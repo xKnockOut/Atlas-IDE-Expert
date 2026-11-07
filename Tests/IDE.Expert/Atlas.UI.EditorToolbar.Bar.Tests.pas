@@ -73,11 +73,11 @@ var
   Button: TAtlasToolbarButton;
 begin
   Result := nil;
-  Button := TAtlasToolbarButton.Create(TAtlasToolbarItems.GotoInterface, 'Zum interface-Teil', 'Zum interface-Teil',
+  Button := TAtlasToolbarButton.Create(TAtlasToolbarItems.cGotoInterface, 'Zum interface-Teil', 'Zum interface-Teil',
     TAtlasToolbarIcon.InterfacePart);
   Button.Pinned := True;
   Result := Result + [Button];
-  Button := TAtlasToolbarButton.Create(TAtlasToolbarItems.GotoImplementation, 'Zum implementation-Teil', '',
+  Button := TAtlasToolbarButton.Create(TAtlasToolbarItems.cGotoImplementation, 'Zum implementation-Teil', '',
     TAtlasToolbarIcon.ImplementationPart);
   Button.Pinned := True;
   Button.Pressed := True;
@@ -133,9 +133,9 @@ begin
   FBar.SetButtons(Sample);
   FBar.Height := Height_ * 2;
   Assert.AreEqual(Height_, FBar.Height, 'eine Zeile, nie höher');
-  Assert.IsTrue(FBar.Places.ButtonRect(TAtlasToolbarItems.GotoInterface).Right <=
-    FBar.Places.ButtonRect(TAtlasToolbarItems.GotoImplementation).Left, 'Reihenfolge von links');
-  Assert.IsTrue(FBar.Places.ButtonRect('Atlas.NavBack').Left > FBar.Places.ButtonRect(TAtlasToolbarItems.GotoImplementation).Right,
+  Assert.IsTrue(FBar.Places.ButtonRect(TAtlasToolbarItems.cGotoInterface).Right <=
+    FBar.Places.ButtonRect(TAtlasToolbarItems.cGotoImplementation).Left, 'Reihenfolge von links');
+  Assert.IsTrue(FBar.Places.ButtonRect('Atlas.NavBack').Left > FBar.Places.ButtonRect(TAtlasToolbarItems.cGotoImplementation).Right,
     'Trennstrich dazwischen');
   Assert.IsTrue(FBar.Places.More.IsEmpty, 'alles passt');
   Assert.AreEqual(0, Integer(Length(FBar.Places.OverflowIds)));
@@ -150,7 +150,7 @@ begin
   Assert.IsTrue(FBar.Places.Return.IsEmpty);
   FBar.SetReturn(True, '214', 'Zurück zu Zeile 214 · TfrmKunde.btnSpeichernClick');
   Assert.IsFalse(FBar.Places.Return.IsEmpty);
-  Assert.IsTrue(FBar.Places.Return.Left >= FBar.Places.ButtonRect(TAtlasToolbarItems.GotoImplementation).Right,
+  Assert.IsTrue(FBar.Places.Return.Left >= FBar.Places.ButtonRect(TAtlasToolbarItems.cGotoImplementation).Right,
     'hinter den Abschnittssymbolen');
   Assert.IsTrue(FBar.Places.Return.Right <= FBar.Places.ButtonRect('Atlas.NavBack').Left);
   Assert.AreEqual('Zurück zu Zeile 214 · TfrmKunde.btnSpeichernClick',
@@ -172,10 +172,10 @@ begin
   Overflow := FBar.Places.OverflowIds;
   Assert.IsTrue(Length(Overflow) > 0);
   Assert.AreEqual('Atlas.Custom', Overflow[High(Overflow)], 'Reihenfolge bleibt');
-  Assert.IsFalse(FBar.Places.ButtonRect(TAtlasToolbarItems.GotoInterface).IsEmpty, 'angeheftet');
-  Assert.IsFalse(FBar.Places.ButtonRect(TAtlasToolbarItems.GotoImplementation).IsEmpty, 'angeheftet');
+  Assert.IsFalse(FBar.Places.ButtonRect(TAtlasToolbarItems.cGotoInterface).IsEmpty, 'angeheftet');
+  Assert.IsFalse(FBar.Places.ButtonRect(TAtlasToolbarItems.cGotoImplementation).IsEmpty, 'angeheftet');
   Assert.IsFalse(FBar.Places.Return.IsEmpty, 'Rücksprung bleibt sichtbar');
-  Assert.IsFalse(Overflow[0] = TAtlasToolbarItems.Separator, 'kein Trennstrich vorn im Menü');
+  Assert.IsFalse(Overflow[0] = TAtlasToolbarItems.cSeparator, 'kein Trennstrich vorn im Menü');
   FBar.Repaint;
 end;
 
@@ -306,7 +306,7 @@ begin
   FBar.SetButtons(Sample);
   Area := FBar.Places.ButtonRect('Atlas.NavBack');
   Assert.AreEqual('Zurück (Alt+Links)', FBar.HintAt(Area.CenterPoint.X, Area.CenterPoint.Y));
-  Area := FBar.Places.ButtonRect(TAtlasToolbarItems.GotoImplementation);
+  Area := FBar.Places.ButtonRect(TAtlasToolbarItems.cGotoImplementation);
   Assert.AreEqual('Zum implementation-Teil', FBar.HintAt(Area.CenterPoint.X, Area.CenterPoint.Y),
     'ohne Tooltip die Beschriftung');
   Area := FBar.Places.ButtonRect('Atlas.ProblemsWindow');

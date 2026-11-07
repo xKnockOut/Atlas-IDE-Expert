@@ -363,7 +363,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "find-bugs",
-      "description": "A path through the function ends without assigning Result. The caller then reads an undefined value.",
+      "description": "A path through the function ends without assigning Result. The caller then reads an undefined value. A for loop runs at least once when both bounds are number literals or true constants of the unit (cAttempts = 3) and the range is not empty, as Delphi evaluates it.",
       "bad": "function Find: Integer;\nbegin\n  if Ok then\n    Result := 1;\nend;",
       "good": "function Find: Integer;\nbegin\n  Result := 0;\n  if Ok then\n    Result := 1;\nend;"
     },
@@ -656,7 +656,7 @@
       "category": "vulnerability",
       "severity": "warning",
       "group": "security",
-      "description": "A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Experimental until data flow analysis is available.",
+      "description": "A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Only the path (first argument) counts, not the written content (WriteAllText(Path, List.Text)). Experimental until data flow analysis is available.",
       "bad": "List.LoadFromFile('C:\\Data\\' + Edit1.Text);",
       "good": "Path := TPath.GetFullPath(TPath.Combine(Root, Edit1.Text));  // then check it starts with Root"
     },
@@ -847,7 +847,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "A string literal with words for people stands in a statement. Move it to a resourcestring so it can be translated. Off by default, low confidence.",
+      "description": "A string literal with words for people stands in a statement. Move it to a resourcestring so it can be translated. Silent for texts nobody translates: arguments of logging and check calls (…Log, Log…, Diagnose, Trace, Debug, Assert, OutputDebugString), comparison and registry calls (StartsText, Pos, ReadString …), masks of FormatDateTime and FormatFloat, markup (HTML from <, JSON from { or \"key\":, Markdown headings # and ##) and Font.Name; option ignoreCalls names further routines. Off by default, low confidence.",
       "bad": "ShowMessage('File not found');",
       "good": "resourcestring\n  SFileNotFound = 'File not found';\n...\nShowMessage(SFileNotFound);"
     },
@@ -940,7 +940,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "robustness",
-      "description": "Random is used, but the unit never calls Randomize, so every start yields the same sequence. Randomize often sits in the .dpr, so the rule is off by default and has low confidence.",
+      "description": "Random is used, but the unit never calls Randomize, so every start yields the same sequence. A Random of your own (enumeration value, routine) is not System.Random. Randomize often sits in the .dpr, so the rule is off by default and has low confidence.",
       "bad": "Dice := Random(6) + 1;",
       "good": "Randomize; // once at program start\n...\nDice := Random(6) + 1;"
     },
@@ -1086,7 +1086,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "performance",
-      "description": "A string variable is extended step by step inside a loop. Delphi usually grows strings in place, so this is reported only with low confidence and is off by default; for many iterations TStringBuilder is faster.",
+      "description": "A string variable is extended step by step inside a loop. Delphi usually grows strings in place, so this is reported only with low confidence and is off by default; for many iterations TStringBuilder is faster. Silent when the variable is assigned anew earlier in every iteration, directly in the loop body and not behind then, else or a case label (it does not grow across the loop).",
       "bad": "for I := 1 to 10000 do\n  S := S + IntToStr(I);",
       "good": "Builder := TStringBuilder.Create;\ntry\n  for I := 1 to 10000 do\n    Builder.Append(I);\n  S := Builder.ToString;\nfinally\n  Builder.Free;\nend;"
     },
@@ -1096,7 +1096,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "performance",
-      "description": "The condition of while and until is evaluated on every iteration. Calls like Trim, Format or FileExists and properties like Lines.Text there are recomputed each time; compute them once before the loop. Bounds of for loops are evaluated only once and are not reported. Off by default.",
+      "description": "The condition of while and until is evaluated on every iteration. Calls like Trim or Format and properties like Lines.Text there are recomputed each time; compute them once before the loop. Bounds of for loops are evaluated only once and are not reported, nor is .Text when it is a field (record field of a type in the same file, or a field or a property reading a field according to the name resolution), nor a property whose receiver the loop changes (Items[I].Text), nor FileExists and DirectoryExists (waiting for a file), nor calls whose argument the loop changes (assignment, Inc, Dec, Delete, SetLength, Include, Exclude). Off by default.",
       "bad": "while I < Length(Trim(Memo.Lines.Text)) do\n  Inc(I);",
       "good": "Text := Trim(Memo.Lines.Text);\nwhile I < Length(Text) do\n  Inc(I);"
     },
@@ -1106,7 +1106,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "performance",
-      "description": "Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Silent for menus (TMenuItem has no BeginUpdate) and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.",
+      "description": "Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Silent for menus (TMenuItem has no BeginUpdate, also through fields such as FParts.Menu.Items, including records nested in the class), for lists without a control (TObjectList<T>, TList, TDictionary), for types in the index without BeginUpdate and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.",
       "bad": "for I := 1 to 1000 do\n  ListBox1.Items.Add(IntToStr(I));",
       "good": "ListBox1.Items.BeginUpdate;\ntry\n  for I := 1 to 1000 do\n    ListBox1.Items.Add(IntToStr(I));\nfinally\n  ListBox1.Items.EndUpdate;\nend;"
     },
@@ -2020,7 +2020,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "Number literals (decimal, $hex, floating point, with sign) in statements, outside const sections, types, array bounds and subranges. Allowed values are configurable; DFM coordinates and tests can be excluded through exclude. Off by default and low confidence: it shows up once the rule is switched on and minConfidence is low. Quick fix: Introduce constant (#50) in the const section of the routine.",
+      "description": "Number literals (decimal, $hex, floating point, with sign) in statements, outside const sections, types, array bounds and subranges. Numbers that speak for themselves stay silent: the DPI base 96 in MulDiv, full bit masks ($FF, $FFFF, $FFFFFFFF), time units 24, 60, 1000 and 3600 in *, /, div and mod, and arguments of calls in an array literal whose arguments are all numbers (point lists such as [P(3.5, 1.5), P(9.5, 1.5)]); SetBounds(12, 9, 360, 23) is still reported. Allowed values are configurable; DFM coordinates and tests can be excluded through exclude. Off by default and low confidence: it shows up once the rule is switched on and minConfidence is low. Quick fix: Introduce constant (#50) in the const section of the routine.",
       "bad": "if Tage > 42 then\n  Mahnen;",
       "good": "const\n  Mahnfrist = 42;\n...\nif Tage > Mahnfrist then\n  Mahnen;",
       "options": [
@@ -2150,7 +2150,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "Fields in the public or published section of a class. The section without a visibility keyword only counts for classes without an ancestor or with TObject, because the form designer puts its fields there. Records are excluded unless includeRecords is set; class var is not reported. Off by default. Quick fix: Encapsulate field moves the field as FName into a private section at the end of the class and adds property Name read FName write FName in the old section; accesses from outside stay valid.",
+      "description": "Fields in the public or published section of a class. The section without a visibility keyword only counts for classes without an ancestor or with TObject, because the form designer puts its fields there. Records are excluded unless includeRecords is set; class var and helper classes declared under a private or protected type section are not reported. Off by default. Quick fix: Encapsulate field moves the field as FName into a private section at the end of the class and adds property Name read FName write FName in the old section; accesses from outside stay valid.",
       "bad": "TKunde = class\npublic\n  Name: string;\nend;",
       "good": "TKunde = class\nprivate\n  FName: string;\npublic\n  property Name: string read FName write FName;\nend;",
       "options": [
@@ -3967,7 +3967,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "compiler",
-      "description": "A property has the name of a field of an ancestor (like W1009), a field has the name of a field or property of an ancestor, or a non-virtual method has the name and parameters of a non-virtual method of an ancestor (the last two without a code: Delphi 13 compiles them silently). Code that accesses the object through the ancestor type still sees the old member. Virtual methods are reported by hides-virtual, local names by shadowed-name. Republished properties (property Caption;), properties with a new type over an ancestor property, overload, reintroduce, constructors and class methods are not reported. Members the descendant cannot see (private in another unit, strict private with ignoreStrictPrivate) are skipped; ancestors come from the file and the symbol index. Quick fix for fields and properties: rename the member in the class declaration and the bodies of its methods in this unit (FName becomes FKundeName).",
+      "description": "A property has the name of a field of an ancestor (like W1009), a field has the name of a field or property of an ancestor, or a non-virtual method has the name and parameters of a non-virtual method of an ancestor (the last two without a code: Delphi 13 compiles them silently). Code that accesses the object through the ancestor type still sees the old member. Virtual methods are reported by hides-virtual, local names by shadowed-name. Republished properties (property Caption;), properties with a new type over an ancestor property, overload, reintroduce, constructors, class methods and methods implementing a method of an interface in the class's own ancestor list (QueryInterface over TInterfacedObject) are not reported. Members the descendant cannot see (private in another unit, strict private with ignoreStrictPrivate) are skipped; ancestors come from the file and the symbol index. Quick fix for fields and properties: rename the member in the class declaration and the bodies of its methods in this unit (FName becomes FKundeName).",
       "bad": "TBasis = class\n  FName: string;\nend;\nTKunde = class(TBasis)\n  FName: string;\nend;",
       "good": "TBasis = class\n  FName: string;\nend;\nTKunde = class(TBasis)\n  FKundeName: string;\nend;",
       "compilerCodes": [
@@ -4876,7 +4876,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, not an event of the form file, does not implement an interface and is not used as a method pointer. Experimental: only active when switched on in atlas.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (class … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine and a record helper for the type of the first parameter, each with a preview of all changed calls.",
+      "description": "A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, has no attribute and is not published (DUnitX tests and RTTI call it on the instance), is not an event of the form file, does not implement an interface and is not used as a method pointer. Experimental: only active when switched on in atlas.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (class … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine and a record helper for the type of the first parameter, each with a preview of all changed calls.",
       "bad": "function TRechner.Doppelt(A: Integer): Integer;\nbegin\n  Result := A * 2;  // no field, no Self\nend;",
       "good": "class function TRechner.Doppelt(A: Integer): Integer; static;\nbegin\n  Result := A * 2;\nend;"
     }

@@ -33,7 +33,7 @@ type
 
   TCompilerIdeCommand = class
   public const
-    StartTimeoutSec = 180;
+    cStartTimeoutSec = 180;
   public
     /// <summary>Aufruf von AScript (cc.ps1) über PowerShell APowerShell (pwsh.exe oder powershell.exe).</summary>
     class function Request(const APowerShell, AScript: string; const AArguments: TArray<string>;
@@ -70,7 +70,7 @@ end;
 
 class function TCompilerIdeCommand.StartArguments(const AProject: string): TArray<string>;
 begin
-  Result := ['start', '-Project', AProject, '-TimeoutSec', IntToStr(StartTimeoutSec)];
+  Result := ['start', '-Project', AProject, '-TimeoutSec', IntToStr(cStartTimeoutSec)];
 end;
 
 class function TCompilerIdeCommand.BuildArguments(APid: Cardinal; const AProject, APlatform: string): TArray<string>;
@@ -90,35 +90,35 @@ end;
 
 class function TCompilerIdeCommand.ParsePid(const AOutput: TArray<string>; out APid: Cardinal): Boolean;
 var
-  Line, Lower: string;
-  Index, Start: Integer;
-  Value: Int64;
+  mLine, mLower: string;
+  mIndex, mStart: Integer;
+  mValue: Int64;
 begin
   APid := 0;
-  for Line in AOutput do
+  for mLine in AOutput do
   begin
-    Lower := LowerCase(Line);
-    Index := Pos('pid', Lower);
-    if Index = 0 then
+    mLower := LowerCase(mLine);
+    mIndex := Pos('pid', mLower);
+    if mIndex = 0 then
     begin
       Continue;
     end;
-    Index := Index + 3;
+    mIndex := mIndex + 3;
     // "pid N", "pid: N", "pid=N"
-    while (Index <= Length(Lower)) and not CharInSet(Lower[Index], ['0'..'9']) and
-      CharInSet(Lower[Index], [' ', ':', '=', #9]) do
+    while (mIndex <= Length(mLower)) and not CharInSet(mLower[mIndex], ['0'..'9']) and
+      CharInSet(mLower[mIndex], [' ', ':', '=', #9]) do
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
-    Start := Index;
-    while (Index <= Length(Lower)) and CharInSet(Lower[Index], ['0'..'9']) do
+    mStart := mIndex;
+    while (mIndex <= Length(mLower)) and CharInSet(mLower[mIndex], ['0'..'9']) do
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
-    if (Index > Start) and TryStrToInt64(Copy(Lower, Start, Index - Start), Value) and (Value > 0) and
-      (Value <= High(Cardinal)) then
+    if (mIndex > mStart) and TryStrToInt64(Copy(mLower, mStart, mIndex - mStart), mValue) and (mValue > 0) and
+      (mValue <= High(Cardinal)) then
     begin
-      APid := Cardinal(Value);
+      APid := Cardinal(mValue);
       Exit(True);
     end;
   end;
@@ -127,37 +127,37 @@ end;
 
 class function TCompilerIdeCommand.ParseBuild(const AOutput: TArray<string>; out AReport: TIdeBuildReport): Boolean;
 var
-  Text: string;
-  First, Last: Integer;
-  Value: TJSONValue;
-  Root: TJSONObject;
+  mText: string;
+  mFirst, mLast: Integer;
+  mValue: TJSONValue;
+  mRoot: TJSONObject;
 begin
   AReport := Default(TIdeBuildReport);
-  Text := string.Join(#10, AOutput);
-  First := Pos('{', Text);
-  Last := LastDelimiter('}', Text);
-  if (First = 0) or (Last < First) then
+  mText := string.Join(#10, AOutput);
+  mFirst := Pos('{', mText);
+  mLast := LastDelimiter('}', mText);
+  if (mFirst = 0) or (mLast < mFirst) then
   begin
     Exit(False);
   end;
-  Value := TJSONObject.ParseJSONValue(Copy(Text, First, Last - First + 1));
+  mValue := TJSONObject.ParseJSONValue(Copy(mText, mFirst, mLast - mFirst + 1));
   try
-    Result := Value is TJSONObject;
+    Result := mValue is TJSONObject;
     if not Result then
     begin
       Exit;
     end;
-    Root := TJSONObject(Value);
-    AReport.Ok := Root.GetValue<Boolean>('ok', False);
-    AReport.OutputWritten := Root.GetValue<Boolean>('outputWritten', False);
-    AReport.LogFile := Root.GetValue<string>('logFile', '');
-    AReport.Error := Root.GetValue<string>('error', '');
+    mRoot := TJSONObject(mValue);
+    AReport.Ok := mRoot.GetValue<Boolean>('ok', False);
+    AReport.OutputWritten := mRoot.GetValue<Boolean>('outputWritten', False);
+    AReport.LogFile := mRoot.GetValue<string>('logFile', '');
+    AReport.Error := mRoot.GetValue<string>('error', '');
     if AReport.Error = '' then
     begin
-      AReport.Error := Root.GetValue<string>('message', '');
+      AReport.Error := mRoot.GetValue<string>('message', '');
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 

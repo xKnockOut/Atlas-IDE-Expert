@@ -63,7 +63,6 @@ type
     property SettingsExportSecretsChoice: TAtlasChoiceBox read FSettingsExportSecrets;
     property ExportButton: TButton read FExportButton;
     property ImportButton: TButton read FImportButton;
-    property ResetPageButton: TButton read FResetPageButton;
     property ResetAllButton: TButton read FResetAllButton;
   end;
 
@@ -85,16 +84,16 @@ end;
 
 procedure TAtlasSettingsTransferPart.AddTransferSection;
 const
-  BarHeight = 66;
-  ButtonHeight = 25;
-  Row2 = 34;
+  cBarHeight = 66;
+  cButtonHeight = 25;
+  cRow2 = 34;
 
   function AddButton(const ACaption: string; ALeft, ATop, AWidth: Integer; const AClick: TNotifyEvent): TButton;
   begin
     Result := TButton.Create(FPage);
     Result.Parent := FTransferBar;
     Result.Caption := ACaption;
-    Result.SetBounds(ALeft, ATop, AWidth, ButtonHeight);
+    Result.SetBounds(ALeft, ATop, AWidth, cButtonHeight);
     Result.OnClick := AClick;
   end;
 
@@ -111,13 +110,13 @@ begin
   FTransferBar.Parent := FPage;
   FTransferBar.Align := alBottom;
   FTransferBar.AlignWithMargins := True;
-  FTransferBar.Height := BarHeight;
+  FTransferBar.Height := cBarHeight;
   FExportButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsExportButton), 0, 4, 120, ExportClick);
   FImportButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsImportButton), 126, 4, 120, ImportClick);
   FProfileButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsProfileButton), 252, 4, 120, ProfileClick);
-  FResetPageButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsResetPageButton), 0, Row2, 150,
+  FResetPageButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsResetPageButton), 0, cRow2, 150,
     ResetPageClick);
-  FResetAllButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsResetAllButton), 156, Row2, 150,
+  FResetAllButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsResetAllButton), 156, cRow2, 150,
     ResetAllClick);
 end;
 
@@ -128,15 +127,15 @@ end;
 
 procedure TAtlasSettingsTransferPart.ShowModified;
 var
-  Modified: TArray<string>;
+  mModified: TArray<string>;
 begin
   FTransferBar.Visible := FSettingsExportImport.Checked;
-  Modified := nil;
+  mModified := nil;
   if FSettingsMarkModified.Checked then
   begin
-    Modified := TAtlasSettingsTransfer.ModifiedNames(FPage.Catalog, FPage.CurrentSettings);
+    mModified := TAtlasSettingsTransfer.ModifiedNames(FPage.Catalog, FPage.CurrentSettings);
   end;
-  FPage.Marks.Show(Modified, FSettingsMarkModified.Checked);
+  FPage.Marks.Show(mModified, FSettingsMarkModified.Checked);
 end;
 
 procedure TAtlasSettingsTransferPart.ResetPageClick(Sender: TObject);
@@ -154,31 +153,31 @@ end;
 
 procedure TAtlasSettingsTransferPart.ImportClick(Sender: TObject);
 var
-  Imported: TAtlasPluginSettings;
+  mImported: TAtlasPluginSettings;
 begin
-  if Assigned(FOnImportSettings) and FOnImportSettings(FPage.CurrentSettings, False, Imported) then
+  if Assigned(FOnImportSettings) and FOnImportSettings(FPage.CurrentSettings, False, mImported) then
   begin
-    FPage.LoadFrom(Imported);
+    FPage.LoadFrom(mImported);
   end;
 end;
 
 procedure TAtlasSettingsTransferPart.ProfileClick(Sender: TObject);
 var
-  Imported: TAtlasPluginSettings;
+  mImported: TAtlasPluginSettings;
 begin
-  if Assigned(FOnImportSettings) and FOnImportSettings(FPage.CurrentSettings, True, Imported) then
+  if Assigned(FOnImportSettings) and FOnImportSettings(FPage.CurrentSettings, True, mImported) then
   begin
-    FPage.LoadFrom(Imported);
+    FPage.LoadFrom(mImported);
   end;
 end;
 
 procedure TAtlasSettingsTransferPart.ResetAllClick(Sender: TObject);
 var
-  Reset: TAtlasPluginSettings;
+  mReset: TAtlasPluginSettings;
 begin
-  if Assigned(FOnResetAllSettings) and FOnResetAllSettings(FPage.CurrentSettings, Reset) then
+  if Assigned(FOnResetAllSettings) and FOnResetAllSettings(FPage.CurrentSettings, mReset) then
   begin
-    FPage.LoadFrom(Reset);
+    FPage.LoadFrom(mReset);
   end;
 end;
 

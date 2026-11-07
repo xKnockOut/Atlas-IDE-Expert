@@ -231,7 +231,7 @@ begin
   Findings := TRuleAssert.Findings(TEmptyStatementRule.Create,
     Body('  if Liste.Count = 0 then;'#10'    raise EKeineDaten.Create(''Keine Daten'');'#10));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(EmptyStatementRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cEmptyStatementRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
   Assert.AreEqual('Leere Anweisung nach then: die nächste Zeile läuft immer.', Findings[0].Message);
@@ -354,7 +354,7 @@ begin
   Findings := TRuleAssert.Findings(TLoopOffByOneRule.Create,
     ListBody('  for I := 0 to Kunden.Count do'#10'    Ausgabe(Kunden[I].Name);'#10));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(LoopOffByOneRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cLoopOffByOneRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
   Assert.AreEqual('Obergrenze Kunden.Count: der letzte Durchlauf greift hinter das Listenende (Index Count).',
@@ -473,7 +473,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(Loop));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(CollectionModifiedInLoopRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cCollectionModifiedInLoopRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
   Assert.AreEqual('Kunden.Delete in einer Vorwärtsschleife über Kunden: das nächste Element wird übersprungen, ' +
@@ -600,7 +600,7 @@ begin
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = EmptyStatementRuleId then
+    if Rule.Descriptor.Id = cEmptyStatementRuleId then
     begin
       Found := True;
     end;
@@ -609,30 +609,30 @@ begin
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = LoopOffByOneRuleId then
+    if Rule.Descriptor.Id = cLoopOffByOneRuleId then
     begin
       Found := True;
     end;
   end;
-  Assert.IsTrue(Found, LoopOffByOneRuleId);
+  Assert.IsTrue(Found, cLoopOffByOneRuleId);
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = CollectionModifiedInLoopRuleId then
+    if Rule.Descriptor.Id = cCollectionModifiedInLoopRuleId then
     begin
       Found := True;
     end;
   end;
-  Assert.IsTrue(Found, CollectionModifiedInLoopRuleId);
+  Assert.IsTrue(Found, cCollectionModifiedInLoopRuleId);
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = DestroyCalledDirectlyRuleId then
+    if Rule.Descriptor.Id = cDestroyCalledDirectlyRuleId then
     begin
       Found := True;
     end;
   end;
-  Assert.IsTrue(Found, DestroyCalledDirectlyRuleId);
+  Assert.IsTrue(Found, cDestroyCalledDirectlyRuleId);
 end;
 
 procedure TStatementPatternRulesTests.DestroyCalledDirectlyIssueExample;
@@ -1023,7 +1023,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto(Statements));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(ComparisonAsStatementRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cComparisonAsStatementRuleId, Findings[0].RuleId);
   Assert.AreEqual('Vergleich als Anweisung (wie E2014); gemeint ist wohl Result := 0.', Findings[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
@@ -1104,7 +1104,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang(Statements));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(DuplicateCaseLabelRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cDuplicateCaseLabelRuleId, Findings[0].RuleId);
   Assert.AreEqual('stOffen kommt schon in Zeile 12 vor (wie E2030).', Findings[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));

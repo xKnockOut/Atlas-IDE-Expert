@@ -60,38 +60,26 @@ type
   // Typen der Vervollständigung stehen in Atlas.Common.Lsp.CompletionRequest (Code-Review S-01) und den
   // Completion-Units; hier weiter unter ihrem Namen, damit Aufrufer ohne Änderung übersetzen.
   TCompletionContextKind = Atlas.Common.Lsp.CompletionRequest.TCompletionContextKind;
-  TCompletionFilter = Atlas.Common.Lsp.CompletionRequest.TCompletionFilter;
-  TCompletionPlace = Atlas.Common.Lsp.CompletionRequest.TCompletionPlace;
   TCompletionContext = Atlas.Common.Lsp.CompletionRequest.TCompletionContext;
   TCompletionItem = Atlas.Common.Lsp.CompletionRequest.TCompletionItem;
   TCompletionItems = Atlas.Common.Lsp.CompletionRequest.TCompletionItems;
   TCompletionReadText = Atlas.Common.Lsp.CompletionRequest.TCompletionReadText;
-  TCompletionPartialProc = Atlas.Common.Lsp.CompletionRequest.TCompletionPartialProc;
   TCompletionRequest = Atlas.Common.Lsp.CompletionRequest.TCompletionRequest;
   TPostfixOptions = Atlas.Common.Lsp.Completion.Postfix.TPostfixOptions;
-  TCompletionFormFunc = Atlas.Common.Lsp.Completion.Forms.TCompletionFormFunc;
   TCompletionNamingFunc = Atlas.Common.Lsp.Completion.Names.TCompletionNamingFunc;
-  TPostfixOptionsFunc = Atlas.Common.Lsp.Completion.Hooks.TPostfixOptionsFunc;
-  TCompletionMatchingFunc = Atlas.Common.Lsp.Completion.Hooks.TCompletionMatchingFunc;
-  TCompletionSettingsFunc = Atlas.Common.Lsp.Completion.Hooks.TCompletionSettingsFunc;
   TCompletionNotifyProc = Atlas.Common.Lsp.Completion.Hooks.TCompletionNotifyProc;
   TCompletionLogProc = Atlas.Common.Lsp.Completion.Hooks.TCompletionLogProc;
-  TCompletionEnabledFunc = Atlas.Common.Lsp.Completion.Hooks.TCompletionEnabledFunc;
-  TCompletionWithFunc = Atlas.Common.Lsp.Completion.Hooks.TCompletionWithFunc;
-  TCompletionCreateFunc = Atlas.Common.Lsp.Completion.Hooks.TCompletionCreateFunc;
   TCompletionHooks = Atlas.Common.Lsp.Completion.Hooks.TCompletionHooks;
 
   TLspCompletion = class
   public const
-    Method = 'textDocument/completion';
-    ResolveMethod = 'completionItem/resolve';
+    cMethod = 'textDocument/completion';
+    cResolveMethod = 'completionItem/resolve';
     /// <summary>Eigene Postfix-Vorlagen vom Plugin (#188).</summary>
-    PostfixTemplatesMethod = 'atlas/postfixTemplates';
-    MaxItems = CompletionMaxItems;
+    cPostfixTemplatesMethod = 'atlas/postfixTemplates';
+    cMaxItems = cCompletionMaxItems;
     /// <summary>Höchstzahl der Vorschläge aus nicht eingebundenen Units.</summary>
-    MaxImportItems = CompletionMaxImportItems;
-    /// <summary>So viele Zeichen muss der Name haben, bevor nicht eingebundene Units mitsuchen.</summary>
-    MinImportPrefix = CompletionMinImportPrefix;
+    cMaxImportItems = cCompletionMaxImportItems;
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -273,9 +261,9 @@ end;
 
 procedure TLspCompletion.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method, Handle);
-  ADispatcher.RegisterConcurrentRequest(ResolveMethod, HandleResolve);
-  ADispatcher.RegisterNotification(PostfixTemplatesMethod, HandlePostfixTemplates);
+  ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
+  ADispatcher.RegisterConcurrentRequest(cResolveMethod, HandleResolve);
+  ADispatcher.RegisterNotification(cPostfixTemplatesMethod, HandlePostfixTemplates);
 end;
 
 procedure TLspCompletion.HandlePostfixTemplates(const AParams: TJSONValue);
@@ -326,7 +314,7 @@ begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPosition)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TCompletionText.MissingPosition].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TCompletionText.MissingPosition].Text);
   end;
   if not FStore.TryGet(mUri, mDocument) then
   begin
@@ -469,8 +457,8 @@ var
 begin
   if not (AParams is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TCompletionText.MissingItem].Text +
-      ResolveMethod);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TCompletionText.MissingItem].Text +
+      cResolveMethod);
   end;
   // Antwort ist der Eintrag selbst, ergänzt um Details; ohne data unverändert.
   mItem := TJSONObject(AParams.Clone);

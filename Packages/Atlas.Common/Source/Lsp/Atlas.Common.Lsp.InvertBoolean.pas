@@ -53,10 +53,10 @@ type
 
   TLspInvertBoolean = class
   public const
-    ClientCommand = 'atlas.invertBoolean';
-    ApplyCommand = 'atlas.server.invertBoolean';
-    Kind = 'refactor.rewrite';
-    AnnotationId = 'invertBoolean';
+    cClientCommand = 'atlas.invertBoolean';
+    cApplyCommand = 'atlas.server.invertBoolean';
+    cKind = 'refactor.rewrite';
+    cAnnotationId = 'invertBoolean';
   public
     /// <summary>Steht an APosition ein umkehrbares Boolean-Symbol des Projekts? ASymbol ist dann aufgelöst.</summary>
     class function Target(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
@@ -151,8 +151,8 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  BooleanTypes: array[0..4] of string = ('Boolean', 'System.Boolean', 'ByteBool', 'WordBool', 'LongBool');
-  FormExtensions: array[0..1] of string = ('.dfm', '.fmx');
+  cBooleanTypes: array[0..4] of string = ('Boolean', 'System.Boolean', 'ByteBool', 'WordBool', 'LongBool');
+  cFormExtensions: array[0..1] of string = ('.dfm', '.fmx');
 
 type
   TSourceFile = class
@@ -201,18 +201,18 @@ end;
 
 function TSourceFile.TokenAt(const APosition: TTextPosition): Integer;
 var
-  Index, At: Integer;
-  Tokens: TArray<TPascalToken>;
+  mIndex, mAt: Integer;
+  mTokens: TArray<TPascalToken>;
 begin
-  Tokens := Tree.Tokens;
-  At := Offset(APosition);
-  for Index := 0 to High(Tokens) do
+  mTokens := Tree.Tokens;
+  mAt := Offset(APosition);
+  for mIndex := 0 to High(mTokens) do
   begin
-    if Tokens[Index].Offset = At then
+    if mTokens[mIndex].Offset = mAt then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end
-    else if Tokens[Index].Offset > At then
+    else if mTokens[mIndex].Offset > mAt then
     begin
       Break;
     end;
@@ -222,28 +222,28 @@ end;
 
 function TSourceFile.IsVarArgument(ACall: TSyntaxNode; AArgument: Integer): Boolean;
 var
-  Callee: TSyntaxNode;
-  Candidate: TResolvedSymbol;
-  Modifier: string;
-  Index: Integer;
-  Tokens: TArray<TPascalToken>;
+  mCallee: TSyntaxNode;
+  mCandidate: TResolvedSymbol;
+  mModifier: string;
+  mIndex: Integer;
+  mTokens: TArray<TPascalToken>;
 begin
   Result := False;
   if (Resolver = nil) or (ACall.ChildCount = 0) then
   begin
     Exit;
   end;
-  Callee := ACall[0];
+  mCallee := ACall[0];
   // Der Name ist das letzte Token des Aufgerufenen (Obj.Toggle → Toggle).
-  Tokens := Tree.Tokens;
-  for Index := High(Tokens) downto 0 do
+  mTokens := Tree.Tokens;
+  for mIndex := High(mTokens) downto 0 do
   begin
-    if (Tokens[Index].Offset < Callee.EndOffset) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) then
+    if (mTokens[mIndex].Offset < mCallee.EndOffset) and (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) then
     begin
-      for Candidate in Resolver.ResolveAll(Tree, FileName, Tokens[Index].StartPos) do
+      for mCandidate in Resolver.ResolveAll(Tree, FileName, mTokens[mIndex].StartPos) do
       begin
-        Modifier := TLspInvertBoolean.ParameterModifier(Candidate.Signature, AArgument);
-        if (Modifier = 'var') or (Modifier = 'out') then
+        mModifier := TLspInvertBoolean.ParameterModifier(mCandidate.Signature, AArgument);
+        if (mModifier = 'var') or (mModifier = 'out') then
         begin
           Exit(True);
         end;
@@ -255,7 +255,7 @@ end;
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
 end;
 
 function Where(const AFileName: string; const APosition: TTextPosition): string;
@@ -265,7 +265,7 @@ end;
 
 function IsBooleanType(const ATypeName: string): Boolean;
 begin
-  Result := IndexText(Trim(ATypeName), BooleanTypes) >= 0;
+  Result := IndexText(Trim(ATypeName), cBooleanTypes) >= 0;
 end;
 
 /// <summary>Vorheriges Token ohne Kommentare; -1 am Anfang.</summary>
@@ -528,36 +528,36 @@ begin
   mArguments.Add(mSuggested);
   mCommand := TJSONObject.Create;
   mCommand.AddPair('title', mTitle);
-  mCommand.AddPair('command', ClientCommand);
+  mCommand.AddPair('command', cClientCommand);
   mCommand.AddPair('arguments', mArguments);
   mAction := TJSONObject.Create;
   mAction.AddPair('title', mTitle);
-  mAction.AddPair('kind', Kind);
+  mAction.AddPair('kind', cKind);
   mAction.AddPair('command', mCommand);
   Result := [mAction];
 end;
 
 function EditsJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
 var
-  Document, Item: TJSONObject;
-  Items: TJSONArray;
-  Edit: TTextEdit;
+  mDocument, mItem: TJSONObject;
+  mItems: TJSONArray;
+  mEdit: TTextEdit;
 begin
-  Document := TJSONObject.Create;
-  Document.AddPair('uri', AUri);
-  Document.AddPair('version', TJSONNull.Create);
-  Items := TJSONArray.Create;
-  for Edit in AEdits do
+  mDocument := TJSONObject.Create;
+  mDocument.AddPair('uri', AUri);
+  mDocument.AddPair('version', TJSONNull.Create);
+  mItems := TJSONArray.Create;
+  for mEdit in AEdits do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-    Item.AddPair('newText', Edit.NewText);
-    Item.AddPair('annotationId', TLspInvertBoolean.AnnotationId);
-    Items.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mItem.AddPair('newText', mEdit.NewText);
+    mItem.AddPair('annotationId', TLspInvertBoolean.cAnnotationId);
+    mItems.AddElement(mItem);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('textDocument', Document);
-  Result.AddPair('edits', Items);
+  Result.AddPair('textDocument', mDocument);
+  Result.AddPair('edits', mItems);
 end;
 
 type
@@ -655,8 +655,8 @@ end;
 
 function TInvertPlan.Source(const AFileName: string): TSourceFile;
 var
-  Text: string;
-  Created: TSourceFile;
+  mText: string;
+  mCreated: TSourceFile;
 begin
   if FSources.TryGetValue(UpperCase(AFileName), Result) then
   begin
@@ -669,11 +669,11 @@ begin
     Result.Text := FText;
     Result.Tree := FTree;
   end
-  else if Assigned(FContext.ReadText) and FContext.ReadText(AFileName, Text) then
+  else if Assigned(FContext.ReadText) and FContext.ReadText(AFileName, mText) then
   begin
     Result := TSourceFile.Create;
-    Result.Text := Text;
-    Result.Tree := TSyntaxTreeCache.Parse(Text);
+    Result.Text := mText;
+    Result.Tree := TSyntaxTreeCache.Parse(mText);
     Result.OwnsTree := True;
   end;
   if Result = nil then
@@ -684,8 +684,8 @@ begin
   Result.Lines := TLineTable.Build(Result.Text);
   Result.Resolver := FResolver;
   // Methodenzeiger über eine lokale Variable: Result lässt sich nicht erfassen (E2555).
-  Created := Result;
-  Result.Targets.VarArgument := Created.IsVarArgument;
+  mCreated := Result;
+  Result.Targets.VarArgument := mCreated.IsVarArgument;
   FSources.Add(UpperCase(AFileName), Result);
   Order.Add(AFileName);
 end;
@@ -697,31 +697,31 @@ end;
 
 function TInvertPlan.Member(const AFileName, AContainer, AName: string; out ASymbol: TResolvedSymbol): Boolean;
 var
-  Unit_: TSourceFile;
-  Symbol: TIndexSymbol;
+  mUnit_: TSourceFile;
+  mSymbol: TIndexSymbol;
 begin
   Result := False;
   ASymbol := Default(TResolvedSymbol);
-  Unit_ := Source(AFileName);
-  if (Unit_ = nil) or (Unit_.Tree = nil) then
+  mUnit_ := Source(AFileName);
+  if (mUnit_ = nil) or (mUnit_.Tree = nil) then
   begin
     Exit;
   end;
-  for Symbol in FResolver.ExtractedUnit(Unit_.Tree, AFileName).Symbols do
+  for mSymbol in FResolver.ExtractedUnit(mUnit_.Tree, AFileName).Symbols do
   begin
-    if SameText(Symbol.Container, AContainer) and SameText(Symbol.Name, AName) and
-      (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Method]) then
+    if SameText(mSymbol.Container, AContainer) and SameText(mSymbol.Name, AName) and
+      (mSymbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Method]) then
     begin
       ASymbol.Kind := TResolvedKind.Symbol;
-      ASymbol.Name := Symbol.Name;
-      ASymbol.Container := Symbol.Container;
-      ASymbol.SymbolKind := Symbol.Kind;
+      ASymbol.Name := mSymbol.Name;
+      ASymbol.Container := mSymbol.Container;
+      ASymbol.SymbolKind := mSymbol.Kind;
       ASymbol.FileName := AFileName;
-      ASymbol.Range := Symbol.Range;
-      ASymbol.SelectionRange := Symbol.SelectionRange;
-      ASymbol.TypeName := Symbol.TypeName;
-      ASymbol.Visibility := Symbol.Visibility;
-      ASymbol.Signature := Symbol.Signature;
+      ASymbol.Range := mSymbol.Range;
+      ASymbol.SelectionRange := mSymbol.SelectionRange;
+      ASymbol.TypeName := mSymbol.TypeName;
+      ASymbol.Visibility := mSymbol.Visibility;
+      ASymbol.Signature := mSymbol.Signature;
       Exit(True);
     end;
   end;
@@ -857,14 +857,14 @@ end;
 
 procedure TInvertPlan.AddVariable(const ASymbol: TResolvedSymbol; const ANewName: string; AAccessorCheck: Boolean);
 var
-  Owner: string;
+  mOwner: string;
 begin
   if AAccessorCheck and (ASymbol.SymbolKind = TIndexSymbolKind.Field) then
   begin
-    Owner := AccessingProperty(ASymbol.FileName, ASymbol.Container, ASymbol.Name);
-    if Owner <> '' then
+    mOwner := AccessingProperty(ASymbol.FileName, ASymbol.Container, ASymbol.Name);
+    if mOwner <> '' then
     begin
-      raise Fail(cTexts[TLspInvertBooleanText.IsAnAccessorOfThe].Fmt([ASymbol.Name, Owner]));
+      raise Fail(cTexts[TLspInvertBooleanText.IsAnAccessorOfThe].Fmt([ASymbol.Name, mOwner]));
     end;
   end;
   AddReferences(ASymbol.FileName, ASymbol.SelectionRange.StartPos, ANewName, True, AAccessorCheck);
@@ -874,19 +874,19 @@ end;
 /// <summary>Knoten der Art AKind, dessen Bereich APosition enthält (der innerste).</summary>
 function NodeAt(ATree: TSyntaxTree; AKind: TSyntaxKind; AOffset: Integer): TSyntaxNode;
 var
-  Found: TSyntaxNode;
+  mFound: TSyntaxNode;
 begin
-  Found := nil;
+  mFound := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       Result := (ANode.StartOffset <= AOffset) and (AOffset <= ANode.EndOffset);
       if Result and (ANode.Kind = AKind) then
       begin
-        Found := ANode;
+        mFound := ANode;
       end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 /// <summary>Globale Variable: " = True" hinter den Typ. False, wenn das so nicht geht (Warnung nötig).</summary>
@@ -904,7 +904,8 @@ begin
     Exit(True);
   end;
   mTypeRef := mDecl.FindChild(TSyntaxKind.TypeReference);
-  Result := (mTypeRef <> nil) and (NextToken(mTokens, AToken) >= 0) and mTokens[NextToken(mTokens, AToken)].IsSymbol(':');
+  Result := (mTypeRef <> nil) and (NextToken(mTokens, AToken) >= 0) and
+    mTokens[NextToken(mTokens, AToken)].IsSymbol(':');
   if Result then
   begin
     mPosition := AUnit.Lines.PositionAt(mTypeRef.EndOffset);
@@ -1157,82 +1158,82 @@ end;
 
 procedure TInvertPlan.AddSetter(const AFileName: string; const APosition: TTextPosition; const ANewName: string);
 var
-  Origin, Unit_: TSourceFile;
-  Family: TRoutineFamily;
-  Header: TRoutineFamilyHeader;
-  Call: TRoutineFamilyCall;
-  Last: Integer;
-  Name: string;
+  mOrigin, mUnit_: TSourceFile;
+  mFamily: TRoutineFamily;
+  mHeader: TRoutineFamilyHeader;
+  mCall: TRoutineFamilyCall;
+  mLast: Integer;
+  mName: string;
 begin
-  Origin := Source(AFileName);
-  if (Origin = nil) or (Origin.Tree = nil) then
+  mOrigin := Source(AFileName);
+  if (mOrigin = nil) or (mOrigin.Tree = nil) then
   begin
     raise Fail(cTexts[TLspInvertBooleanText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
   end;
-  Family := TLspChangeSignature.Family(FamilySource(FResolver, FContext, Origin.Tree, AFileName, APosition));
-  Last := -1;
-  for Header in Family.Headers do
+  mFamily := TLspChangeSignature.Family(FamilySource(FResolver, FContext, mOrigin.Tree, AFileName, APosition));
+  mLast := -1;
+  for mHeader in mFamily.Headers do
   begin
-    Unit_ := Source(Header.FileName);
-    if Unit_ = nil then
+    mUnit_ := Source(mHeader.FileName);
+    if mUnit_ = nil then
     begin
       Continue;
     end;
-    Unit_.Targets.AddName(Unit_.Offset(Header.NamePos), ANewName, False);
-    if Header.Parameters = nil then
+    mUnit_.Targets.AddName(mUnit_.Offset(mHeader.NamePos), ANewName, False);
+    if mHeader.Parameters = nil then
     begin
       Continue;
     end;
-    Last := High(Header.Parameters);
+    mLast := High(mHeader.Parameters);
     // Der Wertparameter steht zuletzt; sein Name bleibt, seine Bedeutung kehrt sich um.
-    Name := Header.Parameters[Last].Name;
-    if Header.IsBody then
+    mName := mHeader.Parameters[mLast].Name;
+    if mHeader.IsBody then
     begin
-      Unit_.Targets.AddLocal(Unit_.Offset(Header.NamePos), Name, Name);
+      mUnit_.Targets.AddLocal(mUnit_.Offset(mHeader.NamePos), mName, mName);
     end;
   end;
-  for Call in Family.Calls do
+  for mCall in mFamily.Calls do
   begin
-    Unit_ := Source(Call.FileName);
-    if Unit_ = nil then
+    mUnit_ := Source(mCall.FileName);
+    if mUnit_ = nil then
     begin
       Continue;
     end;
-    Unit_.Targets.AddName(Unit_.Offset(Call.NamePos), ANewName, False);
-    if Last >= 0 then
+    mUnit_.Targets.AddName(mUnit_.Offset(mCall.NamePos), ANewName, False);
+    if mLast >= 0 then
     begin
-      Unit_.Targets.AddCall(Unit_.Offset(Call.NamePos), Last);
+      mUnit_.Targets.AddCall(mUnit_.Offset(mCall.NamePos), mLast);
     end;
   end;
-  for Name in Family.Warnings do
+  for mName in mFamily.Warnings do
   begin
-    Warn(Name);
+    Warn(mName);
   end;
 end;
 
 /// <summary>Literal True/False nach "=" ab Token AFrom bis vor ";" bzw. ")"; -1 ohne.</summary>
 function DefaultToken(const ATokens: TArray<TPascalToken>; AFrom: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
-  Index := AFrom;
-  while (Index >= 0) and (Index <= High(ATokens)) do
+  mIndex := AFrom;
+  while (mIndex >= 0) and (mIndex <= High(ATokens)) do
   begin
-    if ATokens[Index].IsSymbol(';') or ATokens[Index].IsSymbol(')') then
+    if ATokens[mIndex].IsSymbol(';') or ATokens[mIndex].IsSymbol(')') then
     begin
       Exit;
     end;
-    if ATokens[Index].IsSymbol('=') then
+    if ATokens[mIndex].IsSymbol('=') then
     begin
-      Index := NextToken(ATokens, Index);
-      if (Index >= 0) and (TInvertBoolean.NegateLiteral(ATokens[Index].Text) <> '') then
+      mIndex := NextToken(ATokens, mIndex);
+      if (mIndex >= 0) and (TInvertBoolean.NegateLiteral(ATokens[mIndex].Text) <> '') then
       begin
-        Result := Index;
+        Result := mIndex;
       end;
       Exit;
     end;
-    Index := NextToken(ATokens, Index);
+    mIndex := NextToken(ATokens, mIndex);
   end;
 end;
 
@@ -1605,7 +1606,7 @@ begin
   mClasses := ClassFamily(FContext.Index, AClassName);
   for mFileName in FContext.Files do
   begin
-    for mExtension in FormExtensions do
+    for mExtension in cFormExtensions do
     begin
       AddForm(ChangeFileExt(mFileName, mExtension), mClasses, AOld, ANew);
     end;
@@ -1619,30 +1620,30 @@ end;
 
 procedure TInvertPlan.CheckStrings(const AOld: string);
 var
-  FileName, Text: string;
-  Tree: TSyntaxTree;
-  Token: TPascalToken;
+  mFileName, mText: string;
+  mTree: TSyntaxTree;
+  mToken: TPascalToken;
 begin
   // Zeichenketten mit dem alten Namen: RTTI (GetPropValue, FindComponent, MethodAddress) findet ihn nicht mehr.
-  for FileName in FContext.Files do
+  for mFileName in FContext.Files do
   begin
-    if not Assigned(FContext.ReadText) or not FContext.ReadText(FileName, Text) or
-      not ContainsText(Text, '''' + AOld + '''') then
+    if not Assigned(FContext.ReadText) or not FContext.ReadText(mFileName, mText) or
+      not ContainsText(mText, '''' + AOld + '''') then
     begin
       Continue;
     end;
-    Tree := TSyntaxTreeCache.Parse(Text);
+    mTree := TSyntaxTreeCache.Parse(mText);
     try
-      for Token in Tree.Tokens do
+      for mToken in mTree.Tokens do
       begin
-        if (Token.Kind = TPascalTokenKind.StringLiteral) and SameText(Token.Text, '''' + AOld + '''') then
+        if (mToken.Kind = TPascalTokenKind.StringLiteral) and SameText(mToken.Text, '''' + AOld + '''') then
         begin
-          Warn(cTexts[TLspInvertBooleanText.StringRTTIOrStreamingStays].Fmt([Where(FileName, Token.StartPos),
-            Token.Text]));
+          Warn(cTexts[TLspInvertBooleanText.StringRTTIOrStreamingStays].Fmt([Where(mFileName, mToken.StartPos),
+            mToken.Text]));
         end;
       end;
     finally
-      Tree.Free;
+      mTree.Free;
     end;
   end;
 end;
@@ -1752,7 +1753,7 @@ begin
   mAnnotation.AddPair('needsConfirmation', TJSONBool.Create(True));
   mAnnotation.AddPair('description', ADescription);
   mAnnotations := TJSONObject.Create;
-  mAnnotations.AddPair(TLspInvertBoolean.AnnotationId, mAnnotation);
+  mAnnotations.AddPair(TLspInvertBoolean.cAnnotationId, mAnnotation);
   mEdit := TJSONObject.Create;
   mEdit.AddPair('documentChanges', AChanges);
   mEdit.AddPair('changeAnnotations', mAnnotations);
@@ -1781,7 +1782,7 @@ var
 begin
   if not TLspRename.IsValidName(AContext.NewName) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TLspInvertBooleanText.IsNotAValidIdentifier].Fmt([AContext.NewName]));
   end;
   if not Target(AResolver, ATree, AFileName, APosition, AContext.Files, mSymbol) then

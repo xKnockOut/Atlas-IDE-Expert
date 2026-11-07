@@ -87,14 +87,14 @@ type
 
   TCrashCases = class
   public const
-    MaxCases = 20;
-    RequestName = 'anfrage.json';
-    StackName = 'stapel.txt';
-    ReplayName = 'wiederholen.cmd';
+    cMaxCases = 20;
+    cRequestName = 'anfrage.json';
+    cStackName = 'stapel.txt';
+    cReplayName = 'wiederholen.cmd';
     /// <summary>Ersatzname des Schnappschusses, wenn die Uri keinen Dateinamen hat.</summary>
-    BufferName = 'puffer.pas';
+    cBufferName = 'puffer.pas';
     /// <summary>Version von anfrage.json.</summary>
-    FormatVersion = 1;
+    cFormatVersion = 1;
   public
     /// <summary>„2026-10-29_211530_4711“.</summary>
     class function FolderName(ATime: TDateTime; AProcessId: Cardinal): string; static;
@@ -186,8 +186,8 @@ end;
 /// <summary>AName ist eine der festen Dateien eines Falls (oder eine Einstellungsdatei).</summary>
 function IsFixedFileName(const AName: string): Boolean;
 begin
-  Result := SameText(AName, TCrashCases.RequestName) or SameText(AName, TCrashCases.StackName) or
-    SameText(AName, TCrashCases.ReplayName) or SameText(AName, 'atlas.json') or SameText(AName, 'settings.json');
+  Result := SameText(AName, TCrashCases.cRequestName) or SameText(AName, TCrashCases.cStackName) or
+    SameText(AName, TCrashCases.cReplayName) or SameText(AName, 'atlas.json') or SameText(AName, 'settings.json');
 end;
 
 { TCrashCase }
@@ -210,7 +210,7 @@ begin
   // Kein Name, der mit den festen Dateien des Falls zusammenfällt.
   if (Result = '') or IsFixedFileName(Result) then
   begin
-    Result := TCrashCases.BufferName;
+    Result := TCrashCases.cBufferName;
   end;
 end;
 
@@ -495,7 +495,7 @@ begin
   begin
     Result.AddPair('snapshot', ACase.SnapshotName);
   end;
-  Result.AddPair('stack', TCrashCases.StackName);
+  Result.AddPair('stack', TCrashCases.cStackName);
   mSettings := TJSONArray.Create;
   Result.AddPair('settings', mSettings);
   for mSetting in ACase.Settings do
@@ -534,7 +534,7 @@ var
 begin
   mRoot := TJSONObject.Create;
   try
-    mRoot.AddPair('format', TJSONNumber.Create(FormatVersion));
+    mRoot.AddPair('format', TJSONNumber.Create(cFormatVersion));
     mRoot.AddPair('kind', cKindNames[ACase.Kind]);
     mRoot.AddPair('time', DateToISO8601(ACase.Time, False));
     mRoot.AddPair('processId', TJSONNumber.Create(ACase.ProcessId));
@@ -620,7 +620,7 @@ begin
   Result := '@echo off' + sLineBreak +
     'rem Atlas-Absturzfall nachstellen (#1355): Exit-Code 1 = reproduziert, 0 = nicht reproduziert.' + sLineBreak +
     'cd /d "%~dp0"' + sLineBreak +
-    '"' + mServer + '" --replay ' + RequestName + sLineBreak +
+    '"' + mServer + '" --replay ' + cRequestName + sLineBreak +
     'echo Exit-Code %ERRORLEVEL%' + sLineBreak +
     'pause' + sLineBreak;
 end;
@@ -639,7 +639,7 @@ begin
   try
     for mFolder in TDirectory.GetDirectories(ARoot) do
     begin
-      if TFile.Exists(TPath.Combine(mFolder, RequestName)) then
+      if TFile.Exists(TPath.Combine(mFolder, cRequestName)) then
       begin
         mList.Add(mFolder);
       end;
@@ -667,6 +667,7 @@ begin
       TDirectory.Delete(mFolders[mIndex], True);
     except
       // Gesperrt (etwa im Explorer offen) oder schon weg: beim nächsten Fall erneut.
+      // lsp-ignore: catch-all-without-raise -- Aufräumen nach Kräften, nächster Fall versucht es erneut
       on Exception do
         ;
     end;
@@ -701,12 +702,12 @@ begin
       TFile.WriteAllText(TPath.Combine(Result, mSetting.Name), mText, TEncoding.UTF8);
     end;
   end;
-  TFile.WriteAllText(TPath.Combine(Result, StackName), StackText(ACase), TEncoding.UTF8);
+  TFile.WriteAllText(TPath.Combine(Result, cStackName), StackText(ACase), TEncoding.UTF8);
   // Ohne BOM: cmd.exe liest sonst „ï»¿@echo“ als Befehl.
-  TFile.WriteAllBytes(TPath.Combine(Result, ReplayName), TEncoding.ANSI.GetBytes(ReplayScript(ACase)));
+  TFile.WriteAllBytes(TPath.Combine(Result, cReplayName), TEncoding.ANSI.GetBytes(ReplayScript(ACase)));
   // Zuletzt: Ein Ordner gilt erst mit anfrage.json als Fall (Folders).
-  TFile.WriteAllText(TPath.Combine(Result, RequestName), RequestJson(ACase), TEncoding.UTF8);
-  Prune(ARoot, MaxCases);
+  TFile.WriteAllText(TPath.Combine(Result, cRequestName), RequestJson(ACase), TEncoding.UTF8);
+  Prune(ARoot, cMaxCases);
 end;
 
 function StringOf(const AObject: TJSONObject; const AName: string): string;

@@ -70,12 +70,12 @@ end;
 
 class function TAtlasDockPlan.Shown(AFormVisible: Boolean; const AHostsVisible: array of Boolean): Boolean;
 var
-  Visible: Boolean;
+  mVisible: Boolean;
 begin
   Result := AFormVisible;
-  for Visible in AHostsVisible do
+  for mVisible in AHostsVisible do
   begin
-    Result := Result and Visible;
+    Result := Result and mVisible;
   end;
 end;
 

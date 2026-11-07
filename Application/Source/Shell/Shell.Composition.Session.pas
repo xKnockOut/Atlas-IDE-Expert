@@ -192,9 +192,9 @@ function TShellSession.Run(AConnection: TJsonRpcConnection; ALifecycle: TLspLife
 var
   mPrevious: Integer;
 begin
-  FServices.Logger.Info(Format('%s %s gestartet', [TProductVersion.Name, TProductVersion.Version]));
+  FServices.Logger.Info(Format('%s %s gestartet', [TProductVersion.cName, TProductVersion.cVersion]));
   FDiagnostics.AllowMethods(FServices.Dispatcher.Methods);
-  mPrevious := FDiagnostics.BeginRun(TProductVersion.Version, AllocatedBytes);
+  mPrevious := FDiagnostics.BeginRun(TProductVersion.cVersion, AllocatedBytes);
   // Neustarts erklären (#175): Die IDE beendet ihren Server hart (Projektwechsel, IDE geschlossen);
   // dann fehlt dessen Endzeile, und der nächste Start meldet das hier.
   if mPrevious > 0 then

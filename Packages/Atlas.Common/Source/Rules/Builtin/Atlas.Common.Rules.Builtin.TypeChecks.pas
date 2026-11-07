@@ -48,10 +48,10 @@ uses
   Atlas.Common.Editing.ChangeSignature;
 
 const
-  DynamicArrayMisuseRuleId = 'dynamic-array-misuse';
-  LocalRoutineAsCallbackRuleId = 'local-routine-as-callback';
-  ConditionNotBooleanRuleId = 'condition-not-boolean';
-  ForInNotEnumerableRuleId = 'for-in-not-enumerable';
+  cDynamicArrayMisuseRuleId = 'dynamic-array-misuse';
+  cLocalRoutineAsCallbackRuleId = 'local-routine-as-callback';
+  cConditionNotBooleanRuleId = 'condition-not-boolean';
+  cForInNotEnumerableRuleId = 'for-in-not-enumerable';
 
 type
   TDynamicArrayMisuseRule = class(TInterfacedObject, IRule)
@@ -146,70 +146,70 @@ const
 const
   cMaxAncestorDepth = 16;
   // Eingebaute Typen, die als Bedingung E2012 auslösen (condition-not-boolean).
-  ConditionIntegerTypes: array[0..19] of string = ('Integer', 'Cardinal', 'ShortInt', 'SmallInt', 'LongInt',
+  cConditionIntegerTypes: array[0..19] of string = ('Integer', 'Cardinal', 'ShortInt', 'SmallInt', 'LongInt',
     'Int64', 'Byte', 'Word', 'LongWord', 'UInt64', 'NativeInt', 'NativeUInt', 'Int8', 'Int16', 'Int32', 'UInt8',
     'UInt16', 'UInt32', 'FixedInt', 'FixedUInt');
-  ConditionFloatTypes: array[0..5] of string = ('Single', 'Double', 'Extended', 'Real', 'Currency', 'Comp');
-  ConditionPointerTypes: array[0..4] of string = ('Pointer', 'PChar', 'PAnsiChar', 'PWideChar', 'PByte');
-  ConditionStringTypes: array[0..6] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString',
+  cConditionFloatTypes: array[0..5] of string = ('Single', 'Double', 'Extended', 'Real', 'Currency', 'Comp');
+  cConditionPointerTypes: array[0..4] of string = ('Pointer', 'PChar', 'PAnsiChar', 'PWideChar', 'PByte');
+  cConditionStringTypes: array[0..6] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString',
     'ShortString', 'RawByteString', 'UTF8String');
 
 { TDynamicArrayMisuseRule }
 
 function TDynamicArrayMisuseRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(DynamicArrayMisuseRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cDynamicArrayMisuseRuleId, TRuleSeverity.Error,
     cTexts[TTypeChecksText.DynArrayTitle].Text);
 end;
 
 procedure TDynamicArrayMisuseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName: string;
-  Local: TUnitIndex;
-  Node: TSyntaxNode;
+  mFileName: string;
+  mLocal: TUnitIndex;
+  mNode: TSyntaxNode;
 
   /// <summary>Variable, Feld oder Parameter mit dynamischem Array als Typ? Offene Array-Parameter (array of
   /// T als Parametertyp) sind keine dynamischen Arrays.</summary>
   function IsArrayVariable(ANode: TSyntaxNode): Boolean;
   var
-    Symbol, TypeInfo: TResolvedSymbol;
-    TypeFound: Boolean;
-    FromUnit: TUnitIndex;
-    TypeText: string;
+    mSymbol, mTypeInfo: TResolvedSymbol;
+    mTypeFound: Boolean;
+    mFromUnit: TUnitIndex;
+    mTypeText: string;
   begin
     Result := False;
     if not (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess]) or
-      not Resolver.NodeType(AContext.Tree, FileName, ANode, Symbol, TypeInfo, TypeFound) or
-      not (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) then
+      not mResolver.NodeType(AContext.Tree, mFileName, ANode, mSymbol, mTypeInfo, mTypeFound) or
+      not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) then
     begin
       Exit;
     end;
-    TypeText := DeclaredTypeText(AContext, Symbol);
-    if (Symbol.IsParameter and StartsText('array of', TypeText)) or
-      not SymbolUnit(Resolver, Local, Symbol, FromUnit) then
+    mTypeText := DeclaredTypeText(AContext, mSymbol);
+    if (mSymbol.IsParameter and StartsText('array of', mTypeText)) or
+      not SymbolUnit(mResolver, mLocal, mSymbol, mFromUnit) then
     begin
       Exit;
     end;
-    Result := IsDynamicArrayType(Resolver, AContext, FromUnit, TypeText);
+    Result := IsDynamicArrayType(mResolver, AContext, mFromUnit, mTypeText);
   end;
 
   /// <summary>Ist ANode ein Typbezeichner? ADynamic: ein dynamisches Array; AOther: sicher keins (Klasse,
   /// Record, Aufzählung, Interface oder eingebauter Wert-Typ).</summary>
   function TypeIdentifier(ANode: TSyntaxNode; out ADynamic, AOther: Boolean): Boolean;
   var
-    Symbol, TypeInfo: TResolvedSymbol;
-    TypeFound: Boolean;
-    FromUnit: TUnitIndex;
+    mSymbol, mTypeInfo: TResolvedSymbol;
+    mTypeFound: Boolean;
+    mFromUnit: TUnitIndex;
   begin
     ADynamic := False;
     AOther := False;
     Result := (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
-      Resolver.NodeType(AContext.Tree, FileName, ANode, Symbol, TypeInfo, TypeFound) and Symbol.IsType;
+      mResolver.NodeType(AContext.Tree, mFileName, ANode, mSymbol, mTypeInfo, mTypeFound) and mSymbol.IsType;
     // Eingebaute Typen wie Integer stehen ohne System nicht im Index (#1369, Fall Cm.E2307).
     if not Result and (ANode.Kind = TSyntaxKind.Identifier) and TResolverText.IsBuiltinTypeName(ANode.Name) and
-      (Length(Resolver.CallCandidates(AContext.Tree, FileName, ANode)) = 0) then
+      (Length(mResolver.CallCandidates(AContext.Tree, mFileName, ANode)) = 0) then
     begin
       AOther := not MatchText(ANode.Name, ['Pointer', 'PChar', 'PWideChar', 'PAnsiChar']);
       Exit(True);
@@ -218,18 +218,18 @@ var
     begin
       Exit;
     end;
-    if Symbol.Builtin then
+    if mSymbol.Builtin then
     begin
-      AOther := not MatchText(Symbol.Name, ['Pointer', 'PChar', 'PWideChar', 'PAnsiChar']);
+      AOther := not MatchText(mSymbol.Name, ['Pointer', 'PChar', 'PWideChar', 'PAnsiChar']);
       Exit;
     end;
-    if Symbol.SymbolKind = TIndexSymbolKind.TypeAlias then
+    if mSymbol.SymbolKind = TIndexSymbolKind.TypeAlias then
     begin
-      ADynamic := SymbolUnit(Resolver, Local, Symbol, FromUnit) and
-        IsDynamicArrayType(Resolver, AContext, FromUnit, Symbol.Name);
+      ADynamic := SymbolUnit(mResolver, mLocal, mSymbol, mFromUnit) and
+        IsDynamicArrayType(mResolver, AContext, mFromUnit, mSymbol.Name);
       Exit;
     end;
-    AOther := Symbol.SymbolKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.RecordType,
+    AOther := mSymbol.SymbolKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.RecordType,
       TIndexSymbolKind.EnumType, TIndexSymbolKind.InterfaceType];
   end;
 
@@ -247,17 +247,17 @@ var
 
   procedure CheckNew(ACall: TSyntaxNode; AArgCount: Integer; const ATargetText: string);
   var
-    Dynamic, Other: Boolean;
+    mDynamic, mOther: Boolean;
   begin
-    if TypeIdentifier(ACall[1], Dynamic, Other) then
+    if TypeIdentifier(ACall[1], mDynamic, mOther) then
     begin
-      if (AArgCount = 1) and Dynamic then
+      if (AArgCount = 1) and mDynamic then
       begin
         AReport.Add(TTextRange.Create(ACall.StartPos, ACall.EndPos),
           cTexts[TTypeChecksText.NewNeedsLength].Fmt([ATargetText]),
           TRuleConfidence.High);
       end
-      else if (AArgCount > 1) and Other then
+      else if (AArgCount > 1) and mOther then
       begin
         AReport.Add(TTextRange.Create(ACall.StartPos, ACall.EndPos),
           cTexts[TTypeChecksText.NewNotDynArray].Fmt([ATargetText]), TRuleConfidence.High);
@@ -273,34 +273,34 @@ var
 
   procedure CheckCall(ACall: TSyntaxNode);
   var
-    Callee: TSyntaxNode;
-    ArgCount: Integer;
-    TargetText: string;
-    SingleArray: Boolean;
+    mCallee: TSyntaxNode;
+    mArgCount: Integer;
+    mTargetText: string;
+    mSingleArray: Boolean;
   begin
     if ACall.ChildCount < 2 then
     begin
       Exit;
     end;
-    Callee := ACall[0];
-    ArgCount := ACall.ChildCount - 1;
-    TargetText := NodeText(AContext, ACall[1]);
-    if IsIntrinsicCall(Resolver, AContext, FileName, Callee, 'New') then
+    mCallee := ACall[0];
+    mArgCount := ACall.ChildCount - 1;
+    mTargetText := NodeText(AContext, ACall[1]);
+    if IsIntrinsicCall(mResolver, AContext, mFileName, mCallee, 'New') then
     begin
-      CheckNew(ACall, ArgCount, TargetText);
+      CheckNew(ACall, mArgCount, mTargetText);
       Exit;
     end;
-    SingleArray := (ArgCount = 1) and IsArrayVariable(ACall[1]);
-    if SingleArray and IsIntrinsicCall(Resolver, AContext, FileName, Callee, 'Dispose') then
+    mSingleArray := (mArgCount = 1) and IsArrayVariable(ACall[1]);
+    if mSingleArray and IsIntrinsicCall(mResolver, AContext, mFileName, mCallee, 'Dispose') then
     begin
       AReport.Add(TTextRange.Create(ACall.StartPos, ACall.EndPos),
         cTexts[TTypeChecksText.DisposeNotAllowed].Text, TRuleConfidence.High,
-        StatementFixes(ACall, TargetText + ' := nil'));
+        StatementFixes(ACall, mTargetText + ' := nil'));
     end
-    else if SingleArray and IsIntrinsicCall(Resolver, AContext, FileName, Callee, 'SetLength') then
+    else if mSingleArray and IsIntrinsicCall(mResolver, AContext, mFileName, mCallee, 'SetLength') then
     begin
       AReport.Add(TTextRange.Create(ACall.StartPos, ACall.EndPos),
-        cTexts[TTypeChecksText.SetLengthNeedsLength].Fmt([TargetText]),
+        cTexts[TTypeChecksText.SetLengthNeedsLength].Fmt([mTargetText]),
         TRuleConfidence.High);
     end;
   end;
@@ -316,23 +316,23 @@ begin
   begin
     Exit;
   end;
-  FileName := ResolverFileName(AContext);
+  mFileName := ResolverFileName(AContext);
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
-  Resolver.PinTree(AContext.Tree, FileName);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver.PinTree(AContext.Tree, mFileName);
   try
-    Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
-    for Node in PreOrder(AContext.Tree.Root) do
+    mLocal := mResolver.ExtractedUnit(AContext.Tree, mFileName);
+    for mNode in PreOrder(AContext.Tree.Root) do
     begin
-      if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) and
-        MatchText(Node[0].Name, ['New', 'Dispose', 'SetLength']) then
+      if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount > 0) and
+        MatchText(mNode[0].Name, ['New', 'Dispose', 'SetLength']) then
       begin
-        CheckCall(Node);
+        CheckCall(mNode);
       end;
     end;
   finally
-    Resolver.UnpinTree;
+    mResolver.UnpinTree;
   end;
 end;
 
@@ -340,21 +340,21 @@ end;
 
 function TLocalRoutineAsCallbackRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(LocalRoutineAsCallbackRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cLocalRoutineAsCallbackRuleId, TRuleSeverity.Error,
     cTexts[TTypeChecksText.LocalRoutineTitle].Text);
 end;
 
 procedure TLocalRoutineAsCallbackRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName, LineBreak: string;
-  Local: TUnitIndex;
-  Nodes: TArray<TSyntaxNode>;
-  Nested: TList<TSyntaxNode>;
-  Names: TStringList;
-  Lines: TArray<string>;
-  Parent: TSyntaxNode;
+  mFileName, mLineBreak: string;
+  mLocal: TUnitIndex;
+  mNodes: TArray<TSyntaxNode>;
+  mNested: TList<TSyntaxNode>;
+  mNames: TStringList;
+  mLines: TArray<string>;
+  mParent: TSyntaxNode;
 
   function OuterRoutine(ANode: TSyntaxNode): TSyntaxNode;
   begin
@@ -368,19 +368,19 @@ var
   /// <summary>Verschachtelte Routine, deren Kopf ASymbol deklariert; nil, wenn ASymbol keine ist.</summary>
   function NestedOf(const ASymbol: TResolvedSymbol): TSyntaxNode;
   var
-    Candidate, Header: TSyntaxNode;
+    mCandidate, mHeader: TSyntaxNode;
   begin
     Result := nil;
     if (ASymbol.Kind <> TResolvedKind.Local) or (ASymbol.SymbolKind <> TIndexSymbolKind.Routine) then
     begin
       Exit;
     end;
-    for Candidate in Nested do
+    for mCandidate in mNested do
     begin
-      Header := Candidate.FindChild(TSyntaxKind.RoutineHeader);
-      if (Header <> nil) and Covers(Header, ASymbol.SelectionRange.StartPos) then
+      mHeader := mCandidate.FindChild(TSyntaxKind.RoutineHeader);
+      if (mHeader <> nil) and Covers(mHeader, ASymbol.SelectionRange.StartPos) then
       begin
-        Exit(Candidate);
+        Exit(mCandidate);
       end;
     end;
   end;
@@ -388,32 +388,32 @@ var
   /// <summary>Typ des Ziels ATarget einer Zuweisung als Text samt Unit.</summary>
   function TargetType(ATarget: TSyntaxNode; out AText: string; out AUnit: TUnitIndex): Boolean;
   var
-    Symbol, TypeInfo: TResolvedSymbol;
-    TypeFound: Boolean;
+    mSymbol, mTypeInfo: TResolvedSymbol;
+    mTypeFound: Boolean;
   begin
-    Result := Resolver.NodeType(AContext.Tree, FileName, ATarget, Symbol, TypeInfo, TypeFound) and
-      (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
-      SymbolUnit(Resolver, Local, Symbol, AUnit);
+    Result := mResolver.NodeType(AContext.Tree, mFileName, ATarget, mSymbol, mTypeInfo, mTypeFound) and
+      (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
+      SymbolUnit(mResolver, mLocal, mSymbol, AUnit);
     if Result then
     begin
-      AText := DeclaredTypeText(AContext, Symbol);
+      AText := DeclaredTypeText(AContext, mSymbol);
     end;
   end;
 
   /// <summary>Typ des Parameters an Stelle AArgument (0 = erstes Argument) des Aufrufs ACall.</summary>
   function ParameterType(ACall: TSyntaxNode; AArgument: Integer; out AText: string; out AUnit: TUnitIndex): Boolean;
   var
-    Symbol, TypeInfo: TResolvedSymbol;
-    TypeFound: Boolean;
-    Params: TArray<TSignatureParameter>;
+    mSymbol, mTypeInfo: TResolvedSymbol;
+    mTypeFound: Boolean;
+    mParams: TArray<TSignatureParameter>;
   begin
-    Result := Resolver.NodeType(AContext.Tree, FileName, ACall, Symbol, TypeInfo, TypeFound) and
-      (Symbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_]) and
-      RoutineParams(AContext, Symbol, Params) and (AArgument < Length(Params)) and
-      SymbolUnit(Resolver, Local, Symbol, AUnit);
+    Result := mResolver.NodeType(AContext.Tree, mFileName, ACall, mSymbol, mTypeInfo, mTypeFound) and
+      (mSymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_]) and
+      RoutineParams(AContext, mSymbol, mParams) and (AArgument < Length(mParams)) and
+      SymbolUnit(mResolver, mLocal, mSymbol, AUnit);
     if Result then
     begin
-      AText := Params[AArgument].TypeName;
+      AText := mParams[AArgument].TypeName;
     end;
   end;
 
@@ -428,20 +428,20 @@ var
   /// Mitglied der Klasse ohne Präfix) oder an nichts Bekanntes?</summary>
   function UsesSurrounding(ARoutine, AInner: TSyntaxNode): Boolean;
   var
-    Symbol, TypeInfo: TResolvedSymbol;
-    TypeFound: Boolean;
+    mSymbol, mTypeInfo: TResolvedSymbol;
+    mTypeFound: Boolean;
   begin
-    if not Resolver.NodeType(AContext.Tree, FileName, AInner, Symbol, TypeInfo, TypeFound) then
+    if not mResolver.NodeType(AContext.Tree, mFileName, AInner, mSymbol, mTypeInfo, mTypeFound) then
     begin
       Result := not TSystemIntrinsics.IsKnown(AInner.Name);
     end
-    else if Symbol.Kind = TResolvedKind.Local then
+    else if mSymbol.Kind = TResolvedKind.Local then
     begin
-      Result := not Covers(ARoutine, Symbol.SelectionRange.StartPos);
+      Result := not Covers(ARoutine, mSymbol.SelectionRange.StartPos);
     end
     else
     begin
-      Result := (Symbol.Kind = TResolvedKind.Symbol) and (Symbol.Container <> '') and not Symbol.IsType;
+      Result := (mSymbol.Kind = TResolvedKind.Symbol) and (mSymbol.Container <> '') and not mSymbol.IsType;
     end;
   end;
 
@@ -449,11 +449,11 @@ var
   /// der Klasse ohne Präfix, keine lokalen Namen weiter außen)? Dann darf sie auf Unit-Ebene stehen.</summary>
   function SelfContained(ARoutine: TSyntaxNode): Boolean;
   var
-    Inner: TSyntaxNode;
+    mInner: TSyntaxNode;
   begin
-    for Inner in PreOrder(ARoutine) do
+    for mInner in PreOrder(ARoutine) do
     begin
-      if (Inner.Kind = TSyntaxKind.Identifier) and not IsMemberName(Inner) and UsesSurrounding(ARoutine, Inner) then
+      if (mInner.Kind = TSyntaxKind.Identifier) and not IsMemberName(mInner) and UsesSurrounding(ARoutine, mInner) then
       begin
         Exit(False);
       end;
@@ -464,151 +464,152 @@ var
   /// <summary>Korrektur: ARoutine als Routine der Unit direkt vor die umgebende Routine stellen.</summary>
   function MoveFix(ARoutine: TSyntaxNode; out AFix: TRuleFix): Boolean;
   var
-    Outer: TSyntaxNode;
-    First, Last, Line: Integer;
-    Indent, Text: string;
+    mOuter: TSyntaxNode;
+    mFirst, mLast, mLine: Integer;
+    mIndent, mText: string;
   begin
     Result := False;
-    Outer := OuterRoutine(ARoutine);
+    mOuter := OuterRoutine(ARoutine);
     // Nur eine Ebene tief: Bei tieferer Schachtelung bräuchte die mittlere Routine sie weiter.
-    if (Outer = nil) or (OuterRoutine(Outer) <> nil) or not SelfContained(ARoutine) then
+    if (mOuter = nil) or (OuterRoutine(mOuter) <> nil) or not SelfContained(ARoutine) then
     begin
       Exit;
     end;
-    First := ARoutine.StartPos.Line;
-    Last := ARoutine.EndPos.Line;
-    if (Last > High(Lines)) or (Trim(Copy(Lines[First], 1, ARoutine.StartPos.Character)) <> '') or
-      (Trim(Copy(Lines[Last], ARoutine.EndPos.Character + 1, MaxInt)) <> '') then
+    mFirst := ARoutine.StartPos.Line;
+    mLast := ARoutine.EndPos.Line;
+    if (mLast > High(mLines)) or (Trim(Copy(mLines[mFirst], 1, ARoutine.StartPos.Character)) <> '') or
+      (Trim(Copy(mLines[mLast], ARoutine.EndPos.Character + 1, MaxInt)) <> '') then
     begin
       Exit;
     end;
-    Indent := TTextLines.IndentOf(Lines[First]);
-    Text := '';
-    for Line := First to Last do
+    mIndent := TTextLines.IndentOf(mLines[mFirst]);
+    mText := '';
+    for mLine := mFirst to mLast do
     begin
-      if StartsStr(Indent, Lines[Line]) then
+      if StartsStr(mIndent, mLines[mLine]) then
       begin
-        Text := Text + Copy(Lines[Line], Length(Indent) + 1, MaxInt) + LineBreak;
+        mText := mText + Copy(mLines[mLine], Length(mIndent) + 1, MaxInt) + mLineBreak;
       end
       else
       begin
-        Text := Text + TrimLeft(Lines[Line]) + LineBreak;
+        mText := mText + TrimLeft(mLines[mLine]) + mLineBreak;
       end;
     end;
     AFix := TRuleFix.Create(cTexts[TTypeChecksText.MoveToUnit].Fmt([ARoutine.Name]), [
-      TTextEdit.Create(TTextRange.Create(Outer.StartPos.Line, 0, Outer.StartPos.Line, 0), Text + LineBreak),
-      TTextEdit.Create(TTextRange.Create(First, 0, Last + 1, 0), '')]);
+      TTextEdit.Create(TTextRange.Create(mOuter.StartPos.Line, 0, mOuter.StartPos.Line, 0), mText + mLineBreak),
+      TTextEdit.Create(TTextRange.Create(mFirst, 0, mLast + 1, 0), '')]);
     Result := True;
   end;
 
   procedure Report(AName: TSyntaxNode; ARoutine: TSyntaxNode; AAssigned: Boolean);
   var
-    Kind, Message: string;
-    Fix: TRuleFix;
-    Fixes: TArray<TRuleFix>;
-    Header: TSyntaxNode;
+    mKind, mMessage: string;
+    mFix: TRuleFix;
+    mFixes: TArray<TRuleFix>;
+    mHeader: TSyntaxNode;
   begin
-    Kind := cTexts[TTypeChecksText.ProcedureKind].Text;
-    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-    if (Header <> nil) and StartsText('function', Trim(NodeText(AContext, Header))) then
+    mKind := cTexts[TTypeChecksText.ProcedureKind].Text;
+    mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    if (mHeader <> nil) and StartsText('function', Trim(NodeText(AContext, mHeader))) then
     begin
-      Kind := cTexts[TTypeChecksText.FunctionKind].Text;
+      mKind := cTexts[TTypeChecksText.FunctionKind].Text;
     end;
     if AAssigned then
     begin
-      Message := cTexts[TTypeChecksText.LocalAssigned].Fmt([Kind, ARoutine.Name]);
+      mMessage := cTexts[TTypeChecksText.LocalAssigned].Fmt([mKind, ARoutine.Name]);
     end
     else
     begin
-      Message := cTexts[TTypeChecksText.LocalPassed].Fmt([Kind, ARoutine.Name]);
+      mMessage := cTexts[TTypeChecksText.LocalPassed].Fmt([mKind, ARoutine.Name]);
     end;
-    Fixes := nil;
-    if MoveFix(ARoutine, Fix) then
+    mFixes := nil;
+    if MoveFix(ARoutine, mFix) then
     begin
-      Fixes := [Fix];
+      mFixes := [mFix];
     end;
-    AReport.Add(TTextRange.Create(AName.StartPos, AName.EndPos), Message, TRuleConfidence.High, Fixes);
+    AReport.Add(TTextRange.Create(AName.StartPos, AName.EndPos), mMessage, TRuleConfidence.High, mFixes);
   end;
 
   procedure CheckName(AName: TSyntaxNode);
   var
-    Symbol, TypeInfo: TResolvedSymbol;
-    TypeFound: Boolean;
-    Routine: TSyntaxNode;
-    TypeText: string;
-    FromUnit: TUnitIndex;
-    Argument, Index: Integer;
+    mSymbol, mTypeInfo: TResolvedSymbol;
+    mTypeFound: Boolean;
+    mRoutine: TSyntaxNode;
+    mTypeText: string;
+    mFromUnit: TUnitIndex;
+    mArgument, mIndex: Integer;
   begin
-    Parent := AName.Parent;
-    if (Parent = nil) or not (Parent.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.Call]) or
-      (Parent[0] = AName) then
+    mParent := AName.Parent;
+    if (mParent = nil) or not (mParent.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.Call]) or
+      (mParent[0] = AName) then
     begin
       Exit;
     end;
-    if not Resolver.NodeType(AContext.Tree, FileName, AName, Symbol, TypeInfo, TypeFound) then
+    if not mResolver.NodeType(AContext.Tree, mFileName, AName, mSymbol, mTypeInfo, mTypeFound) then
     begin
       Exit;
     end;
-    Routine := NestedOf(Symbol);
-    if Routine = nil then
+    mRoutine := NestedOf(mSymbol);
+    if mRoutine = nil then
     begin
       Exit;
     end;
-    if Parent.Kind = TSyntaxKind.AssignStatement then
+    if mParent.Kind = TSyntaxKind.AssignStatement then
     begin
-      if TargetType(Parent[0], TypeText, FromUnit) and IsPlainProcedureType(Resolver, AContext, FromUnit, TypeText)
+      if TargetType(mParent[0], mTypeText, mFromUnit) and
+        IsPlainProcedureType(mResolver, AContext, mFromUnit, mTypeText)
       then
       begin
-        Report(AName, Routine, True);
+        Report(AName, mRoutine, True);
       end;
       Exit;
     end;
-    Argument := -1;
-    for Index := 1 to Parent.ChildCount - 1 do
+    mArgument := -1;
+    for mIndex := 1 to mParent.ChildCount - 1 do
     begin
-      if Parent[Index] = AName then
+      if mParent[mIndex] = AName then
       begin
-        Argument := Index - 1;
+        mArgument := mIndex - 1;
       end;
     end;
-    if (Argument >= 0) and ParameterType(Parent, Argument, TypeText, FromUnit) and
-      IsPlainProcedureType(Resolver, AContext, FromUnit, TypeText) then
+    if (mArgument >= 0) and ParameterType(mParent, mArgument, mTypeText, mFromUnit) and
+      IsPlainProcedureType(mResolver, AContext, mFromUnit, mTypeText) then
     begin
-      Report(AName, Routine, False);
+      Report(AName, mRoutine, False);
     end;
   end;
 
   /// <summary>@X mit X lokaler Variable bzw. Parameter der Routine AOuter?</summary>
   function IsLocalAddress(AInner, AOuter: TSyntaxNode): Boolean;
   var
-    Symbol, TypeInfo: TResolvedSymbol;
-    TypeFound: Boolean;
+    mSymbol, mTypeInfo: TResolvedSymbol;
+    mTypeFound: Boolean;
   begin
     Result := (AInner.Kind = TSyntaxKind.AddressOf) and (AInner.ChildCount = 1) and
       (AInner[0].Kind = TSyntaxKind.Identifier);
-    Result := Result and Resolver.NodeType(AContext.Tree, FileName, AInner[0], Symbol, TypeInfo, TypeFound);
-    Result := Result and (Symbol.Kind = TResolvedKind.Local) and (Symbol.SymbolKind = TIndexSymbolKind.Variable) and
-      Covers(AOuter, Symbol.SelectionRange.StartPos);
+    Result := Result and mResolver.NodeType(AContext.Tree, mFileName, AInner[0], mSymbol, mTypeInfo, mTypeFound);
+    Result := Result and (mSymbol.Kind = TResolvedKind.Local) and (mSymbol.SymbolKind = TIndexSymbolKind.Variable) and
+      Covers(AOuter, mSymbol.SelectionRange.StartPos);
   end;
 
   /// <summary>@X in einer typisierten Konstante einer Routine mit X lokaler Variable bzw. Parameter
   /// (wie E2278).</summary>
   procedure CheckConstant(AConst: TSyntaxNode);
   var
-    Inner, Outer: TSyntaxNode;
+    mInner, mOuter: TSyntaxNode;
   begin
-    Outer := OuterRoutine(AConst);
-    if (Outer = nil) or (AConst.FindChild(TSyntaxKind.TypeReference) = nil) and
+    mOuter := OuterRoutine(AConst);
+    if (mOuter = nil) or (AConst.FindChild(TSyntaxKind.TypeReference) = nil) and
       (AConst.FindChild(TSyntaxKind.PointerType) = nil) then
     begin
       Exit;
     end;
-    for Inner in PreOrder(AConst) do
+    for mInner in PreOrder(AConst) do
     begin
-      if IsLocalAddress(Inner, Outer) then
+      if IsLocalAddress(mInner, mOuter) then
       begin
-        AReport.Add(TTextRange.Create(Inner.StartPos, Inner.EndPos),
-          cTexts[TTypeChecksText.LocalAddress].Fmt([Inner[0].Name]),
+        AReport.Add(TTextRange.Create(mInner.StartPos, mInner.EndPos),
+          cTexts[TTypeChecksText.LocalAddress].Fmt([mInner[0].Name]),
           TRuleConfidence.High);
       end;
     end;
@@ -617,53 +618,53 @@ var
   /// <summary>Verschachtelte Routinen samt Namen sammeln; False, wenn es weder sie noch Konstanten gibt.</summary>
   function CollectNested: Boolean;
   var
-    Node: TSyntaxNode;
+    mNode: TSyntaxNode;
   begin
     Result := False;
-    for Node in Nodes do
+    for mNode in mNodes do
     begin
-      if (Node.Kind = TSyntaxKind.RoutineDecl) and (OuterRoutine(Node) <> nil) then
+      if (mNode.Kind = TSyntaxKind.RoutineDecl) and (OuterRoutine(mNode) <> nil) then
       begin
-        Nested.Add(Node);
-        Names.Add(Node.Name);
+        mNested.Add(mNode);
+        mNames.Add(mNode.Name);
       end
-      else if Node.Kind = TSyntaxKind.ConstDecl then
+      else if mNode.Kind = TSyntaxKind.ConstDecl then
       begin
         Result := True;
       end;
     end;
-    Result := Result or (Nested.Count > 0);
+    Result := Result or (mNested.Count > 0);
   end;
 
   procedure CheckNodes;
   var
-    Node: TSyntaxNode;
+    mNode: TSyntaxNode;
   begin
-    FileName := ResolverFileName(AContext);
-    Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
-    if LineBreak = '' then
+    mFileName := ResolverFileName(AContext);
+    mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
+    if mLineBreak = '' then
     begin
-      LineBreak := sLineBreak;
+      mLineBreak := sLineBreak;
     end;
     // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
     mCache := TRuleDerived.Open(AContext);
-    Resolver := TRuleDerived.Resolver(mCache, AContext);
-    Resolver.PinTree(AContext.Tree, FileName);
+    mResolver := TRuleDerived.Resolver(mCache, AContext);
+    mResolver.PinTree(AContext.Tree, mFileName);
     try
-      Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
-      for Node in Nodes do
+      mLocal := mResolver.ExtractedUnit(AContext.Tree, mFileName);
+      for mNode in mNodes do
       begin
-        if (Node.Kind = TSyntaxKind.Identifier) and (Names.IndexOf(Node.Name) >= 0) then
+        if (mNode.Kind = TSyntaxKind.Identifier) and (mNames.IndexOf(mNode.Name) >= 0) then
         begin
-          CheckName(Node);
+          CheckName(mNode);
         end
-        else if Node.Kind = TSyntaxKind.ConstDecl then
+        else if mNode.Kind = TSyntaxKind.ConstDecl then
         begin
-          CheckConstant(Node);
+          CheckConstant(mNode);
         end;
       end;
     finally
-      Resolver.UnpinTree;
+      mResolver.UnpinTree;
     end;
   end;
 
@@ -672,20 +673,20 @@ begin
   begin
     Exit;
   end;
-  Nodes := PreOrder(AContext.Tree.Root);
-  Nested := TList<TSyntaxNode>.Create;
-  Names := TStringList.Create;
+  mNodes := PreOrder(AContext.Tree.Root);
+  mNested := TList<TSyntaxNode>.Create;
+  mNames := TStringList.Create;
   try
-    Names.CaseSensitive := False;
-    Names.Sorted := True;
-    Names.Duplicates := dupIgnore;
+    mNames.CaseSensitive := False;
+    mNames.Sorted := True;
+    mNames.Duplicates := dupIgnore;
     if CollectNested then
     begin
       CheckNodes;
     end;
   finally
-    Names.Free;
-    Nested.Free;
+    mNames.Free;
+    mNested.Free;
   end;
 end;
 
@@ -693,36 +694,37 @@ end;
 
 function TConditionNotBooleanRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(ConditionNotBooleanRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cConditionNotBooleanRuleId, TRuleSeverity.Error,
     cTexts[TTypeChecksText.ConditionTitle].Text);
 end;
 
 procedure TConditionNotBooleanRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName: string;
-  Local: TUnitIndex;
-  Node: TSyntaxNode;
+  mFileName: string;
+  mLocal: TUnitIndex;
+  mNode: TSyntaxNode;
 
-  /// <summary>Vergleich, der aus dem Wert vom Typ AType eine Bedingung macht ('&lt;&gt; 0', '&lt;&gt; nil' ...); '' ohne
+  /// <summary>Vergleich, der aus dem Wert vom Typ AType eine Bedingung macht ('&lt;&gt; 0', '&lt;&gt; nil' ...); ''
+  /// ohne
   /// sicheren Typ.</summary>
   function Comparison(const AType: TResolvedSymbol): string;
   var
-    FromUnit: TUnitIndex;
+    mFromUnit: TUnitIndex;
   begin
     Result := '';
     if AType.Builtin then
     begin
-      if MatchText(AType.Name, ConditionIntegerTypes) or MatchText(AType.Name, ConditionFloatTypes) then
+      if MatchText(AType.Name, cConditionIntegerTypes) or MatchText(AType.Name, cConditionFloatTypes) then
       begin
         Result := '<> 0';
       end
-      else if MatchText(AType.Name, ConditionPointerTypes) then
+      else if MatchText(AType.Name, cConditionPointerTypes) then
       begin
         Result := '<> nil';
       end
-      else if MatchText(AType.Name, ConditionStringTypes) then
+      else if MatchText(AType.Name, cConditionStringTypes) then
       begin
         Result := '<> ''''';
       end
@@ -735,7 +737,7 @@ var
     begin
       Result := '<> nil';
     end
-    else if (AType.SymbolKind = TIndexSymbolKind.TypeAlias) and SymbolUnit(Resolver, Local, AType, FromUnit) and
+    else if (AType.SymbolKind = TIndexSymbolKind.TypeAlias) and SymbolUnit(mResolver, mLocal, AType, mFromUnit) and
       StartsStr('^', DeclaredTypeText(AContext, AType)) then
     begin
       // Typisierter Zeiger (PZahl = ^Integer).
@@ -754,48 +756,48 @@ var
   /// <summary>Sicherer Typ der Bedingung AInner außerhalb bedingter Zweige; ATypeInfo: ihr Typ.</summary>
   function ConditionType(AInner: TSyntaxNode; out ATypeInfo: TResolvedSymbol): Boolean;
   var
-    Symbol: TResolvedSymbol;
-    TypeFound: Boolean;
+    mSymbol: TResolvedSymbol;
+    mTypeFound: Boolean;
   begin
     Result := (AInner.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
       TSyntaxKind.IndexAccess, TSyntaxKind.Dereference]) and
-      Resolver.NodeType(AContext.Tree, FileName, AInner, Symbol, ATypeInfo, TypeFound) and TypeFound;
-    Result := Result and not Symbol.IsType and (Symbol.Condition = '') and (Symbol.VariantBranch = '');
+      mResolver.NodeType(AContext.Tree, mFileName, AInner, mSymbol, ATypeInfo, mTypeFound) and mTypeFound;
+    Result := Result and not mSymbol.IsType and (mSymbol.Condition = '') and (mSymbol.VariantBranch = '');
   end;
 
   procedure CheckCondition(ACondition: TSyntaxNode);
   var
-    Inner: TSyntaxNode;
-    TypeInfo: TResolvedSymbol;
-    Compare, Text: string;
-    Fixes: TArray<TRuleFix>;
+    mInner: TSyntaxNode;
+    mTypeInfo: TResolvedSymbol;
+    mCompare, mText: string;
+    mFixes: TArray<TRuleFix>;
   begin
-    Inner := ACondition;
-    while (Inner.Kind = TSyntaxKind.ParenExpr) and (Inner.ChildCount = 1) do
+    mInner := ACondition;
+    while (mInner.Kind = TSyntaxKind.ParenExpr) and (mInner.ChildCount = 1) do
     begin
-      Inner := Inner[0];
+      mInner := mInner[0];
     end;
-    if not ConditionType(Inner, TypeInfo) then
+    if not ConditionType(mInner, mTypeInfo) then
     begin
       Exit;
     end;
-    Compare := Comparison(TypeInfo);
-    if Compare = '' then
+    mCompare := Comparison(mTypeInfo);
+    if mCompare = '' then
     begin
       Exit;
     end;
-    Text := NodeText(AContext, ACondition);
-    Fixes := [Replacement(ACondition, Text + ' ' + Compare, False)];
-    if Compare = '<> nil' then
+    mText := NodeText(AContext, ACondition);
+    mFixes := [Replacement(ACondition, mText + ' ' + mCompare, False)];
+    if mCompare = '<> nil' then
     begin
-      Fixes := Fixes + [Replacement(ACondition, Format('Assigned(%s)', [Text]), True)];
+      mFixes := mFixes + [Replacement(ACondition, Format('Assigned(%s)', [mText]), True)];
     end
-    else if MatchText(TypeInfo.Name, ConditionIntegerTypes) then
+    else if MatchText(mTypeInfo.Name, cConditionIntegerTypes) then
     begin
-      Fixes := Fixes + [Replacement(ACondition, Text + ' > 0', True)];
+      mFixes := mFixes + [Replacement(ACondition, mText + ' > 0', True)];
     end;
     AReport.Add(TTextRange.Create(ACondition.StartPos, ACondition.EndPos),
-      cTexts[TTypeChecksText.NotBoolean].Fmt([TypeInfo.Name]), TRuleConfidence.High, Fixes);
+      cTexts[TTypeChecksText.NotBoolean].Fmt([mTypeInfo.Name]), TRuleConfidence.High, mFixes);
   end;
 
 begin
@@ -803,31 +805,31 @@ begin
   begin
     Exit;
   end;
-  FileName := ResolverFileName(AContext);
+  mFileName := ResolverFileName(AContext);
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
-  Resolver.PinTree(AContext.Tree, FileName);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver.PinTree(AContext.Tree, mFileName);
   try
-    Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
-    for Node in PreOrder(AContext.Tree.Root) do
-      case Node.Kind of
+    mLocal := mResolver.ExtractedUnit(AContext.Tree, mFileName);
+    for mNode in PreOrder(AContext.Tree.Root) do
+      case mNode.Kind of
         TSyntaxKind.IfStatement, TSyntaxKind.WhileStatement, TSyntaxKind.IfExpr:
-          if Node.ChildCount > 0 then
+          if mNode.ChildCount > 0 then
           begin
-            CheckCondition(Node[0]);
+            CheckCondition(mNode[0]);
           end;
         TSyntaxKind.RepeatStatement:
           // Die Bedingung hinter until ist das letzte Kind.
-          if Node.ChildCount > 0 then
+          if mNode.ChildCount > 0 then
           begin
-            CheckCondition(Node[Node.ChildCount - 1]);
+            CheckCondition(mNode[mNode.ChildCount - 1]);
           end;
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
   finally
-    Resolver.UnpinTree;
+    mResolver.UnpinTree;
   end;
 end;
 
@@ -835,38 +837,38 @@ end;
 
 function TForInNotEnumerableRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(ForInNotEnumerableRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cForInNotEnumerableRuleId, TRuleSeverity.Error,
     cTexts[TTypeChecksText.EnumeratorTitle].Text);
 end;
 
 procedure TForInNotEnumerableRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName: string;
-  Node: TSyntaxNode;
+  mFileName: string;
+  mNode: TSyntaxNode;
 
   /// <summary>Sind alle Vorfahren von AType bekannt (bis TObject bzw. IInterface)? Nur dann steht fest, dass
   /// ein Mitglied fehlt.</summary>
   function AncestorsKnown(const AType: TResolvedSymbol): Boolean;
   var
-    Current, Ancestor: TResolvedSymbol;
-    Depth: Integer;
+    mCurrent, mAncestor: TResolvedSymbol;
+    mDepth: Integer;
   begin
-    Current := AType;
-    for Depth := 0 to cMaxAncestorDepth do
+    mCurrent := AType;
+    for mDepth := 0 to cMaxAncestorDepth do
     begin
-      if (Current.SymbolKind = TIndexSymbolKind.RecordType) or SameText(Current.Name, 'TObject') or
-        SameText(Current.Name, 'IInterface') then
+      if (mCurrent.SymbolKind = TIndexSymbolKind.RecordType) or SameText(mCurrent.Name, 'TObject') or
+        SameText(mCurrent.Name, 'IInterface') then
       begin
         Exit(True);
       end;
-      if not Resolver.AncestorOf(Current, Ancestor) then
+      if not mResolver.AncestorOf(mCurrent, mAncestor) then
       begin
         // Ohne eigene Angabe ist der Vorfahr TObject bzw. IInterface, auch wenn sie nicht im Index stehen.
-        Exit(Length(Current.Ancestors) = 0);
+        Exit(Length(mCurrent.Ancestors) = 0);
       end;
-      Current := Ancestor;
+      mCurrent := mAncestor;
     end;
     Result := False;
   end;
@@ -875,8 +877,8 @@ var
   /// </summary>
   function IsScalarName(const AName: string): Boolean;
   begin
-    Result := MatchText(AName, ConditionIntegerTypes) or MatchText(AName, ConditionFloatTypes);
-    Result := Result or MatchText(AName, ConditionPointerTypes) or
+    Result := MatchText(AName, cConditionIntegerTypes) or MatchText(AName, cConditionFloatTypes);
+    Result := Result or MatchText(AName, cConditionPointerTypes) or
       MatchText(AName, ['Boolean', 'Char', 'AnsiChar', 'WideChar']);
   end;
 
@@ -889,8 +891,8 @@ var
   /// <summary>Klasse, Record bzw. Interface ohne GetEnumerator bei bekannten Vorfahren (wie E2430).</summary>
   function NoEnumeratorMessage(const AType: TResolvedSymbol; out AMessage: string): Boolean;
   var
-    Member: TResolvedSymbol;
-    Hint: string;
+    mMember: TResolvedSymbol;
+    mHint: string;
   begin
     AMessage := '';
     Result := AncestorsKnown(AType);
@@ -898,57 +900,57 @@ var
     begin
       Exit;
     end;
-    Hint := '';
-    if Resolver.FindMember(AType, 'Count', Member) then
+    mHint := '';
+    if mResolver.FindMember(AType, 'Count', mMember) then
     begin
-      Hint := cTexts[TTypeChecksText.UseCount].Text;
+      mHint := cTexts[TTypeChecksText.UseCount].Text;
     end;
-    AMessage := cTexts[TTypeChecksText.NoEnumerator].Fmt([AType.Name, Hint]);
+    AMessage := cTexts[TTypeChecksText.NoEnumerator].Fmt([AType.Name, mHint]);
   end;
 
   /// <summary>Typ des Enumerators, den AMethod (GetEnumerator) liefert, wenn er sicher bekannt und nicht generisch
   /// ist.</summary>
   function EnumeratorOf(const AMethod: TResolvedSymbol; out AEnumerator: TResolvedSymbol): Boolean;
   var
-    MethodUnit: TUnitIndex;
+    mMethodUnit: TUnitIndex;
   begin
-    Result := (AMethod.TypeName <> '') and (AMethod.TypeArgs = '') and Resolver.DeclaringUnit(AMethod, MethodUnit);
-    Result := Result and Resolver.ResolveTypeFrom(MethodUnit, AMethod.TypeName, AEnumerator);
+    Result := (AMethod.TypeName <> '') and (AMethod.TypeArgs = '') and mResolver.DeclaringUnit(AMethod, mMethodUnit);
+    Result := Result and mResolver.ResolveTypeFrom(mMethodUnit, AMethod.TypeName, AEnumerator);
     Result := Result and not AEnumerator.Builtin and IsStructured(AEnumerator) and (AEnumerator.TypeParams = '');
   end;
 
   /// <summary>Fehlt dem Enumerator MoveNext oder Current (wie E2431)?</summary>
   function IncompleteEnumerator(const AType, AMethod: TResolvedSymbol; out AMessage: string): Boolean;
   var
-    Enumerator, Member: TResolvedSymbol;
-    Missing: string;
+    mEnumerator, mMember: TResolvedSymbol;
+    mMissing: string;
   begin
     AMessage := '';
     Result := False;
-    if not EnumeratorOf(AMethod, Enumerator) then
+    if not EnumeratorOf(AMethod, mEnumerator) then
     begin
       Exit;
     end;
-    Missing := '';
-    if not Resolver.FindMember(Enumerator, 'MoveNext', Member) then
+    mMissing := '';
+    if not mResolver.FindMember(mEnumerator, 'MoveNext', mMember) then
     begin
-      Missing := 'MoveNext';
+      mMissing := 'MoveNext';
     end
-    else if not Resolver.FindMember(Enumerator, 'Current', Member) then
+    else if not mResolver.FindMember(mEnumerator, 'Current', mMember) then
     begin
-      Missing := 'Current';
+      mMissing := 'Current';
     end;
-    Result := (Missing <> '') and AncestorsKnown(Enumerator);
+    Result := (mMissing <> '') and AncestorsKnown(mEnumerator);
     if Result then
     begin
-      AMessage := cTexts[TTypeChecksText.NoCurrent].Fmt([Enumerator.Name, AType.Name, Missing]);
+      AMessage := cTexts[TTypeChecksText.NoCurrent].Fmt([mEnumerator.Name, AType.Name, mMissing]);
     end;
   end;
 
   /// <summary>Kann der Typ sicher kein for-in? AMessage nennt den Grund.</summary>
   function NotEnumerable(const AType: TResolvedSymbol; out AMessage: string): Boolean;
   var
-    Method: TResolvedSymbol;
+    mMethod: TResolvedSymbol;
   begin
     AMessage := '';
     if AType.Builtin then
@@ -963,27 +965,27 @@ var
     begin
       Result := False;
     end
-    else if not Resolver.FindMember(AType, 'GetEnumerator', Method) then
+    else if not mResolver.FindMember(AType, 'GetEnumerator', mMethod) then
     begin
       Result := NoEnumeratorMessage(AType, AMessage);
     end
     else
     begin
       // GetEnumerator gibt es: Der Enumerator braucht MoveNext und Current (wie E2431).
-      Result := IncompleteEnumerator(AType, Method, AMessage);
+      Result := IncompleteEnumerator(AType, mMethod, AMessage);
     end;
   end;
 
   /// <summary>Durchlaufener Ausdruck der Schleife (das erste Kind, das kein Typverweis ist); nil ohne.</summary>
   function CollectionOf(ALoop: TSyntaxNode): TSyntaxNode;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
-    for Index := 0 to ALoop.ChildCount - 1 do
+    for mIndex := 0 to ALoop.ChildCount - 1 do
     begin
-      if ALoop[Index].Kind <> TSyntaxKind.TypeReference then
+      if ALoop[mIndex].Kind <> TSyntaxKind.TypeReference then
       begin
-        Exit(ALoop[Index]);
+        Exit(ALoop[mIndex]);
       end;
     end;
     Result := nil;
@@ -992,26 +994,26 @@ var
   /// <summary>Sicherer, nicht generischer Typ des Ausdrucks ACollection außerhalb bedingter Zweige.</summary>
   function CollectionType(ACollection: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
   var
-    Symbol: TResolvedSymbol;
-    TypeFound: Boolean;
+    mSymbol: TResolvedSymbol;
+    mTypeFound: Boolean;
   begin
     Result := (ACollection.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
       TSyntaxKind.IndexAccess, TSyntaxKind.Dereference]) and
-      Resolver.NodeType(AContext.Tree, FileName, ACollection, Symbol, AType, TypeFound) and TypeFound;
-    Result := Result and not Symbol.IsType and (Symbol.Condition = '') and (Symbol.VariantBranch = '');
+      mResolver.NodeType(AContext.Tree, mFileName, ACollection, mSymbol, AType, mTypeFound) and mTypeFound;
+    Result := Result and not mSymbol.IsType and (mSymbol.Condition = '') and (mSymbol.VariantBranch = '');
     Result := Result and (AType.TypeParams = '');
   end;
 
   procedure CheckLoop(ALoop: TSyntaxNode);
   var
-    Collection: TSyntaxNode;
-    TypeInfo: TResolvedSymbol;
-    Message: string;
+    mCollection: TSyntaxNode;
+    mTypeInfo: TResolvedSymbol;
+    mMessage: string;
   begin
-    Collection := CollectionOf(ALoop);
-    if (Collection <> nil) and CollectionType(Collection, TypeInfo) and NotEnumerable(TypeInfo, Message) then
+    mCollection := CollectionOf(ALoop);
+    if (mCollection <> nil) and CollectionType(mCollection, mTypeInfo) and NotEnumerable(mTypeInfo, mMessage) then
     begin
-      AReport.Add(TTextRange.Create(Collection.StartPos, Collection.EndPos), Message, TRuleConfidence.High);
+      AReport.Add(TTextRange.Create(mCollection.StartPos, mCollection.EndPos), mMessage, TRuleConfidence.High);
     end;
   end;
 
@@ -1020,21 +1022,21 @@ begin
   begin
     Exit;
   end;
-  FileName := ResolverFileName(AContext);
+  mFileName := ResolverFileName(AContext);
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
-  Resolver.PinTree(AContext.Tree, FileName);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver.PinTree(AContext.Tree, mFileName);
   try
-    for Node in PreOrder(AContext.Tree.Root) do
+    for mNode in PreOrder(AContext.Tree.Root) do
     begin
-      if Node.Kind = TSyntaxKind.ForInStatement then
+      if mNode.Kind = TSyntaxKind.ForInStatement then
       begin
-        CheckLoop(Node);
+        CheckLoop(mNode);
       end;
     end;
   finally
-    Resolver.UnpinTree;
+    mResolver.UnpinTree;
   end;
 end;
 

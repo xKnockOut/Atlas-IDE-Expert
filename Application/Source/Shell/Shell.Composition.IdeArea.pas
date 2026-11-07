@@ -66,7 +66,7 @@ type
 
 const
   /// <summary>Längste Pause der Projektprüfung für einen Compile, falls sein Ende nie ankommt (#1247).</summary>
-  CompilePauseLimitMs = 10 * 60 * 1000;
+  cCompilePauseLimitMs = 10 * 60 * 1000;
 
 implementation
 
@@ -116,7 +116,7 @@ var
   mName: string;
 begin
   Result := TFormatRoutines.Defaults;
-  for mName in TRuleOptions.Strings(TRuleEngine.RuleOptions(FormatArgsRuleId, FCore.Settings.SettingsFor(AUri)),
+  for mName in TRuleOptions.Strings(TRuleEngine.RuleOptions(cFormatArgsRuleId, FCore.Settings.SettingsFor(AUri)),
     'formatMethods', nil) do
   begin
     if Trim(mName) <> '' then
@@ -211,7 +211,7 @@ begin
     procedure(ARunning: Boolean)
     begin
       // Die Frist ist ein Sicherheitsnetz für ein verlorenes Ende, keine Steuerung.
-      mServices.Diagnostics().Pull.Check.Pause(TLspWorkspaceCheck.cPauseCompile, ARunning, CompilePauseLimitMs);
+      mServices.Diagnostics().Pull.Check.Pause(TLspWorkspaceCheck.cPauseCompile, ARunning, cCompilePauseLimitMs);
     end;
   Result.NamingChanged := RefreshLater;
   Result.TypesChanged := RefreshLater;

@@ -735,7 +735,7 @@ begin
   begin
     mText := mText + TAtlasTrackerTestResultsText.cSeparator + AJob.JobBranch;
   end;
-  mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.BuildServer,
+  mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cBuildServer,
     TAtlasNotificationSeverity.Error, mTitle, mText,
     [TAtlasNotificationCenter.Action(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsBrowse),
     BrowseAction(Self, FActions, AJob, ABuild.Number))]);

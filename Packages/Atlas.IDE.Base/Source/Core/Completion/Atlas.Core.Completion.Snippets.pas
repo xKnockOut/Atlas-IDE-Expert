@@ -85,7 +85,7 @@ type
 
   TAtlasSnippets = class
   public const
-    FileExtension = '.atlas-snippet';
+    cFileExtension = '.atlas-snippet';
   public
     /// <summary>Liest eine Vorlagendatei. False mit AError, wenn Kopf oder Text fehlen oder ein Schlüssel
     /// unbekannt ist.</summary>
@@ -239,9 +239,9 @@ type
     Text: string;
   end;
 
-function IsDigit(C: Char): Boolean;
+function IsDigit(AC: Char): Boolean;
 begin
-  Result := (C >= '0') and (C <= '9');
+  Result := (AC >= '0') and (AC <= '9');
 end;
 
 function NormalizeBreaks(const AText: string): string;
@@ -574,7 +574,7 @@ procedure AddSnippetFiles(const APath: string; ANames: TStringList);
 var
   mSearch: TSearchRec;
 begin
-  if FindFirst(IncludeTrailingPathDelimiter(APath) + '*' + TAtlasSnippets.FileExtension, faAnyFile, mSearch) <> 0 then
+  if FindFirst(IncludeTrailingPathDelimiter(APath) + '*' + TAtlasSnippets.cFileExtension, faAnyFile, mSearch) <> 0 then
   begin
     Exit;
   end;
@@ -643,12 +643,12 @@ end;
 
 function TAtlasSnippetExpansion.HasPlaceholders: Boolean;
 var
-  Stop: TAtlasSnippetStop;
+  mStop: TAtlasSnippetStop;
 begin
   Result := False;
-  for Stop in Stops do
+  for mStop in Stops do
   begin
-    if Stop.Number > 0 then
+    if mStop.Number > 0 then
     begin
       Exit(True);
     end;
@@ -718,17 +718,17 @@ end;
 
 class function TAtlasSnippets.FileNameFor(const APrefix: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := APrefix;
-  for Index := 1 to Length(Result) do
+  for mIndex := 1 to Length(Result) do
   begin
-    if not TTextChars.IsAsciiIdentChar(Result[Index]) then
+    if not TTextChars.IsAsciiIdentChar(Result[mIndex]) then
     begin
-      Result[Index] := '_';
+      Result[mIndex] := '_';
     end;
   end;
-  Result := Result + FileExtension;
+  Result := Result + cFileExtension;
 end;
 
 function Snippet(const APrefix, AName, ADescription, ABody, AContext: string): TAtlasSnippet;
@@ -757,7 +757,8 @@ begin
       'while ${1:Condition} do'#10'begin'#10'  $0'#10'end;', 'statement'),
     Snippet('repeat', UiText(TSnippetsText.RepeatUntilLoop), UiText(TSnippetsText.AtLeastOnceUntilThe),
       'repeat'#10'  $0'#10'until ${1:Condition};', 'statement'),
-    Snippet('class', UiText(TSnippetsText.ClassWithConstructorAndDestructor), UiText(TSnippetsText.ClassDeclarationInTheType),
+    Snippet('class', UiText(TSnippetsText.ClassWithConstructorAndDestructor),
+      UiText(TSnippetsText.ClassDeclarationInTheType),
       '${1:TMyClass} = class(${2:TObject})'#10'private'#10'  $0'#10'public'#10'  constructor Create;'#10 +
       '  destructor Destroy; override;'#10'end;', 'declaration'),
     Snippet('record', 'Record', UiText(TSnippetsText.RecordDeclarationInTheType),
@@ -791,28 +792,28 @@ end;
 
 class function TAtlasSnippets.FileTemplates(const AList: TAtlasSnippetList): TAtlasSnippetList;
 var
-  Item: TAtlasSnippet;
+  mItem: TAtlasSnippet;
 begin
   Result := nil;
-  for Item in AList do
+  for mItem in AList do
   begin
-    if Item.FileKind <> '' then
+    if mItem.FileKind <> '' then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
 end;
 
 class function TAtlasSnippets.WithoutFileTemplates(const AList: TAtlasSnippetList): TAtlasSnippetList;
 var
-  Item: TAtlasSnippet;
+  mItem: TAtlasSnippet;
 begin
   Result := nil;
-  for Item in AList do
+  for mItem in AList do
   begin
-    if Item.FileKind = '' then
+    if mItem.FileKind = '' then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
 end;
@@ -861,69 +862,69 @@ end;
 
 class function TAtlasSnippets.Postfixes(const AList: TAtlasSnippetList): TAtlasSnippetList;
 var
-  Item: TAtlasSnippet;
+  mItem: TAtlasSnippet;
 begin
   Result := nil;
-  for Item in AList do
+  for mItem in AList do
   begin
-    if Item.Postfix then
+    if mItem.Postfix then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
 end;
 
 class function TAtlasSnippets.WithoutPostfix(const AList: TAtlasSnippetList): TAtlasSnippetList;
 var
-  Item: TAtlasSnippet;
+  mItem: TAtlasSnippet;
 begin
   Result := nil;
-  for Item in AList do
+  for mItem in AList do
   begin
-    if not Item.Postfix then
+    if not mItem.Postfix then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
 end;
 
 class function TAtlasSnippets.PostfixParams(const AList: TAtlasSnippetList): TJSONObject;
 var
-  Templates: TJSONArray;
-  Item: TAtlasSnippet;
-  Entry: TJSONObject;
-  Description: string;
+  mTemplates: TJSONArray;
+  mItem: TAtlasSnippet;
+  mEntry: TJSONObject;
+  mDescription: string;
 begin
   Result := TJSONObject.Create;
-  Templates := TJSONArray.Create;
-  Result.AddPair('templates', Templates);
-  for Item in Postfixes(AList) do
+  mTemplates := TJSONArray.Create;
+  Result.AddPair('templates', mTemplates);
+  for mItem in Postfixes(AList) do
   begin
-    Description := Item.Description;
-    if Description = '' then
+    mDescription := mItem.Description;
+    if mDescription = '' then
     begin
-      Description := Item.Name;
+      mDescription := mItem.Name;
     end;
-    Entry := TJSONObject.Create;
-    Entry.AddPair('key', Item.Prefix);
-    Entry.AddPair('description', Description);
-    Entry.AddPair('body', Item.Body);
-    if Item.TypeCondition <> '' then
+    mEntry := TJSONObject.Create;
+    mEntry.AddPair('key', mItem.Prefix);
+    mEntry.AddPair('description', mDescription);
+    mEntry.AddPair('body', mItem.Body);
+    if mItem.TypeCondition <> '' then
     begin
-      Entry.AddPair('type', Item.TypeCondition);
+      mEntry.AddPair('type', mItem.TypeCondition);
     end;
-    Templates.AddElement(Entry);
+    mTemplates.AddElement(mEntry);
   end;
 end;
 
 class function TAtlasSnippets.Expand(const ABody, AIndent, ALineBreak: string): TAtlasSnippetExpansion;
 var
-  Parts: TArray<TSegment>;
-  Defaults: TArray<string>;
-  Known: TArray<Boolean>;
-  Index, Number, Highest: Integer;
-  Text: string;
-  Stop: TAtlasSnippetStop;
+  mParts: TArray<TSegment>;
+  mDefaults: TArray<string>;
+  mKnown: TArray<Boolean>;
+  mIndex, mNumber, mHighest: Integer;
+  mText: string;
+  mStop: TAtlasSnippetStop;
 
   function Indented(const AValue: string): string;
   begin
@@ -932,44 +933,44 @@ var
 
 begin
   Result := Default(TAtlasSnippetExpansion);
-  Parts := Segments(NormalizeBreaks(ABody));
+  mParts := Segments(NormalizeBreaks(ABody));
   // Vorgabetext je Nummer: der erste vorhandene.
-  Highest := 0;
-  for Index := 0 to High(Parts) do
+  mHighest := 0;
+  for mIndex := 0 to High(mParts) do
   begin
-    if Parts[Index].IsStop and (Parts[Index].Number > Highest) then
+    if mParts[mIndex].IsStop and (mParts[mIndex].Number > mHighest) then
     begin
-      Highest := Parts[Index].Number;
+      mHighest := mParts[mIndex].Number;
     end;
   end;
-  SetLength(Defaults, Highest + 1);
-  SetLength(Known, Highest + 1);
-  for Index := 0 to High(Parts) do
+  SetLength(mDefaults, mHighest + 1);
+  SetLength(mKnown, mHighest + 1);
+  for mIndex := 0 to High(mParts) do
   begin
-    if Parts[Index].IsStop and Parts[Index].HasDefault and not Known[Parts[Index].Number] then
+    if mParts[mIndex].IsStop and mParts[mIndex].HasDefault and not mKnown[mParts[mIndex].Number] then
     begin
-      Defaults[Parts[Index].Number] := Parts[Index].Text;
-      Known[Parts[Index].Number] := True;
+      mDefaults[mParts[mIndex].Number] := mParts[mIndex].Text;
+      mKnown[mParts[mIndex].Number] := True;
     end;
   end;
-  Text := '';
-  for Index := 0 to High(Parts) do
+  mText := '';
+  for mIndex := 0 to High(mParts) do
   begin
-    if Parts[Index].IsStop then
+    if mParts[mIndex].IsStop then
     begin
-      Number := Parts[Index].Number;
-      Stop.Number := Number;
-      Stop.Start := Length(Text);
-      Text := Text + Indented(Defaults[Number]);
-      Stop.Length := Length(Text) - Stop.Start;
-      Result.Stops := Result.Stops + [Stop];
+      mNumber := mParts[mIndex].Number;
+      mStop.Number := mNumber;
+      mStop.Start := Length(mText);
+      mText := mText + Indented(mDefaults[mNumber]);
+      mStop.Length := Length(mText) - mStop.Start;
+      Result.Stops := Result.Stops + [mStop];
     end
     else
     begin
-      Text := Text + Indented(Parts[Index].Text);
+      mText := mText + Indented(mParts[mIndex].Text);
     end;
   end;
-  Result.Text := Text;
+  Result.Text := mText;
 end;
 
 function ConvertLsp(const AText: string; var AIndex: Integer; ATop: Boolean): string; forward;
@@ -1127,10 +1128,10 @@ end;
 
 class function TAtlasSnippets.FromLsp(const AText: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := 1;
-  Result := ConvertLsp(NormalizeBreaks(AText), Index, True);
+  mIndex := 1;
+  Result := ConvertLsp(NormalizeBreaks(AText), mIndex, True);
 end;
 
 class function TAtlasSnippets.PlainText(const ABody: string): string;
@@ -1145,7 +1146,7 @@ end;
 
 class function TAtlasSnippets.FolderStamp(const APath: string): string;
 var
-  Search: TSearchRec;
+  mSearch: TSearchRec;
 begin
   Result := '';
   if (APath = '') or not DirectoryExists(APath) then
@@ -1153,13 +1154,13 @@ begin
     Exit;
   end;
   Result := '+';
-  if FindFirst(IncludeTrailingPathDelimiter(APath) + '*' + FileExtension, faAnyFile, Search) = 0 then
+  if FindFirst(IncludeTrailingPathDelimiter(APath) + '*' + cFileExtension, faAnyFile, mSearch) = 0 then
     try
       repeat
-        Result := Result + Search.Name + '|' + IntToStr(Search.Size) + '|' + FormatDateTime('yyyymmddhhnnss', Search.TimeStamp) + ';';
-      until FindNext(Search) <> 0;
+        Result := Result + mSearch.Name + '|' + IntToStr(mSearch.Size) + '|' + FormatDateTime('yyyymmddhhnnss', mSearch.TimeStamp) + ';';
+      until FindNext(mSearch) <> 0;
     finally
-      FindClose(Search);
+      FindClose(mSearch);
     end;
 end;
 

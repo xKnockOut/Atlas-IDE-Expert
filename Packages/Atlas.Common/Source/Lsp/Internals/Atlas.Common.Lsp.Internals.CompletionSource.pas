@@ -15,7 +15,7 @@ type
 
 const
   /// <summary>So viele Vorfahren verfolgt TypeChain höchstens (Schutz vor Zyklen im Index).</summary>
-  MaxAncestorChain = 32;
+  cMaxAncestorChain = 32;
 
 /// <summary>Innerster Typ aus AKinds, in dessen Deklaration ALine liegt: Kopf vor ALine, Ende ab ALine
 /// (AInclusiveEnd) bzw. hinter ALine. AMinAncestors: Mindestzahl der Einträge in Ancestors (2 für Klassen
@@ -29,21 +29,27 @@ function TypeChain(AResolver: TNameResolver; const AUnit: TUnitIndex; const ATyp
 
 implementation
 
+/// <summary>Umschließt der Bereich von ASymbol die Zeile ALine (Ende mit AInclusiveEnd eingeschlossen)?</summary>
+function SpansLine(const ASymbol: TIndexSymbol; ALine: Integer; AInclusiveEnd: Boolean): Boolean;
+begin
+  Result := (ASymbol.Range.StartPos.Line < ALine) and
+    ((ASymbol.Range.EndPos.Line > ALine) or (AInclusiveEnd and (ASymbol.Range.EndPos.Line = ALine)));
+end;
+
 function EnclosingTypeAt(const AUnit: TUnitIndex; ALine: Integer; const AKinds: TIndexSymbolKinds;
   AMinAncestors: Integer; AInclusiveEnd: Boolean; out ASymbol: TIndexSymbol): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := False;
   ASymbol := Default(TIndexSymbol);
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if (Symbol.Kind in AKinds) and (Length(Symbol.Ancestors) >= AMinAncestors) and
-      (Symbol.Range.StartPos.Line < ALine) and
-      ((Symbol.Range.EndPos.Line > ALine) or (AInclusiveEnd and (Symbol.Range.EndPos.Line = ALine))) and
-      (not Result or (Symbol.Range.StartPos.Line >= ASymbol.Range.StartPos.Line)) then
+    if (mSymbol.Kind in AKinds) and (Length(mSymbol.Ancestors) >= AMinAncestors) and
+      SpansLine(mSymbol, ALine, AInclusiveEnd) and
+      (not Result or (mSymbol.Range.StartPos.Line >= ASymbol.Range.StartPos.Line)) then
     begin
-      ASymbol := Symbol;
+      ASymbol := mSymbol;
       Result := True;
     end;
   end;
@@ -63,23 +69,23 @@ end;
 
 function TypeChain(AResolver: TNameResolver; const AUnit: TUnitIndex; const AType: string): TArray<string>;
 var
-  Current, Ancestor: TResolvedSymbol;
-  Depth: Integer;
+  mCurrent, mAncestor: TResolvedSymbol;
+  mDepth: Integer;
 begin
   Result := nil;
   Result := [AType];
-  if not AResolver.ResolveTypeFrom(AUnit, AType, Current) then
+  if not AResolver.ResolveTypeFrom(AUnit, AType, mCurrent) then
   begin
     Exit;
   end;
-  for Depth := 1 to MaxAncestorChain do
+  for mDepth := 1 to cMaxAncestorChain do
   begin
-    if not AResolver.AncestorOf(Current, Ancestor) then
+    if not AResolver.AncestorOf(mCurrent, mAncestor) then
     begin
       Break;
     end;
-    Result := Result + [Ancestor.Name];
-    Current := Ancestor;
+    Result := Result + [mAncestor.Name];
+    mCurrent := mAncestor;
   end;
 end;
 

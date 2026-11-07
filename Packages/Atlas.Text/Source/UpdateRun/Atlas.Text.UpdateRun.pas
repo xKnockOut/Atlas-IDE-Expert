@@ -79,46 +79,46 @@ type
   /// <summary>Kennungen der Fehler in state.json und result.json.</summary>
   TUpdateErrors = class
   public const
-    Manifest = 'manifest';
-    VersionChanged = 'version';
-    NoPackage = 'noPackage';
-    NoCompiler = 'noCompiler';
-    Download = 'download';
-    Hash = 'hash';
-    Archive = 'archive';
-    Unsigned = 'unsigned';
-    Signature = 'signature';
-    Build = 'build';
-    Locked = 'locked';
-    CopyFailed = 'copy';
-    Registry = 'registry';
-    Cancelled = 'cancelled';
-    Elevation = 'elevation';
-    Selection = 'selection';
+    cManifest = 'manifest';
+    cVersionChanged = 'version';
+    cNoPackage = 'noPackage';
+    cNoCompiler = 'noCompiler';
+    cDownload = 'download';
+    cHash = 'hash';
+    cArchive = 'archive';
+    cUnsigned = 'unsigned';
+    cSignature = 'signature';
+    cBuild = 'build';
+    cLocked = 'locked';
+    cCopyFailed = 'copy';
+    cRegistry = 'registry';
+    cCancelled = 'cancelled';
+    cElevation = 'elevation';
+    cSelection = 'selection';
     /// <summary>Unerwarteter Fehler; Detail nennt die Meldung.</summary>
-    Unexpected = 'unexpected';
+    cUnexpected = 'unexpected';
   end;
 
   /// <summary>Dateien und Ordner eines Updates (#1519). Alles liegt unter %LOCALAPPDATA%\Atlas\Updates
   /// (Root); je Version ein Staging-Ordner Root\&lt;Version&gt;.</summary>
   TUpdateLayout = class
   public const
-    UpdaterExe = 'AtlasUpdate.exe';
-    ServerExe = 'AtlasServer.exe';
+    cUpdaterExe = 'AtlasUpdate.exe';
+    cServerExe = 'AtlasServer.exe';
     /// <summary>Stand der Vorbereitung im Staging-Ordner.</summary>
-    StateFile = 'state.json';
+    cStateFile = 'state.json';
     /// <summary>Ergebnis des letzten Tauschs im Root.</summary>
-    ResultFile = 'result.json';
+    cResultFile = 'result.json';
     /// <summary>Abgelehnte neue Module im Root (Namen, eine Zeile je Modul).</summary>
-    DeclinedFile = 'declined.txt';
-    LogFile = 'update.log';
+    cDeclinedFile = 'declined.txt';
+    cLogFile = 'update.log';
     /// <summary>Neue Dateien im Aufbau des Atlas-Ordners.</summary>
-    FilesFolder = 'files';
-    SourceFolder = 'source';
-    BackupFolder = 'backup';
-    DownloadFolder = 'download';
+    cFilesFolder = 'files';
+    cSourceFolder = 'source';
+    cBackupFolder = 'backup';
+    cDownloadFolder = 'download';
     /// <summary>Endung, unter der eine laufende EXE beim Tausch beiseitegelegt wird.</summary>
-    OldSuffix = '.atlas-old';
+    cOldSuffix = '.atlas-old';
   public
     class function Join(const ADir, AName: string): string; static;
   end;
@@ -487,7 +487,7 @@ begin
   mRoot := ParseObject(AJson);
   if mRoot = nil then
   begin
-    Result.Error := TUpdateErrors.Manifest;
+    Result.Error := TUpdateErrors.cManifest;
     Exit;
   end;
   try

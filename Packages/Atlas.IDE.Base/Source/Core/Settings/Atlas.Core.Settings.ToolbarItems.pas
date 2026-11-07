@@ -22,16 +22,16 @@ uses
 type
   TAtlasToolbarItems = class
   public const
-    Separator = '|';
-    Delimiter = ',';
-    GotoInterface = 'Atlas.GotoInterface';
-    GotoImplementation = 'Atlas.GotoImplementation';
-    GotoUses = 'Atlas.GotoUses';
-    GotoInitialization = 'Atlas.GotoInitialization';
-    ReturnFromSection = 'Atlas.ReturnFromSection';
-    FindMethod = 'Atlas.FindMethod';
-    CommandPalette = 'Atlas.CommandPalette';
-    Customize = 'Atlas.EditorToolbarCustomize';
+    cSeparator = '|';
+    cDelimiter = ',';
+    cGotoInterface = 'Atlas.GotoInterface';
+    cGotoImplementation = 'Atlas.GotoImplementation';
+    cGotoUses = 'Atlas.GotoUses';
+    cGotoInitialization = 'Atlas.GotoInitialization';
+    cReturnFromSection = 'Atlas.ReturnFromSection';
+    cFindMethod = 'Atlas.FindMethod';
+    cCommandPalette = 'Atlas.CommandPalette';
+    cCustomize = 'Atlas.EditorToolbarCustomize';
   public
     /// <summary>Kennungen in Reihenfolge, Trennstrich als Separator; ohne Leerraum und leere Einträge.</summary>
     class function Parse(const AText: string): TArray<string>; static;
@@ -65,10 +65,10 @@ uses
   System.StrUtils;
 
 const
-  DefaultItems: array[0..14] of string = (TAtlasToolbarItems.GotoInterface, TAtlasToolbarItems.GotoImplementation,
-    TAtlasToolbarItems.Separator, 'Atlas.NavBack', 'Atlas.NavForward', 'Atlas.ToggleMethod', 'Atlas.SwitchTestUnit',
-    TAtlasToolbarItems.Separator, 'Atlas.UnitSearch', TAtlasToolbarItems.FindMethod, TAtlasToolbarItems.Separator,
-    'Atlas.CodeActions', 'Atlas.FormatCode', 'Atlas.ProblemsWindow', TAtlasToolbarItems.CommandPalette);
+  cDefaultItems: array[0..14] of string = (TAtlasToolbarItems.cGotoInterface, TAtlasToolbarItems.cGotoImplementation,
+    TAtlasToolbarItems.cSeparator, 'Atlas.NavBack', 'Atlas.NavForward', 'Atlas.ToggleMethod', 'Atlas.SwitchTestUnit',
+    TAtlasToolbarItems.cSeparator, 'Atlas.UnitSearch', TAtlasToolbarItems.cFindMethod, TAtlasToolbarItems.cSeparator,
+    'Atlas.CodeActions', 'Atlas.FormatCode', 'Atlas.ProblemsWindow', TAtlasToolbarItems.cCommandPalette);
 
 /// <summary>AItem kommt in die bereinigte Liste AResult: nicht leer, kein Trennstrich am Anfang oder doppelt,
 /// kein Eintrag doppelt.</summary>
@@ -90,26 +90,26 @@ end;
 
 class function TAtlasToolbarItems.Parse(const AText: string): TArray<string>;
 var
-  Part: string;
+  mPart: string;
 begin
   Result := nil;
-  for Part in AText.Split([Delimiter]) do
+  for mPart in AText.Split([cDelimiter]) do
   begin
-    if Trim(Part) <> '' then
+    if Trim(mPart) <> '' then
     begin
-      Result := Result + [Trim(Part)];
+      Result := Result + [Trim(mPart)];
     end;
   end;
 end;
 
 class function TAtlasToolbarItems.Format(const AItems: TArray<string>): string;
 begin
-  Result := string.Join(Delimiter, AItems);
+  Result := string.Join(cDelimiter, AItems);
 end;
 
 class function TAtlasToolbarItems.IsSeparator(const AId: string): Boolean;
 begin
-  Result := AId = Separator;
+  Result := AId = cSeparator;
 end;
 
 class function TAtlasToolbarItems.Clean(const AItems: TArray<string>): TArray<string>;
@@ -137,12 +137,12 @@ end;
 
 class function TAtlasToolbarItems.Default: TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  SetLength(Result, Length(DefaultItems));
-  for Index := 0 to High(DefaultItems) do
+  SetLength(Result, Length(cDefaultItems));
+  for mIndex := 0 to High(cDefaultItems) do
   begin
-    Result[Index] := DefaultItems[Index];
+    Result[mIndex] := cDefaultItems[mIndex];
   end;
 end;
 
@@ -153,8 +153,8 @@ end;
 
 class function TAtlasToolbarItems.IsSection(const AId: string): Boolean;
 begin
-  Result := SameText(AId, GotoInterface) or SameText(AId, GotoImplementation) or SameText(AId, GotoUses) or
-    SameText(AId, GotoInitialization);
+  Result := SameText(AId, cGotoInterface) or SameText(AId, cGotoImplementation) or SameText(AId, cGotoUses) or
+    SameText(AId, cGotoInitialization);
 end;
 
 class function TAtlasToolbarItems.PinnedCount(const AItems: TArray<string>): Integer;
@@ -168,7 +168,7 @@ end;
 
 class function TAtlasToolbarItems.Add(var AItems: TArray<string>; const AId: string; AIndex: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
   if Trim(AId) = '' then
@@ -177,9 +177,9 @@ begin
   end;
   if not IsSeparator(AId) then
   begin
-    for Index := 0 to High(AItems) do
+    for mIndex := 0 to High(AItems) do
     begin
-      if SameText(AItems[Index], AId) then
+      if SameText(AItems[mIndex], AId) then
       begin
         Exit;
       end;
@@ -204,19 +204,19 @@ end;
 
 class function TAtlasToolbarItems.Move(var AItems: TArray<string>; AIndex, ADelta: Integer): Integer;
 var
-  Target: Integer;
-  Item: string;
+  mTarget: Integer;
+  mItem: string;
 begin
   Result := AIndex;
-  Target := AIndex + ADelta;
-  if (AIndex < 0) or (AIndex > High(AItems)) or (Target < 0) or (Target > High(AItems)) then
+  mTarget := AIndex + ADelta;
+  if (AIndex < 0) or (AIndex > High(AItems)) or (mTarget < 0) or (mTarget > High(AItems)) then
   begin
     Exit;
   end;
-  Item := AItems[AIndex];
-  AItems[AIndex] := AItems[Target];
-  AItems[Target] := Item;
-  Result := Target;
+  mItem := AItems[AIndex];
+  AItems[AIndex] := AItems[mTarget];
+  AItems[mTarget] := mItem;
+  Result := mTarget;
 end;
 
 end.

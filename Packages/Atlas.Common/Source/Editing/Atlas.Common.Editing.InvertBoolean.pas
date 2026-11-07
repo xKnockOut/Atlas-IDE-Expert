@@ -121,23 +121,23 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  Antonyms: array[0..22] of string = ('Hidden=Visible', 'Enabled=Disabled', 'IsEmpty=HasItems', 'Valid=Invalid',
+  cAntonyms: array[0..22] of string = ('Hidden=Visible', 'Enabled=Disabled', 'IsEmpty=HasItems', 'Valid=Invalid',
     'Locked=Unlocked', 'Active=Inactive', 'Checked=Unchecked', 'Open=Closed', 'Allowed=Forbidden',
     'Available=Unavailable', 'Connected=Disconnected', 'Modified=Unmodified', 'Selected=Unselected', 'Show=Hide',
     'Succeeded=Failed', 'ReadOnly=Writable', 'Online=Offline', 'Expanded=Collapsed', 'Started=Stopped',
     'Include=Exclude', 'Accepted=Rejected', 'Known=Unknown', 'Empty=NotEmpty');
-  WordPrefixes: array[0..5] of string = ('Is', 'Has', 'Can', 'Should', 'Get', 'Set');
+  cWordPrefixes: array[0..5] of string = ('Is', 'Has', 'Can', 'Should', 'Get', 'Set');
 
 { TInvertTargets }
 
 procedure TInvertTargets.AddName(AOffset: Integer; const ANewName: string; AInvert: Boolean);
 var
-  Item: TInvertName;
+  mItem: TInvertName;
 begin
-  Item.Offset := AOffset;
-  Item.NewName := ANewName;
-  Item.Invert := AInvert;
-  Names := Names + [Item];
+  mItem.Offset := AOffset;
+  mItem.NewName := ANewName;
+  mItem.Invert := AInvert;
+  Names := Names + [mItem];
 end;
 
 procedure TInvertTargets.AddBody(AOffset: Integer);
@@ -147,21 +147,21 @@ end;
 
 procedure TInvertTargets.AddLocal(ABodyOffset: Integer; const AName, ANewName: string);
 var
-  Item: TInvertLocal;
+  mItem: TInvertLocal;
 begin
-  Item.BodyOffset := ABodyOffset;
-  Item.Name := AName;
-  Item.NewName := ANewName;
-  Locals := Locals + [Item];
+  mItem.BodyOffset := ABodyOffset;
+  mItem.Name := AName;
+  mItem.NewName := ANewName;
+  Locals := Locals + [mItem];
 end;
 
 procedure TInvertTargets.AddCall(ACalleeOffset, AArgument: Integer);
 var
-  Item: TInvertCall;
+  mItem: TInvertCall;
 begin
-  Item.CalleeOffset := ACalleeOffset;
-  Item.Argument := AArgument;
-  Calls := Calls + [Item];
+  mItem.CalleeOffset := ACalleeOffset;
+  mItem.Argument := AArgument;
+  Calls := Calls + [mItem];
 end;
 
 function TInvertTargets.IsEmpty: Boolean;
@@ -171,14 +171,14 @@ end;
 
 { Namen }
 
-function IsUpper(C: Char): Boolean;
+function IsUpper(AC: Char): Boolean;
 begin
-  Result := CharInSet(C, ['A'..'Z']);
+  Result := CharInSet(AC, ['A'..'Z']);
 end;
 
-function IsLowerOrDigit(C: Char): Boolean;
+function IsLowerOrDigit(AC: Char): Boolean;
 begin
-  Result := CharInSet(C, ['a'..'z', '0'..'9', '_']);
+  Result := CharInSet(AC, ['a'..'z', '0'..'9', '_']);
 end;
 
 /// <summary>Beginnt bei AIndex (ab 1) ein Wort? FHidden: bei 2; IsEmpty: bei 1 und 3.</summary>
@@ -213,12 +213,12 @@ end;
 
 class function TInvertBoolean.BuiltinAntonyms: TArray<string>;
 var
-  Pair: string;
+  mPair: string;
 begin
   Result := nil;
-  for Pair in Antonyms do
+  for mPair in cAntonyms do
   begin
-    Result := Result + [Pair];
+    Result := Result + [mPair];
   end;
 end;
 
@@ -334,7 +334,7 @@ begin
   begin
     Exit(AName[1] + APrefix + Copy(AName, 2, MaxInt));
   end;
-  for mPart in WordPrefixes do
+  for mPart in cWordPrefixes do
   begin
     if (Length(AName) > Length(mPart)) and StartsStr(mPart, AName) and IsUpper(AName[Length(mPart) + 1]) then
     begin
@@ -471,17 +471,17 @@ type
   end;
 
 const
-  ExpressionKinds = [TSyntaxKind.Identifier, TSyntaxKind.Literal, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
+  cExpressionKinds = [TSyntaxKind.Identifier, TSyntaxKind.Literal, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
     TSyntaxKind.IndexAccess, TSyntaxKind.Dereference, TSyntaxKind.AddressOf, TSyntaxKind.SetConstructor,
     TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr, TSyntaxKind.InheritedExpr,
     TSyntaxKind.RangeExpr, TSyntaxKind.IfExpr];
 
 constructor TRewriter.Create(ATree: TSyntaxTree; const AText: string; const ATargets: TInvertTargets);
 var
-  Item: TInvertName;
-  Call: TInvertCall;
-  Arguments: TArray<Integer>;
-  Offset, Index: Integer;
+  mItem: TInvertName;
+  mCall: TInvertCall;
+  mArguments: TArray<Integer>;
+  mOffset, mIndex: Integer;
 begin
   inherited Create;
   FRoot := ATree.Root;
@@ -495,28 +495,28 @@ begin
   FEdits := TList<TOffsetEdit>.Create;
   FVarArgument := ATargets.VarArgument;
   FLocals := ATargets.Locals;
-  for Index := 0 to High(FSource.Tokens) do
+  for mIndex := 0 to High(FSource.Tokens) do
   begin
-    if FSource.Tokens[Index].Kind = TPascalTokenKind.Identifier then
+    if FSource.Tokens[mIndex].Kind = TPascalTokenKind.Identifier then
     begin
-      FTokenAtEnd.AddOrSetValue(FSource.Tokens[Index].Offset + Length(FSource.Tokens[Index].Text), Index);
+      FTokenAtEnd.AddOrSetValue(FSource.Tokens[mIndex].Offset + Length(FSource.Tokens[mIndex].Text), mIndex);
     end;
   end;
-  for Item in ATargets.Names do
+  for mItem in ATargets.Names do
   begin
-    FNames.AddOrSetValue(Item.Offset, Item);
+    FNames.AddOrSetValue(mItem.Offset, mItem);
   end;
-  for Call in ATargets.Calls do
+  for mCall in ATargets.Calls do
   begin
-    if not FCalls.TryGetValue(Call.CalleeOffset, Arguments) then
+    if not FCalls.TryGetValue(mCall.CalleeOffset, mArguments) then
     begin
-      Arguments := nil;
+      mArguments := nil;
     end;
-    FCalls.AddOrSetValue(Call.CalleeOffset, Arguments + [Call.Argument]);
+    FCalls.AddOrSetValue(mCall.CalleeOffset, mArguments + [mCall.Argument]);
   end;
-  for Offset in ATargets.Bodies do
+  for mOffset in ATargets.Bodies do
   begin
-    FBodies.AddOrSetValue(Offset, True);
+    FBodies.AddOrSetValue(mOffset, True);
   end;
 end;
 
@@ -630,16 +630,16 @@ end;
 
 function TRewriter.NameOffset(ANode: TSyntaxNode): Integer;
 var
-  Token: Integer;
+  mToken: Integer;
 begin
   Result := -1;
   case ANode.Kind of
     TSyntaxKind.Identifier:
       Result := ANode.StartOffset;
     TSyntaxKind.MemberAccess, TSyntaxKind.InheritedExpr:
-      if FTokenAtEnd.TryGetValue(ANode.EndOffset, Token) then
+      if FTokenAtEnd.TryGetValue(ANode.EndOffset, mToken) then
       begin
-        Result := FSource.Tokens[Token].Offset;
+        Result := FSource.Tokens[mToken].Offset;
       end;
   else
     // Übrige Werte bewusst ohne Wirkung.
@@ -659,16 +659,16 @@ end;
 
 function TRewriter.IsValueRef(ANode: TSyntaxNode): Boolean;
 var
-  Name: TInvertName;
+  mName: TInvertName;
 begin
   Result := False;
   case ANode.Kind of
     TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.InheritedExpr:
-      Result := not IsCallee(ANode) and InvertedName(NameOffset(ANode), Name) and Name.Invert;
+      Result := not IsCallee(ANode) and InvertedName(NameOffset(ANode), mName) and mName.Invert;
     TSyntaxKind.Call, TSyntaxKind.IndexAccess:
       Result := (ANode.ChildCount > 0) and
         (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.InheritedExpr]) and
-        InvertedName(NameOffset(ANode[0]), Name) and Name.Invert;
+        InvertedName(NameOffset(ANode[0]), mName) and mName.Invert;
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -728,12 +728,12 @@ end;
 
 function ContainsValue(AValue: Integer; const AValues: TArray<Integer>): Boolean;
 var
-  Item: Integer;
+  mItem: Integer;
 begin
   Result := False;
-  for Item in AValues do
+  for mItem in AValues do
   begin
-    if Item = AValue then
+    if mItem = AValue then
     begin
       Exit(True);
     end;
@@ -743,28 +743,28 @@ end;
 /// <summary>Ein Ausdruck ohne Operator auf oberster Ebene: Name, Aufruf, Index, Klammer.</summary>
 function IsAtomic(const AText: string): Boolean;
 var
-  Index, Depth: Integer;
-  Quoted: Boolean;
+  mIndex, mDepth: Integer;
+  mQuoted: Boolean;
 begin
-  Depth := 0;
-  Quoted := False;
-  for Index := 1 to Length(AText) do
+  mDepth := 0;
+  mQuoted := False;
+  for mIndex := 1 to Length(AText) do
   begin
-    if AText[Index] = '''' then
+    if AText[mIndex] = '''' then
     begin
-      Quoted := not Quoted;
+      mQuoted := not mQuoted;
     end;
-    if Quoted then
+    if mQuoted then
     begin
       Continue;
     end;
-    case AText[Index] of
+    case AText[mIndex] of
       '(', '[':
-        Inc(Depth);
+        Inc(mDepth);
       ')', ']':
-        Dec(Depth);
+        Dec(mDepth);
       ' ', #9, #10, #13, '+', '-', '*', '/', '=', '<', '>':
-        if Depth = 0 then
+        if mDepth = 0 then
         begin
           Exit(False);
         end;
@@ -781,25 +781,25 @@ end;
 
 function TRewriter.LocalRewrite(ANode: TSyntaxNode): string;
 var
-  Saved: TList<TOffsetEdit>;
-  Edit: TOffsetEdit;
-  Index: Integer;
+  mSaved: TList<TOffsetEdit>;
+  mEdit: TOffsetEdit;
+  mIndex: Integer;
 begin
   // Anweisungen in einer anonymen Methode: Änderungen auf ihren Text anwenden.
-  Saved := FEdits;
+  mSaved := FEdits;
   FEdits := TList<TOffsetEdit>.Create;
   try
     Visit(ANode, False);
     Result := FSource.NodeText(ANode);
-    for Index := FEdits.Count - 1 downto 0 do
+    for mIndex := FEdits.Count - 1 downto 0 do
     begin
-      Edit := FEdits[Index];
-      Result := Copy(Result, 1, Edit.StartOffset - ANode.StartOffset) + Edit.Text +
-        Copy(Result, Edit.EndOffset - ANode.StartOffset + 1, MaxInt);
+      mEdit := FEdits[mIndex];
+      Result := Copy(Result, 1, mEdit.StartOffset - ANode.StartOffset) + mEdit.Text +
+        Copy(Result, mEdit.EndOffset - ANode.StartOffset + 1, MaxInt);
     end;
   finally
     FEdits.Free;
-    FEdits := Saved;
+    FEdits := mSaved;
   end;
 end;
 
@@ -818,39 +818,39 @@ end;
 /// <summary>Text zwischen AStart und AStop, nur mit umbenannten Bezeichnern.</summary>
 function TRewriter.Renamed(AStart, AStop: Integer): string;
 var
-  Offset, Token: Integer;
-  Name: TInvertName;
+  mOffset, mToken: Integer;
+  mName: TInvertName;
 begin
   Result := '';
-  Offset := AStart;
-  for Token := FSource.FirstToken(AStart) to High(FSource.Tokens) do
+  mOffset := AStart;
+  for mToken := FSource.FirstToken(AStart) to High(FSource.Tokens) do
   begin
-    if FSource.Tokens[Token].Offset >= AStop then
+    if FSource.Tokens[mToken].Offset >= AStop then
     begin
       Break;
     end;
-    if FSource.Tokens[Token].Kind <> TPascalTokenKind.Identifier then
+    if FSource.Tokens[mToken].Kind <> TPascalTokenKind.Identifier then
     begin
       Continue;
     end;
-    if InvertedName(FSource.Tokens[Token].Offset, Name) then
+    if InvertedName(FSource.Tokens[mToken].Offset, mName) then
     begin
-      Result := Result + FSource.Slice(Offset, FSource.Tokens[Token].Offset) + Name.NewName;
-      Offset := FSource.Tokens[Token].Offset + Length(FSource.Tokens[Token].Text);
+      Result := Result + FSource.Slice(mOffset, FSource.Tokens[mToken].Offset) + mName.NewName;
+      mOffset := FSource.Tokens[mToken].Offset + Length(FSource.Tokens[mToken].Text);
     end;
   end;
-  Result := Result + FSource.Slice(Offset, AStop);
+  Result := Result + FSource.Slice(mOffset, AStop);
 end;
 
 function TRewriter.RebuildGeneric(ANode: TSyntaxNode): string;
 var
-  Index, Position: Integer;
-  Child: TSyntaxNode;
-  Part: string;
+  mIndex, mPosition: Integer;
+  mChild: TSyntaxNode;
+  mPart: string;
 
   function Own(AStop: Integer): string;
   begin
-    Result := Renamed(Position, AStop);
+    Result := Renamed(mPosition, AStop);
   end;
 
 begin
@@ -859,62 +859,62 @@ begin
     Exit(LocalRewrite(ANode));
   end;
   Result := '';
-  Position := ANode.StartOffset;
-  for Index := 0 to ANode.ChildCount - 1 do
+  mPosition := ANode.StartOffset;
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    Child := ANode[Index];
-    Result := Result + Own(Child.StartOffset);
-    Part := Print(Child, False, ANode.Kind = TSyntaxKind.ParenExpr);
+    mChild := ANode[mIndex];
+    Result := Result + Own(mChild.StartOffset);
+    mPart := Print(mChild, False, ANode.Kind = TSyntaxKind.ParenExpr);
     // Vor "." und "^" braucht ein verneinter Ausdruck Klammern.
-    if (Index = 0) and (ANode.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Dereference]) and
-      not IsAtomic(Part) then
+    if (mIndex = 0) and (ANode.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Dereference]) and
+      not IsAtomic(mPart) then
     begin
-      Part := '(' + Part + ')';
+      mPart := '(' + mPart + ')';
     end;
-    Result := Result + Part;
-    Position := Child.EndOffset;
+    Result := Result + mPart;
+    mPosition := mChild.EndOffset;
   end;
   Result := Result + Own(ANode.EndOffset);
 end;
 
 function TRewriter.RebuildCall(ANode: TSyntaxNode): string;
 var
-  Index: Integer;
-  Child, Callee: TSyntaxNode;
-  Arguments: TArray<Integer>;
-  Part: string;
-  Negated: Boolean;
+  mIndex: Integer;
+  mChild, mCallee: TSyntaxNode;
+  mArguments: TArray<Integer>;
+  mPart: string;
+  mNegated: Boolean;
 begin
-  Callee := ANode[0];
-  Result := Rebuild(Callee);
+  mCallee := ANode[0];
+  Result := Rebuild(mCallee);
   if not IsAtomic(Result) then
   begin
     Result := '(' + Result + ')';
   end;
-  Arguments := nil;
+  mArguments := nil;
   if ANode.Kind = TSyntaxKind.Call then
   begin
-    if not FCalls.TryGetValue(NameOffset(Callee), Arguments) then
+    if not FCalls.TryGetValue(NameOffset(mCallee), mArguments) then
     begin
-      Arguments := nil;
+      mArguments := nil;
     end;
   end;
-  for Index := 1 to ANode.ChildCount - 1 do
+  for mIndex := 1 to ANode.ChildCount - 1 do
   begin
-    Child := ANode[Index];
-    Result := Result + FSource.Slice(ANode[Index - 1].EndOffset, Child.StartOffset);
-    Negated := ContainsValue(Index - 1, Arguments);
-    if IsValueRef(Child) and not Negated and (ANode.Kind = TSyntaxKind.Call) and Assigned(FVarArgument) and
-      FVarArgument(ANode, Index - 1) then
+    mChild := ANode[mIndex];
+    Result := Result + FSource.Slice(ANode[mIndex - 1].EndOffset, mChild.StartOffset);
+    mNegated := ContainsValue(mIndex - 1, mArguments);
+    if IsValueRef(mChild) and not mNegated and (ANode.Kind = TSyntaxKind.Call) and Assigned(FVarArgument) and
+      FVarArgument(ANode, mIndex - 1) then
     begin
-      Warn(Child.StartOffset, cTexts[TEditingInvertBooleanText.PassedToAVarOr].Text);
-      Part := Rebuild(Child);
+      Warn(mChild.StartOffset, cTexts[TEditingInvertBooleanText.PassedToAVarOr].Text);
+      mPart := Rebuild(mChild);
     end
     else
     begin
-      Part := Print(Child, Negated, True);
+      mPart := Print(mChild, mNegated, True);
     end;
-    Result := Result + Part;
+    Result := Result + mPart;
   end;
   Result := Result + FSource.Slice(ANode[ANode.ChildCount - 1].EndOffset, ANode.EndOffset);
 end;
@@ -1142,12 +1142,12 @@ end;
 
 procedure TRewriter.Emit(AStart, AEnd: Integer; const AText: string);
 var
-  Edit: TOffsetEdit;
+  mEdit: TOffsetEdit;
 begin
-  Edit.StartOffset := AStart;
-  Edit.EndOffset := AEnd;
-  Edit.Text := AText;
-  FEdits.Add(Edit);
+  mEdit.StartOffset := AStart;
+  mEdit.EndOffset := AEnd;
+  mEdit.Text := AText;
+  FEdits.Add(mEdit);
 end;
 
 procedure TRewriter.Emit(ANode: TSyntaxNode; const AText: string);
@@ -1160,11 +1160,11 @@ end;
 
 procedure TRewriter.Warn(AOffset: Integer; const AText: string);
 var
-  Warning: TInvertWarning;
+  mWarning: TInvertWarning;
 begin
-  Warning.Position := FLines.PositionAt(AOffset);
-  Warning.Text := AText;
-  Warnings := Warnings + [Warning];
+  mWarning.Position := FLines.PositionAt(AOffset);
+  mWarning.Text := AText;
+  Warnings := Warnings + [mWarning];
 end;
 
 /// <summary>Result(…) als Aufruf der Funktion selbst, nicht ihr Rückgabewert.</summary>
@@ -1176,10 +1176,10 @@ end;
 
 procedure TRewriter.CollectIdentifiers(ANode: TSyntaxNode; const AName, ANewName: string);
 var
-  Name, NewName: string;
+  mName, mNewName: string;
 begin
-  Name := AName;
-  NewName := ANewName;
+  mName := AName;
+  mNewName := ANewName;
   // Walk statt Rekursion (Bericht M1).
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
@@ -1190,10 +1190,10 @@ begin
       begin
         Exit(False);
       end;
-      if (AChild.Kind = TSyntaxKind.Identifier) and SameText(AChild.Name, Name) and not IsResultCall(AChild) then
+      if (AChild.Kind = TSyntaxKind.Identifier) and SameText(AChild.Name, mName) and not IsResultCall(AChild) then
       begin
         Item.Offset := AChild.StartOffset;
-        Item.NewName := NewName;
+        Item.NewName := mNewName;
         Item.Invert := True;
         FNames.AddOrSetValue(Item.Offset, Item);
       end;
@@ -1203,161 +1203,162 @@ end;
 
 procedure TRewriter.CollectLocals(ANode: TSyntaxNode);
 var
-  Routines: TList<TSyntaxNode>;
-  Routine, Block: TSyntaxNode;
-  Offset: Integer;
-  Local: TInvertLocal;
+  mRoutines: TList<TSyntaxNode>;
+  mRoutine, mBlock: TSyntaxNode;
+  mOffset: Integer;
+  mLocal: TInvertLocal;
 begin
   // Walk statt Rekursion (Bericht M1): erst die Routinen sammeln, dann ihre Rümpfe durchgehen.
-  Routines := TList<TSyntaxNode>.Create;
+  mRoutines := TList<TSyntaxNode>.Create;
   try
     ANode.Walk(
       function(AChild: TSyntaxNode): Boolean
       begin
         if AChild.Kind = TSyntaxKind.RoutineDecl then
         begin
-          Routines.Add(AChild);
+          mRoutines.Add(AChild);
         end;
         Result := True;
       end);
-    for Routine in Routines do
+    for mRoutine in mRoutines do
     begin
-      Offset := FSource.HeaderNameOffset(Routine);
-      Block := Routine.FindChild(TSyntaxKind.Block);
-      if (Block = nil) or (Offset < 0) then
+      mOffset := FSource.HeaderNameOffset(mRoutine);
+      mBlock := mRoutine.FindChild(TSyntaxKind.Block);
+      if (mBlock = nil) or (mOffset < 0) then
       begin
         Continue;
       end;
-      if FBodies.ContainsKey(Offset) then
+      if FBodies.ContainsKey(mOffset) then
       begin
-        CollectIdentifiers(Block, 'Result', 'Result');
+        CollectIdentifiers(mBlock, 'Result', 'Result');
       end;
-      for Local in FLocals do
+      for mLocal in FLocals do
       begin
-        if Local.BodyOffset = Offset then
+        if mLocal.BodyOffset = mOffset then
         begin
-          CollectIdentifiers(Block, Local.Name, Local.NewName);
+          CollectIdentifiers(mBlock, mLocal.Name, mLocal.NewName);
         end;
       end;
     end;
   finally
-    Routines.Free;
+    mRoutines.Free;
   end;
 end;
 
 procedure TRewriter.VisitExpression(ANode: TSyntaxNode);
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   // Eigener Stapel statt Rekursion (Bericht M1), in derselben Reihenfolge. Print und Rebuild bleiben rekursiv;
   // sie folgen nur Teilausdrücken mit dem umgekehrten Namen.
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if Node.Kind = TSyntaxKind.AnonymousMethod then
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.AnonymousMethod then
       begin
-        Visit(Node, False);
+        Visit(mNode, False);
       end
-      else if ContainsDirect(Node) then
+      else if ContainsDirect(mNode) then
       begin
-        Emit(Node, Print(Node, False, True));
+        Emit(mNode, Print(mNode, False, True));
       end
       else
       begin
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 procedure TRewriter.VisitAssign(ANode: TSyntaxNode);
 var
-  Target, Value: TSyntaxNode;
+  mTarget, mValue: TSyntaxNode;
 begin
-  Target := ANode[0];
-  Value := ANode[1];
-  if IsValueRef(Target) then
+  mTarget := ANode[0];
+  mValue := ANode[1];
+  if IsValueRef(mTarget) then
   begin
-    Emit(Target, Rebuild(Target));
-    Emit(Value, Print(Value, True, True));
+    Emit(mTarget, Rebuild(mTarget));
+    Emit(mValue, Print(mValue, True, True));
     Exit;
   end;
-  VisitExpression(Target);
-  VisitExpression(Value);
+  VisitExpression(mTarget);
+  VisitExpression(mValue);
 end;
 
 procedure TRewriter.VisitCall(ANode: TSyntaxNode; AInBody: Boolean);
 var
-  Call: TSyntaxNode;
+  mCall: TSyntaxNode;
 begin
-  Call := ANode[0];
+  mCall := ANode[0];
   // Exit(Wert) im Rumpf einer umgekehrten Funktion liefert das Gegenteil.
-  if AInBody and (Call.Kind = TSyntaxKind.Call) and (Call.ChildCount = 2) and
-    (Call[0].Kind = TSyntaxKind.Identifier) and SameText(Call[0].Name, 'Exit') then
+  if AInBody and (mCall.Kind = TSyntaxKind.Call) and (mCall.ChildCount = 2) and
+    (mCall[0].Kind = TSyntaxKind.Identifier) and SameText(mCall[0].Name, 'Exit') then
   begin
-    Emit(Call[1], Print(Call[1], True, True));
+    Emit(mCall[1], Print(mCall[1], True, True));
     Exit;
   end;
-  if ContainsDirect(Call) then
+  if ContainsDirect(mCall) then
   begin
-    Emit(Call, Rebuild(Call));
+    Emit(mCall, Rebuild(mCall));
   end
   else
   begin
-    VisitExpression(Call);
+    VisitExpression(mCall);
   end;
 end;
 
 procedure TRewriter.VisitDeclaration(ANode: TSyntaxNode);
 var
-  Index, Token: Integer;
-  Value: TSyntaxNode;
-  Name: TInvertName;
+  mIndex, mToken: Integer;
+  mValue: TSyntaxNode;
+  mName: TInvertName;
 begin
   // var X: Boolean = True, const X: Boolean = True, var X := A: Ist X umgekehrt, wird der Startwert verneint.
-  Value := nil;
-  for Index := 0 to ANode.ChildCount - 1 do
+  mValue := nil;
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    if ANode[Index].Kind in ExpressionKinds + [TSyntaxKind.AnonymousMethod] then
+    if ANode[mIndex].Kind in cExpressionKinds + [TSyntaxKind.AnonymousMethod] then
     begin
-      Value := ANode[Index];
+      mValue := ANode[mIndex];
     end;
   end;
-  if Value = nil then
+  if mValue = nil then
   begin
     Exit;
   end;
-  Token := FSource.FirstToken(ANode.StartOffset);
-  while (Token <= High(FSource.Tokens)) and (FSource.Tokens[Token].Offset < Value.StartOffset) and
-    not ((FSource.Tokens[Token].Kind = TPascalTokenKind.Identifier) and SameText(FSource.Tokens[Token].Text, ANode.Name)) do
+  mToken := FSource.FirstToken(ANode.StartOffset);
+  while (mToken <= High(FSource.Tokens)) and (FSource.Tokens[mToken].Offset < mValue.StartOffset) and
+    not ((FSource.Tokens[mToken].Kind = TPascalTokenKind.Identifier) and
+      SameText(FSource.Tokens[mToken].Text, ANode.Name)) do
   begin
-    Inc(Token);
+    Inc(mToken);
   end;
-  if (Token <= High(FSource.Tokens)) and (FSource.Tokens[Token].Offset < Value.StartOffset) and
-    InvertedName(FSource.Tokens[Token].Offset, Name) and Name.Invert then
+  if (mToken <= High(FSource.Tokens)) and (FSource.Tokens[mToken].Offset < mValue.StartOffset) and
+    InvertedName(FSource.Tokens[mToken].Offset, mName) and mName.Invert then
   begin
-    Emit(Value, Print(Value, True, True));
+    Emit(mValue, Print(mValue, True, True));
   end
   else
   begin
-    VisitExpression(Value);
+    VisitExpression(mValue);
   end;
 end;
 
 procedure TRewriter.Visit(ANode: TSyntaxNode; AInBody: Boolean);
 var
-  Index: Integer;
-  Child: TSyntaxNode;
+  mIndex: Integer;
+  mChild: TSyntaxNode;
 begin
   case ANode.Kind of
     TSyntaxKind.RoutineDecl:
@@ -1384,52 +1385,52 @@ begin
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    Child := ANode[Index];
-    if Child.Kind in ExpressionKinds then
+    mChild := ANode[mIndex];
+    if mChild.Kind in cExpressionKinds then
     begin
-      VisitExpression(Child);
+      VisitExpression(mChild);
     end
     else
     begin
-      Visit(Child, AInBody);
+      Visit(mChild, AInBody);
     end;
   end;
 end;
 
 function TRewriter.Edits: TArray<TTextEdit>;
 var
-  Item: TInvertName;
-  Edit: TOffsetEdit;
-  Covered: Boolean;
-  Token: Integer;
+  mItem: TInvertName;
+  mEdit: TOffsetEdit;
+  mCovered: Boolean;
+  mToken: Integer;
 begin
   CollectLocals(FRoot);
   Visit(FRoot, False);
   // Übrige Stellen (Deklarationen, Property-Klauseln, uses von Methodenzeigern): nur umbenennen.
-  for Item in FNames.Values do
+  for mItem in FNames.Values do
   begin
-    Covered := False;
-    for Edit in FEdits do
+    mCovered := False;
+    for mEdit in FEdits do
     begin
-      if (Item.Offset >= Edit.StartOffset) and (Item.Offset < Edit.EndOffset) then
+      if (mItem.Offset >= mEdit.StartOffset) and (mItem.Offset < mEdit.EndOffset) then
       begin
-        Covered := True;
+        mCovered := True;
       end;
     end;
-    Token := FSource.IdentifierAt(Item.Offset);
-    if not Covered and (Token >= 0) and
-      (FSource.Tokens[Token].Text <> Item.NewName) then
+    mToken := FSource.IdentifierAt(mItem.Offset);
+    if not mCovered and (mToken >= 0) and
+      (FSource.Tokens[mToken].Text <> mItem.NewName) then
     begin
-      Emit(Item.Offset, Item.Offset + Length(FSource.Tokens[Token].Text), Item.NewName);
+      Emit(mItem.Offset, mItem.Offset + Length(FSource.Tokens[mToken].Text), mItem.NewName);
     end;
   end;
   Result := nil;
-  for Edit in FEdits do
+  for mEdit in FEdits do
   begin
-    Result := Result + [TTextEdit.Create(TTextRange.Create(FLines.PositionAt(Edit.StartOffset),
-      FLines.PositionAt(Edit.EndOffset)), Edit.Text)];
+    Result := Result + [TTextEdit.Create(TTextRange.Create(FLines.PositionAt(mEdit.StartOffset),
+      FLines.PositionAt(mEdit.EndOffset)), mEdit.Text)];
   end;
 end;
 
@@ -1438,7 +1439,7 @@ end;
 class function TInvertBoolean.Rewrite(ATree: TSyntaxTree; const AText: string; const ATargets: TInvertTargets;
   out AWarnings: TArray<TInvertWarning>): TArray<TTextEdit>;
 var
-  Rewriter: TRewriter;
+  mRewriter: TRewriter;
 begin
   AWarnings := nil;
   Result := nil;
@@ -1446,71 +1447,71 @@ begin
   begin
     Exit;
   end;
-  Rewriter := TRewriter.Create(ATree, AText, ATargets);
+  mRewriter := TRewriter.Create(ATree, AText, ATargets);
   try
-    Result := Rewriter.Edits;
-    AWarnings := Rewriter.Warnings;
+    Result := mRewriter.Edits;
+    AWarnings := mRewriter.Warnings;
   finally
-    Rewriter.Free;
+    mRewriter.Free;
   end;
 end;
 
 class function TInvertBoolean.DfmEdits(const AText: string; const AClasses: TArray<string>; const AOld,
   ANew: string; out AWarnings: TArray<TInvertWarning>): TArray<TTextEdit>;
 var
-  Document: TDfmDocument;
-  Edits: TArray<TTextEdit>;
-  Warnings: TArray<TInvertWarning>;
+  mDocument: TDfmDocument;
+  mEdits: TArray<TTextEdit>;
+  mWarnings: TArray<TInvertWarning>;
 
   procedure Walk(AObject: TDfmObject);
   var
-    Item: TDfmProperty;
-    Child: TDfmObject;
-    Value: string;
-    Warning: TInvertWarning;
+    mItem: TDfmProperty;
+    mChild: TDfmObject;
+    mValue: string;
+    mWarning: TInvertWarning;
   begin
     if IndexText(AObject.TypeName, AClasses) >= 0 then
     begin
-      for Item in AObject.Properties do
+      for mItem in AObject.Properties do
       begin
-        if SameText(Item.Name, AOld) then
+        if SameText(mItem.Name, AOld) then
         begin
-          Value := NegateLiteral(Trim(Item.Value));
-          Edits := Edits + [TTextEdit.Create(Item.NameRange, ANew)];
-          if Value <> '' then
+          mValue := NegateLiteral(Trim(mItem.Value));
+          mEdits := mEdits + [TTextEdit.Create(mItem.NameRange, ANew)];
+          if mValue <> '' then
           begin
-            Edits := Edits + [TTextEdit.Create(Item.ValueRange, Value)];
+            mEdits := mEdits + [TTextEdit.Create(mItem.ValueRange, mValue)];
           end
           else
           begin
-            Warning.Position := Item.ValueRange.StartPos;
-            Warning.Text := cTexts[TEditingInvertBooleanText.InValueNotInvertedPlease].Fmt([AOld, Item.Value,
+            mWarning.Position := mItem.ValueRange.StartPos;
+            mWarning.Text := cTexts[TEditingInvertBooleanText.InValueNotInvertedPlease].Fmt([AOld, mItem.Value,
               AObject.Name]);
-            Warnings := Warnings + [Warning];
+            mWarnings := mWarnings + [mWarning];
           end;
         end;
       end;
     end;
-    for Child in AObject.Children do
+    for mChild in AObject.Children do
     begin
-      Walk(Child);
+      Walk(mChild);
     end;
   end;
 
 begin
-  Edits := nil;
-  Warnings := nil;
-  Document := TDfmParser.Parse(AText);
+  mEdits := nil;
+  mWarnings := nil;
+  mDocument := TDfmParser.Parse(AText);
   try
-    if Document.Root <> nil then
+    if mDocument.Root <> nil then
     begin
-      Walk(Document.Root);
+      Walk(mDocument.Root);
     end;
   finally
-    Document.Free;
+    mDocument.Free;
   end;
-  AWarnings := Warnings;
-  Result := Edits;
+  AWarnings := mWarnings;
+  Result := mEdits;
 end;
 
 initialization

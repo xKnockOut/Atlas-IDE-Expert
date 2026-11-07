@@ -232,27 +232,27 @@ end;
 
 function ExecuteDefine(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Project: TProjectInfo;
-  Text, Config: string;
+  mProject: TProjectInfo;
+  mText, mConfig: string;
 begin
   AEdits := nil;
   if not IsValidIdent(AContext.Arguments) then
   begin
     Exit(Fail(cTexts[TProjectCommandsText.ExpectedIsASymbolE].Text, AReason));
   end;
-  if not LoadProject(AContext, Project, Text, AReason) then
+  if not LoadProject(AContext, mProject, mText, AReason) then
   begin
     Exit(False);
   end;
   if EndsStr('!', AContext.Name) then
   begin
-    Config := 'Base';
+    mConfig := 'Base';
   end
   else
   begin
-    Config := Project.Config;
+    mConfig := mProject.Config;
   end;
-  Result := AddToProject(AContext, Project, Text, TListEntry.Create(Config, 'DCC_Define', AContext.Arguments), AEdits,
+  Result := AddToProject(AContext, mProject, mText, TListEntry.Create(mConfig, 'DCC_Define', AContext.Arguments), AEdits,
     AReason);
 end;
 
@@ -261,28 +261,28 @@ end;
 function ExecuteSearchPath(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
-  Project: TProjectInfo;
-  Text, Path: string;
+  mProject: TProjectInfo;
+  mText, mPath: string;
 begin
   AEdits := nil;
-  Path := AContext.Arguments;
-  if (Length(Path) >= 2) and CharInSet(Path[1], ['''', '"']) and (Path[Length(Path)] = Path[1]) then
+  mPath := AContext.Arguments;
+  if (Length(mPath) >= 2) and CharInSet(mPath[1], ['''', '"']) and (mPath[Length(mPath)] = mPath[1]) then
   begin
-    Path := Copy(Path, 2, Length(Path) - 2);
+    mPath := Copy(mPath, 2, Length(mPath) - 2);
   end;
-  if Path = '' then
+  if mPath = '' then
   begin
     Exit(Fail(cTexts[TProjectCommandsText.ExpectedIsAFolderRelative].Text, AReason));
   end;
-  if not LoadProject(AContext, Project, Text, AReason) then
+  if not LoadProject(AContext, mProject, mText, AReason) then
   begin
     Exit(False);
   end;
-  if not AContext.Host.DirectoryExists(TProjectPaths.Combine(TProjectPaths.DirectoryOf(Project.FileName), Path)) then
+  if not AContext.Host.DirectoryExists(TProjectPaths.Combine(TProjectPaths.DirectoryOf(mProject.FileName), mPath)) then
   begin
-    Exit(Fail(cTexts[TProjectCommandsText.TheFolderDoesNotExist].Fmt([Path]), AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.TheFolderDoesNotExist].Fmt([mPath]), AReason));
   end;
-  Result := AddToProject(AContext, Project, Text, TListEntry.Create('Base', 'DCC_UnitSearchPath', Path), AEdits,
+  Result := AddToProject(AContext, mProject, mText, TListEntry.Create('Base', 'DCC_UnitSearchPath', mPath), AEdits,
     AReason);
 end;
 
@@ -290,10 +290,10 @@ end;
 
 function ExecuteConfig(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Project: TProjectInfo;
-  Word, Config, Platform, Uri: string;
-  Host: ISlashHost;
-  Source: TCommandSource;
+  mProject: TProjectInfo;
+  mWord, mConfig, mPlatform, mUri: string;
+  mHost: ISlashHost;
+  mSource: TCommandSource;
 begin
   AEdits := nil;
   if AContext.Arguments = '' then
@@ -304,41 +304,41 @@ begin
   begin
     Exit(Fail(cTexts[TProjectCommandsText.ConfigNeedsALoadedProject].Text, AReason));
   end;
-  if not AContext.Host.Project(AContext.Uri, Project) then
+  if not AContext.Host.Project(AContext.Uri, mProject) then
   begin
     Exit(Fail(cTexts[TProjectCommandsText.NoDprojIsLoadedFor].Text, AReason));
   end;
-  Config := '';
-  Platform := '';
+  mConfig := '';
+  mPlatform := '';
   // Reihenfolge egal: jedes Wort ist entweder Konfiguration oder Plattform des Projekts.
-  for Word in AContext.Arguments.Split([' ', #9], TStringSplitOptions.ExcludeEmpty) do
+  for mWord in AContext.Arguments.Split([' ', #9], TStringSplitOptions.ExcludeEmpty) do
   begin
-    if (Config = '') and (IndexText(Word, Project.Configs) >= 0) then
+    if (mConfig = '') and (IndexText(mWord, mProject.Configs) >= 0) then
     begin
-      Config := Project.Configs[IndexText(Word, Project.Configs)];
+      mConfig := mProject.Configs[IndexText(mWord, mProject.Configs)];
     end
-    else if (Platform = '') and (IndexText(Word, Project.Platforms) >= 0) then
+    else if (mPlatform = '') and (IndexText(mWord, mProject.Platforms) >= 0) then
     begin
-      Platform := Project.Platforms[IndexText(Word, Project.Platforms)];
+      mPlatform := mProject.Platforms[IndexText(mWord, mProject.Platforms)];
     end
     else
     begin
-      Exit(Fail(cTexts[TProjectCommandsText.IsNeitherAConfigurationNor].Fmt([Word, string.Join(', ', Project.Configs),
-        string.Join(', ', Project.Platforms)]), AReason));
+      Exit(Fail(cTexts[TProjectCommandsText.IsNeitherAConfigurationNor].Fmt([mWord, string.Join(', ', mProject.Configs),
+        string.Join(', ', mProject.Platforms)]), AReason));
     end;
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    AEdits := [Source.RemoveCommand];
+    AEdits := [mSource.RemoveCommand];
   finally
-    Source.Free;
+    mSource.Free;
   end;
-  Host := AContext.Host;
-  Uri := AContext.Uri;
+  mHost := AContext.Host;
+  mUri := AContext.Uri;
   AContext.Defer(
     procedure
     begin
-      Host.SelectBuild(Uri, Config, Platform);
+      mHost.SelectBuild(mUri, mConfig, mPlatform);
     end);
   Result := True;
 end;
@@ -348,21 +348,21 @@ end;
 /// <summary>Ereignis mit Wert AMethod in AObject oder darunter; False ohne.</summary>
 function FindEvent(AObject: TDfmObject; const AMethod: string; out ARange: TTextRange): Boolean;
 var
-  Prop: TDfmProperty;
-  Child: TDfmObject;
+  mProp: TDfmProperty;
+  mChild: TDfmObject;
 begin
-  for Prop in AObject.Properties do
+  for mProp in AObject.Properties do
   begin
-    if Prop.IsEvent and SameText(Trim(Prop.Value), AMethod) then
+    if mProp.IsEvent and SameText(Trim(mProp.Value), AMethod) then
     begin
-      ARange := TTextRange.Create(Prop.NameRange.StartPos.Line, Prop.NameRange.StartPos.Character,
-        Prop.ValueRange.EndPos.Line, Prop.ValueRange.EndPos.Character);
+      ARange := TTextRange.Create(mProp.NameRange.StartPos.Line, mProp.NameRange.StartPos.Character,
+        mProp.ValueRange.EndPos.Line, mProp.ValueRange.EndPos.Character);
       Exit(True);
     end;
   end;
-  for Child in AObject.Children do
+  for mChild in AObject.Children do
   begin
-    if FindEvent(Child, AMethod, ARange) then
+    if FindEvent(mChild, AMethod, ARange) then
     begin
       Exit(True);
     end;
@@ -372,62 +372,62 @@ end;
 
 function ExecuteDfm(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Routine: TSyntaxNode;
-  Method, FileName, FormFile, FormText, Extension: string;
-  Document: TDfmDocument;
-  Target: TTextRange;
-  Host: ISlashHost;
+  mSource: TCommandSource;
+  mRoutine: TSyntaxNode;
+  mMethod, mFileName, mFormFile, mFormText, mExtension: string;
+  mDocument: TDfmDocument;
+  mTarget: TTextRange;
+  mHost: ISlashHost;
 begin
   AEdits := nil;
   if AContext.Host = nil then
   begin
     Exit(Fail(cTexts[TProjectCommandsText.DfmNeedsTheEditor].Text, AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Routine := Source.RoutineAt;
-    if (Routine = nil) or (Pos('.', Routine.Name) = 0) then
+    mRoutine := mSource.RoutineAt;
+    if (mRoutine = nil) or (Pos('.', mRoutine.Name) = 0) then
     begin
       Exit(Fail(cTexts[TProjectCommandsText.DfmOnlyAppliesInA].Text, AReason));
     end;
-    Method := Copy(Routine.Name, LastDelimiter('.', Routine.Name) + 1, MaxInt);
-    FileName := TDocumentUris.ToPath(AContext.Uri);
-    FormFile := '';
-    for Extension in TArray<string>.Create('.dfm', '.fmx') do
+    mMethod := Copy(mRoutine.Name, LastDelimiter('.', mRoutine.Name) + 1, MaxInt);
+    mFileName := TDocumentUris.ToPath(AContext.Uri);
+    mFormFile := '';
+    for mExtension in TArray<string>.Create('.dfm', '.fmx') do
     begin
-      if (FormFile = '') and AContext.Host.ReadFile(ChangeFileExt(FileName, Extension), FormText) then
+      if (mFormFile = '') and AContext.Host.ReadFile(ChangeFileExt(mFileName, mExtension), mFormText) then
       begin
-        FormFile := ChangeFileExt(FileName, Extension);
+        mFormFile := ChangeFileExt(mFileName, mExtension);
       end;
     end;
-    if FormFile = '' then
+    if mFormFile = '' then
     begin
       Exit(Fail(cTexts[TProjectCommandsText.ThereIsNoDfmOr].Text, AReason));
     end;
-    Document := TDfmParser.Parse(FormText);
+    mDocument := TDfmParser.Parse(mFormText);
     try
-      if Document.Root = nil then
+      if mDocument.Root = nil then
       begin
-        Exit(Fail(cTexts[TProjectCommandsText.IsNotATextDFM].Fmt([ExtractFileName(FormFile)]), AReason));
+        Exit(Fail(cTexts[TProjectCommandsText.IsNotATextDFM].Fmt([ExtractFileName(mFormFile)]), AReason));
       end;
       // Ereignis-Handler: zur Zuweisung; sonst Formularmethode: zum Formular selbst.
-      if not FindEvent(Document.Root, Method, Target) then
+      if not FindEvent(mDocument.Root, mMethod, mTarget) then
       begin
-        Target := Document.Root.NameRange;
+        mTarget := mDocument.Root.NameRange;
       end;
     finally
-      Document.Free;
+      mDocument.Free;
     end;
-    AEdits := [Source.RemoveCommand];
+    AEdits := [mSource.RemoveCommand];
   finally
-    Source.Free;
+    mSource.Free;
   end;
-  Host := AContext.Host;
+  mHost := AContext.Host;
   AContext.Defer(
     procedure
     begin
-      Host.ShowDocument(FormFile, Target);
+      mHost.ShowDocument(mFormFile, mTarget);
     end);
   Result := True;
 end;
@@ -437,13 +437,13 @@ end;
 /// <summary>AText mit AEdit angewandt.</summary>
 function Applied(const AText: string; const AEdit: TTextEdit): string;
 var
-  Table: TLineTable;
-  Start, Stop: Integer;
+  mTable: TLineTable;
+  mStart, mStop: Integer;
 begin
-  Table := TLineTable.Build(AText);
-  Start := Table.OffsetAt(AEdit.Range.StartPos);
-  Stop := Table.OffsetAt(AEdit.Range.EndPos);
-  Result := Copy(AText, 1, Start) + AEdit.NewText + Copy(AText, Stop + 1, MaxInt);
+  mTable := TLineTable.Build(AText);
+  mStart := mTable.OffsetAt(AEdit.Range.StartPos);
+  mStop := mTable.OffsetAt(AEdit.Range.EndPos);
+  Result := Copy(AText, 1, mStart) + AEdit.NewText + Copy(AText, mStop + 1, MaxInt);
 end;
 
 /// <summary>Name ohne Endung .pas; '' wenn kein gültiger (auch gepunkteter) Bezeichner.</summary>
@@ -463,9 +463,9 @@ end;
 /// <summary>Leere Unit wie Datei > Neu > Unit der IDE.</summary>
 function NewUnitText(const AUnitName: string): string;
 const
-  LB = #13#10;
+  cLB = #13#10;
 begin
-  Result := 'unit ' + AUnitName + ';' + LB + LB + 'interface' + LB + LB + 'implementation' + LB + LB + 'end.' + LB;
+  Result := 'unit ' + AUnitName + ';' + cLB + cLB + 'interface' + cLB + cLB + 'implementation' + cLB + cLB + 'end.' + cLB;
 end;
 
 /// <summary>Zeilenende für neue Units: format.endOfLine, sonst das der Datei des Befehls (CRLF ohne
@@ -691,15 +691,15 @@ end;
 
 function ExecuteUnit(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
   AEdits := nil;
-  Name := UnitNameOf(AContext.Arguments);
-  if Name = '' then
+  mName := UnitNameOf(AContext.Arguments);
+  if mName = '' then
   begin
     Exit(Fail(cTexts[TProjectCommandsText.ExpectedIsAUnitName].Text, AReason));
   end;
-  Result := AddNewUnit(AContext, Name, NewUnitText(Name), True, AEdits, AReason);
+  Result := AddNewUnit(AContext, mName, NewUnitText(mName), True, AEdits, AReason);
 end;
 
 { /component }
@@ -707,19 +707,19 @@ end;
 /// <summary>Unit, die die Klasse AClassName deklariert, aus dem Index; '' ohne.</summary>
 function ClassUnit(const AContext: TSlashContext; const AClassName: string): string;
 var
-  Location: TSymbolLocation;
+  mLocation: TSymbolLocation;
 begin
   Result := '';
   if AContext.Index = nil then
   begin
     Exit;
   end;
-  for Location in AContext.Index.FindSymbols(AClassName) do
+  for mLocation in AContext.Index.FindSymbols(AClassName) do
   begin
-    if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') and
-      (Location.UnitName <> '') then
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and (mLocation.Symbol.Container = '') and
+      (mLocation.UnitName <> '') then
     begin
-      Exit(Location.UnitName);
+      Exit(mLocation.UnitName);
     end;
   end;
 end;
@@ -727,51 +727,51 @@ end;
 function ExecuteComponent(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
-  ClassName, Ancestor, AncestorUnit, UnitName, Palette: string;
-  Colon: Integer;
+  mClassName, mAncestor, mAncestorUnit, mUnitName, mPalette: string;
+  mColon: Integer;
 begin
   AEdits := nil;
-  Colon := Pos(':', AContext.Arguments);
-  if Colon > 0 then
+  mColon := Pos(':', AContext.Arguments);
+  if mColon > 0 then
   begin
-    ClassName := Trim(Copy(AContext.Arguments, 1, Colon - 1));
-    Ancestor := Trim(Copy(AContext.Arguments, Colon + 1, MaxInt));
+    mClassName := Trim(Copy(AContext.Arguments, 1, mColon - 1));
+    mAncestor := Trim(Copy(AContext.Arguments, mColon + 1, MaxInt));
   end
   else
   begin
-    ClassName := Trim(AContext.Arguments);
-    Ancestor := 'TComponent';
+    mClassName := Trim(AContext.Arguments);
+    mAncestor := 'TComponent';
   end;
-  if not IsValidIdent(ClassName) or not IsValidIdent(Ancestor, True) then
+  if not IsValidIdent(mClassName) or not IsValidIdent(mAncestor, True) then
   begin
     Exit(Fail(cTexts[TProjectCommandsText.ExpectedIsComponentTMyButtonTButton].Text, AReason));
   end;
   // TComponent steht in System.Classes, das das Gerüst immer einträgt.
-  AncestorUnit := '';
-  if not SameText(Ancestor, 'TComponent') then
+  mAncestorUnit := '';
+  if not SameText(mAncestor, 'TComponent') then
   begin
-    AncestorUnit := ClassUnit(AContext, Ancestor);
-    if AncestorUnit = '' then
+    mAncestorUnit := ClassUnit(AContext, mAncestor);
+    if mAncestorUnit = '' then
     begin
-      Exit(Fail(cTexts[TProjectCommandsText.TheIndexDoesNotKnow].Fmt([Ancestor]), AReason));
+      Exit(Fail(cTexts[TProjectCommandsText.TheIndexDoesNotKnow].Fmt([mAncestor]), AReason));
     end;
-    if SameText(AncestorUnit, 'System.Classes') or SameText(AncestorUnit, 'System.SysUtils') then
+    if SameText(mAncestorUnit, 'System.Classes') or SameText(mAncestorUnit, 'System.SysUtils') then
     begin
-      AncestorUnit := '';
+      mAncestorUnit := '';
     end;
   end;
-  UnitName := TUnitTemplates.InstanceName(ClassName);
-  Palette := '';
+  mUnitName := TUnitTemplates.InstanceName(mClassName);
+  mPalette := '';
   if AContext.Host <> nil then
   begin
-    Palette := Trim(AContext.Host.Setting(AContext.Uri, TSlashSettings.ComponentPalette));
+    mPalette := Trim(AContext.Host.Setting(AContext.Uri, TSlashSettings.cComponentPalette));
   end;
-  if Palette = '' then
+  if mPalette = '' then
   begin
-    Palette := TSlashSettings.DefaultPalette;
+    mPalette := TSlashSettings.cDefaultPalette;
   end;
-  Result := AddNewUnit(AContext, UnitName, TUnitTemplates.ComponentUnit(UnitName, ClassName, Ancestor,
-    AncestorUnit, Palette, #13#10), False, AEdits, AReason);
+  Result := AddNewUnit(AContext, mUnitName, TUnitTemplates.ComponentUnit(mUnitName, mClassName, mAncestor,
+    mAncestorUnit, mPalette, #13#10), False, AEdits, AReason);
 end;
 
 { /open }
@@ -895,13 +895,13 @@ end;
 
 function ExecuteOpen(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Name, FileName: string;
-  Host: ISlashHost;
-  Source: TCommandSource;
+  mName, mFileName: string;
+  mHost: ISlashHost;
+  mSource: TCommandSource;
 begin
   AEdits := nil;
-  Name := UnitNameOf(AContext.Arguments);
-  if Name = '' then
+  mName := UnitNameOf(AContext.Arguments);
+  if mName = '' then
   begin
     Exit(Fail(cTexts[TProjectCommandsText.ExpectedIsAUnitName2].Text, AReason));
   end;
@@ -909,21 +909,21 @@ begin
   begin
     Exit(Fail(cTexts[TProjectCommandsText.OpenNeedsTheEditor].Text, AReason));
   end;
-  if not FindUnitFile(AContext, Name, FileName) then
+  if not FindUnitFile(AContext, mName, mFileName) then
   begin
-    Exit(Fail(cTexts[TProjectCommandsText.TheUnitIsNeitherIn].Fmt([Name]), AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.TheUnitIsNeitherIn].Fmt([mName]), AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    AEdits := [Source.RemoveCommand];
+    AEdits := [mSource.RemoveCommand];
   finally
-    Source.Free;
+    mSource.Free;
   end;
-  Host := AContext.Host;
+  mHost := AContext.Host;
   AContext.Defer(
     procedure
     begin
-      Host.ShowDocument(FileName, TTextRange.Create(0, 0, 0, 0));
+      mHost.ShowDocument(mFileName, TTextRange.Create(0, 0, 0, 0));
     end);
   Result := True;
 end;
@@ -951,20 +951,20 @@ end;
 /// <summary>Zeile, vor der neue Rümpfe stehen: initialization, finalization bzw. "end."; -1 ohne.</summary>
 function BodyLine(const ALines: TArray<string>): Integer;
 var
-  Index: Integer;
-  Line: string;
+  mIndex: Integer;
+  mLine: string;
 begin
   Result := -1;
-  for Index := High(ALines) downto 0 do
+  for mIndex := High(ALines) downto 0 do
   begin
-    Line := LowerCase(Trim(ALines[Index]));
-    if (Result < 0) and Line.StartsWith('end.') then
+    mLine := LowerCase(Trim(ALines[mIndex]));
+    if (Result < 0) and mLine.StartsWith('end.') then
     begin
-      Result := Index;
+      Result := mIndex;
     end
-    else if (Result >= 0) and ((Line = 'initialization') or (Line = 'finalization')) then
+    else if (Result >= 0) and ((mLine = 'initialization') or (mLine = 'finalization')) then
     begin
-      Result := Index;
+      Result := mIndex;
     end;
   end;
 end;

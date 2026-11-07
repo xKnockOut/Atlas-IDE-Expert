@@ -134,7 +134,8 @@ type
     property EndOffset: Integer read FEndOffset;
   end;
 
-  /// <summary>Syntaxfehler. Message endet mit „(wie Code).“, wenn der Compiler denselben Fehler meldet (#1022).</summary>
+  /// <summary>Syntaxfehler. Message endet mit „(wie Code).“, wenn der Compiler denselben Fehler meldet
+  /// (#1022).</summary>
   TSyntaxDiagnostic = record
     Message: string;
     StartPos: TTextPosition;
@@ -246,24 +247,24 @@ end;
 
 destructor TSyntaxNode.Destroy;
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
 begin
   // Iterativ statt rekursiv: Lange Ketten wie 1+1+...+1 ergeben sehr tiefe
   // Bäume, die rekursiv den Stapel sprengen würden.
   if (FChildren <> nil) and (FChildren.Count > 0) then
   begin
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      DetachChildren(Pending);
-      while Pending.Count > 0 do
+      DetachChildren(mPending);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Node.DetachChildren(Pending);
-        Node.Free;
+        mNode := mPending.Pop;
+        mNode.DetachChildren(mPending);
+        mNode.Free;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
   FChildren.Free;
@@ -291,13 +292,13 @@ end;
 
 function TSyntaxNode.FindChild(AKind: TSyntaxKind): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to ChildCount - 1 do
+  for mIndex := 0 to ChildCount - 1 do
   begin
-    if Children[Index].Kind = AKind then
+    if Children[mIndex].Kind = AKind then
     begin
-      Exit(Children[Index]);
+      Exit(Children[mIndex]);
     end;
   end;
   Result := nil;
@@ -305,11 +306,11 @@ end;
 
 function TSyntaxNode.IsMethodResolution: Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to ChildCount - 1 do
+  for mIndex := 0 to ChildCount - 1 do
   begin
-    if (Children[Index].Kind = TSyntaxKind.Directive) and (Children[Index].Name = 'resolution') then
+    if (Children[mIndex].Kind = TSyntaxKind.Directive) and (Children[mIndex].Name = 'resolution') then
     begin
       Exit(True);
     end;
@@ -319,17 +320,17 @@ end;
 
 function TSyntaxNode.ResolutionTarget: string;
 var
-  Index: Integer;
-  Clause: TSyntaxNode;
+  mIndex: Integer;
+  mClause: TSyntaxNode;
 begin
-  for Index := 0 to ChildCount - 1 do
+  for mIndex := 0 to ChildCount - 1 do
   begin
-    Clause := Children[Index];
-    if (Clause.Kind = TSyntaxKind.Directive) and (Clause.Name = 'resolution') then
+    mClause := Children[mIndex];
+    if (mClause.Kind = TSyntaxKind.Directive) and (mClause.Name = 'resolution') then
     begin
-      if (Clause.ChildCount > 0) and (Clause[0].Kind = TSyntaxKind.Identifier) then
+      if (mClause.ChildCount > 0) and (mClause[0].Kind = TSyntaxKind.Identifier) then
       begin
-        Exit(Clause[0].Name);
+        Exit(mClause[0].Name);
       end;
       Break;
     end;
@@ -339,24 +340,24 @@ end;
 
 function TSyntaxNode.EnclosingTypeName: string;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   Result := '';
-  Node := Self;
-  while Node <> nil do
+  mNode := Self;
+  while mNode <> nil do
   begin
-    if Node.Kind = TSyntaxKind.TypeDecl then
+    if mNode.Kind = TSyntaxKind.TypeDecl then
     begin
       if Result = '' then
       begin
-        Result := Node.Name;
+        Result := mNode.Name;
       end
       else
       begin
-        Result := Node.Name + '.' + Result;
+        Result := mNode.Name + '.' + Result;
       end;
     end;
-    Node := Node.Parent;
+    mNode := mNode.Parent;
   end;
 end;
 
@@ -387,9 +388,9 @@ end;
 
 function TSyntaxNode.Search(const AVisit: TSyntaxNodeSearch): TSyntaxNode;
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := nil;
   case AVisit(Self) of
@@ -402,35 +403,35 @@ begin
   begin
     Exit;
   end;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    for Index := ChildCount - 1 downto 0 do
+    for mIndex := ChildCount - 1 downto 0 do
     begin
-      Pending.Push(Children[Index]);
+      mPending.Push(Children[mIndex]);
     end;
-    while Pending.Count > 0 do
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      case AVisit(Node) of
+      mNode := mPending.Pop;
+      case AVisit(mNode) of
         TSyntaxSearchStep.Found:
-          Exit(Node);
+          Exit(mNode);
         TSyntaxSearchStep.Descend:
-          for Index := Node.ChildCount - 1 downto 0 do
+          for mIndex := mNode.ChildCount - 1 downto 0 do
           begin
-            Pending.Push(Node.Children[Index]);
+            mPending.Push(mNode.Children[mIndex]);
           end;
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 procedure TSyntaxNode.Walk(const AVisit: TSyntaxNodeVisit);
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   // Iterativ (Bericht M1): Ketten wie 1 - 1 - … - 1 ergeben Bäume, die so tief sind wie die Kette lang; rekursiv
   // kostete jede Ebene einen Stapelrahmen je Läufer. Die Kinder kommen in umgekehrter Reihenfolge auf den Stapel,
@@ -439,26 +440,26 @@ begin
   begin
     Exit;
   end;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    for Index := ChildCount - 1 downto 0 do
+    for mIndex := ChildCount - 1 downto 0 do
     begin
-      Pending.Push(Children[Index]);
+      mPending.Push(Children[mIndex]);
     end;
-    while Pending.Count > 0 do
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if not AVisit(Node) then
+      mNode := mPending.Pop;
+      if not AVisit(mNode) then
       begin
         Continue;
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node.Children[Index]);
+        mPending.Push(mNode.Children[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -541,9 +542,9 @@ end;
 
 function TSyntaxTree.IsControlCharPart(ATokenIndex: Integer): Boolean;
 var
-  Node: TSyntaxNode;
-  Offset, Index: Integer;
-  Found: Boolean;
+  mNode: TSyntaxNode;
+  mOffset, mIndex: Integer;
+  mFound: Boolean;
 begin
   Result := False;
   if (ATokenIndex < 1) or (ATokenIndex > High(FTokens)) or not FTokens[ATokenIndex - 1].IsSymbol('^') or
@@ -552,24 +553,24 @@ begin
     Exit;
   end;
   // Innerster Knoten über dem Token: ein Literal nur bei ^C, ein Zeigertyp ^T bleibt TypeReference.
-  Offset := FTokens[ATokenIndex].Offset;
-  Node := FRoot;
+  mOffset := FTokens[ATokenIndex].Offset;
+  mNode := FRoot;
   repeat
-    if Node.Kind = TSyntaxKind.Literal then
+    if mNode.Kind = TSyntaxKind.Literal then
     begin
       Exit(True);
     end;
-    Found := False;
-    for Index := 0 to Node.ChildCount - 1 do
+    mFound := False;
+    for mIndex := 0 to mNode.ChildCount - 1 do
     begin
-      if (Node[Index].StartOffset <= Offset) and (Offset < Node[Index].EndOffset) then
+      if (mNode[mIndex].StartOffset <= mOffset) and (mOffset < mNode[mIndex].EndOffset) then
       begin
-        Node := Node[Index];
-        Found := True;
+        mNode := mNode[mIndex];
+        mFound := True;
         Break;
       end;
     end;
-  until not Found;
+  until not mFound;
 end;
 
 constructor TSyntaxTree.Create(ARoot: TSyntaxNode; const ATokens: TArray<TPascalToken>;
@@ -616,37 +617,37 @@ end;
 
 procedure TSyntaxTree.Measure;
 var
-  Pending: TStack<TDepthEntry>;
-  Item: TDepthEntry;
-  Index, Found: Integer;
-  Bottom: TSyntaxNode;
+  mPending: TStack<TDepthEntry>;
+  mItem: TDepthEntry;
+  mIndex, mFound: Integer;
+  mBottom: TSyntaxNode;
 begin
-  Found := 0;
-  Bottom := nil;
-  Pending := TStack<TDepthEntry>.Create;
+  mFound := 0;
+  mBottom := nil;
+  mPending := TStack<TDepthEntry>.Create;
   try
-    Pending.Push(DepthEntry(FRoot, 1));
-    while Pending.Count > 0 do
+    mPending.Push(DepthEntry(FRoot, 1));
+    while mPending.Count > 0 do
     begin
-      Item := Pending.Pop;
-      if Item.Depth > Found then
+      mItem := mPending.Pop;
+      if mItem.Depth > mFound then
       begin
-        Found := Item.Depth;
-        Bottom := Item.Node;
+        mFound := mItem.Depth;
+        mBottom := mItem.Node;
       end;
       // Rückwärts auf den Stapel: Bei gleicher Tiefe gewinnt der erste Knoten in Baumreihenfolge.
-      for Index := Item.Node.ChildCount - 1 downto 0 do
+      for mIndex := mItem.Node.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(DepthEntry(Item.Node[Index], Item.Depth + 1));
+        mPending.Push(DepthEntry(mItem.Node[mIndex], mItem.Depth + 1));
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
   // Gleichzeitige Aufrufe aus mehreren Threads rechnen dieselben Werte; das Merken ist unkritisch. FDepth zuletzt,
   // weil es anzeigt, dass gemessen ist.
-  FDeepest := Bottom;
-  FDepth := Found;
+  FDeepest := mBottom;
+  FDepth := mFound;
 end;
 
 function TSyntaxTree.Depth: Integer;

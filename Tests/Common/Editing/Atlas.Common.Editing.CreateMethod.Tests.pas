@@ -169,7 +169,7 @@ begin
   Assert.AreEqual('List', TCreateMethod.NameFromType('System.Generics.Collections.TList<TKunde>'));
   Assert.AreEqual('Text', TCreateMethod.NameFromType('string'));
   Assert.AreEqual('Value', TCreateMethod.NameFromType('Integer'));
-  Assert.AreEqual('Value', TCreateMethod.NameFromType(TCreateMethod.TypePlaceholder));
+  Assert.AreEqual('Value', TCreateMethod.NameFromType(TCreateMethod.cTypePlaceholder));
   Unique := TCreateMethod.UniqueNames(['Value', 'Value', 'Rate', 'value']);
   Assert.AreEqual('Value,Value2,Rate,value3', Unique[0] + ',' + Unique[1] + ',' + Unique[2] + ',' + Unique[3]);
 end;

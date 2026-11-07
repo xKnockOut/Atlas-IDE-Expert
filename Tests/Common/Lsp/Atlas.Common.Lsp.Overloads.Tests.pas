@@ -119,12 +119,12 @@ begin
     Assert.AreEqual(2, Integer(Length(Actions)));
     Assert.AreEqual(TOverloads.ForwardTitle, Actions[0].GetValue<string>('title'));
     Assert.AreEqual(TOverloads.CopyTitle, Actions[1].GetValue<string>('title'));
-    Assert.AreEqual(TLspOverloads.ClientCommand, Actions[0].GetValue<string>('command.command'));
+    Assert.AreEqual(TLspOverloads.cClientCommand, Actions[0].GetValue<string>('command.command'));
     Arguments := Actions[0].GetValue<TJSONArray>('command.arguments');
     Assert.AreEqual(3, Arguments.Count);
     Assert.AreEqual(TDocumentUris.FromPath(LogFile), Arguments.Items[0].Value);
-    Assert.AreEqual(TLspOverloads.ForwardName, Arguments.Items[2].Value);
-    Assert.AreEqual(TLspOverloads.CopyName, Actions[1].GetValue<TJSONArray>('command.arguments').Items[2].Value);
+    Assert.AreEqual(TLspOverloads.cForwardName, Arguments.Items[2].Value);
+    Assert.AreEqual(TLspOverloads.cCopyName, Actions[1].GetValue<TJSONArray>('command.arguments').Items[2].Value);
   finally
     FreeAll(Actions);
   end;

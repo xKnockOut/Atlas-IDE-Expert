@@ -261,7 +261,7 @@ var
 begin
   Favorites := TAtlasFavorites.Create;
   try
-    for Index := 1 to TAtlasFavorites.MaxPerType do
+    for Index := 1 to TAtlasFavorites.cMaxPerType do
     begin
       Assert.IsTrue(Favorites.Toggle(Member('M' + IntToStr(Index), 'TDataSet', 0, 0)) = TAtlasFavoriteToggle.Added);
     end;
@@ -582,7 +582,7 @@ begin
   Controller := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create(QueryItems) as
     IAtlasCompletionProvider, ViewRef);
   try
-    for Index := 1 to TAtlasFavorites.MaxPerType do
+    for Index := 1 to TAtlasFavorites.cMaxPerType do
     begin
       Favorites.Toggle(Member('Weitere' + IntToStr(Index), 'TDataSet', 1, 0));
     end;
@@ -656,7 +656,7 @@ begin
   try
     TFile.WriteAllText(FileName, '{kaputt');
     Assert.IsTrue(Favorites.LoadFromFile(FileName) = TAtlasDataLoad.Renewed);
-    Assert.AreEqual('{kaputt', TFile.ReadAllText(FileName + TAtlasDataFile.DefectExtension, TEncoding.UTF8));
+    Assert.AreEqual('{kaputt', TFile.ReadAllText(FileName + TAtlasDataFile.cDefectExtension, TEncoding.UTF8));
     Favorites.Toggle(Member('Open', 'TDataSet', 1, 0));
     Assert.IsTrue(Favorites.SaveToFile(FileName));
     Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);

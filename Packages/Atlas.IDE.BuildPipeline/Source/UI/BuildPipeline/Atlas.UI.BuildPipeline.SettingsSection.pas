@@ -97,7 +97,7 @@ begin
   mGates := nil;
   for mGate := Low(TAtlasBuildGate) to High(TAtlasBuildGate) do
   begin
-    mGates := mGates + [TAtlasBuildPipelineSettings.GateNames[mGate]];
+    mGates := mGates + [TAtlasBuildPipelineSettings.cGateNames[mGate]];
   end;
   Choice('build.gate', TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsBuildGate),
     [TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsBuildGateOff),
@@ -122,7 +122,8 @@ begin
     Exit;
   end;
   // Ungültige Einträge fallen weg; gespeichert wird die einheitliche Form „W1035, H2164“.
-  AValues.WriteString(cWarningsAsErrorsKey, TAtlasBuildVerdicts.NormalizeCodes(AValues.ReadString(cWarningsAsErrorsKey)));
+  AValues.WriteString(cWarningsAsErrorsKey,
+    TAtlasBuildVerdicts.NormalizeCodes(AValues.ReadString(cWarningsAsErrorsKey)));
 end;
 
 procedure TAtlasBuildPipelineCompilerSection.Close;
@@ -160,13 +161,14 @@ var
 begin
   Switch('build.releaseGuard', TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsReleaseGuard));
   // build.gate steht beim Compiler (#529) und gilt auch hier.
-  FConfigs := Line(cReleaseConfigsKey, TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsReleaseConfigs));
+  FConfigs := Line(cReleaseConfigsKey,
+    TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsReleaseConfigs));
   Title(TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsReleaseChecksTitle));
   for mCheck := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
   begin
     mCaption := TAtlasBuildPipelineStrings.Text(cCaptions[mCheck]);
     // Alle Prüfungen teilen build.releaseChecks: Punkt nur an der Einstellung, nicht an jeder Zeile.
-    if TAtlasBuildPipelineSettings.HasTarget[mCheck] then
+    if TAtlasBuildPipelineSettings.cHasTarget[mCheck] then
     begin
       FCheckChoices[mCheck] := OwnChoice(mCaption,
         [TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsReleaseNotChecked),
@@ -192,7 +194,8 @@ begin
   Result := FCheckChoices[ACheck];
 end;
 
-procedure TAtlasBuildPipelineReleaseSection.LoadCheck(ACheck: TAtlasReleaseCheck; const AItem: TAtlasReleaseCheckSetting);
+procedure TAtlasBuildPipelineReleaseSection.LoadCheck(ACheck: TAtlasReleaseCheck;
+  const AItem: TAtlasReleaseCheckSetting);
 begin
   if FCheckBoxes[ACheck] <> nil then
   begin

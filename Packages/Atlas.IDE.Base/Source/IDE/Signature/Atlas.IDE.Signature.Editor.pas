@@ -68,7 +68,7 @@ type
   TAtlasEditorSignature = class
   private const
     /// <summary>Takte ohne Änderung, bis die Platzhalter neu angefragt werden (#451).</summary>
-    FormatQuietTicks = 3;
+    cFormatQuietTicks = 3;
   private
     FProvider: IAtlasSignatureSource;
     FHint: TAtlasSignatureHint;
@@ -141,11 +141,11 @@ uses
 /// <summary>Größe des Editorfensters (Client-Bereich); (0, 0) ohne Fenster.</summary>
 function EditorSize(AWindow: HWND): TPoint;
 var
-  Area: TRect;
+  mArea: TRect;
 begin
-  if (AWindow <> 0) and GetClientRect(AWindow, Area) then
+  if (AWindow <> 0) and GetClientRect(AWindow, mArea) then
   begin
-    Result := Point(Area.Width, Area.Height);
+    Result := Point(mArea.Width, mArea.Height);
   end
   else
   begin
@@ -322,8 +322,8 @@ end;
 constructor TAtlasEditorSignature.Create(const ASource: IAtlasSignatureSource; const ACompletionOpen: TAtlasBoolFunc;
   const ALog: TAtlasLogFunc);
 var
-  Editor: IOTAEditorServices;
-  Notifier: INTAEditServicesNotifier;
+  mEditor: IOTAEditorServices;
+  mNotifier: INTAEditServicesNotifier;
 begin
   inherited Create;
   FLog := ALog;
@@ -347,22 +347,22 @@ begin
   FTimer.Enabled := False;
   FTimer.Interval := 50;
   FTimer.OnTimer := TimerTick;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editor) then
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditor) then
   begin
-    Notifier := TSignatureNotifier.Create(Self);
-    FNotifierIndex := Editor.AddNotifier(Notifier);
+    mNotifier := TSignatureNotifier.Create(Self);
+    FNotifierIndex := mEditor.AddNotifier(mNotifier);
   end;
 end;
 
 destructor TAtlasEditorSignature.Destroy;
 var
-  Editor: IOTAEditorServices;
+  mEditor: IOTAEditorServices;
 begin
   // Erst abmelden, dann freigeben (#493).
   TAtlasKeyHook.Remove(FKeys);
-  if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, Editor) then
+  if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, mEditor) then
   begin
-    Editor.RemoveNotifier(FNotifierIndex);
+    mEditor.RemoveNotifier(FNotifierIndex);
   end;
   FTimer.Free;
   Shutdown;
@@ -524,7 +524,7 @@ end;
 
 procedure TAtlasEditorSignature.CheckFormat(const AText: string; ALine, ACharacter, ACaret: Integer);
 var
-  Text: string;
+  mText: string;
 begin
   if FPending or not FHint.FormatPlaceholders or not FController.Help.Format.Found or (FView = nil) then
   begin
@@ -535,7 +535,7 @@ begin
   begin
     FFormat.Text := AText;
     FFormat.Caret := ACaret;
-    FFormat.Due := FormatQuietTicks;
+    FFormat.Due := cFormatQuietTicks;
     Exit;
   end;
   if FFormat.Due <= 0 then
@@ -547,17 +547,17 @@ begin
   begin
     Exit;
   end;
-  Text := AText;
-  FProvider.Query(FView.Buffer.FileName, Text, ALine, ACharacter,
+  mText := AText;
+  FProvider.Query(FView.Buffer.FileName, mText, ALine, ACharacter,
     procedure(const AHelp: TAtlasSignatureHelp)
     begin
       // Inzwischen geschlossen oder weitergetippt: Der nächste Takt fragt neu.
-      if (FView = nil) or not FController.Active or (Text <> FFormat.Text) then
+      if (FView = nil) or not FController.Active or (mText <> FFormat.Text) then
       begin
         Exit;
       end;
       FController.UpdateFormat(AHelp.Format);
-      ShowFormat(AHelp.Format, Text);
+      ShowFormat(AHelp.Format, mText);
     end);
 end;
 
@@ -581,9 +581,9 @@ end;
 
 procedure TAtlasEditorSignature.EditorModified(const AView: IOTAEditView);
 var
-  FileName, LineText: string;
-  Line: Integer;
-  Removed: Boolean;
+  mFileName, mLineText: string;
+  mLine: Integer;
+  mRemoved: Boolean;
 begin
   if Active then
   begin
@@ -593,15 +593,15 @@ begin
   begin
     Exit;
   end;
-  FileName := AView.Buffer.FileName;
-  Line := AView.CursorPos.Line;
-  LineText := TAtlasEditorBuffer.LineText(AView, Line);
-  Removed := not Active and SameText(FileName, FLast.FileName) and (Line = FLast.Line) and
-    TAtlasCallScanner.RemovedClosingParen(FLast.Text, LineText);
-  FLast.FileName := FileName;
-  FLast.Line := Line;
-  FLast.Text := LineText;
-  if not Removed then
+  mFileName := AView.Buffer.FileName;
+  mLine := AView.CursorPos.Line;
+  mLineText := TAtlasEditorBuffer.LineText(AView, mLine);
+  mRemoved := not Active and SameText(mFileName, FLast.FileName) and (mLine = FLast.Line) and
+    TAtlasCallScanner.RemovedClosingParen(FLast.Text, mLineText);
+  FLast.FileName := mFileName;
+  FLast.Line := mLine;
+  FLast.Text := mLineText;
+  if not mRemoved then
   begin
     Exit;
   end;
@@ -661,12 +661,12 @@ end;
 
 procedure TAtlasEditorSignature.Recheck;
 var
-  Anchor: TRect;
+  mAnchor: TRect;
   mSpot: TCursorSpot;
-  Site: TAtlasCallSite;
-  View: IOTAEditView;
-  Now: TAtlasEditorWindowState;
-  Move: Boolean;
+  mSite: TAtlasCallSite;
+  mView: IOTAEditView;
+  mNow: TAtlasEditorWindowState;
+  mMove: Boolean;
 begin
   if not Active or (FView = nil) then
   begin
@@ -674,40 +674,40 @@ begin
     Exit;
   end;
   // IDE inaktiv, Fokus woanders, Größe geändert, Ankerzeile außer Sicht: schließen (#414).
-  Now := WindowState(FView, FEditorWindow, GetFocus);
-  if TAtlasCloseRules.Hint(FOpened, Now, FAnchorLine, Move) <> TAtlasCloseReason.None then
+  mNow := WindowState(FView, FEditorWindow, GetFocus);
+  if TAtlasCloseRules.Hint(FOpened, mNow, FAnchorLine, mMove) <> TAtlasCloseReason.None then
   begin
     Close;
     Exit;
   end;
   // Gescrollt: mitwandern, solange die Ankerzeile sichtbar ist.
-  if Move then
+  if mMove then
   begin
-    Anchor := FHint.Anchor;
-    Anchor.Offset(0, (FOpened.TopRow - Now.TopRow) * Anchor.Height);
-    FHint.MoveTo(Anchor);
-    FOpened.TopRow := Now.TopRow;
+    mAnchor := FHint.Anchor;
+    mAnchor.Offset(0, (FOpened.TopRow - mNow.TopRow) * mAnchor.Height);
+    FHint.MoveTo(mAnchor);
+    FOpened.TopRow := mNow.TopRow;
   end;
   mSpot := CursorSpot(FView);
-  Site := TAtlasCallScanner.Scan(mSpot.Text, mSpot.Caret);
+  mSite := TAtlasCallScanner.Scan(mSpot.Text, mSpot.Caret);
   // Aufruf verlassen (auch durch ")") oder in einen anderen gewechselt.
-  if not Site.Found or (Site.OpenParen > FOpenParen) then
+  if not mSite.Found or (mSite.OpenParen > FOpenParen) then
   begin
     Close;
     Exit;
   end;
   // Inneren Aufruf verlassen: wieder den äußeren zeigen (#438).
-  if Site.OpenParen < FOpenParen then
+  if mSite.OpenParen < FOpenParen then
   begin
-    View := FView;
+    mView := FView;
     Close;
-    Invoke(View);
+    Invoke(mView);
     Exit;
   end;
   if FController.Active then
   begin
     FHint.Above := Assigned(FCompletionOpen) and FCompletionOpen();
-    FController.UpdateParameter(Site.ActiveParameter);
+    FController.UpdateParameter(mSite.ActiveParameter);
     CheckFormat(mSpot.Text, mSpot.Line - 1, mSpot.Character, mSpot.Caret);
   end;
 end;

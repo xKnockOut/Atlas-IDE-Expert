@@ -320,7 +320,7 @@ begin
   Text := 'procedure P;' + LF + 'begin' + LF + '{ eins' + LF + '      zwei }' + LF + 'A;' + LF + 'end;';
   Tokens := TPascalLexer.Tokenize(Text);
   Columns := TBlockIndenter.Columns(Tokens, [0, 0, 0, 6, 0, 0], 2);
-  Assert.AreEqual(TBlockIndenter.Keep, Columns[3]);
+  Assert.AreEqual(TBlockIndenter.cKeep, Columns[3]);
   Assert.AreEqual(2, Columns[4]);
   Assert.AreEqual(0, Columns[5]);
 end;

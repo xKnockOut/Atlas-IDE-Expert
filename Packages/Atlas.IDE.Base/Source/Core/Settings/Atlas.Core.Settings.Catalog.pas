@@ -48,7 +48,8 @@ type
     DefaultJson: string;
     /// <summary>Interner Zustand (Breiten, „gesehen“): nicht exportiert, nicht zurückgesetzt, nicht markiert.</summary>
     State: Boolean;
-    /// <summary>Gilt nur für diesen Rechner (Serverpfad, Delphi-Version): nicht exportiert, nicht zurückgesetzt.</summary>
+    /// <summary>Gilt nur für diesen Rechner (Serverpfad, Delphi-Version): nicht exportiert, nicht
+    /// zurückgesetzt.</summary>
     Machine: Boolean;
     /// <summary>Pfad: Benutzerordner werden beim Export zu Pfadmakros.</summary>
     IsPath: Boolean;
@@ -118,7 +119,8 @@ type
     function IndexOfKey(const AKey: string): Integer;
     /// <summary>Plugin-Eintrag mit Registry-Name AName; -1 ohne.</summary>
     function IndexOfName(const AName: string): Integer;
-    /// <summary>Wie IndexOfKey, dazu Registry-Namen, x-formerKeys und x-renamedFrom (AMigrated True); -1 ohne.</summary>
+    /// <summary>Wie IndexOfKey, dazu Registry-Namen, x-formerKeys und x-renamedFrom (AMigrated True); -1
+    /// ohne.</summary>
     function Resolve(const AKey: string; out AMigrated: Boolean): Integer;
     /// <summary>Gibt es den Bereich?</summary>
     function HasArea(const AArea: string): Boolean;
@@ -182,25 +184,25 @@ end;
 
 function KindOf(ASchema: TJSONObject): TAtlasSettingKind;
 var
-  Value: TJSONValue;
-  TypeName: string;
+  mValue: TJSONValue;
+  mTypeName: string;
 begin
   Result := akJson;
-  Value := ASchema.GetValue('type');
-  if not (Value is TJSONString) then
+  mValue := ASchema.GetValue('type');
+  if not (mValue is TJSONString) then
   begin
     Exit;
   end;
-  TypeName := TJSONString(Value).Value;
-  if TypeName = 'boolean' then
+  mTypeName := TJSONString(mValue).Value;
+  if mTypeName = 'boolean' then
   begin
     Result := akBoolean;
   end
-  else if TypeName = 'integer' then
+  else if mTypeName = 'integer' then
   begin
     Result := akInteger;
   end
-  else if TypeName = 'string' then
+  else if mTypeName = 'string' then
   begin
     Result := akString;
   end;
@@ -208,45 +210,45 @@ end;
 
 function Flag(ASchema: TJSONObject; const AName: string): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := nil;
+  mValue := nil;
   if ASchema <> nil then
   begin
-    Value := ASchema.GetValue(AName);
+    mValue := ASchema.GetValue(AName);
   end;
-  Result := (Value is TJSONBool) and TJSONBool(Value).AsBoolean;
+  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
 end;
 
 function TextOf(ASchema: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
-  Value := nil;
+  mValue := nil;
   if ASchema <> nil then
   begin
-    Value := ASchema.GetValue(AName);
+    mValue := ASchema.GetValue(AName);
   end;
-  if Value is TJSONString then
+  if mValue is TJSONString then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end;
 end;
 
 function StringsOf(ASchema: TJSONObject; const AName: string): TArray<string>;
 var
-  Value, Item: TJSONValue;
+  mValue, mItem: TJSONValue;
 begin
   Result := nil;
-  Value := ASchema.GetValue(AName);
-  if Value is TJSONArray then
+  mValue := ASchema.GetValue(AName);
+  if mValue is TJSONArray then
   begin
-    for Item in TJSONArray(Value) do
+    for mItem in TJSONArray(mValue) do
     begin
-      if Item is TJSONString then
+      if mItem is TJSONString then
       begin
-        Result := Result + [TJSONString(Item).Value];
+        Result := Result + [TJSONString(mItem).Value];
       end;
     end;
   end;
@@ -255,51 +257,51 @@ end;
 /// <summary>Text des Schlüssels AName; AFound False, wenn er fehlt (oder kein String ist).</summary>
 function OptionalText(ASchema: TJSONObject; const AName: string; out AFound: Boolean): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
-  Value := ASchema.GetValue(AName);
-  AFound := Value is TJSONString;
+  mValue := ASchema.GetValue(AName);
+  AFound := mValue is TJSONString;
   if AFound then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end;
 end;
 
 function ReadAreas(ARoot: TJSONObject; const AName: string): TArray<TAtlasCatalogArea>;
 var
-  Table: TJSONObject;
-  Pair: TJSONPair;
-  Area: TAtlasCatalogArea;
+  mTable: TJSONObject;
+  mPair: TJSONPair;
+  mArea: TAtlasCatalogArea;
 begin
   Result := nil;
-  if not ARoot.TryGetValue<TJSONObject>(AName, Table) then
+  if not ARoot.TryGetValue<TJSONObject>(AName, mTable) then
   begin
     Exit;
   end;
-  for Pair in Table do
+  for mPair in mTable do
   begin
-    Area := Default(TAtlasCatalogArea);
-    Area.Id := Pair.JsonString.Value;
-    if Pair.JsonValue is TJSONObject then
+    mArea := Default(TAtlasCatalogArea);
+    mArea.Id := mPair.JsonString.Value;
+    if mPair.JsonValue is TJSONObject then
     begin
-      Area.Caption := TextOf(TJSONObject(Pair.JsonValue), 'caption');
-      Area.CaptionEn := TextOf(TJSONObject(Pair.JsonValue), 'captionEn');
+      mArea.Caption := TextOf(TJSONObject(mPair.JsonValue), 'caption');
+      mArea.CaptionEn := TextOf(TJSONObject(mPair.JsonValue), 'captionEn');
     end;
-    Result := Result + [Area];
+    Result := Result + [mArea];
   end;
 end;
 
 /// <summary>Wert des Schlüssels AName als JSON-Text ('default', 'x-offValue'); '' ohne.</summary>
 function JsonOf(ASchema: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
-  Value := ASchema.GetValue(AName);
-  if Value <> nil then
+  mValue := ASchema.GetValue(AName);
+  if mValue <> nil then
   begin
-    Result := Value.ToJSON;
+    Result := mValue.ToJSON;
   end;
 end;
 
@@ -410,7 +412,7 @@ end;
 
 class function TAtlasJsonValues.Parse(const AJson: string): TJSONValue;
 var
-  Root, Value: TJSONValue;
+  mRoot, mValue: TJSONValue;
 begin
   Result := nil;
   if Trim(AJson) = '' then
@@ -418,36 +420,36 @@ begin
     Exit;
   end;
   // Über ein Hüllobjekt, damit auch einzelne Zahlen, Strings und Wahrheitswerte gelesen werden.
-  Root := TJSONObject.ParseJSONValue('{"v":' + AJson + '}');
+  mRoot := TJSONObject.ParseJSONValue('{"v":' + AJson + '}');
   try
-    if not (Root is TJSONObject) then
+    if not (mRoot is TJSONObject) then
     begin
       Exit;
     end;
-    Value := TJSONObject(Root).GetValue('v');
-    if Value = nil then
+    mValue := TJSONObject(mRoot).GetValue('v');
+    if mValue = nil then
     begin
       Exit;
     end;
-    Result := Value.Clone as TJSONValue;
+    Result := mValue.Clone as TJSONValue;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasJsonValues.Canonical(const AJson: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
-  Value := Parse(AJson);
+  mValue := Parse(AJson);
   try
-    if Value <> nil then
+    if mValue <> nil then
     begin
-      Result := Value.ToJSON;
+      Result := mValue.ToJSON;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -458,17 +460,17 @@ end;
 
 class function TAtlasJsonValues.Display(const AJson: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := AJson;
-  Value := Parse(AJson);
+  mValue := Parse(AJson);
   try
-    if Value is TJSONString then
+    if mValue is TJSONString then
     begin
-      Result := TJSONString(Value).Value;
+      Result := TJSONString(mValue).Value;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -558,21 +560,21 @@ end;
 
 procedure TAtlasSettingsCatalog.SetProjectPath(AIndex: Integer; const APath: string);
 var
-  Entry: TAtlasCatalogEntry;
+  mEntry: TAtlasCatalogEntry;
 begin
-  Entry := FEntries[AIndex];
-  if Entry.ProjectPath <> '' then
+  mEntry := FEntries[AIndex];
+  if mEntry.ProjectPath <> '' then
   begin
     Exit;
   end;
-  Entry.ProjectPath := APath;
-  FEntries[AIndex] := Entry;
+  mEntry.ProjectPath := APath;
+  FEntries[AIndex] := mEntry;
 end;
 
 procedure TAtlasSettingsCatalog.AddServerKey(const AKey, AScope: string; ASchema, AParent: TJSONObject);
 var
-  Plugin: string;
-  Index: Integer;
+  mPlugin: string;
+  mIndex: Integer;
 begin
   if (AScope = 'global') or (AScope = 'both') then
   begin
@@ -584,22 +586,22 @@ begin
   end;
   FProjectPaths := FProjectPaths + [AKey];
   // Projektwert mit Plugin-Einstellung bzw. globaler Wert mit Projektwert ("both"): atlas.json überdeckt ihn.
-  Index := -1;
+  mIndex := -1;
   if AScope = 'both' then
   begin
-    Index := IndexOfKey(AKey);
+    mIndex := IndexOfKey(AKey);
   end
   else
   begin
-    Plugin := TextOf(ASchema, 'x-plugin');
-    if Plugin <> '' then
+    mPlugin := TextOf(ASchema, 'x-plugin');
+    if mPlugin <> '' then
     begin
-      Index := IndexOfName(Plugin);
+      mIndex := IndexOfName(mPlugin);
     end;
   end;
-  if Index >= 0 then
+  if mIndex >= 0 then
   begin
-    SetProjectPath(Index, AKey);
+    SetProjectPath(mIndex, AKey);
   end;
 end;
 
@@ -675,36 +677,36 @@ end;
 
 function TAtlasSettingsCatalog.IndexOfKey(const AKey: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
-  for Index := 0 to FEntries.Count - 1 do
+  for mIndex := 0 to FEntries.Count - 1 do
   begin
-    if SameText(FEntries[Index].Key, AKey) then
+    if SameText(FEntries[mIndex].Key, AKey) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
 
 function TAtlasSettingsCatalog.IndexOfName(const AName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
-  for Index := 0 to FEntries.Count - 1 do
+  for mIndex := 0 to FEntries.Count - 1 do
   begin
-    if (FEntries[Index].Source = asPlugin) and SameText(FEntries[Index].Name, AName) then
+    if (FEntries[mIndex].Source = asPlugin) and SameText(FEntries[mIndex].Name, AName) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
 
 function TAtlasSettingsCatalog.Resolve(const AKey: string; out AMigrated: Boolean): Integer;
 var
-  Index: Integer;
-  Former: string;
+  mIndex: Integer;
+  mFormer: string;
 begin
   AMigrated := False;
   Result := IndexOfKey(AKey);
@@ -719,20 +721,20 @@ begin
   begin
     Exit;
   end;
-  for Index := 0 to FEntries.Count - 1 do
+  for mIndex := 0 to FEntries.Count - 1 do
   begin
-    for Former in FEntries[Index].FormerKeys do
+    for mFormer in FEntries[mIndex].FormerKeys do
     begin
-      if SameText(Former, AKey) then
+      if SameText(mFormer, AKey) then
       begin
-        Exit(Index);
+        Exit(mIndex);
       end;
     end;
-    for Former in FEntries[Index].RenamedFrom do
+    for mFormer in FEntries[mIndex].RenamedFrom do
     begin
-      if SameText(Former, AKey) then
+      if SameText(mFormer, AKey) then
       begin
-        Exit(Index);
+        Exit(mIndex);
       end;
     end;
   end;
@@ -741,12 +743,12 @@ end;
 
 function TAtlasSettingsCatalog.HasArea(const AArea: string): Boolean;
 var
-  Area: TAtlasCatalogArea;
+  mArea: TAtlasCatalogArea;
 begin
   Result := False;
-  for Area in FAreas do
+  for mArea in FAreas do
   begin
-    if SameText(Area.Id, AArea) then
+    if SameText(mArea.Id, AArea) then
     begin
       Exit(True);
     end;
@@ -755,17 +757,17 @@ end;
 
 function TAtlasSettingsCatalog.AreaCaption(const AArea: string; AEnglish: Boolean): string;
 var
-  Area: TAtlasCatalogArea;
+  mArea: TAtlasCatalogArea;
 begin
   Result := AArea;
-  for Area in FAreas do
+  for mArea in FAreas do
   begin
-    if SameText(Area.Id, AArea) then
+    if SameText(mArea.Id, AArea) then
     begin
-      Result := Area.Caption;
-      if AEnglish and (Area.CaptionEn <> '') then
+      Result := mArea.Caption;
+      if AEnglish and (mArea.CaptionEn <> '') then
       begin
-        Result := Area.CaptionEn;
+        Result := mArea.CaptionEn;
       end;
       Exit;
     end;
@@ -774,23 +776,23 @@ end;
 
 function TAtlasSettingsCatalog.AreaIds: TArray<string>;
 var
-  Area: TAtlasCatalogArea;
+  mArea: TAtlasCatalogArea;
 begin
   Result := nil;
-  for Area in FAreas do
+  for mArea in FAreas do
   begin
-    Result := Result + [Area.Id];
+    Result := Result + [mArea.Id];
   end;
 end;
 
 function TAtlasSettingsCatalog.IsProjectPath(const APath: string): Boolean;
 var
-  Path: string;
+  mPath: string;
 begin
   Result := False;
-  for Path in FProjectPaths do
+  for mPath in FProjectPaths do
   begin
-    if SameText(Path, APath) or SameText(Path + '.', Copy(APath, 1, Length(Path) + 1)) then
+    if SameText(mPath, APath) or SameText(mPath + '.', Copy(APath, 1, Length(mPath) + 1)) then
     begin
       Exit(True);
     end;
@@ -800,23 +802,23 @@ end;
 function TAtlasSettingsCatalog.ValidValue(const AEntry: TAtlasCatalogEntry; const AJson: string;
   out AIssues: TArray<string>): Boolean;
 var
-  Value, Schema: TJSONValue;
+  mValue, mSchema: TJSONValue;
 begin
   AIssues := nil;
-  Value := TAtlasJsonValues.Parse(AJson);
-  Schema := TJSONObject.ParseJSONValue(AEntry.SchemaJson);
+  mValue := TAtlasJsonValues.Parse(AJson);
+  mSchema := TJSONObject.ParseJSONValue(AEntry.SchemaJson);
   try
-    if Value = nil then
+    if mValue = nil then
     begin
       AIssues := AIssues + [AEntry.Key + UiText(TCatalogText.NotAValidJSONValue)];
     end
-    else if Schema is TJSONObject then
+    else if mSchema is TJSONObject then
     begin
-      TAtlasSchemaCheck.Check(Value, TJSONObject(Schema), AEntry.Key, AIssues);
+      TAtlasSchemaCheck.Check(mValue, TJSONObject(mSchema), AEntry.Key, AIssues);
     end;
   finally
-    Schema.Free;
-    Value.Free;
+    mSchema.Free;
+    mValue.Free;
   end;
   Result := Length(AIssues) = 0;
 end;

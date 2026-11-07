@@ -5,7 +5,8 @@
 //                    includeRecords. Der Abschnitt ohne Sichtbarkeitswort zählt nur bei Klassen ohne Vorfahren bzw.
 //                    mit TObject: sonst stehen dort die Felder des Designers. Korrektur „Feld kapseln“: FName im
 //                    private-Abschnitt am Ende der Klasse, dazu property Name read FName write FName (wie
-//                    /encapsulate, #298)
+//                    /encapsulate, #298). Typen unter einem private-/protected-Abschnitt (protected type
+//                    TEntry = class …) sind Hilfsklassen ihrer Klasse und bleiben still
 //   global-variable  var bzw. threadvar im interface-Teil einer Unit (Standard aus, #941); die Formularvariable des
 //                    Designers (frmHaupt: TfrmHaupt) nur mit includeFormVariables
 
@@ -69,9 +70,9 @@ end;
 
 procedure TPublicFieldRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Lines: TArray<string>;
-  LineBreak: string;
-  IncludeRecords: Boolean;
+  mLines: TArray<string>;
+  mLineBreak: string;
+  mIncludeRecords: Boolean;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -81,9 +82,9 @@ var
   function LineOf(ALine: Integer): string;
   begin
     Result := '';
-    if (ALine >= 0) and (ALine <= High(Lines)) then
+    if (ALine >= 0) and (ALine <= High(mLines)) then
     begin
-      Result := Lines[ALine];
+      Result := mLines[ALine];
     end;
   end;
 
@@ -97,16 +98,16 @@ var
 
   function HasMember(AType: TSyntaxNode; const AName: string): Boolean;
   var
-    Index: Integer;
-    Name: string;
+    mIndex: Integer;
+    mName: string;
   begin
-    for Index := 0 to AType.ChildCount - 1 do
+    for mIndex := 0 to AType.ChildCount - 1 do
     begin
-      if AType[Index].Kind in [TSyntaxKind.Field, TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineHeader] then
+      if AType[mIndex].Kind in [TSyntaxKind.Field, TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineHeader] then
       begin
-        for Name in AType[Index].Name.Split([',']) do
+        for mName in AType[mIndex].Name.Split([',']) do
         begin
-          if SameText(Trim(Name), AName) then
+          if SameText(Trim(mName), AName) then
           begin
             Exit(True);
           end;
@@ -130,11 +131,11 @@ var
   // Ein Name allein in seiner Zeile, mit Typ, ohne F-Präfix, FName noch frei und end des Typs am Zeilenanfang.
   function Encapsulable(AType, AField: TSyntaxNode): Boolean;
   var
-    Name: string;
+    mName: string;
   begin
-    Name := Trim(AField.Name);
-    Result := (Pos(',', Name) = 0) and (AField.FindChild(TSyntaxKind.TypeReference) <> nil) and AloneInLine(AField);
-    Result := Result and not Prefixed(Name) and not HasMember(AType, FieldNameOf(Name));
+    mName := Trim(AField.Name);
+    Result := (Pos(',', mName) = 0) and (AField.FindChild(TSyntaxKind.TypeReference) <> nil) and AloneInLine(AField);
+    Result := Result and not Prefixed(mName) and not HasMember(AType, FieldNameOf(mName));
     Result := Result and (Trim(Copy(LineOf(AType.EndPos.Line), 1, AType.EndPos.Character - 3)) = '');
   end;
 
@@ -153,21 +154,22 @@ var
   // Einziges Mitglied seines Abschnitts: Das Sichtbarkeitswort geht mit.
   function SectionEdits(AType, AField, ASection: TSyntaxNode): TArray<TTextEdit>;
   var
-    Position: Integer;
-    Next: TSyntaxNode;
+    mPosition: Integer;
+    mNext: TSyntaxNode;
   begin
     Result := nil;
     if (ASection = nil) or not AloneInLine(ASection) then
     begin
       Exit;
     end;
-    Position := IndexOfChild(AType, AField);
-    Next := nil;
-    if (Position >= 0) and (Position < AType.ChildCount - 1) then
+    mPosition := IndexOfChild(AType, AField);
+    mNext := nil;
+    if (mPosition >= 0) and (mPosition < AType.ChildCount - 1) then
     begin
-      Next := AType[Position + 1];
+      mNext := AType[mPosition + 1];
     end;
-    if (Position > 0) and (AType[Position - 1] = ASection) and ((Next = nil) or (Next.Kind = TSyntaxKind.Visibility))
+    if (mPosition > 0) and (AType[mPosition - 1] = ASection) and
+      ((mNext = nil) or (mNext.Kind = TSyntaxKind.Visibility))
       then
     begin
       Result := [TTextEdit.Create(TTextRange.Create(ASection.StartPos.Line, 0, ASection.StartPos.Line + 1, 0), '')];
@@ -177,36 +179,37 @@ var
   // private-Abschnitt mit FName und die Property im alten Abschnitt, vor dem end des Typs.
   function MemberText(const AName, ATypeName, AIndent, AVisibility: string): string;
   var
-    FieldName: string;
+    mFieldName: string;
   begin
-    FieldName := FieldNameOf(AName);
-    Result := AIndent + 'private' + LineBreak + AIndent + '  ' + FieldName + ': ' + ATypeName + ';' + LineBreak +
-      AIndent + AVisibility + LineBreak + AIndent + '  property ' + AName + ': ' + ATypeName + ' read ' + FieldName +
-      ' write ' + FieldName + ';' + LineBreak;
+    mFieldName := FieldNameOf(AName);
+    Result := AIndent + 'private' + mLineBreak + AIndent + '  ' + mFieldName + ': ' + ATypeName + ';' + mLineBreak +
+      AIndent + AVisibility + mLineBreak + AIndent + '  property ' + AName + ': ' + ATypeName + ' read ' + mFieldName +
+      ' write ' + mFieldName + ';' + mLineBreak;
   end;
 
   // FName in private am Ende des Typs, Property im alten Abschnitt; der leere Abschnitt fällt weg.
   function Encapsulate(AType, AField, ASection: TSyntaxNode; const AVisibility: string;
     out AFix: TRuleFix): Boolean;
   var
-    Name, TypeName, Indent: string;
-    EndLine: Integer;
-    Edits: TArray<TTextEdit>;
+    mName, mTypeName, mIndent: string;
+    mEndLine: Integer;
+    mEdits: TArray<TTextEdit>;
   begin
     Result := Encapsulable(AType, AField);
     if not Result then
     begin
       Exit;
     end;
-    Name := Trim(AField.Name);
-    TypeName := NodeText(AField.FindChild(TSyntaxKind.TypeReference));
-    EndLine := AType.EndPos.Line;
-    Indent := TTextLines.IndentOf(LineOf(EndLine));
-    Edits := SectionEdits(AType, AField, ASection);
-    Edits := Edits + [TTextEdit.Create(TTextRange.Create(AField.StartPos.Line, 0, AField.StartPos.Line + 1, 0), '')];
-    Edits := Edits + [TTextEdit.Create(TTextRange.Create(EndLine, 0, EndLine, 0), MemberText(Name, TypeName, Indent,
+    mName := Trim(AField.Name);
+    mTypeName := NodeText(AField.FindChild(TSyntaxKind.TypeReference));
+    mEndLine := AType.EndPos.Line;
+    mIndent := TTextLines.IndentOf(LineOf(mEndLine));
+    mEdits := SectionEdits(AType, AField, ASection);
+    mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(AField.StartPos.Line, 0, AField.StartPos.Line + 1, 0), '')];
+    mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(mEndLine, 0, mEndLine, 0),
+      MemberText(mName, mTypeName, mIndent,
       AVisibility))];
-    AFix := TRuleFix.Create(cTexts[TStyleDeclarationsText.Encapsulate].Text, Edits);
+    AFix := TRuleFix.Create(cTexts[TStyleDeclarationsText.Encapsulate].Text, mEdits);
   end;
 
   // Zählt ein Feld im Abschnitt AVisibility ('' = ohne Sichtbarkeitswort)?
@@ -224,51 +227,51 @@ var
 
   function FieldFixes(AType, AField, ASection: TSyntaxNode; const AVisibility, AImplicit: string): TArray<TRuleFix>;
   var
-    Fix: TRuleFix;
-    Encapsulated: Boolean;
+    mFix: TRuleFix;
+    mEncapsulated: Boolean;
   begin
     if AVisibility = '' then
     begin
-      Encapsulated := Encapsulate(AType, AField, nil, AImplicit, Fix);
+      mEncapsulated := Encapsulate(AType, AField, nil, AImplicit, mFix);
     end
     else
     begin
-      Encapsulated := Encapsulate(AType, AField, ASection, AVisibility, Fix);
+      mEncapsulated := Encapsulate(AType, AField, ASection, AVisibility, mFix);
     end;
     Result := nil;
-    if Encapsulated then
+    if mEncapsulated then
     begin
-      Result := [Fix];
+      Result := [mFix];
     end;
   end;
 
   procedure CheckType(AType: TSyntaxNode; AImplicitCounts: Boolean; const AImplicit: string);
   var
-    Index: Integer;
-    Child, Section: TSyntaxNode;
-    Visibility, Name: string;
-    Fixes: TArray<TRuleFix>;
+    mIndex: Integer;
+    mChild, mSection: TSyntaxNode;
+    mVisibility, mName: string;
+    mFixes: TArray<TRuleFix>;
   begin
-    Visibility := '';
-    Section := nil;
-    for Index := 0 to AType.ChildCount - 1 do
+    mVisibility := '';
+    mSection := nil;
+    for mIndex := 0 to AType.ChildCount - 1 do
     begin
-      Child := AType[Index];
-      if Child.Kind = TSyntaxKind.Visibility then
+      mChild := AType[mIndex];
+      if mChild.Kind = TSyntaxKind.Visibility then
       begin
-        Visibility := Child.Name;
-        Section := Child;
+        mVisibility := mChild.Name;
+        mSection := mChild;
         Continue;
       end;
-      if (Child.Kind <> TSyntaxKind.Field) or not FieldCounts(Visibility, AImplicitCounts) then
+      if (mChild.Kind <> TSyntaxKind.Field) or not FieldCounts(mVisibility, AImplicitCounts) then
       begin
         Continue;
       end;
-      Fixes := FieldFixes(AType, Child, Section, Visibility, AImplicit);
-      for Name in Child.Name.Split([',']) do
+      mFixes := FieldFixes(AType, mChild, mSection, mVisibility, AImplicit);
+      for mName in mChild.Name.Split([',']) do
       begin
-        AReport.Add(TTextRange.Create(Child.StartPos, Child.EndPos),
-          cTexts[TStyleDeclarationsText.PublicField].Fmt([Trim(Name)]), Fixes);
+        AReport.Add(TTextRange.Create(mChild.StartPos, mChild.EndPos),
+          cTexts[TStyleDeclarationsText.PublicField].Fmt([Trim(mName)]), mFixes);
       end;
     end;
   end;
@@ -276,45 +279,83 @@ var
   // Abschnitt ohne Sichtbarkeitswort: bei Klassen ohne Vorfahren public, sonst oft Felder des Designers.
   function PlainClass(AClass: TSyntaxNode): Boolean;
   var
-    Ancestor: TSyntaxNode;
+    mAncestor: TSyntaxNode;
   begin
-    Ancestor := AClass.FindChild(TSyntaxKind.TypeReference);
-    Result := (Ancestor = nil) or SameText(NodeText(Ancestor), 'TObject');
+    mAncestor := AClass.FindChild(TSyntaxKind.TypeReference);
+    Result := (mAncestor = nil) or SameText(NodeText(mAncestor), 'TObject');
+  end;
+
+  // Abschnitt, aus dem von außen niemand zugreift (private, protected, strict …).
+  function HiddenSection(const AVisibility: string): Boolean;
+  begin
+    Result := (AVisibility <> '') and not MatchText(AVisibility, ['public', 'published', 'automated']);
+  end;
+
+  // Kinder auf den Stapel, rückwärts; Typen in einem verborgenen Abschnitt erben „verborgen“ (TEntry unter
+  // protected type ist eine Hilfsklasse, ihre Felder sind von außen nicht erreichbar).
+  procedure PushChildren(ANode: TSyntaxNode; AHidden: Boolean; APending: TStack<TSyntaxNode>;
+    AHiddenFlags: TStack<Boolean>);
+  var
+    mIndex: Integer;
+    mFlags: TArray<Boolean>;
+    mVisibility: string;
+  begin
+    SetLength(mFlags, ANode.ChildCount);
+    mVisibility := '';
+    for mIndex := 0 to ANode.ChildCount - 1 do
+    begin
+      if ANode[mIndex].Kind = TSyntaxKind.Visibility then
+      begin
+        mVisibility := ANode[mIndex].Name;
+      end;
+      mFlags[mIndex] := AHidden or (ANode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]) and
+        HiddenSection(mVisibility);
+    end;
+    for mIndex := ANode.ChildCount - 1 downto 0 do
+    begin
+      APending.Push(ANode[mIndex]);
+      AHiddenFlags.Push(mFlags[mIndex]);
+    end;
   end;
 
   procedure Visit(ANode: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mHiddenFlags: TStack<Boolean>;
+    mNode: TSyntaxNode;
+    mHidden: Boolean;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    mHiddenFlags := TStack<Boolean>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      mHiddenFlags.Push(False);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        case Node.Kind of
+        mNode := mPending.Pop;
+        mHidden := mHiddenFlags.Pop;
+        case mNode.Kind of
           TSyntaxKind.ClassType:
-            CheckType(Node, PlainClass(Node), 'public');
-          TSyntaxKind.RecordType:
-            if IncludeRecords then
+            if not mHidden then
             begin
-              CheckType(Node, True, 'public');
+              CheckType(mNode, PlainClass(mNode), 'public');
+            end;
+          TSyntaxKind.RecordType:
+            if mIncludeRecords and not mHidden then
+            begin
+              CheckType(mNode, True, 'public');
             end;
           TSyntaxKind.Block, TSyntaxKind.AsmBlock:
             Continue;
         else
           // Übrige Werte bewusst ohne Wirkung.
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          Pending.Push(Node[Index]);
-        end;
+        PushChildren(mNode, mHidden, mPending, mHiddenFlags);
       end;
     finally
-      Pending.Free;
+      mHiddenFlags.Free;
+      mPending.Free;
     end;
   end;
 
@@ -323,8 +364,8 @@ begin
   begin
     Exit;
   end;
-  IncludeRecords := TRuleOptions.Bool(AContext.Options, 'includeRecords', False);
-  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  mIncludeRecords := TRuleOptions.Bool(AContext.Options, 'includeRecords', False);
+  mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
   Visit(AContext.Tree.Root);
 end;
 
@@ -338,12 +379,12 @@ end;
 
 procedure TGlobalVariableRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 const
-  FormRoots: array[0..7] of string = ('TForm', 'TCustomForm', 'TFrame', 'TCustomFrame', 'TDataModule',
+  cFormRoots: array[0..7] of string = ('TForm', 'TCustomForm', 'TFrame', 'TCustomFrame', 'TDataModule',
     'TService', 'TWebModule', 'TCustomDataModule');
 var
-  Tokens: TArray<TPascalToken>;
-  FormClasses: TArray<string>;
-  IncludeForms: Boolean;
+  mTokens: TArray<TPascalToken>;
+  mFormClasses: TArray<string>;
+  mIncludeForms: Boolean;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -353,119 +394,119 @@ var
   // Klasse mit Vorfahren in einer Unit mit Formulardatei bzw. direkter Nachfahre einer bekannten Designerklasse?
   function IsFormClass(ATypeDecl: TSyntaxNode): Boolean;
   var
-    Body, Ancestor: TSyntaxNode;
+    mBody, mAncestor: TSyntaxNode;
   begin
     Result := False;
-    Body := ATypeDecl.FindChild(TSyntaxKind.ClassType);
-    if Body = nil then
+    mBody := ATypeDecl.FindChild(TSyntaxKind.ClassType);
+    if mBody = nil then
     begin
       Exit;
     end;
-    Ancestor := Body.FindChild(TSyntaxKind.TypeReference);
-    Result := (Ancestor <> nil) and ((AContext.FormText <> '') or MatchText(NodeText(Ancestor), FormRoots));
+    mAncestor := mBody.FindChild(TSyntaxKind.TypeReference);
+    Result := (mAncestor <> nil) and ((AContext.FormText <> '') or MatchText(NodeText(mAncestor), cFormRoots));
   end;
 
   // Klassen der Unit, die ein Formular, Frame oder Datenmodul sind: mit Formulardatei jede Klasse mit
   // Vorfahren, sonst die direkten Nachfahren bekannter Designerklassen.
   procedure CollectForms(ANode: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.TypeDecl then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.TypeDecl then
         begin
-          if IsFormClass(Node) then
+          if IsFormClass(mNode) then
           begin
-            FormClasses := FormClasses + [Node.Name];
+            mFormClasses := mFormClasses + [mNode.Name];
           end;
           Continue;
         end;
-        if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.RoutineDecl] then
+        if mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.RoutineDecl] then
         begin
           Continue;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   function NameRange(ADecl: TSyntaxNode; const AName: string): TTextRange;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
     Result := TTextRange.Create(ADecl.StartPos, ADecl.EndPos);
     // Nur die Token der Deklaration, binär angesprungen statt die ganze Datei (#1342).
-    Index := TSyntaxTree.FirstTokenOf(Tokens, ADecl.StartOffset);
-    while (Index <= High(Tokens)) and (Tokens[Index].Offset < ADecl.EndOffset) do
+    mIndex := TSyntaxTree.FirstTokenOf(mTokens, ADecl.StartOffset);
+    while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ADecl.EndOffset) do
     begin
-      if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AName) then
+      if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, AName) then
       begin
-        Exit(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos));
+        Exit(TTextRange.Create(mTokens[mIndex].StartPos, mTokens[mIndex].EndPos));
       end;
-      Inc(Index);
+      Inc(mIndex);
     end;
   end;
 
   procedure CheckSection(ASection: TSyntaxNode);
   var
-    Index: Integer;
-    Decl, TypeRef: TSyntaxNode;
-    Name: string;
+    mIndex: Integer;
+    mDecl, mTypeRef: TSyntaxNode;
+    mName: string;
   begin
-    for Index := 0 to ASection.ChildCount - 1 do
+    for mIndex := 0 to ASection.ChildCount - 1 do
     begin
-      Decl := ASection[Index];
-      if Decl.Kind <> TSyntaxKind.VarDecl then
+      mDecl := ASection[mIndex];
+      if mDecl.Kind <> TSyntaxKind.VarDecl then
       begin
         Continue;
       end;
-      TypeRef := Decl.FindChild(TSyntaxKind.TypeReference);
-      if not IncludeForms and (TypeRef <> nil) and MatchText(NodeText(TypeRef), FormClasses) then
+      mTypeRef := mDecl.FindChild(TSyntaxKind.TypeReference);
+      if not mIncludeForms and (mTypeRef <> nil) and MatchText(NodeText(mTypeRef), mFormClasses) then
       begin
         Continue;
       end;
-      for Name in Decl.Name.Split([',']) do
+      for mName in mDecl.Name.Split([',']) do
       begin
-        AReport.Add(NameRange(Decl, Trim(Name)), cTexts[TStyleDeclarationsText.Global].Fmt([Trim(Name)]));
+        AReport.Add(NameRange(mDecl, Trim(mName)), cTexts[TStyleDeclarationsText.Global].Fmt([Trim(mName)]));
       end;
     end;
   end;
 
 var
-  InterfacePart: TSyntaxNode;
-  Index: Integer;
+  mInterfacePart: TSyntaxNode;
+  mIndex: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  InterfacePart := AContext.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
-  if InterfacePart = nil then
+  mInterfacePart := AContext.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
+  if mInterfacePart = nil then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  IncludeForms := TRuleOptions.Bool(AContext.Options, 'includeFormVariables', False);
-  FormClasses := nil;
-  CollectForms(InterfacePart);
-  for Index := 0 to InterfacePart.ChildCount - 1 do
+  mTokens := AContext.Tree.Tokens;
+  mIncludeForms := TRuleOptions.Bool(AContext.Options, 'includeFormVariables', False);
+  mFormClasses := nil;
+  CollectForms(mInterfacePart);
+  for mIndex := 0 to mInterfacePart.ChildCount - 1 do
   begin
-    if InterfacePart[Index].Kind = TSyntaxKind.VarSection then
+    if mInterfacePart[mIndex].Kind = TSyntaxKind.VarSection then
     begin
-      CheckSection(InterfacePart[Index]);
+      CheckSection(mInterfacePart[mIndex]);
     end;
   end;
 end;

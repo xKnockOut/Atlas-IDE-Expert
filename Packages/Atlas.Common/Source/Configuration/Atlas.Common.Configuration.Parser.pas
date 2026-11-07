@@ -142,7 +142,7 @@ begin
     if (AReader.ProfileNode <> nil) and not ASettings.IsKnownProfile(mName) then
     begin
       AReader.ReportNode(AReader.ProfileNode, cTexts[TConfigurationParserText.UnknownProfileBuiltInOtherwise].Fmt([
-        mName, string.Join(', ', BuiltinProfileNames)]));
+        mName, string.Join(', ', cBuiltinProfileNames)]));
     end;
   end;
   mTestNode := AReader.TestProfileNode;
@@ -228,22 +228,22 @@ end;
 
 function QuoteKey(const AKey: string): string;
 var
-  Ch: Char;
+  mCh: Char;
 begin
   Result := '"';
-  for Ch in AKey do
+  for mCh in AKey do
   begin
-    if (Ch = '"') or (Ch = '\') then
+    if (mCh = '"') or (mCh = '\') then
     begin
-      Result := Result + '\' + Ch;
+      Result := Result + '\' + mCh;
     end
-    else if Ord(Ch) < 32 then
+    else if Ord(mCh) < 32 then
     begin
-      Result := Result + Format('\u%.4x', [Ord(Ch)]);
+      Result := Result + Format('\u%.4x', [Ord(mCh)]);
     end
     else
     begin
-      Result := Result + Ch;
+      Result := Result + mCh;
     end;
   end;
   Result := Result + '"';
@@ -324,27 +324,27 @@ end;
 
 class function TConfigurationParser.MergeText(const ALower, AUpper: string): string;
 var
-  Lower, Upper: TJsonNode;
+  mLower, mUpper: TJsonNode;
 begin
-  Lower := ParseObject(ALower);
-  Upper := ParseObject(AUpper);
+  mLower := ParseObject(ALower);
+  mUpper := ParseObject(AUpper);
   try
-    if Lower = nil then
+    if mLower = nil then
     begin
-      if Upper = nil then
+      if mUpper = nil then
       begin
         Exit('');
       end;
       Exit(AUpper);
     end;
-    if Upper = nil then
+    if mUpper = nil then
     begin
       Exit(ALower);
     end;
-    Result := MergeObjects(ALower, Lower, AUpper, Upper);
+    Result := MergeObjects(ALower, mLower, AUpper, mUpper);
   finally
-    Lower.Free;
-    Upper.Free;
+    mLower.Free;
+    mUpper.Free;
   end;
 end;
 
@@ -380,7 +380,8 @@ begin
   end;
 end;
 
-class function TConfigurationParser.Parse(const AText: string; out AIssues: TArray<TConfigurationIssue>): TServerSettings;
+class function TConfigurationParser.Parse(const AText: string;
+  out AIssues: TArray<TConfigurationIssue>): TServerSettings;
 var
   mReader: TConfigurationReader;
 begin

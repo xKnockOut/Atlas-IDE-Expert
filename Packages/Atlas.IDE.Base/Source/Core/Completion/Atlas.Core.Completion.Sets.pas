@@ -47,27 +47,27 @@ uses
 /// <summary>Angehakte Einträge nach Ordinal (wenige Einträge, Einfügen genügt).</summary>
 function CheckedInOrder(const AItems: TAtlasCompletionItems): TAtlasCompletionItems;
 var
-  Item, Moved: TAtlasCompletionItem;
-  Index, Scan: Integer;
+  mItem, mMoved: TAtlasCompletionItem;
+  mIndex, mScan: Integer;
 begin
   Result := nil;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if (Item.SetOf <> '') and Item.Checked then
+    if (mItem.SetOf <> '') and mItem.Checked then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
-  for Index := 1 to High(Result) do
+  for mIndex := 1 to High(Result) do
   begin
-    Moved := Result[Index];
-    Scan := Index - 1;
-    while (Scan >= 0) and (Result[Scan].Ordinal > Moved.Ordinal) do
+    mMoved := Result[mIndex];
+    mScan := mIndex - 1;
+    while (mScan >= 0) and (Result[mScan].Ordinal > mMoved.Ordinal) do
     begin
-      Result[Scan + 1] := Result[Scan];
-      Dec(Scan);
+      Result[mScan + 1] := Result[mScan];
+      Dec(mScan);
     end;
-    Result[Scan + 1] := Moved;
+    Result[mScan + 1] := mMoved;
   end;
 end;
 
@@ -79,11 +79,11 @@ end;
 
 class function TAtlasCompletionSets.Active(const AItems: TAtlasCompletionItems): Boolean;
 var
-  Item: TAtlasCompletionItem;
+  mItem: TAtlasCompletionItem;
 begin
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if Item.SetOf <> '' then
+    if mItem.SetOf <> '' then
     begin
       Exit(True);
     end;
@@ -93,12 +93,12 @@ end;
 
 class function TAtlasCompletionSets.CheckedCount(const AItems: TAtlasCompletionItems): Integer;
 var
-  Item: TAtlasCompletionItem;
+  mItem: TAtlasCompletionItem;
 begin
   Result := 0;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if (Item.SetOf <> '') and Item.Checked then
+    if (mItem.SetOf <> '') and mItem.Checked then
     begin
       Inc(Result);
     end;
@@ -107,24 +107,24 @@ end;
 
 class function TAtlasCompletionSets.Text(const AItems: TAtlasCompletionItems): string;
 var
-  Chosen: TAtlasCompletionItems;
-  Index: Integer;
+  mChosen: TAtlasCompletionItems;
+  mIndex: Integer;
 begin
-  Chosen := CheckedInOrder(AItems);
+  mChosen := CheckedInOrder(AItems);
   Result := '';
-  for Index := 0 to High(Chosen) do
+  for mIndex := 0 to High(mChosen) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
       Result := Result + ', ';
     end;
-    if Chosen[Index].InsertText <> '' then
+    if mChosen[mIndex].InsertText <> '' then
     begin
-      Result := Result + Chosen[Index].InsertText;
+      Result := Result + mChosen[mIndex].InsertText;
     end
     else
     begin
-      Result := Result + Chosen[Index].Name;
+      Result := Result + mChosen[mIndex].Name;
     end;
   end;
   Result := '[' + Result + ']';
@@ -132,117 +132,117 @@ end;
 
 class function TAtlasCompletionSets.Merge(const AEdits: TArray<TAtlasTextEdit>): TArray<TAtlasTextEdit>;
 var
-  Edit: TAtlasTextEdit;
-  Index, Found: Integer;
+  mEdit: TAtlasTextEdit;
+  mIndex, mFound: Integer;
   // Je Bereich die schon übernommenen Texte, mit #0 umschlossen.
-  Seen: TArray<string>;
+  mSeen: TArray<string>;
 begin
   Result := nil;
-  Seen := nil;
-  for Edit in AEdits do
+  mSeen := nil;
+  for mEdit in AEdits do
   begin
-    Found := -1;
-    for Index := 0 to High(Result) do
+    mFound := -1;
+    for mIndex := 0 to High(Result) do
     begin
-      if SameRange(Result[Index], Edit) then
+      if SameRange(Result[mIndex], mEdit) then
       begin
-        Found := Index;
+        mFound := mIndex;
         Break;
       end;
     end;
-    if Found < 0 then
+    if mFound < 0 then
     begin
-      Result := Result + [Edit];
-      Seen := Seen + [#0 + Edit.NewText + #0];
+      Result := Result + [mEdit];
+      mSeen := mSeen + [#0 + mEdit.NewText + #0];
     end
-    else if Pos(#0 + Edit.NewText + #0, Seen[Found]) = 0 then
+    else if Pos(#0 + mEdit.NewText + #0, mSeen[mFound]) = 0 then
     begin
-      Seen[Found] := Seen[Found] + Edit.NewText + #0;
-      Result[Found].NewText := Result[Found].NewText + Edit.NewText;
+      mSeen[mFound] := mSeen[mFound] + mEdit.NewText + #0;
+      Result[mFound].NewText := Result[mFound].NewText + mEdit.NewText;
     end;
   end;
 end;
 
 class function TAtlasCompletionSets.AssignItems(const AItem: TAtlasCompletionItem): TAtlasCompletionItems;
 var
-  Index: Integer;
-  Range, Insert: TAtlasTextEdit;
-  Title: string;
+  mIndex: Integer;
+  mRange, mInsert: TAtlasTextEdit;
+  mTitle: string;
 begin
   Result := nil;
   if not AItem.HasTextEdit then
   begin
     Exit;
   end;
-  Range := AItem.TextEdit;
-  Range.NewText := '';
-  Insert := Range;
-  Insert.StartLine := Range.EndLine;
-  Insert.StartCharacter := Range.EndCharacter;
+  mRange := AItem.TextEdit;
+  mRange.NewText := '';
+  mInsert := mRange;
+  mInsert.StartLine := mRange.EndLine;
+  mInsert.StartCharacter := mRange.EndCharacter;
   // Überschrift mit dem Typ des Ausdrucks.
-  Title := AItem.Signature;
-  if Title = '' then
+  mTitle := AItem.Signature;
+  if mTitle = '' then
   begin
-    Title := AItem.Name;
+    mTitle := AItem.Name;
   end;
   SetLength(Result, Length(AItem.Assignments));
-  for Index := 0 to High(AItem.Assignments) do
+  for mIndex := 0 to High(AItem.Assignments) do
   begin
-    Result[Index] := Default(TAtlasCompletionItem);
-    Result[Index].Name := AItem.Assignments[Index].Name;
-    Result[Index].Signature := AItem.Assignments[Index].Detail;
-    Result[Index].Kind := TAtlasItemKind.Field;
-    Result[Index].Batch := True;
-    Result[Index].Assign := True;
-    Result[Index].Ordinal := Index + 1;
-    Result[Index].Checked := True;
-    Result[Index].SetOf := Title;
-    Result[Index].ExpectedType := Title;
-    Result[Index].Fits := True;
+    Result[mIndex] := Default(TAtlasCompletionItem);
+    Result[mIndex].Name := AItem.Assignments[mIndex].Name;
+    Result[mIndex].Signature := AItem.Assignments[mIndex].Detail;
+    Result[mIndex].Kind := TAtlasItemKind.Field;
+    Result[mIndex].Batch := True;
+    Result[mIndex].Assign := True;
+    Result[mIndex].Ordinal := mIndex + 1;
+    Result[mIndex].Checked := True;
+    Result[mIndex].SetOf := mTitle;
+    Result[mIndex].ExpectedType := mTitle;
+    Result[mIndex].Fits := True;
     // Die Zusatzänderung ist kein uses-Eintrag.
-    Result[Index].UnitUsed := True;
-    Result[Index].SetRange := Range;
-    Insert.NewText := AItem.Assignments[Index].Text;
-    Result[Index].AdditionalEdits := [Insert];
+    Result[mIndex].UnitUsed := True;
+    Result[mIndex].SetRange := mRange;
+    mInsert.NewText := AItem.Assignments[mIndex].Text;
+    Result[mIndex].AdditionalEdits := [mInsert];
   end;
 end;
 
 class function TAtlasCompletionSets.CommitItem(const AItems: TAtlasCompletionItems): TAtlasCompletionItem;
 var
-  Item, Chosen: TAtlasCompletionItem;
-  Edits: TArray<TAtlasTextEdit>;
+  mItem, mChosen: TAtlasCompletionItem;
+  mEdits: TArray<TAtlasTextEdit>;
 begin
   Result := Default(TAtlasCompletionItem);
   // Interface implementieren (#466): das getippte Wort weg, die Änderungen der angehakten Methoden dazu.
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if Item.Batch then
+    if mItem.Batch then
     begin
-      Result.Name := Item.SetOf;
+      Result.Name := mItem.SetOf;
       Result.Kind := TAtlasItemKind.Method;
       // Erzeugt Code: die Zusatzänderungen gelten auch ohne automatische uses-Einträge.
       Result.IsAction := True;
       Result.HasTextEdit := True;
-      Result.TextEdit := Item.SetRange;
+      Result.TextEdit := mItem.SetRange;
       Result.TextEdit.NewText := '';
-      Edits := nil;
-      for Chosen in CheckedInOrder(AItems) do
+      mEdits := nil;
+      for mChosen in CheckedInOrder(AItems) do
       begin
-        Edits := Edits + Chosen.AdditionalEdits;
+        mEdits := mEdits + mChosen.AdditionalEdits;
       end;
-      Result.AdditionalEdits := Merge(Edits);
+      Result.AdditionalEdits := Merge(mEdits);
       Exit;
     end;
   end;
   Result.Name := Text(AItems);
   Result.Kind := TAtlasItemKind.EnumMember;
   Result.InsertText := Result.Name;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if Item.SetOf <> '' then
+    if mItem.SetOf <> '' then
     begin
       Result.HasTextEdit := True;
-      Result.TextEdit := Item.SetRange;
+      Result.TextEdit := mItem.SetRange;
       Result.TextEdit.NewText := Result.Name;
       Break;
     end;

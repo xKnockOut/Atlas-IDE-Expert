@@ -1,6 +1,6 @@
 ﻿# Handtests für Atlas 2.0.0-beta.1
 
-Stand: 06.11.2026 (Pilot-2.0.0-beta.1 mit #1816). Sammelliste aller Handtests, die seit 1.2.0 für 2.0 dazugekommen sind (Marco, 01.11.2026: erst alles umbauen, dann eine Liste). Quellen: `docs/Atlas-Testfaelle.md`, die Sammelliste des Modulumbaus (`planung/v2/handtests-v2.md` im Projektordner), die Übergabe und die PR-Beschreibungen. Die IDs sind dieselben wie dort, damit Rückmeldungen im Issue oder PR zuzuordnen sind. Erzeugt mit `werkzeuge/handtests-v2.py` im Projektordner.
+Stand: 06.11.2026 (Pilot-2.0.0-beta.1 mit #1848). Sammelliste aller Handtests, die seit 1.2.0 für 2.0 dazugekommen sind (Marco, 01.11.2026: erst alles umbauen, dann eine Liste). Quellen: `docs/Atlas-Testfaelle.md`, die Sammelliste des Modulumbaus (`planung/v2/handtests-v2.md` im Projektordner), die Übergabe und die PR-Beschreibungen. Die IDs sind dieselben wie dort, damit Rückmeldungen im Issue oder PR zuzuordnen sind. Erzeugt mit `werkzeuge/handtests-v2.py` im Projektordner.
 
 **So abarbeiten:** Teil 1 zuerst; scheitert dort etwas, lohnt der Rest nicht. Danach Teil 2: die Tests, deren Ergebnis eine offene Ursache klärt oder eine Funktion abnimmt, in der angegebenen Reihenfolge. Dann Teil 3 (Umstieg) und die übrigen Teile in beliebiger Reihenfolge. In die Spalte „Ergebnis“ ✓, ✗ mit Stichwort oder „–“ (nicht anwendbar) eintragen. Zeilen mit **Abnahme** entscheiden, ob eine Funktion als fertig gilt; sie sollten vor dem Tag `v2.0.0-beta.1` grün sein. Alle Tests in einem eigenen Registry-Profil (`bds -r Atlas20`), nicht im Standardprofil.
 
@@ -24,18 +24,19 @@ Diese Tests zuerst, in dieser Reihenfolge. Die ersten klären eine Ursache, die 
 | 1 | KPM4 | Known Packages (Teil 5) | Klärt, ob die IDE beim Beenden ihre alte Liste zurückschreibt (Ursache (b) vom 05.11.) |
 | 2 | KPM8 | Known Packages (Teil 5) | Klärt, ob das Übersetzen von Base bei installierten Modulen die Module austrägt (Ursache (a)); entscheidet, ob `cc.ps1` ein eigenes Profil braucht |
 | 3 | HE3, HE4 | Hauptthread-Einträge (Teil 5) | Absturz in `MainThread` Zeile 129 beim Entladen eines Moduls (#1811) |
-| 4 | RF2 | Regionen beim Öffnen (Teil 5) | Trifft „nächsten Block zuklappen“ an der Kopfzeile wirklich die Region? Sonst braucht #1814 einen anderen Weg |
-| 5 | AS21, AS22 | Sitzungsmarke der Bau-IDE (Teil 5) | Bau-IDEs (`cc.ps1`) dürfen nicht als Absturz zählen; `cc.ps1` muss `ATLAS_NO_SESSION_MARKER` setzen |
-| 6 | SL1, SL3 | Sprache der Serverbefunde (Teil 5) | Englische Befunde in deutscher IDE: zeigt, welche Quelle die Sprache falsch erkennt |
-| 7 | FPR7 | Fehlalarme von vier Prüfregeln (Teil 5) | Klärt, ob in `RotatingFileStream` die RTL im Index fehlte oder `inline-not-expanded` RenameFile trotz Index nicht meldet |
-| 8 | IT2, IT3 | Typen aus IDE-Packages (Teil 5) | Kern von #1816: keine Fehlmeldung bei Typen aus installierten Packages, aber weiter bei fehlendem uses |
-| 9 | EK4 | Kontextmenü Atlas (Teil 5) | Kürzel nach dem ersten Öffnen des Menüs genau einmal (kein doppeltes Formatieren) |
-| 10 | AA13, AA22 | Abgebrochene Serveranfragen (Teil 6) | Abnahme: Willkommensseite ohne Sekundentakt, kein „Absturzfall gesichert“ in sehr großen Units |
-| 11 | UAL1 | Unit-Aliase (Teil 5) | Kein falsches F2613 bei `WinTypes`/`WinProcs` |
-| 12 | FMK1–FMK3 | Formatieren mit Markierung (Teil 5) | Liefert die Protokollzeilen, mit denen die Ursache „Format-Knopf formatiert die ganze Unit“ gefunden wird |
-| 13 | R12-1 | Korrekturen aus release/1.2 (Teil 6) | Abnahme: Strg+F unter Delphi 12 |
-| 14 | UX18 | Update-Installer (Teil 6) | Abnahme: Einrichten mit `AtlasUpdate.exe install` |
-| 15 | RT18 | Rauchtests (Teil 7) | Abnahme: IDE beenden ohne Zugriffsverletzung |
+| 4 | HB1, HB4 | Hänger aus der Diagnose (Teil 5) | Abnahme: Schnellbefehle und „→ Testunit“ ohne Hänger im Hauptthread (#1846) |
+| 5 | RF2 | Regionen beim Öffnen (Teil 5) | Trifft „nächsten Block zuklappen“ an der Kopfzeile wirklich die Region? Sonst braucht #1814 einen anderen Weg |
+| 6 | AS21, AS22 | Sitzungsmarke der Bau-IDE (Teil 5) | Bau-IDEs (`cc.ps1`) dürfen nicht als Absturz zählen; `cc.ps1` muss `ATLAS_NO_SESSION_MARKER` setzen |
+| 7 | SL1, SL3 | Sprache der Serverbefunde (Teil 5) | Englische Befunde in deutscher IDE: zeigt, welche Quelle die Sprache falsch erkennt |
+| 8 | FPR7 | Fehlalarme von vier Prüfregeln (Teil 5) | Klärt, ob in `RotatingFileStream` die RTL im Index fehlte oder `inline-not-expanded` RenameFile trotz Index nicht meldet |
+| 9 | IT2, IT3 | Typen aus IDE-Packages (Teil 5) | Kern von #1816: keine Fehlmeldung bei Typen aus installierten Packages, aber weiter bei fehlendem uses |
+| 10 | EK4 | Kontextmenü Atlas (Teil 5) | Kürzel nach dem ersten Öffnen des Menüs genau einmal (kein doppeltes Formatieren) |
+| 11 | AA13, AA22 | Abgebrochene Serveranfragen (Teil 6) | Abnahme: Willkommensseite ohne Sekundentakt, kein „Absturzfall gesichert“ in sehr großen Units |
+| 12 | UAL1 | Unit-Aliase (Teil 5) | Kein falsches F2613 bei `WinTypes`/`WinProcs` |
+| 13 | FMK1–FMK3 | Formatieren mit Markierung (Teil 5) | Liefert die Protokollzeilen, mit denen die Ursache „Format-Knopf formatiert die ganze Unit“ gefunden wird |
+| 14 | R12-1 | Korrekturen aus release/1.2 (Teil 6) | Abnahme: Strg+F unter Delphi 12 |
+| 15 | UX18 | Update-Installer (Teil 6) | Abnahme: Einrichten mit `AtlasUpdate.exe install` |
+| 16 | RT18 | Rauchtests (Teil 7) | Abnahme: IDE beenden ohne Zugriffsverletzung |
 
 ## Teil 3: Installation und Umstieg von 1.x
 
@@ -392,6 +393,21 @@ Anlass: Zugriffsverletzung 06:31:15 in `Atlas.Core.Diagnostics.MainThread` (Zeil
 | HE4 | Wie HE3, während eine Prüfung oder ein Tracker-Abruf läuft (viele Einträge unterwegs) | Kein Absturz; IDE bleibt bedienbar |  |
 | HE5 | Nach HE3 die Packages wieder anhaken (laden) | Module melden sich an und arbeiten normal (Willkommensseite aktualisiert sich, Tracker-Vorschau lädt) |  |
 | HE6 | IDE mehrmals normal beenden, auch mit laufender Prüfung | Kein Absturz beim Beenden; „Atlas entladen“ im Protokoll ohne Fehler im Schritt MainThread |  |
+### Hänger aus der Diagnose vom 06.11.2026 (Hauptthread)
+
+Vorbereitung: Plugin mit diesem Stand gebaut, Diagnosemodus an (Plugin-Zeiten an, Schwelle 16 ms), Server läuft und ist beschäftigt (z. B. direkt nach dem Öffnen einer großen Projektgruppe, während „Index …“ läuft).
+
+| Nr. | Schritte | Erwartet | Ergebnis |
+|---|---|---|---|
+| HB1 | In einer Unit `/try` tippen, Enter | Gerüst erscheint wie bisher; die IDE friert dabei nicht ein (kein Hänger im Reiter *Hänger*), Reiter *Server*: `textDocument/onTypeFormatting` mit „Hauptthread gewartet“ 0 (**Abnahme**) |  |
+| HB2 | Über einer Methodendeklaration `///` tippen | ///-Gerüst mit Platzhaltern wie bisher, Tab springt weiter |  |
+| HB3 | `/try`, Enter und sofort weitertippen | Nichts wird nachträglich eingesetzt; der getippte Text bleibt unverändert |  |
+| HB4 | Code Lens „→ Testunit …“ über `unit …;` anklicken | Testunit öffnet sich; die IDE bleibt bedienbar, bis sie offen ist; `atlas.server.testUnit` mit „Hauptthread gewartet“ 0 (**Abnahme**) |  |
+| HB5 | Zur Testunit wechseln, wenn es noch keine gibt (Befehl oder Lens) | Testunit wird angelegt, ins Testprojekt eingetragen und geöffnet, wie bisher |  |
+| HB6 | Einen Atlas-Dialog (z. B. Issue anlegen, Atlas-Einstellungen) 20 s offen lassen, dann schließen; Reiter *Hauptthread* ansehen | Die Funktion zeigt keine 20 s Maximum, die Belegung steigt nicht; Aufrufe im Dialog stehen für sich (**Abnahme**) |  |
+| HB7 | Einen Befehl auslösen, der noch auf den Server wartet (z. B. Units suchen öffnen), dann *Langsame Aufrufe* ansehen | In der Spalte *Aktion* steht die Anfrage, z. B. `workspace/executeCommand atlas.server.units` |  |
+| HB8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasEditorCommandsTests.SlashAnswerOnlyForUnchangedText`, `TAtlasPluginTimingsTests.ModalDialogIsNotOwnTime` grün |  |
+
 ### Sitzungsmarke der Bau-IDEs: Abgesicherter Start (#722, PR #1808)
 
 Ergänzt den Abschnitt „Abgesicherter Start (#722)“ in `docs/Atlas-Testfaelle.md` (AS1–AS20 sind Teil von 1.x).
@@ -455,6 +471,22 @@ Vorbereitung: Plugin und Server mit diesem Stand gebaut; Testprojekt mit eigener
 | FPR6 | Klasse mit Feld `FPos: TPos;`, wobei `TPos = Atlas.Text.Lines.TTextPosition` (Alias anderen Namens in einer anderen Unit des Projekts), im Konstruktor `FPos := TPos.Create(1, 2);` | Kein `field-not-freed` an `FPos` |  |
 | FPR7 | In einer Unit ohne `Winapi.Windows` im uses `RenameFile(A, B); // lsp-ignore: inline-not-expanded`, Datei speichern | Kein Hinweis `unused-suppression`, der Kommentar bleibt beim Speichern stehen; bitte zusätzlich melden, ob ohne den Kommentar `inline-not-expanded` (H2443, Winapi.Windows fehlt) erscheint |  |
 | FPR8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TMethodLookupTests`, `TMethodWithoutSelfRuleTests.InterfaceMethodsAreSilent`, `TFlowHandleLeakTests`, `TFreeFieldTypesTests.FollowsAliasesOfOtherUnits`, `TRuleEngineTests.UndecidedLineKeepsSuppression`, `TInliningRulesTests.UnknownCallKeepsSuppression` grün |  |
+
+### Fehlalarme der Stilregeln aus Marcos Lauf (06.11.2026)
+
+Vorbereitung: Plugin und Server mit diesem Stand gebaut. In der `atlas.json` von Atlas `"minConfidence": "low"` und die Regeln `naming-prefix`, `magic-number`, `hardcoded-string`, `public-field`, `method-without-self`, `string-concat-in-loop`, `loop-invariant-call`, `missing-begin-update` auf `"info"`; dann im Fenster „Atlas-Prüfung“ die Projektgruppe Atlas prüfen.
+
+| Nr. | Schritte | Erwartet | Ergebnis |
+|---|---|---|---|
+| RFP1 | Befunde mit der Liste vom 06.11. vergleichen (`hardcoded-string`) | Keine Meldung mehr für `TAtlasGuard.Log(…)`, `Diagnose(…)`, `Assert(…)`, `FormatDateTime`-Masken, `'<tr …>'`, `'## …'`, `Font.Name := 'Segoe UI'`; Texte wie `'nur https'` bleiben (**Abnahme**) |  |
+| RFP2 | `magic-number` bei `EnsureRange(…, 0, $FFFF)`, `MulDiv(…, 96)`, Vektor-Icons `[P(3.5, 1.5), …]` | Still; `SetBounds(12, 9, 360, 23)` im Tastenkürzel-Fenster bleibt gemeldet |  |
+| RFP3 | `naming-prefix` in Vergleichern `function(const A, B: …)` und in Handlern, die der Code zuweist (`FEvents.OnEditorPaintLine := PaintLine`) | Still für `A`, `B` und die Parameter der Handler |  |
+| RFP4 | `public-field` in `Atlas.Core.Problems.Store` (`protected type TEntry`) | Still; Felder öffentlicher Klassen bleiben gemeldet |  |
+| RFP5 | `method-without-self`: `TAtlasKeyMapForm.FormClose`, `TStopTicker.Tick` (`OnTimer := TStopTicker(FTicker).Tick`) | Still |  |
+| RFP6 | `uses-unit-not-found` in `Atlas.Common.dpk` (`requires Atlas.Text`) ohne gebaute `Atlas.Text.dcp` | Still, weil Atlas.Text in derselben Projektgruppe steht |  |
+| RFP7 | Atlas.Windows.Console.StdStreams öffnen | Kein „NoErrMsg ist nicht deklariert“ (Index neu aufgebaut, Version 32) |  |
+| RFP8 | Atlas.Common.Lsp.PullDiagnostics Zeile mit `raise FErrorClass.Create` | Weder `class-reference-nonvirtual-constructor` noch `unused-suppression` |  |
+| RFP9 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; neue Tests in Style, Performance, Naming, General, MemberHides, ClassReferences, ControlFlow, EventAssignments, UnitLookup grün |  |
 
 ### Typen aus den Packages der IDE (atlas/ideTypes, PR #1816)
 
@@ -643,6 +675,30 @@ end.
 | KU3 | „Klasse in eigene Unit verschieben“ auf `TFenster` | Neue Unit enthält `{ TFenster }` vor den Rümpfen; in der alten Unit bleibt kein `{ TFenster }` zurück |  |
 | KU4 | `classCompletion.typeComment` auf `off`, KU1 und KU3 | Kommentar bleibt wie bisher stehen (Umbenennen ändert ihn nicht, Verschieben lässt ihn zurück) |  |
 | KK10 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TTypeCommentsTests`, `TClassBodiesTests`, `TClassCompletionTests`, `TMethodOrderTests`, `TMoveClassTests.MovesTypeComment`, `TLspRenameTests.RenamesTypeComments`, `TConfigurationParserTests.ReadsClassCompletion`, `TAtlasEditingSettingsTests.MethodPlacementOptions` grün |  |
+
+### Einrückung beim Tippen (#1827, #1828, #1829, #1831, #1832)
+
+Vorbereitung: Plugin und AtlasServer mit diesem Stand gebaut, Blockeinrückung der IDE 2 (Tools › Optionen › Editor › Sprache › Delphi › Blockeinrückung), keine `.editorconfig`, `smartIndent` in den Einstellungen unverändert. Neue Unit `Einrueckung.pas` mit einer leeren Methode `procedure TForm1.Test;` / `begin` / `end;`. Nach jedem Enter kurz warten (die Antwort kommt im Hintergrund).
+
+| Nr. | Schritte | Erwartet | Ergebnis |
+|---|---|---|---|
+| ET1 | Schreibmarke hinter `begin`, Enter | Marke in Spalte 3 (eine Ebene tiefer), wie bisher; nichts springt (**Abnahme**) |  |
+| ET2 | `if A then` tippen, Enter | Marke zwei Ebenen tief (Spalte 5) |  |
+| ET3 | Wie ET2, `B;` tippen, Enter | Marke zurück auf Spalte 3 (unter `if`), nicht unter `B;` (**Abnahme**) |  |
+| ET4 | `case A of` / Enter / `1:` Enter | Nach `case A of` Spalte 5, nach `1:` Spalte 7 |  |
+| ET5 | `Foo(A,` tippen, Enter | Marke unter `A` (ausgerichtet an der offenen Klammer) |  |
+| ET6 | `X := A +` tippen, Enter | Marke eine Ebene tiefer als `X` (Fortsetzung) |  |
+| ET7 | Im Block `if A then begin` / `  B;` die Zeile `    end` absichtlich zu weit eingerückt tippen, Enter | `end` springt unter `if`, die neue Zeile ebenfalls (**Abnahme**) |  |
+| ET8 | `try` / `B;` / `finally` (zu weit eingerückt), Enter | `finally` steht unter `try`, die neue Zeile eine Ebene tiefer |  |
+| ET9 | Nach ET7 einmal Strg+Z | Nur die Einrückung ist zurückgenommen, der Zeilenumbruch bleibt |  |
+| ET10 | `S := 'Hallo Welt';` tippen, Schreibmarke zwischen `Hallo ` und `Welt`, Enter | Zeile 1: `S := 'Hallo ' +`, neue Zeile eine Ebene tiefer `'Welt';`, Marke hinter dem Anführungszeichen; übersetzt ohne E2052 (**Abnahme**) |  |
+| ET11 | `smartIndent.splitStringsIndent` auf `align`, ET10 wiederholen; dann in `ShowMessage('Hallo Welt');` | Neue Zeile beginnt unter `'Hallo` (dem ersten Wert hinter `:=`) bzw. unter dem ersten Argument hinter `(` |  |
+| ET12 | Datei mit 4 Leerzeichen je Ebene (Stil sagt 2), hinter `if A then` Enter | Marke 4 Spalten tiefer als `if` (Atlas folgt der Datei) |  |
+| ET13 | In `{ Kommentar` Enter; über `//`-Kommentar Enter (Kommentar fortsetzen an); unter einer Zeile `/uses` Enter | Kommentar: Atlas rückt nicht ein; `//` wird wie bisher fortgesetzt; Schnellbefehl wie bisher |  |
+| ET14 | Schnell tippen: Enter und sofort weiterschreiben | Nichts springt nachträglich; die Antwort verfällt |  |
+| ET15 | Atlas-Einstellungen (settings.json), Seite *Eingabehilfen*, Abschnitt `smartIndent`: `enabled` aus; dann nur `outdentClosers` aus; dann nur `splitStrings` aus; dann nur `afterEnter` aus | `enabled` aus: IDE wie ohne Atlas. `outdentClosers` aus: `end` bleibt stehen. `splitStrings` aus: ET10 lässt einen offenen String (wie ohne Atlas). `afterEnter` aus: nur noch Schlusswörter und Strings. Seite und Beschreibungen auch auf Englisch („Typing aids“) |  |
+| ET16 | `editor.smartPaste` = `indent`, nach `if A then B;` am Zeilenanfang einen zweizeiligen Block einfügen (Strg+V); dann ohne laufenden Server | Mit Server: erste Zeile unter `if`, die zweite behält ihren Abstand; ein eigener Rückgängig-Schritt. Ohne Server: Heuristik wie bisher (Ebene der Zeile darüber) |  |
+| ET17 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TSmartIndentTests`, `TLspSmartIndentTests`, `TAtlasSmartIndentTests`, `TAtlasSmartPasteTests.ReindentUsesServerColumn`, `TBlockIndenterTests.ReportsLineInfo`, `TConfigurationParserTests.ReadsSmartIndent` grün |  |
 
 ### Benachrichtigungs-Plakette immer sichtbar (#1155, PR #1802)
 
@@ -1099,4 +1155,5 @@ Für die Behebung der Atlas-Befunde (Metriken) wurden viele Units zerlegt, ohne 
 | RL2 | Release-Notizen auf der Release-Seite lesen | Deutsch und Englisch aus `docs/Release-Notizen/2.0.0-beta.1.md`, ohne whatsnew-Markierungen |  |
 | RL3 | ZIP auf einem Rechner ohne Atlas entpacken, `AtlasUpdate.exe install` | Wie UX18; Karte „Neu in Atlas“ zeigt sieben Karten für 2.0.0-beta.1, bei englischer IDE englisch |  |
 | RL4 | Installation mit 1.2.0: Update-Prüfung | Bietet die Beta nicht an (Vorabversion zählt nicht als „latest“) |  |
+| RL5 | Ohne Delphi-Runner: nach dem Release-Workflow RP1–RP4 aus `docs/Atlas-Testfaelle.md` (#1849), `Tools/Publish-ReleasePackage.ps1 -Version 2.0.0-beta.1` | Release hat das ZIP, `atlas-version.json` und `atlas-version-beta.json` nennen `packages.37.0` |  |
 

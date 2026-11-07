@@ -245,7 +245,7 @@ begin
   mRunner.Answer('-c credential.interactive=never', '', 128,
     'fatal: could not read Username for ''https://github.com'': terminal prompts disabled', TAtlasVcsOutcome.Ok);
   mCheck := TAtlasVcsServerChecks.Check(mRef, TAtlasVcsKind.Git, 'git.exe', 'C:\Projekte\Kasse',
-    TAtlasVcsServerChecks.TimeoutMs, EncodeDate(2026, 10, 28));
+    TAtlasVcsServerChecks.cTimeoutMs, EncodeDate(2026, 10, 28));
   Assert.AreEqual(4, Integer(Length(mRunner.Calls)));
   Assert.AreEqual('remote', mRunner.Calls[0]);
   Assert.AreEqual('rev-parse --abbrev-ref --symbolic-full-name @{u}', mRunner.Calls[1]);
@@ -262,7 +262,7 @@ begin
   mRunner.ExitCodes[3] := 0;
   mRunner.Errors[3] := '';
   mCheck := TAtlasVcsServerChecks.Check(mRef, TAtlasVcsKind.Git, 'git.exe', 'C:\Projekte\Kasse',
-    TAtlasVcsServerChecks.TimeoutMs, Now);
+    TAtlasVcsServerChecks.cTimeoutMs, Now);
   Assert.IsTrue(mCheck.State = TAtlasVcsServerState.Reachable);
   Assert.IsFalse(mCheck.CanLogin);
 end;

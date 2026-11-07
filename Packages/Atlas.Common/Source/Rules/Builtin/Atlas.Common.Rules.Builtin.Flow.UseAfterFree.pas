@@ -17,7 +17,7 @@ type
   end;
 
 const
-  UseAfterFreeRuleId = 'use-after-free';
+  cUseAfterFreeRuleId = 'use-after-free';
 
 implementation
 
@@ -92,12 +92,12 @@ end;
 
 function TUseAfterFreeCheck.AlreadyReported(AOffset: Integer): Boolean;
 var
-  Offset: Integer;
+  mOffset: Integer;
 begin
   Result := False;
-  for Offset in FReported do
+  for mOffset in FReported do
   begin
-    Result := Result or (Offset = AOffset);
+    Result := Result or (mOffset = AOffset);
   end;
 end;
 
@@ -136,19 +136,19 @@ end;
 
 procedure TUseAfterFreeCheck.VisitCall(ANode: TSyntaxNode);
 var
-  Index: Integer;
-  Callee: string;
+  mIndex: Integer;
+  mCallee: string;
 begin
-  Callee := '';
+  mCallee := '';
   if (ANode.ChildCount > 0) and (ANode[0].Kind = TSyntaxKind.Identifier) then
   begin
-    Callee := ANode[0].Name;
+    mCallee := ANode[0].Name;
   end;
-  for Index := 1 to ANode.ChildCount - 1 do
+  for mIndex := 1 to ANode.ChildCount - 1 do
   begin
-    if SameText(FreedPath(ANode[Index]), FPath) then
+    if SameText(FreedPath(ANode[mIndex]), FPath) then
     begin
-      VisitArgument(Callee, ANode[Index]);
+      VisitArgument(mCallee, ANode[mIndex]);
     end;
   end;
 end;
@@ -167,91 +167,91 @@ end;
 /// <summary>X = nil, X &lt;&gt; nil: eine Abfrage, die den Weg trennt.</summary>
 procedure TUseAfterFreeCheck.VisitBinary(ANode: TSyntaxNode);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    FGuarded := FGuarded or SameText(FreedPath(ANode[Index]), FPath);
+    FGuarded := FGuarded or SameText(FreedPath(ANode[mIndex]), FPath);
   end;
 end;
 
 /// <summary>Wertet ANode aus; Ergebnis: ab diesem Kind weiter absteigen (ChildCount: gar nicht).</summary>
 function TUseAfterFreeCheck.FirstChildToVisit(ANode: TSyntaxNode): Integer;
 begin
-  Result := 0;
-  if ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
-  begin
-    Result := ANode.ChildCount;
-  end
-  else if ANode.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess, TSyntaxKind.Dereference] then
-  begin
-    Result := VisitAccess(ANode);
-  end
-  else if ANode.Kind = TSyntaxKind.Call then
-  begin
-    VisitCall(ANode);
-  end
-  else if ANode.Kind = TSyntaxKind.AddressOf then
-  begin
-    Result := VisitAddress(ANode);
-  end
-  else if ANode.Kind = TSyntaxKind.BinaryExpr then
-  begin
-    VisitBinary(ANode);
+  case ANode.Kind of
+    TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl:
+      Result := ANode.ChildCount;
+    TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess, TSyntaxKind.Dereference:
+      Result := VisitAccess(ANode);
+    TSyntaxKind.Call:
+      begin
+        VisitCall(ANode);
+        Result := 0;
+      end;
+    TSyntaxKind.AddressOf:
+      Result := VisitAddress(ANode);
+    TSyntaxKind.BinaryExpr:
+      begin
+        VisitBinary(ANode);
+        Result := 0;
+      end;
+  else
+    // Alle anderen Knoten: sämtliche Kinder besuchen.
+    Result := 0;
   end;
 end;
 
 procedure TUseAfterFreeCheck.Visit(ARoot: TSyntaxNode);
 var
-  Index, First: Integer;
-  Node: TSyntaxNode;
-  Pending: TStack<TSyntaxNode>;
+  mIndex, mFirst: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
 begin
   // Iterativ (Bericht M1).
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ARoot);
-    while Pending.Count > 0 do
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      First := FirstChildToVisit(Node);
-      for Index := Node.ChildCount - 1 downto First do
+      mNode := mPending.Pop;
+      mFirst := FirstChildToVisit(mNode);
+      for mIndex := mNode.ChildCount - 1 downto mFirst do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 /// <summary>Zugriffe auf FPath im eigenen Teil der Anweisung bzw. Bedingung ASyntax.</summary>
 procedure TUseAfterFreeCheck.Inspect(ASyntax: TSyntaxNode);
 var
-  Index: Integer;
-  Child: TSyntaxNode;
-  AllChildren: Boolean;
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+  mAllChildren: Boolean;
 begin
-  AllChildren := ASyntax.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement,
+  mAllChildren := ASyntax.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement,
     TSyntaxKind.RaiseStatement, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst];
-  for Index := 0 to ASyntax.ChildCount - 1 do
+  for mIndex := 0 to ASyntax.ChildCount - 1 do
   begin
-    Child := ASyntax[Index];
-    if not AllChildren and (Child.Kind in FlowStatementKinds) then
+    mChild := ASyntax[mIndex];
+    if not mAllChildren and (mChild.Kind in cFlowStatementKinds) then
     begin
       Continue;
     end;
-    if (Index = 0) and (ASyntax.Kind = TSyntaxKind.AssignStatement) and SameText(FreedPath(Child), FPath) then
+    if (mIndex = 0) and (ASyntax.Kind = TSyntaxKind.AssignStatement) and SameText(FreedPath(mChild), FPath) then
     begin
       FStops := True;
     end
-    else if (ASyntax.Kind = TSyntaxKind.WithStatement) and SameText(FreedPath(Child), FPath) then
+    else if (ASyntax.Kind = TSyntaxKind.WithStatement) and SameText(FreedPath(mChild), FPath) then
     begin
-      FUses := FUses + [Child];
+      FUses := FUses + [mChild];
     end
     else
     begin
-      Visit(Child);
+      Visit(mChild);
     end;
   end;
 end;
@@ -270,9 +270,9 @@ end;
 
 procedure TUseAfterFreeCheck.ReportAccess(ANode: TFlowNode; AAccess: TSyntaxNode);
 var
-  Confidence: TRuleConfidence;
-  FreeLine: Integer;
-  Message: string;
+  mConfidence: TRuleConfidence;
+  mFreeLine: Integer;
+  mMessage: string;
 begin
   if AlreadyReported(AAccess.StartOffset) then
   begin
@@ -280,28 +280,28 @@ begin
   end;
   FReported := FReported + [AAccess.StartOffset];
   // Im selben Block nacheinander: der Zugriff folgt sicher auf die Freigabe.
-  Confidence := TRuleConfidence.Medium;
+  mConfidence := TRuleConfidence.Medium;
   if (ANode.Syntax.Parent = FFree.Syntax.Parent) and (ANode.Syntax.StartOffset > FFree.Syntax.StartOffset) then
   begin
-    Confidence := TRuleConfidence.High;
+    mConfidence := TRuleConfidence.High;
   end;
-  FreeLine := FFree.Syntax.StartPos.Line + 1;
+  mFreeLine := FFree.Syntax.StartPos.Line + 1;
   if FToNil then
   begin
-    Message := cTexts[TFlowUseAfterFreeText.FreedAndNil].Fmt([FPath, FreeLine]);
+    mMessage := cTexts[TFlowUseAfterFreeText.FreedAndNil].Fmt([FPath, mFreeLine]);
   end
   else
   begin
-    Message := cTexts[TFlowUseAfterFreeText.Freed].Fmt([FPath, FreeLine]);
+    mMessage := cTexts[TFlowUseAfterFreeText.Freed].Fmt([FPath, mFreeLine]);
   end;
-  FReport.Add(NodeRange(AAccess), Message, Confidence,
-    [TRuleFix.Jump(cTexts[TFlowUseAfterFreeText.JumpToFree].Fmt([FreeLine]), FFree.Syntax.StartPos)]);
+  FReport.Add(NodeRange(AAccess), mMessage, mConfidence,
+    [TRuleFix.Jump(cTexts[TFlowUseAfterFreeText.JumpToFree].Fmt([mFreeLine]), FFree.Syntax.StartPos)]);
 end;
 
 /// <summary>Meldet die Zugriffe in ANode; True, wenn der Weg hinter ANode weitergeht.</summary>
 function TUseAfterFreeCheck.WalksOn(ANode: TFlowNode): Boolean;
 var
-  Access: TSyntaxNode;
+  mAccess: TSyntaxNode;
 begin
   FStops := StopsAt(ANode);
   FGuarded := False;
@@ -313,9 +313,9 @@ begin
   Result := False;
   if not (FGuarded and FToNil) then
   begin
-    for Access in FUses do
+    for mAccess in FUses do
     begin
-      ReportAccess(ANode, Access);
+      ReportAccess(ANode, mAccess);
     end;
     Result := not (FStops or FGuarded);
   end;
@@ -323,28 +323,28 @@ end;
 
 procedure TUseAfterFreeCheck.Follow(AFree: TFlowNode; const APath: string; AToNil: Boolean);
 var
-  Visited: TArray<Boolean>;
-  Queue: TArray<TFlowNode>;
-  Head: Integer;
-  Current: TFlowNode;
+  mVisited: TArray<Boolean>;
+  mQueue: TArray<TFlowNode>;
+  mHead: Integer;
+  mCurrent: TFlowNode;
 begin
   FFree := AFree;
   FPath := APath;
   FToNil := AToNil;
-  SetLength(Visited, FGraph.Nodes.Count);
-  Queue := nil;
-  QueueSuccessors(AFree, Visited, Queue);
-  Head := 0;
-  while Head < Length(Queue) do
+  SetLength(mVisited, FGraph.Nodes.Count);
+  mQueue := nil;
+  QueueSuccessors(AFree, mVisited, mQueue);
+  mHead := 0;
+  while mHead < Length(mQueue) do
   begin
-    Current := Queue[Head];
-    Inc(Head);
-    if not Visited[Current.Index] then
+    mCurrent := mQueue[mHead];
+    Inc(mHead);
+    if not mVisited[mCurrent.Index] then
     begin
-      Visited[Current.Index] := True;
-      if WalksOn(Current) then
+      mVisited[mCurrent.Index] := True;
+      if WalksOn(mCurrent) then
       begin
-        QueueSuccessors(Current, Visited, Queue);
+        QueueSuccessors(mCurrent, mVisited, mQueue);
       end;
     end;
   end;
@@ -353,32 +353,32 @@ end;
 
 procedure TUseAfterFreeCheck.CheckGraph;
 var
-  Node: TFlowNode;
-  Path: string;
-  ToNil: Boolean;
+  mNode: TFlowNode;
+  mPath: string;
+  mToNil: Boolean;
 begin
-  for Node in FGraph.Nodes do
+  for mNode in FGraph.Nodes do
   begin
-    if (Node.Kind = TFlowNodeKind.Statement) and FreedBy(Node.Syntax, Path, ToNil) then
+    if (mNode.Kind = TFlowNodeKind.Statement) and FreedBy(mNode.Syntax, mPath, mToNil) then
     begin
-      Follow(Node, Path, ToNil);
+      Follow(mNode, mPath, mToNil);
     end;
   end;
 end;
 
 procedure TUseAfterFreeCheck.Run(const AContext: TRuleContext);
 var
-  Cache: IRuleDerivedCache;
-  Routine: TSyntaxNode;
+  mCache: IRuleDerivedCache;
+  mRoutine: TSyntaxNode;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Cache := TRuleDerived.Open(AContext);
-  for Routine in TRuleDerived.Routines(Cache, AContext) do
+  mCache := TRuleDerived.Open(AContext);
+  for mRoutine in TRuleDerived.Routines(mCache, AContext) do
   begin
-    FGraph := TRuleDerived.Graph(Cache, AContext, Routine);
+    FGraph := TRuleDerived.Graph(mCache, AContext, mRoutine);
     if FGraph.Complete then
     begin
       CheckGraph;
@@ -390,18 +390,18 @@ end;
 
 function TUseAfterFreeRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UseAfterFreeRuleId, TRuleSeverity.Error, cTexts[TFlowUseAfterFreeText.Title].Text);
+  Result := TRuleDescriptor.Create(cUseAfterFreeRuleId, TRuleSeverity.Error, cTexts[TFlowUseAfterFreeText.Title].Text);
 end;
 
 procedure TUseAfterFreeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Check: TUseAfterFreeCheck;
+  mCheck: TUseAfterFreeCheck;
 begin
-  Check := TUseAfterFreeCheck.Create(AReport);
+  mCheck := TUseAfterFreeCheck.Create(AReport);
   try
-    Check.Run(AContext);
+    mCheck.Run(AContext);
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 

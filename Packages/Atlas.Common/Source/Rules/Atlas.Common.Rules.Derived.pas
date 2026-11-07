@@ -83,13 +83,13 @@ uses
   Atlas.Common.Index.Extractor;
 
 const
-  KeyUnitIndex = 'rules.unitIndex';
-  KeyRoutines = 'rules.routines';
-  KeyFlowSignatures = 'rules.flowSignatures';
-  KeyGraph = 'rules.graph:';
-  KeyCodeTokens = 'rules.codeTokens';
-  KeyLines = 'rules.lines';
-  KeyResolver = 'rules.resolver';
+  cKeyUnitIndex = 'rules.unitIndex';
+  cKeyRoutines = 'rules.routines';
+  cKeyFlowSignatures = 'rules.flowSignatures';
+  cKeyGraph = 'rules.graph:';
+  cKeyCodeTokens = 'rules.codeTokens';
+  cKeyLines = 'rules.lines';
+  cKeyResolver = 'rules.resolver';
 
 { TRuleDerivedCache }
 
@@ -143,11 +143,11 @@ end;
 class function TRuleDerived.Get<T>(const ACache: IRuleDerivedCache; const AKey: string;
   const AFactory: TFunc<T>): T;
 var
-  Value: TObject;
+  mValue: TObject;
 begin
-  if ACache.TryGet(AKey, Value) then
+  if ACache.TryGet(AKey, mValue) then
   begin
-    Exit(T(Value));
+    Exit(T(mValue));
   end;
   Result := AFactory();
   ACache.Put(AKey, Result);
@@ -155,147 +155,148 @@ end;
 
 class function TRuleDerived.UnitIndex(const ACache: IRuleDerivedCache; const AContext: TRuleContext): TUnitIndex;
 var
-  Value: TObject;
-  Index: TUnitIndex;
+  mValue: TObject;
+  mIndex: TUnitIndex;
 begin
-  if ACache.TryGet(KeyUnitIndex, Value) then
+  if ACache.TryGet(cKeyUnitIndex, mValue) then
   begin
-    Exit(TRuleDerivedValue<TUnitIndex>(Value).Value);
+    Exit(TRuleDerivedValue<TUnitIndex>(mValue).Value);
   end;
-  Index := Default(TUnitIndex);
+  mIndex := Default(TUnitIndex);
   if AContext.Tree <> nil then
   begin
-    Index := TIndexExtractor.Extract(AContext.Tree, '');
+    mIndex := TIndexExtractor.Extract(AContext.Tree, '');
   end;
-  ACache.Put(KeyUnitIndex, TRuleDerivedValue<TUnitIndex>.Create(Index));
-  Result := Index;
+  ACache.Put(cKeyUnitIndex, TRuleDerivedValue<TUnitIndex>.Create(mIndex));
+  Result := mIndex;
 end;
 
 class function TRuleDerived.Resolver(const ACache: IRuleDerivedCache; const AContext: TRuleContext): TNameResolver;
 var
-  Value: TObject;
+  mValue: TObject;
 begin
-  if ACache.TryGet(KeyResolver, Value) then
+  if ACache.TryGet(cKeyResolver, mValue) then
   begin
-    Exit(TNameResolver(Value));
+    Exit(TNameResolver(mValue));
   end;
   Result := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   Result.Namespaces := AContext.Namespaces;
-  ACache.Put(KeyResolver, Result);
+  ACache.Put(cKeyResolver, Result);
 end;
 
-class function TRuleDerived.Routines(const ACache: IRuleDerivedCache; const AContext: TRuleContext): TArray<TSyntaxNode>;
+class function TRuleDerived.Routines(const ACache: IRuleDerivedCache;
+  const AContext: TRuleContext): TArray<TSyntaxNode>;
 var
-  Value: TObject;
-  Found: TList<TSyntaxNode>;
+  mValue: TObject;
+  mFound: TList<TSyntaxNode>;
 begin
-  if ACache.TryGet(KeyRoutines, Value) then
+  if ACache.TryGet(cKeyRoutines, mValue) then
   begin
-    Exit(TRuleDerivedValue<TArray<TSyntaxNode>>(Value).Value);
+    Exit(TRuleDerivedValue<TArray<TSyntaxNode>>(mValue).Value);
   end;
   Result := nil;
   if AContext.Tree <> nil then
   begin
-    Found := TList<TSyntaxNode>.Create;
+    mFound := TList<TSyntaxNode>.Create;
     try
       AContext.Tree.Root.Walk(
         function(ANode: TSyntaxNode): Boolean
         begin
           if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.Block) <> nil) then
           begin
-            Found.Add(ANode);
+            mFound.Add(ANode);
           end;
           Result := True;
         end);
-      Result := Found.ToArray;
+      Result := mFound.ToArray;
     finally
-      Found.Free;
+      mFound.Free;
     end;
   end;
-  ACache.Put(KeyRoutines, TRuleDerivedValue<TArray<TSyntaxNode>>.Create(Result));
+  ACache.Put(cKeyRoutines, TRuleDerivedValue<TArray<TSyntaxNode>>.Create(Result));
 end;
 
 class function TRuleDerived.FlowSignatures(const ACache: IRuleDerivedCache;
   const AContext: TRuleContext): TFlowSignatureLookup;
 var
-  Value: TObject;
+  mValue: TObject;
 begin
-  if ACache.TryGet(KeyFlowSignatures, Value) then
+  if ACache.TryGet(cKeyFlowSignatures, mValue) then
   begin
-    Exit(TRuleDerivedValue<TFlowSignatureLookup>(Value).Value);
+    Exit(TRuleDerivedValue<TFlowSignatureLookup>(mValue).Value);
   end;
   Result := nil;
   if AContext.Tree <> nil then
   begin
     Result := TFlowSignatures.FromTree(AContext.Tree.Root);
   end;
-  ACache.Put(KeyFlowSignatures, TRuleDerivedValue<TFlowSignatureLookup>.Create(Result));
+  ACache.Put(cKeyFlowSignatures, TRuleDerivedValue<TFlowSignatureLookup>.Create(Result));
 end;
 
 class function TRuleDerived.Graph(const ACache: IRuleDerivedCache; const AContext: TRuleContext;
   ARoutine: TSyntaxNode): TControlFlowGraph;
 var
-  Key: string;
-  Value: TObject;
-  Lookup: TFlowSignatureLookup;
+  mKey: string;
+  mValue: TObject;
+  mLookup: TFlowSignatureLookup;
 begin
-  Key := KeyGraph + IntToStr(ARoutine.StartOffset);
-  if ACache.TryGet(Key, Value) then
+  mKey := cKeyGraph + IntToStr(ARoutine.StartOffset);
+  if ACache.TryGet(mKey, mValue) then
   begin
-    Exit(TControlFlowGraph(Value));
+    Exit(TControlFlowGraph(mValue));
   end;
-  Lookup := FlowSignatures(ACache, AContext);
-  Result := TControlFlowGraph.Build(ARoutine, Lookup);
-  ACache.Put(Key, Result);
+  mLookup := FlowSignatures(ACache, AContext);
+  Result := TControlFlowGraph.Build(ARoutine, mLookup);
+  ACache.Put(mKey, Result);
 end;
 
 class function TRuleDerived.CodeTokens(const ACache: IRuleDerivedCache;
   const AContext: TRuleContext): TArray<TPascalToken>;
 var
-  Value: TObject;
-  Tokens: TArray<TPascalToken>;
-  Token: TPascalToken;
-  Count: Integer;
+  mValue: TObject;
+  mTokens: TArray<TPascalToken>;
+  mToken: TPascalToken;
+  mCount: Integer;
 begin
-  if ACache.TryGet(KeyCodeTokens, Value) then
+  if ACache.TryGet(cKeyCodeTokens, mValue) then
   begin
-    Exit(TRuleDerivedValue<TArray<TPascalToken>>(Value).Value);
+    Exit(TRuleDerivedValue<TArray<TPascalToken>>(mValue).Value);
   end;
   Result := nil;
   if AContext.Tree <> nil then
   begin
-    Tokens := AContext.Tree.Tokens;
-    SetLength(Result, Length(Tokens));
-    Count := 0;
-    for Token in Tokens do
+    mTokens := AContext.Tree.Tokens;
+    SetLength(Result, Length(mTokens));
+    mCount := 0;
+    for mToken in mTokens do
     begin
-      if not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+      if not (mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
       begin
-        Result[Count] := Token;
-        Inc(Count);
+        Result[mCount] := mToken;
+        Inc(mCount);
       end;
     end;
-    SetLength(Result, Count);
+    SetLength(Result, mCount);
   end;
-  ACache.Put(KeyCodeTokens, TRuleDerivedValue<TArray<TPascalToken>>.Create(Result));
+  ACache.Put(cKeyCodeTokens, TRuleDerivedValue<TArray<TPascalToken>>.Create(Result));
 end;
 
 class function TRuleDerived.PositionAt(const ACache: IRuleDerivedCache; const AContext: TRuleContext;
   AOffset: Integer): TTextPosition;
 var
-  Value: TObject;
-  Lines: ITextDocument;
+  mValue: TObject;
+  mLines: ITextDocument;
 begin
-  if ACache.TryGet(KeyLines, Value) then
+  if ACache.TryGet(cKeyLines, mValue) then
   begin
-    Lines := TRuleDerivedValue<ITextDocument>(Value).Value;
+    mLines := TRuleDerivedValue<ITextDocument>(mValue).Value;
   end
   else
   begin
-    Lines := TTextDocument.Create('', 'objectpascal', 0, AContext.Text);
-    ACache.Put(KeyLines, TRuleDerivedValue<ITextDocument>.Create(Lines));
+    mLines := TTextDocument.Create('', 'objectpascal', 0, AContext.Text);
+    ACache.Put(cKeyLines, TRuleDerivedValue<ITextDocument>.Create(mLines));
   end;
-  Result := Lines.PositionAt(AOffset);
+  Result := mLines.PositionAt(AOffset);
 end;
 
 class function TRuleDerived.OffsetRange(const ACache: IRuleDerivedCache; const AContext: TRuleContext;

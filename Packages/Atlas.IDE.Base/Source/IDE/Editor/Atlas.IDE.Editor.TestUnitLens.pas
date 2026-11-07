@@ -43,11 +43,11 @@ type
       function AllowedLineStages: TPaintLineStages; override;
     end;
   private const
-    QuietMs = 500;
+    cQuietMs = 500;
     // Im Hintergrund: Ein langsamer Server hält nur die Lens auf, nicht die IDE.
-    TimeoutMs = 5000;
-    RetryMs = 5000;
-    RefreshMs = 10000;
+    cTimeoutMs = 5000;
+    cRetryMs = 5000;
+    cRefreshMs = 10000;
   private
     FSession: TAtlasTestUnitLensSessionFunc;
     FRun: TAtlasLensCommandProc;
@@ -99,7 +99,7 @@ uses
   Atlas.IDE.Foundation.EditorRefresh;
 
 const
-  TestUnitCommand = 'atlas.server.testUnit';
+  cTestUnitCommand = 'atlas.server.testUnit';
 
 { TAtlasEditorTestUnitLens.TEvents }
 
@@ -118,7 +118,7 @@ end;
 constructor TAtlasEditorTestUnitLens.Create(const ASession: TAtlasTestUnitLensSessionFunc;
   const ARun: TAtlasLensCommandProc);
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   inherited Create;
   FSession := ASession;
@@ -129,9 +129,9 @@ begin
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
   FEvents.OnEditorMouseDown := EditorMouseDown;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+    FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 250;
@@ -141,15 +141,15 @@ end;
 
 destructor TAtlasEditorTestUnitLens.Destroy;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   FTimer.Free;
   // Eine ausstehende Antwort erreicht die Lens nicht mehr.
   FPoll.Close;
   // Erst abmelden, dann freigeben (#493).
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    Services.RemoveEditorEventsNotifier(FIndex);
+    mServices.RemoveEditorEventsNotifier(FIndex);
   end;
   FEvents.OnEditorPaintLine := nil;
   FEvents.OnEditorMouseDown := nil;
@@ -159,11 +159,11 @@ end;
 
 class procedure TAtlasEditorTestUnitLens.Invalidate;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(Services);
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 
@@ -199,7 +199,7 @@ begin
     mView := TAtlasLensPoll.TopView;
     // Gleicher Stand schon gefragt: nur ab und zu neu (Testunit inzwischen angelegt).
     if (mView <> nil) and (mView.Buffer <> nil) and SameText(ExtractFileExt(mView.Buffer.FileName), '.pas') and
-      FPoll.Due(mView, QuietMs, RefreshMs) then
+      FPoll.Due(mView, cQuietMs, cRefreshMs) then
     begin
       Fetch;
     end;
@@ -220,8 +220,8 @@ begin
     FPoll.Fetched;
     Exit;
   end;
-  FPoll.AskAsync(FSession(), FRun, TAtlasFeature.CodeLens, TestUnitCommand, FPoll.UriLineArguments(mLine), RetryMs,
-    TimeoutMs, Answer(mLine));
+  FPoll.AskAsync(FSession(), FRun, TAtlasFeature.CodeLens,
+    TAtlasLensRequest.Create(cTestUnitCommand, FPoll.UriLineArguments(mLine), cTimeoutMs), cRetryMs, Answer(mLine));
 end;
 
 function TAtlasEditorTestUnitLens.Answer(ALine: Integer): TProc<TJSONValue>;
@@ -238,7 +238,7 @@ var
   mInfo: TAtlasTestUnitInfo;
 begin
   // Den Wert gibt der Manager frei.
-  if not FPoll.Answered(AAnswer, RetryMs) then
+  if not FPoll.Answered(AAnswer, cRetryMs) then
   begin
     Exit;
   end;
@@ -317,7 +317,7 @@ end;
 procedure TAtlasEditorTestUnitLens.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 var
-  View: IOTAEditView;
+  mView: IOTAEditView;
 begin
   if (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or not FShowing or
     not PtInRect(FLensRect, Point(X, Y)) then
@@ -325,9 +325,9 @@ begin
     Exit;
   end;
   // Nur, wenn die Marke noch dort steht: gleiche Datei, nicht gescrollt.
-  View := TAtlasLensPoll.TopView;
-  if (View = nil) or (View.Buffer = nil) or not SameText(View.Buffer.FileName, FPoll.FetchedFile) or
-    (View.TopRow <> FLensTopRow) then
+  mView := TAtlasLensPoll.TopView;
+  if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, FPoll.FetchedFile) or
+    (mView.TopRow <> FLensTopRow) then
   begin
     Exit;
   end;

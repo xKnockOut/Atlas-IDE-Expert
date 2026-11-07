@@ -156,12 +156,12 @@ class function TAtlasCompletionTexts.HeaderText(const AItems: TAtlasCompletionIt
 begin
   // Überschrift einer Gruppe geerbter Member (#419): Klasse des nächsten Eintrags;
   // mit erwartetem Typ (#417, #444) „Passt zu …“ bzw. „Weitere“.
-  if AOrder[APosition] = TAtlasRanking.TypoHeader then
+  if AOrder[APosition] = TAtlasRanking.cTypoHeader then
   begin
     // Tippfehler-Treffer (#485).
     Result := TAtlasStrings.Text(TAtlasTextId.DidYouMean);
   end
-  else if AOrder[APosition] = TAtlasRanking.RestHeader then
+  else if AOrder[APosition] = TAtlasRanking.cRestHeader then
   begin
     // Rest der Liste ohne Treffer (#497).
     Result := TAtlasStrings.Text(TAtlasTextId.CompletionRestHeader);
@@ -182,7 +182,7 @@ var
   mItem: TAtlasCompletionItem;
 begin
   mItem := AItems[AOrder[APosition + 1]];
-  if AOrder[APosition] = TAtlasRanking.UnknownHeader then
+  if AOrder[APosition] = TAtlasRanking.cUnknownHeader then
   begin
     // Unbekannter Name (#471): „TotalCount ist unbekannt“.
     Result := TAtlasStrings.Fmt(TAtlasTextId.UnknownHeader, [mItem.Unknown]);

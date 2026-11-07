@@ -112,7 +112,7 @@ begin
   Result := '';
   for mFinding in AFindings do
   begin
-    if mFinding.RuleId = UnusedUsesRuleId then
+    if mFinding.RuleId = cUnusedUsesRuleId then
     begin
       Result := Result + mFinding.Message + ';';
     end;
@@ -281,7 +281,7 @@ begin
   // Hilfe und Dritte stehen nebeneinander: Ihre Korrekturen überlappen am Komma, die zweite folgt im nächsten
   // Durchgang.
   mResult := TBulkFix.Run('Bericht.pas', UnitText('Hilfe, Dritte, Andere, Start'), TBulkFixOptions.Create(
-    TArray<string>.Create(UnusedUsesRuleId), mSettings.FixMinConfidence, TRuleCatalog.Shared.Entries),
+    TArray<string>.Create(cUnusedUsesRuleId), mSettings.FixMinConfidence, TRuleCatalog.Shared.Entries),
     TBulkFix.CheckWith(TArray<IRule>.Create(TUnusedUsesRule.Create), mSettings, 'Bericht.pas', Project(mIndex),
     TCheckSource.Default), TBulkFix.SyntaxErrorsWith(TCheckSource.Default));
   Assert.AreEqual(UnitText('Andere, Start'), mResult.NewText);

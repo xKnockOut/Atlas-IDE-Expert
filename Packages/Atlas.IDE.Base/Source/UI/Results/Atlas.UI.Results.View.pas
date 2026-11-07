@@ -123,7 +123,7 @@ type
     /// <summary>Taste im Baum; AKey 0, wenn ein Teil sie übernommen hat.</summary>
     procedure KeyDown(var AKey: Word);
     /// <summary>Hinweis des Knotens unter der Maus zeigen.</summary>
-    procedure HintAt(X, Y: Integer);
+    procedure HintAt(AX, AY: Integer);
     property Host: TWinControl read FControls.Host;
     property Header: TPanel read FControls.Header;
     property Title: TLabel read FControls.Title;
@@ -344,11 +344,11 @@ begin
   end;
 end;
 
-procedure TAtlasResultsView.HintAt(X, Y: Integer);
+procedure TAtlasResultsView.HintAt(AX, AY: Integer);
 var
   mNode: TTreeNode;
 begin
-  mNode := Tree.GetNodeAt(X, Y);
+  mNode := Tree.GetNodeAt(AX, AY);
   if mNode = FHintNode then
   begin
     Exit;

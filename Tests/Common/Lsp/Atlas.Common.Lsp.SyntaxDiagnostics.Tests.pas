@@ -340,7 +340,7 @@ begin
       Diagnostics.RefreshLater;
     end;
     Assert.AreEqual(0, TInterlocked.CompareExchange(Calls, 0, 0), 'erst nach der Pause');
-    Sleep(TLspSyntaxDiagnostics.RefreshDelayMs + 500);
+    Sleep(TLspSyntaxDiagnostics.cRefreshDelayMs + 500);
     Assert.AreEqual(1, TInterlocked.CompareExchange(Calls, 0, 0));
   finally
     Diagnostics.Free;
@@ -368,7 +368,7 @@ begin
     Assert.IsTrue(FCapture.WaitForCount(1, 1000), 'Keine Diagnose gemeldet');
     Assert.IsTrue(Watch.ElapsedMilliseconds < 200,
       Format('Diagnose nach %d ms', [Watch.ElapsedMilliseconds]));
-    Sleep(TLspSyntaxDiagnostics.DefaultDelayMs * 2);
+    Sleep(TLspSyntaxDiagnostics.cDefaultDelayMs * 2);
     Assert.AreEqual(1, Integer(FCapture.Count), 'Nur der letzte Stand wird ausgewertet');
     Message := FCapture.MessageAt(0);
     try
@@ -482,7 +482,7 @@ begin
     // Konfidenz als eigenes Feld, nicht im Meldungstext (#144).
     Assert.AreEqual('Meldung', Item.GetValue<string>('message'));
     Assert.AreEqual('medium', Item.GetValue<string>('data.confidence'));
-    Assert.AreEqual(RuleDocumentationBaseUri + Finding.RuleId, Item.GetValue<string>('codeDescription.href'));
+    Assert.AreEqual(cRuleDocumentationBaseUri + Finding.RuleId, Item.GetValue<string>('codeDescription.href'));
   finally
     Item.Free;
   end;
@@ -606,10 +606,13 @@ var
   Params: TJSONObject;
   Document: ITextDocument;
   Item: TJSONValue;
+  Input: TSyntaxDiagnosticsInput;
 begin
   Document := FStore.Open(Uri, 'objectpascal', 1, ValidCode);
-  Params := TLspSyntaxDiagnostics.BuildParams(Document,
+  Input := Default(TSyntaxDiagnosticsInput);
+  Input.Inactive := TLspInactiveRegions.FromRanges(
     [TTextRange.Create(TTextPosition.Create(1, 0), TTextPosition.Create(2, 0))]);
+  Params := TLspSyntaxDiagnostics.BuildParams(Document, Input);
   try
     Assert.AreEqual(1, Params.GetValue<TJSONArray>('diagnostics').Count);
     Item := Params.GetValue<TJSONArray>('diagnostics').Items[0];

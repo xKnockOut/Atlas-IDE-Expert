@@ -13,7 +13,7 @@ uses
   Atlas.Common.Rules.Contract;
 
 const
-  HresultIntegerMixRuleId = 'hresult-integer-mix';
+  cHresultIntegerMixRuleId = 'hresult-integer-mix';
 
 type
   THresultIntegerMixRule = class(TInterfacedObject, IRule)
@@ -100,14 +100,14 @@ end;
 /// <summary>Ergebnistyp im Kopf (letzter Typverweis); nil ohne.</summary>
 function ResultNode(AHeader: TSyntaxNode): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to AHeader.ChildCount - 1 do
+  for mIndex := 0 to AHeader.ChildCount - 1 do
   begin
-    if AHeader[Index].Kind = TSyntaxKind.TypeReference then
+    if AHeader[mIndex].Kind = TSyntaxKind.TypeReference then
     begin
-      Result := AHeader[Index];
+      Result := AHeader[mIndex];
     end;
   end;
 end;
@@ -116,13 +116,13 @@ end;
 /// </summary>
 function AllInterchanged(const AExpected, AActual: TIndexSymbols): Boolean;
 var
-  Method, Wanted: TIndexSymbol;
+  mMethod, mWanted: TIndexSymbol;
 begin
-  for Method in AActual do
+  for mMethod in AActual do
   begin
-    for Wanted in AExpected do
+    for mWanted in AExpected do
     begin
-      if not THresultIntegerMixRule.Interchanged(Wanted.TypeName, Method.TypeName) then
+      if not THresultIntegerMixRule.Interchanged(mWanted.TypeName, mMethod.TypeName) then
       begin
         Exit(False);
       end;
@@ -156,183 +156,183 @@ end;
 
 function THresultScan.Key(const AName: string; const AParamTypes: TArray<string>): string;
 var
-  ParamType: string;
+  mParamType: string;
 begin
   Result := LowerCase(AName) + '(';
-  for ParamType in AParamTypes do
+  for mParamType in AParamTypes do
   begin
-    Result := Result + LowerCase(FResolver.Queries.UnqualifyType(NormalizedType(ParamType), FLocal.UnitName)) + ';';
+    Result := Result + LowerCase(FResolver.Queries.UnqualifyType(NormalizedType(mParamType), FLocal.UnitName)) + ';';
   end;
   Result := Result + ')';
 end;
 
 function THresultScan.AlignFix(const AMethod: TIndexSymbol; const AType: string; out AFix: TRuleFix): Boolean;
 var
-  Node, Declaration, Body, Target: TSyntaxNode;
-  Bodies: Integer;
-  Edits: TArray<TTextEdit>;
+  mNode, mDeclaration, mBody, mTarget: TSyntaxNode;
+  mBodies: Integer;
+  mEdits: TArray<TTextEdit>;
 begin
   // Korrektur: Ergebnistyp in Deklaration und (einzigem) Rumpf auf AType setzen.
   Result := False;
-  Declaration := nil;
-  Body := nil;
-  Bodies := 0;
-  for Node in FNodes do
+  mDeclaration := nil;
+  mBody := nil;
+  mBodies := 0;
+  for mNode in FNodes do
   begin
-    if (Node.Kind = TSyntaxKind.RoutineHeader) and Covers(Node, AMethod.SelectionRange.StartPos) then
+    if (mNode.Kind = TSyntaxKind.RoutineHeader) and Covers(mNode, AMethod.SelectionRange.StartPos) then
     begin
-      Declaration := Node;
+      mDeclaration := mNode;
     end
-    else if (Node.Kind = TSyntaxKind.RoutineDecl) and SameText(Node.Name, FClass.Name + '.' + AMethod.Name) then
+    else if (mNode.Kind = TSyntaxKind.RoutineDecl) and SameText(mNode.Name, FClass.Name + '.' + AMethod.Name) then
     begin
-      Inc(Bodies);
-      Body := Node.FindChild(TSyntaxKind.RoutineHeader);
+      Inc(mBodies);
+      mBody := mNode.FindChild(TSyntaxKind.RoutineHeader);
     end;
   end;
-  if (Declaration = nil) or (Bodies > 1) then
+  if (mDeclaration = nil) or (mBodies > 1) then
   begin
     Exit;
   end;
-  Target := ResultNode(Declaration);
-  if Target = nil then
+  mTarget := ResultNode(mDeclaration);
+  if mTarget = nil then
   begin
     Exit;
   end;
-  Edits := [TTextEdit.Create(TTextRange.Create(Target.StartPos, Target.EndPos), AType)];
-  if Body <> nil then
+  mEdits := [TTextEdit.Create(TTextRange.Create(mTarget.StartPos, mTarget.EndPos), AType)];
+  if mBody <> nil then
   begin
-    Target := ResultNode(Body);
+    mTarget := ResultNode(mBody);
     // Ein Rumpf ohne Ergebnistyp (function TExport.Schreiben;) bleibt richtig.
-    if (Target <> nil) and (Target.StartPos.Line <> Declaration.StartPos.Line) then
+    if (mTarget <> nil) and (mTarget.StartPos.Line <> mDeclaration.StartPos.Line) then
     begin
-      Edits := Edits + [TTextEdit.Create(TTextRange.Create(Target.StartPos, Target.EndPos), AType)];
+      mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(mTarget.StartPos, mTarget.EndPos), AType)];
     end;
   end;
-  AFix := TRuleFix.Create(cTexts[TTypeChecksHresultText.ResultLikeInterface].Fmt([AType]), Edits);
+  AFix := TRuleFix.Create(cTexts[TTypeChecksHresultText.ResultLikeInterface].Fmt([AType]), mEdits);
   Result := True;
 end;
 
 procedure THresultScan.CollectMethods;
 var
-  Member: TIndexSymbol;
+  mMember: TIndexSymbol;
 begin
   // Methoden im Rumpf der Klasse.
   FMethods.Clear;
-  for Member in FLocal.Symbols do
+  for mMember in FLocal.Symbols do
   begin
-    if SameText(Member.Container, FClass.Name) and (Member.Kind = TIndexSymbolKind.Method) and
-      Inside(Member.SelectionRange, FClass.Range) then
+    if SameText(mMember.Container, FClass.Name) and (mMember.Kind = TIndexSymbolKind.Method) and
+      Inside(mMember.SelectionRange, FClass.Range) then
     begin
-      FMethods.Add(Member);
+      FMethods.Add(mMember);
     end;
   end;
 end;
 
 procedure THresultScan.CollectResolutions;
 var
-  Target: string;
+  mTarget: string;
 begin
   // Zuordnungen "function IExport.Lesen = LesenIntern" stehen an der Klasse.
   FResolutions.Clear;
-  for Target in FClass.Resolutions do
+  for mTarget in FClass.Resolutions do
   begin
-    FResolutions.Values[LowerCase(Copy(Target, 1, Pos('=', Target) - 1))] := Copy(Target, Pos('=', Target) + 1,
+    FResolutions.Values[LowerCase(Copy(mTarget, 1, Pos('=', mTarget) - 1))] := Copy(mTarget, Pos('=', mTarget) + 1,
       MaxInt);
   end;
 end;
 
 procedure THresultScan.CheckClass(const AClass: TIndexSymbol);
 var
-  Name: string;
-  Ancestor: TResolvedSymbol;
+  mName: string;
+  mAncestor: TResolvedSymbol;
 begin
   FClass := AClass;
   FSeen.Clear;
   CollectMethods;
   CollectResolutions;
-  for Name in AClass.Ancestors do
+  for mName in AClass.Ancestors do
   begin
-    if FResolver.ResolveTypeFrom(FLocal, Name, Ancestor) and
-      (Ancestor.SymbolKind = TIndexSymbolKind.InterfaceType) then
+    if FResolver.ResolveTypeFrom(FLocal, mName, mAncestor) and
+      (mAncestor.SymbolKind = TIndexSymbolKind.InterfaceType) then
     begin
-      CheckInterfaceChain(Ancestor);
+      CheckInterfaceChain(mAncestor);
     end;
   end;
 end;
 
 procedure THresultScan.CheckInterfaceChain(const AInterface: TResolvedSymbol);
 var
-  Intf, Parent: TResolvedSymbol;
-  IntfUnit: TUnitIndex;
-  Depth: Integer;
+  mIntf, mParent: TResolvedSymbol;
+  mIntfUnit: TUnitIndex;
+  mDepth: Integer;
 begin
   // Das Interface und seine Vorfahren, jedes nur einmal je Klasse.
-  Intf := AInterface;
-  for Depth := 0 to cMaxInterfaceDepth do
+  mIntf := AInterface;
+  for mDepth := 0 to cMaxInterfaceDepth do
   begin
-    if (FSeen.IndexOf(Intf.QualifiedName) >= 0) or not SymbolUnit(FResolver, FLocal, Intf, IntfUnit) then
+    if (FSeen.IndexOf(mIntf.QualifiedName) >= 0) or not SymbolUnit(FResolver, FLocal, mIntf, mIntfUnit) then
     begin
       Break;
     end;
-    FSeen.Add(Intf.QualifiedName);
-    CheckInterface(Intf, IntfUnit);
-    if not FResolver.AncestorOf(Intf, Parent) or (Parent.SymbolKind <> TIndexSymbolKind.InterfaceType) then
+    FSeen.Add(mIntf.QualifiedName);
+    CheckInterface(mIntf, mIntfUnit);
+    if not FResolver.AncestorOf(mIntf, mParent) or (mParent.SymbolKind <> TIndexSymbolKind.InterfaceType) then
     begin
       Break;
     end;
-    Intf := Parent;
+    mIntf := mParent;
   end;
 end;
 
 procedure THresultScan.CheckInterface(const AInterface: TResolvedSymbol; const AUnit: TUnitIndex);
 var
-  Member: TIndexSymbol;
+  mMember: TIndexSymbol;
 begin
-  for Member in AUnit.Symbols do
+  for mMember in AUnit.Symbols do
   begin
-    if SameText(Member.Container, AInterface.QualifiedName) and (Member.Kind = TIndexSymbolKind.Method) then
+    if SameText(mMember.Container, AInterface.QualifiedName) and (mMember.Kind = TIndexSymbolKind.Method) then
     begin
-      CheckMember(AInterface, AUnit, Member);
+      CheckMember(AInterface, AUnit, mMember);
     end;
   end;
 end;
 
 function THresultScan.ExpectedVariants(const AUnit: TUnitIndex; const AMember: TIndexSymbol): TIndexSymbols;
 var
-  Method: TIndexSymbol;
-  MemberKey: string;
+  mMethod: TIndexSymbol;
+  mMemberKey: string;
 begin
   // Alle Varianten der Interface-Methode (bedingte Zweige).
   Result := nil;
-  MemberKey := Key(AMember.Name, AMember.ParamTypes);
-  for Method in AUnit.Symbols do
+  mMemberKey := Key(AMember.Name, AMember.ParamTypes);
+  for mMethod in AUnit.Symbols do
   begin
-    if SameText(Method.Container, AMember.Container) and (Method.Kind = TIndexSymbolKind.Method) and
-      (Key(Method.Name, Method.ParamTypes) = MemberKey) then
+    if SameText(mMethod.Container, AMember.Container) and (mMethod.Kind = TIndexSymbolKind.Method) and
+      (Key(mMethod.Name, mMethod.ParamTypes) = mMemberKey) then
     begin
-      Result := Result + [Method];
+      Result := Result + [mMethod];
     end;
   end;
 end;
 
 function THresultScan.ActualVariants(const AInterface: TResolvedSymbol; const AMember: TIndexSymbol): TIndexSymbols;
 var
-  Method: TIndexSymbol;
-  Target, MethodKey: string;
+  mMethod: TIndexSymbol;
+  mTarget, mMethodKey: string;
 begin
   // Alle Varianten der Implementierung, auch über eine Zuordnung "IFoo.Bar = Baz".
   Result := nil;
-  Target := FResolutions.Values[LowerCase(AInterface.Name + '.' + AMember.Name)];
-  if Target = '' then
+  mTarget := FResolutions.Values[LowerCase(AInterface.Name + '.' + AMember.Name)];
+  if mTarget = '' then
   begin
-    Target := AMember.Name;
+    mTarget := AMember.Name;
   end;
-  MethodKey := Key(Target, AMember.ParamTypes);
-  for Method in FMethods do
+  mMethodKey := Key(mTarget, AMember.ParamTypes);
+  for mMethod in FMethods do
   begin
-    if Key(Method.Name, Method.ParamTypes) = MethodKey then
+    if Key(mMethod.Name, mMethod.ParamTypes) = mMethodKey then
     begin
-      Result := Result + [Method];
+      Result := Result + [mMethod];
     end;
   end;
 end;
@@ -340,37 +340,37 @@ end;
 procedure THresultScan.CheckMember(const AInterface: TResolvedSymbol; const AUnit: TUnitIndex;
   const AMember: TIndexSymbol);
 var
-  Expected, Actual: TIndexSymbols;
+  mExpected, mActual: TIndexSymbols;
 begin
-  Expected := ExpectedVariants(AUnit, AMember);
+  mExpected := ExpectedVariants(AUnit, AMember);
   // Jede Methode einmal: nur an ihrer ersten Variante.
-  if (Length(Expected) = 0) or (Expected[0].SelectionRange.StartPos.Line <> AMember.SelectionRange.StartPos.Line) then
+  if (Length(mExpected) = 0) or (mExpected[0].SelectionRange.StartPos.Line <> AMember.SelectionRange.StartPos.Line) then
   begin
     Exit;
   end;
-  Actual := ActualVariants(AInterface, AMember);
-  if (Length(Actual) > 0) and AllInterchanged(Expected, Actual) then
+  mActual := ActualVariants(AInterface, AMember);
+  if (Length(mActual) > 0) and AllInterchanged(mExpected, mActual) then
   begin
-    ReportMember(AInterface, AMember, Expected, Actual);
+    ReportMember(AInterface, AMember, mExpected, mActual);
   end;
 end;
 
 procedure THresultScan.ReportMember(const AInterface: TResolvedSymbol; const AMember: TIndexSymbol; const AExpected,
   AActual: TIndexSymbols);
 var
-  Method: TIndexSymbol;
-  Fix: TRuleFix;
-  Fixes: TArray<TRuleFix>;
+  mMethod: TIndexSymbol;
+  mFix: TRuleFix;
+  mFixes: TArray<TRuleFix>;
 begin
-  for Method in AActual do
+  for mMethod in AActual do
   begin
-    Fixes := nil;
-    if (Length(AExpected) = 1) and (Length(AActual) = 1) and AlignFix(Method, AMember.TypeName, Fix) then
+    mFixes := nil;
+    if (Length(AExpected) = 1) and (Length(AActual) = 1) and AlignFix(mMethod, AMember.TypeName, mFix) then
     begin
-      Fixes := [Fix];
+      mFixes := [mFix];
     end;
-    FReport.Add(Method.SelectionRange, cTexts[TTypeChecksHresultText.Mismatch].Fmt(
-      [AInterface.Name, AMember.Name, AMember.TypeName, Method.TypeName]), TRuleConfidence.High, Fixes);
+    FReport.Add(mMethod.SelectionRange, cTexts[TTypeChecksHresultText.Mismatch].Fmt(
+      [AInterface.Name, AMember.Name, AMember.TypeName, mMethod.TypeName]), TRuleConfidence.High, mFixes);
   end;
 end;
 
@@ -378,22 +378,22 @@ end;
 
 function THresultIntegerMixRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(HresultIntegerMixRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cHresultIntegerMixRuleId, TRuleSeverity.Warning,
     cTexts[TTypeChecksHresultText.Title].Text);
 end;
 
 /// <summary>1 für HRESULT, 2 für Integer bzw. LongInt, 0 sonst.</summary>
 function ResultFamily(const AType: string): Integer;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := Trim(AType);
-  Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
-  if SameText(Name, 'HRESULT') then
+  mName := Trim(AType);
+  mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
+  if SameText(mName, 'HRESULT') then
   begin
     Result := 1;
   end
-  else if SameText(Name, 'Integer') or SameText(Name, 'LongInt') then
+  else if SameText(mName, 'Integer') or SameText(mName, 'LongInt') then
   begin
     Result := 2;
   end
@@ -411,39 +411,39 @@ end;
 
 procedure THresultIntegerMixRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName: string;
-  Local: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Scan: THresultScan;
+  mFileName: string;
+  mLocal: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mScan: THresultScan;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or (not ContainsText(AContext.Text, 'HRESULT') and
     not ContainsText(AContext.Text, 'Integer') and not ContainsText(AContext.Text, 'LongInt')) then
   begin
     Exit;
   end;
-  FileName := ResolverFileName(AContext);
+  mFileName := ResolverFileName(AContext);
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
-  Resolver.PinTree(AContext.Tree, FileName);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver.PinTree(AContext.Tree, mFileName);
   try
-    Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
-    Scan := THresultScan.Create(Resolver, Local, PreOrder(AContext.Tree.Root), AReport);
+    mLocal := mResolver.ExtractedUnit(AContext.Tree, mFileName);
+    mScan := THresultScan.Create(mResolver, mLocal, PreOrder(AContext.Tree.Root), AReport);
     try
-      for Symbol in Local.Symbols do
+      for mSymbol in mLocal.Symbols do
       begin
-        if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Length(Symbol.Ancestors) > 0) then
+        if (mSymbol.Kind = TIndexSymbolKind.ClassType) and (Length(mSymbol.Ancestors) > 0) then
         begin
-          Scan.CheckClass(Symbol);
+          mScan.CheckClass(mSymbol);
         end;
       end;
     finally
-      Scan.Free;
+      mScan.Free;
     end;
   finally
-    Resolver.UnpinTree;
+    mResolver.UnpinTree;
   end;
 end;
 

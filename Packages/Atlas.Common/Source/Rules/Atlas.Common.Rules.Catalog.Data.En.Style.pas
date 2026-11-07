@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesEnStyle: array[0..995] of string = (
+  cCatalogLinesEnStyle: array[0..995] of string = (
     '{',
     '      "id": "unused-local",',
     '      "name": "Unused local variable",',
@@ -90,7 +90,9 @@ const
     '      "category": "code-smell",',
     '      "severity": "hint",',
     '      "group": "style",',
-    '      "description": "A string literal with words for people stands in a statement. Move it to a resourcestring so it can be translated. Off by default, low confidence.",',
+    '      "description": "A string literal with words for people stands in a statement. Move it to a resourcestring so it can be translated. Silent for texts nobody translates: arguments of logging and ch' +
+    'eck calls (…Log, Log…, Diagnose, Trace, Debug, Assert, OutputDebugString), comparison and registry calls (StartsText, Pos, ReadString …), masks of FormatDateTime and FormatFloat, markup (HTML from <, ' +
+    'JSON from { or \"key\":, Markdown headings # and ##) and Font.Name; option ignoreCalls names further routines. Off by default, low confidence.",',
     '      "bad": "ShowMessage(''File not found'');",',
     '      "good": "resourcestring\n  SFileNotFound = ''File not found'';\n...\nShowMessage(SFileNotFound);"',
     '    },',
@@ -459,9 +461,10 @@ const
     '      "category": "code-smell",',
     '      "severity": "hint",',
     '      "group": "style",',
-    '      "description": "Number literals (decimal, $hex, floating point, with sign) in statements, outside const sections, types, array bounds and subranges. Allowed values are configurable; DFM coordina' +
-    'tes and tests can be excluded through exclude. Off by default and low confidence: it shows up once the rule is switched on and minConfidence is low. Quick fix: Introduce constant (#50) in the const se' +
-    'ction of the routine.",',
+    '      "description": "Number literals (decimal, $hex, floating point, with sign) in statements, outside const sections, types, array bounds and subranges. Numbers that speak for themselves stay silent' +
+    ': the DPI base 96 in MulDiv, full bit masks ($FF, $FFFF, $FFFFFFFF), time units 24, 60, 1000 and 3600 in *, /, div and mod, and arguments of calls in an array literal whose arguments are all numbers (' +
+    'point lists such as [P(3.5, 1.5), P(9.5, 1.5)]); SetBounds(12, 9, 360, 23) is still reported. Allowed values are configurable; DFM coordinates and tests can be excluded through exclude. Off by default' +
+    ' and low confidence: it shows up once the rule is switched on and minConfidence is low. Quick fix: Introduce constant (#50) in the const section of the routine.",',
     '      "bad": "if Tage > 42 then\n  Mahnen;",',
     '      "good": "const\n  Mahnfrist = 42;\n...\nif Tage > Mahnfrist then\n  Mahnen;",',
     '      "options": [',
@@ -602,8 +605,8 @@ const
     '      "severity": "hint",',
     '      "group": "style",',
     '      "description": "Fields in the public or published section of a class. The section without a visibility keyword only counts for classes without an ancestor or with TObject, because the form desig' +
-    'ner puts its fields there. Records are excluded unless includeRecords is set; class var is not reported. Off by default. Quick fix: Encapsulate field moves the field as FName into a private section at' +
-    ' the end of the class and adds property Name read FName write FName in the old section; accesses from outside stay valid.",',
+    'ner puts its fields there. Records are excluded unless includeRecords is set; class var and helper classes declared under a private or protected type section are not reported. Off by default. Quick fi' +
+    'x: Encapsulate field moves the field as FName into a private section at the end of the class and adds property Name read FName write FName in the old section; accesses from outside stay valid.",',
     '      "bad": "TKunde = class\npublic\n  Name: string;\nend;",',
     '      "good": "TKunde = class\nprivate\n  FName: string;\npublic\n  property Name: string read FName write FName;\nend;",',
     '      "options": [',
@@ -1142,10 +1145,10 @@ const
     '      "category": "code-smell",',
     '      "severity": "hint",',
     '      "group": "style",',
-    '      "description": "A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, not an event of the form file, does not' +
-    ' implement an interface and is not used as a method pointer. Experimental: only active when switched on in atlas.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (clas' +
-    's … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine and a record helper for the type of the first parameter, each with a preview of all chang' +
-    'ed calls.",',
+    '      "description": "A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, has no attribute and is not published (' +
+    'DUnitX tests and RTTI call it on the instance), is not an event of the form file, does not implement an interface and is not used as a method pointer. Experimental: only active when switched on in atl' +
+    'as.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (class … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine' +
+    ' and a record helper for the type of the first parameter, each with a preview of all changed calls.",',
     '      "bad": "function TRechner.Doppelt(A: Integer): Integer;\nbegin\n  Result := A * 2;  // no field, no Self\nend;",',
     '      "good": "class function TRechner.Doppelt(A: Integer): Integer; static;\nbegin\n  Result := A * 2;\nend;"',
     '    }');

@@ -51,18 +51,18 @@ type
 
   TCompletionUses = class
   public const
-    GroupNames: array[TUsesGroup] of string = ('project', 'rtl', 'library');
-    SectionNames: array[TUsesSection] of string = ('', 'interface', 'implementation');
+    cGroupNames: array[TUsesGroup] of string = ('project', 'rtl', 'library');
+    cSectionNames: array[TUsesSection] of string = ('', 'interface', 'implementation');
     /// <summary>Namespaces der Units, die RAD Studio mitbringt.</summary>
-    RtlNamespaces: array[0..16] of string = ('System', 'Vcl', 'Winapi', 'Data', 'Xml', 'Soap', 'Web',
+    cRtlNamespaces: array[0..16] of string = ('System', 'Vcl', 'Winapi', 'Data', 'Xml', 'Soap', 'Web',
       'Datasnap', 'FMX', 'REST', 'FireDAC', 'IBX', 'Bde', 'Posix', 'Macapi', 'Androidapi', 'iOSapi');
     /// <summary>Abzug je Gruppe: Projekt vor RTL/VCL vor Drittanbietern, unabhängig vom Treffer.</summary>
-    GroupPenalty = 10000;
+    cGroupPenalty = 10000;
     /// <summary>Abzug für einen Treffer ab einem Namensteil, der ein Namespace des Projekts ist, bzw. ab einem
     /// anderen Namensteil.</summary>
-    NamespacePenalty = 5;
-    PartPenalty = 20;
-    MaxTypes = 6;
+    cNamespacePenalty = 5;
+    cPartPenalty = 20;
+    cMaxTypes = 6;
   public
     class function GroupOf(const AUnit: TUnitIndex): TUsesGroup; static;
     /// <summary>uses-Listen um APosition: Abschnitt, eingebundene Units hier und im anderen Abschnitt. Liest auch
@@ -112,18 +112,18 @@ end;
 
 function JoinParts(const AParts: TArray<string>; AFrom: Integer): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := AFrom to High(AParts) do
+  for mIndex := AFrom to High(AParts) do
   begin
     if Result = '' then
     begin
-      Result := AParts[Index];
+      Result := AParts[mIndex];
     end
     else
     begin
-      Result := Result + '.' + AParts[Index];
+      Result := Result + '.' + AParts[mIndex];
     end;
   end;
 end;
@@ -132,25 +132,25 @@ end;
 
 class function TCompletionUses.GroupOf(const AUnit: TUnitIndex): TUsesGroup;
 var
-  Namespace, Path, Known: string;
+  mNamespace, mPath, mKnown: string;
 begin
   if not AUnit.Library_ then
   begin
     Exit(TUsesGroup.Project);
   end;
-  Path := LowerCase(AUnit.FileName.Replace('/', '\'));
-  if Pos('\embarcadero\studio\', Path) > 0 then
+  mPath := LowerCase(AUnit.FileName.Replace('/', '\'));
+  if Pos('\embarcadero\studio\', mPath) > 0 then
   begin
     Exit(TUsesGroup.Rtl);
   end;
-  Namespace := '';
+  mNamespace := '';
   if Pos('.', AUnit.UnitName) > 0 then
   begin
-    Namespace := Copy(AUnit.UnitName, 1, Pos('.', AUnit.UnitName) - 1);
+    mNamespace := Copy(AUnit.UnitName, 1, Pos('.', AUnit.UnitName) - 1);
   end;
-  for Known in RtlNamespaces do
+  for mKnown in cRtlNamespaces do
   begin
-    if SameText(Namespace, Known) then
+    if SameText(mNamespace, mKnown) then
     begin
       Exit(TUsesGroup.Rtl);
     end;
@@ -338,13 +338,13 @@ begin
   begin
     Exit;
   end;
-  Result := TCompletionUses.PartPenalty;
+  Result := TCompletionUses.cPartPenalty;
   mLead := JoinParts(Copy(AParts, 0, APart), 0);
   for mNamespace in ANamespaces do
   begin
     if SameText(mNamespace, mLead) then
     begin
-      Result := TCompletionUses.NamespacePenalty;
+      Result := TCompletionUses.cNamespacePenalty;
     end;
   end;
 end;
@@ -356,7 +356,7 @@ var
   mPart, mDots, mScore: Integer;
 begin
   AMatch := Default(TUsesMatch);
-  AMatch.Score := TFuzzyMatch.NoMatch;
+  AMatch.Score := TFuzzyMatch.cNoMatch;
   mParts := AUnitName.Split(['.']);
   mDots := Length(APrefix) - Length(APrefix.Replace('.', ''));
   Result := False;
@@ -368,7 +368,7 @@ begin
       Break;
     end;
     mScore := MatchScore(JoinParts(mParts, mPart), APrefix, AMatching);
-    if mScore = TFuzzyMatch.NoMatch then
+    if mScore = TFuzzyMatch.cNoMatch then
     begin
       Continue;
     end;
@@ -384,38 +384,38 @@ end;
 
 class function TCompletionUses.ShortPath(const AFileName: string): string;
 const
-  Marker = '\embarcadero\studio\';
+  cMarker = '\embarcadero\studio\';
 var
-  Path: string;
-  Start, Stop: Integer;
+  mPath: string;
+  mStart, mStop: Integer;
 begin
   Result := AFileName;
-  Path := AFileName.Replace('/', '\');
-  Start := Pos(Marker, LowerCase(Path));
-  if Start = 0 then
+  mPath := AFileName.Replace('/', '\');
+  mStart := Pos(cMarker, LowerCase(mPath));
+  if mStart = 0 then
   begin
     Exit;
   end;
   // Hinter "Studio\" steht die Version ("37.0"), dann der Rest unter $(BDS).
-  Stop := PosEx('\', Path, Start + Length(Marker));
-  if Stop = 0 then
+  mStop := PosEx('\', mPath, mStart + Length(cMarker));
+  if mStop = 0 then
   begin
     Exit;
   end;
-  Result := '$(BDS)' + Copy(Path, Stop, MaxInt);
+  Result := '$(BDS)' + Copy(mPath, mStop, MaxInt);
 end;
 
 class function TCompletionUses.ExportedTypes(const AUnit: TUnitIndex; AMax: Integer;
   out ACount: Integer): TArray<string>;
 var
-  Symbol: TIndexSymbol;
-  Name: string;
+  mSymbol: TIndexSymbol;
+  mName: string;
 begin
   Result := nil;
   ACount := 0;
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if not Symbol.InInterface or (Symbol.Container <> '') or not (Symbol.Kind in IndexTypeKinds) then
+    if not mSymbol.InInterface or (mSymbol.Container <> '') or not (mSymbol.Kind in cIndexTypeKinds) then
     begin
       Continue;
     end;
@@ -424,12 +424,12 @@ begin
     begin
       Continue;
     end;
-    Name := Symbol.Name;
-    if Symbol.TypeParams <> '' then
+    mName := mSymbol.Name;
+    if mSymbol.TypeParams <> '' then
     begin
-      Name := Name + '<' + Symbol.TypeParams.Replace(' ', '') + '>';
+      mName := mName + '<' + mSymbol.TypeParams.Replace(' ', '') + '>';
     end;
-    Result := Result + [Name];
+    Result := Result + [mName];
   end;
 end;
 
@@ -603,17 +603,17 @@ end;
 class function TCompletionUses.Hidden(const ASite: TUsesSite; const APrefix: string;
   const ANamespaces: TArray<string>; AMatching: TCompletionMatching): TArray<string>;
 var
-  Name: string;
-  Found: TUsesMatch;
+  mName: string;
+  mFound: TUsesMatch;
 begin
   Result := nil;
   if APrefix <> '' then
   begin
-    for Name in ASite.Here do
+    for mName in ASite.Here do
     begin
-      if Match(Name, APrefix, ANamespaces, AMatching, Found) then
+      if Match(mName, APrefix, ANamespaces, AMatching, mFound) then
       begin
-        Result := Result + [Name];
+        Result := Result + [mName];
       end;
     end;
   end;
@@ -655,10 +655,10 @@ begin
   begin
     Exit;
   end;
-  Result := TCompletionUses.SectionNames[TUsesSection.Interface_];
+  Result := TCompletionUses.cSectionNames[TUsesSection.Interface_];
   if Site.Section = TUsesSection.Interface_ then
   begin
-    Result := TCompletionUses.SectionNames[TUsesSection.Implementation_];
+    Result := TCompletionUses.cSectionNames[TUsesSection.Implementation_];
   end;
 end;
 
@@ -670,7 +670,7 @@ var
 begin
   Result := Default(TCompletionItem);
   Result.Name := AUnitInfo.UnitName;
-  Result.Kind := KindModule;
+  Result.Kind := cKindModule;
   Result.Detail := TCompletionUses.ShortPath(AUnitInfo.FileName);
   Result.HasTextEdit := True;
   Result.TextEdit := TTextEdit.Create(Range, AUnitInfo.UnitName);
@@ -678,14 +678,14 @@ begin
   begin
     Result.FilterText := Prefix;
   end;
-  Result.UsesGroup := TCompletionUses.GroupNames[AGroup];
+  Result.UsesGroup := TCompletionUses.cGroupNames[AGroup];
   Result.UsesFilter := AFound.Filter;
   Result.UsesElsewhere := Elsewhere(AUnitInfo.UnitName);
   if (Cycles <> nil) and Cycles.TryGetValue(UpperCase(AUnitInfo.UnitName), mChain) then
   begin
     Result.UsesCycle := mChain;
   end;
-  Result.UsesTypes := TCompletionUses.ExportedTypes(AUnitInfo, TCompletionUses.MaxTypes, mCount);
+  Result.UsesTypes := TCompletionUses.ExportedTypes(AUnitInfo, TCompletionUses.cMaxTypes, mCount);
   Result.UsesTypeCount := mCount;
   Result.UsesHidden := HiddenUnits;
 end;
@@ -763,7 +763,7 @@ begin
       if mItems.Wanted(mUnitInfo, mFound) then
       begin
         mGroup := GroupOf(mUnitInfo);
-        ACollector.AddItem(mItems.Item(mUnitInfo, mFound, mGroup), mFound.Score - Ord(mGroup) * GroupPenalty);
+        ACollector.AddItem(mItems.Item(mUnitInfo, mFound, mGroup), mFound.Score - Ord(mGroup) * cGroupPenalty);
       end;
     end;
   finally

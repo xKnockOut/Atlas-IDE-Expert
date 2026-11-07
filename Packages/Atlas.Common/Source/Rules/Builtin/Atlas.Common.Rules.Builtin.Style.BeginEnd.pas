@@ -13,7 +13,7 @@ uses
 type
   TMissingBeginEndRule = class(TInterfacedObject, IRule)
   public const
-    DefaultStatements: array[0..4] of string = ('if', 'else', 'for', 'while', 'with');
+    cDefaultStatements: array[0..4] of string = ('if', 'else', 'for', 'while', 'with');
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -126,29 +126,29 @@ type
 
 constructor TBeginEndSites.Create(const AContext: TRuleContext);
 var
-  Style: TFormatStyle;
-  Index: Integer;
+  mStyle: TFormatStyle;
+  mIndex: Integer;
 begin
   inherited Create;
   FText := AContext.Text;
   FTokens := AContext.Tree.Tokens;
   FLines := TTextLines.SplitLines(AContext.Text, FLineBreak);
-  Style := AContext.Formatting;
-  if Style.IndentSize <= 0 then
+  mStyle := AContext.Formatting;
+  if mStyle.IndentSize <= 0 then
   begin
-    Style.IndentSize := 2;
+    mStyle.IndentSize := 2;
   end;
-  FIndentUnit := TFormatLayout.IndentUnit(Style);
-  FElsePlacement := Style.ElsePlacement;
-  if Style.EndOfLine <> '' then
+  FIndentUnit := TFormatLayout.IndentUnit(mStyle);
+  FElsePlacement := mStyle.ElsePlacement;
+  if mStyle.EndOfLine <> '' then
   begin
-    FLineBreak := Style.EndOfLine;
+    FLineBreak := mStyle.EndOfLine;
   end;
   FPaths := TConditionalBranches.Paths(FTokens);
-  SetLength(FStatements, Length(TMissingBeginEndRule.DefaultStatements));
-  for Index := 0 to High(TMissingBeginEndRule.DefaultStatements) do
+  SetLength(FStatements, Length(TMissingBeginEndRule.cDefaultStatements));
+  for mIndex := 0 to High(TMissingBeginEndRule.cDefaultStatements) do
   begin
-    FStatements[Index] := TMissingBeginEndRule.DefaultStatements[Index];
+    FStatements[mIndex] := TMissingBeginEndRule.cDefaultStatements[mIndex];
   end;
   FStatements := TRuleOptions.Strings(AContext.Options, 'statements', FStatements);
   FAllowSingleLineExit := TRuleOptions.Bool(AContext.Options, 'allowSingleLineExit', False);
@@ -160,40 +160,40 @@ end;
 
 procedure TBeginEndSites.SortSites;
 var
-  Index, Other: Integer;
-  Site: TBodySite;
+  mIndex, mOther: Integer;
+  mSite: TBodySite;
 begin
   // Nach dem Schlüsselwort ordnen (else steht hinter den Stellen im then-Zweig); fast schon sortiert.
-  for Index := 1 to High(FSites) do
+  for mIndex := 1 to High(FSites) do
   begin
-    Site := FSites[Index];
-    Other := Index - 1;
-    while (Other >= 0) and (FSites[Other].Keyword > Site.Keyword) do
+    mSite := FSites[mIndex];
+    mOther := mIndex - 1;
+    while (mOther >= 0) and (FSites[mOther].Keyword > mSite.Keyword) do
     begin
-      FSites[Other + 1] := FSites[Other];
-      Dec(Other);
+      FSites[mOther + 1] := FSites[mOther];
+      Dec(mOther);
     end;
-    FSites[Other + 1] := Site;
+    FSites[mOther + 1] := mSite;
   end;
 end;
 
 function TBeginEndSites.TokenAtOffset(AOffset: Integer): Integer;
 var
-  Upper, Middle: Integer;
+  mUpper, mMiddle: Integer;
 begin
   // Erstes Token ab AOffset (die Tokens sind nach Offset sortiert).
   Result := 0;
-  Upper := Length(FTokens);
-  while Result < Upper do
+  mUpper := Length(FTokens);
+  while Result < mUpper do
   begin
-    Middle := (Result + Upper) div 2;
-    if FTokens[Middle].Offset < AOffset then
+    mMiddle := (Result + mUpper) div 2;
+    if FTokens[mMiddle].Offset < AOffset then
     begin
-      Result := Middle + 1;
+      Result := mMiddle + 1;
     end
     else
     begin
-      Upper := Middle;
+      mUpper := mMiddle;
     end;
   end;
 end;
@@ -210,16 +210,16 @@ end;
 
 function TBeginEndSites.StartsLine(AToken: Integer): Boolean;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
-  Line := FTokens[AToken].StartPos.Line;
-  Result := (Line < Length(FLines)) and (Trim(Copy(FLines[Line], 1, FTokens[AToken].StartPos.Character)) = '');
+  mLine := FTokens[AToken].StartPos.Line;
+  Result := (mLine < Length(FLines)) and (Trim(Copy(FLines[mLine], 1, FTokens[AToken].StartPos.Character)) = '');
 end;
 
 function TBeginEndSites.Conditional(AFirst, ALast: Integer): Boolean;
 var
-  Index: Integer;
-  Path: string;
+  mIndex: Integer;
+  mPath: string;
 begin
   // Rumpf mit {$IFDEF}: Der Baum enthält beide Zweige; ohne sichere Lage keine Meldung.
   Result := False;
@@ -227,10 +227,10 @@ begin
   begin
     Exit;
   end;
-  Path := TConditionalBranches.PathAt(FPaths, AFirst);
-  for Index := AFirst to Min(ALast, High(FTokens)) do
+  mPath := TConditionalBranches.PathAt(FPaths, AFirst);
+  for mIndex := AFirst to Min(ALast, High(FTokens)) do
   begin
-    if TConditionalBranches.PathAt(FPaths, Index) <> Path then
+    if TConditionalBranches.PathAt(FPaths, mIndex) <> mPath then
     begin
       Exit(True);
     end;
@@ -239,17 +239,17 @@ end;
 
 function TBeginEndSites.Allowed(ALead, AFirst, ALast: Integer): Boolean;
 var
-  SameLine: Boolean;
+  mSameLine: Boolean;
 begin
-  SameLine := FTokens[ALast].EndPos.Line = FTokens[ALead].StartPos.Line;
-  Result := SameLine and (FAllowSameLine or (FAllowSingleLineExit and
+  mSameLine := FTokens[ALast].EndPos.Line = FTokens[ALead].StartPos.Line;
+  Result := mSameLine and (FAllowSameLine or (FAllowSingleLineExit and
     MatchText(FTokens[AFirst].Text, ['Exit', 'Continue', 'Break', 'raise'])));
 end;
 
 procedure TBeginEndSites.Add(const AName: string; AKeyword, ALead, AAnchor: Integer; ABody,
   ARoutine: TSyntaxNode);
 var
-  Site: TBodySite;
+  mSite: TBodySite;
 begin
   // Schon Blöcke: begin … end, asm … end, try … end, repeat … until, case … end.
   if ABody.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.TryStatement, TSyntaxKind.RepeatStatement,
@@ -261,82 +261,83 @@ begin
   begin
     Exit;
   end;
-  Site := Default(TBodySite);
-  Site.Name := AName;
-  Site.Keyword := AKeyword;
-  Site.Lead := ALead;
-  Site.Anchor := AAnchor;
-  Site.Routine := ARoutine;
-  Site.First := TokenAtOffset(ABody.StartOffset);
-  Site.Last := LastTokenOf(ABody);
-  if (Site.First > High(FTokens)) or (Site.Last < Site.First) or (FTokens[Site.First].Offset <> ABody.StartOffset) then
+  mSite := Default(TBodySite);
+  mSite.Name := AName;
+  mSite.Keyword := AKeyword;
+  mSite.Lead := ALead;
+  mSite.Anchor := AAnchor;
+  mSite.Routine := ARoutine;
+  mSite.First := TokenAtOffset(ABody.StartOffset);
+  mSite.Last := LastTokenOf(ABody);
+  if (mSite.First > High(FTokens)) or (mSite.Last < mSite.First) or
+    (FTokens[mSite.First].Offset <> ABody.StartOffset) then
   begin
     Exit;
   end;
-  if Conditional(ALead, NextCode(FTokens, Site.Last + 1)) or Allowed(ALead, Site.First, Site.Last) then
+  if Conditional(ALead, NextCode(FTokens, mSite.Last + 1)) or Allowed(ALead, mSite.First, mSite.Last) then
   begin
     Exit;
   end;
-  FSites := FSites + [Site];
+  FSites := FSites + [mSite];
 end;
 
 procedure TBeginEndSites.Visit(ANode, ARoutine: TSyntaxNode);
 var
-  Stack: TArray<TSyntaxNode>;
-  Routines: TArray<TSyntaxNode>;
-  Count, Index: Integer;
-  Node, Routine: TSyntaxNode;
+  mStack: TArray<TSyntaxNode>;
+  mRoutines: TArray<TSyntaxNode>;
+  mCount, mIndex: Integer;
+  mNode, mRoutine: TSyntaxNode;
 begin
   // Ohne Rekursion: Ausdrücke können sehr tief sein (#1094).
-  SetLength(Stack, 64);
-  SetLength(Routines, 64);
-  Stack[0] := ANode;
-  Routines[0] := ARoutine;
-  Count := 1;
-  while Count > 0 do
+  SetLength(mStack, 64);
+  SetLength(mRoutines, 64);
+  mStack[0] := ANode;
+  mRoutines[0] := ARoutine;
+  mCount := 1;
+  while mCount > 0 do
   begin
-    Dec(Count);
-    Node := Stack[Count];
-    Routine := Routines[Count];
-    if Node.Kind = TSyntaxKind.RoutineDecl then
+    Dec(mCount);
+    mNode := mStack[mCount];
+    mRoutine := mRoutines[mCount];
+    if mNode.Kind = TSyntaxKind.RoutineDecl then
     begin
-      Routine := Node;
+      mRoutine := mNode;
     end;
-    if Count + Node.ChildCount > Length(Stack) then
+    if mCount + mNode.ChildCount > Length(mStack) then
     begin
-      SetLength(Stack, 2 * (Count + Node.ChildCount));
-      SetLength(Routines, Length(Stack));
+      SetLength(mStack, 2 * (mCount + mNode.ChildCount));
+      SetLength(mRoutines, Length(mStack));
     end;
-    for Index := Node.ChildCount - 1 downto 0 do
+    for mIndex := mNode.ChildCount - 1 downto 0 do
     begin
-      Stack[Count] := Node[Index];
-      Routines[Count] := Routine;
-      Inc(Count);
+      mStack[mCount] := mNode[mIndex];
+      mRoutines[mCount] := mRoutine;
+      Inc(mCount);
     end;
-    VisitNode(Node, Routine);
+    VisitNode(mNode, mRoutine);
   end;
 end;
 
 procedure TBeginEndSites.VisitNode(ANode, ARoutine: TSyntaxNode);
 var
-  Keyword: Integer;
+  mKeyword: Integer;
 begin
   if ANode.ChildCount = 0 then
   begin
     Exit;
   end;
-  Keyword := TokenAtOffset(ANode.StartOffset);
-  if Keyword > High(FTokens) then
+  mKeyword := TokenAtOffset(ANode.StartOffset);
+  if mKeyword > High(FTokens) then
   begin
     Exit;
   end;
   case ANode.Kind of
     TSyntaxKind.IfStatement:
-      VisitIf(ANode, ARoutine, Keyword);
+      VisitIf(ANode, ARoutine, mKeyword);
     TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement, TSyntaxKind.WithStatement:
-      VisitBody(ANode, ARoutine, Keyword, LowerCase(FTokens[Keyword].Text));
+      VisitBody(ANode, ARoutine, mKeyword, LowerCase(FTokens[mKeyword].Text));
     TSyntaxKind.CaseItem:
-      VisitBody(ANode, ARoutine, Keyword, 'case');
+      VisitBody(ANode, ARoutine, mKeyword, 'case');
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -344,218 +345,218 @@ end;
 
 procedure TBeginEndSites.VisitIf(ANode, ARoutine: TSyntaxNode; AKeyword: Integer);
 var
-  Lead, Next: Integer;
-  Body: TSyntaxNode;
+  mLead, mNext: Integer;
+  mBody: TSyntaxNode;
 begin
-  Lead := NextCode(FTokens, LastTokenOf(ANode[0]) + 1);
-  if (Lead > High(FTokens)) or not FTokens[Lead].IsKeyword('then') then
+  mLead := NextCode(FTokens, LastTokenOf(ANode[0]) + 1);
+  if (mLead > High(FTokens)) or not FTokens[mLead].IsKeyword('then') then
   begin
     Exit;
   end;
-  Next := NextCode(FTokens, Lead + 1);
-  Body := nil;
-  if (ANode.ChildCount > 1) and (Next <= High(FTokens)) and (ANode[1].StartOffset = FTokens[Next].Offset) then
+  mNext := NextCode(FTokens, mLead + 1);
+  mBody := nil;
+  if (ANode.ChildCount > 1) and (mNext <= High(FTokens)) and (ANode[1].StartOffset = FTokens[mNext].Offset) then
   begin
-    Body := ANode[1];
-    Add('if', AKeyword, Lead, AKeyword, Body, ARoutine);
+    mBody := ANode[1];
+    Add('if', AKeyword, mLead, AKeyword, mBody, ARoutine);
   end;
-  VisitElse(ANode, ARoutine, Body, AKeyword);
+  VisitElse(ANode, ARoutine, mBody, AKeyword);
 end;
 
 procedure TBeginEndSites.VisitElse(ANode, ARoutine, ABody: TSyntaxNode; AKeyword: Integer);
 var
-  Last: TSyntaxNode;
-  ElseToken: Integer;
+  mLast: TSyntaxNode;
+  mElseToken: Integer;
 begin
   // else: das letzte Kind, wenn davor else steht; else if braucht keinen eigenen Block.
-  Last := ANode[ANode.ChildCount - 1];
-  if (Last = ANode[0]) or (Last = ABody) or (Last.Kind = TSyntaxKind.IfStatement) then
+  mLast := ANode[ANode.ChildCount - 1];
+  if (mLast = ANode[0]) or (mLast = ABody) or (mLast.Kind = TSyntaxKind.IfStatement) then
   begin
     Exit;
   end;
-  ElseToken := PreviousCode(FTokens, TokenAtOffset(Last.StartOffset));
-  if (ElseToken < 0) or not FTokens[ElseToken].IsKeyword('else') then
+  mElseToken := PreviousCode(FTokens, TokenAtOffset(mLast.StartOffset));
+  if (mElseToken < 0) or not FTokens[mElseToken].IsKeyword('else') then
   begin
     Exit;
   end;
-  if StartsLine(ElseToken) then
+  if StartsLine(mElseToken) then
   begin
-    Add('else', ElseToken, ElseToken, ElseToken, Last, ARoutine);
+    Add('else', mElseToken, mElseToken, mElseToken, mLast, ARoutine);
   end
   else
   begin
-    Add('else', ElseToken, ElseToken, AKeyword, Last, ARoutine);
+    Add('else', mElseToken, mElseToken, AKeyword, mLast, ARoutine);
   end;
 end;
 
 procedure TBeginEndSites.VisitBody(ANode, ARoutine: TSyntaxNode; AKeyword: Integer; const AName: string);
 var
-  Last: TSyntaxNode;
-  Lead: Integer;
-  Fits: Boolean;
+  mLast: TSyntaxNode;
+  mLead: Integer;
+  mFits: Boolean;
 begin
   // Rumpf hinter do (Schleifen, with) bzw. hinter : (case-Zweig).
-  Last := ANode[ANode.ChildCount - 1];
-  Lead := PreviousCode(FTokens, TokenAtOffset(Last.StartOffset));
-  if Lead < 0 then
+  mLast := ANode[ANode.ChildCount - 1];
+  mLead := PreviousCode(FTokens, TokenAtOffset(mLast.StartOffset));
+  if mLead < 0 then
   begin
     Exit;
   end;
   if AName = 'case' then
   begin
-    Fits := FTokens[Lead].IsSymbol(':');
+    mFits := FTokens[mLead].IsSymbol(':');
   end
   else
   begin
-    Fits := FTokens[Lead].IsKeyword('do');
+    mFits := FTokens[mLead].IsKeyword('do');
   end;
-  if Fits then
+  if mFits then
   begin
-    Add(AName, AKeyword, Lead, AKeyword, Last, ARoutine);
+    Add(AName, AKeyword, mLead, AKeyword, mLast, ARoutine);
   end;
 end;
 
 function TBeginEndSites.Indent(ASite: Integer; const AChosen: TArray<Boolean>): string;
 var
-  Anchor, Index: Integer;
+  mAnchor, mIndex: Integer;
 begin
-  Anchor := FSites[ASite].Anchor;
-  if StartsLine(Anchor) then
+  mAnchor := FSites[ASite].Anchor;
+  if StartsLine(mAnchor) then
   begin
-    Exit(TTextLines.IndentOf(FLines[FTokens[Anchor].StartPos.Line]));
+    Exit(TTextLines.IndentOf(FLines[FTokens[mAnchor].StartPos.Line]));
   end;
   // Steht die Anweisung hinter then/do in derselben Zeile, kommt sie mit der Korrektur in eine eigene Zeile.
-  for Index := 0 to High(FSites) do
+  for mIndex := 0 to High(FSites) do
   begin
-    if AChosen[Index] and (FSites[Index].First = Anchor) and
-      (FTokens[FSites[Index].Lead].StartPos.Line = FTokens[Anchor].StartPos.Line) then
+    if AChosen[mIndex] and (FSites[mIndex].First = mAnchor) and
+      (FTokens[FSites[mIndex].Lead].StartPos.Line = FTokens[mAnchor].StartPos.Line) then
     begin
-      Exit(Indent(Index, AChosen) + FIndentUnit);
+      Exit(Indent(mIndex, AChosen) + FIndentUnit);
     end;
   end;
-  Result := TTextLines.IndentOf(FLines[FTokens[Anchor].StartPos.Line]);
+  Result := TTextLines.IndentOf(FLines[FTokens[mAnchor].StartPos.Line]);
 end;
 
 function TBeginEndSites.BeginEdit(ASite: Integer; const AChosen: TArray<Boolean>): TRuleEdit;
 var
-  Own, Gap, Text: string;
-  LeadEnd: Integer;
+  mOwn, mGap, mText: string;
+  mLeadEnd: Integer;
 begin
   // Vorn: begin in eigener Zeile auf der Einrückung der Anweisung; ein Rumpf aus derselben Zeile rückt ein.
-  Own := Indent(ASite, AChosen);
-  LeadEnd := FTokens[FSites[ASite].Lead].Offset + Length(FTokens[FSites[ASite].Lead].Text);
-  Gap := Copy(FText, LeadEnd + 1, FTokens[FSites[ASite].First].Offset - LeadEnd);
-  if Pos(#10, Gap) > 0 then
+  mOwn := Indent(ASite, AChosen);
+  mLeadEnd := FTokens[FSites[ASite].Lead].Offset + Length(FTokens[FSites[ASite].Lead].Text);
+  mGap := Copy(FText, mLeadEnd + 1, FTokens[FSites[ASite].First].Offset - mLeadEnd);
+  if Pos(#10, mGap) > 0 then
   begin
-    Text := FLineBreak + Own + 'begin' + Gap;
+    mText := FLineBreak + mOwn + 'begin' + mGap;
   end
   else
   begin
-    Text := FLineBreak + Own + 'begin' + FLineBreak + Own + FIndentUnit + Trim(Gap);
-    if Trim(Gap) <> '' then
+    mText := FLineBreak + mOwn + 'begin' + FLineBreak + mOwn + FIndentUnit + Trim(mGap);
+    if Trim(mGap) <> '' then
     begin
-      Text := Text + ' ';
+      mText := mText + ' ';
     end;
   end;
   Result := TRuleEdit.Create(TTextRange.Create(FTokens[FSites[ASite].Lead].EndPos,
-    FTokens[FSites[ASite].First].StartPos), Text);
+    FTokens[FSites[ASite].First].StartPos), mText);
 end;
 
 function TBeginEndSites.EndEdit(ASite: Integer; const AChosen: TArray<Boolean>;
   const ADone: TArray<Boolean>): TRuleEdit;
 var
-  Text: string;
-  Outer, Index: Integer;
-  Range: TTextRange;
+  mText: string;
+  mOuter, mIndex: Integer;
+  mRange: TTextRange;
 begin
   // Hinten: alle Rümpfe, die am selben Token enden, innen zuerst. Das Semikolon steht im Block, vor else
   // also keins (E2153). ADone ist ein dynamisches Array: die erledigten Stellen stehen danach beim Aufrufer.
-  Text := '';
-  Outer := -1;
+  mText := '';
+  mOuter := -1;
   // Die Stellen sind nach Schlüsselwort geordnet: von hinten ist die innere zuerst dran.
-  for Index := High(FSites) downto 0 do
+  for mIndex := High(FSites) downto 0 do
   begin
-    if not AChosen[Index] or (FSites[Index].Last <> FSites[ASite].Last) then
+    if not AChosen[mIndex] or (FSites[mIndex].Last <> FSites[ASite].Last) then
     begin
       Continue;
     end;
-    ADone[Index] := True;
-    Outer := Index;
-    Text := Text + ';' + FLineBreak + Indent(Index, AChosen) + 'end';
+    ADone[mIndex] := True;
+    mOuter := mIndex;
+    mText := mText + ';' + FLineBreak + Indent(mIndex, AChosen) + 'end';
   end;
-  Range := TTextRange.Create(FTokens[FSites[ASite].Last].EndPos, FTokens[FSites[ASite].Last].EndPos);
-  JoinElse(ASite, Outer, AChosen, Text, Range);
-  Result := TRuleEdit.Create(Range, Text);
+  mRange := TTextRange.Create(FTokens[FSites[ASite].Last].EndPos, FTokens[FSites[ASite].Last].EndPos);
+  JoinElse(ASite, mOuter, AChosen, mText, mRange);
+  Result := TRuleEdit.Create(mRange, mText);
 end;
 
 procedure TBeginEndSites.JoinElse(ASite, AOuter: Integer; const AChosen: TArray<Boolean>; var AText: string;
   var ARange: TTextRange);
 var
-  Next, LeadEnd: Integer;
-  Gap: string;
+  mNext, mLeadEnd: Integer;
+  mGap: string;
 begin
-  Next := NextCode(FTokens, FSites[ASite].Last + 1);
-  if (Next > High(FTokens)) or not FTokens[Next].IsKeyword('else') then
+  mNext := NextCode(FTokens, FSites[ASite].Last + 1);
+  if (mNext > High(FTokens)) or not FTokens[mNext].IsKeyword('else') then
   begin
     Exit;
   end;
-  LeadEnd := FTokens[FSites[ASite].Last].Offset + Length(FTokens[FSites[ASite].Last].Text);
-  Gap := Copy(FText, LeadEnd + 1, FTokens[Next].Offset - LeadEnd);
+  mLeadEnd := FTokens[FSites[ASite].Last].Offset + Length(FTokens[FSites[ASite].Last].Text);
+  mGap := Copy(FText, mLeadEnd + 1, FTokens[mNext].Offset - mLeadEnd);
   // format.elsePlacement sameLine: end else. Nur ohne Kommentar dazwischen, der ginge sonst verloren.
-  if (FElsePlacement = TBlockPlacement.SameLine) and (Trim(Gap) = '') then
+  if (FElsePlacement = TBlockPlacement.SameLine) and (Trim(mGap) = '') then
   begin
     AText := AText + ' ';
-    ARange.EndPos := FTokens[Next].StartPos;
+    ARange.EndPos := FTokens[mNext].StartPos;
   end
-  else if FTokens[Next].StartPos.Line = FTokens[FSites[ASite].Last].EndPos.Line then
+  else if FTokens[mNext].StartPos.Line = FTokens[FSites[ASite].Last].EndPos.Line then
   begin
     AText := AText + FLineBreak + Indent(AOuter, AChosen);
-    ARange.EndPos := FTokens[Next].StartPos;
+    ARange.EndPos := FTokens[mNext].StartPos;
   end;
 end;
 
 function TBeginEndSites.Edits(const ASites: TArray<Integer>): TArray<TRuleEdit>;
 var
-  Chosen, Done: TArray<Boolean>;
-  Site, Count: Integer;
+  mChosen, mDone: TArray<Boolean>;
+  mSite, mCount: Integer;
 begin
   // Höchstens zwei Edits je Stelle: vorn begin, hinten end (gleiche Enden zusammengefasst).
   SetLength(Result, 2 * Length(ASites));
-  Count := 0;
-  SetLength(Chosen, Length(FSites));
-  SetLength(Done, Length(FSites));
-  for Site in ASites do
+  mCount := 0;
+  SetLength(mChosen, Length(FSites));
+  SetLength(mDone, Length(FSites));
+  for mSite in ASites do
   begin
-    Chosen[Site] := True;
+    mChosen[mSite] := True;
   end;
-  for Site in ASites do
+  for mSite in ASites do
   begin
-    Result[Count] := BeginEdit(Site, Chosen);
-    Inc(Count);
+    Result[mCount] := BeginEdit(mSite, mChosen);
+    Inc(mCount);
   end;
-  for Site in ASites do
+  for mSite in ASites do
   begin
-    if Done[Site] then
+    if mDone[mSite] then
     begin
       Continue;
     end;
-    Result[Count] := EndEdit(Site, Chosen, Done);
-    Inc(Count);
+    Result[mCount] := EndEdit(mSite, mChosen, mDone);
+    Inc(mCount);
   end;
-  SetLength(Result, Count);
+  SetLength(Result, mCount);
 end;
 
 /// <summary>Indizes der Stellen ab AFirst, die in derselben Routine liegen wie AFirst.</summary>
 function SitesOfRoutine(const ASites: TArray<TBodySite>; AFirst: Integer): TArray<Integer>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := AFirst to High(ASites) do
+  for mIndex := AFirst to High(ASites) do
   begin
-    if ASites[Index].Routine = ASites[AFirst].Routine then
+    if ASites[mIndex].Routine = ASites[AFirst].Routine then
     begin
-      Result := Result + [Index];
+      Result := Result + [mIndex];
     end;
   end;
 end;
@@ -563,30 +564,30 @@ end;
 /// <summary>Korrekturen „ganze Methode“ zu allen Stellen von AFinder.</summary>
 function MethodFixes(AFinder: TBeginEndSites): TMethodFixes;
 var
-  Sites: TArray<TBodySite>;
-  Index, Other: Integer;
-  Method: TArray<Integer>;
+  mSites: TArray<TBodySite>;
+  mIndex, mOther: Integer;
+  mMethod: TArray<Integer>;
 begin
-  Sites := AFinder.Sites;
-  SetLength(Result.Edits, Length(Sites));
-  SetLength(Result.Counts, Length(Sites));
+  mSites := AFinder.Sites;
+  SetLength(Result.Edits, Length(mSites));
+  SetLength(Result.Counts, Length(mSites));
   // Die Stellen einer Routine folgen aufeinander (nach Schlüsselwort geordnet), außer bei verschachtelten
   // Routinen; deshalb über alle Stellen sammeln.
-  for Index := 0 to High(Sites) do
+  for mIndex := 0 to High(mSites) do
   begin
-    if (Sites[Index].Routine = nil) or (Result.Counts[Index] > 0) then
+    if (mSites[mIndex].Routine = nil) or (Result.Counts[mIndex] > 0) then
     begin
       Continue;
     end;
-    Method := SitesOfRoutine(Sites, Index);
-    if Length(Method) > 1 then
+    mMethod := SitesOfRoutine(mSites, mIndex);
+    if Length(mMethod) > 1 then
     begin
-      Result.Edits[Index] := AFinder.Edits(Method);
+      Result.Edits[mIndex] := AFinder.Edits(mMethod);
     end;
-    for Other in Method do
+    for mOther in mMethod do
     begin
-      Result.Edits[Other] := Result.Edits[Index];
-      Result.Counts[Other] := Length(Method);
+      Result.Edits[mOther] := Result.Edits[mIndex];
+      Result.Counts[mOther] := Length(mMethod);
     end;
   end;
 end;
@@ -594,12 +595,12 @@ end;
 /// <summary>Alle Stellen 0..ACount-1.</summary>
 function AllSites(ACount: Integer): TArray<Integer>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   SetLength(Result, ACount);
-  for Index := 0 to ACount - 1 do
+  for mIndex := 0 to ACount - 1 do
   begin
-    Result[Index] := Index;
+    Result[mIndex] := mIndex;
   end;
 end;
 
@@ -608,7 +609,7 @@ end;
 function SiteFixes(AFinder: TBeginEndSites; ASite: Integer; const AMethods: TMethodFixes;
   var AFileEdits: TArray<TRuleEdit>): TArray<TRuleFix>;
 var
-  SiteCount: Integer;
+  mSiteCount: Integer;
 begin
   Result := [TRuleFix.Create(cTexts[TStyleBeginEndText.SetBeginEnd].Text, AFinder.Edits([ASite]), True)];
   if AMethods.Counts[ASite] > 1 then
@@ -616,16 +617,16 @@ begin
     Result := Result + [TRuleFix.Create(cTexts[TStyleBeginEndText.InMethod].Fmt(
       [AMethods.Counts[ASite]]), AMethods.Edits[ASite])];
   end;
-  SiteCount := Length(AFinder.Sites);
-  if SiteCount <= Max(1, AMethods.Counts[ASite]) then
+  mSiteCount := Length(AFinder.Sites);
+  if mSiteCount <= Max(1, AMethods.Counts[ASite]) then
   begin
     Exit;
   end;
   if AFileEdits = nil then
   begin
-    AFileEdits := AFinder.Edits(AllSites(SiteCount));
+    AFileEdits := AFinder.Edits(AllSites(mSiteCount));
   end;
-  Result := Result + [TRuleFix.Create(cTexts[TStyleBeginEndText.InFile].Fmt([SiteCount]),
+  Result := Result + [TRuleFix.Create(cTexts[TStyleBeginEndText.InFile].Fmt([mSiteCount]),
     AFileEdits)];
 end;
 
@@ -643,28 +644,28 @@ end;
 
 procedure TMissingBeginEndRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Finder: TBeginEndSites;
-  Sites: TArray<TBodySite>;
-  Index: Integer;
-  Methods: TMethodFixes;
-  FileEdits: TArray<TRuleEdit>;
+  mFinder: TBeginEndSites;
+  mSites: TArray<TBodySite>;
+  mIndex: Integer;
+  mMethods: TMethodFixes;
+  mFileEdits: TArray<TRuleEdit>;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  Finder := TBeginEndSites.Create(AContext);
+  mFinder := TBeginEndSites.Create(AContext);
   try
-    Sites := Finder.Sites;
-    Methods := MethodFixes(Finder);
-    FileEdits := nil;
-    for Index := 0 to High(Sites) do
+    mSites := mFinder.Sites;
+    mMethods := MethodFixes(mFinder);
+    mFileEdits := nil;
+    for mIndex := 0 to High(mSites) do
     begin
-      AReport.Add(RangeOf(AContext.Tree.Tokens, Sites[Index].Keyword, Sites[Index].Keyword),
-        SiteMessage(Sites[Index].Name), TRuleConfidence.High, SiteFixes(Finder, Index, Methods, FileEdits));
+      AReport.Add(RangeOf(AContext.Tree.Tokens, mSites[mIndex].Keyword, mSites[mIndex].Keyword),
+        SiteMessage(mSites[mIndex].Name), TRuleConfidence.High, SiteFixes(mFinder, mIndex, mMethods, mFileEdits));
     end;
   finally
-    Finder.Free;
+    mFinder.Free;
   end;
 end;
 

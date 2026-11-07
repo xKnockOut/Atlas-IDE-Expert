@@ -27,7 +27,7 @@ type
 
   TLspFoldingRanges = class
   public const
-    Method = 'textDocument/foldingRange';
+    cMethod = 'textDocument/foldingRange';
   private
     FStore: IDocumentStore;
     function HandleFoldingRange(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -66,9 +66,9 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  KindComment = 'comment';
-  KindImports = 'imports';
-  KindRegion = 'region';
+  cKindComment = 'comment';
+  cKindImports = 'imports';
+  cKindRegion = 'region';
 
 procedure AddRange(AList: TList<TFoldingRange>; AStartLine, AEndLine: Integer; const AKind: string);
 begin
@@ -80,20 +80,20 @@ end;
 
 procedure CollectNodes(ARoot: TSyntaxNode; AList: TList<TFoldingRange>);
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   // Iterativ, damit auch sehr tiefe Bäume (lange Ausdrucksketten) den Stapel nicht sprengen.
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ARoot);
-    while Pending.Count > 0 do
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      case Node.Kind of
+      mNode := mPending.Pop;
+      case mNode.Kind of
         TSyntaxKind.UsesClause:
-          AddRange(AList, Node.StartPos.Line, Node.EndPos.Line, KindImports);
+          AddRange(AList, mNode.StartPos.Line, mNode.EndPos.Line, cKindImports);
         TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
         TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection,
         TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection,
@@ -105,40 +105,40 @@ begin
         TSyntaxKind.RepeatStatement, TSyntaxKind.WithStatement, TSyntaxKind.TryStatement,
         TSyntaxKind.ExceptBlock, TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptionHandler,
         TSyntaxKind.AnonymousMethod, TSyntaxKind.SetConstructor, TSyntaxKind.Call:
-          AddRange(AList, Node.StartPos.Line, Node.EndPos.Line, '');
+          AddRange(AList, mNode.StartPos.Line, mNode.EndPos.Line, '');
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
-      for Index := 0 to Node.ChildCount - 1 do
+      for mIndex := 0 to mNode.ChildCount - 1 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 function IsDirective(const AToken: TPascalToken; const AName: string): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
   // {$REGION 'x'} oder (*$REGION*); Groß- und Kleinschreibung egal.
-  Text := AToken.Text;
-  if Text.StartsWith('{$') then
+  mText := AToken.Text;
+  if mText.StartsWith('{$') then
   begin
-    Text := Text.Substring(2);
+    mText := mText.Substring(2);
   end
-  else if Text.StartsWith('(*$') then
+  else if mText.StartsWith('(*$') then
   begin
-    Text := Text.Substring(3);
+    mText := mText.Substring(3);
   end
   else
   begin
     Exit(False);
   end;
-  Result := Text.ToUpper.StartsWith(AName) and
-    ((Length(Text) = Length(AName)) or not CharInSet(Text.Chars[Length(AName)], ['A'..'Z', 'a'..'z', '0'..'9', '_']));
+  Result := mText.ToUpper.StartsWith(AName) and
+    ((Length(mText) = Length(AName)) or not CharInSet(mText.Chars[Length(AName)], ['A'..'Z', 'a'..'z', '0'..'9', '_']));
 end;
 
 type
@@ -165,7 +165,7 @@ begin
   end
   else if IsDirective(AToken, 'ENDREGION') and (Regions.Count > 0) then
   begin
-    AddRange(List, Regions.Pop, AToken.EndPos.Line, KindRegion);
+    AddRange(List, Regions.Pop, AToken.EndPos.Line, cKindRegion);
   end;
 end;
 
@@ -173,7 +173,7 @@ procedure TTokenFolds.CloseLineComments;
 begin
   if LineStart >= 0 then
   begin
-    AddRange(List, LineStart, LineEnd, KindComment);
+    AddRange(List, LineStart, LineEnd, cKindComment);
   end;
 end;
 
@@ -199,7 +199,7 @@ begin
   else
   begin
     // Blockkommentar über mehrere Zeilen.
-    AddRange(List, AToken.StartPos.Line, AToken.EndPos.Line, KindComment);
+    AddRange(List, AToken.StartPos.Line, AToken.EndPos.Line, cKindComment);
   end;
 end;
 
@@ -253,22 +253,22 @@ end;
 procedure TLspFoldingRanges.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   // Nebenläufig: Parsen großer Dateien blockiert die Nachrichtenschleife nicht.
-  ADispatcher.RegisterConcurrentRequest(Method, HandleFoldingRange);
+  ADispatcher.RegisterConcurrentRequest(cMethod, HandleFoldingRange);
 end;
 
 class function TLspFoldingRanges.Collect(ATree: TSyntaxTree): TArray<TFoldingRange>;
 var
-  List: TList<TFoldingRange>;
-  Unique: TList<TFoldingRange>;
-  Range: TFoldingRange;
+  mList: TList<TFoldingRange>;
+  mUnique: TList<TFoldingRange>;
+  mRange: TFoldingRange;
 begin
-  List := TList<TFoldingRange>.Create;
-  Unique := TList<TFoldingRange>.Create;
+  mList := TList<TFoldingRange>.Create;
+  mUnique := TList<TFoldingRange>.Create;
   try
-    CollectNodes(ATree.Root, List);
-    CollectTokens(ATree.Tokens, List);
+    CollectNodes(ATree.Root, mList);
+    CollectTokens(ATree.Tokens, mList);
     // Nach Startzeile, bei gleicher Startzeile der größte Bereich zuerst.
-    List.Sort(TComparer<TFoldingRange>.Construct(
+    mList.Sort(TComparer<TFoldingRange>.Construct(
       function(const ALeft, ARight: TFoldingRange): Integer
       begin
         Result := ALeft.StartLine - ARight.StartLine;
@@ -277,75 +277,75 @@ begin
           Result := ARight.EndLine - ALeft.EndLine;
         end;
       end));
-    for Range in List do
+    for mRange in mList do
     begin
-      if (Unique.Count = 0) or (Unique.Last.StartLine <> Range.StartLine) then
+      if (mUnique.Count = 0) or (mUnique.Last.StartLine <> mRange.StartLine) then
       begin
-        Unique.Add(Range);
+        mUnique.Add(mRange);
       end;
     end;
-    Result := Unique.ToArray;
+    Result := mUnique.ToArray;
   finally
-    Unique.Free;
-    List.Free;
+    mUnique.Free;
+    mList.Free;
   end;
 end;
 
 class function TLspFoldingRanges.ToJson(const ARanges: TArray<TFoldingRange>): TJSONArray;
 var
-  Range: TFoldingRange;
-  Item: TJSONObject;
+  mRange: TFoldingRange;
+  mItem: TJSONObject;
 begin
   Result := TJSONArray.Create;
-  for Range in ARanges do
+  for mRange in ARanges do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('startLine', TJSONNumber.Create(Range.StartLine));
-    Item.AddPair('endLine', TJSONNumber.Create(Range.EndLine));
-    if Range.Kind <> '' then
+    mItem := TJSONObject.Create;
+    mItem.AddPair('startLine', TJSONNumber.Create(mRange.StartLine));
+    mItem.AddPair('endLine', TJSONNumber.Create(mRange.EndLine));
+    if mRange.Kind <> '' then
     begin
-      Item.AddPair('kind', Range.Kind);
+      mItem.AddPair('kind', mRange.Kind);
     end;
-    Result.AddElement(Item);
+    Result.AddElement(mItem);
   end;
 end;
 
 function TLspFoldingRanges.HandleFoldingRange(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Cancellation: IPascalCancellation;
-  Uri: string;
-  Document: ITextDocument;
-  Tree: TSyntaxTree;
-  Shared: ISharedSyntaxTree;
-  Form: TDfmDocument;
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mDocument: ITextDocument;
+  mTree: TSyntaxTree;
+  mShared: ISharedSyntaxTree;
+  mForm: TDfmDocument;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TFoldingRangesText.FieldTextDocumentUriMissingIn].Text + Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TFoldingRangesText.FieldTextDocumentUriMissingIn].Text + cMethod);
   end;
   // Nicht geöffnete Dokumente haben keine Faltbereiche.
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONNull.Create);
   end;
   // Formulardateien (#44) haben einen eigenen Baum.
-  if TDfmParser.IsFormFile(Uri) then
+  if TDfmParser.IsFormFile(mUri) then
   begin
-    Form := TDfmParser.Parse(Document.Text);
+    mForm := TDfmParser.Parse(mDocument.Text);
     try
-      Exit(TLspFormFiles.BuildFoldingRanges(Form));
+      Exit(TLspFormFiles.BuildFoldingRanges(mForm));
     finally
-      Form.Free;
+      mForm.Free;
     end;
   end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
-  Cancellation := TRequestCancellation.Create(ACancellation);
-  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
-  Tree := Shared.Tree;
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  mTree := mShared.Tree;
   ACancellation.ThrowIfCancellationRequested;
-  Result := ToJson(Collect(Tree));
+  Result := ToJson(Collect(mTree));
 end;
 
 initialization

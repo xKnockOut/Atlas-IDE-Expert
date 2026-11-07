@@ -173,7 +173,8 @@ type
     /// <summary>Tastenkürzel-Übersicht (#520): Menüeintrag *Atlas › Tastenkürzel-Übersicht…* und Befehl der
     /// Palette; aus: beide ausgeblendet.</summary>
     KeyOverview: Boolean;
-    /// <summary>Eigenes Kürzel für das Atlas-Fenster (#777, TShortCut, 0 = keins); Strg+F12 über replaceIdeDialog.</summary>
+    /// <summary>Eigenes Kürzel für das Atlas-Fenster (#777, TShortCut, 0 = keins); Strg+F12 über
+    /// replaceIdeDialog.</summary>
     UnitSearchKey: Integer;
     /// <summary>Kürzel für „Schnell öffnen“ (#503, keys.quickOpen, TShortCut, 0 = keins); Vorgabe Strg+P.</summary>
     QuickOpenKey: Integer;
@@ -207,9 +208,11 @@ type
     JumpToMatch: Boolean;
     /// <summary>Kürzel „Zum Gegenstück springen“ (#635, keys.jumpToMatchShortcut); Vorgabe Strg+Ü.</summary>
     JumpToMatchKey: Integer;
-    /// <summary>Kürzel „Bis zum Gegenstück markieren“ (#635, keys.jumpToMatchSelect); Vorgabe Strg+Umschalt+Ü.</summary>
+    /// <summary>Kürzel „Bis zum Gegenstück markieren“ (#635, keys.jumpToMatchSelect); Vorgabe
+    /// Strg+Umschalt+Ü.</summary>
     JumpToMatchSelectKey: Integer;
-    /// <summary>Taste für den Fokus ins Suchfeld, solange die Willkommensseite aktiv ist (TShortCut; 0 = keine).</summary>
+    /// <summary>Taste für den Fokus ins Suchfeld, solange die Willkommensseite aktiv ist (TShortCut; 0 =
+    /// keine).</summary>
     WelcomePageSearchKey: Integer;
     /// <summary>Taste für „Öffnen und bauen“ bzw. „Tests“ in der Zeile mit dem Fokus (#764, TShortCut; 0 = keine).
     /// </summary>

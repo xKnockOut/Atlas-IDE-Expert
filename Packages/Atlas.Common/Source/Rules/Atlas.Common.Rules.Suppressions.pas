@@ -79,58 +79,58 @@ end;
 
 function SplitIds(const AText: string): TArray<string>;
 var
-  I, Start: Integer;
-  List: TList<string>;
+  I, mStart: Integer;
+  mList: TList<string>;
 begin
   // Trenner: Komma, Leerzeichen, Tabulator.
-  List := TList<string>.Create;
+  mList := TList<string>.Create;
   try
-    Start := 1;
+    mStart := 1;
     for I := 1 to Length(AText) + 1 do
     begin
       // Begründung nach "--" gehört nicht zu den Kennungen.
-      if (I = Start) and (Copy(AText, I, 2) = '--') then
+      if (I = mStart) and (Copy(AText, I, 2) = '--') then
       begin
         Break;
       end;
       if (I > Length(AText)) or CharInSet(AText[I], [',', ' ', #9]) then
       begin
-        if I > Start then
+        if I > mStart then
         begin
-          List.Add(LowerCase(Copy(AText, Start, I - Start)));
+          mList.Add(LowerCase(Copy(AText, mStart, I - mStart)));
         end;
-        Start := I + 1;
+        mStart := I + 1;
       end;
     end;
-    Result := List.ToArray;
+    Result := mList.ToArray;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 /// <summary>Stellen der Kennungen AIds im Kommentar AToken, ab dem Marker gesucht.</summary>
 function IdRangesOf(const AToken: TPascalToken; const AMarker: string; const AIds: TArray<string>): TArray<TTextRange>;
 var
-  Lower: string;
-  Index, Found, Cursor: Integer;
+  mLower: string;
+  mIndex, mFound, mCursor: Integer;
 begin
   SetLength(Result, Length(AIds));
-  Lower := LowerCase(AToken.Text);
-  Cursor := Pos(AMarker, Lower) + Length(AMarker);
-  for Index := 0 to High(AIds) do
+  mLower := LowerCase(AToken.Text);
+  mCursor := Pos(AMarker, mLower) + Length(AMarker);
+  for mIndex := 0 to High(AIds) do
   begin
-    Result[Index] := TTextRange.Create(AToken.StartPos, AToken.EndPos);
-    Found := PosEx(AIds[Index], Lower, Cursor);
-    if Found = 0 then
+    Result[mIndex] := TTextRange.Create(AToken.StartPos, AToken.EndPos);
+    mFound := PosEx(AIds[mIndex], mLower, mCursor);
+    if mFound = 0 then
     begin
       Continue;
     end;
-    Cursor := Found + Length(AIds[Index]);
+    mCursor := mFound + Length(AIds[mIndex]);
     // Nur einzeilige Kommentare genau; sonst bleibt der ganze Kommentar.
-    if (AToken.StartPos.Line = AToken.EndPos.Line) and (Pos(#10, Copy(AToken.Text, 1, Found)) = 0) then
+    if (AToken.StartPos.Line = AToken.EndPos.Line) and (Pos(#10, Copy(AToken.Text, 1, mFound)) = 0) then
     begin
-      Result[Index] := TTextRange.Create(AToken.StartPos.Line, AToken.StartPos.Character + Found - 1,
-        AToken.StartPos.Line, AToken.StartPos.Character + Found - 1 + Length(AIds[Index]));
+      Result[mIndex] := TTextRange.Create(AToken.StartPos.Line, AToken.StartPos.Character + mFound - 1,
+        AToken.StartPos.Line, AToken.StartPos.Character + mFound - 1 + Length(AIds[mIndex]));
     end;
   end;
 end;
@@ -138,50 +138,50 @@ end;
 /// <summary>Editierabstand nach Levenshtein, ohne Groß-/Kleinschreibung.</summary>
 function Distance(const A, B: string): Integer;
 var
-  Previous, Current: TArray<Integer>;
-  I, J, Cost: Integer;
+  mPrevious, mCurrent: TArray<Integer>;
+  I, J, mCost: Integer;
 begin
-  SetLength(Previous, Length(B) + 1);
-  SetLength(Current, Length(B) + 1);
+  SetLength(mPrevious, Length(B) + 1);
+  SetLength(mCurrent, Length(B) + 1);
   for J := 0 to Length(B) do
   begin
-    Previous[J] := J;
+    mPrevious[J] := J;
   end;
   for I := 1 to Length(A) do
   begin
-    Current[0] := I;
+    mCurrent[0] := I;
     for J := 1 to Length(B) do
     begin
-      Cost := 1;
+      mCost := 1;
       if UpCase(A[I]) = UpCase(B[J]) then
       begin
-        Cost := 0;
+        mCost := 0;
       end;
-      Current[J] := Min(Min(Previous[J] + 1, Current[J - 1] + 1), Previous[J - 1] + Cost);
+      mCurrent[J] := Min(Min(mPrevious[J] + 1, mCurrent[J - 1] + 1), mPrevious[J - 1] + mCost);
     end;
-    Previous := Copy(Current);
+    mPrevious := Copy(mCurrent);
   end;
-  Result := Previous[Length(B)];
+  Result := mPrevious[Length(B)];
 end;
 
 { TSuppressions }
 
 class function TSuppressions.Suggest(const AId: string; const AKnown: TArray<string>): string;
 var
-  Known: string;
-  Best, Current, Limit: Integer;
+  mKnown: string;
+  mBest, mCurrent, mLimit: Integer;
 begin
   Result := '';
   // Höchstens ein Viertel der Zeichen falsch, mindestens 1, höchstens 3.
-  Limit := Max(1, Min(3, Length(AId) div 4));
-  Best := Limit + 1;
-  for Known in AKnown do
+  mLimit := Max(1, Min(3, Length(AId) div 4));
+  mBest := mLimit + 1;
+  for mKnown in AKnown do
   begin
-    Current := Distance(AId, Known);
-    if Current < Best then
+    mCurrent := Distance(AId, mKnown);
+    if mCurrent < mBest then
     begin
-      Best := Current;
-      Result := LowerCase(Known);
+      mBest := mCurrent;
+      Result := LowerCase(mKnown);
     end;
   end;
 end;
@@ -199,56 +199,56 @@ end;
 constructor TSuppressions.Create(const ATokens: TArray<TPascalToken>);
 var
   I, J: Integer;
-  Body, Lower: string;
-  Entry: TSuppressionEntry;
-  LastCodeLine: Integer;
-  CodeAfter: Boolean;
+  mBody, mLower: string;
+  mEntry: TSuppressionEntry;
+  mLastCodeLine: Integer;
+  mCodeAfter: Boolean;
 begin
   inherited Create;
   FEntries := TList<TSuppressionEntry>.Create;
-  LastCodeLine := -1;
+  mLastCodeLine := -1;
   for I := 0 to High(ATokens) do
   begin
     if ATokens[I].Kind <> TPascalTokenKind.Comment then
     begin
-      LastCodeLine := ATokens[I].EndPos.Line;
+      mLastCodeLine := ATokens[I].EndPos.Line;
       Continue;
     end;
-    Body := CommentBody(ATokens[I].Text);
-    Lower := LowerCase(Body);
-    Entry := Default(TSuppressionEntry);
-    Entry.Range := TTextRange.Create(ATokens[I].StartPos, ATokens[I].EndPos);
-    if StartsText(FileMarker, Lower) then
+    mBody := CommentBody(ATokens[I].Text);
+    mLower := LowerCase(mBody);
+    mEntry := Default(TSuppressionEntry);
+    mEntry.Range := TTextRange.Create(ATokens[I].StartPos, ATokens[I].EndPos);
+    if StartsText(FileMarker, mLower) then
     begin
-      Entry.Ids := SplitIds(Copy(Body, Length(FileMarker) + 1, MaxInt));
-      Entry.IdRanges := IdRangesOf(ATokens[I], FileMarker, Entry.Ids);
-      Entry.TargetLine := -1;
+      mEntry.Ids := SplitIds(Copy(mBody, Length(FileMarker) + 1, MaxInt));
+      mEntry.IdRanges := IdRangesOf(ATokens[I], FileMarker, mEntry.Ids);
+      mEntry.TargetLine := -1;
     end
-    else if StartsText(LineMarker, Lower) then
+    else if StartsText(LineMarker, mLower) then
     begin
-      Entry.Ids := SplitIds(Copy(Body, Length(LineMarker) + 1, MaxInt));
-      Entry.IdRanges := IdRangesOf(ATokens[I], LineMarker, Entry.Ids);
-      if LastCodeLine = ATokens[I].StartPos.Line then
+      mEntry.Ids := SplitIds(Copy(mBody, Length(LineMarker) + 1, MaxInt));
+      mEntry.IdRanges := IdRangesOf(ATokens[I], LineMarker, mEntry.Ids);
+      if mLastCodeLine = ATokens[I].StartPos.Line then
       begin
-        Entry.TargetLine := ATokens[I].StartPos.Line;
+        mEntry.TargetLine := ATokens[I].StartPos.Line;
       end
       else
       begin
-        Entry.TargetLine := ATokens[I].EndPos.Line + 1;
+        mEntry.TargetLine := ATokens[I].EndPos.Line + 1;
       end;
     end
     else
     begin
       Continue;
     end;
-    CodeAfter := False;
+    mCodeAfter := False;
     J := I + 1;
     if (J <= High(ATokens)) and (ATokens[J].StartPos.Line = ATokens[I].EndPos.Line) then
     begin
-      CodeAfter := True;
+      mCodeAfter := True;
     end;
-    Entry.OwnLine := (LastCodeLine <> ATokens[I].StartPos.Line) and not CodeAfter;
-    FEntries.Add(Entry);
+    mEntry.OwnLine := (mLastCodeLine <> ATokens[I].StartPos.Line) and not mCodeAfter;
+    FEntries.Add(mEntry);
   end;
 end;
 
@@ -260,11 +260,11 @@ end;
 
 class function TSuppressions.Covers(const AIds: TArray<string>; const ARuleId: string): Boolean;
 var
-  Id: string;
+  mId: string;
 begin
-  for Id in AIds do
+  for mId in AIds do
   begin
-    if (Id = '*') or SameText(TRuleIdAliases.Current(Id), TRuleIdAliases.Current(ARuleId)) then
+    if (mId = '*') or SameText(TRuleIdAliases.Current(mId), TRuleIdAliases.Current(ARuleId)) then
     begin
       Exit(True);
     end;
@@ -275,16 +275,16 @@ end;
 function TSuppressions.IsSuppressed(const ARuleId: string; ALine: Integer): Boolean;
 var
   I: Integer;
-  Entry: TSuppressionEntry;
+  mEntry: TSuppressionEntry;
 begin
   Result := False;
   for I := 0 to FEntries.Count - 1 do
   begin
-    Entry := FEntries[I];
-    if ((Entry.TargetLine = -1) or (Entry.TargetLine = ALine)) and Covers(Entry.Ids, ARuleId) then
+    mEntry := FEntries[I];
+    if ((mEntry.TargetLine = -1) or (mEntry.TargetLine = ALine)) and Covers(mEntry.Ids, ARuleId) then
     begin
-      Entry.Used := True;
-      FEntries[I] := Entry;
+      mEntry.Used := True;
+      FEntries[I] := mEntry;
       Result := True;
     end;
   end;
@@ -297,14 +297,14 @@ end;
 
 function TSuppressions.UnusedEntries: TArray<TSuppressionEntry>;
 var
-  Entry: TSuppressionEntry;
+  mEntry: TSuppressionEntry;
 begin
   Result := nil;
-  for Entry in FEntries do
+  for mEntry in FEntries do
   begin
-    if not Entry.Used then
+    if not mEntry.Used then
     begin
-      Result := Result + [Entry];
+      Result := Result + [mEntry];
     end;
   end;
 end;

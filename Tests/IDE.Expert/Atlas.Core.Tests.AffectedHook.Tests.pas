@@ -74,7 +74,7 @@ var
   mScript: string;
 begin
   mScript := TAtlasAffectedHook.Script(Texts);
-  Assert.IsTrue(mScript.StartsWith('#!/bin/sh' + #10 + TAtlasAffectedHook.Marker + #10 + '# Zweck' + #10 +
+  Assert.IsTrue(mScript.StartsWith('#!/bin/sh' + #10 + TAtlasAffectedHook.cMarker + #10 + '# Zweck' + #10 +
     '# Entfernen zweite Zeile' + #10));
   // Texte der UI (#1458): Fragen sicher für sh gequotet.
   Assert.IsTrue(Pos('printf ''Run? [y/N] '' > /dev/tty', mScript) > 0);
@@ -104,7 +104,8 @@ begin
   Assert.IsTrue(TAtlasAffectedHook.State(mHooks) = TAtlasAffectedHookState.Missing);
   Assert.IsTrue(TAtlasAffectedHook.Install(mHooks, FDir, Config), 'legt Ordner, Hook und Angaben an');
   Assert.IsTrue(TAtlasAffectedHook.State(mHooks) = TAtlasAffectedHookState.Own);
-  Assert.AreEqual(TAtlasAffectedHook.ConfigText(Config), TFile.ReadAllText(TAtlasAffectedHook.ConfigFileOf(FDir), TEncoding.UTF8));
+  Assert.AreEqual(TAtlasAffectedHook.ConfigText(Config),
+    TFile.ReadAllText(TAtlasAffectedHook.ConfigFileOf(FDir), TEncoding.UTF8));
   Assert.IsTrue(TAtlasAffectedHook.Install(mHooks, FDir, Config), 'eigener wird ersetzt');
   Assert.IsTrue(TAtlasAffectedHook.Uninstall(mHooks, FDir));
   Assert.IsTrue(TAtlasAffectedHook.State(mHooks) = TAtlasAffectedHookState.Missing);

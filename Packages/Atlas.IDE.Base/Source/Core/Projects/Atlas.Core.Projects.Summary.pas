@@ -103,7 +103,7 @@
 // der Befehl „Projekt für Atlas einrichten“ hebt es auf). "paths" ist das
 // Ergebnis von „Suchpfade und Defines prüfen“: gelesene und nicht lesbare
 // Dateien, Zahl der fehlenden Units und der Defines ohne Quelle und die
-// ersten Funde (höchstens TAtlasProjectSetup.MaxFindings je Liste; Datei
+// ersten Funde (höchstens TAtlasProjectSetup.cMaxFindings je Liste; Datei
 // relativ zum Projektordner, Zeile ab 1, "count" Stellen im Projekt).
 // "skippedMacros" sind unbekannte Makros übersprungener Suchpfade; Funde mit
 // "uncertain" sind deshalb nicht sicher ("uncertainUnits" und
@@ -111,7 +111,7 @@
 // einer Projektgruppe steht die Prüfung je Projekt in dessen Zusammenfassung.
 // "tests" ist der letzte DUnitX-Lauf aus der IDE (#69; Grundlage der Karte
 // Tests #763): Testprojekt, Konfiguration, Plattform, Zahlen, Dauer und die
-// fehlgeschlagenen Tests (höchstens TAtlasProjectTests.MaxFailures; "failed"
+// fehlgeschlagenen Tests (höchstens TAtlasProjectTests.cMaxFailures; "failed"
 // und "errors" zählen alle). "test" ist der volle Name aus dem Bericht von
 // DUnitX; „Fehlgeschlagene erneut ausführen“ übergibt genau diese Namen an
 // --run. "file" ist absolut, "line" ab 1 (Methodenkopf), beide fehlen ohne
@@ -129,7 +129,7 @@
 // fehlt = gelungen), "at" der letzte gelungene Abruf. "number" bis
 // "durationMs" sind der letzte abgeschlossene Build ("result" wie
 // TAtlasCiBuild.OutcomeKey), "passed" bis "failures" sein Testbericht (fehlen
-// ohne Bericht; höchstens TAtlasCiBuild.MaxFailures Fehlschläge mit vollem
+// ohne Bericht; höchstens TAtlasCiBuild.cMaxFailures Fehlschläge mit vollem
 // Namen und erster Zeile der Meldung). Schlägt ein Abruf fehl, bleibt der
 // letzte Build stehen („Stand vom …“).
 //
@@ -319,7 +319,6 @@ type
   TAtlasProjectSetup = Atlas.Core.Projects.Summary.Sections.TAtlasProjectSetup;
   TAtlasProjectTestFailure = Atlas.Core.Projects.Summary.Sections.TAtlasProjectTestFailure;
   TAtlasProjectTests = Atlas.Core.Projects.Summary.Sections.TAtlasProjectTests;
-  TAtlasProjectReleaseBuild = Atlas.Core.Projects.Summary.Sections.TAtlasProjectReleaseBuild;
   TAtlasProjectRelease = Atlas.Core.Projects.Summary.Sections.TAtlasProjectRelease;
   TAtlasProjectCi = Atlas.Core.Projects.Summary.Sections.TAtlasProjectCi;
 
@@ -355,15 +354,15 @@ type
   TAtlasProjectSummaries = class
   public const
     /// <summary>Format, das diese Fassung liest und schreibt.</summary>
-    Format = 1;
+    cFormat = 1;
     /// <summary>Kennzahlen im Abschnitt "metrics" (wie atlas.server.metrics, #66).</summary>
-    MetricKeys: array[0..4] of string = ('length', 'nesting', 'cyclomatic', 'cognitive', 'parameters');
+    cMetricKeys: array[0..4] of string = ('length', 'nesting', 'cyclomatic', 'cognitive', 'parameters');
     /// <summary>Namen der Reihen im Abschnitt "trends" und in welcomePage.trends.series (#758).</summary>
-    TrendKeys: array[TAtlasTrendSeries] of string = ('warnings', 'ruleHits', 'todos', 'duration', 'methodLength');
+    cTrendKeys: array[TAtlasTrendSeries] of string = ('warnings', 'ruleHits', 'todos', 'duration', 'methodLength');
     /// <summary>Reihen mit einer Nachkommastelle in der Datei; die übrigen sind ganze Zahlen.</summary>
-    TrendDecimals: array[TAtlasTrendSeries] of Boolean = (False, False, False, True, True);
+    cTrendDecimals: array[TAtlasTrendSeries] of Boolean = (False, False, False, True, True);
     /// <summary>Unterordner von %LOCALAPPDATA%\Atlas.</summary>
-    FolderName = 'projects';
+    cFolderName = 'projects';
   public
     /// <summary>Normierter Pfad für Vergleich und Schlüssel.</summary>
     class function NormalizedPath(const AProject: string): string; static;
@@ -412,19 +411,19 @@ uses
 
 const
   // Bekannte Felder; alles andere übernimmt ToJson unverändert aus Raw.
-  TopKeys: array[0..16] of string = ('format', 'project', 'lastOpened', 'lastClosed', 'hidden', 'vcs', 'build',
+  cTopKeys: array[0..16] of string = ('format', 'project', 'lastOpened', 'lastClosed', 'hidden', 'vcs', 'build',
     'check', 'rules', 'metrics', 'todos', 'baseline', 'trends', 'setup', 'tests', 'release', 'ci');
-  VcsKeys: array[0..6] of string = ('at', 'kind', 'branch', 'revision', 'changed', 'ahead', 'behind');
-  BuildKeys: array[0..9] of string = ('at', 'kind', 'configuration', 'platform', 'succeeded', 'errors', 'warnings',
+  cVcsKeys: array[0..6] of string = ('at', 'kind', 'branch', 'revision', 'changed', 'ahead', 'behind');
+  cBuildKeys: array[0..9] of string = ('at', 'kind', 'configuration', 'platform', 'succeeded', 'errors', 'warnings',
     'hints', 'durationMs', 'first');
-  CheckKeys: array[0..2] of string = ('at', 'errors', 'first');
-  RulesKeys: array[0..1] of string = ('at', 'newHits');
-  MetricsKeys: array[0..6] of string = ('at', 'files', 'methods', 'overLimits', 'average', 'maximum', 'exceeded');
-  TodosKeys: array[0..4] of string = ('at', 'files', 'open', 'done', 'keywords');
-  BaselineKeys: array[0..8] of string = ('at', 'exists', 'valid', 'entries', 'hits', 'orphaned', 'updated', 'added',
+  cCheckKeys: array[0..2] of string = ('at', 'errors', 'first');
+  cRulesKeys: array[0..1] of string = ('at', 'newHits');
+  cMetricsKeys: array[0..6] of string = ('at', 'files', 'methods', 'overLimits', 'average', 'maximum', 'exceeded');
+  cTodosKeys: array[0..4] of string = ('at', 'files', 'open', 'done', 'keywords');
+  cBaselineKeys: array[0..8] of string = ('at', 'exists', 'valid', 'entries', 'hits', 'orphaned', 'updated', 'added',
     'removed');
-  TrendsKeys: array[0..1] of string = ('builds', 'points');
-  TrendPointKeys: array[0..8] of string = ('at', 'build', 'branch', 'commit', 'warnings', 'ruleHits', 'todos',
+  cTrendsKeys: array[0..1] of string = ('builds', 'points');
+  cTrendPointKeys: array[0..8] of string = ('at', 'build', 'branch', 'commit', 'warnings', 'ruleHits', 'todos',
     'duration', 'methodLength');
 
 { TAtlasProjectLocation }
@@ -528,23 +527,23 @@ end;
 
 function TAtlasProjectSummary.Name: string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // Ohne ExtractFileName: Der Pfad hat immer „\“, auch wenn die Tests nicht unter Windows laufen.
   Result := Project;
-  for Index := Length(Result) downto 1 do
+  for mIndex := Length(Result) downto 1 do
   begin
-    if CharInSet(Result[Index], ['\', '/']) then
+    if CharInSet(Result[mIndex], ['\', '/']) then
     begin
-      Result := Copy(Result, Index + 1, MaxInt);
+      Result := Copy(Result, mIndex + 1, MaxInt);
       Break;
     end;
   end;
-  for Index := Length(Result) downto 1 do
+  for mIndex := Length(Result) downto 1 do
   begin
-    if Result[Index] = '.' then
+    if Result[mIndex] = '.' then
     begin
-      Result := Copy(Result, 1, Index - 1);
+      Result := Copy(Result, 1, mIndex - 1);
       Break;
     end;
   end;
@@ -585,28 +584,28 @@ end;
 /// <summary>Zahlen je Kennzahl aus AObject; ATenths: Dezimalzahlen als Zehntel. Fehlende bleiben 0.</summary>
 function MetricNumbersOf(AObject: TJSONObject; ATenths: Boolean): TAtlasMetricNumbers;
 var
-  Index: Integer;
-  Value: TJSONValue;
+  mIndex: Integer;
+  mValue: TJSONValue;
 begin
-  for Index := Low(Result) to High(Result) do
+  for mIndex := Low(Result) to High(Result) do
   begin
-    Result[Index] := 0;
+    Result[mIndex] := 0;
     if AObject = nil then
     begin
       Continue;
     end;
-    Value := AObject.GetValue(TAtlasProjectSummaries.MetricKeys[Index]);
-    if not (Value is TJSONNumber) then
+    mValue := AObject.GetValue(TAtlasProjectSummaries.cMetricKeys[mIndex]);
+    if not (mValue is TJSONNumber) then
     begin
       Continue;
     end;
     if ATenths then
     begin
-      Result[Index] := Round(TJSONNumber(Value).AsDouble * 10);
+      Result[mIndex] := Round(TJSONNumber(mValue).AsDouble * 10);
     end
     else
     begin
-      Result[Index] := TJSONNumber(Value).AsInt;
+      Result[mIndex] := TJSONNumber(mValue).AsInt;
     end;
   end;
 end;
@@ -614,18 +613,18 @@ end;
 /// <summary>Objekt {"length": …, …}; ATenths: Werte als Dezimalzahl mit einer Nachkommastelle.</summary>
 function MetricNumbersJson(const ANumbers: TAtlasMetricNumbers; ATenths: Boolean): TJSONObject;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := TJSONObject.Create;
-  for Index := Low(ANumbers) to High(ANumbers) do
+  for mIndex := Low(ANumbers) to High(ANumbers) do
   begin
     if ATenths then
     begin
-      Result.AddPair(TAtlasProjectSummaries.MetricKeys[Index], TJSONNumber.Create(ANumbers[Index] / 10));
+      Result.AddPair(TAtlasProjectSummaries.cMetricKeys[mIndex], TJSONNumber.Create(ANumbers[mIndex] / 10));
     end
     else
     begin
-      Result.AddPair(TAtlasProjectSummaries.MetricKeys[Index], TJSONNumber.Create(ANumbers[Index]));
+      Result.AddPair(TAtlasProjectSummaries.cMetricKeys[mIndex], TJSONNumber.Create(ANumbers[mIndex]));
     end;
   end;
 end;
@@ -658,49 +657,49 @@ end;
 class function TAtlasProjectMetrics.FromServer(const AJson: string; AAtUtc: TDateTime;
   out AMetrics: TAtlasProjectMetrics): Boolean;
 var
-  Value: TJSONValue;
-  Section: TJSONObject;
+  mValue: TJSONValue;
+  mSection: TJSONObject;
 begin
   AMetrics := TAtlasProjectMetrics.Empty;
   Result := False;
   try
-    Value := TJSONObject.ParseJSONValue(AJson);
+    mValue := TJSONObject.ParseJSONValue(AJson);
   except
     on Exception do
-      Value := nil;
+      mValue := nil;
   end;
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    Section := ObjectOf(TJSONObject(Value), 'summary');
-    if Section = nil then
+    mSection := ObjectOf(TJSONObject(mValue), 'summary');
+    if mSection = nil then
     begin
-      Section := ObjectOf(TJSONObject(Value), 'metrics');
+      mSection := ObjectOf(TJSONObject(mValue), 'metrics');
     end;
-    if Section = nil then
+    if mSection = nil then
     begin
-      Section := TJSONObject(Value);
+      mSection := TJSONObject(mValue);
     end;
-    if not (Section.GetValue('methods') is TJSONNumber) then
+    if not (mSection.GetValue('methods') is TJSONNumber) then
     begin
       Exit;
     end;
-    AMetrics := MetricsOf(Section);
+    AMetrics := MetricsOf(mSection);
     AMetrics.At := AAtUtc;
     Result := True;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 /// <summary>Zahlen aus einem Objekt mit files, open, done, keywords.</summary>
 function TodosOf(ASection: TJSONObject): TAtlasProjectTodos;
 var
-  Keywords: TJSONObject;
-  Index: Integer;
-  Pair: TJSONPair;
+  mKeywords: TJSONObject;
+  mIndex: Integer;
+  mPair: TJSONPair;
 begin
   Result := TAtlasProjectTodos.Empty;
   if ASection = nil then
@@ -712,18 +711,18 @@ begin
   Result.Files := NumberOf(ASection, 'files', 0);
   Result.Open := NumberOf(ASection, 'open', 0);
   Result.Done := NumberOf(ASection, 'done', 0);
-  Keywords := ObjectOf(ASection, 'keywords');
-  if Keywords = nil then
+  mKeywords := ObjectOf(ASection, 'keywords');
+  if mKeywords = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Keywords.Count - 1 do
+  for mIndex := 0 to mKeywords.Count - 1 do
   begin
-    Pair := Keywords.Pairs[Index];
-    if Pair.JsonValue is TJSONNumber then
+    mPair := mKeywords.Pairs[mIndex];
+    if mPair.JsonValue is TJSONNumber then
     begin
-      Result.Keywords := Result.Keywords + [Pair.JsonString.Value];
-      Result.KeywordCounts := Result.KeywordCounts + [TJSONNumber(Pair.JsonValue).AsInt];
+      Result.Keywords := Result.Keywords + [mPair.JsonString.Value];
+      Result.KeywordCounts := Result.KeywordCounts + [TJSONNumber(mPair.JsonValue).AsInt];
     end;
   end;
 end;
@@ -739,13 +738,13 @@ end;
 
 function TAtlasProjectTodos.CountOf(const AKeyword: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Keywords) do
+  for mIndex := 0 to High(Keywords) do
   begin
-    if SameText(Keywords[Index], AKeyword) then
+    if SameText(Keywords[mIndex], AKeyword) then
     begin
-      Exit(KeywordCounts[Index]);
+      Exit(KeywordCounts[mIndex]);
     end;
   end;
   Result := 0;
@@ -754,58 +753,58 @@ end;
 class function TAtlasProjectTodos.FromServer(const AJson: string; AAtUtc: TDateTime;
   out ATodos: TAtlasProjectTodos): Boolean;
 var
-  Value: TJSONValue;
-  Section: TJSONObject;
+  mValue: TJSONValue;
+  mSection: TJSONObject;
 begin
   ATodos := TAtlasProjectTodos.Empty;
   Result := False;
   try
-    Value := TJSONObject.ParseJSONValue(AJson);
+    mValue := TJSONObject.ParseJSONValue(AJson);
   except
     on Exception do
-      Value := nil;
+      mValue := nil;
   end;
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    Section := ObjectOf(TJSONObject(Value), 'summary');
-    if Section = nil then
+    mSection := ObjectOf(TJSONObject(mValue), 'summary');
+    if mSection = nil then
     begin
-      Section := ObjectOf(TJSONObject(Value), 'todos');
+      mSection := ObjectOf(TJSONObject(mValue), 'todos');
     end;
-    if Section = nil then
+    if mSection = nil then
     begin
-      Section := TJSONObject(Value);
+      mSection := TJSONObject(mValue);
     end;
-    if not (Section.GetValue('open') is TJSONNumber) then
+    if not (mSection.GetValue('open') is TJSONNumber) then
     begin
       Exit;
     end;
-    ATodos := TodosOf(Section);
+    ATodos := TodosOf(mSection);
     ATodos.At := AAtUtc;
     Result := True;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 /// <summary>Messpunkt aus AItem; Werte in Zehnteln, fehlende bleiben Lücken.</summary>
 function TrendPointOf(AItem: TJSONObject): TAtlasTrendPoint;
 var
-  Series: TAtlasTrendSeries;
-  Value: TJSONValue;
+  mSeries: TAtlasTrendSeries;
+  mValue: TJSONValue;
 begin
   Result := TAtlasTrendPoint.Create(SummaryTimeOf(TextOf(AItem, 'at')), NumberOf(AItem, 'build', 0));
   Result.Branch := TextOf(AItem, 'branch');
   Result.Commit := TextOf(AItem, 'commit');
-  for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
+  for mSeries := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
   begin
-    Value := AItem.GetValue(TAtlasProjectSummaries.TrendKeys[Series]);
-    if Value is TJSONNumber then
+    mValue := AItem.GetValue(TAtlasProjectSummaries.cTrendKeys[mSeries]);
+    if mValue is TJSONNumber then
     begin
-      Result.SetValue(Series, Round(TJSONNumber(Value).AsDouble * 10));
+      Result.SetValue(mSeries, Round(TJSONNumber(mValue).AsDouble * 10));
     end;
   end;
 end;
@@ -814,11 +813,11 @@ end;
 /// </summary>
 function TrendsOf(ASection: TJSONObject): TAtlasProjectTrends;
 var
-  Points: TJSONValue;
-  Item: TJSONValue;
-  Index: Integer;
-  Point: TAtlasTrendPoint;
-  Highest: Integer;
+  mPoints: TJSONValue;
+  mItem: TJSONValue;
+  mIndex: Integer;
+  mPoint: TAtlasTrendPoint;
+  mHighest: Integer;
 begin
   Result := TAtlasProjectTrends.Empty;
   if ASection = nil then
@@ -827,105 +826,105 @@ begin
   end;
   Result.Known := True;
   Result.Builds := NumberOf(ASection, 'builds', 0);
-  Highest := 0;
-  Points := ASection.GetValue('points');
-  if Points is TJSONArray then
+  mHighest := 0;
+  mPoints := ASection.GetValue('points');
+  if mPoints is TJSONArray then
   begin
-    for Index := 0 to TJSONArray(Points).Count - 1 do
+    for mIndex := 0 to TJSONArray(mPoints).Count - 1 do
     begin
-      Item := TJSONArray(Points).Items[Index];
-      if not (Item is TJSONObject) then
+      mItem := TJSONArray(mPoints).Items[mIndex];
+      if not (mItem is TJSONObject) then
       begin
         Continue;
       end;
-      Point := TrendPointOf(TJSONObject(Item));
+      mPoint := TrendPointOf(TJSONObject(mItem));
       // Nummern steigen streng: Doppelte oder Rückschritte rücken hinter den höchsten.
-      if Point.Build <= Highest then
+      if mPoint.Build <= mHighest then
       begin
-        Point.Build := Highest + 1;
+        mPoint.Build := mHighest + 1;
       end;
-      Highest := Point.Build;
-      Result.Points := Result.Points + [Point];
+      mHighest := mPoint.Build;
+      Result.Points := Result.Points + [mPoint];
     end;
   end;
   // Ohne oder mit zu kleinem Zähler: mindestens die höchste Nummer.
-  if Result.Builds < Highest then
+  if Result.Builds < mHighest then
   begin
-    Result.Builds := Highest;
+    Result.Builds := mHighest;
   end;
 end;
 
 /// <summary>Punkt mit der Nummer ABuild aus dem Abschnitt "trends" von AOriginal (darf nil sein); nil ohne.</summary>
 function OriginalPoint(AOriginal: TJSONObject; ABuild: Integer): TJSONObject;
 var
-  Points: TJSONValue;
-  Index: Integer;
-  Item: TJSONValue;
+  mPoints: TJSONValue;
+  mIndex: Integer;
+  mItem: TJSONValue;
 begin
   Result := nil;
   if AOriginal = nil then
   begin
     Exit;
   end;
-  Points := AOriginal.GetValue('points');
-  if not (Points is TJSONArray) then
+  mPoints := AOriginal.GetValue('points');
+  if not (mPoints is TJSONArray) then
   begin
     Exit;
   end;
-  for Index := 0 to TJSONArray(Points).Count - 1 do
+  for mIndex := 0 to TJSONArray(mPoints).Count - 1 do
   begin
-    Item := TJSONArray(Points).Items[Index];
-    if (Item is TJSONObject) and (NumberOf(TJSONObject(Item), 'build', 0) = ABuild) then
+    mItem := TJSONArray(mPoints).Items[mIndex];
+    if (mItem is TJSONObject) and (NumberOf(TJSONObject(mItem), 'build', 0) = ABuild) then
     begin
-      Exit(TJSONObject(Item));
+      Exit(TJSONObject(mItem));
     end;
   end;
 end;
 
 function TrendsJson(const ATrends: TAtlasProjectTrends; AOriginal: TJSONObject): TJSONObject;
 var
-  Points: TJSONArray;
-  Item: TJSONObject;
-  Point: TAtlasTrendPoint;
-  Series: TAtlasTrendSeries;
+  mPoints: TJSONArray;
+  mItem: TJSONObject;
+  mPoint: TAtlasTrendPoint;
+  mSeries: TAtlasTrendSeries;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('builds', TJSONNumber.Create(ATrends.Builds));
-  Points := TJSONArray.Create;
-  Result.AddPair('points', Points);
-  for Point in ATrends.Points do
+  mPoints := TJSONArray.Create;
+  Result.AddPair('points', mPoints);
+  for mPoint in ATrends.Points do
   begin
-    Item := TJSONObject.Create;
-    Points.AddElement(Item);
-    AddTime(Item, 'at', Point.At);
-    Item.AddPair('build', TJSONNumber.Create(Point.Build));
-    if Point.Branch <> '' then
+    mItem := TJSONObject.Create;
+    mPoints.AddElement(mItem);
+    AddTime(mItem, 'at', mPoint.At);
+    mItem.AddPair('build', TJSONNumber.Create(mPoint.Build));
+    if mPoint.Branch <> '' then
     begin
-      Item.AddPair('branch', Point.Branch);
+      mItem.AddPair('branch', mPoint.Branch);
     end;
-    if Point.Commit <> '' then
+    if mPoint.Commit <> '' then
     begin
-      Item.AddPair('commit', Point.Commit);
+      mItem.AddPair('commit', mPoint.Commit);
     end;
-    for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
+    for mSeries := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
     begin
       // Lücke: kein Feld.
-      if not Point.Has[Series] then
+      if not mPoint.Has[mSeries] then
       begin
         Continue;
       end;
-      if TAtlasProjectSummaries.TrendDecimals[Series] then
+      if TAtlasProjectSummaries.cTrendDecimals[mSeries] then
       begin
-        Item.AddPair(TAtlasProjectSummaries.TrendKeys[Series], TJSONNumber.Create(Point.Values[Series] / 10));
+        mItem.AddPair(TAtlasProjectSummaries.cTrendKeys[mSeries], TJSONNumber.Create(mPoint.Values[mSeries] / 10));
       end
       else
       begin
-        Item.AddPair(TAtlasProjectSummaries.TrendKeys[Series], TJSONNumber.Create(Point.Values[Series] div 10));
+        mItem.AddPair(TAtlasProjectSummaries.cTrendKeys[mSeries], TJSONNumber.Create(mPoint.Values[mSeries] div 10));
       end;
     end;
-    KeepUnknown(Item, OriginalPoint(AOriginal, Point.Build), TrendPointKeys);
+    KeepUnknown(mItem, OriginalPoint(AOriginal, mPoint.Build), cTrendPointKeys);
   end;
-  KeepUnknown(Result, AOriginal, TrendsKeys);
+  KeepUnknown(Result, AOriginal, cTrendsKeys);
 end;
 
 /// <summary>Abschnitt "vcs"; Empty ohne Abschnitt.</summary>
@@ -1030,7 +1029,7 @@ begin
   Result.AddPair('changed', TJSONNumber.Create(AVcs.Changed));
   Result.AddPair('ahead', TJSONNumber.Create(AVcs.Ahead));
   Result.AddPair('behind', TJSONNumber.Create(AVcs.Behind));
-  KeepUnknown(Result, AOriginal, VcsKeys);
+  KeepUnknown(Result, AOriginal, cVcsKeys);
 end;
 
 function BuildJson(const ABuild: TAtlasProjectBuild; AOriginal: TJSONObject): TJSONObject;
@@ -1052,7 +1051,7 @@ begin
   begin
     Result.AddPair('first', LocationJson(ABuild.First));
   end;
-  KeepUnknown(Result, AOriginal, BuildKeys);
+  KeepUnknown(Result, AOriginal, cBuildKeys);
 end;
 
 function CheckJson(const ACheck: TAtlasProjectCheck; AOriginal: TJSONObject): TJSONObject;
@@ -1064,7 +1063,7 @@ begin
   begin
     Result.AddPair('first', LocationJson(ACheck.First));
   end;
-  KeepUnknown(Result, AOriginal, CheckKeys);
+  KeepUnknown(Result, AOriginal, cCheckKeys);
 end;
 
 function RulesJson(const ARules: TAtlasProjectRules; AOriginal: TJSONObject): TJSONObject;
@@ -1072,7 +1071,7 @@ begin
   Result := TJSONObject.Create;
   AddTime(Result, 'at', ARules.At);
   Result.AddPair('newHits', TJSONNumber.Create(ARules.NewHits));
-  KeepUnknown(Result, AOriginal, RulesKeys);
+  KeepUnknown(Result, AOriginal, cRulesKeys);
 end;
 
 function MetricsJson(const AMetrics: TAtlasProjectMetrics; AOriginal: TJSONObject): TJSONObject;
@@ -1085,26 +1084,26 @@ begin
   Result.AddPair('average', MetricNumbersJson(AMetrics.AverageTenths, True));
   Result.AddPair('maximum', MetricNumbersJson(AMetrics.Maximum, False));
   Result.AddPair('exceeded', MetricNumbersJson(AMetrics.Exceeded, False));
-  KeepUnknown(Result, AOriginal, MetricsKeys);
+  KeepUnknown(Result, AOriginal, cMetricsKeys);
 end;
 
 function TodosJson(const ATodos: TAtlasProjectTodos; AOriginal: TJSONObject): TJSONObject;
 var
-  Keywords: TJSONObject;
-  Index: Integer;
+  mKeywords: TJSONObject;
+  mIndex: Integer;
 begin
   Result := TJSONObject.Create;
   AddTime(Result, 'at', ATodos.At);
   Result.AddPair('files', TJSONNumber.Create(ATodos.Files));
   Result.AddPair('open', TJSONNumber.Create(ATodos.Open));
   Result.AddPair('done', TJSONNumber.Create(ATodos.Done));
-  Keywords := TJSONObject.Create;
-  Result.AddPair('keywords', Keywords);
-  for Index := 0 to High(ATodos.Keywords) do
+  mKeywords := TJSONObject.Create;
+  Result.AddPair('keywords', mKeywords);
+  for mIndex := 0 to High(ATodos.Keywords) do
   begin
-    Keywords.AddPair(ATodos.Keywords[Index], TJSONNumber.Create(ATodos.KeywordCounts[Index]));
+    mKeywords.AddPair(ATodos.Keywords[mIndex], TJSONNumber.Create(ATodos.KeywordCounts[mIndex]));
   end;
-  KeepUnknown(Result, AOriginal, TodosKeys);
+  KeepUnknown(Result, AOriginal, cTodosKeys);
 end;
 
 function BaselineJson(const ABaseline: TAtlasProjectBaseline; AOriginal: TJSONObject): TJSONObject;
@@ -1122,7 +1121,7 @@ begin
     Result.AddPair('added', TJSONNumber.Create(ABaseline.Added));
     Result.AddPair('removed', TJSONNumber.Create(ABaseline.Removed));
   end;
-  KeepUnknown(Result, AOriginal, BaselineKeys);
+  KeepUnknown(Result, AOriginal, cBaselineKeys);
 end;
 
 /// <summary>Bekannte Abschnitte von ASummary an ARoot; AOriginal ist die gelesene Datei (darf nil sein).</summary>
@@ -1182,18 +1181,18 @@ end;
 
 class function TAtlasProjectSummaries.NormalizedPath(const AProject: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Trim(AProject);
-  for Index := 1 to Length(Result) do
+  for mIndex := 1 to Length(Result) do
   begin
-    if Result[Index] = '/' then
+    if Result[mIndex] = '/' then
     begin
-      Result[Index] := '\';
+      Result[mIndex] := '\';
     end
-    else if CharInSet(Result[Index], ['a'..'z']) then
+    else if CharInSet(Result[mIndex], ['a'..'z']) then
     begin
-      Result[Index] := Chr(Ord(Result[Index]) - 32);
+      Result[mIndex] := Chr(Ord(Result[mIndex]) - 32);
     end;
   end;
 end;
@@ -1202,29 +1201,29 @@ end;
 {$IFOPT Q+}{$DEFINE ATLAS_HASH_UEBERLAUF}{$Q-}{$ENDIF}
 class function TAtlasProjectSummaries.KeyOf(const AProject: string): string;
 const
-  Offset: UInt64 = $CBF29CE484222325;
-  Prime: UInt64 = $00000100000001B3;
-  Digits: string = '0123456789abcdef';
+  cOffset: UInt64 = $CBF29CE484222325;
+  cPrime: UInt64 = $00000100000001B3;
+  cDigits: string = '0123456789abcdef';
 var
-  Text: string;
-  Hash: UInt64;
-  Index, Shift: Integer;
-  Unit_: Word;
+  mText: string;
+  mHash: UInt64;
+  mIndex, mShift: Integer;
+  mUnit_: Word;
 begin
-  Text := NormalizedPath(AProject);
-  Hash := Offset;
-  for Index := 1 to Length(Text) do
+  mText := NormalizedPath(AProject);
+  mHash := cOffset;
+  for mIndex := 1 to Length(mText) do
   begin
-    Unit_ := Ord(Text[Index]);
-    Hash := (Hash xor (Unit_ and $FF)) * Prime;
-    Hash := (Hash xor (Unit_ shr 8)) * Prime;
+    mUnit_ := Ord(mText[mIndex]);
+    mHash := (mHash xor (mUnit_ and $FF)) * cPrime;
+    mHash := (mHash xor (mUnit_ shr 8)) * cPrime;
   end;
   Result := '';
-  Shift := 60;
-  while Shift >= 0 do
+  mShift := 60;
+  while mShift >= 0 do
   begin
-    Result := Result + Digits[((Hash shr Shift) and $F) + 1];
-    Dec(Shift, 4);
+    Result := Result + cDigits[((mHash shr mShift) and $F) + 1];
+    Dec(mShift, 4);
   end;
 end;
 {$IFDEF ATLAS_HASH_UEBERLAUF}{$Q+}{$UNDEF ATLAS_HASH_UEBERLAUF}{$ENDIF}
@@ -1246,106 +1245,106 @@ end;
 
 class function TAtlasProjectSummaries.FormatOf(const AJson: string): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := 0;
   try
-    Value := TJSONObject.ParseJSONValue(AJson);
+    mValue := TJSONObject.ParseJSONValue(AJson);
   except
     on Exception do
-      Value := nil;
+      mValue := nil;
   end;
   try
-    if Value is TJSONObject then
+    if mValue is TJSONObject then
     begin
-      Result := NumberOf(TJSONObject(Value), 'format', 0);
+      Result := NumberOf(TJSONObject(mValue), 'format', 0);
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TAtlasProjectSummaries.Parse(const AJson: string; out ASummary: TAtlasProjectSummary): Boolean;
 var
-  Value: TJSONValue;
-  Root: TJSONObject;
+  mValue: TJSONValue;
+  mRoot: TJSONObject;
 begin
   ASummary := TAtlasProjectSummary.Create('');
   Result := False;
   try
-    Value := TJSONObject.ParseJSONValue(AJson);
+    mValue := TJSONObject.ParseJSONValue(AJson);
   except
     on Exception do
-      Value := nil;
+      mValue := nil;
   end;
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    Root := TJSONObject(Value);
+    mRoot := TJSONObject(mValue);
     // Ohne "format" gilt 1; ein höheres Format kennt diese Fassung nicht.
-    if NumberOf(Root, 'format', 1) > Format then
+    if NumberOf(mRoot, 'format', 1) > cFormat then
     begin
       Exit;
     end;
     ASummary.Raw := AJson;
-    ASummary.Project := TextOf(Root, 'project');
-    ASummary.LastOpened := TimeOf(TextOf(Root, 'lastOpened'));
-    ASummary.LastClosed := TimeOf(TextOf(Root, 'lastClosed'));
-    ASummary.Hidden := FlagOf(Root, 'hidden');
-    ASummary.Vcs := VcsOf(ObjectOf(Root, 'vcs'));
-    ASummary.Build := BuildOf(ObjectOf(Root, 'build'));
-    ASummary.Check := CheckOf(ObjectOf(Root, 'check'));
-    ASummary.Rules := RulesOf(ObjectOf(Root, 'rules'));
-    ASummary.Metrics := MetricsOf(ObjectOf(Root, 'metrics'));
-    ASummary.Todos := TodosOf(ObjectOf(Root, 'todos'));
-    ASummary.Baseline := BaselineOf(ObjectOf(Root, 'baseline'));
-    ASummary.Trends := TrendsOf(ObjectOf(Root, 'trends'));
-    ASummary.Setup := TAtlasSummarySections.SetupOf(ObjectOf(Root, 'setup'));
-    ASummary.Tests := TAtlasSummarySections.TestsOf(ObjectOf(Root, 'tests'));
-    ASummary.Release := TAtlasSummarySections.ReleaseOf(ObjectOf(Root, 'release'));
-    ASummary.Ci := TAtlasSummarySections.CiOf(ObjectOf(Root, 'ci'));
+    ASummary.Project := TextOf(mRoot, 'project');
+    ASummary.LastOpened := TimeOf(TextOf(mRoot, 'lastOpened'));
+    ASummary.LastClosed := TimeOf(TextOf(mRoot, 'lastClosed'));
+    ASummary.Hidden := FlagOf(mRoot, 'hidden');
+    ASummary.Vcs := VcsOf(ObjectOf(mRoot, 'vcs'));
+    ASummary.Build := BuildOf(ObjectOf(mRoot, 'build'));
+    ASummary.Check := CheckOf(ObjectOf(mRoot, 'check'));
+    ASummary.Rules := RulesOf(ObjectOf(mRoot, 'rules'));
+    ASummary.Metrics := MetricsOf(ObjectOf(mRoot, 'metrics'));
+    ASummary.Todos := TodosOf(ObjectOf(mRoot, 'todos'));
+    ASummary.Baseline := BaselineOf(ObjectOf(mRoot, 'baseline'));
+    ASummary.Trends := TrendsOf(ObjectOf(mRoot, 'trends'));
+    ASummary.Setup := TAtlasSummarySections.SetupOf(ObjectOf(mRoot, 'setup'));
+    ASummary.Tests := TAtlasSummarySections.TestsOf(ObjectOf(mRoot, 'tests'));
+    ASummary.Release := TAtlasSummarySections.ReleaseOf(ObjectOf(mRoot, 'release'));
+    ASummary.Ci := TAtlasSummarySections.CiOf(ObjectOf(mRoot, 'ci'));
     Result := True;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TAtlasProjectSummaries.ToJson(const ASummary: TAtlasProjectSummary): string;
 var
-  Value: TJSONValue;
-  Original, Root: TJSONObject;
+  mValue: TJSONValue;
+  mOriginal, mRoot: TJSONObject;
 begin
-  Value := nil;
+  mValue := nil;
   if ASummary.Raw <> '' then
     try
-      Value := TJSONObject.ParseJSONValue(ASummary.Raw);
+      mValue := TJSONObject.ParseJSONValue(ASummary.Raw);
     except
       on Exception do
-        Value := nil;
+        mValue := nil;
     end;
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Original := nil;
-    if Value is TJSONObject then
+    mOriginal := nil;
+    if mValue is TJSONObject then
     begin
-      Original := TJSONObject(Value);
+      mOriginal := TJSONObject(mValue);
     end;
-    Root.AddPair('format', TJSONNumber.Create(Format));
-    Root.AddPair('project', ASummary.Project);
-    AddTime(Root, 'lastOpened', ASummary.LastOpened);
-    AddTime(Root, 'lastClosed', ASummary.LastClosed);
+    mRoot.AddPair('format', TJSONNumber.Create(cFormat));
+    mRoot.AddPair('project', ASummary.Project);
+    AddTime(mRoot, 'lastOpened', ASummary.LastOpened);
+    AddTime(mRoot, 'lastClosed', ASummary.LastClosed);
     if ASummary.Hidden then
     begin
-      Root.AddPair('hidden', TJSONBool.Create(True));
+      mRoot.AddPair('hidden', TJSONBool.Create(True));
     end;
-    AddSections(Root, Original, ASummary);
-    KeepUnknown(Root, Original, TopKeys);
-    Result := Root.ToJSON;
+    AddSections(mRoot, mOriginal, ASummary);
+    KeepUnknown(mRoot, mOriginal, cTopKeys);
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
-    Value.Free;
+    mRoot.Free;
+    mValue.Free;
   end;
 end;
 
@@ -1355,21 +1354,21 @@ end;
 function ReadSummary(const AFileName, AProject: string; out ASummary: TAtlasProjectSummary;
   out AParsed: Boolean): TAtlasDataLoad;
 var
-  Summary: TAtlasProjectSummary;
-  Parsed: Boolean;
+  mSummary: TAtlasProjectSummary;
+  mParsed: Boolean;
 begin
-  Parsed := False;
+  mParsed := False;
   Result := TAtlasDataFile.Load(AFileName, 'Projektübersicht',
     function(const AText: string): Boolean
     begin
-      Parsed := TAtlasProjectSummaries.Parse(AText, Summary);
+      mParsed := TAtlasProjectSummaries.Parse(AText, mSummary);
       // Ein höheres Format ist nicht unbrauchbar: nicht beiseitelegen; Save überschreibt es nicht.
-      Result := Parsed or (TAtlasProjectSummaries.FormatOf(AText) > TAtlasProjectSummaries.Format);
+      Result := mParsed or (TAtlasProjectSummaries.FormatOf(AText) > TAtlasProjectSummaries.cFormat);
     end);
-  AParsed := Parsed and (Result = TAtlasDataLoad.Loaded);
+  AParsed := mParsed and (Result = TAtlasDataLoad.Loaded);
   if AParsed then
   begin
-    ASummary := Summary;
+    ASummary := mSummary;
     if ASummary.Project = '' then
     begin
       ASummary.Project := AProject;
@@ -1383,7 +1382,7 @@ end;
 
 class function TAtlasProjectSummaries.DefaultFolder: string;
 begin
-  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), FolderName);
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), cFolderName);
 end;
 
 class function TAtlasProjectSummaries.FailedTestsOf(const AFolder, ATestProject: string): TArray<string>;
@@ -1413,22 +1412,22 @@ end;
 
 class function TAtlasProjectSummaries.Save(const AFolder: string; const ASummary: TAtlasProjectSummary): Boolean;
 var
-  FileName, Text: string;
+  mFileName, mText: string;
 begin
   Result := False;
   if (AFolder = '') or (Trim(ASummary.Project) = '') then
   begin
     Exit;
   end;
-  FileName := FileFor(AFolder, ASummary.Project);
+  mFileName := FileFor(AFolder, ASummary.Project);
   try
     // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
-    if FileExists(FileName) and (not TAtlasDataFile.TryRead(FileName, Text) or (FormatOf(Text) > Format)) then
+    if FileExists(mFileName) and (not TAtlasDataFile.TryRead(mFileName, mText) or (FormatOf(mText) > cFormat)) then
     begin
       Exit;
     end;
     // Atomar ersetzt, UTF-8 ohne BOM wie JSON üblich.
-    TAtlasDataFile.Write(FileName, ToJson(ASummary));
+    TAtlasDataFile.Write(mFileName, ToJson(ASummary));
     Result := True;
   except
     on E: Exception do
@@ -1439,8 +1438,8 @@ end;
 class function TAtlasProjectSummaries.Update(const AFolder, AProject: string;
   const AChange: TAtlasProjectSummaryChange): Boolean;
 var
-  Summary: TAtlasProjectSummary;
-  Parsed: Boolean;
+  mSummary: TAtlasProjectSummary;
+  mParsed: Boolean;
 begin
   Result := False;
   if (AFolder = '') or (Trim(AProject) = '') then
@@ -1449,15 +1448,15 @@ begin
   end;
   // Ohne Datei oder mit unbrauchbarer (jetzt .defekt) beginnt eine neue; eine gesperrte bleibt unverändert,
   // sonst ginge ihr Inhalt verloren. Eine Datei mit höherem Format bleibt unangetastet (Save prüft das).
-  if not TAtlasDataFile.Writable(ReadSummary(FileFor(AFolder, AProject), AProject, Summary, Parsed)) then
+  if not TAtlasDataFile.Writable(ReadSummary(FileFor(AFolder, AProject), AProject, mSummary, mParsed)) then
   begin
     Exit;
   end;
   if Assigned(AChange) then
   begin
-    AChange(Summary);
+    AChange(mSummary);
   end;
-  Result := Save(AFolder, Summary);
+  Result := Save(AFolder, mSummary);
 end;
 
 end.

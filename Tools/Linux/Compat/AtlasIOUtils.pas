@@ -1,4 +1,6 @@
-﻿{$mode delphi}{$H+}{$modeswitch unicodestrings}{$modeswitch advancedrecords}{$modeswitch functionreferences}{$modeswitch anonymousfunctions}{$modeswitch typehelpers}
+﻿{$mode delphi}{$H+}
+{$modeswitch unicodestrings}{$modeswitch advancedrecords}{$modeswitch functionreferences}
+{$modeswitch anonymousfunctions}{$modeswitch typehelpers}
 unit AtlasIOUtils;
 
 // Ersatz für Delphis System.IOUtils im Linux-Bau (#1109). Convert-ForFpc.py
@@ -196,27 +198,27 @@ end;
 
 class function TFile.ReadAllBytes(const AFileName: string): TBytes;
 var
-  Stream: TFileStream;
+  mStream: TFileStream;
 begin
-  Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
+  mStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
   try
-    SetLength(Result, Stream.Size);
+    SetLength(Result, mStream.Size);
     if Length(Result) > 0 then
-      Stream.ReadBuffer(Result[0], Length(Result));
+      mStream.ReadBuffer(Result[0], Length(Result));
   finally
-    Stream.Free;
+    mStream.Free;
   end;
 end;
 
 /// <summary>Wie Delphi: eine Präambel (BOM) bestimmt die Kodierung, sonst gilt ADefault.</summary>
 function DecodeText(const ABytes: TBytes; ADefault: TEncoding): string;
 var
-  Encoding: TEncoding;
-  Skip: Integer;
+  mEncoding: TEncoding;
+  mSkip: Integer;
 begin
-  Encoding := nil;
-  Skip := TEncoding.GetBufferEncoding(ABytes, Encoding, ADefault);
-  Result := Encoding.GetString(ABytes, Skip, Length(ABytes) - Skip);
+  mEncoding := nil;
+  mSkip := TEncoding.GetBufferEncoding(ABytes, mEncoding, ADefault);
+  Result := mEncoding.GetString(ABytes, mSkip, Length(ABytes) - mSkip);
 end;
 
 class function TFile.ReadAllText(const AFileName: string): string;
@@ -231,17 +233,17 @@ end;
 
 function SplitText(const AText: string): TArray<string>;
 var
-  Lines: TStringList;
-  Index: Integer;
+  mLines: TStringList;
+  mIndex: Integer;
 begin
-  Lines := TStringList.Create;
+  mLines := TStringList.Create;
   try
-    Lines.Text := AText;
-    SetLength(Result, Lines.Count);
-    for Index := 0 to Lines.Count - 1 do
-      Result[Index] := Lines[Index];
+    mLines.Text := AText;
+    SetLength(Result, mLines.Count);
+    for mIndex := 0 to mLines.Count - 1 do
+      Result[mIndex] := mLines[mIndex];
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 
@@ -257,14 +259,14 @@ end;
 
 class procedure TFile.WriteAllBytes(const AFileName: string; const ABytes: TBytes);
 var
-  Stream: TFileStream;
+  mStream: TFileStream;
 begin
-  Stream := TFileStream.Create(AFileName, fmCreate);
+  mStream := TFileStream.Create(AFileName, fmCreate);
   try
     if Length(ABytes) > 0 then
-      Stream.WriteBuffer(ABytes[0], Length(ABytes));
+      mStream.WriteBuffer(ABytes[0], Length(ABytes));
   finally
-    Stream.Free;
+    mStream.Free;
   end;
 end;
 
@@ -281,11 +283,11 @@ end;
 
 function JoinLines(const AContents: TArray<string>): string;
 var
-  Line: string;
+  mLine: string;
 begin
   Result := '';
-  for Line in AContents do
-    Result := Result + Line + sLineBreak;
+  for mLine in AContents do
+    Result := Result + mLine + sLineBreak;
 end;
 
 class procedure TFile.WriteAllLines(const AFileName: string; const AContents: TArray<string>);
@@ -301,20 +303,20 @@ end;
 
 class procedure TFile.AppendAllText(const AFileName, AContents: string);
 var
-  Stream: TFileStream;
-  Bytes: TBytes;
+  mStream: TFileStream;
+  mBytes: TBytes;
 begin
   if FileExists(AFileName) then
-    Stream := TFileStream.Create(AFileName, fmOpenReadWrite)
+    mStream := TFileStream.Create(AFileName, fmOpenReadWrite)
   else
-    Stream := TFileStream.Create(AFileName, fmCreate);
+    mStream := TFileStream.Create(AFileName, fmCreate);
   try
-    Stream.Seek(0, soEnd);
-    Bytes := TEncoding.UTF8.GetBytes(AContents);
-    if Length(Bytes) > 0 then
-      Stream.WriteBuffer(Bytes[0], Length(Bytes));
+    mStream.Seek(0, soEnd);
+    mBytes := TEncoding.UTF8.GetBytes(AContents);
+    if Length(mBytes) > 0 then
+      mStream.WriteBuffer(mBytes[0], Length(mBytes));
   finally
-    Stream.Free;
+    mStream.Free;
   end;
 end;
 
@@ -359,20 +361,20 @@ end;
 
 class function TFile.GetSize(const AFileName: string): Int64;
 var
-  Info: Stat;
+  mInfo: Stat;
 begin
-  if not StatOf(AFileName, Info) then
+  if not StatOf(AFileName, mInfo) then
     raise EInOutError.CreateFmt('Datei "%s" fehlt', [AFileName]);
-  Result := Info.st_size;
+  Result := mInfo.st_size;
 end;
 
 class function TFile.GetLastWriteTimeUtc(const AFileName: string): TDateTime;
 var
-  Info: Stat;
+  mInfo: Stat;
 begin
-  if not StatOf(AFileName, Info) then
+  if not StatOf(AFileName, mInfo) then
     raise EInOutError.CreateFmt('Datei "%s" fehlt', [AFileName]);
-  Result := UnixToDateTime(Info.st_mtime, True) + Info.st_mtime_nsec / (Int64(1000000000) * SecsPerDay);
+  Result := UnixToDateTime(mInfo.st_mtime, True) + mInfo.st_mtime_nsec / (Int64(1000000000) * SecsPerDay);
 end;
 
 class function TFile.GetLastWriteTime(const AFileName: string): TDateTime;
@@ -406,22 +408,22 @@ end;
 
 procedure DeleteTree(const APath: string);
 var
-  Search: TSearchRec;
-  Child: string;
+  mSearch: TSearchRec;
+  mChild: string;
 begin
-  if FindFirst(IncludeTrailingPathDelimiter(APath) + '*', faAnyFile or faSymLink, Search) = 0 then
+  if FindFirst(IncludeTrailingPathDelimiter(APath) + '*', faAnyFile or faSymLink, mSearch) = 0 then
     try
       repeat
-        if (Search.Name = '.') or (Search.Name = '..') then
+        if (mSearch.Name = '.') or (mSearch.Name = '..') then
           Continue;
-        Child := IncludeTrailingPathDelimiter(APath) + Search.Name;
-        if (Search.Attr and faDirectory <> 0) and (Search.Attr and faSymLink = 0) then
-          DeleteTree(Child)
+        mChild := IncludeTrailingPathDelimiter(APath) + mSearch.Name;
+        if (mSearch.Attr and faDirectory <> 0) and (mSearch.Attr and faSymLink = 0) then
+          DeleteTree(mChild)
         else
-          DeleteFile(Child);
-      until FindNext(Search) <> 0;
+          DeleteFile(mChild);
+      until FindNext(mSearch) <> 0;
     finally
-      FindClose(Search);
+      FindClose(mSearch);
     end;
   RemoveDir(APath);
 end;
@@ -440,37 +442,41 @@ begin
     Delete(APath);
 end;
 
+/// <summary>Einträge von APath, die auf APattern passen: Dateien (AFiles) oder Ordner.</summary>
+procedure CollectLevel(const ABase, APattern: string; AFiles: Boolean; var AResult: TArray<string>);
+var
+  mSearch: TSearchRec;
+begin
+  if FindFirst(ABase + APattern, faAnyFile, mSearch) <> 0 then
+    Exit;
+  try
+    repeat
+      if (mSearch.Name <> '.') and (mSearch.Name <> '..') and ((mSearch.Attr and faDirectory <> 0) <> AFiles) then
+        AResult := AResult + [ABase + mSearch.Name];
+    until FindNext(mSearch) <> 0;
+  finally
+    FindClose(mSearch);
+  end;
+end;
+
 procedure Collect(const APath, APattern: string; AFiles: Boolean; ARecursive: Boolean; var AResult: TArray<string>);
 var
-  Search: TSearchRec;
-  Base: string;
-  IsDir: Boolean;
+  mSearch: TSearchRec;
+  mBase: string;
 begin
-  Base := IncludeTrailingPathDelimiter(APath);
-  if FindFirst(Base + APattern, faAnyFile, Search) = 0 then
-    try
-      repeat
-        if (Search.Name = '.') or (Search.Name = '..') then
-          Continue;
-        IsDir := Search.Attr and faDirectory <> 0;
-        if IsDir <> AFiles then
-          AResult := AResult + [Base + Search.Name];
-      until FindNext(Search) <> 0;
-    finally
-      FindClose(Search);
-    end;
-  if not ARecursive then
+  mBase := IncludeTrailingPathDelimiter(APath);
+  CollectLevel(mBase, APattern, AFiles, AResult);
+  if not ARecursive or (FindFirst(mBase + '*', faDirectory, mSearch) <> 0) then
     Exit;
-  if FindFirst(Base + '*', faDirectory, Search) = 0 then
-    try
-      repeat
-        if (Search.Name <> '.') and (Search.Name <> '..') and (Search.Attr and faDirectory <> 0) and
-          (Search.Attr and faSymLink = 0) then
-          Collect(Base + Search.Name, APattern, AFiles, True, AResult);
-      until FindNext(Search) <> 0;
-    finally
-      FindClose(Search);
-    end;
+  try
+    repeat
+      if (mSearch.Name <> '.') and (mSearch.Name <> '..') and (mSearch.Attr and faDirectory <> 0) and
+        (mSearch.Attr and faSymLink = 0) then
+        Collect(mBase + mSearch.Name, APattern, AFiles, True, AResult);
+    until FindNext(mSearch) <> 0;
+  finally
+    FindClose(mSearch);
+  end;
 end;
 
 function Pattern(const ASearchPattern: string): string;
@@ -493,17 +499,17 @@ end;
 
 class function TDirectory.IsEmpty(const APath: string): Boolean;
 var
-  Search: TSearchRec;
+  mSearch: TSearchRec;
 begin
   Result := True;
-  if FindFirst(IncludeTrailingPathDelimiter(APath) + '*', faAnyFile, Search) = 0 then
+  if FindFirst(IncludeTrailingPathDelimiter(APath) + '*', faAnyFile, mSearch) = 0 then
     try
       repeat
-        if (Search.Name <> '.') and (Search.Name <> '..') then
+        if (mSearch.Name <> '.') and (mSearch.Name <> '..') then
           Exit(False);
-      until FindNext(Search) <> 0;
+      until FindNext(mSearch) <> 0;
     finally
-      FindClose(Search);
+      FindClose(mSearch);
     end;
 end;
 

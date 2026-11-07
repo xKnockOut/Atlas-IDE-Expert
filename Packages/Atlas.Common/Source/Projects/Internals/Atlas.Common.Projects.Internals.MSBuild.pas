@@ -126,79 +126,79 @@ end;
 
 procedure TMSBuildProperties.SetValue(const AName, AValue: string);
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := UpperCase(AName);
-  if not FValues.ContainsKey(Key) then
+  mKey := UpperCase(AName);
+  if not FValues.ContainsKey(mKey) then
   begin
     FNames.Add(AName);
   end;
-  FValues.AddOrSetValue(Key, AValue);
+  FValues.AddOrSetValue(mKey, AValue);
 end;
 
 function TMSBuildProperties.Expand(const AText: string): string;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
-  Close: Integer;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
+  mClose: Integer;
 begin
   if Pos('$(', AText) = 0 then
   begin
     Exit(AText);
   end;
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Index := 1;
-    while Index <= Length(AText) do
+    mIndex := 1;
+    while mIndex <= Length(AText) do
     begin
-      if (AText[Index] = '$') and (Index < Length(AText)) and (AText[Index + 1] = '(') then
+      if (AText[mIndex] = '$') and (mIndex < Length(AText)) and (AText[mIndex + 1] = '(') then
       begin
-        Close := Pos(')', AText, Index + 2);
-        if Close > 0 then
+        mClose := Pos(')', AText, mIndex + 2);
+        if mClose > 0 then
         begin
-          Builder.Append(Get(Trim(Copy(AText, Index + 2, Close - Index - 2))));
-          Index := Close + 1;
+          mBuilder.Append(Get(Trim(Copy(AText, mIndex + 2, mClose - mIndex - 2))));
+          mIndex := mClose + 1;
           Continue;
         end;
       end;
-      Builder.Append(AText[Index]);
-      Inc(Index);
+      mBuilder.Append(AText[mIndex]);
+      Inc(mIndex);
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 function TMSBuildProperties.Evaluate(const ACondition: string): Boolean;
 var
-  Parser: TConditionParser;
+  mParser: TConditionParser;
 begin
   if Trim(ACondition) = '' then
   begin
     Exit(True);
   end;
-  Parser := TConditionParser.Create(ACondition, Self);
+  mParser := TConditionParser.Create(ACondition, Self);
   try
     try
-      Result := Parser.Run;
+      Result := mParser.Run;
     except
       on EConditionError do
         Result := False;
     end;
   finally
-    Parser.Free;
+    mParser.Free;
   end;
 end;
 
 function TMSBuildProperties.ToArray: TArray<TPair<string, string>>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   SetLength(Result, FNames.Count);
-  for Index := 0 to FNames.Count - 1 do
+  for mIndex := 0 to FNames.Count - 1 do
   begin
-    Result[Index] := TPair<string, string>.Create(FNames[Index], Get(FNames[Index]));
+    Result[mIndex] := TPair<string, string>.Create(FNames[mIndex], Get(FNames[mIndex]));
   end;
 end;
 
@@ -222,15 +222,15 @@ end;
 
 function TConditionParser.TryKeyword(const AWord: string): Boolean;
 var
-  After: Integer;
+  mAfter: Integer;
 begin
   SkipSpace;
-  After := FPos + Length(AWord);
+  mAfter := FPos + Length(AWord);
   Result := SameText(Copy(FText, FPos, Length(AWord)), AWord) and
-    ((After > Length(FText)) or not CharInSet(FText[After], ['A'..'Z', 'a'..'z', '0'..'9', '_']));
+    ((mAfter > Length(FText)) or not CharInSet(FText[mAfter], ['A'..'Z', 'a'..'z', '0'..'9', '_']));
   if Result then
   begin
-    FPos := After;
+    FPos := mAfter;
   end;
 end;
 
@@ -246,25 +246,25 @@ end;
 
 function TConditionParser.ParseOr: Boolean;
 var
-  Right: Boolean;
+  mRight: Boolean;
 begin
   Result := ParseAnd;
   while TryKeyword('or') do
   begin
-    Right := ParseAnd;
-    Result := Result or Right;
+    mRight := ParseAnd;
+    Result := Result or mRight;
   end;
 end;
 
 function TConditionParser.ParseAnd: Boolean;
 var
-  Right: Boolean;
+  mRight: Boolean;
 begin
   Result := ParseNot;
   while TryKeyword('and') do
   begin
-    Right := ParseNot;
-    Result := Result and Right;
+    mRight := ParseNot;
+    Result := Result and mRight;
   end;
 end;
 
@@ -344,17 +344,17 @@ end;
 
 function TConditionParser.ParseFunction(const AName: string): Boolean;
 var
-  Argument: string;
+  mArgument: string;
 begin
-  Argument := ParseOperand;
+  mArgument := ParseOperand;
   ExpectClose;
   if SameText(AName, 'Exists') then
   begin
-    Result := Assigned(FProperties.FFileExists) and FProperties.FFileExists(Argument);
+    Result := Assigned(FProperties.FFileExists) and FProperties.FFileExists(mArgument);
   end
   else if SameText(AName, 'HasTrailingSlash') then
   begin
-    Result := (Argument <> '') and CharInSet(Argument[Length(Argument)], ['\', '/']);
+    Result := (mArgument <> '') and CharInSet(mArgument[Length(mArgument)], ['\', '/']);
   end
   else
   begin

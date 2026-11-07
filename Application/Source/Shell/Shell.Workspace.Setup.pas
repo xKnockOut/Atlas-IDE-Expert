@@ -112,9 +112,11 @@ type
     property OnProjectLoaded: TProc read FOnProjectLoaded write FOnProjectLoaded;
     /// <summary>Nach einem vollständigen (nicht abgebrochenen) Indexaufbau; im Index-Thread.</summary>
     property OnIndexFinished: TProc read FOnIndexFinished write FOnIndexFinished;
-    /// <summary>Projektstufe des Aufbaus fertig (Projektdateien und über uses erreichbare Units); im Index-Thread.</summary>
+    /// <summary>Projektstufe des Aufbaus fertig (Projektdateien und über uses erreichbare Units); im
+    /// Index-Thread.</summary>
     property OnProjectReady: TProc read FOnProjectReady write FOnProjectReady;
-    /// <summary>Zeile fürs Diagnoselog (#647), nur Zahlen und feste Wörter; im Index- oder Nachrichten-Thread.</summary>
+    /// <summary>Zeile fürs Diagnoselog (#647), nur Zahlen und feste Wörter; im Index- oder
+    /// Nachrichten-Thread.</summary>
     property OnIndexEvent: TProc<string> read FOnIndexEvent write FOnIndexEvent;
     /// <summary>Projekt- und Unit-Namen nach dem Lesen der .dproj, damit das Server-Log sie verbirgt (#647).</summary>
     property OnNames: TProc<TArray<string>> read FOnNames write FOnNames;

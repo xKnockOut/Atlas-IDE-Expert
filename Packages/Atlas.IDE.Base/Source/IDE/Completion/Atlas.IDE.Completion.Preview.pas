@@ -81,7 +81,7 @@ end;
 
 constructor TAtlasEditorPreview.Create;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   inherited Create;
   FIndex := -1;
@@ -89,20 +89,20 @@ begin
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+    FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
 end;
 
 destructor TAtlasEditorPreview.Destroy;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   Clear;
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    Services.RemoveEditorEventsNotifier(FIndex);
+    mServices.RemoveEditorEventsNotifier(FIndex);
   end;
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
@@ -111,11 +111,11 @@ end;
 
 procedure TAtlasEditorPreview.InvalidateLine(ALine: Integer);
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
-  if (ALine > 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if (ALine > 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTopLine(Services, ALine);
+    TAtlasIdeEditorRefresh.InvalidateTopLine(mServices, ALine);
   end;
 end;
 
@@ -161,48 +161,48 @@ end;
 procedure TAtlasEditorPreview.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  Cell: TRect;
-  Canvas: TCanvas;
-  Italic: TFont;
-  DC: HDC;
-  Saved, Top, TopRow: Integer;
-  Size: TSize;
+  mCell: TRect;
+  mCanvas: TCanvas;
+  mItalic: TFont;
+  mDC: HDC;
+  mSaved, mTop, mTopRow: Integer;
+  mSize: TSize;
 begin
   try
     if BeforeEvent or (Stage <> plsEndPaint) or not ShowsIn(Context) then
     begin
       Exit;
     end;
-    Cell := Context.EditorState.GetCharacterPosPx(FColumn, Context.EditorLineNum);
-    Canvas := Context.Canvas;
-    Top := Rect.Top + (Rect.Height - Canvas.TextHeight('Wg')) div 2;
+    mCell := Context.EditorState.GetCharacterPosPx(FColumn, Context.EditorLineNum);
+    mCanvas := Context.Canvas;
+    mTop := Rect.Top + (Rect.Height - mCanvas.TextHeight('Wg')) div 2;
     // Eigene kursive Schrift und gesicherter DC-Zustand: Schrift, Textfarbe und
     // Hintergrundmodus der IDE bleiben unverändert (sonst färbt die Vorschaufarbe
     // später gezeichnete Läufe ein).
-    Italic := TFont.Create;
+    mItalic := TFont.Create;
     try
-      Italic.Assign(Canvas.Font);
-      Italic.Style := [fsItalic];
-      DC := Canvas.Handle;
-      Saved := SaveDC(DC);
+      mItalic.Assign(mCanvas.Font);
+      mItalic.Style := [fsItalic];
+      mDC := mCanvas.Handle;
+      mSaved := SaveDC(mDC);
       try
-        SelectObject(DC, Italic.Handle);
-        SetBkMode(DC, TRANSPARENT);
-        SetTextColor(DC, ColorToRGB(TColor(TAtlasIdeStyle.Colors.Muted)));
-        Winapi.Windows.TextOut(DC, Cell.Left, Top, PChar(FText), Length(FText));
-        GetTextExtentPoint32W(DC, PChar(FText), Length(FText), Size);
+        SelectObject(mDC, mItalic.Handle);
+        SetBkMode(mDC, TRANSPARENT);
+        SetTextColor(mDC, ColorToRGB(TColor(TAtlasIdeStyle.Colors.Muted)));
+        Winapi.Windows.TextOut(mDC, mCell.Left, mTop, PChar(FText), Length(FText));
+        GetTextExtentPoint32W(mDC, PChar(FText), Length(FText), mSize);
       finally
-        RestoreDC(DC, Saved);
+        RestoreDC(mDC, mSaved);
       end;
-      TopRow := 0;
+      mTopRow := 0;
       if Context.EditView <> nil then
       begin
-        TopRow := Context.EditView.TopRow;
+        mTopRow := Context.EditView.TopRow;
       end;
       TAtlasIdeElements.Painted(TAtlasIdeElements.Target(FElement, Context.FileName, FLine - 1, ''),
-        TRect.Create(Cell.Left, Rect.Top, Cell.Left + Size.cx, Rect.Bottom), TopRow, Rect.Height);
+        TRect.Create(mCell.Left, Rect.Top, mCell.Left + mSize.cx, Rect.Bottom), mTopRow, Rect.Height);
     finally
-      Italic.Free;
+      mItalic.Free;
     end;
   except
     // Zeichnen darf die IDE nie stören.

@@ -80,8 +80,8 @@ uses
 
 const
   // Linker legt das Codesegment an die Modulbasis + $1000.
-  DefaultCodeOffset = $1000;
-  DefaultImageBase = $400000;
+  cDefaultCodeOffset = $1000;
+  cDefaultImageBase = $400000;
 
 function TMapLocation.ToString: string;
 begin
@@ -99,39 +99,39 @@ end;
 /// <summary>Liest "0001:00ABCDEF"; False bei anderem Segment oder Format.</summary>
 function ReadAddress(const AText: string; out ASegment: Integer; out AAddress: UInt64): Boolean;
 var
-  Colon: Integer;
-  Value: Int64;
+  mColon: Integer;
+  mValue: Int64;
 begin
-  Colon := Pos(':', AText);
-  Result := (Colon = 5) and TryStrToInt('$' + Copy(AText, 1, 4), ASegment) and
-    TryStrToInt64('$' + Copy(AText, Colon + 1, MaxInt), Value);
+  mColon := Pos(':', AText);
+  Result := (mColon = 5) and TryStrToInt('$' + Copy(AText, 1, 4), ASegment) and
+    TryStrToInt64('$' + Copy(AText, mColon + 1, MaxInt), mValue);
   if Result then
   begin
-    AAddress := UInt64(Value);
+    AAddress := UInt64(mValue);
   end;
 end;
 
 /// <summary>Teile einer Zeile, durch Leerzeichen getrennt.</summary>
 function Words(const ALine: string): TArray<string>;
 var
-  Index, Start: Integer;
+  mIndex, mStart: Integer;
 begin
   Result := nil;
-  Index := 1;
-  while Index <= Length(ALine) do
+  mIndex := 1;
+  while mIndex <= Length(ALine) do
   begin
-    while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
+    while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
-    Start := Index;
-    while (Index <= Length(ALine)) and not CharInSet(ALine[Index], [' ', #9]) do
+    mStart := mIndex;
+    while (mIndex <= Length(ALine)) and not CharInSet(ALine[mIndex], [' ', #9]) do
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
-    if Index > Start then
+    if mIndex > mStart then
     begin
-      Result := Result + [Copy(ALine, Start, Index - Start)];
+      Result := Result + [Copy(ALine, mStart, mIndex - mStart)];
     end;
   end;
 end;
@@ -187,7 +187,7 @@ begin
   inherited Create;
   FSymbols := TList<TSymbol>.Create;
   FLines := TList<TLineEntry>.Create;
-  FCodeStart := DefaultCodeOffset;
+  FCodeStart := cDefaultCodeOffset;
   Parse(AText);
 end;
 
@@ -260,9 +260,9 @@ begin
   begin
     Exit;
   end;
-  if mAddress >= DefaultImageBase then
+  if mAddress >= cDefaultImageBase then
   begin
-    FCodeStart := mAddress - DefaultImageBase;
+    FCodeStart := mAddress - cDefaultImageBase;
   end
   else if mAddress > 0 then
   begin
@@ -386,35 +386,35 @@ end;
 
 function TMapFile.Symbolize(const AStackTrace, AModule: string): string;
 var
-  Line, Prefix: string;
-  Offset: Int64;
-  Location: TMapLocation;
-  Builder: TStringBuilder;
+  mLine, mPrefix: string;
+  mOffset: Int64;
+  mLocation: TMapLocation;
+  mBuilder: TStringBuilder;
 begin
-  Prefix := AModule + '+$';
-  Builder := TStringBuilder.Create;
+  mPrefix := AModule + '+$';
+  mBuilder := TStringBuilder.Create;
   try
-    for Line in StringReplace(AStackTrace, #13, '', [rfReplaceAll]).Split([#10]) do
+    for mLine in StringReplace(AStackTrace, #13, '', [rfReplaceAll]).Split([#10]) do
     begin
-      if Line = '' then
+      if mLine = '' then
       begin
         Continue;
       end;
-      Builder.Append(Line);
-      if StartsText(Prefix, Trim(Line)) and
-        TryStrToInt64('$' + Copy(Trim(Line), Length(Prefix) + 1, MaxInt), Offset) then
+      mBuilder.Append(mLine);
+      if StartsText(mPrefix, Trim(mLine)) and
+        TryStrToInt64('$' + Copy(Trim(mLine), Length(mPrefix) + 1, MaxInt), mOffset) then
       begin
-        Location := Resolve(UInt64(Offset));
-        if Location.Found then
+        mLocation := Resolve(UInt64(mOffset));
+        if mLocation.Found then
         begin
-          Builder.Append(' ').Append(Location.ToString);
+          mBuilder.Append(' ').Append(mLocation.ToString);
         end;
       end;
-      Builder.Append(sLineBreak);
+      mBuilder.Append(sLineBreak);
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 

@@ -72,16 +72,16 @@ begin
 end;
 
 /// <summary>Grund ohne Pfad: Klasse, bei Ein-/Ausgabe- und Systemfehlern mit Fehlercode.</summary>
-function ErrorReason(E: Exception): string;
+function ErrorReason(AE: Exception): string;
 begin
-  Result := E.ClassName;
-  if E is EInOutError then
+  Result := AE.ClassName;
+  if AE is EInOutError then
   begin
-    Result := Format('%s %d', [Result, EInOutError(E).ErrorCode]);
+    Result := Format('%s %d', [Result, EInOutError(AE).ErrorCode]);
   end
-  else if E is EOSError then
+  else if AE is EOSError then
   begin
-    Result := Format('%s %d', [Result, EOSError(E).ErrorCode]);
+    Result := Format('%s %d', [Result, EOSError(AE).ErrorCode]);
   end;
 end;
 
@@ -89,12 +89,12 @@ end;
 
 function TDiskIndexFileSystem.FileStamp(const AFileName: string; out AStamp: Int64): Boolean;
 var
-  Age: TDateTime;
+  mAge: TDateTime;
 begin
-  Result := FileAge(AFileName, Age);
+  Result := FileAge(AFileName, mAge);
   if Result then
   begin
-    AStamp := Round(Age * MSecsPerDay);
+    AStamp := Round(mAge * MSecsPerDay);
   end
   else
   begin
@@ -104,10 +104,10 @@ end;
 
 function TDiskIndexFileSystem.ReadText(const AFileName: string; out AText: string): Boolean;
 var
-  Format: TFileFormat;
+  mFormat: TFileFormat;
 begin
   try
-    AText := TFileEncoding.LoadFromFile(AFileName, Format);
+    AText := TFileEncoding.LoadFromFile(AFileName, mFormat);
     Result := True;
   except
     on EInOutError do
@@ -148,37 +148,38 @@ end;
 
 function TDiskIndexFileSystem.WriteText(const AFileName, AText: string): Boolean;
 var
-  Error: string;
+  mError: string;
 begin
-  Result := WriteBytes(AFileName, TEncoding.UTF8.GetPreamble + TEncoding.UTF8.GetBytes(AText), Error);
+  Result := WriteBytes(AFileName, TEncoding.UTF8.GetPreamble + TEncoding.UTF8.GetBytes(AText), mError);
 end;
 
 function TDiskIndexFileSystem.WriteBytes(const AFileName: string; const ABytes: TBytes; out AError: string): Boolean;
 var
-  Temp, Backup: string;
-  Written: Boolean;
+  mTemp, mBackup: string;
+  mWritten: Boolean;
 begin
   AError := '';
   // Name je Thread: Auch ein Schreiber ohne Sperre (Tests, Aufräumen) überschreibt keine fremde Zwischendatei.
-  Temp := Format('%s.%d.tmp', [AFileName, TThread.CurrentThread.ThreadID]);
+  mTemp := Format('%s.%d.tmp', [AFileName, TThread.CurrentThread.ThreadID]);
   // TFile.Replace braucht eine Sicherungsdatei: Mit '' scheitert es an
   // TPath.GetFullPath('') ("Pfad ist leer"), sobald die Zieldatei existiert.
-  Backup := Format('%s.%d.bak', [AFileName, TThread.CurrentThread.ThreadID]);
-  Written := False;
+  mBackup := Format('%s.%d.bak', [AFileName, TThread.CurrentThread.ThreadID]);
+  mWritten := False;
   try
     ForceDirectories(ExtractFileDir(AFileName));
-    TFile.WriteAllBytes(Temp, ABytes);
-    Written := True;
+    TFile.WriteAllBytes(mTemp, ABytes);
+    mWritten := True;
     if FileExists(AFileName) then
     begin
-      TFile.Replace(Temp, AFileName, Backup);
+      TFile.Replace(mTemp, AFileName, mBackup);
     end
     else
     begin
-      RenameFile(Temp, AFileName); // lsp-ignore: inline-not-expanded -- Common ohne Winapi
+      RenameFile(mTemp, AFileName); // lsp-ignore: inline-not-expanded -- Common ohne Winapi
     end;
   except
     // Gemeldet, nicht verschluckt: Der Aufrufer schreibt den Grund ins Log.
+    // lsp-ignore: catch-all-without-raise -- Fehler geht als AError an den Aufrufer
     on E: Exception do
       AError := ErrorReason(E);
   end;
@@ -186,26 +187,26 @@ begin
   // nichts (etwa ein Ziel, das ein fremdes Programm ohne FILE_SHARE_DELETE offen hält).
   // Gelungen ist das Schreiben genau dann, wenn die temporäre Datei an die Stelle des Ziels
   // getreten ist.
-  Result := Written and not FileExists(Temp);
+  Result := mWritten and not FileExists(mTemp);
   // ReplaceFile kann das alte Ziel schon zur Sicherung umbenannt haben, ohne die neue Datei
   // nachzuschieben (ERROR_UNABLE_TO_MOVE_REPLACEMENT_2). Die temporäre Datei ist vollständig
   // geschrieben, also an ihre Stelle setzen.
-  if Written and not Result and not FileExists(AFileName) then
+  if mWritten and not Result and not FileExists(AFileName) then
   begin
-    Result := RenameFile(Temp, AFileName); // lsp-ignore: inline-not-expanded -- Common ohne Winapi
+    Result := RenameFile(mTemp, AFileName); // lsp-ignore: inline-not-expanded -- Common ohne Winapi
   end;
   if not Result and (AError = '') then
   begin
     AError := cTexts[TDiskFileSystemText.TargetNotReplaced].Text;
   end;
   // Keine Reste, weder bei Erfolg noch bei Fehler (Test FailedReplaceLeavesNoRemains).
-  if FileExists(Temp) then
+  if FileExists(mTemp) then
   begin
-    System.SysUtils.DeleteFile(Temp);
+    System.SysUtils.DeleteFile(mTemp);
   end;
-  if FileExists(Backup) then
+  if FileExists(mBackup) then
   begin
-    System.SysUtils.DeleteFile(Backup);
+    System.SysUtils.DeleteFile(mBackup);
   end;
 end;
 

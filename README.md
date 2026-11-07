@@ -10,7 +10,7 @@ Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/At
 
 ## Quick start
 
-You need RAD Studio or Delphi 12 or later. Ready-made downloads are on the [releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) page; releases 1.0.0 to 1.2.0 contain the plugin for Delphi 13 only. What is new in 1.2.0 is listed in the [changelog](CHANGELOG.md) (German).
+You need RAD Studio or Delphi 12 or later. Ready-made downloads are on the [releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) page; releases 1.0.0 to 1.2.0 contain the plugin for Delphi 13 only. What is new in 1.2.0 and in the pre-release 2.0.0-beta.1 is listed in the [changelog](CHANGELOG.md) (German); a short bilingual summary of 2.0.0-beta.1 is in [docs/Release-Notizen/2.0.0-beta.1.md](docs/Release-Notizen/2.0.0-beta.1.md). The hand tests for 2.0 are collected in [docs/Handtests-2.0.md](docs/Handtests-2.0.md) (German).
 
 **Option A – add the release package by hand:**
 
@@ -65,6 +65,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **"Compiler ahead":** dcc errors and warnings before you build, with quick fixes; Atlas finds units like dcc, including namespaces and unit aliases (`WinTypes`, `WinProcs`)
 - **Window "Atlas Findings"** for file, project or group, with bulk fixes; with a group open, the scope list also offers each project of the group
 - **Profiles, confidence, baseline and suppressions** for legacy projects
+- **Experimental style rules with few false alarms:** `hardcoded-string` skips log, check and comparison calls, date masks and markup; `magic-number` skips the DPI base 96, full bit masks, time units and point lists; `naming-prefix` keeps the parameter names of event handlers assigned in code; `public-field` skips helper classes under `private type`
 - **Types from installed packages:** the IDE tells Atlas the types of its packages (even without .pas). "Type is not declared" stays silent for them, the quick fix suggests their unit, completion offers them with a `uses` entry
 - **Members of types from installed packages:** for units without source, Atlas asks the IDE for the members it knows via RTTI (properties, methods with parameter types, fields, interfaces, enum values). Hover, member completion after `.`, parameter hints and enum values for parameters then work for these types too, without "go to declaration".
 - **Linter for CI** with text, JSON or SARIF output. All rules: [docs/Regeln.md](docs/Regeln.md)
@@ -244,6 +245,7 @@ pwsh Tools/Test-PackageDependencies.ps1    # self-test of the module boundaries 
 pwsh Tools/Check-ConsoleOutput.ps1         # no Write/Writeln to stdout
 pwsh Tools/Check-TestCoverage.ps1          # every unit with logic has tests, every test unit runs
 pwsh Tools/Check-WindowHosts.ps1           # dock windows and editor bars use their shared hosts
+pwsh Tools/Check-ProjectFiles.ps1          # project files readable by MSBuild (source build for Delphi 12)
 ```
 
 `Tests/DccFaelle` holds minimal cases for the compiler rules: each one states whether dcc reports it or compiles it. `pwsh Tools/Build-DccFaelle.ps1` builds them in a scratch IDE via `cc.ps1` (Win32 and Win64) and writes the dcc messages per case to `Output/DccFaelle-Ergebnis.txt`; the rules must not be stricter than that result (#1328).
@@ -252,8 +254,8 @@ pwsh Tools/Check-WindowHosts.ps1           # dock windows and editor bars use th
 
 ## Branches
 
-- `Pilot-2.0.0-beta.1` (unstable): all changes for v2.0 land here once Atlas and CI (FPC) are green. Not necessarily built with Delphi yet.
-- `Pilot-2.0-stable` (stable): only points at Pilot commits that built with Delphi with no errors, warnings or hints and whose tests passed. The branch is only fast-forwarded, never edited directly. Tags `delphi-ok-YYYY-MM-DD` mark each confirmed state.
+- `main`: next version. All new work lands here.
+- `release/X.Y`: bug fixes for the released version, started from its tag. Each fix is merged forward into `main`.
 
 ## CI
 
@@ -261,6 +263,7 @@ pwsh Tools/Check-WindowHosts.ps1           # dock windows and editor bars use th
   - The job needs a self-hosted Windows runner (labels `self-hosted`, `windows`, `delphi`) on the developer's workstation. It runs in the signed-in user context, not as a service, because `cc.ps1` starts an IDE, and only while that machine is switched on. Every job starts its own scratch IDE.
   - It runs only with the repository variable `DELPHI_RUNNER=true`; otherwise the job "uebersprungen" says so in the run summary. `CC_SCRIPT` overrides the path to `cc.ps1`.
   - A new push to the same branch cancels the running build (`concurrency`).
+- `release.yml`: release for the tag `v<version>`. Without the Delphi runner the release package is missing; `pwsh Tools/Publish-ReleasePackage.ps1 -Version <version>` then attaches a locally built one and enters it in the update installer's version files (#1849, [docs/Release.md](docs/Release.md), German).
 - `package-dependencies.yml`: package dependencies, the stdout rule, Delphi 12 compatibility, rule catalog, configuration docs, no Embarcadero sources in `Tests/`, and Atlas windows and editor bars only through their shared hosts.
 
 ## Command line

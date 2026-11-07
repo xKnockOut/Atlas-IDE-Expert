@@ -30,7 +30,7 @@ type
     FTaskHint: string;
     FTasksLocked: Boolean;
     procedure Rebuild;
-    function TaskAt(X, Y: Integer): Boolean;
+    function TaskAt(AX, AY: Integer): Boolean;
     procedure WMGetDlgCode(var AMessage: TWMGetDlgCode); message WM_GETDLGCODE;
   protected
     procedure Paint; override;
@@ -242,11 +242,11 @@ begin
   end;
 end;
 
-function TAtlasIssueDocBox.TaskAt(X, Y: Integer): Boolean;
+function TAtlasIssueDocBox.TaskAt(AX, AY: Integer): Boolean;
 var
   mLink, mIndex: Integer;
 begin
-  mLink := FView.LinkAt(X, Y);
+  mLink := FView.LinkAt(AX, AY);
   Result := (mLink >= 0) and (FView.Link(mLink).Kind = TAtlasDocLinkKind.Url) and
     TAtlasTrackerMarkdown.TaskIndexOf(FView.Link(mLink).Url, mIndex);
 end;

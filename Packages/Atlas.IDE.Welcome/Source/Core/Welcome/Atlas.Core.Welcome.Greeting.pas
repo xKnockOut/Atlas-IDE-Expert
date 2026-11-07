@@ -30,20 +30,14 @@ uses
 
 class function TAtlasWelcomeGreeting.DayTimeOf(AHour: Integer): TAtlasDayTime;
 begin
-  if (AHour >= 5) and (AHour <= 10) then
-  begin
-    Result := TAtlasDayTime.Morning;
-  end
-  else if (AHour >= 11) and (AHour <= 17) then
-  begin
-    Result := TAtlasDayTime.Day;
-  end
-  else if (AHour >= 18) and (AHour <= 23) then
-  begin
-    Result := TAtlasDayTime.Evening;
-  end
+  case AHour of
+    5..10:
+      Result := TAtlasDayTime.Morning;
+    11..17:
+      Result := TAtlasDayTime.Day;
+    18..23:
+      Result := TAtlasDayTime.Evening;
   else
-  begin
     Result := TAtlasDayTime.Night;
   end;
 end;
@@ -60,17 +54,17 @@ end;
 /// <summary>Erstes Wort bis zu einem der Trennzeichen.</summary>
 function FirstWord(const AText: string; const ASeparators: array of Char): string;
 var
-  Index: Integer;
-  Ch: Char;
+  mIndex: Integer;
+  mCh: Char;
 begin
   Result := Trim(AText);
-  for Index := 1 to Length(Result) do
+  for mIndex := 1 to Length(Result) do
   begin
-    for Ch in ASeparators do
+    for mCh in ASeparators do
     begin
-      if Result[Index] = Ch then
+      if Result[mIndex] = mCh then
       begin
-        Exit(Copy(Result, 1, Index - 1));
+        Exit(Copy(Result, 1, mIndex - 1));
       end;
     end;
   end;
@@ -78,35 +72,35 @@ end;
 
 class function TAtlasWelcomeGreeting.FirstName(const ADisplayName, AUserName: string): string;
 var
-  Name: string;
-  Comma: Integer;
+  mName: string;
+  mComma: Integer;
 begin
-  Name := Trim(ADisplayName);
-  if Name <> '' then
+  mName := Trim(ADisplayName);
+  if mName <> '' then
   begin
     // „Nachname, Vorname“ (Active Directory).
-    Comma := Pos(',', Name);
-    if Comma > 0 then
+    mComma := Pos(',', mName);
+    if mComma > 0 then
     begin
-      Name := Trim(Copy(Name, Comma + 1, MaxInt));
+      mName := Trim(Copy(mName, mComma + 1, MaxInt));
     end;
-    Result := FirstWord(Name, [' ']);
+    Result := FirstWord(mName, [' ']);
     if Result <> '' then
     begin
       Exit;
     end;
   end;
-  Name := Trim(AUserName);
+  mName := Trim(AUserName);
   // Domäne bzw. UPN abschneiden.
-  if LastDelimiter('\', Name) > 0 then
+  if LastDelimiter('\', mName) > 0 then
   begin
-    Name := Copy(Name, LastDelimiter('\', Name) + 1, MaxInt);
+    mName := Copy(mName, LastDelimiter('\', mName) + 1, MaxInt);
   end;
-  if Pos('@', Name) > 0 then
+  if Pos('@', mName) > 0 then
   begin
-    Name := Copy(Name, 1, Pos('@', Name) - 1);
+    mName := Copy(mName, 1, Pos('@', mName) - 1);
   end;
-  Result := Capitalized(FirstWord(Name, ['.', '_', '-', ' ']));
+  Result := Capitalized(FirstWord(mName, ['.', '_', '-', ' ']));
 end;
 
 end.

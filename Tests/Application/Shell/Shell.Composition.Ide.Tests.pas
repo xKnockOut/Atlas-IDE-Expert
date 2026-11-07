@@ -122,15 +122,15 @@ end;
 
 procedure TShellIdeTests.ForwardsMessages;
 begin
-  Notify(TLspIdeBuild.MessagesMethod, '{"messages":[{"file":"A.pas","line":3,"column":1,"severity":"error",' +
+  Notify(TLspIdeBuild.cMessagesMethod, '{"messages":[{"file":"A.pas","line":3,"column":1,"severity":"error",' +
     '"code":"E2003","text":"x"}]}');
   Assert.AreEqual(1, FMessages);
 end;
 
 procedure TShellIdeTests.ForwardsCompiling;
 begin
-  Notify(TLspIdeBuild.StartedMethod, '{"group":true,"kind":"make"}');
-  Notify(TLspIdeBuild.FinishedMethod, '{"group":true,"success":true}');
+  Notify(TLspIdeBuild.cStartedMethod, '{"group":true,"kind":"make"}');
+  Notify(TLspIdeBuild.cFinishedMethod, '{"group":true,"success":true}');
   Assert.AreEqual('True;False;', FEvents);
 end;
 
@@ -138,10 +138,10 @@ procedure TShellIdeTests.NamingChangeRefreshes;
 const
   cContext = '{"project":"C:\\P\\A.dproj","configuration":"Debug","platform":"Win32","active":true';
 begin
-  Notify(TLspIdeProject.Method, cContext + '}');
+  Notify(TLspIdeProject.cMethod, cContext + '}');
   Assert.AreEqual('', FEvents, 'neuer Kontext lädt neu, prüft nicht nur neu');
   Assert.AreEqual('C:\P\A.dproj', FIde.Project.ActiveProject);
-  Notify(TLspIdeProject.Method, cContext + ',"naming":{"constant":"c"}}');
+  Notify(TLspIdeProject.cMethod, cContext + ',"naming":{"constant":"c"}}');
   Assert.AreEqual('naming;', FEvents);
 end;
 

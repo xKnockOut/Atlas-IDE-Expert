@@ -151,7 +151,7 @@ var
   Target: TAtlasReassignedTarget;
   Color: TAtlasColor;
 begin
-  Assert.AreEqual('locals,valueParams', TAtlasReassignedNames.TargetsText(TAtlasReassignedNames.DefaultTargets));
+  Assert.AreEqual('locals,valueParams', TAtlasReassignedNames.TargetsText(TAtlasReassignedNames.cDefaultTargets));
   Assert.AreEqual('loopVars,fields', TAtlasReassignedNames.NormalizeTargets(' Fields; loopvars, unbekannt,fields'));
   Assert.AreEqual('', TAtlasReassignedNames.NormalizeTargets(''));
   Assert.IsTrue(TAtlasReassignedNames.TryTarget('VARPARAMS', Target));

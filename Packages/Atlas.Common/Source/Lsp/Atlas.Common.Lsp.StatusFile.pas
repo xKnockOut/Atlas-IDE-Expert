@@ -22,9 +22,9 @@ uses
 type
   TServerStatusFile = record
   public const
-    FolderName = 'Status';
+    cFolderName = 'Status';
     /// <summary>Ältere Dateien gelten als verwaist (Server abgestürzt oder ohne Abfrage).</summary>
-    MaxAgeSeconds = 60;
+    cMaxAgeSeconds = 60;
   public
     class function FolderOf(const ARoot: string): string; static;
     class function FileFor(const ARoot: string; APid: Cardinal): string; static;
@@ -59,7 +59,7 @@ end;
 
 class function TServerStatusFile.FolderOf(const ARoot: string): string;
 begin
-  Result := TPath.Combine(ARoot, FolderName);
+  Result := TPath.Combine(ARoot, cFolderName);
 end;
 
 class function TServerStatusFile.FileFor(const ARoot: string; APid: Cardinal): string;
@@ -93,6 +93,7 @@ begin
   try
     Result := TFile.ReadAllText(AFileName, TEncoding.UTF8);
   except
+    // lsp-ignore: catch-all-without-raise -- Statusdatei nach Kräften; nur Anzeige
     on Exception do
       Result := '';
   end;
@@ -179,7 +180,7 @@ begin
       Continue;
     end;
     if not ReadEntry(mOther, mPid, mWritten, mRoots, mStatus) or
-      (SecondsBetween(ANow, mWritten) > 10 * TServerStatusFile.MaxAgeSeconds) then
+      (SecondsBetween(ANow, mWritten) > 10 * TServerStatusFile.cMaxAgeSeconds) then
     begin
       TFile.Delete(mOther);
     end;
@@ -221,6 +222,7 @@ begin
       TFile.Move(mTemp, mTarget);
       DeleteOrphans(FolderOf(ARoot), mTarget, ANow);
     except
+      // lsp-ignore: catch-all-without-raise -- Statusdatei nach Kräften; nur Anzeige
       on Exception do
         // Nur Anzeige für MCP; der Status selbst ist schon beantwortet.
         Exit;
@@ -238,6 +240,7 @@ begin
       TFile.Delete(FileFor(ARoot, APid));
     end;
   except
+    // lsp-ignore: catch-all-without-raise -- Statusdatei nach Kräften; nur Anzeige
     on Exception do
       Exit;
   end;
@@ -267,7 +270,7 @@ begin
     begin
       Continue;
     end;
-    if (mWritten > ANow + OneSecond * MaxAgeSeconds) or (SecondsBetween(ANow, mWritten) > MaxAgeSeconds) then
+    if (mWritten > ANow + OneSecond * cMaxAgeSeconds) or (SecondsBetween(ANow, mWritten) > cMaxAgeSeconds) then
     begin
       Continue;
     end;

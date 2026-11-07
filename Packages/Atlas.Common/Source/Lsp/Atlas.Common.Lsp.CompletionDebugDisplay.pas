@@ -122,13 +122,13 @@ function MemberKind(AKind: TIndexSymbolKind): Integer;
 begin
   case AKind of
     TIndexSymbolKind.Property_:
-      Result := KindProperty;
+      Result := cKindProperty;
     TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_:
-      Result := KindMethod;
+      Result := cKindMethod;
     TIndexSymbolKind.Variable:
-      Result := KindVariable;
+      Result := cKindVariable;
   else
-    Result := KindField;
+    Result := cKindField;
   end;
 end;
 
@@ -175,7 +175,7 @@ begin
   ATarget := Default(TIndexSymbol);
   for mSymbol in ALocal.Symbols do
   begin
-    if not (mSymbol.Kind in TTypeMembers.RuleKinds) or (mSymbol.FileName <> '') or
+    if not (mSymbol.Kind in TTypeMembers.cRuleKinds) or (mSymbol.FileName <> '') or
       not TDebugDisplayText.RuleAbove(ALines, mSymbol.Range.StartPos.Line, mSource) then
     begin
       Continue;

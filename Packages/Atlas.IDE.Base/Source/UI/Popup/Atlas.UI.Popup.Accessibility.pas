@@ -22,16 +22,16 @@ uses
   System.Types;
 
 const
-  UiaListControlType = 50008;
-  UiaListItemControlType = 50007;
-  UiaTextControlType = 50020;
-  UiaToolTipControlType = 50022;
+  cUiaListControlType = 50008;
+  cUiaListItemControlType = 50007;
+  cUiaTextControlType = 50020;
+  cUiaToolTipControlType = 50022;
   /// <summary>Richtungen für Navigate (NavigateDirection).</summary>
-  UiaNavigateParent = 0;
-  UiaNavigateNextSibling = 1;
-  UiaNavigatePreviousSibling = 2;
-  UiaNavigateFirstChild = 3;
-  UiaNavigateLastChild = 4;
+  cUiaNavigateParent = 0;
+  cUiaNavigateNextSibling = 1;
+  cUiaNavigatePreviousSibling = 2;
+  cUiaNavigateFirstChild = 3;
+  cUiaNavigateLastChild = 4;
 
 type
   /// <summary>UiaRect aus UIAutomationCore.h (Bildschirmkoordinaten).</summary>
@@ -182,30 +182,30 @@ uses
   System.Variants;
 
 const
-  UiaRootObjectId = -25;
-  UiaAppendRuntimeId = 3;
-  ProviderOptionsServerSide = $2;
-  ProviderOptionsUseComThreading = $20;
-  UiaSelectionPatternId = 10001;
-  UiaSelectionItemPatternId = 10010;
-  UiaControlTypeProperty = 30003;
-  UiaNameProperty = 30005;
-  UiaHasKeyboardFocusProperty = 30008;
-  UiaIsKeyboardFocusableProperty = 30009;
-  UiaIsEnabledProperty = 30010;
-  UiaHelpTextProperty = 30013;
-  UiaIsOffscreenProperty = 30022;
-  UiaFrameworkIdProperty = 30024;
-  UiaItemStatusProperty = 30026;
-  UiaPositionInSetProperty = 30152;
-  UiaSizeOfSetProperty = 30153;
-  UiaElementSelectedEvent = 20012;
-  StructureChangeChildrenInvalidated = 2;
-  NotificationKindOther = 4;
-  NotificationProcessingImportantMostRecent = 1;
-  UiaElementNotAvailable = HResult($80040201);
-  VarTypeInteger = 3;
-  VarTypeUnknown = 13;
+  cUiaRootObjectId = -25;
+  cUiaAppendRuntimeId = 3;
+  cProviderOptionsServerSide = $2;
+  cProviderOptionsUseComThreading = $20;
+  cUiaSelectionPatternId = 10001;
+  cUiaSelectionItemPatternId = 10010;
+  cUiaControlTypeProperty = 30003;
+  cUiaNameProperty = 30005;
+  cUiaHasKeyboardFocusProperty = 30008;
+  cUiaIsKeyboardFocusableProperty = 30009;
+  cUiaIsEnabledProperty = 30010;
+  cUiaHelpTextProperty = 30013;
+  cUiaIsOffscreenProperty = 30022;
+  cUiaFrameworkIdProperty = 30024;
+  cUiaItemStatusProperty = 30026;
+  cUiaPositionInSetProperty = 30152;
+  cUiaSizeOfSetProperty = 30153;
+  cUiaElementSelectedEvent = 20012;
+  cStructureChangeChildrenInvalidated = 2;
+  cNotificationKindOther = 4;
+  cNotificationProcessingImportantMostRecent = 1;
+  cUiaElementNotAvailable = HResult($80040201);
+  cVarTypeInteger = 3;
+  cVarTypeUnknown = 13;
 
 type
   TUiaReturnRawElementProvider = function(AWindow: HWND; AWParam: WPARAM; ALParam: LPARAM;
@@ -267,24 +267,24 @@ var
 
 procedure Load;
 var
-  Module: HMODULE;
+  mModule: HMODULE;
 begin
   if Loaded then
   begin
     Exit;
   end;
   Loaded := True;
-  Module := LoadLibrary('UIAutomationCore.dll');
-  if Module = 0 then
+  mModule := LoadLibrary('UIAutomationCore.dll');
+  if mModule = 0 then
   begin
     Exit;
   end;
-  @ReturnRawElementProvider := GetProcAddress(Module, 'UiaReturnRawElementProvider');
-  @HostProviderFromHwnd := GetProcAddress(Module, 'UiaHostProviderFromHwnd');
-  @RaiseNotificationEvent := GetProcAddress(Module, 'UiaRaiseNotificationEvent');
-  @RaiseAutomationEvent := GetProcAddress(Module, 'UiaRaiseAutomationEvent');
-  @RaiseStructureChangedEvent := GetProcAddress(Module, 'UiaRaiseStructureChangedEvent');
-  @ClientsAreListening := GetProcAddress(Module, 'UiaClientsAreListening');
+  @ReturnRawElementProvider := GetProcAddress(mModule, 'UiaReturnRawElementProvider');
+  @HostProviderFromHwnd := GetProcAddress(mModule, 'UiaHostProviderFromHwnd');
+  @RaiseNotificationEvent := GetProcAddress(mModule, 'UiaRaiseNotificationEvent');
+  @RaiseAutomationEvent := GetProcAddress(mModule, 'UiaRaiseAutomationEvent');
+  @RaiseStructureChangedEvent := GetProcAddress(mModule, 'UiaRaiseStructureChangedEvent');
+  @ClientsAreListening := GetProcAddress(mModule, 'UiaClientsAreListening');
 end;
 
 function UiaRect(const ARect: TRect): TAtlasUiaRect;
@@ -315,7 +315,7 @@ end;
 
 function TAtlasAccessibleElement.get_ProviderOptions(out ARetVal: Integer): HResult;
 begin
-  ARetVal := ProviderOptionsServerSide or ProviderOptionsUseComThreading;
+  ARetVal := cProviderOptionsServerSide or cProviderOptionsUseComThreading;
   Result := S_OK;
 end;
 
@@ -328,13 +328,13 @@ end;
 function TAtlasAccessibleElement.GetPropertyValue(APropertyId: Integer; out ARetVal: OleVariant): HResult;
 begin
   case APropertyId of
-    UiaControlTypeProperty:
+    cUiaControlTypeProperty:
       ARetVal := FControlType;
-    UiaNameProperty:
+    cUiaNameProperty:
       ARetVal := FName;
-    UiaIsKeyboardFocusableProperty, UiaHasKeyboardFocusProperty:
+    cUiaIsKeyboardFocusableProperty, cUiaHasKeyboardFocusProperty:
       ARetVal := False;
-    UiaFrameworkIdProperty:
+    cUiaFrameworkIdProperty:
       ARetVal := 'Atlas';
   else
     ARetVal := Unassigned;
@@ -365,13 +365,13 @@ end;
 
 constructor TAtlasAccessibleList.Create(AWindow: HWND; const AName: string; const ASource: IAtlasAccessibleItems);
 begin
-  inherited Create(AWindow, UiaListControlType, AName);
+  inherited Create(AWindow, cUiaListControlType, AName);
   FSource := ASource;
 end;
 
 function TAtlasAccessibleList.GetPatternProvider(APatternId: Integer; out ARetVal: IUnknown): HResult;
 begin
-  if (APatternId = UiaSelectionPatternId) and (FSource <> nil) then
+  if (APatternId = cUiaSelectionPatternId) and (FSource <> nil) then
   begin
     ARetVal := IAtlasSelectionProvider(Self);
     Result := S_OK;
@@ -393,19 +393,19 @@ end;
 
 function TAtlasAccessibleList.Navigate(ADirection: Integer; out ARetVal: IAtlasRawElementFragment): HResult;
 var
-  Target: Integer;
+  mTarget: Integer;
 begin
   ARetVal := nil;
   Result := S_OK;
   // Eltern und Geschwister der Liste liefert der Host (das Fenster).
-  if (FSource = nil) or ((ADirection <> UiaNavigateFirstChild) and (ADirection <> UiaNavigateLastChild)) then
+  if (FSource = nil) or ((ADirection <> cUiaNavigateFirstChild) and (ADirection <> cUiaNavigateLastChild)) then
   begin
     Exit;
   end;
-  Target := TAtlasAccessibility.NavigateTarget(ADirection, -1, FSource.AccessibleCount);
-  if Target >= 0 then
+  mTarget := TAtlasAccessibility.NavigateTarget(ADirection, -1, FSource.AccessibleCount);
+  if mTarget >= 0 then
   begin
-    ARetVal := Item(Target) as IAtlasRawElementFragment;
+    ARetVal := Item(mTarget) as IAtlasRawElementFragment;
   end;
 end;
 
@@ -443,8 +443,8 @@ end;
 
 function TAtlasAccessibleList.ElementProviderFromPoint(AX, AY: Double; out ARetVal: IAtlasRawElementFragment): HResult;
 var
-  Position: Integer;
-  Bounds: TRect;
+  mPosition: Integer;
+  mBounds: TRect;
 begin
   ARetVal := nil;
   Result := S_OK;
@@ -452,12 +452,12 @@ begin
   begin
     Exit;
   end;
-  for Position := 0 to FSource.AccessibleCount - 1 do
+  for mPosition := 0 to FSource.AccessibleCount - 1 do
   begin
-    if FSource.AccessibleBounds(Position, Bounds) and (AX >= Bounds.Left) and (AX < Bounds.Right) and
-      (AY >= Bounds.Top) and (AY < Bounds.Bottom) then
+    if FSource.AccessibleBounds(mPosition, mBounds) and (AX >= mBounds.Left) and (AX < mBounds.Right) and
+      (AY >= mBounds.Top) and (AY < mBounds.Bottom) then
     begin
-      ARetVal := Item(Position) as IAtlasRawElementFragment;
+      ARetVal := Item(mPosition) as IAtlasRawElementFragment;
       Exit;
     end;
   end;
@@ -471,26 +471,26 @@ end;
 
 function TAtlasAccessibleList.GetSelection(out ARetVal: Pointer): HResult;
 var
-  Selected: IAtlasRawElementProvider;
-  Index: Integer;
+  mSelected: IAtlasRawElementProvider;
+  mIndex: Integer;
 begin
   ARetVal := nil;
   Result := S_OK;
   if FSource = nil then
   begin
-    Exit(UiaElementNotAvailable);
+    Exit(cUiaElementNotAvailable);
   end;
-  Selected := Item(FSource.AccessibleSelected);
-  if (Selected = nil) or FSource.AccessibleIsHeader(FSource.AccessibleSelected) then
+  mSelected := Item(FSource.AccessibleSelected);
+  if (mSelected = nil) or FSource.AccessibleIsHeader(FSource.AccessibleSelected) then
   begin
-    ARetVal := SafeArrayCreateVector(VarTypeUnknown, 0, 0);
+    ARetVal := SafeArrayCreateVector(cVarTypeUnknown, 0, 0);
     Exit;
   end;
-  ARetVal := SafeArrayCreateVector(VarTypeUnknown, 0, 1);
-  Index := 0;
+  ARetVal := SafeArrayCreateVector(cVarTypeUnknown, 0, 1);
+  mIndex := 0;
   if ARetVal <> nil then
   begin
-    Result := SafeArrayPutElement(ARetVal, Index, Pointer(Selected));
+    Result := SafeArrayPutElement(ARetVal, mIndex, Pointer(mSelected));
   end;
 end;
 
@@ -514,7 +514,7 @@ end;
 
 procedure TAtlasAccessibleList.SelectionChanged;
 var
-  Selected: IAtlasRawElementProvider;
+  mSelected: IAtlasRawElementProvider;
 begin
   if (FSource = nil) or not TAtlasAccessibility.Listening or not Assigned(RaiseAutomationEvent) then
   begin
@@ -524,10 +524,10 @@ begin
   begin
     Exit;
   end;
-  Selected := Item(FSource.AccessibleSelected);
-  if Selected <> nil then
+  mSelected := Item(FSource.AccessibleSelected);
+  if mSelected <> nil then
   begin
-    RaiseAutomationEvent(Selected, UiaElementSelectedEvent);
+    RaiseAutomationEvent(mSelected, cUiaElementSelectedEvent);
   end;
 end;
 
@@ -537,7 +537,7 @@ begin
   begin
     Exit;
   end;
-  RaiseStructureChangedEvent(Self, StructureChangeChildrenInvalidated, nil, 0);
+  RaiseStructureChangedEvent(Self, cStructureChangeChildrenInvalidated, nil, 0);
 end;
 
 { TAtlasAccessibleItem }
@@ -553,47 +553,47 @@ end;
 
 function TAtlasAccessibleItem.Position: Integer;
 var
-  Source: IAtlasAccessibleItems;
-  Index: Integer;
+  mSource: IAtlasAccessibleItems;
+  mIndex: Integer;
 begin
   Result := -1;
-  Source := FList.Source;
-  if Source = nil then
+  mSource := FList.Source;
+  if mSource = nil then
   begin
     Exit;
   end;
   // Meist steht der Eintrag noch an derselben Stelle; nach dem Filtern wird er gesucht.
-  if (FPosition < Source.AccessibleCount) and (Source.AccessibleId(FPosition) = FId) then
+  if (FPosition < mSource.AccessibleCount) and (mSource.AccessibleId(FPosition) = FId) then
   begin
     Exit(FPosition);
   end;
-  for Index := 0 to Source.AccessibleCount - 1 do
+  for mIndex := 0 to mSource.AccessibleCount - 1 do
   begin
-    if Source.AccessibleId(Index) = FId then
+    if mSource.AccessibleId(mIndex) = FId then
     begin
-      FPosition := Index;
-      Exit(Index);
+      FPosition := mIndex;
+      Exit(mIndex);
     end;
   end;
 end;
 
 function TAtlasAccessibleItem.get_ProviderOptions(out ARetVal: Integer): HResult;
 begin
-  ARetVal := ProviderOptionsServerSide or ProviderOptionsUseComThreading;
+  ARetVal := cProviderOptionsServerSide or cProviderOptionsUseComThreading;
   Result := S_OK;
 end;
 
 function TAtlasAccessibleItem.GetPatternProvider(APatternId: Integer; out ARetVal: IUnknown): HResult;
 var
-  Current: Integer;
+  mCurrent: Integer;
 begin
   ARetVal := nil;
-  Current := Position;
-  if Current < 0 then
+  mCurrent := Position;
+  if mCurrent < 0 then
   begin
-    Exit(UiaElementNotAvailable);
+    Exit(cUiaElementNotAvailable);
   end;
-  if (APatternId = UiaSelectionItemPatternId) and not FList.Source.AccessibleIsHeader(Current) then
+  if (APatternId = cUiaSelectionItemPatternId) and not FList.Source.AccessibleIsHeader(mCurrent) then
   begin
     ARetVal := IAtlasSelectionItemProvider(Self);
   end;
@@ -602,50 +602,50 @@ end;
 
 function TAtlasAccessibleItem.GetPropertyValue(APropertyId: Integer; out ARetVal: OleVariant): HResult;
 var
-  Current: Integer;
-  Source: IAtlasAccessibleItems;
-  Bounds: TRect;
+  mCurrent: Integer;
+  mSource: IAtlasAccessibleItems;
+  mBounds: TRect;
 begin
   ARetVal := Unassigned;
-  Current := Position;
-  if Current < 0 then
+  mCurrent := Position;
+  if mCurrent < 0 then
   begin
-    Exit(UiaElementNotAvailable);
+    Exit(cUiaElementNotAvailable);
   end;
-  Source := FList.Source;
+  mSource := FList.Source;
   case APropertyId of
-    UiaControlTypeProperty:
-      if Source.AccessibleIsHeader(Current) then
+    cUiaControlTypeProperty:
+      if mSource.AccessibleIsHeader(mCurrent) then
       begin
-        ARetVal := UiaTextControlType;
+        ARetVal := cUiaTextControlType;
       end
       else
       begin
-        ARetVal := UiaListItemControlType;
+        ARetVal := cUiaListItemControlType;
       end;
-    UiaNameProperty:
-      ARetVal := Source.AccessibleName(Current);
-    UiaHelpTextProperty:
-      if Source.AccessibleHelp(Current) <> '' then
+    cUiaNameProperty:
+      ARetVal := mSource.AccessibleName(mCurrent);
+    cUiaHelpTextProperty:
+      if mSource.AccessibleHelp(mCurrent) <> '' then
       begin
-        ARetVal := Source.AccessibleHelp(Current);
+        ARetVal := mSource.AccessibleHelp(mCurrent);
       end;
-    UiaItemStatusProperty:
-      if Source.AccessibleStatus(Current) <> '' then
+    cUiaItemStatusProperty:
+      if mSource.AccessibleStatus(mCurrent) <> '' then
       begin
-        ARetVal := Source.AccessibleStatus(Current);
+        ARetVal := mSource.AccessibleStatus(mCurrent);
       end;
-    UiaIsKeyboardFocusableProperty, UiaHasKeyboardFocusProperty:
+    cUiaIsKeyboardFocusableProperty, cUiaHasKeyboardFocusProperty:
       ARetVal := False;
-    UiaIsEnabledProperty:
+    cUiaIsEnabledProperty:
       ARetVal := True;
-    UiaIsOffscreenProperty:
-      ARetVal := not Source.AccessibleBounds(Current, Bounds);
-    UiaPositionInSetProperty:
-      ARetVal := Current + 1;
-    UiaSizeOfSetProperty:
-      ARetVal := Source.AccessibleCount;
-    UiaFrameworkIdProperty:
+    cUiaIsOffscreenProperty:
+      ARetVal := not mSource.AccessibleBounds(mCurrent, mBounds);
+    cUiaPositionInSetProperty:
+      ARetVal := mCurrent + 1;
+    cUiaSizeOfSetProperty:
+      ARetVal := mSource.AccessibleCount;
+    cUiaFrameworkIdProperty:
       ARetVal := 'Atlas';
   end;
   Result := S_OK;
@@ -660,59 +660,59 @@ end;
 
 function TAtlasAccessibleItem.Navigate(ADirection: Integer; out ARetVal: IAtlasRawElementFragment): HResult;
 var
-  Current, Target: Integer;
+  mCurrent, mTarget: Integer;
 begin
   ARetVal := nil;
-  Current := Position;
-  if Current < 0 then
+  mCurrent := Position;
+  if mCurrent < 0 then
   begin
-    Exit(UiaElementNotAvailable);
+    Exit(cUiaElementNotAvailable);
   end;
   Result := S_OK;
-  if ADirection = UiaNavigateParent then
+  if ADirection = cUiaNavigateParent then
   begin
     ARetVal := FList;
     Exit;
   end;
-  Target := TAtlasAccessibility.NavigateTarget(ADirection, Current, FList.Source.AccessibleCount);
-  if Target >= 0 then
+  mTarget := TAtlasAccessibility.NavigateTarget(ADirection, mCurrent, FList.Source.AccessibleCount);
+  if mTarget >= 0 then
   begin
-    ARetVal := FList.Item(Target) as IAtlasRawElementFragment;
+    ARetVal := FList.Item(mTarget) as IAtlasRawElementFragment;
   end;
 end;
 
 function TAtlasAccessibleItem.GetRuntimeId(out ARetVal: Pointer): HResult;
 var
-  Index, Value: Integer;
+  mIndex, mValue: Integer;
 begin
-  ARetVal := SafeArrayCreateVector(VarTypeInteger, 0, 2);
+  ARetVal := SafeArrayCreateVector(cVarTypeInteger, 0, 2);
   Result := S_OK;
   if ARetVal = nil then
   begin
     Exit(E_OUTOFMEMORY);
   end;
-  Index := 0;
-  Value := UiaAppendRuntimeId;
-  SafeArrayPutElement(ARetVal, Index, @Value);
-  Index := 1;
-  Value := FId;
-  SafeArrayPutElement(ARetVal, Index, @Value);
+  mIndex := 0;
+  mValue := cUiaAppendRuntimeId;
+  SafeArrayPutElement(ARetVal, mIndex, @mValue);
+  mIndex := 1;
+  mValue := FId;
+  SafeArrayPutElement(ARetVal, mIndex, @mValue);
 end;
 
 function TAtlasAccessibleItem.get_BoundingRectangle(out ARetVal: TAtlasUiaRect): HResult;
 var
-  Current: Integer;
-  Bounds: TRect;
+  mCurrent: Integer;
+  mBounds: TRect;
 begin
   ARetVal := EmptyUiaRect;
-  Current := Position;
-  if Current < 0 then
+  mCurrent := Position;
+  if mCurrent < 0 then
   begin
-    Exit(UiaElementNotAvailable);
+    Exit(cUiaElementNotAvailable);
   end;
-  if FList.Source.AccessibleBounds(Current, Bounds) then
+  if FList.Source.AccessibleBounds(mCurrent, mBounds) then
   begin
-    ARetVal := UiaRect(Bounds);
+    ARetVal := UiaRect(mBounds);
   end;
   Result := S_OK;
 end;
@@ -736,16 +736,16 @@ end;
 
 function TAtlasAccessibleItem.Select: HResult;
 var
-  Current: Integer;
+  mCurrent: Integer;
 begin
-  Current := Position;
-  if Current < 0 then
+  mCurrent := Position;
+  if mCurrent < 0 then
   begin
-    Exit(UiaElementNotAvailable);
+    Exit(cUiaElementNotAvailable);
   end;
-  if not FList.Source.AccessibleIsHeader(Current) then
+  if not FList.Source.AccessibleIsHeader(mCurrent) then
   begin
-    FList.Source.AccessibleSelect(Current);
+    FList.Source.AccessibleSelect(mCurrent);
   end;
   Result := S_OK;
 end;
@@ -764,15 +764,15 @@ end;
 
 function TAtlasAccessibleItem.get_IsSelected(out ARetVal: BOOL): HResult;
 var
-  Current: Integer;
+  mCurrent: Integer;
 begin
   ARetVal := False;
-  Current := Position;
-  if Current < 0 then
+  mCurrent := Position;
+  if mCurrent < 0 then
   begin
-    Exit(UiaElementNotAvailable);
+    Exit(cUiaElementNotAvailable);
   end;
-  ARetVal := FList.Source.AccessibleSelected = Current;
+  ARetVal := FList.Source.AccessibleSelected = mCurrent;
   Result := S_OK;
 end;
 
@@ -788,7 +788,7 @@ class function TAtlasAccessibility.Answer(AWindow: HWND; AWParam: WPARAM; ALPara
   const AElement: IAtlasRawElementProvider): LRESULT;
 begin
   Result := 0;
-  if (Integer(ALParam) <> UiaRootObjectId) or (AElement = nil) then
+  if (Integer(ALParam) <> cUiaRootObjectId) or (AElement = nil) then
   begin
     Exit;
   end;
@@ -820,7 +820,7 @@ begin
   begin
     Exit;
   end;
-  RaiseNotificationEvent(AElement, NotificationKindOther, NotificationProcessingImportantMostRecent,
+  RaiseNotificationEvent(AElement, cNotificationKindOther, cNotificationProcessingImportantMostRecent,
     PWideChar(AText), 'Atlas');
 end;
 
@@ -832,22 +832,22 @@ begin
     Exit;
   end;
   case ADirection of
-    UiaNavigateFirstChild:
+    cUiaNavigateFirstChild:
       if AFrom < 0 then
       begin
         Result := 0;
       end;
-    UiaNavigateLastChild:
+    cUiaNavigateLastChild:
       if AFrom < 0 then
       begin
         Result := ACount - 1;
       end;
-    UiaNavigateNextSibling:
+    cUiaNavigateNextSibling:
       if (AFrom >= 0) and (AFrom < ACount - 1) then
       begin
         Result := AFrom + 1;
       end;
-    UiaNavigatePreviousSibling:
+    cUiaNavigatePreviousSibling:
       if (AFrom > 0) and (AFrom < ACount) then
       begin
         Result := AFrom - 1;

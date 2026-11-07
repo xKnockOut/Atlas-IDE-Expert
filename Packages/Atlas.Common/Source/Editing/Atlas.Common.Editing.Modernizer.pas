@@ -87,11 +87,11 @@ end;
 
 function Occurs(const AWord: string; const ALines: TArray<string>; AFirst, ALast: Integer): Boolean;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
-  for Line := AFirst to ALast do
+  for mLine := AFirst to ALast do
   begin
-    if TModernizer.WordPos(AWord, ALines[Line]) > 0 then
+    if TModernizer.WordPos(AWord, ALines[mLine]) > 0 then
     begin
       Exit(True);
     end;
@@ -101,11 +101,11 @@ end;
 
 procedure Delete(var ALines: TArray<string>; AIndex: Integer);
 var
-  Line: Integer;
+  mLine: Integer;
 begin
-  for Line := AIndex to High(ALines) - 1 do
+  for mLine := AIndex to High(ALines) - 1 do
   begin
-    ALines[Line] := ALines[Line + 1];
+    ALines[mLine] := ALines[mLine + 1];
   end;
   SetLength(ALines, Length(ALines) - 1);
 end;
@@ -113,14 +113,14 @@ end;
 /// <summary>Zeile des "begin" der Routine (Einrückung wie der Kopf); -1 ohne.</summary>
 function MainBegin(const ALines: TArray<string>): Integer;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
-  for Line := 1 to High(ALines) do
+  for mLine := 1 to High(ALines) do
   begin
-    if SameText(Trim(ALines[Line]), 'begin') and
-      (TTextLines.IndentLength(ALines[Line]) = TTextLines.IndentLength(ALines[0])) then
+    if SameText(Trim(ALines[mLine]), 'begin') and
+      (TTextLines.IndentLength(ALines[mLine]) = TTextLines.IndentLength(ALines[0])) then
     begin
-      Exit(Line);
+      Exit(mLine);
     end;
   end;
   Result := -1;
@@ -129,46 +129,46 @@ end;
 /// <summary>X.Free; X := nil; wird zu FreeAndNil(X);</summary>
 function ApplyFreeAndNil(var ALines: TArray<string>): Integer;
 var
-  Line: Integer;
-  Text, Name: string;
+  mLine: Integer;
+  mText, mName: string;
 begin
   Result := 0;
-  Line := 0;
-  while Line < High(ALines) do
+  mLine := 0;
+  while mLine < High(ALines) do
   begin
-    Text := Trim(ALines[Line]);
-    if EndsText('.Free;', Text) then
+    mText := Trim(ALines[mLine]);
+    if EndsText('.Free;', mText) then
     begin
-      Name := Copy(Text, 1, Length(Text) - 6);
-      if (Name <> '') and SameText(Trim(ALines[Line + 1]), Name + ' := nil;') then
+      mName := Copy(mText, 1, Length(mText) - 6);
+      if (mName <> '') and SameText(Trim(ALines[mLine + 1]), mName + ' := nil;') then
       begin
-        ALines[Line] := Copy(ALines[Line], 1, TTextLines.IndentLength(ALines[Line])) + 'FreeAndNil(' + Name + ');';
-        Delete(ALines, Line + 1);
+        ALines[mLine] := Copy(ALines[mLine], 1, TTextLines.IndentLength(ALines[mLine])) + 'FreeAndNil(' + mName + ');';
+        Delete(ALines, mLine + 1);
         Inc(Result);
       end;
     end;
-    Inc(Line);
+    Inc(mLine);
   end;
 end;
 
 /// <summary>Liste L aus der Obergrenze "L.Count - 1", "High(L)" oder "Length(L) - 1"; '' sonst.</summary>
 function ListOf(const AUpper: string): string;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Trim(AUpper);
+  mText := Trim(AUpper);
   Result := '';
-  if EndsText('.Count - 1', Text) then
+  if EndsText('.Count - 1', mText) then
   begin
-    Result := Copy(Text, 1, Length(Text) - 10);
+    Result := Copy(mText, 1, Length(mText) - 10);
   end
-  else if StartsText('High(', Text) and EndsStr(')', Text) then
+  else if StartsText('High(', mText) and EndsStr(')', mText) then
   begin
-    Result := Copy(Text, 6, Length(Text) - 6);
+    Result := Copy(mText, 6, Length(mText) - 6);
   end
-  else if StartsText('Length(', Text) and EndsText(') - 1', Text) then
+  else if StartsText('Length(', mText) and EndsText(') - 1', mText) then
   begin
-    Result := Copy(Text, 8, Length(Text) - 11);
+    Result := Copy(mText, 8, Length(mText) - 11);
   end;
   Result := Trim(Result);
   if (Result = '') or (Pos('(', Result) > 0) or (Pos(' ', Result) > 0) then
@@ -222,36 +222,36 @@ end;
 /// <summary>Ersetzt L[I] in ALine durch AItem; False, wenn I anders vorkommt oder L[I] beschrieben wird.</summary>
 function ReplaceAccess(var ALine: string; const AList, AIndex, AItem: string): Boolean;
 var
-  Access, Rest: string;
-  At, Word: Integer;
+  mAccess, mRest: string;
+  mAt, mWord: Integer;
 begin
-  Access := AList + '[' + AIndex + ']';
-  Rest := ALine;
+  mAccess := AList + '[' + AIndex + ']';
+  mRest := ALine;
   ALine := '';
   repeat
-    At := Pos(LowerCase(Access), LowerCase(Rest));
-    if (At > 1) and (TTextChars.IsAsciiIdentChar(Rest[At - 1]) or (Rest[At - 1] = '.')) then
+    mAt := Pos(LowerCase(mAccess), LowerCase(mRest));
+    if (mAt > 1) and (TTextChars.IsAsciiIdentChar(mRest[mAt - 1]) or (mRest[mAt - 1] = '.')) then
     begin
-      At := 0;
+      mAt := 0;
     end;
-    if At = 0 then
+    if mAt = 0 then
     begin
       Break;
     end;
-    if StartsStr(':=', TrimLeft(Copy(Rest, At + Length(Access), MaxInt))) then
+    if StartsStr(':=', TrimLeft(Copy(mRest, mAt + Length(mAccess), MaxInt))) then
     begin
       Exit(False);
     end;
-    ALine := ALine + Copy(Rest, 1, At - 1) + AItem;
-    Rest := Copy(Rest, At + Length(Access), MaxInt);
+    ALine := ALine + Copy(mRest, 1, mAt - 1) + AItem;
+    mRest := Copy(mRest, mAt + Length(mAccess), MaxInt);
   until False;
-  ALine := ALine + Rest;
-  Word := TModernizer.WordPos(AIndex, ALine);
-  Result := Word = 0;
+  ALine := ALine + mRest;
+  mWord := TModernizer.WordPos(AIndex, ALine);
+  Result := mWord = 0;
 end;
 
 const
-  Mutators: array[0..9] of string = ('Add', 'Delete', 'Insert', 'Remove', 'Clear', 'Exchange', 'Move', 'Extract',
+  cMutators: array[0..9] of string = ('Add', 'Delete', 'Insert', 'Remove', 'Clear', 'Exchange', 'Move', 'Extract',
     'Sort', 'AddRange');
 
 /// <summary>Zerlegt "for I := 0 to L.Count - 1 do" in Zählvariable und Liste; False bei anderer Form.</summary>
@@ -292,7 +292,7 @@ function Mutates(const AList, ALine: string): Boolean;
 var
   mMutator: string;
 begin
-  for mMutator in Mutators do
+  for mMutator in cMutators do
   begin
     if Pos(LowerCase(AList + '.' + mMutator + '('), LowerCase(ALine)) > 0 then
     begin
@@ -375,19 +375,19 @@ end;
 /// <summary>Deklaration "Name: Typ;" (ein Name, kein Vorgabewert) zerlegen.</summary>
 function SingleDeclaration(const ALine: string; out AName, AType: string): Boolean;
 var
-  Text: string;
-  Colon: Integer;
+  mText: string;
+  mColon: Integer;
 begin
-  Text := Trim(ALine);
-  Colon := Pos(':', Text);
-  Result := (Colon > 1) and EndsStr(';', Text) and (Pos('=', Text) = 0) and (Pos(',', Text) = 0) and
-    (Pos('//', Text) = 0) and (Pos('{', Text) = 0);
+  mText := Trim(ALine);
+  mColon := Pos(':', mText);
+  Result := (mColon > 1) and EndsStr(';', mText) and (Pos('=', mText) = 0) and (Pos(',', mText) = 0) and
+    (Pos('//', mText) = 0) and (Pos('{', mText) = 0);
   if not Result then
   begin
     Exit;
   end;
-  AName := Trim(Copy(Text, 1, Colon - 1));
-  AType := Trim(Copy(Text, Colon + 1, Length(Text) - Colon - 1));
+  AName := Trim(Copy(mText, 1, mColon - 1));
+  AType := Trim(Copy(mText, mColon + 1, Length(mText) - mColon - 1));
   Result := IsValidIdent(AName) and (AType <> '');
 end;
 
@@ -533,9 +533,9 @@ end;
 class function TModernizer.Apply(const ALines: TArray<string>; AKinds: TModernizations;
   out ACount: Integer): TArray<string>;
 var
-  Freed: TArray<string>;
+  mFreed: TArray<string>;
 begin
-  Freed := nil;
+  mFreed := nil;
   Result := Copy(ALines);
   ACount := 0;
   if TModernization.FreeAndNilCall in AKinds then
@@ -544,11 +544,11 @@ begin
   end;
   if TModernization.ForIn in AKinds then
   begin
-    ACount := ACount + ApplyForIn(Result, Freed);
+    ACount := ACount + ApplyForIn(Result, mFreed);
   end;
-  if (TModernization.InlineVar in AKinds) or (Freed <> nil) then
+  if (TModernization.InlineVar in AKinds) or (mFreed <> nil) then
   begin
-    ACount := ACount + ApplyInlineVar(Result, TModernization.InlineVar in AKinds, Freed);
+    ACount := ACount + ApplyInlineVar(Result, TModernization.InlineVar in AKinds, mFreed);
   end;
 end;
 

@@ -29,17 +29,17 @@ implementation
 
 function TFindingFilter.AcceptsFile(const APath: string): Boolean;
 var
-  Pattern: string;
-  UnitName: string;
+  mPattern: string;
+  mUnitName: string;
 begin
   if Length(Units) = 0 then
   begin
     Exit(True);
   end;
-  UnitName := ChangeFileExt(ExtractFileName(StringReplace(APath, '/', '\', [rfReplaceAll])), '');
-  for Pattern in Units do
+  mUnitName := ChangeFileExt(ExtractFileName(StringReplace(APath, '/', '\', [rfReplaceAll])), '');
+  for mPattern in Units do
   begin
-    if SameText(Pattern, UnitName) or MatchesGlob(Pattern, APath) then
+    if SameText(mPattern, mUnitName) or MatchesGlob(mPattern, APath) then
     begin
       Exit(True);
     end;
@@ -49,7 +49,7 @@ end;
 
 function TFindingFilter.AcceptsFinding(const AFinding: TRuleFinding): Boolean;
 var
-  Id: string;
+  mId: string;
 begin
   if (Ord(MinSeverity) > Ord(TRuleSeverity.Off)) and (Ord(AFinding.Severity) < Ord(MinSeverity)) then
   begin
@@ -59,9 +59,9 @@ begin
   begin
     Exit(True);
   end;
-  for Id in Rules do
+  for mId in Rules do
   begin
-    if SameText(Id, AFinding.RuleId) then
+    if SameText(mId, AFinding.RuleId) then
     begin
       Exit(True);
     end;
@@ -71,35 +71,35 @@ end;
 
 function TFindingFilter.Apply(const AFindings: TArray<TRuleFinding>): TArray<TRuleFinding>;
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
   Result := nil;
-  for Finding in AFindings do
+  for mFinding in AFindings do
   begin
-    if AcceptsFinding(Finding) then
+    if AcceptsFinding(mFinding) then
     begin
-      Result := Result + [Finding];
+      Result := Result + [mFinding];
     end;
   end;
 end;
 
 class function TFindingFilter.SplitList(const AText: string): TArray<string>;
 var
-  I, Start: Integer;
-  Part: string;
+  I, mStart: Integer;
+  mPart: string;
 begin
   Result := nil;
-  Start := 1;
+  mStart := 1;
   for I := 1 to Length(AText) + 1 do
   begin
     if (I > Length(AText)) or (AText[I] = ',') then
     begin
-      Part := Trim(Copy(AText, Start, I - Start));
-      if Part <> '' then
+      mPart := Trim(Copy(AText, mStart, I - mStart));
+      if mPart <> '' then
       begin
-        Result := Result + [Part];
+        Result := Result + [mPart];
       end;
-      Start := I + 1;
+      mStart := I + 1;
     end;
   end;
 end;

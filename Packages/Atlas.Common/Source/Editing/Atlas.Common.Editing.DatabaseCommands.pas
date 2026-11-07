@@ -65,39 +65,39 @@ const
 
 const
   /// <summary>Ab dieser Länge der Zeile "Q.SQL.Text := '…';" wird der Text verteilt.</summary>
-  MaxSqlLine = 100;
+  cMaxSqlLine = 100;
 
 /// <summary>Erstes Wort von AArguments als Name (mit Punkten), Rest in ARest.</summary>
 function SplitName(const AArguments: string; out AName, ARest: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := 1;
-  while (Index <= Length(AArguments)) and (AArguments[Index] > ' ') do
+  mIndex := 1;
+  while (mIndex <= Length(AArguments)) and (AArguments[mIndex] > ' ') do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  AName := Copy(AArguments, 1, Index - 1);
-  ARest := Trim(Copy(AArguments, Index, MaxInt));
+  AName := Copy(AArguments, 1, mIndex - 1);
+  ARest := Trim(Copy(AArguments, mIndex, MaxInt));
   Result := (AName <> '') and IsValidIdent(AName, True);
 end;
 
 /// <summary>Deklarierter Typ des ersten Namensteils an der Befehlszeile; '' wenn unbekannt.</summary>
 function TypeOfName(ASource: TCommandSource; const AName: string): string;
 var
-  Types: TDeclaredTypes;
-  First: string;
+  mTypes: TDeclaredTypes;
+  mFirst: string;
 begin
-  First := AName;
-  if Pos('.', First) > 0 then
+  mFirst := AName;
+  if Pos('.', mFirst) > 0 then
   begin
-    First := Copy(First, 1, Pos('.', First) - 1);
+    mFirst := Copy(mFirst, 1, Pos('.', mFirst) - 1);
   end;
-  Types := TDeclaredTypes.Create(ASource.Tree, ASource.Text);
+  mTypes := TDeclaredTypes.Create(ASource.Tree, ASource.Text);
   try
-    Result := Types.DeclaredType(First, TTextPosition.Create(ASource.Line, 0));
+    Result := mTypes.DeclaredType(mFirst, TTextPosition.Create(ASource.Line, 0));
   finally
-    Types.Free;
+    mTypes.Free;
   end;
   // Bei DM.Q ist der Typ von DM nicht der der Query.
   if Pos('.', AName) > 0 then
@@ -128,44 +128,44 @@ end;
 
 function ExecuteSql(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Name, Sql, Indent, TypeName, Param, Literal, Single: string;
-  Lines: TArray<string>;
+  mSource: TCommandSource;
+  mName, mSql, mIndent, mTypeName, mParam, mLiteral, mSingle: string;
+  mLines: TArray<string>;
 begin
   AEdits := nil;
-  if not SplitName(AContext.Arguments, Name, Sql) or (Sql = '') then
+  if not SplitName(AContext.Arguments, mName, mSql) or (mSql = '') then
   begin
     Exit(Fail(cTexts[TDatabaseCommandsText.ExpectedAreQueryAndSQL].Text, AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if Source.RoutineAt = nil then
+    if mSource.RoutineAt = nil then
     begin
       Exit(Fail(cTexts[TDatabaseCommandsText.SqlOnlyAppliesInThe].Text, AReason));
     end;
-    Indent := Source.Indent(Source.Line);
-    TypeName := TypeOfName(Source, Name);
-    Single := Format('%s%s.SQL.Text := %s;', [Indent, Name, TStringLiterals.Quote(Sql)]);
-    if Length(Single) <= MaxSqlLine then
+    mIndent := mSource.Indent(mSource.Line);
+    mTypeName := TypeOfName(mSource, mName);
+    mSingle := Format('%s%s.SQL.Text := %s;', [mIndent, mName, TStringLiterals.Quote(mSql)]);
+    if Length(mSingle) <= cMaxSqlLine then
     begin
-      Lines := [Single];
+      mLines := [mSingle];
     end
     else
     begin
       // Lange Abfragen: eine Zeile je Klausel, ab Delphi 12 als '''-String, sonst mit sLineBreak.
-      Literal := TStringLiterals.ToLiteral(string.Join(#13#10, TSqlText.Layout(Sql, 0)), Indent + '  ', True,
+      mLiteral := TStringLiterals.ToLiteral(string.Join(#13#10, TSqlText.Layout(mSql, 0)), mIndent + '  ', True,
         TStringLiterals.UseMultiline(TStringLiteralStyle.Auto, AContext.DelphiVersion),
-        TStringLiteralSettings.Default, Source.LineBreak);
-      Lines := [Format('%s%s.SQL.Text :=', [Indent, Name]), Literal + ';'];
+        TStringLiteralSettings.Default, mSource.LineBreak);
+      mLines := [Format('%s%s.SQL.Text :=', [mIndent, mName]), mLiteral + ';'];
     end;
-    for Param in TSqlText.Params(Sql) do
+    for mParam in TSqlText.Params(mSql) do
     begin
-      Lines := Lines + [ParamLine(Indent, Name, TypeName, Param)];
+      mLines := mLines + [ParamLine(mIndent, mName, mTypeName, mParam)];
     end;
-    AEdits := [Source.ReplaceWithLines(Lines)];
+    AEdits := [mSource.ReplaceWithLines(mLines)];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -174,19 +174,19 @@ end;
 /// <summary>SQL-Text von AName aus der Unit, sonst aus der Formulardatei daneben.</summary>
 function SqlOf(const AContext: TSlashContext; ASource: TCommandSource; const AName: string): string;
 var
-  FileName, FormText, Extension: string;
+  mFileName, mFormText, mExtension: string;
 begin
   Result := TSqlText.FromSource(ASource.Text, AName);
   if (Result <> '') or (AContext.Host = nil) or (AContext.Uri = '') then
   begin
     Exit;
   end;
-  FileName := TDocumentUris.ToPath(AContext.Uri);
-  for Extension in TArray<string>.Create('.dfm', '.fmx') do
+  mFileName := TDocumentUris.ToPath(AContext.Uri);
+  for mExtension in TArray<string>.Create('.dfm', '.fmx') do
   begin
-    if AContext.Host.ReadFile(ChangeFileExt(FileName, Extension), FormText) then
+    if AContext.Host.ReadFile(ChangeFileExt(mFileName, mExtension), mFormText) then
     begin
-      Result := TSqlText.FromForm(FormText, AName);
+      Result := TSqlText.FromForm(mFormText, AName);
       if Result <> '' then
       begin
         Exit;
@@ -195,62 +195,94 @@ begin
   end;
 end;
 
+/// <summary>Text der Routine ARoutine ohne die Zeile des Befehls.</summary>
+function RoutineTextWithoutCommand(ASource: TCommandSource; ARoutine: TSyntaxNode): string;
+var
+  mIndex: Integer;
+  mBuilder: TStringBuilder;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    for mIndex := ARoutine.StartPos.Line to ARoutine.EndPos.Line do
+    begin
+      if mIndex <> ASource.Line then
+      begin
+        mBuilder.Append(ASource.Lines[mIndex]).Append(#10);
+      end;
+    end;
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
+end;
+
+/// <summary>Parameter der Abfrage AName, die die Routine unter dem Cursor noch nicht setzt; sonst der Grund, warum
+/// /params hier nichts einfügt.</summary>
+function MissingParams(const AContext: TSlashContext; ASource: TCommandSource; const AName: string;
+  out AMissing: TArray<string>): string;
+var
+  mRoutine: TSyntaxNode;
+  mSql: string;
+  mParams, mAssigned, mExtra: TArray<string>;
+begin
+  AMissing := nil;
+  mRoutine := ASource.RoutineAt;
+  if mRoutine = nil then
+  begin
+    Exit(cTexts[TDatabaseCommandsText.ParamsOnlyAppliesInThe].Text);
+  end;
+  mSql := SqlOf(AContext, ASource, AName);
+  if mSql = '' then
+  begin
+    Exit(cTexts[TDatabaseCommandsText.ThereIsNoSQLText].Fmt([AName]));
+  end;
+  mParams := TSqlText.Params(mSql);
+  mAssigned := TSqlText.AssignedParams(RoutineTextWithoutCommand(ASource, mRoutine), AName);
+  AMissing := TSqlText.Missing(mParams, mAssigned);
+  mExtra := TSqlText.Missing(mAssigned, mParams);
+  if mExtra <> nil then
+  begin
+    Result := cTexts[TDatabaseCommandsText.NotInTheSQLOf].Fmt([AName, string.Join(', ', mExtra)]);
+  end
+  else if AMissing = nil then
+  begin
+    Result := cTexts[TDatabaseCommandsText.AllParametersOfAreSet].Fmt([AName]);
+  end
+  else
+  begin
+    Result := '';
+  end;
+end;
+
 function ExecuteParams(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Routine: TSyntaxNode;
-  Name, Rest, Sql, RoutineText, Indent, TypeName, Param: string;
-  Params, Assigned, Missing, Extra, Lines: TArray<string>;
-  Index: Integer;
+  mSource: TCommandSource;
+  mName, mRest, mIndent, mTypeName, mParam: string;
+  mMissing, mLines: TArray<string>;
 begin
   AEdits := nil;
-  if not SplitName(AContext.Arguments, Name, Rest) or (Rest <> '') then
+  if not SplitName(AContext.Arguments, mName, mRest) or (mRest <> '') then
   begin
     Exit(Fail(cTexts[TDatabaseCommandsText.ExpectedIsAQueryE].Text, AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Routine := Source.RoutineAt;
-    if Routine = nil then
+    AReason := MissingParams(AContext, mSource, mName, mMissing);
+    if AReason <> '' then
     begin
-      Exit(Fail(cTexts[TDatabaseCommandsText.ParamsOnlyAppliesInThe].Text, AReason));
+      Exit(False);
     end;
-    Sql := SqlOf(AContext, Source, Name);
-    if Sql = '' then
+    mIndent := mSource.Indent(mSource.Line);
+    mTypeName := TypeOfName(mSource, mName);
+    mLines := nil;
+    for mParam in mMissing do
     begin
-      Exit(Fail(cTexts[TDatabaseCommandsText.ThereIsNoSQLText].Fmt([Name]), AReason));
+      mLines := mLines + [ParamLine(mIndent, mName, mTypeName, mParam)];
     end;
-    Params := TSqlText.Params(Sql);
-    RoutineText := '';
-    for Index := Routine.StartPos.Line to Routine.EndPos.Line do
-    begin
-      if Index <> Source.Line then
-      begin
-        RoutineText := RoutineText + Source.Lines[Index] + #10;
-      end;
-    end;
-    Assigned := TSqlText.AssignedParams(RoutineText, Name);
-    Missing := TSqlText.Missing(Params, Assigned);
-    Extra := TSqlText.Missing(Assigned, Params);
-    if Extra <> nil then
-    begin
-      Exit(Fail(cTexts[TDatabaseCommandsText.NotInTheSQLOf].Fmt([Name, string.Join(', ', Extra)]), AReason));
-    end;
-    if Missing = nil then
-    begin
-      Exit(Fail(cTexts[TDatabaseCommandsText.AllParametersOfAreSet].Fmt([Name]), AReason));
-    end;
-    Indent := Source.Indent(Source.Line);
-    TypeName := TypeOfName(Source, Name);
-    Lines := nil;
-    for Param in Missing do
-    begin
-      Lines := Lines + [ParamLine(Indent, Name, TypeName, Param)];
-    end;
-    AEdits := [Source.ReplaceWithLines(Lines)];
+    AEdits := [mSource.ReplaceWithLines(mLines)];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -258,22 +290,22 @@ end;
 
 function ExecuteLoop(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Name, Rest: string;
+  mSource: TCommandSource;
+  mName, mRest: string;
 begin
   AEdits := nil;
-  if not SplitName(AContext.Arguments, Name, Rest) or (Rest <> '') then
+  if not SplitName(AContext.Arguments, mName, mRest) or (mRest <> '') then
   begin
     Exit(Fail(cTexts[TDatabaseCommandsText.ExpectedIsADatasetE].Text, AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
     // Next steht fest am Ende der Schleife: keine Endlosschleife durch ein vergessenes Next.
-    Result := Wrap(Source, 'loop', TWrapFrame.Create([Name + '.DisableControls;', 'try', '  ' + Name + '.First;',
-      '  while not ' + Name + '.Eof do', '  begin'], ['    ' + Name + '.Next;', '  end;', 'finally',
-      '  ' + Name + '.EnableControls;', 'end;'], '    '), AEdits, AReason);
+    Result := Wrap(mSource, 'loop', TWrapFrame.Create([mName + '.DisableControls;', 'try', '  ' + mName + '.First;',
+      '  while not ' + mName + '.Eof do', '  begin'], ['    ' + mName + '.Next;', '  end;', 'finally',
+      '  ' + mName + '.EnableControls;', 'end;'], '    '), AEdits, AReason);
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -282,54 +314,54 @@ end;
 function ExecuteTransaction(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Routine: TSyntaxNode;
-  Name, Rest, TypeName, Start, Commit, Rollback, Tx: string;
+  mSource: TCommandSource;
+  mRoutine: TSyntaxNode;
+  mName, mRest, mTypeName, mStart, mCommit, mRollback, mTx: string;
 begin
   AEdits := nil;
-  if not SplitName(AContext.Arguments, Name, Rest) or (Rest <> '') then
+  if not SplitName(AContext.Arguments, mName, mRest) or (mRest <> '') then
   begin
     Exit(Fail(cTexts[TDatabaseCommandsText.ExpectedIsAConnectionE].Text, AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Routine := Source.RoutineAt;
-    TypeName := TypeOfName(Source, Name);
-    Tx := '';
-    if IsAdo(TypeName) then
+    mRoutine := mSource.RoutineAt;
+    mTypeName := TypeOfName(mSource, mName);
+    mTx := '';
+    if IsAdo(mTypeName) then
     begin
-      Start := Name + '.BeginTrans;';
-      Commit := Name + '.CommitTrans;';
-      Rollback := Name + '.RollbackTrans;';
+      mStart := mName + '.BeginTrans;';
+      mCommit := mName + '.CommitTrans;';
+      mRollback := mName + '.RollbackTrans;';
     end
-    else if SameText(TypeName, 'TSQLConnection') then
+    else if SameText(mTypeName, 'TSQLConnection') then
     begin
-      Tx := 'Transaktion';
-      Start := Tx + ' := ' + Name + '.BeginTransaction;';
-      Commit := Name + '.CommitFreeAndNil(' + Tx + ');';
-      Rollback := Name + '.RollbackFreeAndNil(' + Tx + ');';
+      mTx := 'Transaktion';
+      mStart := mTx + ' := ' + mName + '.BeginTransaction;';
+      mCommit := mName + '.CommitFreeAndNil(' + mTx + ');';
+      mRollback := mName + '.RollbackFreeAndNil(' + mTx + ');';
     end
-    else if SameText(TypeName, 'TIBDatabase') then
+    else if SameText(mTypeName, 'TIBDatabase') then
     begin
-      Start := Name + '.DefaultTransaction.StartTransaction;';
-      Commit := Name + '.DefaultTransaction.Commit;';
-      Rollback := Name + '.DefaultTransaction.Rollback;';
+      mStart := mName + '.DefaultTransaction.StartTransaction;';
+      mCommit := mName + '.DefaultTransaction.Commit;';
+      mRollback := mName + '.DefaultTransaction.Rollback;';
     end
     else
     begin
-      Start := Name + '.StartTransaction;';
-      Commit := Name + '.Commit;';
-      Rollback := Name + '.Rollback;';
+      mStart := mName + '.StartTransaction;';
+      mCommit := mName + '.Commit;';
+      mRollback := mName + '.Rollback;';
     end;
-    Result := Wrap(Source, 'transaction', TWrapFrame.Create([Start, 'try'], ['  ' + Commit, 'except',
-      '  ' + Rollback, '  raise;', 'end;'], '  '), AEdits, AReason);
-    if Result and (Tx <> '') then
+    Result := Wrap(mSource, 'transaction', TWrapFrame.Create([mStart, 'try'], ['  ' + mCommit, 'except',
+      '  ' + mRollback, '  raise;', 'end;'], '  '), AEdits, AReason);
+    if Result and (mTx <> '') then
     begin
-      AEdits := AEdits + [AddLocal(Source, Routine, TSyntaxKind.VarSection, 'var', Tx + ': TDBXTransaction;')];
-      AddUses(Source, AContext, Source.Line, ['Data.DBXCommon'], AEdits);
+      AEdits := AEdits + [AddLocal(mSource, mRoutine, TSyntaxKind.VarSection, 'var', mTx + ': TDBXTransaction;')];
+      AddUses(mSource, AContext, mSource.Line, ['Data.DBXCommon'], AEdits);
     end;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 

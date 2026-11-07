@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesDeExceptions: array[0..39] of string = (
+  cCatalogLinesDeExceptions: array[0..39] of string = (
     '{',
     '      "id": "empty-except",',
     '      "name": "Leerer except-Block",',

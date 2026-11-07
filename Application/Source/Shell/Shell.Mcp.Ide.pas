@@ -8,7 +8,8 @@ interface
 uses
   Atlas.Common.Lsp.IdeBuild;
 
-/// <summary>Im Editor der IDE ungespeichert geänderte Dateien: editor-dirty-&lt;pid&gt;.json je laufender IDE.</summary>
+/// <summary>Im Editor der IDE ungespeichert geänderte Dateien: editor-dirty-&lt;pid&gt;.json je laufender
+/// IDE.</summary>
 function EditorDirtyFiles: TArray<string>;
 /// <summary>
 /// Schreibt AText mit Kodierung und Zeilenenden der vorhandenen Datei (#121). Ist die Datei in einer IDE
@@ -50,49 +51,50 @@ const
 /// Löschen, damit das Plugin sie währenddessen atomar ersetzen kann (Bericht M5, N3).</summary>
 function ReadPluginFile(const AFileName: string): string;
 var
-  FileFormat: TFileFormat;
+  mFileFormat: TFileFormat;
 begin
-  Result := TFileEncoding.LoadFromFile(AFileName, FileFormat);
+  Result := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
 end;
 
-/// <summary>Prozess der IDE, in der AFileName offen ist ("open" in editor-dirty-&lt;pid&gt;.json, #397); 0 ohne.</summary>
+/// <summary>Prozess der IDE, in der AFileName offen ist ("open" in editor-dirty-&lt;pid&gt;.json, #397); 0
+/// ohne.</summary>
 function IdeWithOpenFile(const AFileName: string): Cardinal;
 var
-  FileName, Text: string;
-  Json: TJSONValue;
-  Item: TJSONValue;
-  Pid: Integer;
+  mFileName, mText: string;
+  mJson: TJSONValue;
+  mItem: TJSONValue;
+  mPid: Integer;
 begin
   Result := 0;
   if not TDirectory.Exists(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas')) then
   begin
     Exit;
   end;
-  for FileName in TDirectory.GetFiles(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
+  for mFileName in TDirectory.GetFiles(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     'editor-dirty-*.json') do
   begin
     try
-      Text := ReadPluginFile(FileName);
+      mText := ReadPluginFile(mFileName);
     except
       on Exception do
         Continue;
     end;
-    Json := TJSONObject.ParseJSONValue(Text);
+    mJson := TJSONObject.ParseJSONValue(mText);
     try
-      if not (Json is TJSONObject) or not TJSONObject(Json).TryGetValue<Integer>('pid', Pid) or
-        not TProcessInstances.Running(Cardinal(Pid)) or not (TJSONObject(Json).GetValue('open') is TJSONArray) then
+      if not (mJson is TJSONObject) or not TJSONObject(mJson).TryGetValue<Integer>('pid', mPid) or
+        not TProcessInstances.Running(Cardinal(mPid)) or not (TJSONObject(mJson).GetValue('open') is TJSONArray) then
       begin
         Continue;
       end;
-      for Item in TJSONArray(TJSONObject(Json).GetValue('open')) do
+      for mItem in TJSONArray(TJSONObject(mJson).GetValue('open')) do
       begin
-        if SameText(Item.Value, AFileName) then
+        if SameText(mItem.Value, AFileName) then
         begin
-          Exit(Cardinal(Pid));
+          Exit(Cardinal(mPid));
         end;
       end;
     finally
-      Json.Free;
+      mJson.Free;
     end;
   end;
 end;
@@ -100,68 +102,69 @@ end;
 /// <summary>Laufende IDEs mit Atlas-Plugin samt offenen Projekten (editor-dirty-&lt;pid&gt;.json, #261).</summary>
 function RunningIdes: TArray<TMcpIdeEntry>;
 var
-  FileName, Text: string;
-  Entry: TMcpIdeEntry;
+  mFileName, mText: string;
+  mEntry: TMcpIdeEntry;
 begin
   Result := nil;
   if not TDirectory.Exists(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas')) then
   begin
     Exit;
   end;
-  for FileName in TDirectory.GetFiles(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
+  for mFileName in TDirectory.GetFiles(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     'editor-dirty-*.json') do
   begin
     try
-      Text := ReadPluginFile(FileName);
+      mText := ReadPluginFile(mFileName);
     except
       on Exception do
         Continue;
     end;
-    if TMcpIdeBuilds.ParseEntry(Text, Entry) and TProcessInstances.Running(Entry.Pid) then
+    if TMcpIdeBuilds.ParseEntry(mText, mEntry) and TProcessInstances.Running(mEntry.Pid) then
     begin
-      Result := Result + [Entry];
+      Result := Result + [mEntry];
     end;
   end;
 end;
 
-/// <summary>Im Editor der IDE ungespeichert geänderte Dateien: editor-dirty-&lt;pid&gt;.json je laufender IDE.</summary>
+/// <summary>Im Editor der IDE ungespeichert geänderte Dateien: editor-dirty-&lt;pid&gt;.json je laufender
+/// IDE.</summary>
 function EditorDirtyFiles: TArray<string>;
 var
-  FileName, Text: string;
-  Json: TJSONValue;
-  Item: TJSONValue;
-  Pid: Integer;
+  mFileName, mText: string;
+  mJson: TJSONValue;
+  mItem: TJSONValue;
+  mPid: Integer;
 begin
   Result := nil;
   if not TDirectory.Exists(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas')) then
   begin
     Exit;
   end;
-  for FileName in TDirectory.GetFiles(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
+  for mFileName in TDirectory.GetFiles(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     'editor-dirty-*.json') do
   begin
     try
-      Text := ReadPluginFile(FileName);
+      mText := ReadPluginFile(mFileName);
     except
       on Exception do
         Continue;
     end;
-    Json := TJSONObject.ParseJSONValue(Text);
+    mJson := TJSONObject.ParseJSONValue(mText);
     try
-      if not (Json is TJSONObject) or not TJSONObject(Json).TryGetValue<Integer>('pid', Pid) or
-        not TProcessInstances.Running(Cardinal(Pid)) then
+      if not (mJson is TJSONObject) or not TJSONObject(mJson).TryGetValue<Integer>('pid', mPid) or
+        not TProcessInstances.Running(Cardinal(mPid)) then
       begin
         Continue;
       end;
-      if TJSONObject(Json).GetValue('files') is TJSONArray then
+      if TJSONObject(mJson).GetValue('files') is TJSONArray then
       begin
-        for Item in TJSONArray(TJSONObject(Json).GetValue('files')) do
+        for mItem in TJSONArray(TJSONObject(mJson).GetValue('files')) do
         begin
-          Result := Result + [Item.Value];
+          Result := Result + [mItem.Value];
         end;
       end;
     finally
-      Json.Free;
+      mJson.Free;
     end;
   end;
 end;
@@ -172,29 +175,29 @@ end;
 /// </summary>
 procedure WriteSourceText(const AFileName, AText: string);
 var
-  FileFormat: TFileFormat;
-  Expected, Reason: string;
-  Pid: Cardinal;
+  mFileFormat: TFileFormat;
+  mExpected, mReason: string;
+  mPid: Cardinal;
 begin
-  Expected := TFileEncoding.LoadFromFile(AFileName, FileFormat);
-  Pid := IdeWithOpenFile(AFileName);
-  if Pid <> 0 then
-    case TMcpIdeEdits.Send(TMcpIdeEdits.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), Pid),
-      TMcpIdeEdit.Make(AFileName, Expected, AText),
+  mExpected := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
+  mPid := IdeWithOpenFile(AFileName);
+  if mPid <> 0 then
+    case TMcpIdeEdits.Send(TMcpIdeEdits.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid),
+      TMcpIdeEdit.Make(AFileName, mExpected, AText),
       procedure
       begin
-        Sleep(TMcpIdeEdits.PollMs);
+        Sleep(TMcpIdeEdits.cPollMs);
       end,
       function: Int64
       begin
         Result := TThread.GetTickCount64;
-      end, Reason) of
+      end, mReason) of
       TMcpIdeEditOutcome.Applied:
         Exit;
       TMcpIdeEditOutcome.Failed:
-        raise EMcpToolError.CreateFmt('IDE: %s', [Reason]);
+        raise EMcpToolError.CreateFmt('IDE: %s', [mReason]);
     end;
-  TFileEncoding.SaveToFile(AFileName, AText, FileFormat);
+  TFileEncoding.SaveToFile(AFileName, AText, mFileFormat);
 end;
 
 /// <summary>Baut AProject ('' = aktives Projekt) in der laufenden IDE über das Atlas-Plugin (#261) und wartet
@@ -202,46 +205,46 @@ end;
 /// den Auftrag nicht annimmt.</summary>
 function BuildInIde(const ARoot, AProject, AMode, AConfiguration, APlatform: string): TIdeBuild;
 var
-  Request: TMcpIdeBuildRequest;
-  Pid: Cardinal;
-  Wanted, BuildText, Reason: string;
+  mRequest: TMcpIdeBuildRequest;
+  mPid: Cardinal;
+  mWanted, mBuildText, mReason: string;
 begin
-  Request := Default(TMcpIdeBuildRequest);
-  Request.Mode := AMode;
-  if Request.Mode = '' then
+  mRequest := Default(TMcpIdeBuildRequest);
+  mRequest.Mode := AMode;
+  if mRequest.Mode = '' then
   begin
-    Request.Mode := 'make';
+    mRequest.Mode := 'make';
   end;
-  if not TMcpIdeBuilds.ModeValid(Request.Mode) then
+  if not TMcpIdeBuilds.ModeValid(mRequest.Mode) then
   begin
     raise EMcpToolError.Create(cTexts[TMcpIdeText.ModeInvalid].Text);
   end;
-  Request.Configuration := AConfiguration;
-  Request.Platform := APlatform;
+  mRequest.Configuration := AConfiguration;
+  mRequest.Platform := APlatform;
   // Relativer Pfad: relativ zum Arbeitsordner.
-  Wanted := AProject;
-  if (Wanted <> '') and ((Pos('\', Wanted) > 0) or (Pos('/', Wanted) > 0)) and not TPath.IsPathRooted(Wanted) then
+  mWanted := AProject;
+  if (mWanted <> '') and ((Pos('\', mWanted) > 0) or (Pos('/', mWanted) > 0)) and not TPath.IsPathRooted(mWanted) then
   begin
-    Wanted := TPath.GetFullPath(TPath.Combine(ARoot, Wanted));
+    mWanted := TPath.GetFullPath(TPath.Combine(ARoot, mWanted));
   end;
-  if not TMcpIdeBuilds.Pick(RunningIdes, ARoot, Wanted, Pid, Request.Project, Reason) then
+  if not TMcpIdeBuilds.Pick(RunningIdes, ARoot, mWanted, mPid, mRequest.Project, mReason) then
   begin
-    raise EMcpToolError.Create(Reason);
+    raise EMcpToolError.Create(mReason);
   end;
   if TMcpIdeBuilds.Send(TMcpIdeBuilds.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
-    Pid), Request,
+    mPid), mRequest,
     procedure
     begin
-      Sleep(TMcpIdeBuilds.PollMs);
+      Sleep(TMcpIdeBuilds.cPollMs);
     end,
     function: Int64
     begin
       Result := TThread.GetTickCount64;
-    end, BuildText, Reason) <> TMcpIdeBuildOutcome.Done then
+    end, mBuildText, mReason) <> TMcpIdeBuildOutcome.Done then
   begin
-    raise EMcpToolError.Create(Reason);
+    raise EMcpToolError.Create(mReason);
   end;
-  if not TMcpBuildTools.FromFileText(BuildText, Result) then
+  if not TMcpBuildTools.FromFileText(mBuildText, Result) then
   begin
     raise EMcpToolError.Create(cTexts[TMcpIdeText.ResultUnreadable].Text);
   end;

@@ -48,9 +48,9 @@ type
 
   TAtlasUpdateInstall = class
   public const
-    PrereleaseChannel = 'prerelease';
+    cPrereleaseChannel = 'prerelease';
     /// <summary>Fehlercode des Plugins: AtlasUpdate.exe ließ sich nicht starten.</summary>
-    StartFailed = 'start';
+    cStartFailed = 'start';
   public
     /// <summary>Wert von updates.install; unbekannt = ask.</summary>
     class function ModeOf(const AText: string): TAtlasUpdateInstallMode; static;
@@ -107,7 +107,7 @@ end;
 class function TAtlasUpdateInstall.ChannelUrl(const AChannel, AInstalled: string): string;
 begin
   // Wer eine Vorabversion fährt, erfährt auch von der nächsten (stabil kommt ebenfalls in diesen Kanal).
-  Result := TUpdateChannels.UrlOf(SameText(AChannel, PrereleaseChannel) or (Pos('-', AInstalled) > 0));
+  Result := TUpdateChannels.UrlOf(SameText(AChannel, cPrereleaseChannel) or (Pos('-', AInstalled) > 0));
 end;
 
 class function TAtlasUpdateInstall.UpdatesRoot(const ALocalAppData: string): string;
@@ -127,7 +127,7 @@ end;
 
 class function TAtlasUpdateInstall.UpdaterOf(const APluginDir: string): string;
 begin
-  Result := TUpdateLayout.Join(TargetOf(APluginDir), TUpdateLayout.UpdaterExe);
+  Result := TUpdateLayout.Join(TargetOf(APluginDir), TUpdateLayout.cUpdaterExe);
 end;
 
 class function TAtlasUpdateInstall.Blocked(const AEnvironment: TAtlasUpdateEnvironment): TAtlasUpdateBlock;

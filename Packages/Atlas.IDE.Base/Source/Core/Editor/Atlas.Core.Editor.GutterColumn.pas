@@ -72,7 +72,7 @@ type
   TAtlasGutterColumn = class
   public const
     /// <summary>Breite bei 96 DPI und 16 Pixeln Zeilenhöhe.</summary>
-    BaseWidth = 16;
+    cBaseWidth = 16;
   public
     /// <summary>Symbol der Zeile nach Vorrang und Unterschaltern; None ohne.</summary>
     class function Choose(const ALine: TAtlasGutterLine; const AOptions: TAtlasGutterColumnOptions): TAtlasGutterSymbol;
@@ -112,34 +112,34 @@ end;
 
 function TargetsOf(AValue: TJSONValue; const AToPath: TFunc<string, string>): TArray<TAtlasGutterTarget>;
 var
-  Item: TJSONValue;
-  Target: TAtlasGutterTarget;
-  Uri: string;
+  mItem: TJSONValue;
+  mTarget: TAtlasGutterTarget;
+  mUri: string;
 begin
   Result := nil;
   if not (AValue is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(AValue) do
+  for mItem in TJSONArray(AValue) do
   begin
-    if not (Item is TJSONObject) then
+    if not (mItem is TJSONObject) then
     begin
       Continue;
     end;
-    Target := Default(TAtlasGutterTarget);
-    Target.Name := TJSONObject(Item).GetValue<string>('name', '');
-    Uri := TJSONObject(Item).GetValue<string>('uri', '');
-    Target.FileName := Uri;
-    if Assigned(AToPath) and (Uri <> '') then
+    mTarget := Default(TAtlasGutterTarget);
+    mTarget.Name := TJSONObject(mItem).GetValue<string>('name', '');
+    mUri := TJSONObject(mItem).GetValue<string>('uri', '');
+    mTarget.FileName := mUri;
+    if Assigned(AToPath) and (mUri <> '') then
     begin
-      Target.FileName := AToPath(Uri);
+      mTarget.FileName := AToPath(mUri);
     end;
-    Target.Line := TJSONObject(Item).GetValue<Integer>('line', -1);
-    Target.Character := TJSONObject(Item).GetValue<Integer>('character', 0);
-    if (Target.Name <> '') and (Target.FileName <> '') and (Target.Line >= 0) then
+    mTarget.Line := TJSONObject(mItem).GetValue<Integer>('line', -1);
+    mTarget.Character := TJSONObject(mItem).GetValue<Integer>('character', 0);
+    if (mTarget.Name <> '') and (mTarget.FileName <> '') and (mTarget.Line >= 0) then
     begin
-      Result := Result + [Target];
+      Result := Result + [mTarget];
     end;
   end;
 end;
@@ -147,8 +147,8 @@ end;
 class function TAtlasFileOverrides.FromJson(AValue: TJSONValue;
   const AToPath: TFunc<string, string>): TAtlasFileOverrides;
 var
-  Item: TJSONValue;
-  Entry: TAtlasGutterOverrides;
+  mItem: TJSONValue;
+  mEntry: TAtlasGutterOverrides;
 begin
   Result := Default(TAtlasFileOverrides);
   // Typen selbst prüfen: GetValue<TJSONArray> wandelt eine Zahl ungeprüft um.
@@ -156,33 +156,33 @@ begin
   begin
     Exit;
   end;
-  for Item in TJSONArray(TJSONObject(AValue).GetValue('lines')) do
+  for mItem in TJSONArray(TJSONObject(AValue).GetValue('lines')) do
   begin
-    if not (Item is TJSONObject) then
+    if not (mItem is TJSONObject) then
     begin
       Continue;
     end;
-    Entry := Default(TAtlasGutterOverrides);
-    Entry.Line := TJSONObject(Item).GetValue<Integer>('line', -1);
-    Entry.Overrides := TargetsOf(TJSONObject(Item).GetValue('overrides'), AToPath);
-    Entry.Overridden := TargetsOf(TJSONObject(Item).GetValue('overridden'), AToPath);
-    if (Entry.Line >= 0) and ((Length(Entry.Overrides) > 0) or (Length(Entry.Overridden) > 0)) then
+    mEntry := Default(TAtlasGutterOverrides);
+    mEntry.Line := TJSONObject(mItem).GetValue<Integer>('line', -1);
+    mEntry.Overrides := TargetsOf(TJSONObject(mItem).GetValue('overrides'), AToPath);
+    mEntry.Overridden := TargetsOf(TJSONObject(mItem).GetValue('overridden'), AToPath);
+    if (mEntry.Line >= 0) and ((Length(mEntry.Overrides) > 0) or (Length(mEntry.Overridden) > 0)) then
     begin
-      Result.Lines := Result.Lines + [Entry];
+      Result.Lines := Result.Lines + [mEntry];
     end;
   end;
 end;
 
 function TAtlasFileOverrides.At(ALine: Integer; out AEntry: TAtlasGutterOverrides): Boolean;
 var
-  Entry: TAtlasGutterOverrides;
+  mEntry: TAtlasGutterOverrides;
 begin
   AEntry := Default(TAtlasGutterOverrides);
-  for Entry in Lines do
+  for mEntry in Lines do
   begin
-    if Entry.Line = ALine then
+    if mEntry.Line = ALine then
     begin
-      AEntry := Entry;
+      AEntry := mEntry;
       Exit(True);
     end;
   end;
@@ -243,18 +243,18 @@ end;
 class function TAtlasGutterColumn.ProblemSymbol(const AProblems: TArray<TAtlasProblem>;
   ALine: Integer): TAtlasGutterSymbol;
 var
-  Problem: TAtlasProblem;
-  Symbol: TAtlasGutterSymbol;
+  mProblem: TAtlasProblem;
+  mSymbol: TAtlasGutterSymbol;
 begin
   Result := TAtlasGutterSymbol.None;
-  for Problem in AProblems do
+  for mProblem in AProblems do
   begin
-    if Counts(Problem, ALine) then
+    if Counts(mProblem, ALine) then
     begin
-      Symbol := SymbolOf(Problem.Severity);
-      if (Result = TAtlasGutterSymbol.None) or (Ord(Symbol) < Ord(Result)) then
+      mSymbol := SymbolOf(mProblem.Severity);
+      if (Result = TAtlasGutterSymbol.None) or (Ord(mSymbol) < Ord(Result)) then
       begin
-        Result := Symbol;
+        Result := mSymbol;
       end;
     end;
   end;
@@ -263,25 +263,25 @@ end;
 class function TAtlasGutterColumn.ProblemsAt(const AProblems: TArray<TAtlasProblem>;
   ALine: Integer): TArray<TAtlasProblem>;
 var
-  Problem: TAtlasProblem;
-  Index, Position: Integer;
+  mProblem: TAtlasProblem;
+  mIndex, mPosition: Integer;
 begin
   Result := nil;
-  for Problem in AProblems do
+  for mProblem in AProblems do
   begin
-    if Counts(Problem, ALine) then
+    if Counts(mProblem, ALine) then
     begin
       // Stabil nach Schweregrad: Gleich schwere behalten die Reihenfolge des Servers.
-      Position := Length(Result);
-      for Index := 0 to High(Result) do
+      mPosition := Length(Result);
+      for mIndex := 0 to High(Result) do
       begin
-        if Ord(Problem.Severity) < Ord(Result[Index].Severity) then
+        if Ord(mProblem.Severity) < Ord(Result[mIndex].Severity) then
         begin
-          Position := Index;
+          mPosition := mIndex;
           Break;
         end;
       end;
-      Insert(Problem, Result, Position);
+      Insert(mProblem, Result, mPosition);
     end;
   end;
 end;

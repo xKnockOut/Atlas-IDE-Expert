@@ -94,7 +94,7 @@ type
 
   TLspSignatureHelp = class
   public const
-    Method = 'textDocument/signatureHelp';
+    cMethod = 'textDocument/signatureHelp';
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -125,7 +125,8 @@ type
       AFirst, ALast: Integer): string; static;
     /// <summary>Setzt Fits und Mismatch von ASignature für AArgumentTypes.</summary>
     class procedure Match(var ASignature: TSignature; const AArgumentTypes: TArray<string>); static;
-    /// <summary>Kopf einer Routine ab ALine/AColumn bis zum ; hinter der Parameterliste, auf eine Zeile gebracht.</summary>
+    /// <summary>Kopf einer Routine ab ALine/AColumn bis zum ; hinter der Parameterliste, auf eine Zeile
+    /// gebracht.</summary>
     class function ParseSignature(const ALines: TArray<string>; ALine, AColumn: Integer): TSignature; static;
     /// <summary>Signaturen des Aufrufs an APosition im Dokument von ARequest.</summary>
     class function HelpAt(const ARequest: TSignatureHelpRequest; const APosition: TTextPosition): TSignatureHelp;
@@ -167,9 +168,9 @@ const
     (De: 'Felder "textDocument.uri" und "position" fehlen'; En: 'Fields "textDocument.uri" and "position" missing'));
 
 const
-  RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
-  MaxHeaderLines = 50;
-  ParameterModifiers: array[0..4] of string = ('const ', 'var ', 'out ', 'constref ', '[ref] ');
+  cRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
+  cMaxHeaderLines = 50;
+  cParameterModifiers: array[0..4] of string = ('const ', 'var ', 'out ', 'constref ', '[ref] ');
   /// <summary>Schlüsselwörter, an denen die Suche nach der offenen Klammer endet.</summary>
   cStatementKeywords: array[0..4] of string = ('begin', 'end', 'then', 'do', 'var');
   /// <summary>Zeichen hinter einem Parameternamen in seiner Gruppe.</summary>
@@ -239,25 +240,25 @@ end;
 
 function CollapseSpaces(const AText: string): string;
 var
-  Index: Integer;
-  Space: Boolean;
+  mIndex: Integer;
+  mSpace: Boolean;
 begin
   Result := '';
-  Space := False;
-  for Index := 1 to Length(AText) do
+  mSpace := False;
+  for mIndex := 1 to Length(AText) do
   begin
-    if CharInSet(AText[Index], [' ', #9, #10, #13]) then
+    if CharInSet(AText[mIndex], [' ', #9, #10, #13]) then
     begin
-      Space := Result <> '';
+      mSpace := Result <> '';
     end
     else
     begin
-      if Space then
+      if mSpace then
       begin
         Result := Result + ' ';
       end;
-      Space := False;
-      Result := Result + AText[Index];
+      mSpace := False;
+      Result := Result + AText[mIndex];
     end;
   end;
 end;
@@ -432,21 +433,21 @@ end;
 
 procedure TLspSignatureHelp.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method, Handle);
+  ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
 end;
 
 class function TLspSignatureHelp.Capability: TJSONObject;
 var
-  Triggers, Retriggers: TJSONArray;
+  mTriggers, mRetriggers: TJSONArray;
 begin
-  Triggers := TJSONArray.Create;
-  Triggers.Add('(');
-  Triggers.Add(',');
-  Retriggers := TJSONArray.Create;
-  Retriggers.Add(')');
+  mTriggers := TJSONArray.Create;
+  mTriggers.Add('(');
+  mTriggers.Add(',');
+  mRetriggers := TJSONArray.Create;
+  mRetriggers.Add(')');
   Result := TJSONObject.Create;
-  Result.AddPair('triggerCharacters', Triggers);
-  Result.AddPair('retriggerCharacters', Retriggers);
+  Result.AddPair('triggerCharacters', mTriggers);
+  Result.AddPair('retriggerCharacters', mRetriggers);
 end;
 
 class function TLspSignatureHelp.CallSiteAt(ATree: TSyntaxTree; const APosition: TTextPosition): TCallSite;
@@ -503,7 +504,7 @@ begin
   Result := '';
   mDepth := 0;
   mLine := ALine;
-  while (mLine <= High(ALines)) and (mLine < ALine + MaxHeaderLines) do
+  while (mLine <= High(ALines)) and (mLine < ALine + cMaxHeaderLines) do
   begin
     mText := ALines[mLine];
     if mLine = ALine then
@@ -611,7 +612,7 @@ begin
   begin
     Result := Copy(AGroupText, 1, mColon - 1);
   end;
-  for mModifier in ParameterModifiers do
+  for mModifier in cParameterModifiers do
   begin
     if StartsText(mModifier, Result) then
     begin
@@ -930,17 +931,17 @@ end;
 
 class procedure TLspSignatureHelp.Match(var ASignature: TSignature; const AArgumentTypes: TArray<string>);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   ASignature.Fits := True;
   ASignature.Mismatch := -1;
   // Zu viele Argumente zählt der Hint selbst; hier nur die Typen.
-  for Index := 0 to Min(High(AArgumentTypes), High(ASignature.Parameters)) do
+  for mIndex := 0 to Min(High(AArgumentTypes), High(ASignature.Parameters)) do
   begin
-    if not TResolverText.ArgumentFits(ASignature.Parameters[Index].TypeName, AArgumentTypes[Index]) then
+    if not TResolverText.ArgumentFits(ASignature.Parameters[mIndex].TypeName, AArgumentTypes[mIndex]) then
     begin
       ASignature.Fits := False;
-      ASignature.Mismatch := Index;
+      ASignature.Mismatch := mIndex;
       Exit;
     end;
   end;
@@ -960,27 +961,27 @@ end;
 
 procedure ApplyDocumentation(var ASignature: TSignature; const ADoc: TXmlDoc);
 var
-  Section: TXmlDocSection;
-  Name, Text: string;
-  Index: Integer;
+  mSection: TXmlDocSection;
+  mName, mText: string;
+  mIndex: Integer;
 begin
   // Alles außer den Parametern an die Signatur, <param> an den passenden Parameter. Klartext: Der Hint
   // des Plugins und der Client von RAD Studio zeigen kein Markdown; Namen aus cref bleiben erhalten.
   ASignature.Documentation := ADoc.ToPlainText(False);
-  for Section in ADoc.Sections do
+  for mSection in ADoc.Sections do
   begin
-    if Section.Kind <> TXmlDocSectionKind.Param then
+    if mSection.Kind <> TXmlDocSectionKind.Param then
     begin
       Continue;
     end;
-    Name := Section.Name;
-    for Index := 0 to High(ASignature.Parameters) do
+    mName := mSection.Name;
+    for mIndex := 0 to High(ASignature.Parameters) do
     begin
-      Text := Copy(ASignature.Text, ASignature.Parameters[Index].StartIndex + 1,
-        ASignature.Parameters[Index].EndIndex - ASignature.Parameters[Index].StartIndex);
-      if NamesParameter(Text, Name) then
+      mText := Copy(ASignature.Text, ASignature.Parameters[mIndex].StartIndex + 1,
+        ASignature.Parameters[mIndex].EndIndex - ASignature.Parameters[mIndex].StartIndex);
+      if NamesParameter(mText, mName) then
       begin
-        ASignature.Parameters[Index].Documentation := Section.Text;
+        ASignature.Parameters[mIndex].Documentation := mSection.Text;
         Break;
       end;
     end;
@@ -990,14 +991,14 @@ end;
 /// <summary>Erste Überladung mit genug Parametern für AActiveParameter.</summary>
 function ActiveSignatureOf(const ASignatures: TArray<TSignature>; AActiveParameter: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
-  for Index := 0 to High(ASignatures) do
+  for mIndex := 0 to High(ASignatures) do
   begin
-    if Length(ASignatures[Index].Parameters) > AActiveParameter then
+    if Length(ASignatures[mIndex].Parameters) > AActiveParameter then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
@@ -1005,18 +1006,19 @@ end;
 /// <summary>Steht der Name an APosition in einer Attributklammer ("[TestCase(")? ANameToken: sein Token.</summary>
 function AttributeName(ATree: TSyntaxTree; const APosition: TTextPosition; out ANameToken: TPascalToken): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Prev: Integer;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mPrev: Integer;
 begin
   Result := False;
-  Tokens := ATree.Tokens;
-  for Index := 0 to High(Tokens) do
+  mTokens := ATree.Tokens;
+  for mIndex := 0 to High(mTokens) do
   begin
-    if (Tokens[Index].StartPos.Line = APosition.Line) and (Tokens[Index].StartPos.Character = APosition.Character) then
+    if (mTokens[mIndex].StartPos.Line = APosition.Line) and
+      (mTokens[mIndex].StartPos.Character = APosition.Character) then
     begin
-      Prev := PreviousCodeToken(Tokens, Index);
-      ANameToken := Tokens[Index];
-      Exit((Tokens[Index].Kind = TPascalTokenKind.Identifier) and TAttributes.InBracket(Tokens, Prev));
+      mPrev := PreviousCodeToken(mTokens, mIndex);
+      ANameToken := mTokens[mIndex];
+      Exit((mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and TAttributes.InBracket(mTokens, mPrev));
     end;
   end;
 end;
@@ -1026,43 +1028,43 @@ end;
 function AttributeConstructor(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition; const AResolved: TResolvedSymbol; out ACtor: TResolvedSymbol): Boolean;
 var
-  NameToken: TPascalToken;
-  AttributeClass: TResolvedSymbol;
+  mNameToken: TPascalToken;
+  mAttributeClass: TResolvedSymbol;
 begin
   Result := False;
   ACtor := Default(TResolvedSymbol);
-  if not AttributeName(ATree, APosition, NameToken) then
+  if not AttributeName(ATree, APosition, mNameToken) then
   begin
     Exit;
   end;
-  if not AResolver.Queries.AttributeClassOf(AResolved, AttributeClass) and
+  if not AResolver.Queries.AttributeClassOf(AResolved, mAttributeClass) and
     not AResolver.Queries.AttributeClassOf(AResolver.ResolveChain(ATree, AFileName,
-      TArray<string>.Create(TAttributes.ShortName(NameToken.Text) + 'Attribute'), NameToken.Offset), AttributeClass) then
+      TArray<string>.Create(TAttributes.ShortName(mNameToken.Text) + 'Attribute'), mNameToken.Offset), mAttributeClass) then
   begin
     Exit;
   end;
-  Result := AResolver.DeclaredMember(AttributeClass, 'Create', ACtor) and
+  Result := AResolver.DeclaredMember(mAttributeClass, 'Create', ACtor) and
     (ACtor.SymbolKind = TIndexSymbolKind.Constructor_);
 end;
 
 /// <summary>Routinen der Unit System ohne Quelltext (#880): Signaturen aus der eingebauten Liste.</summary>
 function IntrinsicSignatures(const AName: string): TArray<TSignature>;
 var
-  Intrinsic: TSystemIntrinsic;
-  Signature: TSignature;
+  mIntrinsic: TSystemIntrinsic;
+  mSignature: TSignature;
 begin
   Result := nil;
-  for Intrinsic in TSystemIntrinsics.Find(AName) do
+  for mIntrinsic in TSystemIntrinsics.Find(AName) do
   begin
-    if Intrinsic.Kind = TIndexSymbolKind.Routine then
+    if mIntrinsic.Kind = TIndexSymbolKind.Routine then
     begin
-      Signature := TLspSignatureHelp.ParseSignature([Intrinsic.Declaration], 0, 0);
-      if Signature.Text = '' then
+      mSignature := TLspSignatureHelp.ParseSignature([mIntrinsic.Declaration], 0, 0);
+      if mSignature.Text = '' then
       begin
         Continue;
       end;
-      Signature.Documentation := Intrinsic.Documentation;
-      Result := Result + [Signature];
+      mSignature.Documentation := mIntrinsic.Documentation;
+      Result := Result + [mSignature];
     end;
   end;
 end;
@@ -1143,7 +1145,7 @@ end;
 
 function THelpRun.IsOverload(const ASymbol: TIndexSymbol): Boolean;
 begin
-  Result := (ASymbol.Kind in RoutineKinds) and SameText(ASymbol.Name, FResolved.Name) and
+  Result := (ASymbol.Kind in cRoutineKinds) and SameText(ASymbol.Name, FResolved.Name) and
     SameText(ASymbol.Container, FResolved.Container);
 end;
 
@@ -1232,7 +1234,7 @@ begin
     Exit;
   end;
   Result := Copy(FLines);
-  for mLine := AStart.Line to Min(High(Result), AStart.Line + MaxHeaderLines) do
+  for mLine := AStart.Line to Min(High(Result), AStart.Line + cMaxHeaderLines) do
   begin
     Result[mLine] := TInterfaceStubs.SubstituteWords(Result[mLine], ABindings);
   end;
@@ -1324,7 +1326,7 @@ begin
   begin
     Exit(IntrinsicHelp);
   end;
-  if (FResolved.SymbolKind in RoutineKinds) and ReadLines and CollectStarts then
+  if (FResolved.SymbolKind in cRoutineKinds) and ReadLines and CollectStarts then
   begin
     Result.Signatures := Signatures;
     Result.ActiveParameter := FSite.ActiveParameter;
@@ -1349,101 +1351,102 @@ end;
 
 class function TLspSignatureHelp.ToJson(const AHelp: TSignatureHelp): TJSONValue;
 var
-  Signatures, Parameters, LabelRange: TJSONArray;
-  Signature, Parameter, Documentation, Data, FormatJson: TJSONObject;
-  Item: TSignature;
-  Index: Integer;
+  mSignatures, mParameters, mLabelRange: TJSONArray;
+  mSignature, mParameter, mDocumentation, mData, mFormatJson: TJSONObject;
+  mItem: TSignature;
+  mIndex: Integer;
 begin
   if not AHelp.Found then
   begin
     Exit(TJSONNull.Create);
   end;
-  Signatures := TJSONArray.Create;
-  for Item in AHelp.Signatures do
+  mSignatures := TJSONArray.Create;
+  for mItem in AHelp.Signatures do
   begin
-    Signature := TJSONObject.Create;
-    Signatures.AddElement(Signature);
-    Signature.AddPair('label', Item.Text);
-    if Item.Documentation <> '' then
+    mSignature := TJSONObject.Create;
+    mSignatures.AddElement(mSignature);
+    mSignature.AddPair('label', mItem.Text);
+    if mItem.Documentation <> '' then
     begin
-      Documentation := TJSONObject.Create;
-      Documentation.AddPair('kind', 'markdown');
-      Documentation.AddPair('value', Item.Documentation);
-      Signature.AddPair('documentation', Documentation);
+      mDocumentation := TJSONObject.Create;
+      mDocumentation.AddPair('kind', 'markdown');
+      mDocumentation.AddPair('value', mItem.Documentation);
+      mSignature.AddPair('documentation', mDocumentation);
     end;
-    Parameters := TJSONArray.Create;
-    Signature.AddPair('parameters', Parameters);
-    for Index := 0 to High(Item.Parameters) do
+    mParameters := TJSONArray.Create;
+    mSignature.AddPair('parameters', mParameters);
+    for mIndex := 0 to High(mItem.Parameters) do
     begin
-      Parameter := TJSONObject.Create;
-      Parameters.AddElement(Parameter);
-      LabelRange := TJSONArray.Create;
-      LabelRange.Add(Item.Parameters[Index].StartIndex);
-      LabelRange.Add(Item.Parameters[Index].EndIndex);
-      Parameter.AddPair('label', LabelRange);
-      if Item.Parameters[Index].Documentation <> '' then
+      mParameter := TJSONObject.Create;
+      mParameters.AddElement(mParameter);
+      mLabelRange := TJSONArray.Create;
+      mLabelRange.Add(mItem.Parameters[mIndex].StartIndex);
+      mLabelRange.Add(mItem.Parameters[mIndex].EndIndex);
+      mParameter.AddPair('label', mLabelRange);
+      if mItem.Parameters[mIndex].Documentation <> '' then
       begin
-        Parameter.AddPair('documentation', Item.Parameters[Index].Documentation);
+        mParameter.AddPair('documentation', mItem.Parameters[mIndex].Documentation);
       end;
     end;
     // Verträglichkeit der bisherigen Argumente (#498), für den Parameter-Hint des Plugins.
-    Data := TJSONObject.Create;
-    Data.AddPair('fits', TJSONBool.Create(Item.Fits));
-    Data.AddPair('mismatch', TJSONNumber.Create(Item.Mismatch));
-    Signature.AddPair('data', Data);
+    mData := TJSONObject.Create;
+    mData.AddPair('fits', TJSONBool.Create(mItem.Fits));
+    mData.AddPair('mismatch', TJSONNumber.Create(mItem.Mismatch));
+    mSignature.AddPair('data', mData);
   end;
   Result := TJSONObject.Create;
-  TJSONObject(Result).AddPair('signatures', Signatures);
+  TJSONObject(Result).AddPair('signatures', mSignatures);
   TJSONObject(Result).AddPair('activeSignature', TJSONNumber.Create(AHelp.ActiveSignature));
   TJSONObject(Result).AddPair('activeParameter', TJSONNumber.Create(AHelp.ActiveParameter));
   // Platzhalter (#451), Erweiterung von Atlas.
-  FormatJson := TSignatureFormats.ToJson(AHelp.Format);
-  if FormatJson <> nil then
+  mFormatJson := TSignatureFormats.ToJson(AHelp.Format);
+  if mFormatJson <> nil then
   begin
-    TJSONObject(Result).AddPair('format', FormatJson);
+    TJSONObject(Result).AddPair('format', mFormatJson);
   end;
 end;
 
-function TLspSignatureHelp.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+function TLspSignatureHelp.Handle(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Cancellation: IPascalCancellation;
-  Uri: string;
-  PositionValue: TJSONValue;
-  Document: ITextDocument;
-  Tree: TSyntaxTree;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
-  Help: TSignatureHelp;
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mPositionValue: TJSONValue;
+  mDocument: ITextDocument;
+  mTree: TSyntaxTree;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mHelp: TSignatureHelp;
   mRequest: TSignatureHelpRequest;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TSignatureHelpText.FieldsTextDocumentUriAndPosition].Text);
   end;
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONNull.Create);
   end;
-  Cancellation := TRequestCancellation.Create(ACancellation);
-  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
-  Tree := Shared.Tree;
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  mTree := mShared.Tree;
   ACancellation.ThrowIfCancellationRequested;
-  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    Resolver.Namespaces := Namespaces;
-    mRequest := TSignatureHelpRequest.Create(Resolver, FIndex, Tree, Document.Text, TDocumentUris.ToPath(Uri),
+    mResolver.Namespaces := Namespaces;
+    mRequest := TSignatureHelpRequest.Create(mResolver, FIndex, mTree, mDocument.Text, TDocumentUris.ToPath(mUri),
       FReadText);
     if Assigned(FFormatRoutinesFor) then
     begin
-      mRequest.Routines := FFormatRoutinesFor(Uri);
+      mRequest.Routines := FFormatRoutinesFor(mUri);
     end;
-    Help := HelpAt(mRequest, TLspPositions.ReadPosition(PositionValue));
+    mHelp := HelpAt(mRequest, TLspPositions.ReadPosition(mPositionValue));
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
-  Result := ToJson(Help);
+  Result := ToJson(mHelp);
 end;
 
 initialization

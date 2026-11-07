@@ -65,7 +65,7 @@ type
     function Accessible: IAtlasRawElementProvider;
     /// <summary>WM_GETOBJECT, WM_MOUSEACTIVATE (MA_NOACTIVATE) und WM_NCHITTEST (HTCLIENT); False für alle
     /// übrigen Nachrichten.</summary>
-    function HandleOwnMessage(var Message: TMessage): Boolean;
+    function HandleOwnMessage(var AMessage: TMessage): Boolean;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
     procedure SetColors(const AValue: TAtlasColors);
     procedure SetBorderColor(AValue: TAtlasColor);
@@ -136,10 +136,10 @@ uses
 
 const
   // Windows 11 (ab Build 22000); in älteren Winapi.DwmApi nicht deklariert.
-  DWMWA_WINDOW_CORNER_PREFERENCE = 33;
-  DWMWA_BORDER_COLOR = 34;
-  DWMWCP_ROUNDSMALL = 3;
-  CornerRadius = 6;
+  cDWMWA_WINDOW_CORNER_PREFERENCE = 33;
+  cDWMWA_BORDER_COLOR = 34;
+  cDWMWCP_ROUNDSMALL = 3;
+  cCornerRadius = 6;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -200,13 +200,13 @@ end;
 
 procedure TAtlasPopupWindow.CreateWnd;
 var
-  Preference: DWORD;
+  mPreference: DWORD;
 begin
   inherited CreateWnd;
   // Windows 11: runde Ecken mit Kantenglättung und Rahmen vom Fenstermanager.
-  Preference := DWMWCP_ROUNDSMALL;
-  FCorners.ByWindowManager := Succeeded(DwmSetWindowAttribute(Handle, DWMWA_WINDOW_CORNER_PREFERENCE,
-    @Preference, SizeOf(Preference)));
+  mPreference := cDWMWCP_ROUNDSMALL;
+  FCorners.ByWindowManager := Succeeded(DwmSetWindowAttribute(Handle, cDWMWA_WINDOW_CORNER_PREFERENCE,
+    @mPreference, SizeOf(mPreference)));
   FCorners.Known := True;
   UpdateCorners;
 end;
@@ -259,21 +259,21 @@ begin
   Result := FAccess.Provider;
 end;
 
-function TAtlasPopupWindow.HandleOwnMessage(var Message: TMessage): Boolean;
+function TAtlasPopupWindow.HandleOwnMessage(var AMessage: TMessage): Boolean;
 begin
   Result := True;
-  case Message.Msg of
+  case AMessage.Msg of
     WM_GETOBJECT:
       begin
-        Message.Result := TAtlasAccessibility.Answer(Handle, Message.WParam, Message.LParam, Accessible);
+        AMessage.Result := TAtlasAccessibility.Answer(Handle, AMessage.WParam, AMessage.LParam, Accessible);
         // Nicht für UI Automation: wie bisher die VCL antworten lassen.
-        Result := Message.Result <> 0;
+        Result := AMessage.Result <> 0;
       end;
     // Klicks wählen, ohne zu aktivieren.
     WM_MOUSEACTIVATE:
-      Message.Result := MA_NOACTIVATE;
+      AMessage.Result := MA_NOACTIVATE;
     WM_NCHITTEST:
-      Message.Result := HTCLIENT;
+      AMessage.Result := HTCLIENT;
   else
     Result := False;
   end;
@@ -291,7 +291,7 @@ end;
 
 procedure TAtlasPopupWindow.UpdateCorners;
 var
-  Border: DWORD;
+  mBorder: DWORD;
 begin
   // Schon während inherited CreateWnd kommt WM_SIZE; eine Region mit der Größe von dann bliebe sonst stehen.
   if not HandleAllocated or not FCorners.Known then
@@ -300,14 +300,14 @@ begin
   end;
   if FCorners.ByWindowManager then
   begin
-    Border := DWORD(FBorderColor);
-    DwmSetWindowAttribute(Handle, DWMWA_BORDER_COLOR, @Border, SizeOf(Border));
+    mBorder := DWORD(FBorderColor);
+    DwmSetWindowAttribute(Handle, cDWMWA_BORDER_COLOR, @mBorder, SizeOf(mBorder));
   end
   else
   begin
     // Ältere Windows-Versionen: Region mit runden Ecken; das Fenster übernimmt sie.
-    SetWindowRgn(Handle, CreateRoundRectRgn(0, 0, Width + 1, Height + 1, Scale(2 * CornerRadius),
-      Scale(2 * CornerRadius)), IsWindowVisible(Handle));
+    SetWindowRgn(Handle, CreateRoundRectRgn(0, 0, Width + 1, Height + 1, Scale(2 * cCornerRadius),
+      Scale(2 * cCornerRadius)), IsWindowVisible(Handle));
   end;
 end;
 
@@ -394,7 +394,7 @@ begin
   begin
     Exit;
   end;
-  FrameRounded(ClientRect, FBorderColor, CornerRadius);
+  FrameRounded(ClientRect, FBorderColor, cCornerRadius);
 end;
 
 procedure TAtlasPopupWindow.ShowAt(const ABounds: TRect);
@@ -440,12 +440,12 @@ end;
 
 class function TAtlasPopupWindow.MonitorPPI(const APoint: TPoint): Integer;
 var
-  Monitor: TMonitor;
+  mMonitor: TMonitor;
 begin
-  Monitor := Screen.MonitorFromPoint(APoint, mdNearest);
-  if Monitor <> nil then
+  mMonitor := Screen.MonitorFromPoint(APoint, mdNearest);
+  if mMonitor <> nil then
   begin
-    Result := Monitor.PixelsPerInch;
+    Result := mMonitor.PixelsPerInch;
   end
   else
   begin
@@ -455,12 +455,12 @@ end;
 
 class function TAtlasPopupWindow.WorkAreaAt(const APoint: TPoint): TRect;
 var
-  Monitor: TMonitor;
+  mMonitor: TMonitor;
 begin
-  Monitor := Screen.MonitorFromPoint(APoint, mdNearest);
-  if Monitor <> nil then
+  mMonitor := Screen.MonitorFromPoint(APoint, mdNearest);
+  if mMonitor <> nil then
   begin
-    Result := Monitor.WorkareaRect;
+    Result := mMonitor.WorkareaRect;
   end
   else
   begin

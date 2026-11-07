@@ -20,11 +20,11 @@ uses
 type
   TAtlasStatusBarItems = class
   public const
-    Delimiter = ',';
-    Status = 'status';
-    Findings = 'findings';
-    LiveCheck = 'liveCheck';
-    Method = 'method';
+    cDelimiter = ',';
+    cStatus = 'status';
+    cFindings = 'findings';
+    cLiveCheck = 'liveCheck';
+    cMethod = 'method';
   public
     /// <summary>Alle Elemente in der Vorgabe-Reihenfolge.</summary>
     class function All: TArray<string>; static;
@@ -45,18 +45,18 @@ type
 implementation
 
 const
-  Known: array[0..3] of string = (TAtlasStatusBarItems.Status, TAtlasStatusBarItems.Findings,
-    TAtlasStatusBarItems.LiveCheck, TAtlasStatusBarItems.Method);
+  cKnown: array[0..3] of string = (TAtlasStatusBarItems.cStatus, TAtlasStatusBarItems.cFindings,
+    TAtlasStatusBarItems.cLiveCheck, TAtlasStatusBarItems.cMethod);
 
 function RankOf(const AId: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Known) do
+  for mIndex := 0 to High(cKnown) do
   begin
-    if SameText(Known[Index], AId) then
+    if SameText(cKnown[mIndex], AId) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -64,12 +64,12 @@ end;
 
 class function TAtlasStatusBarItems.All: TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  SetLength(Result, Length(Known));
-  for Index := 0 to High(Known) do
+  SetLength(Result, Length(cKnown));
+  for mIndex := 0 to High(cKnown) do
   begin
-    Result[Index] := Known[Index];
+    Result[mIndex] := cKnown[mIndex];
   end;
 end;
 
@@ -80,23 +80,23 @@ end;
 
 class function TAtlasStatusBarItems.Canonical(const AId: string): string;
 var
-  Rank: Integer;
+  mRank: Integer;
 begin
-  Rank := RankOf(Trim(AId));
-  if Rank < 0 then
+  mRank := RankOf(Trim(AId));
+  if mRank < 0 then
   begin
     Exit('');
   end;
-  Result := Known[Rank];
+  Result := cKnown[mRank];
 end;
 
 class function TAtlasStatusBarItems.Contains(const AItems: TArray<string>; const AId: string): Boolean;
 var
-  Item: string;
+  mItem: string;
 begin
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if SameText(Item, AId) then
+    if SameText(mItem, AId) then
     begin
       Exit(True);
     end;
@@ -106,22 +106,22 @@ end;
 
 class function TAtlasStatusBarItems.Parse(const AText: string): TArray<string>;
 var
-  Part, Id: string;
+  mPart, mId: string;
 begin
   Result := nil;
-  for Part in AText.Split([Delimiter]) do
+  for mPart in AText.Split([cDelimiter]) do
   begin
-    Id := Canonical(Part);
-    if (Id <> '') and not Contains(Result, Id) then
+    mId := Canonical(mPart);
+    if (mId <> '') and not Contains(Result, mId) then
     begin
-      Result := Result + [Id];
+      Result := Result + [mId];
     end;
   end;
 end;
 
 class function TAtlasStatusBarItems.Format(const AItems: TArray<string>): string;
 begin
-  Result := string.Join(Delimiter, AItems);
+  Result := string.Join(cDelimiter, AItems);
 end;
 
 class function TAtlasStatusBarItems.Normalize(const AText: string): string;
@@ -131,30 +131,30 @@ end;
 
 class function TAtlasStatusBarItems.Toggle(const AItems: TArray<string>; const AId: string): TArray<string>;
 var
-  Id: string;
-  Index, Rank: Integer;
+  mId: string;
+  mIndex, mRank: Integer;
 begin
   Result := Parse(Format(AItems));
-  Id := Canonical(AId);
-  if Id = '' then
+  mId := Canonical(AId);
+  if mId = '' then
   begin
     Exit;
   end;
-  for Index := 0 to High(Result) do
+  for mIndex := 0 to High(Result) do
   begin
-    if Result[Index] = Id then
+    if Result[mIndex] = mId then
     begin
-      Delete(Result, Index, 1);
+      Delete(Result, mIndex, 1);
       Exit;
     end;
   end;
-  Rank := RankOf(Id);
-  Index := 0;
-  while (Index <= High(Result)) and (RankOf(Result[Index]) < Rank) do
+  mRank := RankOf(mId);
+  mIndex := 0;
+  while (mIndex <= High(Result)) and (RankOf(Result[mIndex]) < mRank) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Insert(Id, Result, Index);
+  Insert(mId, Result, mIndex);
 end;
 
 end.

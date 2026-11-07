@@ -3,7 +3,8 @@
 // Sprachreferenz für Compiler-Direktiven (#102, Teil 1): Kurztext und
 // DocWiki-Link je Direktive und Schalterbuchstaben ({$R+} = RANGECHECKS); die
 // Bezeichner für {$WARN} und alle Direktivennamen stehen in Pascal.DirectiveNames
-// (#989). Grundlage für Hover und Vervollständigung in Direktiven; #187 soll dieselbe Tabelle für Schlüsselwörter nutzen.
+// (#989). Grundlage für Hover und Vervollständigung in Direktiven; #187 soll dieselbe Tabelle für Schlüsselwörter
+// nutzen.
 //
 // Links folgen dem Schema https://docwiki.embarcadero.com/RADStudio/<Release>/en/<Seite>
 // mit dem Release-Namen aus TDocWiki (Delphi 12 = Athens, Delphi 13 = Florence).
@@ -31,8 +32,7 @@ type
 
   TCompilerDirectives = class
   public const
-    BaseUri = 'https://docwiki.embarcadero.com/RADStudio/';
-    WarningsTopic = 'Warning_messages_(Delphi)';
+    cBaseUri = 'https://docwiki.embarcadero.com/RADStudio/';
   public
     /// <summary>Alle Direktiven der Tabelle.</summary>
     class function All: TArray<TDirectiveInfo>; static;
@@ -331,13 +331,13 @@ end;
 
 class function TCompilerDirectives.Find(const AName: string; out AInfo: TDirectiveInfo): Boolean;
 var
-  Info: TDirectiveInfo;
+  mInfo: TDirectiveInfo;
 begin
-  for Info in Directives[TAtlasLocale.Language] do
+  for mInfo in Directives[TAtlasLocale.Language] do
   begin
-    if SameText(Info.Name, AName) or ((Length(AName) = 1) and SameText(Info.Letter, AName)) then
+    if SameText(mInfo.Name, AName) or ((Length(AName) = 1) and SameText(mInfo.Letter, AName)) then
     begin
-      AInfo := Info;
+      AInfo := mInfo;
       Exit(True);
     end;
   end;
@@ -346,7 +346,7 @@ end;
 
 class function TCompilerDirectives.Url(const ADelphiVersion, ATopic: string): string;
 begin
-  Result := BaseUri + TDocWiki.ReleaseName(ADelphiVersion) + '/en/' + ATopic;
+  Result := cBaseUri + TDocWiki.ReleaseName(ADelphiVersion) + '/en/' + ATopic;
 end;
 
 function DescribeInfo(const AInfo: TDirectiveInfo; const AVersion, AState: string): string;
@@ -486,27 +486,27 @@ end;
 class function TCompilerDirectives.CompletionAt(const ALineBeforeCursor: string; out ANames: TArray<string>;
   out AIsWarning: Boolean): Boolean;
 var
-  Open: Integer;
-  Inner: string;
-  Info: TDirectiveInfo;
+  mOpen: Integer;
+  mInner: string;
+  mInfo: TDirectiveInfo;
 begin
   ANames := nil;
   AIsWarning := False;
-  Open := 0;
+  mOpen := 0;
   // Letzte offene Direktive in der Zeile vor dem Cursor.
-  while PosEx('{$', ALineBeforeCursor, Open + 1) > 0 do
+  while PosEx('{$', ALineBeforeCursor, mOpen + 1) > 0 do
   begin
-    Open := PosEx('{$', ALineBeforeCursor, Open + 1);
+    mOpen := PosEx('{$', ALineBeforeCursor, mOpen + 1);
   end;
-  if (Open = 0) or (PosEx('}', ALineBeforeCursor, Open) > 0) then
+  if (mOpen = 0) or (PosEx('}', ALineBeforeCursor, mOpen) > 0) then
   begin
     Exit(False);
   end;
-  Inner := Copy(ALineBeforeCursor, Open + 2, MaxInt);
-  if StartsText('WARN ', Inner) then
+  mInner := Copy(ALineBeforeCursor, mOpen + 2, MaxInt);
+  if StartsText('WARN ', mInner) then
   begin
     // Nur der Bezeichner direkt nach WARN, nicht ON/OFF dahinter.
-    if Pos(' ', Trim(Copy(Inner, 6, MaxInt))) > 0 then
+    if Pos(' ', Trim(Copy(mInner, 6, MaxInt))) > 0 then
     begin
       Exit(False);
     end;
@@ -515,13 +515,13 @@ begin
     Exit(True);
   end;
   // Nur solange der Name getippt wird.
-  if TDirectiveNames.LeadingName(Inner) <> Inner then
+  if TDirectiveNames.LeadingName(mInner) <> mInner then
   begin
     Exit(False);
   end;
-  for Info in Directives[TAtlasLocale.Language] do
+  for mInfo in Directives[TAtlasLocale.Language] do
   begin
-    ANames := ANames + [Info.Name];
+    ANames := ANames + [mInfo.Name];
   end;
   Result := True;
 end;
@@ -529,23 +529,23 @@ end;
 class function TCompilerDirectives.HoverAt(ATree: TSyntaxTree; const APosition: TTextPosition;
   const ADelphiVersion: string; out AMarkdown: string): Boolean;
 var
-  Token: TPascalToken;
-  AfterStart, BeforeEnd: Boolean;
+  mToken: TPascalToken;
+  mAfterStart, mBeforeEnd: Boolean;
 begin
   AMarkdown := '';
   if ATree = nil then
   begin
     Exit(False);
   end;
-  for Token in ATree.Tokens do
+  for mToken in ATree.Tokens do
   begin
-    AfterStart := (Token.StartPos.Line < APosition.Line) or ((Token.StartPos.Line = APosition.Line) and
-      (Token.StartPos.Character <= APosition.Character));
-    BeforeEnd := (Token.EndPos.Line > APosition.Line) or ((Token.EndPos.Line = APosition.Line) and
-      (Token.EndPos.Character > APosition.Character));
-    if AfterStart and BeforeEnd then
+    mAfterStart := (mToken.StartPos.Line < APosition.Line) or ((mToken.StartPos.Line = APosition.Line) and
+      (mToken.StartPos.Character <= APosition.Character));
+    mBeforeEnd := (mToken.EndPos.Line > APosition.Line) or ((mToken.EndPos.Line = APosition.Line) and
+      (mToken.EndPos.Character > APosition.Character));
+    if mAfterStart and mBeforeEnd then
     begin
-      Exit((Token.Kind = TPascalTokenKind.Directive) and Describe(Token.Text, ADelphiVersion, AMarkdown));
+      Exit((mToken.Kind = TPascalTokenKind.Directive) and Describe(mToken.Text, ADelphiVersion, AMarkdown));
     end;
   end;
   Result := False;

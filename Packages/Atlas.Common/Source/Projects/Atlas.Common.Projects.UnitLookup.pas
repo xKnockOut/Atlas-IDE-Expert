@@ -20,6 +20,8 @@
 //   4. bei Packages die Units der requires-Packages (.dpk bzw. .dcp), auch über
 //      deren requires: dcc lädt mit Atlas.Common.dcp auch das davon verlangte
 //      Atlas.Text.dcp, dessen Units damit ebenso sichtbar sind
+// requires (FindPackage): ein Projekt der Projektgruppe gleichen Namens gilt
+// als vorhanden, die Gruppe baut es vor diesem
 // Quelle Atlas: Units im Index und in den Quellpfaden (Browsing Path).
 //
 // Dateien aus {$I} und {$R} (FindFile, #1379): Ordner der einbindenden Datei,
@@ -46,6 +48,8 @@ type
 
   /// <summary>Anderes Projekt der Gruppe: Ordner, in den es übersetzt, und seine Units.</summary>
   TUnitLookupGroupOutput = record
+    /// <summary>Name des Projekts ohne Endung (Atlas.Text): requires dieses Namens baut die Gruppe selbst.</summary>
+    ProjectName: string;
     /// <summary>DCU-Ausgabeordner, absolut, mit eingesetzter Plattform und Konfiguration.</summary>
     DcuFolder: string;
     Units: TArray<string>;
@@ -90,7 +94,7 @@ type
   TUnitLookup = class(TInterfacedObject, IRuleUnitLookup)
   private const
     /// <summary>So tief sucht FolderOutsidePaths unter dem Projektordner.</summary>
-    MaxFolderDepth = 4;
+    cMaxFolderDepth = 4;
   private
     FSetup: TUnitLookupSetup;
     // Unit-Aliase des Projekts samt Vorgaben von Delphi; nach dem Konstruktor nur gelesen.
@@ -119,6 +123,8 @@ type
     function FindInProject(const AUnitName, AFromFile: string; out AUnsure: Boolean): Boolean;
     function FindInAtlas(const AUnitName: string): Boolean;
     function BuiltByGroup(const ANames: TArray<string>): Boolean;
+    /// <summary>Ist APackage ein Projekt der Gruppe (requires eines Packages derselben Projektgruppe)?</summary>
+    function PackageInGroup(const APackage: string): Boolean;
     function InFolderAny(const AFolder: string; const ANames: TArray<string>): Boolean;
     /// <summary>Gibt es die Datei neben AFromFile oder in einem der Ordner für FindFile?</summary>
     function ExistsInFileFolders(const AFileName, AFromFile: string): Boolean;
@@ -166,14 +172,14 @@ end;
 /// <summary>DCU-Ausgabeordner (DCC_DcuOutput) mit eingesetzter Plattform und Konfiguration; '' ohne.</summary>
 function DcuOutput(const AProject: TProjectInfo): string;
 var
-  Pair: TPair<string, string>;
+  mPair: TPair<string, string>;
 begin
   Result := '';
-  for Pair in AProject.Properties do
+  for mPair in AProject.Properties do
   begin
-    if SameText(Pair.Key, 'DCC_DcuOutput') then
+    if SameText(mPair.Key, 'DCC_DcuOutput') then
     begin
-      Result := Pair.Value;
+      Result := mPair.Value;
     end;
   end;
   if Result = '' then
@@ -326,25 +332,25 @@ end;
 
 function TUnitLookup.Listing(const AFolder: string): TDictionary<string, string>;
 var
-  Key, FileName, Extension: string;
+  mKey, mFileName, mExtension: string;
 begin
-  Key := FolderKey(AFolder);
+  mKey := FolderKey(AFolder);
   TMonitor.Enter(FLock);
   try
-    if FListings.TryGetValue(Key, Result) then
+    if FListings.TryGetValue(mKey, Result) then
     begin
       Exit;
     end;
     Result := TDictionary<string, string>.Create;
-    FListings.Add(Key, Result);
+    FListings.Add(mKey, Result);
     if Assigned(FSetup.ListFiles) and not HasMacro(AFolder) then
     begin
-      for FileName in FSetup.ListFiles(AFolder) do
+      for mFileName in FSetup.ListFiles(AFolder) do
       begin
-        Extension := LowerCase(TProjectPaths.Extension(FileName));
-        if (Extension = '.pas') or (Extension = '.dcu') then
+        mExtension := LowerCase(TProjectPaths.Extension(mFileName));
+        if (mExtension = '.pas') or (mExtension = '.dcu') then
         begin
-          Result.AddOrSetValue(LowerCase(TProjectPaths.BaseName(FileName)), TProjectPaths.BaseName(FileName));
+          Result.AddOrSetValue(LowerCase(TProjectPaths.BaseName(mFileName)), TProjectPaths.BaseName(mFileName));
         end;
       end;
     end;
@@ -355,12 +361,12 @@ end;
 
 function TUnitLookup.InFolder(const AFolder, AName: string): Boolean;
 var
-  Names: TDictionary<string, string>;
+  mNames: TDictionary<string, string>;
 begin
-  Names := Listing(AFolder);
+  mNames := Listing(AFolder);
   TMonitor.Enter(FLock);
   try
-    Result := Names.ContainsKey(LowerCase(AName));
+    Result := mNames.ContainsKey(LowerCase(AName));
   finally
     TMonitor.Exit(FLock);
   end;
@@ -553,18 +559,18 @@ end;
 
 function TUnitLookup.FindInAtlas(const AUnitName: string): Boolean;
 var
-  Name, Folder: string;
+  mName, mFolder: string;
 begin
   Result := True;
-  for Name in Candidates(AUnitName) do
+  for mName in Candidates(AUnitName) do
   begin
-    if Assigned(FSetup.IndexKnows) and FSetup.IndexKnows(Name) then
+    if Assigned(FSetup.IndexKnows) and FSetup.IndexKnows(mName) then
     begin
       Exit;
     end;
-    for Folder in FSetup.BrowsingPaths do
+    for mFolder in FSetup.BrowsingPaths do
     begin
-      if InFolder(Folder, Name) then
+      if InFolder(mFolder, mName) then
       begin
         Exit;
       end;
@@ -630,8 +636,33 @@ begin
   end;
 end;
 
+function TUnitLookup.PackageInGroup(const APackage: string): Boolean;
+var
+  mOutputs: TArray<TUnitLookupGroupOutput>;
+  mOutput: TUnitLookupGroupOutput;
+begin
+  mOutputs := FSetup.GroupOutputs;
+  if Assigned(FSetup.GroupOutputsOf) then
+  begin
+    mOutputs := mOutputs + FSetup.GroupOutputsOf();
+  end;
+  for mOutput in mOutputs do
+  begin
+    if (mOutput.ProjectName <> '') and SameText(mOutput.ProjectName, APackage) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 function TUnitLookup.FindPackage(const APackage: string): TRuleUnitAnswer;
 begin
+  // Ein Package derselben Projektgruppe entsteht beim Bauen der Gruppe, auch wenn seine .dcp noch fehlt.
+  if PackageInGroup(APackage) then
+  begin
+    Exit(TRuleUnitAnswer.Found);
+  end;
   if not Assigned(FSetup.PackageExists) or not FSetup.LibraryKnown or FUncertain then
   begin
     Exit(TRuleUnitAnswer.Unknown);
@@ -686,53 +717,53 @@ end;
 
 function TUnitLookup.KnownUnits(ASources: TRuleUnitSources): TArray<string>;
 var
-  Seen: TDictionary<string, Boolean>;
-  Folders: TArray<string>;
-  Folder, Name: string;
-  ProjectUnit: TProjectUnit;
+  mSeen: TDictionary<string, Boolean>;
+  mFolders: TArray<string>;
+  mFolder, mName: string;
+  mProjectUnit: TProjectUnit;
 
   procedure Add(const AName: string);
   begin
-    if (AName <> '') and not Seen.ContainsKey(LowerCase(AName)) then
+    if (AName <> '') and not mSeen.ContainsKey(LowerCase(AName)) then
     begin
-      Seen.Add(LowerCase(AName), True);
+      mSeen.Add(LowerCase(AName), True);
       Result := Result + [AName];
     end;
   end;
 
 begin
   Result := nil;
-  Seen := TDictionary<string, Boolean>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    Folders := nil;
+    mFolders := nil;
     if TRuleUnitSource.Project in ASources then
     begin
-      for ProjectUnit in FSetup.Project.Units do
+      for mProjectUnit in FSetup.Project.Units do
       begin
-        Add(ProjectUnit.Name);
+        Add(mProjectUnit.Name);
       end;
-      Folders := FProjectFolders;
+      mFolders := FProjectFolders;
     end;
     if TRuleUnitSource.Atlas in ASources then
     begin
-      Folders := Folders + FSetup.BrowsingPaths;
+      mFolders := mFolders + FSetup.BrowsingPaths;
       if Assigned(FSetup.IndexUnits) then
       begin
-        for Name in FSetup.IndexUnits() do
+        for mName in FSetup.IndexUnits() do
         begin
-          Add(Name);
+          Add(mName);
         end;
       end;
     end;
-    for Folder in Folders do
+    for mFolder in mFolders do
     begin
-      for Name in Listing(Folder).Values do
+      for mName in Listing(mFolder).Values do
       begin
-        Add(Name);
+        Add(mName);
       end;
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
 end;
 
@@ -789,7 +820,7 @@ begin
         // Relativ zur .dproj, mit dem Trenner der Pfade.
         Exit(RelativeFolder(mRoot, mItem.Folder));
       end;
-      if mItem.Depth >= MaxFolderDepth then
+      if mItem.Depth >= cMaxFolderDepth then
       begin
         Continue;
       end;

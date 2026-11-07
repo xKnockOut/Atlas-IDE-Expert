@@ -9,7 +9,7 @@
 // Typ und Vorgabe, Ausnahmen ("exclude") und der Hauptschalter je Gruppe
 // ("group:<gruppe>": "off", vom Server ausgewertet). Optionen und Ausnahmen
 // als Text für die Felder der Seite (OptionText, OptionJson, ListText,
-// ParseList); GroupIds sind die Gruppen des Servers in Reihenfolge der Seite.
+// ParseList); cGroupIds sind die Gruppen des Servers in Reihenfolge der Seite.
 // Optionen der Art "object-list" (#1133) als Tabelle mit den Spalten des
 // Katalogs (TableCells, TableJson).
 
@@ -81,14 +81,13 @@ type
 
   TAtlasRuleTable = class
   public const
-    Severities: array[0..4] of string = ('off', 'hint', 'info', 'warning', 'error');
     /// <summary>Gruppen des Regelkatalogs (TRuleGroup des Servers) in der Reihenfolge der Seite Prüfregeln.
     /// </summary>
-    GroupIds: array[0..13] of string = ('find-bugs', 'exceptions', 'threads', 'database', 'compiler',
+    cGroupIds: array[0..13] of string = ('find-bugs', 'exceptions', 'threads', 'database', 'compiler',
       'robustness', 'performance', 'security', 'components', 'forms', 'architecture', 'style', 'packages',
       'internal');
     /// <summary>Gruppe „Compiler vorab“ (#1024) mit der Option "typeLevel".</summary>
-    CompilerGroup = 'compiler';
+    cCompilerGroup = 'compiler';
   public
     /// <summary>ACatalog: Antwort von atlas.server.settingsCatalog (darf nil sein). ARulesJson: Wert von
     /// "rules" ('' ohne).</summary>
@@ -98,7 +97,8 @@ type
     class function Rows(ACatalog: TJSONValue; const ARulesJson, AGlobalRulesJson: string): TArray<TAtlasRuleRow>;
       overload; static;
     /// <summary>Pfad und JSON-Text für TAtlasJsonText, um ASeverity für AId zu setzen ('' = entfernen):
-    /// "rules.&lt;id&gt;" oder bei einer Regel mit Optionen "rules.&lt;id&gt;.severity". So ändert sich in der Datei nur
+    /// "rules.&lt;id&gt;" oder bei einer Regel mit Optionen "rules.&lt;id&gt;.severity". So ändert sich in der Datei
+    /// nur
     /// dieser Wert.</summary>
     class procedure SeverityChange(const ARulesJson, AId, ASeverity: string; out APath, AJson: string); static;
     /// <summary>Neuer Wert von "rules" mit ASeverity für AId; '' entfernt die Regel (bei Optionen nur
@@ -178,18 +178,18 @@ end;
 
 function ParseRules(const ARulesJson: string): TJSONObject;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := nil;
+  mValue := nil;
   if ARulesJson <> '' then
   begin
-    Value := TJSONObject.ParseJSONValue(ARulesJson);
+    mValue := TJSONObject.ParseJSONValue(ARulesJson);
   end;
-  if Value is TJSONObject then
+  if mValue is TJSONObject then
   begin
-    Exit(TJSONObject(Value));
+    Exit(TJSONObject(mValue));
   end;
-  Value.Free;
+  mValue.Free;
   Result := TJSONObject.Create;
 end;
 
@@ -205,26 +205,26 @@ end;
 /// <summary>Einstellung von AId als Objekt; ein Text wird zu {"severity": …}.</summary>
 function RuleObject(ARules: TJSONObject; const AId: string): TJSONObject;
 var
-  Existing: TJSONValue;
-  Severity: string;
-  Pair: TJSONPair;
+  mExisting: TJSONValue;
+  mSeverity: string;
+  mPair: TJSONPair;
 begin
-  Existing := ARules.GetValue(AId);
-  if Existing is TJSONObject then
+  mExisting := ARules.GetValue(AId);
+  if mExisting is TJSONObject then
   begin
-    Exit(TJSONObject(Existing));
+    Exit(TJSONObject(mExisting));
   end;
-  Severity := '';
-  if (Existing is TJSONString) and not (Existing is TJSONNumber) then
+  mSeverity := '';
+  if (mExisting is TJSONString) and not (mExisting is TJSONNumber) then
   begin
-    Severity := TJSONString(Existing).Value;
+    mSeverity := TJSONString(mExisting).Value;
   end;
-  Pair := ARules.RemovePair(AId);
-  Pair.Free;
+  mPair := ARules.RemovePair(AId);
+  mPair.Free;
   Result := TJSONObject.Create;
-  if Severity <> '' then
+  if mSeverity <> '' then
   begin
-    Result.AddPair('severity', Severity);
+    Result.AddPair('severity', mSeverity);
   end;
   ARules.AddPair(AId, Result);
 end;
@@ -232,26 +232,26 @@ end;
 /// <summary>Ein Objekt nur mit "severity" wird wieder Text, ein leeres fällt weg.</summary>
 procedure Compact(ARules: TJSONObject; const AId: string);
 var
-  Rule: TJSONValue;
-  Severity: string;
-  Pair: TJSONPair;
+  mRule: TJSONValue;
+  mSeverity: string;
+  mPair: TJSONPair;
 begin
-  Rule := ARules.GetValue(AId);
-  if not (Rule is TJSONObject) then
+  mRule := ARules.GetValue(AId);
+  if not (mRule is TJSONObject) then
   begin
     Exit;
   end;
-  if TJSONObject(Rule).Count = 0 then
+  if TJSONObject(mRule).Count = 0 then
   begin
-    Pair := ARules.RemovePair(AId);
-    Pair.Free;
+    mPair := ARules.RemovePair(AId);
+    mPair.Free;
   end
-  else if (TJSONObject(Rule).Count = 1) and (TJSONObject(Rule).GetValue('severity') <> nil) then
+  else if (TJSONObject(mRule).Count = 1) and (TJSONObject(mRule).GetValue('severity') <> nil) then
   begin
-    Severity := TJSONObject(Rule).GetValue<string>('severity', '');
-    Pair := ARules.RemovePair(AId);
-    Pair.Free;
-    ARules.AddPair(AId, Severity);
+    mSeverity := TJSONObject(mRule).GetValue<string>('severity', '');
+    mPair := ARules.RemovePair(AId);
+    mPair.Free;
+    ARules.AddPair(AId, mSeverity);
   end;
 end;
 
@@ -282,33 +282,33 @@ end;
 
 procedure ReadOptions(AOptions: TJSONValue; var ARow: TAtlasRuleRow);
 var
-  Item, DefaultValue: TJSONValue;
-  Option: TAtlasRuleOption;
+  mItem, mDefaultValue: TJSONValue;
+  mOption: TAtlasRuleOption;
 begin
   ARow.Options := nil;
   if not (AOptions is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(AOptions) do
+  for mItem in TJSONArray(AOptions) do
   begin
-    if Item is TJSONObject then
+    if mItem is TJSONObject then
     begin
-      Option := Default(TAtlasRuleOption);
-      Option.Name := TJSONObject(Item).GetValue<string>('name', '');
-      if Option.Name = '' then
+      mOption := Default(TAtlasRuleOption);
+      mOption.Name := TJSONObject(mItem).GetValue<string>('name', '');
+      if mOption.Name = '' then
       begin
         Continue;
       end;
-      Option.Kind := TJSONObject(Item).GetValue<string>('type', 'json');
-      Option.Columns := ColumnsOf(TJSONObject(Item).GetValue('columns'));
-      Option.Description := TJSONObject(Item).GetValue<string>('description', '');
-      DefaultValue := TJSONObject(Item).GetValue('default');
-      if DefaultValue <> nil then
+      mOption.Kind := TJSONObject(mItem).GetValue<string>('type', 'json');
+      mOption.Columns := ColumnsOf(TJSONObject(mItem).GetValue('columns'));
+      mOption.Description := TJSONObject(mItem).GetValue<string>('description', '');
+      mDefaultValue := TJSONObject(mItem).GetValue('default');
+      if mDefaultValue <> nil then
       begin
-        Option.DefaultJson := DefaultValue.ToJSON;
+        mOption.DefaultJson := mDefaultValue.ToJSON;
       end;
-      ARow.Options := ARow.Options + [Option];
+      ARow.Options := ARow.Options + [mOption];
     end;
   end;
 end;
@@ -693,15 +693,15 @@ end;
 
 function TAtlasRuleRow.Matches(const AText: string): Boolean;
 var
-  Needle: string;
+  mNeedle: string;
 begin
   if AText = '' then
   begin
     Exit(True);
   end;
-  Needle := AText.ToLower;
-  Result := Id.ToLower.Contains(Needle) or Name.ToLower.Contains(Needle) or
-    Category.ToLower.Contains(Needle) or Description.ToLower.Contains(Needle);
+  mNeedle := AText.ToLower;
+  Result := Id.ToLower.Contains(mNeedle) or Name.ToLower.Contains(mNeedle) or
+    Category.ToLower.Contains(mNeedle) or Description.ToLower.Contains(mNeedle);
 end;
 
 { TAtlasRuleTable }
@@ -709,22 +709,22 @@ end;
 class function TAtlasRuleTable.Rows(ACatalog: TJSONValue; const ARulesJson,
   AGlobalRulesJson: string): TArray<TAtlasRuleRow>;
 var
-  Global: TArray<TAtlasRuleRow>;
-  Index, Other: Integer;
+  mGlobal: TArray<TAtlasRuleRow>;
+  mIndex, mOther: Integer;
 begin
   Result := Rows(ACatalog, ARulesJson);
   if AGlobalRulesJson = '' then
   begin
     Exit;
   end;
-  Global := Rows(nil, AGlobalRulesJson);
-  for Other := 0 to High(Global) do
+  mGlobal := Rows(nil, AGlobalRulesJson);
+  for mOther := 0 to High(mGlobal) do
   begin
-    for Index := 0 to High(Result) do
+    for mIndex := 0 to High(Result) do
     begin
-      if SameText(Result[Index].Id, Global[Other].Id) then
+      if SameText(Result[mIndex].Id, mGlobal[mOther].Id) then
       begin
-        Result[Index].GlobalSeverity := Global[Other].Severity;
+        Result[mIndex].GlobalSeverity := mGlobal[mOther].Severity;
       end;
     end;
   end;
@@ -754,26 +754,26 @@ end;
 class procedure TAtlasRuleTable.SeverityChange(const ARulesJson, AId, ASeverity: string; out APath,
   AJson: string);
 var
-  Value, Existing: TJSONValue;
+  mValue, mExisting: TJSONValue;
 begin
   APath := 'rules.' + AId;
-  Value := nil;
+  mValue := nil;
   if ARulesJson <> '' then
   begin
-    Value := TJSONObject.ParseJSONValue(ARulesJson);
+    mValue := TJSONObject.ParseJSONValue(ARulesJson);
   end;
   try
-    Existing := nil;
-    if Value is TJSONObject then
+    mExisting := nil;
+    if mValue is TJSONObject then
     begin
-      Existing := TJSONObject(Value).GetValue(AId);
+      mExisting := TJSONObject(mValue).GetValue(AId);
     end;
-    if Existing is TJSONObject then
+    if mExisting is TJSONObject then
     begin
       APath := APath + '.severity';
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
   AJson := '';
   if ASeverity <> '' then
@@ -784,119 +784,119 @@ end;
 
 class function TAtlasRuleTable.WithSeverity(const ARulesJson, AId, ASeverity: string): string;
 var
-  Value: TJSONValue;
-  Rules: TJSONObject;
-  Existing: TJSONValue;
-  Pair: TJSONPair;
+  mValue: TJSONValue;
+  mRules: TJSONObject;
+  mExisting: TJSONValue;
+  mPair: TJSONPair;
 begin
-  Value := nil;
+  mValue := nil;
   if ARulesJson <> '' then
   begin
-    Value := TJSONObject.ParseJSONValue(ARulesJson);
+    mValue := TJSONObject.ParseJSONValue(ARulesJson);
   end;
-  if not (Value is TJSONObject) then
+  if not (mValue is TJSONObject) then
   begin
-    Value.Free;
-    Value := TJSONObject.Create;
+    mValue.Free;
+    mValue := TJSONObject.Create;
   end;
-  Rules := TJSONObject(Value);
+  mRules := TJSONObject(mValue);
   try
-    Existing := Rules.GetValue(AId);
-    if Existing is TJSONObject then
+    mExisting := mRules.GetValue(AId);
+    if mExisting is TJSONObject then
     begin
       // Optionen bleiben; nur der Schweregrad wechselt.
-      Pair := TJSONObject(Existing).RemovePair('severity');
-      Pair.Free;
+      mPair := TJSONObject(mExisting).RemovePair('severity');
+      mPair.Free;
       if ASeverity <> '' then
       begin
-        TJSONObject(Existing).AddPair('severity', ASeverity);
+        TJSONObject(mExisting).AddPair('severity', ASeverity);
       end;
     end
     else
     begin
-      Pair := Rules.RemovePair(AId);
-      Pair.Free;
+      mPair := mRules.RemovePair(AId);
+      mPair.Free;
       if ASeverity <> '' then
       begin
-        Rules.AddPair(AId, ASeverity);
+        mRules.AddPair(AId, ASeverity);
       end;
     end;
-    if Rules.Count = 0 then
+    if mRules.Count = 0 then
     begin
       Result := '';
     end
     else
     begin
-      Result := Rules.ToJSON;
+      Result := mRules.ToJSON;
     end;
   finally
-    Rules.Free;
+    mRules.Free;
   end;
 end;
 
 class function TAtlasRuleTable.WithOption(const ARulesJson, AId, AOption, AValueJson: string): string;
 var
-  Rules, Rule: TJSONObject;
-  Value: TJSONValue;
-  Pair: TJSONPair;
+  mRules, mRule: TJSONObject;
+  mValue: TJSONValue;
+  mPair: TJSONPair;
 begin
-  Rules := ParseRules(ARulesJson);
+  mRules := ParseRules(ARulesJson);
   try
-    Value := nil;
+    mValue := nil;
     if AValueJson <> '' then
     begin
-      Value := TJSONObject.ParseJSONValue(AValueJson);
-      if Value = nil then
+      mValue := TJSONObject.ParseJSONValue(AValueJson);
+      if mValue = nil then
       begin
-        Exit(RulesText(Rules));
+        Exit(RulesText(mRules));
       end;
     end;
-    Rule := RuleObject(Rules, AId);
-    Pair := Rule.RemovePair(AOption);
-    Pair.Free;
-    if Value <> nil then
+    mRule := RuleObject(mRules, AId);
+    mPair := mRule.RemovePair(AOption);
+    mPair.Free;
+    if mValue <> nil then
     begin
-      Rule.AddPair(AOption, Value);
+      mRule.AddPair(AOption, mValue);
     end;
-    Compact(Rules, AId);
-    Result := RulesText(Rules);
+    Compact(mRules, AId);
+    Result := RulesText(mRules);
   finally
-    Rules.Free;
+    mRules.Free;
   end;
 end;
 
 class function TAtlasRuleTable.WithExclude(const ARulesJson, AId: string; const AExclude: TArray<string>): string;
 var
-  Rules, Rule: TJSONObject;
-  Items: TJSONArray;
-  Pattern: string;
-  Pair: TJSONPair;
+  mRules, mRule: TJSONObject;
+  mItems: TJSONArray;
+  mPattern: string;
+  mPair: TJSONPair;
 begin
-  Rules := ParseRules(ARulesJson);
+  mRules := ParseRules(ARulesJson);
   try
-    Rule := RuleObject(Rules, AId);
-    Pair := Rule.RemovePair('exclude');
-    Pair.Free;
-    Items := nil;
-    for Pattern in AExclude do
+    mRule := RuleObject(mRules, AId);
+    mPair := mRule.RemovePair('exclude');
+    mPair.Free;
+    mItems := nil;
+    for mPattern in AExclude do
     begin
-      if Pattern.Trim <> '' then
+      if mPattern.Trim <> '' then
       begin
-        if Items = nil then
+        if mItems = nil then
         begin
-          Items := TJSONArray.Create;
+          mItems := TJSONArray.Create;
         end;
-        Items.Add(Pattern.Trim);
+        mItems.Add(mPattern.Trim);
       end;
     end;
-    if Items <> nil then
+    if mItems <> nil then
     begin
-      Rule.AddPair('exclude', Items);
+      mRule.AddPair('exclude', mItems);
     end;
-    Compact(Rules, AId);
-    Result := RulesText(Rules);
+    Compact(mRules, AId);
+    Result := RulesText(mRules);
   finally
-    Rules.Free;
+    mRules.Free;
   end;
 end;
 
@@ -907,139 +907,139 @@ end;
 
 class function TAtlasRuleTable.GroupOff(const ARulesJson, AGroup: string): Boolean;
 var
-  Rules: TJSONObject;
-  Value: TJSONValue;
+  mRules: TJSONObject;
+  mValue: TJSONValue;
 begin
-  Rules := ParseRules(ARulesJson);
+  mRules := ParseRules(ARulesJson);
   try
-    Value := Rules.GetValue(GroupKey(AGroup));
-    if Value is TJSONObject then
+    mValue := mRules.GetValue(GroupKey(AGroup));
+    if mValue is TJSONObject then
     begin
-      Value := TJSONObject(Value).GetValue('severity');
+      mValue := TJSONObject(mValue).GetValue('severity');
     end;
-    Result := (Value is TJSONString) and not (Value is TJSONNumber) and SameText(TJSONString(Value).Value, 'off');
+    Result := (mValue is TJSONString) and not (mValue is TJSONNumber) and SameText(TJSONString(mValue).Value, 'off');
   finally
-    Rules.Free;
+    mRules.Free;
   end;
 end;
 
 class function TAtlasRuleTable.WithGroup(const ARulesJson, AGroup: string; AOn: Boolean): string;
 var
-  Value: string;
+  mValue: string;
 begin
-  Value := '';
+  mValue := '';
   if not AOn then
   begin
-    Value := 'off';
+    mValue := 'off';
   end;
-  Result := WithGroupOption(ARulesJson, AGroup, 'severity', Value);
+  Result := WithGroupOption(ARulesJson, AGroup, 'severity', mValue);
 end;
 
 class function TAtlasRuleTable.GroupOption(const ARulesJson, AGroup, AOption: string): string;
 var
-  Rules: TJSONObject;
-  Value: TJSONValue;
+  mRules: TJSONObject;
+  mValue: TJSONValue;
 begin
   Result := '';
-  Rules := ParseRules(ARulesJson);
+  mRules := ParseRules(ARulesJson);
   try
-    Value := Rules.GetValue(GroupKey(AGroup));
-    if Value is TJSONObject then
+    mValue := mRules.GetValue(GroupKey(AGroup));
+    if mValue is TJSONObject then
     begin
-      Value := TJSONObject(Value).GetValue(AOption);
+      mValue := TJSONObject(mValue).GetValue(AOption);
     end
     else if not SameText(AOption, 'severity') then
     begin
-      Value := nil;
+      mValue := nil;
     end;
-    if (Value is TJSONString) and not (Value is TJSONNumber) then
+    if (mValue is TJSONString) and not (mValue is TJSONNumber) then
     begin
-      Result := TJSONString(Value).Value;
+      Result := TJSONString(mValue).Value;
     end;
   finally
-    Rules.Free;
+    mRules.Free;
   end;
 end;
 
 class function TAtlasRuleTable.WithGroupOption(const ARulesJson, AGroup, AOption, AValue: string): string;
 var
-  Rules, Group: TJSONObject;
-  Value: TJSONValue;
-  Pair: TJSONPair;
-  Severity: string;
+  mRules, mGroup: TJSONObject;
+  mValue: TJSONValue;
+  mPair: TJSONPair;
+  mSeverity: string;
 begin
-  Rules := ParseRules(ARulesJson);
+  mRules := ParseRules(ARulesJson);
   try
     // Text ("off") und Objekt einheitlich als Objekt bearbeiten, danach so knapp wie möglich zurückschreiben.
-    Pair := Rules.RemovePair(GroupKey(AGroup));
+    mPair := mRules.RemovePair(GroupKey(AGroup));
     try
-      Group := TJSONObject.Create;
-      if Pair <> nil then
+      mGroup := TJSONObject.Create;
+      if mPair <> nil then
       begin
-        Value := Pair.JsonValue;
-        if Value is TJSONObject then
+        mValue := mPair.JsonValue;
+        if mValue is TJSONObject then
         begin
-          Group.Free;
-          Group := TJSONObject(TJSONObject(Value).Clone);
+          mGroup.Free;
+          mGroup := TJSONObject(TJSONObject(mValue).Clone);
         end
-        else if (Value is TJSONString) and not (Value is TJSONNumber) then
+        else if (mValue is TJSONString) and not (mValue is TJSONNumber) then
         begin
-          Group.AddPair('severity', TJSONString(Value).Value);
+          mGroup.AddPair('severity', TJSONString(mValue).Value);
         end;
       end;
     finally
-      Pair.Free;
+      mPair.Free;
     end;
-    Pair := Group.RemovePair(AOption);
-    Pair.Free;
+    mPair := mGroup.RemovePair(AOption);
+    mPair.Free;
     if AValue <> '' then
     begin
-      Group.AddPair(AOption, AValue);
+      mGroup.AddPair(AOption, AValue);
     end;
-    if Group.Count = 0 then
+    if mGroup.Count = 0 then
     begin
-      Group.Free;
+      mGroup.Free;
     end
-    else if (Group.Count = 1) and (Group.GetValue('severity') is TJSONString) then
+    else if (mGroup.Count = 1) and (mGroup.GetValue('severity') is TJSONString) then
     begin
-      Severity := TJSONString(Group.GetValue('severity')).Value;
-      Group.Free;
-      Rules.AddPair(GroupKey(AGroup), Severity);
+      mSeverity := TJSONString(mGroup.GetValue('severity')).Value;
+      mGroup.Free;
+      mRules.AddPair(GroupKey(AGroup), mSeverity);
     end
     else
     begin
-      Rules.AddPair(GroupKey(AGroup), Group);
+      mRules.AddPair(GroupKey(AGroup), mGroup);
     end;
-    Result := RulesText(Rules);
+    Result := RulesText(mRules);
   finally
-    Rules.Free;
+    mRules.Free;
   end;
 end;
 
 class function TAtlasRuleTable.Groups(const ARows: TArray<TAtlasRuleRow>): TArray<string>;
 var
-  Row: TAtlasRuleRow;
-  Group: string;
-  Found: Boolean;
+  mRow: TAtlasRuleRow;
+  mGroup: string;
+  mFound: Boolean;
 begin
   Result := nil;
-  for Row in ARows do
+  for mRow in ARows do
   begin
-    if Row.Group = '' then
+    if mRow.Group = '' then
     begin
       Continue;
     end;
-    Found := False;
-    for Group in Result do
+    mFound := False;
+    for mGroup in Result do
     begin
-      if SameText(Group, Row.Group) then
+      if SameText(mGroup, mRow.Group) then
       begin
-        Found := True;
+        mFound := True;
       end;
     end;
-    if not Found then
+    if not mFound then
     begin
-      Result := Result + [Row.Group];
+      Result := Result + [mRow.Group];
     end;
   end;
 end;
@@ -1047,14 +1047,14 @@ end;
 class function TAtlasRuleTable.Filter(const ARows: TArray<TAtlasRuleRow>; const AGroup,
   AText: string): TArray<Integer>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to High(ARows) do
+  for mIndex := 0 to High(ARows) do
   begin
-    if ((AGroup = '') or SameText(ARows[Index].Group, AGroup)) and ARows[Index].Matches(AText.Trim) then
+    if ((AGroup = '') or SameText(ARows[mIndex].Group, AGroup)) and ARows[mIndex].Matches(AText.Trim) then
     begin
-      Result := Result + [Index];
+      Result := Result + [mIndex];
     end;
   end;
 end;
@@ -1062,16 +1062,16 @@ end;
 class function TAtlasRuleTable.OverridingRule(const ARows: TArray<TAtlasRuleRow>;
   const ARow: TAtlasRuleRow): string;
 var
-  Id: string;
-  Index: Integer;
+  mId: string;
+  mIndex: Integer;
 begin
-  for Id in ARow.OverriddenBy do
+  for mId in ARow.OverriddenBy do
   begin
-    for Index := 0 to High(ARows) do
+    for mIndex := 0 to High(ARows) do
     begin
-      if SameText(ARows[Index].Id, Id) and ARows[Index].Enabled then
+      if SameText(ARows[mIndex].Id, mId) and ARows[mIndex].Enabled then
       begin
-        Exit(ARows[Index].Id);
+        Exit(ARows[mIndex].Id);
       end;
     end;
   end;
@@ -1085,59 +1085,59 @@ end;
 
 class function TAtlasRuleTable.ParseList(const AText: string): TArray<string>;
 var
-  Part: string;
+  mPart: string;
 begin
   Result := nil;
-  for Part in AText.Split([';']) do
+  for mPart in AText.Split([';']) do
   begin
-    if Part.Trim <> '' then
+    if mPart.Trim <> '' then
     begin
-      Result := Result + [Part.Trim];
+      Result := Result + [mPart.Trim];
     end;
   end;
 end;
 
 class function TAtlasRuleTable.OptionText(const AOption: TAtlasRuleOption): string;
 var
-  Json: string;
-  Value, Item: TJSONValue;
-  Items: TArray<string>;
+  mJson: string;
+  mValue, mItem: TJSONValue;
+  mItems: TArray<string>;
 begin
-  Json := AOption.ValueJson;
-  if Json = '' then
+  mJson := AOption.ValueJson;
+  if mJson = '' then
   begin
-    Json := AOption.DefaultJson;
+    mJson := AOption.DefaultJson;
   end;
-  Result := Json;
-  if Json = '' then
+  Result := mJson;
+  if mJson = '' then
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(Json);
+  mValue := TJSONObject.ParseJSONValue(mJson);
   try
-    if (Value is TJSONString) and not (Value is TJSONNumber) then
+    if (mValue is TJSONString) and not (mValue is TJSONNumber) then
     begin
-      Result := TJSONString(Value).Value;
+      Result := TJSONString(mValue).Value;
     end
-    else if (Value is TJSONArray) and (SameText(AOption.Kind, 'string-list') or
+    else if (mValue is TJSONArray) and (SameText(AOption.Kind, 'string-list') or
       SameText(AOption.Kind, 'number-list')) then
     begin
-      Items := nil;
-      for Item in TJSONArray(Value) do
+      mItems := nil;
+      for mItem in TJSONArray(mValue) do
       begin
-        if (Item is TJSONString) and not (Item is TJSONNumber) then
+        if (mItem is TJSONString) and not (mItem is TJSONNumber) then
         begin
-          Items := Items + [TJSONString(Item).Value];
+          mItems := mItems + [TJSONString(mItem).Value];
         end
         else
         begin
-          Items := Items + [Item.ToJSON];
+          mItems := mItems + [mItem.ToJSON];
         end;
       end;
-      Result := ListText(Items);
+      Result := ListText(mItems);
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -1232,32 +1232,32 @@ end;
 
 class function TAtlasRuleTable.Changes(const AOldJson, ANewJson: string): TArray<TPair<string, string>>;
 var
-  Old, Updated: TJSONObject;
-  Pair: TJSONPair;
-  Value: TJSONValue;
+  mOld, mUpdated: TJSONObject;
+  mPair: TJSONPair;
+  mValue: TJSONValue;
 begin
   Result := nil;
-  Old := ParseRules(AOldJson);
-  Updated := ParseRules(ANewJson);
+  mOld := ParseRules(AOldJson);
+  mUpdated := ParseRules(ANewJson);
   try
-    for Pair in Updated do
+    for mPair in mUpdated do
     begin
-      Value := Old.GetValue(Pair.JsonString.Value);
-      if (Value = nil) or (Value.ToJSON <> Pair.JsonValue.ToJSON) then
+      mValue := mOld.GetValue(mPair.JsonString.Value);
+      if (mValue = nil) or (mValue.ToJSON <> mPair.JsonValue.ToJSON) then
       begin
-        Result := Result + [TPair<string, string>.Create('rules.' + Pair.JsonString.Value, Pair.JsonValue.ToJSON)];
+        Result := Result + [TPair<string, string>.Create('rules.' + mPair.JsonString.Value, mPair.JsonValue.ToJSON)];
       end;
     end;
-    for Pair in Old do
+    for mPair in mOld do
     begin
-      if Updated.GetValue(Pair.JsonString.Value) = nil then
+      if mUpdated.GetValue(mPair.JsonString.Value) = nil then
       begin
-        Result := Result + [TPair<string, string>.Create('rules.' + Pair.JsonString.Value, '')];
+        Result := Result + [TPair<string, string>.Create('rules.' + mPair.JsonString.Value, '')];
       end;
     end;
   finally
-    Updated.Free;
-    Old.Free;
+    mUpdated.Free;
+    mOld.Free;
   end;
 end;
 

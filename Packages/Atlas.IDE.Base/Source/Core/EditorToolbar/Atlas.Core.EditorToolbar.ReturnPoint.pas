@@ -84,17 +84,17 @@ end;
 procedure TAtlasReturnPoints.Jumped(const AFileName: string; AFromLine, ATargetLine: Integer;
   const AContext: string);
 var
-  Point: TAtlasReturnPoint;
+  mPoint: TAtlasReturnPoint;
 begin
   if (AFileName = '') or (AFromLine = ATargetLine) or FPoints.ContainsKey(KeyOf(AFileName)) then
   begin
     Exit;
   end;
-  Point.FileName := AFileName;
-  Point.Line := AFromLine;
-  Point.Context := AContext;
-  Point.Away := True;
-  FPoints.Add(KeyOf(AFileName), Point);
+  mPoint.FileName := AFileName;
+  mPoint.Line := AFromLine;
+  mPoint.Context := AContext;
+  mPoint.Away := True;
+  FPoints.Add(KeyOf(AFileName), mPoint);
 end;
 
 function TAtlasReturnPoints.Find(const AFileName: string; out APoint: TAtlasReturnPoint): Boolean;
@@ -108,42 +108,42 @@ end;
 
 procedure TAtlasReturnPoints.LinesChanged(const AFileName: string; AAnchor, ADelta: Integer);
 var
-  Point: TAtlasReturnPoint;
+  mPoint: TAtlasReturnPoint;
 begin
-  if (ADelta = 0) or not FPoints.TryGetValue(KeyOf(AFileName), Point) or (Point.Line <= AAnchor) then
+  if (ADelta = 0) or not FPoints.TryGetValue(KeyOf(AFileName), mPoint) or (mPoint.Line <= AAnchor) then
   begin
     Exit;
   end;
-  if (ADelta < 0) and (Point.Line <= AAnchor - ADelta) then
+  if (ADelta < 0) and (mPoint.Line <= AAnchor - ADelta) then
   begin
-    Point.Line := AAnchor;
+    mPoint.Line := AAnchor;
   end
   else
   begin
-    Point.Line := Point.Line + ADelta;
+    mPoint.Line := mPoint.Line + ADelta;
   end;
-  FPoints[KeyOf(AFileName)] := Point;
+  FPoints[KeyOf(AFileName)] := mPoint;
 end;
 
 function TAtlasReturnPoints.Caret(const AFileName: string; ALine: Integer): Boolean;
 var
-  Point: TAtlasReturnPoint;
+  mPoint: TAtlasReturnPoint;
 begin
   Result := False;
-  if not FPoints.TryGetValue(KeyOf(AFileName), Point) then
+  if not FPoints.TryGetValue(KeyOf(AFileName), mPoint) then
   begin
     Exit;
   end;
-  if ALine <> Point.Line then
+  if ALine <> mPoint.Line then
   begin
-    if not Point.Away then
+    if not mPoint.Away then
     begin
-      Point.Away := True;
-      FPoints[KeyOf(AFileName)] := Point;
+      mPoint.Away := True;
+      FPoints[KeyOf(AFileName)] := mPoint;
     end;
     Exit;
   end;
-  if not Point.Away then
+  if not mPoint.Away then
   begin
     Exit;
   end;
@@ -158,24 +158,24 @@ end;
 
 procedure TAtlasReturnPoints.KeepOnly(const AOpenFiles: TArray<string>);
 var
-  Open: TDictionary<string, Boolean>;
-  FileName, Key: string;
+  mOpen: TDictionary<string, Boolean>;
+  mFileName, mKey: string;
 begin
-  Open := TDictionary<string, Boolean>.Create;
+  mOpen := TDictionary<string, Boolean>.Create;
   try
-    for FileName in AOpenFiles do
+    for mFileName in AOpenFiles do
     begin
-      Open.AddOrSetValue(KeyOf(FileName), True);
+      mOpen.AddOrSetValue(KeyOf(mFileName), True);
     end;
-    for Key in FPoints.Keys.ToArray do
+    for mKey in FPoints.Keys.ToArray do
     begin
-      if not Open.ContainsKey(Key) then
+      if not mOpen.ContainsKey(mKey) then
       begin
-        FPoints.Remove(Key);
+        FPoints.Remove(mKey);
       end;
     end;
   finally
-    Open.Free;
+    mOpen.Free;
   end;
 end;
 
@@ -191,27 +191,27 @@ end;
 
 class function TAtlasReturnPoints.ContextAt(const ANodes: TAtlasOutlineNodes; ALine: Integer): string;
 var
-  Index, Best: Integer;
+  mIndex, mBest: Integer;
 begin
-  Best := -1;
-  for Index := 0 to High(ANodes) do
+  mBest := -1;
+  for mIndex := 0 to High(ANodes) do
   begin
-    if not (ANodes[Index].Category in [TAtlasOutlineCategory.Method, TAtlasOutlineCategory.Routine]) then
+    if not (ANodes[mIndex].Category in [TAtlasOutlineCategory.Method, TAtlasOutlineCategory.Routine]) then
     begin
       Continue;
     end;
-    if (ALine < ANodes[Index].StartLine) or (ALine > ANodes[Index].EndLine) then
+    if (ALine < ANodes[mIndex].StartLine) or (ALine > ANodes[mIndex].EndLine) then
     begin
       Continue;
     end;
     // Die innerste: der späteste Anfang.
-    if (Best < 0) or (ANodes[Index].StartLine >= ANodes[Best].StartLine) then
+    if (mBest < 0) or (ANodes[mIndex].StartLine >= ANodes[mBest].StartLine) then
     begin
-      Best := Index;
+      mBest := mIndex;
     end;
   end;
   // Deklaration in einer Klasse mit Besitzer davor, wie beim Rumpf („TFoo.Bar“).
-  Result := TAtlasBreadcrumbs.QualifiedName(ANodes, Best);
+  Result := TAtlasBreadcrumbs.QualifiedName(ANodes, mBest);
 end;
 
 end.

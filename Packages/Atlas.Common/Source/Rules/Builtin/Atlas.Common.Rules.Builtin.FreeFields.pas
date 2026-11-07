@@ -101,50 +101,50 @@ end;
 
 class function TOwnedFieldNotFreedRule.Ignored(const AField: TOwnedField; const AIgnoreTypes: TArray<string>): Boolean;
 var
-  Declared: string;
+  mDeclared: string;
 begin
   // Generische Typen vergleichen ohne Typparameter: TObjectList<TFoo> -> TObjectList.
-  Declared := AField.TypeName;
-  if Pos('<', Declared) > 0 then
+  mDeclared := AField.TypeName;
+  if Pos('<', mDeclared) > 0 then
   begin
-    Declared := Copy(Declared, 1, Pos('<', Declared) - 1);
+    mDeclared := Copy(mDeclared, 1, Pos('<', mDeclared) - 1);
   end;
-  Result := MatchText(Trim(AField.CreatedType), AIgnoreTypes) or MatchText(Trim(Declared), AIgnoreTypes) or
+  Result := MatchText(Trim(AField.CreatedType), AIgnoreTypes) or MatchText(Trim(mDeclared), AIgnoreTypes) or
     MatchText(Trim(AField.TypeName), AIgnoreTypes);
 end;
 
 procedure TOwnedFieldNotFreedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Field: TOwnedField;
-  Style: TFreeFieldsStyle;
-  Edits: TArray<TTextEdit>;
-  Fixes: TArray<TRuleFix>;
-  IgnoreTypes: TArray<string>;
+  mField: TOwnedField;
+  mStyle: TFreeFieldsStyle;
+  mEdits: TArray<TTextEdit>;
+  mFixes: TArray<TRuleFix>;
+  mIgnoreTypes: TArray<string>;
 begin
   if (AContext.Tree = nil) or AContext.NoFreeFields then
   begin
     Exit;
   end;
-  IgnoreTypes := TRuleOptions.Strings(AContext.Options, 'ignoreTypes', nil);
-  Style := TFreeFieldsStyle.Free;
+  mIgnoreTypes := TRuleOptions.Strings(AContext.Options, 'ignoreTypes', nil);
+  mStyle := TFreeFieldsStyle.Free;
   if AContext.FreeFieldsFreeAndNil then
   begin
-    Style := TFreeFieldsStyle.FreeAndNil;
+    mStyle := TFreeFieldsStyle.FreeAndNil;
   end;
-  for Field in TFreeFields.Analyze(AContext.Tree, AContext.Text, AContext.Index) do
+  for mField in TFreeFields.Analyze(AContext.Tree, AContext.Text, AContext.Index) do
   begin
-    if (Field.State <> TOwnedFieldState.NotFreed) or Ignored(Field, IgnoreTypes) then
+    if (mField.State <> TOwnedFieldState.NotFreed) or Ignored(mField, mIgnoreTypes) then
     begin
       Continue;
     end;
-    Fixes := nil;
+    mFixes := nil;
     // Nicht sicher: Ob die Klasse das Objekt besitzt, weiß nur der Entwickler.
-    if TFreeFields.Edits(AContext.Tree, AContext.Text, [Field], Style, Edits) then
+    if TFreeFields.Edits(AContext.Tree, AContext.Text, [mField], mStyle, mEdits) then
     begin
-      Fixes := [TRuleFix.Create(TFreeFields.FieldTitle, Edits, False)];
+      mFixes := [TRuleFix.Create(TFreeFields.FieldTitle, mEdits, False)];
     end;
     // Mittel: Ob das Objekt anderswo freigegeben wird, sieht die Regel nicht immer.
-    AReport.Add(Field.Range, cTexts[TFreeFieldsText.Leak].Fmt([Field.Name]), TRuleConfidence.Medium, Fixes);
+    AReport.Add(mField.Range, cTexts[TFreeFieldsText.Leak].Fmt([mField.Name]), TRuleConfidence.Medium, mFixes);
   end;
 end;
 
@@ -158,18 +158,18 @@ end;
 
 procedure TOwnedFieldFreeUnclearRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Field: TOwnedField;
+  mField: TOwnedField;
 begin
   if (AContext.Tree = nil) or AContext.NoFreeFields then
   begin
     Exit;
   end;
-  for Field in TFreeFields.Analyze(AContext.Tree, AContext.Text, AContext.Index) do
+  for mField in TFreeFields.Analyze(AContext.Tree, AContext.Text, AContext.Index) do
   begin
-    if Field.State = TOwnedFieldState.Unclear then
+    if mField.State = TOwnedFieldState.Unclear then
     begin
-      AReport.Add(Field.Range, cTexts[TFreeFieldsText.Unclear].Fmt([Field.Name, Field.CreatedIn, Field.ClassName,
-        Field.Reason]));
+      AReport.Add(mField.Range, cTexts[TFreeFieldsText.Unclear].Fmt([mField.Name, mField.CreatedIn, mField.ClassName,
+        mField.Reason]));
     end;
   end;
 end;
@@ -177,9 +177,9 @@ end;
 { TInitializationNotFinalizedRule }
 
 const
-  InitializationNotFinalizedRuleId = 'initialization-not-finalized';
+  cInitializationNotFinalizedRuleId = 'initialization-not-finalized';
   /// <summary>Aufrufe am Objekt, die es freigeben.</summary>
-  ReleasingMethods: array[0..3] of string = ('Free', 'Destroy', 'DisposeOf', 'Release');
+  cReleasingMethods: array[0..3] of string = ('Free', 'Destroy', 'DisposeOf', 'Release');
 
 type
   /// <summary>Ein in initialization bzw. class constructor erzeugtes Objekt (#971).</summary>
@@ -268,7 +268,7 @@ begin
   begin
     Exit;
   end;
-  if MatchText(ANode.Name, ReleasingMethods) then
+  if MatchText(ANode.Name, cReleasingMethods) then
   begin
     FFreed := True;
   end
@@ -372,9 +372,9 @@ end;
 
 function TInitUses.Leaks(const ACreation: TInitCreation): Boolean;
 var
-  Token: TPascalToken;
-  Node: TSyntaxNode;
-  Known: Boolean;
+  mToken: TPascalToken;
+  mNode: TSyntaxNode;
+  mKnown: Boolean;
 begin
   Visit(FContext.Tree.Root);
   if FFreed or FEscaped then
@@ -382,22 +382,22 @@ begin
     Exit(False);
   end;
   // Jede Erwähnung im Text muss eine der harmlosen sein (auch in Properties, with und asm).
-  for Token in FContext.Tree.Tokens do
+  for mToken in FContext.Tree.Tokens do
   begin
-    if (Token.Kind <> TPascalTokenKind.Identifier) or not SameText(Token.Text, FName) or
-      ((Token.Offset >= ACreation.DeclStart) and (Token.Offset < ACreation.DeclEnd)) then
+    if (mToken.Kind <> TPascalTokenKind.Identifier) or not SameText(mToken.Text, FName) or
+      ((mToken.Offset >= ACreation.DeclStart) and (mToken.Offset < ACreation.DeclEnd)) then
     begin
       Continue;
     end;
-    Known := False;
-    for Node in FHarmless do
+    mKnown := False;
+    for mNode in FHarmless do
     begin
-      if (Token.Offset >= Node.StartOffset) and (Token.Offset < Node.EndOffset) then
+      if (mToken.Offset >= mNode.StartOffset) and (mToken.Offset < mNode.EndOffset) then
       begin
-        Known := True;
+        mKnown := True;
       end;
     end;
-    if not Known then
+    if not mKnown then
     begin
       Exit(False);
     end;
@@ -408,21 +408,21 @@ end;
 /// <summary>Verwendet eine andere Unit des Index den Namen? Dann könnte sie das Objekt freigeben.</summary>
 function UsedElsewhere(const AContext: TRuleContext; const AName: string): Boolean;
 var
-  UnitIndex: TUnitIndex;
-  Usage: TIndexUsage;
+  mUnitIndex: TUnitIndex;
+  mUsage: TIndexUsage;
 begin
   Result := False;
   if AContext.Index = nil then
   begin
     Exit;
   end;
-  for UnitIndex in AContext.Index.Units do
+  for mUnitIndex in AContext.Index.Units do
   begin
-    if not SameText(UnitIndex.UnitName, AContext.UnitName) then
+    if not SameText(mUnitIndex.UnitName, AContext.UnitName) then
     begin
-      for Usage in UnitIndex.Usages do
+      for mUsage in mUnitIndex.Usages do
       begin
-        if SameText(Usage.Name, AName) then
+        if SameText(mUsage.Name, AName) then
         begin
           Exit(True);
         end;
@@ -434,31 +434,31 @@ end;
 /// <summary>Typname der Deklaration, '' ohne einfachen Typverweis.</summary>
 function DeclaredType(const AText: string; ADecl: TSyntaxNode): string;
 var
-  TypeRef: TSyntaxNode;
+  mTypeRef: TSyntaxNode;
 begin
   Result := '';
-  TypeRef := ADecl.FindChild(TSyntaxKind.TypeReference);
-  if TypeRef <> nil then
+  mTypeRef := ADecl.FindChild(TSyntaxKind.TypeReference);
+  if mTypeRef <> nil then
   begin
-    Result := Trim(Copy(AText, TypeRef.StartOffset + 1, TypeRef.EndOffset - TypeRef.StartOffset));
+    Result := Trim(Copy(AText, mTypeRef.StartOffset + 1, mTypeRef.EndOffset - mTypeRef.StartOffset));
   end;
 end;
 
 /// <summary>Steht vor ANode das Schlüsselwort class (class var)?</summary>
 function AfterClassKeyword(const ATokens: TArray<TPascalToken>; ANode: TSyntaxNode): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
-  for Index := High(ATokens) downto 0 do
+  for mIndex := High(ATokens) downto 0 do
   begin
-    if ATokens[Index].Offset < ANode.StartOffset then
+    if ATokens[mIndex].Offset < ANode.StartOffset then
     begin
-      if ATokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+      if ATokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
       begin
         Continue;
       end;
-      Exit(ATokens[Index].IsKeyword('class'));
+      Exit(ATokens[mIndex].IsKeyword('class'));
     end;
   end;
 end;
@@ -477,7 +477,8 @@ begin
   begin
     mDecl := AVars[mIndex];
     if (mDecl.Kind <> TSyntaxKind.VarDecl) or (DeclaredType(AContext.Text, mDecl) = '') or
-      not TFreeFields.IsObjectType(AContext.Tree, AContext.Text, AContext.Index, DeclaredType(AContext.Text, mDecl)) then
+      not TFreeFields.IsObjectType(AContext.Tree, AContext.Text, AContext.Index,
+        DeclaredType(AContext.Text, mDecl)) then
     begin
       Continue;
     end;
@@ -900,7 +901,7 @@ end;
 
 function TInitializationNotFinalizedRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(InitializationNotFinalizedRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cInitializationNotFinalizedRuleId, TRuleSeverity.Warning,
     cTexts[TFreeFieldsText.StartTitle].Text);
 end;
 

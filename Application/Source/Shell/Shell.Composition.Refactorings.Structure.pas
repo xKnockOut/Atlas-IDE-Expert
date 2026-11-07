@@ -163,19 +163,19 @@ end;
 
 procedure TShellStructureRefactorings.Register(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspChangeSignature.PrepareCommand, ChangeSignaturePrepare);
-  ACommands.Register(TLspChangeSignature.ApplyCommand, ChangeSignature);
-  ACommands.Register(TLspMoveClass.ApplyCommand, MoveClass);
-  ACommands.Register(TLspPropertyFromAccessors.ApplyCommand, PropertyFromAccessors);
-  ACommands.Register(TLspInlineAccessor.ApplyCommand, InlineAccessor);
-  ACommands.Register(TLspSafeDelete.PrepareCommand, SafeDeletePrepare);
-  ACommands.Register(TLspSafeDelete.ApplyCommand, SafeDelete);
-  ACommands.Register(TLspExtractInterface.PrepareCommand, ExtractInterfacePrepare);
-  ACommands.Register(TLspExtractInterface.ApplyCommand, ExtractInterface);
-  ACommands.Register(TLspExtractSuperclass.PrepareCommand, ExtractSuperclassPrepare);
-  ACommands.Register(TLspExtractSuperclass.ApplyCommand, ExtractSuperclass);
-  ACommands.Register(TLspMoveMember.PrepareCommand, MoveMemberPrepare);
-  ACommands.Register(TLspMoveMember.ApplyCommand, MoveMember);
+  ACommands.Register(TLspChangeSignature.cPrepareCommand, ChangeSignaturePrepare);
+  ACommands.Register(TLspChangeSignature.cApplyCommand, ChangeSignature);
+  ACommands.Register(TLspMoveClass.cApplyCommand, MoveClass);
+  ACommands.Register(TLspPropertyFromAccessors.cApplyCommand, PropertyFromAccessors);
+  ACommands.Register(TLspInlineAccessor.cApplyCommand, InlineAccessor);
+  ACommands.Register(TLspSafeDelete.cPrepareCommand, SafeDeletePrepare);
+  ACommands.Register(TLspSafeDelete.cApplyCommand, SafeDelete);
+  ACommands.Register(TLspExtractInterface.cPrepareCommand, ExtractInterfacePrepare);
+  ACommands.Register(TLspExtractInterface.cApplyCommand, ExtractInterface);
+  ACommands.Register(TLspExtractSuperclass.cPrepareCommand, ExtractSuperclassPrepare);
+  ACommands.Register(TLspExtractSuperclass.cApplyCommand, ExtractSuperclass);
+  ACommands.Register(TLspMoveMember.cPrepareCommand, MoveMemberPrepare);
+  ACommands.Register(TLspMoveMember.cApplyCommand, MoveMember);
 end;
 
 function TShellStructureRefactorings.Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
@@ -415,7 +415,7 @@ begin
   mSettings := Settings(mUri);
   Allow(mSettings.InlineAccessor,
     Disabled(cTexts[TStructureRefactoringText.InlineAccessor].Text, 'refactoring.inlineAccessor'));
-  Allow((mScope = TLspInlineAccessor.ScopeHere) or mSettings.InlineAccessorBulk,
+  Allow((mScope = TLspInlineAccessor.cScopeHere) or mSettings.InlineAccessorBulk,
     cTexts[TStructureRefactoringText.BulkOff].Text);
   mDocument := Open(mUri);
   mContext := Default(TInlineAccessorContext);

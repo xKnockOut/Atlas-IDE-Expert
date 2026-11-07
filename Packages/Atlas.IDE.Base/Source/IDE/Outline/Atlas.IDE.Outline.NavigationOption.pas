@@ -40,7 +40,7 @@ uses
   Atlas.IDE.Foundation.Settings;
 
 const
-  Marker = 'IdeNavigationToolbarHidden';
+  cMarker = 'IdeNavigationToolbarHidden';
 
 var
   /// <summary>Zuletzt protokollierter Weg; gleiche Zeilen nicht bei jedem Aufruf wiederholen.</summary>
@@ -58,102 +58,102 @@ end;
 
 function ReadMarker: Boolean;
 var
-  Registry: TRegistry;
+  mRegistry: TRegistry;
 begin
   Result := False;
-  Registry := TRegistry.Create(KEY_READ);
+  mRegistry := TRegistry.Create(KEY_READ);
   try
-    Registry.RootKey := HKEY_CURRENT_USER;
+    mRegistry.RootKey := HKEY_CURRENT_USER;
     try
-      if Registry.OpenKeyReadOnly(AtlasRegistryKey) and Registry.ValueExists(Marker) then
+      if mRegistry.OpenKeyReadOnly(cAtlasRegistryKey) and mRegistry.ValueExists(cMarker) then
       begin
-        Result := Registry.ReadInteger(Marker) <> 0;
+        Result := mRegistry.ReadInteger(cMarker) <> 0;
       end;
     except
       on E: ERegistryException do
         TAtlasGuard.Log('Navigationsleiste: Merker nicht lesbar (' + TAtlasGuard.MessageText(E.Message) + ')');
     end;
   finally
-    Registry.Free;
+    mRegistry.Free;
   end;
 end;
 
 procedure WriteMarker(AValue: Boolean);
 var
-  Registry: TRegistry;
+  mRegistry: TRegistry;
 begin
-  Registry := TRegistry.Create(KEY_READ or KEY_WRITE);
+  mRegistry := TRegistry.Create(KEY_READ or KEY_WRITE);
   try
-    Registry.RootKey := HKEY_CURRENT_USER;
+    mRegistry.RootKey := HKEY_CURRENT_USER;
     try
-      if Registry.OpenKey(AtlasRegistryKey, True) then
+      if mRegistry.OpenKey(cAtlasRegistryKey, True) then
       begin
-        Registry.WriteInteger(Marker, Ord(AValue));
+        mRegistry.WriteInteger(cMarker, Ord(AValue));
       end;
     except
       on E: ERegistryException do
         TAtlasGuard.Log('Navigationsleiste: Merker nicht geschrieben (' + TAtlasGuard.MessageText(E.Message) + ')');
     end;
   finally
-    Registry.Free;
+    mRegistry.Free;
   end;
 end;
 
 function OptionNames(const AOptions: IOTAEnvironmentOptions): TArray<string>;
 var
-  Names: TOTAOptionNameArray;
-  Index: Integer;
+  mNames: TOTAOptionNameArray;
+  mIndex: Integer;
 begin
-  Names := AOptions.GetOptionNames;
-  SetLength(Result, Length(Names));
-  for Index := 0 to High(Names) do
+  mNames := AOptions.GetOptionNames;
+  SetLength(Result, Length(mNames));
+  for mIndex := 0 to High(mNames) do
   begin
-    Result[Index] := Names[Index].Name;
+    Result[mIndex] := mNames[mIndex].Name;
   end;
 end;
 
 class function TAtlasIdeNavigationOption.Apply(AHide: Boolean): Boolean;
 var
-  Services: IOTAServices;
-  Options: IOTAEnvironmentOptions;
-  Names: TArray<string>;
-  Name: string;
-  Value: Variant;
-  State, Next: TAtlasIdeStructure;
+  mServices: IOTAServices;
+  mOptions: IOTAEnvironmentOptions;
+  mNames: TArray<string>;
+  mName: string;
+  mValue: Variant;
+  mState, mNext: TAtlasIdeStructure;
 begin
   Result := False;
-  if not Supports(BorlandIDEServices, IOTAServices, Services) then
+  if not Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
     Exit;
   end;
   try
-    Options := Services.GetEnvironmentOptions;
-    if Options = nil then
+    mOptions := mServices.GetEnvironmentOptions;
+    if mOptions = nil then
     begin
       Exit;
     end;
-    Names := OptionNames(Options);
-    Name := TAtlasNavigationOption.Find(Names);
-    if Name = '' then
+    mNames := OptionNames(mOptions);
+    mName := TAtlasNavigationOption.Find(mNames);
+    if mName = '' then
     begin
       LogWay(Format('Navigationsleiste: Die IDE hat keine Option dafür (ähnliche Namen: %s); zum Ausblenden ' +
-        'hängt Atlas die Leiste um (Netz)', [string.Join(', ', TAtlasNavigationOption.Candidates(Names))]));
+        'hängt Atlas die Leiste um (Netz)', [string.Join(', ', TAtlasNavigationOption.Candidates(mNames))]));
       Exit;
     end;
-    Value := Options.Values[Name];
-    State.Enabled := TAtlasNavigationOption.IsOn(Value);
-    State.DisabledByAtlas := ReadMarker;
-    Next := TAtlasGuides.Switch(State, AHide);
-    if Next.Enabled <> State.Enabled then
+    mValue := mOptions.Values[mName];
+    mState.Enabled := TAtlasNavigationOption.IsOn(mValue);
+    mState.DisabledByAtlas := ReadMarker;
+    mNext := TAtlasGuides.Switch(mState, AHide);
+    if mNext.Enabled <> mState.Enabled then
     begin
-      Options.Values[Name] := TAtlasNavigationOption.Encode(Value, Next.Enabled);
+      mOptions.Values[mName] := TAtlasNavigationOption.Encode(mValue, mNext.Enabled);
     end;
-    if Next.DisabledByAtlas <> State.DisabledByAtlas then
+    if mNext.DisabledByAtlas <> mState.DisabledByAtlas then
     begin
-      WriteMarker(Next.DisabledByAtlas);
+      WriteMarker(mNext.DisabledByAtlas);
     end;
-    LogWay(Format('Navigationsleiste: über die Option %s der IDE (an: %s, von Atlas ausgeschaltet: %s)', [Name,
-      BoolToStr(Next.Enabled, True), BoolToStr(Next.DisabledByAtlas, True)]));
+    LogWay(Format('Navigationsleiste: über die Option %s der IDE (an: %s, von Atlas ausgeschaltet: %s)', [mName,
+      BoolToStr(mNext.Enabled, True), BoolToStr(mNext.DisabledByAtlas, True)]));
     Result := True;
   except
     // Die IDE lehnt Lesen oder Schreiben ab: Dann bleibt das Umhängen (Netz); der Grund steht im Protokoll.

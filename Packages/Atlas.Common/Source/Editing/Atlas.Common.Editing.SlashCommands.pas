@@ -99,7 +99,8 @@ type
     /// Zeile einer Änderung mitten in einer Zeile und der Vorgabestil (zwei Leerzeichen) bleiben unverändert.</summary>
     class function Reindent(const AText: string; const AEdits: TArray<TTextEdit>;
       const AStyle: TFormatStyle): TArray<TTextEdit>; static;
-    /// <summary>Hinweise für Befehlszeilen, die stehen geblieben sind (unbekannt, abgeschaltet, falscher Ort).</summary>
+    /// <summary>Hinweise für Befehlszeilen, die stehen geblieben sind (unbekannt, abgeschaltet, falscher
+    /// Ort).</summary>
     function Problems(const AText: string; const ADisabled: TArray<string>;
       const AIndex: ISymbolIndex; const ADelphiVersion: string): TArray<TSlashProblem>; overload;
     /// <summary>Wie oben mit ADelphiVersion = ''.</summary>
@@ -161,11 +162,11 @@ const
 
 function IsDisabled(const AName: string; const ADisabled: TArray<string>): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in ADisabled do
+  for mName in ADisabled do
   begin
-    if SameText(Name, AName) then
+    if SameText(mName, AName) then
     begin
       Exit(True);
     end;
@@ -254,16 +255,16 @@ end;
 
 class function TSlashCommandRegistry.Shared: TSlashCommandRegistry;
 var
-  Created: TSlashCommandRegistry;
+  mCreated: TSlashCommandRegistry;
   mRegister: TSlashRegister;
   mLanguage: TTextLanguage;
 begin
   mLanguage := TAtlasLocale.Language;
   if FShared[mLanguage] = nil then
   begin
-    Created := TSlashCommandRegistry.Create;
-    mRegister := RegisterInto(Created);
-    Created.Register(UsesCommand);
+    mCreated := TSlashCommandRegistry.Create;
+    mRegister := RegisterInto(mCreated);
+    mCreated.Register(UsesCommand);
     RegisterDeclarationCommands(mRegister);
     RegisterClassCommands(mRegister);
     RegisterWrapCommands(mRegister);
@@ -280,9 +281,9 @@ begin
     RegisterWinApiCommands(mRegister);
     RegisterTaskCommands(mRegister);
     RegisterRecordCommands(mRegister);
-    if AtomicCmpExchange(Pointer(FShared[mLanguage]), Pointer(Created), nil) <> nil then
+    if AtomicCmpExchange(Pointer(FShared[mLanguage]), Pointer(mCreated), nil) <> nil then
     begin
-      Created.Free;
+      mCreated.Free;
     end;
   end;
   Result := FShared[mLanguage];
@@ -290,9 +291,9 @@ end;
 
 procedure TSlashCommandRegistry.Register(const ACommand: TSlashCommand);
 var
-  Existing: TSlashCommand;
+  mExisting: TSlashCommand;
 begin
-  if Find(ACommand.Name, Existing) then
+  if Find(ACommand.Name, mExisting) then
   begin
     raise EArgumentException.CreateFmt(cTexts[TSlashCommandsText.SlashCommandIsAlreadyRegistered].Text,
       [ACommand.Name]);
@@ -307,15 +308,15 @@ end;
 
 function TSlashCommandRegistry.Find(const AName: string; out ACommand: TSlashCommand): Boolean;
 var
-  Command: TSlashCommand;
+  mCommand: TSlashCommand;
 begin
   TMonitor.Enter(FLock);
   try
-    for Command in FCommands do
+    for mCommand in FCommands do
     begin
-      if SameText(Command.Name, AName) then
+      if SameText(mCommand.Name, AName) then
       begin
-        ACommand := Command;
+        ACommand := mCommand;
         Exit(True);
       end;
     end;
@@ -342,62 +343,62 @@ end;
 
 class function TSlashCommandRegistry.Split(const ALine: string; out AName, AArguments: string): Boolean;
 var
-  Text: string;
-  Index: Integer;
+  mText: string;
+  mIndex: Integer;
 begin
   AName := '';
   AArguments := '';
-  Text := Trim(ALine);
+  mText := Trim(ALine);
   // "/name": Buchstabe direkt nach "/"; "//" ist ein Kommentar.
-  if (Length(Text) < 2) or (Text[1] <> '/') or not CharInSet(Text[2], ['A'..'Z', 'a'..'z']) then
+  if (Length(mText) < 2) or (mText[1] <> '/') or not CharInSet(mText[2], ['A'..'Z', 'a'..'z']) then
   begin
     Exit(False);
   end;
-  Index := 2;
-  while (Index <= Length(Text)) and CharInSet(Text[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '!', '-']) do
+  mIndex := 2;
+  while (mIndex <= Length(mText)) and CharInSet(mText[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_', '!', '-']) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  if (Index <= Length(Text)) and (Text[Index] <> ' ') then
+  if (mIndex <= Length(mText)) and (mText[mIndex] <> ' ') then
   begin
     Exit(False);
   end;
-  AName := Copy(Text, 2, Index - 2);
-  AArguments := Trim(Copy(Text, Index, MaxInt));
+  AName := Copy(mText, 2, mIndex - 2);
+  AArguments := Trim(Copy(mText, mIndex, MaxInt));
   Result := True;
 end;
 
 class function TSlashCommandRegistry.IsCodeLine(const ATokens: TArray<TPascalToken>; ALine: Integer): Boolean;
 var
-  Token: TPascalToken;
-  InAsm: Boolean;
+  mToken: TPascalToken;
+  mInAsm: Boolean;
 begin
-  InAsm := False;
-  for Token in ATokens do
+  mInAsm := False;
+  for mToken in ATokens do
   begin
-    if Token.StartPos.Line > ALine then
+    if mToken.StartPos.Line > ALine then
     begin
       Break;
     end;
     // Mehrzeiliger Kommentar oder String über der Zeile.
-    if (Token.StartPos.Line < ALine) and (Token.EndPos.Line >= ALine) and
-      (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.StringLiteral]) then
+    if (mToken.StartPos.Line < ALine) and (mToken.EndPos.Line >= ALine) and
+      (mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.StringLiteral]) then
     begin
       Exit(False);
     end;
-    if Token.StartPos.Line < ALine then
+    if mToken.StartPos.Line < ALine then
     begin
-      if Token.IsKeyword('asm') then
+      if mToken.IsKeyword('asm') then
       begin
-        InAsm := True;
+        mInAsm := True;
       end
-      else if InAsm and Token.IsKeyword('end') then
+      else if mInAsm and mToken.IsKeyword('end') then
       begin
-        InAsm := False;
+        mInAsm := False;
       end;
     end;
   end;
-  Result := not InAsm;
+  Result := not mInAsm;
 end;
 
 function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition;
@@ -704,14 +705,14 @@ end;
 
 function TSlashCommandRegistry.Matching(const APrefix: string; const ADisabled: TArray<string>): TArray<TSlashCommand>;
 var
-  Command: TSlashCommand;
+  mCommand: TSlashCommand;
 begin
   Result := nil;
-  for Command in Commands do
+  for mCommand in Commands do
   begin
-    if StartsText(APrefix, Command.Name) and not IsDisabled(Command.Name, ADisabled) then
+    if StartsText(APrefix, mCommand.Name) and not IsDisabled(mCommand.Name, ADisabled) then
     begin
-      Result := Result + [Command];
+      Result := Result + [mCommand];
     end;
   end;
 end;

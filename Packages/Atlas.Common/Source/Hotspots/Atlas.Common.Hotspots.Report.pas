@@ -35,10 +35,10 @@ type
   THotspotReport = record
   public const
     /// <summary>Vorgabe für die Länge der Listen in get_hotspots.</summary>
-    TextLimit = 20;
+    cTextLimit = 20;
     /// <summary>Höchstens so viele Blasen im HTML-Bericht.</summary>
-    ChartLimit = 200;
-    JsonFormat = 1;
+    cChartLimit = 200;
+    cJsonFormat = 1;
   public
     class function ParseSection(const AText: string; out ASection: THotspotSection): Boolean; static;
     class function SectionName(ASection: THotspotSection): string; static;
@@ -381,7 +381,7 @@ var
 begin
   mBuilder := TStringBuilder.Create;
   try
-    mBuilder.Append('{"format":').Append(JsonFormat);
+    mBuilder.Append('{"format":').Append(cJsonFormat);
     mBuilder.Append(',"title":').Append(JsonText(AResult.Title));
     mBuilder.Append(',"vcs":').Append(JsonText(THotspots.KindName(AResult.Kind)));
     mBuilder.Append(',"head":').Append(JsonText(AResult.Head));
@@ -626,7 +626,7 @@ var
   mEntry: THotspotEntry;
   mX, mY, mRadius: Double;
 begin
-  mCount := Min(Length(AEntries), THotspotReport.ChartLimit);
+  mCount := Min(Length(AEntries), THotspotReport.cChartLimit);
   mMaxChanges := 1;
   mMaxComplexity := 1;
   mMaxLines := 1;

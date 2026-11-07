@@ -1015,11 +1015,18 @@ function Pascal-Lines([string] $Name, [string] $Source) {
     return $Result
 }
 # Eingebettete Texte (Schemata): mehrere Zeilen je Element, damit die Unit kurz bleibt (metric-unit-length);
-# je Element eine Zeile mit höchstens 990 Bytes in UTF-8 (Delphi bricht ab 1024 ab, F2069), Teile höchstens 200 Zeichen.
+# je Element höchstens 990 Bytes in UTF-8 (Delphi bricht ab 1024 ab, F2069), Teile höchstens 200 Zeichen.
+# line-length zählt Stringinhalte nicht (ignoreStrings), nur die Anführungszeichen: Eine Zeile wird umbrochen,
+# sobald der Rest ohne Stringinhalte 120 Zeichen oder die Zeile 990 Bytes überschritte.
+# Breite eines Teils für line-length: ein String-Literal zählt nur mit seinen Anführungszeichen.
+function Code-Width([string] $Token) {
+    if ($Token.StartsWith("'")) { return 2 }
+    return $Token.Length
+}
 function Pascal-Chunks([string] $Name, [string] $Source) {
     $Lines = $Source.TrimStart([char]0xFEFF).Replace("`r`n", "`n").TrimEnd("`n").Split("`n")
-    $Elements = New-Object System.Collections.Generic.List[string]
-    $Current = ''
+    $Elements = New-Object System.Collections.Generic.List[object]
+    $Current = New-Object System.Collections.Generic.List[string]
     $CurrentSize = 0
     foreach ($Line in $Lines) {
         $Tokens = @()
@@ -1027,21 +1034,32 @@ function Pascal-Chunks([string] $Name, [string] $Source) {
             $Tokens += "'" + $Line.Substring($At, [Math]::Min(200, $Line.Length - $At)).Replace("'", "''") + "'"
         }
         $Tokens += '#10'
-        $Text = $Tokens -join ' + '
-        $Size = [Text.Encoding]::UTF8.GetByteCount($Text)
-        if ($Size -gt 990) {
-            if ($Current -ne '') { $Elements.Add($Current); $Current = ''; $CurrentSize = 0 }
-            $Elements.Add($Tokens -join " +`r`n      ")
-            continue
+        $Size = [Text.Encoding]::UTF8.GetByteCount($Tokens -join ' + ')
+        if (($Current.Count -gt 0) -and ($CurrentSize + 3 + $Size -gt 990)) {
+            $Elements.Add($Current.ToArray()); $Current.Clear(); $CurrentSize = 0
         }
-        if (($Current -ne '') -and ($CurrentSize + 3 + $Size -gt 990)) { $Elements.Add($Current); $Current = ''; $CurrentSize = 0 }
-        if ($Current -eq '') { $Current = $Text; $CurrentSize = $Size } else { $Current = $Current + ' + ' + $Text; $CurrentSize += 3 + $Size }
+        if ($Current.Count -gt 0) { $CurrentSize += 3 }
+        $Current.AddRange([string[]] $Tokens)
+        $CurrentSize += $Size
     }
-    if ($Current -ne '') { $Elements.Add($Current) }
+    if ($Current.Count -gt 0) { $Elements.Add($Current.ToArray()) }
     $Result = @("  $Name`: array[0..$($Elements.Count - 1)] of string = (")
     for ($Index = 0; $Index -lt $Elements.Count; $Index++) {
         $End = if ($Index -eq $Elements.Count - 1) { ');' } else { ',' }
-        $Result += '    ' + $Elements[$Index] + $End
+        $Tokens = $Elements[$Index]
+        $Row = '    ' + $Tokens[0]
+        $Width = 4 + (Code-Width $Tokens[0])
+        for ($T = 1; $T -lt $Tokens.Count; $T++) {
+            $TokenWidth = Code-Width $Tokens[$T]
+            $Bytes = [Text.Encoding]::UTF8.GetByteCount($Row) + 3 + [Text.Encoding]::UTF8.GetByteCount($Tokens[$T]) + 2
+            if (($Width + 3 + $TokenWidth + 2 -gt 120) -or ($Bytes -gt 990)) {
+                $Result += $Row + ' +'
+                $Row = '      ' + $Tokens[$T]
+                $Width = 6 + $TokenWidth
+            }
+            else { $Row = $Row + ' + ' + $Tokens[$T]; $Width += 3 + $TokenWidth }
+        }
+        $Result += $Row + $End
     }
     return $Result
 }
@@ -1057,9 +1075,9 @@ function Sync-Unit([string] $Path, [string[]] $Lines) {
 }
 function Text-Unit([string] $UnitName, [string[]] $Comment, [string] $Summary, [string] $FunctionName, [string] $Source) {
     return @("unit $UnitName;", '') + $Comment + @('', 'interface', '', "/// <summary>$Summary</summary>", "function $FunctionName`: string;", '',
-        'implementation', '', 'const') + (Pascal-Chunks 'Chunks' $Source) +
+        'implementation', '', 'const') + (Pascal-Chunks 'cChunks' $Source) +
         @('', "function $FunctionName`: string;", 'var', '  mChunk: string;', 'begin', "  Result := '';",
-        '  for mChunk in Chunks do', '  begin', '    Result := Result + mChunk;', '  end;', 'end;', '', 'end.')
+        '  for mChunk in cChunks do', '  begin', '    Result := Result + mChunk;', '  end;', 'end;', '', 'end.')
 }
 $SettingsFolder = Join-Path $Root 'Packages/Atlas.IDE.Base/Source/Core/Settings'
 
@@ -1089,17 +1107,17 @@ $ProfileLines = @('unit Atlas.Core.Settings.ProfileData;', '',
     'function AtlasProfileJson(const AFileName: string): string;', '',
     'implementation', '', 'uses', '  System.SysUtils;', '', 'const')
 for ($Index = 0; $Index -lt $Profiles.Count; $Index++) {
-    $ProfileLines += Pascal-Lines "Profile$Index" ([IO.File]::ReadAllText($Profiles[$Index].FullName, $Utf8))
+    $ProfileLines += Pascal-Lines "cProfile$Index" ([IO.File]::ReadAllText($Profiles[$Index].FullName, $Utf8))
 }
-$ProfileLines += @('', 'function Joined(const ALines: array of string): string;', 'var', '  Line: string;', 'begin', "  Result := '';",
-    '  for Line in ALines do', '  begin', '    Result := Result + Line + #10;', '  end;', 'end;', '',
+$ProfileLines += @('', 'function Joined(const ALines: array of string): string;', 'var', '  mLine: string;', 'begin', "  Result := '';",
+    '  for mLine in ALines do', '  begin', '    Result := Result + mLine + #10;', '  end;', 'end;', '',
     'function AtlasProfileFiles: TArray<string>;', 'begin', "  SetLength(Result, $($Profiles.Count));")
 for ($Index = 0; $Index -lt $Profiles.Count; $Index++) { $ProfileLines += "  Result[$Index] := '$($Profiles[$Index].Name)';" }
 $ProfileLines += @('end;', '', 'function AtlasProfileJson(const AFileName: string): string;', 'begin', "  Result := '';")
 for ($Index = 0; $Index -lt $Profiles.Count; $Index++) {
     $ProfileLines += "  if SameText(AFileName, '$($Profiles[$Index].Name)') then"
     $ProfileLines += '  begin'
-    $ProfileLines += "    Result := Joined(Profile$Index);"
+    $ProfileLines += "    Result := Joined(cProfile$Index);"
     $ProfileLines += '  end;'
 }
 $ProfileLines += @('end;', '', 'end.')
@@ -1141,9 +1159,9 @@ $ScopeLines = @(
     '// Projekt = atlas.json. Gemischte Objekte stehen je Glied als "objekt.glied" da.',
     '// Schlüssel mit x-scope "both" stehen in beiden Listen.', '',
     'interface', '', 'const', '  /// <summary>Schlüssel für alle Projekte (settings.json).</summary>') +
-    (Pascal-List 'GlobalSettingPaths' $GlobalPaths) +
+    (Pascal-List 'cGlobalSettingPaths' $GlobalPaths) +
     @('  /// <summary>Schlüssel des Projekts (atlas.json).</summary>') +
-    (Pascal-List 'ProjectSettingPaths' $ProjectPaths) +
+    (Pascal-List 'cProjectSettingPaths' $ProjectPaths) +
     @('', '/// <summary>Experimentelle Schlüssel (x-experimental, #834): wirken nur mit experimental.enabled.</summary>',
       'function ExperimentalSettingPaths: TArray<string>;', '', 'implementation', '',
       'function ExperimentalSettingPaths: TArray<string>;', 'begin')

@@ -283,7 +283,7 @@ begin
   TAtlasGuard.RotatingLog.Folder := FFolder;
   TAtlasGuard.Fuse.ResetAll;
   TAtlasShutdown.Reset;
-  TAtlasTimeLimit.LimitMs := TAtlasTimeLimit.DefaultMs;
+  TAtlasTimeLimit.LimitMs := TAtlasTimeLimit.cDefaultMs;
 end;
 
 procedure TAtlasTimeLimitTests.TearDown;
@@ -398,8 +398,8 @@ begin
     Assert.IsTrue(TAtlasShutdown.WaitFor(Event, 10000) = wrAbandoned);
     Assert.IsTrue(Watch.ElapsedMilliseconds < 500);
     Watch := TStopwatch.StartNew;
-    Assert.IsTrue(TAtlasTimeLimit.StopAll(TAtlasShutdown.StopMs), 'alle Arbeiter beendet');
-    Assert.IsTrue(Watch.ElapsedMilliseconds < TAtlasShutdown.StopMs);
+    Assert.IsTrue(TAtlasTimeLimit.StopAll(TAtlasShutdown.cStopMs), 'alle Arbeiter beendet');
+    Assert.IsTrue(Watch.ElapsedMilliseconds < TAtlasShutdown.cStopMs);
     Assert.AreEqual(0, TAtlasTimeLimit.BusyCount);
     Assert.IsTrue(TAtlasTimeLimit.Run(
       procedure

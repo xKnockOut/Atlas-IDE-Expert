@@ -64,9 +64,9 @@ uses
   Atlas.Text.Lines;
 
 const
-  FormUses = 'Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,' +
+  cFormUses = 'Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,' +
     '|  Vcl.Controls, Vcl.Forms, Vcl.Dialogs';
-  DataModuleUses = 'System.SysUtils, System.Classes';
+  cDataModuleUses = 'System.SysUtils, System.Classes';
 
 class function TUnitTemplates.InstanceName(const AClassName: string): string;
 begin
@@ -106,30 +106,30 @@ end;
 
 class function TUnitTemplates.FormUnit(const ASpec: TFormUnitSpec; const ALineBreak: string): string;
 var
-  Ancestor, UsesList: string;
+  mAncestor, mUsesList: string;
 begin
-  Ancestor := ASpec.Ancestor;
-  if Ancestor = '' then
+  mAncestor := ASpec.Ancestor;
+  if mAncestor = '' then
   begin
-    Ancestor := DefaultAncestor(ASpec.Kind);
+    mAncestor := DefaultAncestor(ASpec.Kind);
   end;
   if ASpec.Kind = TFormKind.DataModule then
   begin
-    UsesList := DataModuleUses;
+    mUsesList := cDataModuleUses;
   end
   else
   begin
-    UsesList := StringReplace(FormUses, '|', ALineBreak, []);
+    mUsesList := StringReplace(cFormUses, '|', ALineBreak, []);
   end;
   if ASpec.AncestorUnit <> '' then
   begin
-    UsesList := UsesList + ',' + ALineBreak + '  ' + ASpec.AncestorUnit;
+    mUsesList := mUsesList + ',' + ALineBreak + '  ' + ASpec.AncestorUnit;
   end;
   Result := 'unit ' + ASpec.UnitName + ';' + ALineBreak + ALineBreak +
     'interface' + ALineBreak + ALineBreak +
-    'uses' + ALineBreak + '  ' + UsesList + ';' + ALineBreak + ALineBreak +
+    'uses' + ALineBreak + '  ' + mUsesList + ';' + ALineBreak + ALineBreak +
     'type' + ALineBreak +
-    Format('  %s = class(%s)', [ASpec.ClassName, Ancestor]) + ALineBreak +
+    Format('  %s = class(%s)', [ASpec.ClassName, mAncestor]) + ALineBreak +
     '  private' + ALineBreak + '    { Private-Deklarationen }' + ALineBreak +
     '  public' + ALineBreak + '    { Public-Deklarationen }' + ALineBreak +
     '  end;' + ALineBreak + ALineBreak;
@@ -145,23 +145,23 @@ end;
 class function TUnitTemplates.FormDfm(const AClassName: string; AKind: TFormKind; AInherited: Boolean;
   const ALineBreak: string): string;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := InstanceName(AClassName);
+  mName := InstanceName(AClassName);
   if AInherited then
   begin
-    Result := Format('inherited %s: %s', [Name, AClassName]) + ALineBreak;
+    Result := Format('inherited %s: %s', [mName, AClassName]) + ALineBreak;
   end
   else
   begin
-    Result := Format('object %s: %s', [Name, AClassName]) + ALineBreak;
+    Result := Format('object %s: %s', [mName, AClassName]) + ALineBreak;
   end;
   // Geerbte Formulare übernehmen alle Werte vom Vorfahren.
   if not AInherited then
     case AKind of
       TFormKind.Form:
         Result := Result + '  Left = 0' + ALineBreak + '  Top = 0' + ALineBreak +
-          '  Caption = ' + QuotedStr(Name) + ALineBreak + '  ClientHeight = 441' + ALineBreak +
+          '  Caption = ' + QuotedStr(mName) + ALineBreak + '  ClientHeight = 441' + ALineBreak +
           '  ClientWidth = 624' + ALineBreak;
       TFormKind.Frame:
         Result := Result + '  Left = 0' + ALineBreak + '  Top = 0' + ALineBreak + '  Width = 640' + ALineBreak +
@@ -175,16 +175,16 @@ end;
 class function TUnitTemplates.ComponentUnit(const AUnitName, AClassName, AAncestor, AAncestorUnit,
   APalette: string; const ALineBreak: string): string;
 var
-  UsesList: string;
+  mUsesList: string;
 begin
-  UsesList := 'System.SysUtils, System.Classes';
+  mUsesList := 'System.SysUtils, System.Classes';
   if AAncestorUnit <> '' then
   begin
-    UsesList := UsesList + ', ' + AAncestorUnit;
+    mUsesList := mUsesList + ', ' + AAncestorUnit;
   end;
   Result := 'unit ' + AUnitName + ';' + ALineBreak + ALineBreak +
     'interface' + ALineBreak + ALineBreak +
-    'uses' + ALineBreak + '  ' + UsesList + ';' + ALineBreak + ALineBreak +
+    'uses' + ALineBreak + '  ' + mUsesList + ';' + ALineBreak + ALineBreak +
     'type' + ALineBreak +
     Format('  %s = class(%s)', [AClassName, AAncestor]) + ALineBreak +
     '  private' + ALineBreak + '  protected' + ALineBreak + '  public' + ALineBreak + '  published' + ALineBreak +
@@ -405,34 +405,34 @@ end;
 class function TUnitTemplates.ProjectEdit(const AText, AFileName, AClassName: string; AKind: TFormKind;
   AWithForm: Boolean; out AEdit: TTextEdit): Boolean;
 var
-  Lines: TArray<string>;
-  Last: Integer;
-  Indent, LB, Text: string;
+  mLines: TArray<string>;
+  mLast: Integer;
+  mIndent, mLB, mText: string;
 begin
-  LB := TTextLines.LineBreakOf(AText);
-  Lines := AText.Split([LB]);
-  Last := LastReferenceLine(Lines);
-  if Last < 0 then
+  mLB := TTextLines.LineBreakOf(AText);
+  mLines := AText.Split([mLB]);
+  mLast := LastReferenceLine(mLines);
+  if mLast < 0 then
   begin
-    Exit(FirstReferenceEdit(Lines, AFileName, LB, AEdit));
+    Exit(FirstReferenceEdit(mLines, AFileName, mLB, AEdit));
   end;
-  Indent := Copy(Lines[Last], 1, Pos('<', Lines[Last]) - 1);
+  mIndent := Copy(mLines[mLast], 1, Pos('<', mLines[mLast]) - 1);
   if not AWithForm then
   begin
-    Text := Format('%s<DCCReference Include="%s"/>', [Indent, AFileName]);
+    mText := Format('%s<DCCReference Include="%s"/>', [mIndent, AFileName]);
   end
   else
   begin
-    Text := Format('%s<DCCReference Include="%s">', [Indent, AFileName]) + LB +
-      Format('%s    <Form>%s</Form>', [Indent, TUnitTemplates.InstanceName(AClassName)]);
+    mText := Format('%s<DCCReference Include="%s">', [mIndent, AFileName]) + mLB +
+      Format('%s    <Form>%s</Form>', [mIndent, TUnitTemplates.InstanceName(AClassName)]);
     if AKind <> TFormKind.Form then
     begin
-      Text := Text + LB + Format('%s    <FormType>dfm</FormType>', [Indent]) + LB +
-        Format('%s    <DesignClass>%s</DesignClass>', [Indent, TUnitTemplates.DefaultAncestor(AKind)]);
+      mText := mText + mLB + Format('%s    <FormType>dfm</FormType>', [mIndent]) + mLB +
+        Format('%s    <DesignClass>%s</DesignClass>', [mIndent, TUnitTemplates.DefaultAncestor(AKind)]);
     end;
-    Text := Text + LB + Indent + '</DCCReference>';
+    mText := mText + mLB + mIndent + '</DCCReference>';
   end;
-  AEdit := TTextEdit.Create(TTextRange.Create(Last, Length(Lines[Last]), Last, Length(Lines[Last])), LB + Text);
+  AEdit := TTextEdit.Create(TTextRange.Create(mLast, Length(mLines[mLast]), mLast, Length(mLines[mLast])), mLB + mText);
   Result := True;
 end;
 

@@ -78,7 +78,7 @@ begin
   Dispatcher := TJsonRpcDispatcher.Create;
   try
     Switches.Attach(Dispatcher);
-    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspCompilerSwitches.Method +
+    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspCompilerSwitches.cMethod +
       '","params":' + AParams + '}') as TJSONObject;
     try
       Response := Dispatcher.DispatchMessage(Request);

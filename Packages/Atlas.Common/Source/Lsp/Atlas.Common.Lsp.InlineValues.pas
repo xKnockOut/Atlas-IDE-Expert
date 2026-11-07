@@ -47,8 +47,8 @@ type
 
   TLspInlineValues = class
   public const
-    Method = 'textDocument/inlineValue';
-    MaxValues = 500;
+    cMethod = 'textDocument/inlineValue';
+    cMaxValues = 500;
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -104,42 +104,42 @@ type
 /// Sie sehen deren Variablen.</summary>
 function RoutineAt(ARoot: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 var
-  Node, Child: TSyntaxNode;
-  Index: Integer;
-  Descended: Boolean;
+  mNode, mChild: TSyntaxNode;
+  mIndex: Integer;
+  mDescended: Boolean;
 begin
   Result := nil;
-  Node := ARoot;
+  mNode := ARoot;
   repeat
-    Descended := False;
-    for Index := 0 to Node.ChildCount - 1 do
+    mDescended := False;
+    for mIndex := 0 to mNode.ChildCount - 1 do
     begin
-      Child := Node[Index];
-      if (Child.StartOffset <= AOffset) and (AOffset < Child.EndOffset) then
+      mChild := mNode[mIndex];
+      if (mChild.StartOffset <= AOffset) and (AOffset < mChild.EndOffset) then
       begin
-        Node := Child;
-        if Node.Kind = TSyntaxKind.RoutineDecl then
+        mNode := mChild;
+        if mNode.Kind = TSyntaxKind.RoutineDecl then
         begin
-          Result := Node;
+          Result := mNode;
         end;
-        Descended := True;
+        mDescended := True;
         Break;
       end;
     end;
-  until not Descended;
+  until not mDescended;
 end;
 
 /// <summary>Offset des ersten Tokens in ALine bzw. danach; -1 ohne.</summary>
 function LineOffset(const ATokens: TArray<TPascalToken>; ALine: Integer): Integer;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
-  for Token in ATokens do
+  for mToken in ATokens do
   begin
-    if (Token.StartPos.Line >= ALine) and not (Token.Kind in [TPascalTokenKind.Comment,
+    if (mToken.StartPos.Line >= ALine) and not (mToken.Kind in [TPascalTokenKind.Comment,
       TPascalTokenKind.Directive]) then
     begin
-      Exit(Token.Offset);
+      Exit(mToken.Offset);
     end;
   end;
   Result := -1;
@@ -153,9 +153,9 @@ end;
 /// <summary>Bereiche der with-Anweisungen in ARoutine.</summary>
 function WithRanges(ARoutine: TSyntaxNode): TArray<TOffsetRange>;
 var
-  Found: TList<TOffsetRange>;
+  mFound: TList<TOffsetRange>;
 begin
-  Found := TList<TOffsetRange>.Create;
+  mFound := TList<TOffsetRange>.Create;
   try
     ARoutine.Walk(
       function(ANode: TSyntaxNode): Boolean
@@ -166,23 +166,23 @@ begin
         begin
           Range.StartOffset := ANode.StartOffset;
           Range.EndOffset := ANode.EndOffset;
-          Found.Add(Range);
+          mFound.Add(Range);
         end;
         Result := True;
       end);
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Found.Free;
+    mFound.Free;
   end;
 end;
 
 function InAny(const ARanges: TArray<TOffsetRange>; AOffset: Integer): Boolean;
 var
-  Range: TOffsetRange;
+  mRange: TOffsetRange;
 begin
-  for Range in ARanges do
+  for mRange in ARanges do
   begin
-    if (Range.StartOffset <= AOffset) and (AOffset < Range.EndOffset) then
+    if (mRange.StartOffset <= AOffset) and (AOffset < mRange.EndOffset) then
     begin
       Exit(True);
     end;
@@ -213,7 +213,7 @@ end;
 
 procedure TLspInlineValues.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method, Handle);
+  ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
 end;
 
 /// <summary>Zeilen von AFirstLine bis ALastLine, in denen ARoutine Werte zeigt: ab ihrem Anfang bzw. ARange bis
@@ -325,7 +325,7 @@ begin
   try
     mIndex := 0;
     while (mIndex <= High(mTokens)) and (mTokens[mIndex].StartPos.Line <= ALastLine) and
-      (mFound.Count < TLspInlineValues.MaxValues) do
+      (mFound.Count < TLspInlineValues.cMaxValues) do
     begin
       mToken := mTokens[mIndex];
       mKey := IntToStr(mToken.StartPos.Line) + ':' + LowerCase(mToken.Text);
@@ -377,57 +377,57 @@ end;
 
 class function TLspInlineValues.ToJson(const AValues: TArray<TInlineValue>): TJSONArray;
 var
-  Value: TInlineValue;
-  Item: TJSONObject;
+  mValue: TInlineValue;
+  mItem: TJSONObject;
 begin
   Result := TJSONArray.Create;
-  for Value in AValues do
+  for mValue in AValues do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Value.Range));
-    Item.AddPair('variableName', Value.Name);
-    Item.AddPair('caseSensitiveLookup', TJSONBool.Create(False));
-    if Value.TypeName <> '' then
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mValue.Range));
+    mItem.AddPair('variableName', mValue.Name);
+    mItem.AddPair('caseSensitiveLookup', TJSONBool.Create(False));
+    if mValue.TypeName <> '' then
     begin
-      Item.AddPair('atlasType', Value.TypeName);
+      mItem.AddPair('atlasType', mValue.TypeName);
     end;
-    Result.AddElement(Item);
+    Result.AddElement(mItem);
   end;
 end;
 
 function TLspInlineValues.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Cancellation: IPascalCancellation;
-  Uri: string;
-  RangeValue, StoppedValue: TJSONValue;
-  Document: ITextDocument;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
-  Stopped: TTextRange;
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mRangeValue, mStoppedValue: TJSONValue;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mStopped: TTextRange;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('context.stoppedLocation', StoppedValue)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('range', mRangeValue) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('context.stoppedLocation', mStoppedValue)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TInlineValuesText.FieldsTextDocumentUriRangeAnd].Text + Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TInlineValuesText.FieldsTextDocumentUriRangeAnd].Text + cMethod);
   end;
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONNull.Create);
   end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
-  Cancellation := TRequestCancellation.Create(ACancellation);
-  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
   ACancellation.ThrowIfCancellationRequested;
-  Stopped := TLspPositions.ReadRange(StoppedValue);
-  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  mStopped := TLspPositions.ReadRange(mStoppedValue);
+  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    Resolver.Namespaces := Namespaces;
-    Result := ToJson(Collect(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadRange(RangeValue),
-      Stopped.StartPos.Line));
+    mResolver.Namespaces := Namespaces;
+    Result := ToJson(Collect(mResolver, mShared.Tree, TDocumentUris.ToPath(mUri), TLspPositions.ReadRange(mRangeValue),
+      mStopped.StartPos.Line));
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
 

@@ -104,7 +104,7 @@ begin
     on EInOutError do
     begin
       // Gesperrt (laufende EXE): umbenennen geht, dann neu schreiben.
-      FFiles.MoveFile(ATarget, ATarget + TUpdateLayout.OldSuffix);
+      FFiles.MoveFile(ATarget, ATarget + TUpdateLayout.cOldSuffix);
       FFiles.CopyFile(ASource, ATarget);
     end;
   end;
@@ -155,6 +155,7 @@ begin
         FFiles.DeleteFile(TUpdateLayout.Join(FTarget, mStep.Path));
       end;
     except
+      // lsp-ignore: catch-all-without-raise -- Wiederherstellen nach Kräften; ALog protokolliert
       on mError: Exception do
       begin
         ALog(cTexts[TFileSwapText.NotRestored].Fmt([mStep.Path, mError.Message]));
@@ -170,7 +171,7 @@ var
 begin
   for mFile in AFiles.FilesIn(ATarget) do
   begin
-    if mFile.EndsWith(TUpdateLayout.OldSuffix, True) then
+    if mFile.EndsWith(TUpdateLayout.cOldSuffix, True) then
     begin
       try
         AFiles.DeleteFile(TUpdateLayout.Join(ATarget, mFile));

@@ -202,21 +202,21 @@ end;
 
 class function TAtlasMainThread.Guarded(AFeature: TAtlasFeature; const AProc: TThreadProcedure): TThreadProcedure;
 var
-  Feature: TAtlasFeature;
-  Proc: TThreadProcedure;
+  mFeature: TAtlasFeature;
+  mProc: TThreadProcedure;
 begin
-  Feature := AFeature;
-  Proc := AProc;
+  mFeature := AFeature;
+  mProc := AProc;
   Result :=
     procedure
     begin
       try
-        Proc();
+        mProc();
       except
         on EAbort do
           ;
         on E: Exception do
-          TAtlasGuard.Report(Feature, E);
+          TAtlasGuard.Report(mFeature, E);
       end;
     end;
 end;
@@ -365,7 +365,7 @@ end;
 
 class procedure TAtlasMainThread.Post(AFeature: TAtlasFeature; const AProc: TThreadProcedure; AForce: Boolean);
 var
-  Proc: TThreadProcedure;
+  mProc: TThreadProcedure;
   mModule: NativeUInt;
 begin
   if FLock = nil then
@@ -382,14 +382,14 @@ begin
     begin
       Exit;
     end;
-    Proc := Guarded(AFeature, AddPending(mModule, AProc));
+    mProc := Guarded(AFeature, AddPending(mModule, AProc));
     if AForce then
     begin
-      TThread.ForceQueue(FOwner, Proc);
+      TThread.ForceQueue(FOwner, mProc);
     end
     else
     begin
-      TThread.Queue(FOwner, Proc);
+      TThread.Queue(FOwner, mProc);
     end;
   finally
     FLock.Leave;
@@ -398,13 +398,13 @@ end;
 
 class procedure TAtlasMainThread.Queue(AFeature: TAtlasFeature; const AProc: TThreadProcedure);
 var
-  Proc: TThreadProcedure;
+  mProc: TThreadProcedure;
 begin
   // Wie TThread.Queue: im Hauptthread sofort, auch nach Stop (das Entladen ruft noch Code im Hauptthread).
   if IsMain then
   begin
-    Proc := Guarded(AFeature, AProc);
-    Proc();
+    mProc := Guarded(AFeature, AProc);
+    mProc();
   end
   else
   begin
@@ -437,7 +437,7 @@ end;
 
 class procedure TAtlasMainThread.Stop;
 var
-  Owner: TOwner;
+  mOwner: TOwner;
   mDropped: TArray<TThreadProcedure>;
 begin
   if FLock = nil then
@@ -447,7 +447,7 @@ begin
   FLock.Enter;
   try
     FStopped := True;
-    Owner := FOwner;
+    mOwner := FOwner;
     FOwner := nil;
     // Auch Einträge, die CheckSynchronize schon aus der Warteschlange genommen hat, laufen dann leer.
     mDropped := TakePending(0);
@@ -459,23 +459,23 @@ begin
     TAtlasGuard.Log(Format('Atlas: dropped %d queued main thread entries on unload', [Length(mDropped)]));
   end;
   // mDropped wird erst beim Verlassen frei, außerhalb der Sperre (wie DropModule).
-  if Owner = nil then
+  if mOwner = nil then
   begin
     Exit;
   end;
   // Ab hier kommt kein Eintrag mehr dazu (Post prüft unter FLock); alle wartenden verwerfen.
-  TThread.RemoveQueuedEvents(Owner);
-  Owner.Terminate;
+  TThread.RemoveQueuedEvents(mOwner);
+  mOwner.Terminate;
   // Nicht Owner.WaitFor (arbeitet im Hauptthread die Warteschlange ab) und nicht das Handle (braucht beim
   // Prozessende die Ladersperre): auf Finished warten wie TAtlasTimeLimit.StopAll.
-  if TAtlasShutdown.WaitForThreads([TThread(Owner)], TAtlasShutdown.StopMs) then
+  if TAtlasShutdown.WaitForThreads([TThread(mOwner)], TAtlasShutdown.cStopMs) then
   begin
-    Owner.Free;
+    mOwner.Free;
   end
   else
   begin
     TAtlasGuard.Log('Atlas: Besitzer der Hauptthread-Einträge endet nicht; er gibt sich bei Rückkehr selbst frei');
-    Owner.FreeOnTerminate := True;
+    mOwner.FreeOnTerminate := True;
   end;
 end;
 

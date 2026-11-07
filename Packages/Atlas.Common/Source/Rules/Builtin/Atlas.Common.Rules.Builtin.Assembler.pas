@@ -34,7 +34,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  AsmInvalidRuleId = 'asm-invalid';
+  cAsmInvalidRuleId = 'asm-invalid';
 
 type
   TAsmInvalidRule = class(TInterfacedObject, IRule)
@@ -637,7 +637,7 @@ end;
 
 function TAsmInvalidRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(AsmInvalidRuleId, TRuleSeverity.Error, cTexts[TAssemblerText.Title].Text);
+  Result := TRuleDescriptor.Create(cAsmInvalidRuleId, TRuleSeverity.Error, cTexts[TAssemblerText.Title].Text);
 end;
 
 procedure TAsmInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

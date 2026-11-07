@@ -34,7 +34,7 @@ type
   TAtlasIdeDebugTrace = class
   public const
     /// <summary>Namen der Aktionen in der Aktionsliste der IDE.</summary>
-    ActionNames: array[TAtlasTraceKind] of string = ('RunTraceIntoCommand', 'RunTraceToSourceCommand');
+    cActionNames: array[TAtlasTraceKind] of string = ('RunTraceIntoCommand', 'RunTraceToSourceCommand');
   private type
     /// <summary>Hängt an einer Aktion: meldet den Schritt, dann die Aktion wie bisher.</summary>
     THook = class(TComponent)
@@ -67,8 +67,6 @@ type
     class procedure AddHandler(const AName: string; const AEvent: TAtlasTraceEvent); static;
     /// <summary>Empfänger abmelden; beim letzten hängt Atlas sich von den Aktionen ab.</summary>
     class procedure RemoveHandler(const AName: string); static;
-    /// <summary>Hängt Atlas an der Aktion? (Studie, Diagnose)</summary>
-    class function Hooked(AKind: TAtlasTraceKind): Boolean; static;
     /// <summary>Aus Atlas „Einzelne Anweisung“: Empfänger melden (Origin Atlas), dann fortsetzen; False ohne
     /// angehaltenen Prozess.</summary>
     class function StepInto: Boolean; static;
@@ -160,7 +158,7 @@ begin
   for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
   begin
     mAction := mServices.ActionList.Actions[mIndex];
-    if SameText(mAction.Name, ActionNames[AKind]) then
+    if SameText(mAction.Name, cActionNames[AKind]) then
     begin
       Exit(mAction);
     end;
@@ -203,7 +201,7 @@ begin
     else
     begin
       TAtlasGuard.Log(Format('Debugger: Aktion %s nicht gefunden; der Schritt bleibt unverändert',
-        [ActionNames[mKind]]));
+        [cActionNames[mKind]]));
     end;
   end;
 end;
@@ -273,11 +271,6 @@ begin
         end);
     end;
   end;
-end;
-
-class function TAtlasIdeDebugTrace.Hooked(AKind: TAtlasTraceKind): Boolean;
-begin
-  Result := FHooks[AKind] <> nil;
 end;
 
 class function TAtlasIdeDebugTrace.StepInto: Boolean;

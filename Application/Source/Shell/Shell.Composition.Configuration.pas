@@ -98,7 +98,7 @@ end;
 
 procedure TShellConfiguration.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterNotification(TLspConfiguration.DidChangeConfigurationMethod, DidChangeConfiguration);
+  ADispatcher.RegisterNotification(TLspConfiguration.cDidChangeConfigurationMethod, DidChangeConfiguration);
 end;
 
 procedure TShellConfiguration.UseReplaySettings(const AFileName: string);

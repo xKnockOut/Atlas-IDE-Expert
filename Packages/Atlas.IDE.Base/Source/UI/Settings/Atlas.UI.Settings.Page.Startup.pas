@@ -57,9 +57,9 @@ uses
 
 const
   // Auswahllisten der Updates (#1519) in der Reihenfolge der Anzeige.
-  UpdatesInstallModes: array[0..2] of string = ('ask', 'auto', 'off');
-  UpdatesChannels: array[0..1] of string = ('stable', 'prerelease');
-  UpdatesNewModulesModes: array[0..2] of string = ('ask', 'install', 'skip');
+  cUpdatesInstallModes: array[0..2] of string = ('ask', 'auto', 'off');
+  cUpdatesChannels: array[0..1] of string = ('stable', 'prerelease');
+  cUpdatesNewModulesModes: array[0..2] of string = ('ask', 'install', 'skip');
 
 { TAtlasSettingsStartupPart }
 
@@ -90,22 +90,22 @@ end;
 
 procedure TAtlasSettingsStartupPart.AddSafeSection;
 var
-  Panel: TWinControl;
+  mPanel: TWinControl;
   mCaption: TLabel;
 begin
   // Abgesicherter Start nach einem Absturz (#722).
   AddTitle(TAtlasTextId.SettingsSafeTitle);
   BindCheck('SafeAskAfterCrash', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeAsk)));
   BindCheck('SafeAutoAfterRepeatedCrash', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeAuto)));
-  Panel := AddPanel(26);
+  mPanel := AddPanel(26);
   mCaption := TLabel.Create(FPage);
-  mCaption.Parent := Panel;
+  mCaption.Parent := mPanel;
   mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsSafeKey);
   mCaption.Left := 0;
   mCaption.Top := 5;
   FSafeKey := TAtlasChoiceBox.Create(FPage);
-  FSafeKey.Parent := Panel;
-  FSafeKey.Left := FieldLeft;
+  FSafeKey.Parent := mPanel;
+  FSafeKey.Left := cFieldLeft;
   FSafeKey.Top := 1;
   FSafeKey.Width := 120;
   // Reihenfolge wie TAtlasStartupKey ohne None vorn: Umschalt, Strg, keine.
@@ -142,14 +142,14 @@ end;
 
 procedure TAtlasSettingsStartupPart.AddUpdatesSection;
 var
-  Panel: TWinControl;
+  mPanel: TWinControl;
 begin
   // Version und Update-Prüfung (#495).
   AddTitle(TAtlasTextId.SettingsUpdatesTitle);
-  Panel := AddPanel(20);
+  mPanel := AddPanel(20);
   FVersion := TLabel.Create(FPage);
-  FVersion.Parent := Panel;
-  FVersion.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsVersion, [TAtlasPluginVersion.Version,
+  FVersion.Parent := mPanel;
+  FVersion.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsVersion, [TAtlasPluginVersion.cVersion,
     TAtlasUpdates.IdeVersion]);
   FVersion.Left := 0;
   FVersion.Top := 2;
@@ -189,9 +189,9 @@ begin
   end;
   FUndoOnConflict.Choice := Ord(TAtlasUndoNames.ParseConflictMode(ASettings.UndoMultiFileOnConflict));
   FUndoNewFiles.Choice := Ord(TAtlasUndoNames.ParseNewFiles(ASettings.UndoMultiFileNewFiles));
-  FUpdatesInstall.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesInstall, UpdatesInstallModes);
-  FUpdatesChannel.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesChannel, UpdatesChannels);
-  FUpdatesNewModules.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesNewModules, UpdatesNewModulesModes);
+  FUpdatesInstall.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesInstall, cUpdatesInstallModes);
+  FUpdatesChannel.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesChannel, cUpdatesChannels);
+  FUpdatesNewModules.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesNewModules, cUpdatesNewModulesModes);
 end;
 
 procedure TAtlasSettingsStartupPart.Save(var ASettings: TAtlasPluginSettings);
@@ -207,9 +207,9 @@ begin
   ASettings.UndoMultiFileOnConflict := TAtlasUndoNames.ConflictModeName(TAtlasUndoConflictMode(
     Max(0, FUndoOnConflict.Choice)));
   ASettings.UndoMultiFileNewFiles := TAtlasUndoNames.NewFilesName(TAtlasNewFilesMode(Max(0, FUndoNewFiles.Choice)));
-  ASettings.UpdatesInstall := UpdatesInstallModes[EnsureRange(FUpdatesInstall.Choice, 0, 2)];
-  ASettings.UpdatesChannel := UpdatesChannels[EnsureRange(FUpdatesChannel.Choice, 0, 1)];
-  ASettings.UpdatesNewModules := UpdatesNewModulesModes[EnsureRange(FUpdatesNewModules.Choice, 0, 2)];
+  ASettings.UpdatesInstall := cUpdatesInstallModes[EnsureRange(FUpdatesInstall.Choice, 0, 2)];
+  ASettings.UpdatesChannel := cUpdatesChannels[EnsureRange(FUpdatesChannel.Choice, 0, 1)];
+  ASettings.UpdatesNewModules := cUpdatesNewModulesModes[EnsureRange(FUpdatesNewModules.Choice, 0, 2)];
 end;
 
 end.

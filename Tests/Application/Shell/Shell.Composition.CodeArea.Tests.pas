@@ -127,8 +127,8 @@ end;
 
 procedure TShellCodeAreaTests.RequestsAttached;
 begin
-  Assert.IsTrue(HasMethod(TLspCompletion.Method), TLspCompletion.Method);
-  Assert.IsTrue(HasMethod(TLspCodeActions.Method), TLspCodeActions.Method);
+  Assert.IsTrue(HasMethod(TLspCompletion.cMethod), TLspCompletion.cMethod);
+  Assert.IsTrue(HasMethod(TLspCodeActions.cMethod), TLspCodeActions.cMethod);
 end;
 
 procedure TShellCodeAreaTests.UsesContextWithoutWorkspace;

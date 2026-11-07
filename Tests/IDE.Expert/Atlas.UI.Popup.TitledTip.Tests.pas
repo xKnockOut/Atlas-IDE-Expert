@@ -45,7 +45,7 @@ begin
     Assert.IsTrue(Two.cy > One.cy, 'zweite Zeile macht den Tooltip höher');
     Assert.AreEqual('Eine Zeile' + #13#10 + 'Noch eine', Tip.Text);
     Long := Tip.Measure('Notiz', StringOfChar('x', 20) + ' ' + StringOfChar('y', 400));
-    Assert.IsTrue(Long.cx <= TAtlasTitledTip.MaxWidth + 2 * TAtlasTitledTip.Padding, 'Breite begrenzt');
+    Assert.IsTrue(Long.cx <= TAtlasTitledTip.cMaxWidth + 2 * TAtlasTitledTip.cPadding, 'Breite begrenzt');
   finally
     Tip.Free;
   end;

@@ -64,10 +64,10 @@ type
 
   TLspStepFilter = class
   public const
-    Command = 'atlas.server.stepFilter';
-    CountsCommand = 'atlas.server.stepFilterCounts';
+    cCommand = 'atlas.server.stepFilter';
+    cCountsCommand = 'atlas.server.stepFilterCounts';
     /// <summary>Höchstens so viele Dateien zählt CountsCommand.</summary>
-    MaxFiles = 5000;
+    cMaxFiles = 5000;
   private
     class function Keyword(AHeader: TSyntaxNode; const AText: string): string; static;
     class function Statements(ABlock: TSyntaxNode): TArray<TSyntaxNode>; static;
@@ -749,7 +749,7 @@ begin
   begin
     if mKind in ARoutine.Kinds then
     begin
-      mKinds.Add(TStepFilterNames.KindNames[mKind]);
+      mKinds.Add(TStepFilterNames.cKindNames[mKind]);
     end;
   end;
 end;
@@ -770,7 +770,7 @@ begin
   Result.AddPair('kinds', mKinds);
   for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
   begin
-    mKinds.AddPair(TStepFilterNames.KindNames[mKind], TJSONNumber.Create(ACounts.Kinds[mKind]));
+    mKinds.AddPair(TStepFilterNames.cKindNames[mKind], TJSONNumber.Create(ACounts.Kinds[mKind]));
   end;
   mPatterns := TJSONArray.Create;
   Result.AddPair('patterns', mPatterns);

@@ -27,9 +27,9 @@ uses
 type
   TAtlasJenkinsProvider = class(TInterfacedObject, IAtlasCiProvider)
   public const
-    ProviderName = 'jenkins';
+    cProviderName = 'jenkins';
     /// <summary>Höchstens so viele Zeichen einer Fehlermeldung werden gespeichert.</summary>
-    MaxMessage = 300;
+    cMaxMessage = 300;
   public
     /// <summary>Teil einer Adresse: UTF-8, alles außer A–Z, a–z, 0–9 und -._~ als %XX.</summary>
     class function Encode(const AText: string): string; static;
@@ -60,11 +60,11 @@ uses
   System.JSON;
 
 const
-  BuildTree = 'tree=number,result,timestamp,duration';
+  cBuildTree = 'tree=number,result,timestamp,duration';
   // [ und ] kodiert: manche Proxys lehnen sie in der Adresse ab.
-  CaseTree = 'suites%5Bcases%5BclassName,name,status,errorDetails%5D%5D';
-  ReportTree = 'tree=passCount,failCount,skipCount,' + CaseTree +
-    ',childReports%5Bresult%5BpassCount,failCount,skipCount,' + CaseTree + '%5D%5D';
+  cCaseTree = 'suites%5Bcases%5BclassName,name,status,errorDetails%5D%5D';
+  cReportTree = 'tree=passCount,failCount,skipCount,' + cCaseTree +
+    ',childReports%5Bresult%5BpassCount,failCount,skipCount,' + cCaseTree + '%5D%5D';
 
 /// <summary>Zeichen, die in einer Adresse unverändert bleiben (RFC 3986, „unreserved“).</summary>
 function IsUnreserved(AValue: Byte): Boolean;
@@ -76,28 +76,28 @@ end;
 
 class function TAtlasJenkinsProvider.Encode(const AText: string): string;
 var
-  Bytes: TBytes;
-  Value: Byte;
+  mBytes: TBytes;
+  mValue: Byte;
 begin
   Result := '';
-  Bytes := TEncoding.UTF8.GetBytes(AText);
-  for Value in Bytes do
+  mBytes := TEncoding.UTF8.GetBytes(AText);
+  for mValue in mBytes do
   begin
-    if IsUnreserved(Value) then
+    if IsUnreserved(mValue) then
     begin
-      Result := Result + Char(Value);
+      Result := Result + Char(mValue);
     end
     else
     begin
-      Result := Result + '%' + IntToHex(Value, 2);
+      Result := Result + '%' + IntToHex(mValue, 2);
     end;
   end;
 end;
 
 class function TAtlasJenkinsProvider.JobUrl(const AJob: TAtlasCiJob): string;
 var
-  Parts: TArray<string>;
-  Part: string;
+  mParts: TArray<string>;
+  mPart: string;
 begin
   Result := '';
   if (AJob.Server = '') or (AJob.Job = '') then
@@ -105,12 +105,12 @@ begin
     Exit;
   end;
   Result := AJob.Url;
-  Parts := AJob.Job.Split(['/']);
-  for Part in Parts do
+  mParts := AJob.Job.Split(['/']);
+  for mPart in mParts do
   begin
-    if Trim(Part) <> '' then
+    if Trim(mPart) <> '' then
     begin
-      Result := Result + '/job/' + Encode(Trim(Part));
+      Result := Result + '/job/' + Encode(Trim(mPart));
     end;
   end;
   // Jenkins führt den Branch eines Multibranch-Jobs kodiert ("feature%2Fx"); in der Adresse noch einmal.
@@ -125,7 +125,7 @@ begin
   Result := JobUrl(AJob);
   if Result <> '' then
   begin
-    Result := Result + '/lastCompletedBuild/api/json?' + BuildTree;
+    Result := Result + '/lastCompletedBuild/api/json?' + cBuildTree;
   end;
 end;
 
@@ -134,7 +134,7 @@ begin
   Result := JobUrl(AJob);
   if (Result <> '') and (ANumber > 0) then
   begin
-    Result := Result + '/' + IntToStr(ANumber) + '/testReport/api/json?' + ReportTree;
+    Result := Result + '/' + IntToStr(ANumber) + '/testReport/api/json?' + cReportTree;
   end
   else
   begin
@@ -172,111 +172,111 @@ end;
 
 function NumberOf(AObject: TJSONObject; const AName: string; out AValue: Int64): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   AValue := 0;
-  Value := AObject.Values[AName];
-  Result := Value is TJSONNumber;
+  mValue := AObject.Values[AName];
+  Result := mValue is TJSONNumber;
   // Über den Text: Zeitstempel in ms passen nicht in 32 Bit, Zähler können als 12.0 kommen.
-  if Result and not TryStrToInt64(TJSONNumber(Value).Value, AValue) then
+  if Result and not TryStrToInt64(TJSONNumber(mValue).Value, AValue) then
   begin
-    AValue := Trunc(TJSONNumber(Value).AsDouble);
+    AValue := Trunc(TJSONNumber(mValue).AsDouble);
   end;
 end;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
-  Value := AObject.Values[AName];
-  if Value is TJSONString then
+  mValue := AObject.Values[AName];
+  if mValue is TJSONString then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end;
 end;
 
 /// <summary>Erste nicht leere Zeile, gekürzt.</summary>
 function FirstLine(const AText: string): string;
 var
-  Lines: TArray<string>;
-  Line: string;
+  mLines: TArray<string>;
+  mLine: string;
 begin
   Result := '';
-  Lines := AText.Replace(#13, #10).Split([#10]);
-  for Line in Lines do
+  mLines := AText.Replace(#13, #10).Split([#10]);
+  for mLine in mLines do
   begin
-    if Trim(Line) <> '' then
+    if Trim(mLine) <> '' then
     begin
-      Result := Trim(Line);
+      Result := Trim(mLine);
       Break;
     end;
   end;
-  if Length(Result) > TAtlasJenkinsProvider.MaxMessage then
+  if Length(Result) > TAtlasJenkinsProvider.cMaxMessage then
   begin
-    Result := Copy(Result, 1, TAtlasJenkinsProvider.MaxMessage - 1) + '…';
+    Result := Copy(Result, 1, TAtlasJenkinsProvider.cMaxMessage - 1) + '…';
   end;
 end;
 
 class function TAtlasJenkinsProvider.ParseBuild(const AJson: string; out ABuild: TAtlasCiBuild): Boolean;
 var
-  Value: TJSONValue;
-  Root: TJSONObject;
-  Number, Stamp, Duration: Int64;
+  mValue: TJSONValue;
+  mRoot: TJSONObject;
+  mNumber, mStamp, mDuration: Int64;
 begin
   ABuild := TAtlasCiBuild.Empty;
   Result := False;
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    Root := TJSONObject(Value);
-    if not NumberOf(Root, 'number', Number) or (Number <= 0) or (Number > MaxInt) then
+    mRoot := TJSONObject(mValue);
+    if not NumberOf(mRoot, 'number', mNumber) or (mNumber <= 0) or (mNumber > MaxInt) then
     begin
       Exit;
     end;
-    ABuild.Number := Integer(Number);
-    ABuild.Outcome := OutcomeOfResult(TextOf(Root, 'result'));
+    ABuild.Number := Integer(mNumber);
+    ABuild.Outcome := OutcomeOfResult(TextOf(mRoot, 'result'));
     // Millisekunden seit 1970 in UTC.
-    if NumberOf(Root, 'timestamp', Stamp) and (Stamp > 0) then
+    if NumberOf(mRoot, 'timestamp', mStamp) and (mStamp > 0) then
     begin
-      ABuild.StartedUtc := IncMilliSecond(UnixToDateTime(Stamp div 1000), Stamp mod 1000);
+      ABuild.StartedUtc := IncMilliSecond(UnixToDateTime(mStamp div 1000), mStamp mod 1000);
     end;
-    if NumberOf(Root, 'duration', Duration) and (Duration > 0) then
+    if NumberOf(mRoot, 'duration', mDuration) and (mDuration > 0) then
     begin
-      ABuild.DurationMs := Duration;
+      ABuild.DurationMs := mDuration;
     end;
     Result := True;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 /// <summary>Zähler eines Berichts zu ABuild addieren.</summary>
 procedure ReadCounts(AReport: TJSONObject; var ABuild: TAtlasCiBuild);
 var
-  Count: Int64;
+  mCount: Int64;
 begin
-  if NumberOf(AReport, 'passCount', Count) then
+  if NumberOf(AReport, 'passCount', mCount) then
   begin
-    Inc(ABuild.Passed, Integer(Count));
+    Inc(ABuild.Passed, Integer(mCount));
   end;
-  if NumberOf(AReport, 'failCount', Count) then
+  if NumberOf(AReport, 'failCount', mCount) then
   begin
-    Inc(ABuild.Failed, Integer(Count));
+    Inc(ABuild.Failed, Integer(mCount));
   end;
-  if NumberOf(AReport, 'skipCount', Count) then
+  if NumberOf(AReport, 'skipCount', mCount) then
   begin
-    Inc(ABuild.Skipped, Integer(Count));
+    Inc(ABuild.Skipped, Integer(mCount));
   end;
 end;
 
 /// <summary>Fehlgeschlagener Fall aus AItem; False bei anderem Status oder ohne Namen.</summary>
 function FailureOf(AItem: TJSONValue; out AFailure: TAtlasCiFailure): Boolean;
 var
-  Status, ClassName, CaseName: string;
+  mStatus, mClassName, mCaseName: string;
 begin
   AFailure := Default(TAtlasCiFailure);
   Result := False;
@@ -284,17 +284,17 @@ begin
   begin
     Exit;
   end;
-  Status := TextOf(TJSONObject(AItem), 'status');
-  if not (SameText(Status, 'FAILED') or SameText(Status, 'REGRESSION')) then
+  mStatus := TextOf(TJSONObject(AItem), 'status');
+  if not (SameText(mStatus, 'FAILED') or SameText(mStatus, 'REGRESSION')) then
   begin
     Exit;
   end;
-  ClassName := Trim(TextOf(TJSONObject(AItem), 'className'));
-  CaseName := Trim(TextOf(TJSONObject(AItem), 'name'));
-  AFailure.Test := CaseName;
-  if ClassName <> '' then
+  mClassName := Trim(TextOf(TJSONObject(AItem), 'className'));
+  mCaseName := Trim(TextOf(TJSONObject(AItem), 'name'));
+  AFailure.Test := mCaseName;
+  if mClassName <> '' then
   begin
-    AFailure.Test := ClassName + '.' + CaseName;
+    AFailure.Test := mClassName + '.' + mCaseName;
   end;
   AFailure.Message := FirstLine(TextOf(TJSONObject(AItem), 'errorDetails'));
   Result := AFailure.Test <> '';
@@ -303,23 +303,23 @@ end;
 /// <summary>Fehlschläge der Fälle einer Suite sammeln, höchstens MaxFailures.</summary>
 procedure ReadCases(ASuite: TJSONValue; var ABuild: TAtlasCiBuild);
 var
-  Cases, Item: TJSONValue;
-  Failure: TAtlasCiFailure;
+  mCases, mItem: TJSONValue;
+  mFailure: TAtlasCiFailure;
 begin
   if not (ASuite is TJSONObject) then
   begin
     Exit;
   end;
-  Cases := TJSONObject(ASuite).Values['cases'];
-  if not (Cases is TJSONArray) then
+  mCases := TJSONObject(ASuite).Values['cases'];
+  if not (mCases is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(Cases) do
+  for mItem in TJSONArray(mCases) do
   begin
-    if (Length(ABuild.Failures) < TAtlasCiBuild.MaxFailures) and FailureOf(Item, Failure) then
+    if (Length(ABuild.Failures) < TAtlasCiBuild.cMaxFailures) and FailureOf(mItem, mFailure) then
     begin
-      ABuild.Failures := ABuild.Failures + [Failure];
+      ABuild.Failures := ABuild.Failures + [mFailure];
     end;
   end;
 end;
@@ -327,15 +327,15 @@ end;
 /// <summary>Fälle eines Berichts (oder eines Teilberichts) zählen und Fehlschläge sammeln.</summary>
 procedure ReadReport(AReport: TJSONObject; var ABuild: TAtlasCiBuild);
 var
-  Suites, Suite: TJSONValue;
+  mSuites, mSuite: TJSONValue;
 begin
   ReadCounts(AReport, ABuild);
-  Suites := AReport.Values['suites'];
-  if Suites is TJSONArray then
+  mSuites := AReport.Values['suites'];
+  if mSuites is TJSONArray then
   begin
-    for Suite in TJSONArray(Suites) do
+    for mSuite in TJSONArray(mSuites) do
     begin
-      ReadCases(Suite, ABuild);
+      ReadCases(mSuite, ABuild);
     end;
   end;
 end;
@@ -343,16 +343,16 @@ end;
 /// <summary>Teilberichte (Matrix, Pipeline) aus AChildren zählen.</summary>
 procedure ReadChildReports(AChildren: TJSONArray; var ABuild: TAtlasCiBuild);
 var
-  Child, Inner: TJSONValue;
+  mChild, mInner: TJSONValue;
 begin
-  for Child in AChildren do
+  for mChild in AChildren do
   begin
-    if Child is TJSONObject then
+    if mChild is TJSONObject then
     begin
-      Inner := TJSONObject(Child).Values['result'];
-      if Inner is TJSONObject then
+      mInner := TJSONObject(mChild).Values['result'];
+      if mInner is TJSONObject then
       begin
-        ReadReport(TJSONObject(Inner), ABuild);
+        ReadReport(TJSONObject(mInner), ABuild);
       end;
     end;
   end;
@@ -360,34 +360,34 @@ end;
 
 class function TAtlasJenkinsProvider.ParseTestReport(const AJson: string; var ABuild: TAtlasCiBuild): Boolean;
 var
-  Value, Children: TJSONValue;
-  Root: TJSONObject;
-  Sum: TAtlasCiBuild;
+  mValue, mChildren: TJSONValue;
+  mRoot: TJSONObject;
+  mSum: TAtlasCiBuild;
 begin
   Result := False;
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    Root := TJSONObject(Value);
-    Sum := TAtlasCiBuild.Empty;
-    Children := Root.Values['childReports'];
-    if (Children is TJSONArray) and (TJSONArray(Children).Count > 0) then
+    mRoot := TJSONObject(mValue);
+    mSum := TAtlasCiBuild.Empty;
+    mChildren := mRoot.Values['childReports'];
+    if (mChildren is TJSONArray) and (TJSONArray(mChildren).Count > 0) then
     begin
       // Zusammengefasster Bericht (Matrix, Pipeline mit Teilberichten): Teilberichte zählen.
-      ReadChildReports(TJSONArray(Children), Sum);
+      ReadChildReports(TJSONArray(mChildren), mSum);
     end
     else
     begin
-      ReadReport(Root, Sum);
+      ReadReport(mRoot, mSum);
     end;
     ABuild.TestsKnown := True;
-    ABuild.Passed := Sum.Passed;
-    ABuild.Failed := Sum.Failed;
-    ABuild.Skipped := Sum.Skipped;
-    ABuild.Failures := Sum.Failures;
+    ABuild.Passed := mSum.Passed;
+    ABuild.Failed := mSum.Failed;
+    ABuild.Skipped := mSum.Skipped;
+    ABuild.Failures := mSum.Failures;
     // Weniger Zähler als gelesene Fehlschläge (alte Plugins zählen nicht): die gelesenen gelten.
     if ABuild.Failed < Length(ABuild.Failures) then
     begin
@@ -395,7 +395,7 @@ begin
     end;
     Result := True;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -413,16 +413,16 @@ end;
 
 function TAtlasJenkinsProvider.Name: string;
 begin
-  Result := ProviderName;
+  Result := cProviderName;
 end;
 
 function TAtlasJenkinsProvider.Fetch(const AJob: TAtlasCiJob; const ATransport: IAtlasCiTransport;
   ATimeoutMs: Integer; out ABuild: TAtlasCiBuild; out AError: TAtlasCiFetchError): Boolean;
 var
-  Watch: TStopwatch;
-  Status: Integer;
-  Text: string;
-  Rest: Int64;
+  mWatch: TStopwatch;
+  mStatus: Integer;
+  mText: string;
+  mRest: Int64;
 begin
   ABuild := TAtlasCiBuild.Empty;
   AError := TAtlasCiFetchError.None;
@@ -432,16 +432,16 @@ begin
     AError := TAtlasCiFetchError.NotConfigured;
     Exit;
   end;
-  Watch := TStopwatch.StartNew;
-  if not ATransport.Get(BuildApiUrl(AJob), ATimeoutMs, Status, Text, AError) then
+  mWatch := TStopwatch.StartNew;
+  if not ATransport.Get(BuildApiUrl(AJob), ATimeoutMs, mStatus, mText, AError) then
   begin
     Exit;
   end;
-  if Status <> 200 then
+  if mStatus <> 200 then
   begin
-    AError := ErrorOfStatus(Status);
+    AError := ErrorOfStatus(mStatus);
   end
-  else if not ParseBuild(Text, ABuild) then
+  else if not ParseBuild(mText, ABuild) then
   begin
     AError := TAtlasCiFetchError.Invalid;
   end
@@ -450,15 +450,15 @@ begin
     Result := True;
   end;
   // Testbericht in der restlichen Zeit; fehlt er oder reicht die Zeit nicht, bleiben die Tests unbekannt.
-  Rest := ATimeoutMs - Watch.ElapsedMilliseconds;
-  if not Result or (Rest <= 0) then
+  mRest := ATimeoutMs - mWatch.ElapsedMilliseconds;
+  if not Result or (mRest <= 0) then
   begin
     Exit;
   end;
-  if ATransport.Get(TestReportApiUrl(AJob, ABuild.Number), Integer(Rest), Status, Text, AError) and
-    (Status = 200) then
+  if ATransport.Get(TestReportApiUrl(AJob, ABuild.Number), Integer(mRest), mStatus, mText, AError) and
+    (mStatus = 200) then
   begin
-    ParseTestReport(Text, ABuild);
+    ParseTestReport(mText, ABuild);
   end;
   // Ein fehlender Bericht ist kein Fehler der Abfrage.
   AError := TAtlasCiFetchError.None;

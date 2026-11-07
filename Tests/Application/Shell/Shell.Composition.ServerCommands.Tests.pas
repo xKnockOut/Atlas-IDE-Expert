@@ -197,11 +197,11 @@ begin
     finally
       mCapability.Free;
     end;
-    for mName in TArray<string>.Create(StatusCommand, ProcessesCommand, TLspSettingsCommands.CheckCommand,
-      TLspSettingsCommands.CatalogCommand, TShellServerCommands.CompileCommand,
-      TShellServerCommands.RebuildIndexCommand, ClearIndexCommand, TShellCrashCases.RetryCommand,
-      TLspPullDiagnostics.RecheckCommand, TShellServerCommands.SelectBuildCommand,
-      TShellServerCommands.SelectProjectCommand, TLspFormFiles.ConvertCommand) do
+    for mName in TArray<string>.Create(cStatusCommand, cProcessesCommand, TLspSettingsCommands.cCheckCommand,
+      TLspSettingsCommands.cCatalogCommand, TShellServerCommands.cCompileCommand,
+      TShellServerCommands.cRebuildIndexCommand, cClearIndexCommand, TShellCrashCases.cRetryCommand,
+      TLspPullDiagnostics.cRecheckCommand, TShellServerCommands.cSelectBuildCommand,
+      TShellServerCommands.cSelectProjectCommand, TLspFormFiles.cConvertCommand) do
     begin
       Assert.IsTrue(Pos('"' + mName + '"', mText) > 0, mName);
     end;
@@ -218,14 +218,14 @@ begin
   Assert.WillRaise(
     procedure
     begin
-      Execute(TShellServerCommands.CompileCommand, TJSONArray.Create).Free;
+      Execute(TShellServerCommands.cCompileCommand, TJSONArray.Create).Free;
     end, EJsonRpcError);
   mArguments := TJSONArray.Create;
   mArguments.Add('file:///tmp/Projekt.dpr');
   Assert.WillRaise(
     procedure
     begin
-      Execute(TShellServerCommands.CompileCommand, mArguments).Free;
+      Execute(TShellServerCommands.cCompileCommand, mArguments).Free;
     end, EJsonRpcError);
   Assert.AreEqual(2, Integer(Length(FCompiled)));
   Assert.AreEqual('', FCompiled[0]);
@@ -236,16 +236,16 @@ procedure TShellServerCommandsTests.WithoutWorkspacesNothingHappens;
 var
   mAnswer: TJSONValue;
 begin
-  mAnswer := Execute(TShellServerCommands.SelectProjectCommand, TJSONArray.Create);
+  mAnswer := Execute(TShellServerCommands.cSelectProjectCommand, TJSONArray.Create);
   try
     Assert.IsTrue(mAnswer is TJSONObject);
   finally
     mAnswer.Free;
   end;
-  Execute(TShellServerCommands.RebuildIndexCommand, TJSONArray.Create).Free;
+  Execute(TShellServerCommands.cRebuildIndexCommand, TJSONArray.Create).Free;
   Assert.AreEqual(1, Integer(Length(FLog)));
   Assert.AreEqual('Index wird für 0 Ordner neu aufgebaut', FLog[0]);
-  mAnswer := Execute(ProcessesCommand, TJSONArray.Create);
+  mAnswer := Execute(cProcessesCommand, TJSONArray.Create);
   try
     Assert.IsNotNull(mAnswer);
   finally
@@ -261,14 +261,14 @@ var
 begin
   mArguments := TJSONArray.Create;
   mArguments.Add('file:///tmp/A.pas');
-  mAnswer := Execute(TShellCrashCases.RetryCommand, mArguments);
+  mAnswer := Execute(TShellCrashCases.cRetryCommand, mArguments);
   try
     Assert.AreEqual('1', mAnswer.Value);
   finally
     mAnswer.Free;
   end;
   Assert.AreEqual('file:///tmp/A.pas', FRetried);
-  Execute(TLspPullDiagnostics.RecheckCommand, TJSONArray.Create).Free;
+  Execute(TLspPullDiagnostics.cRecheckCommand, TJSONArray.Create).Free;
   Assert.AreEqual(1, FRechecks);
   Assert.AreEqual('Alle Dateien werden neu geprüft', FLog[0]);
 end;

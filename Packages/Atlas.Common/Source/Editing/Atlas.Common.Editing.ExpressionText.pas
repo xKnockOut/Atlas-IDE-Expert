@@ -23,12 +23,12 @@ uses
   Atlas.Common.Pascal.SyntaxTree;
 
 const
-  PrecedenceIfExpr = 0;
-  PrecedenceRelational = 1;
-  PrecedenceAdditive = 2;
-  PrecedenceMultiplicative = 3;
-  PrecedenceUnary = 4;
-  PrecedenceOperand = 5;
+  cPrecedenceIfExpr = 0;
+  cPrecedenceRelational = 1;
+  cPrecedenceAdditive = 2;
+  cPrecedenceMultiplicative = 3;
+  cPrecedenceUnary = 4;
+  cPrecedenceOperand = 5;
 
 type
   /// <summary>Text eines Ausdrucks mit dem Vorrang seines äußersten Operators.</summary>
@@ -61,8 +61,6 @@ type
     class function Negate(const AText: string; ANode: TSyntaxNode): TExpressionPart; static;
     /// <summary>Gegenoperator eines Vergleichs (= ↔ &lt;&gt; …); '' bei anderen Operatoren.</summary>
     class function InvertedComparison(const AOperator: string): string; static;
-    /// <summary>Vergleich mit vertauschten Seiten (&lt; ↔ &gt; …); '' bei anderen Operatoren.</summary>
-    class function MirroredComparison(const AOperator: string): string; static;
     /// <summary>Gleicher Ausdruck ohne Rücksicht auf Leerraum, Kommentare, Groß-/Kleinschreibung der Namen
     /// und äußere Klammern.</summary>
     class function Same(ATree: TSyntaxTree; A, B: TSyntaxNode): Boolean; static;
@@ -123,20 +121,20 @@ end;
 
 class function TExpressionText.OperatorPrecedence(const AOperator: string): Integer;
 var
-  Op: string;
+  mOp: string;
 begin
-  Op := LowerCase(AOperator);
-  if MatchStr(Op, ['=', '<>', '<', '>', '<=', '>=', 'in', 'is', 'is not', 'not in']) then
+  mOp := LowerCase(AOperator);
+  if MatchStr(mOp, ['=', '<>', '<', '>', '<=', '>=', 'in', 'is', 'is not', 'not in']) then
   begin
-    Result := PrecedenceRelational;
+    Result := cPrecedenceRelational;
   end
-  else if MatchStr(Op, ['+', '-', 'or', 'xor']) then
+  else if MatchStr(mOp, ['+', '-', 'or', 'xor']) then
   begin
-    Result := PrecedenceAdditive;
+    Result := cPrecedenceAdditive;
   end
-  else if MatchStr(Op, ['*', '/', 'div', 'mod', 'and', 'shl', 'shr', 'as']) then
+  else if MatchStr(mOp, ['*', '/', 'div', 'mod', 'and', 'shl', 'shr', 'as']) then
   begin
-    Result := PrecedenceMultiplicative;
+    Result := cPrecedenceMultiplicative;
   end
   else
   begin
@@ -152,15 +150,15 @@ begin
       Result := OperatorPrecedence(ANode.Name);
       if Result < 0 then
       begin
-        Result := PrecedenceRelational;
+        Result := cPrecedenceRelational;
       end;
     end;
     TSyntaxKind.UnaryExpr, TSyntaxKind.AddressOf:
-      Result := PrecedenceUnary;
+      Result := cPrecedenceUnary;
     TSyntaxKind.IfExpr:
-      Result := PrecedenceIfExpr;
+      Result := cPrecedenceIfExpr;
   else
-    Result := PrecedenceOperand;
+    Result := cPrecedenceOperand;
   end;
 end;
 
@@ -176,19 +174,19 @@ end;
 
 class function TExpressionText.Combine(const AOperator: string; const ALeft, ARight: TExpressionPart): TExpressionPart;
 var
-  Level: Integer;
+  mLevel: Integer;
 begin
-  Level := OperatorPrecedence(AOperator);
+  mLevel := OperatorPrecedence(AOperator);
   // Linksassoziativ: links reicht derselbe Vorrang, rechts braucht es einen höheren. Vergleiche lassen sich
   // in Delphi nicht verketten (A = B = C ist A = (B = C) nicht), deshalb dort beidseitig höher.
-  if Level = PrecedenceRelational then
+  if mLevel = cPrecedenceRelational then
   begin
-    Result := TExpressionPart.Create(ALeft.AtLeast(Level + 1) + ' ' + AOperator + ' ' + ARight.AtLeast(Level + 1),
-      Level);
+    Result := TExpressionPart.Create(ALeft.AtLeast(mLevel + 1) + ' ' + AOperator + ' ' + ARight.AtLeast(mLevel + 1),
+      mLevel);
   end
   else
   begin
-    Result := TExpressionPart.Create(ALeft.AtLeast(Level) + ' ' + AOperator + ' ' + ARight.AtLeast(Level + 1), Level);
+    Result := TExpressionPart.Create(ALeft.AtLeast(mLevel) + ' ' + AOperator + ' ' + ARight.AtLeast(mLevel + 1), mLevel);
   end;
 end;
 
@@ -201,20 +199,6 @@ begin
     3: Result := '<';
     4: Result := '<=';
     5: Result := '>';
-  else
-    Result := '';
-  end;
-end;
-
-class function TExpressionText.MirroredComparison(const AOperator: string): string;
-begin
-  case IndexStr(AOperator, ['=', '<>', '<', '>', '<=', '>=']) of
-    0: Result := '=';
-    1: Result := '<>';
-    2: Result := '>';
-    3: Result := '<';
-    4: Result := '>=';
-    5: Result := '<=';
   else
     Result := '';
   end;
@@ -233,9 +217,9 @@ begin
   Result := TExpressionText.OperatorPrecedence(AParent.Name);
   if Result < 0 then
   begin
-    Result := PrecedenceRelational;
+    Result := cPrecedenceRelational;
   end;
-  if (AParent[1] = ANode) or (Result = PrecedenceRelational) then
+  if (AParent[1] = ANode) or (Result = cPrecedenceRelational) then
   begin
     Inc(Result);
   end;
@@ -245,7 +229,7 @@ class function TExpressionText.ContextPrecedence(ANode: TSyntaxNode): Integer;
 var
   mParent: TSyntaxNode;
 begin
-  Result := PrecedenceIfExpr;
+  Result := cPrecedenceIfExpr;
   mParent := ANode.Parent;
   if mParent = nil then
   begin
@@ -258,18 +242,18 @@ begin
         Result := BinaryContextPrecedence(mParent, ANode);
       end;
     TSyntaxKind.UnaryExpr:
-      Result := PrecedenceUnary;
+      Result := cPrecedenceUnary;
     TSyntaxKind.AddressOf, TSyntaxKind.Call, TSyntaxKind.IndexAccess, TSyntaxKind.MemberAccess:
       if mParent[0] = ANode then
       begin
-        Result := PrecedenceOperand;
+        Result := cPrecedenceOperand;
       end;
     // Bedingung und Wert vor else eines Bedingungsausdrucks: ein innerer Bedingungsausdruck in Klammern
     // (sonst gehörte das else zum inneren).
     TSyntaxKind.IfExpr:
       if (mParent.ChildCount = 3) and (mParent[2] <> ANode) then
       begin
-        Result := PrecedenceIfExpr + 1;
+        Result := cPrecedenceIfExpr + 1;
       end;
   else
     // Übrige Arten: nichts zu tun.
@@ -322,11 +306,11 @@ begin
   end
   else if TExpressionText.IsBooleanLiteral(ANode) and SameText(ANode.Name, 'True') then
   begin
-    APart := TExpressionPart.Create('False', PrecedenceOperand);
+    APart := TExpressionPart.Create('False', cPrecedenceOperand);
   end
   else if TExpressionText.IsBooleanLiteral(ANode) then
   begin
-    APart := TExpressionPart.Create('True', PrecedenceOperand);
+    APart := TExpressionPart.Create('True', cPrecedenceOperand);
   end
   else
   begin
@@ -351,52 +335,52 @@ begin
   if not mDone then
   begin
     // Alles andere (Name, Aufruf, in, is, xor, bedingter Ausdruck): not vor den Operanden.
-    Result := TExpressionPart.Create('not ' + Part(AText, mNode).AtLeast(PrecedenceUnary), PrecedenceUnary);
+    Result := TExpressionPart.Create('not ' + Part(AText, mNode).AtLeast(cPrecedenceUnary), cPrecedenceUnary);
   end;
 end;
 
 class function TExpressionText.Simplify(const AText: string; ANode: TSyntaxNode): TExpressionPart;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
-  Node := Strip(ANode);
-  if (Node.Kind = TSyntaxKind.UnaryExpr) and SameText(Node.Name, 'not') and (Node.ChildCount = 1) then
+  mNode := Strip(ANode);
+  if (mNode.Kind = TSyntaxKind.UnaryExpr) and SameText(mNode.Name, 'not') and (mNode.ChildCount = 1) then
   begin
-    Result := Negate(AText, Node[0]);
+    Result := Negate(AText, mNode[0]);
   end
   else
   begin
-    Result := Part(AText, Node);
+    Result := Part(AText, mNode);
   end;
 end;
 
 class function TExpressionText.Normalized(ATree: TSyntaxTree; ANode: TSyntaxNode): string;
 var
-  Node: TSyntaxNode;
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
-  Word: string;
+  mNode: TSyntaxNode;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+  mWord: string;
 begin
-  Node := Strip(ANode);
-  Tokens := ATree.Tokens;
+  mNode := Strip(ANode);
+  mTokens := ATree.Tokens;
   Result := '';
-  Index := TRoutineBody.TokenAt(Tokens, Node.StartOffset);
-  while (Index <= High(Tokens)) and (Tokens[Index].Offset < Node.EndOffset) do
+  mIndex := TRoutineBody.TokenAt(mTokens, mNode.StartOffset);
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < mNode.EndOffset) do
   begin
-    if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    if not (mTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
-      Word := Tokens[Index].Text;
-      if Tokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
+      mWord := mTokens[mIndex].Text;
+      if mTokens[mIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
       begin
-        Word := LowerCase(Word);
+        mWord := LowerCase(mWord);
       end;
       if Result <> '' then
       begin
         Result := Result + ' ';
       end;
-      Result := Result + Word;
+      Result := Result + mWord;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 

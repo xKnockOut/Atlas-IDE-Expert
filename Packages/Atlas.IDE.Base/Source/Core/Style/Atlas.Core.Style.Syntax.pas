@@ -43,7 +43,7 @@ uses
   Atlas.Text.Chars;
 
 const
-  Keywords: array of string = [
+  cKeywords: array of string = [
     'absolute', 'abstract', 'and', 'array', 'as', 'begin', 'case', 'cdecl', 'class', 'const', 'constructor',
     'default', 'deprecated', 'destructor', 'dispinterface', 'div', 'do', 'downto', 'dynamic', 'else', 'end',
     'except', 'experimental', 'export', 'external', 'file', 'final', 'finalization', 'finally', 'for',
@@ -202,11 +202,11 @@ end;
 
 class function TAtlasSyntax.IsKeyword(const AWord: string): Boolean;
 var
-  Word: string;
+  mWord: string;
 begin
-  for Word in Keywords do
+  for mWord in cKeywords do
   begin
-    if SameText(Word, AWord) then
+    if SameText(mWord, AWord) then
     begin
       Exit(True);
     end;

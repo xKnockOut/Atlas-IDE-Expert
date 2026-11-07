@@ -88,9 +88,9 @@ begin
       end;
     Build.Attach(Dispatcher);
     Assert.IsFalse(Build.LastBuild.Known);
-    Notify(Dispatcher, TLspIdeBuild.FinishedMethod,
+    Notify(Dispatcher, TLspIdeBuild.cFinishedMethod,
       '{"project":"C:\\P\\A.dproj","kind":"build","configuration":"Debug","platform":"Win32","success":false,"durationMs":1234}');
-    Notify(Dispatcher, TLspIdeBuild.MessagesMethod, Sample);
+    Notify(Dispatcher, TLspIdeBuild.cMessagesMethod, Sample);
     Assert.AreEqual(3, Received);
     Assert.IsTrue(Build.LastBuild.Known);
     Assert.AreEqual('C:\P\A.dproj', Build.LastBuild.Project);
@@ -129,19 +129,19 @@ begin
         end;
       end;
     Build.Attach(Dispatcher);
-    Notify(Dispatcher, TLspIdeBuild.StartedMethod, '{"group":true,"kind":"make"}');
-    Notify(Dispatcher, TLspIdeBuild.StartedMethod, '{"project":"C:\\P\\A.dproj"}');
-    Notify(Dispatcher, TLspIdeBuild.StartedMethod, '{"project":"C:\\P\\B.dproj"}');
+    Notify(Dispatcher, TLspIdeBuild.cStartedMethod, '{"group":true,"kind":"make"}');
+    Notify(Dispatcher, TLspIdeBuild.cStartedMethod, '{"project":"C:\\P\\A.dproj"}');
+    Notify(Dispatcher, TLspIdeBuild.cStartedMethod, '{"project":"C:\\P\\B.dproj"}');
     Assert.IsTrue(Build.Compiling);
-    Notify(Dispatcher, TLspIdeBuild.FinishedMethod, '{"project":"C:\\P\\A.dproj","success":true}');
+    Notify(Dispatcher, TLspIdeBuild.cFinishedMethod, '{"project":"C:\\P\\A.dproj","success":true}');
     Assert.IsTrue(Build.Compiling, 'B und die Gruppe laufen noch');
     // Fehlt das Ende von B, beendet das Ende der Gruppe alles.
-    Notify(Dispatcher, TLspIdeBuild.FinishedMethod, '{"group":true,"success":true}');
+    Notify(Dispatcher, TLspIdeBuild.cFinishedMethod, '{"group":true,"success":true}');
     Assert.IsFalse(Build.Compiling);
     // Einzelnes Projekt im Hintergrund (#548).
-    Notify(Dispatcher, TLspIdeBuild.StartedMethod, '{"project":"C:\\P\\A.dproj","background":true}');
+    Notify(Dispatcher, TLspIdeBuild.cStartedMethod, '{"project":"C:\\P\\A.dproj","background":true}');
     Assert.IsTrue(Build.Compiling);
-    Notify(Dispatcher, TLspIdeBuild.FinishedMethod, '{"project":"c:\\p\\a.dproj","background":true}');
+    Notify(Dispatcher, TLspIdeBuild.cFinishedMethod, '{"project":"c:\\p\\a.dproj","background":true}');
     Assert.IsFalse(Build.Compiling);
     Assert.AreEqual('+-+-', Events);
   finally

@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesDeStyle: array[0..553] of string = (
+  cCatalogLinesDeStyle: array[0..553] of string = (
     '{',
     '      "id": "unused-local",',
     '      "name": "Ungenutzte lokale Variable",',
@@ -59,7 +59,9 @@ const
     '{',
     '      "id": "hardcoded-string",',
     '      "name": "Text im Code statt resourcestring",',
-    '      "description": "In einer Anweisung steht ein String mit Wörtern für Menschen. In einen resourcestring auslagern, damit er übersetzt werden kann. Standardmäßig aus, niedrige Konfidenz."',
+    '      "description": "In einer Anweisung steht ein String mit Wörtern für Menschen. In einen resourcestring auslagern, damit er übersetzt werden kann. Still bei Texten, die niemand übersetzt: Argument' +
+    'e von Protokoll- und Prüfaufrufen (…Log, Log…, Diagnose, Trace, Debug, Assert, OutputDebugString), Vergleichs- und Registry-Aufrufen (StartsText, Pos, ReadString …), Masken von FormatDateTime und Form' +
+    'atFloat, Markup (HTML ab <, JSON ab { oder \"Schlüssel\":, Markdown-Überschriften # und ##) und Font.Name; die Option ignoreCalls nennt weitere Routinen. Standardmäßig aus, niedrige Konfidenz."',
     '    },',
     '{',
     '      "id": "bool-compare",',
@@ -284,9 +286,10 @@ const
     '{',
     '      "id": "magic-number",',
     '      "name": "Zahl ohne Namen im Code",',
-    '      "description": "Zahlenliterale (dezimal, $hex, Gleitkomma, mit Vorzeichen) in Anweisungen, außerhalb von const-Abschnitten, Typen, Array-Grenzen und Teilbereichen. Erlaubte Werte sind einstellba' +
-    'r; DFM-Koordinaten und Tests lassen sich über exclude ausnehmen. Standard aus und niedrige Konfidenz: Treffer erscheinen, wenn die Regel eingeschaltet und minConfidence low ist. Schnellkorrektur: Kons' +
-    'tante einführen (#50) im const-Abschnitt der Routine.",',
+    '      "description": "Zahlenliterale (dezimal, $hex, Gleitkomma, mit Vorzeichen) in Anweisungen, außerhalb von const-Abschnitten, Typen, Array-Grenzen und Teilbereichen. Still bei Zahlen, die für sich' +
+    ' sprechen: DPI-Basis 96 in MulDiv, volle Bitmasken ($FF, $FFFF, $FFFFFFFF), Zeiteinheiten 24, 60, 1000 und 3600 in *, /, div und mod sowie Argumente von Aufrufen in einem Array-Literal, deren Argument' +
+    'e alle Zahlen sind (Punktlisten wie [P(3.5, 1.5), P(9.5, 1.5)]); SetBounds(12, 9, 360, 23) bleibt gemeldet. Erlaubte Werte sind einstellbar; DFM-Koordinaten und Tests lassen sich über exclude ausnehme' +
+    'n. Standard aus und niedrige Konfidenz: Treffer erscheinen, wenn die Regel eingeschaltet und minConfidence low ist. Schnellkorrektur: Konstante einführen (#50) im const-Abschnitt der Routine.",',
     '      "options": [',
     '        {',
     '          "name": "allowed",',
@@ -372,8 +375,8 @@ const
     '      "id": "public-field",',
     '      "name": "Öffentliches Feld",',
     '      "description": "Felder im public- oder published-Abschnitt einer Klasse. Der Abschnitt ohne Sichtbarkeitswort zählt nur bei Klassen ohne Vorfahren oder mit TObject, weil der Formulardesigner dor' +
-    't seine Felder anlegt. Records sind ausgenommen, außer mit includeRecords; class var wird nicht gemeldet. Standard aus. Schnellkorrektur: Feld kapseln legt das Feld als FName in einen private-Abschnit' +
-    't am Ende der Klasse und ergänzt im alten Abschnitt property Name read FName write FName; Zugriffe von außen bleiben gültig.",',
+    't seine Felder anlegt. Records sind ausgenommen, außer mit includeRecords; class var und Hilfsklassen unter einem private- oder protected-type-Abschnitt werden nicht gemeldet. Standard aus. Schnellkor' +
+    'rektur: Feld kapseln legt das Feld als FName in einen private-Abschnitt am Ende der Klasse und ergänzt im alten Abschnitt property Name read FName write FName; Zugriffe von außen bleiben gültig.",',
     '      "options": [',
     '        {',
     '          "name": "includeRecords",',
@@ -708,10 +711,10 @@ const
     '{',
     '      "id": "method-without-self",',
     '      "name": "Methode braucht Self nicht",',
-    '      "description": "Eine Methode einer Klasse oder eines Records nutzt weder Self noch Instanzmitglieder (Felder, Properties, Instanzmethoden, inherited). Sie ist nicht virtuell, kein Ereignis der F' +
-    'ormulardatei, implementiert kein Interface und wird nicht als Methodenzeiger verwendet. Experimentell: nur aktiv, wenn in atlas.json eingeschaltet; schweigt mit refactoring.methodKind aus. Schnellkorr' +
-    'ektur: in eine class-Methode umwandeln (class … static mit refactoring.methodKindStatic); die Code-Aktionen bieten außerdem Aufrufe über die Klasse, eine freie Routine und einen Record-Helper für den ' +
-    'Typ des ersten Parameters, jeweils mit Vorschau aller geänderten Aufrufe."',
+    '      "description": "Eine Methode einer Klasse oder eines Records nutzt weder Self noch Instanzmitglieder (Felder, Properties, Instanzmethoden, inherited). Sie ist nicht virtuell, hat kein Attribut u' +
+    'nd ist nicht published (DUnitX-Tests und RTTI rufen sie an der Instanz auf), ist kein Ereignis der Formulardatei, implementiert kein Interface und wird nicht als Methodenzeiger verwendet. Experimentel' +
+    'l: nur aktiv, wenn in atlas.json eingeschaltet; schweigt mit refactoring.methodKind aus. Schnellkorrektur: in eine class-Methode umwandeln (class … static mit refactoring.methodKindStatic); die Code-A' +
+    'ktionen bieten außerdem Aufrufe über die Klasse, eine freie Routine und einen Record-Helper für den Typ des ersten Parameters, jeweils mit Vorschau aller geänderten Aufrufe."',
     '    }');
 
 implementation

@@ -183,7 +183,6 @@ type
     property LocationEdit: TEdit read FLocationEdit;
     property LocationError: TLabel read FLocationError;
     property AfterPanel: TPanel read FAfterPanel;
-    property AfterBox: TComboBox read FAfterBox;
     property FolderPanel: TPanel read FFolderPanel;
     property FolderEdit: TEdit read FFolderEdit;
     property MixedLabel: TLabel read FMixedLabel;

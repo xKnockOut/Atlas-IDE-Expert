@@ -63,7 +63,7 @@ begin
     function: TJSONObject
     begin
       Result := TJSONObject.Create;
-      Result.AddPair('textDocumentSync', TJSONNumber.Create(TLspTextDocumentSyncKind.Incremental));
+      Result.AddPair('textDocumentSync', TJSONNumber.Create(TLspTextDocumentSyncKind.cIncremental));
     end);
   FLifecycle.OnExit :=
     procedure
@@ -114,7 +114,7 @@ begin
   Response := Send('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{}}}');
   try
     Assert.AreEqual(1, Response.GetValue<Integer>('id'));
-    Assert.AreEqual(TLspTextDocumentSyncKind.Incremental,
+    Assert.AreEqual(TLspTextDocumentSyncKind.cIncremental,
       Response.GetValue<Integer>('result.capabilities.textDocumentSync'));
     Assert.AreEqual('TestServer', Response.GetValue<string>('result.serverInfo.name'));
     Assert.AreEqual('1.2.3', Response.GetValue<string>('result.serverInfo.version'));
@@ -137,7 +137,7 @@ var
 begin
   Response := Send('{"jsonrpc":"2.0","id":2,"method":"test/request"}');
   try
-    Assert.AreEqual(TLspErrorCode.ServerNotInitialized, Response.GetValue<Integer>('error.code'));
+    Assert.AreEqual(TLspErrorCode.cServerNotInitialized, Response.GetValue<Integer>('error.code'));
   finally
     Response.Free;
   end;
@@ -171,7 +171,7 @@ begin
   InitializeServer;
   Response := Send('{"jsonrpc":"2.0","id":2,"method":"initialize","params":{}}');
   try
-    Assert.AreEqual(TJsonRpcErrorCode.InvalidRequest, Response.GetValue<Integer>('error.code'));
+    Assert.AreEqual(TJsonRpcErrorCode.cInvalidRequest, Response.GetValue<Integer>('error.code'));
   finally
     Response.Free;
   end;
@@ -192,7 +192,7 @@ begin
 
   Response := Send('{"jsonrpc":"2.0","id":3,"method":"test/request"}');
   try
-    Assert.AreEqual(TJsonRpcErrorCode.InvalidRequest, Response.GetValue<Integer>('error.code'));
+    Assert.AreEqual(TJsonRpcErrorCode.cInvalidRequest, Response.GetValue<Integer>('error.code'));
   finally
     Response.Free;
   end;

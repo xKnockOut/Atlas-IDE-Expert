@@ -51,23 +51,23 @@ type
   public const
     /// <summary>Format für git for-each-ref (#762): Name, Upstream, Remote, Ref auf dem Remote, Abstand
     /// ("ahead 1, behind 2", "gone" oder leer), Commit-Zeit (Unix) und "*" für HEAD.</summary>
-    BranchFormat = '%(refname:short)%00%(upstream:short)%00%(upstream:remotename)%00%(upstream:remoteref)%00' +
+    cBranchFormat = '%(refname:short)%00%(upstream:short)%00%(upstream:remotename)%00%(upstream:remoteref)%00' +
       '%(upstream:track,nobracket)%00%(committerdate:unix)%00%(HEAD)';
     /// <summary>Format für git stash list (#762): Hash, Zeit (Unix), Auswahl, Betreff des Reflogs.</summary>
-    StashFormat = '%H%x00%ct%x00%gd%x00%gs';
+    cStashFormat = '%H%x00%ct%x00%gd%x00%gs';
     /// <summary>Format für git log (#762): Hash, Zeit (Unix), Betreff.</summary>
-    LogFormat = '%H%x00%ct%x00%s';
+    cLogFormat = '%H%x00%ct%x00%s';
     /// <summary>Format für git log --name-only -z (#755): RS, Hash, Zeit (Unix), Autor, Betreff.</summary>
-    IncomingFormat = '%x1e%H%x00%ct%x00%an%x00%s';
+    cIncomingFormat = '%x1e%H%x00%ct%x00%an%x00%s';
     /// <summary>Format für git log -L (#1275): RS, Hash, Autor, Zeit (Unix), ganze Nachricht, je mit US
     /// abgeschlossen; danach folgt der Unterschied.</summary>
-    LineLogFormat = '%x1e%H%x1f%an%x1f%ct%x1f%B%x1f';
+    cLineLogFormat = '%x1e%H%x1f%an%x1f%ct%x1f%B%x1f';
     /// <summary>Format für die Nachrichten zu Commits (#1275): RS, Hash, US, ganze Nachricht.</summary>
-    MessageFormat = '%x1e%H%x1f%B';
+    cMessageFormat = '%x1e%H%x1f%B';
     /// <summary>Format für git log --name-status -z (#1269): RS, Hash, Zeit (Unix), Autor, ganze Nachricht.</summary>
-    HistoryFormat = '%x1e%H%x00%ct%x00%an%x00%B';
+    cHistoryFormat = '%x1e%H%x00%ct%x00%an%x00%B';
     /// <summary>Format für git for-each-ref (#1269): voller Name, Commit-Zeit (Unix), "*" für HEAD.</summary>
-    RefFormat = '%(refname)%00%(committerdate:unix)%00%(HEAD)';
+    cRefFormat = '%(refname)%00%(committerdate:unix)%00%(HEAD)';
   public
     /// <summary>Ausgabe von git log --name-status -z mit HistoryFormat; Pfade vollständig unter ARoot.</summary>
     class function ParseHistory(const AText, ARoot: string): TArray<TAtlasVcsLogEntry>; static;
@@ -102,34 +102,34 @@ uses
   Atlas.Core.Vcs.Internals.Text;
 
 const
-  NullCommit = '0000000000000000000000000000000000000000';
+  cNullCommit = '0000000000000000000000000000000000000000';
 
 /// <summary>Das N-te durch Leerzeichen getrennte Feld (0-basiert); der Rest ab dem Feld bei ARest.</summary>
 function Field(const ALine: string; AIndex: Integer; ARest: Boolean): string;
 var
-  Index, Count, Start: Integer;
+  mIndex, mCount, mStart: Integer;
 begin
-  Count := 0;
-  Start := 1;
-  for Index := 1 to Length(ALine) do
+  mCount := 0;
+  mStart := 1;
+  for mIndex := 1 to Length(ALine) do
   begin
-    if ALine[Index] = ' ' then
+    if ALine[mIndex] = ' ' then
     begin
-      if Count = AIndex then
+      if mCount = AIndex then
       begin
-        Exit(Copy(ALine, Start, Index - Start));
+        Exit(Copy(ALine, mStart, mIndex - mStart));
       end;
-      Inc(Count);
-      Start := Index + 1;
-      if (Count = AIndex) and ARest then
+      Inc(mCount);
+      mStart := mIndex + 1;
+      if (mCount = AIndex) and ARest then
       begin
-        Exit(Copy(ALine, Start, MaxInt));
+        Exit(Copy(ALine, mStart, MaxInt));
       end;
     end;
   end;
-  if Count = AIndex then
+  if mCount = AIndex then
   begin
-    Result := Copy(ALine, Start, MaxInt);
+    Result := Copy(ALine, mStart, MaxInt);
   end
   else
   begin
@@ -184,19 +184,19 @@ end;
 
 procedure ReadAheadBehind(const AValue: string; var AHead: TAtlasVcsHead);
 var
-  AheadText, BehindText: string;
-  Number: Integer;
+  mAheadText, mBehindText: string;
+  mNumber: Integer;
 begin
   // "+1 -2"
-  AheadText := Field(AValue, 0, False);
-  BehindText := Field(AValue, 1, False);
-  if (Copy(AheadText, 1, 1) = '+') and TryStrToInt(Copy(AheadText, 2, MaxInt), Number) then
+  mAheadText := Field(AValue, 0, False);
+  mBehindText := Field(AValue, 1, False);
+  if (Copy(mAheadText, 1, 1) = '+') and TryStrToInt(Copy(mAheadText, 2, MaxInt), mNumber) then
   begin
-    AHead.Ahead := Number;
+    AHead.Ahead := mNumber;
   end;
-  if (Copy(BehindText, 1, 1) = '-') and TryStrToInt(Copy(BehindText, 2, MaxInt), Number) then
+  if (Copy(mBehindText, 1, 1) = '-') and TryStrToInt(Copy(mBehindText, 2, MaxInt), mNumber) then
   begin
-    AHead.Behind := Number;
+    AHead.Behind := mNumber;
   end;
 end;
 
@@ -305,14 +305,14 @@ end;
 /// <summary>Zeilen (LF, CR wird entfernt) ohne leere.</summary>
 function NonEmptyLines(const AText: string): TArray<string>;
 var
-  Line: string;
+  mLine: string;
 begin
   Result := nil;
-  for Line in AText.Split([#10]) do
+  for mLine in AText.Split([#10]) do
   begin
-    if Line.TrimRight([#13]) <> '' then
+    if mLine.TrimRight([#13]) <> '' then
     begin
-      Result := Result + [Line.TrimRight([#13])];
+      Result := Result + [mLine.TrimRight([#13])];
     end;
   end;
 end;
@@ -320,11 +320,11 @@ end;
 /// <summary>Unix-Zeit als UTC; 0 bei ungültigem Text.</summary>
 function UnixField(const AText: string): TDateTime;
 var
-  Seconds: Int64;
+  mSeconds: Int64;
 begin
-  if TryStrToInt64(Trim(AText), Seconds) and (Seconds > 0) then
+  if TryStrToInt64(Trim(AText), mSeconds) and (mSeconds > 0) then
   begin
-    Result := VcsUnixToDate(Seconds);
+    Result := VcsUnixToDate(mSeconds);
   end
   else
   begin
@@ -380,38 +380,39 @@ end;
 
 class function TAtlasGitParser.ParseBranches(const AText: string): TArray<TAtlasVcsBranch>;
 var
-  Line: string;
-  Fields: TArray<string>;
-  Branch: TAtlasVcsBranch;
+  mLine: string;
+  mFields: TArray<string>;
+  mBranch: TAtlasVcsBranch;
 begin
   Result := nil;
-  for Line in NonEmptyLines(AText) do
+  for mLine in NonEmptyLines(AText) do
   begin
-    Fields := Line.Split([#0]);
-    if Length(Fields) < 7 then
+    mFields := mLine.Split([#0]);
+    if Length(mFields) < 7 then
     begin
       raise EAtlasVcsParse.Create('git for-each-ref: sieben Felder erwartet');
     end;
-    Branch := Default(TAtlasVcsBranch);
-    Branch.Name := Fields[0];
-    Branch.Upstream := Fields[1];
-    Branch.Remote := Fields[2];
-    Branch.RemoteRef := Fields[3];
-    Branch.Ahead := -1;
-    Branch.Behind := -1;
-    ReadTrack(Fields[4], Branch);
-    Branch.TipDate := UnixField(Fields[5]);
-    Branch.Current := Trim(Fields[6]) = '*';
-    if Branch.Name = '' then
+    mBranch := Default(TAtlasVcsBranch);
+    mBranch.Name := mFields[0];
+    mBranch.Upstream := mFields[1];
+    mBranch.Remote := mFields[2];
+    mBranch.RemoteRef := mFields[3];
+    mBranch.Ahead := -1;
+    mBranch.Behind := -1;
+    ReadTrack(mFields[4], mBranch);
+    mBranch.TipDate := UnixField(mFields[5]);
+    mBranch.Current := Trim(mFields[6]) = '*';
+    if mBranch.Name = '' then
     begin
       raise EAtlasVcsParse.Create('git for-each-ref: Name fehlt');
     end;
-    Result := Result + [Branch];
+    Result := Result + [mBranch];
   end;
 end;
 
 /// <summary>Betreff "WIP on &lt;branch&gt;: &lt;hash&gt; &lt;Betreff des Commits&gt;" (ohne Namen) oder
-/// "On &lt;branch&gt;: &lt;Name&gt;" in Branch und Nachricht zerlegen; sonst bleibt der Betreff die Nachricht.</summary>
+/// "On &lt;branch&gt;: &lt;Name&gt;" in Branch und Nachricht zerlegen; sonst bleibt der Betreff die
+/// Nachricht.</summary>
 procedure ReadStashSubject(const ASubject: string; var AStash: TAtlasVcsStash);
 var
   mRest: string;
@@ -472,29 +473,29 @@ end;
 
 class function TAtlasGitParser.ParseLog(const AText: string): TArray<TAtlasVcsCommit>;
 var
-  Line: string;
-  Fields: TArray<string>;
-  Commit: TAtlasVcsCommit;
+  mLine: string;
+  mFields: TArray<string>;
+  mCommit: TAtlasVcsCommit;
 begin
   Result := nil;
-  for Line in NonEmptyLines(AText) do
+  for mLine in NonEmptyLines(AText) do
   begin
-    Fields := Line.Split([#0]);
-    if (Length(Fields) < 2) or (Length(Fields[0]) < 7) then
+    mFields := mLine.Split([#0]);
+    if (Length(mFields) < 2) or (Length(mFields[0]) < 7) then
     begin
       raise EAtlasVcsParse.Create('git log: Hash und Zeit erwartet');
     end;
-    Commit.Hash := Fields[0];
-    Commit.Date := UnixField(Fields[1]);
-    if Length(Fields) > 2 then
+    mCommit.Hash := mFields[0];
+    mCommit.Date := UnixField(mFields[1]);
+    if Length(mFields) > 2 then
     begin
-      Commit.Summary := Fields[2];
+      mCommit.Summary := mFields[2];
     end
     else
     begin
-      Commit.Summary := '';
+      mCommit.Summary := '';
     end;
-    Result := Result + [Commit];
+    Result := Result + [mCommit];
   end;
 end;
 
@@ -575,40 +576,40 @@ end;
 
 class function TAtlasGitParser.ParseIncoming(const AText, ARoot: string): TArray<TAtlasVcsIncomingCommit>;
 var
-  Records, Fields: TArray<string>;
-  Item, Path: string;
-  Index: Integer;
-  Commit: TAtlasVcsIncomingCommit;
+  mRecords, mFields: TArray<string>;
+  mItem, mPath: string;
+  mIndex: Integer;
+  mCommit: TAtlasVcsIncomingCommit;
 begin
   Result := nil;
-  Records := AText.Split([#$1E]);
-  for Item in Records do
+  mRecords := AText.Split([#$1E]);
+  for mItem in mRecords do
   begin
     // Vor dem ersten Trenner steht nichts; Zeilenenden zwischen den Commits zählen nicht.
-    if Item.Trim([#0, #10, #13]) = '' then
+    if mItem.Trim([#0, #10, #13]) = '' then
     begin
       Continue;
     end;
-    Fields := Item.Split([#0]);
-    if (Length(Fields) < 4) or (Length(Fields[0]) < 7) then
+    mFields := mItem.Split([#0]);
+    if (Length(mFields) < 4) or (Length(mFields[0]) < 7) then
     begin
       raise EAtlasVcsParse.Create('git log: Hash, Zeit, Autor und Betreff erwartet');
     end;
-    Commit := Default(TAtlasVcsIncomingCommit);
-    Commit.Hash := Fields[0];
-    Commit.Date := UnixField(Fields[1]);
-    Commit.Author := Fields[2];
-    Commit.Summary := Fields[3];
+    mCommit := Default(TAtlasVcsIncomingCommit);
+    mCommit.Hash := mFields[0];
+    mCommit.Date := UnixField(mFields[1]);
+    mCommit.Author := mFields[2];
+    mCommit.Summary := mFields[3];
     // Dateien: die erste nach einem Zeilenende, alle je mit NUL abgeschlossen.
-    for Index := 4 to High(Fields) do
+    for mIndex := 4 to High(mFields) do
     begin
-      Path := Fields[Index].Trim([#10, #13]);
-      if Path <> '' then
+      mPath := mFields[mIndex].Trim([#10, #13]);
+      if mPath <> '' then
       begin
-        Commit.Files := Commit.Files + [VcsFullPath(ARoot, Path)];
+        mCommit.Files := mCommit.Files + [VcsFullPath(ARoot, mPath)];
       end;
     end;
-    Result := Result + [Commit];
+    Result := Result + [mCommit];
   end;
 end;
 
@@ -791,12 +792,12 @@ end;
 
 class function TAtlasGitParser.ParseLines(const AText: string): TArray<string>;
 var
-  Line: string;
+  mLine: string;
 begin
   Result := nil;
-  for Line in NonEmptyLines(AText) do
+  for mLine in NonEmptyLines(AText) do
   begin
-    Result := Result + [Trim(Line)];
+    Result := Result + [Trim(mLine)];
   end;
 end;
 
@@ -1023,7 +1024,7 @@ begin
   ReadCommitInfo(FCommits[mCommit]);
   AItem.Line := mFinal;
   // Noch nicht übernommen: git nennt "Not Committed Yet" und die Uhrzeit von jetzt.
-  if mHash <> NullCommit then
+  if mHash <> cNullCommit then
   begin
     AItem.Revision := mHash;
     AItem.Author := FCommits[mCommit].Author;

@@ -25,9 +25,8 @@ type
 
   TAtlasTimeClock = class
   public const
-    DefaultIdleMinutes = 10;
-    MinIdleMinutes = 1;
-    MaxIdleMinutes = 120;
+    cMinIdleMinutes = 1;
+    cMaxIdleMinutes = 120;
   private
     FNow: TAtlasTimeNow;
     FIdle: TDateTime;
@@ -80,7 +79,7 @@ end;
 
 procedure TAtlasTimeClock.SetIdleMinutes(AMinutes: Integer);
 begin
-  FIdle := EnsureRange(AMinutes, MinIdleMinutes, MaxIdleMinutes) / MinsPerDay;
+  FIdle := EnsureRange(AMinutes, cMinIdleMinutes, cMaxIdleMinutes) / MinsPerDay;
 end;
 
 procedure TAtlasTimeClock.Close;

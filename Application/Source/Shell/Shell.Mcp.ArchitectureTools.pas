@@ -163,7 +163,7 @@ begin
   begin
     mFailOn := TArchitectureComparer.DefaultFailOn;
   end;
-  Result := TArchitectureComparer.Text(mComparison, mFailOn, TArchitectureReport.TextLimit);
+  Result := TArchitectureComparer.Text(mComparison, mFailOn, TArchitectureReport.cTextLimit);
 end;
 
 /// <summary>Text der Architekturübersicht für get_architecture über AArchitecture; in eigener Routine, damit die
@@ -192,7 +192,7 @@ begin
       end
       else
       begin
-        Result := TArchitectureReport.Text(mOverview, ASection, TArchitectureReport.TextLimit);
+        Result := TArchitectureReport.Text(mOverview, ASection, TArchitectureReport.cTextLimit);
       end;
     end;
 end;
@@ -254,12 +254,12 @@ end;
 
 function ToolGetArchitecture(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
-  Section: TArchitectureSection;
-  CompareWith: string;
+  mSection: TArchitectureSection;
+  mCompareWith: string;
   mValue: TJSONValue;
   mResolution: Double;
 begin
-  if not TArchitectureReport.ParseSection(TMcpServer.OptionalString(AArguments, 'section'), Section) then
+  if not TArchitectureReport.ParseSection(TMcpServer.OptionalString(AArguments, 'section'), mSection) then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('section',
       ['overview', 'central', 'subsystems', 'cycles', 'crossLinks']));
@@ -278,12 +278,12 @@ begin
     end;
     mResolution := TJSONNumber(mValue).AsDouble;
   end;
-  CompareWith := TMcpServer.OptionalString(AArguments, 'compareWith');
-  if CompareWith <> '' then
+  mCompareWith := TMcpServer.OptionalString(AArguments, 'compareWith');
+  if mCompareWith <> '' then
   begin
-    CompareWith := AContext.Guard.Resolve(CompareWith);
+    mCompareWith := AContext.Guard.Resolve(mCompareWith);
   end;
-  Result := AContext.Architecture(Section, TMcpServer.OptionalString(AArguments, 'unit'), CompareWith, mResolution);
+  Result := AContext.Architecture(mSection, TMcpServer.OptionalString(AArguments, 'unit'), mCompareWith, mResolution);
 end;
 
 procedure AddGetArchitecture(const AContext: TMcpToolContext);

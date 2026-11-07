@@ -29,14 +29,14 @@ type
 
   TAtlasSettingsQueryMigrations = class
   public const
-    Path = 'issues.queries';
+    cPath = 'issues.queries';
     /// <summary>Name der übernommenen Abfrage aus issues.query.</summary>
-    StandardName = 'Standard';
+    cStandardName = 'Standard';
     /// <summary>Frühere Namen in TAtlasPluginSettings.Load/Save, neuer zuerst.</summary>
-    LegacyName = 'IssuesQuery';
-    OlderLegacyName = 'WelcomePageIssuesQuery';
+    cLegacyName = 'IssuesQuery';
+    cOlderLegacyName = 'WelcomePageIssuesQuery';
     /// <summary>Name in TAtlasPluginSettings.Load/Save (settings.json).</summary>
-    SettingName = 'IssuesQueries';
+    cSettingName = 'IssuesQueries';
   public
     /// <summary>AJson mit „Standard“ = ALegacyQuery vorn; unverändert, wenn ALegacyQuery leer ist oder es
     /// „Standard“ schon gibt.</summary>
@@ -62,11 +62,11 @@ begin
   if Moved then
   begin
     Result := Format('Einstellung %s ist jetzt die Abfrage „%s“ in %s', [OldKey,
-      TAtlasSettingsQueryMigrations.StandardName, TAtlasSettingsQueryMigrations.Path]);
+      TAtlasSettingsQueryMigrations.cStandardName, TAtlasSettingsQueryMigrations.cPath]);
   end
   else
   begin
-    Result := Format('Einstellung %s entfällt (%s gilt)', [OldKey, TAtlasSettingsQueryMigrations.Path]);
+    Result := Format('Einstellung %s entfällt (%s gilt)', [OldKey, TAtlasSettingsQueryMigrations.cPath]);
   end;
 end;
 
@@ -91,7 +91,7 @@ end;
 /// <summary>Eine gültige Zeile „Standard“ (wie TAtlasTrackerQueries.Read: Name und Abfrage nicht leer).</summary>
 function IsStandard(AItem: TJSONValue): Boolean;
 begin
-  Result := SameText(TextOf(AItem, 'name'), TAtlasSettingsQueryMigrations.StandardName) and
+  Result := SameText(TextOf(AItem, 'name'), TAtlasSettingsQueryMigrations.cStandardName) and
     (TextOf(AItem, 'query') <> '');
 end;
 
@@ -109,7 +109,7 @@ begin
   begin
     Exit;
   end;
-  mParts := TArray<string>.Create('{"name": ' + TAtlasJsonText.Quote(StandardName) + ', "query": ' +
+  mParts := TArray<string>.Create('{"name": ' + TAtlasJsonText.Quote(cStandardName) + ', "query": ' +
     TAtlasJsonText.Quote(mQuery) + '}');
   mRoot := nil;
   if Trim(AJson) <> '' then
@@ -141,34 +141,34 @@ var
 begin
   Result := Default(TAtlasSettingsQueryMigration);
   // issues.query (#1280) vor welcomePage.issues.query; beide entfallen danach.
-  if ALegacyNames.Contains(LegacyName) then
+  if ALegacyNames.Contains(cLegacyName) then
   begin
     Result.OldKey := 'issues.query';
-    mLegacy := ALegacy.ReadString(LegacyName, '');
+    mLegacy := ALegacy.ReadString(cLegacyName, '');
   end
-  else if ALegacyNames.Contains(OlderLegacyName) then
+  else if ALegacyNames.Contains(cOlderLegacyName) then
   begin
     Result.OldKey := 'welcomePage.issues.query';
-    mLegacy := ALegacy.ReadString(OlderLegacyName, '');
+    mLegacy := ALegacy.ReadString(cOlderLegacyName, '');
   end
   else
   begin
     Exit;
   end;
   Result.Found := True;
-  mBefore := ATarget.ReadString(SettingName, '[]');
+  mBefore := ATarget.ReadString(cSettingName, '[]');
   mAfter := WithLegacy(mBefore, mLegacy);
   Result.Moved := mAfter <> mBefore;
   if Result.Moved then
   begin
-    ATarget.WriteString(SettingName, mAfter);
+    ATarget.WriteString(cSettingName, mAfter);
   end;
 end;
 
 class procedure TAtlasSettingsQueryMigrations.RemoveLegacy(const ALegacyNames: IAtlasSettingsNames);
 begin
-  ALegacyNames.Remove(LegacyName);
-  ALegacyNames.Remove(OlderLegacyName);
+  ALegacyNames.Remove(cLegacyName);
+  ALegacyNames.Remove(cOlderLegacyName);
 end;
 
 end.

@@ -26,18 +26,18 @@ uses
 
 class function TIndexFiles.UnitOf(const AIndex: ISymbolIndex; const AFileName: string; out AUnit: TUnitIndex): Boolean;
 var
-  Candidate: TUnitIndex;
+  mCandidate: TUnitIndex;
 begin
   Result := (AIndex <> nil) and AIndex.FindFile(AFileName, AUnit);
   if Result or (AIndex = nil) then
   begin
     Exit;
   end;
-  for Candidate in AIndex.Units do
+  for mCandidate in AIndex.Units do
   begin
-    if IndexText(AFileName, Candidate.Includes) >= 0 then
+    if IndexText(AFileName, mCandidate.Includes) >= 0 then
     begin
-      AUnit := Candidate;
+      AUnit := mCandidate;
       Exit(True);
     end;
   end;

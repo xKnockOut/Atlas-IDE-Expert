@@ -121,6 +121,10 @@ procedure TAtlasSettingsPageTests.WarmUp;
 begin
   WarmUpSettingsPage;
   FilterAndResetPerNode;
+  // Erste Fehler legen die Listen der Sicherung an.
+  TAtlasGuard.ReportProvider('Testquelle', 'Fehler');
+  TAtlasGuard.Fuse.Failed(TAtlasFeature.Pairs);
+  TAtlasGuard.Fuse.ResetAll;
 end;
 /// <summary>Liegt AControl in AParent (oder ist es selbst)?</summary>
 function Inside(AControl, AParent: TControl): Boolean;
@@ -902,7 +906,7 @@ begin
     Assert.AreEqual('none', Saved.SafeStartupKey);
     Assert.AreEqual(20000, Saved.SafeStartupTimeoutMs);
     // Begrenzt auf die Höchstzahl.
-    Assert.AreEqual(TAtlasPluginSettings.MaxSafeSettingsHistory, Saved.SafeKeepSettingsHistory);
+    Assert.AreEqual(TAtlasPluginSettings.cMaxSafeSettingsHistory, Saved.SafeKeepSettingsHistory);
   finally
     Page.Free;
   end;
@@ -1008,8 +1012,8 @@ begin
     Assert.IsFalse(Saved.UndoMultiFile);
     Assert.IsFalse(Saved.UndoMultiFilePersist);
     // Begrenzt auf den erlaubten Bereich.
-    Assert.AreEqual(TAtlasPluginSettings.MaxUndoDepth, Saved.UndoMultiFileDepth);
-    Assert.AreEqual(TAtlasPluginSettings.MinUndoMaxSizeMb, Saved.UndoMultiFileMaxSizeMb);
+    Assert.AreEqual(TAtlasPluginSettings.cMaxUndoDepth, Saved.UndoMultiFileDepth);
+    Assert.AreEqual(TAtlasPluginSettings.cMinUndoMaxSizeMb, Saved.UndoMultiFileMaxSizeMb);
     Assert.AreEqual('partial', Saved.UndoMultiFileOnConflict);
     Assert.AreEqual('delete', Saved.UndoMultiFileNewFiles);
     Assert.AreEqual(Settings.UndoKey, Saved.UndoKey);
@@ -1069,8 +1073,8 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Assert.IsNotNull(Page.Symbol);
-    Assert.AreEqual(TAtlasSymbol.HeaderSize, Page.Symbol.LogicalSize);
-    Assert.AreEqual(TAtlasSymbol.PixelSize(TAtlasSymbol.HeaderSize, Page.Symbol.CurrentPPI), Page.Symbol.Width);
+    Assert.AreEqual(TAtlasSymbol.cHeaderSize, Page.Symbol.LogicalSize);
+    Assert.AreEqual(TAtlasSymbol.PixelSize(TAtlasSymbol.cHeaderSize, Page.Symbol.CurrentPPI), Page.Symbol.Width);
   finally
     Page.Free;
   end;

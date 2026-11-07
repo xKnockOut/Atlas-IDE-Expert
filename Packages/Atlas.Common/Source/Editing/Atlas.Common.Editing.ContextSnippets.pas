@@ -94,14 +94,14 @@ end;
 /// <summary>Zeilen des Rumpfs zwischen begin und end ohne die Cursorzeile, verbunden mit #10.</summary>
 function BodyText(ASource: TCommandSource; ABlock: TSyntaxNode): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := ABlock.StartPos.Line + 1 to ABlock.EndPos.Line - 1 do
+  for mIndex := ABlock.StartPos.Line + 1 to ABlock.EndPos.Line - 1 do
   begin
-    if Index <> ASource.Line then
+    if mIndex <> ASource.Line then
     begin
-      Result := Result + ASource.Lines[Index] + #10;
+      Result := Result + ASource.Lines[mIndex] + #10;
     end;
   end;
 end;
@@ -109,21 +109,21 @@ end;
 /// <summary>Kommt AName als ganzes Wort in AText vor (ohne Groß/Klein)?</summary>
 function Mentions(const AText, AName: string): Boolean;
 var
-  Upper, Name: string;
-  Found, After: Integer;
+  mUpper, mName: string;
+  mFound, mAfter: Integer;
 begin
-  Upper := UpperCase(AText);
-  Name := UpperCase(AName);
-  Found := Pos(Name, Upper);
-  while Found > 0 do
+  mUpper := UpperCase(AText);
+  mName := UpperCase(AName);
+  mFound := Pos(mName, mUpper);
+  while mFound > 0 do
   begin
-    After := Found + Length(Name);
-    if ((Found = 1) or not TTextChars.IsAsciiIdentChar(Upper[Found - 1])) and
-      ((After > Length(Upper)) or not TTextChars.IsAsciiIdentChar(Upper[After])) then
+    mAfter := mFound + Length(mName);
+    if ((mFound = 1) or not TTextChars.IsAsciiIdentChar(mUpper[mFound - 1])) and
+      ((mAfter > Length(mUpper)) or not TTextChars.IsAsciiIdentChar(mUpper[mAfter])) then
     begin
       Exit(True);
     end;
-    Found := PosEx(Name, Upper, Found + 1);
+    mFound := PosEx(mName, mUpper, mFound + 1);
   end;
   Result := False;
 end;
@@ -155,43 +155,43 @@ end;
 function PropertyItems(ASource: TCommandSource; const AContext: TSlashContext;
   const AClass: TIndexSymbol): TArray<TContextSnippet>;
 var
-  Field, Member: TIndexSymbol;
-  Name, Setter, TypeText, Call, Indent, LB: string;
-  Edits: TArray<TTextEdit>;
-  EndLine: Integer;
+  mField, mMember: TIndexSymbol;
+  mName, mSetter, mTypeText, mCall, mIndent, mLB: string;
+  mEdits: TArray<TTextEdit>;
+  mEndLine: Integer;
 begin
   Result := nil;
-  Call := TSetterGenerator.NotifyCall(ASource, AContext.Index, AClass);
-  LB := ASource.LineBreak;
-  EndLine := AClass.Range.EndPos.Line;
-  Indent := ASource.Indent(EndLine);
-  for Field in Members(ASource, AClass, [TIndexSymbolKind.Field]) do
+  mCall := TSetterGenerator.NotifyCall(ASource, AContext.Index, AClass);
+  mLB := ASource.LineBreak;
+  mEndLine := AClass.Range.EndPos.Line;
+  mIndent := ASource.Indent(mEndLine);
+  for mField in Members(ASource, AClass, [TIndexSymbolKind.Field]) do
   begin
-    if (Length(Field.Name) < 2) or not CharInSet(Field.Name[1], ['F', 'f']) or (Field.TypeName = '') then
+    if (Length(mField.Name) < 2) or not CharInSet(mField.Name[1], ['F', 'f']) or (mField.TypeName = '') then
     begin
       Continue;
     end;
-    Name := Copy(Field.Name, 2, MaxInt);
-    if FindMember(ASource, AClass, Name, [TIndexSymbolKind.Property_], Member) then
+    mName := Copy(mField.Name, 2, MaxInt);
+    if FindMember(ASource, AClass, mName, [TIndexSymbolKind.Property_], mMember) then
     begin
       Continue;
     end;
-    Setter := 'Set' + Name;
-    TypeText := FullType(Field);
-    Edits := nil;
-    if not FindMember(ASource, AClass, Setter, [TIndexSymbolKind.Method], Member) then
+    mSetter := 'Set' + mName;
+    mTypeText := FullType(mField);
+    mEdits := nil;
+    if not FindMember(ASource, AClass, mSetter, [TIndexSymbolKind.Method], mMember) then
     begin
       // Wie /changed: eigener private-Abschnitt vor "end", weil Felder vor Methoden stehen müssen.
-      Edits := [ASource.BeforeLine(EndLine, Indent + 'private' + LB + Indent + '  ' +
-        Format('procedure %s(const Value: %s);', [Setter, TypeText])),
-        ASource.AddBody(AClass.Name, Format('procedure %s.%s(const Value: %s);', [AClass.Name, Setter, TypeText]) +
-        LB + TSetterGenerator.Body(Field.Name, 'Value', Call, LB))];
+      mEdits := [ASource.BeforeLine(mEndLine, mIndent + 'private' + mLB + mIndent + '  ' +
+        Format('procedure %s(const Value: %s);', [mSetter, mTypeText])),
+        ASource.AddBody(AClass.Name, Format('procedure %s.%s(const Value: %s);', [AClass.Name, mSetter, mTypeText]) +
+        mLB + TSetterGenerator.Body(mField.Name, 'Value', mCall, mLB))];
     end;
-    Result := Result + [Snippet('prop', 'prop ' + Name,
-      cTexts[TContextSnippetsText.PropertyWithSetterWhichChecks].Fmt([Name, TypeText, Setter,
-      NotifyText(Call)]),
-      Format('property ${1:%s}: %s read %s write %s;$0', [TContextSnippets.Escape(Name),
-      TContextSnippets.Escape(TypeText), Field.Name, Setter]), Edits)];
+    Result := Result + [Snippet('prop', 'prop ' + mName,
+      cTexts[TContextSnippetsText.PropertyWithSetterWhichChecks].Fmt([mName, mTypeText, mSetter,
+      NotifyText(mCall)]),
+      Format('property ${1:%s}: %s read %s write %s;$0', [TContextSnippets.Escape(mName),
+      TContextSnippets.Escape(mTypeText), mField.Name, mSetter]), mEdits)];
   end;
 end;
 
@@ -200,54 +200,54 @@ end;
 function SetterItems(ASource: TCommandSource; const AContext: TSlashContext; const AClass: TIndexSymbol;
   ARoutine, ABlock: TSyntaxNode; const AMethod: string): TArray<TContextSnippet>;
 var
-  Prop, Member: TIndexSymbol;
-  Field, Value, Call, Text, Line: string;
-  Found: Boolean;
+  mProp, mMember: TIndexSymbol;
+  mField, mValue, mCall, mText, mLine: string;
+  mFound: Boolean;
 begin
   Result := nil;
   // Feld: read-Teil der Property, die über AMethod schreibt; sonst FName zu SetName.
-  Field := '';
-  for Prop in Members(ASource, AClass, [TIndexSymbolKind.Property_]) do
+  mField := '';
+  for mProp in Members(ASource, AClass, [TIndexSymbolKind.Property_]) do
   begin
-    if SameText(Accessor(RangeText(ASource.Lines, Prop.Range), 'write'), AMethod) then
+    if SameText(Accessor(RangeText(ASource.Lines, mProp.Range), 'write'), AMethod) then
     begin
-      Field := Accessor(RangeText(ASource.Lines, Prop.Range), 'read');
+      mField := Accessor(RangeText(ASource.Lines, mProp.Range), 'read');
       Break;
     end;
   end;
-  if (Field = '') and StartsText('Set', AMethod) and (Length(AMethod) > 3) then
+  if (mField = '') and StartsText('Set', AMethod) and (Length(AMethod) > 3) then
   begin
-    Field := 'F' + Copy(AMethod, 4, MaxInt);
+    mField := 'F' + Copy(AMethod, 4, MaxInt);
   end;
-  if (Field = '') or not FindMember(ASource, AClass, Field, [TIndexSymbolKind.Field], Member) then
-  begin
-    Exit;
-  end;
-  Field := Member.Name;
-  Value := ParameterNames(RoutineSignature(ASource.Lines[ARoutine.StartPos.Line]));
-  if (Value = '') or (Pos(',', Value) > 0) or Mentions(BodyText(ASource, ABlock), Field) then
+  if (mField = '') or not FindMember(ASource, AClass, mField, [TIndexSymbolKind.Field], mMember) then
   begin
     Exit;
   end;
-  Call := TSetterGenerator.NotifyCall(ASource, AContext.Index, AClass);
+  mField := mMember.Name;
+  mValue := ParameterNames(RoutineSignature(ASource.Lines[ARoutine.StartPos.Line]));
+  if (mValue = '') or (Pos(',', mValue) > 0) or Mentions(BodyText(ASource, ABlock), mField) then
+  begin
+    Exit;
+  end;
+  mCall := TSetterGenerator.NotifyCall(ASource, AContext.Index, AClass);
   // Die Benachrichtigung ist der Platzhalter; ohne bleibt nur die Endposition.
-  if Call <> '' then
+  if mCall <> '' then
   begin
-    Call := '${1:' + Call + '}';
+    mCall := '${1:' + mCall + '}';
   end;
-  Text := '';
-  Found := False;
-  for Line in TSetterGenerator.Statements(Field, Value, Call) do
+  mText := '';
+  mFound := False;
+  for mLine in TSetterGenerator.Statements(mField, mValue, mCall) do
   begin
-    if Found then
+    if mFound then
     begin
-      Text := Text + #10;
+      mText := mText + #10;
     end;
-    Text := Text + Line;
-    Found := True;
+    mText := mText + mLine;
+    mFound := True;
   end;
-  Result := [Snippet('changed', 'changed ' + Field, cTexts[TContextSnippetsText.SetOnlyOnChange].Fmt([Field,
-    NotifyText(TSetterGenerator.NotifyCall(ASource, AContext.Index, AClass))]), Text + '$0', nil)];
+  Result := [Snippet('changed', 'changed ' + mField, cTexts[TContextSnippetsText.SetOnlyOnChange].Fmt([mField,
+    NotifyText(TSetterGenerator.NotifyCall(ASource, AContext.Index, AClass))]), mText + '$0', nil)];
 end;
 
 { create }
@@ -255,46 +255,46 @@ end;
 function ConstructorItems(ASource: TCommandSource; const AContext: TSlashContext; const AClass: TIndexSymbol;
   ABlock: TSyntaxNode): TArray<TContextSnippet>;
 var
-  Field: TIndexSymbol;
-  Created: TArray<string>;
-  Body, Text, Owner: string;
-  Lines: TArray<string>;
-  Number: Integer;
-  OwnerKnown: Boolean;
+  mField: TIndexSymbol;
+  mCreated: TArray<string>;
+  mBody, mText, mOwner: string;
+  mLines: TArray<string>;
+  mNumber: Integer;
+  mOwnerKnown: Boolean;
 begin
   Result := nil;
-  Body := BodyText(ASource, ABlock);
-  Created := CreatedFields(ASource, AClass.Name);
-  OwnerKnown := IsComponentType(ASource, AContext.Index, AClass.Name);
-  Lines := nil;
-  Number := 0;
-  for Field in Members(ASource, AClass, [TIndexSymbolKind.Field]) do
+  mBody := BodyText(ASource, ABlock);
+  mCreated := CreatedFields(ASource, AClass.Name);
+  mOwnerKnown := IsComponentType(ASource, AContext.Index, AClass.Name);
+  mLines := nil;
+  mNumber := 0;
+  for mField in Members(ASource, AClass, [TIndexSymbolKind.Field]) do
   begin
-    if (IndexText(Field.Name, Created) >= 0) or Mentions(Body, Field.Name) or
-      not IsObjectField(ASource, AContext.Index, Field) then
+    if (IndexText(mField.Name, mCreated) >= 0) or Mentions(mBody, mField.Name) or
+      not IsObjectField(ASource, AContext.Index, mField) then
     begin
       Continue;
     end;
-    Inc(Number);
-    Owner := '';
-    if OwnerKnown and IsComponentType(ASource, AContext.Index, Field.TypeName) then
+    Inc(mNumber);
+    mOwner := '';
+    if mOwnerKnown and IsComponentType(ASource, AContext.Index, mField.TypeName) then
     begin
-      Owner := '(Self)';
+      mOwner := '(Self)';
     end;
-    Lines := Lines + [Format('%s := ${%d:%s}.Create%s;', [Field.Name, Number,
-      TContextSnippets.Escape(FullType(Field)), Owner])];
+    mLines := mLines + [Format('%s := ${%d:%s}.Create%s;', [mField.Name, mNumber,
+      TContextSnippets.Escape(FullType(mField)), mOwner])];
   end;
-  if Number = 0 then
+  if mNumber = 0 then
   begin
     Exit;
   end;
-  if not Mentions(Body, 'inherited') then
+  if not Mentions(mBody, 'inherited') then
   begin
-    Lines := ['inherited;'] + Lines;
+    mLines := ['inherited;'] + mLines;
   end;
-  Text := string.Join(#10, Lines) + '$0';
-  Result := [Snippet('create', 'create', cTexts[TContextSnippetsText.CreateObjectFieldsOf].Fmt([Number, AClass.Name]),
-    Text,
+  mText := string.Join(#10, mLines) + '$0';
+  Result := [Snippet('create', 'create', cTexts[TContextSnippetsText.CreateObjectFieldsOf].Fmt([mNumber, AClass.Name]),
+    mText,
     nil)];
 end;
 
@@ -303,29 +303,29 @@ end;
 function DestructorItems(ASource: TCommandSource; const AClass: TIndexSymbol;
   ABlock: TSyntaxNode): TArray<TContextSnippet>;
 var
-  Created, Lines: TArray<string>;
-  Body: string;
-  Index: Integer;
+  mCreated, mLines: TArray<string>;
+  mBody: string;
+  mIndex: Integer;
 begin
   Result := nil;
-  Body := BodyText(ASource, ABlock);
-  Created := CreatedFields(ASource, AClass.Name);
-  Lines := nil;
+  mBody := BodyText(ASource, ABlock);
+  mCreated := CreatedFields(ASource, AClass.Name);
+  mLines := nil;
   // In umgekehrter Reihenfolge der Erzeugung freigeben, wie /dtor.
-  for Index := High(Created) downto 0 do
+  for mIndex := High(mCreated) downto 0 do
   begin
-    if not Mentions(Body, Created[Index]) then
+    if not Mentions(mBody, mCreated[mIndex]) then
     begin
-      Lines := Lines + [Format('FreeAndNil(%s);', [Created[Index]])];
+      mLines := mLines + [Format('FreeAndNil(%s);', [mCreated[mIndex]])];
     end;
   end;
-  if Length(Lines) = 0 then
+  if Length(mLines) = 0 then
   begin
     Exit;
   end;
-  Result := [Snippet('free', 'free', cTexts[TContextSnippetsText.FreeCreatedFieldsOf].Fmt([Integer(Length(Lines)),
-    AClass.Name]), string.Join(#10, Lines) + '$0', nil)];
-  if not Mentions(Body, 'inherited') then
+  Result := [Snippet('free', 'free', cTexts[TContextSnippetsText.FreeCreatedFieldsOf].Fmt([Integer(Length(mLines)),
+    AClass.Name]), string.Join(#10, mLines) + '$0', nil)];
+  if not Mentions(mBody, 'inherited') then
   begin
     Result[0].Text := Result[0].Text + #10'inherited;';
   end;
@@ -560,10 +560,10 @@ end;
 
 class function TContextSnippets.ToPlain(const ASnippet: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := 1;
-  Result := PlainUntilClose(ASnippet, Index, False);
+  mIndex := 1;
+  Result := PlainUntilClose(ASnippet, mIndex, False);
 end;
 
 initialization

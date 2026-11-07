@@ -58,8 +58,8 @@ type
 
   TAtlasIdeDebugDialogCompletion = class
   public const
-    TickMs = 100;
-    HistoryFileName = 'debug-expressions.json';
+    cTickMs = 100;
+    cHistoryFileName = 'debug-expressions.json';
   private type
     TKeys = class(TAtlasKeyClient)
     protected
@@ -219,7 +219,7 @@ end;
 function HistoryFile: string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
-    TAtlasIdeDebugDialogCompletion.HistoryFileName);
+    TAtlasIdeDebugDialogCompletion.cHistoryFileName);
 end;
 
 function CurrentProject: string;
@@ -605,7 +605,7 @@ begin
     end;
   FKeys := TKeys.Create(0);
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
   TAtlasKeyHook.Add(FKeys);
@@ -640,11 +640,11 @@ end;
 
 class procedure TAtlasIdeDebugDialogCompletion.Release;
 var
-  Instance: TAtlasIdeDebugDialogCompletion;
+  mInstance: TAtlasIdeDebugDialogCompletion;
 begin
-  Instance := FInstance;
+  mInstance := FInstance;
   FInstance := nil;
-  Instance.Free;
+  mInstance.Free;
 end;
 
 class function TAtlasIdeDebugDialogCompletion.Started: Boolean;
@@ -654,10 +654,10 @@ end;
 
 class function TAtlasIdeDebugDialogCompletion.Enabled: Boolean;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := Settings.Enabled and Settings.DebugCompletionInDialogs;
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.DebugCompletionInDialogs;
 end;
 
 class procedure TAtlasIdeDebugDialogCompletion.ApplySettings;
@@ -694,73 +694,73 @@ end;
 
 procedure TAtlasIdeDebugDialogCompletion.LogDialog(AForm: TCustomForm);
 var
-  Key, Labels: string;
-  Index: Integer;
+  mKey, mLabels: string;
+  mIndex: Integer;
 begin
   // Ohne Ausdrücke und Pfade: Klasse, Titel und Beschriftungen des Dialogs.
-  Key := AForm.ClassName + '|' + AForm.Caption;
-  if FLogged.IndexOf(Key) >= 0 then
+  mKey := AForm.ClassName + '|' + AForm.Caption;
+  if FLogged.IndexOf(mKey) >= 0 then
   begin
     Exit;
   end;
-  FLogged.Add(Key);
-  Labels := '';
-  for Index := 0 to AForm.ComponentCount - 1 do
+  FLogged.Add(mKey);
+  mLabels := '';
+  for mIndex := 0 to AForm.ComponentCount - 1 do
   begin
-    if AForm.Components[Index] is TCustomLabel then
+    if AForm.Components[mIndex] is TCustomLabel then
     begin
-      Labels := Labels + ' [' + TLabelAccess(AForm.Components[Index]).Caption + ']';
+      mLabels := mLabels + ' [' + TLabelAccess(AForm.Components[mIndex]).Caption + ']';
     end;
   end;
-  Say(Format('Debug-Dialog erkannt: %s „%s“, Beschriftungen:%s', [AForm.ClassName, AForm.Caption, Labels]));
+  Say(Format('Debug-Dialog erkannt: %s „%s“, Beschriftungen:%s', [AForm.ClassName, AForm.Caption, mLabels]));
 end;
 
 procedure TAtlasIdeDebugDialogCompletion.Track(AFocus: HWND);
 var
-  Control: TWinControl;
-  Form: TCustomForm;
-  Dialog: TAtlasDebugDialog;
-  Field: TAtlasDebugField;
-  Start, Stop: Integer;
+  mControl: TWinControl;
+  mForm: TCustomForm;
+  mDialog: TAtlasDebugDialog;
+  mField: TAtlasDebugField;
+  mStart, mStop: Integer;
 begin
-  Control := EditControl(AFocus);
-  if Control = nil then
+  mControl := EditControl(AFocus);
+  if mControl = nil then
   begin
     Exit;
   end;
-  Form := GetParentForm(Control);
-  if Form = nil then
+  mForm := GetParentForm(mControl);
+  if mForm = nil then
   begin
     Exit;
   end;
-  FOwnField := Assigned(OwnField) and OwnField(Control);
+  FOwnField := Assigned(OwnField) and OwnField(mControl);
   if FOwnField then
   begin
     // Angedockt ist Form das Hauptfenster der IDE: an Titel und Klasse nicht zu erkennen.
-    Dialog := TAtlasDebugDialog.Evaluate;
-    Field := TAtlasDebugField.Expression;
+    mDialog := TAtlasDebugDialog.Evaluate;
+    mField := TAtlasDebugField.Expression;
   end
   else
   begin
-    Dialog := TAtlasDebugDialogs.DialogOf(Form.ClassName, Form.Caption);
-    if Dialog = TAtlasDebugDialog.None then
+    mDialog := TAtlasDebugDialogs.DialogOf(mForm.ClassName, mForm.Caption);
+    if mDialog = TAtlasDebugDialog.None then
     begin
       Exit;
     end;
-    LogDialog(Form);
-    Field := TAtlasDebugDialogs.FieldOf(Dialog, LabelOf(Form, Control));
+    LogDialog(mForm);
+    mField := TAtlasDebugDialogs.FieldOf(mDialog, LabelOf(mForm, mControl));
   end;
-  if not TAtlasDebugDialogs.Completes(Field) then
+  if not TAtlasDebugDialogs.Completes(mField) then
   begin
     Exit;
   end;
   FEdit := AFocus;
-  FForm := Form;
-  FDialog := Dialog;
+  FForm := mForm;
+  FDialog := mDialog;
   FText := WindowText(FEdit);
-  Selection(FEdit, Start, Stop);
-  FAllSelected := (FText <> '') and (Start = 0) and (Stop = Length(FText));
-  FCaret := Max(Stop, 0);
+  Selection(FEdit, mStart, mStop);
+  FAllSelected := (FText <> '') and (mStart = 0) and (mStop = Length(FText));
+  FCaret := Max(mStop, 0);
   FWordStart := -1;
   FHistoryMode := False;
 end;
@@ -885,7 +885,7 @@ begin
     begin
       Exit;
     end;
-    mContext.Trigger := TAtlasTriggers.History;
+    mContext.Trigger := TAtlasTriggers.cHistory;
     mContext.Prefix := '';
   end
   else
@@ -918,41 +918,41 @@ end;
 
 procedure TAtlasIdeDebugDialogCompletion.Commit(const AItem: TAtlasCompletionItem);
 var
-  Insert, Text: string;
-  Caret, Stop: Integer;
+  mInsert, mText: string;
+  mCaret, mStop: Integer;
 begin
   if (FEdit = 0) or not IsWindow(FEdit) then
   begin
     Exit;
   end;
-  Insert := AItem.InsertText;
-  if Insert = '' then
+  mInsert := AItem.InsertText;
+  if mInsert = '' then
   begin
-    Insert := AItem.Name;
+    mInsert := AItem.Name;
   end;
   if FHistoryMode then
   begin
     SendMessage(FEdit, EM_SETSEL, 0, -1);
-    Caret := Length(Insert);
+    mCaret := Length(mInsert);
   end
   else
   begin
     // Das ganze Wort an der Schreibmarke, wie TAtlasExpressionEdit.Apply.
-    TAtlasExpressionEdit.Apply(FText, FCaret, FCaret - Max(FWordStart, 0), Insert, Text, Caret);
-    Stop := Length(FText) - (Length(Text) - Caret);
-    SendMessage(FEdit, EM_SETSEL, WPARAM(Max(FWordStart, 0)), LPARAM(Stop));
+    TAtlasExpressionEdit.Apply(FText, FCaret, FCaret - Max(FWordStart, 0), mInsert, mText, mCaret);
+    mStop := Length(FText) - (Length(mText) - mCaret);
+    SendMessage(FEdit, EM_SETSEL, WPARAM(Max(FWordStart, 0)), LPARAM(mStop));
   end;
   // Mit Rückgängig-Eintrag (wParam = 1): Strg+Z im Feld nimmt es zurück.
-  SendMessage(FEdit, EM_REPLACESEL, 1, LPARAM(PChar(Insert)));
-  SendMessage(FEdit, EM_SETSEL, WPARAM(Caret), LPARAM(Caret));
+  SendMessage(FEdit, EM_REPLACESEL, 1, LPARAM(PChar(mInsert)));
+  SendMessage(FEdit, EM_SETSEL, WPARAM(mCaret), LPARAM(mCaret));
   FText := WindowText(FEdit);
-  FCaret := Caret;
+  FCaret := mCaret;
   FHistoryMode := False;
 end;
 
 function TAtlasIdeDebugDialogCompletion.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 var
-  Navigation: TAtlasNavigationKey;
+  mNavigation: TAtlasNavigationKey;
 begin
   Result := False;
   if (FEdit = 0) or (GetFocus <> FEdit) or not Enabled then
@@ -967,7 +967,7 @@ begin
   begin
     Exit;
   end;
-  if FController.Visible and NavigationOf(AKey, Navigation) then
+  if FController.Visible and NavigationOf(AKey, mNavigation) then
   begin
     Exit(True);
   end;
@@ -977,7 +977,7 @@ end;
 
 procedure TAtlasIdeDebugDialogCompletion.HandleKey(AKey: Word);
 var
-  Navigation: TAtlasNavigationKey;
+  mNavigation: TAtlasNavigationKey;
 begin
   if AKey = VK_SPACE then
   begin
@@ -985,9 +985,9 @@ begin
     Selection(FEdit, FWordStart, FCaret);
     Query(False, False);
   end
-  else if FController.Visible and NavigationOf(AKey, Navigation) then
+  else if FController.Visible and NavigationOf(AKey, mNavigation) then
   begin
-    FController.HandleKey(Navigation);
+    FController.HandleKey(mNavigation);
   end
   else if AKey = VK_DOWN then
   begin

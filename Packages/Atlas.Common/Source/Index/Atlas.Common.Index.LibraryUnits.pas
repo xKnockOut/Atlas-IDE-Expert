@@ -30,16 +30,16 @@ uses
   System.StrUtils;
 
 const
-  LibraryPrefixes: array[0..15] of string = ('System', 'Vcl', 'Winapi', 'Data', 'Xml', 'Soap', 'Datasnap',
+  cLibraryPrefixes: array[0..15] of string = ('System', 'Vcl', 'Winapi', 'Data', 'Xml', 'Soap', 'Datasnap',
     'FireDAC', 'REST', 'Web', 'IBX', 'FMX', 'Posix', 'Macapi', 'Androidapi', 'iOSapi');
 
 class function TLibraryUnits.IsLibraryUnit(const AUnitName: string): Boolean;
 var
-  Prefix: string;
+  mPrefix: string;
 begin
-  for Prefix in LibraryPrefixes do
+  for mPrefix in cLibraryPrefixes do
   begin
-    if SameText(AUnitName, Prefix) or StartsText(Prefix + '.', AUnitName) then
+    if SameText(AUnitName, mPrefix) or StartsText(mPrefix + '.', AUnitName) then
     begin
       Exit(True);
     end;
@@ -49,12 +49,12 @@ end;
 
 class function TLibraryUnits.IsLibrary(const AIndex: ISymbolIndex; const AUnitName: string): Boolean;
 var
-  Found: TUnitIndex;
+  mFound: TUnitIndex;
 begin
   Result := IsLibraryUnit(AUnitName);
-  if not Result and (AIndex <> nil) and (AUnitName <> '') and AIndex.FindUnit(AUnitName, Found) then
+  if not Result and (AIndex <> nil) and (AUnitName <> '') and AIndex.FindUnit(AUnitName, mFound) then
   begin
-    Result := Found.Library_;
+    Result := mFound.Library_;
   end;
 end;
 

@@ -38,7 +38,7 @@ type
 
   TAtlasExternalChanges = class
   public const
-    QuietMs = 500;
+    cQuietMs = 500;
   private type
     TKnown = record
       Exists: Boolean;
@@ -55,7 +55,8 @@ type
     procedure Observe(const AFiles: TArray<TAtlasObservedFile>; ANowMs: Int64);
     /// <summary>Ein Vorgang ist fertig: Änderungen liegen vor und seit QuietMs kam keine dazu.</summary>
     function Due(ANowMs: Int64): Boolean;
-    /// <summary>Entscheidungen für den fertigen Vorgang, nach Dateiname sortiert; der neue Stand gilt danach als bekannt.</summary>
+    /// <summary>Entscheidungen für den fertigen Vorgang, nach Dateiname sortiert; der neue Stand gilt danach als
+    /// bekannt.</summary>
     function TakeBatch: TArray<TAtlasReloadDecision>;
     class function ActionText(AAction: TAtlasReloadAction): string; static;
   end;
@@ -81,11 +82,11 @@ end;
 
 class function TAtlasExternalChanges.ActionText(AAction: TAtlasReloadAction): string;
 const
-  Texts: array[TAtlasLanguage, TAtlasReloadAction] of string = (
+  cTexts: array[TAtlasLanguage, TAtlasReloadAction] of string = (
     ('neu laden', 'ungespeicherte Änderungen, behalten', 'gelöscht'),
     ('reload', 'unsaved changes, kept', 'deleted'));
 begin
-  Result := Texts[TAtlasTextLanguage.Current, AAction];
+  Result := cTexts[TAtlasTextLanguage.Current, AAction];
 end;
 
 constructor TAtlasExternalChanges.Create;
@@ -104,102 +105,102 @@ end;
 
 procedure TAtlasExternalChanges.Observe(const AFiles: TArray<TAtlasObservedFile>; ANowMs: Int64);
 var
-  Observed: TAtlasObservedFile;
-  Known: TKnown;
-  Open: TDictionary<string, Boolean>;
-  Key: string;
-  Pending: TAtlasObservedFile;
+  mObserved: TAtlasObservedFile;
+  mKnown: TKnown;
+  mOpen: TDictionary<string, Boolean>;
+  mKey: string;
+  mPending: TAtlasObservedFile;
 begin
-  Open := TDictionary<string, Boolean>.Create;
+  mOpen := TDictionary<string, Boolean>.Create;
   try
-    for Observed in AFiles do
+    for mObserved in AFiles do
     begin
-      Key := UpperCase(Observed.FileName);
-      Open.AddOrSetValue(Key, True);
-      if not FKnown.TryGetValue(Key, Known) then
+      mKey := UpperCase(mObserved.FileName);
+      mOpen.AddOrSetValue(mKey, True);
+      if not FKnown.TryGetValue(mKey, mKnown) then
       begin
         // Neu geöffnet bzw. neue Datei ohne Platte: nur merken.
-        Known.Exists := Observed.Exists;
-        Known.Stamp := Observed.Stamp;
-        FKnown.Add(Key, Known);
+        mKnown.Exists := mObserved.Exists;
+        mKnown.Stamp := mObserved.Stamp;
+        FKnown.Add(mKey, mKnown);
         Continue;
       end;
-      if (Known.Exists = Observed.Exists) and (Known.Stamp = Observed.Stamp) then
+      if (mKnown.Exists = mObserved.Exists) and (mKnown.Stamp = mObserved.Stamp) then
       begin
-        FPending.Remove(Key);
+        FPending.Remove(mKey);
         Continue;
       end;
       // Noch nie auf der Platte gewesen (neue Unit): erstes Speichern ist keine externe Änderung.
-      if not Known.Exists then
+      if not mKnown.Exists then
       begin
-        Known.Exists := Observed.Exists;
-        Known.Stamp := Observed.Stamp;
-        FKnown[Key] := Known;
+        mKnown.Exists := mObserved.Exists;
+        mKnown.Stamp := mObserved.Stamp;
+        FKnown[mKey] := mKnown;
         Continue;
       end;
-      if not FPending.TryGetValue(Key, Pending) or (Pending.Stamp <> Observed.Stamp) or
-        (Pending.Exists <> Observed.Exists) then
+      if not FPending.TryGetValue(mKey, mPending) or (mPending.Stamp <> mObserved.Stamp) or
+        (mPending.Exists <> mObserved.Exists) then
       begin
         FLastChange := ANowMs;
       end;
-      FPending.AddOrSetValue(Key, Observed);
+      FPending.AddOrSetValue(mKey, mObserved);
     end;
-    for Key in FKnown.Keys.ToArray do
+    for mKey in FKnown.Keys.ToArray do
     begin
-      if not Open.ContainsKey(Key) then
+      if not mOpen.ContainsKey(mKey) then
       begin
-        FKnown.Remove(Key);
-        FPending.Remove(Key);
+        FKnown.Remove(mKey);
+        FPending.Remove(mKey);
       end;
     end;
   finally
-    Open.Free;
+    mOpen.Free;
   end;
 end;
 
 function TAtlasExternalChanges.Due(ANowMs: Int64): Boolean;
 begin
-  Result := (FPending.Count > 0) and (ANowMs - FLastChange >= QuietMs);
+  Result := (FPending.Count > 0) and (ANowMs - FLastChange >= cQuietMs);
 end;
 
 function TAtlasExternalChanges.TakeBatch: TArray<TAtlasReloadDecision>;
 var
-  Observed: TAtlasObservedFile;
-  Known: TKnown;
-  Decision: TAtlasReloadDecision;
-  List: TList<TAtlasReloadDecision>;
+  mObserved: TAtlasObservedFile;
+  mKnown: TKnown;
+  mDecision: TAtlasReloadDecision;
+  mList: TList<TAtlasReloadDecision>;
 begin
-  List := TList<TAtlasReloadDecision>.Create;
+  mList := TList<TAtlasReloadDecision>.Create;
   try
-    for Observed in FPending.Values do
+    for mObserved in FPending.Values do
     begin
-      Decision.FileName := Observed.FileName;
-      if not Observed.Exists then
+      mDecision.FileName := mObserved.FileName;
+      if not mObserved.Exists then
       begin
-        Decision.Action := TAtlasReloadAction.Deleted;
+        mDecision.Action := TAtlasReloadAction.Deleted;
       end
-      else if Observed.Modified then
+      else if mObserved.Modified then
       begin
-        Decision.Action := TAtlasReloadAction.KeepModified;
+        mDecision.Action := TAtlasReloadAction.KeepModified;
       end
       else
       begin
-        Decision.Action := TAtlasReloadAction.Reload;
+        mDecision.Action := TAtlasReloadAction.Reload;
       end;
-      List.Add(Decision);
-      Known.Exists := Observed.Exists;
-      Known.Stamp := Observed.Stamp;
-      FKnown[UpperCase(Observed.FileName)] := Known;
+      mList.Add(mDecision);
+      mKnown.Exists := mObserved.Exists;
+      mKnown.Stamp := mObserved.Stamp;
+      FKnown[UpperCase(mObserved.FileName)] := mKnown;
     end;
     FPending.Clear;
-    List.Sort(TComparer<TAtlasReloadDecision>.Construct(
+    mList.Sort(TComparer<TAtlasReloadDecision>.Construct(
       function(const A, B: TAtlasReloadDecision): Integer
       begin
         Result := CompareText(A.FileName, B.FileName);
       end));
-    Result := List.ToArray;
+    Result := mList.ToArray;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 

@@ -68,7 +68,7 @@ type
 implementation
 
 const
-  OriginTexts: array[TAtlasUnitOrigin] of string = ('active', 'group', 'searchPath', 'library');
+  cOriginTexts: array[TAtlasUnitOrigin] of string = ('active', 'group', 'searchPath', 'library');
 
 function GroupingPrefix(AGrouping: TAtlasUnitGrouping): string;
 begin
@@ -100,15 +100,15 @@ end;
 
 function TAtlasUnitSearchState.Collapsed(const AGroupFile: string; AGrouping: TAtlasUnitGrouping): TArray<string>;
 var
-  Item, Prefix: string;
+  mItem, mPrefix: string;
 begin
   Result := nil;
-  Prefix := GroupingPrefix(AGrouping);
-  for Item in GroupState(AGroupFile).Collapsed do
+  mPrefix := GroupingPrefix(AGrouping);
+  for mItem in GroupState(AGroupFile).Collapsed do
   begin
-    if Item.StartsWith(Prefix) then
+    if mItem.StartsWith(mPrefix) then
     begin
-      Result := Result + [Copy(Item, Length(Prefix) + 1, MaxInt)];
+      Result := Result + [Copy(mItem, Length(mPrefix) + 1, MaxInt)];
     end;
   end;
 end;
@@ -116,49 +116,49 @@ end;
 procedure TAtlasUnitSearchState.SetCollapsed(const AGroupFile: string; AGrouping: TAtlasUnitGrouping;
   const AKeys: TArray<string>);
 var
-  State: TGroupState;
-  Kept: TArray<string>;
-  Item, Prefix: string;
+  mState: TGroupState;
+  mKept: TArray<string>;
+  mItem, mPrefix: string;
 begin
-  State := GroupState(AGroupFile);
-  Prefix := GroupingPrefix(AGrouping);
-  Kept := nil;
-  for Item in State.Collapsed do
+  mState := GroupState(AGroupFile);
+  mPrefix := GroupingPrefix(AGrouping);
+  mKept := nil;
+  for mItem in mState.Collapsed do
   begin
-    if not Item.StartsWith(Prefix) then
+    if not mItem.StartsWith(mPrefix) then
     begin
-      Kept := Kept + [Item];
+      mKept := mKept + [mItem];
     end;
   end;
-  for Item in AKeys do
+  for mItem in AKeys do
   begin
-    Kept := Kept + [Prefix + LowerCase(Item)];
+    mKept := mKept + [mPrefix + LowerCase(mItem)];
   end;
-  State.Collapsed := Kept;
-  FGroups.AddOrSetValue(LowerCase(AGroupFile), State);
+  mState.Collapsed := mKept;
+  FGroups.AddOrSetValue(LowerCase(AGroupFile), mState);
 end;
 
 function TAtlasUnitSearchState.Filters(const AGroupFile: string; out AOrigins: TAtlasUnitOrigins;
   out AKinds: TAtlasUnitKinds): Boolean;
 var
-  State: TGroupState;
+  mState: TGroupState;
 begin
-  State := GroupState(AGroupFile);
-  AOrigins := State.Origins;
-  AKinds := State.Kinds;
-  Result := State.HasFilters;
+  mState := GroupState(AGroupFile);
+  AOrigins := mState.Origins;
+  AKinds := mState.Kinds;
+  Result := mState.HasFilters;
 end;
 
 procedure TAtlasUnitSearchState.SetFilters(const AGroupFile: string; AOrigins: TAtlasUnitOrigins;
   AKinds: TAtlasUnitKinds);
 var
-  State: TGroupState;
+  mState: TGroupState;
 begin
-  State := GroupState(AGroupFile);
-  State.HasFilters := True;
-  State.Origins := AOrigins;
-  State.Kinds := AKinds;
-  FGroups.AddOrSetValue(LowerCase(AGroupFile), State);
+  mState := GroupState(AGroupFile);
+  mState.HasFilters := True;
+  mState.Origins := AOrigins;
+  mState.Kinds := AKinds;
+  FGroups.AddOrSetValue(LowerCase(AGroupFile), mState);
 end;
 
 function TextsToJson(const ATexts: TArray<string>): TJSONArray;
@@ -179,7 +179,7 @@ begin
   Result := TJSONArray.Create;
   for mOrigin in AOrigins do
   begin
-    Result.Add(OriginTexts[mOrigin]);
+    Result.Add(cOriginTexts[mOrigin]);
   end;
 end;
 
@@ -246,7 +246,7 @@ begin
   begin
     for mOrigin := Low(TAtlasUnitOrigin) to High(TAtlasUnitOrigin) do
     begin
-      if SameText(mValue.Value, OriginTexts[mOrigin]) then
+      if SameText(mValue.Value, cOriginTexts[mOrigin]) then
       begin
         Include(Result, mOrigin);
       end;

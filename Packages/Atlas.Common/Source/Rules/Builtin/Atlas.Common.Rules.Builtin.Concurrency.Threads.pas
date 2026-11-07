@@ -138,38 +138,38 @@ end;
 /// <summary>Variable X bei X.FreeOnTerminate := True, sonst ''.</summary>
 function FreeOnTerminateTarget(AStatement: TSyntaxNode): string;
 var
-  Target: TSyntaxNode;
+  mTarget: TSyntaxNode;
 begin
   Result := '';
   if (AStatement.Kind <> TSyntaxKind.AssignStatement) or (AStatement.ChildCount <> 2) then
   begin
     Exit;
   end;
-  Target := AStatement[0];
-  if (Target.Kind = TSyntaxKind.MemberAccess) and SameText(Target.Name, 'FreeOnTerminate') and
-    (Target.ChildCount = 1) and (Target[0].Kind = TSyntaxKind.Identifier) and IsTrueLiteral(AStatement[1]) then
+  mTarget := AStatement[0];
+  if (mTarget.Kind = TSyntaxKind.MemberAccess) and SameText(mTarget.Name, 'FreeOnTerminate') and
+    (mTarget.ChildCount = 1) and (mTarget[0].Kind = TSyntaxKind.Identifier) and IsTrueLiteral(AStatement[1]) then
   begin
-    Result := Target[0].Name;
+    Result := mTarget[0].Name;
   end;
 end;
 
 /// <summary>Variable bei X.Free oder FreeAndNil(X), sonst ''.</summary>
 function FreedVariable(AStatement: TSyntaxNode): string;
 var
-  Call: TMethodCall;
+  mCall: TMethodCall;
 begin
   Result := '';
-  if not TryMethodCall(AStatement, Call) then
+  if not TryMethodCall(AStatement, mCall) then
   begin
     Exit;
   end;
-  if SameText(Call.Method, 'Free') and (Call.Call = nil) then
+  if SameText(mCall.Method, 'Free') and (mCall.Call = nil) then
   begin
-    Result := VariableName(Call.Receiver);
+    Result := VariableName(mCall.Receiver);
   end
-  else if SameText(Call.Method, 'FreeAndNil') and (Call.Receiver = nil) and (Call.Call.ChildCount = 2) then
+  else if SameText(mCall.Method, 'FreeAndNil') and (mCall.Receiver = nil) and (mCall.Call.ChildCount = 2) then
   begin
-    Result := VariableName(Call.Call[1]);
+    Result := VariableName(mCall.Call[1]);
   end;
 end;
 
@@ -191,56 +191,56 @@ procedure TThreadUseAfterFreeOnTerminateRule.Check(const AContext: TRuleContext;
 
   procedure CheckList(AList: TSyntaxNode);
   var
-    Index: Integer;
-    Statement: TSyntaxNode;
-    Call: TMethodCall;
-    Name: string;
-    Started: Boolean;
+    mIndex: Integer;
+    mStatement: TSyntaxNode;
+    mCall: TMethodCall;
+    mName: string;
+    mStarted: Boolean;
   begin
-    Name := '';
-    Started := False;
-    for Index := 0 to AList.ChildCount - 1 do
+    mName := '';
+    mStarted := False;
+    for mIndex := 0 to AList.ChildCount - 1 do
     begin
-      Statement := AList[Index];
-      if Started then
+      mStatement := AList[mIndex];
+      if mStarted then
       begin
-        if not Mentions(Statement, Name) then
+        if not Mentions(mStatement, mName) then
         begin
           Continue;
         end;
         // Neue Zuweisung beendet die Beobachtung; Free meldet thread-free-with-free-on-terminate.
-        if not IsAssignmentTo(Statement, Name) and not SameText(FreedVariable(Statement), Name) then
+        if not IsAssignmentTo(mStatement, mName) and not SameText(FreedVariable(mStatement), mName) then
         begin
-          AReport.Add(NodeRange(Statement), cTexts[TConcurrencyThreadsText.UsedAfterStart].Fmt([Name]),
+          AReport.Add(NodeRange(mStatement), cTexts[TConcurrencyThreadsText.UsedAfterStart].Fmt([mName]),
             TRuleConfidence.High);
         end;
-        Name := '';
-        Started := False;
+        mName := '';
+        mStarted := False;
         Continue;
       end;
-      if FreeOnTerminateTarget(Statement) <> '' then
+      if FreeOnTerminateTarget(mStatement) <> '' then
       begin
-        Name := FreeOnTerminateTarget(Statement);
+        mName := FreeOnTerminateTarget(mStatement);
       end
-      else if (Name <> '') and TryMethodCall(Statement, Call) and
-        (SameText(Call.Method, 'Start') or SameText(Call.Method, 'Resume')) and
-        SameText(VariableName(Call.Receiver), Name) then
+      else if (mName <> '') and TryMethodCall(mStatement, mCall) and
+        (SameText(mCall.Method, 'Start') or SameText(mCall.Method, 'Resume')) and
+        SameText(VariableName(mCall.Receiver), mName) then
       begin
-        Started := True;
+        mStarted := True;
       end;
     end;
   end;
 
 var
-  List: TSyntaxNode;
+  mList: TSyntaxNode;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  for List in StatementLists(AContext.Tree.Root) do
+  for mList in StatementLists(AContext.Tree.Root) do
   begin
-    CheckList(List);
+    CheckList(mList);
   end;
 end;
 
@@ -256,42 +256,43 @@ procedure TThreadFreeWithFreeOnTerminateRule.Check(const AContext: TRuleContext;
 
   procedure CheckList(AList: TSyntaxNode);
   var
-    Index: Integer;
-    Statement: TSyntaxNode;
-    Name: string;
+    mIndex: Integer;
+    mStatement: TSyntaxNode;
+    mName: string;
   begin
-    Name := '';
-    for Index := 0 to AList.ChildCount - 1 do
+    mName := '';
+    for mIndex := 0 to AList.ChildCount - 1 do
     begin
-      Statement := AList[Index];
-      if FreeOnTerminateTarget(Statement) <> '' then
+      mStatement := AList[mIndex];
+      if FreeOnTerminateTarget(mStatement) <> '' then
       begin
-        Name := FreeOnTerminateTarget(Statement);
+        mName := FreeOnTerminateTarget(mStatement);
       end
-      else if (Name <> '') and IsAssignmentTo(Statement, Name) then
+      else if (mName <> '') and IsAssignmentTo(mStatement, mName) then
       begin
-        Name := '';
+        mName := '';
       end
-      else if (Name <> '') and SameText(FreedVariable(Statement), Name) then
+      else if (mName <> '') and SameText(FreedVariable(mStatement), mName) then
       begin
-        AReport.Add(NodeRange(Statement), cTexts[TConcurrencyThreadsText.DoubleFree].Fmt([Name]), TRuleConfidence.High,
+        AReport.Add(NodeRange(mStatement), cTexts[TConcurrencyThreadsText.DoubleFree].Fmt([mName]),
+          TRuleConfidence.High,
           [TRuleFix.Create(cTexts[TConcurrencyThreadsText.RemoveFree].Text,
-            [TRuleEdit.Create(StatementRemoval(AContext.Text, Statement), '')])]);
-        Name := '';
+            [TRuleEdit.Create(StatementRemoval(AContext.Text, mStatement), '')])]);
+        mName := '';
       end;
     end;
   end;
 
 var
-  List: TSyntaxNode;
+  mList: TSyntaxNode;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  for List in StatementLists(AContext.Tree.Root) do
+  for mList in StatementLists(AContext.Tree.Root) do
   begin
-    CheckList(List);
+    CheckList(mList);
   end;
 end;
 
@@ -325,18 +326,18 @@ end;
 
 procedure TSynchronizeInDestructorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Threads: TArray<string>;
-  Routines: TArray<TSyntaxNode>;
+  mThreads: TArray<string>;
+  mRoutines: TArray<TSyntaxNode>;
 
   function FindMethod(const AClass, AMethod: string): TSyntaxNode;
   var
-    Routine: TSyntaxNode;
+    mRoutine: TSyntaxNode;
   begin
-    for Routine in Routines do
+    for mRoutine in mRoutines do
     begin
-      if SameText(Routine.Name, AClass + '.' + AMethod) then
+      if SameText(mRoutine.Name, AClass + '.' + AMethod) then
       begin
-        Exit(Routine);
+        Exit(mRoutine);
       end;
     end;
     Result := nil;
@@ -367,63 +368,63 @@ var
 
   procedure Search(ABody: TSyntaxNode; const AClass: string);
   var
-    Pending: TStack<TCallDepthEntry>;
-    Entry: TCallDepthEntry;
-    Index: Integer;
-    Node, Body: TSyntaxNode;
+    mPending: TStack<TCallDepthEntry>;
+    mEntry: TCallDepthEntry;
+    mIndex: Integer;
+    mNode, mBody: TSyntaxNode;
   begin
     // Iterativ mit eigenem Stapel (Bericht M1); die Kinder rückwärts darauf, damit die Reihenfolge der Treffer die
     // der früheren Rekursion bleibt.
-    Pending := TStack<TCallDepthEntry>.Create;
+    mPending := TStack<TCallDepthEntry>.Create;
     try
-      Pending.Push(CallDepthEntry(ABody, 0));
-      while Pending.Count > 0 do
+      mPending.Push(CallDepthEntry(ABody, 0));
+      while mPending.Count > 0 do
       begin
-        Entry := Pending.Pop;
-        Node := Entry.Node;
-        if Node.Kind = TSyntaxKind.AnonymousMethod then
+        mEntry := mPending.Pop;
+        mNode := mEntry.Node;
+        if mNode.Kind = TSyntaxKind.AnonymousMethod then
         begin
           Continue;
         end;
-        if IsSynchronizeName(Node) then
+        if IsSynchronizeName(mNode) then
         begin
-          AReport.Add(NameRange(Node), cTexts[TConcurrencyThreadsText.SyncDestructor].Text, TRuleConfidence.Medium);
+          AReport.Add(NameRange(mNode), cTexts[TConcurrencyThreadsText.SyncDestructor].Text, TRuleConfidence.Medium);
           Continue;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(CallDepthEntry(Node[Index], Entry.Depth));
+          mPending.Push(CallDepthEntry(mNode[mIndex], mEntry.Depth));
         end;
         // Eine Ebene tief in Methoden derselben Klasse, die der Destruktor aufruft; zuletzt auf den Stapel, damit
         // sie wie früher vor den Kindern des Aufrufs drankommen.
-        Body := nil;
-        if Entry.Depth = 0 then
+        mBody := nil;
+        if mEntry.Depth = 0 then
         begin
-          Body := CalleeBody(Node, AClass);
+          mBody := CalleeBody(mNode, AClass);
         end;
-        if Body <> nil then
+        if mBody <> nil then
         begin
-          Pending.Push(CallDepthEntry(Body, 1));
+          mPending.Push(CallDepthEntry(mBody, 1));
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
 var
-  Routine, Body: TSyntaxNode;
+  mRoutine, mBody: TSyntaxNode;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Threads := SharedThreadClasses(AContext);
-  if Threads = nil then
+  mThreads := SharedThreadClasses(AContext);
+  if mThreads = nil then
   begin
     Exit;
   end;
-  Routines := nil;
+  mRoutines := nil;
   // Iterativ (Bericht M1); eingebettete Routinen zählen nicht als Methoden.
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
@@ -431,17 +432,17 @@ begin
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
       if not Result then
       begin
-        Routines := Routines + [ANode];
+        mRoutines := mRoutines + [ANode];
       end;
     end);
-  for Routine in Routines do
+  for mRoutine in mRoutines do
   begin
-    if (Pos('destructor', NodeText(AContext.Text, Routine)) = 1) and InList(Threads, ClassPart(Routine.Name)) then
+    if (Pos('destructor', NodeText(AContext.Text, mRoutine)) = 1) and InList(mThreads, ClassPart(mRoutine.Name)) then
     begin
-      Body := Routine.FindChild(TSyntaxKind.Block);
-      if Body <> nil then
+      mBody := mRoutine.FindChild(TSyntaxKind.Block);
+      if mBody <> nil then
       begin
-        Search(Body, ClassPart(Routine.Name));
+        Search(mBody, ClassPart(mRoutine.Name));
       end;
     end;
   end;
@@ -479,7 +480,7 @@ end;
 
 procedure TThreadResumeSuspendRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Report: IRuleReport;
+  mReport: IRuleReport;
   mTypes: TDeclaredTypes;
   mAncestry: TAncestry;
 begin
@@ -487,7 +488,7 @@ begin
   begin
     Exit;
   end;
-  Report := AReport;
+  mReport := AReport;
   mTypes := nil;
   mAncestry := nil;
   try
@@ -519,13 +520,13 @@ begin
         Range := NameRange(Call.Member);
         if SameText(Call.Method, 'Resume') then
         begin
-          Report.Add(Range, cTexts[TConcurrencyThreadsText.ResumeDeprecated].Text,
+          mReport.Add(Range, cTexts[TConcurrencyThreadsText.ResumeDeprecated].Text,
             TRuleConfidence.High, [TRuleFix.Create(cTexts[TConcurrencyThreadsText.ReplaceWithStart].Text,
               [TRuleEdit.Create(Range, 'Start')], True)]);
         end
         else
         begin
-          Report.Add(Range, cTexts[TConcurrencyThreadsText.SuspendDeprecated].Text, TRuleConfidence.High);
+          mReport.Add(Range, cTexts[TConcurrencyThreadsText.SuspendDeprecated].Text, TRuleConfidence.High);
         end;
       end);
   finally
@@ -537,7 +538,7 @@ end;
 { TThreadLoopWithoutTerminatedRule }
 
 const
-  ThreadWaitCalls: array[0..6] of string = ('Sleep', 'WaitFor', 'WaitForSingleObject', 'WaitForMultipleObjects',
+  cThreadWaitCalls: array[0..6] of string = ('Sleep', 'WaitFor', 'WaitForSingleObject', 'WaitForMultipleObjects',
     'MsgWaitForMultipleObjects', 'Wait', 'Yield');
 
 function TThreadLoopWithoutTerminatedRule.Descriptor: TRuleDescriptor;
@@ -560,8 +561,8 @@ end;
 
 procedure TThreadLoopWithoutTerminatedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Routines: TArray<TSyntaxNode>;
-  Names: TArray<TArray<string>>;
+  mRoutines: TArray<TSyntaxNode>;
+  mNames: TArray<TArray<string>>;
 
   function IsConstant(ANode: TSyntaxNode; const AValue: string): Boolean;
   begin
@@ -571,45 +572,45 @@ var
   // Alle Bezeichner (auch hinter einem Punkt), ohne anonyme Methoden.
   procedure CollectNames(ANode: TSyntaxNode; var ANames: TArray<string>);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion.
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.AnonymousMethod then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.AnonymousMethod then
         begin
           Continue;
         end;
-        if (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and not InList(ANames, Node.Name) then
+        if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and not InList(ANames, mNode.Name) then
         begin
-          ANames := ANames + [Node.Name];
+          ANames := ANames + [mNode.Name];
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   function MentionsAny(ANode: TSyntaxNode; const ACandidates: array of string): Boolean;
   var
-    Found: TArray<string>;
-    Name: string;
+    mFound: TArray<string>;
+    mName: string;
   begin
-    Found := nil;
-    CollectNames(ANode, Found);
-    for Name in ACandidates do
+    mFound := nil;
+    CollectNames(ANode, mFound);
+    for mName in ACandidates do
     begin
-      if InList(Found, Name) then
+      if InList(mFound, mName) then
       begin
         Exit(True);
       end;
@@ -624,12 +625,12 @@ var
     mMethod: string;
     mAny: Boolean;
   begin
-    mMethod := MethodPart(Routines[AIndex].Name);
+    mMethod := MethodPart(mRoutines[AIndex].Name);
     mAny := False;
     Result := True;
-    for mOther := 0 to High(Routines) do
+    for mOther := 0 to High(mRoutines) do
     begin
-      if (mOther <> AIndex) and InList(Names[mOther], mMethod) then
+      if (mOther <> AIndex) and InList(mNames[mOther], mMethod) then
       begin
         mAny := True;
         Result := Result and ContainsIndex(AReached, mOther);
@@ -646,19 +647,19 @@ var
   begin
     Result := nil;
     mReached := nil;
-    for mIndex := 0 to High(Routines) do
+    for mIndex := 0 to High(mRoutines) do
     begin
-      if SameText(Routines[mIndex].Name, AClass + '.Execute') then
+      if SameText(mRoutines[mIndex].Name, AClass + '.Execute') then
       begin
         mReached := mReached + [mIndex];
       end;
     end;
     repeat
       mCount := Length(mReached);
-      for mIndex := 0 to High(Routines) do
+      for mIndex := 0 to High(mRoutines) do
       begin
         if (mReached <> nil) and not ContainsIndex(mReached, mIndex) and
-          SameText(ClassPart(Routines[mIndex].Name), AClass) and CalledOnlyFrom(mIndex, mReached) then
+          SameText(ClassPart(mRoutines[mIndex].Name), AClass) and CalledOnlyFrom(mIndex, mReached) then
         begin
           mReached := mReached + [mIndex];
         end;
@@ -666,58 +667,58 @@ var
     until mCount = Length(mReached);
     for mIndex in mReached do
     begin
-      Result := Result + [Routines[mIndex]];
+      Result := Result + [mRoutines[mIndex]];
     end;
   end;
 
   function Fix(ALoop: TSyntaxNode): TArray<TRuleFix>;
   var
-    Condition: TSyntaxNode;
-    Text, Replacement: string;
+    mCondition: TSyntaxNode;
+    mText, mReplacement: string;
   begin
     if ALoop.Kind = TSyntaxKind.WhileStatement then
     begin
-      Condition := ALoop[0];
+      mCondition := ALoop[0];
     end
     else
     begin
-      Condition := ALoop[ALoop.ChildCount - 1];
+      mCondition := ALoop[ALoop.ChildCount - 1];
     end;
-    Text := SourceText(AContext.Text, Condition);
-    if Condition.Kind = TSyntaxKind.BinaryExpr then
+    mText := SourceText(AContext.Text, mCondition);
+    if mCondition.Kind = TSyntaxKind.BinaryExpr then
     begin
-      Text := '(' + Text + ')';
+      mText := '(' + mText + ')';
     end;
     if ALoop.Kind = TSyntaxKind.WhileStatement then
     begin
-      if IsConstant(Condition, 'True') then
+      if IsConstant(mCondition, 'True') then
       begin
-        Replacement := 'not Terminated';
+        mReplacement := 'not Terminated';
       end
       else
       begin
-        Replacement := Text + ' and not Terminated';
+        mReplacement := mText + ' and not Terminated';
       end;
     end
-    else if IsConstant(Condition, 'False') then
+    else if IsConstant(mCondition, 'False') then
     begin
-      Replacement := 'Terminated';
+      mReplacement := 'Terminated';
     end
     else
     begin
-      Replacement := Text + ' or Terminated';
+      mReplacement := mText + ' or Terminated';
     end;
     Result := [TRuleFix.Create(cTexts[TConcurrencyThreadsText.AddTerminated].Text,
-      [TRuleEdit.Create(NodeRange(Condition), Replacement)])];
+      [TRuleEdit.Create(NodeRange(mCondition), mReplacement)])];
   end;
 
   function HasMethod(const AName: string): Boolean;
   var
-    Routine: TSyntaxNode;
+    mRoutine: TSyntaxNode;
   begin
-    for Routine in Routines do
+    for mRoutine in mRoutines do
     begin
-      if SameText(Routine.Name, AName) then
+      if SameText(mRoutine.Name, AName) then
       begin
         Exit(True);
       end;
@@ -742,7 +743,7 @@ var
       mKeyword := 'repeat';
     end;
     // Endlosschleife oder Warteschleife: beide laufen weiter, bis jemand Terminated prüft.
-    if mInfinite or MentionsAny(ANode, ThreadWaitCalls) then
+    if mInfinite or MentionsAny(ANode, cThreadWaitCalls) then
     begin
       AReport.Add(TTextRange.Create(ANode.StartPos, TTextPosition.Create(ANode.StartPos.Line,
         ANode.StartPos.Character + Length(mKeyword))), cTexts[TConcurrencyThreadsText.NoTerminated].Text,
@@ -752,85 +753,85 @@ var
 
   procedure Visit(ANode: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.AnonymousMethod then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.AnonymousMethod then
         begin
           Continue;
         end;
-        if (Node.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement]) and (Node.ChildCount >= 2) and
-          not MentionsAny(Node, ['Terminated', 'CheckTerminated']) then
+        if (mNode.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement]) and (mNode.ChildCount >= 2) and
+          not MentionsAny(mNode, ['Terminated', 'CheckTerminated']) then
         begin
-          CheckLoop(Node);
+          CheckLoop(mNode);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
 var
-  Ancestry: TAncestry;
-  Classes: TArray<string>;
-  Index: Integer;
-  Owner: string;
-  Routine: TSyntaxNode;
+  mAncestry: TAncestry;
+  mClasses: TArray<string>;
+  mIndex: Integer;
+  mOwner: string;
+  mRoutine: TSyntaxNode;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Execute') then
   begin
     Exit;
   end;
-  Routines := nil;
+  mRoutines := nil;
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind = TSyntaxKind.RoutineDecl then
       begin
-        Routines := Routines + [ANode];
+        mRoutines := mRoutines + [ANode];
       end;
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
     end);
-  SetLength(Names, Length(Routines));
-  for Index := 0 to High(Routines) do
+  SetLength(mNames, Length(mRoutines));
+  for mIndex := 0 to High(mRoutines) do
   begin
-    Names[Index] := nil;
-    CollectNames(Routines[Index], Names[Index]);
+    mNames[mIndex] := nil;
+    CollectNames(mRoutines[mIndex], mNames[mIndex]);
   end;
-  Classes := SharedThreadClasses(AContext);
-  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
+  mClasses := SharedThreadClasses(AContext);
+  mAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
   try
-    for Routine in Routines do
+    for mRoutine in mRoutines do
     begin
-      Owner := ClassPart(Routine.Name);
-      if (Owner <> '') and not InList(Classes, Owner) and Ancestry.DescendsFrom(Owner, 'TThread') then
+      mOwner := ClassPart(mRoutine.Name);
+      if (mOwner <> '') and not InList(mClasses, mOwner) and mAncestry.DescendsFrom(mOwner, 'TThread') then
       begin
-        Classes := Classes + [Owner];
+        mClasses := mClasses + [mOwner];
       end;
     end;
   finally
-    Ancestry.Free;
+    mAncestry.Free;
   end;
-  for Owner in Classes do
+  for mOwner in mClasses do
   begin
     // Mit TerminatedSet beendet die Klasse ihre Schleifen auf eigenem Weg (Ereignis, Flag).
-    if not HasMethod(Owner + '.TerminatedSet') then
+    if not HasMethod(mOwner + '.TerminatedSet') then
     begin
-      for Routine in ThreadRoutines(Owner) do
+      for mRoutine in ThreadRoutines(mOwner) do
       begin
-        Visit(Routine);
+        Visit(mRoutine);
       end;
     end;
   end;
@@ -921,8 +922,8 @@ end;
 
 procedure TAnonymousThreadNotStartedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Lines: TArray<string>;
-  LineBreak: string;
+  mLines: TArray<string>;
+  mLineBreak: string;
 
   // TThread.CreateAnonymousThread(…) bzw. System.Classes.TThread.CreateAnonymousThread(…)?
   function IsCreation(ANode: TSyntaxNode): Boolean;
@@ -934,78 +935,78 @@ var
   // Wie benutzt die Routine die Variable sonst? Gestartet, nur Eigenschaften gesetzt oder weitergegeben.
   procedure Usage(ARoutine, ATarget: TSyntaxNode; const AName: string; out AStarted, AEscapes: Boolean);
   var
-    Pending, Parents, Grands: TStack<TSyntaxNode>;
-    Node, Parent, Grand: TSyntaxNode;
-    Index: Integer;
+    mPending, mParents, mGrands: TStack<TSyntaxNode>;
+    mNode, mParent, mGrand: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1); parallele Stapel führen Eltern- und Großelternknoten mit.
     AStarted := False;
     AEscapes := False;
-    Pending := TStack<TSyntaxNode>.Create;
-    Parents := TStack<TSyntaxNode>.Create;
-    Grands := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    mParents := TStack<TSyntaxNode>.Create;
+    mGrands := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoutine);
-      Parents.Push(nil);
-      Grands.Push(nil);
-      while Pending.Count > 0 do
+      mPending.Push(ARoutine);
+      mParents.Push(nil);
+      mGrands.Push(nil);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Parent := Parents.Pop;
-        Grand := Grands.Pop;
-        if (Node <> ATarget) and (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, AName) then
+        mNode := mPending.Pop;
+        mParent := mParents.Pop;
+        mGrand := mGrands.Pop;
+        if (mNode <> ATarget) and (mNode.Kind = TSyntaxKind.Identifier) and SameText(mNode.Name, AName) then
         begin
-          ClassifyUse(Node, Parent, Grand, AStarted, AEscapes);
+          ClassifyUse(mNode, mParent, mGrand, AStarted, AEscapes);
           Continue;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
-          Parents.Push(Node);
-          Grands.Push(Parent);
+          mPending.Push(mNode[mIndex]);
+          mParents.Push(mNode);
+          mGrands.Push(mParent);
         end;
       end;
     finally
-      Grands.Free;
-      Parents.Free;
-      Pending.Free;
+      mGrands.Free;
+      mParents.Free;
+      mPending.Free;
     end;
   end;
 
   // T.Start; nach der letzten Anweisung derselben Liste, die T erwähnt.
   function StartFix(AAssign: TSyntaxNode; const AName: string): TArray<TRuleFix>;
   var
-    List, Last: TSyntaxNode;
-    Index, Position: Integer;
-    Rest: string;
+    mList, mLast: TSyntaxNode;
+    mIndex, mPosition: Integer;
+    mRest: string;
   begin
     Result := nil;
-    List := AAssign.Parent;
-    if (List = nil) or not IsStatementList(List) then
+    mList := AAssign.Parent;
+    if (mList = nil) or not IsStatementList(mList) then
     begin
       Exit;
     end;
-    Last := AAssign;
-    Position := -1;
-    for Index := 0 to List.ChildCount - 1 do
+    mLast := AAssign;
+    mPosition := -1;
+    for mIndex := 0 to mList.ChildCount - 1 do
     begin
-      if List[Index] = AAssign then
+      if mList[mIndex] = AAssign then
       begin
-        Position := Index;
+        mPosition := mIndex;
       end
-      else if (Position >= 0) and Mentions(List[Index], AName) then
+      else if (mPosition >= 0) and Mentions(mList[mIndex], AName) then
       begin
-        Last := List[Index];
+        mLast := mList[mIndex];
       end;
     end;
-    Rest := Trim(Copy(Lines[Last.EndPos.Line], Last.EndPos.Character + 1, MaxInt));
-    if ((Rest <> '') and (Rest <> ';')) or (Last.EndPos.Line >= High(Lines)) then
+    mRest := Trim(Copy(mLines[mLast.EndPos.Line], mLast.EndPos.Character + 1, MaxInt));
+    if ((mRest <> '') and (mRest <> ';')) or (mLast.EndPos.Line >= High(mLines)) then
     begin
       Exit;
     end;
     Result := [TRuleFix.Create(cTexts[TConcurrencyThreadsText.AddStart].Fmt([AName]), [TRuleEdit.Create(
-      TTextRange.Create(Last.EndPos.Line + 1, 0, Last.EndPos.Line + 1, 0),
-      TTextLines.IndentOf(Lines[AAssign.StartPos.Line]) + AName + '.Start;' + LineBreak)])];
+      TTextRange.Create(mLast.EndPos.Line + 1, 0, mLast.EndPos.Line + 1, 0),
+      TTextLines.IndentOf(mLines[AAssign.StartPos.Line]) + AName + '.Start;' + mLineBreak)])];
   end;
 
   // T := TThread.CreateAnonymousThread(…); bzw. var T := …; mit lokaler Variable: der Aufruf (ATarget: T bei der
@@ -1066,34 +1067,34 @@ var
 
   procedure Visit(ANode, ARoutine: TSyntaxNode);
   var
-    Pending, RoutineStack: TStack<TSyntaxNode>;
-    Node, Routine: TSyntaxNode;
-    Index: Integer;
+    mPending, mRoutineStack: TStack<TSyntaxNode>;
+    mNode, mRoutine: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1); RoutineStack führt ARoutine je Knoten mit.
-    Pending := TStack<TSyntaxNode>.Create;
-    RoutineStack := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    mRoutineStack := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      RoutineStack.Push(ARoutine);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      mRoutineStack.Push(ARoutine);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Routine := RoutineStack.Pop;
-        if Node.Kind = TSyntaxKind.RoutineDecl then
+        mNode := mPending.Pop;
+        mRoutine := mRoutineStack.Pop;
+        if mNode.Kind = TSyntaxKind.RoutineDecl then
         begin
-          Routine := Node;
+          mRoutine := mNode;
         end;
-        CheckNode(Node, Routine);
-        for Index := Node.ChildCount - 1 downto 0 do
+        CheckNode(mNode, mRoutine);
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
-          RoutineStack.Push(Routine);
+          mPending.Push(mNode[mIndex]);
+          mRoutineStack.Push(mRoutine);
         end;
       end;
     finally
-      RoutineStack.Free;
-      Pending.Free;
+      mRoutineStack.Free;
+      mPending.Free;
     end;
   end;
 
@@ -1103,7 +1104,7 @@ begin
   begin
     Exit;
   end;
-  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
   Visit(AContext.Tree.Root, nil);
 end;
 
@@ -1117,8 +1118,8 @@ end;
 
 procedure TTaskExceptionUnobservedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Lines: TArray<string>;
-  LineBreak: string;
+  mLines: TArray<string>;
+  mLineBreak: string;
 
   function IsTaskCall(ANode: TSyntaxNode; const AMethod: string): Boolean;
   begin
@@ -1143,77 +1144,77 @@ var
 
   function Catches(ANode: TSyntaxNode): Boolean;
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1).
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if (Node.Kind = TSyntaxKind.TryStatement) and (Node.FindChild(TSyntaxKind.ExceptBlock) <> nil) then
+        mNode := mPending.Pop;
+        if (mNode.Kind = TSyntaxKind.TryStatement) and (mNode.FindChild(TSyntaxKind.ExceptBlock) <> nil) then
         begin
           Exit(True);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   // Erster Aufruf im Rumpf für die Meldung.
   function FirstCall(ANode: TSyntaxNode): string;
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
-    Call: TMethodCall;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
+    mCall: TMethodCall;
   begin
     // Iterativ (Bericht M1), Vorordnung wie die frühere Rekursion; ein Aufruf ohne Namen lässt seine Kinder aus.
     Result := '';
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if TryMethodCall(Node, Call) then
+        mNode := mPending.Pop;
+        if TryMethodCall(mNode, mCall) then
         begin
-          if Call.Method <> '' then
+          if mCall.Method <> '' then
           begin
-            Exit(Call.Method);
+            Exit(mCall.Method);
           end;
           Continue;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   // Steht das Wort an APosition am Zeilenanfang und folgen höchstens Klammern, Komma und Semikolon?
   function OnOwnLine(const APosition: TTextPosition; ALength: Integer): Boolean;
   var
-    Rest: string;
-    Character: Char;
+    mRest: string;
+    mCharacter: Char;
   begin
-    Result := Trim(Copy(Lines[APosition.Line], 1, APosition.Character)) = '';
-    Rest := Copy(Lines[APosition.Line], APosition.Character + ALength + 1, MaxInt);
-    for Character in Rest do
+    Result := Trim(Copy(mLines[APosition.Line], 1, APosition.Character)) = '';
+    mRest := Copy(mLines[APosition.Line], APosition.Character + ALength + 1, MaxInt);
+    for mCharacter in mRest do
     begin
-      if not CharInSet(Character, [' ', #9, ')', ',', ';']) then
+      if not CharInSet(mCharacter, [' ', #9, ')', ',', ';']) then
       begin
         Result := False;
       end;
@@ -1224,28 +1225,28 @@ var
   // eine Stufe).
   function ExceptPart(const AIndent, AStep: string): string;
   begin
-    Result := AIndent + AStep + 'except' + LineBreak +
-      AIndent + AStep + AStep + 'on E: Exception do' + LineBreak +
-      AIndent + AStep + AStep + 'begin' + LineBreak +
-      AIndent + AStep + AStep + AStep + 'var Fehler := E.Message;' + LineBreak +
-      AIndent + AStep + AStep + AStep + 'TThread.Queue(nil,' + LineBreak + // mainthread-ok
-      AIndent + AStep + AStep + AStep + AStep + 'procedure' + LineBreak +
-      AIndent + AStep + AStep + AStep + AStep + 'begin' + LineBreak +
-      AIndent + AStep + AStep + AStep + AStep + AStep + 'ShowMessage(Fehler);' + LineBreak +
-      AIndent + AStep + AStep + AStep + AStep + 'end);' + LineBreak +
-      AIndent + AStep + AStep + 'end;' + LineBreak +
-      AIndent + AStep + 'end;' + LineBreak;
+    Result := AIndent + AStep + 'except' + mLineBreak +
+      AIndent + AStep + AStep + 'on E: Exception do' + mLineBreak +
+      AIndent + AStep + AStep + 'begin' + mLineBreak +
+      AIndent + AStep + AStep + AStep + 'var Fehler := E.Message;' + mLineBreak +
+      AIndent + AStep + AStep + AStep + 'TThread.Queue(nil,' + mLineBreak + // mainthread-ok
+      AIndent + AStep + AStep + AStep + AStep + 'procedure' + mLineBreak +
+      AIndent + AStep + AStep + AStep + AStep + 'begin' + mLineBreak +
+      AIndent + AStep + AStep + AStep + AStep + AStep + 'ShowMessage(Fehler);' + mLineBreak +
+      AIndent + AStep + AStep + AStep + AStep + 'end);' + mLineBreak +
+      AIndent + AStep + AStep + 'end;' + mLineBreak +
+      AIndent + AStep + 'end;' + mLineBreak;
   end;
 
   // Korrektur: Rumpf in try … except, Meldung über TThread.Queue im Hauptthread.
   function WrapFix(ABody: TSyntaxNode): TArray<TRuleFix>;
   var
-    Edits: TArray<TRuleEdit>;
-    Indent, Step, Dialogs, Text: string;
-    Line: Integer;
-    Used: TArray<string>;
-    UsesEdit: TRuleEdit;
-    UsedUnit: string;
+    mEdits: TArray<TRuleEdit>;
+    mIndent, mStep, mDialogs, mText: string;
+    mLine: Integer;
+    mUsed: TArray<string>;
+    mUsesEdit: TRuleEdit;
+    mUsedUnit: string;
   begin
     Result := nil;
     if (ABody.EndPos.Line - ABody.StartPos.Line < 2) or not OnOwnLine(ABody.StartPos, Length('begin')) or
@@ -1254,94 +1255,94 @@ var
     begin
       Exit;
     end;
-    Indent := TTextLines.IndentOf(Lines[ABody.StartPos.Line]);
-    Step := TRoutineBody.IndentUnit(AContext.Formatting);
+    mIndent := TTextLines.IndentOf(mLines[ABody.StartPos.Line]);
+    mStep := TRoutineBody.IndentUnit(AContext.Formatting);
     // Ein Edit für alle Zeilen zwischen begin und end: try, eingerückter Rumpf, except-Teil.
-    Text := Indent + Step + 'try' + LineBreak;
-    for Line := ABody.StartPos.Line + 1 to ABody.EndPos.Line - 1 do
+    mText := mIndent + mStep + 'try' + mLineBreak;
+    for mLine := ABody.StartPos.Line + 1 to ABody.EndPos.Line - 1 do
     begin
-      if Trim(Lines[Line]) = '' then
+      if Trim(mLines[mLine]) = '' then
       begin
-        Text := Text + Lines[Line] + LineBreak;
+        mText := mText + mLines[mLine] + mLineBreak;
       end
       else
       begin
-        Text := Text + Step + Lines[Line] + LineBreak;
+        mText := mText + mStep + mLines[mLine] + mLineBreak;
       end;
     end;
-    Edits := [TRuleEdit.Create(TTextRange.Create(ABody.StartPos.Line + 1, 0, ABody.EndPos.Line, 0), Text +
-      ExceptPart(Indent, Step))];
+    mEdits := [TRuleEdit.Create(TTextRange.Create(ABody.StartPos.Line + 1, 0, ABody.EndPos.Line, 0), mText +
+      ExceptPart(mIndent, mStep))];
     // ShowMessage aus Vcl.Dialogs bzw. FMX.Dialogs, Exception aus System.SysUtils.
-    Used := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
-    Dialogs := 'Vcl.Dialogs';
-    for UsedUnit in Used do
+    mUsed := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
+    mDialogs := 'Vcl.Dialogs';
+    for mUsedUnit in mUsed do
     begin
-      if StartsText('FMX.', UsedUnit) then
+      if StartsText('FMX.', mUsedUnit) then
       begin
-        Dialogs := 'FMX.Dialogs';
+        mDialogs := 'FMX.Dialogs';
       end;
     end;
-    if not TUsesClauses.IsUsed(Used, Dialogs, AContext.Namespaces) and
-      TUsesClauses.AddUnit(AContext.Tree.Tokens, ABody.StartOffset, Dialogs, LineBreak, UsesEdit) then
+    if not TUsesClauses.IsUsed(mUsed, mDialogs, AContext.Namespaces) and
+      TUsesClauses.AddUnit(AContext.Tree.Tokens, ABody.StartOffset, mDialogs, mLineBreak, mUsesEdit) then
     begin
-      Edits := [UsesEdit] + Edits;
+      mEdits := [mUsesEdit] + mEdits;
     end;
-    if not TUsesClauses.IsUsed(Used, 'System.SysUtils', AContext.Namespaces) and
-      TUsesClauses.AddUnit(AContext.Tree.Tokens, ABody.StartOffset, 'System.SysUtils', LineBreak, UsesEdit) then
+    if not TUsesClauses.IsUsed(mUsed, 'System.SysUtils', AContext.Namespaces) and
+      TUsesClauses.AddUnit(AContext.Tree.Tokens, ABody.StartOffset, 'System.SysUtils', mLineBreak, mUsesEdit) then
     begin
-      Edits := [UsesEdit] + Edits;
+      mEdits := [mUsesEdit] + mEdits;
     end;
-    Result := [TRuleFix.Create(cTexts[TConcurrencyThreadsText.WrapTry].Text, Edits)];
+    Result := [TRuleFix.Create(cTexts[TConcurrencyThreadsText.WrapTry].Text, mEdits)];
   end;
 
   procedure Report(ACall: TSyntaxNode);
   var
-    Method, Body: TSyntaxNode;
-    Name: string;
+    mMethod, mBody: TSyntaxNode;
+    mName: string;
   begin
-    Method := ACall[1];
-    if Method.Kind <> TSyntaxKind.AnonymousMethod then
+    mMethod := ACall[1];
+    if mMethod.Kind <> TSyntaxKind.AnonymousMethod then
     begin
       Exit;
     end;
-    Body := Method.FindChild(TSyntaxKind.Block);
-    if (Body = nil) or Catches(Body) then
+    mBody := mMethod.FindChild(TSyntaxKind.Block);
+    if (mBody = nil) or Catches(mBody) then
     begin
       Exit;
     end;
-    Name := FirstCall(Body);
-    if Name = '' then
+    mName := FirstCall(mBody);
+    if mName = '' then
     begin
-      Name := cTexts[TConcurrencyThreadsText.InTask].Text;
+      mName := cTexts[TConcurrencyThreadsText.InTask].Text;
     end
     else
     begin
-      Name := 'in ' + Name;
+      mName := 'in ' + mName;
     end;
-    AReport.Add(NameRange(ACall[0]), cTexts[TConcurrencyThreadsText.TaskLost].Fmt([Name]), TRuleConfidence.Medium,
-      WrapFix(Body));
+    AReport.Add(NameRange(ACall[0]), cTexts[TConcurrencyThreadsText.TaskLost].Fmt([mName]), TRuleConfidence.Medium,
+      WrapFix(mBody));
   end;
 
   // Wie oft erwähnt die Routine die Variable außer an ATarget: als V.Start und sonst?
   procedure CountUses(ANode, AParent, ATarget: TSyntaxNode; const AName: string; var AStarts, AOthers: Integer);
   var
-    Pending, Parents: TStack<TSyntaxNode>;
-    Node, Parent: TSyntaxNode;
-    Index: Integer;
+    mPending, mParents: TStack<TSyntaxNode>;
+    mNode, mParent: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1); Parents führt den Elternknoten mit.
-    Pending := TStack<TSyntaxNode>.Create;
-    Parents := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    mParents := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      Parents.Push(AParent);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      mParents.Push(AParent);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Parent := Parents.Pop;
-        if (Node <> ATarget) and (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, AName) then
+        mNode := mPending.Pop;
+        mParent := mParents.Pop;
+        if (mNode <> ATarget) and (mNode.Kind = TSyntaxKind.Identifier) and SameText(mNode.Name, AName) then
         begin
-          if (Parent <> nil) and (Parent.Kind = TSyntaxKind.MemberAccess) and SameText(Parent.Name, 'Start') then
+          if (mParent <> nil) and (mParent.Kind = TSyntaxKind.MemberAccess) and SameText(mParent.Name, 'Start') then
           begin
             Inc(AStarts);
           end
@@ -1351,31 +1352,31 @@ var
           end;
           Continue;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
-          Parents.Push(Node);
+          mPending.Push(mNode[mIndex]);
+          mParents.Push(mNode);
         end;
       end;
     finally
-      Parents.Free;
-      Pending.Free;
+      mParents.Free;
+      mPending.Free;
     end;
   end;
 
   // Run ohne jede weitere Erwähnung; Create nur mit V.Start.
   procedure CheckVariable(ARoutine, ATarget, AValue: TSyntaxNode; const AName: string);
   var
-    Starts, Others: Integer;
+    mStarts, mOthers: Integer;
   begin
-    Starts := 0;
-    Others := 0;
-    CountUses(ARoutine, nil, ATarget, AName, Starts, Others);
-    if Others > 0 then
+    mStarts := 0;
+    mOthers := 0;
+    CountUses(ARoutine, nil, ATarget, AName, mStarts, mOthers);
+    if mOthers > 0 then
     begin
       Exit;
     end;
-    if (IsTaskCall(AValue, 'Run') and (Starts = 0)) or (IsTaskCall(AValue, 'Create') and (Starts > 0)) then
+    if (IsTaskCall(AValue, 'Run') and (mStarts = 0)) or (IsTaskCall(AValue, 'Create') and (mStarts > 0)) then
     begin
       Report(AValue);
     end;
@@ -1408,47 +1409,47 @@ var
 
   procedure Visit(ANode, ARoutine: TSyntaxNode);
   var
-    Pending, RoutineStack: TStack<TSyntaxNode>;
-    Node, Routine: TSyntaxNode;
-    Index: Integer;
+    mPending, mRoutineStack: TStack<TSyntaxNode>;
+    mNode, mRoutine: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1); RoutineStack führt ARoutine je Knoten mit.
-    Pending := TStack<TSyntaxNode>.Create;
-    RoutineStack := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    mRoutineStack := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      RoutineStack.Push(ARoutine);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      mRoutineStack.Push(ARoutine);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Routine := RoutineStack.Pop;
-        if Node.Kind = TSyntaxKind.RoutineDecl then
+        mNode := mPending.Pop;
+        mRoutine := mRoutineStack.Pop;
+        if mNode.Kind = TSyntaxKind.RoutineDecl then
         begin
-          Routine := Node;
+          mRoutine := mNode;
         end;
-        if (Node.Kind = TSyntaxKind.CallStatement) and (Node.ChildCount > 0) then
+        if (mNode.Kind = TSyntaxKind.CallStatement) and (mNode.ChildCount > 0) then
         begin
-          CheckTaskStatement(Node);
+          CheckTaskStatement(mNode);
         end
         // Lokale Variable, die nie wieder vorkommt (bei Create nur in V.Start).
-        else if IsLocalAssign(Node, Routine) then
+        else if IsLocalAssign(mNode, mRoutine) then
         begin
-          CheckVariable(Routine, Node[0], Node[1], Node[0].Name);
+          CheckVariable(mRoutine, mNode[0], mNode[1], mNode[0].Name);
         end
-        else if (Routine <> nil) and (Node.Kind = TSyntaxKind.InlineVar) and (Node.ChildCount > 0) and
-          (Pos(',', Node.Name) = 0) then
+        else if (mRoutine <> nil) and (mNode.Kind = TSyntaxKind.InlineVar) and (mNode.ChildCount > 0) and
+          (Pos(',', mNode.Name) = 0) then
         begin
-          CheckVariable(Routine, nil, Node[Node.ChildCount - 1], Node.Name);
+          CheckVariable(mRoutine, nil, mNode[mNode.ChildCount - 1], mNode.Name);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
-          RoutineStack.Push(Routine);
+          mPending.Push(mNode[mIndex]);
+          mRoutineStack.Push(mRoutine);
         end;
       end;
     finally
-      RoutineStack.Free;
-      Pending.Free;
+      mRoutineStack.Free;
+      mPending.Free;
     end;
   end;
 
@@ -1457,7 +1458,7 @@ begin
   begin
     Exit;
   end;
-  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
   Visit(AContext.Tree.Root, nil);
 end;
 

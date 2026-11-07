@@ -14,6 +14,8 @@ type
     [Test]
     procedure ReadsUsedUnitsOfBothSections;
     [Test]
+    procedure ReadsUsedUnitsOfText;
+    [Test]
     procedure ReadsOwnName;
     [Test]
     procedure ReadsReferencesWithPositions;
@@ -95,6 +97,12 @@ procedure TUsesClauseTests.ReadsUsedUnitsOfBothSections;
 begin
   Assert.AreEqual('System.SysUtils Werkzeug Classes Daten.Kunden',
     string.Join(' ', TUsesClauses.UsedUnits(TPascalLexer.Tokenize(UnitText))));
+end;
+
+procedure TUsesClauseTests.ReadsUsedUnitsOfText;
+begin
+  Assert.AreEqual('System.SysUtils Werkzeug Classes Daten.Kunden', string.Join(' ', TUsesClauses.UsedUnitsOf(UnitText)));
+  Assert.AreEqual(0, Integer(Length(TUsesClauses.UsedUnitsOf(''))));
 end;
 
 procedure TUsesClauseTests.ReadsReferencesWithPositions;

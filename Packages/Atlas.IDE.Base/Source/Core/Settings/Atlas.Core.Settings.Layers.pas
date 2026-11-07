@@ -77,9 +77,9 @@ type
 
   TAtlasSettingsFiles = class
   public const
-    GlobalFolder = 'Atlas';
-    GlobalName = 'settings.json';
-    ProjectName = 'atlas.json';
+    cGlobalFolder = 'Atlas';
+    cGlobalName = 'settings.json';
+    cProjectName = 'atlas.json';
   public
     /// <summary>Globale Datei unter AAppData (%APPDATA%); '' ohne AAppData. Wie der Server.</summary>
     class function GlobalFile(const AAppData: string): string; static;
@@ -96,8 +96,8 @@ uses
 constructor TAtlasSettingsModel.Create(const AFields: TArray<TAtlasSettingField>; const AText, AGlobalText: string;
   AGlobal: Boolean);
 var
-  Root, GlobalRoot: TJSONObject;
-  Index: Integer;
+  mRoot, mGlobalRoot: TJSONObject;
+  mIndex: Integer;
 begin
   inherited Create;
   FFields := AFields;
@@ -106,28 +106,28 @@ begin
   SetLength(FOriginal, Length(FFields));
   SetLength(FCurrent, Length(FFields));
   SetLength(FInherited, Length(FFields));
-  Root := TAtlasJsonText.Parse(AText);
-  GlobalRoot := nil;
+  mRoot := TAtlasJsonText.Parse(AText);
+  mGlobalRoot := nil;
   if not AGlobal then
   begin
-    GlobalRoot := TAtlasJsonText.Parse(AGlobalText);
+    mGlobalRoot := TAtlasJsonText.Parse(AGlobalText);
   end;
   try
-    for Index := 0 to High(FFields) do
+    for mIndex := 0 to High(FFields) do
     begin
-      if Root <> nil then
+      if mRoot <> nil then
       begin
-        FOriginal[Index] := TAtlasJsonText.ValueAt(Root, FFields[Index].Path);
+        FOriginal[mIndex] := TAtlasJsonText.ValueAt(mRoot, FFields[mIndex].Path);
       end;
-      FCurrent[Index] := FOriginal[Index];
-      if GlobalRoot <> nil then
+      FCurrent[mIndex] := FOriginal[mIndex];
+      if mGlobalRoot <> nil then
       begin
-        FInherited[Index] := TAtlasJsonText.ValueAt(GlobalRoot, FFields[Index].Path);
+        FInherited[mIndex] := TAtlasJsonText.ValueAt(mGlobalRoot, FFields[mIndex].Path);
       end;
     end;
   finally
-    GlobalRoot.Free;
-    Root.Free;
+    mGlobalRoot.Free;
+    mRoot.Free;
   end;
 end;
 
@@ -143,13 +143,13 @@ end;
 
 function TAtlasSettingsModel.IndexOf(const APath: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FFields) do
+  for mIndex := 0 to High(FFields) do
   begin
-    if SameText(FFields[Index].Path, APath) then
+    if SameText(FFields[mIndex].Path, APath) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -229,14 +229,14 @@ end;
 
 function TAtlasSettingsModel.Changes: TArray<TPair<string, string>>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to High(FFields) do
+  for mIndex := 0 to High(FFields) do
   begin
-    if FCurrent[Index] <> FOriginal[Index] then
+    if FCurrent[mIndex] <> FOriginal[mIndex] then
     begin
-      Result := Result + [TPair<string, string>.Create(FFields[Index].Path, FCurrent[Index])];
+      Result := Result + [TPair<string, string>.Create(FFields[mIndex].Path, FCurrent[mIndex])];
     end;
   end;
   Result := Result + FPaths;
@@ -244,13 +244,13 @@ end;
 
 procedure TAtlasSettingsModel.SetPath(const APath, AJson: string);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FPaths) do
+  for mIndex := 0 to High(FPaths) do
   begin
-    if SameText(FPaths[Index].Key, APath) then
+    if SameText(FPaths[mIndex].Key, APath) then
     begin
-      FPaths[Index].Value := AJson;
+      FPaths[mIndex].Value := AJson;
       Exit;
     end;
   end;
@@ -264,14 +264,14 @@ end;
 
 function TAtlasSettingsModel.ResultText: string;
 var
-  Pending: TArray<TPair<string, string>>;
+  mPending: TArray<TPair<string, string>>;
 begin
-  Pending := Changes;
-  if Length(Pending) = 0 then
+  mPending := Changes;
+  if Length(mPending) = 0 then
   begin
     Exit(FText);
   end;
-  Result := TAtlasJsonText.ApplyChanges(FText, Pending);
+  Result := TAtlasJsonText.ApplyChanges(FText, mPending);
 end;
 
 { TAtlasSettingsFiles }
@@ -281,7 +281,7 @@ begin
   Result := '';
   if AAppData <> '' then
   begin
-    Result := TPath.Combine(TPath.Combine(AAppData, GlobalFolder), GlobalName);
+    Result := TPath.Combine(TPath.Combine(AAppData, cGlobalFolder), cGlobalName);
   end;
 end;
 

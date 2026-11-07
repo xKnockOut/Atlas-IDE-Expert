@@ -45,9 +45,9 @@ type
 
   TLspCompilerBaseline = class
   public const
-    AddCommand = 'atlas.baselineCompilerMessages';
-    ClassifyCommand = 'atlas.classifyCompilerMessages';
-    FormatVersion = 1;
+    cAddCommand = 'atlas.baselineCompilerMessages';
+    cClassifyCommand = 'atlas.classifyCompilerMessages';
+    cFormatVersion = 1;
   private
     FSourceFor: TLspMetricsSourceFunc;
     FReadText: TLspBaselineRead;
@@ -111,17 +111,17 @@ const
 /// Pfad relativ zu ARoot mit "/", '' außerhalb; Trenner und Groß-/Kleinschreibung zählen nicht.
 function RelativeTo(const ARoot, AFileName: string): string;
 var
-  Root, Name: string;
+  mRoot, mName: string;
 begin
-  Root := TRuleBaseline.NormalizePath(ARoot);
-  if (Root <> '') and (Root[Length(Root)] <> '/') then
+  mRoot := TRuleBaseline.NormalizePath(ARoot);
+  if (mRoot <> '') and (mRoot[Length(mRoot)] <> '/') then
   begin
-    Root := Root + '/';
+    mRoot := mRoot + '/';
   end;
-  Name := TRuleBaseline.NormalizePath(AFileName);
-  if (Root <> '/') and (Length(Name) > Length(Root)) and SameText(Copy(Name, 1, Length(Root)), Root) then
+  mName := TRuleBaseline.NormalizePath(AFileName);
+  if (mRoot <> '/') and (Length(mName) > Length(mRoot)) and SameText(Copy(mName, 1, Length(mRoot)), mRoot) then
   begin
-    Result := Copy(Name, Length(Root) + 1, MaxInt);
+    Result := Copy(mName, Length(mRoot) + 1, MaxInt);
   end
   else
   begin
@@ -153,59 +153,59 @@ end;
 
 class function TLspCompilerBaseline.MessagesOf(const AValue: TJSONValue): TArray<TLspCompilerMessage>;
 var
-  Item: TJSONValue;
-  Field: TJSONValue;
-  Message: TLspCompilerMessage;
+  mItem: TJSONValue;
+  mField: TJSONValue;
+  mMessage: TLspCompilerMessage;
 begin
   Result := nil;
   if not (AValue is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(AValue) do
+  for mItem in TJSONArray(AValue) do
   begin
-    Message := Default(TLspCompilerMessage);
-    if Item is TJSONObject then
+    mMessage := Default(TLspCompilerMessage);
+    if mItem is TJSONObject then
     begin
-      Field := TJSONObject(Item).GetValue('file');
-      if Field is TJSONString then
+      mField := TJSONObject(mItem).GetValue('file');
+      if mField is TJSONString then
       begin
-        Message.FileName := Field.Value;
+        mMessage.FileName := mField.Value;
       end;
-      Field := TJSONObject(Item).GetValue('line');
-      if Field is TJSONNumber then
+      mField := TJSONObject(mItem).GetValue('line');
+      if mField is TJSONNumber then
       begin
-        Message.Line := TJSONNumber(Field).AsInt;
+        mMessage.Line := TJSONNumber(mField).AsInt;
       end;
-      Field := TJSONObject(Item).GetValue('code');
-      if Field is TJSONString then
+      mField := TJSONObject(mItem).GetValue('code');
+      if mField is TJSONString then
       begin
-        Message.Code := UpperCase(Field.Value);
+        mMessage.Code := UpperCase(mField.Value);
       end;
     end;
     // Ungültige Einträge bleiben als leere Meldung stehen: Die Positionen der Antwort gelten für die Eingabe.
-    Result := Result + [Message];
+    Result := Result + [mMessage];
   end;
 end;
 
 function TLspCompilerBaseline.Load(const ARoot: string; out APrevious: string): IRuleBaseline;
 var
-  FileName, Text: string;
+  mFileName, mText: string;
 begin
   Result := nil;
   APrevious := 'none';
   // Neuer Name, sonst der frühere (#403) wie atlas.updateBaseline.
-  FileName := FileIn(ARoot, BaselineFileName);
-  if not FFiles.Exists(FileName) and FFiles.Exists(FileIn(ARoot, LegacyBaselineFileName)) then
+  mFileName := FileIn(ARoot, cBaselineFileName);
+  if not FFiles.Exists(mFileName) and FFiles.Exists(FileIn(ARoot, cLegacyBaselineFileName)) then
   begin
-    FileName := FileIn(ARoot, LegacyBaselineFileName);
+    mFileName := FileIn(ARoot, cLegacyBaselineFileName);
   end;
-  if not (FFiles.Exists(FileName) and FFiles.Read(FileName, Text)) then
+  if not (FFiles.Exists(mFileName) and FFiles.Read(mFileName, mText)) then
   begin
     Exit;
   end;
   try
-    Result := TRuleBaseline.FromJson(Text);
+    Result := TRuleBaseline.FromJson(mText);
     APrevious := 'valid';
   except
     on ERuleBaseline do
@@ -229,142 +229,142 @@ end;
 function TLspCompilerBaseline.SourcesOf(const ARoot: string; const AMessages: TArray<TLspCompilerMessage>;
   out AOwner, ASlot: TArray<Integer>): TArray<TBaselineSource>;
 var
-  ByPath: TDictionary<string, Integer>;
-  Unreadable: TDictionary<string, Boolean>;
-  Index, Owner: Integer;
-  Relative, Key, Text: string;
-  Source: TBaselineSource;
+  mByPath: TDictionary<string, Integer>;
+  mUnreadable: TDictionary<string, Boolean>;
+  mIndex, mOwner: Integer;
+  mRelative, mKey, mText: string;
+  mSource: TBaselineSource;
 begin
   Result := nil;
   SetLength(AOwner, Length(AMessages));
   SetLength(ASlot, Length(AMessages));
-  ByPath := TDictionary<string, Integer>.Create;
-  Unreadable := TDictionary<string, Boolean>.Create;
+  mByPath := TDictionary<string, Integer>.Create;
+  mUnreadable := TDictionary<string, Boolean>.Create;
   try
-    for Index := 0 to High(AMessages) do
+    for mIndex := 0 to High(AMessages) do
     begin
-      AOwner[Index] := -1;
-      ASlot[Index] := -1;
-      if not Accepts(AMessages[Index]) then
+      AOwner[mIndex] := -1;
+      ASlot[mIndex] := -1;
+      if not Accepts(AMessages[mIndex]) then
       begin
         Continue;
       end;
-      Relative := RelativeTo(ARoot, AMessages[Index].FileName);
-      Key := LowerCase(Relative);
-      if (Relative = '') or Unreadable.ContainsKey(Key) then
+      mRelative := RelativeTo(ARoot, AMessages[mIndex].FileName);
+      mKey := LowerCase(mRelative);
+      if (mRelative = '') or mUnreadable.ContainsKey(mKey) then
       begin
         Continue;
       end;
-      if not ByPath.TryGetValue(Key, Owner) then
+      if not mByPath.TryGetValue(mKey, mOwner) then
       begin
-        if not (Assigned(FReadText) and FReadText(AMessages[Index].FileName, Text)) then
+        if not (Assigned(FReadText) and FReadText(AMessages[mIndex].FileName, mText)) then
         begin
-          Unreadable.Add(Key, True);
+          mUnreadable.Add(mKey, True);
           Continue;
         end;
-        Source := Default(TBaselineSource);
-        Source.Path := Relative;
-        Source.Text := Text;
-        Owner := Length(Result);
-        Result := Result + [Source];
-        ByPath.Add(Key, Owner);
+        mSource := Default(TBaselineSource);
+        mSource.Path := mRelative;
+        mSource.Text := mText;
+        mOwner := Length(Result);
+        Result := Result + [mSource];
+        mByPath.Add(mKey, mOwner);
       end;
-      AOwner[Index] := Owner;
-      ASlot[Index] := Length(Result[Owner].Findings);
-      Result[Owner].Findings := Result[Owner].Findings + [FindingOf(AMessages[Index])];
+      AOwner[mIndex] := mOwner;
+      ASlot[mIndex] := Length(Result[mOwner].Findings);
+      Result[mOwner].Findings := Result[mOwner].Findings + [FindingOf(AMessages[mIndex])];
     end;
   finally
-    Unreadable.Free;
-    ByPath.Free;
+    mUnreadable.Free;
+    mByPath.Free;
   end;
 end;
 
 function TLspCompilerBaseline.Add(const ASource: TLspMetricsSource;
   const AMessages: TArray<TLspCompilerMessage>): string;
 var
-  Old: IRuleBaseline;
-  Previous, FileName: string;
-  Sources: TArray<TBaselineSource>;
-  Owner, Slot: TArray<Integer>;
-  Outcome: TBaselineUpdate;
-  Index, Skipped: Integer;
+  mOld: IRuleBaseline;
+  mPrevious, mFileName: string;
+  mSources: TArray<TBaselineSource>;
+  mOwner, mSlot: TArray<Integer>;
+  mOutcome: TBaselineUpdate;
+  mIndex, mSkipped: Integer;
 begin
-  Old := Load(ASource.Root, Previous);
+  mOld := Load(ASource.Root, mPrevious);
   // Eine unbrauchbare Datei nicht still ersetzen: Sie enthält womöglich Regeltreffer (Bericht N3).
-  if Previous = 'invalid' then
+  if mPrevious = 'invalid' then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TCompilerBaselineText.BaselineNotReadableWriteIt].Text);
   end;
-  Sources := SourcesOf(ASource.Root, AMessages, Owner, Slot);
-  Skipped := 0;
-  for Index := 0 to High(AMessages) do
+  mSources := SourcesOf(ASource.Root, AMessages, mOwner, mSlot);
+  mSkipped := 0;
+  for mIndex := 0 to High(AMessages) do
   begin
-    if Accepts(AMessages[Index]) and (Owner[Index] < 0) then
+    if Accepts(AMessages[mIndex]) and (mOwner[mIndex] < 0) then
     begin
-      Inc(Skipped);
+      Inc(mSkipped);
     end;
   end;
-  Outcome := TRuleBaseline.ReplaceCompiler(Old, Sources);
-  FileName := FileIn(ASource.Root, BaselineFileName);
-  FFiles.Write(FileName, Outcome.Json);
+  mOutcome := TRuleBaseline.ReplaceCompiler(mOld, mSources);
+  mFileName := FileIn(ASource.Root, cBaselineFileName);
+  FFiles.Write(mFileName, mOutcome.Json);
   if Assigned(FOnWritten) then
   begin
-    FOnWritten(FileName);
+    FOnWritten(mFileName);
   end;
   Result := Format('{"format": %d, "file": %s, "previous": %s, "total": %d, "files": %d, ' +
-    '"added": %d, "removed": %d, "unchanged": %d, "skipped": %d}', [FormatVersion,
-    TFindingsOutput.JsonString(FileName), TFindingsOutput.JsonString(Previous), Outcome.Total, Outcome.Files,
-    Outcome.Added, Outcome.Removed, Outcome.Unchanged, Skipped]);
+    '"added": %d, "removed": %d, "unchanged": %d, "skipped": %d}', [cFormatVersion,
+    TFindingsOutput.JsonString(mFileName), TFindingsOutput.JsonString(mPrevious), mOutcome.Total, mOutcome.Files,
+    mOutcome.Added, mOutcome.Removed, mOutcome.Unchanged, mSkipped]);
 end;
 
 function TLspCompilerBaseline.Classify(const ASource: TLspMetricsSource;
   const AMessages: TArray<TLspCompilerMessage>; out APrevious: string): TArray<Boolean>;
 var
-  Baseline: IRuleBaseline;
-  Sources: TArray<TBaselineSource>;
-  Owner, Slot: TArray<Integer>;
-  Marks: TArray<TArray<TBaselineMark>>;
-  Index: Integer;
+  mBaseline: IRuleBaseline;
+  mSources: TArray<TBaselineSource>;
+  mOwner, mSlot: TArray<Integer>;
+  mMarks: TArray<TArray<TBaselineMark>>;
+  mIndex: Integer;
 begin
   SetLength(Result, Length(AMessages));
-  for Index := 0 to High(Result) do
+  for mIndex := 0 to High(Result) do
   begin
-    Result[Index] := False;
+    Result[mIndex] := False;
   end;
-  Baseline := Load(ASource.Root, APrevious);
-  if Baseline = nil then
+  mBaseline := Load(ASource.Root, APrevious);
+  if mBaseline = nil then
   begin
     Exit;
   end;
-  Sources := SourcesOf(ASource.Root, AMessages, Owner, Slot);
-  SetLength(Marks, Length(Sources));
-  for Index := 0 to High(Sources) do
+  mSources := SourcesOf(ASource.Root, AMessages, mOwner, mSlot);
+  SetLength(mMarks, Length(mSources));
+  for mIndex := 0 to High(mSources) do
   begin
-    Marks[Index] := Baseline.Classify(Sources[Index].Path, Sources[Index].Text,
-      TFindingScopes.FromText(Sources[Index].Text), Sources[Index].Findings);
+    mMarks[mIndex] := mBaseline.Classify(mSources[mIndex].Path, mSources[mIndex].Text,
+      TFindingScopes.FromText(mSources[mIndex].Text), mSources[mIndex].Findings);
   end;
-  for Index := 0 to High(AMessages) do
+  for mIndex := 0 to High(AMessages) do
   begin
-    if Owner[Index] >= 0 then
+    if mOwner[mIndex] >= 0 then
     begin
-      Result[Index] := Marks[Owner[Index]][Slot[Index]].State = TBaselineState.Unchanged;
+      Result[mIndex] := mMarks[mOwner[mIndex]][mSlot[mIndex]].State = TBaselineState.Unchanged;
     end;
   end;
 end;
 
 function TLspCompilerBaseline.SourceOf(const AArguments: TJSONArray): TLspMetricsSource;
 var
-  FileName: string;
+  mFileName: string;
 begin
-  FileName := '';
+  mFileName := '';
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
   begin
-    FileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
   end;
-  if not (Assigned(FSourceFor) and FSourceFor(FileName, False, Result)) then
+  if not (Assigned(FSourceFor) and FSourceFor(mFileName, False, Result)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TCompilerBaselineText.NoWorkspaceFoundForThe].Text);
   end;
 end;
@@ -380,39 +380,39 @@ end;
 
 function TLspCompilerBaseline.ExecuteAdd(const AArguments: TJSONArray): TJSONValue;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Add(SourceOf(AArguments), MessagesArgument(AArguments));
-  Result := TJSONObject.ParseJSONValue(Text);
+  mText := Add(SourceOf(AArguments), MessagesArgument(AArguments));
+  Result := TJSONObject.ParseJSONValue(mText);
   if Result = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInternalError,
       cTexts[TCompilerBaselineText.AnswerOfTheBaselineIs].Text);
   end;
 end;
 
 function TLspCompilerBaseline.ExecuteClassify(const AArguments: TJSONArray): TJSONValue;
 var
-  Baselined: TArray<Boolean>;
-  Previous: string;
-  Answer: TJSONObject;
-  Indexes: TJSONArray;
-  Index: Integer;
+  mBaselined: TArray<Boolean>;
+  mPrevious: string;
+  mAnswer: TJSONObject;
+  mIndexes: TJSONArray;
+  mIndex: Integer;
 begin
-  Baselined := Classify(SourceOf(AArguments), MessagesArgument(AArguments), Previous);
-  Answer := TJSONObject.Create;
-  Answer.AddPair('format', TJSONNumber.Create(FormatVersion));
-  Answer.AddPair('baseline', Previous);
-  Indexes := TJSONArray.Create;
-  Answer.AddPair('baselined', Indexes);
-  for Index := 0 to High(Baselined) do
+  mBaselined := Classify(SourceOf(AArguments), MessagesArgument(AArguments), mPrevious);
+  mAnswer := TJSONObject.Create;
+  mAnswer.AddPair('format', TJSONNumber.Create(cFormatVersion));
+  mAnswer.AddPair('baseline', mPrevious);
+  mIndexes := TJSONArray.Create;
+  mAnswer.AddPair('baselined', mIndexes);
+  for mIndex := 0 to High(mBaselined) do
   begin
-    if Baselined[Index] then
+    if mBaselined[mIndex] then
     begin
-      Indexes.Add(Index);
+      mIndexes.Add(mIndex);
     end;
   end;
-  Result := Answer;
+  Result := mAnswer;
 end;
 
 initialization

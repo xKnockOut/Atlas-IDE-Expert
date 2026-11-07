@@ -44,7 +44,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  InlineNotExpandedRuleId = 'inline-not-expanded';
+  cInlineNotExpandedRuleId = 'inline-not-expanded';
 
 type
   TInlineNotExpandedRule = class(TInterfacedObject, IRule, IRuleLineCertainty)
@@ -200,55 +200,55 @@ type
   end;
 
 const
-  ImplicitUnits: array[0..1] of string = ('System', 'SysInit');
+  cImplicitUnits: array[0..1] of string = ('System', 'SysInit');
   /// <summary>Höchstzahl der Units, die die Suche nach einem indirekten Zyklus besucht.</summary>
-  MaxCycleUnits = 400;
-  EnumeratorMembers: array[0..1] of string = ('MoveNext', 'Current');
+  cMaxCycleUnits = 400;
+  cEnumeratorMembers: array[0..1] of string = ('MoveNext', 'Current');
   /// <summary>Ergebnis von CycleOf, wenn die Unit die eigene direkt verwendet; kein gültiger Unit-Name.</summary>
-  CycleDirect = '=';
+  cCycleDirect = '=';
 
 /// <summary>Einbettbare inline-Routine, deren Rumpf auf nichts außerhalb ihrer Unit verweist (#1381)?</summary>
 function IsWithoutRefs(const ASymbol: TIndexSymbol): Boolean;
 begin
-  Result := (Length(ASymbol.InlineRefs) = 1) and (ASymbol.InlineRefs[0] = TIndexSymbol.InlineWithoutRefs);
+  Result := (Length(ASymbol.InlineRefs) = 1) and (ASymbol.InlineRefs[0] = TIndexSymbol.cInlineWithoutRefs);
 end;
 
 function SplitName(const AQualified: string; out AContainer: string): string;
 var
-  Dot: Integer;
+  mDot: Integer;
 begin
-  Dot := AQualified.LastIndexOf('.');
-  if Dot < 0 then
+  mDot := AQualified.LastIndexOf('.');
+  if mDot < 0 then
   begin
     AContainer := '';
     Exit(AQualified);
   end;
-  AContainer := AQualified.Substring(0, Dot);
-  Result := AQualified.Substring(Dot + 1);
+  AContainer := AQualified.Substring(0, mDot);
+  Result := AQualified.Substring(mDot + 1);
 end;
 
 /// <summary>Wort hinter read bzw. write im Kopf einer Property; '' ohne.</summary>
 function AccessorName(const ASignature: string; AWrite: Boolean): string;
 var
-  Words: TArray<string>;
-  Index: Integer;
-  Keyword: string;
+  mWords: TArray<string>;
+  mIndex: Integer;
+  mKeyword: string;
 begin
   Result := '';
   if AWrite then
   begin
-    Keyword := 'write';
+    mKeyword := 'write';
   end
   else
   begin
-    Keyword := 'read';
+    mKeyword := 'read';
   end;
-  Words := ASignature.Replace(';', ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
-  for Index := 0 to High(Words) - 1 do
+  mWords := ASignature.Replace(';', ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
+  for mIndex := 0 to High(mWords) - 1 do
   begin
-    if SameText(Words[Index], Keyword) then
+    if SameText(mWords[mIndex], mKeyword) then
     begin
-      Exit(Words[Index + 1]);
+      Exit(mWords[mIndex + 1]);
     end;
   end;
 end;
@@ -348,15 +348,15 @@ end;
 
 function TInlineCycles.IsOwnUnit(const AName: string): Boolean;
 var
-  Namespace: string;
+  mNamespace: string;
 begin
   if SameText(AName, FOwnName) then
   begin
     Exit(True);
   end;
-  for Namespace in FNamespaces do
+  for mNamespace in FNamespaces do
   begin
-    if SameText(Namespace + '.' + AName, FOwnName) then
+    if SameText(mNamespace + '.' + AName, FOwnName) then
     begin
       Exit(True);
     end;
@@ -366,15 +366,15 @@ end;
 
 function TInlineCycles.FindIndexedUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
 var
-  Namespace: string;
+  mNamespace: string;
 begin
   if FIndex.FindUnit(AName, AUnit) then
   begin
     Exit(True);
   end;
-  for Namespace in FNamespaces do
+  for mNamespace in FNamespaces do
   begin
-    if FIndex.FindUnit(Namespace + '.' + AName, AUnit) then
+    if FIndex.FindUnit(mNamespace + '.' + AName, AUnit) then
     begin
       Exit(True);
     end;
@@ -384,11 +384,11 @@ end;
 
 function TInlineCycles.UsesOwnUnit(const AUnit: TUnitIndex): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in AUnit.InterfaceUses + AUnit.ImplementationUses do
+  for mName in AUnit.InterfaceUses + AUnit.ImplementationUses do
   begin
-    if IsOwnUnit(Name) then
+    if IsOwnUnit(mName) then
     begin
       Exit(True);
     end;
@@ -398,48 +398,49 @@ end;
 
 function TInlineCycles.IndirectVia(const AUnit: TUnitIndex): string;
 var
-  Names, Vias: TQueue<string>;
-  Seen: TDictionary<string, Boolean>;
-  Current: TUnitIndex;
-  Name, Via: string;
+  mNames, mVias: TQueue<string>;
+  mSeen: TDictionary<string, Boolean>;
+  mCurrent: TUnitIndex;
+  mName, mVia: string;
 begin
   // Breitensuche über die uses-Listen der Units im Index; Vias hält zu jedem Namen den direkten Nachbarn von
   // AUnit, über den der Weg läuft. Nur Units, die der Index schon kennt: Nachladen wäre zu teuer, und ohne sie
   // gibt es keine sichere Aussage (dann keine Meldung).
   Result := '';
-  Names := TQueue<string>.Create;
-  Vias := TQueue<string>.Create;
-  Seen := TDictionary<string, Boolean>.Create;
+  mNames := TQueue<string>.Create;
+  mVias := TQueue<string>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    Seen.Add(UpperCase(AUnit.UnitName), True);
-    for Name in AUnit.InterfaceUses + AUnit.ImplementationUses do
+    mSeen.Add(UpperCase(AUnit.UnitName), True);
+    for mName in AUnit.InterfaceUses + AUnit.ImplementationUses do
     begin
-      Names.Enqueue(Name);
-      Vias.Enqueue(Name);
+      mNames.Enqueue(mName);
+      mVias.Enqueue(mName);
     end;
-    while (Names.Count > 0) and (Seen.Count < MaxCycleUnits) do
+    while (mNames.Count > 0) and (mSeen.Count < cMaxCycleUnits) do
     begin
-      Name := Names.Dequeue;
-      Via := Vias.Dequeue;
-      if IsOwnUnit(Name) or not FindIndexedUnit(Name, Current) or Seen.ContainsKey(UpperCase(Current.UnitName)) then
+      mName := mNames.Dequeue;
+      mVia := mVias.Dequeue;
+      if IsOwnUnit(mName) or not FindIndexedUnit(mName, mCurrent) or
+        mSeen.ContainsKey(UpperCase(mCurrent.UnitName)) then
       begin
         Continue;
       end;
-      Seen.Add(UpperCase(Current.UnitName), True);
-      for Name in Current.InterfaceUses + Current.ImplementationUses do
+      mSeen.Add(UpperCase(mCurrent.UnitName), True);
+      for mName in mCurrent.InterfaceUses + mCurrent.ImplementationUses do
       begin
-        if IsOwnUnit(Name) then
+        if IsOwnUnit(mName) then
         begin
-          Exit(Via);
+          Exit(mVia);
         end;
-        Names.Enqueue(Name);
-        Vias.Enqueue(Via);
+        mNames.Enqueue(mName);
+        mVias.Enqueue(mVia);
       end;
     end;
   finally
-    Seen.Free;
-    Vias.Free;
-    Names.Free;
+    mSeen.Free;
+    mVias.Free;
+    mNames.Free;
   end;
 end;
 
@@ -454,7 +455,7 @@ begin
   end;
   if UsesOwnUnit(AUnit) then
   begin
-    Result := CycleDirect;
+    Result := cCycleDirect;
   end
   else
   begin
@@ -572,7 +573,7 @@ begin
       end;
       mUnitName := RefUnit(ACallee, mRef, mHasOwner, mOwner, Result.External);
       if (mUnitName = '') or SameText(mUnitName, ACallee.OwnerUnit.UnitName) or
-        (IndexText(mUnitName, ImplicitUnits) >= 0) then
+        (IndexText(mUnitName, cImplicitUnits) >= 0) then
       begin
         Continue;
       end;
@@ -591,17 +592,17 @@ end;
 
 function TInlineCheck.HasInlineAccessor(const AProperty: TIndexSymbol): Boolean;
 var
-  Name, mContainer: string;
-  Accessors: TArray<string>;
+  mName, mContainer: string;
+  mAccessors: TArray<string>;
 begin
   mContainer := AProperty.Container;
   Result := False;
-  Accessors := [AccessorName(AProperty.Signature, False), AccessorName(AProperty.Signature, True)];
-  for Name in Accessors do
+  mAccessors := [AccessorName(AProperty.Signature, False), AccessorName(AProperty.Signature, True)];
+  for mName in mAccessors do
   begin
-    if Name <> '' then
+    if mName <> '' then
     begin
-      if FIndex.HasSymbol(Name,
+      if FIndex.HasSymbol(mName,
         function(const AOther: TIndexSymbol): Boolean
         begin
           Result := (AOther.InlineRefs <> nil) and SameText(AOther.Container, mContainer);
@@ -609,7 +610,7 @@ begin
       begin
         Exit(True);
       end;
-      if FOwnInline.ContainsKey(LowerCase(mContainer + '.' + Name)) then
+      if FOwnInline.ContainsKey(LowerCase(mContainer + '.' + mName)) then
       begin
         Exit(True);
       end;
@@ -619,24 +620,24 @@ end;
 
 procedure TInlineCheck.CollectOwnCandidates;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   // Einmal je Unit statt je Bezeichner über alle Symbole der Datei: Units mit vielen Symbolen und vielen
   // verschiedenen Namen (Atlas.UI.Settings.Page) brauchten sonst Sekunden.
-  for Symbol in FOwn.Symbols do
+  for mSymbol in FOwn.Symbols do
   begin
-    if Symbol.InlineRefs <> nil then
+    if mSymbol.InlineRefs <> nil then
     begin
-      FOwnInline.AddOrSetValue(LowerCase(Symbol.Container + '.' + Symbol.Name), True);
-      FOwnCandidates.AddOrSetValue(LowerCase(Symbol.Name), True);
+      FOwnInline.AddOrSetValue(LowerCase(mSymbol.Container + '.' + mSymbol.Name), True);
+      FOwnCandidates.AddOrSetValue(LowerCase(mSymbol.Name), True);
     end;
   end;
-  for Symbol in FOwn.Symbols do
+  for mSymbol in FOwn.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.Property_) and not FOwnCandidates.ContainsKey(LowerCase(Symbol.Name)) and
-      HasInlineAccessor(Symbol) then
+    if (mSymbol.Kind = TIndexSymbolKind.Property_) and not FOwnCandidates.ContainsKey(LowerCase(mSymbol.Name)) and
+      HasInlineAccessor(mSymbol) then
     begin
-      FOwnCandidates.AddOrSetValue(LowerCase(Symbol.Name), True);
+      FOwnCandidates.AddOrSetValue(LowerCase(mSymbol.Name), True);
     end;
   end;
 end;
@@ -672,7 +673,7 @@ end;
 
 function TInlineCheck.IndexSymbolOf(const AResolved: TResolvedSymbol; out ACallee: TInlineCallee): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := False;
   if not AResolved.Found or (AResolved.Kind <> TResolvedKind.Symbol) then
@@ -692,12 +693,12 @@ begin
   begin
     ACallee.OwnerUnit := FOwn;
   end;
-  for Symbol in ACallee.OwnerUnit.Symbols do
+  for mSymbol in ACallee.OwnerUnit.Symbols do
   begin
-    if (Symbol.SelectionRange.StartPos = AResolved.SelectionRange.StartPos) and SameText(Symbol.Name, AResolved.Name)
-      and SameText(Symbol.Container, AResolved.Container) then
+    if (mSymbol.SelectionRange.StartPos = AResolved.SelectionRange.StartPos) and SameText(mSymbol.Name, AResolved.Name)
+      and SameText(mSymbol.Container, AResolved.Container) then
     begin
-      ACallee.Symbol := Symbol;
+      ACallee.Symbol := mSymbol;
       Exit(True);
     end;
   end;
@@ -705,22 +706,22 @@ end;
 
 function TInlineCheck.Accessor(const ACallee: TInlineCallee; AWrite: Boolean; out AResult: TInlineCallee): Boolean;
 var
-  Name: string;
-  Symbol: TIndexSymbol;
+  mName: string;
+  mSymbol: TIndexSymbol;
 begin
   Result := False;
-  Name := AccessorName(ACallee.Symbol.Signature, AWrite);
-  if (Name = '') or (Pos('.', Name) > 0) then
+  mName := AccessorName(ACallee.Symbol.Signature, AWrite);
+  if (mName = '') or (Pos('.', mName) > 0) then
   begin
     Exit;
   end;
-  for Symbol in ACallee.OwnerUnit.Symbols do
+  for mSymbol in ACallee.OwnerUnit.Symbols do
   begin
-    if SameText(Symbol.Name, Name) and SameText(Symbol.Container, ACallee.Symbol.Container) and
-      (Symbol.Kind = TIndexSymbolKind.Method) and Symbol.InInterface then
+    if SameText(mSymbol.Name, mName) and SameText(mSymbol.Container, ACallee.Symbol.Container) and
+      (mSymbol.Kind = TIndexSymbolKind.Method) and mSymbol.InInterface then
     begin
       AResult.OwnerUnit := ACallee.OwnerUnit;
-      AResult.Symbol := Symbol;
+      AResult.Symbol := mSymbol;
       Exit(True);
     end;
   end;
@@ -728,60 +729,60 @@ end;
 
 function TInlineCheck.EnclosingRoutines(AOffset: Integer): TArray<TSyntaxNode>;
 var
-  Node: TSyntaxNode;
-  Index: Integer;
-  Found: Boolean;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+  mFound: Boolean;
 begin
   // Von außen nach innen: Methode, dann ihre lokalen Routinen.
   Result := nil;
-  Node := FContext.Tree.Root;
+  mNode := FContext.Tree.Root;
   repeat
-    Found := False;
-    for Index := 0 to Node.ChildCount - 1 do
+    mFound := False;
+    for mIndex := 0 to mNode.ChildCount - 1 do
     begin
-      if (Node[Index].StartOffset <= AOffset) and (AOffset < Node[Index].EndOffset) then
+      if (mNode[mIndex].StartOffset <= AOffset) and (AOffset < mNode[mIndex].EndOffset) then
       begin
-        Node := Node[Index];
-        if Node.Kind = TSyntaxKind.RoutineDecl then
+        mNode := mNode[mIndex];
+        if mNode.Kind = TSyntaxKind.RoutineDecl then
         begin
-          Result := Result + [Node];
+          Result := Result + [mNode];
         end;
-        Found := True;
+        mFound := True;
         Break;
       end;
     end;
-  until not Found;
+  until not mFound;
 end;
 
 function TInlineCheck.CallerIsInline(const ARoutines: TArray<TSyntaxNode>): Boolean;
 var
-  Routine, Header: TSyntaxNode;
-  Index: Integer;
-  Name, Container: string;
-  Symbol: TIndexSymbol;
+  mRoutine, mHeader: TSyntaxNode;
+  mIndex: Integer;
+  mName, mContainer: string;
+  mSymbol: TIndexSymbol;
 begin
   Result := False;
   if Length(ARoutines) = 0 then
   begin
     Exit;
   end;
-  Routine := ARoutines[High(ARoutines)];
-  Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
-  if Header <> nil then
+  mRoutine := ARoutines[High(ARoutines)];
+  mHeader := mRoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if mHeader <> nil then
   begin
-    for Index := 0 to Header.ChildCount - 1 do
+    for mIndex := 0 to mHeader.ChildCount - 1 do
     begin
-      if (Header[Index].Kind = TSyntaxKind.Directive) and SameText(Header[Index].Name, 'inline') then
+      if (mHeader[mIndex].Kind = TSyntaxKind.Directive) and SameText(mHeader[mIndex].Name, 'inline') then
       begin
         Exit(True);
       end;
     end;
   end;
   // inline steht oft nur an der Deklaration.
-  Name := SplitName(Routine.Name, Container);
-  for Symbol in FOwn.Symbols do
+  mName := SplitName(mRoutine.Name, mContainer);
+  for mSymbol in FOwn.Symbols do
   begin
-    if SameText(Symbol.Name, Name) and SameText(Symbol.Container, Container) and Symbol.HasDirective('inline') then
+    if SameText(mSymbol.Name, mName) and SameText(mSymbol.Container, mContainer) and mSymbol.HasDirective('inline') then
     begin
       Exit(True);
     end;
@@ -810,59 +811,59 @@ end;
 
 function TInlineCheck.Explain(const ACallee: TInlineCallee; const ARange: TTextRange; AOffset: Integer): Boolean;
 var
-  Needs: TInlineNeeds;
-  Name, Missing: string;
-  Routines: TArray<TSyntaxNode>;
-  Missings: TArray<string>;
-  UnitName: string;
-  Edit: TTextEdit;
-  Fixes: TArray<TRuleFix>;
+  mNeeds: TInlineNeeds;
+  mName, mMissing: string;
+  mRoutines: TArray<TSyntaxNode>;
+  mMissings: TArray<string>;
+  mUnitName: string;
+  mEdit: TTextEdit;
+  mFixes: TArray<TRuleFix>;
 begin
   Result := False;
-  Name := ACallee.Symbol.QualifiedName;
-  Routines := EnclosingRoutines(AOffset);
-  Needs := NeedsOf(ACallee);
+  mName := ACallee.Symbol.QualifiedName;
+  mRoutines := EnclosingRoutines(AOffset);
+  mNeeds := NeedsOf(ACallee);
   // In derselben Unit sind uses, Zyklen und der implementation-Teil dieselben.
   if FCycles.IsOwnUnit(ACallee.OwnerUnit.UnitName) then
   begin
     Exit;
   end;
   // Zyklen zuerst: Dann bettet der Compiler gar nicht ein, gleich was in uses steht.
-  if ReportedCycle(ACallee, Needs, ARange) then
+  if ReportedCycle(ACallee, mNeeds, ARange) then
   begin
     Exit(True);
   end;
   // Die billige Frage nach dem uses zuerst: CallerIsInline durchsucht die Symbole der Datei.
-  if OnlyInImplementationUses(ACallee.OwnerUnit.UnitName) and CallerIsInline(Routines) then
+  if OnlyInImplementationUses(ACallee.OwnerUnit.UnitName) and CallerIsInline(mRoutines) then
   begin
-    FReport.Add(ARange, cTexts[TInliningText.ImplUses].Fmt([Name, ACallee.OwnerUnit.UnitName]));
+    FReport.Add(ARange, cTexts[TInliningText.ImplUses].Fmt([mName, ACallee.OwnerUnit.UnitName]));
     Exit(True);
   end;
-  Missings := nil;
-  for UnitName in Needs.Units do
+  mMissings := nil;
+  for mUnitName in mNeeds.Units do
   begin
-    if not FCycles.IsOwnUnit(UnitName) and not TUsesClauses.IsUsed(FUsed, UnitName, FContext.Namespaces) then
+    if not FCycles.IsOwnUnit(mUnitName) and not TUsesClauses.IsUsed(FUsed, mUnitName, FContext.Namespaces) then
     begin
-      Missings := Missings + [UnitName];
+      mMissings := mMissings + [mUnitName];
     end;
   end;
-  if Length(Missings) = 0 then
+  if Length(mMissings) = 0 then
   begin
     Exit;
   end;
-  Missing := String.Join(', ', Missings);
-  Fixes := nil;
-  if TUsesClauses.AddUnit(FContext.Tree.Tokens, AOffset, Missing, FLineBreak, Edit) then
+  mMissing := String.Join(', ', mMissings);
+  mFixes := nil;
+  if TUsesClauses.AddUnit(FContext.Tree.Tokens, AOffset, mMissing, FLineBreak, mEdit) then
   begin
-    Fixes := [TRuleFix.Create(cTexts[TInliningText.AddUses].Fmt([Missing]), [Edit], True)];
+    mFixes := [TRuleFix.Create(cTexts[TInliningText.AddUses].Fmt([mMissing]), [mEdit], True)];
   end;
-  if Length(Missings) = 1 then
+  if Length(mMissings) = 1 then
   begin
-    FReport.Add(ARange, cTexts[TInliningText.MissingUnit].Fmt([Name, Missing]), Fixes);
+    FReport.Add(ARange, cTexts[TInliningText.MissingUnit].Fmt([mName, mMissing]), mFixes);
   end
   else
   begin
-    FReport.Add(ARange, cTexts[TInliningText.MissingUnits].Fmt([Name, Missing]), Fixes);
+    FReport.Add(ARange, cTexts[TInliningText.MissingUnits].Fmt([mName, mMissing]), mFixes);
   end;
   Result := True;
 end;
@@ -883,7 +884,7 @@ begin
   end;
   mName := ACallee.Symbol.QualifiedName;
   Result := mCycle <> '';
-  if mCycle = CycleDirect then
+  if mCycle = cCycleDirect then
   begin
     FReport.Add(ARange, cTexts[TInliningText.CompiledUnit].Fmt([mName, ACallee.OwnerUnit.UnitName, FOwnName]));
   end
@@ -896,44 +897,45 @@ end;
 
 procedure TInlineCheck.CheckToken(ATokenIndex: Integer);
 var
-  Tokens: TArray<TPascalToken>;
-  Token: TPascalToken;
-  Resolved: TResolvedSymbol;
-  Callee, Target: TInlineCallee;
-  Next: Integer;
-  IsWrite: Boolean;
+  mTokens: TArray<TPascalToken>;
+  mToken: TPascalToken;
+  mResolved: TResolvedSymbol;
+  mCallee, mTarget: TInlineCallee;
+  mNext: Integer;
+  mIsWrite: Boolean;
 begin
-  Tokens := FContext.Tree.Tokens;
-  Token := Tokens[ATokenIndex];
-  if not IsCandidate(Token.Text) then
+  mTokens := FContext.Tree.Tokens;
+  mToken := mTokens[ATokenIndex];
+  if not IsCandidate(mToken.Text) then
   begin
     Exit;
   end;
-  Resolved := FResolver.Resolve(FContext.Tree, FContext.RelativePath, Token.StartPos);
-  if not IndexSymbolOf(Resolved, Callee) then
+  mResolved := FResolver.Resolve(FContext.Tree, FContext.RelativePath, mToken.StartPos);
+  if not IndexSymbolOf(mResolved, mCallee) then
   begin
     Exit;
   end;
-  if Callee.Symbol.Kind = TIndexSymbolKind.Property_ then
+  if mCallee.Symbol.Kind = TIndexSymbolKind.Property_ then
   begin
     // Zuweisung an die Property ruft den Setter, sonst liest sie über den Getter.
-    Next := ATokenIndex + 1;
-    while (Next <= High(Tokens)) and (Tokens[Next].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+    mNext := ATokenIndex + 1;
+    while (mNext <= High(mTokens)) and (mTokens[mNext].Kind in [TPascalTokenKind.Comment,
+      TPascalTokenKind.Directive]) do
     begin
-      Inc(Next);
+      Inc(mNext);
     end;
-    IsWrite := (Next <= High(Tokens)) and Tokens[Next].IsSymbol(':=');
-    if not Accessor(Callee, IsWrite, Target) then
+    mIsWrite := (mNext <= High(mTokens)) and mTokens[mNext].IsSymbol(':=');
+    if not Accessor(mCallee, mIsWrite, mTarget) then
     begin
       Exit;
     end;
-    Callee := Target;
+    mCallee := mTarget;
   end
-  else if not (Callee.Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) then
+  else if not (mCallee.Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) then
   begin
     Exit;
   end;
-  Report(Callee, TTextRange.Create(Token.StartPos, Token.EndPos), Token.Offset);
+  Report(mCallee, TTextRange.Create(mToken.StartPos, mToken.EndPos), mToken.Offset);
 end;
 
 /// <summary>Ausdruck hinter in; Kinder: [Typ der Variablen], Ausdruck, [Anweisung]. nil ohne.</summary>
@@ -966,7 +968,7 @@ begin
   begin
     Exit;
   end;
-  for mName in EnumeratorMembers do
+  for mName in cEnumeratorMembers do
   begin
     if not FCallee.DeclaredMember(mEnumType, mName, mMember) or not IndexSymbolOf(mMember, mTarget) then
     begin
@@ -1015,9 +1017,9 @@ end;
 
 procedure TInlineCheck.Run;
 var
-  Index: Integer;
-  ForIns: TList<TSyntaxNode>;
-  Node: TSyntaxNode;
+  mIndex: Integer;
+  mForIns: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
 begin
   FOwnName := TUsesClauses.OwnName(FContext.Tree.Tokens);
   if FOwnName = '' then
@@ -1031,14 +1033,14 @@ begin
   try
     FOwn := FResolver.ExtractedUnit(FContext.Tree, FContext.RelativePath);
     CollectOwnCandidates;
-    for Index := 0 to High(FContext.Tree.Tokens) do
+    for mIndex := 0 to High(FContext.Tree.Tokens) do
     begin
-      if FContext.Tree.Tokens[Index].Kind = TPascalTokenKind.Identifier then
+      if FContext.Tree.Tokens[mIndex].Kind = TPascalTokenKind.Identifier then
       begin
-        CheckToken(Index);
+        CheckToken(mIndex);
       end;
     end;
-    ForIns := TList<TSyntaxNode>.Create;
+    mForIns := TList<TSyntaxNode>.Create;
     try
       FContext.Tree.Root.Walk(
         function(ANode: TSyntaxNode): Boolean
@@ -1046,15 +1048,15 @@ begin
           Result := True;
           if ANode.Kind = TSyntaxKind.ForInStatement then
           begin
-            ForIns.Add(ANode);
+            mForIns.Add(ANode);
           end;
         end);
-      for Node in ForIns do
+      for mNode in mForIns do
       begin
-        CheckForIn(Node);
+        CheckForIn(mNode);
       end;
     finally
-      ForIns.Free;
+      mForIns.Free;
     end;
   finally
     FResolver.UnpinTree;
@@ -1065,23 +1067,23 @@ end;
 
 function TInlineNotExpandedRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(InlineNotExpandedRuleId, TRuleSeverity.Hint,
+  Result := TRuleDescriptor.Create(cInlineNotExpandedRuleId, TRuleSeverity.Hint,
     cTexts[TInliningText.Title].Text);
 end;
 
 procedure TInlineNotExpandedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Check: TInlineCheck;
+  mCheck: TInlineCheck;
 begin
   if (AContext.Tree = nil) or ContainsText(AContext.Text, '{$INLINE OFF}') then
   begin
     Exit;
   end;
-  Check := TInlineCheck.Create(AContext, AReport);
+  mCheck := TInlineCheck.Create(AContext, AReport);
   try
-    Check.Run;
+    mCheck.Run;
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 

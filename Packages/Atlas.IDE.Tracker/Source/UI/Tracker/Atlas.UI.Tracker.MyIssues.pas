@@ -130,7 +130,6 @@ type
     class function TitleText(const AProjectName: string): string; overload; static;
     /// <summary>Wie oben, mit Punkt davor, wenn AUnseen (#1271: neue Änderungen an einem Issue).</summary>
     class function TitleText(const AProjectName: string; AUnseen: Boolean): string; overload; static;
-    class function NowUtc: TDateTime; static;
   end;
 
   /// <summary>Zeile der Chips beim Zeichnen: Zeichenfläche, nächste linke Kante, Oberkante, rechte Grenze.</summary>
@@ -216,8 +215,6 @@ type
     property Menu: TPopupMenu read FMenu;
     property PreviewItem: TMenuItem read FPreviewItem;
     property BrowseItem: TMenuItem read FBrowseItem;
-    property BrowsePullItem: TMenuItem read FBrowsePullItem;
-    property StartBranchItem: TMenuItem read FStartBranchItem;
     property StartRememberItem: TMenuItem read FStartRememberItem;
     property QueryItem: TMenuItem read FQueryItem;
     property CredentialsItem: TMenuItem read FCredentialsItem;
@@ -378,11 +375,6 @@ begin
 end;
 
 { TAtlasTrackerIssuesText }
-
-class function TAtlasTrackerIssuesText.NowUtc: TDateTime;
-begin
-  Result := TTimeZone.Local.ToUniversalTime(Now);
-end;
 
 class function TAtlasTrackerIssuesText.TitleText(const AProjectName: string): string;
 begin

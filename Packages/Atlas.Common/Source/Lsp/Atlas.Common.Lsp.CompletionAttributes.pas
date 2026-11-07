@@ -25,10 +25,10 @@ type
   TCompletionAttributes = class
   public const
     /// <summary>Bekannte Attribute in der Reihenfolge der Liste; die Klassen heißen NameAttribute.</summary>
-    KnownNames: array[0..6] of string = ('Test', 'TestCase', 'TestFixture', 'Setup', 'TearDown', 'JSONName',
+    cKnownNames: array[0..6] of string = ('Test', 'TestCase', 'TestFixture', 'Setup', 'TearDown', 'JSONName',
       'JSONMarshalled');
     /// <summary>Attribute, die der Compiler selbst kennt.</summary>
-    CompilerNames: array[0..3] of string = ('weak', 'unsafe', 'volatile', 'Ref');
+    cCompilerNames: array[0..3] of string = ('weak', 'unsafe', 'volatile', 'Ref');
   public
     /// <summary>Klassennamen der bekannten Attribute (TestAttribute …), für den uses-Eintrag schon ohne Eingabe.
     /// </summary>
@@ -60,12 +60,12 @@ uses
 
 class function TCompletionAttributes.KnownClassNames: TArray<string>;
 var
-  Name: string;
+  mName: string;
 begin
   Result := nil;
-  for Name in KnownNames do
+  for mName in cKnownNames do
   begin
-    Result := Result + [Name + 'Attribute'];
+    Result := Result + [mName + 'Attribute'];
   end;
 end;
 
@@ -87,27 +87,27 @@ end;
 
 class function TCompletionAttributes.ParameterText(const ASignature: string): string;
 var
-  Open, Index, Depth: Integer;
+  mOpen, mIndex, mDepth: Integer;
 begin
   Result := '';
-  Open := Pos('(', ASignature);
-  if Open = 0 then
+  mOpen := Pos('(', ASignature);
+  if mOpen = 0 then
   begin
     Exit;
   end;
-  Depth := 0;
-  for Index := Open to Length(ASignature) do
+  mDepth := 0;
+  for mIndex := mOpen to Length(ASignature) do
   begin
-    if ASignature[Index] = '(' then
+    if ASignature[mIndex] = '(' then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if ASignature[Index] = ')' then
+    else if ASignature[mIndex] = ')' then
     begin
-      Dec(Depth);
-      if Depth = 0 then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
-        Exit(Copy(ASignature, Open, Index - Open + 1));
+        Exit(Copy(ASignature, mOpen, mIndex - mOpen + 1));
       end;
     end;
   end;
@@ -116,20 +116,20 @@ end;
 /// <summary>Rang eines bekannten Attributs (0 …), -1 sonst.</summary>
 function KnownRank(const AName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(TCompletionAttributes.KnownNames) do
+  for mIndex := 0 to High(TCompletionAttributes.cKnownNames) do
   begin
-    if SameText(AName, TCompletionAttributes.KnownNames[Index]) then
+    if SameText(AName, TCompletionAttributes.cKnownNames[mIndex]) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
-  for Index := 0 to High(TCompletionAttributes.CompilerNames) do
+  for mIndex := 0 to High(TCompletionAttributes.cCompilerNames) do
   begin
-    if SameText(AName, TCompletionAttributes.CompilerNames[Index]) then
+    if SameText(AName, TCompletionAttributes.cCompilerNames[mIndex]) then
     begin
-      Exit(Length(TCompletionAttributes.KnownNames) + Index);
+      Exit(Length(TCompletionAttributes.cKnownNames) + mIndex);
     end;
   end;
   Result := -1;
@@ -240,7 +240,7 @@ end;
 
 function TAttributeList.Matches(const AName: string): Boolean;
 begin
-  Result := MatchScore(AName, FPrefix, FRequest.Matching) <> TFuzzyMatch.NoMatch;
+  Result := MatchScore(AName, FPrefix, FRequest.Matching) <> TFuzzyMatch.cNoMatch;
 end;
 
 procedure TAttributeList.Keep(var AEntry: TAttributeEntry);
@@ -300,14 +300,14 @@ var
   mEntry: TAttributeEntry;
 begin
   // Compiler-Attribute ohne Klasse.
-  for mName in TCompletionAttributes.CompilerNames do
+  for mName in TCompletionAttributes.cCompilerNames do
   begin
     if Matches(mName) then
     begin
       mEntry := Default(TAttributeEntry);
       mEntry.Item.Name := mName;
       mEntry.Item.Detail := 'Compiler';
-      mEntry.Item.Kind := KindKeyword;
+      mEntry.Item.Kind := cKindKeyword;
       mEntry.Item.Attribute := True;
       Keep(mEntry);
     end;

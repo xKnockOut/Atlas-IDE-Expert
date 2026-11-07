@@ -26,9 +26,9 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  EmptyStatementRuleId = 'empty-statement';
-  DestroyCalledDirectlyRuleId = 'destroy-called-directly';
-  ComparisonAsStatementRuleId = 'comparison-as-statement';
+  cEmptyStatementRuleId = 'empty-statement';
+  cDestroyCalledDirectlyRuleId = 'destroy-called-directly';
+  cComparisonAsStatementRuleId = 'comparison-as-statement';
 
 type
   TEmptyStatementRule = class(TInterfacedObject, IRule)
@@ -47,7 +47,8 @@ type
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
-    /// <summary>Ausdruck, den die Aufrufanweisung AStatement als Anweisung stehen lässt (Vergleich, Operator, Literal); nil sonst.</summary>
+    /// <summary>Ausdruck, den die Aufrufanweisung AStatement als Anweisung stehen lässt (Vergleich, Operator, Literal);
+    /// nil sonst.</summary>
     class function ExpressionOf(AStatement: TSyntaxNode): TSyntaxNode; static;
   end;
 
@@ -108,15 +109,15 @@ const
 
 function TEmptyStatementRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(EmptyStatementRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cEmptyStatementRuleId, TRuleSeverity.Warning,
     cTexts[TStatementsText.EmptyTitle].Text);
 end;
 
 procedure TEmptyStatementRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
-  AllowCommented: Boolean;
-  Report: IRuleReport;
+  mTokens: TTokens;
+  mAllowCommented: Boolean;
+  mReport: IRuleReport;
 
   // Semikolon ANext direkt nach dem Schlüsselwort AKeyword melden, außer am Blockende.
   procedure InspectSemicolon(AKeyword, ANext: Integer; AIsLoop: Boolean);
@@ -124,14 +125,14 @@ var
     mAfter: Integer;
     mWord, mMessage: string;
   begin
-    mAfter := NextCode(Tokens, ANext + 1);
+    mAfter := NextCode(mTokens, ANext + 1);
     // Am Blockende ändert das Semikolon nichts am Ablauf (z. B. while not Fertig do; als Warteschleife).
-    if (mAfter > High(Tokens)) or (Tokens[mAfter].Kind = TPascalTokenKind.Keyword) and
-      MatchText(Tokens[mAfter].Text, ['end', 'until', 'except', 'finally', 'else']) then
+    if (mAfter > High(mTokens)) or (mTokens[mAfter].Kind = TPascalTokenKind.Keyword) and
+      MatchText(mTokens[mAfter].Text, ['end', 'until', 'except', 'finally', 'else']) then
     begin
       Exit;
     end;
-    mWord := LowerCase(Tokens[AKeyword].Text);
+    mWord := LowerCase(mTokens[AKeyword].Text);
     if AIsLoop then
     begin
       mMessage := cTexts[TStatementsText.EmptyLoop].Fmt([mWord]);
@@ -140,10 +141,10 @@ var
     begin
       mMessage := cTexts[TStatementsText.EmptyNextLine].Fmt([mWord]);
     end;
-    Report.Add(TTextRange.Create(Tokens[AKeyword].StartPos, Tokens[ANext].EndPos), mMessage, TRuleConfidence.High,
+    mReport.Add(TTextRange.Create(mTokens[AKeyword].StartPos, mTokens[ANext].EndPos), mMessage, TRuleConfidence.High,
       [TRuleFix.Create(cTexts[TStatementsText.RemoveSemicolon].Text,
-        [TRuleEdit.Create(TTextRange.Create(Tokens[ANext].StartPos,
-      Tokens[ANext].EndPos), '')])]);
+        [TRuleEdit.Create(TTextRange.Create(mTokens[ANext].StartPos,
+      mTokens[ANext].EndPos), '')])]);
   end;
 
   // begin end ohne Anweisung ab Token ANext, mit Kommentar darin nur bei allowCommented = false.
@@ -154,15 +155,15 @@ var
   begin
     mHasComment := False;
     mIndex := ANext + 1;
-    while (mIndex <= High(Tokens)) and (Tokens[mIndex].Offset < ABody.EndOffset) do
+    while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ABody.EndOffset) do
     begin
-      mHasComment := mHasComment or (Tokens[mIndex].Kind = TPascalTokenKind.Comment);
+      mHasComment := mHasComment or (mTokens[mIndex].Kind = TPascalTokenKind.Comment);
       Inc(mIndex);
     end;
-    if not (mHasComment and AllowCommented) then
+    if not (mHasComment and mAllowCommented) then
     begin
-      Report.Add(TTextRange.Create(Tokens[AKeyword].StartPos, Tokens[mIndex - 1].EndPos),
-        cTexts[TStatementsText.EmptyBlock].Fmt([LowerCase(Tokens[AKeyword].Text)]),
+      mReport.Add(TTextRange.Create(mTokens[AKeyword].StartPos, mTokens[mIndex - 1].EndPos),
+        cTexts[TStatementsText.EmptyBlock].Fmt([LowerCase(mTokens[AKeyword].Text)]),
         TRuleConfidence.High);
     end;
   end;
@@ -176,17 +177,17 @@ var
     begin
       Exit;
     end;
-    mNext := NextCode(Tokens, AKeyword + 1);
-    if mNext > High(Tokens) then
+    mNext := NextCode(mTokens, AKeyword + 1);
+    if mNext > High(mTokens) then
     begin
       Exit;
     end;
-    if Tokens[mNext].IsSymbol(';') and ((ABody = nil) or (ABody.StartOffset > Tokens[mNext].Offset)) then
+    if mTokens[mNext].IsSymbol(';') and ((ABody = nil) or (ABody.StartOffset > mTokens[mNext].Offset)) then
     begin
       InspectSemicolon(AKeyword, mNext, AIsLoop);
     end
     else if (ABody <> nil) and (ABody.Kind = TSyntaxKind.Block) and (ABody.ChildCount = 0) and
-      Tokens[mNext].IsKeyword('begin') and (Tokens[mNext].Offset = ABody.StartOffset) then
+      mTokens[mNext].IsKeyword('begin') and (mTokens[mNext].Offset = ABody.StartOffset) then
     begin
       InspectEmptyBlock(AKeyword, mNext, ABody);
     end;
@@ -200,8 +201,8 @@ var
     Result := False;
     for mChild := 0 to ANode.ChildCount - 1 do
     begin
-      if (ANode[mChild].Kind in StatementKinds) and (Tokens[AIndex].Offset >= ANode[mChild].StartOffset) and
-        (Tokens[AIndex].Offset < ANode[mChild].EndOffset) then
+      if (ANode[mChild].Kind in StatementKinds) and (mTokens[AIndex].Offset >= ANode[mChild].StartOffset) and
+        (mTokens[AIndex].Offset < ANode[mChild].EndOffset) then
       begin
         Exit(True);
       end;
@@ -216,15 +217,15 @@ var
     mDepth := 0;
     for mIndex := AFrom to AStop - 1 do
     begin
-      if Tokens[mIndex].IsSymbol('(') or Tokens[mIndex].IsSymbol('[') then
+      if mTokens[mIndex].IsSymbol('(') or mTokens[mIndex].IsSymbol('[') then
       begin
         Inc(mDepth);
       end
-      else if Tokens[mIndex].IsSymbol(')') or Tokens[mIndex].IsSymbol(']') then
+      else if mTokens[mIndex].IsSymbol(')') or mTokens[mIndex].IsSymbol(']') then
       begin
         Dec(mDepth);
       end
-      else if (mDepth = 0) and Tokens[mIndex].IsKeyword(AWord) and not InChildStatement(ANode, mIndex) then
+      else if (mDepth = 0) and mTokens[mIndex].IsKeyword(AWord) and not InChildStatement(ANode, mIndex) then
       begin
         Exit(mIndex);
       end;
@@ -237,21 +238,21 @@ var
     mThen, mElse: Integer;
     mBody: TSyntaxNode;
   begin
-    mThen := OwnKeyword(ANode, TokenFrom(Tokens, ANode[0].EndOffset), AStop, 'then');
+    mThen := OwnKeyword(ANode, TokenFrom(mTokens, ANode[0].EndOffset), AStop, 'then');
     if mThen < 0 then
     begin
       Exit;
     end;
     mElse := OwnKeyword(ANode, mThen + 1, AStop, 'else');
-    mBody := StatementAfter(ANode, Tokens[mThen].Offset);
-    if (mBody <> nil) and (mElse >= 0) and (mBody.StartOffset > Tokens[mElse].Offset) then
+    mBody := StatementAfter(ANode, mTokens[mThen].Offset);
+    if (mBody <> nil) and (mElse >= 0) and (mBody.StartOffset > mTokens[mElse].Offset) then
     begin
       mBody := nil;
     end;
     Inspect(mThen, mBody, False);
     if mElse >= 0 then
     begin
-      Inspect(mElse, StatementAfter(ANode, Tokens[mElse].Offset), False);
+      Inspect(mElse, StatementAfter(ANode, mTokens[mElse].Offset), False);
     end;
   end;
 
@@ -259,46 +260,46 @@ var
   var
     mDo: Integer;
   begin
-    mDo := OwnKeyword(ANode, TokenFrom(Tokens, ANode.StartOffset), AStop, 'do');
+    mDo := OwnKeyword(ANode, TokenFrom(mTokens, ANode.StartOffset), AStop, 'do');
     if mDo >= 0 then
     begin
-      Inspect(mDo, StatementAfter(ANode, Tokens[mDo].Offset), ANode.Kind <> TSyntaxKind.WithStatement);
+      Inspect(mDo, StatementAfter(ANode, mTokens[mDo].Offset), ANode.Kind <> TSyntaxKind.WithStatement);
     end;
   end;
 
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Index, Stop: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex, mStop: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1): lange else-if-Ketten ergeben sehr tiefe Bäume.
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Stop := TokenFrom(Tokens, Node.EndOffset);
-        case Node.Kind of
+        mNode := mPending.Pop;
+        mStop := TokenFrom(mTokens, mNode.EndOffset);
+        case mNode.Kind of
           TSyntaxKind.IfStatement:
-            if Node.ChildCount > 0 then
+            if mNode.ChildCount > 0 then
             begin
-              VisitIf(Node, Stop);
+              VisitIf(mNode, mStop);
             end;
           TSyntaxKind.WhileStatement, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement,
           TSyntaxKind.WithStatement:
-            VisitLoop(Node, Stop);
+            VisitLoop(mNode, mStop);
         else
           // Übrige Werte bewusst ohne Wirkung.
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -307,9 +308,9 @@ begin
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  AllowCommented := TRuleOptions.Bool(AContext.Options, 'allowCommented', True);
-  Report := AReport;
+  mTokens := AContext.Tree.Tokens;
+  mAllowCommented := TRuleOptions.Bool(AContext.Options, 'allowCommented', True);
+  mReport := AReport;
   Visit(AContext.Tree.Root);
 end;
 
@@ -317,13 +318,13 @@ end;
 
 function TDestroyCalledDirectlyRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(DestroyCalledDirectlyRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cDestroyCalledDirectlyRuleId, TRuleSeverity.Warning,
     cTexts[TStatementsText.DestroyTitle].Text);
 end;
 
 procedure TDestroyCalledDirectlyRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
+  mTokens: TTokens;
 
   // X.Destroy bzw. X.Destroy() ohne Argumente als Anweisung: der Zugriff; sonst nil.
   function DestroyAccess(ANode: TSyntaxNode): TSyntaxNode;
@@ -351,10 +352,10 @@ var
     mIndex: Integer;
   begin
     Result := -1;
-    mIndex := TokenFrom(Tokens, ATarget.StartOffset);
-    while (mIndex <= High(Tokens)) and (Tokens[mIndex].Offset < ATarget.EndOffset) do
+    mIndex := TokenFrom(mTokens, ATarget.StartOffset);
+    while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ATarget.EndOffset) do
     begin
-      if (Tokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[mIndex].Text, 'Destroy') then
+      if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, 'Destroy') then
       begin
         Result := mIndex;
       end;
@@ -376,7 +377,7 @@ var
     end;
     if mName >= 0 then
     begin
-      mRange := TTextRange.Create(Tokens[mName].StartPos, Tokens[mName].EndPos);
+      mRange := TTextRange.Create(mTokens[mName].StartPos, mTokens[mName].EndPos);
       AReport.Add(mRange, cTexts[TStatementsText.DestroyDirect].Text, TRuleConfidence.High,
         [TRuleFix.Create(cTexts[TStatementsText.FreeInstead].Text, [TRuleEdit.Create(mRange, 'Free')], True)]);
     end;
@@ -384,25 +385,25 @@ var
 
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Node: TSyntaxNode;
-    Index: Integer;
-    Pending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Inspect(Node);
-        for Index := Node.ChildCount - 1 downto 0 do
+        mNode := mPending.Pop;
+        Inspect(mNode);
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -411,7 +412,7 @@ begin
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
+  mTokens := AContext.Tree.Tokens;
   Visit(AContext.Tree.Root);
 end;
 
@@ -419,7 +420,7 @@ end;
 
 function TComparisonAsStatementRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(ComparisonAsStatementRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cComparisonAsStatementRuleId, TRuleSeverity.Error,
     cTexts[TStatementsText.ComparisonTitle].Text);
 end;
 
@@ -445,19 +446,19 @@ end;
 
 procedure TComparisonAsStatementRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 const
-  Comparisons: array[0..7] of string = ('=', '<>', '<', '>', '<=', '>=', 'in', 'is');
+  cComparisons: array[0..7] of string = ('=', '<>', '<', '>', '<=', '>=', 'in', 'is');
   // Längere Vorschläge kürzt die Meldung nicht, sie lässt sie weg.
-  MaxSuggestion = 60;
+  cMaxSuggestion = 60;
 var
-  Tokens: TTokens;
+  mTokens: TTokens;
 
   function IsComparison(const AOperator: string): Boolean;
   var
-    Item: string;
+    mItem: string;
   begin
-    for Item in Comparisons do
+    for mItem in cComparisons do
     begin
-      if SameText(Item, AOperator) then
+      if SameText(mItem, AOperator) then
       begin
         Exit(True);
       end;
@@ -468,27 +469,27 @@ var
   // Quelltext von ANode, Leerraum und Zeilenumbrüche zu einem Leerzeichen.
   function Compact(ANode: TSyntaxNode): string;
   var
-    Raw: string;
-    Index: Integer;
-    Space: Boolean;
+    mRaw: string;
+    mIndex: Integer;
+    mSpace: Boolean;
   begin
-    Raw := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+    mRaw := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
     Result := '';
-    Space := False;
-    for Index := 1 to Length(Raw) do
+    mSpace := False;
+    for mIndex := 1 to Length(mRaw) do
     begin
-      if CharInSet(Raw[Index], [' ', #9, #10, #13]) then
+      if CharInSet(mRaw[mIndex], [' ', #9, #10, #13]) then
       begin
-        Space := True;
+        mSpace := True;
       end
       else
       begin
-        if Space and (Result <> '') then
+        if mSpace and (Result <> '') then
         begin
           Result := Result + ' ';
         end;
-        Space := False;
-        Result := Result + Raw[Index];
+        mSpace := False;
+        Result := Result + mRaw[mIndex];
       end;
     end;
   end;
@@ -503,17 +504,17 @@ var
   // Token "=" zwischen linker und rechter Seite; -1 ohne.
   function EqualsToken(AExpression: TSyntaxNode): Integer;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
-    for Index := TokenFrom(Tokens, AExpression[0].EndOffset) to High(Tokens) do
+    for mIndex := TokenFrom(mTokens, AExpression[0].EndOffset) to High(mTokens) do
     begin
-      if Tokens[Index].Offset >= AExpression[1].StartOffset then
+      if mTokens[mIndex].Offset >= AExpression[1].StartOffset then
       begin
         Break;
       end;
-      if Tokens[Index].IsSymbol('=') then
+      if mTokens[mIndex].IsSymbol('=') then
       begin
-        Exit(Index);
+        Exit(mIndex);
       end;
     end;
     Result := -1;
@@ -543,7 +544,7 @@ var
       Exit;
     end;
     mSuggestion := Compact(AExpression[0]) + ' := ' + Compact(AExpression[1]);
-    if Length(mSuggestion) <= MaxSuggestion then
+    if Length(mSuggestion) <= cMaxSuggestion then
     begin
       Result := cTexts[TStatementsText.ComparisonMeant].Fmt([mSuggestion]);
     end
@@ -552,8 +553,8 @@ var
       Result := cTexts[TStatementsText.AssignMeant].Text;
     end;
     AFixes := [TRuleFix.Create(cTexts[TStatementsText.ToAssign].Text,
-      [TRuleEdit.Create(TTextRange.Create(Tokens[mEquals].StartPos,
-      Tokens[mEquals].EndPos), ':=')], True)];
+      [TRuleEdit.Create(TTextRange.Create(mTokens[mEquals].StartPos,
+      mTokens[mEquals].EndPos), ':=')], True)];
   end;
 
   procedure Inspect(AExpression: TSyntaxNode);
@@ -575,29 +576,29 @@ var
 
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Node, Expression: TSyntaxNode;
-    Index: Integer;
-    Pending: TStack<TSyntaxNode>;
+    mNode, mExpression: TSyntaxNode;
+    mIndex: Integer;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Expression := ExpressionOf(Node);
-        if Expression <> nil then
+        mNode := mPending.Pop;
+        mExpression := ExpressionOf(mNode);
+        if mExpression <> nil then
         begin
-          Inspect(Expression);
+          Inspect(mExpression);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -606,7 +607,7 @@ begin
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
+  mTokens := AContext.Tree.Tokens;
   Visit(AContext.Tree.Root);
 end;
 

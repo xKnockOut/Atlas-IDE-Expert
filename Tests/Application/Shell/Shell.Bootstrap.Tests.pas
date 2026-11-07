@@ -93,9 +93,9 @@ end;
 
 procedure TCaptureLogger.Log(ALevel: TLogLevel; const AText: string);
 const
-  Names: array[TLogLevel] of string = ('DEBUG', 'INFO', 'WARNING', 'ERROR');
+  cNames: array[TLogLevel] of string = ('DEBUG', 'INFO', 'WARNING', 'ERROR');
 begin
-  Lines.Add(Names[ALevel] + ' ' + AText);
+  Lines.Add(cNames[ALevel] + ' ' + AText);
 end;
 
 procedure TCaptureLogger.Debug(const AText: string);
@@ -119,7 +119,7 @@ begin
 end;
 
 const
-  Group =
+  cGroup =
     '<?xml version="1.0" encoding="utf-8"?>'#13#10 +
     '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10 +
     '  <ItemGroup>'#13#10 +
@@ -164,20 +164,20 @@ end;
 
 procedure TShellBootstrapTests.ReadSourceText_Utf8Bom_ReturnsText;
 var
-  Text: string;
+  mText: string;
 begin
-  Assert.IsTrue(TShellBootstrap.ReadSourceText(Write('A.pas', 'unit Ä;'), Text));
-  Assert.AreEqual('unit Ä;', Text);
+  Assert.IsTrue(TShellBootstrap.ReadSourceText(Write('A.pas', 'unit Ä;'), mText));
+  Assert.AreEqual('unit Ä;', mText);
 end;
 
 procedure TShellBootstrapTests.ReadSourceText_Missing_ReturnsFalse;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := 'alt';
-  Assert.IsFalse(TShellBootstrap.ReadSourceText(TPath.Combine(FFolder, 'Fehlt.pas'), Text));
-  Assert.AreEqual('', Text);
-  Assert.IsFalse(TShellBootstrap.ReadSourceText('', Text));
+  mText := 'alt';
+  Assert.IsFalse(TShellBootstrap.ReadSourceText(TPath.Combine(FFolder, 'Fehlt.pas'), mText));
+  Assert.AreEqual('', mText);
+  Assert.IsFalse(TShellBootstrap.ReadSourceText('', mText));
 end;
 
 procedure TShellBootstrapTests.ReadSourceText_OpenDocumentFirst;
@@ -206,36 +206,36 @@ end;
 
 procedure TShellBootstrapTests.GroupProjects_Groupproj_ListsProjects;
 var
-  Logger: TCaptureLogger;
-  Keep: ILogger;
-  Projects: TArray<string>;
+  mLogger: TCaptureLogger;
+  mKeep: ILogger;
+  mProjects: TArray<string>;
 begin
-  Logger := TCaptureLogger.Create;
-  Keep := Logger;
-  Write('Gruppe.groupproj', Group);
-  Projects := TShellBootstrap.GroupProjects(FFolder, Keep);
-  Assert.AreEqual(2, Integer(Length(Projects)));
-  Assert.IsTrue(Projects[0].EndsWith('App.dproj'));
-  Assert.IsTrue(Projects[1].EndsWith('Tests.dproj'));
-  Assert.Contains(Logger.Lines.Text, 'INFO Projektgruppe');
+  mLogger := TCaptureLogger.Create;
+  mKeep := mLogger;
+  Write('Gruppe.groupproj', cGroup);
+  mProjects := TShellBootstrap.GroupProjects(FFolder, mKeep);
+  Assert.AreEqual(2, Integer(Length(mProjects)));
+  Assert.IsTrue(mProjects[0].EndsWith('App.dproj'));
+  Assert.IsTrue(mProjects[1].EndsWith('Tests.dproj'));
+  Assert.Contains(mLogger.Lines.Text, 'INFO Projektgruppe');
 end;
 
 procedure TShellBootstrapTests.GroupProjects_TwoGroups_Empty;
 begin
-  Write('A.groupproj', Group);
-  Write('B.groupproj', Group);
+  Write('A.groupproj', cGroup);
+  Write('B.groupproj', cGroup);
   Assert.AreEqual(0, Integer(Length(TShellBootstrap.GroupProjects(FFolder, nil))));
 end;
 
 procedure TShellBootstrapTests.LoadGroup_Invalid_LogsWarning;
 var
-  Logger: TCaptureLogger;
-  Keep: ILogger;
+  mLogger: TCaptureLogger;
+  mKeep: ILogger;
 begin
-  Logger := TCaptureLogger.Create;
-  Keep := Logger;
-  Assert.AreEqual(0, Integer(Length(TShellBootstrap.LoadGroup(Write('Kaputt.groupproj', '<kein xml'), Keep))));
-  Assert.Contains(Logger.Lines.Text, 'WARNING Projektgruppe');
+  mLogger := TCaptureLogger.Create;
+  mKeep := mLogger;
+  Assert.AreEqual(0, Integer(Length(TShellBootstrap.LoadGroup(Write('Kaputt.groupproj', '<kein xml'), mKeep))));
+  Assert.Contains(mLogger.Lines.Text, 'WARNING Projektgruppe');
 end;
 
 procedure TShellBootstrapTests.GlobalSettingsFile_UnderAppData;
@@ -253,12 +253,12 @@ end;
 
 procedure TShellBootstrapTests.LoadGlobalSettings_File_ReturnsText;
 var
-  FileName: string;
+  mFileName: string;
 begin
-  FileName := TShellBootstrap.GlobalSettingsFile(FFolder);
-  TDirectory.CreateDirectory(ExtractFileDir(FileName));
-  TFile.WriteAllText(FileName, '{"mcp": {"disabledTools": ["rename_symbol"]}}', TEncoding.UTF8);
-  Assert.AreEqual('{"mcp": {"disabledTools": ["rename_symbol"]}}', TShellBootstrap.LoadGlobalSettings(FileName, nil));
+  mFileName := TShellBootstrap.GlobalSettingsFile(FFolder);
+  TDirectory.CreateDirectory(ExtractFileDir(mFileName));
+  TFile.WriteAllText(mFileName, '{"mcp": {"disabledTools": ["rename_symbol"]}}', TEncoding.UTF8);
+  Assert.AreEqual('{"mcp": {"disabledTools": ["rename_symbol"]}}', TShellBootstrap.LoadGlobalSettings(mFileName, nil));
 end;
 
 procedure TShellBootstrapTests.TextLanguage_LocaleThenSettingThenEnglish;
@@ -276,13 +276,13 @@ end;
 
 procedure TShellBootstrapTests.ProjectSettings_McpGlobalSettingsOff;
 var
-  Settings: TServerSettings;
+  mSettings: TServerSettings;
 begin
   // language gehört in die globale Datei und wirkt in atlas.json nicht.
-  Write(ConfigurationFileName, '{"mcp": {"globalSettings": false}, "language": "en"}');
-  Settings := TShellBootstrap.ProjectSettings(FFolder);
-  Assert.IsFalse(Settings.McpGlobalSettings);
-  Assert.AreEqual(TServerSettings.Default.Language, Settings.Language);
+  Write(cConfigurationFileName, '{"mcp": {"globalSettings": false}, "language": "en"}');
+  mSettings := TShellBootstrap.ProjectSettings(FFolder);
+  Assert.IsFalse(mSettings.McpGlobalSettings);
+  Assert.AreEqual(TServerSettings.Default.Language, mSettings.Language);
 end;
 
 initialization

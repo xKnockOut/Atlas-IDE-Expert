@@ -14,9 +14,9 @@ type
 
   TAtlasProblemsUpdateSetting = record
   public const
-    DefaultDelayMs = 400;
-    MinDelayMs = 100;
-    MaxDelayMs = 10000;
+    cDefaultDelayMs = 400;
+    cMinDelayMs = 100;
+    cMaxDelayMs = 10000;
     /// <summary>Werte von problems.update in der Reihenfolge von TAtlasProblemsUpdate.</summary>
     cValues: array[TAtlasProblemsUpdate] of string = ('live', 'save', 'manual');
   public
@@ -78,7 +78,7 @@ end;
 
 class function TAtlasProblemsUpdateSetting.ClampDelay(ADelayMs: Integer): Integer;
 begin
-  Result := EnsureRange(ADelayMs, MinDelayMs, MaxDelayMs);
+  Result := EnsureRange(ADelayMs, cMinDelayMs, cMaxDelayMs);
 end;
 
 end.

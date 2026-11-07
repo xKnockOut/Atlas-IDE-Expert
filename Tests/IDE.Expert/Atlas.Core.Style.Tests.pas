@@ -444,8 +444,8 @@ procedure TAtlasScalingTests.ClampsAndIgnoresInvalidValues;
 begin
   Assert.AreEqual(1.0, TAtlasScaling.ZoomFromCaret(0, 15), 0.001);
   Assert.AreEqual(1.0, TAtlasScaling.ZoomFromCaret(15, 0), 0.001);
-  Assert.AreEqual(TAtlasScaling.MaxZoom, TAtlasScaling.ZoomFromCaret(500, 10), 0.001);
-  Assert.AreEqual(TAtlasScaling.MinZoom, TAtlasScaling.ZoomFromCaret(2, 15), 0.001);
+  Assert.AreEqual(TAtlasScaling.cMaxZoom, TAtlasScaling.ZoomFromCaret(500, 10), 0.001);
+  Assert.AreEqual(TAtlasScaling.cMinZoom, TAtlasScaling.ZoomFromCaret(2, 15), 0.001);
 end;
 
 { TAtlasSyntaxTests }

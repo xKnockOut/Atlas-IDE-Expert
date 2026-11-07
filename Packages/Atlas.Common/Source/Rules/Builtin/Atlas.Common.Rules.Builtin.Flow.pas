@@ -146,13 +146,12 @@ type
   end;
 
 const
-  OutParamReadRuleId = Atlas.Common.Rules.Builtin.Flow.OutParamRead.OutParamReadRuleId;
-  UseAfterFreeRuleId = Atlas.Common.Rules.Builtin.Flow.UseAfterFree.UseAfterFreeRuleId;
-  DerefBeforeNilCheckRuleId = Atlas.Common.Rules.Builtin.Flow.DerefBeforeNilCheck.DerefBeforeNilCheckRuleId;
-  FieldFreeWithoutNilRuleId = Atlas.Common.Rules.Builtin.Flow.FieldFreeWithoutNil.FieldFreeWithoutNilRuleId;
-  DestructorNotNilSafeRuleId = Atlas.Common.Rules.Builtin.Flow.DestructorNotNilSafe.DestructorNotNilSafeRuleId;
-  HandleLeakRuleId = Atlas.Common.Rules.Builtin.Flow.HandleLeak.HandleLeakRuleId;
-  NoreturnReturnsRuleId = 'noreturn-returns';
+  cUseAfterFreeRuleId = Atlas.Common.Rules.Builtin.Flow.UseAfterFree.cUseAfterFreeRuleId;
+  cDerefBeforeNilCheckRuleId = Atlas.Common.Rules.Builtin.Flow.DerefBeforeNilCheck.cDerefBeforeNilCheckRuleId;
+  cFieldFreeWithoutNilRuleId = Atlas.Common.Rules.Builtin.Flow.FieldFreeWithoutNil.cFieldFreeWithoutNilRuleId;
+  cDestructorNotNilSafeRuleId = Atlas.Common.Rules.Builtin.Flow.DestructorNotNilSafe.cDestructorNotNilSafeRuleId;
+  cHandleLeakRuleId = Atlas.Common.Rules.Builtin.Flow.HandleLeak.cHandleLeakRuleId;
+  cNoreturnReturnsRuleId = 'noreturn-returns';
 
 /// <summary>Wird AName in ABlock so benutzt, dass der Kontrollfluss die Zuweisung nicht sieht?</summary>
 function HasOpaqueUse(ABlock: TSyntaxNode; const AName: string): Boolean;
@@ -210,39 +209,39 @@ end;
 
 procedure TResultNotSetRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Routines: TArray<TSyntaxNode>;
-  Routine, Header, Block: TSyntaxNode;
-  Graph: TControlFlowGraph;
-  Cache: IRuleDerivedCache;
-  Name: string;
+  mRoutines: TArray<TSyntaxNode>;
+  mRoutine, mHeader, mBlock: TSyntaxNode;
+  mGraph: TControlFlowGraph;
+  mCache: IRuleDerivedCache;
+  mName: string;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
   // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
-  Cache := TRuleDerived.Open(AContext);
-  Routines := TRuleDerived.Routines(Cache, AContext);
-  for Routine in Routines do
+  mCache := TRuleDerived.Open(AContext);
+  mRoutines := TRuleDerived.Routines(mCache, AContext);
+  for mRoutine in mRoutines do
   begin
-    Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
+    mHeader := mRoutine.FindChild(TSyntaxKind.RoutineHeader);
     // Nur Funktionen: der Kopf trägt einen Ergebnistyp.
-    if (Header = nil) or (Header.FindChild(TSyntaxKind.TypeReference) = nil) then
+    if (mHeader = nil) or (mHeader.FindChild(TSyntaxKind.TypeReference) = nil) then
     begin
       Continue;
     end;
-    Block := Routine.FindChild(TSyntaxKind.Block);
-    Name := ShortName(Routine.Name);
-    if HasOpaqueUse(Block, 'Result') or HasOpaqueUse(Block, Name) or ContainsKind(Block, TSyntaxKind.InheritedExpr) then
+    mBlock := mRoutine.FindChild(TSyntaxKind.Block);
+    mName := ShortName(mRoutine.Name);
+    if HasOpaqueUse(mBlock, 'Result') or HasOpaqueUse(mBlock, mName) or ContainsKind(mBlock, TSyntaxKind.InheritedExpr) then
     begin
       Continue;
     end;
-    Graph := TRuleDerived.Graph(Cache, AContext, Routine);
+    mGraph := TRuleDerived.Graph(mCache, AContext, mRoutine);
     // Alte Schreibweise: Zuweisung an den Funktionsnamen setzt ebenfalls das Ergebnis.
-    if (Graph.MayEndWithout('Result') = TFlowAnswer.Yes) and (Graph.MayEndWithout(Name) = TFlowAnswer.Yes) then
+    if (mGraph.MayEndWithout('Result') = TFlowAnswer.Yes) and (mGraph.MayEndWithout(mName) = TFlowAnswer.Yes) then
     begin
-      AReport.Add(HeaderNameRange(AContext, Routine),
-        cTexts[TFlowText.NoResult].Fmt([Name]),
+      AReport.Add(HeaderNameRange(AContext, mRoutine),
+        cTexts[TFlowText.NoResult].Fmt([mName]),
         TRuleConfidence.High);
     end;
   end;
@@ -258,48 +257,48 @@ end;
 /// <summary>Bereich der ersten Zeile von ANode; mehrzeilige Anweisungen werden nicht ganz markiert.</summary>
 function FirstLineRange(const AContext: TRuleContext; ANode: TSyntaxNode): TTextRange;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
   mIndex: Integer;
-  Last: TTextPosition;
+  mLast: TTextPosition;
 begin
-  Last := ANode.EndPos;
-  if Last.Line <> ANode.StartPos.Line then
+  mLast := ANode.EndPos;
+  if mLast.Line <> ANode.StartPos.Line then
   begin
-    Last := ANode.StartPos;
+    mLast := ANode.StartPos;
     for mIndex := AContext.Tree.FirstTokenFrom(ANode.StartOffset) to High(AContext.Tree.Tokens) do
     begin
-      Token := AContext.Tree.Tokens[mIndex];
-      if Token.Offset >= ANode.EndOffset then
+      mToken := AContext.Tree.Tokens[mIndex];
+      if mToken.Offset >= ANode.EndOffset then
       begin
         Break;
       end;
-      if (Token.Offset >= ANode.StartOffset) and (Token.StartPos.Line = ANode.StartPos.Line) and
-        (Token.Kind <> TPascalTokenKind.Comment) then
+      if (mToken.Offset >= ANode.StartOffset) and (mToken.StartPos.Line = ANode.StartPos.Line) and
+        (mToken.Kind <> TPascalTokenKind.Comment) then
       begin
-        Last := Token.EndPos;
+        mLast := mToken.EndPos;
       end;
     end;
   end;
-  Result := TTextRange.Create(ANode.StartPos, Last);
+  Result := TTextRange.Create(ANode.StartPos, mLast);
 end;
 
 procedure TUnreachableCodeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Routines: TArray<TSyntaxNode>;
-  Dead: TArray<TSyntaxNode>;
-  Routine: TSyntaxNode;
-  Graph: TControlFlowGraph;
-  Cache: IRuleDerivedCache;
-  Unreachable: TArray<TFlowNode>;
-  Node: TFlowNode;
+  mRoutines: TArray<TSyntaxNode>;
+  mDead: TArray<TSyntaxNode>;
+  mRoutine: TSyntaxNode;
+  mGraph: TControlFlowGraph;
+  mCache: IRuleDerivedCache;
+  mUnreachable: TArray<TFlowNode>;
+  mNode: TFlowNode;
 
   function IsDead(ANode: TSyntaxNode): Boolean;
   var
-    Item: TSyntaxNode;
+    mItem: TSyntaxNode;
   begin
-    for Item in Dead do
+    for mItem in mDead do
     begin
-      if Item = ANode then
+      if mItem = ANode then
       begin
         Exit(True);
       end;
@@ -311,18 +310,18 @@ var
   // unerreichbaren Anweisungen aufwärts statt rekursiv durch ANode.
   function HasDead(ANode: TSyntaxNode): Boolean;
   var
-    Item, Current: TSyntaxNode;
+    mItem, mCurrent: TSyntaxNode;
   begin
-    for Item in Dead do
+    for mItem in mDead do
     begin
-      Current := Item;
-      while Current <> nil do
+      mCurrent := mItem;
+      while mCurrent <> nil do
       begin
-        if Current = ANode then
+        if mCurrent = ANode then
         begin
           Exit(True);
         end;
-        Current := Current.Parent;
+        mCurrent := mCurrent.Parent;
       end;
     end;
     Result := False;
@@ -333,30 +332,30 @@ var
   // die einen Vorgänger hat) erreichbarer Code.
   function StartsDeadRun(AStatement: TSyntaxNode): Boolean;
   var
-    Current, Parent: TSyntaxNode;
-    Index: Integer;
+    mCurrent, mParent: TSyntaxNode;
+    mIndex: Integer;
   begin
-    Current := AStatement.Parent;
-    while (Current <> nil) and (Current <> Routine) do
+    mCurrent := AStatement.Parent;
+    while (mCurrent <> nil) and (mCurrent <> mRoutine) do
     begin
-      if IsDead(Current) then
+      if IsDead(mCurrent) then
       begin
         Exit(False);
       end;
-      Current := Current.Parent;
+      mCurrent := mCurrent.Parent;
     end;
-    Current := AStatement;
-    while (Current <> Routine) and (Current.Parent <> nil) do
+    mCurrent := AStatement;
+    while (mCurrent <> mRoutine) and (mCurrent.Parent <> nil) do
     begin
-      Parent := Current.Parent;
-      for Index := 1 to Parent.ChildCount - 1 do
+      mParent := mCurrent.Parent;
+      for mIndex := 1 to mParent.ChildCount - 1 do
       begin
-        if Parent[Index] = Current then
+        if mParent[mIndex] = mCurrent then
         begin
-          Exit(not HasDead(Parent[Index - 1]));
+          Exit(not HasDead(mParent[mIndex - 1]));
         end;
       end;
-      Current := Parent;
+      mCurrent := mParent;
     end;
     Result := True;
   end;
@@ -367,29 +366,29 @@ begin
     Exit;
   end;
   // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
-  Cache := TRuleDerived.Open(AContext);
-  Routines := TRuleDerived.Routines(Cache, AContext);
-  for Routine in Routines do
+  mCache := TRuleDerived.Open(AContext);
+  mRoutines := TRuleDerived.Routines(mCache, AContext);
+  for mRoutine in mRoutines do
   begin
-    Graph := TRuleDerived.Graph(Cache, AContext, Routine);
-    if not Graph.Complete then
+    mGraph := TRuleDerived.Graph(mCache, AContext, mRoutine);
+    if not mGraph.Complete then
     begin
       Continue;
     end;
-    Unreachable := Graph.UnreachableStatements;
-    Dead := nil;
-    for Node in Unreachable do
+    mUnreachable := mGraph.UnreachableStatements;
+    mDead := nil;
+    for mNode in mUnreachable do
     begin
-      if Node.Syntax <> nil then
+      if mNode.Syntax <> nil then
       begin
-        Dead := Dead + [Node.Syntax];
+        mDead := mDead + [mNode.Syntax];
       end;
     end;
-    for Node in Unreachable do
+    for mNode in mUnreachable do
     begin
-      if (Node.Syntax <> nil) and StartsDeadRun(Node.Syntax) then
+      if (mNode.Syntax <> nil) and StartsDeadRun(mNode.Syntax) then
       begin
-        AReport.Add(FirstLineRange(AContext, Node.Syntax), cTexts[TFlowText.Unreachable].Text,
+        AReport.Add(FirstLineRange(AContext, mNode.Syntax), cTexts[TFlowText.Unreachable].Text,
           TRuleConfidence.High);
       end;
     end;
@@ -495,7 +494,7 @@ end;
 
 function TNoreturnReturnsRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(NoreturnReturnsRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cNoreturnReturnsRuleId, TRuleSeverity.Warning,
     cTexts[TFlowText.NoReturnTitle].Text);
 end;
 

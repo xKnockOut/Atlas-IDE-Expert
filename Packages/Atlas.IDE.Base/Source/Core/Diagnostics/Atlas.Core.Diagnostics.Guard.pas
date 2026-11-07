@@ -103,7 +103,7 @@ type
   public
     /// <summary>So lange wartet Add auf einen anderen Prozess, der gerade schreibt; danach schreibt es trotzdem.
     /// </summary>
-    const LockTimeoutMs = 2000;
+    const cLockTimeoutMs = 2000;
     constructor Create(const AFolder: string; AMaxBytes: Int64; AMaxFiles: Integer); overload;
     /// <summary>Wie oben mit AMaxFiles = 5.</summary>
     constructor Create(const AFolder: string; AMaxBytes: Int64); overload;
@@ -135,12 +135,12 @@ type
 
   TAtlasFuse = class
   public const
-    Limit = 3;
-    WindowMinutes = 5;
+    cLimit = 3;
+    cWindowMinutes = 5;
     /// <summary>Derselbe Fehler eines Features so kurz nach dem zuletzt gezählten zählt nicht erneut.</summary>
-    RepeatMs = 1000;
+    cRepeatMs = 1000;
     /// <summary>Langsame Quelle: höchstens eine Protokollzeile je Quelle in diesem Abstand.</summary>
-    SlowLogSeconds = 60;
+    cSlowLogSeconds = 60;
   private
     FFailures: array[TAtlasFeature] of TArray<TDateTime>;
     // Zuletzt gezählter Fehler je Feature (Schlüssel, Zeit) und übergangene Wiederholungen seitdem.
@@ -190,7 +190,7 @@ type
 
   TAtlasGuardMessage = reference to procedure(const AText: string);
   /// <summary>Stacktrace zur gerade behandelten Ausnahme; '' ohne.</summary>
-  TAtlasGuardStackFunc = reference to function(E: Exception): string;
+  TAtlasGuardStackFunc = reference to function(AE: Exception): string;
   /// <summary>Sicherung eines Features hat ausgelöst; AMessage ist die letzte Fehlermeldung (gekürzt).</summary>
   TAtlasGuardTripped = reference to procedure(AFeature: TAtlasFeature; const AMessage: string);
 
@@ -216,19 +216,19 @@ type
     FOnTripped: TAtlasGuardTripped;
     FTiming: TAtlasGuardTiming;
     class procedure Warn(const AText: string); static;
-    class function ErrorLine(const AWhere: string; E: Exception): string; static;
+    class function ErrorLine(const AWhere: string; AE: Exception): string; static;
     /// <summary>Klasse und Stelle (ExceptAddr) des gerade behandelten Fehlers; ohne Stelle Klasse und Meldung.
     /// </summary>
-    class function FailureKey(E: Exception): string; static;
+    class function FailureKey(AE: Exception): string; static;
   public
     /// <summary>Höchstlänge einer Fehlermeldung im Protokoll; mehr könnte Quelltext enthalten.</summary>
-    const MaxMessageLength = 300;
+    const cMaxMessageLength = 300;
     class constructor Create;
     class destructor Destroy;
     /// <summary>Führt AProc geschützt aus; False bei Fehler oder abgeschaltetem Feature.</summary>
     class function Run(AFeature: TAtlasFeature; const AProc: TProc): Boolean; static;
     /// <summary>Fehler aus einem eigenen except-Block melden (zählt wie in Run).</summary>
-    class procedure Report(AFeature: TAtlasFeature; E: Exception); static;
+    class procedure Report(AFeature: TAtlasFeature; AE: Exception); static;
     /// <summary>Feature durch die Sicherung abgeschaltet?</summary>
     class function Disabled(AFeature: TAtlasFeature): Boolean; static;
     class procedure Enable(AFeature: TAtlasFeature); static;
@@ -241,14 +241,14 @@ type
     class procedure Log(const AText: string); static;
     /// <summary>„Klasse: Meldung“ mit gekennzeichneter, einzeiliger Meldung (#1478) für eine Protokollzeile.
     /// </summary>
-    class function ErrorText(E: Exception): string; static;
+    class function ErrorText(AE: Exception): string; static;
     /// <summary>AText einzeilig und gekürzt (SafeMessage), als fremder Text gekennzeichnet (#1478).</summary>
     class function MessageText(const AText: string): string; static;
     /// <summary>Klarnamen im Protokoll (diagnostics.log.names); Vorgabe aus.</summary>
     class procedure SetLogNames(AValue: Boolean); static;
     class function FeatureName(AFeature: TAtlasFeature): string; static;
     /// <summary>Fehler der Quelle AName melden; nach 3 in 5 Minuten fällt nur sie aus.</summary>
-    class procedure ReportProvider(const AName: string; E: Exception); overload; static;
+    class procedure ReportProvider(const AName: string; AE: Exception); overload; static;
     class procedure ReportProvider(const AName, AMessage: string); overload; static;
     /// <summary>Quelle AName war zu langsam (Zeitlimit überschritten oder vorige Anfrage läuft noch): zählt nicht
     /// zur Sicherung; eine Protokollzeile je Quelle und SlowLogSeconds mit der Zahl der übergangenen.</summary>
@@ -336,18 +336,18 @@ end;
 
 class function TAtlasRotatingLog.MutexName(const AFolder: string): string;
 var
-  Key: string;
-  Hash: Cardinal;
-  Index: Integer;
+  mKey: string;
+  mHash: Cardinal;
+  mIndex: Integer;
 begin
   // FNV-1a über den Ordner; ein Mutexname darf außer nach „Local\“ keinen Backslash enthalten.
-  Key := UpperCase(ExcludeTrailingPathDelimiter(AFolder));
-  Hash := 2166136261;
-  for Index := 1 to Length(Key) do
+  mKey := UpperCase(ExcludeTrailingPathDelimiter(AFolder));
+  mHash := 2166136261;
+  for mIndex := 1 to Length(mKey) do
   begin
-    Hash := Cardinal((UInt64(Hash xor Ord(Key[Index])) * 16777619) and $FFFFFFFF);
+    mHash := Cardinal((UInt64(mHash xor Ord(mKey[mIndex])) * 16777619) and $FFFFFFFF);
   end;
-  Result := 'Local\Atlas.Log.' + IntToHex(Hash, 8);
+  Result := 'Local\Atlas.Log.' + IntToHex(mHash, 8);
 end;
 
 class function TAtlasRotatingLog.DefaultFolder: string;
@@ -362,28 +362,28 @@ end;
 
 procedure TAtlasRotatingLog.Rotate;
 var
-  Index: Integer;
-  Older, Newer: string;
+  mIndex: Integer;
+  mOlder, mNewer: string;
 begin
   // atlas.log → atlas.1.log → … → atlas.(Max-1).log; die älteste fällt weg.
-  for Index := FMaxFiles - 1 downto 1 do
+  for mIndex := FMaxFiles - 1 downto 1 do
   begin
-    Older := TPath.Combine(FFolder, Format('atlas.%d.log', [Index]));
-    if Index = 1 then
+    mOlder := TPath.Combine(FFolder, Format('atlas.%d.log', [mIndex]));
+    if mIndex = 1 then
     begin
-      Newer := FileName;
+      mNewer := FileName;
     end
     else
     begin
-      Newer := TPath.Combine(FFolder, Format('atlas.%d.log', [Index - 1]));
+      mNewer := TPath.Combine(FFolder, Format('atlas.%d.log', [mIndex - 1]));
     end;
-    if TFile.Exists(Older) then
+    if TFile.Exists(mOlder) then
     begin
-      TFile.Delete(Older);
+      TFile.Delete(mOlder);
     end;
-    if TFile.Exists(Newer) then
+    if TFile.Exists(mNewer) then
     begin
-      TFile.Move(Newer, Older);
+      TFile.Move(mNewer, mOlder);
     end;
   end;
 end;
@@ -449,7 +449,7 @@ begin
     mLock := TMutex.Create(nil, False, MutexName(FFolder));
     try
       // Abgebrochen heißt: Ein anderer Prozess endete beim Schreiben; die Sperre gehört dann uns.
-      mOwned := mLock.WaitFor(LockTimeoutMs) in [wrSignaled, wrAbandoned];
+      mOwned := mLock.WaitFor(cLockTimeoutMs) in [wrSignaled, wrAbandoned];
       try
         WriteLocked(ALine);
       finally
@@ -471,16 +471,16 @@ end;
 
 procedure TAtlasRotatingLog.Add(const AText: string);
 var
-  Failure, Error: string;
-  Notify: Boolean;
+  mFailure, mError: string;
+  mNotify: Boolean;
 begin
   FLock.Enter;
   try
-    Failure := AppendLine(FormatDateTime('yyyy-mm-dd hh":"nn":"ss.zzz', Now) + ' ' + FRedactor.Redact(AText) +
+    mFailure := AppendLine(FormatDateTime('yyyy-mm-dd hh":"nn":"ss.zzz', Now) + ' ' + FRedactor.Redact(AText) +
       sLineBreak);
-    if Failure = '' then
+    if mFailure = '' then
     begin
-      Notify := FFailed > 0;
+      mNotify := FFailed > 0;
       FFailed := 0;
       FLastError := '';
     end
@@ -488,17 +488,17 @@ begin
     begin
       Inc(FFailed);
       Inc(FLost);
-      Notify := Failure <> FLastError;
-      FLastError := Failure;
+      mNotify := mFailure <> FLastError;
+      FLastError := mFailure;
     end;
-    Error := FLastError;
+    mError := FLastError;
   finally
     FLock.Leave;
   end;
   // Außerhalb der Sperren: Der Empfänger darf selbst protokollieren.
-  if Notify and Assigned(FOnError) then
+  if mNotify and Assigned(FOnError) then
   begin
-    FOnError(Error);
+    FOnError(mError);
   end;
 end;
 
@@ -540,46 +540,46 @@ end;
 
 function TAtlasFuse.Count(var AStamps: TArray<TDateTime>): Boolean;
 var
-  Time, Stamp: TDateTime;
-  Recent: TArray<TDateTime>;
+  mTime, mStamp: TDateTime;
+  mRecent: TArray<TDateTime>;
 begin
-  Time := FClock;
-  Recent := nil;
-  for Stamp in AStamps do
+  mTime := FClock;
+  mRecent := nil;
+  for mStamp in AStamps do
   begin
-    if MinutesBetween(Time, Stamp) < WindowMinutes then
+    if MinutesBetween(mTime, mStamp) < cWindowMinutes then
     begin
-      Recent := Recent + [Stamp];
+      mRecent := mRecent + [mStamp];
     end;
   end;
-  Recent := Recent + [Time];
-  AStamps := Recent;
-  Result := Length(Recent) >= Limit;
+  mRecent := mRecent + [mTime];
+  AStamps := mRecent;
+  Result := Length(mRecent) >= cLimit;
 end;
 
 function TAtlasFuse.Failed(AFeature: TAtlasFeature): Boolean;
 var
-  Repeated: Boolean;
-  Skipped: Integer;
+  mRepeated: Boolean;
+  mSkipped: Integer;
 begin
-  Result := Failed(AFeature, '', Repeated, Skipped);
+  Result := Failed(AFeature, '', mRepeated, mSkipped);
 end;
 
 function TAtlasFuse.Failed(AFeature: TAtlasFeature; const AKey: string; out ARepeat: Boolean;
   out ASkipped: Integer): Boolean;
 var
-  Time: TDateTime;
+  mTime: TDateTime;
 begin
   FLock.Enter;
   try
     Result := False;
     ARepeat := False;
     ASkipped := 0;
-    Time := FClock;
+    mTime := FClock;
     // Fester Abstand ab dem zuletzt gezählten, nicht gleitend: Ein Fehler, der bei jedem Zeichnen kommt, zählt so
     // einmal je RepeatMs und löst die Sicherung weiterhin aus.
     if (AKey <> '') and (AKey = FLastKey[AFeature]) and
-      (MilliSecondsBetween(Time, FLastCounted[AFeature]) < RepeatMs) then
+      (MilliSecondsBetween(mTime, FLastCounted[AFeature]) < cRepeatMs) then
     begin
       ARepeat := True;
       Inc(FRepeats[AFeature]);
@@ -587,7 +587,7 @@ begin
     end;
     ASkipped := FRepeats[AFeature];
     FLastKey[AFeature] := AKey;
-    FLastCounted[AFeature] := Time;
+    FLastCounted[AFeature] := mTime;
     FRepeats[AFeature] := 0;
     if AFeature in FTripped then
     begin
@@ -605,27 +605,27 @@ end;
 
 function TAtlasFuse.ProviderFailed(const AName: string): Boolean;
 var
-  Key: string;
-  Stamps: TArray<TDateTime>;
+  mKey: string;
+  mStamps: TArray<TDateTime>;
 begin
-  Key := AnsiLowerCase(AName);
+  mKey := AnsiLowerCase(AName);
   FLock.Enter;
   try
     Result := False;
-    if FProvidersTripped.ContainsKey(Key) then
+    if FProvidersTripped.ContainsKey(mKey) then
     begin
       Exit;
     end;
-    if not FProviderFailures.TryGetValue(Key, Stamps) then
+    if not FProviderFailures.TryGetValue(mKey, mStamps) then
     begin
-      Stamps := nil;
+      mStamps := nil;
     end;
-    if Count(Stamps) then
+    if Count(mStamps) then
     begin
-      FProvidersTripped.Add(Key, AName);
+      FProvidersTripped.Add(mKey, AName);
       Result := True;
     end;
-    FProviderFailures.AddOrSetValue(Key, Stamps);
+    FProviderFailures.AddOrSetValue(mKey, mStamps);
   finally
     FLock.Leave;
   end;
@@ -633,26 +633,26 @@ end;
 
 function TAtlasFuse.ProviderSlow(const AName: string; out ASkipped: Integer): Boolean;
 var
-  Key: string;
-  Time, Logged: TDateTime;
+  mKey: string;
+  mTime, mLogged: TDateTime;
 begin
-  Key := AnsiLowerCase(AName);
+  mKey := AnsiLowerCase(AName);
   FLock.Enter;
   try
-    Time := FClock;
-    if not FSlowSkipped.TryGetValue(Key, ASkipped) then
+    mTime := FClock;
+    if not FSlowSkipped.TryGetValue(mKey, ASkipped) then
     begin
       ASkipped := 0;
     end;
-    Result := not FSlowLogged.TryGetValue(Key, Logged) or (SecondsBetween(Time, Logged) >= SlowLogSeconds);
+    Result := not FSlowLogged.TryGetValue(mKey, mLogged) or (SecondsBetween(mTime, mLogged) >= cSlowLogSeconds);
     if Result then
     begin
-      FSlowLogged.AddOrSetValue(Key, Time);
-      FSlowSkipped.AddOrSetValue(Key, 0);
+      FSlowLogged.AddOrSetValue(mKey, mTime);
+      FSlowSkipped.AddOrSetValue(mKey, 0);
     end
     else
     begin
-      FSlowSkipped.AddOrSetValue(Key, ASkipped + 1);
+      FSlowSkipped.AddOrSetValue(mKey, ASkipped + 1);
       ASkipped := 0;
     end;
   finally
@@ -682,13 +682,13 @@ end;
 
 procedure TAtlasFuse.ResetProvider(const AName: string);
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := AnsiLowerCase(AName);
+  mKey := AnsiLowerCase(AName);
   FLock.Enter;
   try
-    FProvidersTripped.Remove(Key);
-    FProviderFailures.Remove(Key);
+    FProvidersTripped.Remove(mKey);
+    FProviderFailures.Remove(mKey);
   finally
     FLock.Leave;
   end;
@@ -739,11 +739,11 @@ end;
 
 procedure TAtlasFuse.ResetAll;
 var
-  Feature: TAtlasFeature;
+  mFeature: TAtlasFeature;
 begin
-  for Feature := Low(TAtlasFeature) to High(TAtlasFeature) do
+  for mFeature := Low(TAtlasFeature) to High(TAtlasFeature) do
   begin
-    Reset(Feature);
+    Reset(mFeature);
   end;
   FLock.Enter;
   try
@@ -775,7 +775,7 @@ end;
 
 class function TAtlasGuard.FeatureName(AFeature: TAtlasFeature): string;
 const
-  Names: array[TAtlasLanguage, TAtlasFeature] of string = (
+  cNames: array[TAtlasLanguage, TAtlasFeature] of string = (
     ('Vervollständigung', 'Parameter-Hint', 'Tooltip', 'Klammerpaare',
       'Probleme', 'Neuladen', 'Befehlspalette', 'Prüfung beim Speichern', 'Wächter', 'Server', 'Einstellungen', 'Menü',
       'Dateien', 'Inlay-Hints', 'Ergebnisfenster', 'Editorbefehle', 'Formulare', 'Compile-Ereignisse', 'Statusfeld',
@@ -805,7 +805,7 @@ const
       'Issue keys', 'Issues in line history', 'Code queries', 'Hotspots', 'Designer bar', 'Tracker',
       'Welcome page: updates', 'Region folding', 'Indent while typing'));
 begin
-  Result := Names[TAtlasTextLanguage.Current, AFeature];
+  Result := cNames[TAtlasTextLanguage.Current, AFeature];
 end;
 
 class procedure TAtlasGuard.Log(const AText: string);
@@ -816,9 +816,9 @@ begin
   end;
 end;
 
-class function TAtlasGuard.ErrorText(E: Exception): string;
+class function TAtlasGuard.ErrorText(AE: Exception): string;
 begin
-  Result := E.ClassName + ': ' + MessageText(E.Message);
+  Result := AE.ClassName + ': ' + MessageText(AE.Message);
 end;
 
 class function TAtlasGuard.MessageText(const AText: string): string;
@@ -836,58 +836,58 @@ end;
 
 class function TAtlasGuard.SafeMessage(const AText: string): string;
 var
-  Builder: TStringBuilder;
-  Ch: Char;
-  Space: Boolean;
+  mBuilder: TStringBuilder;
+  mCh: Char;
+  mSpace: Boolean;
 begin
   // Zeilenumbrüche und Steuerzeichen werden zu einem Leerzeichen; Folgen davon zu einem.
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Space := False;
-    for Ch in AText do
+    mSpace := False;
+    for mCh in AText do
     begin
-      if CharInSet(Ch, [#0..#32]) then
+      if CharInSet(mCh, [#0..#32]) then
       begin
-        Space := True;
+        mSpace := True;
       end
       else
       begin
-        if Space and (Builder.Length > 0) then
+        if mSpace and (mBuilder.Length > 0) then
         begin
-          Builder.Append(' ');
+          mBuilder.Append(' ');
         end;
-        Space := False;
-        Builder.Append(Ch);
+        mSpace := False;
+        mBuilder.Append(mCh);
       end;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  if Length(Result) > MaxMessageLength then
+  if Length(Result) > cMaxMessageLength then
   begin
-    Result := Copy(Result, 1, MaxMessageLength) + '…';
+    Result := Copy(Result, 1, cMaxMessageLength) + '…';
   end;
 end;
 
-class function TAtlasGuard.ErrorLine(const AWhere: string; E: Exception): string;
+class function TAtlasGuard.ErrorLine(const AWhere: string; AE: Exception): string;
 var
-  Trace: string;
+  mTrace: string;
 begin
-  Result := Format('Atlas %s · Fehler in %s: %s', [TAtlasPluginVersion.Version, AWhere, ErrorText(E)]);
+  Result := Format('Atlas %s · Fehler in %s: %s', [TAtlasPluginVersion.cVersion, AWhere, ErrorText(AE)]);
   // E.StackTrace nur mit installiertem Anbieter (JCL, madExcept); sonst der Mitschnitt des Plugins.
-  Trace := Trim(E.StackTrace);
-  if (Trace = '') and Assigned(FStackOf) then
+  mTrace := Trim(AE.StackTrace);
+  if (mTrace = '') and Assigned(FStackOf) then
     try
-      Trace := Trim(FStackOf(E));
+      mTrace := Trim(FStackOf(AE));
     except
       // Sicherheitsnetz: Ein Fehler beim Auflösen darf die Fehlerzeile selbst nicht verhindern.
       on Inner: Exception do
-        Trace := 'nicht verfügbar (' + Inner.ClassName + ')';
+        mTrace := 'nicht verfügbar (' + Inner.ClassName + ')';
     end;
-  if Trace <> '' then
+  if mTrace <> '' then
   begin
-    Result := Result + sLineBreak + '  Stack: ' + StringReplace(Trace, sLineBreak, sLineBreak + '  ', [rfReplaceAll]);
+    Result := Result + sLineBreak + '  Stack: ' + StringReplace(mTrace, sLineBreak, sLineBreak + '  ', [rfReplaceAll]);
   end;
 end;
 
@@ -902,94 +902,94 @@ begin
     end;
 end;
 
-class function TAtlasGuard.FailureKey(E: Exception): string;
+class function TAtlasGuard.FailureKey(AE: Exception): string;
 begin
   // ExceptAddr gehört zur gerade behandelten Ausnahme; Report läuft in deren except-Block.
   if ExceptAddr <> nil then
   begin
-    Result := Format('%s@%p', [E.ClassName, ExceptAddr]);
+    Result := Format('%s@%p', [AE.ClassName, ExceptAddr]);
   end
   else
   begin
-    Result := E.ClassName + ': ' + E.Message;
+    Result := AE.ClassName + ': ' + AE.Message;
   end;
 end;
 
-class procedure TAtlasGuard.Report(AFeature: TAtlasFeature; E: Exception);
+class procedure TAtlasGuard.Report(AFeature: TAtlasFeature; AE: Exception);
 var
-  Failure: TProc<TAtlasFeature>;
-  Tripped: TAtlasGuardTripped;
-  Fired, Repeated: Boolean;
-  Skipped: Integer;
-  Where: string;
+  mFailure: TProc<TAtlasFeature>;
+  mTripped: TAtlasGuardTripped;
+  mFired, mRepeated: Boolean;
+  mSkipped: Integer;
+  mWhere: string;
 begin
-  Fired := False;
-  Repeated := False;
-  Skipped := 0;
+  mFired := False;
+  mRepeated := False;
+  mSkipped := 0;
   if FFuse <> nil then
   begin
-    Fired := FFuse.Failed(AFeature, FailureKey(E), Repeated, Skipped);
+    mFired := FFuse.Failed(AFeature, FailureKey(AE), mRepeated, mSkipped);
   end;
   // Derselbe Fehler kurz nach dem gezählten (etwa für jede Zeile eines Zeichendurchlaufs): nicht noch einmal
   // protokollieren und nicht zählen; die nächste gezählte Zeile nennt die Zahl.
-  if Repeated then
+  if mRepeated then
   begin
     Exit;
   end;
-  Where := FeatureName(AFeature);
-  if Skipped > 0 then
+  mWhere := FeatureName(AFeature);
+  if mSkipped > 0 then
   begin
-    Where := Format('%s (seit der letzten Meldung %d Wiederholungen übergangen)', [Where, Skipped]);
+    mWhere := Format('%s (seit der letzten Meldung %d Wiederholungen übergangen)', [mWhere, mSkipped]);
   end;
-  Log(ErrorLine(Where, E));
-  Failure := FOnFailure;
-  if Assigned(Failure) then
+  Log(ErrorLine(mWhere, AE));
+  mFailure := FOnFailure;
+  if Assigned(mFailure) then
     try
-      Failure(AFeature);
+      mFailure(AFeature);
     except
       // Die Meldung eines Fehlers darf selbst keinen auslösen.
     end;
-  if not Fired then
+  if not mFired then
   begin
     Exit;
   end;
-  Warn(Format(UiText(TGuardText.FeatureTripped), [FeatureName(AFeature), TAtlasFuse.Limit, TAtlasFuse.WindowMinutes,
-    TLogMarks.Text(SafeMessage(E.Message))]));
-  Tripped := FOnTripped;
-  if Assigned(Tripped) then
+  Warn(Format(UiText(TGuardText.FeatureTripped), [FeatureName(AFeature), TAtlasFuse.cLimit, TAtlasFuse.cWindowMinutes,
+    TLogMarks.Text(SafeMessage(AE.Message))]));
+  mTripped := FOnTripped;
+  if Assigned(mTripped) then
     try
-      Tripped(AFeature, SafeMessage(E.Message));
+      mTripped(AFeature, SafeMessage(AE.Message));
     except
       // Auch der Eintrag in der Zentrale darf nicht in die IDE durchschlagen.
     end;
 end;
 
-class procedure TAtlasGuard.ReportProvider(const AName: string; E: Exception);
+class procedure TAtlasGuard.ReportProvider(const AName: string; AE: Exception);
 begin
-  Log(ErrorLine('Quelle ' + AName, E));
+  Log(ErrorLine('Quelle ' + AName, AE));
   if (FFuse <> nil) and FFuse.ProviderFailed(AName) then
   begin
-    Warn(Format(UiText(TGuardText.SourceTripped), [AName, TAtlasFuse.Limit, TAtlasFuse.WindowMinutes,
-      TLogMarks.Text(SafeMessage(E.Message))]));
+    Warn(Format(UiText(TGuardText.SourceTripped), [AName, TAtlasFuse.cLimit, TAtlasFuse.cWindowMinutes,
+      TLogMarks.Text(SafeMessage(AE.Message))]));
   end;
 end;
 
 class procedure TAtlasGuard.ReportProvider(const AName, AMessage: string);
 var
-  Error: Exception;
+  mError: Exception;
 begin
-  Error := Exception.Create(AMessage);
+  mError := Exception.Create(AMessage);
   try
-    ReportProvider(AName, Error);
+    ReportProvider(AName, mError);
   finally
-    Error.Free;
+    mError.Free;
   end;
 end;
 
 class procedure TAtlasGuard.ReportProviderSlow(const AName, AText: string);
 var
-  Skipped: Integer;
-  Suffix: string;
+  mSkipped: Integer;
+  mSuffix: string;
   mTiming: TAtlasGuardTiming;
 begin
   mTiming := FTiming;
@@ -997,16 +997,16 @@ begin
   begin
     mTiming.ProviderSlow(AName);
   end;
-  if (FFuse = nil) or not FFuse.ProviderSlow(AName, Skipped) then
+  if (FFuse = nil) or not FFuse.ProviderSlow(AName, mSkipped) then
   begin
     Exit;
   end;
-  Suffix := '';
-  if Skipped > 0 then
+  mSuffix := '';
+  if mSkipped > 0 then
   begin
-    Suffix := Format(' (dazu %d weitere seit der letzten Meldung)', [Skipped]);
+    mSuffix := Format(' (dazu %d weitere seit der letzten Meldung)', [mSkipped]);
   end;
-  Log(Format('Quelle %s langsam: %s%s; zählt nicht als Fehler', [AName, MessageText(AText), Suffix]));
+  Log(Format('Quelle %s langsam: %s%s; zählt nicht als Fehler', [AName, MessageText(AText), mSuffix]));
 end;
 
 class function TAtlasGuard.RunProvider(const AName: string; const AProc: TProc): Boolean;
@@ -1131,16 +1131,16 @@ end;
 
 class procedure TAtlasGuard.EnableAll;
 var
-  Feature: TAtlasFeature;
-  Name: string;
+  mFeature: TAtlasFeature;
+  mName: string;
 begin
-  for Feature in DisabledSet do
+  for mFeature in DisabledSet do
   begin
-    Enable(Feature);
+    Enable(mFeature);
   end;
-  for Name in DisabledProviders do
+  for mName in DisabledProviders do
   begin
-    EnableProvider(Name);
+    EnableProvider(mName);
   end;
 end;
 

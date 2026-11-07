@@ -13,7 +13,8 @@ uses
 procedure RegisterStatusTools(const AContext: TMcpToolContext);
 /// <summary>query_code (#1351): Code-Abfragen über den Index der Gruppe; nur lesend.</summary>
 procedure RegisterQueryTools(const AContext: TMcpToolContext);
-/// <summary>Werkzeuge für toten Code und Unit-Abhängigkeiten (#64): Projekte, Index und Uses-Graph der Gruppe wie bei den Prüfregeln (#1112).</summary>
+/// <summary>Werkzeuge für toten Code und Unit-Abhängigkeiten (#64): Projekte, Index und Uses-Graph der Gruppe wie bei
+/// den Prüfregeln (#1112).</summary>
 procedure RegisterDeadCodeTools(const AContext: TMcpToolContext);
 
 implementation
@@ -114,10 +115,10 @@ var
 begin
   Result := Default(TServerStatus);
   Result.ProcessId := TShellPlatform.CurrentProcessId;
-  Result.Version := TProductVersion.Version;
+  Result.Version := TProductVersion.cVersion;
   Result.Started := AStarted;
   Result.UptimeMs := MilliSecondsBetween(Now, AStarted);
-  Result.State := TServerStatus.StateReady;
+  Result.State := TServerStatus.cStateReady;
   Result.MemoryBytes := TShutdownLeaks.AllocatedBytes;
   Result.IndexCacheHitPercent := -1;
   mTrees := TSyntaxTreeCache.Stats;
@@ -160,7 +161,7 @@ end;
 
 procedure AddGetServerStatus(const AContext: TMcpToolContext);
 begin
-  AContext.Server.AddTool(TMcpStatusTools.ToolName, cTexts[TMcpProjectText.StatusTool].Text,
+  AContext.Server.AddTool(TMcpStatusTools.cToolName, cTexts[TMcpProjectText.StatusTool].Text,
     SchemaWith('{"type":"object","properties":{' +
       '"format":{"type":"string","enum":["markdown","json"],"description":%s}}}',
       [cTexts[TMcpProjectText.StatusFormat].Text]),
@@ -269,29 +270,30 @@ begin
 end;
 function ToolFindUnusedCode(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
-  FileName, Format: string;
-  Files: TArray<string>;
+  mFileName, mFormat: string;
+  mFiles: TArray<string>;
 begin
-  FileName := TMcpServer.OptionalString(AArguments, 'file');
-  Format := TMcpServer.OptionalString(AArguments, 'format');
-  if (Format <> '') and not SameText(Format, 'markdown') and not SameText(Format, 'json') then
+  mFileName := TMcpServer.OptionalString(AArguments, 'file');
+  mFormat := TMcpServer.OptionalString(AArguments, 'format');
+  if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('format', ['markdown', 'json']));
   end;
-  if FileName <> '' then
+  if mFileName <> '' then
   begin
-    Files := [AContext.Guard.Resolve(FileName)];
+    mFiles := [AContext.Guard.Resolve(mFileName)];
   end
   else
   begin
-    Files := AContext.Group.Main.State.ProjectFiles;
+    mFiles := AContext.Group.Main.State.ProjectFiles;
   end;
-  if Length(Files) = 0 then
+  if Length(mFiles) = 0 then
   begin
     raise EMcpToolError.Create(TShellTexts.NoProjectGiveFile);
   end;
   Result := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules,
-    AContext.Group.Main.Configuration.Settings, AContext.Root), Files, AContext.Index, AContext.Group.RuleProjectFiles, AContext.Group.Main.State.Namespaces, SameText(Format, 'json'));
+    AContext.Group.Main.Configuration.Settings, AContext.Root), mFiles, AContext.Index, AContext.Group.RuleProjectFiles,
+      AContext.Group.Main.State.Namespaces, SameText(mFormat, 'json'));
 end;
 
 procedure AddFindUnusedCode(const AContext: TMcpToolContext);
@@ -307,36 +309,36 @@ end;
 
 function ToolGetUnitDependencies(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
-  UnitName, Format, Text: string;
-  Direction: TMcpUsesDirection;
-  Transitive: Boolean;
+  mUnitName, mFormat, mText: string;
+  mDirection: TMcpUsesDirection;
+  mTransitive: Boolean;
 begin
-  UnitName := TMcpServer.RequiredString(AArguments, 'unit');
-  if (Pos('\', UnitName) > 0) or (Pos('/', UnitName) > 0) or SameText(ExtractFileExt(UnitName), '.pas') then
+  mUnitName := TMcpServer.RequiredString(AArguments, 'unit');
+  if (Pos('\', mUnitName) > 0) or (Pos('/', mUnitName) > 0) or SameText(ExtractFileExt(mUnitName), '.pas') then
   begin
-    UnitName := AContext.Guard.Resolve(UnitName);
+    mUnitName := AContext.Guard.Resolve(mUnitName);
   end;
-  if not TMcpDeadCodeTools.ParseDirection(TMcpServer.OptionalString(AArguments, 'direction'), Direction) then
+  if not TMcpDeadCodeTools.ParseDirection(TMcpServer.OptionalString(AArguments, 'direction'), mDirection) then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('direction', ['uses', 'usedBy', 'both']));
   end;
-  if not AArguments.TryGetValue<Boolean>('transitive', Transitive) then
+  if not AArguments.TryGetValue<Boolean>('transitive', mTransitive) then
   begin
-    Transitive := False;
+    mTransitive := False;
   end;
-  Format := TMcpServer.OptionalString(AArguments, 'format');
-  if (Format <> '') and not SameText(Format, 'markdown') and not SameText(Format, 'json') then
+  mFormat := TMcpServer.OptionalString(AArguments, 'format');
+  if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('format', ['markdown', 'json']));
   end;
-  Text := '';
+  mText := '';
   AContext.Group.UsesGraph.Read(
     procedure(const AUses: TUsesGraph)
     begin
-      Text := TMcpDeadCodeTools.UnitDependencies(AUses, UnitName, AContext.Root, Direction, Transitive,
-        SameText(Format, 'json'));
+      mText := TMcpDeadCodeTools.UnitDependencies(AUses, mUnitName, AContext.Root, mDirection, mTransitive,
+        SameText(mFormat, 'json'));
     end);
-  Result := Text;
+  Result := mText;
 end;
 
 procedure AddGetUnitDependencies(const AContext: TMcpToolContext);
@@ -356,7 +358,8 @@ begin
 end;
 
 
-/// <summary>Werkzeuge für toten Code und Unit-Abhängigkeiten (#64): Projekte, Index und Uses-Graph der Gruppe wie bei den Prüfregeln (#1112).</summary>
+/// <summary>Werkzeuge für toten Code und Unit-Abhängigkeiten (#64): Projekte, Index und Uses-Graph der Gruppe wie bei
+/// den Prüfregeln (#1112).</summary>
 procedure RegisterDeadCodeTools(const AContext: TMcpToolContext);
 begin
   AddFindUnusedCode(AContext);

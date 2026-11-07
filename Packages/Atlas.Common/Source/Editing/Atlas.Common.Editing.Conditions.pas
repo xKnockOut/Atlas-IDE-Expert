@@ -119,25 +119,25 @@ end;
 /// <summary>Letzte echte Anweisung unter den Kindern 0..ALast von ANode; nil ohne.</summary>
 function LastStatement(ANode: TSyntaxNode; ALast: Integer): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := ALast downto 0 do
+  for mIndex := ALast downto 0 do
   begin
-    if TRoutineBody.IsStatement(ANode[Index]) and (ANode[Index].Kind <> TSyntaxKind.EmptyStatement) then
+    if TRoutineBody.IsStatement(ANode[mIndex]) and (ANode[mIndex].Kind <> TSyntaxKind.EmptyStatement) then
     begin
-      Exit(ANode[Index]);
+      Exit(ANode[mIndex]);
     end;
   end;
 end;
 
 function HasInlineDeclaration(const AStatements: TArray<TSyntaxNode>): Boolean;
 var
-  Statement: TSyntaxNode;
+  mStatement: TSyntaxNode;
 begin
-  for Statement in AStatements do
+  for mStatement in AStatements do
   begin
-    if Statement.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
+    if mStatement.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
     begin
       Exit(True);
     end;
@@ -150,47 +150,49 @@ end;
 class function TConditions.Invert(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   const ALayout: TStatementLayout; out ARewrite: TStatementRewrite): Boolean;
 var
-  Node, Parent: TSyntaxNode;
-  Layout: TStatementLayout;
-  Spans: TArray<TStatementSpan>;
-  EndPos: TTextPosition;
-  Suffix, Code: string;
-  EmptyThen: Boolean;
+  mNode, mParent: TSyntaxNode;
+  mLayout: TStatementLayout;
+  mSpans: TArray<TStatementSpan>;
+  mEndPos: TTextPosition;
+  mSuffix, mCode: string;
+  mEmptyThen: Boolean;
 begin
   Result := False;
   ARewrite := Default(TStatementRewrite);
-  Node := TStatementText.HeadAt(ATree, APosition, TSyntaxKind.IfStatement);
-  if (Node = nil) or not HasElse(Node) then
+  mNode := TStatementText.HeadAt(ATree, APosition, TSyntaxKind.IfStatement);
+  if (mNode = nil) or not HasElse(mNode) then
   begin
     Exit;
   end;
-  EmptyThen := TStatementText.Statements(Node[1]) = nil;
+  mEmptyThen := TStatementText.Statements(mNode[1]) = nil;
   // Ohne else stünde das neue if vor dem else eines äußeren if und bekäme es (if Q then if A then else B else Z).
-  Parent := Node.Parent;
-  if EmptyThen and (Parent <> nil) and (Parent.Kind = TSyntaxKind.IfStatement) and HasElse(Parent) and
-    (Parent[1] = Node) then
+  mParent := mNode.Parent;
+  if mEmptyThen and (mParent <> nil) and (mParent.Kind = TSyntaxKind.IfStatement) and HasElse(mParent) and
+    (mParent[1] = mNode) then
   begin
     Exit;
   end;
-  Spans := TStatementText.Spans(ATree, [Node[1], Node[2]]);
-  if TStatementText.Uncovered(ATree, Node.StartOffset, Node.EndOffset, Spans) then
+  mSpans := TStatementText.Spans(ATree, [mNode[1], mNode[2]]);
+  if TStatementText.Uncovered(ATree, mNode.StartOffset, mNode.EndOffset, mSpans) then
   begin
     Exit;
   end;
-  Layout := LayoutAt(AText, Node, ALayout);
-  EndPos := TStatementText.ReplacementEnd(ATree, Node, Spans, Suffix);
-  Code := 'if ' + TExpressionText.Negate(AText, Node[0]).Text + ' then';
-  if EmptyThen then
+  mLayout := LayoutAt(AText, mNode, ALayout);
+  mEndPos := TStatementText.ReplacementEnd(ATree, mNode, mSpans, mSuffix);
+  mCode := 'if ' + TExpressionText.Negate(AText, mNode[0]).Text + ' then';
+  if mEmptyThen then
   begin
-    Code := Code + TStatementText.Finish(TStatementText.GuardedBranch(AText, ATree, Node[2], Layout, False), Suffix);
+    mCode := mCode + TStatementText.Finish(TStatementText.GuardedBranch(AText, ATree, mNode[2], mLayout, False),
+      mSuffix);
   end
   else
   begin
-    Code := Code + TStatementText.Finish(TStatementText.GuardedBranch(AText, ATree, Node[2], Layout, True), '') +
-      Layout.LineBreak + Layout.Indent + 'else' +
-      TStatementText.Finish(TStatementText.GuardedBranch(AText, ATree, Node[1], Layout, False), Suffix);
+    mCode := mCode + TStatementText.Finish(TStatementText.GuardedBranch(AText, ATree, mNode[2], mLayout, True), '') +
+      mLayout.LineBreak + mLayout.Indent + 'else' +
+      TStatementText.Finish(TStatementText.GuardedBranch(AText, ATree, mNode[1], mLayout, False), mSuffix);
   end;
-  ARewrite := TStatementRewrite.Create(InvertTitle, TTextEdit.Create(TTextRange.Create(Node.StartPos, EndPos), Code));
+  ARewrite := TStatementRewrite.Create(InvertTitle,
+    TTextEdit.Create(TTextRange.Create(mNode.StartPos, mEndPos), mCode));
   Result := True;
 end;
 
@@ -367,107 +369,108 @@ end;
 /// <summary>Das einzige innere if ohne else im then-Zweig von AIf (selbst ohne else); nil ohne.</summary>
 function SoleInnerIf(AIf: TSyntaxNode): TSyntaxNode;
 var
-  Statements: TArray<TSyntaxNode>;
+  mStatements: TArray<TSyntaxNode>;
 begin
   Result := nil;
   if (AIf = nil) or (AIf.Kind <> TSyntaxKind.IfStatement) or HasElse(AIf) or (AIf.ChildCount < 2) then
   begin
     Exit;
   end;
-  Statements := TStatementText.Statements(AIf[1]);
-  if (Length(Statements) = 1) and (Statements[0].Kind = TSyntaxKind.IfStatement) and not HasElse(Statements[0]) and
-    (Statements[0].ChildCount = 2) then
+  mStatements := TStatementText.Statements(AIf[1]);
+  if (Length(mStatements) = 1) and (mStatements[0].Kind = TSyntaxKind.IfStatement) and not HasElse(mStatements[0]) and
+    (mStatements[0].ChildCount = 2) then
   begin
-    Result := Statements[0];
+    Result := mStatements[0];
   end;
 end;
 
 class function TConditions.MergeNested(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   const ALayout: TStatementLayout; out ARewrite: TStatementRewrite): Boolean;
 var
-  Node, Outer, Inner, Parent: TSyntaxNode;
-  Statements: TArray<TSyntaxNode>;
-  Spans: TArray<TStatementSpan>;
-  Layout: TStatementLayout;
-  EndPos: TTextPosition;
-  Suffix, Code: string;
+  mNode, mOuter, mInner, mParent: TSyntaxNode;
+  mStatements: TArray<TSyntaxNode>;
+  mSpans: TArray<TStatementSpan>;
+  mLayout: TStatementLayout;
+  mEndPos: TTextPosition;
+  mSuffix, mCode: string;
 begin
   Result := False;
   ARewrite := Default(TStatementRewrite);
-  Node := TStatementText.HeadAt(ATree, APosition, TSyntaxKind.IfStatement);
-  if Node = nil then
+  mNode := TStatementText.HeadAt(ATree, APosition, TSyntaxKind.IfStatement);
+  if mNode = nil then
   begin
     Exit;
   end;
-  Outer := nil;
-  Inner := SoleInnerIf(Node);
-  if Inner <> nil then
+  mOuter := nil;
+  mInner := SoleInnerIf(mNode);
+  if mInner <> nil then
   begin
-    Outer := Node;
+    mOuter := mNode;
   end
   else
   begin
     // Auf dem inneren if: das äußere ist der Elternknoten bzw. der um den Block begin … end.
-    Parent := Node.Parent;
-    if (Parent <> nil) and (Parent.Kind = TSyntaxKind.Block) then
+    mParent := mNode.Parent;
+    if (mParent <> nil) and (mParent.Kind = TSyntaxKind.Block) then
     begin
-      Parent := Parent.Parent;
+      mParent := mParent.Parent;
     end;
-    if SoleInnerIf(Parent) = Node then
+    if SoleInnerIf(mParent) = mNode then
     begin
-      Outer := Parent;
-      Inner := Node;
+      mOuter := mParent;
+      mInner := mNode;
     end;
   end;
-  if Outer = nil then
+  if mOuter = nil then
   begin
     Exit;
   end;
-  Statements := TStatementText.Statements(Inner[1]);
-  if Statements = nil then
+  mStatements := TStatementText.Statements(mInner[1]);
+  if mStatements = nil then
   begin
     Exit;
   end;
-  Spans := TStatementText.Spans(ATree, [Inner[1]]);
-  if TStatementText.Uncovered(ATree, Outer.StartOffset, Outer.EndOffset, Spans) then
+  mSpans := TStatementText.Spans(ATree, [mInner[1]]);
+  if TStatementText.Uncovered(ATree, mOuter.StartOffset, mOuter.EndOffset, mSpans) then
   begin
     Exit;
   end;
-  Layout := LayoutAt(AText, Outer, ALayout);
-  EndPos := TStatementText.ReplacementEnd(ATree, Outer, Spans, Suffix);
-  Code := 'if ' + TExpressionText.Combine('and', TExpressionText.Part(AText, Outer[0]),
-    TExpressionText.Part(AText, Inner[0])).Text + ' then' +
-    TStatementText.Finish(TStatementText.Branch(AText, ATree, Statements, Layout, False), Suffix);
-  ARewrite := TStatementRewrite.Create(MergeTitle, TTextEdit.Create(TTextRange.Create(Outer.StartPos, EndPos), Code));
+  mLayout := LayoutAt(AText, mOuter, ALayout);
+  mEndPos := TStatementText.ReplacementEnd(ATree, mOuter, mSpans, mSuffix);
+  mCode := 'if ' + TExpressionText.Combine('and', TExpressionText.Part(AText, mOuter[0]),
+    TExpressionText.Part(AText, mInner[0])).Text + ' then' +
+    TStatementText.Finish(TStatementText.Branch(AText, ATree, mStatements, mLayout, False), mSuffix);
+  ARewrite := TStatementRewrite.Create(MergeTitle,
+    TTextEdit.Create(TTextRange.Create(mOuter.StartPos, mEndPos), mCode));
   Result := True;
 end;
 
 /// <summary>not, dessen Operand sich ohne not schreiben lässt: not X, ein Vergleich oder True/False.</summary>
 function IsDoubleNegation(ANode: TSyntaxNode): Boolean;
 var
-  Operand: TSyntaxNode;
+  mOperand: TSyntaxNode;
 begin
   Result := False;
   if (ANode.Kind <> TSyntaxKind.UnaryExpr) or not SameText(ANode.Name, 'not') or (ANode.ChildCount <> 1) then
   begin
     Exit;
   end;
-  Operand := TExpressionText.Strip(ANode[0]);
-  case Operand.Kind of
+  mOperand := TExpressionText.Strip(ANode[0]);
+  case mOperand.Kind of
     TSyntaxKind.UnaryExpr:
-      Result := SameText(Operand.Name, 'not');
+      Result := SameText(mOperand.Name, 'not');
     TSyntaxKind.BinaryExpr:
-      Result := TExpressionText.InvertedComparison(Operand.Name) <> '';
+      Result := TExpressionText.InvertedComparison(mOperand.Name) <> '';
   else
-    Result := TExpressionText.IsBooleanLiteral(Operand);
+    Result := TExpressionText.IsBooleanLiteral(mOperand);
   end;
 end;
 
 class function TConditions.RemoveDoubleNegation(const AText: string; ATree: TSyntaxTree;
   const APosition: TTextPosition; out ARewrite: TStatementRewrite): Boolean;
 var
-  Found: TSyntaxNode;
-  Position: TTextPosition;
+  mFound: TSyntaxNode;
+  mPosition: TTextPosition;
 begin
   Result := False;
   ARewrite := Default(TStatementRewrite);
@@ -475,12 +478,12 @@ begin
   begin
     Exit;
   end;
-  Position := APosition;
+  mPosition := APosition;
   // Das äußerste passende not: Search findet den Elternknoten vor seinen Kindern.
-  Found := ATree.Root.Search(
+  mFound := ATree.Root.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
-      if not TStatementText.Encloses(ANode, Position) then
+      if not TStatementText.Encloses(ANode, mPosition) then
       begin
         Exit(TSyntaxSearchStep.Skip);
       end;
@@ -490,40 +493,40 @@ begin
         Result := TSyntaxSearchStep.Found;
       end;
     end);
-  if (Found = nil) or TStatementText.HasComment(ATree, Found.StartOffset, Found.EndOffset) then
+  if (mFound = nil) or TStatementText.HasComment(ATree, mFound.StartOffset, mFound.EndOffset) then
   begin
     Exit;
   end;
-  ARewrite := TStatementRewrite.Create(DoubleNegationTitle, TTextEdit.Create(TTextRange.Create(Found.StartPos,
-    Found.EndPos), TExpressionText.Simplify(AText, Found).AtLeast(TExpressionText.ContextPrecedence(Found))));
+  ARewrite := TStatementRewrite.Create(DoubleNegationTitle, TTextEdit.Create(TTextRange.Create(mFound.StartPos,
+    mFound.EndPos), TExpressionText.Simplify(AText, mFound).AtLeast(TExpressionText.ContextPrecedence(mFound))));
   Result := True;
 end;
 
 class function TConditions.Actions(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   const ALayout: TStatementLayout): TArray<TStatementRewrite>;
 var
-  Rewrite: TStatementRewrite;
+  mRewrite: TStatementRewrite;
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
   begin
     Exit;
   end;
-  if Invert(AText, ATree, APosition, ALayout, Rewrite) then
+  if Invert(AText, ATree, APosition, ALayout, mRewrite) then
   begin
-    Result := Result + [Rewrite];
+    Result := Result + [mRewrite];
   end;
-  if EarlyExit(AText, ATree, APosition, ALayout, Rewrite) then
+  if EarlyExit(AText, ATree, APosition, ALayout, mRewrite) then
   begin
-    Result := Result + [Rewrite];
+    Result := Result + [mRewrite];
   end;
-  if MergeNested(AText, ATree, APosition, ALayout, Rewrite) then
+  if MergeNested(AText, ATree, APosition, ALayout, mRewrite) then
   begin
-    Result := Result + [Rewrite];
+    Result := Result + [mRewrite];
   end;
-  if RemoveDoubleNegation(AText, ATree, APosition, Rewrite) then
+  if RemoveDoubleNegation(AText, ATree, APosition, mRewrite) then
   begin
-    Result := Result + [Rewrite];
+    Result := Result + [mRewrite];
   end;
 end;
 

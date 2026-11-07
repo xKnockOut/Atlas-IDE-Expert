@@ -137,7 +137,7 @@ var
 begin
   mRedactor := TAtlasLogRedactor.Create(nil);
   try
-    for mIndex := 1 to TAtlasLogRedactor.MaxLabels do
+    for mIndex := 1 to TAtlasLogRedactor.cMaxLabels do
     begin
       mRedactor.Redact(TLogMarks.Name('N' + IntToStr(mIndex)));
     end;
@@ -156,7 +156,7 @@ var
 begin
   mRedactor := TAtlasLogRedactor.Create(nil);
   try
-    for mIndex := 1 to TAtlasLogRedactor.MaxLabels do
+    for mIndex := 1 to TAtlasLogRedactor.cMaxLabels do
     begin
       mRedactor.Redact(TLogMarks.Name('N' + IntToStr(mIndex)));
     end;

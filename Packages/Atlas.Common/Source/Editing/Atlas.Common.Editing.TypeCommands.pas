@@ -123,24 +123,24 @@ const
 
 const
   // Typen, die per Zuweisung kopiert und als JSON-Wert geschrieben werden.
-  StringTypes: array[0..5] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'Char', 'TCaption');
-  IntegerTypes: array[0..10] of string = ('Integer', 'Cardinal', 'Int64', 'UInt64', 'Byte', 'Word', 'SmallInt',
+  cStringTypes: array[0..5] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'Char', 'TCaption');
+  cIntegerTypes: array[0..10] of string = ('Integer', 'Cardinal', 'Int64', 'UInt64', 'Byte', 'Word', 'SmallInt',
     'ShortInt', 'LongInt', 'NativeInt', 'TColor');
-  FloatTypes: array[0..5] of string = ('Double', 'Single', 'Extended', 'Currency', 'Real', 'TDateTime');
+  cFloatTypes: array[0..5] of string = ('Double', 'Single', 'Extended', 'Currency', 'Real', 'TDateTime');
   // Bekannte Klassen aus RTL und VCL, die Assign können.
-  PersistentTypes: array[0..10] of string = ('TStrings', 'TStringList', 'TPersistent', 'TCollection', 'TFont',
+  cPersistentTypes: array[0..10] of string = ('TStrings', 'TStringList', 'TPersistent', 'TCollection', 'TFont',
     'TBitmap', 'TPicture', 'TPen', 'TBrush', 'TIcon', 'TGraphic');
 
 function EnumPrefix(const ATypeName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 2 to Length(ATypeName) do
+  for mIndex := 2 to Length(ATypeName) do
   begin
-    if CharInSet(ATypeName[Index], ['A'..'Z']) then
+    if CharInSet(ATypeName[mIndex], ['A'..'Z']) then
     begin
-      Result := Result + LowerCase(ATypeName[Index]);
+      Result := Result + LowerCase(ATypeName[mIndex]);
     end;
   end;
   if Result = '' then
@@ -213,50 +213,50 @@ end;
 /// <summary>Beginnt die nächste Zeile mit einer weiteren Typdeklaration (Name = …)?</summary>
 function TypeFollows(ASource: TCommandSource): Boolean;
 var
-  Next: Integer;
-  Line: string;
+  mNext: Integer;
+  mLine: string;
 begin
-  Next := ASource.Line + 1;
-  while (Next <= High(ASource.Lines)) and (Trim(ASource.Lines[Next]) = '') do
+  mNext := ASource.Line + 1;
+  while (mNext <= High(ASource.Lines)) and (Trim(ASource.Lines[mNext]) = '') do
   begin
-    Inc(Next);
+    Inc(mNext);
   end;
-  if Next > High(ASource.Lines) then
+  if mNext > High(ASource.Lines) then
   begin
     Exit(False);
   end;
-  Line := Trim(ASource.Lines[Next]);
-  Result := (Pos('=', Line) > 1) and IsValidIdent(Trim(Copy(Line, 1, Pos('=', Line) - 1)));
+  mLine := Trim(ASource.Lines[mNext]);
+  Result := (Pos('=', mLine) > 1) and IsValidIdent(Trim(Copy(mLine, 1, Pos('=', mLine) - 1)));
 end;
 
 /// <summary>Ersetzt die Befehlszeile durch ALines; ohne type-Abschnitt kommt "type" davor.</summary>
 function TypeDeclaration(ASource: TCommandSource; AInTypeSection: Boolean; const ALines: array of string): TTextEdit;
 var
-  Indent, Text: string;
-  Index: Integer;
+  mIndent, mText: string;
+  mIndex: Integer;
 begin
-  Text := '';
-  Indent := '  ';
+  mText := '';
+  mIndent := '  ';
   if AInTypeSection then
   begin
-    Indent := ASource.Indent(ASource.Line);
+    mIndent := ASource.Indent(ASource.Line);
   end
   else
   begin
-    Text := 'type' + ASource.LineBreak;
+    mText := 'type' + ASource.LineBreak;
   end;
-  for Index := 0 to High(ALines) do
+  for mIndex := 0 to High(ALines) do
   begin
-    if StartsStr('#', ALines[Index]) then
+    if StartsStr('#', ALines[mIndex]) then
     begin
-      Text := Text + Copy(ALines[Index], 2, MaxInt) + ASource.LineBreak;
+      mText := mText + Copy(ALines[mIndex], 2, MaxInt) + ASource.LineBreak;
     end
     else
     begin
-      Text := Text + Indent + ALines[Index] + ASource.LineBreak;
+      mText := mText + mIndent + ALines[mIndex] + ASource.LineBreak;
     end;
   end;
-  Result := TTextEdit.Create(TTextRange.Create(ASource.Line, 0, ASource.Line + 1, 0), Text);
+  Result := TTextEdit.Create(TTextRange.Create(ASource.Line, 0, ASource.Line + 1, 0), mText);
 end;
 
 { /enum }
@@ -367,27 +367,27 @@ end;
 /// <summary>Ist ATypeName eine Klasse (in der Datei oder im Index)?</summary>
 function IsClassType(ASource: TCommandSource; const AIndex: ISymbolIndex; const ATypeName: string): Boolean;
 var
-  Symbol: TIndexSymbol;
-  Location: TSymbolLocation;
+  mSymbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
 begin
-  for Symbol in ASource.UnitIndex.Symbols do
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if SameText(Symbol.Name, ATypeName) and (Symbol.Container = '') then
+    if SameText(mSymbol.Name, ATypeName) and (mSymbol.Container = '') then
     begin
-      Exit(Symbol.Kind = TIndexSymbolKind.ClassType);
+      Exit(mSymbol.Kind = TIndexSymbolKind.ClassType);
     end;
   end;
   if AIndex <> nil then
   begin
-    for Location in AIndex.FindSymbols(ATypeName) do
+    for mLocation in AIndex.FindSymbols(ATypeName) do
     begin
-      if Location.Symbol.Kind = TIndexSymbolKind.ClassType then
+      if mLocation.Symbol.Kind = TIndexSymbolKind.ClassType then
       begin
         Exit(True);
       end;
     end;
   end;
-  Result := MatchText(ATypeName, PersistentTypes) or MatchText(ATypeName, ['TObject', 'TComponent', 'TControl',
+  Result := MatchText(ATypeName, cPersistentTypes) or MatchText(ATypeName, ['TObject', 'TComponent', 'TControl',
     'TForm', 'TFrame', 'TList', 'TStream']);
 end;
 
@@ -398,44 +398,44 @@ function EnumMembers(ASource: TCommandSource; const AIndex: ISymbolIndex; const 
 
   function Collect(const AUnit: TUnitIndex; const AName: string): Boolean;
   var
-    Symbol: TIndexSymbol;
+    mSymbol: TIndexSymbol;
   begin
-    for Symbol in AUnit.Symbols do
+    for mSymbol in AUnit.Symbols do
     begin
-      if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, AName) then
+      if (mSymbol.Kind = TIndexSymbolKind.EnumMember) and SameText(mSymbol.Container, AName) then
       begin
-        AValues := AValues + [Symbol.Name];
+        AValues := AValues + [mSymbol.Name];
       end;
     end;
     Result := AValues <> nil;
   end;
 
 var
-  Symbol: TIndexSymbol;
-  Location: TSymbolLocation;
-  Owner: TUnitIndex;
-  Name: string;
+  mSymbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
+  mOwner: TUnitIndex;
+  mName: string;
 begin
   AValues := nil;
   // Unit.TTyp: gesucht wird der einfache Name.
-  Name := ATypeName;
-  if Pos('.', Name) > 0 then
+  mName := ATypeName;
+  if Pos('.', mName) > 0 then
   begin
-    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+    mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
   end;
-  for Symbol in ASource.UnitIndex.Symbols do
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if SameText(Symbol.Name, Name) and (Symbol.Container = '') then
+    if SameText(mSymbol.Name, mName) and (mSymbol.Container = '') then
     begin
-      Exit((Symbol.Kind = TIndexSymbolKind.EnumType) and Collect(ASource.UnitIndex, Symbol.Name));
+      Exit((mSymbol.Kind = TIndexSymbolKind.EnumType) and Collect(ASource.UnitIndex, mSymbol.Name));
     end;
   end;
   if AIndex <> nil then
   begin
-    for Location in AIndex.FindSymbols(Name) do
+    for mLocation in AIndex.FindSymbols(mName) do
     begin
-      if (Location.Symbol.Kind = TIndexSymbolKind.EnumType) and (Location.Symbol.Container = '') and
-        AIndex.FindFile(Location.FileName, Owner) and Collect(Owner, Location.Symbol.Name) then
+      if (mLocation.Symbol.Kind = TIndexSymbolKind.EnumType) and (mLocation.Symbol.Container = '') and
+        AIndex.FindFile(mLocation.FileName, mOwner) and Collect(mOwner, mLocation.Symbol.Name) then
       begin
         Exit(True);
       end;
@@ -447,63 +447,63 @@ end;
 /// <summary>Namenstabelle cNames; lange Listen umbrechen nach Kommas.</summary>
 function NamesConstant(const ATypeName: string; const AValues: TArray<string>): TArray<string>;
 const
-  MaxWidth = 100;
+  cMaxWidth = 100;
 var
-  Line: string;
-  Index: Integer;
+  mLine: string;
+  mIndex: Integer;
 begin
   Result := nil;
-  Line := Format('  cNames: array[%s] of string = (', [ATypeName]);
-  for Index := 0 to High(AValues) do
+  mLine := Format('  cNames: array[%s] of string = (', [ATypeName]);
+  for mIndex := 0 to High(AValues) do
   begin
-    if (Index > 0) and (Length(Line) + Length(AValues[Index]) + 4 > MaxWidth) then
+    if (mIndex > 0) and (Length(mLine) + Length(AValues[mIndex]) + 4 > cMaxWidth) then
     begin
-      Result := Result + [Line];
-      Line := '   ';
+      Result := Result + [mLine];
+      mLine := '   ';
     end;
-    Line := Line + QuotedStr(AValues[Index]);
-    if Index < High(AValues) then
+    mLine := mLine + QuotedStr(AValues[mIndex]);
+    if mIndex < High(AValues) then
     begin
-      Line := Line + ', ';
+      mLine := mLine + ', ';
     end
     else
     begin
-      Line := Line + ');';
+      mLine := mLine + ');';
     end;
   end;
-  Result := Result + [TrimRight(Line)];
+  Result := Result + [TrimRight(mLine)];
 end;
 
 /// <summary>Elementtyp des Mengentyps ADecl ("set of TElement"); '' bei namenloser Aufzählung.</summary>
 function SetElementOf(ADecl: TSyntaxNode): string;
 var
-  Body: TSyntaxNode;
+  mBody: TSyntaxNode;
 begin
   Result := '';
-  Body := ADecl.FindChild(TSyntaxKind.SetType);
-  if (Body <> nil) and (Body.ChildCount > 0) and (Body[0].Kind = TSyntaxKind.TypeReference) then
+  mBody := ADecl.FindChild(TSyntaxKind.SetType);
+  if (mBody <> nil) and (mBody.ChildCount > 0) and (mBody[0].Kind = TSyntaxKind.TypeReference) then
   begin
-    Result := Body[0].Name;
+    Result := mBody[0].Name;
   end;
 end;
 
 function SetElementIn(ATree: TSyntaxTree; const ATypeName: string; out AElement: string): Boolean;
 var
-  TypeName: string;
-  Found: TSyntaxNode;
+  mTypeName: string;
+  mFound: TSyntaxNode;
 begin
   AElement := '';
   if (ATree = nil) or (ATree.Root = nil) then
   begin
     Exit(False);
   end;
-  TypeName := ATypeName;
+  mTypeName := ATypeName;
   // Search statt Rekursion (Bericht M1); in einen gleichnamigen Typ ohne Element geht die Suche nicht hinein.
-  Found := ATree.Root.Search(
+  mFound := ATree.Root.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
       Result := TSyntaxSearchStep.Descend;
-      if (ANode.Kind <> TSyntaxKind.TypeDecl) or not SameText(ANode.Name, TypeName) then
+      if (ANode.Kind <> TSyntaxKind.TypeDecl) or not SameText(ANode.Name, mTypeName) then
       begin
         Exit;
       end;
@@ -513,10 +513,10 @@ begin
         Result := TSyntaxSearchStep.Found;
       end;
     end);
-  Result := Found <> nil;
+  Result := mFound <> nil;
   if Result then
   begin
-    AElement := SetElementOf(Found);
+    AElement := SetElementOf(mFound);
   end;
 end;
 
@@ -578,38 +578,39 @@ end;
 function SetHelper(ASource: TCommandSource; const AContext: TSlashContext; AInTypeSection: Boolean;
   const ATypeName, AHelperName, AElement: string): TArray<TTextEdit>;
 var
-  Values, Lines, ToText, Body: TArray<string>;
+  mValues, mLines, mToText, mBody: TArray<string>;
 begin
-  Lines := [cTexts[TTypeCommandsText.OnlyOneHelperPerType].Text,
+  mLines := [cTexts[TTypeCommandsText.OnlyOneHelperPerType].Text,
     Format('%s = record helper for %s', [AHelperName, ATypeName])];
   // Mit bekannten Werten eine Namenstabelle, sonst die Namen aus der RTTI.
-  if EnumMembers(ASource, AContext.Index, AElement, Values) then
+  if EnumMembers(ASource, AContext.Index, AElement, mValues) then
   begin
-    Lines := Lines + ['private const'] + NamesConstant(AElement, Values);
-    ToText := ['    Result := Result + cNames[Value];'];
+    mLines := mLines + ['private const'] + NamesConstant(AElement, mValues);
+    mToText := ['    Result := Result + cNames[Value];'];
   end
   else
   begin
-    ToText := ['    Result := Result + GetEnumName(TypeInfo(' + AElement + '), Ord(Value));'];
+    mToText := ['    Result := Result + GetEnumName(TypeInfo(' + AElement + '), Ord(Value));'];
   end;
-  Lines := Lines + ['public', Format('  function Contains(AValue: %s): Boolean;', [AElement]),
+  mLines := mLines + ['public', Format('  function Contains(AValue: %s): Boolean;', [AElement]),
     '  function ToText: string;', Format('  procedure Toggle(AValue: %s);', [AElement]),
     Format('  class function All: %s; static;', [ATypeName]), 'end;'];
-  Body := [Format('function %s.Contains(AValue: %s): Boolean;', [AHelperName, AElement]), 'begin',
+  mBody := [Format('function %s.Contains(AValue: %s): Boolean;', [AHelperName, AElement]), 'begin',
     '  Result := AValue in Self;', 'end;', '',
     Format('function %s.ToText: string;', [AHelperName]), 'var', Format('  Value: %s;', [AElement]), 'begin',
     '  Result := '''';', '  for Value in Self do', '  begin', '    if Result <> '''' then',
     '      Result := Result + '', '';'];
-  Body := Body + ToText;
-  Body := Body + ['  end;', '  Result := ''['' + Result + '']'';', 'end;', '',
+  mBody := mBody + mToText;
+  mBody := mBody + ['  end;', '  Result := ''['' + Result + '']'';', 'end;', '',
     Format('procedure %s.Toggle(AValue: %s);', [AHelperName, AElement]), 'begin', '  if AValue in Self then',
     '    Exclude(Self, AValue)', '  else', '    Include(Self, AValue);', 'end;', '',
     Format('class function %s.All: %s;', [AHelperName, ATypeName]), 'begin',
     Format('  Result := [Low(%s)..High(%s)];', [AElement, AElement]), 'end;'];
-  Result := [TypeDeclaration(ASource, AInTypeSection, Lines), ASource.AddBody(AHelperName, Join(ASource, Body))];
+  Result := [TypeDeclaration(ASource, AInTypeSection, mLines), ASource.AddBody(AHelperName, Join(ASource, mBody))];
 end;
 
-/// <summary>Trägt AUnitName ins uses ein, wenn sie dort fehlt; der Eintrag gilt für die Stelle in Zeile ALine.</summary>
+/// <summary>Trägt AUnitName ins uses ein, wenn sie dort fehlt; der Eintrag gilt für die Stelle in Zeile
+/// ALine.</summary>
 procedure AddMissingUses(ASource: TCommandSource; const AContext: TSlashContext; const AUnitName: string;
   ALine: Integer; var AEdits: TArray<TTextEdit>);
 var
@@ -685,7 +686,7 @@ begin
       AEdits := [PlainHelper(mSource, mInTypeSection, mTypeName, mHelperName, 'class')];
     end
     // #875: Mengen bekommen Contains, ToText, Toggle und All (abschaltbar).
-    else if SettingOn(AContext, TSlashSettings.SetHelper) and SetElement(mSource, AContext, mTypeName, mElement) then
+    else if SettingOn(AContext, TSlashSettings.cSetHelper) and SetElement(mSource, AContext, mTypeName, mElement) then
     begin
       AEdits := SetHelper(mSource, AContext, mInTypeSection, mTypeName, mHelperName, mElement);
       if not EnumMembers(mSource, AContext.Index, mElement, mValues) then
@@ -694,7 +695,7 @@ begin
       end;
     end
     // #875: Aufzählungen bekommen Namen, ToString und FromString (abschaltbar).
-    else if SettingOn(AContext, TSlashSettings.EnumHelper) and
+    else if SettingOn(AContext, TSlashSettings.cEnumHelper) and
       EnumMembers(mSource, AContext.Index, mTypeName, mValues) then
     begin
       AEdits := EnumHelper(mSource, mInTypeSection, mTypeName, mHelperName, mValues);
@@ -715,29 +716,29 @@ end;
 function AddToClass(ASource: TCommandSource; const AClass: TIndexSymbol; const ADeclarations: array of string;
   const ABodies: string): TArray<TTextEdit>;
 var
-  EndLine, Index: Integer;
-  Indent, Text: string;
+  mEndLine, mIndex: Integer;
+  mIndent, mText: string;
 begin
-  EndLine := AClass.Range.EndPos.Line;
-  Indent := ASource.Indent(EndLine);
-  Text := '';
-  for Index := 0 to High(ADeclarations) do
+  mEndLine := AClass.Range.EndPos.Line;
+  mIndent := ASource.Indent(mEndLine);
+  mText := '';
+  for mIndex := 0 to High(ADeclarations) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
-      Text := Text + ASource.LineBreak;
+      mText := mText + ASource.LineBreak;
     end;
     // Abschnittsnamen ohne, Mitglieder mit zusätzlicher Einrückung.
-    if MatchText(ADeclarations[Index], ['private', 'protected', 'public', 'published', 'strict private']) then
+    if MatchText(ADeclarations[mIndex], ['private', 'protected', 'public', 'published', 'strict private']) then
     begin
-      Text := Text + Indent + ADeclarations[Index];
+      mText := mText + mIndent + ADeclarations[mIndex];
     end
     else
     begin
-      Text := Text + Indent + '  ' + ADeclarations[Index];
+      mText := mText + mIndent + '  ' + ADeclarations[mIndex];
     end;
   end;
-  Result := [ASource.BeforeLine(EndLine, Text)];
+  Result := [ASource.BeforeLine(mEndLine, mText)];
   if ABodies <> '' then
   begin
     Result := Result + [ASource.AddBody(AClass.Name, ABodies)];
@@ -746,31 +747,31 @@ end;
 
 function Join(ASource: TCommandSource; const ALines: array of string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(ALines) do
+  for mIndex := 0 to High(ALines) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
       Result := Result + ASource.LineBreak;
     end;
-    Result := Result + ALines[Index];
+    Result := Result + ALines[mIndex];
   end;
 end;
 
 /// <summary>Felder von AClass in der Datei.</summary>
 function FieldsOf(ASource: TCommandSource; const AClass: TIndexSymbol): TArray<TIndexSymbol>;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := nil;
-  for Symbol in ASource.UnitIndex.Symbols do
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, AClass.Name) and
-      (Symbol.TypeName <> '') then
+    if (mSymbol.Kind = TIndexSymbolKind.Field) and SameText(mSymbol.Container, AClass.Name) and
+      (mSymbol.TypeName <> '') then
     begin
-      Result := Result + [Symbol];
+      Result := Result + [mSymbol];
     end;
   end;
 end;
@@ -779,18 +780,18 @@ end;
 function TypeAt(ASource: TCommandSource; const AName: string; out AType: TIndexSymbol;
   out AReason: string): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   if ASource.ClassAt(AType) then
   begin
     Exit(True);
   end;
-  for Symbol in ASource.UnitIndex.Symbols do
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.RecordType) and (Symbol.Range.StartPos.Line < ASource.Line) and
-      (Symbol.Range.EndPos.Line > ASource.Line) then
+    if (mSymbol.Kind = TIndexSymbolKind.RecordType) and (mSymbol.Range.StartPos.Line < ASource.Line) and
+      (mSymbol.Range.EndPos.Line > ASource.Line) then
     begin
-      AType := Symbol;
+      AType := mSymbol;
       Exit(True);
     end;
   end;
@@ -802,61 +803,61 @@ end;
 /// <summary>Hinweis nach /singleton, wenn die Klasse schon Konstruktoren hat (#298); '' ohne.</summary>
 function SingletonConstructorNote(ASource: TCommandSource; const AClassName: string): string;
 var
-  Symbol: TIndexSymbol;
-  Names: TArray<string>;
+  mSymbol: TIndexSymbol;
+  mNames: TArray<string>;
 begin
-  Names := nil;
-  for Symbol in ASource.UnitIndex.Symbols do
+  mNames := nil;
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.Constructor_) and SameText(Symbol.Container, AClassName) and
-      not MatchText(Symbol.Name, Names) then
+    if (mSymbol.Kind = TIndexSymbolKind.Constructor_) and SameText(mSymbol.Container, AClassName) and
+      not MatchText(mSymbol.Name, mNames) then
     begin
-      Names := Names + [Symbol.Name];
+      mNames := mNames + [mSymbol.Name];
     end;
   end;
   Result := '';
-  if Names <> nil then
+  if mNames <> nil then
   begin
-    Result := cTexts[TTypeCommandsText.SingletonConstructorStaysUnchangedAnd].Fmt([string.Join(', ', Names)]);
+    Result := cTexts[TTypeCommandsText.SingletonConstructorStaysUnchangedAnd].Fmt([string.Join(', ', mNames)]);
   end;
 end;
 
 function ExecuteSingleton(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  ClassSymbol: TIndexSymbol;
-  Name, Note, Uri: string;
-  Host: ISlashHost;
+  mSource: TCommandSource;
+  mClassSymbol: TIndexSymbol;
+  mName, mNote, mUri: string;
+  mHost: ISlashHost;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not Source.ClassAt(ClassSymbol) then
+    if not mSource.ClassAt(mClassSymbol) then
     begin
       Exit(Fail(cTexts[TTypeCommandsText.SingletonOnlyAppliesInA].Text, AReason));
     end;
-    Name := ClassSymbol.Name;
-    AEdits := AddToClass(Source, ClassSymbol, ['private', Format('class var FInstance: %s;', [Name]), 'public',
-      'class destructor Destroy;', Format('class function Instance: %s;', [Name])],
-      Join(Source, [Format('class destructor %s.Destroy;', [Name]), 'begin', '  FreeAndNil(FInstance);', 'end;',
-      '', Format('class function %s.Instance: %s;', [Name, Name]), 'begin', '  if FInstance = nil then',
-      Format('    FInstance := %s.Create;', [Name]), '  Result := FInstance;', 'end;'])) + [Source.RemoveCommand];
+    mName := mClassSymbol.Name;
+    AEdits := AddToClass(mSource, mClassSymbol, ['private', Format('class var FInstance: %s;', [mName]), 'public',
+      'class destructor Destroy;', Format('class function Instance: %s;', [mName])],
+      Join(mSource, [Format('class destructor %s.Destroy;', [mName]), 'begin', '  FreeAndNil(FInstance);', 'end;',
+      '', Format('class function %s.Instance: %s;', [mName, mName]), 'begin', '  if FInstance = nil then',
+      Format('    FInstance := %s.Create;', [mName]), '  Result := FInstance;', 'end;'])) + [mSource.RemoveCommand];
     // Ein vorhandener Konstruktor bleibt, wie er ist; der Hinweis nennt ihn.
-    Note := SingletonConstructorNote(Source, Name);
-    Host := AContext.Host;
-    Uri := AContext.Uri;
-    if (Host <> nil) and (Note <> '') then
+    mNote := SingletonConstructorNote(mSource, mName);
+    mHost := AContext.Host;
+    mUri := AContext.Uri;
+    if (mHost <> nil) and (mNote <> '') then
     begin
       AContext.Defer(
         procedure
         begin
-          Host.Notify(Uri, Note);
+          mHost.Notify(mUri, mNote);
         end);
     end;
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -1076,44 +1077,44 @@ end;
 
 function IsObjectField(ASource: TCommandSource; const AIndex: ISymbolIndex; const AField: TIndexSymbol): Boolean;
 begin
-  Result := not MatchText(AField.TypeName, StringTypes) and not MatchText(AField.TypeName, IntegerTypes) and
-    not MatchText(AField.TypeName, FloatTypes) and not SameText(AField.TypeName, 'Boolean') and
+  Result := not MatchText(AField.TypeName, cStringTypes) and not MatchText(AField.TypeName, cIntegerTypes) and
+    not MatchText(AField.TypeName, cFloatTypes) and not SameText(AField.TypeName, 'Boolean') and
     IsClassType(ASource, AIndex, AField.TypeName);
 end;
 
 function ExecuteAssign(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  ClassSymbol, Field: TIndexSymbol;
-  Name, Body: string;
+  mSource: TCommandSource;
+  mClassSymbol, mField: TIndexSymbol;
+  mName, mBody: string;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not Source.ClassAt(ClassSymbol) then
+    if not mSource.ClassAt(mClassSymbol) then
     begin
       Exit(Fail(cTexts[TTypeCommandsText.AssignOnlyAppliesInA].Text, AReason));
     end;
-    Name := ClassSymbol.Name;
-    Body := Join(Source, [Format('procedure %s.Assign(Source: TPersistent);', [Name]), 'begin',
-      Format('  if Source is %s then', [Name]), '  begin']);
-    for Field in FieldsOf(Source, ClassSymbol) do
+    mName := mClassSymbol.Name;
+    mBody := Join(mSource, [Format('procedure %s.Assign(Source: TPersistent);', [mName]), 'begin',
+      Format('  if Source is %s then', [mName]), '  begin']);
+    for mField in FieldsOf(mSource, mClassSymbol) do
     begin
-      if IsObjectField(Source, AContext.Index, Field) then
+      if IsObjectField(mSource, AContext.Index, mField) then
       begin
-        Body := Body + Source.LineBreak + Format('    %s.Assign(%s(Source).%s);', [Field.Name, Name, Field.Name]);
+        mBody := mBody + mSource.LineBreak + Format('    %s.Assign(%s(Source).%s);', [mField.Name, mName, mField.Name]);
       end
       else
       begin
-        Body := Body + Source.LineBreak + Format('    %s := %s(Source).%s;', [Field.Name, Name, Field.Name]);
+        mBody := mBody + mSource.LineBreak + Format('    %s := %s(Source).%s;', [mField.Name, mName, mField.Name]);
       end;
     end;
-    Body := Body + Source.LineBreak + Join(Source, ['  end', '  else', '    inherited Assign(Source);', 'end;']);
-    AEdits := AddToClass(Source, ClassSymbol, ['public', 'procedure Assign(Source: TPersistent); override;'], Body) +
-      [Source.RemoveCommand];
+    mBody := mBody + mSource.LineBreak + Join(mSource, ['  end', '  else', '    inherited Assign(Source);', 'end;']);
+    AEdits := AddToClass(mSource, mClassSymbol, ['public', 'procedure Assign(Source: TPersistent); override;'], mBody) +
+      [mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -1136,13 +1137,13 @@ var
   mKey: string;
 begin
   mKey := JsonKey(AField.Name);
-  if MatchText(AField.TypeName, StringTypes) then
+  if MatchText(AField.TypeName, cStringTypes) then
   begin
     AToJson := AToJson + ALineBreak + Format('  Result.AddPair(''%s'', %s);', [mKey, AField.Name]);
     AFromJson := AFromJson + ALineBreak + Format('  Result.%s := AJson.GetValue<string>(''%s'');', [AField.Name,
       mKey]);
   end
-  else if MatchText(AField.TypeName, IntegerTypes) or MatchText(AField.TypeName, FloatTypes) then
+  else if MatchText(AField.TypeName, cIntegerTypes) or MatchText(AField.TypeName, cFloatTypes) then
   begin
     AToJson := AToJson + ALineBreak + Format('  Result.AddPair(''%s'', TJSONNumber.Create(%s));', [mKey,
       AField.Name]);
@@ -1216,35 +1217,35 @@ end;
 function ExecuteException(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Name, Ancestor: string;
-  InTypeSection: Boolean;
+  mSource: TCommandSource;
+  mName, mAncestor: string;
+  mInTypeSection: Boolean;
 begin
   AEdits := nil;
   if Pos(':', AContext.Arguments) > 0 then
   begin
-    Name := Trim(Copy(AContext.Arguments, 1, Pos(':', AContext.Arguments) - 1));
-    Ancestor := Trim(Copy(AContext.Arguments, Pos(':', AContext.Arguments) + 1, MaxInt));
+    mName := Trim(Copy(AContext.Arguments, 1, Pos(':', AContext.Arguments) - 1));
+    mAncestor := Trim(Copy(AContext.Arguments, Pos(':', AContext.Arguments) + 1, MaxInt));
   end
   else
   begin
-    Name := Trim(AContext.Arguments);
-    Ancestor := 'Exception';
+    mName := Trim(AContext.Arguments);
+    mAncestor := 'Exception';
   end;
-  if not IsValidIdent(Name) or not IsValidIdent(Ancestor, True) then
+  if not IsValidIdent(mName) or not IsValidIdent(mAncestor, True) then
   begin
     Exit(Fail(cTexts[TTypeCommandsText.ExpectedIsExceptionENameEBase].Text, AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not TypePlace(Source, 'exception', InTypeSection, AReason) then
+    if not TypePlace(mSource, 'exception', mInTypeSection, AReason) then
     begin
       Exit(False);
     end;
-    AEdits := [TypeDeclaration(Source, InTypeSection, [Format('%s = class(%s);', [Name, Ancestor])])];
+    AEdits := [TypeDeclaration(mSource, mInTypeSection, [Format('%s = class(%s);', [mName, mAncestor])])];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -1252,32 +1253,32 @@ end;
 
 function ExecuteThread(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  TypeName: string;
-  InTypeSection: Boolean;
+  mSource: TCommandSource;
+  mTypeName: string;
+  mInTypeSection: Boolean;
 begin
   AEdits := nil;
-  TypeName := Trim(AContext.Arguments);
-  if not IsValidIdent(TypeName) then
+  mTypeName := Trim(AContext.Arguments);
+  if not IsValidIdent(mTypeName) then
   begin
     Exit(Fail(cTexts[TTypeCommandsText.ExpectedIsThreadTName].Text, AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not TypePlace(Source, 'thread', InTypeSection, AReason) then
+    if not TypePlace(mSource, 'thread', mInTypeSection, AReason) then
     begin
       Exit(False);
     end;
-    AEdits := [TypeDeclaration(Source, InTypeSection, [Format('%s = class(TThread)', [TypeName]), 'protected',
-      '  procedure Execute; override;', 'end;']), Source.AddBody(TypeName, Join(Source, [
-      Format('procedure %s.Execute;', [TypeName]), 'begin',
+    AEdits := [TypeDeclaration(mSource, mInTypeSection, [Format('%s = class(TThread)', [mTypeName]), 'protected',
+      '  procedure Execute; override;', 'end;']), mSource.AddBody(mTypeName, Join(mSource, [
+      Format('procedure %s.Execute;', [mTypeName]), 'begin',
       cTexts[TTypeCommandsText.IfNobodyWaitsForThe].Text,
       '  while not Terminated do', '  begin',
       cTexts[TTypeCommandsText.ShowResultsInTheMain].Text, '  end;', 'end;']))];
-    AddMissingUses(Source, AContext, 'System.Classes', Source.Line, AEdits);
+    AddMissingUses(mSource, AContext, 'System.Classes', mSource.Line, AEdits);
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 

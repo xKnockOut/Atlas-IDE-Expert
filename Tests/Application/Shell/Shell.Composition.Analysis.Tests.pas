@@ -51,8 +51,8 @@ begin
     finally
       mCapability.Free;
     end;
-    Assert.IsTrue(Pos('"' + TLspMetrics.Command + '"', mText) > 0, TLspMetrics.Command);
-    Assert.IsTrue(Pos('"' + TLspTodos.Command + '"', mText) > 0, TLspTodos.Command);
+    Assert.IsTrue(Pos('"' + TLspMetrics.cCommand + '"', mText) > 0, TLspMetrics.cCommand);
+    Assert.IsTrue(Pos('"' + TLspTodos.cCommand + '"', mText) > 0, TLspTodos.cCommand);
   finally
     mCommands.Free;
     mAnalysis.Free;
@@ -86,7 +86,7 @@ begin
   mCommands := TLspCommands.Create;
   try
     mAnalysis.RegisterReportCommands(mCommands);
-    for mName in TArray<string>.Create(TLspMetrics.Command, TLspTodos.Command) do
+    for mName in TArray<string>.Create(TLspMetrics.cCommand, TLspTodos.cCommand) do
     begin
       Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
     end;

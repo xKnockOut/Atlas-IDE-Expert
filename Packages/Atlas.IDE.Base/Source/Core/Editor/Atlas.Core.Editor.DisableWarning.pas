@@ -40,7 +40,7 @@ type
 
 const
   /// <summary>Wert der Projektoption für „Warnung aus“.</summary>
-  AtlasWarningOptionOff = 'false';
+  cAtlasWarningOptionOff = 'false';
 
 implementation
 
@@ -50,28 +50,28 @@ uses
 
 function ArgumentsOf(const AJson: string): TJSONArray;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := nil;
-  Value := TJSONObject.ParseJSONValue(AJson);
-  if Value is TJSONArray then
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  if mValue is TJSONArray then
   begin
-    Result := TJSONArray(Value);
+    Result := TJSONArray(mValue);
   end
   else
   begin
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 function IsIdentifier(const AText: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AText <> '';
-  for Index := 1 to Length(AText) do
+  for mIndex := 1 to Length(AText) do
   begin
-    if not CharInSet(AText[Index], ['A'..'Z', '0'..'9', '_']) then
+    if not CharInSet(AText[mIndex], ['A'..'Z', '0'..'9', '_']) then
     begin
       Exit(False);
     end;
@@ -83,42 +83,42 @@ end;
 class function TAtlasDisableWarningRequest.TryParse(const AArgumentsJson: string;
   out ARequest: TAtlasDisableWarningRequest): Boolean;
 var
-  Arguments: TJSONArray;
+  mArguments: TJSONArray;
 begin
   ARequest := Default(TAtlasDisableWarningRequest);
-  Arguments := ArgumentsOf(AArgumentsJson);
+  mArguments := ArgumentsOf(AArgumentsJson);
   try
-    Result := (Arguments <> nil) and (Arguments.Count >= 4);
+    Result := (mArguments <> nil) and (mArguments.Count >= 4);
     if not Result then
     begin
       Exit;
     end;
-    ARequest.Uri := Arguments.Items[0].Value;
-    ARequest.Line := StrToIntDef(Arguments.Items[1].Value, -1);
-    ARequest.Code := Arguments.Items[2].Value;
-    ARequest.Scope := Arguments.Items[3].Value;
-    ARequest.AskReason := (Arguments.Count > 4) and (Arguments.Items[4] is TJSONBool) and
-      TJSONBool(Arguments.Items[4]).AsBoolean;
+    ARequest.Uri := mArguments.Items[0].Value;
+    ARequest.Line := StrToIntDef(mArguments.Items[1].Value, -1);
+    ARequest.Code := mArguments.Items[2].Value;
+    ARequest.Scope := mArguments.Items[3].Value;
+    ARequest.AskReason := (mArguments.Count > 4) and (mArguments.Items[4] is TJSONBool) and
+      TJSONBool(mArguments.Items[4]).AsBoolean;
     Result := (ARequest.Uri <> '') and (ARequest.Line >= 0) and (ARequest.Code <> '') and (ARequest.Scope <> '');
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
 end;
 
 function TAtlasDisableWarningRequest.ApplyArguments(const AReason: string): string;
 var
-  Arguments: TJSONArray;
+  mArguments: TJSONArray;
 begin
-  Arguments := TJSONArray.Create;
+  mArguments := TJSONArray.Create;
   try
-    Arguments.Add(Uri);
-    Arguments.AddElement(TJSONNumber.Create(Line));
-    Arguments.Add(Code);
-    Arguments.Add(Scope);
-    Arguments.Add(Trim(AReason));
-    Result := Arguments.ToJSON;
+    mArguments.Add(Uri);
+    mArguments.AddElement(TJSONNumber.Create(Line));
+    mArguments.Add(Code);
+    mArguments.Add(Scope);
+    mArguments.Add(Trim(AReason));
+    Result := mArguments.ToJSON;
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
 end;
 
@@ -127,23 +127,23 @@ end;
 class function TAtlasDisableWarningProject.TryParse(const AArgumentsJson: string;
   out ARequest: TAtlasDisableWarningProject): Boolean;
 var
-  Arguments: TJSONArray;
+  mArguments: TJSONArray;
 begin
   ARequest := Default(TAtlasDisableWarningProject);
-  Arguments := ArgumentsOf(AArgumentsJson);
+  mArguments := ArgumentsOf(AArgumentsJson);
   try
-    Result := (Arguments <> nil) and (Arguments.Count >= 3);
+    Result := (mArguments <> nil) and (mArguments.Count >= 3);
     if not Result then
     begin
       Exit;
     end;
-    ARequest.Uri := Arguments.Items[0].Value;
-    ARequest.Code := Arguments.Items[1].Value;
-    ARequest.Identifier := UpperCase(Trim(Arguments.Items[2].Value));
+    ARequest.Uri := mArguments.Items[0].Value;
+    ARequest.Code := mArguments.Items[1].Value;
+    ARequest.Identifier := UpperCase(Trim(mArguments.Items[2].Value));
     // Nur Bezeichner wie SYMBOL_DEPRECATED: Der Name wird Teil einer Projektoption.
     Result := (ARequest.Uri <> '') and IsIdentifier(ARequest.Identifier);
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
 end;
 

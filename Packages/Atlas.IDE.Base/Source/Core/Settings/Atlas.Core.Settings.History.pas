@@ -66,7 +66,7 @@ type
 
   TAtlasSettingsHistory = class
   public const
-    MaxKeep = 50;
+    cMaxKeep = 50;
   private
     FSnapshots: TList<TAtlasSettingsSnapshot>;
     function GetCount: Integer;
@@ -167,11 +167,11 @@ end;
 
 function TAtlasMemorySettingsStore.Text(const AName: string): string;
 var
-  Value: Integer;
+  mValue: Integer;
 begin
-  if FIntegers.TryGetValue(LowerCase(AName), Value) then
+  if FIntegers.TryGetValue(LowerCase(AName), mValue) then
   begin
-    Result := IntToStr(Value);
+    Result := IntToStr(mValue);
   end
   else if not FStrings.TryGetValue(LowerCase(AName), Result) then
   begin
@@ -181,40 +181,40 @@ end;
 
 function TAtlasMemorySettingsStore.ToJson: TJSONObject;
 var
-  Name: string;
-  Value: Integer;
+  mName: string;
+  mValue: Integer;
 begin
   Result := TJSONObject.Create;
-  for Name in FNames do
+  for mName in FNames do
   begin
-    if FIntegers.TryGetValue(LowerCase(Name), Value) then
+    if FIntegers.TryGetValue(LowerCase(mName), mValue) then
     begin
-      Result.AddPair(Name, TJSONNumber.Create(Value));
+      Result.AddPair(mName, TJSONNumber.Create(mValue));
     end
     else
     begin
-      Result.AddPair(Name, TJSONString.Create(ReadString(Name, '')));
+      Result.AddPair(mName, TJSONString.Create(ReadString(mName, '')));
     end;
   end;
 end;
 
 procedure TAtlasMemorySettingsStore.FromJson(AValues: TJSONObject);
 var
-  Pair: TJSONPair;
+  mPair: TJSONPair;
 begin
   if AValues = nil then
   begin
     Exit;
   end;
-  for Pair in AValues do
+  for mPair in AValues do
   begin
-    if Pair.JsonValue is TJSONNumber then
+    if mPair.JsonValue is TJSONNumber then
     begin
-      WriteInteger(Pair.JsonString.Value, TJSONNumber(Pair.JsonValue).AsInt);
+      WriteInteger(mPair.JsonString.Value, TJSONNumber(mPair.JsonValue).AsInt);
     end
-    else if Pair.JsonValue is TJSONString then
+    else if mPair.JsonValue is TJSONString then
     begin
-      WriteString(Pair.JsonString.Value, TJSONString(Pair.JsonValue).Value);
+      WriteString(mPair.JsonString.Value, TJSONString(mPair.JsonValue).Value);
     end;
   end;
 end;
@@ -226,15 +226,15 @@ end;
 
 procedure TAtlasMemorySettingsStore.Remove(const AName: string);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   FIntegers.Remove(LowerCase(AName));
   FStrings.Remove(LowerCase(AName));
-  for Index := FNames.Count - 1 downto 0 do
+  for mIndex := FNames.Count - 1 downto 0 do
   begin
-    if SameText(FNames[Index], AName) then
+    if SameText(FNames[mIndex], AName) then
     begin
-      FNames.Delete(Index);
+      FNames.Delete(mIndex);
     end;
   end;
 end;
@@ -242,11 +242,11 @@ end;
 class function TAtlasMemorySettingsStore.FromSettings(
   const ASettings: TAtlasPluginSettings): IAtlasMemorySettingsStore;
 var
-  Copy_: TAtlasPluginSettings;
+  mCopy_: TAtlasPluginSettings;
 begin
   Result := TAtlasMemorySettingsStore.Create;
-  Copy_ := ASettings;
-  Copy_.Save(Result);
+  mCopy_ := ASettings;
+  mCopy_.Save(Result);
 end;
 
 { TAtlasSettingsHistory }
@@ -275,17 +275,17 @@ end;
 
 class function TAtlasSettingsHistory.Differences(const ALeft, ARight: TAtlasPluginSettings): TArray<string>;
 var
-  Left, Right: IAtlasMemorySettingsStore;
-  Name: string;
+  mLeft, mRight: IAtlasMemorySettingsStore;
+  mName: string;
 begin
-  Left := TAtlasMemorySettingsStore.FromSettings(ALeft);
-  Right := TAtlasMemorySettingsStore.FromSettings(ARight);
+  mLeft := TAtlasMemorySettingsStore.FromSettings(ALeft);
+  mRight := TAtlasMemorySettingsStore.FromSettings(ARight);
   Result := nil;
-  for Name in Left.Names do
+  for mName in mLeft.Names do
   begin
-    if Left.Text(Name) <> Right.Text(Name) then
+    if mLeft.Text(mName) <> mRight.Text(mName) then
     begin
-      Result := Result + [Name];
+      Result := Result + [mName];
     end;
   end;
 end;
@@ -293,22 +293,22 @@ end;
 procedure TAtlasSettingsHistory.Push(const ABefore, AAfter: TAtlasPluginSettings; AChangedAt: TDateTime;
   AKeep: Integer);
 var
-  Snapshot: TAtlasSettingsSnapshot;
+  mSnapshot: TAtlasSettingsSnapshot;
 begin
   if Length(Differences(ABefore, AAfter)) = 0 then
   begin
     Exit;
   end;
-  Snapshot.ChangedAt := AChangedAt;
-  Snapshot.Settings := ABefore;
-  FSnapshots.Insert(0, Snapshot);
+  mSnapshot.ChangedAt := AChangedAt;
+  mSnapshot.Settings := ABefore;
+  FSnapshots.Insert(0, mSnapshot);
   if AKeep < 0 then
   begin
     AKeep := 0;
   end;
-  if AKeep > MaxKeep then
+  if AKeep > cMaxKeep then
   begin
-    AKeep := MaxKeep;
+    AKeep := cMaxKeep;
   end;
   while FSnapshots.Count > AKeep do
   begin
@@ -337,81 +337,81 @@ end;
 
 function TAtlasSettingsHistory.ToJson: string;
 var
-  Root: TJSONArray;
-  Item: TJSONObject;
-  Snapshot: TAtlasSettingsSnapshot;
-  Store: IAtlasMemorySettingsStore;
+  mRoot: TJSONArray;
+  mItem: TJSONObject;
+  mSnapshot: TAtlasSettingsSnapshot;
+  mStore: IAtlasMemorySettingsStore;
 begin
-  Root := TJSONArray.Create;
+  mRoot := TJSONArray.Create;
   try
-    for Snapshot in FSnapshots do
+    for mSnapshot in FSnapshots do
     begin
-      Store := TAtlasMemorySettingsStore.FromSettings(Snapshot.Settings);
-      Item := TJSONObject.Create;
-      Item.AddPair('changedAt', TJSONString.Create(DateToISO8601(Snapshot.ChangedAt, True)));
-      Item.AddPair('settings', Store.ToJson);
-      Root.AddElement(Item);
+      mStore := TAtlasMemorySettingsStore.FromSettings(mSnapshot.Settings);
+      mItem := TJSONObject.Create;
+      mItem.AddPair('changedAt', TJSONString.Create(DateToISO8601(mSnapshot.ChangedAt, True)));
+      mItem.AddPair('settings', mStore.ToJson);
+      mRoot.AddElement(mItem);
     end;
-    Result := Root.ToJSON;
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 function TAtlasSettingsHistory.LoadJson(const AText: string): Boolean;
 var
-  Root, Values: TJSONValue;
-  Element: TJSONValue;
-  Snapshot: TAtlasSettingsSnapshot;
-  Store: IAtlasMemorySettingsStore;
-  Stamp: string;
-  Catalog: TAtlasSettingsCatalog;
+  mRoot, mValues: TJSONValue;
+  mElement: TJSONValue;
+  mSnapshot: TAtlasSettingsSnapshot;
+  mStore: IAtlasMemorySettingsStore;
+  mStamp: string;
+  mCatalog: TAtlasSettingsCatalog;
 begin
   FSnapshots.Clear;
-  Catalog := nil;
-  Root := TJSONObject.ParseJSONValue(AText);
+  mCatalog := nil;
+  mRoot := TJSONObject.ParseJSONValue(AText);
   try
-    Result := Root is TJSONArray;
+    Result := mRoot is TJSONArray;
     if not Result then
     begin
       Exit;
     end;
-    for Element in TJSONArray(Root) do
+    for mElement in TJSONArray(mRoot) do
     begin
-      if not (Element is TJSONObject) then
+      if not (mElement is TJSONObject) then
       begin
         Continue;
       end;
-      Values := TJSONObject(Element).GetValue('settings');
-      Stamp := TJSONObject(Element).GetValue<string>('changedAt', '');
-      if not (Values is TJSONObject) or (Stamp = '') then
+      mValues := TJSONObject(mElement).GetValue('settings');
+      mStamp := TJSONObject(mElement).GetValue<string>('changedAt', '');
+      if not (mValues is TJSONObject) or (mStamp = '') then
       begin
         Continue;
       end;
-      Store := TAtlasMemorySettingsStore.Create;
-      Store.FromJson(TJSONObject(Values));
+      mStore := TAtlasMemorySettingsStore.Create;
+      mStore.FromJson(TJSONObject(mValues));
       // Stände von vor einer Umbenennung (#1280): frühere Namen wie beim Start übernehmen.
-      if Catalog = nil then
+      if mCatalog = nil then
       begin
-        Catalog := TAtlasSettingsCatalog.CreateDefault;
+        mCatalog := TAtlasSettingsCatalog.CreateDefault;
       end;
-      TAtlasSettingsRenames.Apply(Store, Store as IAtlasSettingsNames, Catalog);
+      TAtlasSettingsRenames.Apply(mStore, mStore as IAtlasSettingsNames, mCatalog);
       // Einzelne Abfrage von vor #1262: als „Standard“ in die Liste der Abfragen.
-      TAtlasSettingsQueryMigrations.Migrate(Store, Store as IAtlasSettingsNames, Store);
-      TAtlasSettingsQueryMigrations.RemoveLegacy(Store as IAtlasSettingsNames);
-      Snapshot.Settings := TAtlasPluginSettings.Defaults;
-      Snapshot.Settings.Load(Store);
+      TAtlasSettingsQueryMigrations.Migrate(mStore, mStore as IAtlasSettingsNames, mStore);
+      TAtlasSettingsQueryMigrations.RemoveLegacy(mStore as IAtlasSettingsNames);
+      mSnapshot.Settings := TAtlasPluginSettings.Defaults;
+      mSnapshot.Settings.Load(mStore);
       try
-        Snapshot.ChangedAt := ISO8601ToDate(Stamp, True);
+        mSnapshot.ChangedAt := ISO8601ToDate(mStamp, True);
       except
         on EConvertError do
           Continue;
       end;
-      FSnapshots.Add(Snapshot);
+      FSnapshots.Add(mSnapshot);
     end;
   finally
-    Catalog.Free;
-    Root.Free;
+    mCatalog.Free;
+    mRoot.Free;
   end;
 end;
 

@@ -70,8 +70,8 @@ uses
 constructor TUnitResolver.Create(const AProject: TProjectInfo; const ALibraryPaths: TArray<string>;
   const AFileExists: TFunc<string, Boolean>);
 var
-  Directories: TList<string>;
-  Directory: string;
+  mDirectories: TList<string>;
+  mDirectory: string;
 begin
   inherited Create;
   FProject := AProject;
@@ -80,23 +80,23 @@ begin
   FCache := TDictionary<string, string>.Create;
   FLock := TObject.Create;
   FListings := TObjectDictionary<string, TDictionary<string, string>>.Create([doOwnsValues]);
-  Directories := TList<string>.Create;
+  mDirectories := TList<string>.Create;
   try
     if AProject.FileName <> '' then
     begin
-      Directories.Add(TProjectPaths.DirectoryOf(AProject.FileName));
+      mDirectories.Add(TProjectPaths.DirectoryOf(AProject.FileName));
     end;
-    for Directory in AProject.SearchPaths do
+    for mDirectory in AProject.SearchPaths do
     begin
-      Directories.Add(Directory);
+      mDirectories.Add(mDirectory);
     end;
-    for Directory in ALibraryPaths do
+    for mDirectory in ALibraryPaths do
     begin
-      Directories.Add(Directory);
+      mDirectories.Add(mDirectory);
     end;
-    FDirectories := Directories.ToArray;
+    FDirectories := mDirectories.ToArray;
   finally
-    Directories.Free;
+    mDirectories.Free;
   end;
 end;
 
@@ -110,53 +110,53 @@ end;
 
 function TUnitResolver.Candidates(const AUnitName: string): TArray<string>;
 var
-  Names: TList<string>;
-  Namespace, mTarget: string;
+  mNames: TList<string>;
+  mNamespace, mTarget: string;
 begin
-  Names := TList<string>.Create;
+  mNames := TList<string>.Create;
   try
-    Names.Add(AUnitName);
-    for Namespace in FProject.Namespaces do
+    mNames.Add(AUnitName);
+    for mNamespace in FProject.Namespaces do
     begin
-      Names.Add(Namespace + '.' + AUnitName);
+      mNames.Add(mNamespace + '.' + AUnitName);
     end;
     if TUnitAliases.Target(FAliases, AUnitName, mTarget) then
     begin
-      Names.Add(mTarget);
-      for Namespace in FProject.Namespaces do
+      mNames.Add(mTarget);
+      for mNamespace in FProject.Namespaces do
       begin
-        Names.Add(Namespace + '.' + mTarget);
+        mNames.Add(mNamespace + '.' + mTarget);
       end;
     end;
-    Result := Names.ToArray;
+    Result := mNames.ToArray;
   finally
-    Names.Free;
+    mNames.Free;
   end;
 end;
 
 function TUnitResolver.FileIn(const ADirectory, AName: string; out APath: string): Boolean;
 var
-  Key, FileName: string;
-  Listing: TDictionary<string, string>;
+  mKey, mFileName: string;
+  mListing: TDictionary<string, string>;
 begin
   if not Assigned(FListUnits) then
   begin
     APath := TProjectPaths.Combine(ADirectory, AName + '.pas');
     Exit(FFileExists(APath));
   end;
-  Key := LowerCase(ExcludeTrailingPathDelimiter(ADirectory));
+  mKey := LowerCase(ExcludeTrailingPathDelimiter(ADirectory));
   TMonitor.Enter(FLock);
   try
-    if not FListings.TryGetValue(Key, Listing) then
+    if not FListings.TryGetValue(mKey, mListing) then
     begin
-      Listing := TDictionary<string, string>.Create;
-      for FileName in FListUnits(ADirectory) do
+      mListing := TDictionary<string, string>.Create;
+      for mFileName in FListUnits(ADirectory) do
       begin
-        Listing.AddOrSetValue(LowerCase(ChangeFileExt(ExtractFileName(FileName), '')), FileName);
+        mListing.AddOrSetValue(LowerCase(ChangeFileExt(ExtractFileName(mFileName), '')), mFileName);
       end;
-      FListings.Add(Key, Listing);
+      FListings.Add(mKey, mListing);
     end;
-    Result := Listing.TryGetValue(LowerCase(AName), APath);
+    Result := mListing.TryGetValue(LowerCase(AName), APath);
   finally
     TMonitor.Exit(FLock);
   end;
@@ -214,16 +214,16 @@ end;
 
 function TUnitResolver.Resolve(const AUnitName, AFromDirectory: string): string;
 var
-  Key: string;
+  mKey: string;
 begin
   if Trim(AUnitName) = '' then
   begin
     Exit('');
   end;
-  Key := LowerCase(AUnitName) + '|' + LowerCase(AFromDirectory);
+  mKey := LowerCase(AUnitName) + '|' + LowerCase(AFromDirectory);
   TMonitor.Enter(FLock);
   try
-    if FCache.TryGetValue(Key, Result) then
+    if FCache.TryGetValue(mKey, Result) then
     begin
       Exit;
     end;
@@ -233,7 +233,7 @@ begin
   Result := Search(Trim(AUnitName), AFromDirectory);
   TMonitor.Enter(FLock);
   try
-    FCache.AddOrSetValue(Key, Result);
+    FCache.AddOrSetValue(mKey, Result);
   finally
     TMonitor.Exit(FLock);
   end;

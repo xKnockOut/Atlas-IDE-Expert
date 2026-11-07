@@ -18,7 +18,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  DebugDisplayPlaceholderRuleId = 'debug-display-placeholder';
+  cDebugDisplayPlaceholderRuleId = 'debug-display-placeholder';
 
 type
   TDebugDisplayPlaceholderRule = class(TInterfacedObject, IRule)
@@ -63,7 +63,7 @@ const
 
 function TDebugDisplayPlaceholderRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(DebugDisplayPlaceholderRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cDebugDisplayPlaceholderRuleId, TRuleSeverity.Warning,
     cTexts[TDebugDisplayRuleText.Title].Text);
 end;
 
@@ -72,8 +72,8 @@ end;
 function ReadTemplate(const ALines: TArray<string>; const ASource: TDebugDisplaySource; const AReport: IRuleReport;
   out ATemplate: TDebugDisplayTemplate): Boolean;
 var
-  Segment: TDebugDisplaySegment;
-  Column: Integer;
+  mSegment: TDebugDisplaySegment;
+  mColumn: Integer;
 begin
   ATemplate := Default(TDebugDisplayTemplate);
   Result := True;
@@ -85,10 +85,10 @@ begin
   Result := ATemplate.Valid;
   if not Result then
   begin
-    Segment := Default(TDebugDisplaySegment);
-    Segment.Offset := ATemplate.ErrorOffset;
-    Column := TDebugDisplayText.SourceColumn(ALines[ASource.TemplateLine], ASource.TemplateColumn, Segment);
-    AReport.Add(TTextRange.Create(ASource.TemplateLine, Column, ASource.TemplateLine, Column + 1),
+    mSegment := Default(TDebugDisplaySegment);
+    mSegment.Offset := ATemplate.ErrorOffset;
+    mColumn := TDebugDisplayText.SourceColumn(ALines[ASource.TemplateLine], ASource.TemplateColumn, mSegment);
+    AReport.Add(TTextRange.Create(ASource.TemplateLine, mColumn, ASource.TemplateLine, mColumn + 1),
       cTexts[TDebugDisplayRuleText.Invalid].Fmt([ATemplate.Error]));
   end;
 end;
@@ -98,30 +98,30 @@ procedure CheckPlaceholders(const ALines: TArray<string>; const ASource: TDebugD
   const ATemplate: TDebugDisplayTemplate; const AMembers: TArray<TTypeMember>; const ATypeName: string;
   const AReport: IRuleReport);
 var
-  Segment: TDebugDisplaySegment;
-  Root: string;
-  Column: Integer;
+  mSegment: TDebugDisplaySegment;
+  mRoot: string;
+  mColumn: Integer;
 begin
-  for Segment in ATemplate.Placeholders do
+  for mSegment in ATemplate.Placeholders do
   begin
-    Root := Segment.Root;
-    if (Root = '') or SameText(Root, 'Self') or TTypeMembers.Contains(AMembers, Root) then
+    mRoot := mSegment.Root;
+    if (mRoot = '') or SameText(mRoot, 'Self') or TTypeMembers.Contains(AMembers, mRoot) then
     begin
       Continue;
     end;
-    Column := TDebugDisplayText.SourceColumn(ALines[ASource.TemplateLine], ASource.TemplateColumn, Segment);
-    AReport.Add(TTextRange.Create(ASource.TemplateLine, Column, ASource.TemplateLine, Column + Length(Root)),
-      cTexts[TDebugDisplayRuleText.NoMember].Fmt([ATypeName, Root, Segment.Text]));
+    mColumn := TDebugDisplayText.SourceColumn(ALines[ASource.TemplateLine], ASource.TemplateColumn, mSegment);
+    AReport.Add(TTextRange.Create(ASource.TemplateLine, mColumn, ASource.TemplateLine, mColumn + Length(mRoot)),
+      cTexts[TDebugDisplayRuleText.NoMember].Fmt([ATypeName, mRoot, mSegment.Text]));
   end;
 end;
 
 /// <summary>Spalte (ab 1) des Namens AName in der children-Zeile ALine; 1, wenn er fehlt.</summary>
 function ChildColumn(const ALine, AName: string): Integer;
 begin
-  Result := Pos(LowerCase(TDebugDisplayText.ChildrenKey), LowerCase(ALine));
+  Result := Pos(LowerCase(TDebugDisplayText.cChildrenKey), LowerCase(ALine));
   if Result > 0 then
   begin
-    Result := Result + Length(TDebugDisplayText.ChildrenKey);
+    Result := Result + Length(TDebugDisplayText.cChildrenKey);
   end
   else
   begin
@@ -138,48 +138,48 @@ end;
 procedure CheckChildren(const ALines: TArray<string>; const ASource: TDebugDisplaySource;
   const AMembers: TArray<TTypeMember>; const ATypeName: string; const AReport: IRuleReport);
 var
-  Name: string;
-  Found: Integer;
+  mName: string;
+  mFound: Integer;
 begin
-  for Name in ASource.Children do
+  for mName in ASource.Children do
   begin
-    if not TTypeMembers.Contains(AMembers, Name) then
+    if not TTypeMembers.Contains(AMembers, mName) then
     begin
-      Found := ChildColumn(ALines[ASource.ChildrenLine], Name);
-      AReport.Add(TTextRange.Create(ASource.ChildrenLine, Found - 1, ASource.ChildrenLine, Found - 1 + Length(Name)),
-        cTexts[TDebugDisplayRuleText.NoChildMember].Fmt([ATypeName, Name]));
+      mFound := ChildColumn(ALines[ASource.ChildrenLine], mName);
+      AReport.Add(TTextRange.Create(ASource.ChildrenLine, mFound - 1, ASource.ChildrenLine, mFound - 1 + Length(mName)),
+        cTexts[TDebugDisplayRuleText.NoChildMember].Fmt([ATypeName, mName]));
     end;
   end;
 end;
 
 procedure TDebugDisplayPlaceholderRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Local: TUnitIndex;
-  Lines: TArray<string>;
-  Symbol: TIndexSymbol;
-  Source: TDebugDisplaySource;
-  Template: TDebugDisplayTemplate;
-  Members: TArray<TTypeMember>;
+  mLocal: TUnitIndex;
+  mLines: TArray<string>;
+  mSymbol: TIndexSymbol;
+  mSource: TDebugDisplaySource;
+  mTemplate: TDebugDisplayTemplate;
+  mMembers: TArray<TTypeMember>;
 begin
   if (AContext.Tree = nil) or not (ContainsText(AContext.Text, 'atlas-debug')
     or ContainsText(AContext.Text, 'AtlasDebug')) then
   begin
     Exit;
   end;
-  Local := TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext);
-  Lines := TTextLines.SplitLines(AContext.Text);
-  for Symbol in Local.Symbols do
+  mLocal := TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext);
+  mLines := TTextLines.SplitLines(AContext.Text);
+  for mSymbol in mLocal.Symbols do
   begin
-    if not (Symbol.Kind in TTypeMembers.RuleKinds) or (Symbol.FileName <> '')
-      or not TDebugDisplayText.RuleAbove(Lines, Symbol.Range.StartPos.Line, Source) then
+    if not (mSymbol.Kind in TTypeMembers.cRuleKinds) or (mSymbol.FileName <> '')
+      or not TDebugDisplayText.RuleAbove(mLines, mSymbol.Range.StartPos.Line, mSource) then
     begin
       Continue;
     end;
-    if ReadTemplate(Lines, Source, AReport, Template) and
-      TTypeMembers.Collect(Local, AContext.Index, Symbol, Members) then
+    if ReadTemplate(mLines, mSource, AReport, mTemplate) and
+      TTypeMembers.Collect(mLocal, AContext.Index, mSymbol, mMembers) then
     begin
-      CheckPlaceholders(Lines, Source, Template, Members, Symbol.Name, AReport);
-      CheckChildren(Lines, Source, Members, Symbol.Name, AReport);
+      CheckPlaceholders(mLines, mSource, mTemplate, mMembers, mSymbol.Name, AReport);
+      CheckChildren(mLines, mSource, mMembers, mSymbol.Name, AReport);
     end;
   end;
 end;

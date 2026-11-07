@@ -132,7 +132,7 @@ begin
       mIdentity.Workspace := FName;
       if mIdentity.Kind = '' then
       begin
-        mIdentity.Kind := TIndexProcessInfo.KindLsp;
+        mIdentity.Kind := TIndexProcessInfo.cKindLsp;
       end;
       FProcessEntry := TIndexProcessEntry.Create(ACacheFile, mIdentity);
     end;
@@ -200,7 +200,7 @@ procedure TShellWorkspaceCache.Release;
 begin
   FreeAndNil(FCacheLock);
   FCacheLockFile := '';
-  Report(TIndexProcessInfo.StateReady, False, cTexts[TWorkspaceCacheText.Released].Text);
+  Report(TIndexProcessInfo.cStateReady, False, cTexts[TWorkspaceCacheText.Released].Text);
 end;
 
 function TShellWorkspaceCache.Lock(const AFiles: TShellCacheFiles; const AOrigin: string;
@@ -208,7 +208,7 @@ function TShellWorkspaceCache.Lock(const AFiles: TShellCacheFiles; const AOrigin
 begin
   if SameText(AFiles.ProjectFile, FCacheLockFile) and (FCacheLock <> nil) then
   begin
-    Report(AFiles.ProjectFile, TIndexProcessInfo.StateBuilding, True, cTexts[TWorkspaceCacheText.Updating].Text);
+    Report(AFiles.ProjectFile, TIndexProcessInfo.cStateBuilding, True, cTexts[TWorkspaceCacheText.Updating].Text);
     Exit(True);
   end;
   FreeAndNil(FCacheLock);
@@ -218,11 +218,11 @@ begin
   // Für „Prozesse am Projekt“ (#62): wer schreibt, wer nur liest.
   if Result then
   begin
-    Report(AFiles.ProjectFile, TIndexProcessInfo.StateBuilding, True, cTexts[TWorkspaceCacheText.Locked].Text);
+    Report(AFiles.ProjectFile, TIndexProcessInfo.cStateBuilding, True, cTexts[TWorkspaceCacheText.Locked].Text);
   end
   else
   begin
-    Report(AFiles.ProjectFile, TIndexProcessInfo.StateReading, False, cTexts[TWorkspaceCacheText.ReadOnly].Text);
+    Report(AFiles.ProjectFile, TIndexProcessInfo.cStateReading, False, cTexts[TWorkspaceCacheText.ReadOnly].Text);
   end;
   try
     // Herkunft und Benutzung vermerken (#905): Danach erkennt jede Instanz verwaiste und ungenutzte Caches.

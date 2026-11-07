@@ -33,7 +33,8 @@ type
     /// <summary>Bei "X in [": die Kette X, deren Typ der Elementtyp ist; sonst leer, dann gilt der
     /// erwartete Typ an der Klammer.</summary>
     ElementOf: TArray<string>;
-    /// <summary>Was Enter ersetzt: von "[" bis hinter "]", ohne schließende Klammer bis zum Ende des Getippten.</summary>
+    /// <summary>Was Enter ersetzt: von "[" bis hinter "]", ohne schließende Klammer bis zum Ende des
+    /// Getippten.</summary>
     EditRange: TTextRange;
     /// <summary>Schon enthaltene Werte ("akLeft", "TAlign.alTop") und Bereiche ("skCircle..skRect"), ohne das
     /// Wort am Cursor.</summary>
@@ -116,19 +117,19 @@ end;
 function TokenBefore(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
   out APrefix: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   APrefix := -1;
   Result := -1;
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    if Compare(ATokens[Index].StartPos, APosition) >= 0 then
+    if Compare(ATokens[mIndex].StartPos, APosition) >= 0 then
     begin
       Break;
     end;
-    if not IsTrivia(ATokens[Index]) then
+    if not IsTrivia(ATokens[mIndex]) then
     begin
-      Result := Index;
+      Result := mIndex;
     end;
   end;
   if (Result >= 0) and (ATokens[Result].Kind = TPascalTokenKind.Identifier) and
@@ -162,16 +163,16 @@ end;
 
 function IsKeywordIn(const AToken: TPascalToken; const AWords: array of string): Boolean;
 var
-  Word: string;
+  mWord: string;
 begin
   Result := False;
   if AToken.Kind <> TPascalTokenKind.Keyword then
   begin
     Exit;
   end;
-  for Word in AWords do
+  for mWord in AWords do
   begin
-    if AToken.IsKeyword(Word) then
+    if AToken.IsKeyword(mWord) then
     begin
       Exit(True);
     end;
@@ -536,39 +537,39 @@ end;
 
 class function TCompletionEnums.SetElement(const ADeclaration: string): string;
 var
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
 begin
   Result := '';
-  Tokens := TPascalLexer.Tokenize(ADeclaration);
-  Index := 0;
-  while (Index <= High(Tokens)) and not Tokens[Index].IsSymbol('=') do
+  mTokens := TPascalLexer.Tokenize(ADeclaration);
+  mIndex := 0;
+  while (mIndex <= High(mTokens)) and not mTokens[mIndex].IsSymbol('=') do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Index := Next(Tokens, Index);
-  if (Index <= High(Tokens)) and Tokens[Index].IsKeyword('packed') then
+  mIndex := Next(mTokens, mIndex);
+  if (mIndex <= High(mTokens)) and mTokens[mIndex].IsKeyword('packed') then
   begin
-    Index := Next(Tokens, Index);
+    mIndex := Next(mTokens, mIndex);
   end;
-  if (Index > High(Tokens)) or not Tokens[Index].IsKeyword('set') then
+  if (mIndex > High(mTokens)) or not mTokens[mIndex].IsKeyword('set') then
   begin
     Exit;
   end;
-  Index := Next(Tokens, Index);
-  if (Index > High(Tokens)) or not Tokens[Index].IsKeyword('of') then
+  mIndex := Next(mTokens, mIndex);
+  if (mIndex > High(mTokens)) or not mTokens[mIndex].IsKeyword('of') then
   begin
     Exit;
   end;
-  Index := Next(Tokens, Index);
-  while (Index <= High(Tokens)) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) do
+  mIndex := Next(mTokens, mIndex);
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) do
   begin
-    Result := Result + CleanName(Tokens[Index].Text);
-    Index := Next(Tokens, Index);
-    if (Index <= High(Tokens)) and Tokens[Index].IsSymbol('.') then
+    Result := Result + CleanName(mTokens[mIndex].Text);
+    mIndex := Next(mTokens, mIndex);
+    if (mIndex <= High(mTokens)) and mTokens[mIndex].IsSymbol('.') then
     begin
       Result := Result + '.';
-      Index := Next(Tokens, Index);
+      mIndex := Next(mTokens, mIndex);
     end
     else
     begin
@@ -579,12 +580,12 @@ end;
 
 class function TCompletionEnums.ScopedAt(const AText: string; AOffset: Integer): Boolean;
 var
-  Match: TMatch;
+  mMatch: TMatch;
 begin
   Result := False;
-  for Match in TRegEx.Matches(Copy(AText, 1, AOffset), '\{\$SCOPEDENUMS\s+(ON|OFF)\s*\}', [roIgnoreCase]) do
+  for mMatch in TRegEx.Matches(Copy(AText, 1, AOffset), '\{\$SCOPEDENUMS\s+(ON|OFF)\s*\}', [roIgnoreCase]) do
   begin
-    Result := SameText(Match.Groups[1].Value, 'ON');
+    Result := SameText(mMatch.Groups[1].Value, 'ON');
   end;
 end;
 
@@ -599,48 +600,48 @@ class function TCompletionEnums.Checked(const AValues, APresent: TArray<string>;
 
   function IndexOfValue(const AName: string): Integer;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
-    for Index := 0 to High(AValues) do
+    for mIndex := 0 to High(AValues) do
     begin
-      if SameText(AValues[Index], LastPart(AName)) then
+      if SameText(AValues[mIndex], LastPart(AName)) then
       begin
-        Exit(Index);
+        Exit(mIndex);
       end;
     end;
     Result := -1;
   end;
 
 var
-  Element: string;
-  Bounds: TArray<string>;
-  Low_, High_, Index: Integer;
+  mElement: string;
+  mBounds: TArray<string>;
+  mLow_, mHigh_, mIndex: Integer;
 begin
   SetLength(AChecked, Length(AValues));
-  for Index := 0 to High(AChecked) do
+  for mIndex := 0 to High(AChecked) do
   begin
-    AChecked[Index] := False;
+    AChecked[mIndex] := False;
   end;
-  for Element in APresent do
+  for mElement in APresent do
   begin
-    Bounds := Element.Split(['..']);
-    Low_ := IndexOfValue(Bounds[0]);
-    High_ := Low_;
-    if Length(Bounds) = 2 then
+    mBounds := mElement.Split(['..']);
+    mLow_ := IndexOfValue(mBounds[0]);
+    mHigh_ := mLow_;
+    if Length(mBounds) = 2 then
     begin
-      High_ := IndexOfValue(Bounds[1]);
+      mHigh_ := IndexOfValue(mBounds[1]);
     end
-    else if Length(Bounds) > 2 then
+    else if Length(mBounds) > 2 then
     begin
       Exit(False);
     end;
-    if (Low_ < 0) or (High_ < 0) then
+    if (mLow_ < 0) or (mHigh_ < 0) then
     begin
       Exit(False);
     end;
-    for Index := Low_ to High_ do
+    for mIndex := mLow_ to mHigh_ do
     begin
-      AChecked[Index] := True;
+      AChecked[mIndex] := True;
     end;
   end;
   Result := True;

@@ -10,60 +10,60 @@ uses
   Atlas.Core.Settings.Plugin.Store;
 
 const
-  MaxXmlDocLines = 50;
+  cMaxXmlDocLines = 50;
   /// <summary>Grenze für hover.membersMaxLines (#1841).</summary>
-  MaxHoverMembersLines = 100;
-  MinPeekLines = 5;
-  MaxPeekLines = 60;
+  cMaxHoverMembersLines = 100;
+  cMinPeekLines = 5;
+  cMaxPeekLines = 60;
   /// <summary>Grenzen für navigation.impactDepth (#1120).</summary>
-  MinImpactDepth = 1;
-  MaxImpactDepth = 5;
+  cMinImpactDepth = 1;
+  cMaxImpactDepth = 5;
   /// <summary>Grenzen für navigation.dataFlow.maxDepth (#690).</summary>
-  MinDataFlowDepth = 1;
-  MaxDataFlowDepth = 20;
+  cMinDataFlowDepth = 1;
+  cMaxDataFlowDepth = 20;
   /// <summary>Grenzen für editor.stickyScrollMaxLines (#506).</summary>
-  MinStickyLines = 1;
-  MaxStickyLines = 10;
+  cMinStickyLines = 1;
+  cMaxStickyLines = 10;
   /// <summary>Grenzen für editor.stickyScrollBlockMinLines (#1230).</summary>
-  MinStickyBlockLines = 5;
-  MaxStickyBlockLines = 1000;
+  cMinStickyBlockLines = 5;
+  cMaxStickyBlockLines = 1000;
   /// <summary>Grenzen für editor.minimap.width, .scale und .maxColumn (#873).</summary>
-  MinMinimapWidth = 40;
-  MaxMinimapWidth = 400;
-  MinMinimapScale = 1;
-  MaxMinimapScale = 3;
-  MinMinimapColumn = 20;
-  MaxMinimapColumn = 500;
+  cMinMinimapWidth = 40;
+  cMaxMinimapWidth = 400;
+  cMinMinimapScale = 1;
+  cMaxMinimapScale = 3;
+  cMinMinimapColumn = 20;
+  cMaxMinimapColumn = 500;
   /// <summary>Grenzen für editor.blockEndLabels.minLines (#620).</summary>
-  MinBlockEndLines = 1;
-  MaxBlockEndLines = 1000;
+  cMinBlockEndLines = 1;
+  cMaxBlockEndLines = 1000;
   /// <summary>Grenzen für editor.recursionMarkers.depth (#623); wie TRecursionAnalysis im Server.</summary>
-  MinRecursionDepth = 1;
-  MaxRecursionDepth = 16;
+  cMinRecursionDepth = 1;
+  cMaxRecursionDepth = 16;
   /// <summary>Muster fortsetzen (#671): Mindestzahl gleichförmiger Zeilen.</summary>
-  MinPatternLines = 2;
-  MaxPatternLines = 5;
+  cMinPatternLines = 2;
+  cMaxPatternLines = 5;
   /// <summary>Grenzen für undo.multiFile.depth und undo.multiFile.maxSizeMb (#721).</summary>
-  MinUndoDepth = 1;
-  MaxUndoDepth = 200;
-  MinUndoMaxSizeMb = 1;
-  MaxUndoMaxSizeMb = 1024;
+  cMinUndoDepth = 1;
+  cMaxUndoDepth = 200;
+  cMinUndoMaxSizeMb = 1;
+  cMaxUndoMaxSizeMb = 1024;
   /// <summary>search.history (#893): Vorgabe und Höchstwert.</summary>
-  DefaultSearchHistory = 20;
-  MaxSearchHistory = 100;
+  cDefaultSearchHistory = 20;
+  cMaxSearchHistory = 100;
   /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
-  BeginEndAlways = 'always';
-  BeginEndMultiLine = 'multiLine';
-  BeginEndNever = 'never';
-  TryKindFinally = 'finally';
-  TryKindExcept = 'except';
-  TryKindAsk = 'ask';
+  cBeginEndAlways = 'always';
+  cBeginEndMultiLine = 'multiLine';
+  cBeginEndNever = 'never';
+  cTryKindFinally = 'finally';
+  cTryKindExcept = 'except';
+  cTryKindAsk = 'ask';
   /// <summary>Werte von editor.multiCursorModifier (#589): Taste für den Klick mit neuer Marke.</summary>
-  MultiCursorModifierAlt = 'alt';
-  MultiCursorModifierCtrl = 'ctrl';
+  cMultiCursorModifierAlt = 'alt';
+  cMultiCursorModifierCtrl = 'ctrl';
   /// <summary>Werte von editor.designerBar.searchStyle (#1442).</summary>
-  DesignerSearchWindow = 'window';
-  DesignerSearchPopup = 'popup';
+  cDesignerSearchWindow = 'window';
+  cDesignerSearchPopup = 'popup';
 
 type
   /// <summary>Plugin-Einstellungen: Verhalten beim Tippen und Bearbeiten im Editor.</summary>
@@ -227,7 +227,8 @@ type
     ExpressionTypeConversions: Boolean;
     /// <summary>Wert konstanter Ausdrücke im Tooltip zeigen (#689).</summary>
     ExpressionTypeConstValue: Boolean;
-    /// <summary>Modul-Schalter designer.enabled (#1454): Designer-Werkzeuge; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// <summary>Modul-Schalter designer.enabled (#1454): Designer-Werkzeuge; aus = die wirksamen Werte aller
+    /// Einstellungen des Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     DesignerEnabled: Boolean;
     /// <summary>Vorgaben.</summary>
@@ -274,7 +275,8 @@ type
     NavHistory: Boolean;
     /// <summary>Definition und Referenzen einblenden (#505, peek.enabled).</summary>
     Peek: Boolean;
-    /// <summary>Höhe des Peek-Fensters in Editorzeilen (#505, peek.heightLines), MinPeekLines bis MaxPeekLines.</summary>
+    /// <summary>Höhe des Peek-Fensters in Editorzeilen (#505, peek.heightLines), MinPeekLines bis
+    /// MaxPeekLines.</summary>
     PeekHeightLines: Integer;
     /// <summary>Bei Routinen auch die Implementierung zeigen (#505, peek.showImplementation).</summary>
     PeekShowImplementation: Boolean;
@@ -289,7 +291,8 @@ type
     /// <summary>Vorgabe der Tiefe der Auswirkungsanalyse (#1120, navigation.impactDepth), MinImpactDepth bis
     /// MaxImpactDepth.</summary>
     ImpactDepth: Integer;
-    /// <summary>„Woher kommt der Wert?“ und „Wohin geht der Wert?“ im Ergebnisfenster (#690, navigation.dataFlow).</summary>
+    /// <summary>„Woher kommt der Wert?“ und „Wohin geht der Wert?“ im Ergebnisfenster (#690,
+    /// navigation.dataFlow).</summary>
     DataFlow: Boolean;
     /// <summary>Größte Tiefe beim Aufklappen (#690, navigation.dataFlow.maxDepth), MinDataFlowDepth bis
     /// MaxDataFlowDepth.</summary>
@@ -304,7 +307,8 @@ type
     OutlineFollowCursor: Boolean;
     /// <summary>Bedingung des aktiven {$IFDEF}-Zweigs hinter dem Eintrag (#845, outline.conditions).</summary>
     OutlineConditions: Boolean;
-    /// <summary>Modul-Schalter search.enabled (#1454): Suche (Atlas-Suche, Unitsuche, Abfragen); aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// <summary>Modul-Schalter search.enabled (#1454): Suche (Atlas-Suche, Unitsuche, Abfragen); aus = die wirksamen
+    /// Werte aller Einstellungen des Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     SearchEnabled: Boolean;
     /// <summary>Vorgaben.</summary>
@@ -319,13 +323,17 @@ type
   TAtlasPluginUnitSearchSettings = record
     /// <summary>Hauptschalter für das Fenster „Units suchen“ (#777, unitSearch.enabled); Vorgabe an.</summary>
     UnitSearchEnabled: Boolean;
-    /// <summary>Strg+F12 und Ansicht › Units öffnen das Atlas-Fenster statt des IDE-Dialogs (#777, unitSearch.replaceIdeDialog); Vorgabe an.</summary>
+    /// <summary>Strg+F12 und Ansicht › Units öffnen das Atlas-Fenster statt des IDE-Dialogs (#777,
+    /// unitSearch.replaceIdeDialog); Vorgabe an.</summary>
     UnitSearchReplaceIdeDialog: Boolean;
-    /// <summary>Alt+F11 und Datei › Unit verwenden öffnen das Atlas-Fenster im Modus „Unit verwenden“ (#786, unitSearch.replaceUseUnitDialog); Vorgabe an.</summary>
+    /// <summary>Alt+F11 und Datei › Unit verwenden öffnen das Atlas-Fenster im Modus „Unit verwenden“ (#786,
+    /// unitSearch.replaceUseUnitDialog); Vorgabe an.</summary>
     UnitSearchReplaceUseUnitDialog: Boolean;
-    /// <summary>Umschalt+F12 und Ansicht › Formulare öffnen das Atlas-Fenster mit Filter Formulare (#786, unitSearch.replaceFormsDialog); Vorgabe an.</summary>
+    /// <summary>Umschalt+F12 und Ansicht › Formulare öffnen das Atlas-Fenster mit Filter Formulare (#786,
+    /// unitSearch.replaceFormsDialog); Vorgabe an.</summary>
     UnitSearchReplaceFormsDialog: Boolean;
-    /// <summary>Eingeklappte Gruppen je Projektgruppe merken (#777, unitSearch.rememberCollapsed); Vorgabe an.</summary>
+    /// <summary>Eingeklappte Gruppen je Projektgruppe merken (#777, unitSearch.rememberCollapsed); Vorgabe
+    /// an.</summary>
     UnitSearchRememberCollapsed: Boolean;
     /// <summary>Chipzeile mit Herkunft und Art (#777, unitSearch.filters); Vorgabe an.</summary>
     UnitSearchFilters: Boolean;
@@ -513,14 +521,14 @@ end;
 /// am Rand bleibt (' * ').</summary>
 function NormalizedBlockPrefix(const AText: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Copy(AText, 1, 8);
-  for Index := 1 to Length(Result) do
+  for mIndex := 1 to Length(Result) do
   begin
-    if Ord(Result[Index]) < 32 then
+    if Ord(Result[mIndex]) < 32 then
     begin
-      Result[Index] := ' ';
+      Result[mIndex] := ' ';
     end;
   end;
   // Nur Leerraum ist kein Präfix.
@@ -554,8 +562,8 @@ begin
   Result.WrapSelection := True;
   Result.WrapSelectionChars := '([{''';
   Result.CompleteStatement := True;
-  Result.CompleteStatementBeginEnd := BeginEndMultiLine;
-  Result.CompleteStatementTryKind := TryKindFinally;
+  Result.CompleteStatementBeginEnd := cBeginEndMultiLine;
+  Result.CompleteStatementTryKind := cTryKindFinally;
   Result.CompleteStatementMethodBody := True;
   Result.FormatCode := True;
   Result.ContinuePattern := True;
@@ -563,20 +571,20 @@ begin
   Result.MultiCursor := False;
   Result.LinkedEditing := False;
   Result.SmartPaste := 'off';
-  Result.MultiCursorModifier := MultiCursorModifierAlt;
+  Result.MultiCursorModifier := cMultiCursorModifierAlt;
 end;
 
 procedure TAtlasPluginEditorTypingSettings.Normalize;
 begin
-  BlockEndLabelsMinLines := EnsureRange(BlockEndLabelsMinLines, MinBlockEndLines, MaxBlockEndLines);
-  RecursionMarkersDepth := EnsureRange(RecursionMarkersDepth, MinRecursionDepth, MaxRecursionDepth);
-  ContinuePatternMinLines := EnsureRange(ContinuePatternMinLines, MinPatternLines, MaxPatternLines);
-  MethodPlacement := Choice(MethodPlacement, AtlasMethodPlacements);
-  RegionFolds := Choice(RegionFolds, AtlasRegionFoldModes);
+  BlockEndLabelsMinLines := EnsureRange(BlockEndLabelsMinLines, cMinBlockEndLines, cMaxBlockEndLines);
+  RecursionMarkersDepth := EnsureRange(RecursionMarkersDepth, cMinRecursionDepth, cMaxRecursionDepth);
+  ContinuePatternMinLines := EnsureRange(ContinuePatternMinLines, cMinPatternLines, cMaxPatternLines);
+  MethodPlacement := Choice(MethodPlacement, cAtlasMethodPlacements);
+  RegionFolds := Choice(RegionFolds, cAtlasRegionFoldModes);
   ContinueCommentsBlockPrefix := NormalizedBlockPrefix(ContinueCommentsBlockPrefix);
-  CompleteStatementBeginEnd := Choice(CompleteStatementBeginEnd, [BeginEndMultiLine, BeginEndAlways, BeginEndNever]);
-  CompleteStatementTryKind := Choice(CompleteStatementTryKind, [TryKindFinally, TryKindExcept, TryKindAsk]);
-  MultiCursorModifier := Choice(MultiCursorModifier, [MultiCursorModifierAlt, MultiCursorModifierCtrl]);
+  CompleteStatementBeginEnd := Choice(CompleteStatementBeginEnd, [cBeginEndMultiLine, cBeginEndAlways, cBeginEndNever]);
+  CompleteStatementTryKind := Choice(CompleteStatementTryKind, [cTryKindFinally, cTryKindExcept, cTryKindAsk]);
+  MultiCursorModifier := Choice(MultiCursorModifier, [cMultiCursorModifierAlt, cMultiCursorModifierCtrl]);
   SmartPaste := Choice(SmartPaste, ['off', 'uses', 'indent', 'both']);
   InlineDiagnostics := Choice(InlineDiagnostics, ['errors', 'off', 'errorsAndWarnings', 'all']);
 end;
@@ -653,11 +661,11 @@ end;
 
 procedure TAtlasPluginEditorInsightSettings.Normalize;
 begin
-  XmlDocMaxLines := EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines);
-  HoverMembersMaxLines := EnsureRange(HoverMembersMaxLines, 0, MaxHoverMembersLines);
+  XmlDocMaxLines := EnsureRange(XmlDocMaxLines, 0, cMaxXmlDocLines);
+  HoverMembersMaxLines := EnsureRange(HoverMembersMaxLines, 0, cMaxHoverMembersLines);
   XmlDocExpand := Choice(XmlDocExpand, ['last', 'collapsed', 'expanded']);
-  UndoMultiFileDepth := EnsureRange(UndoMultiFileDepth, MinUndoDepth, MaxUndoDepth);
-  UndoMultiFileMaxSizeMb := EnsureRange(UndoMultiFileMaxSizeMb, MinUndoMaxSizeMb, MaxUndoMaxSizeMb);
+  UndoMultiFileDepth := EnsureRange(UndoMultiFileDepth, cMinUndoDepth, cMaxUndoDepth);
+  UndoMultiFileMaxSizeMb := EnsureRange(UndoMultiFileMaxSizeMb, cMinUndoMaxSizeMb, cMaxUndoMaxSizeMb);
   if SameText(Trim(UndoMultiFileOnConflict), 'abort') then
   begin
     UndoMultiFileOnConflict := 'abort';
@@ -729,7 +737,7 @@ begin
   Result.SearchResultsInMessages := True;
   Result.SearchReplace := True;
   Result.SearchRegex := True;
-  Result.SearchHistory := DefaultSearchHistory;
+  Result.SearchHistory := cDefaultSearchHistory;
   Result.SearchMultiFile := True;
   Result.SearchFromFirstHit := False;
   Result.SymbolPath := True;
@@ -756,10 +764,10 @@ end;
 
 procedure TAtlasPluginEditorNavigationSettings.Normalize;
 begin
-  PeekHeightLines := EnsureRange(PeekHeightLines, MinPeekLines, MaxPeekLines);
-  ImpactDepth := EnsureRange(ImpactDepth, MinImpactDepth, MaxImpactDepth);
-  DataFlowMaxDepth := EnsureRange(DataFlowMaxDepth, MinDataFlowDepth, MaxDataFlowDepth);
-  SearchHistory := EnsureRange(SearchHistory, 0, MaxSearchHistory);
+  PeekHeightLines := EnsureRange(PeekHeightLines, cMinPeekLines, cMaxPeekLines);
+  ImpactDepth := EnsureRange(ImpactDepth, cMinImpactDepth, cMaxImpactDepth);
+  DataFlowMaxDepth := EnsureRange(DataFlowMaxDepth, cMinDataFlowDepth, cMaxDataFlowDepth);
+  SearchHistory := EnsureRange(SearchHistory, 0, cMaxSearchHistory);
 end;
 
 procedure TAtlasPluginEditorNavigationSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -868,8 +876,8 @@ end;
 
 procedure TAtlasPluginStickyScrollSettings.Normalize;
 begin
-  StickyScrollMaxLines := EnsureRange(StickyScrollMaxLines, MinStickyLines, MaxStickyLines);
-  StickyScrollBlockMinLines := EnsureRange(StickyScrollBlockMinLines, MinStickyBlockLines, MaxStickyBlockLines);
+  StickyScrollMaxLines := EnsureRange(StickyScrollMaxLines, cMinStickyLines, cMaxStickyLines);
+  StickyScrollBlockMinLines := EnsureRange(StickyScrollBlockMinLines, cMinStickyBlockLines, cMaxStickyBlockLines);
 end;
 
 procedure TAtlasPluginStickyScrollSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -904,7 +912,7 @@ begin
   Result.EditorDesignerBar := True;
   // Alt+^ (VK_OEM_5 mit Alt).
   Result.DesignerSearchKey := 32988;
-  Result.DesignerSearchStyle := DesignerSearchWindow;
+  Result.DesignerSearchStyle := cDesignerSearchWindow;
   Result.DesignerTabOrderClick := False;
   Result.DesignerAlign := False;
   Result.Minimap := False;
@@ -925,15 +933,15 @@ begin
   Result.GutterColumnCodeActions := True;
   Result.GutterColumnOverrides := True;
   Result.OverviewRuler := True;
-  Result.OverviewRulerKinds := TAtlasOverviewKindNames.Text(TAtlasOverviewKindNames.All);
+  Result.OverviewRulerKinds := TAtlasOverviewKindNames.Text(TAtlasOverviewKindNames.cAll);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Normalize;
 begin
   MinimapRender := Choice(MinimapRender, ['characters', 'blocks']);
-  MinimapWidth := EnsureRange(MinimapWidth, MinMinimapWidth, MaxMinimapWidth);
-  MinimapScale := EnsureRange(MinimapScale, MinMinimapScale, MaxMinimapScale);
-  MinimapMaxColumn := EnsureRange(MinimapMaxColumn, MinMinimapColumn, MaxMinimapColumn);
+  MinimapWidth := EnsureRange(MinimapWidth, cMinMinimapWidth, cMaxMinimapWidth);
+  MinimapScale := EnsureRange(MinimapScale, cMinMinimapScale, cMaxMinimapScale);
+  MinimapMaxColumn := EnsureRange(MinimapMaxColumn, cMinMinimapColumn, cMaxMinimapColumn);
   MinimapSide := Choice(MinimapSide, ['right', 'left']);
   MinimapShowSlider := Choice(MinimapShowSlider, ['always', 'mouseover']);
   EditorToolbarPosition := Choice(EditorToolbarPosition, ['belowBreadcrumbs', 'aboveBreadcrumbs', 'inBreadcrumbs']);
@@ -941,7 +949,7 @@ begin
   EditorStatusBarItems := TAtlasStatusBarItems.Normalize(EditorStatusBarItems);
   OverviewRulerKinds := TAtlasOverviewKindNames.Normalize(OverviewRulerKinds);
   DesignerSearchKey := EnsureRange(DesignerSearchKey, 0, $FFFF);
-  DesignerSearchStyle := Choice(DesignerSearchStyle, [DesignerSearchWindow, DesignerSearchPopup]);
+  DesignerSearchStyle := Choice(DesignerSearchStyle, [cDesignerSearchWindow, cDesignerSearchPopup]);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Exchange(const AIo: TAtlasSettingsExchange);

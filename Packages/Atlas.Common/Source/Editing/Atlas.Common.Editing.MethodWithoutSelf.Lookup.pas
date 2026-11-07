@@ -59,6 +59,20 @@ type
     class function IsInterfaceName(const ATypeName: string): Boolean; static;
   end;
 
+  /// <summary>Stelle des Namens Name, der an Offset beginnt: Knoten des Namens und ob er in einer Property oder in
+  /// inherited steht (für TMethodWithoutSelf.UseAt).</summary>
+  TMethodUseScan = record
+    Offset: Integer;
+    Name: string;
+    Found: TSyntaxNode;
+    InProperty: Boolean;
+    InInherited: Boolean;
+    class function Scan(ATree: TSyntaxTree; AOffset: Integer; const AName: string): TMethodUseScan; static;
+  private
+    function IsNameAt(ANode: TSyntaxNode): Boolean;
+    function Visit(ANode: TSyntaxNode): Boolean;
+  end;
+
 implementation
 
 uses
@@ -95,9 +109,9 @@ const
   /// <summary>Tiefe der Interface-Vererbung, bis zu der gesucht wird.</summary>
   cInterfaceDepth = 8;
   // Helper der RTL (System.SysUtils, System.Character), falls der Index sie nicht kennt.
-  RtlHelpedTypes: array[0..14] of string = ('string', 'UnicodeString', 'Integer', 'Cardinal', 'Int64', 'UInt64',
+  cRtlHelpedTypes: array[0..14] of string = ('string', 'UnicodeString', 'Integer', 'Cardinal', 'Int64', 'UInt64',
     'NativeInt', 'NativeUInt', 'Byte', 'Word', 'ShortInt', 'SmallInt', 'Double', 'Single', 'Boolean');
-  RtlHelpers: array[0..14] of string = ('TStringHelper', 'TStringHelper', 'TIntegerHelper', 'TCardinalHelper',
+  cRtlHelpers: array[0..14] of string = ('TStringHelper', 'TStringHelper', 'TIntegerHelper', 'TCardinalHelper',
     'TInt64Helper', 'TUInt64Helper', 'TNativeIntHelper', 'TNativeUIntHelper', 'TByteHelper', 'TWordHelper',
     'TShortIntHelper', 'TSmallIntHelper', 'TDoubleHelper', 'TSingleHelper', 'TBooleanHelper');
 
@@ -487,10 +501,10 @@ var
   mIndex: Integer;
 begin
   Result := '';
-  mIndex := IndexText(ATypeName, RtlHelpedTypes);
+  mIndex := IndexText(ATypeName, cRtlHelpedTypes);
   if (mIndex >= 0) and UsesSysUtils(ATree) then
   begin
-    Result := RtlHelpers[mIndex];
+    Result := cRtlHelpers[mIndex];
   end;
 end;
 
@@ -553,14 +567,21 @@ begin
   if mResolved.Kind = TResolvedKind.None then
   begin
     Result := TMemberLevel.Unknown;
-    if TSystemIntrinsics.IsKnown(TMethodLookup.HeadName(ANode.Name)) then
+    if TSystemIntrinsics.IsKnown(TMethodLookup.HeadName(ANode.Name)) and
+      not AResolver.MayBeHiddenMember(ATree, AFileName, ANode, mResolved) then
     begin
       Result := TMemberLevel.NotMember;
     end;
   end
   else if (mResolved.Kind <> TResolvedKind.Symbol) or mResolved.Builtin or (mResolved.Container = '') then
   begin
+    // Eine freie oder eingebaute Routine verdeckt ein Mitglied eines Vorfahren außerhalb des Index nicht: Close
+    // in einem Formular ist TCustomForm.Close, nicht System.Close.
     Result := TMemberLevel.NotMember;
+    if AResolver.MayBeHiddenMember(ATree, AFileName, ANode, mResolved) then
+    begin
+      Result := TMemberLevel.Unknown;
+    end;
   end
   else
   begin
@@ -733,6 +754,58 @@ var
 begin
   mName := LastTypePart(ATypeName);
   Result := (Length(mName) > 1) and (mName[1] = 'I') and CharInSet(mName[2], ['A'..'Z']);
+end;
+
+function TMethodUseScan.IsNameAt(ANode: TSyntaxNode): Boolean;
+begin
+  if not SameText(ANode.Name, Name) then
+  begin
+    Exit(False);
+  end;
+  case ANode.Kind of
+    TSyntaxKind.Identifier:
+      Result := ANode.StartOffset = Offset;
+    TSyntaxKind.MemberAccess:
+      Result := ANode.EndOffset = Offset + Length(Name);
+  else
+    Result := False;
+  end;
+end;
+
+function TMethodUseScan.Visit(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.StartOffset <= Offset) and (Offset < ANode.EndOffset);
+  if not Result then
+  begin
+    Exit;
+  end;
+  if ANode.Kind = TSyntaxKind.PropertyDecl then
+  begin
+    InProperty := True;
+  end
+  else if (ANode.Kind = TSyntaxKind.InheritedExpr) and SameText(ANode.Name, Name) then
+  begin
+    InInherited := True;
+  end
+  else if IsNameAt(ANode) then
+  begin
+    Found := ANode;
+  end;
+end;
+
+class function TMethodUseScan.Scan(ATree: TSyntaxTree; AOffset: Integer; const AName: string): TMethodUseScan;
+var
+  mScan: TMethodUseScan;
+begin
+  mScan := Default(TMethodUseScan);
+  mScan.Offset := AOffset;
+  mScan.Name := AName;
+  ATree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      Result := mScan.Visit(ANode);
+    end);
+  Result := mScan;
 end;
 
 end.

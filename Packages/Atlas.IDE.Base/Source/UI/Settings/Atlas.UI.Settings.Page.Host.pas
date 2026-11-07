@@ -328,13 +328,13 @@ end;
 
 function TAtlasSettingsPageHost.ControlOf(const AKey: string): TControl;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FRevealKeys) do
+  for mIndex := 0 to High(FRevealKeys) do
   begin
-    if SameText(FRevealKeys[Index], AKey) then
+    if SameText(FRevealKeys[mIndex], AKey) then
     begin
-      Exit(FRevealControls[Index]);
+      Exit(FRevealControls[mIndex]);
     end;
   end;
   Result := nil;
@@ -376,7 +376,7 @@ end;
 
 procedure TAtlasSettingsPageHost.SetLocked(AControl: TControl; ALocked: Boolean);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if AControl = nil then
   begin
@@ -393,9 +393,9 @@ begin
   AControl.Enabled := not ALocked and not FOwnOff.Contains(AControl);
   if (AControl is TWinControl) and not (AControl is TAtlasSettingsGroup) then
   begin
-    for Index := 0 to TWinControl(AControl).ControlCount - 1 do
+    for mIndex := 0 to TWinControl(AControl).ControlCount - 1 do
     begin
-      SetLocked(TWinControl(AControl).Controls[Index], ALocked);
+      SetLocked(TWinControl(AControl).Controls[mIndex], ALocked);
     end;
   end;
 end;

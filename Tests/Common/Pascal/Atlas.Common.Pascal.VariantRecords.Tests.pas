@@ -121,7 +121,7 @@ begin
     begin
       Result := Result + ' ';
     end;
-    if Entry.GetValue<Integer>('kind', 0) = TLspSymbolKind.Namespace then
+    if Entry.GetValue<Integer>('kind', 0) = TLspSymbolKind.cNamespace then
     begin
       Result := Result + '[' + Entry.GetValue<string>('name', '') + ': ' + Names(Entry.GetValue('children')) + ']';
     end

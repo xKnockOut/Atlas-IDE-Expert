@@ -69,28 +69,25 @@ uses
   Atlas.Common.Rules.Contract;
 
 const
-  UnusedSuppressionRuleId = 'unused-suppression';
-  UnknownRuleIdRuleId = 'unknown-rule-id';
+  cUnusedSuppressionRuleId = 'unused-suppression';
+  cUnknownRuleIdRuleId = 'unknown-rule-id';
   /// <summary>Hinweis, dass die Regeln eine Unit wegen MaxTreeDepth übersprungen haben (Bericht M1).</summary>
-  UnitTooDeepRuleId = 'unit-too-deep';
+  cUnitTooDeepRuleId = 'unit-too-deep';
 
 type
   TRuleEngine = class
   public const
     /// <summary>Ab dieser Dauer nennt das Diagnoselog die Regel.</summary>
-    SlowRuleMs = 100;
+    cSlowRuleMs = 100;
     /// <summary>Netz (#1094, Bericht M1): Tiefere Syntaxbäume prüfen die Regeln nicht, die Unit bekommt den
     /// Hinweis unit-too-deep. Alle Regeln laufen iterativ; TBuiltinRulesTests prüft sie mit Ketten von 5000
     /// Gliedern in 128 KB Stapel. Die Grenze fängt nur unbekannte rekursive Wege ab; so tiefe Bäume entstehen erst aus
     /// Ketten mit 100000 Gliedern.</summary>
-    MaxTreeDepth = 100000;
+    cMaxTreeDepth = 100000;
   public
     /// <summary>Wirksamer Schweregrad einer Regel; Off = nicht ausführen.</summary>
     class function EffectiveSeverity(const ARule: TRuleDescriptor;
       const ASettings: TServerSettings; const ARelativePath: string): TRuleSeverity; overload; static;
-    /// <summary>Wie oben ohne Dateipfad (ARelativePath = '').</summary>
-    class function EffectiveSeverity(const ARule: TRuleDescriptor;
-      const ASettings: TServerSettings): TRuleSeverity; overload; static;
     class function EffectiveSeverity(const ARule: TRuleDescriptor; const ASettings: TServerSettings;
       const ARelativePath: string; out AEnabled: Boolean): TRuleSeverity; overload; static;
     /// <summary>Ist die Gruppe der Regel über "group:&lt;gruppe&gt;": "off" abgeschaltet (#909)?</summary>
@@ -256,22 +253,22 @@ type
 /// (Bericht M1); leer, wenn der Hinweis abgeschaltet ist.</summary>
 function TooDeepFindings(ATree: TSyntaxTree; const ASettings: TServerSettings): TArray<TRuleFinding>;
 var
-  Finding: TRuleFinding;
-  Node: TSyntaxNode;
+  mFinding: TRuleFinding;
+  mNode: TSyntaxNode;
 begin
   Result := nil;
-  if ASettings.RuleSeverity(UnitTooDeepRuleId, TRuleSeverity.Hint) = TRuleSeverity.Off then
+  if ASettings.RuleSeverity(cUnitTooDeepRuleId, TRuleSeverity.Hint) = TRuleSeverity.Off then
   begin
     Exit;
   end;
-  Node := ATree.Deepest;
-  Finding := Default(TRuleFinding);
-  Finding.RuleId := UnitTooDeepRuleId;
-  Finding.Range := TTextRange.Create(Node.StartPos, Node.EndPos);
-  Finding.Message := cTexts[TEngineText.UnitTooDeep].Fmt([ATree.Depth, TRuleEngine.MaxTreeDepth]);
-  Finding.Severity := ASettings.RuleSeverity(UnitTooDeepRuleId, TRuleSeverity.Hint);
-  Finding.Confidence := TRuleConfidence.High;
-  Result := [Finding];
+  mNode := ATree.Deepest;
+  mFinding := Default(TRuleFinding);
+  mFinding.RuleId := cUnitTooDeepRuleId;
+  mFinding.Range := TTextRange.Create(mNode.StartPos, mNode.EndPos);
+  mFinding.Message := cTexts[TEngineText.UnitTooDeep].Fmt([ATree.Depth, TRuleEngine.cMaxTreeDepth]);
+  mFinding.Severity := ASettings.RuleSeverity(cUnitTooDeepRuleId, TRuleSeverity.Hint);
+  mFinding.Confidence := TRuleConfidence.High;
+  Result := [mFinding];
 end;
 
 function CompareFindings(const A, B: TRuleFinding): Integer;
@@ -291,29 +288,29 @@ end;
 /// {$R-,Q-} meldet zwei Treffer derselben Regel an derselben Stelle).</summary>
 function SortedFindings(const AFindings: TArray<TRuleFinding>): TArray<TRuleFinding>;
 var
-  Items: TArray<TRuleFinding>;
-  Order: TArray<Integer>;
-  Index: Integer;
+  mItems: TArray<TRuleFinding>;
+  mOrder: TArray<Integer>;
+  mIndex: Integer;
 begin
-  Items := AFindings;
-  SetLength(Order, Length(Items));
-  for Index := 0 to High(Order) do
+  mItems := AFindings;
+  SetLength(mOrder, Length(mItems));
+  for mIndex := 0 to High(mOrder) do
   begin
-    Order[Index] := Index;
+    mOrder[mIndex] := mIndex;
   end;
-  TArray.Sort<Integer>(Order, TComparer<Integer>.Construct(
+  TArray.Sort<Integer>(mOrder, TComparer<Integer>.Construct(
     function(const A, B: Integer): Integer
     begin
-      Result := CompareFindings(Items[A], Items[B]);
+      Result := CompareFindings(mItems[A], mItems[B]);
       if Result = 0 then
       begin
         Result := A - B;
       end;
     end));
-  SetLength(Result, Length(Items));
-  for Index := 0 to High(Order) do
+  SetLength(Result, Length(mItems));
+  for mIndex := 0 to High(mOrder) do
   begin
-    Result[Index] := Items[Order[Index]];
+    Result[mIndex] := mItems[mOrder[mIndex]];
   end;
 end;
 
@@ -345,100 +342,94 @@ end;
 procedure TRuleReport.Add(const ARange: TTextRange; const AMessage: string; AConfidence: TRuleConfidence;
   const AFixes: TArray<TRuleFix>);
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
-  Finding.RuleId := FRuleId;
-  Finding.Range := ARange;
-  Finding.Message := AMessage;
-  Finding.Severity := TRuleEngine.CapSeverity(FSeverity, AConfidence);
-  Finding.Confidence := AConfidence;
-  Finding.Fixes := AFixes;
-  Finding.Details := '';
-  FFindings.Add(Finding);
+  mFinding.RuleId := FRuleId;
+  mFinding.Range := ARange;
+  mFinding.Message := AMessage;
+  mFinding.Severity := TRuleEngine.CapSeverity(FSeverity, AConfidence);
+  mFinding.Confidence := AConfidence;
+  mFinding.Fixes := AFixes;
+  mFinding.Details := '';
+  FFindings.Add(mFinding);
 end;
 
 procedure TRuleReport.AddWithDetails(const ARange: TTextRange; const AMessage, ADetails: string;
   AConfidence: TRuleConfidence; const AFixes: TArray<TRuleFix>);
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
-  Finding.RuleId := FRuleId;
-  Finding.Range := ARange;
-  Finding.Message := AMessage;
-  Finding.Severity := TRuleEngine.CapSeverity(FSeverity, AConfidence);
-  Finding.Confidence := AConfidence;
-  Finding.Fixes := AFixes;
-  Finding.Details := ADetails;
-  FFindings.Add(Finding);
+  mFinding.RuleId := FRuleId;
+  mFinding.Range := ARange;
+  mFinding.Message := AMessage;
+  mFinding.Severity := TRuleEngine.CapSeverity(FSeverity, AConfidence);
+  mFinding.Confidence := AConfidence;
+  mFinding.Fixes := AFixes;
+  mFinding.Details := ADetails;
+  FFindings.Add(mFinding);
 end;
 
 procedure TRuleReport.AddWithSeverity(const ARange: TTextRange; const AMessage: string; ASeverity: TRuleSeverity;
   const AFixes: TArray<TRuleFix>);
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
   if ASeverity = TRuleSeverity.Off then
   begin
     Exit;
   end;
-  Finding.RuleId := FRuleId;
-  Finding.Range := ARange;
-  Finding.Message := AMessage;
+  mFinding.RuleId := FRuleId;
+  mFinding.Range := ARange;
+  mFinding.Message := AMessage;
   if ASeverity = TRuleSeverity.Default then
   begin
-    Finding.Severity := FSeverity;
+    mFinding.Severity := FSeverity;
   end
   else
   begin
-    Finding.Severity := ASeverity;
+    mFinding.Severity := ASeverity;
   end;
-  Finding.Confidence := TRuleConfidence.High;
-  Finding.Fixes := AFixes;
-  Finding.Details := '';
-  FFindings.Add(Finding);
+  mFinding.Confidence := TRuleConfidence.High;
+  mFinding.Fixes := AFixes;
+  mFinding.Details := '';
+  FFindings.Add(mFinding);
 end;
 
 procedure TRuleReport.AddRelated(const ARange: TTextRange; const AMessage, ADetails: string; ASeverity: TRuleSeverity;
   const AFixes: TArray<TRuleFix>; const ARelated: TArray<TRuleRelated>);
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
   if ASeverity = TRuleSeverity.Off then
   begin
     Exit;
   end;
-  Finding.RuleId := FRuleId;
-  Finding.Range := ARange;
-  Finding.Message := AMessage;
+  mFinding.RuleId := FRuleId;
+  mFinding.Range := ARange;
+  mFinding.Message := AMessage;
   if ASeverity = TRuleSeverity.Default then
   begin
-    Finding.Severity := FSeverity;
+    mFinding.Severity := FSeverity;
   end
   else
   begin
-    Finding.Severity := ASeverity;
+    mFinding.Severity := ASeverity;
   end;
-  Finding.Confidence := TRuleConfidence.High;
-  Finding.Fixes := AFixes;
-  Finding.Details := ADetails;
-  Finding.Related := ARelated;
-  FFindings.Add(Finding);
+  mFinding.Confidence := TRuleConfidence.High;
+  mFinding.Fixes := AFixes;
+  mFinding.Details := ADetails;
+  mFinding.Related := ARelated;
+  FFindings.Add(mFinding);
 end;
 
 { TRuleEngine }
 
 class function TRuleEngine.EffectiveSeverity(const ARule: TRuleDescriptor;
-  const ASettings: TServerSettings): TRuleSeverity;
-begin
-  Result := EffectiveSeverity(ARule, ASettings, '');
-end;
-
-class function TRuleEngine.EffectiveSeverity(const ARule: TRuleDescriptor;
   const ASettings: TServerSettings; const ARelativePath: string): TRuleSeverity;
 var
-  Enabled: Boolean;
+  mEnabled: Boolean;
 begin
-  Result := EffectiveSeverity(ARule, ASettings, ARelativePath, Enabled);
+  Result := EffectiveSeverity(ARule, ASettings, ARelativePath, mEnabled);
 end;
 
 class function TRuleEngine.EffectiveSeverity(const ARule: TRuleDescriptor; const ASettings: TServerSettings;
@@ -466,56 +457,56 @@ end;
 
 class function TRuleEngine.GroupOff(const ARuleId: string; const ASettings: TServerSettings): Boolean;
 var
-  Entry: TRuleCatalogEntry;
+  mEntry: TRuleCatalogEntry;
 begin
-  Result := (Length(ASettings.Rules) > 0) and TRuleCatalog.Shared.TryFind(ARuleId, Entry) and
-    (ASettings.RuleSeverity(TRuleCatalog.GroupKey(Entry.Group), TRuleSeverity.Default) = TRuleSeverity.Off);
+  Result := (Length(ASettings.Rules) > 0) and TRuleCatalog.Shared.TryFind(ARuleId, mEntry) and
+    (ASettings.RuleSeverity(TRuleCatalog.GroupKey(mEntry.Group), TRuleSeverity.Default) = TRuleSeverity.Off);
 end;
 
 class function TRuleEngine.TypeLevelOff(const ARuleId: string; const ASettings: TServerSettings): Boolean;
 var
-  Entry: TRuleCatalogEntry;
-  Options: string;
-  Value, Level: TJSONValue;
+  mEntry: TRuleCatalogEntry;
+  mOptions: string;
+  mValue, mLevel: TJSONValue;
 begin
   Result := False;
-  if (Length(ASettings.Rules) = 0) or not TRuleCatalog.Shared.TryFind(ARuleId, Entry) or
-    (Entry.Group <> TRuleGroup.Compiler) or (Entry.Level <> 'T') then
+  if (Length(ASettings.Rules) = 0) or not TRuleCatalog.Shared.TryFind(ARuleId, mEntry) or
+    (mEntry.Group <> TRuleGroup.Compiler) or (mEntry.Level <> 'T') then
   begin
     Exit;
   end;
-  Options := RuleOptions(TRuleCatalog.GroupKey(Entry.Group), ASettings);
-  if Options = '' then
+  mOptions := RuleOptions(TRuleCatalog.GroupKey(mEntry.Group), ASettings);
+  if mOptions = '' then
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(Options);
+  mValue := TJSONObject.ParseJSONValue(mOptions);
   try
-    if Value is TJSONObject then
+    if mValue is TJSONObject then
     begin
-      Level := TJSONObject(Value).GetValue('typeLevel');
-      Result := (Level is TJSONString) and SameText(TJSONString(Level).Value, 'off');
+      mLevel := TJSONObject(mValue).GetValue('typeLevel');
+      Result := (mLevel is TJSONString) and SameText(TJSONString(mLevel).Value, 'off');
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TRuleEngine.CapSeverity(ASeverity: TRuleSeverity; AConfidence: TRuleConfidence): TRuleSeverity;
 var
-  Limit: TRuleSeverity;
+  mLimit: TRuleSeverity;
 begin
   case AConfidence of
     TRuleConfidence.Low:
-      Limit := TRuleSeverity.Hint;
+      mLimit := TRuleSeverity.Hint;
     TRuleConfidence.Medium:
-      Limit := TRuleSeverity.Warning;
+      mLimit := TRuleSeverity.Warning;
   else
-    Limit := TRuleSeverity.Error;
+    mLimit := TRuleSeverity.Error;
   end;
-  if Ord(ASeverity) > Ord(Limit) then
+  if Ord(ASeverity) > Ord(mLimit) then
   begin
-    Result := Limit;
+    Result := mLimit;
   end
   else
   begin
@@ -525,13 +516,13 @@ end;
 
 class function TRuleEngine.RuleOptions(const ARuleId: string; const ASettings: TServerSettings): string;
 var
-  Rule: TRuleSetting;
+  mRule: TRuleSetting;
 begin
-  for Rule in ASettings.Rules do
+  for mRule in ASettings.Rules do
   begin
-    if SameText(Rule.Id, ARuleId) then
+    if SameText(mRule.Id, ARuleId) then
     begin
-      Exit(Rule.Options);
+      Exit(mRule.Options);
     end;
   end;
   Result := '';
@@ -539,42 +530,42 @@ end;
 
 class function TRuleEngine.IsExceptedByOptions(const AOptions, ARelativePath, AUnitName: string): Boolean;
 var
-  Value: TJSONValue;
-  Exclude: TJSONValue;
-  Item: TJSONValue;
-  Pattern: string;
+  mValue: TJSONValue;
+  mExclude: TJSONValue;
+  mItem: TJSONValue;
+  mPattern: string;
 begin
   Result := False;
   if AOptions = '' then
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(AOptions);
+  mValue := TJSONObject.ParseJSONValue(AOptions);
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    Exclude := TJSONObject(Value).GetValue('exclude');
-    if not (Exclude is TJSONArray) then
+    mExclude := TJSONObject(mValue).GetValue('exclude');
+    if not (mExclude is TJSONArray) then
     begin
       Exit;
     end;
-    for Item in TJSONArray(Exclude) do
+    for mItem in TJSONArray(mExclude) do
     begin
-      if not (Item is TJSONString) then
+      if not (mItem is TJSONString) then
       begin
         Continue;
       end;
-      Pattern := Item.Value;
-      if ((AUnitName <> '') and SameText(Pattern, AUnitName)) or
-        ((ARelativePath <> '') and MatchesGlob(Pattern, ARelativePath)) then
+      mPattern := mItem.Value;
+      if ((AUnitName <> '') and SameText(mPattern, AUnitName)) or
+        ((ARelativePath <> '') and MatchesGlob(mPattern, ARelativePath)) then
       begin
         Exit(True);
       end;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -682,7 +673,7 @@ begin
   begin
     Exit;
   end;
-  if (AContext.Tree <> nil) and (AContext.Tree.Depth > MaxTreeDepth) then
+  if (AContext.Tree <> nil) and (AContext.Tree.Depth > cMaxTreeDepth) then
   begin
     TRequestDiagnostics.TreeTooDeep(AContext.Tree.Depth);
     Exit(TooDeepFindings(AContext.Tree, ASettings));
@@ -886,7 +877,7 @@ procedure TRuleRun.RuleTimed(const ARuleId: string; const AWatch: TStopwatch);
 begin
   // Zeitprofil des Prüflaufs (#1356): dieselbe Messung, an den Profiler des Threads, falls einer hängt.
   TCheckProfiler.RuleTimed(ARuleId, TCheckProfiler.TicksToMicroseconds(AWatch.ElapsedTicks, TStopwatch.Frequency));
-  if AWatch.ElapsedMilliseconds >= TRuleEngine.SlowRuleMs then
+  if AWatch.ElapsedMilliseconds >= TRuleEngine.cSlowRuleMs then
   begin
     TRequestDiagnostics.Slowest('slowRule', ARuleId, Integer(AWatch.ElapsedMilliseconds));
   end;
@@ -1042,7 +1033,7 @@ begin
     mRemoval := AEntry.Range;
   end;
   Result := Default(TRuleFinding);
-  Result.RuleId := UnusedSuppressionRuleId;
+  Result.RuleId := cUnusedSuppressionRuleId;
   Result.Range := AEntry.Range;
   Result.Message := cTexts[TEngineText.UnusedSuppression].Text;
   Result.Severity := ASeverity;
@@ -1056,7 +1047,7 @@ var
   mSeverity: TRuleSeverity;
   mEntry: TSuppressionEntry;
 begin
-  mSeverity := FSettings.RuleSeverity(UnusedSuppressionRuleId, TRuleSeverity.Hint);
+  mSeverity := FSettings.RuleSeverity(cUnusedSuppressionRuleId, TRuleSeverity.Hint);
   if mSeverity = TRuleSeverity.Off then
   begin
     Exit;
@@ -1099,7 +1090,7 @@ begin
   mRange := AEntry.IdRanges[AIndex];
   mSuggestion := TSuppressions.Suggest(mId, AKnown);
   Result := Default(TRuleFinding);
-  Result.RuleId := UnknownRuleIdRuleId;
+  Result.RuleId := cUnknownRuleIdRuleId;
   Result.Range := mRange;
   Result.Severity := ASeverity;
   Result.Confidence := TRuleConfidence.High;
@@ -1124,7 +1115,7 @@ var
   mEntry: TSuppressionEntry;
   mIndex: Integer;
 begin
-  mSeverity := FSettings.RuleSeverity(UnknownRuleIdRuleId, TRuleSeverity.Hint);
+  mSeverity := FSettings.RuleSeverity(cUnknownRuleIdRuleId, TRuleSeverity.Hint);
   if (Length(FSuppressions.Entries) = 0) or (mSeverity = TRuleSeverity.Off) then
   begin
     Exit;

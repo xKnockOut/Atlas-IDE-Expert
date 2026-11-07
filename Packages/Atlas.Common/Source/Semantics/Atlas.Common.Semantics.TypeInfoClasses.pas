@@ -30,7 +30,7 @@ type
 
   TTypeInfoClasses = class
   public const
-    MaxDepth = 32;
+    cMaxDepth = 32;
   private
     FIndex: ISymbolIndex;
     FReadText: TTypeInfoReadText;
@@ -64,9 +64,9 @@ uses
   Atlas.Common.Pascal.Preprocessor;
 
 const
-  Platform_ = 'Win32';
-  CompilerVersion_ = 37.0;
-  KnownClasses: array[0..39] of string = ('tpersistent', 'tinterfacedpersistent', 'tcomponent', 'tcollection',
+  cPlatform_ = 'Win32';
+  cCompilerVersion_ = 37.0;
+  cKnownClasses: array[0..39] of string = ('tpersistent', 'tinterfacedpersistent', 'tcomponent', 'tcollection',
     'tcollectionitem', 'townedcollection', 'tstrings', 'tstringlist', 'tbasicaction', 'tcontainedaction',
     'tcustomaction', 'taction', 'tcontrol', 'twincontrol', 'tcustomcontrol', 'tgraphiccontrol', 'tscrollingwincontrol',
     'tcustomform', 'tform', 'tcustomframe', 'tframe', 'tdatamodule', 'tgraphicsobject', 'tfont', 'tbrush', 'tpen',
@@ -101,12 +101,12 @@ end;
 
 class function TTypeInfoClasses.KnownTypeInfoClass(const AClassName: string): Boolean;
 var
-  Name, Known: string;
+  mName, mKnown: string;
 begin
-  Name := ShortName(AClassName);
-  for Known in KnownClasses do
+  mName := ShortName(AClassName);
+  for mKnown in cKnownClasses do
   begin
-    if Name = Known then
+    if mName = mKnown then
     begin
       Exit(True);
     end;
@@ -116,116 +116,116 @@ end;
 
 class function TTypeInfoClasses.ReadSwitch(const ADirective: string; out AOn: Boolean): Boolean;
 var
-  Body, Part, Upper: string;
-  Found: Boolean;
+  mBody, mPart, mUpper: string;
+  mFound: Boolean;
 begin
   AOn := False;
-  Body := Trim(ADirective);
-  if Body.StartsWith('{$') and Body.EndsWith('}') then
+  mBody := Trim(ADirective);
+  if mBody.StartsWith('{$') and mBody.EndsWith('}') then
   begin
-    Body := Copy(Body, 3, Length(Body) - 3);
+    mBody := Copy(mBody, 3, Length(mBody) - 3);
   end
-  else if Body.StartsWith('(*$') and Body.EndsWith('*)') then
+  else if mBody.StartsWith('(*$') and mBody.EndsWith('*)') then
   begin
-    Body := Copy(Body, 4, Length(Body) - 5);
+    mBody := Copy(mBody, 4, Length(mBody) - 5);
   end
   else
   begin
     Exit(False);
   end;
-  Upper := UpperCase(Trim(Body));
-  if Upper.StartsWith('TYPEINFO') then
+  mUpper := UpperCase(Trim(mBody));
+  if mUpper.StartsWith('TYPEINFO') then
   begin
-    Upper := Trim(Copy(Upper, 9, MaxInt));
-    if Upper = 'ON' then
+    mUpper := Trim(Copy(mUpper, 9, MaxInt));
+    if mUpper = 'ON' then
     begin
       AOn := True;
     end
-    else if Upper <> 'OFF' then
+    else if mUpper <> 'OFF' then
     begin
       Exit(False);
     end;
     Exit(True);
   end;
   // Schalterliste: {$M+} oder {$R-,M+,H+}; der letzte M-Schalter gilt.
-  Found := False;
-  for Part in Upper.Split([',']) do
+  mFound := False;
+  for mPart in mUpper.Split([',']) do
   begin
-    if Trim(Part) = 'M+' then
+    if Trim(mPart) = 'M+' then
     begin
       AOn := True;
-      Found := True;
+      mFound := True;
     end
-    else if Trim(Part) = 'M-' then
+    else if Trim(mPart) = 'M-' then
     begin
       AOn := False;
-      Found := True;
+      mFound := True;
     end;
   end;
-  Result := Found;
+  Result := mFound;
 end;
 
 class function TTypeInfoClasses.SwitchAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Boolean;
 var
-  Token: TPascalToken;
-  Value: Boolean;
-  Saved: TArray<Boolean>;
-  Name: string;
+  mToken: TPascalToken;
+  mValue: Boolean;
+  mSaved: TArray<Boolean>;
+  mName: string;
 begin
   Result := False;
-  Saved := nil;
-  for Token in ATokens do
+  mSaved := nil;
+  for mToken in ATokens do
   begin
-    if not Before(Token.StartPos, APosition) then
+    if not Before(mToken.StartPos, APosition) then
     begin
       Break;
     end;
-    if Token.Kind <> TPascalTokenKind.Directive then
+    if mToken.Kind <> TPascalTokenKind.Directive then
     begin
       Continue;
     end;
-    if ReadSwitch(Token.Text, Value) then
+    if ReadSwitch(mToken.Text, mValue) then
     begin
-      Result := Value;
+      Result := mValue;
       Continue;
     end;
     // {$PUSHOPT}/{$POPOPT} (#847).
-    Name := UpperCase(StringReplace(Token.Text, ' ', '', [rfReplaceAll]));
-    if (Name = '{$PUSHOPT}') or (Name = '(*$PUSHOPT*)') then
+    mName := UpperCase(StringReplace(mToken.Text, ' ', '', [rfReplaceAll]));
+    if (mName = '{$PUSHOPT}') or (mName = '(*$PUSHOPT*)') then
     begin
-      Saved := Saved + [Result];
+      mSaved := mSaved + [Result];
     end
-    else if ((Name = '{$POPOPT}') or (Name = '(*$POPOPT*)')) and (Saved <> nil) then
+    else if ((mName = '{$POPOPT}') or (mName = '(*$POPOPT*)')) and (mSaved <> nil) then
     begin
-      Result := Saved[High(Saved)];
-      SetLength(Saved, Length(Saved) - 1);
+      Result := mSaved[High(mSaved)];
+      SetLength(mSaved, Length(mSaved) - 1);
     end;
   end;
 end;
 
 class function TTypeInfoClasses.ActiveTokens(const AText: string): TArray<TPascalToken>;
 var
-  Options: TPreprocessorOptions;
-  Processed: TPreprocessorResult;
-  Index: Integer;
+  mOptions: TPreprocessorOptions;
+  mProcessed: TPreprocessorResult;
+  mIndex: Integer;
 begin
   // Ohne bedingte Direktive sind alle Token aktiv.
   if (Pos('{$IF', UpperCase(AText)) = 0) and (Pos('(*$IF', UpperCase(AText)) = 0) then
   begin
     Exit(TPascalLexer.Tokenize(AText));
   end;
-  Options := TPreprocessorOptions.Default;
-  Options.Defines := TPascalPreprocessor.PredefinedSymbols(Platform_, CompilerVersion_);
-  Options.CompilerVersion := CompilerVersion_;
-  Options.RTLVersion := CompilerVersion_;
-  Processed := TPascalPreprocessor.Process(AText, Options);
+  mOptions := TPreprocessorOptions.Default;
+  mOptions.Defines := TPascalPreprocessor.PredefinedSymbols(cPlatform_, cCompilerVersion_);
+  mOptions.CompilerVersion := cCompilerVersion_;
+  mOptions.RTLVersion := cCompilerVersion_;
+  mProcessed := TPascalPreprocessor.Process(AText, mOptions);
   // Nur Token der Datei selbst, nicht aus Include-Dateien.
   Result := nil;
-  for Index := 0 to High(Processed.Tokens) do
+  for mIndex := 0 to High(mProcessed.Tokens) do
   begin
-    if (Index > High(Processed.FileIndexes)) or (Processed.FileIndexes[Index] = 0) then
+    if (mIndex > High(mProcessed.FileIndexes)) or (mProcessed.FileIndexes[mIndex] = 0) then
     begin
-      Result := Result + [Processed.Tokens[Index]];
+      Result := Result + [mProcessed.Tokens[mIndex]];
     end;
   end;
 end;
@@ -279,7 +279,7 @@ var
   mFound: TSymbolLocation;
 begin
   mKey := ShortName(AClassName);
-  if (mKey = '') or (mKey = 'tobject') or (ADepth > MaxDepth) then
+  if (mKey = '') or (mKey = 'tobject') or (ADepth > cMaxDepth) then
   begin
     Exit(False);
   end;

@@ -44,10 +44,10 @@ type
   TAtlasCloseRules = record
   public const
     /// <summary>So lange bleibt der Tooltip, nachdem die Maus Bezeichner und Tooltip verlassen hat.</summary>
-    TooltipHideDelayMs = 300;
+    cTooltipHideDelayMs = 300;
     /// <summary>So lange verweilt die Maus, bevor ein Tooltip erscheint (Atlas-Tooltip, Issue-Kennungen #1265).
     /// </summary>
-    TooltipShowDelayMs = 500;
+    cTooltipShowDelayMs = 500;
   private
     class function Window(const AOpened, ANow: TAtlasEditorWindowState): TAtlasCloseReason; static;
   public
@@ -115,7 +115,7 @@ end;
 class function TAtlasCloseRules.PopupWord(ALineSame: Boolean; const ALineText: string; AWordStart,
   ACharacter: Integer; out AIndex: Integer): TAtlasCloseReason;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   AIndex := 0;
   if not ALineSame then
@@ -126,11 +126,11 @@ begin
   begin
     Exit(TAtlasCloseReason.BeforeWord);
   end;
-  for Index := AWordStart + 1 to ACharacter do
+  for mIndex := AWordStart + 1 to ACharacter do
   begin
-    if (Index > Length(ALineText)) or not TAtlasWord.IsIdentifierChar(ALineText[Index]) then
+    if (mIndex > Length(ALineText)) or not TAtlasWord.IsIdentifierChar(ALineText[mIndex]) then
     begin
-      AIndex := Index;
+      AIndex := mIndex;
       Exit(TAtlasCloseReason.NonIdentifier);
     end;
   end;
@@ -140,10 +140,10 @@ end;
 class function TAtlasCloseRules.DelayedOpen(const AOpened, ANow: TAtlasEditorWindowState; ALineSame: Boolean;
   const ALineText: string; ACharacterAtStart, ACharacter: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := (Popup(AOpened, ANow) = TAtlasCloseReason.None) and
-    (PopupWord(ALineSame, ALineText, ACharacterAtStart, ACharacter, Index) = TAtlasCloseReason.None);
+    (PopupWord(ALineSame, ALineText, ACharacterAtStart, ACharacter, mIndex) = TAtlasCloseReason.None);
 end;
 
 class function TAtlasCloseRules.Hint(const AOpened, ANow: TAtlasEditorWindowState; AAnchorLine: Integer;
@@ -183,11 +183,11 @@ end;
 
 class function TAtlasCloseRules.Name(AReason: TAtlasCloseReason): string;
 const
-  Names: array[TAtlasCloseReason] of string = ('keiner', 'IDE inaktiv', 'Fokus woanders', 'anderer Tab',
+  cNames: array[TAtlasCloseReason] of string = ('keiner', 'IDE inaktiv', 'Fokus woanders', 'anderer Tab',
     'Größe geändert', 'gescrollt', 'außer Sicht', 'andere Zeile', 'Cursor vor dem Wortanfang',
     'Zeichen getippt');
 begin
-  Result := Names[AReason];
+  Result := cNames[AReason];
 end;
 
 end.

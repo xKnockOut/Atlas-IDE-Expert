@@ -294,7 +294,7 @@ begin
   begin
     Ids := Ids + Finding.RuleId + ' ';
   end;
-  Assert.IsFalse(Pos(' ' + UnitTooDeepRuleId + ' ', Ids) > 0, 'nicht übersprungen');
+  Assert.IsFalse(Pos(' ' + cUnitTooDeepRuleId + ' ', Ids) > 0, 'nicht übersprungen');
   Assert.IsTrue(Pos(' thread-resume-suspend ', Ids) > 0, Ids);
   Assert.IsTrue(Pos(' thread-vcl-access ', Ids) > 0, Ids);
   Findings := nil;

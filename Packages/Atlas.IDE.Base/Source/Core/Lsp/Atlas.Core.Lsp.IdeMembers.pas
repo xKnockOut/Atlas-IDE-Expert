@@ -59,8 +59,8 @@ type
 
   TAtlasIdeMembers = class
   public const
-    WantedMethod = 'atlas/ideMembersWanted';
-    Method = 'atlas/ideMembers';
+    cWantedMethod = 'atlas/ideMembersWanted';
+    cMethod = 'atlas/ideMembers';
   public
     /// <summary>Units aus den Parametern von atlas/ideMembersWanted ({"units": ["A", "B"]}); leer bei anderem
     /// Aufbau.</summary>

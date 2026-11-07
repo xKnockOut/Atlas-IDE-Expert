@@ -55,17 +55,17 @@ uses
 
 const
   // Kennungen der Befehlspalette für die Tastenkürzel-Tipps (#600), je Tag der Einträge.
-  EditorIds: array[0..14] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
+  cEditorIds: array[0..14] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
     'Atlas.TypeDefinition', 'Atlas.CopyQualifiedName', 'Atlas.CopyQualifiedNameParams', 'Atlas.ToggleMethod',
     'Atlas.SwitchTestUnit', '', '', 'Atlas.GenerateMenu', 'Atlas.FormatCode',
     'Atlas.MethodOrder', 'Atlas.CollapseRegions', 'Atlas.ExpandRegions');
-  ResultsIds: array[0..11] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
+  cResultsIds: array[0..11] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
     'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow', 'Atlas.CallDiagram',
     'Atlas.Impact', 'Atlas.DataFlowSources', 'Atlas.DataFlowTargets');
   // Editorleiste (#1101), je Tag von RunSection.
-  SectionIds: array[0..5] of string = ('Atlas.GotoInterface', 'Atlas.GotoImplementation', 'Atlas.GotoUses',
+  cSectionIds: array[0..5] of string = ('Atlas.GotoInterface', 'Atlas.GotoImplementation', 'Atlas.GotoUses',
     'Atlas.GotoInitialization', 'Atlas.ReturnFromSection', 'Atlas.FindMethod');
-  UndoIds: array[0..2] of string = ('Atlas.UndoChange', 'Atlas.RedoChange', 'Atlas.ChangeList');
+  cUndoIds: array[0..2] of string = ('Atlas.UndoChange', 'Atlas.RedoChange', 'Atlas.ChangeList');
 
 /// <summary>Meldet AIds[ACommand] bei den Tastenkürzel-Tipps, wenn es den Tag dort gibt.</summary>
 procedure Invoked(const AIds: array of string; ACommand: Integer);
@@ -152,7 +152,7 @@ begin
     begin
       if Assigned(ACommand) then
       begin
-        ACommand(TAtlasProcessesView.Command, ADone);
+        ACommand(TAtlasProcessesView.cCommand, ADone);
       end
       else
       begin
@@ -175,7 +175,7 @@ end;
 
 class procedure TAtlasMenuActions.RunResults(ACommand: Integer);
 begin
-  Invoked(ResultsIds, ACommand);
+  Invoked(cResultsIds, ACommand);
   TAtlasGuard.Run(TAtlasFeature.Results,
     procedure
     begin
@@ -185,7 +185,7 @@ end;
 
 class procedure TAtlasMenuActions.RunEditor(ACommand: Integer);
 begin
-  Invoked(EditorIds, ACommand);
+  Invoked(cEditorIds, ACommand);
   TAtlasGuard.Run(TAtlasFeature.EditorCommands,
     procedure
     begin
@@ -195,7 +195,7 @@ end;
 
 class procedure TAtlasMenuActions.RunSection(ACommand: Integer);
 begin
-  Invoked(SectionIds, ACommand);
+  Invoked(cSectionIds, ACommand);
   TAtlasGuard.Run(TAtlasFeature.EditorToolbar,
     procedure
     begin
@@ -205,7 +205,7 @@ end;
 
 class procedure TAtlasMenuActions.RunUndo(ACommand: Integer);
 begin
-  Invoked(UndoIds, ACommand);
+  Invoked(cUndoIds, ACommand);
   TAtlasGuard.Run(TAtlasFeature.EditorCommands,
     procedure
     begin

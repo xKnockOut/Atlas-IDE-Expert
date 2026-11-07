@@ -75,9 +75,9 @@ type
     /// <summary>Fläche des Pfeils am Knopf AId; leer ohne Menü.</summary>
     function ArrowRect(const AId: string): TRect;
     /// <summary>Tooltip über dem Punkt (Client); '' = keiner.</summary>
-    function HintAt(X, Y: Integer): string;
+    function HintAt(AX, AY: Integer): string;
     /// <summary>Klick wie mit der linken Maustaste (Tests).</summary>
-    procedure ClickAt(X, Y: Integer);
+    procedure ClickAt(AX, AY: Integer);
     property Buttons: TArray<TAtlasDesignerButton> read FButtons;
     /// <summary>Klick auf einen Knopf (Kennung).</summary>
     property OnCommand: TProc<string> read FOnCommand write FOnCommand;
@@ -148,7 +148,7 @@ begin
   end;
   FButtons := Copy(AButtons);
   Layout;
-  SetHot(PartNone);
+  SetHot(cPartNone);
   Invalidate;
 end;
 
@@ -215,7 +215,7 @@ begin
       Exit(2 * mIndex + 1);
     end;
   end;
-  Result := PartNone;
+  Result := cPartNone;
 end;
 
 function TAtlasDesignerBar.PartHint(APart: Integer): string;
@@ -381,16 +381,16 @@ begin
   Result := TRect.Empty;
 end;
 
-function TAtlasDesignerBar.HintAt(X, Y: Integer): string;
+function TAtlasDesignerBar.HintAt(AX, AY: Integer): string;
 begin
   Layout;
-  Result := PartHint(PartAt(X, Y));
+  Result := PartHint(PartAt(AX, AY));
 end;
 
-procedure TAtlasDesignerBar.ClickAt(X, Y: Integer);
+procedure TAtlasDesignerBar.ClickAt(AX, AY: Integer);
 begin
   Layout;
-  PartClicked(PartAt(X, Y), [], X, Y);
+  PartClicked(PartAt(AX, AY), [], AX, AY);
 end;
 
 end.

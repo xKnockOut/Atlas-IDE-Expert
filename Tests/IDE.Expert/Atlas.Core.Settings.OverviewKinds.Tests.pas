@@ -50,7 +50,7 @@ begin
     TAtlasOverviewKind.Bookmarks]);
   Assert.IsTrue(TAtlasOverviewKindNames.Parse('') = []);
   Assert.IsTrue(TAtlasOverviewKindNames.Parse(
-    'diagnostics,search,changes,breakpoints,bookmarks,cursor') = TAtlasOverviewKindNames.All);
+    'diagnostics,search,changes,breakpoints,bookmarks,cursor') = TAtlasOverviewKindNames.cAll);
 end;
 
 procedure TAtlasOverviewKindNamesTests.DropsUnknownNames;
@@ -65,7 +65,7 @@ begin
     TAtlasOverviewKind.Search]));
   Assert.AreEqual('', TAtlasOverviewKindNames.Text([]));
   Assert.AreEqual('diagnostics,search,changes,breakpoints,bookmarks,cursor',
-    TAtlasOverviewKindNames.Text(TAtlasOverviewKindNames.All));
+    TAtlasOverviewKindNames.Text(TAtlasOverviewKindNames.cAll));
 end;
 
 procedure TAtlasOverviewKindNamesTests.NormalizeRemovesDuplicatesAndUnknown;

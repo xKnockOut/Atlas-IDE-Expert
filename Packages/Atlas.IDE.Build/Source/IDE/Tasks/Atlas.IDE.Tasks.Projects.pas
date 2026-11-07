@@ -27,7 +27,7 @@ type
   TAtlasIdeTaskProjects = class
   public const
     /// <summary>Schlüssel der Läufe ohne Projekt (nur globale Aufgaben).</summary>
-    NoProject = '(global)';
+    cNoProject = '(global)';
   public
     class function ActiveProject: string; static;
     /// <summary>tasks.json in %APPDATA%\Atlas (Verlauf).</summary>
@@ -118,7 +118,7 @@ end;
 
 class function TAtlasIdeTaskProjects.HistoryFile: string;
 begin
-  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('APPDATA'), 'Atlas'), TAtlasTaskHistory.FileName);
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('APPDATA'), 'Atlas'), TAtlasTaskHistory.cFileName);
 end;
 
 class function TAtlasIdeTaskProjects.KeyOf(const AProject: string): string;
@@ -126,7 +126,7 @@ begin
   Result := AProject;
   if Result = '' then
   begin
-    Result := NoProject;
+    Result := cNoProject;
   end;
 end;
 
@@ -137,7 +137,7 @@ begin
   mProjectFile := '';
   if AProject <> '' then
   begin
-    mProjectFile := TPath.Combine(ExtractFileDir(AProject), TAtlasSettingsFiles.ProjectName);
+    mProjectFile := TPath.Combine(ExtractFileDir(AProject), TAtlasSettingsFiles.cProjectName);
   end;
   Result := AnsiLowerCase(AProject) + '|' + Stamp(mProjectFile) + '|' + Stamp(TAtlasProjectSettings.GlobalFile);
 end;
@@ -156,7 +156,7 @@ begin
   if AProject <> '' then
   begin
     mOwn := TAtlasTasks.Parse(TAtlasProjectSettings.ReadText(TPath.Combine(ExtractFileDir(AProject),
-      TAtlasSettingsFiles.ProjectName), mHasBom), False, mIssues);
+      TAtlasSettingsFiles.cProjectName), mHasBom), False, mIssues);
   end;
   mGlobal := TAtlasTasks.Parse(TAtlasProjectSettings.ReadText(TAtlasProjectSettings.GlobalFile, mHasBom), True,
     mIssues);

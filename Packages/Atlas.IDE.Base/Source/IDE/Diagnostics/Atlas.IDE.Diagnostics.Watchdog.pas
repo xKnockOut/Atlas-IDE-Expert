@@ -29,10 +29,10 @@ type
 
   TAtlasWatchdog = class
   private const
-    WM_ATLAS_PING = WM_APP + $4A1;
-    WM_ATLAS_STARTUP = WM_APP + $4A2;
-    PeriodMs = 100;
-    StackWords = 4096;
+    cWM_ATLAS_PING = WM_APP + $4A1;
+    cWM_ATLAS_STARTUP = WM_APP + $4A2;
+    cPeriodMs = 100;
+    cStackWords = 4096;
   private type
     TWatchThread = class(TThread)
     private
@@ -55,7 +55,7 @@ type
     FOnHang: TAtlasHangProc;
     FThresholdFunc: TFunc<Integer>;
     // Kopie beim Hänger; nur im Wächter-Thread beschrieben, vor dem Anhalten angelegt.
-    FStack: array[0..StackWords - 1] of NativeUInt;
+    FStack: array[0..cStackWords - 1] of NativeUInt;
     FStackCount: Integer;
     FIP: NativeUInt;
     // GetThreadContext verlangt unter x64 einen auf 16 Byte ausgerichteten TContext.
@@ -89,7 +89,7 @@ begin
   Result := not Application.Terminated and (Application.MainForm <> nil) and Application.MainForm.Visible;
 end;
 
-function InternalGetWindowText(hWnd: HWND; pString: PWideChar; cchMaxCount: Integer): Integer; stdcall;
+function InternalGetWindowText(AHWnd: HWND; APString: PWideChar; ACchMaxCount: Integer): Integer; stdcall;
   external user32 name 'InternalGetWindowText';
 
 { TAtlasWatchdog.TWatchThread }
@@ -114,39 +114,39 @@ end;
 
 procedure TAtlasWatchdog.TWatchThread.Execute;
 var
-  Seq: Integer;
-  SentAt: Int64;
-  Captured: Boolean;
-  Hang: TAtlasHang;
+  mSeq: Integer;
+  mSentAt: Int64;
+  mCaptured: Boolean;
+  mHang: TAtlasHang;
 begin
   try
     NameThreadForDebugging('Atlas.Watchdog');
-    Seq := 0;
+    mSeq := 0;
     while not Terminated do
     begin
       if TInterlocked.CompareExchange(FOwner.FStarted, 0, 0) = 0 then
       begin
-        FOwner.FWake.WaitFor(PeriodMs);
+        FOwner.FWake.WaitFor(cPeriodMs);
         Continue;
       end;
-      Inc(Seq);
-      SentAt := NowMs;
-      if not PostMessage(FOwner.FWindow, WM_ATLAS_PING, WPARAM(Seq), 0) then
+      Inc(mSeq);
+      mSentAt := NowMs;
+      if not PostMessage(FOwner.FWindow, cWM_ATLAS_PING, WPARAM(mSeq), 0) then
       begin
-        FOwner.FWake.WaitFor(PeriodMs);
+        FOwner.FWake.WaitFor(cPeriodMs);
         Continue;
       end;
-      Captured := AwaitPong(Seq, SentAt, Hang);
+      mCaptured := AwaitPong(mSeq, mSentAt, mHang);
       if Terminated then
       begin
         Break;
       end;
-      if Captured and Running then
+      if mCaptured and Running then
       begin
-        Hang.DurationMs := NowMs - SentAt;
-        Report(Hang, FOwner.TakeAddresses);
+        mHang.DurationMs := NowMs - mSentAt;
+        Report(mHang, FOwner.TakeAddresses);
       end;
-      FOwner.FWake.WaitFor(PeriodMs);
+      FOwner.FWake.WaitFor(cPeriodMs);
     end;
   except
     // Der Wächter selbst darf die IDE nie stören (#493).
@@ -157,21 +157,21 @@ end;
 
 procedure TAtlasWatchdog.TWatchThread.Report(const AHang: TAtlasHang; const AAddresses: TArray<UInt64>);
 var
-  Hang: TAtlasHang;
-  Addresses: TArray<UInt64>;
+  mHang: TAtlasHang;
+  mAddresses: TArray<UInt64>;
 begin
-  Hang := AHang;
-  Addresses := AAddresses;
+  mHang := AHang;
+  mAddresses := AAddresses;
   Queue(
     procedure
     begin
       // Module erst jetzt im Hauptthread: Die Ladersperre ist frei.
       // Rahmen im Atlas-Modul mit Unit, Routine und Zeile, wenn die Map-Datei neben der BPL liegt.
-      Hang.Frames := TAtlasIdeStackCapture.Symbolize(TAtlasStackScan.Frames(Addresses,
+      mHang.Frames := TAtlasIdeStackCapture.Symbolize(TAtlasStackScan.Frames(mAddresses,
         TAtlasIdeStackCapture.Modules));
       if Assigned(FOwner.FOnHang) then
       begin
-        FOwner.FOnHang(Hang);
+        FOwner.FOnHang(mHang);
       end;
     end);
 end;
@@ -196,7 +196,7 @@ begin
   begin
     FMainThread := 0;
   end;
-  PostMessage(FWindow, WM_ATLAS_STARTUP, 0, 0);
+  PostMessage(FWindow, cWM_ATLAS_STARTUP, 0, 0);
   FThread := TWatchThread.Create(True);
   FThread.FOwner := Self;
   FThread.FreeOnTerminate := False;
@@ -239,7 +239,7 @@ procedure TAtlasWatchdog.WndProc(var AMessage: TMessage);
 begin
   try
     case AMessage.Msg of
-      WM_ATLAS_PING:
+      cWM_ATLAS_PING:
         begin
           TInterlocked.Exchange(FPong, Integer(AMessage.WParam));
           // Die Schwelle kann sich in den Optionen ändern; hier im Hauptthread lesen.
@@ -248,7 +248,7 @@ begin
             TInterlocked.Exchange(FThresholdMs, FThresholdFunc());
           end;
         end;
-      WM_ATLAS_STARTUP:
+      cWM_ATLAS_STARTUP:
         TInterlocked.Exchange(FStarted, 1);
     else
       AMessage.Result := DefWindowProc(FWindow, AMessage.Msg, AMessage.WParam, AMessage.LParam);
@@ -261,11 +261,11 @@ end;
 
 procedure TAtlasWatchdog.Capture;
 var
-  Context: PContext;
-  StackPointer, Limit: NativeUInt;
-  Info: TMemoryBasicInformation;
+  mContext: PContext;
+  mStackPointer, mLimit: NativeUInt;
+  mInfo: TMemoryBasicInformation;
 begin
-  Context := PContext((NativeUInt(@FContextBuffer[0]) + 15) and not NativeUInt(15));
+  mContext := PContext((NativeUInt(@FContextBuffer[0]) + 15) and not NativeUInt(15));
   FStackCount := 0;
   FIP := 0;
   if FMainThread = 0 then
@@ -278,30 +278,30 @@ begin
     Exit;
   end;
   try
-    FillChar(Context^, SizeOf(TContext), 0);
-    Context.ContextFlags := CONTEXT_CONTROL;
-    if not GetThreadContext(FMainThread, Context^) then
+    FillChar(mContext^, SizeOf(TContext), 0);
+    mContext.ContextFlags := CONTEXT_CONTROL;
+    if not GetThreadContext(FMainThread, mContext^) then
     begin
       Exit;
     end;
     {$IFDEF CPUX64}
-    StackPointer := Context.Rsp;
-    FIP := Context.Rip;
+    mStackPointer := mContext.Rsp;
+    FIP := mContext.Rip;
     {$ELSE}
-    StackPointer := Context.Esp;
-    FIP := Context.Eip;
+    mStackPointer := mContext.Esp;
+    FIP := mContext.Eip;
     {$ENDIF}
-    if VirtualQuery(Pointer(StackPointer), Info, SizeOf(Info)) = 0 then
+    if VirtualQuery(Pointer(mStackPointer), mInfo, SizeOf(mInfo)) = 0 then
     begin
       Exit;
     end;
-    Limit := NativeUInt(Info.BaseAddress) + Info.RegionSize;
-    FStackCount := (Limit - StackPointer) div SizeOf(NativeUInt);
-    if FStackCount > StackWords then
+    mLimit := NativeUInt(mInfo.BaseAddress) + mInfo.RegionSize;
+    FStackCount := (mLimit - mStackPointer) div SizeOf(NativeUInt);
+    if FStackCount > cStackWords then
     begin
-      FStackCount := StackWords;
+      FStackCount := cStackWords;
     end;
-    Move(Pointer(StackPointer)^, FStack[0], FStackCount * SizeOf(NativeUInt));
+    Move(Pointer(mStackPointer)^, FStack[0], FStackCount * SizeOf(NativeUInt));
   finally
     ResumeThread(FMainThread);
   end;
@@ -309,33 +309,33 @@ end;
 
 function TAtlasWatchdog.TakeAddresses: TArray<UInt64>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   SetLength(Result, FStackCount + 1);
   Result[0] := FIP;
-  for Index := 0 to FStackCount - 1 do
+  for mIndex := 0 to FStackCount - 1 do
   begin
-    Result[Index + 1] := FStack[Index];
+    Result[mIndex + 1] := FStack[mIndex];
   end;
 end;
 
 class function TAtlasWatchdog.ForegroundWindowText: string;
 var
-  Window: HWND;
-  Buffer: array[0..255] of WideChar;
-  Length_: Integer;
+  mWindow: HWND;
+  mBuffer: array[0..255] of WideChar;
+  mLength_: Integer;
 begin
   // InternalGetWindowText schickt keine Nachricht an das (hängende) Fenster.
   Result := '';
-  Window := GetForegroundWindow;
-  if Window = 0 then
+  mWindow := GetForegroundWindow;
+  if mWindow = 0 then
   begin
     Exit;
   end;
-  Length_ := InternalGetWindowText(Window, Buffer, Length(Buffer));
-  if Length_ > 0 then
+  mLength_ := InternalGetWindowText(mWindow, mBuffer, Length(mBuffer));
+  if mLength_ > 0 then
   begin
-    SetString(Result, PWideChar(@Buffer[0]), Length_);
+    SetString(Result, PWideChar(@mBuffer[0]), mLength_);
   end;
 end;
 

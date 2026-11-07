@@ -13,25 +13,25 @@ type
   /// <summary>Fehlercodes nach JSON-RPC 2.0.</summary>
   TJsonRpcErrorCode = record
   public const
-    ParseError = -32700;
-    InvalidRequest = -32600;
-    MethodNotFound = -32601;
-    InvalidParams = -32602;
-    InternalError = -32603;
+    cParseError = -32700;
+    cInvalidRequest = -32600;
+    cMethodNotFound = -32601;
+    cInvalidParams = -32602;
+    cInternalError = -32603;
     /// <summary>Anfrage wurde per $/cancelRequest abgebrochen (LSP-Basisprotokoll).</summary>
-    RequestCancelled = -32800;
+    cRequestCancelled = -32800;
     /// <summary>Das Dokument hat sich geändert, das Ergebnis wäre veraltet (LSP, #283).</summary>
-    ContentModified = -32801;
+    cContentModified = -32801;
     /// <summary>Die Anfrage war gültig, ließ sich aber nicht ausführen; die Meldung nennt den Grund (LSP 3.17,
     /// z. B. „Projekt kompilieren“ ohne nutzbaren Compiler, #261).</summary>
-    RequestFailed = -32803;
+    cRequestFailed = -32803;
   end;
 
 const
   /// <summary>Benachrichtigung, mit der die Gegenseite eine offene Anfrage abbricht.</summary>
-  JsonRpcCancelRequestMethod = '$/cancelRequest';
+  cJsonRpcCancelRequestMethod = '$/cancelRequest';
   /// <summary>Gegenstück im Model Context Protocol: params.requestId statt params.id (#1117).</summary>
-  McpCancelledMethod = 'notifications/cancelled';
+  cMcpCancelledMethod = 'notifications/cancelled';
 
 type
 
@@ -147,14 +147,14 @@ end;
 
 constructor EJsonRpcRequestCancelled.Create;
 begin
-  inherited Create(TJsonRpcErrorCode.RequestCancelled, 'Anfrage abgebrochen');
+  inherited Create(TJsonRpcErrorCode.cRequestCancelled, 'Anfrage abgebrochen');
 end;
 
 { EJsonRpcContentModified }
 
 constructor EJsonRpcContentModified.Create;
 begin
-  inherited Create(TJsonRpcErrorCode.ContentModified, 'Dokument wurde geändert');
+  inherited Create(TJsonRpcErrorCode.cContentModified, 'Dokument wurde geändert');
 end;
 
 end.

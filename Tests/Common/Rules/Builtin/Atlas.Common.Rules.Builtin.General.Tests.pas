@@ -42,6 +42,8 @@ type
     [Test]
     procedure HardcodedStringInStatements;
     [Test]
+    procedure HardcodedStringMachineTextSilent;
+    [Test]
     procedure GuidLineFormat;
     [Test]
     procedure GuidSyntaxIssueExample;
@@ -213,6 +215,37 @@ begin
   Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(Findings[0].Confidence));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THardcodedStringRule.Create, 'unit U;'#10'interface'#10 +
     'resourcestring'#10'  SFehlt = ''Datei nicht gefunden'';'#10'implementation'#10'end.', Config))));
+end;
+
+procedure TGeneralRulesTests.HardcodedStringMachineTextSilent;
+const
+  Config = '{ "minConfidence": "low", "rules": { "hardcoded-string": "hint" } }';
+  ConfigPick = '{ "minConfidence": "low", "rules": { "hardcoded-string": { "severity": "hint", ' +
+    '"ignoreCalls": ["Pick"] } } }';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Protokoll, Prüfungen, Vergleiche, Registry, Masken, Markup und Schriftnamen liest kein Benutzer
+  // (Marcos Lauf 06.11.2026).
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THardcodedStringRule.Create, InRoutine(
+    '  TAtlasGuard.Log(Format(''Datei nicht gefunden: %s'', [Name]));'#10 +
+    '  FLog(''Projekte weggefallen, Prüfung neu'');'#10'  Diagnose(''Starte den Server neu'');'#10 +
+    '  Assert(Fertig, ''Liste nicht leer'');'#10'  OutputDebugString(PChar(''Atlas: Protokoll gestört''));'#10 +
+    '  if StartsText(''Detailed map of segments'', Zeile) then'#10'    Exit;'#10 +
+    '  Farbe := Registry.ReadString(''Background Color New'');'#10 +
+    '  Zeit := FormatDateTime(''dd.mm. hh":"nn'', Jetzt);'#10'  B.Append(''<tr class="conflict">'');'#10 +
+    '  B.Append(''"summary": {"units": '');'#10'  B.Append(''## Versionen'');'#10 +
+    '  Font.Name := ''Segoe UI'';'), Config))));
+  // Eigene Routinen über ignoreCalls.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(THardcodedStringRule.Create, InRoutine(
+    '  B.Append(Pick(Englisch, ''## Versions'', ''Die Versionen''));'), Config))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THardcodedStringRule.Create, InRoutine(
+    '  B.Append(Pick(Englisch, ''## Versions'', ''Die Versionen''));'), ConfigPick))));
+  // Text vor einer Maske und ein Text, der mit einem Zitat beginnt, sieht der Benutzer.
+  Findings := TRuleAssert.Findings(THardcodedStringRule.Create, InRoutine(
+    '  S := ''Erstellt am '' + FormatDateTime(''dd.mm.yyyy'', Jetzt);'#10 +
+    '  raise EFehler.CreateFmt(''"%s" ist keine Formulardatei'', [Name]);'), Config);
+  Assert.AreEqual(2, Integer(Length(Findings)));
 end;
 
 procedure TGeneralRulesTests.GuidLineFormat;

@@ -517,7 +517,7 @@ begin
     SourceWith('  X := 1; // lsp-ignore: *'#13#10)))));
   mFindings := TRuleAssert.Findings(TUncertainMarkerRule.Create(7), SourceWith('  X := 1; // lsp-ignore: marker'#13#10));
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual(UnusedSuppressionRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(cUnusedSuppressionRuleId, mFindings[0].RuleId);
 end;
 
 procedure TRuleEngineTests.SuppressionReasonIsNoId;
@@ -537,7 +537,7 @@ begin
   // Abnahme #41: Tippfehler ergibt unknown-rule-id mit Vorschlag, aber keine unused-suppression.
   Findings := TRuleAssert.Findings(TMarkerRule.Create, SourceWith(Line + #13#10));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(UnknownRuleIdRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cUnknownRuleIdRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
   Assert.IsTrue(Pos('"empty-except"', Findings[0].Message) > 0, Findings[0].Message);
   // Genau die Kennung ist markiert, die Korrektur ersetzt nur sie.
@@ -549,7 +549,7 @@ begin
   // Allein in der Zeile und ohne Treffer darunter: weiterhin keine unused-suppression daneben.
   Findings := TRuleAssert.Findings(TMarkerRule.Create, SourceWith('  // lsp-ignore: empty-exept'#13#10'  X := 1;'#13#10));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(UnknownRuleIdRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cUnknownRuleIdRuleId, Findings[0].RuleId);
   // Auch in { } und mit Begründung; die Begründung wird nie gelesen.
   Findings := TRuleAssert.Findings(TMarkerRule.Create,
     SourceWith('  Marker := 1; { lsp-ignore: marker -- empty-exept }'#13#10));
@@ -562,7 +562,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TMarkerRule.Create, SourceWith('  X := 1; // lsp-ignore: voellig-anders'#13#10));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(UnknownRuleIdRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cUnknownRuleIdRuleId, Findings[0].RuleId);
   Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
   Assert.IsTrue(Pos('wirkt nicht', Findings[0].Message) > 0, Findings[0].Message);
   // Kennungen der übergebenen Regeln, des Katalogs und "*" sind bekannt.
@@ -698,7 +698,7 @@ begin
         TCallbackRule.Create('langsam',
           procedure
           begin
-            Sleep(TRuleEngine.SlowRuleMs + 50);
+            Sleep(TRuleEngine.cSlowRuleMs + 50);
           end)], TServerSettings.Default, Context);
     finally
       Notes := TRequestDiagnostics.Close;
@@ -895,11 +895,11 @@ var
   Notes: TRequestNotes;
   Depth: Integer;
 begin
-  Text := DeepSource(TRuleEngine.MaxTreeDepth + 200);
+  Text := DeepSource(TRuleEngine.cMaxTreeDepth + 200);
   Tree := TPascalParser.Parse(Text);
   try
     Depth := Tree.Depth;
-    Assert.IsTrue(Depth > TRuleEngine.MaxTreeDepth, 'Subtraktion bleibt linkslastig');
+    Assert.IsTrue(Depth > TRuleEngine.cMaxTreeDepth, 'Subtraktion bleibt linkslastig');
     Context := Default(TRuleContext);
     Context.Text := Text;
     Context.Tree := Tree;
@@ -915,7 +915,7 @@ begin
   end;
   // Statt der Regeln nur der Hinweis, am ersten Glied der Kette ("  Marker := 1" in Zeile 6).
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(UnitTooDeepRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cUnitTooDeepRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
   Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
   Assert.AreEqual(12, Findings[0].Range.StartPos.Character);
@@ -932,7 +932,7 @@ end;
 procedure TRuleEngineTests.TooDeepHintCanBeSwitchedOff;
 begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create,
-    DeepSource(TRuleEngine.MaxTreeDepth + 200), '{"rules": {"unit-too-deep": "off"}}'))));
+    DeepSource(TRuleEngine.cMaxTreeDepth + 200), '{"rules": {"unit-too-deep": "off"}}'))));
 end;
 
 initialization

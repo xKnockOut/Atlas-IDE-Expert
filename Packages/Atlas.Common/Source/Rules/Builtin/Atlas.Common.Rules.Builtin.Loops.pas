@@ -35,8 +35,8 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  ForVariableMisuseRuleId = 'for-variable-misuse';
-  ForVariableAfterLoopRuleId = 'for-variable-after-loop';
+  cForVariableMisuseRuleId = 'for-variable-misuse';
+  cForVariableAfterLoopRuleId = 'for-variable-after-loop';
 
 type
   TForVariableMisuseRule = class(TInterfacedObject, IRule)
@@ -101,11 +101,11 @@ type
 /// <summary>Hat der Parser im Bereich von AScope einen Fehler gemeldet?</summary>
 function ParserBroken(ATree: TSyntaxTree; AScope: TSyntaxNode): Boolean;
 var
-  Diagnostic: TSyntaxDiagnostic;
+  mDiagnostic: TSyntaxDiagnostic;
 begin
-  for Diagnostic in ATree.Diagnostics do
+  for mDiagnostic in ATree.Diagnostics do
   begin
-    if (Diagnostic.StartPos.Line >= AScope.StartPos.Line) and (Diagnostic.StartPos.Line <= AScope.EndPos.Line) then
+    if (mDiagnostic.StartPos.Line >= AScope.StartPos.Line) and (mDiagnostic.StartPos.Line <= AScope.EndPos.Line) then
     begin
       Exit(True);
     end;
@@ -116,13 +116,13 @@ end;
 /// <summary>Fügt die Namen "A,B" in ASet ein (klein).</summary>
 procedure AddNames(ASet: TNameSet; const ANames: string);
 var
-  Part: string;
+  mPart: string;
 begin
-  for Part in ANames.Split([',']) do
+  for mPart in ANames.Split([',']) do
   begin
-    if Trim(Part) <> '' then
+    if Trim(mPart) <> '' then
     begin
-      ASet.AddOrSetValue(LowerCase(Trim(Part)), True);
+      ASet.AddOrSetValue(LowerCase(Trim(mPart)), True);
     end;
   end;
 end;
@@ -130,19 +130,19 @@ end;
 /// <summary>Variablen der Abschnitte var direkt unter AOwner (Routine oder Unit-Abschnitt).</summary>
 procedure AddVariables(ASet: TNameSet; AOwner: TSyntaxNode);
 var
-  Index, Item: Integer;
-  Section: TSyntaxNode;
+  mIndex, mItem: Integer;
+  mSection: TSyntaxNode;
 begin
-  for Index := 0 to AOwner.ChildCount - 1 do
+  for mIndex := 0 to AOwner.ChildCount - 1 do
   begin
-    Section := AOwner[Index];
-    if Section.Kind = TSyntaxKind.VarSection then
+    mSection := AOwner[mIndex];
+    if mSection.Kind = TSyntaxKind.VarSection then
     begin
-      for Item := 0 to Section.ChildCount - 1 do
+      for mItem := 0 to mSection.ChildCount - 1 do
       begin
-        if Section[Item].Kind = TSyntaxKind.VarDecl then
+        if mSection[mItem].Kind = TSyntaxKind.VarDecl then
         begin
-          AddNames(ASet, Section[Item].Name);
+          AddNames(ASet, mSection[mItem].Name);
         end;
       end;
     end;
@@ -157,23 +157,23 @@ end;
 
 function TokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 var
-  Low, High, Middle: Integer;
+  mLow, mHigh, mMiddle: Integer;
 begin
-  Low := 0;
-  High := Length(ATokens);
-  while Low < High do
+  mLow := 0;
+  mHigh := Length(ATokens);
+  while mLow < mHigh do
   begin
-    Middle := (Low + High) div 2;
-    if ATokens[Middle].Offset < AOffset then
+    mMiddle := (mLow + mHigh) div 2;
+    if ATokens[mMiddle].Offset < AOffset then
     begin
-      Low := Middle + 1;
+      mLow := mMiddle + 1;
     end
     else
     begin
-      High := Middle;
+      mHigh := mMiddle;
     end;
   end;
-  Result := Low;
+  Result := mLow;
 end;
 
 function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
@@ -203,48 +203,48 @@ end;
 // Leerraum am Anfang der Zeile, in der die Stelle AOffset (Spalte ACharacter) liegt.
 function IndentAt(const AText: string; AOffset, ACharacter: Integer): string;
 var
-  LineStart, Index: Integer;
+  mLineStart, mIndex: Integer;
 begin
-  LineStart := AOffset - ACharacter;
-  Index := LineStart + 1;
-  while (Index <= AOffset) and CharInSet(AText[Index], [' ', #9]) do
+  mLineStart := AOffset - ACharacter;
+  mIndex := mLineStart + 1;
+  while (mIndex <= AOffset) and CharInSet(AText[mIndex], [' ', #9]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Copy(AText, LineStart + 1, Index - LineStart - 1);
+  Result := Copy(AText, mLineStart + 1, mIndex - mLineStart - 1);
 end;
 
 // Kommt im Rumpf ein Continue dieser Schleife vor (nicht in einer inneren Schleife)?
 function HasOwnContinue(ANode: TSyntaxNode): Boolean;
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   // Iterativ (Bericht M1).
   Result := False;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+      mNode := mPending.Pop;
+      if mNode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
         TSyntaxKind.RepeatStatement, TSyntaxKind.AnonymousMethod] then
       begin
         Continue;
       end;
-      if (Node.Kind = TSyntaxKind.CallStatement) and SameText(Node.Name, 'Continue') then
+      if (mNode.Kind = TSyntaxKind.CallStatement) and SameText(mNode.Name, 'Continue') then
       begin
         Exit(True);
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -378,15 +378,15 @@ end;
 
 function TForVariableMisuseRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(ForVariableMisuseRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cForVariableMisuseRuleId, TRuleSeverity.Error,
     cTexts[TLoopsText.LoopVarTitle].Text);
 end;
 
 procedure TForVariableMisuseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Globals, Fields: TNameSet;
-  VarRoutines: TDictionary<string, TArray<TArray<Boolean>>>;
+  mTokens: TArray<TPascalToken>;
+  mGlobals, mFields: TNameSet;
+  mVarRoutines: TDictionary<string, TArray<TArray<Boolean>>>;
 
 
   // var- bzw. out-Modus jedes Parameters des Kopfs AHeader in Reihenfolge.
@@ -425,11 +425,11 @@ var
     begin
       mKey := Copy(mKey, LastDelimiter('.', mKey) + 1, MaxInt);
     end;
-    if not VarRoutines.TryGetValue(mKey, mKnown) then
+    if not mVarRoutines.TryGetValue(mKey, mKnown) then
     begin
       mKnown := nil;
     end;
-    VarRoutines.AddOrSetValue(mKey, mKnown + [ParameterModes(AHeader)]);
+    mVarRoutines.AddOrSetValue(mKey, mKnown + [ParameterModes(AHeader)]);
   end;
 
   procedure AddFields(AField: TSyntaxNode; const AClassName: string);
@@ -438,7 +438,7 @@ var
   begin
     for mKey in AField.Name.Split([',']) do
     begin
-      Fields.AddOrSetValue(AClassName + '.' + LowerCase(Trim(mKey)), True);
+      mFields.AddOrSetValue(AClassName + '.' + LowerCase(Trim(mKey)), True);
     end;
   end;
 
@@ -491,17 +491,17 @@ var
   // Übergibt jede Deklaration von AName an der Stelle AArgument einen var- bzw. out-Parameter?
   function PassesByReference(const AName: string; AArgument: Integer): Boolean;
   var
-    Known: TArray<TArray<Boolean>>;
-    Modes: TArray<Boolean>;
+    mKnown: TArray<TArray<Boolean>>;
+    mModes: TArray<Boolean>;
   begin
     Result := False;
-    if not VarRoutines.TryGetValue(LowerCase(AName), Known) then
+    if not mVarRoutines.TryGetValue(LowerCase(AName), mKnown) then
     begin
       Exit;
     end;
-    for Modes in Known do
+    for mModes in mKnown do
     begin
-      if (AArgument > High(Modes)) or not Modes[AArgument] then
+      if (AArgument > High(mModes)) or not mModes[AArgument] then
       begin
         Exit(False);
       end;
@@ -525,12 +525,12 @@ var
       begin
         Continue;
       end;
-      if (mIndex = 1) and MatchText(mName, ['Inc', 'Dec']) and not VarRoutines.ContainsKey('inc') and
-        not VarRoutines.ContainsKey('dec') then
+      if (mIndex = 1) and MatchText(mName, ['Inc', 'Dec']) and not mVarRoutines.ContainsKey('inc') and
+        not mVarRoutines.ContainsKey('dec') then
       begin
         AReport.Add(TTextRange.Create(mTarget.StartPos, mTarget.EndPos),
           cTexts[TLoopsText.Modified].Fmt([AName]),
-          TRuleConfidence.High, WhileLoopFix(AContext.Text, Tokens, ALoop, AInline));
+          TRuleConfidence.High, WhileLoopFix(AContext.Text, mTokens, ALoop, AInline));
       end
       else if PassesByReference(mName, mIndex - 1) then
       begin
@@ -579,7 +579,7 @@ var
         begin
           AReport.Add(TTextRange.Create(mNode[0].StartPos, mNode[0].EndPos),
             cTexts[TLoopsText.Assigned].Fmt([AName]),
-            TRuleConfidence.High, WhileLoopFix(AContext.Text, Tokens, ALoop, AInline));
+            TRuleConfidence.High, WhileLoopFix(AContext.Text, mTokens, ALoop, AInline));
         end
         else if IsNamedCall(mNode) then
         begin
@@ -598,71 +598,71 @@ var
   // Kommt AName in ANode außerhalb von ALoop vor?
   function UsedOutside(ANode, ALoop: TSyntaxNode; const AName: string): Boolean;
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node = ALoop then
+        mNode := mPending.Pop;
+        if mNode = ALoop then
         begin
           Continue;
         end;
-        if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, AName) then
+        if (mNode.Kind = TSyntaxKind.Identifier) and SameText(mNode.Name, AName) then
         begin
           Exit(True);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   // Schleifen der Routine ARoutine (Rumpf ABody); AOuterLocals: Variablen der umgebenden Routinen.
   procedure CheckRoutine(ARoutine, ABody: TSyntaxNode; AOuterLocals: TNameSet; const AClass: string);
   var
-    Locals: TNameSet;
-    Header, Params: TSyntaxNode;
-    Index: Integer;
+    mLocals: TNameSet;
+    mHeader, mParams: TSyntaxNode;
+    mIndex: Integer;
 
     procedure CollectInline(ARoot: TSyntaxNode);
     var
-      Child: Integer;
-      Node: TSyntaxNode;
-      Pending: TStack<TSyntaxNode>;
+      mChild: Integer;
+      mNode: TSyntaxNode;
+      mPending: TStack<TSyntaxNode>;
     begin
       // Iterativ (Bericht M1).
-      Pending := TStack<TSyntaxNode>.Create;
+      mPending := TStack<TSyntaxNode>.Create;
       try
-        Pending.Push(ARoot);
-        while Pending.Count > 0 do
+        mPending.Push(ARoot);
+        while mPending.Count > 0 do
         begin
-          Node := Pending.Pop;
-          if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+          mNode := mPending.Pop;
+          if mNode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
           begin
             Continue;
           end;
-          if Node.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
+          if mNode.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
           begin
-            AddNames(Locals, Node.Name);
+            AddNames(mLocals, mNode.Name);
           end;
-          for Child := Node.ChildCount - 1 downto 0 do
+          for mChild := mNode.ChildCount - 1 downto 0 do
           begin
-            Pending.Push(Node[Child]);
+            mPending.Push(mNode[mChild]);
           end;
         end;
       finally
-        Pending.Free;
+        mPending.Free;
       end;
     end;
 
@@ -676,11 +676,11 @@ var
       begin
         Result := cTexts[TLoopsText.OuterVariable].Text;
       end
-      else if (AClass <> '') and Fields.ContainsKey(AClass + '.' + AKey) then
+      else if (AClass <> '') and mFields.ContainsKey(AClass + '.' + AKey) then
       begin
         Result := cTexts[TLoopsText.FieldKind].Text;
       end
-      else if Globals.ContainsKey(AKey) then
+      else if mGlobals.ContainsKey(AKey) then
       begin
         Result := cTexts[TLoopsText.GlobalVariable].Text;
         ACode := 'W1019';
@@ -702,9 +702,9 @@ var
       if not UsedOutside(ABody, ALoop, ALoop.Name) then
       begin
         mFixes := [TRuleFix.Create(cTexts[TLoopsText.UseForVar].Fmt([ALoop.Name]),
-          [TRuleEdit.Create(TTextRange.Create(Tokens[AForToken].StartPos, Tokens[AForToken].StartPos), 'var ')])];
+          [TRuleEdit.Create(TTextRange.Create(mTokens[AForToken].StartPos, mTokens[AForToken].StartPos), 'var ')])];
       end;
-      AReport.Add(TTextRange.Create(Tokens[AForToken].StartPos, Tokens[AForToken].EndPos),
+      AReport.Add(TTextRange.Create(mTokens[AForToken].StartPos, mTokens[AForToken].EndPos),
         cTexts[TLoopsText.NonLocal].Fmt([ALoop.Name, mKind, mCode]),
         TRuleConfidence.High, mFixes);
     end;
@@ -715,9 +715,9 @@ var
       mIsInline: Boolean;
     begin
       // Erstes Code-Token nach for: var bei for var I, sonst der Name.
-      mForToken := NextCode(Tokens, TokenAt(Tokens, ALoop.StartOffset) + 1);
-      mIsInline := (mForToken <= High(Tokens)) and Tokens[mForToken].IsKeyword('var');
-      if not mIsInline and not Locals.ContainsKey(LowerCase(ALoop.Name)) then
+      mForToken := NextCode(mTokens, TokenAt(mTokens, ALoop.StartOffset) + 1);
+      mIsInline := (mForToken <= High(mTokens)) and mTokens[mForToken].IsKeyword('var');
+      if not mIsInline and not mLocals.ContainsKey(LowerCase(ALoop.Name)) then
       begin
         CheckNonLocal(ALoop, mForToken);
       end;
@@ -766,23 +766,23 @@ var
     end;
 
   var
-    Outer: TNameSet;
-    Child: TSyntaxNode;
-    Pair: TPair<string, Boolean>;
+    mOuter: TNameSet;
+    mChild: TSyntaxNode;
+    mPair: TPair<string, Boolean>;
   begin
-    Locals := TNameSet.Create;
-    Outer := TNameSet.Create;
+    mLocals := TNameSet.Create;
+    mOuter := TNameSet.Create;
     try
-      AddVariables(Locals, ARoutine);
-      Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-      if Header <> nil then
+      AddVariables(mLocals, ARoutine);
+      mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+      if mHeader <> nil then
       begin
-        Params := Header.FindChild(TSyntaxKind.Parameters);
-        if Params <> nil then
+        mParams := mHeader.FindChild(TSyntaxKind.Parameters);
+        if mParams <> nil then
         begin
-          for Index := 0 to Params.ChildCount - 1 do
+          for mIndex := 0 to mParams.ChildCount - 1 do
           begin
-            AddNames(Locals, Params[Index].Name);
+            AddNames(mLocals, mParams[mIndex].Name);
           end;
         end;
       end;
@@ -793,69 +793,69 @@ var
       end;
       // Lokale Routinen: deren umgebende Variablen sind diese plus die äußeren. Die Rekursion bleibt (Bericht M1):
       // sie geht nur über verschachtelte Routinendeklarationen, nicht über Ausdrücke oder Anweisungsketten.
-      for Pair in AOuterLocals do
+      for mPair in AOuterLocals do
       begin
-        Outer.AddOrSetValue(Pair.Key, True);
+        mOuter.AddOrSetValue(mPair.Key, True);
       end;
-      for Pair in Locals do
+      for mPair in mLocals do
       begin
-        Outer.AddOrSetValue(Pair.Key, True);
+        mOuter.AddOrSetValue(mPair.Key, True);
       end;
-      for Index := 0 to ARoutine.ChildCount - 1 do
+      for mIndex := 0 to ARoutine.ChildCount - 1 do
       begin
-        Child := ARoutine[Index];
-        if (Child.Kind = TSyntaxKind.RoutineDecl) and (Child.FindChild(TSyntaxKind.Block) <> nil) then
+        mChild := ARoutine[mIndex];
+        if (mChild.Kind = TSyntaxKind.RoutineDecl) and (mChild.FindChild(TSyntaxKind.Block) <> nil) then
         begin
-          CheckRoutine(Child, Child.FindChild(TSyntaxKind.Block), Outer, AClass);
+          CheckRoutine(mChild, mChild.FindChild(TSyntaxKind.Block), mOuter, AClass);
         end;
       end;
     finally
-      Outer.Free;
-      Locals.Free;
+      mOuter.Free;
+      mLocals.Free;
     end;
   end;
 
   procedure VisitRoutines(ANode: TSyntaxNode);
   var
-    Index: Integer;
-    Body: TSyntaxNode;
-    ClassName: string;
-    NoOuter: TNameSet;
+    mIndex: Integer;
+    mBody: TSyntaxNode;
+    mClassName: string;
+    mNoOuter: TNameSet;
   begin
-    for Index := 0 to ANode.ChildCount - 1 do
+    for mIndex := 0 to ANode.ChildCount - 1 do
     begin
-      Body := ANode[Index];
-      if (Body.Kind = TSyntaxKind.RoutineDecl) and (Body.FindChild(TSyntaxKind.Block) <> nil) then
+      mBody := ANode[mIndex];
+      if (mBody.Kind = TSyntaxKind.RoutineDecl) and (mBody.FindChild(TSyntaxKind.Block) <> nil) then
       begin
-        ClassName := '';
-        if Pos('.', Body.Name) > 0 then
+        mClassName := '';
+        if Pos('.', mBody.Name) > 0 then
         begin
-          ClassName := LowerCase(Copy(Body.Name, 1, LastDelimiter('.', Body.Name) - 1));
+          mClassName := LowerCase(Copy(mBody.Name, 1, LastDelimiter('.', mBody.Name) - 1));
         end;
-        NoOuter := TNameSet.Create;
+        mNoOuter := TNameSet.Create;
         try
-          CheckRoutine(Body, Body.FindChild(TSyntaxKind.Block), NoOuter, ClassName);
+          CheckRoutine(mBody, mBody.FindChild(TSyntaxKind.Block), mNoOuter, mClassName);
         finally
-          NoOuter.Free;
+          mNoOuter.Free;
         end;
       end
-      else if Body.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
+      else if mBody.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
       begin
-        VisitRoutines(Body);
+        VisitRoutines(mBody);
       end;
     end;
   end;
 
   procedure CollectGlobals(ANode: TSyntaxNode);
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
-    AddVariables(Globals, ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
+    AddVariables(mGlobals, ANode);
+    for mIndex := 0 to ANode.ChildCount - 1 do
     begin
-      if ANode[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
+      if ANode[mIndex].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
       begin
-        AddVariables(Globals, ANode[Index]);
+        AddVariables(mGlobals, ANode[mIndex]);
       end;
     end;
   end;
@@ -865,18 +865,18 @@ begin
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Globals := TNameSet.Create;
-  Fields := TNameSet.Create;
-  VarRoutines := TDictionary<string, TArray<TArray<Boolean>>>.Create;
+  mTokens := AContext.Tree.Tokens;
+  mGlobals := TNameSet.Create;
+  mFields := TNameSet.Create;
+  mVarRoutines := TDictionary<string, TArray<TArray<Boolean>>>.Create;
   try
     CollectGlobals(AContext.Tree.Root);
     CollectDeclarations(AContext.Tree.Root, '');
     VisitRoutines(AContext.Tree.Root);
   finally
-    VarRoutines.Free;
-    Fields.Free;
-    Globals.Free;
+    mVarRoutines.Free;
+    mFields.Free;
+    mGlobals.Free;
   end;
 end;
 
@@ -884,16 +884,16 @@ end;
 
 function TForVariableAfterLoopRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(ForVariableAfterLoopRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cForVariableAfterLoopRuleId, TRuleSeverity.Warning,
     cTexts[TLoopsText.ReadAfterTitle].Text);
 end;
 
 procedure TForVariableAfterLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Cache: IRuleDerivedCache;
-  Graph: TControlFlowGraph;
-  Tokens: TArray<TPascalToken>;
-  Reported: TDictionary<TSyntaxNode, Boolean>;
+  mCache: IRuleDerivedCache;
+  mGraph: TControlFlowGraph;
+  mTokens: TArray<TPascalToken>;
+  mReported: TDictionary<TSyntaxNode, Boolean>;
 
   function IsInside(ANode, AOuter: TSyntaxNode): Boolean;
   begin
@@ -908,40 +908,40 @@ var
   // Methoden); nil ohne.
   function FindName(ASyntax: TSyntaxNode; const AName: string): TSyntaxNode;
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
     Result := nil;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ASyntax);
-      while Pending.Count > 0 do
+      mPending.Push(ASyntax);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.AnonymousMethod then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.AnonymousMethod then
         begin
           Continue;
         end;
-        if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, AName) then
+        if (mNode.Kind = TSyntaxKind.Identifier) and SameText(mNode.Name, AName) then
         begin
-          Exit(Node);
+          Exit(mNode);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          if not (Node[Index].Kind in [TSyntaxKind.Block, TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement,
+          if not (mNode[mIndex].Kind in [TSyntaxKind.Block, TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement,
             TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement, TSyntaxKind.CaseItem, TSyntaxKind.CaseElse,
             TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
             TSyntaxKind.RepeatStatement, TSyntaxKind.WithStatement, TSyntaxKind.TryStatement,
             TSyntaxKind.RaiseStatement, TSyntaxKind.LabeledStatement]) then
           begin
-            Pending.Push(Node[Index]);
+            mPending.Push(mNode[mIndex]);
           end;
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -949,39 +949,39 @@ var
   // Anweisung verfolgen.
   function EntersBody(ANext: TFlowNode; ALoop: TSyntaxNode): Boolean;
   var
-    Node, Next: TFlowNode;
-    Pending: TStack<TFlowNode>;
-    Seen: TDictionary<TFlowNode, Boolean>;
+    mNode, mNext: TFlowNode;
+    mPending: TStack<TFlowNode>;
+    mSeen: TDictionary<TFlowNode, Boolean>;
   begin
     Result := False;
-    Pending := TStack<TFlowNode>.Create;
-    Seen := TDictionary<TFlowNode, Boolean>.Create;
+    mPending := TStack<TFlowNode>.Create;
+    mSeen := TDictionary<TFlowNode, Boolean>.Create;
     try
-      Pending.Push(ANext);
-      while Pending.Count > 0 do
+      mPending.Push(ANext);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Seen.ContainsKey(Node) then
+        mNode := mPending.Pop;
+        if mSeen.ContainsKey(mNode) then
         begin
           Continue;
         end;
-        Seen.Add(Node, True);
-        if Node.Syntax <> nil then
+        mSeen.Add(mNode, True);
+        if mNode.Syntax <> nil then
         begin
-          if IsInside(Node.Syntax, ALoop) and (Node.Syntax <> ALoop) then
+          if IsInside(mNode.Syntax, ALoop) and (mNode.Syntax <> ALoop) then
           begin
             Exit(True);
           end;
           Continue;
         end;
-        for Next in Node.Successors do
+        for mNext in mNode.Successors do
         begin
-          Pending.Push(Next);
+          mPending.Push(mNext);
         end;
       end;
     finally
-      Seen.Free;
-      Pending.Free;
+      mSeen.Free;
+      mPending.Free;
     end;
   end;
 
@@ -991,14 +991,14 @@ var
     mNode: TFlowNode;
   begin
     Result := nil;
-    for mNode in Graph.Nodes do
+    for mNode in mGraph.Nodes do
     begin
       if (mNode.Kind = TFlowNodeKind.Condition) and (mNode.Syntax = ALoop) then
       begin
         Result := mNode;
       end;
     end;
-    if (Result <> nil) and (Graph.IsReachable(Result) <> TFlowAnswer.Yes) then
+    if (Result <> nil) and (mGraph.IsReachable(Result) <> TFlowAnswer.Yes) then
     begin
       Result := nil;
     end;
@@ -1016,14 +1016,14 @@ var
     mTarget: TSyntaxNode;
   begin
     mTarget := FindName(ANode.Syntax, ALoop.Name);
-    if (mTarget = nil) or Reported.ContainsKey(mTarget) then
+    if (mTarget = nil) or mReported.ContainsKey(mTarget) then
     begin
       Exit;
     end;
-    Reported.Add(mTarget, True);
+    mReported.Add(mTarget, True);
     AReport.Add(TTextRange.Create(mTarget.StartPos, mTarget.EndPos), cTexts[TLoopsText.ReadAfter].Fmt([ALoop.Name]),
       TRuleConfidence.High,
-      WhileLoopFix(AContext.Text, Tokens, ALoop, False));
+      WhileLoopFix(AContext.Text, mTokens, ALoop, False));
   end;
 
   // Folgt dem Fluss ab ANode, solange die Schleifenvariable weder neu belegt noch gelesen wird; ein Lesen meldet
@@ -1089,75 +1089,75 @@ var
 
   procedure VisitLoops(ARoot: TSyntaxNode; ALocals: TNameSet);
   var
-    Index, ForToken: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex, mForToken: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+        mNode := mPending.Pop;
+        if mNode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
         begin
           Continue;
         end;
-        if (Node.Kind = TSyntaxKind.ForStatement) and ALocals.ContainsKey(LowerCase(Node.Name)) then
+        if (mNode.Kind = TSyntaxKind.ForStatement) and ALocals.ContainsKey(LowerCase(mNode.Name)) then
         begin
-          ForToken := NextCode(Tokens, TokenAt(Tokens, Node.StartOffset) + 1);
-          if (ForToken <= High(Tokens)) and not Tokens[ForToken].IsKeyword('var') then
+          mForToken := NextCode(mTokens, TokenAt(mTokens, mNode.StartOffset) + 1);
+          if (mForToken <= High(mTokens)) and not mTokens[mForToken].IsKeyword('var') then
           begin
-            CheckLoop(Node);
+            CheckLoop(mNode);
           end;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
 var
-  Routine, Block: TSyntaxNode;
-  Locals: TNameSet;
+  mRoutine, mBlock: TSyntaxNode;
+  mLocals: TNameSet;
 begin
   if (AContext.Tree = nil) or not ContainsText(AContext.Text, 'for') then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Cache := TRuleDerived.Open(AContext);
-  Reported := TDictionary<TSyntaxNode, Boolean>.Create;
-  Locals := TNameSet.Create;
+  mTokens := AContext.Tree.Tokens;
+  mCache := TRuleDerived.Open(AContext);
+  mReported := TDictionary<TSyntaxNode, Boolean>.Create;
+  mLocals := TNameSet.Create;
   try
-    for Routine in TRuleDerived.Routines(Cache, AContext) do
+    for mRoutine in TRuleDerived.Routines(mCache, AContext) do
     begin
-      Block := Routine.FindChild(TSyntaxKind.Block);
-      if Block = nil then
+      mBlock := mRoutine.FindChild(TSyntaxKind.Block);
+      if mBlock = nil then
       begin
         Continue;
       end;
-      Locals.Clear;
-      AddVariables(Locals, Routine);
-      if Locals.Count = 0 then
+      mLocals.Clear;
+      AddVariables(mLocals, mRoutine);
+      if mLocals.Count = 0 then
       begin
         Continue;
       end;
-      Graph := TRuleDerived.Graph(Cache, AContext, Routine);
-      if (Graph = nil) or not Graph.Complete then
+      mGraph := TRuleDerived.Graph(mCache, AContext, mRoutine);
+      if (mGraph = nil) or not mGraph.Complete then
       begin
         Continue;
       end;
-      VisitLoops(Block, Locals);
+      VisitLoops(mBlock, mLocals);
     end;
   finally
-    Locals.Free;
-    Reported.Free;
+    mLocals.Free;
+    mReported.Free;
   end;
 end;
 

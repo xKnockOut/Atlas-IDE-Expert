@@ -9,7 +9,8 @@
 // und Knöpfe für Neustart, Optionen, Logordner und Update. Builds auf Auftrag stellt das
 // Modul Build-Pipeline über IAtlasBuildJobs (Atlas.IDE.Contracts.BuildPipeline) bereit.
 // Teilnehmer, die ein Modul an den Compile-Ereignissen anmeldet, und Felder im
-// Statusfeld nimmt es beim Stoppen selbst zurück (Remove, leerer Text). Die Kompositionswurzel setzt die Quellen beim Start
+// Statusfeld nimmt es beim Stoppen selbst zurück (Remove, leerer Text). Die Kompositionswurzel setzt die Quellen beim
+// Start
 // (Install) und nimmt sie beim Entladen zurück (Uninstall); danach liefern
 // sie nil bzw. tun nichts. Ein Modul fragt die Sitzung bei jedem Aufruf
 // neu, statt sie zu speichern: Der Server kann neu starten.
@@ -117,7 +118,8 @@ type
     class function ActiveSession: TLspSession; static;
     /// <summary>Zeile in der Meldungsansicht der IDE, Gruppe „Atlas“.</summary>
     class procedure Message(const AText: string); static;
-    /// <summary>Warnung wie die der Sicherung: Meldungsansicht und Bericht; vor Install nur die Meldungsansicht.</summary>
+    /// <summary>Warnung wie die der Sicherung: Meldungsansicht und Bericht; vor Install nur die
+    /// Meldungsansicht.</summary>
     class procedure Warning(const AText: string); static;
     /// <summary>Zeile im Diagnoselog des Servers; ohne Server nichts.</summary>
     class procedure Log(const AText: string); static;

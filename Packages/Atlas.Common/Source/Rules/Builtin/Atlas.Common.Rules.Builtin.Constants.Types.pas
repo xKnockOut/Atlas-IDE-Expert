@@ -86,7 +86,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Semantics.ConstantValues,
@@ -121,55 +120,55 @@ end;
 
 function IntegerRange(const ATypeName: string; out ALow, AHigh: Int64): Boolean;
 var
-  Name: string;
-  HighKnown: Boolean;
-  Size: Integer;
+  mName: string;
+  mHighKnown: Boolean;
+  mSize: Integer;
 begin
-  Name := LowerCase(ATypeName);
-  if Name.StartsWith('system.') then
+  mName := LowerCase(ATypeName);
+  if mName.StartsWith('system.') then
   begin
-    Name := Copy(Name, Length('system.') + 1, MaxInt);
+    mName := Copy(mName, Length('system.') + 1, MaxInt);
   end;
-  Result := (Name <> 'char') and (Name <> 'widechar') and (Name <> 'ansichar') and (Name <> 'boolean') and
-    (Name <> 'bytebool') and TOrdinalConstants.FixedType(Name, ALow, AHigh, HighKnown, Size) and HighKnown;
+  Result := (mName <> 'char') and (mName <> 'widechar') and (mName <> 'ansichar') and (mName <> 'boolean') and
+    (mName <> 'bytebool') and TOrdinalConstants.FixedType(mName, ALow, AHigh, mHighKnown, mSize) and mHighKnown;
 end;
 
 function SubrangeOf(const ASignature: string; out ALow, AHigh: Int64): Boolean;
 var
-  Text: string;
-  Equals, Dots: Integer;
+  mText: string;
+  mEquals, mDots: Integer;
 begin
   Result := False;
-  Equals := Pos('=', ASignature);
-  if Equals = 0 then
+  mEquals := Pos('=', ASignature);
+  if mEquals = 0 then
   begin
     Exit;
   end;
-  Text := Trim(Copy(ASignature, Equals + 1, MaxInt));
-  if Text.EndsWith(';') then
+  mText := Trim(Copy(ASignature, mEquals + 1, MaxInt));
+  if mText.EndsWith(';') then
   begin
-    Text := Trim(Copy(Text, 1, Length(Text) - 1));
+    mText := Trim(Copy(mText, 1, Length(mText) - 1));
   end;
-  Dots := Pos('..', Text);
-  if Dots = 0 then
+  mDots := Pos('..', mText);
+  if mDots = 0 then
   begin
     Exit;
   end;
-  Result := TOrdinalConstants.Evaluate(Copy(Text, 1, Dots - 1), nil, ALow) and
-    TOrdinalConstants.Evaluate(Copy(Text, Dots + 2, MaxInt), nil, AHigh) and (ALow <= AHigh);
+  Result := TOrdinalConstants.Evaluate(Copy(mText, 1, mDots - 1), nil, ALow) and
+    TOrdinalConstants.Evaluate(Copy(mText, mDots + 2, MaxInt), nil, AHigh) and (ALow <= AHigh);
 end;
 
 function TypeBodyOf(const ASignature: string): string;
 var
-  Equals: Integer;
+  mEquals: Integer;
 begin
   Result := '';
-  Equals := Pos('=', ASignature);
-  if (Equals = 0) or ASignature.EndsWith('…') then
+  mEquals := Pos('=', ASignature);
+  if (mEquals = 0) or ASignature.EndsWith('…') then
   begin
     Exit;
   end;
-  Result := Trim(Copy(ASignature, Equals + 1, MaxInt));
+  Result := Trim(Copy(ASignature, mEquals + 1, MaxInt));
   if Result.EndsWith(';') then
   begin
     Result := Trim(Copy(Result, 1, Length(Result) - 1));
@@ -211,15 +210,15 @@ end;
 
 constructor TTypedNames.Create(const AContext: TRuleContext; const AWanted: TArray<string>);
 var
-  Name: string;
+  mName: string;
 begin
   inherited Create;
   FIndex := AContext.Index;
   FText := AContext.Text;
   FWanted := TDictionary<string, Boolean>.Create;
-  for Name in AWanted do
+  for mName in AWanted do
   begin
-    FWanted.AddOrSetValue(CanonicalTypeName(Name), True);
+    FWanted.AddOrSetValue(CanonicalTypeName(mName), True);
   end;
   FTypes := TDictionary<string, Boolean>.Create;
   FLocal := TDictionary<string, Boolean>.Create;
@@ -247,19 +246,19 @@ end;
 
 function TTypedNames.Wanted(const ATypeName: string): Boolean;
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := CanonicalTypeName(ATypeName);
-  if FWanted.ContainsKey(Key) then
+  mKey := CanonicalTypeName(ATypeName);
+  if FWanted.ContainsKey(mKey) then
   begin
     Exit(True);
   end;
-  if FTypes.TryGetValue(Key, Result) then
+  if FTypes.TryGetValue(mKey, Result) then
   begin
     Exit;
   end;
   // Vorläufig False: schützt vor zyklischen Aliasen.
-  FTypes.Add(Key, False);
+  FTypes.Add(mKey, False);
   Result := False;
   if (FIndex <> nil) and IsValidIdent(ATypeName, True) then
   begin
@@ -269,16 +268,16 @@ begin
         Result := (ASymbol.Kind = TIndexSymbolKind.TypeAlias) and Wanted(TypeBodyOf(ASymbol.Signature));
       end);
   end;
-  FTypes[Key] := Result;
+  FTypes[mKey] := Result;
 end;
 
 function TTypedNames.Mentions(const AText: string): Boolean;
 var
-  Word: string;
+  mWord: string;
 begin
-  for Word in DeclarationWords(AText) do
+  for mWord in DeclarationWords(AText) do
   begin
-    if Wanted(Word) then
+    if Wanted(mWord) then
     begin
       Exit(True);
     end;
@@ -288,88 +287,88 @@ end;
 
 procedure TTypedNames.CollectTypes(ANode: TSyntaxNode);
 var
-  Index: Integer;
-  Body: string;
-  Node: TSyntaxNode;
-  Pending: TStack<TSyntaxNode>;
+  mIndex: Integer;
+  mBody: string;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
 begin
   // Iterativ (Bericht M1).
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if (Node.Kind = TSyntaxKind.TypeDecl) and (Node.ChildCount > 0) then
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.TypeDecl) and (mNode.ChildCount > 0) then
       begin
-        Body := Trim(NodeText(Node[0]));
-        if (Pos(' ', Body) = 0) and Wanted(Body) then
+        mBody := Trim(NodeText(mNode[0]));
+        if (Pos(' ', mBody) = 0) and Wanted(mBody) then
         begin
-          FTypes.AddOrSetValue(CanonicalTypeName(Node.Name), True);
+          FTypes.AddOrSetValue(CanonicalTypeName(mNode.Name), True);
         end;
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 procedure TTypedNames.CollectLocal(ANode: TSyntaxNode);
 var
-  Index: Integer;
-  Name, Header: string;
-  Node: TSyntaxNode;
-  Pending: TStack<TSyntaxNode>;
+  mIndex: Integer;
+  mName, mHeader: string;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
 begin
   // Iterativ (Bericht M1).
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if (Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.Parameter, TSyntaxKind.ConstDecl,
-        TSyntaxKind.PropertyDecl, TSyntaxKind.InlineVar]) and (Node.ChildCount > 0) and
-        Mentions(NodeText(Node[0])) then
+      mNode := mPending.Pop;
+      if (mNode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.Parameter, TSyntaxKind.ConstDecl,
+        TSyntaxKind.PropertyDecl, TSyntaxKind.InlineVar]) and (mNode.ChildCount > 0) and
+        Mentions(NodeText(mNode[0])) then
       begin
-        for Name in Node.Name.Split([',']) do
+        for mName in mNode.Name.Split([',']) do
         begin
-          FLocal.AddOrSetValue(LowerCase(Trim(Name)), True);
+          FLocal.AddOrSetValue(LowerCase(Trim(mName)), True);
         end;
       end;
       // Funktionen mit gesuchtem Ergebnistyp.
-      if Node.Kind = TSyntaxKind.RoutineHeader then
+      if mNode.Kind = TSyntaxKind.RoutineHeader then
       begin
-        Header := NodeText(Node);
-        if Mentions(Copy(Header, LastDelimiter(')', Header) + 1, MaxInt)) then
+        mHeader := NodeText(mNode);
+        if Mentions(Copy(mHeader, LastDelimiter(')', mHeader) + 1, MaxInt)) then
         begin
-          FLocal.AddOrSetValue(LowerCase(Copy(Node.Name, LastDelimiter('.', Node.Name) + 1, MaxInt)), True);
+          FLocal.AddOrSetValue(LowerCase(Copy(mNode.Name, LastDelimiter('.', mNode.Name) + 1, MaxInt)), True);
         end;
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 function TTypedNames.Suspect(const AName: string): Boolean;
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := LowerCase(AName);
-  if (Key = '') or FLocal.ContainsKey(Key) then
+  mKey := LowerCase(AName);
+  if (mKey = '') or FLocal.ContainsKey(mKey) then
   begin
-    Exit(Key <> '');
+    Exit(mKey <> '');
   end;
-  if FSuspects.TryGetValue(Key, Result) then
+  if FSuspects.TryGetValue(mKey, Result) then
   begin
     Exit;
   end;
@@ -384,59 +383,59 @@ begin
           (ASymbol.TypeName <> '') and Wanted(ASymbol.TypeName);
       end);
   end;
-  FSuspects.Add(Key, Result);
+  FSuspects.Add(mKey, Result);
 end;
 
 function OperandName(ANode: TSyntaxNode): string;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   // Iterativ (Bericht M1): an Aufrufen, Indizes und Klammern entlang nach links.
-  Node := ANode;
-  while ((Node.Kind in [TSyntaxKind.Call, TSyntaxKind.IndexAccess]) and (Node.ChildCount > 0)) or
-    ((Node.Kind = TSyntaxKind.ParenExpr) and (Node.ChildCount = 1)) do
+  mNode := ANode;
+  while ((mNode.Kind in [TSyntaxKind.Call, TSyntaxKind.IndexAccess]) and (mNode.ChildCount > 0)) or
+    ((mNode.Kind = TSyntaxKind.ParenExpr) and (mNode.ChildCount = 1)) do
   begin
-    Node := Node[0];
+    mNode := mNode[0];
   end;
   Result := '';
-  if Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess] then
+  if mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess] then
   begin
-    Result := Node.Name;
+    Result := mNode.Name;
   end;
 end;
 
 function OperandKind(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string; ANode: TSyntaxNode;
   out AKind: TIntegerKind; out ATypeName: string): Boolean;
 var
-  Symbol, TypeInfo: TResolvedSymbol;
-  TypeFound: Boolean;
-  Node: TSyntaxNode;
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
+  mNode: TSyntaxNode;
 begin
   Result := False;
   AKind := Default(TIntegerKind);
   ATypeName := '';
   // Iterativ (Bericht M1): Klammern ablösen statt sich selbst aufzurufen.
-  Node := ANode;
-  while (Node.Kind = TSyntaxKind.ParenExpr) and (Node.ChildCount = 1) do
+  mNode := ANode;
+  while (mNode.Kind = TSyntaxKind.ParenExpr) and (mNode.ChildCount = 1) do
   begin
-    Node := Node[0];
+    mNode := mNode[0];
   end;
-  if not (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
-    TSyntaxKind.IndexAccess]) or not AResolver.NodeType(ATree, AFileName, Node, Symbol, TypeInfo, TypeFound) or
-    not (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_,
+  if not (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
+    TSyntaxKind.IndexAccess]) or not AResolver.NodeType(ATree, AFileName, mNode, mSymbol, mTypeInfo, mTypeFound) or
+    not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_,
     TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) then
   begin
     Exit;
   end;
-  ATypeName := Symbol.TypeName;
+  ATypeName := mSymbol.TypeName;
   AKind := IntegerKindOf(ATypeName);
   // Eigene Aliase (type TGroesse = UInt64) über den aufgelösten Typ.
-  if (AKind.Bits = 0) and TypeFound then
+  if (AKind.Bits = 0) and mTypeFound then
   begin
-    AKind := IntegerKindOf(TypeInfo.Name);
+    AKind := IntegerKindOf(mTypeInfo.Name);
     if AKind.Bits = 0 then
     begin
-      AKind := IntegerKindOf(TypeBodyOf(TypeInfo.Signature));
+      AKind := IntegerKindOf(TypeBodyOf(mTypeInfo.Signature));
     end;
   end;
   Result := AKind.Bits > 0;

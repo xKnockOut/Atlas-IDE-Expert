@@ -26,7 +26,8 @@
 //                     Zuweisung an eine Property ohne write (#1006, wie E2129) und
 //                     Lesen einer Property ohne read (wie E2130), nur bei sicher
 //                     aufgelöster Property; eine ohne Typ neu deklarierte, deren
-//                     Vorfahr nicht im Index steht, gilt nicht als sicher (#1326). Vorab gefiltert über die Namen solcher
+//                     Vorfahr nicht im Index steht, gilt nicht als sicher (#1326). Vorab gefiltert über die Namen
+//                     solcher
 //                     Properties in Datei und Index. Korrekturen: Count := 0 wird
 //                     Clear, wenn der Typ Clear hat; in einer Methode der eigenen
 //                     Klasse direkt das Feld hinter read; für eine Property dieser
@@ -40,8 +41,8 @@ uses
   Atlas.Common.Rules.Contract;
 
 const
-  AssignToPropertyMemberRuleId = 'assign-to-property-member';
-  ReadonlyPropertyAssignedRuleId = 'readonly-property-assigned';
+  cAssignToPropertyMemberRuleId = 'assign-to-property-member';
+  cReadonlyPropertyAssignedRuleId = 'readonly-property-assigned';
 
 type
   TAssignToPropertyMemberRule = class(TInterfacedObject, IRule)
@@ -129,22 +130,22 @@ type
 
 function TAssignToPropertyMemberRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(AssignToPropertyMemberRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cAssignToPropertyMemberRuleId, TRuleSeverity.Error,
     cTexts[TStatementsPropertiesText.RecordTitle].Text);
 end;
 
 procedure TAssignToPropertyMemberRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 const
   // Anweisungen, die in einer Folge stehen: Dort passen drei Zeilen statt einer.
-  SequenceParents = [TSyntaxKind.Block, TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock,
+  cSequenceParents = [TSyntaxKind.Block, TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock,
     TSyntaxKind.RepeatStatement];
 var
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName: string;
-  Tokens: TTokens;
-  Lines: TArray<string>;
-  LineBreak: string;
+  mFileName: string;
+  mTokens: TTokens;
+  mLines: TArray<string>;
+  mLineBreak: string;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -164,44 +165,44 @@ var
   function CopyFix(AStatement, AReceiver: TSyntaxNode; const AType: TResolvedSymbol;
     out AFix: TRuleFix): Boolean;
   var
-    Routine: TSyntaxNode;
-    Name, TypeName, Indent, Receiver, NewText: string;
-    UsesEdit: TTextEdit;
-    Edits: TArray<TTextEdit>;
+    mRoutine: TSyntaxNode;
+    mName, mTypeName, mIndent, mReceiver, mNewText: string;
+    mUsesEdit: TTextEdit;
+    mEdits: TArray<TTextEdit>;
   begin
     Result := False;
-    Routine := EnclosingRoutine(AStatement);
-    if (Routine = nil) or (AStatement.Parent = nil) or not (AStatement.Parent.Kind in SequenceParents) or
-      (AStatement.StartPos.Line <> AStatement.EndPos.Line) or (AStatement.StartPos.Line > High(Lines)) then
+    mRoutine := EnclosingRoutine(AStatement);
+    if (mRoutine = nil) or (AStatement.Parent = nil) or not (AStatement.Parent.Kind in cSequenceParents) or
+      (AStatement.StartPos.Line <> AStatement.EndPos.Line) or (AStatement.StartPos.Line > High(mLines)) then
     begin
       Exit;
     end;
-    TypeName := AType.Name;
-    Name := TypeName;
-    if (Length(Name) > 1) and CharInSet(Name[1], ['T', 't']) then
+    mTypeName := AType.Name;
+    mName := mTypeName;
+    if (Length(mName) > 1) and CharInSet(mName[1], ['T', 't']) then
     begin
-      Name := Copy(Name, 2, MaxInt);
+      mName := Copy(mName, 2, MaxInt);
     end;
-    Name := TRoutineBody.UniqueName(Tokens, UpperCase(Copy(Name, 1, 1)));
-    Indent := TTextLines.IndentOf(Lines[AStatement.StartPos.Line]);
-    Receiver := NodeText(AReceiver);
-    NewText := Name + ' := ' + Receiver + ';' + LineBreak + Indent + Name +
-      Copy(AContext.Text, AReceiver.EndOffset + 1, AStatement.EndOffset - AReceiver.EndOffset) + ';' + LineBreak +
-      Indent + Receiver + ' := ' + Name;
-    Edits := [TRoutineBody.AddVariable(AContext.Text, Routine, Name, TypeName, AContext.Formatting),
-      TTextEdit.Create(TTextRange.Create(AStatement.StartPos, AStatement.EndPos), NewText)];
+    mName := TRoutineBody.UniqueName(mTokens, UpperCase(Copy(mName, 1, 1)));
+    mIndent := TTextLines.IndentOf(mLines[AStatement.StartPos.Line]);
+    mReceiver := NodeText(AReceiver);
+    mNewText := mName + ' := ' + mReceiver + ';' + mLineBreak + mIndent + mName +
+      Copy(AContext.Text, AReceiver.EndOffset + 1, AStatement.EndOffset - AReceiver.EndOffset) + ';' + mLineBreak +
+      mIndent + mReceiver + ' := ' + mName;
+    mEdits := [TRoutineBody.AddVariable(AContext.Text, mRoutine, mName, mTypeName, AContext.Formatting),
+      TTextEdit.Create(TTextRange.Create(AStatement.StartPos, AStatement.EndPos), mNewText)];
     // Der Typ stammt oft aus einer Unit, die die Datei nicht einbindet (TRect aus System.Types).
     if (AType.UnitName <> '') and not SameText(AType.UnitName, 'System') and
-      not SameText(AType.UnitName, TUsesClauses.OwnName(Tokens)) and
-      not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(Tokens), AType.UnitName, AContext.Namespaces) then
+      not SameText(AType.UnitName, TUsesClauses.OwnName(mTokens)) and
+      not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(mTokens), AType.UnitName, AContext.Namespaces) then
     begin
-      if not TUsesClauses.AddUnit(Tokens, AStatement.StartOffset, AType.UnitName, LineBreak, UsesEdit) then
+      if not TUsesClauses.AddUnit(mTokens, AStatement.StartOffset, AType.UnitName, mLineBreak, mUsesEdit) then
       begin
         Exit;
       end;
-      Edits := Edits + [UsesEdit];
+      mEdits := mEdits + [mUsesEdit];
     end;
-    AFix := TRuleFix.Create(cTexts[TStatementsPropertiesText.AssignVia].Fmt([Name]), Edits);
+    AFix := TRuleFix.Create(cTexts[TStatementsPropertiesText.AssignVia].Fmt([mName]), mEdits);
     Result := True;
   end;
 
@@ -219,7 +220,7 @@ var
     end;
     AReceiver := ATarget[0];
     Result := (AReceiver.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
-      TSyntaxKind.Call]) and Resolver.NodeType(AContext.Tree, FileName, AReceiver, ASymbol, ATypeInfo, mTypeFound);
+      TSyntaxKind.Call]) and mResolver.NodeType(AContext.Tree, mFileName, AReceiver, ASymbol, ATypeInfo, mTypeFound);
     Result := Result and mTypeFound and (ATypeInfo.SymbolKind = TIndexSymbolKind.RecordType) and not ASymbol.IsType;
   end;
 
@@ -232,7 +233,7 @@ var
     // Liest die Property ein Feld, schreibt Delphi in das Feld; weiter oben kann es wieder eine Kopie geben.
     if (ASymbol.MaxArgs = 0) and (AReceiver.Kind <> TSyntaxKind.IndexAccess) then
     begin
-      if not Resolver.PropertyReadsField(ASymbol, mReadsField) then
+      if not mResolver.PropertyReadsField(ASymbol, mReadsField) then
       begin
         Exit(TMemberStep.Stop);
       end;
@@ -321,49 +322,49 @@ var
 
   procedure CheckConstant(ATarget: TSyntaxNode);
   var
-    Symbol, TypeInfo: TResolvedSymbol;
-    TypeFound: Boolean;
+    mSymbol, mTypeInfo: TResolvedSymbol;
+    mTypeFound: Boolean;
   begin
     // Typisierte Konstanten sind mit {$J+} beschreibbar; untypisierte nie.
-    if Resolver.NodeType(AContext.Tree, FileName, ATarget, Symbol, TypeInfo, TypeFound) and
-      (Symbol.SymbolKind = TIndexSymbolKind.Constant) and (Symbol.TypeName = '') then
+    if mResolver.NodeType(AContext.Tree, mFileName, ATarget, mSymbol, mTypeInfo, mTypeFound) and
+      (mSymbol.SymbolKind = TIndexSymbolKind.Constant) and (mSymbol.TypeName = '') then
     begin
       AReport.Add(TTextRange.Create(ATarget.StartPos, ATarget.EndPos),
-        cTexts[TStatementsPropertiesText.ConstantTarget].Fmt([Symbol.Name]), TRuleConfidence.High);
+        cTexts[TStatementsPropertiesText.ConstantTarget].Fmt([mSymbol.Name]), TRuleConfidence.High);
     end;
   end;
 
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount > 0) then
+        mNode := mPending.Pop;
+        if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount > 0) then
         begin
-          if Node[0].Kind = TSyntaxKind.Identifier then
+          if mNode[0].Kind = TSyntaxKind.Identifier then
           begin
-            CheckConstant(Node[0]);
+            CheckConstant(mNode[0]);
           end
           else
           begin
-            CheckMember(Node, Node[0]);
+            CheckMember(mNode, mNode[0]);
           end;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -372,18 +373,18 @@ begin
   begin
     Exit;
   end;
-  FileName := ContextFileName(AContext);
-  Tokens := AContext.Tree.Tokens;
-  Lines := TTextLines.SplitLines(AContext.Text);
-  LineBreak := TTextLines.LineBreakOf(AContext.Text);
+  mFileName := ContextFileName(AContext);
+  mTokens := AContext.Tree.Tokens;
+  mLines := TTextLines.SplitLines(AContext.Text);
+  mLineBreak := TTextLines.LineBreakOf(AContext.Text);
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
-  Resolver.PinTree(AContext.Tree, FileName);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver.PinTree(AContext.Tree, mFileName);
   try
     Visit(AContext.Tree.Root);
   finally
-    Resolver.UnpinTree;
+    mResolver.UnpinTree;
   end;
 end;
 
@@ -397,10 +398,10 @@ end;
 
 procedure TUntypedPointerRefcountRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName: string;
-  Tokens: TTokens;
+  mFileName: string;
+  mTokens: TTokens;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -425,16 +426,16 @@ var
     mOpen: Integer;
   begin
     AMarked := False;
-    Result := PreviousCode(Tokens, AIndex);
-    while (Result >= 0) and Tokens[Result].IsSymbol(']') do
+    Result := PreviousCode(mTokens, AIndex);
+    while (Result >= 0) and mTokens[Result].IsSymbol(']') do
     begin
       mOpen := Result;
-      while (mOpen >= 0) and not Tokens[mOpen].IsSymbol('[') do
+      while (mOpen >= 0) and not mTokens[mOpen].IsSymbol('[') do
       begin
-        AMarked := AMarked or MatchText(Tokens[mOpen].Text, ['weak', 'unsafe', 'WeakAttribute', 'UnsafeAttribute']);
+        AMarked := AMarked or MatchText(mTokens[mOpen].Text, ['weak', 'unsafe', 'WeakAttribute', 'UnsafeAttribute']);
         Dec(mOpen);
       end;
-      Result := PreviousCode(Tokens, mOpen);
+      Result := PreviousCode(mTokens, mOpen);
     end;
   end;
 
@@ -443,10 +444,10 @@ var
   var
     mIndex: Integer;
   begin
-    for mIndex := 0 to High(Tokens) do
+    for mIndex := 0 to High(mTokens) do
     begin
-      if (Tokens[mIndex].StartPos.Line = ASymbol.SelectionRange.StartPos.Line) and
-        (Tokens[mIndex].StartPos.Character = ASymbol.SelectionRange.StartPos.Character) then
+      if (mTokens[mIndex].StartPos.Line = ASymbol.SelectionRange.StartPos.Line) and
+        (mTokens[mIndex].StartPos.Character = ASymbol.SelectionRange.StartPos.Character) then
       begin
         Exit(mIndex);
       end;
@@ -462,7 +463,7 @@ var
   begin
     Result := -1;
     AMarked := False;
-    if (ASymbol.SymbolKind = TIndexSymbolKind.Field) and SameText(ASymbol.FileName, FileName) then
+    if (ASymbol.SymbolKind = TIndexSymbolKind.Field) and SameText(ASymbol.FileName, mFileName) then
     begin
       Result := DeclarationToken(ASymbol);
     end;
@@ -471,9 +472,9 @@ var
       Exit;
     end;
     mBefore := BeforeAttributes(Result, AMarked);
-    mAfter := NextCode(Tokens, Result + 1);
-    if ((mBefore >= 0) and Tokens[mBefore].IsSymbol(',')) or (mAfter > High(Tokens)) or
-      not Tokens[mAfter].IsSymbol(':') then
+    mAfter := NextCode(mTokens, Result + 1);
+    if ((mBefore >= 0) and mTokens[mBefore].IsSymbol(',')) or (mAfter > High(mTokens)) or
+      not mTokens[mAfter].IsSymbol(':') then
     begin
       Result := -1;
     end;
@@ -508,7 +509,7 @@ var
   begin
     mValue := AStatement[1];
     Result := TRuleFix.Create(cTexts[TStatementsPropertiesText.UseAttribute].Fmt([AAttribute, ASymbolName]),
-      [TRuleEdit.Create(TTextRange.Create(Tokens[AField].StartPos, Tokens[AField].StartPos), '[' + AAttribute + '] '),
+      [TRuleEdit.Create(TTextRange.Create(mTokens[AField].StartPos, mTokens[AField].StartPos), '[' + AAttribute + '] '),
       TRuleEdit.Create(TTextRange.Create(AStatement[0].StartPos, AStatement[0].EndPos), AName),
       TRuleEdit.Create(TTextRange.Create(mValue.StartPos, mValue.EndPos), PlainValue(mValue))]);
   end;
@@ -532,7 +533,7 @@ var
     ATypeFound := False;
     ATarget := PointerArgument(AStatement[0]);
     Result := (ATarget <> nil) and (ATarget.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]);
-    Result := Result and Resolver.NodeType(AContext.Tree, FileName, ATarget, ASymbol, ATypeInfo, ATypeFound) and
+    Result := Result and mResolver.NodeType(AContext.Tree, mFileName, ATarget, ASymbol, ATypeInfo, ATypeFound) and
       not ASymbol.IsType;
   end;
 
@@ -576,10 +577,10 @@ var
   var
     mIndex: Integer;
   begin
-    for mIndex := 0 to High(Tokens) - 1 do
+    for mIndex := 0 to High(mTokens) - 1 do
     begin
-      if (Tokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[mIndex].Text, 'Pointer') and
-        Tokens[mIndex + 1].IsSymbol('(') then
+      if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, 'Pointer') and
+        mTokens[mIndex + 1].IsSymbol('(') then
       begin
         Exit(True);
       end;
@@ -622,20 +623,20 @@ begin
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
+  mTokens := AContext.Tree.Tokens;
   if not HasPointerCall then
   begin
     Exit;
   end;
-  FileName := ContextFileName(AContext);
+  mFileName := ContextFileName(AContext);
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
-  Resolver.PinTree(AContext.Tree, FileName);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver.PinTree(AContext.Tree, mFileName);
   try
     Visit(AContext.Tree.Root);
   finally
-    Resolver.UnpinTree;
+    mResolver.UnpinTree;
   end;
 end;
 
@@ -643,43 +644,43 @@ end;
 
 function TReadonlyPropertyAssignedRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(ReadonlyPropertyAssignedRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cReadonlyPropertyAssignedRuleId, TRuleSeverity.Error,
     cTexts[TStatementsPropertiesText.NoWriteTitle].Text);
 end;
 
 class function TReadonlyPropertyAssignedRule.Accessors(const ASignature: string; out AHasRead,
   AHasWrite: Boolean): Boolean;
 var
-  Text, Word: string;
-  Index, Depth: Integer;
+  mText, mWord: string;
+  mIndex, mDepth: Integer;
 begin
   // Indexparameter ausblenden: [read: Integer] wäre kein Zugriff.
-  Text := '';
-  Depth := 0;
-  for Index := 1 to Length(ASignature) do
+  mText := '';
+  mDepth := 0;
+  for mIndex := 1 to Length(ASignature) do
   begin
-    if ASignature[Index] = '[' then
+    if ASignature[mIndex] = '[' then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if ASignature[Index] = ']' then
+    else if ASignature[mIndex] = ']' then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if Depth = 0 then
+    else if mDepth = 0 then
     begin
-      Text := Text + ASignature[Index];
+      mText := mText + ASignature[mIndex];
     end;
   end;
   AHasRead := False;
   AHasWrite := False;
-  for Word in Text.Replace(';', ' ').Split([' '], TStringSplitOptions.ExcludeEmpty) do
+  for mWord in mText.Replace(';', ' ').Split([' '], TStringSplitOptions.ExcludeEmpty) do
   begin
-    if SameText(Word, 'read') then
+    if SameText(mWord, 'read') then
     begin
       AHasRead := True;
     end
-    else if SameText(Word, 'write') then
+    else if SameText(mWord, 'write') then
     begin
       AHasWrite := True;
     end;
@@ -735,16 +736,16 @@ end;
 
 procedure TReadonlyPropertyAssignedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName: string;
-  Lines: TArray<string>;
-  Local: TUnitIndex;
+  mFileName: string;
+  mLines: TArray<string>;
+  mLocal: TUnitIndex;
   // Name -> gibt es eine Property ohne write (Bit 1) bzw. ohne read (Bit 2) mit diesem Namen?
-  Suspects: TDictionary<string, Integer>;
+  mSuspects: TDictionary<string, Integer>;
   // Signaturen der Properties der eigenen Unit je Name (klein); erst bei Bedarf.
-  LocalProperties: TObjectDictionary<string, TList<string>>;
-  Actions: TClassActionContext;
+  mLocalProperties: TObjectDictionary<string, TList<string>>;
+  mActions: TClassActionContext;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -753,58 +754,58 @@ var
 
   function SuspectFlags(const AName: string): Integer;
   var
-    Symbol: TIndexSymbol;
-    Signatures: TList<string>;
-    Signature: string;
+    mSymbol: TIndexSymbol;
+    mSignatures: TList<string>;
+    mSignature: string;
   begin
-    if Suspects.TryGetValue(LowerCase(AName), Result) then
+    if mSuspects.TryGetValue(LowerCase(AName), Result) then
     begin
       Exit;
     end;
     Result := 0;
     // Properties der eigenen Unit einmal nach Namen ordnen statt je Name über alle Symbole (große Units).
-    if LocalProperties = nil then
+    if mLocalProperties = nil then
     begin
-      LocalProperties := TObjectDictionary<string, TList<string>>.Create([doOwnsValues]);
-      for Symbol in Local.Symbols do
+      mLocalProperties := TObjectDictionary<string, TList<string>>.Create([doOwnsValues]);
+      for mSymbol in mLocal.Symbols do
       begin
-        if Symbol.Kind = TIndexSymbolKind.Property_ then
+        if mSymbol.Kind = TIndexSymbolKind.Property_ then
         begin
-          if not LocalProperties.TryGetValue(LowerCase(Symbol.Name), Signatures) then
+          if not mLocalProperties.TryGetValue(LowerCase(mSymbol.Name), mSignatures) then
           begin
-            Signatures := TList<string>.Create;
-            LocalProperties.Add(LowerCase(Symbol.Name), Signatures);
+            mSignatures := TList<string>.Create;
+            mLocalProperties.Add(LowerCase(mSymbol.Name), mSignatures);
           end;
-          Signatures.Add(Symbol.Signature);
+          mSignatures.Add(mSymbol.Signature);
         end;
       end;
     end;
-    if LocalProperties.TryGetValue(LowerCase(AName), Signatures) then
+    if mLocalProperties.TryGetValue(LowerCase(AName), mSignatures) then
     begin
-      for Signature in Signatures do
+      for mSignature in mSignatures do
       begin
-        Result := Result or AccessFlags(Signature);
+        Result := Result or AccessFlags(mSignature);
       end;
     end;
     // Der Teil aus dem Index hängt nur vom Namen ab: über alle Units des Laufs gemerkt (häufige Namen wie Count
     // haben Tausende Treffer und kamen sonst in jeder Unit neu).
     Result := Result or IndexPropertyFlags(AContext.NameFacts, AContext.Index, AName);
-    Suspects.Add(LowerCase(AName), Result);
+    mSuspects.Add(LowerCase(AName), Result);
   end;
 
   /// <summary>Wort hinter read in der Signatur ('' ohne); bei read FPunkt.X das ganze FPunkt.X.</summary>
   function ReadAccessor(const ASignature: string): string;
   var
-    Words: TArray<string>;
-    Index: Integer;
+    mWords: TArray<string>;
+    mIndex: Integer;
   begin
     Result := '';
-    Words := ASignature.Replace(';', ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
-    for Index := 0 to High(Words) - 1 do
+    mWords := ASignature.Replace(';', ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
+    for mIndex := 0 to High(mWords) - 1 do
     begin
-      if SameText(Words[Index], 'read') then
+      if SameText(mWords[mIndex], 'read') then
       begin
-        Exit(Words[Index + 1]);
+        Exit(mWords[mIndex + 1]);
       end;
     end;
   end;
@@ -812,61 +813,61 @@ var
   /// <summary>Klasse der Methode, in der ANode steht (TKunde bei TKunde.Laden); '' außerhalb.</summary>
   function MethodClass(ANode: TSyntaxNode): string;
   var
-    Node: TSyntaxNode;
+    mNode: TSyntaxNode;
   begin
     Result := '';
-    Node := ANode.Parent;
-    while (Node <> nil) and (Node.Kind <> TSyntaxKind.RoutineDecl) do
+    mNode := ANode.Parent;
+    while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.RoutineDecl) do
     begin
-      Node := Node.Parent;
+      mNode := mNode.Parent;
     end;
-    if (Node <> nil) and (Pos('.', Node.Name) > 0) then
+    if (mNode <> nil) and (Pos('.', mNode.Name) > 0) then
     begin
-      Result := Copy(Node.Name, 1, LastDelimiter('.', Node.Name) - 1);
+      Result := Copy(mNode.Name, 1, LastDelimiter('.', mNode.Name) - 1);
     end;
   end;
 
   function SetterFix(const AProperty: TResolvedSymbol; out AFix: TRuleFix): Boolean;
   var
-    Plan: TAccessorPlan;
-    Action: TCodeAction;
-    Line, Column: Integer;
-    Accessor, Text: string;
+    mPlan: TAccessorPlan;
+    mAction: TCodeAction;
+    mLine, mColumn: Integer;
+    mAccessor, mText: string;
   begin
     Result := False;
-    Line := AProperty.Range.StartPos.Line;
-    if not SameText(AProperty.UnitName, Local.UnitName) or (AProperty.MaxArgs > 0) or
-      (AProperty.Range.EndPos.Line <> Line) or (Line > High(Lines)) or StartsText('class ', AProperty.Signature) then
+    mLine := AProperty.Range.StartPos.Line;
+    if not SameText(AProperty.UnitName, mLocal.UnitName) or (AProperty.MaxArgs > 0) or
+      (AProperty.Range.EndPos.Line <> mLine) or (mLine > High(mLines)) or StartsText('class ', AProperty.Signature) then
     begin
       Exit;
     end;
-    Accessor := ReadAccessor(AProperty.Signature);
-    Text := LowerCase(Lines[Line]);
-    Column := Pos('read ' + LowerCase(Accessor), Text);
-    if (Accessor = '') or (Column = 0) then
+    mAccessor := ReadAccessor(AProperty.Signature);
+    mText := LowerCase(mLines[mLine]);
+    mColumn := Pos('read ' + LowerCase(mAccessor), mText);
+    if (mAccessor = '') or (mColumn = 0) then
     begin
       Exit;
     end;
-    Column := Column - 1 + Length('read ' + Accessor);
-    Plan := Default(TAccessorPlan);
-    Plan.Kind := TAccessorKind.Setter;
-    Plan.PropertyName := AProperty.Name;
-    Plan.PropertyType := AProperty.TypeName;
+    mColumn := mColumn - 1 + Length('read ' + mAccessor);
+    mPlan := Default(TAccessorPlan);
+    mPlan.Kind := TAccessorKind.Setter;
+    mPlan.PropertyName := AProperty.Name;
+    mPlan.PropertyType := AProperty.TypeName;
     if AProperty.TypeArgs <> '' then
     begin
-      Plan.PropertyType := Plan.PropertyType + '<' + AProperty.TypeArgs + '>';
+      mPlan.PropertyType := mPlan.PropertyType + '<' + AProperty.TypeArgs + '>';
     end;
-    Plan.MethodSection := 'private';
+    mPlan.MethodSection := 'private';
     if AContext.AccessorsProtected then
     begin
-      Plan.MethodSection := 'protected';
+      mPlan.MethodSection := 'protected';
     end;
-    if not TClassActions.CreateAccessor(AContext.Text, Line, Plan, Actions, Action) then
+    if not TClassActions.CreateAccessor(AContext.Text, mLine, mPlan, mActions, mAction) then
     begin
       Exit;
     end;
-    AFix := TRuleFix.Create(cTexts[TStatementsPropertiesText.CreateWrite].Fmt([Plan.Name]), Action.Edits +
-      [TTextEdit.Create(TTextRange.Create(Line, Column, Line, Column), ' write ' + Plan.Name)]);
+    AFix := TRuleFix.Create(cTexts[TStatementsPropertiesText.CreateWrite].Fmt([mPlan.Name]), mAction.Edits +
+      [TTextEdit.Create(TTextRange.Create(mLine, mColumn, mLine, mColumn), ' write ' + mPlan.Name)]);
     Result := True;
   end;
 
@@ -887,7 +888,7 @@ var
     mTypeInfo: TResolvedSymbol;
     mTypeFound, mHasRead, mHasWrite: Boolean;
   begin
-    Result := Resolver.NodeType(AContext.Tree, FileName, ATarget, ASymbol, mTypeInfo, mTypeFound) and
+    Result := mResolver.NodeType(AContext.Tree, mFileName, ATarget, ASymbol, mTypeInfo, mTypeFound) and
       (ASymbol.SymbolKind = TIndexSymbolKind.Property_) and (ASymbol.TypeName <> '');
     Result := Result and Accessors(ASymbol.Signature, mHasRead, mHasWrite) and not mHasWrite;
   end;
@@ -900,9 +901,9 @@ var
   begin
     Result := SameText(ASymbol.Name, 'Count') and (AStatement.ChildCount > 1) and (NodeText(AStatement[1]) = '0');
     Result := Result and (ATarget.Kind = TSyntaxKind.MemberAccess) and (ATarget.ChildCount > 0);
-    Result := Result and Resolver.NodeType(AContext.Tree, FileName, ATarget[0], mOwner, mOwnerType, mTypeFound) and
+    Result := Result and mResolver.NodeType(AContext.Tree, mFileName, ATarget[0], mOwner, mOwnerType, mTypeFound) and
       mTypeFound;
-    Result := Result and Resolver.FindMember(mOwnerType, 'Clear', mClear) and
+    Result := Result and mResolver.FindMember(mOwnerType, 'Clear', mClear) and
       (mClear.SymbolKind = TIndexSymbolKind.Method);
   end;
 
@@ -921,7 +922,7 @@ var
     mField: string;
   begin
     Result := nil;
-    if InOwnMethod(AStatement, ATarget, ASymbol) and Resolver.PropertyReadsField(ASymbol, mReadsField) and
+    if InOwnMethod(AStatement, ATarget, ASymbol) and mResolver.PropertyReadsField(ASymbol, mReadsField) and
       mReadsField then
     begin
       mField := ReadAccessor(ASymbol.Signature);
@@ -969,71 +970,71 @@ var
 
   procedure CheckRead(ANode: TSyntaxNode);
   var
-    Symbol, TypeInfo: TResolvedSymbol;
-    TypeFound, HasRead, HasWrite: Boolean;
+    mSymbol, mTypeInfo: TResolvedSymbol;
+    mTypeFound, mHasRead, mHasWrite: Boolean;
   begin
     if SuspectFlags(ANode.Name) and 2 = 0 then
     begin
       Exit;
     end;
-    if Resolver.NodeType(AContext.Tree, FileName, ANode, Symbol, TypeInfo, TypeFound) and
-      (Symbol.SymbolKind = TIndexSymbolKind.Property_) and (Symbol.TypeName <> '') and
-      Accessors(Symbol.Signature, HasRead, HasWrite) and not HasRead then
+    if mResolver.NodeType(AContext.Tree, mFileName, ANode, mSymbol, mTypeInfo, mTypeFound) and
+      (mSymbol.SymbolKind = TIndexSymbolKind.Property_) and (mSymbol.TypeName <> '') and
+      Accessors(mSymbol.Signature, mHasRead, mHasWrite) and not mHasRead then
     begin
       AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TStatementsPropertiesText.NoRead].Fmt(
-        [Symbol.Container, Symbol.Name]), TRuleConfidence.High);
+        [mSymbol.Container, mSymbol.Name]), TRuleConfidence.High);
     end;
   end;
 
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Node, Target: TSyntaxNode;
-    Written: Boolean;
-    Pending: TStack<TSyntaxNode>;
-    PendingWritten: TStack<Boolean>;
+    mIndex: Integer;
+    mNode, mTarget: TSyntaxNode;
+    mWritten: Boolean;
+    mPending: TStack<TSyntaxNode>;
+    mPendingWritten: TStack<Boolean>;
   begin
     // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel, ob er geschrieben wird.
-    Pending := TStack<TSyntaxNode>.Create;
-    PendingWritten := TStack<Boolean>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    mPendingWritten := TStack<Boolean>.Create;
     try
-      Pending.Push(ARoot);
-      PendingWritten.Push(False);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      mPendingWritten.Push(False);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Written := PendingWritten.Pop;
-        if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount > 0) then
+        mNode := mPending.Pop;
+        mWritten := mPendingWritten.Pop;
+        if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount > 0) then
         begin
-          Target := Node[0];
-          CheckWrite(Node, Target);
+          mTarget := mNode[0];
+          CheckWrite(mNode, mTarget);
           // Erst die Kinder des Ziels, dann die übrigen Kinder der Zuweisung (umgekehrt auf den Stapel).
-          for Index := Node.ChildCount - 1 downto 1 do
+          for mIndex := mNode.ChildCount - 1 downto 1 do
           begin
-            Pending.Push(Node[Index]);
-            PendingWritten.Push(False);
+            mPending.Push(mNode[mIndex]);
+            mPendingWritten.Push(False);
           end;
           // Das Ziel selbst wird geschrieben, bei Liste.Items[I] auch die Property davor.
-          for Index := Target.ChildCount - 1 downto 0 do
+          for mIndex := mTarget.ChildCount - 1 downto 0 do
           begin
-            Pending.Push(Target[Index]);
-            PendingWritten.Push((Target.Kind = TSyntaxKind.IndexAccess) and (Index = 0));
+            mPending.Push(mTarget[mIndex]);
+            mPendingWritten.Push((mTarget.Kind = TSyntaxKind.IndexAccess) and (mIndex = 0));
           end;
           Continue;
         end;
-        if not Written and (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+        if not mWritten and (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
         begin
-          CheckRead(Node);
+          CheckRead(mNode);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
-          PendingWritten.Push(False);
+          mPending.Push(mNode[mIndex]);
+          mPendingWritten.Push(False);
         end;
       end;
     finally
-      PendingWritten.Free;
-      Pending.Free;
+      mPendingWritten.Free;
+      mPending.Free;
     end;
   end;
 
@@ -1042,29 +1043,29 @@ begin
   begin
     Exit;
   end;
-  FileName := ContextFileName(AContext);
-  Lines := TTextLines.SplitLines(AContext.Text);
-  Actions := TClassActionContext.Default;
-  Actions.Index := AContext.Index;
-  Actions.Namespaces := AContext.Namespaces;
-  Actions.DelphiVersion := AContext.DelphiVersion;
-  Actions.Style := AContext.Formatting;
-  Suspects := TDictionary<string, Integer>.Create;
-  LocalProperties := nil;
+  mFileName := ContextFileName(AContext);
+  mLines := TTextLines.SplitLines(AContext.Text);
+  mActions := TClassActionContext.Default;
+  mActions.Index := AContext.Index;
+  mActions.Namespaces := AContext.Namespaces;
+  mActions.DelphiVersion := AContext.DelphiVersion;
+  mActions.Style := AContext.Formatting;
+  mSuspects := TDictionary<string, Integer>.Create;
+  mLocalProperties := nil;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
+    mResolver.PinTree(AContext.Tree, mFileName);
     try
-      Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
+      mLocal := mResolver.ExtractedUnit(AContext.Tree, mFileName);
       Visit(AContext.Tree.Root);
     finally
-      Resolver.UnpinTree;
+      mResolver.UnpinTree;
     end;
   finally
-    LocalProperties.Free;
-    Suspects.Free;
+    mLocalProperties.Free;
+    mSuspects.Free;
   end;
 end;
 

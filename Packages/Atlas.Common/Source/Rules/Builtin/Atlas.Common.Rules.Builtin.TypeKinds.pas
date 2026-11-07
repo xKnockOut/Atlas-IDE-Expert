@@ -38,7 +38,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  TypeKindRequiredRuleId = 'type-kind-required';
+  cTypeKindRequiredRuleId = 'type-kind-required';
 
 type
   TTypeKindRequiredRule = class(TInterfacedObject, IRule)
@@ -660,8 +660,8 @@ begin
     Exit;
   end;
   mKind := ReferencedKind(mRefs[0], mType);
-  if (mKind in [TResolvedTypeKind.Unknown, TResolvedTypeKind.Class_, TResolvedTypeKind.Interface_,
-    TResolvedTypeKind.Helper, TResolvedTypeKind.Object_]) then
+  if mKind in [TResolvedTypeKind.Unknown, TResolvedTypeKind.Class_, TResolvedTypeKind.Interface_,
+    TResolvedTypeKind.Helper, TResolvedTypeKind.Object_] then
   begin
     Exit;
   end;
@@ -1062,7 +1062,7 @@ end;
 
 function TTypeKindRequiredRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(TypeKindRequiredRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cTypeKindRequiredRuleId, TRuleSeverity.Error,
     cTexts[TTypeKindsText.Title].Text);
 end;
 

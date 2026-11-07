@@ -54,7 +54,7 @@ type
   TAtlasTrackerChecklist = class
   public const
     /// <summary>Längster Text eines neuen Punkts.</summary>
-    MaxItemText = 500;
+    cMaxItemText = 500;
   public
     class function Items(const AText: string): TArray<TAtlasChecklistItem>; static;
     class function Progress(const AText: string): TAtlasChecklistProgress; static;
@@ -261,9 +261,9 @@ var
 begin
   AResult := AText;
   mText := Trim(StringReplace(StringReplace(AItemText, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
-  if Length(mText) > MaxItemText then
+  if Length(mText) > cMaxItemText then
   begin
-    mText := Copy(mText, 1, MaxItemText);
+    mText := Copy(mText, 1, cMaxItemText);
   end;
   mItems := Items(AText);
   if (mText = '') or (Length(mItems) = 0) then

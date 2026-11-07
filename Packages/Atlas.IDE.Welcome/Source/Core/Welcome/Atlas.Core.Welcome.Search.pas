@@ -44,7 +44,8 @@ type
     /// <summary>Schon vom Server gefiltert (Symbole): passt immer, Reihenfolge bleibt.</summary>
     Prefiltered: Boolean;
     Score: Integer;
-    class function Create(AGroup: TAtlasWelcomeSearchGroup; const ACaption, ADetail, ATarget: string): TAtlasWelcomeHit; static;
+    class function Create(AGroup: TAtlasWelcomeSearchGroup; const ACaption, ADetail, ATarget: string): TAtlasWelcomeHit;
+      static;
   end;
 
   TAtlasWelcomeSearchResult = record
@@ -72,10 +73,10 @@ type
 
   TAtlasWelcomeSearch = class
   public const
-    GroupLimit = 4;
+    cGroupLimit = 4;
     /// <summary>Unter der Teilfolge (200): Tippfehler stehen hinten.</summary>
-    ScoreTypo = 100;
-    NoMatch = -1;
+    cScoreTypo = 100;
+    cNoMatch = -1;
   public
     /// <summary>Punktzahl von AText für APattern; NoMatch, wenn er nicht passt. Leeres Muster passt nie.</summary>
     class function Score(const APattern, AText: string): Integer; static;
@@ -138,40 +139,40 @@ end;
 
 class function TAtlasWelcomeSearch.Score(const APattern, AText: string): Integer;
 var
-  Pattern: string;
-  Limit, Index, Distance, Best: Integer;
+  mPattern: string;
+  mLimit, mIndex, mDistance, mBest: Integer;
 begin
-  Pattern := Trim(APattern);
-  if (Pattern = '') or (AText = '') then
+  mPattern := Trim(APattern);
+  if (mPattern = '') or (AText = '') then
   begin
-    Exit(NoMatch);
+    Exit(cNoMatch);
   end;
-  Result := TAtlasCompletionMatcher.Score(Pattern, AText);
-  if Result <> TAtlasCompletionMatcher.NoMatch then
+  Result := TAtlasCompletionMatcher.Score(mPattern, AText);
+  if Result <> TAtlasCompletionMatcher.cNoMatch then
   begin
     Exit;
   end;
-  Result := NoMatch;
-  Limit := TAtlasCompletionMatcher.TypoLimit(Pattern);
-  if Limit = 0 then
+  Result := cNoMatch;
+  mLimit := TAtlasCompletionMatcher.TypoLimit(mPattern);
+  if mLimit = 0 then
   begin
     Exit;
   end;
-  Best := MaxInt;
-  for Index := 1 to Length(AText) do
+  mBest := MaxInt;
+  for mIndex := 1 to Length(AText) do
   begin
-    if StartsWord(AText, Index) then
+    if StartsWord(AText, mIndex) then
     begin
-      Distance := TAtlasCompletionMatcher.TypoDistance(Pattern, Copy(AText, Index, MaxInt));
-      if Distance < Best then
+      mDistance := TAtlasCompletionMatcher.TypoDistance(mPattern, Copy(AText, mIndex, MaxInt));
+      if mDistance < mBest then
       begin
-        Best := Distance;
+        mBest := mDistance;
       end;
     end;
   end;
-  if Best <= Limit then
+  if mBest <= mLimit then
   begin
-    Result := ScoreTypo - Best;
+    Result := cScoreTypo - mBest;
   end;
 end;
 
@@ -183,7 +184,7 @@ begin
     Result := Max(Result, Score(APattern, AHit.Alias));
   end;
   // Der Server hat schon gefiltert, auch nach Container und Teilen, die hier nicht stehen.
-  if AHit.Prefiltered and (Result = NoMatch) and (Trim(APattern) <> '') then
+  if AHit.Prefiltered and (Result = cNoMatch) and (Trim(APattern) <> '') then
   begin
     Result := 0;
   end;
@@ -192,7 +193,7 @@ end;
 class function TAtlasWelcomeSearch.Search(const APattern: string; const ACandidates: TArray<TAtlasWelcomeHit>;
   const ASymbolHint: string): TArray<TAtlasWelcomeSearchResult>;
 begin
-  Result := Search(APattern, ACandidates, ASymbolHint, GroupLimit);
+  Result := Search(APattern, ACandidates, ASymbolHint, cGroupLimit);
 end;
 
 /// <summary>Reihenfolge der Treffer (Indizes in ACandidates): höhere Bewertung zuerst; gefilterte Symbole behalten
@@ -228,7 +229,7 @@ begin
   try
     for mIndex := 0 to High(ACandidates) do
     begin
-      if (ACandidates[mIndex].Group = AGroup) and (AScores[mIndex] <> TAtlasWelcomeSearch.NoMatch) then
+      if (ACandidates[mIndex].Group = AGroup) and (AScores[mIndex] <> TAtlasWelcomeSearch.cNoMatch) then
       begin
         mFound.Add(mIndex);
       end;
@@ -252,35 +253,35 @@ end;
 class function TAtlasWelcomeSearch.Search(const APattern: string; const ACandidates: TArray<TAtlasWelcomeHit>;
   const ASymbolHint: string; ALimit: Integer): TArray<TAtlasWelcomeSearchResult>;
 var
-  Group: TAtlasWelcomeSearchGroup;
-  Scores: TArray<Integer>;
-  Index: Integer;
-  Entry: TAtlasWelcomeSearchResult;
+  mGroup: TAtlasWelcomeSearchGroup;
+  mScores: TArray<Integer>;
+  mIndex: Integer;
+  mEntry: TAtlasWelcomeSearchResult;
 begin
   Result := nil;
-  SetLength(Scores, Length(ACandidates));
-  for Index := 0 to High(ACandidates) do
+  SetLength(mScores, Length(ACandidates));
+  for mIndex := 0 to High(ACandidates) do
   begin
-    Scores[Index] := ScoreHit(APattern, ACandidates[Index]);
+    mScores[mIndex] := ScoreHit(APattern, ACandidates[mIndex]);
   end;
-  for Group := Low(TAtlasWelcomeSearchGroup) to High(TAtlasWelcomeSearchGroup) do
+  for mGroup := Low(TAtlasWelcomeSearchGroup) to High(TAtlasWelcomeSearchGroup) do
   begin
-    Entry := GroupEntry(Group, ACandidates, Scores, ASymbolHint, ALimit);
-    if (Length(Entry.Hits) > 0) or (Entry.Hint <> '') then
+    mEntry := GroupEntry(mGroup, ACandidates, mScores, ASymbolHint, ALimit);
+    if (Length(mEntry.Hits) > 0) or (mEntry.Hint <> '') then
     begin
-      Result := Result + [Entry];
+      Result := Result + [mEntry];
     end;
   end;
 end;
 
 class function TAtlasWelcomeSearch.Flatten(const AResults: TArray<TAtlasWelcomeSearchResult>): TArray<TAtlasWelcomeHit>;
 var
-  Entry: TAtlasWelcomeSearchResult;
+  mEntry: TAtlasWelcomeSearchResult;
 begin
   Result := nil;
-  for Entry in AResults do
+  for mEntry in AResults do
   begin
-    Result := Result + Entry.Hits;
+    Result := Result + mEntry.Hits;
   end;
 end;
 
@@ -293,38 +294,39 @@ begin
   Result.Text := AText;
 end;
 
-class function TAtlasWelcomeSearch.Rows(const AResults: TArray<TAtlasWelcomeSearchResult>): TArray<TAtlasWelcomeSearchRow>;
+class function TAtlasWelcomeSearch.Rows(
+  const AResults: TArray<TAtlasWelcomeSearchResult>): TArray<TAtlasWelcomeSearchRow>;
 var
-  Entry: TAtlasWelcomeSearchResult;
-  Index, Flat: Integer;
+  mEntry: TAtlasWelcomeSearchResult;
+  mIndex, mFlat: Integer;
 begin
   Result := nil;
-  Flat := 0;
-  for Entry in AResults do
+  mFlat := 0;
+  for mEntry in AResults do
   begin
-    Result := Result + [Row(TAtlasWelcomeRowKind.Group, Entry.Group, -1, '')];
-    for Index := 0 to High(Entry.Hits) do
+    Result := Result + [Row(TAtlasWelcomeRowKind.Group, mEntry.Group, -1, '')];
+    for mIndex := 0 to High(mEntry.Hits) do
     begin
-      Result := Result + [Row(TAtlasWelcomeRowKind.Hit, Entry.Group, Flat, '')];
-      Inc(Flat);
+      Result := Result + [Row(TAtlasWelcomeRowKind.Hit, mEntry.Group, mFlat, '')];
+      Inc(mFlat);
     end;
-    if Entry.Hint <> '' then
+    if mEntry.Hint <> '' then
     begin
-      Result := Result + [Row(TAtlasWelcomeRowKind.Hint, Entry.Group, -1, Entry.Hint)];
+      Result := Result + [Row(TAtlasWelcomeRowKind.Hint, mEntry.Group, -1, mEntry.Hint)];
     end;
-    if Entry.More > 0 then
+    if mEntry.More > 0 then
     begin
-      Result := Result + [Row(TAtlasWelcomeRowKind.More, Entry.Group, Entry.More, '')];
+      Result := Result + [Row(TAtlasWelcomeRowKind.More, mEntry.Group, mEntry.More, '')];
     end;
   end;
 end;
 
 class function TAtlasWelcomeSearch.IsProjectFile(const AFileName: string): Boolean;
 var
-  Extension: string;
+  mExtension: string;
 begin
-  Extension := LowerCase(ExtractFileExt(Trim(AFileName)));
-  Result := (Extension = '.dproj') or (Extension = '.dpr') or (Extension = '.dpk') or (Extension = '.groupproj');
+  mExtension := LowerCase(ExtractFileExt(Trim(AFileName)));
+  Result := (mExtension = '.dproj') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.groupproj');
 end;
 
 /// <summary>Absoluter Windows-Pfad (C:\… oder \\Server\…); relative Einträge taugen nicht zum Öffnen.</summary>
@@ -340,15 +342,15 @@ type
 
 function NumberOf(const AName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // Ziffern am Ende: File_12 → 12; ohne Ziffern ans Ende.
-  Index := Length(AName);
-  while (Index > 0) and CharInSet(AName[Index], ['0'..'9']) do
+  mIndex := Length(AName);
+  while (mIndex > 0) and CharInSet(AName[mIndex], ['0'..'9']) do
   begin
-    Dec(Index);
+    Dec(mIndex);
   end;
-  Result := StrToIntDef(Copy(AName, Index + 1, MaxInt), MaxInt);
+  Result := StrToIntDef(Copy(AName, mIndex + 1, MaxInt), MaxInt);
 end;
 
 /// <summary>Erster Teil von AValue (durch Komma getrennt), der ein absoluter Pfad einer Projektdatei ist; ''
@@ -370,17 +372,17 @@ end;
 
 class function TAtlasWelcomeSearch.RecentProjects(const AValues: TArray<TPair<string, string>>): TArray<string>;
 var
-  Values: TValueList;
-  Pair: TPair<string, string>;
-  Path: string;
-  Seen: TDictionary<string, Boolean>;
+  mValues: TValueList;
+  mPair: TPair<string, string>;
+  mPath: string;
+  mSeen: TDictionary<string, Boolean>;
 begin
   Result := nil;
-  Values := TValueList.Create;
-  Seen := TDictionary<string, Boolean>.Create;
+  mValues := TValueList.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    Values.AddRange(AValues);
-    Values.Sort(TValueComparer.Construct(
+    mValues.AddRange(AValues);
+    mValues.Sort(TValueComparer.Construct(
       function(const A, B: TPair<string, string>): Integer
       begin
         Result := CompareValue(NumberOf(A.Key), NumberOf(B.Key));
@@ -389,18 +391,18 @@ begin
           Result := CompareText(A.Key, B.Key);
         end;
       end));
-    for Pair in Values do
+    for mPair in mValues do
     begin
-      Path := ProjectPathIn(Pair.Value);
-      if (Path <> '') and not Seen.ContainsKey(AnsiUpperCase(Path)) then
+      mPath := ProjectPathIn(mPair.Value);
+      if (mPath <> '') and not mSeen.ContainsKey(AnsiUpperCase(mPath)) then
       begin
-        Seen.Add(AnsiUpperCase(Path), True);
-        Result := Result + [Path];
+        mSeen.Add(AnsiUpperCase(mPath), True);
+        Result := Result + [mPath];
       end;
     end;
   finally
-    Seen.Free;
-    Values.Free;
+    mSeen.Free;
+    mValues.Free;
   end;
 end;
 

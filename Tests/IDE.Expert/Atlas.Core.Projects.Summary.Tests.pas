@@ -553,13 +553,13 @@ begin
   Assert.AreEqual('Demo.Tests.TRechner.Teilt', Names[1]);
   // Höchstens MaxFailures in der Datei; unbekannte Felder bleiben.
   Summary.Tests.Failures := nil;
-  for Index := 1 to TAtlasProjectTests.MaxFailures + 5 do
+  for Index := 1 to TAtlasProjectTests.cMaxFailures + 5 do
   begin
     Failure.Test := 'Demo.Tests.T.M' + IntToStr(Index);
     Summary.Tests.Failures := Summary.Tests.Failures + [Failure];
   end;
   Assert.IsTrue(TAtlasProjectSummaries.Parse(TAtlasProjectSummaries.ToJson(Summary), Read));
-  Assert.AreEqual(TAtlasProjectTests.MaxFailures, Integer(Length(Read.Tests.Failures)));
+  Assert.AreEqual(TAtlasProjectTests.cMaxFailures, Integer(Length(Read.Tests.Failures)));
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "tests": {"passed": 3, "jenkins": ' +
     '{"job": "x"}}}', Read));
   Assert.IsTrue(Read.Tests.Known);
@@ -592,7 +592,7 @@ begin
   mSummary.Tests.Project := 'C:\Projekte\Andere.Tests.dproj';
   Assert.IsTrue(TAtlasProjectSummaries.Save(FFolder, mSummary));
   Assert.AreEqual(0, Integer(Length(TAtlasProjectSummaries.FailedTestsOf(FFolder, TestProject))));
-  Assert.Contains(TAtlasProjectSummaries.DefaultFolder, TAtlasProjectSummaries.FolderName);
+  Assert.Contains(TAtlasProjectSummaries.DefaultFolder, TAtlasProjectSummaries.cFolderName);
 end;
 
 procedure TAtlasProjectSummaryTests.ReleaseRoundTripAndRemember;
@@ -632,12 +632,12 @@ begin
   Assert.AreEqual('1.1.0.0', Read.Release.VersionOf('Release', 'Win64'));
   Assert.IsTrue(SameTime(At(2026, 10, 2, 8, 0, 0), Read.Release.Builds[1].At));
   // Höchstens MaxBuilds Einträge, der neueste zuerst; unbekannte Felder bleiben.
-  for Index := 1 to TAtlasProjectRelease.MaxBuilds + 3 do
+  for Index := 1 to TAtlasProjectRelease.cMaxBuilds + 3 do
   begin
     Summary.Release.Remember('Release', 'P' + IntToStr(Index), IntToStr(Index), 0);
   end;
-  Assert.AreEqual(TAtlasProjectRelease.MaxBuilds, Integer(Length(Summary.Release.Builds)));
-  Assert.AreEqual('P' + IntToStr(TAtlasProjectRelease.MaxBuilds + 3), Summary.Release.Builds[0].Platform);
+  Assert.AreEqual(TAtlasProjectRelease.cMaxBuilds, Integer(Length(Summary.Release.Builds)));
+  Assert.AreEqual('P' + IntToStr(TAtlasProjectRelease.cMaxBuilds + 3), Summary.Release.Builds[0].Platform);
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "release": {"findings": 1, "gate": ' +
     '"block", "builds": [{"configuration": "Release", "platform": "Win32", "version": "2.0.0.0", "signed": true}]}}',
     Read));
@@ -855,7 +855,7 @@ begin
   Assert.IsTrue(Read.Setup.CheckedAt = Stamp);
   Assert.AreEqual(12, Read.Setup.Files);
   Assert.AreEqual(60, Read.Setup.MissingUnitCount);
-  Assert.AreEqual(TAtlasProjectSetup.MaxFindings, Integer(Length(Read.Setup.MissingUnits)));
+  Assert.AreEqual(TAtlasProjectSetup.cMaxFindings, Integer(Length(Read.Setup.MissingUnits)));
   Assert.AreEqual('Src\Main.pas', Read.Setup.MissingUnits[0].FileName);
   Assert.AreEqual(3, Integer(Read.Setup.UndefinedDefines[0].Count));
   Assert.IsFalse(Read.Setup.PathsClean);
@@ -911,7 +911,7 @@ begin
   TFile.WriteAllText(FileName, '{"format": 1, "check": {');
   Assert.IsFalse(TAtlasProjectSummaries.Load(FFolder, Project, Summary));
   Assert.AreEqual(Project, Summary.Project);
-  Assert.IsTrue(FileExists(FileName + TAtlasDataFile.DefectExtension), 'beiseitegelegt');
+  Assert.IsTrue(FileExists(FileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
   Assert.IsTrue(TAtlasProjectSummaries.Update(FFolder, Project,
     procedure(var ASummary: TAtlasProjectSummary)
     begin

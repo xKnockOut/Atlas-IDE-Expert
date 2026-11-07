@@ -35,12 +35,12 @@ type
   TAtlasProjectRecording = class
   public const
     /// <summary>Zeitlimit je Aufruf (Head, Changes); zusammen 2 s je Projekt.</summary>
-    VcsCallTimeoutMs = 1000;
+    cVcsCallTimeoutMs = 1000;
     /// <summary>Frühestens nach dieser Zeit fragt die Seite dasselbe Projekt erneut ab.</summary>
-    VcsRefreshMs = 60000;
+    cVcsRefreshMs = 60000;
     /// <summary>Spätestens dann gilt eine Abfrage als beendet, auch ohne Ergebnis (zwei Aufrufe mit Zeitlimit
     /// plus Reserve).</summary>
-    VcsQueryLimitMs = 5000;
+    cVcsQueryLimitMs = 5000;
   public
     /// <summary>Ergebnis eines Compiles in die Zusammenfassung: ARun.Background (Hintergrundprüfung, #548) setzt
     /// "check", sonst "build". Fehler zählen mit schweren Fehlern (Fatal).</summary>
@@ -86,33 +86,33 @@ end;
 class procedure TAtlasProjectRecording.RecordCompile(var ASummary: TAtlasProjectSummary;
   const AMessages: TArray<TAtlasCompilerMessage>; const ARun: TAtlasProjectCompileRun; ANowUtc: TDateTime);
 var
-  Message: TAtlasCompilerMessage;
-  Errors, Warnings, Hints: Integer;
-  First: TAtlasProjectLocation;
+  mMessage: TAtlasCompilerMessage;
+  mErrors, mWarnings, mHints: Integer;
+  mFirst: TAtlasProjectLocation;
 begin
-  Errors := 0;
-  Warnings := 0;
-  Hints := 0;
-  First := Default(TAtlasProjectLocation);
-  for Message in AMessages do
-    case Message.Severity of
+  mErrors := 0;
+  mWarnings := 0;
+  mHints := 0;
+  mFirst := Default(TAtlasProjectLocation);
+  for mMessage in AMessages do
+    case mMessage.Severity of
       TAtlasCompilerSeverity.Error, TAtlasCompilerSeverity.Fatal:
         begin
-          Inc(Errors);
+          Inc(mErrors);
           // Erste Fehlermeldung mit Datei; ohne Datei kein Sprungziel.
-          if First.IsEmpty and (Message.FileName <> '') then
+          if mFirst.IsEmpty and (mMessage.FileName <> '') then
           begin
-            First.FileName := Message.FileName;
-            First.Line := Message.Line;
-            First.Column := Message.Column;
-            First.Code := Message.Code;
-            First.Text := Message.Text;
+            mFirst.FileName := mMessage.FileName;
+            mFirst.Line := mMessage.Line;
+            mFirst.Column := mMessage.Column;
+            mFirst.Code := mMessage.Code;
+            mFirst.Text := mMessage.Text;
           end;
         end;
       TAtlasCompilerSeverity.Warning:
-        Inc(Warnings);
+        Inc(mWarnings);
       TAtlasCompilerSeverity.Hint:
-        Inc(Hints);
+        Inc(mHints);
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;
@@ -121,8 +121,8 @@ begin
     ASummary.Check := TAtlasProjectCheck.Empty;
     ASummary.Check.Known := True;
     ASummary.Check.At := ANowUtc;
-    ASummary.Check.Errors := Errors;
-    ASummary.Check.First := First;
+    ASummary.Check.Errors := mErrors;
+    ASummary.Check.First := mFirst;
     Exit;
   end;
   ASummary.Build := TAtlasProjectBuild.Empty;
@@ -132,10 +132,10 @@ begin
   ASummary.Build.Configuration := ARun.Configuration;
   ASummary.Build.Platform := ARun.Platform;
   ASummary.Build.Succeeded := ARun.Succeeded;
-  ASummary.Build.Errors := Errors;
-  ASummary.Build.Warnings := Warnings;
-  ASummary.Build.Hints := Hints;
-  ASummary.Build.First := First;
+  ASummary.Build.Errors := mErrors;
+  ASummary.Build.Warnings := mWarnings;
+  ASummary.Build.Hints := mHints;
+  ASummary.Build.First := mFirst;
 end;
 
 class function TAtlasProjectRecording.Probe(const AVcs: IAtlasVersionControl; ANowUtc: TDateTime;
@@ -147,11 +147,11 @@ end;
 class function TAtlasProjectRecording.Probe(const AVcs: IAtlasVersionControl; const AFolder: string;
   ANowUtc: TDateTime; out AState: TAtlasProjectVcs): Boolean;
 var
-  Outcome: TAtlasVcsOutcome;
-  Head: TAtlasVcsHead;
-  Changes: TArray<TAtlasVcsChange>;
-  Change: TAtlasVcsChange;
-  Count: Integer;
+  mOutcome: TAtlasVcsOutcome;
+  mHead: TAtlasVcsHead;
+  mChanges: TArray<TAtlasVcsChange>;
+  mChange: TAtlasVcsChange;
+  mCount: Integer;
 begin
   AState := TAtlasProjectVcs.Empty;
   Result := False;
@@ -159,8 +159,8 @@ begin
   begin
     Exit;
   end;
-  Outcome := AVcs.Head(Head);
-  if (Outcome = TAtlasVcsOutcome.NoWorkingCopy) or (Outcome = TAtlasVcsOutcome.Disabled) then
+  mOutcome := AVcs.Head(mHead);
+  if (mOutcome = TAtlasVcsOutcome.NoWorkingCopy) or (mOutcome = TAtlasVcsOutcome.Disabled) then
   begin
     // Keine Versionsverwaltung: kein Branch, keine Marke, kein Fehler.
     AState.Known := True;
@@ -168,67 +168,67 @@ begin
     AState.Kind := 'none';
     Exit(True);
   end;
-  if Outcome <> TAtlasVcsOutcome.Ok then
+  if mOutcome <> TAtlasVcsOutcome.Ok then
   begin
     Exit;
   end;
   AState.Known := True;
   AState.At := ANowUtc;
   AState.Kind := LowerCase(AtlasVcsKindName(AVcs.Kind));
-  AState.Branch := Head.Branch;
-  AState.Revision := Head.Revision;
-  AState.Ahead := Head.Ahead;
-  AState.Behind := Head.Behind;
-  if AVcs.Changes(Changes) = TAtlasVcsOutcome.Ok then
+  AState.Branch := mHead.Branch;
+  AState.Revision := mHead.Revision;
+  AState.Ahead := mHead.Ahead;
+  AState.Behind := mHead.Behind;
+  if AVcs.Changes(mChanges) = TAtlasVcsOutcome.Ok then
   begin
-    Count := 0;
-    for Change in Changes do
+    mCount := 0;
+    for mChange in mChanges do
     begin
-      if (AFolder = '') or InFolder(Change.Path, AFolder) or InFolder(Change.OldPath, AFolder) then
+      if (AFolder = '') or InFolder(mChange.Path, AFolder) or InFolder(mChange.OldPath, AFolder) then
       begin
-        Inc(Count);
+        Inc(mCount);
       end;
     end;
-    AState.Changed := Count;
+    AState.Changed := mCount;
   end;
   Result := True;
 end;
 
 class function TAtlasProjectRecording.InFolder(const AFileName, AFolder: string): Boolean;
 var
-  Folder, FileName: string;
+  mFolder, mFileName: string;
 begin
-  Folder := StringReplace(Trim(AFolder), '/', '\', [rfReplaceAll]);
-  FileName := StringReplace(Trim(AFileName), '/', '\', [rfReplaceAll]);
-  if (Folder = '') or (FileName = '') then
+  mFolder := StringReplace(Trim(AFolder), '/', '\', [rfReplaceAll]);
+  mFileName := StringReplace(Trim(AFileName), '/', '\', [rfReplaceAll]);
+  if (mFolder = '') or (mFileName = '') then
   begin
     Exit(False);
   end;
-  if Folder[Length(Folder)] <> '\' then
+  if mFolder[Length(mFolder)] <> '\' then
   begin
-    Folder := Folder + '\';
+    mFolder := mFolder + '\';
   end;
-  Result := SameText(Copy(FileName, 1, Length(Folder)), Folder);
+  Result := SameText(Copy(mFileName, 1, Length(mFolder)), mFolder);
 end;
 
 class function TAtlasProjectRecording.QueryRunning(AStartedMs, ANowMs: UInt64): Boolean;
 begin
   // Ein Tick vor dem Start (Uhr übergelaufen o. Ä.) zählt als beendet.
-  Result := (ANowMs >= AStartedMs) and (ANowMs - AStartedMs < VcsQueryLimitMs);
+  Result := (ANowMs >= AStartedMs) and (ANowMs - AStartedMs < cVcsQueryLimitMs);
 end;
 
 class function TAtlasProjectRecording.IsRuleHit(const AProblem: TAtlasProblem): Boolean;
 begin
   // Fehlgeschlagene Tests (#69) sind keine Regeltreffer.
   Result := (AProblem.Code <> '') and not AProblem.IsCompiler and not AProblem.Unnecessary and
-    not SameText(AProblem.Source, TAtlasProblemStore.TestSource);
+    not SameText(AProblem.Source, TAtlasProblemStore.cTestSource);
 end;
 
 class function TAtlasProjectRecording.CountRuleHits(AStore: TAtlasProblemStore; const AFolder: string;
   out AHits: Integer): Boolean;
 var
-  FileName: string;
-  Problem: TAtlasProblem;
+  mFileName: string;
+  mProblem: TAtlasProblem;
 begin
   AHits := 0;
   Result := False;
@@ -236,14 +236,14 @@ begin
   begin
     Exit;
   end;
-  for FileName in AStore.AllFiles do
+  for mFileName in AStore.AllFiles do
   begin
-    if InFolder(FileName, AFolder) then
+    if InFolder(mFileName, AFolder) then
     begin
       Result := True;
-      for Problem in AStore.ForFile(FileName) do
+      for mProblem in AStore.ForFile(mFileName) do
       begin
-        if IsRuleHit(Problem) then
+        if IsRuleHit(mProblem) then
         begin
           Inc(AHits);
         end;

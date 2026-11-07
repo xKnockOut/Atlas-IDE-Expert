@@ -83,7 +83,8 @@ type
     procedure Notify(const AChanges: TArray<TAtlasSettingsChange>);
     procedure RemovePart(AItem: TAtlasRegistration);
     procedure RemoveListener(AItem: TAtlasRegistration);
-    class function ChangeOf(AKind: TAtlasSettingsChangeKind; const AOwnerId, AKey, AOldKey: string): TAtlasSettingsChange; static;
+    class function ChangeOf(AKind: TAtlasSettingsChangeKind; const AOwnerId, AKey,
+      AOldKey: string): TAtlasSettingsChange; static;
     class function OwnerKeysName(const AOwnerId: string): string; static;
   public
     /// <summary>Mit einer Ablage im Arbeitsspeicher.</summary>

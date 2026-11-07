@@ -86,7 +86,7 @@ const
 
 class function TUpdateFolders.FilesDir(const AStaging: string): string;
 begin
-  Result := TUpdateLayout.Join(AStaging, TUpdateLayout.FilesFolder);
+  Result := TUpdateLayout.Join(AStaging, TUpdateLayout.cFilesFolder);
 end;
 
 class function TUpdateFolders.PlatformDir(const ARoot, APlatform: string): string;
@@ -141,14 +141,14 @@ begin
   mInput := Default(TUpdateSelectionInput);
   mInput.Staged := PackagesIn(ASystem.Files, PlatformDir(AFilesDir, AArgs.Platform));
   if not ASystem.Files.FileExists(TUpdateLayout.Join(PlatformDir(AFilesDir, AArgs.Platform),
-    TUpdateVersions.BasePackage + mTarget.Suffix + '.bpl')) then
+    TUpdateVersions.cBasePackage + mTarget.Suffix + '.bpl')) then
   begin
-    raise EUpdateError.CreateCode(TUpdateErrors.NoPackage, AArgs.Platform);
+    raise EUpdateError.CreateCode(TUpdateErrors.cNoPackage, AArgs.Platform);
   end;
   mInput.Registered := TUpdateKnownPackages.Registered(ASystem.Registry, mTarget);
   mInput.Present := PackagesIn(ASystem.Files, mTarget.PackageDir);
   mInput.Declined := TUpdateSelection.ParseLines(ASystem.Files.ReadText(TUpdateLayout.Join(RootOf(AArgs.Staging),
-    TUpdateLayout.DeclinedFile)));
+    TUpdateLayout.cDeclinedFile)));
   mInput.NewModules := AArgs.NewModules;
   Result := TUpdateSelection.Candidates(mInput);
 end;
@@ -167,7 +167,7 @@ end;
 
 procedure TUpdatePreparation.WriteStage;
 begin
-  FSystem.Files.WriteText(TUpdateLayout.Join(FArgs.Staging, TUpdateLayout.StateFile), FStage.ToJson);
+  FSystem.Files.WriteText(TUpdateLayout.Join(FArgs.Staging, TUpdateLayout.cStateFile), FStage.ToJson);
 end;
 
 procedure TUpdatePreparation.SetPhase(APhase: TUpdatePhase; AProgress: Integer);
@@ -187,15 +187,15 @@ var
 begin
   if not FSystem.Network.Fetch(FArgs.ManifestUrl, mText, mError) then
   begin
-    raise EUpdateError.CreateCode(TUpdateErrors.Download, mError);
+    raise EUpdateError.CreateCode(TUpdateErrors.cDownload, mError);
   end;
-  if not TUpdateManifests.TryParse(mText, TUpdateChannels.ReleasesUrl, Result) then
+  if not TUpdateManifests.TryParse(mText, TUpdateChannels.cReleasesUrl, Result) then
   begin
-    raise EUpdateError.CreateCode(TUpdateErrors.Manifest, '');
+    raise EUpdateError.CreateCode(TUpdateErrors.cManifest, '');
   end;
   if (FArgs.Version <> '') and (Result.Version <> FArgs.Version) then
   begin
-    raise EUpdateError.CreateCode(TUpdateErrors.VersionChanged, Result.Version);
+    raise EUpdateError.CreateCode(TUpdateErrors.cVersionChanged, Result.Version);
   end;
 end;
 
@@ -204,7 +204,7 @@ procedure TUpdatePreparation.Fetch(const AFile: TUpdateFile; const AName: string
 var
   mZip, mError: string;
 begin
-  mZip := TUpdateLayout.Join(TUpdateLayout.Join(FArgs.Staging, TUpdateLayout.DownloadFolder), AName);
+  mZip := TUpdateLayout.Join(TUpdateLayout.Join(FArgs.Staging, TUpdateLayout.cDownloadFolder), AName);
   FSystem.Log(cTexts[TPrepareText.Loading].Fmt([AName]));
   if not FSystem.Network.Download(AFile.Url, mZip,
     procedure(APercent: Integer)
@@ -212,11 +212,11 @@ begin
       SetPhase(TUpdatePhase.Downloading, AFrom + (ATo - AFrom) * APercent div 100);
     end, mError) then
   begin
-    raise EUpdateError.CreateCode(TUpdateErrors.Download, mError);
+    raise EUpdateError.CreateCode(TUpdateErrors.cDownload, mError);
   end;
   if not SameText(FSystem.Trust.Sha256(mZip), AFile.Sha256) then
   begin
-    raise EUpdateError.CreateCode(TUpdateErrors.Hash, AName);
+    raise EUpdateError.CreateCode(TUpdateErrors.cHash, AName);
   end;
   TUpdateArchives.ExtractAll(FSystem.Archive, mZip, ATargetDir);
 end;
@@ -248,11 +248,11 @@ begin
     mSignature := FSystem.Trust.Signature(TUpdateLayout.Join(mFilesDir, mFile));
     if not mSignature.Valid then
     begin
-      raise EUpdateError.CreateCode(TUpdateErrors.Unsigned, mFile);
+      raise EUpdateError.CreateCode(TUpdateErrors.cUnsigned, mFile);
     end;
     if mSignature.Subject <> mOwn.Subject then
     begin
-      raise EUpdateError.CreateCode(TUpdateErrors.Signature, mFile);
+      raise EUpdateError.CreateCode(TUpdateErrors.cSignature, mFile);
     end;
   end;
 end;
@@ -265,9 +265,9 @@ begin
   TUpdateIdes.ByCompilerVersion(FArgs.Ide, mVersion);
   if not FSystem.Builder.CanBuild(mVersion.BdsVersion, FArgs.Platform, mReason) then
   begin
-    raise EUpdateError.CreateCode(TUpdateErrors.NoCompiler, mReason);
+    raise EUpdateError.CreateCode(TUpdateErrors.cNoCompiler, mReason);
   end;
-  mSourceDir := TUpdateLayout.Join(FArgs.Staging, TUpdateLayout.SourceFolder);
+  mSourceDir := TUpdateLayout.Join(FArgs.Staging, TUpdateLayout.cSourceFolder);
   Fetch(ASource, 'source.zip', 50, 80, mSourceDir);
   SetPhase(TUpdatePhase.Building, 0);
   TUpdateSourceBuild.Build(FSystem, mVersion.BdsVersion, FArgs.Platform, mSourceDir);
@@ -294,11 +294,11 @@ begin
   FStage.FromSource := not mManifest.PackageFor(FArgs.Ide, mPackage);
   if FStage.FromSource and not (mManifest.Source.IsValid and mManifest.AnyPackage(mPackage)) then
   begin
-    raise EUpdateError.CreateCode(TUpdateErrors.NoPackage, FArgs.Ide);
+    raise EUpdateError.CreateCode(TUpdateErrors.cNoPackage, FArgs.Ide);
   end;
   mFilesDir := TUpdateFolders.FilesDir(FArgs.Staging);
   FSystem.Files.DeleteDirectory(mFilesDir);
-  FSystem.Files.DeleteDirectory(TUpdateLayout.Join(FArgs.Staging, TUpdateLayout.SourceFolder));
+  FSystem.Files.DeleteDirectory(TUpdateLayout.Join(FArgs.Staging, TUpdateLayout.cSourceFolder));
   Fetch(mPackage, 'package.zip', 0, 50, mFilesDir);
   CheckSignatures;
   if FStage.FromSource then
@@ -306,11 +306,11 @@ begin
     BuildFromSource(mManifest.Source);
   end;
   SelectCandidates;
-  if FSystem.Files.FileExists(TUpdateLayout.Join(mFilesDir, TUpdateLayout.UpdaterExe)) then
+  if FSystem.Files.FileExists(TUpdateLayout.Join(mFilesDir, TUpdateLayout.cUpdaterExe)) then
   begin
-    FStage.Updater := TUpdateLayout.Join(mFilesDir, TUpdateLayout.UpdaterExe);
+    FStage.Updater := TUpdateLayout.Join(mFilesDir, TUpdateLayout.cUpdaterExe);
   end;
-  FSystem.Files.DeleteDirectory(TUpdateLayout.Join(FArgs.Staging, TUpdateLayout.DownloadFolder));
+  FSystem.Files.DeleteDirectory(TUpdateLayout.Join(FArgs.Staging, TUpdateLayout.cDownloadFolder));
   SetPhase(TUpdatePhase.Ready, 100);
 end;
 
@@ -326,9 +326,10 @@ begin
       FStage.Detail := mError.Detail;
       Result := 1;
     end;
+    // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Updaters; Fehler steht in FStage
     on mError: Exception do
     begin
-      FStage.Error := TUpdateErrors.Unexpected;
+      FStage.Error := TUpdateErrors.cUnexpected;
       FStage.Detail := mError.Message;
       Result := 1;
     end;

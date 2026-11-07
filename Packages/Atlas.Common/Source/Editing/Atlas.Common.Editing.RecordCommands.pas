@@ -70,7 +70,7 @@ type
   end;
 
 const
-  Operators: array[0..19] of TOperatorEntry = (
+  cOperators: array[0..19] of TOperatorEntry = (
     (Symbol: '='; Name: 'Equal'), (Symbol: '<>'; Name: 'NotEqual'),
     (Symbol: '<'; Name: 'LessThan'), (Symbol: '<='; Name: 'LessThanOrEqual'),
     (Symbol: '>'; Name: 'GreaterThan'), (Symbol: '>='; Name: 'GreaterThanOrEqual'),
@@ -82,18 +82,18 @@ const
     (Symbol: 'inc'; Name: 'Inc'), (Symbol: 'dec'; Name: 'Dec'),
     (Symbol: ''; Name: 'Implicit'), (Symbol: ''; Name: 'Explicit'));
   // Vorfahren, deren Nachfahren Assign kennen.
-  PersistentBases: array[0..6] of string = ('TPersistent', 'TComponent', 'TCollection', 'TCollectionItem',
+  cPersistentBases: array[0..6] of string = ('TPersistent', 'TComponent', 'TCollection', 'TCollectionItem',
     'TStrings', 'TStringList', 'TInterfacedPersistent');
 
 function OperatorName(const AToken: string): string;
 var
-  Entry: TOperatorEntry;
+  mEntry: TOperatorEntry;
 begin
-  for Entry in Operators do
+  for mEntry in cOperators do
   begin
-    if ((Entry.Symbol <> '') and SameText(Entry.Symbol, AToken)) or SameText(Entry.Name, AToken) then
+    if ((mEntry.Symbol <> '') and SameText(mEntry.Symbol, AToken)) or SameText(mEntry.Name, AToken) then
     begin
-      Exit(Entry.Name);
+      Exit(mEntry.Name);
     end;
   end;
   Result := '';
@@ -118,37 +118,37 @@ type
 /// <summary>"X, Y: Integer; Name: string" in Gruppen; False bei Fehlern.</summary>
 function ParseFields(const AText: string; out AGroups: TArray<TFieldGroup>): Boolean;
 var
-  Part, Name: string;
-  Group: TFieldGroup;
-  Colon: Integer;
+  mPart, mName: string;
+  mGroup: TFieldGroup;
+  mColon: Integer;
 begin
   AGroups := nil;
-  for Part in AText.Split([';']) do
+  for mPart in AText.Split([';']) do
   begin
-    if Trim(Part) = '' then
+    if Trim(mPart) = '' then
     begin
       Continue;
     end;
-    Colon := Pos(':', Part);
-    if Colon = 0 then
+    mColon := Pos(':', mPart);
+    if mColon = 0 then
     begin
       Exit(False);
     end;
-    Group.Names := nil;
-    for Name in Copy(Part, 1, Colon - 1).Split([',']) do
+    mGroup.Names := nil;
+    for mName in Copy(mPart, 1, mColon - 1).Split([',']) do
     begin
-      if not IsValidIdent(Trim(Name)) then
+      if not IsValidIdent(Trim(mName)) then
       begin
         Exit(False);
       end;
-      Group.Names := Group.Names + [Trim(Name)];
+      mGroup.Names := mGroup.Names + [Trim(mName)];
     end;
-    Group.TypeName := Trim(Copy(Part, Colon + 1, MaxInt));
-    if Group.TypeName = '' then
+    mGroup.TypeName := Trim(Copy(mPart, mColon + 1, MaxInt));
+    if mGroup.TypeName = '' then
     begin
       Exit(False);
     end;
-    AGroups := AGroups + [Group];
+    AGroups := AGroups + [mGroup];
   end;
   Result := Length(AGroups) > 0;
 end;
@@ -264,14 +264,14 @@ end;
 function RecordAt(ASource: TCommandSource; const AName: string; out ARecord: TIndexSymbol;
   out AReason: string): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
-  for Symbol in ASource.UnitIndex.Symbols do
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.RecordType) and (Symbol.Range.StartPos.Line < ASource.Line) and
-      (Symbol.Range.EndPos.Line > ASource.Line) then
+    if (mSymbol.Kind = TIndexSymbolKind.RecordType) and (mSymbol.Range.StartPos.Line < ASource.Line) and
+      (mSymbol.Range.EndPos.Line > ASource.Line) then
     begin
-      ARecord := Symbol;
+      ARecord := mSymbol;
       Exit(True);
     end;
   end;
@@ -281,16 +281,16 @@ end;
 /// <summary>Bedingung, die alle Felder von A und B vergleicht.</summary>
 function FieldsEqual(const AFields: TArray<TIndexSymbol>; const ALeft, ARight: string): string;
 var
-  Field: TIndexSymbol;
+  mField: TIndexSymbol;
 begin
   Result := '';
-  for Field in AFields do
+  for mField in AFields do
   begin
     if Result <> '' then
     begin
       Result := Result + ' and ';
     end;
-    Result := Result + Format('(%s.%s = %s.%s)', [ALeft, Field.Name, ARight, Field.Name]);
+    Result := Result + Format('(%s.%s = %s.%s)', [ALeft, mField.Name, ARight, mField.Name]);
   end;
   if Result = '' then
   begin
@@ -331,7 +331,7 @@ var
   mEntry: TOperatorEntry;
 begin
   Result := '';
-  for mEntry in Operators do
+  for mEntry in cOperators do
   begin
     if mEntry.Name = AName then
     begin
@@ -436,62 +436,63 @@ end;
 
 function ExecuteOperator(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  RecordSymbol: TIndexSymbol;
-  Names: TArray<string>;
-  Token, Name, Target: string;
-  Colon: Integer;
-  Output: TOperatorOutput;
-  Fields: TArray<TIndexSymbol>;
+  mSource: TCommandSource;
+  mRecordSymbol: TIndexSymbol;
+  mNames: TArray<string>;
+  mToken, mName, mTarget: string;
+  mColon: Integer;
+  mOutput: TOperatorOutput;
+  mFields: TArray<TIndexSymbol>;
 begin
   AEdits := nil;
-  Names := nil;
-  for Token in Trim(AContext.Arguments).Split([' '], TStringSplitOptions.ExcludeEmpty) do
+  mNames := nil;
+  for mToken in Trim(AContext.Arguments).Split([' '], TStringSplitOptions.ExcludeEmpty) do
   begin
-    Colon := Pos(':', Token);
-    Name := OperatorName(IfThen(Colon > 0, Copy(Token, 1, Colon - 1), Token));
-    if Name = '' then
+    mColon := Pos(':', mToken);
+    mName := OperatorName(IfThen(mColon > 0, Copy(mToken, 1, mColon - 1), mToken));
+    if mName = '' then
     begin
-      Exit(Fail(cTexts[TRecordCommandsText.UnknownOperator].Text + Token, AReason));
+      Exit(Fail(cTexts[TRecordCommandsText.UnknownOperator].Text + mToken, AReason));
     end;
-    Target := IfThen(Colon > 0, Copy(Token, Colon + 1, MaxInt), 'string');
+    mTarget := IfThen(mColon > 0, Copy(mToken, mColon + 1, MaxInt), 'string');
     // Zu = gehört immer <> und umgekehrt.
-    if MatchText(Name, ['Equal', 'NotEqual']) then
+    if MatchText(mName, ['Equal', 'NotEqual']) then
     begin
-      Names := Names + ['Equal:', 'NotEqual:'];
+      mNames := mNames + ['Equal:', 'NotEqual:'];
     end
     else
     begin
-      Names := Names + [Name + ':' + Target];
+      mNames := mNames + [mName + ':' + mTarget];
     end;
   end;
-  if Names = nil then
+  if mNames = nil then
   begin
     Exit(Fail(cTexts[TRecordCommandsText.ExpectedIsOperatorImplicit].Text, AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not RecordAt(Source, 'operator', RecordSymbol, AReason) then
+    if not RecordAt(mSource, 'operator', mRecordSymbol, AReason) then
     begin
       Exit(False);
     end;
-    Fields := FieldsOf(Source, RecordSymbol);
-    Output := Default(TOperatorOutput);
-    Output.Declarations := TArray<string>.Create('public');
-    for Token in Names do
+    mFields := FieldsOf(mSource, mRecordSymbol);
+    mOutput := Default(TOperatorOutput);
+    mOutput.Declarations := TArray<string>.Create('public');
+    for mToken in mNames do
     begin
-      Name := Copy(Token, 1, Pos(':', Token) - 1);
+      mName := Copy(mToken, 1, Pos(':', mToken) - 1);
       // Doppelte (z. B. = und <> zusammen) nur einmal.
-      if ContainsText(string.Join(#10, Output.Declarations), 'class operator ' + Name + '(') then
+      if ContainsText(string.Join(#10, mOutput.Declarations), 'class operator ' + mName + '(') then
       begin
         Continue;
       end;
-      OperatorParts(Source.LineBreak, RecordSymbol, Fields, Name, Copy(Token, Pos(':', Token) + 1, MaxInt), Output);
+      OperatorParts(mSource.LineBreak, mRecordSymbol, mFields, mName, Copy(mToken, Pos(':', mToken) + 1, MaxInt),
+        mOutput);
     end;
-    AEdits := AddToClass(Source, RecordSymbol, Output.Declarations, Output.Bodies) + [Source.RemoveCommand];
+    AEdits := AddToClass(mSource, mRecordSymbol, mOutput.Declarations, mOutput.Bodies) + [mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -728,7 +729,7 @@ begin
     begin
       mCurrent := mAncestor;
     end;
-    if MatchText(mCurrent, PersistentBases) then
+    if MatchText(mCurrent, cPersistentBases) then
     begin
       Exit(True);
     end;
@@ -742,92 +743,92 @@ end;
 
 function ExecuteClone(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  ClassSymbol, Field: TIndexSymbol;
+  mSource: TCommandSource;
+  mClassSymbol, mField: TIndexSymbol;
   T: string;
-  Copies, Body: TArray<string>;
+  mCopies, mBody: TArray<string>;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not Source.ClassAt(ClassSymbol) then
+    if not mSource.ClassAt(mClassSymbol) then
     begin
       Exit(Fail(cTexts[TRecordCommandsText.CloneOnlyAppliesInA].Text, AReason));
     end;
-    T := ClassSymbol.Name;
-    Copies := nil;
-    if IsPersistent(Source, ClassSymbol) then
+    T := mClassSymbol.Name;
+    mCopies := nil;
+    if IsPersistent(mSource, mClassSymbol) then
     begin
-      Copies := ['    Result.Assign(Self);'];
+      mCopies := ['    Result.Assign(Self);'];
     end
     else
     begin
-      for Field in FieldsOf(Source, ClassSymbol) do
+      for mField in FieldsOf(mSource, mClassSymbol) do
       begin
-        if not IsObjectField(Source, AContext.Index, Field) then
+        if not IsObjectField(mSource, AContext.Index, mField) then
         begin
-          Copies := Copies + [Format('    Result.%s := %s;', [Field.Name, Field.Name])];
+          mCopies := mCopies + [Format('    Result.%s := %s;', [mField.Name, mField.Name])];
         end
-        else if HasMember(Source, Field.TypeName, 'Clone') then
+        else if HasMember(mSource, mField.TypeName, 'Clone') then
         begin
-          Copies := Copies + [Format('    Result.%s.Free;', [Field.Name]),
-            Format('    Result.%s := %s.Clone;', [Field.Name, Field.Name])];
+          mCopies := mCopies + [Format('    Result.%s.Free;', [mField.Name]),
+            Format('    Result.%s := %s.Clone;', [mField.Name, mField.Name])];
         end
         else
         begin
-          Copies := Copies + [cTexts[TRecordCommandsText.TODOCopyResultFrom].Fmt([Field.Name, Field.Name])];
+          mCopies := mCopies + [cTexts[TRecordCommandsText.TODOCopyResultFrom].Fmt([mField.Name, mField.Name])];
         end;
       end;
     end;
     // Erst zusammensetzen: "[...] + Copies" geht nicht als offenes Array-Argument.
-    Body := TArray<string>.Create(Format('function %s.Clone: %s;', [T, T]), 'begin',
-      Format('  Result := %s.Create;', [T]), '  try') + Copies +
+    mBody := TArray<string>.Create(Format('function %s.Clone: %s;', [T, T]), 'begin',
+      Format('  Result := %s.Create;', [T]), '  try') + mCopies +
       TArray<string>.Create('  except', '    Result.Free;', '    raise;', '  end;', 'end;');
-    AEdits := AddToClass(Source, ClassSymbol, ['public', Format('function Clone: %s;', [T])], Join(Source, Body)) +
-      [Source.RemoveCommand];
+    AEdits := AddToClass(mSource, mClassSymbol, ['public', Format('function Clone: %s;', [T])], Join(mSource, mBody)) +
+      [mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
 function OperatorTokens: TArray<string>;
 var
-  Entry: TOperatorEntry;
+  mEntry: TOperatorEntry;
 begin
   Result := nil;
-  for Entry in Operators do
+  for mEntry in cOperators do
   begin
-    if Entry.Symbol <> '' then
+    if mEntry.Symbol <> '' then
     begin
-      Result := Result + [Entry.Symbol];
+      Result := Result + [mEntry.Symbol];
     end
     else
     begin
-      Result := Result + [Entry.Name];
+      Result := Result + [mEntry.Name];
     end;
   end;
 end;
 
 function EqualsFields(const AContext: TSlashContext): TArray<string>;
 var
-  Source: TCommandSource;
-  TypeSymbol, Field: TIndexSymbol;
-  Reason: string;
+  mSource: TCommandSource;
+  mTypeSymbol, mField: TIndexSymbol;
+  mReason: string;
 begin
   Result := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not Source.ClassAt(TypeSymbol) and not RecordAt(Source, 'equals', TypeSymbol, Reason) then
+    if not mSource.ClassAt(mTypeSymbol) and not RecordAt(mSource, 'equals', mTypeSymbol, mReason) then
     begin
       Exit;
     end;
-    for Field in FieldsOf(Source, TypeSymbol) do
+    for mField in FieldsOf(mSource, mTypeSymbol) do
     begin
-      Result := Result + [Field.Name];
+      Result := Result + [mField.Name];
     end;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 

@@ -81,7 +81,7 @@ type
 
 const
   // Aufsteigend nach erster ProjectVersion der jeweiligen Hauptversion.
-  Ranges: array[0..7] of TVersionRange = (
+  cRanges: array[0..7] of TVersionRange = (
     (FromProject: 15.0; Bds: '14.0'; Name: 'Delphi XE6'),
     (FromProject: 18.0; Bds: '19.0'; Name: 'Delphi 10.2'),
     (FromProject: 18.5; Bds: '20.0'; Name: 'Delphi 10.3'),
@@ -98,51 +98,51 @@ end;
 
 class function TDelphiVersions.ProjectVersionOf(const ADprojText: string): string;
 var
-  Start, Stop: Integer;
+  mStart, mStop: Integer;
 begin
   Result := '';
-  Start := Pos('<ProjectVersion>', ADprojText);
-  if Start = 0 then
+  mStart := Pos('<ProjectVersion>', ADprojText);
+  if mStart = 0 then
   begin
     Exit;
   end;
-  Inc(Start, Length('<ProjectVersion>'));
-  Stop := Pos('</ProjectVersion>', ADprojText);
-  if Stop > Start then
+  Inc(mStart, Length('<ProjectVersion>'));
+  mStop := Pos('</ProjectVersion>', ADprojText);
+  if mStop > mStart then
   begin
-    Result := Trim(Copy(ADprojText, Start, Stop - Start));
+    Result := Trim(Copy(ADprojText, mStart, mStop - mStart));
   end;
 end;
 
 class function TDelphiVersions.BdsForProjectVersion(const AProjectVersion: string): string;
 var
-  Value: Double;
-  Index: Integer;
+  mValue: Double;
+  mIndex: Integer;
 begin
   Result := '';
-  Value := ToNumber(AProjectVersion);
-  if Value < Ranges[0].FromProject then
+  mValue := ToNumber(AProjectVersion);
+  if mValue < cRanges[0].FromProject then
   begin
     Exit;
   end;
-  for Index := 0 to High(Ranges) - 1 do
+  for mIndex := 0 to High(cRanges) - 1 do
   begin
-    if (Value >= Ranges[Index].FromProject) and (Value < Ranges[Index + 1].FromProject) then
+    if (mValue >= cRanges[mIndex].FromProject) and (mValue < cRanges[mIndex + 1].FromProject) then
     begin
-      Exit(Ranges[Index].Bds);
+      Exit(cRanges[mIndex].Bds);
     end;
   end;
 end;
 
 class function TDelphiVersions.ProductName(const ABdsVersion: string): string;
 var
-  Range: TVersionRange;
+  mRange: TVersionRange;
 begin
-  for Range in Ranges do
+  for mRange in cRanges do
   begin
-    if (Range.Bds <> '') and (ToNumber(Range.Bds) = ToNumber(ABdsVersion)) then
+    if (mRange.Bds <> '') and (ToNumber(mRange.Bds) = ToNumber(ABdsVersion)) then
     begin
-      Exit(Range.Name);
+      Exit(mRange.Name);
     end;
   end;
   Result := 'BDS ' + ABdsVersion;
@@ -150,16 +150,16 @@ end;
 
 class function TDelphiVersions.IsInstalled(const ABdsVersion: string; const AInstalled: TArray<string>): Boolean;
 var
-  Version: string;
+  mVersion: string;
 begin
   Result := False;
   if ToNumber(ABdsVersion) = 0 then
   begin
     Exit;
   end;
-  for Version in AInstalled do
+  for mVersion in AInstalled do
   begin
-    if ToNumber(Version) = ToNumber(ABdsVersion) then
+    if ToNumber(mVersion) = ToNumber(ABdsVersion) then
     begin
       Exit(True);
     end;
@@ -168,15 +168,15 @@ end;
 
 class function TDelphiVersions.LatestKnown: string;
 begin
-  Result := Ranges[High(Ranges) - 1].Bds;
+  Result := cRanges[High(cRanges) - 1].Bds;
 end;
 
 class function TDelphiVersions.Choose(const AConfigured, AProjectVersion: string;
   const AInstalled: TArray<string>): string;
 var
-  Missing: Boolean;
+  mMissing: Boolean;
 begin
-  Result := Choose(AConfigured, AProjectVersion, AInstalled, Missing);
+  Result := Choose(AConfigured, AProjectVersion, AInstalled, mMissing);
 end;
 
 /// <summary>Wahl ohne Installation: die eingestellte Version, sonst die zum Projekt passende, sonst die neueste
@@ -246,30 +246,30 @@ end;
 class function TDelphiVersions.ConfigurationIssues(const ASettings: TServerSettings;
   const AInstalled: TArray<string>): TArray<TConfigurationIssue>;
 var
-  Issue: TConfigurationIssue;
-  Fallback: string;
-  Missing: Boolean;
+  mIssue: TConfigurationIssue;
+  mFallback: string;
+  mMissing: Boolean;
 begin
   Result := nil;
   if (ASettings.DelphiVersion = '') or IsInstalled(ASettings.DelphiVersion, AInstalled) then
   begin
     Exit;
   end;
-  Issue := Default(TConfigurationIssue);
-  Issue.Range := ASettings.DelphiVersionRange;
-  Issue.IsError := False;
+  mIssue := Default(TConfigurationIssue);
+  mIssue.Range := ASettings.DelphiVersionRange;
+  mIssue.IsError := False;
   if Length(AInstalled) = 0 then
   begin
-    Issue.Message := cTexts[TDelphiVersionsText.BDSIsNotInstalledAnd].Fmt([ProductName(ASettings.DelphiVersion),
+    mIssue.Message := cTexts[TDelphiVersionsText.BDSIsNotInstalledAnd].Fmt([ProductName(ASettings.DelphiVersion),
       ASettings.DelphiVersion]);
   end
   else
   begin
-    Fallback := Choose(ASettings.DelphiVersion, '', AInstalled, Missing);
-    Issue.Message := cTexts[TDelphiVersionsText.BDSIsNotInstalledAtlas].Fmt([ProductName(ASettings.DelphiVersion),
-      ASettings.DelphiVersion, ProductName(Fallback)]);
+    mFallback := Choose(ASettings.DelphiVersion, '', AInstalled, mMissing);
+    mIssue.Message := cTexts[TDelphiVersionsText.BDSIsNotInstalledAtlas].Fmt([ProductName(ASettings.DelphiVersion),
+      ASettings.DelphiVersion, ProductName(mFallback)]);
   end;
-  Result := [Issue];
+  Result := [mIssue];
 end;
 
 initialization

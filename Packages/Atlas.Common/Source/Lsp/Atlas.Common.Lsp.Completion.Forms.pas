@@ -349,7 +349,7 @@ begin
   Result := Default(TCompletionItem);
   Result.Name := AComponent.Name;
   Result.Detail := AComponent.TypeName;
-  Result.Kind := KindField;
+  Result.Kind := cKindField;
   Result.Container := AForm.RootType;
   Result.Scope := 3;
   Result.Form := AForm.RootName;
@@ -556,7 +556,7 @@ begin
   try
     for mComponent in mForm.Components do
     begin
-      mByType := MatchScore(mComponent.Name, mContext.Prefix, ARequest.Matching) = TFuzzyMatch.NoMatch;
+      mByType := MatchScore(mComponent.Name, mContext.Prefix, ARequest.Matching) = TFuzzyMatch.cNoMatch;
       if not mByType or MatchesByType(ARequest, mAncestors, mComponent.TypeName, mContext.Prefix) then
       begin
         // Liste statt AItems := AItems + [...] (Code-Review P-08).
@@ -635,10 +635,10 @@ begin
   Result := Default(TCompletionItem);
   Result.Name := AName.Name;
   Result.Detail := AName.TypeName;
-  Result.Kind := KindField;
+  Result.Kind := cKindField;
   if ACall.Kind = TDataNameKind.Param then
   begin
-    Result.Kind := KindVariable;
+    Result.Kind := cKindVariable;
   end;
   // Schreibweise wie in der Quelle; ersetzt den ganzen Inhalt zwischen den Anführungszeichen.
   Result.HasTextEdit := True;

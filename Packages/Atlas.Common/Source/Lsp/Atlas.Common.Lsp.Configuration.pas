@@ -62,9 +62,9 @@ type
 
   TLspConfiguration = class
   public const
-    DidChangeConfigurationMethod = 'workspace/didChangeConfiguration';
+    cDidChangeConfigurationMethod = 'workspace/didChangeConfiguration';
     /// <summary>Abschnitt der Editor-Einstellungen, z. B. atlas.project in VS Code.</summary>
-    EditorSection = 'atlas';
+    cEditorSection = 'atlas';
   private
     FStore: IDocumentStore;
     FTransport: IJsonRpcTransport;
@@ -120,9 +120,6 @@ type
     class function RootPathFromInitialize(const AParams: TJSONObject): string; static;
     /// <summary>Abschnitt atlas aus den Parametern von didChangeConfiguration als JSON; sonst ''.</summary>
     class function EditorSettingsFromParams(const AParams: TJSONValue): string; static;
-    /// <summary>Diagnostics zu den Fehlern; der Aufrufer übernimmt das Objekt.</summary>
-    class function BuildParams(const AUri: string; AVersion: Integer;
-      const AIssues: TArray<TConfigurationIssue>): TJSONObject; static;
     /// <summary>Aktuelle Einstellungen (Kopie, threadsicher).</summary>
     property Settings: TServerSettings read GetSettings;
     property RootPath: string read FRootPath;
@@ -160,14 +157,14 @@ uses
   Atlas.Common.Configuration.Scopes;
 
 const
-  DiagnosticSource = 'Atlas';
+  cDiagnosticSource = 'Atlas';
 
 function IsConfigurationUri(const AUri: string): Boolean;
 var
-  Path: string;
+  mPath: string;
 begin
-  Path := StringReplace(TDocumentUris.ToPath(AUri), '\', '/', [rfReplaceAll]);
-  Result := IsConfigurationFileName(Copy(Path, LastDelimiter('/', Path) + 1, MaxInt));
+  mPath := StringReplace(TDocumentUris.ToPath(AUri), '\', '/', [rfReplaceAll]);
+  Result := IsConfigurationFileName(Copy(mPath, LastDelimiter('/', mPath) + 1, MaxInt));
 end;
 
 { TLspConfiguration }
@@ -199,26 +196,27 @@ begin
   FStore.Subscribe(HandleDocumentEvent);
   if ADispatcher <> nil then
   begin
-    ADispatcher.RegisterNotification(DidChangeConfigurationMethod, HandleDidChangeConfiguration);
+    ADispatcher.RegisterNotification(cDidChangeConfigurationMethod, HandleDidChangeConfiguration);
   end;
 end;
 
 procedure TLspConfiguration.Recompute;
 var
-  Ignored: TArray<TConfigurationIssue>;
+  mIgnored: TArray<TConfigurationIssue>;
 begin
   // Die Meldungen zur Datei sind schon veröffentlicht.
-  Apply(TConfigurationParser.Parse(TConfigurationScopes.Effective(FTexts.Global, FTexts.Editor, FTexts.Workspace), Ignored));
+  Apply(TConfigurationParser.Parse(TConfigurationScopes.Effective(FTexts.Global, FTexts.Editor, FTexts.Workspace),
+    mIgnored));
 end;
 
 function TLspConfiguration.FileIssues(const AText: string): TArray<TConfigurationIssue>;
 var
-  Misplaced: TArray<TConfigurationIssue>;
+  mMisplaced: TArray<TConfigurationIssue>;
   mSettings: TServerSettings;
 begin
   mSettings := TConfigurationParser.Parse(AText, Result);
-  TConfigurationScopes.Filter(AText, TConfigurationScope.Project, Misplaced);
-  Result := Result + Misplaced;
+  TConfigurationScopes.Filter(AText, TConfigurationScope.Project, mMisplaced);
+  Result := Result + mMisplaced;
   if Assigned(FExtraIssues) then
   begin
     Result := Result + FExtraIssues(mSettings);
@@ -227,21 +225,21 @@ end;
 
 procedure TLspConfiguration.Revalidate;
 var
-  Uri: string;
-  Document: ITextDocument;
+  mUri: string;
+  mDocument: ITextDocument;
 begin
   if FFiles.Read = '' then
   begin
     Exit;
   end;
-  Uri := TDocumentUris.FromPath(FFiles.Read);
-  if (FStore <> nil) and FStore.TryGet(Uri, Document) then
+  mUri := TDocumentUris.FromPath(FFiles.Read);
+  if (FStore <> nil) and FStore.TryGet(mUri, mDocument) then
   begin
-    Publish(Uri, Document.Version, FileIssues(Document.Text));
+    Publish(mUri, mDocument.Version, FileIssues(mDocument.Text));
   end
   else if FTexts.Workspace <> '' then
   begin
-    Publish(Uri, -1, FileIssues(FTexts.Workspace));
+    Publish(mUri, -1, FileIssues(FTexts.Workspace));
   end;
 end;
 
@@ -272,7 +270,7 @@ end;
 
 function TLspConfiguration.FileChanged(const AFileName: string): Boolean;
 var
-  Document: ITextDocument;
+  mDocument: ITextDocument;
 begin
   Result := (AFileName <> '') and (SameText(AFileName, FFiles.Primary) or SameText(AFileName, FFiles.Legacy));
   if not Result then
@@ -280,7 +278,7 @@ begin
     Exit;
   end;
   // Im Editor geöffnet: Dort gilt der Text des Editors, bis er schließt.
-  if (FFiles.Read <> '') and FStore.TryGet(TDocumentUris.FromPath(FFiles.Read), Document) then
+  if (FFiles.Read <> '') and FStore.TryGet(TDocumentUris.FromPath(FFiles.Read), mDocument) then
   begin
     Exit(False);
   end;
@@ -294,17 +292,17 @@ end;
 
 class function TLspConfiguration.EditorSettingsFromParams(const AParams: TJSONValue): string;
 var
-  Section: TJSONValue;
+  mSection: TJSONValue;
 begin
   Result := '';
   if not (AParams is TJSONObject) then
   begin
     Exit;
   end;
-  Section := TJSONObject(AParams).FindValue('settings.' + EditorSection);
-  if Section is TJSONObject then
+  mSection := TJSONObject(AParams).FindValue('settings.' + cEditorSection);
+  if mSection is TJSONObject then
   begin
-    Result := Section.ToJSON;
+    Result := mSection.ToJSON;
   end;
 end;
 
@@ -360,29 +358,29 @@ begin
   Result := (FFiles.Read <> '') and SameText(TDocumentUris.ToPath(AUri), FFiles.Read);
 end;
 
-class function TLspConfiguration.BuildParams(const AUri: string; AVersion: Integer;
-  const AIssues: TArray<TConfigurationIssue>): TJSONObject;
+/// <summary>Diagnostics zu den Fehlern; der Aufrufer übernimmt das Objekt.</summary>
+function BuildParams(const AUri: string; AVersion: Integer; const AIssues: TArray<TConfigurationIssue>): TJSONObject;
 var
-  Items: TJSONArray;
-  Item: TJSONObject;
-  Issue: TConfigurationIssue;
+  mItems: TJSONArray;
+  mItem: TJSONObject;
+  mIssue: TConfigurationIssue;
 begin
-  Items := TJSONArray.Create;
-  for Issue in AIssues do
+  mItems := TJSONArray.Create;
+  for mIssue in AIssues do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Issue.Range));
-    if Issue.IsError then
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mIssue.Range));
+    if mIssue.IsError then
     begin
-      Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Error));
+      mItem.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.cError));
     end
     else
     begin
-      Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Warning));
+      mItem.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.cWarning));
     end;
-    Item.AddPair('source', DiagnosticSource);
-    Item.AddPair('message', Issue.Message);
-    Items.AddElement(Item);
+    mItem.AddPair('source', cDiagnosticSource);
+    mItem.AddPair('message', mIssue.Message);
+    mItems.AddElement(mItem);
   end;
   Result := TJSONObject.Create;
   Result.AddPair('uri', AUri);
@@ -390,40 +388,40 @@ begin
   begin
     Result.AddPair('version', TJSONNumber.Create(AVersion));
   end;
-  Result.AddPair('diagnostics', Items);
+  Result.AddPair('diagnostics', mItems);
 end;
 
 procedure TLspConfiguration.Publish(const AUri: string; AVersion: Integer; const AIssues: TArray<TConfigurationIssue>);
 var
-  Notification: TJSONObject;
+  mNotification: TJSONObject;
 begin
-  Notification := TJsonRpcMessages.Notification(TLspTextDocumentMethod.PublishDiagnostics,
+  mNotification := TJsonRpcMessages.Notification(TLspTextDocumentMethod.cPublishDiagnostics,
     BuildParams(AUri, AVersion, AIssues));
   try
-    FTransport.WriteMessage(Notification);
+    FTransport.WriteMessage(mNotification);
   finally
-    Notification.Free;
+    mNotification.Free;
   end;
 end;
 
 procedure TLspConfiguration.LoadFromDisk;
 var
-  Text: string;
-  Issues: TArray<TConfigurationIssue>;
-  Found: Boolean;
+  mText: string;
+  mIssues: TArray<TConfigurationIssue>;
+  mFound: Boolean;
 begin
   FFiles.Read := FFiles.Primary;
-  Found := (FFiles.Read <> '') and FReadFile(FFiles.Read, Text);
-  if not Found and (FFiles.Legacy <> '') and FReadFile(FFiles.Legacy, Text) then
+  mFound := (FFiles.Read <> '') and FReadFile(FFiles.Read, mText);
+  if not mFound and (FFiles.Legacy <> '') and FReadFile(FFiles.Legacy, mText) then
   begin
     FFiles.Read := FFiles.Legacy;
-    Found := True;
+    mFound := True;
   end;
-  if Found then
+  if mFound then
   begin
-    Issues := FileIssues(Text);
-    Publish(TDocumentUris.FromPath(FFiles.Read), -1, Issues);
-    FTexts.Workspace := Text;
+    mIssues := FileIssues(mText);
+    Publish(TDocumentUris.FromPath(FFiles.Read), -1, mIssues);
+    FTexts.Workspace := mText;
   end
   else
   begin
@@ -460,7 +458,7 @@ function HasConfiguration(const AReadFile: TConfigurationFileReader; const ADir:
 var
   mText: string;
 begin
-  Result := AReadFile(ADir + ConfigurationFileName, mText) or AReadFile(ADir + LegacyConfigurationFileName, mText);
+  Result := AReadFile(ADir + cConfigurationFileName, mText) or AReadFile(ADir + cLegacyConfigurationFileName, mText);
 end;
 
 /// <summary>Ordner mit atlas.json ab ADir nach oben, bis zum Stamm des Repositorys (.git/.svn) bzw. des Laufwerks;
@@ -501,15 +499,15 @@ begin
       mDir := mFound;
       FConfigRoot := mFound;
     end;
-    FFiles.Primary := mDir + ConfigurationFileName;
-    FFiles.Legacy := mDir + LegacyConfigurationFileName;
+    FFiles.Primary := mDir + cConfigurationFileName;
+    FFiles.Legacy := mDir + cLegacyConfigurationFileName;
   end;
   LoadFromDisk;
 end;
 
 procedure TLspConfiguration.HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
   if not IsConfigurationUri(ADocument.Uri) then
   begin
@@ -518,8 +516,8 @@ begin
   case AKind of
     TDocumentEventKind.Opened, TDocumentEventKind.Changed:
       begin
-        Issues := FileIssues(ADocument.Text);
-        Publish(ADocument.Uri, ADocument.Version, Issues);
+        mIssues := FileIssues(ADocument.Text);
+        Publish(ADocument.Uri, ADocument.Version, mIssues);
         if IsWorkspaceFile(ADocument.Uri) then
         begin
           FTexts.Workspace := ADocument.Text;
@@ -542,36 +540,36 @@ end;
 
 class function TLspConfiguration.RootPathFromInitialize(const AParams: TJSONObject): string;
 var
-  Value: TJSONValue;
-  Folders: TJSONArray;
+  mValue: TJSONValue;
+  mFolders: TJSONArray;
 begin
   Result := '';
   if AParams = nil then
   begin
     Exit;
   end;
-  Value := AParams.GetValue('rootUri');
-  if (Value is TJSONString) and (Value.Value <> '') then
+  mValue := AParams.GetValue('rootUri');
+  if (mValue is TJSONString) and (mValue.Value <> '') then
   begin
-    Exit(TDocumentUris.ToPath(Value.Value));
+    Exit(TDocumentUris.ToPath(mValue.Value));
   end;
-  Value := AParams.GetValue('workspaceFolders');
-  if Value is TJSONArray then
+  mValue := AParams.GetValue('workspaceFolders');
+  if mValue is TJSONArray then
   begin
-    Folders := TJSONArray(Value);
-    if (Folders.Count > 0) and (Folders.Items[0] is TJSONObject) then
+    mFolders := TJSONArray(mValue);
+    if (mFolders.Count > 0) and (mFolders.Items[0] is TJSONObject) then
     begin
-      Value := TJSONObject(Folders.Items[0]).GetValue('uri');
-      if Value is TJSONString then
+      mValue := TJSONObject(mFolders.Items[0]).GetValue('uri');
+      if mValue is TJSONString then
       begin
-        Exit(TDocumentUris.ToPath(Value.Value));
+        Exit(TDocumentUris.ToPath(mValue.Value));
       end;
     end;
   end;
-  Value := AParams.GetValue('rootPath');
-  if Value is TJSONString then
+  mValue := AParams.GetValue('rootPath');
+  if mValue is TJSONString then
   begin
-    Result := Value.Value;
+    Result := mValue.Value;
   end;
 end;
 

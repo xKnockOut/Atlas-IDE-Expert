@@ -54,11 +54,11 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  UnitNameMismatchRuleId = 'unit-name-mismatch';
-  TextAfterFinalEndRuleId = 'text-after-final-end';
-  ExportsInvalidRuleId = 'exports-invalid';
-  UnitNameConflictRuleId = 'unit-name-conflict';
-  ImplicitVariantsUnitRuleId = 'implicit-variants-unit';
+  cUnitNameMismatchRuleId = 'unit-name-mismatch';
+  cTextAfterFinalEndRuleId = 'text-after-final-end';
+  cExportsInvalidRuleId = 'exports-invalid';
+  cUnitNameConflictRuleId = 'unit-name-conflict';
+  cImplicitVariantsUnitRuleId = 'implicit-variants-unit';
 
 type
 {$SCOPEDENUMS ON}
@@ -220,14 +220,14 @@ end;
 /// <summary>Ist AText ein Name aus Bezeichnern mit Punkten dazwischen?</summary>
 function IsQualifiedName(const AText: string): Boolean;
 var
-  Part: string;
+  mPart: string;
 begin
   Result := AText <> '';
   if Result then
   begin
-    for Part in AText.Split(['.']) do
+    for mPart in AText.Split(['.']) do
     begin
-      if not IsValidIdent(Part) then
+      if not IsValidIdent(mPart) then
       begin
         Exit(False);
       end;
@@ -239,19 +239,19 @@ end;
 function InBranch(const ATokens: TArray<TPascalToken>; const APaths: TArray<string>;
   const APosition: TTextPosition): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
   if APaths = nil then
   begin
     Exit;
   end;
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    if (ATokens[Index].StartPos.Line = APosition.Line) and
-      (ATokens[Index].StartPos.Character = APosition.Character) then
+    if (ATokens[mIndex].StartPos.Line = APosition.Line) and
+      (ATokens[mIndex].StartPos.Character = APosition.Character) then
     begin
-      Exit(TConditionalBranches.PathAt(APaths, Index) <> '');
+      Exit(TConditionalBranches.PathAt(APaths, mIndex) <> '');
     end;
   end;
 end;
@@ -368,44 +368,44 @@ end;
 
 function WarningEnabled(const ATokens: TArray<TPascalToken>; const AName: string; AOffset: Integer): Boolean;
 var
-  Token: TPascalToken;
-  Name, Body, Rest: string;
+  mToken: TPascalToken;
+  mName, mBody, mRest: string;
 begin
   Result := True;
-  for Token in ATokens do
+  for mToken in ATokens do
   begin
-    if Token.Offset >= AOffset then
+    if mToken.Offset >= AOffset then
     begin
       Break;
     end;
-    if Token.Kind <> TPascalTokenKind.Directive then
+    if mToken.Kind <> TPascalTokenKind.Directive then
     begin
       Continue;
     end;
-    Name := TPascalLexer.DirectiveName(Token.Text);
-    Body := TDirectiveNames.Body(Token.Text);
-    Rest := UpperCase(Trim(Copy(Body, Length(TDirectiveNames.LeadingName(Body)) + 1, MaxInt)));
-    if Name = 'WARNINGS' then
+    mName := TPascalLexer.DirectiveName(mToken.Text);
+    mBody := TDirectiveNames.Body(mToken.Text);
+    mRest := UpperCase(Trim(Copy(mBody, Length(TDirectiveNames.LeadingName(mBody)) + 1, MaxInt)));
+    if mName = 'WARNINGS' then
     begin
-      Result := Rest <> 'OFF';
+      Result := mRest <> 'OFF';
     end
-    else if (Name = 'WARN') and SameText(TDirectiveNames.LeadingName(Rest), AName) then
+    else if (mName = 'WARN') and SameText(TDirectiveNames.LeadingName(mRest), AName) then
     begin
-      Result := not EndsStr(' OFF', Rest);
+      Result := not EndsStr(' OFF', mRest);
     end;
   end;
 end;
 
 function ReadNeighbour(const AContext: TRuleContext; const AFileName: string; out AText: string): Boolean;
 var
-  Bytes: TBytes;
-  Format: TFileFormat;
+  mBytes: TBytes;
+  mFormat: TFileFormat;
 begin
   AText := '';
-  Result := (AFileName <> '') and Assigned(AContext.ReadFile) and AContext.ReadFile(AFileName, Bytes);
+  Result := (AFileName <> '') and Assigned(AContext.ReadFile) and AContext.ReadFile(AFileName, mBytes);
   if Result then
   begin
-    AText := TFileEncoding.Decode(Bytes, Format);
+    AText := TFileEncoding.Decode(mBytes, mFormat);
   end;
 end;
 
@@ -413,21 +413,21 @@ end;
 
 function TUnitNameMismatchRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UnitNameMismatchRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cUnitNameMismatchRuleId, TRuleSeverity.Error,
     cTexts[TUnitsText.NameTitle].Text);
 end;
 
 class function TUnitNameMismatchRule.ExpectedName(const APath: string): string;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := StringReplace(APath, '\', '/', [rfReplaceAll]);
-  Name := Copy(Name, LastDelimiter('/', Name) + 1, MaxInt);
-  if not EndsText('.pas', Name) then
+  mName := StringReplace(APath, '\', '/', [rfReplaceAll]);
+  mName := Copy(mName, LastDelimiter('/', mName) + 1, MaxInt);
+  if not EndsText('.pas', mName) then
   begin
     Exit('');
   end;
-  Result := Copy(Name, 1, Length(Name) - Length('.pas'));
+  Result := Copy(mName, 1, Length(mName) - Length('.pas'));
 end;
 
 /// <summary>Kopf der Unit gegen den Dateinamen (E1038).</summary>
@@ -518,15 +518,15 @@ end;
 
 function TTextAfterFinalEndRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(TextAfterFinalEndRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cTextAfterFinalEndRuleId, TRuleSeverity.Warning,
     cTexts[TUnitsText.AfterEndTitle].Text);
 end;
 
 class function TTextAfterFinalEndRule.FinalDot(const AContext: TRuleContext): Integer;
 var
-  Tokens: TArray<TPascalToken>;
-  Root: TSyntaxNode;
-  From, Index: Integer;
+  mTokens: TArray<TPascalToken>;
+  mRoot: TSyntaxNode;
+  mFrom, mIndex: Integer;
 begin
   Result := -1;
   if (AContext.Tree = nil) or (AContext.Tree.Diagnostics <> nil) or (AContext.Tree.Root = nil) or
@@ -534,87 +534,87 @@ begin
   begin
     Exit;
   end;
-  Root := AContext.Tree.Root;
-  Tokens := AContext.Tree.Tokens;
+  mRoot := AContext.Tree.Root;
+  mTokens := AContext.Tree.Tokens;
   // Hinter dem letzten Abschnitt folgen end und der Punkt; beim Programm gehört end zum Block.
-  From := Root.Children[Root.ChildCount - 1].EndOffset;
-  Index := 0;
-  while (Index <= High(Tokens)) and (Tokens[Index].Offset < From) do
+  mFrom := mRoot.Children[mRoot.ChildCount - 1].EndOffset;
+  mIndex := 0;
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < mFrom) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  while (Index <= High(Tokens)) and not IsCode(Tokens[Index]) do
+  while (mIndex <= High(mTokens)) and not IsCode(mTokens[mIndex]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  if (Index <= High(Tokens)) and Tokens[Index].IsKeyword('end') then
+  if (mIndex <= High(mTokens)) and mTokens[mIndex].IsKeyword('end') then
   begin
-    Inc(Index);
-    while (Index <= High(Tokens)) and not IsCode(Tokens[Index]) do
+    Inc(mIndex);
+    while (mIndex <= High(mTokens)) and not IsCode(mTokens[mIndex]) do
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
   end;
-  if (Index <= High(Tokens)) and Tokens[Index].IsSymbol('.') then
+  if (mIndex <= High(mTokens)) and mTokens[mIndex].IsSymbol('.') then
   begin
-    Result := Index;
+    Result := mIndex;
   end;
 end;
 
 procedure TTextAfterFinalEndRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Dot, First, Index: Integer;
-  AllowComments: Boolean;
-  Message: string;
+  mTokens: TArray<TPascalToken>;
+  mDot, mFirst, mIndex: Integer;
+  mAllowComments: Boolean;
+  mMessage: string;
 begin
-  Dot := FinalDot(AContext);
-  if Dot < 0 then
+  mDot := FinalDot(AContext);
+  if mDot < 0 then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  if TConditionalBranches.PathAt(TConditionalBranches.Paths(Tokens), Dot) <> '' then
+  mTokens := AContext.Tree.Tokens;
+  if TConditionalBranches.PathAt(TConditionalBranches.Paths(mTokens), mDot) <> '' then
   begin
     Exit;
   end;
-  if not WarningEnabled(Tokens, '', Tokens[Dot].Offset) then
+  if not WarningEnabled(mTokens, '', mTokens[mDot].Offset) then
   begin
     Exit;
   end;
-  AllowComments := TRuleOptions.Bool(AContext.Options, 'allowComments', True);
-  First := -1;
-  for Index := Dot + 1 to High(Tokens) do
+  mAllowComments := TRuleOptions.Bool(AContext.Options, 'allowComments', True);
+  mFirst := -1;
+  for mIndex := mDot + 1 to High(mTokens) do
   begin
-    if IsCode(Tokens[Index]) or not AllowComments then
+    if IsCode(mTokens[mIndex]) or not mAllowComments then
     begin
-      First := Index;
+      mFirst := mIndex;
       Break;
     end;
   end;
-  if First < 0 then
+  if mFirst < 0 then
   begin
     Exit;
   end;
-  Message := cTexts[TUnitsText.CommentAfterEnd].Text;
-  for Index := First to High(Tokens) do
+  mMessage := cTexts[TUnitsText.CommentAfterEnd].Text;
+  for mIndex := mFirst to High(mTokens) do
   begin
-    if IsCode(Tokens[Index]) then
+    if IsCode(mTokens[mIndex]) then
     begin
-      Message := cTexts[TUnitsText.CodeAfterEnd].Text;
+      mMessage := cTexts[TUnitsText.CodeAfterEnd].Text;
     end;
   end;
   // Entfernt wird ab dem Ende des Tokens davor, damit keine Leerzeilen stehen bleiben.
-  AReport.Add(RangeOf(Tokens, First, High(Tokens)), Message, TRuleConfidence.High,
+  AReport.Add(RangeOf(mTokens, mFirst, High(mTokens)), mMessage, TRuleConfidence.High,
     [TRuleFix.Create(cTexts[TUnitsText.RemoveAfterEnd].Text,
-    [TRuleEdit.Create(TTextRange.Create(Tokens[First - 1].EndPos, Tokens[High(Tokens)].EndPos), '')])]);
+    [TRuleEdit.Create(TTextRange.Create(mTokens[mFirst - 1].EndPos, mTokens[High(mTokens)].EndPos), '')])]);
 end;
 
 { TExportsInvalidRule }
 
 function TExportsInvalidRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(ExportsInvalidRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cExportsInvalidRuleId, TRuleSeverity.Error,
     cTexts[TUnitsText.ExportsTitle].Text);
 end;
 
@@ -943,16 +943,16 @@ end;
 /// <summary>Steht ANode in einer Routine?</summary>
 function InRoutine(ANode: TSyntaxNode): Boolean;
 var
-  Parent: TSyntaxNode;
+  mParent: TSyntaxNode;
 begin
-  Parent := ANode.Parent;
-  while Parent <> nil do
+  mParent := ANode.Parent;
+  while mParent <> nil do
   begin
-    if Parent.Kind = TSyntaxKind.RoutineDecl then
+    if mParent.Kind = TSyntaxKind.RoutineDecl then
     begin
       Exit(True);
     end;
-    Parent := Parent.Parent;
+    mParent := mParent.Parent;
   end;
   Result := False;
 end;
@@ -1199,31 +1199,31 @@ end;
 
 function TUnitNameConflictRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UnitNameConflictRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cUnitNameConflictRuleId, TRuleSeverity.Error,
     cTexts[TUnitsText.CollisionTitle].Text);
 end;
 
 procedure TUnitNameConflictRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Header: TModuleHeader;
-  Path, Body, Name, Suggestion: string;
-  Token: TPascalToken;
-  At: Integer;
-  Range: TTextRange;
-  Fixes: TArray<TRuleFix>;
+  mTokens: TArray<TPascalToken>;
+  mHeader: TModuleHeader;
+  mPath, mBody, mName, mSuggestion: string;
+  mToken: TPascalToken;
+  mAt: Integer;
+  mRange: TTextRange;
+  mFixes: TArray<TRuleFix>;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Header := TModuleHeader.Read(Tokens);
-  Path := StringReplace(AContext.FileName + '|' + AContext.RelativePath, '\', '/', [rfReplaceAll]);
-  if (Header.Kind = TModuleKind.UnitModule) and MatchText(Header.Name, ['System', 'SysInit']) and
-    not ContainsText(Path, 'source/rtl/') then
+  mTokens := AContext.Tree.Tokens;
+  mHeader := TModuleHeader.Read(mTokens);
+  mPath := StringReplace(AContext.FileName + '|' + AContext.RelativePath, '\', '/', [rfReplaceAll]);
+  if (mHeader.Kind = TModuleKind.UnitModule) and MatchText(mHeader.Name, ['System', 'SysInit']) and
+    not ContainsText(mPath, 'source/rtl/') then
   begin
-    AReport.Add(RangeOf(Tokens, Header.First, Header.Last), cTexts[TUnitsText.Reserved].Fmt([Header.Name]),
+    AReport.Add(RangeOf(mTokens, mHeader.First, mHeader.Last), cTexts[TUnitsText.Reserved].Fmt([mHeader.Name]),
       TRuleConfidence.High);
   end;
   // {$NOINCLUDE X} braucht eine Unit, die der Compiler kennt.
@@ -1231,33 +1231,33 @@ begin
   begin
     Exit;
   end;
-  for Token in Tokens do
+  for mToken in mTokens do
   begin
-    if (Token.Kind <> TPascalTokenKind.Directive) or (TPascalLexer.DirectiveName(Token.Text) <> 'NOINCLUDE') then
+    if (mToken.Kind <> TPascalTokenKind.Directive) or (TPascalLexer.DirectiveName(mToken.Text) <> 'NOINCLUDE') then
     begin
       Continue;
     end;
-    Body := TDirectiveNames.Body(Token.Text);
-    Name := Trim(Copy(Body, Length(TDirectiveNames.LeadingName(Body)) + 1, MaxInt));
-    if not IsQualifiedName(Name) or (Token.StartPos.Line <> Token.EndPos.Line) then
+    mBody := TDirectiveNames.Body(mToken.Text);
+    mName := Trim(Copy(mBody, Length(TDirectiveNames.LeadingName(mBody)) + 1, MaxInt));
+    if not IsQualifiedName(mName) or (mToken.StartPos.Line <> mToken.EndPos.Line) then
     begin
       Continue;
     end;
-    if AContext.Units.Find(Name, '', AContext.FileName, [TRuleUnitSource.Project]) <> TRuleUnitAnswer.Missing then
+    if AContext.Units.Find(mName, '', AContext.FileName, [TRuleUnitSource.Project]) <> TRuleUnitAnswer.Missing then
     begin
       Continue;
     end;
-    At := Pos(Name, Token.Text);
-    Range := TTextRange.Create(Token.StartPos.Line, Token.StartPos.Character + At - 1, Token.StartPos.Line,
-      Token.StartPos.Character + At - 1 + Length(Name));
-    Fixes := nil;
-    for Suggestion in TUsesUnitNotFoundRule.Suggestions(Name, AContext.Units.KnownUnits([TRuleUnitSource.Project])) do
+    mAt := Pos(mName, mToken.Text);
+    mRange := TTextRange.Create(mToken.StartPos.Line, mToken.StartPos.Character + mAt - 1, mToken.StartPos.Line,
+      mToken.StartPos.Character + mAt - 1 + Length(mName));
+    mFixes := nil;
+    for mSuggestion in TUsesUnitNotFoundRule.Suggestions(mName, AContext.Units.KnownUnits([TRuleUnitSource.Project])) do
     begin
-      Fixes := Fixes + [TRuleFix.Create(cTexts[TUnitsText.UseName].Fmt([Suggestion]), [TRuleEdit.Create(Range,
-        Suggestion)])];
+      mFixes := mFixes + [TRuleFix.Create(cTexts[TUnitsText.UseName].Fmt([mSuggestion]), [TRuleEdit.Create(mRange,
+        mSuggestion)])];
     end;
-    AReport.Add(Range, cTexts[TUnitsText.NoInclude].Fmt([Name, Name]),
-      TRuleConfidence.High, Fixes);
+    AReport.Add(mRange, cTexts[TUnitsText.NoInclude].Fmt([mName, mName]),
+      TRuleConfidence.High, mFixes);
   end;
 end;
 
@@ -1265,7 +1265,7 @@ end;
 
 function TImplicitVariantsUnitRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(ImplicitVariantsUnitRuleId, TRuleSeverity.Hint,
+  Result := TRuleDescriptor.Create(cImplicitVariantsUnitRuleId, TRuleSeverity.Hint,
     cTexts[TUnitsText.VariantsTitle].Text, True);
 end;
 

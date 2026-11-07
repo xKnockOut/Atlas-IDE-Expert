@@ -7,59 +7,15 @@
 interface
 
 uses
-  System.Generics.Collections,
   System.JSON,
   System.Diagnostics,
-  Atlas.Common.Logging.Contract,
-  Atlas.Common.Logging.Providers.RecentSink,
-  Atlas.Common.Documents.Contract,
-  Atlas.Common.Index.Contract,
-  Atlas.Common.Index.Scheduler,
-  Atlas.Common.JsonRpc.Statistics,
-  Atlas.Common.JsonRpc.TracingTransport,
-  Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.Status,
-  Atlas.Common.Lsp.WorkspaceCheck,
   Atlas.Text.LogMarks,
   Shell.Workspace,
-  Shell.Composition.Contract;
+  Shell.Composition.Status.Contract;
 
 type
-  TShellStatusTextFunc = reference to function: string;
-  TShellStatusSelectedFunc = reference to function(AWorkspace: TShellWorkspace): Boolean;
-  TShellStatusRecentLogFunc = reference to function: IRecentLogLines;
-  TShellStatusTracingFunc = reference to function: TJsonRpcTracingTransport;
-  TShellStatusAnonymizerFunc = reference to function: ILogAnonymizer;
-  TShellStatusCompilerProc = reference to procedure(var AStatus: TServerStatus);
-  TShellStatusCheckProc = reference to procedure(var AStatus: TServerStatus; out AQueue: TWorkspaceCheckQueue);
-  TShellStatusIndexQueueFunc = reference to function: TIndexSchedulerQueue;
-
-  /// <summary>Was Status, Fehlerbericht und Diagnosepaket von der Komposition brauchen.</summary>
-  TShellStatusServices = record
-    Logger: ILogger;
-    Index: ISymbolIndex;
-    Documents: IDocumentStore;
-    Statistics: IJsonRpcStatistics;
-    /// <summary>Ruft AVisit mit allen Arbeitsbereichen unter deren Sperre auf.</summary>
-    VisitWorkspaces: TShellVisitWorkspacesProc;
-    /// <summary>Einstellungen des Editors (Text der Schichtung).</summary>
-    EditorSettings: TShellStatusTextFunc;
-    /// <summary>Aktives Projekt der IDE.</summary>
-    ActiveProject: TShellStatusTextFunc;
-    IsSelectedProject: TShellStatusSelectedFunc;
-    /// <summary>Letzte Logzeilen; nil ohne Protokoll im Speicher.</summary>
-    RecentLog: TShellStatusRecentLogFunc;
-    /// <summary>Mitschnitt der Nachrichten; nil ohne.</summary>
-    Tracing: TShellStatusTracingFunc;
-    /// <summary>Anonymisierung von Namen; nil ohne.</summary>
-    Anonymizer: TShellStatusAnonymizerFunc;
-    CompilerStatus: TShellStatusCompilerProc;
-    /// <summary>Profil des Prüflaufs in AStatus und dessen Warteschlange.</summary>
-    CheckStatus: TShellStatusCheckProc;
-    IndexQueue: TShellStatusIndexQueueFunc;
-  end;
-
   /// <summary>Status, Prozesse, Fehlerbericht und Diagnosepaket.</summary>
   TShellStatusReports = class
   private
@@ -90,9 +46,17 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.IOUtils,
   System.Math,
   Atlas.Common.Product.Version,
+  Atlas.Common.Logging.Providers.RecentSink,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.Scheduler,
+  Atlas.Common.JsonRpc.TracingTransport,
+  Atlas.Common.Diagnostics.Anonymizer,
+  Atlas.Common.Lsp.WorkspaceCheck,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Diagnostics.BugReport,
@@ -209,8 +173,8 @@ end;
 
 procedure TShellStatusReports.RegisterCommands(ACommands: TLspCommands);
 begin
-  ACommands.RegisterConcurrent(TServerPackage.Command, DiagnosticPackage);
-  ACommands.RegisterConcurrent(TBugReport.Command, BugReport);
+  ACommands.RegisterConcurrent(TServerPackage.cCommand, DiagnosticPackage);
+  ACommands.RegisterConcurrent(TBugReport.cCommand, BugReport);
 end;
 
 function TShellStatusReports.Workspaces: TArray<TShellWorkspace>;
@@ -357,7 +321,7 @@ begin
   mInput := Default(TBugReportInput);
   mInput.Anonymize := True;
   ReadBugReportOptions(AArguments, mInput, mTarget);
-  mInput.ServerVersion := TProductVersion.Version;
+  mInput.ServerVersion := TProductVersion.cVersion;
   mInput.Created := Now;
   mInput.Configuration := ConfigurationReport;
   mInput.LogLines := LastLines(SessionLines(mInput.Anonymize), cBugReportLogLines);
@@ -425,7 +389,7 @@ var
 begin
   // Fenster „Atlas-Server“ (#1356): Prozess, Speicher je Bereich, Prüflauf, Warteschlangen, Cache-Treffer.
   AStatus.ProcessId := TShellPlatform.CurrentProcessId;
-  AStatus.Version := TProductVersion.Version;
+  AStatus.Version := TProductVersion.cVersion;
   AStatus.Started := FStartedAt;
   AStatus.UptimeMs := FUptime.ElapsedMilliseconds;
   mParts := FServices.Index.MemoryParts;
@@ -449,16 +413,16 @@ begin
   AStatus.Queue.CheckRunning := mCheckQueue.Running;
   AStatus.Queue.OldestWaitMs := Max(mIndexQueue.OldestWaitMs, mCheckQueue.OldestWaitMs);
   // Zustand: lädt, solange ein Arbeitsbereich seinen Index aufbaut; prüft, solange ein Prüflauf aktiv ist.
-  AStatus.State := TServerStatus.StateReady;
+  AStatus.State := TServerStatus.cStateReady;
   if AStatus.CheckRun.Active then
   begin
-    AStatus.State := TServerStatus.StateChecking;
+    AStatus.State := TServerStatus.cStateChecking;
   end;
   for mWorkspace in AStatus.Workspaces do
   begin
     if mWorkspace.LastIndexMs < 0 then
     begin
-      AStatus.State := TServerStatus.StateLoading;
+      AStatus.State := TServerStatus.cStateLoading;
     end;
   end;
 end;
@@ -492,7 +456,7 @@ var
 begin
   mInput := Default(TServerPackageInput);
   mInput.Anonymize := True;
-  mInput.TraceMinutes := TServerPackage.DefaultTraceMinutes;
+  mInput.TraceMinutes := TServerPackage.cDefaultTraceMinutes;
   ReadPackageOptions(AArguments, mInput);
   mStatus := StatusJson(mInput.Anonymize);
   try

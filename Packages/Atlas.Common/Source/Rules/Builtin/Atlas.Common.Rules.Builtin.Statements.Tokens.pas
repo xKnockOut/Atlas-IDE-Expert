@@ -65,23 +65,23 @@ end;
 /// <summary>Erstes Token ab AOffset (Index), High + 1 ohne.</summary>
 function TokenFrom(const ATokens: TTokens; AOffset: Integer): Integer;
 var
-  Low, High, Middle: Integer;
+  mLow, mHigh, mMiddle: Integer;
 begin
-  Low := 0;
-  High := Length(ATokens);
-  while Low < High do
+  mLow := 0;
+  mHigh := Length(ATokens);
+  while mLow < mHigh do
   begin
-    Middle := (Low + High) div 2;
-    if ATokens[Middle].Offset < AOffset then
+    mMiddle := (mLow + mHigh) div 2;
+    if ATokens[mMiddle].Offset < AOffset then
     begin
-      Low := Middle + 1;
+      mLow := mMiddle + 1;
     end
     else
     begin
-      High := Middle;
+      mHigh := mMiddle;
     end;
   end;
-  Result := Low;
+  Result := mLow;
 end;
 
 function StatementKinds: TSyntaxKinds;
@@ -96,13 +96,13 @@ end;
 /// <summary>Erste Anweisung unter ANode, die nach AOffset beginnt; nil ohne.</summary>
 function StatementAfter(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    if (ANode[Index].Kind in StatementKinds) and (ANode[Index].StartOffset >= AOffset) then
+    if (ANode[mIndex].Kind in StatementKinds) and (ANode[mIndex].StartOffset >= AOffset) then
     begin
-      Exit(ANode[Index]);
+      Exit(ANode[mIndex]);
     end;
   end;
   Result := nil;
@@ -118,14 +118,14 @@ end;
 /// <summary>Code-Token AFirst..ALast ohne Leerraum und Kommentare, kleingeschrieben (zum Vergleichen).</summary>
 function CodeKey(const ATokens: TTokens; AFirst, ALast: Integer): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := AFirst to ALast do
+  for mIndex := AFirst to ALast do
   begin
-    if not IsTrivia(ATokens[Index]) then
+    if not IsTrivia(ATokens[mIndex]) then
     begin
-      Result := Result + LowerCase(ATokens[Index].Text);
+      Result := Result + LowerCase(ATokens[mIndex].Text);
     end;
   end;
 end;
@@ -143,19 +143,19 @@ end;
 /// <summary>Index der schließenden Klammer zu AOpen, -1 ohne.</summary>
 function Closing(const ATokens: TTokens; AOpen, AStop: Integer): Integer;
 var
-  Depth: Integer;
+  mDepth: Integer;
 begin
-  Depth := 0;
+  mDepth := 0;
   for Result := AOpen to AStop - 1 do
   begin
     if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
     else if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
     begin
-      Dec(Depth);
-      if Depth = 0 then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
         Exit;
       end;
@@ -167,23 +167,23 @@ end;
 /// <summary>Erstes Token AText (Schlüsselwort bzw. Symbol) in AFrom..AStop-1 auf Klammerebene 0; -1 ohne.</summary>
 function DepthZero(const ATokens: TTokens; AFrom, AStop: Integer; const AText: string; AKeyword: Boolean): Integer;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
-  Depth := 0;
-  for Index := AFrom to AStop - 1 do
+  mDepth := 0;
+  for mIndex := AFrom to AStop - 1 do
   begin
-    if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
+    if ATokens[mIndex].IsSymbol('(') or ATokens[mIndex].IsSymbol('[') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']') then
+    else if ATokens[mIndex].IsSymbol(')') or ATokens[mIndex].IsSymbol(']') then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (Depth = 0) and ((AKeyword and ATokens[Index].IsKeyword(AText)) or
-      (not AKeyword and ATokens[Index].IsSymbol(AText))) then
+    else if (mDepth = 0) and ((AKeyword and ATokens[mIndex].IsKeyword(AText)) or
+      (not AKeyword and ATokens[mIndex].IsSymbol(AText))) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -192,24 +192,24 @@ end;
 /// <summary>Bilden die ABaseCount Code-Token vor AIndex die Basis ABaseKey (CodeKey), ohne Punkt davor?</summary>
 function BaseBefore(const ATokens: TTokens; AIndex: Integer; const ABaseKey: string; ABaseCount: Integer): Boolean;
 var
-  Before, Count, Prev: Integer;
-  Key: string;
+  mBefore, mCount, mPrev: Integer;
+  mKey: string;
 begin
-  Key := '';
-  Before := AIndex;
-  Count := 0;
-  while Count < ABaseCount do
+  mKey := '';
+  mBefore := AIndex;
+  mCount := 0;
+  while mCount < ABaseCount do
   begin
-    Before := PreviousCode(ATokens, Before);
-    if Before < 0 then
+    mBefore := PreviousCode(ATokens, mBefore);
+    if mBefore < 0 then
     begin
       Exit(False);
     end;
-    Key := LowerCase(ATokens[Before].Text) + Key;
-    Inc(Count);
+    mKey := LowerCase(ATokens[mBefore].Text) + mKey;
+    Inc(mCount);
   end;
-  Prev := PreviousCode(ATokens, Before);
-  Result := (Key = ABaseKey) and ((Prev < 0) or not ATokens[Prev].IsSymbol('.'));
+  mPrev := PreviousCode(ATokens, mBefore);
+  Result := (mKey = ABaseKey) and ((mPrev < 0) or not ATokens[mPrev].IsSymbol('.'));
 end;
 
 /// <summary>Dateiname des Kontexts für die Namensauflösung: Datei, relativer Pfad oder Unitname.</summary>

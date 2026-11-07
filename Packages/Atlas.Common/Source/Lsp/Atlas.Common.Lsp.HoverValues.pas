@@ -71,507 +71,548 @@ end;
 
 class function THoverValues.TryParseNumber(const AText: string; out AValue: Int64): Boolean;
 var
-  Text: string;
-  Base, Index, Digit: Integer;
-  Negative: Boolean;
-  Value: UInt64;
+  mText: string;
+  mBase, mIndex, mDigit: Integer;
+  mNegative: Boolean;
+  mValue: UInt64;
 begin
   AValue := 0;
-  Text := Trim(AText);
-  Negative := StartsStr('-', Text);
-  if Negative or StartsStr('+', Text) then
+  mText := Trim(AText);
+  mNegative := StartsStr('-', mText);
+  if mNegative or StartsStr('+', mText) then
   begin
-    Text := Trim(Copy(Text, 2, MaxInt));
+    mText := Trim(Copy(mText, 2, MaxInt));
   end;
-  Base := 10;
-  if StartsStr('$', Text) then
+  mBase := 10;
+  if StartsStr('$', mText) then
   begin
-    Base := 16;
+    mBase := 16;
   end
-  else if StartsStr('%', Text) then
+  else if StartsStr('%', mText) then
   begin
-    Base := 2;
+    mBase := 2;
   end
-  else if StartsStr('&', Text) then
+  else if StartsStr('&', mText) then
   begin
-    Base := 8;
+    mBase := 8;
   end;
-  if Base <> 10 then
+  if mBase <> 10 then
   begin
-    Text := Copy(Text, 2, MaxInt);
+    mText := Copy(mText, 2, MaxInt);
   end;
   // Ziffertrenner ab Delphi 11: 1_000
-  Text := StringReplace(Text, '_', '', [rfReplaceAll]);
-  if Text = '' then
+  mText := StringReplace(mText, '_', '', [rfReplaceAll]);
+  if mText = '' then
   begin
     Exit(False);
   end;
-  Value := 0;
-  for Index := 1 to Length(Text) do
+  mValue := 0;
+  for mIndex := 1 to Length(mText) do
   begin
-    Digit := DigitValue(Text[Index]);
-    if (Digit < 0) or (Digit >= Base) then
+    mDigit := DigitValue(mText[mIndex]);
+    if (mDigit < 0) or (mDigit >= mBase) then
     begin
       Exit(False);
     end;
-    if Value > (High(UInt64) - UInt64(Digit)) div UInt64(Base) then
+    if mValue > (High(UInt64) - UInt64(mDigit)) div UInt64(mBase) then
     begin
       Exit(False);
     end;
-    Value := Value * UInt64(Base) + UInt64(Digit);
+    mValue := mValue * UInt64(mBase) + UInt64(mDigit);
   end;
-  if Negative then
+  if mNegative then
   begin
-    AValue := -Int64(Value);
+    AValue := -Int64(mValue);
   end
   else
   begin
-    AValue := Int64(Value);
+    AValue := Int64(mValue);
   end;
   Result := True;
 end;
 
 class function THoverValues.FormatNumber(AValue: Int64): string;
 var
-  Hex, Binary: string;
-  Value: UInt64;
+  mHex, mBinary: string;
+  mValue: UInt64;
 begin
-  Value := UInt64(AValue);
+  mValue := UInt64(AValue);
   // Ohne Vorzeichen auf Byte, Word, Cardinal bzw. Int64 auffüllen.
   if (AValue >= 0) and (AValue <= High(Byte)) then
   begin
-    Hex := IntToHex(AValue, 2);
+    mHex := IntToHex(AValue, 2);
   end
   else if (AValue >= 0) and (AValue <= High(Word)) then
   begin
-    Hex := IntToHex(AValue, 4);
+    mHex := IntToHex(AValue, 4);
   end
   else if (AValue >= 0) and (AValue <= High(Cardinal)) then
   begin
-    Hex := IntToHex(AValue, 8);
+    mHex := IntToHex(AValue, 8);
   end
   else
   begin
-    Hex := IntToHex(AValue, 16);
+    mHex := IntToHex(AValue, 16);
   end;
-  Binary := '';
+  mBinary := '';
   repeat
-    Binary := Char(Ord('0') + Integer(Value and 1)) + Binary;
-    Value := Value shr 1;
-  until Value = 0;
-  Result := IntToStr(AValue) + ' · $' + Hex + ' · %' + Binary;
+    mBinary := Char(Ord('0') + Integer(mValue and 1)) + mBinary;
+    mValue := mValue shr 1;
+  until mValue = 0;
+  Result := IntToStr(AValue) + ' · $' + mHex + ' · %' + mBinary;
 end;
 
 const
-  HintWords: array[0..3] of string = ('deprecated', 'platform', 'experimental', 'library');
+  cHintWords: array[0..3] of string = ('deprecated', 'platform', 'experimental', 'library');
 
 /// <summary>Teile von AText auf oberster Ebene (außerhalb von Strings und Klammern), getrennt durch ADelimiter.
 /// </summary>
 function SplitTop(const AText: string; ADelimiter: Char): TArray<string>;
 var
-  Index, Depth, Start: Integer;
-  InString: Boolean;
+  mIndex, mDepth, mStart: Integer;
+  mInString: Boolean;
 begin
   Result := nil;
-  Depth := 0;
-  InString := False;
-  Start := 1;
-  for Index := 1 to Length(AText) do
+  mDepth := 0;
+  mInString := False;
+  mStart := 1;
+  for mIndex := 1 to Length(AText) do
   begin
-    if AText[Index] = '''' then
+    if AText[mIndex] = '''' then
     begin
-      InString := not InString;
+      mInString := not mInString;
     end
-    else if InString then
+    else if mInString then
     begin
       Continue;
     end
-    else if CharInSet(AText[Index], ['(', '[']) then
+    else if CharInSet(AText[mIndex], ['(', '[']) then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if CharInSet(AText[Index], [')', ']']) then
+    else if CharInSet(AText[mIndex], [')', ']']) then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (AText[Index] = ADelimiter) and (Depth = 0) then
+    else if (AText[mIndex] = ADelimiter) and (mDepth = 0) then
     begin
-      Result := Result + [Trim(Copy(AText, Start, Index - Start))];
-      Start := Index + 1;
+      Result := Result + [Trim(Copy(AText, mStart, mIndex - mStart))];
+      mStart := mIndex + 1;
     end;
   end;
-  Result := Result + [Trim(Copy(AText, Start, MaxInt))];
+  Result := Result + [Trim(Copy(AText, mStart, MaxInt))];
 end;
 
 /// <summary>Position des ersten AChar auf oberster Ebene; 0 ohne.</summary>
 function PosTop(AChar: Char; const AText: string): Integer;
 var
-  Index, Depth: Integer;
-  InString: Boolean;
+  mIndex, mDepth: Integer;
+  mInString: Boolean;
 begin
-  Depth := 0;
-  InString := False;
-  for Index := 1 to Length(AText) do
+  mDepth := 0;
+  mInString := False;
+  for mIndex := 1 to Length(AText) do
   begin
-    if AText[Index] = '''' then
+    if AText[mIndex] = '''' then
     begin
-      InString := not InString;
+      mInString := not mInString;
     end
-    else if InString then
+    else if mInString then
     begin
       Continue;
     end
-    else if (AText[Index] = AChar) and (Depth = 0) then
+    else if (AText[mIndex] = AChar) and (mDepth = 0) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end
-    else if CharInSet(AText[Index], ['(', '[']) then
+    else if CharInSet(AText[mIndex], ['(', '[']) then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if CharInSet(AText[Index], [')', ']']) then
+    else if CharInSet(AText[mIndex], [')', ']']) then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end;
   end;
   Result := 0;
 end;
 
+/// <summary>ATail ohne angehängtes "deprecated 'Grund'"; sonst unverändert.</summary>
+function WithoutDeprecatedMessage(const ATail: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := ATail;
+  if not EndsStr('''', ATail) then
+  begin
+    Exit;
+  end;
+  mIndex := Length(ATail) - 1;
+  while (mIndex > 0) and (ATail[mIndex] <> '''') do
+  begin
+    Dec(mIndex);
+  end;
+  if (mIndex > 1) and EndsText('deprecated', TrimRight(Copy(ATail, 1, mIndex - 1))) then
+  begin
+    Result := TrimRight(Copy(ATail, 1, mIndex - 1));
+  end;
+end;
+
+/// <summary>Entfernt ein angehängtes Hinweiswort (deprecated, platform …) von AText; False ohne.</summary>
+function StripHintWord(var AText: string): Boolean;
+var
+  mTail, mWord: string;
+begin
+  mTail := WithoutDeprecatedMessage(AText);
+  for mWord in cHintWords do
+  begin
+    if EndsText(' ' + mWord, mTail) then
+    begin
+      AText := TrimRight(Copy(mTail, 1, Length(mTail) - Length(mWord)));
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 class function THoverValues.ConstantExpression(const ADeclaration: string): string;
 var
-  Equals, Index: Integer;
-  Parts: TArray<string>;
-  Last, Word: string;
-  Changed: Boolean;
+  mEquals: Integer;
+  mParts: TArray<string>;
 begin
   Result := '';
-  Equals := PosTop('=', ADeclaration);
-  if Equals = 0 then
+  mEquals := PosTop('=', ADeclaration);
+  if mEquals = 0 then
   begin
     Exit;
   end;
   // Bis zum ersten ";" auf oberster Ebene; die Hinweise stehen davor oder dahinter.
-  Parts := SplitTop(Copy(ADeclaration, Equals + 1, MaxInt), ';');
-  Result := Parts[0];
+  mParts := SplitTop(Copy(ADeclaration, mEquals + 1, MaxInt), ';');
+  Result := mParts[0];
   // Angehängte Direktiven wie "deprecated 'Grund'" gehören nicht zum Wert.
   repeat
-    Changed := False;
-    Last := Result;
-    if EndsStr('''', Last) then
-    begin
-      Index := Length(Last) - 1;
-      while (Index > 0) and (Last[Index] <> '''') do
-      begin
-        Dec(Index);
-      end;
-      if (Index > 1) and EndsText('deprecated', TrimRight(Copy(Last, 1, Index - 1))) then
-      begin
-        Last := TrimRight(Copy(Last, 1, Index - 1));
-      end;
-    end;
-    for Word in HintWords do
-    begin
-      if EndsText(' ' + Word, Last) then
-      begin
-        Result := TrimRight(Copy(Last, 1, Length(Last) - Length(Word)));
-        Changed := True;
-        Break;
-      end;
-    end;
-  until not Changed;
+  until not StripHintWord(Result);
 end;
 
 class function THoverValues.ConstantValue(const ADeclaration: string): string;
 var
-  Expression: string;
-  Value: Int64;
+  mExpression: string;
+  mValue: Int64;
 begin
-  Expression := ConstantExpression(ADeclaration);
+  mExpression := ConstantExpression(ADeclaration);
   Result := '';
-  if Expression = '' then
+  if mExpression = '' then
   begin
     Exit;
   end;
-  if TryParseNumber(Expression, Value) then
+  if TryParseNumber(mExpression, mValue) then
   begin
-    Exit(FormatNumber(Value));
+    Exit(FormatNumber(mValue));
   end;
-  Result := SetValue(Expression);
+  Result := SetValue(mExpression);
   if Result = '' then
   begin
-    Result := StringValue(Expression);
+    Result := StringValue(mExpression);
   end;
 end;
 
 /// <summary>Ordinalwert eines Zahlen- oder Zeichenliterals ('a', #65, 10); False sonst.</summary>
 function TryOrdinal(const AText: string; out AValue: Int64): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Trim(AText);
-  if (Length(Text) = 3) and (Text[1] = '''') and (Text[3] = '''') then
+  mText := Trim(AText);
+  if (Length(mText) = 3) and (mText[1] = '''') and (mText[3] = '''') then
   begin
-    AValue := Ord(Text[2]);
+    AValue := Ord(mText[2]);
     Exit(True);
   end;
-  if StartsStr('#', Text) then
+  if StartsStr('#', mText) then
   begin
-    Exit(THoverValues.TryParseNumber(Copy(Text, 2, MaxInt), AValue));
+    Exit(THoverValues.TryParseNumber(Copy(mText, 2, MaxInt), AValue));
   end;
-  Result := THoverValues.TryParseNumber(Text, AValue);
+  Result := THoverValues.TryParseNumber(mText, AValue);
 end;
 
 class function THoverValues.SetValue(const AExpression: string): string;
 var
-  Text, Element, Low_, High_: string;
-  Elements: TArray<string>;
-  Count, Range: Integer;
-  First, Last: Int64;
-  Countable: Boolean;
+  mText, mElement, mLow_, mHigh_: string;
+  mElements: TArray<string>;
+  mCount, mRange: Integer;
+  mFirst, mLast: Int64;
+  mCountable: Boolean;
 begin
   Result := '';
-  Text := Trim(AExpression);
-  if (Length(Text) < 2) or (Text[1] <> '[') or (Text[Length(Text)] <> ']') or
-    (PosTop(']', Copy(Text, 2, Length(Text) - 2)) > 0) then
+  mText := Trim(AExpression);
+  if (Length(mText) < 2) or (mText[1] <> '[') or (mText[Length(mText)] <> ']') or
+    (PosTop(']', Copy(mText, 2, Length(mText) - 2)) > 0) then
   begin
     Exit;
   end;
-  Text := Trim(Copy(Text, 2, Length(Text) - 2));
-  if Text = '' then
+  mText := Trim(Copy(mText, 2, Length(mText) - 2));
+  if mText = '' then
   begin
     Exit(cTexts[THoverValuesText.Empty].Text);
   end;
-  Elements := SplitTop(Text, ',');
-  Count := 0;
-  Countable := True;
-  for Element in Elements do
+  mElements := SplitTop(mText, ',');
+  mCount := 0;
+  mCountable := True;
+  for mElement in mElements do
   begin
-    Range := Pos('..', Element);
-    if Range = 0 then
+    mRange := Pos('..', mElement);
+    if mRange = 0 then
     begin
-      Inc(Count);
+      Inc(mCount);
       Continue;
     end;
-    Low_ := Trim(Copy(Element, 1, Range - 1));
-    High_ := Trim(Copy(Element, Range + 2, MaxInt));
-    if TryOrdinal(Low_, First) and TryOrdinal(High_, Last) and (Last >= First) then
+    mLow_ := Trim(Copy(mElement, 1, mRange - 1));
+    mHigh_ := Trim(Copy(mElement, mRange + 2, MaxInt));
+    if TryOrdinal(mLow_, mFirst) and TryOrdinal(mHigh_, mLast) and (mLast >= mFirst) then
     begin
-      Inc(Count, Integer(Last - First + 1));
+      Inc(mCount, Integer(mLast - mFirst + 1));
     end
     else
     begin
-      Countable := False;
+      mCountable := False;
     end;
   end;
-  Result := '[' + string.Join(', ', Elements) + ']';
-  if not Countable then
+  Result := '[' + string.Join(', ', mElements) + ']';
+  if not mCountable then
   begin
     Exit;
   end;
-  if Count = 1 then
+  if mCount = 1 then
   begin
     Result := Result + ' · 1 Element';
   end
   else
   begin
-    Result := Result + cTexts[THoverValuesText.Elements].Fmt([IntToStr(Count)]);
+    Result := Result + cTexts[THoverValuesText.Elements].Fmt([IntToStr(mCount)]);
+  end;
+end;
+
+/// <summary>Liest das Literal ab AText[AIndex] = '''' in ABuilder; AIndex steht danach hinter dem Literal.
+/// False ohne schließendes Hochkomma.</summary>
+function ReadQuoted(const AText: string; var AIndex: Integer; ABuilder: TStringBuilder): Boolean;
+var
+  mClose: Integer;
+begin
+  mClose := AIndex + 1;
+  while mClose <= Length(AText) do
+  begin
+    if AText[mClose] = '''' then
+    begin
+      if (mClose < Length(AText)) and (AText[mClose + 1] = '''') then
+      begin
+        ABuilder.Append('''');
+        Inc(mClose, 2);
+        Continue;
+      end;
+      AIndex := mClose + 1;
+      Exit(True);
+    end;
+    ABuilder.Append(AText[mClose]);
+    Inc(mClose);
+  end;
+  Result := False;
+end;
+
+/// <summary>Liest den Zeichencode ab AText[AIndex] = '#' in ABuilder; False bei ungültigem Code.</summary>
+function ReadCharCode(const AText: string; var AIndex: Integer; ABuilder: TStringBuilder): Boolean;
+var
+  mClose: Integer;
+  mCode: Int64;
+begin
+  mClose := AIndex + 1;
+  while (mClose <= Length(AText)) and CharInSet(AText[mClose], ['$', '0'..'9', 'a'..'f', 'A'..'F']) do
+  begin
+    Inc(mClose);
+  end;
+  Result := THoverValues.TryParseNumber(Copy(AText, AIndex + 1, mClose - AIndex - 1), mCode) and (mCode >= 0) and
+    (mCode <= $FFFF);
+  if Result then
+  begin
+    ABuilder.Append(Char(mCode));
+    AIndex := mClose;
+  end;
+end;
+
+/// <summary>Eine Folge aus 'Literal' und #Code ohne Leerraum dazwischen in ABuilder; False bei anderem
+/// Text.</summary>
+function ReadStringPart(const APart: string; ABuilder: TStringBuilder): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := APart <> '';
+  mIndex := 1;
+  while Result and (mIndex <= Length(APart)) do
+  begin
+    case APart[mIndex] of
+      '''': Result := ReadQuoted(APart, mIndex, ABuilder);
+      '#': Result := ReadCharCode(APart, mIndex, ABuilder);
+    else
+      Result := False;
+    end;
   end;
 end;
 
 class function THoverValues.StringValue(const AExpression: string): string;
 var
-  Part, Text: string;
-  Index, Close: Integer;
-  Code: Int64;
-  Builder: TStringBuilder;
+  mPart, mText: string;
+  mBuilder: TStringBuilder;
 begin
   Result := '';
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    for Part in SplitTop(AExpression, '+') do
+    for mPart in SplitTop(AExpression, '+') do
     begin
-      Text := Part;
-      if Text = '' then
+      if not ReadStringPart(mPart, mBuilder) then
       begin
         Exit;
       end;
-      // Eine Folge aus 'Literal' und #Code ohne Leerraum dazwischen.
-      Index := 1;
-      while Index <= Length(Text) do
-      begin
-        if Text[Index] = '''' then
-        begin
-          Close := Index + 1;
-          while Close <= Length(Text) do
-          begin
-            if Text[Close] = '''' then
-            begin
-              if (Close < Length(Text)) and (Text[Close + 1] = '''') then
-              begin
-                Builder.Append('''');
-                Inc(Close, 2);
-                Continue;
-              end;
-              Break;
-            end;
-            Builder.Append(Text[Close]);
-            Inc(Close);
-          end;
-          if Close > Length(Text) then
-          begin
-            Exit;
-          end;
-          Index := Close + 1;
-        end
-        else if Text[Index] = '#' then
-        begin
-          Close := Index + 1;
-          while (Close <= Length(Text)) and CharInSet(Text[Close], ['$', '0'..'9', 'a'..'f', 'A'..'F']) do
-          begin
-            Inc(Close);
-          end;
-          if not TryParseNumber(Copy(Text, Index + 1, Close - Index - 1), Code) or (Code < 0) or
-            (Code > $FFFF) then
-          begin
-            Exit;
-          end;
-          Builder.Append(Char(Code));
-          Index := Close;
-        end
-        else
-        begin
-          Exit;
-        end;
-      end;
     end;
-    Text := Builder.ToString;
+    mText := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Text := StringReplace(Text, #13#10, '⏎', [rfReplaceAll]);
-  Text := StringReplace(Text, #10, '⏎', [rfReplaceAll]);
-  Text := StringReplace(Text, #13, '⏎', [rfReplaceAll]);
-  Result := '''' + Text + '''';
+  mText := StringReplace(mText, #13#10, '⏎', [rfReplaceAll]);
+  mText := StringReplace(mText, #10, '⏎', [rfReplaceAll]);
+  mText := StringReplace(mText, #13, '⏎', [rfReplaceAll]);
+  Result := '''' + mText + '''';
 end;
 
 class function THoverValues.SetBaseType(const ADeclaration: string; out ABaseType: string): Boolean;
 var
-  Expression, Lower: string;
+  mExpression, mLower: string;
 begin
   ABaseType := '';
-  Expression := ConstantExpression(ADeclaration);
-  Lower := LowerCase(Expression);
-  Result := StartsStr('set of ', Lower) or StartsStr('packed set of ', Lower);
+  mExpression := ConstantExpression(ADeclaration);
+  mLower := LowerCase(mExpression);
+  Result := StartsStr('set of ', mLower) or StartsStr('packed set of ', mLower);
   if Result then
   begin
-    ABaseType := Trim(Copy(Expression, Pos(' of ', Lower) + 4, MaxInt));
+    ABaseType := Trim(Copy(mExpression, Pos(' of ', mLower) + 4, MaxInt));
   end;
 end;
 
 class function THoverValues.BaseTypeCount(const ABaseType: string): Integer;
 var
-  Text: string;
-  Range: Integer;
-  First, Last: Int64;
+  mText: string;
+  mRange: Integer;
+  mFirst, mLast: Int64;
 begin
   Result := -1;
-  Text := Trim(ABaseType);
-  if StartsStr('(', Text) and EndsStr(')', Text) then
+  mText := Trim(ABaseType);
+  if StartsStr('(', mText) and EndsStr(')', mText) then
   begin
-    Exit(Length(SplitTop(Copy(Text, 2, Length(Text) - 2), ',')));
+    Exit(Length(SplitTop(Copy(mText, 2, Length(mText) - 2), ',')));
   end;
-  Range := Pos('..', Text);
-  if Range > 0 then
+  mRange := Pos('..', mText);
+  if mRange > 0 then
   begin
-    if TryOrdinal(Copy(Text, 1, Range - 1), First) and TryOrdinal(Copy(Text, Range + 2, MaxInt), Last) and
-      (Last >= First) then
+    if TryOrdinal(Copy(mText, 1, mRange - 1), mFirst) and TryOrdinal(Copy(mText, mRange + 2, MaxInt), mLast) and
+      (mLast >= mFirst) then
     begin
-      Result := Integer(Last - First + 1);
+      Result := Integer(mLast - mFirst + 1);
     end;
     Exit;
   end;
-  if SameText(Text, 'Boolean') or SameText(Text, 'ByteBool') then
+  if SameText(mText, 'Boolean') or SameText(mText, 'ByteBool') then
   begin
     Result := 2;
   end
-  else if SameText(Text, 'Byte') or SameText(Text, 'ShortInt') or SameText(Text, 'AnsiChar') or
-    SameText(Text, 'Char') or SameText(Text, 'UInt8') or SameText(Text, 'Int8') then
+  else if MatchText(mText, ['Byte', 'ShortInt', 'AnsiChar', 'Char', 'UInt8', 'Int8']) then
   begin
     // set of Char gilt als set of AnsiChar (Warnung W1050).
     Result := 256;
   end;
 end;
 
-class function THoverValues.Deprecation(const ADeclaration: string): string;
+/// <summary>Beginnt bei AIndex ein Wort (nicht mitten in einem Namen oder nach ".")?</summary>
+function IsWordStart(const AText: string; AIndex: Integer): Boolean;
+begin
+  Result := CharInSet(AText[AIndex], ['a'..'z', 'A'..'Z', '_']);
+  if Result and (AIndex > 1) then
+  begin
+    Result := not CharInSet(AText[AIndex - 1], ['a'..'z', 'A'..'Z', '0'..'9', '_', '.']);
+  end;
+end;
+
+/// <summary>Erste Stelle ab AIndex, die kein Leerzeichen ist.</summary>
+function SkipSpaces(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result <= Length(AText)) and (AText[Result] = ' ') do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>"**Veraltet**: Grund" für deprecated 'Grund'; AIndex steht hinter dem Wort.</summary>
+function DeprecatedText(const ADeclaration: string; AIndex: Integer): string;
 var
-  Index, Start, Close: Integer;
-  Word, Message: string;
-  InString: Boolean;
+  mStart, mClose: Integer;
+begin
+  Result := cTexts[THoverValuesText.Deprecated].Text;
+  mStart := SkipSpaces(ADeclaration, AIndex);
+  if (mStart > Length(ADeclaration)) or (ADeclaration[mStart] <> '''') then
+  begin
+    Exit;
+  end;
+  mClose := PosEx('''', ADeclaration, mStart + 1);
+  if mClose > mStart + 1 then
+  begin
+    Result := Result + ': ' + Copy(ADeclaration, mStart + 1, mClose - mStart - 1);
+  end;
+end;
+
+/// <summary>Hinweis zum Direktivenwort AWord (klein), das vor AIndex endet; '' bei anderen Wörtern.</summary>
+function DirectiveHint(const ADeclaration, AWord: string; AIndex: Integer): string;
 begin
   Result := '';
-  InString := False;
-  Index := 1;
-  while Index <= Length(ADeclaration) do
+  if AWord = 'deprecated' then
   begin
-    if ADeclaration[Index] = '''' then
+    Result := DeprecatedText(ADeclaration, AIndex);
+  end
+  else if AWord = 'platform' then
+  begin
+    Result := cTexts[THoverValuesText.PlatformSpecific].Text;
+  end
+  else if AWord = 'experimental' then
+  begin
+    Result := cTexts[THoverValuesText.Experimental].Text;
+  end;
+end;
+
+class function THoverValues.Deprecation(const ADeclaration: string): string;
+var
+  mIndex, mStart, mClose: Integer;
+  mInString: Boolean;
+begin
+  Result := '';
+  mInString := False;
+  mIndex := 1;
+  while (Result = '') and (mIndex <= Length(ADeclaration)) do
+  begin
+    if ADeclaration[mIndex] = '''' then
     begin
-      InString := not InString;
-      Inc(Index);
+      mInString := not mInString;
+    end;
+    if mInString or not IsWordStart(ADeclaration, mIndex) then
+    begin
+      Inc(mIndex);
       Continue;
     end;
-    if InString or not CharInSet(ADeclaration[Index], ['a'..'z', 'A'..'Z', '_']) or
-      ((Index > 1) and CharInSet(ADeclaration[Index - 1], ['a'..'z', 'A'..'Z', '0'..'9', '_', '.'])) then
+    mStart := mIndex;
+    while (mIndex <= Length(ADeclaration)) and CharInSet(ADeclaration[mIndex], ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
     begin
-      Inc(Index);
-      Continue;
+      Inc(mIndex);
     end;
-    Start := Index;
-    while (Index <= Length(ADeclaration)) and CharInSet(ADeclaration[Index], ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
-    begin
-      Inc(Index);
-    end;
-    Word := LowerCase(Copy(ADeclaration, Start, Index - Start));
     // Direktiven stehen vor ";", einem String oder am Ende; Namen wie "Platform: string" nicht.
-    Close := Index;
-    while (Close <= Length(ADeclaration)) and (ADeclaration[Close] = ' ') do
+    mClose := SkipSpaces(ADeclaration, mIndex);
+    if (mClose > Length(ADeclaration)) or CharInSet(ADeclaration[mClose], [';', '''']) then
     begin
-      Inc(Close);
-    end;
-    if (Close <= Length(ADeclaration)) and not CharInSet(ADeclaration[Close], [';', '''']) then
-    begin
-      Continue;
-    end;
-    if Word = 'deprecated' then
-    begin
-      // deprecated 'Stattdessen Bar verwenden'
-      Message := '';
-      Start := Index;
-      while (Start <= Length(ADeclaration)) and (ADeclaration[Start] = ' ') do
-      begin
-        Inc(Start);
-      end;
-      if (Start <= Length(ADeclaration)) and (ADeclaration[Start] = '''') then
-      begin
-        Close := PosEx('''', ADeclaration, Start + 1);
-        if Close > 0 then
-        begin
-          Message := Copy(ADeclaration, Start + 1, Close - Start - 1);
-        end;
-      end;
-      Result := cTexts[THoverValuesText.Deprecated].Text;
-      if Message <> '' then
-      begin
-        Result := Result + ': ' + Message;
-      end;
-      Exit;
-    end;
-    if Word = 'platform' then
-    begin
-      Exit(cTexts[THoverValuesText.PlatformSpecific].Text);
-    end;
-    if Word = 'experimental' then
-    begin
-      Exit(cTexts[THoverValuesText.Experimental].Text);
+      Result := DirectiveHint(ADeclaration, LowerCase(Copy(ADeclaration, mStart, mIndex - mStart)), mIndex);
     end;
   end;
 end;

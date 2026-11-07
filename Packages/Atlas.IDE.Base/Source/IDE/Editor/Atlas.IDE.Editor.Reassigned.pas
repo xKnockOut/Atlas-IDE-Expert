@@ -44,14 +44,14 @@ type
 
   TAtlasIdeReassigned = class
   public const
-    Command = 'atlas.server.reassigned';
+    cCommand = 'atlas.server.reassigned';
   private const
-    TickMs = 250;
-    QuietMs = 700;
-    TimeoutMs = 2000;
-    RetryMs = 5000;
+    cTickMs = 250;
+    cQuietMs = 700;
+    cTimeoutMs = 2000;
+    cRetryMs = 5000;
     /// <summary>Anteil der Akzentfarbe am Hintergrund bei der Themenfarbe.</summary>
-    ThemeStrength = 0.7;
+    cThemeStrength = 0.7;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -92,7 +92,7 @@ type
       const ASet: TAtlasReassignedSet; AFailed: Boolean);
     procedure ReapWorkers(AWait: Boolean);
     function LineColor(ABack: TAtlasColor): TAtlasColor;
-    procedure PaintUses(const Rect: TRect; const Context: INTACodeEditorPaintContext; const AText: string;
+    procedure PaintUses(const ARect: TRect; const AContext: INTACodeEditorPaintContext; const AText: string;
       const AUses: TArray<TAtlasReassignedUse>; ABack: TAtlasColor);
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
@@ -139,7 +139,7 @@ end;
 
 constructor TAtlasIdeReassigned.Create(const ASession: TAtlasReassignedSessionFunc);
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   inherited Create;
   FSession := ASession;
@@ -148,35 +148,35 @@ begin
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+    FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := TimerTick;
   FTimer.Enabled := True;
 end;
 
 destructor TAtlasIdeReassigned.Destroy;
 var
-  Services: INTACodeEditorServices;
-  Painted: Boolean;
+  mServices: INTACodeEditorServices;
+  mPainted: Boolean;
 begin
   FreeAndNil(FTimer);
   // Erst abmelden, dann freigeben (#493).
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    Services.RemoveEditorEventsNotifier(FIndex);
+    mServices.RemoveEditorEventsNotifier(FIndex);
   end;
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
   // Laufende Anfragen halten die Sitzung als rohen Zeiger: abwarten.
   ReapWorkers(True);
   FreeAndNil(FWorkers);
-  Painted := FSet.HasUses;
+  mPainted := FSet.HasUses;
   Clear;
-  if Painted then
+  if mPainted then
   begin
     Invalidate;
   end;
@@ -203,20 +203,20 @@ end;
 
 class procedure TAtlasIdeReassigned.Invalidate;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(Services);
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 
 class function TAtlasIdeReassigned.IsSource(const AFileName: string): Boolean;
 var
-  Extension: string;
+  mExtension: string;
 begin
-  Extension := ExtractFileExt(AFileName);
-  Result := SameText(Extension, '.pas') or SameText(Extension, '.dpr') or SameText(Extension, '.dpk');
+  mExtension := ExtractFileExt(AFileName);
+  Result := SameText(mExtension, '.pas') or SameText(mExtension, '.dpr') or SameText(mExtension, '.dpk');
 end;
 
 procedure TAtlasIdeReassigned.Clear;
@@ -229,19 +229,19 @@ end;
 
 procedure TAtlasIdeReassigned.ReapWorkers(AWait: Boolean);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if FWorkers = nil then
   begin
     Exit;
   end;
-  for Index := FWorkers.Count - 1 downto 0 do
+  for mIndex := FWorkers.Count - 1 downto 0 do
   begin
-    if AWait or FWorkers[Index].Finished then
+    if AWait or FWorkers[mIndex].Finished then
     begin
-      FWorkers[Index].WaitFor;
-      FWorkers[Index].Free;
-      FWorkers.Delete(Index);
+      FWorkers[mIndex].WaitFor;
+      FWorkers[mIndex].Free;
+      FWorkers.Delete(mIndex);
     end;
   end;
 end;
@@ -302,7 +302,7 @@ begin
     FChangedAt := mMoment;
     Exit;
   end;
-  Result := (mMoment - FChangedAt >= QuietMs) and (mMoment >= FRetryAt);
+  Result := (mMoment - FChangedAt >= cQuietMs) and (mMoment >= FRetryAt);
 end;
 
 procedure TAtlasIdeReassigned.Update;
@@ -359,7 +359,7 @@ begin
       mFound := Default(TAtlasReassignedSet);
       mFailed := False;
       try
-        mAnswer := ASession.RunCommand(TAtlasIdeReassigned.Command, AArguments, TAtlasIdeReassigned.TimeoutMs);
+        mAnswer := ASession.RunCommand(TAtlasIdeReassigned.cCommand, AArguments, TAtlasIdeReassigned.cTimeoutMs);
         try
           mFound := TAtlasReassignedSet.FromJson(mAnswer);
         finally
@@ -402,7 +402,7 @@ begin
   begin
     // Server läuft (noch) nicht: beim nächsten Takt nach der Wartezeit noch einmal.
     FAskedKey := '';
-    FRetryAt := GetTickCount + RetryMs;
+    FRetryAt := GetTickCount + cRetryMs;
     Exit;
   end;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
@@ -419,7 +419,7 @@ end;
 procedure TAtlasIdeReassigned.Accept(ARequest: Integer; const AFileName, AText: string;
   const ASet: TAtlasReassignedSet; AFailed: Boolean);
 var
-  Had: Boolean;
+  mHad: Boolean;
 begin
   if ARequest <> FRequest then
   begin
@@ -428,18 +428,18 @@ begin
   if AFailed then
   begin
     FAskedKey := '';
-    FRetryAt := GetTickCount + RetryMs;
+    FRetryAt := GetTickCount + cRetryMs;
     Exit;
   end;
   if not ASet.Valid then
   begin
     Exit;
   end;
-  Had := FSet.HasUses;
+  mHad := FSet.HasUses;
   FSet := ASet;
   FShownFile := AFileName;
   FLines := TTextLines.SplitLines(AText);
-  if Had or FSet.HasUses then
+  if mHad or FSet.HasUses then
   begin
     Invalidate;
   end;
@@ -449,53 +449,53 @@ function TAtlasIdeReassigned.LineColor(ABack: TAtlasColor): TAtlasColor;
 begin
   if not TAtlasReassignedNames.TryColor(FColor, Result) then
   begin
-    Result := TAtlasColorMath.Mix(TAtlasColors.ForBackground(ABack).Accent, ABack, ThemeStrength);
+    Result := TAtlasColorMath.Mix(TAtlasColors.ForBackground(ABack).Accent, ABack, cThemeStrength);
   end;
 end;
 
-procedure TAtlasIdeReassigned.PaintUses(const Rect: TRect; const Context: INTACodeEditorPaintContext;
+procedure TAtlasIdeReassigned.PaintUses(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const AText: string; const AUses: TArray<TAtlasReassignedUse>; ABack: TAtlasColor);
 var
-  Use: TAtlasReassignedUse;
-  Part: TAtlasUnderlineSegment;
-  First, Last, Code, Mark: TRect;
-  Canvas: TCanvas;
-  DC: HDC;
-  Saved, Step, Baseline: Integer;
+  mUse: TAtlasReassignedUse;
+  mPart: TAtlasUnderlineSegment;
+  mFirst, mLast, mCode, mMark: TRect;
+  mCanvas: TCanvas;
+  mDC: HDC;
+  mSaved, mStep, mBaseline: Integer;
 begin
-  Canvas := Context.Canvas;
-  DC := Canvas.Handle;
-  Code := Context.LineState.CodeRect;
+  mCanvas := AContext.Canvas;
+  mDC := mCanvas.Handle;
+  mCode := AContext.LineState.CodeRect;
   // Eine Einheit je 16 Pixel Zeilenhöhe: wächst mit der Bildschirmskalierung.
-  Step := Max(1, Rect.Height div 16);
+  mStep := Max(1, ARect.Height div 16);
   // Über der Wellenlinie der Probleme (Rect.Bottom - 2), damit beide lesbar bleiben.
-  Baseline := Rect.Bottom - 2 - 2 * Step;
-  Saved := SaveDC(DC);
+  mBaseline := ARect.Bottom - 2 - 2 * mStep;
+  mSaved := SaveDC(mDC);
   try
-    if Code.Right > Code.Left then
+    if mCode.Right > mCode.Left then
     begin
-      IntersectClipRect(DC, Code.Left, Rect.Top, Rect.Right, Rect.Bottom);
+      IntersectClipRect(mDC, mCode.Left, ARect.Top, ARect.Right, ARect.Bottom);
     end;
-    Canvas.Pen.Color := TColor(LineColor(ABack));
-    Canvas.Pen.Width := Step;
-    Canvas.Pen.Style := psSolid;
-    for Use in AUses do
+    mCanvas.Pen.Color := TColor(LineColor(ABack));
+    mCanvas.Pen.Width := mStep;
+    mCanvas.Pen.Style := psSolid;
+    for mUse in AUses do
     begin
-      First := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, Use.Character, FTabWidth),
-        Context.EditorLineNum);
-      Last := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, Use.EndCharacter, FTabWidth),
-        Context.EditorLineNum);
-      for Part in TAtlasReassigned.Segments(FStyle, First.Left, Max(Last.Left, First.Left + 1), Baseline, Step) do
+      mFirst := AContext.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, mUse.Character, FTabWidth),
+        AContext.EditorLineNum);
+      mLast := AContext.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, mUse.EndCharacter, FTabWidth),
+        AContext.EditorLineNum);
+      for mPart in TAtlasReassigned.Segments(FStyle, mFirst.Left, Max(mLast.Left, mFirst.Left + 1), mBaseline, mStep) do
       begin
-        Canvas.MoveTo(Part.X1, Part.Y1);
-        Canvas.LineTo(Part.X2, Part.Y2);
+        mCanvas.MoveTo(mPart.X1, mPart.Y1);
+        mCanvas.LineTo(mPart.X2, mPart.Y2);
       end;
-      Mark := TRect.Create(First.Left, Baseline - 2 * Step, Max(Last.Left, First.Left + 1), Rect.Bottom);
-      TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.Reassigned, Context.FileName,
-        Context.LogicalLineNum - 1, AText), Mark, Context.EditView.TopRow, Rect.Height);
+      mMark := TRect.Create(mFirst.Left, mBaseline - 2 * mStep, Max(mLast.Left, mFirst.Left + 1), ARect.Bottom);
+      TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.Reassigned, AContext.FileName,
+        AContext.LogicalLineNum - 1, AText), mMark, AContext.EditView.TopRow, ARect.Height);
     end;
   finally
-    RestoreDC(DC, Saved);
+    RestoreDC(mDC, mSaved);
   end;
 end;
 

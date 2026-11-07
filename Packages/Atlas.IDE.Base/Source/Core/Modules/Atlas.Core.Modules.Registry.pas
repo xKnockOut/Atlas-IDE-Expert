@@ -143,7 +143,8 @@ type
     procedure Own(const ARegistration: IAtlasRegistration);
     function Provide(const AIID: TGUID; const AObject: IInterface): IAtlasRegistration;
     function Subscribe(const AListener: IAtlasRegistryListener): IAtlasRegistration;
-    /// <summary>Schließen und jede Anmeldung rückwärts lösen; Ergebnis: fehlgeschlagene als „Klasse: Meldung“.</summary>
+    /// <summary>Schließen und jede Anmeldung rückwärts lösen; Ergebnis: fehlgeschlagene als „Klasse:
+    /// Meldung“.</summary>
     function Close: TArray<string>;
     /// <summary>Registry abgebaut: schließen, ohne die Anmeldungen zu lösen (sie sind schon abgetrennt).</summary>
     procedure Detach;

@@ -128,13 +128,13 @@ end;
 /// <summary>Kopf der Methode AName in der Klassendeklaration, sonst nil.</summary>
 function ClassHeader(const AClass: TClassInfo; const AName: string): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to AClass.Body.ChildCount - 1 do
+  for mIndex := 0 to AClass.Body.ChildCount - 1 do
   begin
-    if (AClass.Body[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(AClass.Body[Index].Name, AName) then
+    if (AClass.Body[mIndex].Kind = TSyntaxKind.RoutineHeader) and SameText(AClass.Body[mIndex].Name, AName) then
     begin
-      Exit(AClass.Body[Index]);
+      Exit(AClass.Body[mIndex]);
     end;
   end;
   Result := nil;
@@ -151,7 +151,7 @@ begin
   mDepth := 0;
   while not Result and (mName <> '') and not SameText(mName, 'TObject') and (mDepth < 64) do
   begin
-    Result := IsIn(mName, ComponentBases) or IsIn(mName, ConstructorBases) or
+    Result := IsIn(mName, cComponentBases) or IsIn(mName, cConstructorBases) or
       AModel.Ancestry.HasConstructor(mName);
     mName := AModel.Ancestry.ParentOf(mName);
     Inc(mDepth);
@@ -182,7 +182,7 @@ begin
     mTarget := mTarget[0];
   end;
   Result := IsOwnTarget(mTarget) and (IsIn(mTarget.Name, AConstructors) or
-    IsIn(mTarget.Name, AncestorConstructors));
+    IsIn(mTarget.Name, cAncestorConstructors));
 end;
 
 /// <summary>Ruft der Rumpf ARoot einen anderen Konstruktor derselben Klasse auf oder CreateNew?</summary>
@@ -322,7 +322,7 @@ begin
   begin
     // Komponenten: Destroy meldet component-missing-inherited (keine Doppelmeldung).
     Result := IsIn(AMethod.MethodName, FMethods) and FModel.DeclaredWith(FInfo, AMethod.MethodName, 'override') and
-      not (FModel.IsComponent(FInfo.Name) and IsIn(AMethod.MethodName, InheritedMethods));
+      not (FModel.IsComponent(FInfo.Name) and IsIn(AMethod.MethodName, cInheritedMethods));
   end;
 end;
 
@@ -631,7 +631,7 @@ end;
 /// <summary>Ist AStatement ein Aufruf von inherited (inherited; inherited Name; inherited Name(…))?</summary>
 function IsInheritedCall(AStatement: TSyntaxNode; out AName: string): Boolean;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   Result := False;
   AName := '';
@@ -639,30 +639,30 @@ begin
   begin
     Exit;
   end;
-  Node := AStatement[0];
-  if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) then
+  mNode := AStatement[0];
+  if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount > 0) then
   begin
-    Node := Node[0];
+    mNode := mNode[0];
   end;
-  if Node.Kind <> TSyntaxKind.InheritedExpr then
+  if mNode.Kind <> TSyntaxKind.InheritedExpr then
   begin
     Exit;
   end;
-  AName := Node.Name;
+  AName := mNode.Name;
   Result := True;
 end;
 
 /// <summary>Namen der Felder, Properties und Methoden der Klasse selbst.</summary>
 function OwnMembers(const AClass: TClassInfo): TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := OwnFields(AClass);
-  for Index := 0 to AClass.Body.ChildCount - 1 do
+  for mIndex := 0 to AClass.Body.ChildCount - 1 do
   begin
-    if AClass.Body[Index].Kind in [TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineHeader] then
+    if AClass.Body[mIndex].Kind in [TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineHeader] then
     begin
-      Result := Result + [AClass.Body[Index].Name];
+      Result := Result + [AClass.Body[mIndex].Name];
     end;
   end;
 end;
@@ -670,66 +670,66 @@ end;
 /// <summary>Bezeichner F bzw. Self.F als Ziel einer Freigabe: F.Free, F.DisposeOf, F.Destroy, FreeAndNil(F).</summary>
 function FreedName(ANode: TSyntaxNode): string;
 var
-  Target: TSyntaxNode;
+  mTarget: TSyntaxNode;
 begin
   Result := '';
-  Target := nil;
+  mTarget := nil;
   if (ANode.Kind = TSyntaxKind.MemberAccess) and IsIn(ANode.Name, ['Free', 'DisposeOf', 'Destroy']) and
     (ANode.ChildCount = 1) then
   begin
-    Target := ANode[0];
+    mTarget := ANode[0];
   end
   else if (ANode.Kind = TSyntaxKind.Call) and IsIn(ANode.Name, ['FreeAndNil', 'Dispose', 'FreeMem']) and
     (ANode.ChildCount = 2) then
   begin
-    Target := ANode[1];
+    mTarget := ANode[1];
   end;
-  if Target = nil then
+  if mTarget = nil then
   begin
     Exit;
   end;
-  if (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount = 1) and
-    (Target[0].Kind = TSyntaxKind.Identifier) and SameText(Target[0].Name, 'Self') then
+  if (mTarget.Kind = TSyntaxKind.MemberAccess) and (mTarget.ChildCount = 1) and
+    (mTarget[0].Kind = TSyntaxKind.Identifier) and SameText(mTarget[0].Name, 'Self') then
   begin
-    Exit(Target.Name);
+    Exit(mTarget.Name);
   end;
-  if Target.Kind = TSyntaxKind.Identifier then
+  if mTarget.Kind = TSyntaxKind.Identifier then
   begin
-    Result := Target.Name;
+    Result := mTarget.Name;
   end;
 end;
 
 /// <summary>Erstes freigegebenes eigenes Feld in ANode, '' ohne.</summary>
 function FirstFreedField(ANode: TSyntaxNode; const AFields: TArray<string>): string;
 var
-  Index: Integer;
-  Node: TSyntaxNode;
-  Pending: TStack<TSyntaxNode>;
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
 begin
   // Iterativ (Bericht M1).
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      Result := FreedName(Node);
+      mNode := mPending.Pop;
+      Result := FreedName(mNode);
       if (Result <> '') and IsIn(Result, AFields) then
       begin
         Exit;
       end;
-      if Node.Kind = TSyntaxKind.AnonymousMethod then
+      if mNode.Kind = TSyntaxKind.AnonymousMethod then
       begin
         Continue;
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
     Result := '';
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -765,20 +765,20 @@ end;
 
 procedure TInheritedOrderRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Model: TComponentModel;
-  Cache: IRuleDerivedCache;
-  Lines: TArray<string>;
-  LineBreak: string;
+  mModel: TComponentModel;
+  mCache: IRuleDerivedCache;
+  mLines: TArray<string>;
+  mLineBreak: string;
 
   function FindClassInfo(const AName: string; out AInfo: TClassInfo): Boolean;
   var
-    Info: TClassInfo;
+    mInfo: TClassInfo;
   begin
-    for Info in Model.Classes do
+    for mInfo in mModel.Classes do
     begin
-      if SameText(Info.Name, AName) then
+      if SameText(mInfo.Name, AName) then
       begin
-        AInfo := Info;
+        AInfo := mInfo;
         Exit(True);
       end;
     end;
@@ -788,21 +788,21 @@ var
   // Wartet der Destruktor eines Vorfahren auf etwas (TThread.Destroy beendet und erwartet den Thread)?
   function WaitsInDestructor(const AClassName: string): Boolean;
   var
-    Name: string;
-    Depth: Integer;
+    mName: string;
+    mDepth: Integer;
   begin
-    Name := AClassName;
-    for Depth := 0 to 63 do
+    mName := AClassName;
+    for mDepth := 0 to 63 do
     begin
-      if ContainsText(Name, 'Thread') then
+      if ContainsText(mName, 'Thread') then
       begin
         Exit(True);
       end;
-      if (Name = '') or SameText(Name, 'TObject') then
+      if (mName = '') or SameText(mName, 'TObject') then
       begin
         Break;
       end;
-      Name := Model.Ancestry.ParentOf(Name);
+      mName := mModel.Ancestry.ParentOf(mName);
     end;
     Result := False;
   end;
@@ -810,79 +810,79 @@ var
   // Steht AStatement allein in seinen Zeilen (höchstens mit ";")?
   function OwnLines(AStatement: TSyntaxNode): Boolean;
   begin
-    Result := (AStatement.EndPos.Line <= High(Lines)) and
-      (Trim(Copy(Lines[AStatement.StartPos.Line], 1, AStatement.StartPos.Character)) = '') and
-      IsIn(Trim(Copy(Lines[AStatement.EndPos.Line], AStatement.EndPos.Character + 1, MaxInt)), ['', ';']);
+    Result := (AStatement.EndPos.Line <= High(mLines)) and
+      (Trim(Copy(mLines[AStatement.StartPos.Line], 1, AStatement.StartPos.Character)) = '') and
+      IsIn(Trim(Copy(mLines[AStatement.EndPos.Line], AStatement.EndPos.Character + 1, MaxInt)), ['', ';']);
   end;
 
   // inherited ans Ende bzw. an den Anfang: Zeilen der Anweisung entfernen, Text neu einfügen.
   function MoveFix(ABlock, AStatement: TSyntaxNode; AToEnd: Boolean; out AFix: TRuleFix): Boolean;
   var
-    Insert, Remove: TRuleEdit;
-    Text: string;
+    mInsert, mRemove: TRuleEdit;
+    mText: string;
   begin
     Result := False;
     if not OwnLines(AStatement) then
     begin
       Exit;
     end;
-    Text := Model.NodeText(AStatement) + ';';
+    mText := mModel.NodeText(AStatement) + ';';
     if AToEnd then
     begin
-      Result := Model.InsertBeforeEnd(ABlock, Text, Insert);
+      Result := mModel.InsertBeforeEnd(ABlock, mText, mInsert);
     end
     else
     begin
-      Result := Model.InsertAfterBegin(ABlock, Text, Insert);
+      Result := mModel.InsertAfterBegin(ABlock, mText, mInsert);
     end;
     if not Result then
     begin
       Exit;
     end;
-    Remove := TRuleEdit.Create(TTextRange.Create(AStatement.StartPos.Line, 0, AStatement.EndPos.Line + 1, 0), '');
+    mRemove := TRuleEdit.Create(TTextRange.Create(AStatement.StartPos.Line, 0, AStatement.EndPos.Line + 1, 0), '');
     if AToEnd then
     begin
-      AFix := TRuleFix.Create(cTexts[TComponentsInheritedCallsText.MoveToEnd].Text, [Remove, Insert]);
+      AFix := TRuleFix.Create(cTexts[TComponentsInheritedCallsText.MoveToEnd].Text, [mRemove, mInsert]);
     end
     else
     begin
-      AFix := TRuleFix.Create(cTexts[TComponentsInheritedCallsText.MoveToStart].Text, [Insert, Remove]);
+      AFix := TRuleFix.Create(cTexts[TComponentsInheritedCallsText.MoveToStart].Text, [mInsert, mRemove]);
     end;
   end;
 
   procedure CheckDestructor(const AMethod: TMethodImpl; const AInfo: TClassInfo);
   var
-    Index: Integer;
-    Statement: TSyntaxNode;
-    Name, Field: string;
-    Fix: TRuleFix;
+    mIndex: Integer;
+    mStatement: TSyntaxNode;
+    mName, mField: string;
+    mFix: TRuleFix;
     mFixes: TArray<TRuleFix>;
   begin
     if WaitsInDestructor(AInfo.Name) then
     begin
       Exit;
     end;
-    for Index := 0 to AMethod.Block.ChildCount - 1 do
+    for mIndex := 0 to AMethod.Block.ChildCount - 1 do
     begin
-      Statement := AMethod.Block[Index];
-      if not IsInheritedCall(Statement, Name) then
+      mStatement := AMethod.Block[mIndex];
+      if not IsInheritedCall(mStatement, mName) then
       begin
         Continue;
       end;
-      Field := '';
-      if (Name = '') or SameText(Name, AMethod.MethodName) then
+      mField := '';
+      if (mName = '') or SameText(mName, AMethod.MethodName) then
       begin
-        Field := FreedFrom(AMethod.Block, Index + 1, OwnFields(AInfo));
+        mField := FreedFrom(AMethod.Block, mIndex + 1, OwnFields(AInfo));
       end;
-      if Field <> '' then
+      if mField <> '' then
       begin
         mFixes := nil;
-        if MoveFix(AMethod.Block, Statement, True, Fix) then
+        if MoveFix(AMethod.Block, mStatement, True, mFix) then
         begin
-          mFixes := [Fix];
+          mFixes := [mFix];
         end;
-        AReport.Add(TTextRange.Create(Statement.StartPos, Statement.EndPos),
-          cTexts[TComponentsInheritedCallsText.BeforeFree].Fmt([Field]), TRuleConfidence.Medium, mFixes);
+        AReport.Add(TTextRange.Create(mStatement.StartPos, mStatement.EndPos),
+          cTexts[TComponentsInheritedCallsText.BeforeFree].Fmt([mField]), TRuleConfidence.Medium, mFixes);
       end;
       Exit;
     end;
@@ -892,110 +892,110 @@ var
   function FirstInheritedAccess(ARoot: TSyntaxNode; const AParent: string; const AExcluded: TArray<string>;
     out AName, AOwner: string): TSyntaxNode;
   var
-    Index: Integer;
-    Name, Unresolved: string;
-    Member: TIndexSymbol;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mName, mUnresolved: string;
+    mMember: TIndexSymbol;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
     Result := nil;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.AnonymousMethod then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.AnonymousMethod then
         begin
           Continue;
         end;
-        Name := AccessedName(Node);
-        if (Name <> '') and not SameText(Name, 'Self') and not IsIn(Name, AExcluded) and
-          Model.Ancestry.FindMember(AParent, Name, Member, Unresolved) and
-          (Member.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
+        mName := AccessedName(mNode);
+        if (mName <> '') and not SameText(mName, 'Self') and not IsIn(mName, AExcluded) and
+          mModel.Ancestry.FindMember(AParent, mName, mMember, mUnresolved) and
+          (mMember.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
         begin
-          AName := Name;
-          AOwner := Member.Container;
-          Exit(Node);
+          AName := mName;
+          AOwner := mMember.Container;
+          Exit(mNode);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   // Verwenden die Argumente von inherited Create(…) lokale Variablen, die die Anweisungen davor setzen?
   function ArgumentsUseLocals(ARoot: TSyntaxNode; const ALocals: TArray<string>): Boolean;
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if (Node.Kind = TSyntaxKind.Identifier) and IsIn(Node.Name, ALocals) then
+        mNode := mPending.Pop;
+        if (mNode.Kind = TSyntaxKind.Identifier) and IsIn(mNode.Name, ALocals) then
         begin
           Exit(True);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   procedure CheckConstructor(const AMethod: TMethodImpl; const AInfo: TClassInfo);
   var
-    Index, Earlier: Integer;
-    Statement, Access: TSyntaxNode;
-    Name, Member, Owner, Parent: string;
-    Locals, Excluded: TArray<string>;
-    Fix: TRuleFix;
-    Fixes: TArray<TRuleFix>;
+    mIndex, mEarlier: Integer;
+    mStatement, mAccess: TSyntaxNode;
+    mName, mMember, mOwner, mParent: string;
+    mLocals, mExcluded: TArray<string>;
+    mFix: TRuleFix;
+    mFixes: TArray<TRuleFix>;
   begin
-    Parent := DeclaredParent(AInfo);
-    if (Parent = '') or SameText(Parent, 'TObject') or Model.HasToken(AMethod.Block, ['with']) then
+    mParent := DeclaredParent(AInfo);
+    if (mParent = '') or SameText(mParent, 'TObject') or mModel.HasToken(AMethod.Block, ['with']) then
     begin
       Exit;
     end;
-    Locals := MethodLocalNames(AMethod);
-    Excluded := Locals + OwnMembers(AInfo);
-    for Index := 0 to AMethod.Block.ChildCount - 1 do
+    mLocals := MethodLocalNames(AMethod);
+    mExcluded := mLocals + OwnMembers(AInfo);
+    for mIndex := 0 to AMethod.Block.ChildCount - 1 do
     begin
-      Statement := AMethod.Block[Index];
-      if not IsInheritedCall(Statement, Name) then
+      mStatement := AMethod.Block[mIndex];
+      if not IsInheritedCall(mStatement, mName) then
       begin
         Continue;
       end;
-      for Earlier := 0 to Index - 1 do
+      for mEarlier := 0 to mIndex - 1 do
       begin
-        Access := FirstInheritedAccess(AMethod.Block[Earlier], Parent, Excluded, Member, Owner);
-        if Access = nil then
+        mAccess := FirstInheritedAccess(AMethod.Block[mEarlier], mParent, mExcluded, mMember, mOwner);
+        if mAccess = nil then
         begin
           Continue;
         end;
-        Fixes := nil;
-        if not ArgumentsUseLocals(Statement, Locals) and MoveFix(AMethod.Block, Statement, False, Fix) then
+        mFixes := nil;
+        if not ArgumentsUseLocals(mStatement, mLocals) and MoveFix(AMethod.Block, mStatement, False, mFix) then
         begin
-          Fixes := [Fix];
+          mFixes := [mFix];
         end;
-        AReport.Add(TTextRange.Create(Access.StartPos, Access.EndPos),
+        AReport.Add(TTextRange.Create(mAccess.StartPos, mAccess.EndPos),
           cTexts[TComponentsInheritedCallsText.BeforeInherited].Fmt(
-          [AMethod.MethodName, Member, Owner]), TRuleConfidence.Medium, Fixes);
+          [AMethod.MethodName, mMember, mOwner]), TRuleConfidence.Medium, mFixes);
         Exit;
       end;
       Exit;
@@ -1003,30 +1003,30 @@ var
   end;
 
 var
-  Method: TMethodImpl;
-  Info: TClassInfo;
-  Source: string;
+  mMethod: TMethodImpl;
+  mInfo: TClassInfo;
+  mSource: string;
 begin
-  Cache := TRuleDerived.Open(AContext);
-  if not PrepareModel(Cache, AContext, Model) or not ContainsText(AContext.Text, 'inherited') then
+  mCache := TRuleDerived.Open(AContext);
+  if not PrepareModel(mCache, AContext, mModel) or not ContainsText(AContext.Text, 'inherited') then
   begin
     Exit;
   end;
-  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
-  for Method in Model.Methods do
+  mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
+  for mMethod in mModel.Methods do
   begin
-    if not FindClassInfo(Method.ClassName, Info) then
+    if not FindClassInfo(mMethod.ClassName, mInfo) then
     begin
       Continue;
     end;
-    Source := TrimLeft(Model.NodeText(Method.Decl));
-    if StartsText('destructor', Source) then
+    mSource := TrimLeft(mModel.NodeText(mMethod.Decl));
+    if StartsText('destructor', mSource) then
     begin
-      CheckDestructor(Method, Info);
+      CheckDestructor(mMethod, mInfo);
     end
-    else if StartsText('constructor', Source) then
+    else if StartsText('constructor', mSource) then
     begin
-      CheckConstructor(Method, Info);
+      CheckConstructor(mMethod, mInfo);
     end;
   end;
 end;
@@ -1042,14 +1042,14 @@ end;
 class function TInheritedWrongMethodRule.Allowed(const APairs: TArray<string>;
   const AMethod, AInherited: string): Boolean;
 var
-  Pair: string;
-  Separator: Integer;
+  mPair: string;
+  mSeparator: Integer;
 begin
-  for Pair in APairs do
+  for mPair in APairs do
   begin
-    Separator := Pos('>', Pair);
-    if (Separator > 0) and MatchesGlob(Trim(Copy(Pair, 1, Separator - 1)), AMethod) and
-      MatchesGlob(Trim(Copy(Pair, Separator + 1, MaxInt)), AInherited) then
+    mSeparator := Pos('>', mPair);
+    if (mSeparator > 0) and MatchesGlob(Trim(Copy(mPair, 1, mSeparator - 1)), AMethod) and
+      MatchesGlob(Trim(Copy(mPair, mSeparator + 1, MaxInt)), AInherited) then
     begin
       Exit(True);
     end;
@@ -1095,19 +1095,19 @@ end;
 
 procedure TInheritedWrongMethodRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Model: TComponentModel;
-  Cache: IRuleDerivedCache;
-  Pairs: TArray<string>;
+  mModel: TComponentModel;
+  mCache: IRuleDerivedCache;
+  mPairs: TArray<string>;
 
   function FindClassInfo(const AName: string; out AInfo: TClassInfo): Boolean;
   var
-    Info: TClassInfo;
+    mInfo: TClassInfo;
   begin
-    for Info in Model.Classes do
+    for mInfo in mModel.Classes do
     begin
-      if SameText(Info.Name, AName) then
+      if SameText(mInfo.Name, AName) then
       begin
-        AInfo := Info;
+        AInfo := mInfo;
         Exit(True);
       end;
     end;
@@ -1119,79 +1119,79 @@ var
   procedure CollectCalls(ARoot: TSyntaxNode; var ACalls: TArray<TSyntaxNode>; var ASameName: Boolean;
     const AMethodName: string);
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.InheritedExpr then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.InheritedExpr then
         begin
-          if (Node.Name = '') or SameText(Node.Name, AMethodName) then
+          if (mNode.Name = '') or SameText(mNode.Name, AMethodName) then
           begin
             ASameName := True;
           end
-          else if (Node.Parent <> nil) and ((Node.Parent.Kind = TSyntaxKind.CallStatement) or
-            ((Node.Parent.Kind = TSyntaxKind.Call) and (Node.Parent[0] = Node))) then
+          else if (mNode.Parent <> nil) and ((mNode.Parent.Kind = TSyntaxKind.CallStatement) or
+            ((mNode.Parent.Kind = TSyntaxKind.Call) and (mNode.Parent[0] = mNode))) then
           begin
-            ACalls := ACalls + [Node];
+            ACalls := ACalls + [mNode];
           end;
         end;
-        if Node.Kind = TSyntaxKind.AnonymousMethod then
+        if mNode.Kind = TSyntaxKind.AnonymousMethod then
         begin
           Continue;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
 var
-  Method: TMethodImpl;
-  Info: TClassInfo;
-  Calls: TArray<TSyntaxNode>;
-  Call: TSyntaxNode;
-  SameName: Boolean;
-  Source: string;
+  mMethod: TMethodImpl;
+  mInfo: TClassInfo;
+  mCalls: TArray<TSyntaxNode>;
+  mCall: TSyntaxNode;
+  mSameName: Boolean;
+  mSource: string;
 begin
-  Cache := TRuleDerived.Open(AContext);
-  if not PrepareModel(Cache, AContext, Model) or not ContainsText(AContext.Text, 'inherited') then
+  mCache := TRuleDerived.Open(AContext);
+  if not PrepareModel(mCache, AContext, mModel) or not ContainsText(AContext.Text, 'inherited') then
   begin
     Exit;
   end;
-  Pairs := TRuleOptions.Strings(AContext.Options, 'allowed', nil);
-  for Method in Model.Methods do
+  mPairs := TRuleOptions.Strings(AContext.Options, 'allowed', nil);
+  for mMethod in mModel.Methods do
   begin
     // Konstruktoren dürfen jeden geerbten Konstruktor aufrufen (inherited Create(nil)).
-    Source := TrimLeft(Model.NodeText(Method.Decl));
-    if StartsText('constructor', Source) or StartsText('class ', Source) or
-      not FindClassInfo(Method.ClassName, Info) or not Model.DeclaredWith(Info, Method.MethodName, 'override') then
+    mSource := TrimLeft(mModel.NodeText(mMethod.Decl));
+    if StartsText('constructor', mSource) or StartsText('class ', mSource) or
+      not FindClassInfo(mMethod.ClassName, mInfo) or not mModel.DeclaredWith(mInfo, mMethod.MethodName, 'override') then
     begin
       Continue;
     end;
-    Calls := nil;
-    SameName := False;
-    CollectCalls(Method.Block, Calls, SameName, Method.MethodName);
+    mCalls := nil;
+    mSameName := False;
+    CollectCalls(mMethod.Block, mCalls, mSameName, mMethod.MethodName);
     // Ruft die Methode auch sich selbst im Vorfahren auf, ist der andere Aufruf gewollt.
-    if SameName then
+    if mSameName then
     begin
       Continue;
     end;
-    for Call in Calls do
+    for mCall in mCalls do
     begin
-      if not Allowed(Pairs, Method.MethodName, Call.Name) then
+      if not Allowed(mPairs, mMethod.MethodName, mCall.Name) then
       begin
-        ReportWrongCall(Method, Call, AReport);
+        ReportWrongCall(mMethod, mCall, AReport);
       end;
     end;
   end;

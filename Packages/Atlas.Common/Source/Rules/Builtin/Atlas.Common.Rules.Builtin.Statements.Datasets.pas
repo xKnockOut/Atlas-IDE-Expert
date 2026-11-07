@@ -101,7 +101,7 @@ const
 function StatementCall(const AText: string; ANode: TSyntaxNode; out AReceiver: string;
   out AArguments: Integer): string;
 var
-  Target: TSyntaxNode;
+  mTarget: TSyntaxNode;
 begin
   Result := '';
   AReceiver := '';
@@ -110,23 +110,23 @@ begin
   begin
     Exit;
   end;
-  Target := ANode[0];
-  if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
+  mTarget := ANode[0];
+  if (mTarget.Kind = TSyntaxKind.Call) and (mTarget.ChildCount > 0) then
   begin
-    AArguments := Target.ChildCount - 1;
-    Target := Target[0];
+    AArguments := mTarget.ChildCount - 1;
+    mTarget := mTarget[0];
   end;
-  if Target.Kind = TSyntaxKind.MemberAccess then
+  if mTarget.Kind = TSyntaxKind.MemberAccess then
   begin
-    if Target.ChildCount > 0 then
+    if mTarget.ChildCount > 0 then
     begin
-      AReceiver := Copy(AText, Target[0].StartOffset + 1, Target[0].EndOffset - Target[0].StartOffset);
+      AReceiver := Copy(AText, mTarget[0].StartOffset + 1, mTarget[0].EndOffset - mTarget[0].StartOffset);
     end;
-    Result := Target.Name;
+    Result := mTarget.Name;
   end
-  else if Target.Kind = TSyntaxKind.Identifier then
+  else if mTarget.Kind = TSyntaxKind.Identifier then
   begin
-    Result := Target.Name;
+    Result := mTarget.Name;
   end;
 end;
 
@@ -134,7 +134,7 @@ end;
 
 const
   // Methoden, die den Datensatzzeiger weiterbewegen oder die Schleife über Eof beenden.
-  DatasetAdvancing: array[0..6] of string = ('Next', 'Delete', 'MoveBy', 'Last', 'Close', 'FindNext', 'Free');
+  cDatasetAdvancing: array[0..6] of string = ('Next', 'Delete', 'MoveBy', 'Last', 'Close', 'FindNext', 'Free');
 
 function TDatasetLoopWithoutNextRule.Descriptor: TRuleDescriptor;
 begin
@@ -144,9 +144,9 @@ end;
 
 procedure TDatasetLoopWithoutNextRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Lines: TArray<string>;
-  LineBreak: string;
-  DataSet: string;
+  mLines: TArray<string>;
+  mLineBreak: string;
+  mDataSet: string;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -155,51 +155,51 @@ var
 
   function StatementName(ANode: TSyntaxNode; out AReceiver: string): string;
   var
-    Arguments: Integer;
+    mArguments: Integer;
   begin
-    Result := StatementCall(AContext.Text, ANode, AReceiver, Arguments);
+    Result := StatementCall(AContext.Text, ANode, AReceiver, mArguments);
   end;
 
   function IsAdvance(ANode: TSyntaxNode): Boolean;
   var
-    Receiver, Name: string;
+    mReceiver, mName: string;
   begin
-    Name := StatementName(ANode, Receiver);
-    Result := SameText(Receiver, DataSet) and MatchText(Name, DatasetAdvancing);
+    mName := StatementName(ANode, mReceiver);
+    Result := SameText(mReceiver, mDataSet) and MatchText(mName, cDatasetAdvancing);
   end;
 
   // Continue in ANode, außer in inneren Schleifen?
   function HasContinue(ANode: TSyntaxNode): Boolean;
   var
-    Index: Integer;
-    Receiver: string;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mReceiver: string;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement,
+        mNode := mPending.Pop;
+        if mNode.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement,
           TSyntaxKind.ForInStatement, TSyntaxKind.AnonymousMethod] then
         begin
           Continue;
         end;
-        if SameText(StatementName(Node, Receiver), 'Continue') and (Receiver = '') then
+        if SameText(StatementName(mNode, mReceiver), 'Continue') and (mReceiver = '') then
         begin
           Exit(True);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -379,93 +379,94 @@ var
   // Dann bewegt vielleicht der Aufgerufene den Zeiger.
   function Escapes(ANode: TSyntaxNode): Boolean;
   var
-    Index: Integer;
-    Node, Parent: TSyntaxNode;
-    Pending, Parents: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode, mParent: TSyntaxNode;
+    mPending, mParents: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel sein Elternknoten (nil an der Wurzel).
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
-    Parents := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    mParents := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      Parents.Push(nil);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      mParents.Push(nil);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Parent := Parents.Pop;
-        if Node.Kind = TSyntaxKind.AnonymousMethod then
+        mNode := mPending.Pop;
+        mParent := mParents.Pop;
+        if mNode.Kind = TSyntaxKind.AnonymousMethod then
         begin
           Continue;
         end;
-        if (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
-          SameText(NodeText(Node), DataSet) and
-          not ((Parent <> nil) and (Parent.Kind = TSyntaxKind.MemberAccess) and (Parent[0] = Node)) then
+        if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+          SameText(NodeText(mNode), mDataSet) and
+          not ((mParent <> nil) and (mParent.Kind = TSyntaxKind.MemberAccess) and (mParent[0] = mNode)) then
         begin
           Exit(True);
         end;
-        if Node.Kind = TSyntaxKind.WithStatement then
+        if mNode.Kind = TSyntaxKind.WithStatement then
         begin
           Exit(True);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
-          Parents.Push(Node);
+          mPending.Push(mNode[mIndex]);
+          mParents.Push(mNode);
         end;
       end;
     finally
-      Parents.Free;
-      Pending.Free;
+      mParents.Free;
+      mPending.Free;
     end;
   end;
 
   function MentionsAdvance(ANode: TSyntaxNode): Boolean;
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if IsAdvance(Node) then
+        mNode := mPending.Pop;
+        if IsAdvance(mNode) then
         begin
           Exit(True);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   // Korrektur: Q.Next; vor dem end des Rumpfs.
   function NextFix(ABody: TSyntaxNode): TArray<TRuleFix>;
   var
-    EndLine: Integer;
+    mEndLine: Integer;
   begin
     Result := nil;
     if ABody.Kind <> TSyntaxKind.Block then
     begin
       Exit;
     end;
-    EndLine := ABody.EndPos.Line;
-    if (EndLine <= ABody.StartPos.Line) or (Trim(Copy(Lines[EndLine], 1, ABody.EndPos.Character - Length('end'))) <> '') then
+    mEndLine := ABody.EndPos.Line;
+    if (mEndLine <= ABody.StartPos.Line) or (Trim(Copy(mLines[mEndLine], 1, ABody.EndPos.Character -
+      Length('end'))) <> '') then
     begin
       Exit;
     end;
-    Result := [TRuleFix.Create(cTexts[TStatementsDatasetsText.InsertNext].Fmt([DataSet]), [TRuleEdit.Create(
-      TTextRange.Create(EndLine, 0, EndLine, 0), TTextLines.IndentOf(Lines[EndLine]) +
-      TRoutineBody.IndentUnit(AContext.Formatting) + DataSet + '.Next;' + LineBreak)])];
+    Result := [TRuleFix.Create(cTexts[TStatementsDatasetsText.InsertNext].Fmt([mDataSet]), [TRuleEdit.Create(
+      TTextRange.Create(mEndLine, 0, mEndLine, 0), TTextLines.IndentOf(mLines[mEndLine]) +
+      TRoutineBody.IndentUnit(AContext.Formatting) + mDataSet + '.Next;' + mLineBreak)])];
   end;
 
   // not Q.Eof
@@ -479,7 +480,7 @@ var
 
   procedure InspectLoop(ACondition, ABody: TSyntaxNode);
   begin
-    DataSet := NodeText(ACondition[0][0]);
+    mDataSet := NodeText(ACondition[0][0]);
     if Escapes(ABody) or Advances(ABody) then
     begin
       Exit;
@@ -487,41 +488,41 @@ var
     if not MentionsAdvance(ABody) then
     begin
       AReport.Add(TTextRange.Create(ACondition.StartPos, ACondition.EndPos),
-        cTexts[TStatementsDatasetsText.NextMissing].Fmt([DataSet]), TRuleConfidence.High,
+        cTexts[TStatementsDatasetsText.NextMissing].Fmt([mDataSet]), TRuleConfidence.High,
         NextFix(ABody));
     end
     else
     begin
       AReport.Add(TTextRange.Create(ACondition.StartPos, ACondition.EndPos),
-        cTexts[TStatementsDatasetsText.NextNotAlways].Fmt([DataSet]), TRuleConfidence.Medium);
+        cTexts[TStatementsDatasetsText.NextNotAlways].Fmt([mDataSet]), TRuleConfidence.Medium);
     end;
   end;
 
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
+        mNode := mPending.Pop;
         // while not Q.Eof do …
-        if (Node.Kind = TSyntaxKind.WhileStatement) and (Node.ChildCount = 2) and IsNotEof(Node[0]) then
+        if (mNode.Kind = TSyntaxKind.WhileStatement) and (mNode.ChildCount = 2) and IsNotEof(mNode[0]) then
         begin
-          InspectLoop(Node[0], Node[1]);
+          InspectLoop(mNode[0], mNode[1]);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -530,16 +531,16 @@ begin
   begin
     Exit;
   end;
-  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
   Visit(AContext.Tree.Root);
 end;
 
 { TDatasetEditWithoutPostRule }
 
 const
-  DatasetEditMethods: array[0..2] of string = ('Edit', 'Append', 'Insert');
+  cDatasetEditMethods: array[0..2] of string = ('Edit', 'Append', 'Insert');
   // Methoden, die den Bearbeitungsmodus beenden.
-  DatasetPostMethods: array[0..2] of string = ('Post', 'Cancel', 'CheckBrowseMode');
+  cDatasetPostMethods: array[0..2] of string = ('Post', 'Cancel', 'CheckBrowseMode');
 
 function TDatasetEditWithoutPostRule.Descriptor: TRuleDescriptor;
 begin
@@ -549,9 +550,9 @@ end;
 
 procedure TDatasetEditWithoutPostRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Lines: TArray<string>;
-  LineBreak: string;
-  Routines: TArray<TSyntaxNode>;
+  mLines: TArray<string>;
+  mLineBreak: string;
+  mRoutines: TArray<TSyntaxNode>;
   mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
   mFileName: string;
@@ -609,37 +610,37 @@ var
   // Beendet ANode (oder ein Nachfahr ab AFrom) den Bearbeitungsmodus von ADataSet?
   function Ends(ANode: TSyntaxNode; const ADataSet: string; AFrom: Integer): Boolean;
   var
-    Index, Arguments: Integer;
-    Receiver, Name: string;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex, mArguments: Integer;
+    mReceiver, mName: string;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.StartOffset >= AFrom then
+        mNode := mPending.Pop;
+        if mNode.StartOffset >= AFrom then
         begin
-          Name := StatementCall(AContext.Text, Node, Receiver, Arguments);
-          if SameText(Receiver, ADataSet) and MatchText(Name, DatasetPostMethods) then
+          mName := StatementCall(AContext.Text, mNode, mReceiver, mArguments);
+          if SameText(mReceiver, ADataSet) and MatchText(mName, cDatasetPostMethods) then
           begin
             Exit(True);
           end;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          if Node[Index].EndOffset > AFrom then
+          if mNode[mIndex].EndOffset > AFrom then
           begin
-            Pending.Push(Node[Index]);
+            mPending.Push(mNode[mIndex]);
           end;
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -653,141 +654,141 @@ var
   // Kommt ADataSet ab AFrom als Wert vor (Argument, Zuweisung), nicht nur als Empfänger (Q.X, Q['X'])?
   function Escapes(ANode: TSyntaxNode; const ADataSet: string; AFrom: Integer): Boolean;
   var
-    Index: Integer;
-    Node, Parent: TSyntaxNode;
-    Pending, Parents: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode, mParent: TSyntaxNode;
+    mPending, mParents: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel sein Elternknoten (nil an der Wurzel). Eine Nennung
     // der Datenmenge als Empfänger beendet nur ihren Zweig, wie in der Rekursion.
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
-    Parents := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    mParents := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      Parents.Push(nil);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      mParents.Push(nil);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Parent := Parents.Pop;
-        if (Node.StartOffset >= AFrom) and (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
-          SameText(NodeText(Node), ADataSet) then
+        mNode := mPending.Pop;
+        mParent := mParents.Pop;
+        if (mNode.StartOffset >= AFrom) and (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+          SameText(NodeText(mNode), ADataSet) then
         begin
-          Result := not IsReceiver(Node, Parent);
+          Result := not IsReceiver(mNode, mParent);
           if Result then
           begin
             Exit;
           end;
           Continue;
         end;
-        if (Node.StartOffset >= AFrom) and (Node.Kind = TSyntaxKind.WithStatement) then
+        if (mNode.StartOffset >= AFrom) and (mNode.Kind = TSyntaxKind.WithStatement) then
         begin
           Exit(True);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          if Node[Index].EndOffset > AFrom then
+          if mNode[mIndex].EndOffset > AFrom then
           begin
-            Pending.Push(Node[Index]);
-            Parents.Push(Node);
+            mPending.Push(mNode[mIndex]);
+            mParents.Push(mNode);
           end;
         end;
       end;
     finally
-      Parents.Free;
-      Pending.Free;
+      mParents.Free;
+      mPending.Free;
     end;
   end;
 
   function UsesDataSet(ANode: TSyntaxNode; const ADataSet: string): Boolean;
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
-          SameText(NodeText(Node), ADataSet) then
+        mNode := mPending.Pop;
+        if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+          SameText(NodeText(mNode), ADataSet) then
         begin
           Exit(True);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   function OwnLine(ANode: TSyntaxNode): Boolean;
   var
-    Rest: string;
+    mRest: string;
   begin
-    Rest := Trim(Copy(Lines[ANode.EndPos.Line], ANode.EndPos.Character + 1, MaxInt));
-    Result := (Trim(Copy(Lines[ANode.StartPos.Line], 1, ANode.StartPos.Character)) = '') and
-      ((Rest = '') or (Rest = ';')) and (ANode.EndPos.Line < High(Lines));
+    mRest := Trim(Copy(mLines[ANode.EndPos.Line], ANode.EndPos.Character + 1, MaxInt));
+    Result := (Trim(Copy(mLines[ANode.StartPos.Line], 1, ANode.StartPos.Character)) = '') and
+      ((mRest = '') or (mRest = ';')) and (ANode.EndPos.Line < High(mLines));
   end;
 
   // Korrektur: die folgenden Anweisungen, die die Datenmenge benutzen, in try … Post … except Cancel; raise; end.
   function PostFix(AStatement: TSyntaxNode; const ADataSet: string): TArray<TRuleFix>;
   var
-    List: TSyntaxNode;
-    Index, Position, Last, Line: Integer;
-    Indent, Step, Text: string;
+    mList: TSyntaxNode;
+    mIndex, mPosition, mLast, mLine: Integer;
+    mIndent, mStep, mText: string;
   begin
     Result := nil;
-    List := AStatement.Parent;
-    if (List = nil) or not OwnLine(AStatement) then
+    mList := AStatement.Parent;
+    if (mList = nil) or not OwnLine(AStatement) then
     begin
       Exit;
     end;
-    Position := -1;
-    for Index := 0 to List.ChildCount - 1 do
+    mPosition := -1;
+    for mIndex := 0 to mList.ChildCount - 1 do
     begin
-      if List[Index] = AStatement then
+      if mList[mIndex] = AStatement then
       begin
-        Position := Index;
+        mPosition := mIndex;
       end;
     end;
-    Last := Position;
-    while (Last + 1 < List.ChildCount) and (List[Last + 1].Kind in [TSyntaxKind.AssignStatement,
-      TSyntaxKind.CallStatement]) and UsesDataSet(List[Last + 1], ADataSet) and OwnLine(List[Last + 1]) do
+    mLast := mPosition;
+    while (mLast + 1 < mList.ChildCount) and (mList[mLast + 1].Kind in [TSyntaxKind.AssignStatement,
+      TSyntaxKind.CallStatement]) and UsesDataSet(mList[mLast + 1], ADataSet) and OwnLine(mList[mLast + 1]) do
     begin
-      Inc(Last);
+      Inc(mLast);
     end;
-    if (Position < 0) or (Last = Position) then
+    if (mPosition < 0) or (mLast = mPosition) then
     begin
       Exit;
     end;
-    Indent := TTextLines.IndentOf(Lines[AStatement.StartPos.Line]);
-    Step := TRoutineBody.IndentUnit(AContext.Formatting);
-    Text := Indent + 'try' + LineBreak;
-    for Line := List[Position + 1].StartPos.Line to List[Last].EndPos.Line do
+    mIndent := TTextLines.IndentOf(mLines[AStatement.StartPos.Line]);
+    mStep := TRoutineBody.IndentUnit(AContext.Formatting);
+    mText := mIndent + 'try' + mLineBreak;
+    for mLine := mList[mPosition + 1].StartPos.Line to mList[mLast].EndPos.Line do
     begin
-      Text := Text + Step + Lines[Line] + LineBreak;
+      mText := mText + mStep + mLines[mLine] + mLineBreak;
     end;
-    Text := Text + Indent + Step + ADataSet + '.Post;' + LineBreak + Indent + 'except' + LineBreak + Indent + Step +
-      ADataSet + '.Cancel;' + LineBreak + Indent + Step + 'raise;' + LineBreak + Indent + 'end;' + LineBreak;
+    mText := mText + mIndent + mStep + ADataSet + '.Post;' + mLineBreak + mIndent + 'except' + mLineBreak + mIndent + mStep +
+      ADataSet + '.Cancel;' + mLineBreak + mIndent + mStep + 'raise;' + mLineBreak + mIndent + 'end;' + mLineBreak;
     Result := [TRuleFix.Create(cTexts[TStatementsDatasetsText.AddPost].Fmt([ADataSet]), [TRuleEdit.Create(
-      TTextRange.Create(List[Position + 1].StartPos.Line, 0, List[Last].EndPos.Line + 1, 0), Text)])];
+      TTextRange.Create(mList[mPosition + 1].StartPos.Line, 0, mList[mLast].EndPos.Line + 1, 0), mText)])];
   end;
 
   // Beendet eine andere Routine der Unit den Bearbeitungsmodus (Bearbeiten-/Speichern-Knopf)?
   function EndedElsewhere(ARoutine: TSyntaxNode; const ADataSet: string): Boolean;
   var
-    Other: TSyntaxNode;
+    mOther: TSyntaxNode;
   begin
-    for Other in Routines do
+    for mOther in mRoutines do
     begin
-      if (Other <> ARoutine) and Ends(Other, ADataSet, 0) then
+      if (mOther <> ARoutine) and Ends(mOther, ADataSet, 0) then
       begin
         Exit(True);
       end;
@@ -801,7 +802,7 @@ var
     mArguments: Integer;
   begin
     AName := StatementCall(AContext.Text, ANode, AReceiver, mArguments);
-    Result := (AReceiver <> '') and (mArguments = 0) and MatchText(AName, DatasetEditMethods);
+    Result := (AReceiver <> '') and (mArguments = 0) and MatchText(AName, cDatasetEditMethods);
     Result := Result and not Ends(ARoutine, AReceiver, ANode.EndOffset) and
       not Escapes(ARoutine, AReceiver, ANode.EndOffset);
     Result := Result and not EndedElsewhere(ARoutine, AReceiver) and MayBeDataSet(ANode);
@@ -821,37 +822,37 @@ var
 
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Node, Routine: TSyntaxNode;
-    Pending, PendingRoutines: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode, mRoutine: TSyntaxNode;
+    mPending, mPendingRoutines: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel die umgebende Routine.
-    Pending := TStack<TSyntaxNode>.Create;
-    PendingRoutines := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    mPendingRoutines := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      PendingRoutines.Push(nil);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      mPendingRoutines.Push(nil);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Routine := PendingRoutines.Pop;
-        if Node.Kind = TSyntaxKind.RoutineDecl then
+        mNode := mPending.Pop;
+        mRoutine := mPendingRoutines.Pop;
+        if mNode.Kind = TSyntaxKind.RoutineDecl then
         begin
-          Routine := Node;
+          mRoutine := mNode;
         end;
-        if (Routine <> nil) and (Node.Kind = TSyntaxKind.CallStatement) then
+        if (mRoutine <> nil) and (mNode.Kind = TSyntaxKind.CallStatement) then
         begin
-          CheckCall(Node, Routine);
+          CheckCall(mNode, mRoutine);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
-          PendingRoutines.Push(Routine);
+          mPending.Push(mNode[mIndex]);
+          mPendingRoutines.Push(mRoutine);
         end;
       end;
     finally
-      PendingRoutines.Free;
-      Pending.Free;
+      mPendingRoutines.Free;
+      mPending.Free;
     end;
   end;
 
@@ -860,14 +861,14 @@ begin
   begin
     Exit;
   end;
-  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
-  Routines := nil;
+  mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
+  mRoutines := nil;
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind = TSyntaxKind.RoutineDecl then
       begin
-        Routines := Routines + [ANode];
+        mRoutines := mRoutines + [ANode];
       end;
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
     end);
@@ -887,7 +888,7 @@ end;
 
 const
   // FireDAC, IBX und dbExpress (StartTransaction), dbExpress ab XE (BeginTransaction), ADO (BeginTrans).
-  BuiltinTransactionPairs: array[0..2, 0..2] of string = (('StartTransaction', 'Commit', 'Rollback'),
+  cBuiltinTransactionPairs: array[0..2, 0..2] of string = (('StartTransaction', 'Commit', 'Rollback'),
     ('BeginTransaction', 'CommitFreeAndNil', 'RollbackFreeAndNil'), ('BeginTrans', 'CommitTrans', 'RollbackTrans'));
 
 function TTransactionWithoutRollbackRule.Descriptor: TRuleDescriptor;
@@ -953,29 +954,29 @@ end;
 
 class function TTransactionWithoutRollbackRule.Pairs(const AOptions: string): TArray<TTransactionPair>;
 var
-  Index: Integer;
-  Pair: TTransactionPair;
+  mIndex: Integer;
+  mPair: TTransactionPair;
 begin
   // Eine eigene Liste ersetzt die eingebauten Paare.
   if PairsFromOptions(AOptions, Result) then
   begin
     Exit;
   end;
-  for Index := Low(BuiltinTransactionPairs) to High(BuiltinTransactionPairs) do
+  for mIndex := Low(cBuiltinTransactionPairs) to High(cBuiltinTransactionPairs) do
   begin
-    Pair.Start := BuiltinTransactionPairs[Index, 0];
-    Pair.Commit := BuiltinTransactionPairs[Index, 1];
-    Pair.Rollback := BuiltinTransactionPairs[Index, 2];
-    Result := Result + [Pair];
+    mPair.Start := cBuiltinTransactionPairs[mIndex, 0];
+    mPair.Commit := cBuiltinTransactionPairs[mIndex, 1];
+    mPair.Rollback := cBuiltinTransactionPairs[mIndex, 2];
+    Result := Result + [mPair];
   end;
 end;
 
 procedure TTransactionWithoutRollbackRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Lines: TArray<string>;
-  LineBreak: string;
-  Routines: TArray<TSyntaxNode>;
-  Known: TArray<TTransactionPair>;
+  mLines: TArray<string>;
+  mLineBreak: string;
+  mRoutines: TArray<TSyntaxNode>;
+  mKnown: TArray<TTransactionPair>;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -985,7 +986,7 @@ var
   // Aufruf X.M bzw. X.M(…) in ANode selbst (Anweisung oder rechte Seite einer Zuweisung).
   function CallIn(ANode: TSyntaxNode; out AReceiver: string; out ACall, AMember: TSyntaxNode): string;
   var
-    Target: TSyntaxNode;
+    mTarget: TSyntaxNode;
   begin
     Result := '';
     AReceiver := '';
@@ -993,135 +994,136 @@ var
     AMember := nil;
     if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount > 0) then
     begin
-      Target := ANode[0];
+      mTarget := ANode[0];
     end
     else if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) then
     begin
-      Target := ANode[1];
+      mTarget := ANode[1];
     end
     else if (ANode.Kind = TSyntaxKind.InlineVar) and (ANode.ChildCount > 0) then
     begin
-      Target := ANode[ANode.ChildCount - 1];
+      mTarget := ANode[ANode.ChildCount - 1];
     end
     else
     begin
       Exit;
     end;
-    if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
+    if (mTarget.Kind = TSyntaxKind.Call) and (mTarget.ChildCount > 0) then
     begin
-      ACall := Target;
-      Target := Target[0];
+      ACall := mTarget;
+      mTarget := mTarget[0];
     end;
-    if (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount > 0) then
+    if (mTarget.Kind = TSyntaxKind.MemberAccess) and (mTarget.ChildCount > 0) then
     begin
-      AReceiver := NodeText(Target[0]);
-      AMember := Target;
-      Result := Target.Name;
+      AReceiver := NodeText(mTarget[0]);
+      AMember := mTarget;
+      Result := mTarget.Name;
     end;
   end;
 
   // Ruft ANode (auch verschachtelt) AReceiver.AMethod auf? Nur in except-Teilen, wenn AInExcept.
   function Calls(ANode: TSyntaxNode; const AReceiver, AMethod: string; AInExcept: Boolean): Boolean;
   var
-    Index: Integer;
-    Receiver: string;
-    Node, Call, Member: TSyntaxNode;
-    Inside: Boolean;
-    Pending: TStack<TSyntaxNode>;
-    PendingInside: TStack<Boolean>;
+    mIndex: Integer;
+    mReceiver: string;
+    mNode, mCall, mMember: TSyntaxNode;
+    mInside: Boolean;
+    mPending: TStack<TSyntaxNode>;
+    mPendingInside: TStack<Boolean>;
   begin
     // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel, ob er in einem except-Teil liegt.
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
-    PendingInside := TStack<Boolean>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    mPendingInside := TStack<Boolean>.Create;
     try
-      Pending.Push(ANode);
-      PendingInside.Push(False);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      mPendingInside.Push(False);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Inside := PendingInside.Pop;
-        if Node.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+        mNode := mPending.Pop;
+        mInside := mPendingInside.Pop;
+        if mNode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
         begin
           Continue;
         end;
-        if Node.Kind = TSyntaxKind.ExceptBlock then
+        if mNode.Kind = TSyntaxKind.ExceptBlock then
         begin
-          Inside := True;
+          mInside := True;
         end;
-        if (Inside or not AInExcept) and SameText(CallIn(Node, Receiver, Call, Member), AMethod) and
-          SameText(Receiver, AReceiver) then
+        if (mInside or not AInExcept) and SameText(CallIn(mNode, mReceiver, mCall, mMember), AMethod) and
+          SameText(mReceiver, AReceiver) then
         begin
           Exit(True);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
-          PendingInside.Push(Inside);
+          mPending.Push(mNode[mIndex]);
+          mPendingInside.Push(mInside);
         end;
       end;
     finally
-      PendingInside.Free;
-      Pending.Free;
+      mPendingInside.Free;
+      mPending.Free;
     end;
   end;
 
   function OwnLine(ANode: TSyntaxNode): Boolean;
   var
-    Rest: string;
+    mRest: string;
   begin
-    Rest := Trim(Copy(Lines[ANode.EndPos.Line], ANode.EndPos.Character + 1, MaxInt));
-    Result := (Trim(Copy(Lines[ANode.StartPos.Line], 1, ANode.StartPos.Character)) = '') and
-      ((Rest = '') or (Rest = ';')) and (ANode.EndPos.Line < High(Lines));
+    mRest := Trim(Copy(mLines[ANode.EndPos.Line], ANode.EndPos.Character + 1, MaxInt));
+    Result := (Trim(Copy(mLines[ANode.StartPos.Line], 1, ANode.StartPos.Character)) = '') and
+      ((mRest = '') or (mRest = ';')) and (ANode.EndPos.Line < High(mLines));
   end;
 
   // Korrektur: Anweisungen bis zum Commit in try … except Rollback; raise; end.
   function RollbackFix(AList: TSyntaxNode; APosition: Integer; const AReceiver: string;
     const APair: TTransactionPair): TArray<TRuleFix>;
   var
-    Index, Last, Line: Integer;
-    Receiver, Indent, Step, Text, Arguments: string;
-    Call, Member: TSyntaxNode;
+    mIndex, mLast, mLine: Integer;
+    mReceiver, mIndent, mStep, mText, mArguments: string;
+    mCall, mMember: TSyntaxNode;
   begin
     Result := nil;
-    Last := -1;
-    Arguments := '';
-    for Index := APosition + 1 to AList.ChildCount - 1 do
+    mLast := -1;
+    mArguments := '';
+    for mIndex := APosition + 1 to AList.ChildCount - 1 do
     begin
-      if SameText(CallIn(AList[Index], Receiver, Call, Member), APair.Commit) and SameText(Receiver, AReceiver) then
+      if SameText(CallIn(AList[mIndex], mReceiver, mCall, mMember), APair.Commit) and
+        SameText(mReceiver, AReceiver) then
       begin
-        Last := Index;
+        mLast := mIndex;
         // Commit(TD) bzw. CommitFreeAndNil(T): dieselben Argumente für Rollback.
-        if (Call <> nil) and (Call.ChildCount > 1) then
+        if (mCall <> nil) and (mCall.ChildCount > 1) then
         begin
-          Arguments := Copy(NodeText(Call), Length(NodeText(Call[0])) + 1, MaxInt);
+          mArguments := Copy(NodeText(mCall), Length(NodeText(mCall[0])) + 1, MaxInt);
         end;
         Break;
       end;
     end;
-    if (Last < 0) or not OwnLine(AList[APosition]) then
+    if (mLast < 0) or not OwnLine(AList[APosition]) then
     begin
       Exit;
     end;
-    for Index := APosition + 1 to Last do
+    for mIndex := APosition + 1 to mLast do
     begin
-      if not OwnLine(AList[Index]) then
+      if not OwnLine(AList[mIndex]) then
       begin
         Exit;
       end;
     end;
-    Indent := TTextLines.IndentOf(Lines[AList[APosition].StartPos.Line]);
-    Step := TRoutineBody.IndentUnit(AContext.Formatting);
-    Text := Indent + 'try' + LineBreak;
-    for Line := AList[APosition + 1].StartPos.Line to AList[Last].EndPos.Line do
+    mIndent := TTextLines.IndentOf(mLines[AList[APosition].StartPos.Line]);
+    mStep := TRoutineBody.IndentUnit(AContext.Formatting);
+    mText := mIndent + 'try' + mLineBreak;
+    for mLine := AList[APosition + 1].StartPos.Line to AList[mLast].EndPos.Line do
     begin
-      Text := Text + Step + Lines[Line] + LineBreak;
+      mText := mText + mStep + mLines[mLine] + mLineBreak;
     end;
-    Text := Text + Indent + 'except' + LineBreak + Indent + Step + AReceiver + '.' + APair.Rollback + Arguments +
-      ';' + LineBreak + Indent + Step + 'raise;' + LineBreak + Indent + 'end;' + LineBreak;
+    mText := mText + mIndent + 'except' + mLineBreak + mIndent + mStep + AReceiver + '.' + APair.Rollback + mArguments +
+      ';' + mLineBreak + mIndent + mStep + 'raise;' + mLineBreak + mIndent + 'end;' + mLineBreak;
     Result := [TRuleFix.Create(cTexts[TStatementsDatasetsText.CreateTry].Fmt([AReceiver, APair.Rollback]),
-      [TRuleEdit.Create(TTextRange.Create(AList[APosition + 1].StartPos.Line, 0, AList[Last].EndPos.Line + 1, 0),
-      Text)])];
+      [TRuleEdit.Create(TTextRange.Create(AList[APosition + 1].StartPos.Line, 0, AList[mLast].EndPos.Line + 1, 0),
+      mText)])];
   end;
 
   // Stelle von AStatement in der Anweisungsliste darüber; -1 ohne.
@@ -1150,7 +1152,7 @@ var
     mIndex: Integer;
   begin
     Result := False;
-    for mOther in Routines do
+    for mOther in mRoutines do
     begin
       if mOther = ARoutine then
       begin
@@ -1200,7 +1202,7 @@ var
     begin
       Exit;
     end;
-    for mPair in Known do
+    for mPair in mKnown do
     begin
       if SameText(mName, mPair.Start) then
       begin
@@ -1212,38 +1214,38 @@ var
 
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Node, Routine: TSyntaxNode;
-    Pending, PendingRoutines: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode, mRoutine: TSyntaxNode;
+    mPending, mPendingRoutines: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel die umgebende Routine.
-    Pending := TStack<TSyntaxNode>.Create;
-    PendingRoutines := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    mPendingRoutines := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      PendingRoutines.Push(nil);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      mPendingRoutines.Push(nil);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Routine := PendingRoutines.Pop;
-        if Node.Kind = TSyntaxKind.RoutineDecl then
+        mNode := mPending.Pop;
+        mRoutine := mPendingRoutines.Pop;
+        if mNode.Kind = TSyntaxKind.RoutineDecl then
         begin
-          Routine := Node;
+          mRoutine := mNode;
         end;
-        if (Routine <> nil) and (Node.Kind in [TSyntaxKind.CallStatement, TSyntaxKind.AssignStatement,
+        if (mRoutine <> nil) and (mNode.Kind in [TSyntaxKind.CallStatement, TSyntaxKind.AssignStatement,
           TSyntaxKind.InlineVar]) then
         begin
-          CheckStatement(Node, Routine);
+          CheckStatement(mNode, mRoutine);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
-          PendingRoutines.Push(Routine);
+          mPending.Push(mNode[mIndex]);
+          mPendingRoutines.Push(mRoutine);
         end;
       end;
     finally
-      PendingRoutines.Free;
-      Pending.Free;
+      mPendingRoutines.Free;
+      mPending.Free;
     end;
   end;
 
@@ -1252,15 +1254,15 @@ begin
   begin
     Exit;
   end;
-  Known := Pairs(AContext.Options);
-  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
-  Routines := nil;
+  mKnown := Pairs(AContext.Options);
+  mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
+  mRoutines := nil;
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind = TSyntaxKind.RoutineDecl then
       begin
-        Routines := Routines + [ANode];
+        mRoutines := mRoutines + [ANode];
       end;
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
     end);

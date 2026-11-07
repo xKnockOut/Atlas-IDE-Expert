@@ -78,9 +78,6 @@ type
   end;
 
   TAtlasTrackerProjects = class
-  public const
-    /// <summary>Pfad in settings.json.</summary>
-    Path = 'issues.projects';
   public
     /// <summary>Persönliche Zeilen aus dem JSON-Text der Liste; Zeilen ohne „Gilt für“ oder Verbindung entfallen,
     /// ebenso eine zweite Zeile für denselben Pfad (der Server meldet sie in settings.json).</summary>

@@ -11,7 +11,7 @@
 //   Haltepunkt des Benutzers, fragt Atlas die Routine (je Datei und Zeile
 //   einmal je Debug-Sitzung). Ist sie gefiltert, setzt Atlas „Bis zur
 //   Rückkehr“ fort (ormRunUntilReturn) und springt danach auf derselben Tiefe
-//   erneut hinein, höchstens TAtlasStepFilter.MaxSkips-mal je F7. Hält das
+//   erneut hinein, höchstens TAtlasStepFilter.cMaxSkips-mal je F7. Hält das
 //   Programm dabei tiefer oder flacher (Haltepunkt, Exception, Ende der
 //   Ausgangsroutine), bleibt es dort stehen.
 // - Umschalt+F7 (Bis zur nächsten Quelltextzeile) und der Befehl „Trotzdem
@@ -45,13 +45,13 @@ type
   TAtlasIdeDebugStepFilter = class
   public const
     /// <summary>Name des Empfängers bei TAtlasIdeDebugTrace.</summary>
-    TraceHandler = 'StepFilter';
+    cTraceHandler = 'StepFilter';
     /// <summary>Zeitlimit je Routine: Der Debugger steht so lange.</summary>
-    TimeoutMs = 3000;
+    cTimeoutMs = 3000;
     /// <summary>Zeitlimit für die Treffer im Index (im Hintergrund).</summary>
-    CountsTimeoutMs = 10000;
-    IntervalMs = 100;
-    StackRetries = 10;
+    cCountsTimeoutMs = 10000;
+    cIntervalMs = 100;
+    cStackRetries = 10;
   private type
     TListener = class(TAtlasIdeDebugListener)
     public
@@ -134,8 +134,6 @@ type
     class procedure ShowWindow; static;
     class procedure ApplySettings; static;
     class procedure ThemeChanged; static;
-    /// <summary>Übersprungen in dieser Debug-Sitzung (Fenster, Studie).</summary>
-    class function SkippedCount: Integer; static;
   end;
 
 implementation
@@ -162,7 +160,7 @@ begin
     TAtlasDebugStackRead.Wait:
       begin
         Inc(TAtlasIdeDebugStepFilter.FStep.Retries);
-        if TAtlasIdeDebugStepFilter.FStep.Retries <= TAtlasIdeDebugStepFilter.StackRetries then
+        if TAtlasIdeDebugStepFilter.FStep.Retries <= TAtlasIdeDebugStepFilter.cStackRetries then
         begin
           TAtlasIdeDebugStepFilter.FTimer.Enabled := True;
         end
@@ -226,8 +224,8 @@ var
 begin
   ACounts := Default(TAtlasStepCounts);
   try
-    mAnswer := ASession.RunCommand(TAtlasStepFilter.CountsCommand, TAtlasStepFilter.CountsArguments(APatterns),
-      TAtlasIdeDebugStepFilter.CountsTimeoutMs);
+    mAnswer := ASession.RunCommand(TAtlasStepFilter.cCountsCommand, TAtlasStepFilter.CountsArguments(APatterns),
+      TAtlasIdeDebugStepFilter.cCountsTimeoutMs);
     try
       Result := TAtlasStepFilter.ReadCounts(mAnswer, Length(APatterns), ACounts);
     finally
@@ -315,7 +313,7 @@ begin
   begin
     FTimer := TTimer.Create(nil);
     FTimer.Enabled := False;
-    FTimer.Interval := IntervalMs;
+    FTimer.Interval := cIntervalMs;
     FTimer.OnTimer := FTicker.Tick;
   end;
   if FCache = nil then
@@ -324,7 +322,7 @@ begin
   end;
   FRun.Cancel;
   FStep.Bypass := False;
-  TAtlasIdeDebugTrace.AddHandler(TraceHandler,
+  TAtlasIdeDebugTrace.AddHandler(cTraceHandler,
     procedure(AKind: TAtlasTraceKind; AOrigin: TAtlasTraceOrigin)
     begin
       Traced(AKind, AOrigin);
@@ -345,7 +343,7 @@ begin
     TAtlasIdeDebugSession.RemoveListener(FListener);
   end;
   FListener := nil;
-  TAtlasIdeDebugTrace.RemoveHandler(TraceHandler);
+  TAtlasIdeDebugTrace.RemoveHandler(cTraceHandler);
   FreeAndNil(FTimer);
   FreeAndNil(FTicker);
   FreeAndNil(FCache);
@@ -357,11 +355,6 @@ end;
 class function TAtlasIdeDebugStepFilter.Started: Boolean;
 begin
   Result := FListener <> nil;
-end;
-
-class function TAtlasIdeDebugStepFilter.SkippedCount: Integer;
-begin
-  Result := FSkips.Count;
 end;
 
 class function TAtlasIdeDebugStepFilter.Options: TAtlasStepFilterOptions;
@@ -543,8 +536,8 @@ begin
     begin
       mSession.Sync(AFileName, TAtlasEditorBuffer.Text(mBuffer));
     end;
-    mAnswer := mSession.RunCommand(TAtlasStepFilter.Command,
-      TAtlasStepFilter.Arguments(TLspSession.PathToUri(AFileName), ALine), TimeoutMs);
+    mAnswer := mSession.RunCommand(TAtlasStepFilter.cCommand,
+      TAtlasStepFilter.Arguments(TLspSession.PathToUri(AFileName), ALine), cTimeoutMs);
     try
       Result := TAtlasStepFilter.ReadRoutine(mAnswer, ARoutine);
     finally
@@ -608,8 +601,8 @@ begin
   mFileName := mView.Buffer.FileName;
   try
     mSession.Sync(mFileName, TAtlasEditorBuffer.Text(mView.Buffer));
-    mAnswer := mSession.RunCommand(TAtlasStepFilter.Command,
-      TAtlasStepFilter.Arguments(TLspSession.PathToUri(mFileName), mView.CursorPos.Line - 1), TimeoutMs);
+    mAnswer := mSession.RunCommand(TAtlasStepFilter.cCommand,
+      TAtlasStepFilter.Arguments(TLspSession.PathToUri(mFileName), mView.CursorPos.Line - 1), cTimeoutMs);
     try
       Result := TAtlasStepFilter.ReadRoutine(mAnswer, ARoutine) and ARoutine.Found;
     finally

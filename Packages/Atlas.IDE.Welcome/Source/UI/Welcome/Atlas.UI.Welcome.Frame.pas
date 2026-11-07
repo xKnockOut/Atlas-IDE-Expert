@@ -46,9 +46,9 @@ type
 
   TAtlasWelcomeSectionFrame = class(TAtlasWelcomeFrame)
   public const
-    TitleHeight = 24;
+    cTitleHeight = 24;
     /// <summary>Höhe ohne eigene Angabe (logische Pixel).</summary>
-    DefaultBodyHeight = 120;
+    cDefaultBodyHeight = 120;
   private
     FSectionId: string;
     FTitleBar: TPanel;
@@ -116,16 +116,16 @@ end;
 
 function TAtlasWelcomeFrame.HasWindow: Boolean;
 var
-  Control: TWinControl;
+  mControl: TWinControl;
 begin
-  Control := Self;
-  while Control <> nil do
+  mControl := Self;
+  while mControl <> nil do
   begin
-    if Control.HandleAllocated or (Control.ParentWindow <> 0) or (Control is TCustomForm) then
+    if mControl.HandleAllocated or (mControl.ParentWindow <> 0) or (mControl is TCustomForm) then
     begin
       Exit(True);
     end;
-    Control := Control.Parent;
+    mControl := mControl.Parent;
   end;
   FPendingUpdate := True;
   Result := False;
@@ -151,7 +151,7 @@ begin
   FTitleBar.Align := alTop;
   FTitleBar.BevelOuter := bvNone;
   FTitleBar.ParentBackground := True;
-  FTitleBar.Height := TitleHeight;
+  FTitleBar.Height := cTitleHeight;
   FTitle := TLabel.Create(Self);
   FTitle.Parent := FTitleBar;
   FTitle.Left := 2;
@@ -186,7 +186,7 @@ end;
 
 function TAtlasWelcomeSectionFrame.BodyHeight: Integer;
 begin
-  Result := DefaultBodyHeight;
+  Result := cDefaultBodyHeight;
 end;
 
 procedure TAtlasWelcomeSectionFrame.HeightChanged;
@@ -232,14 +232,14 @@ end;
 
 class function TAtlasWelcomeViews.CreateView(const AId: string; AOwner: TComponent): TAtlasWelcomeSectionFrame;
 var
-  Factory: TAtlasWelcomeViewFactory;
+  mFactory: TAtlasWelcomeViewFactory;
 begin
   Result := nil;
-  if (FFactories = nil) or not FFactories.TryGetValue(LowerCase(AId), Factory) then
+  if (FFactories = nil) or not FFactories.TryGetValue(LowerCase(AId), mFactory) then
   begin
     Exit;
   end;
-  Result := Factory(AOwner);
+  Result := mFactory(AOwner);
   if Result <> nil then
   begin
     Result.SectionId := AId;

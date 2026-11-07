@@ -151,7 +151,7 @@ begin
   if AReader.ExpectString(ANode, 'encoding', mText) and
     not TFileEncoding.ParseCodePage(mText, ASettings.DefaultEncoding) then
   begin
-    ASettings.DefaultEncoding := TFileEncoding.Utf8CodePage;
+    ASettings.DefaultEncoding := TFileEncoding.cUtf8CodePage;
     AReader.ReportNode(ANode, cTexts[TGeneralOptionsText.UnknownEncodingExpectedUtf8].Text);
   end;
 end;

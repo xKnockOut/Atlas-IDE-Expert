@@ -58,7 +58,7 @@ type
 
   TAtlasExpressionHistory = class
   public const
-    MaxPerProject = 20;
+    cMaxPerProject = 20;
   private
     FProjects: TDictionary<string, TArray<string>>;
     FMax: Integer;
@@ -91,9 +91,9 @@ uses
 
 const
   // Teile von Fensterklassen und Titeln; klein verglichen.
-  EvaluateWords: array[0..2] of string = ('evaluate', 'auswerten', 'inspector');
-  WatchWords: array[0..2] of string = ('watch', 'überwach', 'ueberwach');
-  BreakpointWords: array[0..1] of string = ('breakpoint', 'haltepunkt');
+  cEvaluateWords: array[0..2] of string = ('evaluate', 'auswerten', 'inspector');
+  cWatchWords: array[0..2] of string = ('watch', 'überwach', 'ueberwach');
+  cBreakpointWords: array[0..1] of string = ('breakpoint', 'haltepunkt');
 
 /// <summary>Klein geschrieben, Umlaute eingeschlossen; unabhängig vom Gebietsschema („Überwachung“).</summary>
 function Fold(const AText: string): string;
@@ -106,11 +106,11 @@ end;
 
 function ContainsAny(const AText: string; const AWords: array of string): Boolean;
 var
-  Word: string;
+  mWord: string;
 begin
-  for Word in AWords do
+  for mWord in AWords do
   begin
-    if Pos(Word, AText) > 0 then
+    if Pos(mWord, AText) > 0 then
     begin
       Exit(True);
     end;
@@ -120,11 +120,11 @@ end;
 
 function IsAny(const AText: string; const AWords: array of string): Boolean;
 var
-  Word: string;
+  mWord: string;
 begin
-  for Word in AWords do
+  for mWord in AWords do
   begin
-    if AText = Word then
+    if AText = mWord then
     begin
       Exit(True);
     end;
@@ -136,19 +136,19 @@ end;
 
 class function TAtlasDebugDialogs.DialogOf(const AClassName, ACaption: string): TAtlasDebugDialog;
 var
-  Text: string;
+  mText: string;
 begin
   // Haltepunkt vor Auswerten: „Ausdruck auswerten“ steht auch im Haltepunktdialog, aber nicht im Titel.
-  Text := Fold(AClassName + ' ' + ACaption);
-  if ContainsAny(Text, BreakpointWords) then
+  mText := Fold(AClassName + ' ' + ACaption);
+  if ContainsAny(mText, cBreakpointWords) then
   begin
     Result := TAtlasDebugDialog.Breakpoint;
   end
-  else if ContainsAny(Text, WatchWords) then
+  else if ContainsAny(mText, cWatchWords) then
   begin
     Result := TAtlasDebugDialog.Watch;
   end
-  else if ContainsAny(Text, EvaluateWords) then
+  else if ContainsAny(mText, cEvaluateWords) then
   begin
     Result := TAtlasDebugDialog.Evaluate;
   end
@@ -169,35 +169,35 @@ end;
 
 class function TAtlasDebugDialogs.FieldOf(ADialog: TAtlasDebugDialog; const ALabel: string): TAtlasDebugField;
 var
-  Text: string;
+  mText: string;
 begin
   Result := TAtlasDebugField.None;
-  Text := CleanLabel(ALabel);
+  mText := CleanLabel(ALabel);
   case ADialog of
     TAtlasDebugDialog.Evaluate:
-      if (Text = '') or IsAny(Text, ['expression', 'ausdruck']) then
+      if (mText = '') or IsAny(mText, ['expression', 'ausdruck']) then
       begin
         Result := TAtlasDebugField.Expression;
       end;
     TAtlasDebugDialog.Watch:
-      if IsAny(Text, ['expression', 'ausdruck']) then
+      if IsAny(mText, ['expression', 'ausdruck']) then
       begin
         Result := TAtlasDebugField.Expression;
       end;
     TAtlasDebugDialog.Breakpoint:
-      if IsAny(Text, ['condition', 'bedingung']) then
+      if IsAny(mText, ['condition', 'bedingung']) then
       begin
         Result := TAtlasDebugField.Condition;
       end
-      else if IsAny(Text, ['eval expression', 'evaluate expression', 'ausdruck auswerten', 'auswertung']) then
+      else if IsAny(mText, ['eval expression', 'evaluate expression', 'ausdruck auswerten', 'auswertung']) then
       begin
         Result := TAtlasDebugField.LogExpression;
       end
-      else if IsAny(Text, ['filename', 'file name', 'dateiname', 'datei']) then
+      else if IsAny(mText, ['filename', 'file name', 'dateiname', 'datei']) then
       begin
         Result := TAtlasDebugField.FileName;
       end
-      else if IsAny(Text, ['line number', 'line', 'zeilennummer', 'zeile']) then
+      else if IsAny(mText, ['line number', 'line', 'zeilennummer', 'zeile']) then
       begin
         Result := TAtlasDebugField.LineNumber;
       end;
@@ -212,11 +212,11 @@ end;
 
 class function TAtlasDebugDialogs.ScopeLine(const ALineText: string): Integer;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
-  if TryStrToInt(Trim(ALineText), Line) and (Line >= 1) then
+  if TryStrToInt(Trim(ALineText), mLine) and (mLine >= 1) then
   begin
-    Result := Line - 1;
+    Result := mLine - 1;
   end
   else
   begin
@@ -228,29 +228,29 @@ end;
 
 class function TAtlasExpressionEdit.PrefixAt(const AText: string; ACaret: Integer): string;
 var
-  Caret, Start: Integer;
+  mCaret, mStart: Integer;
 begin
-  Caret := ACaret;
-  if Caret > Length(AText) then
+  mCaret := ACaret;
+  if mCaret > Length(AText) then
   begin
-    Caret := Length(AText);
+    mCaret := Length(AText);
   end;
-  if Caret < 0 then
+  if mCaret < 0 then
   begin
-    Caret := 0;
+    mCaret := 0;
   end;
-  Start := Caret;
-  while (Start > 0) and TTextChars.IsIdentChar(AText[Start]) do
+  mStart := mCaret;
+  while (mStart > 0) and TTextChars.IsIdentChar(AText[mStart]) do
   begin
-    Dec(Start);
+    Dec(mStart);
   end;
-  Result := Copy(AText, Start + 1, Caret - Start);
+  Result := Copy(AText, mStart + 1, mCaret - mStart);
 end;
 
 class function TAtlasExpressionEdit.OpensAfter(const AOld, ANew: string; ACaret: Integer): Boolean;
 var
-  Typed: Char;
-  Prefix: string;
+  mTyped: Char;
+  mPrefix: string;
 begin
   Result := False;
   if (Length(ANew) <> Length(AOld) + 1) or (ACaret < 1) or (ACaret > Length(ANew)) then
@@ -262,49 +262,49 @@ begin
   begin
     Exit;
   end;
-  Typed := ANew[ACaret];
-  if Typed = '.' then
+  mTyped := ANew[ACaret];
+  if mTyped = '.' then
   begin
     Exit(True);
   end;
-  Prefix := PrefixAt(ANew, ACaret);
+  mPrefix := PrefixAt(ANew, ACaret);
   // Erstes Zeichen eines Bezeichners, keine Zahl.
-  Result := (Length(Prefix) = 1) and not CharInSet(Typed, ['0'..'9']);
+  Result := (Length(mPrefix) = 1) and not CharInSet(mTyped, ['0'..'9']);
 end;
 
 class procedure TAtlasExpressionEdit.Apply(const AText: string; ACaret, APrefixLength: Integer;
   const AInsert: string; out ANewText: string; out ANewCaret: Integer);
 var
-  Caret, Start: Integer;
+  mCaret, mStart: Integer;
 begin
-  Caret := ACaret;
-  if Caret > Length(AText) then
+  mCaret := ACaret;
+  if mCaret > Length(AText) then
   begin
-    Caret := Length(AText);
+    mCaret := Length(AText);
   end;
-  if Caret < 0 then
+  if mCaret < 0 then
   begin
-    Caret := 0;
+    mCaret := 0;
   end;
-  Start := Caret - APrefixLength;
-  if Start < 0 then
+  mStart := mCaret - APrefixLength;
+  if mStart < 0 then
   begin
-    Start := 0;
+    mStart := 0;
   end;
   // Den Rest eines Worts hinter der Schreibmarke mit ersetzen, wie im Editor.
-  while (Caret < Length(AText)) and TTextChars.IsIdentChar(AText[Caret + 1]) do
+  while (mCaret < Length(AText)) and TTextChars.IsIdentChar(AText[mCaret + 1]) do
   begin
-    Inc(Caret);
+    Inc(mCaret);
   end;
-  ANewText := Copy(AText, 1, Start) + AInsert + Copy(AText, Caret + 1, MaxInt);
-  ANewCaret := Start + Length(AInsert);
+  ANewText := Copy(AText, 1, mStart) + AInsert + Copy(AText, mCaret + 1, MaxInt);
+  ANewCaret := mStart + Length(AInsert);
 end;
 
 { TAtlasExpressionHistory }
 
 constructor TAtlasExpressionHistory.Create;
 begin
-  Create(MaxPerProject);
+  Create(cMaxPerProject);
 end;
 
 constructor TAtlasExpressionHistory.Create(AMax: Integer);
@@ -332,34 +332,34 @@ end;
 
 function TAtlasExpressionHistory.Add(const AProject, AExpression: string): Boolean;
 var
-  Expression, Key: string;
-  Old, New: TArray<string>;
-  Item: string;
+  mExpression, mKey: string;
+  mOld, mNew: TArray<string>;
+  mItem: string;
 begin
-  Expression := Trim(AExpression);
+  mExpression := Trim(AExpression);
   Result := False;
-  if Expression = '' then
+  if mExpression = '' then
   begin
     Exit;
   end;
-  Key := KeyOf(AProject);
-  if not FProjects.TryGetValue(Key, Old) then
+  mKey := KeyOf(AProject);
+  if not FProjects.TryGetValue(mKey, mOld) then
   begin
-    Old := nil;
+    mOld := nil;
   end;
-  if (Length(Old) > 0) and (Old[0] = Expression) then
+  if (Length(mOld) > 0) and (mOld[0] = mExpression) then
   begin
     Exit;
   end;
-  New := TArray<string>.Create(Expression);
-  for Item in Old do
+  mNew := TArray<string>.Create(mExpression);
+  for mItem in mOld do
   begin
-    if (Item <> Expression) and (Length(New) < FMax) then
+    if (mItem <> mExpression) and (Length(mNew) < FMax) then
     begin
-      New := New + [Item];
+      mNew := mNew + [mItem];
     end;
   end;
-  FProjects.AddOrSetValue(Key, New);
+  FProjects.AddOrSetValue(mKey, mNew);
   Result := True;
 end;
 
@@ -373,39 +373,39 @@ end;
 
 function TAtlasExpressionHistory.Remove(const AProject, AExpression: string): Boolean;
 var
-  Key, Expression, Item: string;
-  Old, New: TArray<string>;
+  mKey, mExpression, mItem: string;
+  mOld, mNew: TArray<string>;
 begin
   Result := False;
-  Key := KeyOf(AProject);
-  Expression := Trim(AExpression);
-  if not FProjects.TryGetValue(Key, Old) then
+  mKey := KeyOf(AProject);
+  mExpression := Trim(AExpression);
+  if not FProjects.TryGetValue(mKey, mOld) then
   begin
     Exit;
   end;
-  New := nil;
-  for Item in Old do
+  mNew := nil;
+  for mItem in mOld do
   begin
-    if Item = Expression then
+    if mItem = mExpression then
     begin
       Result := True;
     end
     else
     begin
-      New := New + [Item];
+      mNew := mNew + [mItem];
     end;
   end;
   if not Result then
   begin
     Exit;
   end;
-  if Length(New) = 0 then
+  if Length(mNew) = 0 then
   begin
-    FProjects.Remove(Key);
+    FProjects.Remove(mKey);
   end
   else
   begin
-    FProjects.AddOrSetValue(Key, New);
+    FProjects.AddOrSetValue(mKey, mNew);
   end;
 end;
 
@@ -416,77 +416,77 @@ end;
 
 function TAtlasExpressionHistory.LoadFromText(const AText: string): Boolean;
 var
-  Root, Projects: TJSONValue;
-  Pair: TJSONPair;
-  Value: TJSONValue;
-  List: TArray<string>;
+  mRoot, mProjects: TJSONValue;
+  mPair: TJSONPair;
+  mValue: TJSONValue;
+  mList: TArray<string>;
 begin
   Clear;
-  Root := TJSONObject.ParseJSONValue(AText);
+  mRoot := TJSONObject.ParseJSONValue(AText);
   try
-    Result := Root is TJSONObject;
+    Result := mRoot is TJSONObject;
     if not Result then
     begin
       Exit;
     end;
-    Projects := TJSONObject(Root).GetValue('projects');
-    Result := Projects is TJSONObject;
+    mProjects := TJSONObject(mRoot).GetValue('projects');
+    Result := mProjects is TJSONObject;
     if not Result then
     begin
       Exit;
     end;
-    for Pair in TJSONObject(Projects) do
+    for mPair in TJSONObject(mProjects) do
     begin
-      if not (Pair.JsonValue is TJSONArray) then
+      if not (mPair.JsonValue is TJSONArray) then
       begin
         Continue;
       end;
-      List := nil;
-      for Value in TJSONArray(Pair.JsonValue) do
+      mList := nil;
+      for mValue in TJSONArray(mPair.JsonValue) do
       begin
         // TJSONNumber erbt von TJSONString.
-        if (Value is TJSONString) and not (Value is TJSONNumber) and (Trim(Value.Value) <> '') and
-          (Length(List) < FMax) then
+        if (mValue is TJSONString) and not (mValue is TJSONNumber) and (Trim(mValue.Value) <> '') and
+          (Length(mList) < FMax) then
         begin
-          List := List + [Trim(Value.Value)];
+          mList := mList + [Trim(mValue.Value)];
         end;
       end;
-      if Length(List) > 0 then
+      if Length(mList) > 0 then
       begin
-        FProjects.AddOrSetValue(KeyOf(Pair.JsonString.Value), List);
+        FProjects.AddOrSetValue(KeyOf(mPair.JsonString.Value), mList);
       end;
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 function TAtlasExpressionHistory.ToText: string;
 var
-  Root, Projects: TJSONObject;
-  List: TJSONArray;
-  Keys: TArray<string>;
-  Key, Item: string;
+  mRoot, mProjects: TJSONObject;
+  mList: TJSONArray;
+  mKeys: TArray<string>;
+  mKey, mItem: string;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Projects := TJSONObject.Create;
-    Root.AddPair('projects', Projects);
+    mProjects := TJSONObject.Create;
+    mRoot.AddPair('projects', mProjects);
     // Feste Reihenfolge: Die Datei ändert sich nur, wenn sich der Verlauf ändert.
-    Keys := FProjects.Keys.ToArray;
-    TArray.Sort<string>(Keys);
-    for Key in Keys do
+    mKeys := FProjects.Keys.ToArray;
+    TArray.Sort<string>(mKeys);
+    for mKey in mKeys do
     begin
-      List := TJSONArray.Create;
-      for Item in FProjects[Key] do
+      mList := TJSONArray.Create;
+      for mItem in FProjects[mKey] do
       begin
-        List.Add(Item);
+        mList.Add(mItem);
       end;
-      Projects.AddPair(Key, List);
+      mProjects.AddPair(mKey, mList);
     end;
-    Result := Root.ToJSON;
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 

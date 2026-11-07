@@ -183,7 +183,7 @@ begin
   TLinterOutput.Error(cTexts[TLinterArchitectureText.Report].Fmt([AOptions.ArchitectureFile, Length(AOverview.Units),
     Length(AOverview.Subsystems), Length(AOverview.Cycles),
     Length(AOverview.CrossLinks)]));
-  Result := TFindingsOutput.ExitClean;
+  Result := TFindingsOutput.cExitClean;
   if not AComparison.Compared or (AOptions.CompareFile = '') then
   begin
     Exit;
@@ -192,7 +192,7 @@ begin
     sLineBreak);
   if AComparison.Comparison.Kinds * AComparison.FailOn <> [] then
   begin
-    Result := TFindingsOutput.ExitFindings;
+    Result := TFindingsOutput.cExitFindings;
   end;
 end;
 
@@ -227,13 +227,13 @@ begin
   if not mSettings.ArchitectureEnabled then
   begin
     TLinterOutput.Error(cTexts[TLinterArchitectureText.Off].Text);
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   TFileEncodingDefaults.SetFolder(ATarget.ConfigRoot, mSettings.DefaultEncoding);
   mOverview := TLinterArchitecture.OverviewOf(ATarget, mSettings);
   if not Compare(AOptions, ATarget, mSettings, mOverview, AComparison) then
   begin
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   WriteReport(AOptions, mOverview, AComparison);
   Result := Finish(AOptions, mOverview, AComparison);
@@ -248,7 +248,7 @@ begin
   mComparison := Default(TLinterArchitectureComparison);
   if not Validate(AOptions, mComparison) or not TLinterTarget.ResolveOrCurrent(AOptions.CheckTarget, mTarget) then
   begin
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   try
     Result := Report(AOptions, mTarget, mComparison);
@@ -256,7 +256,7 @@ begin
     on E: Exception do
     begin
       TLinterOutput.Error(E.Message);
-      Result := TFindingsOutput.ExitFailure;
+      Result := TFindingsOutput.cExitFailure;
     end;
   end;
 end;

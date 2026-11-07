@@ -60,13 +60,13 @@ uses
 
 const
   // Schlüsselwörter je Stelle (#31).
-  StatementKeywords: array[0..34] of string = ('begin', 'end', 'if', 'then', 'else', 'case', 'of', 'for', 'to',
+  cStatementKeywords: array[0..34] of string = ('begin', 'end', 'if', 'then', 'else', 'case', 'of', 'for', 'to',
     'downto', 'do', 'while', 'repeat', 'until', 'try', 'except', 'finally', 'on', 'raise', 'with', 'inherited',
     'var', 'const', 'nil', 'not', 'and', 'or', 'xor', 'div', 'mod', 'shl', 'shr', 'in', 'is', 'as');
-  DeclarationKeywords: array[0..18] of string = ('procedure', 'function', 'constructor', 'destructor', 'var',
+  cDeclarationKeywords: array[0..18] of string = ('procedure', 'function', 'constructor', 'destructor', 'var',
     'const', 'type', 'begin', 'end', 'class', 'record', 'uses', 'implementation', 'initialization', 'finalization',
     'resourcestring', 'threadvar', 'label', 'exports');
-  ClassBodyKeywords: array[0..23] of string = ('procedure', 'function', 'constructor', 'destructor', 'property',
+  cClassBodyKeywords: array[0..23] of string = ('procedure', 'function', 'constructor', 'destructor', 'property',
     'private', 'protected', 'public', 'published', 'strict', 'class', 'var', 'const', 'type', 'end', 'case',
     'virtual', 'override', 'overload', 'abstract', 'reintroduce', 'dynamic', 'static', 'message');
   /// <summary>Ergebnis von AssignmentBefore, wenn die Kette vor dem Cursor kein Bezeichner ist.</summary>
@@ -695,17 +695,17 @@ begin
   Result := nil;
   case APlace of
     TCompletionPlace.Statement:
-      for mWord in StatementKeywords do
+      for mWord in cStatementKeywords do
       begin
         Result := Result + [mWord];
       end;
     TCompletionPlace.Declaration:
-      for mWord in DeclarationKeywords do
+      for mWord in cDeclarationKeywords do
       begin
         Result := Result + [mWord];
       end;
     TCompletionPlace.ClassBody:
-      for mWord in ClassBodyKeywords do
+      for mWord in cClassBodyKeywords do
       begin
         Result := Result + [mWord];
       end;

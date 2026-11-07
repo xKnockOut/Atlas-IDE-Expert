@@ -82,7 +82,7 @@ uses
   Atlas.Core.Diagnostics.Guard;
 
 /// <summary>Löst einen von drei Fehlern an drei verschiedenen Stellen aus: Wiederholungen derselben Stelle zählen
-/// innerhalb von TAtlasFuse.RepeatMs nur einmal.</summary>
+/// innerhalb von TAtlasFuse.cRepeatMs nur einmal.</summary>
 procedure RaiseAt(AIndex: Integer);
 begin
   case AIndex of
@@ -437,9 +437,9 @@ begin
         StringOfChar('x', 1000));
     end);
   Text := TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8);
-  Assert.Contains(Text, 'Atlas ' + TAtlasPluginVersion.Version);
+  Assert.Contains(Text, 'Atlas ' + TAtlasPluginVersion.cVersion);
   Assert.Contains(Text, 'Fehler in Tooltip: EInvalidOpException: Zeile 1 procedure Geheim;');
-  Assert.IsFalse(Text.Contains(StringOfChar('x', TAtlasGuard.MaxMessageLength)), 'Meldung gekürzt');
+  Assert.IsFalse(Text.Contains(StringOfChar('x', TAtlasGuard.cMaxMessageLength)), 'Meldung gekürzt');
   Assert.AreEqual(1, Integer(Length(Text.Trim.Split([sLineBreak]))), 'eine Zeile ohne Stack-Trace-Anbieter');
   Assert.AreEqual('a b', TAtlasGuard.SafeMessage(' a'#13#10'b '));
 end;
@@ -516,7 +516,7 @@ begin
       Assert.IsTrue(Repeated);
     end;
     // Fester Abstand ab dem gezählten, nicht gleitend: Ein dauernder Fehler zählt einmal je RepeatMs.
-    Clock := IncMilliSecond(Clock, TAtlasFuse.RepeatMs);
+    Clock := IncMilliSecond(Clock, TAtlasFuse.cRepeatMs);
     Assert.IsFalse(Fuse.Failed(TAtlasFeature.Minimap, 'EAccessViolation@1', Repeated, Skipped));
     Assert.IsFalse(Repeated, 'nach RepeatMs zählt er wieder');
     Assert.AreEqual(40, Skipped, 'die übergangenen Wiederholungen');
@@ -648,7 +648,7 @@ begin
     Assert.IsFalse(Fuse.ProviderSlow('wörter', Skipped), 'Name ohne Groß-/Kleinschreibung');
     Assert.IsFalse(Fuse.ProviderSlow('Wörter', Skipped));
     Assert.IsTrue(Fuse.ProviderSlow('Andere', Skipped), 'je Quelle getrennt');
-    Clock := IncSecond(Clock, TAtlasFuse.SlowLogSeconds);
+    Clock := IncSecond(Clock, TAtlasFuse.cSlowLogSeconds);
     Assert.IsTrue(Fuse.ProviderSlow('Wörter', Skipped));
     Assert.AreEqual(2, Skipped, 'die übergangenen seit der letzten Zeile');
     Assert.IsFalse(Fuse.ProviderTripped('Wörter'), 'langsam ist kein Fehler');

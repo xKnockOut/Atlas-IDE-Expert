@@ -54,9 +54,9 @@ type
   {$SCOPEDENUMS OFF}
 
   TFrame = class
-    Kind: TFrameKind;
-    Group: Integer;
-    PendingIfs: TList<Integer>;
+    FKind: TFrameKind;
+    FGroup: Integer;
+    FPendingIfs: TList<Integer>;
     constructor Create(AKind: TFrameKind; AGroup: Integer);
     destructor Destroy; override;
   end;
@@ -79,8 +79,8 @@ type
   end;
 
 const
-  RoutineKeywords: array[0..3] of string = ('procedure', 'function', 'constructor', 'destructor');
-  BlockKeywords: array[0..17] of string = ('begin', 'end', 'try', 'finally', 'except', 'case', 'of', 'else',
+  cRoutineKeywords: array[0..3] of string = ('procedure', 'function', 'constructor', 'destructor');
+  cBlockKeywords: array[0..17] of string = ('begin', 'end', 'try', 'finally', 'except', 'case', 'of', 'else',
     'repeat', 'until', 'asm', 'record', 'class', 'interface', 'dispinterface', 'object', 'if', 'then');
 
 { TFrame }
@@ -88,14 +88,14 @@ const
 constructor TFrame.Create(AKind: TFrameKind; AGroup: Integer);
 begin
   inherited Create;
-  Kind := AKind;
-  Group := AGroup;
-  PendingIfs := TList<Integer>.Create;
+  FKind := AKind;
+  FGroup := AGroup;
+  FPendingIfs := TList<Integer>.Create;
 end;
 
 destructor TFrame.Destroy;
 begin
-  PendingIfs.Free;
+  FPendingIfs.Free;
   inherited;
 end;
 
@@ -136,12 +136,12 @@ end;
 
 function TGroups.GroupTokens(AToken: Integer; out ATokens: TArray<Integer>): Boolean;
 var
-  Group: Integer;
+  mGroup: Integer;
 begin
-  Result := FGroupOf.TryGetValue(AToken, Group);
+  Result := FGroupOf.TryGetValue(AToken, mGroup);
   if Result then
   begin
-    ATokens := FGroups[Group].ToArray;
+    ATokens := FGroups[mGroup].ToArray;
   end;
 end;
 
@@ -173,10 +173,10 @@ type
   end;
 
 const
-  OpenWords: array[0..5] of string = ('begin', 'try', 'case', 'repeat', 'asm', 'record');
-  OpenKinds: array[0..5] of TFrameKind = (TFrameKind.Begin_, TFrameKind.Try_, TFrameKind.Case_, TFrameKind.Repeat_,
+  cOpenWords: array[0..5] of string = ('begin', 'try', 'case', 'repeat', 'asm', 'record');
+  cOpenKinds: array[0..5] of TFrameKind = (TFrameKind.Begin_, TFrameKind.Try_, TFrameKind.Case_, TFrameKind.Repeat_,
     TFrameKind.Asm_, TFrameKind.Record_);
-  TypeWords: array[0..3] of string = ('class', 'interface', 'dispinterface', 'object');
+  cTypeWords: array[0..3] of string = ('class', 'interface', 'dispinterface', 'object');
 
 function Significant(const AToken: TPascalToken): Boolean;
 begin
@@ -287,7 +287,7 @@ end;
 
 procedure TBlockScan.CloseTop(AToken: Integer);
 begin
-  FOwner.AddTo(FStack.Peek.Group, AToken);
+  FOwner.AddTo(FStack.Peek.FGroup, AToken);
   FStack.Pop;
 end;
 
@@ -295,17 +295,17 @@ function TBlockScan.Open(const AWord: string; APosition: Integer): Boolean;
 var
   mWord: Integer;
 begin
-  mWord := IndexText(AWord, OpenWords);
+  mWord := IndexText(AWord, cOpenWords);
   if mWord >= 0 then
   begin
     // Varianter Teil eines Records: das end des Records schließt ihn.
-    if (OpenKinds[mWord] <> TFrameKind.Case_) or (FStack.Peek.Kind <> TFrameKind.Record_) then
+    if (cOpenKinds[mWord] <> TFrameKind.Case_) or (FStack.Peek.FKind <> TFrameKind.Record_) then
     begin
-      Push(OpenKinds[mWord], FSignificants[APosition]);
+      Push(cOpenKinds[mWord], FSignificants[APosition]);
     end;
     Exit(True);
   end;
-  Result := MatchText(AWord, TypeWords);
+  Result := MatchText(AWord, cTypeWords);
   if Result and StartsTypeBody(APosition) then
   begin
     Push(TFrameKind.TypeBody, FSignificants[APosition]);
@@ -320,30 +320,30 @@ begin
   Result := True;
   if AWord = 'end' then
   begin
-    if not (mTop.Kind in [TFrameKind.Root, TFrameKind.Repeat_]) then
+    if not (mTop.FKind in [TFrameKind.Root, TFrameKind.Repeat_]) then
     begin
       CloseTop(AToken);
     end;
   end
   else if AWord = 'until' then
   begin
-    if mTop.Kind = TFrameKind.Repeat_ then
+    if mTop.FKind = TFrameKind.Repeat_ then
     begin
       CloseTop(AToken);
     end;
   end
   else if MatchText(AWord, ['finally', 'except']) then
   begin
-    if mTop.Kind = TFrameKind.Try_ then
+    if mTop.FKind = TFrameKind.Try_ then
     begin
-      FOwner.AddTo(mTop.Group, AToken);
+      FOwner.AddTo(mTop.FGroup, AToken);
     end;
   end
   else if AWord = 'of' then
   begin
-    if (mTop.Kind = TFrameKind.Case_) and (FOwner.FGroups[mTop.Group].Count = 1) then
+    if (mTop.FKind = TFrameKind.Case_) and (FOwner.FGroups[mTop.FGroup].Count = 1) then
     begin
-      FOwner.AddTo(mTop.Group, AToken);
+      FOwner.AddTo(mTop.FGroup, AToken);
     end;
   end
   else
@@ -359,25 +359,25 @@ begin
   mTop := FStack.Peek;
   if AWord = 'if' then
   begin
-    mTop.PendingIfs.Add(FOwner.NewGroup(AToken));
+    mTop.FPendingIfs.Add(FOwner.NewGroup(AToken));
   end
   else if AWord = 'then' then
   begin
-    if (mTop.PendingIfs.Count > 0) and (FOwner.FGroups[mTop.PendingIfs.Last].Count = 1) then
+    if (mTop.FPendingIfs.Count > 0) and (FOwner.FGroups[mTop.FPendingIfs.Last].Count = 1) then
     begin
-      FOwner.AddTo(mTop.PendingIfs.Last, AToken);
+      FOwner.AddTo(mTop.FPendingIfs.Last, AToken);
     end;
   end
   else if AWord = 'else' then
   begin
-    if mTop.PendingIfs.Count > 0 then
+    if mTop.FPendingIfs.Count > 0 then
     begin
-      FOwner.AddTo(mTop.PendingIfs.Last, AToken);
-      mTop.PendingIfs.Delete(mTop.PendingIfs.Count - 1);
+      FOwner.AddTo(mTop.FPendingIfs.Last, AToken);
+      mTop.FPendingIfs.Delete(mTop.FPendingIfs.Count - 1);
     end
-    else if mTop.Kind in [TFrameKind.Case_, TFrameKind.Try_] then
+    else if mTop.FKind in [TFrameKind.Case_, TFrameKind.Try_] then
     begin
-      FOwner.AddTo(mTop.Group, AToken);
+      FOwner.AddTo(mTop.FGroup, AToken);
     end;
   end;
 end;
@@ -390,7 +390,7 @@ begin
   mIndex := FSignificants[APosition];
   if FOwner.FTokens[mIndex].IsSymbol(';') then
   begin
-    FStack.Peek.PendingIfs.Clear;
+    FStack.Peek.FPendingIfs.Clear;
     Exit;
   end;
   if FOwner.FTokens[mIndex].Kind <> TPascalTokenKind.Keyword then
@@ -454,22 +454,22 @@ end;
 
 procedure TGroups.BuildDirectives;
 var
-  Conditions, Regions: TStack<Integer>;
-  Index: Integer;
+  mConditions, mRegions: TStack<Integer>;
+  mIndex: Integer;
 begin
-  Conditions := TStack<Integer>.Create;
-  Regions := TStack<Integer>.Create;
+  mConditions := TStack<Integer>.Create;
+  mRegions := TStack<Integer>.Create;
   try
-    for Index := 0 to High(FTokens) do
+    for mIndex := 0 to High(FTokens) do
     begin
-      if FTokens[Index].Kind = TPascalTokenKind.Directive then
+      if FTokens[mIndex].Kind = TPascalTokenKind.Directive then
       begin
-        AddDirective(TPascalLexer.DirectiveName(FTokens[Index].Text), Index, Conditions, Regions);
+        AddDirective(TPascalLexer.DirectiveName(FTokens[mIndex].Text), mIndex, mConditions, mRegions);
       end;
     end;
   finally
-    Regions.Free;
-    Conditions.Free;
+    mRegions.Free;
+    mConditions.Free;
   end;
 end;
 
@@ -477,21 +477,21 @@ end;
 
 function TokenAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 var
-  Index: Integer;
-  Token: TPascalToken;
+  mIndex: Integer;
+  mToken: TPascalToken;
 begin
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    Token := ATokens[Index];
-    if (Token.StartPos.Line > APosition.Line) or
-      ((Token.StartPos.Line = APosition.Line) and (Token.StartPos.Character > APosition.Character)) then
+    mToken := ATokens[mIndex];
+    if (mToken.StartPos.Line > APosition.Line) or
+      ((mToken.StartPos.Line = APosition.Line) and (mToken.StartPos.Character > APosition.Character)) then
     begin
       Break;
     end;
-    if (Token.EndPos.Line = APosition.Line) and (APosition.Character <= Token.EndPos.Character) and
-      (Token.Kind <> TPascalTokenKind.Symbol) then
+    if (mToken.EndPos.Line = APosition.Line) and (APosition.Character <= mToken.EndPos.Character) and
+      (mToken.Kind <> TPascalTokenKind.Symbol) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -511,18 +511,18 @@ end;
 function LastKeywordBefore(const ATokens: TArray<TPascalToken>; AStartOffset, AEndOffset: Integer;
   const AWord: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
-  for Index := TSyntaxTree.FirstTokenOf(ATokens, AStartOffset) to High(ATokens) do
+  for mIndex := TSyntaxTree.FirstTokenOf(ATokens, AStartOffset) to High(ATokens) do
   begin
-    if ATokens[Index].Offset >= AEndOffset then
+    if ATokens[mIndex].Offset >= AEndOffset then
     begin
       Break;
     end;
-    if (ATokens[Index].Offset >= AStartOffset) and ATokens[Index].IsKeyword(AWord) then
+    if (ATokens[mIndex].Offset >= AStartOffset) and ATokens[mIndex].IsKeyword(AWord) then
     begin
-      Result := Index;
+      Result := mIndex;
     end;
   end;
 end;
@@ -530,16 +530,16 @@ end;
 /// <summary>Legt die Kinder von ANode, die AOffset enthalten, auf APending (das erste oben).</summary>
 procedure PushChildren(APending: TStack<TSyntaxPostOrderEntry>; ANode: TSyntaxNode; AOffset: Integer);
 var
-  Index: Integer;
-  Child: TSyntaxNode;
+  mIndex: Integer;
+  mChild: TSyntaxNode;
 begin
   APending.Push(TSyntaxPostOrderEntry.Create(ANode, True));
-  for Index := ANode.ChildCount - 1 downto 0 do
+  for mIndex := ANode.ChildCount - 1 downto 0 do
   begin
-    Child := ANode[Index];
-    if (AOffset >= Child.StartOffset) and (AOffset < Child.EndOffset) then
+    mChild := ANode[mIndex];
+    if (AOffset >= mChild.StartOffset) and (AOffset < mChild.EndOffset) then
     begin
-      APending.Push(TSyntaxPostOrderEntry.Create(Child, False));
+      APending.Push(TSyntaxPostOrderEntry.Create(mChild, False));
     end;
   end;
 end;
@@ -556,38 +556,38 @@ end;
 /// <summary>Innerster Knoten einer der Arten, der AOffset enthält; ohne Grenzen zu überschreiten.</summary>
 function Innermost(ANode: TSyntaxNode; AOffset: Integer; const AKinds, ABoundaries: TSyntaxKinds): TSyntaxNode;
 var
-  Pending: TStack<TSyntaxPostOrderEntry>;
-  Entry: TSyntaxPostOrderEntry;
+  mPending: TStack<TSyntaxPostOrderEntry>;
+  mEntry: TSyntaxPostOrderEntry;
 begin
   // Eigener Stapel statt Rekursion (Bericht M1): Der Weg zum Offset kann durch tiefe Ausdrücke führen.
   // Ein Knoten wird nach seinen Kindern geprüft; eine Grenze beendet wie früher die Suche unter ihren
   // Geschwistern, die Vorfahren werden danach noch geprüft.
   Result := nil;
-  Pending := TStack<TSyntaxPostOrderEntry>.Create;
+  mPending := TStack<TSyntaxPostOrderEntry>.Create;
   try
-    Pending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
-    while (Pending.Count > 0) and (Result = nil) do
+    mPending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
+    while (mPending.Count > 0) and (Result = nil) do
     begin
-      Entry := Pending.Pop;
-      if not Entry.Done then
+      mEntry := mPending.Pop;
+      if not mEntry.Done then
       begin
-        PushChildren(Pending, Entry.Node, AOffset);
+        PushChildren(mPending, mEntry.Node, AOffset);
       end
-      else if Entry.Node = ANode then
+      else if mEntry.Node = ANode then
       begin
         Continue;
       end
-      else if Entry.Node.Kind in AKinds then
+      else if mEntry.Node.Kind in AKinds then
       begin
-        Result := Entry.Node;
+        Result := mEntry.Node;
       end
-      else if Entry.Node.Kind in ABoundaries then
+      else if mEntry.Node.Kind in ABoundaries then
       begin
-        DropSiblings(Pending);
+        DropSiblings(mPending);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -601,36 +601,36 @@ end;
 function ExitRanges(ATree: TSyntaxTree; const APosition: TTextPosition;
   const ASettings: THighlightSettings): TArray<TTextRange>;
 var
-  Options: TExitPointOptions;
-  Found: TExitPointSet;
-  Point: TExitPoint;
+  mOptions: TExitPointOptions;
+  mFound: TExitPointSet;
+  mPoint: TExitPoint;
 begin
   Result := nil;
-  Options := TExitPointOptions.Default;
-  Options.Exceptions := False;
-  Options.Keywords := ASettings.ExitKeywords;
-  Found := TExitPoints.Find(ATree, APosition, Options, nil, nil);
-  for Point in Found.Points do
+  mOptions := TExitPointOptions.Default;
+  mOptions.Exceptions := False;
+  mOptions.Keywords := ASettings.ExitKeywords;
+  mFound := TExitPoints.Find(ATree, APosition, mOptions, nil, nil);
+  for mPoint in mFound.Points do
   begin
-    Result := Result + [Point.Range];
+    Result := Result + [mPoint.Range];
   end;
 end;
 
 /// <summary>RoutineDecl mit Rumpf, in deren Kopf AOffset liegt.</summary>
 function RoutineOfHeader(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 var
-  Root: TSyntaxNode;
-  Offset: Integer;
+  mRoot: TSyntaxNode;
+  mOffset: Integer;
 begin
-  Root := ANode;
-  Offset := AOffset;
+  mRoot := ANode;
+  mOffset := AOffset;
   // Search statt Rekursion (Bericht M1); unter ANode nur Knoten, die AOffset enthalten.
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     var
       Header: TSyntaxNode;
     begin
-      if (ACandidate <> Root) and ((Offset < ACandidate.StartOffset) or (Offset >= ACandidate.EndOffset)) then
+      if (ACandidate <> mRoot) and ((mOffset < ACandidate.StartOffset) or (mOffset >= ACandidate.EndOffset)) then
       begin
         Exit(TSyntaxSearchStep.Skip);
       end;
@@ -638,7 +638,7 @@ begin
       if (ACandidate.Kind = TSyntaxKind.RoutineDecl) and (ACandidate.FindChild(TSyntaxKind.Block) <> nil) then
       begin
         Header := ACandidate.FindChild(TSyntaxKind.RoutineHeader);
-        if (Header <> nil) and (Offset >= Header.StartOffset) and (Offset < Header.EndOffset) then
+        if (Header <> nil) and (mOffset >= Header.StartOffset) and (mOffset < Header.EndOffset) then
         begin
           Result := TSyntaxSearchStep.Found;
         end;
@@ -653,12 +653,12 @@ end;
 
 function ByPosition(const ARanges: TArray<TTextRange>): TArray<TTextRange>;
 var
-  List: TList<TTextRange>;
-  Range: TTextRange;
-  Index: Integer;
-  Known: Boolean;
+  mList: TList<TTextRange>;
+  mRange: TTextRange;
+  mIndex: Integer;
+  mKnown: Boolean;
 begin
-  List := TList<TTextRange>.Create(TComparer<TTextRange>.Construct(
+  mList := TList<TTextRange>.Create(TComparer<TTextRange>.Construct(
     function(const A, B: TTextRange): Integer
     begin
       Result := A.StartPos.Line - B.StartPos.Line;
@@ -668,22 +668,22 @@ begin
       end;
     end));
   try
-    for Range in ARanges do
+    for mRange in ARanges do
     begin
-      Known := False;
-      for Index := 0 to List.Count - 1 do
+      mKnown := False;
+      for mIndex := 0 to mList.Count - 1 do
       begin
-        Known := Known or (List[Index].StartPos = Range.StartPos);
+        mKnown := mKnown or (mList[mIndex].StartPos = mRange.StartPos);
       end;
-      if not Known then
+      if not mKnown then
       begin
-        List.Add(Range);
+        mList.Add(mRange);
       end;
     end;
-    List.Sort;
-    Result := List.ToArray;
+    mList.Sort;
+    Result := mList.ToArray;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
@@ -698,9 +698,9 @@ type
   end;
 
 const
-  Loops = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+  cLoops = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
     TSyntaxKind.RepeatStatement];
-  Routines = [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod];
+  cRoutines = [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod];
 
 function TKeywordQuery.Token: TPascalToken;
 begin
@@ -719,23 +719,23 @@ end;
 /// Implementierung; False, wenn das Token keins davon ist.</summary>
 function FindExits(const AQuery: TKeywordQuery; out ARanges: TArray<TTextRange>): Boolean;
 var
-  Token: TPascalToken;
-  Routine: TSyntaxNode;
+  mToken: TPascalToken;
+  mRoutine: TSyntaxNode;
 begin
   ARanges := nil;
-  Token := AQuery.Token;
+  mToken := AQuery.Token;
   if IsExitWord(AQuery) then
   begin
-    Result := Innermost(AQuery.Tree.Root, Token.Offset, Routines, []) <> nil;
+    Result := Innermost(AQuery.Tree.Root, mToken.Offset, cRoutines, []) <> nil;
   end
-  else if MatchText(Token.Text, ['Break', 'Continue']) then
+  else if MatchText(mToken.Text, ['Break', 'Continue']) then
   begin
-    Result := Innermost(AQuery.Tree.Root, Token.Offset, Loops, Routines) <> nil;
+    Result := Innermost(AQuery.Tree.Root, mToken.Offset, cLoops, cRoutines) <> nil;
   end
   else
   begin
-    Routine := RoutineOfHeader(AQuery.Tree.Root, Token.Offset);
-    Result := (Routine <> nil) and SameText(Token.Text, ShortName(Routine.Name)) and AQuery.Settings.ExitPoints;
+    mRoutine := RoutineOfHeader(AQuery.Tree.Root, mToken.Offset);
+    Result := (mRoutine <> nil) and SameText(mToken.Text, ShortName(mRoutine.Name)) and AQuery.Settings.ExitPoints;
   end;
   if Result and AQuery.Settings.ExitPoints then
   begin
@@ -746,20 +746,20 @@ end;
 /// <summary>Bereiche der Gruppe des Tokens (ADirectives: mit Direktiven); False ohne Gruppe.</summary>
 function GroupRanges(const AQuery: TKeywordQuery; ADirectives: Boolean; out ARanges: TArray<TTextRange>): Boolean;
 var
-  Groups: TGroups;
-  Members: TArray<Integer>;
-  Member: Integer;
+  mGroups: TGroups;
+  mMembers: TArray<Integer>;
+  mMember: Integer;
 begin
   ARanges := nil;
-  Groups := TGroups.Create(AQuery.Tree.Tokens, ADirectives);
+  mGroups := TGroups.Create(AQuery.Tree.Tokens, ADirectives);
   try
-    Result := Groups.GroupTokens(AQuery.Index, Members);
-    for Member in Members do
+    Result := mGroups.GroupTokens(AQuery.Index, mMembers);
+    for mMember in mMembers do
     begin
-      AddToken(ARanges, AQuery.Tree.Tokens[Member]);
+      AddToken(ARanges, AQuery.Tree.Tokens[mMember]);
     end;
   finally
-    Groups.Free;
+    mGroups.Free;
   end;
   ARanges := ByPosition(ARanges);
 end;
@@ -778,29 +778,29 @@ end;
 /// <summary>procedure/function/… einer Implementierung: Kopf, begin und end.</summary>
 function FindRoutine(const AQuery: TKeywordQuery; out ARanges: TArray<TTextRange>): Boolean;
 var
-  Routine, Block: TSyntaxNode;
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
+  mRoutine, mBlock: TSyntaxNode;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
 begin
   ARanges := nil;
-  Routine := RoutineOfHeader(AQuery.Tree.Root, AQuery.Token.Offset);
-  Result := Routine <> nil;
+  mRoutine := RoutineOfHeader(AQuery.Tree.Root, AQuery.Token.Offset);
+  Result := mRoutine <> nil;
   if not Result or not AQuery.Settings.BlockPairs then
   begin
     Exit;
   end;
-  Tokens := AQuery.Tree.Tokens;
+  mTokens := AQuery.Tree.Tokens;
   AddToken(ARanges, AQuery.Token);
-  Block := Routine.FindChild(TSyntaxKind.Block);
-  Index := IndexOfOffset(Tokens, Block.StartOffset);
-  if Index >= 0 then
+  mBlock := mRoutine.FindChild(TSyntaxKind.Block);
+  mIndex := IndexOfOffset(mTokens, mBlock.StartOffset);
+  if mIndex >= 0 then
   begin
-    AddToken(ARanges, Tokens[Index]);
+    AddToken(ARanges, mTokens[mIndex]);
   end;
-  Index := LastKeywordBefore(Tokens, Block.StartOffset, Block.EndOffset, 'end');
-  if Index >= 0 then
+  mIndex := LastKeywordBefore(mTokens, mBlock.StartOffset, mBlock.EndOffset, 'end');
+  if mIndex >= 0 then
   begin
-    AddToken(ARanges, Tokens[Index]);
+    AddToken(ARanges, mTokens[mIndex]);
   end;
   ARanges := ByPosition(ARanges);
 end;
@@ -821,8 +821,8 @@ end;
 class function TKeywordHighlights.Find(ATree: TSyntaxTree; const APosition: TTextPosition;
   const ASettings: THighlightSettings; out ARanges: TArray<TTextRange>): Boolean;
 var
-  Query: TKeywordQuery;
-  Token: TPascalToken;
+  mQuery: TKeywordQuery;
+  mToken: TPascalToken;
 begin
   ARanges := nil;
   Result := False;
@@ -830,34 +830,34 @@ begin
   begin
     Exit;
   end;
-  Query.Tree := ATree;
-  Query.Index := TokenAt(ATree.Tokens, APosition);
-  Query.Position := APosition;
-  Query.Settings := ASettings;
-  if Query.Index < 0 then
+  mQuery.Tree := ATree;
+  mQuery.Index := TokenAt(ATree.Tokens, APosition);
+  mQuery.Position := APosition;
+  mQuery.Settings := ASettings;
+  if mQuery.Index < 0 then
   begin
     Exit;
   end;
-  Token := Query.Token;
-  if IsExitWord(Query) or (Token.Kind = TPascalTokenKind.Identifier) then
+  mToken := mQuery.Token;
+  if IsExitWord(mQuery) or (mToken.Kind = TPascalTokenKind.Identifier) then
   begin
-    Result := FindExits(Query, ARanges);
+    Result := FindExits(mQuery, ARanges);
   end
-  else if Token.Kind = TPascalTokenKind.Directive then
+  else if mToken.Kind = TPascalTokenKind.Directive then
   begin
-    Result := FindDirective(Query, ARanges);
+    Result := FindDirective(mQuery, ARanges);
   end
-  else if Token.Kind <> TPascalTokenKind.Keyword then
+  else if mToken.Kind <> TPascalTokenKind.Keyword then
   begin
     Result := False;
   end
-  else if MatchText(Token.Text, RoutineKeywords) then
+  else if MatchText(mToken.Text, cRoutineKeywords) then
   begin
-    Result := FindRoutine(Query, ARanges);
+    Result := FindRoutine(mQuery, ARanges);
   end
-  else if MatchText(Token.Text, BlockKeywords) then
+  else if MatchText(mToken.Text, cBlockKeywords) then
   begin
-    Result := FindBlock(Query, ARanges);
+    Result := FindBlock(mQuery, ARanges);
   end;
 end;
 

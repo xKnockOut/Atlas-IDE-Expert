@@ -65,7 +65,7 @@ begin
   Assert.IsFalse(TRuleCodeActions.FixAll([FindingWith(0, 'a', False)], Action));
   Assert.IsTrue(TRuleCodeActions.FixAll([FindingWith(0, 'a', False), FindingWith(2, 'b', True), FindingWith(4, 'c', True)],
     Action));
-  Assert.AreEqual(FixAllKind, Action.Kind);
+  Assert.AreEqual(cFixAllKind, Action.Kind);
   Assert.AreEqual(2, Integer(Length(Action.Edits)));
   Assert.AreEqual('b', Action.Edits[0].NewText);
   Assert.AreEqual('c', Action.Edits[1].NewText);
@@ -93,12 +93,12 @@ begin
   Assert.AreEqual(3, Integer(Length(Actions)));
   Assert.AreEqual('Beheben', Actions[0].Title);
   Assert.IsTrue(Actions[0].IsPreferred);
-  Assert.AreEqual(QuickFixKind, Actions[1].Kind);
+  Assert.AreEqual(cQuickFixKind, Actions[1].Kind);
   Assert.AreEqual('marker', Actions[2].RuleId);
   // Fenster „Atlas-Prüfung“ und Befund-Hover wählen über die Tags (#909).
-  Assert.AreEqual(RuleFixTag, Actions[0].Tag);
-  Assert.AreEqual(RuleSuppressLineTag, Actions[1].Tag);
-  Assert.AreEqual(RuleSuppressFileTag, Actions[2].Tag);
+  Assert.AreEqual(cRuleFixTag, Actions[0].Tag);
+  Assert.AreEqual(cRuleSuppressLineTag, Actions[1].Tag);
+  Assert.AreEqual(cRuleSuppressFileTag, Actions[2].Tag);
 end;
 
 procedure TRuleCodeActionTests.AlternativeFixesCarryNoFixTag;
@@ -130,7 +130,7 @@ begin
   Finding.Fixes := [TRuleFix.UnitRelations('Graph zeigen (Unit-Beziehungen)')];
   Actions := TRuleCodeActions.ForFindings([Finding], Body, TTextRange.Create(5, 0, 5, 0));
   Assert.AreEqual('Graph zeigen (Unit-Beziehungen)', Actions[0].Title);
-  Assert.AreEqual(ShowUnitRelationsCommand, Actions[0].Command);
+  Assert.AreEqual(cShowUnitRelationsCommand, Actions[0].Command);
   Assert.AreEqual(0, Integer(Length(Actions[0].Edits)));
 end;
 

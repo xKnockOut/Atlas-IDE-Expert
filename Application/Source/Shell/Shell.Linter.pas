@@ -182,12 +182,12 @@ begin
   try
     TLinterOutput.Error(cTexts[TLinterShellText.Cleared].Fmt([TIndexCacheDirectory.Clear(
       TIndexCacheDirectory.DefaultRoot), TIndexCacheDirectory.DefaultRoot]));
-    Result := TFindingsOutput.ExitClean;
+    Result := TFindingsOutput.cExitClean;
   except
     on E: Exception do
     begin
       TLinterOutput.Error(Format('%s: %s', [E.ClassName, E.Message]));
-      Result := TFindingsOutput.ExitFailure;
+      Result := TFindingsOutput.cExitFailure;
     end;
   end;
 end;

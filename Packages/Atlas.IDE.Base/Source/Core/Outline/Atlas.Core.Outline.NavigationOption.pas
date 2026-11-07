@@ -42,38 +42,38 @@ uses
 
 class function TAtlasNavigationOption.Find(const ANames: TArray<string>): string;
 var
-  Name, Key: string;
+  mName, mKey: string;
 begin
   Result := '';
-  for Name in ANames do
+  for mName in ANames do
   begin
-    Key := UpperCase(Name);
-    if (Pos('NAV', Key) = 0) or (Pos('BAR', Key) = 0) then
+    mKey := UpperCase(mName);
+    if (Pos('NAV', mKey) = 0) or (Pos('BAR', mKey) = 0) then
     begin
       Continue;
     end;
-    if (Pos('SHOW', Key) > 0) or (Pos('VISIBLE', Key) > 0) then
+    if (Pos('SHOW', mKey) > 0) or (Pos('VISIBLE', mKey) > 0) then
     begin
-      Exit(Name);
+      Exit(mName);
     end;
     if Result = '' then
     begin
-      Result := Name;
+      Result := mName;
     end;
   end;
 end;
 
 class function TAtlasNavigationOption.Candidates(const ANames: TArray<string>): TArray<string>;
 var
-  Name, Key: string;
+  mName, mKey: string;
 begin
   Result := nil;
-  for Name in ANames do
+  for mName in ANames do
   begin
-    Key := UpperCase(Name);
-    if (Pos('NAV', Key) > 0) or (Pos('TOOLBAR', Key) > 0) then
+    mKey := UpperCase(mName);
+    if (Pos('NAV', mKey) > 0) or (Pos('TOOLBAR', mKey) > 0) then
     begin
-      Result := Result + [Name];
+      Result := Result + [mName];
     end;
   end;
 end;

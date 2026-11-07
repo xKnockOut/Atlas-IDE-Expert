@@ -81,7 +81,7 @@ type
 
 const
   // Wartende prüfen so oft den Abbruch.
-  PollMs = 100;
+  cPollMs = 100;
 
 { TIndexTurn }
 
@@ -126,21 +126,21 @@ end;
 
 function TIndexScheduler.Register(APriority: Integer): IIndexTurn;
 var
-  Entry: TEntry;
-  Ticket: Int64;
+  mEntry: TEntry;
+  mTicket: Int64;
 begin
-  Entry.Priority := APriority;
-  Entry.Stage := TIndexStage.Project;
-  Entry.WaitingSince := 0;
+  mEntry.Priority := APriority;
+  mEntry.Stage := TIndexStage.Project;
+  mEntry.WaitingSince := 0;
   TMonitor.Enter(FLock);
   try
     Inc(FNextTicket);
-    Ticket := FNextTicket;
-    FEntries.Add(Ticket, Entry);
+    mTicket := FNextTicket;
+    FEntries.Add(mTicket, mEntry);
   finally
     TMonitor.Exit(FLock);
   end;
-  Result := TIndexTurn.Create(Self, Ticket);
+  Result := TIndexTurn.Create(Self, mTicket);
 end;
 
 function TIndexScheduler.Count: Integer;
@@ -203,25 +203,25 @@ end;
 
 function TIndexScheduler.MayRun(ATicket: Int64; const AEntry: TEntry): Boolean;
 var
-  Other: TPair<Int64, TEntry>;
+  mOther: TPair<Int64, TEntry>;
 begin
   if (FRunning <> 0) and (FRunning <> ATicket) then
   begin
     Exit(False);
   end;
-  for Other in FEntries do
+  for mOther in FEntries do
   begin
-    if Other.Key = ATicket then
+    if mOther.Key = ATicket then
     begin
       Continue;
     end;
-    if Other.Value.Stage < AEntry.Stage then
+    if mOther.Value.Stage < AEntry.Stage then
     begin
       Exit(False);
     end;
     // Gleiche Stufe: kleinere Priorität, bei gleicher die frühere Anmeldung zuerst.
-    if (Other.Value.Stage = AEntry.Stage) and ((Other.Value.Priority < AEntry.Priority) or
-      ((Other.Value.Priority = AEntry.Priority) and (Other.Key < ATicket))) then
+    if (mOther.Value.Stage = AEntry.Stage) and ((mOther.Value.Priority < AEntry.Priority) or
+      ((mOther.Value.Priority = AEntry.Priority) and (mOther.Key < ATicket))) then
     begin
       Exit(False);
     end;
@@ -231,27 +231,27 @@ end;
 
 function TIndexScheduler.Enter(ATicket: Int64; AStage: TIndexStage; const ACancelled: TIndexCancelled): Boolean;
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
   TMonitor.Enter(FLock);
   try
-    if not FEntries.TryGetValue(ATicket, Entry) then
+    if not FEntries.TryGetValue(ATicket, mEntry) then
     begin
       Exit(True);
     end;
-    Entry.Stage := AStage;
-    Entry.WaitingSince := TThread.GetTickCount64;
-    FEntries[ATicket] := Entry;
+    mEntry.Stage := AStage;
+    mEntry.WaitingSince := TThread.GetTickCount64;
+    FEntries[ATicket] := mEntry;
     // Andere sehen die neue Stufe sofort.
     TMonitor.PulseAll(FLock);
-    while not MayRun(ATicket, Entry) do
+    while not MayRun(ATicket, mEntry) do
     begin
       if Assigned(ACancelled) and ACancelled() then
       begin
         SetWaiting(ATicket, False);
         Exit(False);
       end;
-      TMonitor.Wait(FLock, PollMs);
+      TMonitor.Wait(FLock, cPollMs);
     end;
     SetWaiting(ATicket, False);
     FRunning := ATicket;
@@ -263,7 +263,7 @@ end;
 
 procedure TIndexScheduler.Leave(ATicket: Int64);
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
   TMonitor.Enter(FLock);
   try
@@ -272,10 +272,10 @@ begin
       FRunning := 0;
     end;
     // Bis zur nächsten Stufe zählt der Aufbau als hinter der verlassenen; so kommen andere an die Reihe.
-    if FEntries.TryGetValue(ATicket, Entry) and (Entry.Stage < High(TIndexStage)) then
+    if FEntries.TryGetValue(ATicket, mEntry) and (mEntry.Stage < High(TIndexStage)) then
     begin
-      Entry.Stage := Succ(Entry.Stage);
-      FEntries[ATicket] := Entry;
+      mEntry.Stage := Succ(mEntry.Stage);
+      FEntries[ATicket] := mEntry;
     end;
     TMonitor.PulseAll(FLock);
   finally

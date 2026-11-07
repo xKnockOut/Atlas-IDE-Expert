@@ -63,12 +63,12 @@ type
   TMcpPrompts = class
   public const
     /// <summary>Größte Ressource aus einer Vorlage (UTF-8).</summary>
-    MaxResourceBytes = 64 * 1024;
+    cMaxResourceBytes = 64 * 1024;
     /// <summary>Größter eingebetteter Abschnitt eines Prompts (UTF-8).</summary>
-    MaxSectionBytes = 32 * 1024;
+    cMaxSectionBytes = 32 * 1024;
     /// <summary>Zeilen vor und nach der Zeile eines Befunds im Codeausschnitt von fix_finding.</summary>
-    SnippetContext = 8;
-    ConventionsUri = 'delphi://conventions';
+    cSnippetContext = 8;
+    cConventionsUri = 'delphi://conventions';
   private
     FServer: TMcpServer;
     FSettings: TFunc<TServerSettings>;
@@ -220,10 +220,10 @@ begin
   end;
 end;
 
-/// <summary>Abschnitt mit Überschrift, Inhalt auf TMcpPrompts.MaxSectionBytes gekürzt.</summary>
+/// <summary>Abschnitt mit Überschrift, Inhalt auf TMcpPrompts.cMaxSectionBytes gekürzt.</summary>
 function Section(const ATitle, ABody: string): string;
 begin
-  Result := '## ' + ATitle + sLineBreak + sLineBreak + TMcpPrompts.Limit(TrimRight(ABody), TMcpPrompts.MaxSectionBytes,
+  Result := '## ' + ATitle + sLineBreak + sLineBreak + TMcpPrompts.Limit(TrimRight(ABody), TMcpPrompts.cMaxSectionBytes,
     '');
 end;
 
@@ -660,7 +660,7 @@ begin
     if FServer.InvokeTool(ATool, AArguments, mText) then
     begin
       Result := '## ' + ATitle + ' (' + ATool + ')' + sLineBreak + sLineBreak +
-        Limit(TrimRight(mText), MaxSectionBytes, ATool);
+        Limit(TrimRight(mText), cMaxSectionBytes, ATool);
     end
     else
     begin
@@ -693,9 +693,9 @@ function TMcpPrompts.ConventionsSection: string;
 var
   mText: string;
 begin
-  if FServer.ReadResourceText(ConventionsUri, mText) then
+  if FServer.ReadResourceText(cConventionsUri, mText) then
   begin
-    Result := Section(Say('Projektkonventionen', 'Project conventions') + ' (' + ConventionsUri + ')', mText);
+    Result := Section(Say('Projektkonventionen', 'Project conventions') + ' (' + cConventionsUri + ')', mText);
   end
   else
   begin
@@ -881,7 +881,7 @@ begin
   begin
     raise EMcpToolError.CreateFmt(Say('%s hat nur %d Zeilen', '%s has only %d lines'), [mFile, Length(mLines)]);
   end;
-  mSnippet := '```pascal' + sLineBreak + Snippet(mLines, mLine, SnippetContext) + sLineBreak + '```';
+  mSnippet := '```pascal' + sLineBreak + Snippet(mLines, mLine, cSnippetContext) + sLineBreak + '```';
   mSteps := Say('1. Erkläre zuerst die Ursache des Befunds in diesem Code, nicht nur die Regel.' + sLineBreak,
     '1. First explain the cause of the finding in this code, not just the rule.' + sLineBreak);
   if FServer.Restricted or not FServer.ToolAvailable('apply_code_action') then
@@ -1235,7 +1235,7 @@ begin
         sLineBreak + mInterface + sLineBreak + '```';
     end;
   end;
-  Result := Limit(Result, MaxResourceBytes, 'get_unit_outline / get_declaration');
+  Result := Limit(Result, cMaxResourceBytes, 'get_unit_outline / get_declaration');
 end;
 
 function TMcpPrompts.FormResource(const AFile: string): string;
@@ -1245,7 +1245,7 @@ begin
   UseLanguage;
   mFile := FormFile(AFile);
   Result := Limit('# ' + Say('Formular ', 'Form ') + mFile + sLineBreak + sLineBreak +
-    ToolText('get_dfm_info', StringArgs('file', mFile)), MaxResourceBytes, 'get_dfm_info');
+    ToolText('get_dfm_info', StringArgs('file', mFile)), cMaxResourceBytes, 'get_dfm_info');
 end;
 
 function TMcpPrompts.FindingsResource(const AFile: string): string;
@@ -1255,14 +1255,14 @@ begin
   UseLanguage;
   mFile := CheckedFile(FResolveFile, AFile);
   Result := Limit('# ' + Say('Befunde ', 'Findings ') + mFile + sLineBreak + sLineBreak +
-    ToolText('get_diagnostics', StringArgs('file', mFile)), MaxResourceBytes, 'get_diagnostics');
+    ToolText('get_diagnostics', StringArgs('file', mFile)), cMaxResourceBytes, 'get_diagnostics');
 end;
 
 function TMcpPrompts.BuildResource: string;
 begin
   UseLanguage;
   Result := Limit('# ' + Say('Letzter Build', 'Last build') + sLineBreak + sLineBreak +
-    ToolText('get_last_build', TJSONObject.Create), MaxResourceBytes, 'get_last_build');
+    ToolText('get_last_build', TJSONObject.Create), cMaxResourceBytes, 'get_last_build');
 end;
 
 procedure TMcpPrompts.Register;

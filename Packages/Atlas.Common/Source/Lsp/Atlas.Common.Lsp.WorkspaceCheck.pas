@@ -891,6 +891,7 @@ begin
   try
     Priority := tpLower;
   except
+    // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Prüf-Threads; Fehler wird protokolliert
     on Exception do
       Log(cTexts[TWorkspaceCheckText.ProjectCheckLowPriorityNot].Text);
   end;
@@ -907,6 +908,7 @@ begin
     end;
   except
     // Ein Fehler außerhalb einer Datei beendet nur die Projektprüfung, nicht den Server.
+    // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Prüf-Threads; Fehler wird protokolliert
     on E: Exception do
       Log(cTexts[TWorkspaceCheckText.ProjectCheckEndedAfterError].Text + E.ClassName);
   end;
@@ -1000,6 +1002,7 @@ begin
   try
     mItems := Diagnose(AEntry, mUri, mText);
   except
+    // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Prüf-Threads; Fehler wird protokolliert
     on E: Exception do
     begin
       Fail(AEntry, mUri, mStamp, E);

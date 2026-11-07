@@ -406,6 +406,15 @@
                 "description": "Nur field-free-without-nil: Methoden, in denen Free ohne nil erlaubt ist (#917). Destruktoren und Methoden mit [TearDown] gelten immer.",
                 "x-description-en": "Only field-free-without-nil: methods in which Free without nil is allowed (#917). Destructors and methods with [TearDown] always count."
               },
+              "ignoreCalls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur hardcoded-string: weitere Routinen, deren Text-Argumente niemand übersetzt (z. B. eine eigene Pick(Englisch, 'en', 'de')). Protokoll-, Prüf-, Vergleichs- und Registry-Aufrufe gelten immer.",
+                "x-description-en": "Only hardcoded-string: further routines whose text arguments nobody translates (for example an own Pick(English, 'en', 'de')). Logging, check, comparison and registry calls always count."
+              },
               "assertPatterns": {
                 "type": "array",
                 "items": {

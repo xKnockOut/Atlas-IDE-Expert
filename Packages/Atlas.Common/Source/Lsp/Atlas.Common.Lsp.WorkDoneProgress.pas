@@ -25,7 +25,7 @@ type
     FPercent: Integer;
     procedure SendProgress(const AKind, ATitleOrMessage: string; APercent: Integer);
   public
-    const MinReportIntervalMs = 200;
+    const cMinReportIntervalMs = 200;
     constructor Create(const ATransport: IJsonRpcTransport; const AToken: string);
     destructor Destroy; override;
     procedure Start(const ATitle: string);
@@ -63,52 +63,52 @@ end;
 
 procedure TLspWorkDoneProgress.SendProgress(const AKind, ATitleOrMessage: string; APercent: Integer);
 var
-  Value, Params: TJSONObject;
-  Notification: TJSONObject;
+  mValue, mParams: TJSONObject;
+  mNotification: TJSONObject;
 begin
-  Value := TJSONObject.Create;
-  Value.AddPair('kind', AKind);
+  mValue := TJSONObject.Create;
+  mValue.AddPair('kind', AKind);
   if AKind = 'begin' then
   begin
-    Value.AddPair('title', ATitleOrMessage);
-    Value.AddPair('cancellable', TJSONBool.Create(False));
+    mValue.AddPair('title', ATitleOrMessage);
+    mValue.AddPair('cancellable', TJSONBool.Create(False));
   end
   else if ATitleOrMessage <> '' then
   begin
-    Value.AddPair('message', ATitleOrMessage);
+    mValue.AddPair('message', ATitleOrMessage);
   end;
   if (AKind <> 'end') and (APercent >= 0) then
   begin
-    Value.AddPair('percentage', TJSONNumber.Create(APercent));
+    mValue.AddPair('percentage', TJSONNumber.Create(APercent));
   end;
-  Params := TJSONObject.Create;
-  Params.AddPair('token', FToken);
-  Params.AddPair('value', Value);
-  Notification := TJsonRpcMessages.Notification('$/progress', Params);
+  mParams := TJSONObject.Create;
+  mParams.AddPair('token', FToken);
+  mParams.AddPair('value', mValue);
+  mNotification := TJsonRpcMessages.Notification('$/progress', mParams);
   try
-    FTransport.WriteMessage(Notification);
+    FTransport.WriteMessage(mNotification);
   finally
-    Notification.Free;
+    mNotification.Free;
   end;
 end;
 
 procedure TLspWorkDoneProgress.Start(const ATitle: string);
 var
-  Request, Params: TJSONObject;
+  mRequest, mParams: TJSONObject;
 begin
   TMonitor.Enter(FLock);
   try
-    Params := TJSONObject.Create;
-    Params.AddPair('token', FToken);
-    Request := TJSONObject.Create;
+    mParams := TJSONObject.Create;
+    mParams.AddPair('token', FToken);
+    mRequest := TJSONObject.Create;
     try
-      Request.AddPair('jsonrpc', '2.0');
-      Request.AddPair('id', 'atlas/' + FToken);
-      Request.AddPair('method', 'window/workDoneProgress/create');
-      Request.AddPair('params', Params);
-      FTransport.WriteMessage(Request);
+      mRequest.AddPair('jsonrpc', '2.0');
+      mRequest.AddPair('id', 'atlas/' + FToken);
+      mRequest.AddPair('method', 'window/workDoneProgress/create');
+      mRequest.AddPair('params', mParams);
+      FTransport.WriteMessage(mRequest);
     finally
-      Request.Free;
+      mRequest.Free;
     end;
     SendProgress('begin', ATitle, 0);
     FActive := True;
@@ -127,7 +127,7 @@ begin
     begin
       FPercent := APercent;
     end;
-    if not FActive or (FLastReport.ElapsedMilliseconds < MinReportIntervalMs) then
+    if not FActive or (FLastReport.ElapsedMilliseconds < cMinReportIntervalMs) then
     begin
       Exit;
     end;

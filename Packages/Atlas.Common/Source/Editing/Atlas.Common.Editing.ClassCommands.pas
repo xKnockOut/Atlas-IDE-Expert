@@ -25,7 +25,8 @@ uses
 /// <summary>Trägt die Klassenbefehle über ARegister ein.</summary>
 procedure RegisterClassCommands(const ARegister: TSlashRegister);
 
-/// <summary>Methodenname zur Botschaft: WM_SIZE wird zu WMSize, CM_MOUSEENTER zu CMMouseEnter (Tabelle, sonst je Teil groß).</summary>
+/// <summary>Methodenname zur Botschaft: WM_SIZE wird zu WMSize, CM_MOUSEENTER zu CMMouseEnter (Tabelle, sonst je Teil
+/// groß).</summary>
 function MessageMethodName(const AMessage: string): string;
 /// <summary>Record-Typ zur Botschaft, TMessage ohne Eintrag in der Tabelle.</summary>
 function MessageRecord(const AMessage: string): string;
@@ -59,6 +60,7 @@ uses
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassBodies,
+  Atlas.Common.Editing.TypeComments,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource,
@@ -119,7 +121,7 @@ type
 
 const
   // Häufige Botschaften mit Methodennamen wie in der VCL und Record aus Winapi.Messages bzw. Vcl.Controls.
-  MessageTable: array[0..37] of TMessageEntry = (
+  cMessageTable: array[0..37] of TMessageEntry = (
     (Name: 'WM_SIZE'; Method: 'WMSize'; RecordType: 'TWMSize'),
     (Name: 'WM_MOVE'; Method: 'WMMove'; RecordType: 'TWMMove'),
     (Name: 'WM_PAINT'; Method: 'WMPaint'; RecordType: 'TWMPaint'),
@@ -161,42 +163,42 @@ const
 
 function MessageMethodName(const AMessage: string): string;
 var
-  Entry: TMessageEntry;
-  Parts: TArray<string>;
-  Index: Integer;
+  mEntry: TMessageEntry;
+  mParts: TArray<string>;
+  mIndex: Integer;
 begin
-  for Entry in MessageTable do
+  for mEntry in cMessageTable do
   begin
-    if SameText(Entry.Name, Trim(AMessage)) then
+    if SameText(mEntry.Name, Trim(AMessage)) then
     begin
-      Exit(Entry.Method);
+      Exit(mEntry.Method);
     end;
   end;
   // Unbekannte Botschaft: Präfix groß, jeder weitere Teil mit großem Anfangsbuchstaben.
-  Parts := UpperCase(Trim(AMessage)).Split(['_']);
-  if Length(Parts) = 0 then
+  mParts := UpperCase(Trim(AMessage)).Split(['_']);
+  if Length(mParts) = 0 then
   begin
     Exit('');
   end;
-  Result := Parts[0];
-  for Index := 1 to High(Parts) do
+  Result := mParts[0];
+  for mIndex := 1 to High(mParts) do
   begin
-    if Parts[Index] <> '' then
+    if mParts[mIndex] <> '' then
     begin
-      Result := Result + Parts[Index][1] + LowerCase(Copy(Parts[Index], 2, MaxInt));
+      Result := Result + mParts[mIndex][1] + LowerCase(Copy(mParts[mIndex], 2, MaxInt));
     end;
   end;
 end;
 
 function MessageRecord(const AMessage: string): string;
 var
-  Entry: TMessageEntry;
+  mEntry: TMessageEntry;
 begin
-  for Entry in MessageTable do
+  for mEntry in cMessageTable do
   begin
-    if SameText(Entry.Name, Trim(AMessage)) then
+    if SameText(mEntry.Name, Trim(AMessage)) then
     begin
-      Exit(Entry.RecordType);
+      Exit(mEntry.RecordType);
     end;
   end;
   Result := 'TMessage';
@@ -204,28 +206,28 @@ end;
 
 function RoutineSignature(const ADeclaration: string): string;
 var
-  Index, Depth: Integer;
-  Text: string;
+  mIndex, mDepth: Integer;
+  mText: string;
 begin
-  Text := StringReplace(StringReplace(ADeclaration, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
-  Depth := 0;
-  for Index := 1 to Length(Text) do
-    case Text[Index] of
-      '(': Inc(Depth);
-      ')': Dec(Depth);
+  mText := StringReplace(StringReplace(ADeclaration, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
+  mDepth := 0;
+  for mIndex := 1 to Length(mText) do
+    case mText[mIndex] of
+      '(': Inc(mDepth);
+      ')': Dec(mDepth);
       ';':
-        if Depth = 0 then
+        if mDepth = 0 then
         begin
-          Text := Copy(Text, 1, Index - 1);
+          mText := Copy(mText, 1, mIndex - 1);
           Break;
         end;
     end;
   // Zeilenumbrüche und Einrückung zu einem Leerzeichen.
-  while Pos('  ', Text) > 0 do
+  while Pos('  ', mText) > 0 do
   begin
-    Text := StringReplace(Text, '  ', ' ', [rfReplaceAll]);
+    mText := StringReplace(mText, '  ', ' ', [rfReplaceAll]);
   end;
-  Result := Trim(Text);
+  Result := Trim(mText);
 end;
 
 /// <summary>AList mit AItem dahinter, getrennt durch ASeparator, wenn AList nicht leer ist.</summary>
@@ -300,27 +302,27 @@ end;
 function AddMethod(ASource: TCommandSource; const AClass: TIndexSymbol; const ASection, ADeclaration,
   ABody: string): TArray<TTextEdit>;
 var
-  EndLine: Integer;
-  Indent: string;
+  mEndLine: Integer;
+  mIndent: string;
 begin
-  EndLine := AClass.Range.EndPos.Line;
-  Indent := ASource.Indent(EndLine);
-  Result := [ASource.BeforeLine(EndLine, Indent + ASection + ASource.LineBreak + Indent + '  ' + ADeclaration),
+  mEndLine := AClass.Range.EndPos.Line;
+  mIndent := ASource.Indent(mEndLine);
+  Result := [ASource.BeforeLine(mEndLine, mIndent + ASection + ASource.LineBreak + mIndent + '  ' + ADeclaration),
     ASource.AddBody(AClass.Name, ABody), ASource.RemoveCommand];
 end;
 
 function Lines(ASource: TCommandSource; const AParts: array of string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(AParts) do
+  for mIndex := 0 to High(AParts) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
       Result := Result + ASource.LineBreak;
     end;
-    Result := Result + AParts[Index];
+    Result := Result + AParts[mIndex];
   end;
 end;
 
@@ -328,28 +330,28 @@ end;
 
 function ExecuteImpl(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  ClassSymbol: TIndexSymbol;
-  Action: TCodeAction;
+  mSource: TCommandSource;
+  mClassSymbol: TIndexSymbol;
+  mAction: TCodeAction;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not Source.ClassAt(ClassSymbol) then
+    if not mSource.ClassAt(mClassSymbol) then
     begin
       Exit(Fail(cTexts[TClassCommandsText.ImplOnlyAppliesInA].Text, AReason));
     end;
     // Kommentar, Reihenfolge und Vorbefüllung nach classCompletion.* (#1834).
-    if not TClassCompletion.MissingBodies(Source.Tree, Source.Text,
-      TTextPosition.Create(ClassSymbol.SelectionRange.StartPos.Line, 0),
-      TClassBodyOptions.FromHost(AContext.Host, AContext.Uri, AContext.Style), Action) then
+    if not TClassCompletion.MissingBodies(mSource.Tree, mSource.Text,
+      TTextPosition.Create(mClassSymbol.SelectionRange.StartPos.Line, 0),
+      TClassBodyOptions.FromHost(AContext.Host, AContext.Uri, AContext.Style), mAction) then
     begin
-      Exit(Fail(cTexts[TClassCommandsText.AllMethodsOfHaveA].Fmt([ClassSymbol.Name]), AReason));
+      Exit(Fail(cTexts[TClassCommandsText.AllMethodsOfHaveA].Fmt([mClassSymbol.Name]), AReason));
     end;
-    AEdits := Action.Edits + [Source.RemoveCommand];
+    AEdits := mAction.Edits + [mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -469,35 +471,36 @@ end;
 /// <summary>Freigabe von AField in der Zeile: FreeAndNil(F), F.Free oder F.DisposeOf.</summary>
 function FreesField(const ALine, AField: string): Boolean;
 var
-  Line: string;
+  mLine: string;
 begin
-  Line := LowerCase(StringReplace(ALine, ' ', '', [rfReplaceAll]));
-  Result := (Pos('freeandnil(' + LowerCase(AField) + ')', Line) > 0) or
-    (Pos(LowerCase(AField) + '.free', Line) > 0) or (Pos(LowerCase(AField) + '.disposeof', Line) > 0);
+  mLine := LowerCase(StringReplace(ALine, ' ', '', [rfReplaceAll]));
+  Result := (Pos('freeandnil(' + LowerCase(AField) + ')', mLine) > 0) or
+    (Pos(LowerCase(AField) + '.free', mLine) > 0) or (Pos(LowerCase(AField) + '.disposeof', mLine) > 0);
 end;
 
-/// <summary>Vorhandener Destruktor Destroy der Klasse: Rumpf ABody (mehrzeilig) und ob die Klasse ihn deklariert.</summary>
+/// <summary>Vorhandener Destruktor Destroy der Klasse: Rumpf ABody (mehrzeilig) und ob die Klasse ihn
+/// deklariert.</summary>
 function FindDestructor(ASource: TCommandSource; const AClass: TIndexSymbol; out ABody: TIndexSymbol;
   out ADeclared: Boolean): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   ABody := Default(TIndexSymbol);
   ADeclared := False;
   Result := False;
-  for Symbol in ASource.UnitIndex.Symbols do
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.Constructor_) and SameText(Symbol.Container, AClass.Name) and
-      SameText(Symbol.Name, 'Destroy') then
+    if (mSymbol.Kind = TIndexSymbolKind.Constructor_) and SameText(mSymbol.Container, AClass.Name) and
+      SameText(mSymbol.Name, 'Destroy') then
     begin
-      if (Symbol.Range.StartPos.Line > AClass.Range.StartPos.Line) and
-        (Symbol.Range.EndPos.Line < AClass.Range.EndPos.Line) then
+      if (mSymbol.Range.StartPos.Line > AClass.Range.StartPos.Line) and
+        (mSymbol.Range.EndPos.Line < AClass.Range.EndPos.Line) then
       begin
         ADeclared := True;
       end
-      else if Symbol.Range.EndPos.Line > Symbol.Range.StartPos.Line then
+      else if mSymbol.Range.EndPos.Line > mSymbol.Range.StartPos.Line then
       begin
-        ABody := Symbol;
+        ABody := mSymbol;
         Result := True;
       end;
     end;
@@ -519,7 +522,8 @@ begin
   Result := False;
 end;
 
-/// <summary>Zeile, vor die die Freigaben kommen: das erste "inherited" im Rumpf, sonst das abschließende "end".</summary>
+/// <summary>Zeile, vor die die Freigaben kommen: das erste "inherited" im Rumpf, sonst das abschließende
+/// "end".</summary>
 function FreeTarget(ASource: TCommandSource; const ABody: TIndexSymbol): Integer;
 var
   mLine: Integer;
@@ -572,44 +576,44 @@ end;
 
 function ExecuteDtor(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  ClassSymbol, Existing: TIndexSymbol;
-  Fields: TArray<string>;
-  Body: string;
-  Index: Integer;
-  Declared: Boolean;
+  mSource: TCommandSource;
+  mClassSymbol, mExisting: TIndexSymbol;
+  mFields: TArray<string>;
+  mBody: string;
+  mIndex: Integer;
+  mDeclared: Boolean;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not Source.ClassAt(ClassSymbol) then
+    if not mSource.ClassAt(mClassSymbol) then
     begin
       Exit(Fail(cTexts[TClassCommandsText.DtorOnlyAppliesInA].Text, AReason));
     end;
-    Fields := CreatedFields(Source, ClassSymbol.Name);
+    mFields := CreatedFields(mSource, mClassSymbol.Name);
     // Vorhandenen Destruktor ergänzen statt einen zweiten anzulegen.
-    if FindDestructor(Source, ClassSymbol, Existing, Declared) then
+    if FindDestructor(mSource, mClassSymbol, mExisting, mDeclared) then
     begin
-      Exit(ExtendDestructor(Source, ClassSymbol, Existing, Fields, AEdits, AReason));
+      Exit(ExtendDestructor(mSource, mClassSymbol, mExisting, mFields, AEdits, AReason));
     end;
-    Body := Format('destructor %s.Destroy;', [ClassSymbol.Name]) + Source.LineBreak + 'begin';
+    mBody := Format('destructor %s.Destroy;', [mClassSymbol.Name]) + mSource.LineBreak + 'begin';
     // In umgekehrter Reihenfolge der Erzeugung freigeben.
-    for Index := High(Fields) downto 0 do
+    for mIndex := High(mFields) downto 0 do
     begin
-      Body := Body + Source.LineBreak + Format('  FreeAndNil(%s);', [Fields[Index]]);
+      mBody := mBody + mSource.LineBreak + Format('  FreeAndNil(%s);', [mFields[mIndex]]);
     end;
-    Body := Body + Source.LineBreak + '  inherited;' + Source.LineBreak + 'end;';
-    if Declared then
+    mBody := mBody + mSource.LineBreak + '  inherited;' + mSource.LineBreak + 'end;';
+    if mDeclared then
     begin
-      AEdits := [Source.AddBody(ClassSymbol.Name, Body), Source.RemoveCommand];
+      AEdits := [mSource.AddBody(mClassSymbol.Name, mBody), mSource.RemoveCommand];
     end
     else
     begin
-      AEdits := AddMethod(Source, ClassSymbol, 'public', 'destructor Destroy; override;', Body);
+      AEdits := AddMethod(mSource, mClassSymbol, 'public', 'destructor Destroy; override;', mBody);
     end;
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -617,62 +621,62 @@ end;
 
 function ExecuteMsg(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  ClassSymbol: TIndexSymbol;
-  Message, Name, RecordType: string;
+  mSource: TCommandSource;
+  mClassSymbol: TIndexSymbol;
+  mMessage, mName, mRecordType: string;
 begin
   AEdits := nil;
-  Message := UpperCase(Trim(AContext.Arguments));
-  if (Pos('_', Message) < 2) or not IsValidIdent(Message) then
+  mMessage := UpperCase(Trim(AContext.Arguments));
+  if (Pos('_', mMessage) < 2) or not IsValidIdent(mMessage) then
   begin
     Exit(Fail(cTexts[TClassCommandsText.ExpectedIsMsgWMNAME].Text, AReason));
   end;
-  Name := MessageMethodName(Message);
-  RecordType := MessageRecord(Message);
-  Source := TCommandSource.Create(AContext);
+  mName := MessageMethodName(mMessage);
+  mRecordType := MessageRecord(mMessage);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not Source.ClassAt(ClassSymbol) then
+    if not mSource.ClassAt(mClassSymbol) then
     begin
       Exit(Fail(cTexts[TClassCommandsText.MsgOnlyAppliesInA].Text, AReason));
     end;
-    AEdits := AddMethod(Source, ClassSymbol, 'protected',
-      Format('procedure %s(var Message: %s); message %s;', [Name, RecordType, Message]),
-      Lines(Source, [Format('procedure %s.%s(var Message: %s);', [ClassSymbol.Name, Name, RecordType]), 'begin',
+    AEdits := AddMethod(mSource, mClassSymbol, 'protected',
+      Format('procedure %s(var Message: %s); message %s;', [mName, mRecordType, mMessage]),
+      Lines(mSource, [Format('procedure %s.%s(var Message: %s);', [mClassSymbol.Name, mName, mRecordType]), 'begin',
         '  inherited;', 'end;']));
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
 { /override }
 
 const
-  VisibilityNames: array[TIndexVisibility] of string = ('public', 'published', 'protected', 'strict protected',
+  cVisibilityNames: array[TIndexVisibility] of string = ('public', 'published', 'protected', 'strict protected',
     'private', 'strict private');
 
 /// <summary>Sucht eine virtuelle Methode AName in AUnit, Klasse AClassName; liefert auch den Vorfahren.</summary>
 function FindInUnit(const AUnit: TUnitIndex; const AClassName, AName: string; out AMethod: TIndexSymbol;
   out AAncestor: string): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   AAncestor := '';
   Result := False;
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.ClassType) and SameText(Symbol.Name, AClassName) and
-      (Length(Symbol.Ancestors) > 0) then
+    if (mSymbol.Kind = TIndexSymbolKind.ClassType) and SameText(mSymbol.Name, AClassName) and
+      (Length(mSymbol.Ancestors) > 0) then
     begin
-      AAncestor := Symbol.Ancestors[0];
+      AAncestor := mSymbol.Ancestors[0];
     end;
   end;
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and Symbol.IsVirtual and
-      SameText(Symbol.Container, AClassName) and SameText(Symbol.Name, AName) then
+    if (mSymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and mSymbol.IsVirtual and
+      SameText(mSymbol.Container, AClassName) and SameText(mSymbol.Name, AName) then
     begin
-      AMethod := Symbol;
+      AMethod := mSymbol;
       Exit(True);
     end;
   end;
@@ -681,10 +685,10 @@ end;
 /// <summary>Datei einer anderen Unit; der Index kennt keine Parameterlisten.</summary>
 function LoadText(const AFileName: string; out AText: string): Boolean;
 var
-  Format: TFileFormat;
+  mFormat: TFileFormat;
 begin
   try
-    AText := TFileEncoding.LoadFromFile(AFileName, Format);
+    AText := TFileEncoding.LoadFromFile(AFileName, mFormat);
     Result := True;
   except
     on EInOutError do
@@ -696,7 +700,7 @@ end;
 
 function RangeText(const ALines: TArray<string>; const ARange: TTextRange): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if ARange.StartPos.Line = ARange.EndPos.Line then
   begin
@@ -704,9 +708,9 @@ begin
       ARange.EndPos.Character - ARange.StartPos.Character));
   end;
   Result := Copy(ALines[ARange.StartPos.Line], ARange.StartPos.Character + 1, MaxInt);
-  for Index := ARange.StartPos.Line + 1 to ARange.EndPos.Line - 1 do
+  for mIndex := ARange.StartPos.Line + 1 to ARange.EndPos.Line - 1 do
   begin
-    Result := Result + ' ' + ALines[Index];
+    Result := Result + ' ' + ALines[mIndex];
   end;
   Result := Result + ' ' + Copy(ALines[ARange.EndPos.Line], 1, ARange.EndPos.Character);
 end;
@@ -797,86 +801,86 @@ end;
 
 function ExecuteOverride(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  ClassSymbol: TIndexSymbol;
-  Signature, Keyword, Rest, Arguments, Call: string;
-  Header: TVirtualHeader;
-  Space: Integer;
+  mSource: TCommandSource;
+  mClassSymbol: TIndexSymbol;
+  mSignature, mKeyword, mRest, mArguments, mCall: string;
+  mHeader: TVirtualHeader;
+  mSpace: Integer;
 begin
   AEdits := nil;
   if not IsValidIdent(AContext.Arguments) then
   begin
     Exit(Fail(cTexts[TClassCommandsText.ExpectedIsOverrideMethodName].Text, AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not Source.ClassAt(ClassSymbol) then
+    if not mSource.ClassAt(mClassSymbol) then
     begin
       Exit(Fail(cTexts[TClassCommandsText.OverrideOnlyAppliesInA].Text, AReason));
     end;
-    if not FindVirtual(Source, AContext.Index, ClassSymbol, AContext.Arguments, Header) then
+    if not FindVirtual(mSource, AContext.Index, mClassSymbol, AContext.Arguments, mHeader) then
     begin
-      Exit(Fail(cTexts[TClassCommandsText.NoVirtualMethodInThe].Fmt([AContext.Arguments]) + ClassSymbol.Name,
+      Exit(Fail(cTexts[TClassCommandsText.NoVirtualMethodInThe].Fmt([AContext.Arguments]) + mClassSymbol.Name,
         AReason));
     end;
-    Signature := Header.Signature;
+    mSignature := mHeader.Signature;
     // "procedure Paint" wird zu "procedure TFoo.Paint".
-    Space := Pos(' ', Signature);
-    Keyword := Copy(Signature, 1, Space - 1);
-    Rest := Trim(Copy(Signature, Space + 1, MaxInt));
-    if StartsText('class ', Signature) then
+    mSpace := Pos(' ', mSignature);
+    mKeyword := Copy(mSignature, 1, mSpace - 1);
+    mRest := Trim(Copy(mSignature, mSpace + 1, MaxInt));
+    if StartsText('class ', mSignature) then
     begin
-      Space := Pos(' ', Rest);
-      Keyword := Keyword + ' ' + Copy(Rest, 1, Space - 1);
-      Rest := Trim(Copy(Rest, Space + 1, MaxInt));
+      mSpace := Pos(' ', mRest);
+      mKeyword := mKeyword + ' ' + Copy(mRest, 1, mSpace - 1);
+      mRest := Trim(Copy(mRest, mSpace + 1, MaxInt));
     end;
-    Arguments := ParameterNames(Signature);
-    if Arguments <> '' then
+    mArguments := ParameterNames(mSignature);
+    if mArguments <> '' then
     begin
-      Call := Format('inherited %s(%s)', [AContext.Arguments, Arguments]);
+      mCall := Format('inherited %s(%s)', [AContext.Arguments, mArguments]);
     end
     else
     begin
-      Call := 'inherited ' + AContext.Arguments;
+      mCall := 'inherited ' + AContext.Arguments;
     end;
-    if EndsText('function', Keyword) then
+    if EndsText('function', mKeyword) then
     begin
-      Call := 'Result := ' + Call;
+      mCall := 'Result := ' + mCall;
     end
-    else if Arguments = '' then
+    else if mArguments = '' then
     begin
-      Call := 'inherited';
+      mCall := 'inherited';
     end;
-    AEdits := AddMethod(Source, ClassSymbol, VisibilityNames[Header.Visibility], Signature + '; override;',
-      Lines(Source, [Format('%s %s.%s;', [Keyword, ClassSymbol.Name, Rest]), 'begin', '  ' + Call + ';', 'end;']));
+    AEdits := AddMethod(mSource, mClassSymbol, cVisibilityNames[mHeader.Visibility], mSignature + '; override;',
+      Lines(mSource, [Format('%s %s.%s;', [mKeyword, mClassSymbol.Name, mRest]), 'begin', '  ' + mCall + ';', 'end;']));
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
 function CtorFields(const AContext: TSlashContext): TArray<string>;
 var
-  Source: TCommandSource;
-  ClassSymbol, Symbol: TIndexSymbol;
+  mSource: TCommandSource;
+  mClassSymbol, mSymbol: TIndexSymbol;
 begin
   Result := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not Source.ClassAt(ClassSymbol) then
+    if not mSource.ClassAt(mClassSymbol) then
     begin
       Exit;
     end;
-    for Symbol in Source.UnitIndex.Symbols do
+    for mSymbol in mSource.UnitIndex.Symbols do
     begin
-      if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, ClassSymbol.Name) and
-        (Symbol.TypeName <> '') then
+      if (mSymbol.Kind = TIndexSymbolKind.Field) and SameText(mSymbol.Container, mClassSymbol.Name) and
+        (mSymbol.TypeName <> '') then
       begin
-        Result := Result + [Symbol.Name];
+        Result := Result + [mSymbol.Name];
       end;
     end;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -885,28 +889,28 @@ end;
 procedure CollectVirtuals(const AUnit: TUnitIndex; const AClassName: string; const AOwn: TArray<string>;
   var AResult: TArray<string>; out AAncestor: string; out AFound: Boolean);
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   AAncestor := '';
   AFound := False;
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.ClassType) and SameText(Symbol.Name, AClassName) then
+    if (mSymbol.Kind = TIndexSymbolKind.ClassType) and SameText(mSymbol.Name, AClassName) then
     begin
       AFound := True;
-      if Length(Symbol.Ancestors) > 0 then
+      if Length(mSymbol.Ancestors) > 0 then
       begin
-        AAncestor := Symbol.Ancestors[0];
+        AAncestor := mSymbol.Ancestors[0];
       end;
     end;
   end;
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and Symbol.IsVirtual and
-      SameText(Symbol.Container, AClassName) and not MatchText(Symbol.Name, AOwn) and
-      not MatchText(Symbol.Name, AResult) then
+    if (mSymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and mSymbol.IsVirtual and
+      SameText(mSymbol.Container, AClassName) and not MatchText(mSymbol.Name, AOwn) and
+      not MatchText(mSymbol.Name, AResult) then
     begin
-      AResult := AResult + [Symbol.Name];
+      AResult := AResult + [mSymbol.Name];
     end;
   end;
 end;
@@ -974,12 +978,12 @@ end;
 
 function MessageNames: TArray<string>;
 var
-  Entry: TMessageEntry;
+  mEntry: TMessageEntry;
 begin
   Result := nil;
-  for Entry in MessageTable do
+  for mEntry in cMessageTable do
   begin
-    Result := Result + [Entry.Name];
+    Result := Result + [mEntry.Name];
   end;
 end;
 
@@ -1170,7 +1174,7 @@ begin
   Result := '';
   if AContext.Host <> nil then
   begin
-    Result := LowerCase(Trim(AContext.Host.Setting(AContext.Uri, TSlashSettings.InterfaceSection)));
+    Result := LowerCase(Trim(AContext.Host.Setting(AContext.Uri, TSlashSettings.cInterfaceSection)));
   end;
   if (Result <> 'private') and (Result <> 'protected') then
   begin
@@ -1213,7 +1217,8 @@ begin
 end;
 
 /// <summary>Deklaration und Rumpf für die fehlende Methode AMember; nil, wenn sie sich nicht erzeugen lässt.</summary>
-function MemberEdits(const ATarget: TIntfTarget; const AMember: TResolvedSymbol): TArray<TTextEdit>;
+function MemberEdits(const ATarget: TIntfTarget; const AMember: TResolvedSymbol;
+  const AOptions: TClassBodyOptions): TArray<TTextEdit>;
 var
   mLines: TArray<string>;
   mStub: TInterfaceStub;
@@ -1230,7 +1235,7 @@ begin
   end;
   Result := TInterfaceStubs.ClassEdits(mStub, ATarget.EndLine, ATarget.Indent, ATarget.Section, ATarget.NeedHeader,
     mSource.LineBreak);
-  if TClassCompletion.BodyEdit(mSource.Tree, mSource.Text, ATarget.TypeName, mStub.Body, mEdit) then
+  if TClassCompletion.BodyEdit(mSource.Tree, mSource.Text, ATarget.TypeName, mStub.Body, AOptions, mEdit) then
   begin
     Result := Result + [mEdit];
   end
@@ -1244,6 +1249,7 @@ end;
 function IntfEdits(ASource: TCommandSource; const AContext: TSlashContext; const AName: string;
   out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
+  mOptions: TClassBodyOptions;
   mClass: TIndexSymbol;
   mTarget: TIntfTarget;
   mOwn: TUnitIndex;
@@ -1272,9 +1278,12 @@ begin
     Exit(Fail(cTexts[TClassCommandsText.IsAlreadyAttachedToAnd].Fmt([AName, mClass.Name]), AReason));
   end;
   mEdits := nil;
+  mOptions := TClassBodyOptions.Default;
   for mMember in mMissing do
   begin
-    mEdits := mEdits + MemberEdits(mTarget, mMember);
+    mEdits := mEdits + MemberEdits(mTarget, mMember, mOptions);
+    // Jede Methode sieht denselben Ausgangstext: Den Typkommentar bekommt nur die erste.
+    mOptions.TypeComment := TTypeCommentStyle.Off;
   end;
   if not mListed and not HeaderEdit(ASource, mClass, AName, mEdit) then
   begin

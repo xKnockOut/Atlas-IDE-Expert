@@ -133,15 +133,15 @@ end;
 
 procedure TAtlasAccessibilityTests.NavigateTargetCoversChildrenAndSiblings;
 begin
-  Assert.AreEqual(0, TAtlasAccessibility.NavigateTarget(UiaNavigateFirstChild, -1, 3));
-  Assert.AreEqual(2, TAtlasAccessibility.NavigateTarget(UiaNavigateLastChild, -1, 3));
-  Assert.AreEqual(-1, TAtlasAccessibility.NavigateTarget(UiaNavigateFirstChild, -1, 0));
-  Assert.AreEqual(2, TAtlasAccessibility.NavigateTarget(UiaNavigateNextSibling, 1, 3));
-  Assert.AreEqual(-1, TAtlasAccessibility.NavigateTarget(UiaNavigateNextSibling, 2, 3));
-  Assert.AreEqual(0, TAtlasAccessibility.NavigateTarget(UiaNavigatePreviousSibling, 1, 3));
-  Assert.AreEqual(-1, TAtlasAccessibility.NavigateTarget(UiaNavigatePreviousSibling, 0, 3));
+  Assert.AreEqual(0, TAtlasAccessibility.NavigateTarget(cUiaNavigateFirstChild, -1, 3));
+  Assert.AreEqual(2, TAtlasAccessibility.NavigateTarget(cUiaNavigateLastChild, -1, 3));
+  Assert.AreEqual(-1, TAtlasAccessibility.NavigateTarget(cUiaNavigateFirstChild, -1, 0));
+  Assert.AreEqual(2, TAtlasAccessibility.NavigateTarget(cUiaNavigateNextSibling, 1, 3));
+  Assert.AreEqual(-1, TAtlasAccessibility.NavigateTarget(cUiaNavigateNextSibling, 2, 3));
+  Assert.AreEqual(0, TAtlasAccessibility.NavigateTarget(cUiaNavigatePreviousSibling, 1, 3));
+  Assert.AreEqual(-1, TAtlasAccessibility.NavigateTarget(cUiaNavigatePreviousSibling, 0, 3));
   // Einträge haben keine Kinder.
-  Assert.AreEqual(-1, TAtlasAccessibility.NavigateTarget(UiaNavigateFirstChild, 1, 3));
+  Assert.AreEqual(-1, TAtlasAccessibility.NavigateTarget(cUiaNavigateFirstChild, 1, 3));
 end;
 
 procedure TAtlasAccessibilityTests.ItemsAreListItemsWithPositionAndStatus;
@@ -150,25 +150,25 @@ var
   Bounds: TAtlasUiaRect;
 begin
   List := TAtlasAccessibleList.Create(0, 'Vorschläge', NewFake);
-  First := Child(List, UiaNavigateFirstChild);
+  First := Child(List, cUiaNavigateFirstChild);
   Assert.IsNotNull(First);
-  Assert.AreEqual(UiaListItemControlType, Integer(Prop(First, ControlTypeProperty)));
+  Assert.AreEqual(cUiaListItemControlType, Integer(Prop(First, ControlTypeProperty)));
   Assert.AreEqual('Add', string(Prop(First, NameProperty)));
   Assert.AreEqual('function Add', string(Prop(First, HelpTextProperty)));
   Assert.AreEqual(1, Integer(Prop(First, PositionInSetProperty)));
   Assert.AreEqual(5, Integer(Prop(First, SizeOfSetProperty)));
   Assert.IsTrue(VarIsEmpty(Prop(First, ItemStatusProperty)));
-  Next := Child(Child(First, UiaNavigateNextSibling), UiaNavigateNextSibling);
+  Next := Child(Child(First, cUiaNavigateNextSibling), cUiaNavigateNextSibling);
   Assert.AreEqual('AddPair', string(Prop(Next, NameProperty)));
   Assert.AreEqual('deprecated', string(Prop(Next, ItemStatusProperty)));
   Assert.AreEqual(3, Integer(Prop(Next, PositionInSetProperty)));
   Assert.AreEqual(S_OK, Next.get_BoundingRectangle(Bounds));
   Assert.AreEqual(240.0, Bounds.Top, 0.001);
   Assert.AreEqual(200.0, Bounds.Width, 0.001);
-  Parent := Child(Next, UiaNavigateParent);
+  Parent := Child(Next, cUiaNavigateParent);
   Assert.IsTrue((Parent as IUnknown) = (List as IUnknown));
-  Assert.AreEqual('Assign', string(Prop(Child(List, UiaNavigateLastChild), NameProperty)));
-  Assert.IsNull(Child(Child(List, UiaNavigateLastChild), UiaNavigateNextSibling));
+  Assert.AreEqual('Assign', string(Prop(Child(List, cUiaNavigateLastChild), NameProperty)));
+  Assert.IsNull(Child(Child(List, cUiaNavigateLastChild), cUiaNavigateNextSibling));
 end;
 
 procedure TAtlasAccessibilityTests.HeadersAreTextAndNotSelectable;
@@ -177,8 +177,8 @@ var
   Pattern: IUnknown;
 begin
   List := TAtlasAccessibleList.Create(0, 'Vorschläge', NewFake);
-  Header := Child(Child(List, UiaNavigateLastChild), UiaNavigatePreviousSibling);
-  Assert.AreEqual(UiaTextControlType, Integer(Prop(Header, ControlTypeProperty)));
+  Header := Child(Child(List, cUiaNavigateLastChild), cUiaNavigatePreviousSibling);
+  Assert.AreEqual(cUiaTextControlType, Integer(Prop(Header, ControlTypeProperty)));
   Assert.AreEqual('Weitere Einträge', string(Prop(Header, NameProperty)));
   Assert.AreEqual(S_OK, (Header as IAtlasRawElementProvider).GetPatternProvider(SelectionItemPattern, Pattern));
   Assert.IsNull(Pattern);
@@ -197,7 +197,7 @@ begin
   List := TAtlasAccessibleList.Create(0, 'Vorschläge', Source);
   Assert.AreEqual(S_OK, (List as IAtlasRawElementProvider).GetPatternProvider(SelectionPattern, Pattern));
   Assert.IsNotNull(Pattern);
-  Second := Child(Child(List, UiaNavigateFirstChild), UiaNavigateNextSibling);
+  Second := Child(Child(List, cUiaNavigateFirstChild), cUiaNavigateNextSibling);
   Assert.AreEqual(S_OK, (Second as IAtlasRawElementProvider).GetPatternProvider(SelectionItemPattern, Pattern));
   Assert.IsNotNull(Pattern);
   Assert.AreEqual(S_OK, (Pattern as IAtlasSelectionItemProvider).get_IsSelected(Selected));
@@ -218,7 +218,7 @@ begin
   Fake := NewFake;
   Source := Fake;
   List := TAtlasAccessibleList.Create(0, 'Vorschläge', Source);
-  Item := Child(Child(List, UiaNavigateFirstChild), UiaNavigateNextSibling);
+  Item := Child(Child(List, cUiaNavigateFirstChild), cUiaNavigateNextSibling);
   // Weitergetippt: "Add" fällt heraus, AddStrings steht jetzt vorn.
   Fake.Ids := [1, 2];
   Fake.Names := ['AddStrings', 'AddPair'];
@@ -238,11 +238,11 @@ var
 begin
   ListObject := TAtlasAccessibleList.Create(0, 'Vorschläge', NewFake);
   List := ListObject;
-  Item := Child(List, UiaNavigateFirstChild);
+  Item := Child(List, cUiaNavigateFirstChild);
   ListObject.Detach;
   Assert.AreEqual(ElementNotAvailable, (Item as IAtlasRawElementProvider).GetPropertyValue(NameProperty, Value));
-  Assert.AreEqual(ElementNotAvailable, Item.Navigate(UiaNavigateNextSibling, Target));
-  Assert.IsNull(Child(List, UiaNavigateFirstChild));
+  Assert.AreEqual(ElementNotAvailable, Item.Navigate(cUiaNavigateNextSibling, Target));
+  Assert.IsNull(Child(List, cUiaNavigateFirstChild));
 end;
 
 end.

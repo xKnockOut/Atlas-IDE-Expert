@@ -104,7 +104,7 @@ begin
   // Fall Cm.W1047 aus Tests/Compilermeldungen: dcc meldet „Unsicherer Code '@-Operator'“.
   mFound := Findings(Source('{$WARN UNSAFE_CODE ON}'#10, '  P: Pointer;'#10, '  P := @AWert;'#10));
   Assert.AreEqual('13:7 @AWert: Der @-Operator ist unsicherer Code (wie W1047).|', Messages(mFound));
-  Assert.AreEqual(UnsafeCodeRuleId, mFound[0].RuleId);
+  Assert.AreEqual(cUnsafeCodeRuleId, mFound[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
   Assert.AreEqual(13, mFound[0].Range.EndPos.Character);
   Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
@@ -286,7 +286,7 @@ begin
   mFound := False;
   for mRule in BuiltinRules do
   begin
-    if mRule.Descriptor.Id = UnsafeCodeRuleId then
+    if mRule.Descriptor.Id = cUnsafeCodeRuleId then
     begin
       mFound := True;
     end;

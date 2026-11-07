@@ -55,7 +55,7 @@ uses
 
 const
   // Name der IDE-Aktion „Auswerten/Ändern“ je Delphi-Version; ungeprüft, siehe Handtest AW15.
-  EvaluateActionNames: array[0..2] of string = ('RunEvaluateModifyCommand', 'RunEvaluateCommand',
+  cEvaluateActionNames: array[0..2] of string = ('RunEvaluateModifyCommand', 'RunEvaluateCommand',
     'DebugEvaluateCommand');
 
 /// <summary>Erste Aktion in AServices, für die AMatch zutrifft; nil ohne.</summary>
@@ -132,7 +132,7 @@ begin
   begin
     Exit;
   end;
-  for mName in EvaluateActionNames do
+  for mName in cEvaluateActionNames do
   begin
     if Result = nil then
     begin

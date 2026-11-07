@@ -94,6 +94,7 @@ implementation
 uses
   System.UITypes,
   Vcl.Dialogs,
+  Vcl.Graphics,
   Atlas.UI.Rules.Strings;
 
 const
@@ -151,7 +152,8 @@ begin
   Host.AddHint(TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesGlobalNote), 34);
   mRow := AddRow(cRowHeight);
   FRulesProject := AddButton(mRow, TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesProjectButton), 0, RulesLinkClick);
-  FRulesGlobal := AddButton(mRow, TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesGlobalButton), cButtonGap, RulesLinkClick);
+  FRulesGlobal := AddButton(mRow, TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesGlobalButton), cButtonGap,
+    RulesLinkClick);
   FRulesProject.Enabled := Assigned(FHooks.OpenProject);
   FRulesGlobal.Enabled := Assigned(FHooks.OpenGlobal);
 end;
@@ -182,7 +184,8 @@ begin
     FBaselineInfo.Caption := FHooks.BaselineInfo();
   end;
   mRow := AddRow(cRowHeight);
-  FBaselineUpdate := AddButton(mRow, TAtlasRulesStrings.Text(TAtlasRulesTextId.ServerPageBaselineUpdate), 0, BaselineClick);
+  FBaselineUpdate := AddButton(mRow, TAtlasRulesStrings.Text(TAtlasRulesTextId.ServerPageBaselineUpdate), 0,
+    BaselineClick);
   FBaselineDelete := AddButton(mRow, TAtlasRulesStrings.Text(TAtlasRulesTextId.ServerPageBaselineDelete), cButtonGap,
     BaselineClick);
   FBaselineUpdate.Enabled := Assigned(FHooks.BaselineUpdate);

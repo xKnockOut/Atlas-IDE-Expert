@@ -51,13 +51,13 @@ type
 
   TLspInlineAccessor = class
   public const
-    ClientCommand = 'atlas.inlineAccessor';
-    ApplyCommand = 'atlas.server.inlineAccessor';
-    Kind = 'refactor.inline';
-    AnnotationId = 'inlineAccessor';
-    ScopeHere = 'here';
-    ScopeUnit = 'unit';
-    ScopeProject = 'project';
+    cClientCommand = 'atlas.inlineAccessor';
+    cApplyCommand = 'atlas.server.inlineAccessor';
+    cKind = 'refactor.inline';
+    cAnnotationId = 'inlineAccessor';
+    cScopeHere = 'here';
+    cScopeUnit = 'unit';
+    cScopeProject = 'project';
   public
     /// <summary>Code-Aktionen an APosition; nil, wenn abgeschaltet oder dort nichts zu ersetzen ist. Der
     /// Aufrufer übernimmt die Objekte.</summary>
@@ -146,57 +146,57 @@ end;
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
 end;
 
 /// <summary>Klasse an ALine: Deklaration (Kopf bis end) oder Rumpf einer ihrer Methoden; nil ohne.</summary>
 function ClassAt(ATree: TSyntaxTree; ALine: Integer): TSyntaxNode;
 var
-  Routine: TSyntaxNode;
-  Name: string;
+  mRoutine: TSyntaxNode;
+  mName: string;
 begin
   Result := TClassLayout.DeclAt(ATree, ALine, True);
   if Result <> nil then
   begin
     Exit;
   end;
-  Routine := nil;
+  mRoutine := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       Result := (ANode.StartPos.Line <= ALine) and (ANode.EndPos.Line >= ALine);
       if Result and (ANode.Kind = TSyntaxKind.RoutineDecl) then
       begin
-        Routine := ANode;
+        mRoutine := ANode;
       end;
     end);
-  if (Routine = nil) or (Pos('.', Routine.Name) = 0) then
+  if (mRoutine = nil) or (Pos('.', mRoutine.Name) = 0) then
   begin
     Exit;
   end;
-  Name := Copy(Routine.Name, 1, LastDelimiter('.', Routine.Name) - 1);
-  if Pos('.', Name) > 0 then
+  mName := Copy(mRoutine.Name, 1, LastDelimiter('.', mRoutine.Name) - 1);
+  if Pos('.', mName) > 0 then
   begin
-    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+    mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
   end;
-  Result := TClassLayout.DeclNamed(ATree, Name);
+  Result := TClassLayout.DeclNamed(ATree, mName);
 end;
 
 /// <summary>Alle trivialen Zugriffsmethoden der Datei.</summary>
 function CountInFile(ATree: TSyntaxTree; const AText: string; const AOptions: TInlineAccessorOptions;
   const AInterfaces: TInterfaceDeclares): Integer;
 var
-  Decl: TSyntaxNode;
-  Layout: TClassLayout;
+  mDecl: TSyntaxNode;
+  mLayout: TClassLayout;
 begin
   Result := 0;
-  for Decl in TClassLayout.AllDecls(ATree) do
+  for mDecl in TClassLayout.AllDecls(ATree) do
   begin
-    Layout := TClassLayout.Read(ATree, AText, Decl);
+    mLayout := TClassLayout.Read(ATree, AText, mDecl);
     try
-      Inc(Result, Length(TInlineAccessor.InClass(Layout, AOptions, AInterfaces)));
+      Inc(Result, Length(TInlineAccessor.InClass(mLayout, AOptions, AInterfaces)));
     finally
-      Layout.Free;
+      mLayout.Free;
     end;
   end;
 end;
@@ -215,11 +215,11 @@ begin
   mArguments.Add(AScope);
   mCommand := TJSONObject.Create;
   mCommand.AddPair('title', ATitle);
-  mCommand.AddPair('command', TLspInlineAccessor.ClientCommand);
+  mCommand.AddPair('command', TLspInlineAccessor.cClientCommand);
   mCommand.AddPair('arguments', mArguments);
   Result := TJSONObject.Create;
   Result.AddPair('title', ATitle);
-  Result.AddPair('kind', TLspInlineAccessor.Kind);
+  Result.AddPair('kind', TLspInlineAccessor.cKind);
   Result.AddPair('command', mCommand);
 end;
 
@@ -254,7 +254,7 @@ begin
   end;
   if mFound <> nil then
   begin
-    Result := Result + [Action(TInlineAccessor.Title(mFound), AUri, APosition, ScopeHere)];
+    Result := Result + [Action(TInlineAccessor.Title(mFound), AUri, APosition, cScopeHere)];
   end;
   mCount := 0;
   if AOffer.Bulk and ((mFound <> nil) or mOnHeader) then
@@ -264,8 +264,8 @@ begin
   if mCount > 0 then
   begin
     Result := Result + [Action(cTexts[TLspInlineAccessorText.ReplaceAllTrivialAccessorsOf].Fmt([mCount]), AUri,
-      APosition, ScopeUnit), Action(cTexts[TLspInlineAccessorText.ReplaceAllTrivialAccessorsOf2].Text, AUri, APosition,
-      ScopeProject)];
+      APosition, cScopeUnit), Action(cTexts[TLspInlineAccessorText.ReplaceAllTrivialAccessorsOf2].Text, AUri, APosition,
+      cScopeProject)];
   end;
 end;
 
@@ -386,13 +386,13 @@ var
   mCurrent: TAccessorUnit;
 begin
   mCurrent := AddUnit(AFileName, AText, ATree, False);
-  if FContext.Scope = TLspInlineAccessor.ScopeHere then
+  if FContext.Scope = TLspInlineAccessor.cScopeHere then
   begin
     AddHere(mCurrent, APosition);
     Exit;
   end;
   AddClasses(mCurrent);
-  if FContext.Scope = TLspInlineAccessor.ScopeProject then
+  if FContext.Scope = TLspInlineAccessor.cScopeProject then
   begin
     AddProject(AFileName);
   end;
@@ -517,7 +517,7 @@ begin
     AddEdits(mUnit);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('edit', FChanges.ToJson(TLspInlineAccessor.AnnotationId,
+  Result.AddPair('edit', FChanges.ToJson(TLspInlineAccessor.cAnnotationId,
     cTexts[TLspInlineAccessorText.ReplaceAccessorWithField].Text,
     cTexts[TLspInlineAccessorText.AccessorsFiles].Fmt([mTotal, FChanges.FileCount])));
   Result.AddPair('warnings', FChanges.WarningsJson);
@@ -531,7 +531,7 @@ class function TLspInlineAccessor.Execute(AResolver: TNameResolver; ATree: TSynt
 var
   mRun: TAccessorRun;
 begin
-  if not MatchText(AContext.Scope, [ScopeHere, ScopeUnit, ScopeProject]) then
+  if not MatchText(AContext.Scope, [cScopeHere, cScopeUnit, cScopeProject]) then
   begin
     raise Fail(cTexts[TLspInlineAccessorText.UnknownScope].Fmt([AContext.Scope]));
   end;

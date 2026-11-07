@@ -68,9 +68,9 @@ type
 
   TAtlasWelcomeProjects = class
   public const
-    DefaultMax = 8;
-    MinMax = 1;
-    MaxMax = 30;
+    cDefaultMax = 8;
+    cMinMax = 1;
+    cMaxMax = 30;
   public
     /// <summary>Einträge zu ARecent (Reihenfolge der IDE), jedes Projekt einmal, ohne entfernte, höchstens AMax
     /// (auf MinMax..MaxMax begrenzt).</summary>
@@ -101,7 +101,7 @@ uses
   System.Math;
 
 const
-  Ellipsis = #$2026;
+  cEllipsis = #$2026;
 
 { TAtlasProjectPill }
 
@@ -190,28 +190,28 @@ end;
 class function TAtlasWelcomeProjects.Entries(const ARecent: TArray<string>; const ALoad: TAtlasProjectSummaryLoader;
   AMax: Integer): TAtlasProjectEntries;
 var
-  Limit: Integer;
-  Project: string;
-  Seen: TArray<string>;
-  Entry: TAtlasProjectEntry;
+  mLimit: Integer;
+  mProject: string;
+  mSeen: TArray<string>;
+  mEntry: TAtlasProjectEntry;
 begin
   Result := nil;
-  Seen := nil;
-  Limit := Min(Max(AMax, MinMax), MaxMax);
-  for Project in ARecent do
+  mSeen := nil;
+  mLimit := Min(Max(AMax, cMinMax), cMaxMax);
+  for mProject in ARecent do
   begin
-    if Length(Result) >= Limit then
+    if Length(Result) >= mLimit then
     begin
       Break;
     end;
-    if (Trim(Project) = '') or SeenBefore(Seen, TAtlasProjectSummaries.NormalizedPath(Project)) then
+    if (Trim(mProject) = '') or SeenBefore(mSeen, TAtlasProjectSummaries.NormalizedPath(mProject)) then
     begin
       Continue;
     end;
-    Entry := EntryFor(Trim(Project), ALoad);
-    if not (Entry.HasSummary and Entry.Summary.Hidden) then
+    mEntry := EntryFor(Trim(mProject), ALoad);
+    if not (mEntry.HasSummary and mEntry.Summary.Hidden) then
     begin
-      Result := Result + [Entry];
+      Result := Result + [mEntry];
     end;
   end;
 end;
@@ -264,24 +264,24 @@ end;
 
 class function TAtlasWelcomeProjects.Pills(const AEntry: TAtlasProjectEntry): TArray<TAtlasProjectPill>;
 var
-  Build: TAtlasProjectBuild;
-  Check: TAtlasProjectCheck;
-  Pill: TAtlasProjectPill;
+  mBuild: TAtlasProjectBuild;
+  mCheck: TAtlasProjectCheck;
+  mPill: TAtlasProjectPill;
 begin
   Result := nil;
-  Build := AEntry.Summary.Build;
-  Check := AEntry.Summary.Check;
-  if Build.Known then
+  mBuild := AEntry.Summary.Build;
+  mCheck := AEntry.Summary.Check;
+  if mBuild.Known then
   begin
-    Result := Result + [BuildPill(Build)];
+    Result := Result + [BuildPill(mBuild)];
   end;
   // Prüfung nur, wenn sie nach dem letzten Build lief: sonst zeigt der Build den neueren Stand.
-  if Check.Known and (Check.Errors > 0) and (not Build.Known or (Check.At >= Build.At)) then
+  if mCheck.Known and (mCheck.Errors > 0) and (not mBuild.Known or (mCheck.At >= mBuild.At)) then
   begin
-    Pill := TAtlasProjectPill.Create(TAtlasProjectPillKind.CheckErrors, TAtlasProjectPillLevel.Error, Check.Errors,
+    mPill := TAtlasProjectPill.Create(TAtlasProjectPillKind.CheckErrors, TAtlasProjectPillLevel.Error, mCheck.Errors,
       0, 0);
-    Pill.Target := Check.First;
-    Result := Result + [Pill];
+    mPill.Target := mCheck.First;
+    Result := Result + [mPill];
   end;
   Result := Result + VcsPills(AEntry.Summary.Vcs);
   if AEntry.Summary.Rules.Known and (AEntry.Summary.Rules.NewHits > 0) then
@@ -293,50 +293,50 @@ end;
 
 class function TAtlasWelcomeProjects.Level(const APills: TArray<TAtlasProjectPill>): TAtlasProjectPillLevel;
 var
-  Pill: TAtlasProjectPill;
+  mPill: TAtlasProjectPill;
 begin
   Result := TAtlasProjectPillLevel.Neutral;
-  for Pill in APills do
+  for mPill in APills do
   begin
-    if Ord(Pill.Level) > Ord(Result) then
+    if Ord(mPill.Level) > Ord(Result) then
     begin
-      Result := Pill.Level;
+      Result := mPill.Level;
     end;
   end;
 end;
 
 class function TAtlasWelcomeProjects.ShortPath(const APath: string; AMaxLength: Integer): string;
 var
-  Parts: TArray<string>;
-  Head, Tail, Candidate: string;
-  Index: Integer;
+  mParts: TArray<string>;
+  mHead, mTail, mCandidate: string;
+  mIndex: Integer;
 begin
   Result := APath;
   if (AMaxLength < 4) or (Length(Result) <= AMaxLength) then
   begin
     Exit;
   end;
-  Parts := StringReplace(APath, '/', '\', [rfReplaceAll]).Split(['\']);
-  if Length(Parts) < 3 then
+  mParts := StringReplace(APath, '/', '\', [rfReplaceAll]).Split(['\']);
+  if Length(mParts) < 3 then
   begin
-    Exit(Ellipsis + Copy(APath, Length(APath) - AMaxLength + 2, MaxInt));
+    Exit(cEllipsis + Copy(APath, Length(APath) - AMaxLength + 2, MaxInt));
   end;
-  Head := Parts[0] + '\' + Ellipsis;
-  Tail := '\' + Parts[High(Parts)];
-  if Length(Head) + Length(Tail) > AMaxLength then
+  mHead := mParts[0] + '\' + cEllipsis;
+  mTail := '\' + mParts[High(mParts)];
+  if Length(mHead) + Length(mTail) > AMaxLength then
   begin
-    Exit(Ellipsis + Copy(APath, Length(APath) - AMaxLength + 2, MaxInt));
+    Exit(cEllipsis + Copy(APath, Length(APath) - AMaxLength + 2, MaxInt));
   end;
-  for Index := High(Parts) - 1 downto 1 do
+  for mIndex := High(mParts) - 1 downto 1 do
   begin
-    Candidate := '\' + Parts[Index] + Tail;
-    if Length(Head) + Length(Candidate) > AMaxLength then
+    mCandidate := '\' + mParts[mIndex] + mTail;
+    if Length(mHead) + Length(mCandidate) > AMaxLength then
     begin
       Break;
     end;
-    Tail := Candidate;
+    mTail := mCandidate;
   end;
-  Result := Head + Tail;
+  Result := mHead + mTail;
 end;
 
 { TAtlasWelcomeAutoOpen }

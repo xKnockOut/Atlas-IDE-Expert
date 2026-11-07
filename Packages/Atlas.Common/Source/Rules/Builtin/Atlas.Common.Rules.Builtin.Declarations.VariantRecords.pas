@@ -163,18 +163,18 @@ end;
 
 procedure TVariantRecordManagedFieldRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 const
-  TypeKinds = [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.PointerType, TSyntaxKind.RecordType,
+  cTypeKinds = [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.PointerType, TSyntaxKind.RecordType,
     TSyntaxKind.ClassType, TSyntaxKind.InterfaceType, TSyntaxKind.ClassOfType, TSyntaxKind.SetType,
     TSyntaxKind.EnumType, TSyntaxKind.ProcedureType, TSyntaxKind.SubrangeType, TSyntaxKind.FileType];
 var
-  Tokens: TArray<TPascalToken>;
-  Lines: TArray<string>;
-  LineBreak: string;
-  Types: TManagedTypes;
+  mTokens: TArray<TPascalToken>;
+  mLines: TArray<string>;
+  mLineBreak: string;
+  mTypes: TManagedTypes;
 
   function IsCode(AIndex: Integer): Boolean;
   begin
-    Result := not (Tokens[AIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]);
+    Result := not (mTokens[AIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]);
   end;
 
   function NodeText(ANode: TSyntaxNode): string;
@@ -184,13 +184,13 @@ var
 
   function TypeNode(ANode: TSyntaxNode): TSyntaxNode;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
-    for Index := 0 to ANode.ChildCount - 1 do
+    for mIndex := 0 to ANode.ChildCount - 1 do
     begin
-      if ANode[Index].Kind in TypeKinds then
+      if ANode[mIndex].Kind in cTypeKinds then
       begin
-        Exit(ANode[Index]);
+        Exit(ANode[mIndex]);
       end;
     end;
     Result := nil;
@@ -200,75 +200,75 @@ var
   // AAlone: einziger Name seiner Gruppe (nur dann lässt sich ": record" anhängen).
   function UnconstrainedParam(ANode: TSyntaxNode; const AName: string; out AAlone: Boolean): Integer;
   var
-    Decl, Params: TSyntaxNode;
-    Found: Boolean;
+    mDecl, mParams: TSyntaxNode;
+    mFound: Boolean;
   begin
     Result := -1;
     AAlone := False;
-    Found := False;
-    Decl := ANode.Parent;
-    while not Found and (Decl <> nil) do
+    mFound := False;
+    mDecl := ANode.Parent;
+    while not mFound and (mDecl <> nil) do
     begin
-      if Decl.Kind = TSyntaxKind.TypeDecl then
+      if mDecl.Kind = TSyntaxKind.TypeDecl then
       begin
-        Params := Decl.FindChild(TSyntaxKind.GenericParams);
-        Found := (Params <> nil) and FindParam(Tokens, Params, AName, Result, AAlone);
+        mParams := mDecl.FindChild(TSyntaxKind.GenericParams);
+        mFound := (mParams <> nil) and FindParam(mTokens, mParams, AName, Result, AAlone);
       end;
-      Decl := Decl.Parent;
+      mDecl := mDecl.Parent;
     end;
   end;
 
   // Feld vor das case des varianten Teils verschieben: einfügen vor case, im Zweig samt Trenner löschen.
   function MoveToFixedPart(AField, APart: TSyntaxNode): TRuleFix;
   var
-    Item: TSyntaxNode;
-    Text: string;
-    Position, Remove: Integer;
-    CaseToken, First, Last: Integer;
-    Removal: TTextRange;
+    mItem: TSyntaxNode;
+    mText: string;
+    mPosition, mRemove: Integer;
+    mCaseToken, mFirst, mLast: Integer;
+    mRemoval: TTextRange;
   begin
     Result := Default(TRuleFix);
-    Item := AField.Parent;
-    Position := 0;
-    while Item[Position] <> AField do
+    mItem := AField.Parent;
+    mPosition := 0;
+    while mItem[mPosition] <> AField do
     begin
-      Inc(Position);
+      Inc(mPosition);
     end;
-    Text := NodeText(AField);
-    if Text.EndsWith(';') then
+    mText := NodeText(AField);
+    if mText.EndsWith(';') then
     begin
-      Text := TrimRight(Copy(Text, 1, Length(Text) - 1));
+      mText := TrimRight(Copy(mText, 1, Length(mText) - 1));
     end;
-    First := TokenAtOffset(Tokens, AField.StartOffset);
-    Last := TokenAtOffset(Tokens, AField.EndOffset) - 1;
-    if Tokens[Last].IsSymbol(';') and (Position < Item.ChildCount - 1) then
+    mFirst := TokenAtOffset(mTokens, AField.StartOffset);
+    mLast := TokenAtOffset(mTokens, AField.EndOffset) - 1;
+    if mTokens[mLast].IsSymbol(';') and (mPosition < mItem.ChildCount - 1) then
     begin
       // Bis vor das nächste Feld.
-      Removal := TTextRange.Create(Tokens[First].StartPos, Item[Position + 1].StartPos);
+      mRemoval := TTextRange.Create(mTokens[mFirst].StartPos, mItem[mPosition + 1].StartPos);
     end
-    else if Position > 0 then
+    else if mPosition > 0 then
     begin
       // Letztes Feld: ab dem ; des vorigen.
-      Remove := First - 1;
-      while (Remove > 0) and not IsCode(Remove) do
+      mRemove := mFirst - 1;
+      while (mRemove > 0) and not IsCode(mRemove) do
       begin
-        Dec(Remove);
+        Dec(mRemove);
       end;
-      if not Tokens[Remove].IsSymbol(';') then
+      if not mTokens[mRemove].IsSymbol(';') then
       begin
         Exit;
       end;
-      Removal := TTextRange.Create(Tokens[Remove].StartPos, Tokens[Last].EndPos);
+      mRemoval := TTextRange.Create(mTokens[mRemove].StartPos, mTokens[mLast].EndPos);
     end
     else
     begin
-      Removal := TTextRange.Create(Tokens[First].StartPos, Tokens[Last].EndPos);
+      mRemoval := TTextRange.Create(mTokens[mFirst].StartPos, mTokens[mLast].EndPos);
     end;
-    CaseToken := TokenAtOffset(Tokens, APart.StartOffset);
+    mCaseToken := TokenAtOffset(mTokens, APart.StartOffset);
     Result := TRuleFix.Create(cTexts[TDeclarationsVariantRecordsText.MoveToFixed].Fmt([AField.Name]),
-      [TRuleEdit.Create(TTextRange.Create(Tokens[CaseToken].StartPos, Tokens[CaseToken].StartPos),
-      Text + ';' + LineBreak + TTextLines.IndentOf(Lines[Tokens[CaseToken].StartPos.Line])),
-      TRuleEdit.Create(Removal, '')], False);
+      [TRuleEdit.Create(TTextRange.Create(mTokens[mCaseToken].StartPos, mTokens[mCaseToken].StartPos),
+      mText + ';' + mLineBreak + TTextLines.IndentOf(mLines[mTokens[mCaseToken].StartPos.Line])),
+      TRuleEdit.Create(mRemoval, '')], False);
   end;
 
   function ShortStringFix(ATypeNode: TSyntaxNode): TArray<TRuleFix>;
@@ -284,122 +284,122 @@ var
 
   procedure CheckField(AField: TSyntaxNode);
   var
-    TypeRef, Part: TSyntaxNode;
-    TypeText, Kind: string;
-    Param: Integer;
-    Alone: Boolean;
-    Fixes: TArray<TRuleFix>;
-    Moved: TRuleFix;
+    mTypeRef, mPart: TSyntaxNode;
+    mTypeText, mKind: string;
+    mParam: Integer;
+    mAlone: Boolean;
+    mFixes: TArray<TRuleFix>;
+    mMoved: TRuleFix;
   begin
-    TypeRef := TypeNode(AField);
-    if TypeRef = nil then
+    mTypeRef := TypeNode(AField);
+    if mTypeRef = nil then
     begin
       Exit;
     end;
-    TypeText := NodeText(TypeRef);
-    Part := AField.Parent.Parent;
-    Fixes := nil;
+    mTypeText := NodeText(mTypeRef);
+    mPart := AField.Parent.Parent;
+    mFixes := nil;
     // Nur der äußerste variante Teil hat einen festen Teil davor.
-    if Part.Parent.Kind = TSyntaxKind.RecordType then
+    if mPart.Parent.Kind = TSyntaxKind.RecordType then
     begin
-      Moved := MoveToFixedPart(AField, Part);
-      if Moved.Title <> '' then
+      mMoved := MoveToFixedPart(AField, mPart);
+      if mMoved.Title <> '' then
       begin
-        Fixes := [Moved];
+        mFixes := [mMoved];
       end;
     end;
-    Param := UnconstrainedParam(AField, TypeText, Alone);
-    if Param >= 0 then
+    mParam := UnconstrainedParam(AField, mTypeText, mAlone);
+    if mParam >= 0 then
     begin
-      if Alone then
+      if mAlone then
       begin
-        Fixes := Fixes + [TRuleFix.Create(cTexts[TDeclarationsVariantRecordsText.RecordConstraint].Fmt([TypeText]),
-          [TRuleEdit.Create(TTextRange.Create(Tokens[Param].EndPos, Tokens[Param].EndPos), ': record')], False)];
+        mFixes := mFixes + [TRuleFix.Create(cTexts[TDeclarationsVariantRecordsText.RecordConstraint].Fmt([mTypeText]),
+          [TRuleEdit.Create(TTextRange.Create(mTokens[mParam].EndPos, mTokens[mParam].EndPos), ': record')], False)];
       end;
-      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos),
-        cTexts[TDeclarationsVariantRecordsText.TypeParam].Fmt([TypeText]), TRuleConfidence.High, Fixes);
+      AReport.Add(TTextRange.Create(mTypeRef.StartPos, mTypeRef.EndPos),
+        cTexts[TDeclarationsVariantRecordsText.TypeParam].Fmt([mTypeText]), TRuleConfidence.High, mFixes);
       Exit;
     end;
-    Kind := Types.Managed(TypeText, 0);
-    if Kind <> '' then
+    mKind := mTypes.Managed(mTypeText, 0);
+    if mKind <> '' then
     begin
-      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos),
-        cTexts[TDeclarationsVariantRecordsText.NeedsFinal].Fmt([TypeText]), TRuleConfidence.High,
-        ShortStringFix(TypeRef) + Fixes);
+      AReport.Add(TTextRange.Create(mTypeRef.StartPos, mTypeRef.EndPos),
+        cTexts[TDeclarationsVariantRecordsText.NeedsFinal].Fmt([mTypeText]), TRuleConfidence.High,
+        ShortStringFix(mTypeRef) + mFixes);
     end
-    else if Types.CustomManaged(TypeText, 0) then
+    else if mTypes.CustomManaged(mTypeText, 0) then
     begin
-      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos),
-        cTexts[TDeclarationsVariantRecordsText.NeedsInit].Fmt([TypeText]), TRuleConfidence.High, Fixes);
+      AReport.Add(TTextRange.Create(mTypeRef.StartPos, mTypeRef.EndPos),
+        cTexts[TDeclarationsVariantRecordsText.NeedsInit].Fmt([mTypeText]), TRuleConfidence.High, mFixes);
     end;
   end;
 
   procedure CheckFile(AFile: TSyntaxNode);
   var
-    TypeRef: TSyntaxNode;
-    TypeText: string;
+    mTypeRef: TSyntaxNode;
+    mTypeText: string;
   begin
-    TypeRef := TypeNode(AFile);
-    if TypeRef = nil then
+    mTypeRef := TypeNode(AFile);
+    if mTypeRef = nil then
     begin
       Exit;
     end;
-    TypeText := NodeText(TypeRef);
-    if Types.Managed(TypeText, 0) <> '' then
+    mTypeText := NodeText(mTypeRef);
+    if mTypes.Managed(mTypeText, 0) <> '' then
     begin
-      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos),
-        cTexts[TDeclarationsVariantRecordsText.FileFinal].Fmt([TypeText]), TRuleConfidence.High,
-        ShortStringFix(TypeRef));
+      AReport.Add(TTextRange.Create(mTypeRef.StartPos, mTypeRef.EndPos),
+        cTexts[TDeclarationsVariantRecordsText.FileFinal].Fmt([mTypeText]), TRuleConfidence.High,
+        ShortStringFix(mTypeRef));
     end
-    else if Types.CustomManaged(TypeText, 0) then
+    else if mTypes.CustomManaged(mTypeText, 0) then
     begin
-      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos),
-        cTexts[TDeclarationsVariantRecordsText.FileInit].Fmt([TypeText]), TRuleConfidence.High, nil);
+      AReport.Add(TTextRange.Create(mTypeRef.StartPos, mTypeRef.EndPos),
+        cTexts[TDeclarationsVariantRecordsText.FileInit].Fmt([mTypeText]), TRuleConfidence.High, nil);
     end;
   end;
 
 var
-  Stack: TArray<TSyntaxNode>;
-  Count, Index: Integer;
-  Node: TSyntaxNode;
+  mStack: TArray<TSyntaxNode>;
+  mCount, mIndex: Integer;
+  mNode: TSyntaxNode;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
-  Types := TManagedTypes.Create(AContext.Tree, AContext.Text, AContext.Index);
+  mTokens := AContext.Tree.Tokens;
+  mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
+  mTypes := TManagedTypes.Create(AContext.Tree, AContext.Text, AContext.Index);
   try
     // Ohne Rekursion durch den Baum (#1094).
-    SetLength(Stack, 64);
-    Stack[0] := AContext.Tree.Root;
-    Count := 1;
-    while Count > 0 do
+    SetLength(mStack, 64);
+    mStack[0] := AContext.Tree.Root;
+    mCount := 1;
+    while mCount > 0 do
     begin
-      Dec(Count);
-      Node := Stack[Count];
-      if (Node.Kind = TSyntaxKind.Field) and (Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.CaseItem) and
-        (Node.Parent.Parent <> nil) and (Node.Parent.Parent.Kind = TSyntaxKind.VariantPart) then
+      Dec(mCount);
+      mNode := mStack[mCount];
+      if (mNode.Kind = TSyntaxKind.Field) and (mNode.Parent <> nil) and (mNode.Parent.Kind = TSyntaxKind.CaseItem) and
+        (mNode.Parent.Parent <> nil) and (mNode.Parent.Parent.Kind = TSyntaxKind.VariantPart) then
       begin
-        CheckField(Node);
+        CheckField(mNode);
       end
-      else if Node.Kind = TSyntaxKind.FileType then
+      else if mNode.Kind = TSyntaxKind.FileType then
       begin
-        CheckFile(Node);
+        CheckFile(mNode);
       end;
-      if Count + Node.ChildCount > Length(Stack) then
+      if mCount + mNode.ChildCount > Length(mStack) then
       begin
-        SetLength(Stack, 2 * (Count + Node.ChildCount));
+        SetLength(mStack, 2 * (mCount + mNode.ChildCount));
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Stack[Count] := Node[Index];
-        Inc(Count);
+        mStack[mCount] := mNode[mIndex];
+        Inc(mCount);
       end;
     end;
   finally
-    Types.Free;
+    mTypes.Free;
   end;
 end;
 

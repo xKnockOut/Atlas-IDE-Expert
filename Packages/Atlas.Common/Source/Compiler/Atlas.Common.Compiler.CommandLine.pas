@@ -46,18 +46,18 @@ const
 
 function JoinList(const AItems: TArray<string>): string;
 var
-  Item: string;
+  mItem: string;
 begin
   Result := '';
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if Item <> '' then
+    if mItem <> '' then
     begin
       if Result <> '' then
       begin
         Result := Result + ';';
       end;
-      Result := Result + Item;
+      Result := Result + mItem;
     end;
   end;
 end;
@@ -82,14 +82,14 @@ end;
 
 class function TCompilerCommandLine.BdsRoot(const AVariables: TArray<TPair<string, string>>): string;
 var
-  Variable: TPair<string, string>;
+  mVariable: TPair<string, string>;
 begin
   Result := '';
-  for Variable in AVariables do
+  for mVariable in AVariables do
   begin
-    if SameText(Variable.Key, 'BDS') then
+    if SameText(mVariable.Key, 'BDS') then
     begin
-      Exit(Variable.Value);
+      Exit(mVariable.Value);
     end;
   end;
 end;
@@ -97,8 +97,8 @@ end;
 class function TCompilerCommandLine.Build(const AProject: TProjectInfo; const ALibraryPaths: TArray<string>;
   const ABdsRoot, AOutputDir: string): TCompilerRequest;
 var
-  Paths: string;
-  Arguments: TList<string>;
+  mPaths: string;
+  mArguments: TList<string>;
 begin
   if AProject.MainSource = '' then
   begin
@@ -107,36 +107,36 @@ begin
   Result := Default(TCompilerRequest);
   Result.Executable := ExecutableFor(ABdsRoot, AProject.Platform);
   Result.WorkingDir := TProjectPaths.DirectoryOf(AProject.FileName);
-  Paths := JoinList(AProject.SearchPaths + ALibraryPaths);
-  Arguments := TList<string>.Create;
+  mPaths := JoinList(AProject.SearchPaths + ALibraryPaths);
+  mArguments := TList<string>.Create;
   try
     // Kurze Ausgabe, Make (nur Geändertes), Hinweise und Warnungen an.
-    Arguments.AddRange(['-Q', '-M', '-H+', '-W+']);
-    Arguments.Add('-NU' + AOutputDir);
-    Arguments.Add('-E' + AOutputDir);
+    mArguments.AddRange(['-Q', '-M', '-H+', '-W+']);
+    mArguments.Add('-NU' + AOutputDir);
+    mArguments.Add('-E' + AOutputDir);
     // Packages: BPL und DCP ebenfalls in den eigenen Ordner, sonst landen sie im
     // gemeinsamen Bpl-Ordner und überschreiben die installierten Packages.
-    Arguments.Add('-LE' + AOutputDir);
-    Arguments.Add('-LN' + AOutputDir);
-    if Paths <> '' then
+    mArguments.Add('-LE' + AOutputDir);
+    mArguments.Add('-LN' + AOutputDir);
+    if mPaths <> '' then
     begin
-      Arguments.Add('-U' + Paths);
-      Arguments.Add('-I' + Paths);
-      Arguments.Add('-R' + Paths);
-      Arguments.Add('-O' + Paths);
+      mArguments.Add('-U' + mPaths);
+      mArguments.Add('-I' + mPaths);
+      mArguments.Add('-R' + mPaths);
+      mArguments.Add('-O' + mPaths);
     end;
     if Length(AProject.Defines) > 0 then
     begin
-      Arguments.Add('-D' + JoinList(AProject.Defines));
+      mArguments.Add('-D' + JoinList(AProject.Defines));
     end;
     if Length(AProject.Namespaces) > 0 then
     begin
-      Arguments.Add('-NS' + JoinList(AProject.Namespaces));
+      mArguments.Add('-NS' + JoinList(AProject.Namespaces));
     end;
-    Arguments.Add(AProject.MainSource);
-    Result.Arguments := Arguments.ToArray;
+    mArguments.Add(AProject.MainSource);
+    Result.Arguments := mArguments.ToArray;
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
 end;
 

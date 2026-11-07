@@ -69,9 +69,12 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
+  Atlas.Common.Rules.Builtin.Performance.StringResets,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Semantics.NameResolver.Symbols,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Performance.DynamicArrays,
@@ -260,24 +263,24 @@ end;
 /// <summary>Index von do bzw. until ab AFirst auf gleicher Klammerebene; -1 ohne.</summary>
 function FindKeyword(const ATokens: TTokens; AFirst: Integer; const AKeyword: string): Integer;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
-  Depth := 0;
-  for Index := AFirst to High(ATokens) do
+  mDepth := 0;
+  for mIndex := AFirst to High(ATokens) do
   begin
-    if (Depth = 0) and ATokens[Index].IsKeyword(AKeyword) then
+    if (mDepth = 0) and ATokens[mIndex].IsKeyword(AKeyword) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end
-    else if (AKeyword = 'until') and ATokens[Index].IsKeyword('repeat') then
+    else if (AKeyword = 'until') and ATokens[mIndex].IsKeyword('repeat') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if (AKeyword = 'until') and ATokens[Index].IsKeyword('until') then
+    else if (AKeyword = 'until') and ATokens[mIndex].IsKeyword('until') then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (AKeyword = 'do') and ATokens[Index].IsSymbol(';') then
+    else if (AKeyword = 'do') and ATokens[mIndex].IsSymbol(';') then
     begin
       Exit(-1);
     end;
@@ -367,11 +370,11 @@ end;
 /// <summary>Liegt Token AIndex im Rumpf einer der Schleifen?</summary>
 function InLoopBody(const ALoops: TArray<TLoop>; AIndex: Integer): Boolean;
 var
-  Loop: TLoop;
+  mLoop: TLoop;
 begin
-  for Loop in ALoops do
+  for mLoop in ALoops do
   begin
-    if (AIndex >= Loop.BodyFirst) and (AIndex <= Loop.BodyLast) then
+    if (AIndex >= mLoop.BodyFirst) and (AIndex <= mLoop.BodyLast) then
     begin
       Exit(True);
     end;
@@ -386,20 +389,114 @@ begin
     ((AIndex = 0) or not ATokens[PreviousCode(ATokens, AIndex)].IsSymbol('.'));
 end;
 
+/// <summary>Erstes Token des Rumpfs der innersten Schleife um AIndex; -1 außerhalb jeder Schleife.</summary>
+function InnermostBodyFirst(const ALoops: TArray<TLoop>; AIndex: Integer): Integer;
+var
+  mLoop: TLoop;
+begin
+  Result := -1;
+  for mLoop in ALoops do
+  begin
+    if (AIndex >= mLoop.BodyFirst) and (AIndex <= mLoop.BodyLast) and (mLoop.BodyFirst > Result) then
+    begin
+      Result := mLoop.BodyFirst;
+    end;
+  end;
+end;
+
+/// <summary>Blocktiefe vor dem Rumpf ab AFirst: repeat … until steht schon auf der ersten Ebene (1), ein
+/// begin … end erreicht sie erst mit seinem begin (0).</summary>
+function BodyStartDepth(const ATokens: TTokens; AFirst: Integer): Integer;
+var
+  mBefore: Integer;
+begin
+  Result := 0;
+  mBefore := PreviousCode(ATokens, AFirst);
+  if (mBefore >= 0) and ATokens[mBefore].IsKeyword('repeat') then
+  begin
+    Result := 1;
+  end;
+end;
+
+/// <summary>Blocktiefe nach dem Token AToken: begin, try, case, asm, repeat öffnen, end und until schließen.</summary>
+procedure StepDepth(const AToken: TPascalToken; var ADepth: Integer);
+begin
+  if OpensBlock(AToken) then
+  begin
+    Inc(ADepth);
+  end
+  else if AToken.IsKeyword('end') or AToken.IsKeyword('until') then
+  begin
+    Dec(ADepth);
+  end;
+end;
+
+/// <summary>Beginnt an AIndex eine Anweisung (davor ;, begin oder repeat), nicht hinter then, else oder
+/// einer case-Marke?</summary>
+function StartsStatement(const ATokens: TTokens; AIndex: Integer): Boolean;
+var
+  mBefore: Integer;
+begin
+  mBefore := PreviousCode(ATokens, AIndex);
+  Result := (mBefore >= 0) and (ATokens[mBefore].IsSymbol(';') or ATokens[mBefore].IsKeyword('begin') or
+    ATokens[mBefore].IsKeyword('repeat'));
+end;
+
+/// <summary>Steht an AIndex AName := …, ohne AName vorn rechts (ein Neusetzen, kein Anhängen)?</summary>
+function IsResetOf(const ATokens: TTokens; AIndex: Integer; const AName: string): Boolean;
+var
+  mNext: Integer;
+begin
+  Result := False;
+  if not SameText(ATokens[AIndex].Text, AName) or not StartsDesignator(ATokens, AIndex) then
+  begin
+    Exit;
+  end;
+  mNext := NextCode(ATokens, AIndex + 1);
+  Result := (mNext < High(ATokens)) and ATokens[mNext].IsSymbol(':=') and
+    not SameText(ATokens[NextCode(ATokens, mNext + 1)].Text, AName);
+end;
+
+/// <summary>Wird AName im Rumpf der innersten Schleife um AIndex vor AIndex neu gesetzt (AName := … ohne AName
+/// vorn)? Dann wächst der String nur innerhalb eines Durchlaufs (mText := Zeile; mText := mText + ', '). Zählt
+/// nur eine Zuweisung, die in jedem Durchlauf läuft: direkt im begin … end des Rumpfs, nicht hinter then, else
+/// oder einer case-Marke und nicht in einem inneren Block.</summary>
+function ResetInLoop(const ATokens: TTokens; const ALoops: TArray<TLoop>; AIndex: Integer;
+  const AName: string): Boolean;
+var
+  mFirst, mIndex, mDepth: Integer;
+begin
+  Result := False;
+  mFirst := InnermostBodyFirst(ALoops, AIndex);
+  if mFirst < 0 then
+  begin
+    Exit;
+  end;
+  mDepth := BodyStartDepth(ATokens, mFirst);
+  for mIndex := mFirst to AIndex - 1 do
+  begin
+    StepDepth(ATokens[mIndex], mDepth);
+    if (mDepth = 1) and StartsStatement(ATokens, mIndex) and IsResetOf(ATokens, mIndex, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
 /// <summary>Punktkette ab AIndex (A.B.C) als Text in Kleinbuchstaben; ALast = letztes Token.</summary>
 function Chain(const ATokens: TTokens; AIndex: Integer; out ALast: Integer): string;
 var
-  Dot: Integer;
+  mDot: Integer;
 begin
   Result := LowerCase(ATokens[AIndex].Text);
   ALast := AIndex;
-  Dot := NextCode(ATokens, ALast + 1);
-  while (Dot < High(ATokens)) and ATokens[Dot].IsSymbol('.') and
-    (ATokens[NextCode(ATokens, Dot + 1)].Kind = TPascalTokenKind.Identifier) do
+  mDot := NextCode(ATokens, ALast + 1);
+  while (mDot < High(ATokens)) and ATokens[mDot].IsSymbol('.') and
+    (ATokens[NextCode(ATokens, mDot + 1)].Kind = TPascalTokenKind.Identifier) do
   begin
-    ALast := NextCode(ATokens, Dot + 1);
+    ALast := NextCode(ATokens, mDot + 1);
     Result := Result + '.' + LowerCase(ATokens[ALast].Text);
-    Dot := NextCode(ATokens, ALast + 1);
+    mDot := NextCode(ATokens, ALast + 1);
   end;
 end;
 
@@ -413,57 +510,62 @@ end;
 
 procedure TStringConcatInLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
-  Found: TArray<TLoop>;
-  Types: TDeclaredTypes;
-  Index, Assign, Same, Plus, Last: Integer;
-  TypeName: string;
+  mTokens: TTokens;
+  mFound: TArray<TLoop>;
+  mTypes: TDeclaredTypes;
+  mIndex, mAssign, mSame, mPlus, mLast: Integer;
+  mTypeName: string;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Found := Loops(Tokens);
-  if Found = nil then
+  mTokens := AContext.Tree.Tokens;
+  mFound := Loops(mTokens);
+  if mFound = nil then
   begin
     Exit;
   end;
-  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
-    for Index := 0 to High(Tokens) do
+    for mIndex := 0 to High(mTokens) do
     begin
       // S := S + …
-      if not StartsDesignator(Tokens, Index) or not InLoopBody(Found, Index) then
+      if not StartsDesignator(mTokens, mIndex) or not InLoopBody(mFound, mIndex) then
       begin
         Continue;
       end;
-      Assign := NextCode(Tokens, Index + 1);
-      Same := NextCode(Tokens, Assign + 1);
-      Plus := NextCode(Tokens, Same + 1);
-      if (Plus > High(Tokens)) or not Tokens[Assign].IsSymbol(':=') or
-        not SameText(Tokens[Same].Text, Tokens[Index].Text) or not Tokens[Plus].IsSymbol('+') then
+      mAssign := NextCode(mTokens, mIndex + 1);
+      mSame := NextCode(mTokens, mAssign + 1);
+      mPlus := NextCode(mTokens, mSame + 1);
+      if (mPlus > High(mTokens)) or not mTokens[mAssign].IsSymbol(':=') or
+        not SameText(mTokens[mSame].Text, mTokens[mIndex].Text) or not mTokens[mPlus].IsSymbol('+') then
       begin
         Continue;
       end;
-      TypeName := Types.DeclaredType(Tokens[Index].Text, Tokens[Index].StartPos);
-      if not MatchText(TypeName, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'UTF8String',
-        'RawByteString']) then
+      mTypeName := mTypes.DeclaredType(mTokens[mIndex].Text, mTokens[mIndex].StartPos);
+      if not MatchText(mTypeName, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'UTF8String',
+        'RawByteString']) or ResetInLoop(mTokens, mFound, mIndex, mTokens[mIndex].Text) or
+        TStringResets.EarlierInPass(AContext.Tree, mTokens[mIndex].Offset, mTokens[mIndex].Text) then
       begin
         Continue;
       end;
-      Last := StatementEnd(Tokens, Index);
-      AReport.Add(RangeOf(Tokens, Index, Last), cTexts[TPerformanceText.Concat].Fmt([Tokens[Index].Text]),
+      mLast := StatementEnd(mTokens, mIndex);
+      AReport.Add(RangeOf(mTokens, mIndex, mLast), cTexts[TPerformanceText.Concat].Fmt([mTokens[mIndex].Text]),
         TRuleConfidence.Low);
     end;
   finally
-    Types.Free;
+    mTypes.Free;
   end;
 end;
 
 { TLoopInvariantCallRule }
 
-/// <summary>Wird der Bezeichner AName im Rumpf von ALoop zugewiesen oder mit Inc/Dec geändert?</summary>
+const
+  /// <summary>Routinen, die ihr erstes Argument ändern (Delete(Result, 1, 2) in while Copy(Result, …)).</summary>
+  cVarParamRoutines: array[0..5] of string = ('Inc', 'Dec', 'Delete', 'SetLength', 'Include', 'Exclude');
+
+/// <summary>Wird der Bezeichner AName im Rumpf von ALoop zugewiesen oder über VarParamRoutines geändert?</summary>
 function ChangedInLoop(const ATokens: TTokens; const ALoop: TLoop; const AName: string): Boolean;
 var
   mIndex, mNext, mPrevious: Integer;
@@ -479,7 +581,7 @@ begin
       end;
       mPrevious := PreviousCode(ATokens, mIndex);
       if (mPrevious > 0) and ATokens[mPrevious].IsSymbol('(') and
-        MatchText(ATokens[PreviousCode(ATokens, mPrevious)].Text, ['Inc', 'Dec']) then
+        MatchText(ATokens[PreviousCode(ATokens, mPrevious)].Text, cVarParamRoutines) then
       begin
         Exit(True);
       end;
@@ -488,7 +590,8 @@ begin
   Result := False;
 end;
 
-/// <summary>Hängt der Aufruf ab AIndex an einem Bezeichner, den die Schleife ändert? Dann ist er nicht invariant.</summary>
+/// <summary>Hängt der Aufruf ab AIndex an einem Bezeichner, den die Schleife ändert? Dann ist er nicht
+/// invariant.</summary>
 function ArgumentsChange(const ATokens: TTokens; const ALoop: TLoop; AIndex: Integer): Boolean;
 var
   mIndex, mDepth: Integer;
@@ -524,10 +627,11 @@ begin
 end;
 
 const
-  ExpensiveCalls: array[0..17] of string = ('Trim', 'TrimLeft', 'TrimRight', 'LowerCase', 'UpperCase',
-    'AnsiLowerCase', 'AnsiUpperCase', 'Format', 'StrToInt', 'StrToFloat', 'IntToStr', 'FileExists',
-    'DirectoryExists', 'ExtractFileName', 'ExtractFilePath', 'StringReplace', 'Copy', 'ComponentCount');
-  ExpensiveProperties: array[0..2] of string = ('Text', 'CommaText', 'DelimitedText');
+  // Ohne FileExists und DirectoryExists: Das Dateisystem ändert sich ohne die Schleife (Warten auf eine Datei).
+  cExpensiveCalls: array[0..15] of string = ('Trim', 'TrimLeft', 'TrimRight', 'LowerCase', 'UpperCase',
+    'AnsiLowerCase', 'AnsiUpperCase', 'Format', 'StrToInt', 'StrToFloat', 'IntToStr', 'ExtractFileName',
+    'ExtractFilePath', 'StringReplace', 'Copy', 'ComponentCount');
+  cExpensiveProperties: array[0..2] of string = ('Text', 'CommaText', 'DelimitedText');
 
 function TLoopInvariantCallRule.Descriptor: TRuleDescriptor;
 begin
@@ -535,40 +639,243 @@ begin
     cTexts[TPerformanceText.ConditionTitle].Text, True);
 end;
 
+/// <summary>Punktkette vor dem Punkt ADot (ASpan in ASpan.Text, FParts.Scanner in FParts.Scanner.Text); '' wenn
+/// davor kein einfacher Bezeichner steht (Aufruf, Index).</summary>
+function ReceiverBefore(const ATokens: TTokens; ADot: Integer): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  mIndex := PreviousCode(ATokens, ADot);
+  while (mIndex >= 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) do
+  begin
+    if Result <> '' then
+    begin
+      Result := '.' + Result;
+    end;
+    Result := ATokens[mIndex].Text + Result;
+    mIndex := PreviousCode(ATokens, mIndex);
+    if (mIndex < 0) or not ATokens[mIndex].IsSymbol('.') then
+    begin
+      Exit;
+    end;
+    mIndex := PreviousCode(ATokens, mIndex);
+  end;
+  Result := '';
+end;
+
+/// <summary>Ist .AName hinter dem Punkt ADot ein Feld eines Typs dieser Datei (Record TAtlasDocSpan.Text)? Ein
+/// Feld zu lesen baut keinen String auf.</summary>
+function IsDeclaredField(const ATypes: TDeclaredTypes; const ATokens: TTokens; ADot: Integer;
+  const AName: string): Boolean;
+var
+  mReceiver, mType: string;
+begin
+  mReceiver := ReceiverBefore(ATokens, ADot);
+  Result := (mReceiver <> '') and
+    ATypes.FieldType(ATypes.ChainType(mReceiver, ATokens[ADot].StartPos), AName, mType);
+end;
+
+/// <summary>Öffnende Klammer zur schließenden ] oder ) bei AClose; unter 0, wenn sie fehlt.</summary>
+function GroupStart(const ATokens: TTokens; AClose: Integer): Integer;
+var
+  mDepth: Integer;
+begin
+  Result := AClose;
+  mDepth := 0;
+  repeat
+    if ATokens[Result].IsSymbol(']') or ATokens[Result].IsSymbol(')') then
+    begin
+      Inc(mDepth);
+    end
+    else if ATokens[Result].IsSymbol('[') or ATokens[Result].IsSymbol('(') then
+    begin
+      Dec(mDepth);
+    end;
+    if mDepth > 0 then
+    begin
+      Dec(Result);
+    end;
+  until (mDepth = 0) or (Result < 0);
+end;
+
+/// <summary>Erstes Token des Empfängers vor dem Punkt ADot: Bezeichner, Punkte und Klammergruppen
+/// (ATokens[mIndex + 1].Text, Token(Result).Text).</summary>
+function ReceiverStart(const ATokens: TTokens; ADot: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := ADot;
+  mIndex := PreviousCode(ATokens, ADot);
+  while mIndex >= 0 do
+  begin
+    if ATokens[mIndex].IsSymbol(']') or ATokens[mIndex].IsSymbol(')') then
+    begin
+      mIndex := GroupStart(ATokens, mIndex);
+    end
+    else if (ATokens[mIndex].Kind <> TPascalTokenKind.Identifier) and not ATokens[mIndex].IsSymbol('.') then
+    begin
+      Exit;
+    end;
+    Result := mIndex;
+    mIndex := PreviousCode(ATokens, mIndex);
+  end;
+end;
+
+/// <summary>Ändert die Schleife einen Bezeichner im Empfänger vor ADot (Index ATokens[mIndex])? Dann liest jede
+/// Prüfung etwas anderes.</summary>
+function ReceiverChanges(const ATokens: TTokens; const ALoop: TLoop; ADot: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  for mIndex := ReceiverStart(ATokens, ADot) to ADot - 1 do
+  begin
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and ChangedInLoop(ATokens, ALoop,
+      ATokens[mIndex].Text) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Dateiname für die Namensauflösung: Pfad, sonst relativer Pfad, sonst Unit-Name.</summary>
+function ResolverFileName(const AContext: TRuleContext): string;
+begin
+  Result := AContext.FileName;
+  if Result = '' then
+  begin
+    Result := AContext.RelativePath;
+  end;
+  if Result = '' then
+  begin
+    Result := AContext.UnitName + '.pas';
+  end;
+end;
+
+type
+  /// <summary>Prüft die Bedingungen der Schleifen einer Unit (loop-invariant-call).</summary>
+  TLoopConditionCheck = class
+  private
+    FTypes: TDeclaredTypes;
+    FTokens: TTokens;
+    FTree: TSyntaxTree;
+    FFileName: string;
+    FResolver: TNameResolver;
+    /// <summary>Löst die Namensauflösung .AName bei AIndex als Feld auf oder als Property, die direkt ein Feld
+    /// liest (TPascalToken.Text aus einer anderen Unit)? Ein Feld zu lesen baut keinen String auf.</summary>
+    function ReadsField(AIndex: Integer): Boolean;
+    procedure CheckProperty(const ALoop: TLoop; AIndex, ADot: Integer; const AReport: IRuleReport);
+  public
+    constructor Create(const AContext: TRuleContext; AResolver: TNameResolver);
+    destructor Destroy; override;
+    /// <summary>Meldet den Bezeichner an AIndex in der Bedingung von ALoop, wenn er eine teure Eigenschaft (kein
+    /// Feld) eines unveränderten Empfängers oder ein teurer Aufruf mit unveränderten Argumenten ist.</summary>
+    procedure CheckToken(const ALoop: TLoop; AIndex: Integer; const AReport: IRuleReport);
+    /// <summary>Alle Bedingungen von while und until.</summary>
+    procedure CheckLoops(const AReport: IRuleReport);
+  end;
+
+constructor TLoopConditionCheck.Create(const AContext: TRuleContext; AResolver: TNameResolver);
+begin
+  inherited Create;
+  FTree := AContext.Tree;
+  FTokens := FTree.Tokens;
+  FTypes := TDeclaredTypes.Create(FTree, AContext.Text);
+  FResolver := AResolver;
+  FFileName := ResolverFileName(AContext);
+end;
+
+destructor TLoopConditionCheck.Destroy;
+begin
+  FTypes.Free;
+  inherited;
+end;
+
+function TLoopConditionCheck.ReadsField(AIndex: Integer): Boolean;
+var
+  mSymbol: TResolvedSymbol;
+  mReadsField: Boolean;
+begin
+  mSymbol := FResolver.Resolve(FTree, FFileName, FTokens[AIndex].StartPos);
+  if mSymbol.Kind <> TResolvedKind.Symbol then
+  begin
+    Exit(False);
+  end;
+  Result := (mSymbol.SymbolKind = TIndexSymbolKind.Field) or ((mSymbol.SymbolKind = TIndexSymbolKind.Property_) and
+    FResolver.PropertyReadsField(mSymbol, mReadsField) and mReadsField);
+end;
+
+procedure TLoopConditionCheck.CheckProperty(const ALoop: TLoop; AIndex, ADot: Integer; const AReport: IRuleReport);
+var
+  mName: string;
+begin
+  mName := FTokens[AIndex].Text;
+  if IsDeclaredField(FTypes, FTokens, ADot, mName) or ReceiverChanges(FTokens, ALoop, ADot) or ReadsField(AIndex) then
+  begin
+    Exit;
+  end;
+  AReport.Add(RangeOf(FTokens, AIndex, AIndex), cTexts[TPerformanceText.ConditionString].Fmt([mName]),
+    TRuleConfidence.Medium);
+end;
+
+procedure TLoopConditionCheck.CheckToken(const ALoop: TLoop; AIndex: Integer; const AReport: IRuleReport);
+var
+  mName: string;
+  mPrevious: Integer;
+begin
+  mName := FTokens[AIndex].Text;
+  mPrevious := PreviousCode(FTokens, AIndex);
+  if MatchText(mName, cExpensiveProperties) and (mPrevious >= 0) and FTokens[mPrevious].IsSymbol('.') then
+  begin
+    CheckProperty(ALoop, AIndex, mPrevious, AReport);
+  end
+  else if MatchText(mName, cExpensiveCalls) and StartsDesignator(FTokens, AIndex) and
+    not ArgumentsChange(FTokens, ALoop, AIndex) then
+  begin
+    AReport.Add(RangeOf(FTokens, AIndex, AIndex), cTexts[TPerformanceText.ConditionCall].Fmt([mName]),
+      TRuleConfidence.Medium);
+  end;
+end;
+
+procedure TLoopConditionCheck.CheckLoops(const AReport: IRuleReport);
+var
+  mLoop: TLoop;
+  mIndex: Integer;
+begin
+  FResolver.PinTree(FTree, FFileName);
+  try
+    for mLoop in Loops(FTokens) do
+    begin
+      for mIndex := mLoop.CondFirst to mLoop.CondLast do
+      begin
+        if FTokens[mIndex].Kind = TPascalTokenKind.Identifier then
+        begin
+          CheckToken(mLoop, mIndex, AReport);
+        end;
+      end;
+    end;
+  finally
+    FResolver.UnpinTree;
+  end;
+end;
+
 procedure TLoopInvariantCallRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
-  Loop: TLoop;
-  Index, Previous: Integer;
-  Name: string;
+  mCache: IRuleDerivedCache;
+  mCheck: TLoopConditionCheck;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  for Loop in Loops(Tokens) do
-  begin
-    for Index := Loop.CondFirst to Loop.CondLast do
-    begin
-      if Tokens[Index].Kind <> TPascalTokenKind.Identifier then
-      begin
-        Continue;
-      end;
-      Name := Tokens[Index].Text;
-      Previous := PreviousCode(Tokens, Index);
-      if MatchText(Name, ExpensiveProperties) and (Previous >= 0) and Tokens[Previous].IsSymbol('.') then
-      begin
-        AReport.Add(RangeOf(Tokens, Index, Index), cTexts[TPerformanceText.ConditionString].Fmt([Name]),
-          TRuleConfidence.Medium);
-      end
-      else if MatchText(Name, ExpensiveCalls) and StartsDesignator(Tokens, Index) and
-        not ArgumentsChange(Tokens, Loop, Index) then
-      begin
-        AReport.Add(RangeOf(Tokens, Index, Index), cTexts[TPerformanceText.ConditionCall].Fmt([Name]),
-          TRuleConfidence.Medium);
-      end;
-    end;
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  mCheck := TLoopConditionCheck.Create(AContext, TRuleDerived.Resolver(mCache, AContext));
+  try
+    mCheck.CheckLoops(AReport);
+  finally
+    mCheck.Free;
   end;
 end;
 
@@ -576,14 +883,14 @@ end;
 
 const
   /// <summary>Bis zu so vielen Durchläufen lohnt BeginUpdate nicht.</summary>
-  FewIterations = 10;
+  cFewIterations = 10;
   /// <summary>Menüs: Items ist ein TMenuItem, das kein BeginUpdate kennt.</summary>
-  MenuTypes: array[0..3] of string = ('TMenu', 'TMainMenu', 'TPopupMenu', 'TMenuItem');
+  cMenuTypes: array[0..3] of string = ('TMenu', 'TMainMenu', 'TPopupMenu', 'TMenuItem');
 
 /// <summary>Ganzzahl ab AIndex (mit Vorzeichen -); ALast = letztes Token.</summary>
 function IntegerAt(const ATokens: TTokens; AIndex: Integer; out AValue: Int64; out ALast: Integer): Boolean;
 var
-  Negative: Boolean;
+  mNegative: Boolean;
 begin
   Result := False;
   AValue := 0;
@@ -592,8 +899,8 @@ begin
   begin
     Exit;
   end;
-  Negative := ATokens[AIndex].IsSymbol('-');
-  if Negative then
+  mNegative := ATokens[AIndex].IsSymbol('-');
+  if mNegative then
   begin
     ALast := NextCode(ATokens, AIndex + 1);
   end;
@@ -602,7 +909,7 @@ begin
   begin
     Exit;
   end;
-  if Negative then
+  if mNegative then
   begin
     AValue := -AValue;
   end;
@@ -793,21 +1100,21 @@ end;
 /// <summary>Durchlaufen alle Schleifen um AIndex zusammen höchstens FewIterations Mal?</summary>
 function FewInLoops(const ATokens: TTokens; const ALoops: TArray<TLoop>; AIndex: Integer): Boolean;
 var
-  Loop: TLoop;
-  Total, Count: Int64;
+  mLoop: TLoop;
+  mTotal, mCount: Int64;
 begin
-  Total := 1;
-  for Loop in ALoops do
+  mTotal := 1;
+  for mLoop in ALoops do
   begin
-    if (AIndex >= Loop.BodyFirst) and (AIndex <= Loop.BodyLast) then
+    if (AIndex >= mLoop.BodyFirst) and (AIndex <= mLoop.BodyLast) then
     begin
-      Count := FixedIterations(ATokens, Loop);
-      if Count < 0 then
+      mCount := FixedIterations(ATokens, mLoop);
+      if mCount < 0 then
       begin
         Exit(False);
       end;
-      Total := Total * Count;
-      if Total > FewIterations then
+      mTotal := mTotal * mCount;
+      if mTotal > cFewIterations then
       begin
         Exit(False);
       end;
@@ -858,17 +1165,57 @@ begin
     MatchText(mMethod, ['add', 'addobject', 'append', 'insert', 'addchild', 'addchildobject', 'addpair']);
 end;
 
-/// <summary>Menu.Items ist ein TMenuItem ohne BeginUpdate.</summary>
+/// <summary>Menu.Items ist ein TMenuItem ohne BeginUpdate; auch über Felder (FParts.Menu.Items).</summary>
 function IsMenuItems(const ATypes: TDeclaredTypes; const AReceiver: string; const APosition: TTextPosition): Boolean;
-var
-  mOwner: string;
 begin
-  mOwner := OwnerOf(AReceiver);
-  if StartsText('self.', mOwner) then
+  Result := MatchText(ATypes.ChainType(OwnerOf(AReceiver), APosition), cMenuTypes);
+end;
+
+const
+  /// <summary>Listen ohne Steuerelement und ohne BeginUpdate (TObjectList&lt;T&gt;, TList).</summary>
+  cPlainLists: array[0..5] of string = ('TList', 'TObjectList', 'TInterfaceList', 'TStack', 'TQueue',
+    'TDictionary');
+
+/// <summary>Typname ohne Typargumente: TObjectList&lt;TNode&gt; → TObjectList.</summary>
+function BareTypeName(const ATypeName: string): string;
+var
+  mAngle: Integer;
+begin
+  Result := Trim(ATypeName);
+  mAngle := Pos('<', Result);
+  if mAngle > 0 then
   begin
-    mOwner := Copy(mOwner, Length('self.') + 1, MaxInt);
+    Result := Trim(Copy(Result, 1, mAngle - 1));
   end;
-  Result := (Pos('.', mOwner) = 0) and MatchText(ATypes.DeclaredType(mOwner, APosition), MenuTypes);
+end;
+
+/// <summary>Kennt die Namensauflösung den Empfänger AReceiver (bzw. sein Objekt davor) als Typ ohne BeginUpdate:
+/// Menü (FParts.Menu: TPopupMenu aus einer anderen Unit), Liste ohne Steuerelement (Items: TObjectList&lt;T&gt;) oder
+/// ein Typ im Index ohne Mitglied BeginUpdate? Unbekannt: False.</summary>
+function LacksBeginUpdate(const AContext: TRuleContext; AResolver: TNameResolver; const AFileName,
+  AReceiver: string; AOffset: Integer): Boolean;
+var
+  mOwner, mItems: TResolvedSymbol;
+  mChain: TResolvedChainType;
+  mMember: TResolvedSymbol;
+begin
+  mOwner := AResolver.ResolveChain(AContext.Tree, AFileName, OwnerOf(AReceiver).Split(['.']), AOffset);
+  if (mOwner.Kind <> TResolvedKind.None) and MatchText(BareTypeName(mOwner.TypeName), cMenuTypes) then
+  begin
+    Exit(True);
+  end;
+  mItems := AResolver.ResolveChain(AContext.Tree, AFileName, AReceiver.Split(['.']), AOffset);
+  if mItems.Kind = TResolvedKind.None then
+  begin
+    Exit(False);
+  end;
+  if MatchText(BareTypeName(mItems.TypeName), cPlainLists) or MatchText(BareTypeName(mItems.TypeName),
+    cMenuTypes) then
+  begin
+    Exit(True);
+  end;
+  Result := AResolver.ChainType(AContext.Tree, AFileName, AReceiver.Split(['.']), AOffset, mChain) and
+    mChain.TypeFound and not AResolver.FindMember(mChain.TypeInfo, 'BeginUpdate', mMember);
 end;
 
 /// <summary>Steht für den Empfänger schon BeginUpdate in der Datei bzw. ist er schon gemeldet?</summary>
@@ -903,7 +1250,9 @@ var
   mUpdated, mReported: TArray<string>;
   mTypes: TDeclaredTypes;
   mIndex, mLast: Integer;
-  mReceiver: string;
+  mReceiver, mFileName: string;
+  mCache: IRuleDerivedCache;
+  mResolver: TNameResolver;
 begin
   if AContext.Tree = nil then
   begin
@@ -915,7 +1264,12 @@ begin
   begin
     Exit;
   end;
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mFileName := ResolverFileName(AContext);
   mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  mResolver.PinTree(AContext.Tree, mFileName);
   try
     mUpdated := UpdatedReceivers(mTokens);
     mReported := nil;
@@ -928,7 +1282,8 @@ begin
       end;
       // Wenige Einträge: Das Neuzeichnen fällt nicht ins Gewicht.
       if IsHandled(mReceiver, mUpdated, mReported) or IsMenuItems(mTypes, mReceiver, mTokens[mIndex].StartPos) or
-        FewInLoops(mTokens, mFound, mIndex) then
+        FewInLoops(mTokens, mFound, mIndex) or
+        LacksBeginUpdate(AContext, mResolver, mFileName, mReceiver, mTokens[mIndex].Offset) then
       begin
         Continue;
       end;
@@ -936,6 +1291,7 @@ begin
       ReportAdd(AContext, AReport, mTokens, mIndex, mLast);
     end;
   finally
+    mResolver.UnpinTree;
     mTypes.Free;
   end;
 end;
@@ -957,9 +1313,9 @@ end;
 /// <summary>Ganzzahliges Literal ab 1?</summary>
 function IsPositiveLiteral(ANode: TSyntaxNode): Boolean;
 var
-  Value: Integer;
+  mValue: Integer;
 begin
-  Result := (ANode.Kind = TSyntaxKind.Literal) and TryStrToInt(ANode.Name, Value) and (Value >= 1);
+  Result := (ANode.Kind = TSyntaxKind.Literal) and TryStrToInt(ANode.Name, mValue) and (mValue >= 1);
 end;
 
 /// <summary>Vergrößert ALength die Länge von ATarget um einen festen Schritt: Length(A) + n, n + Length(A),
@@ -1031,42 +1387,44 @@ end;
 /// <summary>Steht AStatement direkt im Rumpf von ALoop, wird es also bei jedem Durchlauf ausgeführt?</summary>
 function RunsEveryIteration(ALoop, AStatement: TSyntaxNode): Boolean;
 var
-  Body: TSyntaxNode;
+  mBody: TSyntaxNode;
 begin
   if ALoop.Kind = TSyntaxKind.RepeatStatement then
   begin
     Exit(AStatement.Parent = ALoop);
   end;
-  Body := LoopBody(ALoop);
-  Result := (Body = AStatement) or ((Body <> nil) and (Body.Kind = TSyntaxKind.Block) and (AStatement.Parent = Body));
+  mBody := LoopBody(ALoop);
+  Result := (mBody = AStatement) or ((mBody <> nil) and (mBody.Kind = TSyntaxKind.Block) and
+    (AStatement.Parent = mBody));
 end;
 
 /// <summary>Ergebnistyp der Funktion um ANode als Quelltext; '' ohne.</summary>
 function ResultType(const AText: string; ANode: TSyntaxNode): string;
 var
-  Routine, Header: TSyntaxNode;
+  mRoutine, mHeader: TSyntaxNode;
 begin
   Result := '';
-  Routine := ANode.Parent;
-  while (Routine <> nil) and (Routine.Kind <> TSyntaxKind.RoutineDecl) do
+  mRoutine := ANode.Parent;
+  while (mRoutine <> nil) and (mRoutine.Kind <> TSyntaxKind.RoutineDecl) do
   begin
-    if Routine.Kind = TSyntaxKind.AnonymousMethod then
+    if mRoutine.Kind = TSyntaxKind.AnonymousMethod then
     begin
       Exit;
     end;
-    Routine := Routine.Parent;
+    mRoutine := mRoutine.Parent;
   end;
-  if Routine = nil then
+  if mRoutine = nil then
   begin
     Exit;
   end;
-  Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
-  if (Header <> nil) and (Header.ChildCount > 0) and (Header[Header.ChildCount - 1].Kind <> TSyntaxKind.Parameters) then
+  mHeader := mRoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if (mHeader <> nil) and (mHeader.ChildCount > 0) and
+    (mHeader[mHeader.ChildCount - 1].Kind <> TSyntaxKind.Parameters) then
   begin
-    Header := Header.FindChild(TSyntaxKind.TypeReference);
-    if Header <> nil then
+    mHeader := mHeader.FindChild(TSyntaxKind.TypeReference);
+    if mHeader <> nil then
     begin
-      Result := NodeText(AText, Header);
+      Result := NodeText(AText, mHeader);
     end;
   end;
 end;
@@ -1075,8 +1433,8 @@ end;
 /// ALoopIndex: Ausdruck für den Index des I-ten Elements (I bzw. I - Start).</summary>
 function ForCount(const AText: string; ALoop: TSyntaxNode; out ALoopIndex: string): string;
 var
-  First, Last: TSyntaxNode;
-  LowText, HighText: string;
+  mFirst, mLast: TSyntaxNode;
+  mLowText, mHighText: string;
 begin
   Result := '';
   ALoopIndex := '';
@@ -1084,36 +1442,36 @@ begin
   begin
     Exit;
   end;
-  First := ALoop[ALoop.ChildCount - 3];
-  Last := ALoop[ALoop.ChildCount - 2];
-  if ContainsText(Copy(AText, First.EndOffset + 1, Last.StartOffset - First.EndOffset), 'downto') then
+  mFirst := ALoop[ALoop.ChildCount - 3];
+  mLast := ALoop[ALoop.ChildCount - 2];
+  if ContainsText(Copy(AText, mFirst.EndOffset + 1, mLast.StartOffset - mFirst.EndOffset), 'downto') then
   begin
     Exit;
   end;
-  LowText := Trim(NodeText(AText, First));
-  HighText := Trim(NodeText(AText, Last));
-  if LowText = '0' then
+  mLowText := Trim(NodeText(AText, mFirst));
+  mHighText := Trim(NodeText(AText, mLast));
+  if mLowText = '0' then
   begin
     ALoopIndex := ALoop.Name;
-    if (Last.Kind = TSyntaxKind.BinaryExpr) and (Last.Name = '-') and (Last.ChildCount = 2) and
-      (Last[1].Kind = TSyntaxKind.Literal) and (Last[1].Name = '1') then
+    if (mLast.Kind = TSyntaxKind.BinaryExpr) and (mLast.Name = '-') and (mLast.ChildCount = 2) and
+      (mLast[1].Kind = TSyntaxKind.Literal) and (mLast[1].Name = '1') then
     begin
-      Result := Trim(NodeText(AText, Last[0]));
+      Result := Trim(NodeText(AText, mLast[0]));
     end
     else
     begin
-      Result := HighText + ' + 1';
+      Result := mHighText + ' + 1';
     end;
   end
-  else if LowText = '1' then
+  else if mLowText = '1' then
   begin
-    Result := HighText;
+    Result := mHighText;
     ALoopIndex := ALoop.Name + ' - 1';
   end
   else
   begin
-    Result := Format('%s - %s + 1', [HighText, LowText]);
-    ALoopIndex := Format('%s - %s', [ALoop.Name, LowText]);
+    Result := Format('%s - %s + 1', [mHighText, mLowText]);
+    ALoopIndex := Format('%s - %s', [ALoop.Name, mLowText]);
   end;
 end;
 

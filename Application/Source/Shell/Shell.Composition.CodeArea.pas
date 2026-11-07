@@ -80,7 +80,8 @@ type
     function RefactoringServices: TShellRefactoringServices;
     function CompletionServices: TShellCompletionServices;
     function CodeActionServices: TShellCodeActionServices;
-    /// <summary>Präfix der Namensvorschläge (#452): Vorgabe der Projektdatei .atlas, sonst die Zählung im Index.</summary>
+    /// <summary>Präfix der Namensvorschläge (#452): Vorgabe der Projektdatei .atlas, sonst die Zählung im
+    /// Index.</summary>
     function NamingPrefixFor(const AUri: string; AKind: TNamingKind): string;
     /// <summary>Einstellungen und Projektdaten des Arbeitsbereichs von AUri für Code-Aktionen.</summary>
     function CodeActionWorkspaceOf(const AUri: string): TShellCodeActionWorkspace;
@@ -115,7 +116,6 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Compiler.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.Completion.Names,
@@ -407,7 +407,7 @@ begin
       Result.SortUses := mWorkspace.Configuration.Settings.SortUses;
       Result.SortUsesByNamespace := mWorkspace.Configuration.Settings.SortUsesByNamespace;
       // usesKeep und die Option keep von unused-uses (#1135): Regel, Abblenden und „uses aufräumen“ gleich.
-      Result.UsesKeep := TUnusedUsesRule.Keep(TRuleEngine.RuleOptions(UnusedUsesRuleId,
+      Result.UsesKeep := TUnusedUsesRule.Keep(TRuleEngine.RuleOptions(cUnusedUsesRuleId,
         mWorkspace.Configuration.Settings), mWorkspace.Configuration.Settings.UsesKeep);
       Result.Namespaces := mWorkspace.State.Namespaces;
       Result.IncludePaths := mWorkspace.State.IncludePaths;

@@ -44,10 +44,10 @@ type
 
   TLspMethodWithoutSelf = class
   public const
-    ClientCommand = 'atlas.methodKind';
-    ApplyCommand = 'atlas.server.methodKind';
-    Kind = 'refactor.rewrite';
-    AnnotationId = 'methodKind';
+    cClientCommand = 'atlas.methodKind';
+    cApplyCommand = 'atlas.server.methodKind';
+    cKind = 'refactor.rewrite';
+    cAnnotationId = 'methodKind';
   public
     /// <summary>Mitglieder, Interfaces, Helper und Formular über AResolver für ATree der Datei AFileName.</summary>
     class function Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
@@ -105,62 +105,62 @@ end;
 class function TLspMethodWithoutSelf.Actions(ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition; const ALookup: TMethodLookup): TArray<TJSONObject>;
 var
-  Target: TMethodTarget;
-  Reason, Title: string;
-  Conversion: TMethodConversion;
-  Arguments: TJSONArray;
-  Command, Action: TJSONObject;
+  mTarget: TMethodTarget;
+  mReason, mTitle: string;
+  mConversion: TMethodConversion;
+  mArguments: TJSONArray;
+  mCommand, mAction: TJSONObject;
 begin
   Result := nil;
-  if not TMethodWithoutSelf.Target(AText, ATree, APosition, ALookup, Target, Reason) then
+  if not TMethodWithoutSelf.Target(AText, ATree, APosition, ALookup, mTarget, mReason) then
   begin
     Exit;
   end;
-  for Conversion in Target.Conversions do
+  for mConversion in mTarget.Conversions do
   begin
-    Title := Target.Title(Conversion);
-    Arguments := TJSONArray.Create;
-    Arguments.Add(AUri);
-    Arguments.AddElement(TLspPositions.PositionToJson(APosition));
-    Arguments.Add(TMethodWithoutSelf.ConversionName(Conversion));
-    Command := TJSONObject.Create;
-    Command.AddPair('title', Title);
-    Command.AddPair('command', ClientCommand);
-    Command.AddPair('arguments', Arguments);
-    Action := TJSONObject.Create;
-    Action.AddPair('title', Title);
-    Action.AddPair('kind', Kind);
-    Action.AddPair('command', Command);
-    Result := Result + [Action];
+    mTitle := mTarget.Title(mConversion);
+    mArguments := TJSONArray.Create;
+    mArguments.Add(AUri);
+    mArguments.AddElement(TLspPositions.PositionToJson(APosition));
+    mArguments.Add(TMethodWithoutSelf.ConversionName(mConversion));
+    mCommand := TJSONObject.Create;
+    mCommand.AddPair('title', mTitle);
+    mCommand.AddPair('command', cClientCommand);
+    mCommand.AddPair('arguments', mArguments);
+    mAction := TJSONObject.Create;
+    mAction.AddPair('title', mTitle);
+    mAction.AddPair('kind', cKind);
+    mAction.AddPair('command', mCommand);
+    Result := Result + [mAction];
   end;
 end;
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
 end;
 
 function EditsJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
 var
-  Document, Item: TJSONObject;
-  Items: TJSONArray;
-  Edit: TTextEdit;
+  mDocument, mItem: TJSONObject;
+  mItems: TJSONArray;
+  mEdit: TTextEdit;
 begin
-  Document := TJSONObject.Create;
-  Document.AddPair('uri', AUri);
-  Document.AddPair('version', TJSONNull.Create);
-  Items := TJSONArray.Create;
-  for Edit in AEdits do
+  mDocument := TJSONObject.Create;
+  mDocument.AddPair('uri', AUri);
+  mDocument.AddPair('version', TJSONNull.Create);
+  mItems := TJSONArray.Create;
+  for mEdit in AEdits do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-    Item.AddPair('newText', Edit.NewText);
-    Item.AddPair('annotationId', TLspMethodWithoutSelf.AnnotationId);
-    Items.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mItem.AddPair('newText', mEdit.NewText);
+    mItem.AddPair('annotationId', TLspMethodWithoutSelf.cAnnotationId);
+    mItems.AddElement(mItem);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('textDocument', Document);
-  Result.AddPair('edits', Items);
+  Result.AddPair('textDocument', mDocument);
+  Result.AddPair('edits', mItems);
 end;
 
 type
@@ -356,7 +356,7 @@ begin
   mAnnotation.AddPair('description', cTexts[TLspMethodWithoutSelfText.CallsInFiles].Fmt([AName, AConverted.Calls,
     Length(AConverted.Files)]));
   mAnnotations := TJSONObject.Create;
-  mAnnotations.AddPair(TLspMethodWithoutSelf.AnnotationId, mAnnotation);
+  mAnnotations.AddPair(TLspMethodWithoutSelf.cAnnotationId, mAnnotation);
   mEdit := TJSONObject.Create;
   mEdit.AddPair('documentChanges', mChanges);
   mEdit.AddPair('changeAnnotations', mAnnotations);
@@ -383,7 +383,7 @@ var
 begin
   if not TMethodWithoutSelf.ConversionOf(AContext.Conversion, mConversion) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TLspMethodWithoutSelfText.UnknownConversion].Fmt([AContext.Conversion]));
   end;
   mRun := TMethodKindRun.Create(AResolver, ATree, AFileName, AText, AContext);
@@ -400,14 +400,14 @@ end;
 class function TLspMethodWithoutSelf.Markers(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
   const ALookup: TMethodLookup): TArray<TTextPosition>;
 var
-  Target: TMethodTarget;
+  mTarget: TMethodTarget;
 begin
   Result := nil;
-  for Target in TMethodWithoutSelf.Candidates(AText, ATree, ALookup) do
+  for mTarget in TMethodWithoutSelf.Candidates(AText, ATree, ALookup) do
   begin
-    if (Target.HeaderEnd.Line >= ARange.StartPos.Line) and (Target.HeaderEnd.Line <= ARange.EndPos.Line) then
+    if (mTarget.HeaderEnd.Line >= ARange.StartPos.Line) and (mTarget.HeaderEnd.Line <= ARange.EndPos.Line) then
     begin
-      Result := Result + [Target.HeaderEnd];
+      Result := Result + [mTarget.HeaderEnd];
     end;
   end;
 end;

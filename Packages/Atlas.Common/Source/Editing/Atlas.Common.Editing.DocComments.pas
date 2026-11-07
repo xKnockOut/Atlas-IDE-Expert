@@ -79,9 +79,9 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  DeclarationKinds = [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl, TSyntaxKind.Field,
+  cDeclarationKinds = [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl, TSyntaxKind.Field,
     TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl];
-  RoutineWords: array[0..4] of string = ('function', 'procedure', 'constructor', 'destructor', 'operator');
+  cRoutineWords: array[0..4] of string = ('function', 'procedure', 'constructor', 'destructor', 'operator');
 
 type
   TSyntaxKinds = set of TSyntaxKind;
@@ -89,92 +89,92 @@ type
 /// <summary>Teile von AText an ASeparator auf Klammertiefe 0.</summary>
 function SplitTop(const AText: string; ASeparator: Char): TArray<string>;
 var
-  Index, Depth, Start: Integer;
+  mIndex, mDepth, mStart: Integer;
 begin
   Result := nil;
-  Depth := 0;
-  Start := 1;
-  for Index := 1 to Length(AText) do
-    case AText[Index] of
+  mDepth := 0;
+  mStart := 1;
+  for mIndex := 1 to Length(AText) do
+    case AText[mIndex] of
       '(', '[', '<':
-        Inc(Depth);
+        Inc(mDepth);
       ')', ']', '>':
-        Dec(Depth);
+        Dec(mDepth);
     else
-      if (AText[Index] = ASeparator) and (Depth = 0) then
+      if (AText[mIndex] = ASeparator) and (mDepth = 0) then
       begin
-        Result := Result + [Copy(AText, Start, Index - Start)];
-        Start := Index + 1;
+        Result := Result + [Copy(AText, mStart, mIndex - mStart)];
+        mStart := mIndex + 1;
       end;
     end;
-  Result := Result + [Copy(AText, Start, MaxInt)];
+  Result := Result + [Copy(AText, mStart, MaxInt)];
 end;
 
 /// <summary>Deklarationstext ab ALine bis zum ";" auf Klammertiefe 0.</summary>
 function DeclarationText(const ALines: TArray<string>; ALine: Integer): string;
 var
-  Line, Index, Depth: Integer;
-  Text: string;
+  mLine, mIndex, mDepth: Integer;
+  mText: string;
 begin
   Result := '';
-  Depth := 0;
-  for Line := ALine to High(ALines) do
+  mDepth := 0;
+  for mLine := ALine to High(ALines) do
   begin
-    Text := ALines[Line];
-    if Pos('//', Text) > 0 then
+    mText := ALines[mLine];
+    if Pos('//', mText) > 0 then
     begin
-      Text := Copy(Text, 1, Pos('//', Text) - 1);
+      mText := Copy(mText, 1, Pos('//', mText) - 1);
     end;
-    for Index := 1 to Length(Text) do
+    for mIndex := 1 to Length(mText) do
     begin
-      case Text[Index] of
+      case mText[mIndex] of
         '(':
-          Inc(Depth);
+          Inc(mDepth);
         ')':
-          Dec(Depth);
+          Dec(mDepth);
         ';':
-          if Depth = 0 then
+          if mDepth = 0 then
           begin
-            Exit(Result + Copy(Text, 1, Index));
+            Exit(Result + Copy(mText, 1, mIndex));
           end;
       end;
     end;
-    Result := Result + Text + ' ';
+    Result := Result + mText + ' ';
   end;
 end;
 
 /// <summary>Namen aus einer Parametergruppe "const [Ref] A, B: Integer = 0".</summary>
 function GroupNames(const AGroup: string): TArray<string>;
 var
-  Text, Name: string;
-  Colon, Bracket: Integer;
+  mText, mName: string;
+  mColon, mBracket: Integer;
 begin
   Result := nil;
-  Text := Trim(AGroup);
-  Colon := Pos(':', Text);
-  if Colon > 0 then
+  mText := Trim(AGroup);
+  mColon := Pos(':', mText);
+  if mColon > 0 then
   begin
-    Text := Copy(Text, 1, Colon - 1);
+    mText := Copy(mText, 1, mColon - 1);
   end;
   // Attribute wie [Ref] entfernen.
-  Bracket := Pos(']', Text);
-  if (Pos('[', Text) > 0) and (Bracket > 0) then
+  mBracket := Pos(']', mText);
+  if (Pos('[', mText) > 0) and (mBracket > 0) then
   begin
-    Text := Copy(Text, 1, Pos('[', Text) - 1) + Copy(Text, Bracket + 1, MaxInt);
+    mText := Copy(mText, 1, Pos('[', mText) - 1) + Copy(mText, mBracket + 1, MaxInt);
   end;
-  Text := Trim(Text);
-  for Name in ['const ', 'var ', 'out ', 'constref '] do
+  mText := Trim(mText);
+  for mName in ['const ', 'var ', 'out ', 'constref '] do
   begin
-    if StartsText(Name, Text) then
+    if StartsText(mName, mText) then
     begin
-      Text := Trim(Copy(Text, Length(Name) + 1, MaxInt));
+      mText := Trim(Copy(mText, Length(mName) + 1, MaxInt));
     end;
   end;
-  for Name in SplitTop(Text, ',') do
+  for mName in SplitTop(mText, ',') do
   begin
-    if IsValidIdent(Trim(Name)) then
+    if IsValidIdent(Trim(mName)) then
     begin
-      Result := Result + [Trim(Name)];
+      Result := Result + [Trim(mName)];
     end;
   end;
 end;
@@ -189,7 +189,7 @@ begin
     AText := Trim(Copy(AText, 7, MaxInt));
   end;
   AWord := LowerCase(Copy(AText, 1, Pos(' ', AText + ' ') - 1));
-  Result := IndexText(AWord, RoutineWords) >= 0;
+  Result := IndexText(AWord, cRoutineWords) >= 0;
   if Result then
   begin
     AText := Trim(Copy(AText, Length(AWord) + 1, MaxInt));
@@ -303,16 +303,16 @@ end;
 
 class function TDocComments.Skeleton(const ASignature: TDocSignature; const AIndent: string): TArray<string>;
 var
-  Name: string;
+  mName: string;
 begin
   Result := [AIndent + '/// <summary></summary>'];
-  for Name in ASignature.TypeParams do
+  for mName in ASignature.TypeParams do
   begin
-    Result := Result + [AIndent + Format('/// <typeparam name="%s"></typeparam>', [Name])];
+    Result := Result + [AIndent + Format('/// <typeparam name="%s"></typeparam>', [mName])];
   end;
-  for Name in ASignature.Params do
+  for mName in ASignature.Params do
   begin
-    Result := Result + [AIndent + Format('/// <param name="%s"></param>', [Name])];
+    Result := Result + [AIndent + Format('/// <param name="%s"></param>', [mName])];
   end;
   if ASignature.HasResult then
   begin
@@ -324,22 +324,22 @@ end;
 /// Rekursion (Bericht M1); unter ANode nur Knoten, die ALine überdecken.</summary>
 function NodeAt(ANode: TSyntaxNode; ALine: Integer; const AKinds: TSyntaxKinds): TSyntaxNode; overload;
 var
-  Root: TSyntaxNode;
-  Line: Integer;
-  Kinds: TSyntaxKinds;
+  mRoot: TSyntaxNode;
+  mLine: Integer;
+  mKinds: TSyntaxKinds;
 begin
-  Root := ANode;
-  Line := ALine;
-  Kinds := AKinds;
+  mRoot := ANode;
+  mLine := ALine;
+  mKinds := AKinds;
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin
-      if (ACandidate <> Root) and ((ACandidate.StartPos.Line > Line) or (ACandidate.EndPos.Line < Line)) then
+      if (ACandidate <> mRoot) and ((ACandidate.StartPos.Line > mLine) or (ACandidate.EndPos.Line < mLine)) then
       begin
         Exit(TSyntaxSearchStep.Skip);
       end;
       Result := TSyntaxSearchStep.Descend;
-      if (ACandidate.Kind in Kinds) and (ACandidate.StartPos.Line = Line) then
+      if (ACandidate.Kind in mKinds) and (ACandidate.StartPos.Line = mLine) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
@@ -348,7 +348,7 @@ end;
 
 function FindDeclaration(ANode: TSyntaxNode; ALine: Integer): Boolean;
 begin
-  Result := NodeAt(ANode, ALine, DeclarationKinds) <> nil;
+  Result := NodeAt(ANode, ALine, cDeclarationKinds) <> nil;
 end;
 
 /// <summary>Beginnt in Zeile ALine eine Deklaration (Typ, Konstante, Variable, Feld, Property, Routine)?</summary>
@@ -378,19 +378,19 @@ end;
 /// </summary>
 function FindType(ANode: TSyntaxNode; const AName: string): TSyntaxNode;
 const
-  Containers = [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection, TSyntaxKind.TypeSection,
+  cContainers = [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection, TSyntaxKind.TypeSection,
     TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType, TSyntaxKind.HelperType];
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    Result := ANode[Index];
+    Result := ANode[mIndex];
     if (Result.Kind = TSyntaxKind.TypeDecl) and SameText(Result.Name, AName) then
     begin
       Exit;
     end;
-    if Result.Kind in Containers then
+    if Result.Kind in cContainers then
     begin
       Result := FindType(Result, AName);
       if Result <> nil then
@@ -405,23 +405,23 @@ end;
 /// <summary>Parameternamen eines RoutineHeader-Knotens in Reihenfolge.</summary>
 function HeaderParams(AHeader: TSyntaxNode): TArray<string>;
 var
-  Parameters: TSyntaxNode;
-  Index: Integer;
-  Name: string;
+  mParameters: TSyntaxNode;
+  mIndex: Integer;
+  mName: string;
 begin
   Result := nil;
-  Parameters := AHeader.FindChild(TSyntaxKind.Parameters);
-  if Parameters = nil then
+  mParameters := AHeader.FindChild(TSyntaxKind.Parameters);
+  if mParameters = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Parameters.ChildCount - 1 do
+  for mIndex := 0 to mParameters.ChildCount - 1 do
   begin
-    if Parameters[Index].Kind = TSyntaxKind.Parameter then
+    if mParameters[mIndex].Kind = TSyntaxKind.Parameter then
     begin
-      for Name in Parameters[Index].Name.Split([',']) do
+      for mName in mParameters[mIndex].Name.Split([',']) do
       begin
-        Result := Result + [Trim(Name)];
+        Result := Result + [Trim(mName)];
       end;
     end;
   end;
@@ -429,14 +429,14 @@ end;
 
 function SameNames(const A, B: TArray<string>): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Length(A) = Length(B);
   if Result then
   begin
-    for Index := 0 to High(A) do
+    for mIndex := 0 to High(A) do
     begin
-      if not SameText(A[Index], B[Index]) then
+      if not SameText(A[mIndex], B[mIndex]) then
       begin
         Exit(False);
       end;
@@ -530,107 +530,107 @@ end;
 class function TDocComments.AfterSlash(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   out AEdit: TTextEdit): Boolean;
 var
-  Lines: TArray<string>;
-  Line: Integer;
-  Skeleton: TArray<string>;
+  mLines: TArray<string>;
+  mLine: Integer;
+  mSkeleton: TArray<string>;
 begin
   Result := False;
-  Lines := TTextLines.SplitLines(AText);
-  Line := APosition.Line;
-  if (Line < 0) or (Line >= High(Lines)) or (Trim(Lines[Line]) <> '///') then
+  mLines := TTextLines.SplitLines(AText);
+  mLine := APosition.Line;
+  if (mLine < 0) or (mLine >= High(mLines)) or (Trim(mLines[mLine]) <> '///') then
   begin
     Exit;
   end;
   // Schon dokumentiert oder kein Ziel darunter.
-  if ((Line > 0) and IsDocLine(Lines[Line - 1])) or not IsDeclarationLine(ATree, Lines, Line + 1) then
+  if ((mLine > 0) and IsDocLine(mLines[mLine - 1])) or not IsDeclarationLine(ATree, mLines, mLine + 1) then
   begin
     Exit;
   end;
-  Skeleton := TDocComments.Skeleton(TDocComments.Signature(Lines, Line + 1), TTextLines.IndentOf(Lines[Line]));
-  AEdit := TTextEdit.Create(TTextRange.Create(Line, 0, Line, Length(Lines[Line])),
-    TTextLines.JoinLines(Skeleton, TTextLines.LineBreakOf(AText)));
+  mSkeleton := TDocComments.Skeleton(TDocComments.Signature(mLines, mLine + 1), TTextLines.IndentOf(mLines[mLine]));
+  AEdit := TTextEdit.Create(TTextRange.Create(mLine, 0, mLine, Length(mLines[mLine])),
+    TTextLines.JoinLines(mSkeleton, TTextLines.LineBreakOf(AText)));
   Result := True;
 end;
 
 class function TDocComments.AfterSlash(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   out AEdits: TArray<TTextEdit>): Boolean;
 var
-  Lines: TArray<string>;
-  Line, Target: Integer;
-  Declaration: TSyntaxNode;
-  Edit: TTextEdit;
-  LB: string;
+  mLines: TArray<string>;
+  mLine, mTarget: Integer;
+  mDeclaration: TSyntaxNode;
+  mEdit: TTextEdit;
+  mLB: string;
 begin
   AEdits := nil;
-  Lines := TTextLines.SplitLines(AText);
-  Line := APosition.Line;
-  Declaration := nil;
-  if (Line >= 0) and (Line < High(Lines)) and (Trim(Lines[Line]) = '///') and
-    not ((Line > 0) and IsDocLine(Lines[Line - 1])) then
+  mLines := TTextLines.SplitLines(AText);
+  mLine := APosition.Line;
+  mDeclaration := nil;
+  if (mLine >= 0) and (mLine < High(mLines)) and (Trim(mLines[mLine]) = '///') and
+    not ((mLine > 0) and IsDocLine(mLines[mLine - 1])) then
   begin
-    Declaration := MethodDeclaration(ATree, Lines, Line + 1);
+    mDeclaration := MethodDeclaration(ATree, mLines, mLine + 1);
   end;
-  if Declaration = nil then
+  if mDeclaration = nil then
   begin
-    Result := TDocComments.AfterSlash(AText, ATree, APosition, Edit);
+    Result := TDocComments.AfterSlash(AText, ATree, APosition, mEdit);
     if Result then
     begin
-      AEdits := [Edit];
+      AEdits := [mEdit];
     end;
     Exit;
   end;
   // Über den Attributen der Deklaration einfügen.
-  Target := Declaration.StartPos.Line;
-  while (Target > 0) and IsAttributeLine(Lines[Target - 1]) do
+  mTarget := mDeclaration.StartPos.Line;
+  while (mTarget > 0) and IsAttributeLine(mLines[mTarget - 1]) do
   begin
-    Dec(Target);
+    Dec(mTarget);
   end;
   // Schon dokumentiert: "///" bleibt, wie getippt.
-  Result := not ((Target > 0) and IsDocLine(Lines[Target - 1]));
+  Result := not ((mTarget > 0) and IsDocLine(mLines[mTarget - 1]));
   if not Result then
   begin
     Exit;
   end;
-  LB := TTextLines.LineBreakOf(AText);
-  AEdits := [TTextEdit.Create(TTextRange.Create(Target, 0, Target, 0),
-    TTextLines.JoinLines(TDocComments.Skeleton(TDocComments.Signature(Lines, Declaration.StartPos.Line),
-    TTextLines.IndentOf(Lines[Declaration.StartPos.Line])), LB) + LB),
-    TTextEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), '')];
+  mLB := TTextLines.LineBreakOf(AText);
+  AEdits := [TTextEdit.Create(TTextRange.Create(mTarget, 0, mTarget, 0),
+    TTextLines.JoinLines(TDocComments.Skeleton(TDocComments.Signature(mLines, mDeclaration.StartPos.Line),
+    TTextLines.IndentOf(mLines[mDeclaration.StartPos.Line])), mLB) + mLB),
+    TTextEdit.Create(TTextRange.Create(mLine, 0, mLine + 1, 0), '')];
 end;
 
 class function TDocComments.AdjustBlock(const AText: string; ATree: TSyntaxTree; ALine: Integer;
   out AAction: TCodeAction): Boolean;
 var
-  Lines: TArray<string>;
-  Line: Integer;
-  Actions: TArray<TCodeAction>;
+  mLines: TArray<string>;
+  mLine: Integer;
+  mActions: TArray<TCodeAction>;
 begin
   Result := False;
   AAction := Default(TCodeAction);
-  Lines := TTextLines.SplitLines(AText);
-  if (ALine < 0) or (ALine > High(Lines)) or not IsDocLine(Lines[ALine]) then
+  mLines := TTextLines.SplitLines(AText);
+  if (ALine < 0) or (ALine > High(mLines)) or not IsDocLine(mLines[ALine]) then
   begin
     Exit;
   end;
-  Line := ALine;
-  while (Line <= High(Lines)) and IsDocLine(Lines[Line]) do
+  mLine := ALine;
+  while (mLine <= High(mLines)) and IsDocLine(mLines[mLine]) do
   begin
-    Inc(Line);
+    Inc(mLine);
   end;
-  while (Line <= High(Lines)) and IsAttributeLine(Lines[Line]) do
+  while (mLine <= High(mLines)) and IsAttributeLine(mLines[mLine]) do
   begin
-    Inc(Line);
+    Inc(mLine);
   end;
-  if Line > High(Lines) then
+  if mLine > High(mLines) then
   begin
     Exit;
   end;
-  Actions := TDocComments.Actions(AText, ATree, Line);
+  mActions := TDocComments.Actions(AText, ATree, mLine);
   // Ohne Block liefert Actions "erzeugen"; hier steht ein Block, also nur der Abgleich.
-  Result := Actions <> nil;
+  Result := mActions <> nil;
   if Result then
   begin
-    AAction := Actions[0];
+    AAction := mActions[0];
     AAction.Title := cTexts[TDocCommentsText.SynchronizeParameters].Text;
   end;
 end;
@@ -638,62 +638,63 @@ end;
 /// <summary>Name aus einer Zeile "/// &lt;param name="X"&gt;"; '' sonst.</summary>
 function ParamName(const ALine: string): string;
 var
-  Start, Stop: Integer;
+  mStart, mStop: Integer;
 begin
   Result := '';
-  Start := Pos('<param name="', ALine);
-  if Start = 0 then
+  mStart := Pos('<param name="', ALine);
+  if mStart = 0 then
   begin
     Exit;
   end;
-  Start := Start + Length('<param name="');
-  Stop := PosEx('"', ALine, Start);
-  if Stop > Start then
+  mStart := mStart + Length('<param name="');
+  mStop := PosEx('"', ALine, mStart);
+  if mStop > mStart then
   begin
-    Result := Copy(ALine, Start, Stop - Start);
+    Result := Copy(ALine, mStart, mStop - mStart);
   end;
 end;
 
 /// <summary>Bearbeitungen, die den &lt;param&gt; ab Zeile ALine als &lt;!-- entfernt: Name --&gt; markieren;
-/// die Beschreibung bleibt im Kommentar. ALast = letzte Kommentarzeile, bis zu der &lt;/param&gt; gesucht wird.</summary>
+/// die Beschreibung bleibt im Kommentar. ALast = letzte Kommentarzeile, bis zu der &lt;/param&gt; gesucht
+/// wird.</summary>
 function MarkRemoved(const ALines: TArray<string>; ALine, ALast: Integer; const AName: string): TArray<TTextEdit>;
 const
-  CloseTag = '</param>';
+  cCloseTag = '</param>';
 var
-  Open, OpenEnd, Close, Line: Integer;
-  Description: string;
+  mOpen, mOpenEnd, mClose, mLine: Integer;
+  mDescription: string;
 begin
-  Open := Pos('<param name="', ALines[ALine]);
-  OpenEnd := PosEx('>', ALines[ALine], Open);
-  Close := PosEx(CloseTag, ALines[ALine], OpenEnd);
-  if Close > 0 then
+  mOpen := Pos('<param name="', ALines[ALine]);
+  mOpenEnd := PosEx('>', ALines[ALine], mOpen);
+  mClose := PosEx(cCloseTag, ALines[ALine], mOpenEnd);
+  if mClose > 0 then
   begin
     // "--" ist in einem XML-Kommentar nicht erlaubt.
-    Description := Trim(StringReplace(Copy(ALines[ALine], OpenEnd + 1, Close - OpenEnd - 1), '--', '–',
+    mDescription := Trim(StringReplace(Copy(ALines[ALine], mOpenEnd + 1, mClose - mOpenEnd - 1), '--', '–',
       [rfReplaceAll]));
-    if Description <> '' then
+    if mDescription <> '' then
     begin
-      Description := ': ' + Description;
+      mDescription := ': ' + mDescription;
     end;
-    Result := [TTextEdit.Create(TTextRange.Create(ALine, Open - 1, ALine, Close - 1 + Length(CloseTag)),
-      Format('<!-- entfernt: %s%s -->', [AName, Description]))];
+    Result := [TTextEdit.Create(TTextRange.Create(ALine, mOpen - 1, ALine, mClose - 1 + Length(cCloseTag)),
+      Format('<!-- entfernt: %s%s -->', [AName, mDescription]))];
     Exit;
   end;
   // Mehrzeilig: Anfang und Ende des Tags ersetzen, die Zeilen dazwischen bleiben.
-  Result := [TTextEdit.Create(TTextRange.Create(ALine, Open - 1, ALine, OpenEnd),
+  Result := [TTextEdit.Create(TTextRange.Create(ALine, mOpen - 1, ALine, mOpenEnd),
     Format('<!-- entfernt: %s:', [AName]))];
-  for Line := ALine + 1 to ALast do
+  for mLine := ALine + 1 to ALast do
   begin
-    Close := Pos(CloseTag, ALines[Line]);
-    if Close > 0 then
+    mClose := Pos(cCloseTag, ALines[mLine]);
+    if mClose > 0 then
     begin
-      Result := Result + [TTextEdit.Create(TTextRange.Create(Line, Close - 1, Line, Close - 1 + Length(CloseTag)),
+      Result := Result + [TTextEdit.Create(TTextRange.Create(mLine, mClose - 1, mLine, mClose - 1 + Length(cCloseTag)),
         '-->')];
       Exit;
     end;
   end;
   // Kein Ende gefunden: nur den Anfang markieren und schließen.
-  Result := [TTextEdit.Create(TTextRange.Create(ALine, Open - 1, ALine, OpenEnd),
+  Result := [TTextEdit.Create(TTextRange.Create(ALine, mOpen - 1, ALine, mOpenEnd),
     Format('<!-- entfernt: %s -->', [AName]))];
 end;
 
@@ -822,7 +823,7 @@ begin
   mSignature := TDocComments.Signature(mLines, ALine);
   mBlock := TDocBlock.Create(AText, mLines, ALine);
   mAction := Default(TCodeAction);
-  mAction.Kind := RewriteKind;
+  mAction.Kind := cRewriteKind;
   if mBlock.First = mBlock.Top then
   begin
     mAction.Title := cTexts[TDocCommentsText.GenerateDocumentationComment].Text;

@@ -505,14 +505,14 @@ begin
   AHooks.CommentAssist :=
     function(const ATarget: TAtlasTrackerTarget; const AKey: string): IAtlasCommentAssist
     begin
-      Result := mLink.Assist(ATarget, AKey, TAtlasCommentDrafts.FieldPreview);
+      Result := mLink.Assist(ATarget, AKey, TAtlasCommentDrafts.cFieldPreview);
     end;
   AHooks.CommentSent :=
     procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
     begin
       if (mLink.Keep <> nil) and (mLink.Services.FComments <> nil) then
       begin
-        mLink.Services.FComments.DeleteDraft(ATarget, AKey, TAtlasCommentDrafts.FieldPreview);
+        mLink.Services.FComments.DeleteDraft(ATarget, AKey, TAtlasCommentDrafts.cFieldPreview);
       end;
     end;
 end;

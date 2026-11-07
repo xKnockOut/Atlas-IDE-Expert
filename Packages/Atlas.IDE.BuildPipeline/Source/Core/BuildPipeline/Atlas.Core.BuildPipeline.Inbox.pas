@@ -63,11 +63,11 @@ type
 
   TAtlasBuildInbox = class
   public const
-    RequestExtension = '.json';
-    TakenExtension = '.taken';
-    ResultSuffix = '.result.json';
+    cRequestExtension = '.json';
+    cTakenExtension = '.taken';
+    cResultSuffix = '.result.json';
     /// <summary>Wert von "requestedBy" in den Compile-Ereignissen und im Ergebnis.</summary>
-    RequestedBy = 'mcp';
+    cRequestedBy = 'mcp';
   public
     /// <summary>Eingang des Prozesses APid unter ABase (%LOCALAPPDATA%\Atlas).</summary>
     class function Folder(const ABase: string; APid: Cardinal): string; static;
@@ -107,27 +107,27 @@ end;
 
 class function TAtlasBuildInbox.Pending(const AFolder: string): TArray<string>;
 var
-  Name: string;
-  Found: TList<string>;
+  mName: string;
+  mFound: TList<string>;
 begin
   Result := nil;
   if not TDirectory.Exists(AFolder) then
   begin
     Exit;
   end;
-  Found := TList<string>.Create;
+  mFound := TList<string>.Create;
   try
-    for Name in TDirectory.GetFiles(AFolder, '*' + RequestExtension) do
+    for mName in TDirectory.GetFiles(AFolder, '*' + cRequestExtension) do
     begin
-      if Name.EndsWith(RequestExtension, True) and not Name.EndsWith(ResultSuffix, True) then
+      if mName.EndsWith(cRequestExtension, True) and not mName.EndsWith(cResultSuffix, True) then
       begin
-        Found.Add(Name);
+        mFound.Add(mName);
       end;
     end;
-    Found.Sort;
-    Result := Found.ToArray;
+    mFound.Sort;
+    Result := mFound.ToArray;
   finally
-    Found.Free;
+    mFound.Free;
   end;
 end;
 
@@ -156,35 +156,35 @@ end;
 class function TAtlasBuildInbox.ParseRequest(const AText: string; const ATexts: TAtlasBuildInboxTexts;
   out ARequest: TAtlasBuildRequest; out AReason: string): Boolean;
 var
-  Value: TJSONValue;
-  Root: TJSONObject;
-  Mode: string;
+  mValue: TJSONValue;
+  mRoot: TJSONObject;
+  mMode: string;
 begin
   ARequest := Default(TAtlasBuildRequest);
   AReason := '';
-  Value := TJSONObject.ParseJSONValue(AText);
+  mValue := TJSONObject.ParseJSONValue(AText);
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       AReason := ATexts.Unreadable;
       Exit(False);
     end;
-    Root := TJSONObject(Value);
-    ARequest.Project := Root.GetValue<string>('project', '');
-    Mode := Root.GetValue<string>('mode', '');
-    ARequest.Configuration := Root.GetValue<string>('configuration', '');
-    ARequest.Platform := Root.GetValue<string>('platform', '');
+    mRoot := TJSONObject(mValue);
+    ARequest.Project := mRoot.GetValue<string>('project', '');
+    mMode := mRoot.GetValue<string>('mode', '');
+    ARequest.Configuration := mRoot.GetValue<string>('configuration', '');
+    ARequest.Platform := mRoot.GetValue<string>('platform', '');
   finally
-    Value.Free;
+    mValue.Free;
   end;
   if ARequest.Project = '' then
   begin
     AReason := ATexts.NoProject;
     Exit(False);
   end;
-  if not KindOf(Mode, ARequest.Kind) then
+  if not KindOf(mMode, ARequest.Kind) then
   begin
-    AReason := Format(ATexts.UnknownMode, [Mode]);
+    AReason := Format(ATexts.UnknownMode, [mMode]);
     Exit(False);
   end;
   Result := True;
@@ -193,36 +193,36 @@ end;
 class function TAtlasBuildInbox.Take(const AFileName: string; const ATexts: TAtlasBuildInboxTexts;
   out ARequest: TAtlasBuildRequest; out AReason: string): Boolean;
 var
-  Taken, Text, Id: string;
+  mTaken, mText, mId: string;
 begin
   ARequest := Default(TAtlasBuildRequest);
   AReason := '';
-  Id := ChangeFileExt(ExtractFileName(AFileName), '');
-  Taken := ChangeFileExt(AFileName, TakenExtension);
+  mId := ChangeFileExt(ExtractFileName(AFileName), '');
+  mTaken := ChangeFileExt(AFileName, cTakenExtension);
   // Umbenennen ist der Zuschlag: Hat der MCP-Server inzwischen zurückgezogen, schlägt es fehl.
-  if not RenameFile(AFileName, Taken) then
+  if not RenameFile(AFileName, mTaken) then
   begin
     Exit(False);
   end;
   try
-    Text := TFile.ReadAllText(Taken, TEncoding.UTF8);
+    mText := TFile.ReadAllText(mTaken, TEncoding.UTF8);
   except
     on Exception do
-      Text := '';
+      mText := '';
   end;
-  Result := ParseRequest(Text, ATexts, ARequest, AReason);
-  ARequest.Id := Id;
+  Result := ParseRequest(mText, ATexts, ARequest, AReason);
+  ARequest.Id := mId;
   if not Result then
   begin
-    Answer(ExtractFilePath(AFileName), Id, RefusalText(AReason));
+    Answer(ExtractFilePath(AFileName), mId, RefusalText(AReason));
   end;
 end;
 
 class function TAtlasBuildInbox.BuildJson(const AReport: TAtlasBuildReport): TJSONObject;
 var
-  Items: TJSONArray;
-  Message: TAtlasCompilerMessage;
-  Item: TJSONObject;
+  mItems: TJSONArray;
+  mMessage: TAtlasCompilerMessage;
+  mItem: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('project', AReport.Project.FileName);
@@ -232,69 +232,69 @@ begin
   Result.AddPair('success', TJSONBool.Create(AReport.Succeeded));
   Result.AddPair('durationMs', TJSONNumber.Create(AReport.DurationMs));
   Result.AddPair('finishedAt', DateToISO8601(AReport.FinishedAt, False));
-  Result.AddPair('requestedBy', RequestedBy);
-  Items := TJSONArray.Create;
-  Result.AddPair('messages', Items);
-  for Message in AReport.Messages do
+  Result.AddPair('requestedBy', cRequestedBy);
+  mItems := TJSONArray.Create;
+  Result.AddPair('messages', mItems);
+  for mMessage in AReport.Messages do
   begin
-    if Message.Severity = TAtlasCompilerSeverity.Info then
+    if mMessage.Severity = TAtlasCompilerSeverity.Info then
     begin
       Continue;
     end;
-    Item := TJSONObject.Create;
-    Item.AddPair('file', Message.FileName);
-    Item.AddPair('line', TJSONNumber.Create(Message.Line));
-    Item.AddPair('column', TJSONNumber.Create(Message.Column));
-    Item.AddPair('severity', TAtlasCompilerMessages.SeverityText(Message.Severity));
-    Item.AddPair('code', Message.Code);
-    Item.AddPair('text', Message.Text);
-    Items.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('file', mMessage.FileName);
+    mItem.AddPair('line', TJSONNumber.Create(mMessage.Line));
+    mItem.AddPair('column', TJSONNumber.Create(mMessage.Column));
+    mItem.AddPair('severity', TAtlasCompilerMessages.SeverityText(mMessage.Severity));
+    mItem.AddPair('code', mMessage.Code);
+    mItem.AddPair('text', mMessage.Text);
+    mItems.AddElement(mItem);
   end;
 end;
 
 class function TAtlasBuildInbox.SuccessText(const AReport: TAtlasBuildReport): string;
 var
-  Root: TJSONObject;
+  mRoot: TJSONObject;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Root.AddPair('ok', TJSONBool.Create(True));
-    Root.AddPair('build', BuildJson(AReport));
-    Result := Root.ToJSON;
+    mRoot.AddPair('ok', TJSONBool.Create(True));
+    mRoot.AddPair('build', BuildJson(AReport));
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasBuildInbox.RefusalText(const AReason: string): string;
 var
-  Root: TJSONObject;
+  mRoot: TJSONObject;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Root.AddPair('ok', TJSONBool.Create(False));
-    Root.AddPair('reason', AReason);
-    Result := Root.ToJSON;
+    mRoot.AddPair('ok', TJSONBool.Create(False));
+    mRoot.AddPair('reason', AReason);
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class procedure TAtlasBuildInbox.Answer(const AFolder, AId, AText: string);
 var
-  Target, Temporary: string;
+  mTarget, mTemporary: string;
 begin
-  Target := TPath.Combine(AFolder, AId + ResultSuffix);
-  Temporary := Target + '.tmp';
-  TFile.WriteAllText(Temporary, AText, TEncoding.UTF8);
-  if FileExists(Target) then
+  mTarget := TPath.Combine(AFolder, AId + cResultSuffix);
+  mTemporary := mTarget + '.tmp';
+  TFile.WriteAllText(mTemporary, AText, TEncoding.UTF8);
+  if FileExists(mTarget) then
   begin
-    TFile.Delete(Target);
+    TFile.Delete(mTarget);
   end;
-  TFile.Move(Temporary, Target);
-  if FileExists(TPath.Combine(AFolder, AId + TakenExtension)) then
+  TFile.Move(mTemporary, mTarget);
+  if FileExists(TPath.Combine(AFolder, AId + cTakenExtension)) then
   begin
-    TFile.Delete(TPath.Combine(AFolder, AId + TakenExtension));
+    TFile.Delete(TPath.Combine(AFolder, AId + cTakenExtension));
   end;
 end;
 

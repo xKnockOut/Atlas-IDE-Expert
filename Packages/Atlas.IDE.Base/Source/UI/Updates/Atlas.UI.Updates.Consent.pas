@@ -54,14 +54,14 @@ uses
   Atlas.UI.Strings;
 
 const
-  Gap = 8;
-  ConsentWidth = 420;
+  cGap = 8;
+  cConsentWidth = 420;
 
 { TAtlasUpdateConsent }
 
 constructor TAtlasUpdateConsent.CreateConsent(AOwner: TComponent);
 var
-  Buttons: TFlowPanel;
+  mButtons: TFlowPanel;
 begin
   inherited CreateNew(AOwner);
   Caption := TAtlasStrings.Text(TAtlasTextId.UpdatesConsentTitle);
@@ -70,37 +70,37 @@ begin
   Position := poDesigned;
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  ClientWidth := ScaleValue(ConsentWidth);
+  ClientWidth := ScaleValue(cConsentWidth);
   OnClose := FormClose;
 
   // Atlas-Symbol (#751) links neben dem Text.
   FSymbol := TAtlasSymbolImage.Create(Self);
   FSymbol.Parent := Self;
-  FSymbol.LogicalSize := TAtlasSymbol.HeaderSize;
-  FSymbol.Left := Gap;
-  FSymbol.Top := Gap;
+  FSymbol.LogicalSize := TAtlasSymbol.cHeaderSize;
+  FSymbol.Left := cGap;
+  FSymbol.Top := cGap;
   FText := TLabel.Create(Self);
   FText.Parent := Self;
   FText.Align := alTop;
   FText.AlignWithMargins := True;
-  FText.Margins.SetBounds(2 * Gap + FSymbol.Width, Gap, Gap, 0);
+  FText.Margins.SetBounds(2 * cGap + FSymbol.Width, cGap, cGap, 0);
   FText.WordWrap := True;
   FText.Caption := TAtlasStrings.Text(TAtlasTextId.UpdatesConsentText);
 
-  Buttons := TFlowPanel.Create(Self);
-  Buttons.Parent := Self;
-  Buttons.Align := alTop;
-  Buttons.AutoSize := True;
-  Buttons.BevelOuter := bvNone;
-  Buttons.AlignWithMargins := True;
-  Buttons.Margins.SetBounds(Gap, Gap, Gap, Gap);
-  Buttons.Top := FText.Top + FText.Height + 1;
-  FYes := AddButton(Buttons, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentYes), YesClick);
-  FNo := AddButton(Buttons, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentNo), NoClick);
-  ClientHeight := Buttons.Top + Buttons.Height + Gap;
-  if ClientHeight < FSymbol.Top + FSymbol.Height + Gap then
+  mButtons := TFlowPanel.Create(Self);
+  mButtons.Parent := Self;
+  mButtons.Align := alTop;
+  mButtons.AutoSize := True;
+  mButtons.BevelOuter := bvNone;
+  mButtons.AlignWithMargins := True;
+  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  mButtons.Top := FText.Top + FText.Height + 1;
+  FYes := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentYes), YesClick);
+  FNo := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentNo), NoClick);
+  ClientHeight := mButtons.Top + mButtons.Height + cGap;
+  if ClientHeight < FSymbol.Top + FSymbol.Height + cGap then
   begin
-    ClientHeight := FSymbol.Top + FSymbol.Height + Gap;
+    ClientHeight := FSymbol.Top + FSymbol.Height + cGap;
   end;
 end;
 
@@ -114,13 +114,13 @@ begin
   Canvas.Font := Font;
   Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(24);
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, Gap, Gap div 2);
+  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
 end;
 
 procedure TAtlasUpdateConsent.ShowIn(const AArea: TRect);
 begin
-  Left := AArea.Right - Width - Gap;
-  Top := AArea.Bottom - Height - Gap;
+  Left := AArea.Right - Width - cGap;
+  Top := AArea.Bottom - Height - cGap;
   // Nicht modal: Die IDE arbeitet weiter, während die Frage offen ist.
   Show;
 end;

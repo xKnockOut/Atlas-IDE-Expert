@@ -89,11 +89,11 @@ type
 
   TAtlasProjectBaselines = class
   public const
-    Command = 'atlas.updateBaseline';
+    cCommand = 'atlas.updateBaseline';
     /// <summary>Zeitlimit des Befehls: Er prüft alle Dateien des Projekts.</summary>
-    TimeoutMs = 600000;
-    FileName = TAtlasBaselineInfo.FileName;
-    LegacyFileName = TAtlasBaselineInfo.LegacyFileName;
+    cTimeoutMs = 600000;
+    cFileName = TAtlasBaselineInfo.cFileName;
+    cLegacyFileName = TAtlasBaselineInfo.cLegacyFileName;
   public
     /// <summary>AFolder\atlas-baseline.json, sonst AFolder\delphi-lsp-baseline.json, wenn nur diese existiert;
     /// '' ohne Datei.</summary>
@@ -134,27 +134,27 @@ uses
 /// <summary>Ordner von AFileName, normiert (Großbuchstaben, „\“, ohne Trenner am Ende); '' ohne Ordner.</summary>
 function FolderKey(const AFileName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := TAtlasProjectSummaries.NormalizedPath(AFileName);
-  Index := Length(Result);
-  while (Index > 0) and (Result[Index] <> '\') do
+  mIndex := Length(Result);
+  while (mIndex > 0) and (Result[mIndex] <> '\') do
   begin
-    Dec(Index);
+    Dec(mIndex);
   end;
-  Result := Copy(Result, 1, Index - 1);
+  Result := Copy(Result, 1, mIndex - 1);
 end;
 
 { TAtlasBaselineState }
 
 function TAtlasBaselineState.OrphanCount: Integer;
 var
-  Orphan: TAtlasBaselineOrphan;
+  mOrphan: TAtlasBaselineOrphan;
 begin
   Result := 0;
-  for Orphan in Orphans do
+  for mOrphan in Orphans do
   begin
-    Inc(Result, Orphan.Count);
+    Inc(Result, mOrphan.Count);
   end;
 end;
 
@@ -172,39 +172,39 @@ end;
 
 function NumberOf(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := ADefault;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONNumber then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONNumber then
   begin
-    Result := TJSONNumber(Value).AsInt;
+    Result := TJSONNumber(mValue).AsInt;
   end;
 end;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end;
 end;
 
 function ParseObject(const AText: string): TJSONObject;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := nil;
   if Trim(AText) = '' then
@@ -212,38 +212,38 @@ begin
     Exit;
   end;
   try
-    Value := TJSONObject.ParseJSONValue(AText);
+    mValue := TJSONObject.ParseJSONValue(AText);
   except
     on Exception do
-      Value := nil;
+      mValue := nil;
   end;
-  if Value is TJSONObject then
+  if mValue is TJSONObject then
   begin
-    Result := TJSONObject(Value);
+    Result := TJSONObject(mValue);
   end
   else
   begin
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 /// <summary>Fügt ACount Treffer zu APath hinzu (gleicher Pfad ohne Rücksicht auf Groß-/Kleinschreibung).</summary>
 procedure AddOrphan(var AOrphans: TArray<TAtlasBaselineOrphan>; const APath: string; ACount: Integer);
 var
-  Index: Integer;
-  Orphan: TAtlasBaselineOrphan;
+  mIndex: Integer;
+  mOrphan: TAtlasBaselineOrphan;
 begin
-  for Index := 0 to High(AOrphans) do
+  for mIndex := 0 to High(AOrphans) do
   begin
-    if SameText(AOrphans[Index].Path, APath) then
+    if SameText(AOrphans[mIndex].Path, APath) then
     begin
-      Inc(AOrphans[Index].Count, ACount);
+      Inc(AOrphans[mIndex].Count, ACount);
       Exit;
     end;
   end;
-  Orphan.Path := APath;
-  Orphan.Count := ACount;
-  AOrphans := AOrphans + [Orphan];
+  mOrphan.Path := APath;
+  mOrphan.Count := ACount;
+  AOrphans := AOrphans + [mOrphan];
 end;
 
 { TAtlasProjectBaselines }
@@ -260,13 +260,13 @@ begin
   begin
     Exit;
   end;
-  if AExists(Joined(AFolder, FileName)) then
+  if AExists(Joined(AFolder, cFileName)) then
   begin
-    Exit(Joined(AFolder, FileName));
+    Exit(Joined(AFolder, cFileName));
   end;
-  if AExists(Joined(AFolder, LegacyFileName)) then
+  if AExists(Joined(AFolder, cLegacyFileName)) then
   begin
-    Result := Joined(AFolder, LegacyFileName);
+    Result := Joined(AFolder, cLegacyFileName);
   end;
 end;
 
@@ -302,7 +302,7 @@ end;
 
 function TBaselineFileCheck.Gone(const APath: string): Boolean;
 var
-  Key: string;
+  mKey: string;
 begin
   Result := False;
   if (APath = '') or not Assigned(FExists) then
@@ -310,11 +310,11 @@ begin
     Exit;
   end;
   // Wie SameText: nur ASCII ohne Groß- und Kleinschreibung.
-  Key := UpperCase(APath);
-  if not FGone.TryGetValue(Key, Result) then
+  mKey := UpperCase(APath);
+  if not FGone.TryGetValue(mKey, Result) then
   begin
     Result := not FExists(Joined(FFolder, StringReplace(APath, '/', '\', [rfReplaceAll])));
-    FGone.Add(Key, Result);
+    FGone.Add(mKey, Result);
   end;
 end;
 
@@ -333,65 +333,65 @@ end;
 class function TAtlasProjectBaselines.StateOfText(const AFolder, AText: string;
   const AExists: TAtlasBaselineFileExists): TAtlasBaselineState;
 var
-  Root: TJSONObject;
-  Findings, Item: TJSONValue;
-  Path: string;
-  Count: Integer;
-  Check: TBaselineFileCheck;
+  mRoot: TJSONObject;
+  mFindings, mItem: TJSONValue;
+  mPath: string;
+  mCount: Integer;
+  mCheck: TBaselineFileCheck;
 begin
   Result := Default(TAtlasBaselineState);
   Result.Orphans := nil;
   Result.Exists := True;
-  Root := ParseObject(AText);
-  Check := TBaselineFileCheck.Create(AFolder, AExists);
+  mRoot := ParseObject(AText);
+  mCheck := TBaselineFileCheck.Create(AFolder, AExists);
   try
-    if Root = nil then
+    if mRoot = nil then
     begin
       Exit;
     end;
-    Findings := Root.GetValue('findings');
-    if not (Findings is TJSONArray) then
+    mFindings := mRoot.GetValue('findings');
+    if not (mFindings is TJSONArray) then
     begin
       Exit;
     end;
     Result.Valid := True;
-    for Item in TJSONArray(Findings) do
+    for mItem in TJSONArray(mFindings) do
     begin
       Inc(Result.Entries);
-      ReadBaselineEntry(Item, Count, Path);
-      Inc(Result.Hits, Count);
-      if Check.Gone(Path) then
+      ReadBaselineEntry(mItem, mCount, mPath);
+      Inc(Result.Hits, mCount);
+      if mCheck.Gone(mPath) then
       begin
-        AddOrphan(Result.Orphans, Path, Count);
+        AddOrphan(Result.Orphans, mPath, mCount);
       end;
     end;
   finally
-    Check.Free;
-    Root.Free;
+    mCheck.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasProjectBaselines.StateOf(const AFolder: string; const AExists: TAtlasBaselineFileExists;
   const ARead: TAtlasBaselineReadText): TAtlasBaselineState;
 var
-  Name, Text: string;
+  mName, mText: string;
 begin
   Result := Default(TAtlasBaselineState);
   Result.Orphans := nil;
-  Name := FileIn(AFolder, AExists);
-  if Name = '' then
+  mName := FileIn(AFolder, AExists);
+  if mName = '' then
   begin
     Exit;
   end;
-  if ARead(Name, Text) then
+  if ARead(mName, mText) then
   begin
-    Result := StateOfText(AFolder, Text, AExists);
+    Result := StateOfText(AFolder, mText, AExists);
   end
   else
   begin
     Result.Exists := True;
   end;
-  Result.FileName := Name;
+  Result.FileName := mName;
 end;
 
 function FileOnDisk(const AFileName: string): Boolean;
@@ -418,74 +418,74 @@ end;
 
 class function TAtlasProjectBaselines.Arguments(const AProjectUri: string): string;
 var
-  Items: TJSONArray;
+  mItems: TJSONArray;
 begin
-  Items := TJSONArray.Create;
+  mItems := TJSONArray.Create;
   try
-    Items.Add(AProjectUri);
-    Result := Items.ToJSON;
+    mItems.Add(AProjectUri);
+    Result := mItems.ToJSON;
   finally
-    Items.Free;
+    mItems.Free;
   end;
 end;
 
 /// <summary>Liest orphaned der Serverantwort: Einträge ohne Datei und ihre Anzahl.</summary>
 procedure ReadServerOrphans(ARoot: TJSONObject; var AUpdate: TAtlasBaselineUpdate);
 var
-  Orphaned: TJSONObject;
-  Entries, Item: TJSONValue;
-  Path: string;
+  mOrphaned: TJSONObject;
+  mEntries, mItem: TJSONValue;
+  mPath: string;
 begin
   if not (ARoot.GetValue('orphaned') is TJSONObject) then
   begin
     Exit;
   end;
-  Orphaned := TJSONObject(ARoot.GetValue('orphaned'));
-  Entries := Orphaned.GetValue('entries');
-  if Entries is TJSONArray then
+  mOrphaned := TJSONObject(ARoot.GetValue('orphaned'));
+  mEntries := mOrphaned.GetValue('entries');
+  if mEntries is TJSONArray then
   begin
-    for Item in TJSONArray(Entries) do
+    for mItem in TJSONArray(mEntries) do
     begin
-      Path := '';
-      if Item is TJSONObject then
+      mPath := '';
+      if mItem is TJSONObject then
       begin
-        Path := TextOf(TJSONObject(Item), 'path');
+        mPath := TextOf(TJSONObject(mItem), 'path');
       end;
-      if Path <> '' then
+      if mPath <> '' then
       begin
-        AddOrphan(AUpdate.Orphans, Path, NumberOf(TJSONObject(Item), 'count', 1));
+        AddOrphan(AUpdate.Orphans, mPath, NumberOf(TJSONObject(mItem), 'count', 1));
       end;
     end;
   end;
-  AUpdate.OrphanCount := NumberOf(Orphaned, 'count', 0);
+  AUpdate.OrphanCount := NumberOf(mOrphaned, 'count', 0);
 end;
 
 class function TAtlasProjectBaselines.FromServer(const AJson: string; out AUpdate: TAtlasBaselineUpdate): Boolean;
 var
-  Root: TJSONObject;
+  mRoot: TJSONObject;
 begin
   AUpdate := Default(TAtlasBaselineUpdate);
   AUpdate.Orphans := nil;
-  Root := ParseObject(AJson);
+  mRoot := ParseObject(AJson);
   try
-    Result := (Root <> nil) and (Root.GetValue('total') is TJSONNumber) and (TextOf(Root, 'file') <> '');
+    Result := (mRoot <> nil) and (mRoot.GetValue('total') is TJSONNumber) and (TextOf(mRoot, 'file') <> '');
     if not Result then
     begin
       Exit;
     end;
-    AUpdate.FileName := TextOf(Root, 'file');
-    AUpdate.Previous := TextOf(Root, 'previous');
-    AUpdate.SetAside := TextOf(Root, 'setAside');
-    AUpdate.Skipped := NumberOf(Root, 'skipped', 0);
-    AUpdate.Total := NumberOf(Root, 'total', 0);
-    AUpdate.Files := NumberOf(Root, 'files', 0);
-    AUpdate.Added := NumberOf(Root, 'added', 0);
-    AUpdate.Removed := NumberOf(Root, 'removed', 0);
-    AUpdate.Unchanged := NumberOf(Root, 'unchanged', 0);
-    AUpdate.Completed := NumberOf(Root, 'completed', 0);
-    ReadServerOrphans(Root, AUpdate);
+    AUpdate.FileName := TextOf(mRoot, 'file');
+    AUpdate.Previous := TextOf(mRoot, 'previous');
+    AUpdate.SetAside := TextOf(mRoot, 'setAside');
+    AUpdate.Skipped := NumberOf(mRoot, 'skipped', 0);
+    AUpdate.Total := NumberOf(mRoot, 'total', 0);
+    AUpdate.Files := NumberOf(mRoot, 'files', 0);
+    AUpdate.Added := NumberOf(mRoot, 'added', 0);
+    AUpdate.Removed := NumberOf(mRoot, 'removed', 0);
+    AUpdate.Unchanged := NumberOf(mRoot, 'unchanged', 0);
+    AUpdate.Completed := NumberOf(mRoot, 'completed', 0);
+    ReadServerOrphans(mRoot, AUpdate);
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 

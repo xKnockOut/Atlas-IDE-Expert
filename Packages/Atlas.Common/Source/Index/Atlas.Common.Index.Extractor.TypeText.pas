@@ -366,7 +366,7 @@ begin
     if Trim(mName) <> '' then
     begin
       Inc(ACounts[mKind].Total);
-      if TIndexTypeText.HasNamePrefix(Trim(mName), NamingPrefixes[mKind]) then
+      if TIndexTypeText.HasNamePrefix(Trim(mName), cNamingPrefixes[mKind]) then
       begin
         Inc(ACounts[mKind].Prefixed);
       end;

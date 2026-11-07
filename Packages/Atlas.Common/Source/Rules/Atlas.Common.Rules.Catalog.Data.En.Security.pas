@@ -8,7 +8,7 @@
 interface
 
 const
-  CatalogLinesEnSecurity: array[0..109] of string = (
+  cCatalogLinesEnSecurity: array[0..109] of string = (
     '{',
     '      "id": "bidi-control",',
     '      "name": "Bidirectional control character",',
@@ -68,8 +68,8 @@ const
     '      "category": "vulnerability",',
     '      "severity": "warning",',
     '      "group": "security",',
-    '      "description": "A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Experimental until da' +
-    'ta flow analysis is available.",',
+    '      "description": "A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Only the path (first ' +
+    'argument) counts, not the written content (WriteAllText(Path, List.Text)). Experimental until data flow analysis is available.",',
     '      "bad": "List.LoadFromFile(''C:\\Data\\'' + Edit1.Text);",',
     '      "good": "Path := TPath.GetFullPath(TPath.Combine(Root, Edit1.Text));  // then check it starts with Root"',
     '    },',

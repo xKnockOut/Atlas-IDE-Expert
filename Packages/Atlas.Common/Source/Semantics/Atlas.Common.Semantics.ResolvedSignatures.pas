@@ -20,7 +20,7 @@ type
   TResolvedSignatures = class
   public const
     /// <summary>Typumwandlungen, die das Argument nur lesen.</summary>
-    ValueCasts: array[0..9] of string = ('PChar', 'PWideChar', 'PAnsiChar', 'string', 'AnsiString', 'UTF8String',
+    cValueCasts: array[0..9] of string = ('PChar', 'PWideChar', 'PAnsiChar', 'string', 'AnsiString', 'UTF8String',
       'RawByteString', 'WideString', 'UnicodeString', 'Pointer');
   public
     /// <summary>Modifizierer der Parameter einer Signatur je Name in Kleinbuchstaben ('' bei Wertparametern);
@@ -46,24 +46,24 @@ uses
 /// <summary>Token, das an AOffset beginnt; -1 ohne.</summary>
 function TokenStartingAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 var
-  Low_, High_, Middle: Integer;
+  mLow_, mHigh_, mMiddle: Integer;
 begin
-  Low_ := 0;
-  High_ := High(ATokens);
-  while Low_ <= High_ do
+  mLow_ := 0;
+  mHigh_ := High(ATokens);
+  while mLow_ <= mHigh_ do
   begin
-    Middle := (Low_ + High_) div 2;
-    if ATokens[Middle].Offset < AOffset then
+    mMiddle := (mLow_ + mHigh_) div 2;
+    if ATokens[mMiddle].Offset < AOffset then
     begin
-      Low_ := Middle + 1;
+      mLow_ := mMiddle + 1;
     end
-    else if ATokens[Middle].Offset > AOffset then
+    else if ATokens[mMiddle].Offset > AOffset then
     begin
-      High_ := Middle - 1;
+      mHigh_ := mMiddle - 1;
     end
     else
     begin
-      Exit(Middle);
+      Exit(mMiddle);
     end;
   end;
   Result := -1;
@@ -71,38 +71,38 @@ end;
 
 class function TResolvedSignatures.SignatureModes(const ASignature: string; out AModes: TArray<string>): Boolean;
 var
-  Open, Close, Depth, Index: Integer;
-  Parameter: TSignatureParameter;
+  mOpen, mClose, mDepth, mIndex: Integer;
+  mParameter: TSignatureParameter;
 begin
   AModes := nil;
-  Open := Pos('(', ASignature);
-  Close := 0;
-  Depth := 0;
-  if Open > 0 then
+  mOpen := Pos('(', ASignature);
+  mClose := 0;
+  mDepth := 0;
+  if mOpen > 0 then
   begin
-    for Index := Open to Length(ASignature) do
+    for mIndex := mOpen to Length(ASignature) do
     begin
-      if ASignature[Index] = '(' then
+      if ASignature[mIndex] = '(' then
       begin
-        Inc(Depth);
+        Inc(mDepth);
       end
-      else if ASignature[Index] = ')' then
+      else if ASignature[mIndex] = ')' then
       begin
-        Dec(Depth);
-        if Depth = 0 then
+        Dec(mDepth);
+        if mDepth = 0 then
         begin
-          Close := Index;
+          mClose := mIndex;
           Break;
         end;
       end;
     end;
   end;
-  Result := Close > 0;
+  Result := mClose > 0;
   if Result then
   begin
-    for Parameter in TChangeSignature.ParseParameters(Copy(ASignature, Open + 1, Close - Open - 1)) do
+    for mParameter in TChangeSignature.ParseParameters(Copy(ASignature, mOpen + 1, mClose - mOpen - 1)) do
     begin
-      AModes := AModes + [LowerCase(Trim(Parameter.Modifier))];
+      AModes := AModes + [LowerCase(Trim(mParameter.Modifier))];
     end;
   end;
 end;
@@ -189,7 +189,7 @@ begin
     Exit;
   end;
   mCallee := ACall[0];
-  if (mCallee.Kind = TSyntaxKind.Identifier) and MatchText(mCallee.Name, ValueCasts) then
+  if (mCallee.Kind = TSyntaxKind.Identifier) and MatchText(mCallee.Name, cValueCasts) then
   begin
     Exit(TFlowArgumentMode.Value);
   end;
@@ -208,30 +208,30 @@ end;
 class function TResolvedSignatures.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName: string): TFlowSignatureLookup;
 var
-  Local: TFlowSignatureLookup;
-  Resolver: TNameResolver;
-  Tree: TSyntaxTree;
-  FileName: string;
+  mLocal: TFlowSignatureLookup;
+  mResolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mFileName: string;
 begin
-  Local := nil;
+  mLocal := nil;
   if ATree <> nil then
   begin
-    Local := TFlowSignatures.FromTree(ATree.Root);
+    mLocal := TFlowSignatures.FromTree(ATree.Root);
   end;
-  Resolver := AResolver;
-  Tree := ATree;
-  FileName := AFileName;
+  mResolver := AResolver;
+  mTree := ATree;
+  mFileName := AFileName;
   Result :=
     function(ACall: TSyntaxNode; AArgument: Integer): TFlowArgumentMode
     begin
       Result := TFlowArgumentMode.Unknown;
-      if Assigned(Local) then
+      if Assigned(mLocal) then
       begin
-        Result := Local(ACall, AArgument);
+        Result := mLocal(ACall, AArgument);
       end;
       if Result = TFlowArgumentMode.Unknown then
       begin
-        Result := TResolvedSignatures.Mode(Resolver, Tree, FileName, ACall, AArgument);
+        Result := TResolvedSignatures.Mode(mResolver, mTree, mFileName, ACall, AArgument);
       end;
     end;
 end;

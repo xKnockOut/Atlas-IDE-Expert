@@ -125,7 +125,7 @@ begin
   mFound := Findings(Typarten('', Lines(['  mZahl[1] := 0;', '  mZahl^ := 0;', '  mZahl.Wert := 0;',
     '  with mZahl do', '    ;', '  mZeichen[1] := ''a'';', '  AFarbe^ := Rot;', '  mWert.X := 1;'])));
   Assert.AreEqual(7, Integer(Length(mFound)));
-  Assert.AreEqual(TypeKindRequiredRuleId, mFound[0].RuleId);
+  Assert.AreEqual(cTypeKindRequiredRuleId, mFound[0].RuleId);
   Assert.AreEqual('mZahl ist eine Ganzzahl (Integer), kein Array; ein Index ist hier nicht möglich (wie E2016).',
     mFound[0].Message);
   Assert.AreEqual(21, mFound[0].Range.StartPos.Line);
@@ -395,7 +395,7 @@ begin
   mFound := False;
   for mRule in BuiltinRules do
   begin
-    if mRule.Descriptor.Id = TypeKindRequiredRuleId then
+    if mRule.Descriptor.Id = cTypeKindRequiredRuleId then
     begin
       mFound := True;
     end;

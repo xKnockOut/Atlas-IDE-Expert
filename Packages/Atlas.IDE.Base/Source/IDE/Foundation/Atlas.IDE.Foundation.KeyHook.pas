@@ -117,19 +117,19 @@ begin
     end);
 end;
 
-function KeyboardProc(Code: Integer; WParam: WPARAM; LParam: LPARAM): LRESULT; stdcall;
+function KeyboardProc(ACode: Integer; AWParam: WPARAM; ALParam: LPARAM): LRESULT; stdcall;
 var
   mClient: TAtlasKeyClient;
   mShift: TShiftState;
 begin
   try
     mShift := CurrentShift;
-    if (Code = HC_ACTION) and ClientFor(Word(WParam), mShift, mClient) then
+    if (ACode = HC_ACTION) and ClientFor(Word(AWParam), mShift, mClient) then
     begin
       // Gedrückt (auch Wiederholung): ausführen; losgelassen nur schlucken.
-      if (LParam and $80000000) = 0 then
+      if (ALParam and $80000000) = 0 then
       begin
-        QueueKey(mClient, Word(WParam), mShift);
+        QueueKey(mClient, Word(AWParam), mShift);
       end;
       Exit(1);
     end;
@@ -138,14 +138,14 @@ begin
     on E: Exception do
       TAtlasGuard.Log('Tastatur-Hook: ' + TAtlasGuard.ErrorText(E));
   end;
-  Result := CallNextHookEx(Hook, Code, WParam, LParam);
+  Result := CallNextHookEx(Hook, ACode, AWParam, ALParam);
 end;
 
 { TAtlasKeyHook }
 
 class procedure TAtlasKeyHook.Add(AClient: TAtlasKeyClient);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if Clients = nil then
   begin
@@ -155,12 +155,12 @@ begin
   begin
     Exit;
   end;
-  Index := 0;
-  while (Index < Clients.Count) and (Clients[Index].Priority <= AClient.Priority) do
+  mIndex := 0;
+  while (mIndex < Clients.Count) and (Clients[mIndex].Priority <= AClient.Priority) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Clients.Insert(Index, AClient);
+  Clients.Insert(mIndex, AClient);
   if Hook = 0 then
   begin
     Hook := SetWindowsHookEx(WH_KEYBOARD, @KeyboardProc, 0, GetCurrentThreadId);

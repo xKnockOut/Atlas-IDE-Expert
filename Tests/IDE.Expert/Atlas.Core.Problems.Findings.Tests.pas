@@ -187,7 +187,7 @@ begin
   Assert.IsTrue(TAtlasFindings.CategoryOf(Item) = TAtlasFindingCategory.SecurityHotspot);
   Item.Category := '';
   Assert.IsTrue(TAtlasFindings.CategoryOf(Item) = TAtlasFindingCategory.Other);
-  Item.Source := TAtlasProblem.CompilerSource;
+  Item.Source := TAtlasProblem.cCompilerSource;
   Item.Category := 'bug';
   Assert.IsTrue(TAtlasFindings.CategoryOf(Item) = TAtlasFindingCategory.Compiler);
 end;
@@ -204,7 +204,7 @@ begin
     Inactive.Unnecessary := True;
     UsesHint := Problem(0, 'unused-uses', 'ungenutzt', TAtlasProblemSeverity.Hint);
     UsesHint.UsesUnit := 'System.Math';
-    UsesHint.UsesState := TAtlasProblem.UsesUnused;
+    UsesHint.UsesState := TAtlasProblem.cUsesUnused;
     Store.Update('C:\P\A.pas', 'unit A;' + #10 + '    x := 1;   ' + #10, True,
       [Problem(1, 'r', 'Treffer', TAtlasProblemSeverity.Warning), Inactive, UsesHint], '', True);
     Items := TAtlasFindings.FromStore(Store, nil, nil);
@@ -215,7 +215,7 @@ begin
     Assert.IsFalse(TAtlasFindings.IsFinding(Inactive));
     Assert.IsFalse(TAtlasFindings.IsFinding(UsesHint));
     Inactive := Problem(0, '', 'Test', TAtlasProblemSeverity.Error);
-    Inactive.Source := TAtlasProblemStore.TestSource;
+    Inactive.Source := TAtlasProblemStore.cTestSource;
     Assert.IsFalse(TAtlasFindings.IsFinding(Inactive));
   finally
     Store.Free;
@@ -324,7 +324,7 @@ begin
   Assert.AreEqual('X erwartet 1 Argumente (wie E2035).', Item.MessageText(True));
   Assert.AreEqual('X erwartet 1 Argumente.', Item.MessageText(False));
   Item.Problem := Problem(1, 'W1036', 'Variable nicht initialisiert', TAtlasProblemSeverity.Warning);
-  Item.Problem.Source := TAtlasProblem.CompilerSource;
+  Item.Problem.Source := TAtlasProblem.cCompilerSource;
   Assert.AreEqual('W1036', Item.CompilerText);
 end;
 
@@ -336,7 +336,7 @@ var
   Compiler: TAtlasProblem;
 begin
   Compiler := Problem(2, 'W1036', 'Variable nicht initialisiert', TAtlasProblemSeverity.Warning);
-  Compiler.Source := TAtlasProblem.CompilerSource;
+  Compiler.Source := TAtlasProblem.cCompilerSource;
   Items := Sample + TAtlasFindings.FromProblems('C:\P\C.pas', [Compiler], nil);
   Items[1].Category := TAtlasFindingCategory.Bug;
   View := TAtlasFindingsView.Create;
@@ -1051,7 +1051,7 @@ begin
   Assert.IsTrue(Value = TAtlasClosedUnits.Normal);
   Assert.IsFalse(TAtlasFindings.TryParseClosedUnits('grau', Value));
   Assert.IsTrue(Value = TAtlasClosedUnits.Dimmed);
-  Assert.AreEqual('dimmed', TAtlasFindings.ClosedUnitsNames[TAtlasClosedUnits.Dimmed]);
+  Assert.AreEqual('dimmed', TAtlasFindings.cClosedUnitsNames[TAtlasClosedUnits.Dimmed]);
 end;
 
 procedure TAtlasFindingsTierTests.DimmedColorsStayReadable;
@@ -1075,10 +1075,10 @@ begin
     Back := Backs[Index];
     Text := Texts[Index];
     Dimmed := DimmedTextColor(Text, Back);
-    Assert.IsTrue(TAtlasColorMath.Contrast(Dimmed, Back) >= AtlasDimmedMinContrast - 0.01,
+    Assert.IsTrue(TAtlasColorMath.Contrast(Dimmed, Back) >= cAtlasDimmedMinContrast - 0.01,
       TAtlasColorMath.ToHex(Dimmed));
     // Ausgegraut heißt: weniger Kontrast als der Text, solange das Maß es erlaubt; zu blasser Text wird kräftiger.
-    if TAtlasColorMath.Contrast(Text, Back) >= AtlasDimmedMinContrast then
+    if TAtlasColorMath.Contrast(Text, Back) >= cAtlasDimmedMinContrast then
     begin
       Assert.IsTrue(TAtlasColorMath.Contrast(Dimmed, Back) <= TAtlasColorMath.Contrast(Text, Back) + 0.01);
     end;

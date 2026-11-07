@@ -40,7 +40,7 @@ type
 
   TAtlasHiddenPlaces = class
   public const
-    Key = 'hidden';
+    cKey = 'hidden';
   public
     /// <summary>AFileName relativ zu AFolder mit "/"; False, wenn die Datei nicht unter AFolder liegt.</summary>
     class function Relative(const AFolder, AFileName: string; out ARelative: string): Boolean; static;
@@ -117,14 +117,14 @@ end;
 
 class function TAtlasHiddenPlaces.NormalizePath(const APath: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Trim(APath);
-  for Index := 1 to Length(Result) do
+  for mIndex := 1 to Length(Result) do
   begin
-    if Result[Index] = '\' then
+    if Result[mIndex] = '\' then
     begin
-      Result[Index] := '/';
+      Result[mIndex] := '/';
     end;
   end;
   while Result.StartsWith('./') do
@@ -135,20 +135,20 @@ end;
 
 class function TAtlasHiddenPlaces.Relative(const AFolder, AFileName: string; out ARelative: string): Boolean;
 var
-  Folder, FileName: string;
+  mFolder, mFileName: string;
 begin
   ARelative := '';
-  Folder := NormalizePath(AFolder);
-  while (Folder <> '') and IsSeparator(Folder[Length(Folder)]) do
+  mFolder := NormalizePath(AFolder);
+  while (mFolder <> '') and IsSeparator(mFolder[Length(mFolder)]) do
   begin
-    Delete(Folder, Length(Folder), 1);
+    Delete(mFolder, Length(mFolder), 1);
   end;
-  FileName := NormalizePath(AFileName);
-  Result := (Folder <> '') and (Length(FileName) > Length(Folder) + 1) and
-    SameText(Copy(FileName, 1, Length(Folder)), Folder) and (FileName[Length(Folder) + 1] = '/');
+  mFileName := NormalizePath(AFileName);
+  Result := (mFolder <> '') and (Length(mFileName) > Length(mFolder) + 1) and
+    SameText(Copy(mFileName, 1, Length(mFolder)), mFolder) and (mFileName[Length(mFolder) + 1] = '/');
   if Result then
   begin
-    ARelative := Copy(FileName, Length(Folder) + 2, MaxInt);
+    ARelative := Copy(mFileName, Length(mFolder) + 2, MaxInt);
   end;
   // Kein Ausbruch über "..": der Pfad bleibt unter dem Ordner.
   if Result and ((Pos('/../', '/' + ARelative + '/') > 0)) then
@@ -161,13 +161,13 @@ end;
 class function TAtlasHiddenPlaces.IndexOf(const APlaces: TArray<TAtlasHiddenPlace>;
   const APlace: TAtlasHiddenPlace): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(APlaces) do
+  for mIndex := 0 to High(APlaces) do
   begin
-    if APlaces[Index].SameAs(APlace) then
+    if APlaces[mIndex].SameAs(APlace) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -176,109 +176,109 @@ end;
 class function TAtlasHiddenPlaces.ToJson(const APlaces: TArray<TAtlasHiddenPlace>;
   const AIndent, ALineBreak: string): string;
 var
-  Index: Integer;
-  Item: string;
+  mIndex: Integer;
+  mItem: string;
 begin
   if Length(APlaces) = 0 then
   begin
     Exit('[]');
   end;
   Result := '[';
-  for Index := 0 to High(APlaces) do
+  for mIndex := 0 to High(APlaces) do
   begin
-    Item := '{"setting": ' + TAtlasJsonText.Quote(APlaces[Index].Setting) + ', "file": ' +
-      TAtlasJsonText.Quote(NormalizePath(APlaces[Index].FileName));
-    if APlaces[Index].Anchor <> '' then
+    mItem := '{"setting": ' + TAtlasJsonText.Quote(APlaces[mIndex].Setting) + ', "file": ' +
+      TAtlasJsonText.Quote(NormalizePath(APlaces[mIndex].FileName));
+    if APlaces[mIndex].Anchor <> '' then
     begin
-      Item := Item + ', "anchor": ' + TAtlasJsonText.Quote(APlaces[Index].Anchor);
+      mItem := mItem + ', "anchor": ' + TAtlasJsonText.Quote(APlaces[mIndex].Anchor);
     end;
-    Item := Item + '}';
-    if Index < High(APlaces) then
+    mItem := mItem + '}';
+    if mIndex < High(APlaces) then
     begin
-      Item := Item + ',';
+      mItem := mItem + ',';
     end;
-    Result := Result + ALineBreak + AIndent + '  ' + Item;
+    Result := Result + ALineBreak + AIndent + '  ' + mItem;
   end;
   Result := Result + ALineBreak + AIndent + ']';
 end;
 
 class function TAtlasHiddenPlaces.FromText(const AText: string): TArray<TAtlasHiddenPlace>;
 var
-  Root: TJSONObject;
-  Value, Item: TJSONValue;
-  Place: TAtlasHiddenPlace;
+  mRoot: TJSONObject;
+  mValue, mItem: TJSONValue;
+  mPlace: TAtlasHiddenPlace;
 begin
   Result := nil;
-  Root := TAtlasJsonText.Parse(AText);
-  if Root = nil then
+  mRoot := TAtlasJsonText.Parse(AText);
+  if mRoot = nil then
   begin
     Exit;
   end;
   try
-    Value := Root.GetValue(Key);
-    if not (Value is TJSONArray) then
+    mValue := mRoot.GetValue(cKey);
+    if not (mValue is TJSONArray) then
     begin
       Exit;
     end;
-    for Item in TJSONArray(Value) do
+    for mItem in TJSONArray(mValue) do
     begin
-      if not (Item is TJSONObject) then
+      if not (mItem is TJSONObject) then
       begin
         Continue;
       end;
-      Place := TAtlasHiddenPlace.Create(TJSONObject(Item).GetValue<string>('setting', ''),
-        TJSONObject(Item).GetValue<string>('file', ''), TJSONObject(Item).GetValue<string>('anchor', ''));
-      if (Place.Setting <> '') and (Place.FileName <> '') then
+      mPlace := TAtlasHiddenPlace.Create(TJSONObject(mItem).GetValue<string>('setting', ''),
+        TJSONObject(mItem).GetValue<string>('file', ''), TJSONObject(mItem).GetValue<string>('anchor', ''));
+      if (mPlace.Setting <> '') and (mPlace.FileName <> '') then
       begin
-        Result := Result + [Place];
+        Result := Result + [mPlace];
       end;
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasHiddenPlaces.AddTo(const AText, ASkeleton: string; const APlace: TAtlasHiddenPlace): string;
 var
-  Places: TArray<TAtlasHiddenPlace>;
+  mPlaces: TArray<TAtlasHiddenPlace>;
 begin
   Result := AText;
   if Trim(Result) = '' then
   begin
     Result := ASkeleton;
   end;
-  Places := FromText(Result);
-  if IndexOf(Places, APlace) >= 0 then
+  mPlaces := FromText(Result);
+  if IndexOf(mPlaces, APlace) >= 0 then
   begin
     Exit;
   end;
-  Places := Places + [APlace];
-  Result := TAtlasJsonText.SetValue(Result, Key, ToJson(Places, '  ', TTextLines.LineBreakOf(Result)));
+  mPlaces := mPlaces + [APlace];
+  Result := TAtlasJsonText.SetValue(Result, cKey, ToJson(mPlaces, '  ', TTextLines.LineBreakOf(Result)));
 end;
 
 class function TAtlasHiddenPlaces.RemoveFrom(const AText: string; const APlace: TAtlasHiddenPlace): string;
 var
-  Places: TArray<TAtlasHiddenPlace>;
-  Index: Integer;
+  mPlaces: TArray<TAtlasHiddenPlace>;
+  mIndex: Integer;
 begin
   Result := AText;
-  Places := FromText(Result);
-  Index := IndexOf(Places, APlace);
-  if Index < 0 then
+  mPlaces := FromText(Result);
+  mIndex := IndexOf(mPlaces, APlace);
+  if mIndex < 0 then
   begin
     Exit;
   end;
-  Delete(Places, Index, 1);
-  Result := TAtlasJsonText.SetValue(Result, Key, ToJson(Places, '  ', TTextLines.LineBreakOf(Result)));
+  Delete(mPlaces, mIndex, 1);
+  Result := TAtlasJsonText.SetValue(Result, cKey, ToJson(mPlaces, '  ', TTextLines.LineBreakOf(Result)));
 end;
 
 { TAtlasHiddenIndex }
 
 constructor TAtlasHiddenIndex.Create(const APlaces: TArray<TAtlasHiddenPlace>; const AFolder: string);
 var
-  Place: TAtlasHiddenPlace;
-  Name: string;
-  List: TList<string>;
+  mPlace: TAtlasHiddenPlace;
+  mName: string;
+  mList: TList<string>;
 begin
   inherited Create;
   FFolder := AFolder;
@@ -287,15 +287,15 @@ begin
   begin
     Exit;
   end;
-  for Place in APlaces do
+  for mPlace in APlaces do
   begin
-    Name := LowerCase(Place.Setting + '|' + TAtlasHiddenPlaces.NormalizePath(Place.FileName));
-    if not FAnchors.TryGetValue(Name, List) then
+    mName := LowerCase(mPlace.Setting + '|' + TAtlasHiddenPlaces.NormalizePath(mPlace.FileName));
+    if not FAnchors.TryGetValue(mName, mList) then
     begin
-      List := TList<string>.Create;
-      FAnchors.Add(Name, List);
+      mList := TList<string>.Create;
+      FAnchors.Add(mName, mList);
     end;
-    List.Add(Place.Anchor);
+    mList.Add(mPlace.Anchor);
   end;
 end;
 
@@ -328,17 +328,17 @@ end;
 
 function TAtlasHiddenIndex.FileHidden(const ASetting, AFileName: string): Boolean;
 var
-  Anchors: TList<string>;
+  mAnchors: TList<string>;
 begin
-  Result := Lookup(ASetting, AFileName, Anchors) and Anchors.Contains('');
+  Result := Lookup(ASetting, AFileName, mAnchors) and mAnchors.Contains('');
 end;
 
 function TAtlasHiddenIndex.Hidden(const ASetting, AFileName, AAnchor: string): Boolean;
 var
-  Anchors: TList<string>;
+  mAnchors: TList<string>;
 begin
-  Result := Lookup(ASetting, AFileName, Anchors) and (Anchors.Contains('') or
-    ((AAnchor <> '') and Anchors.Contains(AAnchor)));
+  Result := Lookup(ASetting, AFileName, mAnchors) and (mAnchors.Contains('') or
+    ((AAnchor <> '') and mAnchors.Contains(AAnchor)));
 end;
 
 end.

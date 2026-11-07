@@ -41,8 +41,13 @@ type
         ResultAddress: TOTAAddress; ResultSize: LongWord; ReturnCode: Integer); overload;
       procedure Destroyed; reintroduce;
     end;
+  private
+    /// <summary>Verzögerte Auswertung (erDeferred, etwa LLDB): wartet höchstens ATimeoutMs auf das Ergebnis.
+    /// </summary>
+    class function WaitDeferred(const AThread: IOTAThread; const ADebugger: IOTADebuggerServices;
+      ATimeoutMs: Integer; out AText: string): Boolean; static;
   public const
-    ChunkSize = 64 * 1024;
+    cChunkSize = 64 * 1024;
   public
     /// <summary>Thread des angehaltenen Prozesses (psStopped, psFault, psException); sonst nil.</summary>
     class function StoppedThread: IOTAThread; static;
@@ -64,7 +69,7 @@ uses
   Winapi.Windows;
 
 const
-  BufferSize = 4096;
+  cBufferSize = 4096;
 
 { TAtlasIdeDebugEvaluator.TWaiter }
 
@@ -108,20 +113,20 @@ end;
 
 class function TAtlasIdeDebugEvaluator.StoppedThread: IOTAThread;
 var
-  Debugger: IOTADebuggerServices;
-  Process: IOTAProcess;
+  mDebugger: IOTADebuggerServices;
+  mProcess: IOTAProcess;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) then
+  if not Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
   begin
     Exit;
   end;
-  Process := Debugger.CurrentProcess;
-  if (Process = nil) or not (Process.ProcessState in [psStopped, psFault, psException]) then
+  mProcess := mDebugger.CurrentProcess;
+  if (mProcess = nil) or not (mProcess.ProcessState in [psStopped, psFault, psException]) then
   begin
     Exit;
   end;
-  Result := Process.CurrentThread;
+  Result := mProcess.CurrentThread;
 end;
 
 class function TAtlasIdeDebugEvaluator.SideEffects(AEvaluation: TAtlasVisualizerEvaluation): TOTAEvalSideEffects;
@@ -136,100 +141,108 @@ begin
   end;
 end;
 
+class function TAtlasIdeDebugEvaluator.WaitDeferred(const AThread: IOTAThread;
+  const ADebugger: IOTADebuggerServices; ATimeoutMs: Integer; out AText: string): Boolean;
+var
+  mWaiter: TWaiter;
+  mWaiterRef: IOTAThreadNotifier;
+  mIndex: Integer;
+  mStartedAt: UInt64;
+begin
+  AText := '';
+  mWaiter := TWaiter.Create;
+  mWaiterRef := mWaiter;
+  mIndex := AThread.AddNotifier(mWaiterRef);
+  try
+    mStartedAt := GetTickCount64;
+    while not mWaiter.Done and (GetTickCount64 - mStartedAt < UInt64(ATimeoutMs)) do
+    begin
+      ADebugger.ProcessDebugEvents;
+    end;
+  finally
+    try
+      AThread.RemoveNotifier(mIndex);
+    except
+      // Thread schon abgebaut.
+    end;
+  end;
+  Result := mWaiter.Done and (mWaiter.ReturnCode = 0);
+  if Result then
+  begin
+    AText := mWaiter.Text;
+  end;
+end;
+
 class function TAtlasIdeDebugEvaluator.Evaluate(const AExpression: string; AEvaluation: TAtlasVisualizerEvaluation;
   ATimeoutMs: Integer; out AText: string): Boolean;
 var
-  Debugger: IOTADebuggerServices;
-  Thread: IOTAThread;
-  Buffer: array[0..BufferSize - 1] of Char;
-  CanModify: Boolean;
-  ResultAddr, ResultSize, ResultVal: LongWord;
-  Code: TOTAEvaluateResult;
-  Waiter: TWaiter;
-  WaiterRef: IOTAThreadNotifier;
-  Index: Integer;
-  StartedAt: UInt64;
+  mDebugger: IOTADebuggerServices;
+  mThread: IOTAThread;
+  mBuffer: array[0..cBufferSize - 1] of Char;
+  mCanModify: Boolean;
+  mResultAddr, mResultSize, mResultVal: LongWord;
+  mCode: TOTAEvaluateResult;
 begin
   AText := '';
   Result := False;
-  Thread := StoppedThread;
-  if (Thread = nil) or (AExpression = '') or not Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) then
+  mThread := StoppedThread;
+  if (mThread = nil) or (AExpression = '') or not Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
   begin
     Exit;
   end;
-  FillChar(Buffer, SizeOf(Buffer), 0);
+  FillChar(mBuffer, SizeOf(mBuffer), 0);
   try
-    Code := Thread.Evaluate(AExpression, @Buffer[0], Length(Buffer), CanModify, SideEffects(AEvaluation), '',
-      ResultAddr, ResultSize, ResultVal, '', 0);
+    mCode := mThread.Evaluate(AExpression, @mBuffer[0], Length(mBuffer), mCanModify, SideEffects(AEvaluation), '',
+      mResultAddr, mResultSize, mResultVal, '', 0);
   except
     on Exception do
       Exit;
   end;
-  case Code of
+  case mCode of
     erOK:
       begin
-        AText := Buffer;
+        AText := mBuffer;
         Result := True;
       end;
     erDeferred:
-      begin
-        Waiter := TWaiter.Create;
-        WaiterRef := Waiter;
-        Index := Thread.AddNotifier(WaiterRef);
-        try
-          StartedAt := GetTickCount64;
-          while not Waiter.Done and (GetTickCount64 - StartedAt < UInt64(ATimeoutMs)) do
-          begin
-            Debugger.ProcessDebugEvents;
-          end;
-        finally
-          try
-            Thread.RemoveNotifier(Index);
-          except
-            // Thread schon abgebaut.
-          end;
-        end;
-        Result := Waiter.Done and (Waiter.ReturnCode = 0);
-        if Result then
-        begin
-          AText := Waiter.Text;
-        end;
-      end;
+      Result := WaitDeferred(mThread, mDebugger, ATimeoutMs, AText);
+    erError, erBusy:
+      ; // Nichts auszuwerten: Result bleibt False.
   end;
 end;
 
 class function TAtlasIdeDebugEvaluator.ReadMemory(AAddress: UInt64; ACount: Integer; out ABytes: TBytes): Boolean;
 var
-  Debugger: IOTADebuggerServices;
-  Process: IOTAProcess;
-  Offset, Count: Integer;
+  mDebugger: IOTADebuggerServices;
+  mProcess: IOTAProcess;
+  mOffset, mCount: Integer;
 begin
   ABytes := nil;
   Result := False;
-  if (AAddress = 0) or (ACount <= 0) or not Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) then
+  if (AAddress = 0) or (ACount <= 0) or not Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
   begin
     Exit;
   end;
-  Process := Debugger.CurrentProcess;
-  if (Process = nil) or not (Process.ProcessState in [psStopped, psFault, psException]) then
+  mProcess := mDebugger.CurrentProcess;
+  if (mProcess = nil) or not (mProcess.ProcessState in [psStopped, psFault, psException]) then
   begin
     Exit;
   end;
   SetLength(ABytes, ACount);
-  Offset := 0;
+  mOffset := 0;
   try
-    while Offset < ACount do
+    while mOffset < ACount do
     begin
-      Count := ACount - Offset;
-      if Count > ChunkSize then
+      mCount := ACount - mOffset;
+      if mCount > cChunkSize then
       begin
-        Count := ChunkSize;
+        mCount := cChunkSize;
       end;
-      if Process.ReadProcessMemory(AAddress + UInt64(Offset), Count, ABytes[Offset]) <> Count then
+      if mProcess.ReadProcessMemory(AAddress + UInt64(mOffset), mCount, ABytes[mOffset]) <> mCount then
       begin
         Exit;
       end;
-      Inc(Offset, Count);
+      Inc(mOffset, mCount);
     end;
   except
     on Exception do
@@ -240,13 +253,13 @@ end;
 
 class function TAtlasIdeDebugEvaluator.Context(ABudgetMs: Integer): TAtlasVisualizerContext;
 var
-  Deadline: UInt64;
+  mDeadline: UInt64;
 begin
   if ABudgetMs < 1 then
   begin
     ABudgetMs := 1;
   end;
-  Deadline := GetTickCount64 + UInt64(ABudgetMs);
+  mDeadline := GetTickCount64 + UInt64(ABudgetMs);
   Result.Eval :=
     function(const AExpression: string; AEvaluation: TAtlasVisualizerEvaluation; out AText: string): Boolean
     var
@@ -254,7 +267,7 @@ begin
     begin
       AText := '';
       Tick := GetTickCount64;
-      Result := (Tick < Deadline) and Evaluate(AExpression, AEvaluation, Integer(Deadline - Tick), AText);
+      Result := (Tick < mDeadline) and Evaluate(AExpression, AEvaluation, Integer(mDeadline - Tick), AText);
     end;
   Result.Read :=
     function(AAddress: UInt64; ACount: Integer; out ABytes: TBytes): Boolean

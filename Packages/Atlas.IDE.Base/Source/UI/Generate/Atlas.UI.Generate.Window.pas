@@ -75,7 +75,7 @@ type
 
   TAtlasGenerateWindow = class(TForm)
   private const
-    VisibleRows = 14;
+    cVisibleRows = 14;
   private
     FEntries: TArray<TAtlasGenerateEntry>;
     FOptions: TAtlasGenerateOptions;
@@ -148,7 +148,7 @@ type
 
 const
   // Eigene Beschriftungen der Schnellbefehle; die Kurzbeschreibungen des Servers gibt es nur auf Deutsch.
-  CommandCaptions: array[0..51] of TCommandCaption = (
+  cCommandCaptions: array[0..51] of TCommandCaption = (
     (Name: 'ctor'; Id: TAtlasTextId.GenerateCmdCtor),
     (Name: 'dtor'; Id: TAtlasTextId.GenerateCmdDtor),
     (Name: 'prop'; Id: TAtlasTextId.GenerateCmdProp),
@@ -228,7 +228,7 @@ begin
   begin
     Exit;
   end;
-  for mItem in CommandCaptions do
+  for mItem in cCommandCaptions do
   begin
     if SameText(mItem.Name, AEntry.Name) then
     begin
@@ -702,7 +702,7 @@ var
   mVisible: Integer;
 begin
   mMetrics.Window := Self;
-  mVisible := EnsureRange(RowCount, 1, VisibleRows);
+  mVisible := EnsureRange(RowCount, 1, cVisibleRows);
   ClientHeight := mMetrics.TitleHeight + mVisible * mMetrics.RowHeight + mMetrics.FooterHeight + ScaleValue(4);
 end;
 
@@ -769,9 +769,9 @@ begin
   begin
     FTop := FSelected;
   end
-  else if FSelected >= FTop + VisibleRows then
+  else if FSelected >= FTop + cVisibleRows then
   begin
-    FTop := FSelected - VisibleRows + 1;
+    FTop := FSelected - cVisibleRows + 1;
   end;
   // Kopf über dem ersten Eintrag mit zeigen.
   if not FStep.Active and (FTop > 0) and (FTop = FSelected) and FRows[FTop - 1].IsHeader then
@@ -984,9 +984,9 @@ begin
     VK_DOWN:
       Step(1);
     VK_PRIOR:
-      Step(-VisibleRows);
+      Step(-cVisibleRows);
     VK_NEXT:
-      Step(VisibleRows);
+      Step(cVisibleRows);
     VK_HOME:
       Step(-RowCount);
     VK_END:
@@ -1082,7 +1082,7 @@ end;
 
 function TAtlasGenerateWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
 begin
-  FTop := EnsureRange(FTop - Sign(WheelDelta) * 3, 0, Max(0, RowCount - VisibleRows));
+  FTop := EnsureRange(FTop - Sign(WheelDelta) * 3, 0, Max(0, RowCount - cVisibleRows));
   Invalidate;
   Result := True;
 end;
@@ -1104,7 +1104,7 @@ begin
     mPainter.Input(mTitle);
   end;
   Canvas.Brush.Style := bsSolid;
-  for mRow := 0 to Min(VisibleRows, RowCount - FTop) - 1 do
+  for mRow := 0 to Min(cVisibleRows, RowCount - FTop) - 1 do
   begin
     if FStep.Active then
     begin

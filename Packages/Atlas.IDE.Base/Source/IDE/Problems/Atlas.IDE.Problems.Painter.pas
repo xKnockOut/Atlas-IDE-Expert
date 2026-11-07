@@ -55,7 +55,7 @@ type
     function Typing(const AFileName: string; ALine: Integer; const AText: string): Boolean;
     procedure TimerTick(Sender: TObject);
     procedure EnsureFont(const AEditorFont: TFont);
-    procedure PaintInline(const Rect: TRect; const Context: INTACodeEditorPaintContext;
+    procedure PaintInline(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
       const AProblems: TArray<TAtlasProblem>; const AText: string; ATabWidth: Integer);
     /// <summary>Text der Zeile aus dem Speicher, wenn er dem Editor entspricht und gezeichnet werden soll; ABusy
     /// während der Tipp-Pause in der Cursorzeile.</summary>
@@ -111,7 +111,7 @@ end;
 
 constructor TAtlasProblemsPainter.Create(AStore: TAtlasProblemStore);
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   inherited Create;
   FStore := AStore;
@@ -122,22 +122,22 @@ begin
   FFont := TFont.Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := TAtlasInlineDiagnostics.PauseMs;
+  FTimer.Interval := TAtlasInlineDiagnostics.cPauseMs;
   FTimer.OnTimer := TimerTick;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+    FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
 end;
 
 destructor TAtlasProblemsPainter.Destroy;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   // Erst abmelden, dann freigeben (#493).
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    Services.RemoveEditorEventsNotifier(FIndex);
+    mServices.RemoveEditorEventsNotifier(FIndex);
   end;
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
@@ -154,13 +154,13 @@ end;
 
 function TAtlasProblemsPainter.Typing(const AFileName: string; ALine: Integer; const AText: string): Boolean;
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := AFileName + '|' + IntToStr(ALine);
+  mKey := AFileName + '|' + IntToStr(ALine);
   // Zeile gewechselt: nur merken. Gleiche Zeile mit anderem Text: getippt.
-  if Key <> FCursorKey then
+  if mKey <> FCursorKey then
   begin
-    FCursorKey := Key;
+    FCursorKey := mKey;
     FCursorText := AText;
   end
   else if AText <> FCursorText then
@@ -180,25 +180,25 @@ end;
 
 procedure TAtlasProblemsPainter.EnsureFont(const AEditorFont: TFont);
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
-  if Key = FFontKey then
+  mKey := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
+  if mKey = FFontKey then
   begin
     Exit;
   end;
   FFont.Assign(AEditorFont);
   FFont.Style := [fsItalic];
-  FFontKey := Key;
+  FFontKey := mKey;
 end;
 
 class procedure TAtlasProblemsPainter.Invalidate;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(Services);
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 
@@ -208,63 +208,63 @@ begin
   Result := Length(TAtlasPairs.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
 end;
 
-procedure TAtlasProblemsPainter.PaintInline(const Rect: TRect; const Context: INTACodeEditorPaintContext;
+procedure TAtlasProblemsPainter.PaintInline(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const AProblems: TArray<TAtlasProblem>; const AText: string; ATabWidth: Integer);
 const
   // Deckkraft der Farbe über dem Hintergrund: gedimmt, aber lesbar.
-  Strength = 0.7;
+  cStrength = 0.7;
 var
-  Mode: TAtlasInlineDiagnosticsMode;
-  Found: TAtlasInlineDiagnostic;
-  Caption, Key: string;
-  Cell: TRect;
-  DC: HDC;
-  Saved, X, Top: Integer;
-  Sample: COLORREF;
-  Front: TAtlasColor;
-  Size: TSize;
+  mMode: TAtlasInlineDiagnosticsMode;
+  mFound: TAtlasInlineDiagnostic;
+  mCaption, mKey: string;
+  mCell: TRect;
+  mDC: HDC;
+  mSaved, X, mTop: Integer;
+  mSample: COLORREF;
+  mFront: TAtlasColor;
+  mSize: TSize;
 begin
-  Mode := TAtlasIdeSettings.InlineDiagnosticsMode;
-  if (Mode = TAtlasInlineDiagnosticsMode.Off) or
-    not TAtlasInlineDiagnostics.Pick(AProblems, Context.LogicalLineNum - 1, Mode, Found) then
+  mMode := TAtlasIdeSettings.InlineDiagnosticsMode;
+  if (mMode = TAtlasInlineDiagnosticsMode.Off) or
+    not TAtlasInlineDiagnostics.Pick(AProblems, AContext.LogicalLineNum - 1, mMode, mFound) then
   begin
     Exit;
   end;
-  Caption := TAtlasInlineDiagnostics.Caption(Found);
+  mCaption := TAtlasInlineDiagnostics.Caption(mFound);
   // In .atlas ausgeblendet (#628): an dieser Codezeile oder in der Datei.
-  if (Caption = '') or TAtlasIdeElements.Hidden(TAtlasDrawnElement.InlineDiagnostics, Context.FileName, AText) then
+  if (mCaption = '') or TAtlasIdeElements.Hidden(TAtlasDrawnElement.InlineDiagnostics, AContext.FileName, AText) then
   begin
     Exit;
   end;
   // Zwei Zeichen hinter dem letzten Zeichen, hinter Inlay-Hints und Beschriftungen derselben Zeile.
-  Cell := Context.EditorState.GetCharacterPosPx(ColumnOf(AText, Length(TrimRight(AText)), ATabWidth) + 2,
-    Context.EditorLineNum);
-  Key := TAtlasLineTail.KeyOf(Context.FileName, Context.LogicalLineNum, Context.EditorLineNum, Rect.Top);
-  X := TAtlasLineTail.Start(Self, Key, Cell.Left);
-  DC := Context.Canvas.Handle;
+  mCell := AContext.EditorState.GetCharacterPosPx(ColumnOf(AText, Length(TrimRight(AText)), ATabWidth) + 2,
+    AContext.EditorLineNum);
+  mKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
+  X := TAtlasLineTail.Start(Self, mKey, mCell.Left);
+  mDC := AContext.Canvas.Handle;
   // Hintergrund des Editor-Farbschemas am rechten Rand (dort steht nichts), nicht das IDE-Thema.
-  Sample := GetPixel(DC, Rect.Right - 2, Rect.Top + 1);
-  if Sample = CLR_INVALID then
+  mSample := GetPixel(mDC, ARect.Right - 2, ARect.Top + 1);
+  if mSample = CLR_INVALID then
   begin
-    Sample := COLORREF(ColorToRGB(Context.Canvas.Brush.Color));
+    mSample := COLORREF(ColorToRGB(AContext.Canvas.Brush.Color));
   end;
-  Front := TAtlasColorMath.Mix(ProblemColor(TAtlasIdeStyle.Colors, Found.Problem), TAtlasColor(Sample), Strength);
-  EnsureFont(Context.Canvas.Font);
-  Saved := SaveDC(DC);
+  mFront := TAtlasColorMath.Mix(ProblemColor(TAtlasIdeStyle.Colors, mFound.Problem), TAtlasColor(mSample), cStrength);
+  EnsureFont(AContext.Canvas.Font);
+  mSaved := SaveDC(mDC);
   try
-    SelectObject(DC, FFont.Handle);
-    SetTextColor(DC, COLORREF(ColorToRGB(TColor(Front))));
-    SetBkMode(DC, TRANSPARENT);
-    GetTextExtentPoint32W(DC, PChar(Caption), Length(Caption), Size);
-    Top := Rect.Top + Max(0, (Rect.Bottom - Rect.Top - Size.cy) div 2);
-    TextOutW(DC, X, Top, PChar(Caption), Length(Caption));
+    SelectObject(mDC, FFont.Handle);
+    SetTextColor(mDC, COLORREF(ColorToRGB(TColor(mFront))));
+    SetBkMode(mDC, TRANSPARENT);
+    GetTextExtentPoint32W(mDC, PChar(mCaption), Length(mCaption), mSize);
+    mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mSize.cy) div 2);
+    TextOutW(mDC, X, mTop, PChar(mCaption), Length(mCaption));
   finally
-    RestoreDC(DC, Saved);
+    RestoreDC(mDC, mSaved);
   end;
-  TAtlasLineTail.Finish(Self, Key, X + Size.cx);
+  TAtlasLineTail.Finish(Self, mKey, X + mSize.cx);
   TAtlasIdeElements.Painted(
-    TAtlasIdeElements.Target(TAtlasDrawnElement.InlineDiagnostics, Context.FileName, Context.LogicalLineNum - 1,
-    AText), TRect.Create(X, Top, X + Size.cx, Top + Size.cy), Context.EditView.TopRow, Rect.Height);
+    TAtlasIdeElements.Target(TAtlasDrawnElement.InlineDiagnostics, AContext.FileName, AContext.LogicalLineNum - 1,
+    AText), TRect.Create(X, mTop, X + mSize.cx, mTop + mSize.cy), AContext.EditView.TopRow, ARect.Height);
 end;
 
 /// <summary>Zeichenbereich [AFrom, ATill) des Problems in der Zeile ALine; leer wird ein Zeichen, am Zeilenende

@@ -75,7 +75,8 @@ begin
     // Doppelter Name: OK gesperrt, mit Hinweis.
     mDialog.View.Name.Text := 'standard';
     Assert.IsFalse(mDialog.View.Ok.Enabled);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryNameTaken), mDialog.View.Result.Text);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryNameTaken),
+      mDialog.View.Result.Text);
     mDialog.View.Name.Text := 'Neu';
     mDialog.View.Query.Text := '';
     Assert.IsFalse(mDialog.View.Ok.Enabled, 'ohne Abfrage');
@@ -167,7 +168,8 @@ begin
     Assert.AreEqual('ATL', mSeen.Project);
     Assert.AreEqual('assignee: me #Unresolved', mSeen.Query);
     Assert.AreEqual('de', mSeen.Language, 'Sprache der Verbindung');
-    Assert.IsTrue(string(mDialog.View.Result.Text).Contains(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestEmpty, [120])),
+    Assert.IsTrue(string(mDialog.View.Result.Text)
+      .Contains(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestEmpty, [120])),
       mDialog.View.Result.Text);
     Assert.IsTrue(string(mDialog.View.Result.Text).Contains('assignee: meine #Ungelöst'), 'Tipp');
     Assert.IsTrue(string(mDialog.View.Result.Text).Contains(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestSent,

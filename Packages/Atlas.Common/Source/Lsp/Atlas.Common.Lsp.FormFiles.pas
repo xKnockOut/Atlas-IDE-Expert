@@ -15,9 +15,9 @@ type
   TLspFormFiles = class
   public const
     /// <summary>Code der Hinweis-Diagnose für binäre Formulare (#122).</summary>
-    BinaryCode = 'binary-form';
+    cBinaryCode = 'binary-form';
     /// <summary>Befehl: binäre Formulare in Text umwandeln; Argument die URI, ohne Argument alle im Projekt.</summary>
-    ConvertCommand = 'atlas.server.convertBinaryForms';
+    cConvertCommand = 'atlas.server.convertBinaryForms';
   public
     /// <summary>DocumentSymbol[] der Formulardatei. Der Aufrufer übernimmt das Objekt.</summary>
     class function BuildSymbols(ADocument: TDfmDocument): TJSONArray; static;
@@ -52,26 +52,26 @@ const
 
 function ObjectToJson(AObject: TDfmObject): TJSONObject;
 var
-  Children: TJSONArray;
-  Child: TDfmObject;
-  Item: TDfmProperty;
-  Event: TJSONObject;
-  Name: string;
+  mChildren: TJSONArray;
+  mChild: TDfmObject;
+  mItem: TDfmProperty;
+  mEvent: TJSONObject;
+  mName: string;
 begin
   Result := TJSONObject.Create;
   if AObject.Kind = TDfmObjectKind.Item then
   begin
-    Name := 'item';
+    mName := 'item';
   end
   else if AObject.Name = '' then
   begin
-    Name := AObject.TypeName;
+    mName := AObject.TypeName;
   end
   else
   begin
-    Name := AObject.Name + ': ' + AObject.TypeName;
+    mName := AObject.Name + ': ' + AObject.TypeName;
   end;
-  Result.AddPair('name', Name);
+  Result.AddPair('name', mName);
   if AObject.Kind = TDfmObjectKind.Inherited_ then
   begin
     Result.AddPair('detail', 'inherited');
@@ -80,56 +80,57 @@ begin
   begin
     Result.AddPair('detail', 'inline');
   end;
-  Result.AddPair('kind', TJSONNumber.Create(TLspSymbolKind.Object_));
+  Result.AddPair('kind', TJSONNumber.Create(TLspSymbolKind.cObject_));
   Result.AddPair('range', TLspPositions.RangeToJson(AObject.Range));
   Result.AddPair('selectionRange', TLspPositions.RangeToJson(AObject.NameRange));
-  Children := TJSONArray.Create;
-  for Item in AObject.Properties do
+  mChildren := TJSONArray.Create;
+  for mItem in AObject.Properties do
   begin
-    if Item.IsEvent then
+    if mItem.IsEvent then
     begin
-      Event := TJSONObject.Create;
-      Event.AddPair('name', Item.Name + ' = ' + Item.Value);
-      Event.AddPair('kind', TJSONNumber.Create(TLspSymbolKind.Event));
-      Event.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(Item.NameRange.StartPos, Item.ValueRange.EndPos)));
-      Event.AddPair('selectionRange', TLspPositions.RangeToJson(Item.NameRange));
-      Children.AddElement(Event);
+      mEvent := TJSONObject.Create;
+      mEvent.AddPair('name', mItem.Name + ' = ' + mItem.Value);
+      mEvent.AddPair('kind', TJSONNumber.Create(TLspSymbolKind.cEvent));
+      mEvent.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(mItem.NameRange.StartPos,
+        mItem.ValueRange.EndPos)));
+      mEvent.AddPair('selectionRange', TLspPositions.RangeToJson(mItem.NameRange));
+      mChildren.AddElement(mEvent);
     end;
   end;
-  for Child in AObject.Children do
+  for mChild in AObject.Children do
   begin
-    Children.AddElement(ObjectToJson(Child));
+    mChildren.AddElement(ObjectToJson(mChild));
   end;
-  Result.AddPair('children', Children);
+  Result.AddPair('children', mChildren);
 end;
 
 procedure AddFolding(AObject: TDfmObject; AItems: TJSONArray);
 var
-  Item: TDfmProperty;
-  Child: TDfmObject;
-  Range: TJSONObject;
+  mItem: TDfmProperty;
+  mChild: TDfmObject;
+  mRange: TJSONObject;
 begin
   if AObject.Range.EndPos.Line > AObject.Range.StartPos.Line then
   begin
-    Range := TJSONObject.Create;
-    Range.AddPair('startLine', TJSONNumber.Create(AObject.Range.StartPos.Line));
-    Range.AddPair('endLine', TJSONNumber.Create(AObject.Range.EndPos.Line));
-    AItems.AddElement(Range);
+    mRange := TJSONObject.Create;
+    mRange.AddPair('startLine', TJSONNumber.Create(AObject.Range.StartPos.Line));
+    mRange.AddPair('endLine', TJSONNumber.Create(AObject.Range.EndPos.Line));
+    AItems.AddElement(mRange);
   end;
   // Mehrzeilige Werte wie Binärdaten und Stringlisten.
-  for Item in AObject.Properties do
+  for mItem in AObject.Properties do
   begin
-    if Item.ValueRange.EndPos.Line > Item.ValueRange.StartPos.Line then
+    if mItem.ValueRange.EndPos.Line > mItem.ValueRange.StartPos.Line then
     begin
-      Range := TJSONObject.Create;
-      Range.AddPair('startLine', TJSONNumber.Create(Item.NameRange.StartPos.Line));
-      Range.AddPair('endLine', TJSONNumber.Create(Item.ValueRange.EndPos.Line));
-      AItems.AddElement(Range);
+      mRange := TJSONObject.Create;
+      mRange.AddPair('startLine', TJSONNumber.Create(mItem.NameRange.StartPos.Line));
+      mRange.AddPair('endLine', TJSONNumber.Create(mItem.ValueRange.EndPos.Line));
+      AItems.AddElement(mRange);
     end;
   end;
-  for Child in AObject.Children do
+  for mChild in AObject.Children do
   begin
-    AddFolding(Child, AItems);
+    AddFolding(mChild, AItems);
   end;
 end;
 
@@ -155,32 +156,32 @@ end;
 
 class function TLspFormFiles.BinaryDiagnostics: TJSONArray;
 var
-  Item: TJSONObject;
+  mItem: TJSONObject;
 begin
   Result := TJSONArray.Create;
-  Item := TJSONObject.Create;
-  Item.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(0, 0, 0, 4)));
-  Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Hint));
-  Item.AddPair('source', 'Atlas');
-  Item.AddPair('code', BinaryCode);
-  Item.AddPair('message', cTexts[TFormFilesText.FormIsStoredAsBinary].Text);
-  Result.AddElement(Item);
+  mItem := TJSONObject.Create;
+  mItem.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(0, 0, 0, 4)));
+  mItem.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.cHint));
+  mItem.AddPair('source', 'Atlas');
+  mItem.AddPair('code', cBinaryCode);
+  mItem.AddPair('message', cTexts[TFormFilesText.FormIsStoredAsBinary].Text);
+  Result.AddElement(mItem);
 end;
 
 class function TLspFormFiles.BuildDiagnostics(ADocument: TDfmDocument): TJSONArray;
 var
-  Error: TDfmError;
-  Item: TJSONObject;
+  mError: TDfmError;
+  mItem: TJSONObject;
 begin
   Result := TJSONArray.Create;
-  for Error in ADocument.Errors do
+  for mError in ADocument.Errors do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(Error.Position, Error.Position)));
-    Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Error));
-    Item.AddPair('source', 'Atlas');
-    Item.AddPair('message', Error.Message);
-    Result.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(mError.Position, mError.Position)));
+    mItem.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.cError));
+    mItem.AddPair('source', 'Atlas');
+    mItem.AddPair('message', mError.Message);
+    Result.AddElement(mItem);
   end;
 end;
 

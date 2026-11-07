@@ -58,38 +58,38 @@ end;
 
 procedure TFileChangeTracker.SetFiles(const AFiles: TArray<string>);
 var
-  FileName, Key: string;
-  Keep: TDictionary<string, string>;
+  mFileName, mKey: string;
+  mKeep: TDictionary<string, string>;
 begin
   TMonitor.Enter(FLock);
   try
-    Keep := TDictionary<string, string>.Create;
+    mKeep := TDictionary<string, string>.Create;
     try
       FFiles.Clear;
-      for FileName in AFiles do
+      for mFileName in AFiles do
       begin
-        Key := LowerCase(FileName);
-        if (FileName = '') or Keep.ContainsKey(Key) then
+        mKey := LowerCase(mFileName);
+        if (mFileName = '') or mKeep.ContainsKey(mKey) then
         begin
           Continue;
         end;
-        FFiles.Add(FileName);
-        if FStamps.ContainsKey(Key) then
+        FFiles.Add(mFileName);
+        if FStamps.ContainsKey(mKey) then
         begin
-          Keep.Add(Key, FStamps[Key]);
+          mKeep.Add(mKey, FStamps[mKey]);
         end
         else
         begin
-          Keep.Add(Key, FStamp(FileName));
+          mKeep.Add(mKey, FStamp(mFileName));
         end;
       end;
       FStamps.Clear;
-      for Key in Keep.Keys do
+      for mKey in mKeep.Keys do
       begin
-        FStamps.Add(Key, Keep[Key]);
+        FStamps.Add(mKey, mKeep[mKey]);
       end;
     finally
-      Keep.Free;
+      mKeep.Free;
     end;
   finally
     TMonitor.Exit(FLock);
@@ -98,19 +98,19 @@ end;
 
 function TFileChangeTracker.Poll: TArray<string>;
 var
-  FileName, Key, Stamp: string;
+  mFileName, mKey, mStamp: string;
 begin
   Result := nil;
   TMonitor.Enter(FLock);
   try
-    for FileName in FFiles do
+    for mFileName in FFiles do
     begin
-      Key := LowerCase(FileName);
-      Stamp := FStamp(FileName);
-      if Stamp <> FStamps[Key] then
+      mKey := LowerCase(mFileName);
+      mStamp := FStamp(mFileName);
+      if mStamp <> FStamps[mKey] then
       begin
-        FStamps[Key] := Stamp;
-        Result := Result + [FileName];
+        FStamps[mKey] := mStamp;
+        Result := Result + [mFileName];
       end;
     end;
   finally
@@ -130,28 +130,28 @@ end;
 
 function TFileChangeTracker.Directories: TArray<string>;
 var
-  FileName, Dir, Known: string;
-  Found: Boolean;
+  mFileName, mDir, mKnown: string;
+  mFound: Boolean;
 begin
   Result := nil;
-  for FileName in Files do
+  for mFileName in Files do
   begin
-    Dir := ExtractFileDir(FileName);
-    if Dir = '' then
+    mDir := ExtractFileDir(mFileName);
+    if mDir = '' then
     begin
       Continue;
     end;
-    Found := False;
-    for Known in Result do
+    mFound := False;
+    for mKnown in Result do
     begin
-      if SameText(Known, Dir) then
+      if SameText(mKnown, mDir) then
       begin
-        Found := True;
+        mFound := True;
       end;
     end;
-    if not Found then
+    if not mFound then
     begin
-      Result := Result + [Dir];
+      Result := Result + [mDir];
     end;
   end;
 end;

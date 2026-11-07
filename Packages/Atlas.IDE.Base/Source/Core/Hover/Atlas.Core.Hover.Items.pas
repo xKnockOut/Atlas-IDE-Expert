@@ -74,7 +74,7 @@ type
   /// beschnitten auf View, ClipFrom = -1 ohne.</summary>
   TAtlasHoverScroll = record
   public const
-    MinRows = 3;
+    cMinRows = 3;
   public
     View: TRect;
     Content: Integer;
@@ -136,7 +136,7 @@ begin
   end;
   if Result > 0 then
   begin
-    Result := Max(Result, MinRows * ARow);
+    Result := Max(Result, cMinRows * ARow);
   end;
 end;
 

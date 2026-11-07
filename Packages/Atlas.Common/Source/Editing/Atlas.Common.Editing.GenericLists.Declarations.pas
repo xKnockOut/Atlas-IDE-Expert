@@ -33,7 +33,8 @@ type
     function IsLegacyName(ANode: TSyntaxNode): Boolean;
     /// <summary>L := TList.Create bzw. TObjectList.Create(False); jede andere Zuweisung ist eine Weitergabe.</summary>
     procedure NoteCreation(AFileIndex: Integer; AValue: TSyntaxNode);
-    /// <summary>Typ von AName in ADeclaration durch ANewType ersetzen; ALegacy: dort stand der alte Klassenname.</summary>
+    /// <summary>Typ von AName in ADeclaration durch ANewType ersetzen; ALegacy: dort stand der alte
+    /// Klassenname.</summary>
     procedure RetypeDeclaration(ASource: TGenericListSource; ADeclaration: TSyntaxNode; const AName, ANewType: string;
       ALegacy: Boolean);
     /// <summary>Deklaration FTarget.Declaration in der eigenen Datei einordnen und umschreiben.</summary>

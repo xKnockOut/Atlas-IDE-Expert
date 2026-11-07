@@ -117,15 +117,15 @@ type
 
   TAtlasTaskHistory = class
   public const
-    FileName = 'tasks.json';
-    FormatVersion = 1;
-    MaxProjects = 50;
+    cFileName = 'tasks.json';
+    cFormatVersion = 1;
+    cMaxProjects = 50;
   private type
     TProject = class
-      Key: string;
-      Last: TArray<TAtlasTaskLastRun>;
-      Hidden: TArray<string>;
-      Used: TDateTime;
+      FKey: string;
+      FLast: TArray<TAtlasTaskLastRun>;
+      FHidden: TArray<string>;
+      FUsed: TDateTime;
     end;
   private
     FProjects: TObjectList<TProject>;
@@ -205,7 +205,7 @@ end;
 
 function TAtlasTaskLines.Decode(const ABytes: TBytes; AStart, ACount: Integer): string;
 var
-  Encoding: TEncoding;
+  mEncoding: TEncoding;
 begin
   if ACount <= 0 then
   begin
@@ -217,11 +217,11 @@ begin
     Exit(Clean(TEncoding.UTF8.GetString(ABytes, AStart, ACount)));
   end;
   try
-    Encoding := TEncoding.GetEncoding(FCodePage);
+    mEncoding := TEncoding.GetEncoding(FCodePage);
     try
-      Result := Clean(Encoding.GetString(ABytes, AStart, ACount));
+      Result := Clean(mEncoding.GetString(ABytes, AStart, ACount));
     finally
-      Encoding.Free;
+      mEncoding.Free;
     end;
   except
     on Exception do
@@ -231,27 +231,27 @@ end;
 
 function TAtlasTaskLines.Feed(const ABytes: TBytes; ACount: Integer): TArray<string>;
 var
-  Data: TBytes;
-  Index, Start: Integer;
+  mData: TBytes;
+  mIndex, mStart: Integer;
 begin
   Result := nil;
   if ACount <= 0 then
   begin
     Exit;
   end;
-  Data := FPending;
-  SetLength(Data, Length(FPending) + ACount);
-  Move(ABytes[0], Data[Length(FPending)], ACount);
-  Start := 0;
-  for Index := 0 to High(Data) do
+  mData := FPending;
+  SetLength(mData, Length(FPending) + ACount);
+  Move(ABytes[0], mData[Length(FPending)], ACount);
+  mStart := 0;
+  for mIndex := 0 to High(mData) do
   begin
-    if Data[Index] = 10 then
+    if mData[mIndex] = 10 then
     begin
-      Result := Result + [Decode(Data, Start, Index - Start)];
-      Start := Index + 1;
+      Result := Result + [Decode(mData, mStart, mIndex - mStart)];
+      mStart := mIndex + 1;
     end;
   end;
-  FPending := Copy(Data, Start, Length(Data) - Start);
+  FPending := Copy(mData, mStart, Length(mData) - mStart);
 end;
 
 function TAtlasTaskLines.Flush: TArray<string>;
@@ -275,11 +275,11 @@ end;
 
 function TAtlasTaskRun.Counts: TAtlasTaskCounts;
 var
-  Finding: TAtlasTaskFinding;
+  mFinding: TAtlasTaskFinding;
 begin
   Result := Default(TAtlasTaskCounts);
-  for Finding in Findings do
-    case Finding.Severity of
+  for mFinding in Findings do
+    case mFinding.Severity of
       TAtlasTaskSeverity.Error:
         Inc(Result.Errors);
       TAtlasTaskSeverity.Warning:
@@ -308,20 +308,20 @@ end;
 
 class function TAtlasTaskGate.Decide(const AEntries: TArray<TAtlasTaskGateEntry>): TAtlasTaskGateDecision;
 var
-  Entry: TAtlasTaskGateEntry;
+  mEntry: TAtlasTaskGateEntry;
 begin
   Result := Default(TAtlasTaskGateDecision);
-  for Entry in AEntries do
-    case Entry.Mode of
+  for mEntry in AEntries do
+    case mEntry.Mode of
       TAtlasTaskBeforeBuild.Block:
-        if Fails(Entry.Run) then
+        if Fails(mEntry.Run) then
         begin
-          Result.Blocking := Result.Blocking + [Entry.Run];
+          Result.Blocking := Result.Blocking + [mEntry.Run];
         end;
       TAtlasTaskBeforeBuild.Warn:
-        if Fails(Entry.Run) or (Entry.Run.Counts.Total > 0) then
+        if Fails(mEntry.Run) or (mEntry.Run.Counts.Total > 0) then
         begin
-          Result.Warnings := Result.Warnings + [Entry.Run];
+          Result.Warnings := Result.Warnings + [mEntry.Run];
         end;
       TAtlasTaskBeforeBuild.Off: ;
     end;
@@ -348,7 +348,7 @@ end;
 { TAtlasTaskHistory }
 
 const
-  OutcomeNames: array[TAtlasTaskOutcome] of string = ('finished', 'programMissing', 'startFailed', 'timedOut',
+  cOutcomeNames: array[TAtlasTaskOutcome] of string = ('finished', 'programMissing', 'startFailed', 'timedOut',
     'cancelled');
 
 constructor TAtlasTaskHistory.Create;
@@ -375,15 +375,15 @@ end;
 
 function TAtlasTaskHistory.Find(const AProject: string): TProject;
 var
-  Project: TProject;
-  Wanted: string;
+  mProject: TProject;
+  mWanted: string;
 begin
-  Wanted := Key(AProject);
-  for Project in FProjects do
+  mWanted := Key(AProject);
+  for mProject in FProjects do
   begin
-    if Project.Key = Wanted then
+    if mProject.FKey = mWanted then
     begin
-      Exit(Project);
+      Exit(mProject);
     end;
   end;
   Result := nil;
@@ -391,7 +391,7 @@ end;
 
 function TAtlasTaskHistory.Ensure(const AProject: string): TProject;
 var
-  Oldest, Index: Integer;
+  mOldest, mIndex: Integer;
 begin
   Result := Find(AProject);
   if Result <> nil then
@@ -399,55 +399,55 @@ begin
     Exit;
   end;
   // Höchstens MaxProjects: das am längsten nicht benutzte fällt weg.
-  if FProjects.Count >= MaxProjects then
+  if FProjects.Count >= cMaxProjects then
   begin
-    Oldest := 0;
-    for Index := 1 to FProjects.Count - 1 do
+    mOldest := 0;
+    for mIndex := 1 to FProjects.Count - 1 do
     begin
-      if FProjects[Index].Used < FProjects[Oldest].Used then
+      if FProjects[mIndex].FUsed < FProjects[mOldest].FUsed then
       begin
-        Oldest := Index;
+        mOldest := mIndex;
       end;
     end;
-    FProjects.Delete(Oldest);
+    FProjects.Delete(mOldest);
   end;
   Result := TProject.Create;
-  Result.Key := Key(AProject);
+  Result.FKey := Key(AProject);
   FProjects.Add(Result);
 end;
 
 procedure TAtlasTaskHistory.Remember(const AProject: string; const ARun: TAtlasTaskRun);
 var
-  Project: TProject;
-  Index: Integer;
+  mProject: TProject;
+  mIndex: Integer;
 begin
-  Project := Ensure(AProject);
-  Project.Used := ARun.FinishedAt;
-  for Index := 0 to High(Project.Last) do
+  mProject := Ensure(AProject);
+  mProject.FUsed := ARun.FinishedAt;
+  for mIndex := 0 to High(mProject.FLast) do
   begin
-    if SameText(Project.Last[Index].Name, ARun.Name) then
+    if SameText(mProject.FLast[mIndex].Name, ARun.Name) then
     begin
-      Project.Last[Index] := TAtlasTaskLastRun.From(ARun);
+      mProject.FLast[mIndex] := TAtlasTaskLastRun.From(ARun);
       Exit;
     end;
   end;
-  Project.Last := Project.Last + [TAtlasTaskLastRun.From(ARun)];
+  mProject.FLast := mProject.FLast + [TAtlasTaskLastRun.From(ARun)];
 end;
 
 function TAtlasTaskHistory.LastRun(const AProject, AName: string; out ARun: TAtlasTaskLastRun): Boolean;
 var
-  Project: TProject;
-  Run: TAtlasTaskLastRun;
+  mProject: TProject;
+  mRun: TAtlasTaskLastRun;
 begin
   ARun := Default(TAtlasTaskLastRun);
-  Project := Find(AProject);
-  if Project <> nil then
+  mProject := Find(AProject);
+  if mProject <> nil then
   begin
-    for Run in Project.Last do
+    for mRun in mProject.FLast do
     begin
-      if SameText(Run.Name, AName) then
+      if SameText(mRun.Name, AName) then
       begin
-        ARun := Run;
+        ARun := mRun;
         Exit(True);
       end;
     end;
@@ -457,23 +457,23 @@ end;
 
 function TAtlasTaskHistory.LastRuns(const AProject: string): TArray<TAtlasTaskLastRun>;
 var
-  Project: TProject;
+  mProject: TProject;
 begin
   Result := nil;
-  Project := Find(AProject);
-  if Project <> nil then
+  mProject := Find(AProject);
+  if mProject <> nil then
   begin
-    Result := Copy(Project.Last);
+    Result := Copy(mProject.FLast);
   end;
 end;
 
 function TAtlasTaskHistory.IsHidden(const AProject, AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in HiddenNames(AProject) do
+  for mName in HiddenNames(AProject) do
   begin
-    if SameText(Name, AName) then
+    if SameText(mName, AName) then
     begin
       Exit(True);
     end;
@@ -483,94 +483,94 @@ end;
 
 procedure TAtlasTaskHistory.SetHidden(const AProject, AName: string; AHidden: Boolean);
 var
-  Project: TProject;
-  Kept: TArray<string>;
-  Name: string;
+  mProject: TProject;
+  mKept: TArray<string>;
+  mName: string;
 begin
   if IsHidden(AProject, AName) = AHidden then
   begin
     Exit;
   end;
-  Project := Ensure(AProject);
+  mProject := Ensure(AProject);
   if AHidden then
   begin
-    Project.Hidden := Project.Hidden + [AName];
+    mProject.FHidden := mProject.FHidden + [AName];
     Exit;
   end;
-  Kept := nil;
-  for Name in Project.Hidden do
+  mKept := nil;
+  for mName in mProject.FHidden do
   begin
-    if not SameText(Name, AName) then
+    if not SameText(mName, AName) then
     begin
-      Kept := Kept + [Name];
+      mKept := mKept + [mName];
     end;
   end;
-  Project.Hidden := Kept;
+  mProject.FHidden := mKept;
 end;
 
 function TAtlasTaskHistory.HiddenNames(const AProject: string): TArray<string>;
 var
-  Project: TProject;
+  mProject: TProject;
 begin
   Result := nil;
-  Project := Find(AProject);
-  if Project <> nil then
+  mProject := Find(AProject);
+  if mProject <> nil then
   begin
-    Result := Copy(Project.Hidden);
+    Result := Copy(mProject.FHidden);
   end;
 end;
 
 function TAtlasTaskHistory.ToJson: string;
 var
-  Root, Projects, Item, Last, RunObject: TJSONObject;
-  Hidden: TJSONArray;
-  Project: TProject;
-  Run: TAtlasTaskLastRun;
-  Name: string;
+  mRoot, mProjects, mItem, mLast, mRunObject: TJSONObject;
+  mHidden: TJSONArray;
+  mProject: TProject;
+  mRun: TAtlasTaskLastRun;
+  mName: string;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Root.AddPair('format', TJSONNumber.Create(FormatVersion));
-    Projects := TJSONObject.Create;
-    Root.AddPair('projects', Projects);
-    for Project in FProjects do
+    mRoot.AddPair('format', TJSONNumber.Create(cFormatVersion));
+    mProjects := TJSONObject.Create;
+    mRoot.AddPair('projects', mProjects);
+    for mProject in FProjects do
     begin
-      Item := TJSONObject.Create;
-      Projects.AddPair(Project.Key, Item);
-      Item.AddPair('used', DateToISO8601(Project.Used, False));
-      Hidden := TJSONArray.Create;
-      for Name in Project.Hidden do
+      mItem := TJSONObject.Create;
+      mProjects.AddPair(mProject.FKey, mItem);
+      mItem.AddPair('used', DateToISO8601(mProject.FUsed, False));
+      mHidden := TJSONArray.Create;
+      for mName in mProject.FHidden do
       begin
-        Hidden.Add(Name);
+        mHidden.Add(mName);
       end;
-      Item.AddPair('hidden', Hidden);
-      Last := TJSONObject.Create;
-      Item.AddPair('last', Last);
-      for Run in Project.Last do
+      mItem.AddPair('hidden', mHidden);
+      mLast := TJSONObject.Create;
+      mItem.AddPair('last', mLast);
+      for mRun in mProject.FLast do
       begin
-        RunObject := TJSONObject.Create;
-        RunObject.AddPair('outcome', OutcomeNames[Run.Outcome]);
-        RunObject.AddPair('exitCode', TJSONNumber.Create(Run.ExitCode));
-        RunObject.AddPair('errors', TJSONNumber.Create(Run.Counts.Errors));
-        RunObject.AddPair('warnings', TJSONNumber.Create(Run.Counts.Warnings));
-        RunObject.AddPair('infos', TJSONNumber.Create(Run.Counts.Infos));
-        RunObject.AddPair('durationMs', TJSONNumber.Create(Run.DurationMs));
-        RunObject.AddPair('finished', DateToISO8601(Run.FinishedAt, False));
-        Last.AddPair(Run.Name, RunObject);
+        mRunObject := TJSONObject.Create;
+        mRunObject.AddPair('outcome', cOutcomeNames[mRun.Outcome]);
+        mRunObject.AddPair('exitCode', TJSONNumber.Create(mRun.ExitCode));
+        mRunObject.AddPair('errors', TJSONNumber.Create(mRun.Counts.Errors));
+        mRunObject.AddPair('warnings', TJSONNumber.Create(mRun.Counts.Warnings));
+        mRunObject.AddPair('infos', TJSONNumber.Create(mRun.Counts.Infos));
+        mRunObject.AddPair('durationMs', TJSONNumber.Create(mRun.DurationMs));
+        mRunObject.AddPair('finished', DateToISO8601(mRun.FinishedAt, False));
+        mLast.AddPair(mRun.Name, mRunObject);
       end;
     end;
-    Result := Root.ToJSON;
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 function IntOf(AObject: TJSONObject; const AName: string): Int64;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := AObject.GetValue(AName);
-  if not (Value is TJSONNumber) or not TryStrToInt64(Value.ToString, Result) then
+  mValue := AObject.GetValue(AName);
+  if not (mValue is TJSONNumber) or not TryStrToInt64(mValue.ToString, Result) then
   begin
     Result := 0;
   end;
@@ -578,10 +578,10 @@ end;
 
 function DateOf(AObject: TJSONObject; const AName: string): TDateTime;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := AObject.GetValue(AName);
-  if not (Value is TJSONString) or not TryISO8601ToDate(Value.Value, Result, False) then
+  mValue := AObject.GetValue(AName);
+  if not (mValue is TJSONString) or not TryISO8601ToDate(mValue.Value, Result, False) then
   begin
     Result := 0;
   end;
@@ -616,7 +616,7 @@ begin
   end;
   for mOutcome := Low(TAtlasTaskOutcome) to High(TAtlasTaskOutcome) do
   begin
-    if SameText(AValue.Value, OutcomeNames[mOutcome]) then
+    if SameText(AValue.Value, cOutcomeNames[mOutcome]) then
     begin
       Result := mOutcome;
     end;
@@ -676,17 +676,17 @@ begin
     end;
     for mPair in TJSONObject(mProjects) do
     begin
-      if not (mPair.JsonValue is TJSONObject) or (FProjects.Count >= MaxProjects) then
+      if not (mPair.JsonValue is TJSONObject) or (FProjects.Count >= cMaxProjects) then
       begin
         Continue;
       end;
       mItem := TJSONObject(mPair.JsonValue);
       mProject := TProject.Create;
       FProjects.Add(mProject);
-      mProject.Key := Key(mPair.JsonString.Value);
-      mProject.Used := DateOf(mItem, 'used');
-      mProject.Hidden := ReadHidden(mItem.GetValue('hidden'));
-      mProject.Last := ReadRuns(mItem.GetValue('last'));
+      mProject.FKey := Key(mPair.JsonString.Value);
+      mProject.FUsed := DateOf(mItem, 'used');
+      mProject.FHidden := ReadHidden(mItem.GetValue('hidden'));
+      mProject.FLast := ReadRuns(mItem.GetValue('last'));
     end;
   finally
     mParsed.Free;

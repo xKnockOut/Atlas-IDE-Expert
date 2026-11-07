@@ -116,7 +116,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TTodoRule.Create, Source, Enabled);
   Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual(TodoCommentRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cTodoCommentRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
   Assert.AreEqual('TODO 1 [GUI, Marco]: Fokus setzen', Findings[0].Message);
   Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
@@ -184,7 +184,7 @@ begin
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = TodoCommentRuleId then
+    if Rule.Descriptor.Id = cTodoCommentRuleId then
     begin
       Found := True;
     end;
@@ -198,7 +198,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TCommentedOutCodeRule.Create, CommentedCode);
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(CommentedOutCodeRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cCommentedOutCodeRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
   Assert.AreEqual('3 Zeilen auskommentierter Code; die Versionsverwaltung bewahrt ihn auf.', Findings[0].Message);

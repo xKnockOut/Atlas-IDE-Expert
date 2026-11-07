@@ -133,7 +133,7 @@ begin
   Result.Height := 22;
   FSymbol := TAtlasSymbolImage.Create(Self);
   FSymbol.Parent := Result;
-  FSymbol.LogicalSize := TAtlasSymbol.MenuSize;
+  FSymbol.LogicalSize := TAtlasSymbol.cMenuSize;
   FSymbol.Align := alLeft;
   FSymbol.AlignWithMargins := True;
 end;

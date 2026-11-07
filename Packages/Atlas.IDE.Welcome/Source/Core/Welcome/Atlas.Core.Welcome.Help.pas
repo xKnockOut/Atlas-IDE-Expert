@@ -20,12 +20,12 @@ type
 
   TAtlasHelp = class
   public const
-    DocsFolder = 'Doku';
-    DocsIndex = 'index.html';
+    cDocsFolder = 'Doku';
+    cDocsIndex = 'index.html';
     /// <summary>Doku-Seite des Repositorys, wenn keine installierte Doku da ist.</summary>
-    DocsUrl = 'https://github.com/xKnockOut/Atlas-IDE-Expert/tree/main/docs';
+    cDocsUrl = 'https://github.com/xKnockOut/Atlas-IDE-Expert/tree/main/docs';
     /// <summary>„Atlas unterstützen“: Spendenseite (PayPal), fest; nichts wird gesendet.</summary>
-    DonateUrl = 'https://www.paypal.com/paypalme/xKnockOut288';
+    cDonateUrl = 'https://www.paypal.com/paypalme/xKnockOut288';
   public
     /// <summary>Doku\index.html im Ordner APluginDir oder eine Ebene darüber (BPL in Win32\ bzw. Win64\);
     /// '' ohne. AExists prüft eine Datei.</summary>
@@ -42,28 +42,28 @@ implementation
 
 class function TAtlasHelp.LocalDocs(const APluginDir: string; const AExists: TFunc<string, Boolean>): string;
 var
-  Folder, Parent, Candidate: string;
+  mFolder, mParent, mCandidate: string;
 begin
   Result := '';
   if (APluginDir = '') or not Assigned(AExists) then
   begin
     Exit;
   end;
-  Folder := IncludeTrailingPathDelimiter(APluginDir);
-  Candidate := Folder + DocsFolder + PathDelim + DocsIndex;
-  if AExists(Candidate) then
+  mFolder := IncludeTrailingPathDelimiter(APluginDir);
+  mCandidate := mFolder + cDocsFolder + PathDelim + cDocsIndex;
+  if AExists(mCandidate) then
   begin
-    Exit(Candidate);
+    Exit(mCandidate);
   end;
-  Parent := ExtractFilePath(ExcludeTrailingPathDelimiter(Folder));
-  if Parent = '' then
+  mParent := ExtractFilePath(ExcludeTrailingPathDelimiter(mFolder));
+  if mParent = '' then
   begin
     Exit;
   end;
-  Candidate := IncludeTrailingPathDelimiter(Parent) + DocsFolder + PathDelim + DocsIndex;
-  if AExists(Candidate) then
+  mCandidate := IncludeTrailingPathDelimiter(mParent) + cDocsFolder + PathDelim + cDocsIndex;
+  if AExists(mCandidate) then
   begin
-    Result := Candidate;
+    Result := mCandidate;
   end;
 end;
 
@@ -72,7 +72,7 @@ begin
   Result := LocalDocs(APluginDir, AExists);
   if Result = '' then
   begin
-    Result := DocsUrl;
+    Result := cDocsUrl;
   end;
 end;
 

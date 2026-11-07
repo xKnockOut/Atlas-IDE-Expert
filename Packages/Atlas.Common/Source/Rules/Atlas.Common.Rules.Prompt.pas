@@ -16,7 +16,7 @@ uses
 type
   TFindingPrompt = class
   public const
-    DefaultContext = 3;
+    cDefaultContext = 3;
   public
     /// <summary>Markdown zu AFinding in AText (Datei AFileName); ACatalog darf nil sein.</summary>
     class function Markdown(const AFinding: TRuleFinding; const AFileName, AText: string;
@@ -86,7 +86,7 @@ end;
 class function TFindingPrompt.Markdown(const AFinding: TRuleFinding; const AFileName, AText: string;
   const ACatalog: TRuleCatalog): string;
 begin
-  Result := Markdown(AFinding, AFileName, AText, ACatalog, DefaultContext);
+  Result := Markdown(AFinding, AFileName, AText, ACatalog, cDefaultContext);
 end;
 
 /// <summary>Abschnitt "### Code": AContext Zeilen um ALine (ab 0), die Fundzeile mit ">" markiert.</summary>

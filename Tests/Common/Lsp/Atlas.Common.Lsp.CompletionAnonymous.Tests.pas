@@ -361,7 +361,7 @@ begin
   Assert.AreEqual('anonymous', Item.Action);
   Assert.IsTrue(Item.Snippet);
   Assert.IsTrue(Item.Pinned);
-  Assert.AreEqual(KindSnippet, Item.Kind);
+  Assert.AreEqual(cKindSnippet, Item.Kind);
   Assert.AreEqual('procedure'#10'  begin'#10'    $0'#10'  end', Item.TextEdit.NewText);
   Assert.AreEqual(12, Item.TextEdit.Range.StartPos.Character);
   Assert.AreEqual(12, Item.TextEdit.Range.EndPos.Character);

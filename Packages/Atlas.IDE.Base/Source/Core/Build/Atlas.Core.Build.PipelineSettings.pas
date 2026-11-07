@@ -44,16 +44,16 @@ type
 
   TAtlasBuildPipelineSettings = class
   public const
-    ReleaseConfiguration = 'Release';
-    CheckNames: array[TAtlasReleaseCheck] of string = ('debugDefine', 'debugInfo', 'stackFrames', 'assertions',
+    cReleaseConfiguration = 'Release';
+    cCheckNames: array[TAtlasReleaseCheck] of string = ('debugDefine', 'debugInfo', 'stackFrames', 'assertions',
       'rangeChecks', 'overflowChecks', 'memoryLeaks', 'versionInfo', 'outputFolder');
     /// <summary>Prüfungen mit Sollwert (Compileroptionen).</summary>
-    HasTarget: array[TAtlasReleaseCheck] of Boolean = (False, True, True, True, True, True, False, False, False);
-    GateNames: array[TAtlasBuildGate] of string = ('off', 'warn', 'block');
+    cHasTarget: array[TAtlasReleaseCheck] of Boolean = (False, True, True, True, True, True, False, False, False);
+    cGateNames: array[TAtlasBuildGate] of string = ('off', 'warn', 'block');
     /// <summary>build.gateTimeoutMs: Vorgabe und Grenzen.</summary>
-    GateDefaultTimeoutMs = 300;
-    GateMinTimeoutMs = 50;
-    GateMaxTimeoutMs = 10000;
+    cGateDefaultTimeoutMs = 300;
+    cGateMinTimeoutMs = 50;
+    cGateMaxTimeoutMs = 10000;
   public
     /// <summary>"off", "warn" oder "block" (Groß-/Kleinschreibung egal); sonst off.</summary>
     class function GateOf(const AText: string): TAtlasBuildGate; static;
@@ -70,24 +70,24 @@ implementation
 
 class function TAtlasReleaseChecks.Defaults: TAtlasReleaseChecks;
 var
-  Check: TAtlasReleaseCheck;
+  mCheck: TAtlasReleaseCheck;
 begin
-  for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
+  for mCheck := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
   begin
-    Result.Items[Check].Enabled := True;
-    Result.Items[Check].Expected := False;
+    Result.Items[mCheck].Enabled := True;
+    Result.Items[mCheck].Expected := False;
   end;
 end;
 
 function CheckOf(const AName: string; out ACheck: TAtlasReleaseCheck): Boolean;
 var
-  Check: TAtlasReleaseCheck;
+  mCheck: TAtlasReleaseCheck;
 begin
-  for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
+  for mCheck := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
   begin
-    if SameText(AName, TAtlasBuildPipelineSettings.CheckNames[Check]) then
+    if SameText(AName, TAtlasBuildPipelineSettings.cCheckNames[mCheck]) then
     begin
-      ACheck := Check;
+      ACheck := mCheck;
       Exit(True);
     end;
   end;
@@ -97,64 +97,64 @@ end;
 
 class function TAtlasReleaseChecks.Parse(const AText: string): TAtlasReleaseChecks;
 var
-  Part, Name, Target: string;
-  Enabled: Boolean;
-  Equals: Integer;
-  Check: TAtlasReleaseCheck;
+  mPart, mName, mTarget: string;
+  mEnabled: Boolean;
+  mEquals: Integer;
+  mCheck: TAtlasReleaseCheck;
 begin
   Result := Defaults;
-  for Part in AText.Split([',', ';']) do
+  for mPart in AText.Split([',', ';']) do
   begin
-    Name := Trim(Part);
-    Enabled := True;
-    if Name.StartsWith('-') or Name.StartsWith('!') then
+    mName := Trim(mPart);
+    mEnabled := True;
+    if mName.StartsWith('-') or mName.StartsWith('!') then
     begin
-      Enabled := False;
-      Name := Trim(Copy(Name, 2, MaxInt));
+      mEnabled := False;
+      mName := Trim(Copy(mName, 2, MaxInt));
     end;
-    Target := '';
-    Equals := Pos('=', Name);
-    if Equals > 0 then
+    mTarget := '';
+    mEquals := Pos('=', mName);
+    if mEquals > 0 then
     begin
-      Target := Trim(Copy(Name, Equals + 1, MaxInt));
-      Name := Trim(Copy(Name, 1, Equals - 1));
+      mTarget := Trim(Copy(mName, mEquals + 1, MaxInt));
+      mName := Trim(Copy(mName, 1, mEquals - 1));
     end;
-    if not CheckOf(Name, Check) then
+    if not CheckOf(mName, mCheck) then
     begin
       Continue;
     end;
-    Result.Items[Check].Enabled := Enabled;
-    if TAtlasBuildPipelineSettings.HasTarget[Check] and (Target <> '') then
+    Result.Items[mCheck].Enabled := mEnabled;
+    if TAtlasBuildPipelineSettings.cHasTarget[mCheck] and (mTarget <> '') then
     begin
-      Result.Items[Check].Expected := SameText(Target, 'on') or SameText(Target, 'true') or (Target = '1');
+      Result.Items[mCheck].Expected := SameText(mTarget, 'on') or SameText(mTarget, 'true') or (mTarget = '1');
     end;
   end;
 end;
 
 function TAtlasReleaseChecks.ToText: string;
 const
-  Targets: array[Boolean] of string = ('=off', '=on');
+  cTargets: array[Boolean] of string = ('=off', '=on');
 var
-  Check: TAtlasReleaseCheck;
-  Item: string;
+  mCheck: TAtlasReleaseCheck;
+  mItem: string;
 begin
   Result := '';
-  for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
+  for mCheck := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
   begin
-    Item := TAtlasBuildPipelineSettings.CheckNames[Check];
-    if not Items[Check].Enabled then
+    mItem := TAtlasBuildPipelineSettings.cCheckNames[mCheck];
+    if not Items[mCheck].Enabled then
     begin
-      Item := '-' + Item;
+      mItem := '-' + mItem;
     end;
-    if TAtlasBuildPipelineSettings.HasTarget[Check] then
+    if TAtlasBuildPipelineSettings.cHasTarget[mCheck] then
     begin
-      Item := Item + Targets[Items[Check].Expected];
+      mItem := mItem + cTargets[Items[mCheck].Expected];
     end;
     if Result <> '' then
     begin
       Result := Result + ',';
     end;
-    Result := Result + Item;
+    Result := Result + mItem;
   end;
 end;
 
@@ -165,13 +165,13 @@ end;
 
 class function TAtlasBuildPipelineSettings.GateOf(const AText: string): TAtlasBuildGate;
 var
-  Gate: TAtlasBuildGate;
+  mGate: TAtlasBuildGate;
 begin
-  for Gate := Low(TAtlasBuildGate) to High(TAtlasBuildGate) do
+  for mGate := Low(TAtlasBuildGate) to High(TAtlasBuildGate) do
   begin
-    if SameText(Trim(AText), GateNames[Gate]) then
+    if SameText(Trim(AText), cGateNames[mGate]) then
     begin
-      Exit(Gate);
+      Exit(mGate);
     end;
   end;
   Result := TAtlasBuildGate.Off;
@@ -179,31 +179,31 @@ end;
 
 class function TAtlasBuildPipelineSettings.ConfigurationList(const AText: string): TArray<string>;
 var
-  Part, Name, Known: string;
-  Seen: Boolean;
+  mPart, mName, mKnown: string;
+  mSeen: Boolean;
 begin
   Result := nil;
-  for Part in AText.Split([',', ';']) do
+  for mPart in AText.Split([',', ';']) do
   begin
-    Name := Trim(Part);
+    mName := Trim(mPart);
     // JSON-artige Eingabe ["Release", "Ship"] verträgt die Liste auch.
-    Name := Trim(StringReplace(StringReplace(StringReplace(Name, '"', '', [rfReplaceAll]), '[', '',
+    mName := Trim(StringReplace(StringReplace(StringReplace(mName, '"', '', [rfReplaceAll]), '[', '',
       [rfReplaceAll]), ']', '', [rfReplaceAll]));
-    if Name = '' then
+    if mName = '' then
     begin
       Continue;
     end;
-    Seen := False;
-    for Known in Result do
+    mSeen := False;
+    for mKnown in Result do
     begin
-      if SameText(Known, Name) then
+      if SameText(mKnown, mName) then
       begin
-        Seen := True;
+        mSeen := True;
       end;
     end;
-    if not Seen then
+    if not mSeen then
     begin
-      Result := Result + [Name];
+      Result := Result + [mName];
     end;
   end;
 end;

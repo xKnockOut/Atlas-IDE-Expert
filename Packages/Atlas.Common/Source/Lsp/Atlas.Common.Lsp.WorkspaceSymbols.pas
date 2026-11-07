@@ -4,7 +4,8 @@
 //
 // Treffer und Reihenfolge nach TFuzzyMatch: exakter Name, Namensanfang,
 // Teilstring, dann Teilfolge mit Kürzeln wie "TBB" für TBButton (#39);
-// innerhalb gleicher Güte Typen vor Mitgliedern und danach alphabetisch. Höchstens MaxResults Treffer. Implementierungen von
+// innerhalb gleicher Güte Typen vor Mitgliedern und danach alphabetisch. Höchstens MaxResults Treffer.
+// Implementierungen von
 // Methoden (TFoo.Bar in implementation) erscheinen nicht doppelt.
 // Eine leere Anfrage liefert nichts, damit der Client nicht den ganzen
 // Index erhält. Lesezeichen ("// @bookmark Name", #306) kommen vor den
@@ -34,10 +35,10 @@ type
 
   TLspWorkspaceSymbols = class
   public const
-    Method = 'workspace/symbol';
-    MaxResults = 200;
+    cMethod = 'workspace/symbol';
+    cMaxResults = 200;
     /// <summary>SymbolKind.Key für Lesezeichen.</summary>
-    BookmarkKind = 20;
+    cBookmarkKind = 20;
   private
     FIndex: ISymbolIndex;
     FBookmarksFor: TBookmarkSource;
@@ -91,7 +92,7 @@ type
   end;
 
 const
-  TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+  cTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType, TIndexSymbolKind.EnumType,
     TIndexSymbolKind.TypeAlias];
 
@@ -105,7 +106,7 @@ end;
 
 procedure TLspWorkspaceSymbols.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method, HandleSymbol);
+  ADispatcher.RegisterConcurrentRequest(cMethod, HandleSymbol);
 end;
 
 class function TLspWorkspaceSymbols.Search(const AIndex: ISymbolIndex; const AQuery: string;
@@ -143,7 +144,7 @@ begin
   Result.Item.FileName := AUnit.FileName;
   Result.Item.Bookmark := False;
   Result.Rank := -ARank * 2;
-  if not (ASymbol.Kind in TypeKinds) then
+  if not (ASymbol.Kind in cTypeKinds) then
   begin
     Inc(Result.Rank);
   end;
@@ -159,7 +160,7 @@ begin
   for mSymbol in AUnit.Symbols do
   begin
     mRank := TFuzzyMatch.Score(mSymbol.Name, AQuery);
-    if (mRank <> TFuzzyMatch.NoMatch) and not IsRepeat(ASeen, AUnit, mSymbol) then
+    if (mRank <> TFuzzyMatch.cNoMatch) and not IsRepeat(ASeen, AUnit, mSymbol) then
     begin
       ACandidates.Add(NewCandidate(AUnit, mSymbol, mRank));
     end;
@@ -229,38 +230,38 @@ end;
 class function TLspWorkspaceSymbols.SearchBookmarks(const AHits: TArray<TBookmarkHit>;
   const AQuery: string): TArray<TWorkspaceSymbol>;
 var
-  Query: string;
-  Hit: TBookmarkHit;
-  Candidates: TList<TCandidate>;
-  Candidate: TCandidate;
-  Rank: Integer;
+  mQuery: string;
+  mHit: TBookmarkHit;
+  mCandidates: TList<TCandidate>;
+  mCandidate: TCandidate;
+  mRank: Integer;
 begin
   Result := nil;
-  Query := LowerCase(Trim(AQuery));
-  if Query = '' then
+  mQuery := LowerCase(Trim(AQuery));
+  if mQuery = '' then
   begin
     Exit;
   end;
-  Candidates := TList<TCandidate>.Create;
+  mCandidates := TList<TCandidate>.Create;
   try
-    for Hit in AHits do
+    for mHit in AHits do
     begin
-      Rank := TFuzzyMatch.Score(Hit.Bookmark.Name, Query);
-      if Rank = TFuzzyMatch.NoMatch then
+      mRank := TFuzzyMatch.Score(mHit.Bookmark.Name, mQuery);
+      if mRank = TFuzzyMatch.cNoMatch then
       begin
         Continue;
       end;
-      Candidate.Item.Symbol := Default(TIndexSymbol);
-      Candidate.Item.Symbol.Name := Hit.Bookmark.Name;
-      Candidate.Item.Symbol.Range := Hit.Bookmark.Range;
-      Candidate.Item.Symbol.SelectionRange := Hit.Bookmark.Range;
-      Candidate.Item.UnitName := ChangeFileExt(ExtractFileName(Hit.FileName), '');
-      Candidate.Item.FileName := Hit.FileName;
-      Candidate.Item.Bookmark := True;
-      Candidate.Rank := -Rank;
-      Candidates.Add(Candidate);
+      mCandidate.Item.Symbol := Default(TIndexSymbol);
+      mCandidate.Item.Symbol.Name := mHit.Bookmark.Name;
+      mCandidate.Item.Symbol.Range := mHit.Bookmark.Range;
+      mCandidate.Item.Symbol.SelectionRange := mHit.Bookmark.Range;
+      mCandidate.Item.UnitName := ChangeFileExt(ExtractFileName(mHit.FileName), '');
+      mCandidate.Item.FileName := mHit.FileName;
+      mCandidate.Item.Bookmark := True;
+      mCandidate.Rank := -mRank;
+      mCandidates.Add(mCandidate);
     end;
-    Candidates.Sort(TComparer<TCandidate>.Construct(
+    mCandidates.Sort(TComparer<TCandidate>.Construct(
       function(const A, B: TCandidate): Integer
       begin
         Result := A.Rank - B.Rank;
@@ -269,12 +270,12 @@ begin
           Result := CompareText(A.Item.Symbol.Name, B.Item.Symbol.Name);
         end;
       end));
-    for Candidate in Candidates do
+    for mCandidate in mCandidates do
     begin
-      Result := Result + [Candidate.Item];
+      Result := Result + [mCandidate.Item];
     end;
   finally
-    Candidates.Free;
+    mCandidates.Free;
   end;
 end;
 
@@ -311,60 +312,60 @@ end;
 
 class function TLspWorkspaceSymbols.ToJson(const ASymbols: TArray<TWorkspaceSymbol>): TJSONArray;
 var
-  Item: TWorkspaceSymbol;
-  Info, Location: TJSONObject;
+  mItem: TWorkspaceSymbol;
+  mInfo, mLocation: TJSONObject;
 begin
   Result := TJSONArray.Create;
-  for Item in ASymbols do
+  for mItem in ASymbols do
   begin
-    Info := TJSONObject.Create;
-    Info.AddPair('name', Item.Symbol.Name);
-    if Item.Bookmark then
+    mInfo := TJSONObject.Create;
+    mInfo.AddPair('name', mItem.Symbol.Name);
+    if mItem.Bookmark then
     begin
-      Info.AddPair('kind', TJSONNumber.Create(BookmarkKind));
+      mInfo.AddPair('kind', TJSONNumber.Create(cBookmarkKind));
     end
     else
     begin
-      Info.AddPair('kind', TJSONNumber.Create(LspKind(Item.Symbol.Kind)));
+      mInfo.AddPair('kind', TJSONNumber.Create(LspKind(mItem.Symbol.Kind)));
     end;
-    if Item.Symbol.Container <> '' then
+    if mItem.Symbol.Container <> '' then
     begin
-      Info.AddPair('containerName', Item.UnitName + '.' + Item.Symbol.Container);
+      mInfo.AddPair('containerName', mItem.UnitName + '.' + mItem.Symbol.Container);
     end
     else
     begin
-      Info.AddPair('containerName', Item.UnitName);
+      mInfo.AddPair('containerName', mItem.UnitName);
     end;
-    Location := TJSONObject.Create;
-    Location.AddPair('uri', TDocumentUris.FromPath(Item.FileName));
-    Location.AddPair('range', TLspPositions.RangeToJson(Item.Symbol.SelectionRange));
-    Info.AddPair('location', Location);
-    Result.AddElement(Info);
+    mLocation := TJSONObject.Create;
+    mLocation.AddPair('uri', TDocumentUris.FromPath(mItem.FileName));
+    mLocation.AddPair('range', TLspPositions.RangeToJson(mItem.Symbol.SelectionRange));
+    mInfo.AddPair('location', mLocation);
+    Result.AddElement(mInfo);
   end;
 end;
 
 function TLspWorkspaceSymbols.HandleSymbol(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Query: string;
-  Found: TArray<TWorkspaceSymbol>;
+  mQuery: string;
+  mFound: TArray<TWorkspaceSymbol>;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('query', Query)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('query', mQuery)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TWorkspaceSymbolsText.FieldQueryMissingIn].Text + Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TWorkspaceSymbolsText.FieldQueryMissingIn].Text + cMethod);
   end;
-  Found := nil;
+  mFound := nil;
   if Assigned(FBookmarksFor) then
   begin
-    Found := SearchBookmarks(FBookmarksFor(), Query);
+    mFound := SearchBookmarks(FBookmarksFor(), mQuery);
   end;
-  Found := Found + Search(FIndex, Query, MaxResults, ACancellation);
-  if Length(Found) > MaxResults then
+  mFound := mFound + Search(FIndex, mQuery, cMaxResults, ACancellation);
+  if Length(mFound) > cMaxResults then
   begin
-    SetLength(Found, MaxResults);
+    SetLength(mFound, cMaxResults);
   end;
-  Result := ToJson(Found);
+  Result := ToJson(mFound);
 end;
 
 initialization

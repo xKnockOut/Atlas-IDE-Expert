@@ -183,7 +183,7 @@ begin
     begin
       try
         try
-          mJson := TakeJson(mSession.ExecuteCommand(TAtlasStatusLines.StatusCommand, 5000));
+          mJson := TakeJson(mSession.ExecuteCommand(TAtlasStatusLines.cStatusCommand, 5000));
           if Assigned(ADone) then
           begin
             ADone(mJson);

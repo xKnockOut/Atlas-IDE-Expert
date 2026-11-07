@@ -115,7 +115,7 @@ begin
     Assert.IsFalse(mSaved.QuickBookmarksGutterClick);
     Assert.IsFalse(mSaved.QuickBookmarksNumberedKeys);
     Assert.IsFalse(mSaved.QuickBookmarksImportIde);
-    Assert.AreEqual(TAtlasPluginSettings.MaxQuickChordWait, mSaved.QuickBookmarkChordWait, 'begrenzt');
+    Assert.AreEqual(TAtlasPluginSettings.cMaxQuickChordWait, mSaved.QuickBookmarkChordWait, 'begrenzt');
     Assert.AreEqual('file', mSaved.QuickBookmarksScope);
     Assert.AreEqual(0, mSaved.QuickBookmarkKey);
     Assert.AreEqual($71, mSaved.NextBookmarkKey, 'F2');

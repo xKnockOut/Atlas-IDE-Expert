@@ -357,7 +357,7 @@ end;
 
 procedure TAtlasIdeKnownPackages.Notify;
 begin
-  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Packages, TAtlasNotificationSeverity.Warning,
+  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cPackages, TAtlasNotificationSeverity.Warning,
     UiText(TKnownPackagesText.Title), Format(UiText(TKnownPackagesText.Text),
     [TAtlasKnownPackages.Names(FState.Missing)]), [TAtlasNotificationCenter.Action(UiText(TKnownPackagesText.Restore),
     RestoreAction(KnownKey(FRegistryKey), FState.Missing))]);
@@ -417,12 +417,12 @@ begin
   if mError <> '' then
   begin
     TAtlasGuard.Log('Known Packages: Wieder eintragen fehlgeschlagen: ' + TAtlasGuard.MessageText(mError));
-    TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Packages, TAtlasNotificationSeverity.Error,
+    TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cPackages, TAtlasNotificationSeverity.Error,
       UiText(TKnownPackagesText.Title), Format(UiText(TKnownPackagesText.Failed), [mError]));
     Exit;
   end;
   TAtlasGuard.Log('Known Packages: wieder eingetragen: ' + mNames);
-  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Packages, TAtlasNotificationSeverity.Info,
+  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cPackages, TAtlasNotificationSeverity.Info,
     UiText(TKnownPackagesText.DoneTitle), Format(UiText(TKnownPackagesText.DoneText), [mNames]));
 end;
 

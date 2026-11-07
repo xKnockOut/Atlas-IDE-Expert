@@ -32,11 +32,11 @@ type
 
   TJsonRpcTracingTransport = class(TInterfacedObject, IJsonRpcTransport)
   public const
-    IncomingMarker = '-->';
-    OutgoingMarker = '<--';
+    cIncomingMarker = '-->';
+    cOutgoingMarker = '<--';
     /// <summary>So lange und höchstens so viele Zeichen (UTF-16) hält RecentLines (#1356).</summary>
-    RecentMinutes = 10;
-    RecentMaxChars = 2 * 1024 * 1024;
+    cRecentMinutes = 10;
+    cRecentMaxChars = 2 * 1024 * 1024;
   private type
     TRecentLine = record
       Time: TDateTime;
@@ -126,8 +126,8 @@ begin
   mLine.Text := ALine;
   FRecent.Enqueue(mLine);
   Inc(FRecentChars, Length(ALine));
-  while (FRecent.Count > 1) and ((FRecentChars > RecentMaxChars) or
-    (FRecent.Peek.Time < ATime - RecentMinutes / MinsPerDay)) do
+  while (FRecent.Count > 1) and ((FRecentChars > cRecentMaxChars) or
+    (FRecent.Peek.Time < ATime - cRecentMinutes / MinsPerDay)) do
   begin
     Dec(FRecentChars, Length(FRecent.Dequeue.Text));
   end;
@@ -139,9 +139,9 @@ var
   mSince: TDateTime;
   mLines: TList<string>;
 begin
-  if AMinutes > RecentMinutes then
+  if AMinutes > cRecentMinutes then
   begin
-    AMinutes := RecentMinutes;
+    AMinutes := cRecentMinutes;
   end;
   mSince := ANow - AMinutes / MinsPerDay;
   mLines := TList<string>.Create;
@@ -166,30 +166,31 @@ end;
 
 procedure TJsonRpcTracingTransport.WriteTrace(const AMarker, AText: string);
 var
-  Data: TBytes;
-  Report: TJsonRpcTraceFailedEvent;
-  Reason: string;
+  mData: TBytes;
+  mReport: TJsonRpcTraceFailedEvent;
+  mReason: string;
   mTime: TDateTime;
   mLine: string;
 begin
   mTime := Now;
   mLine := FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss"."zzz', mTime) + ' ' + AMarker + ' ' + AText;
-  Data := TEncoding.UTF8.GetBytes(mLine + sLineBreak);
-  Report := nil;
-  Reason := '';
+  mData := TEncoding.UTF8.GetBytes(mLine + sLineBreak);
+  mReport := nil;
+  mReason := '';
   FLock.Enter;
   try
     Remember(mTime, mLine);
     if not FFailed then
       try
-        FTrace.WriteBuffer(Data, Length(Data));
+        FTrace.WriteBuffer(mData, Length(mData));
       except
         // Ein defekter Mitschnitt darf das Protokoll nicht stören; ab jetzt wird nicht mehr geschrieben.
+        // lsp-ignore: catch-all-without-raise -- Mitschnitt darf das Protokoll nie stören; Fehler wird gemeldet
         on E: Exception do
         begin
           FFailed := True;
-          Reason := E.ClassName + ': ' + E.Message;
-          Report := FOnFailed;
+          mReason := E.ClassName + ': ' + E.Message;
+          mReport := FOnFailed;
           FOnFailed := nil;
         end;
       end;
@@ -198,9 +199,9 @@ begin
   end;
   // Außerhalb der Sperre: Die Meldung kann über diesen Transport zurückkommen (window/logMessage),
   // und der Logger hält eigene Sperren.
-  if Assigned(Report) then
+  if Assigned(mReport) then
     try
-      Report(Reason);
+      mReport(mReason);
     except
       // Meldefehler ignorieren: Das Protokoll läuft weiter.
     end;
@@ -215,16 +216,16 @@ begin
       raise;
     on E: Exception do
     begin
-      WriteTrace(IncomingMarker, Format('!! %s: %s', [E.ClassName, E.Message]));
+      WriteTrace(cIncomingMarker, Format('!! %s: %s', [E.ClassName, E.Message]));
       raise;
     end;
   end;
-  WriteTrace(IncomingMarker, Result.ToJSON);
+  WriteTrace(cIncomingMarker, Result.ToJSON);
 end;
 
 procedure TJsonRpcTracingTransport.WriteMessage(const AMessage: TJSONObject);
 begin
-  WriteTrace(OutgoingMarker, AMessage.ToJSON);
+  WriteTrace(cOutgoingMarker, AMessage.ToJSON);
   FInner.WriteMessage(AMessage);
 end;
 

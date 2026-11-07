@@ -34,11 +34,11 @@ type
   TAtlasIdePatternContinuation = class
   private const
     /// <summary>Höchstens so lange wartet Enter auf die Werte eines Aufzählungstyps vom Server.</summary>
-    EnumTimeoutMs = 100;
+    cEnumTimeoutMs = 100;
     /// <summary>Gemerkte Aufzählungen, danach beginnt der Speicher neu.</summary>
-    MaxCachedEnums = 200;
+    cMaxCachedEnums = 200;
     /// <summary>Nach der Vervollständigung (0), vor Parameterhilfe und Platzhaltern.</summary>
-    KeyPriority = 5;
+    cKeyPriority = 5;
   private type
     TKeys = class(TAtlasKeyClient)
     protected
@@ -98,23 +98,23 @@ uses
   Atlas.IDE.Editor.EnterWatch;
 
 const
-  HandlerName = 'PatternContinuation';
+  cHandlerName = 'PatternContinuation';
 
 /// <summary>Ersetzt in ABuffer (Text AText) ab Zeichen AStart AOldLength Zeichen durch AInsert; ein eigener
 /// Rückgängig-Schritt.</summary>
 procedure WriteBuffer(const ABuffer: IOTAEditBuffer; const AText: string; AStart, AOldLength: Integer;
   const AInsert: string);
 var
-  Writer: IOTAEditWriter;
+  mWriter: IOTAEditWriter;
 begin
-  Writer := ABuffer.CreateUndoableWriter;
-  Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
-  Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
+  mWriter := ABuffer.CreateUndoableWriter;
+  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
+  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
   if AInsert <> '' then
   begin
-    Writer.Insert(PAnsiChar(UTF8Encode(AInsert)));
+    mWriter.Insert(PAnsiChar(UTF8Encode(AInsert)));
   end;
-  Writer := nil;
+  mWriter := nil;
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
@@ -149,13 +149,13 @@ begin
   end;
   if FKeys = nil then
   begin
-    FKeys := TKeys.Create(KeyPriority);
+    FKeys := TKeys.Create(cKeyPriority);
   end;
   if FEnums = nil then
   begin
     FEnums := TDictionary<string, TArray<string>>.Create;
   end;
-  TAtlasEnterWatch.Add(HandlerName,
+  TAtlasEnterWatch.Add(cHandlerName,
     function: Boolean
     begin
       Result := Enabled;
@@ -168,7 +168,7 @@ end;
 
 class procedure TAtlasIdePatternContinuation.Uninstall;
 begin
-  TAtlasEnterWatch.Remove(HandlerName);
+  TAtlasEnterWatch.Remove(cHandlerName);
   Dismiss;
   // Vor dem Freigeben abmelden (TAtlasKeyHook).
   if FKeys <> nil then
@@ -217,54 +217,54 @@ end;
 
 class function TAtlasIdePatternContinuation.AtSuggestion: Boolean;
 var
-  View: IOTAEditView;
+  mView: IOTAEditView;
 begin
-  View := TAtlasEditorBuffer.ActiveView;
-  Result := (View <> nil) and (View.Buffer <> nil) and SameText(View.Buffer.FileName, FFileName) and
-    (View.CursorPos.Line = FLine) and (View.CursorPos.Col = FColumn);
+  mView := TAtlasEditorBuffer.ActiveView;
+  Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, FFileName) and
+    (mView.CursorPos.Line = FLine) and (mView.CursorPos.Col = FColumn);
 end;
 
 class function TAtlasIdePatternContinuation.EnumValues(const AFileName, AText, AMember: string;
   ALine, ACharacter: Integer): TArray<string>;
 var
-  Session: TLspSession;
-  Answer: TJSONValue;
-  Item: TJSONValue;
-  Key: string;
+  mSession: TLspSession;
+  mAnswer: TJSONValue;
+  mItem: TJSONValue;
+  mKey: string;
 begin
   Result := TAtlasPatternContinuation.LocalEnumValues(AText, AMember);
   if Result <> nil then
   begin
     Exit;
   end;
-  Key := LowerCase(AFileName + '|' + AMember);
-  if (FEnums <> nil) and FEnums.TryGetValue(Key, Result) then
+  mKey := LowerCase(AFileName + '|' + AMember);
+  if (FEnums <> nil) and FEnums.TryGetValue(mKey, Result) then
   begin
     Exit;
   end;
-  Session := nil;
+  mSession := nil;
   if Assigned(FSessionOf) then
   begin
-    Session := FSessionOf();
+    mSession := FSessionOf();
   end;
-  if (Session = nil) or not Session.Initialized then
+  if (mSession = nil) or not mSession.Initialized then
   begin
     Exit;
   end;
   try
-    Session.Sync(AFileName, AText);
-    Answer := Session.RunCommand('atlas.server.enumValues', Format('["%s",{"line":%d,"character":%d}]',
-      [TLspSession.PathToUri(AFileName).Replace('\', '\\').Replace('"', '\"'), ALine, ACharacter]), EnumTimeoutMs);
+    mSession.Sync(AFileName, AText);
+    mAnswer := mSession.RunCommand('atlas.server.enumValues', Format('["%s",{"line":%d,"character":%d}]',
+      [TLspSession.PathToUri(AFileName).Replace('\', '\\').Replace('"', '\"'), ALine, ACharacter]), cEnumTimeoutMs);
     try
-      if Answer is TJSONArray then
+      if mAnswer is TJSONArray then
       begin
-        for Item in TJSONArray(Answer) do
+        for mItem in TJSONArray(mAnswer) do
         begin
-          Result := Result + [Item.Value];
+          Result := Result + [mItem.Value];
         end;
       end;
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   except
     // Zeitlimit oder Fehler: kein Aufzählungswert, also kein Vorschlag für diese Spalte.
@@ -273,11 +273,11 @@ begin
   end;
   if FEnums <> nil then
   begin
-    if FEnums.Count >= MaxCachedEnums then
+    if FEnums.Count >= cMaxCachedEnums then
     begin
       FEnums.Clear;
     end;
-    FEnums.AddOrSetValue(Key, Result);
+    FEnums.AddOrSetValue(mKey, Result);
   end;
 end;
 

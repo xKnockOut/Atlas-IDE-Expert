@@ -75,15 +75,15 @@ type
   TTokens = TArray<TPascalToken>;
 
 const
-  Conventions: array[0..5] of string = ('stdcall', 'cdecl', 'register', 'pascal', 'safecall', 'winapi');
+  cConventions: array[0..5] of string = ('stdcall', 'cdecl', 'register', 'pascal', 'safecall', 'winapi');
   // Häufige Funktionen aus Winapi.Windows mit BOOL-Ergebnis, falls der Index sie nicht kennt.
-  BoolFunctions: array[0..33] of string = ('CloseHandle', 'DeleteFile', 'CopyFile', 'MoveFile', 'MoveFileEx',
+  cBoolFunctions: array[0..33] of string = ('CloseHandle', 'DeleteFile', 'CopyFile', 'MoveFile', 'MoveFileEx',
     'ReadFile', 'WriteFile', 'CreateDirectory', 'RemoveDirectory', 'SetEvent', 'ResetEvent', 'ReleaseMutex',
     'FreeLibrary', 'SetWindowPos', 'PostMessage', 'PostThreadMessage', 'DestroyWindow', 'SetCurrentDirectory',
     'GetExitCodeProcess', 'TerminateProcess', 'DuplicateHandle', 'FlushFileBuffers', 'SetEndOfFile', 'LockFile',
     'UnlockFile', 'GetFileTime', 'SetFileTime', 'GetComputerName', 'GetUserName', 'SystemParametersInfo',
     'SetFileAttributes', 'CreateProcess', 'ReleaseSemaphore', 'SetThreadPriority');
-  BoolTypes: array[0..3] of string = ('BOOL', 'LongBool', 'Boolean', 'WordBool');
+  cBoolTypes: array[0..3] of string = ('BOOL', 'LongBool', 'Boolean', 'WordBool');
 
 function IsCode(const AToken: TPascalToken): Boolean;
 begin
@@ -96,15 +96,15 @@ end;
 function DllConstName(const ADll: string): string;
 var
   C: Char;
-  Upper: Boolean;
+  mUpper: Boolean;
 begin
   Result := '';
-  Upper := True;
+  mUpper := True;
   for C in ChangeFileExt(ExtractFileName(ADll), '') do
   begin
     if CharInSet(C, ['A'..'Z', 'a'..'z', '0'..'9']) then
     begin
-      if Upper then
+      if mUpper then
       begin
         Result := Result + UpperCase(C);
       end
@@ -112,11 +112,11 @@ begin
       begin
         Result := Result + C;
       end;
-      Upper := False;
+      mUpper := False;
     end
     else
     begin
-      Upper := True;
+      mUpper := True;
     end;
   end;
   if (Result = '') or CharInSet(Result[1], ['0'..'9']) then
@@ -166,14 +166,14 @@ begin
     begin
       ASpec.Delayed := True;
     end
-    else if MatchText(mWords[mIndex], Conventions) then
+    else if MatchText(mWords[mIndex], cConventions) then
     begin
       ASpec.Convention := LowerCase(mWords[mIndex]);
     end
     else
     begin
       Exit(Fail(cTexts[TWinApiCommandsText.UnknownEntryAllowedAreDelayed].Fmt([mWords[mIndex],
-        string.Join(', ', Conventions)]), AReason));
+        string.Join(', ', cConventions)]), AReason));
     end;
   end;
   Result := True;
@@ -292,17 +292,17 @@ end;
 
 function HasConvention(ARoutine: TSyntaxNode): Boolean;
 var
-  Header: TSyntaxNode;
-  Index: Integer;
+  mHeader: TSyntaxNode;
+  mIndex: Integer;
 begin
-  Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-  if Header = nil then
+  mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if mHeader = nil then
   begin
-    Header := ARoutine;
+    mHeader := ARoutine;
   end;
-  for Index := 0 to Header.ChildCount - 1 do
+  for mIndex := 0 to mHeader.ChildCount - 1 do
   begin
-    if (Header[Index].Kind = TSyntaxKind.Directive) and MatchText(Header[Index].Name, Conventions) then
+    if (mHeader[mIndex].Kind = TSyntaxKind.Directive) and MatchText(mHeader[mIndex].Name, cConventions) then
     begin
       Exit(True);
     end;
@@ -580,27 +580,27 @@ end;
 /// <summary>Rückgabetyp von AName aus Unit bzw. Index; '' wenn unbekannt.</summary>
 function ResultType(ASource: TCommandSource; const AIndex: ISymbolIndex; const AName: string): string;
 var
-  Symbol: TIndexSymbol;
-  Location: TSymbolLocation;
+  mSymbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
 begin
-  for Symbol in ASource.UnitIndex.Symbols do
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if (Symbol.Kind in [TIndexSymbolKind.Routine, TIndexSymbolKind.Method]) and SameText(Symbol.Name, AName) then
+    if (mSymbol.Kind in [TIndexSymbolKind.Routine, TIndexSymbolKind.Method]) and SameText(mSymbol.Name, AName) then
     begin
-      Exit(IfThen(Symbol.TypeName = '', '-', Symbol.TypeName));
+      Exit(IfThen(mSymbol.TypeName = '', '-', mSymbol.TypeName));
     end;
   end;
   if AIndex <> nil then
   begin
-    for Location in AIndex.FindSymbols(AName) do
+    for mLocation in AIndex.FindSymbols(AName) do
     begin
-      if Location.Symbol.Kind in [TIndexSymbolKind.Routine, TIndexSymbolKind.Method] then
+      if mLocation.Symbol.Kind in [TIndexSymbolKind.Routine, TIndexSymbolKind.Method] then
       begin
-        Exit(IfThen(Location.Symbol.TypeName = '', '-', Location.Symbol.TypeName));
+        Exit(IfThen(mLocation.Symbol.TypeName = '', '-', mLocation.Symbol.TypeName));
       end;
     end;
   end;
-  if MatchText(AName, BoolFunctions) or MatchText(Copy(AName, 1, Length(AName) - 1), BoolFunctions) and
+  if MatchText(AName, cBoolFunctions) or MatchText(Copy(AName, 1, Length(AName) - 1), cBoolFunctions) and
     CharInSet(AName[Length(AName)], ['A', 'W']) then
   begin
     Exit('BOOL');
@@ -625,97 +625,97 @@ end;
 
 function ExecuteOsCheck(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Statement: TStatement;
-  TypeName, Condition, Indent: string;
-  Line: Integer;
+  mSource: TCommandSource;
+  mStatement: TStatement;
+  mTypeName, mCondition, mIndent: string;
+  mLine: Integer;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if Source.RoutineAt = nil then
+    if mSource.RoutineAt = nil then
     begin
       Exit(Fail(cTexts[TWinApiCommandsText.OscheckOnlyAppliesInThe].Text, AReason));
     end;
-    if not StatementBelow(Source, Statement) then
+    if not StatementBelow(mSource, mStatement) then
     begin
       Exit(Fail(cTexts[TWinApiCommandsText.BelowOscheckThereIsNo].Text, AReason));
     end;
-    TypeName := ResultType(Source, AContext.Index, Statement.Callee);
-    if Statement.Target = '' then
+    mTypeName := ResultType(mSource, AContext.Index, mStatement.Callee);
+    if mStatement.Target = '' then
     begin
-      if TypeName = '' then
+      if mTypeName = '' then
       begin
-        Exit(Fail(cTexts[TWinApiCommandsText.ReturnTypeOfUnknownWin32Check].Fmt([Statement.Callee]), AReason));
+        Exit(Fail(cTexts[TWinApiCommandsText.ReturnTypeOfUnknownWin32Check].Fmt([mStatement.Callee]), AReason));
       end;
-      if not MatchText(TypeName, BoolTypes) then
+      if not MatchText(mTypeName, cBoolTypes) then
       begin
-        Exit(Fail(cTexts[TWinApiCommandsText.ReturnsNotBOOLWin32CheckDoes].Fmt([Statement.Callee,
-          IfThen(TypeName = '-', cTexts[TWinApiCommandsText.Nothing].Text, TypeName)]), AReason));
+        Exit(Fail(cTexts[TWinApiCommandsText.ReturnsNotBOOLWin32CheckDoes].Fmt([mStatement.Callee,
+          IfThen(mTypeName = '-', cTexts[TWinApiCommandsText.Nothing].Text, mTypeName)]), AReason));
       end;
-      AEdits := WrapStatement(Source, Statement, 'Win32Check(' + Statement.Text + ')');
+      AEdits := WrapStatement(mSource, mStatement, 'Win32Check(' + mStatement.Text + ')');
     end
     else
     begin
       // Rückgabewert genutzt: danach prüfen.
-      if MatchText(TypeName, BoolTypes) then
+      if MatchText(mTypeName, cBoolTypes) then
       begin
-        Condition := Format('not %s', [Statement.Target]);
+        mCondition := Format('not %s', [mStatement.Target]);
       end
       else
       begin
-        Condition := Format('%s = 0', [Statement.Target]);
+        mCondition := Format('%s = 0', [mStatement.Target]);
       end;
-      Line := Statement.Range.EndPos.Line;
-      Indent := Source.Indent(Statement.Range.StartPos.Line);
-      AEdits := [Source.AfterLine(Line, Format('%sif %s then', [Indent, Condition]) + Source.LineBreak + Indent +
-        '  RaiseLastOSError;'), Source.RemoveCommand];
+      mLine := mStatement.Range.EndPos.Line;
+      mIndent := mSource.Indent(mStatement.Range.StartPos.Line);
+      AEdits := [mSource.AfterLine(mLine, Format('%sif %s then', [mIndent, mCondition]) + mSource.LineBreak + mIndent +
+        '  RaiseLastOSError;'), mSource.RemoveCommand];
     end;
-    AddUses(Source, AContext, Source.Line, ['System.SysUtils'], AEdits);
+    AddUses(mSource, AContext, mSource.Line, ['System.SysUtils'], AEdits);
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
 function ExecuteOleCheck(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Statement: TStatement;
-  TypeName, Indent: string;
+  mSource: TCommandSource;
+  mStatement: TStatement;
+  mTypeName, mIndent: string;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if Source.RoutineAt = nil then
+    if mSource.RoutineAt = nil then
     begin
       Exit(Fail(cTexts[TWinApiCommandsText.OlecheckOnlyAppliesInThe].Text, AReason));
     end;
-    if not StatementBelow(Source, Statement) then
+    if not StatementBelow(mSource, mStatement) then
     begin
       Exit(Fail(cTexts[TWinApiCommandsText.BelowOlecheckThereIsNo].Text, AReason));
     end;
-    TypeName := ResultType(Source, AContext.Index, Statement.Callee);
-    if (TypeName <> '') and not MatchText(TypeName, ['HRESULT', 'HResult']) then
+    mTypeName := ResultType(mSource, AContext.Index, mStatement.Callee);
+    if (mTypeName <> '') and not MatchText(mTypeName, ['HRESULT', 'HResult']) then
     begin
-      Exit(Fail(cTexts[TWinApiCommandsText.ReturnsNotHRESULT].Fmt([Statement.Callee, IfThen(TypeName = '-',
+      Exit(Fail(cTexts[TWinApiCommandsText.ReturnsNotHRESULT].Fmt([mStatement.Callee, IfThen(mTypeName = '-',
         cTexts[TWinApiCommandsText.Nothing].Text,
-        TypeName)]), AReason));
+        mTypeName)]), AReason));
     end;
-    if Statement.Target = '' then
+    if mStatement.Target = '' then
     begin
-      AEdits := WrapStatement(Source, Statement, 'OleCheck(' + Statement.Text + ')');
+      AEdits := WrapStatement(mSource, mStatement, 'OleCheck(' + mStatement.Text + ')');
     end
     else
     begin
-      Indent := Source.Indent(Statement.Range.StartPos.Line);
-      AEdits := [Source.AfterLine(Statement.Range.EndPos.Line, Format('%sOleCheck(%s);', [Indent,
-        Statement.Target])), Source.RemoveCommand];
+      mIndent := mSource.Indent(mStatement.Range.StartPos.Line);
+      AEdits := [mSource.AfterLine(mStatement.Range.EndPos.Line, Format('%sOleCheck(%s);', [mIndent,
+        mStatement.Target])), mSource.RemoveCommand];
     end;
-    AddUses(Source, AContext, Source.Line, ['System.Win.ComObj'], AEdits);
+    AddUses(mSource, AContext, mSource.Line, ['System.Win.ComObj'], AEdits);
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 

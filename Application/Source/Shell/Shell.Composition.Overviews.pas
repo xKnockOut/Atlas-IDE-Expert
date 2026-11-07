@@ -172,28 +172,28 @@ procedure TShellOverviews.RegisterReportCommands(ACommands: TLspCommands);
 begin
   // Lesende Befehle laufen nebenläufig wie die gleichnamigen Anfragen (Diagnose 06.11.2026: Stau hinter langen
   // Befehlen); Berichte speichern und uses ändern bleiben in der Reihenfolge der Nachrichten.
-  ACommands.RegisterConcurrent(TLspArchitecture.Command,
+  ACommands.RegisterConcurrent(TLspArchitecture.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FArchitecture.Execute(AArguments);
     end);
-  ACommands.Register(TLspArchitecture.SaveCommand,
+  ACommands.Register(TLspArchitecture.cSaveCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FArchitecture.SaveReport(AArguments);
     end);
-  ACommands.RegisterConcurrent(TLspQuery.Command,
+  ACommands.RegisterConcurrent(TLspQuery.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FQuery.Execute(AArguments);
     end);
   // Hotspots (#1354): nebenläufig; gerechnet wird im Hintergrund, die Antwort kommt sofort (sonst "pending").
-  ACommands.RegisterConcurrent(TLspHotspots.Command,
+  ACommands.RegisterConcurrent(TLspHotspots.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FHotspots.Execute(AArguments);
     end);
-  ACommands.RegisterConcurrent(TLspHotspots.SaveCommand,
+  ACommands.RegisterConcurrent(TLspHotspots.cSaveCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FHotspots.SaveReport(AArguments);
@@ -203,47 +203,47 @@ end;
 procedure TShellOverviews.RegisterUnitCommands(ACommands: TLspCommands);
 begin
   // Lesend und threadsicher wie die Anfragen atlas/unitRelations und atlas/symbolPath: nebenläufig.
-  ACommands.RegisterConcurrent(TLspUnitRelations.Command,
+  ACommands.RegisterConcurrent(TLspUnitRelations.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FUnitRelations.Execute(AArguments);
     end);
-  ACommands.Register(TLspUnitRelations.MoveCommand,
+  ACommands.Register(TLspUnitRelations.cMoveCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FUnitRelations.Move(AArguments);
     end);
-  ACommands.Register(TLspUnitRelations.RemoveCommand,
+  ACommands.Register(TLspUnitRelations.cRemoveCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FUnitRelations.Remove(AArguments);
     end);
-  ACommands.RegisterConcurrent(TLspUnitRelations.CostCommand,
+  ACommands.RegisterConcurrent(TLspUnitRelations.cCostCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FUnitRelations.Cost(AArguments);
     end);
-  ACommands.RegisterConcurrent(TLspUnitRelations.UseUnitCommand,
+  ACommands.RegisterConcurrent(TLspUnitRelations.cUseUnitCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FUnitRelations.UseUnitInfo(AArguments);
     end);
-  ACommands.RegisterConcurrent(TLspSymbolPath.Command,
+  ACommands.RegisterConcurrent(TLspSymbolPath.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FSymbolPath.Execute(AArguments);
     end);
-  ACommands.Register(TLspDebugDisplay.Command,
+  ACommands.Register(TLspDebugDisplay.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FDebugDisplay.Execute(AArguments);
     end);
-  ACommands.Register(TLspEventHandlers.Command,
+  ACommands.Register(TLspEventHandlers.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FEventHandlers.Execute(AArguments);
     end);
-  ACommands.RegisterConcurrent(TLspRecursion.Command,
+  ACommands.RegisterConcurrent(TLspRecursion.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FRecursion.Execute(AArguments);

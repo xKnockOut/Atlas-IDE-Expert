@@ -23,6 +23,8 @@ type
 
 implementation
 
+{ TGoldenZaehler }
+
 function TGoldenZaehler.Wert: Integer;
 begin
   Result := Default(Integer);

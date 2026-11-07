@@ -250,7 +250,7 @@ begin
       // TChild hat einen Vorfahren im Projekt, aber keine Nachfahren.
       Assert.AreEqual(1, Integer(Length(Actions)));
       Assert.AreEqual('„Fill“ in Vorfahr verschieben …', Actions[0].GetValue('title').Value);
-      Assert.AreEqual(TLspMoveMember.ClientCommand,
+      Assert.AreEqual(TLspMoveMember.cClientCommand,
         (Actions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
     finally
       FreeAll(Actions);

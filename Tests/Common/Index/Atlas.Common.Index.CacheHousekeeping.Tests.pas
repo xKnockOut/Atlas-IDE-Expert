@@ -592,7 +592,7 @@ procedure TIndexCacheDirectoryTests.FileNameCarriesFormatVersion;
 begin
   // Server verschiedener Atlas-Versionen (installiert und neu) teilen sich sonst eine Datei und verwerfen
   // gegenseitig ihre Caches („Formatversion 27 statt 29“).
-  Assert.AreEqual(Format('index-%d.atlasidx', [TIndexCache.FormatVersion]), TIndexCacheDirectory.CacheFileName);
+  Assert.AreEqual(Format('index-%d.atlasidx', [TIndexCache.cFormatVersion]), TIndexCacheDirectory.CacheFileName);
   Assert.AreEqual(TIndexCacheDirectory.CacheFileName,
     ExtractFileName(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt')));
   Assert.AreEqual(TIndexCacheDirectory.CacheFileName,
@@ -610,8 +610,8 @@ begin
   TIndexCacheDirectory.WriteOrigin(Current, 'C:\Projekte\App.dproj');
   TIndexCacheDirectory.TouchUse(Current);
   Assert.AreEqual(1, TIndexCacheDirectory.Remove([Current]));
-  Assert.IsTrue(FileExists(TPath.Combine(Folder, TIndexCacheDirectory.OriginFileName)));
-  Assert.IsTrue(FileExists(TPath.Combine(Folder, TIndexCacheDirectory.UseMarkerFileName)));
+  Assert.IsTrue(FileExists(TPath.Combine(Folder, TIndexCacheDirectory.cOriginFileName)));
+  Assert.IsTrue(FileExists(TPath.Combine(Folder, TIndexCacheDirectory.cUseMarkerFileName)));
   Assert.AreEqual(1, TIndexCacheDirectory.Remove([Older]));
   Assert.IsFalse(TDirectory.Exists(Folder));
 end;

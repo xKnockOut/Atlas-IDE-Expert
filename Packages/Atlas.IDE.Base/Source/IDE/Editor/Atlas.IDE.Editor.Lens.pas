@@ -34,6 +34,14 @@ type
   TAtlasLensCommandProc = reference to procedure(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal;
     const ADone: TProc<TJSONValue>);
 
+  /// <summary>Serverbefehl eines Abrufs: Name, Argumente (JSON-Array) und Zeitlimit.</summary>
+  TAtlasLensRequest = record
+    Command: string;
+    Arguments: string;
+    TimeoutMs: Cardinal;
+    class function Create(const ACommand, AArguments: string; ATimeoutMs: Cardinal): TAtlasLensRequest; static;
+  end;
+
   TAtlasLensPoll = record
   public
     /// <summary>Datei und Text im oberen Editor beim letzten Takt.</summary>
@@ -52,13 +60,12 @@ type
     /// <summary>Merkt den Text von AView; True, wenn er seit AQuietMs still steht, keine Antwort aussteht, keine
     /// Wartezeit offen ist und der Stand noch nicht oder vor mindestens ARefreshMs gefragt wurde.</summary>
     function Due(const AView: IOTAEditView; AQuietMs, ARefreshMs: Cardinal): Boolean;
-    /// <summary>Gibt ASession (nil: nicht fragen) den gemerkten Text und schickt den Befehl über ARun in den
+    /// <summary>Gibt ASession (nil: nicht fragen) den gemerkten Text und schickt ARequest über ARun in den
     /// Hintergrund. AOnAnswer läuft im Hauptthread, gesichert über AFeature, mit der Antwort oder nil, nur solange
     /// der Abruf weder vergessen (Forget) noch geschlossen (Close) ist; dort Answered aufrufen. False: nicht
     /// gefragt (kein Server; Server indexiert oder Fehler beim Abgleich, dann mit Wartezeit ARetryMs).</summary>
     function AskAsync(ASession: TLspSession; const ARun: TAtlasLensCommandProc; AFeature: TAtlasFeature;
-      const ACommand, AArguments: string; ARetryMs: Cardinal; ATimeoutMs: Cardinal;
-      const AOnAnswer: TProc<TJSONValue>): Boolean;
+      const ARequest: TAtlasLensRequest; ARetryMs: Cardinal; const AOnAnswer: TProc<TJSONValue>): Boolean;
     /// <summary>Antwort von AskAsync eintragen: mit Antwort den gefragten Stand als geholt, ohne (Fehler,
     /// Zeitlimit, kein Server) Wartezeit ARetryMs. True mit Antwort.</summary>
     function Answered(AAnswer: TJSONValue; ARetryMs: Cardinal): Boolean;
@@ -144,9 +151,19 @@ begin
   end;
 end;
 
+{ TAtlasLensRequest }
+
+class function TAtlasLensRequest.Create(const ACommand, AArguments: string; ATimeoutMs: Cardinal): TAtlasLensRequest;
+begin
+  Result.Command := ACommand;
+  Result.Arguments := AArguments;
+  Result.TimeoutMs := ATimeoutMs;
+end;
+
+{ TAtlasLensPoll }
+
 function TAtlasLensPoll.AskAsync(ASession: TLspSession; const ARun: TAtlasLensCommandProc; AFeature: TAtlasFeature;
-  const ACommand, AArguments: string; ARetryMs: Cardinal; ATimeoutMs: Cardinal;
-  const AOnAnswer: TProc<TJSONValue>): Boolean;
+  const ARequest: TAtlasLensRequest; ARetryMs: Cardinal; const AOnAnswer: TProc<TJSONValue>): Boolean;
 var
   mPercent: Integer;
 begin
@@ -174,7 +191,7 @@ begin
   end;
   Result := True;
   // Ohne Server ruft ARun den Rückruf sofort; Asked.Waiting ist dann schon wieder aus.
-  ARun(ACommand, AArguments, ATimeoutMs, Asked.Start(FileName, Text, AFeature, AOnAnswer));
+  ARun(ARequest.Command, ARequest.Arguments, ARequest.TimeoutMs, Asked.Start(FileName, Text, AFeature, AOnAnswer));
 end;
 
 function TAtlasLensPoll.Answered(AAnswer: TJSONValue; ARetryMs: Cardinal): Boolean;

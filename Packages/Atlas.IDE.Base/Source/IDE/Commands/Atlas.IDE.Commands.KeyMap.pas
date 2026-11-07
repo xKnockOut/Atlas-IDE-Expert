@@ -49,10 +49,10 @@ uses
 type
   TAtlasIdeKeyMap = class
   public const
-    CommandId = 'Atlas.KeyOverview';
+    cCommandId = 'Atlas.KeyOverview';
     /// <summary>Wartezeit nach dem Laden, bis die übrigen Packages ihre Tasten angemeldet haben.</summary>
-    StartDelayMs = 3000;
-    ExportFileName = 'Tastenkuerzel.html';
+    cStartDelayMs = 3000;
+    cExportFileName = 'Tastenkuerzel.html';
   private class var
     FInstance: TAtlasIdeKeyMap;
   private
@@ -77,6 +77,10 @@ type
     class function SetupKeys: TArray<TAtlasSetupKey>; static;
     /// <summary>Taste eines Atlas-Befehls der Palette als Text, wenn Atlas sie belegt; sonst ''.</summary>
     class function AtlasShortCut(const ACommandId: string): string; static;
+    /// <summary>Wie AtlasShortCut für viele Befehle: Belegungen und Konflikte einmal auswerten, dann nur
+    /// nachschlagen. Die ganze Palette fragte sonst je Befehl alle Einstellungen und Aktionen der IDE ab
+    /// (Willkommensseite: 60 s Start, 06.11.2026).</summary>
+    class function AtlasShortCuts: TFunc<string, string>; static;
     /// <summary>Ziel des HTML-Exports.</summary>
     class function ExportFile: string; static;
     /// <summary>Fenster zeigen und neu einlesen; Suche und Filter bleiben.</summary>
@@ -120,11 +124,11 @@ uses
   Atlas.Core.Modules.Contributions;
 
 const
-  KeyIdPrefix = 'Atlas.Key.';
+  cKeyIdPrefix = 'Atlas.Key.';
   // Reihenfolge, in der die Komposition die Tasten anmeldet (RebindKeys); bei mehreren Atlas-Belegungen
   // derselben Taste gilt die zuletzt angemeldete. 3 = Editorbefehle (eine Bindung); Strg+F12 (#777) ist keine
   // Bindung, sondern eine Aktion und bekommt ihren Platz in der Aktionsliste.
-  BindOrder: array[TAtlasKeyFunction] of Integer = (1, 2, 4, 5, 6, 7, 3, 3, 3, 3, 3, 3, 3, 8, 3, 3, 3, 3, 0, 3, 3, 3,
+  cBindOrder: array[TAtlasKeyFunction] of Integer = (1, 2, 4, 5, 6, 7, 3, 3, 3, 3, 3, 3, 3, 8, 3, 3, 3, 3, 0, 3, 3, 3,
     8, 8, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
     // Mehrfachmarken (#589): Editorbefehle.
     3, 3, 3, 3, 3,
@@ -209,24 +213,24 @@ end;
 
 function TOrigins.OfModule(AModule: HMODULE; out AName: string): TAtlasKeyOrigin;
 var
-  Entry: TOrigin;
+  mEntry: TOrigin;
 begin
-  if not FCache.TryGetValue(AModule, Entry) then
+  if not FCache.TryGetValue(AModule, mEntry) then
   begin
     if AModule = 0 then
     begin
-      Entry.Origin := TAtlasKeyOrigin.Ide;
-      Entry.Name := TAtlasKeyMap.IdeName;
+      mEntry.Origin := TAtlasKeyOrigin.Ide;
+      mEntry.Name := TAtlasKeyMap.cIdeName;
     end
     else
     begin
-      Entry.Origin := TAtlasKeyMap.OriginOfModule(GetModuleName(AModule), FIdeFolder, AtlasModuleOf(AModule),
-        Entry.Name);
+      mEntry.Origin := TAtlasKeyMap.OriginOfModule(GetModuleName(AModule), FIdeFolder, AtlasModuleOf(AModule),
+        mEntry.Name);
     end;
-    FCache.Add(AModule, Entry);
+    FCache.Add(AModule, mEntry);
   end;
-  AName := Entry.Name;
-  Result := Entry.Origin;
+  AName := mEntry.Name;
+  Result := mEntry.Origin;
 end;
 
 function TOrigins.OfAddress(AAddress: Pointer; out AName: string): TAtlasKeyOrigin;
@@ -243,14 +247,15 @@ end;
 
 function IndexOfFunc(const AItems: TArray<TAtlasKeyItem>; AFunc: TAtlasKeyFunction): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
-  for Index := 0 to High(AItems) do
+  for mIndex := 0 to High(AItems) do
   begin
-    if (AItems[Index].Origin = TAtlasKeyOrigin.Atlas) and (AItems[Index].Id = KeyIdPrefix + IntToStr(Ord(AFunc))) then
+    if (AItems[mIndex].Origin = TAtlasKeyOrigin.Atlas) and
+      (AItems[mIndex].Id = cKeyIdPrefix + IntToStr(Ord(AFunc))) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
@@ -259,33 +264,33 @@ end;
 /// keine Zeile. Strg+F12 (#777) kommt mit den Aktionen (AddActions).</summary>
 procedure AddAtlasKeys(AItems: TList<TAtlasKeyItem>; const AEntries: TArray<TAtlasKeyEntry>);
 var
-  Entry: TAtlasKeyEntry;
-  Item: TAtlasKeyItem;
+  mEntry: TAtlasKeyEntry;
+  mItem: TAtlasKeyItem;
 begin
-  for Entry in AEntries do
+  for mEntry in AEntries do
   begin
-    if (Entry.Key = 0) or Entry.Disabled or (TAtlasKeyMap.SourceOf(Entry.Func) = TAtlasKeySource.Action) then
+    if (mEntry.Key = 0) or mEntry.Disabled or (TAtlasKeyMap.SourceOf(mEntry.Func) = TAtlasKeySource.Action) then
     begin
       Continue;
     end;
-    Item := TAtlasKeyItem.Create(Entry.Key, ShortCutToText(TShortCut(Entry.Key)),
-      TAtlasKeyMapWindow.FunctionCaption(Entry.Func), TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Atlas,
-      TAtlasKeyMap.AtlasName, TAtlasKeyMap.ContextOf(Entry.Func), TAtlasKeyMap.SourceOf(Entry.Func),
-      KeyIdPrefix + IntToStr(Ord(Entry.Func)), BindOrder[Entry.Func]));
-    Item.Category := TAtlasKeyMap.AtlasName;
-    Item.Func := Entry.Func;
-    Item.Priority := Entry.Priority;
-    if Item.Source = TAtlasKeySource.Window then
+    mItem := TAtlasKeyItem.Create(mEntry.Key, ShortCutToText(TShortCut(mEntry.Key)),
+      TAtlasKeyMapWindow.FunctionCaption(mEntry.Func), TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Atlas,
+      TAtlasKeyMap.cAtlasName, TAtlasKeyMap.ContextOf(mEntry.Func), TAtlasKeyMap.SourceOf(mEntry.Func),
+      cKeyIdPrefix + IntToStr(Ord(mEntry.Func)), cBindOrder[mEntry.Func]));
+    mItem.Category := TAtlasKeyMap.cAtlasName;
+    mItem.Func := mEntry.Func;
+    mItem.Priority := mEntry.Priority;
+    if mItem.Source = TAtlasKeySource.Window then
     begin
       // Abgeschaltet (Willkommensseite oder Suchfeld aus) kommt es oben gar nicht an.
-      Item.Active := True;
+      mItem.Active := True;
     end
     else
     begin
       // Wie beim Belegen (#494): frei oder mit Vorrang.
-      Item.Active := TAtlasKeyConflicts.ShouldBind(Entry.Key, TAtlasIdeKeys.Owner(Entry.Key), Entry.Priority);
+      mItem.Active := TAtlasKeyConflicts.ShouldBind(mEntry.Key, TAtlasIdeKeys.Owner(mEntry.Key), mEntry.Priority);
     end;
-    AItems.Add(Item);
+    AItems.Add(mItem);
   end;
 end;
 
@@ -354,43 +359,44 @@ end;
 procedure AddAction(AItems: TList<TAtlasKeyItem>; AOrigins: TOrigins; AAction: TCustomAction;
   AShortCut: TShortCut; AOrder: Integer; AHooked: Boolean);
 var
-  Origin: TAtlasKeyOrigin;
-  Name, Caption: string;
-  Item: TAtlasKeyItem;
+  mOrigin: TAtlasKeyOrigin;
+  mName, mCaption: string;
+  mItem: TAtlasKeyItem;
 begin
   // Die Aktion „Units“ ohne Übernahme durch Atlas (#777): Der Handler liegt in Atlas, ruft aber den Dialog der IDE.
   if AHooked then
   begin
-    Origin := TAtlasKeyOrigin.Ide;
-    Name := TAtlasKeyMap.IdeName;
+    mOrigin := TAtlasKeyOrigin.Ide;
+    mName := TAtlasKeyMap.cIdeName;
   end
   else if SameText(AAction.Category, 'Atlas') or AAction.Category.StartsWith('Atlas.', True) then
   begin
-    Origin := TAtlasKeyOrigin.Atlas;
-    Name := TAtlasKeyMap.AtlasName;
+    mOrigin := TAtlasKeyOrigin.Atlas;
+    mName := TAtlasKeyMap.cAtlasName;
   end
   // Der Handler liegt im Modul dessen, der die Aktion angelegt hat; ohne Handler zählt der Besitzer.
   else if Assigned(AAction.OnExecute) then
   begin
-    Origin := AOrigins.OfAddress(TMethod(AAction.OnExecute).Code, Name);
+    mOrigin := AOrigins.OfAddress(TMethod(AAction.OnExecute).Code, mName);
   end
   else if AAction.Owner <> nil then
   begin
-    Origin := AOrigins.OfAddress(Pointer(AAction.Owner.ClassType), Name);
+    mOrigin := AOrigins.OfAddress(Pointer(AAction.Owner.ClassType), mName);
   end
   else
   begin
-    Origin := AOrigins.OfAddress(Pointer(AAction.ClassType), Name);
+    mOrigin := AOrigins.OfAddress(Pointer(AAction.ClassType), mName);
   end;
-  Caption := TAtlasCommandPalette.CleanCaption(AAction.Caption);
-  if Caption = '' then
+  mCaption := TAtlasCommandPalette.CleanCaption(AAction.Caption);
+  if mCaption = '' then
   begin
-    Caption := AAction.Name;
+    mCaption := AAction.Name;
   end;
-  Item := TAtlasKeyItem.Create(Word(AShortCut), ShortCutToText(AShortCut), Caption, TAtlasKeyProvenance.Create(Origin,
-    Name, TAtlasKeyMap.ContextOfCategory(AAction.Category), TAtlasKeySource.Action, AAction.Name, AOrder));
-  Item.Category := AAction.Category;
-  AItems.Add(Item);
+  mItem := TAtlasKeyItem.Create(Word(AShortCut), ShortCutToText(AShortCut), mCaption,
+    TAtlasKeyProvenance.Create(mOrigin,
+    mName, TAtlasKeyMap.ContextOfCategory(AAction.Category), TAtlasKeySource.Action, AAction.Name, AOrder));
+  mItem.Category := AAction.Category;
+  AItems.Add(mItem);
 end;
 
 /// <summary>Die von „Units suchen“ übernommene Aktion „Units“ (#777) als Atlas-Taste: bewusst übernommen, also
@@ -398,17 +404,17 @@ end;
 procedure AddUnitSearchAction(AItems: TList<TAtlasKeyItem>; AAction: TCustomAction; AShortCut: TShortCut;
   AOrder: Integer);
 const
-  Func = TAtlasKeyFunction.UnitSearchIde;
+  cFunc = TAtlasKeyFunction.UnitSearchIde;
 var
-  Item: TAtlasKeyItem;
+  mItem: TAtlasKeyItem;
 begin
-  Item := TAtlasKeyItem.Create(Word(AShortCut), ShortCutToText(AShortCut), TAtlasKeyMapWindow.FunctionCaption(Func),
-    TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Atlas, TAtlasKeyMap.AtlasName, TAtlasKeyMap.ContextOf(Func),
-    TAtlasKeyMap.SourceOf(Func), KeyIdPrefix + IntToStr(Ord(Func)), AOrder));
-  Item.Category := AAction.Category;
-  Item.Func := Func;
-  Item.Priority := True;
-  AItems.Add(Item);
+  mItem := TAtlasKeyItem.Create(Word(AShortCut), ShortCutToText(AShortCut), TAtlasKeyMapWindow.FunctionCaption(cFunc),
+    TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Atlas, TAtlasKeyMap.cAtlasName, TAtlasKeyMap.ContextOf(cFunc),
+    TAtlasKeyMap.SourceOf(cFunc), cKeyIdPrefix + IntToStr(Ord(cFunc)), AOrder));
+  mItem.Category := AAction.Category;
+  mItem.Func := cFunc;
+  mItem.Priority := True;
+  AItems.Add(mItem);
 end;
 
 type
@@ -476,23 +482,23 @@ end;
 
 procedure AddActions(AItems: TList<TAtlasKeyItem>; AOrigins: TOrigins; const AEntries: TArray<TAtlasKeyEntry>);
 var
-  Services: INTAServices;
-  Index: Integer;
-  Scan: TActionScan;
+  mServices: INTAServices;
+  mIndex: Integer;
+  mScan: TActionScan;
 begin
-  if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
+  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
   begin
     Exit;
   end;
-  Scan.Items := AItems;
-  Scan.Origins := AOrigins;
-  Scan.Hooked := TakenAction(TAtlasKeyFunction.UnitSearchIde);
-  Scan.TakenOver := UnitSearchTakenOver(AEntries);
-  for Index := 0 to Services.ActionList.ActionCount - 1 do
+  mScan.Items := AItems;
+  mScan.Origins := AOrigins;
+  mScan.Hooked := TakenAction(TAtlasKeyFunction.UnitSearchIde);
+  mScan.TakenOver := UnitSearchTakenOver(AEntries);
+  for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
   begin
-    if Services.ActionList.Actions[Index] is TCustomAction then
+    if mServices.ActionList.Actions[mIndex] is TCustomAction then
     begin
-      AddActionKeys(Scan, TCustomAction(Services.ActionList.Actions[Index]), Index);
+      AddActionKeys(mScan, TCustomAction(mServices.ActionList.Actions[mIndex]), mIndex);
     end;
   end;
 end;
@@ -500,19 +506,19 @@ end;
 /// <summary>Bekannte Belegungen der Standard-Tastaturbelegung (#494), die keine Aktionen sind.</summary>
 procedure AddKnownIdeKeys(AItems: TList<TAtlasKeyItem>);
 var
-  Known: TAtlasKeyOwner;
-  Command: string;
+  mKnown: TAtlasKeyOwner;
+  mCommand: string;
 begin
-  for Known in TAtlasKeyConflicts.KnownIdeKeys do
+  for mKnown in TAtlasKeyConflicts.KnownIdeKeys do
   begin
-    Command := Known.Owner;
-    if Command.StartsWith('IDE: ') then
+    mCommand := mKnown.Owner;
+    if mCommand.StartsWith('IDE: ') then
     begin
-      Command := Copy(Command, 6, MaxInt);
+      mCommand := Copy(mCommand, 6, MaxInt);
     end;
-    AItems.Add(TAtlasKeyItem.Create(Known.ShortCut, ShortCutToText(TShortCut(Known.ShortCut)), Command,
-      TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Ide, TAtlasKeyMap.IdeName, TAtlasKeyContext.Editor,
-      TAtlasKeySource.Binding, 'Editor.' + IntToStr(Known.ShortCut), 0)));
+    AItems.Add(TAtlasKeyItem.Create(mKnown.ShortCut, ShortCutToText(TShortCut(mKnown.ShortCut)), mCommand,
+      TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Ide, TAtlasKeyMap.cIdeName, TAtlasKeyContext.Editor,
+      TAtlasKeySource.Binding, 'Editor.' + IntToStr(mKnown.ShortCut), 0)));
   end;
 end;
 
@@ -520,75 +526,75 @@ end;
 /// F1–F12 mit jeder Umschaltung.</summary>
 function ProbeKeys(const AItems: TArray<TAtlasKeyItem>): TArray<Word>;
 const
-  Modifiers: array[0..5] of Word = (TAtlasKeyMap.scCtrl, TAtlasKeyMap.scCtrl or TAtlasKeyMap.scShift,
-    TAtlasKeyMap.scCtrl or TAtlasKeyMap.scAlt, TAtlasKeyMap.scCtrl or TAtlasKeyMap.scAlt or TAtlasKeyMap.scShift,
-    TAtlasKeyMap.scAlt, TAtlasKeyMap.scAlt or TAtlasKeyMap.scShift);
+  cModifiers: array[0..5] of Word = (TAtlasKeyMap.cScCtrl, TAtlasKeyMap.cScCtrl or TAtlasKeyMap.cScShift,
+    TAtlasKeyMap.cScCtrl or TAtlasKeyMap.cScAlt, TAtlasKeyMap.cScCtrl or TAtlasKeyMap.cScAlt or TAtlasKeyMap.cScShift,
+    TAtlasKeyMap.cScAlt, TAtlasKeyMap.cScAlt or TAtlasKeyMap.cScShift);
 var
-  Seen: TDictionary<Word, Boolean>;
-  Item: TAtlasKeyItem;
-  Modifier: Word;
-  Key: Integer;
+  mSeen: TDictionary<Word, Boolean>;
+  mItem: TAtlasKeyItem;
+  mModifier: Word;
+  mKey: Integer;
 
   procedure Add(AKey: Word);
   begin
-    if (AKey <> 0) and not Seen.ContainsKey(AKey) then
+    if (AKey <> 0) and not mSeen.ContainsKey(AKey) then
     begin
-      Seen.Add(AKey, True);
+      mSeen.Add(AKey, True);
       Result := Result + [AKey];
     end;
   end;
 
 begin
   Result := nil;
-  Seen := TDictionary<Word, Boolean>.Create;
+  mSeen := TDictionary<Word, Boolean>.Create;
   try
-    for Item in AItems do
+    for mItem in AItems do
     begin
-      Add(Item.ShortCut);
+      Add(mItem.ShortCut);
     end;
-    for Modifier in Modifiers do
+    for mModifier in cModifiers do
     begin
-      for Key := Ord('A') to Ord('Z') do
+      for mKey := Ord('A') to Ord('Z') do
       begin
-        Add(Modifier or Word(Key));
+        Add(mModifier or Word(mKey));
       end;
-      for Key := Ord('0') to Ord('9') do
+      for mKey := Ord('0') to Ord('9') do
       begin
-        Add(Modifier or Word(Key));
+        Add(mModifier or Word(mKey));
       end;
-      Add(Modifier or $20);
-      Add(Modifier or $0D);
+      Add(mModifier or $20);
+      Add(mModifier or $0D);
     end;
-    for Key := $70 to $7B do
+    for mKey := $70 to $7B do
     begin
-      Add(Word(Key));
-      Add(TAtlasKeyMap.scShift or Word(Key));
-      for Modifier in Modifiers do
+      Add(Word(mKey));
+      Add(TAtlasKeyMap.cScShift or Word(mKey));
+      for mModifier in cModifiers do
       begin
-        Add(Modifier or Word(Key));
+        Add(mModifier or Word(mKey));
       end;
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
 end;
 
 /// <summary>Wirksame Tastaturbelegung des Editors für AKey: Code ihres Handlers; False ohne.</summary>
 function LookupBinding(const AKeyboard: IOTAKeyboardServices; AKey: Word; out ACode: Pointer): Boolean;
 var
-  Binding: TKeyBindingRec;
+  mBinding: TKeyBindingRec;
 begin
   ACode := nil;
-  Binding := Default(TKeyBindingRec);
+  mBinding := Default(TKeyBindingRec);
   try
-    Result := AKeyboard.LookupKeyBinding([TShortCut(AKey)], Binding);
+    Result := AKeyboard.LookupKeyBinding([TShortCut(AKey)], mBinding);
   except
     // Eine Taste, die die IDE nicht auflösen kann, zählt als frei.
     Result := False;
   end;
   if Result then
   begin
-    ACode := TMethod(Binding.KeyProc).Code;
+    ACode := TMethod(mBinding.KeyProc).Code;
   end;
   Result := Result and (ACode <> nil);
 end;
@@ -666,7 +672,7 @@ begin
   end
   else if mShared then
   begin
-    AddEditorBinding(AItems, AKey, TAtlasKeyOrigin.Ide, TAtlasKeyMap.IdeName, AOrder);
+    AddEditorBinding(AItems, AKey, TAtlasKeyOrigin.Ide, TAtlasKeyMap.cIdeName, AOrder);
   end;
 end;
 
@@ -675,33 +681,33 @@ end;
 /// oder einer Erweiterung treffen; Belegungen anderer Erweiterungen immer.</summary>
 procedure AddBindings(AItems: TList<TAtlasKeyItem>; AOrigins: TOrigins);
 var
-  Keyboard: IOTAKeyboardServices;
-  Key: Word;
-  Code: Pointer;
-  Origin: TAtlasKeyOrigin;
-  Name: string;
-  Order: Integer;
+  mKeyboard: IOTAKeyboardServices;
+  mKey: Word;
+  mCode: Pointer;
+  mOrigin: TAtlasKeyOrigin;
+  mName: string;
+  mOrder: Integer;
 begin
-  if not Supports(BorlandIDEServices, IOTAKeyboardServices, Keyboard) then
+  if not Supports(BorlandIDEServices, IOTAKeyboardServices, mKeyboard) then
   begin
     Exit;
   end;
-  Order := 100;
-  for Key in ProbeKeys(AItems.ToArray) do
+  mOrder := 100;
+  for mKey in ProbeKeys(AItems.ToArray) do
   begin
-    if not LookupBinding(Keyboard, Key, Code) then
+    if not LookupBinding(mKeyboard, mKey, mCode) then
     begin
       Continue;
     end;
-    Origin := AOrigins.OfAddress(Code, Name);
-    Inc(Order);
-    case Origin of
+    mOrigin := AOrigins.OfAddress(mCode, mName);
+    Inc(mOrder);
+    case mOrigin of
       TAtlasKeyOrigin.Atlas:
-        MarkAtlasBinding(AItems, Key);
+        MarkAtlasBinding(AItems, mKey);
       TAtlasKeyOrigin.Ide:
-        MarkIdeBinding(AItems, Key, Order);
+        MarkIdeBinding(AItems, mKey, mOrder);
     else
-      AddEditorBinding(AItems, Key, Origin, Name, Order);
+      AddEditorBinding(AItems, mKey, mOrigin, mName, mOrder);
     end;
   end;
 end;
@@ -713,7 +719,7 @@ begin
   case AItem.Source of
     TAtlasKeySource.Action:
       // Strg+F12 für „Units suchen“ (#777) zählt beim Befehl der Palette.
-      if (AItem.Origin = TAtlasKeyOrigin.Atlas) and AItem.Id.StartsWith(KeyIdPrefix) then
+      if (AItem.Origin = TAtlasKeyOrigin.Atlas) and AItem.Id.StartsWith(cKeyIdPrefix) then
       begin
         Result := TAtlasShortcutTips.AtlasCommandId(AItem.Func);
       end
@@ -734,21 +740,21 @@ end;
 /// <summary>Zählung je Befehl aus der gemeinsamen Zählung (#600, #757); ohne sie bleibt sie 0.</summary>
 procedure AddUsage(var AItems: TArray<TAtlasKeyItem>);
 var
-  Index: Integer;
-  Id: string;
-  Entry: TAtlasCommandUsageEntry;
+  mIndex: Integer;
+  mId: string;
+  mEntry: TAtlasCommandUsageEntry;
 begin
   if TAtlasIdeCommandUsage.Instance = nil then
   begin
     Exit;
   end;
-  for Index := 0 to High(AItems) do
+  for mIndex := 0 to High(AItems) do
   begin
-    Id := UsageIdOf(AItems[Index]);
-    if (Id <> '') and TAtlasIdeCommandUsage.UsageOf(Id, Entry) then
+    mId := UsageIdOf(AItems[mIndex]);
+    if (mId <> '') and TAtlasIdeCommandUsage.UsageOf(mId, mEntry) then
     begin
-      AItems[Index].MouseUses := Entry.Mouse;
-      AItems[Index].KeyUses := Entry.Keyboard;
+      AItems[mIndex].MouseUses := mEntry.Mouse;
+      AItems[mIndex].KeyUses := mEntry.Keyboard;
     end;
   end;
 end;
@@ -800,22 +806,22 @@ end;
 
 class function TAtlasIdeKeyMap.AtlasEntries: TArray<TAtlasKeyEntry>;
 var
-  Index: Integer;
-  Hooked: TBasicAction;
+  mIndex: Integer;
+  mHooked: TBasicAction;
 begin
   Result := TAtlasKeyEntry.AllFromSettings(TAtlasIdeSettings.Current);
-  Hooked := TakenAction(TAtlasKeyFunction.UnitSearchIde);
-  for Index := 0 to High(Result) do
+  mHooked := TakenAction(TAtlasKeyFunction.UnitSearchIde);
+  for mIndex := 0 to High(Result) do
   begin
-    if Result[Index].Func = TAtlasKeyFunction.UnitSearchIde then
+    if Result[mIndex].Func = TAtlasKeyFunction.UnitSearchIde then
     begin
-      if Hooked is TCustomAction then
+      if mHooked is TCustomAction then
       begin
-        Result[Index].Key := Word(TCustomAction(Hooked).ShortCut);
+        Result[mIndex].Key := Word(TCustomAction(mHooked).ShortCut);
       end
       else
       begin
-        Result[Index].Key := 0;
+        Result[mIndex].Key := 0;
       end;
     end;
   end;
@@ -823,23 +829,23 @@ end;
 
 class function TAtlasIdeKeyMap.Collect: TArray<TAtlasKeyItem>;
 var
-  Origins: TOrigins;
-  Items: TList<TAtlasKeyItem>;
-  Entries: TArray<TAtlasKeyEntry>;
+  mOrigins: TOrigins;
+  mItems: TList<TAtlasKeyItem>;
+  mEntries: TArray<TAtlasKeyEntry>;
 begin
-  Entries := AtlasEntries;
+  mEntries := AtlasEntries;
   // Liste statt Anhängen ans Array: Die IDE hat weit über tausend Aktionen.
-  Items := TList<TAtlasKeyItem>.Create;
-  Origins := TOrigins.Create;
+  mItems := TList<TAtlasKeyItem>.Create;
+  mOrigins := TOrigins.Create;
   try
-    AddAtlasKeys(Items, Entries);
-    AddActions(Items, Origins, Entries);
-    AddKnownIdeKeys(Items);
-    AddBindings(Items, Origins);
-    Result := Items.ToArray;
+    AddAtlasKeys(mItems, mEntries);
+    AddActions(mItems, mOrigins, mEntries);
+    AddKnownIdeKeys(mItems);
+    AddBindings(mItems, mOrigins);
+    Result := mItems.ToArray;
   finally
-    Origins.Free;
-    Items.Free;
+    mOrigins.Free;
+    mItems.Free;
   end;
   TAtlasKeyMap.Analyze(Result);
   AddUsage(Result);
@@ -847,66 +853,107 @@ end;
 
 class function TAtlasIdeKeyMap.SetupKeys: TArray<TAtlasSetupKey>;
 var
-  Items: TArray<TAtlasKeyItem>;
-  Entry, Current: TAtlasKeyEntry;
-  Index, Partner: Integer;
-  Text, Owner: string;
+  mItems: TArray<TAtlasKeyItem>;
+  mEntry, mCurrent: TAtlasKeyEntry;
+  mIndex, mPartner: Integer;
+  mText, mOwner: string;
 begin
   Result := nil;
-  Items := Collect;
-  for Entry in AtlasEntries do
+  mItems := Collect;
+  for mEntry in AtlasEntries do
   begin
-    Text := '';
-    if Entry.Key <> 0 then
+    mText := '';
+    if mEntry.Key <> 0 then
     begin
-      Text := ShortCutToText(TShortCut(Entry.Key));
+      mText := ShortCutToText(TShortCut(mEntry.Key));
     end;
-    Owner := '';
-    Current := Entry;
-    Index := IndexOfFunc(Items, Entry.Func);
-    if (Index >= 0) and Items[Index].Conflict then
+    mOwner := '';
+    mCurrent := mEntry;
+    mIndex := IndexOfFunc(mItems, mEntry.Func);
+    if (mIndex >= 0) and mItems[mIndex].Conflict then
     begin
-      Partner := TAtlasKeyMap.PartnerOf(Items, Index);
-      if Partner >= 0 then
+      mPartner := TAtlasKeyMap.PartnerOf(mItems, mIndex);
+      if mPartner >= 0 then
       begin
-        Owner := Items[Partner].Holder;
+        mOwner := mItems[mPartner].Holder;
       end;
-      Current.Priority := Entry.Priority and Items[Index].Wins;
+      mCurrent.Priority := mEntry.Priority and mItems[mIndex].Wins;
     end;
-    Result := Result + [TAtlasSetupKey.Create(Current, Text, Owner)];
+    Result := Result + [TAtlasSetupKey.Create(mCurrent, mText, mOwner)];
   end;
 end;
 
 class function TAtlasIdeKeyMap.AtlasShortCut(const ACommandId: string): string;
-var
-  Entry: TAtlasKeyEntry;
 begin
   Result := '';
-  if ACommandId = '' then
+  if ACommandId <> '' then
   begin
-    Exit;
+    Result := AtlasShortCuts()(ACommandId);
   end;
-  // Mehrere Tasten für einen Befehl (#775, #777): die erste, die Atlas hält.
-  for Entry in AtlasEntries do
-  begin
-    if (Entry.Key <> 0) and not Entry.Disabled and SameText(TAtlasKeyMap.CommandIdOf(Entry.Func), ACommandId) and
-      TAtlasKeyConflicts.ShouldBind(Entry.Key, TAtlasIdeKeys.Owner(Entry.Key), Entry.Priority) then
+end;
+
+/// <summary>Nachschlagen in AIds/AKeys (gleich lang); eigene Routine, damit die Methodenreferenz nur die Arrays hält.
+/// </summary>
+function ShortCutLookup(const AIds, AKeys: TArray<string>): TFunc<string, string>;
+begin
+  Result :=
+    function(AId: string): string
+    var
+      mIndex: Integer;
     begin
-      Exit(ShortCutToText(TShortCut(Entry.Key)));
+      Result := '';
+      for mIndex := 0 to High(AIds) do
+      begin
+        if SameText(AIds[mIndex], AId) then
+        begin
+          Exit(AKeys[mIndex]);
+        end;
+      end;
+    end;
+end;
+
+class function TAtlasIdeKeyMap.AtlasShortCuts: TFunc<string, string>;
+var
+  mEntry: TAtlasKeyEntry;
+  mId: string;
+  mIds, mKeys: TArray<string>;
+  mKnown: Boolean;
+  mIndex: Integer;
+begin
+  mIds := nil;
+  mKeys := nil;
+  // Mehrere Tasten für einen Befehl (#775, #777): die erste, die Atlas hält.
+  for mEntry in AtlasEntries do
+  begin
+    mId := TAtlasKeyMap.CommandIdOf(mEntry.Func);
+    if (mEntry.Key = 0) or mEntry.Disabled or (mId = '') then
+    begin
+      Continue;
+    end;
+    mKnown := False;
+    for mIndex := 0 to High(mIds) do
+    begin
+      mKnown := mKnown or SameText(mIds[mIndex], mId);
+    end;
+    if not mKnown and TAtlasKeyConflicts.ShouldBind(mEntry.Key, TAtlasIdeKeys.Owner(mEntry.Key), mEntry.Priority) then
+    begin
+      mIds := mIds + [mId];
+      mKeys := mKeys + [ShortCutToText(TShortCut(mEntry.Key))];
     end;
   end;
+  Result := ShortCutLookup(mIds, mKeys);
 end;
 
 class function TAtlasIdeKeyMap.ExportFile: string;
 var
-  Folder: string;
+  mFolder: string;
 begin
-  Folder := GetEnvironmentVariable('LOCALAPPDATA');
-  if Folder = '' then
+  mFolder := GetEnvironmentVariable('LOCALAPPDATA');
+  if mFolder = '' then
   begin
-    Folder := TPath.GetTempPath;
+    mFolder := TPath.GetTempPath;
   end;
-  Result := TPath.Combine(TPath.Combine(Folder, 'Atlas'), ExportFileName);
+  Result := TPath.Combine(TPath.Combine(mFolder, 'Atlas'), cExportFileName);
 end;
 
 procedure TAtlasIdeKeyMap.Refresh;
@@ -969,18 +1016,18 @@ end;
 
 procedure TAtlasIdeKeyMap.ExportHtml;
 var
-  FileName, Html: string;
+  mFileName, mHtml: string;
 begin
   if FWindow = nil then
   begin
     Exit;
   end;
-  FileName := ExportFile;
+  mFileName := ExportFile;
   try
-    Html := FWindow.ExportHtml(FormatDateTime('ddddd t', Now));
-    ForceDirectories(ExtractFileDir(FileName));
-    TFile.WriteAllText(FileName, Html, TEncoding.UTF8);
-    ShellExecute(0, 'open', PChar(FileName), nil, nil, SW_SHOWNORMAL);
+    mHtml := FWindow.ExportHtml(FormatDateTime('ddddd t', Now));
+    ForceDirectories(ExtractFileDir(mFileName));
+    TFile.WriteAllText(mFileName, mHtml, TEncoding.UTF8);
+    ShellExecute(0, 'open', PChar(mFileName), nil, nil, SW_SHOWNORMAL);
     // Anonym: nur die Anzahl, kein Pfad.
     TAtlasGuard.Log(Format('Tastenkürzel-Übersicht exportiert: %d Zeilen (#520)', [Length(FWindow.Shown)]));
   except
@@ -991,25 +1038,25 @@ end;
 
 procedure TAtlasIdeKeyMap.OpenKeyConflicts;
 var
-  Options: IOTAEnvironmentOptions140;
-  Services: IOTAServices;
+  mOptions: IOTAEnvironmentOptions140;
+  mServices: IOTAServices;
 begin
   // Seite „Atlas.Tastenkonflikte“ (#494) unter Tools › Optionen; danach neu einlesen.
-  if Supports(BorlandIDEServices, IOTAServices, Services) and
-    Supports(Services.GetEnvironmentOptions, IOTAEnvironmentOptions140, Options) then
+  if Supports(BorlandIDEServices, IOTAServices, mServices) and
+    Supports(mServices.GetEnvironmentOptions, IOTAEnvironmentOptions140, mOptions) then
   begin
-    Options.EditOptions('', 'Atlas.' + TAtlasStrings.Text(TAtlasTextId.KeysTitle));
+    mOptions.EditOptions('', 'Atlas.' + TAtlasStrings.Text(TAtlasTextId.KeysTitle));
   end;
   Refresh;
 end;
 
 procedure TAtlasIdeKeyMap.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
 var
-  Run: TProc;
-  Visible: TFunc<Boolean>;
+  mRun: TProc;
+  mVisible: TFunc<Boolean>;
 begin
   // Typisierte Variablen: Delphi wählt die Überladung mit anonymen Methoden sonst nicht (E2250).
-  Run :=
+  mRun :=
     procedure
     begin
       if FInstance <> nil then
@@ -1017,12 +1064,12 @@ begin
         FInstance.ShowWindow;
       end;
     end;
-  Visible :=
+  mVisible :=
     function: Boolean
     begin
       Result := TAtlasIdeSettings.Current.KeyOverview;
     end;
-  ARegistry.RegisterCommand(CommandId, TAtlasStrings.Text(TAtlasTextId.KeyMapMenu), '', Run, Visible);
+  ARegistry.RegisterCommand(cCommandId, TAtlasStrings.Text(TAtlasTextId.KeyMapMenu), '', mRun, mVisible);
 end;
 
 procedure TAtlasIdeKeyMap.CheckAtStart;
@@ -1032,7 +1079,7 @@ begin
     FTimer := TTimer.Create(nil);
     FTimer.OnTimer := TimerTick;
   end;
-  FTimer.Interval := StartDelayMs;
+  FTimer.Interval := cStartDelayMs;
   FTimer.Enabled := True;
 end;
 
@@ -1051,10 +1098,10 @@ end;
 
 procedure TAtlasIdeKeyMap.CheckNow;
 var
-  Items: TArray<TAtlasKeyItem>;
-  Conflicts: TArray<Integer>;
-  Index, Partner: Integer;
-  Winner: string;
+  mItems: TArray<TAtlasKeyItem>;
+  mConflicts: TArray<Integer>;
+  mIndex, mPartner: Integer;
+  mWinner: string;
 begin
   if (FWindow <> nil) and FWindow.Visible then
   begin
@@ -1064,34 +1111,34 @@ begin
   begin
     Exit;
   end;
-  Items := Collect;
-  Conflicts := TAtlasKeyMap.AtlasConflicts(Items);
+  mItems := Collect;
+  mConflicts := TAtlasKeyMap.AtlasConflicts(mItems);
   // Anonym: nur Zahlen.
   TAtlasGuard.Log(Format('Tastenkürzel: %d Belegungen, %d mit Konflikt, %d Atlas-Tasten betroffen (#520)',
-    [Length(Items), TAtlasKeyMap.ConflictCount(Items), Length(Conflicts)]));
-  for Index in Conflicts do
+    [Length(mItems), TAtlasKeyMap.ConflictCount(mItems), Length(mConflicts)]));
+  for mIndex in mConflicts do
   begin
     // Was #494 beim Belegen gemeldet hat, nicht noch einmal.
-    if TAtlasIdeKeys.Reported(Items[Index].ShortCut) then
+    if TAtlasIdeKeys.Reported(mItems[mIndex].ShortCut) then
     begin
       Continue;
     end;
-    Partner := TAtlasKeyMap.PartnerOf(Items, Index);
-    if Partner < 0 then
+    mPartner := TAtlasKeyMap.PartnerOf(mItems, mIndex);
+    if mPartner < 0 then
     begin
       Continue;
     end;
-    if Items[Index].Winner >= 0 then
+    if mItems[mIndex].Winner >= 0 then
     begin
-      Winner := Items[Items[Index].Winner].Holder;
+      mWinner := mItems[mItems[mIndex].Winner].Holder;
     end
     else
     begin
-      Winner := TAtlasStrings.Text(TAtlasTextId.KeyMapNobody);
+      mWinner := TAtlasStrings.Text(TAtlasTextId.KeyMapNobody);
     end;
     TAtlasIdeKeys.AddMessage(TAtlasStrings.Fmt(TAtlasTextId.KeyMapStartConflict,
-      [Items[Index].KeyText, Items[Index].Command, Items[Partner].Holder, Winner]));
-    TAtlasIdeKeys.MarkReported(Items[Index].ShortCut);
+      [mItems[mIndex].KeyText, mItems[mIndex].Command, mItems[mPartner].Holder, mWinner]));
+    TAtlasIdeKeys.MarkReported(mItems[mIndex].ShortCut);
   end;
 end;
 

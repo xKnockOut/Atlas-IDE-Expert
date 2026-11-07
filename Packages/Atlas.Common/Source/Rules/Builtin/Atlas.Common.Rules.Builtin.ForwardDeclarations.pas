@@ -57,7 +57,7 @@ type
   end;
 
 const
-  UnsatisfiedForwardRuleId = 'unsatisfied-forward';
+  cUnsatisfiedForwardRuleId = 'unsatisfied-forward';
 
 procedure RegisterForwardDeclarationRules(const ARegistry: TRuleRegistry);
 
@@ -109,7 +109,7 @@ const
 
 function FixesOf(const AFinding: TForwardFinding): TArray<TRuleFix>;
 var
-  Safe: Boolean;
+  mSafe: Boolean;
 begin
   Result := nil;
   if AFinding.Fix = TForwardFix.NoFix then
@@ -117,8 +117,8 @@ begin
     Exit;
   end;
   // Ergänzen und Entfernen ändern nur eine Zeile und sind immer richtig.
-  Safe := AFinding.Fix in [TForwardFix.AddForward, TForwardFix.RemoveForward];
-  Result := [TRuleFix.Create(TForwardDeclarations.FixTitle(AFinding.Fix), AFinding.Edits, Safe)];
+  mSafe := AFinding.Fix in [TForwardFix.AddForward, TForwardFix.RemoveForward];
+  Result := [TRuleFix.Create(TForwardDeclarations.FixTitle(AFinding.Fix), AFinding.Edits, mSafe)];
 end;
 
 { TTypeUsedBeforeDeclarationRule }
@@ -131,25 +131,25 @@ end;
 
 procedure TTypeUsedBeforeDeclarationRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Finding: TForwardFinding;
-  Message: string;
+  mFinding: TForwardFinding;
+  mMessage: string;
 begin
   if (AContext.Tree = nil) or AContext.NoForwardDeclaration then
   begin
     Exit;
   end;
-  for Finding in TForwardDeclarations.Analyze(AContext.Tree, AContext.Text) do
+  for mFinding in TForwardDeclarations.Analyze(AContext.Tree, AContext.Text) do
   begin
-    if Finding.Issue <> TForwardIssue.UsedBeforeDeclaration then
+    if mFinding.Issue <> TForwardIssue.UsedBeforeDeclaration then
     begin
       Continue;
     end;
-    Message := cTexts[TForwardDeclarationsText.UsedBefore].Fmt([Finding.TypeName, Finding.UserName]);
-    if Finding.Reason <> '' then
+    mMessage := cTexts[TForwardDeclarationsText.UsedBefore].Fmt([mFinding.TypeName, mFinding.UserName]);
+    if mFinding.Reason <> '' then
     begin
-      Message := Message + cTexts[TForwardDeclarationsText.NoFix].Fmt([Finding.Reason]);
+      mMessage := mMessage + cTexts[TForwardDeclarationsText.NoFix].Fmt([mFinding.Reason]);
     end;
-    AReport.Add(Finding.Range, Message, FixesOf(Finding));
+    AReport.Add(mFinding.Range, mMessage, FixesOf(mFinding));
   end;
 end;
 
@@ -163,18 +163,19 @@ end;
 
 procedure TUnneededForwardDeclarationRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Finding: TForwardFinding;
+  mFinding: TForwardFinding;
 begin
   if (AContext.Tree = nil) or AContext.NoForwardDeclaration then
   begin
     Exit;
   end;
-  for Finding in TForwardDeclarations.Analyze(AContext.Tree, AContext.Text) do
+  for mFinding in TForwardDeclarations.Analyze(AContext.Tree, AContext.Text) do
   begin
-    if Finding.Issue = TForwardIssue.UnneededForward then
+    if mFinding.Issue = TForwardIssue.UnneededForward then
     begin
-      AReport.Add(Finding.Range, cTexts[TForwardDeclarationsText.Redundant].Fmt([Finding.TypeName, Finding.TypeName]),
-        FixesOf(Finding));
+      AReport.Add(mFinding.Range, cTexts[TForwardDeclarationsText.Redundant].Fmt([mFinding.TypeName,
+        mFinding.TypeName]),
+        FixesOf(mFinding));
     end;
   end;
 end;
@@ -183,68 +184,68 @@ end;
 
 function TUnsatisfiedForwardRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UnsatisfiedForwardRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cUnsatisfiedForwardRuleId, TRuleSeverity.Error,
     cTexts[TForwardDeclarationsText.UnresolvedTitle].Text);
 end;
 
 procedure TUnsatisfiedForwardRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Paths: TArray<string>;
-  HasIncludes: Boolean;
-  Implementation_: TSyntaxNode;
+  mTokens: TArray<TPascalToken>;
+  mPaths: TArray<string>;
+  mHasIncludes: Boolean;
+  mImplementation_: TSyntaxNode;
 
   /// <summary>Erstes Token ab AOffset (Index); Length(Tokens) ohne.</summary>
   function TokenAt(AOffset: Integer): Integer;
   var
-    Low, High, Middle: Integer;
+    mLow, mHigh, mMiddle: Integer;
   begin
-    Low := 0;
-    High := Length(Tokens);
-    while Low < High do
+    mLow := 0;
+    mHigh := Length(mTokens);
+    while mLow < mHigh do
     begin
-      Middle := (Low + High) div 2;
-      if Tokens[Middle].Offset < AOffset then
+      mMiddle := (mLow + mHigh) div 2;
+      if mTokens[mMiddle].Offset < AOffset then
       begin
-        Low := Middle + 1;
+        mLow := mMiddle + 1;
       end
       else
       begin
-        High := Middle;
+        mHigh := mMiddle;
       end;
     end;
-    Result := Low;
+    Result := mLow;
   end;
 
   function PathOf(ANode: TSyntaxNode): string;
   begin
-    Result := TConditionalBranches.PathAt(Paths, TokenAt(ANode.StartOffset));
+    Result := TConditionalBranches.PathAt(mPaths, TokenAt(ANode.StartOffset));
   end;
 
   /// <summary>Bereich des ersten Bezeichners AName ab dem Anfang von ANode; der ganze Knoten ohne.</summary>
   function NameRange(ANode: TSyntaxNode; const AName: string): TTextRange;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
-    Index := TokenAt(ANode.StartOffset);
-    while (Index < Length(Tokens)) and (Tokens[Index].Offset < ANode.EndOffset) do
+    mIndex := TokenAt(ANode.StartOffset);
+    while (mIndex < Length(mTokens)) and (mTokens[mIndex].Offset < ANode.EndOffset) do
     begin
-      if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AName) then
+      if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, AName) then
       begin
-        Exit(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos));
+        Exit(TTextRange.Create(mTokens[mIndex].StartPos, mTokens[mIndex].EndPos));
       end;
-      Inc(Index);
+      Inc(mIndex);
     end;
     Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
   end;
 
   function HasDirective(AHeader: TSyntaxNode; const ADirective: string): Boolean;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
-    for Index := 0 to AHeader.ChildCount - 1 do
+    for mIndex := 0 to AHeader.ChildCount - 1 do
     begin
-      if (AHeader[Index].Kind = TSyntaxKind.Directive) and SameText(AHeader[Index].Name, ADirective) then
+      if (AHeader[mIndex].Kind = TSyntaxKind.Directive) and SameText(AHeader[mIndex].Name, ADirective) then
       begin
         Exit(True);
       end;
@@ -254,18 +255,18 @@ var
 
   function ParamCount(AHeader: TSyntaxNode): Integer;
   var
-    Params: TSyntaxNode;
-    Index: Integer;
+    mParams: TSyntaxNode;
+    mIndex: Integer;
   begin
     Result := 0;
-    Params := AHeader.FindChild(TSyntaxKind.Parameters);
-    if Params <> nil then
+    mParams := AHeader.FindChild(TSyntaxKind.Parameters);
+    if mParams <> nil then
     begin
-      for Index := 0 to Params.ChildCount - 1 do
+      for mIndex := 0 to mParams.ChildCount - 1 do
       begin
-        if Params[Index].Kind = TSyntaxKind.Parameter then
+        if mParams[mIndex].Kind = TSyntaxKind.Parameter then
         begin
-          Inc(Result, Length(Params[Index].Name.Split([','])));
+          Inc(Result, Length(mParams[mIndex].Name.Split([','])));
         end;
       end;
     end;
@@ -274,33 +275,33 @@ var
   /// <summary>Rumpf (oder external) im Sinn des Compilers: Block, asm-Block oder external.</summary>
   function IsBody(ARoutine: TSyntaxNode): Boolean;
   var
-    Header: TSyntaxNode;
+    mHeader: TSyntaxNode;
   begin
-    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
     Result := (ARoutine.FindChild(TSyntaxKind.Block) <> nil) or (ARoutine.FindChild(TSyntaxKind.AsmBlock) <> nil) or
-      ((Header <> nil) and HasDirective(Header, 'external'));
+      ((mHeader <> nil) and HasDirective(mHeader, 'external'));
   end;
 
   /// <summary>Gibt es unter AContainer ab dem Kind AFrom einen Rumpf zur Deklaration ADecl, der mit ihr übersetzt
   /// wird?</summary>
   function Satisfied(AContainer: TSyntaxNode; AFrom: Integer; ADecl: TSyntaxNode): Boolean;
   var
-    Index: Integer;
-    Header, Other: TSyntaxNode;
-    Overloaded: Boolean;
+    mIndex: Integer;
+    mHeader, mOther: TSyntaxNode;
+    mOverloaded: Boolean;
   begin
-    Header := ADecl.FindChild(TSyntaxKind.RoutineHeader);
-    Overloaded := HasDirective(Header, 'overload');
-    for Index := AFrom to AContainer.ChildCount - 1 do
+    mHeader := ADecl.FindChild(TSyntaxKind.RoutineHeader);
+    mOverloaded := HasDirective(mHeader, 'overload');
+    for mIndex := AFrom to AContainer.ChildCount - 1 do
     begin
-      Other := AContainer[Index];
-      if (Other = ADecl) or (Other.Kind <> TSyntaxKind.RoutineDecl) or not SameText(Other.Name, ADecl.Name) or
-        not IsBody(Other) or TConditionalBranches.Exclusive(PathOf(ADecl), PathOf(Other)) then
+      mOther := AContainer[mIndex];
+      if (mOther = ADecl) or (mOther.Kind <> TSyntaxKind.RoutineDecl) or not SameText(mOther.Name, ADecl.Name) or
+        not IsBody(mOther) or TConditionalBranches.Exclusive(PathOf(ADecl), PathOf(mOther)) then
       begin
         Continue;
       end;
-      if not Overloaded or (Other.FindChild(TSyntaxKind.RoutineHeader) = nil) or
-        (ParamCount(Other.FindChild(TSyntaxKind.RoutineHeader)) = ParamCount(Header)) then
+      if not mOverloaded or (mOther.FindChild(TSyntaxKind.RoutineHeader) = nil) or
+        (ParamCount(mOther.FindChild(TSyntaxKind.RoutineHeader)) = ParamCount(mHeader)) then
       begin
         Exit(True);
       end;
@@ -314,17 +315,17 @@ var
     mIndex, mDepth: Integer;
   begin
     mDepth := 0;
-    for mIndex := AFirst to High(Tokens) do
+    for mIndex := AFirst to High(mTokens) do
     begin
-      if Tokens[mIndex].IsSymbol('(') or Tokens[mIndex].IsSymbol('[') then
+      if mTokens[mIndex].IsSymbol('(') or mTokens[mIndex].IsSymbol('[') then
       begin
         Inc(mDepth);
       end
-      else if Tokens[mIndex].IsSymbol(')') or Tokens[mIndex].IsSymbol(']') then
+      else if mTokens[mIndex].IsSymbol(')') or mTokens[mIndex].IsSymbol(']') then
       begin
         Dec(mDepth);
       end
-      else if (mDepth = 0) and Tokens[mIndex].IsSymbol(';') then
+      else if (mDepth = 0) and mTokens[mIndex].IsSymbol(';') then
       begin
         Exit(mIndex);
       end;
@@ -402,61 +403,61 @@ var
     begin
       Exit('');
     end;
-    Result := CompactHead(Copy(AContext.Text, Tokens[mFirst].Offset + 1,
-      Tokens[mStop].Offset + 1 - Tokens[mFirst].Offset));
+    Result := CompactHead(Copy(AContext.Text, mTokens[mFirst].Offset + 1,
+      mTokens[mStop].Offset + 1 - mTokens[mFirst].Offset));
   end;
 
   /// <summary>Korrektur: leeren Rumpf vor initialization bzw. dem abschließenden "end." einfügen.</summary>
   function CreateBody(ADecl: TSyntaxNode): TArray<TRuleFix>;
   var
-    Header, Section: TSyntaxNode;
-    Head, Break_: string;
-    Index: Integer;
-    At: TTextPosition;
-    Found: Boolean;
+    mHeader, mSection: TSyntaxNode;
+    mHead, mBreak_: string;
+    mIndex: Integer;
+    mAt: TTextPosition;
+    mFound: Boolean;
   begin
     Result := nil;
-    Header := ADecl.FindChild(TSyntaxKind.RoutineHeader);
-    if (Header = nil) or (Implementation_ = nil) then
+    mHeader := ADecl.FindChild(TSyntaxKind.RoutineHeader);
+    if (mHeader = nil) or (mImplementation_ = nil) then
     begin
       Exit;
     end;
-    Head := HeadText(Header);
-    if Head = '' then
+    mHead := HeadText(mHeader);
+    if mHead = '' then
     begin
       Exit;
     end;
-    if HasDirective(Header, 'overload') then
+    if HasDirective(mHeader, 'overload') then
     begin
-      Head := Head + ' overload;';
+      mHead := mHead + ' overload;';
     end;
-    Found := False;
-    At := Default(TTextPosition);
-    Section := AContext.Tree.Root.FindChild(TSyntaxKind.InitializationSection);
-    if Section <> nil then
+    mFound := False;
+    mAt := Default(TTextPosition);
+    mSection := AContext.Tree.Root.FindChild(TSyntaxKind.InitializationSection);
+    if mSection <> nil then
     begin
-      At := Section.StartPos;
-      Found := True;
+      mAt := mSection.StartPos;
+      mFound := True;
     end
     else
     begin
-      for Index := High(Tokens) downto 1 do
+      for mIndex := High(mTokens) downto 1 do
       begin
-        if Tokens[Index].IsSymbol('.') and Tokens[Index - 1].IsKeyword('end') then
+        if mTokens[mIndex].IsSymbol('.') and mTokens[mIndex - 1].IsKeyword('end') then
         begin
-          At := Tokens[Index - 1].StartPos;
-          Found := True;
+          mAt := mTokens[mIndex - 1].StartPos;
+          mFound := True;
           Break;
         end;
       end;
     end;
-    if not Found or (At.Character <> 0) then
+    if not mFound or (mAt.Character <> 0) then
     begin
       Exit;
     end;
-    Break_ := TTextLines.LineBreakOf(AContext.Text);
+    mBreak_ := TTextLines.LineBreakOf(AContext.Text);
     Result := [TRuleFix.Create(cTexts[TForwardDeclarationsText.CreateEmptyBody].Fmt([ADecl.Name]),
-      [TRuleEdit.Create(TTextRange.Create(At, At), Head + Break_ + 'begin' + Break_ + 'end;' + Break_ + Break_)])];
+      [TRuleEdit.Create(TTextRange.Create(mAt, mAt), mHead + mBreak_ + 'begin' + mBreak_ + 'end;' + mBreak_ + mBreak_)])];
   end;
 
   /// <summary>E2065: Die Routine AContainer[AIndex] ist forward deklariert, aber nicht implementiert.</summary>
@@ -473,7 +474,7 @@ var
       Exit;
     end;
     mMessage := cTexts[TForwardDeclarationsText.ForwardNotImplemented].Fmt([mChild.Name]);
-    if AContainer = Implementation_ then
+    if AContainer = mImplementation_ then
     begin
       AReport.Add(NameRange(mHeader, mChild.Name), mMessage, TRuleConfidence.High, CreateBody(mChild));
     end
@@ -487,67 +488,67 @@ var
   // zuvor die Rekursion in lokale Routinen.
   procedure CheckRoutines(ARoot: TSyntaxNode);
   var
-    PendingContainer: TStack<TSyntaxNode>;
-    PendingIndex: TStack<Integer>;
-    Container, Child: TSyntaxNode;
-    Index, ChildIndex: Integer;
+    mPendingContainer: TStack<TSyntaxNode>;
+    mPendingIndex: TStack<Integer>;
+    mContainer, mChild: TSyntaxNode;
+    mIndex, mChildIndex: Integer;
   begin
-    PendingContainer := TStack<TSyntaxNode>.Create;
-    PendingIndex := TStack<Integer>.Create;
+    mPendingContainer := TStack<TSyntaxNode>.Create;
+    mPendingIndex := TStack<Integer>.Create;
     try
-      for ChildIndex := ARoot.ChildCount - 1 downto 0 do
+      for mChildIndex := ARoot.ChildCount - 1 downto 0 do
       begin
-        if ARoot[ChildIndex].Kind = TSyntaxKind.RoutineDecl then
+        if ARoot[mChildIndex].Kind = TSyntaxKind.RoutineDecl then
         begin
-          PendingContainer.Push(ARoot);
-          PendingIndex.Push(ChildIndex);
+          mPendingContainer.Push(ARoot);
+          mPendingIndex.Push(mChildIndex);
         end;
       end;
-      while PendingContainer.Count > 0 do
+      while mPendingContainer.Count > 0 do
       begin
-        Container := PendingContainer.Pop;
-        Index := PendingIndex.Pop;
-        Child := Container[Index];
-        CheckForward(Container, Index);
+        mContainer := mPendingContainer.Pop;
+        mIndex := mPendingIndex.Pop;
+        mChild := mContainer[mIndex];
+        CheckForward(mContainer, mIndex);
         // Lokale Routinen mit forward.
-        for ChildIndex := Child.ChildCount - 1 downto 0 do
+        for mChildIndex := mChild.ChildCount - 1 downto 0 do
         begin
-          if Child[ChildIndex].Kind = TSyntaxKind.RoutineDecl then
+          if mChild[mChildIndex].Kind = TSyntaxKind.RoutineDecl then
           begin
-            PendingContainer.Push(Child);
-            PendingIndex.Push(ChildIndex);
+            mPendingContainer.Push(mChild);
+            mPendingIndex.Push(mChildIndex);
           end;
         end;
       end;
     finally
-      PendingIndex.Free;
-      PendingContainer.Free;
+      mPendingIndex.Free;
+      mPendingContainer.Free;
     end;
   end;
 
   procedure CheckInterface(ASection: TSyntaxNode);
   var
-    Index: Integer;
-    Child, Header: TSyntaxNode;
+    mIndex: Integer;
+    mChild, mHeader: TSyntaxNode;
   begin
-    for Index := 0 to ASection.ChildCount - 1 do
+    for mIndex := 0 to ASection.ChildCount - 1 do
     begin
-      Child := ASection[Index];
-      if Child.Kind <> TSyntaxKind.RoutineDecl then
+      mChild := ASection[mIndex];
+      if mChild.Kind <> TSyntaxKind.RoutineDecl then
       begin
         Continue;
       end;
-      Header := Child.FindChild(TSyntaxKind.RoutineHeader);
-      if (Header = nil) or HasDirective(Header, 'external') or HasDirective(Header, 'forward') or
-        (Pos('.', Child.Name) > 0) or (PathOf(Child) <> '') then
+      mHeader := mChild.FindChild(TSyntaxKind.RoutineHeader);
+      if (mHeader = nil) or HasDirective(mHeader, 'external') or HasDirective(mHeader, 'forward') or
+        (Pos('.', mChild.Name) > 0) or (PathOf(mChild) <> '') then
       begin
         Continue;
       end;
-      if not Satisfied(Implementation_, 0, Child) then
+      if not Satisfied(mImplementation_, 0, mChild) then
       begin
-        AReport.Add(NameRange(Header, Child.Name),
-          cTexts[TForwardDeclarationsText.InterfaceNotImplemented].Fmt([Child.Name]), TRuleConfidence.High,
-          CreateBody(Child));
+        AReport.Add(NameRange(mHeader, mChild.Name),
+          cTexts[TForwardDeclarationsText.InterfaceNotImplemented].Fmt([mChild.Name]), TRuleConfidence.High,
+          CreateBody(mChild));
       end;
     end;
   end;
@@ -645,32 +646,32 @@ var
 
   procedure CheckTypes(ASection: TSyntaxNode);
   var
-    Index: Integer;
-    Decl, Forward_: TSyntaxNode;
-    Code: string;
+    mIndex: Integer;
+    mDecl, mForward_: TSyntaxNode;
+    mCode: string;
   begin
-    for Index := 0 to ASection.ChildCount - 1 do
+    for mIndex := 0 to ASection.ChildCount - 1 do
     begin
-      Decl := ASection[Index];
-      if Decl.Kind <> TSyntaxKind.TypeDecl then
+      mDecl := ASection[mIndex];
+      if mDecl.Kind <> TSyntaxKind.TypeDecl then
       begin
         Continue;
       end;
-      CheckSelfContained(Decl);
-      Forward_ := Decl.FindChild(TSyntaxKind.ForwardType);
-      if (Forward_ = nil) or (PathOf(Decl) <> '') or Completed(ASection, Index) then
+      CheckSelfContained(mDecl);
+      mForward_ := mDecl.FindChild(TSyntaxKind.ForwardType);
+      if (mForward_ = nil) or (PathOf(mDecl) <> '') or Completed(ASection, mIndex) then
       begin
         Continue;
       end;
-      if SameText(Forward_.Name, 'class') then
+      if SameText(mForward_.Name, 'class') then
       begin
-        Code := 'E2086';
+        mCode := 'E2086';
       end
       else
       begin
-        Code := 'E2420';
+        mCode := 'E2420';
       end;
-      AReport.Add(NameRange(Decl, Decl.Name), cTexts[TForwardDeclarationsText.FullMissing].Fmt([Decl.Name, Code]),
+      AReport.Add(NameRange(mDecl, mDecl.Name), cTexts[TForwardDeclarationsText.FullMissing].Fmt([mDecl.Name, mCode]),
         TRuleConfidence.High);
     end;
   end;
@@ -678,74 +679,74 @@ var
   // Iterativ (Bericht M1).
   procedure VisitTypes(ARoot: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.TypeSection then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.TypeSection then
         begin
-          CheckTypes(Node);
+          CheckTypes(mNode);
         end;
         // Nur Deklarationscontainer (#1094).
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          if Node[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
+          if mNode[mIndex].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
             TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl, TSyntaxKind.ClassType, TSyntaxKind.ObjectType,
             TSyntaxKind.RecordType, TSyntaxKind.RoutineDecl] then
           begin
-            Pending.Push(Node[Index]);
+            mPending.Push(mNode[mIndex]);
           end;
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
 var
-  Token: TPascalToken;
-  Interface_: TSyntaxNode;
-  Text: string;
+  mToken: TPascalToken;
+  mInterface_: TSyntaxNode;
+  mText: string;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Paths := TConditionalBranches.Paths(Tokens);
-  HasIncludes := False;
-  for Token in Tokens do
+  mTokens := AContext.Tree.Tokens;
+  mPaths := TConditionalBranches.Paths(mTokens);
+  mHasIncludes := False;
+  for mToken in mTokens do
   begin
-    if Token.Kind = TPascalTokenKind.Directive then
+    if mToken.Kind = TPascalTokenKind.Directive then
     begin
-      Text := UpperCase(Token.Text);
+      mText := UpperCase(mToken.Text);
       // {$I+} und {$I-} schalten die E/A-Prüfung um und sind keine Includes.
-      if StartsStr('{$INCLUDE ', Text) or StartsStr('{$I ', Text) then
+      if StartsStr('{$INCLUDE ', mText) or StartsStr('{$I ', mText) then
       begin
-        HasIncludes := True;
+        mHasIncludes := True;
       end;
     end;
   end;
   VisitTypes(AContext.Tree.Root);
-  if HasIncludes then
+  if mHasIncludes then
   begin
     Exit;
   end;
-  Implementation_ := AContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
-  Interface_ := AContext.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
-  if (Interface_ <> nil) and (Implementation_ <> nil) then
+  mImplementation_ := AContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  mInterface_ := AContext.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
+  if (mInterface_ <> nil) and (mImplementation_ <> nil) then
   begin
-    CheckInterface(Interface_);
+    CheckInterface(mInterface_);
   end;
-  if Implementation_ <> nil then
+  if mImplementation_ <> nil then
   begin
-    CheckRoutines(Implementation_);
+    CheckRoutines(mImplementation_);
   end
   else if AContext.Tree.Root.Kind in [TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile] then
   begin

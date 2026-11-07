@@ -95,7 +95,7 @@ uses
   Atlas.Text.Lines;
 
 const
-  Reserved: array[0..64] of string = ('and', 'array', 'as', 'asm', 'begin', 'case', 'class', 'const', 'constructor',
+  cReserved: array[0..64] of string = ('and', 'array', 'as', 'asm', 'begin', 'case', 'class', 'const', 'constructor',
     'destructor', 'dispinterface', 'div', 'do', 'downto', 'else', 'end', 'except', 'exports', 'file', 'finalization',
     'finally', 'for', 'function', 'goto', 'if', 'implementation', 'in', 'inherited', 'initialization', 'inline',
     'interface', 'is', 'label', 'library', 'mod', 'nil', 'not', 'object', 'of', 'or', 'packed', 'procedure', 'program',
@@ -204,13 +204,13 @@ end;
 
 class function TAtlasLinkedEditing.IndexAt(const ARanges: TAtlasLinkedRanges; ALine, ACharacter: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ARanges) do
+  for mIndex := 0 to High(ARanges) do
   begin
-    if ARanges[Index].Contains(ALine, ACharacter) then
+    if ARanges[mIndex].Contains(ALine, ACharacter) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -228,23 +228,23 @@ end;
 
 class function TAtlasLinkedEditing.Matches(const ALines: TArray<string>; const ARanges: TAtlasLinkedRanges): Boolean;
 var
-  Range: TAtlasLinkedRange;
-  First: string;
+  mRange: TAtlasLinkedRange;
+  mFirst: string;
 begin
   Result := False;
   if Length(ARanges) = 0 then
   begin
     Exit;
   end;
-  First := NameOf(ALines, ARanges[0]);
-  if (First = '') or not IsName(First) then
+  mFirst := NameOf(ALines, ARanges[0]);
+  if (mFirst = '') or not IsName(mFirst) then
   begin
     Exit;
   end;
-  for Range in ARanges do
+  for mRange in ARanges do
   begin
-    if (Range.Line > High(ALines)) or (Range.EndCharacter > Length(ALines[Range.Line])) or
-      not SameText(NameOf(ALines, Range), First) then
+    if (mRange.Line > High(ALines)) or (mRange.EndCharacter > Length(ALines[mRange.Line])) or
+      not SameText(NameOf(ALines, mRange), mFirst) then
     begin
       Exit;
     end;
@@ -254,12 +254,12 @@ end;
 
 class function TAtlasLinkedEditing.IsName(const AName: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := True;
-  for Index := 1 to Length(AName) do
+  for mIndex := 1 to Length(AName) do
   begin
-    if not TTextChars.IsIdentChar(AName[Index]) or ((Index = 1) and not TTextChars.IsIdentStart(AName[1])) then
+    if not TTextChars.IsIdentChar(AName[mIndex]) or ((mIndex = 1) and not TTextChars.IsIdentStart(AName[1])) then
     begin
       Exit(False);
     end;
@@ -268,7 +268,7 @@ end;
 
 class function TAtlasLinkedEditing.IsReserved(const AName: string): Boolean;
 begin
-  Result := IndexText(AName, Reserved) >= 0;
+  Result := IndexText(AName, cReserved) >= 0;
 end;
 
 class function TAtlasLinkedEditing.Key(const AName: string; AOffset: Integer; AKind: TAtlasLinkedKey;
@@ -320,7 +320,7 @@ end;
 class function TAtlasLinkedEditing.Follow(const AOldLine, ANewLine: string; const ARange: TAtlasLinkedRange;
   out AName: string): Boolean;
 var
-  Tail: Integer;
+  mTail: Integer;
 begin
   AName := '';
   Result := False;
@@ -328,37 +328,38 @@ begin
   begin
     Exit;
   end;
-  Tail := Length(AOldLine) - ARange.EndCharacter;
-  if (Length(ANewLine) < ARange.Character + Tail) or
+  mTail := Length(AOldLine) - ARange.EndCharacter;
+  if (Length(ANewLine) < ARange.Character + mTail) or
     (Copy(ANewLine, 1, ARange.Character) <> Copy(AOldLine, 1, ARange.Character)) or
-    (Copy(ANewLine, Length(ANewLine) - Tail + 1, Tail) <> Copy(AOldLine, ARange.EndCharacter + 1, Tail)) then
+    (Copy(ANewLine, Length(ANewLine) - mTail + 1, mTail) <> Copy(AOldLine, ARange.EndCharacter + 1, mTail)) then
   begin
     Exit;
   end;
-  AName := Copy(ANewLine, ARange.Character + 1, Length(ANewLine) - ARange.Character - Tail);
+  AName := Copy(ANewLine, ARange.Character + 1, Length(ANewLine) - ARange.Character - mTail);
   Result := True;
 end;
 
 class function TAtlasLinkedEditing.Resized(const ARanges: TAtlasLinkedRanges; APrimary,
   ANewLength: Integer): TAtlasLinkedRanges;
 var
-  Index, Delta: Integer;
-  Primary: TAtlasLinkedRange;
+  mIndex, mDelta: Integer;
+  mPrimary: TAtlasLinkedRange;
 begin
   Result := Copy(ARanges);
   if (APrimary < 0) or (APrimary > High(ARanges)) then
   begin
     Exit;
   end;
-  Primary := ARanges[APrimary];
-  Delta := ANewLength - Primary.Length;
+  mPrimary := ARanges[APrimary];
+  mDelta := ANewLength - mPrimary.Length;
   Result[APrimary].Length := ANewLength;
-  for Index := 0 to High(Result) do
+  for mIndex := 0 to High(Result) do
   begin
-    if (Index <> APrimary) and (Result[Index].Line = Primary.Line) and (Result[Index].Character > Primary.Character)
+    if (mIndex <> APrimary) and (Result[mIndex].Line = mPrimary.Line) and
+      (Result[mIndex].Character > mPrimary.Character)
     then
     begin
-      Inc(Result[Index].Character, Delta);
+      Inc(Result[mIndex].Character, mDelta);
     end;
   end;
 end;
@@ -366,58 +367,58 @@ end;
 class function TAtlasLinkedEditing.Rename(const AText: string; const ARanges: TAtlasLinkedRanges; const AName: string;
   out ANewText: string; out ANewRanges: TAtlasLinkedRanges): Boolean;
 var
-  Table: TLineTable;
-  Sorted: TAtlasLinkedRanges;
-  Order: TArray<Integer>;
-  Index, Other, Offset, Delta: Integer;
-  Range: TAtlasLinkedRange;
+  mTable: TLineTable;
+  mSorted: TAtlasLinkedRanges;
+  mOrder: TArray<Integer>;
+  mIndex, mOther, mOffset, mDelta: Integer;
+  mRange: TAtlasLinkedRange;
 begin
   ANewText := AText;
   ANewRanges := Copy(ARanges);
   Result := False;
-  Table := TLineTable.Build(AText);
-  for Range in ARanges do
+  mTable := TLineTable.Build(AText);
+  for mRange in ARanges do
   begin
-    if (Range.Line < 0) or (Range.Line >= Table.LineCount) or (Range.Character < 0) or
-      (Table.LineStart(Range.Line) + Range.EndCharacter > Table.LineContentEnd(Range.Line)) then
+    if (mRange.Line < 0) or (mRange.Line >= mTable.LineCount) or (mRange.Character < 0) or
+      (mTable.LineStart(mRange.Line) + mRange.EndCharacter > mTable.LineContentEnd(mRange.Line)) then
     begin
       Exit;
     end;
   end;
   // Von hinten nach vorn ersetzen, damit die Offsets davor gültig bleiben.
-  Sorted := ARanges;
-  SetLength(Order, Length(ARanges));
-  for Index := 0 to High(Order) do
+  mSorted := ARanges;
+  SetLength(mOrder, Length(ARanges));
+  for mIndex := 0 to High(mOrder) do
   begin
-    Order[Index] := Index;
+    mOrder[mIndex] := mIndex;
   end;
-  TArray.Sort<Integer>(Order, TComparer<Integer>.Construct(
+  TArray.Sort<Integer>(mOrder, TComparer<Integer>.Construct(
     function(const A, B: Integer): Integer
     begin
-      Result := Sorted[B].Line - Sorted[A].Line;
+      Result := mSorted[B].Line - mSorted[A].Line;
       if Result = 0 then
       begin
-        Result := Sorted[B].Character - Sorted[A].Character;
+        Result := mSorted[B].Character - mSorted[A].Character;
       end;
     end));
-  for Index in Order do
+  for mIndex in mOrder do
   begin
-    Range := ARanges[Index];
-    Offset := Table.LineStart(Range.Line) + Range.Character;
-    ANewText := Copy(ANewText, 1, Offset) + AName + Copy(ANewText, Offset + Range.Length + 1, MaxInt);
+    mRange := ARanges[mIndex];
+    mOffset := mTable.LineStart(mRange.Line) + mRange.Character;
+    ANewText := Copy(ANewText, 1, mOffset) + AName + Copy(ANewText, mOffset + mRange.Length + 1, MaxInt);
   end;
   // Neue Bereiche: Länge des Namens, verschoben um die Änderungen davor in derselben Zeile.
-  for Index := 0 to High(ARanges) do
+  for mIndex := 0 to High(ARanges) do
   begin
-    Delta := 0;
-    for Other := 0 to High(ARanges) do
+    mDelta := 0;
+    for mOther := 0 to High(ARanges) do
     begin
-      if (ARanges[Other].Line = ARanges[Index].Line) and (ARanges[Other].Character < ARanges[Index].Character) then
+      if (ARanges[mOther].Line = ARanges[mIndex].Line) and (ARanges[mOther].Character < ARanges[mIndex].Character) then
       begin
-        Inc(Delta, Length(AName) - ARanges[Other].Length);
+        Inc(mDelta, Length(AName) - ARanges[mOther].Length);
       end;
     end;
-    ANewRanges[Index] := TAtlasLinkedRange.Create(ARanges[Index].Line, ARanges[Index].Character + Delta,
+    ANewRanges[mIndex] := TAtlasLinkedRange.Create(ARanges[mIndex].Line, ARanges[mIndex].Character + mDelta,
       Length(AName));
   end;
   Result := True;
@@ -426,7 +427,7 @@ end;
 class function TAtlasLinkedEditing.Problem(const AName, AOriginal: string; const AConflicts: TAtlasLinkedConflicts;
   out ADetail: string): TAtlasLinkedProblem;
 var
-  Conflict: TAtlasLinkedConflict;
+  mConflict: TAtlasLinkedConflict;
 begin
   ADetail := '';
   Result := TAtlasLinkedProblem.None;
@@ -438,11 +439,11 @@ begin
   begin
     Exit(TAtlasLinkedProblem.Reserved);
   end;
-  for Conflict in AConflicts do
+  for mConflict in AConflicts do
   begin
-    if SameText(Conflict.Name, AName) then
+    if SameText(mConflict.Name, AName) then
     begin
-      ADetail := Conflict.Detail;
+      ADetail := mConflict.Detail;
       Exit(TAtlasLinkedProblem.Visible);
     end;
   end;

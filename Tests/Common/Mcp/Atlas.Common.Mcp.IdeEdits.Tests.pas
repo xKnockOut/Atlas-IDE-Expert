@@ -156,7 +156,7 @@ var
   Ms: Integer;
 begin
   // Über eine Variable: Ein Vergleich zweier Konstanten wäre ein konstanter Ausdruck.
-  Ms := TMcpIdeEdits.PollMs;
+  Ms := TMcpIdeEdits.cPollMs;
   Assert.IsTrue(Ms >= 50, IntToStr(Ms));
   Assert.IsTrue(Ms <= 100, IntToStr(Ms));
 end;

@@ -97,7 +97,7 @@ end;
 
 class function TAccessorCreation.Declaration(const APlan: TAccessorPlan): string;
 var
-  Index: string;
+  mIndex: string;
 begin
   case APlan.Kind of
     TAccessorKind.Getter:
@@ -111,12 +111,12 @@ begin
       end;
     TAccessorKind.Setter:
       begin
-        Index := '';
+        mIndex := '';
         if APlan.IndexParameters <> '' then
         begin
-          Index := APlan.IndexParameters + '; ';
+          mIndex := APlan.IndexParameters + '; ';
         end;
-        Result := Format('procedure %s(%sconst Value: %s);', [APlan.Name, Index, APlan.PropertyType]);
+        Result := Format('procedure %s(%sconst Value: %s);', [APlan.Name, mIndex, APlan.PropertyType]);
       end;
   else
     Result := Format('%s: %s;', [APlan.FieldName, APlan.PropertyType]);
@@ -139,24 +139,24 @@ end;
 function FindType(const AName: string; const AIndex: ISymbolIndex; const AUnit: TUnitIndex;
   out ASymbol: TIndexSymbol): Boolean;
 var
-  Symbol: TIndexSymbol;
-  Location: TSymbolLocation;
+  mSymbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
 begin
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if IsTypeSymbol(Symbol, AName) then
+    if IsTypeSymbol(mSymbol, AName) then
     begin
-      ASymbol := Symbol;
+      ASymbol := mSymbol;
       Exit(True);
     end;
   end;
   if AIndex <> nil then
   begin
-    for Location in AIndex.FindSymbols(AName) do
+    for mLocation in AIndex.FindSymbols(AName) do
     begin
-      if IsTypeSymbol(Location.Symbol, AName) then
+      if IsTypeSymbol(mLocation.Symbol, AName) then
       begin
-        ASymbol := Location.Symbol;
+        ASymbol := mLocation.Symbol;
         Exit(True);
       end;
     end;
@@ -269,24 +269,24 @@ end;
 /// <summary>Erster Abschnitt AName (oder "strict AName") im Klassenrumpf; nil ohne.</summary>
 function SectionNode(ABody: TSyntaxNode; const AName: string; out ANext: TSyntaxNode): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
   ANext := nil;
-  for Index := 0 to ABody.ChildCount - 1 do
+  for mIndex := 0 to ABody.ChildCount - 1 do
   begin
-    if ABody[Index].Kind = TSyntaxKind.Visibility then
+    if ABody[mIndex].Kind = TSyntaxKind.Visibility then
     begin
       if Result = nil then
       begin
-        if SameText(ABody[Index].Name, AName) or SameText(ABody[Index].Name, 'strict ' + AName) then
+        if SameText(ABody[mIndex].Name, AName) or SameText(ABody[mIndex].Name, 'strict ' + AName) then
         begin
-          Result := ABody[Index];
+          Result := ABody[mIndex];
         end;
       end
       else if ANext = nil then
       begin
-        ANext := ABody[Index];
+        ANext := ABody[mIndex];
       end;
     end;
   end;
@@ -294,11 +294,11 @@ end;
 
 function HasSection(ABody: TSyntaxNode; const AName: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to ABody.ChildCount - 1 do
+  for mIndex := 0 to ABody.ChildCount - 1 do
   begin
-    if (ABody[Index].Kind = TSyntaxKind.Visibility) and SameText(ABody[Index].Name, AName) then
+    if (ABody[mIndex].Kind = TSyntaxKind.Visibility) and SameText(ABody[mIndex].Name, AName) then
     begin
       Exit(True);
     end;

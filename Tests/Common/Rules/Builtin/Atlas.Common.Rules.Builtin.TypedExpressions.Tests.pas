@@ -165,7 +165,7 @@ var
 begin
   Found := ComparisonFindings(Routine('  Rest: Cardinal;'#10, '  while Rest >= 0 do'#10'    Dec(Rest);'#10));
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(ComparisonAlwaysConstantRuleId, Found[0].RuleId);
+  Assert.AreEqual(cComparisonAlwaysConstantRuleId, Found[0].RuleId);
   Assert.AreEqual('Rest ist Cardinal; Rest >= 0 ist immer wahr, die Schleife endet nie (wie W1022).',
     Found[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));
@@ -399,7 +399,7 @@ begin
     '    (''Neu'', ''Offen'', ''Geschlossen'');'#10);
   Found := InitFindings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(ConstantInitializerMismatchRuleId, Found[0].RuleId);
+  Assert.AreEqual(cConstantInitializerMismatchRuleId, Found[0].RuleId);
   Assert.AreEqual('TStatus hat 4 Werte, die Konstante 3 Einträge; stArchiviert fehlt (wie E2072).',
     Found[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
@@ -684,7 +684,7 @@ begin
   Source := Befehle('', '  case Befehl of'#10'    ''neu'': Neu;'#10'    ''ende'': Beenden;'#10'  end;'#10);
   Found := CaseFindings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(CaseSelectorNotOrdinalRuleId, Found[0].RuleId);
+  Assert.AreEqual(cCaseSelectorNotOrdinalRuleId, Found[0].RuleId);
   Assert.AreEqual('case braucht einen ordinalen Typ; Befehl ist string (wie E2001).', Found[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
   Assert.AreEqual(5, Found[0].Range.StartPos.Line);
@@ -834,7 +834,7 @@ begin
   Source := Routine('  Pfad: AnsiString;'#10, '  DeleteFile(PChar(Pfad));'#10);
   Found := CastFindings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(SuspiciousStringPointerCastRuleId, Found[0].RuleId);
+  Assert.AreEqual(cSuspiciousStringPointerCastRuleId, Found[0].RuleId);
   Assert.AreEqual('PChar zeigt auf WideChar, Pfad ist AnsiString; die API liest Datenmüll (wie W1044).',
     Found[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));

@@ -83,7 +83,7 @@ var
 begin
   mFound := Findings(Source('', '  S := Format(''%d'', [AName]);'#10));
   Assert.AreEqual(1, Integer(Length(mFound)));
-  Assert.AreEqual(FormatArgsRuleId, mFound[0].RuleId);
+  Assert.AreEqual(cFormatArgsRuleId, mFound[0].RuleId);
   Assert.AreEqual('%d erwartet eine Ganzzahl, AName ist vom Typ string: EConvertError zur Laufzeit.',
     mFound[0].Message);
   Assert.AreEqual(13, mFound[0].Range.StartPos.Line);

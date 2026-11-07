@@ -63,10 +63,10 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  ConditionalDirectiveUnbalancedRuleId = 'conditional-directive-unbalanced';
-  DirectiveTypoRuleId = 'directive-typo';
-  CompilerWarningsDisabledRuleId = 'compiler-warnings-disabled';
-  CompilerDirectiveInvalidRuleId = 'compiler-directive-invalid';
+  cConditionalDirectiveUnbalancedRuleId = 'conditional-directive-unbalanced';
+  cDirectiveTypoRuleId = 'directive-typo';
+  cCompilerWarningsDisabledRuleId = 'compiler-warnings-disabled';
+  cCompilerDirectiveInvalidRuleId = 'compiler-directive-invalid';
 
 type
   TConditionalDirectiveUnbalancedRule = class(TInterfacedObject, IRule)
@@ -184,7 +184,7 @@ const
 
 const
   /// <summary>BDS-Nummer von Delphi 13: ab hier ist eine unbekannte Direktive ein Fehler (E1030, #1382).</summary>
-  Delphi13 = '37.0';
+  cDelphi13 = '37.0';
 
 type
   /// <summary>Offenes {$IF…} mit seiner Kette aus {$ELSEIF}/{$ELSE}.</summary>
@@ -204,25 +204,25 @@ type
 /// <summary>Leerraum zu einem Zeichen zusammengefasst, höchstens AMax Zeichen.</summary>
 function Compact(const AText: string; AMax: Integer): string;
 var
-  Ch: Char;
-  Space: Boolean;
+  mCh: Char;
+  mSpace: Boolean;
 begin
   Result := '';
-  Space := False;
-  for Ch in Trim(AText) do
+  mSpace := False;
+  for mCh in Trim(AText) do
   begin
-    if CharInSet(Ch, [' ', #9, #10, #13]) then
+    if CharInSet(mCh, [' ', #9, #10, #13]) then
     begin
-      Space := True;
+      mSpace := True;
     end
     else
     begin
-      if Space then
+      if mSpace then
       begin
         Result := Result + ' ';
       end;
-      Space := False;
-      Result := Result + Ch;
+      mSpace := False;
+      Result := Result + mCh;
     end;
   end;
   if Length(Result) > AMax then
@@ -234,39 +234,39 @@ end;
 /// <summary>Erstes Wort bis Leerraum oder Komma.</summary>
 function FirstWord(const AText: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := 1;
-  while (Index <= Length(AText)) and not CharInSet(AText[Index], [' ', #9, #10, #13, ',']) do
+  mIndex := 1;
+  while (mIndex <= Length(AText)) and not CharInSet(AText[mIndex], [' ', #9, #10, #13, ',']) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Copy(AText, 1, Index - 1);
+  Result := Copy(AText, 1, mIndex - 1);
 end;
 
 /// <summary>Kommt ein Bezeichner vor, der mit FPC beginnt (FPC, FPC_FULLVERSION)?</summary>
 function MentionsFpc(const AText: string): Boolean;
 var
-  Index, Start: Integer;
+  mIndex, mStart: Integer;
 begin
-  Index := 1;
-  while Index <= Length(AText) do
+  mIndex := 1;
+  while mIndex <= Length(AText) do
   begin
-    if CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '_']) then
+    if CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '_']) then
     begin
-      Start := Index;
-      while (Index <= Length(AText)) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+      mStart := mIndex;
+      while (mIndex <= Length(AText)) and CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
       begin
-        Inc(Index);
+        Inc(mIndex);
       end;
-      if StartsText('FPC', Copy(AText, Start, Index - Start)) then
+      if StartsText('FPC', Copy(AText, mStart, mIndex - mStart)) then
       begin
         Exit(True);
       end;
     end
     else
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
   end;
   Result := False;
@@ -289,26 +289,26 @@ end;
 
 function TConditionalDirectiveUnbalancedRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(ConditionalDirectiveUnbalancedRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cConditionalDirectiveUnbalancedRuleId, TRuleSeverity.Error,
     cTexts[TDirectivesText.ConditionalTitle].Text);
 end;
 
 procedure TConditionalDirectiveUnbalancedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Stack: TArray<TOpenConditional>;
-  Options: TArray<Integer>;
-  OptionInBranch: Boolean;
-  LineBreak, mUnknownCode: string;
+  mTokens: TArray<TPascalToken>;
+  mStack: TArray<TOpenConditional>;
+  mOptions: TArray<Integer>;
+  mOptionInBranch: Boolean;
+  mLineBreak, mUnknownCode: string;
 
   function RangeOf(AIndex: Integer): TTextRange;
   begin
-    Result := TTextRange.Create(Tokens[AIndex].StartPos, Tokens[AIndex].EndPos);
+    Result := TTextRange.Create(mTokens[AIndex].StartPos, mTokens[AIndex].EndPos);
   end;
 
   function InFpcBranch: Boolean;
   begin
-    Result := (Stack <> nil) and Stack[High(Stack)].Fpc;
+    Result := (mStack <> nil) and mStack[High(mStack)].Fpc;
   end;
 
   /// <summary>Korrektur, die das Wort AWord (ab Zeichen AFrom der Direktive) durch AReplacement in seiner
@@ -316,41 +316,41 @@ var
   function ReplaceFix(AIndex: Integer; const AWord, AReplacement, AShown: string; AFrom: Integer;
     out AFix: TRuleFix): Boolean;
   var
-    At: Integer;
-    Start: TTextPosition;
+    mAt: Integer;
+    mStart: TTextPosition;
   begin
     AFix := Default(TRuleFix);
-    At := PosEx(AWord, Tokens[AIndex].Text, AFrom);
-    Result := (At > 0) and (Tokens[AIndex].StartPos.Line = Tokens[AIndex].EndPos.Line);
+    mAt := PosEx(AWord, mTokens[AIndex].Text, AFrom);
+    Result := (mAt > 0) and (mTokens[AIndex].StartPos.Line = mTokens[AIndex].EndPos.Line);
     if not Result then
     begin
       Exit;
     end;
-    Start := TTextPosition.Create(Tokens[AIndex].StartPos.Line, Tokens[AIndex].StartPos.Character + At - 1);
+    mStart := TTextPosition.Create(mTokens[AIndex].StartPos.Line, mTokens[AIndex].StartPos.Character + mAt - 1);
     AFix := TRuleFix.Create(cTexts[TDirectivesText.FixTypo].Fmt([AShown]),
-      [TRuleEdit.Create(TTextRange.Create(Start, TTextPosition.Create(Start.Line, Start.Character + Length(AWord))),
+      [TRuleEdit.Create(TTextRange.Create(mStart, TTextPosition.Create(mStart.Line, mStart.Character + Length(AWord))),
       LikeOriginal(AWord, AReplacement))]);
   end;
 
   /// <summary>Entfernt die Direktive AIndex, steht sie allein in der Zeile, mitsamt der Zeile.</summary>
   function RemoveFix(AIndex: Integer; const ATitle: string): TRuleFix;
   var
-    Line: Integer;
-    Alone: Boolean;
+    mLine: Integer;
+    mAlone: Boolean;
   begin
-    Line := Tokens[AIndex].StartPos.Line;
-    Alone := Tokens[AIndex].EndPos.Line = Line;
-    if Alone and (AIndex > 0) then
+    mLine := mTokens[AIndex].StartPos.Line;
+    mAlone := mTokens[AIndex].EndPos.Line = mLine;
+    if mAlone and (AIndex > 0) then
     begin
-      Alone := Tokens[AIndex - 1].EndPos.Line < Line;
+      mAlone := mTokens[AIndex - 1].EndPos.Line < mLine;
     end;
-    if Alone and (AIndex < High(Tokens)) then
+    if mAlone and (AIndex < High(mTokens)) then
     begin
-      Alone := Tokens[AIndex + 1].StartPos.Line > Line;
+      mAlone := mTokens[AIndex + 1].StartPos.Line > mLine;
     end;
-    if Alone then
+    if mAlone then
     begin
-      Result := TRuleFix.Create(ATitle, [TRuleEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), '')]);
+      Result := TRuleFix.Create(ATitle, [TRuleEdit.Create(TTextRange.Create(mLine, 0, mLine + 1, 0), '')]);
     end
     else
     begin
@@ -361,17 +361,17 @@ var
   /// <summary>{$ENDIF} vor der ersten Leerzeile hinter der Kette; False ohne Leerzeile.</summary>
   function EndifFix(const AOpen: TOpenConditional; out AFix: TRuleFix): Boolean;
   var
-    Index, Line: Integer;
+    mIndex, mLine: Integer;
   begin
     AFix := Default(TRuleFix);
-    for Index := AOpen.Last + 1 to High(Tokens) do
+    for mIndex := AOpen.Last + 1 to High(mTokens) do
     begin
-      if Tokens[Index].StartPos.Line > Tokens[Index - 1].EndPos.Line + 1 then
+      if mTokens[mIndex].StartPos.Line > mTokens[mIndex - 1].EndPos.Line + 1 then
       begin
-        Line := Tokens[Index - 1].EndPos.Line;
-        AFix := TRuleFix.Create(cTexts[TDirectivesText.AddEndif].Fmt([Line + 1]),
-          [TRuleEdit.Create(TTextRange.Create(Line + 1, 0, Line + 1, 0),
-          StringOfChar(' ', Tokens[AOpen.Opening].StartPos.Character) + '{$ENDIF}' + LineBreak)]);
+        mLine := mTokens[mIndex - 1].EndPos.Line;
+        AFix := TRuleFix.Create(cTexts[TDirectivesText.AddEndif].Fmt([mLine + 1]),
+          [TRuleEdit.Create(TTextRange.Create(mLine + 1, 0, mLine + 1, 0),
+          StringOfChar(' ', mTokens[AOpen.Opening].StartPos.Character) + '{$ENDIF}' + mLineBreak)]);
         Exit(True);
       end;
     end;
@@ -386,16 +386,16 @@ var
 
   procedure CheckSymbol(AIndex: Integer; const AName, ARest: string);
   var
-    Symbol: string;
+    mSymbol: string;
   begin
-    Symbol := FirstWord(ARest);
-    if Symbol = '' then
+    mSymbol := FirstWord(ARest);
+    if mSymbol = '' then
     begin
       AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.NoSymbol].Fmt([AName]), TRuleConfidence.High);
     end
-    else if not IsValidIdent(Symbol) then
+    else if not IsValidIdent(mSymbol) then
     begin
-      AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.BadSymbol].Fmt([Symbol, AName]),
+      AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.BadSymbol].Fmt([mSymbol, AName]),
         TRuleConfidence.High);
     end;
   end;
@@ -423,31 +423,31 @@ var
 
   procedure CheckShortSwitches(AIndex: Integer; const ABody: string);
   var
-    Part: string;
+    mPart: string;
   begin
-    for Part in SplitString(ABody, ',') do
+    for mPart in SplitString(ABody, ',') do
     begin
-      if SameText(TDirectiveNames.LeadingName(Trim(Part)), 'A') then
+      if SameText(TDirectiveNames.LeadingName(Trim(mPart)), 'A') then
       begin
-        CheckAlignValue(AIndex, Trim(Copy(Trim(Part), 2, MaxInt)), False);
+        CheckAlignValue(AIndex, Trim(Copy(Trim(mPart), 2, MaxInt)), False);
       end;
     end;
   end;
 
   procedure CheckUnknown(AIndex: Integer; const AName: string);
   var
-    Closest: string;
-    Fix: TRuleFix;
+    mClosest: string;
+    mFix: TRuleFix;
   begin
     if InFpcBranch or TDirectiveNames.IsDirective(AName) then
     begin
       Exit;
     end;
-    Closest := TTextFuzzy.Closest(AName, TDirectiveNames.Directives);
-    if (Closest <> '') and ReplaceFix(AIndex, AName, Closest, '{$' + Closest + '}', 1, Fix) then
+    mClosest := TTextFuzzy.Closest(AName, TDirectiveNames.Directives);
+    if (mClosest <> '') and ReplaceFix(AIndex, AName, mClosest, '{$' + mClosest + '}', 1, mFix) then
     begin
       AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.UnknownDirectiveGuess].Fmt(
-        [AName, Closest, mUnknownCode]), TRuleConfidence.High, [Fix]);
+        [AName, mClosest, mUnknownCode]), TRuleConfidence.High, [mFix]);
     end
     else
     begin
@@ -459,105 +459,105 @@ var
   /// <summary>AFrom: erstes Zeichen hinter WARN in der Direktive.</summary>
   procedure CheckWarn(AIndex, AFrom: Integer; const ARest: string);
   var
-    Id, Closest: string;
-    Fix: TRuleFix;
+    mId, mClosest: string;
+    mFix: TRuleFix;
   begin
-    Id := TDirectiveNames.LeadingName(ARest);
-    if (Id = '') or InFpcBranch or TDirectiveNames.IsWarning(Id) then
+    mId := TDirectiveNames.LeadingName(ARest);
+    if (mId = '') or InFpcBranch or TDirectiveNames.IsWarning(mId) then
     begin
       Exit;
     end;
-    Closest := TTextFuzzy.Closest(Id, TDirectiveNames.Warnings);
-    if (Closest <> '') and ReplaceFix(AIndex, Id, Closest, Closest, AFrom, Fix) then
+    mClosest := TTextFuzzy.Closest(mId, TDirectiveNames.Warnings);
+    if (mClosest <> '') and ReplaceFix(AIndex, mId, mClosest, mClosest, AFrom, mFix) then
     begin
       AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.UnknownWarningGuess].Fmt(
-        [Id, Closest, mUnknownCode]), TRuleConfidence.High, [Fix]);
+        [mId, mClosest, mUnknownCode]), TRuleConfidence.High, [mFix]);
     end
     else
     begin
-      AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.UnknownWarning].Fmt([Id, mUnknownCode]),
+      AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.UnknownWarning].Fmt([mId, mUnknownCode]),
         TRuleConfidence.High);
     end;
   end;
 
   procedure Open(AIndex: Integer; const AName, ARest: string);
   var
-    Item: TOpenConditional;
+    mItem: TOpenConditional;
   begin
-    Item.Opening := AIndex;
-    Item.Last := AIndex;
-    Item.Name := AName;
-    Item.HadElse := False;
-    Item.Fpc := InFpcBranch or MentionsFpc(ARest);
+    mItem.Opening := AIndex;
+    mItem.Last := AIndex;
+    mItem.Name := AName;
+    mItem.HadElse := False;
+    mItem.Fpc := InFpcBranch or MentionsFpc(ARest);
     if AName = 'IFNDEF' then
     begin
-      Item.Condition := 'not ' + FirstWord(ARest);
+      mItem.Condition := 'not ' + FirstWord(ARest);
     end
     else if AName = 'IFDEF' then
     begin
-      Item.Condition := FirstWord(ARest);
+      mItem.Condition := FirstWord(ARest);
     end
     else
     begin
-      Item.Condition := Compact(ARest, 40);
+      mItem.Condition := Compact(ARest, 40);
     end;
-    Stack := Stack + [Item];
+    mStack := mStack + [mItem];
   end;
 
   procedure Unclosed(const AItem: TOpenConditional; ATop: Boolean);
   var
-    Code: string;
-    Message: string;
-    Fix: TRuleFix;
+    mCode: string;
+    mMessage: string;
+    mFix: TRuleFix;
   begin
-    Code := 'E2095';
+    mCode := 'E2095';
     if AItem.Name = 'IF' then
     begin
-      Code := 'E2280';
+      mCode := 'E2280';
     end;
-    Message := cTexts[TDirectivesText.NeverClosed].Fmt(
-      [Compact(Tokens[AItem.Opening].Text, 60), AItem.Condition, Code]);
-    if ATop and EndifFix(AItem, Fix) then
+    mMessage := cTexts[TDirectivesText.NeverClosed].Fmt(
+      [Compact(mTokens[AItem.Opening].Text, 60), AItem.Condition, mCode]);
+    if ATop and EndifFix(AItem, mFix) then
     begin
-      AReport.Add(RangeOf(AItem.Opening), Message, TRuleConfidence.High, [Fix]);
+      AReport.Add(RangeOf(AItem.Opening), mMessage, TRuleConfidence.High, [mFix]);
     end
     else
     begin
-      AReport.Add(RangeOf(AItem.Opening), Message, TRuleConfidence.High);
+      AReport.Add(RangeOf(AItem.Opening), mMessage, TRuleConfidence.High);
     end;
   end;
 
   /// <summary>{$ELSE} oder {$ELSEIF} an AIndex.</summary>
   procedure VisitElse(AIndex: Integer; const AName, ARest: string);
   begin
-    if Stack = nil then
+    if mStack = nil then
     begin
       Stray(AIndex, AName);
     end
-    else if Stack[High(Stack)].HadElse then
+    else if mStack[High(mStack)].HadElse then
     begin
       AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.AfterElse].Fmt(
-        [AName, Compact(Tokens[Stack[High(Stack)].Opening].Text, 60),
-        Tokens[Stack[High(Stack)].Opening].StartPos.Line + 1]), TRuleConfidence.High);
+        [AName, Compact(mTokens[mStack[High(mStack)].Opening].Text, 60),
+        mTokens[mStack[High(mStack)].Opening].StartPos.Line + 1]), TRuleConfidence.High);
     end
     else
     begin
-      Stack[High(Stack)].HadElse := AName = 'ELSE';
-      Stack[High(Stack)].Last := AIndex;
-      Stack[High(Stack)].Fpc := Stack[High(Stack)].Fpc or MentionsFpc(ARest);
+      mStack[High(mStack)].HadElse := AName = 'ELSE';
+      mStack[High(mStack)].Last := AIndex;
+      mStack[High(mStack)].Fpc := mStack[High(mStack)].Fpc or MentionsFpc(ARest);
     end;
   end;
 
   /// <summary>{$ENDIF} oder {$IFEND} an AIndex.</summary>
   procedure VisitEnd(AIndex: Integer; const AName: string);
   begin
-    if Stack = nil then
+    if mStack = nil then
     begin
       Stray(AIndex, AName);
     end
     else
     begin
-      SetLength(Stack, Length(Stack) - 1);
+      SetLength(mStack, Length(mStack) - 1);
     end;
   end;
 
@@ -570,8 +570,8 @@ var
     end
     else if MatchStr(AName, ['PUSHOPT', 'POPOPT']) then
     begin
-      Options := Options + [AIndex];
-      OptionInBranch := OptionInBranch or (Stack <> nil);
+      mOptions := mOptions + [AIndex];
+      mOptionInBranch := mOptionInBranch or (mStack <> nil);
     end
     else if AName = 'ALIGN' then
     begin
@@ -579,7 +579,7 @@ var
     end
     else if AName = 'WARN' then
     begin
-      CheckWarn(AIndex, Pos(TDirectiveNames.LeadingName(ABody), Tokens[AIndex].Text) + Length(AName), ARest);
+      CheckWarn(AIndex, Pos(TDirectiveNames.LeadingName(ABody), mTokens[AIndex].Text) + Length(AName), ARest);
     end
     else if Length(AName) = 1 then
     begin
@@ -595,7 +595,7 @@ var
   var
     mBody, mName, mRest: string;
   begin
-    mBody := TDirectiveNames.Body(Tokens[AIndex].Text);
+    mBody := TDirectiveNames.Body(mTokens[AIndex].Text);
     mName := UpperCase(TDirectiveNames.LeadingName(mBody));
     mRest := Trim(Copy(mBody, Length(mName) + 1, MaxInt));
     if mName = '' then
@@ -626,68 +626,68 @@ var
 
   procedure CheckOptionStack;
   var
-    Pushes: TArray<Integer>;
-    Index: Integer;
+    mPushes: TArray<Integer>;
+    mIndex: Integer;
   begin
-    if OptionInBranch then
+    if mOptionInBranch then
     begin
       Exit;
     end;
-    Pushes := nil;
-    for Index in Options do
+    mPushes := nil;
+    for mIndex in mOptions do
     begin
-      if SameText(TDirectiveNames.LeadingName(TDirectiveNames.Body(Tokens[Index].Text)), 'PUSHOPT') then
+      if SameText(TDirectiveNames.LeadingName(TDirectiveNames.Body(mTokens[mIndex].Text)), 'PUSHOPT') then
       begin
-        Pushes := Pushes + [Index];
+        mPushes := mPushes + [mIndex];
       end
-      else if Pushes = nil then
+      else if mPushes = nil then
       begin
-        AReport.Add(RangeOf(Index), cTexts[TDirectivesText.PopWithoutPush].Text, TRuleConfidence.High);
+        AReport.Add(RangeOf(mIndex), cTexts[TDirectivesText.PopWithoutPush].Text, TRuleConfidence.High);
       end
       else
       begin
-        SetLength(Pushes, Length(Pushes) - 1);
+        SetLength(mPushes, Length(mPushes) - 1);
       end;
     end;
-    for Index in Pushes do
+    for mIndex in mPushes do
     begin
-      AReport.Add(RangeOf(Index), cTexts[TDirectivesText.PushWithoutPop].Text, TRuleConfidence.High);
+      AReport.Add(RangeOf(mIndex), cTexts[TDirectivesText.PushWithoutPop].Text, TRuleConfidence.High);
     end;
   end;
 
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  LineBreak := #10;
+  mTokens := AContext.Tree.Tokens;
+  mLineBreak := #10;
   if Pos(#13#10, AContext.Text) > 0 then
   begin
-    LineBreak := #13#10;
+    mLineBreak := #13#10;
   end;
-  Stack := nil;
-  Options := nil;
-  OptionInBranch := False;
+  mStack := nil;
+  mOptions := nil;
+  mOptionInBranch := False;
   // Delphi 13 meldet unbekannte Direktiven und {$WARN}-Bezeichner als Fehler E1030, ältere Versionen als W1030
   // (#1382).
   mUnknownCode := 'W1030';
-  if TLanguageFeatures.IsAtLeast(AContext.DelphiVersion, Delphi13) then
+  if TLanguageFeatures.IsAtLeast(AContext.DelphiVersion, cDelphi13) then
   begin
     mUnknownCode := 'E1030';
   end;
-  for Index := 0 to High(Tokens) do
+  for mIndex := 0 to High(mTokens) do
   begin
-    if Tokens[Index].Kind = TPascalTokenKind.Directive then
+    if mTokens[mIndex].Kind = TPascalTokenKind.Directive then
     begin
-      Visit(Index);
+      Visit(mIndex);
     end;
   end;
-  for Index := 0 to High(Stack) do
+  for mIndex := 0 to High(mStack) do
   begin
-    Unclosed(Stack[Index], Index = High(Stack));
+    Unclosed(mStack[mIndex], mIndex = High(mStack));
   end;
   CheckOptionStack;
 end;
@@ -696,44 +696,44 @@ end;
 
 function TDirectiveTypoRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(DirectiveTypoRuleId, TRuleSeverity.Error, cTexts[TDirectivesText.TypoTitle].Text);
+  Result := TRuleDescriptor.Create(cDirectiveTypoRuleId, TRuleSeverity.Error, cTexts[TDirectivesText.TypoTitle].Text);
 end;
 
 /// <summary>Offsets der Token in Zweigen, deren Bedingung (auch umschließend) FPC abfragt.</summary>
 function FpcOffsets(const ATokens: TArray<TPascalToken>): TArray<Integer>;
 var
-  Token: TPascalToken;
-  Stack: TArray<Boolean>;
-  Body, Name, Rest: string;
-  Fpc: Boolean;
+  mToken: TPascalToken;
+  mStack: TArray<Boolean>;
+  mBody, mName, mRest: string;
+  mFpc: Boolean;
 begin
   Result := nil;
-  Stack := nil;
-  for Token in ATokens do
+  mStack := nil;
+  for mToken in ATokens do
   begin
-    Fpc := (Stack <> nil) and Stack[High(Stack)];
-    if Token.Kind <> TPascalTokenKind.Directive then
+    mFpc := (mStack <> nil) and mStack[High(mStack)];
+    if mToken.Kind <> TPascalTokenKind.Directive then
     begin
-      if Fpc then
+      if mFpc then
       begin
-        Result := Result + [Token.Offset];
+        Result := Result + [mToken.Offset];
       end;
       Continue;
     end;
-    Body := TDirectiveNames.Body(Token.Text);
-    Name := UpperCase(TDirectiveNames.LeadingName(Body));
-    Rest := Copy(Body, Length(Name) + 1, MaxInt);
-    if (Name = 'IF') or (Name = 'IFDEF') or (Name = 'IFNDEF') or (Name = 'IFOPT') then
+    mBody := TDirectiveNames.Body(mToken.Text);
+    mName := UpperCase(TDirectiveNames.LeadingName(mBody));
+    mRest := Copy(mBody, Length(mName) + 1, MaxInt);
+    if (mName = 'IF') or (mName = 'IFDEF') or (mName = 'IFNDEF') or (mName = 'IFOPT') then
     begin
-      Stack := Stack + [Fpc or MentionsFpc(Rest)];
+      mStack := mStack + [mFpc or MentionsFpc(mRest)];
     end
-    else if (Name = 'ELSEIF') and (Stack <> nil) then
+    else if (mName = 'ELSEIF') and (mStack <> nil) then
     begin
-      Stack[High(Stack)] := Stack[High(Stack)] or MentionsFpc(Rest);
+      mStack[High(mStack)] := mStack[High(mStack)] or MentionsFpc(mRest);
     end
-    else if ((Name = 'ENDIF') or (Name = 'IFEND')) and (Stack <> nil) then
+    else if ((mName = 'ENDIF') or (mName = 'IFEND')) and (mStack <> nil) then
     begin
-      SetLength(Stack, Length(Stack) - 1);
+      SetLength(mStack, Length(mStack) - 1);
     end;
   end;
 end;
@@ -1019,13 +1019,13 @@ end;
 /// <summary>Folgt hinter dem Token AIndex noch Code außer dem abschließenden "end."?</summary>
 function CodeFollows(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
-  for Index := AIndex + 1 to High(ATokens) do
+  for mIndex := AIndex + 1 to High(ATokens) do
   begin
-    if not (ATokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) and
-      not ATokens[Index].IsKeyword('end') and not ATokens[Index].IsSymbol('.') then
+    if not (ATokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) and
+      not ATokens[mIndex].IsKeyword('end') and not ATokens[mIndex].IsSymbol('.') then
     begin
       Exit(True);
     end;
@@ -1036,28 +1036,28 @@ end;
 /// der sie umschließt; nil ohne oder wenn es ein ganzer Abschnitt wäre.</summary>
 function NextBlock(ATree: TSyntaxTree; AOffset: Integer): TSyntaxNode;
 var
-  Node, Inner: TSyntaxNode;
-  Index: Integer;
+  mNode, mInner: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := nil;
-  Node := ATree.Root;
-  while Node <> nil do
+  mNode := ATree.Root;
+  while mNode <> nil do
   begin
-    Inner := nil;
-    for Index := 0 to Node.ChildCount - 1 do
+    mInner := nil;
+    for mIndex := 0 to mNode.ChildCount - 1 do
     begin
-      if (Node[Index].StartOffset <= AOffset) and (AOffset < Node[Index].EndOffset) then
+      if (mNode[mIndex].StartOffset <= AOffset) and (AOffset < mNode[mIndex].EndOffset) then
       begin
-        Inner := Node[Index];
+        mInner := mNode[mIndex];
         Break;
       end
-      else if Node[Index].StartOffset >= AOffset then
+      else if mNode[mIndex].StartOffset >= AOffset then
       begin
-        Result := Node[Index];
+        Result := mNode[mIndex];
         Break;
       end;
     end;
-    Node := Inner;
+    mNode := mInner;
   end;
   if (Result <> nil) and (Result.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
     TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection]) then
@@ -1068,7 +1068,7 @@ end;
 
 function TCompilerWarningsDisabledRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(CompilerWarningsDisabledRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cCompilerWarningsDisabledRuleId, TRuleSeverity.Warning,
     cTexts[TDirectivesText.OffTitle].Text);
 end;
 
@@ -1326,7 +1326,7 @@ end;
 
 function TCompilerDirectiveInvalidRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(CompilerDirectiveInvalidRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cCompilerDirectiveInvalidRuleId, TRuleSeverity.Error,
     cTexts[TDirectivesText.DirectiveTitle].Text);
 end;
 

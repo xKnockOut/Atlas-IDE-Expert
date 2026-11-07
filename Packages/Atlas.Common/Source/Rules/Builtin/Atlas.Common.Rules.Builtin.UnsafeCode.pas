@@ -24,7 +24,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  UnsafeCodeRuleId = 'unsafe-code';
+  cUnsafeCodeRuleId = 'unsafe-code';
 
 type
   TUnsafeCodeRule = class(TInterfacedObject, IRule)
@@ -92,7 +92,7 @@ end;
 
 function TUnsafeCodeRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UnsafeCodeRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cUnsafeCodeRuleId, TRuleSeverity.Warning,
     cTexts[TUnsafeCodeText.Title].Text);
 end;
 

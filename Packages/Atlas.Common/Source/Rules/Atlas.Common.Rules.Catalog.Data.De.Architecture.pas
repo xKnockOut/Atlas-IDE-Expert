@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesDeArchitecture: array[0..66] of string = (
+  cCatalogLinesDeArchitecture: array[0..66] of string = (
     '{',
     '      "id": "forbidden-uses",',
     '      "name": "Verbotene uses-Beziehung",',

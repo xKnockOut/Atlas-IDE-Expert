@@ -29,8 +29,8 @@ type
 
   TTestUnits = class
   public const
-    DefaultPattern = '{unit}.Tests';
-    Placeholder = '{unit}';
+    cDefaultPattern = '{unit}.Tests';
+    cPlaceholder = '{unit}';
   public
     /// <summary>Name der Testunit zu AUnitName nach APattern; leeres Muster gilt als Vorgabe.</summary>
     class function TestUnitName(const AUnitName, APattern: string): string; static;
@@ -56,7 +56,8 @@ type
     /// <summary>Bindet die Programmdatei DUnitX oder DUnit ein?</summary>
     class function IsTestProgram(const AText: string): Boolean; static;
     /// <summary>Erstes Testprogramm (.dpr) unter ACandidates; '' ohne.</summary>
-    class function FindTestProgram(const ACandidates: TArray<string>; const AReadText: TTestUnitReadText): string; static;
+    class function FindTestProgram(const ACandidates: TArray<string>;
+      const AReadText: TTestUnitReadText): string; static;
     /// <summary>Pfad von AFileName relativ zum Ordner ABaseDir, mit \ wie in .dpr und .dproj;
     /// AFileName unverändert, wenn es auf einem anderen Laufwerk liegt.</summary>
     class function RelativePath(const ABaseDir, AFileName: string): string; static;
@@ -90,58 +91,58 @@ const
 function PatternOrDefault(const APattern: string): string;
 begin
   Result := APattern;
-  if Pos(TTestUnits.Placeholder, Result) = 0 then
+  if Pos(TTestUnits.cPlaceholder, Result) = 0 then
   begin
-    Result := TTestUnits.DefaultPattern;
+    Result := TTestUnits.cDefaultPattern;
   end;
 end;
 
 class function TTestUnits.TestUnitName(const AUnitName, APattern: string): string;
 begin
-  Result := StringReplace(PatternOrDefault(APattern), Placeholder, AUnitName, [rfIgnoreCase]);
+  Result := StringReplace(PatternOrDefault(APattern), cPlaceholder, AUnitName, [rfIgnoreCase]);
 end;
 
 class function TTestUnits.TestedUnitName(const ATestUnitName, APattern: string; out AUnitName: string): Boolean;
 var
-  Pattern, Prefix, Suffix: string;
-  At: Integer;
+  mPattern, mPrefix, mSuffix: string;
+  mAt: Integer;
 begin
   AUnitName := '';
-  Pattern := PatternOrDefault(APattern);
-  At := Pos(Placeholder, Pattern);
-  Prefix := Copy(Pattern, 1, At - 1);
-  Suffix := Copy(Pattern, At + Length(Placeholder), MaxInt);
-  Result := (Length(ATestUnitName) > Length(Prefix) + Length(Suffix)) and StartsText(Prefix, ATestUnitName) and
-    EndsText(Suffix, ATestUnitName);
+  mPattern := PatternOrDefault(APattern);
+  mAt := Pos(cPlaceholder, mPattern);
+  mPrefix := Copy(mPattern, 1, mAt - 1);
+  mSuffix := Copy(mPattern, mAt + Length(cPlaceholder), MaxInt);
+  Result := (Length(ATestUnitName) > Length(mPrefix) + Length(mSuffix)) and StartsText(mPrefix, ATestUnitName) and
+    EndsText(mSuffix, ATestUnitName);
   if Result then
   begin
-    AUnitName := Copy(ATestUnitName, Length(Prefix) + 1, Length(ATestUnitName) - Length(Prefix) - Length(Suffix));
+    AUnitName := Copy(ATestUnitName, Length(mPrefix) + 1, Length(ATestUnitName) - Length(mPrefix) - Length(mSuffix));
   end;
 end;
 
 class function TTestUnits.FixtureName(const AClassName, AUnitName: string): string;
 var
-  Name: string;
-  Dot: Integer;
+  mName: string;
+  mDot: Integer;
 begin
   if AClassName <> '' then
   begin
-    Name := AClassName;
-    if (Length(Name) > 1) and CharInSet(Name[1], ['T', 't']) and CharInSet(Name[2], ['A'..'Z']) then
+    mName := AClassName;
+    if (Length(mName) > 1) and CharInSet(mName[1], ['T', 't']) and CharInSet(mName[2], ['A'..'Z']) then
     begin
-      Name := Copy(Name, 2, MaxInt);
+      mName := Copy(mName, 2, MaxInt);
     end;
   end
   else
   begin
-    Name := AUnitName;
-    Dot := Name.LastIndexOf('.');
-    if Dot >= 0 then
+    mName := AUnitName;
+    mDot := mName.LastIndexOf('.');
+    if mDot >= 0 then
     begin
-      Name := Name.Substring(Dot + 1);
+      mName := mName.Substring(mDot + 1);
     end;
   end;
-  Result := 'T' + Name + 'Tests';
+  Result := 'T' + mName + 'Tests';
 end;
 
 function IsClass(const ASymbol: TIndexSymbol): Boolean;
@@ -204,67 +205,67 @@ end;
 
 class function TTestUnits.FirstClass(const AUnit: TUnitIndex): string;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := '';
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if IsClass(Symbol) and Symbol.InInterface then
+    if IsClass(mSymbol) and mSymbol.InInterface then
     begin
-      Exit(Symbol.Name);
+      Exit(mSymbol.Name);
     end;
   end;
 end;
 
 class function TTestUnits.TestMethods(const AUnit: TUnitIndex; const AClassName: string): TArray<TTestUnitMethod>;
 var
-  Symbol: TIndexSymbol;
-  Method: TTestUnitMethod;
-  Count, Index: Integer;
-  Wanted: Boolean;
+  mSymbol: TIndexSymbol;
+  mMethod: TTestUnitMethod;
+  mCount, mIndex: Integer;
+  mWanted: Boolean;
 begin
   Result := nil;
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if not Symbol.InInterface then
+    if not mSymbol.InInterface then
     begin
       Continue;
     end;
     if AClassName <> '' then
     begin
-      Wanted := (Symbol.Kind = TIndexSymbolKind.Method) and SameText(Symbol.Container, AClassName) and
-        (Symbol.Visibility in [TIndexVisibility.Public, TIndexVisibility.Published]) and
-        not SameText(Symbol.Name, 'Destroy');
+      mWanted := (mSymbol.Kind = TIndexSymbolKind.Method) and SameText(mSymbol.Container, AClassName) and
+        (mSymbol.Visibility in [TIndexVisibility.Public, TIndexVisibility.Published]) and
+        not SameText(mSymbol.Name, 'Destroy');
     end
     else
     begin
-      Wanted := (Symbol.Kind = TIndexSymbolKind.Routine) and (Symbol.Container = '');
+      mWanted := (mSymbol.Kind = TIndexSymbolKind.Routine) and (mSymbol.Container = '');
     end;
-    if not Wanted then
+    if not mWanted then
     begin
       Continue;
     end;
     // Überladene Methoden: TestBerechne, TestBerechne2, …
-    Count := 1;
-    for Index := 0 to High(Result) do
+    mCount := 1;
+    for mIndex := 0 to High(Result) do
     begin
-      if SameText(Result[Index].Target, Symbol.QualifiedName) then
+      if SameText(Result[mIndex].Target, mSymbol.QualifiedName) then
       begin
-        Inc(Count);
+        Inc(mCount);
       end;
     end;
-    Method.Target := Symbol.QualifiedName;
-    Method.Name := 'Test' + Symbol.Name;
-    if Count > 1 then
+    mMethod.Target := mSymbol.QualifiedName;
+    mMethod.Name := 'Test' + mSymbol.Name;
+    if mCount > 1 then
     begin
-      Method.Name := Method.Name + IntToStr(Count);
+      mMethod.Name := mMethod.Name + IntToStr(mCount);
     end;
-    Result := Result + [Method];
+    Result := Result + [mMethod];
   end;
 end;
 
 const
-  ComponentAncestors: array[0..8] of string = ('TComponent', 'TControl', 'TWinControl', 'TCustomControl',
+  cComponentAncestors: array[0..8] of string = ('TComponent', 'TControl', 'TWinControl', 'TCustomControl',
     'TGraphicControl', 'TForm', 'TFrame', 'TDataModule', 'TCustomForm');
 
 /// <summary>Ist ASymbol ein Konstruktor von AClassName im interface?</summary>
@@ -307,7 +308,7 @@ begin
     begin
       Result := Result or (mSymbol.TypeParams <> '');
       AComponent := AComponent or ((Length(mSymbol.Ancestors) > 0) and
-        MatchText(mSymbol.Ancestors[0], ComponentAncestors));
+        MatchText(mSymbol.Ancestors[0], cComponentAncestors));
     end;
   end;
 end;
@@ -496,19 +497,19 @@ end;
 
 class function TTestUnits.IsTestProgram(const AText: string): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
 begin
-  Tokens := TPascalLexer.Tokenize(AText);
+  mTokens := TPascalLexer.Tokenize(AText);
   Result := False;
-  for Index := 0 to High(Tokens) do
+  for mIndex := 0 to High(mTokens) do
   begin
-    if Tokens[Index].IsKeyword('program') then
+    if mTokens[mIndex].IsKeyword('program') then
     begin
-      Exit(TUsesClauses.IsTestUnit(Tokens));
+      Exit(TUsesClauses.IsTestUnit(mTokens));
     end
-    else if Tokens[Index].IsKeyword('unit') or Tokens[Index].IsKeyword('library') or
-      Tokens[Index].IsKeyword('package') then
+    else if mTokens[mIndex].IsKeyword('unit') or mTokens[mIndex].IsKeyword('library') or
+      mTokens[mIndex].IsKeyword('package') then
     begin
       Exit(False);
     end;
@@ -518,58 +519,58 @@ end;
 class function TTestUnits.FindTestProgram(const ACandidates: TArray<string>;
   const AReadText: TTestUnitReadText): string;
 var
-  Candidate: string;
+  mCandidate: string;
 begin
   Result := '';
-  for Candidate in ACandidates do
+  for mCandidate in ACandidates do
   begin
-    if SameText(ExtractFileExt(Candidate), '.dpr') and IsTestProgram(AReadText(Candidate)) then
+    if SameText(ExtractFileExt(mCandidate), '.dpr') and IsTestProgram(AReadText(mCandidate)) then
     begin
-      Exit(Candidate);
+      Exit(mCandidate);
     end;
   end;
 end;
 
 function SplitPath(const APath: string): TArray<string>;
 var
-  Part: string;
+  mPart: string;
 begin
   Result := nil;
-  for Part in StringReplace(APath, '/', '\', [rfReplaceAll]).Split(['\']) do
+  for mPart in StringReplace(APath, '/', '\', [rfReplaceAll]).Split(['\']) do
   begin
-    if (Part <> '') and (Part <> '.') then
+    if (mPart <> '') and (mPart <> '.') then
     begin
-      Result := Result + [Part];
+      Result := Result + [mPart];
     end;
   end;
 end;
 
 class function TTestUnits.RelativePath(const ABaseDir, AFileName: string): string;
 var
-  Base, Target: TArray<string>;
-  Common, Index: Integer;
+  mBase, mTarget: TArray<string>;
+  mCommon, mIndex: Integer;
 begin
-  Base := SplitPath(ABaseDir);
-  Target := SplitPath(AFileName);
-  Common := 0;
-  while (Common < Length(Base)) and (Common < Length(Target) - 1) and SameText(Base[Common], Target[Common]) do
+  mBase := SplitPath(ABaseDir);
+  mTarget := SplitPath(AFileName);
+  mCommon := 0;
+  while (mCommon < Length(mBase)) and (mCommon < Length(mTarget) - 1) and SameText(mBase[mCommon], mTarget[mCommon]) do
   begin
-    Inc(Common);
+    Inc(mCommon);
   end;
   // Anderes Laufwerk (oder kein gemeinsamer Anfang bei absoluten Pfaden): vollständiger Pfad.
-  if (Common = 0) and (Length(Base) > 0) and (Length(Target) > 0) and (Pos(':', Target[0]) > 0) then
+  if (mCommon = 0) and (Length(mBase) > 0) and (Length(mTarget) > 0) and (Pos(':', mTarget[0]) > 0) then
   begin
     Exit(StringReplace(AFileName, '/', '\', [rfReplaceAll]));
   end;
   Result := '';
-  for Index := Common to High(Base) do
+  for mIndex := mCommon to High(mBase) do
   begin
     Result := Result + '..\';
   end;
-  for Index := Common to High(Target) do
+  for mIndex := mCommon to High(mTarget) do
   begin
-    Result := Result + Target[Index];
-    if Index < High(Target) then
+    Result := Result + mTarget[mIndex];
+    if mIndex < High(mTarget) then
     begin
       Result := Result + '\';
     end;

@@ -33,24 +33,24 @@ implementation
 
 procedure TLspFuzzyMatchTests.FindsAbbreviations;
 begin
-  Assert.IsTrue(TFuzzyMatch.Score('TBButton', 'TBB') > TFuzzyMatch.NoMatch);
-  Assert.IsTrue(TFuzzyMatch.Score('GetTypeHierarchy', 'GTH') > TFuzzyMatch.NoMatch);
-  Assert.IsTrue(TFuzzyMatch.Score('my_long_name', 'mln') > TFuzzyMatch.NoMatch);
+  Assert.IsTrue(TFuzzyMatch.Score('TBButton', 'TBB') > TFuzzyMatch.cNoMatch);
+  Assert.IsTrue(TFuzzyMatch.Score('GetTypeHierarchy', 'GTH') > TFuzzyMatch.cNoMatch);
+  Assert.IsTrue(TFuzzyMatch.Score('my_long_name', 'mln') > TFuzzyMatch.cNoMatch);
 end;
 
 procedure TLspFuzzyMatchTests.FindsSubsequences;
 begin
-  Assert.IsTrue(TFuzzyMatch.Score('TStringList', 'strlst') > TFuzzyMatch.NoMatch);
-  Assert.IsTrue(TFuzzyMatch.Score('TStringList.Create', 'stlcr') > TFuzzyMatch.NoMatch);
+  Assert.IsTrue(TFuzzyMatch.Score('TStringList', 'strlst') > TFuzzyMatch.cNoMatch);
+  Assert.IsTrue(TFuzzyMatch.Score('TStringList.Create', 'stlcr') > TFuzzyMatch.cNoMatch);
 end;
 
 procedure TLspFuzzyMatchTests.RejectsNonMatches;
 begin
-  Assert.AreEqual(TFuzzyMatch.NoMatch, TFuzzyMatch.Score('TStringList', 'xyz'));
-  Assert.AreEqual(TFuzzyMatch.NoMatch, TFuzzyMatch.Score('TStringList', 'tsx'));
-  Assert.AreEqual(TFuzzyMatch.NoMatch, TFuzzyMatch.Score('TStringList', ''));
+  Assert.AreEqual(TFuzzyMatch.cNoMatch, TFuzzyMatch.Score('TStringList', 'xyz'));
+  Assert.AreEqual(TFuzzyMatch.cNoMatch, TFuzzyMatch.Score('TStringList', 'tsx'));
+  Assert.AreEqual(TFuzzyMatch.cNoMatch, TFuzzyMatch.Score('TStringList', ''));
   // Reihenfolge zählt.
-  Assert.AreEqual(TFuzzyMatch.NoMatch, TFuzzyMatch.Score('TStringList', 'gr'));
+  Assert.AreEqual(TFuzzyMatch.cNoMatch, TFuzzyMatch.Score('TStringList', 'gr'));
 end;
 
 procedure TLspFuzzyMatchTests.IgnoresCase;
@@ -70,7 +70,7 @@ begin
   Assert.IsTrue(Exact > Prefix);
   Assert.IsTrue(Prefix > Substring);
   Assert.IsTrue(Substring > Subsequence);
-  Assert.IsTrue(Subsequence > TFuzzyMatch.NoMatch);
+  Assert.IsTrue(Subsequence > TFuzzyMatch.cNoMatch);
   // Kürzerer Name bei gleichem Präfix zuerst.
   Assert.IsTrue(TFuzzyMatch.Score('ListeA', 'liste') > TFuzzyMatch.Score('ListeAB', 'liste'));
 end;
@@ -83,14 +83,14 @@ end;
 
 procedure TLspFuzzyMatchTests.CompletionNeedsWordBoundaries;
 begin
-  Assert.IsTrue(TFuzzyMatch.CompletionScore('TStringList', 'stl') > TFuzzyMatch.NoMatch);
-  Assert.IsTrue(TFuzzyMatch.CompletionScore('TBButton', 'TBB') > TFuzzyMatch.NoMatch);
-  Assert.IsTrue(TFuzzyMatch.CompletionScore('TStringList.Create', 'stlcr') > TFuzzyMatch.NoMatch);
-  Assert.IsTrue(TFuzzyMatch.CompletionScore('TListe', 'liste') > TFuzzyMatch.NoMatch, 'Teilwort');
+  Assert.IsTrue(TFuzzyMatch.CompletionScore('TStringList', 'stl') > TFuzzyMatch.cNoMatch);
+  Assert.IsTrue(TFuzzyMatch.CompletionScore('TBButton', 'TBB') > TFuzzyMatch.cNoMatch);
+  Assert.IsTrue(TFuzzyMatch.CompletionScore('TStringList.Create', 'stlcr') > TFuzzyMatch.cNoMatch);
+  Assert.IsTrue(TFuzzyMatch.CompletionScore('TListe', 'liste') > TFuzzyMatch.cNoMatch, 'Teilwort');
   // Verstreut: die Symbolsuche findet es, die Vervollständigung nicht.
-  Assert.IsTrue(TFuzzyMatch.Score('ERROR_TOO_MANY_LINKS', 'myLis') > TFuzzyMatch.NoMatch);
-  Assert.AreEqual(TFuzzyMatch.NoMatch, TFuzzyMatch.CompletionScore('ERROR_TOO_MANY_LINKS', 'myLis'));
-  Assert.AreEqual(TFuzzyMatch.NoMatch, TFuzzyMatch.CompletionScore('Zaehler', 'zlr'));
+  Assert.IsTrue(TFuzzyMatch.Score('ERROR_TOO_MANY_LINKS', 'myLis') > TFuzzyMatch.cNoMatch);
+  Assert.AreEqual(TFuzzyMatch.cNoMatch, TFuzzyMatch.CompletionScore('ERROR_TOO_MANY_LINKS', 'myLis'));
+  Assert.AreEqual(TFuzzyMatch.cNoMatch, TFuzzyMatch.CompletionScore('Zaehler', 'zlr'));
   Assert.AreEqual(TFuzzyMatch.Score('ListeLeeren', 'liste'), TFuzzyMatch.CompletionScore('ListeLeeren', 'liste'));
 end;
 

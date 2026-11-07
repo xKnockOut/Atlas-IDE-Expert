@@ -2,8 +2,9 @@
 
 // Hover-Tooltip im Editor (#442) über die Code-Editor-API (ToolsAPI.Editor):
 //   - Mausbewegung im Editor → Bezeichner unter der Maus (Zeile, Wortgrenzen).
-//   - Nach 500 ms Verweilen auf demselben Bezeichner: textDocument/hover (im Hintergrund; die IDE wartet nie auf den Server)
-//     (TLspSession.HoverData) und Tooltip unter dem Wort (Kurzform).
+//   - Nach 500 ms Verweilen auf demselben Bezeichner: textDocument/hover (im Hintergrund; die IDE wartet nie auf den
+//   Server)
+//     (TLspSession.HoverDataAt) und Tooltip unter dem Wort (Kurzform).
 //   - Schließen 300 ms nachdem die Maus Bezeichner und Tooltip verlassen hat;
 //     sofort bei Taste (außer Umschalt, Strg, Alt allein), Mausklick, Scrollen,
 //     Größenänderung, IDE inaktiv (ein Wächter prüft das, solange der Tooltip
@@ -94,7 +95,7 @@ type
     end;
   public const
     /// <summary>Nach Vervollständigung (0) und Parameter-Hint (10).</summary>
-    KeyPriority = 20;
+    cKeyPriority = 20;
   private
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
@@ -112,7 +113,7 @@ type
     function WindowState: TAtlasEditorWindowState;
     procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
     /// <summary>Stelle unter der Maus in einer Datei, die Atlas bedient; False sonst.</summary>
-    function MousePos(const AEditor: TWinControl; X, Y: Integer; out APos: TAtlasHoverMousePos): Boolean;
+    function MousePos(const AEditor: TWinControl; AX, AY: Integer; out APos: TAtlasHoverMousePos): Boolean;
     /// <summary>Schlüssel des Bezeichners an APos ('' ohne); ein neuer setzt Wort, Ausdruck und Wortrechteck.
     /// </summary>
     function WordKey(const APos: TAtlasHoverMousePos): string;
@@ -181,7 +182,7 @@ end;
 
 constructor TAtlasEditorHover.THoverKeys.Create(AOwner: TAtlasEditorHover);
 begin
-  inherited Create(KeyPriority);
+  inherited Create(cKeyPriority);
   FOwner := AOwner;
 end;
 
@@ -192,11 +193,13 @@ begin
   // Ohne Tastatur-Ereignisse des Editors: andere Tasten schließen nach der Verarbeitung (wie EditorKeyDown).
   if not Result and (AKey <> VK_SHIFT) and (AKey <> VK_CONTROL) and (AKey <> VK_MENU) and
     not FOwner.FHistory.Pinned then
+  begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.Hover,
       procedure
       begin
         FOwner.Hide;
       end);
+  end;
   {$ENDIF}
 end;
 
@@ -252,11 +255,11 @@ begin
   FWorkers := TList<TThread>.Create;
   FShowTimer := TTimer.Create(nil);
   FShowTimer.Enabled := False;
-  FShowTimer.Interval := TAtlasCloseRules.TooltipShowDelayMs;
+  FShowTimer.Interval := TAtlasCloseRules.cTooltipShowDelayMs;
   FShowTimer.OnTimer := ShowTimerTick;
   FHideTimer := TTimer.Create(nil);
   FHideTimer.Enabled := False;
-  FHideTimer.Interval := TAtlasCloseRules.TooltipHideDelayMs;
+  FHideTimer.Interval := TAtlasCloseRules.cTooltipHideDelayMs;
   FHideTimer.OnTimer := HideTimerTick;
   FWatchTimer := TTimer.Create(nil);
   FWatchTimer.Enabled := False;
@@ -368,7 +371,7 @@ begin
   end;
 end;
 
-function TAtlasEditorHover.MousePos(const AEditor: TWinControl; X, Y: Integer; out APos: TAtlasHoverMousePos):
+function TAtlasEditorHover.MousePos(const AEditor: TWinControl; AX, AY: Integer; out APos: TAtlasHoverMousePos):
   Boolean;
 var
   mServices: INTACodeEditorServices;
@@ -379,7 +382,7 @@ begin
   if Result then
   begin
     APos.State := mServices.EditorState[AEditor];
-    Result := (APos.State <> nil) and APos.State.PointToCharacterPos(Point(X, Y), APos.Column, APos.VisibleLine);
+    Result := (APos.State <> nil) and APos.State.PointToCharacterPos(Point(AX, AY), APos.Column, APos.VisibleLine);
   end;
   if not Result then
   begin
@@ -624,21 +627,21 @@ end;
 
 function TAtlasEditorHover.WindowState: TAtlasEditorWindowState;
 var
-  View: IOTAEditView;
+  mView: IOTAEditView;
 begin
   Result := Default(TAtlasEditorWindowState);
   Result.AppActive := Application.Active;
   Result.Focus := GetFocus;
-  View := CurrentEditView;
-  if View = nil then
+  mView := CurrentEditView;
+  if mView = nil then
   begin
     Exit;
   end;
-  Result.TopRow := View.TopRow;
-  Result.Rows := View.ViewSize.cy;
-  if View.Buffer <> nil then
+  Result.TopRow := mView.TopRow;
+  Result.Rows := mView.ViewSize.cy;
+  if mView.Buffer <> nil then
   begin
-    Result.FileName := View.Buffer.FileName;
+    Result.FileName := mView.Buffer.FileName;
   end;
 end;
 

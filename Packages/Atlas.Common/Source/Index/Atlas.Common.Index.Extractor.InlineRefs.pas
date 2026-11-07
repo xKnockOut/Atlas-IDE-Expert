@@ -54,7 +54,7 @@ uses
   Atlas.Common.Index.Extractor.TypeText;
 
 const
-  NotInlined: array[0..5] of string = ('virtual', 'dynamic', 'override', 'abstract', 'message', 'external');
+  cNotInlined: array[0..5] of string = ('virtual', 'dynamic', 'override', 'abstract', 'message', 'external');
 
 type
   /// <summary>Sammelt die Verweise eines Routinenrumpfs; die Namen der Unit und des Typs sind bekannt.</summary>
@@ -158,7 +158,7 @@ begin
   for mDirective in ADirectives do
   begin
     AInline := AInline or SameText(mDirective, 'inline');
-    ASkip := ASkip or (IndexText(mDirective, NotInlined) >= 0);
+    ASkip := ASkip or (IndexText(mDirective, cNotInlined) >= 0);
   end;
 end;
 
@@ -390,7 +390,7 @@ begin
   // nil heißt „nicht einbettbar“; ohne Verweise bleibt die Routine trotzdem als inline erkennbar (#1381).
   if Length(Result) = 0 then
   begin
-    Result := TArray<string>.Create(TIndexSymbol.InlineWithoutRefs);
+    Result := TArray<string>.Create(TIndexSymbol.cInlineWithoutRefs);
   end;
 end;
 

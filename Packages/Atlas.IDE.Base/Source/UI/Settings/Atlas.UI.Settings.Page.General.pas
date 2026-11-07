@@ -50,7 +50,6 @@ type
     property DefaultServerPath: string read FDefaultServerPath write SetDefaultServerPath;
     /// <summary>Version des Servers unter dem Pfad als Text ('' = unbekannt); nil = keine Anzeige.</summary>
     property OnServerVersion: TFunc<string, string> read FOnServerVersion write SetOnServerVersion;
-    property ServerVersion: TLabel read FServerVersion;
   end;
 
   /// <summary>Benachrichtigungszentrale (#601) am Ende des Reiters „Allgemein“: Schalter, Größe und Verhalten je
@@ -73,7 +72,6 @@ type
     property NotificationsMax: TEdit read FNotificationsMax;
     property NotificationSource: TAtlasChoiceBox read FNotificationSource;
     property NotificationMode: TAtlasChoiceBox read FNotificationMode;
-    property NotificationsSpec: string read FNotificationsSpec;
   end;
 
 implementation
@@ -95,44 +93,44 @@ uses
 
 procedure TAtlasSettingsGeneralPart.Build;
 var
-  Panel: TWinControl;
-  Title: TLabel;
+  mPanel: TWinControl;
+  mTitle: TLabel;
 begin
   AddSheet(TAtlasTextId.SettingsTabGeneral);
   BindCheck('Enabled', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEnabled)));
   // Wo der Server liegt; leer gilt der Standard neben dem Plugin.
-  Panel := AddPanel(20);
-  Title := TLabel.Create(FPage);
-  Title.Parent := Panel;
-  Title.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsServerPath);
-  Title.Left := 0;
-  Title.Top := 3;
+  mPanel := AddPanel(20);
+  mTitle := TLabel.Create(FPage);
+  mTitle.Parent := mPanel;
+  mTitle.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsServerPath);
+  mTitle.Left := 0;
+  mTitle.Top := 3;
   // Pfad in eigener Zeile: Die Beschriftung ist lang, das Feld braucht die Breite.
-  Panel := AddPanel(26);
+  mPanel := AddPanel(26);
   FServerPath := TEdit.Create(FPage);
-  FServerPath.Parent := Panel;
+  FServerPath.Parent := mPanel;
   FServerPath.Left := 0;
   FServerPath.Top := 1;
   FServerPath.Width := 430;
   FServerPath.Anchors := [akLeft, akTop, akRight];
   FServerPath.OnChange := ServerPathChange;
   FServerBrowse := TButton.Create(FPage);
-  FServerBrowse.Parent := Panel;
+  FServerBrowse.Parent := mPanel;
   FServerBrowse.Caption := '…';
   FServerBrowse.Left := 436;
   FServerBrowse.Top := 0;
   FServerBrowse.Width := 30;
   FServerBrowse.Anchors := [akTop, akRight];
   FServerBrowse.OnClick := ServerBrowseClick;
-  Panel := AddPanel(18);
+  mPanel := AddPanel(18);
   FServerStatus := TLabel.Create(FPage);
-  FServerStatus.Parent := Panel;
+  FServerStatus.Parent := mPanel;
   FServerStatus.Left := 0;
   FServerStatus.Top := 0;
   FServerStatus.Font.Color := clGrayText;
-  Panel := AddPanel(18);
+  mPanel := AddPanel(18);
   FServerVersion := TLabel.Create(FPage);
-  FServerVersion.Parent := Panel;
+  FServerVersion.Parent := mPanel;
   FServerVersion.Left := 0;
   FServerVersion.Top := 0;
   FServerVersion.Font.Color := clGrayText;
@@ -173,7 +171,8 @@ begin
   // Tastenkürzel-Tipps (#600); Reihenfolge wie TAtlasTipScope: atlas, all.
   BindCheck('ShortcutTips', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTips)));
   FShortcutTipsScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsScope),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAtlas), TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAll)]);
+    [TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAtlas),
+      TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAll)]);
 end;
 
 procedure TAtlasSettingsGeneralPart.BindMarks;
@@ -248,40 +247,40 @@ end;
 
 procedure TAtlasSettingsGeneralPart.ServerPathChange(Sender: TObject);
 var
-  Path, Version: string;
+  mPath, mVersion: string;
 begin
-  Path := Trim(FServerPath.Text);
-  if Path = '' then
+  mPath := Trim(FServerPath.Text);
+  if mPath = '' then
   begin
-    Path := FDefaultServerPath;
+    mPath := FDefaultServerPath;
   end;
-  if Path = '' then
+  if mPath = '' then
   begin
     FServerStatus.Caption := '';
   end
-  else if FileExists(Path) then
+  else if FileExists(mPath) then
   begin
-    FServerStatus.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsServerFound, [Path]);
+    FServerStatus.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsServerFound, [mPath]);
   end
   else
   begin
-    FServerStatus.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsServerMissing, [Path]);
+    FServerStatus.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsServerMissing, [mPath]);
   end;
   // Version des Servers (#227): aus der Datei bzw. vom laufenden Server.
-  Version := '';
-  if Assigned(FOnServerVersion) and (Path <> '') and FileExists(Path) then
+  mVersion := '';
+  if Assigned(FOnServerVersion) and (mPath <> '') and FileExists(mPath) then
   begin
-    Version := FOnServerVersion(Path);
-    if Version = '' then
+    mVersion := FOnServerVersion(mPath);
+    if mVersion = '' then
     begin
-      Version := TAtlasStrings.Text(TAtlasTextId.SettingsServerVersionUnknown);
+      mVersion := TAtlasStrings.Text(TAtlasTextId.SettingsServerVersionUnknown);
     end
     else
     begin
-      Version := TAtlasStrings.Fmt(TAtlasTextId.SettingsServerVersion, [Version]);
+      mVersion := TAtlasStrings.Fmt(TAtlasTextId.SettingsServerVersion, [mVersion]);
     end;
   end;
-  FServerVersion.Caption := Version;
+  FServerVersion.Caption := mVersion;
 end;
 
 procedure TAtlasSettingsGeneralPart.SetOnServerVersion(const AValue: TFunc<string, string>);
@@ -292,26 +291,26 @@ end;
 
 procedure TAtlasSettingsGeneralPart.ServerBrowseClick(Sender: TObject);
 var
-  Dialog: TOpenDialog;
+  mDialog: TOpenDialog;
 begin
-  Dialog := TOpenDialog.Create(nil);
+  mDialog := TOpenDialog.Create(nil);
   try
-    Dialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsServerFilter);
-    Dialog.Options := Dialog.Options + [ofFileMustExist];
+    mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsServerFilter);
+    mDialog.Options := mDialog.Options + [ofFileMustExist];
     if Trim(FServerPath.Text) <> '' then
     begin
-      Dialog.FileName := Trim(FServerPath.Text);
+      mDialog.FileName := Trim(FServerPath.Text);
     end
     else if FDefaultServerPath <> '' then
     begin
-      Dialog.InitialDir := ExtractFilePath(FDefaultServerPath);
+      mDialog.InitialDir := ExtractFilePath(FDefaultServerPath);
     end;
-    if Dialog.Execute then
+    if mDialog.Execute then
     begin
-      FServerPath.Text := Dialog.FileName;
+      FServerPath.Text := mDialog.FileName;
     end;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
@@ -346,34 +345,34 @@ end;
 
 procedure TAtlasSettingsNotificationsPart.AddNotificationSources;
 var
-  Panel: TWinControl;
+  mPanel: TWinControl;
   mCaption: TLabel;
-  Names: TArray<string>;
-  Source: string;
+  mNames: TArray<string>;
+  mSource: string;
 begin
-  Panel := AddPanel(26);
+  mPanel := AddPanel(26);
   mCaption := TLabel.Create(FPage);
-  mCaption.Parent := Panel;
+  mCaption.Parent := mPanel;
   mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsNotificationsSources);
   mCaption.Left := 0;
   mCaption.Top := 5;
-  Names := nil;
-  for Source in TAtlasNotificationSources.Known do
+  mNames := nil;
+  for mSource in TAtlasNotificationSources.Known do
   begin
-    Names := Names + [TAtlasNotificationTexts.SourceCaption(Source)];
+    mNames := mNames + [TAtlasNotificationTexts.SourceCaption(mSource)];
   end;
   FNotificationSource := TAtlasChoiceBox.Create(FPage);
-  FNotificationSource.Parent := Panel;
-  FNotificationSource.Left := FieldLeft;
+  FNotificationSource.Parent := mPanel;
+  FNotificationSource.Left := cFieldLeft;
   FNotificationSource.Top := 1;
   FNotificationSource.Width := 180;
-  FNotificationSource.SetChoices(Names);
+  FNotificationSource.SetChoices(mNames);
   FNotificationSource.Choice := 0;
   FNotificationSource.OnChange := NotificationSourceChange;
   // Reihenfolge wie TAtlasNotificationMode: einblenden und sammeln, nur sammeln, aus.
   FNotificationMode := TAtlasChoiceBox.Create(FPage);
-  FNotificationMode.Parent := Panel;
-  FNotificationMode.Left := FieldLeft + 186;
+  FNotificationMode.Parent := mPanel;
+  FNotificationMode.Left := cFieldLeft + 186;
   FNotificationMode.Top := 1;
   FNotificationMode.Width := 170;
   FNotificationMode.SetChoices([TAtlasStrings.Text(TAtlasTextId.NotificationsModeShow),
@@ -384,29 +383,29 @@ end;
 
 procedure TAtlasSettingsNotificationsPart.NotificationSourceChange(Sender: TObject);
 var
-  Known: TArray<string>;
+  mKnown: TArray<string>;
 begin
-  Known := TAtlasNotificationSources.Known;
-  if (FNotificationSource.Choice < 0) or (FNotificationSource.Choice > High(Known)) then
+  mKnown := TAtlasNotificationSources.Known;
+  if (FNotificationSource.Choice < 0) or (FNotificationSource.Choice > High(mKnown)) then
   begin
     Exit;
   end;
   FNotificationMode.Choice := Ord(TAtlasNotificationSources.ModeIn(FNotificationsSpec,
-    Known[FNotificationSource.Choice]));
+    mKnown[FNotificationSource.Choice]));
 end;
 
 procedure TAtlasSettingsNotificationsPart.NotificationModeChange(Sender: TObject);
 var
-  Known: TArray<string>;
+  mKnown: TArray<string>;
 begin
-  Known := TAtlasNotificationSources.Known;
-  if (FNotificationSource.Choice < 0) or (FNotificationSource.Choice > High(Known)) or
+  mKnown := TAtlasNotificationSources.Known;
+  if (FNotificationSource.Choice < 0) or (FNotificationSource.Choice > High(mKnown)) or
     (FNotificationMode.Choice < Ord(Low(TAtlasNotificationMode))) or
     (FNotificationMode.Choice > Ord(High(TAtlasNotificationMode))) then
   begin
     Exit;
   end;
-  FNotificationsSpec := TAtlasNotificationSources.WithMode(FNotificationsSpec, Known[FNotificationSource.Choice],
+  FNotificationsSpec := TAtlasNotificationSources.WithMode(FNotificationsSpec, mKnown[FNotificationSource.Choice],
     TAtlasNotificationMode(FNotificationMode.Choice));
 end;
 

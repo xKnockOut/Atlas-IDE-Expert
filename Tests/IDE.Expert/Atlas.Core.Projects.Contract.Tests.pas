@@ -175,7 +175,7 @@ var
   Context: TAtlasProjectContext;
 begin
   Context := Sample;
-  Context.Source := TAtlasProjectContext.SourceConfiguration;
+  Context.Source := TAtlasProjectContext.cSourceConfiguration;
   Assert.AreEqual('A.dproj Debug/Win32 (Konfiguration, BDS 23.0): Defines DEBUG; 1 Suchpfade, 2 Namespaces, ' +
     '0 Bibliothekspfade', Context.Describe);
   // Die Herkunft gehört nur ins Protokoll: Der Server bekommt deshalb nichts Neues.

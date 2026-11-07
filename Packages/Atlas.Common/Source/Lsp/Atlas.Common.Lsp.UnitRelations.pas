@@ -58,14 +58,14 @@ type
 
   TLspUnitRelations = class
   public const
-    Method = 'atlas/unitRelations';
-    Command = 'atlas.unitRelations';
-    MoveCommand = 'atlas.server.moveUses';
-    RemoveCommand = 'atlas.server.removeUses';
-    CostCommand = 'atlas.interfaceCost';
-    UseUnitCommand = 'atlas.useUnitInfo';
+    cMethod = 'atlas/unitRelations';
+    cCommand = 'atlas.unitRelations';
+    cMoveCommand = 'atlas.server.moveUses';
+    cRemoveCommand = 'atlas.server.removeUses';
+    cCostCommand = 'atlas.interfaceCost';
+    cUseUnitCommand = 'atlas.useUnitInfo';
     /// <summary>So viele Namen nennt atlas.interfaceCost höchstens.</summary>
-    CostUnits = 10;
+    cCostUnits = 10;
   private
     FGraph: TUsesGraphService;
     FLocator: TUsesLocator;
@@ -185,7 +185,7 @@ end;
 
 procedure TLspUnitRelations.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method,
+  ADispatcher.RegisterConcurrentRequest(cMethod,
     function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
     begin
       Result := Request(AParams);
@@ -212,45 +212,45 @@ end;
 procedure TLspUnitRelations.EntriesOf(const AFileName, AText: string; out AUnused,
   AOnlyImplementation: TArray<string>);
 var
-  Context: TUsesContext;
-  Entry: TUsesEntry;
+  mContext: TUsesContext;
+  mEntry: TUsesEntry;
 begin
   AUnused := nil;
   AOnlyImplementation := nil;
   if (AText = '') or not Assigned(FUsesContextFor) or
-    not FUsesContextFor(TDocumentUris.FromPath(AFileName), Context) or not Assigned(Context.Info) then
+    not FUsesContextFor(TDocumentUris.FromPath(AFileName), mContext) or not Assigned(mContext.Info) then
   begin
     Exit;
   end;
   // Dieselbe Analyse wie die abgeblendeten uses im Editor (#621).
-  for Entry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), TLspInactiveRegions.Ranges(AText,
-    DefinesOf(AFileName)), Context.Info, Context.Keep) do
+  for mEntry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), TLspInactiveRegions.Ranges(AText,
+    DefinesOf(AFileName)), mContext.Info, mContext.Keep) do
   begin
-    if Entry.State = TUsesEntryState.Unused then
+    if mEntry.State = TUsesEntryState.Unused then
     begin
-      AUnused := AUnused + [Entry.Name];
+      AUnused := AUnused + [mEntry.Name];
     end
-    else if Entry.State = TUsesEntryState.OnlyImplementation then
+    else if mEntry.State = TUsesEntryState.OnlyImplementation then
     begin
-      AOnlyImplementation := AOnlyImplementation + [Entry.Name];
+      AOnlyImplementation := AOnlyImplementation + [mEntry.Name];
     end;
   end;
 end;
 
 procedure TLspUnitRelations.EnsureOptions(const AFileName: string);
 var
-  Options: TUsesGraphOptions;
+  mOptions: TUsesGraphOptions;
 begin
   if not Assigned(FOptionsFor) then
   begin
     Exit;
   end;
-  Options := FOptionsFor(AFileName);
+  mOptions := FOptionsFor(AFileName);
   // Bibliotheks-Units immer: „Verwendet“ zeigt sie mit Datei, soweit der Index sie kennt.
-  Options.IncludeLibrary := True;
-  if not SameOptions(Options, FGraph.Options) then
+  mOptions.IncludeLibrary := True;
+  if not SameOptions(mOptions, FGraph.Options) then
   begin
-    FGraph.SetOptions(Options);
+    FGraph.SetOptions(mOptions);
   end;
 end;
 
@@ -263,46 +263,46 @@ begin
   end;
   if Result = '' then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TUnitRelationsText.FileMissing].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TUnitRelationsText.FileMissing].Text);
   end;
 end;
 
 function TLspUnitRelations.Request(const AParams: TJSONValue): TJSONValue;
 var
-  Params, Answer: TJSONObject;
-  FileName, Text: string;
-  Depth: Integer;
-  Number: Double;
-  Unused, OnlyImplementation: TArray<string>;
-  Relations: TUnitRelations;
+  mParams, mAnswer: TJSONObject;
+  mFileName, mText: string;
+  mDepth: Integer;
+  mNumber: Double;
+  mUnused, mOnlyImplementation: TArray<string>;
+  mRelations: TUnitRelations;
 begin
   if not (AParams is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TUnitRelationsText.UriMissing].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TUnitRelationsText.UriMissing].Text);
   end;
-  Params := TJSONObject(AParams);
-  FileName := '';
-  if Params.GetValue('uri') is TJSONString then
+  mParams := TJSONObject(AParams);
+  mFileName := '';
+  if mParams.GetValue('uri') is TJSONString then
   begin
-    FileName := PathOf(Trim(Params.GetValue('uri').Value));
+    mFileName := PathOf(Trim(mParams.GetValue('uri').Value));
   end;
-  if FileName = '' then
+  if mFileName = '' then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TUnitRelationsText.UriMissing].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TUnitRelationsText.UriMissing].Text);
   end;
-  Depth := 1;
-  if Params.TryGetValue<Double>('depth', Number) then
+  mDepth := 1;
+  if mParams.TryGetValue<Double>('depth', mNumber) then
   begin
-    Depth := Trunc(Number);
+    mDepth := Trunc(mNumber);
   end;
-  if Depth < 0 then
+  if mDepth < 0 then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TUnitRelationsText.DepthIs0AllLevels].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TUnitRelationsText.DepthIs0AllLevels].Text);
   end;
-  Text := TextOf(FileName);
-  EntriesOf(FileName, Text, Unused, OnlyImplementation);
-  EnsureOptions(FileName);
-  Answer := nil;
+  mText := TextOf(mFileName);
+  EntriesOf(mFileName, mText, mUnused, mOnlyImplementation);
+  EnsureOptions(mFileName);
+  mAnswer := nil;
   FGraph.Read(
     procedure(const AGraph: TUsesGraph)
     var
@@ -310,126 +310,126 @@ begin
     begin
       Builder := TUnitRelationsBuilder.Create(AGraph, FLocator, FReader, FDefines);
       try
-        Relations := Builder.Build(FileName, Depth, Unused, OnlyImplementation);
+        mRelations := Builder.Build(mFileName, mDepth, mUnused, mOnlyImplementation);
       finally
         Builder.Free;
       end;
-      Answer := TUnitRelationsBuilder.ToJson(Relations);
+      mAnswer := TUnitRelationsBuilder.ToJson(mRelations);
     end);
-  Answer.AddPair('generation', TJSONNumber.Create(FGraph.Generation));
-  Answer.AddPair('depth', TJSONNumber.Create(Depth));
-  Result := Answer;
+  mAnswer.AddPair('generation', TJSONNumber.Create(FGraph.Generation));
+  mAnswer.AddPair('depth', TJSONNumber.Create(mDepth));
+  Result := mAnswer;
 end;
 
 function TLspUnitRelations.Execute(const AArguments: TJSONArray): TJSONValue;
 var
-  Params: TJSONObject;
-  Options: TJSONObject;
-  Pair: TJSONPair;
+  mParams: TJSONObject;
+  mOptions: TJSONObject;
+  mPair: TJSONPair;
 begin
-  Params := TJSONObject.Create;
+  mParams := TJSONObject.Create;
   try
-    Params.AddPair('uri', FileOf(AArguments, 0));
+    mParams.AddPair('uri', FileOf(AArguments, 0));
     if (AArguments.Count > 1) and (AArguments.Items[1] is TJSONObject) then
     begin
-      Options := TJSONObject(AArguments.Items[1]);
-      for Pair in Options do
+      mOptions := TJSONObject(AArguments.Items[1]);
+      for mPair in mOptions do
       begin
-        if Pair.JsonString.Value <> 'uri' then
+        if mPair.JsonString.Value <> 'uri' then
         begin
-          Params.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
+          mParams.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
         end;
       end;
     end;
-    Result := Request(Params);
+    Result := Request(mParams);
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 
 function TLspUnitRelations.Cost(const AArguments: TJSONArray): TJSONValue;
 var
-  FileName: string;
-  Answer: TJSONObject;
+  mFileName: string;
+  mAnswer: TJSONObject;
 begin
-  FileName := FileOf(AArguments, 0);
-  EnsureOptions(FileName);
-  Answer := nil;
+  mFileName := FileOf(AArguments, 0);
+  EnsureOptions(mFileName);
+  mAnswer := nil;
   FGraph.Read(
     procedure(const AGraph: TUsesGraph)
     begin
-      Answer := TUnitRelationsBuilder.CostToJson(TUnitRelationsBuilder.InterfaceCost(AGraph, FileName, CostUnits));
+      mAnswer := TUnitRelationsBuilder.CostToJson(TUnitRelationsBuilder.InterfaceCost(AGraph, mFileName, cCostUnits));
     end);
-  Answer.AddPair('generation', TJSONNumber.Create(FGraph.Generation));
-  Result := Answer;
+  mAnswer.AddPair('generation', TJSONNumber.Create(FGraph.Generation));
+  Result := mAnswer;
 end;
 
 function TLspUnitRelations.UseUnitInfo(const AArguments: TJSONArray): TJSONValue;
 var
-  FileName: string;
-  Answer: TJSONObject;
-  List: TJSONArray;
-  Reference: TUsesReference;
+  mFileName: string;
+  mAnswer: TJSONObject;
+  mList: TJSONArray;
+  mReference: TUsesReference;
 begin
-  FileName := FileOf(AArguments, 0);
-  EnsureOptions(FileName);
-  Answer := nil;
+  mFileName := FileOf(AArguments, 0);
+  EnsureOptions(mFileName);
+  mAnswer := nil;
   FGraph.Read(
     procedure(const AGraph: TUsesGraph)
     begin
-      Answer := TUnitRelationsBuilder.UseInfoToJson(TUnitRelationsBuilder.UseCandidates(AGraph, FileName));
+      mAnswer := TUnitRelationsBuilder.UseInfoToJson(TUnitRelationsBuilder.UseCandidates(AGraph, mFileName));
     end);
   // „schon in uses“ aus dem Text, wie ihn der Editor gerade hat.
-  List := TJSONArray.Create;
-  for Reference in TUsesLocator.UsesReferences(TextOf(FileName), DefinesOf(FileName)) do
+  mList := TJSONArray.Create;
+  for mReference in TUsesLocator.UsesReferences(TextOf(mFileName), DefinesOf(mFileName)) do
   begin
-    List.Add(Reference.Name);
+    mList.Add(mReference.Name);
   end;
-  Answer.AddPair('inUses', List);
-  Answer.AddPair('generation', TJSONNumber.Create(FGraph.Generation));
-  Result := Answer;
+  mAnswer.AddPair('inUses', mList);
+  mAnswer.AddPair('generation', TJSONNumber.Create(FGraph.Generation));
+  Result := mAnswer;
 end;
 
 class function TLspUnitRelations.MoveEdits(const AText, AUnit: string; ATarget: TUsesSection;
   out AEdits: TArray<TTextEdit>; out AError: string): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Reference: TUsesReference;
-  Found: Boolean;
-  Name: string;
+  mTokens: TArray<TPascalToken>;
+  mReference: TUsesReference;
+  mFound: Boolean;
+  mName: string;
 begin
   AEdits := nil;
   AError := '';
-  Tokens := TPascalLexer.Tokenize(AText);
+  mTokens := TPascalLexer.Tokenize(AText);
   // Den Eintrag in der anderen Liste suchen, Schreibweise wie im Quelltext.
-  Found := False;
-  Name := AUnit;
-  for Reference in TUsesClauses.References(Tokens) do
+  mFound := False;
+  mName := AUnit;
+  for mReference in TUsesClauses.References(mTokens) do
   begin
-    if (Reference.List = TUsesListKind.UsesList) and SameText(Reference.Name, AUnit) then
+    if (mReference.List = TUsesListKind.UsesList) and SameText(mReference.Name, AUnit) then
     begin
-      if Reference.InInterface = (ATarget = TUsesSection.Interface_) then
+      if mReference.InInterface = (ATarget = TUsesSection.Interface_) then
       begin
         AError := cTexts[TUnitRelationsText.IsAlreadyInTheUses].Fmt([AUnit,
           TUnitRelationsBuilder.SectionName(ATarget)]);
         Exit(False);
       end;
-      Found := True;
-      Name := Reference.Name;
+      mFound := True;
+      mName := mReference.Name;
     end;
   end;
-  if not Found then
+  if not mFound then
   begin
     AError := cTexts[TUnitRelationsText.IsInNoUsesList].Fmt([AUnit]);
     Exit(False);
   end;
   if ATarget = TUsesSection.Implementation_ then
   begin
-    Result := TUsesActions.MoveUnits(Tokens, AText, [Name], TTextLines.LineBreakOf(AText), AEdits);
+    Result := TUsesActions.MoveUnits(mTokens, AText, [mName], TTextLines.LineBreakOf(AText), AEdits);
   end
   else
   begin
-    Result := TUsesActions.MoveUnitsToInterface(Tokens, AText, [Name], TTextLines.LineBreakOf(AText), AEdits);
+    Result := TUsesActions.MoveUnitsToInterface(mTokens, AText, [mName], TTextLines.LineBreakOf(AText), AEdits);
   end;
   if not Result then
   begin
@@ -439,92 +439,92 @@ end;
 
 function TLspUnitRelations.Move(const AArguments: TJSONArray): TJSONValue;
 var
-  FileName, UnitName, Target, Error, Extension: string;
-  Section: TUsesSection;
-  Edits: TArray<TTextEdit>;
-  Answer: TJSONObject;
+  mFileName, mUnitName, mTarget, mError, mExtension: string;
+  mSection: TUsesSection;
+  mEdits: TArray<TTextEdit>;
+  mAnswer: TJSONObject;
 begin
-  FileName := FileOf(AArguments, 0);
+  mFileName := FileOf(AArguments, 0);
   if (AArguments.Count < 3) or not (AArguments.Items[1] is TJSONString) or
     not (AArguments.Items[2] is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente: [uri, Unit, interface|implementation]');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, 'Argumente: [uri, Unit, interface|implementation]');
   end;
-  UnitName := Trim(AArguments.Items[1].Value);
-  Target := Trim(AArguments.Items[2].Value);
-  if SameText(Target, 'interface') then
+  mUnitName := Trim(AArguments.Items[1].Value);
+  mTarget := Trim(AArguments.Items[2].Value);
+  if SameText(mTarget, 'interface') then
   begin
-    Section := TUsesSection.Interface_;
+    mSection := TUsesSection.Interface_;
   end
-  else if SameText(Target, 'implementation') then
+  else if SameText(mTarget, 'implementation') then
   begin
-    Section := TUsesSection.Implementation_;
+    mSection := TUsesSection.Implementation_;
   end
   else
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TUnitRelationsText.TargetIsInterfaceOrImplementation].Text);
   end;
-  Extension := LowerCase(ExtractFileExt(FileName));
-  if (Extension = '.dpr') or (Extension = '.dpk') then
+  mExtension := LowerCase(ExtractFileExt(mFileName));
+  if (mExtension = '.dpr') or (mExtension = '.dpk') then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TUnitRelationsText.ProgramsAndPackagesHaveOnly].Text);
   end;
-  if not MoveEdits(TextOf(FileName), UnitName, Section, Edits, Error) then
+  if not MoveEdits(TextOf(mFileName), mUnitName, mSection, mEdits, mError) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Error);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, mError);
   end;
-  Answer := TJSONObject.Create;
-  Answer.AddPair('edit', TLspApplyEdit.TextEdits(FileName, Edits));
-  Result := Answer;
+  mAnswer := TJSONObject.Create;
+  mAnswer.AddPair('edit', TLspApplyEdit.TextEdits(mFileName, mEdits));
+  Result := mAnswer;
 end;
 
 function TLspUnitRelations.Remove(const AArguments: TJSONArray): TJSONValue;
 var
-  FileName, UnitName, Text: string;
-  Entry: TUsesEntry;
-  Context: TUsesContext;
-  Edit: TTextEdit;
-  Answer: TJSONObject;
-  Found: Boolean;
+  mFileName, mUnitName, mText: string;
+  mEntry: TUsesEntry;
+  mContext: TUsesContext;
+  mEdit: TTextEdit;
+  mAnswer: TJSONObject;
+  mFound: Boolean;
 begin
-  FileName := FileOf(AArguments, 0);
+  mFileName := FileOf(AArguments, 0);
   if (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TUnitRelationsText.ArgumentsUriUnit].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TUnitRelationsText.ArgumentsUriUnit].Text);
   end;
-  UnitName := Trim(AArguments.Items[1].Value);
-  Text := TextOf(FileName);
-  if (Text = '') or not Assigned(FUsesContextFor) or
-    not FUsesContextFor(TDocumentUris.FromPath(FileName), Context) or not Assigned(Context.Info) then
+  mUnitName := Trim(AArguments.Items[1].Value);
+  mText := TextOf(mFileName);
+  if (mText = '') or not Assigned(FUsesContextFor) or
+    not FUsesContextFor(TDocumentUris.FromPath(mFileName), mContext) or not Assigned(mContext.Info) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TUnitRelationsText.WithoutAnIndexItCannot].Fmt([
-      UnitName]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TUnitRelationsText.WithoutAnIndexItCannot].Fmt([
+      mUnitName]));
   end;
-  Found := False;
-  for Entry in TUsesActions.Entries(TPascalLexer.Tokenize(Text), TLspInactiveRegions.Ranges(Text,
-    DefinesOf(FileName)), Context.Info, Context.Keep) do
+  mFound := False;
+  for mEntry in TUsesActions.Entries(TPascalLexer.Tokenize(mText), TLspInactiveRegions.Ranges(mText,
+    DefinesOf(mFileName)), mContext.Info, mContext.Keep) do
   begin
-    if (Entry.State = TUsesEntryState.Unused) and SameText(Entry.Name, UnitName) then
+    if (mEntry.State = TUsesEntryState.Unused) and SameText(mEntry.Name, mUnitName) then
     begin
-      if not TUsesActions.RemoveEntries(Text, [Entry.Range], Edit) then
+      if not TUsesActions.RemoveEntries(mText, [mEntry.Range], mEdit) then
       begin
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, UnitName +
+        raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, mUnitName +
           cTexts[TUnitRelationsText.CannotBeRemoved].Text);
       end;
-      Found := True;
+      mFound := True;
       Break;
     end;
   end;
-  if not Found then
+  if not mFound then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, UnitName +
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, mUnitName +
       cTexts[TUnitRelationsText.IsUsedOrMissing].Text);
   end;
-  Answer := TJSONObject.Create;
-  Answer.AddPair('edit', TLspApplyEdit.TextEdits(FileName, [Edit]));
-  Result := Answer;
+  mAnswer := TJSONObject.Create;
+  mAnswer.AddPair('edit', TLspApplyEdit.TextEdits(mFileName, [mEdit]));
+  Result := mAnswer;
 end;
 
 initialization

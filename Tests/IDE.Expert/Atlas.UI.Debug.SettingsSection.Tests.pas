@@ -296,7 +296,7 @@ begin
     Assert.IsFalse(mSaved.DebugVisualizers);
     Assert.AreEqual('lists,dictionaries,dataSets,bytes,colors,guid,geometry', mSaved.DebugVisualizerTypes);
     Assert.AreEqual('Bezeichnung,Name', mSaved.DebugVisualizerNameFields);
-    Assert.AreEqual(TAtlasVisualizerSettings.MaxMaxLength, mSaved.DebugVisualizerMaxLength);
+    Assert.AreEqual(TAtlasVisualizerSettings.cMaxMaxLength, mSaved.DebugVisualizerMaxLength);
     Assert.AreEqual('calls', mSaved.DebugVisualizerEvaluation);
     mPage.LoadFrom(mSaved);
     Assert.IsFalse(FSection.VisualizerKindCheck(TAtlasVisualizerKind.Json).Checked);

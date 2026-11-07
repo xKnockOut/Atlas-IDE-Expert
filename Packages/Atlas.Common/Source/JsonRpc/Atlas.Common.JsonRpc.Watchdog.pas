@@ -107,7 +107,7 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  WaitForever = Cardinal($FFFFFFFF);
+  cWaitForever = Cardinal($FFFFFFFF);
 
 { TJsonRpcWatchdog }
 
@@ -129,7 +129,7 @@ end;
 
 destructor TJsonRpcWatchdog.Destroy;
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
   if FThread <> nil then
   begin
@@ -143,9 +143,9 @@ begin
     FThread.WaitFor;
     FThread.Free;
   end;
-  for Entry in FEntries.Values do
+  for mEntry in FEntries.Values do
   begin
-    Entry.Id.Free;
+    mEntry.Id.Free;
   end;
   FEntries.Free;
   inherited;
@@ -159,22 +159,22 @@ end;
 function TJsonRpcWatchdog.Watch(const AId: TJSONValue; const AMethod: string;
   const AToken: IJsonRpcCancellationToken; const AResponder: TJsonRpcResponder): Int64;
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
   if FThread = nil then
   begin
     Exit(0);
   end;
-  Entry.Id := TJSONValue(AId.Clone);
-  Entry.Method := AMethod;
-  Entry.Token := AToken;
-  Entry.Responder := AResponder;
+  mEntry.Id := TJSONValue(AId.Clone);
+  mEntry.Method := AMethod;
+  mEntry.Token := AToken;
+  mEntry.Responder := AResponder;
   TMonitor.Enter(FEntries);
   try
-    Entry.Due := TThread.GetTickCount64 + FTimeout;
+    mEntry.Due := TThread.GetTickCount64 + FTimeout;
     Inc(FNextTicket);
     Result := FNextTicket;
-    FEntries.Add(Result, Entry);
+    FEntries.Add(Result, mEntry);
     TMonitor.PulseAll(FEntries);
   finally
     TMonitor.Exit(FEntries);
@@ -183,7 +183,7 @@ end;
 
 procedure TJsonRpcWatchdog.Unwatch(ATicket: Int64);
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
   if ATicket = 0 then
   begin
@@ -191,7 +191,7 @@ begin
   end;
   TMonitor.Enter(FEntries);
   try
-    if not FEntries.TryGetValue(ATicket, Entry) then
+    if not FEntries.TryGetValue(ATicket, mEntry) then
     begin
       Exit;
     end;
@@ -199,7 +199,7 @@ begin
   finally
     TMonitor.Exit(FEntries);
   end;
-  Entry.Id.Free;
+  mEntry.Id.Free;
 end;
 
 procedure TJsonRpcWatchdog.SetTimeout(ATimeoutMs: Cardinal);
@@ -228,12 +228,12 @@ end;
 
 procedure TJsonRpcWatchdog.Expire(const AEntry: TEntry);
 var
-  Answered: Boolean;
-  Limit: Cardinal;
+  mAnswered: Boolean;
+  mLimit: Cardinal;
 begin
   try
-    Limit := Timeout;
-    Answered := False;
+    mLimit := Timeout;
+    mAnswered := False;
     if (AEntry.Token <> nil) and Assigned(AEntry.Responder) then
     begin
       // Abbrechen und die Antwort beanspruchen: Wer zuerst kommt (Worker oder Watchdog), antwortet.
@@ -243,11 +243,11 @@ begin
       // verloren (Dauerlauf ConnectionSoakDetectsWorkerLeak unter Last: 100 statt 101 Antworten).
       FPending.BeginWork;
       try
-        Answered := FPending.Expire(AEntry.Token);
-        if Answered then
+        mAnswered := FPending.Expire(AEntry.Token);
+        if mAnswered then
         begin
-          AEntry.Responder(TJsonRpcMessages.Error(AEntry.Id, TJsonRpcErrorCode.RequestCancelled,
-            cTexts[TWatchdogText.TimeLimitOfMsExceeded].Fmt([Limit])));
+          AEntry.Responder(TJsonRpcMessages.Error(AEntry.Id, TJsonRpcErrorCode.cRequestCancelled,
+            cTexts[TWatchdogText.TimeLimitOfMsExceeded].Fmt([mLimit])));
         end;
       finally
         FPending.EndWork;
@@ -259,11 +259,11 @@ begin
     end;
     if Assigned(FOnTimeout) then
     begin
-      FOnTimeout(AEntry.Method, Limit, Answered);
+      FOnTimeout(AEntry.Method, mLimit, mAnswered);
     end;
     if Assigned(FOnExpired) then
     begin
-      FOnExpired(AEntry.Id.ToJSON, AEntry.Method, Limit);
+      FOnExpired(AEntry.Id.ToJSON, AEntry.Method, mLimit);
     end;
   finally
     AEntry.Id.Free;
@@ -304,7 +304,7 @@ begin
     mNextDue := CollectExpired(AExpired, mTicks);
     if (AExpired.Count = 0) and (mNextDue = High(UInt64)) then
     begin
-      TMonitor.Wait(FEntries, WaitForever);
+      TMonitor.Wait(FEntries, cWaitForever);
     end
     else if AExpired.Count = 0 then
     begin

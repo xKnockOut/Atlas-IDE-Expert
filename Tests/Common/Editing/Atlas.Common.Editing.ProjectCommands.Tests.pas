@@ -249,11 +249,11 @@ end;
 
 function TFakeHost.Setting(const AUri, AName: string): string;
 begin
-  if AName = TSlashSettings.LogCall then
+  if AName = TSlashSettings.cLogCall then
   begin
     Result := LogCallValue;
   end
-  else if AName = TSlashSettings.ComponentPalette then
+  else if AName = TSlashSettings.cComponentPalette then
   begin
     Result := PaletteValue;
   end

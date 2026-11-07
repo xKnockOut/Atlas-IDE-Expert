@@ -84,7 +84,7 @@ begin
     Page.OwnerOf :=
       function(AShortCut: Word): string
       begin
-        if AShortCut = TAtlasKeyConflicts.PaletteDefault then
+        if AShortCut = TAtlasKeyConflicts.cPaletteDefault then
         begin
           Result := 'IDE: Makro';
         end
@@ -117,16 +117,16 @@ begin
   try
     Page.LoadFrom(TAtlasPluginSettings.Defaults);
     Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.KeysStatusIdeKey,
-      [ShortCutToText(TAtlasKeyConflicts.IdeSignatureKey)]), Page.StatusLabel(3).Caption);
+      [ShortCutToText(TAtlasKeyConflicts.cIdeSignatureKey)]), Page.StatusLabel(3).Caption);
     Page.ChoiceBox(3).Choice := Ord(TAtlasKeyChoice.UseAtlas);
     Page.ChoiceBox(3).OnChange(Page.ChoiceBox(3));
-    Assert.AreEqual(ShortCutToText(TAtlasKeyConflicts.IdeSignatureKey), Page.KeyEdit(3).Text);
+    Assert.AreEqual(ShortCutToText(TAtlasKeyConflicts.cIdeSignatureKey), Page.KeyEdit(3).Text);
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
   finally
     Page.Free;
   end;
-  Assert.AreEqual(Integer(TAtlasKeyConflicts.IdeSignatureKey), Saved.SignatureKey);
+  Assert.AreEqual(Integer(TAtlasKeyConflicts.cIdeSignatureKey), Saved.SignatureKey);
   Assert.IsTrue(Saved.SignatureKeyPriority);
 end;
 

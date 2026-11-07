@@ -376,7 +376,7 @@ begin
   // Ohne Verbindung: alle Vorlagen beider Anbieter.
   if Length(mProviders) = 0 then
   begin
-    mProviders := TArray<string>.Create(TAtlasTrackerTarget.YouTrack, TAtlasTrackerTarget.GitHub);
+    mProviders := TArray<string>.Create(TAtlasTrackerTarget.cYouTrack, TAtlasTrackerTarget.cGitHub);
     mLanguages := TArray<string>.Create('', '');
   end;
   for mIndex := 0 to High(mProviders) do
@@ -389,7 +389,7 @@ class function TAtlasTrackerQueryDialog.TemplateCaption(const ATemplate: TAtlasT
 var
   mProvider, mKind: string;
 begin
-  if ATemplate.Provider = TAtlasTrackerTarget.GitHub then
+  if ATemplate.Provider = TAtlasTrackerTarget.cGitHub then
   begin
     mProvider := cGitHubCaption;
   end
@@ -409,11 +409,11 @@ begin
   end;
   Result := mProvider + ' · ' + mKind;
   // GitHub kennt nur englische Suchbegriffe; die Sprache zu nennen hilft nur bei YouTrack.
-  if ATemplate.Provider = TAtlasTrackerTarget.GitHub then
+  if ATemplate.Provider = TAtlasTrackerTarget.cGitHub then
   begin
     Exit;
   end;
-  if ATemplate.Language = TAtlasTrackerTemplates.German then
+  if ATemplate.Language = TAtlasTrackerTemplates.cGerman then
   begin
     Result := Result + ' (' + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLanguageGerman) + ')';
   end

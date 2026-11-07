@@ -64,7 +64,7 @@ var
 begin
   for Word in TPascalLexer.ReservedWordList do
   begin
-    Assert.IsTrue(TKeywordReference.Find(Word, Info) or MatchText(Word, TKeywordReference.CommonWords), Word);
+    Assert.IsTrue(TKeywordReference.Find(Word, Info) or MatchText(Word, TKeywordReference.cCommonWords), Word);
   end;
 end;
 
@@ -131,7 +131,7 @@ begin
   begin
     Assert.AreEqual(LowerCase(Info.Name), Info.Name);
     Assert.IsTrue((Info.Text <> '') and (Info.Topic <> '') and (Info.Kind <> ''), Info.Name);
-    Assert.IsFalse(MatchText(Info.Name, TKeywordReference.CommonWords), Info.Name);
+    Assert.IsFalse(MatchText(Info.Name, TKeywordReference.cCommonWords), Info.Name);
     Count := 0;
     for Other in TKeywordReference.All do
     begin

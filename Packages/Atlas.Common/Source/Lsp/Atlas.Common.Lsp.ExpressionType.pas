@@ -48,8 +48,8 @@ type
 
   TLspExpressionType = class
   public const
-    Command = 'atlas.server.expressionType';
-    ErrorNames: array[TExpressionErrorKind] of string = ('', 'noExpression', 'unknownName', 'operator', 'noResult',
+    cCommand = 'atlas.server.expressionType';
+    cErrorNames: array[TExpressionErrorKind] of string = ('', 'noExpression', 'unknownName', 'operator', 'noResult',
       'unknown');
   public
     /// <summary>Antwort für AInfo (siehe Kopf der Unit); der Aufrufer übernimmt das Objekt.</summary>
@@ -101,9 +101,9 @@ end;
 
 class function TLspExpressionType.Json(const AInfo: TExpressionTypeInfo): TJSONObject;
 var
-  Conversions: TJSONArray;
-  Item, Location, Error: TJSONObject;
-  Conversion: TExpressionConversion;
+  mConversions: TJSONArray;
+  mItem, mLocation, mError: TJSONObject;
+  mConversion: TExpressionConversion;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('range', TLspPositions.RangeToJson(AInfo.Range));
@@ -112,28 +112,28 @@ begin
   Result.AddPair('base', AInfo.BaseName);
   if AInfo.TypeFile <> '' then
   begin
-    Location := TJSONObject.Create;
-    Location.AddPair('file', AInfo.TypeFile);
-    Location.AddPair('line', TJSONNumber.Create(AInfo.TypeLine));
-    Location.AddPair('character', TJSONNumber.Create(AInfo.TypeCharacter));
-    Result.AddPair('location', Location);
+    mLocation := TJSONObject.Create;
+    mLocation.AddPair('file', AInfo.TypeFile);
+    mLocation.AddPair('line', TJSONNumber.Create(AInfo.TypeLine));
+    mLocation.AddPair('character', TJSONNumber.Create(AInfo.TypeCharacter));
+    Result.AddPair('location', mLocation);
   end;
-  Conversions := TJSONArray.Create;
-  Result.AddPair('conversions', Conversions);
-  for Conversion in AInfo.Conversions do
+  mConversions := TJSONArray.Create;
+  Result.AddPair('conversions', mConversions);
+  for mConversion in AInfo.Conversions do
   begin
-    Item := TJSONObject.Create;
-    Conversions.AddElement(Item);
-    Item.AddPair('expression', Conversion.Expression);
-    Item.AddPair('from', Conversion.FromType);
-    Item.AddPair('to', Conversion.ToType);
-    if Conversion.Kind = TExpressionConversionKind.Convert then
+    mItem := TJSONObject.Create;
+    mConversions.AddElement(mItem);
+    mItem.AddPair('expression', mConversion.Expression);
+    mItem.AddPair('from', mConversion.FromType);
+    mItem.AddPair('to', mConversion.ToType);
+    if mConversion.Kind = TExpressionConversionKind.Convert then
     begin
-      Item.AddPair('kind', 'convert');
+      mItem.AddPair('kind', 'convert');
     end
     else
     begin
-      Item.AddPair('kind', 'widen');
+      mItem.AddPair('kind', 'widen');
     end;
   end;
   Result.AddPair('overload', AInfo.Overload);
@@ -143,10 +143,10 @@ begin
   end;
   if AInfo.Error <> TExpressionErrorKind.None then
   begin
-    Error := TJSONObject.Create;
-    Error.AddPair('kind', ErrorNames[AInfo.Error]);
-    Error.AddPair('detail', AInfo.ErrorDetail);
-    Result.AddPair('error', Error);
+    mError := TJSONObject.Create;
+    mError.AddPair('kind', cErrorNames[AInfo.Error]);
+    mError.AddPair('detail', AInfo.ErrorDetail);
+    Result.AddPair('error', mError);
   end;
 end;
 
@@ -210,12 +210,12 @@ begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[0] is TJSONString) or
     not (AArguments.Items[1] is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TExpressionTypeText.URIAndRangeExpected].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TExpressionTypeText.URIAndRangeExpected].Text);
   end;
   mUri := AArguments.Items[0].Value;
   if not AStore.TryGet(mUri, mDocument) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TExpressionTypeText.DocumentIsNotOpen].Text +
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TExpressionTypeText.DocumentIsNotOpen].Text +
       mUri);
   end;
   mShared := TSyntaxTreeCache.Get(mDocument);

@@ -34,7 +34,7 @@ type
 
   TLspTodos = class
   public const
-    Command = 'atlas.server.todos';
+    cCommand = 'atlas.server.todos';
   private
     FSourceFor: TLspMetricsSourceFunc;
     FReadText: TTodoReadText;
@@ -46,7 +46,8 @@ type
     function Answer(const ASource: TLspMetricsSource; AMode: TLspTodosMode; const AFilter: TTodoFilter): string;
     /// <summary>Modus aus dem Argument; leer = AProject: Summary, sonst Json. False bei unbekanntem Modus.</summary>
     class function TryParseMode(const AText: string; AProject: Boolean; out AMode: TLspTodosMode): Boolean; static;
-    /// <summary>Filter aus einem Objekt {"category", "owner", "unit", "keyword", "includeDone"}; nil = Vorgabe.</summary>
+    /// <summary>Filter aus einem Objekt {"category", "owner", "unit", "keyword", "includeDone"}; nil =
+    /// Vorgabe.</summary>
     class function FilterOf(const AValue: TJSONValue): TTodoFilter; static;
   end;
 
@@ -120,17 +121,17 @@ end;
 
 class function TLspTodos.FilterOf(const AValue: TJSONValue): TTodoFilter;
 var
-  Item: TJSONObject;
-  Flag: TJSONValue;
+  mItem: TJSONObject;
+  mFlag: TJSONValue;
 
   function Text(const AName: string): string;
   var
-    Value: TJSONValue;
+    mValue: TJSONValue;
   begin
-    Value := Item.GetValue(AName);
-    if Value is TJSONString then
+    mValue := mItem.GetValue(AName);
+    if mValue is TJSONString then
     begin
-      Result := Trim(Value.Value);
+      Result := Trim(mValue.Value);
     end
     else
     begin
@@ -144,75 +145,75 @@ begin
   begin
     Exit;
   end;
-  Item := TJSONObject(AValue);
+  mItem := TJSONObject(AValue);
   Result.Category := Text('category');
   Result.Owner := Text('owner');
   Result.UnitName := Text('unit');
   Result.Keyword := Text('keyword');
-  Flag := Item.GetValue('includeDone');
-  Result.IncludeDone := (Flag is TJSONBool) and TJSONBool(Flag).AsBoolean;
+  mFlag := mItem.GetValue('includeDone');
+  Result.IncludeDone := (mFlag is TJSONBool) and TJSONBool(mFlag).AsBoolean;
 end;
 
 function TLspTodos.Answer(const ASource: TLspMetricsSource; AMode: TLspTodosMode; const AFilter: TTodoFilter): string;
 var
-  Files: TArray<TFileTodos>;
+  mFiles: TArray<TFileTodos>;
 begin
-  Files := TTodoScanner.Collect(ASource.Files, ASource.Root, FReadText, TTodoRules.Keywords(ASource.Settings));
+  mFiles := TTodoScanner.Collect(ASource.Files, ASource.Root, FReadText, TTodoRules.Keywords(ASource.Settings));
   case AMode of
     TLspTodosMode.Json:
-      Result := TTodoReport.Json(TTodoScanner.Filter(Files, AFilter), ASource.Root);
+      Result := TTodoReport.Json(TTodoScanner.Filter(mFiles, AFilter), ASource.Root);
     TLspTodosMode.Markdown:
-      Result := TMetricsReport.JsonString(TTodoReport.Markdown(TTodoScanner.Filter(Files, AFilter), ASource.Title));
+      Result := TMetricsReport.JsonString(TTodoReport.Markdown(TTodoScanner.Filter(mFiles, AFilter), ASource.Title));
   else
-    Result := '{"format": ' + IntToStr(TTodoReport.Format) + ', "summary": ' +
-      TTodoReport.SummaryJson(TTodoReport.Summarize(Files)) + '}';
+    Result := '{"format": ' + IntToStr(TTodoReport.cFormat) + ', "summary": ' +
+      TTodoReport.SummaryJson(TTodoReport.Summarize(mFiles)) + '}';
   end;
 end;
 
 function TLspTodos.Execute(const AArguments: TJSONArray): TJSONValue;
 var
-  FileName, ModeText, Text: string;
-  Mode: TLspTodosMode;
-  Source: TLspMetricsSource;
-  Filter: TTodoFilter;
-  Project: Boolean;
+  mFileName, mModeText, mText: string;
+  mMode: TLspTodosMode;
+  mSource: TLspMetricsSource;
+  mFilter: TTodoFilter;
+  mProject: Boolean;
 begin
-  FileName := '';
-  ModeText := '';
-  Filter := TTodoFilter.Default;
+  mFileName := '';
+  mModeText := '';
+  mFilter := TTodoFilter.Default;
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
   begin
-    FileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
   end;
   if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) then
   begin
-    ModeText := AArguments.Items[1].Value;
+    mModeText := AArguments.Items[1].Value;
   end;
   if (AArguments <> nil) and (AArguments.Count > 2) then
   begin
-    Filter := FilterOf(AArguments.Items[2]);
+    mFilter := FilterOf(AArguments.Items[2]);
   end;
-  Project := TLspMetrics.IsProject(FileName);
-  if not TryParseMode(ModeText, Project, Mode) then
+  mProject := TLspMetrics.IsProject(mFileName);
+  if not TryParseMode(mModeText, mProject, mMode) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TTodosText.UnknownModeAllowedSummaryJson].Fmt([ModeText]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TTodosText.UnknownModeAllowedSummaryJson].Fmt([mModeText]));
   end;
-  if not (Assigned(FSourceFor) and FSourceFor(FileName, Project, Source)) then
+  if not (Assigned(FSourceFor) and FSourceFor(mFileName, mProject, mSource)) then
   begin
-    Source := Default(TLspMetricsSource);
-    Source.Settings := TServerSettings.Default;
+    mSource := Default(TLspMetricsSource);
+    mSource.Settings := TServerSettings.Default;
   end;
   // Eine Quelltextdatei: nur sie, mit den Einstellungen ihres Arbeitsbereichs.
-  if not Project then
+  if not mProject then
   begin
-    Source.Files := [FileName];
+    mSource.Files := [mFileName];
   end;
-  Text := Answer(Source, Mode, Filter);
-  Result := TJSONObject.ParseJSONValue(Text);
+  mText := Answer(mSource, mMode, mFilter);
+  Result := TJSONObject.ParseJSONValue(mText);
   if Result = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, cTexts[TTodosText.TODODataIsNotValid].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInternalError, cTexts[TTodosText.TODODataIsNotValid].Text);
   end;
 end;
 

@@ -82,21 +82,21 @@ const
 /// <summary>Variable aus "X := T….Create(…)" bzw. "var X := …Create"; '' sonst.</summary>
 function CreatedVariable(const ALine: string): string;
 var
-  Line: string;
-  Assign: Integer;
+  mLine: string;
+  mAssign: Integer;
 begin
   Result := '';
-  Line := Trim(ALine);
-  if StartsText('var ', Line) then
+  mLine := Trim(ALine);
+  if StartsText('var ', mLine) then
   begin
-    Line := Trim(Copy(Line, 5, MaxInt));
+    mLine := Trim(Copy(mLine, 5, MaxInt));
   end;
-  Assign := Pos(':=', Line);
-  if (Assign = 0) or (Pos('.create', LowerCase(Copy(Line, Assign, MaxInt))) = 0) then
+  mAssign := Pos(':=', mLine);
+  if (mAssign = 0) or (Pos('.create', LowerCase(Copy(mLine, mAssign, MaxInt))) = 0) then
   begin
     Exit;
   end;
-  Result := Trim(Copy(Line, 1, Assign - 1));
+  Result := Trim(Copy(mLine, 1, mAssign - 1));
   // Inline-Variable mit Typ: "Liste: TStringList".
   if Pos(':', Result) > 0 then
   begin
@@ -110,11 +110,11 @@ end;
 
 function IsField(ASource: TCommandSource; const AName: string): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
-  for Symbol in ASource.UnitIndex.Symbols do
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Name, AName) then
+    if (mSymbol.Kind = TIndexSymbolKind.Field) and SameText(mSymbol.Name, AName) then
     begin
       Exit(True);
     end;
@@ -124,45 +124,45 @@ end;
 
 function ExecuteTry(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Routine: TSyntaxNode;
-  Index: Integer;
-  Variable: string;
+  mSource: TCommandSource;
+  mRoutine: TSyntaxNode;
+  mIndex: Integer;
+  mVariable: string;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Routine := Source.RoutineAt;
-    if Routine = nil then
+    mRoutine := mSource.RoutineAt;
+    if mRoutine = nil then
     begin
       Exit(Fail(cTexts[TWrapCommandsText.TryOnlyAppliesInThe].Text, AReason));
     end;
-    Variable := '';
-    for Index := Source.Line - 1 downto Routine.StartPos.Line do
+    mVariable := '';
+    for mIndex := mSource.Line - 1 downto mRoutine.StartPos.Line do
     begin
-      Variable := CreatedVariable(Source.Lines[Index]);
-      if Variable <> '' then
+      mVariable := CreatedVariable(mSource.Lines[mIndex]);
+      if mVariable <> '' then
       begin
         Break;
       end;
     end;
-    if (Variable = '') or IsField(Source, Variable) then
+    if (mVariable = '') or IsField(mSource, mVariable) then
     begin
       Exit(Fail(cTexts[TWrapCommandsText.NoLocalObjectIsCreated].Text, AReason));
     end;
     // Result gehört dem Aufrufer: nur bei einer Ausnahme freigeben.
-    if SameText(Variable, 'Result') then
+    if SameText(mVariable, 'Result') then
     begin
-      Result := Wrap(Source, 'try', TWrapFrame.Create(['try'], ['except', '  Result.Free;', '  raise;', 'end;'], '  '),
+      Result := Wrap(mSource, 'try', TWrapFrame.Create(['try'], ['except', '  Result.Free;', '  raise;', 'end;'], '  '),
         AEdits, AReason);
     end
     else
     begin
-      Result := Wrap(Source, 'try', TWrapFrame.Create(['try'], ['finally', '  ' + Variable + '.Free;', 'end;'], '  '),
+      Result := Wrap(mSource, 'try', TWrapFrame.Create(['try'], ['finally', '  ' + mVariable + '.Free;', 'end;'], '  '),
         AEdits, AReason);
     end;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -170,37 +170,37 @@ end;
 
 function ExecuteLock(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  ClassSymbol, Symbol: TIndexSymbol;
-  Section: string;
+  mSource: TCommandSource;
+  mClassSymbol, mSymbol: TIndexSymbol;
+  mSection: string;
 begin
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Section := '';
-    if Source.ClassAt(ClassSymbol) then
+    mSection := '';
+    if mSource.ClassAt(mClassSymbol) then
     begin
-      for Symbol in Source.UnitIndex.Symbols do
+      for mSymbol in mSource.UnitIndex.Symbols do
       begin
-        if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, ClassSymbol.Name) and
-          (SameText(Symbol.TypeName, 'TCriticalSection') or SameText(Symbol.TypeName, 'TSyncObjs.TCriticalSection')) then
+        if (mSymbol.Kind = TIndexSymbolKind.Field) and SameText(mSymbol.Container, mClassSymbol.Name) and
+          (SameText(mSymbol.TypeName, 'TCriticalSection') or SameText(mSymbol.TypeName, 'TSyncObjs.TCriticalSection')) then
         begin
-          Section := Symbol.Name;
+          mSection := mSymbol.Name;
           Break;
         end;
       end;
     end;
-    if Section <> '' then
+    if mSection <> '' then
     begin
-      Result := Wrap(Source, 'lock', TWrapFrame.Create([Section + '.Enter;', 'try'], ['finally',
-        '  ' + Section + '.Leave;', 'end;'], '  '), AEdits, AReason);
+      Result := Wrap(mSource, 'lock', TWrapFrame.Create([mSection + '.Enter;', 'try'], ['finally',
+        '  ' + mSection + '.Leave;', 'end;'], '  '), AEdits, AReason);
     end
     else
     begin
-      Result := Wrap(Source, 'lock', TWrapFrame.Create(['TMonitor.Enter(Self);', 'try'], ['finally',
+      Result := Wrap(mSource, 'lock', TWrapFrame.Create(['TMonitor.Enter(Self);', 'try'], ['finally',
         '  TMonitor.Exit(Self);', 'end;'], '  '), AEdits, AReason);
     end;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -209,50 +209,50 @@ end;
 function ExecuteSync(const AContext: TSlashContext; const AMethod: string; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
-  Source: TCommandSource;
+  mSource: TCommandSource;
 begin
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Result := Wrap(Source, AContext.Name, TWrapFrame.Create(['TThread.' + AMethod + '(nil,', '  procedure', '  begin'],
+    Result := Wrap(mSource, AContext.Name, TWrapFrame.Create(['TThread.' + AMethod + '(nil,', '  procedure', '  begin'],
       ['  end);'], '    '), AEdits, AReason);
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
 function ExecuteIfdef(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
+  mSource: TCommandSource;
 begin
   AEdits := nil;
   if not IsValidIdent(AContext.Arguments) then
   begin
     Exit(Fail(cTexts[TWrapCommandsText.ExpectedIsIfdefSYMBOL].Text, AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Result := Wrap(Source, 'ifdef', TWrapFrame.Create(['{$IFDEF ' + AContext.Arguments + '}'], ['{$ENDIF}'], ''),
+    Result := Wrap(mSource, 'ifdef', TWrapFrame.Create(['{$IFDEF ' + AContext.Arguments + '}'], ['{$ENDIF}'], ''),
       AEdits, AReason);
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
 function ExecuteRegion(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
+  mSource: TCommandSource;
 begin
   AEdits := nil;
   if AContext.Arguments = '' then
   begin
     Exit(Fail(cTexts[TWrapCommandsText.ExpectedIsRegionName].Text, AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Result := Wrap(Source, 'region', TWrapFrame.Create(['{$REGION ''' + StringReplace(AContext.Arguments, '''', '''''',
+    Result := Wrap(mSource, 'region', TWrapFrame.Create(['{$REGION ''' + StringReplace(AContext.Arguments, '''', '''''',
       [rfReplaceAll]) + '''}'], ['{$ENDREGION}'], ''), AEdits, AReason);
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -260,16 +260,16 @@ end;
 
 function ExecuteExcept(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
+  mSource: TCommandSource;
 begin
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
     // Nie ein leeres except: protokollieren und weiterwerfen.
-    Result := Wrap(Source, 'except', TWrapFrame.Create(['try'], ['except', '  on E: Exception do', '  begin',
+    Result := Wrap(mSource, 'except', TWrapFrame.Create(['try'], ['except', '  on E: Exception do', '  begin',
       '    ' + LogStatement(AContext, 'E.ClassName + '': '' + E.Message'), '    raise;', '  end;', 'end;'], '  '),
       AEdits, AReason);
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -307,35 +307,35 @@ end;
 function ScopedEnum(const AContext: TSlashContext; ASource: TCommandSource; const AFileName: string;
   const AType: TResolvedSymbol): Boolean;
 var
-  Text: string;
-  Token: TPascalToken;
-  Directive: string;
+  mText: string;
+  mToken: TPascalToken;
+  mDirective: string;
 begin
   Result := False;
   if SameText(AType.FileName, AFileName) then
   begin
-    Text := ASource.Text;
+    mText := ASource.Text;
   end
-  else if (AContext.Host = nil) or not AContext.Host.ReadFile(AType.FileName, Text) then
+  else if (AContext.Host = nil) or not AContext.Host.ReadFile(AType.FileName, mText) then
   begin
     Exit;
   end;
-  for Token in TPascalLexer.Tokenize(Text) do
+  for mToken in TPascalLexer.Tokenize(mText) do
   begin
-    if (Token.StartPos.Line > AType.Range.StartPos.Line) then
+    if mToken.StartPos.Line > AType.Range.StartPos.Line then
     begin
       Break;
     end;
-    if Token.Kind <> TPascalTokenKind.Directive then
+    if mToken.Kind <> TPascalTokenKind.Directive then
     begin
       Continue;
     end;
-    Directive := UpperCase(StringReplace(Token.Text, ' ', '', [rfReplaceAll]));
-    if StartsStr('{$SCOPEDENUMSON', Directive) then
+    mDirective := UpperCase(StringReplace(mToken.Text, ' ', '', [rfReplaceAll]));
+    if StartsStr('{$SCOPEDENUMSON', mDirective) then
     begin
       Result := True;
     end
-    else if StartsStr('{$SCOPEDENUMSOFF', Directive) then
+    else if StartsStr('{$SCOPEDENUMSOFF', mDirective) then
     begin
       Result := False;
     end;

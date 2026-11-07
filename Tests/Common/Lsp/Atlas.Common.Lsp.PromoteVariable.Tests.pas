@@ -157,9 +157,9 @@ begin
   Actions := ActionsAt(FIndex, 16, 3);
   try
     Assert.AreEqual(1, Integer(Length(Actions)));
-    Assert.AreEqual(TLspPromoteVariable.Kind, Actions[0].GetValue<string>('kind'));
+    Assert.AreEqual(TLspPromoteVariable.cKind, Actions[0].GetValue<string>('kind'));
     Assert.IsTrue(Actions[0].GetValue<string>('title').StartsWith(TPromoteVariable.ToFieldTitle + ' (LTotal'));
-    Assert.AreEqual(TLspPromoteVariable.ClientCommand, Actions[0].GetValue<string>('command.command'));
+    Assert.AreEqual(TLspPromoteVariable.cClientCommand, Actions[0].GetValue<string>('command.command'));
     Arguments := Actions[0].GetValue<TJSONArray>('command.arguments');
     Assert.AreEqual(3, Arguments.Count);
     Assert.AreEqual(TDocumentUris.FromPath(FileName), Arguments.Items[0].Value);

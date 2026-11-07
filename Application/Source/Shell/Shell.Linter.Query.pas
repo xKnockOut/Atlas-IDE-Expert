@@ -177,24 +177,24 @@ begin
   if not mSettings.QueryEnabled then
   begin
     TLinterOutput.Error(cTexts[TLinterQueryMessage.Off].Text);
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   TFileEncodingDefaults.SetFolder(ATarget.ConfigRoot, mSettings.DefaultEncoding);
   if not TLinterQuery.Resolve(AOptions.QueryText, AOptions.FailOnMatch, mSettings, mQuery) then
   begin
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   mResult := Execute(AOptions, ATarget.ConfigRoot, ATarget.Target, mSettings, mQuery.Text);
   if mResult.Failed then
   begin
     TLinterOutput.Error(TQueryOutput.ErrorText(mResult));
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   TLinterOutput.Write(AOptions, TQueryOutput.Render(mResult, AFormat));
-  Result := TFindingsOutput.ExitClean;
+  Result := TFindingsOutput.cExitClean;
   if mQuery.FailOnMatch and (mResult.Total > 0) then
   begin
-    Result := TFindingsOutput.ExitFindings;
+    Result := TFindingsOutput.cExitFindings;
   end;
 end;
 
@@ -208,11 +208,11 @@ begin
     (mFormat = TQueryOutputFormat.Markdown) then
   begin
     TLinterOutput.Error(cTexts[TLinterQueryMessage.Formats].Text);
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   if not TLinterTarget.ResolveOrCurrent(AOptions.CheckTarget, mTarget) then
   begin
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   try
     Result := Answer(AOptions, mTarget, mFormat);
@@ -220,7 +220,7 @@ begin
     on E: Exception do
     begin
       TLinterOutput.Error(E.Message);
-      Result := TFindingsOutput.ExitFailure;
+      Result := TFindingsOutput.cExitFailure;
     end;
   end;
 end;

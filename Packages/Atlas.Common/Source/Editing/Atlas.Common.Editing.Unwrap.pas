@@ -94,19 +94,19 @@ uses
   Atlas.Common.Editing.RoutineBody;
 
 const
-  KindNames: array[TUnwrapKind] of string = ('beginEnd', 'tryFinally', 'tryExcept', 'ifThen', 'withDo', 'forDo',
+  cKindNames: array[TUnwrapKind] of string = ('beginEnd', 'tryFinally', 'tryExcept', 'ifThen', 'withDo', 'forDo',
     'whileDo', 'repeatUntil', 'ifdef', 'region');
-  VariantNames: array[TUnwrapVariantKind] of string = ('body', 'keepFinally', 'dropFinally', 'then', 'else',
+  cVariantNames: array[TUnwrapVariantKind] of string = ('body', 'keepFinally', 'dropFinally', 'then', 'else',
     'branch');
-  NoteNames: array[TUnwrapNote] of string = ('', 'multipleRaise', 'loopVariable', 'withUnresolved');
+  cNoteNames: array[TUnwrapNote] of string = ('', 'multipleRaise', 'loopVariable', 'withUnresolved');
 
   /// <summary>Knoten, die genau eine Anweisung tragen: Bleiben dort mehrere, kommen sie in begin … end.</summary>
-  SingleStatementParents = [TSyntaxKind.IfStatement, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement,
+  cSingleStatementParents = [TSyntaxKind.IfStatement, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement,
     TSyntaxKind.WhileStatement, TSyntaxKind.WithStatement, TSyntaxKind.CaseItem, TSyntaxKind.ExceptionHandler,
     TSyntaxKind.LabeledStatement];
 
   /// <summary>Knoten, in denen ein begin … end als Anweisung steht.</summary>
-  StatementParents = SingleStatementParents + [TSyntaxKind.Block, TSyntaxKind.RepeatStatement,
+  cStatementParents = cSingleStatementParents + [TSyntaxKind.Block, TSyntaxKind.RepeatStatement,
     TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.CaseElse];
 
 type
@@ -238,25 +238,25 @@ end;
 
 function CountRaises(ANode: TSyntaxNode): Integer;
 var
-  Count: Integer;
+  mCount: Integer;
 begin
   Result := 0;
   if ANode = nil then
   begin
     Exit;
   end;
-  Count := 0;
+  mCount := 0;
   // Walk statt Rekursion (Bericht M1). Ein raise in einer anonymen Methode gehört nicht zum except-Teil.
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     begin
       if AChild.Kind = TSyntaxKind.RaiseStatement then
       begin
-        Inc(Count);
+        Inc(mCount);
       end;
       Result := AChild.Kind <> TSyntaxKind.AnonymousMethod;
     end);
-  Result := Count;
+  Result := mCount;
 end;
 
 { TUnwrapOptions }
@@ -338,16 +338,16 @@ end;
 
 function TBuilder.IsBlank(AStart, AEnd: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Trim(Copy(Text, AStart + 1, AEnd - AStart)) = '';
   if not Result then
   begin
     Exit;
   end;
-  for Index := AStart + 1 to AEnd do
+  for mIndex := AStart + 1 to AEnd do
   begin
-    if CharInSet(Text[Index], [#10, #13]) then
+    if CharInSet(Text[mIndex], [#10, #13]) then
     begin
       Exit(False);
     end;
@@ -356,84 +356,84 @@ end;
 
 procedure TBuilder.AddPieces(AStart, AEnd: Integer; var ARanges: TArray<TTextRange>);
 var
-  Line, From, Till: Integer;
+  mLine, mFrom, mTill: Integer;
 begin
   if AEnd <= AStart then
   begin
     Exit;
   end;
-  for Line := LineOf(AStart) to LineOf(AEnd) do
+  for mLine := LineOf(AStart) to LineOf(AEnd) do
   begin
-    From := Table.LineStart(Line);
-    if From < AStart then
+    mFrom := Table.LineStart(mLine);
+    if mFrom < AStart then
     begin
-      From := AStart;
+      mFrom := AStart;
     end;
-    Till := Table.LineContentEnd(Line);
-    if Till > AEnd then
+    mTill := Table.LineContentEnd(mLine);
+    if mTill > AEnd then
     begin
-      Till := AEnd;
+      mTill := AEnd;
     end;
-    while (From < Till) and CharInSet(Text[From + 1], [' ', #9]) do
+    while (mFrom < mTill) and CharInSet(Text[mFrom + 1], [' ', #9]) do
     begin
-      Inc(From);
+      Inc(mFrom);
     end;
-    while (Till > From) and CharInSet(Text[Till], [' ', #9]) do
+    while (mTill > mFrom) and CharInSet(Text[mTill], [' ', #9]) do
     begin
-      Dec(Till);
+      Dec(mTill);
     end;
-    if Till > From then
+    if mTill > mFrom then
     begin
-      ARanges := ARanges + [RangeOf(From, Till)];
+      ARanges := ARanges + [RangeOf(mFrom, mTill)];
     end;
   end;
 end;
 
 function TBuilder.ChildFrom(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    if ANode[Index].StartOffset >= AOffset then
+    if ANode[mIndex].StartOffset >= AOffset then
     begin
-      Exit(ANode[Index]);
+      Exit(ANode[mIndex]);
     end;
   end;
 end;
 
 function TBuilder.KeywordEnd(AOffset, AEnd: Integer; const AWord: string): Integer;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   Result := -1;
-  Depth := 0;
-  Index := NextCode(AOffset);
-  while (Index >= 0) and (Index <= High(Tokens)) and (Tokens[Index].Offset < AEnd) do
+  mDepth := 0;
+  mIndex := NextCode(AOffset);
+  while (mIndex >= 0) and (mIndex <= High(Tokens)) and (Tokens[mIndex].Offset < AEnd) do
   begin
-    if IsCode(Index) then
+    if IsCode(mIndex) then
     begin
-      if Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol('[') then
+      if Tokens[mIndex].IsSymbol('(') or Tokens[mIndex].IsSymbol('[') then
       begin
-        Inc(Depth);
+        Inc(mDepth);
       end
-      else if Tokens[Index].IsSymbol(')') or Tokens[Index].IsSymbol(']') then
+      else if Tokens[mIndex].IsSymbol(')') or Tokens[mIndex].IsSymbol(']') then
       begin
-        Dec(Depth);
+        Dec(mDepth);
       end
-      else if (Depth = 0) and Tokens[Index].IsKeyword(AWord) then
+      else if (mDepth = 0) and Tokens[mIndex].IsKeyword(AWord) then
       begin
-        Exit(TokenEnd(Index));
+        Exit(TokenEnd(mIndex));
       end;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
 function TBuilder.BranchSegment(ADelimiterEnd: Integer; ABranch: TSyntaxNode; out ACount: Integer): TSegment;
 var
-  First, Last: Integer;
+  mFirst, mLast: Integer;
 begin
   ACount := 0;
   if ABranch = nil then
@@ -442,12 +442,12 @@ begin
   end;
   if ABranch.Kind = TSyntaxKind.Block then
   begin
-    First := NextCode(ABranch.StartOffset);
-    Last := PrevCode(ABranch.EndOffset);
-    if IsKeyword(First, 'begin') and IsKeyword(Last, 'end') and (First < Last) then
+    mFirst := NextCode(ABranch.StartOffset);
+    mLast := PrevCode(ABranch.EndOffset);
+    if IsKeyword(mFirst, 'begin') and IsKeyword(mLast, 'end') and (mFirst < mLast) then
     begin
       ACount := ABranch.ChildCount;
-      Exit(TSegment.Create(TokenEnd(First), Tokens[Last].Offset));
+      Exit(TSegment.Create(TokenEnd(mFirst), Tokens[mLast].Offset));
     end;
   end;
   ACount := 1;
@@ -456,16 +456,16 @@ end;
 
 function TBuilder.SegmentText(const ASegment: TSegment; const AEdits: TArray<TOffsetEdit>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Copy(Text, ASegment.StartOffset + 1, ASegment.EndOffset - ASegment.StartOffset);
   // Die Edits sind nach Offset absteigend sortiert.
-  for Index := 0 to High(AEdits) do
+  for mIndex := 0 to High(AEdits) do
   begin
-    if (AEdits[Index].Offset >= ASegment.StartOffset) and (AEdits[Index].Offset <= ASegment.EndOffset) then
+    if (AEdits[mIndex].Offset >= ASegment.StartOffset) and (AEdits[mIndex].Offset <= ASegment.EndOffset) then
     begin
-      Result := Copy(Result, 1, AEdits[Index].Offset - ASegment.StartOffset) + AEdits[Index].Text +
-        Copy(Result, AEdits[Index].Offset - ASegment.StartOffset + AEdits[Index].Length + 1, MaxInt);
+      Result := Copy(Result, 1, AEdits[mIndex].Offset - ASegment.StartOffset) + AEdits[mIndex].Text +
+        Copy(Result, AEdits[mIndex].Offset - ASegment.StartOffset + AEdits[mIndex].Length + 1, MaxInt);
     end;
   end;
 end;
@@ -514,7 +514,7 @@ begin
     end;
   end;
   SingleParent := not Directive and (Node <> nil) and (Node.Parent <> nil) and
-    (Node.Parent.Kind in SingleStatementParents);
+    (Node.Parent.Kind in cSingleStatementParents);
   Wrap := SingleParent and (Count <> 1);
 end;
 
@@ -839,7 +839,7 @@ var
   mSegment: TSegment;
   mCount: Integer;
 begin
-  Result := (ANode.Parent <> nil) and (ANode.Parent.Kind in StatementParents);
+  Result := (ANode.Parent <> nil) and (ANode.Parent.Kind in cStatementParents);
   if not Result then
   begin
     Exit;
@@ -847,7 +847,7 @@ begin
   mSegment := BranchSegment(ANode.StartOffset, ANode, mCount);
   // Hinter then/do ergäbe ein Block mit mehreren Anweisungen wieder begin … end.
   Result := (mCount = ANode.ChildCount) and (mSegment.StartOffset <> ANode.StartOffset) and
-    not ((ANode.Parent.Kind in SingleStatementParents) and (mCount <> 1));
+    not ((ANode.Parent.Kind in cSingleStatementParents) and (mCount <> 1));
   if Result then
   begin
     ACandidate.Kind := TUnwrapKind.BeginEnd;
@@ -1291,17 +1291,17 @@ end;
 
 class function TUnwrap.KindName(AKind: TUnwrapKind): string;
 begin
-  Result := KindNames[AKind];
+  Result := cKindNames[AKind];
 end;
 
 class function TUnwrap.VariantName(AKind: TUnwrapVariantKind): string;
 begin
-  Result := VariantNames[AKind];
+  Result := cVariantNames[AKind];
 end;
 
 class function TUnwrap.NoteName(ANote: TUnwrapNote): string;
 begin
-  Result := NoteNames[ANote];
+  Result := cNoteNames[ANote];
 end;
 
 end.

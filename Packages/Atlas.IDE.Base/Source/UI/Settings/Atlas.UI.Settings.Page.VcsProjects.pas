@@ -126,7 +126,6 @@ type
     property OnBrowseProject: TAtlasProjectBrowseEvent read FOnBrowseProject write FOnBrowseProject;
     /// <summary>Zum Testen.</summary>
     property AddCurrentButton: TButton read FAddCurrent;
-    property AddButton: TButton read FAdd;
     property AddMenu: TPopupMenu read FAddMenu;
   end;
 
@@ -182,7 +181,6 @@ type
     property VcsServerCheckAll: TButton read FVcsServerCheckAll;
     property VcsServerLogin: TButton read FVcsServerLogin;
     property VcsServerNote: TLabel read FVcsServerNote;
-    property VcsServerRows: TArray<TAtlasVcsServerRow> read FVcsServerRows;
   end;
 
 implementation
@@ -298,7 +296,8 @@ begin
   FVcsProjectProvider := TAtlasChoiceBox.Create(FPage);
   FVcsProjectProvider.OnChange := VcsProjectProviderChange;
   Attach(AddFieldRow(TAtlasTextId.SettingsVcsProjectsKind, FVcsProjectProvider, cVcsField), FVcsProjectList);
-  FVcsProjectProvider.SetChoices(TArray<string>.Create(TAtlasSettingsVcsPart.VcsProviderCaption('auto'), TAtlasSettingsVcsPart.VcsProviderCaption('git'),
+  FVcsProjectProvider.SetChoices(TArray<string>.Create(TAtlasSettingsVcsPart.VcsProviderCaption('auto'),
+    TAtlasSettingsVcsPart.VcsProviderCaption('git'),
     TAtlasSettingsVcsPart.VcsProviderCaption('svn'), TAtlasSettingsVcsPart.VcsProviderCaption('off')));
   FVcsProjectMainBranch := TEdit.Create(FPage);
   FVcsProjectMainBranch.OnChange := VcsProjectMainBranchChange;
@@ -751,7 +750,8 @@ begin
   FVcsServerList.RowSelect := True;
   FVcsServerList.HideSelection := False;
   FVcsServerList.OnSelectItem := VcsServerSelectItem;
-  TAtlasSettingsPageSheets.AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerProject, cVcsServerProjectColumn);
+  TAtlasSettingsPageSheets.AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerProject,
+    cVcsServerProjectColumn);
   TAtlasSettingsPageSheets.AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerServer, cVcsServerServerColumn);
   TAtlasSettingsPageSheets.AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerState, cVcsServerStateColumn);
   mPanel := AddPanel(32);

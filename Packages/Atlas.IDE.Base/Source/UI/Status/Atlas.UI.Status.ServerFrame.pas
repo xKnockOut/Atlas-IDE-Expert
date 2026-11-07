@@ -359,7 +359,8 @@ begin
   FRules.Align := alTop;
   FRules.OnData := RulesData;
   FRules.OnDblClick := RulesDblClick;
-  FUnits := NewList([TAtlasStrings.Text(TAtlasTextId.ServerColumnUnit), TAtlasStrings.Text(TAtlasTextId.ServerColumnMs)],
+  FUnits := NewList([TAtlasStrings.Text(TAtlasTextId.ServerColumnUnit),
+    TAtlasStrings.Text(TAtlasTextId.ServerColumnMs)],
     [260, 80]);
   FUnits.Align := alTop;
   FUnits.Top := 0;

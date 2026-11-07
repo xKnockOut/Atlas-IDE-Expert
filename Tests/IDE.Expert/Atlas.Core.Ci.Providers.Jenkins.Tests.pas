@@ -119,7 +119,7 @@ end;
 function TFakeTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
   out AError: TAtlasCiFetchError): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Calls := Calls + [AUrl];
   Timeouts := Timeouts + [ATimeoutMs];
@@ -130,12 +130,12 @@ begin
   begin
     Exit(False);
   end;
-  for Index := 0 to High(FPrefixes) do
+  for mIndex := 0 to High(FPrefixes) do
   begin
-    if Copy(AUrl, 1, Length(FPrefixes[Index])) = FPrefixes[Index] then
+    if Copy(AUrl, 1, Length(FPrefixes[mIndex])) = FPrefixes[mIndex] then
     begin
-      AStatus := FStatus[Index];
-      AText := FTexts[Index];
+      AStatus := FStatus[mIndex];
+      AText := FTexts[mIndex];
       Exit(True);
     end;
   end;
@@ -146,22 +146,22 @@ end;
 /// <summary>Datei aus Tests\Data\Jenkins, gesucht ab dem Ordner des Testprogramms aufwärts.</summary>
 function Fixture(const AName: string): string;
 var
-  Directory, FileName: string;
+  mDirectory, mFileName: string;
 begin
-  Directory := ExtractFileDir(ParamStr(0));
-  while Directory <> '' do
+  mDirectory := ExtractFileDir(ParamStr(0));
+  while mDirectory <> '' do
   begin
-    FileName := TPath.Combine(Directory, TPath.Combine('Tests', TPath.Combine('Data',
+    mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
       TPath.Combine('Jenkins', AName))));
-    if TFile.Exists(FileName) then
+    if TFile.Exists(mFileName) then
     begin
-      Exit(TFile.ReadAllText(FileName, TEncoding.UTF8));
+      Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
     end;
-    if ExtractFileDir(Directory) = Directory then
+    if ExtractFileDir(mDirectory) = mDirectory then
     begin
       Break;
     end;
-    Directory := ExtractFileDir(Directory);
+    mDirectory := ExtractFileDir(mDirectory);
   end;
   raise Exception.Create('Tests\Data\Jenkins\' + AName + ' nicht gefunden');
 end;
@@ -175,17 +175,17 @@ end;
 
 procedure TAtlasCiJobTests.CreateTrimsAndLowercasesProvider;
 var
-  Value: TAtlasCiJob;
+  mValue: TAtlasCiJob;
 begin
-  Value := TAtlasCiJob.Create(' Jenkins ', ' https://ci.firma.de/jenkins// ', '/team/kasse/', True, ' main ');
-  Assert.AreEqual('jenkins', Value.Provider);
-  Assert.AreEqual('https://ci.firma.de/jenkins', Value.Url);
-  Assert.AreEqual('team/kasse', Value.Job);
-  Assert.AreEqual('main', Value.Branch);
-  Assert.AreEqual('main', Value.JobBranch);
-  Assert.AreEqual('jenkins|https://ci.firma.de/jenkins|team/kasse|main', Value.Key);
-  Value.Multibranch := False;
-  Assert.AreEqual('', Value.JobBranch, 'ohne Multibranch gehört der Branch nicht zum Job');
+  mValue := TAtlasCiJob.Create(' Jenkins ', ' https://ci.firma.de/jenkins// ', '/team/kasse/', True, ' main ');
+  Assert.AreEqual('jenkins', mValue.Provider);
+  Assert.AreEqual('https://ci.firma.de/jenkins', mValue.Url);
+  Assert.AreEqual('team/kasse', mValue.Job);
+  Assert.AreEqual('main', mValue.Branch);
+  Assert.AreEqual('main', mValue.JobBranch);
+  Assert.AreEqual('jenkins|https://ci.firma.de/jenkins|team/kasse|main', mValue.Key);
+  mValue.Multibranch := False;
+  Assert.AreEqual('', mValue.JobBranch, 'ohne Multibranch gehört der Branch nicht zum Job');
 end;
 
 procedure TAtlasCiJobTests.ConfiguredNeedsServerJobAndBranch;
@@ -216,16 +216,16 @@ end;
 
 procedure TAtlasCiJobTests.KeysOfOutcomeAndError;
 var
-  Outcome: TAtlasCiOutcome;
-  Error: TAtlasCiFetchError;
+  mOutcome: TAtlasCiOutcome;
+  mError: TAtlasCiFetchError;
 begin
-  for Outcome := Low(TAtlasCiOutcome) to High(TAtlasCiOutcome) do
+  for mOutcome := Low(TAtlasCiOutcome) to High(TAtlasCiOutcome) do
   begin
-    Assert.IsTrue(TAtlasCiBuild.OutcomeOf(TAtlasCiBuild.OutcomeKey(Outcome)) = Outcome);
+    Assert.IsTrue(TAtlasCiBuild.OutcomeOf(TAtlasCiBuild.OutcomeKey(mOutcome)) = mOutcome);
   end;
-  for Error := Low(TAtlasCiFetchError) to High(TAtlasCiFetchError) do
+  for mError := Low(TAtlasCiFetchError) to High(TAtlasCiFetchError) do
   begin
-    Assert.IsTrue(TAtlasCiBuild.ErrorOf(TAtlasCiBuild.ErrorKey(Error)) = Error);
+    Assert.IsTrue(TAtlasCiBuild.ErrorOf(TAtlasCiBuild.ErrorKey(mError)) = mError);
   end;
   Assert.AreEqual('', TAtlasCiBuild.ErrorKey(TAtlasCiFetchError.None));
   Assert.IsTrue(TAtlasCiBuild.OutcomeOf('seltsam') = TAtlasCiOutcome.Unknown);
@@ -284,92 +284,92 @@ end;
 
 procedure TAtlasJenkinsProviderTests.ApiUrlsAskOnlyNeededFields;
 var
-  Url: string;
+  mUrl: string;
 begin
   Assert.AreEqual('https://ci.firma.de/job/team/job/kasse/lastCompletedBuild/api/json?' +
     'tree=number,result,timestamp,duration', TAtlasJenkinsProvider.BuildApiUrl(Job));
-  Url := TAtlasJenkinsProvider.TestReportApiUrl(Job, 482);
+  mUrl := TAtlasJenkinsProvider.TestReportApiUrl(Job, 482);
   Assert.StartsWith('https://ci.firma.de/job/team/job/kasse/482/testReport/api/json?tree=passCount,failCount,' +
-    'skipCount,suites%5Bcases%5BclassName,name,status,errorDetails%5D%5D', Url);
-  Assert.Contains(Url, 'childReports%5Bresult%5B');
-  Assert.DoesNotContain(Url, '[', 'eckige Klammern kodiert');
+    'skipCount,suites%5Bcases%5BclassName,name,status,errorDetails%5D%5D', mUrl);
+  Assert.Contains(mUrl, 'childReports%5Bresult%5B');
+  Assert.DoesNotContain(mUrl, '[', 'eckige Klammern kodiert');
   Assert.AreEqual('', TAtlasJenkinsProvider.TestReportApiUrl(Job, 0));
 end;
 
 procedure TAtlasJenkinsProviderTests.ParsesLastCompletedBuildFromFixture;
 var
-  Build: TAtlasCiBuild;
+  mBuild: TAtlasCiBuild;
 begin
-  Assert.IsTrue(TAtlasJenkinsProvider.ParseBuild(Fixture('last-completed-build.json'), Build));
-  Assert.AreEqual(482, Build.Number);
-  Assert.IsTrue(Build.Outcome = TAtlasCiOutcome.Unstable);
-  Assert.AreEqual(Int64(61234), Build.DurationMs);
+  Assert.IsTrue(TAtlasJenkinsProvider.ParseBuild(Fixture('last-completed-build.json'), mBuild));
+  Assert.AreEqual(482, mBuild.Number);
+  Assert.IsTrue(mBuild.Outcome = TAtlasCiOutcome.Unstable);
+  Assert.AreEqual(Int64(61234), mBuild.DurationMs);
   // 1792138800500 ms = 2026-10-16 08:20:00,5 UTC
-  Assert.IsTrue(Abs(Build.StartedUtc - (EncodeDate(2026, 10, 16) + EncodeTime(8, 20, 0, 500))) < 1 / 86400000 * 2);
-  Assert.IsFalse(Build.TestsKnown, 'Tests erst aus dem Testbericht');
+  Assert.IsTrue(Abs(mBuild.StartedUtc - (EncodeDate(2026, 10, 16) + EncodeTime(8, 20, 0, 500))) < 1 / 86400000 * 2);
+  Assert.IsFalse(mBuild.TestsKnown, 'Tests erst aus dem Testbericht');
 end;
 
 procedure TAtlasJenkinsProviderTests.ParsesTestReportFromFixture;
 var
-  Build: TAtlasCiBuild;
+  mBuild: TAtlasCiBuild;
 begin
-  Build := TAtlasCiBuild.Empty;
-  Build.Number := 482;
-  Assert.IsTrue(TAtlasJenkinsProvider.ParseTestReport(Fixture('test-report.json'), Build));
-  Assert.IsTrue(Build.TestsKnown);
-  Assert.AreEqual(410, Build.Passed);
-  Assert.AreEqual(2, Build.Failed);
-  Assert.AreEqual(3, Build.Skipped);
-  Assert.AreEqual(2, Integer(Length(Build.Failures)), 'FAILED und REGRESSION, nicht FIXED');
-  Assert.AreEqual('Atlas.Core.Index.Tests.TIndexTests.FindsDeclarations', Build.Failures[0].Test);
-  Assert.AreEqual('Erwartet 3 Deklarationen, gefunden 0', Build.Failures[0].Message, 'nur die erste Zeile');
-  Assert.AreEqual('Atlas.Core.Hover.Tests.THoverTests.ShowsDocumentation', Build.Failures[1].Test);
-  Assert.AreEqual(482, Build.Number, 'Build bleibt');
+  mBuild := TAtlasCiBuild.Empty;
+  mBuild.Number := 482;
+  Assert.IsTrue(TAtlasJenkinsProvider.ParseTestReport(Fixture('test-report.json'), mBuild));
+  Assert.IsTrue(mBuild.TestsKnown);
+  Assert.AreEqual(410, mBuild.Passed);
+  Assert.AreEqual(2, mBuild.Failed);
+  Assert.AreEqual(3, mBuild.Skipped);
+  Assert.AreEqual(2, Integer(Length(mBuild.Failures)), 'FAILED und REGRESSION, nicht FIXED');
+  Assert.AreEqual('Atlas.Core.Index.Tests.TIndexTests.FindsDeclarations', mBuild.Failures[0].Test);
+  Assert.AreEqual('Erwartet 3 Deklarationen, gefunden 0', mBuild.Failures[0].Message, 'nur die erste Zeile');
+  Assert.AreEqual('Atlas.Core.Hover.Tests.THoverTests.ShowsDocumentation', mBuild.Failures[1].Test);
+  Assert.AreEqual(482, mBuild.Number, 'Build bleibt');
 end;
 
 procedure TAtlasJenkinsProviderTests.ParsesChildReportsFromFixture;
 var
-  Build: TAtlasCiBuild;
+  mBuild: TAtlasCiBuild;
 begin
-  Build := TAtlasCiBuild.Empty;
-  Assert.IsTrue(TAtlasJenkinsProvider.ParseTestReport(Fixture('test-report-child.json'), Build));
-  Assert.AreEqual(42, Build.Passed, 'Teilberichte zusammengezählt');
-  Assert.AreEqual(1, Build.Failed);
-  Assert.AreEqual(1, Build.Skipped);
-  Assert.AreEqual(1, Integer(Length(Build.Failures)));
-  Assert.AreEqual('Win32.Atlas.Tests.TRechnerTests.Summe', Build.Failures[0].Test);
+  mBuild := TAtlasCiBuild.Empty;
+  Assert.IsTrue(TAtlasJenkinsProvider.ParseTestReport(Fixture('test-report-child.json'), mBuild));
+  Assert.AreEqual(42, mBuild.Passed, 'Teilberichte zusammengezählt');
+  Assert.AreEqual(1, mBuild.Failed);
+  Assert.AreEqual(1, mBuild.Skipped);
+  Assert.AreEqual(1, Integer(Length(mBuild.Failures)));
+  Assert.AreEqual('Win32.Atlas.Tests.TRechnerTests.Summe', mBuild.Failures[0].Test);
 end;
 
 procedure TAtlasJenkinsProviderTests.RejectsInvalidAnswers;
 var
-  Build: TAtlasCiBuild;
-  Text: string;
-  Index: Integer;
+  mBuild: TAtlasCiBuild;
+  mText: string;
+  mIndex: Integer;
 begin
-  Assert.IsFalse(TAtlasJenkinsProvider.ParseBuild('<html>Login</html>', Build));
-  Assert.IsFalse(TAtlasJenkinsProvider.ParseBuild('{"result": "SUCCESS"}', Build), 'ohne Nummer');
-  Assert.IsFalse(TAtlasJenkinsProvider.ParseBuild('{"number": 0}', Build));
-  Assert.IsTrue(TAtlasJenkinsProvider.ParseBuild('{"number": 5, "result": null}', Build), 'läuft noch');
-  Assert.IsTrue(Build.Outcome = TAtlasCiOutcome.Unknown);
-  Build := TAtlasCiBuild.Empty;
-  Assert.IsFalse(TAtlasJenkinsProvider.ParseTestReport('[]', Build));
-  Assert.IsFalse(Build.TestsKnown);
+  Assert.IsFalse(TAtlasJenkinsProvider.ParseBuild('<html>Login</html>', mBuild));
+  Assert.IsFalse(TAtlasJenkinsProvider.ParseBuild('{"result": "SUCCESS"}', mBuild), 'ohne Nummer');
+  Assert.IsFalse(TAtlasJenkinsProvider.ParseBuild('{"number": 0}', mBuild));
+  Assert.IsTrue(TAtlasJenkinsProvider.ParseBuild('{"number": 5, "result": null}', mBuild), 'läuft noch');
+  Assert.IsTrue(mBuild.Outcome = TAtlasCiOutcome.Unknown);
+  mBuild := TAtlasCiBuild.Empty;
+  Assert.IsFalse(TAtlasJenkinsProvider.ParseTestReport('[]', mBuild));
+  Assert.IsFalse(mBuild.TestsKnown);
   // Mehr Fehlschläge als MaxFailures: gezählt alle, gespeichert höchstens MaxFailures; lange Meldung gekürzt.
-  Text := '{"failCount": 70, "suites": [{"cases": [';
-  for Index := 1 to 70 do
+  mText := '{"failCount": 70, "suites": [{"cases": [';
+  for mIndex := 1 to 70 do
   begin
-    if Index > 1 then
+    if mIndex > 1 then
     begin
-      Text := Text + ',';
+      mText := mText + ',';
     end;
-    Text := Text + '{"className": "U.T", "name": "M' + IntToStr(Index) + '", "status": "FAILED", ' +
+    mText := mText + '{"className": "U.T", "name": "M' + IntToStr(mIndex) + '", "status": "FAILED", ' +
       '"errorDetails": "' + StringOfChar('x', 400) + '"}';
   end;
-  Text := Text + ']}]}';
-  Assert.IsTrue(TAtlasJenkinsProvider.ParseTestReport(Text, Build));
-  Assert.AreEqual(70, Build.Failed);
-  Assert.AreEqual(TAtlasCiBuild.MaxFailures, Integer(Length(Build.Failures)));
-  Assert.AreEqual(TAtlasJenkinsProvider.MaxMessage, Integer(Length(Build.Failures[0].Message)));
+  mText := mText + ']}]}';
+  Assert.IsTrue(TAtlasJenkinsProvider.ParseTestReport(mText, mBuild));
+  Assert.AreEqual(70, mBuild.Failed);
+  Assert.AreEqual(TAtlasCiBuild.cMaxFailures, Integer(Length(mBuild.Failures)));
+  Assert.AreEqual(TAtlasJenkinsProvider.cMaxMessage, Integer(Length(mBuild.Failures[0].Message)));
 end;
 
 procedure TAtlasJenkinsProviderTests.ErrorOfStatus;
@@ -383,102 +383,102 @@ end;
 
 procedure TAtlasJenkinsProviderTests.FetchReadsBuildAndReport;
 var
-  Transport: TFakeTransport;
-  Keep: IAtlasCiTransport;
-  Provider: IAtlasCiProvider;
-  Build: TAtlasCiBuild;
-  Error: TAtlasCiFetchError;
+  mTransport: TFakeTransport;
+  mKeep: IAtlasCiTransport;
+  mProvider: IAtlasCiProvider;
+  mBuild: TAtlasCiBuild;
+  mError: TAtlasCiFetchError;
 begin
-  Transport := TFakeTransport.Create;
-  Keep := Transport;
-  Transport.Answer('https://ci.firma.de/job/team/job/kasse/lastCompletedBuild/', 200,
+  mTransport := TFakeTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('https://ci.firma.de/job/team/job/kasse/lastCompletedBuild/', 200,
     Fixture('last-completed-build.json'));
-  Transport.Answer('https://ci.firma.de/job/team/job/kasse/482/testReport/', 200, Fixture('test-report.json'));
-  Provider := TAtlasJenkinsProvider.Create;
-  Assert.AreEqual('jenkins', Provider.Name);
-  Assert.IsTrue(Provider.Fetch(Job, Keep, 5000, Build, Error));
-  Assert.IsTrue(Error = TAtlasCiFetchError.None);
-  Assert.AreEqual(482, Build.Number);
-  Assert.IsTrue(Build.TestsKnown);
-  Assert.AreEqual(2, Build.Failed);
-  Assert.AreEqual(2, Integer(Length(Transport.Calls)));
-  Assert.IsTrue(Transport.Timeouts[0] <= 5000);
-  Assert.IsTrue(Transport.Timeouts[1] <= 5000, 'eine Zeitgrenze für beide Aufrufe');
+  mTransport.Answer('https://ci.firma.de/job/team/job/kasse/482/testReport/', 200, Fixture('test-report.json'));
+  mProvider := TAtlasJenkinsProvider.Create;
+  Assert.AreEqual('jenkins', mProvider.Name);
+  Assert.IsTrue(mProvider.Fetch(Job, mKeep, 5000, mBuild, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.None);
+  Assert.AreEqual(482, mBuild.Number);
+  Assert.IsTrue(mBuild.TestsKnown);
+  Assert.AreEqual(2, mBuild.Failed);
+  Assert.AreEqual(2, Integer(Length(mTransport.Calls)));
+  Assert.IsTrue(mTransport.Timeouts[0] <= 5000);
+  Assert.IsTrue(mTransport.Timeouts[1] <= 5000, 'eine Zeitgrenze für beide Aufrufe');
 end;
 
 procedure TAtlasJenkinsProviderTests.FetchWithoutReportKeepsBuild;
 var
-  Transport: TFakeTransport;
-  Keep: IAtlasCiTransport;
-  Provider: IAtlasCiProvider;
-  Build: TAtlasCiBuild;
-  Error: TAtlasCiFetchError;
+  mTransport: TFakeTransport;
+  mKeep: IAtlasCiTransport;
+  mProvider: IAtlasCiProvider;
+  mBuild: TAtlasCiBuild;
+  mError: TAtlasCiFetchError;
 begin
-  Transport := TFakeTransport.Create;
-  Keep := Transport;
-  Transport.Answer('https://ci.firma.de/job/team/job/kasse/lastCompletedBuild/', 200,
+  mTransport := TFakeTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('https://ci.firma.de/job/team/job/kasse/lastCompletedBuild/', 200,
     '{"number": 12, "result": "FAILURE"}');
-  Provider := TAtlasJenkinsProvider.Create;
-  Assert.IsTrue(Provider.Fetch(Job, Keep, 5000, Build, Error), 'Testbericht fehlt (404)');
-  Assert.IsTrue(Error = TAtlasCiFetchError.None);
-  Assert.AreEqual(12, Build.Number);
-  Assert.IsTrue(Build.Outcome = TAtlasCiOutcome.Failure);
-  Assert.IsFalse(Build.TestsKnown);
+  mProvider := TAtlasJenkinsProvider.Create;
+  Assert.IsTrue(mProvider.Fetch(Job, mKeep, 5000, mBuild, mError), 'Testbericht fehlt (404)');
+  Assert.IsTrue(mError = TAtlasCiFetchError.None);
+  Assert.AreEqual(12, mBuild.Number);
+  Assert.IsTrue(mBuild.Outcome = TAtlasCiOutcome.Failure);
+  Assert.IsFalse(mBuild.TestsKnown);
 end;
 
 procedure TAtlasJenkinsProviderTests.FetchReportsNetworkAndAuthErrors;
 var
-  Transport: TFakeTransport;
-  Keep: IAtlasCiTransport;
-  Provider: IAtlasCiProvider;
-  Build: TAtlasCiBuild;
-  Error: TAtlasCiFetchError;
+  mTransport: TFakeTransport;
+  mKeep: IAtlasCiTransport;
+  mProvider: IAtlasCiProvider;
+  mBuild: TAtlasCiBuild;
+  mError: TAtlasCiFetchError;
 begin
-  Provider := TAtlasJenkinsProvider.Create;
-  Transport := TFakeTransport.Create;
-  Keep := Transport;
-  Transport.FailWith(TAtlasCiFetchError.Timeout);
-  Assert.IsFalse(Provider.Fetch(Job, Keep, 5000, Build, Error));
-  Assert.IsTrue(Error = TAtlasCiFetchError.Timeout);
-  Assert.AreEqual(0, Build.Number);
-  Assert.AreEqual(1, Integer(Length(Transport.Calls)), 'nach dem Zeitlimit kein zweiter Aufruf');
+  mProvider := TAtlasJenkinsProvider.Create;
+  mTransport := TFakeTransport.Create;
+  mKeep := mTransport;
+  mTransport.FailWith(TAtlasCiFetchError.Timeout);
+  Assert.IsFalse(mProvider.Fetch(Job, mKeep, 5000, mBuild, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Timeout);
+  Assert.AreEqual(0, mBuild.Number);
+  Assert.AreEqual(1, Integer(Length(mTransport.Calls)), 'nach dem Zeitlimit kein zweiter Aufruf');
 
-  Transport := TFakeTransport.Create;
-  Keep := Transport;
-  Transport.Answer('https://ci.firma.de/', 401, '');
-  Assert.IsFalse(Provider.Fetch(Job, Keep, 5000, Build, Error));
-  Assert.IsTrue(Error = TAtlasCiFetchError.Unauthorized);
+  mTransport := TFakeTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('https://ci.firma.de/', 401, '');
+  Assert.IsFalse(mProvider.Fetch(Job, mKeep, 5000, mBuild, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Unauthorized);
 
-  Transport := TFakeTransport.Create;
-  Keep := Transport;
-  Transport.Answer('https://ci.firma.de/', 200, '<html>Anmeldung</html>');
-  Assert.IsFalse(Provider.Fetch(Job, Keep, 5000, Build, Error));
-  Assert.IsTrue(Error = TAtlasCiFetchError.Invalid);
+  mTransport := TFakeTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('https://ci.firma.de/', 200, '<html>Anmeldung</html>');
+  Assert.IsFalse(mProvider.Fetch(Job, mKeep, 5000, mBuild, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Invalid);
 end;
 
 procedure TAtlasJenkinsProviderTests.FetchWithoutConfigurationDoesNotCallTransport;
 var
-  Transport: TFakeTransport;
-  Keep: IAtlasCiTransport;
-  Provider: IAtlasCiProvider;
-  Build: TAtlasCiBuild;
-  Error: TAtlasCiFetchError;
+  mTransport: TFakeTransport;
+  mKeep: IAtlasCiTransport;
+  mProvider: IAtlasCiProvider;
+  mBuild: TAtlasCiBuild;
+  mError: TAtlasCiFetchError;
 begin
-  Transport := TFakeTransport.Create;
-  Keep := Transport;
-  Provider := TAtlasJenkinsProvider.Create;
-  Assert.IsFalse(Provider.Fetch(TAtlasCiJob.Create('jenkins', '', 'kasse', False, ''), Keep, 5000, Build, Error));
-  Assert.IsTrue(Error = TAtlasCiFetchError.NotConfigured);
-  Assert.AreEqual(0, Integer(Length(Transport.Calls)));
+  mTransport := TFakeTransport.Create;
+  mKeep := mTransport;
+  mProvider := TAtlasJenkinsProvider.Create;
+  Assert.IsFalse(mProvider.Fetch(TAtlasCiJob.Create('jenkins', '', 'kasse', False, ''), mKeep, 5000, mBuild, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured);
+  Assert.AreEqual(0, Integer(Length(mTransport.Calls)));
 end;
 
 procedure TAtlasJenkinsProviderTests.BuildPage;
 var
-  Provider: IAtlasCiProvider;
+  mProvider: IAtlasCiProvider;
 begin
-  Provider := TAtlasJenkinsProvider.Create;
-  Assert.AreEqual('https://ci.firma.de/job/team/job/kasse/482/', Provider.BuildPage(Job, 482));
-  Assert.AreEqual('', Provider.BuildPage(Job, 0));
+  mProvider := TAtlasJenkinsProvider.Create;
+  Assert.AreEqual('https://ci.firma.de/job/team/job/kasse/482/', mProvider.BuildPage(Job, 482));
+  Assert.AreEqual('', mProvider.BuildPage(Job, 0));
 end;
 
 initialization

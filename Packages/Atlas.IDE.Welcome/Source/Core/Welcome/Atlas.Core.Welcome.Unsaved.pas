@@ -174,7 +174,7 @@ type
     RemoteRef: string;
     /// <summary>Als verfolgten Branch eintragen (Branch ohne Upstream).</summary>
     SetUpstream: Boolean;
-    /// <summary>Neueste zuerst, höchstens TAtlasWelcomeUnsaved.PushListMax.</summary>
+    /// <summary>Neueste zuerst, höchstens TAtlasWelcomeUnsaved.cPushListMax.</summary>
     Commits: TArray<TAtlasVcsCommit>;
     /// <summary>Es gibt mehr Commits als aufgeführt.</summary>
     More: Boolean;
@@ -204,28 +204,25 @@ type
   TAtlasWelcomeUnsaved = class
   public const
     /// <summary>Abschnitt in der Projekt-Zusammenfassung.</summary>
-    SectionName = 'unsaved';
-    DefaultMinAgeHours = 0;
-    DefaultWarnHours = 24;
-    DefaultAlertHours = 72;
+    cSectionName = 'unsaved';
     /// <summary>Obergrenze der Stunden-Einstellungen (ein Jahr).</summary>
-    MaxHours = 8760;
+    cMaxHours = 8760;
     /// <summary>Zeitlimit je Projekt; danach startet die Abfrage keinen weiteren Aufruf.</summary>
-    TimeLimitMs = 2000;
+    cTimeLimitMs = 2000;
     /// <summary>Zeitlimit je Aufruf.</summary>
-    CallTimeoutMs = 1000;
+    cCallTimeoutMs = 1000;
     /// <summary>Höchstens so viele git log je Projekt (Alter der Commits).</summary>
-    MaxOutgoingCalls = 6;
+    cMaxOutgoingCalls = 6;
     /// <summary>Höchstens so viele Commits je Branch für das Alter.</summary>
-    MaxCommits = 1000;
+    cMaxCommits = 1000;
     /// <summary>Höchstens so viele Commits je Branch im Dialog „Push …“.</summary>
-    PushListMax = 50;
+    cPushListMax = 50;
     /// <summary>Zeitlimit für git push.</summary>
-    PushTimeoutMs = 120000;
+    cPushTimeoutMs = 120000;
     /// <summary>Frühestens nach dieser Zeit fragt die Seite dasselbe Projekt erneut ab.</summary>
-    RefreshMs = 60000;
+    cRefreshMs = 60000;
     /// <summary>Spätestens dann gilt eine Abfrage als beendet.</summary>
-    QueryLimitMs = 8000;
+    cQueryLimitMs = 8000;
   public
     /// <summary>Art als Text für die Datei: "changes", "conflicts", "commits", "noUpstream", "stashes".</summary>
     class function KindName(AKind: TAtlasUnsavedKind): string; static;
@@ -291,8 +288,8 @@ uses
   Atlas.Core.Projects.Recording;
 
 const
-  KindNames: array[TAtlasUnsavedKind] of string = ('changes', 'conflicts', 'commits', 'noUpstream', 'stashes');
-  AllKinds: TAtlasUnsavedKinds = [TAtlasUnsavedKind.Changes, TAtlasUnsavedKind.Conflicts,
+  cKindNames: array[TAtlasUnsavedKind] of string = ('changes', 'conflicts', 'commits', 'noUpstream', 'stashes');
+  cAllKinds: TAtlasUnsavedKinds = [TAtlasUnsavedKind.Changes, TAtlasUnsavedKind.Conflicts,
     TAtlasUnsavedKind.Commits, TAtlasUnsavedKind.NoUpstream, TAtlasUnsavedKind.Stashes];
 
 { TAtlasUnsavedItem }
@@ -332,15 +329,15 @@ end;
 
 function TAtlasUnsavedState.Find(AKind: TAtlasUnsavedKind; out AItem: TAtlasUnsavedItem): Boolean;
 var
-  Item: TAtlasUnsavedItem;
+  mItem: TAtlasUnsavedItem;
 begin
   AItem := TAtlasUnsavedItem.Create(AKind, 0);
   Result := False;
-  for Item in Items do
+  for mItem in Items do
   begin
-    if Item.Kind = AKind then
+    if mItem.Kind = AKind then
     begin
-      AItem := Item;
+      AItem := mItem;
       Exit(True);
     end;
   end;
@@ -348,14 +345,14 @@ end;
 
 function TAtlasUnsavedState.IgnoredUntil(AKind: TAtlasUnsavedKind): TDateTime;
 var
-  Entry: TAtlasUnsavedIgnore;
+  mEntry: TAtlasUnsavedIgnore;
 begin
   Result := 0;
-  for Entry in Ignored do
+  for mEntry in Ignored do
   begin
-    if (Entry.Kind = AKind) and (Entry.UntilUtc > Result) then
+    if (mEntry.Kind = AKind) and (mEntry.UntilUtc > Result) then
     begin
-      Result := Entry.UntilUtc;
+      Result := mEntry.UntilUtc;
     end;
   end;
 end;
@@ -392,14 +389,14 @@ end;
 
 function TAtlasUnsavedPush.Target: string;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := RemoteRef;
-  if Copy(Name, 1, 11) = 'refs/heads/' then
+  mName := RemoteRef;
+  if Copy(mName, 1, 11) = 'refs/heads/' then
   begin
-    Name := Copy(Name, 12, MaxInt);
+    mName := Copy(mName, 12, MaxInt);
   end;
-  Result := Remote + '/' + Name;
+  Result := Remote + '/' + mName;
 end;
 
 { Hilfen }
@@ -416,12 +413,12 @@ end;
 
 function FileSince(const AFileTime: TAtlasUnsavedFileTime; const APath: string): TDateTime;
 var
-  Stamp: TDateTime;
+  mStamp: TDateTime;
 begin
   Result := 0;
-  if Assigned(AFileTime) and (APath <> '') and AFileTime(APath, Stamp) then
+  if Assigned(AFileTime) and (APath <> '') and AFileTime(APath, mStamp) then
   begin
-    Result := Stamp;
+    Result := mStamp;
   end;
 end;
 
@@ -441,56 +438,56 @@ end;
 procedure AddChanges(var AState: TAtlasUnsavedState; const AChanges: TArray<TAtlasVcsChange>;
   const AFileTime: TAtlasUnsavedFileTime);
 var
-  Change: TAtlasVcsChange;
-  Changes, Conflicts: TAtlasUnsavedItem;
+  mChange: TAtlasVcsChange;
+  mChanges, mConflicts: TAtlasUnsavedItem;
 begin
-  Changes := TAtlasUnsavedItem.Create(TAtlasUnsavedKind.Changes, 0);
-  Conflicts := TAtlasUnsavedItem.Create(TAtlasUnsavedKind.Conflicts, 0);
-  for Change in AChanges do
-    case Change.Kind of
+  mChanges := TAtlasUnsavedItem.Create(TAtlasUnsavedKind.Changes, 0);
+  mConflicts := TAtlasUnsavedItem.Create(TAtlasUnsavedKind.Conflicts, 0);
+  for mChange in AChanges do
+    case mChange.Kind of
       TAtlasVcsChangeKind.Conflicted:
         begin
-          Inc(Conflicts.Count);
-          Conflicts.Since := Older(Conflicts.Since, FileSince(AFileTime, Change.Path));
+          Inc(mConflicts.Count);
+          mConflicts.Since := Older(mConflicts.Since, FileSince(AFileTime, mChange.Path));
         end;
       TAtlasVcsChangeKind.Added, TAtlasVcsChangeKind.Untracked:
         begin
-          Inc(Changes.Count);
-          Inc(Changes.Added);
-          Changes.Since := Older(Changes.Since, FileSince(AFileTime, Change.Path));
+          Inc(mChanges.Count);
+          Inc(mChanges.Added);
+          mChanges.Since := Older(mChanges.Since, FileSince(AFileTime, mChange.Path));
         end;
       TAtlasVcsChangeKind.Deleted, TAtlasVcsChangeKind.Missing:
         begin
           // Keine Datei, keine Zeit: Alter dann über Merge.
-          Inc(Changes.Count);
-          Inc(Changes.Deleted);
+          Inc(mChanges.Count);
+          Inc(mChanges.Deleted);
         end;
     else
-      Inc(Changes.Count);
-      Inc(Changes.Modified);
-      Changes.Since := Older(Changes.Since, FileSince(AFileTime, Change.Path));
+      Inc(mChanges.Count);
+      Inc(mChanges.Modified);
+      mChanges.Since := Older(mChanges.Since, FileSince(AFileTime, mChange.Path));
     end;
-  AddItem(AState, Changes);
-  AddItem(AState, Conflicts);
+  AddItem(AState, mChanges);
+  AddItem(AState, mConflicts);
 end;
 
 { TAtlasWelcomeUnsaved }
 
 class function TAtlasWelcomeUnsaved.KindName(AKind: TAtlasUnsavedKind): string;
 begin
-  Result := KindNames[AKind];
+  Result := cKindNames[AKind];
 end;
 
 class function TAtlasWelcomeUnsaved.KindOf(const AText: string; out AKind: TAtlasUnsavedKind): Boolean;
 var
-  Kind: TAtlasUnsavedKind;
+  mKind: TAtlasUnsavedKind;
 begin
   AKind := TAtlasUnsavedKind.Changes;
-  for Kind := Low(TAtlasUnsavedKind) to High(TAtlasUnsavedKind) do
+  for mKind := Low(TAtlasUnsavedKind) to High(TAtlasUnsavedKind) do
   begin
-    if SameText(KindNames[Kind], Trim(AText)) then
+    if SameText(cKindNames[mKind], Trim(AText)) then
     begin
-      AKind := Kind;
+      AKind := mKind;
       Exit(True);
     end;
   end;
@@ -506,15 +503,15 @@ end;
 class function TAtlasWelcomeUnsaved.ChangesBelow(const AChanges: TArray<TAtlasVcsChange>;
   const AFolder: string): TArray<TAtlasVcsChange>;
 var
-  Change: TAtlasVcsChange;
+  mChange: TAtlasVcsChange;
 begin
   Result := nil;
-  for Change in AChanges do
+  for mChange in AChanges do
   begin
-    if (AFolder = '') or TAtlasProjectRecording.InFolder(Change.Path, AFolder) or
-      TAtlasProjectRecording.InFolder(Change.OldPath, AFolder) then
+    if (AFolder = '') or TAtlasProjectRecording.InFolder(mChange.Path, AFolder) or
+      TAtlasProjectRecording.InFolder(mChange.OldPath, AFolder) then
     begin
-      Result := Result + [Change];
+      Result := Result + [mChange];
     end;
   end;
 end;
@@ -634,7 +631,7 @@ type
 
 function TBranchScan.CanCall: Boolean;
 begin
-  Result := (Calls < TAtlasWelcomeUnsaved.MaxOutgoingCalls) and not TimeUp(Expired);
+  Result := (Calls < TAtlasWelcomeUnsaved.cMaxOutgoingCalls) and not TimeUp(Expired);
 end;
 
 procedure TBranchScan.AddTracked(const ABranch: TAtlasVcsBranch);
@@ -648,7 +645,7 @@ begin
   Inc(Pushable.Count, ABranch.Ahead);
   Pushable.Branches := Pushable.Branches + [ABranch.Name];
   // Alter: ältester nicht gepushter Commit; ohne Abfrage der letzte Commit des Branchs.
-  if CanCall and (Local.Outgoing(ABranch.Name, ABranch.Upstream, TAtlasWelcomeUnsaved.MaxCommits,
+  if CanCall and (Local.Outgoing(ABranch.Name, ABranch.Upstream, TAtlasWelcomeUnsaved.cMaxCommits,
     mCommits) = TAtlasVcsOutcome.Ok) and (Length(mCommits) > 0) then
   begin
     Pushable.Since := Older(Pushable.Since, mCommits[High(mCommits)].Date);
@@ -665,7 +662,7 @@ var
   mCommits: TArray<TAtlasVcsCommit>;
 begin
   // Ohne (oder mit gelöschtem) Upstream: nur, wenn Commits auf keinem Remote liegen.
-  if CanCall and (Local.Outgoing(ABranch.Name, '', TAtlasWelcomeUnsaved.MaxCommits,
+  if CanCall and (Local.Outgoing(ABranch.Name, '', TAtlasWelcomeUnsaved.cMaxCommits,
     mCommits) = TAtlasVcsOutcome.Ok) then
   begin
     Inc(Calls);
@@ -822,7 +819,7 @@ begin
     AState.Known := True;
     AState.At := AQuery.NowUtc;
     AState.Kind := 'none';
-    AState.Queried := AllKinds;
+    AState.Queried := cAllKinds;
     Exit(True);
   end;
   Result := mOutcome = TAtlasVcsOutcome.Ok;
@@ -915,46 +912,46 @@ end;
 class procedure TAtlasWelcomeUnsaved.Age(ASince, ANowUtc: TDateTime; out AValue: Integer;
   out AUnit: TAtlasUnsavedAgeUnit);
 var
-  Minutes: Int64;
+  mMinutes: Int64;
 begin
-  Minutes := Trunc(AgeHours(ASince, ANowUtc) * 60 + 1E-6);
-  if Minutes < 60 then
+  mMinutes := Trunc(AgeHours(ASince, ANowUtc) * 60 + 1E-6);
+  if mMinutes < 60 then
   begin
     AUnit := TAtlasUnsavedAgeUnit.Minutes;
-    AValue := Minutes;
+    AValue := Integer(mMinutes);
     if AValue < 1 then
     begin
       AValue := 1;
     end;
   end
-  else if Minutes < 24 * 60 then
+  else if mMinutes < 24 * 60 then
   begin
     AUnit := TAtlasUnsavedAgeUnit.Hours;
-    AValue := Minutes div 60;
+    AValue := Integer(mMinutes div 60);
   end
   else
   begin
     AUnit := TAtlasUnsavedAgeUnit.Days;
-    AValue := Minutes div (24 * 60);
+    AValue := Integer(mMinutes div (24 * 60));
   end;
 end;
 
 class function TAtlasWelcomeUnsaved.Level(ASince, ANowUtc: TDateTime;
   const AOptions: TAtlasUnsavedOptions): TAtlasUnsavedLevel;
 var
-  Hours: Double;
+  mHours: Double;
 begin
   Result := TAtlasUnsavedLevel.Fresh;
   if ASince <= 0 then
   begin
     Exit;
   end;
-  Hours := AgeHours(ASince, ANowUtc) + 1E-9;
-  if Hours >= AOptions.AlertHours then
+  mHours := AgeHours(ASince, ANowUtc) + 1E-9;
+  if mHours >= AOptions.AlertHours then
   begin
     Result := TAtlasUnsavedLevel.Alert;
   end
-  else if Hours >= AOptions.WarnHours then
+  else if mHours >= AOptions.WarnHours then
   begin
     Result := TAtlasUnsavedLevel.Warning;
   end;
@@ -1097,69 +1094,69 @@ end;
 class procedure TAtlasWelcomeUnsaved.Ignore(var AState: TAtlasUnsavedState; AKind: TAtlasUnsavedKind;
   AUntilUtc: TDateTime);
 var
-  Index: Integer;
-  Entry: TAtlasUnsavedIgnore;
+  mIndex: Integer;
+  mEntry: TAtlasUnsavedIgnore;
 begin
-  for Index := 0 to High(AState.Ignored) do
+  for mIndex := 0 to High(AState.Ignored) do
   begin
-    if AState.Ignored[Index].Kind = AKind then
+    if AState.Ignored[mIndex].Kind = AKind then
     begin
-      AState.Ignored[Index].UntilUtc := AUntilUtc;
+      AState.Ignored[mIndex].UntilUtc := AUntilUtc;
       Exit;
     end;
   end;
-  Entry.Kind := AKind;
-  Entry.UntilUtc := AUntilUtc;
-  AState.Ignored := AState.Ignored + [Entry];
+  mEntry.Kind := AKind;
+  mEntry.UntilUtc := AUntilUtc;
+  AState.Ignored := AState.Ignored + [mEntry];
 end;
 
 { JSON }
 
 function TextIn(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end;
 end;
 
 function NumberIn(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := ADefault;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONNumber then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONNumber then
   begin
-    Result := TJSONNumber(Value).AsInt;
+    Result := TJSONNumber(mValue).AsInt;
   end;
 end;
 
 function ObjectIn(AObject: TJSONObject; const AName: string): TJSONObject;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := nil;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONObject then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONObject then
   begin
-    Result := TJSONObject(Value);
+    Result := TJSONObject(mValue);
   end;
 end;
 
@@ -1405,72 +1402,72 @@ end;
 
 class function TAtlasWelcomeUnsaved.ToJson(const AState: TAtlasUnsavedState): string;
 var
-  Section: TJSONObject;
+  mSection: TJSONObject;
 begin
-  Section := SectionJson(AState);
+  mSection := SectionJson(AState);
   try
-    Result := Section.ToJSON;
+    Result := mSection.ToJSON;
   finally
-    Section.Free;
+    mSection.Free;
   end;
 end;
 
 class function TAtlasWelcomeUnsaved.FromJson(const AJson: string; out AState: TAtlasUnsavedState): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   AState := TAtlasUnsavedState.Empty;
-  Value := ParseObject(AJson);
+  mValue := ParseObject(AJson);
   try
-    Result := (Value is TJSONObject) and StateOf(TJSONObject(Value), AState);
+    Result := (mValue is TJSONObject) and StateOf(TJSONObject(mValue), AState);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TAtlasWelcomeUnsaved.Read(const ASummary: TAtlasProjectSummary;
   out AState: TAtlasUnsavedState): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   AState := TAtlasUnsavedState.Empty;
-  Value := ParseObject(ASummary.Raw);
+  mValue := ParseObject(ASummary.Raw);
   try
-    Result := (Value is TJSONObject) and StateOf(ObjectIn(TJSONObject(Value), SectionName), AState);
+    Result := (mValue is TJSONObject) and StateOf(ObjectIn(TJSONObject(mValue), cSectionName), AState);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class procedure TAtlasWelcomeUnsaved.Write(var ASummary: TAtlasProjectSummary; const AState: TAtlasUnsavedState);
 var
-  Value: TJSONValue;
-  Original, Root: TJSONObject;
-  Index: Integer;
-  Pair: TJSONPair;
+  mValue: TJSONValue;
+  mOriginal, mRoot: TJSONObject;
+  mIndex: Integer;
+  mPair: TJSONPair;
 begin
-  Value := ParseObject(ASummary.Raw);
-  Root := TJSONObject.Create;
+  mValue := ParseObject(ASummary.Raw);
+  mRoot := TJSONObject.Create;
   try
     // Alles außer dem Abschnitt übernehmen; ohne Datei schreibt TAtlasProjectSummaries.ToJson die übrigen
     // Felder aus dem Datensatz.
-    if Value is TJSONObject then
+    if mValue is TJSONObject then
     begin
-      Original := TJSONObject(Value);
-      for Index := 0 to Original.Count - 1 do
+      mOriginal := TJSONObject(mValue);
+      for mIndex := 0 to mOriginal.Count - 1 do
       begin
-        Pair := Original.Pairs[Index];
-        if Pair.JsonString.Value <> SectionName then
+        mPair := mOriginal.Pairs[mIndex];
+        if mPair.JsonString.Value <> cSectionName then
         begin
-          Root.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
+          mRoot.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
         end;
       end;
     end;
-    Root.AddPair(SectionName, SectionJson(AState));
-    ASummary.Raw := Root.ToJSON;
+    mRoot.AddPair(cSectionName, SectionJson(AState));
+    ASummary.Raw := mRoot.ToJSON;
   finally
-    Root.Free;
-    Value.Free;
+    mRoot.Free;
+    mValue.Free;
   end;
 end;
 
@@ -1548,13 +1545,13 @@ begin
   begin
     mUpstream := ABranch.Upstream;
   end;
-  Result := ALocal.Outgoing(ABranch.Name, mUpstream, TAtlasWelcomeUnsaved.PushListMax + 1, mCommits);
+  Result := ALocal.Outgoing(ABranch.Name, mUpstream, TAtlasWelcomeUnsaved.cPushListMax + 1, mCommits);
   if (Result = TAtlasVcsOutcome.Ok) and (Length(mCommits) > 0) then
   begin
-    APlan.More := Length(mCommits) > TAtlasWelcomeUnsaved.PushListMax;
+    APlan.More := Length(mCommits) > TAtlasWelcomeUnsaved.cPushListMax;
     if APlan.More then
     begin
-      SetLength(mCommits, TAtlasWelcomeUnsaved.PushListMax);
+      SetLength(mCommits, TAtlasWelcomeUnsaved.cPushListMax);
     end;
     APlan.Commits := mCommits;
     APlans := APlans + [APlan];
