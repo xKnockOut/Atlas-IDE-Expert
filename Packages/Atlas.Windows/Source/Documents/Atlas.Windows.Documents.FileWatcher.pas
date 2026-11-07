@@ -4,7 +4,7 @@
 // workspace/didChangeWatchedFiles für atlas.json und die globale
 // Benutzerdatei. Ein Hintergrund-Thread wartet über
 // FindFirstChangeNotification auf Änderungen in den Ordnern der Dateien und
-// sieht spätestens alle PollMs nach (Ordner, die es noch nicht gibt, mehr als
+// sieht spätestens alle cPollMs nach (Ordner, die es noch nicht gibt, mehr als
 // 63 Ordner). Welche Dateien sich geändert haben, entscheidet
 // TFileChangeTracker über Änderungszeit und Größe; OnChanged läuft im
 // Beobachter-Thread.
@@ -21,9 +21,9 @@ type
 
   TFileWatcher = class
   public const
-    PollMs = 2000;
+    cPollMs = 2000;
     /// <summary>Wartezeit nach einer Meldung, bis der Schreibvorgang fertig ist.</summary>
-    SettleMs = 100;
+    cSettleMs = 100;
   private
     FTracker: TFileChangeTracker;
     FStop: THandle;
@@ -44,7 +44,7 @@ uses
   Winapi.Windows;
 
 type
-  /// <summary>Beobachter-Thread: Änderungsmeldungen der Ordner des Trackers, Abgleich spätestens alle PollMs.
+  /// <summary>Beobachter-Thread: Änderungsmeldungen der Ordner des Trackers, Abgleich spätestens alle cPollMs.
   /// </summary>
   TWatchThread = class(TThread)
   private
@@ -72,18 +72,18 @@ type
 
 class function TFileWatcher.Stamp(const AFileName: string): string;
 var
-  Data: TWin32FileAttributeData;
+  mData: TWin32FileAttributeData;
 begin
-  if not GetFileAttributesEx(PChar(AFileName), GetFileExInfoStandard, @Data) then
+  if not GetFileAttributesEx(PChar(AFileName), GetFileExInfoStandard, @mData) then
   begin
     Exit('');
   end;
-  if (Data.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+  if (mData.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
   begin
     Exit('');
   end;
-  Result := Format('%u.%u.%u.%u', [Data.ftLastWriteTime.dwHighDateTime, Data.ftLastWriteTime.dwLowDateTime,
-    Data.nFileSizeHigh, Data.nFileSizeLow]);
+  Result := Format('%u.%u.%u.%u', [mData.ftLastWriteTime.dwHighDateTime, mData.ftLastWriteTime.dwLowDateTime,
+    mData.nFileSizeHigh, mData.nFileSizeLow]);
 end;
 
 // Meldung eines Ordners (nicht Stop, nicht neue Dateiliste, kein Zeitablauf)?
@@ -139,7 +139,7 @@ end;
 function TWatchThread.Settle(ANotify: THandle): Boolean;
 begin
   // Mehrere Meldungen eines Speichervorgangs zusammenfassen.
-  Result := WaitForSingleObject(FStop, TFileWatcher.SettleMs) <> WAIT_OBJECT_0;
+  Result := WaitForSingleObject(FStop, TFileWatcher.cSettleMs) <> WAIT_OBJECT_0;
   if Result then
   begin
     FindNextChangeNotification(ANotify);
@@ -162,7 +162,7 @@ var
   mWait: Cardinal;
 begin
   repeat
-    mWait := WaitForMultipleObjects(Length(AHandles), @AHandles[0], False, TFileWatcher.PollMs);
+    mWait := WaitForMultipleObjects(Length(AHandles), @AHandles[0], False, TFileWatcher.cPollMs);
     if mWait = WAIT_OBJECT_0 then
     begin
       Exit(False);

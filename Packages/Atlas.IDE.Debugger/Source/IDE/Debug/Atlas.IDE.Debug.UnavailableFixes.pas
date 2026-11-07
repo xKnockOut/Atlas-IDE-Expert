@@ -22,9 +22,9 @@ type
   TAtlasIdeDebugUnavailableFixes = class
   public const
     /// <summary>Konfiguration, die „Mit Debug neu starten“ zuerst wählt.</summary>
-    DebugConfiguration = 'Debug';
-    DebugDcusOption = 'DCC_DebugDCUs';
-    DebugInfoOption = 'DCC_DebugInformation';
+    cDebugConfiguration = 'Debug';
+    cDebugDcusOption = 'DCC_DebugDCUs';
+    cDebugInfoOption = 'DCC_DebugInformation';
   private
     class function Confirm(const AText: string): Boolean; static;
     class function HasDebugInfo(const AProject: IOTAProject; const AName: string): Boolean; static;
@@ -67,8 +67,8 @@ uses
   Atlas.UI.Debug.Strings;
 
 const
-  ResetAction = 'RunProgramResetCommand';
-  RunAction = 'RunRunCommand';
+  cResetAction = 'RunProgramResetCommand';
+  cRunAction = 'RunRunCommand';
 
 procedure Say(const ASay: TProc<string>; const AText: string);
 begin
@@ -162,7 +162,7 @@ class function TAtlasIdeDebugUnavailableFixes.HasDebugInfo(const AProject: IOTAP
   const AName: string): Boolean;
 begin
   Result := TAtlasDebugUnavailable.OptionOn(
-    TAtlasIdeProjectContext.ConfigurationValue(AProject, AName, '', DebugInfoOption), True);
+    TAtlasIdeProjectContext.ConfigurationValue(AProject, AName, '', cDebugInfoOption), True);
 end;
 
 class function TAtlasIdeDebugUnavailableFixes.ChooseConfiguration(const AProject: IOTAProject): string;
@@ -174,7 +174,7 @@ begin
   mConfigurations := TAtlasIdeProjectContext.Configurations(AProject);
   for mName in mConfigurations do
   begin
-    if SameText(mName, DebugConfiguration) and HasDebugInfo(AProject, mName) then
+    if SameText(mName, cDebugConfiguration) and HasDebugInfo(AProject, mName) then
     begin
       Result := mName;
     end;
@@ -220,7 +220,7 @@ end;
 
 class procedure TAtlasIdeDebugUnavailableFixes.Run(const ASay: TProc<string>);
 begin
-  if not ExecuteAction(RunAction, ShortCut(VK_F9, [])) then
+  if not ExecuteAction(cRunAction, ShortCut(VK_F9, [])) then
   begin
     Say(ASay, TAtlasStrings.Text(TAtlasTextId.StartProfilesNoRunAction));
   end;
@@ -228,7 +228,7 @@ end;
 
 class function TAtlasIdeDebugUnavailableFixes.Reset(const ASay: TProc<string>): Boolean;
 begin
-  Result := ExecuteAction(ResetAction, ShortCut(VK_F2, [ssCtrl]));
+  Result := ExecuteAction(cResetAction, ShortCut(VK_F2, [ssCtrl]));
   if not Result then
   begin
     Say(ASay, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableNoResetAction));
@@ -257,7 +257,7 @@ begin
   begin
     Exit;
   end;
-  mPrevious := Trim(mBuild.GetValue(DebugDcusOption, True));
+  mPrevious := Trim(mBuild.GetValue(cDebugDcusOption, True));
   if mPrevious = '' then
   begin
     mPrevious := 'false';
@@ -267,7 +267,7 @@ begin
   begin
     Exit;
   end;
-  mBuild.SetValue(DebugDcusOption, 'true');
+  mBuild.SetValue(cDebugDcusOption, 'true');
   Say(ASay, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableDcusDone, [mConfiguration, mPrevious]));
 end;
 

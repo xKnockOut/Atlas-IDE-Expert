@@ -25,7 +25,7 @@ type
   TAtlasIdeBlameScope = class
   private const
     /// <summary>Höchstens so viele Titel fragt der Befehl nach.</summary>
-    MaxLookups = 30;
+    cMaxLookups = 30;
   private class var
     FInstance: TAtlasIdeBlameScope;
     FSerial: Integer;
@@ -381,7 +381,7 @@ begin
     begin
       Continue;
     end;
-    if mAsked >= TAtlasIdeBlameScope.MaxLookups then
+    if mAsked >= TAtlasIdeBlameScope.cMaxLookups then
     begin
       Break;
     end;

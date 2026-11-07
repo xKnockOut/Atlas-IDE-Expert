@@ -95,7 +95,7 @@ uses
   Atlas.UI.Strings;
 
 const
-  Texts: array[TAtlasLanguage, TAtlasDebugTextId] of string = (
+  cTexts: array[TAtlasLanguage, TAtlasDebugTextId] of string = (
     ('Atlas: %s',
      'Zeigt %s einzeilig und im Atlas-Ansichtsfenster (#835).',
      'Mit Atlas anzeigen …',
@@ -676,12 +676,12 @@ const
 
 class function TAtlasDebugStrings.Text(AId: TAtlasDebugTextId): string;
 begin
-  Result := Texts[TAtlasStrings.Language, AId];
+  Result := cTexts[TAtlasStrings.Language, AId];
 end;
 
 class function TAtlasDebugStrings.Fmt(AId: TAtlasDebugTextId; const AArgs: array of const): string;
 begin
-  Result := Format(Texts[TAtlasStrings.Language, AId], AArgs);
+  Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
 end;
 
 class function TAtlasDebugStrings.StepIntoTargetCommand: string;

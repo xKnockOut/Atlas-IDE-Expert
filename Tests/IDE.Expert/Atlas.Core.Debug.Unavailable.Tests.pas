@@ -87,15 +87,15 @@ end;
 
 function Edit(ALine: Integer; const AText: string): TLspWorkspaceEdit;
 var
-  Json: TJSONObject;
+  mJson: TJSONObject;
 begin
-  Json := TJSONObject.ParseJSONValue(Format('{"changes":{"file:///C:/P/Kunden.pas":[{"range":{"start":' +
+  mJson := TJSONObject.ParseJSONValue(Format('{"changes":{"file:///C:/P/Kunden.pas":[{"range":{"start":' +
     '{"line":%d,"character":0},"end":{"line":%d,"character":0}},"newText":"%s\r\n"}]}}', [ALine, ALine, AText]))
     as TJSONObject;
   try
-    Result := TLspWorkspaceEdit.FromJson(Json);
+    Result := TLspWorkspaceEdit.FromJson(mJson);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
@@ -117,16 +117,16 @@ end;
 
 procedure TAtlasDebugUnavailableTests.PatternsWithWildcardsAndUserFile;
 var
-  Patterns: TArray<string>;
+  mPatterns: TArray<string>;
 begin
   Assert.IsTrue(TAtlasDebugUnavailable.MatchesPattern('Wert X nicht lesbar', 'wert * nicht lesbar'));
   Assert.IsFalse(TAtlasDebugUnavailable.MatchesPattern('nicht lesbar: Wert', 'wert * nicht lesbar'),
     'Teile in der Reihenfolge des Musters');
-  Patterns := TAtlasDebugUnavailable.ParsePatterns('# eigene Texte' + sLineBreak + sLineBreak +
+  mPatterns := TAtlasDebugUnavailable.ParsePatterns('# eigene Texte' + sLineBreak + sLineBreak +
     '  Wert * nicht lesbar  # Firmen-Debugger' + sLineBreak + 'ausgelagert');
-  Assert.AreEqual(2, Integer(Length(Patterns)));
-  Assert.AreEqual('Wert * nicht lesbar', Patterns[0]);
-  Assert.IsTrue(TAtlasDebugUnavailable.IsUnavailable('Wert Summe nicht lesbar', Patterns));
+  Assert.AreEqual(2, Integer(Length(mPatterns)));
+  Assert.AreEqual('Wert * nicht lesbar', mPatterns[0]);
+  Assert.IsTrue(TAtlasDebugUnavailable.IsUnavailable('Wert Summe nicht lesbar', mPatterns));
   Assert.IsFalse(TAtlasDebugUnavailable.IsUnavailable('Wert Summe nicht lesbar', nil));
 end;
 
@@ -140,131 +140,131 @@ end;
 
 procedure TAtlasDebugUnavailableTests.ReleaseStartComesFirst;
 var
-  Facts: TAtlasUnavailableFacts;
-  Explanation: TAtlasUnavailableExplanation;
+  mFacts: TAtlasUnavailableFacts;
+  mExplanation: TAtlasUnavailableExplanation;
 begin
-  Facts := LocalFacts;
-  Facts.Launch.Configuration := 'Release';
-  Facts.Launch.DebugInfo := 'false';
-  Facts.Launch.Optimization := 'true';
-  Facts.Optimization := Switch('+', TAtlasSwitchSource.Directive);
-  Explanation := TAtlasDebugUnavailable.Explain(Facts);
-  Assert.AreEqual(Ord(TAtlasUnavailableCause.ReleaseBuild), Ord(Explanation.Cause));
-  Assert.AreEqual('Release', Explanation.Configuration);
-  Assert.IsTrue(Explanation.HasFix(TAtlasUnavailableFix.RestartWithDebug));
-  Assert.AreEqual(1, Integer(Length(Explanation.Checked)), 'nur die Konfiguration geprüft');
-  Facts.Launch.DebugInfo := '0';
-  Assert.AreEqual(Ord(TAtlasUnavailableCause.ReleaseBuild), Ord(TAtlasDebugUnavailable.Explain(Facts).Cause),
+  mFacts := LocalFacts;
+  mFacts.Launch.Configuration := 'Release';
+  mFacts.Launch.DebugInfo := 'false';
+  mFacts.Launch.Optimization := 'true';
+  mFacts.Optimization := Switch('+', TAtlasSwitchSource.Directive);
+  mExplanation := TAtlasDebugUnavailable.Explain(mFacts);
+  Assert.AreEqual(Ord(TAtlasUnavailableCause.ReleaseBuild), Ord(mExplanation.Cause));
+  Assert.AreEqual('Release', mExplanation.Configuration);
+  Assert.IsTrue(mExplanation.HasFix(TAtlasUnavailableFix.RestartWithDebug));
+  Assert.AreEqual(1, Integer(Length(mExplanation.Checked)), 'nur die Konfiguration geprüft');
+  mFacts.Launch.DebugInfo := '0';
+  Assert.AreEqual(Ord(TAtlasUnavailableCause.ReleaseBuild), Ord(TAtlasDebugUnavailable.Explain(mFacts).Cause),
     '0 heißt keine Debug-Informationen');
 end;
 
 procedure TAtlasDebugUnavailableTests.DirectiveSwitchesBeforeOptimization;
 var
-  Facts: TAtlasUnavailableFacts;
-  Explanation: TAtlasUnavailableExplanation;
+  mFacts: TAtlasUnavailableFacts;
+  mExplanation: TAtlasUnavailableExplanation;
 begin
-  Facts := LocalFacts;
-  Facts.DebugInfo := Switch('-', TAtlasSwitchSource.Directive);
-  Facts.Optimization := Switch('+', TAtlasSwitchSource.Directive);
-  Explanation := TAtlasDebugUnavailable.Explain(Facts);
-  Assert.AreEqual(Ord(TAtlasUnavailableCause.NoDebugInfo), Ord(Explanation.Cause));
-  Assert.AreEqual(11, Explanation.Switch.Line);
-  Assert.IsTrue(Explanation.HasFix(TAtlasUnavailableFix.ShowDirective));
-  Facts := LocalFacts;
-  Facts.LocalSymbols := Switch('-', TAtlasSwitchSource.Directive);
-  Assert.AreEqual(Ord(TAtlasUnavailableCause.NoLocalSymbols), Ord(TAtlasDebugUnavailable.Explain(Facts).Cause));
-  Facts.Local := False;
-  Assert.AreEqual(Ord(TAtlasUnavailableCause.Unknown), Ord(TAtlasDebugUnavailable.Explain(Facts).Cause),
+  mFacts := LocalFacts;
+  mFacts.DebugInfo := Switch('-', TAtlasSwitchSource.Directive);
+  mFacts.Optimization := Switch('+', TAtlasSwitchSource.Directive);
+  mExplanation := TAtlasDebugUnavailable.Explain(mFacts);
+  Assert.AreEqual(Ord(TAtlasUnavailableCause.NoDebugInfo), Ord(mExplanation.Cause));
+  Assert.AreEqual(11, mExplanation.Switch.Line);
+  Assert.IsTrue(mExplanation.HasFix(TAtlasUnavailableFix.ShowDirective));
+  mFacts := LocalFacts;
+  mFacts.LocalSymbols := Switch('-', TAtlasSwitchSource.Directive);
+  Assert.AreEqual(Ord(TAtlasUnavailableCause.NoLocalSymbols), Ord(TAtlasDebugUnavailable.Explain(mFacts).Cause));
+  mFacts.Local := False;
+  Assert.AreEqual(Ord(TAtlasUnavailableCause.Unknown), Ord(TAtlasDebugUnavailable.Explain(mFacts).Cause),
     '$L- betrifft nur lokale Namen');
 end;
 
 procedure TAtlasDebugUnavailableTests.LaunchValueWinsOverProjectValue;
 var
-  Facts: TAtlasUnavailableFacts;
+  mFacts: TAtlasUnavailableFacts;
 begin
   // Der Server kennt die aktive Konfiguration (O+), gestartet wurde aber Debug (O-).
-  Facts := LocalFacts;
-  Facts.Optimization := Switch('+', TAtlasSwitchSource.Project);
-  Assert.AreEqual(Ord(TAtlasUnavailableCause.Unknown), Ord(TAtlasDebugUnavailable.Explain(Facts).Cause));
+  mFacts := LocalFacts;
+  mFacts.Optimization := Switch('+', TAtlasSwitchSource.Project);
+  Assert.AreEqual(Ord(TAtlasUnavailableCause.Unknown), Ord(TAtlasDebugUnavailable.Explain(mFacts).Cause));
   // Ohne bekannten Start (angehängt) gilt der Stand des Servers.
-  Facts.Launch.Known := False;
-  Assert.AreEqual(Ord(TAtlasUnavailableCause.Optimization), Ord(TAtlasDebugUnavailable.Explain(Facts).Cause));
+  mFacts.Launch.Known := False;
+  Assert.AreEqual(Ord(TAtlasUnavailableCause.Optimization), Ord(TAtlasDebugUnavailable.Explain(mFacts).Cause));
   // Eine Direktive gilt immer.
-  Facts := LocalFacts;
-  Facts.Optimization := Switch('+', TAtlasSwitchSource.Directive);
-  Assert.AreEqual(Ord(TAtlasUnavailableCause.Optimization), Ord(TAtlasDebugUnavailable.Explain(Facts).Cause));
+  mFacts := LocalFacts;
+  mFacts.Optimization := Switch('+', TAtlasSwitchSource.Directive);
+  Assert.AreEqual(Ord(TAtlasUnavailableCause.Optimization), Ord(TAtlasDebugUnavailable.Explain(mFacts).Cause));
 end;
 
 procedure TAtlasDebugUnavailableTests.OptimizationAddsLifetimeAndFixes;
 var
-  Facts: TAtlasUnavailableFacts;
-  Explanation: TAtlasUnavailableExplanation;
+  mFacts: TAtlasUnavailableFacts;
+  mExplanation: TAtlasUnavailableExplanation;
 begin
-  Facts := LocalFacts;
-  Facts.Launch.Optimization := 'true';
-  Facts.Lifetime := TAtlasValueLifetime.After;
-  Facts.LastUse := 41;
-  Facts.RoutineEdit := Edit(30, '{$OPTIMIZATION OFF}');
-  Facts.UnitEdit := Edit(2, '{$O-}');
-  Explanation := TAtlasDebugUnavailable.Explain(Facts);
-  Assert.AreEqual(Ord(TAtlasUnavailableCause.Optimization), Ord(Explanation.Cause));
-  Assert.AreEqual(Ord(TAtlasValueLifetime.After), Ord(Explanation.Lifetime), 'Hinweis zur Lebensdauer');
-  Assert.IsTrue(Explanation.HasFix(TAtlasUnavailableFix.RoutineOptimization));
-  Assert.IsTrue(Explanation.HasFix(TAtlasUnavailableFix.UnitOptimization));
-  Assert.IsFalse(Explanation.HasFix(TAtlasUnavailableFix.ShowDirective), 'O+ aus der .dproj');
-  Assert.AreEqual(3, Integer(Length(Explanation.Checked)));
+  mFacts := LocalFacts;
+  mFacts.Launch.Optimization := 'true';
+  mFacts.Lifetime := TAtlasValueLifetime.After;
+  mFacts.LastUse := 41;
+  mFacts.RoutineEdit := Edit(30, '{$OPTIMIZATION OFF}');
+  mFacts.UnitEdit := Edit(2, '{$O-}');
+  mExplanation := TAtlasDebugUnavailable.Explain(mFacts);
+  Assert.AreEqual(Ord(TAtlasUnavailableCause.Optimization), Ord(mExplanation.Cause));
+  Assert.AreEqual(Ord(TAtlasValueLifetime.After), Ord(mExplanation.Lifetime), 'Hinweis zur Lebensdauer');
+  Assert.IsTrue(mExplanation.HasFix(TAtlasUnavailableFix.RoutineOptimization));
+  Assert.IsTrue(mExplanation.HasFix(TAtlasUnavailableFix.UnitOptimization));
+  Assert.IsFalse(mExplanation.HasFix(TAtlasUnavailableFix.ShowDirective), 'O+ aus der .dproj');
+  Assert.AreEqual(3, Integer(Length(mExplanation.Checked)));
   // Felder liegen nicht in Registern.
-  Facts.Local := False;
-  Assert.AreEqual(Ord(TAtlasUnavailableCause.Unknown), Ord(TAtlasDebugUnavailable.Explain(Facts).Cause));
+  mFacts.Local := False;
+  Assert.AreEqual(Ord(TAtlasUnavailableCause.Unknown), Ord(TAtlasDebugUnavailable.Explain(mFacts).Cause));
 end;
 
 procedure TAtlasDebugUnavailableTests.LifetimeInlineAndLibraryInOrder;
 var
-  Facts: TAtlasUnavailableFacts;
-  Explanation: TAtlasUnavailableExplanation;
+  mFacts: TAtlasUnavailableFacts;
+  mExplanation: TAtlasUnavailableExplanation;
 begin
-  Facts := LocalFacts;
-  Facts.Lifetime := TAtlasValueLifetime.Before;
-  Facts.RoutineInline := True;
-  Facts.LibraryFrame := True;
-  Explanation := TAtlasDebugUnavailable.Explain(Facts);
-  Assert.AreEqual(Ord(TAtlasUnavailableCause.Lifetime), Ord(Explanation.Cause));
-  Assert.AreEqual(0, Integer(Length(Explanation.Fixes)));
-  Facts.Lifetime := TAtlasValueLifetime.Within;
-  Facts.RoutineName := 'TKunde.Summe';
-  Explanation := TAtlasDebugUnavailable.Explain(Facts);
-  Assert.AreEqual(Ord(TAtlasUnavailableCause.InlineRoutine), Ord(Explanation.Cause));
-  Assert.AreEqual('TKunde.Summe', Explanation.RoutineName);
-  Facts.RoutineInline := False;
-  Explanation := TAtlasDebugUnavailable.Explain(Facts);
-  Assert.AreEqual(Ord(TAtlasUnavailableCause.LibraryFrame), Ord(Explanation.Cause));
-  Assert.IsTrue(Explanation.HasFix(TAtlasUnavailableFix.DebugDcus));
-  Facts.Launch.DebugDcus := 'true';
-  Assert.AreEqual(Ord(TAtlasUnavailableCause.Unknown), Ord(TAtlasDebugUnavailable.Explain(Facts).Cause),
+  mFacts := LocalFacts;
+  mFacts.Lifetime := TAtlasValueLifetime.Before;
+  mFacts.RoutineInline := True;
+  mFacts.LibraryFrame := True;
+  mExplanation := TAtlasDebugUnavailable.Explain(mFacts);
+  Assert.AreEqual(Ord(TAtlasUnavailableCause.Lifetime), Ord(mExplanation.Cause));
+  Assert.AreEqual(0, Integer(Length(mExplanation.Fixes)));
+  mFacts.Lifetime := TAtlasValueLifetime.Within;
+  mFacts.RoutineName := 'TKunde.Summe';
+  mExplanation := TAtlasDebugUnavailable.Explain(mFacts);
+  Assert.AreEqual(Ord(TAtlasUnavailableCause.InlineRoutine), Ord(mExplanation.Cause));
+  Assert.AreEqual('TKunde.Summe', mExplanation.RoutineName);
+  mFacts.RoutineInline := False;
+  mExplanation := TAtlasDebugUnavailable.Explain(mFacts);
+  Assert.AreEqual(Ord(TAtlasUnavailableCause.LibraryFrame), Ord(mExplanation.Cause));
+  Assert.IsTrue(mExplanation.HasFix(TAtlasUnavailableFix.DebugDcus));
+  mFacts.Launch.DebugDcus := 'true';
+  Assert.AreEqual(Ord(TAtlasUnavailableCause.Unknown), Ord(TAtlasDebugUnavailable.Explain(mFacts).Cause),
     'mit Debug-DCUs keine Ursache');
 end;
 
 procedure TAtlasDebugUnavailableTests.UnknownListsAllChecks;
 var
-  Explanation: TAtlasUnavailableExplanation;
-  Check: TAtlasUnavailableCheck;
+  mExplanation: TAtlasUnavailableExplanation;
+  mCheck: TAtlasUnavailableCheck;
 begin
-  Explanation := TAtlasDebugUnavailable.Explain(LocalFacts);
-  Assert.AreEqual(Ord(TAtlasUnavailableCause.Unknown), Ord(Explanation.Cause));
-  Assert.AreEqual(Ord(High(TAtlasUnavailableCheck)) + 1, Integer(Length(Explanation.Checked)));
-  for Check := Low(TAtlasUnavailableCheck) to High(TAtlasUnavailableCheck) do
+  mExplanation := TAtlasDebugUnavailable.Explain(LocalFacts);
+  Assert.AreEqual(Ord(TAtlasUnavailableCause.Unknown), Ord(mExplanation.Cause));
+  Assert.AreEqual(Ord(High(TAtlasUnavailableCheck)) + 1, Integer(Length(mExplanation.Checked)));
+  for mCheck := Low(TAtlasUnavailableCheck) to High(TAtlasUnavailableCheck) do
   begin
-    Assert.AreEqual(Ord(Check), Ord(Explanation.Checked[Ord(Check)]), 'Reihenfolge der Prüfung');
+    Assert.AreEqual(Ord(mCheck), Ord(mExplanation.Checked[Ord(mCheck)]), 'Reihenfolge der Prüfung');
   end;
-  Assert.AreEqual(0, Integer(Length(Explanation.Fixes)));
+  Assert.AreEqual(0, Integer(Length(mExplanation.Fixes)));
 end;
 
 procedure TAtlasDebugUnavailableTests.ReadsServerAnswer;
 var
-  Json: TJSONValue;
-  Facts: TAtlasUnavailableFacts;
+  mJson: TJSONValue;
+  mFacts: TAtlasUnavailableFacts;
 begin
-  Json := TJSONObject.ParseJSONValue('{"switches":[' +
+  mJson := TJSONObject.ParseJSONValue('{"switches":[' +
     '{"name":"D","value":"+","origin":{"kind":"project","text":"DCC_DebugInformation"}},' +
     '{"name":"O","value":"+","origin":{"kind":"directive","text":"{$O+}","file":"C:\\P\\Kunden.pas","line":3}}],' +
     '"routine":{"name":"TKunde.Summe","inline":true,"startLine":10,"endLine":20},' +
@@ -272,36 +272,36 @@ begin
     '"fixes":{"routineOptimization":{"changes":{"file:///C:/P/Kunden.pas":[{"range":{"start":{"line":9,' +
     '"character":0},"end":{"line":9,"character":0}},"newText":"{$OPTIMIZATION OFF}\r\n"}]}}}}');
   try
-    Facts := TAtlasUnavailableFacts.Create(DebugLaunch, False);
-    Facts.ReadServer(Json);
+    mFacts := TAtlasUnavailableFacts.Create(DebugLaunch, False);
+    mFacts.ReadServer(mJson);
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Assert.IsTrue(Facts.Server);
-  Assert.IsTrue(Facts.DebugInfo.Known);
-  Assert.AreEqual(Ord(TAtlasSwitchSource.Project), Ord(Facts.DebugInfo.Source));
-  Assert.IsFalse(Facts.LocalSymbols.Known, 'L fehlt in der Antwort');
-  Assert.IsTrue(Facts.Optimization.IsDirective);
-  Assert.AreEqual(3, Facts.Optimization.Line);
-  Assert.AreEqual('TKunde.Summe', Facts.RoutineName);
-  Assert.IsTrue(Facts.RoutineInline);
-  Assert.IsTrue(Facts.Local);
-  Assert.AreEqual(15, Facts.LastUse);
-  Assert.AreEqual(Ord(TAtlasValueLifetime.After), Ord(Facts.Lifetime));
-  Assert.IsFalse(Facts.RoutineEdit.IsEmpty);
-  Assert.IsTrue(Facts.UnitEdit.IsEmpty);
-  Facts := TAtlasUnavailableFacts.Create(DebugLaunch, False);
-  Facts.ReadServer(nil);
-  Assert.IsFalse(Facts.Server, 'ohne Antwort');
+  Assert.IsTrue(mFacts.Server);
+  Assert.IsTrue(mFacts.DebugInfo.Known);
+  Assert.AreEqual(Ord(TAtlasSwitchSource.Project), Ord(mFacts.DebugInfo.Source));
+  Assert.IsFalse(mFacts.LocalSymbols.Known, 'L fehlt in der Antwort');
+  Assert.IsTrue(mFacts.Optimization.IsDirective);
+  Assert.AreEqual(3, mFacts.Optimization.Line);
+  Assert.AreEqual('TKunde.Summe', mFacts.RoutineName);
+  Assert.IsTrue(mFacts.RoutineInline);
+  Assert.IsTrue(mFacts.Local);
+  Assert.AreEqual(15, mFacts.LastUse);
+  Assert.AreEqual(Ord(TAtlasValueLifetime.After), Ord(mFacts.Lifetime));
+  Assert.IsFalse(mFacts.RoutineEdit.IsEmpty);
+  Assert.IsTrue(mFacts.UnitEdit.IsEmpty);
+  mFacts := TAtlasUnavailableFacts.Create(DebugLaunch, False);
+  mFacts.ReadServer(nil);
+  Assert.IsFalse(mFacts.Server, 'ohne Antwort');
 end;
 
 procedure TAtlasDebugUnavailableTests.PreviewShowsInsertedLines;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := TAtlasDebugUnavailable.PreviewLines(Edit(9, '{$OPTIMIZATION OFF}'));
-  Assert.AreEqual(1, Integer(Length(Lines)));
-  Assert.AreEqual('10: {$OPTIMIZATION OFF}', Lines[0]);
+  mLines := TAtlasDebugUnavailable.PreviewLines(Edit(9, '{$OPTIMIZATION OFF}'));
+  Assert.AreEqual(1, Integer(Length(mLines)));
+  Assert.AreEqual('10: {$OPTIMIZATION OFF}', mLines[0]);
 end;
 
 end.

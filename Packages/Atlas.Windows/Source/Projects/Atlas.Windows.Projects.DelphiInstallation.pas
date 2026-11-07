@@ -57,10 +57,10 @@ uses
   Atlas.Common.Projects.Paths;
 
 const
-  BdsKey = 'Software\Embarcadero\BDS';
+  cBdsKey = 'Software\Embarcadero\BDS';
   // Die IDE ist eine 32-Bit-Anwendung; ihre HKLM-Einträge liegen je nach Version in einer der Ansichten.
-  RegistryViews: array[0..1] of LongWord = (KEY_READ, KEY_READ or KEY_WOW64_32KEY);
-  EnvironmentNames: array[0..4] of string = ('PUBLIC', 'USERPROFILE', 'APPDATA', 'ProgramFiles', 'ProgramFiles(x86)');
+  cRegistryViews: array[0..1] of LongWord = (KEY_READ, KEY_READ or KEY_WOW64_32KEY);
+  cEnvironmentNames: array[0..4] of string = ('PUBLIC', 'USERPROFILE', 'APPDATA', 'ProgramFiles', 'ProgramFiles(x86)');
 
 function OpenRead(ARoot: HKEY; const AKey: string; AAccess: LongWord): TRegistry; overload;
 begin
@@ -80,11 +80,11 @@ end;
 
 function FolderPath(AFolder: Integer): string;
 var
-  Buffer: array[0..MAX_PATH] of Char;
+  mBuffer: array[0..MAX_PATH] of Char;
 begin
-  if SHGetFolderPath(0, AFolder, 0, SHGFP_TYPE_CURRENT, Buffer) = S_OK then
+  if SHGetFolderPath(0, AFolder, 0, SHGFP_TYPE_CURRENT, mBuffer) = S_OK then
   begin
-    Result := Buffer;
+    Result := mBuffer;
   end
   else
   begin
@@ -94,16 +94,16 @@ end;
 
 function CompareVersions(const A, B: string): Integer;
 var
-  NumberA: Double;
-  NumberB: Double;
+  mNumberA: Double;
+  mNumberB: Double;
 begin
-  NumberA := StrToFloatDef(A, 0, TFormatSettings.Invariant);
-  NumberB := StrToFloatDef(B, 0, TFormatSettings.Invariant);
-  if NumberA < NumberB then
+  mNumberA := StrToFloatDef(A, 0, TFormatSettings.Invariant);
+  mNumberB := StrToFloatDef(B, 0, TFormatSettings.Invariant);
+  if mNumberA < mNumberB then
   begin
     Result := -1;
   end
-  else if NumberA > NumberB then
+  else if mNumberA > mNumberB then
   begin
     Result := 1;
   end
@@ -115,36 +115,36 @@ end;
 
 function ReadRootDir(const AVersion: string): string;
 var
-  Registry: TRegistry;
-  Access: LongWord;
+  mRegistry: TRegistry;
+  mAccess: LongWord;
 begin
   Result := '';
-  for Access in RegistryViews do
+  for mAccess in cRegistryViews do
   begin
-    Registry := OpenRead(HKEY_LOCAL_MACHINE, BdsKey + '\' + AVersion, Access);
-    if Registry <> nil then
+    mRegistry := OpenRead(HKEY_LOCAL_MACHINE, cBdsKey + '\' + AVersion, mAccess);
+    if mRegistry <> nil then
       try
-        if Registry.ValueExists('RootDir') then
+        if mRegistry.ValueExists('RootDir') then
         begin
-          Result := ExcludeTrailingPathDelimiter(Registry.ReadString('RootDir'));
+          Result := ExcludeTrailingPathDelimiter(mRegistry.ReadString('RootDir'));
         end;
       finally
-        Registry.Free;
+        mRegistry.Free;
       end;
     if Result <> '' then
     begin
       Exit;
     end;
   end;
-  Registry := OpenRead(HKEY_CURRENT_USER, BdsKey + '\' + AVersion);
-  if Registry <> nil then
+  mRegistry := OpenRead(HKEY_CURRENT_USER, cBdsKey + '\' + AVersion);
+  if mRegistry <> nil then
     try
-      if Registry.ValueExists('RootDir') then
+      if mRegistry.ValueExists('RootDir') then
       begin
-        Result := ExcludeTrailingPathDelimiter(Registry.ReadString('RootDir'));
+        Result := ExcludeTrailingPathDelimiter(mRegistry.ReadString('RootDir'));
       end;
     finally
-      Registry.Free;
+      mRegistry.Free;
     end;
 end;
 
@@ -152,33 +152,33 @@ end;
 
 class function TDelphiInstallation.Versions: TArray<string>;
 var
-  Registry: TRegistry;
-  Names: TStringList;
-  Found: TList<string>;
-  Name: string;
+  mRegistry: TRegistry;
+  mNames: TStringList;
+  mFound: TList<string>;
+  mName: string;
 begin
-  Found := TList<string>.Create;
-  Names := TStringList.Create;
+  mFound := TList<string>.Create;
+  mNames := TStringList.Create;
   try
-    Registry := OpenRead(HKEY_CURRENT_USER, BdsKey);
-    if Registry <> nil then
+    mRegistry := OpenRead(HKEY_CURRENT_USER, cBdsKey);
+    if mRegistry <> nil then
       try
-        Registry.GetKeyNames(Names);
+        mRegistry.GetKeyNames(mNames);
       finally
-        Registry.Free;
+        mRegistry.Free;
       end;
-    for Name in Names do
+    for mName in mNames do
     begin
-      if (StrToFloatDef(Name, 0, TFormatSettings.Invariant) > 0) and (ReadRootDir(Name) <> '') then
+      if (StrToFloatDef(mName, 0, TFormatSettings.Invariant) > 0) and (ReadRootDir(mName) <> '') then
       begin
-        Found.Add(Name);
+        mFound.Add(mName);
       end;
     end;
-    Found.Sort(TComparer<string>.Construct(CompareVersions));
-    Result := Found.ToArray;
+    mFound.Sort(TComparer<string>.Construct(CompareVersions));
+    Result := mFound.ToArray;
   finally
-    Names.Free;
-    Found.Free;
+    mNames.Free;
+    mFound.Free;
   end;
 end;
 
@@ -189,16 +189,16 @@ end;
 
 class function TDelphiInstallation.Latest: ILibraryPathProvider;
 var
-  Installed: TArray<string>;
+  mInstalled: TArray<string>;
 begin
-  Installed := Versions;
-  if Length(Installed) = 0 then
+  mInstalled := Versions;
+  if Length(mInstalled) = 0 then
   begin
     Result := nil;
   end
   else
   begin
-    Result := TDelphiInstallation.Create(Installed[High(Installed)]);
+    Result := TDelphiInstallation.Create(mInstalled[High(mInstalled)]);
   end;
 end;
 
@@ -216,56 +216,59 @@ end;
 
 procedure TDelphiInstallation.LoadVariables;
 var
-  Values: TList<TPair<string, string>>;
-  Registry: TRegistry;
-  Names: TStringList;
-  Name: string;
-  StudioFolder: string;
+  mValues: TList<TPair<string, string>>;
+  mRegistry: TRegistry;
+  mNames: TStringList;
+  mName: string;
+  mStudioFolder: string;
 begin
-  Values := TList<TPair<string, string>>.Create;
-  Names := TStringList.Create;
+  mValues := TList<TPair<string, string>>.Create;
+  mNames := TStringList.Create;
   try
     // Benutzerdefinierte Variablen der IDE zuerst, damit sie Vorrang haben.
-    Registry := OpenRead(HKEY_CURRENT_USER, BdsKey + '\' + FVersion + '\Environment Variables');
-    if Registry <> nil then
+    mRegistry := OpenRead(HKEY_CURRENT_USER, cBdsKey + '\' + FVersion + '\Environment Variables');
+    if mRegistry <> nil then
       try
-        Registry.GetValueNames(Names);
-        for Name in Names do
+        mRegistry.GetValueNames(mNames);
+        for mName in mNames do
         begin
-          Values.Add(TPair<string, string>.Create(Name, Registry.ReadString(Name)));
+          mValues.Add(TPair<string, string>.Create(mName, mRegistry.ReadString(mName)));
         end;
       finally
-        Registry.Free;
+        mRegistry.Free;
       end;
-    StudioFolder := 'Embarcadero\Studio\' + FVersion;
-    Values.Add(TPair<string, string>.Create('BDS', FRootDir));
-    Values.Add(TPair<string, string>.Create('BDSBIN', FRootDir + '\bin'));
-    Values.Add(TPair<string, string>.Create('BDSLIB', FRootDir + '\lib'));
-    Values.Add(TPair<string, string>.Create('BDSINCLUDE', FRootDir + '\include'));
-    Values.Add(TPair<string, string>.Create('BDSCOMMONDIR', IncludeTrailingPathDelimiter(FolderPath(CSIDL_COMMON_DOCUMENTS)) + StudioFolder));
-    Values.Add(TPair<string, string>.Create('BDSUSERDIR', IncludeTrailingPathDelimiter(FolderPath(CSIDL_PERSONAL)) + StudioFolder));
-    Values.Add(TPair<string, string>.Create('BDSCatalogRepository', IncludeTrailingPathDelimiter(FolderPath(CSIDL_PERSONAL)) + StudioFolder + '\CatalogRepository'));
-    for Name in EnvironmentNames do
+    mStudioFolder := 'Embarcadero\Studio\' + FVersion;
+    mValues.Add(TPair<string, string>.Create('BDS', FRootDir));
+    mValues.Add(TPair<string, string>.Create('BDSBIN', FRootDir + '\bin'));
+    mValues.Add(TPair<string, string>.Create('BDSLIB', FRootDir + '\lib'));
+    mValues.Add(TPair<string, string>.Create('BDSINCLUDE', FRootDir + '\include'));
+    mValues.Add(TPair<string, string>.Create('BDSCOMMONDIR',
+      IncludeTrailingPathDelimiter(FolderPath(CSIDL_COMMON_DOCUMENTS)) + mStudioFolder));
+    mValues.Add(TPair<string, string>.Create('BDSUSERDIR',
+      IncludeTrailingPathDelimiter(FolderPath(CSIDL_PERSONAL)) + mStudioFolder));
+    mValues.Add(TPair<string, string>.Create('BDSCatalogRepository',
+      IncludeTrailingPathDelimiter(FolderPath(CSIDL_PERSONAL)) + mStudioFolder + '\CatalogRepository'));
+    for mName in cEnvironmentNames do
     begin
-      if GetEnvironmentVariable(Name) <> '' then
+      if GetEnvironmentVariable(mName) <> '' then
       begin
-        Values.Add(TPair<string, string>.Create(Name, GetEnvironmentVariable(Name)));
+        mValues.Add(TPair<string, string>.Create(mName, GetEnvironmentVariable(mName)));
       end;
     end;
-    FVariables := Values.ToArray;
+    FVariables := mValues.ToArray;
   finally
-    Names.Free;
-    Values.Free;
+    mNames.Free;
+    mValues.Free;
   end;
 end;
 
 function TDelphiInstallation.ExpandFor(const AText, APlatform: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AText;
   // Variablen dürfen auf andere verweisen; drei Durchgänge genügen in der Praxis.
-  for Index := 1 to 3 do
+  for mIndex := 1 to 3 do
   begin
     Result := TProjectPaths.ExpandVariables(Result,
       FVariables + [TPair<string, string>.Create('Platform', APlatform)]);
@@ -282,7 +285,7 @@ var
   mItem: string;
 begin
   Result := nil;
-  mRegistry := OpenRead(HKEY_CURRENT_USER, BdsKey + '\' + FVersion + '\Library\' + APlatform);
+  mRegistry := OpenRead(HKEY_CURRENT_USER, cBdsKey + '\' + FVersion + '\Library\' + APlatform);
   if mRegistry = nil then
   begin
     Exit;

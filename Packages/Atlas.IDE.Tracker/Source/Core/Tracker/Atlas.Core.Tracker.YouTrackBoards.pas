@@ -34,14 +34,14 @@ type
   //   (workDays, 1 = Montag … 7 = Sonntag; ohne Recht bleibt Mo–Fr).
   TAtlasYouTrackBoards = class(TInterfacedObject, IAtlasTrackerBoards, IAtlasTrackerWorkDays)
   public const
-    AgileFields = 'id,name,projects(shortName),columnSettings(field(name),columns(presentation,isResolved,' +
+    cAgileFields = 'id,name,projects(shortName),columnSettings(field(name),columns(presentation,isResolved,' +
       'fieldValues(name))),currentSprint(id),estimationField(name)';
-    SprintFields = 'id,name,start,finish,archived';
-    WorkDaysPath = '/api/admin/timeTrackingSettings/workTimeSettings?fields=workDays';
+    cSprintFields = 'id,name,start,finish,archived';
+    cWorkDaysPath = '/api/admin/timeTrackingSettings/workTimeSettings?fields=workDays';
     /// <summary>Felder einer Karte: wie die Vorschau (#1264) ohne Anhänge und Tags, dazu login, Farbe und minutes
     /// (Schätzung als Zeitraum, #1277).</summary>
-    CardFields = 'idReadable,numberInProject,summary,description,resolved,' +
-      'customFields(' + TAtlasYouTrackWorkflow.CardFieldParts +
+    cCardFields = 'idReadable,numberInProject,summary,description,resolved,' +
+      'customFields(' + TAtlasYouTrackWorkflow.cCardFieldParts +
       ',name,value(name,presentation,login,fullName,minutes,color(background))),' +
       'links(direction,linkType(name,localizedName,sourceToTarget,localizedSourceToTarget,targetToSource,' +
       'localizedTargetToSource,aggregation),issues(idReadable,summary,resolved,customFields(name,value(name))))';
@@ -91,8 +91,8 @@ begin
   Result := '';
   if ATarget.Server <> '' then
   begin
-    Result := ATarget.Url + '/api/agiles?fields=' + TTextUris.PercentEncode(AgileFields) + '&$top=' +
-      IntToStr(TAtlasBoardSnapshot.MaxBoards);
+    Result := ATarget.Url + '/api/agiles?fields=' + TTextUris.PercentEncode(cAgileFields) + '&$top=' +
+      IntToStr(TAtlasBoardSnapshot.cMaxBoards);
   end;
 end;
 
@@ -101,8 +101,8 @@ begin
   Result := '';
   if (ATarget.Server <> '') and TAtlasYouTrackJson.ValidId(ABoardId) then
   begin
-    Result := ATarget.Url + '/api/agiles/' + ABoardId + '/sprints?fields=' + TTextUris.PercentEncode(SprintFields) +
-      '&$top=' + IntToStr(TAtlasBoardSnapshot.MaxSprints);
+    Result := ATarget.Url + '/api/agiles/' + ABoardId + '/sprints?fields=' + TTextUris.PercentEncode(cSprintFields) +
+      '&$top=' + IntToStr(TAtlasBoardSnapshot.cMaxSprints);
   end;
 end;
 
@@ -120,7 +120,7 @@ begin
   if (ATarget.Server <> '') and TAtlasYouTrackJson.ValidId(ABoardId) and TAtlasYouTrackJson.ValidId(mSprint) then
   begin
     Result := ATarget.Url + '/api/agiles/' + ABoardId + '/sprints/' + mSprint + '?fields=' +
-      TTextUris.PercentEncode(SprintFields + ',issues(' + CardFields + ')');
+      TTextUris.PercentEncode(cSprintFields + ',issues(' + cCardFields + ')');
   end;
 end;
 
@@ -248,7 +248,7 @@ begin
     begin
       mFirst := mBoard;
     end;
-    if (mBoard = nil) or (Length(ASnapshot.Boards) >= TAtlasBoardSnapshot.MaxBoards) then
+    if (mBoard = nil) or (Length(ASnapshot.Boards) >= TAtlasBoardSnapshot.cMaxBoards) then
     begin
       Continue;
     end;
@@ -331,7 +331,7 @@ begin
     end;
     for mItem in TJSONArray(mValue) do
     begin
-      if not (mItem is TJSONObject) or (Length(ASprints) >= TAtlasBoardSnapshot.MaxSprints) then
+      if not (mItem is TJSONObject) or (Length(ASprints) >= TAtlasBoardSnapshot.cMaxSprints) then
       begin
         Continue;
       end;
@@ -449,7 +449,7 @@ begin
     begin
       for mItem in TJSONArray(mRoot.Values['issues']) do
       begin
-        if not (mItem is TJSONObject) or (Length(ASnapshot.Cards) >= TAtlasBoardSnapshot.MaxCards) then
+        if not (mItem is TJSONObject) or (Length(ASnapshot.Cards) >= TAtlasBoardSnapshot.cMaxCards) then
         begin
           Continue;
         end;
@@ -462,7 +462,7 @@ begin
         mCard := Default(TAtlasBoardCard);
         mCard.Key := mDetails.Key;
         mCard.Number := mDetails.Number;
-        mCard.Title := Copy(mDetails.Title, 1, TAtlasBoardCard.MaxTitle);
+        mCard.Title := Copy(mDetails.Title, 1, TAtlasBoardCard.cMaxTitle);
         mCard.Assignee := mDetails.Assignee;
         mCard.Priority := mDetails.Priority;
         mCard.Checklist := TAtlasTrackerChecklist.Progress(mDetails.Description);
@@ -640,7 +640,8 @@ begin
   ADays := nil;
   // Braucht oft Administratorrechte; ohne Antwort bleibt die Vorgabe Mo–Fr beim Aufrufer.
   Result := (ATarget.Server <> '') and (ATransport <> nil) and
-    TAtlasYouTrackApi.GetText(ATransport, ATarget.Url + WorkDaysPath, ATimeoutMs, mText, mError) and ParseWorkDays(mText, ADays);
+    TAtlasYouTrackApi.GetText(ATransport, ATarget.Url + cWorkDaysPath, ATimeoutMs, mText, mError) and
+      ParseWorkDays(mText, ADays);
 end;
 
 end.

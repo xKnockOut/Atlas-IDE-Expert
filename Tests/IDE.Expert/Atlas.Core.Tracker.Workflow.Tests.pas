@@ -267,7 +267,7 @@ end;
 function Options(const AEndStates: string): TAtlasTrackerSyncOptions;
 begin
   Result := TAtlasTrackerSyncOptions.Create(True, '', '').WithStart('In Arbeit', True,
-    'Beginne {kennung}').WithEnd(AEndStates, TAtlasTrackerWorkflow.DefaultEndComment);
+    'Beginne {kennung}').WithEnd(AEndStates, TAtlasTrackerWorkflow.cDefaultEndComment);
 end;
 
 /// <summary>Wert AName des JSON-Objekts AJson als Text ('' ohne).</summary>
@@ -313,21 +313,21 @@ end;
 
 procedure TAtlasTrackerWorkflowTests.UsesFieldsOnlyWithoutGitHub;
 begin
-  Assert.IsTrue(TAtlasTrackerWorkflow.UsesFields(TAtlasTrackerTarget.YouTrack), 'YouTrack');
-  Assert.IsFalse(TAtlasTrackerWorkflow.UsesFields(TAtlasTrackerTarget.GitHub), 'GitHub');
+  Assert.IsTrue(TAtlasTrackerWorkflow.UsesFields(TAtlasTrackerTarget.cYouTrack), 'YouTrack');
+  Assert.IsFalse(TAtlasTrackerWorkflow.UsesFields(TAtlasTrackerTarget.cGitHub), 'GitHub');
   Assert.IsFalse(TAtlasTrackerWorkflow.UsesFields(' GitHub '), 'Schreibweise und Leerraum');
   Assert.IsTrue(TAtlasTrackerWorkflow.UsesFields(''), 'ohne Anbieter');
 end;
 
 procedure TAtlasTrackerWorkflowTests.EndCommentFollowsLanguage;
 begin
-  Assert.AreEqual(TAtlasPluginSettings.DefaultIssuesEndComment, TAtlasTrackerWorkflow.DefaultEndComment);
-  Assert.AreEqual(TAtlasTrackerWorkflow.DefaultEndCommentEn,
-    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.DefaultEndComment, True));
-  Assert.AreEqual(TAtlasTrackerWorkflow.DefaultEndComment,
-    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.DefaultEndCommentEn, False));
-  Assert.AreEqual(TAtlasTrackerWorkflow.DefaultEndComment,
-    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.DefaultEndComment, False));
+  Assert.AreEqual(TAtlasPluginSettings.DefaultIssuesEndComment, TAtlasTrackerWorkflow.cDefaultEndComment);
+  Assert.AreEqual(TAtlasTrackerWorkflow.cDefaultEndCommentEn,
+    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.cDefaultEndComment, True));
+  Assert.AreEqual(TAtlasTrackerWorkflow.cDefaultEndComment,
+    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.cDefaultEndCommentEn, False));
+  Assert.AreEqual(TAtlasTrackerWorkflow.cDefaultEndComment,
+    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.cDefaultEndComment, False));
   Assert.AreEqual('Fertig: {pr}', TAtlasTrackerWorkflow.EndCommentFor('Fertig: {pr}', True), 'eigener Text');
   Assert.AreEqual('', TAtlasTrackerWorkflow.EndCommentFor('', True), 'leer = kein Kommentar');
 end;
@@ -341,14 +341,14 @@ begin
   mValues.PullRequest := 'https://github.com/beispiel/atlas/pull/7';
   mValues.Time := '1 h 25 min';
   Assert.AreEqual('Erledigt in feature/ATL-123-export.'#10'abc1234 ATL-123: Export'#10'def5678 ATL-123: Test',
-    TAtlasTrackerWorkflow.Fill(TAtlasTrackerWorkflow.DefaultEndComment, mValues));
+    TAtlasTrackerWorkflow.Fill(TAtlasTrackerWorkflow.cDefaultEndComment, mValues));
   Assert.AreEqual('ATL-123: PR https://github.com/beispiel/atlas/pull/7, Zeit 1 h 25 min',
     TAtlasTrackerWorkflow.Fill('{KENNUNG}: PR {pr}, Zeit {time}', mValues), 'ohne Groß-/Kleinschreibung');
   Assert.AreEqual('ATL-123', TAtlasTrackerWorkflow.Fill('{key}', mValues));
   // Leere Platzhalter am Ende hinterlassen keine Leerzeilen.
   mValues.Commits := '';
   Assert.AreEqual('Erledigt in feature/ATL-123-export.',
-    TAtlasTrackerWorkflow.Fill(TAtlasTrackerWorkflow.DefaultEndComment, mValues));
+    TAtlasTrackerWorkflow.Fill(TAtlasTrackerWorkflow.cDefaultEndComment, mValues));
   Assert.AreEqual('{unbekannt} bleibt', TAtlasTrackerWorkflow.Fill('{unbekannt} bleibt', mValues));
 end;
 
@@ -376,12 +376,12 @@ begin
     TAtlasTrackerWorkflow.CommitLines(mCommits, 'ATL-123'));
   Assert.AreEqual('', TAtlasTrackerWorkflow.CommitLines(mCommits, 'ATL-9'));
   mCommits := nil;
-  for mIndex := 1 to TAtlasTrackerWorkflow.MaxCommits + 5 do
+  for mIndex := 1 to TAtlasTrackerWorkflow.cMaxCommits + 5 do
   begin
     mCommits := mCommits + [Commit(Format('%.7d', [mIndex]), 'ATL-123: ' + IntToStr(mIndex))];
   end;
   mLines := TAtlasTrackerWorkflow.CommitLines(mCommits, 'ATL-123').Split([#10]);
-  Assert.AreEqual(TAtlasTrackerWorkflow.MaxCommits, Integer(Length(mLines)), 'höchstens MaxCommits');
+  Assert.AreEqual(TAtlasTrackerWorkflow.cMaxCommits, Integer(Length(mLines)), 'höchstens MaxCommits');
 end;
 
 procedure TAtlasTrackerWorkflowTests.CommitsForUsesFirstExistingBase;

@@ -20,14 +20,14 @@ uses
 type
   TAtlasGitHubApi = class
   public const
-    ApiHost = 'https://api.github.com';
-    ProviderName = 'github';
+    cApiHost = 'https://api.github.com';
+    cProviderName = 'github';
     /// <summary>Vorgabe der Abfrage „Meine Issues“.</summary>
-    DefaultQuery = 'assignee:@me state:open';
+    cDefaultQuery = 'assignee:@me state:open';
     /// <summary>Höchstens so viele offene Pull Requests je Abfrage.</summary>
-    MaxPulls = 50;
+    cMaxPulls = 50;
     /// <summary>Größte Seite der REST-API.</summary>
-    MaxPageSize = 100;
+    cMaxPageSize = 100;
   public
     /// <summary>Basis der REST-API; '' ohne gültigen Server.</summary>
     class function Base(const ATarget: TAtlasTrackerTarget): string; static;
@@ -114,7 +114,7 @@ begin
   end;
   if (mServer = 'https://github.com') or (mServer = 'https://www.github.com') then
   begin
-    Result := ApiHost;
+    Result := cApiHost;
   end
   else
   begin
@@ -127,32 +127,32 @@ begin
   Result := ATarget.Query;
   if Result = '' then
   begin
-    Result := DefaultQuery;
+    Result := cDefaultQuery;
   end;
   Result := Result + ' repo:' + ATarget.Project + ' is:issue';
 end;
 
 class function TAtlasGitHubApi.SearchUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string;
 var
-  Text: string;
-  Limit: Integer;
+  mText: string;
+  mLimit: Integer;
 begin
   Result := Base(ATarget);
   if (Result = '') or (ATarget.Project = '') then
   begin
     Exit('');
   end;
-  Text := SearchText(ATarget);
-  Limit := AMax;
-  if Limit < 1 then
+  mText := SearchText(ATarget);
+  mLimit := AMax;
+  if mLimit < 1 then
   begin
-    Limit := 1;
+    mLimit := 1;
   end;
-  if Limit > 100 then
+  if mLimit > 100 then
   begin
-    Limit := 100;
+    mLimit := 100;
   end;
-  Result := Result + '/search/issues?q=' + TTextUris.PercentEncode(Text) + '&per_page=' + IntToStr(Limit) +
+  Result := Result + '/search/issues?q=' + TTextUris.PercentEncode(mText) + '&per_page=' + IntToStr(mLimit) +
     '&sort=updated&order=desc';
 end;
 
@@ -188,19 +188,19 @@ begin
     Exit('');
   end;
   Result := Result + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/pulls?state=open&per_page=' +
-    IntToStr(MaxPulls);
+    IntToStr(cMaxPulls);
 end;
 
 function SafeSha(const ASha: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := (Length(ASha) >= 7) and (Length(ASha) <= 64);
   if Result then
   begin
-    for Index := 1 to Length(ASha) do
+    for mIndex := 1 to Length(ASha) do
     begin
-      if not CharInSet(ASha[Index], ['0'..'9', 'a'..'f', 'A'..'F']) then
+      if not CharInSet(ASha[mIndex], ['0'..'9', 'a'..'f', 'A'..'F']) then
       begin
         Exit(False);
       end;
@@ -237,7 +237,7 @@ begin
     Exit('');
   end;
   Result := Result + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/pulls?state=all&per_page=' +
-    IntToStr(MaxPageSize) + '&sort=updated&direction=desc';
+    IntToStr(cMaxPageSize) + '&sort=updated&direction=desc';
 end;
 
 class function TAtlasGitHubApi.ErrorOfStatus(AStatus: Integer): TAtlasCiFetchError;
@@ -290,19 +290,19 @@ end;
 
 class function TAtlasGitHubApi.Remaining(const AWatch: TStopwatch; ATimeoutMs: Integer): Integer;
 var
-  Rest: Int64;
+  mRest: Int64;
 begin
-  Rest := ATimeoutMs - AWatch.ElapsedMilliseconds;
+  mRest := ATimeoutMs - AWatch.ElapsedMilliseconds;
   Result := 0;
-  if Rest > 0 then
+  if mRest > 0 then
   begin
-    Result := Integer(Rest);
+    Result := Integer(mRest);
   end;
 end;
 
 
 const
-  ClosingStates: array[0..5] of string = ('Erledigt', 'Done', 'Closed', 'Geschlossen', 'Completed', 'Fertig');
+  cClosingStates: array[0..5] of string = ('Erledigt', 'Done', 'Closed', 'Geschlossen', 'Completed', 'Fertig');
 
 class function TAtlasGitHubApi.WriteResult(ASent: Boolean; const AResponse: TAtlasCiResponse): TAtlasTrackerWriteResult;
 begin
@@ -349,7 +349,7 @@ var
   mState: string;
 begin
   Result := False;
-  for mState in ClosingStates do
+  for mState in cClosingStates do
   begin
     if SameText(mState, Trim(AState)) then
     begin
@@ -493,7 +493,7 @@ begin
     Exit('');
   end;
   Result := Result + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/assignees?per_page=' +
-    IntToStr(MaxPageSize);
+    IntToStr(cMaxPageSize);
 end;
 
 class function TAtlasGitHubApi.ErrorMessage(const AJson: string): string;

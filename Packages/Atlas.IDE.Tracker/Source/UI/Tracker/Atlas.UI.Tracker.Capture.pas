@@ -36,7 +36,7 @@ type
   TAtlasWindowCapture = record
   public const
     /// <summary>So lange darf ein Fenster für WM_NULL brauchen, sonst gilt es als angehalten.</summary>
-    ResponseMs = 300;
+    cResponseMs = 300;
   public
     /// <summary>Sichtbare Fenster ohne Eltern mit Titel von AProcessId; das ohne Besitzer zuerst.</summary>
     class function WindowsOf(AProcessId: DWORD): TArray<TAtlasWindowInfo>; static;
@@ -55,7 +55,7 @@ type
   /// <summary>Ein Klick auf ein beliebiges Fenster wählt es (Hook bis zum Klick).</summary>
   TAtlasWindowPicker = class
   public const
-    TimeoutMs = 15000;
+    cTimeoutMs = 15000;
   private
     FTimer: TTimer;
     FOnPicked: TAtlasWindowPicked;
@@ -93,11 +93,11 @@ uses
 
 const
   // Fehlt in älteren Winapi.Windows: auch Inhalte von DirectX und WinUI zeichnen (ab Windows 8.1).
-  PW_RENDERFULLCONTENT = 2;
+  cPW_RENDERFULLCONTENT = 2;
   // Die ersten acht Bytes jeder PNG-Datei.
-  PngSignature: array[0..7] of Byte = ($89, $50, $4E, $47, $0D, $0A, $1A, $0A);
+  cPngSignature: array[0..7] of Byte = ($89, $50, $4E, $47, $0D, $0A, $1A, $0A);
   // Fehlt in Winapi.Windows: Bildschirmkopie samt überlagerter Fenster.
-  CAPTUREBLT = $40000000;
+  cCAPTUREBLT = $40000000;
 
 type
   // Fehlt in Winapi.Windows: Daten des systemweiten Maus-Hooks (WH_MOUSE_LL).
@@ -174,7 +174,7 @@ var
   mResult: DWORD_PTR;
 begin
   Result := IsWindow(AWindow) and (SendMessageTimeout(AWindow, WM_NULL, 0, 0, SMTO_ABORTIFHUNG or SMTO_BLOCK,
-    ResponseMs, @mResult) <> 0);
+    cResponseMs, @mResult) <> 0);
 end;
 
 class function TAtlasWindowCapture.ProcessOf(AWindow: HWND): DWORD;
@@ -227,7 +227,7 @@ begin
     try
       mFull.PixelFormat := pf32bit;
       mFull.SetSize(mWindow.Width, mWindow.Height);
-      mPrinted := PrintWindow(AWindow, mFull.Canvas.Handle, PW_RENDERFULLCONTENT);
+      mPrinted := PrintWindow(AWindow, mFull.Canvas.Handle, cPW_RENDERFULLCONTENT);
       if mPrinted then
       begin
         Result := TBitmap.Create;
@@ -251,7 +251,7 @@ begin
   mScreen := GetDC(0);
   try
     BitBlt(Result.Canvas.Handle, 0, 0, mRect.Width, mRect.Height, mScreen, mRect.Left, mRect.Top,
-      SRCCOPY or CAPTUREBLT);
+      SRCCOPY or cCAPTUREBLT);
   finally
     ReleaseDC(0, mScreen);
   end;
@@ -339,7 +339,7 @@ begin
   begin
     Finish(PickWindow);
   end
-  else if (GetAsyncKeyState(VK_ESCAPE) < 0) or (GetTickCount64 - FStarted > TimeoutMs) then
+  else if (GetAsyncKeyState(VK_ESCAPE) < 0) or (GetTickCount64 - FStarted > cTimeoutMs) then
   begin
     Finish(0);
   end;
@@ -422,7 +422,8 @@ var
 begin
   Result := nil;
   // Ohne PNG-Signatur gar nicht erst laden (TPngImage meldet das mit eigener Ausnahmeklasse).
-  if (Length(ABytes) < Length(PngSignature)) or not CompareMem(@ABytes[0], @PngSignature[0], Length(PngSignature)) then
+  if (Length(ABytes) < Length(cPngSignature)) or
+    not CompareMem(@ABytes[0], @cPngSignature[0], Length(cPngSignature)) then
   begin
     Exit;
   end;

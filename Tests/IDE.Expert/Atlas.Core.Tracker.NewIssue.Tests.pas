@@ -245,7 +245,7 @@ begin
   mContext.Selection := #13#10 + '  FList.Free;' + #13#10 + '  FList := nil;';
   Assert.AreEqual('FList.Free;', TAtlasNewIssues.TitleOf(mContext), 'erste nicht leere Zeile der Auswahl');
   mContext.Selection := StringOfChar('x', 300);
-  Assert.AreEqual(Integer(TAtlasNewIssues.MaxTitle), Integer(Length(TAtlasNewIssues.TitleOf(mContext))), 'gekürzt');
+  Assert.AreEqual(Integer(TAtlasNewIssues.cMaxTitle), Integer(Length(TAtlasNewIssues.TitleOf(mContext))), 'gekürzt');
   mContext.Lines := nil;
 end;
 
