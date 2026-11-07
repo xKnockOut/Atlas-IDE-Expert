@@ -59,8 +59,6 @@ type
     cMaxNumber = 9;
     /// <summary>Zweite Teile der Faltungsakkorde nach Strg+Umschalt+K in der Standard-Tastaturbelegung.</summary>
     cFoldLetters = 'ACEGMNOPRTU';
-    /// <summary>Vorgabe von bookmarks.quick.chordWait in ms.</summary>
-    cDefaultChordWait = 800;
     cMinColumnWidth = 10;
   public
     /// <summary>Steht in der Spalte: schnelles oder nummeriertes Lesezeichen.</summary>

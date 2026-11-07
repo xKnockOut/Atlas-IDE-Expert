@@ -53,7 +53,6 @@ type
     /// <summary>Knöpfe nach den gesetzten Ereignissen freigeben.</summary>
     procedure Reload;
     property EditGlobal: TButton read FEditGlobal;
-    property EditProject: TButton read FEditProject;
     property CacheInfo: TLabel read FCacheInfo;
     property CacheClear: TButton read FCacheClear;
     property OnEditGlobal: TProc read FHooks.EditGlobal write FHooks.EditGlobal;

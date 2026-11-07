@@ -33,6 +33,8 @@ type
   TMessageMethodInvalidTests = class
   public
     [Test]
+    procedure DescriptionFromTextUnit;
+    [Test]
     procedure IssueExampleDuplicateNumber;
     [Test]
     procedure DuplicatesByValueAndText;
@@ -123,6 +125,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.TypeDeclarations,
+  Atlas.Common.Rules.Builtin.TypeDeclarations.Texts,
   Atlas.Tests.RuleAssert;
 
 /// <summary>Unit Messages mit einigen Nachrichtennummern und TMessage.</summary>
@@ -285,6 +288,13 @@ begin
   Assert.AreEqual('Die Nachrichtennummer 0 von A muss mindestens 1 sein (wie E2139).', Found[0].Message);
   Assert.AreEqual('Die Nachrichtennummer -151 von B muss mindestens 1 sein (wie E2139).', Found[1].Message);
   Assert.AreEqual('Die Nachrichtennummer WM_NULL von C muss mindestens 1 sein (wie E2139).', Found[2].Message);
+end;
+
+procedure TMessageMethodInvalidTests.DescriptionFromTextUnit;
+begin
+  // Die Texte stehen in einer eigenen Unit (metric-unit-length); die Beschreibung kommt weiter aus ihr.
+  Assert.AreEqual(cTexts[TTypeDeclarationsText.MessageTitle].Text,
+    (TMessageMethodInvalidRule.Create as IRule).Descriptor.Description);
 end;
 
 procedure TMessageMethodInvalidTests.OffAndExclude;

@@ -160,7 +160,7 @@ end;
 
 class function TProjectPaths.Combine(const ABase, APath: string): string;
 begin
-  if (APath = '') then
+  if APath = '' then
   begin
     Result := Normalize(ABase);
   end

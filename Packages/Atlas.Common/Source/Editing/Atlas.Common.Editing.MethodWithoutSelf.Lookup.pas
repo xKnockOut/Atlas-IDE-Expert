@@ -59,6 +59,20 @@ type
     class function IsInterfaceName(const ATypeName: string): Boolean; static;
   end;
 
+  /// <summary>Stelle des Namens Name, der an Offset beginnt: Knoten des Namens und ob er in einer Property oder in
+  /// inherited steht (für TMethodWithoutSelf.UseAt).</summary>
+  TMethodUseScan = record
+    Offset: Integer;
+    Name: string;
+    Found: TSyntaxNode;
+    InProperty: Boolean;
+    InInherited: Boolean;
+    class function Scan(ATree: TSyntaxTree; AOffset: Integer; const AName: string): TMethodUseScan; static;
+  private
+    function IsNameAt(ANode: TSyntaxNode): Boolean;
+    function Visit(ANode: TSyntaxNode): Boolean;
+  end;
+
 implementation
 
 uses
@@ -733,6 +747,58 @@ var
 begin
   mName := LastTypePart(ATypeName);
   Result := (Length(mName) > 1) and (mName[1] = 'I') and CharInSet(mName[2], ['A'..'Z']);
+end;
+
+function TMethodUseScan.IsNameAt(ANode: TSyntaxNode): Boolean;
+begin
+  if not SameText(ANode.Name, Name) then
+  begin
+    Exit(False);
+  end;
+  case ANode.Kind of
+    TSyntaxKind.Identifier:
+      Result := ANode.StartOffset = Offset;
+    TSyntaxKind.MemberAccess:
+      Result := ANode.EndOffset = Offset + Length(Name);
+  else
+    Result := False;
+  end;
+end;
+
+function TMethodUseScan.Visit(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.StartOffset <= Offset) and (Offset < ANode.EndOffset);
+  if not Result then
+  begin
+    Exit;
+  end;
+  if ANode.Kind = TSyntaxKind.PropertyDecl then
+  begin
+    InProperty := True;
+  end
+  else if (ANode.Kind = TSyntaxKind.InheritedExpr) and SameText(ANode.Name, Name) then
+  begin
+    InInherited := True;
+  end
+  else if IsNameAt(ANode) then
+  begin
+    Found := ANode;
+  end;
+end;
+
+class function TMethodUseScan.Scan(ATree: TSyntaxTree; AOffset: Integer; const AName: string): TMethodUseScan;
+var
+  mScan: TMethodUseScan;
+begin
+  mScan := Default(TMethodUseScan);
+  mScan.Offset := AOffset;
+  mScan.Name := AName;
+  ATree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      Result := mScan.Visit(ANode);
+    end);
+  Result := mScan;
 end;
 
 end.

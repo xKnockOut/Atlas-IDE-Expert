@@ -174,9 +174,6 @@ type
     cKeepBackups = 10;
     cBackupPrefix = 'atlas-settings-';
   public
-    /// <summary>Aktueller Wert als JSON; '' = nicht gesetzt (nur settings.json).</summary>
-    class function CurrentJson(ACatalog: TAtlasSettingsCatalog; const AState: TAtlasSettingsState;
-      AIndex: Integer): string; static;
     /// <summary>Standardwert als JSON; '' = Schlüssel entfällt (nur settings.json).</summary>
     class function DefaultJson(ACatalog: TAtlasSettingsCatalog; AIndex: Integer): string; static;
     /// <summary>Weicht der Wert vom Standard ab? Zustände und Rechnerwerte zählen nicht.</summary>
@@ -820,19 +817,6 @@ begin
 end;
 
 { TAtlasSettingsTransfer }
-
-class function TAtlasSettingsTransfer.CurrentJson(ACatalog: TAtlasSettingsCatalog;
-  const AState: TAtlasSettingsState; AIndex: Integer): string;
-var
-  mValues: TStateValues;
-begin
-  mValues := TStateValues.Create(ACatalog, AState);
-  try
-    Result := mValues.Get(AIndex);
-  finally
-    mValues.Free;
-  end;
-end;
 
 class function TAtlasSettingsTransfer.DefaultJson(ACatalog: TAtlasSettingsCatalog; AIndex: Integer): string;
 begin

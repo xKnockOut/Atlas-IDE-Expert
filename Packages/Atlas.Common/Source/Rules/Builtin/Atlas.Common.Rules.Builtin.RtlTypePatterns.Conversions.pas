@@ -962,9 +962,9 @@ var
   end;
 
 var
-  mIndex, Position: Integer;
+  mIndex, mPosition: Integer;
   mDefaults: TArray<string>;
-  Name: string;
+  mName: string;
   mCache: IRuleDerivedCache;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
@@ -972,9 +972,9 @@ begin
     Exit;
   end;
   mDefaults := nil;
-  for Name in cDefaultEnumSources do
+  for mName in cDefaultEnumSources do
   begin
-    mDefaults := mDefaults + [Name];
+    mDefaults := mDefaults + [mName];
   end;
   mSources := TRuleOptions.Strings(AContext.Options, 'sources', mDefaults);
   if Length(mSources) = 0 then
@@ -993,13 +993,13 @@ begin
   mLineBreak := TTextLines.LineBreakOf(AContext.Text);
   mCache := TRuleDerived.Open(AContext);
   mLocal := TRuleDerived.UnitIndex(mCache, AContext);
-  for Position := 0 to High(mCode) - 2 do
+  for mPosition := 0 to High(mCode) - 2 do
   begin
     // TName( … ) als Ausdruck: kein Punkt davor (X.TName), kein Typ in einer Deklaration.
-    if IsWord(Position) and (Token(Position).Text[1] = 'T') and IsSym(Position + 1, '(') and
-      not IsSym(Position - 1, '.') then
+    if IsWord(mPosition) and (Token(mPosition).Text[1] = 'T') and IsSym(mPosition + 1, '(') and
+      not IsSym(mPosition - 1, '.') then
     begin
-      CheckCast(Position);
+      CheckCast(mPosition);
     end;
   end;
 end;
@@ -1015,7 +1015,7 @@ end;
 class function TGlobalFormatSettingsModifiedRule.Subject(const AField: string): string;
 const
   // In der Reihenfolge von DeprecatedGlobals.
-  Texts: array[0..19] of TRtlTypePatternsConversionsText = (TRtlTypePatternsConversionsText.CurrencyString,
+  cSubjectTexts: array[0..19] of TRtlTypePatternsConversionsText = (TRtlTypePatternsConversionsText.CurrencyString,
     TRtlTypePatternsConversionsText.CurrencyFormat, TRtlTypePatternsConversionsText.NegCurrFormat,
     TRtlTypePatternsConversionsText.ThousandSeparator, TRtlTypePatternsConversionsText.DecimalSeparator,
     TRtlTypePatternsConversionsText.CurrencyDecimals, TRtlTypePatternsConversionsText.DateSeparator,
@@ -1037,7 +1037,7 @@ begin
   begin
     if SameText(cDeprecatedGlobals[mIndex], AField) then
     begin
-      Exit(cTexts[Texts[mIndex]].Text);
+      Exit(cTexts[cSubjectTexts[mIndex]].Text);
     end;
   end;
   Result := cTexts[TRtlTypePatternsConversionsText.TheSetting].Fmt([AField]);

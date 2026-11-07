@@ -55,8 +55,6 @@ type
   end;
 
   TSafeDelete = class
-  public const
-    cKind = 'refactor';
   public
     /// <summary>Symbol an APosition. Sonst nennt AReason den Grund ('' wenn dort gar kein Symbol steht).
     /// </summary>

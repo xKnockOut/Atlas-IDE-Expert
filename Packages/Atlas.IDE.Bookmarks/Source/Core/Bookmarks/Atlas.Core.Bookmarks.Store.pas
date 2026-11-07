@@ -1004,7 +1004,9 @@ var
 begin
   if CreateGUID(mGuid) <> 0 then
   begin
-    // Ohne GUID: Zeitpunkt und Zufall genügen für eine Liste.
+    // Ohne GUID: Zeitpunkt und Zufall genügen für eine Liste. Ohne Randomize wäre die Folge
+    // bei jedem Start gleich.
+    Randomize;
     Exit(LowerCase(IntToHex(Trunc(Now * 86400000), 12) + IntToHex(Random(MaxInt), 8)));
   end;
   Result := LowerCase(GUIDToString(mGuid));

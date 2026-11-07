@@ -23,7 +23,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Rules.CodeActions,
-  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Configuration.Contract,

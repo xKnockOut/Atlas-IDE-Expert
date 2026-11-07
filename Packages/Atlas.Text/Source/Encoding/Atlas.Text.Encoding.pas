@@ -119,23 +119,23 @@ end;
 function Utf8Lead(ALead: Byte; out ACount: Integer; out ACodePoint: Cardinal): Boolean;
 begin
   Result := True;
-  if (ALead >= $C2) and (ALead <= $DF) then
-  begin
-    ACount := 1;
-    ACodePoint := ALead and $1F;
-  end
-  else if (ALead >= $E0) and (ALead <= $EF) then
-  begin
-    ACount := 2;
-    ACodePoint := ALead and $0F;
-  end
-  else if (ALead >= $F0) and (ALead <= $F4) then
-  begin
-    ACount := 3;
-    ACodePoint := ALead and $07;
-  end
+  case ALead of
+    $C2..$DF:
+      begin
+        ACount := 1;
+        ACodePoint := ALead and $1F;
+      end;
+    $E0..$EF:
+      begin
+        ACount := 2;
+        ACodePoint := ALead and $0F;
+      end;
+    $F0..$F4:
+      begin
+        ACount := 3;
+        ACodePoint := ALead and $07;
+      end;
   else
-  begin
     ACount := 0;
     ACodePoint := 0;
     Result := False;

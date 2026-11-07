@@ -484,7 +484,8 @@ begin
   end;
   if not THotspotReport.ParseSection(StringOf(AParams, 'section'), Result.Section) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[THotspotsText.SectionIsHotspotsOrCoupling].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[THotspotsText.SectionIsHotspotsOrCoupling].Text);
   end;
   Result.Limit := 0;
   if Result.Format = TLspHotspotFormat.Text then
@@ -508,7 +509,8 @@ begin
         mValue := TJSONObject.ParseJSONValue(THotspotReport.Json(AResult));
         if mValue = nil then
         begin
-          raise EJsonRpcError.Create(TJsonRpcErrorCode.cInternalError, cTexts[THotspotsText.HotspotDataIsNotValid].Text);
+          raise EJsonRpcError.Create(TJsonRpcErrorCode.cInternalError,
+            cTexts[THotspotsText.HotspotDataIsNotValid].Text);
         end;
         AAnswer.AddPair('format', 'json');
         AAnswer.AddPair('data', mValue);

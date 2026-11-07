@@ -660,8 +660,8 @@ begin
     Exit;
   end;
   mKind := ReferencedKind(mRefs[0], mType);
-  if (mKind in [TResolvedTypeKind.Unknown, TResolvedTypeKind.Class_, TResolvedTypeKind.Interface_,
-    TResolvedTypeKind.Helper, TResolvedTypeKind.Object_]) then
+  if mKind in [TResolvedTypeKind.Unknown, TResolvedTypeKind.Class_, TResolvedTypeKind.Interface_,
+    TResolvedTypeKind.Helper, TResolvedTypeKind.Object_] then
   begin
     Exit;
   end;

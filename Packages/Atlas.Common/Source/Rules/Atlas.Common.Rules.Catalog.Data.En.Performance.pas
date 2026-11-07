@@ -25,9 +25,10 @@ const
     '      "category": "code-smell",',
     '      "severity": "hint",',
     '      "group": "performance",',
-    '      "description": "The condition of while and until is evaluated on every iteration. Calls like Trim, Format or FileExists and properties like Lines.Text there are recomputed each time; compute the' +
-    'm once before the loop. Bounds of for loops are evaluated only once and are not reported, nor is .Text when it is a field of a type in the same file (record field), nor calls whose argument the loop c' +
-    'hanges (assignment, Inc, Dec, Delete, SetLength, Include, Exclude). Off by default.",',
+    '      "description": "The condition of while and until is evaluated on every iteration. Calls like Trim or Format and properties like Lines.Text there are recomputed each time; compute them once befor' +
+    'e the loop. Bounds of for loops are evaluated only once and are not reported, nor is .Text when it is a field (record field of a type in the same file, or a field or a property reading a field accordi' +
+    'ng to the name resolution), nor a property whose receiver the loop changes (Items[I].Text), nor FileExists and DirectoryExists (waiting for a file), nor calls whose argument the loop changes (assignme' +
+    'nt, Inc, Dec, Delete, SetLength, Include, Exclude). Off by default.",',
     '      "bad": "while I < Length(Trim(Memo.Lines.Text)) do\n  Inc(I);",',
     '      "good": "Text := Trim(Memo.Lines.Text);\nwhile I < Length(Text) do\n  Inc(I);"',
     '    },',
@@ -38,7 +39,8 @@ const
     '      "severity": "hint",',
     '      "group": "performance",',
     '      "description": "Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Silent for menus (TMenuItem has no B' +
-    'eginUpdate, also through fields such as FParts.Menu.Items) and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.",',
+    'eginUpdate, also through fields such as FParts.Menu.Items, including records nested in the class), for lists without a control (TObjectList<T>, TList, TDictionary), for types in the index without Begi' +
+    'nUpdate and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.",',
     '      "bad": "for I := 1 to 1000 do\n  ListBox1.Items.Add(IntToStr(I));",',
     '      "good": "ListBox1.Items.BeginUpdate;\ntry\n  for I := 1 to 1000 do\n    ListBox1.Items.Add(IntToStr(I));\nfinally\n  ListBox1.Items.EndUpdate;\nend;"',
     '    },',

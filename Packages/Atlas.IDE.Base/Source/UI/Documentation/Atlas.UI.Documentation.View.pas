@@ -50,7 +50,6 @@ type
     function LineStep: Integer;
     property PPI: Integer read FPPI;
     property MonoHeight: Integer read FMonoHeight;
-    property UIHeight: Integer read FUIHeight;
   end;
 
   /// <summary>Schriften für TAtlasDocView.Build: Editorschrift, Beschriftung und DPI.</summary>

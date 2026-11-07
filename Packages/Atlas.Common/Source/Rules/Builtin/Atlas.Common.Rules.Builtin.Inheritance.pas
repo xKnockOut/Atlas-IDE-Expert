@@ -127,12 +127,6 @@ type
   /// <summary>Liegt in Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls.</summary>
   TInheritedWithoutAncestorRule = Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls.TInheritedWithoutAncestorRule;
 
-const
-  cMemberHidesAncestorRuleId = Atlas.Common.Rules.Builtin.Inheritance.MemberHides.cMemberHidesAncestorRuleId;
-  cOverrideCaseMismatchRuleId = Atlas.Common.Rules.Builtin.Inheritance.OverrideCase.cOverrideCaseMismatchRuleId;
-  cOverrideOnlyInheritedRuleId = Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls.cOverrideOnlyInheritedRuleId;
-  cInheritedWithoutAncestorRuleId = Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls.cInheritedWithoutAncestorRuleId;
-
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 
 implementation

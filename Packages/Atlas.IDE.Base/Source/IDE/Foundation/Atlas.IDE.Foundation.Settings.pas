@@ -116,8 +116,6 @@ type
     /// <summary>Sitzungswerte der Schnellschalter (#604).</summary>
     class function Session: TAtlasToggleSession; static;
     class procedure SetSession(const ASession: TAtlasToggleSession); static;
-    /// <summary>Sitzungswert für AKey (z. B. XmlDocFull über dem Wert aus atlas.json); False ohne.</summary>
-    class function SessionFlag(const AKey: string; out AValue: Boolean): Boolean; static;
     /// <summary>Schnellschalter aus Plugin-Katalog und atlas.schema.json in der Sprache der Oberfläche.</summary>
     class function QuickToggles: TArray<TAtlasQuickToggle>; static;
     /// <summary>Modul-Schalter aus dem Katalog (#1454), einmal gelesen.</summary>
@@ -743,11 +741,6 @@ begin
   EnsureLoaded;
   GState.Session := ASession;
   Changed;
-end;
-
-class function TAtlasIdeSettings.SessionFlag(const AKey: string; out AValue: Boolean): Boolean;
-begin
-  Result := GState.Session.TryGet(AKey, AValue);
 end;
 
 class function TAtlasIdeSettings.History: TAtlasSettingsHistory;

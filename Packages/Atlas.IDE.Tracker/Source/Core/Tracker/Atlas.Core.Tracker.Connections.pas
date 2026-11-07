@@ -106,8 +106,6 @@ type
 
   TAtlasTrackerConnections = class
   public const
-    /// <summary>Pfad in settings.json.</summary>
-    cPath = 'issues.connections';
     /// <summary>Zeitgrenze von „Verbindung prüfen“.</summary>
     cCheckTimeoutMs = 5000;
   public

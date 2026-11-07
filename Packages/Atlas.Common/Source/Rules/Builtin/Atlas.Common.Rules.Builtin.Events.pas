@@ -866,8 +866,8 @@ var
   end;
 
 var
-  Index: Integer;
-  Decl, mClassNode: TSyntaxNode;
+  mIndex: Integer;
+  mDecl, mClassNode: TSyntaxNode;
   mEvents: TArray<string>;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
@@ -876,32 +876,32 @@ begin
   end;
   mTokens := AContext.Tree.Tokens;
   mCode := nil;
-  for Index := 0 to High(mTokens) do
+  for mIndex := 0 to High(mTokens) do
   begin
-    if not (mTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    if not (mTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
-      mCode := mCode + [Index];
+      mCode := mCode + [mIndex];
     end;
   end;
   mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
   mUnitTypes := nil;
   mRoutines := nil;
   CollectTypes(AContext.Tree.Root);
-  for Decl in mUnitTypes do
+  for mDecl in mUnitTypes do
   begin
-    mClassNode := Decl.FindChild(TSyntaxKind.ClassType);
+    mClassNode := mDecl.FindChild(TSyntaxKind.ClassType);
     if mClassNode = nil then
     begin
-      mClassNode := Decl.FindChild(TSyntaxKind.RecordType);
+      mClassNode := mDecl.FindChild(TSyntaxKind.RecordType);
     end;
     if mClassNode = nil then
     begin
       Continue;
     end;
-    mEvents := EventsOf(Decl.Name, mClassNode);
+    mEvents := EventsOf(mDecl.Name, mClassNode);
     if mEvents <> nil then
     begin
-      CheckRoutines(AContext.Tree.Root, Decl.Name, mEvents);
+      CheckRoutines(AContext.Tree.Root, mDecl.Name, mEvents);
     end;
   end;
 end;

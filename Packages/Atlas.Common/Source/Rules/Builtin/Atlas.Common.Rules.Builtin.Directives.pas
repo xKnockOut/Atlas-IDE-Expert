@@ -656,7 +656,7 @@ var
   end;
 
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if AContext.Tree = nil then
   begin
@@ -678,16 +678,16 @@ begin
   begin
     mUnknownCode := 'E1030';
   end;
-  for Index := 0 to High(mTokens) do
+  for mIndex := 0 to High(mTokens) do
   begin
-    if mTokens[Index].Kind = TPascalTokenKind.Directive then
+    if mTokens[mIndex].Kind = TPascalTokenKind.Directive then
     begin
-      Visit(Index);
+      Visit(mIndex);
     end;
   end;
-  for Index := 0 to High(mStack) do
+  for mIndex := 0 to High(mStack) do
   begin
-    Unclosed(mStack[Index], Index = High(mStack));
+    Unclosed(mStack[mIndex], mIndex = High(mStack));
   end;
   CheckOptionStack;
 end;

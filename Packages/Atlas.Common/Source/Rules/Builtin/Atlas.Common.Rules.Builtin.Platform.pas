@@ -608,7 +608,7 @@ var
   end;
 
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
@@ -626,11 +626,11 @@ begin
   mTokens := AContext.Tree.Tokens;
   mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
-    for Node in NodesOf(AContext.Tree.Root, False) do
+    for mNode in NodesOf(AContext.Tree.Root, False) do
     begin
-      if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) then
+      if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount > 0) then
       begin
-        CheckCall(Node);
+        CheckCall(mNode);
       end;
     end;
   finally

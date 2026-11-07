@@ -1611,7 +1611,7 @@ ShellExecute(0, 'open', 'tool.exe', PChar(QuotedArgument), nil, SW_SHOW);  // va
 
 **Path traversal** · Vulnerability · Warning · Group Security
 
-A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Experimental until data flow analysis is available.
+A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Only the path (first argument) counts, not the written content (WriteAllText(Path, List.Text)). Experimental until data flow analysis is available.
 
 Flagged:
 
@@ -2148,7 +2148,7 @@ if Assigned(X) then S := X.Name else S := '';
 
 **Random without Randomize** · Code smell · Hint · Group Robustness and patterns
 
-Random is used, but the unit never calls Randomize, so every start yields the same sequence. Randomize often sits in the .dpr, so the rule is off by default and has low confidence.
+Random is used, but the unit never calls Randomize, so every start yields the same sequence. A Random of your own (enumeration value, routine) is not System.Random. Randomize often sits in the .dpr, so the rule is off by default and has low confidence.
 
 Flagged:
 
@@ -2461,7 +2461,7 @@ end;
 
 **Expensive call in a loop condition** · Code smell · Hint · Group Performance
 
-The condition of while and until is evaluated on every iteration. Calls like Trim, Format or FileExists and properties like Lines.Text there are recomputed each time; compute them once before the loop. Bounds of for loops are evaluated only once and are not reported, nor is .Text when it is a field of a type in the same file (record field), nor calls whose argument the loop changes (assignment, Inc, Dec, Delete, SetLength, Include, Exclude). Off by default.
+The condition of while and until is evaluated on every iteration. Calls like Trim or Format and properties like Lines.Text there are recomputed each time; compute them once before the loop. Bounds of for loops are evaluated only once and are not reported, nor is .Text when it is a field (record field of a type in the same file, or a field or a property reading a field according to the name resolution), nor a property whose receiver the loop changes (Items[I].Text), nor FileExists and DirectoryExists (waiting for a file), nor calls whose argument the loop changes (assignment, Inc, Dec, Delete, SetLength, Include, Exclude). Off by default.
 
 Flagged:
 
@@ -2483,7 +2483,7 @@ while I < Length(Text) do
 
 **Adding items in a loop without BeginUpdate** · Code smell · Hint · Group Performance
 
-Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Silent for menus (TMenuItem has no BeginUpdate, also through fields such as FParts.Menu.Items) and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.
+Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Silent for menus (TMenuItem has no BeginUpdate, also through fields such as FParts.Menu.Items, including records nested in the class), for lists without a control (TObjectList<T>, TList, TDictionary), for types in the index without BeginUpdate and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.
 
 Flagged:
 
@@ -8740,7 +8740,7 @@ Nimm(Round(1.5));
 
 **Method does not need Self** · Code smell · Hint · Group Style and metrics
 
-A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, not an event of the form file, does not implement an interface and is not used as a method pointer. Experimental: only active when switched on in atlas.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (class … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine and a record helper for the type of the first parameter, each with a preview of all changed calls.
+A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, has no attribute and is not published (DUnitX tests and RTTI call it on the instance), is not an event of the form file, does not implement an interface and is not used as a method pointer. Experimental: only active when switched on in atlas.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (class … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine and a record helper for the type of the first parameter, each with a preview of all changed calls.
 
 Flagged:
 

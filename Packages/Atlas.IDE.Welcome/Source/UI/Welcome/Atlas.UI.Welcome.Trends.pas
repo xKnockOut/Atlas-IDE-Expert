@@ -119,7 +119,6 @@ type
     class function LocalText(AUtc: TDateTime): string; static;
     property Source: IAtlasTrendsSource read FSource write SetSource;
     property View: TAtlasTrendView read FView;
-    property PaintBox: TAtlasWelcomeCanvas read FBox;
   end;
 
 implementation

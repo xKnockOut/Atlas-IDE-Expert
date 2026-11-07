@@ -61,8 +61,6 @@ type
     class function Negate(const AText: string; ANode: TSyntaxNode): TExpressionPart; static;
     /// <summary>Gegenoperator eines Vergleichs (= ↔ &lt;&gt; …); '' bei anderen Operatoren.</summary>
     class function InvertedComparison(const AOperator: string): string; static;
-    /// <summary>Vergleich mit vertauschten Seiten (&lt; ↔ &gt; …); '' bei anderen Operatoren.</summary>
-    class function MirroredComparison(const AOperator: string): string; static;
     /// <summary>Gleicher Ausdruck ohne Rücksicht auf Leerraum, Kommentare, Groß-/Kleinschreibung der Namen
     /// und äußere Klammern.</summary>
     class function Same(ATree: TSyntaxTree; A, B: TSyntaxNode): Boolean; static;
@@ -201,20 +199,6 @@ begin
     3: Result := '<';
     4: Result := '<=';
     5: Result := '>';
-  else
-    Result := '';
-  end;
-end;
-
-class function TExpressionText.MirroredComparison(const AOperator: string): string;
-begin
-  case IndexStr(AOperator, ['=', '<>', '<', '>', '<=', '>=']) of
-    0: Result := '=';
-    1: Result := '<>';
-    2: Result := '>';
-    3: Result := '<';
-    4: Result := '>=';
-    5: Result := '<=';
   else
     Result := '';
   end;

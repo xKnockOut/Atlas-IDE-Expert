@@ -941,7 +941,7 @@ begin
   // Typisierte Konstanten: Name: TGUID = '…';
   for mIndex := 0 to High(mTokens) do
   begin
-    if (mTokens[mIndex].Kind <> TPascalTokenKind.StringLiteral) then
+    if mTokens[mIndex].Kind <> TPascalTokenKind.StringLiteral then
     begin
       Continue;
     end;

@@ -181,11 +181,8 @@ type
     procedure Attach;
     /// <summary>Parameter für publishDiagnostics. Der Aufrufer übernimmt das Objekt.</summary>
     class function BuildParams(const ADocument: ITextDocument): TJSONObject; overload; static;
-    /// <summary>Wie oben, zusätzlich mit inaktiven Bereichen als Hinweise (Tag Unnecessary).</summary>
-    class function BuildParams(const ADocument: ITextDocument;
-      const AInactive: TArray<TTextRange>): TJSONObject; overload; static;
-    /// <summary>Wie oben, zusätzlich mit Sprachmerkmalen, die ADelphiVersion nicht kennt ('' = alle bekannt),
-    /// und den Treffern der Prüfregeln aus ARules.</summary>
+    /// <summary>Wie oben, zusätzlich mit inaktiven Bereichen als Hinweise (Tag Unnecessary), Sprachmerkmalen, die
+    /// ADelphiVersion nicht kennt ('' = alle bekannt), und den Treffern der Prüfregeln aus ARules.</summary>
     class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TTextRange>;
       const ADelphiVersion: string; const ARules: TRuleCheckContext): TJSONObject; overload; static;
     /// <summary>Wie oben mit allen Angaben aus AInput.</summary>
@@ -669,13 +666,7 @@ end;
 
 class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument): TJSONObject;
 begin
-  Result := BuildParams(ADocument, nil);
-end;
-
-class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
-  const AInactive: TArray<TTextRange>): TJSONObject;
-begin
-  Result := BuildParams(ADocument, AInactive, '', Default(TRuleCheckContext));
+  Result := BuildParams(ADocument, nil, '', Default(TRuleCheckContext));
 end;
 
 class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;

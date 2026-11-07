@@ -71,6 +71,8 @@ type
       const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean; static;
     /// <summary>Alle Unit-Namen aus den uses-Listen (interface und implementation).</summary>
     class function UsedUnits(const ATokens: TArray<TPascalToken>): TArray<string>; static;
+    /// <summary>Wie UsedUnits für den Quelltext AText.</summary>
+    class function UsedUnitsOf(const AText: string): TArray<string>; static;
     /// <summary>True, wenn die Unit ein Test-Framework einbindet (DUnitX.TestFramework, TestFramework
     /// oder TestInsight.*). Hier statt in Rules.Profiles, damit Editing ohne Rules auskommt (A-11).</summary>
     class function IsTestUnit(const ATokens: TArray<TPascalToken>): Boolean; static;
@@ -99,6 +101,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Common.Pascal.Lexer;
 
 function IsTrivia(const AToken: TPascalToken): Boolean;
 begin
@@ -243,6 +248,11 @@ begin
     end;
   end;
   Result := False;
+end;
+
+class function TUsesClauses.UsedUnitsOf(const AText: string): TArray<string>;
+begin
+  Result := UsedUnits(TPascalLexer.Tokenize(AText));
 end;
 
 class function TUsesClauses.UsedUnits(const ATokens: TArray<TPascalToken>): TArray<string>;

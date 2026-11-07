@@ -108,9 +108,6 @@ type
     function BarOf(AEditorParent: TWinControl): TControl;
     /// <summary>Leiste des vordersten Editorfensters; nil ohne.</summary>
     function ActiveBar: TControl;
-    /// <summary>Eltern-Steuerelement des Editors, zu dem ABar gehört; nil, wenn sie nicht von diesem Host ist.
-    /// </summary>
-    function EditorParentOf(ABar: TControl): TWinControl;
     function Contains(ABar: TControl): Boolean;
     function Bars: TArray<TControl>;
     function Count: Integer;
@@ -394,18 +391,6 @@ begin
     end;
   end;
   Result := nil;
-end;
-
-function TAtlasEditorBarHost.EditorParentOf(ABar: TControl): TWinControl;
-var
-  mIndex: Integer;
-begin
-  mIndex := FBars.IndexOf(ABar);
-  if mIndex < 0 then
-  begin
-    Exit(nil);
-  end;
-  Result := FParents[mIndex];
 end;
 
 function TAtlasEditorBarHost.Contains(ABar: TControl): Boolean;

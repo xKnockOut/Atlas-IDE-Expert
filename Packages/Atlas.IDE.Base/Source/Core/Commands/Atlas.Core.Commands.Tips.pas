@@ -66,9 +66,6 @@ type
   TAtlasTipCatalog = class
   public const
     cFileName = 'tips.json';
-    /// <summary>Ordner der Bilder im Installationsordner.</summary>
-    cImageFolder = 'Tipps';
-    cFormatVersion = 1;
     /// <summary>Anzeigegröße der Bilder in logischen Pixeln (bei 100 %) und Pixelgröße der einfachen Datei.
     /// </summary>
     cImageWidth = 320;

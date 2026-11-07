@@ -71,7 +71,9 @@ uses
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Semantics.NameResolver.Symbols,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Performance.DynamicArrays,
@@ -623,9 +625,10 @@ begin
 end;
 
 const
-  cExpensiveCalls: array[0..17] of string = ('Trim', 'TrimLeft', 'TrimRight', 'LowerCase', 'UpperCase',
-    'AnsiLowerCase', 'AnsiUpperCase', 'Format', 'StrToInt', 'StrToFloat', 'IntToStr', 'FileExists',
-    'DirectoryExists', 'ExtractFileName', 'ExtractFilePath', 'StringReplace', 'Copy', 'ComponentCount');
+  // Ohne FileExists und DirectoryExists: Das Dateisystem ändert sich ohne die Schleife (Warten auf eine Datei).
+  cExpensiveCalls: array[0..15] of string = ('Trim', 'TrimLeft', 'TrimRight', 'LowerCase', 'UpperCase',
+    'AnsiLowerCase', 'AnsiUpperCase', 'Format', 'StrToInt', 'StrToFloat', 'IntToStr', 'ExtractFileName',
+    'ExtractFilePath', 'StringReplace', 'Copy', 'ComponentCount');
   cExpensiveProperties: array[0..2] of string = ('Text', 'CommaText', 'DelimitedText');
 
 function TLoopInvariantCallRule.Descriptor: TRuleDescriptor;
@@ -671,58 +674,197 @@ begin
     ATypes.FieldType(ATypes.ChainType(mReceiver, ATokens[ADot].StartPos), AName, mType);
 end;
 
-/// <summary>Meldet den Bezeichner an AIndex in der Bedingung von ALoop, wenn er eine teure Eigenschaft (kein Feld
-/// eines Typs dieser Datei) oder ein teurer Aufruf mit unveränderten Argumenten ist.</summary>
-procedure CheckConditionToken(const ATypes: TDeclaredTypes; const ATokens: TTokens; const ALoop: TLoop;
-  AIndex: Integer; const AReport: IRuleReport);
+/// <summary>Erstes Token des Empfängers vor dem Punkt ADot: Bezeichner, Punkte und Klammergruppen
+/// (ATokens[mIndex + 1].Text, Token(Result).Text).</summary>
+function ReceiverStart(const ATokens: TTokens; ADot: Integer): Integer;
+var
+  mIndex, mDepth: Integer;
+begin
+  Result := ADot;
+  mIndex := PreviousCode(ATokens, ADot);
+  while mIndex >= 0 do
+  begin
+    if ATokens[mIndex].IsSymbol(']') or ATokens[mIndex].IsSymbol(')') then
+    begin
+      mDepth := 0;
+      repeat
+        if ATokens[mIndex].IsSymbol(']') or ATokens[mIndex].IsSymbol(')') then
+        begin
+          Inc(mDepth);
+        end
+        else if ATokens[mIndex].IsSymbol('[') or ATokens[mIndex].IsSymbol('(') then
+        begin
+          Dec(mDepth);
+        end;
+        if mDepth > 0 then
+        begin
+          Dec(mIndex);
+        end;
+      until (mDepth = 0) or (mIndex < 0);
+    end
+    else if (ATokens[mIndex].Kind <> TPascalTokenKind.Identifier) and not ATokens[mIndex].IsSymbol('.') then
+    begin
+      Exit;
+    end;
+    Result := mIndex;
+    mIndex := PreviousCode(ATokens, mIndex);
+  end;
+end;
+
+/// <summary>Ändert die Schleife einen Bezeichner im Empfänger vor ADot (Index ATokens[mIndex])? Dann liest jede
+/// Prüfung etwas anderes.</summary>
+function ReceiverChanges(const ATokens: TTokens; const ALoop: TLoop; ADot: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  for mIndex := ReceiverStart(ATokens, ADot) to ADot - 1 do
+  begin
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and ChangedInLoop(ATokens, ALoop,
+      ATokens[mIndex].Text) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Dateiname für die Namensauflösung: Pfad, sonst relativer Pfad, sonst Unit-Name.</summary>
+function ResolverFileName(const AContext: TRuleContext): string;
+begin
+  Result := AContext.FileName;
+  if Result = '' then
+  begin
+    Result := AContext.RelativePath;
+  end;
+  if Result = '' then
+  begin
+    Result := AContext.UnitName + '.pas';
+  end;
+end;
+
+type
+  /// <summary>Prüft die Bedingungen der Schleifen einer Unit (loop-invariant-call).</summary>
+  TLoopConditionCheck = class
+  private
+    FTypes: TDeclaredTypes;
+    FTokens: TTokens;
+    FTree: TSyntaxTree;
+    FFileName: string;
+    FResolver: TNameResolver;
+    /// <summary>Löst die Namensauflösung .AName bei AIndex als Feld auf oder als Property, die direkt ein Feld
+    /// liest (TPascalToken.Text aus einer anderen Unit)? Ein Feld zu lesen baut keinen String auf.</summary>
+    function ReadsField(AIndex: Integer): Boolean;
+    procedure CheckProperty(const ALoop: TLoop; AIndex, ADot: Integer; const AReport: IRuleReport);
+  public
+    constructor Create(const AContext: TRuleContext; AResolver: TNameResolver);
+    destructor Destroy; override;
+    /// <summary>Meldet den Bezeichner an AIndex in der Bedingung von ALoop, wenn er eine teure Eigenschaft (kein
+    /// Feld) eines unveränderten Empfängers oder ein teurer Aufruf mit unveränderten Argumenten ist.</summary>
+    procedure CheckToken(const ALoop: TLoop; AIndex: Integer; const AReport: IRuleReport);
+    /// <summary>Alle Bedingungen von while und until.</summary>
+    procedure CheckLoops(const AReport: IRuleReport);
+  end;
+
+constructor TLoopConditionCheck.Create(const AContext: TRuleContext; AResolver: TNameResolver);
+begin
+  inherited Create;
+  FTree := AContext.Tree;
+  FTokens := FTree.Tokens;
+  FTypes := TDeclaredTypes.Create(FTree, AContext.Text);
+  FResolver := AResolver;
+  FFileName := ResolverFileName(AContext);
+end;
+
+destructor TLoopConditionCheck.Destroy;
+begin
+  FTypes.Free;
+  inherited;
+end;
+
+function TLoopConditionCheck.ReadsField(AIndex: Integer): Boolean;
+var
+  mSymbol: TResolvedSymbol;
+  mReadsField: Boolean;
+begin
+  mSymbol := FResolver.Resolve(FTree, FFileName, FTokens[AIndex].StartPos);
+  if mSymbol.Kind <> TResolvedKind.Symbol then
+  begin
+    Exit(False);
+  end;
+  Result := (mSymbol.SymbolKind = TIndexSymbolKind.Field) or ((mSymbol.SymbolKind = TIndexSymbolKind.Property_) and
+    FResolver.PropertyReadsField(mSymbol, mReadsField) and mReadsField);
+end;
+
+procedure TLoopConditionCheck.CheckProperty(const ALoop: TLoop; AIndex, ADot: Integer; const AReport: IRuleReport);
+var
+  mName: string;
+begin
+  mName := FTokens[AIndex].Text;
+  if IsDeclaredField(FTypes, FTokens, ADot, mName) or ReceiverChanges(FTokens, ALoop, ADot) or ReadsField(AIndex) then
+  begin
+    Exit;
+  end;
+  AReport.Add(RangeOf(FTokens, AIndex, AIndex), cTexts[TPerformanceText.ConditionString].Fmt([mName]),
+    TRuleConfidence.Medium);
+end;
+
+procedure TLoopConditionCheck.CheckToken(const ALoop: TLoop; AIndex: Integer; const AReport: IRuleReport);
 var
   mName: string;
   mPrevious: Integer;
 begin
-  mName := ATokens[AIndex].Text;
-  mPrevious := PreviousCode(ATokens, AIndex);
-  if MatchText(mName, cExpensiveProperties) and (mPrevious >= 0) and ATokens[mPrevious].IsSymbol('.') then
+  mName := FTokens[AIndex].Text;
+  mPrevious := PreviousCode(FTokens, AIndex);
+  if MatchText(mName, cExpensiveProperties) and (mPrevious >= 0) and FTokens[mPrevious].IsSymbol('.') then
   begin
-    if not IsDeclaredField(ATypes, ATokens, mPrevious, mName) then
-    begin
-      AReport.Add(RangeOf(ATokens, AIndex, AIndex), cTexts[TPerformanceText.ConditionString].Fmt([mName]),
-        TRuleConfidence.Medium);
-    end;
+    CheckProperty(ALoop, AIndex, mPrevious, AReport);
   end
-  else if MatchText(mName, cExpensiveCalls) and StartsDesignator(ATokens, AIndex) and
-    not ArgumentsChange(ATokens, ALoop, AIndex) then
+  else if MatchText(mName, cExpensiveCalls) and StartsDesignator(FTokens, AIndex) and
+    not ArgumentsChange(FTokens, ALoop, AIndex) then
   begin
-    AReport.Add(RangeOf(ATokens, AIndex, AIndex), cTexts[TPerformanceText.ConditionCall].Fmt([mName]),
+    AReport.Add(RangeOf(FTokens, AIndex, AIndex), cTexts[TPerformanceText.ConditionCall].Fmt([mName]),
       TRuleConfidence.Medium);
+  end;
+end;
+
+procedure TLoopConditionCheck.CheckLoops(const AReport: IRuleReport);
+var
+  mLoop: TLoop;
+  mIndex: Integer;
+begin
+  FResolver.PinTree(FTree, FFileName);
+  try
+    for mLoop in Loops(FTokens) do
+    begin
+      for mIndex := mLoop.CondFirst to mLoop.CondLast do
+      begin
+        if FTokens[mIndex].Kind = TPascalTokenKind.Identifier then
+        begin
+          CheckToken(mLoop, mIndex, AReport);
+        end;
+      end;
+    end;
+  finally
+    FResolver.UnpinTree;
   end;
 end;
 
 procedure TLoopInvariantCallRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  mTokens: TTokens;
-  mLoop: TLoop;
-  mIndex: Integer;
-  mTypes: TDeclaredTypes;
+  mCache: IRuleDerivedCache;
+  mCheck: TLoopConditionCheck;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  mCheck := TLoopConditionCheck.Create(AContext, TRuleDerived.Resolver(mCache, AContext));
   try
-    for mLoop in Loops(mTokens) do
-    begin
-      for mIndex := mLoop.CondFirst to mLoop.CondLast do
-      begin
-        if mTokens[mIndex].Kind = TPascalTokenKind.Identifier then
-        begin
-          CheckConditionToken(mTypes, mTokens, mLoop, mIndex, AReport);
-        end;
-      end;
-    end;
+    mCheck.CheckLoops(AReport);
   finally
-    mTypes.Free;
+    mCheck.Free;
   end;
 end;
 
@@ -1018,6 +1160,53 @@ begin
   Result := MatchText(ATypes.ChainType(OwnerOf(AReceiver), APosition), cMenuTypes);
 end;
 
+const
+  /// <summary>Listen ohne Steuerelement und ohne BeginUpdate (TObjectList&lt;T&gt;, TList).</summary>
+  cPlainLists: array[0..5] of string = ('TList', 'TObjectList', 'TInterfaceList', 'TStack', 'TQueue',
+    'TDictionary');
+
+/// <summary>Typname ohne Typargumente: TObjectList&lt;TNode&gt; → TObjectList.</summary>
+function BareTypeName(const ATypeName: string): string;
+var
+  mAngle: Integer;
+begin
+  Result := Trim(ATypeName);
+  mAngle := Pos('<', Result);
+  if mAngle > 0 then
+  begin
+    Result := Trim(Copy(Result, 1, mAngle - 1));
+  end;
+end;
+
+/// <summary>Kennt die Namensauflösung den Empfänger AReceiver (bzw. sein Objekt davor) als Typ ohne BeginUpdate:
+/// Menü (FParts.Menu: TPopupMenu aus einer anderen Unit), Liste ohne Steuerelement (Items: TObjectList&lt;T&gt;) oder
+/// ein Typ im Index ohne Mitglied BeginUpdate? Unbekannt: False.</summary>
+function LacksBeginUpdate(const AContext: TRuleContext; AResolver: TNameResolver; const AFileName,
+  AReceiver: string; AOffset: Integer): Boolean;
+var
+  mOwner, mItems: TResolvedSymbol;
+  mChain: TResolvedChainType;
+  mMember: TResolvedSymbol;
+begin
+  mOwner := AResolver.ResolveChain(AContext.Tree, AFileName, OwnerOf(AReceiver).Split(['.']), AOffset);
+  if (mOwner.Kind <> TResolvedKind.None) and MatchText(BareTypeName(mOwner.TypeName), cMenuTypes) then
+  begin
+    Exit(True);
+  end;
+  mItems := AResolver.ResolveChain(AContext.Tree, AFileName, AReceiver.Split(['.']), AOffset);
+  if mItems.Kind = TResolvedKind.None then
+  begin
+    Exit(False);
+  end;
+  if MatchText(BareTypeName(mItems.TypeName), cPlainLists) or MatchText(BareTypeName(mItems.TypeName),
+    cMenuTypes) then
+  begin
+    Exit(True);
+  end;
+  Result := AResolver.ChainType(AContext.Tree, AFileName, AReceiver.Split(['.']), AOffset, mChain) and
+    mChain.TypeFound and not AResolver.FindMember(mChain.TypeInfo, 'BeginUpdate', mMember);
+end;
+
 /// <summary>Steht für den Empfänger schon BeginUpdate in der Datei bzw. ist er schon gemeldet?</summary>
 function IsHandled(const AReceiver: string; const AUpdated, AReported: TArray<string>): Boolean;
 begin
@@ -1050,7 +1239,9 @@ var
   mUpdated, mReported: TArray<string>;
   mTypes: TDeclaredTypes;
   mIndex, mLast: Integer;
-  mReceiver: string;
+  mReceiver, mFileName: string;
+  mCache: IRuleDerivedCache;
+  mResolver: TNameResolver;
 begin
   if AContext.Tree = nil then
   begin
@@ -1062,7 +1253,12 @@ begin
   begin
     Exit;
   end;
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mFileName := ResolverFileName(AContext);
   mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  mResolver.PinTree(AContext.Tree, mFileName);
   try
     mUpdated := UpdatedReceivers(mTokens);
     mReported := nil;
@@ -1075,7 +1271,8 @@ begin
       end;
       // Wenige Einträge: Das Neuzeichnen fällt nicht ins Gewicht.
       if IsHandled(mReceiver, mUpdated, mReported) or IsMenuItems(mTypes, mReceiver, mTokens[mIndex].StartPos) or
-        FewInLoops(mTokens, mFound, mIndex) then
+        FewInLoops(mTokens, mFound, mIndex) or
+        LacksBeginUpdate(AContext, mResolver, mFileName, mReceiver, mTokens[mIndex].Offset) then
       begin
         Continue;
       end;
@@ -1083,6 +1280,7 @@ begin
       ReportAdd(AContext, AReport, mTokens, mIndex, mLast);
     end;
   finally
+    mResolver.UnpinTree;
     mTypes.Free;
   end;
 end;

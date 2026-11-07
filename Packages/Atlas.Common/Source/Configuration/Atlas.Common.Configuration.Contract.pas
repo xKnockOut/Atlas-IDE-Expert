@@ -850,8 +850,6 @@ type
     function RuleSeverity(const ARuleId: string; ADefault: TRuleSeverity): TRuleSeverity;
     /// <summary>True, wenn der Pfad (relativ zum Ordner der Konfiguration, "/" oder "\") ausgeschlossen ist.</summary>
     function IsExcluded(const ARelativePath: string): Boolean;
-    /// <summary>True, wenn die Regel in "rules" steht und nicht abgeschaltet ist.</summary>
-    function IsRuleEnabledExplicitly(const ARuleId: string): Boolean;
     /// <summary>True für '', eingebaute Profile und Profile aus "profiles".</summary>
     function IsKnownProfile(const AName: string): Boolean;
     /// <summary>Eigenes Profil aus "profiles".</summary>
@@ -1522,20 +1520,6 @@ begin
   SetEditorDefaults(Result);
   SetServerDefaults(Result);
   SetAnalysisDefaults(Result);
-end;
-
-function TServerSettings.IsRuleEnabledExplicitly(const ARuleId: string): Boolean;
-var
-  mRule: TRuleSetting;
-begin
-  for mRule in Rules do
-  begin
-    if SameText(mRule.Id, ARuleId) then
-    begin
-      Exit(mRule.Severity <> TRuleSeverity.Off);
-    end;
-  end;
-  Result := False;
 end;
 
 function TServerSettings.RuleSeverity(const ARuleId: string; ADefault: TRuleSeverity): TRuleSeverity;

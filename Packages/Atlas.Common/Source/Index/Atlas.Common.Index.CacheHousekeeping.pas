@@ -30,9 +30,6 @@ type
   end;
 
   TIndexCacheHousekeeping = class
-  public const
-    /// <summary>Höchstgröße des Cache-Ordners.</summary>
-    cDefaultMaxBytes = Int64(256) * 1024 * 1024;
   public
     /// <summary>
     /// Dateien, die gelöscht werden müssen, damit AFiles in AMaxBytes passt.

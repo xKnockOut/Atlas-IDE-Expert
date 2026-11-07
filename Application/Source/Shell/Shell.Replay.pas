@@ -487,7 +487,7 @@ end;
 function NewReplayFolder: string;
 begin
   Result := TPath.Combine(TPath.GetTempPath, 'Atlas' + PathDelim + 'replay' + PathDelim +
-    FormatDateTime('yyyymmdd"-"hhnnsszzz', Now) + '-' + IntToStr(Random(1000000)));
+    FormatDateTime('yyyymmdd"-"hhnnsszzz', Now) + '-' + Copy(TGUID.NewGuid.ToString, 2, 8));
 end;
 
 /// <summary>Schreibt die Einstellungsdatei AName des Falls nach AFolder; False, wenn der Fall keine hat.</summary>

@@ -116,7 +116,6 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Compiler.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.Completion.Names,

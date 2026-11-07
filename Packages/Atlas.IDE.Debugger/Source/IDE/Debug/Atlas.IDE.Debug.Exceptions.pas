@@ -139,10 +139,7 @@ type
     class function AddExceptionHandler(const AHandler: TAtlasDebugExceptionEvent): Integer; static;
     class procedure RemoveExceptionHandler(AHandle: Integer); static;
     class function History: TAtlasDebugExceptionHistory; static;
-    class function IgnoreList: TAtlasDebugIgnoreList; static;
     class procedure SaveIgnoreList(const AList: TAtlasDebugIgnoreList); static;
-    /// <summary>Den erkannten Dialog des aktuellen Halts mit „Fortsetzen“ schließen (#783).</summary>
-    class function ContinueDialog: Boolean; static;
     /// <summary>Den erkannten Dialog des aktuellen Halts mit „Anhalten“ schließen (#783: Leiste statt Dialog).
     /// </summary>
     class function BreakDialog: Boolean; static;
@@ -407,21 +404,11 @@ begin
   Result := FHistory;
 end;
 
-class function TAtlasIdeDebugExceptions.IgnoreList: TAtlasDebugIgnoreList;
-begin
-  Result := FIgnore;
-end;
-
 class procedure TAtlasIdeDebugExceptions.SaveIgnoreList(const AList: TAtlasDebugIgnoreList);
 begin
   FIgnore := AList;
   TAtlasDebugIgnoreList.Save(Folder, FIgnore);
   RefreshWindow;
-end;
-
-class function TAtlasIdeDebugExceptions.ContinueDialog: Boolean;
-begin
-  Result := (FDialog <> nil) and FDialog.ContinueFound;
 end;
 
 class function TAtlasIdeDebugExceptions.BreakDialog: Boolean;

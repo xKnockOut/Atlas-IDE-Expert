@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Rules.Catalog.Data;
 
 // Erzeugt von Tools/Update-RuleCatalog.ps1 aus Katalog\regelkatalog*.json.
-// Nicht von Hand ändern. Je Sprache eine Unit Atlas.Common.Rules.Catalog.Data.<Sprache>, die Regeln je Gruppe in deren Teil-Units.
+// Nicht von Hand ändern. Je Sprache eine Unit Atlas.Common.Rules.Catalog.Data.<Sprache>,
+// die Regeln je Gruppe in deren Teil-Units.
 
 interface
 

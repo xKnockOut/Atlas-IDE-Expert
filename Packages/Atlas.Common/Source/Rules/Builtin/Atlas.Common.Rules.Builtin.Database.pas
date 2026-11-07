@@ -1546,7 +1546,8 @@ const
 
 function TSqlSelectStarRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(cSqlSelectStarRuleId, TRuleSeverity.Hint, cTexts[TDatabaseText.StarTitle].Text, True);
+  Result := TRuleDescriptor.Create(cSqlSelectStarRuleId, TRuleSeverity.Hint, cTexts[TDatabaseText.StarTitle].Text,
+    True);
 end;
 
 class function TSqlSelectStarRule.Stars(const ASql: string; AStrictCase: Boolean): TArray<TSqlStar>;

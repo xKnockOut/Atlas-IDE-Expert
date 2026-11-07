@@ -43,10 +43,6 @@ type
   public const
     /// <summary>Befehl des Servers; Argument optional {"anonymize": true, "client": "…", "target": "…"}.</summary>
     cCommand = 'atlas.server.bugReport';
-    cWorkspaceLabel = TTextAnonymizer.cWorkspaceLabel;
-    cPathLabel = TTextAnonymizer.cPathLabel;
-    cUserLabel = TTextAnonymizer.cUserLabel;
-    cValueLabel = TTextAnonymizer.cValueLabel;
   public
     class function Build(const AInput: TBugReportInput): string; static;
     /// <summary>Pfade unter AWorkspaces zu &lt;ws&gt;, übrige absolute Pfade zu &lt;pfad&gt;,

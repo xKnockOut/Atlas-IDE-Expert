@@ -137,7 +137,6 @@ type
     /// <summary>Ist der Knopf sichtbar und bereit (bei „Nicht mehr fragen“ der Link)?</summary>
     function Clickable(AButton: TAtlasSetupButton): Boolean;
     property Source: IAtlasSetupSource read FSource write SetSource;
-    property Card: TAtlasSetupCard read FCard;
     property BaselineInfo: TLabel read FLabels.BaselineInfo;
     property PathsInfo: TLabel read FLabels.PathsInfo;
     property MoreLabel: TLabel read FLabels.More;

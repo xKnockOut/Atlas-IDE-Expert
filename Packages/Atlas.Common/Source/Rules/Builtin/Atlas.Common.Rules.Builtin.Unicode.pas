@@ -72,7 +72,7 @@ type
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
     /// <summary>Lateinisches Gegenstück eines verwechselbaren Zeichens (kyrillisch "а" → "a"); #0 ohne.</summary>
-    class function LatinOf(C: Char): Char; static;
+    class function LatinOf(AChar: Char): Char; static;
   end;
 
   TFileEncodingUnsupportedRule = class(TInterfacedObject, IRule)
@@ -1620,11 +1620,11 @@ const
     #$03BF#$03BD#$0391#$0392#$0395#$0396#$0397#$0399#$039A#$039C#$039D#$039F#$03A1#$03A4#$03A5#$03A7;
   cConfusableLatin = 'aeopcxyijsdh' + 'ABEKMHOPCTXIJS' + 'ovABEZHIKMNOPTYX';
 
-class function TConfusableIdentifierRule.LatinOf(C: Char): Char;
+class function TConfusableIdentifierRule.LatinOf(AChar: Char): Char;
 var
   mIndex: Integer;
 begin
-  mIndex := Pos(C, cConfusableChars);
+  mIndex := Pos(AChar, cConfusableChars);
   if mIndex = 0 then
   begin
     Result := #0;

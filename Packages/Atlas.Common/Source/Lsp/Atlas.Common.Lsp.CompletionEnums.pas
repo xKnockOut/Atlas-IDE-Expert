@@ -615,12 +615,12 @@ class function TCompletionEnums.Checked(const AValues, APresent: TArray<string>;
 var
   mElement: string;
   mBounds: TArray<string>;
-  mLow_, mHigh_, Index: Integer;
+  mLow_, mHigh_, mIndex: Integer;
 begin
   SetLength(AChecked, Length(AValues));
-  for Index := 0 to High(AChecked) do
+  for mIndex := 0 to High(AChecked) do
   begin
-    AChecked[Index] := False;
+    AChecked[mIndex] := False;
   end;
   for mElement in APresent do
   begin
@@ -639,9 +639,9 @@ begin
     begin
       Exit(False);
     end;
-    for Index := mLow_ to mHigh_ do
+    for mIndex := mLow_ to mHigh_ do
     begin
-      AChecked[Index] := True;
+      AChecked[mIndex] := True;
     end;
   end;
   Result := True;

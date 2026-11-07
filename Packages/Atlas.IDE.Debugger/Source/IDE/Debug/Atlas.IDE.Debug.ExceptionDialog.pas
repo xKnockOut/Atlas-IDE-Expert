@@ -88,7 +88,6 @@ type
     function BreakFound: Boolean;
     /// <summary>Für das Protokoll vergessen, dass der Dialog schon beschrieben ist (neue Sitzung).</summary>
     procedure NewSession;
-    function Watching: Boolean;
     /// <summary>Ohne Rückruf bleibt der Dialog immer sichtbar.</summary>
     property MayHide: TAtlasDebugDialogMayHide read FMayHide write FMayHide;
   end;
@@ -216,11 +215,6 @@ end;
 procedure TAtlasIdeExceptionDialog.NewSession;
 begin
   FLogged := False;
-end;
-
-function TAtlasIdeExceptionDialog.Watching: Boolean;
-begin
-  Result := FTimer.Enabled;
 end;
 
 procedure TAtlasIdeExceptionDialog.Watch(const AOnFound: TAtlasDebugDialogFound; const AOnTimeout: TProc);

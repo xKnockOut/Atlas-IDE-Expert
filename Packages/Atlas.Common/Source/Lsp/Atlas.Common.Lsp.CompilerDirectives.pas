@@ -33,7 +33,6 @@ type
   TCompilerDirectives = class
   public const
     cBaseUri = 'https://docwiki.embarcadero.com/RADStudio/';
-    cWarningsTopic = 'Warning_messages_(Delphi)';
   public
     /// <summary>Alle Direktiven der Tabelle.</summary>
     class function All: TArray<TDirectiveInfo>; static;
