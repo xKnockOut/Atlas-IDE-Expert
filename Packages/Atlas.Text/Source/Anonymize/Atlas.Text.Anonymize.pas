@@ -23,16 +23,16 @@ uses
 type
   TTextAnonymizer = class
   public const
-    WorkspaceLabel = '<ws>';
-    PathLabel = '<pfad>';
-    UserLabel = '<benutzer>';
-    ValueLabel = '<wert>';
+    cWorkspaceLabel = '<ws>';
+    cPathLabel = '<pfad>';
+    cUserLabel = '<benutzer>';
+    cValueLabel = '<wert>';
     /// <summary>Gekennzeichneter Name (TLogMarks.Name).</summary>
-    NameLabel = '<name>';
+    cNameLabel = '<name>';
     /// <summary>Gekennzeichneter fremder Text (TLogMarks.Text).</summary>
-    TextLabel = '<text>';
+    cTextLabel = '<text>';
     /// <summary>Datei unter einem Arbeitsbereich oder gekennzeichneter Dateiname, gefolgt von der Endung.</summary>
-    FileLabel = '<datei>';
+    cFileLabel = '<datei>';
   public
     /// <summary>Gekennzeichnete Werte (TLogMarks) ersetzen: Name → &lt;name&gt;, Text → &lt;text&gt;, Pfad wie
     /// AnonymizePaths bzw. &lt;datei&gt; mit Endung; der übrige Text bleibt.</summary>
@@ -76,12 +76,12 @@ const
 
 const
   // Zeichen, an denen ein Pfad im Fließtext endet.
-  PathEnd: TSysCharSet = [#0..' ', '"', '''', '|', '`', '(', ')', '[', ']', '{', '}', ',', ';', '<', '>', '*', '?'];
+  cPathEnd: TSysCharSet = [#0..' ', '"', '''', '|', '`', '(', ')', '[', ']', '{', '}', ',', ';', '<', '>', '*', '?'];
 
-function IsPathEnd(C: Char): Boolean;
+function IsPathEnd(AC: Char): Boolean;
 begin
-  Result := CharInSet(C, PathEnd) or (C = #$201C) or (C = #$201D) or (C = #$201E) or (C = #$00AB) or
-    (C = #$00BB);
+  Result := CharInSet(AC, cPathEnd) or (AC = #$201C) or (AC = #$201D) or (AC = #$201E) or (AC = #$00AB) or
+    (AC = #$00BB);
 end;
 
 function TrimDelimiters(const APath: string): string;
@@ -96,7 +96,7 @@ end;
 /// <summary>Länge eines absoluten Pfads oder einer Datei-URI ab AIndex; 0, wenn dort keiner beginnt.</summary>
 function PathLengthAt(const AText: string; AIndex: Integer): Integer;
 var
-  Stop: Integer;
+  mStop: Integer;
 begin
   Result := 0;
   // Nicht mitten im Wort und nicht direkt hinter einer Marke wie <ws>.
@@ -107,53 +107,53 @@ begin
   if (AIndex + 2 <= Length(AText)) and CharInSet(AText[AIndex], ['A'..'Z', 'a'..'z']) and
     (AText[AIndex + 1] = ':') and CharInSet(AText[AIndex + 2], ['\', '/']) then
   begin
-    Stop := AIndex + 3;
+    mStop := AIndex + 3;
   end
   else if (AIndex + 2 <= Length(AText)) and (AText[AIndex] = '\') and (AText[AIndex + 1] = '\') and
     TTextChars.IsIdentChar(AText[AIndex + 2]) then
   begin
-    Stop := AIndex + 2;
+    mStop := AIndex + 2;
   end
   else if SameText(Copy(AText, AIndex, 7), 'file://') then
   begin
-    Stop := AIndex + 7;
+    mStop := AIndex + 7;
   end
   else
   begin
     Exit;
   end;
-  while (Stop <= Length(AText)) and not IsPathEnd(AText[Stop]) do
+  while (mStop <= Length(AText)) and not IsPathEnd(AText[mStop]) do
   begin
-    Inc(Stop);
+    Inc(mStop);
   end;
-  Result := Stop - AIndex;
+  Result := mStop - AIndex;
 end;
 
 function ReplaceAbsolutePaths(const AText: string): string;
 var
-  Builder: TStringBuilder;
-  Index, Len: Integer;
+  mBuilder: TStringBuilder;
+  mIndex, mLen: Integer;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Index := 1;
-    while Index <= Length(AText) do
+    mIndex := 1;
+    while mIndex <= Length(AText) do
     begin
-      Len := PathLengthAt(AText, Index);
-      if Len > 0 then
+      mLen := PathLengthAt(AText, mIndex);
+      if mLen > 0 then
       begin
-        Builder.Append(TTextAnonymizer.PathLabel);
-        Inc(Index, Len);
+        mBuilder.Append(TTextAnonymizer.cPathLabel);
+        Inc(mIndex, mLen);
       end
       else
       begin
-        Builder.Append(AText[Index]);
-        Inc(Index);
+        mBuilder.Append(AText[mIndex]);
+        Inc(mIndex);
       end;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -223,7 +223,7 @@ begin
       mStop := QuoteEnd(AText, mIndex);
       if (mStop > mIndex + 1) and (Copy(AText, mIndex + 1, 1) <> '<') then
       begin
-        mBuilder.Append(AText[mIndex]).Append(ValueLabel).Append(AText[mStop]);
+        mBuilder.Append(AText[mIndex]).Append(cValueLabel).Append(AText[mStop]);
         mIndex := mStop + 1;
       end
       else
@@ -265,13 +265,13 @@ var
   mBuilder: TStringBuilder;
   mIndex, mStop, mLabel: Integer;
 begin
-  mLabel := Length(TTextAnonymizer.WorkspaceLabel);
+  mLabel := Length(TTextAnonymizer.cWorkspaceLabel);
   mBuilder := TStringBuilder.Create;
   try
     mIndex := 1;
     while mIndex <= Length(AText) do
     begin
-      if (Copy(AText, mIndex, mLabel) = TTextAnonymizer.WorkspaceLabel) and (mIndex + mLabel <= Length(AText)) and
+      if (Copy(AText, mIndex, mLabel) = TTextAnonymizer.cWorkspaceLabel) and (mIndex + mLabel <= Length(AText)) and
         CharInSet(AText[mIndex + mLabel], ['\', '/']) then
       begin
         mStop := mIndex + mLabel;
@@ -279,7 +279,7 @@ begin
         begin
           Inc(mStop);
         end;
-        mBuilder.Append(TTextAnonymizer.WorkspaceLabel).Append('/').Append(TTextAnonymizer.FileLabel)
+        mBuilder.Append(TTextAnonymizer.cWorkspaceLabel).Append('/').Append(TTextAnonymizer.cFileLabel)
           .Append(FileExtensionOf(Copy(AText, mIndex + mLabel, mStop - mIndex - mLabel)));
         mIndex := mStop;
       end
@@ -334,13 +334,13 @@ begin
   begin
     mSlashed := StringReplace(mRoot, '\', '/', [rfReplaceAll]);
     Result := StringReplace(Result, 'file:///' + StringReplace(mSlashed, ':', '%3A', []),
-      TTextAnonymizer.WorkspaceLabel, [rfReplaceAll, rfIgnoreCase]);
-    Result := StringReplace(Result, 'file:///' + mSlashed, TTextAnonymizer.WorkspaceLabel,
+      TTextAnonymizer.cWorkspaceLabel, [rfReplaceAll, rfIgnoreCase]);
+    Result := StringReplace(Result, 'file:///' + mSlashed, TTextAnonymizer.cWorkspaceLabel,
       [rfReplaceAll, rfIgnoreCase]);
-    Result := StringReplace(Result, mRoot, TTextAnonymizer.WorkspaceLabel, [rfReplaceAll, rfIgnoreCase]);
-    Result := StringReplace(Result, mSlashed, TTextAnonymizer.WorkspaceLabel, [rfReplaceAll, rfIgnoreCase]);
+    Result := StringReplace(Result, mRoot, TTextAnonymizer.cWorkspaceLabel, [rfReplaceAll, rfIgnoreCase]);
+    Result := StringReplace(Result, mSlashed, TTextAnonymizer.cWorkspaceLabel, [rfReplaceAll, rfIgnoreCase]);
     // In JSON stehen Backslashes verdoppelt.
-    Result := StringReplace(Result, StringReplace(mRoot, '\', '\\', [rfReplaceAll]), TTextAnonymizer.WorkspaceLabel,
+    Result := StringReplace(Result, StringReplace(mRoot, '\', '\\', [rfReplaceAll]), TTextAnonymizer.cWorkspaceLabel,
       [rfReplaceAll, rfIgnoreCase]);
   end;
   Result := ReplaceAbsolutePaths(HideWorkspaceRest(Result));
@@ -351,9 +351,9 @@ end;
 function MarkedPath(const AValue: string; const ARoots: TArray<string>): string;
 begin
   Result := ReplacePaths(AValue, ARoots);
-  if (Pos(TTextAnonymizer.WorkspaceLabel, Result) = 0) and (Pos(TTextAnonymizer.PathLabel, Result) = 0) then
+  if (Pos(TTextAnonymizer.cWorkspaceLabel, Result) = 0) and (Pos(TTextAnonymizer.cPathLabel, Result) = 0) then
   begin
-    Result := TTextAnonymizer.FileLabel + FileExtensionOf(AValue);
+    Result := TTextAnonymizer.cFileLabel + FileExtensionOf(AValue);
   end;
 end;
 
@@ -367,11 +367,11 @@ begin
     begin
       case AKind of
         TLogMarkKind.Name:
-          Result := NameLabel;
+          Result := cNameLabel;
         TLogMarkKind.Path:
           Result := MarkedPath(AValue, mRoots);
       else
-        Result := TextLabel;
+        Result := cTextLabel;
       end;
     end);
 end;
@@ -385,7 +385,7 @@ begin
   begin
     if Length(mName) >= 3 then
     begin
-      Result := StringReplace(Result, mName, UserLabel, [rfReplaceAll, rfIgnoreCase]);
+      Result := StringReplace(Result, mName, cUserLabel, [rfReplaceAll, rfIgnoreCase]);
     end;
   end;
 end;
@@ -493,7 +493,7 @@ begin
   end;
   if IsJsonText(AValue) and not TTextAnonymizer.IsKeyword(AValue.Value) then
   begin
-    Exit(TJSONString.Create(TTextAnonymizer.ValueLabel));
+    Exit(TJSONString.Create(TTextAnonymizer.cValueLabel));
   end;
   Result := TJSONValue(AValue.Clone);
 end;

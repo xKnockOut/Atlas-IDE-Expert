@@ -37,116 +37,116 @@ uses
 
 procedure TTextDebugDisplayTests.TemplateSegments;
 var
-  Template: TDebugDisplayTemplate;
+  mTemplate: TDebugDisplayTemplate;
 begin
-  Template := TDebugDisplayTemplate.Parse('{Name}, {Ort} (Nr {Nr})');
-  Assert.IsTrue(Template.Valid);
-  Assert.AreEqual(6, Integer(Length(Template.Segments)));
-  Assert.AreEqual('Name', Template.Segments[0].Text);
-  Assert.AreEqual(1, Template.Segments[0].Offset);
-  Assert.AreEqual(', ', Template.Segments[1].Text);
-  Assert.AreEqual('Ort', Template.Segments[2].Text);
-  Assert.AreEqual(' (Nr ', Template.Segments[3].Text);
-  Assert.AreEqual('Nr', Template.Segments[4].Text);
-  Assert.AreEqual(')', Template.Segments[5].Text);
-  Assert.AreEqual(3, Integer(Length(Template.Placeholders)));
+  mTemplate := TDebugDisplayTemplate.Parse('{Name}, {Ort} (Nr {Nr})');
+  Assert.IsTrue(mTemplate.Valid);
+  Assert.AreEqual(6, Integer(Length(mTemplate.Segments)));
+  Assert.AreEqual('Name', mTemplate.Segments[0].Text);
+  Assert.AreEqual(1, mTemplate.Segments[0].Offset);
+  Assert.AreEqual(', ', mTemplate.Segments[1].Text);
+  Assert.AreEqual('Ort', mTemplate.Segments[2].Text);
+  Assert.AreEqual(' (Nr ', mTemplate.Segments[3].Text);
+  Assert.AreEqual('Nr', mTemplate.Segments[4].Text);
+  Assert.AreEqual(')', mTemplate.Segments[5].Text);
+  Assert.AreEqual(3, Integer(Length(mTemplate.Placeholders)));
 end;
 
 procedure TTextDebugDisplayTests.TemplateFormatAndBraces;
 var
-  Template: TDebugDisplayTemplate;
+  mTemplate: TDebugDisplayTemplate;
 begin
-  Template := TDebugDisplayTemplate.Parse('Summe {Betrag:0.00} {{fest}} { Positionen.Count }');
-  Assert.IsTrue(Template.Valid);
-  Assert.AreEqual('Betrag', Template.Placeholders[0].Text);
-  Assert.AreEqual('0.00', Template.Placeholders[0].Format);
-  Assert.AreEqual('Positionen.Count', Template.Placeholders[1].Text);
-  Assert.AreEqual('', Template.Placeholders[1].Format);
-  Assert.AreEqual(Pos('Positionen', Template.Source) - 1, Template.Placeholders[1].Offset);
-  Assert.AreEqual(' {fest} ', Template.Segments[2].Text);
+  mTemplate := TDebugDisplayTemplate.Parse('Summe {Betrag:0.00} {{fest}} { Positionen.Count }');
+  Assert.IsTrue(mTemplate.Valid);
+  Assert.AreEqual('Betrag', mTemplate.Placeholders[0].Text);
+  Assert.AreEqual('0.00', mTemplate.Placeholders[0].Format);
+  Assert.AreEqual('Positionen.Count', mTemplate.Placeholders[1].Text);
+  Assert.AreEqual('', mTemplate.Placeholders[1].Format);
+  Assert.AreEqual(Pos('Positionen', mTemplate.Source) - 1, mTemplate.Placeholders[1].Offset);
+  Assert.AreEqual(' {fest} ', mTemplate.Segments[2].Text);
   // Doppelpunkt in Klammern ist kein Format.
-  Template := TDebugDisplayTemplate.Parse('{Werte[Low(Werte)]} {Text(''a:b'')}');
-  Assert.AreEqual('Werte[Low(Werte)]', Template.Placeholders[0].Text);
-  Assert.AreEqual('Text(''a:b'')', Template.Placeholders[1].Text);
-  Assert.AreEqual('', Template.Placeholders[1].Format);
+  mTemplate := TDebugDisplayTemplate.Parse('{Werte[Low(Werte)]} {Text(''a:b'')}');
+  Assert.AreEqual('Werte[Low(Werte)]', mTemplate.Placeholders[0].Text);
+  Assert.AreEqual('Text(''a:b'')', mTemplate.Placeholders[1].Text);
+  Assert.AreEqual('', mTemplate.Placeholders[1].Format);
 end;
 
 procedure TTextDebugDisplayTests.TemplateErrors;
 var
-  Template: TDebugDisplayTemplate;
+  mTemplate: TDebugDisplayTemplate;
 begin
-  Template := TDebugDisplayTemplate.Parse('{Name');
-  Assert.IsFalse(Template.Valid);
-  Assert.AreEqual(0, Template.ErrorOffset);
-  Template := TDebugDisplayTemplate.Parse('a {} b');
-  Assert.IsFalse(Template.Valid);
-  Assert.AreEqual(2, Template.ErrorOffset);
-  Template := TDebugDisplayTemplate.Parse('a } b');
-  Assert.IsFalse(Template.Valid);
+  mTemplate := TDebugDisplayTemplate.Parse('{Name');
+  Assert.IsFalse(mTemplate.Valid);
+  Assert.AreEqual(0, mTemplate.ErrorOffset);
+  mTemplate := TDebugDisplayTemplate.Parse('a {} b');
+  Assert.IsFalse(mTemplate.Valid);
+  Assert.AreEqual(2, mTemplate.ErrorOffset);
+  mTemplate := TDebugDisplayTemplate.Parse('a } b');
+  Assert.IsFalse(mTemplate.Valid);
   Assert.IsTrue(TDebugDisplayTemplate.Parse('nur Text').Valid);
 end;
 
 procedure TTextDebugDisplayTests.RootAndCalls;
 var
-  Template: TDebugDisplayTemplate;
+  mTemplate: TDebugDisplayTemplate;
 begin
-  Template := TDebugDisplayTemplate.Parse('{Positionen.Count} {GetName()} {Items[0].Name} {[1]} {Länge}');
-  Assert.AreEqual('Positionen', Template.Placeholders[0].Root);
-  Assert.IsFalse(Template.Placeholders[0].NeedsCall);
-  Assert.AreEqual('GetName', Template.Placeholders[1].Root);
-  Assert.IsTrue(Template.Placeholders[1].NeedsCall);
-  Assert.AreEqual('Items', Template.Placeholders[2].Root);
-  Assert.IsFalse(Template.Placeholders[2].NeedsCall);
-  Assert.AreEqual('', Template.Placeholders[3].Root);
-  Assert.AreEqual('Länge', Template.Placeholders[4].Root);
+  mTemplate := TDebugDisplayTemplate.Parse('{Positionen.Count} {GetName()} {Items[0].Name} {[1]} {Länge}');
+  Assert.AreEqual('Positionen', mTemplate.Placeholders[0].Root);
+  Assert.IsFalse(mTemplate.Placeholders[0].NeedsCall);
+  Assert.AreEqual('GetName', mTemplate.Placeholders[1].Root);
+  Assert.IsTrue(mTemplate.Placeholders[1].NeedsCall);
+  Assert.AreEqual('Items', mTemplate.Placeholders[2].Root);
+  Assert.IsFalse(mTemplate.Placeholders[2].NeedsCall);
+  Assert.AreEqual('', mTemplate.Placeholders[3].Root);
+  Assert.AreEqual('Länge', mTemplate.Placeholders[4].Root);
 end;
 
 procedure TTextDebugDisplayTests.CommentRule;
 var
-  Template: string;
-  Column: Integer;
-  Names: TArray<string>;
+  mTemplate: string;
+  mColumn: Integer;
+  mNames: TArray<string>;
 begin
-  Assert.IsTrue(TDebugDisplayText.CommentTemplate('  // atlas-debug: ''{Name}, {Ort} (Nr {Nr})''', Template,
-    Column));
-  Assert.AreEqual('{Name}, {Ort} (Nr {Nr})', Template);
-  Assert.AreEqual(19, Column);
-  Assert.IsTrue(TDebugDisplayText.CommentTemplate('//Atlas-Debug: {Name} – ''x''', Template, Column));
-  Assert.AreEqual('{Name} – ''x''', Template);
-  Assert.AreEqual(15, Column);
-  Assert.IsTrue(TDebugDisplayText.CommentTemplate('// atlas-debug: ''It''''s {Name}''', Template, Column));
-  Assert.AreEqual('It''s {Name}', Template);
-  Assert.IsFalse(TDebugDisplayText.CommentTemplate('// atlas-debugger: x', Template, Column));
-  Assert.IsFalse(TDebugDisplayText.CommentTemplate('X := 1; // atlas-debug: x', Template, Column));
-  Assert.IsTrue(TDebugDisplayText.CommentChildren('// atlas-debug-children: Name, Ort, ,name, Saldo', Names));
-  Assert.AreEqual('Name|Ort|Saldo', string.Join('|', Names));
+  Assert.IsTrue(TDebugDisplayText.CommentTemplate('  // atlas-debug: ''{Name}, {Ort} (Nr {Nr})''', mTemplate,
+    mColumn));
+  Assert.AreEqual('{Name}, {Ort} (Nr {Nr})', mTemplate);
+  Assert.AreEqual(19, mColumn);
+  Assert.IsTrue(TDebugDisplayText.CommentTemplate('//Atlas-Debug: {Name} – ''x''', mTemplate, mColumn));
+  Assert.AreEqual('{Name} – ''x''', mTemplate);
+  Assert.AreEqual(15, mColumn);
+  Assert.IsTrue(TDebugDisplayText.CommentTemplate('// atlas-debug: ''It''''s {Name}''', mTemplate, mColumn));
+  Assert.AreEqual('It''s {Name}', mTemplate);
+  Assert.IsFalse(TDebugDisplayText.CommentTemplate('// atlas-debugger: x', mTemplate, mColumn));
+  Assert.IsFalse(TDebugDisplayText.CommentTemplate('X := 1; // atlas-debug: x', mTemplate, mColumn));
+  Assert.IsTrue(TDebugDisplayText.CommentChildren('// atlas-debug-children: Name, Ort, ,name, Saldo', mNames));
+  Assert.AreEqual('Name|Ort|Saldo', string.Join('|', mNames));
 end;
 
 procedure TTextDebugDisplayTests.AttributeRule;
 var
-  Template: string;
-  Column: Integer;
-  Names: TArray<string>;
+  mTemplate: string;
+  mColumn: Integer;
+  mNames: TArray<string>;
 begin
-  Assert.IsTrue(TDebugDisplayText.AttributeTemplate('  [AtlasDebugDisplay(''{Name}, {Ort}'')]', Template, Column));
-  Assert.AreEqual('{Name}, {Ort}', Template);
-  Assert.AreEqual(22, Column);
+  Assert.IsTrue(TDebugDisplayText.AttributeTemplate('  [AtlasDebugDisplay(''{Name}, {Ort}'')]', mTemplate, mColumn));
+  Assert.AreEqual('{Name}, {Ort}', mTemplate);
+  Assert.AreEqual(22, mColumn);
   Assert.IsTrue(TDebugDisplayText.AttributeTemplate('[Atlas.Debug.Attributes.AtlasDebugDisplayAttribute( ''{A}'' )]',
-    Template, Column));
-  Assert.AreEqual('{A}', Template);
-  Assert.IsTrue(TDebugDisplayText.AttributeTemplate('[Serializable, AtlasDebugDisplay(''{A}'')]', Template, Column));
-  Assert.IsFalse(TDebugDisplayText.AttributeTemplate('[AtlasDebugDisplayer(''{A}'')]', Template, Column));
-  Assert.IsFalse(TDebugDisplayText.AttributeTemplate('X := AtlasDebugDisplay(''{A}'');', Template, Column));
-  Assert.IsTrue(TDebugDisplayText.AttributeChildren('[AtlasDebugChildren(''Name, Ort'')]', Names));
-  Assert.AreEqual('Name|Ort', string.Join('|', Names));
+    mTemplate, mColumn));
+  Assert.AreEqual('{A}', mTemplate);
+  Assert.IsTrue(TDebugDisplayText.AttributeTemplate('[Serializable, AtlasDebugDisplay(''{A}'')]', mTemplate, mColumn));
+  Assert.IsFalse(TDebugDisplayText.AttributeTemplate('[AtlasDebugDisplayer(''{A}'')]', mTemplate, mColumn));
+  Assert.IsFalse(TDebugDisplayText.AttributeTemplate('X := AtlasDebugDisplay(''{A}'');', mTemplate, mColumn));
+  Assert.IsTrue(TDebugDisplayText.AttributeChildren('[AtlasDebugChildren(''Name, Ort'')]', mNames));
+  Assert.AreEqual('Name|Ort', string.Join('|', mNames));
 end;
 
 procedure TTextDebugDisplayTests.RuleAboveDeclaration;
 var
-  Lines: TArray<string>;
-  Rule: TDebugDisplaySource;
+  mLines: TArray<string>;
+  mRule: TDebugDisplaySource;
 begin
-  Lines := TArray<string>.Create(
+  mLines := TArray<string>.Create(
     'type',
     '  /// <summary>Kunde.</summary>',
     '  // atlas-debug: ''{Name}, {Ort}''',
@@ -158,56 +158,56 @@ begin
     '  // atlas-debug: ''{Name}''',
     '  TAuftrag = record',
     '  end;');
-  Assert.IsTrue(TDebugDisplayText.RuleAbove(Lines, 4, Rule));
-  Assert.AreEqual(Ord(TDebugDisplayOrigin.Comment), Ord(Rule.Origin));
-  Assert.AreEqual('{Name}, {Ort}', Rule.Template);
-  Assert.AreEqual(2, Rule.TemplateLine);
-  Assert.AreEqual('Name|Ort', string.Join('|', Rule.Children));
-  Assert.AreEqual(3, Rule.ChildrenLine);
+  Assert.IsTrue(TDebugDisplayText.RuleAbove(mLines, 4, mRule));
+  Assert.AreEqual(Ord(TDebugDisplayOrigin.Comment), Ord(mRule.Origin));
+  Assert.AreEqual('{Name}, {Ort}', mRule.Template);
+  Assert.AreEqual(2, mRule.TemplateLine);
+  Assert.AreEqual('Name|Ort', string.Join('|', mRule.Children));
+  Assert.AreEqual(3, mRule.ChildrenLine);
   // Die Zeile direkt über der Deklaration gewinnt.
-  Assert.IsTrue(TDebugDisplayText.RuleAbove(Lines, 9, Rule));
-  Assert.AreEqual('{Name}', Rule.Template);
-  Assert.AreEqual(8, Rule.TemplateLine);
+  Assert.IsTrue(TDebugDisplayText.RuleAbove(mLines, 9, mRule));
+  Assert.AreEqual('{Name}', mRule.Template);
+  Assert.AreEqual(8, mRule.TemplateLine);
   // Attribut in der Zeile der Deklaration.
-  Lines := TArray<string>.Create('  [AtlasDebugDisplay(''{X}'')] TPunkt = record');
-  Assert.IsTrue(TDebugDisplayText.RuleAbove(Lines, 0, Rule));
-  Assert.AreEqual(Ord(TDebugDisplayOrigin.Attribute), Ord(Rule.Origin));
-  Assert.AreEqual('{X}', Rule.Template);
+  mLines := TArray<string>.Create('  [AtlasDebugDisplay(''{X}'')] TPunkt = record');
+  Assert.IsTrue(TDebugDisplayText.RuleAbove(mLines, 0, mRule));
+  Assert.AreEqual(Ord(TDebugDisplayOrigin.Attribute), Ord(mRule.Origin));
+  Assert.AreEqual('{X}', mRule.Template);
 end;
 
 procedure TTextDebugDisplayTests.RuleNeedsAdjacentLines;
 var
-  Lines: TArray<string>;
-  Rule: TDebugDisplaySource;
+  mLines: TArray<string>;
+  mRule: TDebugDisplaySource;
 begin
-  Lines := TArray<string>.Create(
+  mLines := TArray<string>.Create(
     '  // atlas-debug: ''{Name}''',
     '',
     '  TKunde = class');
-  Assert.IsFalse(TDebugDisplayText.RuleAbove(Lines, 2, Rule));
-  Lines := TArray<string>.Create(
+  Assert.IsFalse(TDebugDisplayText.RuleAbove(mLines, 2, mRule));
+  mLines := TArray<string>.Create(
     '  // atlas-debug: ''{Name}''',
     '  FWert: Integer;',
     '  TKunde = class');
-  Assert.IsFalse(TDebugDisplayText.RuleAbove(Lines, 2, Rule));
-  Assert.IsFalse(TDebugDisplayText.RuleAbove(Lines, 9, Rule));
+  Assert.IsFalse(TDebugDisplayText.RuleAbove(mLines, 2, mRule));
+  Assert.IsFalse(TDebugDisplayText.RuleAbove(mLines, 9, mRule));
 end;
 
 procedure TTextDebugDisplayTests.SourceColumnWithQuotes;
 var
-  Line, Template: string;
-  Column: Integer;
-  Parsed: TDebugDisplayTemplate;
+  mLine, mTemplate: string;
+  mColumn: Integer;
+  mParsed: TDebugDisplayTemplate;
 begin
-  Line := '// atlas-debug: ''It''''s {Name}''';
-  Assert.IsTrue(TDebugDisplayText.CommentTemplate(Line, Template, Column));
-  Parsed := TDebugDisplayTemplate.Parse(Template);
+  mLine := '// atlas-debug: ''It''''s {Name}''';
+  Assert.IsTrue(TDebugDisplayText.CommentTemplate(mLine, mTemplate, mColumn));
+  mParsed := TDebugDisplayTemplate.Parse(mTemplate);
   // {Name}: Ausdruck „Name“ steht in der Zeile hinter der verdoppelten Hochkomma.
-  Assert.AreEqual(Pos('Name', Line) - 1, TDebugDisplayText.SourceColumn(Line, Column, Parsed.Placeholders[0]));
-  Line := '// atlas-debug: A {Ort}';
-  Assert.IsTrue(TDebugDisplayText.CommentTemplate(Line, Template, Column));
-  Parsed := TDebugDisplayTemplate.Parse(Template);
-  Assert.AreEqual(Pos('Ort', Line) - 1, TDebugDisplayText.SourceColumn(Line, Column, Parsed.Placeholders[0]));
+  Assert.AreEqual(Pos('Name', mLine) - 1, TDebugDisplayText.SourceColumn(mLine, mColumn, mParsed.Placeholders[0]));
+  mLine := '// atlas-debug: A {Ort}';
+  Assert.IsTrue(TDebugDisplayText.CommentTemplate(mLine, mTemplate, mColumn));
+  mParsed := TDebugDisplayTemplate.Parse(mTemplate);
+  Assert.AreEqual(Pos('Ort', mLine) - 1, TDebugDisplayText.SourceColumn(mLine, mColumn, mParsed.Placeholders[0]));
 end;
 
 initialization

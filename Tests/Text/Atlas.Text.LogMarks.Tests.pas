@@ -48,7 +48,7 @@ begin
     TLogMarks.Text('T1'),
     function(AKind: TLogMarkKind; const AValue: string): string
     begin
-      Result := '[' + TLogMarks.KindChars[AKind] + ':' + AValue + ']';
+      Result := '[' + TLogMarks.cKindChars[AKind] + ':' + AValue + ']';
     end);
   Assert.AreEqual('a [N:N1] b [P:P1] c [T:T1]', mText);
 end;
@@ -64,7 +64,7 @@ var
   mValue, mText: string;
 begin
   // Ein Wert mit eigenem Endzeichen darf das Kennzeichen nicht vorzeitig schließen.
-  mValue := 'Geheim' + TLogMarks.StopChar + 'Rest';
+  mValue := 'Geheim' + TLogMarks.cStopChar + 'Rest';
   mText := TLogMarks.Resolve(TLogMarks.Name(mValue),
     function(AKind: TLogMarkKind; const AValue: string): string
     begin
@@ -77,13 +77,13 @@ procedure TLogMarksTests.UnterminatedMarkReachesEnd;
 var
   mText: string;
 begin
-  mText := TLogMarks.Resolve('a ' + TLogMarks.StartChar + 'NGeheim',
+  mText := TLogMarks.Resolve('a ' + TLogMarks.cStartChar + 'NGeheim',
     function(AKind: TLogMarkKind; const AValue: string): string
     begin
       Result := '<' + AValue.Length.ToString + '>';
     end);
   Assert.AreEqual('a <6>', mText);
-  Assert.AreEqual('ab', TLogMarks.Plain('a' + TLogMarks.StopChar + 'b'));
+  Assert.AreEqual('ab', TLogMarks.Plain('a' + TLogMarks.cStopChar + 'b'));
 end;
 
 procedure TLogMarksTests.TextWithoutMarksIsUnchanged;

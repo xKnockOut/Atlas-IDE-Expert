@@ -350,7 +350,7 @@ begin
   Result := Default(TAtlasModuleInfo);
   Result.Id := ModuleId;
   Result.Name := 'Lesezeichen';
-  Result.Version := TAtlasVersion.Version;
+  Result.Version := TAtlasVersion.cVersion;
   Result.Handle := HInstance;
   // Notizen und benannte Lesezeichen gab es schon im abgesicherten Start (nur lokale Dateien).
   Result.MinLevel := TAtlasSafeLevel.Safe;
