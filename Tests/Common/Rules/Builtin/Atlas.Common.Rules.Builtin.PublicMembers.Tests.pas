@@ -26,6 +26,8 @@ type
     [Test]
     procedure RecursionIsNoUse;
     [Test]
+    procedure OtherOverloadCallIsUse;
+    [Test]
     procedure SilentWhileIndexIncomplete;
     [Test]
     procedure SilentWhenFileUnreadable;
@@ -379,6 +381,28 @@ begin
     'begin'#10, 'procedure TKundenService.ExportiereAlsXml(const Datei: string);'#10'begin'#10 +
     '  ExportiereAlsXml(Datei);'#10, []));
   Assert.IsTrue(Messages(Run(Data, ServiceFile)).Contains('TKundenService.ExportiereAlsXml'));
+end;
+
+procedure TUnusedPublicMemberTests.OtherOverloadCallIsUse;
+var
+  mData: TScenario;
+  mFound: string;
+begin
+  // Die Überladung mit Datei ruft die mit Datei und Format auf: Das ist eine Verwendung, kein eigener Rumpf.
+  mData := Scenario('  S.Drucke(''x'');'#10);
+  mData.Put(ServiceFile, StringReplace(StringReplace(ServiceText,
+    '  published'#10, '    procedure Drucke(const Datei: string); overload;'#10 +
+    '    procedure Drucke(const Datei: string; Format: Integer); overload;'#10'  published'#10, []),
+    'procedure TKundenService.Speichere(', 'procedure TKundenService.Drucke(const Datei: string);'#10 +
+    'begin'#10'  Drucke(Datei, 0);'#10'end;'#10 +
+    'procedure TKundenService.Drucke(const Datei: string; Format: Integer);'#10'begin'#10'end;'#10 +
+    'procedure TKundenService.Speichere(', []));
+  mFound := Messages(Run(mData, ServiceFile));
+  Assert.IsFalse(mFound.Contains('TKundenService.Drucke'), mFound);
+  // Ohne Aufruf von außen bleibt die äußere Überladung unbenutzt; ihr eigener Rumpf zählt nicht.
+  mData.Put(MainFile, MainText(''));
+  mFound := Messages(Run(mData, ServiceFile));
+  Assert.IsTrue(mFound.Contains('TKundenService.Drucke'), mFound);
 end;
 
 procedure TUnusedPublicMemberTests.SilentWhileIndexIncomplete;
