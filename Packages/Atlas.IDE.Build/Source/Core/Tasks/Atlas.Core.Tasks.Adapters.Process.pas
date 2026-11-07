@@ -24,7 +24,7 @@ type
   /// hinein.</summary>
   TAtlasTaskProcess = class
   public const
-    SliceMs = 10;
+    cSliceMs = 10;
   public
     /// <summary>Führt die (mit Variablen eingesetzte) Aufgabe aus, nicht im Hauptthread. ACancelled wird im Takt
     /// gefragt; ACodePage für Ausgaben, die kein UTF-8 sind (0 = GetOEMCP).</summary>
@@ -74,9 +74,9 @@ type
 const
   /// <summary>JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE und JobObjectExtendedLimitInformation (selbst deklariert, nicht in
   /// jeder Fassung von Winapi.Windows gleich typisiert).</summary>
-  JobKillOnClose = $00002000;
-  JobExtendedLimitClass = 9;
-  CreateUnicodeEnvironment = $00000400;
+  cJobKillOnClose = $00002000;
+  cJobExtendedLimitClass = 9;
+  cCreateUnicodeEnvironment = $00000400;
 
 function CreateJob(AAttributes: Pointer; AName: PWideChar): THandle; stdcall;
   external kernel32 name 'CreateJobObjectW';
@@ -87,25 +87,25 @@ function AssignToJob(AJob, AProcess: THandle): BOOL; stdcall;
 
 function CurrentEnvironment: TArray<string>;
 var
-  Block, Cursor: PWideChar;
-  Item: string;
+  mBlock, mCursor: PWideChar;
+  mItem: string;
 begin
   Result := nil;
-  Block := GetEnvironmentStringsW;
-  if Block = nil then
+  mBlock := GetEnvironmentStringsW;
+  if mBlock = nil then
   begin
     Exit;
   end;
   try
-    Cursor := Block;
-    while Cursor^ <> #0 do
+    mCursor := mBlock;
+    while mCursor^ <> #0 do
     begin
-      Item := Cursor;
-      Result := Result + [Item];
-      Inc(Cursor, Length(Item) + 1);
+      mItem := mCursor;
+      Result := Result + [mItem];
+      Inc(mCursor, Length(mItem) + 1);
     end;
   finally
-    FreeEnvironmentStringsW(Block);
+    FreeEnvironmentStringsW(mBlock);
   end;
 end;
 
@@ -205,8 +205,8 @@ begin
   if AHandles.Job <> 0 then
   begin
     FillChar(mLimits, SizeOf(mLimits), 0);
-    mLimits.Basic.LimitFlags := JobKillOnClose;
-    SetJobInformation(AHandles.Job, JobExtendedLimitClass, @mLimits, SizeOf(mLimits));
+    mLimits.Basic.LimitFlags := cJobKillOnClose;
+    SetJobInformation(AHandles.Job, cJobExtendedLimitClass, @mLimits, SizeOf(mLimits));
   end;
 end;
 
@@ -234,7 +234,7 @@ begin
   end;
   // Angehalten starten, damit der Prozess im Job ist, bevor er Kinder startet.
   Result := CreateProcess(PChar(ALaunch.ProgramPath), PChar(ALaunch.CommandLine), nil, nil, True,
-    CREATE_NO_WINDOW or CREATE_SUSPENDED or CreateUnicodeEnvironment, PChar(ALaunch.Environment), mWorkingDir,
+    CREATE_NO_WINDOW or CREATE_SUSPENDED or cCreateUnicodeEnvironment, PChar(ALaunch.Environment), mWorkingDir,
     mStartup, AHandles.Process);
   if not Result then
   begin
@@ -316,7 +316,7 @@ begin
   mDeadline := DeadlineOf(ATimeoutSec);
   repeat
     Drain(AHandles.OutRead, ALines, mChunk, AOnLine);
-    if WaitForSingleObject(AHandles.Process.hProcess, TAtlasTaskProcess.SliceMs) = WAIT_OBJECT_0 then
+    if WaitForSingleObject(AHandles.Process.hProcess, TAtlasTaskProcess.cSliceMs) = WAIT_OBJECT_0 then
     begin
       Break;
     end;

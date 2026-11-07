@@ -109,12 +109,12 @@ type
 
   TAtlasTasks = class
   public const
-    DefaultTimeoutSec = 600;
-    MaxTimeoutSec = 86400;
-    GroupNames: array[TAtlasTaskGroup] of string = ('check', 'build', 'test', 'other');
-    BeforeBuildNames: array[TAtlasTaskBeforeBuild] of string = ('off', 'warn', 'block');
-    MatcherNames: array[TAtlasTaskMatcherKind] of string = ('', 'dcc', 'pwsh', 'msbuild', 'generic', '');
-    SeverityNames: array[TAtlasTaskSeverity] of string = ('error', 'warning', 'info');
+    cDefaultTimeoutSec = 600;
+    cMaxTimeoutSec = 86400;
+    cGroupNames: array[TAtlasTaskGroup] of string = ('check', 'build', 'test', 'other');
+    cBeforeBuildNames: array[TAtlasTaskBeforeBuild] of string = ('off', 'warn', 'block');
+    cMatcherNames: array[TAtlasTaskMatcherKind] of string = ('', 'dcc', 'pwsh', 'msbuild', 'generic', '');
+    cSeverityNames: array[TAtlasTaskSeverity] of string = ('error', 'warning', 'info');
   public
     /// <summary>Aufgaben aus dem Wurzelobjekt einer atlas.json bzw. settings.json; AIssues nennt verworfene
     /// Einträge.</summary>
@@ -196,18 +196,18 @@ end;
 
 function TAtlasTaskDefinition.CommandLine: string;
 var
-  Arg: string;
+  mArg: string;
 begin
   Result := Command;
-  for Arg in Args do
+  for mArg in Args do
   begin
-    if Pos(' ', Arg) > 0 then
+    if Pos(' ', mArg) > 0 then
     begin
-      Result := Result + ' "' + Arg + '"';
+      Result := Result + ' "' + mArg + '"';
     end
     else
     begin
-      Result := Result + ' ' + Arg;
+      Result := Result + ' ' + mArg;
     end;
   end;
 end;
@@ -234,13 +234,13 @@ end;
 
 class function TAtlasTasks.TryGroup(const AText: string; out AGroup: TAtlasTaskGroup): Boolean;
 var
-  Group: TAtlasTaskGroup;
+  mGroup: TAtlasTaskGroup;
 begin
-  for Group := Low(TAtlasTaskGroup) to High(TAtlasTaskGroup) do
+  for mGroup := Low(TAtlasTaskGroup) to High(TAtlasTaskGroup) do
   begin
-    if SameText(Trim(AText), GroupNames[Group]) then
+    if SameText(Trim(AText), cGroupNames[mGroup]) then
     begin
-      AGroup := Group;
+      AGroup := mGroup;
       Exit(True);
     end;
   end;
@@ -250,13 +250,13 @@ end;
 
 class function TAtlasTasks.TryBeforeBuild(const AText: string; out AValue: TAtlasTaskBeforeBuild): Boolean;
 var
-  Value: TAtlasTaskBeforeBuild;
+  mValue: TAtlasTaskBeforeBuild;
 begin
-  for Value := Low(TAtlasTaskBeforeBuild) to High(TAtlasTaskBeforeBuild) do
+  for mValue := Low(TAtlasTaskBeforeBuild) to High(TAtlasTaskBeforeBuild) do
   begin
-    if SameText(Trim(AText), BeforeBuildNames[Value]) then
+    if SameText(Trim(AText), cBeforeBuildNames[mValue]) then
     begin
-      AValue := Value;
+      AValue := mValue;
       Exit(True);
     end;
   end;
@@ -266,21 +266,21 @@ end;
 
 class function TAtlasTasks.NormalizedBeforeBuild(const AText: string): string;
 var
-  Value: TAtlasTaskBeforeBuild;
+  mValue: TAtlasTaskBeforeBuild;
 begin
-  TryBeforeBuild(AText, Value);
-  Result := BeforeBuildNames[Value];
+  TryBeforeBuild(AText, mValue);
+  Result := cBeforeBuildNames[mValue];
 end;
 
 class function TAtlasTasks.TrySeverity(const AText: string; out ASeverity: TAtlasTaskSeverity): Boolean;
 var
-  Severity: TAtlasTaskSeverity;
+  mSeverity: TAtlasTaskSeverity;
 begin
-  for Severity := Low(TAtlasTaskSeverity) to High(TAtlasTaskSeverity) do
+  for mSeverity := Low(TAtlasTaskSeverity) to High(TAtlasTaskSeverity) do
   begin
-    if SameText(Trim(AText), SeverityNames[Severity]) then
+    if SameText(Trim(AText), cSeverityNames[mSeverity]) then
     begin
-      ASeverity := Severity;
+      ASeverity := mSeverity;
       Exit(True);
     end;
   end;
@@ -371,14 +371,14 @@ end;
 
 function StringOf(AObject: TJSONObject; const AName: string; out AValue: string): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   AValue := '';
-  Value := AObject.GetValue(AName);
-  Result := Value is TJSONString;
+  mValue := AObject.GetValue(AName);
+  Result := mValue is TJSONString;
   if Result then
   begin
-    AValue := TJSONString(Value).Value;
+    AValue := TJSONString(mValue).Value;
   end;
 end;
 
@@ -389,7 +389,7 @@ var
 begin
   for mKind := TAtlasTaskMatcherKind.Dcc to TAtlasTaskMatcherKind.Generic do
   begin
-    if SameText(Trim(AText), TAtlasTasks.MatcherNames[mKind]) then
+    if SameText(Trim(AText), TAtlasTasks.cMatcherNames[mKind]) then
     begin
       Exit(TAtlasTaskMatcher.Create(mKind));
     end;
@@ -540,9 +540,9 @@ begin
   mValue := AItem.GetValue('timeoutSec');
   if (mValue is TJSONNumber) and TryStrToInt(mValue.ToString, mNumber) and (mNumber >= 0) then
   begin
-    if mNumber > TAtlasTasks.MaxTimeoutSec then
+    if mNumber > TAtlasTasks.cMaxTimeoutSec then
     begin
-      mNumber := TAtlasTasks.MaxTimeoutSec;
+      mNumber := TAtlasTasks.cMaxTimeoutSec;
     end;
     ATask.TimeoutSec := mNumber;
   end
@@ -585,7 +585,7 @@ var
 begin
   ATask := Default(TAtlasTaskDefinition);
   ATask.Group := TAtlasTaskGroup.Other;
-  ATask.TimeoutSec := TAtlasTasks.DefaultTimeoutSec;
+  ATask.TimeoutSec := TAtlasTasks.cDefaultTimeoutSec;
   ATask.Global := AGlobal;
   if not StringOf(AItem, 'name', ATask.Name) or (Trim(ATask.Name) = '') then
   begin
@@ -614,92 +614,92 @@ end;
 class function TAtlasTasks.Parse(ARoot: TJSONObject; AGlobal: Boolean;
   var AIssues: TAtlasTaskIssues): TAtlasTaskDefinitions;
 var
-  Value: TJSONValue;
-  Items: TJSONArray;
-  Index: Integer;
-  Task: TAtlasTaskDefinition;
+  mValue: TJSONValue;
+  mItems: TJSONArray;
+  mIndex: Integer;
+  mTask: TAtlasTaskDefinition;
 begin
   Result := nil;
   if ARoot = nil then
   begin
     Exit;
   end;
-  Value := ARoot.GetValue('tasks');
-  if Value = nil then
+  mValue := ARoot.GetValue('tasks');
+  if mValue = nil then
   begin
     Exit;
   end;
-  if not (Value is TJSONArray) then
+  if not (mValue is TJSONArray) then
   begin
     AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.TasksType, '')];
     Exit;
   end;
-  Items := TJSONArray(Value);
-  for Index := 0 to Items.Count - 1 do
+  mItems := TJSONArray(mValue);
+  for mIndex := 0 to mItems.Count - 1 do
   begin
-    if not (Items.Items[Index] is TJSONObject) then
+    if not (mItems.Items[mIndex] is TJSONObject) then
     begin
-      AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.TaskType, Format('tasks[%d]', [Index]))];
+      AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.TaskType, Format('tasks[%d]', [mIndex]))];
       Continue;
     end;
-    if not ParseTask(TJSONObject(Items.Items[Index]), Index, AGlobal, Task, AIssues) then
+    if not ParseTask(TJSONObject(mItems.Items[mIndex]), mIndex, AGlobal, mTask, AIssues) then
     begin
       Continue;
     end;
-    if IndexOf(Result, Task.Name) >= 0 then
+    if IndexOf(Result, mTask.Name) >= 0 then
     begin
-      AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.DuplicateName, Task.Name)];
+      AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.DuplicateName, mTask.Name)];
       Continue;
     end;
-    Result := Result + [Task];
+    Result := Result + [mTask];
   end;
 end;
 
 class function TAtlasTasks.Parse(const AText: string; AGlobal: Boolean;
   var AIssues: TAtlasTaskIssues): TAtlasTaskDefinitions;
 var
-  Root: TJSONObject;
+  mRoot: TJSONObject;
 begin
   Result := nil;
   if Trim(AText) = '' then
   begin
     Exit;
   end;
-  Root := TAtlasJsonText.Parse(AText);
-  if Root = nil then
+  mRoot := TAtlasJsonText.Parse(AText);
+  if mRoot = nil then
   begin
     Exit;
   end;
   try
-    Result := Parse(Root, AGlobal, AIssues);
+    Result := Parse(mRoot, AGlobal, AIssues);
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasTasks.Merge(const AProject, AGlobal: TAtlasTaskDefinitions): TAtlasTaskDefinitions;
 var
-  Task: TAtlasTaskDefinition;
+  mTask: TAtlasTaskDefinition;
 begin
   Result := Copy(AProject);
-  for Task in AGlobal do
+  for mTask in AGlobal do
   begin
-    if IndexOf(AProject, Task.Name) < 0 then
+    if IndexOf(AProject, mTask.Name) < 0 then
     begin
-      Result := Result + [Task];
+      Result := Result + [mTask];
     end;
   end;
 end;
 
 class function TAtlasTasks.IndexOf(const ATasks: TAtlasTaskDefinitions; const AName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ATasks) do
+  for mIndex := 0 to High(ATasks) do
   begin
-    if SameText(ATasks[Index].Name, AName) then
+    if SameText(ATasks[mIndex].Name, AName) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -708,14 +708,14 @@ end;
 class function TAtlasTasks.OfGroup(const ATasks: TAtlasTaskDefinitions;
   AGroup: TAtlasTaskGroup): TAtlasTaskDefinitions;
 var
-  Task: TAtlasTaskDefinition;
+  mTask: TAtlasTaskDefinition;
 begin
   Result := nil;
-  for Task in ATasks do
+  for mTask in ATasks do
   begin
-    if Task.Group = AGroup then
+    if mTask.Group = AGroup then
     begin
-      Result := Result + [Task];
+      Result := Result + [mTask];
     end;
   end;
 end;
@@ -723,14 +723,14 @@ end;
 class function TAtlasTasks.BeforeBuild(const ATasks: TAtlasTaskDefinitions;
   AGlobal: TAtlasTaskBeforeBuild): TAtlasTaskDefinitions;
 var
-  Task: TAtlasTaskDefinition;
+  mTask: TAtlasTaskDefinition;
 begin
   Result := nil;
-  for Task in ATasks do
+  for mTask in ATasks do
   begin
-    if Task.BeforeBuildFor(AGlobal) <> TAtlasTaskBeforeBuild.Off then
+    if mTask.BeforeBuildFor(AGlobal) <> TAtlasTaskBeforeBuild.Off then
     begin
-      Result := Result + [Task];
+      Result := Result + [mTask];
     end;
   end;
 end;
@@ -744,14 +744,14 @@ end;
 class function TAtlasTasks.Expand(const ATask: TAtlasTaskDefinition;
   const AVariables: TAtlasTaskVariables): TAtlasTaskDefinition;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := ATask;
   Result.Command := AVariables.Expand(ATask.Command);
   Result.Args := Copy(ATask.Args);
-  for Index := 0 to High(Result.Args) do
+  for mIndex := 0 to High(Result.Args) do
   begin
-    Result.Args[Index] := AVariables.Expand(Result.Args[Index]);
+    Result.Args[mIndex] := AVariables.Expand(Result.Args[mIndex]);
   end;
   Result.Cwd := Trim(AVariables.Expand(ATask.Cwd));
   if Result.Cwd = '' then
@@ -771,9 +771,9 @@ begin
     end;
   end;
   Result.EnvValues := Copy(ATask.EnvValues);
-  for Index := 0 to High(Result.EnvValues) do
+  for mIndex := 0 to High(Result.EnvValues) do
   begin
-    Result.EnvValues[Index] := AVariables.Expand(Result.EnvValues[Index]);
+    Result.EnvValues[mIndex] := AVariables.Expand(Result.EnvValues[mIndex]);
   end;
 end;
 

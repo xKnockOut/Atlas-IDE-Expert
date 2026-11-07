@@ -217,34 +217,34 @@ end;
 
 class function TAtlasBuildSwitchesFrame.Lines(const AView: TAtlasCompilerSwitchView): TAtlasSwitchLines;
 var
-  Section: TAtlasSwitchSection;
-  Index: Integer;
-  Line: TAtlasSwitchLine;
-  HasHeader: Boolean;
+  mSection: TAtlasSwitchSection;
+  mIndex: Integer;
+  mLine: TAtlasSwitchLine;
+  mHasHeader: Boolean;
 begin
   Result := nil;
-  for Section := Low(TAtlasSwitchSection) to High(TAtlasSwitchSection) do
+  for mSection := Low(TAtlasSwitchSection) to High(TAtlasSwitchSection) do
   begin
-    HasHeader := False;
-    for Index := 0 to High(AView.Rows) do
+    mHasHeader := False;
+    for mIndex := 0 to High(AView.Rows) do
     begin
-      if AView.Rows[Index].Section <> Section then
+      if AView.Rows[mIndex].Section <> mSection then
       begin
         Continue;
       end;
-      if not HasHeader then
+      if not mHasHeader then
       begin
-        Line := Default(TAtlasSwitchLine);
-        Line.Header := True;
-        Line.Section := Section;
-        Line.Row := -1;
-        Result := Result + [Line];
-        HasHeader := True;
+        mLine := Default(TAtlasSwitchLine);
+        mLine.Header := True;
+        mLine.Section := mSection;
+        mLine.Row := -1;
+        Result := Result + [mLine];
+        mHasHeader := True;
       end;
-      Line := Default(TAtlasSwitchLine);
-      Line.Section := Section;
-      Line.Row := Index;
-      Result := Result + [Line];
+      mLine := Default(TAtlasSwitchLine);
+      mLine.Section := mSection;
+      mLine.Row := mIndex;
+      Result := Result + [mLine];
     end;
   end;
 end;
@@ -305,58 +305,58 @@ end;
 
 class function TAtlasBuildSwitchesFrame.Cells(const ARow: TAtlasSwitchRow): TArray<string>;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := ARow.Name;
+  mName := ARow.Name;
   if ARow.Section = TAtlasSwitchSection.Target then
   begin
     if ARow.Name = 'platform' then
     begin
-      Name := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesPlatform);
+      mName := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesPlatform);
     end
     else
     begin
-      Name := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesConfiguration);
+      mName := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesConfiguration);
     end;
-    Result := TArray<string>.Create(Name, ARow.Value, '', '');
+    Result := TArray<string>.Create(mName, ARow.Value, '', '');
     Exit;
   end;
   if ARow.LongName <> '' then
   begin
-    Name := Name + ' (' + ARow.LongName + ')';
+    mName := mName + ' (' + ARow.LongName + ')';
   end;
   if ARow.Section = TAtlasSwitchSection.Defines then
   begin
-    Result := TArray<string>.Create(Name, '', '', OriginText(ARow));
+    Result := TArray<string>.Create(mName, '', '', OriginText(ARow));
   end
   else
   begin
-    Result := TArray<string>.Create(Name, TAtlasCompilerSwitchTexts.Value(ARow.Value),
+    Result := TArray<string>.Create(mName, TAtlasCompilerSwitchTexts.Value(ARow.Value),
       TAtlasCompilerSwitchTexts.Value(ARow.ProjectValue), OriginText(ARow));
   end;
 end;
 
 class function TAtlasBuildSwitchesFrame.AsText(const AView: TAtlasCompilerSwitchView): string;
 var
-  Line: TAtlasSwitchLine;
-  Builder: TStringBuilder;
+  mLine: TAtlasSwitchLine;
+  mBuilder: TStringBuilder;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    for Line in Lines(AView) do
+    for mLine in Lines(AView) do
     begin
-      if Line.Header then
+      if mLine.Header then
       begin
-        Builder.Append(SectionText(Line.Section)).Append(sLineBreak);
+        mBuilder.Append(SectionText(mLine.Section)).Append(sLineBreak);
       end
       else
       begin
-        Builder.Append('  ').Append(string.Join(#9, Cells(AView.Rows[Line.Row]))).Append(sLineBreak);
+        mBuilder.Append('  ').Append(string.Join(#9, Cells(AView.Rows[mLine.Row]))).Append(sLineBreak);
       end;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -490,7 +490,7 @@ end;
 
 function TAtlasBuildSwitchesFrame.TrySelected(out ARow: TAtlasSwitchRow): Boolean;
 var
-  Line: TAtlasSwitchLine;
+  mLine: TAtlasSwitchLine;
 begin
   ARow := Default(TAtlasSwitchRow);
   Result := FHasView and (FParts.List.Selected <> nil) and (FParts.List.Selected.Index <= High(FLines));
@@ -498,30 +498,30 @@ begin
   begin
     Exit;
   end;
-  Line := FLines[FParts.List.Selected.Index];
-  Result := not Line.Header and (Line.Row >= 0) and (Line.Row <= High(FView.Rows));
+  mLine := FLines[FParts.List.Selected.Index];
+  Result := not mLine.Header and (mLine.Row >= 0) and (mLine.Row <= High(FView.Rows));
   if Result then
   begin
-    ARow := FView.Rows[Line.Row];
+    ARow := FView.Rows[mLine.Row];
   end;
 end;
 
 procedure TAtlasBuildSwitchesFrame.ExecuteSelected;
 var
-  Row: TAtlasSwitchRow;
+  mRow: TAtlasSwitchRow;
 begin
-  if not TrySelected(Row) then
+  if not TrySelected(mRow) then
   begin
     Exit;
   end;
-  if Row.CanJump then
+  if mRow.CanJump then
   begin
     if Assigned(FHandlers.OnJump) then
     begin
-      FHandlers.OnJump(Row);
+      FHandlers.OnJump(mRow);
     end;
   end
-  else if Row.FromProject and Assigned(FHandlers.OnOptions) then
+  else if mRow.FromProject and Assigned(FHandlers.OnOptions) then
   begin
     FHandlers.OnOptions();
   end;
@@ -537,22 +537,22 @@ end;
 
 procedure TAtlasBuildSwitchesFrame.RowColors(ACanvas: TCanvas; AState: TCustomDrawState; AIndex: Integer);
 var
-  Line: TAtlasSwitchLine;
-  Deviates: Boolean;
+  mLine: TAtlasSwitchLine;
+  mDeviates: Boolean;
 begin
-  Deviates := False;
+  mDeviates := False;
   ACanvas.Font.Style := [];
   if (AIndex >= 0) and (AIndex <= High(FLines)) then
   begin
-    Line := FLines[AIndex];
-    if Line.Header then
+    mLine := FLines[AIndex];
+    if mLine.Header then
     begin
       ACanvas.Font.Style := [fsBold];
     end
     else
     begin
-      Deviates := FView.Rows[Line.Row].Deviates;
-      if Deviates then
+      mDeviates := FView.Rows[mLine.Row].Deviates;
+      if mDeviates then
       begin
         ACanvas.Font.Style := [fsBold];
       end;
@@ -567,7 +567,7 @@ begin
   else
   begin
     ACanvas.Brush.Color := ListColor(FParts.List, FParts.List.Color);
-    if Deviates then
+    if mDeviates then
     begin
       ACanvas.Font.Color := ColorToRGB(TColor(TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(
         ACanvas.Brush.Color))).Warn));
@@ -624,22 +624,22 @@ end;
 
 procedure TAtlasBuildSwitchesFrame.MenuPopup(Sender: TObject);
 var
-  Row: TAtlasSwitchRow;
-  Has: Boolean;
+  mRow: TAtlasSwitchRow;
+  mHas: Boolean;
 begin
-  Has := TrySelected(Row);
-  FParts.JumpItem.Enabled := Has and Row.CanJump;
-  FParts.OptionsItem.Enabled := Has and Row.FromProject and (Row.Section <> TAtlasSwitchSection.Target);
+  mHas := TrySelected(mRow);
+  FParts.JumpItem.Enabled := mHas and mRow.CanJump;
+  FParts.OptionsItem.Enabled := mHas and mRow.FromProject and (mRow.Section <> TAtlasSwitchSection.Target);
   FParts.CopyItem.Enabled := FHasView;
 end;
 
 procedure TAtlasBuildSwitchesFrame.JumpClick(Sender: TObject);
 var
-  Row: TAtlasSwitchRow;
+  mRow: TAtlasSwitchRow;
 begin
-  if TrySelected(Row) and Row.CanJump and Assigned(FHandlers.OnJump) then
+  if TrySelected(mRow) and mRow.CanJump and Assigned(FHandlers.OnJump) then
   begin
-    FHandlers.OnJump(Row);
+    FHandlers.OnJump(mRow);
   end;
 end;
 
