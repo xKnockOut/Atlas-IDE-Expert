@@ -97,9 +97,9 @@ type
   TAtlasWelcomeSetup = class
   public const
     /// <summary>Höchstens so viele Makros nennt MacroList, dann „…“.</summary>
-    MaxMacros = 3;
+    cMaxMacros = 3;
     /// <summary>Höchstens so viele Funde stehen in der Karte; der Rest als „… und n weitere“.</summary>
-    MaxLines = 6;
+    cMaxLines = 6;
   public
     /// <summary>Karte zeigen? ASetupOn = welcomePage.projectSetup.</summary>
     class function ShowCard(ASetupOn: Boolean; const AFacts: TAtlasSetupFacts): Boolean; static;
@@ -183,92 +183,92 @@ class function TAtlasWelcomeSetup.Lines(const ASetup: TAtlasProjectSetup; AMax: 
 
   procedure Add(AKind: TAtlasSetupFindingKind; const AFinding: TAtlasSetupFinding; var AList: TArray<TAtlasSetupLine>);
   var
-    Line: TAtlasSetupLine;
+    mLine: TAtlasSetupLine;
   begin
-    Line.Kind := AKind;
-    Line.Name := AFinding.Name;
-    Line.Project := AFinding.Project;
-    Line.Uncertain := AFinding.Uncertain;
-    Line.Macros := '';
-    if Line.Uncertain then
+    mLine.Kind := AKind;
+    mLine.Name := AFinding.Name;
+    mLine.Project := AFinding.Project;
+    mLine.Uncertain := AFinding.Uncertain;
+    mLine.Macros := '';
+    if mLine.Uncertain then
     begin
-      Line.Macros := TAtlasWelcomeSetup.MacroList(ASetup.SkippedMacros);
+      mLine.Macros := TAtlasWelcomeSetup.MacroList(ASetup.SkippedMacros);
     end;
-    Line.FileName := AFinding.FileName;
-    Line.Line := AFinding.Line;
-    Line.Count := AFinding.Count;
-    Line.Note := AFinding.Note;
-    AList := AList + [Line];
+    mLine.FileName := AFinding.FileName;
+    mLine.Line := AFinding.Line;
+    mLine.Count := AFinding.Count;
+    mLine.Note := AFinding.Note;
+    AList := AList + [mLine];
   end;
 
 var
-  Finding: TAtlasSetupFinding;
-  List: TArray<TAtlasSetupLine>;
+  mFinding: TAtlasSetupFinding;
+  mList: TArray<TAtlasSetupLine>;
 begin
-  List := nil;
+  mList := nil;
   AMore := 0;
   // Bei einer Gruppe stehen Funde schon da, bevor alle Projekte geprüft sind.
   if not ASetup.Checked and (Length(ASetup.MissingUnits) + Length(ASetup.UndefinedDefines) = 0) then
   begin
     Exit(nil);
   end;
-  for Finding in ASetup.MissingUnits do
+  for mFinding in ASetup.MissingUnits do
   begin
-    if Length(List) < AMax then
+    if Length(mList) < AMax then
     begin
-      Add(TAtlasSetupFindingKind.MissingUnit, Finding, List);
+      Add(TAtlasSetupFindingKind.MissingUnit, mFinding, mList);
     end;
   end;
-  for Finding in ASetup.UndefinedDefines do
+  for mFinding in ASetup.UndefinedDefines do
   begin
-    if Length(List) < AMax then
+    if Length(mList) < AMax then
     begin
-      Add(TAtlasSetupFindingKind.UndefinedDefine, Finding, List);
+      Add(TAtlasSetupFindingKind.UndefinedDefine, mFinding, mList);
     end;
   end;
   // Hinweise zu requires-Packages (#759) zuletzt; sie sind keine Fehler.
-  for Finding in ASetup.Hints do
+  for mFinding in ASetup.Hints do
   begin
-    if Length(List) < AMax then
+    if Length(mList) < AMax then
     begin
-      Add(TAtlasSetupFindingKind.Hint, Finding, List);
+      Add(TAtlasSetupFindingKind.Hint, mFinding, mList);
     end;
   end;
-  AMore := ASetup.MissingUnitCount + ASetup.UndefinedDefineCount + Length(ASetup.Hints) - Length(List);
+  AMore := ASetup.MissingUnitCount + ASetup.UndefinedDefineCount + Length(ASetup.Hints) - Length(mList);
   if AMore < 0 then
   begin
     AMore := 0;
   end;
-  Result := List;
+  Result := mList;
 end;
 
 class function TAtlasWelcomeSetup.Relative(const AProject, AFileName: string): string;
 var
-  Folder: string;
-  Index: Integer;
+  mFolder: string;
+  mIndex: Integer;
 begin
   Result := AFileName;
-  Folder := '';
-  for Index := Length(AProject) downto 1 do
+  mFolder := '';
+  for mIndex := Length(AProject) downto 1 do
   begin
-    if CharInSet(AProject[Index], ['\', '/']) then
+    if CharInSet(AProject[mIndex], ['\', '/']) then
     begin
-      Folder := Copy(AProject, 1, Index);
+      mFolder := Copy(AProject, 1, mIndex);
       Break;
     end;
   end;
-  if (Folder <> '') and SameText(Copy(AFileName, 1, Length(Folder)), Folder) then
+  if (mFolder <> '') and SameText(Copy(AFileName, 1, Length(mFolder)), mFolder) then
   begin
-    Result := Copy(AFileName, Length(Folder) + 1, MaxInt);
+    Result := Copy(AFileName, Length(mFolder) + 1, MaxInt);
   end;
 end;
 
 class function TAtlasWelcomeSetup.NameOf(const AProject: string): string;
 var
-  Summary: TAtlasProjectSummary;
+  mSummary: TAtlasProjectSummary;
 begin
-  Summary := TAtlasProjectSummary.Create(AProject);
-  Result := Summary.Name;
+  mSummary := TAtlasProjectSummary.Create(AProject);
+  Result := mSummary.Name;
 end;
 
 class function TAtlasWelcomeSetup.Checked(const APrevious: TAtlasProjectSetup; const AProject: string;
@@ -276,24 +276,24 @@ class function TAtlasWelcomeSetup.Checked(const APrevious: TAtlasProjectSetup; c
 
   function Findings(const AList: TArray<TAtlasPathFinding>): TArray<TAtlasSetupFinding>;
   var
-    Item: TAtlasPathFinding;
-    Finding: TAtlasSetupFinding;
+    mItem: TAtlasPathFinding;
+    mFinding: TAtlasSetupFinding;
   begin
     Result := nil;
-    for Item in AList do
+    for mItem in AList do
     begin
       if Length(Result) >= TAtlasProjectSetup.cMaxFindings then
       begin
         Break;
       end;
-      Finding := Default(TAtlasSetupFinding);
-      Finding.Name := Item.Name;
-      Finding.FileName := Relative(AProject, Item.FileName);
-      Finding.Line := Item.Line;
-      Finding.Count := Item.Count;
-      Finding.Uncertain := Item.Uncertain;
-      Finding.Note := Item.Note;
-      Result := Result + [Finding];
+      mFinding := Default(TAtlasSetupFinding);
+      mFinding.Name := mItem.Name;
+      mFinding.FileName := Relative(AProject, mItem.FileName);
+      mFinding.Line := mItem.Line;
+      mFinding.Count := mItem.Count;
+      mFinding.Uncertain := mItem.Uncertain;
+      mFinding.Note := mItem.Note;
+      Result := Result + [mFinding];
     end;
   end;
 
@@ -329,14 +329,14 @@ end;
 /// <summary>Ordner von AFileName mit abschließendem Trenner; '' ohne.</summary>
 function FolderWithSlash(const AFileName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := Length(AFileName) downto 1 do
+  for mIndex := Length(AFileName) downto 1 do
   begin
-    if CharInSet(AFileName[Index], ['\', '/']) then
+    if CharInSet(AFileName[mIndex], ['\', '/']) then
     begin
-      Exit(Copy(AFileName, 1, Index));
+      Exit(Copy(AFileName, 1, mIndex));
     end;
   end;
 end;
@@ -383,49 +383,49 @@ class function TAtlasWelcomeSetup.Combined(const AGroupProject: string; const AG
   procedure AddAll(const AMember: TAtlasSetupMember; const AFrom: TArray<TAtlasSetupFinding>;
     var AList: TArray<TAtlasSetupFinding>);
   var
-    Finding: TAtlasSetupFinding;
+    mFinding: TAtlasSetupFinding;
   begin
-    for Finding in AFrom do
+    for mFinding in AFrom do
     begin
       if Length(AList) >= TAtlasProjectSetup.cMaxFindings then
       begin
         Exit;
       end;
-      AList := AList + [Finding];
+      AList := AList + [mFinding];
       AList[High(AList)].Project := TAtlasWelcomeSetup.NameOf(AMember.Project);
       // Relativ zum Projekt gespeichert, für die Karte relativ zur Gruppe.
-      if (Finding.FileName <> '') and not IsAbsolutePath(Finding.FileName) then
+      if (mFinding.FileName <> '') and not IsAbsolutePath(mFinding.FileName) then
       begin
         AList[High(AList)].FileName := TAtlasWelcomeSetup.Relative(AGroupProject,
-          FolderWithSlash(AMember.Project) + Finding.FileName);
+          FolderWithSlash(AMember.Project) + mFinding.FileName);
       end;
     end;
   end;
 
 var
-  Member: TAtlasSetupMember;
+  mMember: TAtlasSetupMember;
 begin
   Result := TAtlasProjectSetup.Empty;
   Result.Known := AGroup.Known;
   Result.Dismissed := AGroup.Dismissed;
   Result.DismissedAt := AGroup.DismissedAt;
   AChecked := 0;
-  for Member in AMembers do
+  for mMember in AMembers do
   begin
-    if not Member.Setup.Checked then
+    if not mMember.Setup.Checked then
     begin
       Continue;
     end;
     Inc(AChecked);
-    if Member.Setup.CheckedAt > Result.CheckedAt then
+    if mMember.Setup.CheckedAt > Result.CheckedAt then
     begin
-      Result.CheckedAt := Member.Setup.CheckedAt;
+      Result.CheckedAt := mMember.Setup.CheckedAt;
     end;
-    AddCounts(Result, Member.Setup);
-    AddAll(Member, Member.Setup.MissingUnits, Result.MissingUnits);
-    AddAll(Member, Member.Setup.UndefinedDefines, Result.UndefinedDefines);
-    AddAll(Member, Member.Setup.Hints, Result.Hints);
-    AddMacros(Result.SkippedMacros, Member.Setup.SkippedMacros);
+    AddCounts(Result, mMember.Setup);
+    AddAll(mMember, mMember.Setup.MissingUnits, Result.MissingUnits);
+    AddAll(mMember, mMember.Setup.UndefinedDefines, Result.UndefinedDefines);
+    AddAll(mMember, mMember.Setup.Hints, Result.Hints);
+    AddMacros(Result.SkippedMacros, mMember.Setup.SkippedMacros);
   end;
   // Erledigt erst, wenn jedes Projekt geprüft ist.
   Result.Checked := (Length(AMembers) > 0) and (AChecked = Length(AMembers));
@@ -437,12 +437,12 @@ end;
 
 class function TAtlasWelcomeSetup.MacroList(const AMacros: TArray<string>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(AMacros) do
+  for mIndex := 0 to High(AMacros) do
   begin
-    if Index >= MaxMacros then
+    if mIndex >= cMaxMacros then
     begin
       Result := Result + ', …';
       Break;
@@ -451,7 +451,7 @@ begin
     begin
       Result := Result + ', ';
     end;
-    Result := Result + '$(' + AMacros[Index] + ')';
+    Result := Result + '$(' + AMacros[mIndex] + ')';
   end;
 end;
 

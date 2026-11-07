@@ -65,13 +65,13 @@ const
 
 function YouTrack(const AProject: string): TAtlasIssueKeyPattern;
 begin
-  Result := TAtlasIssueKeyPattern.ForTarget(TAtlasTrackerTarget.Create(TAtlasTrackerTarget.YouTrack,
+  Result := TAtlasIssueKeyPattern.ForTarget(TAtlasTrackerTarget.Create(TAtlasTrackerTarget.cYouTrack,
     'https://firma.youtrack.cloud', AProject, ''));
 end;
 
 function GitHub: TAtlasIssueKeyPattern;
 begin
-  Result := TAtlasIssueKeyPattern.ForTarget(TAtlasTrackerTarget.Create(TAtlasTrackerTarget.GitHub, '',
+  Result := TAtlasIssueKeyPattern.ForTarget(TAtlasTrackerTarget.Create(TAtlasTrackerTarget.cGitHub, '',
     'xKnockOut/Atlas-IDE-Expert', ''));
 end;
 
@@ -104,7 +104,7 @@ begin
   Assert.IsFalse(TAtlasIssueKeyPattern.Empty.Active);
   Assert.IsFalse(TAtlasIssueKeyPattern.ForTarget(TAtlasTrackerTarget.Create('', '', '', '')).Active);
   Assert.IsFalse(YouTrack('').Active, 'YouTrack ohne Kürzel');
-  Assert.IsFalse(TAtlasIssueKeyPattern.ForTarget(TAtlasTrackerTarget.Create(TAtlasTrackerTarget.GitHub,
+  Assert.IsFalse(TAtlasIssueKeyPattern.ForTarget(TAtlasTrackerTarget.Create(TAtlasTrackerTarget.cGitHub,
     'https://github.com', '', '')).Active, 'GitHub ohne owner/repo');
   Assert.IsTrue(YouTrack('ATL').Active);
   Assert.IsTrue(GitHub.Active);
@@ -230,7 +230,7 @@ var
   mMatches: TArray<TAtlasIssueKeyMatch>;
   mTarget, mIssueTarget: TAtlasTrackerTarget;
 begin
-  mTarget := TAtlasTrackerTarget.Create(TAtlasTrackerTarget.GitHub, '', 'xKnockOut/Atlas-IDE-Expert', '');
+  mTarget := TAtlasTrackerTarget.Create(TAtlasTrackerTarget.cGitHub, '', 'xKnockOut/Atlas-IDE-Expert', '');
   mMatches := TAtlasCodeLinks.FindKeys(GitHub, 'Fix octo/Lib#9 und #10');
   Assert.AreEqual(2, Integer(Length(mMatches)));
   Assert.AreEqual('octo/lib', mMatches[0].Repository);

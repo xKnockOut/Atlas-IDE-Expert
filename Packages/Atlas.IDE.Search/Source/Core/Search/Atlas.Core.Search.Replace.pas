@@ -75,26 +75,26 @@ end;
 /// <summary>Wert der Gruppe (Nummer oder Name); '' wenn es sie nicht gibt oder sie nicht passte.</summary>
 function GroupValue(const AMatch: TMatch; const AName: string): string;
 var
-  Number: Integer;
-  Group: TGroup;
+  mNumber: Integer;
+  mGroup: TGroup;
 begin
   Result := '';
   try
-    if TryStrToInt(AName, Number) then
+    if TryStrToInt(AName, mNumber) then
     begin
-      if (Number < 0) or (Number >= AMatch.Groups.Count) then
+      if (mNumber < 0) or (mNumber >= AMatch.Groups.Count) then
       begin
         Exit;
       end;
-      Group := AMatch.Groups[Number];
+      mGroup := AMatch.Groups[mNumber];
     end
     else
     begin
-      Group := AMatch.Groups[AName];
+      mGroup := AMatch.Groups[AName];
     end;
-    if Group.Success then
+    if mGroup.Success then
     begin
-      Result := Group.Value;
+      Result := mGroup.Value;
     end;
   except
     // Unbekannter Name: die Engine meldet ihn als Fehler; für den Ersatztext heißt das „nichts“.
@@ -105,8 +105,8 @@ end;
 
 class function TAtlasSearchReplace.Expand(const ATemplate: string; const AMatch: TMatch): string;
 var
-  I, Close: Integer;
-  Next: Char;
+  I, mClose: Integer;
+  mNext: Char;
 begin
   Result := '';
   I := 1;
@@ -118,28 +118,28 @@ begin
       Inc(I);
       Continue;
     end;
-    Next := ATemplate[I + 1];
-    if Next = '$' then
+    mNext := ATemplate[I + 1];
+    if mNext = '$' then
     begin
       Result := Result + '$';
       Inc(I, 2);
     end
-    else if CharInSet(Next, ['0'..'9']) then
+    else if CharInSet(mNext, ['0'..'9']) then
     begin
-      Result := Result + GroupValue(AMatch, Next);
+      Result := Result + GroupValue(AMatch, mNext);
       Inc(I, 2);
     end
-    else if Next = '{' then
+    else if mNext = '{' then
     begin
-      Close := Pos('}', ATemplate, I + 2);
-      if Close = 0 then
+      mClose := Pos('}', ATemplate, I + 2);
+      if mClose = 0 then
       begin
         Result := Result + '$';
         Inc(I);
         Continue;
       end;
-      Result := Result + GroupValue(AMatch, Copy(ATemplate, I + 2, Close - I - 2));
-      I := Close + 1;
+      Result := Result + GroupValue(AMatch, Copy(ATemplate, I + 2, mClose - I - 2));
+      I := mClose + 1;
     end
     else
     begin
@@ -161,24 +161,24 @@ end;
 class function TAtlasSearchReplace.Replacement(const ALines: TArray<string>; const AHit: TAtlasSearchHit;
   const AQuery: TAtlasSearchQuery; const AReplace: string): string;
 var
-  Line: string;
-  Found: TMatch;
+  mLine: string;
+  mFound: TMatch;
 begin
   Result := AReplace;
   if not AQuery.Options.Regex or (AHit.Line < 0) or (AHit.Line > High(ALines)) then
   begin
     Exit;
   end;
-  Line := CleanLine(ALines[AHit.Line]);
+  mLine := CleanLine(ALines[AHit.Line]);
   // Derselbe Ausdruck auf derselben Zeile liefert den Treffer wieder, jetzt mit Gruppen.
-  Found := TRegEx.Create(AQuery.Text, TAtlasSearchRegex.Options(AQuery.Options)).Match(Line);
-  while Found.Success do
+  mFound := TRegEx.Create(AQuery.Text, TAtlasSearchRegex.Options(AQuery.Options)).Match(mLine);
+  while mFound.Success do
   begin
-    if (Found.Index - 1 = AHit.Character) and (Found.Length = AHit.Length) then
+    if (mFound.Index - 1 = AHit.Character) and (mFound.Length = AHit.Length) then
     begin
-      Exit(Expand(AReplace, Found));
+      Exit(Expand(AReplace, mFound));
     end;
-    Found := Found.NextMatch;
+    mFound := mFound.NextMatch;
   end;
 end;
 
@@ -192,17 +192,17 @@ end;
 class function TAtlasSearchReplace.Edits(const ALines: TArray<string>; const AHits: TArray<TAtlasSearchHit>;
   const AQuery: TAtlasSearchQuery; const AReplace: string): TArray<TLspTextEdit>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
   SetLength(Result, Length(AHits));
-  for Index := 0 to High(AHits) do
+  for mIndex := 0 to High(AHits) do
   begin
-    Result[Index].StartPos.Line := AHits[Index].Line;
-    Result[Index].StartPos.Character := AHits[Index].Character;
-    Result[Index].EndPos.Line := AHits[Index].Line;
-    Result[Index].EndPos.Character := AHits[Index].Character + AHits[Index].Length;
-    Result[Index].NewText := Replacement(ALines, AHits[Index], AQuery, AReplace);
+    Result[mIndex].StartPos.Line := AHits[mIndex].Line;
+    Result[mIndex].StartPos.Character := AHits[mIndex].Character;
+    Result[mIndex].EndPos.Line := AHits[mIndex].Line;
+    Result[mIndex].EndPos.Character := AHits[mIndex].Character + AHits[mIndex].Length;
+    Result[mIndex].NewText := Replacement(ALines, AHits[mIndex], AQuery, AReplace);
   end;
 end;
 

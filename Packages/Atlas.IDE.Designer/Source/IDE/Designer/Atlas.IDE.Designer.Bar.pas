@@ -81,17 +81,17 @@ uses
   Atlas.IDE.Foundation.Settings;
 
 const
-  TickMs = 200;
-  KeyPriority = 50;
-  IdSearch = 'search';
-  IdNonVisual = 'nonVisual';
-  IdParent = 'parent';
-  IdTabOrder = 'tabOrder';
-  IdAlign = 'align';
+  cTickMs = 200;
+  cKeyPriority = 50;
+  cIdSearch = 'search';
+  cIdNonVisual = 'nonVisual';
+  cIdParent = 'parent';
+  cIdTabOrder = 'tabOrder';
+  cIdAlign = 'align';
   /// <summary>Aktion der IDE hinter Strg+H im Designer.</summary>
-  NonVisualAction = 'ToggleNonVisualComponentVisibilityCommand';
+  cNonVisualAction = 'ToggleNonVisualComponentVisibilityCommand';
   /// <summary>Eigenschaften für die Vorschau im Suchfenster, sofern gesetzt.</summary>
-  PreviewProperties: array[0..9] of string = ('Caption', 'Text', 'Align', 'Visible', 'Enabled', 'TabOrder', 'Hint',
+  cPreviewProperties: array[0..9] of string = ('Caption', 'Text', 'Align', 'Visible', 'Enabled', 'TabOrder', 'Hint',
     'Action', 'DataSource', 'DataField');
 
 type
@@ -502,7 +502,7 @@ var
   mName, mText: string;
 begin
   Result := nil;
-  for mName in PreviewProperties do
+  for mName in cPreviewProperties do
   begin
     if not PropText(AComponent, mName, mText) then
     begin
@@ -701,9 +701,9 @@ begin
     end);
   FHost.ShowIn := TAtlasEditorBarView.Designer;
   FAlignMenu := TPopupMenu.Create(nil);
-  FKeyClient := TSearchKeyClient.Create(KeyPriority);
+  FKeyClient := TSearchKeyClient.Create(cKeyPriority);
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -808,14 +808,14 @@ begin
   mList := mServices.ActionList;
   // Gemerkter Index: Die Liste hat Tausende Einträge, der Takt fragt fünfmal je Sekunde.
   if (FActionIndex >= 0) and (FActionIndex < mList.ActionCount) and
-    SameText(mList.Actions[FActionIndex].Name, NonVisualAction) then
+    SameText(mList.Actions[FActionIndex].Name, cNonVisualAction) then
   begin
     Exit(mList.Actions[FActionIndex]);
   end;
   FActionIndex := -1;
   for mIndex := 0 to mList.ActionCount - 1 do
   begin
-    if SameText(mList.Actions[mIndex].Name, NonVisualAction) then
+    if SameText(mList.Actions[mIndex].Name, cNonVisualAction) then
     begin
       FActionIndex := mIndex;
       Exit(mList.Actions[mIndex]);
@@ -824,7 +824,7 @@ begin
   if not FActionLogged then
   begin
     FActionLogged := True;
-    TAtlasGuard.Log('Designer-Leiste: IDE-Aktion ' + NonVisualAction + ' nicht gefunden');
+    TAtlasGuard.Log('Designer-Leiste: IDE-Aktion ' + cNonVisualAction + ' nicht gefunden');
   end;
 end;
 
@@ -841,9 +841,9 @@ begin
   begin
     mHint := mHint + ' (' + ShortCutToText(TShortCut(mSettings.DesignerSearchKey)) + ')';
   end;
-  Result := TArray<TAtlasDesignerButton>.Create(TAtlasDesignerButton.Create(IdSearch,
+  Result := TArray<TAtlasDesignerButton>.Create(TAtlasDesignerButton.Create(cIdSearch,
     TAtlasToolbarIcon.ComponentSearch, mHint));
-  mButton := TAtlasDesignerButton.Create(IdNonVisual, TAtlasToolbarIcon.NonVisual,
+  mButton := TAtlasDesignerButton.Create(cIdNonVisual, TAtlasToolbarIcon.NonVisual,
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarNonVisualHint));
   mAction := FindNonVisualAction;
   if mAction = nil then
@@ -866,7 +866,7 @@ begin
     end;
   end;
   Result := Result + [mButton];
-  mButton := TAtlasDesignerButton.Create(IdParent, TAtlasToolbarIcon.SelectParent,
+  mButton := TAtlasDesignerButton.Create(cIdParent, TAtlasToolbarIcon.SelectParent,
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarParentHint));
   mButton.GapBefore := True;
   Result := Result + [mButton];
@@ -878,12 +878,12 @@ begin
   begin
     mHint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarTabOrderHint);
   end;
-  mButton := TAtlasDesignerButton.Create(IdTabOrder, TAtlasToolbarIcon.TabOrder, mHint);
+  mButton := TAtlasDesignerButton.Create(cIdTabOrder, TAtlasToolbarIcon.TabOrder, mHint);
   mButton.Pressed := FTabOrder;
   Result := Result + [mButton];
   if mSettings.DesignerAlign then
   begin
-    mButton := TAtlasDesignerButton.Create(IdAlign, TAtlasToolbarIcon.AlignControls,
+    mButton := TAtlasDesignerButton.Create(cIdAlign, TAtlasToolbarIcon.AlignControls,
       TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerBarAlignHint, [AlignCaption(FLastAlign)]));
     mButton.Menu := True;
     Result := Result + [mButton];
@@ -954,23 +954,23 @@ end;
 
 procedure TDesignerBarState.Command(const AId: string);
 begin
-  if SameText(AId, IdSearch) then
+  if SameText(AId, cIdSearch) then
   begin
     OpenSearch;
   end
-  else if SameText(AId, IdNonVisual) then
+  else if SameText(AId, cIdNonVisual) then
   begin
     ToggleNonVisual;
   end
-  else if SameText(AId, IdParent) then
+  else if SameText(AId, cIdParent) then
   begin
     SelectParent;
   end
-  else if SameText(AId, IdTabOrder) then
+  else if SameText(AId, cIdTabOrder) then
   begin
     ToggleTabOrder;
   end
-  else if SameText(AId, IdAlign) then
+  else if SameText(AId, cIdAlign) then
   begin
     AlignSelection(FLastAlign);
   end;
@@ -985,7 +985,7 @@ var
   mItem: TMenuItem;
   mCount: Integer;
 begin
-  if not SameText(AId, IdAlign) or not CurrentDesigner(mEditor, mRoot) then
+  if not SameText(AId, cIdAlign) or not CurrentDesigner(mEditor, mRoot) then
   begin
     Exit;
   end;

@@ -46,7 +46,7 @@ uses
   System.JSON;
 
 const
-  Answer =
+  cAnswer =
     '{"format":1,"unresolved":2,"handlers":[' +
     '{"form":"TfrmKunde","component":"btnSpeichern","componentClass":"TButton","event":"OnClick",' +
     '"handler":"btnSpeichernClick","container":"TfrmKunde","origin":"form","file":"C:\\P\\Kunde.pas","line":41},' +
@@ -74,20 +74,20 @@ end;
 
 procedure TCoreDebugEventBreakTests.Load;
 var
-  Json: TJSONValue;
+  mJson: TJSONValue;
 begin
-  Json := TJSONObject.ParseJSONValue(Answer);
+  mJson := TJSONObject.ParseJSONValue(cAnswer);
   try
-    Assert.IsTrue(TAtlasEventBreak.ReadAnswer(Json, FAnswer));
+    Assert.IsTrue(TAtlasEventBreak.ReadAnswer(mJson, FAnswer));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TCoreDebugEventBreakTests.ReadsAnswer;
 var
-  Json: TJSONValue;
-  Other: TAtlasEventAnswer;
+  mJson: TJSONValue;
+  mOther: TAtlasEventAnswer;
 begin
   Load;
   // Der Eintrag ohne Datei fällt weg.
@@ -102,11 +102,11 @@ begin
   Assert.AreEqual(-1, FAnswer.Handlers[0].Interval);
   Assert.IsTrue(FAnswer.Handlers[5].Code);
   Assert.IsFalse(FAnswer.Handlers[0].Code);
-  Json := TJSONObject.ParseJSONValue('{"format":2}');
+  mJson := TJSONObject.ParseJSONValue('{"format":2}');
   try
-    Assert.IsFalse(TAtlasEventBreak.ReadAnswer(Json, Other));
+    Assert.IsFalse(TAtlasEventBreak.ReadAnswer(mJson, mOther));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
@@ -126,119 +126,119 @@ end;
 
 procedure TCoreDebugEventBreakTests.MouseSelectsClicksOnly;
 var
-  Choice: TAtlasEventChoice;
-  Selected: TArray<Integer>;
+  mChoice: TAtlasEventChoice;
+  mSelected: TArray<Integer>;
 begin
   Load;
-  Choice := TAtlasEventChoice.Defaults;
-  Choice.Categories := [TAtlasEventCategory.Mouse];
-  Selected := TAtlasEventBreak.Select(FAnswer.Handlers, Choice,
+  mChoice := TAtlasEventChoice.Defaults;
+  mChoice.Categories := [TAtlasEventCategory.Mouse];
+  mSelected := TAtlasEventBreak.Select(FAnswer.Handlers, mChoice,
     TAtlasEventBreakSettings.ExcludedList(TAtlasEventBreakSettings.cDefaultExcluded), nil);
-  Assert.AreEqual(2, Integer(Length(Selected)));
-  Assert.AreEqual(0, Selected[0]);
-  Assert.AreEqual(1, Selected[1]);
+  Assert.AreEqual(2, Integer(Length(mSelected)));
+  Assert.AreEqual(0, mSelected[0]);
+  Assert.AreEqual(1, mSelected[1]);
 end;
 
 procedure TCoreDebugEventBreakTests.FrequentExcludedUnlessChosen;
 var
-  Choice: TAtlasEventChoice;
-  Excluded: TArray<string>;
-  Selected: TArray<Integer>;
+  mChoice: TAtlasEventChoice;
+  mExcluded: TArray<string>;
+  mSelected: TArray<Integer>;
 begin
   Load;
-  Excluded := TAtlasEventBreakSettings.ExcludedList(TAtlasEventBreakSettings.cDefaultExcluded);
-  Choice := TAtlasEventChoice.Defaults;
-  Choice.Categories := TAtlasEventBreak.AllCategories;
+  mExcluded := TAtlasEventBreakSettings.ExcludedList(TAtlasEventBreakSettings.cDefaultExcluded);
+  mChoice := TAtlasEventChoice.Defaults;
+  mChoice.Categories := TAtlasEventBreak.cAllCategories;
   // Ohne häufige: OnPaint, Timer mit 50 ms und OnUpdate fehlen; der Timer im Code (ohne Interval) bleibt.
-  Selected := TAtlasEventBreak.Select(FAnswer.Handlers, Choice, Excluded, nil);
-  Assert.AreEqual(5, Integer(Length(Selected)));
-  Assert.IsTrue(TAtlasEventBreak.IsFrequent(FAnswer.Handlers[2], Excluded), 'OnPaint');
-  Assert.IsTrue(TAtlasEventBreak.IsFrequent(FAnswer.Handlers[3], Excluded), 'Timer 50 ms');
-  Assert.IsFalse(TAtlasEventBreak.IsFrequent(FAnswer.Handlers[5], Excluded), 'Timer ohne Interval');
-  Assert.IsTrue(TAtlasEventBreak.IsFrequent(FAnswer.Handlers[7], Excluded), 'OnUpdate');
-  Choice.Frequent := True;
-  Selected := TAtlasEventBreak.Select(FAnswer.Handlers, Choice, Excluded, nil);
-  Assert.AreEqual(8, Integer(Length(Selected)));
+  mSelected := TAtlasEventBreak.Select(FAnswer.Handlers, mChoice, mExcluded, nil);
+  Assert.AreEqual(5, Integer(Length(mSelected)));
+  Assert.IsTrue(TAtlasEventBreak.IsFrequent(FAnswer.Handlers[2], mExcluded), 'OnPaint');
+  Assert.IsTrue(TAtlasEventBreak.IsFrequent(FAnswer.Handlers[3], mExcluded), 'Timer 50 ms');
+  Assert.IsFalse(TAtlasEventBreak.IsFrequent(FAnswer.Handlers[5], mExcluded), 'Timer ohne Interval');
+  Assert.IsTrue(TAtlasEventBreak.IsFrequent(FAnswer.Handlers[7], mExcluded), 'OnUpdate');
+  mChoice.Frequent := True;
+  mSelected := TAtlasEventBreak.Select(FAnswer.Handlers, mChoice, mExcluded, nil);
+  Assert.AreEqual(8, Integer(Length(mSelected)));
 end;
 
 procedure TCoreDebugEventBreakTests.ScopeOneFormAndVisibleForms;
 var
-  Choice: TAtlasEventChoice;
-  Selected: TArray<Integer>;
-  Index: Integer;
+  mChoice: TAtlasEventChoice;
+  mSelected: TArray<Integer>;
+  mIndex: Integer;
 begin
   Load;
-  Choice := TAtlasEventChoice.Defaults;
-  Choice.Categories := TAtlasEventBreak.AllCategories;
-  Choice.Frequent := True;
-  Choice.Scope := TAtlasEventScope.OneForm;
-  Choice.Form := 'tdmdaten';
-  Selected := TAtlasEventBreak.Select(FAnswer.Handlers, Choice, nil, nil);
-  Assert.AreEqual(1, Integer(Length(Selected)));
-  Assert.AreEqual(4, Selected[0]);
-  Choice.Scope := TAtlasEventScope.VisibleForms;
-  Selected := TAtlasEventBreak.Select(FAnswer.Handlers, Choice, nil, TArray<string>.Create('TfrmHaupt'));
-  Assert.AreEqual(3, Integer(Length(Selected)));
-  for Index in Selected do
+  mChoice := TAtlasEventChoice.Defaults;
+  mChoice.Categories := TAtlasEventBreak.cAllCategories;
+  mChoice.Frequent := True;
+  mChoice.Scope := TAtlasEventScope.OneForm;
+  mChoice.Form := 'tdmdaten';
+  mSelected := TAtlasEventBreak.Select(FAnswer.Handlers, mChoice, nil, nil);
+  Assert.AreEqual(1, Integer(Length(mSelected)));
+  Assert.AreEqual(4, mSelected[0]);
+  mChoice.Scope := TAtlasEventScope.VisibleForms;
+  mSelected := TAtlasEventBreak.Select(FAnswer.Handlers, mChoice, nil, TArray<string>.Create('TfrmHaupt'));
+  Assert.AreEqual(3, Integer(Length(mSelected)));
+  for mIndex in mSelected do
   begin
-    Assert.AreEqual('TfrmHaupt', FAnswer.Handlers[Index].Form);
+    Assert.AreEqual('TfrmHaupt', FAnswer.Handlers[mIndex].Form);
   end;
-  Selected := TAtlasEventBreak.Select(FAnswer.Handlers, Choice, nil, nil);
-  Assert.AreEqual(0, Integer(Length(Selected)), 'kein Formular sichtbar');
+  mSelected := TAtlasEventBreak.Select(FAnswer.Handlers, mChoice, nil, nil);
+  Assert.AreEqual(0, Integer(Length(mSelected)), 'kein Formular sichtbar');
 end;
 
 procedure TCoreDebugEventBreakTests.SharedHandlerOneLocationIdentifiedBySender;
 var
-  Choice: TAtlasEventChoice;
-  Locations: TArray<TAtlasEventLocation>;
-  At: Integer;
+  mChoice: TAtlasEventChoice;
+  mLocations: TArray<TAtlasEventLocation>;
+  mAt: Integer;
 begin
   Load;
-  Choice := TAtlasEventChoice.Defaults;
-  Choice.Categories := TAtlasEventBreak.AllCategories;
-  Choice.Frequent := True;
-  Locations := TAtlasEventBreak.Locations(FAnswer.Handlers,
-    TAtlasEventBreak.Select(FAnswer.Handlers, Choice, nil, nil));
+  mChoice := TAtlasEventChoice.Defaults;
+  mChoice.Categories := TAtlasEventBreak.cAllCategories;
+  mChoice.Frequent := True;
+  mLocations := TAtlasEventBreak.Locations(FAnswer.Handlers,
+    TAtlasEventBreak.Select(FAnswer.Handlers, mChoice, nil, nil));
   // btnSpeichern und btnOk teilen sich Zeile 41.
-  Assert.AreEqual(7, Integer(Length(Locations)));
-  At := TAtlasEventBreak.LocationAt(Locations, 'c:\p\kunde.pas', 41);
-  Assert.AreEqual(0, At);
-  Assert.AreEqual(2, Integer(Length(Locations[At].Handlers)));
-  Assert.AreEqual(1, TAtlasEventBreak.Identify(FAnswer.Handlers, Locations[At], 'btnOk'));
-  Assert.AreEqual(0, TAtlasEventBreak.Identify(FAnswer.Handlers, Locations[At], 'BTNSPEICHERN'));
-  Assert.AreEqual(-1, TAtlasEventBreak.Identify(FAnswer.Handlers, Locations[At], ''));
-  Assert.AreEqual(-1, TAtlasEventBreak.Identify(FAnswer.Handlers, Locations[At], 'btnAnders'));
+  Assert.AreEqual(7, Integer(Length(mLocations)));
+  mAt := TAtlasEventBreak.LocationAt(mLocations, 'c:\p\kunde.pas', 41);
+  Assert.AreEqual(0, mAt);
+  Assert.AreEqual(2, Integer(Length(mLocations[mAt].Handlers)));
+  Assert.AreEqual(1, TAtlasEventBreak.Identify(FAnswer.Handlers, mLocations[mAt], 'btnOk'));
+  Assert.AreEqual(0, TAtlasEventBreak.Identify(FAnswer.Handlers, mLocations[mAt], 'BTNSPEICHERN'));
+  Assert.AreEqual(-1, TAtlasEventBreak.Identify(FAnswer.Handlers, mLocations[mAt], ''));
+  Assert.AreEqual(-1, TAtlasEventBreak.Identify(FAnswer.Handlers, mLocations[mAt], 'btnAnders'));
   // Eine Stelle mit einem Handler braucht keinen Sender.
-  At := TAtlasEventBreak.LocationAt(Locations, 'C:\P\Daten.pas', 20);
-  Assert.AreEqual(4, TAtlasEventBreak.Identify(FAnswer.Handlers, Locations[At], ''));
-  Assert.AreEqual(-1, TAtlasEventBreak.LocationAt(Locations, 'C:\P\Daten.pas', 21));
+  mAt := TAtlasEventBreak.LocationAt(mLocations, 'C:\P\Daten.pas', 20);
+  Assert.AreEqual(4, TAtlasEventBreak.Identify(FAnswer.Handlers, mLocations[mAt], ''));
+  Assert.AreEqual(-1, TAtlasEventBreak.LocationAt(mLocations, 'C:\P\Daten.pas', 21));
 end;
 
 procedure TCoreDebugEventBreakTests.CaptionNamesComponentEventAndHandler;
 var
-  Choice: TAtlasEventChoice;
-  Locations: TArray<TAtlasEventLocation>;
+  mChoice: TAtlasEventChoice;
+  mLocations: TArray<TAtlasEventLocation>;
 begin
   Load;
-  Choice := TAtlasEventChoice.Defaults;
-  Choice.Categories := TAtlasEventBreak.AllCategories;
-  Locations := TAtlasEventBreak.Locations(FAnswer.Handlers,
-    TAtlasEventBreak.Select(FAnswer.Handlers, Choice, nil, nil));
+  mChoice := TAtlasEventChoice.Defaults;
+  mChoice.Categories := TAtlasEventBreak.cAllCategories;
+  mLocations := TAtlasEventBreak.Locations(FAnswer.Handlers,
+    TAtlasEventBreak.Select(FAnswer.Handlers, mChoice, nil, nil));
   Assert.AreEqual('btnOk.OnClick → TfrmKunde.btnSpeichernClick',
-    TAtlasEventBreak.Caption(FAnswer.Handlers, Locations[0], 1));
+    TAtlasEventBreak.Caption(FAnswer.Handlers, mLocations[0], 1));
   Assert.AreEqual('btnSpeichern.OnClick / btnOk.OnClick → TfrmKunde.btnSpeichernClick',
-    TAtlasEventBreak.Caption(FAnswer.Handlers, Locations[0], -1));
+    TAtlasEventBreak.Caption(FAnswer.Handlers, mLocations[0], -1));
 end;
 
 procedure TCoreDebugEventBreakTests.HelpersAndExpressions;
 var
-  Forms: TArray<string>;
+  mForms: TArray<string>;
 begin
   Load;
-  Forms := TAtlasEventBreak.Forms(FAnswer.Handlers);
-  Assert.AreEqual(3, Integer(Length(Forms)));
-  Assert.AreEqual('TdmDaten', Forms[0]);
-  Assert.AreEqual('TfrmHaupt', Forms[1]);
+  mForms := TAtlasEventBreak.Forms(FAnswer.Handlers);
+  Assert.AreEqual(3, Integer(Length(mForms)));
+  Assert.AreEqual('TdmDaten', mForms[0]);
+  Assert.AreEqual('TfrmHaupt', mForms[1]);
   Assert.AreEqual('["file:///C:/P/A.dproj"]', TAtlasEventBreak.Arguments('file:///C:/P/A.dproj'));
   Assert.AreEqual('[null]', TAtlasEventBreak.Arguments(''));
   Assert.AreEqual('Screen.Forms[2].ClassName', TAtlasEventBreak.FormClassExpression(2));

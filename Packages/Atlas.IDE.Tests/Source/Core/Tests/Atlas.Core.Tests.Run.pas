@@ -86,10 +86,10 @@ type
   TAtlasTestRun = class
   public const
     /// <summary>Zeitlimit eines Laufs.</summary>
-    TimeoutMs = 600000;
+    cTimeoutMs = 600000;
     /// <summary>Auftraggeber eines Builds vor den Tests (Compile-Ereignisse #527): löst keinen Lauf nach dem
     /// Build aus.</summary>
-    RequestedBy = 'tests';
+    cRequestedBy = 'tests';
   public
     /// <summary>Hauptdatei eines DUnitX-Testprogramms?</summary>
     class function IsTestProgram(const ALines: TArray<string>): Boolean; static;
@@ -282,55 +282,55 @@ end;
 
 class function TAtlasTestRun.ProblemText(const ACase: TTestCaseResult; const AFormat, AValuesFormat: string): string;
 var
-  Message: string;
-  Index: Integer;
+  mMessage: string;
+  mIndex: Integer;
 begin
   if ACase.HasValues then
   begin
     Exit(Format(AValuesFormat, [ShortName(ACase), ACase.Expected, ACase.Actual]));
   end;
   // Nur die erste Zeile: Die Liste der Probleme zeigt eine Zeile je Eintrag.
-  Message := Trim(ACase.Message);
-  Index := Pos(#10, Message);
-  if Index > 0 then
+  mMessage := Trim(ACase.Message);
+  mIndex := Pos(#10, mMessage);
+  if mIndex > 0 then
   begin
-    Message := TrimRight(Copy(Message, 1, Index - 1));
+    mMessage := TrimRight(Copy(mMessage, 1, mIndex - 1));
   end;
-  Result := Format(AFormat, [ShortName(ACase), Message]);
+  Result := Format(AFormat, [ShortName(ACase), mMessage]);
 end;
 
 class function TAtlasTestRun.Problems(const AFailures: TArray<TAtlasTestFailure>; const AFormat,
   AValuesFormat: string): TArray<TPair<string, TAtlasProblem>>;
 var
-  Failure: TAtlasTestFailure;
-  Problem: TAtlasProblem;
+  mFailure: TAtlasTestFailure;
+  mProblem: TAtlasProblem;
 begin
   Result := nil;
-  for Failure in AFailures do
+  for mFailure in AFailures do
   begin
-    if (Failure.FileName = '') or (Failure.Line < 0) then
+    if (mFailure.FileName = '') or (mFailure.Line < 0) then
     begin
       Continue;
     end;
-    Problem := Default(TAtlasProblem);
-    Problem.StartLine := Failure.Line;
-    Problem.EndLine := Failure.Line;
-    Problem.StartCharacter := Failure.StartCharacter;
-    Problem.EndCharacter := Failure.EndCharacter;
-    Problem.Severity := TAtlasProblemSeverity.Error;
+    mProblem := Default(TAtlasProblem);
+    mProblem.StartLine := mFailure.Line;
+    mProblem.EndLine := mFailure.Line;
+    mProblem.StartCharacter := mFailure.StartCharacter;
+    mProblem.EndCharacter := mFailure.EndCharacter;
+    mProblem.Severity := TAtlasProblemSeverity.Error;
     // Ohne Code: kein Regeltreffer (Projekt-Zusammenfassung, Baseline).
-    Problem.Code := '';
-    Problem.Source := TAtlasProblemStore.cTestSource;
-    Problem.Message := ProblemText(Failure.Test, AFormat, AValuesFormat);
-    Result := Result + [TPair<string, TAtlasProblem>.Create(Failure.FileName, Problem)];
+    mProblem.Code := '';
+    mProblem.Source := TAtlasProblemStore.cTestSource;
+    mProblem.Message := ProblemText(mFailure.Test, AFormat, AValuesFormat);
+    Result := Result + [TPair<string, TAtlasProblem>.Create(mFailure.FileName, mProblem)];
   end;
 end;
 
 class function TAtlasTestRun.SummaryOf(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult;
   const AFailures: TArray<TAtlasTestFailure>; AAtUtc: TDateTime): TAtlasProjectTests;
 var
-  Failure: TAtlasTestFailure;
-  Item: TAtlasProjectTestFailure;
+  mFailure: TAtlasTestFailure;
+  mItem: TAtlasProjectTestFailure;
 begin
   Result := TAtlasProjectTests.Empty;
   Result.Known := True;
@@ -343,21 +343,21 @@ begin
   Result.Errors := ARun.Count(TTestOutcome.Error);
   Result.Skipped := ARun.Count(TTestOutcome.Skipped);
   Result.DurationMs := Integer(ARun.DurationMs);
-  for Failure in AFailures do
+  for mFailure in AFailures do
   begin
     if Length(Result.Failures) >= TAtlasProjectTests.cMaxFailures then
     begin
       Break;
     end;
-    Item := Default(TAtlasProjectTestFailure);
-    Item.Test := Failure.Test.FullName;
-    Item.Message := Failure.Test.Message;
-    Item.FileName := Failure.FileName;
-    if Failure.Line >= 0 then
+    mItem := Default(TAtlasProjectTestFailure);
+    mItem.Test := mFailure.Test.FullName;
+    mItem.Message := mFailure.Test.Message;
+    mItem.FileName := mFailure.FileName;
+    if mFailure.Line >= 0 then
     begin
-      Item.Line := Failure.Line + 1;
+      mItem.Line := mFailure.Line + 1;
     end;
-    Result.Failures := Result.Failures + [Item];
+    Result.Failures := Result.Failures + [mItem];
   end;
 end;
 
@@ -378,20 +378,20 @@ end;
 class function TAtlasTestRun.StatusOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture, AMethod,
   ACaseName: string): TAtlasTestStatus;
 var
-  Item: TTestCaseResult;
+  mItem: TTestCaseResult;
 begin
   Result := TAtlasTestStatus.Unknown;
-  for Item in ACases do
+  for mItem in ACases do
   begin
-    if not Matches(Item, AUnitName, AFixture, AMethod, ACaseName) then
+    if not Matches(mItem, AUnitName, AFixture, AMethod, ACaseName) then
     begin
       Continue;
     end;
-    if Item.IsFailure then
+    if mItem.IsFailure then
     begin
       Exit(TAtlasTestStatus.Failed);
     end;
-    if Item.Outcome = TTestOutcome.Passed then
+    if mItem.Outcome = TTestOutcome.Passed then
     begin
       Result := TAtlasTestStatus.Passed;
     end;

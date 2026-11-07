@@ -147,14 +147,14 @@ end;
 
 class function TVcsChanges.FindProgram(const AName: string): string;
 var
-  Dir: string;
+  mDir: string;
 begin
   // Der Prozessläufer übergibt den Programmnamen direkt an CreateProcess, das PATH nicht durchsucht.
-  for Dir in GetEnvironmentVariable('PATH').Split([PathSep]) do
+  for mDir in GetEnvironmentVariable('PATH').Split([PathSep]) do
   begin
-    if (Dir <> '') and TFile.Exists(TPath.Combine(Dir.Trim(['"']), AName + '.exe')) then
+    if (mDir <> '') and TFile.Exists(TPath.Combine(mDir.Trim(['"']), AName + '.exe')) then
     begin
-      Exit(TPath.Combine(Dir.Trim(['"']), AName + '.exe'));
+      Exit(TPath.Combine(mDir.Trim(['"']), AName + '.exe'));
     end;
   end;
   Result := AName;
@@ -163,37 +163,37 @@ end;
 function TVcsChanges.Run(const AExecutable: string; const AArguments: TArray<string>; ACheck: Boolean;
   out AExitCode: Integer): TArray<string>;
 var
-  Request: TCompilerRequest;
-  Output: TArray<string>;
+  mRequest: TCompilerRequest;
+  mOutput: TArray<string>;
 begin
-  Request.Executable := FindProgram(AExecutable);
-  Request.Arguments := AArguments;
-  Request.WorkingDir := FWorkingDir;
-  Output := nil;
-  AExitCode := FProcess.Run(Request,
+  mRequest.Executable := FindProgram(AExecutable);
+  mRequest.Arguments := AArguments;
+  mRequest.WorkingDir := FWorkingDir;
+  mOutput := nil;
+  AExitCode := FProcess.Run(mRequest,
     procedure(const ALine: string)
     begin
-      Output := Output + [ALine];
+      mOutput := mOutput + [ALine];
     end);
   if ACheck and (AExitCode <> 0) then
   begin
     raise EVcsChanges.Create(cTexts[TVcsChangesText.Failed].Fmt([AExecutable, string.Join(' ', AArguments),
-      AExitCode, string.Join(' ', Output)]));
+      AExitCode, string.Join(' ', mOutput)]));
   end;
-  Result := Output;
+  Result := mOutput;
 end;
 
 procedure TVcsChanges.AddWholeFile(const APath: string);
 var
-  Whole: TLineSpan;
-  Item: TChangedLines;
+  mWhole: TLineSpan;
+  mItem: TChangedLines;
 begin
   FFiles := FFiles + [TChangedFiles.FullPath(FRepoRoot, APath)];
-  Whole.First := 0;
-  Whole.Last := MaxInt;
-  Item.Path := APath;
-  Item.Spans := [Whole];
-  FLines := FLines + [Item];
+  mWhole.First := 0;
+  mWhole.Last := MaxInt;
+  mItem.Path := APath;
+  mItem.Spans := [mWhole];
+  FLines := FLines + [mItem];
 end;
 
 class function TVcsChanges.ToolFor(AKind: TAtlasVcsKind; const AConfigured: string): string;
@@ -226,9 +226,9 @@ end;
 class function TVcsChanges.Detect(const AProcess: ICompilerProcess; const AWorkingDir, AProvider, AGitPath,
   ASvnPath: string; ATimeoutSeconds: Integer): TVcsChanges;
 var
-  Provider: TAtlasVcsProvider;
-  WorkingCopy: TAtlasVcsWorkingCopy;
-  SvnExe: string;
+  mProvider: TAtlasVcsProvider;
+  mWorkingCopy: TAtlasVcsWorkingCopy;
+  mSvnExe: string;
   mTimeoutMs: Cardinal;
 begin
   mTimeoutMs := TAtlasVcsCommand.cDefaultTimeoutMs;
@@ -236,33 +236,33 @@ begin
   begin
     mTimeoutMs := Cardinal(ATimeoutSeconds) * 1000;
   end;
-  Provider := AtlasVcsProviderOf(AProvider);
-  if Provider = TAtlasVcsProvider.Off then
+  mProvider := AtlasVcsProviderOf(AProvider);
+  if mProvider = TAtlasVcsProvider.Off then
   begin
     raise EVcsChanges.Create('Versionsverwaltung abgeschaltet (vcs.provider = off)');
   end;
-  WorkingCopy := TAtlasVcsDetection.Find(AWorkingDir, Provider);
-  case WorkingCopy.Kind of
+  mWorkingCopy := TAtlasVcsDetection.Find(AWorkingDir, mProvider);
+  case mWorkingCopy.Kind of
     TAtlasVcsKind.Git:
       Result := TGitChanges.Create(AProcess, AWorkingDir, ToolFor(TAtlasVcsKind.Git, AGitPath));
     TAtlasVcsKind.Svn:
       begin
-        SvnExe := ToolFor(TAtlasVcsKind.Svn, ASvnPath);
-        if SvnExe = '' then
+        mSvnExe := ToolFor(TAtlasVcsKind.Svn, ASvnPath);
+        if mSvnExe = '' then
         begin
           raise EVcsChanges.Create(cTexts[TVcsChangesText.NoSvn].Fmt([AWorkingDir]));
         end;
-        Result := TSvnChanges.Create(AProcess, AWorkingDir, WorkingCopy, SvnExe, mTimeoutMs * 4);
+        Result := TSvnChanges.Create(AProcess, AWorkingDir, mWorkingCopy, mSvnExe, mTimeoutMs * 4);
       end;
   else
-    if Provider = TAtlasVcsProvider.Auto then
+    if mProvider = TAtlasVcsProvider.Auto then
     begin
       raise EVcsChanges.Create(cTexts[TVcsChangesText.NoWorkingCopy].Fmt([AWorkingDir]));
     end
     else
     begin
       raise EVcsChanges.Create(cTexts[TVcsChangesText.NoProviderCopy].Fmt([AWorkingDir,
-        AtlasVcsProviderText(Provider)]));
+        AtlasVcsProviderText(mProvider)]));
     end;
   end;
 end;
@@ -287,67 +287,67 @@ end;
 
 function TGitChanges.Git(const AArguments: TArray<string>): TArray<string>;
 var
-  ExitCode: Integer;
+  mExitCode: Integer;
 begin
   // Pfade mit Sonderzeichen kommen als Oktalfolgen (core.quotepath) und damit
   // unabhängig von der Codepage, in der der Prozessläufer liest.
   if FGit <> '' then
   begin
-    Result := Run(FGit, ['-c', 'core.quotepath=on'] + AArguments, True, ExitCode);
+    Result := Run(FGit, ['-c', 'core.quotepath=on'] + AArguments, True, mExitCode);
   end
   else
   begin
-    Result := Run('git', ['-c', 'core.quotepath=on'] + AArguments, True, ExitCode);
+    Result := Run('git', ['-c', 'core.quotepath=on'] + AArguments, True, mExitCode);
   end;
 end;
 
 procedure TGitChanges.Load(const ARef: string; AMergeBase, ADefaultBase, AIncludeUncommitted, AWithLines: Boolean);
 var
-  Output, Range: TArray<string>;
-  Ref, Path: string;
+  mOutput, mRange: TArray<string>;
+  mRef, mPath: string;
 begin
-  Output := Git(['rev-parse', '--show-toplevel']);
-  if Length(Output) = 0 then
+  mOutput := Git(['rev-parse', '--show-toplevel']);
+  if Length(mOutput) = 0 then
   begin
     raise EVcsChanges.Create(cTexts[TVcsChangesText.NoGit].Text);
   end;
-  FRepoRoot := ExcludeTrailingPathDelimiter(StringReplace(Trim(Output[0]), '/', PathDelim, [rfReplaceAll]));
-  Ref := ARef;
+  FRepoRoot := ExcludeTrailingPathDelimiter(StringReplace(Trim(mOutput[0]), '/', PathDelim, [rfReplaceAll]));
+  mRef := ARef;
   if AMergeBase then
   begin
-    Output := Git(['merge-base', ARef, 'HEAD']);
-    if Length(Output) = 0 then
+    mOutput := Git(['merge-base', ARef, 'HEAD']);
+    if Length(mOutput) = 0 then
     begin
       raise EVcsChanges.Create(cTexts[TVcsChangesText.NoMergeBase].Fmt([ARef]));
     end;
-    Ref := Trim(Output[0]);
+    mRef := Trim(mOutput[0]);
   end;
   // Ohne HEAD vergleicht git diff mit dem Arbeitsverzeichnis, Index eingeschlossen.
   if AIncludeUncommitted then
   begin
-    Range := [Ref];
+    mRange := [mRef];
   end
   else
   begin
-    Range := [Ref, 'HEAD'];
+    mRange := [mRef, 'HEAD'];
   end;
   FFiles := nil;
-  for Path in TChangedFiles.ParseNameStatus(Git(['diff', '--name-status', '-M', '--no-color'] + Range)) do
+  for mPath in TChangedFiles.ParseNameStatus(Git(['diff', '--name-status', '-M', '--no-color'] + mRange)) do
   begin
-    FFiles := FFiles + [TChangedFiles.FullPath(FRepoRoot, Path)];
+    FFiles := FFiles + [TChangedFiles.FullPath(FRepoRoot, mPath)];
   end;
   FLines := nil;
   if AWithLines then
   begin
-    FLines := TChangedFiles.ParseHunks(Git(['diff', '-U0', '-M', '--no-color', '--no-ext-diff'] + Range));
+    FLines := TChangedFiles.ParseHunks(Git(['diff', '-U0', '-M', '--no-color', '--no-ext-diff'] + mRange));
   end;
   if AIncludeUncommitted then
   begin
-    for Path in Git(['ls-files', '--others', '--exclude-standard', '--full-name', ':/']) do
+    for mPath in Git(['ls-files', '--others', '--exclude-standard', '--full-name', ':/']) do
     begin
-      if Trim(Path) <> '' then
+      if Trim(mPath) <> '' then
       begin
-        AddWholeFile(TChangedFiles.UnquotePath(Trim(Path)));
+        AddWholeFile(TChangedFiles.UnquotePath(Trim(mPath)));
       end;
     end;
   end;
@@ -358,7 +358,7 @@ end;
 constructor TSvnChanges.Create(const AProcess: ICompilerProcess; const AWorkingDir: string;
   const AWorkingCopy: TAtlasVcsWorkingCopy; const ASvn: string; ATimeoutMs: Cardinal);
 var
-  Runner: IAtlasVcsRunner;
+  mRunner: IAtlasVcsRunner;
 begin
   inherited Create(AProcess, AWorkingDir);
   FSvn := ASvn;
@@ -367,8 +367,8 @@ begin
     FSvn := 'svn';
   end;
   // Kommandozeile: kein Fenster, der Hauptthread darf warten.
-  Runner := TShellPlatform.CreateVcsRunner(True, nil);
-  FVcs := TAtlasVersionControl.ForWorkingCopy(AWorkingCopy, Runner, ASvn, ATimeoutMs);
+  mRunner := TShellPlatform.CreateVcsRunner(True, nil);
+  FVcs := TAtlasVersionControl.ForWorkingCopy(AWorkingCopy, mRunner, ASvn, ATimeoutMs);
 end;
 
 function TSvnChanges.Name: string;
@@ -378,10 +378,10 @@ end;
 
 function TSvnChanges.Svn(const AArguments: TArray<string>): TArray<string>;
 var
-  ExitCode: Integer;
+  mExitCode: Integer;
 begin
   // Der von Detect gefundene Pfad, auch wenn svn nicht in PATH liegt (z. B. TortoiseSVN).
-  Result := Run(FSvn, ['--non-interactive'] + AArguments, True, ExitCode);
+  Result := Run(FSvn, ['--non-interactive'] + AArguments, True, mExitCode);
 end;
 
 // Geänderte Dateien zum Prüfen: A, M und R; gelöschte und fehlende Dateien gibt es nicht zu prüfen.

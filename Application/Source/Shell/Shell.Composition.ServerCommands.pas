@@ -39,7 +39,8 @@ type
     ProjectSourceFiles: TShellServerFilesFunc;
     /// <summary>Startet einen Compilerlauf von Hand für das Projekt der Datei ('' = aktives Projekt).</summary>
     Compile: TShellServerCompileFunc;
-    /// <summary>Der Arbeitsbereich der Datei hinter der URI; mit '' alle. Unter der Sperre der Arbeitsbereiche.</summary>
+    /// <summary>Der Arbeitsbereich der Datei hinter der URI; mit '' alle. Unter der Sperre der
+    /// Arbeitsbereiche.</summary>
     Workspaces: TShellServerWorkspacesFunc;
     IsSelectedProject: TShellServerSelectedFunc;
     /// <summary>Aktives Projekt der IDE.</summary>
@@ -71,10 +72,10 @@ type
     /// <summary>Arbeitsbereiche mit Index-Cache und den Prozessen daran (#62).</summary>
     function CollectProcesses: TArray<TLspProcessWorkspace>;
   public const
-    CompileCommand = 'atlas.server.compile';
-    SelectBuildCommand = 'atlas.server.selectBuild';
-    SelectProjectCommand = 'atlas.server.selectProject';
-    RebuildIndexCommand = 'atlas.server.rebuildIndex';
+    cCompileCommand = 'atlas.server.compile';
+    cSelectBuildCommand = 'atlas.server.selectBuild';
+    cSelectProjectCommand = 'atlas.server.selectProject';
+    cRebuildIndexCommand = 'atlas.server.rebuildIndex';
   public
     constructor Create(const AServices: TShellServerCommandServices);
     /// <summary>Reine Lesebefehle, nebenläufig (#874): Status, Prozesse, Prüfung und Katalog der Einstellungen.
@@ -152,14 +153,14 @@ end;
 
 procedure TShellServerCommands.RegisterActionCommands(ACommands: TLspCommands);
 begin
-  ACommands.Register(CompileCommand, RunCompile);
-  ACommands.Register(RebuildIndexCommand, RunRebuildIndex);
+  ACommands.Register(cCompileCommand, RunCompile);
+  ACommands.Register(cRebuildIndexCommand, RunRebuildIndex);
   ACommands.Register(cClearIndexCommand, RunClearIndex);
   // „Erneut versuchen“ nach dem Überspringen (#1355): Argument Uri der Datei, ohne alle.
-  ACommands.Register(TShellCrashCases.RetryCommand, RunRetryCrashCase);
+  ACommands.Register(TShellCrashCases.cRetryCommand, RunRetryCrashCase);
   ACommands.Register(TLspPullDiagnostics.cRecheckCommand, RunRecheck);
-  ACommands.Register(SelectBuildCommand, RunSelectBuild);
-  ACommands.Register(SelectProjectCommand, RunSelectProject);
+  ACommands.Register(cSelectBuildCommand, RunSelectBuild);
+  ACommands.Register(cSelectProjectCommand, RunSelectProject);
 end;
 
 procedure TShellServerCommands.RegisterConvertCommand(ACommands: TLspCommands);

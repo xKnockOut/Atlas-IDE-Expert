@@ -89,7 +89,7 @@ uses
 
 const
   /// <summary>Große Projektgruppen brauchen beim ersten Mal einige Sekunden (Index, Fundstellen).</summary>
-  TimeoutMs = 120000;
+  cTimeoutMs = 120000;
 
 type
   TArchitectureState = class
@@ -176,26 +176,26 @@ end;
 
 destructor TArchitectureState.Destroy;
 var
-  Frame: TAtlasArchitectureFrame;
+  mFrame: TAtlasArchitectureFrame;
 begin
   // Antworten, die noch unterwegs sind, finden FState nicht mehr und fallen weg.
   Inc(FRequest);
   TAtlasIdeArchitectureWindow.OnFrame := nil;
-  Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
-  if Frame <> nil then
+  mFrame := TAtlasIdeArchitectureWindow.ExistingFrame;
+  if mFrame <> nil then
   begin
-    Frame.OnRefresh := nil;
-    Frame.OnSave := nil;
-    Frame.OnSaveState := nil;
-    Frame.OnCompare := nil;
-    Frame.OnClearComparison := nil;
-    Frame.OnScopeChanged := nil;
-    Frame.OnLibraryChanged := nil;
-    Frame.OnResolutionChanged := nil;
-    Frame.OnRenameSubsystems := nil;
-    Frame.OnOpenUnit := nil;
-    Frame.OnOpenLocation := nil;
-    Frame.OnUnitRelations := nil;
+    mFrame.OnRefresh := nil;
+    mFrame.OnSave := nil;
+    mFrame.OnSaveState := nil;
+    mFrame.OnCompare := nil;
+    mFrame.OnClearComparison := nil;
+    mFrame.OnScopeChanged := nil;
+    mFrame.OnLibraryChanged := nil;
+    mFrame.OnResolutionChanged := nil;
+    mFrame.OnRenameSubsystems := nil;
+    mFrame.OnOpenUnit := nil;
+    mFrame.OnOpenLocation := nil;
+    mFrame.OnUnitRelations := nil;
   end;
   inherited Destroy;
 end;
@@ -317,10 +317,10 @@ end;
 
 procedure TArchitectureState.EnsureData;
 var
-  Frame: TAtlasArchitectureFrame;
+  mFrame: TAtlasArchitectureFrame;
 begin
-  Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
-  if (Frame <> nil) and not Frame.HasModel and not FPending then
+  mFrame := TAtlasIdeArchitectureWindow.ExistingFrame;
+  if (mFrame <> nil) and not mFrame.HasModel and not FPending then
   begin
     Refresh;
   end;
@@ -328,36 +328,36 @@ end;
 
 function TArchitectureState.ProjectUri(out AUri: string): Boolean;
 var
-  Project: IOTAProject;
+  mProject: IOTAProject;
 begin
   AUri := '';
-  Project := GetActiveProject;
-  Result := (Project <> nil) and (Project.FileName <> '');
+  mProject := GetActiveProject;
+  Result := (mProject <> nil) and (mProject.FileName <> '');
   if Result then
   begin
-    AUri := TLspSession.PathToUri(Project.FileName);
+    AUri := TLspSession.PathToUri(mProject.FileName);
   end;
 end;
 
 procedure TArchitectureState.ChangeScope(const AScope: string);
 var
-  Next: TAtlasPluginSettings;
+  mNext: TAtlasPluginSettings;
 begin
   FScope := AScope;
-  Next := TAtlasIdeSettings.Stored;
-  Next.ArchitectureScope := AScope;
-  TAtlasIdeSettings.Update(Next);
+  mNext := TAtlasIdeSettings.Stored;
+  mNext.ArchitectureScope := AScope;
+  TAtlasIdeSettings.Update(mNext);
   Refresh;
 end;
 
 procedure TArchitectureState.ChangeLibrary(AValue: Boolean);
 var
-  Next: TAtlasPluginSettings;
+  mNext: TAtlasPluginSettings;
 begin
   FIncludeLibrary := AValue;
-  Next := TAtlasIdeSettings.Stored;
-  Next.ArchitectureIncludeLibraryUnits := AValue;
-  TAtlasIdeSettings.Update(Next);
+  mNext := TAtlasIdeSettings.Stored;
+  mNext.ArchitectureIncludeLibraryUnits := AValue;
+  TAtlasIdeSettings.Update(mNext);
   Refresh;
 end;
 
@@ -463,52 +463,52 @@ end;
 
 procedure TArchitectureState.Refresh;
 var
-  Frame: TAtlasArchitectureFrame;
-  Uri, mArguments: string;
-  Request: Integer;
+  mFrame: TAtlasArchitectureFrame;
+  mUri, mArguments: string;
+  mRequest: Integer;
 begin
-  Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
-  if Frame = nil then
+  mFrame := TAtlasIdeArchitectureWindow.ExistingFrame;
+  if mFrame = nil then
   begin
     Exit;
   end;
-  if not ProjectUri(Uri) then
+  if not ProjectUri(mUri) then
   begin
-    Frame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoProject), False);
+    mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoProject), False);
     Exit;
   end;
   Inc(FRequest);
-  Request := FRequest;
+  mRequest := FRequest;
   FPending := True;
-  Frame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureLoading), True);
-  mArguments := TAtlasArchitectureCommands.Arguments(Uri, Options);
+  mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureLoading), True);
+  mArguments := TAtlasArchitectureCommands.Arguments(mUri, Options);
   // Neu benennen gilt einmal; der Server legt das Ergebnis als vorigen Stand ab (#1367).
   FRename := False;
-  if not FRun(TAtlasArchitectureCommands.Command, mArguments, TimeoutMs, AnswerHandler(Request)) then
+  if not FRun(TAtlasArchitectureCommands.cCommand, mArguments, cTimeoutMs, AnswerHandler(mRequest)) then
   begin
     FPending := False;
-    Frame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoServer), True);
+    mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoServer), True);
   end;
 end;
 
 procedure TArchitectureState.Save(const AFileName: string);
 var
-  Frame: TAtlasArchitectureFrame;
-  Uri: string;
+  mFrame: TAtlasArchitectureFrame;
+  mUri: string;
 begin
-  Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
-  if (Frame = nil) or (AFileName = '') then
+  mFrame := TAtlasIdeArchitectureWindow.ExistingFrame;
+  if (mFrame = nil) or (AFileName = '') then
   begin
     Exit;
   end;
-  if not ProjectUri(Uri) then
+  if not ProjectUri(mUri) then
   begin
-    Frame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoProject), True);
+    mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoProject), True);
     Exit;
   end;
-  if not FRun(TAtlasArchitectureCommands.SaveCommand,
-    TAtlasArchitectureCommands.SaveArguments(Uri, AFileName, Options),
-    TimeoutMs,
+  if not FRun(TAtlasArchitectureCommands.cSaveCommand,
+    TAtlasArchitectureCommands.SaveArguments(mUri, AFileName, Options),
+    cTimeoutMs,
     procedure(AAnswer: string)
     var
       Saved: string;
@@ -539,7 +539,7 @@ begin
         end);
     end) then
   begin
-    Frame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoServer), True);
+    mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoServer), True);
   end;
 end;
 
@@ -551,49 +551,49 @@ end;
 
 procedure TArchitectureState.ApplyRoute;
 var
-  Frame: TAtlasArchitectureFrame;
-  Units, Edges: TArray<Integer>;
+  mFrame: TAtlasArchitectureFrame;
+  mUnits, mEdges: TArray<Integer>;
 begin
-  Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
-  if (Length(FRoute) = 0) or (Frame = nil) or not Frame.HasModel then
+  mFrame := TAtlasIdeArchitectureWindow.ExistingFrame;
+  if (Length(FRoute) = 0) or (mFrame = nil) or not mFrame.HasModel then
   begin
     Exit;
   end;
-  if Frame.Model.RouteOf(FRoute, Units, Edges) then
+  if mFrame.Model.RouteOf(FRoute, mUnits, mEdges) then
   begin
-    Frame.Map.State.ShowRoute(Units, Edges);
+    mFrame.Map.State.ShowRoute(mUnits, mEdges);
   end
   else
   begin
-    Frame.Map.State.ClearPath;
+    mFrame.Map.State.ClearPath;
   end;
   FRoute := nil;
   // Die Karte zeigen, nicht eine Tabelle.
-  Frame.Parts.Pages.ActivePageIndex := 0;
+  mFrame.Parts.Pages.ActivePageIndex := 0;
 end;
 
 procedure TArchitectureState.ApplySettings;
 var
-  Frame: TAtlasArchitectureFrame;
-  Changed: Boolean;
+  mFrame: TAtlasArchitectureFrame;
+  mChanged: Boolean;
 begin
-  Changed := (FScope <> TAtlasIdeSettings.Current.ArchitectureScope) or
+  mChanged := (FScope <> TAtlasIdeSettings.Current.ArchitectureScope) or
     (FIncludeLibrary <> TAtlasIdeSettings.Current.ArchitectureIncludeLibraryUnits);
   // Feinheit und Regler (#1366) stehen in settings.json (Dialog der globalen Einstellungen).
-  Changed := ReadGrouping or Changed;
+  mChanged := ReadGrouping or mChanged;
   FScope := TAtlasIdeSettings.Current.ArchitectureScope;
   FIncludeLibrary := TAtlasIdeSettings.Current.ArchitectureIncludeLibraryUnits;
-  Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
-  if Frame = nil then
+  mFrame := TAtlasIdeArchitectureWindow.ExistingFrame;
+  if mFrame = nil then
   begin
     Exit;
   end;
-  Frame.ScopeValue := FScope;
-  Frame.IncludeLibrary := FIncludeLibrary;
-  Frame.ResolutionValue := FResolution;
-  Frame.ShowResolution := FShowResolution;
+  mFrame.ScopeValue := FScope;
+  mFrame.IncludeLibrary := FIncludeLibrary;
+  mFrame.ResolutionValue := FResolution;
+  mFrame.ShowResolution := FShowResolution;
   // Umfang oder Bibliotheks-Units auf der Optionsseite geändert: neu rechnen, solange das Fenster offen ist.
-  if Changed and TAtlasIdeArchitectureWindow.Visible then
+  if mChanged and TAtlasIdeArchitectureWindow.Visible then
   begin
     Refresh;
   end;
@@ -621,34 +621,34 @@ end;
 
 class procedure TAtlasIdeArchitecture.ShowWindow;
 var
-  Frame: TAtlasArchitectureFrame;
+  mFrame: TAtlasArchitectureFrame;
 begin
   if (FState = nil) or not Active then
   begin
     Exit;
   end;
-  Frame := TAtlasIdeArchitectureWindow.Show;
-  if Frame = nil then
+  mFrame := TAtlasIdeArchitectureWindow.Show;
+  if mFrame = nil then
   begin
     Exit;
   end;
   // Beim ersten Öffnen rechnen; danach nur auf „Neu berechnen“ (die Karte bleibt stehen, während man springt).
   TArchitectureState(FState).EnsureData;
-  if Frame.Parts.Filter.CanFocus then
+  if mFrame.Parts.Filter.CanFocus then
   begin
-    Frame.Parts.Filter.SetFocus;
+    mFrame.Parts.Filter.SetFocus;
   end;
 end;
 
 class procedure TAtlasIdeArchitecture.ShowRanking;
 var
-  Frame: TAtlasArchitectureFrame;
+  mFrame: TAtlasArchitectureFrame;
 begin
   ShowWindow;
-  Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
-  if (FState <> nil) and Active and (Frame <> nil) then
+  mFrame := TAtlasIdeArchitectureWindow.ExistingFrame;
+  if (FState <> nil) and Active and (mFrame <> nil) then
   begin
-    Frame.ShowCostRanking;
+    mFrame.ShowCostRanking;
   end;
 end;
 
@@ -679,13 +679,13 @@ end;
 
 class procedure TAtlasIdeArchitecture.ThemeChanged;
 var
-  Frame: TAtlasArchitectureFrame;
+  mFrame: TAtlasArchitectureFrame;
 begin
   TAtlasIdeArchitectureWindow.ApplyTheme;
-  Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
-  if Frame <> nil then
+  mFrame := TAtlasIdeArchitectureWindow.ExistingFrame;
+  if mFrame <> nil then
   begin
-    Frame.Map.Invalidate;
+    mFrame.Map.Invalidate;
   end;
 end;
 

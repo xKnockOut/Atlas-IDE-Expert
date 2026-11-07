@@ -29,7 +29,8 @@
 {$IMPLICITBUILD OFF}
 {$LIBSUFFIX AUTO}
 
-// Modul Build-Werkzeuge (#1456, ADR 0017): Aufgaben vor und nach dem Build, Compilerschalter, Startprofile, Build öffnen.
+// Modul Build-Werkzeuge (#1456, ADR 0017): Aufgaben vor und nach dem Build,
+// Compilerschalter, Startprofile, Build öffnen.
 // Meldet sich in der Unit-Initialisierung von Atlas.IDE.BuildTools.Composition über die Registry
 // des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen
 // (Regeln 1 bis 4). Requiret nur das Kern-Package

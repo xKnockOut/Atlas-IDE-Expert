@@ -26,7 +26,7 @@ type
 
   TAtlasTaskReports = class
   public const
-    MaxProblems = 2000;
+    cMaxProblems = 2000;
   public
     class function Severity(ASeverity: TAtlasTaskSeverity): TAtlasProblemSeverity; static;
     /// <summary>Probleme der Fundstellen AFindings der Aufgabe ATask (Quelle).</summary>
@@ -132,7 +132,7 @@ begin
     begin
       Continue;
     end;
-    if Length(Result) >= MaxProblems then
+    if Length(Result) >= cMaxProblems then
     begin
       Break;
     end;

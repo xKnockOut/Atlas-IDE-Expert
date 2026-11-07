@@ -36,39 +36,39 @@ uses
 
 procedure TJsoncScannerTests.SkipsSpaceAndComments;
 var
-  Position: Integer;
+  mPosition: Integer;
 begin
-  Position := 1;
-  Assert.IsTrue(TJsoncScanner.SkipSpace('  // a'#10' /* b */ x', Position));
-  Assert.AreEqual<Integer>(17, Position);
+  mPosition := 1;
+  Assert.IsTrue(TJsoncScanner.SkipSpace('  // a'#10' /* b */ x', mPosition));
+  Assert.AreEqual<Integer>(17, mPosition);
 end;
 
 procedure TJsoncScannerTests.LineCommentEndsAtCr;
 var
-  Position: Integer;
+  mPosition: Integer;
 begin
-  Position := 1;
-  Assert.IsTrue(TJsoncScanner.SkipSpace('// a'#13'x', Position));
-  Assert.AreEqual<Integer>(6, Position);
+  mPosition := 1;
+  Assert.IsTrue(TJsoncScanner.SkipSpace('// a'#13'x', mPosition));
+  Assert.AreEqual<Integer>(6, mPosition);
 end;
 
 procedure TJsoncScannerTests.OpenBlockCommentReturnsFalse;
 var
-  Position, OpenComment: Integer;
+  mPosition, mOpenComment: Integer;
 begin
-  Position := 1;
-  Assert.IsFalse(TJsoncScanner.SkipSpace(' /* a */ /* offen', Position, OpenComment));
-  Assert.AreEqual<Integer>(10, OpenComment);
-  Assert.AreEqual<Integer>(18, Position);
-  Position := 1;
-  Assert.IsTrue(TJsoncScanner.SkipSpace('x', Position, OpenComment));
-  Assert.AreEqual<Integer>(0, OpenComment);
+  mPosition := 1;
+  Assert.IsFalse(TJsoncScanner.SkipSpace(' /* a */ /* offen', mPosition, mOpenComment));
+  Assert.AreEqual<Integer>(10, mOpenComment);
+  Assert.AreEqual<Integer>(18, mPosition);
+  mPosition := 1;
+  Assert.IsTrue(TJsoncScanner.SkipSpace('x', mPosition, mOpenComment));
+  Assert.AreEqual<Integer>(0, mOpenComment);
 end;
 
 procedure TJsoncScannerTests.StripCommentsKeepsStrings;
 begin
-  Assert.AreEqual('{"a": "http://x /* y */", "b": 1     }',
-    TJsoncScanner.StripComments('{"a": "http://x /* y */", "b": 1 /**/}'));
+  Assert.AreEqual('{"a": "http://x /* y */", "b": 1     }', // lsp-ignore: security-insecure-http
+    TJsoncScanner.StripComments('{"a": "http://x /* y */", "b": 1 /**/}')); // lsp-ignore: security-insecure-http
   Assert.AreEqual('{"a\"//": 1}', TJsoncScanner.StripComments('{"a\"//": 1}'));
 end;
 
@@ -109,17 +109,17 @@ end;
 
 procedure TJsoncScannerTests.LineColumnCountsLineBreaks;
 var
-  Line, Column: Integer;
+  mLine, mColumn: Integer;
 begin
-  TJsoncScanner.LineColumn('{'#13#10'  "version": 1'#13#10'  "tracker": {}'#13#10'}', 22, Line, Column);
-  Assert.AreEqual<Integer>(3, Line, 'CRLF');
-  Assert.AreEqual<Integer>(3, Column);
-  TJsoncScanner.LineColumn('a'#10'b'#13'cd', 6, Line, Column);
-  Assert.AreEqual<Integer>(3, Line, 'LF und CR');
-  Assert.AreEqual<Integer>(2, Column);
-  TJsoncScanner.LineColumn('abc', 2, Line, Column);
-  Assert.AreEqual<Integer>(1, Line);
-  Assert.AreEqual<Integer>(2, Column);
+  TJsoncScanner.LineColumn('{'#13#10'  "version": 1'#13#10'  "tracker": {}'#13#10'}', 22, mLine, mColumn);
+  Assert.AreEqual<Integer>(3, mLine, 'CRLF');
+  Assert.AreEqual<Integer>(3, mColumn);
+  TJsoncScanner.LineColumn('a'#10'b'#13'cd', 6, mLine, mColumn);
+  Assert.AreEqual<Integer>(3, mLine, 'LF und CR');
+  Assert.AreEqual<Integer>(2, mColumn);
+  TJsoncScanner.LineColumn('abc', 2, mLine, mColumn);
+  Assert.AreEqual<Integer>(1, mLine);
+  Assert.AreEqual<Integer>(2, mColumn);
 end;
 
 initialization

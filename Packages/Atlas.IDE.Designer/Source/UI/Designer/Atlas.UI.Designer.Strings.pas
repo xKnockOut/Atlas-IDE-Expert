@@ -40,7 +40,7 @@ uses
   Atlas.UI.Strings;
 
 const
-  Texts: array[TAtlasLanguage, TAtlasDesignerTextId] of string = (
+  cTexts: array[TAtlasLanguage, TAtlasDesignerTextId] of string = (
     ('Nichtvisuelle Komponenten ein- und ausblenden (Strg+H der IDE)',
      'Die IDE bietet hier kein Ein- und Ausblenden der Nichtvisuellen an.',
      'Elternelement auswählen',
@@ -154,12 +154,12 @@ const
 
 class function TAtlasDesignerStrings.Text(AId: TAtlasDesignerTextId): string;
 begin
-  Result := Texts[TAtlasStrings.Language, AId];
+  Result := cTexts[TAtlasStrings.Language, AId];
 end;
 
 class function TAtlasDesignerStrings.Fmt(AId: TAtlasDesignerTextId; const AArgs: array of const): string;
 begin
-  Result := Format(Texts[TAtlasStrings.Language, AId], AArgs);
+  Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
 end;
 
 end.

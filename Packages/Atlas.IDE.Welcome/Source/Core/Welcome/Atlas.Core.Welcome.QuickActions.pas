@@ -100,17 +100,17 @@ type
 
   TAtlasWelcomeQuickActions = class
   public const
-    Names: array[TAtlasQuickAction] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console', 'tasks');
-    DefaultItems = 'build,tests,run,pull,folder,console,tasks';
-    DefaultConsole = 'wt.exe';
-    FallbackConsole = 'cmd.exe';
+    cNames: array[TAtlasQuickAction] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console', 'tasks');
+    cDefaultItems = 'build,tests,run,pull,folder,console,tasks';
+    cDefaultConsole = 'wt.exe';
+    cFallbackConsole = 'cmd.exe';
     /// <summary>Strg+B und Strg+T als TShortCut (scCtrl or Ord(Taste)).</summary>
-    DefaultBuildKey = $4042;
-    DefaultTestKey = $4054;
+    cDefaultBuildKey = $4042;
+    cDefaultTestKey = $4054;
     /// <summary>Zeitlimit für Pull bzw. svn update (spricht mit dem Server).</summary>
-    PullTimeoutMs = 120000;
+    cPullTimeoutMs = 120000;
     /// <summary>Auftraggeber der Builds in den Compile-Ereignissen (#527): keine Tests nach dem Build (#69).</summary>
-    RequestedBy = 'welcome';
+    cRequestedBy = 'welcome';
   public
     /// <summary>Bekannte Namen aus AText (Komma, Semikolon, Leerzeichen; Groß-/Kleinschreibung egal).</summary>
     class function ParseItems(const AText: string): TAtlasQuickActions; static;
@@ -177,78 +177,78 @@ uses
   Atlas.Text.DUnitX;
 
 const
-  Delimiter = '\';
+  cDelimiter = '\';
 
 function FolderOf(const AFileName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := Length(AFileName) downto 1 do
+  for mIndex := Length(AFileName) downto 1 do
   begin
-    if (AFileName[Index] = '\') or (AFileName[Index] = '/') then
+    if (AFileName[mIndex] = '\') or (AFileName[mIndex] = '/') then
     begin
-      Exit(Copy(AFileName, 1, Index - 1));
+      Exit(Copy(AFileName, 1, mIndex - 1));
     end;
   end;
 end;
 
 function NameOf(const AFileName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AFileName;
-  for Index := Length(AFileName) downto 1 do
+  for mIndex := Length(AFileName) downto 1 do
   begin
-    if (AFileName[Index] = '\') or (AFileName[Index] = '/') then
+    if (AFileName[mIndex] = '\') or (AFileName[mIndex] = '/') then
     begin
-      Exit(Copy(AFileName, Index + 1, MaxInt));
+      Exit(Copy(AFileName, mIndex + 1, MaxInt));
     end;
   end;
 end;
 
 function BaseNameOf(const AFileName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := NameOf(AFileName);
-  for Index := Length(Result) downto 1 do
+  for mIndex := Length(Result) downto 1 do
   begin
-    if Result[Index] = '.' then
+    if Result[mIndex] = '.' then
     begin
-      Exit(Copy(Result, 1, Index - 1));
+      Exit(Copy(Result, 1, mIndex - 1));
     end;
   end;
 end;
 
 function ExtensionOf(const AFileName: string): string;
 var
-  Name: string;
-  Index: Integer;
+  mName: string;
+  mIndex: Integer;
 begin
   Result := '';
-  Name := NameOf(AFileName);
-  for Index := Length(Name) downto 1 do
+  mName := NameOf(AFileName);
+  for mIndex := Length(mName) downto 1 do
   begin
-    if Name[Index] = '.' then
+    if mName[mIndex] = '.' then
     begin
-      Exit(LowerCase(Copy(Name, Index, MaxInt)));
+      Exit(LowerCase(Copy(mName, mIndex, MaxInt)));
     end;
   end;
 end;
 
 function WithExtension(const AFileName, AExtension: string): string;
 var
-  Name: string;
-  Index: Integer;
+  mName: string;
+  mIndex: Integer;
 begin
-  Name := NameOf(AFileName);
+  mName := NameOf(AFileName);
   Result := AFileName;
-  for Index := Length(Name) downto 1 do
+  for mIndex := Length(mName) downto 1 do
   begin
-    if Name[Index] = '.' then
+    if mName[mIndex] = '.' then
     begin
-      Exit(Copy(AFileName, 1, Length(AFileName) - Length(Name) + Index - 1) + AExtension);
+      Exit(Copy(AFileName, 1, Length(AFileName) - Length(mName) + mIndex - 1) + AExtension);
     end;
   end;
   Result := AFileName + AExtension;
@@ -256,12 +256,12 @@ end;
 
 function ContainsText(const AItems: TArray<string>; const AValue: string): Boolean;
 var
-  Item: string;
+  mItem: string;
 begin
   Result := False;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if SameText(Item, AValue) then
+    if SameText(mItem, AValue) then
     begin
       Exit(True);
     end;
@@ -271,22 +271,22 @@ end;
 /// <summary>Wert des Attributs bzw. Inhalts zwischen AStart (ab APos) und ADelimiter; '' ohne.</summary>
 function NextValue(const AText, AStart, ADelimiter: string; var APos: Integer; out AValue: string): Boolean;
 var
-  Start, Stop: Integer;
+  mStart, mStop: Integer;
 begin
   AValue := '';
-  Start := Pos(AStart, AText, APos);
-  if Start = 0 then
+  mStart := Pos(AStart, AText, APos);
+  if mStart = 0 then
   begin
     Exit(False);
   end;
-  Inc(Start, Length(AStart));
-  Stop := Pos(ADelimiter, AText, Start);
-  if Stop = 0 then
+  Inc(mStart, Length(AStart));
+  mStop := Pos(ADelimiter, AText, mStart);
+  if mStop = 0 then
   begin
     Exit(False);
   end;
-  AValue := Copy(AText, Start, Stop - Start);
-  APos := Stop + Length(ADelimiter);
+  AValue := Copy(AText, mStart, mStop - mStart);
+  APos := mStop + Length(ADelimiter);
   Result := True;
 end;
 
@@ -346,17 +346,17 @@ end;
 
 class function TAtlasWelcomeQuickActions.ParseItems(const AText: string): TAtlasQuickActions;
 var
-  Part: string;
-  Action: TAtlasQuickAction;
+  mPart: string;
+  mAction: TAtlasQuickAction;
 begin
   Result := [];
-  for Part in AText.Split([',', ';', ' ']) do
+  for mPart in AText.Split([',', ';', ' ']) do
   begin
-    for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
+    for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
     begin
-      if SameText(Trim(Part), Names[Action]) then
+      if SameText(Trim(mPart), cNames[mAction]) then
       begin
-        Include(Result, Action);
+        Include(Result, mAction);
       end;
     end;
   end;
@@ -364,18 +364,18 @@ end;
 
 class function TAtlasWelcomeQuickActions.ItemsText(AItems: TAtlasQuickActions): string;
 var
-  Action: TAtlasQuickAction;
+  mAction: TAtlasQuickAction;
 begin
   Result := '';
-  for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
+  for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
   begin
-    if Action in AItems then
+    if mAction in AItems then
     begin
       if Result <> '' then
       begin
         Result := Result + ',';
       end;
-      Result := Result + Names[Action];
+      Result := Result + cNames[mAction];
     end;
   end;
 end;
@@ -390,7 +390,7 @@ begin
   Result := Trim(AText);
   if Result = '' then
   begin
-    Result := DefaultConsole;
+    Result := cDefaultConsole;
   end;
 end;
 
@@ -431,53 +431,53 @@ end;
 class function TAtlasWelcomeQuickActions.Buttons(AItems: TAtlasQuickActions; const AVcs: TAtlasProjectVcs;
   ABusy: Boolean; AIdeBusy: Boolean): TAtlasQuickActionButtons;
 var
-  Action: TAtlasQuickAction;
-  Button: TAtlasQuickActionButton;
+  mAction: TAtlasQuickAction;
+  mButton: TAtlasQuickActionButton;
 begin
   Result := nil;
-  for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
+  for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
   begin
-    if not (Action in AItems) then
+    if not (mAction in AItems) then
     begin
       Continue;
     end;
-    Button := Default(TAtlasQuickActionButton);
-    Button.Action := Action;
-    Button.Block := TAtlasPullBlock.None;
+    mButton := Default(TAtlasQuickActionButton);
+    mButton.Action := mAction;
+    mButton.Block := TAtlasPullBlock.None;
     // Ordner und Konsole stören keine laufende Aktion.
-    Button.Enabled := not ABusy or (Action = TAtlasQuickAction.Folder) or (Action = TAtlasQuickAction.Console);
+    mButton.Enabled := not ABusy or (mAction = TAtlasQuickAction.Folder) or (mAction = TAtlasQuickAction.Console);
     // Die IDE öffnet immer nur ein Projekt zur Zeit.
-    if AIdeBusy and UsesIde(Action) then
+    if AIdeBusy and UsesIde(mAction) then
     begin
-      Button.Enabled := False;
+      mButton.Enabled := False;
     end;
-    Button.HasMenu := (Action = TAtlasQuickAction.Build) or (Action = TAtlasQuickAction.Run) or
-      (Action = TAtlasQuickAction.Tasks);
-    if Action = TAtlasQuickAction.Pull then
+    mButton.HasMenu := (mAction = TAtlasQuickAction.Build) or (mAction = TAtlasQuickAction.Run) or
+      (mAction = TAtlasQuickAction.Tasks);
+    if mAction = TAtlasQuickAction.Pull then
     begin
-      Button.Update := IsUpdate(AVcs);
-      Button.Block := PullBlock(AVcs);
-      if (Button.Block = TAtlasPullBlock.None) and ABusy then
+      mButton.Update := IsUpdate(AVcs);
+      mButton.Block := PullBlock(AVcs);
+      if (mButton.Block = TAtlasPullBlock.None) and ABusy then
       begin
-        Button.Block := TAtlasPullBlock.Busy;
+        mButton.Block := TAtlasPullBlock.Busy;
       end;
-      Button.Enabled := Button.Block = TAtlasPullBlock.None;
+      mButton.Enabled := mButton.Block = TAtlasPullBlock.None;
     end;
-    Result := Result + [Button];
+    Result := Result + [mButton];
   end;
 end;
 
 class function TAtlasWelcomeQuickActions.IndexOf(const AButtons: TAtlasQuickActionButtons;
   AAction: TAtlasQuickAction): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
-  for Index := 0 to High(AButtons) do
+  for mIndex := 0 to High(AButtons) do
   begin
-    if AButtons[Index].Action = AAction then
+    if AButtons[mIndex].Action = AAction then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
@@ -527,104 +527,104 @@ end;
 class function TAtlasWelcomeQuickActions.MoveButton(const AButtons: TAtlasQuickActionButtons; ACurrent,
   ADelta: Integer): Integer;
 var
-  Index, Step: Integer;
+  mIndex, mStep: Integer;
 begin
   Result := ACurrent;
   if (ADelta = 0) or (Length(AButtons) = 0) then
   begin
     Exit;
   end;
-  Step := 1;
+  mStep := 1;
   if ADelta < 0 then
   begin
-    Step := -1;
+    mStep := -1;
   end;
-  Index := ACurrent + Step;
+  mIndex := ACurrent + mStep;
   // Ohne gewählten Knopf beginnt „links“ beim letzten.
-  if (ACurrent < 0) and (Step < 0) then
+  if (ACurrent < 0) and (mStep < 0) then
   begin
-    Index := High(AButtons);
+    mIndex := High(AButtons);
   end;
-  while (Index >= 0) and (Index <= High(AButtons)) do
+  while (mIndex >= 0) and (mIndex <= High(AButtons)) do
   begin
-    if AButtons[Index].Enabled then
+    if AButtons[mIndex].Enabled then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
-    Inc(Index, Step);
+    Inc(mIndex, mStep);
   end;
 end;
 
 class function TAtlasWelcomeQuickActions.ConsoleCommand(const AProgram, AFolder: string; out AFileName,
   AParameters: string): Boolean;
 var
-  Folder, Quoted, Base: string;
+  mFolder, mQuoted, mBase: string;
 begin
   AFileName := NormalizedConsole(AProgram);
   AParameters := '';
-  Folder := Trim(AFolder);
-  Result := Folder <> '';
+  mFolder := Trim(AFolder);
+  Result := mFolder <> '';
   if not Result then
   begin
     Exit;
   end;
   // Ein Backslash vor dem schließenden Anführungszeichen würde es maskieren („C:\“ → „C:\.“).
-  Quoted := Folder;
-  if (Quoted[Length(Quoted)] = '\') or (Quoted[Length(Quoted)] = '/') then
+  mQuoted := mFolder;
+  if (mQuoted[Length(mQuoted)] = '\') or (mQuoted[Length(mQuoted)] = '/') then
   begin
-    Quoted := Quoted + '.';
+    mQuoted := mQuoted + '.';
   end;
-  Base := LowerCase(BaseNameOf(AFileName));
-  if Base = 'wt' then
+  mBase := LowerCase(BaseNameOf(AFileName));
+  if mBase = 'wt' then
   begin
-    AParameters := '-d "' + Quoted + '"';
+    AParameters := '-d "' + mQuoted + '"';
   end
-  else if Base = 'cmd' then
+  else if mBase = 'cmd' then
   begin
-    AParameters := '/K cd /d "' + Quoted + '"';
+    AParameters := '/K cd /d "' + mQuoted + '"';
   end
-  else if (Base = 'powershell') or (Base = 'pwsh') then
+  else if (mBase = 'powershell') or (mBase = 'pwsh') then
   begin
-    AParameters := '-NoExit -Command Set-Location -LiteralPath ''' + StringReplace(Quoted, '''', '''''',
+    AParameters := '-NoExit -Command Set-Location -LiteralPath ''' + StringReplace(mQuoted, '''', '''''',
       [rfReplaceAll]) + '''';
   end;
 end;
 
 class function TAtlasWelcomeQuickActions.ReadTargets(const AText: string): TAtlasProjectTargets;
 var
-  Position: Integer;
-  Value, Content: string;
-  Stop: Integer;
+  mPosition: Integer;
+  mValue, mContent: string;
+  mStop: Integer;
 begin
   Result := Default(TAtlasProjectTargets);
-  Position := 1;
-  while NextValue(AText, '<BuildConfiguration Include="', '"', Position, Value) do
+  mPosition := 1;
+  while NextValue(AText, '<BuildConfiguration Include="', '"', mPosition, mValue) do
   begin
-    Value := Trim(XmlDecoded(Value));
-    if (Value <> '') and not SameText(Value, 'Base') and not ContainsText(Result.Configurations, Value) then
+    mValue := Trim(XmlDecoded(mValue));
+    if (mValue <> '') and not SameText(mValue, 'Base') and not ContainsText(Result.Configurations, mValue) then
     begin
-      Result.Configurations := Result.Configurations + [Value];
+      Result.Configurations := Result.Configurations + [mValue];
     end;
   end;
-  Position := 1;
-  while NextValue(AText, '<Platform value="', '"', Position, Value) do
+  mPosition := 1;
+  while NextValue(AText, '<Platform value="', '"', mPosition, mValue) do
   begin
     // <Platform value="Win64">True</Platform>; False = im Projekt abgeschaltet.
-    Content := '';
-    if Copy(AText, Position, 1) = '>' then
+    mContent := '';
+    if Copy(AText, mPosition, 1) = '>' then
     begin
-      Inc(Position);
-      Stop := Pos('<', AText, Position);
-      if Stop > 0 then
+      Inc(mPosition);
+      mStop := Pos('<', AText, mPosition);
+      if mStop > 0 then
       begin
-        Content := Copy(AText, Position, Stop - Position);
-        Position := Stop;
+        mContent := Copy(AText, mPosition, mStop - mPosition);
+        mPosition := mStop;
       end;
     end;
-    Value := Trim(XmlDecoded(Value));
-    if (Value <> '') and SameText(Trim(Content), 'True') and not ContainsText(Result.Platforms, Value) then
+    mValue := Trim(XmlDecoded(mValue));
+    if (mValue <> '') and SameText(Trim(mContent), 'True') and not ContainsText(Result.Platforms, mValue) then
     begin
-      Result.Platforms := Result.Platforms + [Value];
+      Result.Platforms := Result.Platforms + [mValue];
     end;
   end;
 end;
@@ -632,79 +632,79 @@ end;
 class procedure TAtlasWelcomeQuickActions.ChooseTarget(const ATargets: TAtlasProjectTargets;
   const ALastConfiguration, ALastPlatform: string; out AConfiguration, APlatform: string);
 var
-  Name: string;
+  mName: string;
 begin
   AConfiguration := '';
   APlatform := '';
   // Schreibweise der Datei, damit die IDE die Konfiguration sicher findet.
-  for Name in ATargets.Configurations do
+  for mName in ATargets.Configurations do
   begin
-    if SameText(Name, ALastConfiguration) then
+    if SameText(mName, ALastConfiguration) then
     begin
-      AConfiguration := Name;
+      AConfiguration := mName;
     end;
   end;
-  for Name in ATargets.Platforms do
+  for mName in ATargets.Platforms do
   begin
-    if SameText(Name, ALastPlatform) then
+    if SameText(mName, ALastPlatform) then
     begin
-      APlatform := Name;
+      APlatform := mName;
     end;
   end;
 end;
 
 class function TAtlasWelcomeQuickActions.CombinePath(const AFolder, ARelative: string): string;
 var
-  Parts, Kept: TArray<string>;
-  Part, Joined: string;
+  mParts, mKept: TArray<string>;
+  mPart, mJoined: string;
 begin
-  Joined := StringReplace(ARelative, '/', Delimiter, [rfReplaceAll]);
+  mJoined := StringReplace(ARelative, '/', cDelimiter, [rfReplaceAll]);
   // Absoluter Pfad (Laufwerk oder UNC) bleibt, sonst relativ zu AFolder.
-  if not ((Length(Joined) > 1) and ((Joined[2] = ':') or (Copy(Joined, 1, 2) = '\\'))) then
+  if not ((Length(mJoined) > 1) and ((mJoined[2] = ':') or (Copy(mJoined, 1, 2) = '\\'))) then
   begin
-    Joined := StringReplace(AFolder, '/', Delimiter, [rfReplaceAll]) + Delimiter + Joined;
+    mJoined := StringReplace(AFolder, '/', cDelimiter, [rfReplaceAll]) + cDelimiter + mJoined;
   end;
-  Kept := nil;
-  Parts := Joined.Split([Delimiter]);
-  for Part in Parts do
+  mKept := nil;
+  mParts := mJoined.Split([cDelimiter]);
+  for mPart in mParts do
   begin
-    if (Part = '.') or ((Part = '') and (Length(Kept) > 0)) then
+    if (mPart = '.') or ((mPart = '') and (Length(mKept) > 0)) then
     begin
       Continue;
     end;
-    if (Part = '..') and (Length(Kept) > 1) and (Kept[High(Kept)] <> '..') then
+    if (mPart = '..') and (Length(mKept) > 1) and (mKept[High(mKept)] <> '..') then
     begin
-      SetLength(Kept, Length(Kept) - 1);
+      SetLength(mKept, Length(mKept) - 1);
       Continue;
     end;
-    Kept := Kept + [Part];
+    mKept := mKept + [mPart];
   end;
-  Result := string.Join(Delimiter, Kept);
+  Result := string.Join(cDelimiter, mKept);
   // UNC: zwei führende Trenner.
-  if Copy(Joined, 1, 2) = '\\' then
+  if Copy(mJoined, 1, 2) = '\\' then
   begin
-    Result := Delimiter + Result;
+    Result := cDelimiter + Result;
   end;
 end;
 
 class function TAtlasWelcomeQuickActions.GroupProjects(const AText, AFolder: string): TArray<string>;
 var
-  Position: Integer;
-  Value, Path: string;
+  mPosition: Integer;
+  mValue, mPath: string;
 begin
   Result := nil;
-  Position := 1;
-  while NextValue(AText, '<Projects Include="', '"', Position, Value) do
+  mPosition := 1;
+  while NextValue(AText, '<Projects Include="', '"', mPosition, mValue) do
   begin
-    Value := Trim(XmlDecoded(Value));
-    if Value = '' then
+    mValue := Trim(XmlDecoded(mValue));
+    if mValue = '' then
     begin
       Continue;
     end;
-    Path := CombinePath(AFolder, Value);
-    if not ContainsText(Result, Path) then
+    mPath := CombinePath(AFolder, mValue);
+    if not ContainsText(Result, mPath) then
     begin
-      Result := Result + [Path];
+      Result := Result + [mPath];
     end;
   end;
 end;
@@ -716,33 +716,33 @@ end;
 
 class function TAtlasWelcomeQuickActions.TestCandidates(const AProject: string): TArray<string>;
 const
-  Patterns: array[0..3] of string = ('%s.Tests.dproj', '%sTests.dproj', '%s.Test.dproj', '%sTest.dproj');
-  Folders: array[0..4] of string = ('', 'Tests', 'Test', '..\Tests', '..\Test');
+  cPatterns: array[0..3] of string = ('%s.Tests.dproj', '%sTests.dproj', '%s.Test.dproj', '%sTest.dproj');
+  cFolders: array[0..4] of string = ('', 'Tests', 'Test', '..\Tests', '..\Test');
 var
-  Name, Folder, Sub, Pattern, Path: string;
+  mName, mFolder, mSub, mPattern, mPath: string;
 begin
   Result := nil;
-  Name := BaseNameOf(AProject);
-  Folder := FolderOf(AProject);
-  if Name = '' then
+  mName := BaseNameOf(AProject);
+  mFolder := FolderOf(AProject);
+  if mName = '' then
   begin
     Exit;
   end;
-  for Sub in Folders do
+  for mSub in cFolders do
   begin
-    for Pattern in Patterns do
+    for mPattern in cPatterns do
     begin
-      if Sub = '' then
+      if mSub = '' then
       begin
-        Path := CombinePath(Folder, Format(Pattern, [Name]));
+        mPath := CombinePath(mFolder, Format(mPattern, [mName]));
       end
       else
       begin
-        Path := CombinePath(Folder, Sub + Delimiter + Format(Pattern, [Name]));
+        mPath := CombinePath(mFolder, mSub + cDelimiter + Format(mPattern, [mName]));
       end;
-      if not SameText(Path, AProject) and not ContainsText(Result, Path) then
+      if not SameText(mPath, AProject) and not ContainsText(Result, mPath) then
       begin
-        Result := Result + [Path];
+        Result := Result + [mPath];
       end;
     end;
   end;

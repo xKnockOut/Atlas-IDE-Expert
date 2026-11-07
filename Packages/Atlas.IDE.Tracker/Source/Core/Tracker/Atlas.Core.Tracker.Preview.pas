@@ -35,7 +35,7 @@ type
 
   TAtlasIssueHistory = class
   public const
-    MaxEntries = 20;
+    cMaxEntries = 20;
   private
     FEntries: TArray<TAtlasIssueHistoryEntry>;
     FIndex: Integer;
@@ -75,15 +75,15 @@ type
   TAtlasIssuePreview = class
   public const
     /// <summary>So viele neueste Kommentare sind offen; ältere eingeklappt.</summary>
-    ShownComments = 3;
+    cShownComments = 3;
     /// <summary>Zeitgrenze des Ladens.</summary>
-    TimeoutMs = 10000;
+    cTimeoutMs = 10000;
     /// <summary>Größte Bilddatei für die Vorschau.</summary>
-    MaxImageBytes = 8 * 1024 * 1024;
+    cMaxImageBytes = 8 * 1024 * 1024;
     /// <summary>Größter Anhang zum Öffnen.</summary>
-    MaxAttachmentBytes = 64 * 1024 * 1024;
+    cMaxAttachmentBytes = 64 * 1024 * 1024;
     /// <summary>Spielraum zwischen dem Anker einer Meldung und der Zeit des Kommentars.</summary>
-    AnchorSlackMs = 2000;
+    cAnchorSlackMs = 2000;
     /// <summary>Endungen, die Atlas nicht startet, sondern im Explorer zeigt.</summary>
     cRiskyExtensions = '.exe.com.bat.cmd.scr.pif.msi.msp.ps1.psm1.vbs.vbe.js.jse.wsf.wsh.hta.lnk.reg.cpl.jar.dll.' +
       'appref-ms.application.';
@@ -164,9 +164,9 @@ begin
   end;
   SetLength(FEntries, FIndex + 1);
   FEntries := FEntries + [AEntry];
-  if Length(FEntries) > MaxEntries then
+  if Length(FEntries) > cMaxEntries then
   begin
-    FEntries := Copy(FEntries, Length(FEntries) - MaxEntries, MaxEntries);
+    FEntries := Copy(FEntries, Length(FEntries) - cMaxEntries, cMaxEntries);
   end;
   FIndex := High(FEntries);
 end;
@@ -297,9 +297,9 @@ end;
 class function TAtlasIssuePreview.CollapsedComments(ACount: Integer; AExpanded: Boolean): Integer;
 begin
   Result := 0;
-  if not AExpanded and (ACount > ShownComments) then
+  if not AExpanded and (ACount > cShownComments) then
   begin
-    Result := ACount - ShownComments;
+    Result := ACount - cShownComments;
   end;
 end;
 
@@ -315,7 +315,7 @@ begin
   end;
   for mIndex := 0 to High(AComments) do
   begin
-    if AComments[mIndex].Created >= AAnchor - AnchorSlackMs / MSecsPerDay then
+    if AComments[mIndex].Created >= AAnchor - cAnchorSlackMs / MSecsPerDay then
     begin
       Exit(mIndex);
     end;
@@ -403,7 +403,7 @@ end;
 
 class function TAtlasIssuePreview.KeyExample(const AProvider: string): string;
 begin
-  if SameText(AProvider, TAtlasTrackerTarget.GitHub) then
+  if SameText(AProvider, TAtlasTrackerTarget.cGitHub) then
   begin
     Result := '#753';
   end
@@ -486,7 +486,7 @@ var
   mText: string;
 begin
   mText := KeyFromAddress(Trim(AInput));
-  if SameText(AProvider, TAtlasTrackerTarget.GitHub) then
+  if SameText(AProvider, TAtlasTrackerTarget.cGitHub) then
   begin
     Result := GitHubKeyOf(mText);
   end

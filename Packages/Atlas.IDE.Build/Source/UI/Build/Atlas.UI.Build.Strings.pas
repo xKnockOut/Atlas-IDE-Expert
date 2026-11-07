@@ -64,7 +64,7 @@ uses
   Atlas.UI.Strings;
 
 const
-  Texts: array[TAtlasLanguage, TAtlasBuildTextId] of string = (
+  cTexts: array[TAtlasLanguage, TAtlasBuildTextId] of string = (
     ('Startprofil: …',
      'Startprofil: %s',
      'Startprofil: –',
@@ -391,12 +391,12 @@ const
 
 class function TAtlasBuildStrings.Text(AId: TAtlasBuildTextId): string;
 begin
-  Result := Texts[TAtlasStrings.Language, AId];
+  Result := cTexts[TAtlasStrings.Language, AId];
 end;
 
 class function TAtlasBuildStrings.Fmt(AId: TAtlasBuildTextId; const AArgs: array of const): string;
 begin
-  Result := Format(Texts[TAtlasStrings.Language, AId], AArgs);
+  Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
 end;
 
 end.

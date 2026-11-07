@@ -65,8 +65,8 @@ type
 
   TAtlasUpdates = class
   public const
-    cVersionUrl = TUpdateChannels.StableUrl;
-    cReleasesUrl = TUpdateChannels.ReleasesUrl;
+    cVersionUrl = TUpdateChannels.cStableUrl;
+    cReleasesUrl = TUpdateChannels.cReleasesUrl;
     cTimeoutMs = 10000;
   public
     /// <summary>SemVer-Vergleich: negativ, 0 oder positiv; ungültige Versionen sind kleiner als gültige.</summary>

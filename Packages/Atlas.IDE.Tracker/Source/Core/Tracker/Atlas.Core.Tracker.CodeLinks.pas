@@ -94,7 +94,7 @@ type
   TAtlasCodeLinks = class
   public const
     /// <summary>Höchstens so viele Ziffern hat eine Nummer.</summary>
-    MaxDigits = 9;
+    cMaxDigits = 9;
   public
     /// <summary>Alle Kennungen in AText (etwa einer Commit-Nachricht), Place Comment.</summary>
     class function FindKeys(const APattern: TAtlasIssueKeyPattern; const AText: string):
@@ -218,21 +218,21 @@ var
   mProject: string;
 begin
   Result := Empty;
-  if SameText(ATarget.Provider, TAtlasTrackerTarget.GitHub) then
+  if SameText(ATarget.Provider, TAtlasTrackerTarget.cGitHub) then
   begin
     mProject := LowerCase(Trim(ATarget.Project));
     if (Pos('/', mProject) > 1) and (Pos('/', mProject) < Length(mProject)) then
     begin
-      Result.Provider := TAtlasTrackerTarget.GitHub;
+      Result.Provider := TAtlasTrackerTarget.cGitHub;
       Result.Repository := mProject;
     end;
   end
-  else if SameText(ATarget.Provider, TAtlasTrackerTarget.YouTrack) then
+  else if SameText(ATarget.Provider, TAtlasTrackerTarget.cYouTrack) then
   begin
     Result.Projects := YouTrackProjects(ATarget.Project);
     if Length(Result.Projects) > 0 then
     begin
-      Result.Provider := TAtlasTrackerTarget.YouTrack;
+      Result.Provider := TAtlasTrackerTarget.cYouTrack;
     end;
   end;
 end;
@@ -297,7 +297,7 @@ begin
     Inc(mNumberEnd);
   end;
   mDigits := mNumberEnd - mEnd - 1;
-  if (mDigits < 1) or (mDigits > TAtlasCodeLinks.MaxDigits) then
+  if (mDigits < 1) or (mDigits > TAtlasCodeLinks.cMaxDigits) then
   begin
     Exit;
   end;
@@ -385,7 +385,7 @@ begin
   AMatch := Default(TAtlasIssueKeyMatch);
   mNumberEnd := DigitsEnd(AText, AIndex + 1, ALast);
   mDigits := mNumberEnd - AIndex - 1;
-  if (mDigits < 1) or (mDigits > TAtlasCodeLinks.MaxDigits) or ((mNumberEnd <= Length(AText)) and
+  if (mDigits < 1) or (mDigits > TAtlasCodeLinks.cMaxDigits) or ((mNumberEnd <= Length(AText)) and
     (IsWordChar(AText[mNumberEnd]) or CharInSet(AText[mNumberEnd], ['#', '$']))) then
   begin
     Exit;
@@ -418,7 +418,7 @@ end;
 /// <summary>Anfang eines Worts mit Buchstaben, an dem eine YouTrack-Kennung stehen kann.</summary>
 function YouTrackStart(const APattern: TAtlasIssueKeyPattern; const AText: string; AIndex: Integer): Boolean;
 begin
-  Result := (APattern.Provider = TAtlasTrackerTarget.YouTrack) and IsAsciiLetter(AText[AIndex]) and
+  Result := (APattern.Provider = TAtlasTrackerTarget.cYouTrack) and IsAsciiLetter(AText[AIndex]) and
     ((AIndex = 1) or not IsWordChar(AText[AIndex - 1]));
 end;
 
@@ -442,7 +442,7 @@ begin
   end
   else
   begin
-    Result := (APattern.Provider = TAtlasTrackerTarget.GitHub) and (AText[AIndex] = '#') and
+    Result := (APattern.Provider = TAtlasTrackerTarget.cGitHub) and (AText[AIndex] = '#') and
       GitHubAt(APattern, AText, AIndex, AFirst, ALast, AMatch);
   end;
   if Result then

@@ -96,16 +96,16 @@ const
 
 function ToolRenameSymbol(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
-  FileName: string;
-  Line, Column: Integer;
+  mFileName: string;
+  mLine, mColumn: Integer;
 begin
-  FileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
-  if not AArguments.TryGetValue<Integer>('line', Line) or not AArguments.TryGetValue<Integer>('column', Column) then
+  mFileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+  if not AArguments.TryGetValue<Integer>('line', mLine) or not AArguments.TryGetValue<Integer>('column', mColumn) then
   begin
     raise EMcpToolError.Create(TShellTexts.Missing(['line', 'column']));
   end;
   AContext.Edit.Namespaces := AContext.Group.Main.State.Namespaces;
-  Result := AContext.Edit.RenameSymbol(FileName, Line, Column, TMcpServer.RequiredString(AArguments, 'newName'),
+  Result := AContext.Edit.RenameSymbol(mFileName, mLine, mColumn, TMcpServer.RequiredString(AArguments, 'newName'),
     DryRunOf(AArguments));
 end;
 
@@ -129,16 +129,16 @@ end;
 
 function ToolApplyCodeAction(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
-  FileName: string;
-  Line: Integer;
+  mFileName: string;
+  mLine: Integer;
 begin
-  FileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
-  if not AArguments.TryGetValue<Integer>('line', Line) then
+  mFileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+  if not AArguments.TryGetValue<Integer>('line', mLine) then
   begin
     raise EMcpToolError.Create(TShellTexts.Missing(['line']));
   end;
   Result := AContext.Edit.ApplyCodeAction(TMcpRuleScope.Create(BuiltinRules,
-    AContext.Group.Main.Configuration.Settings, AContext.Root), FileName, Line,
+    AContext.Group.Main.Configuration.Settings, AContext.Root), mFileName, mLine,
     TMcpServer.OptionalString(AArguments, 'title'), DryRunOf(AArguments));
 end;
 
@@ -234,7 +234,8 @@ begin
     mScope := TFormatScope.Lines([TFormatLineSpan.Create(mStartLine - 1, mEndLine - 1)]);
   end;
   // Formatregeln wie im Editor: format.* über .editorconfig über den Vorgaben (TLspFormatting.Resolve).
-  mStyle := TLspFormatting.Resolve(nil, mFileName, AContext.Group.WorkspaceOf(mFileName).Configuration.Settings.Formatting,
+  mStyle := TLspFormatting.Resolve(nil, mFileName,
+    AContext.Group.WorkspaceOf(mFileName).Configuration.Settings.Formatting,
     function(const AConfigFile: string; out AConfigText: string): Boolean
     begin
       Result := FileExists(AConfigFile) and ReadSourceText(AConfigFile, AConfigText);

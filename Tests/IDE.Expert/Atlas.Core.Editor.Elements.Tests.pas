@@ -158,11 +158,11 @@ begin
     end;
     Assert.IsTrue(Found, 'keine Einstellung: ' + Key);
   end;
-  Assert.AreEqual('WelcomePageStatusTile', TAtlasDrawnElements.SectionSetting(TAtlasWelcomeIds.State));
-  Assert.AreEqual('WelcomePageProjectStatus', TAtlasDrawnElements.SectionSetting(TAtlasWelcomeIds.Projects));
+  Assert.AreEqual('WelcomePageStatusTile', TAtlasDrawnElements.SectionSetting(TAtlasWelcomeIds.cState));
+  Assert.AreEqual('WelcomePageProjectStatus', TAtlasDrawnElements.SectionSetting(TAtlasWelcomeIds.cProjects));
   // Meine Issues (#765): „Ausblenden“ am Bereich im Bearbeitungsmodus (#767).
-  Assert.AreEqual('WelcomePageIssues', TAtlasDrawnElements.SectionSetting(TAtlasWelcomeIds.Issues));
-  Assert.AreEqual('', TAtlasDrawnElements.SectionSetting(TAtlasWelcomeIds.Board), 'kein eigener Schalter');
+  Assert.AreEqual('WelcomePageIssues', TAtlasDrawnElements.SectionSetting(TAtlasWelcomeIds.cIssues));
+  Assert.AreEqual('', TAtlasDrawnElements.SectionSetting(TAtlasWelcomeIds.cBoard), 'kein eigener Schalter');
 end;
 
 procedure TAtlasDrawnElementsTests.AnchorIsNormalizedAndShort;

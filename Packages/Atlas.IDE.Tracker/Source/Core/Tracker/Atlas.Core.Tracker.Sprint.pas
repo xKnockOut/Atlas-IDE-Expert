@@ -56,7 +56,7 @@ type
   /// <summary>Ein Sprint für Vergleich und Velocity; abgeschlossene im Zwischenspeicher.</summary>
   TAtlasSprintSummary = record
   public const
-    Version = 1;
+    cVersion = 1;
   public
     Id: string;
     Name: string;
@@ -119,11 +119,11 @@ type
   TAtlasTrackerSprint = class
   public const
     /// <summary>So viele frühere Sprints für die Velocity.</summary>
-    VelocitySprints = 3;
+    cVelocitySprints = 3;
     /// <summary>Höchstens so viele Tage hat ein Sprint (Schutz gegen kaputte Daten).</summary>
-    MaxDays = 366;
+    cMaxDays = 366;
     /// <summary>Zeitgrenze für Board, Vorsprints und Arbeitstage zusammen.</summary>
-    TimeoutMs = 15000;
+    cTimeoutMs = 15000;
   public
     /// <summary>Gewicht einer Karte: Punkte (ohne Schätzung 0) bzw. 1.</summary>
     class function Weight(const ACard: TAtlasBoardCard; AUsesPoints: Boolean): Double; static;
@@ -261,7 +261,7 @@ begin
   mLast := DateOf(AFinish - OneSecond);
   mDay := DateOf(AStart);
   mAll := nil;
-  while (mDay <= mLast) and (Length(mAll) < TAtlasTrackerSprint.MaxDays) do
+  while (mDay <= mLast) and (Length(mAll) < TAtlasTrackerSprint.cMaxDays) do
   begin
     mAll := mAll + [mDay];
     if IsWorkDay(mDay) then
@@ -622,7 +622,7 @@ var
 begin
   mRoot := TJSONObject.Create;
   try
-    mRoot.AddPair('version', TJSONNumber.Create(TAtlasSprintSummary.Version));
+    mRoot.AddPair('version', TJSONNumber.Create(TAtlasSprintSummary.cVersion));
     mRoot.AddPair('id', ASummary.Id);
     mRoot.AddPair('name', ASummary.Name);
     mRoot.AddPair('start', TAtlasTrackerBoard.TimeText(ASummary.Start));
@@ -680,7 +680,7 @@ begin
       Exit;
     end;
     mRoot := TJSONObject(mValue);
-    if Round(NumberOf(mRoot, 'version')) <> TAtlasSprintSummary.Version then
+    if Round(NumberOf(mRoot, 'version')) <> TAtlasSprintSummary.cVersion then
     begin
       Exit;
     end;
@@ -691,7 +691,7 @@ begin
     ASummary.UsesPoints := (mRoot.Values['usesPoints'] is TJSONBool) and
       TJSONBool(mRoot.Values['usesPoints']).AsBoolean;
     ASummary.Total := NumberOf(mRoot, 'total');
-    ASummary.Days := EnsureRange(Round(NumberOf(mRoot, 'days')), 0, TAtlasTrackerSprint.MaxDays);
+    ASummary.Days := EnsureRange(Round(NumberOf(mRoot, 'days')), 0, TAtlasTrackerSprint.cMaxDays);
     if mRoot.Values['done'] is TJSONArray then
     begin
       for mItem in TJSONArray(mRoot.Values['done']) do

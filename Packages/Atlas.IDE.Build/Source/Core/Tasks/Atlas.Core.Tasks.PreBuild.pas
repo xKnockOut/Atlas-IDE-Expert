@@ -28,7 +28,7 @@ type
 
   TAtlasTaskPreBuild = class
   public const
-    PassMs = 60000;
+    cPassMs = 60000;
   private
     FRunning: Boolean;
     FBlocking: Boolean;
@@ -104,7 +104,7 @@ begin
   if Result then
   begin
     FPassFile := FProject.FileName;
-    FPassUntil := ANowMs + PassMs;
+    FPassUntil := ANowMs + cPassMs;
   end;
   FBlocking := False;
 end;

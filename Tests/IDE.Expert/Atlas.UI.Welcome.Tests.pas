@@ -104,9 +104,9 @@ uses
 
 procedure TAtlasWelcomeHeaderTests.GreetingFollowsHourAndName;
 var
-  Saved: TAtlasLanguage;
+  mSaved: TAtlasLanguage;
 begin
-  Saved := TAtlasStrings.Language;
+  mSaved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
     Assert.AreEqual('Guten Morgen, Marco', TAtlasWelcomeHeaderFrame.GreetingText(8, 'Marco'));
@@ -116,14 +116,14 @@ begin
     TAtlasStrings.Language := TAtlasLanguage.English;
     Assert.AreEqual('Good evening, Marco', TAtlasWelcomeHeaderFrame.GreetingText(20, 'Marco'));
   finally
-    TAtlasStrings.Language := Saved;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 procedure TAtlasWelcomeHeaderTests.StatusShowsServerAndIndex;
 var
-  Saved: TAtlasLanguage;
+  mSaved: TAtlasLanguage;
 begin
-  Saved := TAtlasStrings.Language;
+  mSaved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
     Assert.AreEqual('Server läuft · 1.284 Units im Index',
@@ -141,14 +141,14 @@ begin
     Assert.AreEqual('Server gestoppt', TAtlasWelcomeHeaderFrame.StatusText(TAtlasServerPhase.Stopped, 10, False, -1));
     Assert.AreEqual('Server startet', TAtlasWelcomeHeaderFrame.StatusText(TAtlasServerPhase.Starting, 10, False, -1));
   finally
-    TAtlasStrings.Language := Saved;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 procedure TAtlasWelcomeHeaderTests.ThousandsFollowLanguage;
 var
-  Saved: TAtlasLanguage;
+  mSaved: TAtlasLanguage;
 begin
-  Saved := TAtlasStrings.Language;
+  mSaved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
     Assert.AreEqual('1.234.567', TAtlasWelcomeHeaderFrame.Thousands(1234567));
@@ -158,56 +158,56 @@ begin
     Assert.AreEqual('Server running · 1,284 units in the index',
       TAtlasWelcomeHeaderFrame.StatusText(TAtlasServerPhase.Running, 1284, False, -1));
   finally
-    TAtlasStrings.Language := Saved;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 procedure TAtlasWelcomeHeaderTests.InfoShowsVersion;
 var
-  Saved: TAtlasLanguage;
-  Info: TAtlasWelcomeHeaderInfo;
+  mSaved: TAtlasLanguage;
+  mInfo: TAtlasWelcomeHeaderInfo;
 begin
-  Saved := TAtlasStrings.Language;
+  mSaved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
-    Info := Default(TAtlasWelcomeHeaderInfo);
-    Info.Version := '1.0.0';
-    Info.Phase := TAtlasServerPhase.Stopped;
-    Info.Units := -1;
-    Info.Percent := -1;
-    Assert.AreEqual('Atlas 1.0.0 · Server gestoppt', TAtlasWelcomeHeaderFrame.InfoText(Info));
+    mInfo := Default(TAtlasWelcomeHeaderInfo);
+    mInfo.Version := '1.0.0';
+    mInfo.Phase := TAtlasServerPhase.Stopped;
+    mInfo.Units := -1;
+    mInfo.Percent := -1;
+    Assert.AreEqual('Atlas 1.0.0 · Server gestoppt', TAtlasWelcomeHeaderFrame.InfoText(mInfo));
   finally
-    TAtlasStrings.Language := Saved;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 procedure TAtlasWelcomeHeaderTests.ShowInfoFillsLabels;
 var
-  Saved: TAtlasLanguage;
-  Header: TAtlasWelcomeHeaderFrame;
-  Info: TAtlasWelcomeHeaderInfo;
+  mSaved: TAtlasLanguage;
+  mHeader: TAtlasWelcomeHeaderFrame;
+  mInfo: TAtlasWelcomeHeaderInfo;
 begin
-  Saved := TAtlasStrings.Language;
-  Header := TAtlasWelcomeHeaderFrame.Create(nil);
+  mSaved := TAtlasStrings.Language;
+  mHeader := TAtlasWelcomeHeaderFrame.Create(nil);
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
-    Info := Default(TAtlasWelcomeHeaderInfo);
-    Info.Greeting := True;
-    Info.Hour := 9;
-    Info.FirstName := 'Marco';
-    Info.Version := '1.0.0';
-    Info.Phase := TAtlasServerPhase.Running;
-    Info.Units := 42;
-    Info.Percent := -1;
-    Header.ShowInfo(Info);
-    Assert.AreEqual('Guten Morgen, Marco', Header.GreetingLabel.Caption);
-    Assert.AreEqual('Atlas 1.0.0 · Server läuft · 42 Units im Index', Header.InfoLabel.Caption);
-    Assert.AreEqual(0, Header.SearchHost.Width, 'Platz für das Suchfeld (#760) noch leer');
+    mInfo := Default(TAtlasWelcomeHeaderInfo);
+    mInfo.Greeting := True;
+    mInfo.Hour := 9;
+    mInfo.FirstName := 'Marco';
+    mInfo.Version := '1.0.0';
+    mInfo.Phase := TAtlasServerPhase.Running;
+    mInfo.Units := 42;
+    mInfo.Percent := -1;
+    mHeader.ShowInfo(mInfo);
+    Assert.AreEqual('Guten Morgen, Marco', mHeader.GreetingLabel.Caption);
+    Assert.AreEqual('Atlas 1.0.0 · Server läuft · 42 Units im Index', mHeader.InfoLabel.Caption);
+    Assert.AreEqual(0, mHeader.SearchHost.Width, 'Platz für das Suchfeld (#760) noch leer');
     // welcomePage.greeting aus: nur „Atlas“.
-    Info.Greeting := False;
-    Header.ShowInfo(Info);
-    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHeaderTitle), Header.GreetingLabel.Caption);
+    mInfo.Greeting := False;
+    mHeader.ShowInfo(mInfo);
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHeaderTitle), mHeader.GreetingLabel.Caption);
   finally
-    Header.Free;
-    TAtlasStrings.Language := Saved;
+    mHeader.Free;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 
@@ -225,62 +225,62 @@ end;
 
 procedure TAtlasWelcomeHeaderTests.SameInfoComparesAllFields;
 var
-  Other: TAtlasWelcomeHeaderInfo;
+  mOther: TAtlasWelcomeHeaderInfo;
 begin
   Assert.IsTrue(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, SampleInfo));
-  Other := SampleInfo;
-  Other.Greeting := False;
-  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, Other), 'Grußzeile');
-  Other := SampleInfo;
-  Other.Hour := 10;
-  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, Other), 'Stunde');
-  Other := SampleInfo;
-  Other.FirstName := 'Mia';
-  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, Other), 'Name');
-  Other := SampleInfo;
-  Other.Version := '1.0.1';
-  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, Other), 'Version');
-  Other := SampleInfo;
-  Other.Phase := TAtlasServerPhase.Stopped;
-  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, Other), 'Phase');
-  Other := SampleInfo;
-  Other.Units := 43;
-  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, Other), 'Units');
-  Other := SampleInfo;
-  Other.Indexing := True;
-  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, Other), 'Indizierung');
-  Other := SampleInfo;
-  Other.Percent := 50;
-  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, Other), 'Prozent');
+  mOther := SampleInfo;
+  mOther.Greeting := False;
+  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, mOther), 'Grußzeile');
+  mOther := SampleInfo;
+  mOther.Hour := 10;
+  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, mOther), 'Stunde');
+  mOther := SampleInfo;
+  mOther.FirstName := 'Mia';
+  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, mOther), 'Name');
+  mOther := SampleInfo;
+  mOther.Version := '1.0.1';
+  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, mOther), 'Version');
+  mOther := SampleInfo;
+  mOther.Phase := TAtlasServerPhase.Stopped;
+  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, mOther), 'Phase');
+  mOther := SampleInfo;
+  mOther.Units := 43;
+  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, mOther), 'Units');
+  mOther := SampleInfo;
+  mOther.Indexing := True;
+  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, mOther), 'Indizierung');
+  mOther := SampleInfo;
+  mOther.Percent := 50;
+  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, mOther), 'Prozent');
 end;
 
 procedure TAtlasWelcomeHeaderTests.SameInfoLeavesHeaderAlone;
 var
-  Saved: TAtlasLanguage;
-  Header: TAtlasWelcomeHeaderFrame;
-  Info: TAtlasWelcomeHeaderInfo;
+  mSaved: TAtlasLanguage;
+  mHeader: TAtlasWelcomeHeaderFrame;
+  mInfo: TAtlasWelcomeHeaderInfo;
 begin
-  Saved := TAtlasStrings.Language;
-  Header := TAtlasWelcomeHeaderFrame.Create(nil);
+  mSaved := TAtlasStrings.Language;
+  mHeader := TAtlasWelcomeHeaderFrame.Create(nil);
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
-    Info := SampleInfo;
-    Header.ShowInfo(Info);
+    mInfo := SampleInfo;
+    mHeader.ShowInfo(mInfo);
     // Markierung: Ein zweites ShowInfo mit denselben Angaben darf den Kopf nicht anfassen.
-    Header.InfoLabel.Caption := 'unberührt';
-    Header.ShowInfo(Info);
-    Assert.AreEqual('unberührt', Header.InfoLabel.Caption, 'gleiche Angaben: nichts neu gesetzt');
-    Info.Units := 43;
-    Header.ShowInfo(Info);
-    Assert.AreEqual('Atlas 1.0.0 · Server läuft · 43 Units im Index', Header.InfoLabel.Caption, 'geändert: neu');
+    mHeader.InfoLabel.Caption := 'unberührt';
+    mHeader.ShowInfo(mInfo);
+    Assert.AreEqual('unberührt', mHeader.InfoLabel.Caption, 'gleiche Angaben: nichts neu gesetzt');
+    mInfo.Units := 43;
+    mHeader.ShowInfo(mInfo);
+    Assert.AreEqual('Atlas 1.0.0 · Server läuft · 43 Units im Index', mHeader.InfoLabel.Caption, 'geändert: neu');
     // Nach Renew (Thema, Sprache, Einstellungen) setzt auch dasselbe ShowInfo alles neu.
-    Header.InfoLabel.Caption := 'unberührt';
-    Header.Renew;
-    Header.ShowInfo(Info);
-    Assert.AreEqual('Atlas 1.0.0 · Server läuft · 43 Units im Index', Header.InfoLabel.Caption, 'nach Renew');
+    mHeader.InfoLabel.Caption := 'unberührt';
+    mHeader.Renew;
+    mHeader.ShowInfo(mInfo);
+    Assert.AreEqual('Atlas 1.0.0 · Server läuft · 43 Units im Index', mHeader.InfoLabel.Caption, 'nach Renew');
   finally
-    Header.Free;
-    TAtlasStrings.Language := Saved;
+    mHeader.Free;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 procedure TAtlasWelcomeBoardTests.WarmUpFirstUse;
@@ -289,203 +289,204 @@ begin
 end;
 procedure TAtlasWelcomeBoardTests.ViewsCreateFramesWithId;
 var
-  View: TAtlasWelcomeSectionFrame;
+  mView: TAtlasWelcomeSectionFrame;
 begin
-  RegisterViews([TAtlasWelcomeIds.State]);
+  RegisterViews([TAtlasWelcomeIds.cState]);
   try
     Assert.IsTrue(TAtlasWelcomeViews.Exists('ATLAS.STATE'));
-    Assert.IsFalse(TAtlasWelcomeViews.Exists(TAtlasWelcomeIds.News));
-    Assert.IsNull(TAtlasWelcomeViews.CreateView(TAtlasWelcomeIds.News, nil));
-    View := TAtlasWelcomeViews.CreateView(TAtlasWelcomeIds.State, nil);
+    Assert.IsFalse(TAtlasWelcomeViews.Exists(TAtlasWelcomeIds.cNews));
+    Assert.IsNull(TAtlasWelcomeViews.CreateView(TAtlasWelcomeIds.cNews, nil));
+    mView := TAtlasWelcomeViews.CreateView(TAtlasWelcomeIds.cState, nil);
     try
-      Assert.IsNotNull(View);
-      Assert.AreEqual(TAtlasWelcomeIds.State, View.SectionId);
-      Assert.IsTrue(View.ShowTitle);
-      Assert.AreEqual(TAtlasWelcomeSectionFrame.TitleHeight + TAtlasWelcomeSectionFrame.DefaultBodyHeight,
-        View.PreferredHeight);
-      View.ShowTitle := False;
-      Assert.AreEqual(TAtlasWelcomeSectionFrame.DefaultBodyHeight, View.PreferredHeight);
+      Assert.IsNotNull(mView);
+      Assert.AreEqual(TAtlasWelcomeIds.cState, mView.SectionId);
+      Assert.IsTrue(mView.ShowTitle);
+      Assert.AreEqual(TAtlasWelcomeSectionFrame.cTitleHeight + TAtlasWelcomeSectionFrame.cDefaultBodyHeight,
+        mView.PreferredHeight);
+      mView.ShowTitle := False;
+      Assert.AreEqual(TAtlasWelcomeSectionFrame.cDefaultBodyHeight, mView.PreferredHeight);
     finally
-      View.Free;
+      mView.Free;
     end;
-    TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.State);
-    Assert.IsFalse(TAtlasWelcomeViews.Exists(TAtlasWelcomeIds.State));
+    TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.cState);
+    Assert.IsFalse(TAtlasWelcomeViews.Exists(TAtlasWelcomeIds.cState));
   finally
     TAtlasWelcomeViews.Release;
   end;
 end;
 procedure TAtlasWelcomeBoardTests.BoardPlacesSectionsInColumns;
 var
-  Host: TForm;
-  Board: TAtlasWelcomeBoardFrame;
-  Left, Right, Below: TAtlasWelcomeSectionFrame;
+  mHost: TForm;
+  mBoard: TAtlasWelcomeBoardFrame;
+  mLeft, mRight, mBelow: TAtlasWelcomeSectionFrame;
 begin
-  RegisterViews([TAtlasWelcomeIds.Continue, TAtlasWelcomeIds.Projects, TAtlasWelcomeIds.State]);
-  Host := TForm.CreateNew(nil);
+  RegisterViews([TAtlasWelcomeIds.cContinue, TAtlasWelcomeIds.cProjects, TAtlasWelcomeIds.cState]);
+  mHost := TForm.CreateNew(nil);
   try
-    Host.ClientWidth := 800;
-    Host.ClientHeight := 600;
-    Board := TAtlasWelcomeBoardFrame.Create(Host);
-    Board.Parent := Host;
-    Board.Align := alClient;
-    Board.Rebuild([Section(TAtlasWelcomeIds.State, 10, TAtlasWelcomeColumn.Right),
-      Section(TAtlasWelcomeIds.Continue, 20, TAtlasWelcomeColumn.Left),
-      Section(TAtlasWelcomeIds.Projects, 30, TAtlasWelcomeColumn.Left),
-      Section(TAtlasWelcomeIds.News, 40, TAtlasWelcomeColumn.Right)], TAtlasWelcomeLayout.Atlas, 2);
-    Assert.AreEqual(2, Integer(Length(Board.Columns)));
-    Left := Board.View(TAtlasWelcomeIds.Continue);
-    Below := Board.View(TAtlasWelcomeIds.Projects);
-    Right := Board.View(TAtlasWelcomeIds.State);
-    Assert.IsNotNull(Left);
-    Assert.IsNull(Board.View(TAtlasWelcomeIds.News), 'ohne Fabrik kein Frame');
-    Assert.AreEqual('Titel ' + TAtlasWelcomeIds.Continue, Left.Title);
-    Assert.IsTrue(Left.ShowTitle);
-    Assert.AreEqual(Left.Left, Below.Left, 'gleiche Spalte');
-    Assert.IsTrue(Below.Top > Left.Top + Left.Height - 1, 'untereinander');
-    Assert.IsTrue(Right.Left > Left.Left + Left.Width - 1, 'rechte Spalte');
-    Assert.AreEqual(Left.Top, Right.Top);
-    Assert.IsTrue(TTestSection(Left).Updates > 0, 'neuer Frame liest seinen Inhalt');
+    mHost.ClientWidth := 800;
+    mHost.ClientHeight := 600;
+    mBoard := TAtlasWelcomeBoardFrame.Create(mHost);
+    mBoard.Parent := mHost;
+    mBoard.Align := alClient;
+    mBoard.Rebuild([Section(TAtlasWelcomeIds.cState, 10, TAtlasWelcomeColumn.Right),
+      Section(TAtlasWelcomeIds.cContinue, 20, TAtlasWelcomeColumn.Left),
+      Section(TAtlasWelcomeIds.cProjects, 30, TAtlasWelcomeColumn.Left),
+      Section(TAtlasWelcomeIds.cNews, 40, TAtlasWelcomeColumn.Right)], TAtlasWelcomeLayout.Atlas, 2);
+    Assert.AreEqual(2, Integer(Length(mBoard.Columns)));
+    mLeft := mBoard.View(TAtlasWelcomeIds.cContinue);
+    mBelow := mBoard.View(TAtlasWelcomeIds.cProjects);
+    mRight := mBoard.View(TAtlasWelcomeIds.cState);
+    Assert.IsNotNull(mLeft);
+    Assert.IsNull(mBoard.View(TAtlasWelcomeIds.cNews), 'ohne Fabrik kein Frame');
+    Assert.AreEqual('Titel ' + TAtlasWelcomeIds.cContinue, mLeft.Title);
+    Assert.IsTrue(mLeft.ShowTitle);
+    Assert.AreEqual(mLeft.Left, mBelow.Left, 'gleiche Spalte');
+    Assert.IsTrue(mBelow.Top > mLeft.Top + mLeft.Height - 1, 'untereinander');
+    Assert.IsTrue(mRight.Left > mLeft.Left + mLeft.Width - 1, 'rechte Spalte');
+    Assert.AreEqual(mLeft.Top, mRight.Top);
+    Assert.IsTrue(TTestSection(mLeft).Updates > 0, 'neuer Frame liest seinen Inhalt');
     // Eine Spalte (Fenster „Atlas-Start“): alles untereinander.
-    Board.Rebuild([Section(TAtlasWelcomeIds.State, 10, TAtlasWelcomeColumn.Right),
-      Section(TAtlasWelcomeIds.Continue, 20, TAtlasWelcomeColumn.Left)], TAtlasWelcomeLayout.Atlas, 1);
-    Assert.AreEqual(Board.View(TAtlasWelcomeIds.Continue).Left, Board.View(TAtlasWelcomeIds.State).Left);
-    Assert.IsTrue(Board.View(TAtlasWelcomeIds.State).Top > Board.View(TAtlasWelcomeIds.Continue).Top);
+    mBoard.Rebuild([Section(TAtlasWelcomeIds.cState, 10, TAtlasWelcomeColumn.Right),
+      Section(TAtlasWelcomeIds.cContinue, 20, TAtlasWelcomeColumn.Left)], TAtlasWelcomeLayout.Atlas, 1);
+    Assert.AreEqual(mBoard.View(TAtlasWelcomeIds.cContinue).Left, mBoard.View(TAtlasWelcomeIds.cState).Left);
+    Assert.IsTrue(mBoard.View(TAtlasWelcomeIds.cState).Top > mBoard.View(TAtlasWelcomeIds.cContinue).Top);
   finally
-    Host.Free;
+    mHost.Free;
     TAtlasWelcomeViews.Release;
   end;
 end;
 procedure TAtlasWelcomeBoardTests.BoardKeepsAndDropsFrames;
 var
-  Host: TForm;
-  Board: TAtlasWelcomeBoardFrame;
-  Kept: TAtlasWelcomeSectionFrame;
-  Before: Integer;
+  mHost: TForm;
+  mBoard: TAtlasWelcomeBoardFrame;
+  mKept: TAtlasWelcomeSectionFrame;
+  mBefore: Integer;
 begin
-  RegisterViews([TAtlasWelcomeIds.Continue, TAtlasWelcomeIds.State]);
+  RegisterViews([TAtlasWelcomeIds.cContinue, TAtlasWelcomeIds.cState]);
   // Wie in der IDE: Die Tafel hängt an einem Fenster.
-  Host := TForm.CreateNew(nil);
-  Board := TAtlasWelcomeBoardFrame.Create(nil);
+  mHost := TForm.CreateNew(nil);
+  mBoard := TAtlasWelcomeBoardFrame.Create(nil);
   try
-    Board.Parent := Host;
-    Board.Rebuild([Section(TAtlasWelcomeIds.Continue, 20, TAtlasWelcomeColumn.Left),
-      Section(TAtlasWelcomeIds.State, 10, TAtlasWelcomeColumn.Right)], TAtlasWelcomeLayout.Atlas, 2);
-    Kept := Board.View(TAtlasWelcomeIds.Continue);
-    Board.Rebuild([Section(TAtlasWelcomeIds.Continue, 20, TAtlasWelcomeColumn.Left)], TAtlasWelcomeLayout.Atlas, 2);
-    Assert.IsTrue(Kept = Board.View(TAtlasWelcomeIds.Continue), 'sichtbarer Bereich behält seinen Frame');
-    Assert.IsNull(Board.View(TAtlasWelcomeIds.State), 'ausgeschalteter Bereich verschwindet');
-    Before := TTestSection(Kept).Updates;
-    Board.UpdateSection(TAtlasWelcomeIds.Continue);
-    Assert.AreEqual(Before + 1, TTestSection(Kept).Updates);
-    Board.UpdateContent;
-    Assert.AreEqual(Before + 2, TTestSection(Kept).Updates);
+    mBoard.Parent := mHost;
+    mBoard.Rebuild([Section(TAtlasWelcomeIds.cContinue, 20, TAtlasWelcomeColumn.Left),
+      Section(TAtlasWelcomeIds.cState, 10, TAtlasWelcomeColumn.Right)], TAtlasWelcomeLayout.Atlas, 2);
+    mKept := mBoard.View(TAtlasWelcomeIds.cContinue);
+    mBoard.Rebuild([Section(TAtlasWelcomeIds.cContinue, 20, TAtlasWelcomeColumn.Left)], TAtlasWelcomeLayout.Atlas, 2);
+    Assert.IsTrue(mKept = mBoard.View(TAtlasWelcomeIds.cContinue), 'sichtbarer Bereich behält seinen Frame');
+    Assert.IsNull(mBoard.View(TAtlasWelcomeIds.cState), 'ausgeschalteter Bereich verschwindet');
+    mBefore := TTestSection(mKept).Updates;
+    mBoard.UpdateSection(TAtlasWelcomeIds.cContinue);
+    Assert.AreEqual(mBefore + 1, TTestSection(mKept).Updates);
+    mBoard.UpdateContent;
+    Assert.AreEqual(mBefore + 2, TTestSection(mKept).Updates);
   finally
-    Board.Free;
-    Host.Free;
+    mBoard.Free;
+    mHost.Free;
     TAtlasWelcomeViews.Release;
   end;
 end;
-/// <summary>Tafel mit drei Bereichen untereinander in einem niedrigen Fenster: Der Inhalt ist höher als der Platz.</summary>
+/// <summary>Tafel mit drei Bereichen untereinander in einem niedrigen Fenster: Der Inhalt ist höher als der
+/// Platz.</summary>
 function TallBoard(AHost: TForm): TAtlasWelcomeBoardFrame;
 begin
-  RegisterViews([TAtlasWelcomeIds.Continue, TAtlasWelcomeIds.Projects, TAtlasWelcomeIds.State]);
+  RegisterViews([TAtlasWelcomeIds.cContinue, TAtlasWelcomeIds.cProjects, TAtlasWelcomeIds.cState]);
   AHost.ClientWidth := 400;
   AHost.ClientHeight := 160;
   Result := TAtlasWelcomeBoardFrame.Create(AHost);
   Result.Parent := AHost;
   Result.Align := alClient;
-  Result.Rebuild([Section(TAtlasWelcomeIds.Continue, 10, TAtlasWelcomeColumn.Left),
-    Section(TAtlasWelcomeIds.Projects, 20, TAtlasWelcomeColumn.Left),
-    Section(TAtlasWelcomeIds.State, 30, TAtlasWelcomeColumn.Left)], TAtlasWelcomeLayout.Atlas, 1);
+  Result.Rebuild([Section(TAtlasWelcomeIds.cContinue, 10, TAtlasWelcomeColumn.Left),
+    Section(TAtlasWelcomeIds.cProjects, 20, TAtlasWelcomeColumn.Left),
+    Section(TAtlasWelcomeIds.cState, 30, TAtlasWelcomeColumn.Left)], TAtlasWelcomeLayout.Atlas, 1);
   // Ohne gezeigtes Fenster: Bereich der Leiste mit Fenster rechnen lassen.
   Result.ScrollBox.HandleNeeded;
   Result.ScrollBox.Realign;
 end;
 procedure TAtlasWelcomeBoardTests.WheelScrollsPageFromSectionAndHeader;
 var
-  Host: TForm;
-  Board: TAtlasWelcomeBoardFrame;
+  mHost: TForm;
+  mBoard: TAtlasWelcomeBoardFrame;
   mOther: TPanel;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Board := TallBoard(Host);
-    Assert.IsTrue(Board.ScrollBox.VertScrollBar.IsScrollBarVisible, 'Überlänge zeigt die Leiste');
-    Assert.AreEqual(0, Board.ScrollBox.VertScrollBar.Position);
-    Assert.IsFalse(Board.Scroller.ScrollWheel(Board.View(TAtlasWelcomeIds.Continue), 120), 'oben geht es nicht weiter');
-    Assert.IsTrue(Board.Scroller.ScrollWheel(Board.View(TAtlasWelcomeIds.Continue).TitleLabel, -120),
+    mBoard := TallBoard(mHost);
+    Assert.IsTrue(mBoard.ScrollBox.VertScrollBar.IsScrollBarVisible, 'Überlänge zeigt die Leiste');
+    Assert.AreEqual(0, mBoard.ScrollBox.VertScrollBar.Position);
+    Assert.IsFalse(mBoard.Scroller.ScrollWheel(mBoard.View(TAtlasWelcomeIds.cContinue), 120), 'oben geht es nicht weiter');
+    Assert.IsTrue(mBoard.Scroller.ScrollWheel(mBoard.View(TAtlasWelcomeIds.cContinue).TitleLabel, -120),
       'über einem Bereich scrollt die Seite');
-    Assert.IsTrue(Board.ScrollBox.VertScrollBar.Position > 0);
-    Assert.IsTrue(Board.Scroller.ScrollWheel(Board.Header, 3 * 120), 'über dem Kopf auch');
-    Assert.AreEqual(0, Board.ScrollBox.VertScrollBar.Position);
-    mOther := TPanel.Create(Host);
-    mOther.Parent := Host;
-    Assert.IsFalse(Board.Contains(mOther));
-    Assert.IsFalse(Board.Scroller.ScrollWheel(mOther, -120), 'außerhalb der Tafel nicht');
-    Assert.IsFalse(Board.Scroller.ScrollWheel(nil, -120));
+    Assert.IsTrue(mBoard.ScrollBox.VertScrollBar.Position > 0);
+    Assert.IsTrue(mBoard.Scroller.ScrollWheel(mBoard.Header, 3 * 120), 'über dem Kopf auch');
+    Assert.AreEqual(0, mBoard.ScrollBox.VertScrollBar.Position);
+    mOther := TPanel.Create(mHost);
+    mOther.Parent := mHost;
+    Assert.IsFalse(mBoard.Contains(mOther));
+    Assert.IsFalse(mBoard.Scroller.ScrollWheel(mOther, -120), 'außerhalb der Tafel nicht');
+    Assert.IsFalse(mBoard.Scroller.ScrollWheel(nil, -120));
   finally
-    Host.Free;
+    mHost.Free;
     TAtlasWelcomeViews.Release;
   end;
 end;
 procedure TAtlasWelcomeBoardTests.WheelScrollsInnerListFirst;
 var
-  Host: TForm;
-  Board: TAtlasWelcomeBoardFrame;
+  mHost: TForm;
+  mBoard: TAtlasWelcomeBoardFrame;
   mInner: TScrollBox;
   mContent: TPanel;
   mBar: TControlScrollBar;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Board := TallBoard(Host);
+    mBoard := TallBoard(mHost);
     // Wie „Neu in Atlas“: eine eigene Scrollbox im Bereich.
-    mInner := TScrollBox.Create(Host);
-    mInner.Parent := Board.View(TAtlasWelcomeIds.Continue);
+    mInner := TScrollBox.Create(mHost);
+    mInner.Parent := mBoard.View(TAtlasWelcomeIds.cContinue);
     mInner.BorderStyle := bsNone;
     mInner.SetBounds(0, 0, 200, 40);
-    mContent := TPanel.Create(Host);
+    mContent := TPanel.Create(mHost);
     mContent.Parent := mInner;
     mContent.SetBounds(0, 0, 180, 400);
     mInner.HandleNeeded;
     mInner.Realign;
     mBar := mInner.VertScrollBar;
     Assert.IsTrue(mBar.IsScrollBarVisible, 'innere Liste mit Überlänge');
-    Assert.IsTrue(Board.Scroller.ScrollWheel(mContent, -120));
+    Assert.IsTrue(mBoard.Scroller.ScrollWheel(mContent, -120));
     Assert.IsTrue(mBar.Position > 0, 'die innere Liste scrollt zuerst');
-    Assert.AreEqual(0, Board.ScrollBox.VertScrollBar.Position, 'die Seite bleibt stehen');
+    Assert.AreEqual(0, mBoard.ScrollBox.VertScrollBar.Position, 'die Seite bleibt stehen');
     // Am Ende der Liste geht das Rad an die Seite.
     mBar.Position := mBar.Range;
-    Assert.IsTrue(Board.Scroller.ScrollWheel(mContent, -120));
-    Assert.IsTrue(Board.ScrollBox.VertScrollBar.Position > 0, 'danach die Seite');
+    Assert.IsTrue(mBoard.Scroller.ScrollWheel(mContent, -120));
+    Assert.IsTrue(mBoard.ScrollBox.VertScrollBar.Position > 0, 'danach die Seite');
   finally
-    Host.Free;
+    mHost.Free;
     TAtlasWelcomeViews.Release;
   end;
 end;
 procedure TAtlasWelcomeBoardTests.KeysScrollPage;
 var
-  Host: TForm;
-  Board: TAtlasWelcomeBoardFrame;
+  mHost: TForm;
+  mBoard: TAtlasWelcomeBoardFrame;
   mBar: TControlScrollBar;
   mPage: Integer;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Board := TallBoard(Host);
-    mBar := Board.ScrollBox.VertScrollBar;
-    Assert.IsFalse(Board.Scroller.ScrollKey(TAtlasWelcomeScrollKey.PageUp), 'oben bleibt Bild auf ohne Wirkung');
-    Assert.IsTrue(Board.Scroller.ScrollKey(TAtlasWelcomeScrollKey.PageDown));
+    mBoard := TallBoard(mHost);
+    mBar := mBoard.ScrollBox.VertScrollBar;
+    Assert.IsFalse(mBoard.Scroller.ScrollKey(TAtlasWelcomeScrollKey.PageUp), 'oben bleibt Bild auf ohne Wirkung');
+    Assert.IsTrue(mBoard.Scroller.ScrollKey(TAtlasWelcomeScrollKey.PageDown));
     mPage := mBar.Position;
     Assert.IsTrue(mPage > 0);
-    Assert.IsTrue(Board.Scroller.ScrollKey(TAtlasWelcomeScrollKey.Bottom));
+    Assert.IsTrue(mBoard.Scroller.ScrollKey(TAtlasWelcomeScrollKey.Bottom));
     Assert.IsTrue(mBar.Position >= mPage);
-    Assert.IsFalse(Board.Scroller.ScrollKey(TAtlasWelcomeScrollKey.Bottom), 'am Ende bleibt es stehen');
-    Assert.IsFalse(Board.Scroller.ScrollKey(TAtlasWelcomeScrollKey.PageDown));
-    Assert.IsTrue(Board.Scroller.ScrollKey(TAtlasWelcomeScrollKey.Top));
+    Assert.IsFalse(mBoard.Scroller.ScrollKey(TAtlasWelcomeScrollKey.Bottom), 'am Ende bleibt es stehen');
+    Assert.IsFalse(mBoard.Scroller.ScrollKey(TAtlasWelcomeScrollKey.PageDown));
+    Assert.IsTrue(mBoard.Scroller.ScrollKey(TAtlasWelcomeScrollKey.Top));
     Assert.AreEqual(0, mBar.Position);
   finally
-    Host.Free;
+    mHost.Free;
     TAtlasWelcomeViews.Release;
   end;
 end;

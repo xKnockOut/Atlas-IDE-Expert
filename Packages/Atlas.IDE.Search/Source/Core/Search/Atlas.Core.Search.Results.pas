@@ -6,7 +6,7 @@
 //   den Zähler „n von m“ der Leiste).
 // - Entries: je Treffer eine Zeile für den Reiter „Atlas-Suche“ im Fenster
 //   Meldungen: 1-basierte Zeile, 1-basierte Editorspalte (Tabs aufgelöst) und
-//   Zeilentext ohne Einzug; höchstens MaxEntries.
+//   Zeilentext ohne Einzug; höchstens cMaxEntries.
 // - RoutineName: kurzer Name einer Routine aus ihrer Kopfzeile für die
 //   Kopfzeile der Liste („Methode TFoo.Bar“).
 // - FollowSelection: F3 mit einzeiliger Markierung sucht nach dem markierten
@@ -33,12 +33,12 @@ type
 
   TAtlasSearchResults = class
   public const
-    MaxEntries = 1000;
+    cMaxEntries = 1000;
   public
     /// <summary>Index des Treffers, der an APos beginnt; sonst des ersten, der APos enthält (Start &lt; APos
     /// &lt;= Ende); -1 ohne.</summary>
     class function IndexAt(const AHits: TArray<TAtlasSearchHit>; const APos: TAtlasSearchPos): Integer; static;
-    /// <summary>Zeilen für das Meldungsfenster, höchstens MaxEntries.</summary>
+    /// <summary>Zeilen für das Meldungsfenster, höchstens cMaxEntries.</summary>
     class function Entries(const ALines: TArray<string>; const AHits: TArray<TAtlasSearchHit>;
       ATabWidth: Integer): TArray<TAtlasSearchEntry>; static;
     /// <summary>„TFoo.Bar“ aus „class function TFoo.Bar(const A: Integer): Boolean;“; ohne Namen die Zeile.
@@ -65,21 +65,21 @@ uses
 class function TAtlasSearchResults.IndexAt(const AHits: TArray<TAtlasSearchHit>;
   const APos: TAtlasSearchPos): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(AHits) do
+  for mIndex := 0 to High(AHits) do
   begin
-    if TAtlasSearchPos.Compare(AHits[Index].StartPos, APos) = 0 then
+    if TAtlasSearchPos.Compare(AHits[mIndex].StartPos, APos) = 0 then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
-  for Index := 0 to High(AHits) do
+  for mIndex := 0 to High(AHits) do
   begin
-    if (TAtlasSearchPos.Compare(AHits[Index].StartPos, APos) < 0) and
-      (TAtlasSearchPos.Compare(APos, AHits[Index].StopPos) <= 0) then
+    if (TAtlasSearchPos.Compare(AHits[mIndex].StartPos, APos) < 0) and
+      (TAtlasSearchPos.Compare(APos, AHits[mIndex].StopPos) <= 0) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -88,71 +88,71 @@ end;
 class function TAtlasSearchResults.Entries(const ALines: TArray<string>; const AHits: TArray<TAtlasSearchHit>;
   ATabWidth: Integer): TArray<TAtlasSearchEntry>;
 var
-  Count, Index: Integer;
-  LineText: string;
+  mCount, mIndex: Integer;
+  mLineText: string;
 begin
   Result := nil;
-  Count := Length(AHits);
-  if Count > MaxEntries then
+  mCount := Length(AHits);
+  if mCount > cMaxEntries then
   begin
-    Count := MaxEntries;
+    mCount := cMaxEntries;
   end;
-  SetLength(Result, Count);
-  for Index := 0 to Count - 1 do
+  SetLength(Result, mCount);
+  for mIndex := 0 to mCount - 1 do
   begin
-    LineText := '';
-    if (AHits[Index].Line >= 0) and (AHits[Index].Line <= High(ALines)) then
+    mLineText := '';
+    if (AHits[mIndex].Line >= 0) and (AHits[mIndex].Line <= High(ALines)) then
     begin
-      LineText := ALines[AHits[Index].Line];
+      mLineText := ALines[AHits[mIndex].Line];
     end;
-    Result[Index].Line := AHits[Index].Line + 1;
-    Result[Index].Column := TAtlasPairs.ColumnOf(LineText, AHits[Index].Character, ATabWidth);
-    Result[Index].Text := TAtlasTextSearch.HitText(ALines, AHits[Index]);
+    Result[mIndex].Line := AHits[mIndex].Line + 1;
+    Result[mIndex].Column := TAtlasPairs.ColumnOf(mLineText, AHits[mIndex].Character, ATabWidth);
+    Result[mIndex].Text := TAtlasTextSearch.HitText(ALines, AHits[mIndex]);
   end;
 end;
 
 class function TAtlasSearchResults.RoutineName(const ACaption: string): string;
 var
-  Text: string;
-  Start, Stop: Integer;
+  mText: string;
+  mStart, mStop: Integer;
 begin
-  Text := Trim(ACaption);
+  mText := Trim(ACaption);
   // Schlüsselwörter vorn überspringen: class, procedure, function, constructor, destructor, operator.
-  Start := 1;
+  mStart := 1;
   repeat
-    while (Start <= Length(Text)) and (Text[Start] = ' ') do
+    while (mStart <= Length(mText)) and (mText[mStart] = ' ') do
     begin
-      Inc(Start);
+      Inc(mStart);
     end;
-    Stop := Start;
-    while (Stop <= Length(Text)) and TTextChars.IsIdentChar(Text[Stop]) do
+    mStop := mStart;
+    while (mStop <= Length(mText)) and TTextChars.IsIdentChar(mText[mStop]) do
     begin
-      Inc(Stop);
+      Inc(mStop);
     end;
-    if not TAtlasTextSearch.IsReserved(Copy(Text, Start, Stop - Start)) then
+    if not TAtlasTextSearch.IsReserved(Copy(mText, mStart, mStop - mStart)) then
     begin
       Break;
     end;
-    Start := Stop;
-  until Start > Length(Text);
+    mStart := mStop;
+  until mStart > Length(mText);
   // Name mit Punkten und Typparametern bis zur Parameterliste bzw. zum Ergebnistyp.
-  Stop := Start;
-  while (Stop <= Length(Text)) and not CharInSet(Text[Stop], ['(', ':', ';', ' ']) do
+  mStop := mStart;
+  while (mStop <= Length(mText)) and not CharInSet(mText[mStop], ['(', ':', ';', ' ']) do
   begin
-    Inc(Stop);
+    Inc(mStop);
   end;
-  Result := Copy(Text, Start, Stop - Start);
+  Result := Copy(mText, mStart, mStop - mStart);
   if Result = '' then
   begin
-    Result := Text;
+    Result := mText;
   end;
 end;
 
 class function TAtlasSearchResults.FollowSelection(const ALast: TAtlasSearchQuery; const ASelected: string;
   out AChanged: Boolean): TAtlasSearchQuery;
 var
-  Same, Identifier: Boolean;
-  Index: Integer;
+  mSame, mIdentifier: Boolean;
+  mIndex: Integer;
 begin
   Result := ALast;
   AChanged := False;
@@ -163,13 +163,13 @@ begin
   // Steht die Markierung auf einem Treffer der letzten Suche, geht F3 einfach weiter.
   if ALast.Options.CaseSensitive and not ALast.Options.Identifier then
   begin
-    Same := ALast.Text = ASelected;
+    mSame := ALast.Text = ASelected;
   end
   else
   begin
-    Same := SameText(ALast.Text, ASelected);
+    mSame := SameText(ALast.Text, ASelected);
   end;
-  if Same then
+  if mSame then
   begin
     Exit;
   end;
@@ -181,15 +181,15 @@ begin
   end;
   Result.Area := TAtlasSearchArea.Create(0, 0, 0, 0);
   // Bezeichner-Modus findet nur Bezeichner; für „Foo.Bar“ oder „:=“ gilt die Textsuche.
-  Identifier := TTextChars.IsIdentStart(ASelected[1]);
-  for Index := 2 to Length(ASelected) do
+  mIdentifier := TTextChars.IsIdentStart(ASelected[1]);
+  for mIndex := 2 to Length(ASelected) do
   begin
-    if not TTextChars.IsIdentChar(ASelected[Index]) then
+    if not TTextChars.IsIdentChar(ASelected[mIndex]) then
     begin
-      Identifier := False;
+      mIdentifier := False;
     end;
   end;
-  if not Identifier then
+  if not mIdentifier then
   begin
     Result.Options.Identifier := False;
   end;

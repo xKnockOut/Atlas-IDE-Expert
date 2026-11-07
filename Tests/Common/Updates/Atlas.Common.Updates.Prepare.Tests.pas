@@ -145,7 +145,7 @@ begin
   Release(TFakeTrust.HashOf('anders'));
   mStage := Prepare('37.0');
   Assert.IsTrue(mStage.Phase = TUpdatePhase.Failed);
-  Assert.AreEqual(TUpdateErrors.Hash, mStage.Error);
+  Assert.AreEqual(TUpdateErrors.cHash, mStage.Error);
   Assert.IsFalse(FFake.Files.FileExists(cStaging + '\files\AtlasServer.exe'));
 end;
 
@@ -156,7 +156,7 @@ begin
   Release(TFakeTrust.HashOf('pkg'));
   FFake.Network.Serve(cManifestUrl, '{"version": "2.0.2"}');
   mStage := Prepare('37.0');
-  Assert.AreEqual(TUpdateErrors.VersionChanged, mStage.Error);
+  Assert.AreEqual(TUpdateErrors.cVersionChanged, mStage.Error);
   Assert.AreEqual('2.0.2', mStage.Detail);
 end;
 
@@ -183,7 +183,7 @@ begin
   Release(TFakeTrust.HashOf('pkg'));
   FFake.Builder.Available := False;
   mStage := Prepare('36.0');
-  Assert.AreEqual(TUpdateErrors.NoCompiler, mStage.Error);
+  Assert.AreEqual(TUpdateErrors.cNoCompiler, mStage.Error);
   Assert.AreEqual('dcc32 fehlt', mStage.Detail);
 end;
 
@@ -194,7 +194,7 @@ begin
   Release(TFakeTrust.HashOf('pkg'));
   FFake.Builder.FailOn := 'Atlas.IDE.Debugger';
   mStage := Prepare('36.0');
-  Assert.AreEqual(TUpdateErrors.Build, mStage.Error);
+  Assert.AreEqual(TUpdateErrors.cBuild, mStage.Error);
   Assert.Contains(mStage.Detail, 'Atlas.IDE.Debugger.dproj');
   Assert.Contains(FFake.LogText, 'Erzeuge Atlas.IDE.Debugger');
 end;
@@ -206,14 +206,14 @@ begin
   Release(TFakeTrust.HashOf('pkg'));
   FFake.Trust.Sign(cUpdater, 'Atlas');
   mStage := Prepare('37.0');
-  Assert.AreEqual(TUpdateErrors.Unsigned, mStage.Error);
+  Assert.AreEqual(TUpdateErrors.cUnsigned, mStage.Error);
   FFake.Trust.Sign(cStaging + '\files\AtlasServer.exe', 'Fremd');
   FFake.Trust.Sign(cStaging + '\files\AtlasUpdate.exe', 'Atlas');
   FFake.Trust.Sign(cStaging + '\files\Win32\Atlas.IDE.Base370.bpl', 'Atlas');
   FFake.Trust.Sign(cStaging + '\files\Win32\Atlas.IDE.Debugger370.bpl', 'Atlas');
   FFake.Trust.Sign(cStaging + '\files\Win32\Atlas.IDE.Search370.bpl', 'Atlas');
   mStage := Prepare('37.0');
-  Assert.AreEqual(TUpdateErrors.Signature, mStage.Error);
+  Assert.AreEqual(TUpdateErrors.cSignature, mStage.Error);
   Assert.AreEqual('AtlasServer.exe', mStage.Detail);
 end;
 

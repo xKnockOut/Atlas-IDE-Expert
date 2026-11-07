@@ -113,29 +113,29 @@ const
 
 function ToolGetDiagnostics(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
-  FileName, Reason: string;
-  Files: TArray<string>;
+  mFileName, mReason: string;
+  mFiles: TArray<string>;
 begin
-  FileName := TMcpServer.OptionalString(AArguments, 'file');
-  if FileName <> '' then
+  mFileName := TMcpServer.OptionalString(AArguments, 'file');
+  if mFileName <> '' then
   begin
-    Files := [AContext.Guard.Resolve(FileName)];
+    mFiles := [AContext.Guard.Resolve(mFileName)];
   end
   else
   begin
-    Files := AContext.Group.Main.State.ProjectFiles;
+    mFiles := AContext.Group.Main.State.ProjectFiles;
   end;
-  if Length(Files) = 0 then
+  if Length(mFiles) = 0 then
   begin
     raise EMcpToolError.Create(TShellTexts.NoProjectGiveFile);
   end;
   Result := TMcpCheckTools.Diagnostics(TMcpRuleScope.Create(BuiltinRules,
-    AContext.Group.Main.Configuration.Settings, AContext.Root), Files, ReadSourceText,
+    AContext.Group.Main.Configuration.Settings, AContext.Root), mFiles, ReadSourceText,
     AContext.CheckSource, AContext.CheckProject);
   // Solange der Index lädt, sehen Regeln, die Typen anderer Units brauchen, noch nicht alles (#1112).
-  if not AContext.Group.Ready(Reason) then
+  if not AContext.Group.Ready(mReason) then
   begin
-    Result := cTexts[TMcpCheckText.IndexLoading].Fmt([Reason]) + sLineBreak + Result;
+    Result := cTexts[TMcpCheckText.IndexLoading].Fmt([mReason]) + sLineBreak + Result;
   end;
 end;
 
@@ -149,20 +149,20 @@ end;
 
 function ToolHookCheck(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
-  FileName: string;
-  Severity: TRuleSeverity;
+  mFileName: string;
+  mSeverity: TRuleSeverity;
 begin
-  Severity := TMcpCheckTools.ParseHookSeverity(TMcpServer.OptionalString(AArguments, 'severity'));
+  mSeverity := TMcpCheckTools.ParseHookSeverity(TMcpServer.OptionalString(AArguments, 'severity'));
   try
-    FileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+    mFileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
   except
     // Dateien außerhalb des Projekts gehen Atlas nichts an; eine Fehlermeldung je Bearbeitung wäre Rauschen.
     on EMcpToolError do
       Exit('');
   end;
   Result := TMcpCheckTools.HookDiagnostics(TMcpRuleScope.Create(BuiltinRules,
-    AContext.Group.Main.Configuration.Settings, AContext.Root), FileName, ReadSourceText,
-    AContext.CheckSource, AContext.CheckProject, Severity);
+    AContext.Group.Main.Configuration.Settings, AContext.Root), mFileName, ReadSourceText,
+    AContext.CheckSource, AContext.CheckProject, mSeverity);
 end;
 
 procedure AddHookCheck(const AContext: TMcpToolContext);
@@ -176,29 +176,29 @@ end;
 
 function ToolGetMetrics(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
-  FileName, Format: string;
-  Files: TArray<string>;
+  mFileName, mFormat: string;
+  mFiles: TArray<string>;
 begin
-  FileName := TMcpServer.OptionalString(AArguments, 'file');
-  Format := TMcpServer.OptionalString(AArguments, 'format');
-  if (Format <> '') and not SameText(Format, 'markdown') and not SameText(Format, 'json') then
+  mFileName := TMcpServer.OptionalString(AArguments, 'file');
+  mFormat := TMcpServer.OptionalString(AArguments, 'format');
+  if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('format', ['markdown', 'json']));
   end;
-  if FileName <> '' then
+  if mFileName <> '' then
   begin
-    Files := [AContext.Guard.Resolve(FileName)];
+    mFiles := [AContext.Guard.Resolve(mFileName)];
   end
   else
   begin
-    Files := AContext.Group.Main.State.ProjectFiles;
+    mFiles := AContext.Group.Main.State.ProjectFiles;
   end;
-  if Length(Files) = 0 then
+  if Length(mFiles) = 0 then
   begin
     raise EMcpToolError.Create(TShellTexts.NoProjectGiveFile);
   end;
-  Result := TMcpCheckTools.Metrics(AContext.Group.Main.Configuration.Settings, AContext.Root, Files, ReadSourceText,
-    SameText(Format, 'json'));
+  Result := TMcpCheckTools.Metrics(AContext.Group.Main.Configuration.Settings, AContext.Root, mFiles, ReadSourceText,
+    SameText(mFormat, 'json'));
 end;
 
 procedure AddGetMetrics(const AContext: TMcpToolContext);
@@ -214,41 +214,42 @@ end;
 
 function ToolGetTodos(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
-  FileName, Format: string;
-  Files: TArray<string>;
-  Filter: TTodoFilter;
-  IncludeDone: Boolean;
+  mFileName, mFormat: string;
+  mFiles: TArray<string>;
+  mFilter: TTodoFilter;
+  mIncludeDone: Boolean;
 begin
-  FileName := TMcpServer.OptionalString(AArguments, 'file');
-  Format := TMcpServer.OptionalString(AArguments, 'format');
-  if (Format <> '') and not SameText(Format, 'markdown') and not SameText(Format, 'json') then
+  mFileName := TMcpServer.OptionalString(AArguments, 'file');
+  mFormat := TMcpServer.OptionalString(AArguments, 'format');
+  if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('format', ['markdown', 'json']));
   end;
-  Filter := TTodoFilter.Default;
-  Filter.UnitName := TMcpServer.OptionalString(AArguments, 'unit');
-  Filter.Category := TMcpServer.OptionalString(AArguments, 'category');
-  Filter.Owner := TMcpServer.OptionalString(AArguments, 'owner');
-  Filter.Keyword := TMcpServer.OptionalString(AArguments, 'keyword');
-  if (AArguments <> nil) and AArguments.TryGetValue<Boolean>('includeDone', IncludeDone) then
+  mFilter := TTodoFilter.Default;
+  mFilter.UnitName := TMcpServer.OptionalString(AArguments, 'unit');
+  mFilter.Category := TMcpServer.OptionalString(AArguments, 'category');
+  mFilter.Owner := TMcpServer.OptionalString(AArguments, 'owner');
+  mFilter.Keyword := TMcpServer.OptionalString(AArguments, 'keyword');
+  if (AArguments <> nil) and AArguments.TryGetValue<Boolean>('includeDone', mIncludeDone) then
   begin
-    Filter.IncludeDone := IncludeDone;
+    mFilter.IncludeDone := mIncludeDone;
   end;
   // Projektweit heißt: die Dateien, die das Projektmodell (#14) dem Projekt zuordnet.
-  if FileName <> '' then
+  if mFileName <> '' then
   begin
-    Files := [AContext.Guard.Resolve(FileName)];
+    mFiles := [AContext.Guard.Resolve(mFileName)];
   end
   else
   begin
-    Files := AContext.Group.Main.State.ProjectFiles;
+    mFiles := AContext.Group.Main.State.ProjectFiles;
   end;
-  if Length(Files) = 0 then
+  if Length(mFiles) = 0 then
   begin
     raise EMcpToolError.Create(TShellTexts.NoProjectGiveFile);
   end;
-  Result := TMcpCheckTools.Todos(AContext.Group.Main.Configuration.Settings, AContext.Root, Files, ReadSourceText, Filter,
-    SameText(Format, 'json'));
+  Result := TMcpCheckTools.Todos(AContext.Group.Main.Configuration.Settings, AContext.Root, mFiles, ReadSourceText,
+    mFilter,
+    SameText(mFormat, 'json'));
 end;
 
 procedure AddGetTodos(const AContext: TMcpToolContext);
@@ -274,25 +275,25 @@ end;
 
 function ToolCheckCode(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
-  FileName, Text: string;
-  StartLine, EndLine: Integer;
+  mFileName, mText: string;
+  mStartLine, mEndLine: Integer;
 begin
-  FileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
-  if not AArguments.TryGetValue<string>('text', Text) then
+  mFileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+  if not AArguments.TryGetValue<string>('text', mText) then
   begin
     raise EMcpToolError.Create(TShellTexts.Missing(['text']));
   end;
-  if not AArguments.TryGetValue<Integer>('startLine', StartLine) then
+  if not AArguments.TryGetValue<Integer>('startLine', mStartLine) then
   begin
-    StartLine := 0;
+    mStartLine := 0;
   end;
-  if not AArguments.TryGetValue<Integer>('endLine', EndLine) then
+  if not AArguments.TryGetValue<Integer>('endLine', mEndLine) then
   begin
-    EndLine := StartLine;
+    mEndLine := mStartLine;
   end;
   Result := AContext.Code.CheckCode(TMcpRuleScope.Create(BuiltinRules, AContext.Group.Main.Configuration.Settings,
-    AContext.Root), FileName, Text,
-    StartLine, EndLine);
+    AContext.Root), mFileName, mText,
+    mStartLine, mEndLine);
 end;
 
 procedure AddCheckCode(const AContext: TMcpToolContext);
@@ -313,25 +314,25 @@ end;
 
 function ToolGetDfmInfo(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
-  FileName, Text: string;
+  mFileName, mText: string;
 begin
-  FileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
-  if SameText(ExtractFileExt(FileName), '.pas') then
+  mFileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+  if SameText(ExtractFileExt(mFileName), '.pas') then
   begin
-    if FileExists(ChangeFileExt(FileName, '.dfm')) then
+    if FileExists(ChangeFileExt(mFileName, '.dfm')) then
     begin
-      FileName := ChangeFileExt(FileName, '.dfm');
+      mFileName := ChangeFileExt(mFileName, '.dfm');
     end
     else
     begin
-      FileName := ChangeFileExt(FileName, '.fmx');
+      mFileName := ChangeFileExt(mFileName, '.fmx');
     end;
   end;
-  if not TDfmParser.IsFormFile(FileName) or not ReadSourceText(FileName, Text) then
+  if not TDfmParser.IsFormFile(mFileName) or not ReadSourceText(mFileName, mText) then
   begin
-    raise EMcpToolError.Create(cTexts[TMcpCheckText.FormNotFound].Fmt([FileName]));
+    raise EMcpToolError.Create(cTexts[TMcpCheckText.FormNotFound].Fmt([mFileName]));
   end;
-  Result := TMcpIndexTools.DfmInfo(Text);
+  Result := TMcpIndexTools.DfmInfo(mText);
 end;
 
 procedure AddGetDfmInfo(const AContext: TMcpToolContext);
@@ -344,48 +345,49 @@ end;
 
 function ToolExplainFinding(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
-  FileName, Text, RuleId, RelativePath: string;
-  Line: Integer;
-  Finding: TRuleFinding;
-  Catalog: TRuleCatalog;
-  Scopes: TFindingScopes;
+  mFileName, mText, mRuleId, mRelativePath: string;
+  mLine: Integer;
+  mFinding: TRuleFinding;
+  mCatalog: TRuleCatalog;
+  mScopes: TFindingScopes;
 begin
-  FileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
-  if not AArguments.TryGetValue<Integer>('line', Line) then
+  mFileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+  if not AArguments.TryGetValue<Integer>('line', mLine) then
   begin
     raise EMcpToolError.Create(TShellTexts.Missing(['line']));
   end;
-  RuleId := TMcpServer.OptionalString(AArguments, 'rule');
-  if not ReadSourceText(FileName, Text) then
+  mRuleId := TMcpServer.OptionalString(AArguments, 'rule');
+  if not ReadSourceText(mFileName, mText) then
   begin
-    raise EMcpToolError.Create(cTexts[TMcpCheckText.Unreadable].Fmt([FileName]));
+    raise EMcpToolError.Create(cTexts[TMcpCheckText.Unreadable].Fmt([mFileName]));
   end;
-  RelativePath := FileName;
-  if StartsText(IncludeTrailingPathDelimiter(AContext.Root), FileName) then
+  mRelativePath := mFileName;
+  if StartsText(IncludeTrailingPathDelimiter(AContext.Root), mFileName) then
   begin
-    RelativePath := Copy(FileName, Length(IncludeTrailingPathDelimiter(AContext.Root)) + 1, MaxInt);
+    mRelativePath := Copy(mFileName, Length(IncludeTrailingPathDelimiter(AContext.Root)) + 1, MaxInt);
   end;
   Result := '';
-  Catalog := TFindingPrompt.GermanCatalog;
+  mCatalog := TFindingPrompt.GermanCatalog;
   try
-    for Finding in TFileChecker.CheckText(BuiltinRules, AContext.Group.Main.Configuration.Settings, RelativePath, Text,
-      TCheckOrigin.Make(AContext.CheckProject(FileName), AContext.Group.Main.State.CheckSource(FileName)), Scopes) do
+    for mFinding in TFileChecker.CheckText(BuiltinRules, AContext.Group.Main.Configuration.Settings, mRelativePath,
+      mText,
+      TCheckOrigin.Make(AContext.CheckProject(mFileName), AContext.Group.Main.State.CheckSource(mFileName)), mScopes) do
     begin
-      if (Finding.Range.StartPos.Line = Line - 1) and ((RuleId = '') or SameText(RuleId, Finding.RuleId)) then
+      if (mFinding.Range.StartPos.Line = mLine - 1) and ((mRuleId = '') or SameText(mRuleId, mFinding.RuleId)) then
       begin
         if Result <> '' then
         begin
           Result := Result + sLineBreak + sLineBreak;
         end;
-        Result := Result + TFindingPrompt.Markdown(Finding, FileName, Text, Catalog);
+        Result := Result + TFindingPrompt.Markdown(mFinding, mFileName, mText, mCatalog);
       end;
     end;
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
   if Result = '' then
   begin
-    raise EMcpToolError.Create(cTexts[TMcpCheckText.NoFinding].Fmt([Line, ExtractFileName(FileName)]));
+    raise EMcpToolError.Create(cTexts[TMcpCheckText.NoFinding].Fmt([mLine, ExtractFileName(mFileName)]));
   end;
 end;
 

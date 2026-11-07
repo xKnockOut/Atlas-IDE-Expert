@@ -72,9 +72,9 @@ end;
 
 procedure TAtlasWelcomeHelpFrameTests.TextsFollowLanguage;
 var
-  Saved: TAtlasLanguage;
+  mSaved: TAtlasLanguage;
 begin
-  Saved := TAtlasStrings.Language;
+  mSaved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
     Assert.AreEqual('Hilfe und Rückmeldung', TAtlasWelcomeHelpFrame.TitleText);
@@ -87,93 +87,93 @@ begin
     Assert.AreEqual('Report a problem …', TAtlasWelcomeHelpFrame.ButtonCaption(TAtlasHelpButton.Report));
     Assert.AreEqual('Support Atlas ♥', TAtlasWelcomeHelpFrame.ButtonCaption(TAtlasHelpButton.Donate));
   finally
-    TAtlasStrings.Language := Saved;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 procedure TAtlasWelcomeHelpFrameTests.ButtonsFollowSourceAndWidth;
 var
-  Host: TForm;
-  Fake: TFakeHelp;
-  Source: IAtlasHelpSource;
-  Frame: TAtlasWelcomeHelpFrame;
-  Kind: TAtlasHelpButton;
-  Wide: Integer;
+  mHost: TForm;
+  mFake: TFakeHelp;
+  mSource: IAtlasHelpSource;
+  mFrame: TAtlasWelcomeHelpFrame;
+  mKind: TAtlasHelpButton;
+  mWide: Integer;
 begin
-  Fake := TFakeHelp.Create;
-  Fake.Keys := True;
-  Source := Fake;
-  Host := TForm.CreateNew(nil);
+  mFake := TFakeHelp.Create;
+  mFake.Keys := True;
+  mSource := mFake;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasWelcomeHelpFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.SetBounds(0, 0, 600, 120);
+    mFrame := TAtlasWelcomeHelpFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.SetBounds(0, 0, 600, 120);
     // Ohne Quelle geht nichts.
-    for Kind := Low(TAtlasHelpButton) to High(TAtlasHelpButton) do
+    for mKind := Low(TAtlasHelpButton) to High(TAtlasHelpButton) do
     begin
-      Assert.IsFalse(Frame.Button(Kind).Enabled, 'ohne Quelle ausgegraut');
+      Assert.IsFalse(mFrame.Button(mKind).Enabled, 'ohne Quelle ausgegraut');
     end;
-    Frame.Source := Source;
-    for Kind := Low(TAtlasHelpButton) to High(TAtlasHelpButton) do
+    mFrame.Source := mSource;
+    for mKind := Low(TAtlasHelpButton) to High(TAtlasHelpButton) do
     begin
-      Assert.IsTrue(Frame.Button(Kind).Enabled);
+      Assert.IsTrue(mFrame.Button(mKind).Enabled);
     end;
-    Assert.AreEqual(Frame.Button(TAtlasHelpButton.Docs).Top, Frame.Button(TAtlasHelpButton.Report).Top,
+    Assert.AreEqual(mFrame.Button(TAtlasHelpButton.Docs).Top, mFrame.Button(TAtlasHelpButton.Report).Top,
       'genug Breite: eine Reihe');
-    Assert.IsTrue(Frame.Button(TAtlasHelpButton.Keys).Left > Frame.Button(TAtlasHelpButton.Docs).Left);
-    Assert.IsTrue(Frame.NoteLabel.Top > Frame.Button(TAtlasHelpButton.Docs).Top, 'Hinweis unter den Knöpfen');
-    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpNote), Frame.NoteLabel.Caption);
-    Assert.IsTrue(Frame.PreferredHeight > Frame.NoteLabel.Top, 'Höhe nach dem Inhalt');
-    Wide := Frame.PreferredHeight;
+    Assert.IsTrue(mFrame.Button(TAtlasHelpButton.Keys).Left > mFrame.Button(TAtlasHelpButton.Docs).Left);
+    Assert.IsTrue(mFrame.NoteLabel.Top > mFrame.Button(TAtlasHelpButton.Docs).Top, 'Hinweis unter den Knöpfen');
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpNote), mFrame.NoteLabel.Caption);
+    Assert.IsTrue(mFrame.PreferredHeight > mFrame.NoteLabel.Top, 'Höhe nach dem Inhalt');
+    mWide := mFrame.PreferredHeight;
     // Schmal: weitere Reihen, der Bereich wird höher.
-    Frame.Width := 120;
-    Frame.UpdateContent;
-    Assert.IsTrue(Frame.Button(TAtlasHelpButton.Report).Top > Frame.Button(TAtlasHelpButton.Docs).Top,
+    mFrame.Width := 120;
+    mFrame.UpdateContent;
+    Assert.IsTrue(mFrame.Button(TAtlasHelpButton.Report).Top > mFrame.Button(TAtlasHelpButton.Docs).Top,
       'schmal: Umbruch');
-    Assert.IsTrue(Frame.PreferredHeight > Wide);
+    Assert.IsTrue(mFrame.PreferredHeight > mWide);
     // Übersicht aus (keys.overview): „Tastenkürzel“ ausgegraut, die anderen gehen.
-    Fake.Keys := False;
-    Frame.UpdateContent;
-    Assert.IsFalse(Frame.Button(TAtlasHelpButton.Keys).Enabled);
-    Assert.IsTrue(Frame.Button(TAtlasHelpButton.Docs).Enabled);
-    Assert.IsTrue(Frame.Button(TAtlasHelpButton.Report).Enabled);
+    mFake.Keys := False;
+    mFrame.UpdateContent;
+    Assert.IsFalse(mFrame.Button(TAtlasHelpButton.Keys).Enabled);
+    Assert.IsTrue(mFrame.Button(TAtlasHelpButton.Docs).Enabled);
+    Assert.IsTrue(mFrame.Button(TAtlasHelpButton.Report).Enabled);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 procedure TAtlasWelcomeHelpFrameTests.ClicksReachSource;
 var
-  Host: TForm;
-  Fake: TFakeHelp;
-  Source: IAtlasHelpSource;
-  Frame: TAtlasWelcomeHelpFrame;
+  mHost: TForm;
+  mFake: TFakeHelp;
+  mSource: IAtlasHelpSource;
+  mFrame: TAtlasWelcomeHelpFrame;
 begin
-  Fake := TFakeHelp.Create;
-  Fake.Keys := True;
-  Source := Fake;
-  Host := TForm.CreateNew(nil);
+  mFake := TFakeHelp.Create;
+  mFake.Keys := True;
+  mSource := mFake;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasWelcomeHelpFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.Source := Source;
-    Frame.Button(TAtlasHelpButton.Docs).Click;
-    Frame.Button(TAtlasHelpButton.Keys).Click;
-    Frame.Button(TAtlasHelpButton.Report).Click;
-    Frame.Button(TAtlasHelpButton.Donate).Click;
-    Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'über die Nachrichtenschleife');
+    mFrame := TAtlasWelcomeHelpFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Source := mSource;
+    mFrame.Button(TAtlasHelpButton.Docs).Click;
+    mFrame.Button(TAtlasHelpButton.Keys).Click;
+    mFrame.Button(TAtlasHelpButton.Report).Click;
+    mFrame.Button(TAtlasHelpButton.Donate).Click;
+    Assert.AreEqual(0, Integer(Length(mFake.Calls)), 'über die Nachrichtenschleife');
     CheckSynchronize;
-    Assert.AreEqual(4, Integer(Length(Fake.Calls)));
-    Assert.AreEqual('docs', Fake.Calls[0]);
-    Assert.AreEqual('keys', Fake.Calls[1]);
-    Assert.AreEqual('report', Fake.Calls[2]);
-    Assert.AreEqual('donate', Fake.Calls[3]);
+    Assert.AreEqual(4, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('docs', mFake.Calls[0]);
+    Assert.AreEqual('keys', mFake.Calls[1]);
+    Assert.AreEqual('report', mFake.Calls[2]);
+    Assert.AreEqual('donate', mFake.Calls[3]);
     // Ausgegrauter Knopf tut nichts.
-    Fake.Keys := False;
-    Frame.UpdateContent;
-    Frame.ClickButton(TAtlasHelpButton.Keys);
+    mFake.Keys := False;
+    mFrame.UpdateContent;
+    mFrame.ClickButton(TAtlasHelpButton.Keys);
     CheckSynchronize;
-    Assert.AreEqual(4, Integer(Length(Fake.Calls)));
+    Assert.AreEqual(4, Integer(Length(mFake.Calls)));
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 

@@ -78,14 +78,14 @@ end;
 
 procedure TAtlasDebugExceptionBannerTests.ModeReplacesOnlyKnownDialog;
 var
-  Dialog: TAtlasDebugDialogScan;
+  mDialog: TAtlasDebugDialogScan;
 begin
-  Dialog := Scan(0, 1);
-  Assert.AreEqual(Ord(TAtlasDebugBannerMode.Off), Ord(TAtlasDebugBannerRules.Mode(False, True, False, Dialog)));
-  Assert.AreEqual(Ord(TAtlasDebugBannerMode.Replace), Ord(TAtlasDebugBannerRules.Mode(True, True, False, Dialog)));
-  Assert.AreEqual(Ord(TAtlasDebugBannerMode.Additional), Ord(TAtlasDebugBannerRules.Mode(True, False, False, Dialog)),
+  mDialog := Scan(0, 1);
+  Assert.AreEqual(Ord(TAtlasDebugBannerMode.Off), Ord(TAtlasDebugBannerRules.Mode(False, True, False, mDialog)));
+  Assert.AreEqual(Ord(TAtlasDebugBannerMode.Replace), Ord(TAtlasDebugBannerRules.Mode(True, True, False, mDialog)));
+  Assert.AreEqual(Ord(TAtlasDebugBannerMode.Additional), Ord(TAtlasDebugBannerRules.Mode(True, False, False, mDialog)),
     'unbekannte IDE-Version: Dialog bleibt');
-  Assert.AreEqual(Ord(TAtlasDebugBannerMode.Additional), Ord(TAtlasDebugBannerRules.Mode(True, True, True, Dialog)),
+  Assert.AreEqual(Ord(TAtlasDebugBannerMode.Additional), Ord(TAtlasDebugBannerRules.Mode(True, True, True, mDialog)),
     'IDE-Dialog für die Sitzung verlangt');
   Assert.AreEqual(Ord(TAtlasDebugBannerMode.Additional), Ord(TAtlasDebugBannerRules.Mode(True, True, False,
     Scan(-1, 1))), 'ohne Knopf „Anhalten“');
@@ -106,20 +106,20 @@ end;
 
 procedure TAtlasDebugExceptionBannerTests.InfoCutsStackToFirstOwnLine;
 var
-  Info: TAtlasDebugBannerInfo;
+  mInfo: TAtlasDebugBannerInfo;
 begin
-  Info := TAtlasDebugBannerRules.Info(SampleException, True, 'C:\Projekte\Demo\Project1.dproj', 'Hauptthread', True);
-  Assert.AreEqual('EConvertError', Info.ExceptionClass);
-  Assert.AreEqual('''x'' ist kein gültiger Wert', Info.Message);
-  Assert.AreEqual('Hauptthread 4711', Info.ThreadText);
-  Assert.AreEqual(3, Info.Count);
-  Assert.AreEqual(3, Info.FrameIndex);
-  Assert.AreEqual(3, Info.Hidden, 'drei Ebenen über dem eigenen Code');
-  Assert.AreEqual('Unit1.TForm1.Button1Click', Info.Routine);
-  Assert.AreEqual('C:\Projekte\Demo\Unit1.pas', Info.FileName);
-  Assert.AreEqual(42, Info.Line);
-  Assert.AreEqual('Unit1.pas:42', Info.LocationText);
-  Assert.IsTrue(Info.CanIgnoreLocation);
+  mInfo := TAtlasDebugBannerRules.Info(SampleException, True, 'C:\Projekte\Demo\Project1.dproj', 'Hauptthread', True);
+  Assert.AreEqual('EConvertError', mInfo.ExceptionClass);
+  Assert.AreEqual('''x'' ist kein gültiger Wert', mInfo.Message);
+  Assert.AreEqual('Hauptthread 4711', mInfo.ThreadText);
+  Assert.AreEqual(3, mInfo.Count);
+  Assert.AreEqual(3, mInfo.FrameIndex);
+  Assert.AreEqual(3, mInfo.Hidden, 'drei Ebenen über dem eigenen Code');
+  Assert.AreEqual('Unit1.TForm1.Button1Click', mInfo.Routine);
+  Assert.AreEqual('C:\Projekte\Demo\Unit1.pas', mInfo.FileName);
+  Assert.AreEqual(42, mInfo.Line);
+  Assert.AreEqual('Unit1.pas:42', mInfo.LocationText);
+  Assert.IsTrue(mInfo.CanIgnoreLocation);
   Assert.IsFalse(TAtlasDebugBannerRules.Info(SampleException, True, 'C:\P.dproj', '', False).CanIgnoreLocation,
     'Knopf ausgeschaltet');
   Assert.IsFalse(TAtlasDebugBannerRules.Info(SampleException, True, '', '', True).CanIgnoreLocation,
@@ -128,29 +128,29 @@ end;
 
 procedure TAtlasDebugExceptionBannerTests.InfoWithoutJustMyCodeShowsTopSource;
 var
-  Info: TAtlasDebugBannerInfo;
+  mInfo: TAtlasDebugBannerInfo;
 begin
-  Info := TAtlasDebugBannerRules.Info(SampleException, False, 'C:\P.dproj', '', True);
-  Assert.AreEqual(1, Info.FrameIndex);
-  Assert.AreEqual(1, Info.Hidden, 'nur der Rahmen ohne Quelltext');
-  Assert.AreEqual(9010, Info.Line);
+  mInfo := TAtlasDebugBannerRules.Info(SampleException, False, 'C:\P.dproj', '', True);
+  Assert.AreEqual(1, mInfo.FrameIndex);
+  Assert.AreEqual(1, mInfo.Hidden, 'nur der Rahmen ohne Quelltext');
+  Assert.AreEqual(9010, mInfo.Line);
 end;
 
 procedure TAtlasDebugExceptionBannerTests.InfoWithoutSourceOffersNoLocation;
 var
-  Exception: TAtlasDebugException;
-  Info: TAtlasDebugBannerInfo;
+  mException: TAtlasDebugException;
+  mInfo: TAtlasDebugBannerInfo;
 begin
-  Exception := TAtlasDebugException.Create(Now, 'EAccessViolation', '', 1, 'Worker');
-  Exception.Frames := TArray<TAtlasDebugFrame>.Create(Frame(':0040A1B2 Demo.Worker', '', 0, False));
-  Info := TAtlasDebugBannerRules.Info(Exception, True, 'C:\P.dproj', 'Hauptthread', True);
-  Assert.AreEqual(-1, Info.FrameIndex);
-  Assert.AreEqual(0, Info.Hidden);
-  Assert.AreEqual('Demo.Worker', Info.Routine, 'Adresse entfällt');
-  Assert.AreEqual('Worker (1)', Info.ThreadText);
-  Assert.AreEqual(1, Info.Count, 'mindestens einmal');
-  Assert.AreEqual('', Info.LocationText);
-  Assert.IsFalse(Info.CanIgnoreLocation);
+  mException := TAtlasDebugException.Create(Now, 'EAccessViolation', '', 1, 'Worker');
+  mException.Frames := TArray<TAtlasDebugFrame>.Create(Frame(':0040A1B2 Demo.Worker', '', 0, False));
+  mInfo := TAtlasDebugBannerRules.Info(mException, True, 'C:\P.dproj', 'Hauptthread', True);
+  Assert.AreEqual(-1, mInfo.FrameIndex);
+  Assert.AreEqual(0, mInfo.Hidden);
+  Assert.AreEqual('Demo.Worker', mInfo.Routine, 'Adresse entfällt');
+  Assert.AreEqual('Worker (1)', mInfo.ThreadText);
+  Assert.AreEqual(1, mInfo.Count, 'mindestens einmal');
+  Assert.AreEqual('', mInfo.LocationText);
+  Assert.IsFalse(mInfo.CanIgnoreLocation);
 end;
 
 end.

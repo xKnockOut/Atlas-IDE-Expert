@@ -28,8 +28,8 @@ type
   TAtlasSearchModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
     IAtlasKeySource, IAtlasAppliesSettings, IAtlasFollowsTheme, IAtlasTakenActions)
   public const
-    ModuleId = 'atlas.search';
-    Switch = 'search';
+    cModuleId = 'atlas.search';
+    cSwitch = 'search';
   private
     FActive: Boolean;
     class function Parts: TArray<IAtlasFeaturePart>; static;
@@ -79,7 +79,7 @@ uses
 const
   /// <summary>Symbolnamen beim Tippen im Fenster „Atlas-Abfrage“: lieber keine Vorschläge als die IDE aufhalten.
   /// </summary>
-  QuerySymbolTimeoutMs = 1500;
+  cQuerySymbolTimeoutMs = 1500;
 
 var
   GScope: IAtlasModuleScope;
@@ -161,7 +161,7 @@ begin
     Exit(nil);
   end;
   try
-    mSymbols := mSession.WorkspaceSymbols(APrefix, QuerySymbolTimeoutMs);
+    mSymbols := mSession.WorkspaceSymbols(APrefix, cQuerySymbolTimeoutMs);
   except
     on ELspClientError do
       mSymbols := nil;
@@ -307,13 +307,13 @@ end;
 function TAtlasSearchModule.Info: TAtlasModuleInfo;
 begin
   Result := Default(TAtlasModuleInfo);
-  Result.Id := ModuleId;
+  Result.Id := cModuleId;
   Result.Name := 'Suche';
-  Result.Version := TAtlasVersion.Version;
+  Result.Version := TAtlasVersion.cVersion;
   Result.Handle := HInstance;
   // Lief mit den Editorbefehlen schon im abgesicherten Start.
   Result.MinLevel := TAtlasSafeLevel.Safe;
-  Result.Switch := Switch;
+  Result.Switch := cSwitch;
 end;
 
 procedure TAtlasSearchModule.Start;
@@ -491,7 +491,7 @@ begin
   if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
     ccMatch then
   begin
-    TAtlasGuard.Log('Modul ' + ModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
+    TAtlasGuard.Log('Modul ' + cModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
     Exit;
   end;
   mModule := TAtlasSearchModule.Create;
@@ -525,9 +525,9 @@ begin
   mRegistry := AtlasModuleRegistry;
   if mRegistry <> nil then
   begin
-    for mFailure in mRegistry.UnregisterModule(ModuleId) do
+    for mFailure in mRegistry.UnregisterModule(cModuleId) do
     begin
-      TAtlasGuard.Log('Modul ' + ModuleId + ' nicht sauber abgemeldet: ' + mFailure);
+      TAtlasGuard.Log('Modul ' + cModuleId + ' nicht sauber abgemeldet: ' + mFailure);
     end;
   end;
 end;

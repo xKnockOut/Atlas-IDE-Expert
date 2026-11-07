@@ -47,8 +47,8 @@ end;
 
 procedure TProductVersionTests.ServerAndPluginShareVersion;
 begin
-  Assert.AreEqual(TAtlasVersion.Version, TProductVersion.cVersion);
-  Assert.AreEqual(TAtlasVersion.Version, TAtlasPluginVersion.cVersion);
+  Assert.AreEqual(TAtlasVersion.cVersion, TProductVersion.cVersion);
+  Assert.AreEqual(TAtlasVersion.cVersion, TAtlasPluginVersion.cVersion);
 end;
 
 initialization

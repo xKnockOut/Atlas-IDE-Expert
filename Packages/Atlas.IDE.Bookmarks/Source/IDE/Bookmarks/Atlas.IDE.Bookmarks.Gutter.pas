@@ -81,45 +81,45 @@ end;
 function TAtlasIdeBookmarksGutter.MarkAt(const AFileName: string; ALine: Integer; const ALineText: string;
   AHasText: Boolean): Boolean;
 var
-  Marks: TArray<TAtlasBookmark>;
+  mMarks: TArray<TAtlasBookmark>;
 begin
-  Marks := TAtlasIdeBookmarks.BookmarksAt(AFileName, ALine);
+  mMarks := TAtlasIdeBookmarks.BookmarksAt(AFileName, ALine);
   // Nur, wenn die Zeile im Editor noch zum Anker passt; nach dem Tippen folgt das Wiederfinden.
-  Result := (Length(Marks) > 0) and
-    (not AHasText or (TAtlasLineAnchors.Normalize(ALineText) = Marks[0].Anchor.Text));
+  Result := (Length(mMarks) > 0) and
+    (not AHasText or (TAtlasLineAnchors.Normalize(ALineText) = mMarks[0].Anchor.Text));
 end;
 
 procedure TAtlasIdeBookmarksGutter.PaintIcon(ACanvas: TCanvas; const AIcon: TRect; const AColors: TAtlasColors;
   ABack: TAtlasColor);
 var
-  Notch, Left, Right: Integer;
+  mNotch, mLeft, mRight: Integer;
 begin
   // Lesezeichenband: schmales Rechteck mit Kerbe unten, in der Warnfarbe.
-  Left := AIcon.Left + Max(0, (AIcon.Width - Max(4, (AIcon.Width * 3) div 4)) div 2);
-  Right := Left + Max(4, (AIcon.Width * 3) div 4);
-  Notch := Max(2, AIcon.Height div 4);
+  mLeft := AIcon.Left + Max(0, (AIcon.Width - Max(4, (AIcon.Width * 3) div 4)) div 2);
+  mRight := mLeft + Max(4, (AIcon.Width * 3) div 4);
+  mNotch := Max(2, AIcon.Height div 4);
   ACanvas.Brush.Style := bsSolid;
   ACanvas.Brush.Color := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.85));
   ACanvas.Pen.Color := TColor(AColors.Warn);
   ACanvas.Pen.Width := 1;
-  ACanvas.Polygon([Point(Left, AIcon.Top), Point(Right, AIcon.Top), Point(Right, AIcon.Bottom),
-    Point((Left + Right) div 2, AIcon.Bottom - Notch), Point(Left, AIcon.Bottom)]);
+  ACanvas.Polygon([Point(mLeft, AIcon.Top), Point(mRight, AIcon.Top), Point(mRight, AIcon.Bottom),
+    Point((mLeft + mRight) div 2, AIcon.Bottom - mNotch), Point(mLeft, AIcon.Bottom)]);
 end;
 
 function TAtlasIdeBookmarksGutter.TipText(const AFileName: string; ALine: Integer;
   out ATitle, AText: string): Boolean;
 var
-  Marks: TArray<TAtlasBookmark>;
+  mMarks: TArray<TAtlasBookmark>;
 begin
-  Marks := TAtlasIdeBookmarks.BookmarksAt(AFileName, ALine);
-  BookmarksTipText(Marks, ATitle, AText);
-  Result := Length(Marks) > 0;
+  mMarks := TAtlasIdeBookmarks.BookmarksAt(AFileName, ALine);
+  BookmarksTipText(mMarks, ATitle, AText);
+  Result := Length(mMarks) > 0;
 end;
 
 class procedure TAtlasIdeBookmarksGutter.BookmarksTipText(const ABookmarks: TArray<TAtlasBookmark>;
   out ATitle, AText: string);
 var
-  Mark: TAtlasBookmark;
+  mMark: TAtlasBookmark;
 begin
   ATitle := '';
   AText := '';
@@ -135,13 +135,13 @@ begin
   begin
     ATitle := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.BookmarksTipMore, [Length(ABookmarks)]);
   end;
-  for Mark in ABookmarks do
+  for mMark in ABookmarks do
   begin
     if AText <> '' then
     begin
       AText := AText + #10;
     end;
-    AText := AText + Mark.Name;
+    AText := AText + mMark.Name;
   end;
 end;
 

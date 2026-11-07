@@ -15,7 +15,7 @@
 // - Addable lässt Units weg, die schon in uses stehen, die aktive Unit und
 //   Include-Dateien; AddUsesArguments baut [uri, [Namen], {"section"}] für
 //   atlas.server.addUses.
-// - Formulare suchen setzt den Filter FormsFilter (Tippsyntax) bzw. die Arten
+// - Formulare suchen setzt den Filter cFormsFilter (Tippsyntax) bzw. die Arten
 //   FormKinds.
 
 interface
@@ -62,8 +62,8 @@ type
 
   TAtlasUseUnit = class
   public const
-    Command = 'atlas.useUnitInfo';
-    FormsFilter = 't:form|frame|dm';
+    cCommand = 'atlas.useUnitInfo';
+    cFormsFilter = 't:form|frame|dm';
   public
     /// <summary>[uri] für atlas.useUnitInfo.</summary>
     class function Arguments(const AUri: string): string; static;
@@ -95,20 +95,20 @@ type
 implementation
 
 const
-  Arrow = ' → ';
+  cArrow = ' → ';
 
 { TAtlasUseUnit }
 
 class function TAtlasUseUnit.Arguments(const AUri: string): string;
 var
-  Items: TJSONArray;
+  mItems: TJSONArray;
 begin
-  Items := TJSONArray.Create;
+  mItems := TJSONArray.Create;
   try
-    Items.Add(AUri);
-    Result := Items.ToJSON;
+    mItems.Add(AUri);
+    Result := mItems.ToJSON;
   finally
-    Items.Free;
+    mItems.Free;
   end;
 end;
 
@@ -210,16 +210,16 @@ end;
 
 class function TAtlasUseUnit.InUses(const AInfo: TAtlasUseUnitInfo; const AName: string): Boolean;
 var
-  Written: string;
+  mWritten: string;
 begin
   Result := SameText(AName, AInfo.UnitName);
   if Result then
   begin
     Exit;
   end;
-  for Written in AInfo.InUses do
+  for mWritten in AInfo.InUses do
   begin
-    if Matches(Written, AName) then
+    if Matches(mWritten, AName) then
     begin
       Exit(True);
     end;
@@ -229,33 +229,33 @@ end;
 class function TAtlasUseUnit.Marks(const AInfo: TAtlasUseUnitInfo;
   const AEntries: TAtlasUnitEntries): TArray<TAtlasUseUnitMark>;
 var
-  Cycles: TDictionary<string, Integer>;
-  Index, Cycle: Integer;
+  mCycles: TDictionary<string, Integer>;
+  mIndex, mCycle: Integer;
 begin
   SetLength(Result, Length(AEntries));
   // Tausende Zeilen, wenige Kreise: einmal nach Datei (sonst Name) ablegen.
-  Cycles := TDictionary<string, Integer>.Create;
+  mCycles := TDictionary<string, Integer>.Create;
   try
-    for Index := 0 to High(AInfo.Cycles) do
+    for mIndex := 0 to High(AInfo.Cycles) do
     begin
-      if AInfo.Cycles[Index].FileName <> '' then
+      if AInfo.Cycles[mIndex].FileName <> '' then
       begin
-        Cycles.AddOrSetValue(LowerCase(AInfo.Cycles[Index].FileName), Index);
+        mCycles.AddOrSetValue(LowerCase(AInfo.Cycles[mIndex].FileName), mIndex);
       end;
-      Cycles.AddOrSetValue('#' + LowerCase(AInfo.Cycles[Index].Name), Index);
+      mCycles.AddOrSetValue('#' + LowerCase(AInfo.Cycles[mIndex].Name), mIndex);
     end;
-    for Index := 0 to High(AEntries) do
+    for mIndex := 0 to High(AEntries) do
     begin
-      Result[Index].InUses := InUses(AInfo, AEntries[Index].Name);
-      if not Cycles.TryGetValue(LowerCase(AEntries[Index].FileName), Cycle) and
-        not Cycles.TryGetValue('#' + LowerCase(AEntries[Index].Name), Cycle) then
+      Result[mIndex].InUses := InUses(AInfo, AEntries[mIndex].Name);
+      if not mCycles.TryGetValue(LowerCase(AEntries[mIndex].FileName), mCycle) and
+        not mCycles.TryGetValue('#' + LowerCase(AEntries[mIndex].Name), mCycle) then
       begin
-        Cycle := -1;
+        mCycle := -1;
       end;
-      Result[Index].Cycle := Cycle;
+      Result[mIndex].Cycle := mCycle;
     end;
   finally
-    Cycles.Free;
+    mCycles.Free;
   end;
 end;
 
@@ -290,63 +290,63 @@ end;
 
 class function TAtlasUseUnit.CycleVia(const ACycle: TAtlasUseUnitCycle; ASection: TAtlasUseUnitSection): string;
 var
-  Parts: TArray<string>;
+  mParts: TArray<string>;
 begin
   Result := ACycle.Name;
   // "Ziel → Kandidat → … → Via → Ziel": vorletzter Teil.
-  Parts := CyclePath(ACycle, ASection).Split([Arrow]);
-  if Length(Parts) >= 3 then
+  mParts := CyclePath(ACycle, ASection).Split([cArrow]);
+  if Length(mParts) >= 3 then
   begin
-    Result := Parts[High(Parts) - 1];
+    Result := mParts[High(mParts) - 1];
   end;
 end;
 
 class function TAtlasUseUnit.Addable(const AInfo: TAtlasUseUnitInfo;
   const AEntries: TArray<TAtlasUnitEntry>): TArray<TAtlasUnitEntry>;
 var
-  Entry: TAtlasUnitEntry;
-  Seen: TDictionary<string, Boolean>;
+  mEntry: TAtlasUnitEntry;
+  mSeen: TDictionary<string, Boolean>;
 begin
   Result := nil;
-  Seen := TDictionary<string, Boolean>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    for Entry in AEntries do
+    for mEntry in AEntries do
     begin
-      if (Entry.Kind = TAtlasUnitKind.Include) or InUses(AInfo, Entry.Name) or
-        Seen.ContainsKey(LowerCase(Entry.Name)) then
+      if (mEntry.Kind = TAtlasUnitKind.Include) or InUses(AInfo, mEntry.Name) or
+        mSeen.ContainsKey(LowerCase(mEntry.Name)) then
       begin
         Continue;
       end;
-      Seen.Add(LowerCase(Entry.Name), True);
-      Result := Result + [Entry];
+      mSeen.Add(LowerCase(mEntry.Name), True);
+      Result := Result + [mEntry];
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
 end;
 
 class function TAtlasUseUnit.AddUsesArguments(const AUri: string; const ANames: TArray<string>;
   ASection: TAtlasUseUnitSection): string;
 var
-  Items, Names: TJSONArray;
-  Options: TJSONObject;
-  Name: string;
+  mItems, mNames: TJSONArray;
+  mOptions: TJSONObject;
+  mName: string;
 begin
-  Items := TJSONArray.Create;
+  mItems := TJSONArray.Create;
   try
-    Items.Add(AUri);
-    Names := TJSONArray.Create;
-    for Name in ANames do
+    mItems.Add(AUri);
+    mNames := TJSONArray.Create;
+    for mName in ANames do
     begin
-      Names.Add(Name);
+      mNames.Add(mName);
     end;
-    Items.AddElement(Names);
-    Options := TJSONObject.Create;
-    Options.AddPair('section', SectionText(ASection));
-    Items.AddElement(Options);
-    Result := Items.ToJSON;
+    mItems.AddElement(mNames);
+    mOptions := TJSONObject.Create;
+    mOptions.AddPair('section', SectionText(ASection));
+    mItems.AddElement(mOptions);
+    Result := mItems.ToJSON;
   finally
-    Items.Free;
+    mItems.Free;
   end;
 end;
 

@@ -80,7 +80,8 @@ type
     function RefactoringServices: TShellRefactoringServices;
     function CompletionServices: TShellCompletionServices;
     function CodeActionServices: TShellCodeActionServices;
-    /// <summary>Präfix der Namensvorschläge (#452): Vorgabe der Projektdatei .atlas, sonst die Zählung im Index.</summary>
+    /// <summary>Präfix der Namensvorschläge (#452): Vorgabe der Projektdatei .atlas, sonst die Zählung im
+    /// Index.</summary>
     function NamingPrefixFor(const AUri: string; AKind: TNamingKind): string;
     /// <summary>Einstellungen und Projektdaten des Arbeitsbereichs von AUri für Code-Aktionen.</summary>
     function CodeActionWorkspaceOf(const AUri: string): TShellCodeActionWorkspace;

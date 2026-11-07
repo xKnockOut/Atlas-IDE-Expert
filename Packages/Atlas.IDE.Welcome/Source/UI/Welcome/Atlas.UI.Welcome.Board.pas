@@ -182,7 +182,7 @@ type
     procedure FitBars;
     procedure UpdateInsertLine;
     /// <summary>Klick auf freie Fläche (Koordinaten der Scrollbox) setzt die Einfügelinie.</summary>
-    procedure ClickAt(X, Y: Integer);
+    procedure ClickAt(AX, AY: Integer);
     /// <summary>Einfügelinie setzen: Spalte und Bereich, vor dem eingefügt wird ('' = ans Ende); -1 = Vorgabe
     /// (Ende der Spalte mit dem meisten Platz).</summary>
     procedure SetTarget(AColumn: Integer; const ABefore: string);
@@ -195,11 +195,11 @@ type
 
   TAtlasWelcomeBoardFrame = class(TAtlasWelcomeFrame)
   public const
-    Gap = 12;
+    cGap = 12;
     /// <summary>Mindestbreite einer Spalte beim Verteilen.</summary>
-    MinColumnWidth = 120;
+    cMinColumnWidth = 120;
     /// <summary>Mit AutoFold: schmaler als das faltet eine Spalte unter die vorige.</summary>
-    FoldWidth = 280;
+    cFoldWidth = 280;
   private type
     /// <summary>Stand der Quelle „Seite anpassen“ beim letzten Rebuild.</summary>
     TSourceState = record
@@ -285,9 +285,9 @@ uses
 
 const
   // Tag der Einträge im Kontextmenü eines Bereichs.
-  TagHide = 1;
-  TagSettings = 2;
-  TagCustomize = 3;
+  cTagHide = 1;
+  cTagSettings = 2;
+  cTagCustomize = 3;
 
 /// <summary>AValue logische Pixel in der Auflösung von AControl.</summary>
 function Scaled(AControl: TControl; AValue: Integer): Integer;
@@ -498,7 +498,7 @@ begin
     Exit;
   end;
   mPixels := TAtlasWelcomeScroll.WheelPixels(FWheelRest, AWheelDelta, Mouse.WheelScrollLines,
-    Scaled(FBoard, TAtlasWelcomeScroll.LineHeight), AControl.ClientHeight);
+    Scaled(FBoard, TAtlasWelcomeScroll.cLineHeight), AControl.ClientHeight);
   mBar.Position := TAtlasWelcomeScroll.Clamp(mBar.Position + mPixels, mMax);
   Result := True;
 end;
@@ -587,7 +587,7 @@ begin
   mOld := mScroll.VertScrollBar.Position;
   mNew := TAtlasWelcomeScroll.KeyPosition(AKey, mOld,
     TAtlasWelcomeScroll.MaxPosition(mScroll.VertScrollBar.Range, mScroll.ClientHeight), mScroll.ClientHeight,
-    Scaled(FBoard, TAtlasWelcomeScroll.LineHeight));
+    Scaled(FBoard, TAtlasWelcomeScroll.cLineHeight));
   Result := mNew <> mOld;
   if Result then
   begin
@@ -696,7 +696,7 @@ begin
   if PtInRect(mScroll.ClientRect, mLocal) then
   begin
     Result := TAtlasWelcomeScroll.EdgeScroll(mLocal.Y, mScroll.ClientHeight,
-      Scaled(FBoard, TAtlasWelcomeScroll.EdgeWidth), Scaled(FBoard, TAtlasWelcomeScroll.EdgeStep));
+      Scaled(FBoard, TAtlasWelcomeScroll.cEdgeWidth), Scaled(FBoard, TAtlasWelcomeScroll.cEdgeStep));
   end;
 end;
 
@@ -732,9 +732,9 @@ begin
   FBoard := ABoard;
   FSectionMenu := TPopupMenu.Create(Self);
   FSectionMenu.OnPopup := SectionMenuPopup;
-  AddSectionItem(TAtlasWelcomeTextId.WelcomeArrangeHide, TagHide, SectionMenuHide);
-  AddSectionItem(TAtlasWelcomeTextId.WelcomeArrangeSettings, TagSettings, SectionMenuSettings);
-  AddSectionItem(TAtlasWelcomeTextId.WelcomeArrangeCustomize, TagCustomize, SectionMenuCustomize);
+  AddSectionItem(TAtlasWelcomeTextId.WelcomeArrangeHide, cTagHide, SectionMenuHide);
+  AddSectionItem(TAtlasWelcomeTextId.WelcomeArrangeSettings, cTagSettings, SectionMenuSettings);
+  AddSectionItem(TAtlasWelcomeTextId.WelcomeArrangeCustomize, cTagCustomize, SectionMenuCustomize);
   FBarMenu := TPopupMenu.Create(Self);
 end;
 
@@ -744,7 +744,7 @@ var
   mItem: TMenuItem;
 begin
   // „Seite anpassen“ steht hinter einem Trennstrich (Eintrag 2).
-  if ATag = TagCustomize then
+  if ATag = cTagCustomize then
   begin
     mItem := TMenuItem.Create(FSectionMenu);
     mItem.Caption := '-';
@@ -944,9 +944,9 @@ begin
   begin
     mItem := FSectionMenu.Items[mIndex];
     case mItem.Tag of
-      TagHide, TagSettings:
+      cTagHide, cTagSettings:
         mItem.Enabled := (FBoard.FSource <> nil) and (CatalogIndex(FBoard, AId) >= 0);
-      TagCustomize:
+      cTagCustomize:
         begin
           mItem.Visible := FBoard.FState.CanCustomize;
           mItem.Checked := FBoard.FState.Editing;
@@ -1083,7 +1083,7 @@ begin
   Result := TAtlasWelcomeGrip.Create(AFrame);
   Result.Parent := AFrame.TitleBar;
   Result.Align := alLeft;
-  Result.Width := Scaled(AFrame, TAtlasWelcomeGrip.GripWidth);
+  Result.Width := Scaled(AFrame, TAtlasWelcomeGrip.cGripWidth);
   Result.SectionId := AFrame.SectionId;
   Result.OnMove := GripMove;
   Result.OnDragStart :=
@@ -1113,7 +1113,7 @@ begin
   Result := TAtlasWelcomeSectionTools.Create(AFrame);
   Result.Parent := AFrame.TitleBar;
   Result.Align := alRight;
-  Result.Width := Scaled(AFrame, 2 * TAtlasWelcomeSectionTools.ToolWidth);
+  Result.Width := Scaled(AFrame, 2 * TAtlasWelcomeSectionTools.cToolWidth);
   Result.SectionId := AFrame.SectionId;
   Result.OnTool :=
     procedure(AId: string; ATool: TAtlasWelcomeTool)
@@ -1155,7 +1155,7 @@ var
 begin
   Result := [TAtlasArrangePart.Create(TAtlasArrangePartKind.Text, '',
     TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeColumns), '', False)];
-  for mCount := TAtlasWelcomeLayout.MinColumns to TAtlasWelcomeLayout.MaxColumns do
+  for mCount := TAtlasWelcomeLayout.cMinColumns to TAtlasWelcomeLayout.cMaxColumns do
   begin
     Result := Result + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Column, IntToStr(mCount), IntToStr(mCount),
       '', FBoard.FLayout.Columns = mCount)];
@@ -1256,7 +1256,7 @@ begin
   begin
     // Vorgabe: Ende der Spalte mit dem meisten Platz.
     AColumn := TAtlasWelcomeFlow.ShortestColumn(FBoard.FPlacement.Cells, FBoard.FPlacement.Placed,
-      TAtlasWelcomeBoardFrame.Gap);
+      TAtlasWelcomeBoardFrame.cGap);
     ABefore := '';
   end;
 end;
@@ -1285,8 +1285,8 @@ begin
   end;
   Target(mColumn, mBefore);
   mLine := TAtlasWelcomeFlow.InsertLine(FBoard.FPlacement.Cells, FBoard.FPlacement.Placed,
-    TAtlasWelcomeArea.Create(FBoard.FScroll.ClientWidth, TAtlasWelcomeBoardFrame.Gap,
-    TAtlasWelcomeBoardFrame.MinColumnWidth), mColumn,
+    TAtlasWelcomeArea.Create(FBoard.FScroll.ClientWidth, TAtlasWelcomeBoardFrame.cGap,
+    TAtlasWelcomeBoardFrame.cMinColumnWidth), mColumn,
     mBefore);
   FInsertLine.SetBounds(mLine.Left, mLine.Top - 1 - FBoard.FScroll.VertScrollBar.Position, mLine.Width, 3);
   FInsertLine.Color := StyleServices(FBoard).GetSystemColor(clHighlight);
@@ -1294,14 +1294,14 @@ begin
   FInsertLine.BringToFront;
 end;
 
-procedure TAtlasWelcomeBoardArranger.ClickAt(X, Y: Integer);
+procedure TAtlasWelcomeBoardArranger.ClickAt(AX, AY: Integer);
 var
   mDrop: TAtlasWelcomeDrop;
 begin
   mDrop := TAtlasWelcomeFlow.DropTarget(FBoard.FPlacement.Cells, FBoard.FPlacement.Placed,
-    TAtlasWelcomeArea.Create(FBoard.FScroll.ClientWidth, TAtlasWelcomeBoardFrame.Gap,
-    TAtlasWelcomeBoardFrame.MinColumnWidth), X,
-    Y + FBoard.FScroll.VertScrollBar.Position, '');
+    TAtlasWelcomeArea.Create(FBoard.FScroll.ClientWidth, TAtlasWelcomeBoardFrame.cGap,
+    TAtlasWelcomeBoardFrame.cMinColumnWidth), AX,
+    AY + FBoard.FScroll.VertScrollBar.Position, '');
   SetTarget(mDrop.Column, mDrop.Before);
 end;
 
@@ -1372,8 +1372,8 @@ begin
     Exit;
   end;
   mDrop := TAtlasWelcomeFlow.DropTarget(FBoard.FPlacement.Cells, FBoard.FPlacement.Placed,
-    TAtlasWelcomeArea.Create(FBoard.FScroll.ClientWidth, TAtlasWelcomeBoardFrame.Gap,
-    TAtlasWelcomeBoardFrame.MinColumnWidth), mLocal.X,
+    TAtlasWelcomeArea.Create(FBoard.FScroll.ClientWidth, TAtlasWelcomeBoardFrame.cGap,
+    TAtlasWelcomeBoardFrame.cMinColumnWidth), mLocal.X,
     mLocal.Y + FBoard.FScroll.VertScrollBar.Position, FDrag.Id);
   SetTarget(mDrop.Column, mDrop.Before);
 end;
@@ -1587,12 +1587,12 @@ begin
     mCount := FPlacement.Wanted;
     if FAutoFold and (FScroll.ClientWidth > 0) then
     begin
-      mCount := TAtlasWelcomeFlow.FitColumns(FPlacement.Wanted, FScroll.ClientWidth, Gap, FoldWidth);
+      mCount := TAtlasWelcomeFlow.FitColumns(FPlacement.Wanted, FScroll.ClientWidth, cGap, cFoldWidth);
     end;
     FPlacement.Cells := FLayout.Cells(ViewSections(Self), mCount);
     FPlacement.Columns := ColumnIds(FPlacement.Cells);
     // Breite zuerst: Bereiche mit umbrechendem Text (#756) berechnen ihre Höhe danach.
-    FPlacement.Placed := TAtlasWelcomeFlow.Place(FPlacement.Cells, FScroll.ClientWidth, Gap, MinColumnWidth,
+    FPlacement.Placed := TAtlasWelcomeFlow.Place(FPlacement.Cells, FScroll.ClientWidth, cGap, cMinColumnWidth,
       function(const AId: string; AWidth: Integer): Integer
       var
         mView: TAtlasWelcomeSectionFrame;

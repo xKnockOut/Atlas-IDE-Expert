@@ -107,9 +107,9 @@ type
   TAtlasTrackerConnections = class
   public const
     /// <summary>Pfad in settings.json.</summary>
-    Path = 'issues.connections';
+    cPath = 'issues.connections';
     /// <summary>Zeitgrenze von „Verbindung prüfen“.</summary>
-    CheckTimeoutMs = 5000;
+    cCheckTimeoutMs = 5000;
   public
     /// <summary>Persönliche Verbindungen aus dem JSON-Text der Liste; Einträge ohne Name, Anbieter oder Adresse und
     /// doppelte Namen entfallen (der Server meldet sie in settings.json).</summary>
@@ -527,7 +527,7 @@ begin
     Exit(TAtlasTrackerTokenStatus.Create(TAtlasTrackerTokenState.Unexpected, ANow, 0));
   end;
   mWatch := TStopwatch.StartNew;
-  mAnswered := ATransport.Get(mUrl, CheckTimeoutMs, mStatus, mText, mError);
+  mAnswered := ATransport.Get(mUrl, cCheckTimeoutMs, mStatus, mText, mError);
   if not mAnswered then
   begin
     mStatus := 0;
@@ -538,7 +538,7 @@ begin
     Exit;
   end;
   // In der restlichen Zeit: Sprache der Oberfläche für die Vorgabe der Abfrage (#1263).
-  mRest := CheckTimeoutMs - mWatch.ElapsedMilliseconds;
+  mRest := cCheckTimeoutMs - mWatch.ElapsedMilliseconds;
   if mRest > 0 then
   begin
     Result.Language := TAtlasTrackerQueryTest.DetectLanguage(AProvider, ATarget, ATransport, Integer(mRest));

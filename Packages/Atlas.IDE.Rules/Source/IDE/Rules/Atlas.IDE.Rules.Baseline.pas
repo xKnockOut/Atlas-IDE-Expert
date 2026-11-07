@@ -63,7 +63,7 @@ uses
 
 const
   /// <summary>Höchstens so viele Pfade in Rückfrage und Meldung; der Rest als „… und n weitere“.</summary>
-  OrphanLines = 15;
+  cOrphanLines = 15;
 
 function ActiveProjectFile: string;
 var
@@ -85,7 +85,7 @@ begin
   Result := nil;
   for mIndex := 0 to High(AOrphans) do
   begin
-    if mIndex = OrphanLines then
+    if mIndex = cOrphanLines then
     begin
       Result := Result + [TAtlasRulesStrings.Fmt(TAtlasRulesTextId.BaselineUpdateOrphansMore,
         [Length(AOrphans) - mIndex])];

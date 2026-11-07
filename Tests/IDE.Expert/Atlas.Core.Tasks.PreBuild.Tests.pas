@@ -42,7 +42,7 @@ end;
 
 procedure TAtlasTaskPreBuildTests.OnlyUserBuildsOfMakeBuildCheck;
 var
-  Item: TAtlasCompileProject;
+  mItem: TAtlasCompileProject;
 begin
   Assert.IsTrue(TAtlasTaskPreBuild.Applies(Project('C:\p\A.dproj', TAtlasCompileKind.Make)));
   Assert.IsTrue(TAtlasTaskPreBuild.Applies(Project('C:\p\A.dproj', TAtlasCompileKind.Build)));
@@ -50,78 +50,78 @@ begin
   Assert.IsFalse(TAtlasTaskPreBuild.Applies(Project('C:\p\A.dproj', TAtlasCompileKind.Clean)));
   Assert.IsFalse(TAtlasTaskPreBuild.Applies(Project('C:\p\A.dproj', TAtlasCompileKind.MakeUnit)));
   Assert.IsFalse(TAtlasTaskPreBuild.Applies(Project('', TAtlasCompileKind.Make)), 'ohne Projekt');
-  Item := Project('C:\p\A.dproj', TAtlasCompileKind.Make);
-  Item.Background := True;
-  Assert.IsFalse(TAtlasTaskPreBuild.Applies(Item), 'Hintergrundprüfung von Atlas');
-  Item.Background := False;
-  Item.RequestedBy := 'mcp';
-  Assert.IsFalse(TAtlasTaskPreBuild.Applies(Item), 'Build für Claude Code');
+  mItem := Project('C:\p\A.dproj', TAtlasCompileKind.Make);
+  mItem.Background := True;
+  Assert.IsFalse(TAtlasTaskPreBuild.Applies(mItem), 'Hintergrundprüfung von Atlas');
+  mItem.Background := False;
+  mItem.RequestedBy := 'mcp';
+  Assert.IsFalse(TAtlasTaskPreBuild.Applies(mItem), 'Build für Claude Code');
 end;
 
 procedure TAtlasTaskPreBuildTests.WarnRunsAlongsideBlockCancelsAndPasses;
 var
-  Gate: TAtlasTaskPreBuild;
+  mGate: TAtlasTaskPreBuild;
   A: TAtlasCompileProject;
 begin
   A := Project('C:\p\A.dproj', TAtlasCompileKind.Make);
-  Gate := TAtlasTaskPreBuild.Create;
+  mGate := TAtlasTaskPreBuild.Create;
   try
-    Assert.IsTrue(Gate.Decide(A, False, False, 0) = TAtlasTaskPreBuildAction.None, 'ohne check-Aufgaben');
-    Assert.IsTrue(Gate.Decide(A, False, True, 0) = TAtlasTaskPreBuildAction.StartWarn);
-    Assert.IsTrue(Gate.Running);
-    Assert.IsTrue(Gate.Decide(A, False, True, 10) = TAtlasTaskPreBuildAction.None, 'warn läuft schon');
-    Assert.IsTrue(Gate.Decide(A, True, False, 10) = TAtlasTaskPreBuildAction.Busy, 'block wartet nicht');
-    Assert.IsFalse(Gate.Finish(True, 20), 'warn baut nicht neu');
-    Assert.IsTrue(Gate.Decide(A, True, True, 30) = TAtlasTaskPreBuildAction.StartAndCancel);
-    Assert.IsTrue(Gate.Blocking);
-    Assert.AreEqual('C:\p\A.dproj', Gate.Project.FileName);
-    Assert.IsTrue(Gate.Finish(True, 40), 'bestanden: neu bauen');
-    Assert.IsFalse(Gate.Running);
-    Assert.IsTrue(Gate.Decide(A, True, True, 50) = TAtlasTaskPreBuildAction.None, 'Freischein');
-    Assert.IsTrue(Gate.Decide(A, True, True, 60) = TAtlasTaskPreBuildAction.StartAndCancel,
+    Assert.IsTrue(mGate.Decide(A, False, False, 0) = TAtlasTaskPreBuildAction.None, 'ohne check-Aufgaben');
+    Assert.IsTrue(mGate.Decide(A, False, True, 0) = TAtlasTaskPreBuildAction.StartWarn);
+    Assert.IsTrue(mGate.Running);
+    Assert.IsTrue(mGate.Decide(A, False, True, 10) = TAtlasTaskPreBuildAction.None, 'warn läuft schon');
+    Assert.IsTrue(mGate.Decide(A, True, False, 10) = TAtlasTaskPreBuildAction.Busy, 'block wartet nicht');
+    Assert.IsFalse(mGate.Finish(True, 20), 'warn baut nicht neu');
+    Assert.IsTrue(mGate.Decide(A, True, True, 30) = TAtlasTaskPreBuildAction.StartAndCancel);
+    Assert.IsTrue(mGate.Blocking);
+    Assert.AreEqual('C:\p\A.dproj', mGate.Project.FileName);
+    Assert.IsTrue(mGate.Finish(True, 40), 'bestanden: neu bauen');
+    Assert.IsFalse(mGate.Running);
+    Assert.IsTrue(mGate.Decide(A, True, True, 50) = TAtlasTaskPreBuildAction.None, 'Freischein');
+    Assert.IsTrue(mGate.Decide(A, True, True, 60) = TAtlasTaskPreBuildAction.StartAndCancel,
       'der Freischein gilt einmal');
   finally
-    Gate.Free;
+    mGate.Free;
   end;
 end;
 
 procedure TAtlasTaskPreBuildTests.FailedOrAbandonedRunGivesNoPass;
 var
-  Gate: TAtlasTaskPreBuild;
+  mGate: TAtlasTaskPreBuild;
   A: TAtlasCompileProject;
 begin
   A := Project('C:\p\A.dproj', TAtlasCompileKind.Build);
-  Gate := TAtlasTaskPreBuild.Create;
+  mGate := TAtlasTaskPreBuild.Create;
   try
-    Gate.Decide(A, True, False, 0);
-    Assert.IsFalse(Gate.Finish(False, 10), 'Verstoß: Build bleibt abgebrochen');
-    Assert.IsTrue(Gate.Decide(A, True, False, 20) = TAtlasTaskPreBuildAction.StartAndCancel);
-    Gate.Abandon;
-    Assert.IsFalse(Gate.Running);
-    Assert.IsFalse(Gate.Finish(True, 30), 'nach Aufgeben nichts mehr');
-    Assert.IsTrue(Gate.Decide(A, True, False, 40) = TAtlasTaskPreBuildAction.StartAndCancel);
+    mGate.Decide(A, True, False, 0);
+    Assert.IsFalse(mGate.Finish(False, 10), 'Verstoß: Build bleibt abgebrochen');
+    Assert.IsTrue(mGate.Decide(A, True, False, 20) = TAtlasTaskPreBuildAction.StartAndCancel);
+    mGate.Abandon;
+    Assert.IsFalse(mGate.Running);
+    Assert.IsFalse(mGate.Finish(True, 30), 'nach Aufgeben nichts mehr');
+    Assert.IsTrue(mGate.Decide(A, True, False, 40) = TAtlasTaskPreBuildAction.StartAndCancel);
   finally
-    Gate.Free;
+    mGate.Free;
   end;
 end;
 
 procedure TAtlasTaskPreBuildTests.PassExpiresAndBelongsToTheProject;
 var
-  Gate: TAtlasTaskPreBuild;
+  mGate: TAtlasTaskPreBuild;
   A, B: TAtlasCompileProject;
 begin
   A := Project('C:\p\A.dproj', TAtlasCompileKind.Make);
   B := Project('C:\p\B.dproj', TAtlasCompileKind.Make);
-  Gate := TAtlasTaskPreBuild.Create;
+  mGate := TAtlasTaskPreBuild.Create;
   try
-    Gate.Decide(A, True, False, 0);
-    Gate.Finish(True, 1000);
-    Assert.IsTrue(Gate.Decide(B, True, False, 1100) = TAtlasTaskPreBuildAction.StartAndCancel, 'anderes Projekt');
-    Gate.Finish(False, 1200);
-    Assert.IsTrue(Gate.Decide(A, True, False, 1000 + TAtlasTaskPreBuild.PassMs + 1) =
+    mGate.Decide(A, True, False, 0);
+    mGate.Finish(True, 1000);
+    Assert.IsTrue(mGate.Decide(B, True, False, 1100) = TAtlasTaskPreBuildAction.StartAndCancel, 'anderes Projekt');
+    mGate.Finish(False, 1200);
+    Assert.IsTrue(mGate.Decide(A, True, False, 1000 + TAtlasTaskPreBuild.cPassMs + 1) =
       TAtlasTaskPreBuildAction.StartAndCancel, 'abgelaufen');
   finally
-    Gate.Free;
+    mGate.Free;
   end;
 end;
 

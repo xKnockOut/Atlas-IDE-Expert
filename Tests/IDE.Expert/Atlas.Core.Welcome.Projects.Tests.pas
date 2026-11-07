@@ -103,9 +103,9 @@ end;
 
 procedure TAtlasWelcomeProjectsTests.EntriesKeepOrderDropDuplicatesAndHidden;
 var
-  Entries: TAtlasProjectEntries;
+  mEntries: TAtlasProjectEntries;
 begin
-  Entries := TAtlasWelcomeProjects.Entries(['C:\A\Eins.dproj', '', 'C:\B\Zwei.groupproj', 'c:/a/eins.dproj',
+  mEntries := TAtlasWelcomeProjects.Entries(['C:\A\Eins.dproj', '', 'C:\B\Zwei.groupproj', 'c:/a/eins.dproj',
     'C:\C\Weg.dproj', 'C:\D\Neu.dproj'],
     function(const AProject: string; out ASummary: TAtlasProjectSummary): Boolean
     begin
@@ -113,196 +113,196 @@ begin
       Result := not SameText(ExtractFileName(AProject), 'Neu.dproj');
       ASummary.Hidden := SameText(ExtractFileName(AProject), 'Weg.dproj');
     end, 8);
-  Assert.AreEqual(3, Integer(Length(Entries)));
-  Assert.AreEqual('C:\A\Eins.dproj', Entries[0].Project, 'Pfad der IDE gilt');
-  Assert.AreEqual('Eins', Entries[0].Name);
-  Assert.IsTrue(Entries[0].HasSummary);
-  Assert.AreEqual('C:\B\Zwei.groupproj', Entries[1].Project, 'Projektgruppen zählen mit');
-  Assert.AreEqual('C:\D\Neu.dproj', Entries[2].Project);
-  Assert.IsFalse(Entries[2].HasSummary, 'ohne Datei trotzdem in der Liste');
-  Assert.IsFalse(Entries[2].Summary.Build.Known);
+  Assert.AreEqual(3, Integer(Length(mEntries)));
+  Assert.AreEqual('C:\A\Eins.dproj', mEntries[0].Project, 'Pfad der IDE gilt');
+  Assert.AreEqual('Eins', mEntries[0].Name);
+  Assert.IsTrue(mEntries[0].HasSummary);
+  Assert.AreEqual('C:\B\Zwei.groupproj', mEntries[1].Project, 'Projektgruppen zählen mit');
+  Assert.AreEqual('C:\D\Neu.dproj', mEntries[2].Project);
+  Assert.IsFalse(mEntries[2].HasSummary, 'ohne Datei trotzdem in der Liste');
+  Assert.IsFalse(mEntries[2].Summary.Build.Known);
 end;
 
 procedure TAtlasWelcomeProjectsTests.EntriesRespectMaximum;
 var
-  Recent: TArray<string>;
-  Index: Integer;
+  mRecent: TArray<string>;
+  mIndex: Integer;
 begin
-  Recent := nil;
-  for Index := 1 to 40 do
+  mRecent := nil;
+  for mIndex := 1 to 40 do
   begin
-    Recent := Recent + [Format('C:\P%d\P%d.dproj', [Index, Index])];
+    mRecent := mRecent + [Format('C:\P%d\P%d.dproj', [mIndex, mIndex])];
   end;
-  Assert.AreEqual(8, Integer(Length(TAtlasWelcomeProjects.Entries(Recent, nil, TAtlasWelcomeProjects.DefaultMax))));
-  Assert.AreEqual(1, Integer(Length(TAtlasWelcomeProjects.Entries(Recent, nil, 0))), 'mindestens eins');
-  Assert.AreEqual(30, Integer(Length(TAtlasWelcomeProjects.Entries(Recent, nil, 99))), 'höchstens 30');
+  Assert.AreEqual(8, Integer(Length(TAtlasWelcomeProjects.Entries(mRecent, nil, TAtlasWelcomeProjects.cDefaultMax))));
+  Assert.AreEqual(1, Integer(Length(TAtlasWelcomeProjects.Entries(mRecent, nil, 0))), 'mindestens eins');
+  Assert.AreEqual(30, Integer(Length(TAtlasWelcomeProjects.Entries(mRecent, nil, 99))), 'höchstens 30');
   Assert.AreEqual(0, Integer(Length(TAtlasWelcomeProjects.Entries(nil, nil, 8))));
 end;
 
 procedure TAtlasWelcomeProjectsTests.CleanBuildOnMainIsGreen;
 var
-  Item: TAtlasProjectEntry;
-  Pills: TArray<TAtlasProjectPill>;
+  mItem: TAtlasProjectEntry;
+  mPills: TArray<TAtlasProjectPill>;
 begin
   // Akzeptanzkriterium: letzter Build 0/0/0 auf main → „main“ und grüne Marke „Build 0/0/0“.
-  Item := Entry(WithBuild(OnMain, True, 0, 0, 0));
-  Assert.AreEqual('main', Item.Branch);
-  Pills := TAtlasWelcomeProjects.Pills(Item);
-  Assert.AreEqual(1, Integer(Length(Pills)));
-  Assert.IsTrue(Pills[0].Kind = TAtlasProjectPillKind.Build);
-  Assert.IsTrue(Pills[0].Level = TAtlasProjectPillLevel.Good);
-  Assert.AreEqual(0, Pills[0].A + Pills[0].B + Pills[0].C);
-  Assert.IsFalse(Pills[0].Clickable);
-  Assert.IsTrue(TAtlasWelcomeProjects.Level(Pills) = TAtlasProjectPillLevel.Good);
+  mItem := Entry(WithBuild(OnMain, True, 0, 0, 0));
+  Assert.AreEqual('main', mItem.Branch);
+  mPills := TAtlasWelcomeProjects.Pills(mItem);
+  Assert.AreEqual(1, Integer(Length(mPills)));
+  Assert.IsTrue(mPills[0].Kind = TAtlasProjectPillKind.Build);
+  Assert.IsTrue(mPills[0].Level = TAtlasProjectPillLevel.Good);
+  Assert.AreEqual(0, mPills[0].A + mPills[0].B + mPills[0].C);
+  Assert.IsFalse(mPills[0].Clickable);
+  Assert.IsTrue(TAtlasWelcomeProjects.Level(mPills) = TAtlasProjectPillLevel.Good);
 end;
 
 procedure TAtlasWelcomeProjectsTests.BuildErrorsAreRedAndJump;
 var
-  Summary: TAtlasProjectSummary;
-  Pills: TArray<TAtlasProjectPill>;
+  mSummary: TAtlasProjectSummary;
+  mPills: TArray<TAtlasProjectPill>;
 begin
   // Akzeptanzkriterium: Build mit 2 Fehlern → rote Marke „2 Fehler“, Klick springt zum ersten Fehler.
-  Summary := WithBuild(OnMain, False, 2, 1, 0);
-  Summary.Build.First.FileName := 'C:\Projekte\Main.pas';
-  Summary.Build.First.Line := 12;
-  Pills := TAtlasWelcomeProjects.Pills(Entry(Summary));
-  Assert.IsTrue(Pills[0].Kind = TAtlasProjectPillKind.BuildErrors);
-  Assert.IsTrue(Pills[0].Level = TAtlasProjectPillLevel.Error);
-  Assert.AreEqual(2, Pills[0].A);
-  Assert.IsTrue(Pills[0].Clickable);
-  Assert.AreEqual('C:\Projekte\Main.pas', Pills[0].Target.FileName);
-  Assert.AreEqual(12, Pills[0].Target.Line);
-  Assert.IsTrue(TAtlasWelcomeProjects.Level(Pills) = TAtlasProjectPillLevel.Error);
+  mSummary := WithBuild(OnMain, False, 2, 1, 0);
+  mSummary.Build.First.FileName := 'C:\Projekte\Main.pas';
+  mSummary.Build.First.Line := 12;
+  mPills := TAtlasWelcomeProjects.Pills(Entry(mSummary));
+  Assert.IsTrue(mPills[0].Kind = TAtlasProjectPillKind.BuildErrors);
+  Assert.IsTrue(mPills[0].Level = TAtlasProjectPillLevel.Error);
+  Assert.AreEqual(2, mPills[0].A);
+  Assert.IsTrue(mPills[0].Clickable);
+  Assert.AreEqual('C:\Projekte\Main.pas', mPills[0].Target.FileName);
+  Assert.AreEqual(12, mPills[0].Target.Line);
+  Assert.IsTrue(TAtlasWelcomeProjects.Level(mPills) = TAtlasProjectPillLevel.Error);
 end;
 
 procedure TAtlasWelcomeProjectsTests.WarningsAndHintsAreYellow;
 var
-  Pills: TArray<TAtlasProjectPill>;
+  mPills: TArray<TAtlasProjectPill>;
 begin
-  Pills := TAtlasWelcomeProjects.Pills(Entry(WithBuild(OnMain, True, 0, 3, 1)));
-  Assert.IsTrue(Pills[0].Kind = TAtlasProjectPillKind.Build);
-  Assert.IsTrue(Pills[0].Level = TAtlasProjectPillLevel.Warning);
-  Assert.AreEqual(3, Pills[0].B);
-  Assert.AreEqual(1, Pills[0].C);
-  Pills := TAtlasWelcomeProjects.Pills(Entry(WithBuild(OnMain, True, 0, 0, 2)));
-  Assert.IsTrue(Pills[0].Level = TAtlasProjectPillLevel.Warning, 'Hinweise auch: Ziel ist 0/0/0');
+  mPills := TAtlasWelcomeProjects.Pills(Entry(WithBuild(OnMain, True, 0, 3, 1)));
+  Assert.IsTrue(mPills[0].Kind = TAtlasProjectPillKind.Build);
+  Assert.IsTrue(mPills[0].Level = TAtlasProjectPillLevel.Warning);
+  Assert.AreEqual(3, mPills[0].B);
+  Assert.AreEqual(1, mPills[0].C);
+  mPills := TAtlasWelcomeProjects.Pills(Entry(WithBuild(OnMain, True, 0, 0, 2)));
+  Assert.IsTrue(mPills[0].Level = TAtlasProjectPillLevel.Warning, 'Hinweise auch: Ziel ist 0/0/0');
 end;
 
 procedure TAtlasWelcomeProjectsTests.FailedBuildWithoutMessagesIsRed;
 var
-  Pills: TArray<TAtlasProjectPill>;
+  mPills: TArray<TAtlasProjectPill>;
 begin
-  Pills := TAtlasWelcomeProjects.Pills(Entry(WithBuild(OnMain, False, 0, 0, 0)));
-  Assert.IsTrue(Pills[0].Kind = TAtlasProjectPillKind.Build);
-  Assert.IsTrue(Pills[0].Level = TAtlasProjectPillLevel.Error);
-  Assert.IsFalse(Pills[0].Clickable);
+  mPills := TAtlasWelcomeProjects.Pills(Entry(WithBuild(OnMain, False, 0, 0, 0)));
+  Assert.IsTrue(mPills[0].Kind = TAtlasProjectPillKind.Build);
+  Assert.IsTrue(mPills[0].Level = TAtlasProjectPillLevel.Error);
+  Assert.IsFalse(mPills[0].Clickable);
 end;
 
 procedure TAtlasWelcomeProjectsTests.NewerCheckErrorsShow;
 var
-  Summary: TAtlasProjectSummary;
-  Pills: TArray<TAtlasProjectPill>;
+  mSummary: TAtlasProjectSummary;
+  mPills: TArray<TAtlasProjectPill>;
 begin
-  Summary := WithBuild(OnMain, True, 0, 0, 0);
-  Summary.Check.Known := True;
-  Summary.Check.Errors := 1;
-  Summary.Check.First.FileName := 'C:\Projekte\Unit2.pas';
-  Summary.Check.At := Summary.Build.At + 1 / 24;
-  Pills := TAtlasWelcomeProjects.Pills(Entry(Summary));
-  Assert.AreEqual(2, Integer(Length(Pills)));
-  Assert.IsTrue(Pills[1].Kind = TAtlasProjectPillKind.CheckErrors);
-  Assert.IsTrue(Pills[1].Clickable);
-  Summary.Check.At := Summary.Build.At - 1 / 24;
-  Assert.AreEqual(1, Integer(Length(TAtlasWelcomeProjects.Pills(Entry(Summary)))), 'ältere Prüfung zählt nicht');
-  Summary.Check.At := Summary.Build.At + 1 / 24;
-  Summary.Check.Errors := 0;
-  Assert.AreEqual(1, Integer(Length(TAtlasWelcomeProjects.Pills(Entry(Summary)))), 'fehlerfreie Prüfung ohne Marke');
+  mSummary := WithBuild(OnMain, True, 0, 0, 0);
+  mSummary.Check.Known := True;
+  mSummary.Check.Errors := 1;
+  mSummary.Check.First.FileName := 'C:\Projekte\Unit2.pas';
+  mSummary.Check.At := mSummary.Build.At + 1 / 24;
+  mPills := TAtlasWelcomeProjects.Pills(Entry(mSummary));
+  Assert.AreEqual(2, Integer(Length(mPills)));
+  Assert.IsTrue(mPills[1].Kind = TAtlasProjectPillKind.CheckErrors);
+  Assert.IsTrue(mPills[1].Clickable);
+  mSummary.Check.At := mSummary.Build.At - 1 / 24;
+  Assert.AreEqual(1, Integer(Length(TAtlasWelcomeProjects.Pills(Entry(mSummary)))), 'ältere Prüfung zählt nicht');
+  mSummary.Check.At := mSummary.Build.At + 1 / 24;
+  mSummary.Check.Errors := 0;
+  Assert.AreEqual(1, Integer(Length(TAtlasWelcomeProjects.Pills(Entry(mSummary)))), 'fehlerfreie Prüfung ohne Marke');
 end;
 
 procedure TAtlasWelcomeProjectsTests.ChangesSyncAndRules;
 var
-  Summary: TAtlasProjectSummary;
-  Pills: TArray<TAtlasProjectPill>;
+  mSummary: TAtlasProjectSummary;
+  mPills: TArray<TAtlasProjectPill>;
 begin
-  Summary := OnMain;
-  Summary.Vcs.Changed := 4;
-  Summary.Vcs.Ahead := 2;
-  Summary.Vcs.Behind := -1;
-  Summary.Rules.Known := True;
-  Summary.Rules.NewHits := 3;
-  Pills := TAtlasWelcomeProjects.Pills(Entry(Summary));
-  Assert.AreEqual(3, Integer(Length(Pills)), 'ohne Build keine Build-Marke');
-  Assert.IsTrue(Pills[0].Kind = TAtlasProjectPillKind.Changes);
-  Assert.AreEqual(4, Pills[0].A);
-  Assert.IsTrue(Pills[0].Level = TAtlasProjectPillLevel.Warning);
-  Assert.IsTrue(Pills[1].Kind = TAtlasProjectPillKind.Sync);
-  Assert.AreEqual(2, Pills[1].A);
-  Assert.AreEqual(0, Pills[1].B, 'unbekannt zählt als 0');
-  Assert.IsTrue(Pills[1].Level = TAtlasProjectPillLevel.Neutral);
-  Assert.IsTrue(Pills[2].Kind = TAtlasProjectPillKind.Rules);
-  Assert.AreEqual(3, Pills[2].A);
+  mSummary := OnMain;
+  mSummary.Vcs.Changed := 4;
+  mSummary.Vcs.Ahead := 2;
+  mSummary.Vcs.Behind := -1;
+  mSummary.Rules.Known := True;
+  mSummary.Rules.NewHits := 3;
+  mPills := TAtlasWelcomeProjects.Pills(Entry(mSummary));
+  Assert.AreEqual(3, Integer(Length(mPills)), 'ohne Build keine Build-Marke');
+  Assert.IsTrue(mPills[0].Kind = TAtlasProjectPillKind.Changes);
+  Assert.AreEqual(4, mPills[0].A);
+  Assert.IsTrue(mPills[0].Level = TAtlasProjectPillLevel.Warning);
+  Assert.IsTrue(mPills[1].Kind = TAtlasProjectPillKind.Sync);
+  Assert.AreEqual(2, mPills[1].A);
+  Assert.AreEqual(0, mPills[1].B, 'unbekannt zählt als 0');
+  Assert.IsTrue(mPills[1].Level = TAtlasProjectPillLevel.Neutral);
+  Assert.IsTrue(mPills[2].Kind = TAtlasProjectPillKind.Rules);
+  Assert.AreEqual(3, mPills[2].A);
 end;
 
 procedure TAtlasWelcomeProjectsTests.NoVersionControlShowsNothing;
 var
-  Summary: TAtlasProjectSummary;
-  Item: TAtlasProjectEntry;
+  mSummary: TAtlasProjectSummary;
+  mItem: TAtlasProjectEntry;
 begin
   // Akzeptanzkriterium: außerhalb einer Versionsverwaltung kein Branch und kein Fehler.
-  Summary := TAtlasProjectSummary.Create('C:\Ohne\Demo.dproj');
-  Summary.Vcs.Known := True;
-  Summary.Vcs.Kind := 'none';
-  Item := Entry(Summary);
-  Assert.AreEqual('', Item.Branch);
-  Assert.IsFalse(Item.VcsStale, 'kein „Stand vom …“');
-  Assert.AreEqual(0, Integer(Length(TAtlasWelcomeProjects.Pills(Item))));
-  Assert.IsTrue(TAtlasWelcomeProjects.Level(TAtlasWelcomeProjects.Pills(Item)) = TAtlasProjectPillLevel.Neutral);
+  mSummary := TAtlasProjectSummary.Create('C:\Ohne\Demo.dproj');
+  mSummary.Vcs.Known := True;
+  mSummary.Vcs.Kind := 'none';
+  mItem := Entry(mSummary);
+  Assert.AreEqual('', mItem.Branch);
+  Assert.IsFalse(mItem.VcsStale, 'kein „Stand vom …“');
+  Assert.AreEqual(0, Integer(Length(TAtlasWelcomeProjects.Pills(mItem))));
+  Assert.IsTrue(TAtlasWelcomeProjects.Level(TAtlasWelcomeProjects.Pills(mItem)) = TAtlasProjectPillLevel.Neutral);
   // Gespeicherter Stand mit Arbeitskopie: bis zur frischen Abfrage „Stand vom …“.
-  Item := Entry(OnMain);
-  Assert.IsTrue(Item.VcsStale);
-  Item.VcsFresh := True;
-  Assert.IsFalse(Item.VcsStale);
+  mItem := Entry(OnMain);
+  Assert.IsTrue(mItem.VcsStale);
+  mItem.VcsFresh := True;
+  Assert.IsFalse(mItem.VcsStale);
 end;
 
 procedure TAtlasWelcomeProjectsTests.DetachedHeadShowsCommit;
 var
-  Summary: TAtlasProjectSummary;
+  mSummary: TAtlasProjectSummary;
 begin
-  Summary := OnMain;
-  Summary.Vcs.Branch := '';
-  Assert.AreEqual('abcdef0', Entry(Summary).Branch);
-  Summary.Vcs.Kind := 'svn';
-  Summary.Vcs.Branch := 'trunk';
-  Assert.AreEqual('trunk', Entry(Summary).Branch);
+  mSummary := OnMain;
+  mSummary.Vcs.Branch := '';
+  Assert.AreEqual('abcdef0', Entry(mSummary).Branch);
+  mSummary.Vcs.Kind := 'svn';
+  mSummary.Vcs.Branch := 'trunk';
+  Assert.AreEqual('trunk', Entry(mSummary).Branch);
 end;
 
 procedure TAtlasWelcomeProjectsTests.ShortensLongPaths;
 var
-  Short: string;
+  mShort: string;
 begin
   Assert.AreEqual('C:\P\Demo.dproj', TAtlasWelcomeProjects.ShortPath('C:\P\Demo.dproj', 40));
-  Short := TAtlasWelcomeProjects.ShortPath('C:\Users\marco\Documents\Embarcadero\Studio\Projekte\Atlas\Demo.dproj', 40);
-  Assert.AreEqual('C:\'#$2026'\Studio\Projekte\Atlas\Demo.dproj', Short);
-  Assert.IsTrue(Length(Short) <= 40);
-  Short := TAtlasWelcomeProjects.ShortPath('C:\Ordner\EinSehrLangerProjektnameDerNichtPasst.dproj', 20);
-  Assert.AreEqual(20, Integer(Length(Short)), 'nur das Ende des Namens');
-  Assert.AreEqual(#$2026, Copy(Short, 1, 1));
+  mShort := TAtlasWelcomeProjects.ShortPath('C:\Users\marco\Documents\Embarcadero\Studio\Projekte\Atlas\Demo.dproj', 40);
+  Assert.AreEqual('C:\'#$2026'\Studio\Projekte\Atlas\Demo.dproj', mShort);
+  Assert.IsTrue(Length(mShort) <= 40);
+  mShort := TAtlasWelcomeProjects.ShortPath('C:\Ordner\EinSehrLangerProjektnameDerNichtPasst.dproj', 20);
+  Assert.AreEqual(20, Integer(Length(mShort)), 'nur das Ende des Namens');
+  Assert.AreEqual(#$2026, Copy(mShort, 1, 1));
 end;
 
 procedure TAtlasWelcomeProjectsTests.SettingsDefaultsAndLimits;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(Settings.WelcomePageProjectStatus);
-  Assert.AreEqual(TAtlasWelcomeProjects.DefaultMax, Settings.WelcomePageMaxProjects);
-  Assert.IsTrue(Settings.WelcomePageRefreshVcs);
-  Settings.WelcomePageMaxProjects := 0;
-  Settings.Normalize;
-  Assert.AreEqual(TAtlasWelcomeProjects.MinMax, Settings.WelcomePageMaxProjects);
-  Settings.WelcomePageMaxProjects := 500;
-  Settings.Normalize;
-  Assert.AreEqual(TAtlasWelcomeProjects.MaxMax, Settings.WelcomePageMaxProjects);
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.WelcomePageProjectStatus);
+  Assert.AreEqual(TAtlasWelcomeProjects.cDefaultMax, mSettings.WelcomePageMaxProjects);
+  Assert.IsTrue(mSettings.WelcomePageRefreshVcs);
+  mSettings.WelcomePageMaxProjects := 0;
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasWelcomeProjects.cMinMax, mSettings.WelcomePageMaxProjects);
+  mSettings.WelcomePageMaxProjects := 500;
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasWelcomeProjects.cMaxMax, mSettings.WelcomePageMaxProjects);
 end;
 
 procedure TAtlasWelcomeProjectsTests.OpensWhenLastProjectClosed;
@@ -334,18 +334,18 @@ end;
 
 procedure TAtlasWelcomeProjectsTests.OpenWhenNoProjectDefaultsOn;
 var
-  Store: IAtlasSettingsStore;
-  Settings: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+  mSettings: TAtlasPluginSettings;
 begin
   Assert.IsTrue(TAtlasPluginSettings.Defaults.WelcomePageOpenWhenNoProject);
-  Store := TAtlasMemorySettingsStore.Create;
-  Settings := TAtlasPluginSettings.Defaults;
-  Settings.WelcomePageOpenWhenNoProject := False;
-  Settings.Save(Store);
-  Assert.AreEqual(0, Store.ReadInteger('WelcomePageOpenWhenNoProject', 1), 'Registry-Name');
-  Settings := TAtlasPluginSettings.Defaults;
-  Settings.Load(Store);
-  Assert.IsFalse(Settings.WelcomePageOpenWhenNoProject);
+  mStore := TAtlasMemorySettingsStore.Create;
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.WelcomePageOpenWhenNoProject := False;
+  mSettings.Save(mStore);
+  Assert.AreEqual(0, mStore.ReadInteger('WelcomePageOpenWhenNoProject', 1), 'Registry-Name');
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.Load(mStore);
+  Assert.IsFalse(mSettings.WelcomePageOpenWhenNoProject);
 end;
 
 initialization

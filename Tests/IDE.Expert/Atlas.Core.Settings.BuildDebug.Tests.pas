@@ -113,9 +113,9 @@ begin
   // Die Einstellungen kennen die Projektaufgaben nicht (A-09): dieselben Werte wie dort.
   for Mode := Low(TAtlasTaskBeforeBuild) to High(TAtlasTaskBeforeBuild) do
   begin
-    Settings.TasksBeforeBuild := UpperCase(TAtlasTasks.BeforeBuildNames[Mode]);
+    Settings.TasksBeforeBuild := UpperCase(TAtlasTasks.cBeforeBuildNames[Mode]);
     Settings.Normalize;
-    Assert.AreEqual(TAtlasTasks.BeforeBuildNames[Mode], Settings.TasksBeforeBuild);
+    Assert.AreEqual(TAtlasTasks.cBeforeBuildNames[Mode], Settings.TasksBeforeBuild);
   end;
   // Speichern und Laden, jede Einstellung abweichend von der Vorgabe.
   Settings.TasksEnabled := False;

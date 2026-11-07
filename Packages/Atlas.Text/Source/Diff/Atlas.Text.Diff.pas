@@ -22,7 +22,7 @@ type
   TTextDiff = class
   public const
     /// <summary>Größte Fläche (Zeilen alt × neu) für den genauen Vergleich der Mitte.</summary>
-    MaxCells = 4000000;
+    cMaxCells = 4000000;
   public
     /// <summary>Anzahl gleicher Zeilen am Anfang und (ohne Überlappung mit dem Anfang) am Ende.</summary>
     class procedure CommonPrefixSuffix(const AOld, ANew: TArray<string>; out APrefix, ASuffix: Integer); overload;
@@ -228,7 +228,7 @@ end;
 // Nur auf einer Seite etwas oder zu groß für den genauen Vergleich: ein Block.
 function IsSingleHunk(AOldCount, ANewCount: Integer): Boolean;
 begin
-  Result := (AOldCount = 0) or (ANewCount = 0) or (Int64(AOldCount + 1) * (ANewCount + 1) > TTextDiff.MaxCells);
+  Result := (AOldCount = 0) or (ANewCount = 0) or (Int64(AOldCount + 1) * (ANewCount + 1) > TTextDiff.cMaxCells);
 end;
 
 class function TTextDiff.Hunks(const AOld, ANew: TArray<string>): TArray<TTextLineHunk>;
@@ -289,70 +289,70 @@ end;
 
 class function TTextDiff.ChangedLines(const AOld, ANew: TArray<string>; AMaxLines: Integer): TArray<string>;
 var
-  Prefix, Suffix, Index, Count: Integer;
-  Full: Boolean;
+  mPrefix, mSuffix, mIndex, mCount: Integer;
+  mFull: Boolean;
 
   procedure Add(const AText: string);
   begin
-    if Full then
+    if mFull then
     begin
       Exit;
     end;
-    if (AMaxLines >= 0) and (Count >= AMaxLines) then
+    if (AMaxLines >= 0) and (mCount >= AMaxLines) then
     begin
       // Begrenzung erreicht: einmal "…", danach nichts mehr.
-      Full := True;
-      if Count = Length(Result) then
+      mFull := True;
+      if mCount = Length(Result) then
       begin
-        SetLength(Result, Count * 2 + 1);
+        SetLength(Result, mCount * 2 + 1);
       end;
-      Result[Count] := '…';
-      Inc(Count);
+      Result[mCount] := '…';
+      Inc(mCount);
       Exit;
     end;
-    if Count = Length(Result) then
+    if mCount = Length(Result) then
     begin
-      SetLength(Result, Count * 2 + 8);
+      SetLength(Result, mCount * 2 + 8);
     end;
-    Result[Count] := AText;
-    Inc(Count);
+    Result[mCount] := AText;
+    Inc(mCount);
   end;
 
 begin
   Result := nil;
-  Count := 0;
-  Full := False;
-  CommonPrefixSuffix(AOld, ANew, Prefix, Suffix);
-  if (Prefix = Length(AOld)) and (Prefix = Length(ANew)) then
+  mCount := 0;
+  mFull := False;
+  CommonPrefixSuffix(AOld, ANew, mPrefix, mSuffix);
+  if (mPrefix = Length(AOld)) and (mPrefix = Length(ANew)) then
   begin
     Exit;
   end;
   if Length(AOld) = Length(ANew) then
   begin
     // Gleiche Zeilenzahl (z. B. Umbenennen): nur die geänderten Zeilen.
-    for Index := Prefix to High(AOld) - Suffix do
+    for mIndex := mPrefix to High(AOld) - mSuffix do
     begin
-      if AOld[Index] <> ANew[Index] then
+      if AOld[mIndex] <> ANew[mIndex] then
       begin
-        Add(Format('Zeile %d:', [Index + 1]));
-        Add('- ' + AOld[Index]);
-        Add('+ ' + ANew[Index]);
+        Add(Format('Zeile %d:', [mIndex + 1]));
+        Add('- ' + AOld[mIndex]);
+        Add('+ ' + ANew[mIndex]);
       end;
     end;
   end
   else
   begin
-    Add(Format('ab Zeile %d:', [Prefix + 1]));
-    for Index := Prefix to High(AOld) - Suffix do
+    Add(Format('ab Zeile %d:', [mPrefix + 1]));
+    for mIndex := mPrefix to High(AOld) - mSuffix do
     begin
-      Add('- ' + AOld[Index]);
+      Add('- ' + AOld[mIndex]);
     end;
-    for Index := Prefix to High(ANew) - Suffix do
+    for mIndex := mPrefix to High(ANew) - mSuffix do
     begin
-      Add('+ ' + ANew[Index]);
+      Add('+ ' + ANew[mIndex]);
     end;
   end;
-  SetLength(Result, Count);
+  SetLength(Result, mCount);
 end;
 
 class function TTextDiff.ChangedLines(const AOld, ANew: TArray<string>): TArray<string>;

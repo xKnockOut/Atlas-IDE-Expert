@@ -53,53 +53,53 @@ end;
 
 procedure TAtlasTestProjectChoiceTests.PickAsksOnlyForUnknownCandidates;
 var
-  Choices: TArray<TAtlasTestProjectChoice>;
+  mChoices: TArray<TAtlasTestProjectChoice>;
 begin
-  Choices := nil;
-  Assert.AreEqual(0, TAtlasTestProjectChoices.Pick(Choices, ['C:\Einzig.dproj']), 'ein Kandidat: ohne Frage');
-  Assert.AreEqual(-1, TAtlasTestProjectChoices.Pick(Choices, nil));
-  Assert.AreEqual(-1, TAtlasTestProjectChoices.Pick(Choices, ['C:\A.dproj', 'C:\B.dproj']), 'fragen');
-  TAtlasTestProjectChoices.Remember(Choices, ['C:\A.dproj', 'C:\B.dproj'], 'C:\B.dproj');
-  Assert.AreEqual(1, TAtlasTestProjectChoices.Pick(Choices, ['C:\A.dproj', 'C:\B.dproj']));
-  Assert.AreEqual(0, TAtlasTestProjectChoices.Pick(Choices, ['c:\b.DPROJ', 'C:\A.dproj']), 'andere Reihenfolge');
-  Assert.AreEqual(-1, TAtlasTestProjectChoices.Pick(Choices, ['C:\A.dproj', 'C:\B.dproj', 'C:\C.dproj']),
+  mChoices := nil;
+  Assert.AreEqual(0, TAtlasTestProjectChoices.Pick(mChoices, ['C:\Einzig.dproj']), 'ein Kandidat: ohne Frage');
+  Assert.AreEqual(-1, TAtlasTestProjectChoices.Pick(mChoices, nil));
+  Assert.AreEqual(-1, TAtlasTestProjectChoices.Pick(mChoices, ['C:\A.dproj', 'C:\B.dproj']), 'fragen');
+  TAtlasTestProjectChoices.Remember(mChoices, ['C:\A.dproj', 'C:\B.dproj'], 'C:\B.dproj');
+  Assert.AreEqual(1, TAtlasTestProjectChoices.Pick(mChoices, ['C:\A.dproj', 'C:\B.dproj']));
+  Assert.AreEqual(0, TAtlasTestProjectChoices.Pick(mChoices, ['c:\b.DPROJ', 'C:\A.dproj']), 'andere Reihenfolge');
+  Assert.AreEqual(-1, TAtlasTestProjectChoices.Pick(mChoices, ['C:\A.dproj', 'C:\B.dproj', 'C:\C.dproj']),
     'neues Testprojekt in der Gruppe: wieder fragen');
 end;
 
 procedure TAtlasTestProjectChoiceTests.RememberReplacesAndLimits;
 var
-  Choices: TArray<TAtlasTestProjectChoice>;
-  Index: Integer;
+  mChoices: TArray<TAtlasTestProjectChoice>;
+  mIndex: Integer;
 begin
-  Choices := nil;
-  TAtlasTestProjectChoices.Remember(Choices, ['A', 'B'], 'A');
-  TAtlasTestProjectChoices.Remember(Choices, ['C', 'D'], 'D');
-  TAtlasTestProjectChoices.Remember(Choices, ['B', 'A'], 'B');
-  Assert.AreEqual(2, Integer(Length(Choices)));
-  Assert.AreEqual('a|b', Choices[0].Key, 'neueste zuerst');
-  Assert.AreEqual('B', Choices[0].Project);
-  Assert.AreEqual('c|d', Choices[1].Key);
-  TAtlasTestProjectChoices.Remember(Choices, ['A', 'B'], '');
-  Assert.AreEqual('B', Choices[0].Project, 'leeres Projekt ändert nichts');
-  for Index := 1 to TAtlasTestProjectChoices.MaxEntries + 5 do
+  mChoices := nil;
+  TAtlasTestProjectChoices.Remember(mChoices, ['A', 'B'], 'A');
+  TAtlasTestProjectChoices.Remember(mChoices, ['C', 'D'], 'D');
+  TAtlasTestProjectChoices.Remember(mChoices, ['B', 'A'], 'B');
+  Assert.AreEqual(2, Integer(Length(mChoices)));
+  Assert.AreEqual('a|b', mChoices[0].Key, 'neueste zuerst');
+  Assert.AreEqual('B', mChoices[0].Project);
+  Assert.AreEqual('c|d', mChoices[1].Key);
+  TAtlasTestProjectChoices.Remember(mChoices, ['A', 'B'], '');
+  Assert.AreEqual('B', mChoices[0].Project, 'leeres Projekt ändert nichts');
+  for mIndex := 1 to TAtlasTestProjectChoices.cMaxEntries + 5 do
   begin
-    TAtlasTestProjectChoices.Remember(Choices, ['P' + IntToStr(Index), 'Q'], 'Q');
+    TAtlasTestProjectChoices.Remember(mChoices, ['P' + IntToStr(mIndex), 'Q'], 'Q');
   end;
-  Assert.AreEqual(TAtlasTestProjectChoices.MaxEntries, Integer(Length(Choices)));
-  Assert.AreEqual('p' + IntToStr(TAtlasTestProjectChoices.MaxEntries + 5) + '|q', Choices[0].Key);
+  Assert.AreEqual(TAtlasTestProjectChoices.cMaxEntries, Integer(Length(mChoices)));
+  Assert.AreEqual('p' + IntToStr(TAtlasTestProjectChoices.cMaxEntries + 5) + '|q', mChoices[0].Key);
 end;
 
 procedure TAtlasTestProjectChoiceTests.JsonRoundTrip;
 var
-  Choices, Loaded: TArray<TAtlasTestProjectChoice>;
+  mChoices, mLoaded: TArray<TAtlasTestProjectChoice>;
 begin
-  Choices := nil;
-  TAtlasTestProjectChoices.Remember(Choices, ['C:\Mit "Zeichen"\A.dproj', 'C:\Ä\B.dproj'], 'C:\Ä\B.dproj');
-  Loaded := TAtlasTestProjectChoices.Parse(TAtlasTestProjectChoices.ToJson(Choices));
-  Assert.AreEqual(1, Integer(Length(Loaded)));
-  Assert.AreEqual(Choices[0].Key, Loaded[0].Key);
-  Assert.AreEqual('C:\Ä\B.dproj', Loaded[0].Project);
-  Assert.AreEqual(1, TAtlasTestProjectChoices.FormatOf(TAtlasTestProjectChoices.ToJson(Choices)));
+  mChoices := nil;
+  TAtlasTestProjectChoices.Remember(mChoices, ['C:\Mit "Zeichen"\A.dproj', 'C:\Ä\B.dproj'], 'C:\Ä\B.dproj');
+  mLoaded := TAtlasTestProjectChoices.Parse(TAtlasTestProjectChoices.ToJson(mChoices));
+  Assert.AreEqual(1, Integer(Length(mLoaded)));
+  Assert.AreEqual(mChoices[0].Key, mLoaded[0].Key);
+  Assert.AreEqual('C:\Ä\B.dproj', mLoaded[0].Project);
+  Assert.AreEqual(1, TAtlasTestProjectChoices.FormatOf(TAtlasTestProjectChoices.ToJson(mChoices)));
   Assert.AreEqual(0, Integer(Length(TAtlasTestProjectChoices.Parse(TAtlasTestProjectChoices.ToJson(nil)))));
 end;
 
@@ -119,57 +119,57 @@ end;
 
 procedure TAtlasTestProjectChoiceTests.SaveAndLoadKeepNewerFormat;
 var
-  Folder, FileName: string;
-  Choices: TArray<TAtlasTestProjectChoice>;
+  mFolder, mFileName: string;
+  mChoices: TArray<TAtlasTestProjectChoice>;
 begin
-  Folder := IncludeTrailingPathDelimiter(TPath.GetTempPath) + 'atlas-test-' + IntToStr(Random(MaxInt));
-  FileName := IncludeTrailingPathDelimiter(Folder) + TAtlasTestProjectChoices.FileName;
+  mFolder := IncludeTrailingPathDelimiter(TPath.GetTempPath) + 'atlas-test-' + IntToStr(Random(MaxInt));
+  mFileName := IncludeTrailingPathDelimiter(mFolder) + TAtlasTestProjectChoices.cFileName;
   try
-    Assert.AreEqual(0, Integer(Length(TAtlasTestProjectChoices.Load(FileName))), 'ohne Datei');
-    Choices := nil;
-    TAtlasTestProjectChoices.Remember(Choices, ['A', 'B'], 'B');
-    Assert.IsTrue(TAtlasTestProjectChoices.Save(FileName, Choices), 'legt den Ordner an');
-    Choices := TAtlasTestProjectChoices.Load(FileName);
-    Assert.AreEqual(1, Integer(Length(Choices)));
-    Assert.AreEqual('B', Choices[0].Project);
-    TFile.WriteAllText(FileName, '{"format": 9, "choices": []}', TEncoding.UTF8);
-    Assert.IsFalse(TAtlasTestProjectChoices.Save(FileName, Choices), 'neuere Fassung bleibt');
-    Assert.AreEqual(9, TAtlasTestProjectChoices.FormatOf(TFile.ReadAllText(FileName, TEncoding.UTF8)));
+    Assert.AreEqual(0, Integer(Length(TAtlasTestProjectChoices.Load(mFileName))), 'ohne Datei');
+    mChoices := nil;
+    TAtlasTestProjectChoices.Remember(mChoices, ['A', 'B'], 'B');
+    Assert.IsTrue(TAtlasTestProjectChoices.Save(mFileName, mChoices), 'legt den Ordner an');
+    mChoices := TAtlasTestProjectChoices.Load(mFileName);
+    Assert.AreEqual(1, Integer(Length(mChoices)));
+    Assert.AreEqual('B', mChoices[0].Project);
+    TFile.WriteAllText(mFileName, '{"format": 9, "choices": []}', TEncoding.UTF8);
+    Assert.IsFalse(TAtlasTestProjectChoices.Save(mFileName, mChoices), 'neuere Fassung bleibt');
+    Assert.AreEqual(9, TAtlasTestProjectChoices.FormatOf(TFile.ReadAllText(mFileName, TEncoding.UTF8)));
   finally
-    if FileExists(FileName) then
+    if FileExists(mFileName) then
     begin
-      System.SysUtils.DeleteFile(FileName);
+      System.SysUtils.DeleteFile(mFileName);
     end;
-    RemoveDir(Folder);
+    RemoveDir(mFolder);
   end;
 end;
 
 procedure TAtlasTestProjectChoiceTests.BrokenFileSetAsideLockedFileKept;
 var
-  Folder, FileName: string;
-  Choices: TArray<TAtlasTestProjectChoice>;
-  Lock: TFileStream;
+  mFolder, mFileName: string;
+  mChoices: TArray<TAtlasTestProjectChoice>;
+  mLock: TFileStream;
 begin
-  Folder := IncludeTrailingPathDelimiter(TPath.GetTempPath) + 'atlas-test-' + IntToStr(Random(MaxInt));
-  FileName := IncludeTrailingPathDelimiter(Folder) + TAtlasTestProjectChoices.FileName;
-  ForceDirectories(Folder);
+  mFolder := IncludeTrailingPathDelimiter(TPath.GetTempPath) + 'atlas-test-' + IntToStr(Random(MaxInt));
+  mFileName := IncludeTrailingPathDelimiter(mFolder) + TAtlasTestProjectChoices.cFileName;
+  ForceDirectories(mFolder);
   try
-    TFile.WriteAllText(FileName, '{"choices": [');
-    Assert.IsTrue(TAtlasTestProjectChoices.Load(FileName, Choices) = TAtlasDataLoad.Renewed);
-    Assert.IsTrue(FileExists(FileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
-    TAtlasTestProjectChoices.Remember(Choices, ['A', 'B'], 'B');
-    Assert.IsTrue(TAtlasTestProjectChoices.Save(FileName, Choices));
-    Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
+    TFile.WriteAllText(mFileName, '{"choices": [');
+    Assert.IsTrue(TAtlasTestProjectChoices.Load(mFileName, mChoices) = TAtlasDataLoad.Renewed);
+    Assert.IsTrue(FileExists(mFileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
+    TAtlasTestProjectChoices.Remember(mChoices, ['A', 'B'], 'B');
+    Assert.IsTrue(TAtlasTestProjectChoices.Save(mFileName, mChoices));
+    mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
     try
-      Assert.IsTrue(TAtlasTestProjectChoices.Load(FileName, Choices) = TAtlasDataLoad.Kept);
-      Assert.AreEqual(0, Integer(Length(Choices)));
-      Assert.IsFalse(TAtlasTestProjectChoices.Save(FileName, Choices), 'gerade nicht lesbar: nicht überschreiben');
+      Assert.IsTrue(TAtlasTestProjectChoices.Load(mFileName, mChoices) = TAtlasDataLoad.Kept);
+      Assert.AreEqual(0, Integer(Length(mChoices)));
+      Assert.IsFalse(TAtlasTestProjectChoices.Save(mFileName, mChoices), 'gerade nicht lesbar: nicht überschreiben');
     finally
-      Lock.Free;
+      mLock.Free;
     end;
-    Assert.AreEqual(1, Integer(Length(TAtlasTestProjectChoices.Load(FileName))));
+    Assert.AreEqual(1, Integer(Length(TAtlasTestProjectChoices.Load(mFileName))));
   finally
-    TDirectory.Delete(Folder, True);
+    TDirectory.Delete(mFolder, True);
   end;
   // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
   TAtlasDataFile.ForgetReports;
