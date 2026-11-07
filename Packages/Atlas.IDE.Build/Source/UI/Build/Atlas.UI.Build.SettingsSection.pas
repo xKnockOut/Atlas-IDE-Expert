@@ -171,7 +171,8 @@ begin
   begin
     AValues.WriteString(cOnOpenKindKey, TAtlasOpenBuildSettings.KindNames[FOpenBuild.Choice - 1]);
   end;
-  AValues.WriteString(cOnOpenExcludeKey, TAtlasOpenBuildSettings.NormalizedExclude(AValues.ReadString(cOnOpenExcludeKey)));
+  AValues.WriteString(cOnOpenExcludeKey,
+    TAtlasOpenBuildSettings.NormalizedExclude(AValues.ReadString(cOnOpenExcludeKey)));
 end;
 
 procedure TAtlasBuildSettingsSection.Close;

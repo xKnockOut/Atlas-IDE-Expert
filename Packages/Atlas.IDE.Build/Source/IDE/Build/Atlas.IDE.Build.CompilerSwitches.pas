@@ -38,8 +38,8 @@ type
 
   TAtlasIdeCompilerSwitches = class
   public const
-    TickMs = 50;
-    RequestTimeoutMs = 3000;
+    cTickMs = 50;
+    cRequestTimeoutMs = 3000;
   private class var
     FInstance: TAtlasIdeCompilerSwitches;
   private
@@ -110,10 +110,10 @@ uses
 
 function Enabled: Boolean;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := Settings.Enabled and Settings.BuildCompilerSwitches;
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.BuildCompilerSwitches;
 end;
 
 { TAtlasIdeCompilerSwitches }
@@ -129,7 +129,7 @@ begin
   FViewLine := -1;
   FMessage := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesEmpty);
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -162,25 +162,25 @@ end;
 
 class procedure TAtlasIdeCompilerSwitches.Release;
 var
-  Instance: TAtlasIdeCompilerSwitches;
+  mInstance: TAtlasIdeCompilerSwitches;
 begin
   if FInstance = nil then
   begin
     Exit;
   end;
-  Instance := FInstance;
+  mInstance := FInstance;
   FInstance := nil;
   // Statusfeld entfernen, solange der Empfänger noch da ist.
-  if Instance.FStatusText <> '' then
+  if mInstance.FStatusText <> '' then
   begin
-    Instance.FStatusText := '';
-    if Assigned(Instance.FStatus) then
+    mInstance.FStatusText := '';
+    if Assigned(mInstance.FStatus) then
     begin
-      Instance.FStatus('', '');
+      mInstance.FStatus('', '');
     end;
   end;
   TAtlasIdeBuildSwitchesWindow.Release;
-  Instance.Free;
+  mInstance.Free;
 end;
 
 class function TAtlasIdeCompilerSwitches.Started: Boolean;
@@ -211,31 +211,31 @@ end;
 
 class procedure TAtlasIdeCompilerSwitches.ShowWindow;
 var
-  Frame: TAtlasBuildSwitchesFrame;
+  mFrame: TAtlasBuildSwitchesFrame;
 begin
   if (FInstance = nil) or not Enabled then
   begin
     Exit;
   end;
-  Frame := TAtlasIdeBuildSwitchesWindow.Show;
-  if Frame <> nil then
+  mFrame := TAtlasIdeBuildSwitchesWindow.Show;
+  if mFrame <> nil then
   begin
-    WireFrame(Frame);
-    FInstance.Fill(Frame);
+    WireFrame(mFrame);
+    FInstance.Fill(mFrame);
   end;
   FInstance.FFollow.Invalidate;
 end;
 
 class function TAtlasIdeCompilerSwitches.StatusHint(const AView: TAtlasCompilerSwitchView): string;
 var
-  Row: TAtlasSwitchRow;
-  Value: string;
+  mRow: TAtlasSwitchRow;
+  mValue: string;
 begin
   Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesStatusHint);
-  for Row in AView.Deviations do
+  for mRow in AView.Deviations do
   begin
-    Value := TAtlasCompilerSwitchTexts.Value(Row.Value);
-    Result := Result + sLineBreak + Row.Name + ' ' + Value + ': ' + TAtlasBuildSwitchesFrame.OriginText(Row);
+    mValue := TAtlasCompilerSwitchTexts.Value(mRow.Value);
+    Result := Result + sLineBreak + mRow.Name + ' ' + mValue + ': ' + TAtlasBuildSwitchesFrame.OriginText(mRow);
   end;
 end;
 
@@ -260,14 +260,14 @@ end;
 
 class procedure TAtlasIdeCompilerSwitches.OpenOptions;
 var
-  Project: IOTAProject;
+  mProject: IOTAProject;
 begin
-  Project := GetActiveProject;
-  if (Project = nil) or (Project.ProjectOptions = nil) then
+  mProject := GetActiveProject;
+  if (mProject = nil) or (mProject.ProjectOptions = nil) then
   begin
     Exit;
   end;
-  Project.ProjectOptions.EditOptions;
+  mProject.ProjectOptions.EditOptions;
   // Geänderte Optionen: gleich neu fragen.
   if FInstance <> nil then
   begin
@@ -420,27 +420,27 @@ end;
 class function TAtlasIdeCompilerSwitches.Fetch(ASession: TLspSession; const AFileName: string;
   ALine, ACharacter: Integer; out AView: TAtlasCompilerSwitchView): Boolean;
 var
-  Response: TJSONValue;
+  mResponse: TJSONValue;
 begin
   AView := Default(TAtlasCompilerSwitchView);
-  Response := nil;
+  mResponse := nil;
   try
     try
-      Response := ASession.CompilerSwitches(AFileName, ALine, ACharacter, RequestTimeoutMs);
-      Result := TAtlasCompilerSwitchView.FromJson(Response, AView);
+      mResponse := ASession.CompilerSwitches(AFileName, ALine, ACharacter, cRequestTimeoutMs);
+      Result := TAtlasCompilerSwitchView.FromJson(mResponse, AView);
     except
       // Server langsam oder weg: kein Stand.
       Result := False;
     end;
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
 procedure TAtlasIdeCompilerSwitches.Accept(ARequest: Integer; const AFileName: string; ALine: Integer;
   const AView: TAtlasCompilerSwitchView; AKnown: Boolean);
 var
-  Frame: TAtlasBuildSwitchesFrame;
+  mFrame: TAtlasBuildSwitchesFrame;
 begin
   // Nur die jüngste Antwort.
   if (ARequest <> FRequest) or not Enabled then
@@ -458,10 +458,10 @@ begin
   FView := AView;
   FViewFile := AFileName;
   FViewLine := ALine;
-  Frame := TAtlasIdeBuildSwitchesWindow.ExistingFrame;
-  if Frame <> nil then
+  mFrame := TAtlasIdeBuildSwitchesWindow.ExistingFrame;
+  if mFrame <> nil then
   begin
-    Fill(Frame);
+    Fill(mFrame);
   end;
   UpdateStatus;
 end;
@@ -480,54 +480,54 @@ end;
 
 procedure TAtlasIdeCompilerSwitches.ShowMessageText(const AText: string);
 var
-  Frame: TAtlasBuildSwitchesFrame;
+  mFrame: TAtlasBuildSwitchesFrame;
 begin
   FMessage := AText;
-  Frame := TAtlasIdeBuildSwitchesWindow.ExistingFrame;
-  if Frame <> nil then
+  mFrame := TAtlasIdeBuildSwitchesWindow.ExistingFrame;
+  if mFrame <> nil then
   begin
-    Fill(Frame);
+    Fill(mFrame);
   end;
   UpdateStatus;
 end;
 
 procedure TAtlasIdeCompilerSwitches.UpdateStatus;
 var
-  Text, Hint: string;
+  mText, mHint: string;
 begin
-  Text := '';
-  Hint := '';
+  mText := '';
+  mHint := '';
   if Enabled and TAtlasIdeSettings.Current.BuildSwitchesInStatusBar and FHasView and (FView.Summary <> '') then
   begin
-    Text := FView.Summary;
-    Hint := StatusHint(FView);
+    mText := FView.Summary;
+    mHint := StatusHint(FView);
   end;
-  if Text = FStatusText then
+  if mText = FStatusText then
   begin
     Exit;
   end;
-  FStatusText := Text;
+  FStatusText := mText;
   if Assigned(FStatus) then
   begin
-    FStatus(Text, Hint);
+    FStatus(mText, mHint);
   end;
 end;
 
 procedure TAtlasIdeCompilerSwitches.ReapWorkers(AWait: Boolean);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if FWorkers = nil then
   begin
     Exit;
   end;
-  for Index := FWorkers.Count - 1 downto 0 do
+  for mIndex := FWorkers.Count - 1 downto 0 do
   begin
-    if AWait or FWorkers[Index].Finished then
+    if AWait or FWorkers[mIndex].Finished then
     begin
-      FWorkers[Index].WaitFor;
-      FWorkers[Index].Free;
-      FWorkers.Delete(Index);
+      FWorkers[mIndex].WaitFor;
+      FWorkers[mIndex].Free;
+      FWorkers.Delete(mIndex);
     end;
   end;
 end;
