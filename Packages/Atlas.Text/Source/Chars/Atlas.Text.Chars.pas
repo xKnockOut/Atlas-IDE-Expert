@@ -32,7 +32,8 @@ end;
 
 class function TTextChars.IsAsciiIdentChar(AC: Char): Boolean;
 begin
-  Result := ((AC >= 'A') and (AC <= 'Z')) or ((AC >= 'a') and (AC <= 'z')) or ((AC >= '0') and (AC <= '9')) or (AC = '_');
+  Result := ((AC >= 'A') and (AC <= 'Z')) or ((AC >= 'a') and (AC <= 'z')) or ((AC >= '0') and (AC <= '9')) or
+    (AC = '_');
 end;
 
 end.

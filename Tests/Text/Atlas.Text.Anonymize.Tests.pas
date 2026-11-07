@@ -67,7 +67,8 @@ end;
 
 procedure TTextAnonymizerTests.LongestRootFirst;
 begin
-  Assert.AreEqual('<ws>/<datei>.pas', TTextAnonymizer.AnonymizePaths(cRoot + '\Sub\a.pas', [cRoot, cRoot + '\Sub'], []));
+  Assert.AreEqual('<ws>/<datei>.pas',
+    TTextAnonymizer.AnonymizePaths(cRoot + '\Sub\a.pas', [cRoot, cRoot + '\Sub'], []));
 end;
 
 procedure TTextAnonymizerTests.KeepsTimesAndWebUrls;
