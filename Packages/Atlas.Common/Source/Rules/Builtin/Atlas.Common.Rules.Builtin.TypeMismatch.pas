@@ -1387,7 +1387,7 @@ procedure TTypeMismatchCheck.CheckIntrinsic(ANode: TSyntaxNode; const AName: str
 var
   mValue: TValueType;
 begin
-  if (MatchText(AName, ['Inc', 'Dec']) and (ANode.ChildCount = 3)) then
+  if MatchText(AName, ['Inc', 'Dec']) and (ANode.ChildCount = 3) then
   begin
     mValue := ValueOf(ANode[2]);
     if (mValue.Kind = TValueKind.Builtin) and (mValue.Category in [TExpressionCategory.Float,

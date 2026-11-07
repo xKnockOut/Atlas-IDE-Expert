@@ -44,6 +44,10 @@ type
     procedure BeginUpdateMenuSilent;
     [Test]
     procedure BeginUpdateMenuInFieldSilent;
+    /// <summary>Menü in einem verschachtelten Record der Klasse und Items als TObjectList&lt;T&gt; (Atlas.UI.Notifications.Window,
+    /// Atlas.Common.Query.Language): kein BeginUpdate.</summary>
+    [Test]
+    procedure BeginUpdateNestedMenuAndPlainListSilent;
     [Test]
     procedure BeginUpdateFewIterationsSilent;
     [Test]
@@ -262,6 +266,20 @@ begin
   Findings := TRuleAssert.Findings(TMissingBeginUpdateRule.Create, Source, AllOn);
   Assert.AreEqual(1, Integer(Length(Findings)));
   Assert.Contains(Findings[0].Message, 'FList.Items.BeginUpdate');
+end;
+
+procedure TPerformanceRulesTests.BeginUpdateNestedMenuAndPlainListSilent;
+const
+  cSource = 'unit U;'#10'interface'#10'uses Vcl.Menus, System.Generics.Collections;'#10'type'#10 +
+    '  TNode = class'#10'  private'#10'    FItems: TObjectList<TNode>;'#10'  public'#10 +
+    '    property Items: TObjectList<TNode> read FItems;'#10'  end;'#10'  TF = class'#10'  private'#10'    type'#10 +
+    '      TParts = record'#10'        Menu: TPopupMenu;'#10'      end;'#10'  private'#10'    FParts: TParts;'#10 +
+    '    procedure Fill(const ANames: TArray<string>; ANode: TNode);'#10'  end;'#10'implementation'#10 +
+    'procedure TF.Fill(const ANames: TArray<string>; ANode: TNode);'#10'var'#10'  mName: string;'#10'begin'#10 +
+    '  for mName in ANames do'#10'  begin'#10'    FParts.Menu.Items.Add(NewLine);'#10 +
+    '    ANode.Items.Add(TNode.Create);'#10'  end;'#10'end;'#10'end.';
+begin
+  Assert.AreEqual(0, Count(TMissingBeginUpdateRule.Create, cSource));
 end;
 
 /// <summary>Das Menü steckt in einem Record-Feld (FParts.Menu in Atlas.UI.Notifications.Window).</summary>

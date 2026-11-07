@@ -179,25 +179,17 @@ end;
 function TUseAfterFreeCheck.FirstChildToVisit(ANode: TSyntaxNode): Integer;
 begin
   Result := 0;
-  if ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
-  begin
-    Result := ANode.ChildCount;
-  end
-  else if ANode.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess, TSyntaxKind.Dereference] then
-  begin
-    Result := VisitAccess(ANode);
-  end
-  else if ANode.Kind = TSyntaxKind.Call then
-  begin
-    VisitCall(ANode);
-  end
-  else if ANode.Kind = TSyntaxKind.AddressOf then
-  begin
-    Result := VisitAddress(ANode);
-  end
-  else if ANode.Kind = TSyntaxKind.BinaryExpr then
-  begin
-    VisitBinary(ANode);
+  case ANode.Kind of
+    TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl:
+      Result := ANode.ChildCount;
+    TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess, TSyntaxKind.Dereference:
+      Result := VisitAccess(ANode);
+    TSyntaxKind.Call:
+      VisitCall(ANode);
+    TSyntaxKind.AddressOf:
+      Result := VisitAddress(ANode);
+    TSyntaxKind.BinaryExpr:
+      VisitBinary(ANode);
   end;
 end;
 

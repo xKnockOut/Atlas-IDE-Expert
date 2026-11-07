@@ -656,7 +656,7 @@
       "category": "vulnerability",
       "severity": "warning",
       "group": "security",
-      "description": "A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Experimental until data flow analysis is available.",
+      "description": "A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Only the path (first argument) counts, not the written content (WriteAllText(Path, List.Text)). Experimental until data flow analysis is available.",
       "bad": "List.LoadFromFile('C:\\Data\\' + Edit1.Text);",
       "good": "Path := TPath.GetFullPath(TPath.Combine(Root, Edit1.Text));  // then check it starts with Root"
     },
@@ -940,7 +940,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "robustness",
-      "description": "Random is used, but the unit never calls Randomize, so every start yields the same sequence. Randomize often sits in the .dpr, so the rule is off by default and has low confidence.",
+      "description": "Random is used, but the unit never calls Randomize, so every start yields the same sequence. A Random of your own (enumeration value, routine) is not System.Random. Randomize often sits in the .dpr, so the rule is off by default and has low confidence.",
       "bad": "Dice := Random(6) + 1;",
       "good": "Randomize; // once at program start\n...\nDice := Random(6) + 1;"
     },
@@ -1106,7 +1106,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "performance",
-      "description": "Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Silent for menus (TMenuItem has no BeginUpdate, also through fields such as FParts.Menu.Items) and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.",
+      "description": "Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Silent for menus (TMenuItem has no BeginUpdate, also through fields such as FParts.Menu.Items, including records nested in the class), for lists without a control (TObjectList<T>, TList, TDictionary), for types in the index without BeginUpdate and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.",
       "bad": "for I := 1 to 1000 do\n  ListBox1.Items.Add(IntToStr(I));",
       "good": "ListBox1.Items.BeginUpdate;\ntry\n  for I := 1 to 1000 do\n    ListBox1.Items.Add(IntToStr(I));\nfinally\n  ListBox1.Items.EndUpdate;\nend;"
     },

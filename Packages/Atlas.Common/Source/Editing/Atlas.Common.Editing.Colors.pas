@@ -370,7 +370,7 @@ begin
     TColorFormat.SystemColor: ;
   end;
   Add(mHex, TColorFormat.Hex);
-  if (AFormat <> TColorFormat.Rgb) then
+  if AFormat <> TColorFormat.Rgb then
   begin
     Add(mRgb, TColorFormat.Rgb);
   end;

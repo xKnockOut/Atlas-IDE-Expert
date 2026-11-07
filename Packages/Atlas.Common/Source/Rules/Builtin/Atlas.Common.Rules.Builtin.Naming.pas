@@ -99,6 +99,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.EventAssignments,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.RoutineBody,
@@ -987,7 +988,9 @@ begin
     mNewName]);
   mFixes := nil;
   // Nur wo umbenannt wird, kann der neue Name kollidieren (ABuf als Parameter einer anderen Methode stört nicht).
-  if ACanFix and (Length(AEdits) > 0) and not OccursIn(FTokens, mNewName, AScopes) then
+  // Ein reserviertes Wort als neuer Name übersetzt nicht (Parameter S würde zu AS).
+  if ACanFix and (Length(AEdits) > 0) and not OccursIn(FTokens, mNewName, AScopes) and
+    not TPascalLexer.IsReservedWord(mNewName) then
   begin
     mFixes := [TRuleFix.Create(cTexts[TNamingText.RenameTo].Fmt([mNewName]), EditsFor(FTokens, AEdits, mNewName))];
   end;

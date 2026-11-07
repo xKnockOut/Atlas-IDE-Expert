@@ -1611,7 +1611,7 @@ ShellExecute(0, 'open', 'tool.exe', PChar(QuotedArgument), nil, SW_SHOW);  // va
 
 **Path traversal** · Vulnerability · Warning · Group Security
 
-A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Experimental until data flow analysis is available.
+A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Only the path (first argument) counts, not the written content (WriteAllText(Path, List.Text)). Experimental until data flow analysis is available.
 
 Flagged:
 
@@ -2148,7 +2148,7 @@ if Assigned(X) then S := X.Name else S := '';
 
 **Random without Randomize** · Code smell · Hint · Group Robustness and patterns
 
-Random is used, but the unit never calls Randomize, so every start yields the same sequence. Randomize often sits in the .dpr, so the rule is off by default and has low confidence.
+Random is used, but the unit never calls Randomize, so every start yields the same sequence. A Random of your own (enumeration value, routine) is not System.Random. Randomize often sits in the .dpr, so the rule is off by default and has low confidence.
 
 Flagged:
 
@@ -2483,7 +2483,7 @@ while I < Length(Text) do
 
 **Adding items in a loop without BeginUpdate** · Code smell · Hint · Group Performance
 
-Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Silent for menus (TMenuItem has no BeginUpdate, also through fields such as FParts.Menu.Items) and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.
+Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Silent for menus (TMenuItem has no BeginUpdate, also through fields such as FParts.Menu.Items, including records nested in the class), for lists without a control (TObjectList<T>, TList, TDictionary), for types in the index without BeginUpdate and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.
 
 Flagged:
 

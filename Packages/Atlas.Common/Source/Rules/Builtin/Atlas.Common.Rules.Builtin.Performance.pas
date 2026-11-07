@@ -728,6 +728,20 @@ begin
   Result := False;
 end;
 
+/// <summary>Dateiname für die Namensauflösung: Pfad, sonst relativer Pfad, sonst Unit-Name.</summary>
+function ResolverFileName(const AContext: TRuleContext): string;
+begin
+  Result := AContext.FileName;
+  if Result = '' then
+  begin
+    Result := AContext.RelativePath;
+  end;
+  if Result = '' then
+  begin
+    Result := AContext.UnitName + '.pas';
+  end;
+end;
+
 type
   /// <summary>Prüft die Bedingungen der Schleifen einer Unit (loop-invariant-call).</summary>
   TLoopConditionCheck = class
@@ -758,15 +772,7 @@ begin
   FTokens := FTree.Tokens;
   FTypes := TDeclaredTypes.Create(FTree, AContext.Text);
   FResolver := AResolver;
-  FFileName := AContext.FileName;
-  if FFileName = '' then
-  begin
-    FFileName := AContext.RelativePath;
-  end;
-  if FFileName = '' then
-  begin
-    FFileName := AContext.UnitName + '.pas';
-  end;
+  FFileName := ResolverFileName(AContext);
 end;
 
 destructor TLoopConditionCheck.Destroy;
@@ -1154,6 +1160,53 @@ begin
   Result := MatchText(ATypes.ChainType(OwnerOf(AReceiver), APosition), cMenuTypes);
 end;
 
+const
+  /// <summary>Listen ohne Steuerelement und ohne BeginUpdate (TObjectList&lt;T&gt;, TList).</summary>
+  cPlainLists: array[0..5] of string = ('TList', 'TObjectList', 'TInterfaceList', 'TStack', 'TQueue',
+    'TDictionary');
+
+/// <summary>Typname ohne Typargumente: TObjectList&lt;TNode&gt; → TObjectList.</summary>
+function BareTypeName(const ATypeName: string): string;
+var
+  mAngle: Integer;
+begin
+  Result := Trim(ATypeName);
+  mAngle := Pos('<', Result);
+  if mAngle > 0 then
+  begin
+    Result := Trim(Copy(Result, 1, mAngle - 1));
+  end;
+end;
+
+/// <summary>Kennt die Namensauflösung den Empfänger AReceiver (bzw. sein Objekt davor) als Typ ohne BeginUpdate:
+/// Menü (FParts.Menu: TPopupMenu aus einer anderen Unit), Liste ohne Steuerelement (Items: TObjectList&lt;T&gt;) oder
+/// ein Typ im Index ohne Mitglied BeginUpdate? Unbekannt: False.</summary>
+function LacksBeginUpdate(const AContext: TRuleContext; AResolver: TNameResolver; const AFileName,
+  AReceiver: string; AOffset: Integer): Boolean;
+var
+  mOwner, mItems: TResolvedSymbol;
+  mChain: TResolvedChainType;
+  mMember: TResolvedSymbol;
+begin
+  mOwner := AResolver.ResolveChain(AContext.Tree, AFileName, OwnerOf(AReceiver).Split(['.']), AOffset);
+  if (mOwner.Kind <> TResolvedKind.None) and MatchText(BareTypeName(mOwner.TypeName), cMenuTypes) then
+  begin
+    Exit(True);
+  end;
+  mItems := AResolver.ResolveChain(AContext.Tree, AFileName, AReceiver.Split(['.']), AOffset);
+  if mItems.Kind = TResolvedKind.None then
+  begin
+    Exit(False);
+  end;
+  if MatchText(BareTypeName(mItems.TypeName), cPlainLists) or MatchText(BareTypeName(mItems.TypeName),
+    cMenuTypes) then
+  begin
+    Exit(True);
+  end;
+  Result := AResolver.ChainType(AContext.Tree, AFileName, AReceiver.Split(['.']), AOffset, mChain) and
+    mChain.TypeFound and not AResolver.FindMember(mChain.TypeInfo, 'BeginUpdate', mMember);
+end;
+
 /// <summary>Steht für den Empfänger schon BeginUpdate in der Datei bzw. ist er schon gemeldet?</summary>
 function IsHandled(const AReceiver: string; const AUpdated, AReported: TArray<string>): Boolean;
 begin
@@ -1186,7 +1239,9 @@ var
   mUpdated, mReported: TArray<string>;
   mTypes: TDeclaredTypes;
   mIndex, mLast: Integer;
-  mReceiver: string;
+  mReceiver, mFileName: string;
+  mCache: IRuleDerivedCache;
+  mResolver: TNameResolver;
 begin
   if AContext.Tree = nil then
   begin
@@ -1198,7 +1253,12 @@ begin
   begin
     Exit;
   end;
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mFileName := ResolverFileName(AContext);
   mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  mResolver.PinTree(AContext.Tree, mFileName);
   try
     mUpdated := UpdatedReceivers(mTokens);
     mReported := nil;
@@ -1211,7 +1271,8 @@ begin
       end;
       // Wenige Einträge: Das Neuzeichnen fällt nicht ins Gewicht.
       if IsHandled(mReceiver, mUpdated, mReported) or IsMenuItems(mTypes, mReceiver, mTokens[mIndex].StartPos) or
-        FewInLoops(mTokens, mFound, mIndex) then
+        FewInLoops(mTokens, mFound, mIndex) or
+        LacksBeginUpdate(AContext, mResolver, mFileName, mReceiver, mTokens[mIndex].Offset) then
       begin
         Continue;
       end;
@@ -1219,6 +1280,7 @@ begin
       ReportAdd(AContext, AReport, mTokens, mIndex, mLast);
     end;
   finally
+    mResolver.UnpinTree;
     mTypes.Free;
   end;
 end;

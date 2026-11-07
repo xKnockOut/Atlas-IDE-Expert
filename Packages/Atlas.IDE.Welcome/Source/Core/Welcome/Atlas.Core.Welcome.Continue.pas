@@ -967,12 +967,12 @@ begin
   end;
   if mMinutes < 60 then
   begin
-    AValue := mMinutes;
+    AValue := Integer(mMinutes);
     Exit(TAtlasContinueAge.Minutes);
   end;
   if Trunc(AAtLocal) = Trunc(ANowLocal) then
   begin
-    AValue := mMinutes div 60;
+    AValue := Integer(mMinutes div 60);
     Exit(TAtlasContinueAge.Hours);
   end;
   if Trunc(AAtLocal) = Trunc(ANowLocal) - 1 then

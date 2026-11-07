@@ -110,6 +110,11 @@ begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSecurityPathTraversalRule.Create,
     Body('  Liste.LoadFromFile(TPath.GetFullPath(Edit1.Text));'#10'  Liste.LoadFromFile(''config.ini'');'),
     Enabled))));
+  // Eingabedaten als Inhalt, nicht als Pfad (Atlas.Common.Diagnostics.CrashCase, Shell.Replay).
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSecurityPathTraversalRule.Create,
+    Body('  TFile.WriteAllText(TPath.Combine(Ordner, ''a.pas''), Fall.Text, TEncoding.UTF8);'), Enabled))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TSecurityPathTraversalRule.Create,
+    Body('  TFile.WriteAllText(Edit1.Text, Inhalt);'), Enabled))));
 end;
 
 procedure TSecurityRulesTests.ChecksumMd5IsLowConfidence;

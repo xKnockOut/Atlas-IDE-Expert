@@ -353,7 +353,7 @@ begin
   mNode := AHead;
   while True do
   begin
-    if (mNode.ChildCount < 2) then
+    if mNode.ChildCount < 2 then
     begin
       Exit;
     end;

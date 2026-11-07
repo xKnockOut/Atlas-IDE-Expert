@@ -39,8 +39,8 @@ const
     '{',
     '      "id": "security-path-traversal",',
     '      "name": "Pfad-Traversal",',
-    '      "description": "Ein Dateizugriff (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) verwendet einen Pfad aus Eingabedaten (Text, ParamStr, Request) ohne Prüfung über TPath.GetFullPath. Expe' +
-    'rimentell, bis die Datenflussanalyse verfügbar ist."',
+    '      "description": "Ein Dateizugriff (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) verwendet einen Pfad aus Eingabedaten (Text, ParamStr, Request) ohne Prüfung über TPath.GetFullPath. Nur ' +
+    'der Pfad (erstes Argument) zählt, nicht der geschriebene Inhalt (WriteAllText(Pfad, Liste.Text)). Experimentell, bis die Datenflussanalyse verfügbar ist."',
     '    },',
     '{',
     '      "id": "security-weak-crypto",',

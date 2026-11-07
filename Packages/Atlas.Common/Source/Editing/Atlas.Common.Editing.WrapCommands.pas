@@ -322,7 +322,7 @@ begin
   end;
   for mToken in TPascalLexer.Tokenize(mText) do
   begin
-    if (mToken.StartPos.Line > AType.Range.StartPos.Line) then
+    if mToken.StartPos.Line > AType.Range.StartPos.Line then
     begin
       Break;
     end;

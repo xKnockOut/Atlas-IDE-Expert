@@ -340,8 +340,8 @@ begin
   mObject := TJSONObject(AItem);
   Result.FileName := StringOf(mObject, 'file');
   Result.Path := StringOf(mObject, 'path');
-  Result.Line := IntegerOf(mObject, 'line');
-  Result.Character := IntegerOf(mObject, 'character');
+  Result.Line := Integer(IntegerOf(mObject, 'line'));
+  Result.Character := Integer(IntegerOf(mObject, 'character'));
   Result.Inferred := FlagOf(mObject, 'inferred');
   Result.InferredDetail := StringOf(mObject, 'inferredDetail');
   mValues := ObjectOf(mObject, 'values');
@@ -367,13 +367,13 @@ begin
   if mError <> nil then
   begin
     AAnswer.Error := StringOf(mError, 'message');
-    AAnswer.ErrorColumn := IntegerOf(mError, 'column');
+    AAnswer.ErrorColumn := Integer(IntegerOf(mError, 'column'));
     AAnswer.Suggestion := StringOf(mError, 'suggestion');
     Exit;
   end;
   AAnswer.Entity := StringOf(AData, 'entity');
-  AAnswer.Total := IntegerOf(AData, 'total');
-  AAnswer.InferredCount := IntegerOf(AData, 'inferred');
+  AAnswer.Total := Integer(IntegerOf(AData, 'total'));
+  AAnswer.InferredCount := Integer(IntegerOf(AData, 'inferred'));
   AAnswer.ElapsedMs := IntegerOf(AData, 'elapsedMs');
   AAnswer.Truncated := FlagOf(AData, 'truncated');
   AAnswer.Columns := ValuesOf(ArrayOf(AData, 'columns'));
