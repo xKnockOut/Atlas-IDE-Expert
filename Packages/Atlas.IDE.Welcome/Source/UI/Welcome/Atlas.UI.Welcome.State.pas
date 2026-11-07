@@ -91,7 +91,6 @@ type
     function Button(AButton: TAtlasStateButton): TButton;
     property Source: IAtlasStateSource read FSource write SetSource;
     property Rows: TAtlasStateRows read FRows;
-    property PaintBox: TAtlasWelcomeCanvas read FBox;
   end;
 
 implementation

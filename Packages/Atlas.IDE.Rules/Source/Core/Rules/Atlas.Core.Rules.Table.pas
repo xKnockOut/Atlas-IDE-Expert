@@ -81,7 +81,6 @@ type
 
   TAtlasRuleTable = class
   public const
-    cSeverities: array[0..4] of string = ('off', 'hint', 'info', 'warning', 'error');
     /// <summary>Gruppen des Regelkatalogs (TRuleGroup des Servers) in der Reihenfolge der Seite Prüfregeln.
     /// </summary>
     cGroupIds: array[0..13] of string = ('find-bugs', 'exceptions', 'threads', 'database', 'compiler',

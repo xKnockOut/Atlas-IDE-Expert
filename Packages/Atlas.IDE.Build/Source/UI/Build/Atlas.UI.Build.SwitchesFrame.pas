@@ -105,7 +105,6 @@ type
     property EmptyLabel: TLabel read FParts.Empty;
     property SummaryLabel: TLabel read FParts.Summary;
     property Menu: TPopupMenu read FParts.Menu;
-    property ShownLines: TAtlasSwitchLines read FLines;
     property OnJump: TProc<TAtlasSwitchRow> read FHandlers.OnJump write FHandlers.OnJump;
     property OnOptions: TProc read FHandlers.OnOptions write FHandlers.OnOptions;
     property OnCopy: TProc<string> read FHandlers.OnCopy write FHandlers.OnCopy;

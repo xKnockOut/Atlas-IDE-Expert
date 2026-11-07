@@ -52,7 +52,6 @@ type
   TDeferredCapture = Atlas.Common.Editing.AnonymousMethods.Shared.TDeferredCapture;
   TProcTypeKind = Atlas.Common.Editing.AnonymousMethods.Shared.TProcTypeKind;
   TAnonymousForm = Atlas.Common.Editing.AnonymousMethods.Shared.TAnonymousForm;
-  TProcTypeFunc = Atlas.Common.Editing.AnonymousMethods.Shared.TProcTypeFunc;
   TAnonymousLookup = Atlas.Common.Editing.AnonymousMethods.Shared.TAnonymousLookup;
   TAnonymousInput = Atlas.Common.Editing.AnonymousMethods.Shared.TAnonymousInput;
 

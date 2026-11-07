@@ -49,9 +49,6 @@ type
     /// <summary>Gleiche Werte (Name, Typ, Inhalt) und Unterschlüssel, Reihenfolge egal, Namen ohne
     /// Groß/klein.</summary>
     function SameAs(AOther: TAtlasRegKey): Boolean;
-    function ToJsonText: string;
-    /// <summary>nil bei ungültigem Text.</summary>
-    class function FromJsonText(const AText: string): TAtlasRegKey; static;
     property Name: string read FName;
     property Values: TList<TAtlasRegValue> read FValues;
     property Keys: TObjectList<TAtlasRegKey> read FKeys;
@@ -425,34 +422,6 @@ begin
   if not Result then
   begin
     FreeAndNil(AKey);
-  end;
-end;
-
-function TAtlasRegKey.ToJsonText: string;
-var
-  mJson: TJSONObject;
-begin
-  mJson := KeyToJson(Self);
-  try
-    Result := mJson.ToJSON;
-  finally
-    mJson.Free;
-  end;
-end;
-
-class function TAtlasRegKey.FromJsonText(const AText: string): TAtlasRegKey;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  mValue := TJSONObject.ParseJSONValue(AText);
-  try
-    if mValue is TJSONObject then
-    begin
-      KeyFromJson('', TJSONObject(mValue), Result);
-    end;
-  finally
-    mValue.Free;
   end;
 end;
 

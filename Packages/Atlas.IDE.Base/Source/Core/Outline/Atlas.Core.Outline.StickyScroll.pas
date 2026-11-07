@@ -93,7 +93,6 @@ type
 
   TAtlasStickyScroll = class
   public const
-    cDefaultMaxLines = 3;
     cMaxMaxLines = 10;
     cSeparator = ' › ';
     /// <summary>So viele Zeilen sucht Header nach der schließenden Klammer.</summary>

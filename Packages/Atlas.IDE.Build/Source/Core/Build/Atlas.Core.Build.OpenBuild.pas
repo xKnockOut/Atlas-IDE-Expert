@@ -106,7 +106,6 @@ type
     class function IsGroupFile(const AFileName: string): Boolean; static;
     class function IsProjectFile(const AFileName: string): Boolean; static;
     property Running: Boolean read FRunning;
-    property BuildRunning: Boolean read FBuildRunning;
     property LastOpened: Int64 read FLastOpened;
   end;
 

@@ -60,6 +60,8 @@ type
     /// aufsteigend; erst bei Bedarf angelegt. Je Methodendeklaration über alle Symbole gesucht war das quadratisch.
     /// </summary>
     FLocalMethodsAt: TDictionary<string, TArray<Integer>>;
+    /// <summary>Legt FLocalMethodsAt an, falls es noch fehlt.</summary>
+    procedure IndexLocalMethods;
     /// <summary>Symbole der Datei AFileName ('' = diese Datei); False, wenn der Index sie nicht kennt.</summary>
     function SymbolsOf(const AFileName: string; out ASymbols: TArray<TIndexSymbol>): Boolean;
     /// <summary>Felder, Properties, Methoden, Konstruktoren und Destruktoren von AType, je Typ einmal gesucht.
@@ -289,29 +291,38 @@ begin
   Result := IntToStr(APos.Line) + ':' + IntToStr(APos.Character);
 end;
 
-function TAncestry.LocalMethodAt(const ATypeName: string; const APos: TTextPosition;
-  out ASymbol: TIndexSymbol): Boolean;
+procedure TAncestry.IndexLocalMethods;
 var
   mIndex: Integer;
   mKey: string;
   mFound: TArray<Integer>;
 begin
-  if FLocalMethodsAt = nil then
+  if FLocalMethodsAt <> nil then
   begin
-    FLocalMethodsAt := TDictionary<string, TArray<Integer>>.Create;
-    for mIndex := 0 to High(FLocal.Symbols) do
+    Exit;
+  end;
+  FLocalMethodsAt := TDictionary<string, TArray<Integer>>.Create;
+  for mIndex := 0 to High(FLocal.Symbols) do
+  begin
+    if FLocal.Symbols[mIndex].Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_] then
     begin
-      if FLocal.Symbols[mIndex].Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_] then
+      mKey := PositionKey(FLocal.Symbols[mIndex].Range.StartPos);
+      if not FLocalMethodsAt.TryGetValue(mKey, mFound) then
       begin
-        mKey := PositionKey(FLocal.Symbols[mIndex].Range.StartPos);
-        if not FLocalMethodsAt.TryGetValue(mKey, mFound) then
-        begin
-          mFound := nil;
-        end;
-        FLocalMethodsAt.AddOrSetValue(mKey, mFound + [mIndex]);
+        mFound := nil;
       end;
+      FLocalMethodsAt.AddOrSetValue(mKey, mFound + [mIndex]);
     end;
   end;
+end;
+
+function TAncestry.LocalMethodAt(const ATypeName: string; const APos: TTextPosition;
+  out ASymbol: TIndexSymbol): Boolean;
+var
+  mIndex: Integer;
+  mFound: TArray<Integer>;
+begin
+  IndexLocalMethods;
   if FLocalMethodsAt.TryGetValue(PositionKey(APos), mFound) then
   begin
     for mIndex in mFound do

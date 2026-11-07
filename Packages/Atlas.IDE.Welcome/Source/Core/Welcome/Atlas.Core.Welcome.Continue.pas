@@ -161,7 +161,6 @@ type
   public const
     /// <summary>Abschnitt in der Projekt-Zusammenfassung.</summary>
     cSectionName = 'continue';
-    cDefaultCount = 5;
     cMinCount = 1;
     cMaxCount = 20;
     /// <summary>Höchstens so viele Reiter je Arbeitsstand.</summary>

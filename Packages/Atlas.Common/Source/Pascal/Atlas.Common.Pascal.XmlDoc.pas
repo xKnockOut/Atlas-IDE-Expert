@@ -117,7 +117,6 @@ type
     class function TryParseSectionName(const AName: string; out AKind: TXmlDocSectionKind): Boolean; static;
     /// <summary>Name für JSON und Tests (text, code, ref …).</summary>
     class function RunKindName(AKind: TXmlDocRunKind): string; static;
-    class function TryParseRunKindName(const AName: string; out AKind: TXmlDocRunKind): Boolean; static;
   end;
 
 implementation
@@ -1753,21 +1752,6 @@ end;
 class function TXmlDoc.RunKindName(AKind: TXmlDocRunKind): string;
 begin
   Result := cRunKindNames[AKind];
-end;
-
-class function TXmlDoc.TryParseRunKindName(const AName: string; out AKind: TXmlDocRunKind): Boolean;
-var
-  mKind: TXmlDocRunKind;
-begin
-  for mKind := Low(TXmlDocRunKind) to High(TXmlDocRunKind) do
-  begin
-    if SameText(cRunKindNames[mKind], AName) then
-    begin
-      AKind := mKind;
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 initialization

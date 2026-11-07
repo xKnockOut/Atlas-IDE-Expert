@@ -123,8 +123,6 @@ type
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
     /// <summary>Einstellungen references.* je Datei; nicht gesetzt: Vorgaben.</summary>
     property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
-    /// <summary>Handler wie Button1Click beim Umbenennen von Button1 anpassen (Standard True).</summary>
-    property RenameHandlers: Boolean read FRenameHandlers write FRenameHandlers;
     /// <summary>Typkommentare mit umbenennen (#1838); nicht gesetzt: ja.</summary>
     property TypeCommentsFor: TRenameTypeCommentsFunc read FTypeCommentsFor write FTypeCommentsFor;
   end;

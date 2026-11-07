@@ -50,7 +50,6 @@ type
     property DefaultServerPath: string read FDefaultServerPath write SetDefaultServerPath;
     /// <summary>Version des Servers unter dem Pfad als Text ('' = unbekannt); nil = keine Anzeige.</summary>
     property OnServerVersion: TFunc<string, string> read FOnServerVersion write SetOnServerVersion;
-    property ServerVersion: TLabel read FServerVersion;
   end;
 
   /// <summary>Benachrichtigungszentrale (#601) am Ende des Reiters „Allgemein“: Schalter, Größe und Verhalten je
@@ -73,7 +72,6 @@ type
     property NotificationsMax: TEdit read FNotificationsMax;
     property NotificationSource: TAtlasChoiceBox read FNotificationSource;
     property NotificationMode: TAtlasChoiceBox read FNotificationMode;
-    property NotificationsSpec: string read FNotificationsSpec;
   end;
 
 implementation

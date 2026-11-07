@@ -29,6 +29,13 @@ function TypeChain(AResolver: TNameResolver; const AUnit: TUnitIndex; const ATyp
 
 implementation
 
+/// <summary>Umschließt der Bereich von ASymbol die Zeile ALine (Ende mit AInclusiveEnd eingeschlossen)?</summary>
+function SpansLine(const ASymbol: TIndexSymbol; ALine: Integer; AInclusiveEnd: Boolean): Boolean;
+begin
+  Result := (ASymbol.Range.StartPos.Line < ALine) and
+    ((ASymbol.Range.EndPos.Line > ALine) or (AInclusiveEnd and (ASymbol.Range.EndPos.Line = ALine)));
+end;
+
 function EnclosingTypeAt(const AUnit: TUnitIndex; ALine: Integer; const AKinds: TIndexSymbolKinds;
   AMinAncestors: Integer; AInclusiveEnd: Boolean; out ASymbol: TIndexSymbol): Boolean;
 var
@@ -39,8 +46,7 @@ begin
   for mSymbol in AUnit.Symbols do
   begin
     if (mSymbol.Kind in AKinds) and (Length(mSymbol.Ancestors) >= AMinAncestors) and
-      (mSymbol.Range.StartPos.Line < ALine) and
-      ((mSymbol.Range.EndPos.Line > ALine) or (AInclusiveEnd and (mSymbol.Range.EndPos.Line = ALine))) and
+      SpansLine(mSymbol, ALine, AInclusiveEnd) and
       (not Result or (mSymbol.Range.StartPos.Line >= ASymbol.Range.StartPos.Line)) then
     begin
       ASymbol := mSymbol;

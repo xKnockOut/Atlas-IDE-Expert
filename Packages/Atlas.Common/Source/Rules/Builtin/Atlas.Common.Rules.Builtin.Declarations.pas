@@ -147,7 +147,6 @@ const
   cFieldAfterMethodRuleId = 'field-after-method';
   cDuplicateDeclarationRuleId = Atlas.Common.Rules.Builtin.Declarations.Duplicates.cDuplicateDeclarationRuleId;
   cOverloadDirectiveMissingRuleId = Atlas.Common.Rules.Builtin.Declarations.Overloads.cOverloadDirectiveMissingRuleId;
-  cDefaultParameterRuleId = Atlas.Common.Rules.Builtin.Declarations.Defaults.cDefaultParameterRuleId;
 
 procedure RegisterDeclarationRules(const ARegistry: TRuleRegistry);
 

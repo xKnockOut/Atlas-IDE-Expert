@@ -37,10 +37,6 @@ uses
   Atlas.Common.Editing.MemberTransfer;
 
 type
-  {$SCOPEDENUMS ON}
-  TMoveDirection = (Up, Down);
-  {$SCOPEDENUMS OFF}
-
   /// <summary>Texte der beteiligten Dateien: der Stand vorher und der aktuelle.</summary>
   TMemberFiles = class
   private

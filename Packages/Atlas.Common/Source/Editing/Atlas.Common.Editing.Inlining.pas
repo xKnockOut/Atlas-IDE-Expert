@@ -47,8 +47,6 @@ type
   TInlineCall = Atlas.Common.Editing.Inlining.Types.TInlineCall;
 
   TInlineRefactoring = class
-  public const
-    cResultSuffix = cInlineResultSuffix;
   public
     /// <summary>„Variable einbetten“ für die lokale Variable an APosition; False mit Grund in AReason.</summary>
     class function InlineVariable(const ASource: TInlineSource; const APosition: TTextPosition;

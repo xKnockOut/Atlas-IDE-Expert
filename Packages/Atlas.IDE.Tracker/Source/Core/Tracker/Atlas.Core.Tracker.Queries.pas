@@ -43,8 +43,6 @@ type
   end;
 
   TAtlasTrackerQueries = class
-  public const
-    cPath = 'issues.queries';
   public
     /// <summary>Zeilen aus issues.queries; ohne Name oder Abfrage und doppelte Namen fallen weg.</summary>
     class function Read(const AJson: string): TArray<TAtlasTrackerQuery>; static;

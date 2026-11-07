@@ -52,11 +52,6 @@ type
     cMaxTermLength = 200;
     /// <summary>Ab so vielen Zeilen nur im sichtbaren Bereich suchen.</summary>
     cLargeFileLines = 20000;
-    /// <summary>Grenzen der Einstellungen.</summary>
-    cMinMinLength = 1;
-    cMaxMinLength = 100;
-    cMinMaxMatches = 1;
-    cMaxMaxMatches = 100000;
   public
     /// <summary>Suchtext aus der Markierung ASelection; False, wenn sie nicht zählt (mehrzeilig, zu kurz, nur
     /// Leerraum, zu lang).</summary>

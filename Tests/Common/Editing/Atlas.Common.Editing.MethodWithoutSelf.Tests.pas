@@ -17,6 +17,8 @@ type
   TMethodWithoutSelfTests = class
   public
     [Test]
+    procedure TitlesFromTextUnit;
+    [Test]
     procedure DetectsMethodWithoutSelf;
     [Test]
     procedure ImplicitFieldIsNoCandidate;
@@ -60,7 +62,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.MethodWithoutSelf,
-  Atlas.Common.Editing.MethodWithoutSelf.Lookup;
+  Atlas.Common.Editing.MethodWithoutSelf.Lookup,
+  Atlas.Common.Editing.MethodWithoutSelf.Texts;
 
 const
   Kunden =
@@ -196,6 +199,14 @@ begin
     OtherTree.Free;
     Tree.Free;
   end;
+end;
+
+procedure TMethodWithoutSelfTests.TitlesFromTextUnit;
+begin
+  // Die Texte stehen in einer eigenen Unit (metric-unit-length); die Titel kommen weiter aus ihr.
+  Assert.AreEqual(cTexts[TEditingMethodWithoutSelfText.ConvertToClassMethod].Text, TMethodWithoutSelf.ClassMethodTitle);
+  Assert.AreEqual(cTexts[TEditingMethodWithoutSelfText.ConvertToStandaloneRoutine].Text,
+    TMethodWithoutSelf.RoutineTitle);
 end;
 
 procedure TMethodWithoutSelfTests.DetectsMethodWithoutSelf;

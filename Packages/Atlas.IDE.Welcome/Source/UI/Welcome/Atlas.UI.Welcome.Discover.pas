@@ -138,7 +138,6 @@ type
     procedure ClickButton(AButton: TAtlasDiscoverButton);
     function Button(AButton: TAtlasDiscoverButton): TButton;
     property Source: IAtlasDiscoverSource read FSource write SetSource;
-    property Card: TAtlasDiscoverCard read FCard;
     property HasCard: Boolean read FHasCard;
     property Image: TImage read FImage;
     property TipTitle: TLabel read FTitleLabel;

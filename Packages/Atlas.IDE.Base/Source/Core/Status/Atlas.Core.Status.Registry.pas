@@ -118,7 +118,6 @@ type
     class function ParseIds(const AText: string): TArray<string>; static;
     /// <summary>Kennungen durch Komma und Leerzeichen getrennt.</summary>
     class function JoinIds(const AIds: TArray<string>): string; static;
-    class function StateName(AState: TAtlasStatusState): string; static;
   end;
 
 implementation
@@ -602,13 +601,6 @@ end;
 class function TAtlasStatusSummary.JoinIds(const AIds: TArray<string>): string;
 begin
   Result := string.Join(', ', AIds);
-end;
-
-class function TAtlasStatusSummary.StateName(AState: TAtlasStatusState): string;
-const
-  cNames: array[TAtlasStatusState] of string = ('neutral', 'grün', 'gelb', 'rot');
-begin
-  Result := cNames[AState];
 end;
 
 end.

@@ -90,20 +90,11 @@ type
     property Syntax: TSyntaxNode read FSyntax;
     /// <summary>Name der Variablen, der dieser Knoten einen Wert zuweist; sonst ''.</summary>
     property Defines: string read FDefines;
-    /// <summary>Variablen, die der Knoten sicher liest.</summary>
-    property Reads: TArray<string> read FReads;
-    /// <summary>Variablen, die der Knoten vielleicht liest (var-Argument, unbekannte Signatur,
-    /// Teilzuweisung).</summary>
-    property MaybeReads: TArray<string> read FMaybeReads;
-    /// <summary>Variablen, die der Knoten vielleicht ändert, ohne sie sicher zu setzen (#143).</summary>
-    property Touches: TArray<string> read FTouches;
     function ReadsName(const AName: string): Boolean;
     function MaybeReadsName(const AName: string): Boolean;
     function TouchesName(const AName: string): Boolean;
     /// <summary>Anweisung in einem try: Sie kann eine Ausnahme auslösen, bevor sie wirkt (#915).</summary>
     property MayRaise: Boolean read FMayRaise;
-    /// <summary>Eingang eines except-Teils bzw. der finally-Kopie für Ausnahmen (#915).</summary>
-    property RaiseEntry: Boolean read FRaiseEntry;
     /// <summary>Führt die Kante zu ANext nur über eine mögliche Ausnahme dieser Anweisung (nicht über raise)?
     /// Regeln, die einem Wert folgen, können solche Wege auslassen (use-after-free, #915).</summary>
     function IsImplicitRaiseEdge(ANext: TFlowNode): Boolean;

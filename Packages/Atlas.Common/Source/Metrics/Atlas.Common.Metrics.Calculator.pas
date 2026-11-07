@@ -36,8 +36,6 @@ type
     /// <summary>Codezeilen von ARoutine (RoutineDecl) ohne Leerzeilen, Kommentare, Direktiven und lokale
     /// Routinen.</summary>
     class function CodeLines(ATree: TSyntaxTree; ARoutine: TSyntaxNode): Integer; static;
-    /// <summary>Verschachtelungstiefe von ARoutine (RoutineDecl); 0 ohne Kontrollstruktur.</summary>
-    class function NestingDepth(ATree: TSyntaxTree; ARoutine: TSyntaxNode): Integer; static;
     /// <summary>Zyklomatische Komplexität von ARoutine (RoutineDecl); mindestens 1.</summary>
     class function Cyclomatic(ATree: TSyntaxTree; ARoutine: TSyntaxNode): Integer; static;
     /// <summary>Kognitive Komplexität von ARoutine (RoutineDecl).</summary>
@@ -952,11 +950,6 @@ begin
   finally
     mLines.Free;
   end;
-end;
-
-class function TMetricsCalculator.NestingDepth(ATree: TSyntaxTree; ARoutine: TSyntaxNode): Integer;
-begin
-  Result := Analyze(ATree, ARoutine).Depth;
 end;
 
 class function TMetricsCalculator.Cyclomatic(ATree: TSyntaxTree; ARoutine: TSyntaxNode): Integer;

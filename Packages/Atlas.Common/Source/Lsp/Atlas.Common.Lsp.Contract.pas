@@ -15,18 +15,13 @@ type
   TLspErrorCode = record
   public const
     cServerNotInitialized = -32002;
-    cUnknownErrorCode = -32001;
     cRequestFailed = -32803;
     cServerCancelled = -32802;
-    cContentModified = -32801;
-    cRequestCancelled = -32800;
   end;
 
   /// <summary>Werte für die Capability textDocumentSync.</summary>
   TLspTextDocumentSyncKind = record
   public const
-    cNone = 0;
-    cFull = 1;
     cIncremental = 2;
   end;
 

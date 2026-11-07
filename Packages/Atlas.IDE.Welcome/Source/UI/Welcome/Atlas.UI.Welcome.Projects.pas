@@ -183,7 +183,6 @@ type
     /// <summary>Knopfleiste, Stand und Tastatur der Schnellaktionen (auch für Tests).</summary>
     property Quick: TAtlasQuickActionsBar read FQuick;
     property Entries: TAtlasProjectEntries read FEntries;
-    property PaintBox: TAtlasWelcomeCanvas read FBox;
     property Menu: TAtlasProjectsMenu read FMenu;
   end;
 

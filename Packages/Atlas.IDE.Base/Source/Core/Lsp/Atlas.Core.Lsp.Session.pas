@@ -63,12 +63,8 @@ type
   TLspHoverParts = Atlas.Core.Lsp.Session.Json.TLspHoverParts;
   TLspDiagnosticReport = Atlas.Core.Lsp.Session.Json.TLspDiagnosticReport;
   TLspWorkspaceRun = Atlas.Core.Lsp.Session.Json.TLspWorkspaceRun;
-  ILspSignal = Atlas.Core.Lsp.Session.Json.ILspSignal;
   TLspOpenDocument = Atlas.Core.Lsp.Session.Json.TLspOpenDocument;
   TLspApplyEditReply = Atlas.Core.Lsp.Session.Json.TLspApplyEditReply;
-  TLspApplyEditProc = Atlas.Core.Lsp.Session.Json.TLspApplyEditProc;
-  TLspShowMessageProc = Atlas.Core.Lsp.Session.Json.TLspShowMessageProc;
-  TLspAtlasNotificationProc = Atlas.Core.Lsp.Session.Json.TLspAtlasNotificationProc;
   TLspFormatOptions = Atlas.Core.Lsp.Session.Json.TLspFormatOptions;
   TLspInitializeOptions = Atlas.Core.Lsp.Session.Base.TLspInitializeOptions;
 

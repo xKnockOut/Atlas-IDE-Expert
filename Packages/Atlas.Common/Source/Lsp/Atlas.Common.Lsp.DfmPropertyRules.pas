@@ -27,7 +27,6 @@ type
     cRuleId = 'dfm-property';
     cAnnotationId = 'dfmPropertyRules';
     cScopeForm = 'form';
-    cScopeProject = 'project';
     cScopeGroup = 'group';
   public
     /// <summary>Unit zu einer Formulardatei (.dfm/.fmx → .pas); andere Dateien bleiben.</summary>

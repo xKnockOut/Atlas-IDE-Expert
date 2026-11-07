@@ -63,7 +63,6 @@ type
     property SettingsExportSecretsChoice: TAtlasChoiceBox read FSettingsExportSecrets;
     property ExportButton: TButton read FExportButton;
     property ImportButton: TButton read FImportButton;
-    property ResetPageButton: TButton read FResetPageButton;
     property ResetAllButton: TButton read FResetAllButton;
   end;
 
