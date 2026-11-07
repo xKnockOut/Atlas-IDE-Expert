@@ -325,7 +325,7 @@ begin
   begin
     Exit(TAtlasQuickChange.Removed);
   end;
-  // Die kleinste freie Nummer 1–9 gleich mit (Marco 28.10.2026); sind alle belegt, ohne Nummer.
+  // Die kleinste freie Nummer 1–9 gleich mit; sind alle belegt, ohne Nummer.
   AddQuick(AList, AFileName, AText, ALine, FreeNumber(AList), ANowUtc);
   Result := TAtlasQuickChange.Added;
 end;

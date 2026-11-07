@@ -2,7 +2,7 @@ name: Server und Tests
 
 # Delphi darf aus Lizenzgründen nicht auf gehosteten Runnern laufen. RAD Studio
 # Starter hat zudem kein msbuild/dcc auf der Kommandozeile; gebaut wird über das
-# IDE-Plugin cc.ps1 (siehe docs/Uebergabe.md). Der Job braucht deshalb einen
+# IDE-Plugin cc.ps1. Der Job braucht deshalb einen
 # selbst gehosteten Windows-Runner mit den Labels [self-hosted, windows, delphi]
 # auf einem Rechner mit RAD Studio und cc.ps1, im angemeldeten Benutzerkontext
 # (nicht als Dienst), weil cc.ps1 eine IDE startet.

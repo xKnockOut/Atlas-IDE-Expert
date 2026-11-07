@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Ersatz-CI für RAD Studio Starter (kein dcc/MSBuild auf der Kommandozeile),
-    nach dem Ablauf in docs/Uebergabe.md:
+    nach diesem Ablauf:
 
     1. cc.ps1 start mit eigener Scratch-IDE; die pid wird aus der Ausgabe
        gelesen und muss zu einem neuen Prozess gehören. Jeder weitere Aufruf

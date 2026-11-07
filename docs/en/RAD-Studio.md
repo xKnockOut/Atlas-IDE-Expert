@@ -9,7 +9,7 @@ There are two ways:
 
 ## IDE plugin
 
-**From the release package:** Extract `atlas-ide-expert-<Version>.zip` from the [release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) into a fixed folder (e.g. `%LOCALAPPDATA%\Programs\Atlas`) and register `Win32\Atlas.IDE.Base370.bpl` (64-bit IDE: `Win64\…`) as in step 2 below; the plugin finds the server one level above the BPL. Details in [Installation.md](Installation.md#rad-studio-release-package). The installer `AtlasSetup.exe` (up to 1.1.0) no longer exists since 1.2.0 ([ADR 0016](../adr/0016-kein-installer.md), German). The steps below are the way with your own build.
+**From the release package:** Extract `atlas-ide-expert-<Version>.zip` from the [release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) into a fixed folder (e.g. `%LOCALAPPDATA%\Programs\Atlas`) and register `Win32\Atlas.IDE.Base370.bpl` (64-bit IDE: `Win64\…`) as in step 2 below; the plugin finds the server one level above the BPL. Details in [Installation.md](Installation.md#rad-studio-release-package). The installer `AtlasSetup.exe` (up to 1.1.0) no longer exists since 1.2.0 (ADR 0016, German). The steps below are the way with your own build.
 
 By hand:
 

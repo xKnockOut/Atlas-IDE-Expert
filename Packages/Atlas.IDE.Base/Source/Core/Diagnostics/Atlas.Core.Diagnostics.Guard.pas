@@ -41,7 +41,7 @@
 //   Fehler, und ein Fehler beim Rotieren verhinderte auch das Anhängen (das
 //   erklärt Lücken wie die ab dem 21.10. 21:29, belegt ist es nicht). Jetzt sperrt ein
 //   benannter Mutex je Ordner Rotieren und Schreiben über alle IDE-Prozesse
-//   (Marcos IDE und die von Claude-Compile gestarteten teilen den Ordner;
+//   (die IDE des Benutzers und die von Claude-Compile gestarteten teilen den Ordner;
 //   ohne Sperre öffneten zwei Schreiber dieselbe Datei exklusiv). Scheitert
 //   das Rotieren, wird trotzdem angehängt und der Grund einmal vermerkt.
 //   Scheitert das Anhängen, zählt Add die verlorenen Zeilen, meldet den

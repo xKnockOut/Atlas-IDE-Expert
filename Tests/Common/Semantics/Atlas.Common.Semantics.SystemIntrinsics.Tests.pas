@@ -214,7 +214,7 @@ begin
   Assert.AreEqual(2, Integer(Length(TSystemIntrinsics.Find('Eof'))));
   Assert.AreEqual(2, TSystemIntrinsics.Find('AssignFile')[0].MinArgs);
   Assert.AreEqual(3, TSystemIntrinsics.Find('AssignFile')[0].MaxArgs);
-  // Speicher-Routinen: FreeMem mit und ohne Größe (Marco 30.10.2026, GetMem/FreeMem gemeldet).
+  // Speicher-Routinen: FreeMem mit und ohne Größe (GetMem/FreeMem gemeldet).
   Assert.IsTrue(TSystemIntrinsics.IsKnown('GetMem'));
   Assert.IsTrue(TSystemIntrinsics.IsKnown('ReallocMem'));
   Assert.AreEqual(1, TSystemIntrinsics.Find('FreeMem')[0].MinArgs);

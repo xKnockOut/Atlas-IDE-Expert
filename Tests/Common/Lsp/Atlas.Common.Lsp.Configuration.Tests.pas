@@ -364,7 +364,7 @@ var
   Message: TJSONObject;
   Diagnostics: TJSONArray;
 begin
-  // Indexumfang gilt für alle Projekte (Marco, #652); atlas.json behält nur index.exclude.
+  // Indexumfang gilt für alle Projekte (#652); atlas.json behält nur index.exclude.
   FDiskText := '{"index": {"libraryPaths": false, "exclude": ["**/Demos/**"]}}';
   FConfiguration.SetGlobalSettings('{"index": {"libraryPaths": true, "searchPaths": false, "exclude": ["x"]}}');
   FConfiguration.LoadWorkspace(Root);

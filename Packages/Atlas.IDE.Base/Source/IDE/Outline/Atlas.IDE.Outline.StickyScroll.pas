@@ -827,7 +827,7 @@ begin
       DrawStroke(APaint, X, 0, mLineColor);
     end;
   end
-  // Oben spitz zulaufend (Marco 28.10.2026), ab der Oberkante der letzten Kopfzeile wie die Linie eines Elements
+  // Oben spitz zulaufend, ab der Oberkante der letzten Kopfzeile wie die Linie eines Elements
   // mit eigener Kopfzeile. Läge die Spitze im Text dieser Zeile (z. B. procedure), zeichnen sie die Blocklinien
   // des Editors in der Zeile darunter (TaperBelow). In Pixeln, denn der Strich wird an den Rand geschoben (GuideX).
   else if X + APaint.Width > APaint.Context.EditorState.GetCharacterPosPx(FRows[mStart.Row].Indent,

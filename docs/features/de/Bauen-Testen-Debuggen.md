@@ -241,7 +241,7 @@ Einstellungen: `debug.justMyCode`, eigener Code = Projektordner und `debug.ownCo
   - Meldung kopieren
 - In Delphi 12 und 13 schließt Atlas dafür den Dialog der IDE, sonst bleibt er und die Leiste kommt danach.
 
-Einstellungen: `debug.exceptionBanner`, aus, bis die Studie in `docs/Studie-Exception-Dialog.md` positiv ist
+Einstellungen: `debug.exceptionBanner`, aus, bis die Studie zu #783 positiv ist
 
 #### Zugriffsverletzung erklärt
 

@@ -1,6 +1,6 @@
 # Roadmap
 
-Stand 07.11.2026, Aufteilung von Marco festgelegt. Grundlage sind die 494 offenen Issues; etwa 178 davon sind umgesetzt
+Stand 07.11.2026, Aufteilung festgelegt. Grundlage sind die 494 offenen Issues; etwa 178 davon sind umgesetzt
 und warten nur auf den Delphi-Build und den Handtest. Übersicht mit allen Issues je Version: `planung/roadmap-2026-11-07/`
 im Projektordner. Atlas bleibt beim RAD-Studio-Plugin, andere Editoren sind nicht geplant.
 
@@ -8,7 +8,7 @@ im Projektordner. Atlas bleibt beim RAD-Studio-Plugin, andere Editoren sind nich
 
 Keine neuen Funktionen mehr.
 
-- `main-merging` mit Delphi bauen (0/0/0, Tests grün) und nach `main` bringen; Handtests aus `docs/Handtests-2.0.md`.
+- `main-merging` mit Delphi bauen (0/0/0, Tests grün) und nach `main` bringen; Handtests.
 - Vor dem Release, weil sie Namen, Einstellungen oder Module ändern: #1883 (KI-neutrale Benennung), #1891 (Modul
   Versionsverwaltung), #1888 (Modul KI-Assistenten). Optional #1885 (AtlasUpdate entfernen und reparieren).
 - Fehler: #1477, #1480, #1751; Serverlast über PR #1847.

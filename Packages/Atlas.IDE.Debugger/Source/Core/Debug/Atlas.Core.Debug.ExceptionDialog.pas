@@ -11,7 +11,7 @@
 //     Knöpfe sind „Anhalten“ und „Fortsetzen“?
 //   - Captions ohne „&“ vergleichen; Deutsch und Englisch.
 // Welche Fensterklasse der Dialog je IDE-Version hat und ob die Knöpfe so
-// heißen, klärt die Studie aus #783 (docs/Studie-Exception-Dialog.md); bis
+// heißen, klärt die Studie aus #783; bis
 // dahin gilt der Dialog nur als erkannt, wenn Text und beide Knöpfe passen.
 
 interface

@@ -289,7 +289,7 @@ Settings: `debug.justMyCode`
   - Copy message
 - In Delphi 12 and 13 Atlas closes the IDE's dialog for it, otherwise the dialog stays and the bar follows.
 
-Settings: `debug.exceptionBanner` (off until the study in `docs/Studie-Exception-Dialog.md` is positive)
+Settings: `debug.exceptionBanner` (off until the study for #783 is positive)
 
 ### Access violation explained
 

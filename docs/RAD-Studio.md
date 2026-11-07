@@ -9,7 +9,7 @@ Es gibt zwei Wege:
 
 ## IDE-Plugin
 
-**Aus dem Release-Paket:** `atlas-ide-expert-<Version>.zip` aus dem [Release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) in einen festen Ordner entpacken (z. B. `%LOCALAPPDATA%\Programs\Atlas`) und `Win32\Atlas.IDE.Base370.bpl` (64-Bit-IDE: `Win64\…`) wie in Schritt 2 unten eintragen; den Server findet das Plugin eine Ebene über der BPL. Einzelheiten in [Installation.md](Installation.md#rad-studio-release-paket). Den Installer `AtlasSetup.exe` (bis 1.1.0) gibt es seit 1.2.0 nicht mehr ([ADR 0016](adr/0016-kein-installer.md)). Die Schritte unten sind der Weg mit einem eigenen Bau.
+**Aus dem Release-Paket:** `atlas-ide-expert-<Version>.zip` aus dem [Release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) in einen festen Ordner entpacken (z. B. `%LOCALAPPDATA%\Programs\Atlas`) und `Win32\Atlas.IDE.Base370.bpl` (64-Bit-IDE: `Win64\…`) wie in Schritt 2 unten eintragen; den Server findet das Plugin eine Ebene über der BPL. Einzelheiten in [Installation.md](Installation.md#rad-studio-release-paket). Den Installer `AtlasSetup.exe` (bis 1.1.0) gibt es seit 1.2.0 nicht mehr (ADR 0016). Die Schritte unten sind der Weg mit einem eigenen Bau.
 
 Von Hand:
 

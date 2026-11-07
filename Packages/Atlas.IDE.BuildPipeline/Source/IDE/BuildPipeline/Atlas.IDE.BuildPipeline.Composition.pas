@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.BuildPipeline.Composition;
 
-// Modul Build-Pipeline (#1455, ADR 0017, Entscheidung Marco 01.11.2026):
+// Modul Build-Pipeline (#1455, ADR 0017):
 // einzige Unit, die den Läufer der Builds auf Auftrag (#261), den
 // MCP-Eingang build_project, die Prüfung vor dem Kompilieren (#529), den
 // Release-Build-Wächter (#533) und die Bewertung mit Zusammenfassung (#530)

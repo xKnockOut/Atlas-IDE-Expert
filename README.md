@@ -10,7 +10,7 @@ Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/At
 
 ## Quick start
 
-You need RAD Studio or Delphi 12 or later. Ready-made downloads are on the [releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) page; releases 1.0.0 to 1.2.0 contain the plugin for Delphi 13 only. What is new in 1.2.0 and in the pre-release 2.0.0-beta.1 is listed in the [changelog](CHANGELOG.md) (German); a short bilingual summary of 2.0.0-beta.1 is in [docs/Release-Notizen/2.0.0-beta.1.md](docs/Release-Notizen/2.0.0-beta.1.md). The hand tests for 2.0 are collected in [docs/Handtests-2.0.md](docs/Handtests-2.0.md) (German).
+You need RAD Studio or Delphi 12 or later. Ready-made downloads are on the [releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) page; releases 1.0.0 to 1.2.0 contain the plugin for Delphi 13 only. What is new in 1.2.0 and in the pre-release 2.0.0-beta.1 is listed in the [changelog](CHANGELOG.md) (German); a short bilingual summary of 2.0.0-beta.1 is in [docs/Release-Notizen/2.0.0-beta.1.md](docs/Release-Notizen/2.0.0-beta.1.md).
 
 **Option A – add the release package by hand:**
 
@@ -139,7 +139,7 @@ So far it is built and checked only with RAD Studio 13 in the 32-bit IDE. What r
 
 - **Claude Code:** MCP tools and LSP as a plugin, see [Editors/ClaudeCode](Editors/ClaudeCode/README.en.md)
 - **CI and command line:** `AtlasServer.exe --check`, see [Linter mode](docs/features/en/Command-line.md#linter-mode)
-- **Claude Code in the cloud (Linux):** the environment's setup script and the SessionStart hook install the server as `AtlasServer` (and `AtlasServer.exe`) in `/usr/local/bin`, prebuilt from the `cloud-linux` pre-release or built with Free Pascal; setup in [Editors/ClaudeCode](Editors/ClaudeCode/README.md#in-cloud-sitzungen-linux) ([ADR 0013](docs/adr/0013-linux-bau.md), [Building on Linux](#building-on-linux))
+- **Claude Code in the cloud (Linux):** the environment's setup script and the SessionStart hook install the server as `AtlasServer` (and `AtlasServer.exe`) in `/usr/local/bin`, prebuilt from the `cloud-linux` pre-release or built with Free Pascal; setup in [Editors/ClaudeCode](Editors/ClaudeCode/README.md#in-cloud-sitzungen-linux) (ADR 0013, [Building on Linux](#building-on-linux))
 
 More: [docs/en/Installation.md](docs/en/Installation.md).
 
@@ -154,7 +154,7 @@ More: [docs/en/Installation.md](docs/en/Installation.md).
 - [MCP tools](docs/en/MCP.md) and the [Claude Code plugin](Editors/ClaudeCode/README.en.md)
 - [Keywords](docs/en/Keywords.md): short help in the hover for keywords and directives
 - [Benchmark](docs/en/Benchmark.md) of the performance targets and of the time until a project group is ready (`Tools/Benchmark/ready.mjs`, several runs per version, median and range)
-- In German only (developer documents): [architecture](docs/Architektur.md), [test cases](docs/Atlas-Testfaelle.md), [changelog](CHANGELOG.md)
+- In German only (developer documents): [architecture](docs/Architektur.md), [changelog](CHANGELOG.md)
 
 Every English page links its German original and vice versa.
 
@@ -195,7 +195,7 @@ All are design-time packages, built for Win32 (classic IDE) and Win64 (64-bit ID
 
 The main thread does not wait for the server while you type or click: slash commands, `///` scaffolds and "Switch to test unit" (also from the code lens) ask in the background. The diagnostics window does not count open modal dialogs as main thread load, and for a slow call it names the server request the main thread waited for. In the server, reading commands (switch to test unit, interface cost, metrics, TODOs, unit relations, editor marks, unit search and others) run concurrently, so hover, completion and diagnostics no longer queue behind a long command.
 
-How a module registers, which contracts it uses and the rules for loading and unloading: [docs/Architektur.md](docs/Architektur.md) (German, section "Module und Verträge des Plugins") and [ADR 0017](docs/adr/0017-funktions-packages.md); each unit's package is listed in [docs/adr/0017-unit-zuordnung.md](docs/adr/0017-unit-zuordnung.md). Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
+How a module registers, which contracts it uses and the rules for loading and unloading: [docs/Architektur.md](docs/Architektur.md) (German, section "Module und Verträge des Plugins") and ADR 0017; each unit's package is listed in [docs/adr/0017-unit-zuordnung.md](docs/adr/0017-unit-zuordnung.md). Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
 
 ## Requirements
 
@@ -206,7 +206,7 @@ How a module registers, which contracts it uses and the rules for loading and un
 
 ## Building
 
-Open `Atlas.groupproj` in the IDE and **Build All**. The order Text → Common → Windows → server → AtlasUpdate → `Atlas.IDE.Base` → module packages → tests is set in the project group. Text, Common, Windows and the server must be built for the same platform, otherwise the server does not find the package units. The plugin packages are set up for Win32 (classic IDE) and Win64 (64-bit IDE from Delphi 12.3); which BPL is loaded depends on the IDE ([ADR 0008](docs/adr/0008-plattformen.md)).
+Open `Atlas.groupproj` in the IDE and **Build All**. The order Text → Common → Windows → server → AtlasUpdate → `Atlas.IDE.Base` → module packages → tests is set in the project group. Text, Common, Windows and the server must be built for the same platform, otherwise the server does not find the package units. The plugin packages are set up for Win32 (classic IDE) and Win64 (64-bit IDE from Delphi 12.3); which BPL is loaded depends on the IDE (ADR 0008).
 
 On the command line (RAD Studio command prompt or after `rsvars.bat`):
 
@@ -218,7 +218,7 @@ Output goes to `Output\<platform>\<config>\` (`Bin`, `Bpl`, `Dcp`, `Dcu`).
 
 ### Building on Linux
 
-Only the server, only for Claude Code sessions in the cloud and other Linux machines without Delphi ([ADR 0013](docs/adr/0013-linux-bau.md)):
+Only the server, only for Claude Code sessions in the cloud and other Linux machines without Delphi (ADR 0013):
 
 ```bash
 Tools/Linux/Build-AtlasServer.sh --install /usr/local/bin

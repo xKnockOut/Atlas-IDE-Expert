@@ -456,14 +456,14 @@ begin
     mClient := APaint.Context.EditControl.ClientHeight;
   end;
   // Erste Zeile unter dem mitlaufenden Kopf: Ist das Element der Linie dahinter verschwunden und läge ihre
-  // Spitze im Text der letzten Kopfzeile, beginnt sie hier spitz und eingeblendet (Marco 28.10.2026).
+  // Spitze im Text der letzten Kopfzeile, beginnt sie hier spitz und eingeblendet.
   if (RowIndex(APaint.Rect) >= 0) and (RowIndex(APaint.Rect) = APaint.Covered) and
     TAtlasIdeStickyScroll.TaperBelow(APaint.Context.FileName, AGuide.Column) then
   begin
     Result := geTaperTop;
   end
   // Letzte sichtbare Zeile: Läuft die Linie darunter weiter (ihr end ist nicht zu sehen), endet sie hier spitz
-  // wie oben unter dem Kopf (Marco 28.10.2026). Genau eine Zeile läuft aus: die angeschnittene letzte, wenn
+  // wie oben unter dem Kopf. Genau eine Zeile läuft aus: die angeschnittene letzte, wenn
   // mindestens die Hälfte zu sehen ist (bis zum Rand), sonst die vorletzte; im Rest darunter dann nichts, sonst
   // begänne die Linie dort wieder breit. Der Rest gilt auch für das Ende der Linie: Steht ihr end dort, lief sie
   // in der Zeile darüber schon aus.

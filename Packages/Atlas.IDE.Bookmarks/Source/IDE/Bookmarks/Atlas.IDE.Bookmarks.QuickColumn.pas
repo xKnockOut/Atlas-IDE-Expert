@@ -350,7 +350,7 @@ var
   mBand: TRect;
   mNotch: Integer;
 begin
-  // Vorschau (Marco 28.10.2026): blasser Marker wie PaintMarks, mit der Nummer, die ein Klick hier vergäbe; sind
+  // Vorschau: blasser Marker wie PaintMarks, mit der Nummer, die ein Klick hier vergäbe; sind
   // alle neun belegt, ohne Nummer.
   mBand := ARect;
   InflateRect(mBand, -1, -1);

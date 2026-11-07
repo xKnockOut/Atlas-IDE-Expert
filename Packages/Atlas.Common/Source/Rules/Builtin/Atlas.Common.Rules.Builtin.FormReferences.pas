@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.FormReferences;
 
-// Verweise der Formulardatei auf andere Module (Marco, 03.11.2026):
+// Verweise der Formulardatei auf andere Module:
 //   dfm-reference-unit-missing  Eine Property der Formulardatei zeigt auf eine Komponente eines anderen
 //                           Formulars, Rahmens oder Datenmoduls (Connection = Form1.Connection), dessen Unit
 //                           weder im interface- noch im implementation-uses steht. Die IDE öffnet beim Laden

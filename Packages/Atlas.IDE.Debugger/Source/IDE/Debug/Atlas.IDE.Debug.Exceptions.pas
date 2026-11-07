@@ -22,7 +22,7 @@
 //     setzt Atlas den Prozess direkt fort. Das wirkt ab dem nächsten Halt, also
 //     auch im nächsten Lauf. Ob die IDE Exceptions, die in ihren eigenen
 //     Debugger-Optionen ignoriert werden, überhaupt meldet, prüft die Studie
-//     (docs/Studie-Exception-Dialog.md, Punkt S1).
+//     (Studie zu #783, Punkt S1).
 //   - Fenster „Exception-Verlauf“ (Befehl Atlas.DebugExceptions): Klick springt
 //     zur Stelle (Datei aus dem Stapel, notfalls über die Dateien der
 //     Projektgruppe gesucht), Kopieren, Klasse ignorieren und wieder anhalten,

@@ -1,8 +1,8 @@
 ﻿# Architektur von Atlas IDE Expert
 
-Entscheidungen mit Begründung stehen im Entscheidungsprotokoll unter [`docs/adr/`](adr/README.md).
-Gebaut wird über das IDE-Plugin cc.ps1 ([ADR 0007](adr/0007-build-ueber-cc-ps1.md)); welches Projekt für
-welche Plattform übersetzt und getestet wird, legt [ADR 0008](adr/0008-plattformen.md) fest.
+Entscheidungen mit Begründung stehen im Entscheidungsprotokoll (ADR); es wird nicht öffentlich geführt.
+Gebaut wird über das IDE-Plugin cc.ps1 (ADR 0007); welches Projekt für
+welche Plattform übersetzt und getestet wird, legt ADR 0008 fest.
 Schichten, Threading-Modell, Symbolindex und Cache-Format stehen in den gleichnamigen Abschnitten unten.
 
 Grundlage ist das Konzept „Rollenbasierte Kopplung und Kohäsion“ (Entwurf, Stand 30.09.2026). Dieses Dokument hält fest, wie das Konzept in diesem Projekt angewendet wird. Bei Widersprüchen gilt das Konzept.
@@ -41,7 +41,7 @@ Laut Konzept enthält ein Platform-Package nur technische Abstraktionen; der Fac
 (LSP-Methoden in `Lsp`, Prüfregeln in `Rules`, Refactoring- und Schnellbefehle in `Editing`,
 Namensauflösung in `Semantics`, MCP-Werkzeuge in `Mcp`) gehörte als Hosted-Features in die Anwendung
 (Code-Review A-08). Er liegt bewusst weiter in `Atlas.Common` (Entscheidung „Umdeklarieren“, Stand
-Block J; Marco hat die Rückfrage dazu nicht beantwortet, die Empfehlung gilt bis auf Widerruf):
+Block J; die Empfehlung gilt bis auf Widerruf):
 
 - Die Verschiebung beträfe rund 300 Dateien mit Tests, jede `uses`-Klausel, alle Projektdateien und
   `Check-PackageDependencies.ps1`. Ohne Compiler in der Cloud fällt jeder vergessene Import erst
@@ -433,7 +433,7 @@ Ab #1455 besteht das Plugin aus `Atlas.IDE.Base` (mit den Verträgen zwischen Mo
 3. **Abmelden ist synchron und vollständig.** Danach erreicht kein Aufruf mehr das Modul: keine Serverantwort, kein `TAtlasMainThread`-Eintrag (die Registry verwirft sie über `TAtlasMainThread.CloseModule`; Einträge mit Code in Base, die Modulobjekte einfangen, muss das Modul selbst vor dem Abmelden stillen), kein Timer, kein Ereignis (Vorbild `IAtlasCompletionProvider`, ADR 0006).
 4. **Jede Anmeldung hat einen Besitzer.** Feature-Slot, Einstellungsteil, Seite, Befehl, Menüeintrag, Statusfeldzeile, Editorleiste, Dock-Fenster, Tipp, Kachel, Hover-Beitrag: alles läuft über den `IAtlasModuleScope` des Moduls und trägt dessen ID; beim Abmelden löst Base alles in umgekehrter Reihenfolge.
 5. **Base stoppt zuerst die Module.** Die Finalisierung von Base ruft `StopAll` vor dem Abbau eigener Registries und setzt danach „Base abgebaut“; Module melden sich in ihrer Finalisierung nur ab, solange Base noch läuft.
-6. **Vertragsinhalte.** Über Package-Grenzen gehen Interfaces mit GUID, Records, `TArray<T>` und Methodenreferenzen; keine Typprüfung gegen generische Klassen (`is TList<…>`), keine `ClassName`-Vergleiche. Alle Verträge liegen in Base: allgemeine (Modul, Registry, Scope, Einstellungen) bei ihrem Feature, Verträge zwischen Modulen unter `Source/Contracts` (`Atlas.IDE.Contracts.*`, nur Interfaces und Records, kein Code). Ein eigenes Package `Atlas.IDE.Contracts` gibt es seit 04.11.2026 nicht mehr (Entscheidung Marco, ADR 0017). Verträge heißen nach der Fähigkeit (`IAtlasIssueSource`), nicht nach Anbieter oder Verbraucher.
+6. **Vertragsinhalte.** Über Package-Grenzen gehen Interfaces mit GUID, Records, `TArray<T>` und Methodenreferenzen; keine Typprüfung gegen generische Klassen (`is TList<…>`), keine `ClassName`-Vergleiche. Alle Verträge liegen in Base: allgemeine (Modul, Registry, Scope, Einstellungen) bei ihrem Feature, Verträge zwischen Modulen unter `Source/Contracts` (`Atlas.IDE.Contracts.*`, nur Interfaces und Records, kein Code). Ein eigenes Package `Atlas.IDE.Contracts` gibt es seit 04.11.2026 nicht mehr (ADR 0017). Verträge heißen nach der Fähigkeit (`IAtlasIssueSource`), nicht nach Anbieter oder Verbraucher.
 7. **Versions-Handschlag.** Base führt eine Vertragsversion als Konstante und als exportierte Funktion `AtlasCoreContractVersion`; ein Modul prüft sie zuerst in `Register` über `GetProcAddress` und meldet sich bei Abweichung nicht an, sondern zeigt einen Hinweis.
 8. **Modul-Identität.** „Gehört das zu Atlas?“ beantwortet die Modul-Registry von Base (HMODULEs der angemeldeten Module), nie `HInstance` oder `GetModuleName(HInstance)` eines einzelnen Moduls. Ressourcen von Base über `FindClassHInstance` einer Base-Klasse, den Installationsordner über eine Funktion von Base. Ein Hook, der nur das eigene Modul betrifft (`SetWindowsHookEx` mit `HInstance`), bleibt.
 9. **Modulliste aus Anmeldungen.** Base enthält keine eingebauten Modulnamen. Ein Modul ist, was sich anmeldet, Atlas-Modul oder fremdes Modul. Base merkt sich jedes Modul, das sich einmal angemeldet hat (ID, Name, Version), und zeigt fehlende als „nicht installiert“; ihre Einstellungswerte bleiben erhalten.
@@ -475,7 +475,7 @@ Jedes Modul hat genau eine Kompositions-Unit `Atlas.IDE.<Modul>.Composition` (Vo
 
 ### Server
 
-Der Ablauf einer Anfrage mit Lese-Thread, `Run`-Thread und Thread-Pool steht oben unter „Ablauf einer Anfrage“ (Entscheidung in [ADR 0004](adr/0004-nebenlaeufige-anfragen.md)). Dazu kommen:
+Der Ablauf einer Anfrage mit Lese-Thread, `Run`-Thread und Thread-Pool steht oben unter „Ablauf einer Anfrage“ (Entscheidung in ADR 0004). Dazu kommen:
 
 - **Indexaufbau:** je Arbeitsbereich ein Hintergrund-Thread (`TIndexService`). Mehrere Aufbauten (Projekte einer Projektgruppe) laufen über einen gemeinsamen `TIndexScheduler` nacheinander und stufenweise: erst die Projektdateien aller Projekte, dann die Units der Suchpfade, zuletzt die Bibliothek; das aktive Projekt zuerst (#648). Ein neuer Aufbau bricht den laufenden ab und wartet auf ihn.
 - **Nachladen einzelner Units:** `EnsureUnit` parst im Thread der Anfrage, ohne globale Sperre und ohne auf den Scheduler zu warten (#617). Eine Sperre schützt nur den Zugriff auf den Builder und zählt seine Nutzer; ein neuer Aufbau gibt den alten Builder erst frei, wenn ihn niemand mehr nutzt.
@@ -510,7 +510,7 @@ Aufbau (`TIndexBuilder`, `TIndexService`): Der Hintergrund-Thread liest den Cach
 
 ## Cache-Format
 
-Entscheidung in [ADR 0010](adr/0010-binaerer-index-cache.md) (ersetzt ADR 0003). Ablage (`Atlas.Common.Index.Adapters.CacheDirectory`, #184, #492):
+Entscheidung in ADR 0010 (ersetzt ADR 0003). Ablage (`Atlas.Common.Index.Adapters.CacheDirectory`, #184, #492):
 
 ```text
 %LOCALAPPDATA%\Atlas\Index\<IDE-Version>\<Projekt-Hash>\index-<Format>.atlasidx
