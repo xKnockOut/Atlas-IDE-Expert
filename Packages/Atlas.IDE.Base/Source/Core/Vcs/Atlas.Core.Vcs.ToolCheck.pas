@@ -36,7 +36,7 @@ type
   TAtlasVcsToolChecks = class
   public const
     /// <summary>Zeitgrenze für „Prüfen“.</summary>
-    TimeoutMs = 5000;
+    cTimeoutMs = 5000;
   public
     /// <summary>Argumente der Versionsabfrage: git --version bzw. svn --version --quiet.</summary>
     class function VersionArguments(AKind: TAtlasVcsKind): TArray<string>; static;
@@ -199,7 +199,7 @@ begin
     Exit(Missing(AKind, ALocation));
   end;
   mDir := ExtractFileDir(ALocation.Executable);
-  mRun := ARunner.Run(ALocation.Executable, VersionArguments(AKind), mDir, TimeoutMs);
+  mRun := ARunner.Run(ALocation.Executable, VersionArguments(AKind), mDir, cTimeoutMs);
   Result := Classify(AKind, ALocation, mRun);
 end;
 

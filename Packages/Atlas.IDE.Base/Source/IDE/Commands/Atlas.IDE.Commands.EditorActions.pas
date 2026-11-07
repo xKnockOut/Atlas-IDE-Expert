@@ -353,7 +353,7 @@ begin
     Exit;
   end;
   try
-    mAnswer := mRunning.RunCommand(ACommand, AArgumentsJson, CommandTimeoutMs);
+    mAnswer := mRunning.RunCommand(ACommand, AArgumentsJson, cCommandTimeoutMs);
     // Ein workspace/applyEdit des Servers (#397) läuft erst nach dieser Antwort im Hauptthread.
     // Eine Antwort als Text zeigen.
     try

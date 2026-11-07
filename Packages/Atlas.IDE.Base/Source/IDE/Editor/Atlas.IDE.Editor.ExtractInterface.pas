@@ -22,7 +22,7 @@ uses
 type
   TAtlasIdeExtractInterface = class
   public const
-    ClientCommand = 'atlas.extractInterface';
+    cClientCommand = 'atlas.extractInterface';
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position]); ASession: laufende Sitzung oder nil;
     /// AMessage: Zeile für die Meldungsansicht.</summary>
@@ -42,10 +42,10 @@ uses
   Atlas.IDE.Foundation.Navigation;
 
 const
-  PrepareCommand = 'atlas.server.extractInterface.prepare';
-  ApplyCommand = 'atlas.server.extractInterface';
+  cPrepareCommand = 'atlas.server.extractInterface.prepare';
+  cApplyCommand = 'atlas.server.extractInterface';
   // Typen der Signaturen auflösen dauert; wie beim Umbenennen.
-  TimeoutMs = 60000;
+  cTimeoutMs = 60000;
 
 class procedure TAtlasIdeExtractInterface.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
@@ -61,8 +61,8 @@ begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  if not TAtlasIdeClassExtraction.Choose(ASession, TAtlasServerEditCommand.Create(PrepareCommand, AArgumentsJson,
-    TimeoutMs, TAtlasTextId.ExtractIntfFailed),
+  if not TAtlasIdeClassExtraction.Choose(ASession, TAtlasServerEditCommand.Create(cPrepareCommand, AArgumentsJson,
+    cTimeoutMs, TAtlasTextId.ExtractIntfFailed),
     function(AModel: TAtlasClassExtractionModel): string
     begin
       Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractIntfTitle, [AModel.Source.SourceClass]);
@@ -72,8 +72,8 @@ begin
   end;
   mTargetFile := '';
   mMethods := 0;
-  if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(ApplyCommand, mChoice.ApplyArguments,
-    TimeoutMs, TAtlasTextId.ExtractIntfFailed),
+  if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(cApplyCommand, mChoice.ApplyArguments,
+    cTimeoutMs, TAtlasTextId.ExtractIntfFailed),
     procedure(const AReply: TJSONObject)
     begin
       mTargetFile := TAtlasIdeServerEdit.TextOf(AReply, 'file');
@@ -94,8 +94,10 @@ begin
   // Vorschau wie beim Umbenennen (#400); Hinweise (Basisklasse, Zugriffsmethoden, Sichtbarkeit) im Hinweis.
   mHint := TAtlasStrings.Fmt(TAtlasTextId.ExtractIntfPreviewHint, [mChoice.Name, mReply.Edit.EditCount,
     Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.ExtractIntfWarning);
-  if TAtlasIdeServerEdit.Confirm(mChoice.Title, mHint, TAtlasStrings.Text(TAtlasTextId.ExtractIntfApply), mReply.Edit) and
-    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.ExtractIntfApply), AMessage, mOutcome) then
+  if TAtlasIdeServerEdit.Confirm(mChoice.Title, mHint, TAtlasStrings.Text(TAtlasTextId.ExtractIntfApply),
+    mReply.Edit) and
+    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.ExtractIntfApply), AMessage,
+      mOutcome) then
   begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.ExtractIntfDone, [mChoice.Name, mOutcome.Edits, mOutcome.Files]));
     TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.ExtractIntfWarning, AMessage);

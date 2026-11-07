@@ -101,7 +101,7 @@ type
   TAtlasDrawnElements = class
   public const
     /// <summary>Höchstlänge eines Ankers in .atlas.</summary>
-    MaxAnchorLength = 120;
+    cMaxAnchorLength = 120;
   public
     class function Info(AElement: TAtlasDrawnElement): TAtlasDrawnElementInfo; static;
     /// <summary>Alle Elemente in der Reihenfolge der Aufzählung.</summary>
@@ -126,10 +126,10 @@ uses
   Atlas.Core.Editor.LineAnchor;
 
 const
-  SectionIds: array[0..13] of string = ('atlas.header', 'atlas.state', 'atlas.continue', 'atlas.projects',
+  cSectionIds: array[0..13] of string = ('atlas.header', 'atlas.state', 'atlas.continue', 'atlas.projects',
     'atlas.history', 'atlas.news', 'atlas.discover', 'atlas.setup', 'atlas.search', 'atlas.unsaved', 'atlas.tests',
     'atlas.help', 'atlas.issues', 'atlas.sprint');
-  SectionKeys: array[0..13] of string = ('WelcomePageHeader', 'WelcomePageStatusTile', 'WelcomePageContinue',
+  cSectionKeys: array[0..13] of string = ('WelcomePageHeader', 'WelcomePageStatusTile', 'WelcomePageContinue',
     'WelcomePageProjectStatus', 'WelcomePageTrends', 'WelcomePageWhatsNew', 'WelcomePageDiscover',
     'WelcomePageProjectSetup', 'WelcomePageSearch', 'WelcomePageUnsaved', 'WelcomePageTests', 'WelcomePageHelp',
     'WelcomePageIssues', 'WelcomePageSprint');
@@ -207,12 +207,12 @@ end;
 
 class function TAtlasDrawnElements.All: TArray<TAtlasDrawnElement>;
 var
-  Element: TAtlasDrawnElement;
+  mElement: TAtlasDrawnElement;
 begin
   Result := nil;
-  for Element := Low(TAtlasDrawnElement) to High(TAtlasDrawnElement) do
+  for mElement := Low(TAtlasDrawnElement) to High(TAtlasDrawnElement) do
   begin
-    Result := Result + [Element];
+    Result := Result + [mElement];
   end;
 end;
 
@@ -223,14 +223,14 @@ end;
 
 class function TAtlasDrawnElements.ForSetting(const AKey: string; out AElement: TAtlasDrawnElement): Boolean;
 var
-  Element: TAtlasDrawnElement;
+  mElement: TAtlasDrawnElement;
 begin
   AElement := Low(TAtlasDrawnElement);
-  for Element := Low(TAtlasDrawnElement) to High(TAtlasDrawnElement) do
+  for mElement := Low(TAtlasDrawnElement) to High(TAtlasDrawnElement) do
   begin
-    if SameText(SettingKey(Element), AKey) then
+    if SameText(SettingKey(mElement), AKey) then
     begin
-      AElement := Element;
+      AElement := mElement;
       Exit(True);
     end;
   end;
@@ -239,13 +239,13 @@ end;
 
 class function TAtlasDrawnElements.SectionSetting(const ASectionId: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := Low(SectionIds) to High(SectionIds) do
+  for mIndex := Low(cSectionIds) to High(cSectionIds) do
   begin
-    if SameText(SectionIds[Index], ASectionId) then
+    if SameText(cSectionIds[mIndex], ASectionId) then
     begin
-      Exit(SectionKeys[Index]);
+      Exit(cSectionKeys[mIndex]);
     end;
   end;
   Result := '';
@@ -253,21 +253,21 @@ end;
 
 class function TAtlasDrawnElements.KnownSections: TArray<string>;
 var
-  Id: string;
+  mId: string;
 begin
   Result := nil;
-  for Id in SectionIds do
+  for mId in cSectionIds do
   begin
-    Result := Result + [Id];
+    Result := Result + [mId];
   end;
 end;
 
 class function TAtlasDrawnElements.Anchor(const AText: string): string;
 begin
   Result := TAtlasLineAnchors.Normalize(AText);
-  if Length(Result) > MaxAnchorLength then
+  if Length(Result) > cMaxAnchorLength then
   begin
-    Result := TrimRight(Copy(Result, 1, MaxAnchorLength));
+    Result := TrimRight(Copy(Result, 1, cMaxAnchorLength));
   end;
 end;
 

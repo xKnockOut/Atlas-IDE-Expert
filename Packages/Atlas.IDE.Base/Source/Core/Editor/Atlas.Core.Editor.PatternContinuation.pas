@@ -43,8 +43,8 @@ type
 
   TAtlasPatternContinuation = class
   public const
-    MinLines = 2;
-    MaxLines = 5;
+    cMinLines = 2;
+    cMaxLines = 5;
   public
     /// <summary>Vorschlag für die leere Zeile ALine (0-basiert) aus den Zeilen darüber; False ohne Muster.
     /// AEnums und AExists dürfen nil sein.</summary>
@@ -91,14 +91,14 @@ type
 
 function LeadingSpace(const ALine: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := 1;
-  while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
+  mIndex := 1;
+  while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Copy(ALine, 1, Index - 1);
+  Result := Copy(ALine, 1, mIndex - 1);
 end;
 
 function IsOperand(const AToken: TToken): Boolean;
@@ -290,20 +290,20 @@ end;
 /// <summary>Gleiche Form: gleiche Länge, gleiche Arten, gleiche Symbole und Kommentare.</summary>
 function SameShape(const A, B: TTokens): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
   if Length(A) <> Length(B) then
   begin
     Exit;
   end;
-  for Index := 0 to High(A) do
+  for mIndex := 0 to High(A) do
   begin
-    if A[Index].Kind <> B[Index].Kind then
+    if A[mIndex].Kind <> B[mIndex].Kind then
     begin
       Exit;
     end;
-    if (A[Index].Kind in [TTokenKind.Symbol, TTokenKind.Comment]) and (A[Index].Text <> B[Index].Text) then
+    if (A[mIndex].Kind in [TTokenKind.Symbol, TTokenKind.Comment]) and (A[mIndex].Text <> B[mIndex].Text) then
     begin
       Exit;
     end;
@@ -313,30 +313,30 @@ end;
 
 function TryNumber(const AText: string; out AValue: Int64; out AHex: Boolean; out ADigits: Integer): Boolean;
 var
-  Body: string;
-  Negative: Boolean;
+  mBody: string;
+  mNegative: Boolean;
 begin
-  Body := AText;
-  Negative := Body.StartsWith('-');
-  if Negative then
+  mBody := AText;
+  mNegative := mBody.StartsWith('-');
+  if mNegative then
   begin
-    Delete(Body, 1, 1);
+    Delete(mBody, 1, 1);
   end;
-  AHex := Body.StartsWith('$');
+  AHex := mBody.StartsWith('$');
   if AHex then
   begin
-    Delete(Body, 1, 1);
+    Delete(mBody, 1, 1);
   end;
-  ADigits := Length(Body);
+  ADigits := Length(mBody);
   if AHex then
   begin
-    Result := TryStrToInt64('$' + Body, AValue);
+    Result := TryStrToInt64('$' + mBody, AValue);
   end
   else
   begin
-    Result := TryStrToInt64(Body, AValue);
+    Result := TryStrToInt64(mBody, AValue);
   end;
-  if Result and Negative then
+  if Result and mNegative then
   begin
     AValue := -AValue;
   end;
@@ -345,7 +345,7 @@ end;
 /// <summary>Gleiche Abstände zwischen AValues? ASStep: der Abstand.</summary>
 function ConstantStep(const AValues: TArray<Int64>; out AStep: Int64): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
   AStep := 0;
@@ -358,9 +358,9 @@ begin
   begin
     Exit;
   end;
-  for Index := 2 to High(AValues) do
+  for mIndex := 2 to High(AValues) do
   begin
-    if AValues[Index] - AValues[Index - 1] <> AStep then
+    if AValues[mIndex] - AValues[mIndex - 1] <> AStep then
     begin
       Exit;
     end;
@@ -372,20 +372,20 @@ end;
 /// </summary>
 function FormatNumber(AValue: Int64; const ATemplate: string; AHex: Boolean; ADigits: Integer): string;
 var
-  Digits: string;
-  Lower: Boolean;
+  mDigits: string;
+  mLower: Boolean;
 begin
   if not AHex then
   begin
     Exit(IntToStr(AValue));
   end;
-  Digits := IntToHex(Abs(AValue), ADigits);
-  Lower := ATemplate <> UpperCase(ATemplate);
-  if Lower then
+  mDigits := IntToHex(Abs(AValue), ADigits);
+  mLower := ATemplate <> UpperCase(ATemplate);
+  if mLower then
   begin
-    Digits := LowerCase(Digits);
+    mDigits := LowerCase(mDigits);
   end;
-  Result := '$' + Digits;
+  Result := '$' + mDigits;
   if AValue < 0 then
   begin
     Result := '-' + Result;
@@ -395,16 +395,16 @@ end;
 /// <summary>Bezeichner mit Nummer am Ende: Präfix und Zahl ("Edit12" → "Edit", 12).</summary>
 function SplitNumbered(const AName: string; out APrefix: string; out ANumber: Int64; out ADigits: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := Length(AName);
-  while (Index > 0) and CharInSet(AName[Index], ['0'..'9']) do
+  mIndex := Length(AName);
+  while (mIndex > 0) and CharInSet(AName[mIndex], ['0'..'9']) do
   begin
-    Dec(Index);
+    Dec(mIndex);
   end;
-  APrefix := Copy(AName, 1, Index);
-  ADigits := Length(AName) - Index;
-  Result := (Index > 0) and (ADigits > 0) and TryStrToInt64(Copy(AName, Index + 1, MaxInt), ANumber);
+  APrefix := Copy(AName, 1, mIndex);
+  ADigits := Length(AName) - mIndex;
+  Result := (mIndex > 0) and (ADigits > 0) and TryStrToInt64(Copy(AName, mIndex + 1, MaxInt), ANumber);
 end;
 
 function ColumnTexts(const ATokens: TArray<TTokens>; AColumn: Integer): TArray<string>;
@@ -712,7 +712,7 @@ begin
   Result := [ATemplate];
   ALineIndexes := [ALine - 1];
   mLine := ALine - 2;
-  while (mLine >= 0) and (Length(Result) < TAtlasPatternContinuation.MaxLines) and
+  while (mLine >= 0) and (Length(Result) < TAtlasPatternContinuation.cMaxLines) and
     IsPatternLine(ALines[mLine], AIndent) do
   begin
     mTokens := Tokenize(Copy(ALines[mLine], Length(AIndent) + 1, MaxInt));
@@ -729,13 +729,13 @@ end;
 function ClampMinLines(AMinLines: Integer): Integer;
 begin
   Result := AMinLines;
-  if Result < TAtlasPatternContinuation.MinLines then
+  if Result < TAtlasPatternContinuation.cMinLines then
   begin
-    Result := TAtlasPatternContinuation.MinLines;
+    Result := TAtlasPatternContinuation.cMinLines;
   end;
-  if Result > TAtlasPatternContinuation.MaxLines then
+  if Result > TAtlasPatternContinuation.cMaxLines then
   begin
-    Result := TAtlasPatternContinuation.MaxLines;
+    Result := TAtlasPatternContinuation.cMaxLines;
   end;
 end;
 
@@ -776,25 +776,25 @@ end;
 
 class function TAtlasPatternContinuation.ContainsWord(const AText, AName: string): Boolean;
 var
-  Text, Name: string;
-  At: Integer;
+  mText, mName: string;
+  mAt: Integer;
 begin
   Result := False;
   if AName = '' then
   begin
     Exit;
   end;
-  Text := LowerCase(AText);
-  Name := LowerCase(AName);
-  At := Pos(Name, Text);
-  while At > 0 do
+  mText := LowerCase(AText);
+  mName := LowerCase(AName);
+  mAt := Pos(mName, mText);
+  while mAt > 0 do
   begin
-    if ((At = 1) or not TTextChars.IsIdentChar(Text[At - 1])) and
-      ((At + Length(Name) > Length(Text)) or not TTextChars.IsIdentChar(Text[At + Length(Name)])) then
+    if ((mAt = 1) or not TTextChars.IsIdentChar(mText[mAt - 1])) and
+      ((mAt + Length(mName) > Length(mText)) or not TTextChars.IsIdentChar(mText[mAt + Length(mName)])) then
     begin
       Exit(True);
     end;
-    At := Pos(Name, Text, At + 1);
+    mAt := Pos(mName, mText, mAt + 1);
   end;
 end;
 

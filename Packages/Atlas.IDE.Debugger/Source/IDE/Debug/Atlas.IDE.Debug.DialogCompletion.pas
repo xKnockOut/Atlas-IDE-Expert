@@ -885,7 +885,7 @@ begin
     begin
       Exit;
     end;
-    mContext.Trigger := TAtlasTriggers.History;
+    mContext.Trigger := TAtlasTriggers.cHistory;
     mContext.Prefix := '';
   end
   else

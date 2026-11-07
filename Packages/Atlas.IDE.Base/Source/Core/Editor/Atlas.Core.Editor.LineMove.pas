@@ -117,14 +117,14 @@ type
 
 function LinesOf(const AText: string): TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AText.Split([#10]);
-  for Index := 0 to High(Result) do
+  for mIndex := 0 to High(Result) do
   begin
-    if Result[Index].EndsWith(#13) then
+    if Result[mIndex].EndsWith(#13) then
     begin
-      Result[Index] := Copy(Result[Index], 1, Length(Result[Index]) - 1);
+      Result[mIndex] := Copy(Result[mIndex], 1, Length(Result[mIndex]) - 1);
     end;
   end;
 end;
@@ -132,18 +132,18 @@ end;
 /// <summary>Blöcke über mehrere Zeilen, die in ALine beginnen, weniger die, die dort enden.</summary>
 function NetDepth(const ABlocks: TArray<TAtlasPairBlock>; ALine: Integer): Integer;
 var
-  Block: TAtlasPairBlock;
+  mBlock: TAtlasPairBlock;
 begin
   Result := 0;
-  for Block in ABlocks do
+  for mBlock in ABlocks do
   begin
-    if Block.OpenLine <> Block.CloseLine then
+    if mBlock.OpenLine <> mBlock.CloseLine then
     begin
-      if Block.OpenLine = ALine then
+      if mBlock.OpenLine = ALine then
       begin
         Inc(Result);
       end;
-      if Block.CloseLine = ALine then
+      if mBlock.CloseLine = ALine then
       begin
         Dec(Result);
       end;
@@ -153,28 +153,28 @@ end;
 
 function LineRange(const ALines: TArray<string>; AFirst, ALast: Integer): TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
   SetLength(Result, ALast - AFirst + 1);
-  for Index := AFirst to ALast do
+  for mIndex := AFirst to ALast do
   begin
-    Result[Index - AFirst] := ALines[Index];
+    Result[mIndex - AFirst] := ALines[mIndex];
   end;
 end;
 
 function Joined(const ALines: TArray<string>; AFirst, ALast: Integer): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := AFirst to ALast do
+  for mIndex := AFirst to ALast do
   begin
-    if Index > AFirst then
+    if mIndex > AFirst then
     begin
       Result := Result + #10;
     end;
-    Result := Result + ALines[Index];
+    Result := Result + ALines[mIndex];
   end;
 end;
 
@@ -501,7 +501,7 @@ end;
 
 class function TAtlasLineMover.Reindent(const ALine: string; ALevels, AIndent: Integer): string;
 var
-  Need, Removed, Index: Integer;
+  mNeed, mRemoved, mIndex: Integer;
 begin
   Result := ALine;
   if (ALevels = 0) or (Trim(ALine) = '') then
@@ -517,22 +517,22 @@ begin
     end;
     Exit(StringOfChar(' ', ALevels * AIndent) + ALine);
   end;
-  Need := -ALevels * AIndent;
-  Removed := 0;
-  Index := 1;
-  while (Index <= Length(ALine)) and (Removed < Need) and CharInSet(ALine[Index], [' ', #9]) do
+  mNeed := -ALevels * AIndent;
+  mRemoved := 0;
+  mIndex := 1;
+  while (mIndex <= Length(ALine)) and (mRemoved < mNeed) and CharInSet(ALine[mIndex], [' ', #9]) do
   begin
-    if ALine[Index] = #9 then
+    if ALine[mIndex] = #9 then
     begin
-      Inc(Removed, AIndent);
+      Inc(mRemoved, AIndent);
     end
     else
     begin
-      Inc(Removed);
+      Inc(mRemoved);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Copy(ALine, Index, MaxInt);
+  Result := Copy(ALine, mIndex, MaxInt);
 end;
 
 class function TAtlasLineMover.Compute(const AText: string; const ASelection: TAtlasLineSelection;
@@ -552,15 +552,15 @@ end;
 
 class procedure TAtlasLineMover.MapPosition(const AMove: TAtlasLineMove; var ALine, ACharacter: Integer);
 var
-  Offset: Integer;
+  mOffset: Integer;
 begin
-  Offset := ALine - AMove.OldFirstLine;
-  if (Offset < 0) or (Offset > High(AMove.IndentShift)) then
+  mOffset := ALine - AMove.OldFirstLine;
+  if (mOffset < 0) or (mOffset > High(AMove.IndentShift)) then
   begin
     Exit;
   end;
   ALine := ALine + AMove.LineShift;
-  ACharacter := ACharacter + AMove.IndentShift[Offset];
+  ACharacter := ACharacter + AMove.IndentShift[mOffset];
   if ACharacter < 0 then
   begin
     ACharacter := 0;
@@ -570,7 +570,7 @@ end;
 class function TAtlasLineMover.Difference(const AOld, ANew: string; out AStart, AOldLength: Integer;
   out AInsert: string): Boolean;
 var
-  Prefix, Suffix, Limit: Integer;
+  mPrefix, mSuffix, mLimit: Integer;
 begin
   AStart := 0;
   AOldLength := 0;
@@ -579,33 +579,33 @@ begin
   begin
     Exit(False);
   end;
-  Limit := Length(AOld);
-  if Length(ANew) < Limit then
+  mLimit := Length(AOld);
+  if Length(ANew) < mLimit then
   begin
-    Limit := Length(ANew);
+    mLimit := Length(ANew);
   end;
-  Prefix := 0;
-  while (Prefix < Limit) and (AOld[Prefix + 1] = ANew[Prefix + 1]) do
+  mPrefix := 0;
+  while (mPrefix < mLimit) and (AOld[mPrefix + 1] = ANew[mPrefix + 1]) do
   begin
-    Inc(Prefix);
+    Inc(mPrefix);
   end;
   // Zurück an den Zeilenanfang: Ersetzt werden ganze Zeilen, nie ein halbes #13#10.
-  while (Prefix > 0) and (AOld[Prefix] <> #10) do
+  while (mPrefix > 0) and (AOld[mPrefix] <> #10) do
   begin
-    Dec(Prefix);
+    Dec(mPrefix);
   end;
-  Suffix := 0;
-  while (Suffix < Limit - Prefix) and (AOld[Length(AOld) - Suffix] = ANew[Length(ANew) - Suffix]) do
+  mSuffix := 0;
+  while (mSuffix < mLimit - mPrefix) and (AOld[Length(AOld) - mSuffix] = ANew[Length(ANew) - mSuffix]) do
   begin
-    Inc(Suffix);
+    Inc(mSuffix);
   end;
-  while (Suffix > 0) and (AOld[Length(AOld) - Suffix] <> #10) do
+  while (mSuffix > 0) and (AOld[Length(AOld) - mSuffix] <> #10) do
   begin
-    Dec(Suffix);
+    Dec(mSuffix);
   end;
-  AStart := Prefix;
-  AOldLength := Length(AOld) - Suffix - Prefix;
-  AInsert := Copy(ANew, Prefix + 1, Length(ANew) - Suffix - Prefix);
+  AStart := mPrefix;
+  AOldLength := Length(AOld) - mSuffix - mPrefix;
+  AInsert := Copy(ANew, mPrefix + 1, Length(ANew) - mSuffix - mPrefix);
   Result := True;
 end;
 

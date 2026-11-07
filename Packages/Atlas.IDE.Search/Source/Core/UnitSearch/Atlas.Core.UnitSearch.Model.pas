@@ -841,19 +841,19 @@ function TScoreSegment.PrefixScore: Integer;
 begin
   if (Length(Word) = Len) and SameAt(WordUpper, Upper, Start) then
   begin
-    Result := TAtlasCompletionMatcher.ScoreExact;
+    Result := TAtlasCompletionMatcher.cScoreExact;
   end
   else if SameAt(Word, Name, Start) then
   begin
-    Result := TAtlasCompletionMatcher.ScorePrefixCase;
+    Result := TAtlasCompletionMatcher.cScorePrefixCase;
   end
   else if SameAt(WordUpper, Upper, Start) then
   begin
-    Result := TAtlasCompletionMatcher.ScorePrefix;
+    Result := TAtlasCompletionMatcher.cScorePrefix;
   end
   else
   begin
-    Result := TAtlasCompletionMatcher.NoMatch;
+    Result := TAtlasCompletionMatcher.cNoMatch;
   end;
 end;
 
@@ -933,7 +933,7 @@ end;
 function TScoreSegment.Score: Integer;
 begin
   Result := PrefixScore;
-  if Result <> TAtlasCompletionMatcher.NoMatch then
+  if Result <> TAtlasCompletionMatcher.cNoMatch then
   begin
     Exit;
   end;
@@ -941,15 +941,15 @@ begin
   FindStarts;
   if MatchesWordStarts then
   begin
-    Result := TAtlasCompletionMatcher.ScoreWordStarts;
+    Result := TAtlasCompletionMatcher.cScoreWordStarts;
   end
   else if Pos(WordUpper, Upper, Start) > 0 then
   begin
-    Result := TAtlasCompletionMatcher.ScoreSubstring;
+    Result := TAtlasCompletionMatcher.cScoreSubstring;
   end
   else if MatchesSubsequence then
   begin
-    Result := TAtlasCompletionMatcher.ScoreSubsequence;
+    Result := TAtlasCompletionMatcher.cScoreSubsequence;
   end;
 end;
 
@@ -964,11 +964,11 @@ begin
   mSegment.Len := Length(AName) - AStart + 1;
   if AWord = '' then
   begin
-    Result := TAtlasCompletionMatcher.ScoreSubsequence;
+    Result := TAtlasCompletionMatcher.cScoreSubsequence;
   end
   else if Length(AWord) > mSegment.Len then
   begin
-    Result := TAtlasCompletionMatcher.NoMatch;
+    Result := TAtlasCompletionMatcher.cNoMatch;
   end
   else if mSegment.Len > cMaxFastLength then
   begin
@@ -993,7 +993,7 @@ begin
   // Schneller Ausschluss: Ohne Teilfolge passt keine Regel des Matchers (die meisten Units je Tastendruck).
   if not IsSubsequence(AWordUpper, AUpper) then
   begin
-    Exit(TAtlasCompletionMatcher.NoMatch);
+    Exit(TAtlasCompletionMatcher.cNoMatch);
   end;
   Result := SegmentScore(AWord, AWordUpper, AName, AUpper, 1);
   // Der letzte Teil des Namens zählt wie ein eigener Name ("binform" in Atlas.Common.Dfm.BinaryForm).
@@ -1002,7 +1002,7 @@ begin
   begin
     Result := Max(Result, SegmentScore(AWord, AWordUpper, AName, AUpper, mDot + 1) - 1);
   end;
-  if Result = TAtlasCompletionMatcher.NoMatch then
+  if Result = TAtlasCompletionMatcher.cNoMatch then
   begin
     Result := TAtlasUnitSearch.cScoreSubsequence;
   end;

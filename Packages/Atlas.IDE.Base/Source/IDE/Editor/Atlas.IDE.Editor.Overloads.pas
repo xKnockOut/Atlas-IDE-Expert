@@ -28,7 +28,7 @@ type
 
   TAtlasIdeOverloads = class
   public const
-    ClientCommand = 'atlas.createOverload';
+    cClientCommand = 'atlas.createOverload';
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position, art]); ASession: laufende Sitzung oder
     /// nil; AMessage: Zeile für die Meldungsansicht; APlaceholders: Platzhalter-Modus (nil = nur Cursor).</summary>
@@ -48,8 +48,8 @@ uses
   Atlas.IDE.Editor.ServerEdit;
 
 const
-  ApplyCommand = 'atlas.server.createOverload';
-  TimeoutMs = 15000;
+  cApplyCommand = 'atlas.server.createOverload';
+  cTimeoutMs = 15000;
 
 /// <summary>Startet den Platzhalter-Modus, wenn AEdit nur die Datei von AView geändert hat.</summary>
 procedure StartPlaceholders(const AView: IOTAEditView; const ABefore: string; const AEdit: TLspWorkspaceEdit;
@@ -92,8 +92,8 @@ begin
   end;
   mPlaceholders := nil;
   try
-    if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(ApplyCommand, AArgumentsJson,
-      TimeoutMs, TAtlasTextId.OverloadFailed),
+    if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(cApplyCommand, AArgumentsJson,
+      cTimeoutMs, TAtlasTextId.OverloadFailed),
       procedure(const AReply: TJSONObject)
       begin
         if AReply.GetValue('placeholders') is TJSONArray then

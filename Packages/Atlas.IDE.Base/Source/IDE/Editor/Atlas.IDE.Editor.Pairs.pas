@@ -141,15 +141,15 @@ type
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
-    procedure Refresh(const Context: INTACodeEditorPaintContext);
+    procedure Refresh(const AContext: INTACodeEditorPaintContext);
     /// <summary>Paare je Zeile aus ATokens, Spalten wie in der IDE.</summary>
     procedure AddTokens(const ALines: TArray<string>; const ATokens: TArray<TAtlasPairToken>);
     /// <summary>Blocklinien je Zeile aus ABlocks.</summary>
     procedure AddGuides(const ALines: TArray<string>; const ABlocks: TArray<TAtlasPairBlock>);
     /// <summary>Inaktive Spalten der Zeile des Laufs (#615); nil ohne oder bei ausgeschalteter Einstellung.</summary>
-    function InactiveSpans(const Context: INTACodeEditorPaintContext): TArray<TAtlasColumnSpan>;
+    function InactiveSpans(const AContext: INTACodeEditorPaintContext): TArray<TAtlasColumnSpan>;
     /// <summary>Gezeichnete Abblendung der Zeile melden (#628): Zweige und uses-Einträge getrennt.</summary>
-    procedure ReportDimmed(const Context: INTACodeEditorPaintContext; ALine: Integer; const ARect: TRect);
+    procedure ReportDimmed(const AContext: INTACodeEditorPaintContext; ALine: Integer; const ARect: TRect);
     /// <summary>Lauf ARun färben und zeichnen; False = die IDE zeichnet ihn.</summary>
     function ColorRun(var ARun: TPairRun): Boolean;
     /// <summary>Inaktive Teile des Laufs abblenden; True = der ganze Lauf ist inaktiv und schon gezeichnet.</summary>
@@ -684,7 +684,7 @@ begin
   end;
 end;
 
-procedure TAtlasEditorPairs.Refresh(const Context: INTACodeEditorPaintContext);
+procedure TAtlasEditorPairs.Refresh(const AContext: INTACodeEditorPaintContext);
 var
   mView: IOTAEditView;
   mText: string;
@@ -696,16 +696,16 @@ var
   mNesting: TAtlasRoutineNesting;
 begin
   FCheck := False;
-  mView := Context.EditView;
+  mView := AContext.EditView;
   if (mView = nil) or (mView.Buffer = nil) then
   begin
     Exit;
   end;
   mText := TAtlasEditorBuffer.Text(mView.Buffer);
   mOwners := TAtlasIdeSettings.Current.PairOwners and
-    not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairOwners, Context.FileName);
+    not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairOwners, AContext.FileName);
   mNesting := TAtlasRoutineNesting.FromSettings(TAtlasIdeSettings.Current);
-  if (mText = FText) and SameText(Context.FileName, FFileName) and (FOwners = mOwners) and
+  if (mText = FText) and SameText(AContext.FileName, FFileName) and (FOwners = mOwners) and
     (FNesting.Style = mNesting.Style) and (FNesting.Band = mNesting.Band) then
   begin
     Exit;
@@ -713,7 +713,7 @@ begin
   FOwners := mOwners;
   FNesting := mNesting;
   mActivity := TAtlasActivity.Scope('Klammerpaare');
-  FFileName := Context.FileName;
+  FFileName := AContext.FileName;
   FText := mText;
   mLines := mText.Split([#10]);
   FTabWidth := TAtlasEditorBuffer.TabWidth(mView.Buffer);
@@ -793,7 +793,7 @@ begin
   Result := TAtlasRoutineNesting.PairPalette(Result, TAtlasIdeSettings.Current);
 end;
 
-function TAtlasEditorPairs.InactiveSpans(const Context: INTACodeEditorPaintContext): TArray<TAtlasColumnSpan>;
+function TAtlasEditorPairs.InactiveSpans(const AContext: INTACodeEditorPaintContext): TArray<TAtlasColumnSpan>;
 var
   mSettings: TAtlasPluginSettings;
   mStore: TAtlasProblemStore;
@@ -811,17 +811,17 @@ begin
     Exit;
   end;
   // Inaktive Zweige (#615) und ungenutzte uses-Einträge (#621) dimmen gleich, mit eigenem Schalter.
-  mBranches := mSettings.InactiveDim and (Length(mStore.Inactive(Context.FileName)) > 0) and
-    not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.InactiveDim, Context.FileName);
-  mUnusedUses := mSettings.DimUnusedUses and (Length(mStore.UnusedUses(Context.FileName)) > 0) and
-    not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.UnusedUses, Context.FileName);
+  mBranches := mSettings.InactiveDim and (Length(mStore.Inactive(AContext.FileName)) > 0) and
+    not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.InactiveDim, AContext.FileName);
+  mUnusedUses := mSettings.DimUnusedUses and (Length(mStore.UnusedUses(AContext.FileName)) > 0) and
+    not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.UnusedUses, AContext.FileName);
   if not (mBranches or mUnusedUses) then
   begin
     Exit;
   end;
   if FDimTabWidth < 0 then
   begin
-    mView := Context.EditView;
+    mView := AContext.EditView;
     if (mView <> nil) and (mView.Buffer <> nil) then
     begin
       FDimTabWidth := TAtlasEditorBuffer.TabWidth(mView.Buffer);
@@ -833,29 +833,29 @@ begin
   end;
   if mBranches then
   begin
-    Result := mStore.InactiveSpans(Context.FileName, Context.LogicalLineNum - 1, FDimTabWidth);
+    Result := mStore.InactiveSpans(AContext.FileName, AContext.LogicalLineNum - 1, FDimTabWidth);
     FBranchesDimmed := Length(Result) > 0;
   end;
   if mUnusedUses then
   begin
-    mEntrySpans := mStore.UsesSpans(Context.FileName, Context.LogicalLineNum - 1, FDimTabWidth);
+    mEntrySpans := mStore.UsesSpans(AContext.FileName, AContext.LogicalLineNum - 1, FDimTabWidth);
     FUsesDimmed := Length(mEntrySpans) > 0;
     Result := Result + mEntrySpans;
   end;
 end;
 
-procedure TAtlasEditorPairs.ReportDimmed(const Context: INTACodeEditorPaintContext; ALine: Integer;
+procedure TAtlasEditorPairs.ReportDimmed(const AContext: INTACodeEditorPaintContext; ALine: Integer;
   const ARect: TRect);
 begin
   if FBranchesDimmed then
   begin
-    TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.InactiveDim, Context.FileName, ALine, ''),
-      ARect, TopRowOf(Context), ARect.Height);
+    TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.InactiveDim, AContext.FileName, ALine, ''),
+      ARect, TopRowOf(AContext), ARect.Height);
   end;
   if FUsesDimmed then
   begin
-    TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.UnusedUses, Context.FileName, ALine, ''),
-      ARect, TopRowOf(Context), ARect.Height);
+    TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.UnusedUses, AContext.FileName, ALine, ''),
+      ARect, TopRowOf(AContext), ARect.Height);
   end;
 end;
 

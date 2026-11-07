@@ -33,7 +33,7 @@ procedure TAtlasToolbarIconsTests.IconsOfKnownCommands;
 var
   Id: string;
 begin
-  Assert.IsTrue(TAtlasToolbarIcons.IconOf(TAtlasToolbarItems.GotoInterface) = TAtlasToolbarIcon.InterfacePart);
+  Assert.IsTrue(TAtlasToolbarIcons.IconOf(TAtlasToolbarItems.cGotoInterface) = TAtlasToolbarIcon.InterfacePart);
   Assert.IsTrue(TAtlasToolbarIcons.IconOf('Atlas.ProblemsWindow') = TAtlasToolbarIcon.Problems);
   Assert.IsTrue(TAtlasToolbarIcons.IconOf('atlas.navback') = TAtlasToolbarIcon.Back, 'ohne Groß-/Kleinschreibung');
   Assert.IsTrue(TAtlasToolbarIcons.IconOf('Atlas.Rename') = TAtlasToolbarIcon.Letter, 'unbekannt');
@@ -68,8 +68,8 @@ begin
       end;
       for Point in Shape.Points do
       begin
-        Assert.IsTrue((Point.X >= 0) and (Point.X <= TAtlasGlyphs.Size), 'X im Feld');
-        Assert.IsTrue((Point.Y >= 0) and (Point.Y <= TAtlasGlyphs.Size), 'Y im Feld');
+        Assert.IsTrue((Point.X >= 0) and (Point.X <= TAtlasGlyphs.cSize), 'X im Feld');
+        Assert.IsTrue((Point.Y >= 0) and (Point.Y <= TAtlasGlyphs.cSize), 'Y im Feld');
       end;
     end;
   end;

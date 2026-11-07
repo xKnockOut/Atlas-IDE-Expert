@@ -38,7 +38,7 @@ type
 
   TAtlasTextFile = class
   public const
-    Utf8CodePage = 65001;
+    cUtf8CodePage = 65001;
   public
     /// <summary>Kodierung der Bytes und Text ohne BOM. ADefaultCodePage: Vorgabe aus atlas.json
     /// (0 oder 65001 = UTF-8, sonst eine ANSI-Codepage).</summary>
@@ -121,12 +121,12 @@ const
   /// (Bericht M5). Danach scheitert Save, statt die Datei an Ort und Stelle zu überschreiben: Das hinterließ
   /// bei einem Abbruch eine halbe Datei und konnte Lesern einen halben Stand zeigen.
   /// </summary>
-  ReplaceAttempts = 10;
-  ReplaceWaitMs = 50;
+  cReplaceAttempts = 10;
+  cReplaceWaitMs = 50;
   // Aus winbase.h (Windows 10 1607 und neuer); Delphis Winapi.Windows kennt sie nicht.
-  FileRenameInfoEx = 22;
-  FILE_RENAME_FLAG_REPLACE_IF_EXISTS = $00000001;
-  FILE_RENAME_FLAG_POSIX_SEMANTICS = $00000002;
+  cFileRenameInfoEx = 22;
+  cFILE_RENAME_FLAG_REPLACE_IF_EXISTS = $00000001;
+  cFILE_RENAME_FLAG_POSIX_SEMANTICS = $00000002;
 
 type
   /// <summary>FILE_RENAME_INFO mit Flags statt ReplaceIfExists, für FileRenameInfoEx.</summary>
@@ -150,15 +150,15 @@ function SetFileInformation(AFile: THandle; AInformationClass: DWORD; AInformati
 /// </summary>
 function PosixReplace(const ASource, ATarget: string; out AError: DWORD): Boolean;
 var
-  Handle: THandle;
-  Name: string;
-  Size: Integer;
-  Info: PFileRenameInfoEx;
+  mHandle: THandle;
+  mName: string;
+  mSize: Integer;
+  mInfo: PFileRenameInfoEx;
 begin
   Result := False;
-  Handle := CreateFile(PChar(ASource), GENERIC_WRITE or _DELETE or SYNCHRONIZE,
+  mHandle := CreateFile(PChar(ASource), GENERIC_WRITE or _DELETE or SYNCHRONIZE,
     FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-  if Handle = INVALID_HANDLE_VALUE then
+  if mHandle = INVALID_HANDLE_VALUE then
   begin
     AError := GetLastError;
     Exit;
@@ -166,26 +166,26 @@ begin
   try
     // Voller Pfad: Ein bloßer Name gilt hier relativ zum aktuellen Verzeichnis des Prozesses, nicht zum
     // Ordner der Datei (die Dateien landeten sonst im Arbeitsverzeichnis von bds.exe bzw. der Tests).
-    Name := ExpandFileName(ATarget);
-    Size := SizeOf(TFileRenameInfoEx) + Length(Name) * SizeOf(WideChar);
-    GetMem(Info, Size);
+    mName := ExpandFileName(ATarget);
+    mSize := SizeOf(TFileRenameInfoEx) + Length(mName) * SizeOf(WideChar);
+    GetMem(mInfo, mSize);
     try
-      FillChar(Info^, Size, 0);
-      Info^.Flags := FILE_RENAME_FLAG_REPLACE_IF_EXISTS or FILE_RENAME_FLAG_POSIX_SEMANTICS;
-      Info^.RootDirectory := 0;
-      Info^.FileNameLength := Length(Name) * SizeOf(WideChar);
-      Move(PChar(Name)^, Info^.FileName, Length(Name) * SizeOf(WideChar));
-      FlushFileBuffers(Handle);
-      Result := SetFileInformation(Handle, FileRenameInfoEx, Info, Size);
+      FillChar(mInfo^, mSize, 0);
+      mInfo^.Flags := cFILE_RENAME_FLAG_REPLACE_IF_EXISTS or cFILE_RENAME_FLAG_POSIX_SEMANTICS;
+      mInfo^.RootDirectory := 0;
+      mInfo^.FileNameLength := Length(mName) * SizeOf(WideChar);
+      Move(PChar(mName)^, mInfo^.FileName, Length(mName) * SizeOf(WideChar));
+      FlushFileBuffers(mHandle);
+      Result := SetFileInformation(mHandle, cFileRenameInfoEx, mInfo, mSize);
       if not Result then
       begin
         AError := GetLastError;
       end;
     finally
-      FreeMem(Info);
+      FreeMem(mInfo);
     end;
   finally
-    CloseHandle(Handle);
+    CloseHandle(mHandle);
   end;
 end;
 
@@ -217,61 +217,61 @@ end;
 /// die Zieldatei auch nach den Versuchen des Netzes noch sperrt.</summary>
 procedure ReplaceWith(const ASource, ATarget: string);
 var
-  Attempt: Integer;
-  Error: DWORD;
+  mAttempt: Integer;
+  mError: DWORD;
 begin
-  Attempt := 1;
-  while not TryReplace(ASource, ATarget, Error) do
+  mAttempt := 1;
+  while not TryReplace(ASource, ATarget, mError) do
   begin
-    if Attempt >= ReplaceAttempts then
+    if mAttempt >= cReplaceAttempts then
     begin
       // Ohne Dateinamen: Die Meldung kann im Protokoll landen.
       raise EAtlasTextFileError.CreateFmt(UiText(TTextFileText.FileIsLockedByAnother),
-        [SysErrorMessage(Error)]);
+        [SysErrorMessage(mError)]);
     end;
     // Netz (siehe ReplaceAttempts).
-    Inc(Attempt);
-    Sleep(ReplaceWaitMs);
+    Inc(mAttempt);
+    Sleep(cReplaceWaitMs);
   end;
 end;
 
 class function TAtlasTextFile.ReadAllBytes(const AFileName: string): TBytes;
 var
-  Handle: THandle;
-  Size: Int64;
-  Total, Count: Integer;
+  mHandle: THandle;
+  mSize: Int64;
+  mTotal, mCount: Integer;
 begin
-  Handle := CreateFile(PChar(AFileName), GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE,
+  mHandle := CreateFile(PChar(AFileName), GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE,
     nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL or FILE_FLAG_SEQUENTIAL_SCAN, 0);
-  if Handle = INVALID_HANDLE_VALUE then
+  if mHandle = INVALID_HANDLE_VALUE then
   begin
     raise EFOpenError.CreateResFmt(@SFOpenErrorEx, [ExpandFileName(AFileName), SysErrorMessage(GetLastError)]);
   end;
   try
-    Size := FileSeek(Handle, Int64(0), 2);
-    if (Size < 0) or (Size > MaxInt) or (FileSeek(Handle, Int64(0), 0) <> 0) then
+    mSize := FileSeek(mHandle, Int64(0), 2);
+    if (mSize < 0) or (mSize > MaxInt) or (FileSeek(mHandle, Int64(0), 0) <> 0) then
     begin
       raise EReadError.CreateRes(@SReadError);
     end;
-    SetLength(Result, Integer(Size));
-    Total := 0;
-    while Total < Length(Result) do
+    SetLength(Result, Integer(mSize));
+    mTotal := 0;
+    while mTotal < Length(Result) do
     begin
-      Count := FileRead(Handle, Result[Total], Length(Result) - Total);
-      if Count < 0 then
+      mCount := FileRead(mHandle, Result[mTotal], Length(Result) - mTotal);
+      if mCount < 0 then
       begin
         raise EReadError.CreateRes(@SReadError);
       end;
       // Kürzer geworden (jemand schreibt an Ort und Stelle): lesen, was da ist.
-      if Count = 0 then
+      if mCount = 0 then
       begin
         Break;
       end;
-      Inc(Total, Count);
+      Inc(mTotal, mCount);
     end;
-    SetLength(Result, Total);
+    SetLength(Result, mTotal);
   finally
-    CloseHandle(Handle);
+    CloseHandle(mHandle);
   end;
 end;
 
@@ -287,38 +287,38 @@ end;
 
 function IsAnsiDefault(ACodePage: Integer): Boolean;
 begin
-  Result := (ACodePage > 0) and (ACodePage <> TAtlasTextFile.Utf8CodePage);
+  Result := (ACodePage > 0) and (ACodePage <> TAtlasTextFile.cUtf8CodePage);
 end;
 
 function AnsiText(const ABytes: TBytes; ACodePage: Integer): string;
 var
-  Encoding: TEncoding;
+  mEncoding: TEncoding;
 begin
   if ACodePage <= 0 then
   begin
     Exit(TEncoding.ANSI.GetString(ABytes));
   end;
-  Encoding := TEncoding.GetEncoding(ACodePage);
+  mEncoding := TEncoding.GetEncoding(ACodePage);
   try
-    Result := Encoding.GetString(ABytes);
+    Result := mEncoding.GetString(ABytes);
   finally
-    Encoding.Free;
+    mEncoding.Free;
   end;
 end;
 
 function AnsiBytes(const AText: string; ACodePage: Integer): TBytes;
 var
-  Encoding: TEncoding;
+  mEncoding: TEncoding;
 begin
   if ACodePage <= 0 then
   begin
     Exit(TEncoding.ANSI.GetBytes(AText));
   end;
-  Encoding := TEncoding.GetEncoding(ACodePage);
+  mEncoding := TEncoding.GetEncoding(ACodePage);
   try
-    Result := Encoding.GetBytes(AText);
+    Result := mEncoding.GetBytes(AText);
   finally
-    Encoding.Free;
+    mEncoding.Free;
   end;
 end;
 
@@ -334,26 +334,26 @@ end;
 
 class function TAtlasTextFile.Decode(const ABytes: TBytes; ADefaultCodePage: Integer): TAtlasTextFileContent;
 var
-  Count: Integer;
-  Bom: TTextBom;
+  mCount: Integer;
+  mBom: TTextBom;
 begin
   Result.CodePage := 0;
-  Count := Length(ABytes);
-  Bom := TTextEncodingProbe.BomOf(ABytes);
-  if Bom = TTextBom.Utf8 then
+  mCount := Length(ABytes);
+  mBom := TTextEncodingProbe.BomOf(ABytes);
+  if mBom = TTextBom.Utf8 then
   begin
     Result.Encoding := TAtlasTextEncoding.Utf8Bom;
-    Result.Text := TEncoding.UTF8.GetString(ABytes, 3, Count - 3);
+    Result.Text := TEncoding.UTF8.GetString(ABytes, 3, mCount - 3);
   end
-  else if Bom = TTextBom.Utf16LE then
+  else if mBom = TTextBom.Utf16LE then
   begin
     Result.Encoding := TAtlasTextEncoding.Utf16LE;
-    Result.Text := TEncoding.Unicode.GetString(ABytes, 2, Count - 2);
+    Result.Text := TEncoding.Unicode.GetString(ABytes, 2, mCount - 2);
   end
-  else if Bom = TTextBom.Utf16BE then
+  else if mBom = TTextBom.Utf16BE then
   begin
     Result.Encoding := TAtlasTextEncoding.Utf16BE;
-    Result.Text := TEncoding.BigEndianUnicode.GetString(ABytes, 2, Count - 2);
+    Result.Text := TEncoding.BigEndianUnicode.GetString(ABytes, 2, mCount - 2);
   end
   else if IsAnsiDefault(ADefaultCodePage) and TTextEncodingProbe.IsAscii(ABytes) then
   begin
@@ -401,14 +401,14 @@ end;
 
 class function TAtlasTextFile.Load(const AFileName: string; ADefaultCodePage: Integer): TAtlasTextFileContent;
 var
-  Bytes: TBytes;
+  mBytes: TBytes;
 begin
-  Bytes := ReadAllBytes(AFileName);
-  if IsBinaryForm(Bytes) then
+  mBytes := ReadAllBytes(AFileName);
+  if IsBinaryForm(mBytes) then
   begin
     raise EAtlasTextFileError.Create(UiText(TTextFileText.FormSavedAsBinaryPlease));
   end;
-  Result := Decode(Bytes, ADefaultCodePage);
+  Result := Decode(mBytes, ADefaultCodePage);
 end;
 
 class function TAtlasTextFile.Load(const AFileName: string): TAtlasTextFileContent;
@@ -441,17 +441,17 @@ end;
 
 class procedure TAtlasTextFile.Replace(const AFileName: string; const ABytes: TBytes);
 var
-  Temporary: string;
+  mTemporary: string;
 begin
   // Erst vollständig daneben schreiben: Ein Abbruch hinterlässt nie eine halbe Datei.
-  Temporary := AFileName + '.atlas-tmp';
-  TFile.WriteAllBytes(Temporary, ABytes);
+  mTemporary := AFileName + '.atlas-tmp';
+  TFile.WriteAllBytes(mTemporary, ABytes);
   try
-    ReplaceWith(Temporary, AFileName);
+    ReplaceWith(mTemporary, AFileName);
   except
-    if TFile.Exists(Temporary) then
+    if TFile.Exists(mTemporary) then
     begin
-      TFile.Delete(Temporary);
+      TFile.Delete(mTemporary);
     end;
     raise;
   end;

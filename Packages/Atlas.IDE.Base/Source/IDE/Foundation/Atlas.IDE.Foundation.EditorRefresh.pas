@@ -41,24 +41,24 @@ uses
   Vcl.Forms;
 
 const
-  EditWindowClass = 'TEditWindow';
+  cEditWindowClass = 'TEditWindow';
 
 { TAtlasIdeEditorRefresh }
 
 class function TAtlasIdeEditorRefresh.EditorOpen: Boolean;
 var
-  Index: Integer;
-  Form: TCustomForm;
+  mIndex: Integer;
+  mForm: TCustomForm;
 begin
   if Application.Terminated or (Application.MainForm = nil) or
     (csDestroying in Application.MainForm.ComponentState) then
   begin
     Exit(False);
   end;
-  for Index := 0 to Screen.CustomFormCount - 1 do
+  for mIndex := 0 to Screen.CustomFormCount - 1 do
   begin
-    Form := Screen.CustomForms[Index];
-    if SameText(Form.ClassName, EditWindowClass) and not (csDestroying in Form.ComponentState) then
+    mForm := Screen.CustomForms[mIndex];
+    if SameText(mForm.ClassName, cEditWindowClass) and not (csDestroying in mForm.ComponentState) then
     begin
       Exit(True);
     end;

@@ -189,7 +189,7 @@ begin
   Assert.AreEqual(TAtlasProjectSetups.BuiltIn(TAtlasSetupTemplate.Existing),
     TAtlasProjectSetups.TemplateText(TAtlasSetupTemplate.Existing, '', Read));
   Assert.Contains(TAtlasProjectSetups.BuiltIn(TAtlasSetupTemplate.NewStrict), '"profile": "strict"');
-  Assert.Contains(TAtlasProjectSetups.BuiltIn(TAtlasSetupTemplate.Existing), TAtlasProjectSetups.SchemaUrl);
+  Assert.Contains(TAtlasProjectSetups.BuiltIn(TAtlasSetupTemplate.Existing), TAtlasProjectSetups.cSchemaUrl);
 end;
 
 procedure TAtlasProjectSetupTests.TargetBesideProjectFile;

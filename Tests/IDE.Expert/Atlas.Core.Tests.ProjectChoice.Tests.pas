@@ -156,7 +156,7 @@ begin
   try
     TFile.WriteAllText(mFileName, '{"choices": [');
     Assert.IsTrue(TAtlasTestProjectChoices.Load(mFileName, mChoices) = TAtlasDataLoad.Renewed);
-    Assert.IsTrue(FileExists(mFileName + TAtlasDataFile.DefectExtension), 'beiseitegelegt');
+    Assert.IsTrue(FileExists(mFileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
     TAtlasTestProjectChoices.Remember(mChoices, ['A', 'B'], 'B');
     Assert.IsTrue(TAtlasTestProjectChoices.Save(mFileName, mChoices));
     mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);

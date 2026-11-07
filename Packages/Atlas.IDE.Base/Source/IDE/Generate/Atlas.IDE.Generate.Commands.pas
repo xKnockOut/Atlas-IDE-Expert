@@ -91,7 +91,7 @@ uses
 
 const
   // Wie die Code-Aktionen: Der Server darf etwas rechnen (Vorfahren, Index).
-  CommandTimeoutMs = 30000;
+  cCommandTimeoutMs = 30000;
 
 function LineAt(const ALines: TArray<string>; AIndex: Integer): string;
 begin
@@ -105,17 +105,17 @@ end;
 /// <summary>Caret des Editors in Bildschirmkoordinaten; False ohne Caret.</summary>
 function CaretRect(out ARect: TRect): Boolean;
 var
-  Info: TGUIThreadInfo;
+  mInfo: TGUIThreadInfo;
 begin
-  FillChar(Info, SizeOf(Info), 0);
-  Info.cbSize := SizeOf(Info);
-  Result := GetGUIThreadInfo(GetCurrentThreadId, Info) and (Info.hwndCaret <> 0);
+  FillChar(mInfo, SizeOf(mInfo), 0);
+  mInfo.cbSize := SizeOf(mInfo);
+  Result := GetGUIThreadInfo(GetCurrentThreadId, mInfo) and (mInfo.hwndCaret <> 0);
   if not Result then
   begin
     Exit;
   end;
-  ARect := Info.rcCaret;
-  MapWindowPoints(Info.hwndCaret, 0, ARect, 2);
+  ARect := mInfo.rcCaret;
+  MapWindowPoints(mInfo.hwndCaret, 0, ARect, 2);
 end;
 
 { TAtlasIdeGenerate }
@@ -217,48 +217,48 @@ end;
 procedure SpotOf(const AView: IOTAEditView; const ALines: TArray<string>; ATabWidth: Integer;
   out ASpot: TAtlasGenerateSpot; out ARange: TLspRange);
 var
-  Block: IOTAEditBlock;
-  Cursor: TOTAEditPos;
-  StartLine, StartChar, EndLine, EndChar: Integer;
+  mBlock: IOTAEditBlock;
+  mCursor: TOTAEditPos;
+  mStartLine, mStartChar, mEndLine, mEndChar: Integer;
 begin
-  Cursor := AView.CursorPos;
-  StartLine := Cursor.Line - 1;
-  StartChar := TLspSession.ColumnToIndex(LineAt(ALines, StartLine), Cursor.Col, ATabWidth);
-  ARange.StartPos := TLspTextPosition.Create(StartLine, StartChar);
+  mCursor := AView.CursorPos;
+  mStartLine := mCursor.Line - 1;
+  mStartChar := TLspSession.ColumnToIndex(LineAt(ALines, mStartLine), mCursor.Col, ATabWidth);
+  ARange.StartPos := TLspTextPosition.Create(mStartLine, mStartChar);
   ARange.EndPos := ARange.StartPos;
-  ASpot := TAtlasGenerateSpot.Create(TLspSession.PathToUri(AView.Buffer.FileName), StartLine, StartChar, -1);
-  Block := AView.Block;
-  if (Block = nil) or not Block.IsValid or (Block.Size = 0) then
+  ASpot := TAtlasGenerateSpot.Create(TLspSession.PathToUri(AView.Buffer.FileName), mStartLine, mStartChar, -1);
+  mBlock := AView.Block;
+  if (mBlock = nil) or not mBlock.IsValid or (mBlock.Size = 0) then
   begin
     Exit;
   end;
-  StartLine := Block.StartingRow - 1;
-  StartChar := TLspSession.ColumnToIndex(LineAt(ALines, StartLine), Block.StartingColumn, ATabWidth);
-  EndLine := Block.EndingRow - 1;
-  EndChar := TLspSession.ColumnToIndex(LineAt(ALines, EndLine), Block.EndingColumn, ATabWidth);
-  ARange.StartPos := TLspTextPosition.Create(StartLine, StartChar);
-  ARange.EndPos := TLspTextPosition.Create(EndLine, EndChar);
+  mStartLine := mBlock.StartingRow - 1;
+  mStartChar := TLspSession.ColumnToIndex(LineAt(ALines, mStartLine), mBlock.StartingColumn, ATabWidth);
+  mEndLine := mBlock.EndingRow - 1;
+  mEndChar := TLspSession.ColumnToIndex(LineAt(ALines, mEndLine), mBlock.EndingColumn, ATabWidth);
+  ARange.StartPos := TLspTextPosition.Create(mStartLine, mStartChar);
+  ARange.EndPos := TLspTextPosition.Create(mEndLine, mEndChar);
   // Umschließen beginnt an der ersten Zeile der Markierung.
-  ASpot := TAtlasGenerateSpot.Create(ASpot.Uri, StartLine, StartChar,
-    TAtlasGenerateMenu.SelectionEndLine(StartLine, EndLine, EndChar, True));
+  ASpot := TAtlasGenerateSpot.Create(ASpot.Uri, mStartLine, mStartChar,
+    TAtlasGenerateMenu.SelectionEndLine(mStartLine, mEndLine, mEndChar, True));
 end;
 
 /// <summary>Führt einen Schnellbefehl über atlas.server.slashRun aus: ein Rückgängig-Schritt.</summary>
 procedure RunSlash(const AView: IOTAEditView; ASession: TLspSession; const ASpot: TAtlasGenerateSpot;
   const AEntry: TAtlasGenerateEntry; const AArgument: string; const ASay: TProc<string>);
 var
-  FileName, Reason: string;
-  Answer: TJSONValue;
-  Edits: TArray<TLspTextEdit>;
-  Edit: TLspWorkspaceEdit;
-  Outcome: TAtlasWorkspaceEditResult;
-  Done: Boolean;
+  mFileName, mReason: string;
+  mAnswer: TJSONValue;
+  mEdits: TArray<TLspTextEdit>;
+  mEdit: TLspWorkspaceEdit;
+  mOutcome: TAtlasWorkspaceEditResult;
+  mDone: Boolean;
 begin
-  FileName := AView.Buffer.FileName;
-  ASession.Sync(FileName, TAtlasEditorBuffer.Text(AView.Buffer));
+  mFileName := AView.Buffer.FileName;
+  ASession.Sync(mFileName, TAtlasEditorBuffer.Text(AView.Buffer));
   try
-    Answer := ASession.RunCommand(TAtlasGenerateProtocol.RunCommand,
-      TAtlasGenerateProtocol.RunArguments(ASpot, AEntry.Name, AArgument), CommandTimeoutMs);
+    mAnswer := ASession.RunCommand(TAtlasGenerateProtocol.cRunCommand,
+      TAtlasGenerateProtocol.RunArguments(ASpot, AEntry.Name, AArgument), cCommandTimeoutMs);
   except
     on E: ELspClientError do
     begin
@@ -267,24 +267,24 @@ begin
     end;
   end;
   try
-    Done := TAtlasGenerateProtocol.ParseRun(Answer, Edits, Reason);
+    mDone := TAtlasGenerateProtocol.ParseRun(mAnswer, mEdits, mReason);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  if not Done then
+  if not mDone then
   begin
-    ASay(TAtlasStrings.Fmt(TAtlasTextId.GenerateFailed, [Reason]));
+    ASay(TAtlasStrings.Fmt(TAtlasTextId.GenerateFailed, [mReason]));
     Exit;
   end;
-  Edit := Default(TLspWorkspaceEdit);
-  Edit.Files := [Default(TLspFileEdits)];
-  Edit.Files[0].FileName := FileName;
-  Edit.Files[0].Edits := Edits;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicy.WriteToDisk,
+  mEdit := Default(TLspWorkspaceEdit);
+  mEdit.Files := [Default(TLspFileEdits)];
+  mEdit.Files[0].FileName := mFileName;
+  mEdit.Files[0].Edits := mEdits;
+  mOutcome := TAtlasIdeWorkspaceEdit.Apply(mEdit, TAtlasUnopenedPolicy.WriteToDisk,
     TAtlasGenerateTexts.EntryCaption(AEntry));
-  if Outcome.Error <> '' then
+  if mOutcome.Error <> '' then
   begin
-    ASay(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
+    ASay(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
   end;
 end;
 
@@ -348,8 +348,8 @@ var
 begin
   AMenu := Default(TAtlasGenerateServerMenu);
   try
-    mAnswer := ASession.RunCommand(TAtlasGenerateProtocol.MenuCommand, TAtlasGenerateProtocol.MenuArguments(ASpot),
-      CommandTimeoutMs);
+    mAnswer := ASession.RunCommand(TAtlasGenerateProtocol.cMenuCommand, TAtlasGenerateProtocol.MenuArguments(ASpot),
+      cCommandTimeoutMs);
   except
     on E: ELspClientError do
     begin
@@ -427,8 +427,8 @@ begin
         Exit;
       end;
       try
-        mFound := mCurrent.RunCommand(TAtlasGenerateProtocol.ChoicesCommand,
-          TAtlasGenerateProtocol.ChoicesArguments(ASpot, AEntry.Name), CommandTimeoutMs);
+        mFound := mCurrent.RunCommand(TAtlasGenerateProtocol.cChoicesCommand,
+          TAtlasGenerateProtocol.ChoicesArguments(ASpot, AEntry.Name), cCommandTimeoutMs);
       except
         on E: ELspClientError do
         begin

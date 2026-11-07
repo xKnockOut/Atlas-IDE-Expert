@@ -359,9 +359,9 @@ begin
   Assert.AreEqual(1920, ASettings.IssuesAttachMaxImageWidth);
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.cCommitPattern, ASettings.IssuesCommitPattern);
-  Assert.AreEqual(TAtlasMyIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
+  Assert.AreEqual(TAtlasMyIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.cIssuesStartBranch);
   Assert.AreEqual(TAtlasMyIssues.StartName(TAtlasIssueStart.Remember),
-    TAtlasPluginSettings.IssuesStartRemember);
+    TAtlasPluginSettings.cIssuesStartRemember);
 end;
 /// <summary>Meine Issues (#765, #1271): Normalisieren.</summary>
 procedure NormalizeIssuesOptions(var ASettings: TAtlasPluginSettings);
@@ -525,14 +525,14 @@ begin
   mSettings.IssuesStartState := ' In Arbeit ';
   mSettings.IssuesStartComment := 'Beginne {kennung}'#13#10'in {branch}';
   mSettings.IssuesEndStates := ' Zur Prüfung, Erledigt ';
-  mSettings.IssuesEndComment := StringOfChar('x', TAtlasPluginSettings.MaxIssuesTemplate + 10);
+  mSettings.IssuesEndComment := StringOfChar('x', TAtlasPluginSettings.cMaxIssuesTemplate + 10);
   mSettings.Normalize;
   Assert.AreEqual('Status', mSettings.IssuesStateField);
   Assert.AreEqual('Assignee', mSettings.IssuesAssigneeField, 'leer = Vorgabe');
   Assert.AreEqual('In Arbeit', mSettings.IssuesStartState);
   Assert.AreEqual('Beginne {kennung}\nin {branch}', mSettings.IssuesStartComment);
   Assert.AreEqual('Zur Prüfung, Erledigt', mSettings.IssuesEndStates);
-  Assert.AreEqual(TAtlasPluginSettings.MaxIssuesTemplate, Integer(Length(mSettings.IssuesEndComment)));
+  Assert.AreEqual(TAtlasPluginSettings.cMaxIssuesTemplate, Integer(Length(mSettings.IssuesEndComment)));
   // Speichern und Laden.
   mSettings.IssuesSyncState := False;
   mSettings.IssuesAssignOnStart := True;
@@ -562,8 +562,8 @@ begin
   mSettings.IssuesIdleMinutes := 0;
   mSettings.IssuesTimeRounding := 500;
   mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinIssuesIdleMinutes, mSettings.IssuesIdleMinutes);
-  Assert.AreEqual(TAtlasPluginSettings.MaxIssuesTimeRounding, mSettings.IssuesTimeRounding);
+  Assert.AreEqual(TAtlasPluginSettings.cMinIssuesIdleMinutes, mSettings.IssuesIdleMinutes);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxIssuesTimeRounding, mSettings.IssuesTimeRounding);
   mSettings.IssuesTimeTracking := True;
   mSettings.IssuesIdleMinutes := 15;
   mSettings.IssuesTimeRounding := 15;
@@ -582,7 +582,7 @@ var
 begin
   mSettings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(mSettings.IssuesCommentEditor, 'Kommentar-Editor ist vorgegeben an');
-  Assert.AreEqual(TAtlasPluginSettings.DefaultIssuesCommentSnippets, mSettings.IssuesCommentSnippets, 'zwei Vorgabe-Bausteine');
+  Assert.AreEqual(TAtlasPluginSettings.cDefaultIssuesCommentSnippets, mSettings.IssuesCommentSnippets, 'zwei Vorgabe-Bausteine');
   // Normalisieren: leer = keine Bausteine, nicht die Vorgabe.
   mSettings.IssuesCommentSnippets := '   ';
   mSettings.Normalize;

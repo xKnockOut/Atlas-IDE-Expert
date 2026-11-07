@@ -31,13 +31,13 @@ uses
 
 class function TAtlasToolbarIcons.IconOf(const AId: string): TAtlasToolbarIcon;
 const
-  Ids: array[0..18] of string = (TAtlasToolbarItems.GotoInterface, TAtlasToolbarItems.GotoImplementation,
-    TAtlasToolbarItems.GotoUses, TAtlasToolbarItems.GotoInitialization, TAtlasToolbarItems.ReturnFromSection,
+  cIds: array[0..18] of string = (TAtlasToolbarItems.cGotoInterface, TAtlasToolbarItems.cGotoImplementation,
+    TAtlasToolbarItems.cGotoUses, TAtlasToolbarItems.cGotoInitialization, TAtlasToolbarItems.cReturnFromSection,
     'Atlas.NavBack', 'Atlas.NavForward', 'Atlas.ToggleMethod', 'Atlas.SwitchTestUnit', 'Atlas.UnitSearch',
-    TAtlasToolbarItems.FindMethod, 'Atlas.QuickOpen', 'Atlas.CodeActions', 'Atlas.FormatCode',
-    'Atlas.ProblemsWindow', 'Atlas.Outline', TAtlasToolbarItems.CommandPalette, TAtlasToolbarItems.Customize,
+    TAtlasToolbarItems.cFindMethod, 'Atlas.QuickOpen', 'Atlas.CodeActions', 'Atlas.FormatCode',
+    'Atlas.ProblemsWindow', 'Atlas.Outline', TAtlasToolbarItems.cCommandPalette, TAtlasToolbarItems.cCustomize,
     'Atlas.SymbolSearch');
-  Icons: array[0..18] of TAtlasToolbarIcon = (TAtlasToolbarIcon.InterfacePart,
+  cIcons: array[0..18] of TAtlasToolbarIcon = (TAtlasToolbarIcon.InterfacePart,
     TAtlasToolbarIcon.ImplementationPart, TAtlasToolbarIcon.UsesClause, TAtlasToolbarIcon.Initialization_,
     TAtlasToolbarIcon.Return, TAtlasToolbarIcon.Back, TAtlasToolbarIcon.Forward, TAtlasToolbarIcon.Toggle,
     TAtlasToolbarIcon.TestUnit, TAtlasToolbarIcon.UnitSearch, TAtlasToolbarIcon.FindMethod,
@@ -45,13 +45,13 @@ const
     TAtlasToolbarIcon.Problems, TAtlasToolbarIcon.Outline, TAtlasToolbarIcon.Palette, TAtlasToolbarIcon.Gear,
     TAtlasToolbarIcon.FindMethod);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Ids) do
+  for mIndex := 0 to High(cIds) do
   begin
-    if SameText(Ids[Index], AId) then
+    if SameText(cIds[mIndex], AId) then
     begin
-      Exit(Icons[Index]);
+      Exit(cIcons[mIndex]);
     end;
   end;
   Result := TAtlasToolbarIcon.Letter;

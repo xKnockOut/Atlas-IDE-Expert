@@ -51,7 +51,7 @@ begin
   mStart.Form := 'TfrmKunde';
   mAsked := 0;
   mDialog := TAtlasEventBreakDialog.CreateDialog(nil, mStart, TArray<string>.Create('TdmDaten', 'TfrmKunde'),
-    TAtlasEventBreakSettings.DefaultExcluded,
+    TAtlasEventBreakSettings.cDefaultExcluded,
     function(const AChoice: TAtlasEventChoice): string
     begin
       Inc(mAsked);

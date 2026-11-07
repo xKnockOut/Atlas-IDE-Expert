@@ -304,7 +304,7 @@ begin
     TAtlasStateRowKind.Server:
       Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateServerMissing);
     TAtlasStateRowKind.Version:
-      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeStateVersion, [TAtlasPluginVersion.Version]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeStateVersion, [TAtlasPluginVersion.cVersion]);
     TAtlasStateRowKind.Index:
       Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateIndexMissing);
     TAtlasStateRowKind.Setup:

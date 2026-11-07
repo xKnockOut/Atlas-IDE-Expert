@@ -4,7 +4,7 @@
 // Atlas.IDE.Tracker.CodeLinks:
 // - TAtlasCodeLinkPainter unterstreicht die Kennungen einer gezeichneten Zeile
 //   gepunktet und liefert, wo sie stehen (TAtlasCodeLinkHit).
-// - TAtlasCodeLinkHover zeigt nach TAtlasCloseRules.TooltipShowDelayMs die
+// - TAtlasCodeLinkHover zeigt nach TAtlasCloseRules.cTooltipShowDelayMs die
 //   Kurzvorschau: Stand aus dem Zwischenspeicher der Vorschau (Peek), sonst
 //   „Wird geladen …“ und eine Kurzabfrage im Hintergrund (Lookup); ein Stand
 //   älter als TAtlasIdeIssueLookups.cFreshMs wird dabei aufgefrischt.
@@ -238,7 +238,7 @@ begin
   begin
     SetHit(Default(TAtlasCodeLinkHit), False);
   end
-  else if not FTip.IsShown and (TThread.GetTickCount64 - FSince >= TAtlasCloseRules.TooltipShowDelayMs) then
+  else if not FTip.IsShown and (TThread.GetTickCount64 - FSince >= TAtlasCloseRules.cTooltipShowDelayMs) then
   begin
     FTarget := ATarget;
     ShowTip;

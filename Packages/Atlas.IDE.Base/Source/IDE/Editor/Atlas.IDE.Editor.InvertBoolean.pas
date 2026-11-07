@@ -19,7 +19,7 @@ uses
 type
   TAtlasIdeInvertBoolean = class
   public const
-    ClientCommand = 'atlas.invertBoolean';
+    cClientCommand = 'atlas.invertBoolean';
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position, name]); ASession: laufende Sitzung oder
     /// nil; AMessage: Zeile für die Meldungsansicht.</summary>
@@ -34,22 +34,22 @@ uses
   Atlas.IDE.Editor.NamedRefactoring;
 
 const
-  ApplyCommand = 'atlas.server.invertBoolean';
+  cApplyCommand = 'atlas.server.invertBoolean';
 
 class procedure TAtlasIdeInvertBoolean.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  Texts: TAtlasNamedRefactoringTexts;
+  mTexts: TAtlasNamedRefactoringTexts;
 begin
-  Texts.Title := TAtlasTextId.InvertBooleanTitle;
-  Texts.Prompt := TAtlasTextId.InvertBooleanPrompt;
-  Texts.Failed := TAtlasTextId.InvertBooleanFailed;
-  Texts.Nothing := TAtlasTextId.InvertBooleanNothing;
-  Texts.PreviewHint := TAtlasTextId.InvertBooleanPreviewHint;
-  Texts.Apply := TAtlasTextId.InvertBooleanApply;
-  Texts.Done := TAtlasTextId.InvertBooleanDone;
-  Texts.Warning := TAtlasTextId.InvertBooleanWarning;
-  TAtlasIdeNamedRefactoring.Execute(ASession, AArgumentsJson, ApplyCommand, Texts, APolicy, AMessage);
+  mTexts.Title := TAtlasTextId.InvertBooleanTitle;
+  mTexts.Prompt := TAtlasTextId.InvertBooleanPrompt;
+  mTexts.Failed := TAtlasTextId.InvertBooleanFailed;
+  mTexts.Nothing := TAtlasTextId.InvertBooleanNothing;
+  mTexts.PreviewHint := TAtlasTextId.InvertBooleanPreviewHint;
+  mTexts.Apply := TAtlasTextId.InvertBooleanApply;
+  mTexts.Done := TAtlasTextId.InvertBooleanDone;
+  mTexts.Warning := TAtlasTextId.InvertBooleanWarning;
+  TAtlasIdeNamedRefactoring.Execute(ASession, AArgumentsJson, cApplyCommand, mTexts, APolicy, AMessage);
 end;
 
 end.

@@ -151,13 +151,13 @@ end;
 
 procedure TAtlasIdeEditorKeys.TBinding.BindKeyboard(const BindingServices: IOTAKeyBindingServices);
 var
-  Key: TAtlasEditorKey;
+  mKey: TAtlasEditorKey;
 begin
   if FOwner <> nil then
   begin
-    for Key in FOwner.Keys do
+    for mKey in FOwner.Keys do
     begin
-      BindingServices.AddKeyBinding([Key.Key], Pressed, nil);
+      BindingServices.AddKeyBinding([mKey.Key], Pressed, nil);
     end;
   end;
 end;
@@ -165,11 +165,11 @@ end;
 procedure TAtlasIdeEditorKeys.TBinding.Pressed(const Context: IOTAKeyContext; KeyCode: TShortCut;
   var BindingResult: TKeyBindingResult);
 var
-  Key: TAtlasEditorKey;
-  Feature: TAtlasFeature;
-  Proc: TProc;
-  Attempt: TFunc<Boolean>;
-  Done: Boolean;
+  mKey: TAtlasEditorKey;
+  mFeature: TAtlasFeature;
+  mProc: TProc;
+  mAttempt: TFunc<Boolean>;
+  mDone: Boolean;
 begin
   BindingResult := krUnhandled;
   if FOwner = nil then
@@ -182,21 +182,21 @@ begin
     BindingResult := krHandled;
     Exit;
   end;
-  for Key in FOwner.Keys do
+  for mKey in FOwner.Keys do
   begin
-    if Key.Key = KeyCode then
+    if mKey.Key = KeyCode then
     begin
-      Feature := Key.Feature;
-      if Assigned(Key.Attempt) then
+      mFeature := mKey.Feature;
+      if Assigned(mKey.Attempt) then
       begin
-        Attempt := Key.Attempt;
-        Done := False;
-        TAtlasGuard.Run(Feature,
+        mAttempt := mKey.Attempt;
+        mDone := False;
+        TAtlasGuard.Run(mFeature,
           procedure
           begin
-            Done := Attempt();
+            mDone := mAttempt();
           end);
-        if Done then
+        if mDone then
         begin
           BindingResult := krHandled;
         end
@@ -207,12 +207,12 @@ begin
         Exit;
       end;
       BindingResult := krHandled;
-      Proc := Key.Proc;
+      mProc := mKey.Proc;
       // Keine Exception an die IDE (#493); erst nach der Tastenverarbeitung.
-      TAtlasMainThread.ForceQueue(Feature,
+      TAtlasMainThread.ForceQueue(mFeature,
         procedure
         begin
-          TAtlasGuard.Run(Feature, Proc);
+          TAtlasGuard.Run(mFeature, mProc);
         end);
       Exit;
     end;
@@ -223,11 +223,11 @@ end;
 
 constructor TAtlasIdeEditorKeys.Create;
 var
-  Keyboard: IOTAKeyboardServices;
+  mKeyboard: IOTAKeyboardServices;
 begin
   inherited Create;
   FBindingIndex := -1;
-  if Supports(BorlandIDEServices, IOTAKeyboardServices, Keyboard) then
+  if Supports(BorlandIDEServices, IOTAKeyboardServices, mKeyboard) then
   begin
     FBinding := TBinding.Create;
     FBindingRef := FBinding;

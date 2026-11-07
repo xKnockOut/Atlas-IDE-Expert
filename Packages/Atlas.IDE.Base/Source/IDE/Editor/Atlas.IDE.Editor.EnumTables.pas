@@ -22,8 +22,8 @@ uses
 type
   TAtlasIdeEnumTables = class
   public const
-    ClientCommand = 'atlas.enumTable';
-    SyncClientCommand = 'atlas.enumTablesSync';
+    cClientCommand = 'atlas.enumTable';
+    cSyncClientCommand = 'atlas.enumTablesSync';
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position, name, stelle]); ASession: laufende
     /// Sitzung oder nil; AMessage: Zeile für die Meldungsansicht.</summary>
@@ -41,39 +41,39 @@ uses
   Atlas.IDE.Editor.NamedRefactoring;
 
 const
-  ApplyCommand = 'atlas.server.enumTable';
-  SyncApplyCommand = 'atlas.server.enumTablesSync';
+  cApplyCommand = 'atlas.server.enumTable';
+  cSyncApplyCommand = 'atlas.server.enumTablesSync';
 
 class procedure TAtlasIdeEnumTables.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  Texts: TAtlasNamedRefactoringTexts;
+  mTexts: TAtlasNamedRefactoringTexts;
 begin
-  Texts.Title := TAtlasTextId.EnumTableTitle;
-  Texts.Prompt := TAtlasTextId.EnumTablePrompt;
-  Texts.Failed := TAtlasTextId.EnumTableFailed;
-  Texts.Nothing := TAtlasTextId.EnumTableNothing;
-  Texts.PreviewHint := TAtlasTextId.EnumTablesPreviewHint;
-  Texts.Apply := TAtlasTextId.EnumTableApply;
-  Texts.Done := TAtlasTextId.EnumTableDone;
-  Texts.Warning := TAtlasTextId.EnumTablesWarning;
-  TAtlasIdeNamedRefactoring.Execute(ASession, AArgumentsJson, ApplyCommand, Texts, APolicy, AMessage);
+  mTexts.Title := TAtlasTextId.EnumTableTitle;
+  mTexts.Prompt := TAtlasTextId.EnumTablePrompt;
+  mTexts.Failed := TAtlasTextId.EnumTableFailed;
+  mTexts.Nothing := TAtlasTextId.EnumTableNothing;
+  mTexts.PreviewHint := TAtlasTextId.EnumTablesPreviewHint;
+  mTexts.Apply := TAtlasTextId.EnumTableApply;
+  mTexts.Done := TAtlasTextId.EnumTableDone;
+  mTexts.Warning := TAtlasTextId.EnumTablesWarning;
+  TAtlasIdeNamedRefactoring.Execute(ASession, AArgumentsJson, cApplyCommand, mTexts, APolicy, AMessage);
 end;
 
 class procedure TAtlasIdeEnumTables.ExecuteSync(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  Texts: TAtlasNamedRefactoringTexts;
+  mTexts: TAtlasNamedRefactoringTexts;
 begin
-  Texts.Title := TAtlasTextId.EnumTablesSyncTitle;
-  Texts.Prompt := TAtlasTextId.EnumTablesSyncTitle;
-  Texts.Failed := TAtlasTextId.EnumTablesSyncFailed;
-  Texts.Nothing := TAtlasTextId.EnumTablesSyncNothing;
-  Texts.PreviewHint := TAtlasTextId.EnumTablesPreviewHint;
-  Texts.Apply := TAtlasTextId.EnumTablesSyncApply;
-  Texts.Done := TAtlasTextId.EnumTablesSyncDone;
-  Texts.Warning := TAtlasTextId.EnumTablesWarning;
-  TAtlasIdeNamedRefactoring.ExecuteWithoutName(ASession, AArgumentsJson, SyncApplyCommand, Texts, APolicy,
+  mTexts.Title := TAtlasTextId.EnumTablesSyncTitle;
+  mTexts.Prompt := TAtlasTextId.EnumTablesSyncTitle;
+  mTexts.Failed := TAtlasTextId.EnumTablesSyncFailed;
+  mTexts.Nothing := TAtlasTextId.EnumTablesSyncNothing;
+  mTexts.PreviewHint := TAtlasTextId.EnumTablesPreviewHint;
+  mTexts.Apply := TAtlasTextId.EnumTablesSyncApply;
+  mTexts.Done := TAtlasTextId.EnumTablesSyncDone;
+  mTexts.Warning := TAtlasTextId.EnumTablesWarning;
+  TAtlasIdeNamedRefactoring.ExecuteWithoutName(ASession, AArgumentsJson, cSyncApplyCommand, mTexts, APolicy,
     AMessage);
 end;
 

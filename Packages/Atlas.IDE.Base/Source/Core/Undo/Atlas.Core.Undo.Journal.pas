@@ -31,8 +31,8 @@ uses
 type
   TAtlasUndoOptions = record
   public const
-    MinDepth = 1;
-    MaxDepth = 200;
+    cMinDepth = 1;
+    cMaxDepth = 200;
   public
     /// <summary>undo.multiFile: aus = nichts protokollieren, Zurücknehmen meldet Disabled.</summary>
     Enabled: Boolean;
@@ -163,15 +163,15 @@ end;
 procedure TAtlasUndoJournal.SetOptions(const AValue: TAtlasUndoOptions);
 begin
   FOptions := AValue;
-  FOptions.Depth := EnsureRange(FOptions.Depth, TAtlasUndoOptions.MinDepth, TAtlasUndoOptions.MaxDepth);
+  FOptions.Depth := EnsureRange(FOptions.Depth, TAtlasUndoOptions.cMinDepth, TAtlasUndoOptions.cMaxDepth);
   Trim;
 end;
 
 procedure TAtlasUndoJournal.Trim;
 var
-  Dropped: Boolean;
+  mDropped: Boolean;
 begin
-  Dropped := False;
+  mDropped := False;
   while FSets.Count > FOptions.Depth do
   begin
     if FStore <> nil then
@@ -180,9 +180,9 @@ begin
     end;
     FRedoStack.Remove(FSets[0].Id);
     FSets.Delete(0);
-    Dropped := True;
+    mDropped := True;
   end;
-  if Dropped then
+  if mDropped then
   begin
     Changed;
   end;
@@ -196,61 +196,61 @@ end;
 function TAtlasUndoJournal.Add(const AAction: string; const AFiles: TArray<TAtlasFileChange>;
   ATime: TDateTime): Integer;
 var
-  ChangeSet: TAtlasChangeSet;
-  Change: TAtlasFileChange;
-  FileOps: Boolean;
+  mChangeSet: TAtlasChangeSet;
+  mChange: TAtlasFileChange;
+  mFileOps: Boolean;
 begin
   Result := 0;
   if not FOptions.Enabled then
   begin
     Exit;
   end;
-  ChangeSet := Default(TAtlasChangeSet);
-  FileOps := False;
-  for Change in AFiles do
+  mChangeSet := Default(TAtlasChangeSet);
+  mFileOps := False;
+  for mChange in AFiles do
   begin
-    if (Change.Kind = TAtlasFileChangeKind.Modified) and (Change.Before.Text = Change.After.Text) and
-      (Change.Before.Encoding = Change.After.Encoding) then
+    if (mChange.Kind = TAtlasFileChangeKind.Modified) and (mChange.Before.Text = mChange.After.Text) and
+      (mChange.Before.Encoding = mChange.After.Encoding) then
     begin
       Continue;
     end;
-    if Change.Kind <> TAtlasFileChangeKind.Modified then
+    if mChange.Kind <> TAtlasFileChangeKind.Modified then
     begin
-      FileOps := True;
+      mFileOps := True;
     end;
-    ChangeSet.Files := ChangeSet.Files + [Change];
-    ChangeSet.Files[High(ChangeSet.Files)].Undone := False;
+    mChangeSet.Files := mChangeSet.Files + [mChange];
+    mChangeSet.Files[High(mChangeSet.Files)].Undone := False;
   end;
   // Eine einzelne geänderte Datei nimmt Strg+Z im Puffer zurück.
-  if (Length(ChangeSet.Files) = 0) or ((Length(ChangeSet.Files) = 1) and not FileOps) then
+  if (Length(mChangeSet.Files) = 0) or ((Length(mChangeSet.Files) = 1) and not mFileOps) then
   begin
     Exit;
   end;
-  ChangeSet.Id := FNextId;
+  mChangeSet.Id := FNextId;
   Inc(FNextId);
-  ChangeSet.Action := AAction;
-  ChangeSet.Time := ATime;
-  FSets.Add(ChangeSet);
+  mChangeSet.Action := AAction;
+  mChangeSet.Time := ATime;
+  FSets.Add(mChangeSet);
   FRedoStack.Clear;
   if FStore <> nil then
   begin
-    FStore.Save(ChangeSet);
+    FStore.Save(mChangeSet);
   end;
-  Log(Format('Atlas-Änderung #%d protokolliert: %d Dateien', [ChangeSet.Id, Length(ChangeSet.Files)]));
+  Log(Format('Atlas-Änderung #%d protokolliert: %d Dateien', [mChangeSet.Id, Length(mChangeSet.Files)]));
   Trim;
   Changed;
-  Result := ChangeSet.Id;
+  Result := mChangeSet.Id;
 end;
 
 function TAtlasUndoJournal.SetIndex(AId: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to FSets.Count - 1 do
+  for mIndex := 0 to FSets.Count - 1 do
   begin
-    if FSets[Index].Id = AId then
+    if FSets[mIndex].Id = AId then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -258,24 +258,24 @@ end;
 
 function TAtlasUndoJournal.Sets: TArray<TAtlasChangeSet>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   SetLength(Result, FSets.Count);
-  for Index := 0 to FSets.Count - 1 do
+  for mIndex := 0 to FSets.Count - 1 do
   begin
-    Result[Index] := FSets[FSets.Count - 1 - Index];
+    Result[mIndex] := FSets[FSets.Count - 1 - mIndex];
   end;
 end;
 
 function TAtlasUndoJournal.Find(AId: Integer; out ASet: TAtlasChangeSet): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := SetIndex(AId);
-  Result := Index >= 0;
+  mIndex := SetIndex(AId);
+  Result := mIndex >= 0;
   if Result then
   begin
-    ASet := FSets[Index];
+    ASet := FSets[mIndex];
   end
   else
   begin
@@ -290,13 +290,13 @@ end;
 
 function TAtlasUndoJournal.LastUndoable: Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := FSets.Count - 1 downto 0 do
+  for mIndex := FSets.Count - 1 downto 0 do
   begin
-    if FSets[Index].State <> TAtlasChangeSetState.Undone then
+    if FSets[mIndex].State <> TAtlasChangeSetState.Undone then
     begin
-      Exit(FSets[Index].Id);
+      Exit(FSets[mIndex].Id);
     end;
   end;
   Result := 0;
@@ -304,14 +304,14 @@ end;
 
 function TAtlasUndoJournal.LastRedoable: Integer;
 var
-  Index: Integer;
-  ChangeSet: TAtlasChangeSet;
+  mIndex: Integer;
+  mChangeSet: TAtlasChangeSet;
 begin
-  for Index := FRedoStack.Count - 1 downto 0 do
+  for mIndex := FRedoStack.Count - 1 downto 0 do
   begin
-    if Find(FRedoStack[Index], ChangeSet) and (ChangeSet.State <> TAtlasChangeSetState.Applied) then
+    if Find(FRedoStack[mIndex], mChangeSet) and (mChangeSet.State <> TAtlasChangeSetState.Applied) then
     begin
-      Exit(ChangeSet.Id);
+      Exit(mChangeSet.Id);
     end;
   end;
   Result := 0;
@@ -626,20 +626,20 @@ end;
 
 procedure TAtlasUndoJournal.Load;
 var
-  Loaded: TArray<TAtlasChangeSet>;
-  ChangeSet: TAtlasChangeSet;
+  mLoaded: TArray<TAtlasChangeSet>;
+  mChangeSet: TAtlasChangeSet;
 begin
   if FStore = nil then
   begin
     Exit;
   end;
-  Loaded := FStore.Load;
+  mLoaded := FStore.Load;
   FSets.Clear;
   FRedoStack.Clear;
-  for ChangeSet in Loaded do
+  for mChangeSet in mLoaded do
   begin
-    FSets.Add(ChangeSet);
-    FNextId := Max(FNextId, ChangeSet.Id + 1);
+    FSets.Add(mChangeSet);
+    FNextId := Max(FNextId, mChangeSet.Id + 1);
   end;
   Log(Format('Atlas-Änderungsprotokoll geladen: %d Sätze', [FSets.Count]));
   Trim;

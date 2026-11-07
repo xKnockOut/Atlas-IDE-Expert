@@ -52,42 +52,42 @@ uses
 procedure WriteBuffer(const ABuffer: IOTAEditBuffer; const AText: string; AStart, AOldLength: Integer;
   const AInsert: string);
 var
-  Writer: IOTAEditWriter;
+  mWriter: IOTAEditWriter;
 begin
-  Writer := ABuffer.CreateUndoableWriter;
-  Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
-  Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
+  mWriter := ABuffer.CreateUndoableWriter;
+  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
+  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
   if AInsert <> '' then
   begin
-    Writer.Insert(PAnsiChar(UTF8Encode(AInsert)));
+    mWriter.Insert(PAnsiChar(UTF8Encode(AInsert)));
   end;
-  Writer := nil;
+  mWriter := nil;
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
 function EditPos(const ALines: TArray<string>; const APosition: TLspTextPosition; ATabWidth: Integer): TOTAEditPos;
 var
-  LineText: string;
+  mLineText: string;
 begin
-  LineText := '';
+  mLineText := '';
   if (APosition.Line >= 0) and (APosition.Line < Length(ALines)) then
   begin
-    LineText := ALines[APosition.Line];
+    mLineText := ALines[APosition.Line];
   end;
   Result.Line := APosition.Line + 1;
-  Result.Col := TLspSession.IndexToColumn(LineText, APosition.Character, ATabWidth);
+  Result.Col := TLspSession.IndexToColumn(mLineText, APosition.Character, ATabWidth);
 end;
 
 function PositionOf(const ALines: TArray<string>; ARow, AColumn, ATabWidth: Integer): TLspTextPosition;
 var
-  LineText: string;
+  mLineText: string;
 begin
-  LineText := '';
+  mLineText := '';
   if (ARow >= 1) and (ARow <= Length(ALines)) then
   begin
-    LineText := ALines[ARow - 1];
+    mLineText := ALines[ARow - 1];
   end;
-  Result := TLspTextPosition.Create(ARow - 1, TLspSession.ColumnToIndex(LineText, AColumn, ATabWidth));
+  Result := TLspTextPosition.Create(ARow - 1, TLspSession.ColumnToIndex(mLineText, AColumn, ATabWidth));
 end;
 
 type
@@ -184,13 +184,13 @@ end;
 
 class function TAtlasIdeBlockComment.Options: TAtlasBlockCommentOptions;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result.Style := TAtlasBlockComment.StyleOf(Settings.ToggleBlockCommentStyle);
-  Result.Fallback := TAtlasBlockComment.FallbackOf(Settings.ToggleBlockCommentFallback);
-  Result.OwnLines := Settings.ToggleBlockCommentOwnLines;
-  Result.Scope := TAtlasBlockComment.ScopeOf(Settings.ToggleBlockCommentWithoutSelection);
+  mSettings := TAtlasIdeSettings.Current;
+  Result.Style := TAtlasBlockComment.StyleOf(mSettings.ToggleBlockCommentStyle);
+  Result.Fallback := TAtlasBlockComment.FallbackOf(mSettings.ToggleBlockCommentFallback);
+  Result.OwnLines := mSettings.ToggleBlockCommentOwnLines;
+  Result.Scope := TAtlasBlockComment.ScopeOf(mSettings.ToggleBlockCommentWithoutSelection);
 end;
 
 class procedure TAtlasIdeBlockComment.Run;

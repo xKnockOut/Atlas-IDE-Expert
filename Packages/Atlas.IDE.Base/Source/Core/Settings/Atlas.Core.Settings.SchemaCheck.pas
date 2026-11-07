@@ -83,15 +83,15 @@ end;
 
 function IsInteger(AValue: TJSONValue): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
   Result := False;
   if not (AValue is TJSONNumber) then
   begin
     Exit;
   end;
-  Text := AValue.ToString;
-  Result := (Pos('.', Text) = 0) and (Pos('e', LowerCase(Text)) = 0);
+  mText := AValue.ToString;
+  Result := (Pos('.', mText) = 0) and (Pos('e', LowerCase(mText)) = 0);
 end;
 
 function HasType(AValue: TJSONValue; const AType: string): Boolean;
@@ -133,7 +133,7 @@ end;
 
 function TypeMatches(AValue: TJSONValue; AType: TJSONValue; out AExpected: string): Boolean;
 var
-  Item: TJSONValue;
+  mItem: TJSONValue;
 begin
   AExpected := '';
   if IsText(AType) then
@@ -143,16 +143,16 @@ begin
   end;
   if AType is TJSONArray then
   begin
-    for Item in TJSONArray(AType) do
+    for mItem in TJSONArray(AType) do
     begin
-      if IsText(Item) then
+      if IsText(mItem) then
       begin
         if AExpected <> '' then
         begin
           AExpected := AExpected + '|';
         end;
-        AExpected := AExpected + Item.Value;
-        if HasType(AValue, Item.Value) then
+        AExpected := AExpected + mItem.Value;
+        if HasType(AValue, mItem.Value) then
         begin
           Exit(True);
         end;
@@ -165,14 +165,14 @@ end;
 
 procedure Add(var AIssues: TArray<string>; const APath, AMessage: string);
 var
-  Path: string;
+  mPath: string;
 begin
-  Path := APath;
-  if Path = '' then
+  mPath := APath;
+  if mPath = '' then
   begin
-    Path := '(Wurzel)';
+    mPath := '(Wurzel)';
   end;
-  AIssues := AIssues + [Path + ': ' + AMessage];
+  AIssues := AIssues + [mPath + ': ' + AMessage];
 end;
 
 function Child(const APath, AName: string): string;

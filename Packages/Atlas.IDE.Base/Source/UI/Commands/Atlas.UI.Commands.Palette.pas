@@ -42,7 +42,7 @@ type
   /// der Zusatzgruppe.</summary>
   TAtlasPaletteDrawing = class(TForm)
   protected const
-    VisibleRows = 12;
+    cVisibleRows = 12;
   protected
     FColors: TAtlasColors;
     function RowHeight: Integer;
@@ -156,7 +156,8 @@ type
     /// <summary>Einträge ersetzen (etwa die erste Liste, wenn OnQuery das Fenster braucht).</summary>
     procedure SetCommands(const ACommands: TArray<TAtlasCommand>);
     property Pattern: string read FPattern;
-    /// <summary>Reihenfolge der Einträge beibehalten statt alphabetisch (Code-Aktionen, #399); vor ShowOver setzen.</summary>
+    /// <summary>Reihenfolge der Einträge beibehalten statt alphabetisch (Code-Aktionen, #399); vor ShowOver
+    /// setzen.</summary>
     property KeepOrder: Boolean read FKeepOrder write SetKeepOrder;
     /// <summary>Einträge in der Reihenfolge von OnQuery bzw. ACommands zeigen, ohne zu filtern (#503).</summary>
     property Presorted: Boolean read FPresorted write SetPresorted;
@@ -314,29 +315,29 @@ end;
 
 procedure TAtlasPaletteDrawing.ShowOver(const AArea: TRect);
 var
-  Width_: Integer;
+  mWidth_: Integer;
 begin
-  Width_ := Min(ScaleValue(640), AArea.Width - ScaleValue(40));
-  SetBounds(AArea.Left + (AArea.Width - Width_) div 2, AArea.Top + ScaleValue(60), Width_,
-    InputHeight + VisibleRows * RowHeight + ScaleValue(8));
+  mWidth_ := Min(ScaleValue(640), AArea.Width - ScaleValue(40));
+  SetBounds(AArea.Left + (AArea.Width - mWidth_) div 2, AArea.Top + ScaleValue(60), mWidth_,
+    InputHeight + cVisibleRows * RowHeight + ScaleValue(8));
   Show;
   SetFocus;
 end;
 
 procedure TAtlasPaletteWindow.ShowAt(const APoint: TPoint; AWidth: Integer);
 var
-  Area: TRect;
-  Height_, Left_, Top_: Integer;
+  mArea: TRect;
+  mHeight_, mLeft_, mTop_: Integer;
 begin
-  Area := Screen.MonitorFromPoint(APoint).WorkareaRect;
-  Height_ := InputHeight + VisibleRows * RowHeight + ScaleValue(8);
-  Left_ := Max(Area.Left, Min(APoint.X, Area.Right - AWidth));
-  Top_ := APoint.Y;
-  if Top_ + Height_ > Area.Bottom then
+  mArea := Screen.MonitorFromPoint(APoint).WorkareaRect;
+  mHeight_ := InputHeight + cVisibleRows * RowHeight + ScaleValue(8);
+  mLeft_ := Max(mArea.Left, Min(APoint.X, mArea.Right - AWidth));
+  mTop_ := APoint.Y;
+  if mTop_ + mHeight_ > mArea.Bottom then
   begin
-    Top_ := Max(Area.Top, Area.Bottom - Height_);
+    mTop_ := Max(mArea.Top, mArea.Bottom - mHeight_);
   end;
-  SetBounds(Left_, Top_, AWidth, Height_);
+  SetBounds(mLeft_, mTop_, AWidth, mHeight_);
   // Leere Eingabe: der aktuelle Eintrag ist gewählt.
   Refilter;
   Show;
@@ -366,14 +367,14 @@ end;
 
 procedure TAtlasPaletteWindow.Refilter;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if FPresorted then
   begin
     SetLength(FOrder, Length(FCommands));
-    for Index := 0 to High(FCommands) do
+    for mIndex := 0 to High(FCommands) do
     begin
-      FOrder[Index] := Index;
+      FOrder[mIndex] := mIndex;
     end;
   end
   else
@@ -385,11 +386,11 @@ begin
   SelectFirst;
   if (FPattern = '') and (FInitialId <> '') then
   begin
-    for Index := 0 to High(FOrder) do
+    for mIndex := 0 to High(FOrder) do
     begin
-      if FCommands[FOrder[Index]].Id = FInitialId then
+      if FCommands[FOrder[mIndex]].Id = FInitialId then
       begin
-        Select(Index);
+        Select(mIndex);
         Break;
       end;
     end;
@@ -438,9 +439,9 @@ begin
   begin
     FTop := FSelected;
   end
-  else if FSelected >= FTop + VisibleRows then
+  else if FSelected >= FTop + cVisibleRows then
   begin
-    FTop := FSelected - VisibleRows + 1;
+    FTop := FSelected - cVisibleRows + 1;
   end;
   Invalidate;
 end;
@@ -481,10 +482,10 @@ end;
 
 procedure TAtlasPaletteWindow.Execute;
 var
-  Command: TAtlasCommand;
-  Handler: TProc<TAtlasCommand>;
-  ShiftHandler: TProc<TAtlasCommand, Boolean>;
-  Shifted: Boolean;
+  mCommand: TAtlasCommand;
+  mHandler: TProc<TAtlasCommand>;
+  mShiftHandler: TProc<TAtlasCommand, Boolean>;
+  mShifted: Boolean;
   mIndex: Integer;
 begin
   if (RowCount = 0) or FExecuting then
@@ -493,7 +494,7 @@ begin
   end;
   case RowKind(FSelected, mIndex) of
     TAtlasPaletteRowKind.Command:
-      Command := FCommands[FOrder[mIndex]];
+      mCommand := FCommands[FOrder[mIndex]];
     TAtlasPaletteRowKind.Item:
       begin
         ExecuteItem(FGroup.Items[mIndex], TAtlasPaletteRows.ActionOf(FCtrlExecuted, FShiftExecuted));
@@ -503,28 +504,28 @@ begin
     Exit;
   end;
   FExecuting := True;
-  Handler := FOnExecute;
-  ShiftHandler := FOnExecuteShift;
-  Shifted := FShiftExecuted;
+  mHandler := FOnExecute;
+  mShiftHandler := FOnExecuteShift;
+  mShifted := FShiftExecuted;
   NotifyClosed;
   Close;
-  if Assigned(ShiftHandler) then
+  if Assigned(mShiftHandler) then
   begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.Palette,
       procedure
       begin
-        ShiftHandler(Command, Shifted);
+        mShiftHandler(mCommand, mShifted);
       end);
     Release;
     Exit;
   end;
   // Erst nach dem Schließen ausführen: Der Befehl öffnet evtl. selbst einen Dialog.
-  if Assigned(Handler) then
+  if Assigned(mHandler) then
   begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.Palette,
       procedure
       begin
-        Handler(Command);
+        mHandler(mCommand);
       end);
   end;
   Release;
@@ -559,9 +560,9 @@ begin
     VK_DOWN:
       Step(1);
     VK_PRIOR:
-      Step(-VisibleRows);
+      Step(-cVisibleRows);
     VK_NEXT:
-      Step(VisibleRows);
+      Step(cVisibleRows);
     Ord('C'):
       begin
         // Strg+C auf einem Eintrag der Gruppe: Kennung kopieren (#1270); sonst wie bisher nichts.
@@ -602,17 +603,17 @@ end;
 
 procedure TAtlasPaletteWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  Row: Integer;
+  mRow: Integer;
 begin
   inherited;
   if Y < InputHeight then
   begin
     Exit;
   end;
-  Row := (Y - InputHeight) div RowHeight;
-  if Rows.Selectable(FTop + Row) then
+  mRow := (Y - InputHeight) div RowHeight;
+  if Rows.Selectable(FTop + mRow) then
   begin
-    Select(FTop + Row);
+    Select(FTop + mRow);
     FShiftExecuted := False;
     FCtrlExecuted := False;
     Execute;
@@ -621,37 +622,37 @@ end;
 
 function TAtlasPaletteWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
 begin
-  FTop := EnsureRange(FTop - Sign(WheelDelta) * 3, 0, Max(0, RowCount - VisibleRows));
+  FTop := EnsureRange(FTop - Sign(WheelDelta) * 3, 0, Max(0, RowCount - cVisibleRows));
   Invalidate;
   Result := True;
 end;
 
 procedure TAtlasPaletteDrawing.DrawHighlighted(const AText, AHighlight: string; const ARect: TRect);
 var
-  Marks: TArray<Boolean>;
-  Position, Index, Run, X: Integer;
-  Part: TRect;
-  Chunk: string;
+  mMarks: TArray<Boolean>;
+  mPosition, mIndex, mRun, X: Integer;
+  mPart: TRect;
+  mChunk: string;
 begin
-  SetLength(Marks, Length(AText) + 1);
-  for Position in TAtlasItemPresentation.Highlights(AHighlight, AText) do
+  SetLength(mMarks, Length(AText) + 1);
+  for mPosition in TAtlasItemPresentation.Highlights(AHighlight, AText) do
   begin
-    if (Position >= 1) and (Position <= Length(AText)) then
+    if (mPosition >= 1) and (mPosition <= Length(AText)) then
     begin
-      Marks[Position] := True;
+      mMarks[mPosition] := True;
     end;
   end;
   X := ARect.Left;
-  Index := 1;
-  while Index <= Length(AText) do
+  mIndex := 1;
+  while mIndex <= Length(AText) do
   begin
-    Run := Index;
-    while (Run < Length(AText)) and (Marks[Run + 1] = Marks[Index]) do
+    mRun := mIndex;
+    while (mRun < Length(AText)) and (mMarks[mRun + 1] = mMarks[mIndex]) do
     begin
-      Inc(Run);
+      Inc(mRun);
     end;
-    Chunk := Copy(AText, Index, Run - Index + 1);
-    if Marks[Index] then
+    mChunk := Copy(AText, mIndex, mRun - mIndex + 1);
+    if mMarks[mIndex] then
     begin
       Canvas.Font.Style := [fsBold];
       Canvas.Font.Color := ToColor(FColors.Accent);
@@ -661,10 +662,10 @@ begin
       Canvas.Font.Style := [];
       Canvas.Font.Color := ToColor(FColors.Text);
     end;
-    Part := Rect(X, ARect.Top, ARect.Right, ARect.Bottom);
-    DrawText(Canvas.Handle, PChar(Chunk), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
-    Inc(X, Canvas.TextWidth(Chunk));
-    Index := Run + 1;
+    mPart := Rect(X, ARect.Top, ARect.Right, ARect.Bottom);
+    DrawText(Canvas.Handle, PChar(mChunk), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+    Inc(X, Canvas.TextWidth(mChunk));
+    mIndex := mRun + 1;
   end;
   Canvas.Font.Style := [];
 end;
@@ -672,51 +673,51 @@ end;
 procedure TAtlasPaletteDrawing.DrawCommand(const ACommand: TAtlasCommand; const ARow: TRect; ASelected: Boolean;
   const AHighlight: string);
 var
-  Row, Part: TRect;
-  ShortCutWidth, CaptionWidth, mBadgeWidth: Integer;
+  mRow, mPart: TRect;
+  mShortCutWidth, mCaptionWidth, mBadgeWidth: Integer;
 begin
-  Row := ARow;
+  mRow := ARow;
   if ASelected then
   begin
     Canvas.Brush.Color := ToColor(FColors.Selection);
-    Canvas.FillRect(Row);
+    Canvas.FillRect(mRow);
   end;
   Canvas.Brush.Style := bsClear;
-  InflateRect(Row, -ScaleValue(8), 0);
-  ShortCutWidth := 0;
+  InflateRect(mRow, -ScaleValue(8), 0);
+  mShortCutWidth := 0;
   if ACommand.ShortCut <> '' then
   begin
     Canvas.Font.Color := ToColor(FColors.Muted);
-    ShortCutWidth := Canvas.TextWidth(ACommand.ShortCut);
-    Part := Rect(Row.Right - ShortCutWidth, Row.Top, Row.Right, Row.Bottom);
-    DrawText(Canvas.Handle, PChar(ACommand.ShortCut), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
-    Inc(ShortCutWidth, ScaleValue(16));
+    mShortCutWidth := Canvas.TextWidth(ACommand.ShortCut);
+    mPart := Rect(mRow.Right - mShortCutWidth, mRow.Top, mRow.Right, mRow.Bottom);
+    DrawText(Canvas.Handle, PChar(ACommand.ShortCut), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+    Inc(mShortCutWidth, ScaleValue(16));
   end;
   // Abzeichen (Zustand eines Issues, #1270) rechts, vor dem Tastenkürzel.
   if ACommand.Badge <> '' then
   begin
     Canvas.Font.Size := Font.Size - 1;
     mBadgeWidth := Canvas.TextWidth(ACommand.Badge) + ScaleValue(12);
-    Part := Rect(Row.Right - ShortCutWidth - mBadgeWidth, Row.Top + ScaleValue(4), Row.Right - ShortCutWidth,
-      Row.Bottom - ScaleValue(4));
+    mPart := Rect(mRow.Right - mShortCutWidth - mBadgeWidth, mRow.Top + ScaleValue(4), mRow.Right - mShortCutWidth,
+      mRow.Bottom - ScaleValue(4));
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := ToColor(FColors.Gutter);
     Canvas.Pen.Color := ToColor(FColors.Muted);
-    Canvas.RoundRect(Part.Left, Part.Top, Part.Right, Part.Bottom, ScaleValue(8), ScaleValue(8));
+    Canvas.RoundRect(mPart.Left, mPart.Top, mPart.Right, mPart.Bottom, ScaleValue(8), ScaleValue(8));
     Canvas.Brush.Style := bsClear;
     Canvas.Font.Color := ToColor(FColors.Text);
-    DrawText(Canvas.Handle, PChar(ACommand.Badge), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_CENTER or
+    DrawText(Canvas.Handle, PChar(ACommand.Badge), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_CENTER or
       DT_NOPREFIX);
     Canvas.Font.Size := Font.Size;
-    Inc(ShortCutWidth, mBadgeWidth + ScaleValue(10));
+    Inc(mShortCutWidth, mBadgeWidth + ScaleValue(10));
   end;
-  CaptionWidth := Min(Canvas.TextWidth(ACommand.Caption) + ScaleValue(4), Row.Width - ShortCutWidth);
-  DrawHighlighted(ACommand.Caption, AHighlight, Rect(Row.Left, Row.Top, Row.Left + CaptionWidth, Row.Bottom));
+  mCaptionWidth := Min(Canvas.TextWidth(ACommand.Caption) + ScaleValue(4), mRow.Width - mShortCutWidth);
+  DrawHighlighted(ACommand.Caption, AHighlight, Rect(mRow.Left, mRow.Top, mRow.Left + mCaptionWidth, mRow.Bottom));
   if ACommand.Path <> '' then
   begin
     Canvas.Font.Color := ToColor(FColors.Muted);
-    Part := Rect(Row.Left + CaptionWidth + ScaleValue(10), Row.Top, Row.Right - ShortCutWidth, Row.Bottom);
-    DrawText(Canvas.Handle, PChar(ACommand.Path), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
+    mPart := Rect(mRow.Left + mCaptionWidth + ScaleValue(10), mRow.Top, mRow.Right - mShortCutWidth, mRow.Bottom);
+    DrawText(Canvas.Handle, PChar(ACommand.Path), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
       DT_END_ELLIPSIS);
   end;
   Canvas.Brush.Style := bsSolid;
@@ -724,19 +725,19 @@ end;
 
 procedure TAtlasPaletteWindow.DrawRow(ARow: Integer);
 var
-  Row: TRect;
+  mRow: TRect;
   mIndex: Integer;
 begin
-  Row := RowRect(ARow);
+  mRow := RowRect(ARow);
   case RowKind(FTop + ARow, mIndex) of
     TAtlasPaletteRowKind.Command:
-      DrawCommand(FCommands[FOrder[mIndex]], Row, FTop + ARow = FSelected, HighlightOf(FPattern));
+      DrawCommand(FCommands[FOrder[mIndex]], mRow, FTop + ARow = FSelected, HighlightOf(FPattern));
     TAtlasPaletteRowKind.Item:
-      DrawCommand(FGroup.Items[mIndex], Row, FTop + ARow = FSelected, FGroup.Highlight);
+      DrawCommand(FGroup.Items[mIndex], mRow, FTop + ARow = FSelected, FGroup.Highlight);
     TAtlasPaletteRowKind.Header:
-      DrawHeader(Row, FGroup.Title);
+      DrawHeader(mRow, FGroup.Title);
     TAtlasPaletteRowKind.Status:
-      DrawStatus(Row, FGroup.Status);
+      DrawStatus(mRow, FGroup.Status);
   end;
 end;
 
@@ -773,15 +774,15 @@ end;
 
 procedure TAtlasPaletteDrawing.DrawInput(const APattern, APrompt: string);
 var
-  Input: TRect;
+  mInput: TRect;
   mText: string;
 begin
   // Eingabefeld mit Akzentrahmen.
-  Input := Rect(ScaleValue(6), ScaleValue(6), ClientWidth - ScaleValue(6), InputHeight - ScaleValue(4));
+  mInput := Rect(ScaleValue(6), ScaleValue(6), ClientWidth - ScaleValue(6), InputHeight - ScaleValue(4));
   Canvas.Pen.Color := ToColor(FColors.Accent);
   Canvas.Brush.Color := ToColor(FColors.Gutter);
-  Canvas.Rectangle(Input);
-  InflateRect(Input, -ScaleValue(8), 0);
+  Canvas.Rectangle(mInput);
+  InflateRect(mInput, -ScaleValue(8), 0);
   Canvas.Brush.Style := bsClear;
   if APattern = '' then
   begin
@@ -793,23 +794,23 @@ begin
     Canvas.Font.Color := ToColor(FColors.Text);
     mText := APattern + '|';
   end;
-  DrawText(Canvas.Handle, PChar(mText), -1, Input, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+  DrawText(Canvas.Handle, PChar(mText), -1, mInput, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   Canvas.Brush.Style := bsSolid;
 end;
 
 procedure TAtlasPaletteWindow.Paint;
 var
-  Row: Integer;
+  mRow: Integer;
 begin
   Canvas.Font := Font;
   Canvas.Brush.Color := ToColor(FColors.Surface);
   Canvas.FillRect(ClientRect);
   DrawInput(FPattern, FPrompt);
-  for Row := 0 to VisibleRows - 1 do
+  for mRow := 0 to cVisibleRows - 1 do
   begin
-    if FTop + Row < RowCount then
+    if FTop + mRow < RowCount then
     begin
-      DrawRow(Row);
+      DrawRow(mRow);
     end;
   end;
   // Rahmen des Fensters.

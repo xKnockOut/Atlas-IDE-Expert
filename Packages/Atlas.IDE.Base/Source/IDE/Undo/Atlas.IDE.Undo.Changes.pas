@@ -74,7 +74,7 @@ uses
   Atlas.IDE.Undo.Target;
 
 const
-  BytesPerMb = 1024 * 1024;
+  cBytesPerMb = 1024 * 1024;
 
 class function TAtlasIdeUndo.DefaultFolder: string;
 begin
@@ -150,27 +150,27 @@ end;
 
 class procedure TAtlasIdeUndo.ApplySettings;
 var
-  Settings: TAtlasPluginSettings;
-  Options: TAtlasUndoOptions;
-  Persist: Boolean;
+  mSettings: TAtlasPluginSettings;
+  mOptions: TAtlasUndoOptions;
+  mPersist: Boolean;
 begin
   if FJournal = nil then
   begin
     Exit;
   end;
-  Settings := TAtlasIdeSettings.Current;
-  Options.Enabled := Settings.UndoMultiFile;
-  Options.Depth := Settings.UndoMultiFileDepth;
-  Options.OnConflict := TAtlasUndoNames.ParseConflictMode(Settings.UndoMultiFileOnConflict);
-  Options.NewFiles := TAtlasUndoNames.ParseNewFiles(Settings.UndoMultiFileNewFiles);
-  Persist := Settings.UndoMultiFile and Settings.UndoMultiFilePersist;
-  if (Persist <> FPersist) or (Settings.UndoMultiFileMaxSizeMb <> FMaxSizeMb) then
+  mSettings := TAtlasIdeSettings.Current;
+  mOptions.Enabled := mSettings.UndoMultiFile;
+  mOptions.Depth := mSettings.UndoMultiFileDepth;
+  mOptions.OnConflict := TAtlasUndoNames.ParseConflictMode(mSettings.UndoMultiFileOnConflict);
+  mOptions.NewFiles := TAtlasUndoNames.ParseNewFiles(mSettings.UndoMultiFileNewFiles);
+  mPersist := mSettings.UndoMultiFile and mSettings.UndoMultiFilePersist;
+  if (mPersist <> FPersist) or (mSettings.UndoMultiFileMaxSizeMb <> FMaxSizeMb) then
   begin
-    FPersist := Persist;
-    FMaxSizeMb := Settings.UndoMultiFileMaxSizeMb;
-    if Persist and Assigned(FStoreFactory) then
+    FPersist := mPersist;
+    FMaxSizeMb := mSettings.UndoMultiFileMaxSizeMb;
+    if mPersist and Assigned(FStoreFactory) then
     begin
-      FJournal.Store := FStoreFactory(FFolder, Int64(FMaxSizeMb) * BytesPerMb);
+      FJournal.Store := FStoreFactory(FFolder, Int64(FMaxSizeMb) * cBytesPerMb);
     end
     else
     begin
@@ -179,9 +179,9 @@ begin
       FJournal.Store := nil;
     end;
   end;
-  FJournal.Options := Options;
+  FJournal.Options := mOptions;
   // Aus: Das Protokoll ist leer, die Aktionen schreiben wie bisher.
-  if not Settings.UndoMultiFile and (FJournal.Count > 0) then
+  if not mSettings.UndoMultiFile and (FJournal.Count > 0) then
   begin
     FJournal.Clear;
   end;
@@ -208,13 +208,13 @@ end;
 
 class procedure TAtlasIdeUndo.Say(const ALines: TArray<string>);
 var
-  Line: string;
+  mLine: string;
 begin
   if Assigned(FOnMessage) then
   begin
-    for Line in ALines do
+    for mLine in ALines do
     begin
-      FOnMessage(Line);
+      FOnMessage(mLine);
     end;
   end;
 end;
@@ -262,13 +262,13 @@ end;
 
 class procedure TAtlasIdeUndo.Refresh;
 var
-  Frame: TAtlasResultsFrame;
+  mFrame: TAtlasResultsFrame;
 begin
   // Nur eine schon sichtbare Liste aktualisieren; nie das Fenster deswegen öffnen.
-  Frame := TAtlasIdeResultsWindow.ExistingFrame;
-  if (FJournal <> nil) and (Frame <> nil) and Frame.Changes.Shows then
+  mFrame := TAtlasIdeResultsWindow.ExistingFrame;
+  if (FJournal <> nil) and (mFrame <> nil) and mFrame.Changes.Shows then
   begin
-    Frame.Changes.Show(TAtlasStrings.Fmt(TAtlasTextId.UndoListTitle, [FJournal.Count]), FJournal.Sets, Now, True);
+    mFrame.Changes.Show(TAtlasStrings.Fmt(TAtlasTextId.UndoListTitle, [FJournal.Count]), FJournal.Sets, Now, True);
   end;
 end;
 
@@ -304,14 +304,14 @@ end;
 
 class procedure TAtlasIdeUndo.ShowDiff(AId: Integer; const AFileName: string);
 var
-  ChangeSet: TAtlasChangeSet;
+  mChangeSet: TAtlasChangeSet;
 begin
-  if (FJournal = nil) or not FJournal.Find(AId, ChangeSet) then
+  if (FJournal = nil) or not FJournal.Find(AId, mChangeSet) then
   begin
     Exit;
   end;
-  TAtlasUndoDiffView.Execute(TAtlasStrings.Fmt(TAtlasTextId.UndoDiffTitle, [ChangeSet.Action]),
-    TAtlasUndoMessages.DiffLines(ChangeSet, AFileName));
+  TAtlasUndoDiffView.Execute(TAtlasStrings.Fmt(TAtlasTextId.UndoDiffTitle, [mChangeSet.Action]),
+    TAtlasUndoMessages.DiffLines(mChangeSet, AFileName));
 end;
 
 end.

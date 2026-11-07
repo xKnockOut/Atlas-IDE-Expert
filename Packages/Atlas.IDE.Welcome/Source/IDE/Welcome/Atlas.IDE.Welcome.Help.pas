@@ -238,7 +238,7 @@ end;
 class function TAtlasIdeHelp.PackageInput: TAtlasPackageInput;
 begin
   Result := Default(TAtlasPackageInput);
-  Result.AtlasVersion := TAtlasPluginVersion.Version;
+  Result.AtlasVersion := TAtlasPluginVersion.cVersion;
   Result.IdeVersion := TAtlasSettingChoices.DelphiCaption(TAtlasUpdates.IdeVersion);
   Result.WindowsVersion := TOSVersion.ToString;
   {$IFDEF WIN64}
@@ -248,7 +248,7 @@ begin
   {$ENDIF}
   Result.PluginLog := TPath.Combine(TAtlasRotatingLog.DefaultFolder, 'atlas.log');
   Result.ServerLogs := TAtlasDiagnosticExport.Files(TAtlasDiagnosticExport.DefaultFolder,
-    TAtlasDiagnosticExport.DefaultDays, Now);
+    TAtlasDiagnosticExport.cDefaultDays, Now);
   Result.SettingsJson := TAtlasIdeBugReport.SettingsJson;
   Result.LastDataFile := TAtlasIdeDiagnosticMode.LastDataFile;
   Result.Roots := TAtlasIdeBugReport.ProjectRoots;

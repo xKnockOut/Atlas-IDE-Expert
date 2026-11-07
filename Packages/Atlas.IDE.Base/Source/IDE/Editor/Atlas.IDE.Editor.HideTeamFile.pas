@@ -99,7 +99,7 @@ begin
     Exit('');
   end;
   Result := ExtractFileDir(mProject);
-  AFileName := TPath.Combine(Result, TAtlasTeamFile.FileName);
+  AFileName := TPath.Combine(Result, TAtlasTeamFile.cFileName);
 end;
 
 class function TAtlasIdeHideTeamFile.Add(const APlace: TAtlasHiddenPlace; out AFileName, ADetail: string): Boolean;

@@ -95,7 +95,7 @@ begin
   Result := '';
   for Index in AOrder do
   begin
-    if Index = TAtlasRanking.UnknownHeader then
+    if Index = TAtlasRanking.cUnknownHeader then
     begin
       Result := Result + '? ';
     end

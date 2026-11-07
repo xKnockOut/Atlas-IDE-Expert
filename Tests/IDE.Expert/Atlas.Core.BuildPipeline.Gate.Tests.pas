@@ -208,8 +208,8 @@ end;
 
 procedure TAtlasBuildGateTests.SettingsClampTimeout;
 begin
-  Assert.AreEqual(TAtlasBuildPipelineSettings.GateMinTimeoutMs, TAtlasGateSettings.Create('block', 0).TimeoutMs);
-  Assert.AreEqual(TAtlasBuildPipelineSettings.GateMaxTimeoutMs, TAtlasGateSettings.Create('block', 999999).TimeoutMs);
+  Assert.AreEqual(TAtlasBuildPipelineSettings.cGateMinTimeoutMs, TAtlasGateSettings.Create('block', 0).TimeoutMs);
+  Assert.AreEqual(TAtlasBuildPipelineSettings.cGateMaxTimeoutMs, TAtlasGateSettings.Create('block', 999999).TimeoutMs);
   Assert.AreEqual(300, TAtlasGateSettings.Create('block', 300).TimeoutMs);
   Assert.IsTrue(TAtlasGateSettings.Create('BLOCK', 300).Gate = TAtlasBuildGate.Block);
   Assert.IsTrue(TAtlasGateSettings.Create('streng', 300).Gate = TAtlasBuildGate.Off);
@@ -247,7 +247,7 @@ var
   mItem: TAtlasProblem;
 begin
   Assert.IsTrue(TAtlasBuildGateCheck.Counts(Problem(TAtlasProblemSeverity.Error, 'syntax', 'Atlas', 1)));
-  Assert.IsTrue(TAtlasBuildGateCheck.Counts(Problem(TAtlasProblemSeverity.Error, 'x', TAtlasProblem.ConfirmedSource,
+  Assert.IsTrue(TAtlasBuildGateCheck.Counts(Problem(TAtlasProblemSeverity.Error, 'x', TAtlasProblem.cConfirmedSource,
     1)), 'Atlas-Befund, vom Compiler bestätigt');
   Assert.IsFalse(TAtlasBuildGateCheck.Counts(Problem(TAtlasProblemSeverity.Warning, 'x', 'Atlas', 1)));
   Assert.IsFalse(TAtlasBuildGateCheck.Counts(Problem(TAtlasProblemSeverity.Hint, 'x', 'Atlas', 1)));

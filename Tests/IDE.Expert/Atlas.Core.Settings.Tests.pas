@@ -514,7 +514,7 @@ begin
   Assert.AreEqual(0, Loaded.MemoryBudgetMb);
   Store.WriteInteger('MemoryBudgetMb', 999999);
   Loaded.Load(Store);
-  Assert.AreEqual(TAtlasPluginSettings.MaxMemoryBudgetMb, Loaded.MemoryBudgetMb);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxMemoryBudgetMb, Loaded.MemoryBudgetMb);
 end;
 procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToGlobalFile;
 var
@@ -562,7 +562,7 @@ begin
   // Grenzen 0..50.
   Store.WriteInteger('XmlDocMaxLines', 99);
   Loaded.Load(Store);
-  Assert.AreEqual(TAtlasPluginSettings.MaxXmlDocLines, Loaded.XmlDocMaxLines);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxXmlDocLines, Loaded.XmlDocMaxLines);
   Store.WriteInteger('XmlDocMaxLines', -3);
   Loaded.Load(Store);
   Assert.AreEqual(0, Loaded.XmlDocMaxLines);
@@ -583,7 +583,7 @@ begin
   Assert.AreEqual(8, Loaded.HoverMembersMaxLines);
   Store.WriteInteger('HoverMembersMaxLines', 500);
   Loaded.Load(Store);
-  Assert.AreEqual(TAtlasPluginSettings.MaxHoverMembersLines, Loaded.HoverMembersMaxLines);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxHoverMembersLines, Loaded.HoverMembersMaxLines);
   Store.WriteInteger('HoverMembersMaxLines', -1);
   Loaded.Load(Store);
   Assert.AreEqual(0, Loaded.HoverMembersMaxLines);
@@ -620,7 +620,7 @@ begin
   Assert.AreEqual(400, Loaded.OpenDelayMs);
   Store.WriteInteger('OpenDelayMs', 99999);
   Loaded.Load(Store);
-  Assert.AreEqual(TAtlasPluginSettings.MaxOpenDelay, Loaded.OpenDelayMs);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxOpenDelay, Loaded.OpenDelayMs);
   Store.WriteInteger('OpenDelayMs', -1);
   Loaded.Load(Store);
   Assert.AreEqual(0, Loaded.OpenDelayMs);
@@ -646,7 +646,7 @@ begin
   Store.WriteString('ShortcutTipsScope', ' ATLAS ');
   Settings := Default(TAtlasPluginSettings);
   Settings.Load(Store);
-  Assert.AreEqual(TAtlasPluginSettings.MinProviderTimeLimit, Settings.ProviderTimeLimitMs);
+  Assert.AreEqual(TAtlasPluginSettings.cMinProviderTimeLimit, Settings.ProviderTimeLimitMs);
   Assert.AreEqual(0, Settings.SignatureKey, 'kein gültiges Kürzel');
   Store.WriteInteger('PairGuideWidth', 7);
   Store.WriteInteger('PairGuideOpacity', 0);
@@ -655,19 +655,19 @@ begin
   Store.WriteString('NestedRoutineColorDark', 'blau');
   Settings := Default(TAtlasPluginSettings);
   Settings.Load(Store);
-  Assert.AreEqual(TAtlasPluginSettings.MaxPairGuideWidth, Settings.PairGuideWidth);
-  Assert.AreEqual(TAtlasPluginSettings.MinPairGuideOpacity, Settings.PairGuideOpacity);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxPairGuideWidth, Settings.PairGuideWidth);
+  Assert.AreEqual(TAtlasPluginSettings.cMinPairGuideOpacity, Settings.PairGuideOpacity);
   Assert.AreEqual('', Settings.PairColorsLight, 'ungültige Farben = Standard');
   Assert.AreEqual('deeper', Settings.NestedRoutines, 'unbekannte Färbung = Vorgabe (#1788)');
   Assert.AreEqual('', Settings.NestedRoutineColorDark, 'ungültige Farbe = Palette (#1788)');
-  Assert.AreEqual(TAtlasPluginSettings.MaxVisibleRows, Settings.VisibleRows);
-  Assert.AreEqual(TAtlasPluginSettings.MinListWidth, Settings.ListWidth);
-  Assert.AreEqual(TAtlasPluginSettings.MaxPanelWidth, Settings.PanelWidth);
-  Assert.AreEqual(TAtlasPluginSettings.MinSafeStartupTimeout, Settings.SafeStartupTimeoutMs);
-  Assert.AreEqual(TAtlasPluginSettings.MaxSafeSettingsHistory, Settings.SafeKeepSettingsHistory);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxVisibleRows, Settings.VisibleRows);
+  Assert.AreEqual(TAtlasPluginSettings.cMinListWidth, Settings.ListWidth);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxPanelWidth, Settings.PanelWidth);
+  Assert.AreEqual(TAtlasPluginSettings.cMinSafeStartupTimeout, Settings.SafeStartupTimeoutMs);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxSafeSettingsHistory, Settings.SafeKeepSettingsHistory);
   Assert.AreEqual('shift', Settings.SafeStartupKey, 'unbekannte Taste: Umschalt');
-  Assert.AreEqual(TAtlasPluginSettings.MinUndoDepth, Settings.UndoMultiFileDepth);
-  Assert.AreEqual(TAtlasPluginSettings.MaxUndoMaxSizeMb, Settings.UndoMultiFileMaxSizeMb);
+  Assert.AreEqual(TAtlasPluginSettings.cMinUndoDepth, Settings.UndoMultiFileDepth);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxUndoMaxSizeMb, Settings.UndoMultiFileMaxSizeMb);
   Assert.AreEqual('abort', Settings.UndoMultiFileOnConflict);
   Assert.AreEqual('recycleBin', Settings.UndoMultiFileNewFiles, 'unbekannt: Papierkorb');
   // shortcutTips.scope (#600): nur atlas oder all.
@@ -678,17 +678,17 @@ begin
   // navigation.impactDepth (#1120): 1 bis 5.
   Settings.ImpactDepth := 0;
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinImpactDepth, Settings.ImpactDepth);
+  Assert.AreEqual(TAtlasPluginSettings.cMinImpactDepth, Settings.ImpactDepth);
   Settings.ImpactDepth := 9;
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MaxImpactDepth, Settings.ImpactDepth);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxImpactDepth, Settings.ImpactDepth);
   // tests.affectedDepth (#1353): 1 bis 5.
   Settings.TestsAffectedDepth := 0;
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinTestsAffectedDepth, Settings.TestsAffectedDepth);
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsAffectedDepth, Settings.TestsAffectedDepth);
   Settings.TestsAffectedDepth := 7;
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MaxTestsAffectedDepth, Settings.TestsAffectedDepth);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsAffectedDepth, Settings.TestsAffectedDepth);
 end;
 
 procedure TAtlasPluginSettingsTests.NormalizesUpdateChoices;
@@ -733,20 +733,20 @@ begin
   Assert.AreEqual(200, Settings.NotificationsMaxEntries);
   Assert.AreEqual($E04E, Settings.NotificationsKey, 'Strg+Umschalt+Alt+N');
   // Grenzen wie in der Zentrale.
-  Assert.AreEqual(TAtlasNotificationCenter.MinEntries, TAtlasPluginSettings.MinNotificationEntries);
-  Assert.AreEqual(TAtlasNotificationCenter.MaxMaxEntries, TAtlasPluginSettings.MaxNotificationEntries);
-  Assert.AreEqual(TAtlasNotificationCenter.DefaultMaxEntries, Settings.NotificationsMaxEntries);
+  Assert.AreEqual(TAtlasNotificationCenter.cMinEntries, TAtlasPluginSettings.cMinNotificationEntries);
+  Assert.AreEqual(TAtlasNotificationCenter.cMaxMaxEntries, TAtlasPluginSettings.cMaxNotificationEntries);
+  Assert.AreEqual(TAtlasNotificationCenter.cDefaultMaxEntries, Settings.NotificationsMaxEntries);
   Settings.NotificationsMaxEntries := 3;
   Settings.NotificationsSources := ' ShortcutTips = COLLECT ; server=show, build=laut, reload=off ';
   Settings.NotificationsKey := -1;
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinNotificationEntries, Settings.NotificationsMaxEntries);
+  Assert.AreEqual(TAtlasPluginSettings.cMinNotificationEntries, Settings.NotificationsMaxEntries);
   Assert.AreEqual('ShortcutTips=collect, reload=off', Settings.NotificationsSources,
     'show entfällt, unbekanntes Verhalten auch');
   Assert.AreEqual(0, Settings.NotificationsKey);
   Settings.NotificationsMaxEntries := 5000;
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MaxNotificationEntries, Settings.NotificationsMaxEntries);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxNotificationEntries, Settings.NotificationsMaxEntries);
   // Speichern und Laden.
   Settings.Notifications := False;
   Settings.NotificationsMaxEntries := 50;
@@ -815,15 +815,15 @@ begin
   // Dieselben Namen wie TAtlasListModes in der Vervollständigung.
   for Mode := Low(TAtlasListMode) to High(TAtlasListMode) do
   begin
-    Settings.CompletionListMode := TAtlasListModes.ModeNames[Mode];
+    Settings.CompletionListMode := TAtlasListModes.cModeNames[Mode];
     Settings.Normalize;
-    Assert.AreEqual(TAtlasListModes.ModeNames[Mode], Settings.CompletionListMode);
+    Assert.AreEqual(TAtlasListModes.cModeNames[Mode], Settings.CompletionListMode);
   end;
   for Scope := Low(TAtlasListScope) to High(TAtlasListScope) do
   begin
-    Settings.CompletionListScope := TAtlasListModes.ScopeNames[Scope];
+    Settings.CompletionListScope := TAtlasListModes.cScopeNames[Scope];
     Settings.Normalize;
-    Assert.AreEqual(TAtlasListModes.ScopeNames[Scope], Settings.CompletionListScope);
+    Assert.AreEqual(TAtlasListModes.cScopeNames[Scope], Settings.CompletionListScope);
   end;
 end;
 procedure TAtlasPluginSettingsTests.CompletionVariantBranchOption;

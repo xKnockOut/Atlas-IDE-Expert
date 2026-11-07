@@ -149,7 +149,7 @@ end;
 
 const
   /// <summary>Endung des Details, mit der der Server die Unit nennt, je Sprache der Servertexte (#1458).</summary>
-  UsesSuffixes: array[0..1] of string = (' (uses ergänzen)', ' (add to uses)'); // german-ok: Text des Servers
+  cUsesSuffixes: array[0..1] of string = (' (uses ergänzen)', ' (add to uses)'); // german-ok: Text des Servers
 
 function MakeBadge(AKind: TAtlasBadgeKind; const ACode: string): TAtlasBadge;
 begin
@@ -179,31 +179,31 @@ end;
 
 function Range(AStart, ACount: Integer): TArray<Integer>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   SetLength(Result, ACount);
-  for Index := 0 to ACount - 1 do
+  for mIndex := 0 to ACount - 1 do
   begin
-    Result[Index] := AStart + Index;
+    Result[mIndex] := AStart + mIndex;
   end;
 end;
 
 function WordStartPositions(const APattern, AName: string): TArray<Integer>;
 var
-  PatternIndex, NameIndex: Integer;
+  mPatternIndex, mNameIndex: Integer;
 begin
   Result := nil;
-  PatternIndex := 1;
-  for NameIndex := 1 to Length(AName) do
+  mPatternIndex := 1;
+  for mNameIndex := 1 to Length(AName) do
   begin
-    if (PatternIndex <= Length(APattern)) and IsWordStart(AName, NameIndex) and
-      SameChar(AName[NameIndex], APattern[PatternIndex]) then
+    if (mPatternIndex <= Length(APattern)) and IsWordStart(AName, mNameIndex) and
+      SameChar(AName[mNameIndex], APattern[mPatternIndex]) then
     begin
-      Result := Result + [NameIndex];
-      Inc(PatternIndex);
+      Result := Result + [mNameIndex];
+      Inc(mPatternIndex);
     end;
   end;
-  if PatternIndex <= Length(APattern) then
+  if mPatternIndex <= Length(APattern) then
   begin
     Result := nil;
   end;
@@ -321,9 +321,9 @@ end;
 
 class function TAtlasItemPresentation.MissingUnit(const AItem: TAtlasCompletionItem): string;
 var
-  Edit: TAtlasTextEdit;
-  Suffix: string;
-  Text: string;
+  mEdit: TAtlasTextEdit;
+  mSuffix: string;
+  mText: string;
 begin
   Result := '';
   if AItem.UnitUsed then
@@ -331,24 +331,24 @@ begin
     Exit;
   end;
   // Der Server nennt die Unit im Detail ("System.Classes (uses ergänzen)" bzw. "System.Classes (add to uses)").
-  for Suffix in UsesSuffixes do
+  for mSuffix in cUsesSuffixes do
   begin
-    if EndsText(Suffix, AItem.Signature) then
+    if EndsText(mSuffix, AItem.Signature) then
     begin
-      Exit(Copy(AItem.Signature, 1, Length(AItem.Signature) - Length(Suffix)));
+      Exit(Copy(AItem.Signature, 1, Length(AItem.Signature) - Length(mSuffix)));
     end;
   end;
   // Sonst aus der Ergänzung selbst (", System.Classes" bzw. "uses System.Classes;").
-  for Edit in AItem.AdditionalEdits do
+  for mEdit in AItem.AdditionalEdits do
   begin
-    Text := Trim(Edit.NewText.Replace(',', ' ').Replace(';', ' '));
-    if StartsText('uses', Text) and ((Length(Text) = 4) or not Text[5].IsLetter) then
+    mText := Trim(mEdit.NewText.Replace(',', ' ').Replace(';', ' '));
+    if StartsText('uses', mText) and ((Length(mText) = 4) or not mText[5].IsLetter) then
     begin
-      Text := Trim(Copy(Text, 5, MaxInt));
+      mText := Trim(Copy(mText, 5, MaxInt));
     end;
-    if Text <> '' then
+    if mText <> '' then
     begin
-      Exit(Text);
+      Exit(mText);
     end;
   end;
 end;
@@ -356,7 +356,7 @@ end;
 class function TAtlasItemPresentation.Announcement(const AItem: TAtlasCompletionItem; const AKind, AOf: string;
   APosition, ACount: Integer): string;
 var
-  Short: string;
+  mShort: string;
 begin
   Result := AItem.Name;
   if AKind <> '' then
@@ -364,10 +364,10 @@ begin
     Result := Result + ', ' + AKind;
   end;
   Result := Result + ', ' + Format(AOf, [APosition, ACount]) + '.';
-  Short := Detail(AItem);
-  if (Short <> '') and not SameText(Short, AItem.Name) then
+  mShort := Detail(AItem);
+  if (mShort <> '') and not SameText(mShort, AItem.Name) then
   begin
-    Result := Result + ' ' + Short;
+    Result := Result + ' ' + mShort;
   end;
 end;
 
@@ -408,18 +408,18 @@ end;
 
 class function TAtlasItemPresentation.TagText(const AItem: TAtlasCompletionItem): string;
 var
-  Tag: TAtlasTag;
+  mTag: TAtlasTag;
 begin
   Result := '';
-  for Tag in Tags(AItem) do
+  for mTag in Tags(AItem) do
   begin
     if Result = '' then
     begin
-      Result := Tag.Text;
+      Result := mTag.Text;
     end
     else
     begin
-      Result := Result + ', ' + Tag.Text;
+      Result := Result + ', ' + mTag.Text;
     end;
   end;
 end;
@@ -460,7 +460,8 @@ begin
   // Exception-Klassen (#483): Ein früherer Zweig fängt die Klasse schon, dieser würde nie erreicht.
   if AItem.Unreachable <> '' then
   begin
-    AddFilledTag(ATags, UiText(TPresentationText.NeverReached) + AItem.Unreachable + UiText(TPresentationText.Before), TAtlasTagKind.Warn);
+    AddFilledTag(ATags, UiText(TPresentationText.NeverReached) + AItem.Unreachable + UiText(TPresentationText.Before),
+      TAtlasTagKind.Warn);
   end;
   if AItem.Count > 0 then
   begin
@@ -637,7 +638,8 @@ procedure AddUsageTag(const AItem: TAtlasCompletionItem; var ATags: TAtlasTags);
 begin
   case AItem.Usage of
     TAtlasUsageMark.Recent: AddIdTag(ATags, UiText(TPresentationText.Recent), TAtlasTagKind.Accent, TAtlasTagId.Recent);
-    TAtlasUsageMark.Frequent: AddIdTag(ATags, UiText(TPresentationText.Frequent), TAtlasTagKind.Neutral, TAtlasTagId.Frequent);
+    TAtlasUsageMark.Frequent: AddIdTag(ATags, UiText(TPresentationText.Frequent), TAtlasTagKind.Neutral,
+      TAtlasTagId.Frequent);
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -657,39 +659,39 @@ end;
 
 class function TAtlasItemPresentation.Highlights(const APattern, AName: string): TArray<Integer>;
 var
-  Score, Found: Integer;
+  mScore, mFound: Integer;
 begin
   Result := nil;
-  Score := TAtlasCompletionMatcher.Score(APattern, AName);
-  if (APattern = '') or (Score = TAtlasCompletionMatcher.NoMatch) then
+  mScore := TAtlasCompletionMatcher.Score(APattern, AName);
+  if (APattern = '') or (mScore = TAtlasCompletionMatcher.cNoMatch) then
   begin
     Exit;
   end;
-  if Score >= TAtlasCompletionMatcher.ScorePrefix then
+  if mScore >= TAtlasCompletionMatcher.cScorePrefix then
   begin
     Exit(Range(1, Length(APattern)));
   end;
-  if Score = TAtlasCompletionMatcher.ScoreWordStarts then
+  if mScore = TAtlasCompletionMatcher.cScoreWordStarts then
   begin
     Exit(WordStartPositions(APattern, AName));
   end;
-  if Score = TAtlasCompletionMatcher.ScoreSubstring then
+  if mScore = TAtlasCompletionMatcher.cScoreSubstring then
   begin
-    Found := Pos(APattern.ToUpper, AName.ToUpper);
-    Exit(Range(Found, Length(APattern)));
+    mFound := Pos(APattern.ToUpper, AName.ToUpper);
+    Exit(Range(mFound, Length(APattern)));
   end;
   Result := SubsequencePositions(APattern, AName);
 end;
 
 class function TAtlasItemPresentation.HiddenKinds(const AItems: TAtlasCompletionItems): string;
 var
-  Item: TAtlasCompletionItem;
+  mItem: TAtlasCompletionItem;
 begin
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if Item.HiddenKinds <> '' then
+    if mItem.HiddenKinds <> '' then
     begin
-      Exit(Item.HiddenKinds);
+      Exit(mItem.HiddenKinds);
     end;
   end;
   Result := '';
@@ -697,13 +699,13 @@ end;
 
 class function TAtlasItemPresentation.DataSource(const AItems: TAtlasCompletionItems): string;
 var
-  Item: TAtlasCompletionItem;
+  mItem: TAtlasCompletionItem;
 begin
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if Item.DataSource <> '' then
+    if mItem.DataSource <> '' then
     begin
-      Exit(Item.DataSource);
+      Exit(mItem.DataSource);
     end;
   end;
   Result := '';
@@ -722,13 +724,13 @@ end;
 
 class function TAtlasItemPresentation.UsesHidden(const AItems: TAtlasCompletionItems): TArray<string>;
 var
-  Item: TAtlasCompletionItem;
+  mItem: TAtlasCompletionItem;
 begin
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if Length(Item.UsesHidden) > 0 then
+    if Length(mItem.UsesHidden) > 0 then
     begin
-      Exit(Item.UsesHidden);
+      Exit(mItem.UsesHidden);
     end;
   end;
   Result := nil;
@@ -736,13 +738,13 @@ end;
 
 class function TAtlasItemPresentation.InheritedAbstract(const AItems: TAtlasCompletionItems): TArray<string>;
 var
-  Item: TAtlasCompletionItem;
+  mItem: TAtlasCompletionItem;
 begin
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if Length(Item.InheritedAbstract) > 0 then
+    if Length(mItem.InheritedAbstract) > 0 then
     begin
-      Exit(Item.InheritedAbstract);
+      Exit(mItem.InheritedAbstract);
     end;
   end;
   Result := nil;
@@ -750,17 +752,17 @@ end;
 
 class function TAtlasItemPresentation.SameNameHidden(const AItems: TAtlasCompletionItems): TArray<string>;
 var
-  Item: TAtlasCompletionItem;
-  Name: string;
+  mItem: TAtlasCompletionItem;
+  mName: string;
 begin
   Result := nil;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    for Name in Item.SameNameHidden do
+    for mName in mItem.SameNameHidden do
     begin
-      if not MatchText(Name, Result) then
+      if not MatchText(mName, Result) then
       begin
-        Result := Result + [Name];
+        Result := Result + [mName];
       end;
     end;
   end;
@@ -784,12 +786,12 @@ end;
 
 class function TAtlasItemPresentation.Guarding(const AItems: TAtlasCompletionItems): Boolean;
 var
-  Item: TAtlasCompletionItem;
+  mItem: TAtlasCompletionItem;
 begin
   Result := Length(AItems) > 0;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if not Item.Guard then
+    if not mItem.Guard then
     begin
       Exit(False);
     end;

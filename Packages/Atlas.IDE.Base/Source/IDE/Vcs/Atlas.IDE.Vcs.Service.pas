@@ -315,7 +315,7 @@ begin
           mSeconds := cDefaultTimeoutSeconds;
         end;
         Result.TimeoutMs := Cardinal(mSeconds) * 1000;
-        Result.Projects := TAtlasVcsProjects.Read(TAtlasJsonText.ValueAt(mRoot, TAtlasVcsProjects.Path));
+        Result.Projects := TAtlasVcsProjects.Read(TAtlasJsonText.ValueAt(mRoot, TAtlasVcsProjects.cPath));
       end;
     finally
       mRoot.Free;
@@ -516,19 +516,19 @@ end;
 
 procedure ToolMissing(AKind: TAtlasVcsKind);
 var
-  Name, Text, mConfigured: string;
+  mName, mText, mConfigured: string;
 begin
-  Name := AtlasVcsKindName(AKind);
-  TAtlasGuard.Log(Format('Versionsverwaltung: %s nicht gefunden, weiter ohne', [Name]));
+  mName := AtlasVcsKindName(AKind);
+  TAtlasGuard.Log(Format('Versionsverwaltung: %s nicht gefunden, weiter ohne', [mName]));
   // Eigener Pfad (#1285): Der Pfad steht nur in der Meldungsansicht, nie im Protokoll.
   mConfigured := TAtlasVcsTools.Configured(AKind);
   if mConfigured <> '' then
   begin
-    Text := Format(TAtlasStrings.Text(TAtlasTextId.VcsToolConfiguredMissing), [Name, mConfigured]);
+    mText := Format(TAtlasStrings.Text(TAtlasTextId.VcsToolConfiguredMissing), [mName, mConfigured]);
   end
   else
   begin
-    Text := Format(TAtlasStrings.Text(TAtlasTextId.VcsToolMissing), [Name, Name]);
+    mText := Format(TAtlasStrings.Text(TAtlasTextId.VcsToolMissing), [mName, mName]);
   end;
   // Kann aus einem Hintergrund-Thread kommen; die Meldungsansicht nur im Hauptthread.
   TAtlasMainThread.ForceQueue(TAtlasFeature.Status,
@@ -536,7 +536,7 @@ begin
     begin
       if Assigned(Message_) and not TAtlasShutdown.Signalled then
       begin
-        Message_(Text);
+        Message_(mText);
       end;
     end);
 end;
@@ -570,7 +570,7 @@ begin
   Message_ := nil;
   if Worker <> nil then
   begin
-    Worker.Stop(TAtlasShutdown.StopMs);
+    Worker.Stop(TAtlasShutdown.cStopMs);
   end;
   FreeAndNil(Worker);
   Runner := nil;
@@ -663,7 +663,7 @@ begin
   if mCopy.Kind = TAtlasVcsKind.None then
   begin
     mCheck := TAtlasVcsServerChecks.Check(mRunner, mCopy.Kind, mExecutable, mCopy.Root,
-      TAtlasVcsServerChecks.TimeoutMs, Now);
+      TAtlasVcsServerChecks.cTimeoutMs, Now);
     ServerStates.AddOrSetValue(mKey, mCheck);
     ADone(mCheck);
     Exit(True);
@@ -673,7 +673,7 @@ begin
     procedure
     begin
       mCheck := TAtlasVcsServerChecks.Check(mRunner, mCopy.Kind, mExecutable, mCopy.Root,
-        TAtlasVcsServerChecks.TimeoutMs, Now);
+        TAtlasVcsServerChecks.cTimeoutMs, Now);
     end,
     procedure
     begin

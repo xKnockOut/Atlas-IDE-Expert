@@ -69,7 +69,7 @@ begin
   Assert.IsTrue(TAtlasDisableWarningProject.TryParse('["file:///C:/A.pas","W1000","symbol_deprecated"]', Request));
   Assert.AreEqual('W1000', Request.Code);
   Assert.AreEqual('DCC_SYMBOL_DEPRECATED', Request.OptionName);
-  Assert.AreEqual('false', AtlasWarningOptionOff);
+  Assert.AreEqual('false', cAtlasWarningOptionOff);
 end;
 
 procedure TAtlasDisableWarningTests.RejectsForeignIdentifier;

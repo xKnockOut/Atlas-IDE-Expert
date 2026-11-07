@@ -114,10 +114,10 @@ end;
 
 constructor TAtlasSignatureModel.Create(const APrepared: TJSONObject);
 var
-  Items: TJSONArray;
-  Item: TJSONValue;
-  Row: TAtlasSignatureRow;
-  Index: Integer;
+  mItems: TJSONArray;
+  mItem: TJSONValue;
+  mRow: TAtlasSignatureRow;
+  mIndex: Integer;
 begin
   inherited Create;
   FOverloadPossible := True;
@@ -136,33 +136,33 @@ begin
   FBoundEvent := APrepared.GetValue<string>('boundEvent', '');
   FEventFixed := APrepared.GetValue<Boolean>('eventFixed', False);
   FMembers := APrepared.GetValue<Integer>('members', 1);
-  Items := APrepared.GetValue('parameters') as TJSONArray;
-  Index := 0;
-  if Items <> nil then
+  mItems := APrepared.GetValue('parameters') as TJSONArray;
+  mIndex := 0;
+  if mItems <> nil then
   begin
-    for Item in Items do
+    for mItem in mItems do
     begin
-      if not (Item is TJSONObject) then
+      if not (mItem is TJSONObject) then
       begin
         Continue;
       end;
-      Row := Default(TAtlasSignatureRow);
-      Row.Origin := Index;
-      Row.Name := TJSONObject(Item).GetValue<string>('name', '');
-      Row.TypeName := TJSONObject(Item).GetValue<string>('type', '');
-      Row.Modifier := TJSONObject(Item).GetValue<string>('modifier', '');
-      Row.DefaultValue := TJSONObject(Item).GetValue<string>('default', '');
-      FOriginal := FOriginal + [Row];
-      Inc(Index);
+      mRow := Default(TAtlasSignatureRow);
+      mRow.Origin := mIndex;
+      mRow.Name := TJSONObject(mItem).GetValue<string>('name', '');
+      mRow.TypeName := TJSONObject(mItem).GetValue<string>('type', '');
+      mRow.Modifier := TJSONObject(mItem).GetValue<string>('modifier', '');
+      mRow.DefaultValue := TJSONObject(mItem).GetValue<string>('default', '');
+      FOriginal := FOriginal + [mRow];
+      Inc(mIndex);
     end;
   end;
   FRows := Copy(FOriginal);
-  Items := APrepared.GetValue('warnings') as TJSONArray;
-  if Items <> nil then
+  mItems := APrepared.GetValue('warnings') as TJSONArray;
+  if mItems <> nil then
   begin
-    for Item in Items do
+    for mItem in mItems do
     begin
-      FWarnings := FWarnings + [Item.Value];
+      FWarnings := FWarnings + [mItem.Value];
     end;
   end;
 end;
@@ -179,14 +179,14 @@ end;
 
 function TAtlasSignatureModel.Add(AIndex: Integer; const AName, ATypeName, AModifier, AValue: string): Integer;
 var
-  Row: TAtlasSignatureRow;
+  mRow: TAtlasSignatureRow;
 begin
-  Row := Default(TAtlasSignatureRow);
-  Row.Origin := -1;
-  Row.Name := Trim(AName);
-  Row.TypeName := Trim(ATypeName);
-  Row.Modifier := LowerCase(Trim(AModifier));
-  Row.Value := Trim(AValue);
+  mRow := Default(TAtlasSignatureRow);
+  mRow.Origin := -1;
+  mRow.Name := Trim(AName);
+  mRow.TypeName := Trim(ATypeName);
+  mRow.Modifier := LowerCase(Trim(AModifier));
+  mRow.Value := Trim(AValue);
   Result := AIndex + 1;
   if Result < 0 then
   begin
@@ -196,7 +196,7 @@ begin
   begin
     Result := Length(FRows);
   end;
-  Insert(Row, FRows, Result);
+  Insert(mRow, FRows, Result);
 end;
 
 procedure TAtlasSignatureModel.Remove(AIndex: Integer);
@@ -209,18 +209,18 @@ end;
 
 function TAtlasSignatureModel.MoveRow(AIndex, ADelta: Integer): Boolean;
 var
-  Target: Integer;
-  Row: TAtlasSignatureRow;
+  mTarget: Integer;
+  mRow: TAtlasSignatureRow;
 begin
-  Target := AIndex + ADelta;
-  Result := (AIndex >= 0) and (AIndex <= High(FRows)) and (Target >= 0) and (Target <= High(FRows));
+  mTarget := AIndex + ADelta;
+  Result := (AIndex >= 0) and (AIndex <= High(FRows)) and (mTarget >= 0) and (mTarget <= High(FRows));
   if not Result then
   begin
     Exit;
   end;
-  Row := FRows[AIndex];
+  mRow := FRows[AIndex];
   Delete(FRows, AIndex, 1);
-  Insert(Row, FRows, Target);
+  Insert(mRow, FRows, mTarget);
 end;
 
 procedure TAtlasSignatureModel.Rename(AIndex: Integer; const AName: string);
@@ -244,27 +244,27 @@ end;
 
 function TAtlasSignatureModel.Preview: string;
 var
-  Row: TAtlasSignatureRow;
-  Parts: TArray<string>;
-  Part: string;
+  mRow: TAtlasSignatureRow;
+  mParts: TArray<string>;
+  mPart: string;
 begin
-  Parts := nil;
-  for Row in FRows do
+  mParts := nil;
+  for mRow in FRows do
   begin
-    Part := Row.Name;
-    if Row.Modifier <> '' then
+    mPart := mRow.Name;
+    if mRow.Modifier <> '' then
     begin
-      Part := Row.Modifier + ' ' + Part;
+      mPart := mRow.Modifier + ' ' + mPart;
     end;
-    if Row.TypeName <> '' then
+    if mRow.TypeName <> '' then
     begin
-      Part := Part + ': ' + Row.TypeName;
+      mPart := mPart + ': ' + mRow.TypeName;
     end;
-    if Row.DefaultValue <> '' then
+    if mRow.DefaultValue <> '' then
     begin
-      Part := Part + ' = ' + Row.DefaultValue;
+      mPart := mPart + ' = ' + mRow.DefaultValue;
     end;
-    Parts := Parts + [Part];
+    mParts := mParts + [mPart];
   end;
   Result := FName;
   if FContainer <> '' then
@@ -272,9 +272,9 @@ begin
     Result := FContainer + '.' + Result;
   end;
   Result := FKind + ' ' + Result;
-  if Length(Parts) > 0 then
+  if Length(mParts) > 0 then
   begin
-    Result := Result + '(' + string.Join('; ', Parts) + ')';
+    Result := Result + '(' + string.Join('; ', mParts) + ')';
   end;
   if FResultType <> '' then
   begin
@@ -284,11 +284,11 @@ end;
 
 function TAtlasSignatureModel.AddsParameters: Boolean;
 var
-  Row: TAtlasSignatureRow;
+  mRow: TAtlasSignatureRow;
 begin
-  for Row in FRows do
+  for mRow in FRows do
   begin
-    if Row.IsNew then
+    if mRow.IsNew then
     begin
       Exit(True);
     end;
@@ -298,14 +298,14 @@ end;
 
 function TAtlasSignatureModel.Changed: Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Length(FRows) <> Length(FOriginal);
   if not Result then
   begin
-    for Index := 0 to High(FRows) do
+    for mIndex := 0 to High(FRows) do
     begin
-      if (FRows[Index].Origin <> Index) or not SameStr(FRows[Index].Name, FOriginal[Index].Name) then
+      if (FRows[mIndex].Origin <> mIndex) or not SameStr(FRows[mIndex].Name, FOriginal[mIndex].Name) then
       begin
         Exit(True);
       end;
@@ -400,26 +400,26 @@ end;
 
 function TAtlasSignatureModel.RequestJson: TJSONObject;
 var
-  Items: TJSONArray;
-  Item: TJSONObject;
-  Row: TAtlasSignatureRow;
+  mItems: TJSONArray;
+  mItem: TJSONObject;
+  mRow: TAtlasSignatureRow;
 begin
-  Items := TJSONArray.Create;
-  for Row in FRows do
+  mItems := TJSONArray.Create;
+  for mRow in FRows do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('origin', TJSONNumber.Create(Row.Origin));
-    Item.AddPair('name', Row.Name);
-    if Row.IsNew then
+    mItem := TJSONObject.Create;
+    mItem.AddPair('origin', TJSONNumber.Create(mRow.Origin));
+    mItem.AddPair('name', mRow.Name);
+    if mRow.IsNew then
     begin
-      Item.AddPair('type', Row.TypeName);
-      Item.AddPair('modifier', Row.Modifier);
-      Item.AddPair('value', Row.Value);
+      mItem.AddPair('type', mRow.TypeName);
+      mItem.AddPair('modifier', mRow.Modifier);
+      mItem.AddPair('value', mRow.Value);
     end;
-    Items.AddElement(Item);
+    mItems.AddElement(mItem);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('parameters', Items);
+  Result.AddPair('parameters', mItems);
   if FOverload and FOverloadPossible then
   begin
     Result.AddPair('newParameter', 'overload');

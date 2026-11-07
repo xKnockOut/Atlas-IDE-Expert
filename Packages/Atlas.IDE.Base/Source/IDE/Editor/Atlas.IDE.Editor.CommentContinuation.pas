@@ -40,23 +40,23 @@ uses
   Atlas.IDE.Editor.EnterWatch;
 
 const
-  HandlerName = 'CommentContinuation';
+  cHandlerName = 'CommentContinuation';
 
 /// <summary>Ersetzt in ABuffer (Text AText) ab Zeichen AStart AOldLength Zeichen durch AInsert; ein eigener
 /// Rückgängig-Schritt.</summary>
 procedure WriteBuffer(const ABuffer: IOTAEditBuffer; const AText: string; AStart, AOldLength: Integer;
   const AInsert: string);
 var
-  Writer: IOTAEditWriter;
+  mWriter: IOTAEditWriter;
 begin
-  Writer := ABuffer.CreateUndoableWriter;
-  Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
-  Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
+  mWriter := ABuffer.CreateUndoableWriter;
+  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
+  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
   if AInsert <> '' then
   begin
-    Writer.Insert(PAnsiChar(UTF8Encode(AInsert)));
+    mWriter.Insert(PAnsiChar(UTF8Encode(AInsert)));
   end;
-  Writer := nil;
+  mWriter := nil;
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
@@ -104,7 +104,7 @@ end;
 
 class procedure TAtlasIdeCommentContinuation.Install;
 begin
-  TAtlasEnterWatch.Add(HandlerName,
+  TAtlasEnterWatch.Add(cHandlerName,
     function: Boolean
     begin
       Result := Enabled;
@@ -117,7 +117,7 @@ end;
 
 class procedure TAtlasIdeCommentContinuation.Uninstall;
 begin
-  TAtlasEnterWatch.Remove(HandlerName);
+  TAtlasEnterWatch.Remove(cHandlerName);
 end;
 
 class function TAtlasIdeCommentContinuation.Enabled: Boolean;
@@ -127,47 +127,47 @@ end;
 
 class function TAtlasIdeCommentContinuation.Run(const AView: IOTAEditView): Boolean;
 var
-  Buffer: IOTAEditBuffer;
-  Text, LineBreak: string;
-  Lines, NewLines: TArray<string>;
-  Cursor, Target: TOTAEditPos;
-  TabWidth, Line, Character: Integer;
-  Edit: TAtlasCommentEdit;
+  mBuffer: IOTAEditBuffer;
+  mText, mLineBreak: string;
+  mLines, mNewLines: TArray<string>;
+  mCursor, mTarget: TOTAEditPos;
+  mTabWidth, mLine, mCharacter: Integer;
+  mEdit: TAtlasCommentEdit;
 begin
   Result := False;
   if not Enabled or (AView = nil) or (AView.Buffer = nil) then
   begin
     Exit;
   end;
-  Buffer := AView.Buffer;
-  if Buffer.IsReadOnly then
+  mBuffer := AView.Buffer;
+  if mBuffer.IsReadOnly then
   begin
     Exit;
   end;
-  Text := TAtlasEditorBuffer.Text(Buffer);
-  LineBreak := #10;
-  if Pos(#13#10, Text) > 0 then
+  mText := TAtlasEditorBuffer.Text(mBuffer);
+  mLineBreak := #10;
+  if Pos(#13#10, mText) > 0 then
   begin
-    LineBreak := #13#10;
+    mLineBreak := #13#10;
   end;
-  Lines := Text.Split([#13#10, #10]);
-  TabWidth := TAtlasEditorBuffer.TabWidth(Buffer);
-  Cursor := AView.CursorPos;
-  Line := Cursor.Line - 1;
-  if (Line < 1) or (Line > High(Lines)) then
-  begin
-    Exit;
-  end;
-  Character := TLspSession.ColumnToIndex(Lines[Line], Cursor.Col, TabWidth);
-  if not TAtlasCommentContinuation.OnEnter(Text, Line, Character, Options, Edit) then
+  mLines := mText.Split([#13#10, #10]);
+  mTabWidth := TAtlasEditorBuffer.TabWidth(mBuffer);
+  mCursor := AView.CursorPos;
+  mLine := mCursor.Line - 1;
+  if (mLine < 1) or (mLine > High(mLines)) then
   begin
     Exit;
   end;
-  NewLines := ReplacedLines(Lines, Edit);
-  WriteLines(AView, Text, string.Join(LineBreak, NewLines));
-  Target.Line := Edit.CursorLine + 1;
-  Target.Col := TLspSession.IndexToColumn(NewLines[Edit.CursorLine], Edit.CursorCharacter, TabWidth);
-  AView.CursorPos := Target;
+  mCharacter := TLspSession.ColumnToIndex(mLines[mLine], mCursor.Col, mTabWidth);
+  if not TAtlasCommentContinuation.OnEnter(mText, mLine, mCharacter, Options, mEdit) then
+  begin
+    Exit;
+  end;
+  mNewLines := ReplacedLines(mLines, mEdit);
+  WriteLines(AView, mText, string.Join(mLineBreak, mNewLines));
+  mTarget.Line := mEdit.CursorLine + 1;
+  mTarget.Col := TLspSession.IndexToColumn(mNewLines[mEdit.CursorLine], mEdit.CursorCharacter, mTabWidth);
+  AView.CursorPos := mTarget;
   AView.MoveViewToCursor;
   AView.Paint;
   Result := True;

@@ -838,18 +838,18 @@ begin
   Assert.IsTrue(Supports(Vcs, IAtlasVcsLocalWork, Local), 'Git bietet IAtlasVcsLocalWork');
   Assert.IsTrue(Local.Branches(Branches) = TAtlasVcsOutcome.Ok);
   Assert.AreEqual(1, Integer(Length(Branches)));
-  Assert.AreEqual(Prefix + 'for-each-ref --format=' + TAtlasGitParser.BranchFormat + ' refs/heads', Runner.Calls[0]);
+  Assert.AreEqual(Prefix + 'for-each-ref --format=' + TAtlasGitParser.cBranchFormat + ' refs/heads', Runner.Calls[0]);
   Assert.IsTrue(Local.Stashes(Stashes) = TAtlasVcsOutcome.Ok);
-  Assert.AreEqual(Prefix + 'stash list --format=' + TAtlasGitParser.StashFormat, Runner.Calls[1]);
+  Assert.AreEqual(Prefix + 'stash list --format=' + TAtlasGitParser.cStashFormat, Runner.Calls[1]);
   Assert.AreEqual('X', Stashes[0].Message);
   Assert.IsTrue(Local.Remotes(Names) = TAtlasVcsOutcome.Ok);
   Assert.AreEqual('origin', Names[0]);
   Assert.IsTrue(Local.Outgoing('main', 'origin/main', 51, Commits) = TAtlasVcsOutcome.Ok);
-  Assert.AreEqual(Prefix + 'log --format=' + TAtlasGitParser.LogFormat + ' --max-count=51 refs/heads/main --not ' +
+  Assert.AreEqual(Prefix + 'log --format=' + TAtlasGitParser.cLogFormat + ' --max-count=51 refs/heads/main --not ' +
     'origin/main', Runner.Calls[3], 'kein fetch: nur das lokale Repository');
   Assert.AreEqual('eins', Commits[0].Summary);
   Assert.IsTrue(Local.Outgoing('lokal', '', 0, Commits) = TAtlasVcsOutcome.Ok);
-  Assert.AreEqual(Prefix + 'log --format=' + TAtlasGitParser.LogFormat + ' --max-count=1 refs/heads/lokal --not ' +
+  Assert.AreEqual(Prefix + 'log --format=' + TAtlasGitParser.cLogFormat + ' --max-count=1 refs/heads/lokal --not ' +
     '--remotes', Runner.Calls[4], 'ohne Upstream: auf keinem Remote');
   Assert.IsTrue(Local.ChangesIn(Hash1, Changes) = TAtlasVcsOutcome.Ok);
   Assert.AreEqual(Prefix + 'diff --name-status -z --no-renames ' + Hash1 + '^1 ' + Hash1, Runner.Calls[5]);
@@ -932,7 +932,7 @@ begin
   Assert.AreEqual(Hash2, Revision);
   Assert.AreEqual(Prefix + 'rev-parse --verify --quiet origin/main^{commit}', Runner.Calls[0]);
   Assert.IsTrue(Incoming.Incoming('origin/main', [Hash1, '', Hash2], 200, Commits) = TAtlasVcsOutcome.Ok);
-  Assert.AreEqual(Prefix + 'log --format=' + TAtlasGitParser.IncomingFormat + ' --name-only -z --no-renames ' +
+  Assert.AreEqual(Prefix + 'log --format=' + TAtlasGitParser.cIncomingFormat + ' --name-only -z --no-renames ' +
     '--max-count=200 origin/main --not ' + Hash1 + ' ' + Hash2, Runner.Calls[1], 'nur lokale Remote-Branches');
   Assert.AreEqual(1, Integer(Length(Commits)));
   Assert.AreEqual(Under('A.pas'), Commits[0].Files[0]);
@@ -1185,8 +1185,8 @@ begin
   Assert.IsTrue(Branching.SwitchBranch('KASSE-42-bon', mOptions) = TAtlasVcsOutcome.Ok);
   Assert.AreEqual(4, Integer(Length(Runner.Calls)));
   Assert.AreEqual('switch ^/Kasse/branches/KASSE-42-bon@ . --non-interactive', Runner.Calls[3]);
-  Assert.AreEqual(Cardinal(TAtlasVcsBranchStep.LongTimeoutMs), Runner.Timeouts[3], 'switch mit langem Zeitlimit');
-  Assert.AreEqual(Cardinal(TAtlasVcsCommand.DefaultTimeoutMs), Runner.Timeouts[1], 'info mit dem üblichen');
+  Assert.AreEqual(Cardinal(TAtlasVcsBranchStep.cLongTimeoutMs), Runner.Timeouts[3], 'switch mit langem Zeitlimit');
+  Assert.AreEqual(Cardinal(TAtlasVcsCommand.cDefaultTimeoutMs), Runner.Timeouts[1], 'info mit dem üblichen');
   AssertSvnBranchLocations(Runner, Branching, mOptions);
   // svnversion liegt neben svn und spricht nicht mit dem Server.
   Assert.IsTrue(Supports(Vcs, IAtlasVcsSvnWorkingCopy, mSvn));

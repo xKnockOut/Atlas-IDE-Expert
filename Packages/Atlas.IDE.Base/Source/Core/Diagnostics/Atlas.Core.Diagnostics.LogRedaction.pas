@@ -23,7 +23,7 @@ uses
 type
   TAtlasLogRedactor = class
   public const
-    MaxLabels = 4096;
+    cMaxLabels = 4096;
   private
     FLock: TCriticalSection;
     FLabels: TDictionary<string, Integer>;
@@ -117,7 +117,7 @@ begin
   mKey := TLogMarks.cKindChars[AKind] + AnsiLowerCase(Trim(AValue));
   if not FLabels.TryGetValue(mKey, mNumber) then
   begin
-    if FLabels.Count >= MaxLabels then
+    if FLabels.Count >= cMaxLabels then
     begin
       mNumber := 0;
     end

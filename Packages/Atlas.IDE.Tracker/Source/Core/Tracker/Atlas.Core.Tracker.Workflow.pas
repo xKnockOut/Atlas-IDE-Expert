@@ -398,7 +398,7 @@ begin
   end
   else
   begin
-    Result := TArray<string>.Create(TAtlasVcsBranchNames.GitBase, TAtlasVcsBranchNames.GitBaseFallback);
+    Result := TArray<string>.Create(TAtlasVcsBranchNames.cGitBase, TAtlasVcsBranchNames.cGitBaseFallback);
   end;
 end;
 

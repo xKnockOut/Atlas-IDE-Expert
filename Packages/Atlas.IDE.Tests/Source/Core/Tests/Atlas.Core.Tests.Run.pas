@@ -111,7 +111,7 @@ type
     /// <summary>Probleme je Datei (nur Tests mit Fundstelle) für den Problem-Speicher.</summary>
     class function Problems(const AFailures: TArray<TAtlasTestFailure>; const AFormat,
       AValuesFormat: string): TArray<TPair<string, TAtlasProblem>>; static;
-    /// <summary>Abschnitt "tests" der Projekt-Zusammenfassung; höchstens TAtlasProjectTests.MaxFailures Tests.
+    /// <summary>Abschnitt "tests" der Projekt-Zusammenfassung; höchstens TAtlasProjectTests.cMaxFailures Tests.
     /// </summary>
     class function SummaryOf(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult;
       const AFailures: TArray<TAtlasTestFailure>; AAtUtc: TDateTime): TAtlasProjectTests; static;
@@ -320,7 +320,7 @@ begin
     mProblem.Severity := TAtlasProblemSeverity.Error;
     // Ohne Code: kein Regeltreffer (Projekt-Zusammenfassung, Baseline).
     mProblem.Code := '';
-    mProblem.Source := TAtlasProblemStore.TestSource;
+    mProblem.Source := TAtlasProblemStore.cTestSource;
     mProblem.Message := ProblemText(mFailure.Test, AFormat, AValuesFormat);
     Result := Result + [TPair<string, TAtlasProblem>.Create(mFailure.FileName, mProblem)];
   end;
@@ -345,7 +345,7 @@ begin
   Result.DurationMs := Integer(ARun.DurationMs);
   for mFailure in AFailures do
   begin
-    if Length(Result.Failures) >= TAtlasProjectTests.MaxFailures then
+    if Length(Result.Failures) >= TAtlasProjectTests.cMaxFailures then
     begin
       Break;
     end;

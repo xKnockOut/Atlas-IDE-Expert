@@ -96,7 +96,7 @@ uses
 
 const
   /// <summary>Mindesthöhe des Schiebers bei 96 DPI.</summary>
-  BaseMinSlider = 6;
+  cBaseMinSlider = 6;
 
 /// <summary>Feste Breite nach den Optionen bei der aktuellen DPI.</summary>
 procedure ApplyWidth(AView: TAtlasMinimapView);
@@ -239,7 +239,7 @@ end;
 function TAtlasMinimapView.SliderSpan: TAtlasMinimapSpan;
 begin
   Result := Map.Slider(FViewport.Top, Max(FViewport.Top, FViewport.Bottom),
-    TAtlasMinimapOverlays.Scaled(BaseMinSlider, CurrentPPI));
+    TAtlasMinimapOverlays.Scaled(cBaseMinSlider, CurrentPPI));
 end;
 
 function TAtlasMinimapView.SliderVisible: Boolean;

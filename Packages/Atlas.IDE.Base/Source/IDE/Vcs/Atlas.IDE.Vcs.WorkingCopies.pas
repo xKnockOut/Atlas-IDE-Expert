@@ -31,9 +31,9 @@ type
   TAtlasIdeWorkingCopies = class(TInterfacedObject)
   public const
     /// <summary>Zeitlimit je lokalem Aufruf (svnversion, status); vcs.timeoutSeconds, wenn größer.</summary>
-    LocalTimeoutMs = 10000;
+    cLocalTimeoutMs = 10000;
     /// <summary>Zeitlimit je Serveraufruf (svn log) und für Aktualisieren.</summary>
-    ServerTimeoutMs = 120000;
+    cServerTimeoutMs = 120000;
   private
     FFolder: string;
     FName: string;
@@ -147,7 +147,7 @@ begin
   if not TAtlasIdeVcs.Run(
     procedure
     begin
-      mList := TAtlasVcsWorkingCopies.Collect(TAtlasIdeVcs.ForFolder(mFolder, TAtlasIdeVcs.AtLeast(LocalTimeoutMs)));
+      mList := TAtlasVcsWorkingCopies.Collect(TAtlasIdeVcs.ForFolder(mFolder, TAtlasIdeVcs.AtLeast(cLocalTimeoutMs)));
     end,
     procedure
     begin
@@ -203,11 +203,11 @@ begin
       if mWork.Kind = TAtlasVcsKind.Git then
       begin
         TAtlasVcsWorkingCopies.FillChanges(mWork, mIndex, TAtlasIdeVcs.ForFolder(mFolder,
-          TAtlasIdeVcs.AtLeast(LocalTimeoutMs)));
+          TAtlasIdeVcs.AtLeast(cLocalTimeoutMs)));
       end
       else
       begin
-        if not Supports(TAtlasIdeVcs.ForFolder(mRoot, TAtlasIdeVcs.AtLeast(LocalTimeoutMs)), IAtlasVcsSvnWorkingCopy,
+        if not Supports(TAtlasIdeVcs.ForFolder(mRoot, TAtlasIdeVcs.AtLeast(cLocalTimeoutMs)), IAtlasVcsSvnWorkingCopy,
           mSvn) then
         begin
           mSvn := nil;
@@ -269,7 +269,7 @@ begin
     var
       mExternals: IAtlasVcsSvnExternals;
     begin
-      if not Supports(TAtlasIdeVcs.ForFolder(mRoot, TAtlasIdeVcs.AtLeast(ServerTimeoutMs)), IAtlasVcsSvnExternals,
+      if not Supports(TAtlasIdeVcs.ForFolder(mRoot, TAtlasIdeVcs.AtLeast(cServerTimeoutMs)), IAtlasVcsSvnExternals,
         mExternals) then
       begin
         mExternals := nil;
@@ -352,7 +352,7 @@ begin
     procedure
     begin
       mOutcome := TAtlasVcsPull.Pull(TAtlasIdeVcs.ForFolder(mFolder,
-        TAtlasIdeVcs.AtLeast(ServerTimeoutMs)), mIgnore, mReason);
+        TAtlasIdeVcs.AtLeast(cServerTimeoutMs)), mIgnore, mReason);
     end,
     procedure
     begin
@@ -421,7 +421,7 @@ begin
     var
       mExternals: IAtlasVcsSvnExternals;
     begin
-      if not Supports(TAtlasIdeVcs.ForFolder(mRoot, TAtlasIdeVcs.AtLeast(LocalTimeoutMs)), IAtlasVcsSvnExternals,
+      if not Supports(TAtlasIdeVcs.ForFolder(mRoot, TAtlasIdeVcs.AtLeast(cLocalTimeoutMs)), IAtlasVcsSvnExternals,
         mExternals) then
       begin
         mExternals := nil;

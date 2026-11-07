@@ -70,33 +70,33 @@ uses
 
 class function TAtlasHSL.FromColor(AColor: TAtlasColor): TAtlasHSL;
 var
-  R, G, B, MaxValue, MinValue, Delta: Double;
+  R, G, B, mMaxValue, mMinValue, mDelta: Double;
 begin
   R := TAtlasColorMath.Red(AColor) / 255;
   G := TAtlasColorMath.Green(AColor) / 255;
   B := TAtlasColorMath.Blue(AColor) / 255;
-  MaxValue := Max(R, Max(G, B));
-  MinValue := Min(R, Min(G, B));
-  Delta := MaxValue - MinValue;
-  Result.L := (MaxValue + MinValue) / 2;
-  if Delta = 0 then
+  mMaxValue := Max(R, Max(G, B));
+  mMinValue := Min(R, Min(G, B));
+  mDelta := mMaxValue - mMinValue;
+  Result.L := (mMaxValue + mMinValue) / 2;
+  if mDelta = 0 then
   begin
     Result.H := 0;
     Result.S := 0;
     Exit;
   end;
-  Result.S := Delta / (1 - Abs(2 * Result.L - 1));
-  if MaxValue = R then
+  Result.S := mDelta / (1 - Abs(2 * Result.L - 1));
+  if mMaxValue = R then
   begin
-    Result.H := 60 * FMod((G - B) / Delta, 6);
+    Result.H := 60 * FMod((G - B) / mDelta, 6);
   end
-  else if MaxValue = G then
+  else if mMaxValue = G then
   begin
-    Result.H := 60 * ((B - R) / Delta + 2);
+    Result.H := 60 * ((B - R) / mDelta + 2);
   end
   else
   begin
-    Result.H := 60 * ((R - G) / Delta + 4);
+    Result.H := 60 * ((R - G) / mDelta + 4);
   end;
   if Result.H < 0 then
   begin
@@ -106,17 +106,17 @@ end;
 
 function TAtlasHSL.ToColor: TAtlasColor;
 var
-  C, X, M, R, G, B, Hue: Double;
+  C, X, M, R, G, B, mHue: Double;
 begin
   C := (1 - Abs(2 * EnsureRange(L, 0, 1) - 1)) * EnsureRange(S, 0, 1);
-  Hue := FMod(H, 360);
-  if Hue < 0 then
+  mHue := FMod(H, 360);
+  if mHue < 0 then
   begin
-    Hue := Hue + 360;
+    mHue := mHue + 360;
   end;
-  X := C * (1 - Abs(FMod(Hue / 60, 2) - 1));
+  X := C * (1 - Abs(FMod(mHue / 60, 2) - 1));
   M := EnsureRange(L, 0, 1) - C / 2;
-  case Trunc(Hue / 60) of
+  case Trunc(mHue / 60) of
     0: begin R := C; G := X; B := 0; end;
     1: begin R := X; G := C; B := 0; end;
     2: begin R := 0; G := C; B := X; end;
@@ -137,13 +137,13 @@ end;
 
 class function TAtlasColorMath.FromHex(const AHex: string): TAtlasColor;
 var
-  Value: Integer;
+  mValue: Integer;
 begin
-  if (Length(AHex) <> 7) or (AHex[1] <> '#') or not TryStrToInt('$' + Copy(AHex, 2, 6), Value) then
+  if (Length(AHex) <> 7) or (AHex[1] <> '#') or not TryStrToInt('$' + Copy(AHex, 2, 6), mValue) then
   begin
     raise EConvertError.CreateFmt('Ungültige Farbe "%s"', [AHex]);
   end;
-  Result := Rgb((Value shr 16) and $FF, (Value shr 8) and $FF, Value and $FF);
+  Result := Rgb((mValue shr 16) and $FF, (mValue shr 8) and $FF, mValue and $FF);
 end;
 
 class function TAtlasColorMath.ToHex(AColor: TAtlasColor): string;
@@ -181,11 +181,11 @@ end;
 
 class function TAtlasColorMath.Lighten(AColor: TAtlasColor; AAmount: Double): TAtlasColor;
 var
-  HSL: TAtlasHSL;
+  mHSL: TAtlasHSL;
 begin
-  HSL := TAtlasHSL.FromColor(AColor);
-  HSL.L := EnsureRange(HSL.L + AAmount, 0, 1);
-  Result := HSL.ToColor;
+  mHSL := TAtlasHSL.FromColor(AColor);
+  mHSL.L := EnsureRange(mHSL.L + AAmount, 0, 1);
+  Result := mHSL.ToColor;
 end;
 
 class function TAtlasColorMath.Darken(AColor: TAtlasColor; AAmount: Double): TAtlasColor;
@@ -197,16 +197,16 @@ class function TAtlasColorMath.Luminance(AColor: TAtlasColor): Double;
 
   function Linear(AValue: Byte): Double;
   var
-    Value: Double;
+    mValue: Double;
   begin
-    Value := AValue / 255;
-    if Value <= 0.04045 then
+    mValue := AValue / 255;
+    if mValue <= 0.04045 then
     begin
-      Result := Value / 12.92;
+      Result := mValue / 12.92;
     end
     else
     begin
-      Result := Power((Value + 0.055) / 1.055, 2.4);
+      Result := Power((mValue + 0.055) / 1.055, 2.4);
     end;
   end;
 
@@ -216,11 +216,11 @@ end;
 
 class function TAtlasColorMath.Contrast(A, B: TAtlasColor): Double;
 var
-  LumA, LumB: Double;
+  mLumA, mLumB: Double;
 begin
-  LumA := Luminance(A);
-  LumB := Luminance(B);
-  Result := (Max(LumA, LumB) + 0.05) / (Min(LumA, LumB) + 0.05);
+  mLumA := Luminance(A);
+  mLumB := Luminance(B);
+  Result := (Max(mLumA, mLumB) + 0.05) / (Min(mLumA, mLumB) + 0.05);
 end;
 
 class function TAtlasLab.Create(AL, AA, AB: Double): TAtlasLab;
@@ -234,16 +234,16 @@ class function TAtlasColorMath.ToLab(AColor: TAtlasColor): TAtlasLab;
 
   function Linear(AValue: Byte): Double;
   var
-    Value: Double;
+    mValue: Double;
   begin
-    Value := AValue / 255;
-    if Value <= 0.04045 then
+    mValue := AValue / 255;
+    if mValue <= 0.04045 then
     begin
-      Result := Value / 12.92;
+      Result := mValue / 12.92;
     end
     else
     begin
-      Result := Power((Value + 0.055) / 1.055, 2.4);
+      Result := Power((mValue + 0.055) / 1.055, 2.4);
     end;
   end;
 

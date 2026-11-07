@@ -204,10 +204,10 @@ end;
 
 procedure TAtlasSnippetsPage.FillList(ASelect: Integer);
 var
-  Index: Integer;
-  Item: TListItem;
-  Entry: TAtlasSnippetEntry;
-  Detail: string;
+  mIndex: Integer;
+  mItem: TListItem;
+  mEntry: TAtlasSnippetEntry;
+  mDetail: string;
 begin
   FFilling := True;
   FList.Items.BeginUpdate;
@@ -215,18 +215,18 @@ begin
     FList.Items.Clear;
     if FCatalog <> nil then
     begin
-      for Index := 0 to FCatalog.Count - 1 do
+      for mIndex := 0 to FCatalog.Count - 1 do
       begin
-        Entry := FCatalog.Entry(Index);
-        Item := FList.Items.Add;
-        Item.Caption := Entry.Snippet.Prefix;
+        mEntry := FCatalog.Entry(mIndex);
+        mItem := FList.Items.Add;
+        mItem.Caption := mEntry.Snippet.Prefix;
         // Herkunft und, falls eine andere Vorlage mit demselben Kürzel gilt, „ersetzt“.
-        Detail := OriginText(Entry.Snippet.Origin);
-        if FCatalog.Replaced(Index) then
+        mDetail := OriginText(mEntry.Snippet.Origin);
+        if FCatalog.Replaced(mIndex) then
         begin
-          Detail := Detail + ', ' + TAtlasStrings.Text(TAtlasTextId.SnippetsReplaced);
+          mDetail := mDetail + ', ' + TAtlasStrings.Text(TAtlasTextId.SnippetsReplaced);
         end;
-        Item.SubItems.Add(Entry.Snippet.Name + ' (' + Detail + ')');
+        mItem.SubItems.Add(mEntry.Snippet.Name + ' (' + mDetail + ')');
       end;
     end;
   finally
@@ -255,40 +255,40 @@ end;
 
 procedure TAtlasSnippetsPage.ShowEntry;
 var
-  Index: Integer;
-  Entry: TAtlasSnippetEntry;
-  CanEdit: Boolean;
+  mIndex: Integer;
+  mEntry: TAtlasSnippetEntry;
+  mCanEdit: Boolean;
 begin
-  Index := Selected;
+  mIndex := Selected;
   FFilling := True;
   try
-    if Index < 0 then
+    if mIndex < 0 then
     begin
       FPrefix.Text := '';
       FName.Text := '';
       FDescription.Text := '';
       FBody.Text := '';
-      CanEdit := False;
+      mCanEdit := False;
     end
     else
     begin
-      Entry := FCatalog.Entry(Index);
-      FPrefix.Text := Entry.Snippet.Prefix;
-      FName.Text := Entry.Snippet.Name;
-      FDescription.Text := Entry.Snippet.Description;
-      FBody.Text := StringReplace(Entry.Snippet.Body, #10, #13#10, [rfReplaceAll]);
-      CanEdit := FCatalog.Editable(Index);
+      mEntry := FCatalog.Entry(mIndex);
+      FPrefix.Text := mEntry.Snippet.Prefix;
+      FName.Text := mEntry.Snippet.Name;
+      FDescription.Text := mEntry.Snippet.Description;
+      FBody.Text := StringReplace(mEntry.Snippet.Body, #10, #13#10, [rfReplaceAll]);
+      mCanEdit := FCatalog.Editable(mIndex);
     end;
   finally
     FFilling := False;
   end;
-  FPrefix.ReadOnly := not CanEdit;
-  FName.ReadOnly := not CanEdit;
-  FDescription.ReadOnly := not CanEdit;
-  FBody.ReadOnly := not CanEdit;
-  FReadOnlyHint.Visible := (Index >= 0) and not CanEdit;
-  FCopy.Enabled := Index >= 0;
-  FDelete.Enabled := CanEdit;
+  FPrefix.ReadOnly := not mCanEdit;
+  FName.ReadOnly := not mCanEdit;
+  FDescription.ReadOnly := not mCanEdit;
+  FBody.ReadOnly := not mCanEdit;
+  FReadOnlyHint.Visible := (mIndex >= 0) and not mCanEdit;
+  FCopy.Enabled := mIndex >= 0;
+  FDelete.Enabled := mCanEdit;
   FNew.Enabled := FCatalog <> nil;
 end;
 
@@ -302,24 +302,24 @@ end;
 
 procedure TAtlasSnippetsPage.FieldChange(Sender: TObject);
 var
-  Index: Integer;
-  Snippet: TAtlasSnippet;
-  Entry: TAtlasSnippetEntry;
+  mIndex: Integer;
+  mSnippet: TAtlasSnippet;
+  mEntry: TAtlasSnippetEntry;
 begin
-  Index := Selected;
-  if FFilling or (Index < 0) or not FCatalog.Editable(Index) then
+  mIndex := Selected;
+  if FFilling or (mIndex < 0) or not FCatalog.Editable(mIndex) then
   begin
     Exit;
   end;
-  Snippet := FCatalog.Entry(Index).Snippet;
-  Snippet.Prefix := Trim(FPrefix.Text);
-  Snippet.Name := Trim(FName.Text);
-  Snippet.Description := Trim(FDescription.Text);
-  Snippet.Body := StringReplace(StringReplace(FBody.Text, #13#10, #10, [rfReplaceAll]), #13, #10, [rfReplaceAll]);
-  FCatalog.Update(Index, Snippet);
+  mSnippet := FCatalog.Entry(mIndex).Snippet;
+  mSnippet.Prefix := Trim(FPrefix.Text);
+  mSnippet.Name := Trim(FName.Text);
+  mSnippet.Description := Trim(FDescription.Text);
+  mSnippet.Body := StringReplace(StringReplace(FBody.Text, #13#10, #10, [rfReplaceAll]), #13, #10, [rfReplaceAll]);
+  FCatalog.Update(mIndex, mSnippet);
   // Nur die Zeile in der Liste anpassen; die Auswahl bleibt.
-  Entry := FCatalog.Entry(Index);
-  FList.Items[Index].Caption := Entry.Snippet.Prefix;
+  mEntry := FCatalog.Entry(mIndex);
+  FList.Items[mIndex].Caption := mEntry.Snippet.Prefix;
 end;
 
 procedure TAtlasSnippetsPage.NewClick(Sender: TObject);
@@ -345,44 +345,44 @@ end;
 
 procedure TAtlasSnippetsPage.DeleteClick(Sender: TObject);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := Selected;
-  if (Index < 0) or not FCatalog.Editable(Index) then
+  mIndex := Selected;
+  if (mIndex < 0) or not FCatalog.Editable(mIndex) then
   begin
     Exit;
   end;
-  FCatalog.Delete(Index);
-  if Index >= FCatalog.Count then
+  FCatalog.Delete(mIndex);
+  if mIndex >= FCatalog.Count then
   begin
-    Index := FCatalog.Count - 1;
+    mIndex := FCatalog.Count - 1;
   end;
-  FillList(Index);
+  FillList(mIndex);
 end;
 
 function TAtlasSnippetsPage.Validate: string;
 var
-  Problems: TArray<TAtlasSnippetProblem>;
-  Reason: string;
+  mProblems: TArray<TAtlasSnippetProblem>;
+  mReason: string;
 begin
   Result := '';
-  if (FCatalog = nil) or FCatalog.Validate(Problems) then
+  if (FCatalog = nil) or FCatalog.Validate(mProblems) then
   begin
     Exit;
   end;
-  case Problems[0].Kind of
+  case mProblems[0].Kind of
     TAtlasSnippetProblemKind.PrefixMissing:
-      Reason := TAtlasStrings.Text(TAtlasTextId.SnippetsPrefixMissing);
+      mReason := TAtlasStrings.Text(TAtlasTextId.SnippetsPrefixMissing);
     TAtlasSnippetProblemKind.PrefixInvalid:
-      Reason := TAtlasStrings.Text(TAtlasTextId.SnippetsPrefixInvalid);
+      mReason := TAtlasStrings.Text(TAtlasTextId.SnippetsPrefixInvalid);
     TAtlasSnippetProblemKind.PrefixTwice:
-      Reason := TAtlasStrings.Text(TAtlasTextId.SnippetsPrefixTwice);
+      mReason := TAtlasStrings.Text(TAtlasTextId.SnippetsPrefixTwice);
   else
-    Reason := TAtlasStrings.Text(TAtlasTextId.SnippetsBodyMissing);
+    mReason := TAtlasStrings.Text(TAtlasTextId.SnippetsBodyMissing);
   end;
   Result := Format(TAtlasStrings.Text(TAtlasTextId.SnippetsInvalid),
-    [FCatalog.Entry(Problems[0].Index).Snippet.Prefix, Reason]);
-  FillList(Problems[0].Index);
+    [FCatalog.Entry(mProblems[0].Index).Snippet.Prefix, mReason]);
+  FillList(mProblems[0].Index);
 end;
 
 end.

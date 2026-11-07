@@ -218,7 +218,7 @@ var
   Value: TJSONValue;
 begin
   Fallback := TAtlasDocDisplay.Create(TAtlasDocExpand.Expanded, 70);
-  Assert.AreEqual(TAtlasDocDisplay.MaxMaxLines, Fallback.MaxLines);
+  Assert.AreEqual(TAtlasDocDisplay.cMaxMaxLines, Fallback.MaxLines);
   Display := TAtlasDocDisplay.FromJson(nil, TAtlasDocDisplay.Create(TAtlasDocExpand.Collapsed, 5));
   Assert.IsFalse(Display.Known);
   Assert.AreEqual(Ord(TAtlasDocExpand.Collapsed), Ord(Display.Expand));

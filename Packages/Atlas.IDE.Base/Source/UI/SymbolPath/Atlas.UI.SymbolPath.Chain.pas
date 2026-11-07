@@ -53,7 +53,7 @@ type
     constructor Create(AOwner: TComponent); override;
     procedure SetAnswer(const AAnswer: TAtlasSymbolPathAnswer);
     /// <summary>Zeile unter dem Punkt (Client-Koordinaten), -1 ohne.</summary>
-    function RowAt(Y: Integer): Integer;
+    function RowAt(AY: Integer): Integer;
     /// <summary>Oberkante und Höhe einer Zeile (nach Layout).</summary>
     function RowRect(AIndex: Integer): TRect;
     /// <summary>Text je Zeile wie gezeichnet, Haupt- und Nebenzeile mit „ · “ (für Tests und Bildschirmleser).
@@ -91,11 +91,11 @@ uses
 
 const
   /// <summary>Logische Bildpunkte bei 96 dpi.</summary>
-  NodeHeight = 40;
-  StepHeight = 30;
-  HeaderHeight = 26;
-  Margin = 8;
-  ArrowIndent = 24;
+  cNodeHeight = 40;
+  cStepHeight = 30;
+  cHeaderHeight = 26;
+  cMargin = 8;
+  cArrowIndent = 24;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -123,7 +123,7 @@ begin
   TabStop := True;
   DoubleBuffered := True;
   FSelected := -1;
-  Height := Px(NodeHeight);
+  Height := Px(cNodeHeight);
 end;
 
 function TAtlasSymbolPathChain.Px(AValue: Integer): Integer;
@@ -207,21 +207,21 @@ end;
 
 function NodeDetail(const ANode: TAtlasSymbolPathNode): string;
 var
-  Location: string;
+  mLocation: string;
 begin
   Result := '';
   if not ANode.IsUnit then
   begin
     Result := ANode.UnitName;
   end;
-  Location := TAtlasSymbolPathChain.LocationText(ANode.FileName, ANode.Line);
-  if Location <> '' then
+  mLocation := TAtlasSymbolPathChain.LocationText(ANode.FileName, ANode.Line);
+  if mLocation <> '' then
   begin
     if Result <> '' then
     begin
       Result := Result + ' · ';
     end;
-    Result := Result + Location;
+    Result := Result + mLocation;
   end;
   if ANode.Library_ then
   begin
@@ -236,8 +236,8 @@ end;
 class procedure TAtlasSymbolPathChain.RowTexts(const AAnswer: TAtlasSymbolPathAnswer;
   const ARow: TAtlasSymbolPathRow; out AMain, ADetail: string);
 var
-  Node: TAtlasSymbolPathNode;
-  Step: TAtlasSymbolPathStep;
+  mNode: TAtlasSymbolPathNode;
+  mStep: TAtlasSymbolPathStep;
 begin
   AMain := '';
   ADetail := '';
@@ -246,25 +246,25 @@ begin
       AMain := TAtlasStrings.Fmt(TAtlasTextId.SymbolPathRouteHeader, [ARow.Route + 1]);
     TAtlasSymbolPathRowKind.Node:
       begin
-        Node := AAnswer.Routes[ARow.Route].Nodes[ARow.Index];
-        AMain := Format('%d  %s', [ARow.Index + 1, Node.Caption]);
-        ADetail := NodeDetail(Node);
+        mNode := AAnswer.Routes[ARow.Route].Nodes[ARow.Index];
+        AMain := Format('%d  %s', [ARow.Index + 1, mNode.Caption]);
+        ADetail := NodeDetail(mNode);
       end;
     TAtlasSymbolPathRowKind.Step:
       begin
-        Step := AAnswer.Routes[ARow.Route].Steps[ARow.Index];
-        AMain := StepCaption(Step);
-        if Step.Inferred then
+        mStep := AAnswer.Routes[ARow.Route].Steps[ARow.Index];
+        AMain := StepCaption(mStep);
+        if mStep.Inferred then
         begin
           AMain := AMain + ' [' + TAtlasStrings.Text(TAtlasTextId.SymbolPathInferred) + ']';
         end;
-        ADetail := LocationText(Step.FileName, Step.Line);
+        ADetail := LocationText(mStep.FileName, mStep.Line);
       end;
     TAtlasSymbolPathRowKind.Candidate:
       begin
-        Node := AAnswer.Candidates[ARow.Index];
-        AMain := Node.Caption;
-        ADetail := NodeDetail(Node);
+        mNode := AAnswer.Candidates[ARow.Index];
+        AMain := mNode.Caption;
+        ADetail := NodeDetail(mNode);
       end;
   end;
 end;
@@ -325,30 +325,30 @@ end;
 
 procedure TAtlasSymbolPathChain.Layout;
 var
-  Index, Top: Integer;
+  mIndex, mTop: Integer;
 begin
   SetLength(FTops, Length(FRows));
   SetLength(FHeights, Length(FRows));
-  Top := Px(Margin);
-  for Index := 0 to High(FRows) do
+  mTop := Px(cMargin);
+  for mIndex := 0 to High(FRows) do
   begin
-    FTops[Index] := Top;
-    case FRows[Index].Kind of
+    FTops[mIndex] := mTop;
+    case FRows[mIndex].Kind of
       TAtlasSymbolPathRowKind.Header:
-        FHeights[Index] := Px(HeaderHeight);
+        FHeights[mIndex] := Px(cHeaderHeight);
       TAtlasSymbolPathRowKind.Step:
-        FHeights[Index] := Px(StepHeight);
+        FHeights[mIndex] := Px(cStepHeight);
     else
-      FHeights[Index] := Px(NodeHeight);
+      FHeights[mIndex] := Px(cNodeHeight);
     end;
-    Inc(Top, FHeights[Index]);
+    Inc(mTop, FHeights[mIndex]);
     // Treffer stehen ohne Pfeil untereinander, mit etwas Abstand.
-    if FRows[Index].Kind = TAtlasSymbolPathRowKind.Candidate then
+    if FRows[mIndex].Kind = TAtlasSymbolPathRowKind.Candidate then
     begin
-      Inc(Top, Px(4));
+      Inc(mTop, Px(4));
     end;
   end;
-  Height := Top + Px(Margin);
+  Height := mTop + Px(cMargin);
 end;
 
 procedure TAtlasSymbolPathChain.Resize;
@@ -363,15 +363,15 @@ begin
   Layout;
 end;
 
-function TAtlasSymbolPathChain.RowAt(Y: Integer): Integer;
+function TAtlasSymbolPathChain.RowAt(AY: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FRows) do
+  for mIndex := 0 to High(FRows) do
   begin
-    if (Y >= FTops[Index]) and (Y < FTops[Index] + FHeights[Index]) then
+    if (AY >= FTops[mIndex]) and (AY < FTops[mIndex] + FHeights[mIndex]) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -382,30 +382,30 @@ begin
   Result := TRect.Empty;
   if (AIndex >= 0) and (AIndex <= High(FRows)) then
   begin
-    Result := TRect.Create(Px(Margin), FTops[AIndex], ClientWidth - Px(Margin), FTops[AIndex] + FHeights[AIndex]);
+    Result := TRect.Create(Px(cMargin), FTops[AIndex], ClientWidth - Px(cMargin), FTops[AIndex] + FHeights[AIndex]);
   end;
 end;
 
 function TAtlasSymbolPathChain.Lines: TArray<string>;
 var
-  Row: TAtlasSymbolPathRow;
-  Main, Detail: string;
+  mRow: TAtlasSymbolPathRow;
+  mMain, mDetail: string;
 begin
   Result := nil;
-  for Row in FRows do
+  for mRow in FRows do
   begin
-    RowTexts(FAnswer, Row, Main, Detail);
-    if Detail <> '' then
+    RowTexts(FAnswer, mRow, mMain, mDetail);
+    if mDetail <> '' then
     begin
-      Main := Main + ' · ' + Detail;
+      mMain := mMain + ' · ' + mDetail;
     end;
-    Result := Result + [Main];
+    Result := Result + [mMain];
   end;
 end;
 
 procedure TAtlasSymbolPathChain.SetSelected(AValue: Integer);
 var
-  Bounds: TRect;
+  mBounds: TRect;
 begin
   if (AValue < -1) or (AValue > High(FRows)) then
   begin
@@ -420,49 +420,49 @@ begin
   // In der Scrollbox sichtbar halten.
   if (FSelected >= 0) and (Parent is TScrollingWinControl) then
   begin
-    Bounds := RowRect(FSelected);
-    if Top + Bounds.Top < 0 then
+    mBounds := RowRect(FSelected);
+    if Top + mBounds.Top < 0 then
     begin
       TScrollingWinControl(Parent).VertScrollBar.Position := TScrollingWinControl(Parent).VertScrollBar.Position +
-        Top + Bounds.Top;
+        Top + mBounds.Top;
     end
-    else if Top + Bounds.Bottom > Parent.ClientHeight then
+    else if Top + mBounds.Bottom > Parent.ClientHeight then
     begin
       TScrollingWinControl(Parent).VertScrollBar.Position := TScrollingWinControl(Parent).VertScrollBar.Position +
-        Top + Bounds.Bottom - Parent.ClientHeight;
+        Top + mBounds.Bottom - Parent.ClientHeight;
     end;
   end;
 end;
 
 procedure TAtlasSymbolPathChain.OpenSelected;
 var
-  Row: TAtlasSymbolPathRow;
+  mRow: TAtlasSymbolPathRow;
 begin
   if (FSelected < 0) or (FSelected > High(FRows)) then
   begin
     Exit;
   end;
-  Row := FRows[FSelected];
-  if (Row.FileName = '') or not Assigned(FOnOpen) then
+  mRow := FRows[FSelected];
+  if (mRow.FileName = '') or not Assigned(FOnOpen) then
   begin
     Exit;
   end;
-  FOnOpen(Row.FileName, Row.Line, Row.Character);
+  FOnOpen(mRow.FileName, mRow.Line, mRow.Character);
 end;
 
 procedure TAtlasSymbolPathChain.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  Hit: Integer;
+  mHit: Integer;
 begin
   inherited;
   if Showing and CanFocus then
   begin
     SetFocus;
   end;
-  Hit := RowAt(Y);
-  if (Hit >= 0) and (FRows[Hit].Kind <> TAtlasSymbolPathRowKind.Header) then
+  mHit := RowAt(Y);
+  if (mHit >= 0) and (FRows[mHit].Kind <> TAtlasSymbolPathRowKind.Header) then
   begin
-    SetSelected(Hit);
+    SetSelected(mHit);
   end;
 end;
 
@@ -474,7 +474,7 @@ end;
 
 procedure TAtlasSymbolPathChain.KeyDown(var Key: Word; Shift: TShiftState);
 var
-  Next: Integer;
+  mNext: Integer;
 begin
   inherited;
   case Key of
@@ -485,20 +485,20 @@ begin
       end;
     VK_DOWN, VK_UP:
       begin
-        Next := FSelected;
+        mNext := FSelected;
         repeat
           if Key = VK_DOWN then
           begin
-            Inc(Next);
+            Inc(mNext);
           end
           else
           begin
-            Dec(Next);
+            Dec(mNext);
           end;
-        until (Next < 0) or (Next > High(FRows)) or (FRows[Next].Kind <> TAtlasSymbolPathRowKind.Header);
-        if (Next >= 0) and (Next <= High(FRows)) then
+        until (mNext < 0) or (mNext > High(FRows)) or (FRows[mNext].Kind <> TAtlasSymbolPathRowKind.Header);
+        if (mNext >= 0) and (mNext <= High(FRows)) then
         begin
-          SetSelected(Next);
+          SetSelected(mNext);
         end;
         Key := 0;
       end;
@@ -550,7 +550,7 @@ var
   mX, mBottom, mTip, mTextTop: Integer;
 begin
   // Pfeil nach unten links, erschlossene Kanten gestrichelt (Breite 1, sonst zeichnet GDI durchgehend).
-  mX := ABox.Left + Px(ArrowIndent);
+  mX := ABox.Left + Px(cArrowIndent);
   mBottom := ABox.Bottom - Px(2);
   Canvas.Pen.Style := psSolid;
   Canvas.Pen.Width := Max(1, Px(2));

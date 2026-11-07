@@ -131,7 +131,7 @@ begin
   FView.Start := FRows.AddChoice('issues.start', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesStart),
     TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesStartBranch),
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesStartRemember)),
-    TArray<string>.Create(TAtlasPluginSettings.IssuesStartBranch, TAtlasPluginSettings.IssuesStartRemember));
+    TArray<string>.Create(TAtlasPluginSettings.cIssuesStartBranch, TAtlasPluginSettings.cIssuesStartRemember));
 end;
 
 procedure TAtlasTrackerGeneralPart.BuildPatterns;
@@ -209,8 +209,8 @@ begin
     TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesNotifyScopeAssigned),
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesNotifyScopeCreated),
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesNotifyScopeWatched)),
-    TArray<string>.Create(TAtlasPluginSettings.IssuesNotifyAssigned, TAtlasPluginSettings.IssuesNotifyAssignedOrCreated,
-    TAtlasPluginSettings.IssuesNotifyWatched));
+    TArray<string>.Create(TAtlasPluginSettings.cIssuesNotifyAssigned, TAtlasPluginSettings.cIssuesNotifyAssignedOrCreated,
+    TAtlasPluginSettings.cIssuesNotifyWatched));
 end;
 
 procedure TAtlasTrackerGeneralPart.BuildAttach;

@@ -98,7 +98,7 @@ type
   /// </summary>
   TAtlasVcsGitBranchOptions = record
   public const
-    DefaultWorktreeFolder = '..\{repo}-{kennung}';
+    cDefaultWorktreeFolder = '..\{repo}-{kennung}';
   public
     Base: TAtlasVcsGitBaseOption;
     /// <summary>vcs.branch.git.push = now: nach dem Anlegen pushen und verfolgen.</summary>
@@ -412,7 +412,7 @@ begin
   Result.PushNow := False;
   Result.Uncommitted := TAtlasVcsGitUncommitted.Carry;
   Result.Worktree := False;
-  Result.WorktreeFolder := DefaultWorktreeFolder;
+  Result.WorktreeFolder := cDefaultWorktreeFolder;
 end;
 
 class function TAtlasVcsGitBranchOptions.FromSettings(const ABase, APush, AUncommitted: string; AWorktree: Boolean;
@@ -441,7 +441,7 @@ begin
   Result.WorktreeFolder := Trim(AWorktreeFolder);
   if Result.WorktreeFolder = '' then
   begin
-    Result.WorktreeFolder := DefaultWorktreeFolder;
+    Result.WorktreeFolder := cDefaultWorktreeFolder;
   end;
 end;
 
@@ -624,7 +624,8 @@ begin
   Result := nil;
   mRemote := ARequest.Base.RemoteName;
   // Basis ist ein Branch-Name aus Inspect; losgelöster HEAD hat keinen.
-  if ((ARequest.Base.Name <> '') and not TAtlasVcsBranchPlan.SafeName(ARequest.Base.Name)) or not TAtlasVcsBranchPlan.SafeName(mRemote) then
+  if ((ARequest.Base.Name <> '') and not TAtlasVcsBranchPlan.SafeName(ARequest.Base.Name)) or
+    not TAtlasVcsBranchPlan.SafeName(mRemote) then
   begin
     Exit;
   end;
@@ -643,7 +644,8 @@ begin
   begin
     // Eigener Ordner: die Arbeitskopie bleibt, wie sie ist; offene Änderungen bleiben dort.
     Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('worktree', 'add', '--quiet', '--no-track',
-      '-b', ARequest.Name, ARequest.WorktreeFolder, TAtlasVcsBranchPlan.BaseRef(TAtlasVcsKind.Git, ARequest.Base)), False, False)];
+      '-b', ARequest.Name, ARequest.WorktreeFolder, TAtlasVcsBranchPlan.BaseRef(TAtlasVcsKind.Git, ARequest.Base)),
+        False, False)];
   end
   else
   begin
@@ -1367,7 +1369,7 @@ begin
   Result := Trim(APattern);
   if Result = '' then
   begin
-    Result := TAtlasVcsGitBranchOptions.DefaultWorktreeFolder;
+    Result := TAtlasVcsGitBranchOptions.cDefaultWorktreeFolder;
   end;
   mKey := FolderPart(AKey);
   // Ohne Issue (Befehl „Branch anlegen …“) steht der Name an Stelle der Kennung.

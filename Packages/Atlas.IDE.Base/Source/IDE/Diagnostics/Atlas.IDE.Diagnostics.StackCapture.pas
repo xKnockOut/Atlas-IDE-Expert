@@ -31,7 +31,7 @@ type
     class procedure Uninstall; static;
     class function Installed: Boolean; static;
     /// <summary>Stacktrace zur gerade behandelten Ausnahme E (im except-Block aufrufen); '' ohne Mitschnitt.</summary>
-    class function StackOf(E: Exception): string; static;
+    class function StackOf(AE: Exception): string; static;
     /// <summary>Aufrufstapel des laufenden Threads ohne die ASkip innersten Rahmen (ohne diese Routine).</summary>
     class function CurrentStack(ASkip: Integer): string; static;
     /// <summary>Hängt an Rahmen "Atlas…bpl+Offset" (z. B. aus dem Einfrier-Wächter) Unit, Routine und Zeile an.
@@ -73,16 +73,16 @@ type
   end;
 
 const
-  ExceptionContinueSearch = 0;
-  StatusStackOverflow = $C00000FD;
+  cExceptionContinueSearch = 0;
+  cStatusStackOverflow = $C00000FD;
   // Hinweise des Debuggers und Thread-Namen: keine Fehler.
-  DbgPrintException = $40010006;
-  DbgPrintExceptionWide = $4001000A;
-  MsVcThreadName = $406D1388;
-  StatusBreakpoint = $80000003;
-  StatusSingleStep = $80000004;
+  cDbgPrintException = $40010006;
+  cDbgPrintExceptionWide = $4001000A;
+  cMsVcThreadName = $406D1388;
+  cStatusBreakpoint = $80000003;
+  cStatusSingleStep = $80000004;
   /// <summary>Höchstens so viele Zeilen je Fehlerzeile im Protokoll.</summary>
-  MaxLines = 32;
+  cMaxLines = 32;
 
 function AddVectoredExceptionHandler(AFirst: ULONG; AHandler: Pointer): Pointer; stdcall;
   external kernel32 name 'AddVectoredExceptionHandler';
@@ -104,22 +104,22 @@ var
 /// <summary>Bereich eines geladenen Moduls aus seinem PE-Kopf.</summary>
 procedure ModuleRange(AModule: HMODULE; out ABase, AEnd: NativeUInt);
 var
-  Info: TModuleInfo;
+  mInfo: TModuleInfo;
 begin
   ABase := 0;
   AEnd := 0;
-  if (AModule <> 0) and GetModuleInformation(GetCurrentProcess, AModule, @Info, SizeOf(Info)) then
+  if (AModule <> 0) and GetModuleInformation(GetCurrentProcess, AModule, @mInfo, SizeOf(mInfo)) then
   begin
-    ABase := NativeUInt(Info.lpBaseOfDll);
-    AEnd := ABase + Info.SizeOfImage;
+    ABase := NativeUInt(mInfo.lpBaseOfDll);
+    AEnd := ABase + mInfo.SizeOfImage;
   end;
 end;
 
 /// <summary>Beim Stapelüberlauf ist kein Platz für den Mitschnitt; Hinweise des Debuggers sind keine Fehler.</summary>
 function Ignored(ACode: Cardinal): Boolean;
 begin
-  Result := (ACode = StatusStackOverflow) or (ACode = DbgPrintException) or (ACode = DbgPrintExceptionWide) or
-    (ACode = MsVcThreadName) or (ACode = StatusBreakpoint) or (ACode = StatusSingleStep);
+  Result := (ACode = cStatusStackOverflow) or (ACode = cDbgPrintException) or (ACode = cDbgPrintExceptionWide) or
+    (ACode = cMsVcThreadName) or (ACode = cStatusBreakpoint) or (ACode = cStatusSingleStep);
 end;
 
 function InOwnModule(AAddress: NativeUInt): Boolean;
@@ -130,64 +130,64 @@ end;
 /// <summary>Läuft im Ausnahmebehandler des Systems: kein Speicher, keine Sperren, keine Ausnahme nach außen.</summary>
 function Handler(AInfo: PRawExceptionPointers): Integer; stdcall;
 var
-  Raw: PRawExceptionRecord;
-  Captured: array[0..TAtlasStackRecord.MaxFrames + 7] of Pointer;
-  Count, First, Index: Integer;
-  Item: TAtlasStackRecord;
-  Ours: Boolean;
+  mRaw: PRawExceptionRecord;
+  mCaptured: array[0..TAtlasStackRecord.cMaxFrames + 7] of Pointer;
+  mCount, mFirst, mIndex: Integer;
+  mItem: TAtlasStackRecord;
+  mOurs: Boolean;
 begin
-  Result := ExceptionContinueSearch;
+  Result := cExceptionContinueSearch;
   if (Ring = nil) or (AInfo = nil) or (AInfo^.ExceptionRecord = nil) then
   begin
     Exit;
   end;
-  Raw := AInfo^.ExceptionRecord;
-  if Ignored(Raw^.ExceptionCode) then
+  mRaw := AInfo^.ExceptionRecord;
+  if Ignored(mRaw^.ExceptionCode) then
   begin
     Exit;
   end;
-  Count := CaptureStackBackTrace(1, Length(Captured), @Captured[0], nil);
+  mCount := CaptureStackBackTrace(1, Length(mCaptured), @mCaptured[0], nil);
   // Vorn steht die Ausnahmeverteilung von ntdll; sie sagt nichts über die Ursache.
-  First := 0;
-  while (First < Count) and (NativeUInt(Captured[First]) >= NtBase) and (NativeUInt(Captured[First]) < NtEnd) do
+  mFirst := 0;
+  while (mFirst < mCount) and (NativeUInt(mCaptured[mFirst]) >= NtBase) and (NativeUInt(mCaptured[mFirst]) < NtEnd) do
   begin
-    Inc(First);
+    Inc(mFirst);
   end;
-  Ours := InOwnModule(NativeUInt(Raw^.ExceptionAddress));
-  for Index := First to Count - 1 do
+  mOurs := InOwnModule(NativeUInt(mRaw^.ExceptionAddress));
+  for mIndex := mFirst to mCount - 1 do
   begin
-    if InOwnModule(NativeUInt(Captured[Index])) then
+    if InOwnModule(NativeUInt(mCaptured[mIndex])) then
     begin
-      Ours := True;
+      mOurs := True;
     end;
   end;
-  if not Ours then
+  if not mOurs then
   begin
     Exit;
   end;
-  Item := Default(TAtlasStackRecord);
-  Item.ThreadId := GetCurrentThreadId;
-  Item.Code := Raw^.ExceptionCode;
-  Item.Address := NativeUInt(Raw^.ExceptionAddress);
-  Item.ParamCount := 0;
-  for Index := 0 to Integer(Raw^.NumberParameters) - 1 do
+  mItem := Default(TAtlasStackRecord);
+  mItem.ThreadId := GetCurrentThreadId;
+  mItem.Code := mRaw^.ExceptionCode;
+  mItem.Address := NativeUInt(mRaw^.ExceptionAddress);
+  mItem.ParamCount := 0;
+  for mIndex := 0 to Integer(mRaw^.NumberParameters) - 1 do
   begin
-    if Index < TAtlasStackRecord.MaxParams then
+    if mIndex < TAtlasStackRecord.cMaxParams then
     begin
-      Item.Params[Index] := Raw^.ExceptionInformation[Index];
-      Item.ParamCount := Index + 1;
+      mItem.Params[mIndex] := mRaw^.ExceptionInformation[mIndex];
+      mItem.ParamCount := mIndex + 1;
     end;
   end;
-  Item.Count := 0;
-  for Index := First to Count - 1 do
+  mItem.Count := 0;
+  for mIndex := mFirst to mCount - 1 do
   begin
-    if Item.Count < TAtlasStackRecord.MaxFrames then
+    if mItem.Count < TAtlasStackRecord.cMaxFrames then
     begin
-      Item.Frames[Item.Count] := NativeUInt(Captured[Index]);
-      Inc(Item.Count);
+      mItem.Frames[mItem.Count] := NativeUInt(mCaptured[mIndex]);
+      Inc(mItem.Count);
     end;
   end;
-  Ring.Add(Item);
+  Ring.Add(mItem);
 end;
 
 /// <summary>Neben der BPL unter ihrem Namen (Release-Paket), sonst wie der Linker sie nennt: ohne die
@@ -277,9 +277,9 @@ begin
     Exit;
   end;
   TAtlasGuard.StackOf :=
-    function(E: Exception): string
+    function(AE: Exception): string
     begin
-      Result := TAtlasIdeStackCapture.StackOf(E);
+      Result := TAtlasIdeStackCapture.StackOf(AE);
     end;
 end;
 
@@ -298,51 +298,51 @@ begin
   Result := Handle <> nil;
 end;
 
-class function TAtlasIdeStackCapture.StackOf(E: Exception): string;
+class function TAtlasIdeStackCapture.StackOf(AE: Exception): string;
 var
-  Item: TAtlasStackRecord;
+  mItem: TAtlasStackRecord;
 begin
   Result := '';
-  if (Ring = nil) or (E = nil) then
+  if (Ring = nil) or (AE = nil) then
   begin
     Exit;
   end;
   // Delphi-Ausnahmen tragen ihr Objekt und die Adresse von raise in den Parametern, Prozessorfehler
   // (Zugriffsverletzung) die Fehleradresse im Record; ExceptAddr liefert beides für die laufende Behandlung.
-  if not Ring.Find(GetCurrentThreadId, [NativeUInt(Pointer(E)), NativeUInt(ExceptAddr)], Item) then
+  if not Ring.Find(GetCurrentThreadId, [NativeUInt(Pointer(AE)), NativeUInt(ExceptAddr)], mItem) then
   begin
     Exit;
   end;
-  Result := TAtlasStackFrames.Describe(Item.Addresses, Modules, LoadedMap, OwnName, MaxLines);
+  Result := TAtlasStackFrames.Describe(mItem.Addresses, Modules, LoadedMap, OwnName, cMaxLines);
 end;
 
 class function TAtlasIdeStackCapture.CurrentStack(ASkip: Integer): string;
 var
-  Frames: array[0..TAtlasStackRecord.MaxFrames - 1] of Pointer;
-  Count, Index: Integer;
-  Addresses: TArray<UInt64>;
+  mFrames: array[0..TAtlasStackRecord.cMaxFrames - 1] of Pointer;
+  mCount, mIndex: Integer;
+  mAddresses: TArray<UInt64>;
 begin
-  Count := CaptureStackBackTrace(ASkip + 1, Length(Frames), @Frames[0], nil);
-  SetLength(Addresses, Count);
-  for Index := 0 to Count - 1 do
+  mCount := CaptureStackBackTrace(ASkip + 1, Length(mFrames), @mFrames[0], nil);
+  SetLength(mAddresses, mCount);
+  for mIndex := 0 to mCount - 1 do
   begin
-    Addresses[Index] := UInt64(NativeUInt(Frames[Index]));
+    mAddresses[mIndex] := UInt64(NativeUInt(mFrames[mIndex]));
   end;
   if OwnName = '' then
   begin
     OwnName := ExtractFileName(GetModuleName(HInstance));
   end;
-  Result := TAtlasStackFrames.Describe(Addresses, Modules, LoadedMap, OwnName, MaxLines);
+  Result := TAtlasStackFrames.Describe(mAddresses, Modules, LoadedMap, OwnName, cMaxLines);
 end;
 
 class function TAtlasIdeStackCapture.Symbolize(const AFrames: TArray<string>): TArray<string>;
 var
-  Index: Integer;
-  Loaded: TMapFile;
+  mIndex: Integer;
+  mLoaded: TMapFile;
 begin
   Result := Copy(AFrames);
-  Loaded := LoadedMap;
-  if Loaded = nil then
+  mLoaded := LoadedMap;
+  if mLoaded = nil then
   begin
     Exit;
   end;
@@ -350,35 +350,36 @@ begin
   begin
     OwnName := ExtractFileName(GetModuleName(HInstance));
   end;
-  for Index := 0 to High(Result) do
+  for mIndex := 0 to High(Result) do
   begin
-    Result[Index] := TAtlasStackFrames.Symbolize(Result[Index], Loaded, OwnName);
+    Result[mIndex] := TAtlasStackFrames.Symbolize(Result[mIndex], mLoaded, OwnName);
   end;
 end;
 
 class function TAtlasIdeStackCapture.Modules: TArray<TAtlasModuleRange>;
 var
-  Handles: array[0..1023] of HMODULE;
-  Needed: DWORD;
-  Index: Integer;
-  Info: TModuleInfo;
-  Name: array[0..MAX_PATH] of Char;
-  Range: TAtlasModuleRange;
+  mHandles: array[0..1023] of HMODULE;
+  mNeeded: DWORD;
+  mIndex: Integer;
+  mInfo: TModuleInfo;
+  mName: array[0..MAX_PATH] of Char;
+  mRange: TAtlasModuleRange;
 begin
   Result := nil;
-  if not EnumProcessModules(GetCurrentProcess, @Handles[0], SizeOf(Handles), Needed) then
+  if not EnumProcessModules(GetCurrentProcess, @mHandles[0], SizeOf(mHandles), mNeeded) then
   begin
     Exit;
   end;
-  for Index := 0 to Integer(Needed div SizeOf(HMODULE)) - 1 do
+  for mIndex := 0 to Integer(mNeeded div SizeOf(HMODULE)) - 1 do
   begin
-    if (Index <= High(Handles)) and GetModuleInformation(GetCurrentProcess, Handles[Index], @Info, SizeOf(Info)) and
-      (GetModuleFileName(Handles[Index], Name, Length(Name)) > 0) then
+    if (mIndex <= High(mHandles)) and GetModuleInformation(GetCurrentProcess, mHandles[mIndex], @mInfo,
+      SizeOf(mInfo)) and
+      (GetModuleFileName(mHandles[mIndex], mName, Length(mName)) > 0) then
     begin
-      Range.Name := ExtractFileName(Name);
-      Range.Base := NativeUInt(Info.lpBaseOfDll);
-      Range.Size := Info.SizeOfImage;
-      Result := Result + [Range];
+      mRange.Name := ExtractFileName(mName);
+      mRange.Base := NativeUInt(mInfo.lpBaseOfDll);
+      mRange.Size := mInfo.SizeOfImage;
+      Result := Result + [mRange];
     end;
   end;
 end;

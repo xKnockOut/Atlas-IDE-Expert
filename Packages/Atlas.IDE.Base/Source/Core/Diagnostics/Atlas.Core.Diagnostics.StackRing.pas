@@ -22,8 +22,8 @@ uses
 type
   TAtlasStackRecord = record
   public const
-    MaxFrames = 40;
-    MaxParams = 4;
+    cMaxFrames = 40;
+    cMaxParams = 4;
   public
     /// <summary>Laufende Nummer; 0 = leer oder gerade in Arbeit.</summary>
     Sequence: Int64;
@@ -31,9 +31,9 @@ type
     Code: Cardinal;
     Address: NativeUInt;
     ParamCount: Integer;
-    Params: array[0..MaxParams - 1] of NativeUInt;
+    Params: array[0..cMaxParams - 1] of NativeUInt;
     Count: Integer;
-    Frames: array[0..MaxFrames - 1] of NativeUInt;
+    Frames: array[0..cMaxFrames - 1] of NativeUInt;
     /// <summary>Passt AKey zur Fehleradresse oder zu einem der Parameter?</summary>
     function Matches(AKey: NativeUInt): Boolean;
     /// <summary>Rahmen als Liste, die Fehleradresse vorn (unter Win32 fehlt die fehlerhafte Routine sonst).</summary>
@@ -42,9 +42,9 @@ type
 
   TAtlasStackRing = class
   public const
-    SlotCount = 32;
+    cSlotCount = 32;
   private
-    FSlots: array[0..SlotCount - 1] of TAtlasStackRecord;
+    FSlots: array[0..cSlotCount - 1] of TAtlasStackRecord;
     FNext: Int64;
   public
     /// <summary>Legt nichts an und sperrt nichts; aus dem Ausnahmebehandler des Systems.</summary>
@@ -73,7 +73,7 @@ uses
 
 function TAtlasStackRecord.Matches(AKey: NativeUInt): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if AKey = 0 then
   begin
@@ -83,9 +83,9 @@ begin
   begin
     Exit(True);
   end;
-  for Index := 0 to ParamCount - 1 do
+  for mIndex := 0 to ParamCount - 1 do
   begin
-    if (Index < MaxParams) and (Params[Index] = AKey) then
+    if (mIndex < cMaxParams) and (Params[mIndex] = AKey) then
     begin
       Exit(True);
     end;
@@ -95,18 +95,18 @@ end;
 
 function TAtlasStackRecord.Addresses: TArray<UInt64>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
   if Address <> 0 then
   begin
     Result := Result + [UInt64(Address)];
   end;
-  for Index := 0 to Count - 1 do
+  for mIndex := 0 to Count - 1 do
   begin
-    if (Index < MaxFrames) and (Frames[Index] <> 0) then
+    if (mIndex < cMaxFrames) and (Frames[mIndex] <> 0) then
     begin
-      Result := Result + [UInt64(Frames[Index])];
+      Result := Result + [UInt64(Frames[mIndex])];
     end;
   end;
 end;
@@ -115,52 +115,52 @@ end;
 
 procedure TAtlasStackRing.Add(const ARecord: TAtlasStackRecord);
 var
-  Sequence: Int64;
-  Slot: ^TAtlasStackRecord;
+  mSequence: Int64;
+  mSlot: ^TAtlasStackRecord;
 begin
-  Sequence := TInterlocked.Increment(FNext);
-  Slot := @FSlots[Sequence mod SlotCount];
+  mSequence := TInterlocked.Increment(FNext);
+  mSlot := @FSlots[mSequence mod cSlotCount];
   // Erst als „in Arbeit“ markieren, dann füllen, zuletzt die Nummer: Find übergeht halbe Einträge.
-  TInterlocked.Exchange(Slot^.Sequence, 0);
-  Slot^.ThreadId := ARecord.ThreadId;
-  Slot^.Code := ARecord.Code;
-  Slot^.Address := ARecord.Address;
-  Slot^.ParamCount := ARecord.ParamCount;
-  Slot^.Params := ARecord.Params;
-  Slot^.Count := ARecord.Count;
-  Slot^.Frames := ARecord.Frames;
-  TInterlocked.Exchange(Slot^.Sequence, Sequence);
+  TInterlocked.Exchange(mSlot^.Sequence, 0);
+  mSlot^.ThreadId := ARecord.ThreadId;
+  mSlot^.Code := ARecord.Code;
+  mSlot^.Address := ARecord.Address;
+  mSlot^.ParamCount := ARecord.ParamCount;
+  mSlot^.Params := ARecord.Params;
+  mSlot^.Count := ARecord.Count;
+  mSlot^.Frames := ARecord.Frames;
+  TInterlocked.Exchange(mSlot^.Sequence, mSequence);
 end;
 
 function TAtlasStackRing.Find(AThreadId: Cardinal; const AKeys: array of NativeUInt;
   out ARecord: TAtlasStackRecord): Boolean;
 var
-  Index: Integer;
-  Key: NativeUInt;
-  Item: TAtlasStackRecord;
-  Best: Int64;
+  mIndex: Integer;
+  mKey: NativeUInt;
+  mItem: TAtlasStackRecord;
+  mBest: Int64;
 begin
   Result := False;
   ARecord := Default(TAtlasStackRecord);
-  Best := 0;
-  for Index := 0 to SlotCount - 1 do
+  mBest := 0;
+  for mIndex := 0 to cSlotCount - 1 do
   begin
-    Item := FSlots[Index];
+    mItem := FSlots[mIndex];
     // Während des Kopierens neu beschrieben: auslassen.
-    if (Item.Sequence = 0) or (TInterlocked.Read(FSlots[Index].Sequence) <> Item.Sequence) then
+    if (mItem.Sequence = 0) or (TInterlocked.Read(FSlots[mIndex].Sequence) <> mItem.Sequence) then
     begin
       Continue;
     end;
-    if (Item.ThreadId <> AThreadId) or (Item.Sequence <= Best) then
+    if (mItem.ThreadId <> AThreadId) or (mItem.Sequence <= mBest) then
     begin
       Continue;
     end;
-    for Key in AKeys do
+    for mKey in AKeys do
     begin
-      if Item.Matches(Key) then
+      if mItem.Matches(mKey) then
       begin
-        ARecord := Item;
-        Best := Item.Sequence;
+        ARecord := mItem;
+        mBest := mItem.Sequence;
         Result := True;
         Break;
       end;
@@ -170,11 +170,11 @@ end;
 
 procedure TAtlasStackRing.Clear;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to SlotCount - 1 do
+  for mIndex := 0 to cSlotCount - 1 do
   begin
-    TInterlocked.Exchange(FSlots[Index].Sequence, 0);
+    TInterlocked.Exchange(FSlots[mIndex].Sequence, 0);
   end;
 end;
 
@@ -183,59 +183,59 @@ end;
 class function TAtlasStackFrames.Symbolize(const AFrame: string; const AMap: TMapFile;
   const AMapModule: string): string;
 var
-  Plus: Integer;
-  Offset: Int64;
-  Location: TMapLocation;
-  Hex: string;
+  mPlus: Integer;
+  mOffset: Int64;
+  mLocation: TMapLocation;
+  mHex: string;
 begin
   Result := AFrame;
   if (AMap = nil) or (AMapModule = '') then
   begin
     Exit;
   end;
-  Plus := Pos('+', AFrame);
-  if (Plus = 0) or not SameText(Copy(AFrame, 1, Plus - 1), AMapModule) then
+  mPlus := Pos('+', AFrame);
+  if (mPlus = 0) or not SameText(Copy(AFrame, 1, mPlus - 1), AMapModule) then
   begin
     Exit;
   end;
-  Hex := Copy(AFrame, Plus + 1, MaxInt);
-  if Hex.StartsWith('$') then
+  mHex := Copy(AFrame, mPlus + 1, MaxInt);
+  if mHex.StartsWith('$') then
   begin
-    Hex := Copy(Hex, 2, MaxInt);
+    mHex := Copy(mHex, 2, MaxInt);
   end;
-  if not TryStrToInt64('$' + Hex, Offset) then
+  if not TryStrToInt64('$' + mHex, mOffset) then
   begin
     Exit;
   end;
-  Location := AMap.Resolve(UInt64(Offset));
-  if Location.Found then
+  mLocation := AMap.Resolve(UInt64(mOffset));
+  if mLocation.Found then
   begin
-    Result := AFrame + ' ' + Location.ToString;
+    Result := AFrame + ' ' + mLocation.ToString;
   end;
 end;
 
 class function TAtlasStackFrames.Describe(const AAddresses: TArray<UInt64>;
   const AModules: TArray<TAtlasModuleRange>; const AMap: TMapFile; const AMapModule: string; AMax: Integer): string;
 var
-  Address: UInt64;
-  Module: TAtlasModuleRange;
-  Frame: string;
-  Lines: Integer;
+  mAddress: UInt64;
+  mModule: TAtlasModuleRange;
+  mFrame: string;
+  mLines: Integer;
 begin
   Result := '';
-  Lines := 0;
-  for Address in AAddresses do
+  mLines := 0;
+  for mAddress in AAddresses do
   begin
-    if Lines >= AMax then
+    if mLines >= AMax then
     begin
       Break;
     end;
-    Frame := Format('$%x', [Address]);
-    for Module in AModules do
+    mFrame := Format('$%x', [mAddress]);
+    for mModule in AModules do
     begin
-      if (Address >= Module.Base) and (Address < Module.Base + Module.Size) then
+      if (mAddress >= mModule.Base) and (mAddress < mModule.Base + mModule.Size) then
       begin
-        Frame := Symbolize(Format('%s+$%x', [Module.Name, Address - Module.Base]), AMap, AMapModule);
+        mFrame := Symbolize(Format('%s+$%x', [mModule.Name, mAddress - mModule.Base]), AMap, AMapModule);
         Break;
       end;
     end;
@@ -243,8 +243,8 @@ begin
     begin
       Result := Result + sLineBreak;
     end;
-    Result := Result + Frame;
-    Inc(Lines);
+    Result := Result + mFrame;
+    Inc(mLines);
   end;
 end;
 

@@ -714,10 +714,10 @@ begin
   Unused := Plain;
   Unused.Severity := TAtlasProblemSeverity.Hint;
   Unused.UsesUnit := 'Vcl.Grids';
-  Unused.UsesState := TAtlasProblem.UsesUnused;
+  Unused.UsesState := TAtlasProblem.cUsesUnused;
   Unused.UsesUnusedCount := 1;
   Moved := Unused;
-  Moved.UsesState := TAtlasProblem.UsesImplementation;
+  Moved.UsesState := TAtlasProblem.cUsesImplementation;
   HoverView := View('');
   HoverView.Problems := [Plain, Unused, Moved];
   HoverInput := Input(HoverView, 300);
@@ -781,7 +781,7 @@ begin
   Cycle := Default(TAtlasProblem);
   Cycle.Severity := TAtlasProblemSeverity.Error;
   Cycle.Source := 'Atlas';
-  Cycle.Code := TAtlasProblem.UsesCycleCode;
+  Cycle.Code := TAtlasProblem.cUsesCycleCode;
   Cycle.Message := 'Zirkuläre Unit-Referenz';
   Cycle.Related := [Related('uC', 3), Related('uA', 3), Related('uB', 3), Related('uC', 3)];
   HoverView := View('');

@@ -36,13 +36,13 @@ type
 
   TAtlasWatchedChanges = class
   public const
-    QuietMs = 300;
+    cQuietMs = 300;
     /// <summary>Rohe Ereignisse wie FILE_ACTION_* von ReadDirectoryChangesW.</summary>
-    ActionAdded = 1;
-    ActionRemoved = 2;
-    ActionModified = 3;
-    ActionRenamedOld = 4;
-    ActionRenamedNew = 5;
+    cActionAdded = 1;
+    cActionRemoved = 2;
+    cActionModified = 3;
+    cActionRenamedOld = 4;
+    cActionRenamedNew = 5;
   private
     FLock: TCriticalSection;
     FPending: TDictionary<string, TAtlasFileChange>;
@@ -102,20 +102,20 @@ end;
 
 class function TAtlasWatchedChanges.IsWatched(const AFileName: string): Boolean;
 const
-  Extensions: array[0..6] of string = ('.pas', '.inc', '.dpr', '.dpk', '.dfm', '.dproj', '.groupproj');
+  cExtensions: array[0..6] of string = ('.pas', '.inc', '.dpr', '.dpk', '.dfm', '.dproj', '.groupproj');
 var
-  Extension, Lower: string;
-  Candidate: string;
+  mExtension, mLower: string;
+  mCandidate: string;
 begin
-  Lower := AnsiLowerCase(AFileName);
-  if (Pos('\.git\', Lower) > 0) or (Pos('\__history\', Lower) > 0) or (Pos('\__recovery\', Lower) > 0) then
+  mLower := AnsiLowerCase(AFileName);
+  if (Pos('\.git\', mLower) > 0) or (Pos('\__history\', mLower) > 0) or (Pos('\__recovery\', mLower) > 0) then
   begin
     Exit(False);
   end;
-  Extension := ExtractFileExt(Lower);
-  for Candidate in Extensions do
+  mExtension := ExtractFileExt(mLower);
+  for mCandidate in cExtensions do
   begin
-    if Extension = Candidate then
+    if mExtension = mCandidate then
     begin
       Exit(True);
     end;
@@ -125,37 +125,37 @@ end;
 
 procedure TAtlasWatchedChanges.Merge(const AFileName: string; AKind: TAtlasFileChangeKind);
 var
-  Key: string;
-  Known: TAtlasFileChange;
+  mKey: string;
+  mKnown: TAtlasFileChange;
 begin
-  Key := AnsiLowerCase(AFileName);
-  if not FPending.TryGetValue(Key, Known) then
+  mKey := AnsiLowerCase(AFileName);
+  if not FPending.TryGetValue(mKey, mKnown) then
   begin
-    FPending.Add(Key, TAtlasFileChange.Create(AFileName, AKind));
-    FOrder.Add(Key);
+    FPending.Add(mKey, TAtlasFileChange.Create(AFileName, AKind));
+    FOrder.Add(mKey);
     Exit;
   end;
-  case Known.Kind of
+  case mKnown.Kind of
     TAtlasFileChangeKind.Created:
       if AKind = TAtlasFileChangeKind.Deleted then
       begin
         // Nur kurz da gewesen (z. B. Sicherungsdatei eines Editors): nichts melden.
-        FPending.Remove(Key);
-        FOrder.Remove(Key);
+        FPending.Remove(mKey);
+        FOrder.Remove(mKey);
         Exit;
       end;
     TAtlasFileChangeKind.Changed:
       if AKind = TAtlasFileChangeKind.Deleted then
       begin
-        Known.Kind := TAtlasFileChangeKind.Deleted;
+        mKnown.Kind := TAtlasFileChangeKind.Deleted;
       end;
     TAtlasFileChangeKind.Deleted:
       if AKind <> TAtlasFileChangeKind.Deleted then
       begin
-        Known.Kind := TAtlasFileChangeKind.Changed;
+        mKnown.Kind := TAtlasFileChangeKind.Changed;
       end;
   end;
-  FPending[Key] := Known;
+  FPending[mKey] := mKnown;
 end;
 
 procedure TAtlasWatchedChanges.Add(const AFileName: string; AAction: Cardinal; ANow: Cardinal);
@@ -167,11 +167,11 @@ begin
   FLock.Enter;
   try
     case AAction of
-      ActionAdded, ActionRenamedNew:
+      cActionAdded, cActionRenamedNew:
         Merge(AFileName, TAtlasFileChangeKind.Created);
-      ActionRemoved, ActionRenamedOld:
+      cActionRemoved, cActionRenamedOld:
         Merge(AFileName, TAtlasFileChangeKind.Deleted);
-      ActionModified:
+      cActionModified:
         Merge(AFileName, TAtlasFileChangeKind.Changed);
     else
       Exit;
@@ -184,18 +184,18 @@ end;
 
 function TAtlasWatchedChanges.Take(ANow: Cardinal): TArray<TAtlasFileChange>;
 var
-  Key: string;
+  mKey: string;
 begin
   Result := nil;
   FLock.Enter;
   try
-    if (FOrder.Count = 0) or (ANow - FLastAdd < QuietMs) then
+    if (FOrder.Count = 0) or (ANow - FLastAdd < cQuietMs) then
     begin
       Exit;
     end;
-    for Key in FOrder do
+    for mKey in FOrder do
     begin
-      Result := Result + [FPending[Key]];
+      Result := Result + [FPending[mKey]];
     end;
     FOrder.Clear;
     FPending.Clear;
@@ -207,37 +207,37 @@ end;
 /// <summary>Nach oben bis zum Git-Arbeitsverzeichnis; ohne Git der Ordner selbst.</summary>
 function GitRootOf(const AFolder: string; const AExists: TAtlasPathExists): string;
 var
-  Candidate: string;
+  mCandidate: string;
 begin
   Result := AFolder;
-  Candidate := AFolder;
-  while Candidate <> '' do
+  mCandidate := AFolder;
+  while mCandidate <> '' do
   begin
-    if AExists(IncludeTrailingPathDelimiter(Candidate) + '.git') then
+    if AExists(IncludeTrailingPathDelimiter(mCandidate) + '.git') then
     begin
-      Result := Candidate;
+      Result := mCandidate;
       Break;
     end;
-    if ExtractFileDir(Candidate) = Candidate then
+    if ExtractFileDir(mCandidate) = mCandidate then
     begin
       Break;
     end;
-    Candidate := ExtractFileDir(Candidate);
+    mCandidate := ExtractFileDir(mCandidate);
   end;
 end;
 
 /// <summary>Doppelt (der erste bleibt) oder unterhalb eines anderen Ordners.</summary>
 function IsCovered(const AFound: TArray<string>; AIndex: Integer): Boolean;
 var
-  Other: Integer;
-  Current: string;
+  mOther: Integer;
+  mCurrent: string;
 begin
   Result := False;
-  Current := AFound[AIndex];
-  for Other := 0 to High(AFound) do
+  mCurrent := AFound[AIndex];
+  for mOther := 0 to High(AFound) do
   begin
-    if ((Other < AIndex) and SameText(AFound[Other], Current)) or
-      ((Other <> AIndex) and Current.StartsWith(IncludeTrailingPathDelimiter(AFound[Other]), True)) then
+    if ((mOther < AIndex) and SameText(AFound[mOther], mCurrent)) or
+      ((mOther <> AIndex) and mCurrent.StartsWith(IncludeTrailingPathDelimiter(AFound[mOther]), True)) then
     begin
       Result := True;
       Break;
@@ -247,25 +247,25 @@ end;
 class function TAtlasWatchedChanges.Roots(const AProjects: TArray<string>;
   const AExists: TAtlasPathExists): TArray<string>;
 var
-  Project, Folder: string;
-  Found: TArray<string>;
-  Index: Integer;
+  mProject, mFolder: string;
+  mFound: TArray<string>;
+  mIndex: Integer;
 begin
-  Found := nil;
-  for Project in AProjects do
+  mFound := nil;
+  for mProject in AProjects do
   begin
-    Folder := ExcludeTrailingPathDelimiter(ExtractFilePath(Project));
-    if Folder <> '' then
+    mFolder := ExcludeTrailingPathDelimiter(ExtractFilePath(mProject));
+    if mFolder <> '' then
     begin
-      Found := Found + [GitRootOf(Folder, AExists)];
+      mFound := mFound + [GitRootOf(mFolder, AExists)];
     end;
   end;
   Result := nil;
-  for Index := 0 to High(Found) do
+  for mIndex := 0 to High(mFound) do
   begin
-    if not IsCovered(Found, Index) then
+    if not IsCovered(mFound, mIndex) then
     begin
-      Result := Result + [Found[Index]];
+      Result := Result + [mFound[mIndex]];
     end;
   end;
 end;

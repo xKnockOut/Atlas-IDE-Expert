@@ -265,7 +265,7 @@ begin
   Items := RestItems;
   Order := TAtlasRanking.Order(Items, 'As', RestOptions(TAtlasListMode.Rest), RestStart);
   Assert.AreEqual('Assign,#,Add,BeginUpdate,Clear,Sort', Names(Items, Order));
-  Assert.AreEqual(TAtlasRanking.RestHeader, Order[1]);
+  Assert.AreEqual(TAtlasRanking.cRestHeader, Order[1]);
   Assert.AreEqual(2, RestStart);
   // Der Chip schränkt auch den Rest ein.
   Items := Items + [Member('Count', 'TStrings', 0, 5, TAtlasItemKind.Property_)];
@@ -294,8 +294,8 @@ begin
   // Tippfehler (#485) stehen unter „Meintest du“ und nicht noch einmal im Rest.
   Order := TAtlasRanking.Order(Items, 'Cleer', RestOptions(TAtlasListMode.Rest), RestStart);
   Assert.AreEqual('#,Clear,#,Add,Assign,BeginUpdate,Sort', Names(Items, Order));
-  Assert.AreEqual(TAtlasRanking.TypoHeader, Order[0]);
-  Assert.AreEqual(TAtlasRanking.RestHeader, Order[2]);
+  Assert.AreEqual(TAtlasRanking.cTypoHeader, Order[0]);
+  Assert.AreEqual(TAtlasRanking.cRestHeader, Order[2]);
   Assert.AreEqual(3, RestStart);
   Items := nil;
   Order := nil;
@@ -1143,7 +1143,7 @@ begin
   try
     TFile.WriteAllText(FileName, '{"entries": 5}');
     Assert.IsTrue(Usage.LoadFromFile(FileName) = TAtlasDataLoad.Renewed);
-    Assert.IsTrue(TFile.Exists(FileName + TAtlasDataFile.DefectExtension), 'beiseitegelegt');
+    Assert.IsTrue(TFile.Exists(FileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
     Usage.Record_(Member('BeginUpdate', 'TStrings', 1, 0));
     Assert.IsTrue(Usage.SaveToFile(FileName));
     Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
@@ -1160,7 +1160,7 @@ begin
   finally
     Usage.Free;
     System.SysUtils.DeleteFile(FileName);
-    System.SysUtils.DeleteFile(FileName + TAtlasDataFile.DefectExtension);
+    System.SysUtils.DeleteFile(FileName + TAtlasDataFile.cDefectExtension);
   end;
   // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
   TAtlasDataFile.ForgetReports;

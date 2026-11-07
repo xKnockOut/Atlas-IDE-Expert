@@ -191,8 +191,8 @@ begin
       History.Jumped(At(Format('U%d.pas', [Index]), 1), At(Format('U%d.pas', [Index + 1]), 1));
       History.Edited(At(Format('U%d.pas', [Index]), 1));
     end;
-    Assert.AreEqual(TAtlasNavHistory.MaxEntries, History.BackCount);
-    Assert.AreEqual(TAtlasNavHistory.MaxEntries, History.EditCount);
+    Assert.AreEqual(TAtlasNavHistory.cMaxEntries, History.BackCount);
+    Assert.AreEqual(TAtlasNavHistory.cMaxEntries, History.EditCount);
     // Der älteste verbliebene Eintrag ist U51.
     Target := At('U151.pas', 1);
     while History.StepBack(Target, Next) do
@@ -246,7 +246,7 @@ end;
 procedure TAtlasNavHistoryTests.ExcerptIsTrimmedAndShortened;
 begin
   Assert.AreEqual('if A then B;', TAtlasNavHistory.Excerpt(#9'  if A then B;  '));
-  Assert.AreEqual(TAtlasNavHistory.MaxExcerpt, Integer(Length(TAtlasNavHistory.Excerpt(StringOfChar('x', 200)))));
+  Assert.AreEqual(TAtlasNavHistory.cMaxExcerpt, Integer(Length(TAtlasNavHistory.Excerpt(StringOfChar('x', 200)))));
 end;
 
 initialization

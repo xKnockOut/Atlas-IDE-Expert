@@ -36,7 +36,7 @@ type
   TAtlasIdeLinkedEditingQuery = class
   private const
     /// <summary>So viele Takte ohne Bewegung, bevor Atlas den Server fragt.</summary>
-    IdleTicks = 2;
+    cIdleTicks = 2;
   private
     FSession: TAtlasLinkedSessionFunc;
     FDeliver: TAtlasLinkedDeliverProc;
@@ -164,7 +164,7 @@ begin
   end;
   Inc(FIdleCount);
   // Die letzte Antwort deckt den Cursor noch ab; jede Änderung am Text verwirft sie (Forget).
-  if (FIdleCount = IdleTicks) and (mKey <> FAskedKey) and NearIdentifier(mLineText, mCharacter) and
+  if (FIdleCount = cIdleTicks) and (mKey <> FAskedKey) and NearIdentifier(mLineText, mCharacter) and
     not Covers(AView.Buffer.FileName, mLine, mCharacter) then
   begin
     FAskedKey := mKey;

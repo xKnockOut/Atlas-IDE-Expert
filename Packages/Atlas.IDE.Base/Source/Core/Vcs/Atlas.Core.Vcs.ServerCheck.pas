@@ -45,7 +45,7 @@ type
   TAtlasVcsServerChecks = class
   public const
     /// <summary>Zeitgrenze der Prüfung.</summary>
-    TimeoutMs = 10000;
+    cTimeoutMs = 10000;
   public
     /// <summary>Rechnername aus einer Adresse (https://, ssh://, git@host:pfad); '' für lokale Pfade.</summary>
     class function HostOf(const AUrl: string): string; static;

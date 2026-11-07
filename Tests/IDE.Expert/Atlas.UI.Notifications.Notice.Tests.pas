@@ -70,7 +70,7 @@ begin
     try
       Assert.IsTrue(Window.IsShown);
       Assert.IsTrue(Window.Timer.Enabled, 'verschwindet von selbst');
-      Assert.AreEqual(TAtlasNoticeWindow.VisibleMs, Integer(Window.Timer.Interval));
+      Assert.AreEqual(TAtlasNoticeWindow.cVisibleMs, Integer(Window.Timer.Interval));
       Assert.IsFalse(Window.ActionRect(0).IsEmpty);
       Assert.IsFalse(Window.ActionRect(1).IsEmpty);
       Assert.IsTrue(Window.ActionRect(1).Left > Window.ActionRect(0).Right, 'nebeneinander');

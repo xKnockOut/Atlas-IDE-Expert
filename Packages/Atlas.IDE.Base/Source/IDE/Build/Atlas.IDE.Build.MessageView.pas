@@ -62,23 +62,23 @@ uses
   Vcl.Forms;
 
 const
-  FormClass = 'TMessageViewForm';
-  TreeNamePart = 'MESSAGETREEVIEW';
-  MessageLineClass = 'TCompilerMsgLine';
-  MaxNodes = 20000;
+  cFormClass = 'TMessageViewForm';
+  cTreeNamePart = 'MESSAGETREEVIEW';
+  cMessageLineClass = 'TCompilerMsgLine';
+  cMaxNodes = 20000;
 
 function FindTree(AOwner: TComponent): TComponent;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to AOwner.ComponentCount - 1 do
+  for mIndex := 0 to AOwner.ComponentCount - 1 do
   begin
-    if Pos(TreeNamePart, UpperCase(AOwner.Components[Index].Name)) > 0 then
+    if Pos(cTreeNamePart, UpperCase(AOwner.Components[mIndex].Name)) > 0 then
     begin
-      Exit(AOwner.Components[Index]);
+      Exit(AOwner.Components[mIndex]);
     end;
-    Result := FindTree(AOwner.Components[Index]);
+    Result := FindTree(AOwner.Components[mIndex]);
     if Result <> nil then
     begin
       Exit;
@@ -88,13 +88,13 @@ end;
 
 function MethodWith(AType: TRttiType; const AName: string; AParamCount: Integer): TRttiMethod;
 var
-  Method: TRttiMethod;
+  mMethod: TRttiMethod;
 begin
-  for Method in AType.GetMethods(AName) do
+  for mMethod in AType.GetMethods(AName) do
   begin
-    if Length(Method.GetParameters) = AParamCount then
+    if Length(mMethod.GetParameters) = AParamCount then
     begin
-      Exit(Method);
+      Exit(mMethod);
     end;
   end;
   Result := nil;
@@ -109,49 +109,49 @@ end;
 /// <summary>APointer zeigt auf ein Delphi-Objekt (Klassenzeiger zeigt auf sich selbst), ohne Zugriffsfehler.</summary>
 function LooksLikeObject(APointer: Pointer): Boolean;
 var
-  Info: TMemoryBasicInformation;
-  ClassPtr: Pointer;
+  mInfo: TMemoryBasicInformation;
+  mClassPtr: Pointer;
 begin
   Result := False;
-  if (APointer = nil) or (VirtualQuery(APointer, Info, SizeOf(Info)) = 0) or (Info.State <> MEM_COMMIT) then
+  if (APointer = nil) or (VirtualQuery(APointer, mInfo, SizeOf(mInfo)) = 0) or (mInfo.State <> MEM_COMMIT) then
   begin
     Exit;
   end;
-  ClassPtr := PPointer(APointer)^;
-  if (ClassPtr = nil) or (VirtualQuery(PByte(ClassPtr) + vmtSelfPtr, Info, SizeOf(Info)) = 0) or
-    (Info.State <> MEM_COMMIT) then
+  mClassPtr := PPointer(APointer)^;
+  if (mClassPtr = nil) or (VirtualQuery(PByte(mClassPtr) + vmtSelfPtr, mInfo, SizeOf(mInfo)) = 0) or
+    (mInfo.State <> MEM_COMMIT) then
   begin
     Exit;
   end;
-  Result := PPointer(PByte(ClassPtr) + vmtSelfPtr)^ = ClassPtr;
+  Result := PPointer(PByte(mClassPtr) + vmtSelfPtr)^ = mClassPtr;
 end;
 
 function InheritsFromName(AObject: TObject; const AClassName: string): Boolean;
 var
-  ClassType: TClass;
+  mClassType: TClass;
 begin
-  ClassType := AObject.ClassType;
-  while ClassType <> nil do
+  mClassType := AObject.ClassType;
+  while mClassType <> nil do
   begin
-    if SameText(ClassType.ClassName, AClassName) then
+    if SameText(mClassType.ClassName, AClassName) then
     begin
       Exit(True);
     end;
-    ClassType := ClassType.ClassParent;
+    mClassType := mClassType.ClassParent;
   end;
   Result := False;
 end;
 
 function PropValue(AContext: TRttiContext; AObject: TObject; const AName: string): TValue;
 var
-  Prop: TRttiProperty;
+  mProp: TRttiProperty;
 begin
-  Prop := AContext.GetType(AObject.ClassType).GetProperty(AName);
-  if (Prop = nil) or not Prop.IsReadable then
+  mProp := AContext.GetType(AObject.ClassType).GetProperty(AName);
+  if (mProp = nil) or not mProp.IsReadable then
   begin
     Exit(TValue.Empty);
   end;
-  Result := Prop.GetValue(AObject);
+  Result := mProp.GetValue(AObject);
 end;
 
 function AsInt(const AValue: TValue): Integer;
@@ -240,14 +240,14 @@ begin
   mForm := nil;
   for mIndex := 0 to Screen.FormCount - 1 do
   begin
-    if SameText(Screen.Forms[mIndex].ClassName, FormClass) then
+    if SameText(Screen.Forms[mIndex].ClassName, cFormClass) then
     begin
       mForm := Screen.Forms[mIndex];
     end;
   end;
   if mForm = nil then
   begin
-    AInfo := FormClass + ' nicht gefunden';
+    AInfo := cFormClass + ' nicht gefunden';
   end
   else
   begin
@@ -270,7 +270,7 @@ begin
     Exit;
   end;
   mLine := TObject(PPointer(AData)^);
-  Result := InheritsFromName(mLine, MessageLineClass);
+  Result := InheritsFromName(mLine, cMessageLineClass);
   if Result then
   begin
     AMessage := TAtlasCompilerMessages.FromIde(PropValue(AContext, mLine, 'Kind').ToString,
@@ -370,7 +370,7 @@ begin
     end;
     mNode := mWalk.First;
     mCount := 0;
-    while (mNode <> nil) and (mCount < MaxNodes) do
+    while (mNode <> nil) and (mCount < cMaxNodes) do
     begin
       if MessageOf(mContext, mWalk.DataOf(mNode), mMessage) and
         (mMessage.Severity <> TAtlasCompilerSeverity.Info) then

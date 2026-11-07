@@ -165,7 +165,7 @@ end;
 function AtlasKey(AFunc: TAtlasKeyFunction; AKey: Word; APriority, AActive: Boolean): TAtlasKeyItem;
 begin
   Result := TAtlasKeyItem.Create(AKey, 'Taste', 'Atlas ' + IntToStr(Ord(AFunc)),
-    TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Atlas, TAtlasKeyMap.AtlasName, TAtlasKeyMap.ContextOf(AFunc),
+    TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Atlas, TAtlasKeyMap.cAtlasName, TAtlasKeyMap.ContextOf(AFunc),
     TAtlasKeyMap.SourceOf(AFunc), 'Atlas.Key.' + IntToStr(Ord(AFunc)), Ord(AFunc)));
   Result.Func := AFunc;
   Result.Priority := APriority;
@@ -175,13 +175,13 @@ end;
 function IdeAction(const AName: string; AKey: Word; AOrder: Integer): TAtlasKeyItem;
 begin
   Result := TAtlasKeyItem.Create(AKey, 'Taste', AName, TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Ide,
-    TAtlasKeyMap.IdeName, TAtlasKeyContext.Global, TAtlasKeySource.Action, AName, AOrder));
+    TAtlasKeyMap.cIdeName, TAtlasKeyContext.Global, TAtlasKeySource.Action, AName, AOrder));
 end;
 
 function IdeBinding(const AName: string; AKey: Word): TAtlasKeyItem;
 begin
   Result := TAtlasKeyItem.Create(AKey, 'Taste', AName, TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Ide,
-    TAtlasKeyMap.IdeName, TAtlasKeyContext.Editor, TAtlasKeySource.Binding, 'Editor.' + IntToStr(AKey), 0));
+    TAtlasKeyMap.cIdeName, TAtlasKeyContext.Editor, TAtlasKeySource.Binding, 'Editor.' + IntToStr(AKey), 0));
 end;
 
 procedure TAtlasKeyMapTests.AllFromSettingsListsEveryAtlasKey;
@@ -290,7 +290,7 @@ begin
       if Name.EndsWith('Key') then
       begin
         Inc(Count);
-        Keys.Add(Name, TAtlasKeyConflicts.scCtrl or TAtlasKeyConflicts.scAlt or (Ord('A') + Count));
+        Keys.Add(Name, TAtlasKeyConflicts.cScCtrl or TAtlasKeyConflicts.cScAlt or (Ord('A') + Count));
         Store.WriteInteger(Name, Keys[Name]);
       end;
     end;
@@ -665,9 +665,9 @@ begin
   Assert.AreEqual($74, Integer(TAtlasKeyMap.ParseShortCut('F5', Modifiers)), 'Funktionstaste allein');
   Assert.AreEqual(0, Integer(TAtlasKeyMap.ParseShortCut('p', Modifiers)), 'ein Zeichen ist Textsuche');
   Assert.AreEqual(0, Integer(TAtlasKeyMap.ParseShortCut('Strg+Alt', Modifiers)));
-  Assert.AreEqual(TAtlasKeyMap.scCtrl or TAtlasKeyMap.scAlt, Integer(Modifiers), 'nur Umschalttasten');
+  Assert.AreEqual(TAtlasKeyMap.cScCtrl or TAtlasKeyMap.cScAlt, Integer(Modifiers), 'nur Umschalttasten');
   Assert.AreEqual(0, Integer(TAtlasKeyMap.ParseShortCut('Strg+', Modifiers)));
-  Assert.AreEqual(TAtlasKeyMap.scCtrl, Integer(Modifiers));
+  Assert.AreEqual(TAtlasKeyMap.cScCtrl, Integer(Modifiers));
   Assert.AreEqual(0, Integer(TAtlasKeyMap.ParseShortCut('Strg+Kompilieren', Modifiers)));
   Assert.AreEqual(0, Integer(Modifiers), 'kein Tastenname: Textsuche');
   Assert.AreEqual(0, Integer(TAtlasKeyMap.ParseShortCut('P+Strg', Modifiers)), 'Taste nur am Ende');

@@ -307,7 +307,7 @@ function StatusInfo(const AServer: TAtlasServerInfo; AIndexing: Boolean; APercen
   TAtlasWelcomeHeaderInfo;
 begin
   Result := Default(TAtlasWelcomeHeaderInfo);
-  Result.Version := TAtlasPluginVersion.Version;
+  Result.Version := TAtlasPluginVersion.cVersion;
   Result.Phase := AServer.Phase;
   Result.Units := AUnits;
   Result.Indexing := AIndexing;

@@ -44,7 +44,7 @@ begin
   Assert.AreEqual('ohne Fehler (Code 0)', TAtlasServerExits.Describe(0));
   Assert.AreEqual('Code 3', TAtlasServerExits.Describe(3));
   Assert.AreEqual('Ausnahme 0xC0001234', TAtlasServerExits.Describe($C0001234));
-  Assert.IsTrue(TAtlasServerExits.Describe(TAtlasServerExits.Unknown).StartsWith('Exit-Code unbekannt'));
+  Assert.IsTrue(TAtlasServerExits.Describe(TAtlasServerExits.cUnknown).StartsWith('Exit-Code unbekannt'));
 end;
 
 procedure TAtlasServerCrashesTests.DescribesExitCodesInEnglish;
@@ -99,7 +99,7 @@ begin
     Assert.IsTrue(Crashes.Crashed($C0000005), 'erster Absturz: neu starten');
     Clock := IncMinute(Clock, 2);
     Assert.IsTrue(Crashes.Crashed($C00000FD), 'andere Ursache: neu starten');
-    Clock := IncMinute(Clock, TAtlasServerCrashes.WindowMinutes + 1);
+    Clock := IncMinute(Clock, TAtlasServerCrashes.cWindowMinutes + 1);
     Assert.IsTrue(Crashes.Crashed($C00000FD), 'dieselbe Ursache, aber später: neu starten');
     Assert.IsFalse(Crashes.Held);
     Clock := IncMinute(Clock, 3);

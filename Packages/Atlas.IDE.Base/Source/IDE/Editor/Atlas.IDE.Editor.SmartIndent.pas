@@ -66,9 +66,9 @@ uses
   Atlas.IDE.Editor.EnterWatch;
 
 const
-  HandlerName = 'SmartIndent';
+  cHandlerName = 'SmartIndent';
   /// <summary>Spalte beim Einfügen: kurz, sonst bleibt die bisherige Heuristik.</summary>
-  ColumnTimeoutMs = 500;
+  cColumnTimeoutMs = 500;
 
 /// <summary>Schreibt AEdits (aufsteigend, ohne Überlappung) als einen Rückgängig-Schritt in ABuffer mit Text
 /// AText.</summary>
@@ -121,7 +121,7 @@ begin
   begin
     FRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.SmartIndent);
   end;
-  TAtlasEnterWatch.Add(HandlerName,
+  TAtlasEnterWatch.Add(cHandlerName,
     function: Boolean
     begin
       Result := Enabled;
@@ -134,7 +134,7 @@ end;
 
 class procedure TAtlasIdeSmartIndent.Uninstall;
 begin
-  TAtlasEnterWatch.Remove(HandlerName);
+  TAtlasEnterWatch.Remove(cHandlerName);
   // Wartet die laufende Anfrage ab und verwirft ihre Antwort.
   FreeAndNil(FRequest);
   FSessionOf := nil;
@@ -192,7 +192,7 @@ begin
     var
       mValue: TJSONValue;
     begin
-      mValue := mSession.RunCommand(TAtlasSmartIndent.Command, mArguments, TAtlasSmartIndent.TimeoutMs);
+      mValue := mSession.RunCommand(TAtlasSmartIndent.cCommand, mArguments, TAtlasSmartIndent.cTimeoutMs);
       try
         TAtlasSmartIndent.ReadAnswer(mValue, mAnswer);
       finally
@@ -255,9 +255,9 @@ begin
   end;
   mSession.Sync(ABuffer.FileName, AText);
   try
-    mValue := mSession.RunCommand(TAtlasSmartIndent.Command, TAtlasSmartIndent.Arguments(
+    mValue := mSession.RunCommand(TAtlasSmartIndent.cCommand, TAtlasSmartIndent.Arguments(
       TLspSession.PathToUri(ABuffer.FileName), ALine, TAtlasEditorBuffer.BlockIndent(ABuffer), True, True),
-      ColumnTimeoutMs);
+      cColumnTimeoutMs);
   except
     on E: ELspClientError do
     begin

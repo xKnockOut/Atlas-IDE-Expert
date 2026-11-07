@@ -1,6 +1,7 @@
 ﻿unit Atlas.IDE.Settings.PageOptions;
 
-// Haken der Optionsseite „Atlas“ zu anderen Teilen der IDE-Schicht: Version des Servers (#227), angeheftete Favoriten (#458), Befehle für „Leiste anpassen …“ (#1101), Projektdatei .atlas (#486),
+// Haken der Optionsseite „Atlas“ zu anderen Teilen der IDE-Schicht: Version des Servers (#227), angeheftete Favoriten
+// (#458), Befehle für „Leiste anpassen …“ (#1101), Projektdatei .atlas (#486),
 // Export, Import und „Alles zurücksetzen“ (#723). Ohne Zustand; die Seite hält die Methodenreferenzen.
 
 interface
@@ -50,7 +51,8 @@ begin
     end;
 end;
 
-class procedure TAtlasPageOptions.ConnectFavorites(APage: TAtlasSettingsPage; const AToolbarCommands: TFunc<TArray<TAtlasToolbarCommandInfo>>);
+class procedure TAtlasPageOptions.ConnectFavorites(APage: TAtlasSettingsPage;
+  const AToolbarCommands: TFunc<TArray<TAtlasToolbarCommandInfo>>);
 begin
   APage.Part<TAtlasSettingsFavoritesPart>.OnRemoveFavorites :=
     procedure(AKeys: TArray<string>)

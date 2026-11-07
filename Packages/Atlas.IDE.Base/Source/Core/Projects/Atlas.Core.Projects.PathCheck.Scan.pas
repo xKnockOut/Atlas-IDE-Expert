@@ -89,29 +89,29 @@ type
 
 function Tokenize(const AText: string): TArray<string>;
 var
-  Index, Start: Integer;
+  mIndex, mStart: Integer;
 begin
   Result := nil;
-  Index := 1;
-  while Index <= Length(AText) do
+  mIndex := 1;
+  while mIndex <= Length(AText) do
   begin
-    if CharInSet(AText[Index], [' ', #9, #10, #13]) then
+    if CharInSet(AText[mIndex], [' ', #9, #10, #13]) then
     begin
-      Inc(Index);
+      Inc(mIndex);
     end
-    else if TTextChars.IsIdentStart(AText[Index]) then
+    else if TTextChars.IsIdentStart(AText[mIndex]) then
     begin
-      Start := Index;
-      while (Index <= Length(AText)) and TTextChars.IsIdentChar(AText[Index]) do
+      mStart := mIndex;
+      while (mIndex <= Length(AText)) and TTextChars.IsIdentChar(AText[mIndex]) do
       begin
-        Inc(Index);
+        Inc(mIndex);
       end;
-      Result := Result + [Copy(AText, Start, Index - Start)];
+      Result := Result + [Copy(AText, mStart, mIndex - mStart)];
     end
     else
     begin
-      Result := Result + [AText[Index]];
-      Inc(Index);
+      Result := Result + [AText[mIndex]];
+      Inc(mIndex);
     end;
   end;
 end;
@@ -163,18 +163,18 @@ end;
 
 function TExpressionParser.ParseOr: TAtlasBranchState;
 var
-  Right: TAtlasBranchState;
+  mRight: TAtlasBranchState;
 begin
   Result := ParseAnd;
   while SameText(Peek, 'or') do
   begin
     Next;
-    Right := ParseAnd;
-    if (Result = TAtlasBranchState.Active) or (Right = TAtlasBranchState.Active) then
+    mRight := ParseAnd;
+    if (Result = TAtlasBranchState.Active) or (mRight = TAtlasBranchState.Active) then
     begin
       Result := TAtlasBranchState.Active;
     end
-    else if (Result = TAtlasBranchState.Unknown) or (Right = TAtlasBranchState.Unknown) then
+    else if (Result = TAtlasBranchState.Unknown) or (mRight = TAtlasBranchState.Unknown) then
     begin
       Result := TAtlasBranchState.Unknown;
     end
@@ -187,18 +187,18 @@ end;
 
 function TExpressionParser.ParseAnd: TAtlasBranchState;
 var
-  Right: TAtlasBranchState;
+  mRight: TAtlasBranchState;
 begin
   Result := ParseUnary;
   while SameText(Peek, 'and') do
   begin
     Next;
-    Right := ParseUnary;
-    if (Result = TAtlasBranchState.Inactive) or (Right = TAtlasBranchState.Inactive) then
+    mRight := ParseUnary;
+    if (Result = TAtlasBranchState.Inactive) or (mRight = TAtlasBranchState.Inactive) then
     begin
       Result := TAtlasBranchState.Inactive;
     end
-    else if (Result = TAtlasBranchState.Unknown) or (Right = TAtlasBranchState.Unknown) then
+    else if (Result = TAtlasBranchState.Unknown) or (mRight = TAtlasBranchState.Unknown) then
     begin
       Result := TAtlasBranchState.Unknown;
     end
@@ -211,10 +211,10 @@ end;
 
 function TExpressionParser.ParseUnary: TAtlasBranchState;
 var
-  Token, Name: string;
+  mToken, mName: string;
 begin
-  Token := Next;
-  if SameText(Token, 'not') then
+  mToken := Next;
+  if SameText(mToken, 'not') then
   begin
     Result := ParseUnary;
     if Result = TAtlasBranchState.Active then
@@ -227,7 +227,7 @@ begin
     end;
     Exit;
   end;
-  if Token = '(' then
+  if mToken = '(' then
   begin
     Result := ParseOr;
     if Next <> ')' then
@@ -236,16 +236,16 @@ begin
     end;
     Exit;
   end;
-  if SameText(Token, 'defined') and (Peek = '(') then
+  if SameText(mToken, 'defined') and (Peek = '(') then
   begin
     Next;
-    Name := Next;
-    if (Name = '') or not TTextChars.IsIdentStart(Name[1]) or (Next <> ')') then
+    mName := Next;
+    if (mName = '') or not TTextChars.IsIdentStart(mName[1]) or (Next <> ')') then
     begin
       FFailed := True;
       Exit(TAtlasBranchState.Unknown);
     end;
-    Exit(StateOf(FDefines.ContainsKey(UpperCase(Name))));
+    Exit(StateOf(FDefines.ContainsKey(UpperCase(mName))));
   end;
   // CompilerVersion, Declared(…), SizeOf, Zahlen, Vergleiche: nicht auswertbar.
   FFailed := True;
@@ -306,16 +306,16 @@ type
 
 constructor TScanner.Create(const AText: string; const ADefines: TArray<string>);
 var
-  Name: string;
+  mName: string;
 begin
   inherited Create;
   FText := AText;
   FDefines := TDictionary<string, Boolean>.Create;
-  for Name in ADefines do
+  for mName in ADefines do
   begin
-    if Trim(Name) <> '' then
+    if Trim(mName) <> '' then
     begin
-      FDefines.AddOrSetValue(UpperCase(Trim(Name)), True);
+      FDefines.AddOrSetValue(UpperCase(Trim(mName)), True);
     end;
   end;
   FStack := TList<TBranch>.Create;
@@ -343,71 +343,71 @@ end;
 
 procedure TScanner.Push(ACondition: TAtlasBranchState);
 var
-  Branch: TBranch;
+  mBranch: TBranch;
 begin
-  Branch := Default(TBranch);
-  Branch.Parent := Current;
-  case Branch.Parent of
+  mBranch := Default(TBranch);
+  mBranch.Parent := Current;
+  case mBranch.Parent of
     TAtlasBranchState.Inactive:
       begin
-        Branch.State := TAtlasBranchState.Inactive;
+        mBranch.State := TAtlasBranchState.Inactive;
         // Kein Zweig darunter kann gelten.
-        Branch.Taken := True;
+        mBranch.Taken := True;
       end;
     TAtlasBranchState.Unknown:
       begin
         if ACondition = TAtlasBranchState.Inactive then
         begin
-          Branch.State := TAtlasBranchState.Inactive;
+          mBranch.State := TAtlasBranchState.Inactive;
         end
         else
         begin
-          Branch.State := TAtlasBranchState.Unknown;
+          mBranch.State := TAtlasBranchState.Unknown;
         end;
-        Branch.Taken := ACondition = TAtlasBranchState.Active;
-        Branch.Unsure := ACondition = TAtlasBranchState.Unknown;
+        mBranch.Taken := ACondition = TAtlasBranchState.Active;
+        mBranch.Unsure := ACondition = TAtlasBranchState.Unknown;
       end;
   else
-    Branch.State := ACondition;
-    Branch.Taken := ACondition = TAtlasBranchState.Active;
-    Branch.Unsure := ACondition = TAtlasBranchState.Unknown;
+    mBranch.State := ACondition;
+    mBranch.Taken := ACondition = TAtlasBranchState.Active;
+    mBranch.Unsure := ACondition = TAtlasBranchState.Unknown;
   end;
-  FStack.Add(Branch);
+  FStack.Add(mBranch);
 end;
 
 procedure TScanner.ElseIf(ACondition: TAtlasBranchState);
 var
-  Branch: TBranch;
+  mBranch: TBranch;
 begin
   if FStack.Count = 0 then
   begin
     Exit;
   end;
-  Branch := FStack.Last;
-  if Branch.Taken or (Branch.Parent = TAtlasBranchState.Inactive) then
+  mBranch := FStack.Last;
+  if mBranch.Taken or (mBranch.Parent = TAtlasBranchState.Inactive) then
   begin
-    Branch.State := TAtlasBranchState.Inactive;
+    mBranch.State := TAtlasBranchState.Inactive;
   end
   else if ACondition = TAtlasBranchState.Inactive then
   begin
-    Branch.State := TAtlasBranchState.Inactive;
+    mBranch.State := TAtlasBranchState.Inactive;
   end
   else
   begin
-    if Branch.Unsure or (Branch.Parent = TAtlasBranchState.Unknown) or
+    if mBranch.Unsure or (mBranch.Parent = TAtlasBranchState.Unknown) or
       (ACondition = TAtlasBranchState.Unknown) then
     begin
-      Branch.State := TAtlasBranchState.Unknown;
+      mBranch.State := TAtlasBranchState.Unknown;
     end
     else
     begin
-      Branch.State := TAtlasBranchState.Active;
+      mBranch.State := TAtlasBranchState.Active;
     end;
     // Gilt die Bedingung sicher, kann kein späterer Zweig mehr gelten: Entweder galt ein früherer oder dieser.
-    Branch.Taken := ACondition = TAtlasBranchState.Active;
-    Branch.Unsure := Branch.Unsure or (ACondition = TAtlasBranchState.Unknown);
+    mBranch.Taken := ACondition = TAtlasBranchState.Active;
+    mBranch.Unsure := mBranch.Unsure or (ACondition = TAtlasBranchState.Unknown);
   end;
-  FStack[FStack.Count - 1] := Branch;
+  FStack[FStack.Count - 1] := mBranch;
 end;
 
 procedure TScanner.Pop;
@@ -420,42 +420,42 @@ end;
 
 procedure TScanner.Reference(const AName: string; ALine: Integer);
 var
-  Use: TAtlasSymbolUse;
+  mUse: TAtlasSymbolUse;
 begin
   if (AName = '') or not TTextChars.IsIdentStart(AName[1]) then
   begin
     Exit;
   end;
-  Use.Name := AName;
-  Use.Line := ALine;
-  FResult.Referenced := FResult.Referenced + [Use];
+  mUse.Name := AName;
+  mUse.Line := ALine;
+  FResult.Referenced := FResult.Referenced + [mUse];
 end;
 
 procedure TScanner.ReferenceAll(const AExpression: string; ALine: Integer);
 var
-  Tokens: TArray<string>;
-  Index: Integer;
+  mTokens: TArray<string>;
+  mIndex: Integer;
 begin
-  Tokens := Tokenize(AExpression);
-  for Index := 0 to High(Tokens) - 3 do
+  mTokens := Tokenize(AExpression);
+  for mIndex := 0 to High(mTokens) - 3 do
   begin
-    if SameText(Tokens[Index], 'defined') and (Tokens[Index + 1] = '(') and (Tokens[Index + 3] = ')') then
+    if SameText(mTokens[mIndex], 'defined') and (mTokens[mIndex + 1] = '(') and (mTokens[mIndex + 3] = ')') then
     begin
-      Reference(Tokens[Index + 2], ALine);
+      Reference(mTokens[mIndex + 2], ALine);
     end;
   end;
 end;
 
 function FirstWord(const AText: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := 1;
-  while (Index <= Length(AText)) and TTextChars.IsIdentChar(AText[Index]) do
+  mIndex := 1;
+  while (mIndex <= Length(AText)) and TTextChars.IsIdentChar(AText[mIndex]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Copy(AText, 1, Index - 1);
+  Result := Copy(AText, 1, mIndex - 1);
 end;
 
 function Unquote(const AText: string): string;
@@ -469,36 +469,36 @@ end;
 
 procedure TScanner.IfDef(const ASymbol: string; ADefined: Boolean; ALine: Integer);
 var
-  Condition: TAtlasBranchState;
+  mCondition: TAtlasBranchState;
 begin
   Reference(ASymbol, ALine);
-  Condition := StateOf(FDefines.ContainsKey(UpperCase(ASymbol)) = ADefined);
+  mCondition := StateOf(FDefines.ContainsKey(UpperCase(ASymbol)) = ADefined);
   if ASymbol = '' then
   begin
-    Condition := TAtlasBranchState.Unknown;
+    mCondition := TAtlasBranchState.Unknown;
   end;
-  Push(Condition);
+  Push(mCondition);
 end;
 
 procedure TScanner.IfExpression(const AExpression: string; AFirst: Boolean; ALine: Integer);
 var
-  Parser: TExpressionParser;
-  Condition: TAtlasBranchState;
+  mParser: TExpressionParser;
+  mCondition: TAtlasBranchState;
 begin
   ReferenceAll(AExpression, ALine);
-  Parser := TExpressionParser.Create(AExpression, FDefines);
+  mParser := TExpressionParser.Create(AExpression, FDefines);
   try
-    Condition := Parser.Parse;
+    mCondition := mParser.Parse;
   finally
-    Parser.Free;
+    mParser.Free;
   end;
   if AFirst then
   begin
-    Push(Condition);
+    Push(mCondition);
   end
   else
   begin
-    ElseIf(Condition);
+    ElseIf(mCondition);
   end;
 end;
 
@@ -557,13 +557,13 @@ end;
 
 procedure TScanner.Directive(const AText: string; ALine: Integer);
 var
-  Name, Argument: string;
+  mName, mArgument: string;
 begin
-  Name := UpperCase(FirstWord(AText));
-  Argument := Trim(Copy(AText, Length(Name) + 1, MaxInt));
-  if not BranchDirective(Name, Argument, FirstWord(Argument), ALine) then
+  mName := UpperCase(FirstWord(AText));
+  mArgument := Trim(Copy(AText, Length(mName) + 1, MaxInt));
+  if not BranchDirective(mName, mArgument, FirstWord(mArgument), ALine) then
   begin
-    OtherDirective(Name, Argument, FirstWord(Argument));
+    OtherDirective(mName, mArgument, FirstWord(mArgument));
   end;
 end;
 
@@ -671,11 +671,11 @@ end;
 
 procedure TScanner.CountLines(AFrom, ATo: Integer);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := AFrom to ATo do
+  for mIndex := AFrom to ATo do
   begin
-    if (Index >= 1) and (Index <= Length(FText)) and (FText[Index] = #10) then
+    if (mIndex >= 1) and (mIndex <= Length(FText)) and (FText[mIndex] = #10) then
     begin
       Inc(FLine);
     end;
@@ -697,26 +697,26 @@ end;
 
 procedure TScanner.Comment(const AOpen, AClose: string);
 var
-  Close, Inner, StartLine: Integer;
+  mClose, mInner, mStartLine: Integer;
 begin
-  Inner := FPos + Length(AOpen);
-  Close := Pos(AClose, FText, Inner);
-  if Close = 0 then
+  mInner := FPos + Length(AOpen);
+  mClose := Pos(AClose, FText, mInner);
+  if mClose = 0 then
   begin
-    Close := Length(FText) + 1;
+    mClose := Length(FText) + 1;
   end;
-  StartLine := FLine;
-  if (Inner <= Length(FText)) and (FText[Inner] = '$') then
+  mStartLine := FLine;
+  if (mInner <= Length(FText)) and (FText[mInner] = '$') then
   begin
-    Directive(Copy(FText, Inner + 1, Close - Inner - 1), StartLine);
+    Directive(Copy(FText, mInner + 1, mClose - mInner - 1), mStartLine);
   end;
-  CountLines(FPos, Close);
-  FPos := Close + Length(AClose);
+  CountLines(FPos, mClose);
+  FPos := mClose + Length(AClose);
 end;
 
 function TScanner.MultilineString: Boolean;
 var
-  Close: Integer;
+  mClose: Integer;
 begin
   // Mehrzeiliger String (Delphi 12): ''' am Zeilenende bis zum nächsten '''.
   Result := StartsAt('''''''') and (FPos + 3 <= Length(FText)) and CharInSet(FText[FPos + 3], [#10, #13]);
@@ -724,31 +724,31 @@ begin
   begin
     Exit;
   end;
-  Close := Pos('''''''', FText, FPos + 3);
-  if Close = 0 then
+  mClose := Pos('''''''', FText, FPos + 3);
+  if mClose = 0 then
   begin
-    Close := Length(FText) + 1;
+    mClose := Length(FText) + 1;
   end;
-  CountLines(FPos, Close);
-  FPos := Close + 3;
+  CountLines(FPos, mClose);
+  FPos := mClose + 3;
   StringLiteral('');
 end;
 
 procedure TScanner.QuotedString;
 var
-  Value: string;
+  mValue: string;
 begin
   if MultilineString then
   begin
     Exit;
   end;
-  Value := '';
+  mValue := '';
   Inc(FPos);
   while (FPos <= Length(FText)) and (FText[FPos] <> #10) do
   begin
     if StartsAt('''''') then
     begin
-      Value := Value + '''';
+      mValue := mValue + '''';
       Inc(FPos, 2);
     end
     else if FText[FPos] = '''' then
@@ -757,7 +757,7 @@ begin
     end
     else
     begin
-      Value := Value + FText[FPos];
+      mValue := mValue + FText[FPos];
       Inc(FPos);
     end;
   end;
@@ -766,25 +766,25 @@ begin
   begin
     Inc(FPos);
   end;
-  StringLiteral(Value);
+  StringLiteral(mValue);
 end;
 
 procedure TScanner.ReadWord;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
   if FText[FPos] = '&' then
   begin
     Inc(FPos);
   end;
-  Start := FPos;
+  mStart := FPos;
   while (FPos <= Length(FText)) and TTextChars.IsIdentChar(FText[FPos]) do
   begin
     Inc(FPos);
   end;
-  if FPos > Start then
+  if FPos > mStart then
   begin
-    Word(Copy(FText, Start, FPos - Start), FLine);
+    Word(Copy(FText, mStart, FPos - mStart), FLine);
   end;
 end;
 
@@ -840,37 +840,37 @@ end;
 
 class function TAtlasPathScan.Scan(const AText: string; const ADefines: TArray<string>): TAtlasSourceScan;
 var
-  Scanner: TScanner;
+  mScanner: TScanner;
 begin
-  Scanner := TScanner.Create(AText, ADefines);
+  mScanner := TScanner.Create(AText, ADefines);
   try
-    Result := Scanner.Run;
+    Result := mScanner.Run;
   finally
-    Scanner.Free;
+    mScanner.Free;
   end;
 end;
 
 class function TAtlasPathScan.Evaluate(const AExpression: string;
   const ADefines: TArray<string>): TAtlasBranchState;
 var
-  Defines: TDictionary<string, Boolean>;
-  Name: string;
-  Parser: TExpressionParser;
+  mDefines: TDictionary<string, Boolean>;
+  mName: string;
+  mParser: TExpressionParser;
 begin
-  Defines := TDictionary<string, Boolean>.Create;
+  mDefines := TDictionary<string, Boolean>.Create;
   try
-    for Name in ADefines do
+    for mName in ADefines do
     begin
-      Defines.AddOrSetValue(UpperCase(Trim(Name)), True);
+      mDefines.AddOrSetValue(UpperCase(Trim(mName)), True);
     end;
-    Parser := TExpressionParser.Create(AExpression, Defines);
+    mParser := TExpressionParser.Create(AExpression, mDefines);
     try
-      Result := Parser.Parse;
+      Result := mParser.Parse;
     finally
-      Parser.Free;
+      mParser.Free;
     end;
   finally
-    Defines.Free;
+    mDefines.Free;
   end;
 end;
 

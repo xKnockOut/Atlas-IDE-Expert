@@ -62,7 +62,7 @@ uses
   Atlas.IDE.Foundation.Settings;
 
 const
-  TickMs = 150;
+  cTickMs = 150;
 
 type
   TNavState = class;
@@ -157,20 +157,20 @@ end;
 
 procedure TEditNotifier.EditorViewModified(const EditWindow: INTAEditWindow; const EditView: IOTAEditView);
 var
-  Owner: TNavState;
-  View: IOTAEditView;
+  mOwner: TNavState;
+  mView: IOTAEditView;
 begin
-  Owner := FOwner;
-  if (Owner = nil) or (EditView = nil) or not Enabled then
+  mOwner := FOwner;
+  if (mOwner = nil) or (EditView = nil) or not Enabled then
   begin
     Exit;
   end;
-  View := EditView;
+  mView := EditView;
   // Keine Exception an die IDE (#493).
   TAtlasGuard.Run(TAtlasFeature.NavHistory,
     procedure
     begin
-      Owner.Edited(View);
+      mOwner.Edited(mView);
     end);
 end;
 
@@ -195,7 +195,7 @@ begin
   History := TAtlasNavHistory.Create;
   LineCounts := TDictionary<string, Integer>.Create;
   Timer := TTimer.Create(Self);
-  Timer.Interval := TickMs;
+  Timer.Interval := cTickMs;
   Timer.OnTimer := Tick;
   Timer.Enabled := True;
 end;
@@ -210,44 +210,44 @@ end;
 
 procedure TNavState.TrackLines(const AView: IOTAEditView; ACursorLine: Integer);
 var
-  Key: string;
-  Count, Known, Anchor: Integer;
+  mKey: string;
+  mCount, mKnown, mAnchor: Integer;
 begin
-  Key := AnsiUpperCase(AView.Buffer.FileName);
-  Count := AView.Buffer.GetLinesInBuffer;
-  if LineCounts.TryGetValue(Key, Known) and (Known <> Count) then
+  mKey := AnsiUpperCase(AView.Buffer.FileName);
+  mCount := AView.Buffer.GetLinesInBuffer;
+  if LineCounts.TryGetValue(mKey, mKnown) and (mKnown <> mCount) then
   begin
     // Eingefügt bzw. gelöscht wurde an der Cursorstelle vor oder nach der Änderung.
-    Anchor := ACursorLine;
+    mAnchor := ACursorLine;
     if SameText(Last.FileName, AView.Buffer.FileName) and (Last.Line > 0) then
     begin
-      Anchor := Min(Anchor, Last.Line);
+      mAnchor := Min(mAnchor, Last.Line);
     end;
-    History.LinesChanged(AView.Buffer.FileName, Anchor, Count - Known);
+    History.LinesChanged(AView.Buffer.FileName, mAnchor, mCount - mKnown);
   end;
-  LineCounts.AddOrSetValue(Key, Count);
+  LineCounts.AddOrSetValue(mKey, mCount);
 end;
 
 procedure TNavState.Edited(const AView: IOTAEditView);
 var
-  Place: TAtlasNavPlace;
+  mPlace: TAtlasNavPlace;
 begin
-  Place := PlaceOf(AView);
-  if Place.FileName = '' then
+  mPlace := PlaceOf(AView);
+  if mPlace.FileName = '' then
   begin
     Exit;
   end;
-  TrackLines(AView, Place.Line);
-  Place := WithExcerpt(AView, Place);
-  History.Edited(Place);
+  TrackLines(AView, mPlace.Line);
+  mPlace := WithExcerpt(AView, mPlace);
+  History.Edited(mPlace);
   Modified := True;
-  Last := Place;
+  Last := mPlace;
 end;
 
 procedure TNavState.Tick(Sender: TObject);
 var
-  View: IOTAEditView;
-  Current: TAtlasNavPlace;
+  mView: IOTAEditView;
+  mCurrent: TAtlasNavPlace;
 begin
   try
     if not Enabled then
@@ -255,13 +255,13 @@ begin
       Last := Default(TAtlasNavPlace);
       Exit;
     end;
-    View := TAtlasEditorBuffer.ActiveView;
-    if View = nil then
+    mView := TAtlasEditorBuffer.ActiveView;
+    if mView = nil then
     begin
       Exit;
     end;
-    Current := PlaceOf(View);
-    if Current.FileName = '' then
+    mCurrent := PlaceOf(mView);
+    if mCurrent.FileName = '' then
     begin
       Exit;
     end;
@@ -269,17 +269,17 @@ begin
     begin
       Modified := False;
     end
-    else if TAtlasNavHistory.IsJump(Last, Current) then
+    else if TAtlasNavHistory.IsJump(Last, mCurrent) then
     begin
-      History.Jumped(Last, Current);
+      History.Jumped(Last, mCurrent);
     end
-    else if SameText(Last.FileName, Current.FileName) and (Last.Line = Current.Line) then
+    else if SameText(Last.FileName, mCurrent.FileName) and (Last.Line = mCurrent.Line) then
     begin
       // Unverändert: den Auszug nicht neu lesen.
       Exit;
     end;
-    Last := WithExcerpt(View, Current);
-    TrackLines(View, Current.Line);
+    Last := WithExcerpt(mView, mCurrent);
+    TrackLines(mView, mCurrent.Line);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.NavHistory, E);
@@ -290,23 +290,23 @@ end;
 
 function Current(out APlace: TAtlasNavPlace): Boolean;
 var
-  View: IOTAEditView;
+  mView: IOTAEditView;
 begin
-  View := TAtlasEditorBuffer.ActiveView;
-  APlace := WithExcerpt(View, PlaceOf(View));
+  mView := TAtlasEditorBuffer.ActiveView;
+  APlace := WithExcerpt(mView, PlaceOf(mView));
   Result := APlace.FileName <> '';
 end;
 
 procedure GoTo_(const ATarget: TAtlasNavPlace);
 var
-  View: IOTAEditView;
+  mView: IOTAEditView;
 begin
   TAtlasIdeNavigation.GoToLocation(ATarget.FileName, Max(0, ATarget.Line - 1), Max(0, ATarget.Column - 1));
   // Der eigene Sprung ist kein neuer Eintrag: Ausgangspunkt für den nächsten Tick ist das Ziel.
   if State <> nil then
   begin
-    View := TAtlasEditorBuffer.ActiveView;
-    State.Last := WithExcerpt(View, PlaceOf(View));
+    mView := TAtlasEditorBuffer.ActiveView;
+    State.Last := WithExcerpt(mView, PlaceOf(mView));
     State.Modified := False;
   end;
 end;
@@ -324,86 +324,86 @@ end;
 
 class procedure TAtlasIdeNavHistory.Install;
 var
-  Owner: TNavState;
-  Editors: IOTAEditorServices;
+  mOwner: TNavState;
+  mEditors: IOTAEditorServices;
 begin
-  Owner := TNavState.Create(nil);
-  FState := Owner;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  mOwner := TNavState.Create(nil);
+  FState := mOwner;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
-    Owner.Notifier := TEditNotifier.Create;
-    Owner.Notifier.FOwner := Owner;
-    Owner.NotifierIndex := Editors.AddNotifier(Owner.Notifier);
+    mOwner.Notifier := TEditNotifier.Create;
+    mOwner.Notifier.FOwner := mOwner;
+    mOwner.NotifierIndex := mEditors.AddNotifier(mOwner.Notifier);
   end;
 end;
 
 class procedure TAtlasIdeNavHistory.Uninstall;
 var
-  Owner: TNavState;
-  Editors: IOTAEditorServices;
+  mOwner: TNavState;
+  mEditors: IOTAEditorServices;
 begin
-  Owner := State;
+  mOwner := State;
   FState := nil;
-  if Owner = nil then
+  if mOwner = nil then
   begin
     Exit;
   end;
-  if Owner.Notifier <> nil then
+  if mOwner.Notifier <> nil then
   begin
-    Owner.Notifier.FOwner := nil;
+    mOwner.Notifier.FOwner := nil;
   end;
   // RemoveNotifier gibt die Referenz der IDE frei und damit den Beobachter (#493).
-  if (Owner.NotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  if (mOwner.NotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
-    Editors.RemoveNotifier(Owner.NotifierIndex);
+    mEditors.RemoveNotifier(mOwner.NotifierIndex);
   end;
-  Owner.Free;
+  mOwner.Free;
 end;
 
 class procedure TAtlasIdeNavHistory.GoBack;
 var
-  Here, Target: TAtlasNavPlace;
+  mHere, mTarget: TAtlasNavPlace;
 begin
   if (State = nil) or not Enabled then
   begin
     Exit;
   end;
-  Current(Here);
-  if State.History.StepBack(Here, Target) then
+  Current(mHere);
+  if State.History.StepBack(mHere, mTarget) then
   begin
-    GoTo_(Target);
+    GoTo_(mTarget);
   end;
 end;
 
 class procedure TAtlasIdeNavHistory.GoForward;
 var
-  Here, Target: TAtlasNavPlace;
+  mHere, mTarget: TAtlasNavPlace;
 begin
   if (State = nil) or not Enabled then
   begin
     Exit;
   end;
-  Current(Here);
-  if State.History.StepForward(Here, Target) then
+  Current(mHere);
+  if State.History.StepForward(mHere, mTarget) then
   begin
-    GoTo_(Target);
+    GoTo_(mTarget);
   end;
 end;
 
 class procedure TAtlasIdeNavHistory.GoLastEdit;
 var
-  Here, Target: TAtlasNavPlace;
+  mHere, mTarget: TAtlasNavPlace;
 begin
   if (State = nil) or not Enabled then
   begin
     Exit;
   end;
-  Current(Here);
-  if State.History.LastEdit(Here, Target) then
+  Current(mHere);
+  if State.History.LastEdit(mHere, mTarget) then
   begin
     // Wie ein Sprung: die Ausgangsstelle kommt auf den Zurück-Stapel.
-    State.History.Jumped(Here, Target);
-    GoTo_(Target);
+    State.History.Jumped(mHere, mTarget);
+    GoTo_(mTarget);
   end;
 end;
 

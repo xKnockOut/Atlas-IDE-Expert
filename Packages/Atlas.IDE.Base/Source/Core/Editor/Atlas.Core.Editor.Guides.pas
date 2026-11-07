@@ -39,7 +39,8 @@ type
   public
     /// <summary>Linien aller gepaarten Blöcke über mehrere Zeilen.</summary>
     class function Compute(const AText: string; ATabWidth: Integer): TArray<TAtlasGuide>; static;
-    /// <summary>Wie Compute aus schon analysierten Blöcken; ALines sind die Zeilen des Texts (an #10 getrennt).</summary>
+    /// <summary>Wie Compute aus schon analysierten Blöcken; ALines sind die Zeilen des Texts (an #10
+    /// getrennt).</summary>
     class function FromBlocks(const ALines: TArray<string>; const ABlocks: TArray<TAtlasPairBlock>;
       ATabWidth: Integer; AOwners: Boolean): TArray<TAtlasGuide>; overload; static;
     /// <summary>Wie oben mit AOwners = False.</summary>
@@ -63,10 +64,10 @@ uses
 
 class function TAtlasGuides.Compute(const AText: string; ATabWidth: Integer): TArray<TAtlasGuide>;
 var
-  Blocks: TArray<TAtlasPairBlock>;
+  mBlocks: TArray<TAtlasPairBlock>;
 begin
-  TAtlasPairs.Analyze(AText, Blocks);
-  Result := FromBlocks(AText.Split([#10]), Blocks, ATabWidth);
+  TAtlasPairs.Analyze(AText, mBlocks);
+  Result := FromBlocks(AText.Split([#10]), mBlocks, ATabWidth);
 end;
 
 class function TAtlasGuides.FromBlocks(const ALines: TArray<string>; const ABlocks: TArray<TAtlasPairBlock>;
@@ -78,38 +79,38 @@ end;
 class function TAtlasGuides.FromBlocks(const ALines: TArray<string>; const ABlocks: TArray<TAtlasPairBlock>;
   ATabWidth: Integer; AOwners: Boolean): TArray<TAtlasGuide>;
 var
-  Block: TAtlasPairBlock;
-  Guide: TAtlasGuide;
-  Display: string;
-  Indent, First: Integer;
+  mBlock: TAtlasPairBlock;
+  mGuide: TAtlasGuide;
+  mDisplay: string;
+  mIndent, mFirst: Integer;
 begin
   Result := nil;
-  for Block in ABlocks do
+  for mBlock in ABlocks do
   begin
-    if (Block.CloseLine <= Block.OpenLine) or (Block.CloseLine > High(ALines)) then
+    if (mBlock.CloseLine <= mBlock.OpenLine) or (mBlock.CloseLine > High(ALines)) then
     begin
       Continue;
     end;
-    First := Block.OpenLine;
+    mFirst := mBlock.OpenLine;
     // Öffner allein am Zeilenanfang unter seiner Anweisung: Linie ab der Anweisung.
-    if AOwners and (Block.OwnerLine < Block.OpenLine) and (Block.OwnerLine >= 0) and
-      (Trim(Copy(ALines[Block.OpenLine], 1, Block.OpenCharacter)) = '') then
+    if AOwners and (mBlock.OwnerLine < mBlock.OpenLine) and (mBlock.OwnerLine >= 0) and
+      (Trim(Copy(ALines[mBlock.OpenLine], 1, mBlock.OpenCharacter)) = '') then
     begin
-      First := Block.OwnerLine;
+      mFirst := mBlock.OwnerLine;
     end;
-    Display := TAtlasPairs.DisplayLine(ALines[First], ATabWidth);
-    Indent := 1;
-    while (Indent <= Length(Display)) and (Display[Indent] = ' ') do
+    mDisplay := TAtlasPairs.DisplayLine(ALines[mFirst], ATabWidth);
+    mIndent := 1;
+    while (mIndent <= Length(mDisplay)) and (mDisplay[mIndent] = ' ') do
     begin
-      Inc(Indent);
+      Inc(mIndent);
     end;
-    Guide.FirstLine := First;
-    Guide.LastLine := Block.CloseLine;
-    Guide.Column := Min(Indent, Length(TAtlasPairs.DisplayLine(Copy(ALines[Block.CloseLine], 1,
-      Block.CloseCharacter), ATabWidth)) + 1);
-    Guide.Depth := Block.Depth;
-    Guide.Routine := Block.Routine;
-    Result := Result + [Guide];
+    mGuide.FirstLine := mFirst;
+    mGuide.LastLine := mBlock.CloseLine;
+    mGuide.Column := Min(mIndent, Length(TAtlasPairs.DisplayLine(Copy(ALines[mBlock.CloseLine], 1,
+      mBlock.CloseCharacter), ATabWidth)) + 1);
+    mGuide.Depth := mBlock.Depth;
+    mGuide.Routine := mBlock.Routine;
+    Result := Result + [mGuide];
   end;
 end;
 

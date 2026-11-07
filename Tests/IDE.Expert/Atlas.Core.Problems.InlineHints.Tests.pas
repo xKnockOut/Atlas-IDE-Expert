@@ -73,7 +73,7 @@ begin
   Inactive := Problem(4, 0, TAtlasProblemSeverity.Error, 'inaktiv');
   Inactive.Unnecessary := True;
   UsesHint := Problem(4, 0, TAtlasProblemSeverity.Error, 'uses');
-  UsesHint.UsesState := TAtlasProblem.UsesUnused;
+  UsesHint.UsesState := TAtlasProblem.cUsesUnused;
   Problems := [Problem(4, 9, TAtlasProblemSeverity.Warning, 'Warnung'), Problem(4, 7, TAtlasProblemSeverity.Error,
     'Zweiter Fehler'), Problem(4, 2, TAtlasProblemSeverity.Error, 'Erster Fehler'), Problem(5, 0,
     TAtlasProblemSeverity.Error, 'andere Zeile'), Inactive, UsesHint];
@@ -108,7 +108,7 @@ begin
   Assert.AreEqual('Erste Zeile', TAtlasInlineDiagnostics.Caption(Found));
   Found.Problem.Message := StringOfChar('x', 200);
   Text := TAtlasInlineDiagnostics.Caption(Found);
-  Assert.AreEqual(TAtlasInlineDiagnostics.MaxChars, Integer(Length(Text)));
+  Assert.AreEqual(TAtlasInlineDiagnostics.cMaxChars, Integer(Length(Text)));
   Assert.AreEqual('…', Copy(Text, Length(Text), 1));
 end;
 
@@ -118,7 +118,7 @@ var
   Counts: TAtlasProblemCounts;
 begin
   Compiler := Problem(0, 0, TAtlasProblemSeverity.Error, 'dcc');
-  Compiler.Source := TAtlasProblem.CompilerSource;
+  Compiler.Source := TAtlasProblem.cCompilerSource;
   Inactive := Problem(0, 0, TAtlasProblemSeverity.Hint, 'inaktiv');
   Inactive.Unnecessary := True;
   Counts := TAtlasInlineDiagnostics.Counts([Problem(0, 0, TAtlasProblemSeverity.Error, 'E'), Problem(1, 0,
@@ -170,12 +170,12 @@ begin
     Key := TAtlasLineTail.KeyOf('U.pas', 3, 3, 40);
     Assert.AreEqual(100, TAtlasLineTail.Start(Hints, Key, 100));
     TAtlasLineTail.Finish(Hints, Key, 150);
-    Assert.AreEqual(150 + TAtlasLineTail.Gap, TAtlasLineTail.Start(Errors, Key, 100), 'hinter den Hinweisen');
+    Assert.AreEqual(150 + TAtlasLineTail.cGap, TAtlasLineTail.Start(Errors, Key, 100), 'hinter den Hinweisen');
     TAtlasLineTail.Finish(Errors, Key, 300);
     // Neues Zeichnen derselben Zeile, diesmal zuerst die Fehler.
     Assert.AreEqual(100, TAtlasLineTail.Start(Errors, Key, 100));
     TAtlasLineTail.Finish(Errors, Key, 200);
-    Assert.AreEqual(200 + TAtlasLineTail.Gap, TAtlasLineTail.Start(Hints, Key, 100));
+    Assert.AreEqual(200 + TAtlasLineTail.cGap, TAtlasLineTail.Start(Hints, Key, 100));
     // Andere Zeile beginnt am eigenen Rand.
     Assert.AreEqual(60, TAtlasLineTail.Start(Hints, TAtlasLineTail.KeyOf('U.pas', 4, 4, 56), 60));
   finally

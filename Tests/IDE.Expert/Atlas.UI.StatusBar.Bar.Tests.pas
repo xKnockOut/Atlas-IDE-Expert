@@ -136,7 +136,7 @@ begin
   // Ohne Probleme fällt das Element weg; ohne Element in der Einstellung ebenso.
   FForm.Width := 1000;
   View.FindingsShown := False;
-  View.Items := TArray<string>.Create(TAtlasStatusBarItems.Status, TAtlasStatusBarItems.Findings);
+  View.Items := TArray<string>.Create(TAtlasStatusBarItems.cStatus, TAtlasStatusBarItems.cFindings);
   FBar.SetView(View);
   Assert.IsTrue(FBar.PartRect(TAtlasStatusBarPart.Findings).IsEmpty, 'Probleme aus');
   Assert.IsTrue(FBar.PartRect(TAtlasStatusBarPart.LiveCheck).IsEmpty, 'nicht gewählt');
@@ -278,7 +278,7 @@ begin
       Hidden := True;
     end;
   View := Sample;
-  View.Items := TArray<string>.Create(TAtlasStatusBarItems.Status, TAtlasStatusBarItems.Method);
+  View.Items := TArray<string>.Create(TAtlasStatusBarItems.cStatus, TAtlasStatusBarItems.cMethod);
   FBar.SetView(View);
   P := Middle(FBar.PartRect(TAtlasStatusBarPart.Method));
   Assert.AreEqual('Zum Methodenkopf', FBar.HintAt(P.X, P.Y));
@@ -293,7 +293,7 @@ begin
   Assert.IsTrue(Menu.Items[3].Checked, 'method');
   Assert.AreEqual('Live-Prüfung', Menu.Items[2].Caption);
   Menu.Items[1].Click;
-  Assert.AreEqual(TAtlasStatusBarItems.Findings, Toggled);
+  Assert.AreEqual(TAtlasStatusBarItems.cFindings, Toggled);
   Menu.Items[5].Click;
   Assert.IsTrue(Hidden, 'ausblenden');
 end;
@@ -335,7 +335,7 @@ begin
   FBar.ClickAt(P.X, P.Y);
   Assert.AreEqual(FBar.ClientToScreen(FBar.PartRect(TAtlasStatusBarPart.Badge).TopLeft).X, Clicked.X);
   // Ohne Element status auch keine Plakette (dann steht sie im Atlas-Feld der Statuszeile).
-  View.Items := TArray<string>.Create(TAtlasStatusBarItems.Method);
+  View.Items := TArray<string>.Create(TAtlasStatusBarItems.cMethod);
   FBar.SetView(View);
   Assert.IsTrue(FBar.PartRect(TAtlasStatusBarPart.Badge).IsEmpty);
 end;
@@ -385,7 +385,7 @@ begin
   FBar.ClickAt(mPoint.X, mPoint.Y);
   Assert.AreEqual('', mClickedId);
   // Ohne Element status auch keine Zusatzfelder (dann stehen sie in der Statuszeile).
-  mView.Items := TArray<string>.Create(TAtlasStatusBarItems.Method);
+  mView.Items := TArray<string>.Create(TAtlasStatusBarItems.cMethod);
   FBar.SetView(mView);
   Assert.IsTrue(FBar.ExtraRect(0).IsEmpty);
 end;

@@ -106,33 +106,33 @@ end;
 function Refactorings: TArray<TRefactoring>;
 begin
   Result := [
-    Refactoring(TAtlasIdeChangeSignature.ClientCommand, TAtlasIdeChangeSignature.Execute),
-    Refactoring(TAtlasIdePropertyFromAccessors.ClientCommand, TAtlasIdePropertyFromAccessors.Execute),
-    Refactoring(TAtlasIdeInlineAccessor.ClientCommand, TAtlasIdeInlineAccessor.Execute),
-    Refactoring(TAtlasIdeSafeDelete.ClientCommand, TAtlasIdeSafeDelete.Execute),
-    Refactoring(TAtlasIdeInvertBoolean.ClientCommand, TAtlasIdeInvertBoolean.Execute),
-    Refactoring(TAtlasIdeDisableWarning.ClientCommand, TAtlasIdeDisableWarning.Execute),
-    Refactoring(TAtlasIdePromoteVariable.ClientCommand, TAtlasIdePromoteVariable.Execute),
-    Refactoring(TAtlasIdeAnonymousMethod.ClientCommand, TAtlasIdeAnonymousMethod.Execute),
-    Refactoring(TAtlasIdeMethodKind.ClientCommand, TAtlasIdeMethodKind.Execute),
-    Refactoring(TAtlasIdeTypeAlias.ClientCommand, TAtlasIdeTypeAlias.Execute),
-    Refactoring(TAtlasIdeTypeAlias.InlineClientCommand, TAtlasIdeTypeAlias.ExecuteInline),
-    Refactoring(TAtlasIdeEnumTables.ClientCommand, TAtlasIdeEnumTables.Execute),
-    Refactoring(TAtlasIdeEnumTables.SyncClientCommand, TAtlasIdeEnumTables.ExecuteSync),
-    Refactoring(TAtlasIdeExtractInterface.ClientCommand, TAtlasIdeExtractInterface.Execute),
-    Refactoring(TAtlasIdeExtractSuperclass.ClientCommand, TAtlasIdeExtractSuperclass.Execute),
-    Refactoring(TAtlasIdeMoveMember.ClientCommand, TAtlasIdeMoveMember.Execute),
-    Refactoring(TAtlasIdeMoveClass.ClientCommand, TAtlasIdeMoveClass.Execute)];
+    Refactoring(TAtlasIdeChangeSignature.cClientCommand, TAtlasIdeChangeSignature.Execute),
+    Refactoring(TAtlasIdePropertyFromAccessors.cClientCommand, TAtlasIdePropertyFromAccessors.Execute),
+    Refactoring(TAtlasIdeInlineAccessor.cClientCommand, TAtlasIdeInlineAccessor.Execute),
+    Refactoring(TAtlasIdeSafeDelete.cClientCommand, TAtlasIdeSafeDelete.Execute),
+    Refactoring(TAtlasIdeInvertBoolean.cClientCommand, TAtlasIdeInvertBoolean.Execute),
+    Refactoring(TAtlasIdeDisableWarning.cClientCommand, TAtlasIdeDisableWarning.Execute),
+    Refactoring(TAtlasIdePromoteVariable.cClientCommand, TAtlasIdePromoteVariable.Execute),
+    Refactoring(TAtlasIdeAnonymousMethod.cClientCommand, TAtlasIdeAnonymousMethod.Execute),
+    Refactoring(TAtlasIdeMethodKind.cClientCommand, TAtlasIdeMethodKind.Execute),
+    Refactoring(TAtlasIdeTypeAlias.cClientCommand, TAtlasIdeTypeAlias.Execute),
+    Refactoring(TAtlasIdeTypeAlias.cInlineClientCommand, TAtlasIdeTypeAlias.ExecuteInline),
+    Refactoring(TAtlasIdeEnumTables.cClientCommand, TAtlasIdeEnumTables.Execute),
+    Refactoring(TAtlasIdeEnumTables.cSyncClientCommand, TAtlasIdeEnumTables.ExecuteSync),
+    Refactoring(TAtlasIdeExtractInterface.cClientCommand, TAtlasIdeExtractInterface.Execute),
+    Refactoring(TAtlasIdeExtractSuperclass.cClientCommand, TAtlasIdeExtractSuperclass.Execute),
+    Refactoring(TAtlasIdeMoveMember.cClientCommand, TAtlasIdeMoveMember.Execute),
+    Refactoring(TAtlasIdeMoveClass.cClientCommand, TAtlasIdeMoveClass.Execute)];
 end;
 
 /// <summary>Projektwarnung (#531) und fehlende Unit (#550), je mit ihrem Befehl.</summary>
 function ArgumentsCommands: TArray<TArgumentsCommand>;
 begin
   Result := [
-    ArgumentsCommand(TAtlasIdeDisableWarning.ProjectCommand, TAtlasIdeDisableWarning.ExecuteProject),
-    ArgumentsCommand(TAtlasIdeMissingUnit.SearchPathCommand, TAtlasIdeMissingUnit.AddSearchPath),
-    ArgumentsCommand(TAtlasIdeMissingUnit.AddUnitCommand, TAtlasIdeMissingUnit.AddUnit),
-    ArgumentsCommand(TAtlasIdeMissingUnit.InfoCommand, TAtlasIdeMissingUnit.ShowInfo)];
+    ArgumentsCommand(TAtlasIdeDisableWarning.cProjectCommand, TAtlasIdeDisableWarning.ExecuteProject),
+    ArgumentsCommand(TAtlasIdeMissingUnit.cSearchPathCommand, TAtlasIdeMissingUnit.AddSearchPath),
+    ArgumentsCommand(TAtlasIdeMissingUnit.cAddUnitCommand, TAtlasIdeMissingUnit.AddUnit),
+    ArgumentsCommand(TAtlasIdeMissingUnit.cInfoCommand, TAtlasIdeMissingUnit.ShowInfo)];
 end;
 
 /// <summary>Argumente als Liste; nil, wenn sie weniger als ACount Einträge hat. Der Aufrufer gibt sie frei.</summary>
@@ -295,7 +295,7 @@ class function TAtlasClientCommands.TryRun(const ACommand, AArgumentsJson: strin
   const AHost: TAtlasClientCommandHost): Boolean;
 begin
   Result := True;
-  if ACommand = TAtlasIdeOverloads.ClientCommand then
+  if ACommand = TAtlasIdeOverloads.cClientCommand then
   begin
     RunOverloads(AArgumentsJson, AHost);
   end

@@ -11,16 +11,16 @@ uses
 
 const
   /// <summary>Grenzen und Vorgabe von vcs.timeoutSeconds (#1285).</summary>
-  MinVcsTimeoutSeconds = 1;
-  MaxVcsTimeoutSeconds = 300;
-  DefaultVcsTimeoutSeconds = 15;
+  cMinVcsTimeoutSeconds = 1;
+  cMaxVcsTimeoutSeconds = 300;
+  cDefaultVcsTimeoutSeconds = 15;
   /// <summary>Vorgaben von vcs.branch.svn.* (#1290); wie TAtlasVcsSvnBranchOptions.Default.</summary>
-  DefaultVcsBranchSvnLocation = '{projektwurzel}/branches/{name}';
-  DefaultVcsBranchSvnCheckoutFolder = '..\{projekt}-{kennung}';
-  DefaultVcsBranchSvnMessage = '{kennung} Branch für {titel}';
+  cDefaultVcsBranchSvnLocation = '{projektwurzel}/branches/{name}';
+  cDefaultVcsBranchSvnCheckoutFolder = '..\{projekt}-{kennung}';
+  cDefaultVcsBranchSvnMessage = '{kennung} Branch für {titel}';
   /// <summary>Vorgabe für vcs.branch.git.worktreeFolder (#1289); wie
-  /// TAtlasVcsGitBranchOptions.DefaultWorktreeFolder.</summary>
-  DefaultVcsWorktreeFolder = '..\{repo}-{kennung}';
+  /// TAtlasVcsGitBranchOptions.cDefaultWorktreeFolder.</summary>
+  cDefaultVcsWorktreeFolder = '..\{repo}-{kennung}';
 
 type
   /// <summary>Plugin-Einstellungen: Versionsverwaltung.</summary>
@@ -102,13 +102,13 @@ begin
   Result.VcsProvider := 'auto';
   Result.VcsGitPath := '';
   Result.VcsSvnPath := '';
-  Result.VcsTimeoutSeconds := DefaultVcsTimeoutSeconds;
+  Result.VcsTimeoutSeconds := cDefaultVcsTimeoutSeconds;
   Result.VcsProjects := '[]';
-  Result.VcsBranchSvnLocation := DefaultVcsBranchSvnLocation;
+  Result.VcsBranchSvnLocation := cDefaultVcsBranchSvnLocation;
   Result.VcsBranchSvnSource := 'head';
   Result.VcsBranchSvnAfter := 'switch';
-  Result.VcsBranchSvnCheckoutFolder := DefaultVcsBranchSvnCheckoutFolder;
-  Result.VcsBranchSvnMessage := DefaultVcsBranchSvnMessage;
+  Result.VcsBranchSvnCheckoutFolder := cDefaultVcsBranchSvnCheckoutFolder;
+  Result.VcsBranchSvnMessage := cDefaultVcsBranchSvnMessage;
   Result.VcsExternalsOnBranch := 'pin';
   Result.VcsExternalsSuggestBranch := 'modified';
   Result.VcsExternalsRules := '[]';
@@ -119,7 +119,7 @@ begin
   Result.VcsBranchGitPush := 'later';
   Result.VcsBranchGitUncommitted := 'carry';
   Result.VcsBranchGitWorktree := False;
-  Result.VcsBranchGitWorktreeFolder := DefaultVcsWorktreeFolder;
+  Result.VcsBranchGitWorktreeFolder := cDefaultVcsWorktreeFolder;
 end;
 
 procedure TAtlasPluginVcsSettings.Normalize;
@@ -128,9 +128,9 @@ begin
   VcsGitPath := Trim(VcsGitPath);
   VcsSvnPath := Trim(VcsSvnPath);
   // Außerhalb der Grenzen gilt die Vorgabe wie im Server (vcs.timeoutSeconds).
-  if (VcsTimeoutSeconds < MinVcsTimeoutSeconds) or (VcsTimeoutSeconds > MaxVcsTimeoutSeconds) then
+  if (VcsTimeoutSeconds < cMinVcsTimeoutSeconds) or (VcsTimeoutSeconds > cMaxVcsTimeoutSeconds) then
   begin
-    VcsTimeoutSeconds := DefaultVcsTimeoutSeconds;
+    VcsTimeoutSeconds := cDefaultVcsTimeoutSeconds;
   end;
   VcsProjects := Trim(VcsProjects);
   if VcsProjects = '' then
@@ -142,19 +142,19 @@ begin
   if not (SameText(Copy(VcsBranchSvnLocation, 1, 15), '{projektwurzel}') or
     (Copy(VcsBranchSvnLocation, 1, 2) = '^/')) then
   begin
-    VcsBranchSvnLocation := DefaultVcsBranchSvnLocation;
+    VcsBranchSvnLocation := cDefaultVcsBranchSvnLocation;
   end;
   VcsBranchSvnSource := Choice(VcsBranchSvnSource, ['head', 'workingCopy']);
   VcsBranchSvnAfter := Choice(VcsBranchSvnAfter, ['switch', 'checkout', 'none']);
   VcsBranchSvnCheckoutFolder := Trim(VcsBranchSvnCheckoutFolder);
   if VcsBranchSvnCheckoutFolder = '' then
   begin
-    VcsBranchSvnCheckoutFolder := DefaultVcsBranchSvnCheckoutFolder;
+    VcsBranchSvnCheckoutFolder := cDefaultVcsBranchSvnCheckoutFolder;
   end;
   VcsBranchSvnMessage := NormalizedIssuesText(VcsBranchSvnMessage, True);
   if VcsBranchSvnMessage = '' then
   begin
-    VcsBranchSvnMessage := DefaultVcsBranchSvnMessage;
+    VcsBranchSvnMessage := cDefaultVcsBranchSvnMessage;
   end;
   VcsExternalsOnBranch := Choice(VcsExternalsOnBranch, ['pin', 'keep', 'ask']);
   VcsExternalsSuggestBranch := Choice(VcsExternalsSuggestBranch, ['modified', 'never', 'always']);
@@ -170,7 +170,7 @@ begin
   VcsBranchGitWorktreeFolder := Trim(VcsBranchGitWorktreeFolder);
   if VcsBranchGitWorktreeFolder = '' then
   begin
-    VcsBranchGitWorktreeFolder := DefaultVcsWorktreeFolder;
+    VcsBranchGitWorktreeFolder := cDefaultVcsWorktreeFolder;
   end;
 end;
 

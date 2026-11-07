@@ -65,9 +65,9 @@ type
 
   TAtlasUpdates = class
   public const
-    VersionUrl = TUpdateChannels.cStableUrl;
-    ReleasesUrl = TUpdateChannels.cReleasesUrl;
-    TimeoutMs = 10000;
+    cVersionUrl = TUpdateChannels.cStableUrl;
+    cReleasesUrl = TUpdateChannels.cReleasesUrl;
+    cTimeoutMs = 10000;
   public
     /// <summary>SemVer-Vergleich: negativ, 0 oder positiv; ungültige Versionen sind kleiner als gültige.</summary>
     class function Compare(const A, B: string): Integer; static;
@@ -109,67 +109,67 @@ uses
 
 function TAtlasUpdateState.ToJson: string;
 var
-  Root: TJSONObject;
+  mRoot: TJSONObject;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Root.AddPair('asked', TJSONBool.Create(Asked));
+    mRoot.AddPair('asked', TJSONBool.Create(Asked));
     if LastCheck > 0 then
     begin
-      Root.AddPair('lastCheck', TJSONString.Create(DateToISO8601(LastCheck, False)));
+      mRoot.AddPair('lastCheck', TJSONString.Create(DateToISO8601(LastCheck, False)));
     end;
     if Available <> '' then
     begin
-      Root.AddPair('available', TJSONString.Create(Available));
-      Root.AddPair('changes', TJSONString.Create(ChangesUrl));
+      mRoot.AddPair('available', TJSONString.Create(Available));
+      mRoot.AddPair('changes', TJSONString.Create(ChangesUrl));
     end;
-    Result := Root.ToJSON;
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasUpdateState.FromJson(const AJson: string): TAtlasUpdateState;
 var
-  Value: TJSONValue;
-  Root: TJSONObject;
-  Text: string;
-  Found: Boolean;
+  mValue: TJSONValue;
+  mRoot: TJSONObject;
+  mText: string;
+  mFound: Boolean;
 begin
   Result := Default(TAtlasUpdateState);
   try
-    Value := TJSONObject.ParseJSONValue(AJson);
+    mValue := TJSONObject.ParseJSONValue(AJson);
   except
     on Exception do
-      Value := nil;
+      mValue := nil;
   end;
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    Root := TJSONObject(Value);
-    Root.TryGetValue<Boolean>('asked', Result.Asked);
+    mRoot := TJSONObject(mValue);
+    mRoot.TryGetValue<Boolean>('asked', Result.Asked);
     // Ergebnis der Abfragen erst in eine Variable: so lesen es auch andere Compiler (Tests unter FPC).
-    Found := Root.TryGetValue<string>('lastCheck', Text);
-    if Found and not TryISO8601ToDate(Text, Result.LastCheck, False) then
+    mFound := mRoot.TryGetValue<string>('lastCheck', mText);
+    if mFound and not TryISO8601ToDate(mText, Result.LastCheck, False) then
     begin
       Result.LastCheck := 0;
     end;
     // Nur eine gültige Version (#754); ohne https-Adresse gilt die Release-Seite der Version.
-    Found := Root.TryGetValue<string>('available', Text);
-    if Found and TAtlasUpdates.IsValidVersion(Text) then
+    mFound := mRoot.TryGetValue<string>('available', mText);
+    if mFound and TAtlasUpdates.IsValidVersion(mText) then
     begin
-      Result.Available := Text;
-      Found := Root.TryGetValue<string>('changes', Result.ChangesUrl);
-      if not Found or not Result.ChangesUrl.StartsWith('https://', True) or
+      Result.Available := mText;
+      mFound := mRoot.TryGetValue<string>('changes', Result.ChangesUrl);
+      if not mFound or not Result.ChangesUrl.StartsWith('https://', True) or
         (Result.ChangesUrl.IndexOfAny([' ', #9, #10, #13]) >= 0) then
       begin
-        Result.ChangesUrl := TAtlasUpdates.ReleasesUrl + '/tag/v' + Text;
+        Result.ChangesUrl := TAtlasUpdates.cReleasesUrl + '/tag/v' + mText;
       end;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -187,23 +187,23 @@ end;
 
 class function TAtlasUpdates.TryParse(const AJson: string; out ARelease: TAtlasRelease): Boolean;
 var
-  Value: TJSONValue;
-  Found: Boolean;
+  mValue: TJSONValue;
+  mFound: Boolean;
 begin
   ARelease := Default(TAtlasRelease);
   try
-    Value := TJSONObject.ParseJSONValue(AJson);
+    mValue := TJSONObject.ParseJSONValue(AJson);
   except
     on Exception do
-      Value := nil;
+      mValue := nil;
   end;
   try
     // Ergebnis der Abfragen erst in eine Variable: so lesen es auch andere Compiler (Tests unter FPC).
-    Result := Value is TJSONObject;
+    Result := mValue is TJSONObject;
     if Result then
     begin
-      Found := TJSONObject(Value).TryGetValue<string>('version', ARelease.Version);
-      Result := Found and IsValidVersion(ARelease.Version);
+      mFound := TJSONObject(mValue).TryGetValue<string>('version', ARelease.Version);
+      Result := mFound and IsValidVersion(ARelease.Version);
     end;
     if not Result then
     begin
@@ -211,15 +211,15 @@ begin
       Exit;
     end;
     // Nur https-Adressen landen in der Meldungsansicht.
-    Found := TJSONObject(Value).TryGetValue<string>('changes', ARelease.ChangesUrl);
-    if not Found or
+    mFound := TJSONObject(mValue).TryGetValue<string>('changes', ARelease.ChangesUrl);
+    if not mFound or
       not ARelease.ChangesUrl.StartsWith('https://', True) or (ARelease.ChangesUrl.IndexOfAny([' ', #9, #10, #13]) >= 0)
     then
     begin
-      ARelease.ChangesUrl := ReleasesUrl + '/tag/v' + ARelease.Version;
+      ARelease.ChangesUrl := cReleasesUrl + '/tag/v' + ARelease.Version;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -267,14 +267,14 @@ begin
   if not ARelease.ChangesUrl.StartsWith('https://', True) or (ARelease.ChangesUrl.IndexOfAny([' ', #9, #10, #13]) >= 0)
   then
   begin
-    ARelease.ChangesUrl := ReleasesUrl + '/tag/v' + AState.Available;
+    ARelease.ChangesUrl := cReleasesUrl + '/tag/v' + AState.Available;
   end;
 end;
 
 class function TAtlasUpdates.Run(const ASource: IAtlasVersionSource; const AQuery: TAtlasUpdateQuery;
   var AState: TAtlasUpdateState; AEnabled: Boolean; ANow: TDateTime): TAtlasUpdateResult;
 var
-  Text: string;
+  mText: string;
 begin
   Result := Default(TAtlasUpdateResult);
   if not AEnabled then
@@ -289,12 +289,13 @@ begin
   end;
   // Auch ein Fehlschlag zählt: höchstens eine Abfrage am Tag.
   AState.LastCheck := ANow;
-  if not ASource.Fetch(RequestUrl(AQuery.Url, AQuery.Installed, AQuery.IdeVersion), TimeoutMs, Text, Result.Error) then
+  if not ASource.Fetch(RequestUrl(AQuery.Url, AQuery.Installed, AQuery.IdeVersion), cTimeoutMs, mText,
+    Result.Error) then
   begin
     Result.Outcome := TAtlasUpdateOutcome.Failed;
     Exit;
   end;
-  if not TryParse(Text, Result.Release) then
+  if not TryParse(mText, Result.Release) then
   begin
     Result.Outcome := TAtlasUpdateOutcome.Failed;
     Result.Error := 'Versionsdatei ungültig';

@@ -37,12 +37,12 @@ uses
 
 function Known(const AKeys: array of string; const AName: string): Boolean;
 var
-  Key: string;
+  mKey: string;
 begin
   Result := False;
-  for Key in AKeys do
+  for mKey in AKeys do
   begin
-    if Key = AName then
+    if mKey = AName then
     begin
       Exit(True);
     end;
@@ -51,87 +51,87 @@ end;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end;
 end;
 
 function NumberOf(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := ADefault;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONNumber then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONNumber then
   begin
-    Result := TJSONNumber(Value).AsInt;
+    Result := TJSONNumber(mValue).AsInt;
   end
-  else if Value is TJSONString then
+  else if mValue is TJSONString then
   begin
-    Result := StrToIntDef(TJSONString(Value).Value, ADefault);
+    Result := StrToIntDef(TJSONString(mValue).Value, ADefault);
   end;
 end;
 
 function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := False;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONBool then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONBool then
   begin
-    Result := SameText(Value.Value, 'true');
+    Result := SameText(mValue.Value, 'true');
   end;
 end;
 
 function ObjectOf(AObject: TJSONObject; const AName: string): TJSONObject;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := nil;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONObject then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONObject then
   begin
-    Result := TJSONObject(Value);
+    Result := TJSONObject(mValue);
   end;
 end;
 
 procedure KeepUnknown(ATarget, AOriginal: TJSONObject; const AKeys: array of string);
 var
-  Index: Integer;
-  Pair: TJSONPair;
+  mIndex: Integer;
+  mPair: TJSONPair;
 begin
   if AOriginal = nil then
   begin
     Exit;
   end;
-  for Index := 0 to AOriginal.Count - 1 do
+  for mIndex := 0 to AOriginal.Count - 1 do
   begin
-    Pair := AOriginal.Pairs[Index];
-    if not Known(AKeys, Pair.JsonString.Value) then
+    mPair := AOriginal.Pairs[mIndex];
+    if not Known(AKeys, mPair.JsonString.Value) then
     begin
-      ATarget.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
+      ATarget.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
     end;
   end;
 end;
@@ -146,16 +146,16 @@ end;
 
 function SummaryTimeText(AUtc: TDateTime): string;
 var
-  Year, Month, Day, Hour, Minute, Second, MSec: Word;
+  mYear, mMonth, mDay, mHour, mMinute, mSecond, mMSec: Word;
 begin
   Result := '';
   if AUtc <= 0 then
   begin
     Exit;
   end;
-  DecodeDate(AUtc, Year, Month, Day);
-  DecodeTime(AUtc, Hour, Minute, Second, MSec);
-  Result := System.SysUtils.Format('%.4d-%.2d-%.2dT%.2d:%.2d:%.2dZ', [Year, Month, Day, Hour, Minute, Second]);
+  DecodeDate(AUtc, mYear, mMonth, mDay);
+  DecodeTime(AUtc, mHour, mMinute, mSecond, mMSec);
+  Result := System.SysUtils.Format('%.4d-%.2d-%.2dT%.2d:%.2d:%.2dZ', [mYear, mMonth, mDay, mHour, mMinute, mSecond]);
 end;
 
 /// <summary>Trenner von yyyy-mm-ddThh:nn:ss an ihrer Stelle.</summary>
@@ -167,32 +167,32 @@ end;
 
 function SummaryTimeOf(const AText: string): TDateTime;
 var
-  Text: string;
-  Year, Month, Day, Hour, Minute, Second: Integer;
-  DatePart, TimePart: TDateTime;
+  mText: string;
+  mYear, mMonth, mDay, mHour, mMinute, mSecond: Integer;
+  mDatePart, mTimePart: TDateTime;
 begin
   Result := 0;
-  Text := Trim(AText);
+  mText := Trim(AText);
   // yyyy-mm-ddThh:nn:ss, danach höchstens Bruchteile und "Z".
-  if not IsTimeShape(Text) then
+  if not IsTimeShape(mText) then
   begin
     Exit;
   end;
-  Year := StrToIntDef(Copy(Text, 1, 4), -1);
-  Month := StrToIntDef(Copy(Text, 6, 2), -1);
-  Day := StrToIntDef(Copy(Text, 9, 2), -1);
-  Hour := StrToIntDef(Copy(Text, 12, 2), -1);
-  Minute := StrToIntDef(Copy(Text, 15, 2), -1);
-  Second := StrToIntDef(Copy(Text, 18, 2), -1);
-  if (Min(Year, Min(Month, Day)) < 1) or (Min(Hour, Min(Minute, Second)) < 0) then
+  mYear := StrToIntDef(Copy(mText, 1, 4), -1);
+  mMonth := StrToIntDef(Copy(mText, 6, 2), -1);
+  mDay := StrToIntDef(Copy(mText, 9, 2), -1);
+  mHour := StrToIntDef(Copy(mText, 12, 2), -1);
+  mMinute := StrToIntDef(Copy(mText, 15, 2), -1);
+  mSecond := StrToIntDef(Copy(mText, 18, 2), -1);
+  if (Min(mYear, Min(mMonth, mDay)) < 1) or (Min(mHour, Min(mMinute, mSecond)) < 0) then
   begin
     Exit;
   end;
-  if not TryEncodeDate(Year, Month, Day, DatePart) or not TryEncodeTime(Hour, Minute, Second, 0, TimePart) then
+  if not TryEncodeDate(mYear, mMonth, mDay, mDatePart) or not TryEncodeTime(mHour, mMinute, mSecond, 0, mTimePart) then
   begin
     Exit;
   end;
-  Result := DatePart + TimePart;
+  Result := mDatePart + mTimePart;
 end;
 
 end.

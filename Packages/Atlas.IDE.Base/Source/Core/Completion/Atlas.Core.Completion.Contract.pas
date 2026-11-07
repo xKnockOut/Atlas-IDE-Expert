@@ -68,7 +68,7 @@ type
   TAtlasTriggers = record
   public const
     /// <summary>Verlauf der Debug-Dialoge (#538) statt einer Anfrage an den Server.</summary>
-    History = 'history';
+    cHistory = 'history';
   end;
 
   TAtlasContext = record
@@ -176,7 +176,8 @@ type
     /// <summary>Wert einer Aufzählung (#448): Stelle in der Deklaration ab 1, 0 sonst. Ohne Getipptes stehen die
     /// Werte in dieser Reihenfolge vor den übrigen passenden Einträgen.</summary>
     Ordinal: Integer;
-    /// <summary>Mengenmodus (#448): Aufzählungstyp der Menge, '' sonst. Dann zeigt das Popup Kontrollkästchen.</summary>
+    /// <summary>Mengenmodus (#448): Aufzählungstyp der Menge, '' sonst. Dann zeigt das Popup
+    /// Kontrollkästchen.</summary>
     SetOf: string;
     /// <summary>Im Mengenmodus angehakt.</summary>
     Checked: Boolean;
@@ -193,9 +194,11 @@ type
     Batch: Boolean;
     /// <summary>Hinweis „3 Methoden von IExporter fehlen“ (#466): ganz oben, nie vorgewählt.</summary>
     Hint: Boolean;
-    /// <summary>Komponente aus dem Formular (#455): Name des Formulars, '' sonst. Gruppe „Formular …“ ganz oben.</summary>
+    /// <summary>Komponente aus dem Formular (#455): Name des Formulars, '' sonst. Gruppe „Formular …“ ganz
+    /// oben.</summary>
     Form: string;
-    /// <summary>Die Komponente passt nur über ihren Typ ("button" → btnSave): immer sichtbar, hinter den Namenstreffern.</summary>
+    /// <summary>Die Komponente passt nur über ihren Typ ("button" → btnSave): immer sichtbar, hinter den
+    /// Namenstreffern.</summary>
     ByType: Boolean;
     /// <summary>Sender mit Typumwandlung (#480): Typ, als der Sender gilt („als TButton“); '' sonst.</summary>
     Sender: string;

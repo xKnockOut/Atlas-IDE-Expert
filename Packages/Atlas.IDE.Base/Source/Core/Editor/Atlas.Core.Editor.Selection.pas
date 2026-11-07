@@ -27,7 +27,8 @@ type
     /// <summary>Nächstkleinerer Bereich in ACurrent; False bei leerer Auswahl.</summary>
     class function Shrink(const AChain: TArray<TLspRange>; const ACurrent: TLspRange;
       out ANext: TLspRange): Boolean; static;
-    /// <summary>Wo die Kette geholt wird: am Anker, solange ACurrent ihn enthält, sonst am Anfang der Auswahl.</summary>
+    /// <summary>Wo die Kette geholt wird: am Anker, solange ACurrent ihn enthält, sonst am Anfang der
+    /// Auswahl.</summary>
     class function ChainPosition(const ACurrent: TLspRange; AHasAnchor: Boolean;
       const AAnchor: TLspTextPosition): TLspTextPosition; static;
   end;
@@ -124,13 +125,13 @@ end;
 class function TAtlasSelectionSteps.Expand(const AChain: TArray<TLspRange>; const ACurrent: TLspRange;
   out ANext: TLspRange): Boolean;
 var
-  Range: TLspRange;
+  mRange: TLspRange;
 begin
-  for Range in AChain do
+  for mRange in AChain do
   begin
-    if Range.Contains(ACurrent) and not Range.Same(ACurrent) then
+    if mRange.Contains(ACurrent) and not mRange.Same(ACurrent) then
     begin
-      ANext := Range;
+      ANext := mRange;
       Exit(True);
     end;
   end;
@@ -141,7 +142,7 @@ end;
 class function TAtlasSelectionSteps.Shrink(const AChain: TArray<TLspRange>; const ACurrent: TLspRange;
   out ANext: TLspRange): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   ANext := ACurrent;
   if ACurrent.IsEmpty then
@@ -149,11 +150,11 @@ begin
     Exit(False);
   end;
   // Von außen nach innen: der erste Bereich, der echt in der Auswahl liegt.
-  for Index := High(AChain) downto 0 do
+  for mIndex := High(AChain) downto 0 do
   begin
-    if ACurrent.Contains(AChain[Index]) and not AChain[Index].Same(ACurrent) and not AChain[Index].IsEmpty then
+    if ACurrent.Contains(AChain[mIndex]) and not AChain[mIndex].Same(ACurrent) and not AChain[mIndex].IsEmpty then
     begin
-      ANext := AChain[Index];
+      ANext := AChain[mIndex];
       Exit(True);
     end;
   end;
@@ -164,16 +165,16 @@ end;
 class function TAtlasSelectionSteps.ChainPosition(const ACurrent: TLspRange; AHasAnchor: Boolean;
   const AAnchor: TLspTextPosition): TLspTextPosition;
 var
-  Anchor: TLspRange;
+  mAnchor: TLspRange;
 begin
   Result := ACurrent.StartPos;
   if not AHasAnchor then
   begin
     Exit;
   end;
-  Anchor.StartPos := AAnchor;
-  Anchor.EndPos := AAnchor;
-  if ACurrent.Contains(Anchor) then
+  mAnchor.StartPos := AAnchor;
+  mAnchor.EndPos := AAnchor;
+  if ACurrent.Contains(mAnchor) then
   begin
     Result := AAnchor;
   end;

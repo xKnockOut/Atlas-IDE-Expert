@@ -47,18 +47,18 @@ type
 
   TAtlasIdeExitPoints = class
   public const
-    Command = 'atlas.server.exitPoints';
+    cCommand = 'atlas.server.exitPoints';
   private const
-    TickMs = 100;
+    cTickMs = 100;
     /// <summary>So viele Takte ohne Bewegung, bevor Atlas den Server fragt.</summary>
-    IdleTicks = 2;
-    TimeoutMs = 1500;
+    cIdleTicks = 2;
+    cTimeoutMs = 1500;
     /// <summary>Deckkraft der Stellen über dem Text (0–255).</summary>
-    PointAlpha = 70;
+    cPointAlpha = 70;
     /// <summary>Anteil der Farbe am Hintergrund der Marke.</summary>
-    MarkStrength = 0.16;
+    cMarkStrength = 0.16;
     /// <summary>Innenabstand der Marke links und rechts in Pixeln.</summary>
-    MarkPadding = 4;
+    cMarkPadding = 4;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -98,9 +98,9 @@ type
     procedure ReapWorkers(AWait: Boolean);
     procedure EnsureFont(const AEditorFont: TFont);
     function Jump(ABackward: Boolean): Boolean;
-    procedure PaintPoints(const Rect: TRect; const Context: INTACodeEditorPaintContext; const AText: string;
+    procedure PaintPoints(const ARect: TRect; const AContext: INTACodeEditorPaintContext; const AText: string;
       const APoints: TArray<TAtlasExitPoint>; ABack: TAtlasColor);
-    procedure PaintBadge(const Rect: TRect; const Context: INTACodeEditorPaintContext; const AText: string;
+    procedure PaintBadge(const ARect: TRect; const AContext: INTACodeEditorPaintContext; const AText: string;
       ABack: TAtlasColor);
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
@@ -165,7 +165,7 @@ end;
 
 constructor TAtlasIdeExitPoints.Create(const ASession: TAtlasExitPointsSessionFunc);
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   inherited Create;
   FSession := ASession;
@@ -175,36 +175,36 @@ begin
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+    FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := TimerTick;
   FTimer.Enabled := True;
 end;
 
 destructor TAtlasIdeExitPoints.Destroy;
 var
-  Services: INTACodeEditorServices;
-  Painted: Boolean;
+  mServices: INTACodeEditorServices;
+  mPainted: Boolean;
 begin
   FreeAndNil(FTimer);
   // Erst abmelden, dann freigeben (#493).
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    Services.RemoveEditorEventsNotifier(FIndex);
+    mServices.RemoveEditorEventsNotifier(FIndex);
   end;
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
   // Laufende Anfragen halten die Sitzung als rohen Zeiger: abwarten.
   ReapWorkers(True);
   FreeAndNil(FWorkers);
-  Painted := FSet.Found;
+  mPainted := FSet.Found;
   Clear;
   FreeAndNil(FFont);
-  if Painted then
+  if mPainted then
   begin
     Invalidate;
   end;
@@ -231,41 +231,41 @@ end;
 
 class procedure TAtlasIdeExitPoints.Invalidate;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(Services);
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 
 function IsSource(const AFileName: string): Boolean;
 var
-  Extension: string;
+  mExtension: string;
 begin
-  Extension := ExtractFileExt(AFileName);
-  Result := SameText(Extension, '.pas') or SameText(Extension, '.dpr') or SameText(Extension, '.dpk') or
-    SameText(Extension, '.inc');
+  mExtension := ExtractFileExt(AFileName);
+  Result := SameText(mExtension, '.pas') or SameText(mExtension, '.dpr') or SameText(mExtension, '.dpk') or
+    SameText(mExtension, '.inc');
 end;
 
 procedure ReadCaret(const AView: IOTAEditView; out ALine, ACharacter: Integer);
 var
-  Cursor: TOTAEditPos;
-  LineText: string;
+  mCursor: TOTAEditPos;
+  mLineText: string;
 begin
-  Cursor := AView.CursorPos;
-  ALine := Max(0, Cursor.Line - 1);
-  LineText := TAtlasEditorBuffer.LineText(AView, ALine + 1);
-  ACharacter := Min(TLspSession.ColumnToIndex(LineText, Cursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer)),
-    Length(LineText));
+  mCursor := AView.CursorPos;
+  ALine := Max(0, mCursor.Line - 1);
+  mLineText := TAtlasEditorBuffer.LineText(AView, ALine + 1);
+  ACharacter := Min(TLspSession.ColumnToIndex(mLineText, mCursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer)),
+    Length(mLineText));
 end;
 
 function HasBlock(const AView: IOTAEditView): Boolean;
 var
-  Block: IOTAEditBlock;
+  mBlock: IOTAEditBlock;
 begin
-  Block := AView.Block;
-  Result := (Block <> nil) and Block.IsValid and (Block.Size > 0);
+  mBlock := AView.Block;
+  Result := (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0);
 end;
 
 procedure TAtlasIdeExitPoints.Clear;
@@ -279,19 +279,19 @@ end;
 
 procedure TAtlasIdeExitPoints.ReapWorkers(AWait: Boolean);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if FWorkers = nil then
   begin
     Exit;
   end;
-  for Index := FWorkers.Count - 1 downto 0 do
+  for mIndex := FWorkers.Count - 1 downto 0 do
   begin
-    if AWait or FWorkers[Index].Finished then
+    if AWait or FWorkers[mIndex].Finished then
     begin
-      FWorkers[Index].WaitFor;
-      FWorkers[Index].Free;
-      FWorkers.Delete(Index);
+      FWorkers[mIndex].WaitFor;
+      FWorkers[mIndex].Free;
+      FWorkers.Delete(mIndex);
     end;
   end;
 end;
@@ -361,7 +361,7 @@ begin
     Exit;
   end;
   Inc(FIdleCount);
-  Result := (FIdleCount >= IdleTicks) and (mKey <> FAskedKey);
+  Result := (FIdleCount >= cIdleTicks) and (mKey <> FAskedKey);
   if Result then
   begin
     FAskedKey := mKey;
@@ -449,7 +449,7 @@ begin
     begin
       mFound := Default(TAtlasExitPointSet);
       try
-        mAnswer := ASession.RunCommand(TAtlasIdeExitPoints.Command, AArguments, TAtlasIdeExitPoints.TimeoutMs);
+        mAnswer := ASession.RunCommand(TAtlasIdeExitPoints.cCommand, AArguments, TAtlasIdeExitPoints.cTimeoutMs);
         try
           mFound := TAtlasExitPointSet.FromJson(mAnswer);
         finally
@@ -525,136 +525,136 @@ end;
 
 function TAtlasIdeExitPoints.Jump(ABackward: Boolean): Boolean;
 var
-  View: IOTAEditView;
-  Snapshot: TAtlasEditorSnapshot;
-  Line, Character: Integer;
-  Point: TAtlasExitPoint;
-  Position: TOTAEditPos;
-  LineText: string;
+  mView: IOTAEditView;
+  mSnapshot: TAtlasEditorSnapshot;
+  mLine, mCharacter: Integer;
+  mPoint: TAtlasExitPoint;
+  mPosition: TOTAEditPos;
+  mLineText: string;
 begin
   Result := False;
   if not FSet.Found then
   begin
     Exit;
   end;
-  View := TAtlasEditorBuffer.ActiveView;
-  if (View = nil) or (View.Buffer = nil) or HasBlock(View) then
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView = nil) or (mView.Buffer = nil) or HasBlock(mView) then
   begin
     Exit;
   end;
-  Snapshot := TAtlasEditorSnapshots.Get(View);
-  if not SameText(Snapshot.FileName, FFileName) or (Snapshot.Version <> FVersion) then
+  mSnapshot := TAtlasEditorSnapshots.Get(mView);
+  if not SameText(mSnapshot.FileName, FFileName) or (mSnapshot.Version <> FVersion) then
   begin
     Exit;
   end;
-  ReadCaret(View, Line, Character);
-  if not FSet.Holds(Line, Character) or not FSet.Next(Line, Character, ABackward, Point) then
+  ReadCaret(mView, mLine, mCharacter);
+  if not FSet.Holds(mLine, mCharacter) or not FSet.Next(mLine, mCharacter, ABackward, mPoint) then
   begin
     Exit;
   end;
-  LineText := '';
-  if Point.Line < Length(FLines) then
+  mLineText := '';
+  if mPoint.Line < Length(FLines) then
   begin
-    LineText := FLines[Point.Line];
+    mLineText := FLines[mPoint.Line];
   end;
-  Position.Line := Point.Line + 1;
-  Position.Col := TLspSession.IndexToColumn(LineText, Point.Character, FTabWidth);
-  View.CursorPos := Position;
-  View.MoveViewToCursor;
-  View.Paint;
+  mPosition.Line := mPoint.Line + 1;
+  mPosition.Col := TLspSession.IndexToColumn(mLineText, mPoint.Character, FTabWidth);
+  mView.CursorPos := mPosition;
+  mView.MoveViewToCursor;
+  mView.Paint;
   Result := True;
 end;
 
 procedure TAtlasIdeExitPoints.EnsureFont(const AEditorFont: TFont);
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
-  if Key = FFontKey then
+  mKey := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
+  if mKey = FFontKey then
   begin
     Exit;
   end;
   FFont.Assign(AEditorFont);
   FFont.Style := [];
-  FFontKey := Key;
+  FFontKey := mKey;
 end;
 
-procedure TAtlasIdeExitPoints.PaintPoints(const Rect: TRect; const Context: INTACodeEditorPaintContext;
+procedure TAtlasIdeExitPoints.PaintPoints(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const AText: string; const APoints: TArray<TAtlasExitPoint>; ABack: TAtlasColor);
 var
-  Point: TAtlasExitPoint;
-  Colors: TAtlasColors;
-  First, Last, Code: TRect;
-  DC: HDC;
-  Saved: Integer;
+  mPoint: TAtlasExitPoint;
+  mColors: TAtlasColors;
+  mFirst, mLast, mCode: TRect;
+  mDC: HDC;
+  mSaved: Integer;
 begin
-  Colors := TAtlasColors.ForBackground(ABack);
-  DC := Context.Canvas.Handle;
-  Code := Context.LineState.CodeRect;
-  Saved := SaveDC(DC);
+  mColors := TAtlasColors.ForBackground(ABack);
+  mDC := AContext.Canvas.Handle;
+  mCode := AContext.LineState.CodeRect;
+  mSaved := SaveDC(mDC);
   try
-    if Code.Right > Code.Left then
+    if mCode.Right > mCode.Left then
     begin
-      IntersectClipRect(DC, Code.Left, Rect.Top, Rect.Right, Rect.Bottom);
+      IntersectClipRect(mDC, mCode.Left, ARect.Top, ARect.Right, ARect.Bottom);
     end;
-    for Point in APoints do
+    for mPoint in APoints do
     begin
-      First := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, Point.Character, FTabWidth),
-        Context.EditorLineNum);
-      Last := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, Point.EndCharacter, FTabWidth),
-        Context.EditorLineNum);
-      TAtlasIdeStyle.Blend(DC, TRect.Create(First.Left, Rect.Top, Max(Last.Left, First.Left + 1), Rect.Bottom),
-        COLORREF(ColorToRGB(TColor(RoleColor(Colors, Point.Role)))), PointAlpha);
+      mFirst := AContext.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, mPoint.Character, FTabWidth),
+        AContext.EditorLineNum);
+      mLast := AContext.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, mPoint.EndCharacter, FTabWidth),
+        AContext.EditorLineNum);
+      TAtlasIdeStyle.Blend(mDC, TRect.Create(mFirst.Left, ARect.Top, Max(mLast.Left, mFirst.Left + 1), ARect.Bottom),
+        COLORREF(ColorToRGB(TColor(RoleColor(mColors, mPoint.Role)))), cPointAlpha);
     end;
   finally
-    RestoreDC(DC, Saved);
+    RestoreDC(mDC, mSaved);
   end;
 end;
 
-procedure TAtlasIdeExitPoints.PaintBadge(const Rect: TRect; const Context: INTACodeEditorPaintContext;
+procedure TAtlasIdeExitPoints.PaintBadge(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const AText: string; ABack: TAtlasColor);
 var
-  Caption, Key: string;
-  Cell, Mark: TRect;
-  Colors: TAtlasColors;
-  Tone: TAtlasColor;
-  DC: HDC;
-  Saved, X, Top: Integer;
-  Size: TSize;
-  Brush: HBRUSH;
+  mCaption, mKey: string;
+  mCell, mMark: TRect;
+  mColors: TAtlasColors;
+  mTone: TAtlasColor;
+  mDC: HDC;
+  mSaved, X, mTop: Integer;
+  mSize: TSize;
+  mBrush: HBRUSH;
 begin
-  Caption := TAtlasExitPoints.BadgeText(FSet, TAtlasStrings.Text(TAtlasTextId.ExitPointsOne),
+  mCaption := TAtlasExitPoints.BadgeText(FSet, TAtlasStrings.Text(TAtlasTextId.ExitPointsOne),
     TAtlasStrings.Text(TAtlasTextId.ExitPointsCount), TAtlasStrings.Text(TAtlasTextId.ExitPointsResultMissing));
-  Cell := Context.EditorState.GetCharacterPosPx(
-    TLspSession.IndexToColumn(AText, Length(TrimRight(AText)), FTabWidth) + 2, Context.EditorLineNum);
-  Key := TAtlasLineTail.KeyOf(Context.FileName, Context.LogicalLineNum, Context.EditorLineNum, Rect.Top);
-  X := TAtlasLineTail.Start(Self, Key, Cell.Left);
-  Colors := TAtlasColors.ForBackground(ABack);
-  Tone := Colors.Warn;
+  mCell := AContext.EditorState.GetCharacterPosPx(
+    TLspSession.IndexToColumn(AText, Length(TrimRight(AText)), FTabWidth) + 2, AContext.EditorLineNum);
+  mKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
+  X := TAtlasLineTail.Start(Self, mKey, mCell.Left);
+  mColors := TAtlasColors.ForBackground(ABack);
+  mTone := mColors.Warn;
   if FSet.ResultMissing then
   begin
-    Tone := Colors.Error;
+    mTone := mColors.Error;
   end;
-  EnsureFont(Context.Canvas.Font);
-  DC := Context.Canvas.Handle;
-  Saved := SaveDC(DC);
-  Brush := CreateSolidBrush(COLORREF(ColorToRGB(TColor(TAtlasColorMath.Mix(Tone, ABack, MarkStrength)))));
+  EnsureFont(AContext.Canvas.Font);
+  mDC := AContext.Canvas.Handle;
+  mSaved := SaveDC(mDC);
+  mBrush := CreateSolidBrush(COLORREF(ColorToRGB(TColor(TAtlasColorMath.Mix(mTone, ABack, cMarkStrength)))));
   try
-    SelectObject(DC, FFont.Handle);
-    GetTextExtentPoint32W(DC, PChar(Caption), Length(Caption), Size);
-    Top := Rect.Top + Max(0, (Rect.Bottom - Rect.Top - Size.cy) div 2);
-    Mark := TRect.Create(X, Rect.Top + 1, X + Size.cx + 2 * MarkPadding, Rect.Bottom - 1);
-    FillRect(DC, Mark, Brush);
-    SetTextColor(DC, COLORREF(ColorToRGB(TColor(Tone))));
-    SetBkMode(DC, TRANSPARENT);
-    TextOutW(DC, X + MarkPadding, Top, PChar(Caption), Length(Caption));
+    SelectObject(mDC, FFont.Handle);
+    GetTextExtentPoint32W(mDC, PChar(mCaption), Length(mCaption), mSize);
+    mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mSize.cy) div 2);
+    mMark := TRect.Create(X, ARect.Top + 1, X + mSize.cx + 2 * cMarkPadding, ARect.Bottom - 1);
+    FillRect(mDC, mMark, mBrush);
+    SetTextColor(mDC, COLORREF(ColorToRGB(TColor(mTone))));
+    SetBkMode(mDC, TRANSPARENT);
+    TextOutW(mDC, X + cMarkPadding, mTop, PChar(mCaption), Length(mCaption));
   finally
-    DeleteObject(Brush);
-    RestoreDC(DC, Saved);
+    DeleteObject(mBrush);
+    RestoreDC(mDC, mSaved);
   end;
-  TAtlasLineTail.Finish(Self, Key, Mark.Right);
-  TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.ExitPoints, Context.FileName,
-    FSet.RoutineLine, AText), Mark, Context.EditView.TopRow, Rect.Height);
+  TAtlasLineTail.Finish(Self, mKey, mMark.Right);
+  TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.ExitPoints, AContext.FileName,
+    FSet.RoutineLine, AText), mMark, AContext.EditView.TopRow, ARect.Height);
 end;
 
 procedure TAtlasIdeExitPoints.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;

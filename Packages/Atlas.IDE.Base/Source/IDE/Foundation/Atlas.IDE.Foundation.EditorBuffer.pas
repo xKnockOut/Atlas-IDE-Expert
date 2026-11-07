@@ -82,75 +82,75 @@ end;
 
 class function TAtlasEditorBuffer.Text(const ABuffer: IOTAEditBuffer): string;
 const
-  ChunkSize = 65536;
+  cChunkSize = 65536;
 var
-  Reader: IOTAEditReader;
-  Bytes: TBytes;
-  Position, Count, Used, Capacity: Integer;
+  mReader: IOTAEditReader;
+  mBytes: TBytes;
+  mPosition, mCount, mUsed, mCapacity: Integer;
 begin
-  Reader := ABuffer.CreateReader;
-  Position := 0;
+  mReader := ABuffer.CreateReader;
+  mPosition := 0;
   // Direkt in den Puffer lesen, Kapazität verdoppeln (P-04): kein Zwischenstück und kein Umkopieren je Stück.
-  Capacity := ChunkSize;
-  Bytes := nil;
-  SetLength(Bytes, Capacity);
-  Used := 0;
+  mCapacity := cChunkSize;
+  mBytes := nil;
+  SetLength(mBytes, mCapacity);
+  mUsed := 0;
   repeat
-    if Used + ChunkSize > Capacity then
+    if mUsed + cChunkSize > mCapacity then
     begin
-      Capacity := Capacity * 2;
-      SetLength(Bytes, Capacity);
+      mCapacity := mCapacity * 2;
+      SetLength(mBytes, mCapacity);
     end;
-    Count := Reader.GetText(Position, PAnsiChar(@Bytes[Used]), ChunkSize);
-    if Count > 0 then
+    mCount := mReader.GetText(mPosition, PAnsiChar(@mBytes[mUsed]), cChunkSize);
+    if mCount > 0 then
     begin
-      Inc(Used, Count);
-      Inc(Position, Count);
+      Inc(mUsed, mCount);
+      Inc(mPosition, mCount);
     end;
-  until Count < ChunkSize;
-  Result := TEncoding.UTF8.GetString(Bytes, 0, Used);
+  until mCount < cChunkSize;
+  Result := TEncoding.UTF8.GetString(mBytes, 0, mUsed);
 end;
 
 class function TAtlasEditorBuffer.LineText(const AView: IOTAEditView; ALine: Integer): string;
 const
-  MaxLine = 8192;
+  cMaxLine = 8192;
 var
-  CharPos: TOTACharPos;
-  Reader: IOTAEditReader;
-  Chunk: AnsiString;
-  Count, Stop, Position: Integer;
+  mCharPos: TOTACharPos;
+  mReader: IOTAEditReader;
+  mChunk: AnsiString;
+  mCount, mStop, mPosition: Integer;
 begin
-  CharPos.Line := ALine;
-  CharPos.CharIndex := 0;
-  Position := AView.CharPosToPos(CharPos);
+  mCharPos.Line := ALine;
+  mCharPos.CharIndex := 0;
+  mPosition := AView.CharPosToPos(mCharPos);
   // Unter dem Dateiende liefert der Editor eine Position in der letzten Zeile; deren Text gehört
   // nicht zu ALine (Diagnoselog 15.10.2026: Hover auf Zeile 1800 bei 1793 Zeilen).
-  if AView.PosToCharPos(Position).Line <> ALine then
+  if AView.PosToCharPos(mPosition).Line <> ALine then
   begin
     Exit('');
   end;
-  Reader := AView.Buffer.CreateReader;
-  SetLength(Chunk, MaxLine);
-  Count := Reader.GetText(Position, PAnsiChar(Chunk), MaxLine);
-  Stop := 1;
-  while (Stop <= Count) and not (Chunk[Stop] in [#13, #10]) do
+  mReader := AView.Buffer.CreateReader;
+  SetLength(mChunk, cMaxLine);
+  mCount := mReader.GetText(mPosition, PAnsiChar(mChunk), cMaxLine);
+  mStop := 1;
+  while (mStop <= mCount) and not (mChunk[mStop] in [#13, #10]) do
   begin
-    Inc(Stop);
+    Inc(mStop);
   end;
-  Result := UTF8ToString(Copy(Chunk, 1, Stop - 1));
+  Result := UTF8ToString(Copy(mChunk, 1, mStop - 1));
 end;
 
 class function TAtlasEditorBuffer.TabWidth(const ABuffer: IOTAEditBuffer): Integer;
 var
-  Stops: string;
+  mStops: string;
 begin
   Result := 8;
   if ABuffer.BufferOptions <> nil then
   begin
-    Stops := Trim(ABuffer.BufferOptions.TabStops);
-    if Stops <> '' then
+    mStops := Trim(ABuffer.BufferOptions.TabStops);
+    if mStops <> '' then
     begin
-      Result := StrToIntDef(Stops.Split([' '])[0], 8);
+      Result := StrToIntDef(mStops.Split([' '])[0], 8);
     end;
     if Result < 1 then
     begin
@@ -175,24 +175,24 @@ end;
 
 class function TAtlasEditorBuffer.CharOffset(const AText: string; ALine, ACharacter: Integer): Integer;
 var
-  Line, Index, LineEnd: Integer;
+  mLine, mIndex, mLineEnd: Integer;
 begin
-  Index := 1;
-  Line := 0;
-  while (Line < ALine) and (Index <= Length(AText)) do
+  mIndex := 1;
+  mLine := 0;
+  while (mLine < ALine) and (mIndex <= Length(AText)) do
   begin
-    if AText[Index] = #10 then
+    if AText[mIndex] = #10 then
     begin
-      Inc(Line);
+      Inc(mLine);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  LineEnd := Index;
-  while (LineEnd <= Length(AText)) and not CharInSet(AText[LineEnd], [#13, #10]) do
+  mLineEnd := mIndex;
+  while (mLineEnd <= Length(AText)) and not CharInSet(AText[mLineEnd], [#13, #10]) do
   begin
-    Inc(LineEnd);
+    Inc(mLineEnd);
   end;
-  Result := Min(Index + ACharacter, LineEnd) - 1;
+  Result := Min(mIndex + ACharacter, mLineEnd) - 1;
 end;
 
 class function TAtlasEditorBuffer.ByteOffset(const AText: string; ALine, ACharacter: Integer): Integer;

@@ -57,11 +57,11 @@ type
   TAtlasIdeSetupChecklist = class
   public const
     /// <summary>Neu prüfen, solange das Fenster offen ist oder der Start entscheidet.</summary>
-    TickMs = 2000;
+    cTickMs = 2000;
     /// <summary>Sonst nur für die Zeile im Statusfeld.</summary>
-    IdleTicks = 5;
+    cIdleTicks = 5;
     /// <summary>Belegung der Tasten höchstens so oft neu lesen (Aktionsliste der IDE).</summary>
-    KeysMaxAgeMs = 30000;
+    cKeysMaxAgeMs = 30000;
   private class var
     FInstance: TAtlasIdeSetupChecklist;
   private
@@ -167,7 +167,7 @@ end;
 
 function TIdeEnvironment.Keys: TArray<TAtlasSetupKey>;
 begin
-  if FKeysRead and (TThread.GetTickCount64 - FKeysAt < TAtlasIdeSetupChecklist.KeysMaxAgeMs) then
+  if FKeysRead and (TThread.GetTickCount64 - FKeysAt < TAtlasIdeSetupChecklist.cKeysMaxAgeMs) then
   begin
     Exit(FKeys);
   end;
@@ -210,34 +210,34 @@ end;
 
 function TIdeEnvironment.Snapshot: TAtlasSetupInput;
 var
-  Settings: TAtlasPluginSettings;
-  Services: IOTAServices;
-  Path: string;
-  Percent: Integer;
+  mSettings: TAtlasPluginSettings;
+  mServices: IOTAServices;
+  mPath: string;
+  mPercent: Integer;
 begin
   Result := Default(TAtlasSetupInput);
-  Settings := TAtlasIdeSettings.Current;
-  Path := '';
+  mSettings := TAtlasIdeSettings.Current;
+  mPath := '';
   if Assigned(FHooks.ServerPath) then
   begin
-    Path := FHooks.ServerPath();
+    mPath := FHooks.ServerPath();
   end;
-  Result.ServerFound := (Path <> '') and FileExists(Path);
+  Result.ServerFound := (mPath <> '') and FileExists(mPath);
   if Assigned(FHooks.ServerInfo) then
   begin
     Result.Server := FHooks.ServerInfo();
   end;
-  Result.PluginVersion := TAtlasPluginVersion.Version;
-  if Supports(BorlandIDEServices, IOTAServices, Services) then
+  Result.PluginVersion := TAtlasPluginVersion.cVersion;
+  if Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
-    Result.BdsVersion := TAtlasProjectContext.VersionOfRegistryKey(Services.GetBaseRegistryKey);
+    Result.BdsVersion := TAtlasProjectContext.VersionOfRegistryKey(mServices.GetBaseRegistryKey);
   end;
   ReadProjects(Result.Platform, Result.Projects);
   Result.IndexPercent := -1;
   if (Result.Server.Phase = TAtlasServerPhase.Running) and Assigned(FHooks.Indexing) then
   begin
-    Result.Indexing := FHooks.Indexing(Percent);
-    Result.IndexPercent := Percent;
+    Result.Indexing := FHooks.Indexing(mPercent);
+    Result.IndexPercent := mPercent;
   end;
   if Assigned(FHooks.StatusJson) and (Result.Server.Phase = TAtlasServerPhase.Running) then
   begin
@@ -245,42 +245,42 @@ begin
   end;
   Result.ErrorInsight := TAtlasIdeStructureSwitch.ErrorInsight;
   Result.ErrorInsightRestart := TAtlasIdeStructureSwitch.ErrorInsightChanged;
-  Result.AtlasProblems := Settings.Enabled and Settings.Problems;
+  Result.AtlasProblems := mSettings.Enabled and mSettings.Problems;
   Result.Keys := Keys;
 end;
 
 function TIdeEnvironment.ChooseServerPath(out APath: string): Boolean;
 var
-  Dialog: TOpenDialog;
+  mDialog: TOpenDialog;
 begin
   APath := '';
-  Dialog := TOpenDialog.Create(nil);
+  mDialog := TOpenDialog.Create(nil);
   try
-    Dialog.Title := TAtlasStrings.Text(TAtlasTextId.SetupChooseTitle);
-    Dialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsServerFilter);
-    Dialog.Options := Dialog.Options + [ofFileMustExist];
+    mDialog.Title := TAtlasStrings.Text(TAtlasTextId.SetupChooseTitle);
+    mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsServerFilter);
+    mDialog.Options := mDialog.Options + [ofFileMustExist];
     if Assigned(FHooks.ServerPath) then
     begin
-      Dialog.InitialDir := ExtractFilePath(FHooks.ServerPath());
+      mDialog.InitialDir := ExtractFilePath(FHooks.ServerPath());
     end;
-    Result := Dialog.Execute;
+    Result := mDialog.Execute;
     if Result then
     begin
-      APath := Dialog.FileName;
+      APath := mDialog.FileName;
     end;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
 procedure TIdeEnvironment.SaveServerPath(const APath: string);
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
   // Wie die Optionsseite: gespeicherte Werte, ohne Sitzungswerte der Schnellschalter.
-  Settings := TAtlasIdeSettings.Stored;
-  Settings.ServerPath := APath;
-  TAtlasIdeSettings.Update(Settings);
+  mSettings := TAtlasIdeSettings.Stored;
+  mSettings.ServerPath := APath;
+  TAtlasIdeSettings.Update(mSettings);
   TAtlasGuard.Log('Einrichtung: Server-Pfad gewählt (#625)');
 end;
 
@@ -292,7 +292,7 @@ end;
 function TIdeEnvironment.RebuildIndex: Boolean;
 begin
   // Abschicken genügt (#874): Auf die Antwort zu warten hielte die IDE an, solange der Server indexiert.
-  Result := Assigned(FHooks.ServerCommand) and FHooks.ServerCommand(TAtlasSetupChecklist.RebuildCommand);
+  Result := Assigned(FHooks.ServerCommand) and FHooks.ServerCommand(TAtlasSetupChecklist.cRebuildCommand);
 end;
 
 function TIdeEnvironment.SetErrorInsight(AEnabled: Boolean): Boolean;
@@ -302,14 +302,14 @@ end;
 
 procedure TIdeEnvironment.OpenKeyConflicts;
 var
-  Options: IOTAEnvironmentOptions140;
-  Services: IOTAServices;
+  mOptions: IOTAEnvironmentOptions140;
+  mServices: IOTAServices;
 begin
   // Seite „Atlas.Tastenkonflikte“ (#494) unter Tools › Optionen; danach Tasten neu lesen.
-  if Supports(BorlandIDEServices, IOTAServices, Services) and
-    Supports(Services.GetEnvironmentOptions, IOTAEnvironmentOptions140, Options) then
+  if Supports(BorlandIDEServices, IOTAServices, mServices) and
+    Supports(mServices.GetEnvironmentOptions, IOTAEnvironmentOptions140, mOptions) then
   begin
-    Options.EditOptions('', 'Atlas.' + TAtlasStrings.Text(TAtlasTextId.KeysTitle));
+    mOptions.EditOptions('', 'Atlas.' + TAtlasStrings.Text(TAtlasTextId.KeysTitle));
   end;
   ForgetKeys;
 end;
@@ -326,7 +326,7 @@ begin
   FIdeEnvironment := TIdeEnvironment.Create(AHooks);
   FEnvironment := TIdeEnvironment(FIdeEnvironment);
   FController := TAtlasSetupController.Create(FEnvironment);
-  FLine := TAtlasStatusLine.Create(FRegistry, TAtlasSetupChecklist.StatusId, TAtlasSetupChecklist.StatusOrder,
+  FLine := TAtlasStatusLine.Create(FRegistry, TAtlasSetupChecklist.cStatusId, TAtlasSetupChecklist.cStatusOrder,
     procedure
     begin
       if FInstance <> nil then
@@ -336,7 +336,7 @@ begin
     end);
   FLineRef := FLine;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := TimerTick;
   // Erste Prüfung im ersten Takt, nicht beim Laden des Packages; erst dann erscheint die Zeile.
   FTimer.Enabled := True;
@@ -356,7 +356,7 @@ begin
   end;
   if FLineAdded and (FRegistry <> nil) then
   begin
-    FRegistry.Remove(TAtlasSetupChecklist.StatusId);
+    FRegistry.Remove(TAtlasSetupChecklist.cStatusId);
   end;
   FLineRef := nil;
   FLine := nil;
@@ -389,7 +389,7 @@ begin
     begin
       // Fenster offen oder Start offen: alle 2 s; sonst nur gelegentlich für die Statuszeile.
       Inc(FIdle);
-      if FLineAdded and not WindowVisible and not FStarting and (FIdle < IdleTicks) then
+      if FLineAdded and not WindowVisible and not FStarting and (FIdle < cIdleTicks) then
       begin
         Exit;
       end;
@@ -416,22 +416,22 @@ end;
 
 procedure TAtlasIdeSetupChecklist.UpdateLine;
 var
-  Done, Total: Integer;
+  mDone, mTotal: Integer;
 begin
   if FLine = nil then
   begin
     Exit;
   end;
-  FController.Progress(Done, Total);
+  FController.Progress(mDone, mTotal);
   if FController.Complete then
   begin
-    FLine.Update(TAtlasStrings.Fmt(TAtlasTextId.SetupStatusComplete, [Done, Total]), TAtlasStatusState.Green);
+    FLine.Update(TAtlasStrings.Fmt(TAtlasTextId.SetupStatusComplete, [mDone, mTotal]), TAtlasStatusState.Green);
   end
   else
   begin
     // Gelb, solange unvollständig (#754); die roten Punkte meldet schon die Zeile des Servers.
-    FLine.Update(TAtlasStrings.Fmt(TAtlasTextId.SetupStatusLine, [Done, Total]), TAtlasStatusState.Yellow,
-      TAtlasStrings.Fmt(TAtlasTextId.SetupStatusSummary, [Done, Total]));
+    FLine.Update(TAtlasStrings.Fmt(TAtlasTextId.SetupStatusLine, [mDone, mTotal]), TAtlasStatusState.Yellow,
+      TAtlasStrings.Fmt(TAtlasTextId.SetupStatusSummary, [mDone, mTotal]));
   end;
 end;
 
@@ -451,11 +451,11 @@ end;
 
 procedure TAtlasIdeSetupChecklist.DecideAtStart;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  case TAtlasSetupChecklist.StartAction(Settings.SetupChecklist, not Settings.SetupChecklistSeen,
-    FController.Results, Int64(TThread.GetTickCount64 - FStartedAt), TAtlasSetupChecklist.StartWaitMs) of
+  mSettings := TAtlasIdeSettings.Current;
+  case TAtlasSetupChecklist.StartAction(mSettings.SetupChecklist, not mSettings.SetupChecklistSeen,
+    FController.Results, Int64(TThread.GetTickCount64 - FStartedAt), TAtlasSetupChecklist.cStartWaitMs) of
     TAtlasSetupStartAction.Open:
       begin
         FStarting := False;
@@ -469,17 +469,17 @@ end;
 
 class function TAtlasIdeSetupChecklist.TryKey: string;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
   // Eigene Taste der Vervollständigung (#494), sonst die der IDE.
-  Settings := TAtlasIdeSettings.Current;
-  if Settings.CompletionKey <> 0 then
+  mSettings := TAtlasIdeSettings.Current;
+  if mSettings.CompletionKey <> 0 then
   begin
-    Result := ShortCutToText(TShortCut(Settings.CompletionKey));
+    Result := ShortCutToText(TShortCut(mSettings.CompletionKey));
   end
   else
   begin
-    Result := ShortCutToText(TShortCut(TAtlasKeyConflicts.IdeCompletionKey));
+    Result := ShortCutToText(TShortCut(TAtlasKeyConflicts.cIdeCompletionKey));
   end;
 end;
 
@@ -554,17 +554,17 @@ end;
 
 procedure TAtlasIdeSetupChecklist.Fix(const AResult: TAtlasSetupResult);
 var
-  Fix_: TAtlasSetupFix;
-  Check_: TAtlasSetupCheck;
+  mFix_: TAtlasSetupFix;
+  mCheck_: TAtlasSetupCheck;
 begin
   // Anonyme Methoden dürfen const-Parameter nicht einfangen.
-  Fix_ := AResult.Fix;
-  Check_ := AResult.Check;
+  mFix_ := AResult.Fix;
+  mCheck_ := AResult.Check;
   TAtlasGuard.Run(TAtlasFeature.Settings,
     procedure
     begin
-      TAtlasGuard.Log(Format('Einrichtung: Knopf %d für Prüfung %d (#625)', [Ord(Fix_), Ord(Check_)]));
-      FController.Apply(Fix_);
+      TAtlasGuard.Log(Format('Einrichtung: Knopf %d für Prüfung %d (#625)', [Ord(mFix_), Ord(mCheck_)]));
+      FController.Apply(mFix_);
       UpdateLine;
       UpdateWindow(True);
     end);
@@ -572,25 +572,25 @@ end;
 
 function TAtlasIdeSetupChecklist.Report: string;
 var
-  Input: TAtlasSetupReportInput;
-  Results_: TArray<TAtlasSetupResult>;
+  mInput: TAtlasSetupReportInput;
+  mResults_: TArray<TAtlasSetupResult>;
 begin
-  Results_ := FController.Results;
-  Input := Default(TAtlasSetupReportInput);
-  Input.Title := TAtlasStrings.Text(TAtlasTextId.SetupTitle);
-  Input.Summary := TAtlasSetupTexts.ProgressText(Results_);
-  Input.AtlasVersion := TAtlasPluginVersion.Version;
-  Input.IdeVersion := TAtlasUpdates.IdeVersion;
+  mResults_ := FController.Results;
+  mInput := Default(TAtlasSetupReportInput);
+  mInput.Title := TAtlasStrings.Text(TAtlasTextId.SetupTitle);
+  mInput.Summary := TAtlasSetupTexts.ProgressText(mResults_);
+  mInput.AtlasVersion := TAtlasPluginVersion.cVersion;
+  mInput.IdeVersion := TAtlasUpdates.IdeVersion;
   {$IFDEF WIN64}
-  Input.Platform := 'Win64';
+  mInput.Platform := 'Win64';
   {$ELSE}
-  Input.Platform := 'Win32';
+  mInput.Platform := 'Win32';
   {$ENDIF}
-  Input.Created := Now;
-  Input.Identity := [GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
+  mInput.Created := Now;
+  mInput.Identity := [GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
     GetEnvironmentVariable('USERDOMAIN')];
-  Input.Lines := TAtlasSetupTexts.ReportLines(Results_);
-  Result := TAtlasSetupChecklist.Report(Input);
+  mInput.Lines := TAtlasSetupTexts.ReportLines(mResults_);
+  Result := TAtlasSetupChecklist.Report(mInput);
 end;
 
 procedure TAtlasIdeSetupChecklist.CopyReport;
@@ -604,33 +604,33 @@ end;
 
 procedure TAtlasIdeSetupChecklist.SaveShowAtStart(AValue: Boolean);
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Stored;
-  if Settings.SetupChecklist = AValue then
+  mSettings := TAtlasIdeSettings.Stored;
+  if mSettings.SetupChecklist = AValue then
   begin
     Exit;
   end;
-  Settings.SetupChecklist := AValue;
-  TAtlasIdeSettings.Update(Settings);
+  mSettings.SetupChecklist := AValue;
+  TAtlasIdeSettings.Update(mSettings);
 end;
 
 procedure TAtlasIdeSetupChecklist.MarkSeen;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Stored;
-  if Settings.SetupChecklistSeen then
+  mSettings := TAtlasIdeSettings.Stored;
+  if mSettings.SetupChecklistSeen then
   begin
     Exit;
   end;
-  Settings.SetupChecklistSeen := True;
-  TAtlasIdeSettings.Update(Settings);
+  mSettings.SetupChecklistSeen := True;
+  TAtlasIdeSettings.Update(mSettings);
 end;
 
 procedure TAtlasIdeSetupChecklist.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
 begin
-  ARegistry.RegisterCommand(TAtlasSetupChecklist.CommandId, TAtlasStrings.Text(TAtlasTextId.SetupMenu), '',
+  ARegistry.RegisterCommand(TAtlasSetupChecklist.cCommandId, TAtlasStrings.Text(TAtlasTextId.SetupMenu), '',
     procedure
     begin
       if FInstance <> nil then

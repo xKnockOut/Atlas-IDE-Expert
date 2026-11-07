@@ -259,7 +259,7 @@ begin
     try
       Assert.IsTrue(Window.IsShown);
       Assert.IsTrue(Window.Timer.Enabled, 'verschwindet von selbst');
-      Assert.AreEqual(TAtlasHideNoticeWindow.VisibleMs, Integer(Window.Timer.Interval));
+      Assert.AreEqual(TAtlasHideNoticeWindow.cVisibleMs, Integer(Window.Timer.Interval));
       Assert.IsFalse(Window.UndoRect.IsEmpty, '„Rückgängig“ ist da');
       Assert.AreEqual('Ausgeblendet', Window.Title);
       Window.ClickUndo;

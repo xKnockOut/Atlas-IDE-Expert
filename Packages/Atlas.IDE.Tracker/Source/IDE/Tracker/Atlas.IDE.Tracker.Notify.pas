@@ -635,7 +635,7 @@ begin
   mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyOpen);
   if ARest > 0 then
   begin
-    mCenter.Notify(TAtlasNotificationSources.Issues, TAtlasNotificationSeverity.Info,
+    mCenter.Notify(TAtlasNotificationSources.cIssues, TAtlasNotificationSeverity.Info,
       TAtlasTrackerNoticeText.MoreTitle(ARest), TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyMoreText));
   end;
   // Älteste zuerst in die Liste, damit die neueste oben steht; eingeblendet wird nur die neueste.
@@ -650,7 +650,7 @@ begin
     end;
     mOpen := OpenAction(Self, Self, mTarget, mNotice.Key, mNotice.Anchor);
     mTitle := TAtlasTrackerNoticeText.Title(mNotice);
-    mMode := mCenter.Notify(TAtlasNotificationSources.Issues, TAtlasNotificationSeverity.Info, mTitle, mNotice.Title,
+    mMode := mCenter.Notify(TAtlasNotificationSources.cIssues, TAtlasNotificationSeverity.Info, mTitle, mNotice.Title,
       [TAtlasNotificationCenter.Action(mCaption, mOpen)]);
     if (mIndex = 0) and (mMode = TAtlasNotificationMode.Show) then
     begin
@@ -668,7 +668,7 @@ begin
   mText := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyErrorText);
   mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFixSettings);
   mRun := SettingsAction(Self, Self);
-  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Issues, TAtlasNotificationSeverity.Warning,
+  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cIssues, TAtlasNotificationSeverity.Warning,
     mTitle, mText, [TAtlasNotificationCenter.Action(mCaption, mRun)]) = TAtlasNotificationMode.Show then
   begin
     ShowToast(mTitle, mText, mCaption, mRun);

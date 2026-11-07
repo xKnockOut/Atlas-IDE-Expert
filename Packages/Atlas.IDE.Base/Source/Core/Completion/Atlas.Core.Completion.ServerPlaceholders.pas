@@ -30,13 +30,13 @@ uses
 
 function ReadOffset(const ALines: TLineTable; ARange: TJSONObject; const AName: string; out AOffset: Integer): Boolean;
 var
-  Line, Character: Integer;
+  mLine, mCharacter: Integer;
 begin
-  Result := ARange.TryGetValue<Integer>(AName + '.line', Line) and
-    ARange.TryGetValue<Integer>(AName + '.character', Character);
+  Result := ARange.TryGetValue<Integer>(AName + '.line', mLine) and
+    ARange.TryGetValue<Integer>(AName + '.character', mCharacter);
   if Result then
   begin
-    AOffset := TLspTextChanges.OffsetOf(ALines, TLspTextPosition.Create(Line, Character));
+    AOffset := TLspTextChanges.OffsetOf(ALines, TLspTextPosition.Create(mLine, mCharacter));
   end
   else
   begin
@@ -65,21 +65,21 @@ end;
 class function TAtlasServerPlaceholders.Expansion(const AValue: TJSONValue;
   const ADocument: string): TAtlasSnippetExpansion;
 var
-  Lines: TLineTable;
-  Item: TJSONValue;
-  Stop: TAtlasSnippetStop;
+  mLines: TLineTable;
+  mItem: TJSONValue;
+  mStop: TAtlasSnippetStop;
 begin
   Result := Default(TAtlasSnippetExpansion);
   if not (AValue is TJSONArray) then
   begin
     Exit;
   end;
-  Lines := TLineTable.Build(ADocument);
-  for Item in TJSONArray(AValue) do
+  mLines := TLineTable.Build(ADocument);
+  for mItem in TJSONArray(AValue) do
   begin
-    if StopOf(Item, Lines, Stop) then
+    if StopOf(mItem, mLines, mStop) then
     begin
-      Result.Stops := Result.Stops + [Stop];
+      Result.Stops := Result.Stops + [mStop];
     end;
   end;
   // Bei gleichem Anfang zuerst die Nummer, damit die Reihenfolge feststeht.

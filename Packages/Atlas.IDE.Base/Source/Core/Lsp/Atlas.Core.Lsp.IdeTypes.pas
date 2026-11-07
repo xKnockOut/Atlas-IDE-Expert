@@ -27,7 +27,7 @@ type
 
   TAtlasIdeTypes = class
   public const
-    Method = 'atlas/ideTypes';
+    cMethod = 'atlas/ideTypes';
   public
     /// <summary>Parameter von atlas/ideTypes: je Unit ein Eintrag in der Reihenfolge des ersten Vorkommens, ohne
     /// doppelte Typen. Der Aufrufer übernimmt das Objekt.</summary>

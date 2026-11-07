@@ -182,7 +182,7 @@ begin
   Assert.IsTrue(mFound);
   for mKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
   begin
-    Assert.IsTrue(Length(TAtlasVisualizers.SupportedTypes(mKind)) > 0, TAtlasVisualizerSettings.KindNames[mKind]);
+    Assert.IsTrue(Length(TAtlasVisualizers.SupportedTypes(mKind)) > 0, TAtlasVisualizerSettings.cKindNames[mKind]);
   end;
   mFound := False;
   for mItem in TAtlasVisualizers.SupportedTypes(TAtlasVisualizerKind.DataSets) do

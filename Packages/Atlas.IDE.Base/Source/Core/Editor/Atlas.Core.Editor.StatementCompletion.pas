@@ -163,46 +163,46 @@ type
 
 const
   // Hinter diesen Wörtern kommt kein Semikolon.
-  OpenWords: array[0..23] of string = ('then', 'do', 'of', 'begin', 'else', 'try', 'repeat', 'finally', 'except',
+  cOpenWords: array[0..23] of string = ('then', 'do', 'of', 'begin', 'else', 'try', 'repeat', 'finally', 'except',
     'var', 'const', 'type', 'private', 'protected', 'public', 'published', 'interface', 'implementation',
     'initialization', 'finalization', 'record', 'class', 'label', 'resourcestring');
-  RoutineWords: array[0..4] of string = ('procedure', 'function', 'constructor', 'destructor', 'operator');
-  BodyStartWords: array[0..5] of string = ('begin', 'var', 'const', 'type', 'label', 'asm');
+  cRoutineWords: array[0..4] of string = ('procedure', 'function', 'constructor', 'destructor', 'operator');
+  cBodyStartWords: array[0..5] of string = ('begin', 'var', 'const', 'type', 'label', 'asm');
 
 function LinesOf(const AText: string): TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AText.Split([#10]);
-  for Index := 0 to High(Result) do
+  for mIndex := 0 to High(Result) do
   begin
-    if Result[Index].EndsWith(#13) then
+    if Result[mIndex].EndsWith(#13) then
     begin
-      Result[Index] := Copy(Result[Index], 1, Length(Result[Index]) - 1);
+      Result[mIndex] := Copy(Result[mIndex], 1, Length(Result[mIndex]) - 1);
     end;
   end;
 end;
 
 function LeadingSpace(const ALine: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := 1;
-  while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
+  mIndex := 1;
+  while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Copy(ALine, 1, Index - 1);
+  Result := Copy(ALine, 1, mIndex - 1);
 end;
 
 function InList(const AWord: string; const AList: array of string): Boolean;
 var
-  Item: string;
+  mItem: string;
 begin
   Result := False;
-  for Item in AList do
+  for mItem in AList do
   begin
-    if Item = AWord then
+    if mItem = AWord then
     begin
       Exit(True);
     end;
@@ -212,20 +212,21 @@ end;
 /// <summary>Erstes Wort der Zeile (kleingeschrieben) gleich AWord?</summary>
 function StartsWord(const ALine, AWord: string): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := LowerCase(TrimLeft(ALine));
-  Result := Text.StartsWith(AWord) and ((Length(Text) = Length(AWord)) or not TTextChars.IsAsciiIdentChar(Text[Length(AWord) + 1]));
+  mText := LowerCase(TrimLeft(ALine));
+  Result := mText.StartsWith(AWord) and ((Length(mText) = Length(AWord)) or
+    not TTextChars.IsAsciiIdentChar(mText[Length(AWord) + 1]));
 end;
 
 function StartsAnyWord(const ALine: string; const AWords: array of string): Boolean;
 var
-  Word: string;
+  mWord: string;
 begin
   Result := False;
-  for Word in AWords do
+  for mWord in AWords do
   begin
-    if StartsWord(ALine, Word) then
+    if StartsWord(ALine, mWord) then
     begin
       Exit(True);
     end;
@@ -509,14 +510,14 @@ end;
 
 function WordIndex(const AScan: TLineScan; const AWord: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
-  for Index := 0 to High(AScan.Words) do
+  for mIndex := 0 to High(AScan.Words) do
   begin
-    if AScan.Words[Index] = AWord then
+    if AScan.Words[mIndex] = AWord then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
@@ -539,28 +540,28 @@ end;
 /// </summary>
 function BodyEnd(const ALines: TArray<string>; ALine, AIndent: Integer): Integer;
 var
-  Next: Integer;
+  mNext: Integer;
 begin
   Result := ALine;
-  Next := NextCode(ALines, Result);
-  while (Next >= 0) and (Length(LeadingSpace(ALines[Next])) > AIndent) do
+  mNext := NextCode(ALines, Result);
+  while (mNext >= 0) and (Length(LeadingSpace(ALines[mNext])) > AIndent) do
   begin
-    Result := Next;
-    Next := NextCode(ALines, Result);
+    Result := mNext;
+    mNext := NextCode(ALines, Result);
   end;
 end;
 
 /// <summary>Anweisungen in den Zeilen AFirst..ALast: Zeilen, die mit ";" enden, und die letzte.</summary>
 function StatementCount(const ALines: TArray<string>; AFirst, ALast: Integer): Integer;
 var
-  Line: Integer;
-  Code: string;
+  mLine: Integer;
+  mCode: string;
 begin
   Result := 0;
-  for Line := AFirst to ALast do
+  for mLine := AFirst to ALast do
   begin
-    Code := ScanLine(Trim(ALines[Line])).Code;
-    if (Code <> '') and (Code.EndsWith(';') or (Line = ALast)) then
+    mCode := ScanLine(Trim(ALines[mLine])).Code;
+    if (mCode <> '') and (mCode.EndsWith(';') or (mLine = ALast)) then
     begin
       Inc(Result);
     end;
@@ -616,12 +617,12 @@ end;
 
 function InImplementation(const ALines: TArray<string>; ALine: Integer): Boolean;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
   Result := False;
-  for Line := ALine - 1 downto 0 do
+  for mLine := ALine - 1 downto 0 do
   begin
-    if StartsWord(ALines[Line], 'implementation') then
+    if StartsWord(ALines[mLine], 'implementation') then
     begin
       Exit(True);
     end;
@@ -641,7 +642,7 @@ begin
     Inc(AFirst);
   end;
   Result := AWords[AFirst];
-  if (Result = 'class') and (Length(AWords) > AFirst + 1) and InList(AWords[AFirst + 1], RoutineWords) then
+  if (Result = 'class') and (Length(AWords) > AFirst + 1) and InList(AWords[AFirst + 1], cRoutineWords) then
   begin
     Result := AWords[AFirst + 1];
   end;
@@ -682,7 +683,7 @@ begin
   begin
     Result := TStatementKind.BeginLine;
   end
-  else if InList(AWord, RoutineWords) and (Pos(':=', ACode) = 0) then
+  else if InList(AWord, cRoutineWords) and (Pos(':=', ACode) = 0) then
   begin
     Result := TStatementKind.Routine;
   end
@@ -709,7 +710,7 @@ end;
 /// </summary>
 function WantsSemicolon(const ACode: string; const AScan: TLineScan): Boolean;
 var
-  Last: string;
+  mLast: string;
 begin
   Result := False;
   if (ACode = '') or ACode.EndsWith(';') or ACode.EndsWith(':') or ACode.EndsWith('.') then
@@ -718,9 +719,9 @@ begin
   end;
   if Length(AScan.Words) > 0 then
   begin
-    Last := AScan.Words[High(AScan.Words)];
+    mLast := AScan.Words[High(AScan.Words)];
     // Nur wenn das Wort wirklich am Ende steht.
-    if InList(Last, OpenWords) and (AScan.Starts[High(AScan.Starts)] + Length(Last) - 1 = Length(AScan.Code)) then
+    if InList(mLast, cOpenWords) and (AScan.Starts[High(AScan.Starts)] + Length(mLast) - 1 = Length(AScan.Code)) then
     begin
       Exit;
     end;
@@ -1015,7 +1016,7 @@ begin
     FEdit.FollowCharacter := Length(FIndent) + FScan.Starts[NameIndex(FScan, FFirst)];
   end
   else if not InTypeBody(FLines, FLine) and InImplementation(FLines, FLine) and not mDeclarationOnly and
-    ((FAfter < 0) or not StartsAnyWord(FLines[FAfter], BodyStartWords)) then
+    ((FAfter < 0) or not StartsAnyWord(FLines[FAfter], cBodyStartWords)) then
   begin
     InsertBeginEnd('end;');
   end
@@ -1234,60 +1235,60 @@ end;
 
 class function TAtlasStatementCompleter.NeedsTryKind(const AText: string; ALine: Integer): Boolean;
 var
-  Lines: TArray<string>;
-  Indent, Last, After: Integer;
+  mLines: TArray<string>;
+  mIndent, mLast, mAfter: Integer;
 begin
   Result := False;
-  Lines := LinesOf(AText);
-  if (ALine < 0) or (ALine > High(Lines)) or StartsInComment(Lines, ALine) or
-    not SameText(ScanLine(Trim(Lines[ALine])).Code, 'try') then
+  mLines := LinesOf(AText);
+  if (ALine < 0) or (ALine > High(mLines)) or StartsInComment(mLines, ALine) or
+    not SameText(ScanLine(Trim(mLines[ALine])).Code, 'try') then
   begin
     Exit;
   end;
-  Indent := Length(LeadingSpace(Lines[ALine]));
-  Last := BodyEnd(Lines, ALine, Indent);
-  After := NextCode(Lines, Last);
-  Result := (After < 0) or (Length(LeadingSpace(Lines[After])) <> Indent) or
-    not StartsAnyWord(Lines[After], ['finally', 'except', 'end']);
+  mIndent := Length(LeadingSpace(mLines[ALine]));
+  mLast := BodyEnd(mLines, ALine, mIndent);
+  mAfter := NextCode(mLines, mLast);
+  Result := (mAfter < 0) or (Length(LeadingSpace(mLines[mAfter])) <> mIndent) or
+    not StartsAnyWord(mLines[mAfter], ['finally', 'except', 'end']);
 end;
 
 class function TAtlasStatementCompleter.Apply(const ALines: TArray<string>;
   const AEdit: TAtlasStatementEdit): TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   SetLength(Result, Length(ALines) - AEdit.OldCount + Length(AEdit.Lines));
-  for Index := 0 to AEdit.StartLine - 1 do
+  for mIndex := 0 to AEdit.StartLine - 1 do
   begin
-    Result[Index] := ALines[Index];
+    Result[mIndex] := ALines[mIndex];
   end;
-  for Index := 0 to High(AEdit.Lines) do
+  for mIndex := 0 to High(AEdit.Lines) do
   begin
-    Result[AEdit.StartLine + Index] := AEdit.Lines[Index];
+    Result[AEdit.StartLine + mIndex] := AEdit.Lines[mIndex];
   end;
-  for Index := AEdit.StartLine + AEdit.OldCount to High(ALines) do
+  for mIndex := AEdit.StartLine + AEdit.OldCount to High(ALines) do
   begin
-    Result[Index - AEdit.OldCount + Length(AEdit.Lines)] := ALines[Index];
+    Result[mIndex - AEdit.OldCount + Length(AEdit.Lines)] := ALines[mIndex];
   end;
 end;
 
 class function TAtlasStatementCompleter.AfterCaseBranches(var ALines: TArray<string>;
   var ACursorLine, ACursorCharacter: Integer): Boolean;
 var
-  Branch: string;
+  mBranch: string;
 begin
   Result := False;
   if (ACursorLine < 0) or (ACursorLine >= High(ALines)) or (Trim(ALines[ACursorLine]) <> '') then
   begin
     Exit;
   end;
-  Branch := TrimRight(ALines[ACursorLine + 1]);
-  if not Branch.EndsWith(': ;') then
+  mBranch := TrimRight(ALines[ACursorLine + 1]);
+  if not mBranch.EndsWith(': ;') then
   begin
     Exit;
   end;
   Delete(ALines, ACursorLine, 1);
-  ACursorCharacter := Length(Branch) - 1;
+  ACursorCharacter := Length(mBranch) - 1;
   Result := True;
 end;
 

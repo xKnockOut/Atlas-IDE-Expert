@@ -59,8 +59,8 @@ type
   end;
 
 const
-  BufferBytes = 65536;
-  NotifyFilter = FILE_NOTIFY_CHANGE_FILE_NAME or FILE_NOTIFY_CHANGE_LAST_WRITE or FILE_NOTIFY_CHANGE_SIZE;
+  cBufferBytes = 65536;
+  cNotifyFilter = FILE_NOTIFY_CHANGE_FILE_NAME or FILE_NOTIFY_CHANGE_LAST_WRITE or FILE_NOTIFY_CHANGE_SIZE;
 
 { TAtlasFolderWatcher.TWatchThread }
 
@@ -92,72 +92,72 @@ end;
 
 procedure TAtlasFolderWatcher.TWatchThread.Report(ABuffer: PByte);
 var
-  Entry: PFileNotifyInformation;
-  Name: string;
-  Stamp: Cardinal;
+  mEntry: PFileNotifyInformation;
+  mName: string;
+  mStamp: Cardinal;
 begin
-  Stamp := GetTickCount;
-  Entry := PFileNotifyInformation(ABuffer);
+  mStamp := GetTickCount;
+  mEntry := PFileNotifyInformation(ABuffer);
   while True do
   begin
-    SetString(Name, PWideChar(@Entry^.FileName[0]), Entry^.FileNameLength div SizeOf(WideChar));
-    FChanges.Add(FRoot + PathDelim + Name, Entry^.Action, Stamp);
-    if Entry^.NextEntryOffset = 0 then
+    SetString(mName, PWideChar(@mEntry^.FileName[0]), mEntry^.FileNameLength div SizeOf(WideChar));
+    FChanges.Add(FRoot + PathDelim + mName, mEntry^.Action, mStamp);
+    if mEntry^.NextEntryOffset = 0 then
     begin
       Break;
     end;
-    Entry := PFileNotifyInformation(PByte(Entry) + Entry^.NextEntryOffset);
+    mEntry := PFileNotifyInformation(PByte(mEntry) + mEntry^.NextEntryOffset);
   end;
 end;
 
 procedure TAtlasFolderWatcher.TWatchThread.Execute;
 var
-  Directory: THandle;
-  Overlapped: TOverlapped;
-  Buffer: TBytes;
-  Handles: array[0..1] of THandle;
-  Bytes: DWORD;
+  mDirectory: THandle;
+  mOverlapped: TOverlapped;
+  mBuffer: TBytes;
+  mHandles: array[0..1] of THandle;
+  mBytes: DWORD;
 begin
   NameThreadForDebugging('Atlas.FolderWatcher');
-  Directory := CreateFile(PChar(FRoot), FILE_LIST_DIRECTORY,
+  mDirectory := CreateFile(PChar(FRoot), FILE_LIST_DIRECTORY,
     FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil, OPEN_EXISTING,
     FILE_FLAG_BACKUP_SEMANTICS or FILE_FLAG_OVERLAPPED, 0);
-  if Directory = INVALID_HANDLE_VALUE then
+  if mDirectory = INVALID_HANDLE_VALUE then
   begin
     Exit;
   end;
   try
-    SetLength(Buffer, BufferBytes);
-    FillChar(Overlapped, SizeOf(Overlapped), 0);
-    Overlapped.hEvent := CreateEvent(nil, True, False, nil);
+    SetLength(mBuffer, cBufferBytes);
+    FillChar(mOverlapped, SizeOf(mOverlapped), 0);
+    mOverlapped.hEvent := CreateEvent(nil, True, False, nil);
     try
-      Handles[0] := Overlapped.hEvent;
-      Handles[1] := FStopEvent;
+      mHandles[0] := mOverlapped.hEvent;
+      mHandles[1] := FStopEvent;
       while not Terminated do
       begin
-        ResetEvent(Overlapped.hEvent);
-        if not ReadDirectoryChangesW(Directory, @Buffer[0], BufferBytes, True, NotifyFilter, nil,
-          @Overlapped, nil) then
+        ResetEvent(mOverlapped.hEvent);
+        if not ReadDirectoryChangesW(mDirectory, @mBuffer[0], cBufferBytes, True, cNotifyFilter, nil,
+          @mOverlapped, nil) then
         begin
           Break;
         end;
-        if WaitForMultipleObjects(2, @Handles[0], False, INFINITE) <> WAIT_OBJECT_0 then
+        if WaitForMultipleObjects(2, @mHandles[0], False, INFINITE) <> WAIT_OBJECT_0 then
         begin
           // Stop: laufendes Lesen abbrechen und dessen Ende abwarten, bevor der Puffer frei wird.
-          CancelIo(Directory);
-          GetOverlappedResult(Directory, Overlapped, Bytes, True);
+          CancelIo(mDirectory);
+          GetOverlappedResult(mDirectory, mOverlapped, mBytes, True);
           Break;
         end;
-        if GetOverlappedResult(Directory, Overlapped, Bytes, False) and (Bytes > 0) then
+        if GetOverlappedResult(mDirectory, mOverlapped, mBytes, False) and (mBytes > 0) then
         begin
-          Report(@Buffer[0]);
+          Report(@mBuffer[0]);
         end;
       end;
     finally
-      CloseHandle(Overlapped.hEvent);
+      CloseHandle(mOverlapped.hEvent);
     end;
   finally
-    CloseHandle(Directory);
+    CloseHandle(mDirectory);
   end;
 end;
 
@@ -179,28 +179,28 @@ end;
 
 function TAtlasFolderWatcher.Roots: TArray<string>;
 var
-  Thread: TWatchThread;
+  mThread: TWatchThread;
 begin
   Result := nil;
-  for Thread in FThreads do
+  for mThread in FThreads do
   begin
-    Result := Result + [Thread.Root];
+    Result := Result + [mThread.Root];
   end;
 end;
 
 procedure TAtlasFolderWatcher.SetRoots(const ARoots: TArray<string>);
 var
-  Index: Integer;
-  Root: string;
-  Known: Boolean;
+  mIndex: Integer;
+  mRoot: string;
+  mKnown: Boolean;
 
   function Wanted(const APath: string): Boolean;
   var
-    Candidate: string;
+    mCandidate: string;
   begin
-    for Candidate in ARoots do
+    for mCandidate in ARoots do
     begin
-      if SameText(ExcludeTrailingPathDelimiter(Candidate), APath) then
+      if SameText(ExcludeTrailingPathDelimiter(mCandidate), APath) then
       begin
         Exit(True);
       end;
@@ -209,27 +209,27 @@ var
   end;
 
 begin
-  for Index := FThreads.Count - 1 downto 0 do
+  for mIndex := FThreads.Count - 1 downto 0 do
   begin
-    if not Wanted(FThreads[Index].Root) then
+    if not Wanted(FThreads[mIndex].Root) then
     begin
-      FThreads.Delete(Index);
+      FThreads.Delete(mIndex);
     end;
   end;
-  for Root in ARoots do
+  for mRoot in ARoots do
   begin
-    Known := False;
-    for Index := 0 to FThreads.Count - 1 do
+    mKnown := False;
+    for mIndex := 0 to FThreads.Count - 1 do
     begin
-      if SameText(FThreads[Index].Root, ExcludeTrailingPathDelimiter(Root)) then
+      if SameText(FThreads[mIndex].Root, ExcludeTrailingPathDelimiter(mRoot)) then
       begin
-        Known := True;
+        mKnown := True;
         Break;
       end;
     end;
-    if not Known and DirectoryExists(Root) then
+    if not mKnown and DirectoryExists(mRoot) then
     begin
-      FThreads.Add(TWatchThread.Create(Root, FChanges));
+      FThreads.Add(TWatchThread.Create(mRoot, FChanges));
     end;
   end;
 end;

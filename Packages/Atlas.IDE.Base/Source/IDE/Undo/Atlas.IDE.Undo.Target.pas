@@ -84,10 +84,10 @@ end;
 
 constructor TAtlasIdeUndoTarget.Create;
 var
-  Hooks: TAtlasUndoDiskHooks;
+  mHooks: TAtlasUndoDiskHooks;
 begin
   inherited Create;
-  Hooks.OnAddToProject :=
+  mHooks.OnAddToProject :=
     procedure(const AFileName, AProject: string)
     var
       Project: IOTAProject;
@@ -98,7 +98,7 @@ begin
         Project.AddFile(AFileName, SameText(ExtractFileExt(AFileName), '.pas'));
       end;
     end;
-  Hooks.OnRemoveFromProject :=
+  mHooks.OnRemoveFromProject :=
     procedure(const AFileName, AProject: string)
     var
       Project: IOTAProject;
@@ -109,7 +109,7 @@ begin
         Project.RemoveFile(AFileName);
       end;
     end;
-  Hooks.OnRecycle :=
+  mHooks.OnRecycle :=
     procedure(AFileName: string)
     begin
       Recycle(AFileName);
@@ -118,7 +118,7 @@ begin
   begin
     raise EInvalidOpException.Create('Atlas: Plattenziel des Änderungsprotokolls nicht eingesetzt.');
   end;
-  FDisk := FDiskFactory(Hooks);
+  FDisk := FDiskFactory(mHooks);
 end;
 
 class function TAtlasIdeUndoTarget.ProjectOf(const AProject: string): IOTAProject;
@@ -132,23 +132,23 @@ end;
 
 function TAtlasIdeUndoTarget.Read(const AFileName: string; out AContent: TAtlasTextFileContent): Boolean;
 var
-  Buffer: IOTAEditBuffer;
-  Text: string;
+  mBuffer: IOTAEditBuffer;
+  mText: string;
 begin
   if not TAtlasIdeFiles.IsProjectFile(AFileName) then
   begin
-    Buffer := TAtlasIdeFiles.BufferOf(AFileName);
-    if Buffer <> nil then
+    mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
+    if mBuffer <> nil then
     begin
       AContent := TAtlasIdeFiles.DiskEncoding(AFileName);
-      AContent.Text := TAtlasEditorBuffer.Text(Buffer);
+      AContent.Text := TAtlasEditorBuffer.Text(mBuffer);
       Exit(True);
     end;
     // Formular im Designer: der Stand des Designers, nicht die Datei.
-    if TAtlasIdeForms.CurrentText(AFileName, Text) then
+    if TAtlasIdeForms.CurrentText(AFileName, mText) then
     begin
       AContent := TAtlasIdeFiles.DiskEncoding(AFileName);
-      AContent.Text := Text;
+      AContent.Text := mText;
       Exit(True);
     end;
   end;
@@ -157,22 +157,22 @@ end;
 
 class procedure TAtlasIdeUndoTarget.WriteBuffer(const ABuffer: IOTAEditBuffer; const AOld, ANew: string);
 var
-  Change: TLspTextChange;
-  Writer: IOTAEditWriter;
-  StartOffset, EndOffset: Integer;
+  mChange: TLspTextChange;
+  mWriter: IOTAEditWriter;
+  mStartOffset, mEndOffset: Integer;
 begin
   // Nur der geänderte Bereich, ein Schreiber = ein Rückgängig-Schritt im Puffer.
-  Change := TLspTextChanges.Between(AOld, ANew);
-  StartOffset := TLspTextChanges.OffsetOf(AOld, Change.StartPos);
-  EndOffset := TLspTextChanges.OffsetOf(AOld, Change.EndPos);
-  Writer := ABuffer.CreateUndoableWriter;
-  Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AOld, 1, StartOffset)));
-  Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AOld, 1, EndOffset)));
-  if Change.Text <> '' then
+  mChange := TLspTextChanges.Between(AOld, ANew);
+  mStartOffset := TLspTextChanges.OffsetOf(AOld, mChange.StartPos);
+  mEndOffset := TLspTextChanges.OffsetOf(AOld, mChange.EndPos);
+  mWriter := ABuffer.CreateUndoableWriter;
+  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AOld, 1, mStartOffset)));
+  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AOld, 1, mEndOffset)));
+  if mChange.Text <> '' then
   begin
-    Writer.Insert(PAnsiChar(UTF8Encode(Change.Text)));
+    mWriter.Insert(PAnsiChar(UTF8Encode(mChange.Text)));
   end;
-  Writer := nil;
+  mWriter := nil;
   // Eigener Schreibvorgang: gemeinsamen Pufferstand verwerfen (P-04).
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
@@ -251,18 +251,18 @@ end;
 
 class procedure TAtlasIdeUndoTarget.CloseFile(const AFileName: string);
 var
-  Services: IOTAModuleServices;
-  Module: IOTAModule;
+  mServices: IOTAModuleServices;
+  mModule: IOTAModule;
 begin
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
   begin
     Exit;
   end;
-  Module := Services.FindModule(AFileName);
+  mModule := mServices.FindModule(AFileName);
   // Inhalt ist geprüft (genau der Stand nach der Aktion); ohne Rückfrage schließen.
-  if Module <> nil then
+  if mModule <> nil then
   begin
-    Module.CloseModule(True);
+    mModule.CloseModule(True);
   end;
 end;
 
@@ -274,16 +274,16 @@ end;
 
 class procedure TAtlasIdeUndoTarget.Recycle(const AFileName: string);
 var
-  Operation: TSHFileOpStruct;
-  From: string;
+  mOperation: TSHFileOpStruct;
+  mFrom: string;
 begin
   // Doppelt nullterminiert, wie SHFileOperation es verlangt.
-  From := AFileName + #0#0;
-  FillChar(Operation, SizeOf(Operation), 0);
-  Operation.wFunc := FO_DELETE;
-  Operation.pFrom := PChar(From);
-  Operation.fFlags := FOF_ALLOWUNDO or FOF_NOCONFIRMATION or FOF_SILENT or FOF_NOERRORUI;
-  if (SHFileOperation(Operation) <> 0) or Operation.fAnyOperationsAborted then
+  mFrom := AFileName + #0#0;
+  FillChar(mOperation, SizeOf(mOperation), 0);
+  mOperation.wFunc := FO_DELETE;
+  mOperation.pFrom := PChar(mFrom);
+  mOperation.fFlags := FOF_ALLOWUNDO or FOF_NOCONFIRMATION or FOF_SILENT or FOF_NOERRORUI;
+  if (SHFileOperation(mOperation) <> 0) or mOperation.fAnyOperationsAborted then
   begin
     raise EInOutError.Create(UiText(TUndoTargetText.RecycleBinNotReachable));
   end;

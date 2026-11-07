@@ -94,27 +94,27 @@ uses
 
 procedure TAtlasSettingsCompletionPart.Build;
 var
-  Panel: TWinControl;
+  mPanel: TWinControl;
 begin
   // Liste der Vervollständigung.
   AddSheet(TAtlasTextId.SettingsTabCompletion);
-  Panel := AddPanel(26);
+  mPanel := AddPanel(26);
   FRowsLabel := TLabel.Create(FPage);
-  FRowsLabel.Parent := Panel;
+  FRowsLabel.Parent := mPanel;
   FRowsLabel.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsRows);
   FRowsLabel.Left := 0;
   FRowsLabel.Top := 5;
   FRows := TEdit.Create(FPage);
-  FRows.Parent := Panel;
-  FRows.Left := FieldLeft;
+  FRows.Parent := mPanel;
+  FRows.Left := cFieldLeft;
   FRows.Top := 1;
   FRows.Width := 44;
   FRows.NumbersOnly := True;
   FRowsUpDown := TUpDown.Create(FPage);
-  FRowsUpDown.Parent := Panel;
+  FRowsUpDown.Parent := mPanel;
   FRowsUpDown.Associate := FRows;
-  FRowsUpDown.Min := TAtlasPluginSettings.MinVisibleRows;
-  FRowsUpDown.Max := TAtlasPluginSettings.MaxVisibleRows;
+  FRowsUpDown.Min := TAtlasPluginSettings.cMinVisibleRows;
+  FRowsUpDown.Max := TAtlasPluginSettings.cMaxVisibleRows;
   FAutoWidth := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsAutoWidth));
   FAutoWidth.OnClick := AutoWidthClick;
   BindText('OpenDelayMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsOpenDelay)));
@@ -133,16 +133,16 @@ begin
     [TAtlasStrings.Text(TAtlasTextId.SettingsListScopeMembers),
     TAtlasStrings.Text(TAtlasTextId.SettingsListScopeEverywhere)]);
   BindCheck('Preview', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPreview)));
-  Panel := AddPanel(32);
+  mPanel := AddPanel(32);
   FResetHistory := TButton.Create(FPage);
-  FResetHistory.Parent := Panel;
+  FResetHistory.Parent := mPanel;
   FResetHistory.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsResetHistory);
   FResetHistory.Left := 0;
   FResetHistory.Top := 3;
   FResetHistory.Width := 150;
   FResetHistory.OnClick := ResetHistoryClick;
   FResetWidths := TButton.Create(FPage);
-  FResetWidths.Parent := Panel;
+  FResetWidths.Parent := mPanel;
 end;
 
 procedure TAtlasSettingsCompletionPart.Build2;
@@ -180,11 +180,11 @@ begin
   ASettings.VisibleRows := FRowsUpDown.Position;
   if (FListMode.Choice >= Ord(Low(TAtlasListMode))) and (FListMode.Choice <= Ord(High(TAtlasListMode))) then
   begin
-    ASettings.CompletionListMode := TAtlasListModes.ModeNames[TAtlasListMode(FListMode.Choice)];
+    ASettings.CompletionListMode := TAtlasListModes.cModeNames[TAtlasListMode(FListMode.Choice)];
   end;
   if (FListScope.Choice >= Ord(Low(TAtlasListScope))) and (FListScope.Choice <= Ord(High(TAtlasListScope))) then
   begin
-    ASettings.CompletionListScope := TAtlasListModes.ScopeNames[TAtlasListScope(FListScope.Choice)];
+    ASettings.CompletionListScope := TAtlasListModes.cScopeNames[TAtlasListScope(FListScope.Choice)];
   end;
 end;
 
@@ -197,7 +197,7 @@ begin
   end
   else if FListWidth = 0 then
   begin
-    FListWidth := TAtlasPluginSettings.MinListWidth + 160;
+    FListWidth := TAtlasPluginSettings.cMinListWidth + 160;
   end;
 end;
 
@@ -224,33 +224,33 @@ end;
 
 procedure TAtlasSettingsFavoritesPart.Build;
 var
-  Panel: TWinControl;
+  mPanel: TWinControl;
   mFavorites: TCheckBox;
 begin
   mFavorites := FPage.Part<TAtlasSettingsCompletionPart>.FavoritesCheck;
   AddTitle(TAtlasTextId.SettingsFavoritesTitle);
-  Panel := AddPanel(80);
+  mPanel := AddPanel(80);
   FFavoritesList := TListBox.Create(FPage);
-  FFavoritesList.Parent := Panel;
+  FFavoritesList.Parent := mPanel;
   FFavoritesList.Align := alClient;
   FFavoritesList.MultiSelect := True;
-  Panel := AddPanel(32);
+  mPanel := AddPanel(32);
   FFavoritesRemove := TButton.Create(FPage);
-  FFavoritesRemove.Parent := Panel;
+  FFavoritesRemove.Parent := mPanel;
   FFavoritesRemove.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFavoritesRemove);
   FFavoritesRemove.Left := 0;
   FFavoritesRemove.Top := 3;
   FFavoritesRemove.Width := 150;
   FFavoritesRemove.OnClick := FavoritesRemoveClick;
   FFavoritesRemoveAll := TButton.Create(FPage);
-  FFavoritesRemoveAll.Parent := Panel;
+  FFavoritesRemoveAll.Parent := mPanel;
   FFavoritesRemoveAll.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFavoritesRemoveAll);
   FFavoritesRemoveAll.Left := 160;
   FFavoritesRemoveAll.Top := 3;
   FFavoritesRemoveAll.Width := 150;
   FFavoritesRemoveAll.OnClick := FavoritesRemoveAllClick;
   Attach(FFavoritesList.Parent, mFavorites);
-  Attach(Panel, mFavorites);
+  Attach(mPanel, mFavorites);
 end;
 
 procedure TAtlasSettingsFavoritesPart.WindowReady;
@@ -266,64 +266,64 @@ end;
 
 procedure TAtlasSettingsFavoritesPart.RefreshFavorites;
 var
-  Favorites: TArray<TAtlasFavorite>;
-  Favorite: TAtlasFavorite;
-  Any: Boolean;
+  mFavorites: TArray<TAtlasFavorite>;
+  mFavorite: TAtlasFavorite;
+  mAny: Boolean;
 begin
   // Wie die Liste der Sicherung: ohne Fenster folgt das in CreateWnd.
   if not FPage.HandleAllocated then
   begin
     Exit;
   end;
-  Favorites := nil;
+  mFavorites := nil;
   if Assigned(FOnFavorites) then
   begin
-    Favorites := FOnFavorites();
+    mFavorites := FOnFavorites();
   end;
   FFavoriteKeys := nil;
-  Any := Length(Favorites) > 0;
+  mAny := Length(mFavorites) > 0;
   FFavoritesList.Items.BeginUpdate;
   try
     FFavoritesList.Items.Clear;
-    for Favorite in Favorites do
+    for mFavorite in mFavorites do
     begin
-      FFavoritesList.Items.Add(Favorite.DisplayName);
-      FFavoriteKeys := FFavoriteKeys + [Favorite.Key];
+      FFavoritesList.Items.Add(mFavorite.DisplayName);
+      FFavoriteKeys := FFavoriteKeys + [mFavorite.Key];
     end;
-    if not Any then
+    if not mAny then
     begin
       FFavoritesList.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsFavoritesNone));
     end;
   finally
     FFavoritesList.Items.EndUpdate;
   end;
-  Allow(FFavoritesList, Any);
-  Allow(FFavoritesRemove, Any and Assigned(FOnRemoveFavorites));
-  Allow(FFavoritesRemoveAll, Any and Assigned(FOnRemoveFavorites));
+  Allow(FFavoritesList, mAny);
+  Allow(FFavoritesRemove, mAny and Assigned(FOnRemoveFavorites));
+  Allow(FFavoritesRemoveAll, mAny and Assigned(FOnRemoveFavorites));
 end;
 
 procedure TAtlasSettingsFavoritesPart.FavoritesRemoveClick(Sender: TObject);
 var
-  Keys: TArray<string>;
-  Index: Integer;
+  mKeys: TArray<string>;
+  mIndex: Integer;
 begin
   if not Assigned(FOnRemoveFavorites) then
   begin
     Exit;
   end;
-  Keys := nil;
-  for Index := 0 to Min(FFavoritesList.Items.Count, Length(FFavoriteKeys)) - 1 do
+  mKeys := nil;
+  for mIndex := 0 to Min(FFavoritesList.Items.Count, Length(FFavoriteKeys)) - 1 do
   begin
-    if FFavoritesList.Selected[Index] then
+    if FFavoritesList.Selected[mIndex] then
     begin
-      Keys := Keys + [FFavoriteKeys[Index]];
+      mKeys := mKeys + [FFavoriteKeys[mIndex]];
     end;
   end;
-  if Length(Keys) = 0 then
+  if Length(mKeys) = 0 then
   begin
     Exit;
   end;
-  FOnRemoveFavorites(Keys);
+  FOnRemoveFavorites(mKeys);
   RefreshFavorites;
 end;
 

@@ -114,7 +114,7 @@ begin
   mValues := nil;
   for mEvaluation := Low(TAtlasVisualizerEvaluation) to High(TAtlasVisualizerEvaluation) do
   begin
-    mValues := mValues + [TAtlasVisualizerSettings.EvaluationNames[mEvaluation]];
+    mValues := mValues + [TAtlasVisualizerSettings.cEvaluationNames[mEvaluation]];
   end;
   Choice('debug.visualizers.evaluation', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugVisualizerEvaluation),
     [TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugVisualizerEvaluationFields),

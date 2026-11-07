@@ -366,16 +366,16 @@ begin
   mVcs := TAtlasGitVersionControl.Create(Root, mRunnerRef, 'git.exe', 5000);
   Assert.IsTrue(Supports(mVcs, IAtlasVcsLineHistory, mHistory), 'Git bietet IAtlasVcsLineHistory');
   Assert.IsTrue(mHistory.LineHistory(Under('src/f.pas'), 1, 3, 200, mCommits) = TAtlasVcsOutcome.Ok);
-  Assert.AreEqual(cPrefix + 'log --format=' + TAtlasGitParser.LineLogFormat + ' --max-count=200 --no-ext-diff ' +
+  Assert.AreEqual(cPrefix + 'log --format=' + TAtlasGitParser.cLineLogFormat + ' --max-count=200 --no-ext-diff ' +
     '-L1,3:src/f.pas', mRunner.Calls[0]);
   Assert.AreEqual(2, Integer(Length(mCommits)));
   Assert.IsTrue(mHistory.Messages(Under('src/f.pas'), TArray<string>.Create(cHashA, cHashB), mMessages) =
     TAtlasVcsOutcome.Ok);
-  Assert.AreEqual(cPrefix + 'log --no-walk=unsorted --format=' + TAtlasGitParser.MessageFormat + ' ' + cHashA + ' ' +
+  Assert.AreEqual(cPrefix + 'log --no-walk=unsorted --format=' + TAtlasGitParser.cMessageFormat + ' ' + cHashA + ' ' +
     cHashB + ' --', mRunner.Calls[1]);
   Assert.AreEqual(2, Integer(Length(mMessages)));
   // Viele Commits: je MessageBatch ein Aufruf.
-  SetLength(mRevisions, TAtlasGitVersionControl.MessageBatch + 1);
+  SetLength(mRevisions, TAtlasGitVersionControl.cMessageBatch + 1);
   for mIndex := 0 to High(mRevisions) do
   begin
     mRevisions[mIndex] := cHashA;

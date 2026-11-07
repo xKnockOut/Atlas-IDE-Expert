@@ -324,17 +324,17 @@ var
 begin
   Keys := TAtlasShortcutTips.ParseSteps('Strg+Umschalt+C');
   Assert.AreEqual(1, Integer(Length(Keys)));
-  Assert.AreEqual(Integer(TAtlasKeyConflicts.scCtrl or TAtlasKeyConflicts.scShift or Ord('C')), Integer(Keys[0]));
+  Assert.AreEqual(Integer(TAtlasKeyConflicts.cScCtrl or TAtlasKeyConflicts.cScShift or Ord('C')), Integer(Keys[0]));
   Keys := TAtlasShortcutTips.ParseSteps('Ctrl+K, Ctrl+D');
   Assert.AreEqual(2, Integer(Length(Keys)));
-  Assert.AreEqual(Integer(TAtlasKeyConflicts.scCtrl or Ord('K')), Integer(Keys[0]));
-  Assert.AreEqual(Integer(TAtlasKeyConflicts.scCtrl or Ord('D')), Integer(Keys[1]));
+  Assert.AreEqual(Integer(TAtlasKeyConflicts.cScCtrl or Ord('K')), Integer(Keys[0]));
+  Assert.AreEqual(Integer(TAtlasKeyConflicts.cScCtrl or Ord('D')), Integer(Keys[1]));
   Keys := TAtlasShortcutTips.ParseSteps('Strg+K, D');
   Assert.AreEqual(2, Integer(Length(Keys)));
   Assert.AreEqual(Integer(Ord('D')), Integer(Keys[1]));
   Assert.AreEqual(0, Integer(Length(TAtlasShortcutTips.ParseSteps('Strg+Unsinn'))));
-  Assert.AreEqual(IntToStr(TAtlasKeyConflicts.scCtrl or Ord('K')) + ',' +
-    IntToStr(TAtlasKeyConflicts.scCtrl or Ord('D')), TAtlasShortcutTips.StepsKey(TAtlasShortcutTips.ParseSteps(
+  Assert.AreEqual(IntToStr(TAtlasKeyConflicts.cScCtrl or Ord('K')) + ',' +
+    IntToStr(TAtlasKeyConflicts.cScCtrl or Ord('D')), TAtlasShortcutTips.StepsKey(TAtlasShortcutTips.ParseSteps(
     'Strg+K, Strg+D')));
 end;
 
@@ -365,7 +365,7 @@ begin
   Assert.IsFalse(TAtlasShortcutTips.AtlasFunctionOf('ecClassCompletion', Func));
   // Neu belegt: Die Taste kommt aus den aktuellen Einstellungen, nicht aus einem Zwischenstand.
   Settings := TAtlasPluginSettings.Defaults;
-  Settings.ExpandKey := TAtlasKeyConflicts.scCtrl or TAtlasKeyConflicts.scAlt or Ord('E');
+  Settings.ExpandKey := TAtlasKeyConflicts.cScCtrl or TAtlasKeyConflicts.cScAlt or Ord('E');
   Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf('atlas.expandselection', Func), 'ohne Groß/klein');
   Key := 0;
   for Entry in TAtlasKeyEntry.AllFromSettings(Settings) do
@@ -375,7 +375,7 @@ begin
       Key := Entry.Key;
     end;
   end;
-  Assert.AreEqual(Integer(TAtlasKeyConflicts.scCtrl or TAtlasKeyConflicts.scAlt or Ord('E')), Integer(Key));
+  Assert.AreEqual(Integer(TAtlasKeyConflicts.cScCtrl or TAtlasKeyConflicts.cScAlt or Ord('E')), Integer(Key));
 end;
 
 procedure TAtlasShortcutTipsTests.KeyOnlyFunctionsHaveNoPaletteCommand;
@@ -383,7 +383,7 @@ var
   Func: TAtlasKeyFunction;
 begin
   // Karte „Atlas entdecken“ (#757): Tipps zu Tasten ohne Befehl der Palette zeigen die Taste selbst.
-  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly(TAtlasShortcutTips.PaletteCommandId, Func));
+  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly(TAtlasShortcutTips.cPaletteCommandId, Func));
   Assert.IsTrue(Func = TAtlasKeyFunction.Palette);
   Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('atlas.completion', Func), 'ohne Groß/klein');
   Assert.IsTrue(Func = TAtlasKeyFunction.Completion);
@@ -418,13 +418,13 @@ end;
 
 procedure TAtlasShortcutTipsTests.RecognizesShortCutStrokes;
 begin
-  Assert.IsTrue(TAtlasShortcutTips.IsShortCutStroke(TAtlasKeyConflicts.scCtrl or Ord('S')));
-  Assert.IsTrue(TAtlasShortcutTips.IsShortCutStroke(TAtlasKeyConflicts.scAlt or $0D));
+  Assert.IsTrue(TAtlasShortcutTips.IsShortCutStroke(TAtlasKeyConflicts.cScCtrl or Ord('S')));
+  Assert.IsTrue(TAtlasShortcutTips.IsShortCutStroke(TAtlasKeyConflicts.cScAlt or $0D));
   Assert.IsTrue(TAtlasShortcutTips.IsShortCutStroke($78), 'F9');
-  Assert.IsTrue(TAtlasShortcutTips.IsShortCutStroke(TAtlasKeyConflicts.scShift or $7B), 'Umschalt+F12');
+  Assert.IsTrue(TAtlasShortcutTips.IsShortCutStroke(TAtlasKeyConflicts.cScShift or $7B), 'Umschalt+F12');
   Assert.IsFalse(TAtlasShortcutTips.IsShortCutStroke(Ord('A')), 'Tippen');
-  Assert.IsFalse(TAtlasShortcutTips.IsShortCutStroke(TAtlasKeyConflicts.scShift or Ord('A')), 'Großbuchstabe');
-  Assert.IsFalse(TAtlasShortcutTips.IsShortCutStroke(TAtlasKeyConflicts.scCtrl), 'nur Umschalttaste');
+  Assert.IsFalse(TAtlasShortcutTips.IsShortCutStroke(TAtlasKeyConflicts.cScShift or Ord('A')), 'Großbuchstabe');
+  Assert.IsFalse(TAtlasShortcutTips.IsShortCutStroke(TAtlasKeyConflicts.cScCtrl), 'nur Umschalttaste');
 end;
 
 { TAtlasCommandUsageTests }
@@ -893,8 +893,8 @@ begin
     TFile.WriteAllText(TipsFile, '{kaputt');
     TFile.WriteAllText(UsageFile, '[1, 2]');
     Usage.LoadFromFiles(TipsFile, UsageFile);
-    Assert.IsTrue(TFile.Exists(TipsFile + TAtlasDataFile.DefectExtension), 'Tipps beiseitegelegt');
-    Assert.IsTrue(TFile.Exists(UsageFile + TAtlasDataFile.DefectExtension), 'Zähler beiseitegelegt');
+    Assert.IsTrue(TFile.Exists(TipsFile + TAtlasDataFile.cDefectExtension), 'Tipps beiseitegelegt');
+    Assert.IsTrue(TFile.Exists(UsageFile + TAtlasDataFile.cDefectExtension), 'Zähler beiseitegelegt');
     Assert.IsTrue(Usage.Writable);
     Assert.IsTrue(Usage.CountsWritable);
     Usage.Count('X', TAtlasCommandInput.Mouse, Moment(10, 0, 0));

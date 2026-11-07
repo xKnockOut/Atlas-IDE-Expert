@@ -6,7 +6,7 @@
 // - Projekt: das im Bereich „Projekte“ (#592) gewählte; ohne Auswahl (oder
 //   wenn es nicht mehr in der Liste steht) das oberste.
 // - Reihen: welcomePage.trends.series (Liste der Namen aus
-//   TAtlasProjectSummaries.TrendKeys, Vorgabe alle fünf), immer in der
+//   TAtlasProjectSummaries.cTrendKeys, Vorgabe alle fünf), immer in der
 //   Reihenfolge der Kacheln; unbekannte Namen fallen weg.
 // - Punkte: die gespeicherten Messpunkte, höchstens welcomePage.trends.points
 //   (die neuesten). Werte kommen unverändert aus der Datei; hier wird nur die
@@ -153,7 +153,7 @@ end;
 
 class function TAtlasWelcomeTrends.SeriesKey(ASeries: TAtlasTrendSeries): string;
 begin
-  Result := TAtlasProjectSummaries.TrendKeys[ASeries];
+  Result := TAtlasProjectSummaries.cTrendKeys[ASeries];
 end;
 
 class function TAtlasWelcomeTrends.ParseSeries(const AText: string): TAtlasTrendSeriesList;
@@ -293,7 +293,7 @@ class function TAtlasWelcomeTrends.ValueText(ASeries: TAtlasTrendSeries; ATenths
 var
   mWhole, mTenth: Integer;
 begin
-  if not TAtlasProjectSummaries.TrendDecimals[ASeries] then
+  if not TAtlasProjectSummaries.cTrendDecimals[ASeries] then
   begin
     Exit(IntToStr(ATenths div 10));
   end;
