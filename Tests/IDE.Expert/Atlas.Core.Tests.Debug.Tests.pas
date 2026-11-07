@@ -74,84 +74,84 @@ end;
 
 procedure TAtlasTestDebugTests.SelectAtTestCaseAndFixture;
 var
-  Found: TDUnitXUnit;
-  Selection: TAtlasTestSelection;
+  mFound: TDUnitXUnit;
+  mSelection: TAtlasTestSelection;
 begin
-  Found := TDUnitXSource.Scan(Sample);
+  mFound := TDUnitXSource.Scan(Sample);
   // Im Rumpf: der Test, Haltepunkt an der ersten Anweisung.
-  Assert.IsTrue(TAtlasTestDebug.SelectAt(Found, 19, Selection));
-  Assert.AreEqual('Rechner.Tests', Selection.UnitName);
-  Assert.AreEqual('TRechnerTests', Selection.Fixture);
-  Assert.AreEqual('Addiert', Selection.Method);
-  Assert.AreEqual('', Selection.CaseName);
-  Assert.AreEqual(18, Selection.BreakLine);
-  Assert.AreEqual(1, Integer(Length(Selection.Names)));
-  Assert.AreEqual('Rechner.Tests.TRechnerTests.Addiert', Selection.Names[0]);
-  Assert.AreEqual('TRechnerTests.Addiert', Selection.Caption);
+  Assert.IsTrue(TAtlasTestDebug.SelectAt(mFound, 19, mSelection));
+  Assert.AreEqual('Rechner.Tests', mSelection.UnitName);
+  Assert.AreEqual('TRechnerTests', mSelection.Fixture);
+  Assert.AreEqual('Addiert', mSelection.Method);
+  Assert.AreEqual('', mSelection.CaseName);
+  Assert.AreEqual(18, mSelection.BreakLine);
+  Assert.AreEqual(1, Integer(Length(mSelection.Names)));
+  Assert.AreEqual('Rechner.Tests.TRechnerTests.Addiert', mSelection.Names[0]);
+  Assert.AreEqual('TRechnerTests.Addiert', mSelection.Caption);
   // Zeile eines Falls: nur dieser Fall.
-  Assert.IsTrue(TAtlasTestDebug.SelectAt(Found, 10, Selection));
-  Assert.AreEqual('Summe', Selection.Method);
-  Assert.AreEqual('Gross', Selection.CaseName);
-  Assert.AreEqual(23, Selection.BreakLine);
-  Assert.AreEqual(1, Integer(Length(Selection.Names)));
-  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', Selection.Names[0]);
-  Assert.AreEqual('TRechnerTests.Summe.Gross', Selection.Caption);
+  Assert.IsTrue(TAtlasTestDebug.SelectAt(mFound, 10, mSelection));
+  Assert.AreEqual('Summe', mSelection.Method);
+  Assert.AreEqual('Gross', mSelection.CaseName);
+  Assert.AreEqual(23, mSelection.BreakLine);
+  Assert.AreEqual(1, Integer(Length(mSelection.Names)));
+  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', mSelection.Names[0]);
+  Assert.AreEqual('TRechnerTests.Summe.Gross', mSelection.Caption);
   // Deklaration: alle Fälle.
-  Assert.IsTrue(TAtlasTestDebug.SelectAt(Found, 11, Selection));
-  Assert.AreEqual('', Selection.CaseName);
-  Assert.AreEqual(2, Integer(Length(Selection.Names)));
+  Assert.IsTrue(TAtlasTestDebug.SelectAt(mFound, 11, mSelection));
+  Assert.AreEqual('', mSelection.CaseName);
+  Assert.AreEqual(2, Integer(Length(mSelection.Names)));
   // Fixture: ohne Methode und ohne Haltepunkt.
-  Assert.IsTrue(TAtlasTestDebug.SelectAt(Found, 4, Selection));
-  Assert.AreEqual('', Selection.Method);
-  Assert.AreEqual(-1, Selection.BreakLine);
-  Assert.AreEqual('Rechner.Tests.TRechnerTests', Selection.Names[0]);
-  Assert.AreEqual('TRechnerTests', Selection.Caption);
+  Assert.IsTrue(TAtlasTestDebug.SelectAt(mFound, 4, mSelection));
+  Assert.AreEqual('', mSelection.Method);
+  Assert.AreEqual(-1, mSelection.BreakLine);
+  Assert.AreEqual('Rechner.Tests.TRechnerTests', mSelection.Names[0]);
+  Assert.AreEqual('TRechnerTests', mSelection.Caption);
 end;
 
 procedure TAtlasTestDebugTests.SelectAtOutsideTests;
 var
-  Found: TDUnitXUnit;
-  Selection: TAtlasTestSelection;
+  mFound: TDUnitXUnit;
+  mSelection: TAtlasTestSelection;
 begin
-  Found := TDUnitXSource.Scan(Sample);
-  Assert.IsFalse(TAtlasTestDebug.SelectAt(Found, 2, Selection));
-  Assert.AreEqual(0, Integer(Length(Selection.Names)));
-  Assert.AreEqual(-1, Selection.BreakLine);
-  Assert.IsFalse(TAtlasTestDebug.SelectAt(Found, 13, Selection));
-  Assert.IsFalse(TAtlasTestDebug.SelectAt(Default(TDUnitXUnit), 0, Selection), 'Unit ohne Tests');
+  mFound := TDUnitXSource.Scan(Sample);
+  Assert.IsFalse(TAtlasTestDebug.SelectAt(mFound, 2, mSelection));
+  Assert.AreEqual(0, Integer(Length(mSelection.Names)));
+  Assert.AreEqual(-1, mSelection.BreakLine);
+  Assert.IsFalse(TAtlasTestDebug.SelectAt(mFound, 13, mSelection));
+  Assert.IsFalse(TAtlasTestDebug.SelectAt(Default(TDUnitXUnit), 0, mSelection), 'Unit ohne Tests');
 end;
 
 procedure TAtlasTestDebugTests.SelectByNameWithAndWithoutUnit;
 var
-  Found: TDUnitXUnit;
-  Selection: TAtlasTestSelection;
+  mFound: TDUnitXUnit;
+  mSelection: TAtlasTestSelection;
 begin
-  Found := TDUnitXSource.Scan(Sample);
-  Assert.IsTrue(TAtlasTestDebug.SelectByName(Found, 'Rechner.Tests.TRechnerTests.Addiert', Selection));
-  Assert.AreEqual('Addiert', Selection.Method);
-  Assert.AreEqual(18, Selection.BreakLine);
-  Assert.IsTrue(TAtlasTestDebug.SelectByName(Found, 'trechnertests.summe.klein', Selection), 'ohne Unit, klein');
-  Assert.AreEqual('Summe', Selection.Method);
-  Assert.AreEqual('Klein', Selection.CaseName);
-  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Klein', Selection.Names[0]);
-  Assert.IsTrue(TAtlasTestDebug.SelectByName(Found, 'Rechner.Tests.TRechnerTests.Summe', Selection));
-  Assert.AreEqual(2, Integer(Length(Selection.Names)), 'alle Fälle');
-  Assert.IsTrue(TAtlasTestDebug.SelectByName(Found, ' Rechner.Tests.TRechnerTests ', Selection));
-  Assert.AreEqual('', Selection.Method);
-  Assert.IsFalse(TAtlasTestDebug.SelectByName(Found, 'Rechner.Tests.TRechnerTests.Fehlt', Selection));
-  Assert.IsFalse(TAtlasTestDebug.SelectByName(Found, 'Andere.TAndere.Addiert', Selection));
-  Assert.IsFalse(TAtlasTestDebug.SelectByName(Found, '', Selection));
+  mFound := TDUnitXSource.Scan(Sample);
+  Assert.IsTrue(TAtlasTestDebug.SelectByName(mFound, 'Rechner.Tests.TRechnerTests.Addiert', mSelection));
+  Assert.AreEqual('Addiert', mSelection.Method);
+  Assert.AreEqual(18, mSelection.BreakLine);
+  Assert.IsTrue(TAtlasTestDebug.SelectByName(mFound, 'trechnertests.summe.klein', mSelection), 'ohne Unit, klein');
+  Assert.AreEqual('Summe', mSelection.Method);
+  Assert.AreEqual('Klein', mSelection.CaseName);
+  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Klein', mSelection.Names[0]);
+  Assert.IsTrue(TAtlasTestDebug.SelectByName(mFound, 'Rechner.Tests.TRechnerTests.Summe', mSelection));
+  Assert.AreEqual(2, Integer(Length(mSelection.Names)), 'alle Fälle');
+  Assert.IsTrue(TAtlasTestDebug.SelectByName(mFound, ' Rechner.Tests.TRechnerTests ', mSelection));
+  Assert.AreEqual('', mSelection.Method);
+  Assert.IsFalse(TAtlasTestDebug.SelectByName(mFound, 'Rechner.Tests.TRechnerTests.Fehlt', mSelection));
+  Assert.IsFalse(TAtlasTestDebug.SelectByName(mFound, 'Andere.TAndere.Addiert', mSelection));
+  Assert.IsFalse(TAtlasTestDebug.SelectByName(mFound, '', mSelection));
 end;
 
 procedure TAtlasTestDebugTests.SplitArgumentsKeepsQuotes;
 var
-  Parts: TArray<string>;
+  mParts: TArray<string>;
 begin
-  Parts := TAtlasTestDebug.SplitArguments('  -a  "--xmlfile:C:\Mit Leer\r.xml"'#9'b"c d"e ');
-  Assert.AreEqual(3, Integer(Length(Parts)));
-  Assert.AreEqual('-a', Parts[0]);
-  Assert.AreEqual('"--xmlfile:C:\Mit Leer\r.xml"', Parts[1]);
-  Assert.AreEqual('b"c d"e', Parts[2]);
+  mParts := TAtlasTestDebug.SplitArguments('  -a  "--xmlfile:C:\Mit Leer\r.xml"'#9'b"c d"e ');
+  Assert.AreEqual(3, Integer(Length(mParts)));
+  Assert.AreEqual('-a', mParts[0]);
+  Assert.AreEqual('"--xmlfile:C:\Mit Leer\r.xml"', mParts[1]);
+  Assert.AreEqual('b"c d"e', mParts[2]);
   Assert.AreEqual(0, Integer(Length(TAtlasTestDebug.SplitArguments('   '))));
   Assert.AreEqual('"--xmlfile:C:\Mit Leer\r.xml"', TAtlasTestDebug.QuoteArgument('--xmlfile:C:\Mit Leer\r.xml'));
   Assert.AreEqual('--run:A.B', TAtlasTestDebug.QuoteArgument('--run:A.B'));
@@ -182,49 +182,49 @@ end;
 
 procedure TAtlasTestDebugTests.SwitchesFollowSettings;
 var
-  Settings: TAtlasPluginSettings;
-  Selection: TAtlasTestSelection;
+  mSettings: TAtlasPluginSettings;
+  mSelection: TAtlasTestSelection;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(TAtlasTestDebug.DebugWanted(Settings));
-  Assert.IsTrue(TAtlasTestDebug.RunWanted(Settings));
-  Assert.IsTrue(TAtlasTestDebug.LensWanted(Settings));
-  Assert.IsTrue(TAtlasTestDebug.LensDebugWanted(Settings));
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(TAtlasTestDebug.DebugWanted(mSettings));
+  Assert.IsTrue(TAtlasTestDebug.RunWanted(mSettings));
+  Assert.IsTrue(TAtlasTestDebug.LensWanted(mSettings));
+  Assert.IsTrue(TAtlasTestDebug.LensDebugWanted(mSettings));
   // codeLens.tests aus: keine Lens, weder „Test ausführen“ noch „Debuggen“, auch nicht über Befehl und
   // Kontextmenü (#585: Atlas verhält sich wie ohne die Funktion).
-  Settings.CodeLensTests := False;
-  Assert.IsFalse(TAtlasTestDebug.LensWanted(Settings));
-  Assert.IsFalse(TAtlasTestDebug.LensDebugWanted(Settings));
-  Assert.IsFalse(TAtlasTestDebug.DebugWanted(Settings));
-  Assert.IsFalse(TAtlasTestDebug.RunWanted(Settings));
-  Settings := TAtlasPluginSettings.Defaults;
-  Settings.TestDebug := False;
-  Assert.IsFalse(TAtlasTestDebug.DebugWanted(Settings));
-  Assert.IsFalse(TAtlasTestDebug.LensDebugWanted(Settings));
-  Assert.IsTrue(TAtlasTestDebug.LensWanted(Settings), 'Test ausführen bleibt');
-  Settings := TAtlasPluginSettings.Defaults;
-  Settings.TestRun := False;
-  Assert.IsFalse(TAtlasTestDebug.DebugWanted(Settings), 'braucht Tests ausführen');
-  Assert.IsFalse(TAtlasTestDebug.RunWanted(Settings));
-  Assert.IsFalse(TAtlasTestDebug.LensWanted(Settings));
-  Settings := TAtlasPluginSettings.Defaults;
-  Settings.Enabled := False;
-  Assert.IsFalse(TAtlasTestDebug.DebugWanted(Settings));
-  Assert.IsFalse(TAtlasTestDebug.RunWanted(Settings));
+  mSettings.CodeLensTests := False;
+  Assert.IsFalse(TAtlasTestDebug.LensWanted(mSettings));
+  Assert.IsFalse(TAtlasTestDebug.LensDebugWanted(mSettings));
+  Assert.IsFalse(TAtlasTestDebug.DebugWanted(mSettings));
+  Assert.IsFalse(TAtlasTestDebug.RunWanted(mSettings));
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.TestDebug := False;
+  Assert.IsFalse(TAtlasTestDebug.DebugWanted(mSettings));
+  Assert.IsFalse(TAtlasTestDebug.LensDebugWanted(mSettings));
+  Assert.IsTrue(TAtlasTestDebug.LensWanted(mSettings), 'Test ausführen bleibt');
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.TestRun := False;
+  Assert.IsFalse(TAtlasTestDebug.DebugWanted(mSettings), 'braucht Tests ausführen');
+  Assert.IsFalse(TAtlasTestDebug.RunWanted(mSettings));
+  Assert.IsFalse(TAtlasTestDebug.LensWanted(mSettings));
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.Enabled := False;
+  Assert.IsFalse(TAtlasTestDebug.DebugWanted(mSettings));
+  Assert.IsFalse(TAtlasTestDebug.RunWanted(mSettings));
   // Haltepunkt: Einstellung, Methode und Zeile.
-  Settings := TAtlasPluginSettings.Defaults;
-  Selection := Default(TAtlasTestSelection);
-  Selection.Method := 'Addiert';
-  Selection.BreakLine := 18;
-  Assert.IsTrue(TAtlasTestDebug.BreakWanted(Settings, Selection));
-  Selection.BreakLine := -1;
-  Assert.IsFalse(TAtlasTestDebug.BreakWanted(Settings, Selection), 'Rumpf unbekannt');
-  Selection.BreakLine := 18;
-  Selection.Method := '';
-  Assert.IsFalse(TAtlasTestDebug.BreakWanted(Settings, Selection), 'ganze Fixture');
-  Selection.Method := 'Addiert';
-  Settings.TestBreakAtStart := False;
-  Assert.IsFalse(TAtlasTestDebug.BreakWanted(Settings, Selection));
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSelection := Default(TAtlasTestSelection);
+  mSelection.Method := 'Addiert';
+  mSelection.BreakLine := 18;
+  Assert.IsTrue(TAtlasTestDebug.BreakWanted(mSettings, mSelection));
+  mSelection.BreakLine := -1;
+  Assert.IsFalse(TAtlasTestDebug.BreakWanted(mSettings, mSelection), 'Rumpf unbekannt');
+  mSelection.BreakLine := 18;
+  mSelection.Method := '';
+  Assert.IsFalse(TAtlasTestDebug.BreakWanted(mSettings, mSelection), 'ganze Fixture');
+  mSelection.Method := 'Addiert';
+  mSettings.TestBreakAtStart := False;
+  Assert.IsFalse(TAtlasTestDebug.BreakWanted(mSettings, mSelection));
 end;
 
 initialization
