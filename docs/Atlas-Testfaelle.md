@@ -9873,3 +9873,22 @@ Vorbereitung: Plugin und Server mit diesem Stand gebaut. In der `atlas.json` von
 | RFP7 | Atlas.Windows.Console.StdStreams öffnen | Kein „NoErrMsg ist nicht deklariert“ (Index neu aufgebaut, Version 32) |
 | RFP8 | Atlas.Common.Lsp.PullDiagnostics Zeile mit `raise FErrorClass.Create` | Weder `class-reference-nonvirtual-constructor` noch `unused-suppression` |
 | RFP9 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; neue Tests in Style, Performance, Naming, General, MemberHides, ClassReferences, ControlFlow, EventAssignments, UnitLookup grün |
+
+## Release-Paket ohne Delphi-Runner (#1849)
+
+| Nr. | Schritte | Erwartet | Ergebnis |
+|---|---|---|---|
+| RP1 | Release-Builds Win64 (Server, AtlasUpdate, alle Plugin-Packages) und Win32 (Plugin-Packages) bauen, `pwsh Tools/New-ReleasePackage.ps1 -Version <V>` | `Output\Win64\Release\Bin\atlas-ide-expert-<V>.zip` mit `AtlasServer.exe`, `AtlasUpdate.exe`, Daten und je Plattform Base und elf Module mit `.map` |  |
+| RP2 | Eine Win32-BPL löschen, RP1 wiederholen | Abbruch „Win32-BPL von … fehlt“ |  |
+| RP3 | Nach Tag und Release-Workflow: `pwsh Tools/Publish-ReleasePackage.ps1 -Version <V> -WhatIf` | Nennt ZIP, `atlas-version.json`, `AtlasServer.exe`/`.map` und `atlas-version-beta.json`, lädt nichts hoch |  |
+| RP4 | Wie RP3 ohne `-WhatIf` | Release hat das ZIP; `atlas-version.json` enthält `packages.37.0` mit SHA-256; `update-channel/atlas-version-beta.json` zeigt auf `<V>` |  |
+| RP5 | Rechner mit der Vorversion: Update-Prüfung, „Herunterladen und beim Beenden installieren“, IDE schließen (**Abnahme**) | `<V>` wird gemeldet, geladen, geprüft und eingespielt; nächster Start meldet das Ergebnis |  |
+
+## IDE-Start mit Willkommensseite (06.11.2026)
+
+| ID | Schritte | Erwartet |
+|---|---|---|
+| WS1 | Release-Paket installiert, „Neu in Atlas“ und „Atlas entdecken“ eingeblendet, Delphi starten, in `atlas.log` die Zeile „Start: …“ suchen | Start wie ohne die Karten (wenige Sekunden), „Welcome“ unter 1 s |
+| WS2 | Dieselbe Sitzung: `atlas.log` nach „Welcome start“ durchsuchen | Eine Zeile mit Gesamtdauer; nur Bereiche ab 20 ms sind genannt |
+| WS3 | Befehlspalette öffnen, Atlas-Befehle mit Tastenkürzel ansehen; Tastenkürzel-Übersicht öffnen | Tasten wie vorher (z. B. Strg+Umschalt+Alt+P bei „Datei jetzt prüfen“) |
+| WS4 | „Atlas entdecken“: „Nächster Tipp“ mehrmals, „Ausprobieren“ | Tipps wechseln ohne Verzögerung, Ausprobieren führt den Befehl aus |

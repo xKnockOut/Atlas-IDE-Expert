@@ -143,8 +143,14 @@ end;
 { TRuleFindingsMemoTests }
 
 procedure TRuleFindingsMemoTests.WarmUp;
+var
+  mMemo: IRuleFindingsMemo;
 begin
-  ActionTitles(TRuleFindingsMemo.Create, 2);
+  mMemo := TRuleFindingsMemo.Create;
+  ActionTitles(mMemo, 2);
+  // Ein Treffer ohne bekannte Regel lädt den Katalog: wie CodeActionReadsMemo.
+  mMemo.Put(cFileName, cText, [Finding('aus-dem-memo', 2, 'Korrektur aus dem Memo')]);
+  ActionTitles(mMemo, 2);
 end;
 
 procedure TRuleFindingsMemoTests.GivesFindingsForSameText;

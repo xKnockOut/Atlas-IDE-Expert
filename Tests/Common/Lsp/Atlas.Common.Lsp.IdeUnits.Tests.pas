@@ -13,6 +13,9 @@ type
   [TestFixture]
   TIdeUnitsTests = class
   public
+    /// <summary>Erste Vervollständigung füllt Caches, nicht dem Test anrechnen.</summary>
+    [SetupFixture]
+    procedure WarmUp;
     [Test]
     procedure ShortTypeDropsUnitsAndCollectsUses;
     [Test]
@@ -278,6 +281,19 @@ begin
   finally
     mTree.Free;
     mResolver.Free;
+  end;
+end;
+
+procedure TIdeUnitsTests.WarmUp;
+var
+  mUnits: TIdeUnits;
+begin
+  mUnits := Units;
+  try
+    CompletionNames(mUnits, cMain, 'G.;', 2);
+    CompletionNames(mUnits, StringReplace(cMain, 'gsEdit;', 'gs;', []), ':= gs;', 5);
+  finally
+    mUnits.Free;
   end;
 end;
 

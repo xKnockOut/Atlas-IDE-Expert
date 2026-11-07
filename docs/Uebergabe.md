@@ -5,6 +5,24 @@
 - `Tools/Update-RuleCatalog.ps1` erzeugt jetzt `cCatalogLines*`.
 - Geprüft (Cloud): AtlasServer übersetzt; FPC-Tests aller Common-Testunits wie auf Pilot (gleiche Fehlschläge, keine neuen); Check-Skripte grün. IDE-Packages nicht übersetzbar in der Cloud: Delphi-Build nötig.
 - Offen: Atlas.IDE.Base (dieser Thread), danach je Modul ein Thread über den Koordinator.
+## IDE-Start 60 s mit Willkommensseite (06.11.2026, Branch `claude/project-thread-a48wa8` auf `Pilot-2.0.0-beta.1`)
+
+- **Befund:** Nach der Installation von 2.0.0-beta.1 aus dem Release-Paket dauerte Marcos IDE-Start 60 s (vorher 0,7–6,5 s), `atlas.log`: „davon Atlas 9563 ms: Welcome 9091 ms“. Ohne „Neu in Atlas“ und „Atlas entdecken“ wieder 4,8 s.
+- **Ursache:** `TAtlasIdeDiscover.AllowedIds` ruft je Tipp `FindCommand` → `TAtlasIdeHost.PaletteCommands` → `TAtlasIdePalette.AtlasCommands`; dort je Befehl `TAtlasIdeKeyMap.AtlasShortCut` mit `AtlasEntries` (Einstellungen, `TakenAction`) und `TAtlasIdeKeys.Owner` (Aktionen der IDE). Rund 60 Tipps × 200 Befehle. Im Branch-Build lag kein `tips.json` neben der BPL.
+- **Fix:** `AtlasShortCuts` (einmal je Liste), Palette-Eigenschaft `ShortCutsOf`, `Execute` ohne Tasten, Discover mit Befehlsliste je Durchgang. Zeitmessung „Welcome start“/„Welcome sync“ in `atlas.log`. Handtests WS1–WS4.
+- **Offen:** Delphi-Build; Marcos Vorschlag, „Neu in Atlas“ und „Atlas entdecken“ in eigene Dialoge mit Markierung bei Neuem zu legen (Entwurf mit Mockup folgt).
+
+## Quelltext-Bau Delphi 12 scheiterte an MSB4066 (06.11.2026, Branch `claude/project-thread-a48wa8` auf `Pilot-2.0.0-beta.1`)
+
+- **Befund:** Marcos erster `AtlasUpdate install` mit 2.0.0-beta.1 unter Delphi 12 brach im MSBuild-Bau ab: „MSB4066: Das Include-Attribut im <DCCReference>-Element ist unbekannt“. Ursache: In `Atlas.IDE.Analysis.dproj` standen drei `DCCReference` (#1756) im Eintrag von `Atlas.UI.UnitRelations.Frame.pas`, in `Atlas.IDE.Base.dproj` ein leeres `<DCCReference/>` unter `Atlas.UI.Settings.Page.pas`. Die IDE übergeht das, MSBuild nicht. `Tests/DccFaelle/DccFaelle.groupproj` war nach Zusammenführungen kein gültiges XML (drei offene `Build`-Ziele).
+- **Fix:** Einträge korrigiert, ein `Build`-Ziel mit allen 30 Projekten. Neue CI-Prüfung `Tools/Check-ProjectFiles.ps1` (mit `-SelfTest`) in `package-dependencies.yml`.
+- **Release 2.0.0-beta.1 bleibt fehlerhaft:** Sein Quelltext-ZIP enthält die alten dproj; der Quelltext-Bau geht erst mit der nächsten Beta. Umgehung für Marco: Quelltext entpacken, die zwei dproj von Hand korrigieren, Base und Module mit `rsvars.bat` + `msbuild /p:Config=Release /p:Platform=Win32` bauen, `Atlas.IDE.*290.bpl` in den Ordner `Win32` des entpackten Pakets kopieren, dann `AtlasUpdate.exe` (ohne Argument = install).
+
+## Release-Paket ohne Delphi-Runner (#1849, 06.11.2026, Branch `claude/project-thread-a48wa8` auf `Pilot-2.0.0-beta.1`)
+- Entscheidung Marco: Paket lokal bauen und an das Release hängen (statt Server-Bau aus dem Quelltext beim Nutzer). Ohne Runner meldete die Update-Prüfung das Release, der Installer brach mit „kein Paket“ ab (auch der Quelltext-Bau braucht ein Paket für AtlasServer/AtlasUpdate).
+- Neu: `Tools/New-ReleasePackage.ps1` (Packen, vorher im Workflow-Schritt; prüft EXE/BPL/Map je Package und Plattform, Version, Build jünger als letzter Commit), `Tools/New-VersionFile.ps1` (atlas-version.json, auch im Workflow), `Tools/Publish-ReleasePackage.ps1` (gh: ZIP + AtlasServer.exe/.map + atlas-version.json ins Release, atlas-version-beta.json nur ersetzen, wenn der Kanal auf diese Version zeigt), Selbsttest `Tools/Test-ReleasePackage.ps1` in package-dependencies.yml.
+- Kein workflow_dispatch: wäre erst aufrufbar, wenn der Workflow auf `main` liegt.
+- Geprüft (Cloud): Selbsttest grün, Publish mit gefälschtem `gh` durchgespielt. Offen: RP1–RP5 auf Marcos PC (Release-Builds, echter Upload).
 
 ## Release 2.0.0-beta.1 vorbereitet (05.11.2026, Branch `claude/project-thread-a48wa8` auf `Pilot-2.0.0-beta.1`)
 - Version stand schon überall auf 2.0.0-beta.1 (Marco, c03f26ed). CHANGELOG: alles aus [Unveröffentlicht] in den Abschnitt `[2.0.0-beta.1]` übernommen, nachgetragen: Modulaufteilung (#1454–#1456), Einstellungen in den Modulen (#1743), interner Umbau für 0 Atlas-Befunde; der veraltete Eintrag „Grundstock der Modul-Verträge … noch nicht verdrahtet“ entfällt. [Unveröffentlicht] ist leer: Einträge von PRs, die noch in die Beta sollen (#1751, Server-Überlastung), vor dem Tag in den Abschnitt 2.0.0-beta.1 verschieben.

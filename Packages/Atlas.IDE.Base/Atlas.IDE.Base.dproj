@@ -301,7 +301,6 @@
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Plugin.Vcs.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Plugin.Welcome.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.pas">
-            <DCCReference/>
             <Form>AtlasSettingsPage</Form>
             <FormType>dfm</FormType>
             <DesignClass>TFrame</DesignClass>
