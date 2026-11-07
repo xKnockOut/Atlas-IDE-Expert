@@ -46,7 +46,7 @@ uses
   Shell.WorkspaceGroup;
 
 const
-  Dproj = '<?xml version="1.0" encoding="utf-8"?>'#13#10 +
+  cDproj = '<?xml version="1.0" encoding="utf-8"?>'#13#10 +
     '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10 +
     '  <PropertyGroup>'#13#10'    <MainSource>Lauf.dpr</MainSource>'#13#10 +
     '    <Config Condition="''$(Config)''==''''">Debug</Config>'#13#10 +
@@ -56,9 +56,9 @@ const
     '    <DelphiCompile Include="$(MainSource)"><MainSource>MainSource</MainSource></DelphiCompile>'#13#10 +
     '    <DCCReference Include="Kunde.pas"/>'#13#10 +
     '  </ItemGroup>'#13#10'</Project>'#13#10;
-  Programm = 'program Lauf;'#13#10'uses'#13#10'  Kunde in ''Kunde.pas'';'#13#10 +
+  cProgramm = 'program Lauf;'#13#10'uses'#13#10'  Kunde in ''Kunde.pas'';'#13#10 +
     'begin'#13#10'end.'#13#10;
-  KundeUnit = 'unit Kunde;'#13#10'interface'#13#10'type'#13#10'  TKunde = class'#13#10'  end;'#13#10 +
+  cKundeUnit = 'unit Kunde;'#13#10'interface'#13#10'type'#13#10'  TKunde = class'#13#10'  end;'#13#10 +
     'implementation'#13#10'end.'#13#10;
 
 function NewGroup(const ARoot: string): TShellWorkspaceGroup;
@@ -105,52 +105,52 @@ end;
 
 procedure TShellWorkspaceGroupTests.LoadIndexesProjectAndGivesRuleProject;
 var
-  Group: TShellWorkspaceGroup;
-  Project: TCheckProject;
-  Reason: string;
-  Found: TUnitIndex;
+  mGroup: TShellWorkspaceGroup;
+  mProject: TCheckProject;
+  mReason: string;
+  mFound: TUnitIndex;
 begin
-  TFile.WriteAllText(Path('Lauf.dproj'), Dproj);
-  TFile.WriteAllText(Path('Lauf.dpr'), Programm);
-  TFile.WriteAllText(Path('Kunde.pas'), KundeUnit);
-  Group := NewGroup(FFolder);
+  TFile.WriteAllText(Path('Lauf.dproj'), cDproj);
+  TFile.WriteAllText(Path('Lauf.dpr'), cProgramm);
+  TFile.WriteAllText(Path('Kunde.pas'), cKundeUnit);
+  mGroup := NewGroup(FFolder);
   try
-    Group.Main.Setup.ProjectFile := Path('Lauf.dproj');
-    Group.CacheRoot := Path('Cache');
-    Group.Load('');
-    Assert.IsTrue(Group.WaitForIndex(60000), 'Index fertig');
-    Assert.IsTrue(Group.Ready(Reason), Reason);
-    Project := Group.RuleProject(Path('Kunde.pas'));
-    Assert.AreEqual(Path('Kunde.pas'), Project.FileName);
-    Assert.IsNotNull(Project.Services.Index, 'Regeln bekommen den Index');
-    Assert.IsTrue(Project.Services.Index.FindUnit('Kunde', Found), 'Unit des Projekts im Index');
-    Assert.IsTrue(Project.Application = TRuleApplicationKind.Console, 'Anwendungsart aus der .dproj (DCC_ConsoleTarget)');
-    Assert.AreEqual('Lauf', Project.Name);
-    Assert.IsNotNull(Project.Services.ProjectFiles, 'Projekte der Gruppe für projektweite Regeln');
-    Assert.AreSame(Group.Main, Group.WorkspaceOf(Path('Fremd.pas')), 'Fremde Datei: Hauptarbeitsbereich');
-    Group.Stop;
+    mGroup.Main.Setup.ProjectFile := Path('Lauf.dproj');
+    mGroup.CacheRoot := Path('Cache');
+    mGroup.Load('');
+    Assert.IsTrue(mGroup.WaitForIndex(60000), 'Index fertig');
+    Assert.IsTrue(mGroup.Ready(mReason), mReason);
+    mProject := mGroup.RuleProject(Path('Kunde.pas'));
+    Assert.AreEqual(Path('Kunde.pas'), mProject.FileName);
+    Assert.IsNotNull(mProject.Services.Index, 'Regeln bekommen den Index');
+    Assert.IsTrue(mProject.Services.Index.FindUnit('Kunde', mFound), 'Unit des Projekts im Index');
+    Assert.IsTrue(mProject.Application = TRuleApplicationKind.Console, 'Anwendungsart aus der .dproj (DCC_ConsoleTarget)');
+    Assert.AreEqual('Lauf', mProject.Name);
+    Assert.IsNotNull(mProject.Services.ProjectFiles, 'Projekte der Gruppe für projektweite Regeln');
+    Assert.AreSame(mGroup.Main, mGroup.WorkspaceOf(Path('Fremd.pas')), 'Fremde Datei: Hauptarbeitsbereich');
+    mGroup.Stop;
   finally
-    Group.Free;
+    mGroup.Free;
   end;
 end;
 
 procedure TShellWorkspaceGroupTests.WithoutProjectHasNoApplication;
 var
-  Group: TShellWorkspaceGroup;
-  Project: TCheckProject;
+  mGroup: TShellWorkspaceGroup;
+  mProject: TCheckProject;
 begin
-  TFile.WriteAllText(Path('Kunde.pas'), KundeUnit);
-  Group := NewGroup(FFolder);
+  TFile.WriteAllText(Path('Kunde.pas'), cKundeUnit);
+  mGroup := NewGroup(FFolder);
   try
-    Group.CacheRoot := Path('Cache');
-    Group.Load('');
-    Assert.IsTrue(Group.WaitForIndex(60000), 'Ohne Projekt wartet nichts');
-    Project := Group.RuleProject(Path('Kunde.pas'));
-    Assert.IsTrue(Project.Application = TRuleApplicationKind.Unknown);
-    Assert.AreEqual('', Project.Name);
-    Group.Stop;
+    mGroup.CacheRoot := Path('Cache');
+    mGroup.Load('');
+    Assert.IsTrue(mGroup.WaitForIndex(60000), 'Ohne Projekt wartet nichts');
+    mProject := mGroup.RuleProject(Path('Kunde.pas'));
+    Assert.IsTrue(mProject.Application = TRuleApplicationKind.Unknown);
+    Assert.AreEqual('', mProject.Name);
+    mGroup.Stop;
   finally
-    Group.Free;
+    mGroup.Free;
   end;
 end;
 

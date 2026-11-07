@@ -178,23 +178,23 @@ end;
 class function TShellDiagnostics.LogFileSink(const AFileName, AFallbackTag: string; ANames: Boolean;
   out AAnonymizer: ILogAnonymizer): ILogSink;
 var
-  Anonymizer: ILogAnonymizer;
-  Inner: ILogSink;
+  mAnonymizer: ILogAnonymizer;
+  mInner: ILogSink;
 begin
-  Inner := TStreamLogSink.CreateForFile(AFileName, AFallbackTag);
+  mInner := TStreamLogSink.CreateForFile(AFileName, AFallbackTag);
   AAnonymizer := nil;
-  Result := Inner;
+  Result := mInner;
   if ANames then
   begin
     Exit;
   end;
   // Eigene Variable: out-Parameter lassen sich nicht einfangen.
-  Anonymizer := TLogAnonymizer.Create(TProcessInfo.IdentityNames);
-  AAnonymizer := Anonymizer;
-  Result := TTransformLogSink.Create(Inner,
+  mAnonymizer := TLogAnonymizer.Create(TProcessInfo.IdentityNames);
+  AAnonymizer := mAnonymizer;
+  Result := TTransformLogSink.Create(mInner,
     function(const AText: string): string
     begin
-      Result := Anonymizer.Anonymize(AText);
+      Result := mAnonymizer.Anonymize(AText);
     end);
 end;
 
@@ -222,15 +222,15 @@ end;
 
 function TShellDiagnostics.BeginRun(const AVersion: string; AMemoryBytes: Int64): Integer;
 var
-  Process: TDiagnosticProcess;
-  Previous, Index: Integer;
+  mProcess: TDiagnosticProcess;
+  mPrevious, mIndex: Integer;
 begin
-  Previous := FFolder.BeginRun;
-  Result := Previous;
-  Process.MemoryBytes := AMemoryBytes;
-  Process.Threads := TProcessInfo.ThreadCount;
-  FLog.LogStart(AVersion, Process);
-  for Index := 1 to Previous do
+  mPrevious := FFolder.BeginRun;
+  Result := mPrevious;
+  mProcess.MemoryBytes := AMemoryBytes;
+  mProcess.Threads := TProcessInfo.ThreadCount;
+  FLog.LogStart(AVersion, mProcess);
+  for mIndex := 1 to mPrevious do
   begin
     FLog.LogEvent('previous run ended without end line (process terminated or crashed)');
   end;
@@ -258,8 +258,8 @@ end;
 procedure TShellDiagnostics.EndRun(AReason: TDiagnosticEndReason; AExitCode: Integer; AMemoryBytes: Int64;
   const AError: Exception);
 var
-  Process: TDiagnosticProcess;
-  ErrorClass, Stack: string;
+  mProcess: TDiagnosticProcess;
+  mErrorClass, mStack: string;
 begin
   // Die Endzeile kommt schon, wenn die Eingabe endet (#647): Das Plugin wartet danach nur kurz und
   // beendet den Prozess, solange noch Anfragen laufen. Der spätere Aufruf aus Run zählt dann nicht.
@@ -268,17 +268,17 @@ begin
     Exit;
   end;
   FEnded := True;
-  Process.MemoryBytes := AMemoryBytes;
-  Process.Threads := TProcessInfo.ThreadCount;
-  ErrorClass := '';
-  Stack := '';
+  mProcess.MemoryBytes := AMemoryBytes;
+  mProcess.Threads := TProcessInfo.ThreadCount;
+  mErrorClass := '';
+  mStack := '';
   if AError <> nil then
   begin
     // Nur Klasse und Aufrufstapel: Die Meldung kann Pfade oder Namen aus dem Projekt enthalten.
-    ErrorClass := AError.ClassName;
-    Stack := TShellPlatform.StackTraceOf(AError);
+    mErrorClass := AError.ClassName;
+    mStack := TShellPlatform.StackTraceOf(AError);
   end;
-  FLog.LogEnd(AReason, AExitCode, Process, ErrorClass, Stack);
+  FLog.LogEnd(AReason, AExitCode, mProcess, mErrorClass, mStack);
   FLogImpl.Flush;
   if FMapFile and FLog.Enabled then
   begin
@@ -294,74 +294,74 @@ end;
 
 function TShellDiagnostics.LibraryCount: Integer;
 var
-  Generation: Int64;
-  UnitIndex: TUnitIndex;
-  Count: Integer;
+  mGeneration: Int64;
+  mUnitIndex: TUnitIndex;
+  mCount: Integer;
 begin
   // Teuer bei vielen Units; nur neu zählen, wenn sich der Index geändert hat.
-  Generation := FIndex.Generation;
+  mGeneration := FIndex.Generation;
   TMonitor.Enter(FLock);
   try
-    if Generation = FLibraryGeneration then
+    if mGeneration = FLibraryGeneration then
     begin
       Exit(FLibraryCount);
     end;
   finally
     TMonitor.Exit(FLock);
   end;
-  Count := 0;
-  for UnitIndex in FIndex.Units do
+  mCount := 0;
+  for mUnitIndex in FIndex.Units do
   begin
-    if UnitIndex.Library_ then
+    if mUnitIndex.Library_ then
     begin
-      Inc(Count);
+      Inc(mCount);
     end;
   end;
   TMonitor.Enter(FLock);
   try
-    FLibraryGeneration := Generation;
-    FLibraryCount := Count;
+    FLibraryGeneration := mGeneration;
+    FLibraryCount := mCount;
   finally
     TMonitor.Exit(FLock);
   end;
-  Result := Count;
+  Result := mCount;
 end;
 
 procedure TShellDiagnostics.DescribeDocument(const AParams: TJSONValue; var ARequest: TDiagnosticRequest);
 var
-  Uri: string;
-  Line, Character: Integer;
-  Document: ITextDocument;
-  Text: string;
+  mUri: string;
+  mLine, mCharacter: Integer;
+  mDocument: ITextDocument;
+  mText: string;
 begin
   if not (AParams is TJSONObject) then
   begin
     Exit;
   end;
-  if TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) then
+  if TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) then
   begin
-    ARequest.Document := FIds.IdOf(TDiagnosticIdKind.Document, TDocumentUris.ToPath(Uri));
+    ARequest.Document := FIds.IdOf(TDiagnosticIdKind.Document, TDocumentUris.ToPath(mUri));
     ARequest.Version := -1;
-    if (FDocuments <> nil) and FDocuments.TryGet(Uri, Document) then
+    if (FDocuments <> nil) and FDocuments.TryGet(mUri, mDocument) then
     begin
-      Text := Document.Text;
-      ARequest.Version := Document.Version;
-      ARequest.Length_ := Length(Text);
-      ARequest.Checksum := IntToHex(Cardinal(THashFNV1a32.GetHashValue(Text)), 8);
-      ARequest.LineCount := Document.LineCount;
+      mText := mDocument.Text;
+      ARequest.Version := mDocument.Version;
+      ARequest.Length_ := Length(mText);
+      ARequest.Checksum := IntToHex(Cardinal(THashFNV1a32.GetHashValue(mText)), 8);
+      ARequest.LineCount := mDocument.LineCount;
     end;
   end;
-  if TJSONObject(AParams).TryGetValue<Integer>('position.line', Line) and
-    TJSONObject(AParams).TryGetValue<Integer>('position.character', Character) then
+  if TJSONObject(AParams).TryGetValue<Integer>('position.line', mLine) and
+    TJSONObject(AParams).TryGetValue<Integer>('position.character', mCharacter) then
   begin
-    ARequest.Line := Line;
-    ARequest.Column := Character;
+    ARequest.Line := mLine;
+    ARequest.Column := mCharacter;
   end;
 end;
 
 class function TShellDiagnostics.CountOf(const AResult: TJSONValue): Integer;
 var
-  Items: TJSONValue;
+  mItems: TJSONValue;
 begin
   if (AResult = nil) or (AResult is TJSONNull) then
   begin
@@ -373,10 +373,10 @@ begin
   end;
   if AResult is TJSONObject then
   begin
-    Items := TJSONObject(AResult).GetValue('items');
-    if Items is TJSONArray then
+    mItems := TJSONObject(AResult).GetValue('items');
+    if mItems is TJSONArray then
     begin
-      Exit(TJSONArray(Items).Count);
+      Exit(TJSONArray(mItems).Count);
     end;
   end;
   Result := 1;
@@ -384,11 +384,11 @@ end;
 
 class function TShellDiagnostics.ShortMethod(const AMethod: string): string;
 var
-  Slash: Integer;
+  mSlash: Integer;
 begin
   // Ohne "/": Der Filter des Diagnoselogs verwirft Zeilen mit Schrägstrich.
-  Slash := LastDelimiter('/', AMethod);
-  Result := Copy(AMethod, Slash + 1, MaxInt);
+  mSlash := LastDelimiter('/', AMethod);
+  Result := Copy(AMethod, mSlash + 1, MaxInt);
   if StartsText('workspace/', AMethod) and (Result <> '') then
   begin
     Result := 'ws' + UpperCase(Result[1]) + Copy(Result, 2, MaxInt);
@@ -397,21 +397,21 @@ end;
 
 procedure TShellDiagnostics.Started(const AMethod: string);
 var
-  Name: string;
-  Count: Integer;
+  mName: string;
+  mCount: Integer;
 begin
   TRequestDiagnostics.Open;
   StartCpuMs := TProcessInfo.ThreadCpuMs;
-  Name := ShortMethod(AMethod);
+  mName := ShortMethod(AMethod);
   TMonitor.Enter(FLock);
   try
-    if FRunning.TryGetValue(Name, Count) then
+    if FRunning.TryGetValue(mName, mCount) then
     begin
-      FRunning[Name] := Count + 1;
+      FRunning[mName] := mCount + 1;
     end
     else
     begin
-      FRunning.Add(Name, 1);
+      FRunning.Add(mName, 1);
     end;
   finally
     TMonitor.Exit(FLock);

@@ -79,12 +79,12 @@ begin
   Result.AddPair('colorProvider', TJSONBool.Create(True));
   mCommands := TJSONArray.Create;
   mCommands.Add(cStatusCommand);
-  mCommands.Add(TShellCrashCases.RetryCommand);
+  mCommands.Add(TShellCrashCases.cRetryCommand);
   mCommands.Add(cProcessesCommand);
-  mCommands.Add(TShellServerCommands.CompileCommand);
-  mCommands.Add(TShellServerCommands.SelectBuildCommand);
-  mCommands.Add(TShellServerCommands.SelectProjectCommand);
-  mCommands.Add(TShellServerCommands.RebuildIndexCommand);
+  mCommands.Add(TShellServerCommands.cCompileCommand);
+  mCommands.Add(TShellServerCommands.cSelectBuildCommand);
+  mCommands.Add(TShellServerCommands.cSelectProjectCommand);
+  mCommands.Add(TShellServerCommands.cRebuildIndexCommand);
   mCommands.Add(cClearIndexCommand);
   mCommands.Add(TLspPullDiagnostics.cRecheckCommand);
   mCommands.Add(TBugReport.cCommand);
