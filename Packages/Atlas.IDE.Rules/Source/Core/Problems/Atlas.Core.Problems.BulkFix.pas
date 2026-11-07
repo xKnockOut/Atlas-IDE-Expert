@@ -34,7 +34,7 @@ type
 
   TAtlasBulkFixPreview = class
   public const
-    Command = 'atlas.server.fixFindings';
+    cCommand = 'atlas.server.fixFindings';
   private
     FRule: string;
     FSummary: string;

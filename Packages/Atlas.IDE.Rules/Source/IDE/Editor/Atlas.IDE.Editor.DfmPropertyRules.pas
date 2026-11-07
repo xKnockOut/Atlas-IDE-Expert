@@ -50,9 +50,9 @@ uses
   Atlas.IDE.Foundation.Navigation;
 
 const
-  Command = 'atlas.server.applyDfmPropertyRules';
+  cCommand = 'atlas.server.applyDfmPropertyRules';
   // Projektgruppe: alle Formulare prüfen dauert; wie beim Umbenennen.
-  TimeoutMs = 60000;
+  cTimeoutMs = 60000;
 
 class function TAtlasIdeDfmPropertyRules.ScopeName(AScope: TAtlasDfmRulesScope): string;
 begin
@@ -69,35 +69,35 @@ end;
 /// <summary>Datei im Editor; '' ohne.</summary>
 function EditorFile: string;
 var
-  Editors: IOTAEditorServices;
-  View: IOTAEditView;
+  mEditors: IOTAEditorServices;
+  mView: IOTAEditView;
 begin
   Result := '';
-  View := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  mView := nil;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
-    View := Editors.TopView;
+    mView := mEditors.TopView;
   end;
-  if (View <> nil) and (View.Buffer <> nil) then
+  if (mView <> nil) and (mView.Buffer <> nil) then
   begin
-    Result := View.Buffer.FileName;
+    Result := mView.Buffer.FileName;
   end;
 end;
 
 /// <summary>Unit mit Formular: .pas mit .dfm/.fmx daneben oder die Formulardatei selbst.</summary>
 function HasForm(const AFileName: string): Boolean;
 var
-  Extension: string;
+  mExtension: string;
 begin
-  Extension := LowerCase(ExtractFileExt(AFileName));
-  Result := (Extension = '.dfm') or (Extension = '.fmx') or ((Extension = '.pas') and
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExtension = '.dfm') or (mExtension = '.fmx') or ((mExtension = '.pas') and
     (FileExists(ChangeFileExt(AFileName, '.dfm')) or FileExists(ChangeFileExt(AFileName, '.fmx'))));
 end;
 
 /// <summary>Datei, über die der Server den Bereich wählt; False mit Meldung, wenn es keine gibt.</summary>
 function TargetFile(AScope: TAtlasDfmRulesScope; const AMessage: TProc<string>; out AFileName: string): Boolean;
 var
-  Project: IOTAProject;
+  mProject: IOTAProject;
 begin
   AFileName := EditorFile;
   if AScope = TAtlasDfmRulesScope.Form then
@@ -110,10 +110,10 @@ begin
     Exit;
   end;
   // Projekt: das aktive; der Server wählt den Arbeitsbereich über die Datei.
-  Project := GetActiveProject;
-  if ((AScope = TAtlasDfmRulesScope.Project) or (AFileName = '')) and (Project <> nil) then
+  mProject := GetActiveProject;
+  if ((AScope = TAtlasDfmRulesScope.Project) or (AFileName = '')) and (mProject <> nil) then
   begin
-    AFileName := Project.FileName;
+    AFileName := mProject.FileName;
   end;
   Result := AFileName <> '';
   if not Result then
@@ -125,15 +125,15 @@ end;
 /// <summary>Argumente des Serverbefehls: Datei-URI und Bereich.</summary>
 function CommandArguments(const AFileName: string; AScope: TAtlasDfmRulesScope): string;
 var
-  Values: TJSONArray;
+  mValues: TJSONArray;
 begin
-  Values := TJSONArray.Create;
+  mValues := TJSONArray.Create;
   try
-    Values.Add(TLspSession.PathToUri(AFileName));
-    Values.Add(TAtlasIdeDfmPropertyRules.ScopeName(AScope));
-    Result := Values.ToJSON;
+    mValues.Add(TLspSession.PathToUri(AFileName));
+    mValues.Add(TAtlasIdeDfmPropertyRules.ScopeName(AScope));
+    Result := mValues.ToJSON;
   finally
-    Values.Free;
+    mValues.Free;
   end;
 end;
 
@@ -141,15 +141,15 @@ end;
 function FetchEdit(ASession: TLspSession; const AFileName: string; AScope: TAtlasDfmRulesScope;
   const AMessage: TProc<string>; out AEdit: TLspWorkspaceEdit): Boolean;
 var
-  Response: TJSONValue;
+  mResponse: TJSONValue;
 begin
   TAtlasIdeRename.SyncOpenBuffers(ASession);
   try
-    Response := ASession.RunCommand(Command, CommandArguments(AFileName, AScope), TimeoutMs);
+    mResponse := ASession.RunCommand(cCommand, CommandArguments(AFileName, AScope), cTimeoutMs);
     try
-      AEdit := TLspWorkspaceEdit.FromJson(Response);
+      AEdit := TLspWorkspaceEdit.FromJson(mResponse);
     finally
-      Response.Free;
+      mResponse.Free;
     end;
   except
     on E: ELspClientError do
@@ -168,59 +168,59 @@ end;
 /// <summary>Vorschau wie beim Umbenennen (#400): Bestätigung durch den Benutzer (needsConfirmation).</summary>
 function Confirmed(const AEdit: TLspWorkspaceEdit): Boolean;
 var
-  Preview: TArray<TAtlasResultEntry>;
-  Open: TAtlasResultsOpen;
+  mPreview: TArray<TAtlasResultEntry>;
+  mOpen: TAtlasResultsOpen;
 begin
-  Preview := TAtlasResults.RenamePreview(AEdit,
+  mPreview := TAtlasResults.RenamePreview(AEdit,
     function(const AFileName: string): string
     begin
       Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
     end);
-  Open :=
+  mOpen :=
     procedure(const AFileName: string; ALine, ACharacter: Integer)
     begin
       TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
     end;
   Result := TAtlasRenamePreview.Execute(TAtlasRulesStrings.Text(TAtlasRulesTextId.DfmRulesPreviewTitle),
     TAtlasRulesStrings.Fmt(TAtlasRulesTextId.DfmRulesPreviewHint, [AEdit.EditCount, Length(AEdit.Files)]),
-    TAtlasRulesStrings.Text(TAtlasRulesTextId.DfmRulesPreviewApply), TAtlasResults.Group(Preview), Open);
+    TAtlasRulesStrings.Text(TAtlasRulesTextId.DfmRulesPreviewApply), TAtlasResults.Group(mPreview), mOpen);
 end;
 
 /// <summary>Korrekturen übernehmen und das Ergebnis melden.</summary>
 procedure ApplyEdit(const AEdit: TLspWorkspaceEdit; APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  Outcome: TAtlasWorkspaceEditResult;
+  mOutcome: TAtlasWorkspaceEditResult;
 begin
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(AEdit, APolicy,
+  mOutcome := TAtlasIdeWorkspaceEdit.Apply(AEdit, APolicy,
     TAtlasRulesStrings.Text(TAtlasRulesTextId.DfmRulesPreviewTitle));
-  if Outcome.Error <> '' then
+  if mOutcome.Error <> '' then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
   end
   else
   begin
-    AMessage(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.DfmRulesDone, [Outcome.Edits, Outcome.Files]));
+    AMessage(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.DfmRulesDone, [mOutcome.Edits, mOutcome.Files]));
   end;
-  if Outcome.Written > 0 then
+  if mOutcome.Written > 0 then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [mOutcome.Written]));
   end;
 end;
 
 class procedure TAtlasIdeDfmPropertyRules.Execute(ASession: TLspSession; AScope: TAtlasDfmRulesScope;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  FileName: string;
-  Edit: TLspWorkspaceEdit;
+  mFileName: string;
+  mEdit: TLspWorkspaceEdit;
 begin
   if ASession = nil then
   begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
   end
-  else if TargetFile(AScope, AMessage, FileName) and FetchEdit(ASession, FileName, AScope, AMessage, Edit) and
-    Confirmed(Edit) then
+  else if TargetFile(AScope, AMessage, mFileName) and FetchEdit(ASession, mFileName, AScope, AMessage, mEdit) and
+    Confirmed(mEdit) then
   begin
-    ApplyEdit(Edit, APolicy, AMessage);
+    ApplyEdit(mEdit, APolicy, AMessage);
   end;
 end;
 
