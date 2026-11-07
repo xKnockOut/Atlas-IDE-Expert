@@ -204,23 +204,23 @@ end;
 
 function ToolGetImpact(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
-  Name, Format: string;
-  Depth: Integer;
+  mName, mFormat: string;
+  mDepth: Integer;
 begin
-  Name := TMcpServer.RequiredString(AArguments, 'name');
-  Format := TMcpServer.OptionalString(AArguments, 'format');
-  if (Format <> '') and not SameText(Format, 'text') and not SameText(Format, 'json') then
+  mName := TMcpServer.RequiredString(AArguments, 'name');
+  mFormat := TMcpServer.OptionalString(AArguments, 'format');
+  if (mFormat <> '') and not SameText(mFormat, 'text') and not SameText(mFormat, 'json') then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('format', ['text', 'json']));
   end;
   AContext.Code.Namespaces := AContext.Group.Main.State.Namespaces;
-  if AArguments.TryGetValue<Integer>('depth', Depth) then
+  if AArguments.TryGetValue<Integer>('depth', mDepth) then
   begin
-    Result := AContext.Code.Impact(Name, Depth, SameText(Format, 'json'));
+    Result := AContext.Code.Impact(mName, mDepth, SameText(mFormat, 'json'));
   end
   else
   begin
-    Result := AContext.Code.Impact(Name, SameText(Format, 'json'));
+    Result := AContext.Code.Impact(mName, SameText(mFormat, 'json'));
   end;
 end;
 
@@ -240,21 +240,21 @@ end;
 
 function ToolQualifiedName(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
-  FileName: string;
-  Line, Column: Integer;
-  WithParameters: Boolean;
+  mFileName: string;
+  mLine, mColumn: Integer;
+  mWithParameters: Boolean;
 begin
-  FileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
-  if not (AArguments.TryGetValue<Integer>('line', Line) and AArguments.TryGetValue<Integer>('column', Column)) then
+  mFileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+  if not (AArguments.TryGetValue<Integer>('line', mLine) and AArguments.TryGetValue<Integer>('column', mColumn)) then
   begin
     raise EMcpToolError.Create(TShellTexts.Missing(['line', 'column']));
   end;
-  if not AArguments.TryGetValue<Boolean>('withParameters', WithParameters) then
+  if not AArguments.TryGetValue<Boolean>('withParameters', mWithParameters) then
   begin
-    WithParameters := False;
+    mWithParameters := False;
   end;
   AContext.Code.Namespaces := AContext.Group.Main.State.Namespaces;
-  Result := AContext.Code.QualifiedName(FileName, Line, Column, WithParameters);
+  Result := AContext.Code.QualifiedName(mFileName, mLine, mColumn, mWithParameters);
 end;
 
 procedure AddQualifiedName(const AContext: TMcpToolContext);

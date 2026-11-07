@@ -72,7 +72,8 @@ function LoadProject(const AFileName, AConfiguration, APlatform: string; out AIn
 function IsTestProject(const AFileName: string): Boolean;
 /// <summary>Projektdateien unter ARoot ohne Sicherungsordner der IDE.</summary>
 function ProjectFilesUnder(const ARoot: string): TArray<string>;
-/// <summary>AGroup.Main.State.CheckSource als Methodenreferenz. Als anonyme Methode, weil Free Pascal (Linux-Bau) an der
+/// <summary>AGroup.Main.State.CheckSource als Methodenreferenz. Als anonyme Methode, weil Free Pascal (Linux-Bau) an
+/// der
 /// Umwandlung einer Methode eines anderen Objekts intern abbricht; in eigener Routine, weil eine anonyme Methode in
 /// einer Variablen, die die anderen anonymen Methoden derselben Routine einfangen, ihren eigenen Rahmen festhält
 /// (Leck unter Delphi). Main erst beim Aufruf: Tests registrieren die Werkzeuge ohne Gruppe.</summary>
@@ -135,18 +136,18 @@ end;
 /// <summary>Projektdatei ohne Ausnahme auswerten; False, wenn sie nicht lesbar ist.</summary>
 function LoadProject(const AFileName, AConfiguration, APlatform: string; out AInfo: TProjectInfo): Boolean;
 var
-  Options: TDprojOptions;
+  mOptions: TDprojOptions;
 begin
-  Options := Default(TDprojOptions);
-  Options.Config := AConfiguration;
-  Options.Platform := APlatform;
-  Options.FileExists :=
+  mOptions := Default(TDprojOptions);
+  mOptions.Config := AConfiguration;
+  mOptions.Platform := APlatform;
+  mOptions.FileExists :=
     function(APath: string): Boolean
     begin
       Result := FileExists(APath);
     end;
   try
-    AInfo := TDprojReader.Load(AFileName, Options);
+    AInfo := TDprojReader.Load(AFileName, mOptions);
     Result := True;
   except
     on Exception do
@@ -160,33 +161,34 @@ end;
 /// <summary>DUnitX-Testprojekt: Die Hauptdatei verwendet DUnitX.TestFramework (#69).</summary>
 function IsTestProject(const AFileName: string): Boolean;
 var
-  Info: TProjectInfo;
-  Text: string;
+  mInfo: TProjectInfo;
+  mText: string;
 begin
-  Result := LoadProject(AFileName, '', '', Info) and (Info.MainSource <> '') and
-    ReadSourceText(Info.MainSource, Text) and TDUnitXSource.UsesDUnitX(TTextLines.SplitLines(Text));
+  Result := LoadProject(AFileName, '', '', mInfo) and (mInfo.MainSource <> '') and
+    ReadSourceText(mInfo.MainSource, mText) and TDUnitXSource.UsesDUnitX(TTextLines.SplitLines(mText));
 end;
 
 /// <summary>Projektdateien unter ARoot ohne Sicherungsordner der IDE.</summary>
 function ProjectFilesUnder(const ARoot: string): TArray<string>;
 var
-  FileName: string;
+  mFileName: string;
 begin
   Result := nil;
   if (ARoot = '') or not TDirectory.Exists(ARoot) then
   begin
     Exit;
   end;
-  for FileName in TDirectory.GetFiles(ARoot, '*.dproj', TSearchOption.soAllDirectories) do
+  for mFileName in TDirectory.GetFiles(ARoot, '*.dproj', TSearchOption.soAllDirectories) do
   begin
-    if not ContainsText(FileName, '\__history\') and not ContainsText(FileName, '\__recovery\') then
+    if not ContainsText(mFileName, '\__history\') and not ContainsText(mFileName, '\__recovery\') then
     begin
-      Result := Result + [FileName];
+      Result := Result + [mFileName];
     end;
   end;
 end;
 
-/// <summary>AGroup.Main.State.CheckSource als Methodenreferenz. Als anonyme Methode, weil Free Pascal (Linux-Bau) an der
+/// <summary>AGroup.Main.State.CheckSource als Methodenreferenz. Als anonyme Methode, weil Free Pascal (Linux-Bau) an
+/// der
 /// Umwandlung einer Methode eines anderen Objekts intern abbricht; in eigener Routine, weil eine anonyme Methode in
 /// einer Variablen, die die anderen anonymen Methoden derselben Routine einfangen, ihren eigenen Rahmen festhält
 /// (Leck unter Delphi). Main erst beim Aufruf: Tests registrieren die Werkzeuge ohne Gruppe.</summary>
