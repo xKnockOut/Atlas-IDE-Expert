@@ -1081,6 +1081,17 @@ begin
     ((mSymbol.Kind = TResolvedKind.Symbol) and not SameText(mSymbol.UnitName, 'System'));
 end;
 
+/// <summary>Steht bei AIndex ein Aufruf von System.Random (unqualifiziert, kein Aufzählungswert, nichts
+/// Eigenes)?</summary>
+function IsSystemRandom(const AContext: TRuleContext; const ATokens: TTokens; AIndex: Integer;
+  var ACache: IRuleDerivedCache): Boolean;
+begin
+  Result := SameText(ATokens[AIndex].Text, 'Random') and
+    ((AIndex = 0) or not ATokens[PreviousCode(ATokens, AIndex)].IsSymbol('.')) and
+    not InEnumDeclaration(AContext.Tree, ATokens[AIndex].Offset) and
+    not IsOwnRandom(AContext, ATokens, AIndex, ACache);
+end;
+
 procedure TRandomWithoutRandomizeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mTokens: TTokens;
@@ -1102,10 +1113,7 @@ begin
       begin
         Exit;
       end
-      else if (mFirst < 0) and SameText(mTokens[mIndex].Text, 'Random') and
-        ((mIndex = 0) or not mTokens[PreviousCode(mTokens, mIndex)].IsSymbol('.')) and
-        not InEnumDeclaration(AContext.Tree, mTokens[mIndex].Offset) and
-        not IsOwnRandom(AContext, mTokens, mIndex, mCache) then
+      else if (mFirst < 0) and IsSystemRandom(AContext, mTokens, mIndex, mCache) then
       begin
         mFirst := mIndex;
       end;
