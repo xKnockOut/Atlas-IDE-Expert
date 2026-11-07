@@ -3,7 +3,7 @@
 // Platform-Feature "Documents" für Linux (#1109): Gegenstück zu
 // Atlas.Windows.Documents.FileWatcher (#227). Ein Hintergrund-Thread wartet
 // über inotify auf Änderungen in den Ordnern der Dateien und sieht spätestens
-// alle PollMs nach (Ordner, die es noch nicht gibt). Welche Dateien sich
+// alle cPollMs nach (Ordner, die es noch nicht gibt). Welche Dateien sich
 // geändert haben, entscheidet wie unter Windows TFileChangeTracker über
 // Änderungszeit und Größe; OnChanged läuft im Beobachter-Thread.
 
@@ -20,10 +20,10 @@ type
 
   TFileWatcher = class
   public const
-    PollMs = 2000;
-    SettleMs = 100;
+    cPollMs = 2000;
+    cSettleMs = 100;
     /// <summary>So oft sieht der Thread nach Stop und neuer Dateiliste.</summary>
-    SliceMs = 100;
+    cSliceMs = 100;
   private
     FTracker: TFileChangeTracker;
     FStop: TEvent;
@@ -45,7 +45,7 @@ uses
   Linux;
 
 type
-  /// <summary>Beobachter-Thread: inotify auf die Ordner des Trackers, Abgleich spätestens alle PollMs.</summary>
+  /// <summary>Beobachter-Thread: inotify auf die Ordner des Trackers, Abgleich spätestens alle cPollMs.</summary>
   TWatchThread = class(TThread)
   private
     FTracker: TFileChangeTracker;
@@ -55,7 +55,7 @@ type
     /// <summary>Seit dem letzten Abgleich gewartete Zeit.</summary>
     FWaited: Integer;
     function OpenInotify: cint;
-    /// <summary>Wartet eine Scheibe von SliceMs auf Meldungen; False, wenn dabei Stop kam.</summary>
+    /// <summary>Wartet eine Scheibe von cSliceMs auf Meldungen; False, wenn dabei Stop kam.</summary>
     function WaitSlice(AInotify: cint): Boolean;
     procedure PollIfDue;
     /// <summary>Beobachtet bis zur neuen Dateiliste (True) oder bis Stop bzw. Terminate (False).</summary>
@@ -71,24 +71,24 @@ type
 
 class function TFileWatcher.Stamp(const AFileName: string): string;
 var
-  Info: Stat;
+  mInfo: Stat;
 begin
-  if FpStat(RawByteString(UTF8String(AFileName)), Info) <> 0 then
+  if FpStat(RawByteString(UTF8String(AFileName)), mInfo) <> 0 then
   begin
     Exit('');
   end;
-  if FpS_ISDIR(Info.st_mode) then
+  if FpS_ISDIR(mInfo.st_mode) then
   begin
     Exit('');
   end;
-  Result := Format('%d.%d.%d', [Int64(Info.st_mtime), Int64(Info.st_mtime_nsec), Int64(Info.st_size)]);
+  Result := Format('%d.%d.%d', [Int64(mInfo.st_mtime), Int64(mInfo.st_mtime_nsec), Int64(mInfo.st_size)]);
 end;
 
 /// <summary>Wartet bis zu ATimeoutMs auf Ereignisse von inotify und liest sie ab; True, wenn welche kamen.</summary>
 function WaitForEvents(AInotify: cint; ATimeoutMs: Integer): Boolean;
 var
-  Poll: pollfd;
-  Buffer: array[0..4095] of Byte;
+  mPoll: pollfd;
+  mBuffer: array[0..4095] of Byte;
 begin
   Result := False;
   if AInotify < 0 then
@@ -96,14 +96,14 @@ begin
     Sleep(ATimeoutMs);
     Exit;
   end;
-  Poll.fd := AInotify;
-  Poll.events := POLLIN;
-  Poll.revents := 0;
-  if FpPoll(@Poll, 1, ATimeoutMs) <= 0 then
+  mPoll.fd := AInotify;
+  mPoll.events := POLLIN;
+  mPoll.revents := 0;
+  if FpPoll(@mPoll, 1, ATimeoutMs) <= 0 then
   begin
     Exit;
   end;
-  while FpRead(AInotify, Buffer, SizeOf(Buffer)) > 0 do
+  while FpRead(AInotify, mBuffer, SizeOf(mBuffer)) > 0 do
   begin
     Result := True;
   end;
@@ -141,25 +141,25 @@ end;
 function TWatchThread.WaitSlice(AInotify: cint): Boolean;
 begin
   Result := True;
-  if not WaitForEvents(AInotify, TFileWatcher.SliceMs) then
+  if not WaitForEvents(AInotify, TFileWatcher.cSliceMs) then
   begin
-    Inc(FWaited, TFileWatcher.SliceMs);
+    Inc(FWaited, TFileWatcher.cSliceMs);
     Exit;
   end;
   // Mehrere Meldungen eines Speichervorgangs zusammenfassen.
-  if FStop.WaitFor(TFileWatcher.SettleMs) = wrSignaled then
+  if FStop.WaitFor(TFileWatcher.cSettleMs) = wrSignaled then
   begin
     Exit(False);
   end;
   WaitForEvents(AInotify, 0);
-  FWaited := TFileWatcher.PollMs;
+  FWaited := TFileWatcher.cPollMs;
 end;
 
 procedure TWatchThread.PollIfDue;
 var
   mChanged: TArray<string>;
 begin
-  if FWaited < TFileWatcher.PollMs then
+  if FWaited < TFileWatcher.cPollMs then
   begin
     Exit;
   end;
