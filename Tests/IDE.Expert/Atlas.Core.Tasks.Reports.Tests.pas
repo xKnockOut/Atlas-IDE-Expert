@@ -62,43 +62,43 @@ end;
 
 procedure TAtlasTaskReportsTests.FindingsBecomeProblemsOfTheTask;
 var
-  Found: TArray<TPair<string, TAtlasProblem>>;
+  mFound: TArray<TPair<string, TAtlasProblem>>;
 begin
-  Found := TAtlasTaskReports.Problems('Delphi-12-Prüfung', TArray<TAtlasTaskFinding>.Create(
+  mFound := TAtlasTaskReports.Problems('Delphi-12-Prüfung', TArray<TAtlasTaskFinding>.Create(
     Finding('C:\p\Kunde.pas', 88, 0, TAtlasTaskSeverity.Error, '„is not“ gibt es erst ab Delphi 13'),
     Finding('', 0, 0, TAtlasTaskSeverity.Error, 'ohne Datei'),
     Finding('C:\p\Kunde.pas', 0, 0, TAtlasTaskSeverity.Warning, ''),
     Finding('C:\p\Fremd.pas', 3, 0, TAtlasTaskSeverity.Info, 'Hinweis')), Lines());
-  Assert.AreEqual(3, Integer(Length(Found)), 'Fundstellen ohne Datei zählen nur in der Ausgabe');
-  Assert.AreEqual('C:\p\Kunde.pas', Found[0].Key);
-  Assert.AreEqual('Delphi-12-Prüfung', Found[0].Value.Source);
-  Assert.AreEqual(87, Found[0].Value.StartLine, '0-basiert');
-  Assert.IsTrue(Found[0].Value.Severity = TAtlasProblemSeverity.Error);
-  Assert.AreEqual(0, Found[1].Value.StartLine, 'ohne Zeile die erste');
-  Assert.IsTrue(Found[1].Value.Severity = TAtlasProblemSeverity.Warning);
-  Assert.IsTrue(Found[2].Value.Severity = TAtlasProblemSeverity.Information);
+  Assert.AreEqual(3, Integer(Length(mFound)), 'Fundstellen ohne Datei zählen nur in der Ausgabe');
+  Assert.AreEqual('C:\p\Kunde.pas', mFound[0].Key);
+  Assert.AreEqual('Delphi-12-Prüfung', mFound[0].Value.Source);
+  Assert.AreEqual(87, mFound[0].Value.StartLine, '0-basiert');
+  Assert.IsTrue(mFound[0].Value.Severity = TAtlasProblemSeverity.Error);
+  Assert.AreEqual(0, mFound[1].Value.StartLine, 'ohne Zeile die erste');
+  Assert.IsTrue(mFound[1].Value.Severity = TAtlasProblemSeverity.Warning);
+  Assert.IsTrue(mFound[2].Value.Severity = TAtlasProblemSeverity.Information);
   Assert.IsTrue(TAtlasTaskReports.Severity(TAtlasTaskSeverity.Error) = TAtlasProblemSeverity.Error);
 end;
 
 procedure TAtlasTaskReportsTests.RangeFollowsColumnOrLine;
 var
-  Found: TArray<TPair<string, TAtlasProblem>>;
+  mFound: TArray<TPair<string, TAtlasProblem>>;
 begin
-  Found := TAtlasTaskReports.Problems('t', TArray<TAtlasTaskFinding>.Create(
+  mFound := TAtlasTaskReports.Problems('t', TArray<TAtlasTaskFinding>.Create(
     Finding('C:\p\Kunde.pas', 88, 0, TAtlasTaskSeverity.Error, 'a'),
     Finding('C:\p\Kunde.pas', 88, 10, TAtlasTaskSeverity.Error, 'b'),
     Finding('C:\p\Kunde.pas', 88, 9, TAtlasTaskSeverity.Error, 'c'),
     Finding('C:\p\Fremd.pas', 3, 5, TAtlasTaskSeverity.Error, 'd'),
     Finding('C:\p\Fremd.pas', 3, 0, TAtlasTaskSeverity.Error, 'e')), Lines());
-  Assert.AreEqual(4, Found[0].Value.StartCharacter, 'ohne Einrückung');
-  Assert.AreEqual(25, Found[0].Value.EndCharacter, 'ohne Leerraum am Ende');
-  Assert.AreEqual(9, Found[1].Value.StartCharacter);
-  Assert.AreEqual(11, Found[1].Value.EndCharacter, 'das Wort „is“');
-  Assert.AreEqual(9, Found[2].Value.EndCharacter, 'Leerzeichen: ein Zeichen');
-  Assert.AreEqual(4, Found[3].Value.StartCharacter, 'Datei nicht lesbar');
-  Assert.AreEqual(5, Found[3].Value.EndCharacter);
-  Assert.AreEqual(0, Found[4].Value.StartCharacter);
-  Assert.AreEqual(1, Found[4].Value.EndCharacter);
+  Assert.AreEqual(4, mFound[0].Value.StartCharacter, 'ohne Einrückung');
+  Assert.AreEqual(25, mFound[0].Value.EndCharacter, 'ohne Leerraum am Ende');
+  Assert.AreEqual(9, mFound[1].Value.StartCharacter);
+  Assert.AreEqual(11, mFound[1].Value.EndCharacter, 'das Wort „is“');
+  Assert.AreEqual(9, mFound[2].Value.EndCharacter, 'Leerzeichen: ein Zeichen');
+  Assert.AreEqual(4, mFound[3].Value.StartCharacter, 'Datei nicht lesbar');
+  Assert.AreEqual(5, mFound[3].Value.EndCharacter);
+  Assert.AreEqual(0, mFound[4].Value.StartCharacter);
+  Assert.AreEqual(1, mFound[4].Value.EndCharacter);
 end;
 
 initialization

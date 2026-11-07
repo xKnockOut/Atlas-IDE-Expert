@@ -183,7 +183,7 @@ var
 begin
   Result := ExtractFileDir(ParamStr(0));
   if ASystem.Files.FileExists(TUpdateLayout.Join(TUpdateLayout.Join(Result, AArgs.Platform),
-    TUpdateVersions.BasePackage + TUpdateIdes.PackageSuffix(AArgs.Ide) + '.bpl')) then
+    TUpdateVersions.cBasePackage + TUpdateIdes.PackageSuffix(AArgs.Ide) + '.bpl')) then
   begin
     Exit;
   end;
@@ -242,7 +242,7 @@ var
   mFilesDir: string;
   mCandidates: TArray<TUpdateCandidate>;
 begin
-  if not ASystem.Files.FileExists(TUpdateLayout.Join(ExtractFileDir(ParamStr(0)), TUpdateLayout.ServerExe)) then
+  if not ASystem.Files.FileExists(TUpdateLayout.Join(ExtractFileDir(ParamStr(0)), TUpdateLayout.cServerExe)) then
   begin
     TShellUpdateSystem.Say(cTexts[TInstallText.NotUnpacked].Text);
     Exit(1);
@@ -280,7 +280,7 @@ begin
   mArgs.Command := 'install';
   mArgs.Staging := TUpdateLayout.Join(TShellUpdateSystem.UpdatesRoot, 'install');
   mArgs.NewModules := TUpdateNewModules.Install;
-  mSystem := TShellUpdateSystem.NewSystem(TUpdateLayout.Join(mArgs.Staging, TUpdateLayout.LogFile));
+  mSystem := TShellUpdateSystem.NewSystem(TUpdateLayout.Join(mArgs.Staging, TUpdateLayout.cLogFile));
   TShellUpdateSystem.Say(cTexts[TInstallText.Welcome].Fmt([TProductVersion.cVersion]));
   try
     Result := Install(mSystem, mArgs);

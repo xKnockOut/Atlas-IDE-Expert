@@ -40,15 +40,15 @@ uses
 
 function Sections(const ALines: array of string): TAtlasUnitSections;
 var
-  Lines: TArray<string>;
-  Index: Integer;
+  mLines: TArray<string>;
+  mIndex: Integer;
 begin
-  SetLength(Lines, Length(ALines));
-  for Index := 0 to High(ALines) do
+  SetLength(mLines, Length(ALines));
+  for mIndex := 0 to High(ALines) do
   begin
-    Lines[Index] := ALines[Index];
+    mLines[mIndex] := ALines[mIndex];
   end;
-  Result := TAtlasSectionScanner.Scan(Lines);
+  Result := TAtlasSectionScanner.Scan(mLines);
 end;
 
 function Cost(ACount: Integer): TAtlasInterfaceCost;
@@ -61,52 +61,52 @@ end;
 
 procedure TAtlasInterfaceCostTests.ParsesServerAnswer;
 var
-  Value: TAtlasInterfaceCost;
+  mValue: TAtlasInterfaceCost;
 begin
   Assert.IsTrue(TAtlasInterfaceCostModel.Parse('{"found":true,"unit":"Unten","file":"C:\\P\\Unten.pas",' +
-    '"recompileCount":2,"units":["Mitte","Oben"],"generation":12}', Value));
-  Assert.IsTrue(Value.Found);
-  Assert.AreEqual('Unten', Value.UnitName);
-  Assert.AreEqual('C:\P\Unten.pas', Value.FileName);
-  Assert.AreEqual(2, Value.RecompileCount);
-  Assert.AreEqual('Mitte,Oben', string.Join(',', Value.Units));
-  Assert.AreEqual(Int64(12), Value.Generation);
-  Assert.IsTrue(TAtlasInterfaceCostModel.Parse('{"found":false,"unit":"Neu","recompileCount":0}', Value));
-  Assert.IsFalse(Value.Found);
-  Assert.IsNull(Value.Units);
+    '"recompileCount":2,"units":["Mitte","Oben"],"generation":12}', mValue));
+  Assert.IsTrue(mValue.Found);
+  Assert.AreEqual('Unten', mValue.UnitName);
+  Assert.AreEqual('C:\P\Unten.pas', mValue.FileName);
+  Assert.AreEqual(2, mValue.RecompileCount);
+  Assert.AreEqual('Mitte,Oben', string.Join(',', mValue.Units));
+  Assert.AreEqual(Int64(12), mValue.Generation);
+  Assert.IsTrue(TAtlasInterfaceCostModel.Parse('{"found":false,"unit":"Neu","recompileCount":0}', mValue));
+  Assert.IsFalse(mValue.Found);
+  Assert.IsNull(mValue.Units);
 end;
 
 procedure TAtlasInterfaceCostTests.RejectsEmptyOrBrokenAnswer;
 var
-  Value: TAtlasInterfaceCost;
+  mValue: TAtlasInterfaceCost;
 begin
-  Assert.IsFalse(TAtlasInterfaceCostModel.Parse('', Value));
-  Assert.IsFalse(TAtlasInterfaceCostModel.Parse('[1]', Value));
-  Assert.IsFalse(TAtlasInterfaceCostModel.Parse('{"found":true}', Value), 'ohne recompileCount');
-  Assert.IsFalse(TAtlasInterfaceCostModel.Parse('{kaputt', Value));
+  Assert.IsFalse(TAtlasInterfaceCostModel.Parse('', mValue));
+  Assert.IsFalse(TAtlasInterfaceCostModel.Parse('[1]', mValue));
+  Assert.IsFalse(TAtlasInterfaceCostModel.Parse('{"found":true}', mValue), 'ohne recompileCount');
+  Assert.IsFalse(TAtlasInterfaceCostModel.Parse('{kaputt', mValue));
 end;
 
 procedure TAtlasInterfaceCostTests.BuildsArguments;
 begin
-  Assert.AreEqual('atlas.interfaceCost', TAtlasInterfaceCostModel.Command);
+  Assert.AreEqual('atlas.interfaceCost', TAtlasInterfaceCostModel.cCommand);
   Assert.AreEqual('["file:///C:/P/A.pas"]', TAtlasInterfaceCostModel.Arguments('file:///C:/P/A.pas'));
 end;
 
 procedure TAtlasInterfaceCostTests.InterfacePartEndsBeforeImplementation;
 var
-  Value: TAtlasUnitSections;
+  mValue: TAtlasUnitSections;
 begin
-  Value := Sections(['unit Unten;', 'interface', 'uses', '  Basis;', 'type', '  TUnten = class end;',
+  mValue := Sections(['unit Unten;', 'interface', 'uses', '  Basis;', 'type', '  TUnten = class end;',
     'implementation', 'procedure P;', 'begin', 'end;', 'end.']);
-  Assert.IsFalse(TAtlasInterfaceCostModel.InInterfacePart(Value, 0, 5), 'Unit-Kopf');
-  Assert.IsTrue(TAtlasInterfaceCostModel.InInterfacePart(Value, 1, 0), 'auf interface');
-  Assert.IsTrue(TAtlasInterfaceCostModel.InInterfacePart(Value, 3, 4), 'interface-uses zählen mit');
-  Assert.IsTrue(TAtlasInterfaceCostModel.InInterfacePart(Value, 5, 10));
-  Assert.IsFalse(TAtlasInterfaceCostModel.InInterfacePart(Value, 6, 0), 'auf implementation');
-  Assert.IsFalse(TAtlasInterfaceCostModel.InInterfacePart(Value, 8, 2), 'Änderung im implementation: kein Hinweis');
+  Assert.IsFalse(TAtlasInterfaceCostModel.InInterfacePart(mValue, 0, 5), 'Unit-Kopf');
+  Assert.IsTrue(TAtlasInterfaceCostModel.InInterfacePart(mValue, 1, 0), 'auf interface');
+  Assert.IsTrue(TAtlasInterfaceCostModel.InInterfacePart(mValue, 3, 4), 'interface-uses zählen mit');
+  Assert.IsTrue(TAtlasInterfaceCostModel.InInterfacePart(mValue, 5, 10));
+  Assert.IsFalse(TAtlasInterfaceCostModel.InInterfacePart(mValue, 6, 0), 'auf implementation');
+  Assert.IsFalse(TAtlasInterfaceCostModel.InInterfacePart(mValue, 8, 2), 'Änderung im implementation: kein Hinweis');
   // Noch ohne implementation (beim Tippen): alles nach interface.
-  Value := Sections(['unit Neu;', 'interface', 'type', '  T = Integer;']);
-  Assert.IsTrue(TAtlasInterfaceCostModel.InInterfacePart(Value, 3, 2));
+  mValue := Sections(['unit Neu;', 'interface', 'type', '  T = Integer;']);
+  Assert.IsTrue(TAtlasInterfaceCostModel.InInterfacePart(mValue, 3, 2));
 end;
 
 procedure TAtlasInterfaceCostTests.ProgramHasNoInterfacePart;
@@ -119,30 +119,30 @@ end;
 
 procedure TAtlasInterfaceCostTests.VisibleOnlyInInterfaceWithCost;
 var
-  Unknown: TAtlasInterfaceCost;
+  mUnknown: TAtlasInterfaceCost;
 begin
   Assert.IsTrue(TAtlasInterfaceCostModel.Visible(True, True, Cost(2)));
   Assert.IsFalse(TAtlasInterfaceCostModel.Visible(False, True, Cost(2)), 'build.showInterfaceCost aus');
   Assert.IsFalse(TAtlasInterfaceCostModel.Visible(True, False, Cost(2)), 'im implementation-Teil');
   Assert.IsFalse(TAtlasInterfaceCostModel.Visible(True, True, Cost(0)), 'niemand verwendet die Unit');
-  Unknown := Cost(3);
-  Unknown.Found := False;
-  Assert.IsFalse(TAtlasInterfaceCostModel.Visible(True, True, Unknown), 'nicht im Index');
+  mUnknown := Cost(3);
+  mUnknown.Found := False;
+  Assert.IsFalse(TAtlasInterfaceCostModel.Visible(True, True, mUnknown), 'nicht im Index');
 end;
 
 procedure TAtlasInterfaceCostTests.UnitListCountsTheRest;
 var
-  Value: TAtlasInterfaceCost;
-  More: Integer;
+  mValue: TAtlasInterfaceCost;
+  mMore: Integer;
 begin
-  Value := Cost(12);
-  Value.Units := TArray<string>.Create('A', 'B');
-  Assert.AreEqual('A, B', TAtlasInterfaceCostModel.UnitList(Value, More));
-  Assert.AreEqual(10, More);
-  Value := Cost(2);
-  Value.Units := TArray<string>.Create('Mitte', 'Oben');
-  Assert.AreEqual('Mitte, Oben', TAtlasInterfaceCostModel.UnitList(Value, More));
-  Assert.AreEqual(0, More);
+  mValue := Cost(12);
+  mValue.Units := TArray<string>.Create('A', 'B');
+  Assert.AreEqual('A, B', TAtlasInterfaceCostModel.UnitList(mValue, mMore));
+  Assert.AreEqual(10, mMore);
+  mValue := Cost(2);
+  mValue.Units := TArray<string>.Create('Mitte', 'Oben');
+  Assert.AreEqual('Mitte, Oben', TAtlasInterfaceCostModel.UnitList(mValue, mMore));
+  Assert.AreEqual(0, mMore);
 end;
 
 initialization

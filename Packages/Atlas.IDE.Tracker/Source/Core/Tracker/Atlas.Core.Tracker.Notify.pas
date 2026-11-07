@@ -122,26 +122,26 @@ type
 
   TAtlasTrackerNotify = class
   public const
-    FileName = 'notify.json';
-    Version = 1;
+    cFileName = 'notify.json';
+    cVersion = 1;
     /// <summary>Kleinster und vorgegebener Abstand in Minuten (issues.notify.intervalMinutes).</summary>
-    MinInterval = 2;
-    DefaultInterval = 10;
+    cMinInterval = 2;
+    cDefaultInterval = 10;
     /// <summary>Größter Abstand nach Fehlern.</summary>
-    MaxBackoffMinutes = 60;
+    cMaxBackoffMinutes = 60;
     /// <summary>Ohne Eingabe so lange setzt die Abfrage aus.</summary>
-    IdleMinutes = 30;
+    cIdleMinutes = 30;
     /// <summary>Beim Öffnen von „Meine Issues“ frühestens so lange nach der letzten Abfrage.</summary>
-    OnDemandMs = 60000;
+    cOnDemandMs = 60000;
     /// <summary>Zeitgrenze einer Abfrage je Verbindung.</summary>
-    TimeoutMs = 15000;
+    cTimeoutMs = 15000;
     /// <summary>Höchstens so viele Meldungen je Abfrage; der Rest kommt als eine Sammelmeldung.</summary>
-    MaxNotices = 10;
+    cMaxNotices = 10;
     /// <summary>Höchstens so viele Issues mit Punkt je Verbindung (die ältesten fallen heraus).</summary>
-    MaxUnseen = 50;
-    ScopeAssigned = 'assigned';
-    ScopeAssignedOrCreated = 'assignedOrCreated';
-    ScopeWatched = 'watched';
+    cMaxUnseen = 50;
+    cScopeAssigned = 'assigned';
+    cScopeAssignedOrCreated = 'assignedOrCreated';
+    cScopeWatched = 'watched';
   public
     /// <summary>"anbieter|server" (klein); '' ohne Anbieter oder Server.</summary>
     class function ConnectionId(const ATarget: TAtlasTrackerTarget): string; static;
@@ -296,7 +296,7 @@ begin
   begin
     Exit;
   end;
-  mCap := UInt64(TAtlasTrackerNotify.MaxBackoffMinutes) * 60000;
+  mCap := UInt64(TAtlasTrackerNotify.cMaxBackoffMinutes) * 60000;
   if mBase >= mCap then
   begin
     Exit;
@@ -330,7 +330,7 @@ begin
   begin
     Exit(False);
   end;
-  mWait := TAtlasTrackerNotify.OnDemandMs;
+  mWait := TAtlasTrackerNotify.cOnDemandMs;
   if UInt64(PollSeconds) * 1000 > mWait then
   begin
     mWait := UInt64(PollSeconds) * 1000;
@@ -379,7 +379,7 @@ end;
 class function TAtlasTrackerNotify.UnseenProject(const ATarget: TAtlasTrackerTarget): string;
 begin
   Result := '';
-  if SameText(ATarget.Provider, TAtlasTrackerTarget.GitHub) then
+  if SameText(ATarget.Provider, TAtlasTrackerTarget.cGitHub) then
   begin
     Result := ATarget.Project;
   end;
@@ -389,21 +389,21 @@ class function TAtlasTrackerNotify.ScopeName(AScope: TAtlasTrackerNotifyScope): 
 begin
   case AScope of
     TAtlasTrackerNotifyScope.Assigned:
-      Result := ScopeAssigned;
+      Result := cScopeAssigned;
     TAtlasTrackerNotifyScope.Watched:
-      Result := ScopeWatched;
+      Result := cScopeWatched;
   else
-    Result := ScopeAssignedOrCreated;
+    Result := cScopeAssignedOrCreated;
   end;
 end;
 
 class function TAtlasTrackerNotify.ScopeOf(const AName: string): TAtlasTrackerNotifyScope;
 begin
-  if SameText(Trim(AName), ScopeAssigned) then
+  if SameText(Trim(AName), cScopeAssigned) then
   begin
     Result := TAtlasTrackerNotifyScope.Assigned;
   end
-  else if SameText(Trim(AName), ScopeWatched) then
+  else if SameText(Trim(AName), cScopeWatched) then
   begin
     Result := TAtlasTrackerNotifyScope.Watched;
   end
@@ -416,15 +416,15 @@ end;
 class function TAtlasTrackerNotify.Interval(AMinutes: Integer): Integer;
 begin
   Result := AMinutes;
-  if Result < MinInterval then
+  if Result < cMinInterval then
   begin
-    Result := MinInterval;
+    Result := cMinInterval;
   end;
 end;
 
 class function TAtlasTrackerNotify.UserActive(AMinimized: Boolean; AIdleMs: UInt64): Boolean;
 begin
-  Result := not AMinimized and (AIdleMs < UInt64(IdleMinutes) * 60000);
+  Result := not AMinimized and (AIdleMs < UInt64(cIdleMinutes) * 60000);
 end;
 
 class function TAtlasTrackerNotify.Foreign(const AChanges: TArray<TAtlasTrackerChange>;
@@ -617,9 +617,9 @@ begin
     mItem.Anchor := mNotice.Anchor;
     AConnection.Unseen := AConnection.Unseen + [mItem];
   end;
-  if Length(AConnection.Unseen) > MaxUnseen then
+  if Length(AConnection.Unseen) > cMaxUnseen then
   begin
-    AConnection.Unseen := Copy(AConnection.Unseen, Length(AConnection.Unseen) - MaxUnseen, MaxUnseen);
+    AConnection.Unseen := Copy(AConnection.Unseen, Length(AConnection.Unseen) - cMaxUnseen, cMaxUnseen);
   end;
 end;
 
@@ -705,7 +705,7 @@ var
 begin
   mRoot := TJSONObject.Create;
   try
-    mRoot.AddPair('version', TJSONNumber.Create(Version));
+    mRoot.AddPair('version', TJSONNumber.Create(cVersion));
     mRoot.AddPair('enabled', TJSONBool.Create(AFile.Enabled));
     mList := TJSONArray.Create;
     mRoot.AddPair('connections', mList);
@@ -787,7 +787,7 @@ var
 begin
   Result := (AValue is TJSONObject) and (TJSONObject(AValue).Values['version'] is TJSONNumber) and
     TryStrToInt(TJSONNumber(TJSONObject(AValue).Values['version']).Value, mVersion) and
-    (mVersion = TAtlasTrackerNotify.Version);
+    (mVersion = TAtlasTrackerNotify.cVersion);
 end;
 
 class function TAtlasTrackerNotify.FromJson(const AJson: string; out AFile: TAtlasTrackerNotifyFile): Boolean;
@@ -833,7 +833,7 @@ begin
     Exit;
   end;
   // Fehlt, gesperrt oder kaputt: wie ohne Datei, also „jetzt“.
-  if TAtlasTrackerFiles.Files.ReadText(TAtlasTrackerFiles.Join(AFolder, FileName), mText) and
+  if TAtlasTrackerFiles.Files.ReadText(TAtlasTrackerFiles.Join(AFolder, cFileName), mText) and
     not FromJson(mText, Result) then
   begin
     Result := TAtlasTrackerNotifyFile.Empty;
@@ -849,7 +849,7 @@ begin
   end;
   // Erst daneben schreiben, dann ersetzen: Ein Abbruch lässt nie eine halbe Datei zurück. Kein Platz, keine
   // Rechte: Der Stand bleibt im Speicher und wird beim nächsten Mal wieder geschrieben.
-  Result := TAtlasTrackerFiles.Files.ReplaceText(TAtlasTrackerFiles.Join(AFolder, FileName), ToJson(AFile));
+  Result := TAtlasTrackerFiles.Files.ReplaceText(TAtlasTrackerFiles.Join(AFolder, cFileName), ToJson(AFile));
 end;
 
 end.

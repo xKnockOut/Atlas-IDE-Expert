@@ -87,7 +87,8 @@ type
     /// <summary>Mögliche Zuständige (…/assignees) als Benutzer ohne Anzeigenamen (#1278); False bei ungültigem
     /// JSON.</summary>
     class function ParseUsers(const AJson: string; out AUsers: TArray<TAtlasTrackerUser>): Boolean; static;
-    /// <summary>"body" aus der Antwort von /issues/&lt;n&gt;, ungekürzt ('' bei null); False bei ungültigem JSON (#1273).
+    /// <summary>"body" aus der Antwort von /issues/&lt;n&gt;, ungekürzt ('' bei null); False bei ungültigem JSON
+    /// (#1273).
     /// </summary>
     class function ParseBody(const AJson: string; out AText: string): Boolean; static;
     /// <summary>sub_issues_summary und issue_dependencies_summary aus /issues/&lt;n&gt; (#1279).</summary>
@@ -97,7 +98,7 @@ type
     class function ParseRelated(const AJson, AProject: string; AKind: TAtlasTrackerLinkKind;
       out ALinks: TArray<TAtlasTrackerLink>): Boolean; static;
     /// <summary>ANew in ALinks übernehmen: eine Erwähnung desselben Issues wird durch die genauere Art ersetzt,
-    /// dieselbe Art nicht doppelt; höchstens TAtlasTrackerDetails.MaxLinks.</summary>
+    /// dieselbe Art nicht doppelt; höchstens TAtlasTrackerDetails.cMaxLinks.</summary>
     class procedure MergeLinks(var ALinks: TArray<TAtlasTrackerLink>; const ANew: TArray<TAtlasTrackerLink>); static;
     /// <summary>Interne ID ("id") aus /issues/&lt;n&gt; bzw. der Antwort beim Anlegen; 0 ohne.</summary>
     class function ParseIssueId(const AJson: string): Int64; static;
@@ -197,10 +198,10 @@ begin
     Exit;
   end;
   AIssue.Key := '#' + IntToStr(AIssue.Number);
-  AIssue.Title := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(mItem, 'title'), TAtlasTrackerIssue.MaxTitle);
+  AIssue.Title := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(mItem, 'title'), TAtlasTrackerIssue.cMaxTitle);
   AIssue.State := TAtlasGitHubJson.TextOf(mItem, 'state');
   AIssue.Assignee := TAtlasGitHubJson.AssigneesOf(mItem);
-  AIssue.Labels := IssueLabelsOf(mItem.Values['labels'], TAtlasTrackerIssue.MaxLabels);
+  AIssue.Labels := IssueLabelsOf(mItem.Values['labels'], TAtlasTrackerIssue.cMaxLabels);
 end;
 
 class function TAtlasGitHubParse.ParseIssues(const AJson: string; AMax: Integer;
@@ -253,47 +254,47 @@ end;
 
 class function TAtlasGitHubParse.ParsePulls(const AJson: string; out APulls: TArray<TAtlasGitHubPull>): Boolean;
 var
-  Value, Item, Head: TJSONValue;
-  Pull: TAtlasGitHubPull;
+  mValue, mItem, mHead: TJSONValue;
+  mPull: TAtlasGitHubPull;
 begin
   APulls := nil;
   Result := False;
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    if not (Value is TJSONArray) then
+    if not (mValue is TJSONArray) then
     begin
       Exit;
     end;
     Result := True;
-    for Item in TJSONArray(Value) do
+    for mItem in TJSONArray(mValue) do
     begin
-      if not (Item is TJSONObject) then
+      if not (mItem is TJSONObject) then
       begin
         Continue;
       end;
-      Pull := Default(TAtlasGitHubPull);
-      Pull.Number := TAtlasGitHubJson.IntOf(TJSONObject(Item), 'number');
-      if Pull.Number <= 0 then
+      mPull := Default(TAtlasGitHubPull);
+      mPull.Number := TAtlasGitHubJson.IntOf(TJSONObject(mItem), 'number');
+      if mPull.Number <= 0 then
       begin
         Continue;
       end;
-      Pull.Draft := TAtlasGitHubJson.FlagOf(TJSONObject(Item), 'draft');
-      Pull.State := LowerCase(TAtlasGitHubJson.TextOf(TJSONObject(Item), 'state'));
-      Pull.Merged := TAtlasGitHubJson.TextOf(TJSONObject(Item), 'merged_at') <> '';
-      Pull.Updated := UpdatedOf(TJSONObject(Item));
-      Pull.Title := TAtlasGitHubJson.TextOf(TJSONObject(Item), 'title');
+      mPull.Draft := TAtlasGitHubJson.FlagOf(TJSONObject(mItem), 'draft');
+      mPull.State := LowerCase(TAtlasGitHubJson.TextOf(TJSONObject(mItem), 'state'));
+      mPull.Merged := TAtlasGitHubJson.TextOf(TJSONObject(mItem), 'merged_at') <> '';
+      mPull.Updated := UpdatedOf(TJSONObject(mItem));
+      mPull.Title := TAtlasGitHubJson.TextOf(TJSONObject(mItem), 'title');
       // Nur der Anfang: „closes #N“ steht fast immer oben, und lange Beschreibungen kosten nur Speicher.
-      Pull.Body := Copy(TAtlasGitHubJson.TextOf(TJSONObject(Item), 'body'), 1, 4000);
-      Head := TJSONObject(Item).Values['head'];
-      if Head is TJSONObject then
+      mPull.Body := Copy(TAtlasGitHubJson.TextOf(TJSONObject(mItem), 'body'), 1, 4000);
+      mHead := TJSONObject(mItem).Values['head'];
+      if mHead is TJSONObject then
       begin
-        Pull.Branch := TAtlasGitHubJson.TextOf(TJSONObject(Head), 'ref');
-        Pull.Sha := TAtlasGitHubJson.TextOf(TJSONObject(Head), 'sha');
+        mPull.Branch := TAtlasGitHubJson.TextOf(TJSONObject(mHead), 'ref');
+        mPull.Sha := TAtlasGitHubJson.TextOf(TJSONObject(mHead), 'sha');
       end;
-      APulls := APulls + [Pull];
+      APulls := APulls + [mPull];
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -350,7 +351,7 @@ begin
   begin
     Exit;
   end;
-  Result := (TAtlasTrackerNaming.KeyOfBranch(TAtlasGitHubApi.ProviderName, '',
+  Result := (TAtlasTrackerNaming.KeyOfBranch(TAtlasGitHubApi.cProviderName, '',
     APull.Branch) = '#' + IntToStr(ANumber)) or
     TextClosesIssue(APull.Title, ANumber) or TextClosesIssue(APull.Body, ANumber);
 end;
@@ -403,98 +404,98 @@ end;
 
 class function TAtlasGitHubParse.ParseCheckRuns(const AJson: string; out AChecks: TAtlasTrackerChecks): Boolean;
 var
-  Value, Runs, Run: TJSONValue;
-  Status, Conclusion: string;
-  Any, Running, Failed: Boolean;
+  mValue, mRuns, mRun: TJSONValue;
+  mStatus, mConclusion: string;
+  mAny, mRunning, mFailed: Boolean;
 begin
   AChecks := TAtlasTrackerChecks.Unknown;
   Result := False;
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    Runs := TJSONObject(Value).Values['check_runs'];
-    if not (Runs is TJSONArray) then
+    mRuns := TJSONObject(mValue).Values['check_runs'];
+    if not (mRuns is TJSONArray) then
     begin
       Exit;
     end;
     Result := True;
-    Any := False;
-    Running := False;
-    Failed := False;
-    for Run in TJSONArray(Runs) do
+    mAny := False;
+    mRunning := False;
+    mFailed := False;
+    for mRun in TJSONArray(mRuns) do
     begin
-      if not (Run is TJSONObject) then
+      if not (mRun is TJSONObject) then
       begin
         Continue;
       end;
-      Any := True;
-      Status := LowerCase(TAtlasGitHubJson.TextOf(TJSONObject(Run), 'status'));
-      Conclusion := LowerCase(TAtlasGitHubJson.TextOf(TJSONObject(Run), 'conclusion'));
-      if Status <> 'completed' then
+      mAny := True;
+      mStatus := LowerCase(TAtlasGitHubJson.TextOf(TJSONObject(mRun), 'status'));
+      mConclusion := LowerCase(TAtlasGitHubJson.TextOf(TJSONObject(mRun), 'conclusion'));
+      if mStatus <> 'completed' then
       begin
-        Running := True;
+        mRunning := True;
       end
-      else if (Conclusion = 'failure') or (Conclusion = 'timed_out') or (Conclusion = 'cancelled') or
-        (Conclusion = 'action_required') or (Conclusion = 'startup_failure') then
+      else if (mConclusion = 'failure') or (mConclusion = 'timed_out') or (mConclusion = 'cancelled') or
+        (mConclusion = 'action_required') or (mConclusion = 'startup_failure') then
       begin
-        Failed := True;
+        mFailed := True;
       end;
     end;
-    if Failed then
+    if mFailed then
     begin
       AChecks := TAtlasTrackerChecks.Failure;
     end
-    else if Running then
+    else if mRunning then
     begin
       AChecks := TAtlasTrackerChecks.Pending;
     end
-    else if Any then
+    else if mAny then
     begin
       AChecks := TAtlasTrackerChecks.Success;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TAtlasGitHubParse.ParseStatus(const AJson: string; out AChecks: TAtlasTrackerChecks): Boolean;
 var
-  Value, Statuses: TJSONValue;
-  State: string;
+  mValue, mStatuses: TJSONValue;
+  mState: string;
 begin
   AChecks := TAtlasTrackerChecks.Unknown;
   Result := False;
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
     Result := True;
     // Ohne einzelne Status meldet GitHub "pending"; das ist keine Ampel.
-    Statuses := TJSONObject(Value).Values['statuses'];
-    if not (Statuses is TJSONArray) or (TJSONArray(Statuses).Count = 0) then
+    mStatuses := TJSONObject(mValue).Values['statuses'];
+    if not (mStatuses is TJSONArray) or (TJSONArray(mStatuses).Count = 0) then
     begin
       Exit;
     end;
-    State := LowerCase(TAtlasGitHubJson.TextOf(TJSONObject(Value), 'state'));
-    if State = 'success' then
+    mState := LowerCase(TAtlasGitHubJson.TextOf(TJSONObject(mValue), 'state'));
+    if mState = 'success' then
     begin
       AChecks := TAtlasTrackerChecks.Success;
     end
-    else if (State = 'failure') or (State = 'error') then
+    else if (mState = 'failure') or (mState = 'error') then
     begin
       AChecks := TAtlasTrackerChecks.Failure;
     end
-    else if State = 'pending' then
+    else if mState = 'pending' then
     begin
       AChecks := TAtlasTrackerChecks.Pending;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -693,7 +694,7 @@ begin
     begin
       mIssue := CrossReferencedIssue(mItem);
       if (mIssue <> nil) and TimelineLinkOf(mIssue, AProject, mLink) and not HasLinkKey(ALinks, mLink.Key)
-        and (Length(ALinks) < TAtlasTrackerDetails.MaxLinks) then
+        and (Length(ALinks) < TAtlasTrackerDetails.cMaxLinks) then
       begin
         ALinks := ALinks + [mLink];
       end;
@@ -746,7 +747,7 @@ var
 begin
   for mLink in TAtlasTrackerMarkdown.Links(AText) do
   begin
-    if (Length(AAttachments) < TAtlasTrackerDetails.MaxAttachments) and FileAttachmentOf(mLink, mAttachment)
+    if (Length(AAttachments) < TAtlasTrackerDetails.cMaxAttachments) and FileAttachmentOf(mLink, mAttachment)
       and not HasAttachmentUrl(AAttachments, mAttachment.Url) then
     begin
       AAttachments := AAttachments + [mAttachment];
@@ -933,7 +934,7 @@ begin
     end;
     for mItem in TJSONArray(mValue) do
     begin
-      if (mItem is TJSONObject) and (Length(ALinks) < TAtlasTrackerDetails.MaxLinks)
+      if (mItem is TJSONObject) and (Length(ALinks) < TAtlasTrackerDetails.cMaxLinks)
         and IssueLinkOf(TJSONObject(mItem), RepositoryOf(TJSONObject(mItem)), AProject, mLink) then
       begin
         mLink.Kind := AKind;
@@ -979,7 +980,7 @@ var
 begin
   for mLink in ANew do
   begin
-    if not MergedIntoKnown(ALinks, mLink) and (Length(ALinks) < TAtlasTrackerDetails.MaxLinks) then
+    if not MergedIntoKnown(ALinks, mLink) and (Length(ALinks) < TAtlasTrackerDetails.cMaxLinks) then
     begin
       ALinks := ALinks + [mLink];
     end;
@@ -1067,7 +1068,7 @@ begin
         Continue;
       end;
       mThread.Title := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(mSubject, 'title'),
-        TAtlasTrackerIssue.MaxTitle);
+        TAtlasTrackerIssue.cMaxTitle);
       mThread.Reason := LowerCase(TAtlasGitHubJson.TextOf(mObject, 'reason'));
       mThread.Updated := TAtlasGitHubJson.TimeOf(mObject, 'updated_at');
       if mThread.Updated > ASince then

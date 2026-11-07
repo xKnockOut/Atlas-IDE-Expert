@@ -20,7 +20,7 @@ type
   TAtlasTrackerNoticeText = class
   public const
     /// <summary>Trenner zwischen den Teilen einer Meldung.</summary>
-    Separator = ' · ';
+    cSeparator = ' · ';
   public
     /// <summary>Titel der Meldung zu einem Issue: Kennung und was neu ist (Zuweisung, Kommentare, Zustand).
     /// </summary>
@@ -93,11 +93,11 @@ begin
   end;
   if mPlain then
   begin
-    Result := ANotice.Key + ' ' + string.Join(Separator, mParts);
+    Result := ANotice.Key + ' ' + string.Join(cSeparator, mParts);
   end
   else
   begin
-    Result := ANotice.Key + ': ' + string.Join(Separator, mParts);
+    Result := ANotice.Key + ': ' + string.Join(cSeparator, mParts);
   end;
 end;
 

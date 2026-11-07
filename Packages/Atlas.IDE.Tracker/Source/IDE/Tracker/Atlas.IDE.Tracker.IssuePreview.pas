@@ -558,7 +558,7 @@ begin
       mOk := False;
       mError := TAtlasCiFetchError.Network;
       try
-        mOk := mProvider.Details(TAtlasTrackerCall.Create(mEntry.Target, mTransport, TAtlasIssuePreview.TimeoutMs),
+        mOk := mProvider.Details(TAtlasTrackerCall.Create(mEntry.Target, mTransport, TAtlasIssuePreview.cTimeoutMs),
           mEntry.Key, mComments, mResult, mError);
       except
         // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.

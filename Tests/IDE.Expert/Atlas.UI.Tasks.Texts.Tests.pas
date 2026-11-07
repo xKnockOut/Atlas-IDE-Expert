@@ -45,8 +45,8 @@ uses
 
 function Run(AOutcome: TAtlasTaskOutcome; AExitCode, AErrors: Integer): TAtlasTaskRun;
 var
-  Index: Integer;
-  Finding: TAtlasTaskFinding;
+  mIndex: Integer;
+  mFinding: TAtlasTaskFinding;
 begin
   Result := Default(TAtlasTaskRun);
   Result.Name := 'Delphi-12-Prüfung';
@@ -54,12 +54,12 @@ begin
   Result.ExitCode := AExitCode;
   Result.DurationMs := 2340;
   Result.Cwd := 'C:\Proj';
-  for Index := 1 to AErrors do
+  for mIndex := 1 to AErrors do
   begin
-    Finding := Default(TAtlasTaskFinding);
-    Finding.FileName := 'C:\Proj\Kunde.pas';
-    Finding.Line := Index;
-    Result.Findings := Result.Findings + [Finding];
+    mFinding := Default(TAtlasTaskFinding);
+    mFinding.FileName := 'C:\Proj\Kunde.pas';
+    mFinding.Line := mIndex;
+    Result.Findings := Result.Findings + [mFinding];
   end;
 end;
 
@@ -91,7 +91,7 @@ end;
 
 procedure TAtlasTaskTextsTests.HeaderPerOutcome;
 var
-  Item: TAtlasTaskRun;
+  mItem: TAtlasTaskRun;
 begin
   Assert.AreEqual('Delphi-12-Prüfung: Exit-Code 1, 2,3 s, 2 Befunde',
     TAtlasTaskTexts.Header(Run(TAtlasTaskOutcome.Finished, 1, 2), 600));
@@ -99,13 +99,13 @@ begin
     TAtlasTaskTexts.Header(Run(TAtlasTaskOutcome.TimedOut, -1, 0), 600));
   Assert.AreEqual('Delphi-12-Prüfung: abgebrochen, 1 Befund',
     TAtlasTaskTexts.Header(Run(TAtlasTaskOutcome.Cancelled, -1, 1), 600));
-  Item := Run(TAtlasTaskOutcome.ProgramMissing, -1, 0);
-  Item.Error := 'pwsh';
+  mItem := Run(TAtlasTaskOutcome.ProgramMissing, -1, 0);
+  mItem.Error := 'pwsh';
   Assert.AreEqual('Delphi-12-Prüfung: Programm „pwsh“ nicht gefunden (gesucht in C:\Proj und in PATH)',
-    TAtlasTaskTexts.Header(Item, 600), 'klare Meldung mit Pfad');
-  Item := Run(TAtlasTaskOutcome.StartFailed, -1, 0);
-  Item.Error := 'Zugriff verweigert';
-  Assert.AreEqual('Delphi-12-Prüfung: Start fehlgeschlagen: Zugriff verweigert', TAtlasTaskTexts.Header(Item, 600));
+    TAtlasTaskTexts.Header(mItem, 600), 'klare Meldung mit Pfad');
+  mItem := Run(TAtlasTaskOutcome.StartFailed, -1, 0);
+  mItem.Error := 'Zugriff verweigert';
+  Assert.AreEqual('Delphi-12-Prüfung: Start fehlgeschlagen: Zugriff verweigert', TAtlasTaskTexts.Header(mItem, 600));
   Assert.AreEqual('▶ Delphi-12-Prüfung läuft: pwsh Tools/Check-Delphi12.ps1',
     TAtlasTaskTexts.Running('Delphi-12-Prüfung', 'pwsh Tools/Check-Delphi12.ps1'));
 end;
@@ -122,25 +122,25 @@ end;
 
 procedure TAtlasTaskTextsTests.LastResultAndDescription;
 var
-  Last: TAtlasTaskLastRun;
-  Task: TAtlasTaskDefinition;
+  mLast: TAtlasTaskLastRun;
+  mTask: TAtlasTaskDefinition;
 begin
   Assert.AreEqual('noch nicht gelaufen', TAtlasTaskTexts.LastResult(Default(TAtlasTaskLastRun), False));
-  Last := TAtlasTaskLastRun.From(Run(TAtlasTaskOutcome.Finished, 0, 0));
-  Last.FinishedAt := EncodeDateTime(2026, 10, 23, 14, 3, 0, 0);
-  Assert.AreEqual('bestanden 14:03', TAtlasTaskTexts.LastResult(Last, True));
-  Last.ExitCode := 2;
-  Assert.AreEqual('Exit-Code 2 14:03', TAtlasTaskTexts.LastResult(Last, True));
-  Last.Counts.Errors := 4;
-  Assert.AreEqual('4 Fehler 14:03', TAtlasTaskTexts.LastResult(Last, True), 'Fehler vor dem Exit-Code');
-  Last.Outcome := TAtlasTaskOutcome.TimedOut;
-  Assert.AreEqual('nicht gelaufen 14:03', TAtlasTaskTexts.LastResult(Last, True));
-  Task := Default(TAtlasTaskDefinition);
-  Task.Command := 'pwsh';
-  Task.Args := TArray<string>.Create('Tools/Check-Delphi12.ps1');
-  Task.Group := TAtlasTaskGroup.Check;
+  mLast := TAtlasTaskLastRun.From(Run(TAtlasTaskOutcome.Finished, 0, 0));
+  mLast.FinishedAt := EncodeDateTime(2026, 10, 23, 14, 3, 0, 0);
+  Assert.AreEqual('bestanden 14:03', TAtlasTaskTexts.LastResult(mLast, True));
+  mLast.ExitCode := 2;
+  Assert.AreEqual('Exit-Code 2 14:03', TAtlasTaskTexts.LastResult(mLast, True));
+  mLast.Counts.Errors := 4;
+  Assert.AreEqual('4 Fehler 14:03', TAtlasTaskTexts.LastResult(mLast, True), 'Fehler vor dem Exit-Code');
+  mLast.Outcome := TAtlasTaskOutcome.TimedOut;
+  Assert.AreEqual('nicht gelaufen 14:03', TAtlasTaskTexts.LastResult(mLast, True));
+  mTask := Default(TAtlasTaskDefinition);
+  mTask.Command := 'pwsh';
+  mTask.Args := TArray<string>.Create('Tools/Check-Delphi12.ps1');
+  mTask.Group := TAtlasTaskGroup.Check;
   Assert.AreEqual('Prüfung · pwsh Tools/Check-Delphi12.ps1 · bestanden 14:03',
-    TAtlasTaskTexts.Description(Task, 'bestanden 14:03'));
+    TAtlasTaskTexts.Description(mTask, 'bestanden 14:03'));
   Assert.AreEqual('Sonstiges', TAtlasTaskTexts.GroupName(TAtlasTaskGroup.Other));
 end;
 

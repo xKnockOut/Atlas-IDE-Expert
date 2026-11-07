@@ -24,9 +24,9 @@ uses
 type
   TAtlasTrackerIssueCache = class
   public const
-    MaxMemory = 50;
-    MaxAgeDays = 7;
-    Version = 2;
+    cMaxMemory = 50;
+    cMaxAgeDays = 7;
+    cVersion = 2;
   private type
     TEntry = record
       Details: TAtlasTrackerDetails;
@@ -355,7 +355,7 @@ var
 begin
   mRoot := TJSONObject.Create;
   try
-    mRoot.AddPair('version', TJSONNumber.Create(Version));
+    mRoot.AddPair('version', TJSONNumber.Create(cVersion));
     mRoot.AddPair('key', ADetails.Key);
     mRoot.AddPair('number', TJSONNumber.Create(ADetails.Number));
     mRoot.AddPair('title', ADetails.Title);
@@ -400,7 +400,7 @@ begin
       Exit;
     end;
     mRoot := TJSONObject(mValue);
-    if mRoot.GetValue<Integer>('version', 0) <> Version then
+    if mRoot.GetValue<Integer>('version', 0) <> cVersion then
     begin
       Exit;
     end;
@@ -426,7 +426,7 @@ var
   mOldest: string;
   mUsed: Int64;
 begin
-  while FEntries.Count > MaxMemory do
+  while FEntries.Count > cMaxMemory do
   begin
     mOldest := '';
     mUsed := High(Int64);
@@ -483,7 +483,7 @@ begin
   end;
   mFile := FileOf(ATarget, AKey);
   Result := (mFile <> '') and TAtlasTrackerFiles.Files.ReadText(mFile, mText) and FromJson(mText, ADetails);
-  if Result and ((ADetails.Fetched <= 0) or (ANow - ADetails.Fetched > MaxAgeDays)) then
+  if Result and ((ADetails.Fetched <= 0) or (ANow - ADetails.Fetched > cMaxAgeDays)) then
   begin
     Result := False;
   end;
@@ -524,7 +524,7 @@ begin
   begin
     for mFile in mFiles.Files(mFolder, '*.json') do
     begin
-      if not IsFresh(mFiles, mFile, ANow, MaxAgeDays) then
+      if not IsFresh(mFiles, mFile, ANow, cMaxAgeDays) then
       begin
         mFiles.DeleteFile(mFile);
       end;

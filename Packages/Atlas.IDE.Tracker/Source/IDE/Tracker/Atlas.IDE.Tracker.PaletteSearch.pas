@@ -125,7 +125,7 @@ begin
   inherited Create;
   FHooks := AHooks;
   FStarted := True;
-  FDebounce := TAtlasIssueSearchDebounce.Create(TAtlasIssuePaletteSearch.DelayMs);
+  FDebounce := TAtlasIssueSearchDebounce.Create(TAtlasIssuePaletteSearch.cDelayMs);
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
   FTimer.OnTimer := TimerTick;
@@ -437,9 +437,9 @@ begin
   if AJob.Query.Kind <> TAtlasIssueSearchKind.Key then
   begin
     Exit(AJob.Provider.Search(TAtlasTrackerCall.Create(AJob.Target, AJob.Transport,
-      TAtlasIssuePaletteSearch.TimeoutMs), AJob.Query.Text, TAtlasIssuePaletteSearch.MaxResults, AIssues, AError));
+      TAtlasIssuePaletteSearch.cTimeoutMs), AJob.Query.Text, TAtlasIssuePaletteSearch.cMaxResults, AIssues, AError));
   end;
-  Result := AJob.Provider.Lookup(AJob.Target, AJob.Transport, AJob.Query.Key, TAtlasIssuePaletteSearch.TimeoutMs,
+  Result := AJob.Provider.Lookup(AJob.Target, AJob.Transport, AJob.Query.Key, TAtlasIssuePaletteSearch.cTimeoutMs,
     mIssue, AError);
   if Result then
   begin

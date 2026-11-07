@@ -24,8 +24,8 @@ type
 
   TAtlasTrackerTimeListDialog = class(TForm)
   public const
-    DialogWidth = 460;
-    ListHeight = 200;
+    cDialogWidth = 460;
+    cListHeight = 200;
   private
     FItems: TArray<TAtlasTimeOpen>;
     FList: TListBox;
@@ -67,7 +67,7 @@ uses
   Atlas.UI.Tracker.Strings;
 
 const
-  Gap = 8;
+  cGap = 8;
 
 { TAtlasTrackerTimeListDialog }
 
@@ -84,13 +84,13 @@ begin
   Position := poMainFormCenter;
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  ClientWidth := ScaleValue(DialogWidth);
+  ClientWidth := ScaleValue(cDialogWidth);
 
   FEmpty := TLabel.Create(Self);
   FEmpty.Parent := Self;
   FEmpty.Align := alTop;
   FEmpty.AlignWithMargins := True;
-  FEmpty.Margins.SetBounds(Gap, Gap, Gap, 0);
+  FEmpty.Margins.SetBounds(cGap, cGap, cGap, 0);
   FEmpty.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeOpenEmpty);
   FEmpty.Visible := Length(FItems) = 0;
 
@@ -98,9 +98,9 @@ begin
   FList.Parent := Self;
   FList.Align := alTop;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(Gap, Gap, Gap, 0);
+  FList.Margins.SetBounds(cGap, cGap, cGap, 0);
   FList.Top := FEmpty.Top + FEmpty.Height + 1;
-  FList.Height := ScaleValue(ListHeight);
+  FList.Height := ScaleValue(cListHeight);
   FList.OnClick := ListClick;
   FList.OnDblClick := BookClick;
 
@@ -110,7 +110,7 @@ begin
   mButtons.AutoSize := True;
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(Gap, Gap, Gap, Gap);
+  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
   mButtons.Top := FList.Top + FList.Height + 1;
   FBook := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeOpenBook));
   FBook.OnClick := BookClick;
@@ -120,7 +120,7 @@ begin
   FClose := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeOpenClose));
   FClose.ModalResult := mrCancel;
   FClose.Cancel := True;
-  ClientHeight := mButtons.Top + mButtons.Height + Gap;
+  ClientHeight := mButtons.Top + mButtons.Height + cGap;
   UpdateButtons;
 end;
 
@@ -132,7 +132,7 @@ begin
   Canvas.Font := Font;
   Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, Gap, Gap div 2);
+  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
 end;
 
 procedure TAtlasTrackerTimeListDialog.DoShow;

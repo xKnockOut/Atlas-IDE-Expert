@@ -62,15 +62,15 @@ uses
   Atlas.UI.Bookmarks.Strings;
 
 const
-  Gap = 8;
-  DialogWidth = 520;
-  DialogHeight = 300;
+  cGap = 8;
+  cDialogWidth = 520;
+  cDialogHeight = 300;
 
 { TAtlasNoteDialog }
 
 constructor TAtlasNoteDialog.CreateDialog(AOwner: TComponent; const ATitle, AText: string; ACanDelete: Boolean);
 var
-  Bottom: TPanel;
+  mBottom: TPanel;
 begin
   inherited CreateNew(AOwner);
   FCanDelete := ACanDelete;
@@ -81,32 +81,32 @@ begin
   Position := poMainFormCenter;
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  ClientWidth := ScaleValue(DialogWidth);
-  ClientHeight := ScaleValue(DialogHeight);
+  ClientWidth := ScaleValue(cDialogWidth);
+  ClientHeight := ScaleValue(cDialogHeight);
   KeyPreview := False;
 
   FHint := TLabel.Create(Self);
   FHint.Parent := Self;
   FHint.Align := alTop;
   FHint.AlignWithMargins := True;
-  FHint.Margins.SetBounds(Gap, Gap, Gap, Gap div 2);
+  FHint.Margins.SetBounds(cGap, cGap, cGap, cGap div 2);
   FHint.WordWrap := True;
   FHint.ShowAccelChar := False;
   FHint.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogHint);
 
-  Bottom := TPanel.Create(Self);
-  Bottom.Parent := Self;
-  Bottom.Align := alBottom;
-  Bottom.Height := ScaleValue(44);
-  Bottom.BevelOuter := bvNone;
+  mBottom := TPanel.Create(Self);
+  mBottom.Parent := Self;
+  mBottom.Align := alBottom;
+  mBottom.Height := ScaleValue(44);
+  mBottom.BevelOuter := bvNone;
   // Rechts „Abbrechen“, links davon „Speichern“; „Löschen“ links außen.
-  FCancel := AddButton(Bottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogCancel), CancelClick);
+  FCancel := AddButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogCancel), CancelClick);
   FCancel.Cancel := True;
-  FCancel.Left := Bottom.ClientWidth - FCancel.Width - ScaleValue(Gap);
-  FSave := AddButton(Bottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogSave), SaveClick);
-  FSave.Left := FCancel.Left - FSave.Width - ScaleValue(Gap);
-  FDelete := AddButton(Bottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogDelete), DeleteClick);
-  FDelete.Left := ScaleValue(Gap);
+  FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
+  FSave := AddButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogSave), SaveClick);
+  FSave.Left := FCancel.Left - FSave.Width - ScaleValue(cGap);
+  FDelete := AddButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogDelete), DeleteClick);
+  FDelete.Left := ScaleValue(cGap);
   FDelete.Anchors := [akLeft, akTop];
   FDelete.Visible := ACanDelete;
 
@@ -114,7 +114,7 @@ begin
   FMemo.Parent := Self;
   FMemo.Align := alClient;
   FMemo.AlignWithMargins := True;
-  FMemo.Margins.SetBounds(Gap, 0, Gap, 0);
+  FMemo.Margins.SetBounds(cGap, 0, cGap, 0);
   FMemo.ScrollBars := ssVertical;
   FMemo.WordWrap := True;
   FMemo.WantReturns := True;
@@ -138,7 +138,7 @@ begin
   begin
     Result.Width := ScaleValue(90);
   end;
-  Result.Top := ScaleValue(Gap);
+  Result.Top := ScaleValue(cGap);
   Result.Height := ScaleValue(28);
   Result.Anchors := [akTop, akRight];
 end;
@@ -208,18 +208,18 @@ end;
 class function TAtlasNoteDialog.Execute(const ATitle: string; var AText: string;
   ACanDelete: Boolean): TAtlasNoteChoice;
 var
-  Dialog: TAtlasNoteDialog;
+  mDialog: TAtlasNoteDialog;
 begin
-  Dialog := TAtlasNoteDialog.CreateDialog(nil, ATitle, AText, ACanDelete);
+  mDialog := TAtlasNoteDialog.CreateDialog(nil, ATitle, AText, ACanDelete);
   try
-    Dialog.ShowModal;
-    Result := Dialog.Choice;
+    mDialog.ShowModal;
+    Result := mDialog.Choice;
     if Result = TAtlasNoteChoice.Save then
     begin
-      AText := Dialog.NoteText;
+      AText := mDialog.NoteText;
     end;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 

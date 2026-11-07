@@ -33,8 +33,8 @@ type
   TAtlasBuildModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
     IAtlasAppliesSettings, IAtlasFollowsTheme, IAtlasBuildToolsSource)
   public const
-    ModuleId = 'atlas.build';
-    Switch = 'buildTools';
+    cModuleId = 'atlas.build';
+    cSwitch = 'buildTools';
   private
     FActive: Boolean;
     class function Parts: TArray<IAtlasFeaturePart>; static;
@@ -86,10 +86,10 @@ uses
   Atlas.UI.Build.Strings;
 
 const
-  StartProfileExtra = 'startProfile';
-  CompilerSwitchesExtra = 'compilerSwitches';
+  cStartProfileExtra = 'startProfile';
+  cCompilerSwitchesExtra = 'compilerSwitches';
   /// <summary>Kennung der Einträge je Aufgabe im Untermenü „Aufgaben“.</summary>
-  TaskEntryPrefix = 'Atlas.Task:';
+  cTaskEntryPrefix = 'Atlas.Task:';
 
 var
   GScope: IAtlasModuleScope;
@@ -305,10 +305,10 @@ procedure ShowStartProfileStatus(const AText, AHint: string);
 begin
   if (AText = '') or not TAtlasIdeSettings.Current.StartProfilesStatusField then
   begin
-    TAtlasIdeHost.SetStatusExtra(StartProfileExtra, '');
+    TAtlasIdeHost.SetStatusExtra(cStartProfileExtra, '');
     Exit;
   end;
-  TAtlasIdeHost.SetStatusField(StartProfileExtra, AText, AHint,
+  TAtlasIdeHost.SetStatusField(cStartProfileExtra, AText, AHint,
     procedure(APoint: TPoint)
     begin
       TAtlasIdeStartProfiles.ShowPicker;
@@ -326,7 +326,7 @@ begin
   // Stop meldet noch Text '' und entfernt so das Feld; danach kein Empfänger mehr.
   TAtlasIdeStartProfiles.Stop;
   TAtlasIdeStartProfiles.SetStatusHandler(nil);
-  TAtlasIdeHost.SetStatusExtra(StartProfileExtra, '');
+  TAtlasIdeHost.SetStatusExtra(cStartProfileExtra, '');
 end;
 
 function StartProfilesStarted: Boolean;
@@ -340,10 +340,10 @@ procedure ShowSwitchesStatus(const AText, AHint: string);
 begin
   if AText = '' then
   begin
-    TAtlasIdeHost.SetStatusExtra(CompilerSwitchesExtra, '');
+    TAtlasIdeHost.SetStatusExtra(cCompilerSwitchesExtra, '');
     Exit;
   end;
-  TAtlasIdeHost.SetStatusField(CompilerSwitchesExtra, AText, AHint,
+  TAtlasIdeHost.SetStatusField(cCompilerSwitchesExtra, AText, AHint,
     procedure(APoint: TPoint)
     begin
       TAtlasIdeCompilerSwitches.ShowWindow;
@@ -363,7 +363,7 @@ end;
 procedure StopCompilerSwitches;
 begin
   TAtlasIdeCompilerSwitches.Release;
-  TAtlasIdeHost.SetStatusExtra(CompilerSwitchesExtra, '');
+  TAtlasIdeHost.SetStatusExtra(cCompilerSwitchesExtra, '');
 end;
 
 function CompilerSwitchesStarted: Boolean;
@@ -427,13 +427,13 @@ end;
 function TAtlasBuildModule.Info: TAtlasModuleInfo;
 begin
   Result := Default(TAtlasModuleInfo);
-  Result.Id := ModuleId;
+  Result.Id := cModuleId;
   Result.Name := 'Build-Werkzeuge';
-  Result.Version := TAtlasVersion.Version;
+  Result.Version := TAtlasVersion.cVersion;
   Result.Handle := HInstance;
   // Die Compiler-Schalter liefen schon im abgesicherten Start; die übrigen Teile verlangen den normalen Start.
   Result.MinLevel := TAtlasSafeLevel.Safe;
-  Result.Switch := Switch;
+  Result.Switch := cSwitch;
 end;
 
 procedure TAtlasBuildModule.Start;
@@ -506,11 +506,11 @@ begin
     end);
   for mItem in mItems do
   begin
-    Result := Result + [TaskEntry(TaskEntryPrefix + mItem.Name, mItem.Caption, TaskMenuRun(mItem.Name))];
+    Result := Result + [TaskEntry(cTaskEntryPrefix + mItem.Name, mItem.Caption, TaskMenuRun(mItem.Name))];
   end;
   if Length(mItems) = 0 then
   begin
-    Result := Result + [TaskEntry(TaskEntryPrefix, TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksMenuEmpty), nil)];
+    Result := Result + [TaskEntry(cTaskEntryPrefix, TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksMenuEmpty), nil)];
   end;
 end;
 
@@ -631,7 +631,7 @@ begin
   if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
     ccMatch then
   begin
-    TAtlasGuard.Log('Modul ' + ModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
+    TAtlasGuard.Log('Modul ' + cModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
     Exit;
   end;
   mModule := TAtlasBuildModule.Create;
@@ -665,9 +665,9 @@ begin
   mRegistry := AtlasModuleRegistry;
   if mRegistry <> nil then
   begin
-    for mFailure in mRegistry.UnregisterModule(ModuleId) do
+    for mFailure in mRegistry.UnregisterModule(cModuleId) do
     begin
-      TAtlasGuard.Log('Modul ' + ModuleId + ' nicht sauber abgemeldet: ' + mFailure);
+      TAtlasGuard.Log('Modul ' + cModuleId + ' nicht sauber abgemeldet: ' + mFailure);
     end;
   end;
 end;

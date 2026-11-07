@@ -40,7 +40,7 @@
 //   Zusammenfassungen, wird gefragt; 404 heißt: kennt der Server nicht). Ohne
 //   „blocked by“ gelten Erwähnungen wie „depends on #12“ oder „Benötigt: #12“
 //   im Text (TAtlasTrackerLinks.TextDependencies); deren Zustand liest
-//   …/issues/<n>, höchstens TAtlasTrackerLinks.MaxTextDependencies.
+//   …/issues/<n>, höchstens TAtlasTrackerLinks.cMaxTextDependencies.
 // - Unteraufgabe anlegen (#1279): POST /repos/<owner/repo>/issues, dann
 //   POST …/issues/<Eltern>/sub_issues mit {"sub_issue_id": <id>};
 //   Verknüpfen: POST …/issues/<n>/dependencies/blocked_by mit
@@ -90,18 +90,18 @@ type
   TAtlasGitHubTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter,
     IAtlasTrackerDescriptions, IAtlasTrackerLinkWriter, IAtlasTrackerBoards, IAtlasTrackerPeople, IAtlasTrackerAttach)
   public const
-    ProviderName = TAtlasGitHubApi.ProviderName;
-    Query = TAtlasGitHubApi.DefaultQuery;
-    ApiHost = TAtlasGitHubApi.ApiHost;
+    cProviderName = TAtlasGitHubApi.cProviderName;
+    cQuery = TAtlasGitHubApi.cDefaultQuery;
+    cApiHost = TAtlasGitHubApi.cApiHost;
     /// <summary>Höchstens so viele Pull Requests bekommen eine Ampel.</summary>
-    MaxChecks = 8;
+    cMaxChecks = 8;
     /// <summary>Höchstens so viele offene Pull Requests werden gelesen.</summary>
-    MaxPulls = TAtlasGitHubApi.MaxPulls;
+    cMaxPulls = TAtlasGitHubApi.cMaxPulls;
     /// <summary>Einträge je Seite für Kommentare und Zeitleiste (#1264).</summary>
-    MaxPageSize = TAtlasGitHubApi.MaxPageSize;
+    cMaxPageSize = TAtlasGitHubApi.cMaxPageSize;
   private const
     /// <summary>Höchstens so viele Issues je Abfrage bekommen Kommentare und Ereignisse (#1271).</summary>
-    MaxChangedIssues = 20;
+    cMaxChangedIssues = 20;
   public
     { IAtlasTrackerProvider }
     function Name: string;
@@ -180,7 +180,7 @@ uses
 
 function TAtlasGitHubTracker.Name: string;
 begin
-  Result := TAtlasGitHubApi.ProviderName;
+  Result := TAtlasGitHubApi.cProviderName;
 end;
 
 function TAtlasGitHubTracker.Caption: string;
@@ -190,7 +190,7 @@ end;
 
 function TAtlasGitHubTracker.DefaultQuery: string;
 begin
-  Result := Query;
+  Result := cQuery;
 end;
 
 function TAtlasGitHubTracker.ApiServer(const ATarget: TAtlasTrackerTarget): string;
@@ -221,7 +221,7 @@ end;
 function TakeCheck(const ACall: TAtlasTrackerCall; const AWatch: TStopwatch; const ASha: string;
   var AChecked: Integer): Boolean;
 begin
-  Result := (AChecked < TAtlasGitHubTracker.MaxChecks) and (TAtlasGitHubApi.Remaining(AWatch, ACall.TimeoutMs) > 0)
+  Result := (AChecked < TAtlasGitHubTracker.cMaxChecks) and (TAtlasGitHubApi.Remaining(AWatch, ACall.TimeoutMs) > 0)
     and (TAtlasGitHubApi.CheckRunsUrl(ACall.Target, ASha) <> '');
   if Result then
   begin
@@ -354,7 +354,7 @@ var
 begin
   AComments := nil;
   Result := TAtlasGitHubApi.GetInTime(ACall, AWatch, AUrl + '/comments?per_page=' +
-    IntToStr(TAtlasGitHubApi.MaxPageSize) + '&page=' + IntToStr(APage), mText)
+    IntToStr(TAtlasGitHubApi.cMaxPageSize) + '&page=' + IntToStr(APage), mText)
     and TAtlasGitHubParse.ParseComments(mText, AComments);
 end;
 
@@ -366,19 +366,19 @@ var
   mOlder: TArray<TAtlasTrackerComment>;
 begin
   Result := nil;
-  mPage := (ACount + TAtlasGitHubApi.MaxPageSize - 1) div TAtlasGitHubApi.MaxPageSize;
+  mPage := (ACount + TAtlasGitHubApi.cMaxPageSize - 1) div TAtlasGitHubApi.cMaxPageSize;
   if (ACount <= 0) or not CommentsPage(ACall, AWatch, AUrl, mPage, Result) then
   begin
     Exit;
   end;
-  if (mPage > 1) and (Length(Result) < TAtlasTrackerDetails.MaxComments)
+  if (mPage > 1) and (Length(Result) < TAtlasTrackerDetails.cMaxComments)
     and CommentsPage(ACall, AWatch, AUrl, mPage - 1, mOlder) then
   begin
     Result := mOlder + Result;
   end;
-  if Length(Result) > TAtlasTrackerDetails.MaxComments then
+  if Length(Result) > TAtlasTrackerDetails.cMaxComments then
   begin
-    Result := Copy(Result, Length(Result) - TAtlasTrackerDetails.MaxComments, TAtlasTrackerDetails.MaxComments);
+    Result := Copy(Result, Length(Result) - TAtlasTrackerDetails.cMaxComments, TAtlasTrackerDetails.cMaxComments);
   end;
 end;
 
@@ -389,7 +389,7 @@ var
   mText: string;
 begin
   Result := nil;
-  if TAtlasGitHubApi.GetInTime(ACall, AWatch, AUrl + '/timeline?per_page=' + IntToStr(TAtlasGitHubApi.MaxPageSize),
+  if TAtlasGitHubApi.GetInTime(ACall, AWatch, AUrl + '/timeline?per_page=' + IntToStr(TAtlasGitHubApi.cMaxPageSize),
     mText) then
   begin
     TAtlasGitHubParse.ParseTimeline(mText, ACall.Target.Project, Result);
@@ -460,7 +460,7 @@ var
   mBlockers: Boolean;
   mNumber: Integer;
 begin
-  mPerPage := '?per_page=' + IntToStr(TAtlasGitHubApi.MaxPageSize);
+  mPerPage := '?per_page=' + IntToStr(TAtlasGitHubApi.cMaxPageSize);
   // Nur fragen, was die Zusammenfassung meldet; ohne Zusammenfassung (-1) trotzdem.
   if ASummary.SubIssues <> 0 then
   begin
@@ -668,7 +668,7 @@ begin
   else
   begin
     mUrl := mUrl + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/labels?per_page=' +
-      IntToStr(TAtlasGitHubApi.MaxPageSize);
+      IntToStr(TAtlasGitHubApi.cMaxPageSize);
     mField := 'name';
   end;
   if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) then
@@ -710,7 +710,7 @@ begin
     AError := TAtlasGitHubApi.ErrorOfStatus(mStatus);
     Exit;
   end;
-  if not TAtlasGitHubParse.ParseBody(mJson, AText) or (Length(AText) > TAtlasTrackerDetails.MaxDescription) then
+  if not TAtlasGitHubParse.ParseBody(mJson, AText) or (Length(AText) > TAtlasTrackerDetails.cMaxDescription) then
   begin
     AText := '';
     AError := TAtlasCiFetchError.Invalid;
@@ -735,7 +735,7 @@ begin
     AError := TAtlasCiFetchError.NotConfigured;
     Exit;
   end;
-  if Length(AText) > TAtlasTrackerDetails.MaxDescription then
+  if Length(AText) > TAtlasTrackerDetails.cMaxDescription then
   begin
     AError := TAtlasCiFetchError.Invalid;
     Exit;
@@ -1026,7 +1026,7 @@ function DevelopmentPullOf(const APull: TAtlasGitHubPull): TAtlasTrackerPull;
 begin
   Result := Default(TAtlasTrackerPull);
   Result.Number := APull.Number;
-  Result.Title := TAtlasGitHubJson.Shorten(APull.Title, TAtlasTrackerIssue.MaxTitle);
+  Result.Title := TAtlasGitHubJson.Shorten(APull.Title, TAtlasTrackerIssue.cMaxTitle);
   Result.Branch := APull.Branch;
   Result.State := TAtlasGitHubParse.PullState(APull);
   Result.Updated := APull.Updated;
@@ -1070,7 +1070,7 @@ begin
   mChecked := 0;
   for mGitHubPull in mPulls do
   begin
-    if Length(ADevelopment.Pulls) >= TAtlasTrackerDevelopment.MaxPulls then
+    if Length(ADevelopment.Pulls) >= TAtlasTrackerDevelopment.cMaxPulls then
     begin
       Break;
     end;
@@ -1125,12 +1125,12 @@ begin
     IntToStr(AThread.Number);
   if TAtlasGitHubApi.GetInTime(ACall, AWatch, mIssueUrl + '/comments?since=' +
     TTextUris.PercentEncode(TAtlasGitHubApi.IsoTime(APoll.Since)) + '&per_page=' +
-    IntToStr(TAtlasGitHubApi.MaxPageSize), mText)
+    IntToStr(TAtlasGitHubApi.cMaxPageSize), mText)
     and TAtlasGitHubParse.ParseCommentChanges(mText, AThread, APoll.Since, mMore) then
   begin
     Result := Result + mMore;
   end;
-  if TAtlasGitHubApi.GetInTime(ACall, AWatch, mIssueUrl + '/events?per_page=' + IntToStr(TAtlasGitHubApi.MaxPageSize),
+  if TAtlasGitHubApi.GetInTime(ACall, AWatch, mIssueUrl + '/events?per_page=' + IntToStr(TAtlasGitHubApi.cMaxPageSize),
     mText) and TAtlasGitHubParse.ParseEventChanges(mText, AThread, APoll.Me, APoll.Since, mMore) then
   begin
     Result := Result + mMore;
@@ -1160,7 +1160,7 @@ begin
     begin
       APoll.Latest := mThread.Updated;
     end;
-    if TAtlasGitHubParse.InScope(mThread.Reason, APoll.Scope) and (mCount < TAtlasGitHubTracker.MaxChangedIssues) then
+    if TAtlasGitHubParse.InScope(mThread.Reason, APoll.Scope) and (mCount < TAtlasGitHubTracker.cMaxChangedIssues) then
     begin
       Inc(mCount);
       Result := Result + ThreadChanges(ACall, AWatch, ABase, mThread, APoll);
@@ -1253,7 +1253,7 @@ end;
 
 function TAtlasGitHubTracker.CommentText(const AComment: string; const AFiles: TAtlasAttachFiles): string;
 begin
-  Result := TAtlasAttachComment.WithTexts(AComment, AFiles, TAtlasAttachComment.MaxTextsLength);
+  Result := TAtlasAttachComment.WithTexts(AComment, AFiles, TAtlasAttachComment.cMaxTextsLength);
 end;
 
 end.

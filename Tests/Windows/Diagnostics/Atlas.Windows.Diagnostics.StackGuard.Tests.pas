@@ -33,12 +33,12 @@ uses
 
 /// <summary>Verbraucht Stapel, bis er überläuft; ADepth verhindert, dass der Compiler die Rekursion
 /// wegoptimiert.</summary>
-function Exhaust(ADepth: Integer): Integer; // lsp-ignore: unconditional-recursion -- läuft absichtlich in den Stapelüberlauf
+function Exhaust(ADepth: Integer): Integer; // lsp-ignore: unconditional-recursion -- absichtlicher Stapelüberlauf
 var
-  Filler: array[0..255] of Integer;
+  mFiller: array[0..255] of Integer;
 begin
-  Filler[ADepth mod 256] := ADepth;
-  Result := Exhaust(ADepth + 1) + Filler[ADepth mod 256];
+  mFiller[ADepth mod 256] := ADepth;
+  Result := Exhaust(ADepth + 1) + mFiller[ADepth mod 256];
 end;
 
 procedure TWindowsStackGuardTests.RemoveGuard;
@@ -56,12 +56,12 @@ end;
 
 procedure TWindowsStackGuardTests.SecondOverflowInSameThreadIsCaughtAgain;
 var
-  Caught: Integer;
-  Failure: string;
+  mCaught: Integer;
+  mFailure: string;
 begin
   TWindowsStackGuard.Install;
-  Caught := 0;
-  Failure := TSmallStack.Run(256,
+  mCaught := 0;
+  mFailure := TSmallStack.Run(256,
     procedure
     var
       Round: Integer;
@@ -77,13 +77,13 @@ begin
             begin
               raise;
             end;
-            Inc(Caught);
+            Inc(mCaught);
             TStackGuard.AfterError(E);
           end;
         end;
     end);
-  Assert.AreEqual('', Failure);
-  Assert.AreEqual(3, Caught);
+  Assert.AreEqual('', mFailure);
+  Assert.AreEqual(3, mCaught);
 end;
 
 initialization

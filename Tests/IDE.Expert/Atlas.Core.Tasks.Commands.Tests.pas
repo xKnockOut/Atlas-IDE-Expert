@@ -62,52 +62,52 @@ end;
 
 procedure TAtlasTaskCommandsTests.ProgramIsFoundInCwdThenPathWithExtensions;
 var
-  Exists: TAtlasTaskFileExists;
+  mExists: TAtlasTaskFileExists;
 begin
-  Exists := ExistsIn(TArray<string>.Create('C:\Tools\pwsh.exe', 'C:\Proj\build.cmd', 'C:\Bin\pwsh.exe'));
+  mExists := ExistsIn(TArray<string>.Create('C:\Tools\pwsh.exe', 'C:\Proj\build.cmd', 'C:\Bin\pwsh.exe'));
   Assert.AreEqual(Native('C:\Tools\pwsh.exe'), TAtlasTaskCommands.FindProgram('pwsh', 'C:\Proj',
-    'C:\Tools;"C:\Bin"', '.COM;.EXE;.BAT;.CMD', Exists), 'PATH in Reihenfolge');
+    'C:\Tools;"C:\Bin"', '.COM;.EXE;.BAT;.CMD', mExists), 'PATH in Reihenfolge');
   Assert.AreEqual(Native('C:\Proj\build.cmd'), TAtlasTaskCommands.FindProgram('build', 'C:\Proj', 'C:\Tools',
-    '.COM;.EXE;.BAT;.CMD', Exists), 'der Arbeitsordner zuerst');
+    '.COM;.EXE;.BAT;.CMD', mExists), 'der Arbeitsordner zuerst');
   Assert.AreEqual(Native('C:\Tools\pwsh.exe'), TAtlasTaskCommands.FindProgram('pwsh.exe', '', 'C:\Tools', '',
-    Exists), 'mit Endung und ohne PATHEXT');
-  Assert.AreEqual(Native('C:\Bin\pwsh.exe'), TAtlasTaskCommands.FindProgram('pwsh', '', ';;C:\Bin\', '', Exists),
+    mExists), 'mit Endung und ohne PATHEXT');
+  Assert.AreEqual(Native('C:\Bin\pwsh.exe'), TAtlasTaskCommands.FindProgram('pwsh', '', ';;C:\Bin\', '', mExists),
     'leere Einträge und Trenner am Ende');
 end;
 
 procedure TAtlasTaskCommandsTests.ProgramWithPathIsResolvedAgainstCwd;
 var
-  Exists: TAtlasTaskFileExists;
+  mExists: TAtlasTaskFileExists;
 begin
-  Exists := ExistsIn(TArray<string>.Create('C:\Proj\Tools\Check.cmd', 'D:\x\run.exe'));
+  mExists := ExistsIn(TArray<string>.Create('C:\Proj\Tools\Check.cmd', 'D:\x\run.exe'));
   Assert.AreEqual(Native('C:\Proj\Tools\Check.cmd'), TAtlasTaskCommands.FindProgram('Tools\Check', 'C:\Proj',
-    'D:\x', '.exe;.cmd', Exists), 'relativ zum Arbeitsordner, nicht in PATH');
+    'D:\x', '.exe;.cmd', mExists), 'relativ zum Arbeitsordner, nicht in PATH');
   Assert.AreEqual(Native('D:\x\run.exe'), Native(TAtlasTaskCommands.FindProgram('D:\x\run', 'C:\Proj', '',
-    '.exe', Exists)), 'mit Laufwerk');
-  Assert.AreEqual('', TAtlasTaskCommands.FindProgram('x\run', 'C:\Proj', 'D:\', '.exe', Exists),
+    '.exe', mExists)), 'mit Laufwerk');
+  Assert.AreEqual('', TAtlasTaskCommands.FindProgram('x\run', 'C:\Proj', 'D:\', '.exe', mExists),
     'ein Pfadteil sucht nicht in PATH');
 end;
 
 procedure TAtlasTaskCommandsTests.MissingProgramGivesEmpty;
 var
-  Exists: TAtlasTaskFileExists;
+  mExists: TAtlasTaskFileExists;
 begin
-  Exists := ExistsIn(nil);
-  Assert.AreEqual('', TAtlasTaskCommands.FindProgram('pwsh', 'C:\Proj', 'C:\Tools', '.exe', Exists));
-  Assert.AreEqual('', TAtlasTaskCommands.FindProgram('  ', 'C:\Proj', 'C:\Tools', '.exe', Exists), 'leer');
+  mExists := ExistsIn(nil);
+  Assert.AreEqual('', TAtlasTaskCommands.FindProgram('pwsh', 'C:\Proj', 'C:\Tools', '.exe', mExists));
+  Assert.AreEqual('', TAtlasTaskCommands.FindProgram('  ', 'C:\Proj', 'C:\Tools', '.exe', mExists), 'leer');
 end;
 
 procedure TAtlasTaskCommandsTests.EnvironmentIsOverwrittenAndExtended;
 var
-  Merged: TArray<string>;
+  mMerged: TArray<string>;
 begin
-  Merged := TAtlasTaskCommands.MergeEnvironment(TArray<string>.Create('=C:=C:\', 'Path=C:\Windows', 'TEMP=C:\t'),
+  mMerged := TAtlasTaskCommands.MergeEnvironment(TArray<string>.Create('=C:=C:\', 'Path=C:\Windows', 'TEMP=C:\t'),
     TArray<string>.Create('PATH', 'ATLAS_CI', ' '), TArray<string>.Create('C:\Tools', '1', 'leer'));
-  Assert.AreEqual(4, Integer(Length(Merged)));
-  Assert.AreEqual('=C:=C:\', Merged[0], 'Laufwerkseinträge bleiben');
-  Assert.AreEqual('PATH=C:\Tools', Merged[1], 'ohne Groß-/Kleinschreibung ersetzt');
-  Assert.AreEqual('TEMP=C:\t', Merged[2]);
-  Assert.AreEqual('ATLAS_CI=1', Merged[3], 'neu angehängt; leere Namen entfallen');
+  Assert.AreEqual(4, Integer(Length(mMerged)));
+  Assert.AreEqual('=C:=C:\', mMerged[0], 'Laufwerkseinträge bleiben');
+  Assert.AreEqual('PATH=C:\Tools', mMerged[1], 'ohne Groß-/Kleinschreibung ersetzt');
+  Assert.AreEqual('TEMP=C:\t', mMerged[2]);
+  Assert.AreEqual('ATLAS_CI=1', mMerged[3], 'neu angehängt; leere Namen entfallen');
 end;
 
 procedure TAtlasTaskCommandsTests.ArgumentsAreQuoted;

@@ -46,7 +46,7 @@ type
   TAtlasInlineValues = class
   public const
     /// <summary>Längere Werte werden gekürzt.</summary>
-    MaxValueLength = 40;
+    cMaxValueLength = 40;
   private type
     TValue = record
       Raw: string;
@@ -119,8 +119,8 @@ uses
 
 const
   // Gültige Tage von TDateTime (0001-01-01 bis 9999-12-31).
-  MinDateTime = -693593.0;
-  MaxDateTime = 2958466.0;
+  cMinDateTime = -693593.0;
+  cMaxDateTime = 2958466.0;
 
 { TAtlasInlineValueItem }
 
@@ -161,16 +161,16 @@ end;
 
 class function TAtlasInlineValues.IsPlainIdentifier(const AName: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
   if (AName = '') or CharInSet(AName[1], ['0'..'9']) or TAtlasDebugExpression.IsReserved(AName) then
   begin
     Exit;
   end;
-  for Index := 1 to Length(AName) do
+  for mIndex := 1 to Length(AName) do
   begin
-    if not (CharInSet(AName[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AName[Index]) > 127)) then
+    if not (CharInSet(AName[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AName[mIndex]) > 127)) then
     begin
       Exit;
     end;
@@ -180,7 +180,7 @@ end;
 
 procedure TAtlasInlineValues.Remember;
 var
-  Pair: TPair<string, TValue>;
+  mPair: TPair<string, TValue>;
 begin
   if FValues.Count = 0 then
   begin
@@ -191,11 +191,11 @@ begin
     FPrevious.Clear;
   end;
   FPreviousContext := FContext;
-  for Pair in FValues do
+  for mPair in FValues do
   begin
-    if Pair.Value.State = TAtlasInlineValueState.Ready then
+    if mPair.Value.State = TAtlasInlineValueState.Ready then
     begin
-      FPrevious.AddOrSetValue(Pair.Key, Pair.Value.Raw);
+      FPrevious.AddOrSetValue(mPair.Key, mPair.Value.Raw);
     end;
   end;
 end;
@@ -276,8 +276,8 @@ end;
 procedure TAtlasInlineValues.Start(const AFileName, AContext: string; AStoppedLine: Integer;
   const ARefs: TAtlasInlineValueRefs; APerLine: Integer);
 var
-  Key: string;
-  Line: Integer;
+  mKey: string;
+  mLine: Integer;
 begin
   Clear;
   if not SameText(FPreviousContext, AContext) then
@@ -290,13 +290,13 @@ begin
   FStoppedLine := AStoppedLine;
   AddRefs(ARefs, Max(APerLine, 1));
   // Auswerten: Zeile des Halts zuerst, dann darüber die nächste zuerst.
-  for Line in LinesByDistance(FLines.Keys.ToArray, AStoppedLine) do
+  for mLine in LinesByDistance(FLines.Keys.ToArray, AStoppedLine) do
   begin
-    for Key in FLines[Line] do
+    for mKey in FLines[mLine] do
     begin
-      if not FOrder.Contains(Key) then
+      if not FOrder.Contains(mKey) then
       begin
-        FOrder.Add(Key);
+        FOrder.Add(mKey);
       end;
     end;
   end;
@@ -330,15 +330,15 @@ end;
 
 function TAtlasInlineValues.NextPending(out AName: string): Boolean;
 var
-  Key: string;
+  mKey: string;
 begin
   AName := '';
   while FNext < FOrder.Count do
   begin
-    Key := FOrder[FNext];
-    if FValues[Key].State = TAtlasInlineValueState.Pending then
+    mKey := FOrder[FNext];
+    if FValues[mKey].State = TAtlasInlineValueState.Pending then
     begin
-      AName := FSpellings[Key];
+      AName := FSpellings[mKey];
       Exit(True);
     end;
     Inc(FNext);
@@ -348,31 +348,31 @@ end;
 
 procedure TAtlasInlineValues.Put(const AName, ARaw: string; AOk: Boolean);
 var
-  Key: string;
-  Value: TValue;
+  mKey: string;
+  mValue: TValue;
 begin
-  Key := KeyOf(AName);
-  if not FValues.ContainsKey(Key) then
+  mKey := KeyOf(AName);
+  if not FValues.ContainsKey(mKey) then
   begin
     Exit;
   end;
-  Value.Raw := Trim(ARaw);
+  mValue.Raw := Trim(ARaw);
   if AOk then
   begin
-    Value.State := TAtlasInlineValueState.Ready;
-    Value.Text := Display(FTypes[Key], Value.Raw);
+    mValue.State := TAtlasInlineValueState.Ready;
+    mValue.Text := Display(FTypes[mKey], mValue.Raw);
   end
-  else if (FUnavailableText <> '') and TAtlasDebugUnavailable.IsUnavailable(Value.Raw, FUnavailablePatterns) then
+  else if (FUnavailableText <> '') and TAtlasDebugUnavailable.IsUnavailable(mValue.Raw, FUnavailablePatterns) then
   begin
-    Value.State := TAtlasInlineValueState.Unavailable;
-    Value.Text := FUnavailableText;
+    mValue.State := TAtlasInlineValueState.Unavailable;
+    mValue.Text := FUnavailableText;
   end
   else
   begin
-    Value.State := TAtlasInlineValueState.Failed;
-    Value.Text := '';
+    mValue.State := TAtlasInlineValueState.Failed;
+    mValue.Text := '';
   end;
-  FValues[Key] := Value;
+  FValues[mKey] := mValue;
 end;
 
 procedure TAtlasInlineValues.SetUnavailable(const AText: string; const APatterns: TArray<string>);
@@ -383,85 +383,85 @@ end;
 
 function TAtlasInlineValues.Line(const AFileName: string; ALine: Integer): TAtlasInlineValueItems;
 var
-  Names: TArray<string>;
-  Key, Previous: string;
-  Value: TValue;
-  Item: TAtlasInlineValueItem;
+  mNames: TArray<string>;
+  mKey, mPrevious: string;
+  mValue: TValue;
+  mItem: TAtlasInlineValueItem;
 begin
   Result := nil;
-  if (FOrder.Count = 0) or not SameText(AFileName, FFileName) or not FLines.TryGetValue(ALine, Names) then
+  if (FOrder.Count = 0) or not SameText(AFileName, FFileName) or not FLines.TryGetValue(ALine, mNames) then
   begin
     Exit;
   end;
-  for Key in Names do
+  for mKey in mNames do
   begin
-    Value := FValues[Key];
-    if not (Value.State in [TAtlasInlineValueState.Ready, TAtlasInlineValueState.Unavailable]) then
+    mValue := FValues[mKey];
+    if not (mValue.State in [TAtlasInlineValueState.Ready, TAtlasInlineValueState.Unavailable]) then
     begin
       Continue;
     end;
-    Item.Name := FSpellings[Key];
-    Item.Text := Value.Text;
-    Item.State := Value.State;
-    Item.Changed := (Value.State = TAtlasInlineValueState.Ready) and FPrevious.TryGetValue(Key, Previous) and
-      (Previous <> Value.Raw);
-    Result := Result + [Item];
+    mItem.Name := FSpellings[mKey];
+    mItem.Text := mValue.Text;
+    mItem.State := mValue.State;
+    mItem.Changed := (mValue.State = TAtlasInlineValueState.Ready) and FPrevious.TryGetValue(mKey, mPrevious) and
+      (mPrevious <> mValue.Raw);
+    Result := Result + [mItem];
   end;
 end;
 
 class function TAtlasInlineValues.Display(const ATypeName, ARaw: string): string;
 var
-  Kind: string;
-  Number: Double;
-  Invariant: TFormatSettings;
+  mKind: string;
+  mNumber: Double;
+  mInvariant: TFormatSettings;
 begin
   Result := Trim(ARaw);
-  Kind := LowerCase(ATypeName);
-  if Kind.StartsWith('system.') then
+  mKind := LowerCase(ATypeName);
+  if mKind.StartsWith('system.') then
   begin
-    Kind := Copy(Kind, Length('system.') + 1, MaxInt);
+    mKind := Copy(mKind, Length('system.') + 1, MaxInt);
   end;
-  if (Kind = 'tdatetime') or (Kind = 'tdate') or (Kind = 'ttime') then
+  if (mKind = 'tdatetime') or (mKind = 'tdate') or (mKind = 'ttime') then
   begin
-    Invariant := TFormatSettings.Invariant;
-    if TryStrToFloat(Result.Replace(',', '.'), Number, Invariant) and (Number >= MinDateTime) and
-      (Number < MaxDateTime) then
+    mInvariant := TFormatSettings.Invariant;
+    if TryStrToFloat(Result.Replace(',', '.'), mNumber, mInvariant) and (mNumber >= cMinDateTime) and
+      (mNumber < cMaxDateTime) then
     begin
-      if Kind = 'tdate' then
+      if mKind = 'tdate' then
       begin
-        Result := FormatDateTime('yyyy-mm-dd', Number, Invariant);
+        Result := FormatDateTime('yyyy-mm-dd', mNumber, mInvariant);
       end
-      else if Kind = 'ttime' then
+      else if mKind = 'ttime' then
       begin
-        Result := FormatDateTime('hh:nn:ss', Number, Invariant);
+        Result := FormatDateTime('hh:nn:ss', mNumber, mInvariant);
       end
-      else if Frac(Number) = 0 then
+      else if Frac(mNumber) = 0 then
       begin
-        Result := FormatDateTime('yyyy-mm-dd', Number, Invariant);
+        Result := FormatDateTime('yyyy-mm-dd', mNumber, mInvariant);
       end
       else
       begin
-        Result := FormatDateTime('yyyy-mm-dd hh:nn:ss', Number, Invariant);
+        Result := FormatDateTime('yyyy-mm-dd hh:nn:ss', mNumber, mInvariant);
       end;
     end;
   end;
   // Zeilenumbrüche im Wert (mehrzeilige Strings) gehören nicht hinter das Zeilenende.
   Result := Result.Replace(#13#10, ' ').Replace(#10, ' ').Replace(#13, ' ');
-  Result := TAtlasDebugExpression.Shorten(Result, MaxValueLength);
+  Result := TAtlasDebugExpression.Shorten(Result, cMaxValueLength);
 end;
 
 class function TAtlasInlineValues.LineText(const AItems: TAtlasInlineValueItems): string;
 var
-  Item: TAtlasInlineValueItem;
+  mItem: TAtlasInlineValueItem;
 begin
   Result := '';
-  for Item in AItems do
+  for mItem in AItems do
   begin
     if Result <> '' then
     begin
       Result := Result + ', ';
     end;
-    Result := Result + Item.Caption;
+    Result := Result + mItem.Caption;
   end;
 end;
 

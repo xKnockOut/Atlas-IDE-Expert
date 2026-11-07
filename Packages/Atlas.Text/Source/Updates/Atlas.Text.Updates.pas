@@ -50,9 +50,9 @@ type
   TUpdateVersions = class
   public const
     /// <summary>Kern und Verträge (ADR 0017): immer installiert, nie abwählbar.</summary>
-    BasePackage = 'Atlas.IDE.Base';
-    ContractsPackage = 'Atlas.IDE.Contracts';
-    PackagePrefix = 'Atlas.IDE.';
+    cBasePackage = 'Atlas.IDE.Base';
+    cContractsPackage = 'Atlas.IDE.Contracts';
+    cPackagePrefix = 'Atlas.IDE.';
   public
     class function IsValidVersion(const AVersion: string): Boolean; static;
     /// <summary>&lt; 0, 0 oder &gt; 0 wie CompareStr; ungültige Versionen sind kleiner als gültige.</summary>
@@ -73,9 +73,9 @@ type
   /// </summary>
   TUpdateChannels = class
   public const
-    ReleasesUrl = 'https://github.com/xKnockOut/Atlas-IDE-Expert/releases';
-    StableUrl = ReleasesUrl + '/latest/download/atlas-version.json';
-    PrereleaseUrl = ReleasesUrl + '/download/update-channel/atlas-version-beta.json';
+    cReleasesUrl = 'https://github.com/xKnockOut/Atlas-IDE-Expert/releases';
+    cStableUrl = cReleasesUrl + '/latest/download/atlas-version.json';
+    cPrereleaseUrl = cReleasesUrl + '/download/update-channel/atlas-version-beta.json';
   public
     class function UrlOf(APrerelease: Boolean): string; static;
   end;
@@ -323,7 +323,7 @@ end;
 
 class function TUpdateVersions.IsRequiredPackage(const AName: string): Boolean;
 begin
-  Result := SameText(AName, BasePackage) or SameText(AName, ContractsPackage);
+  Result := SameText(AName, cBasePackage) or SameText(AName, cContractsPackage);
 end;
 
 { TUpdateChannels }
@@ -332,11 +332,11 @@ class function TUpdateChannels.UrlOf(APrerelease: Boolean): string;
 begin
   if APrerelease then
   begin
-    Result := PrereleaseUrl;
+    Result := cPrereleaseUrl;
   end
   else
   begin
-    Result := StableUrl;
+    Result := cStableUrl;
   end;
 end;
 

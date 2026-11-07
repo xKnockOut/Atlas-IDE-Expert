@@ -170,57 +170,57 @@ end;
 
 procedure TTrackerSettingsSectionTests.IssuesTrackerOwnPage;
 var
-  Host: TForm;
-  Page: TAtlasSettingsPage;
-  Areas: TArray<TTreeNode>;
-  Issues: TTreeNode;
-  Tracker: TTabSheet;
+  mHost: TForm;
+  mPage: TAtlasSettingsPage;
+  mAreas: TArray<TTreeNode>;
+  mIssues: TTreeNode;
+  mTracker: TTabSheet;
 begin
   TAtlasSettingsPageTree.ForgetTreeState;
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Page := TAtlasSettingsPage.Create(Host);
-    Page.Parent := Host;
-    Page.HandleNeeded;
-    Areas := TopLevelNodes(Page);
-    Issues := Areas[15];
+    mPage := TAtlasSettingsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
+    mAreas := TopLevelNodes(mPage);
+    mIssues := mAreas[15];
     // Reiter des Moduls hinter denen von Base (#1456), beschriftet wie der Bereich im Katalog.
-    Assert.AreEqual(Page.Catalog.AreaCaption('issues', TAtlasStrings.Language = TAtlasLanguage.English), Issues.Text);
+    Assert.AreEqual(mPage.Catalog.AreaCaption('issues', TAtlasStrings.Language = TAtlasLanguage.English), mIssues.Text);
     // Alle Tracker-Einstellungen auf dem Hauptknoten der Seite Issue-Tracker.
-    Tracker := SheetOf(FSection.General.View.Tracker);
-    Assert.IsNotNull(Tracker);
-    Assert.AreEqual('', Page.NodeOfSheet(Tracker));
-    Assert.IsTrue(TreeNodeOf(Page, Tracker) = Issues, 'Hauptknoten Issue-Tracker');
-    Assert.IsTrue(SheetOf(FSection.Queries.View.List) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.Start) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.BranchPattern) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.BranchBase) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.CommitPattern) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.Login) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.Preview) = Tracker, 'Vorschau (#1264)');
-    Assert.IsTrue(SheetOf(FSection.General.View.PreviewComments) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.CodeLinks) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.BlameLinks) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.BlameMaxRevisions) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.PreviewChecklists) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.ChecklistStatus) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.PreviewLinks) = Tracker, 'Verknüpfungen (#1279)');
-    Assert.IsTrue(SheetOf(FSection.General.View.WarnBlocked) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.Board) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.BoardConfirmMove) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.BoardOnlyMine) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.SprintBurndown) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.SprintCompare) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.PaletteSearch) = Tracker, 'Palettensuche (#1270)');
-    Assert.IsTrue(SheetOf(FSection.General.View.PreviewDevelopment) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.Notify) = Tracker, 'Meldungen (#1271)');
-    Assert.IsTrue(SheetOf(FSection.General.View.NotifyInterval) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.NotifyScope) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.Attach) = Tracker, 'Anhängen (#1276)');
-    Assert.IsTrue(SheetOf(FSection.General.View.AttachLogFiles) = Tracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.AttachMaxImageWidth) = Tracker);
+    mTracker := SheetOf(FSection.General.View.Tracker);
+    Assert.IsNotNull(mTracker);
+    Assert.AreEqual('', mPage.NodeOfSheet(mTracker));
+    Assert.IsTrue(TreeNodeOf(mPage, mTracker) = mIssues, 'Hauptknoten Issue-Tracker');
+    Assert.IsTrue(SheetOf(FSection.Queries.View.List) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.Start) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.BranchPattern) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.BranchBase) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.CommitPattern) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.Login) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.Preview) = mTracker, 'Vorschau (#1264)');
+    Assert.IsTrue(SheetOf(FSection.General.View.PreviewComments) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.CodeLinks) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.BlameLinks) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.BlameMaxRevisions) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.PreviewChecklists) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.ChecklistStatus) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.PreviewLinks) = mTracker, 'Verknüpfungen (#1279)');
+    Assert.IsTrue(SheetOf(FSection.General.View.WarnBlocked) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.Board) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.BoardConfirmMove) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.BoardOnlyMine) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.SprintBurndown) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.SprintCompare) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.PaletteSearch) = mTracker, 'Palettensuche (#1270)');
+    Assert.IsTrue(SheetOf(FSection.General.View.PreviewDevelopment) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.Notify) = mTracker, 'Meldungen (#1271)');
+    Assert.IsTrue(SheetOf(FSection.General.View.NotifyInterval) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.NotifyScope) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.Attach) = mTracker, 'Anhängen (#1276)');
+    Assert.IsTrue(SheetOf(FSection.General.View.AttachLogFiles) = mTracker);
+    Assert.IsTrue(SheetOf(FSection.General.View.AttachMaxImageWidth) = mTracker);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
@@ -362,7 +362,8 @@ begin
     Assert.AreEqual('Firma', mProbe.FChecked);
     Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerTokenChecking), mList.Items[0].SubItems[2]);
     FSection.TrackerCheckDone(FSection.Tables.Connections.Items[0]);
-    Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerTokenVerified, ['10:18']), mList.Items[0].SubItems[2]);
+    Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerTokenVerified, ['10:18']),
+      mList.Items[0].SubItems[2]);
     mSaved := mSettings;
     AddConnectionLager(mPage, FSection, mList, mSaved);
     // Entfernen fragt über den Haken (Token) und nimmt die Zeile heraus.
@@ -607,7 +608,8 @@ begin
     mPage.LoadFrom(mSettings);
     // Ohne eigene Abfragen: Hinweis auf die Vorgabe je Anbieter.
     Assert.AreEqual(0, FSection.Queries.View.List.Items.Count);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueriesNone), FSection.Queries.View.Note.Caption);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueriesNone),
+      FSection.Queries.View.Note.Caption);
     Assert.IsFalse(FSection.Queries.View.Name.Enabled);
     mSettings.IssuesQueries := '[{"name": "Standard", "query": "assignee: meine #Ungelöst"},' +
       ' {"name": "Sprint", "query": "#{Aktueller Sprint}", "connection": "Firma", "project": "KASSE"}]';
@@ -616,15 +618,18 @@ begin
     AssertQueryRows(FSection, mList);
     // Doppelter Name wird nicht übernommen.
     FSection.Queries.View.Name.Text := 'standard';
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryNameTaken), FSection.Queries.View.Note.Caption);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryNameTaken),
+      FSection.Queries.View.Note.Caption);
     Assert.AreEqual('Sprint', FSection.Tables.Queries.Items[1].Name);
     FSection.Queries.View.Name.Text := 'Aktueller Sprint';
     Assert.AreEqual('Aktueller Sprint', mList.Items[1].Caption);
     // Neue Zeile: ohne Abfrage nicht gespeichert; Leerraum außen fällt weg.
     FSection.Queries.View.Add.Click;
     Assert.AreEqual(3, mList.Items.Count);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryNew), FSection.Queries.View.Name.Text);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryEmpty), FSection.Queries.View.Note.Caption);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryNew),
+      FSection.Queries.View.Name.Text);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryEmpty),
+      FSection.Queries.View.Note.Caption);
     mSaved := mSettings;
     mPage.SaveTo(mSaved);
     Assert.AreEqual(2, Integer(Length(TAtlasTrackerQueries.Read(mSaved.IssuesQueries))), 'ohne Abfrage');
@@ -761,7 +766,8 @@ begin
     Assert.AreEqual('Firma', mAsked);
     Assert.AreEqual('Status', mField);
     Assert.IsFalse(FSection.Workflow.View.LoadValues.Enabled, 'bis zur Antwort');
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesValuesLoading), FSection.Workflow.View.ValuesNote.Caption);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesValuesLoading),
+      FSection.Workflow.View.ValuesNote.Caption);
     AssertTrackerValuesDone(FSection);
   finally
     mHost.Free;
@@ -1009,23 +1015,23 @@ end;
 
 procedure TTrackerSettingsSectionTests.SettingsRoundTrip;
 var
-  Page: TAtlasSettingsPage;
-  Settings, Saved: TAtlasPluginSettings;
+  mPage: TAtlasSettingsPage;
+  mSettings, mSaved: TAtlasPluginSettings;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Page := TAtlasSettingsPage.Create(nil);
+  mSettings := TAtlasPluginSettings.Defaults;
+  mPage := TAtlasSettingsPage.Create(nil);
   try
-    Page.LoadFrom(Settings);
+    mPage.LoadFrom(mSettings);
     AssertSectionDefaults(FSection);
     EditSection(FSection);
-    Saved := TAtlasPluginSettings.Defaults;
-    Page.SaveTo(Saved);
-    AssertSectionSaved(Saved);
-    Page.LoadFrom(Saved);
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    AssertSectionSaved(mSaved);
+    mPage.LoadFrom(mSaved);
     AssertSectionReloaded(FSection);
-    Page.SaveTo(Saved);
+    mPage.SaveTo(mSaved);
   finally
-    Page.Free;
+    mPage.Free;
   end;
 end;
 

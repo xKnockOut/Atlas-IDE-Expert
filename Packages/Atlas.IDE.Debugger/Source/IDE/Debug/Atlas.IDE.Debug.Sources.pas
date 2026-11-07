@@ -134,22 +134,22 @@ end;
 
 class function TAtlasIdeDebugSources.OwnCode: TAtlasDebugOwnCode;
 var
-  Modules: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  Index: Integer;
+  mModules: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+  mIndex: Integer;
 begin
   if not FOwnCodeReady then
   begin
     FOwnCode := TAtlasDebugOwnCode.Create(
       TAtlasDebugOwnCode.ParseFolders(TAtlasIdeSettings.Current.DebugOwnCodeFolders));
-    if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+    if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
     begin
-      Group := Modules.MainProjectGroup;
-      if Group <> nil then
+      mGroup := mModules.MainProjectGroup;
+      if mGroup <> nil then
       begin
-        for Index := 0 to Group.ProjectCount - 1 do
+        for mIndex := 0 to mGroup.ProjectCount - 1 do
         begin
-          FOwnCode.AddFolder(ExtractFileDir(Group.Projects[Index].FileName));
+          FOwnCode.AddFolder(ExtractFileDir(mGroup.Projects[mIndex].FileName));
         end;
       end;
     end;
@@ -160,19 +160,19 @@ end;
 
 class procedure TAtlasIdeDebugSources.MarkFrames(var AFrames: TAtlasDebugFrames);
 var
-  Index: Integer;
-  Path: string;
-  Own: TAtlasDebugOwnCode;
+  mIndex: Integer;
+  mPath: string;
+  mOwn: TAtlasDebugOwnCode;
 begin
-  Own := OwnCode;
-  for Index := 0 to High(AFrames) do
+  mOwn := OwnCode;
+  for mIndex := 0 to High(AFrames) do
   begin
-    Path := Resolve(AFrames[Index].FileName);
-    if Path <> '' then
+    mPath := Resolve(AFrames[mIndex].FileName);
+    if mPath <> '' then
     begin
-      AFrames[Index].FileName := Path;
+      AFrames[mIndex].FileName := mPath;
     end;
-    AFrames[Index].Own := Own.IsOwnFile(Path);
+    AFrames[mIndex].Own := mOwn.IsOwnFile(mPath);
   end;
 end;
 

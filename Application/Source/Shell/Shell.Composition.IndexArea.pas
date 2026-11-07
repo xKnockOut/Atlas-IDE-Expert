@@ -3,7 +3,8 @@
 // Teilwurzel Index der Komposition: gemeinsamer Symbolindex aller Ordner, Uses-Graph (#64), Declared(X) in {$IF}
 // (#847), die Ordner des Arbeitsbereichs vom Client und die Ereignisse des Indexaufbaus (Projekt geladen,
 // Stufe fertig). Dazu die Ersatz-Units der IDE (atlas/ideMembers) und der Index für Hover, Vervollständigung und
-// Parameterhilfe, der sie zum gemeinsamen Index hinzunimmt. Wer außerhalb auf Namespaces oder Bibliotheksordner hört, bekommt sie über die Dienste.
+// Parameterhilfe, der sie zum gemeinsamen Index hinzunimmt. Wer außerhalb auf Namespaces oder Bibliotheksordner hört,
+// bekommt sie über die Dienste.
 
 interface
 
@@ -63,7 +64,8 @@ type
   public
     /// <summary>Legt Index und Uses-Graph an, meldet Declared(X) an und hängt die Ordner an den Verteiler.</summary>
     constructor Create(const AServices: TShellIndexAreaServices);
-    /// <summary>Gibt Ordner und Uses-Graph frei und lässt den Index los; Declared(X) meldet die Komposition ab.</summary>
+    /// <summary>Gibt Ordner und Uses-Graph frei und lässt den Index los; Declared(X) meldet die Komposition
+    /// ab.</summary>
     destructor Destroy; override;
     /// <summary>Ein Ordner hat sein Projekt geladen: Namespaces und Bibliotheksordner neu verteilen.</summary>
     procedure ProjectLoaded;
