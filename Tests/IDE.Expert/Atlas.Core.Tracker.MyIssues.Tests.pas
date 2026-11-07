@@ -148,12 +148,12 @@ end;
 
 function TFakeBranchingVcs.Has(const AList: TArray<string>; const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
   Result := False;
-  for Name in AList do
+  for mName in AList do
   begin
-    if Name = AName then
+    if mName = AName then
     begin
       Exit(True);
     end;
@@ -358,16 +358,16 @@ end;
 
 procedure TAtlasMyIssuesTests.TargetFromTeamFileAndSettings;
 var
-  Target: TAtlasTrackerTarget;
+  mTarget: TAtlasTrackerTarget;
 begin
-  Target := TAtlasMyIssues.TargetFor('youtrack', 'https://yt.firma.de', 'ATL', '', 'for: me');
-  Assert.AreEqual('youtrack', Target.Provider);
-  Assert.AreEqual('for: me', Target.Query);
-  Assert.IsTrue(Target.Configured);
+  mTarget := TAtlasMyIssues.TargetFor('youtrack', 'https://yt.firma.de', 'ATL', '', 'for: me');
+  Assert.AreEqual('youtrack', mTarget.Provider);
+  Assert.AreEqual('for: me', mTarget.Query);
+  Assert.IsTrue(mTarget.Configured);
   // Einstellung ersetzt den Anbieter aus .atlas.
-  Target := TAtlasMyIssues.TargetFor('youtrack', 'https://github.com', 'beispiel/atlas', 'GitHub', '');
-  Assert.AreEqual('github', Target.Provider);
-  Assert.IsTrue(Target.Configured);
+  mTarget := TAtlasMyIssues.TargetFor('youtrack', 'https://github.com', 'beispiel/atlas', 'GitHub', '');
+  Assert.AreEqual('github', mTarget.Provider);
+  Assert.IsTrue(mTarget.Configured);
   // Unbekannter Anbieter: nicht eingerichtet.
   Assert.IsFalse(TAtlasMyIssues.TargetFor('jira', 'https://jira.firma.de', 'ATL', '', '').Configured);
   Assert.IsFalse(TAtlasMyIssues.TargetFor('', '', '', '', '').Configured);
@@ -375,179 +375,179 @@ end;
 
 procedure TAtlasMyIssuesTests.DueEveryTenMinutes;
 var
-  State: TAtlasIssuesState;
+  mState: TAtlasIssuesState;
 begin
-  State := TAtlasIssuesState.Empty;
-  Assert.IsTrue(TAtlasMyIssues.Due(State, GitHub, Now0, False), 'noch nie');
-  TAtlasMyIssues.Recorded(State, GitHub, Now0, True, [Issue('#1', 1, 'a')], TAtlasCiFetchError.None);
-  Assert.IsFalse(TAtlasMyIssues.Due(State, GitHub, IncMinute(Now0, 9), False));
-  Assert.IsTrue(TAtlasMyIssues.Due(State, GitHub, IncMinute(Now0, 10), False));
-  Assert.IsTrue(TAtlasMyIssues.Due(State, GitHub, IncMinute(Now0, 1), True), '„Jetzt abfragen“');
-  Assert.IsTrue(TAtlasMyIssues.Due(State, YouTrack, IncMinute(Now0, 1), False), 'anderes Ziel');
-  Assert.IsTrue(TAtlasMyIssues.Due(State, GitHub, IncMinute(Now0, -5), False), 'Uhr zurückgestellt');
-  Assert.IsFalse(TAtlasMyIssues.Due(State, TAtlasMyIssues.TargetFor('', '', '', '', ''), Now0, True),
+  mState := TAtlasIssuesState.Empty;
+  Assert.IsTrue(TAtlasMyIssues.Due(mState, GitHub, Now0, False), 'noch nie');
+  TAtlasMyIssues.Recorded(mState, GitHub, Now0, True, [Issue('#1', 1, 'a')], TAtlasCiFetchError.None);
+  Assert.IsFalse(TAtlasMyIssues.Due(mState, GitHub, IncMinute(Now0, 9), False));
+  Assert.IsTrue(TAtlasMyIssues.Due(mState, GitHub, IncMinute(Now0, 10), False));
+  Assert.IsTrue(TAtlasMyIssues.Due(mState, GitHub, IncMinute(Now0, 1), True), '„Jetzt abfragen“');
+  Assert.IsTrue(TAtlasMyIssues.Due(mState, YouTrack, IncMinute(Now0, 1), False), 'anderes Ziel');
+  Assert.IsTrue(TAtlasMyIssues.Due(mState, GitHub, IncMinute(Now0, -5), False), 'Uhr zurückgestellt');
+  Assert.IsFalse(TAtlasMyIssues.Due(mState, TAtlasMyIssues.TargetFor('', '', '', '', ''), Now0, True),
     'ohne Tracker kein Netzzugriff');
 end;
 
 procedure TAtlasMyIssuesTests.FailedFetchKeepsLastState;
 var
-  State: TAtlasIssuesState;
+  mState: TAtlasIssuesState;
 begin
-  State := TAtlasIssuesState.Empty;
-  TAtlasMyIssues.Recorded(State, GitHub, Now0, True, [Issue('#1', 1, 'a'), Issue('#2', 2, 'b')],
+  mState := TAtlasIssuesState.Empty;
+  TAtlasMyIssues.Recorded(mState, GitHub, Now0, True, [Issue('#1', 1, 'a'), Issue('#2', 2, 'b')],
     TAtlasCiFetchError.None);
-  TAtlasMyIssues.Recorded(State, GitHub, IncMinute(Now0, 20), False, nil, TAtlasCiFetchError.Network);
-  Assert.AreEqual(2, Integer(Length(State.Items)), 'letzter Stand bleibt');
-  Assert.IsTrue(SameDateTime(Now0, State.At));
-  Assert.IsTrue(State.Error = TAtlasCiFetchError.Network);
-  Assert.IsTrue(SameDateTime(IncMinute(Now0, 20), State.Attempt));
+  TAtlasMyIssues.Recorded(mState, GitHub, IncMinute(Now0, 20), False, nil, TAtlasCiFetchError.Network);
+  Assert.AreEqual(2, Integer(Length(mState.Items)), 'letzter Stand bleibt');
+  Assert.IsTrue(SameDateTime(Now0, mState.At));
+  Assert.IsTrue(mState.Error = TAtlasCiFetchError.Network);
+  Assert.IsTrue(SameDateTime(IncMinute(Now0, 20), mState.Attempt));
   // Anderes Ziel ohne Erfolg: der alte Stand gehört nicht dazu.
-  TAtlasMyIssues.Recorded(State, YouTrack, IncMinute(Now0, 21), False, nil, TAtlasCiFetchError.Timeout);
-  Assert.AreEqual(0, Integer(Length(State.Items)));
-  Assert.IsTrue(State.At = 0);
+  TAtlasMyIssues.Recorded(mState, YouTrack, IncMinute(Now0, 21), False, nil, TAtlasCiFetchError.Timeout);
+  Assert.AreEqual(0, Integer(Length(mState.Items)));
+  Assert.IsTrue(mState.At = 0);
 end;
 
 procedure TAtlasMyIssuesTests.ViewStatus;
 var
-  State: TAtlasIssuesState;
-  View: TAtlasIssuesView;
+  mState: TAtlasIssuesState;
+  mView: TAtlasIssuesView;
 begin
-  State := TAtlasIssuesState.Empty;
-  View := TAtlasMyIssues.View(State, TAtlasMyIssues.TargetFor('', '', '', '', ''), '');
-  Assert.IsTrue(View.Status = TAtlasIssuesStatus.NotConfigured);
-  View := TAtlasMyIssues.View(State, GitHub, '');
-  Assert.IsTrue(View.Status = TAtlasIssuesStatus.Waiting);
-  TAtlasMyIssues.Recorded(State, GitHub, Now0, False, nil, TAtlasCiFetchError.Unauthorized);
-  View := TAtlasMyIssues.View(State, GitHub, '');
-  Assert.IsTrue(View.Status = TAtlasIssuesStatus.Failed);
-  Assert.IsTrue(View.Error = TAtlasCiFetchError.Unauthorized);
-  TAtlasMyIssues.Recorded(State, GitHub, Now0, True, [Issue('#1', 1, 'a')], TAtlasCiFetchError.None);
-  View := TAtlasMyIssues.View(State, GitHub, '');
-  Assert.IsTrue(View.Status = TAtlasIssuesStatus.Ready);
-  Assert.AreEqual(1, Integer(Length(View.Items)));
-  TAtlasMyIssues.Recorded(State, GitHub, IncHour(Now0, 1), False, nil, TAtlasCiFetchError.Network);
-  View := TAtlasMyIssues.View(State, GitHub, '');
-  Assert.IsTrue(View.Status = TAtlasIssuesStatus.Stale, '„Stand vom …“');
-  Assert.IsTrue(SameDateTime(Now0, View.At));
-  Assert.AreEqual(1, Integer(Length(View.Items)));
+  mState := TAtlasIssuesState.Empty;
+  mView := TAtlasMyIssues.View(mState, TAtlasMyIssues.TargetFor('', '', '', '', ''), '');
+  Assert.IsTrue(mView.Status = TAtlasIssuesStatus.NotConfigured);
+  mView := TAtlasMyIssues.View(mState, GitHub, '');
+  Assert.IsTrue(mView.Status = TAtlasIssuesStatus.Waiting);
+  TAtlasMyIssues.Recorded(mState, GitHub, Now0, False, nil, TAtlasCiFetchError.Unauthorized);
+  mView := TAtlasMyIssues.View(mState, GitHub, '');
+  Assert.IsTrue(mView.Status = TAtlasIssuesStatus.Failed);
+  Assert.IsTrue(mView.Error = TAtlasCiFetchError.Unauthorized);
+  TAtlasMyIssues.Recorded(mState, GitHub, Now0, True, [Issue('#1', 1, 'a')], TAtlasCiFetchError.None);
+  mView := TAtlasMyIssues.View(mState, GitHub, '');
+  Assert.IsTrue(mView.Status = TAtlasIssuesStatus.Ready);
+  Assert.AreEqual(1, Integer(Length(mView.Items)));
+  TAtlasMyIssues.Recorded(mState, GitHub, IncHour(Now0, 1), False, nil, TAtlasCiFetchError.Network);
+  mView := TAtlasMyIssues.View(mState, GitHub, '');
+  Assert.IsTrue(mView.Status = TAtlasIssuesStatus.Stale, '„Stand vom …“');
+  Assert.IsTrue(SameDateTime(Now0, mView.At));
+  Assert.AreEqual(1, Integer(Length(mView.Items)));
 end;
 
 procedure TAtlasMyIssuesTests.ActiveIssueFromStartAndBranch;
 var
-  State: TAtlasIssuesState;
-  Active: TAtlasActiveIssue;
+  mState: TAtlasIssuesState;
+  mActive: TAtlasActiveIssue;
 begin
-  State := TAtlasIssuesState.Empty;
-  TAtlasMyIssues.Recorded(State, GitHub, Now0, True, [Issue('#753', 753, 'Atlas-Bereiche')],
+  mState := TAtlasIssuesState.Empty;
+  TAtlasMyIssues.Recorded(mState, GitHub, Now0, True, [Issue('#753', 753, 'Atlas-Bereiche')],
     TAtlasCiFetchError.None);
   // Branch → Ticket, Titel aus der Liste.
-  Active := TAtlasMyIssues.Effective(State, 'github', 'beispiel/atlas', 'feature/753-atlas-bereiche-und');
-  Assert.AreEqual('#753', Active.Key);
-  Assert.AreEqual('Atlas-Bereiche', Active.Title);
-  Assert.IsTrue(Active.FromBranch);
-  Assert.IsFalse(TAtlasMyIssues.Effective(State, 'github', 'beispiel/atlas', 'main').Active);
+  mActive := TAtlasMyIssues.Effective(mState, 'github', 'beispiel/atlas', 'feature/753-atlas-bereiche-und');
+  Assert.AreEqual('#753', mActive.Key);
+  Assert.AreEqual('Atlas-Bereiche', mActive.Title);
+  Assert.IsTrue(mActive.FromBranch);
+  Assert.IsFalse(TAtlasMyIssues.Effective(mState, 'github', 'beispiel/atlas', 'main').Active);
   // Mit Branch begonnen: gilt nur auf diesem Branch.
-  TAtlasMyIssues.Started(State, Issue('#612', 612, 'Parser'), TAtlasIssueStart.Branch, 'feature/612-parser',
+  TAtlasMyIssues.Started(mState, Issue('#612', 612, 'Parser'), TAtlasIssueStart.Branch, 'feature/612-parser',
     Now0);
-  Assert.AreEqual('#612', TAtlasMyIssues.Effective(State, 'github', '', 'feature/612-parser').Key);
-  Assert.AreEqual('#612', TAtlasMyIssues.Effective(State, 'github', '', '').Key, 'Branch unbekannt');
-  Assert.IsFalse(TAtlasMyIssues.Effective(State, 'github', '', 'main').Active, 'anderer Branch');
+  Assert.AreEqual('#612', TAtlasMyIssues.Effective(mState, 'github', '', 'feature/612-parser').Key);
+  Assert.AreEqual('#612', TAtlasMyIssues.Effective(mState, 'github', '', '').Key, 'Branch unbekannt');
+  Assert.IsFalse(TAtlasMyIssues.Effective(mState, 'github', '', 'main').Active, 'anderer Branch');
   // Nur gemerkt: gilt auf jedem Branch.
-  TAtlasMyIssues.Started(State, Issue('ATL-123', 123, 'Tracker'), TAtlasIssueStart.Remember, 'trunk', Now0);
-  Active := TAtlasMyIssues.Effective(State, 'youtrack', 'ATL', 'trunk');
-  Assert.AreEqual('ATL-123', Active.Key);
-  Assert.AreEqual('', Active.Branch);
-  Assert.IsFalse(Active.FromBranch);
+  TAtlasMyIssues.Started(mState, Issue('ATL-123', 123, 'Tracker'), TAtlasIssueStart.Remember, 'trunk', Now0);
+  mActive := TAtlasMyIssues.Effective(mState, 'youtrack', 'ATL', 'trunk');
+  Assert.AreEqual('ATL-123', mActive.Key);
+  Assert.AreEqual('', mActive.Branch);
+  Assert.IsFalse(mActive.FromBranch);
 end;
 
 procedure TAtlasMyIssuesTests.EndedIssueStaysOff;
 var
-  State: TAtlasIssuesState;
+  mState: TAtlasIssuesState;
 begin
-  State := TAtlasIssuesState.Empty;
-  TAtlasMyIssues.Started(State, Issue('#753', 753, 'x'), TAtlasIssueStart.Branch, 'feature/753-x', Now0);
-  TAtlasMyIssues.Ended(State, 'feature/753-x');
-  Assert.IsFalse(TAtlasMyIssues.Effective(State, 'github', '', 'feature/753-x').Active,
+  mState := TAtlasIssuesState.Empty;
+  TAtlasMyIssues.Started(mState, Issue('#753', 753, 'x'), TAtlasIssueStart.Branch, 'feature/753-x', Now0);
+  TAtlasMyIssues.Ended(mState, 'feature/753-x');
+  Assert.IsFalse(TAtlasMyIssues.Effective(mState, 'github', '', 'feature/753-x').Active,
     'der Branch aktiviert es nicht wieder');
-  Assert.AreEqual('#9', TAtlasMyIssues.Effective(State, 'github', '', 'feature/9-y').Key);
-  TAtlasMyIssues.Started(State, Issue('#753', 753, 'x'), TAtlasIssueStart.Branch, 'feature/753-x', Now0);
-  Assert.AreEqual('', State.EndedBranch, 'erneutes Beginnen hebt es auf');
+  Assert.AreEqual('#9', TAtlasMyIssues.Effective(mState, 'github', '', 'feature/9-y').Key);
+  TAtlasMyIssues.Started(mState, Issue('#753', 753, 'x'), TAtlasIssueStart.Branch, 'feature/753-x', Now0);
+  Assert.AreEqual('', mState.EndedBranch, 'erneutes Beginnen hebt es auf');
 end;
 
 procedure TAtlasMyIssuesTests.PlanStartGit;
 var
-  Plan: TAtlasIssueStartPlan;
-  Options: TAtlasIssuesOptions;
+  mPlan: TAtlasIssueStartPlan;
+  mOptions: TAtlasIssuesOptions;
 begin
-  Options := TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', '{kennung} ');
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git, Options,
+  mOptions := TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', '{kennung} ');
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git, mOptions,
     Issue('#753', 753, 'Plugin: Atlas-Bereiche und Layouts der Willkommensseite'));
-  Assert.IsTrue(Plan.Valid);
-  Assert.IsTrue(Plan.Mode = TAtlasIssueStart.Branch);
-  Assert.AreEqual('feature/753-atlas-bereiche-und', Plan.Branch);
-  Assert.AreEqual(2, Integer(Length(Plan.Bases)));
-  Assert.AreEqual('main', Plan.Bases[0]);
-  Assert.AreEqual('master', Plan.Bases[1]);
-  Assert.AreEqual('#753 ', Plan.Prefix);
-  Options := TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, 'bugfix/{nummer}', 'develop', '');
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git, Options, Issue('#9', 9, 'x'));
-  Assert.AreEqual('bugfix/9', Plan.Branch);
-  Assert.AreEqual(1, Integer(Length(Plan.Bases)));
-  Assert.AreEqual('develop', Plan.Bases[0]);
-  Assert.AreEqual('', Plan.Prefix);
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git, TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch,
+  Assert.IsTrue(mPlan.Valid);
+  Assert.IsTrue(mPlan.Mode = TAtlasIssueStart.Branch);
+  Assert.AreEqual('feature/753-atlas-bereiche-und', mPlan.Branch);
+  Assert.AreEqual(2, Integer(Length(mPlan.Bases)));
+  Assert.AreEqual('main', mPlan.Bases[0]);
+  Assert.AreEqual('master', mPlan.Bases[1]);
+  Assert.AreEqual('#753 ', mPlan.Prefix);
+  mOptions := TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, 'bugfix/{nummer}', 'develop', '');
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git, mOptions, Issue('#9', 9, 'x'));
+  Assert.AreEqual('bugfix/9', mPlan.Branch);
+  Assert.AreEqual(1, Integer(Length(mPlan.Bases)));
+  Assert.AreEqual('develop', mPlan.Bases[0]);
+  Assert.AreEqual('', mPlan.Prefix);
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git, TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch,
     '///', '', ''), Issue('#9', 9, 'x'));
-  Assert.IsFalse(Plan.Valid, 'kein gültiger Name');
+  Assert.IsFalse(mPlan.Valid, 'kein gültiger Name');
   // #1286: Hauptbranch des Projekts statt raten; issues.branchBase bleibt vorrangig.
-  Options := TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', '');
-  Options.MainBranch := 'develop';
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git, Options, Issue('#9', 9, 'x'));
-  Assert.AreEqual(1, Integer(Length(Plan.Bases)));
-  Assert.AreEqual('develop', Plan.Bases[0]);
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn, Options, Issue('#9', 9, 'x'));
-  Assert.AreEqual('develop', Plan.Bases[0], 'auch unter SVN (^/develop)');
-  Options.BranchBase := 'release';
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git, Options, Issue('#9', 9, 'x'));
-  Assert.AreEqual('release', Plan.Bases[0]);
+  mOptions := TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', '');
+  mOptions.MainBranch := 'develop';
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git, mOptions, Issue('#9', 9, 'x'));
+  Assert.AreEqual(1, Integer(Length(mPlan.Bases)));
+  Assert.AreEqual('develop', mPlan.Bases[0]);
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn, mOptions, Issue('#9', 9, 'x'));
+  Assert.AreEqual('develop', mPlan.Bases[0], 'auch unter SVN (^/develop)');
+  mOptions.BranchBase := 'release';
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git, mOptions, Issue('#9', 9, 'x'));
+  Assert.AreEqual('release', mPlan.Bases[0]);
 end;
 
 procedure TAtlasMyIssuesTests.PlanStartSvnAndRemember;
 var
-  Plan: TAtlasIssueStartPlan;
+  mPlan: TAtlasIssueStartPlan;
 begin
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn, TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '',
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn, TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '',
     '', '{kennung} '), Issue('ATL-123', 123, 'Tracker im Plugin anbinden'));
-  Assert.AreEqual('ATL-123-tracker-im-plugin', Plan.Branch, 'unter ^/branches/');
-  Assert.AreEqual('trunk', Plan.Bases[0]);
+  Assert.AreEqual('ATL-123-tracker-im-plugin', mPlan.Branch, 'unter ^/branches/');
+  Assert.AreEqual('trunk', mPlan.Bases[0]);
   // #1290: Nachricht aus vcs.branch.svn.message (Vorgabe „{kennung} Branch für {titel}“), Optionen mit Kennung.
-  Assert.AreEqual('ATL-123 Branch für Tracker im Plugin anbinden', Plan.Message);
-  Assert.AreEqual('ATL-123', Plan.Svn.Key);
-  Assert.AreEqual('{projektwurzel}/branches/{name}', Plan.Svn.Location);
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn, TAtlasIssuesOptions.Create(TAtlasIssueStart.Remember, '',
+  Assert.AreEqual('ATL-123 Branch für Tracker im Plugin anbinden', mPlan.Message);
+  Assert.AreEqual('ATL-123', mPlan.Svn.Key);
+  Assert.AreEqual('{projektwurzel}/branches/{name}', mPlan.Svn.Location);
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn, TAtlasIssuesOptions.Create(TAtlasIssueStart.Remember, '',
     '', '{kennung} '), Issue('ATL-123', 123, 'x'));
-  Assert.IsTrue(Plan.Mode = TAtlasIssueStart.Remember);
-  Assert.AreEqual('', Plan.Branch);
-  Assert.AreEqual('ATL-123 ', Plan.Prefix);
+  Assert.IsTrue(mPlan.Mode = TAtlasIssueStart.Remember);
+  Assert.AreEqual('', mPlan.Branch);
+  Assert.AreEqual('ATL-123 ', mPlan.Prefix);
   // Ohne Versionsverwaltung: nur merken.
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.None, TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '',
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.None, TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '',
     '', ''), Issue('ATL-1', 1, 'x'));
-  Assert.IsTrue(Plan.Mode = TAtlasIssueStart.Remember);
-  Assert.IsTrue(Plan.Valid);
+  Assert.IsTrue(mPlan.Mode = TAtlasIssueStart.Remember);
+  Assert.IsTrue(mPlan.Valid);
 end;
 
 procedure TAtlasMyIssuesTests.CommitPrefixOfActiveIssue;
 var
-  State: TAtlasIssuesState;
-  Active: TAtlasActiveIssue;
+  mState: TAtlasIssuesState;
+  mActive: TAtlasActiveIssue;
 begin
-  State := TAtlasIssuesState.Empty;
-  Assert.AreEqual('', TAtlasMyIssues.CommitPrefix(TAtlasMyIssues.Effective(State, 'youtrack', 'ATL',
+  mState := TAtlasIssuesState.Empty;
+  Assert.AreEqual('', TAtlasMyIssues.CommitPrefix(TAtlasMyIssues.Effective(mState, 'youtrack', 'ATL',
     'trunk'), '{kennung} '), 'ohne aktives Issue');
-  TAtlasMyIssues.Started(State, Issue('ATL-123', 123, 'Tracker'), TAtlasIssueStart.Remember, '', Now0);
-  Active := TAtlasMyIssues.Effective(State, 'youtrack', 'ATL', 'trunk');
-  Assert.AreEqual('ATL-123 ', TAtlasMyIssues.CommitPrefix(Active, '{kennung} '));
-  Assert.AreEqual('', TAtlasMyIssues.CommitPrefix(Active, ''), 'leeres Muster: aus');
-  Assert.AreEqual('[123] ', TAtlasMyIssues.CommitPrefix(Active, '[{nummer}] '));
+  TAtlasMyIssues.Started(mState, Issue('ATL-123', 123, 'Tracker'), TAtlasIssueStart.Remember, '', Now0);
+  mActive := TAtlasMyIssues.Effective(mState, 'youtrack', 'ATL', 'trunk');
+  Assert.AreEqual('ATL-123 ', TAtlasMyIssues.CommitPrefix(mActive, '{kennung} '));
+  Assert.AreEqual('', TAtlasMyIssues.CommitPrefix(mActive, ''), 'leeres Muster: aus');
+  Assert.AreEqual('[123] ', TAtlasMyIssues.CommitPrefix(mActive, '[{nummer}] '));
   Assert.AreEqual(753, TAtlasMyIssues.NumberOfKey('#753'));
   Assert.AreEqual(123, TAtlasMyIssues.NumberOfKey('ATL-123'));
   Assert.AreEqual(0, TAtlasMyIssues.NumberOfKey('ATL'));
@@ -556,77 +556,77 @@ end;
 
 procedure TAtlasMyIssuesTests.FieldsOfGitHubAndYouTrack;
 var
-  Value: TAtlasTrackerIssue;
-  Fields: TArray<string>;
+  mValue: TAtlasTrackerIssue;
+  mFields: TArray<string>;
 begin
-  Value := Issue('#753', 753, 'x');
-  Value.Labels := ['plugin', 'willkommensseite'];
-  Value.State := 'open';
-  Fields := TAtlasMyIssues.Fields(Value);
-  Assert.AreEqual(2, Integer(Length(Fields)), 'GitHub: nur Labels');
-  Assert.AreEqual('plugin', Fields[0]);
-  Value := Issue('ATL-123', 123, 'x');
-  Value.State := 'In Progress';
-  Value.Priority := 'Major';
-  Value.Sprint := 'Sprint 42';
-  Fields := TAtlasMyIssues.Fields(Value);
-  Assert.AreEqual(3, Integer(Length(Fields)));
-  Assert.AreEqual('In Progress', Fields[0]);
-  Assert.AreEqual('Major', Fields[1]);
-  Assert.AreEqual('Sprint 42', Fields[2]);
+  mValue := Issue('#753', 753, 'x');
+  mValue.Labels := ['plugin', 'willkommensseite'];
+  mValue.State := 'open';
+  mFields := TAtlasMyIssues.Fields(mValue);
+  Assert.AreEqual(2, Integer(Length(mFields)), 'GitHub: nur Labels');
+  Assert.AreEqual('plugin', mFields[0]);
+  mValue := Issue('ATL-123', 123, 'x');
+  mValue.State := 'In Progress';
+  mValue.Priority := 'Major';
+  mValue.Sprint := 'Sprint 42';
+  mFields := TAtlasMyIssues.Fields(mValue);
+  Assert.AreEqual(3, Integer(Length(mFields)));
+  Assert.AreEqual('In Progress', mFields[0]);
+  Assert.AreEqual('Major', mFields[1]);
+  Assert.AreEqual('Sprint 42', mFields[2]);
 end;
 
 procedure TAtlasMyIssuesTests.SectionRoundTripKeepsOtherFields;
 var
-  Summary, Loaded: TAtlasProjectSummary;
-  State, Back: TAtlasIssuesState;
-  Item: TAtlasTrackerIssue;
-  Json: string;
+  mSummary, mLoaded: TAtlasProjectSummary;
+  mState, mBack: TAtlasIssuesState;
+  mItem: TAtlasTrackerIssue;
+  mJson: string;
 begin
-  Summary := TAtlasProjectSummary.Create('C:\Projekte\Demo.dproj');
-  Summary.LastOpened := Now0;
-  State := TAtlasIssuesState.Empty;
-  Item := Issue('#753', 753, 'Atlas-Bereiche');
-  Item.Labels := ['plugin'];
-  Item.PullRequest.Number := 760;
-  Item.PullRequest.Checks := TAtlasTrackerChecks.Failure;
-  Item.PullRequest.Draft := True;
-  TAtlasMyIssues.Recorded(State, GitHub, Now0, True, [Item], TAtlasCiFetchError.None);
-  TAtlasMyIssues.Recorded(State, GitHub, IncMinute(Now0, 30), False, nil, TAtlasCiFetchError.Timeout);
-  TAtlasMyIssues.Started(State, Item, TAtlasIssueStart.Branch, 'feature/753-atlas-bereiche', Now0);
-  State.Hook := TAtlasMyIssues.cHookYes;
-  State.GitDir := 'C:\Repo\.git';
-  TAtlasMyIssues.Write(Summary, State);
-  Json := TAtlasProjectSummaries.ToJson(Summary);
-  Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Loaded));
-  Assert.IsTrue(SameDateTime(Now0, Loaded.LastOpened), 'übrige Felder bleiben');
-  Assert.IsTrue(TAtlasMyIssues.Read(Loaded, Back));
-  Assert.AreEqual('github', Back.Provider);
-  Assert.AreEqual('https://github.com', Back.Server);
-  Assert.AreEqual('beispiel/atlas', Back.Project);
-  Assert.IsTrue(Back.Error = TAtlasCiFetchError.Timeout);
-  Assert.IsTrue(SameDateTime(Now0, Back.At));
-  Assert.AreEqual(1, Integer(Length(Back.Items)));
-  Assert.AreEqual('#753', Back.Items[0].Key);
-  Assert.AreEqual(753, Back.Items[0].Number);
-  Assert.AreEqual('plugin', Back.Items[0].Labels[0]);
-  Assert.AreEqual(760, Back.Items[0].PullRequest.Number);
-  Assert.IsTrue(Back.Items[0].PullRequest.Checks = TAtlasTrackerChecks.Failure);
-  Assert.IsTrue(Back.Items[0].PullRequest.Draft);
-  Assert.AreEqual('#753', Back.Active.Key);
-  Assert.IsTrue(Back.Active.Mode = TAtlasIssueStart.Branch);
-  Assert.AreEqual('feature/753-atlas-bereiche', Back.Active.Branch);
-  Assert.AreEqual('yes', Back.Hook);
-  Assert.AreEqual('C:\Repo\.git', Back.GitDir);
-  Assert.IsTrue(Back.Matches(GitHub));
+  mSummary := TAtlasProjectSummary.Create('C:\Projekte\Demo.dproj');
+  mSummary.LastOpened := Now0;
+  mState := TAtlasIssuesState.Empty;
+  mItem := Issue('#753', 753, 'Atlas-Bereiche');
+  mItem.Labels := ['plugin'];
+  mItem.PullRequest.Number := 760;
+  mItem.PullRequest.Checks := TAtlasTrackerChecks.Failure;
+  mItem.PullRequest.Draft := True;
+  TAtlasMyIssues.Recorded(mState, GitHub, Now0, True, [mItem], TAtlasCiFetchError.None);
+  TAtlasMyIssues.Recorded(mState, GitHub, IncMinute(Now0, 30), False, nil, TAtlasCiFetchError.Timeout);
+  TAtlasMyIssues.Started(mState, mItem, TAtlasIssueStart.Branch, 'feature/753-atlas-bereiche', Now0);
+  mState.Hook := TAtlasMyIssues.cHookYes;
+  mState.GitDir := 'C:\Repo\.git';
+  TAtlasMyIssues.Write(mSummary, mState);
+  mJson := TAtlasProjectSummaries.ToJson(mSummary);
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(mJson, mLoaded));
+  Assert.IsTrue(SameDateTime(Now0, mLoaded.LastOpened), 'übrige Felder bleiben');
+  Assert.IsTrue(TAtlasMyIssues.Read(mLoaded, mBack));
+  Assert.AreEqual('github', mBack.Provider);
+  Assert.AreEqual('https://github.com', mBack.Server);
+  Assert.AreEqual('beispiel/atlas', mBack.Project);
+  Assert.IsTrue(mBack.Error = TAtlasCiFetchError.Timeout);
+  Assert.IsTrue(SameDateTime(Now0, mBack.At));
+  Assert.AreEqual(1, Integer(Length(mBack.Items)));
+  Assert.AreEqual('#753', mBack.Items[0].Key);
+  Assert.AreEqual(753, mBack.Items[0].Number);
+  Assert.AreEqual('plugin', mBack.Items[0].Labels[0]);
+  Assert.AreEqual(760, mBack.Items[0].PullRequest.Number);
+  Assert.IsTrue(mBack.Items[0].PullRequest.Checks = TAtlasTrackerChecks.Failure);
+  Assert.IsTrue(mBack.Items[0].PullRequest.Draft);
+  Assert.AreEqual('#753', mBack.Active.Key);
+  Assert.IsTrue(mBack.Active.Mode = TAtlasIssueStart.Branch);
+  Assert.AreEqual('feature/753-atlas-bereiche', mBack.Active.Branch);
+  Assert.AreEqual('yes', mBack.Hook);
+  Assert.AreEqual('C:\Repo\.git', mBack.GitDir);
+  Assert.IsTrue(mBack.Matches(GitHub));
   // Ein zweites Schreiben ersetzt den Abschnitt.
-  TAtlasMyIssues.Ended(Back, 'feature/753-atlas-bereiche');
-  TAtlasMyIssues.Write(Loaded, Back);
-  Assert.IsTrue(TAtlasMyIssues.Read(Loaded, State));
-  Assert.IsFalse(State.Active.Active);
-  Assert.AreEqual('feature/753-atlas-bereiche', State.EndedBranch);
-  Assert.IsFalse(TAtlasMyIssues.Read(TAtlasProjectSummary.Create('x'), State), 'ohne Abschnitt');
-  Assert.IsFalse(Pos('token', LowerCase(TAtlasMyIssues.ToJson(Back))) > 0, 'nie Zugangsdaten');
+  TAtlasMyIssues.Ended(mBack, 'feature/753-atlas-bereiche');
+  TAtlasMyIssues.Write(mLoaded, mBack);
+  Assert.IsTrue(TAtlasMyIssues.Read(mLoaded, mState));
+  Assert.IsFalse(mState.Active.Active);
+  Assert.AreEqual('feature/753-atlas-bereiche', mState.EndedBranch);
+  Assert.IsFalse(TAtlasMyIssues.Read(TAtlasProjectSummary.Create('x'), mState), 'ohne Abschnitt');
+  Assert.IsFalse(Pos('token', LowerCase(TAtlasMyIssues.ToJson(mBack))) > 0, 'nie Zugangsdaten');
 end;
 
 const
@@ -688,144 +688,144 @@ end;
 
 procedure TAtlasMyIssuesTests.ExecuteGit;
 var
-  Fake: TFakeBranchingVcs;
-  Vcs: IAtlasVersionControl;
-  Plan: TAtlasIssueStartPlan;
-  Started: TAtlasIssueStartResult;
-  Options: TAtlasIssuesOptions;
+  mFake: TFakeBranchingVcs;
+  mVcs: IAtlasVersionControl;
+  mPlan: TAtlasIssueStartPlan;
+  mStarted: TAtlasIssueStartResult;
+  mOptions: TAtlasIssuesOptions;
 begin
-  Options := TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', '{kennung} ');
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git, Options,
+  mOptions := TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', '{kennung} ');
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git, mOptions,
     Issue('#753', 753, 'Atlas-Bereiche und Layout'));
   // Ohne main: von master (Plan aus TAtlasVcsBranchPlan, #1288).
-  Fake := TFakeBranchingVcs.Create(TAtlasVcsKind.Git);
-  Vcs := Fake;
-  Fake.Bases := ['master'];
-  Started := TAtlasMyIssues.Execute(Vcs, Plan);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
-  Assert.IsTrue(Started.Succeeded);
-  Assert.AreEqual(cExecuteGitcName, Started.Branch);
-  Assert.AreEqual('master', Started.Base);
-  Assert.AreEqual(cExecuteGitcName, Fake.Current);
-  Assert.AreEqual('C:\Repo\.git', Started.GitDir);
-  Assert.AreEqual('C:\Repo\.git\hooks', Started.Hooks);
-  Assert.AreEqual(6, Integer(Length(Fake.Calls)));
-  Assert.AreEqual('exists main', Fake.Calls[1]);
-  Assert.AreEqual('remote master', Fake.Calls[4]);
-  Assert.AreEqual('run checkout --quiet --no-track -b ' + cExecuteGitcName + ' refs/heads/master --', Fake.Calls[5]);
-  Assert.AreEqual(1, Integer(Length(Started.Steps)));
-  Assert.AreEqual(1, Started.Run.Done);
+  mFake := TFakeBranchingVcs.Create(TAtlasVcsKind.Git);
+  mVcs := mFake;
+  mFake.Bases := ['master'];
+  mStarted := TAtlasMyIssues.Execute(mVcs, mPlan);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.IsTrue(mStarted.Succeeded);
+  Assert.AreEqual(cExecuteGitcName, mStarted.Branch);
+  Assert.AreEqual('master', mStarted.Base);
+  Assert.AreEqual(cExecuteGitcName, mFake.Current);
+  Assert.AreEqual('C:\Repo\.git', mStarted.GitDir);
+  Assert.AreEqual('C:\Repo\.git\hooks', mStarted.Hooks);
+  Assert.AreEqual(6, Integer(Length(mFake.Calls)));
+  Assert.AreEqual('exists main', mFake.Calls[1]);
+  Assert.AreEqual('remote master', mFake.Calls[4]);
+  Assert.AreEqual('run checkout --quiet --no-track -b ' + cExecuteGitcName + ' refs/heads/master --', mFake.Calls[5]);
+  Assert.AreEqual(1, Integer(Length(mStarted.Steps)));
+  Assert.AreEqual(1, mStarted.Run.Done);
   // Gibt es den Branch schon: nur auschecken.
-  Fake.Current := 'main';
-  Fake.Calls := nil;
-  Started := TAtlasMyIssues.Execute(Vcs, Plan);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Switched);
-  Assert.AreEqual(2, Integer(Length(Fake.Calls)));
-  Assert.AreEqual('switch ' + cExecuteGitcName, Fake.Calls[1]);
-  AssertGitBaseFromOrigin(Fake, Vcs, Plan);
-  AssertGitInvalidName(Fake, Vcs);
+  mFake.Current := 'main';
+  mFake.Calls := nil;
+  mStarted := TAtlasMyIssues.Execute(mVcs, mPlan);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Switched);
+  Assert.AreEqual(2, Integer(Length(mFake.Calls)));
+  Assert.AreEqual('switch ' + cExecuteGitcName, mFake.Calls[1]);
+  AssertGitBaseFromOrigin(mFake, mVcs, mPlan);
+  AssertGitInvalidName(mFake, mVcs);
 end;
 
 procedure TAtlasMyIssuesTests.ExecuteWithDialogRequest;
 var
-  Fake: TFakeBranchingVcs;
-  Vcs: IAtlasVersionControl;
-  Plan: TAtlasIssueStartPlan;
-  Started: TAtlasIssueStartResult;
+  mFake: TFakeBranchingVcs;
+  mVcs: IAtlasVersionControl;
+  mPlan: TAtlasIssueStartPlan;
+  mStarted: TAtlasIssueStartResult;
   mRequest: TAtlasVcsBranchRequest;
 begin
-  Fake := TFakeBranchingVcs.Create(TAtlasVcsKind.Git);
-  Vcs := Fake;
-  Fake.Bases := ['main'];
-  Fake.Current := 'feature/700-alt';
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git,
+  mFake := TFakeBranchingVcs.Create(TAtlasVcsKind.Git);
+  mVcs := mFake;
+  mFake.Bases := ['main'];
+  mFake.Current := 'feature/700-alt';
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git,
     TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', ''), Issue('#753', 753, 'Atlas-Bereiche'));
   // Im Dialog umbenannt und vom aktuellen Branch: genau diese Werte, ohne eigene Prüfung der Basen.
   mRequest := TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Git, 'feature/753-anders',
     TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.Current, 'feature/700-alt', ''), '');
   ProgressCalls := 0;
-  Started := TAtlasMyIssues.Execute(Vcs, Plan, mRequest, CountingProgress());
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
-  Assert.AreEqual('feature/753-anders', Started.Branch);
-  Assert.AreEqual('feature/700-alt', Started.Base);
-  Assert.AreEqual(2, Integer(Length(Fake.Calls)));
-  Assert.AreEqual('exists feature/753-anders', Fake.Calls[0]);
+  mStarted := TAtlasMyIssues.Execute(mVcs, mPlan, mRequest, CountingProgress());
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.AreEqual('feature/753-anders', mStarted.Branch);
+  Assert.AreEqual('feature/700-alt', mStarted.Base);
+  Assert.AreEqual(2, Integer(Length(mFake.Calls)));
+  Assert.AreEqual('exists feature/753-anders', mFake.Calls[0]);
   Assert.AreEqual('run checkout --quiet --no-track -b feature/753-anders refs/heads/feature/700-alt --',
-    Fake.Calls[1]);
+    mFake.Calls[1]);
   Assert.AreEqual(1, ProgressCalls, 'Fortschritt je Schritt');
   // Ungültiger Name aus dem Dialog: nichts angelegt.
   mRequest.Name := 'mit leerzeichen';
-  Fake.Calls := nil;
-  Started := TAtlasMyIssues.Execute(Vcs, Plan, mRequest);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.InvalidName);
-  Assert.AreEqual(0, Integer(Length(Fake.Calls)));
-  Fake.Calls := nil;
-  Fake.Branches := nil;
-  Fake.Bases := nil;
-  Fake.Current := '';
-  Started := Default(TAtlasIssueStartResult);
+  mFake.Calls := nil;
+  mStarted := TAtlasMyIssues.Execute(mVcs, mPlan, mRequest);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.InvalidName);
+  Assert.AreEqual(0, Integer(Length(mFake.Calls)));
+  mFake.Calls := nil;
+  mFake.Branches := nil;
+  mFake.Bases := nil;
+  mFake.Current := '';
+  mStarted := Default(TAtlasIssueStartResult);
   mRequest := Default(TAtlasVcsBranchRequest);
 end;
 
 procedure TAtlasMyIssuesTests.ExecuteWithGitOptions;
 var
-  Fake: TFakeBranchingVcs;
-  Vcs: IAtlasVersionControl;
-  Plan: TAtlasIssueStartPlan;
-  Started: TAtlasIssueStartResult;
+  mFake: TFakeBranchingVcs;
+  mVcs: IAtlasVersionControl;
+  mPlan: TAtlasIssueStartPlan;
+  mStarted: TAtlasIssueStartResult;
   mRequest: TAtlasVcsBranchRequest;
   mFolder: string;
 begin
-  Fake := TFakeBranchingVcs.Create(TAtlasVcsKind.Git);
-  Vcs := Fake;
-  Fake.Bases := ['main'];
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git,
+  mFake := TFakeBranchingVcs.Create(TAtlasVcsKind.Git);
+  mVcs := mFake;
+  mFake.Bases := ['main'];
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git,
     TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', ''), Issue('#753', 753, 'Atlas-Bereiche'));
   // Push ohne Anmeldung: der lokale Branch bleibt, „Beginnen“ gilt als gelungen.
   mRequest := TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Git, 'feature/753-x',
     TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.LocalMain, 'main', '', 'origin'), '');
   mRequest.PushNow := True;
-  Fake.FailOn := 'push';
-  Started := TAtlasMyIssues.Execute(Vcs, Plan, mRequest);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
-  Assert.IsTrue(Started.PushFailed);
-  Assert.IsTrue(Started.Reason = TAtlasVcsOutcome.Failed, 'Grund des Push');
-  Assert.AreEqual('feature/753-x', Fake.Current);
-  Assert.AreEqual(2, Integer(Length(Started.Steps)));
-  Assert.AreEqual('', Started.Folder);
+  mFake.FailOn := 'push';
+  mStarted := TAtlasMyIssues.Execute(mVcs, mPlan, mRequest);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.IsTrue(mStarted.PushFailed);
+  Assert.IsTrue(mStarted.Reason = TAtlasVcsOutcome.Failed, 'Grund des Push');
+  Assert.AreEqual('feature/753-x', mFake.Current);
+  Assert.AreEqual(2, Integer(Length(mStarted.Steps)));
+  Assert.AreEqual('', mStarted.Folder);
   // Mit Push: nicht gescheitert.
-  Fake.FailOn := '';
-  Fake.Branches := nil;
-  Started := TAtlasMyIssues.Execute(Vcs, Plan, mRequest);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
-  Assert.IsFalse(Started.PushFailed);
+  mFake.FailOn := '';
+  mFake.Branches := nil;
+  mStarted := TAtlasMyIssues.Execute(mVcs, mPlan, mRequest);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.IsFalse(mStarted.PushFailed);
   // Den worktree-Ordner gibt es schon: nichts angelegt.
-  Fake.Branches := nil;
-  Fake.Calls := nil;
+  mFake.Branches := nil;
+  mFake.Calls := nil;
   mRequest.PushNow := False;
   mRequest.WorktreeFolder := ExcludeTrailingPathDelimiter(GetCurrentDir);
-  Started := TAtlasMyIssues.Execute(Vcs, Plan, mRequest);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Failed);
-  Assert.IsTrue(Started.FolderTaken);
-  Assert.AreEqual(mRequest.WorktreeFolder, Started.Folder);
-  Assert.AreEqual(1, Integer(Length(Fake.Calls)), 'nur die Abfrage, ob es den Branch gibt');
+  mStarted := TAtlasMyIssues.Execute(mVcs, mPlan, mRequest);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Failed);
+  Assert.IsTrue(mStarted.FolderTaken);
+  Assert.AreEqual(mRequest.WorktreeFolder, mStarted.Folder);
+  Assert.AreEqual(1, Integer(Length(mFake.Calls)), 'nur die Abfrage, ob es den Branch gibt');
   // Neuer Ordner: worktree add, Ordner und Wurzel im Ergebnis.
   mFolder := IncludeTrailingPathDelimiter(GetCurrentDir) + 'gibt-es-nicht-1289';
   mRequest.WorktreeFolder := mFolder;
-  Fake.Calls := nil;
-  Started := TAtlasMyIssues.Execute(Vcs, Plan, mRequest);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
-  Assert.IsFalse(Started.FolderTaken);
-  Assert.AreEqual(mFolder, Started.Folder);
-  Assert.AreEqual('C:\Repo', Started.WorkingRoot);
+  mFake.Calls := nil;
+  mStarted := TAtlasMyIssues.Execute(mVcs, mPlan, mRequest);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.IsFalse(mStarted.FolderTaken);
+  Assert.AreEqual(mFolder, mStarted.Folder);
+  Assert.AreEqual('C:\Repo', mStarted.WorkingRoot);
   Assert.AreEqual('run worktree add --quiet --no-track -b feature/753-x ' + mFolder + ' refs/heads/main',
-    Fake.Calls[High(Fake.Calls)]);
-  Fake.Calls := nil;
-  Fake.Branches := nil;
-  Fake.Bases := nil;
-  Fake.Current := '';
-  Fake.FailOn := '';
-  Started := Default(TAtlasIssueStartResult);
+    mFake.Calls[High(mFake.Calls)]);
+  mFake.Calls := nil;
+  mFake.Branches := nil;
+  mFake.Bases := nil;
+  mFake.Current := '';
+  mFake.FailOn := '';
+  mStarted := Default(TAtlasIssueStartResult);
   mRequest := Default(TAtlasVcsBranchRequest);
 end;
 
@@ -833,59 +833,59 @@ procedure TAtlasMyIssuesTests.ExecuteSvnAndRemember;
 const
   cName = 'ATL-123-tracker-im-bereich';
 var
-  Fake: TFakeBranchingVcs;
-  Vcs: IAtlasVersionControl;
-  Plan: TAtlasIssueStartPlan;
-  Started: TAtlasIssueStartResult;
+  mFake: TFakeBranchingVcs;
+  mVcs: IAtlasVersionControl;
+  mPlan: TAtlasIssueStartPlan;
+  mStarted: TAtlasIssueStartResult;
   mDone: TArray<TAtlasVcsBranchStep>;
 begin
-  Fake := TFakeBranchingVcs.Create(TAtlasVcsKind.Svn);
-  Vcs := Fake;
+  mFake := TFakeBranchingVcs.Create(TAtlasVcsKind.Svn);
+  mVcs := mFake;
   // Standardlayout ^/trunk: {projektwurzel} ist die Wurzel, der Branch liegt unter ^/branches wie vor #1290.
-  Fake.Current := 'trunk';
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn,
+  mFake.Current := 'trunk';
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn,
     TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', ''), Issue('ATL-123', 123, 'Tracker im Bereich'));
-  Started := TAtlasMyIssues.Execute(Vcs, Plan);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
-  Assert.AreEqual(cName, Started.Branch);
-  Assert.AreEqual('trunk', Started.Base);
-  Assert.AreEqual('', Started.GitDir);
-  Assert.AreEqual('', Started.CheckoutFolder);
-  Assert.AreEqual(3, Integer(Length(Fake.Calls)));
+  mStarted := TAtlasMyIssues.Execute(mVcs, mPlan);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.AreEqual(cName, mStarted.Branch);
+  Assert.AreEqual('trunk', mStarted.Base);
+  Assert.AreEqual('', mStarted.GitDir);
+  Assert.AreEqual('', mStarted.CheckoutFolder);
+  Assert.AreEqual(3, Integer(Length(mFake.Calls)));
   Assert.AreEqual('run copy ^/trunk@ ^/branches/' + cName + '@ --parents -m ATL-123 Branch für Tracker im Bereich',
-    Fake.Calls[1]);
-  Assert.AreEqual('run switch ^/branches/' + cName + '@ .', Fake.Calls[2]);
-  Assert.AreEqual(cName, Fake.Current);
+    mFake.Calls[1]);
+  Assert.AreEqual('run switch ^/branches/' + cName + '@ .', mFake.Calls[2]);
+  Assert.AreEqual(cName, mFake.Current);
   // Scheitert switch nach der Kopie: Fehler mit dem schon ausgeführten Serverschritt.
-  Fake.Branches := nil;
-  Fake.Calls := nil;
-  Fake.Current := 'trunk';
-  Fake.FailOn := 'switch';
-  Started := TAtlasMyIssues.Execute(Vcs, Plan);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Failed);
-  Assert.AreEqual(1, Started.Run.Failed);
-  Assert.AreEqual(1, Started.Run.Done);
-  mDone := TAtlasVcsBranchPlan.ServerStepsDone(Started.Steps, Started.Run.Done);
+  mFake.Branches := nil;
+  mFake.Calls := nil;
+  mFake.Current := 'trunk';
+  mFake.FailOn := 'switch';
+  mStarted := TAtlasMyIssues.Execute(mVcs, mPlan);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Failed);
+  Assert.AreEqual(1, mStarted.Run.Failed);
+  Assert.AreEqual(1, mStarted.Run.Done);
+  mDone := TAtlasVcsBranchPlan.ServerStepsDone(mStarted.Steps, mStarted.Run.Done);
   Assert.AreEqual(1, Integer(Length(mDone)));
   Assert.AreEqual('copy', mDone[0].Arguments[0]);
-  Assert.AreEqual('trunk', Fake.Current, 'Arbeitskopie unverändert');
-  Fake.FailOn := '';
+  Assert.AreEqual('trunk', mFake.Current, 'Arbeitskopie unverändert');
+  mFake.FailOn := '';
   // Nur merken: keine Änderung an der Arbeitskopie.
-  Fake.Calls := nil;
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn,
+  mFake.Calls := nil;
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn,
     TAtlasIssuesOptions.Create(TAtlasIssueStart.Remember, '', '', ''), Issue('ATL-123', 123, 'Tracker'));
-  Started := TAtlasMyIssues.Execute(Vcs, Plan);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Remembered);
-  Assert.AreEqual(0, Integer(Length(Fake.Calls)));
+  mStarted := TAtlasMyIssues.Execute(mVcs, mPlan);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Remembered);
+  Assert.AreEqual(0, Integer(Length(mFake.Calls)));
   // Ohne Versionsverwaltung: gemerkt.
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.None,
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.None,
     TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', ''), Issue('ATL-123', 123, 'Tracker'));
-  Started := TAtlasMyIssues.Execute(nil, Plan);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Remembered);
-  Fake.Branches := nil;
-  Fake.Calls := nil;
-  Fake.Current := '';
-  Started := Default(TAtlasIssueStartResult);
+  mStarted := TAtlasMyIssues.Execute(nil, mPlan);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Remembered);
+  mFake.Branches := nil;
+  mFake.Calls := nil;
+  mFake.Current := '';
+  mStarted := Default(TAtlasIssueStartResult);
   mDone := nil;
 end;
 
@@ -988,38 +988,38 @@ end;
 
 procedure TAtlasMyIssuesTests.ExecuteSvnUnderProjectRoot;
 var
-  Fake: TFakeBranchingVcs;
-  Vcs: IAtlasVersionControl;
-  Options: TAtlasIssuesOptions;
-  Plan: TAtlasIssueStartPlan;
-  Started: TAtlasIssueStartResult;
+  mFake: TFakeBranchingVcs;
+  mVcs: IAtlasVersionControl;
+  mOptions: TAtlasIssuesOptions;
+  mPlan: TAtlasIssueStartPlan;
+  mStarted: TAtlasIssueStartResult;
 begin
-  Fake := TFakeBranchingVcs.Create(TAtlasVcsKind.Svn);
-  Vcs := Fake;
-  Fake.SvnUrl := 'Kasse/trunk';
-  Fake.Current := 'trunk';
-  Options := TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', '');
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn, Options, Issue('KASSE-42', 42, 'Bon drucken langsam'));
-  Assert.AreEqual(cExecuteSvncName, Plan.Branch);
-  Started := TAtlasMyIssues.Execute(Vcs, Plan);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
-  Assert.AreEqual('Kasse/trunk', Started.Base, 'Hauptbranch unter der Projektwurzel');
-  Assert.AreEqual(3, Integer(Length(Fake.Calls)));
-  Assert.AreEqual('exists ^/Kasse/branches/' + cExecuteSvncName, Fake.Calls[0]);
+  mFake := TFakeBranchingVcs.Create(TAtlasVcsKind.Svn);
+  mVcs := mFake;
+  mFake.SvnUrl := 'Kasse/trunk';
+  mFake.Current := 'trunk';
+  mOptions := TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', '');
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn, mOptions, Issue('KASSE-42', 42, 'Bon drucken langsam'));
+  Assert.AreEqual(cExecuteSvncName, mPlan.Branch);
+  mStarted := TAtlasMyIssues.Execute(mVcs, mPlan);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.AreEqual('Kasse/trunk', mStarted.Base, 'Hauptbranch unter der Projektwurzel');
+  Assert.AreEqual(3, Integer(Length(mFake.Calls)));
+  Assert.AreEqual('exists ^/Kasse/branches/' + cExecuteSvncName, mFake.Calls[0]);
   Assert.AreEqual('run copy ^/Kasse/trunk@ ^/Kasse/branches/' + cExecuteSvncName +
-    '@ --parents -m KASSE-42 Branch für Bon drucken langsam', Fake.Calls[1]);
-  Assert.AreEqual('run switch ^/Kasse/branches/' + cExecuteSvncName + '@ .', Fake.Calls[2]);
-  Assert.IsFalse(Started.IndexRebuild, 'ohne Externals kein neuer Index');
+    '@ --parents -m KASSE-42 Branch für Bon drucken langsam', mFake.Calls[1]);
+  Assert.AreEqual('run switch ^/Kasse/branches/' + cExecuteSvncName + '@ .', mFake.Calls[2]);
+  Assert.IsFalse(mStarted.IndexRebuild, 'ohne Externals kein neuer Index');
   // Zweites „Beginnen“ auf demselben Issue: findet ihn am selben Ort und schaltet nur um.
-  Fake.Calls := nil;
-  Fake.Current := 'Kasse/trunk';
-  Started := TAtlasMyIssues.Execute(Vcs, Plan);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Switched);
-  Assert.AreEqual(2, Integer(Length(Fake.Calls)));
-  Assert.AreEqual('switch ^/Kasse/branches/' + cExecuteSvncName, Fake.Calls[1]);
-  Assert.AreEqual('Kasse/branches/' + cExecuteSvncName, Fake.Current);
-  AssertSvnAfterNoneCheckoutLayout(Fake, Vcs, Options);
-  AssertSvnPinnedExternals(Fake, Vcs, Options);
+  mFake.Calls := nil;
+  mFake.Current := 'Kasse/trunk';
+  mStarted := TAtlasMyIssues.Execute(mVcs, mPlan);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Switched);
+  Assert.AreEqual(2, Integer(Length(mFake.Calls)));
+  Assert.AreEqual('switch ^/Kasse/branches/' + cExecuteSvncName, mFake.Calls[1]);
+  Assert.AreEqual('Kasse/branches/' + cExecuteSvncName, mFake.Current);
+  AssertSvnAfterNoneCheckoutLayout(mFake, mVcs, mOptions);
+  AssertSvnPinnedExternals(mFake, mVcs, mOptions);
 end;
 
 procedure TAtlasMyIssuesTests.VcsKindFromText;

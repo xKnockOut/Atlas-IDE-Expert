@@ -79,28 +79,28 @@ end;
 
 procedure TShellPlatformTests.MoveReplacingOverwritesTarget;
 var
-  Source, Target: string;
+  mSource, mTarget: string;
 begin
-  Source := TPath.Combine(FFolder, 'neu.txt');
-  Target := TPath.Combine(FFolder, 'alt.txt');
-  TFile.WriteAllText(Source, 'neu');
-  TFile.WriteAllText(Target, 'alt');
-  Assert.IsTrue(TShellPlatform.MoveReplacing(Source, Target), 'ersetzt');
-  Assert.IsFalse(TFile.Exists(Source), 'Quelle weg');
-  Assert.AreEqual('neu', TFile.ReadAllText(Target, TEncoding.UTF8));
-  Assert.IsFalse(TShellPlatform.MoveReplacing(Source, Target), 'fehlende Quelle');
+  mSource := TPath.Combine(FFolder, 'neu.txt');
+  mTarget := TPath.Combine(FFolder, 'alt.txt');
+  TFile.WriteAllText(mSource, 'neu');
+  TFile.WriteAllText(mTarget, 'alt');
+  Assert.IsTrue(TShellPlatform.MoveReplacing(mSource, mTarget), 'ersetzt');
+  Assert.IsFalse(TFile.Exists(mSource), 'Quelle weg');
+  Assert.AreEqual('neu', TFile.ReadAllText(mTarget, TEncoding.UTF8));
+  Assert.IsFalse(TShellPlatform.MoveReplacing(mSource, mTarget), 'fehlende Quelle');
 end;
 
 procedure TShellPlatformTests.CanonicalizePathKeepsExistingFile;
 var
-  FileName, Canonical: string;
+  mFileName, mCanonical: string;
 begin
-  FileName := TPath.Combine(FFolder, 'Unit1.pas');
-  TFile.WriteAllText(FileName, 'unit Unit1;');
-  Canonical := TShellPlatform.CanonicalizePath(FileName);
-  Assert.IsTrue(TFile.Exists(Canonical), Canonical);
-  Assert.AreEqual(Canonical, TShellPlatform.CanonicalizePath(Canonical), 'stabil');
-  Assert.AreEqual('Unit1.pas', ExtractFileName(Canonical));
+  mFileName := TPath.Combine(FFolder, 'Unit1.pas');
+  TFile.WriteAllText(mFileName, 'unit Unit1;');
+  mCanonical := TShellPlatform.CanonicalizePath(mFileName);
+  Assert.IsTrue(TFile.Exists(mCanonical), mCanonical);
+  Assert.AreEqual(mCanonical, TShellPlatform.CanonicalizePath(mCanonical), 'stabil');
+  Assert.AreEqual('Unit1.pas', ExtractFileName(mCanonical));
 end;
 
 procedure TShellPlatformTests.CurrentProcessIdIsRunning;
@@ -111,26 +111,26 @@ end;
 
 procedure TShellPlatformTests.VcsRunnerRefusesMainThreadAndHonoursTimeout;
 var
-  Runner: IAtlasVcsRunner;
-  Command: TProbe;
-  Answer: TAtlasVcsRunResult;
-  Started: UInt64;
+  mRunner: IAtlasVcsRunner;
+  mCommand: TProbe;
+  mAnswer: TAtlasVcsRunResult;
+  mStarted: UInt64;
 begin
-  Command := Probe;
-  Runner := TShellPlatform.CreateVcsRunner(False, nil);
-  Answer := Runner.Run(Command.Executable, Command.Quick, '', 5000);
-  Assert.IsTrue(Answer.Outcome = TAtlasVcsOutcome.MainThread, 'Hauptthread abgelehnt');
-  Runner := TShellPlatform.CreateVcsRunner(True, nil);
-  Answer := Runner.Run(TPath.Combine(FFolder, 'gibt-es-nicht.exe'), nil, '', 5000);
-  Assert.IsTrue(Answer.Outcome = TAtlasVcsOutcome.ToolMissing, 'fehlendes Programm');
-  Started := TThread.GetTickCount64;
-  Answer := Runner.Run(Command.Executable, Command.Slow, '', 300);
-  Assert.IsTrue(Answer.Outcome = TAtlasVcsOutcome.TimedOut, 'Zeitlimit');
-  Assert.IsTrue(TThread.GetTickCount64 - Started < 5000, 'Prozess beendet, nicht abgewartet');
-  Answer := Runner.Run(Command.Executable, Command.Quick, FFolder, 10000);
-  Assert.IsTrue(Answer.Outcome = TAtlasVcsOutcome.Ok, 'gelaufen');
-  Assert.AreEqual(0, Answer.ExitCode);
-  Assert.IsTrue(Length(Answer.Output) > 0, 'stdout gelesen');
+  mCommand := Probe;
+  mRunner := TShellPlatform.CreateVcsRunner(False, nil);
+  mAnswer := mRunner.Run(mCommand.Executable, mCommand.Quick, '', 5000);
+  Assert.IsTrue(mAnswer.Outcome = TAtlasVcsOutcome.MainThread, 'Hauptthread abgelehnt');
+  mRunner := TShellPlatform.CreateVcsRunner(True, nil);
+  mAnswer := mRunner.Run(TPath.Combine(FFolder, 'gibt-es-nicht.exe'), nil, '', 5000);
+  Assert.IsTrue(mAnswer.Outcome = TAtlasVcsOutcome.ToolMissing, 'fehlendes Programm');
+  mStarted := TThread.GetTickCount64;
+  mAnswer := mRunner.Run(mCommand.Executable, mCommand.Slow, '', 300);
+  Assert.IsTrue(mAnswer.Outcome = TAtlasVcsOutcome.TimedOut, 'Zeitlimit');
+  Assert.IsTrue(TThread.GetTickCount64 - mStarted < 5000, 'Prozess beendet, nicht abgewartet');
+  mAnswer := mRunner.Run(mCommand.Executable, mCommand.Quick, FFolder, 10000);
+  Assert.IsTrue(mAnswer.Outcome = TAtlasVcsOutcome.Ok, 'gelaufen');
+  Assert.AreEqual(0, mAnswer.ExitCode);
+  Assert.IsTrue(Length(mAnswer.Output) > 0, 'stdout gelesen');
 end;
 
 initialization

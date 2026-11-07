@@ -83,53 +83,53 @@ end;
 function TAtlasIdeNotesGutter.MarkAt(const AFileName: string; ALine: Integer; const ALineText: string;
   AHasText: Boolean): Boolean;
 var
-  Notes: TArray<TAtlasNote>;
+  mNotes: TArray<TAtlasNote>;
 begin
-  Notes := TAtlasIdeNotes.NotesAt(AFileName, ALine);
+  mNotes := TAtlasIdeNotes.NotesAt(AFileName, ALine);
   // Nur, wenn die Zeile im Editor noch zum Anker passt; nach dem Tippen folgt die Verankerung.
-  Result := (Length(Notes) > 0) and
-    (not AHasText or (TAtlasLineAnchors.Normalize(ALineText) = Notes[0].Anchor.Text));
+  Result := (Length(mNotes) > 0) and
+    (not AHasText or (TAtlasLineAnchors.Normalize(ALineText) = mNotes[0].Anchor.Text));
 end;
 
 procedure TAtlasIdeNotesGutter.PaintIcon(ACanvas: TCanvas; const AIcon: TRect; const AColors: TAtlasColors;
   ABack: TAtlasColor);
 var
-  Fold, Step, Y: Integer;
+  mFold, mStep, Y: Integer;
 begin
   // Notizblatt mit umgeknickter Ecke und zwei Textzeilen, im Akzent.
-  Fold := Max(2, AIcon.Width div 3);
+  mFold := Max(2, AIcon.Width div 3);
   ACanvas.Brush.Style := bsSolid;
   ACanvas.Brush.Color := TColor(TAtlasColorMath.Mix(AColors.Accent, ABack, 0.25));
   ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(AColors.Accent, ABack, 0.9));
   ACanvas.Pen.Width := 1;
-  ACanvas.Polygon([Point(AIcon.Left, AIcon.Top), Point(AIcon.Right - Fold, AIcon.Top),
-    Point(AIcon.Right, AIcon.Top + Fold), Point(AIcon.Right, AIcon.Bottom), Point(AIcon.Left, AIcon.Bottom)]);
-  ACanvas.MoveTo(AIcon.Right - Fold, AIcon.Top);
-  ACanvas.LineTo(AIcon.Right - Fold, AIcon.Top + Fold);
-  ACanvas.LineTo(AIcon.Right, AIcon.Top + Fold);
-  Step := Max(2, AIcon.Height div 4);
-  Y := AIcon.Top + Fold + Step - 1;
+  ACanvas.Polygon([Point(AIcon.Left, AIcon.Top), Point(AIcon.Right - mFold, AIcon.Top),
+    Point(AIcon.Right, AIcon.Top + mFold), Point(AIcon.Right, AIcon.Bottom), Point(AIcon.Left, AIcon.Bottom)]);
+  ACanvas.MoveTo(AIcon.Right - mFold, AIcon.Top);
+  ACanvas.LineTo(AIcon.Right - mFold, AIcon.Top + mFold);
+  ACanvas.LineTo(AIcon.Right, AIcon.Top + mFold);
+  mStep := Max(2, AIcon.Height div 4);
+  Y := AIcon.Top + mFold + mStep - 1;
   while Y < AIcon.Bottom - 1 do
   begin
     ACanvas.MoveTo(AIcon.Left + 2, Y);
     ACanvas.LineTo(AIcon.Right - 1, Y);
-    Inc(Y, Step);
+    Inc(Y, mStep);
   end;
 end;
 
 function TAtlasIdeNotesGutter.TipText(const AFileName: string; ALine: Integer; out ATitle, AText: string): Boolean;
 var
-  Notes: TArray<TAtlasNote>;
+  mNotes: TArray<TAtlasNote>;
 begin
-  Notes := TAtlasIdeNotes.NotesAt(AFileName, ALine);
-  NotesTipText(Notes, ATitle, AText);
-  Result := Length(Notes) > 0;
+  mNotes := TAtlasIdeNotes.NotesAt(AFileName, ALine);
+  NotesTipText(mNotes, ATitle, AText);
+  Result := Length(mNotes) > 0;
 end;
 
 class procedure TAtlasIdeNotesGutter.NotesTipText(const ANotes: TArray<TAtlasNote>; out ATitle, AText: string);
 var
-  Note: TAtlasNote;
-  Stamp: TDateTime;
+  mNote: TAtlasNote;
+  mStamp: TDateTime;
 begin
   ATitle := '';
   AText := '';
@@ -139,24 +139,24 @@ begin
   end;
   if Length(ANotes) = 1 then
   begin
-    Stamp := ANotes[0].Changed;
-    if Stamp = 0 then
+    mStamp := ANotes[0].Changed;
+    if mStamp = 0 then
     begin
-      Stamp := ANotes[0].Created;
+      mStamp := ANotes[0].Created;
     end;
     ATitle := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesTipTitle,
-      [DateToStr(TTimeZone.Local.ToLocalTime(Stamp), FormatSettings)]);
+      [DateToStr(TTimeZone.Local.ToLocalTime(mStamp), FormatSettings)]);
     AText := ANotes[0].Text;
     Exit;
   end;
   ATitle := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesTipMore, [Length(ANotes)]);
-  for Note in ANotes do
+  for mNote in ANotes do
   begin
     if AText <> '' then
     begin
       AText := AText + #10#10;
     end;
-    AText := AText + Note.Text;
+    AText := AText + mNote.Text;
   end;
 end;
 

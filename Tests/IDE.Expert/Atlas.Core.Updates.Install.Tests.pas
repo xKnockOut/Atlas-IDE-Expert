@@ -84,10 +84,10 @@ end;
 
 procedure TAtlasUpdateInstallTests.ChoosesChannel;
 begin
-  Assert.AreEqual(TUpdateChannels.StableUrl, TAtlasUpdateInstall.ChannelUrl('stable', '2.0.0'));
-  Assert.AreEqual(TUpdateChannels.PrereleaseUrl, TAtlasUpdateInstall.ChannelUrl('prerelease', '2.0.0'));
+  Assert.AreEqual(TUpdateChannels.cStableUrl, TAtlasUpdateInstall.ChannelUrl('stable', '2.0.0'));
+  Assert.AreEqual(TUpdateChannels.cPrereleaseUrl, TAtlasUpdateInstall.ChannelUrl('prerelease', '2.0.0'));
   // Eine installierte Vorabversion erfährt auch von der nächsten.
-  Assert.AreEqual(TUpdateChannels.PrereleaseUrl, TAtlasUpdateInstall.ChannelUrl('stable', '2.0.0-beta.1'));
+  Assert.AreEqual(TUpdateChannels.cPrereleaseUrl, TAtlasUpdateInstall.ChannelUrl('stable', '2.0.0-beta.1'));
 end;
 
 procedure TAtlasUpdateInstallTests.BlocksGetItAndForeignFolders;
@@ -123,12 +123,12 @@ procedure TAtlasUpdateInstallTests.BuildsPrepareArguments;
 var
   mArgs, mParsed: TUpdateArguments;
 begin
-  mArgs := TAtlasUpdateInstall.PrepareArgs(Environment, cRoot, '2.1.0', TUpdateChannels.StableUrl, 'skip');
+  mArgs := TAtlasUpdateInstall.PrepareArgs(Environment, cRoot, '2.1.0', TUpdateChannels.cStableUrl, 'skip');
   mParsed := TUpdateArguments.Parse(mArgs.ToArgs);
   Assert.AreEqual('prepare', mParsed.Command);
   Assert.AreEqual('2.1.0', mParsed.Version);
   Assert.AreEqual('2.0.0', mParsed.Previous);
-  Assert.AreEqual(TUpdateChannels.StableUrl, mParsed.ManifestUrl);
+  Assert.AreEqual(TUpdateChannels.cStableUrl, mParsed.ManifestUrl);
   Assert.AreEqual('C:\Users\Ich\AppData\Local\Programs\Atlas', mParsed.Target);
   Assert.AreEqual(cRoot + '\2.1.0', mParsed.Staging);
   Assert.AreEqual('Software\Embarcadero\BDS\37.0', mParsed.RegistryKey);

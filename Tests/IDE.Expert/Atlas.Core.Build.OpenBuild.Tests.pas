@@ -42,145 +42,145 @@ uses
 
 procedure TAtlasOpenBuildTests.WaitsForQuietIde;
 var
-  Build: TAtlasOpenBuild;
+  mBuild: TAtlasOpenBuild;
 begin
-  Build := TAtlasOpenBuild.Create;
+  mBuild := TAtlasOpenBuild.Create;
   try
-    Assert.IsFalse(Build.Due(10000, 3000, 10000, False), 'nichts vorgemerkt');
-    Build.Opened('C:\P\Gruppe.groupproj', 1000);
-    Build.Opened('C:\P\Unit1.pas', 1000);
-    Assert.IsFalse(Build.Due(3999, 3000, 10000, False), 'zu früh nach dem Öffnen');
-    Assert.IsTrue(Build.Due(4000, 3000, 10000, False));
-    Assert.IsFalse(Build.Due(4000, 3000, 2999, False), 'der Benutzer tippt noch');
+    Assert.IsFalse(mBuild.Due(10000, 3000, 10000, False), 'nichts vorgemerkt');
+    mBuild.Opened('C:\P\Gruppe.groupproj', 1000);
+    mBuild.Opened('C:\P\Unit1.pas', 1000);
+    Assert.IsFalse(mBuild.Due(3999, 3000, 10000, False), 'zu früh nach dem Öffnen');
+    Assert.IsTrue(mBuild.Due(4000, 3000, 10000, False));
+    Assert.IsFalse(mBuild.Due(4000, 3000, 2999, False), 'der Benutzer tippt noch');
     // Ein weiteres Projekt verschiebt den Lauf.
-    Build.Opened('C:\P\App.dproj', 3500);
-    Assert.IsFalse(Build.Due(4000, 3000, 10000, False));
-    Assert.IsTrue(Build.Due(6500, 3000, 10000, False));
-    Assert.AreEqual(2, Integer(Length(Build.Take)), 'Units zählen nicht');
-    Assert.IsFalse(Build.Due(10000, 3000, 10000, False), 'Take leert die Vormerkung');
+    mBuild.Opened('C:\P\App.dproj', 3500);
+    Assert.IsFalse(mBuild.Due(4000, 3000, 10000, False));
+    Assert.IsTrue(mBuild.Due(6500, 3000, 10000, False));
+    Assert.AreEqual(2, Integer(Length(mBuild.Take)), 'Units zählen nicht');
+    Assert.IsFalse(mBuild.Due(10000, 3000, 10000, False), 'Take leert die Vormerkung');
   finally
-    Build.Free;
+    mBuild.Free;
   end;
 end;
 
 procedure TAtlasOpenBuildTests.WaitsForBuildDebuggerAndOwnRun;
 var
-  Build: TAtlasOpenBuild;
+  mBuild: TAtlasOpenBuild;
 begin
-  Build := TAtlasOpenBuild.Create;
+  mBuild := TAtlasOpenBuild.Create;
   try
-    Build.Opened('C:\P\App.dproj', 0);
-    Assert.IsFalse(Build.Due(5000, 3000, 5000, True), 'Debugger läuft');
-    Build.BuildStarted;
-    Assert.IsFalse(Build.Due(5000, 3000, 5000, False), 'Build des Benutzers läuft');
-    Build.BuildFinished;
-    Assert.IsTrue(Build.Due(5000, 3000, 5000, False));
-    Build.RunStarted(['C:\P\Lib.dproj'], 5000);
-    Assert.IsFalse(Build.Due(5000, 3000, 5000, False), 'eigener Lauf');
-    Build.RunFinished;
-    Assert.IsTrue(Build.Due(5000, 3000, 5000, False), 'Vormerkung bleibt');
+    mBuild.Opened('C:\P\App.dproj', 0);
+    Assert.IsFalse(mBuild.Due(5000, 3000, 5000, True), 'Debugger läuft');
+    mBuild.BuildStarted;
+    Assert.IsFalse(mBuild.Due(5000, 3000, 5000, False), 'Build des Benutzers läuft');
+    mBuild.BuildFinished;
+    Assert.IsTrue(mBuild.Due(5000, 3000, 5000, False));
+    mBuild.RunStarted(['C:\P\Lib.dproj'], 5000);
+    Assert.IsFalse(mBuild.Due(5000, 3000, 5000, False), 'eigener Lauf');
+    mBuild.RunFinished;
+    Assert.IsTrue(mBuild.Due(5000, 3000, 5000, False), 'Vormerkung bleibt');
   finally
-    Build.Free;
+    mBuild.Free;
   end;
 end;
 
 procedure TAtlasOpenBuildTests.SelectsEachProjectOncePerOpening;
 var
-  Build: TAtlasOpenBuild;
-  Selected: TArray<string>;
+  mBuild: TAtlasOpenBuild;
+  mSelected: TArray<string>;
 begin
-  Build := TAtlasOpenBuild.Create;
+  mBuild := TAtlasOpenBuild.Create;
   try
-    Selected := Build.Select(['C:\P\Lib.dproj', 'C:\P\App.dproj', 'C:\P\App.dpr', 'C:\P\Atlas.IDE.Expert.dproj'],
+    mSelected := mBuild.Select(['C:\P\Lib.dproj', 'C:\P\App.dproj', 'C:\P\App.dpr', 'C:\P\Atlas.IDE.Expert.dproj'],
       ['atlas.ide.expert']);
-    Assert.AreEqual(2, Integer(Length(Selected)), 'App einmal, Package ausgeschlossen');
-    Assert.AreEqual('C:\P\Lib.dproj', Selected[0], 'Reihenfolge der Gruppe');
-    Assert.AreEqual('C:\P\App.dproj', Selected[1]);
+    Assert.AreEqual(2, Integer(Length(mSelected)), 'App einmal, Package ausgeschlossen');
+    Assert.AreEqual('C:\P\Lib.dproj', mSelected[0], 'Reihenfolge der Gruppe');
+    Assert.AreEqual('C:\P\App.dproj', mSelected[1]);
     // Ein weiteres Projekt in der Gruppe: nur dieses.
-    Selected := Build.Select(['C:\P\Lib.dproj', 'C:\P\App.dproj', 'c:\p\NEU.dproj'], nil);
-    Assert.AreEqual(1, Integer(Length(Selected)));
-    Assert.AreEqual('c:\p\NEU.dproj', Selected[0]);
+    mSelected := mBuild.Select(['C:\P\Lib.dproj', 'C:\P\App.dproj', 'c:\p\NEU.dproj'], nil);
+    Assert.AreEqual(1, Integer(Length(mSelected)));
+    Assert.AreEqual('c:\p\NEU.dproj', mSelected[0]);
     // Ausgeschlossen bleibt bis zum Schließen ausgelassen, auch ohne Ausschluss.
-    Assert.AreEqual(0, Integer(Length(Build.Select(['C:\P\Atlas.IDE.Expert.dproj'], nil))));
+    Assert.AreEqual(0, Integer(Length(mBuild.Select(['C:\P\Atlas.IDE.Expert.dproj'], nil))));
     // Geschlossen und wieder geöffnet: wieder bauen.
-    Build.Closed('C:\P\App.dproj');
-    Selected := Build.Select(['C:\P\Lib.dproj', 'C:\P\App.dproj'], nil);
-    Assert.AreEqual(1, Integer(Length(Selected)));
-    Assert.AreEqual('C:\P\App.dproj', Selected[0]);
+    mBuild.Closed('C:\P\App.dproj');
+    mSelected := mBuild.Select(['C:\P\Lib.dproj', 'C:\P\App.dproj'], nil);
+    Assert.AreEqual(1, Integer(Length(mSelected)));
+    Assert.AreEqual('C:\P\App.dproj', mSelected[0]);
   finally
-    Build.Free;
+    mBuild.Free;
   end;
 end;
 
 procedure TAtlasOpenBuildTests.RetriesUnresolvedFiles;
 var
-  Build: TAtlasOpenBuild;
-  Attempt: Integer;
-  Taken: TArray<string>;
+  mBuild: TAtlasOpenBuild;
+  mAttempt: Integer;
+  mTaken: TArray<string>;
 begin
-  Build := TAtlasOpenBuild.Create;
+  mBuild := TAtlasOpenBuild.Create;
   try
-    Build.Opened('C:\P\Gruppe.groupproj', 0);
-    Build.Take;
-    Assert.IsTrue(Build.Retry('C:\P\Gruppe.groupproj', 4000));
-    Assert.IsFalse(Build.Due(6000, 3000, 10000, False), 'Wartezeit ab dem erneuten Vormerken');
-    Assert.IsTrue(Build.Due(7000, 3000, 10000, False));
-    Taken := Build.Take;
-    Assert.AreEqual(1, Integer(Length(Taken)));
-    Assert.AreEqual('C:\P\Gruppe.groupproj', Taken[0]);
-    for Attempt := 2 to TAtlasOpenBuild.MaxAttempts - 1 do
+    mBuild.Opened('C:\P\Gruppe.groupproj', 0);
+    mBuild.Take;
+    Assert.IsTrue(mBuild.Retry('C:\P\Gruppe.groupproj', 4000));
+    Assert.IsFalse(mBuild.Due(6000, 3000, 10000, False), 'Wartezeit ab dem erneuten Vormerken');
+    Assert.IsTrue(mBuild.Due(7000, 3000, 10000, False));
+    mTaken := mBuild.Take;
+    Assert.AreEqual(1, Integer(Length(mTaken)));
+    Assert.AreEqual('C:\P\Gruppe.groupproj', mTaken[0]);
+    for mAttempt := 2 to TAtlasOpenBuild.cMaxAttempts - 1 do
     begin
-      Assert.IsTrue(Build.Retry('C:\P\Gruppe.groupproj', 0), Format('Versuch %d', [Attempt]));
-      Build.Take;
+      Assert.IsTrue(mBuild.Retry('C:\P\Gruppe.groupproj', 0), Format('Versuch %d', [mAttempt]));
+      mBuild.Take;
     end;
-    Assert.IsFalse(Build.Retry('C:\P\Gruppe.groupproj', 0), 'nach MaxAttempts aufgeben');
-    Assert.AreEqual(0, Integer(Length(Build.Take)));
+    Assert.IsFalse(mBuild.Retry('C:\P\Gruppe.groupproj', 0), 'nach MaxAttempts aufgeben');
+    Assert.AreEqual(0, Integer(Length(mBuild.Take)));
     // Erneutes Öffnen setzt die Versuche zurück.
-    Build.Opened('C:\P\Gruppe.groupproj', 0);
-    Build.Take;
-    Assert.IsTrue(Build.Retry('C:\P\Gruppe.groupproj', 0));
+    mBuild.Opened('C:\P\Gruppe.groupproj', 0);
+    mBuild.Take;
+    Assert.IsTrue(mBuild.Retry('C:\P\Gruppe.groupproj', 0));
   finally
-    Build.Free;
+    mBuild.Free;
   end;
 end;
 
 procedure TAtlasOpenBuildTests.CountsRunResult;
 var
-  Build: TAtlasOpenBuild;
-  Outcome: TAtlasOpenBuildResult;
+  mBuild: TAtlasOpenBuild;
+  mOutcome: TAtlasOpenBuildResult;
 begin
-  Build := TAtlasOpenBuild.Create;
+  mBuild := TAtlasOpenBuild.Create;
   try
-    Build.RunStarted(['C:\P\Lib.dproj', 'C:\P\App.dproj', 'C:\P\Tests.dproj'], 0);
-    Assert.IsTrue(Build.Running);
-    Assert.IsTrue(Build.InRun('c:\p\app.dpr'), '.dpr und .dproj sind dasselbe Projekt');
-    Assert.IsFalse(Build.InRun('C:\P\Fremd.dproj'));
-    Build.ProjectFinished('C:\P\Lib.dproj', True);
-    Build.ProjectFinished('C:\P\Fremd.dproj', False);
-    Assert.IsFalse(Build.RunComplete);
-    Build.ProjectFinished('C:\P\App.dproj', False);
-    Build.ProjectCancelled('C:\P\Tests.dproj', 'Release-Wächter');
-    Assert.IsFalse(Build.RunComplete, 'abgebrochen hat kein Ergebnis');
-    Assert.IsFalse(Build.RunOverdue(TAtlasOpenBuild.MaxRunMs));
-    Assert.IsTrue(Build.RunOverdue(TAtlasOpenBuild.MaxRunMs + 1));
-    Outcome := Build.RunFinished;
-    Assert.IsFalse(Build.Running);
-    Assert.AreEqual(3, Outcome.Total);
-    Assert.AreEqual(1, Outcome.Succeeded);
-    Assert.AreEqual(1, Outcome.Failed);
-    Assert.AreEqual(1, Outcome.NotBuilt);
-    Assert.AreEqual('App', Outcome.FailedNames[0]);
-    Assert.AreEqual('Tests', Outcome.NotBuiltNames[0]);
-    Assert.AreEqual('Release-Wächter', Outcome.CancelReason);
-    Assert.IsFalse(Outcome.AllSucceeded);
-    Build.RunStarted(['C:\P\Lib.dproj'], 0);
-    Build.ProjectFinished('C:\P\Lib.dproj', True);
-    Assert.IsTrue(Build.RunComplete);
-    Outcome := Build.RunFinished;
-    Assert.IsTrue(Outcome.AllSucceeded);
-    Assert.AreEqual('', Outcome.CancelReason);
+    mBuild.RunStarted(['C:\P\Lib.dproj', 'C:\P\App.dproj', 'C:\P\Tests.dproj'], 0);
+    Assert.IsTrue(mBuild.Running);
+    Assert.IsTrue(mBuild.InRun('c:\p\app.dpr'), '.dpr und .dproj sind dasselbe Projekt');
+    Assert.IsFalse(mBuild.InRun('C:\P\Fremd.dproj'));
+    mBuild.ProjectFinished('C:\P\Lib.dproj', True);
+    mBuild.ProjectFinished('C:\P\Fremd.dproj', False);
+    Assert.IsFalse(mBuild.RunComplete);
+    mBuild.ProjectFinished('C:\P\App.dproj', False);
+    mBuild.ProjectCancelled('C:\P\Tests.dproj', 'Release-Wächter');
+    Assert.IsFalse(mBuild.RunComplete, 'abgebrochen hat kein Ergebnis');
+    Assert.IsFalse(mBuild.RunOverdue(TAtlasOpenBuild.cMaxRunMs));
+    Assert.IsTrue(mBuild.RunOverdue(TAtlasOpenBuild.cMaxRunMs + 1));
+    mOutcome := mBuild.RunFinished;
+    Assert.IsFalse(mBuild.Running);
+    Assert.AreEqual(3, mOutcome.Total);
+    Assert.AreEqual(1, mOutcome.Succeeded);
+    Assert.AreEqual(1, mOutcome.Failed);
+    Assert.AreEqual(1, mOutcome.NotBuilt);
+    Assert.AreEqual('App', mOutcome.FailedNames[0]);
+    Assert.AreEqual('Tests', mOutcome.NotBuiltNames[0]);
+    Assert.AreEqual('Release-Wächter', mOutcome.CancelReason);
+    Assert.IsFalse(mOutcome.AllSucceeded);
+    mBuild.RunStarted(['C:\P\Lib.dproj'], 0);
+    mBuild.ProjectFinished('C:\P\Lib.dproj', True);
+    Assert.IsTrue(mBuild.RunComplete);
+    mOutcome := mBuild.RunFinished;
+    Assert.IsTrue(mOutcome.AllSucceeded);
+    Assert.AreEqual('', mOutcome.CancelReason);
   finally
-    Build.Free;
+    mBuild.Free;
   end;
 end;
 

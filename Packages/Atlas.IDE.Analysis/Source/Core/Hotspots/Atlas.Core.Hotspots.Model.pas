@@ -74,7 +74,7 @@ type
 
   TAtlasHotspotModel = record
   public const
-    Format = 1;
+    cFormat = 1;
   public
     Root: string;
     Title: string;
@@ -114,21 +114,21 @@ type
   TAtlasHotspotChart = record
   public const
     /// <summary>Platz für die Achsen links und unten bzw. oben und rechts.</summary>
-    MarginLeft = 44;
-    MarginBottom = 28;
-    MarginTop = 10;
-    MarginRight = 14;
-    MinRadius = 3;
-    MaxRadius = 22;
+    cMarginLeft = 44;
+    cMarginBottom = 28;
+    cMarginTop = 10;
+    cMarginRight = 14;
+    cMinRadius = 3;
+    cMaxRadius = 22;
     /// <summary>Höchstens so viele Blasen (die obersten der Rangliste).</summary>
-    Limit = 200;
+    cLimit = 200;
   public
     /// <summary>Blasen der Zeilen AShown (Nummern in AEntries) in einem Feld AWidth × AHeight; größte zuerst
     /// (gezeichnet wird in dieser Reihenfolge, kleine bleiben oben sichtbar). AScale: Bildpunkte je 96 dpi.</summary>
     class function Layout(const AEntries: TArray<TAtlasHotspotEntry>; const AShown: TArray<Integer>;
       AWidth, AHeight: Integer; AScale: Double): TArray<TAtlasHotspotBubble>; static;
     /// <summary>Zeile (Nummer in Entries) der kleinsten Blase, die den Punkt enthält; -1 ohne.</summary>
-    class function HitTest(const ABubbles: TArray<TAtlasHotspotBubble>; X, Y: Integer): Integer; static;
+    class function HitTest(const ABubbles: TArray<TAtlasHotspotBubble>; AX, AY: Integer): Integer; static;
     /// <summary>Farbe nach Wert als $00BBGGRR: grün (0) über gelb nach rot (1).</summary>
     class function ScoreColor(AScore: Double): Cardinal; static;
     /// <summary>Größte Änderungszahl bzw. Komplexität der Zeilen AShown (mindestens 1) für die Achsen.</summary>
@@ -138,8 +138,8 @@ type
 
   TAtlasHotspotCommands = class
   public const
-    Command = 'atlas.hotspots';
-    SaveCommand = 'atlas.hotspots.saveReport';
+    cCommand = 'atlas.hotspots';
+    cSaveCommand = 'atlas.hotspots.saveReport';
   public
     /// <summary>[uri, {"level", "format": "json", "refresh"}] für atlas.hotspots; ARefresh rechnet neu, auch wenn
     /// der Server ein Ergebnis zum Stand hat („Neu berechnen“).</summary>
@@ -441,7 +441,7 @@ end;
 /// <summary>Daten der Auswertung; False ohne Daten oder bei einem anderen Format.</summary>
 function ReadData(const AData: TJSONObject; var AModel: TAtlasHotspotModel): Boolean;
 begin
-  Result := (AData <> nil) and (IntOf(AData, 'format', 0) = TAtlasHotspotModel.Format);
+  Result := (AData <> nil) and (IntOf(AData, 'format', 0) = TAtlasHotspotModel.cFormat);
   if not Result then
   begin
     Exit;
@@ -555,7 +555,7 @@ var
 begin
   AMaxChanges := 1;
   AMaxComplexity := 1;
-  for mIndex := 0 to Min(Length(AShown), Limit) - 1 do
+  for mIndex := 0 to Min(Length(AShown), cLimit) - 1 do
   begin
     AMaxChanges := Max(AMaxChanges, AEntries[AShown[mIndex]].Changes);
     AMaxComplexity := Max(AMaxComplexity, AEntries[AShown[mIndex]].Complexity);
@@ -577,27 +577,28 @@ begin
   end;
   Extent(AEntries, AShown, mMaxChanges, mMaxComplexity);
   mMaxLines := 1;
-  for mIndex := 0 to Min(Length(AShown), Limit) - 1 do
+  for mIndex := 0 to Min(Length(AShown), cLimit) - 1 do
   begin
     mMaxLines := Max(mMaxLines, AEntries[AShown[mIndex]].Lines);
   end;
-  mLeft := Round(MarginLeft * AScale);
-  mBottom := AHeight - Round(MarginBottom * AScale);
-  mTop := Round(MarginTop * AScale);
-  mRight := AWidth - Round(MarginRight * AScale);
+  mLeft := Round(cMarginLeft * AScale);
+  mBottom := AHeight - Round(cMarginBottom * AScale);
+  mTop := Round(cMarginTop * AScale);
+  mRight := AWidth - Round(cMarginRight * AScale);
   if (mRight <= mLeft) or (mBottom <= mTop) then
   begin
     Exit;
   end;
   mList := TList<TAtlasHotspotBubble>.Create;
   try
-    for mIndex := 0 to Min(Length(AShown), Limit) - 1 do
+    for mIndex := 0 to Min(Length(AShown), cLimit) - 1 do
     begin
       mEntry := AEntries[AShown[mIndex]];
       mBubble.Entry := AShown[mIndex];
       mBubble.X := mLeft + Round((mRight - mLeft) * mEntry.Changes / mMaxChanges);
       mBubble.Y := mBottom - Round((mBottom - mTop) * mEntry.Complexity / mMaxComplexity);
-      mBubble.Radius := Round((MinRadius + (MaxRadius - MinRadius) * Sqrt(Max(0, mEntry.Lines) / mMaxLines)) * AScale);
+      mBubble.Radius := Round((cMinRadius + (cMaxRadius - cMinRadius) * Sqrt(Max(0, mEntry.Lines) / mMaxLines)) *
+        AScale);
       mList.Add(mBubble);
     end;
     // Größte zuerst; bei Gleichstand die Rangfolge, damit die Reihenfolge eindeutig bleibt.
@@ -616,7 +617,7 @@ begin
   end;
 end;
 
-class function TAtlasHotspotChart.HitTest(const ABubbles: TArray<TAtlasHotspotBubble>; X, Y: Integer): Integer;
+class function TAtlasHotspotChart.HitTest(const ABubbles: TArray<TAtlasHotspotBubble>; AX, AY: Integer): Integer;
 var
   mIndex, mBest: Integer;
   mBubble: TAtlasHotspotBubble;
@@ -627,7 +628,7 @@ begin
   for mIndex := High(ABubbles) downto 0 do
   begin
     mBubble := ABubbles[mIndex];
-    if (Sqr(X - mBubble.X) + Sqr(Y - mBubble.Y) <= Sqr(mBubble.Radius)) and (mBubble.Radius < mBest) then
+    if (Sqr(AX - mBubble.X) + Sqr(AY - mBubble.Y) <= Sqr(mBubble.Radius)) and (mBubble.Radius < mBest) then
     begin
       mBest := mBubble.Radius;
       Result := mBubble.Entry;

@@ -95,13 +95,13 @@ begin
   mEntries := AArchive.Entries(AZipFile);
   if Length(mEntries) = 0 then
   begin
-    raise EUpdateError.CreateCode(TUpdateErrors.Archive, cTexts[TArchiveText.Empty].Text);
+    raise EUpdateError.CreateCode(TUpdateErrors.cArchive, cTexts[TArchiveText.Empty].Text);
   end;
   for mEntry in mEntries do
   begin
     if not IsSafeEntry(mEntry) then
     begin
-      raise EUpdateError.CreateCode(TUpdateErrors.Archive, mEntry);
+      raise EUpdateError.CreateCode(TUpdateErrors.cArchive, mEntry);
     end;
   end;
   for mEntry in mEntries do

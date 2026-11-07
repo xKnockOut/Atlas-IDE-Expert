@@ -152,7 +152,8 @@ begin
     mWorkspace := AServices.Workspaces.Pick(TDocumentUris.ToPath(AUri));
     if mWorkspace = nil then
     begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, cTexts[TAffectedRequestText.NoWorkspace].Fmt([AUri]));
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed,
+        cTexts[TAffectedRequestText.NoWorkspace].Fmt([AUri]));
     end;
     Result.WorkingDir := mWorkspace.Root;
   finally

@@ -48,9 +48,9 @@ uses
 
 const
   /// <summary>Nach dem Wartezeitende des Tastatur-Hooks: vor den Fenstern von Atlas gefragt.</summary>
-  ChordPriority = -10;
+  cChordPriority = -10;
   /// <summary>So lange gilt ein selbst gesendeter erster Teil als „durchlassen“.</summary>
-  PassMs = 1000;
+  cPassMs = 1000;
 
 type
   TChordState = class(TAtlasKeyClient)
@@ -80,7 +80,7 @@ var
 
 constructor TChordState.Create;
 begin
-  inherited Create(ChordPriority);
+  inherited Create(cChordPriority);
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
   FTimer.Interval := 50;
@@ -131,7 +131,7 @@ end;
 
 procedure TChordState.Tick(Sender: TObject);
 var
-  Elapsed: Integer;
+  mElapsed: Integer;
 begin
   try
     if not FWaiting then
@@ -139,8 +139,8 @@ begin
       FTimer.Enabled := False;
       Exit;
     end;
-    Elapsed := Integer(TThread.GetTickCount64 - FStarted);
-    if TAtlasQuickBookmarks.Chord(TAtlasIdeSettings.Current.QuickBookmarkChordWait, Elapsed, 0) =
+    mElapsed := Integer(TThread.GetTickCount64 - FStarted);
+    if TAtlasQuickBookmarks.Chord(TAtlasIdeSettings.Current.QuickBookmarkChordWait, mElapsed, 0) =
       TAtlasChordAction.Toggle then
     begin
       Finish;
@@ -195,57 +195,57 @@ end;
 
 procedure TChordState.PassOn(AKey: Word);
 var
-  Inputs: TArray<TInput>;
-  Pressed: TArray<Word>;
-  Modifier: Word;
-  Base: Word;
+  mInputs: TArray<TInput>;
+  mPressed: TArray<Word>;
+  mModifier: Word;
+  mBase: Word;
 
   procedure Add(AVirtual: Word; AUp: Boolean);
   var
-    Input: TInput;
+    mInput: TInput;
   begin
-    Input := Default(TInput);
-    Input.Itype := INPUT_KEYBOARD;
-    Input.ki.wVk := AVirtual;
+    mInput := Default(TInput);
+    mInput.Itype := INPUT_KEYBOARD;
+    mInput.ki.wVk := AVirtual;
     if AUp then
     begin
-      Input.ki.dwFlags := KEYEVENTF_KEYUP;
+      mInput.ki.dwFlags := KEYEVENTF_KEYUP;
     end;
-    Inputs := Inputs + [Input];
+    mInputs := mInputs + [mInput];
   end;
 
 begin
-  Inputs := nil;
-  Pressed := nil;
-  Base := Word(TAtlasIdeSettings.Current.QuickBookmarkKey);
+  mInputs := nil;
+  mPressed := nil;
+  mBase := Word(TAtlasIdeSettings.Current.QuickBookmarkKey);
   // Umschalttasten des ersten Teils, die der Nutzer nicht mehr hält, kurz selbst drücken.
-  if ((Base and scCtrl) <> 0) and (GetKeyState(VK_CONTROL) >= 0) then
+  if ((mBase and scCtrl) <> 0) and (GetKeyState(VK_CONTROL) >= 0) then
   begin
-    Pressed := Pressed + [VK_CONTROL];
+    mPressed := mPressed + [VK_CONTROL];
   end;
-  if ((Base and scShift) <> 0) and (GetKeyState(VK_SHIFT) >= 0) then
+  if ((mBase and scShift) <> 0) and (GetKeyState(VK_SHIFT) >= 0) then
   begin
-    Pressed := Pressed + [VK_SHIFT];
+    mPressed := mPressed + [VK_SHIFT];
   end;
-  if ((Base and scAlt) <> 0) and (GetKeyState(VK_MENU) >= 0) then
+  if ((mBase and scAlt) <> 0) and (GetKeyState(VK_MENU) >= 0) then
   begin
-    Pressed := Pressed + [VK_MENU];
+    mPressed := mPressed + [VK_MENU];
   end;
-  for Modifier in Pressed do
+  for mModifier in mPressed do
   begin
-    Add(Modifier, False);
+    Add(mModifier, False);
   end;
   Add(FBaseKey, False);
   Add(FBaseKey, True);
-  for Modifier in Pressed do
+  for mModifier in mPressed do
   begin
-    Add(Modifier, True);
+    Add(mModifier, True);
   end;
   // Der zweite Teil mit den Umschalttasten, die der Nutzer gerade hält, wie er ihn gedrückt hat.
   Add(AKey, False);
   Add(AKey, True);
   FPassAt := TThread.GetTickCount64;
-  if SendInput(Length(Inputs), Inputs[0], SizeOf(TInput)) <> Cardinal(Length(Inputs)) then
+  if SendInput(Length(mInputs), mInputs[0], SizeOf(TInput)) <> Cardinal(Length(mInputs)) then
   begin
     FPassAt := 0;
     TAtlasIdeKeys.AddMessage(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkChordFailed, [Char(AKey)]));
@@ -256,22 +256,22 @@ end;
 
 class function TAtlasIdeQuickChord.Pressed: Boolean;
 var
-  Wait: Integer;
+  mWait: Integer;
 begin
   if State = nil then
   begin
     State := TChordState.Create;
   end;
   // Der selbst gesendete erste Teil geht an die Faltung der IDE.
-  if (State.FPassAt <> 0) and (TThread.GetTickCount64 - State.FPassAt < PassMs) then
+  if (State.FPassAt <> 0) and (TThread.GetTickCount64 - State.FPassAt < cPassMs) then
   begin
     State.FPassAt := 0;
     Exit(False);
   end;
   State.FPassAt := 0;
   Result := True;
-  Wait := TAtlasIdeSettings.Current.QuickBookmarkChordWait;
-  if Wait <= 0 then
+  mWait := TAtlasIdeSettings.Current.QuickBookmarkChordWait;
+  if mWait <= 0 then
   begin
     State.Toggle;
     Exit;

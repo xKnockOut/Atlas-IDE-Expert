@@ -35,7 +35,7 @@ type
 
   TAtlasInterfaceCostModel = class
   public const
-    Command = 'atlas.interfaceCost';
+    cCommand = 'atlas.interfaceCost';
   public
     /// <summary>[uri] für atlas.interfaceCost.</summary>
     class function Arguments(const AUri: string): string; static;
@@ -57,21 +57,21 @@ implementation
 
 class function TAtlasInterfaceCostModel.Arguments(const AUri: string): string;
 var
-  Items: TJSONArray;
+  mItems: TJSONArray;
 begin
-  Items := TJSONArray.Create;
+  mItems := TJSONArray.Create;
   try
-    Items.Add(AUri);
-    Result := Items.ToJSON;
+    mItems.Add(AUri);
+    Result := mItems.ToJSON;
   finally
-    Items.Free;
+    mItems.Free;
   end;
 end;
 
 class function TAtlasInterfaceCostModel.Parse(const AJson: string; out ACost: TAtlasInterfaceCost): Boolean;
 var
-  Value, Item: TJSONValue;
-  Root: TJSONObject;
+  mValue, mItem: TJSONValue;
+  mRoot: TJSONObject;
 begin
   ACost := Default(TAtlasInterfaceCost);
   Result := False;
@@ -79,44 +79,44 @@ begin
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    Root := TJSONObject(Value);
-    if not (Root.GetValue('recompileCount') is TJSONNumber) then
+    mRoot := TJSONObject(mValue);
+    if not (mRoot.GetValue('recompileCount') is TJSONNumber) then
     begin
       Exit;
     end;
-    ACost.Found := (Root.GetValue('found') is TJSONBool) and TJSONBool(Root.GetValue('found')).AsBoolean;
-    if Root.GetValue('unit') is TJSONString then
+    ACost.Found := (mRoot.GetValue('found') is TJSONBool) and TJSONBool(mRoot.GetValue('found')).AsBoolean;
+    if mRoot.GetValue('unit') is TJSONString then
     begin
-      ACost.UnitName := Root.GetValue('unit').Value;
+      ACost.UnitName := mRoot.GetValue('unit').Value;
     end;
-    if Root.GetValue('file') is TJSONString then
+    if mRoot.GetValue('file') is TJSONString then
     begin
-      ACost.FileName := Root.GetValue('file').Value;
+      ACost.FileName := mRoot.GetValue('file').Value;
     end;
-    ACost.RecompileCount := TJSONNumber(Root.GetValue('recompileCount')).AsInt;
-    if Root.GetValue('units') is TJSONArray then
+    ACost.RecompileCount := TJSONNumber(mRoot.GetValue('recompileCount')).AsInt;
+    if mRoot.GetValue('units') is TJSONArray then
     begin
-      for Item in TJSONArray(Root.GetValue('units')) do
+      for mItem in TJSONArray(mRoot.GetValue('units')) do
       begin
-        if Item is TJSONString then
+        if mItem is TJSONString then
         begin
-          ACost.Units := ACost.Units + [Item.Value];
+          ACost.Units := ACost.Units + [mItem.Value];
         end;
       end;
     end;
-    if Root.GetValue('generation') is TJSONNumber then
+    if mRoot.GetValue('generation') is TJSONNumber then
     begin
-      ACost.Generation := TJSONNumber(Root.GetValue('generation')).AsInt64;
+      ACost.Generation := TJSONNumber(mRoot.GetValue('generation')).AsInt64;
     end;
     Result := True;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 

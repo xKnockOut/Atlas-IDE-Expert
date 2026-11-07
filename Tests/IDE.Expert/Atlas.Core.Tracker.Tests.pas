@@ -281,7 +281,7 @@ end;
 function TFakeTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
   out AError: TAtlasCiFetchError): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Calls := Calls + [AUrl];
   AStatus := 0;
@@ -291,12 +291,12 @@ begin
   begin
     Exit(False);
   end;
-  for Index := 0 to High(FPrefixes) do
+  for mIndex := 0 to High(FPrefixes) do
   begin
-    if Copy(AUrl, 1, Length(FPrefixes[Index])) = FPrefixes[Index] then
+    if Copy(AUrl, 1, Length(FPrefixes[mIndex])) = FPrefixes[mIndex] then
     begin
-      AStatus := FStatus[Index];
-      AText := FTexts[Index];
+      AStatus := FStatus[mIndex];
+      AText := FTexts[mIndex];
       Exit(True);
     end;
   end;
@@ -353,22 +353,22 @@ end;
 /// <summary>Datei aus Tests\Data\&lt;AFolder&gt;, gesucht ab dem Ordner des Testprogramms aufwärts.</summary>
 function Fixture(const AFolder, AName: string): string;
 var
-  Directory, FileName: string;
+  mDirectory, mFileName: string;
 begin
-  Directory := ExtractFileDir(ParamStr(0));
-  while Directory <> '' do
+  mDirectory := ExtractFileDir(ParamStr(0));
+  while mDirectory <> '' do
   begin
-    FileName := TPath.Combine(Directory, TPath.Combine('Tests', TPath.Combine('Data',
+    mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
       TPath.Combine(AFolder, AName))));
-    if TFile.Exists(FileName) then
+    if TFile.Exists(mFileName) then
     begin
-      Exit(TFile.ReadAllText(FileName, TEncoding.UTF8));
+      Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
     end;
-    if ExtractFileDir(Directory) = Directory then
+    if ExtractFileDir(mDirectory) = mDirectory then
     begin
       Break;
     end;
-    Directory := ExtractFileDir(Directory);
+    mDirectory := ExtractFileDir(mDirectory);
   end;
   raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
 end;
@@ -395,29 +395,29 @@ end;
 
 procedure TAtlasTrackerTargetTests.GitHubWithoutUrlUsesGitHubCom;
 var
-  Target: TAtlasTrackerTarget;
+  mTarget: TAtlasTrackerTarget;
 begin
-  Target := TAtlasTrackerTarget.Create(' GitHub ', '', ' beispiel/atlas/ ', ' label:bug ');
-  Assert.AreEqual('github', Target.Provider);
-  Assert.AreEqual('https://github.com', Target.Url);
-  Assert.AreEqual('beispiel/atlas', Target.Project);
-  Assert.AreEqual('label:bug', Target.Query);
-  Assert.IsTrue(Target.Configured);
+  mTarget := TAtlasTrackerTarget.Create(' GitHub ', '', ' beispiel/atlas/ ', ' label:bug ');
+  Assert.AreEqual('github', mTarget.Provider);
+  Assert.AreEqual('https://github.com', mTarget.Url);
+  Assert.AreEqual('beispiel/atlas', mTarget.Project);
+  Assert.AreEqual('label:bug', mTarget.Query);
+  Assert.IsTrue(mTarget.Configured);
   // YouTrack braucht eine Adresse.
   Assert.IsFalse(TAtlasTrackerTarget.Create('youtrack', '', 'ATL', '').Configured);
 end;
 
 procedure TAtlasTrackerTargetTests.GitHubProjectFromUrl;
 var
-  Target: TAtlasTrackerTarget;
+  mTarget: TAtlasTrackerTarget;
 begin
-  Target := TAtlasTrackerTarget.Create('github', 'https://github.com/beispiel/atlas/', '', '');
-  Assert.AreEqual('https://github.com', Target.Url);
-  Assert.AreEqual('beispiel/atlas', Target.Project);
+  mTarget := TAtlasTrackerTarget.Create('github', 'https://github.com/beispiel/atlas/', '', '');
+  Assert.AreEqual('https://github.com', mTarget.Url);
+  Assert.AreEqual('beispiel/atlas', mTarget.Project);
   // Eingetragenes Projekt geht vor.
-  Target := TAtlasTrackerTarget.Create('github', 'https://git.firma.de/team/kasse', 'team/andere', '');
-  Assert.AreEqual('https://git.firma.de', Target.Url);
-  Assert.AreEqual('team/andere', Target.Project);
+  mTarget := TAtlasTrackerTarget.Create('github', 'https://git.firma.de/team/kasse', 'team/andere', '');
+  Assert.AreEqual('https://git.firma.de', mTarget.Url);
+  Assert.AreEqual('team/andere', mTarget.Project);
 end;
 
 procedure TAtlasTrackerTargetTests.ConfiguredNeedsOwnerAndRepoForGitHub;
@@ -431,27 +431,27 @@ end;
 
 procedure TAtlasTrackerTargetTests.ServerAndCredentialTarget;
 var
-  Target: TAtlasTrackerTarget;
+  mTarget: TAtlasTrackerTarget;
 begin
-  Target := TAtlasTrackerTarget.Create('youtrack', 'https://YT.Firma.de:8443/youtrack', 'ATL', '');
-  Assert.AreEqual('https://yt.firma.de:8443', Target.Server);
-  Assert.AreEqual('Atlas:tracker:https://yt.firma.de:8443', Target.CredentialTarget);
-  Assert.IsTrue(Target.Secure);
-  Target := TAtlasTrackerTarget.Create('youtrack', 'https://nutzer:geheim@yt.firma.de', 'ATL', '');
-  Assert.AreEqual('', Target.Server, 'nie Zugangsdaten aus der Adresse');
-  Assert.AreEqual('', Target.CredentialTarget);
-  Assert.IsFalse(Target.Configured);
-  Target := TAtlasTrackerTarget.Create('youtrack', 'http://yt.intern', 'ATL', '');
-  Assert.IsFalse(Target.Secure);
+  mTarget := TAtlasTrackerTarget.Create('youtrack', 'https://YT.Firma.de:8443/youtrack', 'ATL', '');
+  Assert.AreEqual('https://yt.firma.de:8443', mTarget.Server);
+  Assert.AreEqual('Atlas:tracker:https://yt.firma.de:8443', mTarget.CredentialTarget);
+  Assert.IsTrue(mTarget.Secure);
+  mTarget := TAtlasTrackerTarget.Create('youtrack', 'https://nutzer:geheim@yt.firma.de', 'ATL', '');
+  Assert.AreEqual('', mTarget.Server, 'nie Zugangsdaten aus der Adresse');
+  Assert.AreEqual('', mTarget.CredentialTarget);
+  Assert.IsFalse(mTarget.Configured);
+  mTarget := TAtlasTrackerTarget.Create('youtrack', 'http://yt.intern', 'ATL', '');
+  Assert.IsFalse(mTarget.Secure);
 end;
 
 procedure TAtlasTrackerTargetTests.ChecksKeysRoundTrip;
 var
-  Checks: TAtlasTrackerChecks;
+  mChecks: TAtlasTrackerChecks;
 begin
-  for Checks := Low(TAtlasTrackerChecks) to High(TAtlasTrackerChecks) do
+  for mChecks := Low(TAtlasTrackerChecks) to High(TAtlasTrackerChecks) do
   begin
-    Assert.IsTrue(TAtlasTrackerPullRequest.ChecksOf(TAtlasTrackerPullRequest.ChecksKey(Checks)) = Checks);
+    Assert.IsTrue(TAtlasTrackerPullRequest.ChecksOf(TAtlasTrackerPullRequest.ChecksKey(mChecks)) = mChecks);
   end;
   Assert.IsTrue(TAtlasTrackerPullRequest.ChecksOf('neu') = TAtlasTrackerChecks.Unknown);
 end;
@@ -461,7 +461,7 @@ end;
 procedure TAtlasTrackerNamingTests.BranchNameOfMockupIssue;
 begin
   Assert.AreEqual('feature/753-atlas-bereiche-und', TAtlasTrackerNaming.BranchName(
-    TAtlasTrackerNaming.GitBranchPattern, Issue('#753', 753,
+    TAtlasTrackerNaming.cGitBranchPattern, Issue('#753', 753,
       'Plugin: Atlas-Bereiche und Layouts der Willkommensseite')));
 end;
 
@@ -484,17 +484,17 @@ end;
 
 procedure TAtlasTrackerNamingTests.BranchNameIsValidRef;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := TAtlasTrackerNaming.BranchName('feature/{kennung}-{kurztitel}',
+  mName := TAtlasTrackerNaming.BranchName('feature/{kennung}-{kurztitel}',
     Issue('#612', 612, 'Überschrift mit Ümläuten, Akzenten (café) & Sonderzeichen: 100% fertig?'));
-  Assert.AreEqual('feature/612-ueberschrift-mit-uemlaeuten', Name);
+  Assert.AreEqual('feature/612-ueberschrift-mit-uemlaeuten', mName);
   // Muster mit Leerzeichen und Zeichen, die Git verbietet.
-  Name := TAtlasTrackerNaming.BranchName(' bug fix/{kennung}..{kurztitel}~^:? ', Issue('#9', 9, 'A'));
-  Assert.AreEqual('bug-fix/9.a', Name);
-  Assert.IsTrue(TAtlasVcsBranchNames.Valid(Name));
+  mName := TAtlasTrackerNaming.BranchName(' bug fix/{kennung}..{kurztitel}~^:? ', Issue('#9', 9, 'A'));
+  Assert.AreEqual('bug-fix/9.a', mName);
+  Assert.IsTrue(TAtlasVcsBranchNames.Valid(mName));
   // Ohne Kurztitel kein Strich am Ende.
-  Assert.AreEqual('feature/7', TAtlasTrackerNaming.BranchName(TAtlasTrackerNaming.GitBranchPattern,
+  Assert.AreEqual('feature/7', TAtlasTrackerNaming.BranchName(TAtlasTrackerNaming.cGitBranchPattern,
     Issue('#7', 7, '???')));
   Assert.AreEqual('feature/7-x', TAtlasTrackerNaming.BranchName('feature//{nummer}-x.lock/', Issue('#7', 7, '')));
   Assert.AreEqual('', TAtlasTrackerNaming.BranchName('///', Issue('#7', 7, '')));
@@ -502,22 +502,22 @@ end;
 
 procedure TAtlasTrackerNamingTests.BranchNameForYouTrackAndSvn;
 begin
-  Assert.AreEqual('ATL-123-tracker-im-plugin', TAtlasTrackerNaming.BranchName(TAtlasTrackerNaming.SvnBranchPattern,
+  Assert.AreEqual('ATL-123-tracker-im-plugin', TAtlasTrackerNaming.BranchName(TAtlasTrackerNaming.cSvnBranchPattern,
     Issue('ATL-123', 123, 'Tracker im Plugin anbinden')));
   Assert.AreEqual('feature/ATL-123-tracker-im-plugin', TAtlasTrackerNaming.BranchName(
-    TAtlasTrackerNaming.GitBranchPattern, Issue('ATL-123', 123, 'Tracker im Plugin anbinden')));
+    TAtlasTrackerNaming.cGitBranchPattern, Issue('ATL-123', 123, 'Tracker im Plugin anbinden')));
   Assert.AreEqual('issue/123', TAtlasTrackerNaming.BranchName('issue/{NUMMER}', Issue('ATL-123', 123, '')));
 end;
 
 procedure TAtlasTrackerNamingTests.CommitPrefixAndPrefixed;
 var
-  Prefix: string;
+  mPrefix: string;
 begin
-  Prefix := TAtlasTrackerNaming.CommitPrefix(TAtlasTrackerNaming.CommitPattern, Issue('ATL-123', 123, 'x'));
-  Assert.AreEqual('ATL-123 ', Prefix, 'Leerzeichen am Ende bleibt');
-  Assert.AreEqual('ATL-123 Parser repariert', TAtlasTrackerNaming.Prefixed('Parser repariert', Prefix));
-  Assert.AreEqual('ATL-123 Parser', TAtlasTrackerNaming.Prefixed('ATL-123 Parser', Prefix), 'nicht doppelt');
-  Assert.AreEqual('ATL-123: Parser', TAtlasTrackerNaming.Prefixed('ATL-123: Parser', Prefix));
+  mPrefix := TAtlasTrackerNaming.CommitPrefix(TAtlasTrackerNaming.cCommitPattern, Issue('ATL-123', 123, 'x'));
+  Assert.AreEqual('ATL-123 ', mPrefix, 'Leerzeichen am Ende bleibt');
+  Assert.AreEqual('ATL-123 Parser repariert', TAtlasTrackerNaming.Prefixed('Parser repariert', mPrefix));
+  Assert.AreEqual('ATL-123 Parser', TAtlasTrackerNaming.Prefixed('ATL-123 Parser', mPrefix), 'nicht doppelt');
+  Assert.AreEqual('ATL-123: Parser', TAtlasTrackerNaming.Prefixed('ATL-123: Parser', mPrefix));
   // Leeres Muster: Nachricht unverändert.
   Assert.AreEqual('', TAtlasTrackerNaming.CommitPrefix('', Issue('ATL-123', 123, 'x')));
   Assert.AreEqual('Parser', TAtlasTrackerNaming.Prefixed('Parser', ''));
@@ -555,7 +555,7 @@ end;
 
 procedure TAtlasGitHubTrackerTests.ApiUrls;
 var
-  Target: TAtlasTrackerTarget;
+  mTarget: TAtlasTrackerTarget;
 begin
   Assert.AreEqual('https://api.github.com/search/issues?q=assignee%3A%40me%20state%3Aopen%20repo%3Abeispiel/atlas' +
     '%20is%3Aissue&per_page=20&sort=updated&order=desc', TAtlasGitHubApi.SearchUrl(GitHubTarget, 20));
@@ -564,165 +564,165 @@ begin
   Assert.AreEqual('https://api.github.com/repos/beispiel/atlas/commits/0123456789abcdef/check-runs?per_page=100',
     TAtlasGitHubApi.CheckRunsUrl(GitHubTarget, '0123456789abcdef'));
   Assert.AreEqual('', TAtlasGitHubApi.CheckRunsUrl(GitHubTarget, '../x'), 'nur eine Prüfsumme');
-  Target := TAtlasTrackerTarget.Create('github', 'https://git.firma.de', 'team/kasse', 'label:"bug #1"');
-  Assert.AreEqual('https://git.firma.de/api/v3', TAtlasGitHubApi.Base(Target));
+  mTarget := TAtlasTrackerTarget.Create('github', 'https://git.firma.de', 'team/kasse', 'label:"bug #1"');
+  Assert.AreEqual('https://git.firma.de/api/v3', TAtlasGitHubApi.Base(mTarget));
   Assert.AreEqual('https://git.firma.de/api/v3/search/issues?q=label%3A%22bug%20%231%22%20repo%3Ateam/kasse' +
-    '%20is%3Aissue&per_page=5&sort=updated&order=desc', TAtlasGitHubApi.SearchUrl(Target, 5));
+    '%20is%3Aissue&per_page=5&sort=updated&order=desc', TAtlasGitHubApi.SearchUrl(mTarget, 5));
   Assert.AreEqual('https://api.github.com', (TAtlasGitHubTracker.Create as IAtlasTrackerProvider).ApiServer(
     GitHubTarget), 'das Token geht nur an die Schnittstelle');
 end;
 
 procedure TAtlasGitHubTrackerTests.ParsesIssuesFromFixture;
 var
-  Issues: TArray<TAtlasTrackerIssue>;
+  mIssues: TArray<TAtlasTrackerIssue>;
 begin
-  Assert.IsTrue(TAtlasGitHubParse.ParseIssues(Fixture('GitHub', 'search-issues.json'), 20, Issues));
-  Assert.AreEqual(3, Integer(Length(Issues)), 'der Pull Request #640 entfällt');
-  Assert.AreEqual('#753', Issues[0].Key);
-  Assert.AreEqual(753, Issues[0].Number);
-  Assert.AreEqual('Plugin: Atlas-Bereiche und Layouts der Willkommensseite', Issues[0].Title);
-  Assert.AreEqual(2, Integer(Length(Issues[0].Labels)));
-  Assert.AreEqual('plugin', Issues[0].Labels[0]);
-  Assert.AreEqual('willkommensseite', Issues[0].Labels[1]);
-  Assert.AreEqual('beispiel', Issues[0].Assignee, 'Zuständig für die Palette (#1270)');
-  Assert.AreEqual('', Issues[1].Assignee);
-  Assert.AreEqual('#612', Issues[1].Key);
-  Assert.AreEqual('bug', Issues[1].Labels[0]);
-  Assert.AreEqual(0, Integer(Length(Issues[2].Labels)));
-  Assert.AreEqual('Fehler im Parser zweite Zeile', Issues[2].Title, 'Titel einzeilig');
-  Assert.IsTrue(TAtlasGitHubParse.ParseIssues(Fixture('GitHub', 'search-issues.json'), 1, Issues));
-  Assert.AreEqual(1, Integer(Length(Issues)), 'höchstens AMax');
-  Assert.IsFalse(TAtlasGitHubParse.ParseIssues('{"message":"x"}', 20, Issues));
-  Assert.IsFalse(TAtlasGitHubParse.ParseIssues('kein json', 20, Issues));
+  Assert.IsTrue(TAtlasGitHubParse.ParseIssues(Fixture('GitHub', 'search-issues.json'), 20, mIssues));
+  Assert.AreEqual(3, Integer(Length(mIssues)), 'der Pull Request #640 entfällt');
+  Assert.AreEqual('#753', mIssues[0].Key);
+  Assert.AreEqual(753, mIssues[0].Number);
+  Assert.AreEqual('Plugin: Atlas-Bereiche und Layouts der Willkommensseite', mIssues[0].Title);
+  Assert.AreEqual(2, Integer(Length(mIssues[0].Labels)));
+  Assert.AreEqual('plugin', mIssues[0].Labels[0]);
+  Assert.AreEqual('willkommensseite', mIssues[0].Labels[1]);
+  Assert.AreEqual('beispiel', mIssues[0].Assignee, 'Zuständig für die Palette (#1270)');
+  Assert.AreEqual('', mIssues[1].Assignee);
+  Assert.AreEqual('#612', mIssues[1].Key);
+  Assert.AreEqual('bug', mIssues[1].Labels[0]);
+  Assert.AreEqual(0, Integer(Length(mIssues[2].Labels)));
+  Assert.AreEqual('Fehler im Parser zweite Zeile', mIssues[2].Title, 'Titel einzeilig');
+  Assert.IsTrue(TAtlasGitHubParse.ParseIssues(Fixture('GitHub', 'search-issues.json'), 1, mIssues));
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'höchstens AMax');
+  Assert.IsFalse(TAtlasGitHubParse.ParseIssues('{"message":"x"}', 20, mIssues));
+  Assert.IsFalse(TAtlasGitHubParse.ParseIssues('kein json', 20, mIssues));
 end;
 
 procedure TAtlasGitHubTrackerTests.ParsesPullsAndLinksIssues;
 var
-  Pulls: TArray<TAtlasGitHubPull>;
+  mPulls: TArray<TAtlasGitHubPull>;
 begin
-  Assert.IsTrue(TAtlasGitHubParse.ParsePulls(Fixture('GitHub', 'pulls.json'), Pulls));
-  Assert.AreEqual(3, Integer(Length(Pulls)));
-  Assert.AreEqual(760, Pulls[0].Number);
-  Assert.AreEqual('feature/753-atlas-bereiche-und', Pulls[0].Branch);
-  Assert.AreEqual('0123456789abcdef0123456789abcdef01234567', Pulls[0].Sha);
-  Assert.IsTrue(Pulls[1].Draft);
-  Assert.IsTrue(TAtlasGitHubParse.PullMentions(Pulls[0], 753), 'Branch mit der Nummer');
-  Assert.IsTrue(TAtlasGitHubParse.PullMentions(Pulls[1], 598), '„Fixes: #598“');
-  Assert.IsFalse(TAtlasGitHubParse.PullMentions(Pulls[2], 612), 'bloße Erwähnung zählt nicht');
-  Assert.IsFalse(TAtlasGitHubParse.PullMentions(Pulls[2], 6120), 'Erwähnung ohne „closes“');
-  Assert.IsFalse(TAtlasGitHubParse.PullMentions(Pulls[0], 75));
-  Assert.IsFalse(TAtlasGitHubParse.ParsePulls('{}', Pulls));
+  Assert.IsTrue(TAtlasGitHubParse.ParsePulls(Fixture('GitHub', 'pulls.json'), mPulls));
+  Assert.AreEqual(3, Integer(Length(mPulls)));
+  Assert.AreEqual(760, mPulls[0].Number);
+  Assert.AreEqual('feature/753-atlas-bereiche-und', mPulls[0].Branch);
+  Assert.AreEqual('0123456789abcdef0123456789abcdef01234567', mPulls[0].Sha);
+  Assert.IsTrue(mPulls[1].Draft);
+  Assert.IsTrue(TAtlasGitHubParse.PullMentions(mPulls[0], 753), 'Branch mit der Nummer');
+  Assert.IsTrue(TAtlasGitHubParse.PullMentions(mPulls[1], 598), '„Fixes: #598“');
+  Assert.IsFalse(TAtlasGitHubParse.PullMentions(mPulls[2], 612), 'bloße Erwähnung zählt nicht');
+  Assert.IsFalse(TAtlasGitHubParse.PullMentions(mPulls[2], 6120), 'Erwähnung ohne „closes“');
+  Assert.IsFalse(TAtlasGitHubParse.PullMentions(mPulls[0], 75));
+  Assert.IsFalse(TAtlasGitHubParse.ParsePulls('{}', mPulls));
 end;
 
 procedure TAtlasGitHubTrackerTests.ParsesChecksFromFixtures;
 var
-  Checks: TAtlasTrackerChecks;
+  mChecks: TAtlasTrackerChecks;
 begin
-  Assert.IsTrue(TAtlasGitHubParse.ParseCheckRuns(Fixture('GitHub', 'check-runs.json'), Checks));
-  Assert.IsTrue(Checks = TAtlasTrackerChecks.Failure, 'rot, sobald einer fehlschlug');
-  Assert.IsTrue(TAtlasGitHubParse.ParseCheckRuns(Fixture('GitHub', 'check-runs-empty.json'), Checks));
-  Assert.IsTrue(Checks = TAtlasTrackerChecks.Unknown);
+  Assert.IsTrue(TAtlasGitHubParse.ParseCheckRuns(Fixture('GitHub', 'check-runs.json'), mChecks));
+  Assert.IsTrue(mChecks = TAtlasTrackerChecks.Failure, 'rot, sobald einer fehlschlug');
+  Assert.IsTrue(TAtlasGitHubParse.ParseCheckRuns(Fixture('GitHub', 'check-runs-empty.json'), mChecks));
+  Assert.IsTrue(mChecks = TAtlasTrackerChecks.Unknown);
   Assert.IsTrue(TAtlasGitHubParse.ParseCheckRuns(
-    '{"check_runs":[{"status":"completed","conclusion":"success"},{"status":"queued"}]}', Checks));
-  Assert.IsTrue(Checks = TAtlasTrackerChecks.Pending);
+    '{"check_runs":[{"status":"completed","conclusion":"success"},{"status":"queued"}]}', mChecks));
+  Assert.IsTrue(mChecks = TAtlasTrackerChecks.Pending);
   Assert.IsTrue(TAtlasGitHubParse.ParseCheckRuns(
     '{"check_runs":[{"status":"completed","conclusion":"success"},{"status":"completed","conclusion":"skipped"}]}',
-    Checks));
-  Assert.IsTrue(Checks = TAtlasTrackerChecks.Success);
-  Assert.IsTrue(TAtlasGitHubParse.ParseStatus(Fixture('GitHub', 'status.json'), Checks));
-  Assert.IsTrue(Checks = TAtlasTrackerChecks.Success);
-  Assert.IsTrue(TAtlasGitHubParse.ParseStatus('{"state":"pending","statuses":[]}', Checks));
-  Assert.IsTrue(Checks = TAtlasTrackerChecks.Unknown, 'ohne Status keine Ampel');
-  Assert.IsTrue(TAtlasGitHubParse.ParseStatus('{"state":"error","statuses":[{}]}', Checks));
-  Assert.IsTrue(Checks = TAtlasTrackerChecks.Failure);
-  Assert.IsFalse(TAtlasGitHubParse.ParseCheckRuns('[]', Checks));
+    mChecks));
+  Assert.IsTrue(mChecks = TAtlasTrackerChecks.Success);
+  Assert.IsTrue(TAtlasGitHubParse.ParseStatus(Fixture('GitHub', 'status.json'), mChecks));
+  Assert.IsTrue(mChecks = TAtlasTrackerChecks.Success);
+  Assert.IsTrue(TAtlasGitHubParse.ParseStatus('{"state":"pending","statuses":[]}', mChecks));
+  Assert.IsTrue(mChecks = TAtlasTrackerChecks.Unknown, 'ohne Status keine Ampel');
+  Assert.IsTrue(TAtlasGitHubParse.ParseStatus('{"state":"error","statuses":[{}]}', mChecks));
+  Assert.IsTrue(mChecks = TAtlasTrackerChecks.Failure);
+  Assert.IsFalse(TAtlasGitHubParse.ParseCheckRuns('[]', mChecks));
 end;
 
 procedure TAtlasGitHubTrackerTests.FetchReadsIssuesPullsAndChecks;
 var
-  Transport: TFakeTransport;
-  TransportRef: IAtlasCiTransport;
-  Provider: IAtlasTrackerProvider;
-  Issues: TArray<TAtlasTrackerIssue>;
-  Error: TAtlasCiFetchError;
+  mTransport: TFakeTransport;
+  mTransportRef: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mIssues: TArray<TAtlasTrackerIssue>;
+  mError: TAtlasCiFetchError;
 begin
-  Transport := TFakeTransport.Create;
-  TransportRef := Transport;
-  Transport.Answer('https://api.github.com/search/issues', 200, Fixture('GitHub', 'search-issues.json'));
-  Transport.Answer('https://api.github.com/repos/beispiel/atlas/pulls', 200, Fixture('GitHub', 'pulls.json'));
-  Transport.Answer('https://api.github.com/repos/beispiel/atlas/commits/0123', 200,
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer('https://api.github.com/search/issues', 200, Fixture('GitHub', 'search-issues.json'));
+  mTransport.Answer('https://api.github.com/repos/beispiel/atlas/pulls', 200, Fixture('GitHub', 'pulls.json'));
+  mTransport.Answer('https://api.github.com/repos/beispiel/atlas/commits/0123', 200,
     Fixture('GitHub', 'check-runs-empty.json'));
-  Transport.Answer('https://api.github.com/repos/beispiel/atlas/commits/fedcba9876543210fedcba9876543210fedcba98/check',
+  mTransport.Answer('https://api.github.com/repos/beispiel/atlas/commits/fedcba9876543210fedcba9876543210fedcba98/check',
     200, Fixture('GitHub', 'check-runs.json'));
-  Provider := TAtlasGitHubTracker.Create;
-  Assert.IsTrue(Provider.Fetch(GitHubTarget, TransportRef, 5000, 20, Issues, Error));
-  Assert.IsTrue(Error = TAtlasCiFetchError.None);
-  Assert.AreEqual(3, Integer(Length(Issues)));
-  Assert.AreEqual(760, Issues[0].PullRequest.Number, 'PR #760 über den Branch');
+  mProvider := TAtlasGitHubTracker.Create;
+  Assert.IsTrue(mProvider.Fetch(GitHubTarget, mTransportRef, 5000, 20, mIssues, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.None);
+  Assert.AreEqual(3, Integer(Length(mIssues)));
+  Assert.AreEqual(760, mIssues[0].PullRequest.Number, 'PR #760 über den Branch');
   // 760 hat keine Check Runs und keinen kombinierten Status: Ampel unbekannt.
-  Assert.IsTrue(Issues[0].PullRequest.Checks = TAtlasTrackerChecks.Unknown);
-  Assert.AreEqual(0, Issues[1].PullRequest.Number);
-  Assert.AreEqual(640, Issues[2].PullRequest.Number);
-  Assert.IsTrue(Issues[2].PullRequest.Draft);
-  Assert.IsTrue(Issues[2].PullRequest.Checks = TAtlasTrackerChecks.Failure);
-  Assert.AreEqual(5, Integer(Length(Transport.Calls)), 'Suche, PRs, zwei Check-Runs, ein Status');
+  Assert.IsTrue(mIssues[0].PullRequest.Checks = TAtlasTrackerChecks.Unknown);
+  Assert.AreEqual(0, mIssues[1].PullRequest.Number);
+  Assert.AreEqual(640, mIssues[2].PullRequest.Number);
+  Assert.IsTrue(mIssues[2].PullRequest.Draft);
+  Assert.IsTrue(mIssues[2].PullRequest.Checks = TAtlasTrackerChecks.Failure);
+  Assert.AreEqual(5, Integer(Length(mTransport.Calls)), 'Suche, PRs, zwei Check-Runs, ein Status');
 end;
 
 procedure TAtlasGitHubTrackerTests.FetchReportsErrors;
 var
-  Transport: TFakeTransport;
-  TransportRef: IAtlasCiTransport;
-  Provider: IAtlasTrackerProvider;
-  Issues: TArray<TAtlasTrackerIssue>;
-  Error: TAtlasCiFetchError;
+  mTransport: TFakeTransport;
+  mTransportRef: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mIssues: TArray<TAtlasTrackerIssue>;
+  mError: TAtlasCiFetchError;
 begin
-  Provider := TAtlasGitHubTracker.Create;
-  Transport := TFakeTransport.Create;
-  TransportRef := Transport;
-  Transport.Answer('https://api.github.com/search/issues', 401, '{}');
-  Assert.IsFalse(Provider.Fetch(GitHubTarget, TransportRef, 5000, 20, Issues, Error));
-  Assert.IsTrue(Error = TAtlasCiFetchError.Unauthorized);
-  Transport := TFakeTransport.Create;
-  TransportRef := Transport;
-  Transport.Answer('https://api.github.com/search/issues', 422, '{}');
-  Assert.IsFalse(Provider.Fetch(GitHubTarget, TransportRef, 5000, 20, Issues, Error));
-  Assert.IsTrue(Error = TAtlasCiFetchError.Invalid, 'ungültige Abfrage');
-  Transport.FailWith(TAtlasCiFetchError.Timeout);
-  Assert.IsFalse(Provider.Fetch(GitHubTarget, TransportRef, 5000, 20, Issues, Error));
-  Assert.IsTrue(Error = TAtlasCiFetchError.Timeout);
-  Assert.AreEqual(0, Integer(Length(Issues)));
+  mProvider := TAtlasGitHubTracker.Create;
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer('https://api.github.com/search/issues', 401, '{}');
+  Assert.IsFalse(mProvider.Fetch(GitHubTarget, mTransportRef, 5000, 20, mIssues, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Unauthorized);
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer('https://api.github.com/search/issues', 422, '{}');
+  Assert.IsFalse(mProvider.Fetch(GitHubTarget, mTransportRef, 5000, 20, mIssues, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Invalid, 'ungültige Abfrage');
+  mTransport.FailWith(TAtlasCiFetchError.Timeout);
+  Assert.IsFalse(mProvider.Fetch(GitHubTarget, mTransportRef, 5000, 20, mIssues, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Timeout);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
   // Ohne Projekt: kein Netzzugriff.
-  Transport := TFakeTransport.Create;
-  TransportRef := Transport;
-  Assert.IsFalse(Provider.Fetch(TAtlasTrackerTarget.Create('github', '', '', ''), TransportRef, 5000, 20, Issues,
-    Error));
-  Assert.IsTrue(Error = TAtlasCiFetchError.NotConfigured);
-  Assert.AreEqual(0, Integer(Length(Transport.Calls)));
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  Assert.IsFalse(mProvider.Fetch(TAtlasTrackerTarget.Create('github', '', '', ''), mTransportRef, 5000, 20, mIssues,
+    mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured);
+  Assert.AreEqual(0, Integer(Length(mTransport.Calls)));
 end;
 
 procedure TAtlasGitHubTrackerTests.Pages;
 var
-  Provider: IAtlasTrackerProvider;
+  mProvider: IAtlasTrackerProvider;
 begin
-  Provider := TAtlasGitHubTracker.Create;
-  Assert.AreEqual('https://github.com/beispiel/atlas/issues/753', Provider.IssuePage(GitHubTarget, '#753'));
-  Assert.AreEqual('https://github.com/beispiel/atlas/pull/760', Provider.PullRequestPage(GitHubTarget, 760));
-  Assert.AreEqual('', Provider.IssuePage(GitHubTarget, '#x'));
-  Assert.AreEqual('GitHub', Provider.Caption);
-  Assert.AreEqual('assignee:@me state:open', Provider.DefaultQuery);
+  mProvider := TAtlasGitHubTracker.Create;
+  Assert.AreEqual('https://github.com/beispiel/atlas/issues/753', mProvider.IssuePage(GitHubTarget, '#753'));
+  Assert.AreEqual('https://github.com/beispiel/atlas/pull/760', mProvider.PullRequestPage(GitHubTarget, 760));
+  Assert.AreEqual('', mProvider.IssuePage(GitHubTarget, '#x'));
+  Assert.AreEqual('GitHub', mProvider.Caption);
+  Assert.AreEqual('assignee:@me state:open', mProvider.DefaultQuery);
 end;
 
 { TAtlasYouTrackTrackerTests }
 
 procedure TAtlasYouTrackTrackerTests.QueryAndUrl;
 var
-  Target: TAtlasTrackerTarget;
+  mTarget: TAtlasTrackerTarget;
 begin
   Assert.AreEqual('project: ATL for: me #Unresolved', TAtlasYouTrackApi.FullQuery(YouTrackTarget));
-  Target := TAtlasTrackerTarget.Create('youtrack', 'https://yt.firma.de', '', 'for: me State: Open');
-  Assert.AreEqual('for: me State: Open', TAtlasYouTrackApi.FullQuery(Target));
-  Target := TAtlasTrackerTarget.Create('youtrack', 'https://yt.firma.de', 'Atlas IDE', '');
-  Assert.AreEqual('project: {Atlas IDE} for: me #Unresolved', TAtlasYouTrackApi.FullQuery(Target));
+  mTarget := TAtlasTrackerTarget.Create('youtrack', 'https://yt.firma.de', '', 'for: me State: Open');
+  Assert.AreEqual('for: me State: Open', TAtlasYouTrackApi.FullQuery(mTarget));
+  mTarget := TAtlasTrackerTarget.Create('youtrack', 'https://yt.firma.de', 'Atlas IDE', '');
+  Assert.AreEqual('project: {Atlas IDE} for: me #Unresolved', TAtlasYouTrackApi.FullQuery(mTarget));
   Assert.AreEqual('https://beispiel.youtrack.cloud/api/issues?query=project%3A%20ATL%20for%3A%20me%20%23Unresolved' +
     '&fields=idReadable%2CnumberInProject%2Csummary%2CcustomFields%28name%2Cvalue%28name%2Cpresentation%2Clogin' +
     '%2CfullName%29%29&$top=20', TAtlasYouTrackApi.IssuesUrl(YouTrackTarget, 20));
@@ -730,58 +730,58 @@ end;
 
 procedure TAtlasYouTrackTrackerTests.ParsesIssuesFromFixture;
 var
-  Issues: TArray<TAtlasTrackerIssue>;
+  mIssues: TArray<TAtlasTrackerIssue>;
 begin
-  Assert.IsTrue(TAtlasYouTrackParse.ParseIssues(Fixture('YouTrack', 'issues.json'), 20, Issues));
-  Assert.AreEqual(2, Integer(Length(Issues)), 'ohne Kennung entfällt');
-  Assert.AreEqual('ATL-123', Issues[0].Key);
-  Assert.AreEqual(123, Issues[0].Number);
-  Assert.AreEqual('Tracker im Plugin anbinden', Issues[0].Title);
-  Assert.AreEqual('In Progress', Issues[0].State);
-  Assert.AreEqual('Major', Issues[0].Priority);
-  Assert.AreEqual('Sprint 42', Issues[0].Sprint);
-  Assert.AreEqual('Beispiel', Issues[0].Assignee, 'Zuständig für die Palette (#1270)');
-  Assert.AreEqual('ATL-7', Issues[1].Key);
-  Assert.AreEqual('', Issues[1].Assignee);
-  Assert.AreEqual('Offen', Issues[1].State, 'deutscher Feldname, Wert als presentation');
-  Assert.AreEqual('', Issues[1].Priority);
-  Assert.IsFalse(TAtlasYouTrackParse.ParseIssues('{"error":"x"}', 20, Issues));
+  Assert.IsTrue(TAtlasYouTrackParse.ParseIssues(Fixture('YouTrack', 'issues.json'), 20, mIssues));
+  Assert.AreEqual(2, Integer(Length(mIssues)), 'ohne Kennung entfällt');
+  Assert.AreEqual('ATL-123', mIssues[0].Key);
+  Assert.AreEqual(123, mIssues[0].Number);
+  Assert.AreEqual('Tracker im Plugin anbinden', mIssues[0].Title);
+  Assert.AreEqual('In Progress', mIssues[0].State);
+  Assert.AreEqual('Major', mIssues[0].Priority);
+  Assert.AreEqual('Sprint 42', mIssues[0].Sprint);
+  Assert.AreEqual('Beispiel', mIssues[0].Assignee, 'Zuständig für die Palette (#1270)');
+  Assert.AreEqual('ATL-7', mIssues[1].Key);
+  Assert.AreEqual('', mIssues[1].Assignee);
+  Assert.AreEqual('Offen', mIssues[1].State, 'deutscher Feldname, Wert als presentation');
+  Assert.AreEqual('', mIssues[1].Priority);
+  Assert.IsFalse(TAtlasYouTrackParse.ParseIssues('{"error":"x"}', 20, mIssues));
 end;
 
 procedure TAtlasYouTrackTrackerTests.FetchAndErrors;
 var
-  Transport: TFakeTransport;
-  TransportRef: IAtlasCiTransport;
-  Provider: IAtlasTrackerProvider;
-  Issues: TArray<TAtlasTrackerIssue>;
-  Error: TAtlasCiFetchError;
+  mTransport: TFakeTransport;
+  mTransportRef: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mIssues: TArray<TAtlasTrackerIssue>;
+  mError: TAtlasCiFetchError;
 begin
-  Provider := TAtlasYouTrackTracker.Create;
-  Transport := TFakeTransport.Create;
-  TransportRef := Transport;
-  Transport.Answer('https://beispiel.youtrack.cloud/api/issues', 200, Fixture('YouTrack', 'issues.json'));
-  Assert.IsTrue(Provider.Fetch(YouTrackTarget, TransportRef, 5000, 20, Issues, Error));
-  Assert.AreEqual(2, Integer(Length(Issues)));
-  Assert.AreEqual(1, Integer(Length(Transport.Calls)));
-  Assert.AreEqual('https://beispiel.youtrack.cloud', Provider.ApiServer(YouTrackTarget));
-  Transport := TFakeTransport.Create;
-  TransportRef := Transport;
-  Transport.Answer('https://beispiel.youtrack.cloud/api/issues', 400, '{"error":"invalid_query"}');
-  Assert.IsFalse(Provider.Fetch(YouTrackTarget, TransportRef, 5000, 20, Issues, Error));
-  Assert.IsTrue(Error = TAtlasCiFetchError.Invalid);
-  Transport.FailWith(TAtlasCiFetchError.Network);
-  Assert.IsFalse(Provider.Fetch(YouTrackTarget, TransportRef, 5000, 20, Issues, Error));
-  Assert.IsTrue(Error = TAtlasCiFetchError.Network);
+  mProvider := TAtlasYouTrackTracker.Create;
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer('https://beispiel.youtrack.cloud/api/issues', 200, Fixture('YouTrack', 'issues.json'));
+  Assert.IsTrue(mProvider.Fetch(YouTrackTarget, mTransportRef, 5000, 20, mIssues, mError));
+  Assert.AreEqual(2, Integer(Length(mIssues)));
+  Assert.AreEqual(1, Integer(Length(mTransport.Calls)));
+  Assert.AreEqual('https://beispiel.youtrack.cloud', mProvider.ApiServer(YouTrackTarget));
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer('https://beispiel.youtrack.cloud/api/issues', 400, '{"error":"invalid_query"}');
+  Assert.IsFalse(mProvider.Fetch(YouTrackTarget, mTransportRef, 5000, 20, mIssues, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Invalid);
+  mTransport.FailWith(TAtlasCiFetchError.Network);
+  Assert.IsFalse(mProvider.Fetch(YouTrackTarget, mTransportRef, 5000, 20, mIssues, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Network);
 end;
 
 procedure TAtlasYouTrackTrackerTests.IssuePage;
 var
-  Provider: IAtlasTrackerProvider;
+  mProvider: IAtlasTrackerProvider;
 begin
-  Provider := TAtlasYouTrackTracker.Create;
-  Assert.AreEqual('https://beispiel.youtrack.cloud/issue/ATL-123', Provider.IssuePage(YouTrackTarget, 'ATL-123'));
-  Assert.AreEqual('', Provider.IssuePage(YouTrackTarget, 'ATL-1/../x'));
-  Assert.AreEqual('', Provider.PullRequestPage(YouTrackTarget, 5));
+  mProvider := TAtlasYouTrackTracker.Create;
+  Assert.AreEqual('https://beispiel.youtrack.cloud/issue/ATL-123', mProvider.IssuePage(YouTrackTarget, 'ATL-123'));
+  Assert.AreEqual('', mProvider.IssuePage(YouTrackTarget, 'ATL-1/../x'));
+  Assert.AreEqual('', mProvider.PullRequestPage(YouTrackTarget, 5));
 end;
 
 { TAtlasCommitHookTests }
@@ -805,35 +805,35 @@ end;
 
 procedure TAtlasCommitHookTests.ScriptHasMarkerAndUnixLineEnds;
 var
-  Script: string;
+  mScript: string;
 begin
-  Script := TAtlasCommitHook.Script(False);
-  Assert.IsTrue(Script.StartsWith('#!/bin/sh' + #10 + TAtlasCommitHook.Marker + #10));
-  Assert.IsTrue(Pos('# Von Atlas angelegt', Script) > 0, 'Kommentar deutsch');
+  mScript := TAtlasCommitHook.Script(False);
+  Assert.IsTrue(mScript.StartsWith('#!/bin/sh' + #10 + TAtlasCommitHook.cMarker + #10));
+  Assert.IsTrue(Pos('# Von Atlas angelegt', mScript) > 0, 'Kommentar deutsch');
   Assert.IsTrue(Pos('# Created by Atlas', TAtlasCommitHook.Script(True)) > 0, 'Kommentar englisch');
   Assert.IsTrue(TAtlasCommitHook.IsOwn(TAtlasCommitHook.Script(True)), 'englischer Hook ist auch der eigene');
-  Assert.AreEqual(0, Pos(#13, Script), 'sh verträgt kein CR');
-  Assert.IsTrue(Pos('merge|squash|commit) exit 0', Script) > 0, 'Merge, Squash und Amend bleiben');
-  Assert.IsTrue(TAtlasCommitHook.IsOwn(Script));
+  Assert.AreEqual(0, Pos(#13, mScript), 'sh verträgt kein CR');
+  Assert.IsTrue(Pos('merge|squash|commit) exit 0', mScript) > 0, 'Merge, Squash und Amend bleiben');
+  Assert.IsTrue(TAtlasCommitHook.IsOwn(mScript));
   Assert.IsFalse(TAtlasCommitHook.IsOwn('#!/bin/sh' + #10 + 'npx husky'));
 end;
 
 procedure TAtlasCommitHookTests.InstallKeepsForeignHook;
 var
-  Hooks: string;
+  mHooks: string;
 begin
-  Hooks := TPath.Combine(FDir, 'hooks');
-  Assert.IsTrue(TAtlasCommitHook.State(Hooks) = TAtlasCommitHookState.Missing);
-  Assert.IsTrue(TAtlasCommitHook.Install(Hooks, False), 'legt Ordner und Hook an');
-  Assert.IsTrue(TAtlasCommitHook.State(Hooks) = TAtlasCommitHookState.Own);
-  Assert.IsTrue(TAtlasCommitHook.Install(Hooks, True), 'eigener wird ersetzt');
-  Assert.IsTrue(TAtlasCommitHook.Uninstall(Hooks));
-  Assert.IsTrue(TAtlasCommitHook.State(Hooks) = TAtlasCommitHookState.Missing);
-  TFile.WriteAllText(TAtlasCommitHook.HookFile(Hooks), '#!/bin/sh' + #10 + 'echo fremd' + #10);
-  Assert.IsTrue(TAtlasCommitHook.State(Hooks) = TAtlasCommitHookState.Foreign);
-  Assert.IsFalse(TAtlasCommitHook.Install(Hooks, False), 'fremder Hook bleibt');
-  Assert.IsTrue(TAtlasCommitHook.Uninstall(Hooks));
-  Assert.IsTrue(Pos('echo fremd', TFile.ReadAllText(TAtlasCommitHook.HookFile(Hooks), TEncoding.UTF8)) > 0);
+  mHooks := TPath.Combine(FDir, 'hooks');
+  Assert.IsTrue(TAtlasCommitHook.State(mHooks) = TAtlasCommitHookState.Missing);
+  Assert.IsTrue(TAtlasCommitHook.Install(mHooks, False), 'legt Ordner und Hook an');
+  Assert.IsTrue(TAtlasCommitHook.State(mHooks) = TAtlasCommitHookState.Own);
+  Assert.IsTrue(TAtlasCommitHook.Install(mHooks, True), 'eigener wird ersetzt');
+  Assert.IsTrue(TAtlasCommitHook.Uninstall(mHooks));
+  Assert.IsTrue(TAtlasCommitHook.State(mHooks) = TAtlasCommitHookState.Missing);
+  TFile.WriteAllText(TAtlasCommitHook.HookFile(mHooks), '#!/bin/sh' + #10 + 'echo fremd' + #10);
+  Assert.IsTrue(TAtlasCommitHook.State(mHooks) = TAtlasCommitHookState.Foreign);
+  Assert.IsFalse(TAtlasCommitHook.Install(mHooks, False), 'fremder Hook bleibt');
+  Assert.IsTrue(TAtlasCommitHook.Uninstall(mHooks));
+  Assert.IsTrue(Pos('echo fremd', TFile.ReadAllText(TAtlasCommitHook.HookFile(mHooks), TEncoding.UTF8)) > 0);
   Assert.IsFalse(TAtlasCommitHook.Install('', False));
 end;
 
@@ -1189,7 +1189,7 @@ begin
   Assert.IsFalse(mEditor.Description(GitHubTarget, mReadOnlyRef, '#9', 5000, mText, mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.NotFound);
   mReadOnly.Answer('https://api.github.com/repos/beispiel/atlas/issues/8', 200,
-    '{"number":8,"body":"' + StringOfChar('a', TAtlasTrackerDetails.MaxDescription + 1) + '"}');
+    '{"number":8,"body":"' + StringOfChar('a', TAtlasTrackerDetails.cMaxDescription + 1) + '"}');
   Assert.IsFalse(mEditor.Description(GitHubTarget, mReadOnlyRef, '#8', 5000, mText, mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.Invalid);
   Assert.AreEqual('', mText);

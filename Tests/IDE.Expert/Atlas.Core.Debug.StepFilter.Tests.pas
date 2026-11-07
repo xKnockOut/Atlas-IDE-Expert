@@ -249,7 +249,7 @@ var
 begin
   mRun := Default(TAtlasStepFilterRun);
   mRun.Start(2);
-  for mIndex := 1 to TAtlasStepFilter.MaxSkips do
+  for mIndex := 1 to TAtlasStepFilter.cMaxSkips do
   begin
     Assert.AreEqual(Ord(TAtlasStepFilterAction.Return), Ord(mRun.AfterStep(3, True)));
     Assert.AreEqual(Ord(TAtlasStepFilterAction.StepInto), Ord(mRun.AfterReturn(2)));
