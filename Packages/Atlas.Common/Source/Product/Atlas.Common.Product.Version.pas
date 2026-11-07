@@ -14,7 +14,7 @@ type
   TProductVersion = record
   public const
     cName = 'Atlas';
-    cVersion = TAtlasVersion.Version;
+    cVersion = TAtlasVersion.cVersion;
   end;
 
 implementation

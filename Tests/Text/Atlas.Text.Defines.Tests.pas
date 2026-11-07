@@ -34,11 +34,11 @@ uses
 
 function Has(const ASymbols: TArray<string>; const AName: string): Boolean;
 var
-  Symbol: string;
+  mSymbol: string;
 begin
-  for Symbol in ASymbols do
+  for mSymbol in ASymbols do
   begin
-    if SameText(Symbol, AName) then
+    if SameText(mSymbol, AName) then
     begin
       Exit(True);
     end;
@@ -48,30 +48,30 @@ end;
 
 procedure TTextDefinesTests.PredefinedForWin32AndVersion;
 var
-  Symbols: TArray<string>;
+  mSymbols: TArray<string>;
 begin
-  Symbols := TTextDefines.Predefined('Win32', 36.0);
-  Assert.IsTrue(Has(Symbols, 'MSWINDOWS'));
-  Assert.IsTrue(Has(Symbols, 'WIN32'));
-  Assert.IsTrue(Has(Symbols, 'CPUX86'));
-  Assert.IsTrue(Has(Symbols, 'VER360'));
-  Assert.IsTrue(Has(Symbols, 'UNICODE'));
-  Assert.IsFalse(Has(Symbols, 'WIN64'));
+  mSymbols := TTextDefines.Predefined('Win32', 36.0);
+  Assert.IsTrue(Has(mSymbols, 'MSWINDOWS'));
+  Assert.IsTrue(Has(mSymbols, 'WIN32'));
+  Assert.IsTrue(Has(mSymbols, 'CPUX86'));
+  Assert.IsTrue(Has(mSymbols, 'VER360'));
+  Assert.IsTrue(Has(mSymbols, 'UNICODE'));
+  Assert.IsFalse(Has(mSymbols, 'WIN64'));
   // Leere Plattform gilt als Win32.
   Assert.IsTrue(Has(TTextDefines.Predefined('', 0), 'WIN32'));
 end;
 
 procedure TTextDefinesTests.PredefinedForWin64WithoutVersion;
 var
-  Symbols: TArray<string>;
-  Symbol: string;
+  mSymbols: TArray<string>;
+  mSymbol: string;
 begin
-  Symbols := TTextDefines.Predefined('win64', 0);
-  Assert.IsTrue(Has(Symbols, 'WIN64'));
-  Assert.IsTrue(Has(Symbols, 'CPU64BITS'));
-  for Symbol in Symbols do
+  mSymbols := TTextDefines.Predefined('win64', 0);
+  Assert.IsTrue(Has(mSymbols, 'WIN64'));
+  Assert.IsTrue(Has(mSymbols, 'CPU64BITS'));
+  for mSymbol in mSymbols do
   begin
-    Assert.IsFalse(Symbol.StartsWith('VER'), Symbol);
+    Assert.IsFalse(mSymbol.StartsWith('VER'), mSymbol);
   end;
 end;
 

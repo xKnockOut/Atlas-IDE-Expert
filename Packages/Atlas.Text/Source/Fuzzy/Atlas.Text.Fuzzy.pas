@@ -40,81 +40,81 @@ uses
 
 class function TTextFuzzy.IsWordStart(const AName: string; AIndex: Integer): Boolean;
 var
-  Current, Previous: Char;
+  mCurrent, mPrevious: Char;
 begin
   if AIndex = 1 then
   begin
     Exit(True);
   end;
-  Current := AName[AIndex];
-  Previous := AName[AIndex - 1];
-  if (Previous = '_') or (Previous = '.') then
+  mCurrent := AName[AIndex];
+  mPrevious := AName[AIndex - 1];
+  if (mPrevious = '_') or (mPrevious = '.') then
   begin
-    Exit((Current <> '_') and (Current <> '.'));
+    Exit((mCurrent <> '_') and (mCurrent <> '.'));
   end;
-  if Current.IsUpper then
+  if mCurrent.IsUpper then
   begin
-    Exit(Previous.IsLower or Previous.IsDigit or
+    Exit(mPrevious.IsLower or mPrevious.IsDigit or
       ((AIndex < Length(AName)) and AName[AIndex + 1].IsLower));
   end;
-  if Current.IsDigit then
+  if mCurrent.IsDigit then
   begin
-    Exit(not Previous.IsDigit);
+    Exit(not mPrevious.IsDigit);
   end;
-  Result := Current.IsLower and Previous.IsDigit;
+  Result := mCurrent.IsLower and mPrevious.IsDigit;
 end;
 
 class function TTextFuzzy.MatchesWordStarts(const APattern, AName: string): Boolean;
 var
-  PatternIndex, NameIndex: Integer;
+  mPatternIndex, mNameIndex: Integer;
 begin
-  PatternIndex := 1;
-  for NameIndex := 1 to Length(AName) do
+  mPatternIndex := 1;
+  for mNameIndex := 1 to Length(AName) do
   begin
-    if (PatternIndex <= Length(APattern)) and IsWordStart(AName, NameIndex) and
-      (UpCase(AName[NameIndex]) = UpCase(APattern[PatternIndex])) then
+    if (mPatternIndex <= Length(APattern)) and IsWordStart(AName, mNameIndex) and
+      (UpCase(AName[mNameIndex]) = UpCase(APattern[mPatternIndex])) then
     begin
-      Inc(PatternIndex);
+      Inc(mPatternIndex);
     end;
   end;
-  Result := PatternIndex > Length(APattern);
+  Result := mPatternIndex > Length(APattern);
 end;
 
 class function TTextFuzzy.MatchesBoundedSubsequence(const APattern, AName: string): Boolean;
 var
-  Reached, Next: TArray<Boolean>;
-  PatternIndex, NameIndex: Integer;
-  Previous: Boolean;
+  mReached, mNext: TArray<Boolean>;
+  mPatternIndex, mNameIndex: Integer;
+  mPrevious: Boolean;
 begin
   if APattern = '' then
   begin
     Exit(True);
   end;
   // Reached[i]: Das Muster bis zum aktuellen Zeichen endet passend bei AName[i].
-  Reached := nil;
-  SetLength(Reached, Length(AName) + 1);
-  for NameIndex := 1 to Length(AName) do
+  mReached := nil;
+  SetLength(mReached, Length(AName) + 1);
+  for mNameIndex := 1 to Length(AName) do
   begin
-    Reached[NameIndex] := IsWordStart(AName, NameIndex) and (UpCase(AName[NameIndex]) = UpCase(APattern[1]));
+    mReached[mNameIndex] := IsWordStart(AName, mNameIndex) and (UpCase(AName[mNameIndex]) = UpCase(APattern[1]));
   end;
-  for PatternIndex := 2 to Length(APattern) do
+  for mPatternIndex := 2 to Length(APattern) do
   begin
-    Next := nil;
-    SetLength(Next, Length(AName) + 1);
-    Previous := False;
-    for NameIndex := 1 to Length(AName) do
+    mNext := nil;
+    SetLength(mNext, Length(AName) + 1);
+    mPrevious := False;
+    for mNameIndex := 1 to Length(AName) do
     begin
       // Previous: Irgendwo vor NameIndex - 1 endete das bisherige Muster.
-      Next[NameIndex] := (UpCase(AName[NameIndex]) = UpCase(APattern[PatternIndex])) and
-        (Reached[NameIndex - 1] or (Previous and IsWordStart(AName, NameIndex)));
-      Previous := Previous or Reached[NameIndex - 1];
+      mNext[mNameIndex] := (UpCase(AName[mNameIndex]) = UpCase(APattern[mPatternIndex])) and
+        (mReached[mNameIndex - 1] or (mPrevious and IsWordStart(AName, mNameIndex)));
+      mPrevious := mPrevious or mReached[mNameIndex - 1];
     end;
-    Reached := Next;
+    mReached := mNext;
   end;
   Result := False;
-  for NameIndex := 1 to Length(AName) do
+  for mNameIndex := 1 to Length(AName) do
   begin
-    if Reached[NameIndex] then
+    if mReached[mNameIndex] then
     begin
       Exit(True);
     end;
@@ -123,58 +123,58 @@ end;
 
 class function TTextFuzzy.EditDistance(const A, B: string; ALimit: Integer): Integer;
 var
-  Left, Right: string;
-  Row, Next: TArray<Integer>;
-  I, J, Best: Integer;
+  mLeft, mRight: string;
+  mRow, mNext: TArray<Integer>;
+  I, J, mBest: Integer;
 begin
-  Left := LowerCase(A);
-  Right := LowerCase(B);
-  if Abs(Length(Left) - Length(Right)) > ALimit then
+  mLeft := LowerCase(A);
+  mRight := LowerCase(B);
+  if Abs(Length(mLeft) - Length(mRight)) > ALimit then
   begin
     Exit(ALimit + 1);
   end;
-  SetLength(Row, Length(Right) + 1);
-  SetLength(Next, Length(Right) + 1);
-  for J := 0 to Length(Right) do
+  SetLength(mRow, Length(mRight) + 1);
+  SetLength(mNext, Length(mRight) + 1);
+  for J := 0 to Length(mRight) do
   begin
-    Row[J] := J;
+    mRow[J] := J;
   end;
-  for I := 1 to Length(Left) do
+  for I := 1 to Length(mLeft) do
   begin
-    Next[0] := I;
-    Best := Next[0];
-    for J := 1 to Length(Right) do
+    mNext[0] := I;
+    mBest := mNext[0];
+    for J := 1 to Length(mRight) do
     begin
-      Next[J] := Min(Min(Row[J] + 1, Next[J - 1] + 1), Row[J - 1] + Ord(Left[I] <> Right[J]));
-      Best := Min(Best, Next[J]);
+      mNext[J] := Min(Min(mRow[J] + 1, mNext[J - 1] + 1), mRow[J - 1] + Ord(mLeft[I] <> mRight[J]));
+      mBest := Min(mBest, mNext[J]);
     end;
-    if Best > ALimit then
+    if mBest > ALimit then
     begin
       Exit(ALimit + 1);
     end;
-    Row := Copy(Next);
+    mRow := Copy(mNext);
   end;
-  Result := Row[Length(Right)];
+  Result := mRow[Length(mRight)];
 end;
 
 class function TTextFuzzy.Closest(const AName: string; const ACandidates: TArray<string>): string;
 var
-  Candidate: string;
-  Best, Value: Integer;
+  mCandidate: string;
+  mBest, mValue: Integer;
 begin
   Result := '';
-  Best := Min(3, (Length(AName) + 1) div 2);
-  for Candidate in ACandidates do
+  mBest := Min(3, (Length(AName) + 1) div 2);
+  for mCandidate in ACandidates do
   begin
-    Value := EditDistance(AName, Candidate, Best);
-    if Value = 0 then
+    mValue := EditDistance(AName, mCandidate, mBest);
+    if mValue = 0 then
     begin
       Exit('');
     end;
-    if Value < Best then
+    if mValue < mBest then
     begin
-      Best := Value;
-      Result := Candidate;
+      mBest := mValue;
+      Result := mCandidate;
     end;
   end;
 end;

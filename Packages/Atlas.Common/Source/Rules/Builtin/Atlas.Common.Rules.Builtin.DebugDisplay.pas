@@ -118,10 +118,10 @@ end;
 /// <summary>Spalte (ab 1) des Namens AName in der children-Zeile ALine; 1, wenn er fehlt.</summary>
 function ChildColumn(const ALine, AName: string): Integer;
 begin
-  Result := Pos(LowerCase(TDebugDisplayText.ChildrenKey), LowerCase(ALine));
+  Result := Pos(LowerCase(TDebugDisplayText.cChildrenKey), LowerCase(ALine));
   if Result > 0 then
   begin
-    Result := Result + Length(TDebugDisplayText.ChildrenKey);
+    Result := Result + Length(TDebugDisplayText.cChildrenKey);
   end
   else
   begin

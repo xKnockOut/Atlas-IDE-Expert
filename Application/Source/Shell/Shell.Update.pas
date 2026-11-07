@@ -71,7 +71,7 @@ var
   mPreparation: TUpdatePreparation;
 begin
   mPreparation := TUpdatePreparation.Create(TShellUpdateSystem.NewSystem(TUpdateLayout.Join(AArgs.Staging,
-    TUpdateLayout.LogFile)), AArgs, ParamStr(0));
+    TUpdateLayout.cLogFile)), AArgs, ParamStr(0));
   try
     Result := mPreparation.Run;
   finally
@@ -90,7 +90,7 @@ begin
   mOutcome.Version := AStage.Version;
   mOutcome.Reason := AReason;
   mOutcome.Detail := ADetail;
-  ASystem.Files.WriteText(TUpdateLayout.Join(ARootDir, TUpdateLayout.ResultFile), mOutcome.ToJson);
+  ASystem.Files.WriteText(TUpdateLayout.Join(ARootDir, TUpdateLayout.cResultFile), mOutcome.ToJson);
   Result := 1;
 end;
 
@@ -119,19 +119,19 @@ var
   mSystem: TUpdateSystem;
   mStage: TUpdateStage;
 begin
-  mSystem := TShellUpdateSystem.NewSystem(TUpdateLayout.Join(AArgs.Staging, TUpdateLayout.LogFile));
+  mSystem := TShellUpdateSystem.NewSystem(TUpdateLayout.Join(AArgs.Staging, TUpdateLayout.cLogFile));
   mStage := TUpdateStage.FromJson(mSystem.Files.ReadText(TUpdateLayout.Join(AArgs.Staging,
-    TUpdateLayout.StateFile)));
+    TUpdateLayout.cStateFile)));
   if mStage.Phase <> TUpdatePhase.Ready then
   begin
     mSystem.Log(cTexts[TShellUpdateText.NotReady].Text);
-    Exit(Refuse(mSystem, mStage, TUpdateFolders.RootOf(AArgs.Staging), TUpdateErrors.Unexpected,
-      TUpdateLayout.StateFile));
+    Exit(Refuse(mSystem, mStage, TUpdateFolders.RootOf(AArgs.Staging), TUpdateErrors.cUnexpected,
+      TUpdateLayout.cStateFile));
   end;
   if not mSystem.Files.CanWrite(AArgs.Target) then
   begin
     mSystem.Log(cTexts[TShellUpdateText.NotWritable].Fmt([AArgs.Target]));
-    Result := Refuse(mSystem, mStage, TUpdateFolders.RootOf(AArgs.Staging), TUpdateErrors.Elevation, AArgs.Target);
+    Result := Refuse(mSystem, mStage, TUpdateFolders.RootOf(AArgs.Staging), TUpdateErrors.cElevation, AArgs.Target);
   end
   else
   begin
