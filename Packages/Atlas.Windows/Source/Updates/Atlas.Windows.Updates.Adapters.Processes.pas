@@ -33,7 +33,7 @@ uses
 
 const
   // Fehlt in Winapi.TlHelp32.
-  TH32CS_SNAPMODULE32 = $00000010;
+  cTH32CS_SNAPMODULE32 = $00000010;
 
 var
   GCancelled: Integer;
@@ -52,7 +52,7 @@ var
   mPath: string;
 begin
   Result := False;
-  mSnapshot := CreateToolhelp32Snapshot(TH32CS_SNAPMODULE or TH32CS_SNAPMODULE32, APid);
+  mSnapshot := CreateToolhelp32Snapshot(TH32CS_SNAPMODULE or cTH32CS_SNAPMODULE32, APid);
   if mSnapshot = INVALID_HANDLE_VALUE then
   begin
     Exit;

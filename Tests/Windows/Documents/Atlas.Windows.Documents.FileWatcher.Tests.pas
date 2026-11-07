@@ -46,77 +46,77 @@ end;
 
 procedure TFileWatcherTests.ReportsChangedAndCreatedFiles;
 var
-  Watcher: TFileWatcher;
-  Signal: TEvent;
-  Seen: string;
-  Lock: TObject;
-  Config, Other: string;
+  mWatcher: TFileWatcher;
+  mSignal: TEvent;
+  mSeen: string;
+  mLock: TObject;
+  mConfig, mOther: string;
 begin
-  Config := TPath.Combine(FFolder, 'atlas.json');
-  Other := TPath.Combine(FFolder, 'settings.json');
-  TFile.WriteAllText(Config, '{}');
-  Signal := TEvent.Create(nil, False, False, '');
-  Lock := TObject.Create;
+  mConfig := TPath.Combine(FFolder, 'atlas.json');
+  mOther := TPath.Combine(FFolder, 'settings.json');
+  TFile.WriteAllText(mConfig, '{}');
+  mSignal := TEvent.Create(nil, False, False, '');
+  mLock := TObject.Create;
   try
-    Watcher := TFileWatcher.Create(
+    mWatcher := TFileWatcher.Create(
       procedure(const AFiles: TArray<string>)
       var
         FileName: string;
       begin
-        TMonitor.Enter(Lock);
+        TMonitor.Enter(mLock);
         try
           for FileName in AFiles do
           begin
-            Seen := Seen + ExtractFileName(FileName) + ';';
+            mSeen := mSeen + ExtractFileName(FileName) + ';';
           end;
         finally
-          TMonitor.Exit(Lock);
+          TMonitor.Exit(mLock);
         end;
-        Signal.SetEvent;
+        mSignal.SetEvent;
       end);
     try
-      Watcher.SetFiles([Config, Other]);
+      mWatcher.SetFiles([mConfig, mOther]);
       Sleep(200);
-      TFile.WriteAllText(Config, '{"platform": "Win64"}');
-      Assert.IsTrue(Signal.WaitFor(5000) = wrSignaled);
-      TMonitor.Enter(Lock);
+      TFile.WriteAllText(mConfig, '{"platform": "Win64"}');
+      Assert.IsTrue(mSignal.WaitFor(5000) = wrSignaled);
+      TMonitor.Enter(mLock);
       try
-        Assert.AreEqual('atlas.json;', Seen);
-        Seen := '';
+        Assert.AreEqual('atlas.json;', mSeen);
+        mSeen := '';
       finally
-        TMonitor.Exit(Lock);
+        TMonitor.Exit(mLock);
       end;
       // Neu angelegte Datei wird ebenso gemeldet; andere Dateien im Ordner nicht.
       TFile.WriteAllText(TPath.Combine(FFolder, 'Unit1.pas'), 'unit Unit1;');
-      TFile.WriteAllText(Other, '{}');
-      Assert.IsTrue(Signal.WaitFor(5000) = wrSignaled);
+      TFile.WriteAllText(mOther, '{}');
+      Assert.IsTrue(mSignal.WaitFor(5000) = wrSignaled);
       Sleep(300);
-      TMonitor.Enter(Lock);
+      TMonitor.Enter(mLock);
       try
-        Assert.AreEqual('settings.json;', Seen);
+        Assert.AreEqual('settings.json;', mSeen);
       finally
-        TMonitor.Exit(Lock);
+        TMonitor.Exit(mLock);
       end;
     finally
-      Watcher.Free;
+      mWatcher.Free;
     end;
   finally
-    Lock.Free;
-    Signal.Free;
+    mLock.Free;
+    mSignal.Free;
   end;
 end;
 
 procedure TFileWatcherTests.StampChangesWithContent;
 var
-  FileName, Before: string;
+  mFileName, mBefore: string;
 begin
-  FileName := TPath.Combine(FFolder, 'atlas.json');
-  Assert.AreEqual('', TFileWatcher.Stamp(FileName));
-  TFile.WriteAllText(FileName, '{}');
-  Before := TFileWatcher.Stamp(FileName);
-  Assert.IsTrue(Before <> '');
-  TFile.WriteAllText(FileName, '{"a": 1}');
-  Assert.AreNotEqual(Before, TFileWatcher.Stamp(FileName));
+  mFileName := TPath.Combine(FFolder, 'atlas.json');
+  Assert.AreEqual('', TFileWatcher.Stamp(mFileName));
+  TFile.WriteAllText(mFileName, '{}');
+  mBefore := TFileWatcher.Stamp(mFileName);
+  Assert.IsTrue(mBefore <> '');
+  TFile.WriteAllText(mFileName, '{"a": 1}');
+  Assert.AreNotEqual(mBefore, TFileWatcher.Stamp(mFileName));
   Assert.AreEqual('', TFileWatcher.Stamp(FFolder));
 end;
 

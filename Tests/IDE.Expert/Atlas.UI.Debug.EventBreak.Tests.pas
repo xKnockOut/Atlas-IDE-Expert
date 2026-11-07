@@ -42,96 +42,96 @@ end;
 
 procedure TAtlasEventBreakWindowTests.DialogShowsAndReturnsChoice;
 var
-  Dialog: TAtlasEventBreakDialog;
-  Start, Choice: TAtlasEventChoice;
-  Asked: Integer;
+  mDialog: TAtlasEventBreakDialog;
+  mStart, mChoice: TAtlasEventChoice;
+  mAsked: Integer;
 begin
   TAtlasStrings.Language := TAtlasLanguage.German;
-  Start := TAtlasEventChoice.Defaults;
-  Start.Form := 'TfrmKunde';
-  Asked := 0;
-  Dialog := TAtlasEventBreakDialog.CreateDialog(nil, Start, TArray<string>.Create('TdmDaten', 'TfrmKunde'),
+  mStart := TAtlasEventChoice.Defaults;
+  mStart.Form := 'TfrmKunde';
+  mAsked := 0;
+  mDialog := TAtlasEventBreakDialog.CreateDialog(nil, mStart, TArray<string>.Create('TdmDaten', 'TfrmKunde'),
     TAtlasEventBreakSettings.DefaultExcluded,
     function(const AChoice: TAtlasEventChoice): string
     begin
-      Inc(Asked);
-      Result := IntToStr(Asked);
+      Inc(mAsked);
+      Result := IntToStr(mAsked);
     end);
   try
-    Dialog.Prepare;
-    Assert.IsTrue(Dialog.CategoryCheck(TAtlasEventCategory.Mouse).Checked);
-    Assert.IsFalse(Dialog.CategoryCheck(TAtlasEventCategory.Timer).Checked);
-    Assert.IsTrue(Dialog.AllRadio.Checked);
-    Assert.AreEqual(1, Dialog.FormCombo.ItemIndex, 'gemerktes Formular');
-    Assert.IsTrue(Asked > 0, 'Zahl zur Wahl');
-    Dialog.CategoryCheck(TAtlasEventCategory.Database).Checked := True;
-    Dialog.FrequentCheck.Checked := True;
-    Dialog.OneRadio.Checked := True;
-    Choice := Dialog.Choice;
-    Assert.IsTrue(TAtlasEventCategory.Database in Choice.Categories);
-    Assert.IsTrue(Choice.Frequent);
-    Assert.AreEqual(Ord(TAtlasEventScope.OneForm), Ord(Choice.Scope));
-    Assert.AreEqual('TfrmKunde', Choice.Form);
-    Dialog.VisibleRadio.Checked := True;
-    Assert.AreEqual(Ord(TAtlasEventScope.VisibleForms), Ord(Dialog.Choice.Scope));
-    Assert.AreNotEqual('', Dialog.CountLabel.Caption);
+    mDialog.Prepare;
+    Assert.IsTrue(mDialog.CategoryCheck(TAtlasEventCategory.Mouse).Checked);
+    Assert.IsFalse(mDialog.CategoryCheck(TAtlasEventCategory.Timer).Checked);
+    Assert.IsTrue(mDialog.AllRadio.Checked);
+    Assert.AreEqual(1, mDialog.FormCombo.ItemIndex, 'gemerktes Formular');
+    Assert.IsTrue(mAsked > 0, 'Zahl zur Wahl');
+    mDialog.CategoryCheck(TAtlasEventCategory.Database).Checked := True;
+    mDialog.FrequentCheck.Checked := True;
+    mDialog.OneRadio.Checked := True;
+    mChoice := mDialog.Choice;
+    Assert.IsTrue(TAtlasEventCategory.Database in mChoice.Categories);
+    Assert.IsTrue(mChoice.Frequent);
+    Assert.AreEqual(Ord(TAtlasEventScope.OneForm), Ord(mChoice.Scope));
+    Assert.AreEqual('TfrmKunde', mChoice.Form);
+    mDialog.VisibleRadio.Checked := True;
+    Assert.AreEqual(Ord(TAtlasEventScope.VisibleForms), Ord(mDialog.Choice.Scope));
+    Assert.AreNotEqual('', mDialog.CountLabel.Caption);
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
 procedure TAtlasEventBreakWindowTests.DialogNeedsCategory;
 var
-  Dialog: TAtlasEventBreakDialog;
-  Category: TAtlasEventCategory;
+  mDialog: TAtlasEventBreakDialog;
+  mCategory: TAtlasEventCategory;
 begin
-  Dialog := TAtlasEventBreakDialog.CreateDialog(nil, TAtlasEventChoice.Defaults, nil, '', nil);
+  mDialog := TAtlasEventBreakDialog.CreateDialog(nil, TAtlasEventChoice.Defaults, nil, '', nil);
   try
-    Dialog.Prepare;
-    Assert.IsFalse(Dialog.OneRadio.Enabled, 'ohne Formulare');
-    for Category := Low(TAtlasEventCategory) to High(TAtlasEventCategory) do
+    mDialog.Prepare;
+    Assert.IsFalse(mDialog.OneRadio.Enabled, 'ohne Formulare');
+    for mCategory := Low(TAtlasEventCategory) to High(TAtlasEventCategory) do
     begin
-      Dialog.CategoryCheck(Category).Checked := False;
+      mDialog.CategoryCheck(mCategory).Checked := False;
     end;
-    Assert.IsFalse(Dialog.OkButton.Enabled);
+    Assert.IsFalse(mDialog.OkButton.Enabled);
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
 procedure TAtlasEventBreakWindowTests.BarButtons;
 var
-  Bar: TAtlasEventBreakBar;
-  Continued, Closed: Integer;
+  mBar: TAtlasEventBreakBar;
+  mContinued, mClosed: Integer;
 begin
-  Continued := 0;
-  Closed := 0;
-  Bar := TAtlasEventBreakBar.Create(nil);
+  mContinued := 0;
+  mClosed := 0;
+  mBar := TAtlasEventBreakBar.Create(nil);
   try
-    Bar.Colors := TAtlasColors.Light;
-    Bar.SetScaling(96, 1, 'Segoe UI', 9);
-    Bar.OnContinue :=
+    mBar.Colors := TAtlasColors.Light;
+    mBar.SetScaling(96, 1, 'Segoe UI', 9);
+    mBar.OnContinue :=
       procedure
       begin
-        Inc(Continued);
+        Inc(mContinued);
       end;
-    Bar.OnClose :=
+    mBar.OnClose :=
       procedure
       begin
-        Inc(Closed);
+        Inc(mClosed);
       end;
-    Bar.ShowFor('btnSpeichern.OnClick → TfrmKunde.btnSpeichernClick', Point(100, 100));
-    Assert.IsTrue(Bar.IsShown);
-    Assert.IsTrue(Bar.CloseRect.Left > Bar.ContinueRect.Right, 'nebeneinander');
-    Bar.KeepWatching;
-    Assert.AreEqual(1, Continued);
-    Assert.IsFalse(Bar.IsShown);
-    Bar.ShowFor('x', Point(100, 100));
-    Bar.CloseBar;
-    Assert.AreEqual(1, Closed);
-    Assert.IsFalse(Bar.IsShown);
+    mBar.ShowFor('btnSpeichern.OnClick → TfrmKunde.btnSpeichernClick', Point(100, 100));
+    Assert.IsTrue(mBar.IsShown);
+    Assert.IsTrue(mBar.CloseRect.Left > mBar.ContinueRect.Right, 'nebeneinander');
+    mBar.KeepWatching;
+    Assert.AreEqual(1, mContinued);
+    Assert.IsFalse(mBar.IsShown);
+    mBar.ShowFor('x', Point(100, 100));
+    mBar.CloseBar;
+    Assert.AreEqual(1, mClosed);
+    Assert.IsFalse(mBar.IsShown);
   finally
-    Bar.Free;
+    mBar.Free;
   end;
 end;
 

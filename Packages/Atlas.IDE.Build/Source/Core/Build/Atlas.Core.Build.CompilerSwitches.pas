@@ -69,7 +69,7 @@ type
   /// <summary>Entprellt die Cursorbewegung (#558: 150 ms). Zeiten in ms (GetTickCount64).</summary>
   TAtlasSwitchFollow = class
   public const
-    DelayMs = 150;
+    cDelayMs = 150;
   private
     FFileName: string;
     FLine: Integer;
@@ -95,25 +95,25 @@ type
 implementation
 
 const
-  OriginKinds: array[TAtlasSwitchOriginKind] of string = ('default', 'project', 'directive', 'include');
+  cOriginKinds: array[TAtlasSwitchOriginKind] of string = ('default', 'project', 'directive', 'include');
 
 function KindOf(const AText: string): TAtlasSwitchOriginKind;
 var
-  Kind: TAtlasSwitchOriginKind;
+  mKind: TAtlasSwitchOriginKind;
 begin
   Result := TAtlasSwitchOriginKind.Default;
-  for Kind := Low(TAtlasSwitchOriginKind) to High(TAtlasSwitchOriginKind) do
+  for mKind := Low(TAtlasSwitchOriginKind) to High(TAtlasSwitchOriginKind) do
   begin
-    if OriginKinds[Kind] = AText then
+    if cOriginKinds[mKind] = AText then
     begin
-      Result := Kind;
+      Result := mKind;
     end;
   end;
 end;
 
 function RowOf(ASection: TAtlasSwitchSection; AEntry: TJSONObject): TAtlasSwitchRow;
 var
-  Origin: TJSONObject;
+  mOrigin: TJSONObject;
 begin
   Result := Default(TAtlasSwitchRow);
   Result.Section := ASection;
@@ -123,33 +123,33 @@ begin
   Result.Value := AEntry.GetValue<string>('value', '');
   Result.ProjectValue := AEntry.GetValue<string>('projectValue', '');
   Result.Deviates := AEntry.GetValue<Boolean>('deviates', False);
-  if AEntry.TryGetValue<TJSONObject>('origin', Origin) then
+  if AEntry.TryGetValue<TJSONObject>('origin', mOrigin) then
   begin
-    Result.Kind := KindOf(Origin.GetValue<string>('kind', ''));
-    Result.OriginText := Origin.GetValue<string>('text', '');
-    Result.FileName := Origin.GetValue<string>('file', '');
-    Result.Line := Origin.GetValue<Integer>('line', -1);
+    Result.Kind := KindOf(mOrigin.GetValue<string>('kind', ''));
+    Result.OriginText := mOrigin.GetValue<string>('text', '');
+    Result.FileName := mOrigin.GetValue<string>('file', '');
+    Result.Line := mOrigin.GetValue<Integer>('line', -1);
   end;
 end;
 
 procedure AddRows(var ARows: TAtlasSwitchRows; ASection: TAtlasSwitchSection; const AObject: TJSONObject;
   const AName: string);
 var
-  Value: TJSONValue;
-  Item: TJSONValue;
+  mValue: TJSONValue;
+  mItem: TJSONValue;
 begin
-  Value := AObject.GetValue(AName);
-  if Value is TJSONObject then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONObject then
   begin
-    ARows := ARows + [RowOf(ASection, TJSONObject(Value))];
+    ARows := ARows + [RowOf(ASection, TJSONObject(mValue))];
   end
-  else if Value is TJSONArray then
+  else if mValue is TJSONArray then
   begin
-    for Item in TJSONArray(Value) do
+    for mItem in TJSONArray(mValue) do
     begin
-      if Item is TJSONObject then
+      if mItem is TJSONObject then
       begin
-        ARows := ARows + [RowOf(ASection, TJSONObject(Item))];
+        ARows := ARows + [RowOf(ASection, TJSONObject(mItem))];
       end;
     end;
   end;
@@ -184,7 +184,7 @@ end;
 class function TAtlasCompilerSwitchView.FromJson(const AValue: TJSONValue;
   out AView: TAtlasCompilerSwitchView): Boolean;
 var
-  Root: TJSONObject;
+  mRoot: TJSONObject;
 begin
   AView := Default(TAtlasCompilerSwitchView);
   Result := AValue is TJSONObject;
@@ -192,16 +192,16 @@ begin
   begin
     Exit;
   end;
-  Root := TJSONObject(AValue);
-  AView.Configuration := Root.GetValue<string>('configuration', '');
-  AView.Platform := Root.GetValue<string>('platform', '');
-  AView.HasProject := Root.GetValue<Boolean>('hasProject', False);
-  AView.Summary := Root.GetValue<string>('summary', '');
-  AddRows(AView.Rows, TAtlasSwitchSection.Switches, Root, 'switches');
-  AddRows(AView.Rows, TAtlasSwitchSection.Messages, Root, 'hints');
-  AddRows(AView.Rows, TAtlasSwitchSection.Messages, Root, 'warnings');
-  AddRows(AView.Rows, TAtlasSwitchSection.Messages, Root, 'warns');
-  AddRows(AView.Rows, TAtlasSwitchSection.Defines, Root, 'defines');
+  mRoot := TJSONObject(AValue);
+  AView.Configuration := mRoot.GetValue<string>('configuration', '');
+  AView.Platform := mRoot.GetValue<string>('platform', '');
+  AView.HasProject := mRoot.GetValue<Boolean>('hasProject', False);
+  AView.Summary := mRoot.GetValue<string>('summary', '');
+  AddRows(AView.Rows, TAtlasSwitchSection.Switches, mRoot, 'switches');
+  AddRows(AView.Rows, TAtlasSwitchSection.Messages, mRoot, 'hints');
+  AddRows(AView.Rows, TAtlasSwitchSection.Messages, mRoot, 'warnings');
+  AddRows(AView.Rows, TAtlasSwitchSection.Messages, mRoot, 'warns');
+  AddRows(AView.Rows, TAtlasSwitchSection.Defines, mRoot, 'defines');
   if AView.HasProject then
   begin
     AView.Rows := AView.Rows + [TargetRow('platform', AView.Platform)];
@@ -211,14 +211,14 @@ end;
 
 function TAtlasCompilerSwitchView.Deviations: TAtlasSwitchRows;
 var
-  Row: TAtlasSwitchRow;
+  mRow: TAtlasSwitchRow;
 begin
   Result := nil;
-  for Row in Rows do
+  for mRow in Rows do
   begin
-    if Row.Deviates then
+    if mRow.Deviates then
     begin
-      Result := Result + [Row];
+      Result := Result + [mRow];
     end;
   end;
 end;
@@ -262,7 +262,7 @@ end;
 
 function TAtlasSwitchFollow.Due(ANow: UInt64): Boolean;
 begin
-  Result := FPending and (FImmediate or (ANow < FChangedAt) or (ANow - FChangedAt >= DelayMs));
+  Result := FPending and (FImmediate or (ANow < FChangedAt) or (ANow - FChangedAt >= cDelayMs));
   if Result then
   begin
     FPending := False;
@@ -272,10 +272,10 @@ end;
 
 class function TAtlasSwitchFollow.Applies(const AFileName: string): Boolean;
 var
-  Extension: string;
+  mExtension: string;
 begin
-  Extension := LowerCase(ExtractFileExt(AFileName));
-  Result := (Extension = '.pas') or (Extension = '.dpr') or (Extension = '.dpk') or (Extension = '.inc');
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.inc');
 end;
 
 procedure TAtlasSwitchFollow.Invalidate;
