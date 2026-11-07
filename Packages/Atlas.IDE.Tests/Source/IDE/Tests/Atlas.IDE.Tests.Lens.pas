@@ -75,7 +75,7 @@ type
       Alive: Boolean;
     end;
   private const
-    QuietMs = 400;
+    cQuietMs = 400;
   private
     FTests: TAtlasIdeTests;
     FDebugger: TAtlasIdeTestDebugger;
@@ -109,7 +109,7 @@ type
       ALeft: Integer; ABack: TAtlasColor);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     /// <summary>Marke unter (X, Y); ADebug für „Debuggen“. -1 ohne.</summary>
-    function HitAt(X, Y: Integer; out ADebug: Boolean): Integer;
+    function HitAt(AX, AY: Integer; out ADebug: Boolean): Integer;
     /// <summary>Steht die Marke AIndex noch dort, wo sie gezeichnet wurde?</summary>
     function StillShown(AIndex: Integer): Boolean;
     procedure QueueClick(AIndex: Integer; ADebug: Boolean);
@@ -158,7 +158,7 @@ end;
 
 constructor TAtlasIdeTestsLens.Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger);
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   inherited Create;
   FTests := ATests;
@@ -172,9 +172,9 @@ begin
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
   FEvents.OnEditorMouseDown := EditorMouseDown;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+    FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 250;
@@ -184,15 +184,15 @@ end;
 
 destructor TAtlasIdeTestsLens.Destroy;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   FAlive.Alive := False;
   FAliveRef := nil;
   FTimer.Free;
   // Erst abmelden, dann freigeben (#493).
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    Services.RemoveEditorEventsNotifier(FIndex);
+    mServices.RemoveEditorEventsNotifier(FIndex);
   end;
   FEvents.OnEditorPaintLine := nil;
   FEvents.OnEditorMouseDown := nil;
@@ -206,11 +206,11 @@ end;
 
 class procedure TAtlasIdeTestsLens.Invalidate;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(Services);
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 
@@ -234,9 +234,9 @@ end;
 
 procedure TAtlasIdeTestsLens.Tick(Sender: TObject);
 var
-  Editors: IOTAEditorServices;
-  View: IOTAEditView;
-  Text: string;
+  mEditors: IOTAEditorServices;
+  mView: IOTAEditView;
+  mText: string;
 begin
   try
     if not Wanted(TAtlasIdeSettings.Current) then
@@ -244,23 +244,23 @@ begin
       Clear;
       Exit;
     end;
-    View := nil;
-    if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    mView := nil;
+    if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
     begin
-      View := Editors.TopView;
+      mView := mEditors.TopView;
     end;
-    if (View = nil) or (View.Buffer = nil) or not SameText(ExtractFileExt(View.Buffer.FileName), '.pas') then
+    if (mView = nil) or (mView.Buffer = nil) or not SameText(ExtractFileExt(mView.Buffer.FileName), '.pas') then
     begin
       Exit;
     end;
-    Text := TAtlasEditorSnapshots.Get(View).Text;
-    if not SameText(FFileName, View.Buffer.FileName) or (FText <> Text) then
+    mText := TAtlasEditorSnapshots.Get(mView).Text;
+    if not SameText(FFileName, mView.Buffer.FileName) or (FText <> mText) then
     begin
-      FFileName := View.Buffer.FileName;
-      FText := Text;
+      FFileName := mView.Buffer.FileName;
+      FText := mText;
       FChangedAt := GetTickCount;
     end
-    else if (GetTickCount - FChangedAt >= QuietMs) and
+    else if (GetTickCount - FChangedAt >= cQuietMs) and
       (not SameText(FScannedFile, FFileName) or (FScannedText <> FText)) then
     begin
       Scan;
@@ -351,13 +351,13 @@ end;
 
 function TAtlasIdeTestsLens.ItemAt(ALine: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FItems) do
+  for mIndex := 0 to High(FItems) do
   begin
-    if FItems[Index].Line = ALine then
+    if FItems[mIndex].Line = ALine then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -562,7 +562,7 @@ begin
   end;
 end;
 
-function TAtlasIdeTestsLens.HitAt(X, Y: Integer; out ADebug: Boolean): Integer;
+function TAtlasIdeTestsLens.HitAt(AX, AY: Integer; out ADebug: Boolean): Integer;
 var
   mIndex: Integer;
 begin
@@ -570,12 +570,12 @@ begin
   ADebug := False;
   for mIndex := 0 to High(FItems) do
   begin
-    if not FItems[mIndex].RunRect.IsEmpty and PtInRect(FItems[mIndex].RunRect, Point(X, Y)) then
+    if not FItems[mIndex].RunRect.IsEmpty and PtInRect(FItems[mIndex].RunRect, Point(AX, AY)) then
     begin
       Result := mIndex;
       ADebug := False;
     end
-    else if not FItems[mIndex].DebugRect.IsEmpty and PtInRect(FItems[mIndex].DebugRect, Point(X, Y)) then
+    else if not FItems[mIndex].DebugRect.IsEmpty and PtInRect(FItems[mIndex].DebugRect, Point(AX, AY)) then
     begin
       Result := mIndex;
       ADebug := True;
