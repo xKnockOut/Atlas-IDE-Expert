@@ -36,11 +36,12 @@ type
   TAtlasPreviewSections = class
   public const
     /// <summary>Wichtigster Abschnitt zuerst.</summary>
-    Priority: array[0..5] of TAtlasPreviewSection = (TAtlasPreviewSection.Types, TAtlasPreviewSection.Form,
+    cPriority: array[0..5] of TAtlasPreviewSection = (TAtlasPreviewSection.Types, TAtlasPreviewSection.Form,
       TAtlasPreviewSection.UsedBy, TAtlasPreviewSection.Uses_, TAtlasPreviewSection.Header,
       TAtlasPreviewSection.Path);
   public
-    /// <summary>Zustand je Abschnitt für AAvailable Pixel Höhe; AAutoCollapse = False klappt nichts selbst ein.</summary>
+    /// <summary>Zustand je Abschnitt für AAvailable Pixel Höhe; AAutoCollapse = False klappt nichts selbst
+    /// ein.</summary>
     class function Arrange(const AInputs: TAtlasSectionInputs; const AChoices: TAtlasSectionChoices;
       AAvailable: Integer; AAutoCollapse: Boolean): TAtlasSectionStates; static;
     /// <summary>Gesamthöhe der Abschnitte in diesen Zuständen.</summary>
@@ -63,61 +64,61 @@ end;
 class function TAtlasPreviewSections.Height(const AInputs: TAtlasSectionInputs;
   const AStates: TAtlasSectionStates): Integer;
 var
-  Section: TAtlasPreviewSection;
+  mSection: TAtlasPreviewSection;
 begin
   Result := 0;
-  for Section := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
-    case AStates[Section] of
+  for mSection := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
+    case AStates[mSection] of
       TAtlasSectionState.Open:
-        Inc(Result, AInputs[Section].OpenHeight);
+        Inc(Result, AInputs[mSection].OpenHeight);
       TAtlasSectionState.Collapsed, TAtlasSectionState.AutoCollapsed:
-        Inc(Result, AInputs[Section].ClosedHeight);
+        Inc(Result, AInputs[mSection].ClosedHeight);
     end;
 end;
 
 class function TAtlasPreviewSections.Arrange(const AInputs: TAtlasSectionInputs;
   const AChoices: TAtlasSectionChoices; AAvailable: Integer; AAutoCollapse: Boolean): TAtlasSectionStates;
 var
-  Section: TAtlasPreviewSection;
-  Total, OpenCount, Index: Integer;
+  mSection: TAtlasPreviewSection;
+  mTotal, mOpenCount, mIndex: Integer;
 begin
-  OpenCount := 0;
-  for Section := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
+  mOpenCount := 0;
+  for mSection := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
   begin
-    if not AInputs[Section].Present then
+    if not AInputs[mSection].Present then
     begin
-      Result[Section] := TAtlasSectionState.Hidden;
+      Result[mSection] := TAtlasSectionState.Hidden;
     end
-    else if AChoices[Section] = TAtlasSectionChoice.HandClosed then
+    else if AChoices[mSection] = TAtlasSectionChoice.HandClosed then
     begin
-      Result[Section] := TAtlasSectionState.Collapsed;
+      Result[mSection] := TAtlasSectionState.Collapsed;
     end
     else
     begin
-      Result[Section] := TAtlasSectionState.Open;
-      Inc(OpenCount);
+      Result[mSection] := TAtlasSectionState.Open;
+      Inc(mOpenCount);
     end;
   end;
   if not AAutoCollapse then
   begin
     Exit;
   end;
-  Total := Height(AInputs, Result);
+  mTotal := Height(AInputs, Result);
   // Vom unwichtigsten her einklappen; von Hand geöffnete bleiben offen.
-  for Index := High(Priority) downto Low(Priority) do
+  for mIndex := High(cPriority) downto Low(cPriority) do
   begin
-    if (Total <= AAvailable) or (OpenCount <= 1) then
+    if (mTotal <= AAvailable) or (mOpenCount <= 1) then
     begin
       Break;
     end;
-    Section := Priority[Index];
-    if (Result[Section] <> TAtlasSectionState.Open) or (AChoices[Section] = TAtlasSectionChoice.HandOpen) then
+    mSection := cPriority[mIndex];
+    if (Result[mSection] <> TAtlasSectionState.Open) or (AChoices[mSection] = TAtlasSectionChoice.HandOpen) then
     begin
       Continue;
     end;
-    Result[Section] := TAtlasSectionState.AutoCollapsed;
-    Dec(OpenCount);
-    Dec(Total, AInputs[Section].OpenHeight - AInputs[Section].ClosedHeight);
+    Result[mSection] := TAtlasSectionState.AutoCollapsed;
+    Dec(mOpenCount);
+    Dec(mTotal, AInputs[mSection].OpenHeight - AInputs[mSection].ClosedHeight);
   end;
 end;
 

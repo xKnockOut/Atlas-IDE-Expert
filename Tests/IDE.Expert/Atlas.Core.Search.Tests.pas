@@ -71,37 +71,37 @@ uses
 /// <summary>"Zeile:Zeichen+Länge" je Treffer, durch Leerzeichen getrennt.</summary>
 function Describe(const AHits: TArray<TAtlasSearchHit>): string;
 var
-  Hit: TAtlasSearchHit;
+  mHit: TAtlasSearchHit;
 begin
   Result := '';
-  for Hit in AHits do
+  for mHit in AHits do
   begin
     if Result <> '' then
     begin
       Result := Result + ' ';
     end;
-    Result := Result + Format('%d:%d+%d', [Hit.Line, Hit.Character, Hit.Length]);
+    Result := Result + Format('%d:%d+%d', [mHit.Line, mHit.Character, mHit.Length]);
   end;
 end;
 
 function Find(const AText, ANeedle: string; ACase, AWhole, AIdent: Boolean): string;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := TTextLines.SplitLines(AText);
-  Result := Describe(TAtlasTextSearch.FindAll(Lines, ANeedle, TAtlasSearchOptions.Create(ACase, AWhole, AIdent),
-    TAtlasSearchArea.Whole(Lines)));
+  mLines := TTextLines.SplitLines(AText);
+  Result := Describe(TAtlasTextSearch.FindAll(mLines, ANeedle, TAtlasSearchOptions.Create(ACase, AWhole, AIdent),
+    TAtlasSearchArea.Whole(mLines)));
 end;
 
 function EntryOf(const AEntries: TArray<TAtlasKeyEntry>; AFunc: TAtlasKeyFunction): TAtlasKeyEntry;
 var
-  Entry: TAtlasKeyEntry;
+  mEntry: TAtlasKeyEntry;
 begin
-  for Entry in AEntries do
+  for mEntry in AEntries do
   begin
-    if Entry.Func = AFunc then
+    if mEntry.Func = AFunc then
     begin
-      Exit(Entry);
+      Exit(mEntry);
     end;
   end;
   Result := Default(TAtlasKeyEntry);
@@ -140,9 +140,9 @@ end;
 
 procedure TAtlasSearchTests.IdentifierModeHandlesMultiLineCommentsAndStrings;
 const
-  Text = 'A := 1;'#10'{ A'#10'  A }'#10'(* A'#10'A *) A'#10'S := '''''''#10'  A'#10'  '''''';'#10'A';
+  cText = 'A := 1;'#10'{ A'#10'  A }'#10'(* A'#10'A *) A'#10'S := '''''''#10'  A'#10'  '''''';'#10'A';
 begin
-  Assert.AreEqual('0:0+1 4:5+1 8:0+1', Find(Text, 'a', False, False, True));
+  Assert.AreEqual('0:0+1 4:5+1 8:0+1', Find(cText, 'a', False, False, True));
 end;
 
 procedure TAtlasSearchTests.IdentifierModeSkipsKeywordsButNotEscapedNames;
@@ -156,44 +156,44 @@ end;
 
 procedure TAtlasSearchTests.AreaLimitsHits;
 var
-  Lines: TArray<string>;
-  Options: TAtlasSearchOptions;
+  mLines: TArray<string>;
+  mOptions: TAtlasSearchOptions;
 begin
-  Lines := TTextLines.SplitLines('a a'#10'a a'#10'a a');
-  Options := TAtlasSearchOptions.Create(False, False, False);
+  mLines := TTextLines.SplitLines('a a'#10'a a'#10'a a');
+  mOptions := TAtlasSearchOptions.Create(False, False, False);
   // Von Zeile 0, Zeichen 2 bis Zeile 1, Zeichen 1: nur die Treffer ganz darin.
-  Assert.AreEqual('0:2+1 1:0+1', Describe(TAtlasTextSearch.FindAll(Lines, 'a', Options,
+  Assert.AreEqual('0:2+1 1:0+1', Describe(TAtlasTextSearch.FindAll(mLines, 'a', mOptions,
     TAtlasSearchArea.Create(0, 2, 1, 1))));
-  Options.Identifier := True;
-  Assert.AreEqual('0:2+1 1:0+1', Describe(TAtlasTextSearch.FindAll(Lines, 'a', Options,
+  mOptions.Identifier := True;
+  Assert.AreEqual('0:2+1 1:0+1', Describe(TAtlasTextSearch.FindAll(mLines, 'a', mOptions,
     TAtlasSearchArea.Create(0, 2, 1, 1))));
-  Assert.AreEqual('', Describe(TAtlasTextSearch.FindAll(Lines, 'a', Options, TAtlasSearchArea.Create(1, 1, 1, 1))),
+  Assert.AreEqual('', Describe(TAtlasTextSearch.FindAll(mLines, 'a', mOptions, TAtlasSearchArea.Create(1, 1, 1, 1))),
     'leerer Bereich');
 end;
 
 procedure TAtlasSearchTests.NextWrapsForwardAndBackward;
 var
-  Hits: TArray<TAtlasSearchHit>;
-  Wrapped: Boolean;
+  mHits: TArray<TAtlasSearchHit>;
+  mWrapped: Boolean;
 begin
-  Hits := [TAtlasSearchHit.Create(1, 0, 3), TAtlasSearchHit.Create(3, 4, 3), TAtlasSearchHit.Create(5, 0, 3)];
-  Assert.AreEqual(0, TAtlasTextSearch.Next(Hits, TAtlasSearchPos.Create(0, 0), False, Wrapped));
-  Assert.IsFalse(Wrapped);
+  mHits := [TAtlasSearchHit.Create(1, 0, 3), TAtlasSearchHit.Create(3, 4, 3), TAtlasSearchHit.Create(5, 0, 3)];
+  Assert.AreEqual(0, TAtlasTextSearch.Next(mHits, TAtlasSearchPos.Create(0, 0), False, mWrapped));
+  Assert.IsFalse(mWrapped);
   // Ein Treffer am Cursor zählt vorwärts; nach dem Markieren steht der Cursor hinter ihm.
-  Assert.AreEqual(1, TAtlasTextSearch.Next(Hits, TAtlasSearchPos.Create(3, 4), False, Wrapped));
-  Assert.AreEqual(2, TAtlasTextSearch.Next(Hits, TAtlasSearchPos.Create(3, 7), False, Wrapped));
-  Assert.AreEqual(0, TAtlasTextSearch.Next(Hits, TAtlasSearchPos.Create(5, 3), False, Wrapped));
-  Assert.IsTrue(Wrapped, 'Umlauf vorwärts');
-  Assert.AreEqual(0, TAtlasTextSearch.Next(Hits, TAtlasSearchPos.Create(3, 4), True, Wrapped));
-  Assert.IsFalse(Wrapped);
-  Assert.AreEqual(2, TAtlasTextSearch.Next(Hits, TAtlasSearchPos.Create(1, 0), True, Wrapped));
-  Assert.IsTrue(Wrapped, 'Umlauf rückwärts');
-  Assert.AreEqual(-1, TAtlasTextSearch.Next(nil, TAtlasSearchPos.Create(0, 0), False, Wrapped));
+  Assert.AreEqual(1, TAtlasTextSearch.Next(mHits, TAtlasSearchPos.Create(3, 4), False, mWrapped));
+  Assert.AreEqual(2, TAtlasTextSearch.Next(mHits, TAtlasSearchPos.Create(3, 7), False, mWrapped));
+  Assert.AreEqual(0, TAtlasTextSearch.Next(mHits, TAtlasSearchPos.Create(5, 3), False, mWrapped));
+  Assert.IsTrue(mWrapped, 'Umlauf vorwärts');
+  Assert.AreEqual(0, TAtlasTextSearch.Next(mHits, TAtlasSearchPos.Create(3, 4), True, mWrapped));
+  Assert.IsFalse(mWrapped);
+  Assert.AreEqual(2, TAtlasTextSearch.Next(mHits, TAtlasSearchPos.Create(1, 0), True, mWrapped));
+  Assert.IsTrue(mWrapped, 'Umlauf rückwärts');
+  Assert.AreEqual(-1, TAtlasTextSearch.Next(nil, TAtlasSearchPos.Create(0, 0), False, mWrapped));
 end;
 
 procedure TAtlasSearchTests.RoutinesAtListInnermostFirstWithLocalDeclarations;
 const
-  Text = 'implementation'#10 + // 0
+  cText = 'implementation'#10 + // 0
     'procedure TFoo.Outer;'#10 + // 1
     'var'#10 + // 2
     '  X: Integer;'#10 + // 3
@@ -209,111 +209,111 @@ const
     'begin'#10 + // 13
     'end;'; // 14
 var
-  Around: TArray<TAtlasSearchRoutine>;
+  mAround: TArray<TAtlasSearchRoutine>;
 begin
-  Assert.AreEqual(3, Integer(Length(TAtlasSearchScopes.Routines(Text))), 'Klassentyp ist keine Routine');
-  Around := TAtlasSearchScopes.RoutinesAt(Text, TAtlasSearchPos.Create(6, 5));
-  Assert.AreEqual(2, Integer(Length(Around)));
-  Assert.AreEqual('procedure Inner;', Around[0].Caption);
-  Assert.AreEqual(4, Around[0].Area.Start.Line);
-  Assert.AreEqual(7, Around[0].Area.Stop.Line);
-  Assert.AreEqual('procedure TFoo.Outer;', Around[1].Caption);
-  Assert.AreEqual(1, Around[1].Area.Start.Line);
-  Assert.AreEqual(10, Around[1].Area.Stop.Line);
+  Assert.AreEqual(3, Integer(Length(TAtlasSearchScopes.Routines(cText))), 'Klassentyp ist keine Routine');
+  mAround := TAtlasSearchScopes.RoutinesAt(cText, TAtlasSearchPos.Create(6, 5));
+  Assert.AreEqual(2, Integer(Length(mAround)));
+  Assert.AreEqual('procedure Inner;', mAround[0].Caption);
+  Assert.AreEqual(4, mAround[0].Area.Start.Line);
+  Assert.AreEqual(7, mAround[0].Area.Stop.Line);
+  Assert.AreEqual('procedure TFoo.Outer;', mAround[1].Caption);
+  Assert.AreEqual(1, mAround[1].Area.Start.Line);
+  Assert.AreEqual(10, mAround[1].Area.Stop.Line);
   // Lokale Deklarationen gehören zur Routine.
-  Assert.AreEqual(1, Integer(Length(TAtlasSearchScopes.RoutinesAt(Text, TAtlasSearchPos.Create(3, 3)))));
-  Around := TAtlasSearchScopes.RoutinesAt(Text, TAtlasSearchPos.Create(13, 0));
-  Assert.AreEqual(1, Integer(Length(Around)));
-  Assert.AreEqual('class function TFoo.Make: TFoo;', Around[0].Caption);
-  Assert.AreEqual(0, Integer(Length(TAtlasSearchScopes.RoutinesAt(Text, TAtlasSearchPos.Create(0, 2)))));
+  Assert.AreEqual(1, Integer(Length(TAtlasSearchScopes.RoutinesAt(cText, TAtlasSearchPos.Create(3, 3)))));
+  mAround := TAtlasSearchScopes.RoutinesAt(cText, TAtlasSearchPos.Create(13, 0));
+  Assert.AreEqual(1, Integer(Length(mAround)));
+  Assert.AreEqual('class function TFoo.Make: TFoo;', mAround[0].Caption);
+  Assert.AreEqual(0, Integer(Length(TAtlasSearchScopes.RoutinesAt(cText, TAtlasSearchPos.Create(0, 2)))));
 end;
 
 procedure TAtlasSearchTests.AreaForMethodUnitAndSelection;
 const
-  Text = 'procedure A;'#10'  procedure B;'#10'  begin'#10'  end;'#10'begin'#10'end;'#10'X';
+  cText = 'procedure A;'#10'  procedure B;'#10'  begin'#10'  end;'#10'begin'#10'end;'#10'X';
 var
-  Area, Selection: TAtlasSearchArea;
-  Cursor: TAtlasSearchPos;
+  mArea, mSelection: TAtlasSearchArea;
+  mCursor: TAtlasSearchPos;
 begin
-  Cursor := TAtlasSearchPos.Create(2, 3);
-  Selection := TAtlasSearchArea.Create(0, 0, 0, 0);
-  Assert.IsTrue(TAtlasSearchScopes.AreaFor(Text, TAtlasSearchScope.Method, Cursor, Selection, 0, Area));
-  Assert.AreEqual(1, Area.Start.Line, 'innerste');
-  Assert.IsTrue(TAtlasSearchScopes.AreaFor(Text, TAtlasSearchScope.Method, Cursor, Selection, 1, Area));
-  Assert.AreEqual(0, Area.Start.Line, 'äußere');
-  Assert.IsTrue(TAtlasSearchScopes.AreaFor(Text, TAtlasSearchScope.Method, Cursor, Selection, 9, Area));
-  Assert.AreEqual(0, Area.Start.Line, 'zu hohe Stufe bleibt bei der äußersten');
-  Assert.IsFalse(TAtlasSearchScopes.AreaFor(Text, TAtlasSearchScope.Method, TAtlasSearchPos.Create(6, 0),
-    Selection, 0, Area), 'außerhalb jeder Routine');
-  Assert.IsTrue(TAtlasSearchScopes.AreaFor(Text, TAtlasSearchScope.UnitFile, Cursor, Selection, 0, Area));
-  Assert.AreEqual(6, Area.Stop.Line);
-  Assert.AreEqual(1, Area.Stop.Character);
-  Assert.IsFalse(TAtlasSearchScopes.AreaFor(Text, TAtlasSearchScope.Selection, Cursor, Selection, 0, Area),
+  mCursor := TAtlasSearchPos.Create(2, 3);
+  mSelection := TAtlasSearchArea.Create(0, 0, 0, 0);
+  Assert.IsTrue(TAtlasSearchScopes.AreaFor(cText, TAtlasSearchScope.Method, mCursor, mSelection, 0, mArea));
+  Assert.AreEqual(1, mArea.Start.Line, 'innerste');
+  Assert.IsTrue(TAtlasSearchScopes.AreaFor(cText, TAtlasSearchScope.Method, mCursor, mSelection, 1, mArea));
+  Assert.AreEqual(0, mArea.Start.Line, 'äußere');
+  Assert.IsTrue(TAtlasSearchScopes.AreaFor(cText, TAtlasSearchScope.Method, mCursor, mSelection, 9, mArea));
+  Assert.AreEqual(0, mArea.Start.Line, 'zu hohe Stufe bleibt bei der äußersten');
+  Assert.IsFalse(TAtlasSearchScopes.AreaFor(cText, TAtlasSearchScope.Method, TAtlasSearchPos.Create(6, 0),
+    mSelection, 0, mArea), 'außerhalb jeder Routine');
+  Assert.IsTrue(TAtlasSearchScopes.AreaFor(cText, TAtlasSearchScope.UnitFile, mCursor, mSelection, 0, mArea));
+  Assert.AreEqual(6, mArea.Stop.Line);
+  Assert.AreEqual(1, mArea.Stop.Character);
+  Assert.IsFalse(TAtlasSearchScopes.AreaFor(cText, TAtlasSearchScope.Selection, mCursor, mSelection, 0, mArea),
     'leere Auswahl');
-  Selection := TAtlasSearchArea.Create(1, 0, 3, 2);
-  Assert.IsTrue(TAtlasSearchScopes.AreaFor(Text, TAtlasSearchScope.Selection, Cursor, Selection, 0, Area));
-  Assert.AreEqual(3, Area.Stop.Line);
+  mSelection := TAtlasSearchArea.Create(1, 0, 3, 2);
+  Assert.IsTrue(TAtlasSearchScopes.AreaFor(cText, TAtlasSearchScope.Selection, mCursor, mSelection, 0, mArea));
+  Assert.AreEqual(3, mArea.Stop.Line);
 end;
 
 procedure TAtlasSearchTests.WordAtAndHitCaption;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
   Assert.AreEqual('Foo', TAtlasTextSearch.WordAt('  Foo := 1;', 3));
   Assert.AreEqual('Foo', TAtlasTextSearch.WordAt('  Foo := 1;', 5), 'direkt hinter dem Wort');
   Assert.AreEqual('', TAtlasTextSearch.WordAt('  Foo := 1;', 7));
   Assert.AreEqual('', TAtlasTextSearch.WordAt('', 0));
-  Lines := ['x', #9'  Foo := 1;'#13];
-  Assert.AreEqual('2: Foo := 1;', TAtlasTextSearch.HitCaption(Lines, TAtlasSearchHit.Create(1, 3, 3)));
-  Assert.AreEqual('Foo := 1;', TAtlasTextSearch.HitText(Lines, TAtlasSearchHit.Create(1, 3, 3)));
+  mLines := ['x', #9'  Foo := 1;'#13];
+  Assert.AreEqual('2: Foo := 1;', TAtlasTextSearch.HitCaption(mLines, TAtlasSearchHit.Create(1, 3, 3)));
+  Assert.AreEqual('Foo := 1;', TAtlasTextSearch.HitText(mLines, TAtlasSearchHit.Create(1, 3, 3)));
 end;
 
 procedure TAtlasSearchTests.IndexAtFindsMarkedOrContainingHit;
 var
-  Hits: TArray<TAtlasSearchHit>;
+  mHits: TArray<TAtlasSearchHit>;
 begin
   // Open in Zeile 0 ab 2 und 10, Zeile 3 ab 0.
-  Hits := [TAtlasSearchHit.Create(0, 2, 4), TAtlasSearchHit.Create(0, 10, 4), TAtlasSearchHit.Create(3, 0, 4)];
-  Assert.AreEqual(1, TAtlasSearchResults.IndexAt(Hits, TAtlasSearchPos.Create(0, 10)), 'Anfang der Markierung');
-  Assert.AreEqual(0, TAtlasSearchResults.IndexAt(Hits, TAtlasSearchPos.Create(0, 4)), 'Cursor im Treffer');
-  Assert.AreEqual(0, TAtlasSearchResults.IndexAt(Hits, TAtlasSearchPos.Create(0, 6)), 'Cursor direkt dahinter');
-  Assert.AreEqual(-1, TAtlasSearchResults.IndexAt(Hits, TAtlasSearchPos.Create(0, 7)), 'zwischen zwei Treffern');
-  Assert.AreEqual(2, TAtlasSearchResults.IndexAt(Hits, TAtlasSearchPos.Create(3, 0)));
+  mHits := [TAtlasSearchHit.Create(0, 2, 4), TAtlasSearchHit.Create(0, 10, 4), TAtlasSearchHit.Create(3, 0, 4)];
+  Assert.AreEqual(1, TAtlasSearchResults.IndexAt(mHits, TAtlasSearchPos.Create(0, 10)), 'Anfang der Markierung');
+  Assert.AreEqual(0, TAtlasSearchResults.IndexAt(mHits, TAtlasSearchPos.Create(0, 4)), 'Cursor im Treffer');
+  Assert.AreEqual(0, TAtlasSearchResults.IndexAt(mHits, TAtlasSearchPos.Create(0, 6)), 'Cursor direkt dahinter');
+  Assert.AreEqual(-1, TAtlasSearchResults.IndexAt(mHits, TAtlasSearchPos.Create(0, 7)), 'zwischen zwei Treffern');
+  Assert.AreEqual(2, TAtlasSearchResults.IndexAt(mHits, TAtlasSearchPos.Create(3, 0)));
   Assert.AreEqual(-1, TAtlasSearchResults.IndexAt(nil, TAtlasSearchPos.Create(0, 0)));
 end;
 
 procedure TAtlasSearchTests.EntriesCarryLineColumnAndText;
 var
-  Lines: TArray<string>;
-  Hits: TArray<TAtlasSearchHit>;
-  Entries: TArray<TAtlasSearchEntry>;
+  mLines: TArray<string>;
+  mHits: TArray<TAtlasSearchHit>;
+  mEntries: TArray<TAtlasSearchEntry>;
 begin
-  Lines := TTextLines.SplitLines('unit A;'#13#10#9'Open := 1;'#13#10'  if Open > 0 then'#13#10);
-  Hits := TAtlasTextSearch.FindAll(Lines, 'Open', TAtlasSearchOptions.Create(False, True, False),
-    TAtlasSearchArea.Whole(Lines));
-  Entries := TAtlasSearchResults.Entries(Lines, Hits, 4);
-  Assert.AreEqual(2, Integer(Length(Entries)));
-  Assert.AreEqual(2, Entries[0].Line);
-  Assert.AreEqual(5, Entries[0].Column, 'Tab bis Spalte 5 aufgelöst');
-  Assert.AreEqual('Open := 1;', Entries[0].Text);
-  Assert.AreEqual(3, Entries[1].Line);
-  Assert.AreEqual(6, Entries[1].Column);
-  Assert.AreEqual('if Open > 0 then', Entries[1].Text);
+  mLines := TTextLines.SplitLines('unit A;'#13#10#9'Open := 1;'#13#10'  if Open > 0 then'#13#10);
+  mHits := TAtlasTextSearch.FindAll(mLines, 'Open', TAtlasSearchOptions.Create(False, True, False),
+    TAtlasSearchArea.Whole(mLines));
+  mEntries := TAtlasSearchResults.Entries(mLines, mHits, 4);
+  Assert.AreEqual(2, Integer(Length(mEntries)));
+  Assert.AreEqual(2, mEntries[0].Line);
+  Assert.AreEqual(5, mEntries[0].Column, 'Tab bis Spalte 5 aufgelöst');
+  Assert.AreEqual('Open := 1;', mEntries[0].Text);
+  Assert.AreEqual(3, mEntries[1].Line);
+  Assert.AreEqual(6, mEntries[1].Column);
+  Assert.AreEqual('if Open > 0 then', mEntries[1].Text);
 end;
 
 procedure TAtlasSearchTests.EntriesAreCapped;
 var
-  Lines: TArray<string>;
-  Hits: TArray<TAtlasSearchHit>;
-  Index: Integer;
+  mLines: TArray<string>;
+  mHits: TArray<TAtlasSearchHit>;
+  mIndex: Integer;
 begin
-  Lines := ['x'];
-  SetLength(Hits, TAtlasSearchResults.MaxEntries + 5);
-  for Index := 0 to High(Hits) do
+  mLines := ['x'];
+  SetLength(mHits, TAtlasSearchResults.cMaxEntries + 5);
+  for mIndex := 0 to High(mHits) do
   begin
-    Hits[Index] := TAtlasSearchHit.Create(0, 0, 1);
+    mHits[mIndex] := TAtlasSearchHit.Create(0, 0, 1);
   end;
-  Assert.AreEqual(TAtlasSearchResults.MaxEntries, Integer(Length(TAtlasSearchResults.Entries(Lines, Hits, 2))));
+  Assert.AreEqual(TAtlasSearchResults.cMaxEntries, Integer(Length(TAtlasSearchResults.Entries(mLines, mHits, 2))));
 end;
 
 procedure TAtlasSearchTests.RoutineNameFromHeader;
@@ -329,148 +329,148 @@ end;
 
 procedure TAtlasSearchTests.FollowSelectionTakesOtherMarkedText;
 var
-  Last, Query: TAtlasSearchQuery;
-  Changed: Boolean;
+  mLast, mQuery: TAtlasSearchQuery;
+  mChanged: Boolean;
 begin
-  Last := Default(TAtlasSearchQuery);
-  Last.Text := 'Open';
-  Last.Options := TAtlasSearchOptions.Create(False, True, True);
-  Last.Scope := TAtlasSearchScope.Method;
-  Last.Area := TAtlasSearchArea.Create(1, 0, 4, 0);
+  mLast := Default(TAtlasSearchQuery);
+  mLast.Text := 'Open';
+  mLast.Options := TAtlasSearchOptions.Create(False, True, True);
+  mLast.Scope := TAtlasSearchScope.Method;
+  mLast.Area := TAtlasSearchArea.Create(1, 0, 4, 0);
   // Markierung auf einem Treffer der letzten Suche: weitersuchen.
-  Query := TAtlasSearchResults.FollowSelection(Last, 'open', Changed);
-  Assert.IsFalse(Changed, 'Bezeichner-Modus ohne Groß-/Kleinschreibung');
-  Assert.AreEqual('Open', Query.Text);
-  Assert.AreEqual(1, Query.Area.Start.Line, 'Bereich bleibt');
+  mQuery := TAtlasSearchResults.FollowSelection(mLast, 'open', mChanged);
+  Assert.IsFalse(mChanged, 'Bezeichner-Modus ohne Groß-/Kleinschreibung');
+  Assert.AreEqual('Open', mQuery.Text);
+  Assert.AreEqual(1, mQuery.Area.Start.Line, 'Bereich bleibt');
   // Anderer Bezeichner, etwa außerhalb jeder Methode markiert.
-  Query := TAtlasSearchResults.FollowSelection(Last, 'TFormMain', Changed);
-  Assert.IsTrue(Changed);
-  Assert.AreEqual('TFormMain', Query.Text);
-  Assert.AreEqual(Ord(TAtlasSearchScope.Method), Ord(Query.Scope), 'Bereich wählt TryNext');
-  Assert.IsTrue(Query.Area.IsEmpty, 'kein gemerkter Bereich');
-  Assert.IsTrue(Query.Options.Identifier);
-  Assert.IsTrue(Query.Options.WholeWord);
+  mQuery := TAtlasSearchResults.FollowSelection(mLast, 'TFormMain', mChanged);
+  Assert.IsTrue(mChanged);
+  Assert.AreEqual('TFormMain', mQuery.Text);
+  Assert.AreEqual(Ord(TAtlasSearchScope.Method), Ord(mQuery.Scope), 'Bereich wählt TryNext');
+  Assert.IsTrue(mQuery.Area.IsEmpty, 'kein gemerkter Bereich');
+  Assert.IsTrue(mQuery.Options.Identifier);
+  Assert.IsTrue(mQuery.Options.WholeWord);
   // Kein Bezeichner: Textsuche; Bereich Auswahl wird Unit.
-  Last.Scope := TAtlasSearchScope.Selection;
-  Query := TAtlasSearchResults.FollowSelection(Last, 'Self.Close', Changed);
-  Assert.IsTrue(Changed);
-  Assert.IsFalse(Query.Options.Identifier);
-  Assert.AreEqual(Ord(TAtlasSearchScope.UnitFile), Ord(Query.Scope));
+  mLast.Scope := TAtlasSearchScope.Selection;
+  mQuery := TAtlasSearchResults.FollowSelection(mLast, 'Self.Close', mChanged);
+  Assert.IsTrue(mChanged);
+  Assert.IsFalse(mQuery.Options.Identifier);
+  Assert.AreEqual(Ord(TAtlasSearchScope.UnitFile), Ord(mQuery.Scope));
   // Groß-/Kleinschreibung zählt nur in der Textsuche mit Groß/klein.
-  Last.Options := TAtlasSearchOptions.Create(True, False, False);
-  TAtlasSearchResults.FollowSelection(Last, 'open', Changed);
-  Assert.IsTrue(Changed);
+  mLast.Options := TAtlasSearchOptions.Create(True, False, False);
+  TAtlasSearchResults.FollowSelection(mLast, 'open', mChanged);
+  Assert.IsTrue(mChanged);
   // Leer oder mehrzeilig: nichts.
-  TAtlasSearchResults.FollowSelection(Last, '', Changed);
-  Assert.IsFalse(Changed);
-  Query := TAtlasSearchResults.FollowSelection(Last, 'a'#13#10'b', Changed);
-  Assert.IsFalse(Changed);
-  Assert.AreEqual('Open', Query.Text);
+  TAtlasSearchResults.FollowSelection(mLast, '', mChanged);
+  Assert.IsFalse(mChanged);
+  mQuery := TAtlasSearchResults.FollowSelection(mLast, 'a'#13#10'b', mChanged);
+  Assert.IsFalse(mChanged);
+  Assert.AreEqual('Open', mQuery.Text);
 end;
 
 procedure TAtlasSearchTests.StartQuerySearchesTheUnitUnlessAskedForTheMethod;
 var
-  Last, Query: TAtlasSearchQuery;
+  mLast, mQuery: TAtlasSearchQuery;
 begin
   Assert.AreEqual(Ord(TAtlasSearchScope.UnitFile), Ord(Default(TAtlasSearchQuery).Scope), 'Vorgabe Unit');
   // Zuletzt gezielt in der zweiten Routine gesucht: Die nächste Suche beginnt trotzdem in der Unit.
-  Last := Default(TAtlasSearchQuery);
-  Last.Text := 'Open';
-  Last.Options := TAtlasSearchOptions.Create(True, True, False);
-  Last.Scope := TAtlasSearchScope.Method;
-  Last.Level := 1;
-  Last.Area := TAtlasSearchArea.Create(2, 0, 9, 0);
-  Query := TAtlasSearchResults.StartQuery(Last, 'Close', False, False);
-  Assert.AreEqual('Close', Query.Text);
-  Assert.AreEqual(Ord(TAtlasSearchScope.UnitFile), Ord(Query.Scope));
-  Assert.AreEqual(0, Query.Level);
-  Assert.IsTrue(Query.Area.IsEmpty);
-  Assert.IsTrue(Query.Options.CaseSensitive, 'Optionen bleiben');
-  Assert.IsTrue(Query.Options.WholeWord);
+  mLast := Default(TAtlasSearchQuery);
+  mLast.Text := 'Open';
+  mLast.Options := TAtlasSearchOptions.Create(True, True, False);
+  mLast.Scope := TAtlasSearchScope.Method;
+  mLast.Level := 1;
+  mLast.Area := TAtlasSearchArea.Create(2, 0, 9, 0);
+  mQuery := TAtlasSearchResults.StartQuery(mLast, 'Close', False, False);
+  Assert.AreEqual('Close', mQuery.Text);
+  Assert.AreEqual(Ord(TAtlasSearchScope.UnitFile), Ord(mQuery.Scope));
+  Assert.AreEqual(0, mQuery.Level);
+  Assert.IsTrue(mQuery.Area.IsEmpty);
+  Assert.IsTrue(mQuery.Options.CaseSensitive, 'Optionen bleiben');
+  Assert.IsTrue(mQuery.Options.WholeWord);
   // Mehrzeilige Markierung: Auswahl; „In Methode suchen“: Methode, innerste Routine.
-  Assert.AreEqual(Ord(TAtlasSearchScope.Selection), Ord(TAtlasSearchResults.StartQuery(Last, 'x', True, False).Scope));
-  Query := TAtlasSearchResults.StartQuery(Last, 'x', True, True);
-  Assert.AreEqual(Ord(TAtlasSearchScope.Method), Ord(Query.Scope));
-  Assert.AreEqual(0, Query.Level);
+  Assert.AreEqual(Ord(TAtlasSearchScope.Selection), Ord(TAtlasSearchResults.StartQuery(mLast, 'x', True, False).Scope));
+  mQuery := TAtlasSearchResults.StartQuery(mLast, 'x', True, True);
+  Assert.AreEqual(Ord(TAtlasSearchScope.Method), Ord(mQuery.Scope));
+  Assert.AreEqual(0, mQuery.Level);
 end;
 
 procedure TAtlasSearchTests.KeysComeFromSettingsAndFollowTheSwitch;
 var
-  Settings: TAtlasPluginSettings;
-  Entries: TArray<TAtlasKeyEntry>;
+  mSettings: TAtlasPluginSettings;
+  mEntries: TArray<TAtlasKeyEntry>;
   I: Integer;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Entries := TAtlasKeyEntry.AllFromSettings(Settings);
-  Assert.AreEqual($4046, Integer(EntryOf(Entries, TAtlasKeyFunction.Search).Key), 'Strg+F');
-  Assert.AreEqual($72, Integer(EntryOf(Entries, TAtlasKeyFunction.SearchNext).Key), 'F3');
-  Assert.AreEqual($2072, Integer(EntryOf(Entries, TAtlasKeyFunction.SearchPrevious).Key), 'Umschalt+F3');
-  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.Search).Priority, 'bewusst übernommen');
-  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.Search).Disabled);
+  mSettings := TAtlasPluginSettings.Defaults;
+  mEntries := TAtlasKeyEntry.AllFromSettings(mSettings);
+  Assert.AreEqual($4046, Integer(EntryOf(mEntries, TAtlasKeyFunction.Search).Key), 'Strg+F');
+  Assert.AreEqual($72, Integer(EntryOf(mEntries, TAtlasKeyFunction.SearchNext).Key), 'F3');
+  Assert.AreEqual($2072, Integer(EntryOf(mEntries, TAtlasKeyFunction.SearchPrevious).Key), 'Umschalt+F3');
+  Assert.IsTrue(EntryOf(mEntries, TAtlasKeyFunction.Search).Priority, 'bewusst übernommen');
+  Assert.IsFalse(EntryOf(mEntries, TAtlasKeyFunction.Search).Disabled);
   Assert.AreEqual('Atlas.Search', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.Search));
   Assert.AreEqual('Atlas.SearchNext', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SearchNext));
   Assert.AreEqual('Atlas.SearchPrevious', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SearchPrevious));
   Assert.AreEqual('Atlas.SearchInMethod', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SearchMethod));
   Assert.AreEqual(Ord(TAtlasKeyContext.Editor), Ord(TAtlasKeyMap.ContextOf(TAtlasKeyFunction.Search)));
   // Schalter aus: die IDE behält Strg+F und F3; „In Methode suchen“ bleibt.
-  Settings.SearchReplaceIde := False;
-  Entries := TAtlasKeyEntry.AllFromSettings(Settings);
-  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.Search).Disabled);
-  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.SearchNext).Disabled);
-  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.SearchPrevious).Disabled);
-  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.SearchMethod).Disabled);
+  mSettings.SearchReplaceIde := False;
+  mEntries := TAtlasKeyEntry.AllFromSettings(mSettings);
+  Assert.IsTrue(EntryOf(mEntries, TAtlasKeyFunction.Search).Disabled);
+  Assert.IsTrue(EntryOf(mEntries, TAtlasKeyFunction.SearchNext).Disabled);
+  Assert.IsTrue(EntryOf(mEntries, TAtlasKeyFunction.SearchPrevious).Disabled);
+  Assert.IsFalse(EntryOf(mEntries, TAtlasKeyFunction.SearchMethod).Disabled);
   // Zurück in die Einstellungen.
   // Eintrag gezielt suchen: seit FormatCode (#43) ist SearchMethod nicht mehr der letzte.
-  for I := 0 to High(Entries) do
+  for I := 0 to High(mEntries) do
   begin
-    if Entries[I].Func = TAtlasKeyFunction.SearchMethod then
+    if mEntries[I].Func = TAtlasKeyFunction.SearchMethod then
     begin
-      Entries[I].Key := $C046;
+      mEntries[I].Key := $C046;
     end;
   end;
-  TAtlasKeyEntry.ToSettings(Entries, Settings);
-  Assert.AreEqual($C046, Settings.SearchMethodKey);
+  TAtlasKeyEntry.ToSettings(mEntries, mSettings);
+  Assert.AreEqual($C046, mSettings.SearchMethodKey);
 end;
 
 procedure TAtlasSearchTests.SettingsDefaultsAndRoundTrip;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
+  mSettings := TAtlasPluginSettings.Defaults;
   // Entscheidung #878: Atlas ersetzt die IDE-Suche standardmäßig.
-  Assert.IsTrue(Settings.SearchReplaceIde);
-  Assert.IsTrue(Settings.SearchResultsInMessages, 'Liste in den Meldungen standardmäßig an');
-  Assert.IsFalse(Settings.SearchFromFirstHit, '#1242: Vorgabe ab Cursor');
-  Assert.AreEqual($4046, Settings.SearchKey);
-  Assert.AreEqual($72, Settings.SearchNextKey);
-  Assert.AreEqual($2072, Settings.SearchPreviousKey);
-  Assert.AreEqual($E046, Settings.SearchMethodKey);
-  Settings.SearchKey := -3;
-  Settings.SearchMethodKey := $1FFFF;
-  Settings.Normalize;
-  Assert.AreEqual(0, Settings.SearchKey);
-  Assert.AreEqual($FFFF, Settings.SearchMethodKey);
+  Assert.IsTrue(mSettings.SearchReplaceIde);
+  Assert.IsTrue(mSettings.SearchResultsInMessages, 'Liste in den Meldungen standardmäßig an');
+  Assert.IsFalse(mSettings.SearchFromFirstHit, '#1242: Vorgabe ab Cursor');
+  Assert.AreEqual($4046, mSettings.SearchKey);
+  Assert.AreEqual($72, mSettings.SearchNextKey);
+  Assert.AreEqual($2072, mSettings.SearchPreviousKey);
+  Assert.AreEqual($E046, mSettings.SearchMethodKey);
+  mSettings.SearchKey := -3;
+  mSettings.SearchMethodKey := $1FFFF;
+  mSettings.Normalize;
+  Assert.AreEqual(0, mSettings.SearchKey);
+  Assert.AreEqual($FFFF, mSettings.SearchMethodKey);
 end;
 
 procedure TAtlasSearchTests.ManyHitsStayFast;
 var
-  Lines: TArray<string>;
-  Index: Integer;
-  Watch: TStopwatch;
-  Hits: TArray<TAtlasSearchHit>;
+  mLines: TArray<string>;
+  mIndex: Integer;
+  mWatch: TStopwatch;
+  mHits: TArray<TAtlasSearchHit>;
 begin
-  SetLength(Lines, 20000);
-  for Index := 0 to High(Lines) do
+  SetLength(mLines, 20000);
+  for mIndex := 0 to High(mLines) do
   begin
-    Lines[Index] := '  Ergebnis := Wert + Eintrag;';
+    mLines[mIndex] := '  Ergebnis := Wert + Eintrag;';
   end;
-  Watch := TStopwatch.StartNew;
-  Hits := TAtlasTextSearch.FindAll(Lines, 'e', TAtlasSearchOptions.Create(False, False, False),
-    TAtlasSearchArea.Whole(Lines));
-  Watch.Stop;
+  mWatch := TStopwatch.StartNew;
+  mHits := TAtlasTextSearch.FindAll(mLines, 'e', TAtlasSearchOptions.Create(False, False, False),
+    TAtlasSearchArea.Whole(mLines));
+  mWatch.Stop;
   // „Ergebnis“ (2), „Wert“, „Eintrag“: vier e je Zeile, Groß-/Kleinschreibung egal.
-  Assert.AreEqual(80000, Integer(Length(Hits)));
-  Assert.IsTrue(Watch.ElapsedMilliseconds < 500, 'Dauer ' + IntToStr(Watch.ElapsedMilliseconds) + ' ms');
+  Assert.AreEqual(80000, Integer(Length(mHits)));
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < 500, 'Dauer ' + IntToStr(mWatch.ElapsedMilliseconds) + ' ms');
 end;
 
 initialization

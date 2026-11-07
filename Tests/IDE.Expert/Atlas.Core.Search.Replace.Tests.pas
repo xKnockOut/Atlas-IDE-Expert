@@ -77,16 +77,16 @@ uses
 /// <summary>"Zeile:Zeichen+Länge" je Treffer, durch Leerzeichen getrennt.</summary>
 function Describe(const AHits: TArray<TAtlasSearchHit>): string;
 var
-  Hit: TAtlasSearchHit;
+  mHit: TAtlasSearchHit;
 begin
   Result := '';
-  for Hit in AHits do
+  for mHit in AHits do
   begin
     if Result <> '' then
     begin
       Result := Result + ' ';
     end;
-    Result := Result + Format('%d:%d+%d', [Hit.Line, Hit.Character, Hit.Length]);
+    Result := Result + Format('%d:%d+%d', [mHit.Line, mHit.Character, mHit.Length]);
   end;
 end;
 
@@ -99,21 +99,21 @@ end;
 
 function FindIn(const AText: string; const AQuery: TAtlasSearchQuery): string;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := TTextLines.SplitLines(AText);
-  Result := Describe(TAtlasTextSearch.FindAll(Lines, AQuery.Text, AQuery.Options, TAtlasSearchArea.Whole(Lines)));
+  mLines := TTextLines.SplitLines(AText);
+  Result := Describe(TAtlasTextSearch.FindAll(mLines, AQuery.Text, AQuery.Options, TAtlasSearchArea.Whole(mLines)));
 end;
 
 /// <summary>Text nach dem Ersetzen aller Treffer.</summary>
 function ReplaceAll(const AText: string; const AQuery: TAtlasSearchQuery; const AReplace: string): string;
 var
-  Lines: TArray<string>;
-  Hits: TArray<TAtlasSearchHit>;
+  mLines: TArray<string>;
+  mHits: TArray<TAtlasSearchHit>;
 begin
-  Lines := TTextLines.SplitLines(AText);
-  Hits := TAtlasTextSearch.FindAll(Lines, AQuery.Text, AQuery.Options, TAtlasSearchArea.Whole(Lines));
-  Result := TLspEdits.Apply(AText, TAtlasSearchReplace.Edits(Lines, Hits, AQuery, AReplace));
+  mLines := TTextLines.SplitLines(AText);
+  mHits := TAtlasTextSearch.FindAll(mLines, AQuery.Text, AQuery.Options, TAtlasSearchArea.Whole(mLines));
+  Result := TLspEdits.Apply(AText, TAtlasSearchReplace.Edits(mLines, mHits, AQuery, AReplace));
 end;
 
 procedure TAtlasSearchReplaceTests.WarmUpFirstUse;
@@ -148,44 +148,44 @@ end;
 
 procedure TAtlasSearchReplaceTests.RegexWithIdentifierSkipsCommentsAndStrings;
 const
-  Source = 'X := IntToStr(A.Nr); // IntToStr(B.Nr)' + #13#10 +
+  cSource = 'X := IntToStr(A.Nr); // IntToStr(B.Nr)' + #13#10 +
     'S := ''IntToStr(C.Nr)''; { IntToStr(D.Nr)' + #13#10 +
     'IntToStr(E.Nr) } Y := IntToStr(F.Nr);';
 begin
-  Assert.AreEqual('0:5+14 2:22+14', FindIn(Source, Query('IntToStr\((\w+)\.Nr\)', False, False, True, True)));
+  Assert.AreEqual('0:5+14 2:22+14', FindIn(cSource, Query('IntToStr\((\w+)\.Nr\)', False, False, True, True)));
   // Ohne Bezeichner-Modus zählen alle.
   Assert.AreEqual('0:5+14 0:24+14 1:6+14 1:25+14 2:0+14 2:22+14',
-    FindIn(Source, Query('IntToStr\((\w+)\.Nr\)', False, False, False, True)));
+    FindIn(cSource, Query('IntToStr\((\w+)\.Nr\)', False, False, False, True)));
 end;
 
 procedure TAtlasSearchReplaceTests.InvalidRegexReportsErrorAndFindsNothing;
 var
-  Error: string;
+  mError: string;
 begin
-  Assert.IsFalse(TAtlasSearchRegex.Check('(abc', Error));
-  Assert.IsTrue(Error <> '', 'Fehlertext der Engine');
+  Assert.IsFalse(TAtlasSearchRegex.Check('(abc', mError));
+  Assert.IsTrue(mError <> '', 'Fehlertext der Engine');
   Assert.AreEqual('', FindIn('(abc abc', Query('(abc', False, False, False, True)));
-  Assert.IsTrue(TAtlasSearchRegex.Check('a(b)c', Error));
-  Assert.AreEqual('', Error);
-  Assert.IsTrue(TAtlasSearchRegex.Check('', Error), 'leer ist gültig');
+  Assert.IsTrue(TAtlasSearchRegex.Check('a(b)c', mError));
+  Assert.AreEqual('', mError);
+  Assert.IsTrue(TAtlasSearchRegex.Check('', mError), 'leer ist gültig');
   // Ohne Regex ist „(abc“ ein gewöhnlicher Text.
   Assert.AreEqual('0:0+4', FindIn('(abc abc', Query('(abc', False, False, False, False)));
 end;
 
 procedure TAtlasSearchReplaceTests.CodeOnlyMasksCommentsStringsAndDirectives;
 var
-  Code: TArray<string>;
+  mCode: TArray<string>;
   M: Char;
 begin
-  M := TAtlasTextSearch.CodeMask;
-  Code := TAtlasTextSearch.CodeOnly(TTextLines.SplitLines('a {$IFDEF X} b ''c'' d // e' + #13#10 +
+  M := TAtlasTextSearch.cCodeMask;
+  mCode := TAtlasTextSearch.CodeOnly(TTextLines.SplitLines('a {$IFDEF X} b ''c'' d // e' + #13#10 +
     '(* f' + #13#10 + 'g *) h' + #13#10 + 'S := ''''''' + #13#10 + '  text' + #13#10 + '  '''''';'));
-  Assert.AreEqual('a ' + StringOfChar(M, 10) + ' b ' + StringOfChar(M, 3) + ' d ' + StringOfChar(M, 4), Code[0]);
-  Assert.AreEqual(StringOfChar(M, 4), Code[1]);
-  Assert.AreEqual(StringOfChar(M, 4) + ' h', Code[2]);
-  Assert.AreEqual('S := ' + StringOfChar(M, 3), Code[3]);
-  Assert.AreEqual(StringOfChar(M, 6), Code[4]);
-  Assert.AreEqual(StringOfChar(M, 5) + ';', Code[5]);
+  Assert.AreEqual('a ' + StringOfChar(M, 10) + ' b ' + StringOfChar(M, 3) + ' d ' + StringOfChar(M, 4), mCode[0]);
+  Assert.AreEqual(StringOfChar(M, 4), mCode[1]);
+  Assert.AreEqual(StringOfChar(M, 4) + ' h', mCode[2]);
+  Assert.AreEqual('S := ' + StringOfChar(M, 3), mCode[3]);
+  Assert.AreEqual(StringOfChar(M, 6), mCode[4]);
+  Assert.AreEqual(StringOfChar(M, 5) + ';', mCode[5]);
 end;
 
 procedure TAtlasSearchReplaceTests.IdentifierModeStillFindsOnlyIdentifiers;
@@ -197,17 +197,17 @@ end;
 
 procedure TAtlasSearchReplaceTests.ExpandHandlesGroupsNamesAndDollar;
 var
-  Found: TMatch;
+  mFound: TMatch;
 begin
-  Found := TRegEx.Create('(?<name>\w+)=(\d+)').Match('Wert=42');
-  Assert.IsTrue(Found.Success);
-  Assert.AreEqual('42:Wert', TAtlasSearchReplace.Expand('$2:$1', Found));
-  Assert.AreEqual('Wert/Wert=42', TAtlasSearchReplace.Expand('${name}/$0', Found));
-  Assert.AreEqual('$1 kostet $', TAtlasSearchReplace.Expand('$$1 kostet $', Found));
-  Assert.AreEqual('42', TAtlasSearchReplace.Expand('${2}', Found));
+  mFound := TRegEx.Create('(?<name>\w+)=(\d+)').Match('Wert=42');
+  Assert.IsTrue(mFound.Success);
+  Assert.AreEqual('42:Wert', TAtlasSearchReplace.Expand('$2:$1', mFound));
+  Assert.AreEqual('Wert/Wert=42', TAtlasSearchReplace.Expand('${name}/$0', mFound));
+  Assert.AreEqual('$1 kostet $', TAtlasSearchReplace.Expand('$$1 kostet $', mFound));
+  Assert.AreEqual('42', TAtlasSearchReplace.Expand('${2}', mFound));
   // Unbekannte Gruppen ergeben nichts; ein offenes ${ bleibt stehen.
-  Assert.AreEqual('[]', TAtlasSearchReplace.Expand('[$9${gibt_es_nicht}]', Found));
-  Assert.AreEqual('${x', TAtlasSearchReplace.Expand('${x', Found));
+  Assert.AreEqual('[]', TAtlasSearchReplace.Expand('[$9${gibt_es_nicht}]', mFound));
+  Assert.AreEqual('${x', TAtlasSearchReplace.Expand('${x', mFound));
 end;
 
 procedure TAtlasSearchReplaceTests.ReplaceWithGroupsFromTheIssue;
@@ -226,18 +226,18 @@ end;
 
 procedure TAtlasSearchReplaceTests.PreviewShowsBeforeAndAfter;
 var
-  Lines: TArray<string>;
-  Hits: TArray<TAtlasSearchHit>;
-  Search: TAtlasSearchQuery;
-  Preview: TAtlasReplacePreview;
+  mLines: TArray<string>;
+  mHits: TArray<TAtlasSearchHit>;
+  mSearch: TAtlasSearchQuery;
+  mPreview: TAtlasReplacePreview;
 begin
-  Lines := TTextLines.SplitLines('X := IntToStr(Kunde.Nr);');
-  Search := Query('IntToStr\((\w+)\.Nr\)', False, False, False, True);
-  Hits := TAtlasTextSearch.FindAll(Lines, Search.Text, Search.Options, TAtlasSearchArea.Whole(Lines));
-  Preview := TAtlasSearchReplace.Preview(Lines, Hits[0], Search, '$1.Nr.ToString');
-  Assert.AreEqual('IntToStr(Kunde.Nr)', Preview.Before);
-  Assert.AreEqual('Kunde.Nr.ToString', Preview.After);
-  Assert.AreEqual('IntToStr(Kunde.Nr) → Kunde.Nr.ToString', Preview.Caption);
+  mLines := TTextLines.SplitLines('X := IntToStr(Kunde.Nr);');
+  mSearch := Query('IntToStr\((\w+)\.Nr\)', False, False, False, True);
+  mHits := TAtlasTextSearch.FindAll(mLines, mSearch.Text, mSearch.Options, TAtlasSearchArea.Whole(mLines));
+  mPreview := TAtlasSearchReplace.Preview(mLines, mHits[0], mSearch, '$1.Nr.ToString');
+  Assert.AreEqual('IntToStr(Kunde.Nr)', mPreview.Before);
+  Assert.AreEqual('Kunde.Nr.ToString', mPreview.After);
+  Assert.AreEqual('IntToStr(Kunde.Nr) → Kunde.Nr.ToString', mPreview.Caption);
 end;
 
 procedure TAtlasSearchReplaceTests.EditsKeepLineEndings;
@@ -253,70 +253,70 @@ end;
 
 procedure TAtlasSearchReplaceTests.ReplaceListChecksFilesAndHits;
 var
-  List: TAtlasReplaceList;
-  Search: TAtlasSearchQuery;
+  mList: TAtlasReplaceList;
+  mSearch: TAtlasSearchQuery;
 begin
-  Search := Query('a', False, False, False, False);
-  List := TAtlasReplaceList.Create(Search, 'b');
+  mSearch := Query('a', False, False, False, False);
+  mList := TAtlasReplaceList.Create(mSearch, 'b');
   try
-    List.Add(Hits('C:\P\Eins.pas', 'a a', Search));
-    List.Add(Hits('C:\P\Zwei.pas', 'a', Search));
-    List.Add(Hits('C:\P\Leer.pas', 'x', Search));
-    Assert.AreEqual(2, Integer(Length(List.Results)), 'Dateien ohne Treffer kommen nicht in die Liste');
-    Assert.AreEqual(3, List.CheckedCount, 'Vorgabe: alles angehakt');
-    Assert.IsTrue(List.FileChecked(0));
-    List.SetHitChecked(0, 1, False);
-    Assert.IsFalse(List.FileChecked(0), 'Datei nur angehakt, solange alle Treffer es sind');
-    Assert.AreEqual(2, List.CheckedCount);
-    List.SetFileChecked(0, True);
-    Assert.IsTrue(List.HitChecked(0, 1));
-    List.SetFileChecked(1, False);
-    Assert.AreEqual(2, List.CheckedCount);
-    Assert.AreEqual(3, List.HitCount);
+    mList.Add(Hits('C:\P\Eins.pas', 'a a', mSearch));
+    mList.Add(Hits('C:\P\Zwei.pas', 'a', mSearch));
+    mList.Add(Hits('C:\P\Leer.pas', 'x', mSearch));
+    Assert.AreEqual(2, Integer(Length(mList.Results)), 'Dateien ohne Treffer kommen nicht in die Liste');
+    Assert.AreEqual(3, mList.CheckedCount, 'Vorgabe: alles angehakt');
+    Assert.IsTrue(mList.FileChecked(0));
+    mList.SetHitChecked(0, 1, False);
+    Assert.IsFalse(mList.FileChecked(0), 'Datei nur angehakt, solange alle Treffer es sind');
+    Assert.AreEqual(2, mList.CheckedCount);
+    mList.SetFileChecked(0, True);
+    Assert.IsTrue(mList.HitChecked(0, 1));
+    mList.SetFileChecked(1, False);
+    Assert.AreEqual(2, mList.CheckedCount);
+    Assert.AreEqual(3, mList.HitCount);
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 procedure TAtlasSearchReplaceTests.PlanOnlyTakesCheckedHits;
 var
-  List: TAtlasReplaceList;
-  Search: TAtlasSearchQuery;
-  Plan: TAtlasReplacePlan;
+  mList: TAtlasReplaceList;
+  mSearch: TAtlasSearchQuery;
+  mPlan: TAtlasReplacePlan;
 begin
-  Search := Query('a', False, False, False, False);
-  List := TAtlasReplaceList.Create(Search, 'b');
+  mSearch := Query('a', False, False, False, False);
+  mList := TAtlasReplaceList.Create(mSearch, 'b');
   try
-    List.Add(Hits('C:\P\Eins.pas', 'a a a', Search));
-    List.Add(Hits('C:\P\Zwei.pas', 'a', Search));
-    List.SetHitChecked(0, 1, False);
-    Plan := List.Plan(nil, nil);
-    Assert.AreEqual(3, Plan.Replacements);
-    Assert.AreEqual(2, Plan.Files);
-    Assert.AreEqual('b a b', TLspEdits.Apply('a a a', Plan.Edit.Files[0].Edits));
-    Assert.AreEqual('C:\P\Zwei.pas', Plan.Edit.Files[1].FileName);
-    List.SetFileChecked(1, False);
-    Plan := List.Plan(nil, nil);
-    Assert.AreEqual(1, Plan.Files, 'Datei ohne angehakte Treffer fehlt');
+    mList.Add(Hits('C:\P\Eins.pas', 'a a a', mSearch));
+    mList.Add(Hits('C:\P\Zwei.pas', 'a', mSearch));
+    mList.SetHitChecked(0, 1, False);
+    mPlan := mList.Plan(nil, nil);
+    Assert.AreEqual(3, mPlan.Replacements);
+    Assert.AreEqual(2, mPlan.Files);
+    Assert.AreEqual('b a b', TLspEdits.Apply('a a a', mPlan.Edit.Files[0].Edits));
+    Assert.AreEqual('C:\P\Zwei.pas', mPlan.Edit.Files[1].FileName);
+    mList.SetFileChecked(1, False);
+    mPlan := mList.Plan(nil, nil);
+    Assert.AreEqual(1, mPlan.Files, 'Datei ohne angehakte Treffer fehlt');
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 procedure TAtlasSearchReplaceTests.PlanSkipsReadOnlyAndChangedFiles;
 var
-  List: TAtlasReplaceList;
-  Search: TAtlasSearchQuery;
-  Plan: TAtlasReplacePlan;
-  ReadOnly: TAtlasReplaceFileCheck;
-  Current: TAtlasReplaceFileText;
+  mList: TAtlasReplaceList;
+  mSearch: TAtlasSearchQuery;
+  mPlan: TAtlasReplacePlan;
+  mReadOnly: TAtlasReplaceFileCheck;
+  mCurrent: TAtlasReplaceFileText;
 begin
-  ReadOnly :=
+  mReadOnly :=
     function(const AFileName: string): Boolean
     begin
       Result := SameText(ExtractFileName(AFileName), 'Fest.pas');
     end;
-  Current :=
+  mCurrent :=
     function(const AFileName: string): string
     begin
       if SameText(ExtractFileName(AFileName), 'Neu.pas') then
@@ -328,66 +328,66 @@ begin
         Result := 'a';
       end;
     end;
-  Search := Query('a', False, False, False, False);
-  List := TAtlasReplaceList.Create(Search, 'b');
+  mSearch := Query('a', False, False, False, False);
+  mList := TAtlasReplaceList.Create(mSearch, 'b');
   try
-    List.Add(Hits('C:\P\Eins.pas', 'a', Search));
-    List.Add(Hits('C:\P\Fest.pas', 'a', Search));
-    List.Add(Hits('C:\P\Neu.pas', 'a', Search));
-    Plan := List.Plan(ReadOnly, Current);
-    Assert.AreEqual(1, Plan.Files);
-    Assert.AreEqual('C:\P\Eins.pas', Plan.Edit.Files[0].FileName);
-    Assert.AreEqual(1, Integer(Length(Plan.ReadOnly)));
-    Assert.AreEqual('C:\P\Fest.pas', Plan.ReadOnly[0]);
-    Assert.AreEqual(1, Integer(Length(Plan.Changed)));
-    Assert.AreEqual('C:\P\Neu.pas', Plan.Changed[0]);
+    mList.Add(Hits('C:\P\Eins.pas', 'a', mSearch));
+    mList.Add(Hits('C:\P\Fest.pas', 'a', mSearch));
+    mList.Add(Hits('C:\P\Neu.pas', 'a', mSearch));
+    mPlan := mList.Plan(mReadOnly, mCurrent);
+    Assert.AreEqual(1, mPlan.Files);
+    Assert.AreEqual('C:\P\Eins.pas', mPlan.Edit.Files[0].FileName);
+    Assert.AreEqual(1, Integer(Length(mPlan.ReadOnly)));
+    Assert.AreEqual('C:\P\Fest.pas', mPlan.ReadOnly[0]);
+    Assert.AreEqual(1, Integer(Length(mPlan.Changed)));
+    Assert.AreEqual('C:\P\Neu.pas', mPlan.Changed[0]);
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 procedure TAtlasSearchReplaceTests.RowsCarryPreview;
 var
-  List: TAtlasReplaceList;
-  Search: TAtlasSearchQuery;
-  Rows: TArray<TAtlasReplaceRow>;
+  mList: TAtlasReplaceList;
+  mSearch: TAtlasSearchQuery;
+  mRows: TArray<TAtlasReplaceRow>;
 begin
-  Search := Query('(\w+)\.Free', False, False, False, True);
-  List := TAtlasReplaceList.Create(Search, 'FreeAndNil($1)');
+  mSearch := Query('(\w+)\.Free', False, False, False, True);
+  mList := TAtlasReplaceList.Create(mSearch, 'FreeAndNil($1)');
   try
-    List.Add(Hits('C:\P\Eins.pas', 'begin' + #13#10 + '  X.Free;', Search));
-    Rows := List.Rows;
-    Assert.AreEqual(2, Integer(Length(Rows)));
-    Assert.AreEqual(Ord(TAtlasReplaceRowKind.FileRow), Ord(Rows[0].Kind));
-    Assert.AreEqual('Eins.pas', Rows[0].Text);
-    Assert.AreEqual(Ord(TAtlasReplaceRowKind.HitRow), Ord(Rows[1].Kind));
-    Assert.AreEqual(2, Rows[1].Line);
-    Assert.AreEqual('X.Free;', Rows[1].Text);
-    Assert.AreEqual('X.Free → FreeAndNil(X)', Rows[1].Preview);
+    mList.Add(Hits('C:\P\Eins.pas', 'begin' + #13#10 + '  X.Free;', mSearch));
+    mRows := mList.Rows;
+    Assert.AreEqual(2, Integer(Length(mRows)));
+    Assert.AreEqual(Ord(TAtlasReplaceRowKind.FileRow), Ord(mRows[0].Kind));
+    Assert.AreEqual('Eins.pas', mRows[0].Text);
+    Assert.AreEqual(Ord(TAtlasReplaceRowKind.HitRow), Ord(mRows[1].Kind));
+    Assert.AreEqual(2, mRows[1].Line);
+    Assert.AreEqual('X.Free;', mRows[1].Text);
+    Assert.AreEqual('X.Free → FreeAndNil(X)', mRows[1].Preview);
   finally
-    List.Free;
+    mList.Free;
   end;
   // Ohne Regex: der gefundene Text (hier in anderer Schreibweise) und der Ersatz.
-  Search := Query('free', False, False, False, False);
-  List := TAtlasReplaceList.Create(Search, 'Destroy');
+  mSearch := Query('free', False, False, False, False);
+  mList := TAtlasReplaceList.Create(mSearch, 'Destroy');
   try
-    List.Add(Hits('C:\P\Eins.pas', 'X.Free;', Search));
-    Assert.AreEqual('Free → Destroy', List.Rows[1].Preview, 'Vorschau auch ohne Regex');
+    mList.Add(Hits('C:\P\Eins.pas', 'X.Free;', mSearch));
+    Assert.AreEqual('Free → Destroy', mList.Rows[1].Preview, 'Vorschau auch ohne Regex');
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 procedure TAtlasSearchReplaceTests.FollowSelectionSwitchesRegexOff;
 var
-  Last, Next: TAtlasSearchQuery;
-  Changed: Boolean;
+  mLast, mNext: TAtlasSearchQuery;
+  mChanged: Boolean;
 begin
-  Last := Query('a+', False, False, False, True);
-  Next := TAtlasSearchResults.FollowSelection(Last, 'x.y', Changed);
-  Assert.IsTrue(Changed);
-  Assert.IsFalse(Next.Options.Regex, 'Markierung ist Text, kein Ausdruck');
-  Assert.AreEqual('x.y', Next.Text);
+  mLast := Query('a+', False, False, False, True);
+  mNext := TAtlasSearchResults.FollowSelection(mLast, 'x.y', mChanged);
+  Assert.IsTrue(mChanged);
+  Assert.IsFalse(mNext.Options.Regex, 'Markierung ist Text, kein Ausdruck');
+  Assert.AreEqual('x.y', mNext.Text);
 end;
 
 /// <summary>Strg+H nur mit search.replaceIdeSearch und search.replace; aus = die IDE behält die Taste.</summary>
@@ -445,22 +445,22 @@ end;
 
 procedure TAtlasSearchReplaceTests.SettingsDefaultsNormalizeAndKeys;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(Settings.SearchReplace);
-  Assert.IsTrue(Settings.SearchRegex);
-  Assert.AreEqual(20, Settings.SearchHistory);
-  Assert.IsTrue(Settings.SearchMultiFile);
-  Assert.AreEqual($4048, Settings.SearchReplaceKey, 'Strg+H');
-  Settings.SearchHistory := -1;
-  Settings.SearchReplaceKey := $1FFFF;
-  Settings.Normalize;
-  Assert.AreEqual(0, Settings.SearchHistory);
-  Assert.AreEqual($FFFF, Settings.SearchReplaceKey);
-  Settings.SearchHistory := 1000;
-  Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MaxSearchHistory, Settings.SearchHistory);
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.SearchReplace);
+  Assert.IsTrue(mSettings.SearchRegex);
+  Assert.AreEqual(20, mSettings.SearchHistory);
+  Assert.IsTrue(mSettings.SearchMultiFile);
+  Assert.AreEqual($4048, mSettings.SearchReplaceKey, 'Strg+H');
+  mSettings.SearchHistory := -1;
+  mSettings.SearchReplaceKey := $1FFFF;
+  mSettings.Normalize;
+  Assert.AreEqual(0, mSettings.SearchHistory);
+  Assert.AreEqual($FFFF, mSettings.SearchReplaceKey);
+  mSettings.SearchHistory := 1000;
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MaxSearchHistory, mSettings.SearchHistory);
   AssertReplaceKeys;
 end;
 
