@@ -80,16 +80,16 @@ implementation
 
 function SameTexts(const A, B: TArray<string>): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Length(A) = Length(B);
   if not Result then
   begin
     Exit;
   end;
-  for Index := 0 to High(A) do
+  for mIndex := 0 to High(A) do
   begin
-    if A[Index] <> B[Index] then
+    if A[mIndex] <> B[mIndex] then
     begin
       Exit(False);
     end;
@@ -106,32 +106,32 @@ end;
 
 class function TAtlasLineAnchors.Normalize(const AText: string): string;
 var
-  Builder: TStringBuilder;
-  Ch: Char;
-  Space: Boolean;
+  mBuilder: TStringBuilder;
+  mCh: Char;
+  mSpace: Boolean;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Space := False;
-    for Ch in AText do
+    mSpace := False;
+    for mCh in AText do
     begin
-      if (Ch = ' ') or (Ch = #9) then
+      if (mCh = ' ') or (mCh = #9) then
       begin
-        Space := True;
+        mSpace := True;
       end
       else
       begin
-        if Space and (Builder.Length > 0) then
+        if mSpace and (mBuilder.Length > 0) then
         begin
-          Builder.Append(' ');
+          mBuilder.Append(' ');
         end;
-        Space := False;
-        Builder.Append(Ch);
+        mSpace := False;
+        mBuilder.Append(mCh);
       end;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -142,7 +142,7 @@ end;
 
 class function TAtlasLineAnchors.Capture(const ALines: TArray<string>; ALine: Integer): TAtlasLineAnchor;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Default(TAtlasLineAnchor);
   Result.Line := ALine;
@@ -151,38 +151,38 @@ begin
     Exit;
   end;
   Result.Text := Normalize(ALines[ALine]);
-  Index := ALine - 1;
-  while (Index >= 0) and (Length(Result.Before) < ContextLines) do
+  mIndex := ALine - 1;
+  while (mIndex >= 0) and (Length(Result.Before) < ContextLines) do
   begin
-    Result.Before := Result.Before + [Normalize(ALines[Index])];
-    Dec(Index);
+    Result.Before := Result.Before + [Normalize(ALines[mIndex])];
+    Dec(mIndex);
   end;
-  Index := ALine + 1;
-  while (Index <= High(ALines)) and (Length(Result.After) < ContextLines) do
+  mIndex := ALine + 1;
+  while (mIndex <= High(ALines)) and (Length(Result.After) < ContextLines) do
   begin
-    Result.After := Result.After + [Normalize(ALines[Index])];
-    Inc(Index);
+    Result.After := Result.After + [Normalize(ALines[mIndex])];
+    Inc(mIndex);
   end;
 end;
 
 /// <summary>Passende Nachbarzeilen um AIndex (ANorm normiert).</summary>
 function ContextScore(const ANorm: TArray<string>; const AAnchor: TAtlasLineAnchor; AIndex: Integer): Integer;
 var
-  Step, Line: Integer;
+  mStep, mLine: Integer;
 begin
   Result := 0;
-  for Step := 0 to High(AAnchor.Before) do
+  for mStep := 0 to High(AAnchor.Before) do
   begin
-    Line := AIndex - 1 - Step;
-    if (Line >= 0) and (ANorm[Line] = AAnchor.Before[Step]) then
+    mLine := AIndex - 1 - mStep;
+    if (mLine >= 0) and (ANorm[mLine] = AAnchor.Before[mStep]) then
     begin
       Inc(Result);
     end;
   end;
-  for Step := 0 to High(AAnchor.After) do
+  for mStep := 0 to High(AAnchor.After) do
   begin
-    Line := AIndex + 1 + Step;
-    if (Line <= High(ANorm)) and (ANorm[Line] = AAnchor.After[Step]) then
+    mLine := AIndex + 1 + mStep;
+    if (mLine <= High(ANorm)) and (ANorm[mLine] = AAnchor.After[mStep]) then
     begin
       Inc(Result);
     end;
@@ -192,19 +192,19 @@ end;
 /// <summary>Mindestens eine gemerkte Nachbarzeile hat Inhalt.</summary>
 function HasSolidContext(const AAnchor: TAtlasLineAnchor): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
   Result := False;
-  for Text in AAnchor.Before do
+  for mText in AAnchor.Before do
   begin
-    if Text <> '' then
+    if mText <> '' then
     begin
       Exit(True);
     end;
   end;
-  for Text in AAnchor.After do
+  for mText in AAnchor.After do
   begin
-    if Text <> '' then
+    if mText <> '' then
     begin
       Exit(True);
     end;

@@ -86,9 +86,9 @@ uses
   Atlas.UI.Strings;
 
 const
-  Gap = 8;
-  DialogWidth = 680;
-  DialogHeight = 480;
+  cGap = 8;
+  cDialogWidth = 680;
+  cDialogHeight = 480;
 
 function OwnUnitCaption(AModel: TAtlasClassExtractionModel): string;
 begin
@@ -250,8 +250,8 @@ begin
   Position := poMainFormCenter;
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  ClientWidth := ScaleValue(DialogWidth);
-  ClientHeight := ScaleValue(DialogHeight);
+  ClientWidth := ScaleValue(cDialogWidth);
+  ClientHeight := ScaleValue(cDialogHeight);
   CreateFooter;
   CreateHeader;
   CreateSide;
@@ -276,16 +276,16 @@ begin
   mCancel := AddButton(mBottom, TAtlasStrings.Text(TAtlasTextId.ExtractMembersCancel), nil);
   mCancel.Cancel := True;
   mCancel.ModalResult := mrCancel;
-  mCancel.Left := mBottom.ClientWidth - mCancel.Width - ScaleValue(Gap);
+  mCancel.Left := mBottom.ClientWidth - mCancel.Width - ScaleValue(cGap);
   FOk := AddButton(mBottom, TAtlasStrings.Text(TAtlasTextId.ExtractMembersPreview), OkClick);
   FOk.Default := True;
-  FOk.Left := mCancel.Left - FOk.Width - ScaleValue(Gap);
+  FOk.Left := mCancel.Left - FOk.Width - ScaleValue(cGap);
   // Hinweise des Servers und Fehler über den Knöpfen.
   mNotes := TLabel.Create(Self);
   mNotes.Parent := Self;
   mNotes.Align := alBottom;
   mNotes.AlignWithMargins := True;
-  mNotes.Margins.SetBounds(Gap, 0, Gap, Gap div 2);
+  mNotes.Margins.SetBounds(cGap, 0, cGap, cGap div 2);
   mNotes.WordWrap := True;
   mNotes.ShowAccelChar := False;
   mNotes.Caption := NotesText(FModel);
@@ -293,7 +293,7 @@ begin
   FError.Parent := Self;
   FError.Align := alBottom;
   FError.AlignWithMargins := True;
-  FError.Margins.SetBounds(Gap, Gap div 2, Gap, Gap div 2);
+  FError.Margins.SetBounds(cGap, cGap div 2, cGap, cGap div 2);
   FError.WordWrap := True;
   FError.ShowAccelChar := False;
   FError.Font.Color := clRed;
@@ -309,10 +309,10 @@ begin
   mHeader.Align := alTop;
   mHeader.Height := ScaleValue(64);
   mHeader.BevelOuter := bvNone;
-  mRow := ScaleValue(Gap);
+  mRow := ScaleValue(cGap);
   if FModel.IsMove then
   begin
-    mHeader.Height := CreateMoveHeader(mHeader, mRow) + ScaleValue(Gap div 2);
+    mHeader.Height := CreateMoveHeader(mHeader, mRow) + ScaleValue(cGap div 2);
     Exit;
   end;
   FName := TEdit.Create(Self);
@@ -355,7 +355,7 @@ begin
   begin
     FOptionBox.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersKeepAbstract);
   end;
-  FOptionBox.SetBounds(ScaleValue(120), Result, ScaleValue(DialogWidth - 120 - Gap), ScaleValue(23));
+  FOptionBox.SetBounds(ScaleValue(120), Result, ScaleValue(cDialogWidth - 120 - cGap), ScaleValue(23));
   FOptionBox.Anchors := [akLeft, akTop, akRight];
   FOptionBox.Checked := FModel.Option;
   FOptionBox.OnClick := OptionClick;
@@ -382,18 +382,18 @@ begin
   FAbstract.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersAbstract);
   FAbstract.Height := ScaleValue(23);
   FAbstract.OnClick := AbstractClick;
-  mAll.Top := ScaleValue(Gap);
+  mAll.Top := ScaleValue(cGap);
   mNone.Top := mAll.Top + mAll.Height + ScaleValue(4);
-  mNeeds.Top := mNone.Top + mNone.Height + ScaleValue(3 * Gap);
-  FAbstract.Top := mNeeds.Top + mNeeds.Height + ScaleValue(Gap);
+  mNeeds.Top := mNone.Top + mNone.Height + ScaleValue(3 * cGap);
+  FAbstract.Top := mNeeds.Top + mNeeds.Height + ScaleValue(cGap);
   // Nur für die Basisklasse (#713): Abhängigkeiten und abstrakte Methoden.
   mNeeds.Visible := FModel.HasNeeds;
   FAbstract.Visible := FModel.HasModes;
   FAbstract.Enabled := False;
   for mIndex := 0 to mRight.ControlCount - 1 do
   begin
-    mRight.Controls[mIndex].Left := ScaleValue(Gap);
-    mRight.Controls[mIndex].Width := mRight.Width - ScaleValue(2 * Gap);
+    mRight.Controls[mIndex].Left := ScaleValue(cGap);
+    mRight.Controls[mIndex].Width := mRight.Width - ScaleValue(2 * cGap);
     mRight.Controls[mIndex].Anchors := [akLeft, akTop];
   end;
 end;
@@ -414,7 +414,7 @@ begin
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(Gap, Gap, 0, 0);
+  FList.Margins.SetBounds(cGap, cGap, 0, 0);
   FList.ViewStyle := vsReport;
   FList.ReadOnly := True;
   FList.RowSelect := True;
@@ -437,7 +437,7 @@ begin
   Result.Caption := ACaption;
   Result.OnClick := AClick;
   Result.Width := ScaleValue(100);
-  Result.Top := ScaleValue(Gap);
+  Result.Top := ScaleValue(cGap);
   Result.Height := ScaleValue(28);
   Result.Anchors := [akTop, akRight];
 end;
@@ -445,15 +445,15 @@ end;
 function TAtlasExtractMembersDialog.AddLabeled(AParent: TWinControl; const ACaption: string; ATop: Integer;
   AControl: TWinControl): Integer;
 var
-  Caption: TLabel;
+  mCaption: TLabel;
 begin
-  Caption := TLabel.Create(Self);
-  Caption.Parent := AParent;
-  Caption.Caption := ACaption;
-  Caption.SetBounds(ScaleValue(Gap), ATop + ScaleValue(3), ScaleValue(110), ScaleValue(20));
-  Caption.FocusControl := AControl;
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := AParent;
+  mCaption.Caption := ACaption;
+  mCaption.SetBounds(ScaleValue(cGap), ATop + ScaleValue(3), ScaleValue(110), ScaleValue(20));
+  mCaption.FocusControl := AControl;
   AControl.Parent := AParent;
-  AControl.SetBounds(ScaleValue(120), ATop, ScaleValue(DialogWidth - 120 - Gap), ScaleValue(23));
+  AControl.SetBounds(ScaleValue(120), ATop, ScaleValue(cDialogWidth - 120 - cGap), ScaleValue(23));
   AControl.Anchors := [akLeft, akTop, akRight];
   Result := ATop + ScaleValue(28);
 end;
@@ -503,36 +503,36 @@ end;
 
 procedure TAtlasExtractMembersDialog.FillList;
 var
-  Index, Selected: Integer;
-  Item: TListItem;
-  Member: TAtlasExtractionMember;
+  mIndex, mSelected: Integer;
+  mItem: TListItem;
+  mMember: TAtlasExtractionMember;
 begin
-  Selected := -1;
+  mSelected := -1;
   if FList.Selected <> nil then
   begin
-    Selected := FList.Selected.Index;
+    mSelected := FList.Selected.Index;
   end;
   FUpdating := True;
   try
     FList.Items.BeginUpdate;
     try
       FList.Items.Clear;
-      for Index := 0 to FModel.Count - 1 do
+      for mIndex := 0 to FModel.Count - 1 do
       begin
-        Member := FModel[Index];
-        Item := FList.Items.Add;
-        Item.Caption := Member.Display;
-        Item.SubItems.Add(KindText(Member));
-        Item.SubItems.Add(Member.Visibility);
-        Item.SubItems.Add(Member.Reason);
-        Item.Checked := Member.Checked;
+        mMember := FModel[mIndex];
+        mItem := FList.Items.Add;
+        mItem.Caption := mMember.Display;
+        mItem.SubItems.Add(KindText(mMember));
+        mItem.SubItems.Add(mMember.Visibility);
+        mItem.SubItems.Add(mMember.Reason);
+        mItem.Checked := mMember.Checked;
       end;
     finally
       FList.Items.EndUpdate;
     end;
-    if (Selected >= 0) and (Selected < FList.Items.Count) then
+    if (mSelected >= 0) and (mSelected < FList.Items.Count) then
     begin
-      FList.Items[Selected].Selected := True;
+      FList.Items[mSelected].Selected := True;
     end;
   finally
     FUpdating := False;
@@ -544,7 +544,7 @@ end;
 /// <summary>„Nur abstrakt“ nach der markierten Methode.</summary>
 procedure TAtlasExtractMembersDialog.ShowMode;
 var
-  Member: TAtlasExtractionMember;
+  mMember: TAtlasExtractionMember;
 begin
   if not FAbstract.Visible then
   begin
@@ -554,9 +554,9 @@ begin
   try
     if (FList.Selected <> nil) and (FList.Selected.Index < FModel.Count) then
     begin
-      Member := FModel[FList.Selected.Index];
-      FAbstract.Enabled := Member.CanAbstract;
-      FAbstract.Checked := Member.Abstract;
+      mMember := FModel[FList.Selected.Index];
+      FAbstract.Enabled := mMember.CanAbstract;
+      FAbstract.Checked := mMember.Abstract;
     end
     else
     begin
@@ -570,12 +570,12 @@ end;
 
 procedure TAtlasExtractMembersDialog.Refresh;
 var
-  Problem: TAtlasExtractionProblem;
-  Subject: string;
+  mProblem: TAtlasExtractionProblem;
+  mSubject: string;
 begin
-  Problem := FModel.Validate(Subject);
-  FError.Caption := ProblemText(FModel, Problem, Subject);
-  FOk.Enabled := Problem = TAtlasExtractionProblem.None;
+  mProblem := FModel.Validate(mSubject);
+  FError.Caption := ProblemText(FModel, mProblem, mSubject);
+  FOk.Enabled := mProblem = TAtlasExtractionProblem.None;
 end;
 
 procedure TAtlasExtractMembersDialog.NameChange(Sender: TObject);
@@ -596,15 +596,15 @@ end;
 
 procedure TAtlasExtractMembersDialog.TargetClickCheck(Sender: TObject);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if FUpdating then
   begin
     Exit;
   end;
-  for Index := 0 to FTargetList.Items.Count - 1 do
+  for mIndex := 0 to FTargetList.Items.Count - 1 do
   begin
-    FModel.SetTargetChecked(Index, FTargetList.Checked[Index]);
+    FModel.SetTargetChecked(mIndex, FTargetList.Checked[mIndex]);
   end;
   Refresh;
 end;
@@ -696,13 +696,13 @@ end;
 
 class function TAtlasExtractMembersDialog.Execute(AModel: TAtlasClassExtractionModel; const ATitle: string): Boolean;
 var
-  Dialog: TAtlasExtractMembersDialog;
+  mDialog: TAtlasExtractMembersDialog;
 begin
-  Dialog := TAtlasExtractMembersDialog.CreateDialog(nil, AModel, ATitle);
+  mDialog := TAtlasExtractMembersDialog.CreateDialog(nil, AModel, ATitle);
   try
-    Result := Dialog.ShowModal = mrOk;
+    Result := mDialog.ShowModal = mrOk;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 

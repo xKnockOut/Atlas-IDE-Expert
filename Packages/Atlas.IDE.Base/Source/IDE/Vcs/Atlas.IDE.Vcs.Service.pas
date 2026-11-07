@@ -516,19 +516,19 @@ end;
 
 procedure ToolMissing(AKind: TAtlasVcsKind);
 var
-  Name, Text, mConfigured: string;
+  mName, mText, mConfigured: string;
 begin
-  Name := AtlasVcsKindName(AKind);
-  TAtlasGuard.Log(Format('Versionsverwaltung: %s nicht gefunden, weiter ohne', [Name]));
+  mName := AtlasVcsKindName(AKind);
+  TAtlasGuard.Log(Format('Versionsverwaltung: %s nicht gefunden, weiter ohne', [mName]));
   // Eigener Pfad (#1285): Der Pfad steht nur in der Meldungsansicht, nie im Protokoll.
   mConfigured := TAtlasVcsTools.Configured(AKind);
   if mConfigured <> '' then
   begin
-    Text := Format(TAtlasStrings.Text(TAtlasTextId.VcsToolConfiguredMissing), [Name, mConfigured]);
+    mText := Format(TAtlasStrings.Text(TAtlasTextId.VcsToolConfiguredMissing), [mName, mConfigured]);
   end
   else
   begin
-    Text := Format(TAtlasStrings.Text(TAtlasTextId.VcsToolMissing), [Name, Name]);
+    mText := Format(TAtlasStrings.Text(TAtlasTextId.VcsToolMissing), [mName, mName]);
   end;
   // Kann aus einem Hintergrund-Thread kommen; die Meldungsansicht nur im Hauptthread.
   TAtlasMainThread.ForceQueue(TAtlasFeature.Status,
@@ -536,7 +536,7 @@ begin
     begin
       if Assigned(Message_) and not TAtlasShutdown.Signalled then
       begin
-        Message_(Text);
+        Message_(mText);
       end;
     end);
 end;

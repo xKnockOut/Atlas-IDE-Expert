@@ -40,39 +40,39 @@ uses
   Atlas.IDE.Editor.NamedRefactoring;
 
 const
-  ApplyCommand = 'atlas.server.typeAlias';
-  InlineApplyCommand = 'atlas.server.inlineTypeAlias';
+  cApplyCommand = 'atlas.server.typeAlias';
+  cInlineApplyCommand = 'atlas.server.inlineTypeAlias';
 
 class procedure TAtlasIdeTypeAlias.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  Texts: TAtlasNamedRefactoringTexts;
+  mTexts: TAtlasNamedRefactoringTexts;
 begin
-  Texts.Title := TAtlasTextId.TypeAliasTitle;
-  Texts.Prompt := TAtlasTextId.TypeAliasPrompt;
-  Texts.Failed := TAtlasTextId.TypeAliasFailed;
-  Texts.Nothing := TAtlasTextId.TypeAliasNothing;
-  Texts.PreviewHint := TAtlasTextId.TypeAliasPreviewHint;
-  Texts.Apply := TAtlasTextId.TypeAliasApply;
-  Texts.Done := TAtlasTextId.TypeAliasDone;
-  Texts.Warning := TAtlasTextId.TypeAliasWarning;
-  TAtlasIdeNamedRefactoring.Execute(ASession, AArgumentsJson, ApplyCommand, Texts, APolicy, AMessage);
+  mTexts.Title := TAtlasTextId.TypeAliasTitle;
+  mTexts.Prompt := TAtlasTextId.TypeAliasPrompt;
+  mTexts.Failed := TAtlasTextId.TypeAliasFailed;
+  mTexts.Nothing := TAtlasTextId.TypeAliasNothing;
+  mTexts.PreviewHint := TAtlasTextId.TypeAliasPreviewHint;
+  mTexts.Apply := TAtlasTextId.TypeAliasApply;
+  mTexts.Done := TAtlasTextId.TypeAliasDone;
+  mTexts.Warning := TAtlasTextId.TypeAliasWarning;
+  TAtlasIdeNamedRefactoring.Execute(ASession, AArgumentsJson, cApplyCommand, mTexts, APolicy, AMessage);
 end;
 
 class procedure TAtlasIdeTypeAlias.ExecuteInline(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  Texts: TAtlasNamedRefactoringTexts;
+  mTexts: TAtlasNamedRefactoringTexts;
 begin
-  Texts.Title := TAtlasTextId.InlineTypeAliasTitle;
-  Texts.Prompt := TAtlasTextId.InlineTypeAliasTitle;
-  Texts.Failed := TAtlasTextId.InlineTypeAliasFailed;
-  Texts.Nothing := TAtlasTextId.InlineTypeAliasNothing;
-  Texts.PreviewHint := TAtlasTextId.TypeAliasPreviewHint;
-  Texts.Apply := TAtlasTextId.InlineTypeAliasApply;
-  Texts.Done := TAtlasTextId.InlineTypeAliasDone;
-  Texts.Warning := TAtlasTextId.TypeAliasWarning;
-  TAtlasIdeNamedRefactoring.ExecuteWithoutName(ASession, AArgumentsJson, InlineApplyCommand, Texts, APolicy,
+  mTexts.Title := TAtlasTextId.InlineTypeAliasTitle;
+  mTexts.Prompt := TAtlasTextId.InlineTypeAliasTitle;
+  mTexts.Failed := TAtlasTextId.InlineTypeAliasFailed;
+  mTexts.Nothing := TAtlasTextId.InlineTypeAliasNothing;
+  mTexts.PreviewHint := TAtlasTextId.TypeAliasPreviewHint;
+  mTexts.Apply := TAtlasTextId.InlineTypeAliasApply;
+  mTexts.Done := TAtlasTextId.InlineTypeAliasDone;
+  mTexts.Warning := TAtlasTextId.TypeAliasWarning;
+  TAtlasIdeNamedRefactoring.ExecuteWithoutName(ASession, AArgumentsJson, cInlineApplyCommand, mTexts, APolicy,
     AMessage);
 end;
 

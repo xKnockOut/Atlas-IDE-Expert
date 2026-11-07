@@ -50,7 +50,7 @@ uses
   System.SysUtils;
 
 const
-  Sizes: array[0..TAtlasSymbol.SizeCount - 1] of Integer = (16, 20, 24, 32, 40, 48, 64, 128, 256);
+  cSizes: array[0..TAtlasSymbol.SizeCount - 1] of Integer = (16, 20, 24, 32, 40, 48, 64, 128, 256);
 
 function VariantText(AVariant: TAtlasSymbolVariant): string;
 begin
@@ -68,7 +68,7 @@ end;
 
 class function TAtlasSymbol.Size(AIndex: Integer): Integer;
 begin
-  Result := Sizes[AIndex];
+  Result := cSizes[AIndex];
 end;
 
 class function TAtlasSymbol.PixelSize(ALogicalSize, APixelsPerInch: Integer): Integer;
@@ -83,17 +83,17 @@ end;
 
 class function TAtlasSymbol.SizeFor(ALogicalSize, APixelsPerInch: Integer): Integer;
 var
-  Needed, Index: Integer;
+  mNeeded, mIndex: Integer;
 begin
-  Needed := PixelSize(ALogicalSize, APixelsPerInch);
-  for Index := Low(Sizes) to High(Sizes) do
+  mNeeded := PixelSize(ALogicalSize, APixelsPerInch);
+  for mIndex := Low(cSizes) to High(cSizes) do
   begin
-    if Sizes[Index] >= Needed then
+    if cSizes[mIndex] >= mNeeded then
     begin
-      Exit(Sizes[Index]);
+      Exit(cSizes[mIndex]);
     end;
   end;
-  Result := Sizes[High(Sizes)];
+  Result := cSizes[High(cSizes)];
 end;
 
 class function TAtlasSymbol.VariantFor(ABackground: TAtlasColor): TAtlasSymbolVariant;

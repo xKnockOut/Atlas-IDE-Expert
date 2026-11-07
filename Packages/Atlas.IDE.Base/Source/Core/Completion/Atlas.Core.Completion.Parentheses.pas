@@ -176,37 +176,37 @@ end;
 
 class function TAtlasParentheses.CallOpened(const ALine: string; ACharacter: Integer): Boolean;
 const
-  Keywords: array[0..22] of string = ('if', 'while', 'until', 'not', 'and', 'or', 'xor', 'then', 'do', 'of', 'in',
+  cKeywords: array[0..22] of string = ('if', 'while', 'until', 'not', 'and', 'or', 'xor', 'then', 'do', 'of', 'in',
     'case', 'div', 'mod', 'procedure', 'function', 'array', 'set', 'record', 'with', 'is', 'as', 'inherited');
 var
-  Start, Index: Integer;
-  Word: string;
+  mStart, mIndex: Integer;
+  mWord: string;
 begin
   Result := False;
   if (ACharacter < 2) or (ACharacter > Length(ALine)) or (ALine[ACharacter] <> '(') then
   begin
     Exit;
   end;
-  Start := ACharacter - 1;
-  while (Start >= 1) and CharInSet(ALine[Start], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+  mStart := ACharacter - 1;
+  while (mStart >= 1) and CharInSet(ALine[mStart], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
   begin
-    Dec(Start);
+    Dec(mStart);
   end;
-  Word := Copy(ALine, Start + 1, ACharacter - 1 - Start);
-  if (Word = '') or CharInSet(Word[1], ['0'..'9']) then
+  mWord := Copy(ALine, mStart + 1, ACharacter - 1 - mStart);
+  if (mWord = '') or CharInSet(mWord[1], ['0'..'9']) then
   begin
     Exit;
   end;
-  for Index := Low(Keywords) to High(Keywords) do
+  for mIndex := Low(cKeywords) to High(cKeywords) do
   begin
-    if SameText(Word, Keywords[Index]) then
+    if SameText(mWord, cKeywords[mIndex]) then
     begin
       Exit;
     end;
   end;
   // Kein Kommentar und kein String davor in der Zeile.
-  if (Pos('//', Copy(ALine, 1, Start)) > 0) or Odd(Length(Copy(ALine, 1, Start)) -
-    Length(StringReplace(Copy(ALine, 1, Start), '''', '', [rfReplaceAll]))) then
+  if (Pos('//', Copy(ALine, 1, mStart)) > 0) or Odd(Length(Copy(ALine, 1, mStart)) -
+    Length(StringReplace(Copy(ALine, 1, mStart), '''', '', [rfReplaceAll]))) then
   begin
     Exit;
   end;

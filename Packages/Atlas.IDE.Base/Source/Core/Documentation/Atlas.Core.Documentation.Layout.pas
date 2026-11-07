@@ -413,11 +413,11 @@ end;
 
 class procedure TAtlasDocExpandState.Reset;
 var
-  Surface: TAtlasDocSurface;
+  mSurface: TAtlasDocSurface;
 begin
-  for Surface := Low(TAtlasDocSurface) to High(TAtlasDocSurface) do
+  for mSurface := Low(TAtlasDocSurface) to High(TAtlasDocSurface) do
   begin
-    FLast[Surface] := False;
+    FLast[mSurface] := False;
   end;
 end;
 
@@ -457,13 +457,13 @@ end;
 
 function TAtlasDocLayout.LineAt(AY: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Lines) do
+  for mIndex := 0 to High(Lines) do
   begin
-    if (AY >= Lines[Index].Top - Lines[Index].GapBefore) and (AY < Lines[Index].Bottom) then
+    if (AY >= Lines[mIndex].Top - Lines[mIndex].GapBefore) and (AY < Lines[mIndex].Bottom) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -471,20 +471,20 @@ end;
 
 function TAtlasDocLayout.LinkAt(AX, AY: Integer): Integer;
 var
-  Line: Integer;
-  Span: TAtlasDocSpan;
+  mLine: Integer;
+  mSpan: TAtlasDocSpan;
 begin
   Result := -1;
-  Line := LineAt(AY);
-  if (Line < 0) or (AY < Lines[Line].Top) then
+  mLine := LineAt(AY);
+  if (mLine < 0) or (AY < Lines[mLine].Top) then
   begin
     Exit;
   end;
-  for Span in Lines[Line].Spans do
+  for mSpan in Lines[mLine].Spans do
   begin
-    if (Span.Link >= 0) and (AX >= Span.Left) and (AX < Span.Right) then
+    if (mSpan.Link >= 0) and (AX >= mSpan.Left) and (AX < mSpan.Right) then
     begin
-      Exit(Span.Link);
+      Exit(mSpan.Link);
     end;
   end;
 end;
@@ -586,26 +586,26 @@ end;
 function TAtlasDocLayout.SpanRange(const ASpan: TAtlasDocSpan; AFrom, ATo: Integer;
   const AMeasure: TAtlasDocMeasure; out ALeft, ARight: Integer): Boolean;
 var
-  From, Till: Integer;
+  mFrom, mTill: Integer;
 begin
-  From := Max(AFrom, ASpan.TextStart) - ASpan.TextStart;
-  Till := Min(ATo, ASpan.TextStart + Length(ASpan.Text)) - ASpan.TextStart;
-  Result := Till > From;
+  mFrom := Max(AFrom, ASpan.TextStart) - ASpan.TextStart;
+  mTill := Min(ATo, ASpan.TextStart + Length(ASpan.Text)) - ASpan.TextStart;
+  Result := mTill > mFrom;
   if not Result then
   begin
     Exit;
   end;
-  ALeft := ASpan.Left + ASpan.Pad + AMeasure(Copy(ASpan.Text, 1, From), ASpan.Face);
-  ARight := ASpan.Left + ASpan.Pad + AMeasure(Copy(ASpan.Text, 1, Till), ASpan.Face);
+  ALeft := ASpan.Left + ASpan.Pad + AMeasure(Copy(ASpan.Text, 1, mFrom), ASpan.Face);
+  ARight := ASpan.Left + ASpan.Pad + AMeasure(Copy(ASpan.Text, 1, mTill), ASpan.Face);
 end;
 
 function TAtlasDocLayout.Selected(AFrom, ATo: Integer): string;
 var
-  From, Till: Integer;
+  mFrom, mTill: Integer;
 begin
-  From := EnsureRange(Min(AFrom, ATo), 0, Length(Text));
-  Till := EnsureRange(Max(AFrom, ATo), 0, Length(Text));
-  Result := Copy(Text, From + 1, Till - From);
+  mFrom := EnsureRange(Min(AFrom, ATo), 0, Length(Text));
+  mTill := EnsureRange(Max(AFrom, ATo), 0, Length(Text));
+  Result := Copy(Text, mFrom + 1, mTill - mFrom);
 end;
 
 function TAtlasDocLayout.HeightOfLines(ALines: Integer): Integer;

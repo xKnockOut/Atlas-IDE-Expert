@@ -147,9 +147,9 @@ uses
   System.Math;
 
 const
-  RunKindNames: array[TAtlasDocRunKind] of string = ('text', 'code', 'ref', 'link', 'paramref', 'keyword', 'br',
+  cRunKindNames: array[TAtlasDocRunKind] of string = ('text', 'code', 'ref', 'link', 'paramref', 'keyword', 'br',
     'para', 'codeblock', 'bullet', 'cell');
-  SectionKindNames: array[TAtlasDocSectionKind] of string = ('summary', 'param', 'typeparam', 'returns', 'value',
+  cSectionKindNames: array[TAtlasDocSectionKind] of string = ('summary', 'param', 'typeparam', 'returns', 'value',
     'exception', 'remarks', 'example', 'seealso', 'rationale');
 
 { TAtlasDocTarget }
@@ -201,28 +201,28 @@ end;
 
 function TAtlasDocSection.Text: string;
 var
-  Run: TAtlasDocRun;
+  mRun: TAtlasDocRun;
 begin
   Result := '';
-  for Run in Runs do
-    case Run.Kind of
+  for mRun in Runs do
+    case mRun.Kind of
       TAtlasDocRunKind.LineBreak, TAtlasDocRunKind.Paragraph:
         Result := Result + #10;
       TAtlasDocRunKind.CodeBlock:
-        Result := Result + #10 + Run.Text + #10;
+        Result := Result + #10 + mRun.Text + #10;
       TAtlasDocRunKind.Bullet:
-        if Run.Text = '' then
+        if mRun.Text = '' then
         begin
           Result := Result + #10;
         end
         else
         begin
-          Result := Result + #10 + Run.Text + ' ';
+          Result := Result + #10 + mRun.Text + ' ';
         end;
       TAtlasDocRunKind.Cell:
         Result := Result + ' – ';
     else
-      Result := Result + Run.Text;
+      Result := Result + mRun.Text;
     end;
   Result := Trim(Result);
 end;
@@ -236,11 +236,11 @@ end;
 
 function TAtlasDoc.Has(AKind: TAtlasDocSectionKind): Boolean;
 var
-  Section: TAtlasDocSection;
+  mSection: TAtlasDocSection;
 begin
-  for Section in Sections do
+  for mSection in Sections do
   begin
-    if Section.Kind = AKind then
+    if mSection.Kind = AKind then
     begin
       Exit(True);
     end;
@@ -250,27 +250,27 @@ end;
 
 function TAtlasDoc.SectionsOf(AKind: TAtlasDocSectionKind): TArray<TAtlasDocSection>;
 var
-  Section: TAtlasDocSection;
+  mSection: TAtlasDocSection;
 begin
   Result := nil;
-  for Section in Sections do
+  for mSection in Sections do
   begin
-    if Section.Kind = AKind then
+    if mSection.Kind = AKind then
     begin
-      Result := Result + [Section];
+      Result := Result + [mSection];
     end;
   end;
 end;
 
 class function TAtlasDoc.TryParseRunKind(const AName: string; out AKind: TAtlasDocRunKind): Boolean;
 var
-  Kind: TAtlasDocRunKind;
+  mKind: TAtlasDocRunKind;
 begin
-  for Kind := Low(TAtlasDocRunKind) to High(TAtlasDocRunKind) do
+  for mKind := Low(TAtlasDocRunKind) to High(TAtlasDocRunKind) do
   begin
-    if SameText(RunKindNames[Kind], AName) then
+    if SameText(cRunKindNames[mKind], AName) then
     begin
-      AKind := Kind;
+      AKind := mKind;
       Exit(True);
     end;
   end;
@@ -279,13 +279,13 @@ end;
 
 class function TAtlasDoc.TryParseSectionKind(const AName: string; out AKind: TAtlasDocSectionKind): Boolean;
 var
-  Kind: TAtlasDocSectionKind;
+  mKind: TAtlasDocSectionKind;
 begin
-  for Kind := Low(TAtlasDocSectionKind) to High(TAtlasDocSectionKind) do
+  for mKind := Low(TAtlasDocSectionKind) to High(TAtlasDocSectionKind) do
   begin
-    if SameText(SectionKindNames[Kind], AName) then
+    if SameText(cSectionKindNames[mKind], AName) then
     begin
-      AKind := Kind;
+      AKind := mKind;
       Exit(True);
     end;
   end;
@@ -378,59 +378,59 @@ end;
 
 class function TAtlasDoc.FromText(const AText: string): TAtlasDoc;
 var
-  Section: TAtlasDocSection;
-  Line: string;
-  Pending: TAtlasDocRunKind;
-  HasPending: Boolean;
-  Last: Integer;
+  mSection: TAtlasDocSection;
+  mLine: string;
+  mPending: TAtlasDocRunKind;
+  mHasPending: Boolean;
+  mLast: Integer;
 begin
   Result := Default(TAtlasDoc);
   if Trim(AText) = '' then
   begin
     Exit;
   end;
-  Section := Default(TAtlasDocSection);
-  Section.Kind := TAtlasDocSectionKind.Summary;
-  HasPending := False;
-  Pending := TAtlasDocRunKind.LineBreak;
-  for Line in Trim(StringReplace(AText, #13#10, #10, [rfReplaceAll])).Split([#10]) do
+  mSection := Default(TAtlasDocSection);
+  mSection.Kind := TAtlasDocSectionKind.Summary;
+  mHasPending := False;
+  mPending := TAtlasDocRunKind.LineBreak;
+  for mLine in Trim(StringReplace(AText, #13#10, #10, [rfReplaceAll])).Split([#10]) do
   begin
-    if Trim(Line) = '' then
+    if Trim(mLine) = '' then
     begin
-      Pending := TAtlasDocRunKind.Paragraph;
-      HasPending := Length(Section.Runs) > 0;
+      mPending := TAtlasDocRunKind.Paragraph;
+      mHasPending := Length(mSection.Runs) > 0;
       Continue;
     end;
-    Last := High(Section.Runs);
+    mLast := High(mSection.Runs);
     // Eingerückte Zeilen (Code, Beispiele) als Codeblock mit Einrückung; aufeinanderfolgende in einem.
-    if Line.StartsWith(' ') and (Last >= 0) and (Section.Runs[Last].Kind = TAtlasDocRunKind.CodeBlock) and
-      (Pending = TAtlasDocRunKind.LineBreak) then
+    if mLine.StartsWith(' ') and (mLast >= 0) and (mSection.Runs[mLast].Kind = TAtlasDocRunKind.CodeBlock) and
+      (mPending = TAtlasDocRunKind.LineBreak) then
     begin
-      Section.Runs[Last].Text := Section.Runs[Last].Text + #10 + TrimRight(Line);
+      mSection.Runs[mLast].Text := mSection.Runs[mLast].Text + #10 + TrimRight(mLine);
       Continue;
     end;
-    if HasPending then
+    if mHasPending then
     begin
-      Section.Runs := Section.Runs + [TAtlasDocRun.Create(Pending, '')];
+      mSection.Runs := mSection.Runs + [TAtlasDocRun.Create(mPending, '')];
     end;
-    if Line.StartsWith(' ') then
+    if mLine.StartsWith(' ') then
     begin
-      Section.Runs := Section.Runs + [TAtlasDocRun.Create(TAtlasDocRunKind.CodeBlock, TrimRight(Line))];
+      mSection.Runs := mSection.Runs + [TAtlasDocRun.Create(TAtlasDocRunKind.CodeBlock, TrimRight(mLine))];
     end
     else
     begin
-      Section.Runs := Section.Runs + [TAtlasDocRun.Create(TAtlasDocRunKind.Text, TrimRight(Line))];
+      mSection.Runs := mSection.Runs + [TAtlasDocRun.Create(TAtlasDocRunKind.Text, TrimRight(mLine))];
     end;
-    HasPending := True;
-    Pending := TAtlasDocRunKind.LineBreak;
+    mHasPending := True;
+    mPending := TAtlasDocRunKind.LineBreak;
   end;
-  Result.Sections := [Section];
+  Result.Sections := [mSection];
 end;
 
 { TAtlasDocDisplay }
 
 const
-  ExpandNames: array[TAtlasDocExpand] of string = ('collapsed', 'last', 'expanded');
+  cExpandNames: array[TAtlasDocExpand] of string = ('collapsed', 'last', 'expanded');
 
 class function TAtlasDocDisplay.Create(AExpand: TAtlasDocExpand; AMaxLines: Integer): TAtlasDocDisplay;
 begin
@@ -441,13 +441,13 @@ end;
 
 class function TAtlasDocDisplay.ExpandOf(const AName: string): TAtlasDocExpand;
 var
-  Expand: TAtlasDocExpand;
+  mExpand: TAtlasDocExpand;
 begin
-  for Expand := Low(TAtlasDocExpand) to High(TAtlasDocExpand) do
+  for mExpand := Low(TAtlasDocExpand) to High(TAtlasDocExpand) do
   begin
-    if SameText(ExpandNames[Expand], Trim(AName)) then
+    if SameText(cExpandNames[mExpand], Trim(AName)) then
     begin
-      Exit(Expand);
+      Exit(mExpand);
     end;
   end;
   Result := TAtlasDocExpand.Last;
@@ -455,13 +455,13 @@ end;
 
 class function TAtlasDocDisplay.ExpandName(AExpand: TAtlasDocExpand): string;
 begin
-  Result := ExpandNames[AExpand];
+  Result := cExpandNames[AExpand];
 end;
 
 class function TAtlasDocDisplay.FromJson(const AValue: TJSONValue;
   const AFallback: TAtlasDocDisplay): TAtlasDocDisplay;
 var
-  Full: TJSONValue;
+  mFull: TJSONValue;
 begin
   Result := AFallback;
   if not (AValue is TJSONObject) then
@@ -476,10 +476,10 @@ begin
   else
   begin
     // Server vor #770: "full".
-    Full := TJSONObject(AValue).GetValue('full');
-    if Full is TJSONBool then
+    mFull := TJSONObject(AValue).GetValue('full');
+    if mFull is TJSONBool then
     begin
-      if TJSONBool(Full).AsBoolean then
+      if TJSONBool(mFull).AsBoolean then
       begin
         Result.Expand := TAtlasDocExpand.Expanded;
       end
@@ -504,13 +504,13 @@ end;
 
 function TAtlasDocSignature.IndexOf(const AName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Params) do
+  for mIndex := 0 to High(Params) do
   begin
-    if SameText(Params[Index].Name, AName) then
+    if SameText(Params[mIndex].Name, AName) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -518,11 +518,11 @@ end;
 
 function TAtlasDocSignature.HasTypes: Boolean;
 var
-  Param: TAtlasDocParam;
+  mParam: TAtlasDocParam;
 begin
-  for Param in Params do
+  for mParam in Params do
   begin
-    if Param.TypeText <> '' then
+    if mParam.TypeText <> '' then
     begin
       Exit(True);
     end;
@@ -533,32 +533,32 @@ end;
 /// <summary>Stelle von AChar ab AFrom außerhalb von Klammern, spitzen Klammern und Strings; 0 ohne.</summary>
 function FindTop(const AText: string; AChar: Char; AFrom: Integer): Integer;
 var
-  Index, Depth: Integer;
-  InString: Boolean;
+  mIndex, mDepth: Integer;
+  mInString: Boolean;
 begin
-  Depth := 0;
-  InString := False;
-  for Index := AFrom to Length(AText) do
+  mDepth := 0;
+  mInString := False;
+  for mIndex := AFrom to Length(AText) do
   begin
-    if AText[Index] = '''' then
+    if AText[mIndex] = '''' then
     begin
-      InString := not InString;
+      mInString := not mInString;
     end;
-    if InString then
+    if mInString then
     begin
       Continue;
     end;
-    if (Depth = 0) and (AText[Index] = AChar) then
+    if (mDepth = 0) and (AText[mIndex] = AChar) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
-    if CharInSet(AText[Index], ['(', '[', '<']) then
+    if CharInSet(AText[mIndex], ['(', '[', '<']) then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if CharInSet(AText[Index], [')', ']', '>']) and (Depth > 0) then
+    else if CharInSet(AText[mIndex], [')', ']', '>']) and (mDepth > 0) then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end;
   end;
   Result := 0;
@@ -567,19 +567,19 @@ end;
 /// <summary>Teile von AText an ASeparator außerhalb von Klammern.</summary>
 function SplitTop(const AText: string; ASeparator: Char): TArray<string>;
 var
-  Start, Stop: Integer;
+  mStart, mStop: Integer;
 begin
   Result := nil;
-  Start := 1;
+  mStart := 1;
   repeat
-    Stop := FindTop(AText, ASeparator, Start);
-    if Stop = 0 then
+    mStop := FindTop(AText, ASeparator, mStart);
+    if mStop = 0 then
     begin
-      Result := Result + [Trim(Copy(AText, Start, MaxInt))];
+      Result := Result + [Trim(Copy(AText, mStart, MaxInt))];
       Break;
     end;
-    Result := Result + [Trim(Copy(AText, Start, Stop - Start))];
-    Start := Stop + 1;
+    Result := Result + [Trim(Copy(AText, mStart, mStop - mStart))];
+    mStart := mStop + 1;
   until False;
 end;
 

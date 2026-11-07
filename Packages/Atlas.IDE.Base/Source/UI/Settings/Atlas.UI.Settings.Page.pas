@@ -144,30 +144,30 @@ end;
 
 procedure TAtlasSettingsPage.AddHeader;
 var
-  Panel: TWinControl;
-  Title: TLabel;
+  mPanel: TWinControl;
+  mTitle: TLabel;
 begin
-  Panel := TAtlasSettingsRow.Create(Self);
-  Panel.Parent := Self;
-  Panel.Align := alTop;
-  Panel.Height := 40;
+  mPanel := TAtlasSettingsRow.Create(Self);
+  mPanel.Parent := Self;
+  mPanel.Align := alTop;
+  mPanel.Height := 40;
   FSymbol := TAtlasSymbolImage.Create(Self);
-  FSymbol.Parent := Panel;
+  FSymbol.Parent := mPanel;
   FSymbol.LogicalSize := TAtlasSymbol.HeaderSize;
   FSymbol.Left := 4;
   FSymbol.Top := 4;
-  Title := TLabel.Create(Self);
-  Title.Parent := Panel;
-  Title.Left := 44;
-  Title.Top := 12;
-  Title.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsTitle);
-  Title.Font.Style := [fsBold];
+  mTitle := TLabel.Create(Self);
+  mTitle.Parent := mPanel;
+  mTitle.Left := 44;
+  mTitle.Top := 12;
+  mTitle.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsTitle);
+  mTitle.Font.Style := [fsBold];
 end;
 
 procedure TAtlasSettingsPage.AddExperimentalBanner;
 var
   mText: TLabel;
-  Button: TButton;
+  mButton: TButton;
 begin
   FExperimentalBanner := TAtlasSettingsRow.Create(Self);
   FExperimentalBanner.Parent := Self;
@@ -176,12 +176,12 @@ begin
   FExperimentalBanner.Top := 50;
   FExperimentalBanner.Height := 28;
   FExperimentalBanner.Visible := False;
-  Button := TButton.Create(Self);
-  Button.Parent := FExperimentalBanner;
-  Button.Align := alRight;
-  Button.Width := 90;
-  Button.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalAllow);
-  Button.OnClick := ExperimentalAllowClick;
+  mButton := TButton.Create(Self);
+  mButton.Parent := FExperimentalBanner;
+  mButton.Align := alRight;
+  mButton.Width := 90;
+  mButton.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalAllow);
+  mButton.OnClick := ExperimentalAllowClick;
   mText := TLabel.Create(Self);
   mText.Parent := FExperimentalBanner;
   mText.Align := alClient;
@@ -400,47 +400,47 @@ end;
 
 procedure TAtlasSettingsPage.ResetPage;
 var
-  Current, Index: Integer;
-  Names: TArray<string>;
+  mCurrent, mIndex: Integer;
+  mNames: TArray<string>;
 begin
   // Ohne Fenster hängen die Reiter noch nicht am PageControl.
-  Current := ActiveNode;
-  if Current < 0 then
+  mCurrent := ActiveNode;
+  if mCurrent < 0 then
   begin
     Exit;
   end;
   // Unterpunkt: nur seine Einstellungen; Hauptknoten: der ganze Bereich mit allen Unterpunkten (#890).
-  if FNodePages[Current].Node <> '' then
+  if FNodePages[mCurrent].Node <> '' then
   begin
-    Names := FMarks.NamesIn(FNodePages[Current].Box);
+    mNames := FMarks.NamesIn(FNodePages[mCurrent].Box);
   end
   else
   begin
-    Names := nil;
-    for Index := 0 to High(FNodePages) do
+    mNames := nil;
+    for mIndex := 0 to High(FNodePages) do
     begin
-      if FNodePages[Index].Area = FNodePages[Current].Area then
+      if FNodePages[mIndex].Area = FNodePages[mCurrent].Area then
       begin
-        Names := Names + FMarks.NamesIn(FNodePages[Index].Box);
+        mNames := mNames + FMarks.NamesIn(FNodePages[mIndex].Box);
       end;
     end;
   end;
-  ResetNames(Names);
+  ResetNames(mNames);
 end;
 
 procedure TAtlasSettingsPage.CreateWnd;
 var
-  Page: TAtlasSettingsNodePage;
+  mPage: TAtlasSettingsNodePage;
   mPart: TAtlasSettingsPagePart;
 begin
   inherited CreateWnd;
   // Je Knoten ein Reiter, in der Reihenfolge des Baums.
-  for Page in FNodePages do
+  for mPage in FNodePages do
   begin
-    if Page.Sheet.PageControl = nil then
+    if mPage.Sheet.PageControl = nil then
     begin
-      Page.Sheet.PageControl := FPages;
-      Page.Sheet.TabVisible := False;
+      mPage.Sheet.PageControl := FPages;
+      mPage.Sheet.TabVisible := False;
     end;
   end;
   // Der Baum braucht ein Fenster für seine Knoten (wie die Reiter); zeigt die zuletzt gewählte Seite.

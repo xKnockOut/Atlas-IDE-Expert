@@ -110,8 +110,8 @@ uses
   Atlas.IDE.Status.ServerWindow;
 
 const
-  TickMs = 250;
-  LogPrefix = 'Atlas-Statusleiste: ';
+  cTickMs = 250;
+  cLogPrefix = 'Atlas-Statusleiste: ';
 
 type
   TFieldAction = reference to procedure(AField: TAtlasStatusField; const APoint: TPoint);
@@ -204,7 +204,7 @@ begin
       Place(TAtlasEditorStatusBar(ABar), AEditorParent);
     end);
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -226,24 +226,24 @@ end;
 
 procedure TStatusBarState.RefreshField;
 var
-  Field: TAtlasStatusField;
+  mField: TAtlasStatusField;
 begin
-  Field := CurrentField;
-  if Field <> nil then
+  mField := CurrentField;
+  if mField <> nil then
   begin
-    Field.RequestRefresh;
+    mField.RequestRefresh;
   end;
 end;
 
 procedure TStatusBarState.ApplyTheme;
 var
-  Colors: TAtlasColors;
+  mColors: TAtlasColors;
 begin
-  Colors := BarColors;
+  mColors := BarColors;
   FHost.ForEach(
     procedure(ABar: TControl)
     begin
-      TAtlasEditorStatusBar(ABar).SetColors(Colors);
+      TAtlasEditorStatusBar(ABar).SetColors(mColors);
     end);
 end;
 
@@ -268,22 +268,22 @@ end;
 /// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
 function TStatusBarState.CreateBar: TAtlasEditorStatusBar;
 var
-  Bar: TAtlasEditorStatusBar;
-  Host: TAtlasEditorBarHost;
+  mBar: TAtlasEditorStatusBar;
+  mHost: TAtlasEditorBarHost;
 begin
-  Bar := TAtlasEditorStatusBar.Create(nil);
-  Host := FHost;
-  Bar.SetColors(BarColors);
-  Bar.OnDisabled :=
+  mBar := TAtlasEditorStatusBar.Create(nil);
+  mHost := FHost;
+  mBar.SetColors(BarColors);
+  mBar.OnDisabled :=
     procedure(ASender: TObject)
     begin
-      Host.Disabled(ASender);
+      mHost.Disabled(ASender);
     end;
-  Bar.Texts := TAtlasStatusBarTexts.Create(ItemCaptions,
+  mBar.Texts := TAtlasStatusBarTexts.Create(ItemCaptions,
     TAtlasStrings.Text(TAtlasTextId.StatusBarCustomize), TAtlasStrings.Text(TAtlasTextId.StatusBarHide));
-  WireStatus(Bar);
-  WireItems(Bar);
-  Result := Bar;
+  WireStatus(mBar);
+  WireItems(mBar);
+  Result := mBar;
 end;
 
 procedure TStatusBarState.WireStatus(ABar: TAtlasEditorStatusBar);
@@ -312,7 +312,7 @@ begin
       begin
         Exit;
       end;
-      TAtlasGuard.Log(LogPrefix + 'Doppelklick auf Status');
+      TAtlasGuard.Log(cLogPrefix + 'Doppelklick auf Status');
       Later(
         procedure
         begin
@@ -329,7 +329,7 @@ begin
       Kind: TAtlasFindingKind;
     begin
       Kind := AKind;
-      TAtlasGuard.Log(LogPrefix + 'Klick auf Zähler ' + IntToStr(Ord(Kind)));
+      TAtlasGuard.Log(cLogPrefix + 'Klick auf Zähler ' + IntToStr(Ord(Kind)));
       Later(
         procedure
         begin
@@ -374,8 +374,8 @@ end;
 /// Top, größer steht weiter unten). Die Suchleiste kann später kommen; jeder Takt prüft die Reihenfolge.</summary>
 procedure TStatusBarState.Place(ABar: TAtlasEditorStatusBar; AHost: TWinControl);
 var
-  Index: Integer;
-  Control: TControl;
+  mIndex: Integer;
+  mControl: TControl;
 begin
   if ABar.Parent <> AHost then
   begin
@@ -386,10 +386,10 @@ begin
     ABar.Parent := AHost;
     Exit;
   end;
-  for Index := 0 to AHost.ControlCount - 1 do
+  for mIndex := 0 to AHost.ControlCount - 1 do
   begin
-    Control := AHost.Controls[Index];
-    if (Control <> ABar) and Control.Visible and (Control.Align = alBottom) and (Control.Top > ABar.Top) then
+    mControl := AHost.Controls[mIndex];
+    if (mControl <> ABar) and mControl.Visible and (mControl.Align = alBottom) and (mControl.Top > ABar.Top) then
     begin
       ABar.Top := AHost.ClientHeight + 1;
       Exit;
@@ -399,25 +399,25 @@ end;
 
 procedure TStatusBarState.Tick(Sender: TObject);
 var
-  On_, WasHidden: Boolean;
+  mOn_, mWasHidden: Boolean;
 begin
-  On_ := TAtlasIdeStatusBar.Enabled;
-  WasHidden := FHost.Hidden;
+  mOn_ := TAtlasIdeStatusBar.Enabled;
+  mWasHidden := FHost.Hidden;
   if not FHost.Guard then
   begin
     // Sicherung ausgelöst: Leisten weg (Host), das Atlas-Feld zurück in die Statuszeile.
-    if not WasHidden then
+    if not mWasHidden then
     begin
       Want(False);
       RefreshField;
     end;
     Exit;
   end;
-  if WasHidden then
+  if mWasHidden then
   begin
     RefreshField;
   end;
-  if not On_ then
+  if not mOn_ then
   begin
     Want(False);
     if FHost.Count > 0 then
@@ -463,19 +463,19 @@ end;
 /// <summary>Erst nach dem Klick ausführen; nur, wenn der Zustand dann noch lebt.</summary>
 procedure TStatusBarState.Later(const AAction: TProc);
 var
-  Owner: TStatusBarState;
-  Action: TProc;
+  mOwner: TStatusBarState;
+  mAction: TProc;
 begin
-  Owner := Self;
-  Action := AAction;
+  mOwner := Self;
+  mAction := AAction;
   TAtlasMainThread.ForceQueue(TAtlasFeature.StatusBar,
     procedure
     begin
-      if TAtlasIdeStatusBar.FState <> Owner then
+      if TAtlasIdeStatusBar.FState <> mOwner then
       begin
         Exit;
       end;
-      TAtlasGuard.Run(TAtlasFeature.StatusBar, Action);
+      TAtlasGuard.Run(TAtlasFeature.StatusBar, mAction);
     end);
 end;
 
@@ -496,7 +496,7 @@ begin
       mCorner := APoint;
       if mLog <> '' then
       begin
-        TAtlasGuard.Log(LogPrefix + mLog);
+        TAtlasGuard.Log(cLogPrefix + mLog);
       end;
       mOwner.Later(
         procedure
@@ -524,7 +524,7 @@ begin
       mClick: TProc<TPoint>;
     begin
       mId := AId;
-      TAtlasGuard.Log(LogPrefix + 'Klick auf Zusatzfeld ' + mId);
+      TAtlasGuard.Log(cLogPrefix + 'Klick auf Zusatzfeld ' + mId);
       mClick := mOwner.FieldClick('',
         procedure(AField: TAtlasStatusField; const ACorner: TPoint)
         begin
@@ -548,7 +548,7 @@ begin
     begin
       if mLog <> '' then
       begin
-        TAtlasGuard.Log(LogPrefix + mLog);
+        TAtlasGuard.Log(cLogPrefix + mLog);
       end;
       mOwner.Later(mAction);
     end;
@@ -556,25 +556,25 @@ end;
 
 procedure TStatusBarState.JumpToFinding(AKind: TAtlasFindingKind);
 var
-  View: IOTAEditView;
-  Line, Character: Integer;
-  Target: TAtlasProblem;
-  FileName: string;
+  mView: IOTAEditView;
+  mLine, mCharacter: Integer;
+  mTarget: TAtlasProblem;
+  mFileName: string;
 begin
-  View := TAtlasEditorBuffer.ActiveView;
-  if not TAtlasStatusBarViews.CaretOf(View, Line, Character) or
+  mView := TAtlasEditorBuffer.ActiveView;
+  if not TAtlasStatusBarViews.CaretOf(mView, mLine, mCharacter) or
     not TAtlasStatusBarViews.ProblemsOn(TAtlasIdeSettings.Current) then
   begin
     Exit;
   end;
-  FileName := View.Buffer.FileName;
-  if not TAtlasStatusBarContent.NextOf(TAtlasProblemsController.Current.ForFile(FileName), AKind,
-    TAtlasIdeSettings.Current.ProblemsWindowCompiler, Line, Character, Target) then
+  mFileName := mView.Buffer.FileName;
+  if not TAtlasStatusBarContent.NextOf(TAtlasProblemsController.Current.ForFile(mFileName), AKind,
+    TAtlasIdeSettings.Current.ProblemsWindowCompiler, mLine, mCharacter, mTarget) then
   begin
     TAtlasIdeStatusBar.Say(TAtlasStrings.Text(TAtlasTextId.StatusBarNoFindingOfKind));
     Exit;
   end;
-  TAtlasIdeNavigation.GoToLocation(FileName, Target.StartLine, Target.StartCharacter);
+  TAtlasIdeNavigation.GoToLocation(mFileName, mTarget.StartLine, mTarget.StartCharacter);
 end;
 
 procedure TStatusBarState.JumpToMethod;
@@ -611,22 +611,22 @@ end;
 
 procedure TStatusBarState.ToggleItem(const AId: string);
 var
-  Next: TAtlasPluginSettings;
+  mNext: TAtlasPluginSettings;
 begin
-  Next := TAtlasIdeSettings.Stored;
-  Next.EditorStatusBarItems := TAtlasStatusBarItems.Format(TAtlasStatusBarItems.Toggle(
-    TAtlasStatusBarItems.Parse(Next.EditorStatusBarItems), AId));
-  TAtlasIdeSettings.Update(Next);
+  mNext := TAtlasIdeSettings.Stored;
+  mNext.EditorStatusBarItems := TAtlasStatusBarItems.Format(TAtlasStatusBarItems.Toggle(
+    TAtlasStatusBarItems.Parse(mNext.EditorStatusBarItems), AId));
+  TAtlasIdeSettings.Update(mNext);
   RefreshField;
 end;
 
 procedure TStatusBarState.HideBar;
 var
-  Next: TAtlasPluginSettings;
+  mNext: TAtlasPluginSettings;
 begin
-  Next := TAtlasIdeSettings.Stored;
-  Next.EditorStatusBar := False;
-  TAtlasIdeSettings.Update(Next);
+  mNext := TAtlasIdeSettings.Stored;
+  mNext.EditorStatusBar := False;
+  TAtlasIdeSettings.Update(mNext);
   RefreshField;
 end;
 
@@ -677,8 +677,8 @@ end;
 
 class function TAtlasIdeStatusBar.Anchor(out APoint: TPoint): Boolean;
 var
-  Bar: TAtlasEditorStatusBar;
-  Area: TRect;
+  mBar: TAtlasEditorStatusBar;
+  mArea: TRect;
 begin
   APoint := Point(0, 0);
   Result := False;
@@ -686,17 +686,17 @@ begin
   begin
     Exit;
   end;
-  Bar := State.TopBar;
-  if (Bar = nil) or not Bar.Visible or not Bar.HandleAllocated then
+  mBar := State.TopBar;
+  if (mBar = nil) or not mBar.Visible or not mBar.HandleAllocated then
   begin
     Exit;
   end;
-  Area := Bar.PartRect(TAtlasStatusBarPart.Status);
-  if Area.IsEmpty then
+  mArea := mBar.PartRect(TAtlasStatusBarPart.Status);
+  if mArea.IsEmpty then
   begin
     Exit;
   end;
-  APoint := Bar.ClientToScreen(Point(Area.Left, Area.Top));
+  APoint := mBar.ClientToScreen(Point(mArea.Left, mArea.Top));
   Result := True;
 end;
 

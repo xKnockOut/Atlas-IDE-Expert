@@ -344,66 +344,66 @@ end;
 
 procedure TAtlasProblemsSync.TDocumentWorker.Deliver(const APull: TPull; const AReport: TLspDiagnosticReport);
 var
-  Work: TThreadProcedure;
+  mWork: TThreadProcedure;
 begin
   // Eigener Rahmen je Aufruf: Die Closure fängt diese Werte, nicht die Schleifenvariable.
-  Work :=
+  mWork :=
     procedure
     begin
       FDeliver(APull, AReport);
     end;
-  Queue(Work);
+  Queue(mWork);
 end;
 
 procedure TAtlasProblemsSync.TDocumentWorker.LogLater(const AMessage: string);
 var
-  Work: TThreadProcedure;
+  mWork: TThreadProcedure;
 begin
-  Work :=
+  mWork :=
     procedure
     begin
       FLog(AMessage);
     end;
-  Queue(Work);
+  Queue(mWork);
 end;
 
 procedure TAtlasProblemsSync.TDocumentWorker.Execute;
 var
-  Jobs: TArray<TPull>;
-  Job, Done: TPull;
-  Report: TLspDiagnosticReport;
-  Started: Cardinal;
+  mJobs: TArray<TPull>;
+  mJob, mDone: TPull;
+  mReport: TLspDiagnosticReport;
+  mStarted: Cardinal;
 begin
   while not Terminated do
   begin
     FWake.WaitFor(1000);
     System.TMonitor.Enter(FLock);
     try
-      Jobs := FJobs;
+      mJobs := FJobs;
       FJobs := nil;
-      if Length(Jobs) > 0 then
+      if Length(mJobs) > 0 then
       begin
         FBusy := 1;
       end;
     finally
       System.TMonitor.Exit(FLock);
     end;
-    for Job in Jobs do
+    for mJob in mJobs do
     begin
       if Terminated then
       begin
         Break;
       end;
       try
-        Started := TThread.GetTickCount;
-        Report := FSession.DocumentDiagnostics(Job.FileName, Job.PreviousId, DocumentTimeoutMs);
+        mStarted := TThread.GetTickCount;
+        mReport := FSession.DocumentDiagnostics(mJob.FileName, mJob.PreviousId, DocumentTimeoutMs);
         // Kopie: Die Schleifenvariable ist nicht zuweisbar.
-        Done := Job;
-        Done.DurationMs := TThread.GetTickCount - Started;
-        Deliver(Done, Report);
+        mDone := mJob;
+        mDone.DurationMs := TThread.GetTickCount - mStarted;
+        Deliver(mDone, mReport);
       except
         on E: Exception do
-          LogLater('Probleme: ' + ExtractFileName(Job.FileName) + ': ' + E.Message);
+          LogLater('Probleme: ' + ExtractFileName(mJob.FileName) + ': ' + E.Message);
       end;
     end;
     System.TMonitor.Enter(FLock);
@@ -444,26 +444,26 @@ end;
 procedure TAtlasProblemsSync.TWorkspaceWorker.Deliver(const AReports: TArray<TLspDiagnosticReport>;
   const ARun: TLspWorkspaceRun);
 var
-  Work: TThreadProcedure;
+  mWork: TThreadProcedure;
 begin
-  Work :=
+  mWork :=
     procedure
     begin
       FDeliver(AReports, ARun);
     end;
-  Queue(Work);
+  Queue(mWork);
 end;
 
 procedure TAtlasProblemsSync.TWorkspaceWorker.LogLater(const AMessage: string);
 var
-  Work: TThreadProcedure;
+  mWork: TThreadProcedure;
 begin
-  Work :=
+  mWork :=
     procedure
     begin
       FLog(AMessage);
     end;
-  Queue(Work);
+  Queue(mWork);
 end;
 
 function TAtlasProblemsSync.TWorkspaceWorker.Remember(
@@ -487,22 +487,22 @@ end;
 
 procedure TAtlasProblemsSync.TWorkspaceWorker.Execute;
 var
-  Changed: TArray<TLspDiagnosticReport>;
-  Started: Cardinal;
-  Run: TLspWorkspaceRun;
+  mChanged: TArray<TLspDiagnosticReport>;
+  mStarted: Cardinal;
+  mRun: TLspWorkspaceRun;
 begin
   while not Terminated do
   begin
-    Started := GetTickCount;
+    mStarted := GetTickCount;
     try
-      Changed := Remember(FSession.WorkspaceDiagnostics(FKnown.Values.ToArray, WorkspaceTimeoutMs, Run));
+      mChanged := Remember(FSession.WorkspaceDiagnostics(FKnown.Values.ToArray, WorkspaceTimeoutMs, mRun));
       // Auch ohne neue Befunde: Fortschritt, Pause und Ende des Laufs für die Statusleiste (#1247).
-      if (Length(Changed) > 0) or Run.Known then
+      if (Length(mChanged) > 0) or mRun.Known then
       begin
-        Deliver(Changed, Run);
+        Deliver(mChanged, mRun);
       end;
       // Antwortet der Server sofort ohne Neues, nicht im Kreis fragen.
-      if (Length(Changed) = 0) and (GetTickCount - Started < 1000) then
+      if (Length(mChanged) = 0) and (GetTickCount - mStarted < 1000) then
       begin
         FStop.WaitFor(1000);
       end;
@@ -598,27 +598,27 @@ end;
 
 procedure TAtlasProblemsSync.ReportDebugPause(APaused: Boolean);
 var
-  Session: TLspSession;
+  mSession: TLspSession;
 begin
   if FDebugPauseSent = APaused then
   begin
     Exit;
   end;
-  Session := FSession(False);
-  if Session = nil then
+  mSession := FSession(False);
+  if mSession = nil then
   begin
     Exit;
   end;
-  Session.Notify('atlas/workspaceCheck/pause', TJSONObject.Create.AddPair('reason', 'debug')
+  mSession.Notify('atlas/workspaceCheck/pause', TJSONObject.Create.AddPair('reason', 'debug')
     .AddPair('paused', TJSONBool.Create(APaused)));
   FDebugPauseSent := APaused;
 end;
 
 class function TAtlasProblemsSync.Paused: Boolean;
 var
-  Debugger: IOTADebuggerServices;
+  mDebugger: IOTADebuggerServices;
 begin
-  Result := Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) and (Debugger.ProcessCount > 0);
+  Result := Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) and (mDebugger.ProcessCount > 0);
 end;
 
 destructor TAtlasProblemsController.Destroy;
@@ -646,12 +646,12 @@ end;
 
 procedure TAtlasProblemsSync.WaitShutdown;
 var
-  Thread: TThread;
+  mThread: TThread;
 begin
-  for Thread in FRetired do
+  for mThread in FRetired do
   begin
-    Thread.WaitFor;
-    TThread.RemoveQueuedEvents(Thread);
+    mThread.WaitFor;
+    TThread.RemoveQueuedEvents(mThread);
   end;
   FRetired.Clear;
   FBuildTarget.Stop(True);
@@ -684,14 +684,14 @@ end;
 
 procedure TAtlasProblemsSync.FreeFinished;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := FRetired.Count - 1 downto 0 do
+  for mIndex := FRetired.Count - 1 downto 0 do
   begin
-    if FRetired[Index].Finished then
+    if FRetired[mIndex].Finished then
     begin
-      TThread.RemoveQueuedEvents(FRetired[Index]);
-      FRetired.Delete(Index);
+      TThread.RemoveQueuedEvents(FRetired[mIndex]);
+      FRetired.Delete(mIndex);
     end;
   end;
 end;
@@ -966,52 +966,52 @@ end;
 
 procedure TAtlasProblemsSync.CloseUnopened(ASession: TLspSession);
 var
-  FileName: string;
+  mFileName: string;
 begin
-  for FileName in ASession.SyncedFiles do
+  for mFileName in ASession.SyncedFiles do
   begin
-    if not IsOpenInIde(FileName) then
+    if not IsOpenInIde(mFileName) then
     begin
-      ASession.Close(FileName);
-      FTexts.Remove(TAtlasProblemStore.Key(FileName));
-      FVersions.Remove(TAtlasProblemStore.Key(FileName));
-      FPulled.Remove(TAtlasProblemStore.Key(FileName));
+      ASession.Close(mFileName);
+      FTexts.Remove(TAtlasProblemStore.Key(mFileName));
+      FVersions.Remove(TAtlasProblemStore.Key(mFileName));
+      FPulled.Remove(TAtlasProblemStore.Key(mFileName));
     end;
   end;
 end;
 
 class function TAtlasProblemsController.CountsOf(AStore: TAtlasProblemStore): TAtlasProblemCounts;
 var
-  FileName: string;
-  All: TArray<TAtlasProblem>;
+  mFileName: string;
+  mAll: TArray<TAtlasProblem>;
 begin
-  All := nil;
+  mAll := nil;
   if AStore <> nil then
   begin
-    for FileName in AStore.Files do
+    for mFileName in AStore.Files do
     begin
-      All := All + AStore.ForFile(FileName);
+      mAll := mAll + AStore.ForFile(mFileName);
     end;
   end;
-  Result := TAtlasInlineDiagnostics.Counts(All);
+  Result := TAtlasInlineDiagnostics.Counts(mAll);
 end;
 
 procedure TAtlasProblemsController.PublishCounts;
 var
-  Show: Boolean;
+  mShow: Boolean;
 begin
   if not Assigned(FOnCounts) then
   begin
     Exit;
   end;
-  Show := ProblemsActive and TAtlasIdeSettings.ProblemsStatusCounterOn;
-  if (Show = FCountsShown) and (not Show or (FCountsVersion = FStore.Version)) then
+  mShow := ProblemsActive and TAtlasIdeSettings.ProblemsStatusCounterOn;
+  if (mShow = FCountsShown) and (not mShow or (FCountsVersion = FStore.Version)) then
   begin
     Exit;
   end;
-  FCountsShown := Show;
+  FCountsShown := mShow;
   FCountsVersion := FStore.Version;
-  if Show then
+  if mShow then
   begin
     FOnCounts(True, CountsOf(FStore));
   end
@@ -1023,7 +1023,7 @@ end;
 
 procedure TAtlasProblemsController.Publish;
 var
-  Show: Boolean;
+  mShow: Boolean;
 begin
   PublishCounts;
   if FStore.Version <> FPaintedVersion then
@@ -1032,12 +1032,12 @@ begin
     TAtlasProblemsPainter.Invalidate;
     FListDue := GetTickCount + 800;
   end;
-  Show := ProblemsActive and TAtlasIdeSettings.Current.ProblemsMessageList;
-  if (Show <> FListShown) or ((FListedVersion <> FStore.Version) and (GetTickCount >= FListDue)) then
+  mShow := ProblemsActive and TAtlasIdeSettings.Current.ProblemsMessageList;
+  if (mShow <> FListShown) or ((FListedVersion <> FStore.Version) and (GetTickCount >= FListDue)) then
   begin
     FListedVersion := FStore.Version;
-    FListShown := Show;
-    if Show then
+    FListShown := mShow;
+    if mShow then
     begin
       FList.Update(FStore);
     end
@@ -1050,7 +1050,7 @@ end;
 
 procedure TAtlasProblemsSync.DeliverDocument(const APull: TPull; const AReport: TLspDiagnosticReport);
 var
-  Current: string;
+  mCurrent: string;
 begin
   if not ProblemsActive then
   begin
@@ -1065,16 +1065,16 @@ begin
   end;
   FStore.Update(APull.FileName, APull.Text, True, AReport.Problems, AReport.ResultId, APull.ReplaceCompiler);
   // Inzwischen weitergetippt: Positionen auf den aktuellen Text bringen.
-  if FTexts.TryGetValue(TAtlasProblemStore.Key(APull.FileName), Current) and (Current <> APull.Text) then
+  if FTexts.TryGetValue(TAtlasProblemStore.Key(APull.FileName), mCurrent) and (mCurrent <> APull.Text) then
   begin
-    FStore.Edit(APull.FileName, Current);
+    FStore.Edit(APull.FileName, mCurrent);
   end;
 end;
 
 procedure TAtlasProblemsSync.DeliverWorkspace(const AReports: TArray<TLspDiagnosticReport>;
   const ARun: TLspWorkspaceRun);
 var
-  Report: TLspDiagnosticReport;
+  mReport: TLspDiagnosticReport;
 begin
   if not ShowProblems then
   begin
@@ -1089,20 +1089,20 @@ begin
     end;
     FRun := ARun;
   end;
-  for Report in AReports do
+  for mReport in AReports do
   begin
     // Abgeglichene Dateien kommen über textDocument/diagnostic.
-    if not FTexts.ContainsKey(TAtlasProblemStore.Key(Report.FileName)) then
+    if not FTexts.ContainsKey(TAtlasProblemStore.Key(mReport.FileName)) then
     begin
-      FStore.Update(Report.FileName, '', False, Report.Problems, Report.ResultId, True);
+      FStore.Update(mReport.FileName, '', False, mReport.Problems, mReport.ResultId, True);
     end;
   end;
 end;
 
 function TAtlasProblemsController.ProblemsAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
 var
-  Problem: TAtlasProblem;
-  Unused: Integer;
+  mProblem: TAtlasProblem;
+  mUnused: Integer;
 begin
   Result := nil;
   if ShowProblems then
@@ -1111,11 +1111,11 @@ begin
   end;
   if ShowInactive then
   begin
-    for Problem in FStore.InactiveAt(AFileName, ALine, ACharacter) do
+    for mProblem in FStore.InactiveAt(AFileName, ALine, ACharacter) do
     begin
-      Result := Result + [Problem];
+      Result := Result + [mProblem];
       // Hinweis in der Sprache des Plugins statt der Meldung des Servers.
-      Result[High(Result)].Message := Problem.InactiveHint(TAtlasStrings.Text(TAtlasTextId.InactiveCondition),
+      Result[High(Result)].Message := mProblem.InactiveHint(TAtlasStrings.Text(TAtlasTextId.InactiveCondition),
         TAtlasStrings.Text(TAtlasTextId.InactiveTarget), TAtlasStrings.Text(TAtlasTextId.InactiveRegion));
     end;
   end;
@@ -1124,36 +1124,36 @@ begin
   begin
     Exit;
   end;
-  Unused := Length(FStore.UnusedUses(AFileName));
-  for Problem in FStore.UsesAt(AFileName, ALine, ACharacter) do
+  mUnused := Length(FStore.UnusedUses(AFileName));
+  for mProblem in FStore.UsesAt(AFileName, ALine, ACharacter) do
   begin
-    Result := Result + [Problem];
-    Result[High(Result)].Message := UsesHint(Problem);
-    Result[High(Result)].UsesUnusedCount := Unused;
+    Result := Result + [mProblem];
+    Result[High(Result)].Message := UsesHint(mProblem);
+    Result[High(Result)].UsesUnusedCount := mUnused;
   end;
 end;
 
 class function TAtlasProblemsController.UsesHint(const AProblem: TAtlasProblem): string;
 var
-  Id: TAtlasTextId;
+  mId: TAtlasTextId;
 begin
   if AProblem.UsesState = TAtlasProblem.UsesInitialization then
   begin
-    Id := TAtlasTextId.UsesInitializationHint;
+    mId := TAtlasTextId.UsesInitializationHint;
   end
   else if AProblem.UsesState = TAtlasProblem.UsesAllowlist then
   begin
-    Id := TAtlasTextId.UsesAllowlistHint;
+    mId := TAtlasTextId.UsesAllowlistHint;
   end
   else if AProblem.UsesState = TAtlasProblem.UsesImplementation then
   begin
-    Id := TAtlasTextId.UsesImplementationHint;
+    mId := TAtlasTextId.UsesImplementationHint;
   end
   else
   begin
-    Id := TAtlasTextId.UsesUnusedHint;
+    mId := TAtlasTextId.UsesUnusedHint;
   end;
-  Result := TAtlasStrings.Fmt(Id, [AProblem.UsesUnit]);
+  Result := TAtlasStrings.Fmt(mId, [AProblem.UsesUnit]);
 end;
 
 end.

@@ -254,7 +254,7 @@ end;
 
 class function TAtlasStatusBarViews.CaretOf(const AView: IOTAEditView; out ALine, ACharacter: Integer): Boolean;
 var
-  Cursor: TOTAEditPos;
+  mCursor: TOTAEditPos;
 begin
   Result := False;
   ALine := -1;
@@ -263,20 +263,20 @@ begin
   begin
     Exit;
   end;
-  Cursor := AView.CursorPos;
-  if Cursor.Line < 1 then
+  mCursor := AView.CursorPos;
+  if mCursor.Line < 1 then
   begin
     Exit;
   end;
-  ALine := Cursor.Line - 1;
-  ACharacter := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(AView, Cursor.Line), Cursor.Col,
+  ALine := mCursor.Line - 1;
+  ACharacter := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(AView, mCursor.Line), mCursor.Col,
     TAtlasEditorBuffer.TabWidth(AView.Buffer));
   Result := True;
 end;
 
 class procedure TAtlasStatusBarViews.StatusInto(AField: TAtlasStatusField; var AView: TAtlasStatusBarView);
 var
-  Text: string;
+  mText: string;
 begin
   if AField = nil then
   begin
@@ -285,17 +285,17 @@ begin
     AView.StatusState := TAtlasStatusState.Neutral;
     Exit;
   end;
-  Text := AField.Text;
-  if Text = '' then
+  mText := AField.Text;
+  if mText = '' then
   begin
-    Text := TAtlasStatusSummary.FieldCaption;
+    mText := TAtlasStatusSummary.FieldCaption;
   end;
   // Mehr Platz als in der Statuszeile: „Atlas · bereit“ statt nur „Atlas“.
-  if (AField.State = TAtlasStatusState.Green) and SameText(Text, TAtlasStatusSummary.FieldCaption) then
+  if (AField.State = TAtlasStatusState.Green) and SameText(mText, TAtlasStatusSummary.FieldCaption) then
   begin
-    Text := Text + TAtlasStatusSummary.Separator + TAtlasStrings.Text(TAtlasTextId.StatusBarReady);
+    mText := mText + TAtlasStatusSummary.Separator + TAtlasStrings.Text(TAtlasTextId.StatusBarReady);
   end;
-  AView.StatusText := Text;
+  AView.StatusText := mText;
   AView.StatusHint := AField.Tooltip + sLineBreak + TAtlasStrings.Text(TAtlasTextId.StatusBarStatusClicks);
   if TAtlasIdeServerWindow.Enabled then
   begin

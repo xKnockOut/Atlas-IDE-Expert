@@ -101,7 +101,7 @@ type
     class procedure SetBlameHooks(const AHooks: TAtlasBlameHooks); static;
     /// <summary>Commit der Randanzeige unter X, Y (Fensterkoordinaten von AWnd); False ohne, bei einer nicht
     /// gespeicherten oder nicht übernommenen Zeile und nach dem Scrollen.</summary>
-    class function BlameAt(AWnd: HWND; X, Y: Integer; out ACommit: TAtlasBlameCommit): Boolean; static;
+    class function BlameAt(AWnd: HWND; AX, AY: Integer; out ACommit: TAtlasBlameCommit): Boolean; static;
     /// <summary>Hover der Zeilenhistorie neu aufbauen, falls er offen ist (Daten nachgeladen).</summary>
     class procedure RefreshBlameTip; static;
     class procedure HideBlameTip; static;
@@ -138,12 +138,12 @@ uses
   Atlas.IDE.Editor.LineChangesData;
 
 const
-  TickMs = 150;
-  HoverMs = 400;
+  cTickMs = 150;
+  cHoverMs = 400;
   /// <summary>Höchstens so viele alte Zeilen im Fenster.</summary>
-  MaxOldLines = 15;
+  cMaxOldLines = 15;
   /// <summary>Deckkraft der Zeilenhistorie über dem Hintergrund.</summary>
-  BlameStrength = 0.55;
+  cBlameStrength = 0.55;
 
 type
   TEvents = class(TNTACodeEditorNotifier)
@@ -219,7 +219,7 @@ type
     function PaintBlame(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
       const ACaption, ALineText: string): TRect;
     /// <summary>Marke unter X, Y, die noch dort steht (gleiche Datei, nicht gescrollt).</summary>
-    function MarkAt(X, Y: Integer; out ARow: TMarkRow): Boolean;
+    function MarkAt(AX, AY: Integer; out ARow: TMarkRow): Boolean;
     procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
   public
@@ -317,7 +317,7 @@ begin
   begin
     Exit(TAtlasStrings.Text(TAtlasTextId.ChangeAddedTitle));
   end;
-  mShown := Min(Length(AChange.OldLines), MaxOldLines);
+  mShown := Min(Length(AChange.OldLines), cMaxOldLines);
   Result := '';
   for mIndex := 0 to mShown - 1 do
   begin
@@ -426,7 +426,7 @@ begin
     FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -644,7 +644,7 @@ begin
   mDC := AContext.Canvas.Handle;
   // Hintergrund des Editor-Farbschemas am rechten Rand (dort steht nichts).
   mBack := TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Right - 2, ARect.Top + 1);
-  mFront := TAtlasColorMath.Mix(TAtlasColors.ForBackground(mBack).Muted, mBack, BlameStrength);
+  mFront := TAtlasColorMath.Mix(TAtlasColors.ForBackground(mBack).Muted, mBack, cBlameStrength);
   EnsureFont(AContext.Canvas.Font);
   mSaved := SaveDC(mDC);
   try
@@ -733,7 +733,7 @@ begin
   end;
 end;
 
-function TLineChangesState.MarkAt(X, Y: Integer; out ARow: TMarkRow): Boolean;
+function TLineChangesState.MarkAt(AX, AY: Integer; out ARow: TMarkRow): Boolean;
 var
   mRow: TMarkRow;
   mView: IOTAEditView;
@@ -747,7 +747,7 @@ begin
   end;
   for mRow in FRows.Values do
   begin
-    if not Result and PtInRect(mRow.Rect, Point(X, Y)) then
+    if not Result and PtInRect(mRow.Rect, Point(AX, AY)) then
     begin
       ARow := mRow;
       Result := True;
@@ -824,7 +824,7 @@ begin
     FHovering := False;
     HideTip;
   end
-  else if not FTip.IsShown and (TThread.GetTickCount64 - FHoverSince >= HoverMs) then
+  else if not FTip.IsShown and (TThread.GetTickCount64 - FHoverSince >= cHoverMs) then
   begin
     ShowCommit;
   end;
@@ -1019,7 +1019,7 @@ begin
   end;
 end;
 
-class function TAtlasIdeLineChanges.BlameAt(AWnd: HWND; X, Y: Integer; out ACommit: TAtlasBlameCommit): Boolean;
+class function TAtlasIdeLineChanges.BlameAt(AWnd: HWND; AX, AY: Integer; out ACommit: TAtlasBlameCommit): Boolean;
 var
   mState: TLineChangesState;
   mView: IOTAEditView;
@@ -1028,7 +1028,7 @@ begin
   mState := Current;
   Result := (mState <> nil) and mState.FBlameOn and mState.FData.BlameOk and
     mState.FData.HasEntry(mState.FBlame.Entry) and not mState.FBlame.Unsaved and (AWnd <> 0) and
-    (mState.FBlame.Wnd = AWnd) and not mState.FBlame.Rect.IsEmpty and PtInRect(mState.FBlame.Rect, Point(X, Y));
+    (mState.FBlame.Wnd = AWnd) and not mState.FBlame.Rect.IsEmpty and PtInRect(mState.FBlame.Rect, Point(AX, AY));
   if not Result then
   begin
     Exit;

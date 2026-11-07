@@ -38,10 +38,10 @@ type
   TAtlasIdeUnwrap = class
   private const
     /// <summary>„with auflösen“ fragt die Namensauflösung: etwas länger als eine einfache Anfrage.</summary>
-    TimeoutMs = 10000;
+    cTimeoutMs = 10000;
     /// <summary>Deckkraft der Vorschau über dem Text (0–255).</summary>
-    KeepAlpha = 56;
-    RemoveAlpha = 64;
+    cKeepAlpha = 56;
+    cRemoveAlpha = 64;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -67,7 +67,7 @@ type
     FEntries: TArray<TAtlasUnwrapEntry>;
     FPreview: Integer;
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
-    procedure KeyDown(const Msg: TMsg; var Handled: Boolean);
+    procedure KeyDown(const AMsg: TMsg; var AHandled: Boolean);
     function ListKey(AKey: Word): Boolean;
     procedure Execute;
     function Ready(out AView: IOTAEditView; out ASession: TLspSession): Boolean;
@@ -123,31 +123,31 @@ uses
 
 function IsEditorWindow(AWnd: HWND): Boolean;
 var
-  Control: TWinControl;
+  mControl: TWinControl;
 begin
-  Control := FindControl(AWnd);
-  Result := (Control <> nil) and Control.ClassNameIs('TEditControl');
+  mControl := FindControl(AWnd);
+  Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
 end;
 
 function IsPascal(const AFileName: string): Boolean;
 var
-  Ext: string;
+  mExt: string;
 begin
-  Ext := LowerCase(ExtractFileExt(AFileName));
-  Result := (Ext = '.pas') or (Ext = '.dpr') or (Ext = '.dpk') or (Ext = '.inc');
+  mExt := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExt = '.pas') or (mExt = '.dpr') or (mExt = '.dpk') or (mExt = '.inc');
 end;
 
 /// <summary>Bildschirmstelle unter der Zeile mit der Schreibmarke.</summary>
 function CaretPoint: TPoint;
 var
-  Focus: HWND;
+  mFocus: HWND;
 begin
   Result := Mouse.CursorPos;
-  Focus := GetFocus;
-  if (Focus <> 0) and GetCaretPos(Result) then
+  mFocus := GetFocus;
+  if (mFocus <> 0) and GetCaretPos(Result) then
   begin
     Inc(Result.Y, 16);
-    Winapi.Windows.ClientToScreen(Focus, Result);
+    Winapi.Windows.ClientToScreen(mFocus, Result);
   end;
 end;
 
@@ -167,7 +167,7 @@ end;
 
 constructor TAtlasIdeUnwrap.Create(const ASession: TAtlasUnwrapSessionFunc; const AMessage: TProc<string>);
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   inherited Create;
   FSession := ASession;
@@ -179,30 +179,30 @@ begin
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+    FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
 end;
 
 destructor TAtlasIdeUnwrap.Destroy;
 var
-  Services: INTACodeEditorServices;
-  Painted: Boolean;
+  mServices: INTACodeEditorServices;
+  mPainted: Boolean;
 begin
   FreeAndNil(FMessages);
   // Erst abmelden, dann freigeben (#493).
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    Services.RemoveEditorEventsNotifier(FIndex);
+    mServices.RemoveEditorEventsNotifier(FIndex);
   end;
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
-  Painted := FPreview >= 0;
+  mPainted := FPreview >= 0;
   FreeAndNil(FWindow);
   FEntries := nil;
   FLines := nil;
-  if Painted then
+  if mPainted then
   begin
     Invalidate;
   end;
@@ -224,10 +224,10 @@ end;
 
 class function TAtlasIdeUnwrap.Enabled: Boolean;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := Settings.Enabled and Settings.Unwrap;
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.Unwrap;
 end;
 
 class function TAtlasIdeUnwrap.Active: Boolean;
@@ -261,11 +261,11 @@ end;
 
 class procedure TAtlasIdeUnwrap.Invalidate;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(Services);
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 
@@ -279,16 +279,16 @@ end;
 
 procedure TAtlasIdeUnwrap.Close;
 var
-  Painted: Boolean;
+  mPainted: Boolean;
 begin
-  Painted := FPreview >= 0;
+  mPainted := FPreview >= 0;
   FPreview := -1;
   FEntries := nil;
   if (FWindow <> nil) and FWindow.IsShown then
   begin
     FWindow.Dismiss;
   end;
-  if Painted then
+  if mPainted then
   begin
     Invalidate;
   end;
@@ -337,7 +337,7 @@ begin
     TAtlasEditorBuffer.BlockIndent(AView.Buffer));
   try
     ASession.Sync(FFileName, FText);
-    mAnswer := ASession.RunCommand(TAtlasUnwrap.Command, mArguments, TimeoutMs);
+    mAnswer := ASession.RunCommand(TAtlasUnwrap.Command, mArguments, cTimeoutMs);
     try
       AEntries := TAtlasUnwrap.ReadEntries(mAnswer);
     finally
@@ -422,8 +422,8 @@ end;
 
 procedure TAtlasIdeUnwrap.Preview(AIndex: Integer);
 var
-  View: IOTAEditView;
-  First, Last: Integer;
+  mView: IOTAEditView;
+  mFirst, mLast: Integer;
 begin
   if (AIndex < 0) or (AIndex > High(FEntries)) then
   begin
@@ -431,49 +431,49 @@ begin
   end;
   FPreview := AIndex;
   // Die Vorschau soll ganz zu sehen sein: oberste Zeile des Konstrukts in den sichtbaren Bereich.
-  View := TAtlasEditorBuffer.ActiveView;
-  if (View <> nil) and (View.Buffer <> nil) and SameText(View.Buffer.FileName, FFileName) and
-    TAtlasUnwrap.LineSpan(FEntries[AIndex], First, Last) and (First + 1 < View.TopRow) then
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, FFileName) and
+    TAtlasUnwrap.LineSpan(FEntries[AIndex], mFirst, mLast) and (mFirst + 1 < mView.TopRow) then
   begin
-    View.SetTopLeft(First + 1, View.LeftColumn);
+    mView.SetTopLeft(mFirst + 1, mView.LeftColumn);
   end;
   Invalidate;
 end;
 
 procedure TAtlasIdeUnwrap.Accept(AIndex: Integer);
 var
-  View: IOTAEditView;
-  Entry: TAtlasUnwrapEntry;
-  Outcome: TAtlasWorkspaceEditResult;
+  mView: IOTAEditView;
+  mEntry: TAtlasUnwrapEntry;
+  mOutcome: TAtlasWorkspaceEditResult;
 begin
   if (AIndex < 0) or (AIndex > High(FEntries)) or not FEntries[AIndex].Available then
   begin
     Close;
     Exit;
   end;
-  Entry := FEntries[AIndex];
+  mEntry := FEntries[AIndex];
   Close;
-  View := TAtlasEditorBuffer.ActiveView;
+  mView := TAtlasEditorBuffer.ActiveView;
   // Nur auf den Stand, für den die Antwort gilt.
-  if (View = nil) or (View.Buffer = nil) or not SameText(View.Buffer.FileName, FFileName) or
-    (TAtlasEditorBuffer.Text(View.Buffer) <> FText) then
+  if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, FFileName) or
+    (TAtlasEditorBuffer.Text(mView.Buffer) <> FText) then
   begin
     Report(TAtlasStrings.Text(TAtlasTextId.UnwrapChanged));
     Exit;
   end;
   FWriting := True;
   try
-    Outcome := TAtlasIdeWorkspaceEdit.Apply(TAtlasUnwrap.EditOf(Entry, FFileName), TAtlasUnopenedPolicy.OpenInEditor,
+    mOutcome := TAtlasIdeWorkspaceEdit.Apply(TAtlasUnwrap.EditOf(mEntry, FFileName), TAtlasUnopenedPolicy.OpenInEditor,
       TAtlasStrings.Text(TAtlasTextId.UnwrapCommand));
   finally
     FWriting := False;
   end;
-  if Outcome.Error <> '' then
+  if mOutcome.Error <> '' then
   begin
-    Report(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
+    Report(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
     Exit;
   end;
-  Report(TAtlasStrings.Fmt(TAtlasTextId.UnwrapDone, [TAtlasUnwrapWindow.EntryCaption(Entry)]));
+  Report(TAtlasStrings.Fmt(TAtlasTextId.UnwrapDone, [TAtlasUnwrapWindow.EntryCaption(mEntry)]));
 end;
 
 /// <summary>Führt AKey in der Liste aus (Eingabe, Escape, Pfeile ohne Strg/Alt); False für jede andere Taste.
@@ -499,7 +499,7 @@ begin
   end;
 end;
 
-procedure TAtlasIdeUnwrap.KeyDown(const Msg: TMsg; var Handled: Boolean);
+procedure TAtlasIdeUnwrap.KeyDown(const AMsg: TMsg; var AHandled: Boolean);
 var
   mKey: Word;
 begin
@@ -507,14 +507,14 @@ begin
   begin
     Exit;
   end;
-  mKey := Word(Msg.wParam);
+  mKey := Word(AMsg.wParam);
   if (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) then
   begin
     Exit;
   end;
   if ListKey(mKey) then
   begin
-    Handled := True;
+    AHandled := True;
   end
   else
   begin
@@ -580,10 +580,10 @@ var
 begin
   if AKeep then
   begin
-    TAtlasIdeStyle.Blend(ADC, AArea, COLORREF(ColorToRGB(TColor(AColors.Add))), TAtlasIdeUnwrap.KeepAlpha);
+    TAtlasIdeStyle.Blend(ADC, AArea, COLORREF(ColorToRGB(TColor(AColors.Add))), TAtlasIdeUnwrap.cKeepAlpha);
     Exit;
   end;
-  TAtlasIdeStyle.Blend(ADC, AArea, COLORREF(ColorToRGB(TColor(AColors.Error))), TAtlasIdeUnwrap.RemoveAlpha);
+  TAtlasIdeStyle.Blend(ADC, AArea, COLORREF(ColorToRGB(TColor(AColors.Error))), TAtlasIdeUnwrap.cRemoveAlpha);
   // Durchgestrichen: Linie auf halber Höhe.
   mMiddle := (AArea.Top + AArea.Bottom) div 2;
   mOldPen := SelectObject(ADC, APen);

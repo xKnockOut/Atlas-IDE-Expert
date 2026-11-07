@@ -802,17 +802,17 @@ end;
 
 class function TAtlasStatusLines.UnitsOf(const AStatusJson: string): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := -1;
-  Value := TJSONObject.ParseJSONValue(AStatusJson);
+  mValue := TJSONObject.ParseJSONValue(AStatusJson);
   try
-    if Value is TJSONObject then
+    if mValue is TJSONObject then
     begin
-      Result := TJSONObject(Value).GetValue<Integer>('units', -1);
+      Result := TJSONObject(mValue).GetValue<Integer>('units', -1);
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 

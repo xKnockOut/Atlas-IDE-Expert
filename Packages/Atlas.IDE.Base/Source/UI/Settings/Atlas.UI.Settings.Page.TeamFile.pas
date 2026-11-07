@@ -144,21 +144,21 @@ end;
 
 procedure TAtlasSettingsTeamFilePart.AddTeamFileSection;
 var
-  Panel: TWinControl;
+  mPanel: TWinControl;
 begin
   // Projektdatei .atlas (#486): Schalter, Erklärung, „Projektdatei öffnen“ und jeder Wert mit „aus .atlas“.
   FTeamFile := BindCheck('TeamFile', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTeamFile)));
   FTeamFile.OnClick := TeamFileClick;
   Attach(AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileHint)).Parent, FTeamFile);
-  Panel := AddPanel(32);
+  mPanel := AddPanel(32);
   FTeamFileOpen := TButton.Create(FPage);
-  FTeamFileOpen.Parent := Panel;
+  FTeamFileOpen.Parent := mPanel;
   FTeamFileOpen.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileOpen);
   FTeamFileOpen.Left := 0;
   FTeamFileOpen.Top := 3;
   FTeamFileOpen.Width := 180;
   FTeamFileOpen.OnClick := TeamFileOpenClick;
-  Attach(Panel, FTeamFile);
+  Attach(mPanel, FTeamFile);
   FTeamFileInfo := AddWrappedLabel(180, '');
   Attach(FTeamFileInfo.Parent, FTeamFile);
   RefreshTeamFile;

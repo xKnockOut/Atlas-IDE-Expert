@@ -203,7 +203,7 @@ end;
 /// Grund der Ablehnung.</summary>
 function PrepareForm(const AEntry: TAtlasPlannedEdit; var AFile: TPreparedFile): string;
 var
-  Sent: string;
+  mSent: string;
 begin
   AFile.IsForm := True;
   if AEntry.HasBase then
@@ -216,10 +216,10 @@ begin
     Exit;
   end;
   // Check hat den Text schon geprüft; vorher ist der Stand, den der Server kennt.
-  if TAtlasIdeForms.SentText(AEntry.FileName, Sent) then
+  if TAtlasIdeForms.SentText(AEntry.FileName, mSent) then
   begin
-    AFile.Change := TAtlasFileChange.Modified(AEntry.FileName, Content(AEntry.FileName, Sent),
-      Content(AEntry.FileName, TLspEdits.Apply(Sent, AEntry.Edits)));
+    AFile.Change := TAtlasFileChange.Modified(AEntry.FileName, Content(AEntry.FileName, mSent),
+      Content(AEntry.FileName, TLspEdits.Apply(mSent, AEntry.Edits)));
   end;
 end;
 
@@ -315,50 +315,50 @@ end;
 function PrepareFiles(const APlan: TAtlasEditPlan; APolicy: TAtlasUnopenedPolicy; out AFiles: TArray<TPreparedFile>;
   var AResult: TAtlasWorkspaceEditResult): Boolean;
 var
-  Prepared: TList<TPreparedFile>;
-  Entry: TAtlasPlannedEdit;
-  Item: TPreparedFile;
-  Error: string;
+  mPrepared: TList<TPreparedFile>;
+  mEntry: TAtlasPlannedEdit;
+  mItem: TPreparedFile;
+  mError: string;
 begin
   Result := False;
   AFiles := nil;
-  Prepared := TList<TPreparedFile>.Create;
+  mPrepared := TList<TPreparedFile>.Create;
   try
-    for Entry in APlan.Files do
+    for mEntry in APlan.Files do
     begin
-      Item := Default(TPreparedFile);
-      Item.FileName := Entry.FileName;
-      if not TAtlasIdeFiles.IsProjectFile(Entry.FileName) then
+      mItem := Default(TPreparedFile);
+      mItem.FileName := mEntry.FileName;
+      if not TAtlasIdeFiles.IsProjectFile(mEntry.FileName) then
       begin
-        Item.Buffer := TAtlasIdeFiles.BufferOf(Entry.FileName);
+        mItem.Buffer := TAtlasIdeFiles.BufferOf(mEntry.FileName);
       end;
-      if (Item.Buffer = nil) and TAtlasIdeFiles.IsFormFile(Entry.FileName) and
-        TAtlasIdeForms.IsOpen(Entry.FileName) then
+      if (mItem.Buffer = nil) and TAtlasIdeFiles.IsFormFile(mEntry.FileName) and
+        TAtlasIdeForms.IsOpen(mEntry.FileName) then
       begin
-        Error := PrepareForm(Entry, Item);
-        if Error <> '' then
+        mError := PrepareForm(mEntry, mItem);
+        if mError <> '' then
         begin
-          AResult.Error := Failure(Entry.FileName, Error);
+          AResult.Error := Failure(mEntry.FileName, mError);
           Exit;
         end;
       end
       else
         try
-          PrepareText(Entry, APolicy, Item);
+          PrepareText(mEntry, APolicy, mItem);
         except
           on E: Exception do
           begin
-            AResult.Error := Failure(Entry.FileName, E.Message);
+            AResult.Error := Failure(mEntry.FileName, E.Message);
             Exit;
           end;
         end;
-      Prepared.Add(Item);
-      Inc(AResult.Edits, Length(Entry.Edits));
+      mPrepared.Add(mItem);
+      Inc(AResult.Edits, Length(mEntry.Edits));
     end;
-    AFiles := Prepared.ToArray;
+    AFiles := mPrepared.ToArray;
     Result := True;
   finally
-    Prepared.Free;
+    mPrepared.Free;
   end;
 end;
 
@@ -514,13 +514,13 @@ end;
 
 class function TAtlasIdeWorkspaceEdit.CurrentText(const AFileName: string): string;
 var
-  Buffer: IOTAEditBuffer;
+  mBuffer: IOTAEditBuffer;
 begin
   Result := '';
-  Buffer := TAtlasIdeFiles.BufferOf(AFileName);
-  if Buffer <> nil then
+  mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
+  if mBuffer <> nil then
   begin
-    Exit(TAtlasEditorBuffer.Text(Buffer));
+    Exit(TAtlasEditorBuffer.Text(mBuffer));
   end;
   // Offenes Formular: der Stand des Designers, wie ihn der Server kennt (#402).
   if TAtlasIdeForms.SentText(AFileName, Result) then
@@ -541,24 +541,24 @@ end;
 class procedure TAtlasIdeWorkspaceEdit.WriteBuffer(const ABuffer: IOTAEditBuffer; const AText: string;
   const ARanges: TArray<TLspTextRange>);
 var
-  Writer: IOTAEditWriter;
-  Range: TLspTextRange;
-  StartByte, EndByte: Integer;
+  mWriter: IOTAEditWriter;
+  mRange: TLspTextRange;
+  mStartByte, mEndByte: Integer;
 begin
   // Ein Schreiber = ein Rückgängig-Schritt. Er schreibt nur vorwärts; die Bereiche sind aufsteigend.
-  Writer := ABuffer.CreateUndoableWriter;
-  for Range in ARanges do
+  mWriter := ABuffer.CreateUndoableWriter;
+  for mRange in ARanges do
   begin
-    StartByte := TEncoding.UTF8.GetByteCount(Copy(AText, 1, Range.StartOffset));
-    EndByte := TEncoding.UTF8.GetByteCount(Copy(AText, 1, Range.EndOffset));
-    Writer.CopyTo(StartByte);
-    Writer.DeleteTo(EndByte);
-    if Range.NewText <> '' then
+    mStartByte := TEncoding.UTF8.GetByteCount(Copy(AText, 1, mRange.StartOffset));
+    mEndByte := TEncoding.UTF8.GetByteCount(Copy(AText, 1, mRange.EndOffset));
+    mWriter.CopyTo(mStartByte);
+    mWriter.DeleteTo(mEndByte);
+    if mRange.NewText <> '' then
     begin
-      Writer.Insert(PAnsiChar(UTF8Encode(Range.NewText)));
+      mWriter.Insert(PAnsiChar(UTF8Encode(mRange.NewText)));
     end;
   end;
-  Writer := nil;
+  mWriter := nil;
   // Eigener Schreibvorgang: Probleme und Inlay-Hints lesen den Puffer neu (P-04).
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
@@ -566,28 +566,28 @@ end;
 class function TAtlasIdeWorkspaceEdit.Apply(const AEdit: TLspWorkspaceEdit; APolicy: TAtlasUnopenedPolicy;
   const AAction: string): TAtlasWorkspaceEditResult;
 var
-  Target: IAtlasUndoTarget;
-  Environment: IAtlasEditEnvironment;
-  Plan: TAtlasEditPlan;
-  Files: TArray<TPreparedFile>;
+  mTarget: IAtlasUndoTarget;
+  mEnvironment: IAtlasEditEnvironment;
+  mPlan: TAtlasEditPlan;
+  mFiles: TArray<TPreparedFile>;
 begin
   Result := Default(TAtlasWorkspaceEditResult);
-  Target := TAtlasIdeUndoTarget.Create;
-  Environment := TAtlasIdeEditEnvironment.Create(Target);
+  mTarget := TAtlasIdeUndoTarget.Create;
+  mEnvironment := TAtlasIdeEditEnvironment.Create(mTarget);
   // 1. Prüfen: Dateioperationen und alle Texte planen, noch nichts ändern.
-  Plan := TAtlasEditPlanner.Plan(AEdit, Environment);
-  if Plan.Error <> '' then
+  mPlan := TAtlasEditPlanner.Plan(AEdit, mEnvironment);
+  if mPlan.Error <> '' then
   begin
-    Result.Error := Plan.Error;
+    Result.Error := mPlan.Error;
     Exit;
   end;
-  Result.Edits := Plan.CreatedEdits;
-  if not PrepareFiles(Plan, APolicy, Files, Result) then
+  Result.Edits := mPlan.CreatedEdits;
+  if not PrepareFiles(mPlan, APolicy, mFiles, Result) then
   begin
     Exit;
   end;
   // 2. Anwenden.
-  Execute(Plan, Files, AAction, Target, Result);
+  Execute(mPlan, mFiles, AAction, mTarget, Result);
 end;
 
 initialization

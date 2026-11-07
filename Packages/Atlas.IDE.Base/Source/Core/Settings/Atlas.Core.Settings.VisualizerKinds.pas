@@ -56,17 +56,17 @@ implementation
 
 class function TAtlasVisualizerSettings.ParseKinds(const AText: string): TAtlasVisualizerKinds;
 var
-  Part: string;
-  Kind: TAtlasVisualizerKind;
+  mPart: string;
+  mKind: TAtlasVisualizerKind;
 begin
   Result := [];
-  for Part in AText.Split([',', ';']) do
+  for mPart in AText.Split([',', ';']) do
   begin
-    for Kind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+    for mKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
     begin
-      if SameText(Trim(Part), KindNames[Kind]) then
+      if SameText(Trim(mPart), KindNames[mKind]) then
       begin
-        Include(Result, Kind);
+        Include(Result, mKind);
       end;
     end;
   end;
@@ -74,18 +74,18 @@ end;
 
 class function TAtlasVisualizerSettings.KindsText(AKinds: TAtlasVisualizerKinds): string;
 var
-  Kind: TAtlasVisualizerKind;
+  mKind: TAtlasVisualizerKind;
 begin
   Result := '';
-  for Kind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+  for mKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
   begin
-    if Kind in AKinds then
+    if mKind in AKinds then
     begin
       if Result <> '' then
       begin
         Result := Result + ',';
       end;
-      Result := Result + KindNames[Kind];
+      Result := Result + KindNames[mKind];
     end;
   end;
 end;
@@ -97,13 +97,13 @@ end;
 
 class function TAtlasVisualizerSettings.ParseEvaluation(const AText: string): TAtlasVisualizerEvaluation;
 var
-  Item: TAtlasVisualizerEvaluation;
+  mItem: TAtlasVisualizerEvaluation;
 begin
-  for Item := Low(TAtlasVisualizerEvaluation) to High(TAtlasVisualizerEvaluation) do
+  for mItem := Low(TAtlasVisualizerEvaluation) to High(TAtlasVisualizerEvaluation) do
   begin
-    if SameText(Trim(AText), EvaluationNames[Item]) then
+    if SameText(Trim(AText), EvaluationNames[mItem]) then
     begin
-      Exit(Item);
+      Exit(mItem);
     end;
   end;
   Result := TAtlasVisualizerEvaluation.Properties;
@@ -111,28 +111,28 @@ end;
 
 class function TAtlasVisualizerSettings.ParseNameFields(const AText: string): TArray<string>;
 var
-  Part, Name, Known: string;
-  Seen: Boolean;
+  mPart, mName, mKnown: string;
+  mSeen: Boolean;
 begin
   Result := nil;
-  for Part in AText.Split([',', ';']) do
+  for mPart in AText.Split([',', ';']) do
   begin
-    Name := Trim(Part);
-    if (Name = '') or not IsValidIdent(Name) then
+    mName := Trim(mPart);
+    if (mName = '') or not IsValidIdent(mName) then
     begin
       Continue;
     end;
-    Seen := False;
-    for Known in Result do
+    mSeen := False;
+    for mKnown in Result do
     begin
-      if SameText(Known, Name) then
+      if SameText(mKnown, mName) then
       begin
-        Seen := True;
+        mSeen := True;
       end;
     end;
-    if not Seen then
+    if not mSeen then
     begin
-      Result := Result + [Name];
+      Result := Result + [mName];
     end;
   end;
 end;

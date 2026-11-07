@@ -88,7 +88,7 @@ uses
   Atlas.Text.Lines;
 
 const
-  RoutineWords: array[0..6] of string = ('procedure ', 'function ', 'constructor ', 'destructor ', 'operator ',
+  cRoutineWords: array[0..6] of string = ('procedure ', 'function ', 'constructor ', 'destructor ', 'operator ',
     'class procedure ', 'class function ');
 
 function IntegerOf(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
@@ -112,25 +112,25 @@ end;
 /// <summary>Kopf einer Methode mit Typ: "procedure TFoo.Bar", auch class procedure und constructor.</summary>
 function IsMethodHeader(const ALine: string): Boolean;
 var
-  Lower, Word: string;
-  Stop: Integer;
+  mLower, mWord: string;
+  mStop: Integer;
 begin
   Result := False;
-  Lower := LowerCase(Trim(ALine));
-  for Word in RoutineWords do
+  mLower := LowerCase(Trim(ALine));
+  for mWord in cRoutineWords do
   begin
-    if StartsStr(Word, Lower) then
+    if StartsStr(mWord, mLower) then
     begin
-      Stop := Length(Lower) + 1;
-      if Pos('(', Lower) > 0 then
+      mStop := Length(mLower) + 1;
+      if Pos('(', mLower) > 0 then
       begin
-        Stop := Pos('(', Lower);
+        mStop := Pos('(', mLower);
       end;
-      if (Pos(';', Lower) > 0) and (Pos(';', Lower) < Stop) then
+      if (Pos(';', mLower) > 0) and (Pos(';', mLower) < mStop) then
       begin
-        Stop := Pos(';', Lower);
+        mStop := Pos(';', mLower);
       end;
-      Exit(Pos('.', Copy(Lower, Length(Word) + 1, Stop - Length(Word) - 1)) > 0);
+      Exit(Pos('.', Copy(mLower, Length(mWord) + 1, mStop - Length(mWord) - 1)) > 0);
     end;
   end;
 end;
@@ -139,12 +139,12 @@ end;
 
 function TAtlasMethodPlacementReply.Moved: Integer;
 var
-  Move: TAtlasMethodMove;
+  mMove: TAtlasMethodMove;
 begin
   Result := 0;
-  for Move in Moves do
+  for mMove in Moves do
   begin
-    if not Move.Fixed then
+    if not mMove.Fixed then
     begin
       Inc(Result);
     end;
@@ -156,36 +156,36 @@ end;
 class function TAtlasMethodPlacement.Arguments(const AUri, AMode: string; AAll: Boolean;
   const ABefore: string): string;
 var
-  List: TJSONArray;
-  Options: TJSONObject;
+  mList: TJSONArray;
+  mOptions: TJSONObject;
 begin
-  List := TJSONArray.Create;
+  mList := TJSONArray.Create;
   try
-    List.Add(AUri);
-    Options := TJSONObject.Create;
-    Options.AddPair('mode', AMode);
+    mList.Add(AUri);
+    mOptions := TJSONObject.Create;
+    mOptions.AddPair('mode', AMode);
     if AAll then
     begin
-      Options.AddPair('scope', 'all');
+      mOptions.AddPair('scope', 'all');
     end
     else
     begin
-      Options.AddPair('scope', 'new');
-      Options.AddPair('before', ABefore);
+      mOptions.AddPair('scope', 'new');
+      mOptions.AddPair('before', ABefore);
     end;
-    List.AddElement(Options);
-    Result := List.ToJSON;
+    mList.AddElement(mOptions);
+    Result := mList.ToJSON;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 class function TAtlasMethodPlacement.Read(const AAnswer: TJSONValue; out AReply: TAtlasMethodPlacementReply): Boolean;
 var
-  Answer, Item: TJSONObject;
-  Element: TJSONValue;
-  Edit: TLspTextEdit;
-  Move: TAtlasMethodMove;
+  mAnswer, mItem: TJSONObject;
+  mElement: TJSONValue;
+  mEdit: TLspTextEdit;
+  mMove: TAtlasMethodMove;
 begin
   AReply := Default(TAtlasMethodPlacementReply);
   Result := AAnswer is TJSONObject;
@@ -193,68 +193,68 @@ begin
   begin
     Exit;
   end;
-  Answer := TJSONObject(AAnswer);
-  if Answer.GetValue('edits') is TJSONArray then
+  mAnswer := TJSONObject(AAnswer);
+  if mAnswer.GetValue('edits') is TJSONArray then
   begin
-    for Element in TJSONArray(Answer.GetValue('edits')) do
+    for mElement in TJSONArray(mAnswer.GetValue('edits')) do
     begin
-      if TLspTextEdit.FromJson(Element, Edit) then
+      if TLspTextEdit.FromJson(mElement, mEdit) then
       begin
-        AReply.Edits := AReply.Edits + [Edit];
+        AReply.Edits := AReply.Edits + [mEdit];
       end;
     end;
   end;
-  if Answer.GetValue('moves') is TJSONArray then
+  if mAnswer.GetValue('moves') is TJSONArray then
   begin
-    for Element in TJSONArray(Answer.GetValue('moves')) do
+    for mElement in TJSONArray(mAnswer.GetValue('moves')) do
     begin
-      if not (Element is TJSONObject) then
+      if not (mElement is TJSONObject) then
       begin
         Continue;
       end;
-      Item := TJSONObject(Element);
-      Move := Default(TAtlasMethodMove);
-      Move.TypeName := StringOf(Item, 'type');
-      Move.Name := StringOf(Item, 'name');
-      Move.Line := IntegerOf(Item, 'line', 0);
-      Move.NewLine := IntegerOf(Item, 'newLine', -1);
-      Move.Size := IntegerOf(Item, 'size', 1);
-      Move.Delta := IntegerOf(Item, 'delta', 0);
-      Move.Fixed := (Item.GetValue('fixed') is TJSONBool) and TJSONBool(Item.GetValue('fixed')).AsBoolean;
-      Move.Reason := StringOf(Item, 'reason');
-      AReply.Moves := AReply.Moves + [Move];
+      mItem := TJSONObject(mElement);
+      mMove := Default(TAtlasMethodMove);
+      mMove.TypeName := StringOf(mItem, 'type');
+      mMove.Name := StringOf(mItem, 'name');
+      mMove.Line := IntegerOf(mItem, 'line', 0);
+      mMove.NewLine := IntegerOf(mItem, 'newLine', -1);
+      mMove.Size := IntegerOf(mItem, 'size', 1);
+      mMove.Delta := IntegerOf(mItem, 'delta', 0);
+      mMove.Fixed := (mItem.GetValue('fixed') is TJSONBool) and TJSONBool(mItem.GetValue('fixed')).AsBoolean;
+      mMove.Reason := StringOf(mItem, 'reason');
+      AReply.Moves := AReply.Moves + [mMove];
     end;
   end;
 end;
 
 class function TAtlasMethodPlacement.NewHeaders(const ABefore, AAfter: string): Boolean;
 var
-  Known: TDictionary<string, Boolean>;
-  Line: string;
+  mKnown: TDictionary<string, Boolean>;
+  mLine: string;
 begin
   Result := False;
   if ABefore = AAfter then
   begin
     Exit;
   end;
-  Known := TDictionary<string, Boolean>.Create;
+  mKnown := TDictionary<string, Boolean>.Create;
   try
-    for Line in TTextLines.SplitLines(ABefore) do
+    for mLine in TTextLines.SplitLines(ABefore) do
     begin
-      if IsMethodHeader(Line) then
+      if IsMethodHeader(mLine) then
       begin
-        Known.AddOrSetValue(Trim(Line), True);
+        mKnown.AddOrSetValue(Trim(mLine), True);
       end;
     end;
-    for Line in TTextLines.SplitLines(AAfter) do
+    for mLine in TTextLines.SplitLines(AAfter) do
     begin
-      if IsMethodHeader(Line) and not Known.ContainsKey(Trim(Line)) then
+      if IsMethodHeader(mLine) and not mKnown.ContainsKey(Trim(mLine)) then
       begin
         Exit(True);
       end;
     end;
   finally
-    Known.Free;
+    mKnown.Free;
   end;
 end;
 
@@ -319,14 +319,14 @@ end;
 class function TAtlasMethodPlacement.CaretLine(const AMoves: TArray<TAtlasMethodMove>; ALine: Integer;
   out ANewLine: Integer): Boolean;
 var
-  Move: TAtlasMethodMove;
+  mMove: TAtlasMethodMove;
 begin
   ANewLine := ALine;
-  for Move in AMoves do
+  for mMove in AMoves do
   begin
-    if not Move.Fixed and (Move.NewLine >= 0) and (ALine >= Move.Line) and (ALine < Move.Line + Move.Size) then
+    if not mMove.Fixed and (mMove.NewLine >= 0) and (ALine >= mMove.Line) and (ALine < mMove.Line + mMove.Size) then
     begin
-      ANewLine := Move.NewLine + ALine - Move.Line;
+      ANewLine := mMove.NewLine + ALine - mMove.Line;
       Exit(True);
     end;
   end;
@@ -336,20 +336,20 @@ end;
 class function TAtlasMethodPlacement.MoveText(const AMove: TAtlasMethodMove;
   const ATexts: TAtlasMethodPlacementTexts): string;
 var
-  Reason: string;
+  mReason: string;
 begin
   if AMove.Fixed then
   begin
-    Reason := ATexts.SharedLine;
+    mReason := ATexts.SharedLine;
     if AMove.Reason = 'region' then
     begin
-      Reason := ATexts.Region;
+      mReason := ATexts.Region;
     end
     else if AMove.Reason = 'ifdef' then
     begin
-      Reason := ATexts.Conditional;
+      mReason := ATexts.Conditional;
     end;
-    Result := Format(ATexts.Stays, [Reason]);
+    Result := Format(ATexts.Stays, [mReason]);
   end
   else if AMove.Delta < 0 then
   begin

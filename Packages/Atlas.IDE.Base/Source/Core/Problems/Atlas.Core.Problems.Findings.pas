@@ -379,7 +379,7 @@ uses
   System.Generics.Defaults;
 
 const
-  CategoryNames: array[TAtlasFindingCategory] of string = ('bug', 'vulnerability', 'code-smell',
+  cCategoryNames: array[TAtlasFindingCategory] of string = ('bug', 'vulnerability', 'code-smell',
     'security-hotspot', 'compiler', '');
 
 { TAtlasFinding }
@@ -513,17 +513,17 @@ end;
 
 class function TAtlasFindings.CategoryOf(const AProblem: TAtlasProblem): TAtlasFindingCategory;
 var
-  Category: TAtlasFindingCategory;
+  mCategory: TAtlasFindingCategory;
 begin
   if AProblem.IsCompiler then
   begin
     Exit(TAtlasFindingCategory.Compiler);
   end;
-  for Category := Low(TAtlasFindingCategory) to Pred(TAtlasFindingCategory.Compiler) do
+  for mCategory := Low(TAtlasFindingCategory) to Pred(TAtlasFindingCategory.Compiler) do
   begin
-    if SameText(AProblem.Category, CategoryNames[Category]) then
+    if SameText(AProblem.Category, cCategoryNames[mCategory]) then
     begin
-      Exit(Category);
+      Exit(mCategory);
     end;
   end;
   Result := TAtlasFindingCategory.Other;
@@ -538,46 +538,46 @@ end;
 class function TAtlasFindings.FromProblems(const AFileName: string; const AProblems: TArray<TAtlasProblem>;
   const ALines: TArray<string>): TArray<TAtlasFinding>;
 var
-  Problem: TAtlasProblem;
-  Finding: TAtlasFinding;
-  Seen: TDictionary<string, Integer>;
-  Base: string;
-  Number, Count: Integer;
+  mProblem: TAtlasProblem;
+  mFinding: TAtlasFinding;
+  mSeen: TDictionary<string, Integer>;
+  mBase: string;
+  mNumber, mCount: Integer;
 begin
   SetLength(Result, Length(AProblems));
-  Count := 0;
-  Seen := TDictionary<string, Integer>.Create;
+  mCount := 0;
+  mSeen := TDictionary<string, Integer>.Create;
   try
-    for Problem in AProblems do
+    for mProblem in AProblems do
     begin
-      if not IsFinding(Problem) then
+      if not IsFinding(mProblem) then
       begin
         Continue;
       end;
-      Finding := Default(TAtlasFinding);
-      Finding.FileName := AFileName;
-      Finding.Problem := Problem;
-      Finding.Kind := KindOf(Problem.Severity);
-      Finding.Category := CategoryOf(Problem);
-      if (Problem.StartLine >= 0) and (Problem.StartLine < Length(ALines)) then
+      mFinding := Default(TAtlasFinding);
+      mFinding.FileName := AFileName;
+      mFinding.Problem := mProblem;
+      mFinding.Kind := KindOf(mProblem.Severity);
+      mFinding.Category := CategoryOf(mProblem);
+      if (mProblem.StartLine >= 0) and (mProblem.StartLine < Length(ALines)) then
       begin
-        Finding.LineText := ALines[Problem.StartLine].Trim;
+        mFinding.LineText := ALines[mProblem.StartLine].Trim;
       end;
-      Base := AnsiLowerCase(AFileName) + '|' + Problem.Source + '|' + Problem.Code + '|' + Problem.Message;
-      if not Seen.TryGetValue(Base, Number) then
+      mBase := AnsiLowerCase(AFileName) + '|' + mProblem.Source + '|' + mProblem.Code + '|' + mProblem.Message;
+      if not mSeen.TryGetValue(mBase, mNumber) then
       begin
-        Number := 0;
+        mNumber := 0;
       end;
-      Inc(Number);
-      Seen.AddOrSetValue(Base, Number);
-      Finding.Key := Base + '|' + IntToStr(Number);
-      Result[Count] := Finding;
-      Inc(Count);
+      Inc(mNumber);
+      mSeen.AddOrSetValue(mBase, mNumber);
+      mFinding.Key := mBase + '|' + IntToStr(mNumber);
+      Result[mCount] := mFinding;
+      Inc(mCount);
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
-  SetLength(Result, Count);
+  SetLength(Result, mCount);
 end;
 
 type
@@ -659,22 +659,22 @@ end;
 
 class function TAtlasFindings.Concat(const AParts: TArray<TArray<TAtlasFinding>>): TArray<TAtlasFinding>;
 var
-  Part: TArray<TAtlasFinding>;
-  Count, Index: Integer;
+  mPart: TArray<TAtlasFinding>;
+  mCount, mIndex: Integer;
 begin
-  Count := 0;
-  for Part in AParts do
+  mCount := 0;
+  for mPart in AParts do
   begin
-    Inc(Count, Length(Part));
+    Inc(mCount, Length(mPart));
   end;
-  SetLength(Result, Count);
-  Count := 0;
-  for Part in AParts do
+  SetLength(Result, mCount);
+  mCount := 0;
+  for mPart in AParts do
   begin
-    for Index := 0 to High(Part) do
+    for mIndex := 0 to High(mPart) do
     begin
-      Result[Count] := Part[Index];
-      Inc(Count);
+      Result[mCount] := mPart[mIndex];
+      Inc(mCount);
     end;
   end;
 end;
@@ -682,21 +682,21 @@ end;
 class function TAtlasFindings.FromStore(AStore: TAtlasProblemStore; const AFiles: TArray<string>;
   const AReadLines: TFunc<string, TArray<string>>): TArray<TAtlasFinding>;
 var
-  Files: TArray<string>;
-  Parts: TArray<TArray<TAtlasFinding>>;
-  Index: Integer;
+  mFiles: TArray<string>;
+  mParts: TArray<TArray<TAtlasFinding>>;
+  mIndex: Integer;
 begin
-  Files := AFiles;
-  if Files = nil then
+  mFiles := AFiles;
+  if mFiles = nil then
   begin
-    Files := AStore.Files;
+    mFiles := AStore.Files;
   end;
-  SetLength(Parts, Length(Files));
-  for Index := 0 to High(Files) do
+  SetLength(mParts, Length(mFiles));
+  for mIndex := 0 to High(mFiles) do
   begin
-    Parts[Index] := FromStoreFile(AStore, Files[Index], AReadLines);
+    mParts[mIndex] := FromStoreFile(AStore, mFiles[mIndex], AReadLines);
   end;
-  Result := Concat(Parts);
+  Result := Concat(mParts);
 end;
 
 class function TAtlasFindings.Shorten(const AText: string; AMax: Integer): string;
@@ -710,12 +710,12 @@ end;
 
 class function TAtlasFindings.CheckedCount(AStore: TAtlasProblemStore; const AProjectFiles: TArray<string>): Integer;
 var
-  FileName: string;
+  mFileName: string;
 begin
   Result := 0;
-  for FileName in AProjectFiles do
+  for mFileName in AProjectFiles do
   begin
-    if AStore.Contains(FileName) then
+    if AStore.Contains(mFileName) then
     begin
       Inc(Result);
     end;
@@ -794,38 +794,38 @@ end;
 
 class function TAtlasFindings.FormatColumns(const AColumns: TArray<TAtlasFindingColumnState>): string;
 var
-  State: TAtlasFindingColumnState;
-  Part: string;
+  mState: TAtlasFindingColumnState;
+  mPart: string;
 begin
   Result := '';
-  for State in AColumns do
+  for mState in AColumns do
   begin
-    Part := ColumnNames[State.Column];
-    if not State.Visible and not IsMandatory(State.Column) then
+    mPart := ColumnNames[mState.Column];
+    if not mState.Visible and not IsMandatory(mState.Column) then
     begin
-      Part := '-' + Part;
+      mPart := '-' + mPart;
     end;
-    if State.Width > 0 then
+    if mState.Width > 0 then
     begin
-      Part := Part + ':' + IntToStr(State.Width);
+      mPart := mPart + ':' + IntToStr(mState.Width);
     end;
     if Result <> '' then
     begin
       Result := Result + ',';
     end;
-    Result := Result + Part;
+    Result := Result + mPart;
   end;
 end;
 
 class function TAtlasFindings.TryParseScope(const AText: string; out AScope: TAtlasFindingScope): Boolean;
 var
-  Scope: TAtlasFindingScope;
+  mScope: TAtlasFindingScope;
 begin
-  for Scope := Low(TAtlasFindingScope) to High(TAtlasFindingScope) do
+  for mScope := Low(TAtlasFindingScope) to High(TAtlasFindingScope) do
   begin
-    if SameText(AText, ScopeNames[Scope]) then
+    if SameText(AText, ScopeNames[mScope]) then
     begin
-      AScope := Scope;
+      AScope := mScope;
       Exit(True);
     end;
   end;
@@ -835,13 +835,13 @@ end;
 
 class function TAtlasFindings.TryParseGrouping(const AText: string; out AGrouping: TAtlasFindingGrouping): Boolean;
 var
-  Grouping: TAtlasFindingGrouping;
+  mGrouping: TAtlasFindingGrouping;
 begin
-  for Grouping := Low(TAtlasFindingGrouping) to High(TAtlasFindingGrouping) do
+  for mGrouping := Low(TAtlasFindingGrouping) to High(TAtlasFindingGrouping) do
   begin
-    if SameText(AText, GroupingNames[Grouping]) then
+    if SameText(AText, GroupingNames[mGrouping]) then
     begin
-      AGrouping := Grouping;
+      AGrouping := mGrouping;
       Exit(True);
     end;
   end;
@@ -851,11 +851,11 @@ end;
 
 class function TAtlasFindings.UnitKey(const AFileName: string): string;
 var
-  Extension: string;
+  mExtension: string;
 begin
   Result := AnsiLowerCase(AFileName);
-  Extension := ExtractFileExt(Result);
-  if (Extension = '.dfm') or (Extension = '.fmx') then
+  mExtension := ExtractFileExt(Result);
+  if (mExtension = '.dfm') or (mExtension = '.fmx') then
   begin
     Result := ChangeFileExt(Result, '.pas');
   end;
@@ -863,13 +863,13 @@ end;
 
 class function TAtlasFindings.TryParseClosedUnits(const AText: string; out AValue: TAtlasClosedUnits): Boolean;
 var
-  Value: TAtlasClosedUnits;
+  mValue: TAtlasClosedUnits;
 begin
-  for Value := Low(TAtlasClosedUnits) to High(TAtlasClosedUnits) do
+  for mValue := Low(TAtlasClosedUnits) to High(TAtlasClosedUnits) do
   begin
-    if SameText(AText, ClosedUnitsNames[Value]) then
+    if SameText(AText, ClosedUnitsNames[mValue]) then
     begin
-      AValue := Value;
+      AValue := mValue;
       Exit(True);
     end;
   end;
@@ -879,29 +879,29 @@ end;
 
 class function TAtlasFindings.AsText(const AFindings: TArray<TAtlasFinding>): string;
 const
-  KindWords: array[TAtlasFindingKind] of string = ('error', 'warning', 'info');
+  cKindWords: array[TAtlasFindingKind] of string = ('error', 'warning', 'info');
 var
-  Item: TAtlasFinding;
-  Builder: TStringBuilder;
+  mItem: TAtlasFinding;
+  mBuilder: TStringBuilder;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    for Item in AFindings do
+    for mItem in AFindings do
     begin
-      Builder.Append(Item.Location).Append(': ').Append(KindWords[Item.Kind]);
-      if Item.Rule <> '' then
+      mBuilder.Append(mItem.Location).Append(': ').Append(cKindWords[mItem.Kind]);
+      if mItem.Rule <> '' then
       begin
-        Builder.Append(' [').Append(Item.Rule).Append(']');
+        mBuilder.Append(' [').Append(mItem.Rule).Append(']');
       end;
-      Builder.Append(' ').Append(Item.Problem.Message).Append(#13#10);
-      if Item.LineText <> '' then
+      mBuilder.Append(' ').Append(mItem.Problem.Message).Append(#13#10);
+      if mItem.LineText <> '' then
       begin
-        Builder.Append('    ').Append(Item.LineText).Append(#13#10);
+        mBuilder.Append('    ').Append(mItem.LineText).Append(#13#10);
       end;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -1420,7 +1420,7 @@ begin
     TAtlasFindingGrouping.ByRule:
       Result.Caption := AFirst.Problem.Code;
     TAtlasFindingGrouping.ByCategory:
-      Result.Caption := CategoryNames[AFirst.Category];
+      Result.Caption := cCategoryNames[AFirst.Category];
     TAtlasFindingGrouping.None: ;
   end;
   if not FCollapsed.TryGetValue(AKey, mCollapsed) then
@@ -1734,63 +1734,63 @@ end;
 
 function TAtlasFindingsView.GetSelectedRow: Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
   if FSelectedKey = '' then
   begin
     Exit;
   end;
-  for Index := 0 to High(FRows) do
+  for mIndex := 0 to High(FRows) do
   begin
-    if FRows[Index].IsSection then
+    if FRows[mIndex].IsSection then
     begin
       Continue;
     end
-    else if FRows[Index].IsGroup then
+    else if FRows[mIndex].IsGroup then
     begin
-      if FSelectedKey = 'group:' + FRows[Index].GroupKey then
+      if FSelectedKey = 'group:' + FRows[mIndex].GroupKey then
       begin
-        Exit(Index);
+        Exit(mIndex);
       end;
     end
-    else if FFindings[FRows[Index].Finding].Key = FSelectedKey then
+    else if FFindings[FRows[mIndex].Finding].Key = FSelectedKey then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
 
 function TAtlasFindingsView.SelectedFinding(out AFinding: TAtlasFinding): Boolean;
 var
-  Row: Integer;
+  mRow: Integer;
 begin
   AFinding := Default(TAtlasFinding);
-  Row := GetSelectedRow;
-  Result := (Row >= 0) and not FRows[Row].IsGroup and not FRows[Row].IsSection;
+  mRow := GetSelectedRow;
+  Result := (mRow >= 0) and not FRows[mRow].IsGroup and not FRows[mRow].IsSection;
   if Result then
   begin
-    AFinding := FFindings[FRows[Row].Finding];
+    AFinding := FFindings[FRows[mRow].Finding];
   end;
 end;
 
 function TAtlasFindingsView.SelectAt(const AFileName: string; ALine: Integer): Boolean;
 var
-  Index: Integer;
-  Finding: TAtlasFinding;
-  Key: string;
+  mIndex: Integer;
+  mFinding: TAtlasFinding;
+  mKey: string;
 begin
-  for Index in FVisible do
+  for mIndex in FVisible do
   begin
-    Finding := FFindings[Index];
-    if SameText(Finding.FileName, AFileName) and (ALine >= Finding.Problem.StartLine) and
-      (ALine <= Max(Finding.Problem.StartLine, Finding.Problem.EndLine)) then
+    mFinding := FFindings[mIndex];
+    if SameText(mFinding.FileName, AFileName) and (ALine >= mFinding.Problem.StartLine) and
+      (ALine <= Max(mFinding.Problem.StartLine, mFinding.Problem.EndLine)) then
     begin
-      FSelectedKey := Finding.Key;
-      Key := GroupKeyOf(Finding);
-      if (Key <> '') and FCollapsed.ContainsKey(Key) then
+      FSelectedKey := mFinding.Key;
+      mKey := GroupKeyOf(mFinding);
+      if (mKey <> '') and FCollapsed.ContainsKey(mKey) then
       begin
-        SetExpanded(Key, True);
+        SetExpanded(mKey, True);
       end;
       Exit(True);
     end;
@@ -1800,47 +1800,47 @@ end;
 
 function TAtlasFindingsView.Step(AForward: Boolean; out AFinding: TAtlasFinding): Boolean;
 var
-  Current, Index, Target: Integer;
-  Key: string;
+  mCurrent, mIndex, mTarget: Integer;
+  mKey: string;
 begin
   AFinding := Default(TAtlasFinding);
   if Length(FVisible) = 0 then
   begin
     Exit(False);
   end;
-  Current := -1;
-  for Index := 0 to High(FVisible) do
+  mCurrent := -1;
+  for mIndex := 0 to High(FVisible) do
   begin
-    if FFindings[FVisible[Index]].Key = FSelectedKey then
+    if FFindings[FVisible[mIndex]].Key = FSelectedKey then
     begin
-      Current := Index;
+      mCurrent := mIndex;
     end;
   end;
-  if Current < 0 then
+  if mCurrent < 0 then
   begin
     if AForward then
     begin
-      Target := 0;
+      mTarget := 0;
     end
     else
     begin
-      Target := High(FVisible);
+      mTarget := High(FVisible);
     end;
   end
   else if AForward then
   begin
-    Target := (Current + 1) mod Length(FVisible);
+    mTarget := (mCurrent + 1) mod Length(FVisible);
   end
   else
   begin
-    Target := (Current - 1 + Length(FVisible)) mod Length(FVisible);
+    mTarget := (mCurrent - 1 + Length(FVisible)) mod Length(FVisible);
   end;
-  AFinding := FFindings[FVisible[Target]];
+  AFinding := FFindings[FVisible[mTarget]];
   FSelectedKey := AFinding.Key;
-  Key := GroupKeyOf(AFinding);
-  if (Key <> '') and FCollapsed.ContainsKey(Key) then
+  mKey := GroupKeyOf(AFinding);
+  if (mKey <> '') and FCollapsed.ContainsKey(mKey) then
   begin
-    SetExpanded(Key, True);
+    SetExpanded(mKey, True);
   end;
   Result := True;
 end;

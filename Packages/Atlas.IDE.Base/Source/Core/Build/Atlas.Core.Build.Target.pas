@@ -87,8 +87,8 @@ end;
 
 function TAtlasBuildTarget.SameAs(const AOther: TAtlasBuildTarget): Boolean;
 var
-  Define, Other: string;
-  Found: Boolean;
+  mDefine, mOther: string;
+  mFound: Boolean;
 begin
   Result := SameText(Project, AOther.Project) and SameText(Config, AOther.Config) and
     SameText(Platform, AOther.Platform) and (Length(Defines) = Length(AOther.Defines));
@@ -96,14 +96,14 @@ begin
   begin
     Exit;
   end;
-  for Define in Defines do
+  for mDefine in Defines do
   begin
-    Found := False;
-    for Other in AOther.Defines do
+    mFound := False;
+    for mOther in AOther.Defines do
     begin
-      Found := Found or SameText(Define, Other);
+      mFound := mFound or SameText(mDefine, mOther);
     end;
-    if not Found then
+    if not mFound then
     begin
       Exit(False);
     end;
@@ -112,57 +112,57 @@ end;
 
 class function TAtlasBuildTarget.ParseDefines(const AValue: string): TArray<string>;
 var
-  Part, Name, Known: string;
-  Duplicate: Boolean;
+  mPart, mName, mKnown: string;
+  mDuplicate: Boolean;
 begin
   Result := nil;
-  for Part in AValue.Split([';']) do
+  for mPart in AValue.Split([';']) do
   begin
-    Name := UpperCase(Trim(Part));
+    mName := UpperCase(Trim(mPart));
     // $(DCC_Define) verweist auf geerbte Werte; die liefert die IDE schon mit.
-    if (Name = '') or Name.StartsWith('$(') then
+    if (mName = '') or mName.StartsWith('$(') then
     begin
       Continue;
     end;
-    Duplicate := False;
-    for Known in Result do
+    mDuplicate := False;
+    for mKnown in Result do
     begin
-      Duplicate := Duplicate or (Known = Name);
+      mDuplicate := mDuplicate or (mKnown = mName);
     end;
-    if not Duplicate then
+    if not mDuplicate then
     begin
-      Result := Result + [Name];
+      Result := Result + [mName];
     end;
   end;
 end;
 
 function TAtlasBuildTarget.SelectArguments(const AUri: string; AAction: TAtlasBuildTargetAction): TJSONArray;
 var
-  Options: TJSONObject;
-  Items: TJSONArray;
-  Define: string;
+  mOptions: TJSONObject;
+  mItems: TJSONArray;
+  mDefine: string;
 begin
-  Options := TJSONObject.Create;
-  Options.AddPair('uri', AUri);
+  mOptions := TJSONObject.Create;
+  mOptions.AddPair('uri', AUri);
   if AAction = TAtlasBuildTargetAction.Select then
   begin
-    Options.AddPair('config', Config);
-    Options.AddPair('platform', Platform);
-    Items := TJSONArray.Create;
-    for Define in Defines do
+    mOptions.AddPair('config', Config);
+    mOptions.AddPair('platform', Platform);
+    mItems := TJSONArray.Create;
+    for mDefine in Defines do
     begin
-      Items.Add(Define);
+      mItems.Add(mDefine);
     end;
-    Options.AddPair('defines', Items);
+    mOptions.AddPair('defines', mItems);
   end;
   Result := TJSONArray.Create;
-  Result.AddElement(Options);
+  Result.AddElement(mOptions);
 end;
 
 class function TAtlasBuildTarget.FromSelection(const AResult: TJSONValue; const AProject: string;
   out AConfig, APlatform: string): Boolean;
 var
-  Projects, Item: TJSONValue;
+  mProjects, mItem: TJSONValue;
 begin
   AConfig := '';
   APlatform := '';
@@ -171,17 +171,17 @@ begin
   begin
     Exit;
   end;
-  Projects := TJSONObject(AResult).GetValue('projects');
-  if not (Projects is TJSONArray) then
+  mProjects := TJSONObject(AResult).GetValue('projects');
+  if not (mProjects is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(Projects) do
+  for mItem in TJSONArray(mProjects) do
   begin
-    if (Item is TJSONObject) and SameText(TJSONObject(Item).GetValue<string>('project', ''), AProject) then
+    if (mItem is TJSONObject) and SameText(TJSONObject(mItem).GetValue<string>('project', ''), AProject) then
     begin
-      AConfig := TJSONObject(Item).GetValue<string>('config', '');
-      APlatform := TJSONObject(Item).GetValue<string>('platform', '');
+      AConfig := TJSONObject(mItem).GetValue<string>('config', '');
+      APlatform := TJSONObject(mItem).GetValue<string>('platform', '');
       Exit(True);
     end;
   end;
@@ -208,24 +208,24 @@ end;
 
 function TAtlasBuildTargetTracker.Decide(const ACurrent: TAtlasBuildTarget): TAtlasBuildTargetAction;
 var
-  Known: TAtlasBuildTarget;
+  mKnown: TAtlasBuildTarget;
 begin
   Result := TAtlasBuildTargetAction.None;
   if FPending or (ACurrent.Project = '') then
   begin
     Exit;
   end;
-  if not FKnown.TryGetValue(Key(ACurrent.Project), Known) then
+  if not FKnown.TryGetValue(Key(ACurrent.Project), mKnown) then
   begin
     FPending := True;
     Exit(TAtlasBuildTargetAction.Query);
   end;
   // Projekt, das der Server nicht kennt: nichts senden.
-  if Known.Project = '' then
+  if mKnown.Project = '' then
   begin
     Exit;
   end;
-  if ACurrent.SameAs(Known) then
+  if ACurrent.SameAs(mKnown) then
   begin
     Exit;
   end;

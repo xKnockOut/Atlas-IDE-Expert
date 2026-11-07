@@ -121,35 +121,35 @@ end;
 
 class function TAtlasResults.Group(const AEntries: TArray<TAtlasResultEntry>): TArray<TAtlasResultGroup>;
 var
-  Groups: TList<TAtlasResultGroup>;
-  Index: TDictionary<string, Integer>;
-  Entry: TAtlasResultEntry;
-  Position: Integer;
-  Bucket: TAtlasResultGroup;
-  Item: Integer;
-  Entries: TArray<TAtlasResultEntry>;
+  mGroups: TList<TAtlasResultGroup>;
+  mIndex: TDictionary<string, Integer>;
+  mEntry: TAtlasResultEntry;
+  mPosition: Integer;
+  mBucket: TAtlasResultGroup;
+  mItem: Integer;
+  mEntries: TArray<TAtlasResultEntry>;
 begin
-  Groups := TList<TAtlasResultGroup>.Create;
-  Index := TDictionary<string, Integer>.Create;
+  mGroups := TList<TAtlasResultGroup>.Create;
+  mIndex := TDictionary<string, Integer>.Create;
   try
-    for Entry in AEntries do
+    for mEntry in AEntries do
     begin
-      if not Index.TryGetValue(AnsiUpperCase(Entry.FileName), Position) then
+      if not mIndex.TryGetValue(AnsiUpperCase(mEntry.FileName), mPosition) then
       begin
-        Bucket := Default(TAtlasResultGroup);
-        Bucket.FileName := Entry.FileName;
-        Position := Groups.Add(Bucket);
-        Index.Add(AnsiUpperCase(Entry.FileName), Position);
+        mBucket := Default(TAtlasResultGroup);
+        mBucket.FileName := mEntry.FileName;
+        mPosition := mGroups.Add(mBucket);
+        mIndex.Add(AnsiUpperCase(mEntry.FileName), mPosition);
       end;
-      Bucket := Groups[Position];
-      Bucket.Entries := Bucket.Entries + [Entry];
-      Groups[Position] := Bucket;
+      mBucket := mGroups[mPosition];
+      mBucket.Entries := mBucket.Entries + [mEntry];
+      mGroups[mPosition] := mBucket;
     end;
-    for Item := 0 to Groups.Count - 1 do
+    for mItem := 0 to mGroups.Count - 1 do
     begin
-      Bucket := Groups[Item];
-      Entries := Bucket.Entries;
-      TArray.Sort<TAtlasResultEntry>(Entries, TComparer<TAtlasResultEntry>.Construct(
+      mBucket := mGroups[mItem];
+      mEntries := mBucket.Entries;
+      TArray.Sort<TAtlasResultEntry>(mEntries, TComparer<TAtlasResultEntry>.Construct(
         function(const A, B: TAtlasResultEntry): Integer
         begin
           Result := A.Line - B.Line;
@@ -158,10 +158,10 @@ begin
             Result := A.Character - B.Character;
           end;
         end));
-      Bucket.Entries := Entries;
-      Groups[Item] := Bucket;
+      mBucket.Entries := mEntries;
+      mGroups[mItem] := mBucket;
     end;
-    Groups.Sort(TComparer<TAtlasResultGroup>.Construct(
+    mGroups.Sort(TComparer<TAtlasResultGroup>.Construct(
       function(const A, B: TAtlasResultGroup): Integer
       begin
         Result := CompareText(ExtractFileName(A.FileName), ExtractFileName(B.FileName));
@@ -170,35 +170,35 @@ begin
           Result := CompareText(A.FileName, B.FileName);
         end;
       end));
-    Result := Groups.ToArray;
+    Result := mGroups.ToArray;
   finally
-    Index.Free;
-    Groups.Free;
+    mIndex.Free;
+    mGroups.Free;
   end;
 end;
 
 class procedure TAtlasResults.FillText(var AEntries: TArray<TAtlasResultEntry>; const AReadText: TAtlasReadText);
 var
-  Cache: TDictionary<string, TArray<string>>;
-  Index: Integer;
-  FileLines: TArray<string>;
+  mCache: TDictionary<string, TArray<string>>;
+  mIndex: Integer;
+  mFileLines: TArray<string>;
 begin
-  Cache := TDictionary<string, TArray<string>>.Create;
+  mCache := TDictionary<string, TArray<string>>.Create;
   try
-    for Index := 0 to High(AEntries) do
+    for mIndex := 0 to High(AEntries) do
     begin
-      if not Cache.TryGetValue(AnsiUpperCase(AEntries[Index].FileName), FileLines) then
+      if not mCache.TryGetValue(AnsiUpperCase(AEntries[mIndex].FileName), mFileLines) then
       begin
-        FileLines := Lines(AReadText(AEntries[Index].FileName));
-        Cache.Add(AnsiUpperCase(AEntries[Index].FileName), FileLines);
+        mFileLines := Lines(AReadText(AEntries[mIndex].FileName));
+        mCache.Add(AnsiUpperCase(AEntries[mIndex].FileName), mFileLines);
       end;
-      if (AEntries[Index].Line >= 0) and (AEntries[Index].Line < Length(FileLines)) then
+      if (AEntries[mIndex].Line >= 0) and (AEntries[mIndex].Line < Length(mFileLines)) then
       begin
-        AEntries[Index].Text := Trim(FileLines[AEntries[Index].Line]);
+        AEntries[mIndex].Text := Trim(mFileLines[AEntries[mIndex].Line]);
       end;
     end;
   finally
-    Cache.Free;
+    mCache.Free;
   end;
 end;
 
@@ -353,26 +353,26 @@ end;
 
 class function TAtlasResults.SureOnly(const AEntries: TArray<TAtlasResultEntry>): TArray<TAtlasResultEntry>;
 var
-  Entry: TAtlasResultEntry;
+  mEntry: TAtlasResultEntry;
 begin
   Result := nil;
-  for Entry in AEntries do
+  for mEntry in AEntries do
   begin
-    if not Entry.Confidence.Inferred then
+    if not mEntry.Confidence.Inferred then
     begin
-      Result := Result + [Entry];
+      Result := Result + [mEntry];
     end;
   end;
 end;
 
 class function TAtlasResults.InferredCount(const AEntries: TArray<TAtlasResultEntry>): Integer;
 var
-  Entry: TAtlasResultEntry;
+  mEntry: TAtlasResultEntry;
 begin
   Result := 0;
-  for Entry in AEntries do
+  for mEntry in AEntries do
   begin
-    if Entry.Confidence.Inferred then
+    if mEntry.Confidence.Inferred then
     begin
       Inc(Result);
     end;

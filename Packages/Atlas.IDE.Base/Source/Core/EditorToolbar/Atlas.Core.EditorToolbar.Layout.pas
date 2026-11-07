@@ -61,48 +61,48 @@ end;
 /// <summary>Trennstriche nur zwischen zwei gezeigten Knöpfen.</summary>
 procedure HideLoneSeparators(const ASlots: TArray<TAtlasToolbarSlot>; var AShown: TArray<Boolean>);
 var
-  Index, Next: Integer;
-  ButtonBefore: Boolean;
+  mIndex, mNext: Integer;
+  mButtonBefore: Boolean;
 begin
-  ButtonBefore := False;
-  for Index := 0 to High(ASlots) do
+  mButtonBefore := False;
+  for mIndex := 0 to High(ASlots) do
   begin
-    if not AShown[Index] then
+    if not AShown[mIndex] then
     begin
       Continue;
     end;
-    if not ASlots[Index].Separator then
+    if not ASlots[mIndex].Separator then
     begin
-      ButtonBefore := True;
+      mButtonBefore := True;
       Continue;
     end;
-    Next := Index + 1;
-    while (Next <= High(ASlots)) and (not AShown[Next] or ASlots[Next].Separator) do
+    mNext := mIndex + 1;
+    while (mNext <= High(ASlots)) and (not AShown[mNext] or ASlots[mNext].Separator) do
     begin
-      Inc(Next);
+      Inc(mNext);
     end;
-    if not ButtonBefore or (Next > High(ASlots)) then
+    if not mButtonBefore or (mNext > High(ASlots)) then
     begin
-      AShown[Index] := False;
+      AShown[mIndex] := False;
     end
     else
     begin
       // Bis zum nächsten Knopf kein weiterer Trennstrich.
-      ButtonBefore := False;
+      mButtonBefore := False;
     end;
   end;
 end;
 
 function WidthOf(const ASlots: TArray<TAtlasToolbarSlot>; const AShown: TArray<Boolean>): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
-  for Index := 0 to High(ASlots) do
+  for mIndex := 0 to High(ASlots) do
   begin
-    if AShown[Index] then
+    if AShown[mIndex] then
     begin
-      Inc(Result, ASlots[Index].Width);
+      Inc(Result, ASlots[mIndex].Width);
     end;
   end;
 end;
@@ -110,14 +110,14 @@ end;
 /// <summary>Breite der angehefteten Plätze: Sie bleiben in jedem Fall.</summary>
 function PinnedWidth(const ASlots: TArray<TAtlasToolbarSlot>): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
-  for Index := 0 to High(ASlots) do
+  for mIndex := 0 to High(ASlots) do
   begin
-    if ASlots[Index].Pinned then
+    if ASlots[mIndex].Pinned then
     begin
-      Inc(Result, ASlots[Index].Width);
+      Inc(Result, ASlots[mIndex].Width);
     end;
   end;
 end;
@@ -125,82 +125,82 @@ end;
 /// <summary>Verteilt die Plätze der Reihe nach auf Leiste und Menü, bis ALimit erreicht ist.</summary>
 procedure Distribute(const ASlots: TArray<TAtlasToolbarSlot>; ALimit: Integer; out AVisible, AMenu: TArray<Boolean>);
 var
-  Index, Used: Integer;
-  Full: Boolean;
+  mIndex, mUsed: Integer;
+  mFull: Boolean;
 begin
-  Used := PinnedWidth(ASlots);
-  Full := False;
+  mUsed := PinnedWidth(ASlots);
+  mFull := False;
   SetLength(AVisible, Length(ASlots));
   SetLength(AMenu, Length(ASlots));
-  for Index := 0 to High(ASlots) do
+  for mIndex := 0 to High(ASlots) do
   begin
-    AVisible[Index] := ASlots[Index].Pinned;
-    AMenu[Index] := False;
-    if ASlots[Index].Pinned then
+    AVisible[mIndex] := ASlots[mIndex].Pinned;
+    AMenu[mIndex] := False;
+    if ASlots[mIndex].Pinned then
     begin
       Continue;
     end;
-    if not Full and (Used + ASlots[Index].Width <= ALimit) then
+    if not mFull and (mUsed + ASlots[mIndex].Width <= ALimit) then
     begin
-      AVisible[Index] := True;
-      Inc(Used, ASlots[Index].Width);
+      AVisible[mIndex] := True;
+      Inc(mUsed, ASlots[mIndex].Width);
     end
     else
     begin
-      Full := True;
-      AMenu[Index] := True;
+      mFull := True;
+      AMenu[mIndex] := True;
     end;
   end;
 end;
 
 function ShownIndices(const AShown: TArray<Boolean>): TArray<Integer>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to High(AShown) do
+  for mIndex := 0 to High(AShown) do
   begin
-    if AShown[Index] then
+    if AShown[mIndex] then
     begin
-      Result := Result + [Index];
+      Result := Result + [mIndex];
     end;
   end;
 end;
 class function TAtlasToolbarLayout.FullWidth(const ASlots: TArray<TAtlasToolbarSlot>): Integer;
 var
-  Shown: TArray<Boolean>;
-  Index: Integer;
+  mShown: TArray<Boolean>;
+  mIndex: Integer;
 begin
-  SetLength(Shown, Length(ASlots));
-  for Index := 0 to High(Shown) do
+  SetLength(mShown, Length(ASlots));
+  for mIndex := 0 to High(mShown) do
   begin
-    Shown[Index] := True;
+    mShown[mIndex] := True;
   end;
-  HideLoneSeparators(ASlots, Shown);
-  Result := WidthOf(ASlots, Shown);
+  HideLoneSeparators(ASlots, mShown);
+  Result := WidthOf(ASlots, mShown);
 end;
 
 class function TAtlasToolbarLayout.Fit(const ASlots: TArray<TAtlasToolbarSlot>; AAvailable,
   AMoreWidth: Integer): TAtlasToolbarFit;
 var
-  Index: Integer;
-  Menu: TArray<Boolean>;
+  mIndex: Integer;
+  mMenu: TArray<Boolean>;
 begin
   Result := Default(TAtlasToolbarFit);
   SetLength(Result.Visible, Length(ASlots));
-  for Index := 0 to High(ASlots) do
+  for mIndex := 0 to High(ASlots) do
   begin
-    Result.Visible[Index] := True;
+    Result.Visible[mIndex] := True;
   end;
   HideLoneSeparators(ASlots, Result.Visible);
   Result.Used := WidthOf(ASlots, Result.Visible);
   if Result.Used > AAvailable then
   begin
-    Distribute(ASlots, AAvailable - AMoreWidth, Result.Visible, Menu);
+    Distribute(ASlots, AAvailable - AMoreWidth, Result.Visible, mMenu);
     HideLoneSeparators(ASlots, Result.Visible);
-    HideLoneSeparators(ASlots, Menu);
+    HideLoneSeparators(ASlots, mMenu);
     Result.Used := WidthOf(ASlots, Result.Visible);
-    Result.Overflow := ShownIndices(Menu);
+    Result.Overflow := ShownIndices(mMenu);
     // Nur Trennstriche im Menü wären kein Grund für ».
     Result.More := Length(Result.Overflow) > 0;
   end;

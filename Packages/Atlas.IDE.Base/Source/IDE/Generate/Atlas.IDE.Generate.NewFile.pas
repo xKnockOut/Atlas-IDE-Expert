@@ -207,19 +207,19 @@ end;
 class function TAtlasIdeNewFile.CreateFile(AKind: TAtlasNewFileKind; const ATemplate: TAtlasSnippet;
   out AError: string): Boolean;
 var
-  Modules: IOTAModuleServices;
-  Project: IOTAProject;
+  mModules: IOTAModuleServices;
+  mProject: IOTAProject;
 begin
   Result := False;
   AError := '';
-  Project := GetActiveProject;
-  if (Project = nil) or not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  mProject := GetActiveProject;
+  if (mProject = nil) or not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     AError := TAtlasStrings.Text(TAtlasTextId.WelcomeSetupNewNoProject);
     Exit;
   end;
   try
-    Result := Modules.CreateModule(TAtlasFileCreator.Create(AKind, ATemplate.Body, Project)) <> nil;
+    Result := mModules.CreateModule(TAtlasFileCreator.Create(AKind, ATemplate.Body, mProject)) <> nil;
     if not Result then
     begin
       AError := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupNewFailed, [ATemplate.Prefix]);

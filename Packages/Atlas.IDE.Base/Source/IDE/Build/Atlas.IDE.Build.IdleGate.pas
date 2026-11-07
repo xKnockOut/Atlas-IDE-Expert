@@ -92,19 +92,19 @@ end;
 
 constructor TAtlasIdeBuildIdleGate.Create(AFeature: TAtlasFeature);
 var
-  Services: IOTACompileServices;
+  mServices: IOTACompileServices;
 begin
   inherited Create;
   FFeature := AFeature;
   FGate := TAtlasBuildIdleGate.Create(Now);
   FPending := TList<TProc>.Create;
   FNotifierIndex := -1;
-  if Supports(BorlandIDEServices, IOTACompileServices, Services) then
+  if Supports(BorlandIDEServices, IOTACompileServices, mServices) then
   begin
     FNotifier := TNotifier.Create;
     FNotifier.FOwner := Self;
     FNotifierRef := FNotifier;
-    FNotifierIndex := Services.AddNotifier(FNotifierRef);
+    FNotifierIndex := mServices.AddNotifier(FNotifierRef);
   end;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
@@ -114,7 +114,7 @@ end;
 
 destructor TAtlasIdeBuildIdleGate.Destroy;
 var
-  Services: IOTACompileServices;
+  mServices: IOTACompileServices;
 begin
   // Erst abmelden, dann freigeben (#493); die IDE hält den Notifier evtl. noch.
   FreeAndNil(FTimer);
@@ -122,9 +122,9 @@ begin
   begin
     FNotifier.FOwner := nil;
   end;
-  if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTACompileServices, Services) then
+  if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTACompileServices, mServices) then
   begin
-    Services.RemoveNotifier(FNotifierIndex);
+    mServices.RemoveNotifier(FNotifierIndex);
   end;
   FNotifierRef := nil;
   FPending.Free;
@@ -145,19 +145,19 @@ end;
 
 procedure TAtlasIdeBuildIdleGate.TimerTick(Sender: TObject);
 var
-  Procs: TArray<TProc>;
-  Proc: TProc;
+  mProcs: TArray<TProc>;
+  mProc: TProc;
 begin
   if not FGate.Idle(Now) then
   begin
     Exit;
   end;
   FTimer.Enabled := False;
-  Procs := FPending.ToArray;
+  mProcs := FPending.ToArray;
   FPending.Clear;
-  for Proc in Procs do
+  for mProc in mProcs do
   begin
-    TAtlasGuard.Run(FFeature, Proc);
+    TAtlasGuard.Run(FFeature, mProc);
   end;
 end;
 

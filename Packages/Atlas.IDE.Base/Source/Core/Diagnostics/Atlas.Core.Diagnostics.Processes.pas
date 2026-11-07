@@ -83,25 +83,25 @@ uses
 
 function TAtlasProcessRow.Caption: string;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := Client;
-  if Name = '' then
+  mName := Client;
+  if mName = '' then
   begin
-    Name := 'unbekannter Client';
+    mName := 'unbekannter Client';
   end;
-  Result := System.SysUtils.Format('%s (pid %d)', [Name, Pid]);
+  Result := System.SysUtils.Format('%s (pid %d)', [mName, Pid]);
 end;
 
 { TAtlasProcessWorkspace }
 
 function TAtlasProcessWorkspace.HasMcp: Boolean;
 var
-  Row: TAtlasProcessRow;
+  mRow: TAtlasProcessRow;
 begin
-  for Row in Processes do
+  for mRow in Processes do
   begin
-    if SameText(Row.Kind, 'MCP') then
+    if SameText(mRow.Kind, 'MCP') then
     begin
       Exit(True);
     end;
@@ -215,40 +215,40 @@ end;
 
 class function TAtlasProcessesView.ProcessCount(const AWorkspaces: TArray<TAtlasProcessWorkspace>): Integer;
 var
-  Workspace: TAtlasProcessWorkspace;
+  mWorkspace: TAtlasProcessWorkspace;
 begin
   Result := 0;
-  for Workspace in AWorkspaces do
+  for mWorkspace in AWorkspaces do
   begin
-    Inc(Result, Length(Workspace.Processes));
+    Inc(Result, Length(mWorkspace.Processes));
   end;
 end;
 
 class function TAtlasProcessesView.DirtyNames(const AModifiedFiles: TArray<string>): TArray<string>;
 var
-  Names: TStringList;
-  FileName: string;
-  Index: Integer;
+  mNames: TStringList;
+  mFileName: string;
+  mIndex: Integer;
 begin
-  Names := TStringList.Create;
+  mNames := TStringList.Create;
   try
-    Names.Sorted := True;
-    Names.Duplicates := dupIgnore;
-    Names.CaseSensitive := False;
-    for FileName in AModifiedFiles do
+    mNames.Sorted := True;
+    mNames.Duplicates := dupIgnore;
+    mNames.CaseSensitive := False;
+    for mFileName in AModifiedFiles do
     begin
-      if FileName <> '' then
+      if mFileName <> '' then
       begin
-        Names.Add(ExtractFileName(FileName));
+        mNames.Add(ExtractFileName(mFileName));
       end;
     end;
-    SetLength(Result, Names.Count);
-    for Index := 0 to Names.Count - 1 do
+    SetLength(Result, mNames.Count);
+    for mIndex := 0 to mNames.Count - 1 do
     begin
-      Result[Index] := Names[Index];
+      Result[mIndex] := mNames[mIndex];
     end;
   finally
-    Names.Free;
+    mNames.Free;
   end;
 end;
 

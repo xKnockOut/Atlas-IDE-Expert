@@ -33,33 +33,33 @@ uses
 
 class procedure TAtlasIdeDiagnosticExport.Execute(const AMessage: TProc<string>);
 var
-  Files: TArray<string>;
-  Target, Info, Platform: string;
+  mFiles: TArray<string>;
+  mTarget, mInfo, mPlatform: string;
 begin
   {$IFDEF WIN64}
-  Platform := 'Win64';
+  mPlatform := 'Win64';
   {$ELSE}
-  Platform := 'Win32';
+  mPlatform := 'Win32';
   {$ENDIF}
-  Info := TAtlasDiagnosticExport.Info(TAtlasPluginVersion.Version, TAtlasUpdates.IdeVersion, Platform);
-  Files := TAtlasDiagnosticExport.Files(TAtlasDiagnosticExport.DefaultFolder, TAtlasDiagnosticExport.DefaultDays, Now);
+  mInfo := TAtlasDiagnosticExport.Info(TAtlasPluginVersion.Version, TAtlasUpdates.IdeVersion, mPlatform);
+  mFiles := TAtlasDiagnosticExport.Files(TAtlasDiagnosticExport.DefaultFolder, TAtlasDiagnosticExport.DefaultDays, Now);
   if FileExists(TAtlasIdeDiagnosticMode.LastDataFile) then
   begin
-    Files := Files + [TAtlasIdeDiagnosticMode.LastDataFile];
+    mFiles := mFiles + [TAtlasIdeDiagnosticMode.LastDataFile];
   end;
-  if Length(Files) = 0 then
+  if Length(mFiles) = 0 then
   begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.DiagExportEmpty, [TAtlasDiagnosticExport.DefaultDays]));
     Exit;
   end;
   if not TAtlasDiagnosticExportDialog.Execute(TAtlasStrings.Fmt(TAtlasTextId.DiagExportHint,
-    [TAtlasDiagnosticExport.DefaultDays]), TAtlasDiagnosticExport.Preview(Files, Info), Target,
+    [TAtlasDiagnosticExport.DefaultDays]), TAtlasDiagnosticExport.Preview(mFiles, mInfo), mTarget,
     TAtlasIdeDockWindow.ApplyIdeTheme) then
   begin
     Exit;
   end;
-  TAtlasDiagnosticExport.WriteZip(Files, Target, Info);
-  AMessage(TAtlasStrings.Fmt(TAtlasTextId.DiagExportDone, [Target]));
+  TAtlasDiagnosticExport.WriteZip(mFiles, mTarget, mInfo);
+  AMessage(TAtlasStrings.Fmt(TAtlasTextId.DiagExportDone, [mTarget]));
 end;
 
 end.

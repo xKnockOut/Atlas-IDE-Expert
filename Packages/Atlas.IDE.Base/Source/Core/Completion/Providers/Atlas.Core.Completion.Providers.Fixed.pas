@@ -78,12 +78,12 @@ end;
 function TAtlasFixedCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
   const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems;
 var
-  Start: UInt64;
+  mStart: UInt64;
 begin
   AState := Default(TAtlasFetchState);
   AState.Incomplete := FIncomplete;
-  Start := TThread.GetTickCount64;
-  while TThread.GetTickCount64 - Start < FDelayMs do
+  mStart := TThread.GetTickCount64;
+  while TThread.GetTickCount64 - mStart < FDelayMs do
   begin
     if ACancelled() then
     begin

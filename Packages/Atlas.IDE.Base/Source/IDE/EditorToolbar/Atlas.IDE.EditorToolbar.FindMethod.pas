@@ -94,7 +94,7 @@ end;
 
 class function TAtlasIdeFindMethod.CaretOf(const AView: IOTAEditView; out ALine, ACharacter: Integer): Boolean;
 var
-  Cursor: TOTAEditPos;
+  mCursor: TOTAEditPos;
 begin
   Result := False;
   ALine := -1;
@@ -103,13 +103,13 @@ begin
   begin
     Exit;
   end;
-  Cursor := AView.CursorPos;
-  if Cursor.Line < 1 then
+  mCursor := AView.CursorPos;
+  if mCursor.Line < 1 then
   begin
     Exit;
   end;
-  ALine := Cursor.Line - 1;
-  ACharacter := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(AView, Cursor.Line), Cursor.Col,
+  ALine := mCursor.Line - 1;
+  ACharacter := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(AView, mCursor.Line), mCursor.Col,
     TAtlasEditorBuffer.TabWidth(AView.Buffer));
   Result := True;
 end;

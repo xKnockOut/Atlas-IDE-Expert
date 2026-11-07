@@ -163,22 +163,22 @@ end;
 
 class function TAtlasIdeCommandUsage.FindFolder(const APluginDir: string): string;
 var
-  Candidate: string;
+  mCandidate: string;
 begin
   Result := '';
   if APluginDir = '' then
   begin
     Exit;
   end;
-  Candidate := IncludeTrailingPathDelimiter(APluginDir);
-  if FileExists(Candidate + TAtlasTipCatalog.FileName) then
+  mCandidate := IncludeTrailingPathDelimiter(APluginDir);
+  if FileExists(mCandidate + TAtlasTipCatalog.FileName) then
   begin
-    Exit(Candidate);
+    Exit(mCandidate);
   end;
-  Candidate := IncludeTrailingPathDelimiter(ExpandFileName(Candidate + '..'));
-  if FileExists(Candidate + TAtlasTipCatalog.FileName) then
+  mCandidate := IncludeTrailingPathDelimiter(ExpandFileName(mCandidate + '..'));
+  if FileExists(mCandidate + TAtlasTipCatalog.FileName) then
   begin
-    Result := Candidate;
+    Result := mCandidate;
   end;
 end;
 

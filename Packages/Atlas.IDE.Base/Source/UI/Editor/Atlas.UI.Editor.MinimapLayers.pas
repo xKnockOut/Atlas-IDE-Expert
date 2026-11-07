@@ -112,17 +112,17 @@ uses
 
 const
   /// <summary>Deckkraft (0–255) von Methodenband, Zeilenband und Schieber.</summary>
-  MethodAlpha = 28;
+  cMethodAlpha = 28;
   /// <summary>Breite des Akzentstrichs der Routine am Cursor (96 DPI).</summary>
-  MethodBarWidth = 2;
-  BandAlpha = 80;
+  cMethodBarWidth = 2;
+  cBandAlpha = 80;
   // Nur ein Schatten: Bei 48 überdeckte der Schieber im dunklen Thema die Zeichen darunter.
-  SliderAlpha = 20;
+  cSliderAlpha = 20;
   /// <summary>Mindesthöhe einer Marke bei 96 DPI.</summary>
-  BaseMinMark = 2;
+  cBaseMinMark = 2;
   /// <summary>Breite des Änderungsstreifens links bei 96 DPI.</summary>
-  BaseChangeWidth = 3;
-  BaseLabelHeight = 11;
+  cBaseChangeWidth = 3;
+  cBaseLabelHeight = 11;
 
 /// <summary>ARect mit AColor überziehen, Deckkraft AAlpha.</summary>
 procedure Blend(ACanvas: TCanvas; const ARect: TRect; AColor: TAtlasColor; AAlpha: Byte);
@@ -394,11 +394,11 @@ begin
   end;
   mTop := AMap.PixelOfLine(mFirst);
   mBottom := Max(mTop + 1, AMap.PixelOfRow(AMap.RowOf(mLast) + 1));
-  Blend(ACanvas, TRect.Create(0, mTop, AFrame.Width, mBottom), AFrame.Colors.Accent, MethodAlpha);
+  Blend(ACanvas, TRect.Create(0, mTop, AFrame.Width, mBottom), AFrame.Colors.Accent, cMethodAlpha);
   // Akzentstrich am linken Rand: Die leichte Hinterlegung allein ging im dunklen Thema unter.
   ACanvas.Brush.Style := bsSolid;
   ACanvas.Brush.Color := TColor(AFrame.Colors.Accent);
-  ACanvas.FillRect(TRect.Create(0, mTop, Scaled(MethodBarWidth, AFrame.PPI), mBottom));
+  ACanvas.FillRect(TRect.Create(0, mTop, Scaled(cMethodBarWidth, AFrame.PPI), mBottom));
 end;
 
 procedure TAtlasMinimapOverlays.PaintMarkers(ACanvas: TCanvas; const AMap: TAtlasMinimapMap;
@@ -408,7 +408,7 @@ var
 begin
   if not FBarsValid then
   begin
-    FBars := TAtlasMinimap.MarkerBars(FMarks, AMap, Scaled(BaseMinMark, AFrame.PPI));
+    FBars := TAtlasMinimap.MarkerBars(FMarks, AMap, Scaled(cBaseMinMark, AFrame.PPI));
     FBarsValid := True;
   end;
   for mBar in FBars do
@@ -416,12 +416,12 @@ begin
     if mBar.Lane = TAtlasOverviewLane.Left then
     begin
       ACanvas.Brush.Color := TColor(TAtlasOverviewRuler.ColorOf(AFrame.Colors, mBar.Kind));
-      ACanvas.FillRect(TRect.Create(0, mBar.Top, Scaled(BaseChangeWidth, AFrame.PPI), mBar.Bottom));
+      ACanvas.FillRect(TRect.Create(0, mBar.Top, Scaled(cBaseChangeWidth, AFrame.PPI), mBar.Bottom));
     end
     else
     begin
       Blend(ACanvas, TRect.Create(0, mBar.Top, AFrame.Width, mBar.Bottom),
-        TAtlasOverviewRuler.ColorOf(AFrame.Colors, mBar.Kind), BandAlpha);
+        TAtlasOverviewRuler.ColorOf(AFrame.Colors, mBar.Kind), cBandAlpha);
     end;
   end;
 end;
@@ -433,7 +433,7 @@ var
   mArea: TRect;
   mLabelHeight: Integer;
 begin
-  mLabelHeight := Scaled(BaseLabelHeight, AFrame.PPI);
+  mLabelHeight := Scaled(cBaseLabelHeight, AFrame.PPI);
   if not FHeadersValid then
   begin
     FHeaders := TAtlasMinimap.Headers(FNodes, AMap, mLabelHeight);
@@ -443,7 +443,7 @@ begin
   ACanvas.Font.Style := [fsBold];
   for mHeader in FHeaders do
   begin
-    mArea := TRect.Create(Scaled(BaseChangeWidth, AFrame.PPI) + 1, mHeader.Top, AFrame.Width,
+    mArea := TRect.Create(Scaled(cBaseChangeWidth, AFrame.PPI) + 1, mHeader.Top, AFrame.Width,
       mHeader.Top + mLabelHeight);
     Blend(ACanvas, TRect.Create(mArea.Left, mArea.Top, Min(AFrame.Width, mArea.Left +
       ACanvas.TextWidth(mHeader.Text) + Scaled(4, AFrame.PPI)), mArea.Bottom), AFrame.Colors.Surface, 200);
@@ -476,7 +476,7 @@ begin
   if AFrame.SliderVisible and (AMap.RowCount > 0) then
   begin
     Blend(ACanvas, TRect.Create(0, AFrame.Slider.Top, AFrame.Width, AFrame.Slider.Bottom), AFrame.Colors.Text,
-      SliderAlpha);
+      cSliderAlpha);
   end;
 end;
 

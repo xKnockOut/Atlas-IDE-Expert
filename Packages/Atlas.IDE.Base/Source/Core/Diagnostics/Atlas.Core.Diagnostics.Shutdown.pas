@@ -90,35 +90,35 @@ end;
 
 class function TAtlasShutdown.WaitFor(AEvent: TEvent; ATimeoutMs: Cardinal): TWaitResult;
 var
-  Watch: TStopwatch;
-  Left: Int64;
-  Slice: Cardinal;
+  mWatch: TStopwatch;
+  mLeft: Int64;
+  mSlice: Cardinal;
 begin
-  Watch := TStopwatch.StartNew;
+  mWatch := TStopwatch.StartNew;
   repeat
     if Signalled then
     begin
       Exit(wrAbandoned);
     end;
-    Left := Int64(ATimeoutMs) - Watch.ElapsedMilliseconds;
-    if Left <= 0 then
+    mLeft := Int64(ATimeoutMs) - mWatch.ElapsedMilliseconds;
+    if mLeft <= 0 then
     begin
-      Slice := 0;
+      mSlice := 0;
     end
-    else if Left < SliceMs then
+    else if mLeft < SliceMs then
     begin
-      Slice := Cardinal(Left);
+      mSlice := Cardinal(mLeft);
     end
     else
     begin
-      Slice := SliceMs;
+      mSlice := SliceMs;
     end;
-    Result := AEvent.WaitFor(Slice);
+    Result := AEvent.WaitFor(mSlice);
     if Result <> wrTimeout then
     begin
       Exit;
     end;
-  until Watch.ElapsedMilliseconds >= ATimeoutMs;
+  until mWatch.ElapsedMilliseconds >= ATimeoutMs;
   Result := wrTimeout;
 end;
 
@@ -129,15 +129,15 @@ end;
 
 class function TAtlasShutdown.WaitForThreads(const AThreads: TArray<TThread>; AMs: Cardinal): Boolean;
 var
-  Watch: TStopwatch;
-  Thread: TThread;
+  mWatch: TStopwatch;
+  mThread: TThread;
 begin
-  Watch := TStopwatch.StartNew;
+  mWatch := TStopwatch.StartNew;
   repeat
     Result := True;
-    for Thread in AThreads do
+    for mThread in AThreads do
     begin
-      if (Thread <> nil) and not Thread.Finished then
+      if (mThread <> nil) and not mThread.Finished then
       begin
         Result := False;
       end;
@@ -149,7 +149,7 @@ begin
     // Bewusst Finished statt Thread-Handle: Das Handle wird erst nach DLL_THREAD_DETACH signalisiert, und das braucht
     // beim Prozessende die Ladersperre, die das Entladen unter Umständen hält (Code-Review A-13).
     Sleep(5);
-  until Watch.ElapsedMilliseconds >= AMs;
+  until mWatch.ElapsedMilliseconds >= AMs;
 end;
 
 end.

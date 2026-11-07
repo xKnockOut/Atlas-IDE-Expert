@@ -114,33 +114,33 @@ end;
 
 procedure TAtlasCompletionPopupPainter.DrawSyntax;
 var
-  Bar, Text: TRect;
-  Lead, LineText: string;
-  Left: Integer;
+  mBar, mText: TRect;
+  mLead, mLineText: string;
+  mLeft: Integer;
 begin
   FSyntaxLink := Rect(0, 0, 0, 0);
   if SyntaxHeight = 0 then
   begin
     Exit;
   end;
-  Bar := Rect(ListLeft + Pad + Scale(4), Pad + ChipsHeight + Scale(2), ListRight - Pad - Scale(4),
+  mBar := Rect(ListLeft + Pad + Scale(4), Pad + ChipsHeight + Scale(2), ListRight - Pad - Scale(4),
     Pad + ChipsHeight + SyntaxHeight - Scale(2));
-  FillRounded(Bar, Colors.WarnSoft, TAtlasDraw.ChipRadius);
-  Lead := TAtlasCompletionTexts.SyntaxLead(FSyntax.Trust);
-  LineText := TAtlasCompletionTexts.SyntaxLineText(FSyntax.Line);
+  FillRounded(mBar, Colors.WarnSoft, TAtlasDraw.ChipRadius);
+  mLead := TAtlasCompletionTexts.SyntaxLead(FSyntax.Trust);
+  mLineText := TAtlasCompletionTexts.SyntaxLineText(FSyntax.Line);
   Canvas.Font := UIFont;
   Canvas.Font.Color := ToColor(Colors.Warn);
   Canvas.Brush.Style := bsClear;
-  Text := Rect(Bar.Left + Scale(8), Bar.Top, Bar.Right - Scale(8), Bar.Bottom);
-  DrawText(Canvas.Handle, PChar(Lead), -1, Text, cTextFlags or DT_END_ELLIPSIS);
+  mText := Rect(mBar.Left + Scale(8), mBar.Top, mBar.Right - Scale(8), mBar.Bottom);
+  DrawText(Canvas.Handle, PChar(mLead), -1, mText, cTextFlags or DT_END_ELLIPSIS);
   // Zeilenangabe unterstrichen dahinter; nur sie ist anklickbar.
-  Left := Text.Left + Canvas.TextWidth(Lead);
-  if Left + Canvas.TextWidth(LineText) <= Text.Right then
+  mLeft := mText.Left + Canvas.TextWidth(mLead);
+  if mLeft + Canvas.TextWidth(mLineText) <= mText.Right then
   begin
     Canvas.Font.Style := [fsUnderline];
-    Text.Left := Left;
-    DrawText(Canvas.Handle, PChar(LineText), -1, Text, cTextFlags);
-    FSyntaxLink := Rect(Left, Bar.Top, Left + Canvas.TextWidth(LineText), Bar.Bottom);
+    mText.Left := mLeft;
+    DrawText(Canvas.Handle, PChar(mLineText), -1, mText, cTextFlags);
+    FSyntaxLink := Rect(mLeft, mBar.Top, mLeft + Canvas.TextWidth(mLineText), mBar.Bottom);
     Canvas.Font.Style := [];
   end;
   Canvas.Brush.Style := bsSolid;
@@ -149,10 +149,10 @@ end;
 
 procedure TAtlasCompletionPopupPainter.DrawChips;
 var
-  Chip: TAtlasChip;
+  mChip: TAtlasChip;
   mText: string;
   X, mTop, mHeight: Integer;
-  Box, TextRect: TRect;
+  mBox, mTextRect: TRect;
 begin
   FChips.Rects := nil;
   FChips.Kinds := nil;
@@ -164,36 +164,36 @@ begin
   mHeight := Canvas.TextHeight('Wg') + Scale(4);
   mTop := Pad + (ChipsHeight - mHeight) div 2;
   X := ListLeft + Pad + Scale(4);
-  for Chip := Low(TAtlasChip) to High(TAtlasChip) do
+  for mChip := Low(TAtlasChip) to High(TAtlasChip) do
   begin
-    if (Chip <> TAtlasChip.All) and (FChips.Counts[Chip] = 0) then
+    if (mChip <> TAtlasChip.All) and (FChips.Counts[mChip] = 0) then
     begin
       Continue;
     end;
-    mText := Format('%s %d', [TAtlasStrings.Text(TAtlasTextId(Ord(TAtlasTextId.ChipAll) + Ord(Chip))),
-      FChips.Counts[Chip]]);
+    mText := Format('%s %d', [TAtlasStrings.Text(TAtlasTextId(Ord(TAtlasTextId.ChipAll) + Ord(mChip))),
+      FChips.Counts[mChip]]);
     Canvas.Font := UIFont;
-    Box := Rect(X, mTop, X + Canvas.TextWidth(mText) + Scale(14), mTop + mHeight);
-    if Box.Right > ListRight - Pad then
+    mBox := Rect(X, mTop, X + Canvas.TextWidth(mText) + Scale(14), mTop + mHeight);
+    if mBox.Right > ListRight - Pad then
     begin
       Break;
     end;
-    if Chip = FChips.Active then
+    if mChip = FChips.Active then
     begin
-      FrameRounded(Box, Colors.Accent, 9, ToColor(Colors.AccentSoft));
+      FrameRounded(mBox, Colors.Accent, 9, ToColor(Colors.AccentSoft));
       Canvas.Font.Color := ToColor(Colors.Accent);
     end
     else
     begin
-      FrameRounded(Box, Colors.Line, 9);
+      FrameRounded(mBox, Colors.Line, 9);
       Canvas.Font.Color := ToColor(Colors.Muted);
     end;
     Canvas.Brush.Style := bsClear;
-    TextRect := Box;
-    DrawText(Canvas.Handle, PChar(mText), -1, TextRect, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
-    FChips.Rects := FChips.Rects + [Box];
-    FChips.Kinds := FChips.Kinds + [Chip];
-    X := Box.Right + Scale(6);
+    mTextRect := mBox;
+    DrawText(Canvas.Handle, PChar(mText), -1, mTextRect, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+    FChips.Rects := FChips.Rects + [mBox];
+    FChips.Kinds := FChips.Kinds + [mChip];
+    X := mBox.Right + Scale(6);
   end;
   Canvas.Brush.Style := bsSolid;
   Canvas.Font := Font;
@@ -201,18 +201,18 @@ end;
 
 procedure TAtlasCompletionPopupPainter.DrawHeader(ARow, APosition: Integer);
 var
-  Row: TRect;
+  mRow: TRect;
   mText: string;
 begin
   mText := TAtlasCompletionTexts.HeaderText(FItems, FOrder, APosition);
-  Row := RowRect(ARow);
-  Inc(Row.Left, Scale(7));
+  mRow := RowRect(ARow);
+  Inc(mRow.Left, Scale(7));
   Canvas.Font := UIFont;
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(Colors.Muted);
   Canvas.Brush.Style := bsClear;
-  Row.Top := Row.Top + Scale(4);
-  DrawText(Canvas.Handle, PChar(mText), -1, Row, cTextFlags or DT_END_ELLIPSIS);
+  mRow.Top := mRow.Top + Scale(4);
+  DrawText(Canvas.Handle, PChar(mText), -1, mRow, cTextFlags or DT_END_ELLIPSIS);
   Canvas.Font.Style := [];
   Canvas.Brush.Style := bsSolid;
   Canvas.Font := Font;
@@ -225,20 +225,20 @@ end;
 
 procedure TAtlasCompletionPopupPainter.DrawFooter(const ALeft, ARight: string);
 var
-  Footer, mText: TRect;
+  mFooter, mText: TRect;
 begin
   // Nur unter der Liste; das Panel reicht bis unten.
-  Footer := Rect(ListLeft, ClientHeight - FooterHeight, ListRight, ClientHeight);
+  mFooter := Rect(ListLeft, ClientHeight - FooterHeight, ListRight, ClientHeight);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Gutter);
-  Canvas.FillRect(Footer);
+  Canvas.FillRect(mFooter);
   Canvas.Pen.Color := ToColor(Colors.Line);
-  Canvas.MoveTo(Footer.Left, Footer.Top);
-  Canvas.LineTo(Footer.Right, Footer.Top);
+  Canvas.MoveTo(mFooter.Left, mFooter.Top);
+  Canvas.LineTo(mFooter.Right, mFooter.Top);
   Canvas.Font := UIFont;
   Canvas.Font.Color := ToColor(Colors.Muted);
   Canvas.Brush.Style := bsClear;
-  mText := Rect(Footer.Left + Scale(9), Footer.Top + 1, Footer.Right - Scale(9), Footer.Bottom);
+  mText := Rect(mFooter.Left + Scale(9), mFooter.Top + 1, mFooter.Right - Scale(9), mFooter.Bottom);
   DrawText(Canvas.Handle, PChar(ARight), -1, mText, cTextFlags or DT_RIGHT);
   mText.Right := mText.Right - Canvas.TextWidth(ARight) - Scale(10);
   DrawText(Canvas.Handle, PChar(ALeft), -1, mText, cTextFlags or DT_END_ELLIPSIS);
@@ -248,16 +248,16 @@ end;
 
 procedure TAtlasCompletionPopupPainter.PaintEmpty;
 var
-  Line: TRect;
+  mLine: TRect;
 
   procedure DrawLine(AIndex: Integer; const AText: string; AColor: TAtlasColor);
   begin
-    Line := Rect(ListLeft + Pad + Scale(7), ListTop + AIndex * RowHeight, ListRight - Pad - Scale(7),
+    mLine := Rect(ListLeft + Pad + Scale(7), ListTop + AIndex * RowHeight, ListRight - Pad - Scale(7),
       ListTop + (AIndex + 1) * RowHeight);
     Canvas.Font := UIFont;
     Canvas.Font.Color := ToColor(AColor);
     Canvas.Brush.Style := bsClear;
-    DrawText(Canvas.Handle, PChar(AText), -1, Line, cTextFlags or DT_END_ELLIPSIS);
+    DrawText(Canvas.Handle, PChar(AText), -1, mLine, cTextFlags or DT_END_ELLIPSIS);
   end;
 
 begin
@@ -286,23 +286,23 @@ end;
 procedure TAtlasCompletionPopupPainter.DrawBadge(const ARow: TRect; const AItem: TAtlasCompletionItem;
   out ARight: Integer);
 var
-  Badge: TAtlasBadge;
-  Box, mText: TRect;
+  mBadge: TAtlasBadge;
+  mBox, mText: TRect;
   mTop: Integer;
 begin
-  Badge := TAtlasItemPresentation.Badge(AItem);
+  mBadge := TAtlasItemPresentation.Badge(AItem);
   mTop := ARow.Top + (ARow.Height - Scale(17)) div 2;
-  Box := Rect(ARow.Left + Scale(7), mTop, ARow.Left + Scale(7 + 24), mTop + Scale(17));
-  FillRounded(Box, Dim(Colors.Badges[Badge.Kind].Background), 4);
+  mBox := Rect(ARow.Left + Scale(7), mTop, ARow.Left + Scale(7 + 24), mTop + Scale(17));
+  FillRounded(mBox, Dim(Colors.Badges[mBadge.Kind].Background), 4);
   Canvas.Font := Font;
   Canvas.Font.Style := [fsBold];
-  Canvas.Font.Height := -Round(Box.Height * 0.62);
-  Canvas.Font.Color := ToColor(Dim(Colors.Badges[Badge.Kind].Text));
+  Canvas.Font.Height := -Round(mBox.Height * 0.62);
+  Canvas.Font.Color := ToColor(Dim(Colors.Badges[mBadge.Kind].Text));
   Canvas.Brush.Style := bsClear;
-  mText := Box;
-  DrawText(Canvas.Handle, PChar(Badge.Code), -1, mText, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+  mText := mBox;
+  DrawText(Canvas.Handle, PChar(mBadge.Code), -1, mText, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
   Canvas.Font := Font;
-  ARight := Box.Right;
+  ARight := mBox.Right;
 end;
 
 /// <summary>Je Zeichen von AName (1-basiert), ob es zum Getippten APattern gehört.</summary>
@@ -383,33 +383,33 @@ end;
 
 procedure TAtlasCompletionPopupPainter.DrawTag(const ATag: TAtlasTag; ALeft: Integer; const ARow: TRect);
 var
-  Box, mText: TRect;
-  Line, TextColor: TAtlasColor;
+  mBox, mText: TRect;
+  mLine, mTextColor: TAtlasColor;
   mHeight: Integer;
 begin
   case ATag.Kind of
-    TAtlasTagKind.Accent: begin Line := Colors.Accent; TextColor := Colors.Accent; end;
-    TAtlasTagKind.Add: begin Line := Colors.Add; TextColor := Colors.Add; end;
-    TAtlasTagKind.Warn: begin Line := Colors.Warn; TextColor := Colors.Warn; end;
-    TAtlasTagKind.Error: begin Line := Colors.Error; TextColor := Colors.Error; end;
+    TAtlasTagKind.Accent: begin mLine := Colors.Accent; mTextColor := Colors.Accent; end;
+    TAtlasTagKind.Add: begin mLine := Colors.Add; mTextColor := Colors.Add; end;
+    TAtlasTagKind.Warn: begin mLine := Colors.Warn; mTextColor := Colors.Warn; end;
+    TAtlasTagKind.Error: begin mLine := Colors.Error; mTextColor := Colors.Error; end;
   else
-    Line := Colors.Line;
-    TextColor := Colors.Muted;
+    mLine := Colors.Line;
+    mTextColor := Colors.Muted;
   end;
   Canvas.Font := UIFont;
   mHeight := Canvas.TextHeight('Wg') + Scale(2);
-  Box := Rect(ALeft, ARow.Top + (ARow.Height - mHeight) div 2, ALeft + TagWidth(ATag), 0);
-  Box.Bottom := Box.Top + mHeight;
+  mBox := Rect(ALeft, ARow.Top + (ARow.Height - mHeight) div 2, ALeft + TagWidth(ATag), 0);
+  mBox.Bottom := mBox.Top + mHeight;
   Canvas.Font := UIFont;
   // Warnfläche (#481): „verdeckt …“ fällt auch ohne Farbsehen auf.
   if ATag.Filled and (ATag.Kind = TAtlasTagKind.Warn) then
   begin
-    FillRounded(Box, Colors.WarnSoft, TAtlasDraw.ChipRadius);
+    FillRounded(mBox, Colors.WarnSoft, TAtlasDraw.ChipRadius);
   end;
-  FrameRounded(Box, Line, TAtlasDraw.ChipRadius);
-  Canvas.Font.Color := ToColor(TextColor);
+  FrameRounded(mBox, mLine, TAtlasDraw.ChipRadius);
+  Canvas.Font.Color := ToColor(mTextColor);
   Canvas.Brush.Style := bsClear;
-  mText := Box;
+  mText := mBox;
   DrawText(Canvas.Handle, PChar(TAtlasCompletionTexts.TagText(ATag)), -1, mText, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
   Canvas.Brush.Style := bsSolid;
   Canvas.Font := Font;
@@ -417,52 +417,52 @@ end;
 
 procedure TAtlasCompletionPopupPainter.DrawCheck(const ARow: TRect; AChecked: Boolean);
 var
-  Box: TRect;
-  Size, mTop: Integer;
-  Points: array[0..2] of TPoint;
+  mBox: TRect;
+  mSize, mTop: Integer;
+  mPoints: array[0..2] of TPoint;
 begin
-  Size := Scale(13);
-  mTop := ARow.Top + (ARow.Height - Size) div 2;
-  Box := Rect(ARow.Left + Scale(7), mTop, ARow.Left + Scale(7) + Size, mTop + Size);
+  mSize := Scale(13);
+  mTop := ARow.Top + (ARow.Height - mSize) div 2;
+  mBox := Rect(ARow.Left + Scale(7), mTop, ARow.Left + Scale(7) + mSize, mTop + mSize);
   if not AChecked then
   begin
-    FrameRounded(Box, Colors.Muted, 3);
+    FrameRounded(mBox, Colors.Muted, 3);
     Exit;
   end;
-  FillRounded(Box, Colors.Accent, 3);
+  FillRounded(mBox, Colors.Accent, 3);
   // Haken in der Flächenfarbe.
-  Points[0] := Point(Box.Left + MulDiv(Size, 3, 13), Box.Top + MulDiv(Size, 7, 13));
-  Points[1] := Point(Box.Left + MulDiv(Size, 5, 13), Box.Top + MulDiv(Size, 10, 13));
-  Points[2] := Point(Box.Left + MulDiv(Size, 10, 13), Box.Top + MulDiv(Size, 3, 13));
+  mPoints[0] := Point(mBox.Left + MulDiv(mSize, 3, 13), mBox.Top + MulDiv(mSize, 7, 13));
+  mPoints[1] := Point(mBox.Left + MulDiv(mSize, 5, 13), mBox.Top + MulDiv(mSize, 10, 13));
+  mPoints[2] := Point(mBox.Left + MulDiv(mSize, 10, 13), mBox.Top + MulDiv(mSize, 3, 13));
   Canvas.Pen.Color := ToColor(Colors.Surface);
   Canvas.Pen.Width := Max(1, Scale(2));
-  Canvas.Polyline(Points);
+  Canvas.Polyline(mPoints);
   Canvas.Pen.Width := 1;
 end;
 
 procedure TAtlasCompletionPopupPainter.DrawStar(const ARow: TRect; AFilled: Boolean);
 var
-  Points: array[0..9] of TPoint;
-  Index, Radius, Outer, Inner, CenterX, CenterY: Integer;
-  Angle: Double;
+  mPoints: array[0..9] of TPoint;
+  mIndex, mRadius, mOuter, mInner, mCenterX, mCenterY: Integer;
+  mAngle: Double;
 begin
   // Fünfzackiger Stern, Spitze oben: abwechselnd äußerer und innerer Radius.
-  Outer := Scale(6);
-  Inner := Max(1, Round(Outer * 0.45));
-  CenterX := ARow.Left + Scale(4) + Outer;
-  CenterY := ARow.Top + ARow.Height div 2;
-  for Index := 0 to 9 do
+  mOuter := Scale(6);
+  mInner := Max(1, Round(mOuter * 0.45));
+  mCenterX := ARow.Left + Scale(4) + mOuter;
+  mCenterY := ARow.Top + ARow.Height div 2;
+  for mIndex := 0 to 9 do
   begin
-    if Odd(Index) then
+    if Odd(mIndex) then
     begin
-      Radius := Inner;
+      mRadius := mInner;
     end
     else
     begin
-      Radius := Outer;
+      mRadius := mOuter;
     end;
-    Angle := -Pi / 2 + Index * Pi / 5;
-    Points[Index] := Point(CenterX + Round(Radius * Cos(Angle)), CenterY + Round(Radius * Sin(Angle)));
+    mAngle := -Pi / 2 + mIndex * Pi / 5;
+    mPoints[mIndex] := Point(mCenterX + Round(mRadius * Cos(mAngle)), mCenterY + Round(mRadius * Sin(mAngle)));
   end;
   Canvas.Pen.Width := 1;
   if AFilled then
@@ -476,7 +476,7 @@ begin
     Canvas.Pen.Color := ToColor(Colors.Muted);
     Canvas.Brush.Style := bsClear;
   end;
-  Canvas.Polygon(Points);
+  Canvas.Polygon(mPoints);
   Canvas.Brush.Style := bsSolid;
 end;
 
@@ -608,35 +608,35 @@ end;
 
 procedure TAtlasCompletionPopupPainter.DrawMarker(const ARow: TRect);
 var
-  mLeft, Middle, Half: Integer;
+  mLeft, mMiddle, mHalf: Integer;
 begin
   // Schmales Dreieck im Rand vor dem Badge bzw. Stern; passt auch neben die Sternspalte.
   mLeft := ARow.Left + Scale(1);
-  Middle := (ARow.Top + ARow.Bottom) div 2;
-  Half := Scale(4);
+  mMiddle := (ARow.Top + ARow.Bottom) div 2;
+  mHalf := Scale(4);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Accent);
   Canvas.Pen.Color := ToColor(Colors.Accent);
-  Canvas.Polygon([Point(mLeft, Middle - Half), Point(mLeft + Scale(3), Middle), Point(mLeft, Middle + Half)]);
+  Canvas.Polygon([Point(mLeft, mMiddle - mHalf), Point(mLeft + Scale(3), mMiddle), Point(mLeft, mMiddle + mHalf)]);
 end;
 
 procedure TAtlasCompletionPopupPainter.DrawScrollBar;
 var
-  Track, Thumb: TRect;
-  Total, mVisible, ThumbHeight, ThumbTop: Integer;
+  mTrack, mThumb: TRect;
+  mTotal, mVisible, mThumbHeight, mThumbTop: Integer;
 begin
-  Total := Length(FOrder);
+  mTotal := Length(FOrder);
   mVisible := RowCount;
-  if Total <= mVisible then
+  if mTotal <= mVisible then
   begin
     Exit;
   end;
-  Track := Rect(ListRight - Pad - Scale(5), ListTop + Scale(2), ListRight - Pad - Scale(1),
+  mTrack := Rect(ListRight - Pad - Scale(5), ListTop + Scale(2), ListRight - Pad - Scale(1),
     ListTop + mVisible * RowHeight - Scale(2));
-  ThumbHeight := Max(Scale(16), Track.Height * mVisible div Total);
-  ThumbTop := Track.Top + (Track.Height - ThumbHeight) * FTop div Max(1, Total - mVisible);
-  Thumb := Rect(Track.Left, ThumbTop, Track.Right, ThumbTop + ThumbHeight);
-  TAtlasDraw.Thumb(Canvas, Thumb, Colors, Scale(2));
+  mThumbHeight := Max(Scale(16), mTrack.Height * mVisible div mTotal);
+  mThumbTop := mTrack.Top + (mTrack.Height - mThumbHeight) * FTop div Max(1, mTotal - mVisible);
+  mThumb := Rect(mTrack.Left, mThumbTop, mTrack.Right, mThumbTop + mThumbHeight);
+  TAtlasDraw.Thumb(Canvas, mThumb, Colors, Scale(2));
 end;
 
 procedure TAtlasCompletionPopupPainter.Paint;
@@ -703,27 +703,27 @@ end;
 
 procedure TAtlasCompletionPopupPainter.PaintPanel;
 var
-  Panel, Bar: TRect;
-  Edge: Integer;
-  Arrow: string;
+  mPanel, mBar: TRect;
+  mEdge: Integer;
+  mArrow: string;
 begin
-  Panel := PanelRect;
+  mPanel := PanelRect;
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Gutter);
-  Canvas.FillRect(Panel);
+  Canvas.FillRect(mPanel);
   // Trennlinie zur Liste.
   if FPanel.Left then
   begin
-    Edge := Panel.Right - 1;
+    mEdge := mPanel.Right - 1;
   end
   else
   begin
-    Edge := Panel.Left;
+    mEdge := mPanel.Left;
   end;
   Canvas.Pen.Style := psSolid;
   Canvas.Pen.Color := ToColor(Colors.Line);
-  Canvas.MoveTo(Edge, 0);
-  Canvas.LineTo(Edge, ClientHeight);
+  Canvas.MoveTo(mEdge, 0);
+  Canvas.LineTo(mEdge, ClientHeight);
   if Collapsed then
   begin
     // Schmale Leiste (#428): Pfeil zeigt, wohin das Panel aufklappt.
@@ -731,23 +731,23 @@ begin
     Canvas.Font.Style := [fsBold];
     Canvas.Font.Color := ToColor(Colors.Muted);
     Canvas.Brush.Style := bsClear;
-    Bar := Rect(Panel.Left, Scale(6), Panel.Right, Scale(6) + Canvas.TextHeight('Wg'));
+    mBar := Rect(mPanel.Left, Scale(6), mPanel.Right, Scale(6) + Canvas.TextHeight('Wg'));
     if FPanel.Left then
     begin
-      Arrow := '‹';
+      mArrow := '‹';
     end
     else
     begin
-      Arrow := '›';
+      mArrow := '›';
     end;
-    DrawText(Canvas.Handle, PChar(Arrow), -1, Bar, DT_CENTER or DT_SINGLELINE or DT_NOPREFIX);
+    DrawText(Canvas.Handle, PChar(mArrow), -1, mBar, DT_CENTER or DT_SINGLELINE or DT_NOPREFIX);
     Canvas.Font.Style := [];
   end
   else
   begin
     // Höher als das Popup: nur die Doku scrollt (#654).
     FDetailView.MaxHeight := ClientHeight;
-    FDetailView.Render(Canvas, Colors, Font, UIFont, Panel, PPI, True);
+    FDetailView.Render(Canvas, Colors, Font, UIFont, mPanel, PPI, True);
   end;
   Canvas.Font := Font;
   Canvas.Brush.Style := bsSolid;
@@ -755,21 +755,21 @@ end;
 
 procedure TAtlasCompletionPopupPainter.DrawGrip;
 var
-  Row, Column, Size, Step, Right, Bottom: Integer;
+  mRow, mColumn, mSize, mStep, mRight, mBottom: Integer;
 begin
   // Punktmuster unten rechts (#416): drei Reihen, nach unten rechts dichter.
-  Size := Max(1, Scale(2));
-  Step := Scale(4);
-  Right := ClientWidth - Scale(4);
-  Bottom := ClientHeight - Scale(4);
+  mSize := Max(1, Scale(2));
+  mStep := Scale(4);
+  mRight := ClientWidth - Scale(4);
+  mBottom := ClientHeight - Scale(4);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(TAtlasColorMath.Mix(Colors.Muted, Colors.Surface, 0.6));
-  for Row := 0 to 2 do
+  for mRow := 0 to 2 do
   begin
-    for Column := 0 to 2 - Row do
+    for mColumn := 0 to 2 - mRow do
     begin
-      Canvas.FillRect(Rect(Right - (Column + 1) * Step + Step - Size, Bottom - (Row + 1) * Step + Step - Size,
-        Right - Column * Step, Bottom - Row * Step));
+      Canvas.FillRect(Rect(mRight - (mColumn + 1) * mStep + mStep - mSize, mBottom - (mRow + 1) * mStep + mStep - mSize,
+        mRight - mColumn * mStep, mBottom - mRow * mStep));
     end;
   end;
 end;

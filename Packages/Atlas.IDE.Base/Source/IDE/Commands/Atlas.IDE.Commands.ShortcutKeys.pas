@@ -118,43 +118,43 @@ uses
 /// <summary>Der Benutzer hat gerade etwas eingegeben (Maus oder Tastatur, auch im Menü).</summary>
 function UserJustActed: Boolean;
 var
-  Info: TLastInputInfo;
+  mInfo: TLastInputInfo;
 begin
-  Info.cbSize := SizeOf(Info);
-  Info.dwTime := 0;
-  if not GetLastInputInfo(Info) then
+  mInfo.cbSize := SizeOf(mInfo);
+  mInfo.dwTime := 0;
+  if not GetLastInputInfo(mInfo) then
   begin
     Exit(True);
   end;
-  Result := DWORD(GetTickCount - Info.dwTime) < DWORD(TAtlasIdeShortcutKeys.UserInputMs);
+  Result := DWORD(GetTickCount - mInfo.dwTime) < DWORD(TAtlasIdeShortcutKeys.UserInputMs);
 end;
 
 /// <summary>Kürzel aus Menüeinträgen: Aktion → Text hinter dem Tab der Beschriftung (auch Kürzel mit zwei
 /// Schritten) bzw. ShortCut des Eintrags.</summary>
 procedure CollectMenuKeys(AItem: TMenuItem; AResult: TDictionary<TBasicAction, string>);
 var
-  Index: Integer;
-  Child: TMenuItem;
-  Text: string;
+  mIndex: Integer;
+  mChild: TMenuItem;
+  mText: string;
 begin
-  for Index := 0 to AItem.Count - 1 do
+  for mIndex := 0 to AItem.Count - 1 do
   begin
-    Child := AItem.Items[Index];
-    if Child.Action <> nil then
+    mChild := AItem.Items[mIndex];
+    if mChild.Action <> nil then
     begin
-      Text := TAtlasShortcutTips.KeyTextOfCaption(Child.Caption);
-      if (Text = '') and (Child.ShortCut <> 0) then
+      mText := TAtlasShortcutTips.KeyTextOfCaption(mChild.Caption);
+      if (mText = '') and (mChild.ShortCut <> 0) then
       begin
-        Text := ShortCutToText(Child.ShortCut);
+        mText := ShortCutToText(mChild.ShortCut);
       end;
-      if (Text <> '') and not AResult.ContainsKey(Child.Action) then
+      if (mText <> '') and not AResult.ContainsKey(mChild.Action) then
       begin
-        AResult.Add(Child.Action, Text);
+        AResult.Add(mChild.Action, mText);
       end;
     end;
-    if Child.Count > 0 then
+    if mChild.Count > 0 then
     begin
-      CollectMenuKeys(Child, AResult);
+      CollectMenuKeys(mChild, AResult);
     end;
   end;
 end;
@@ -163,30 +163,30 @@ end;
 /// </summary>
 function MenuKeys(AEditorMenus: Boolean): TDictionary<TBasicAction, string>;
 var
-  Services: INTAServices;
-  Editor: INTAEditorServices;
-  Window: INTAEditWindow;
-  Index: Integer;
+  mServices: INTAServices;
+  mEditor: INTAEditorServices;
+  mWindow: INTAEditWindow;
+  mIndex: Integer;
 begin
   Result := TDictionary<TBasicAction, string>.Create;
-  if Supports(BorlandIDEServices, INTAServices, Services) and (Services.MainMenu <> nil) then
+  if Supports(BorlandIDEServices, INTAServices, mServices) and (mServices.MainMenu <> nil) then
   begin
-    CollectMenuKeys(Services.MainMenu.Items, Result);
+    CollectMenuKeys(mServices.MainMenu.Items, Result);
   end;
-  if not AEditorMenus or not Supports(BorlandIDEServices, INTAEditorServices, Editor) then
+  if not AEditorMenus or not Supports(BorlandIDEServices, INTAEditorServices, mEditor) then
   begin
     Exit;
   end;
-  Window := Editor.TopEditWindow;
-  if (Window = nil) or (Window.Form = nil) then
+  mWindow := mEditor.TopEditWindow;
+  if (mWindow = nil) or (mWindow.Form = nil) then
   begin
     Exit;
   end;
-  for Index := 0 to Window.Form.ComponentCount - 1 do
+  for mIndex := 0 to mWindow.Form.ComponentCount - 1 do
   begin
-    if Window.Form.Components[Index] is TPopupMenu then
+    if mWindow.Form.Components[mIndex] is TPopupMenu then
     begin
-      CollectMenuKeys(TPopupMenu(Window.Form.Components[Index]).Items, Result);
+      CollectMenuKeys(TPopupMenu(mWindow.Form.Components[mIndex]).Items, Result);
     end;
   end;
 end;
@@ -195,16 +195,16 @@ end;
 /// als ChordMs)?</summary>
 function MatchesShortCut(AShortCut, APrevKey: Word; APrevAge: UInt64): Boolean;
 var
-  Key, Modifiers: Word;
+  mKey, mModifiers: Word;
 begin
   Result := False;
   if AShortCut = 0 then
   begin
     Exit;
   end;
-  Key := AShortCut and $FF;
-  Modifiers := AShortCut and TAtlasKeyMap.ModifierMask;
-  if (GetKeyState(Key) < 0) and (Modifiers = TAtlasIdeActionKeys.CurrentModifiers) then
+  mKey := AShortCut and $FF;
+  mModifiers := AShortCut and TAtlasKeyMap.ModifierMask;
+  if (GetKeyState(mKey) < 0) and (mModifiers = TAtlasIdeActionKeys.CurrentModifiers) then
   begin
     Exit(True);
   end;
@@ -215,14 +215,14 @@ end;
 /// eben gedrückt (APrevKey vor weniger als ChordMs).</summary>
 function ViaShortCut(AAction: TCustomAction; APrevKey: Word; APrevAge: UInt64): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := MatchesShortCut(Word(AAction.ShortCut), APrevKey, APrevAge);
-  Index := 0;
-  while not Result and (Index < AAction.SecondaryShortCuts.Count) do
+  mIndex := 0;
+  while not Result and (mIndex < AAction.SecondaryShortCuts.Count) do
   begin
-    Result := MatchesShortCut(Word(AAction.SecondaryShortCuts.ShortCuts[Index]), APrevKey, APrevAge);
-    Inc(Index);
+    Result := MatchesShortCut(Word(AAction.SecondaryShortCuts.ShortCuts[mIndex]), APrevKey, APrevAge);
+    Inc(mIndex);
   end;
 end;
 
@@ -263,20 +263,20 @@ end;
 
 class function TAtlasIdeActionKeys.FindAction(const AName: string): TCustomAction;
 var
-  Services: INTAServices;
-  Index: Integer;
+  mServices: INTAServices;
+  mIndex: Integer;
 begin
   Result := nil;
-  if (AName = '') or not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
+  if (AName = '') or not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
   begin
     Exit;
   end;
-  for Index := 0 to Services.ActionList.ActionCount - 1 do
+  for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
   begin
-    if (Services.ActionList.Actions[Index] is TCustomAction) and
-      SameText(Services.ActionList.Actions[Index].Name, AName) then
+    if (mServices.ActionList.Actions[mIndex] is TCustomAction) and
+      SameText(mServices.ActionList.Actions[mIndex].Name, AName) then
     begin
-      Exit(TCustomAction(Services.ActionList.Actions[Index]));
+      Exit(TCustomAction(mServices.ActionList.Actions[mIndex]));
     end;
   end;
 end;
@@ -288,40 +288,40 @@ end;
 
 class function TAtlasIdeActionKeys.ActionKeyText(AAction: TCustomAction): string;
 var
-  Keys: TDictionary<TBasicAction, string>;
-  Index: Integer;
+  mKeys: TDictionary<TBasicAction, string>;
+  mIndex: Integer;
 begin
   if AAction.ShortCut <> 0 then
   begin
     Exit(ShortCutToText(AAction.ShortCut));
   end;
-  for Index := 0 to AAction.SecondaryShortCuts.Count - 1 do
+  for mIndex := 0 to AAction.SecondaryShortCuts.Count - 1 do
   begin
-    if AAction.SecondaryShortCuts.ShortCuts[Index] <> 0 then
+    if AAction.SecondaryShortCuts.ShortCuts[mIndex] <> 0 then
     begin
-      Exit(ShortCutToText(AAction.SecondaryShortCuts.ShortCuts[Index]));
+      Exit(ShortCutToText(AAction.SecondaryShortCuts.ShortCuts[mIndex]));
     end;
   end;
-  Keys := MenuKeys(True);
+  mKeys := MenuKeys(True);
   try
-    if not Keys.TryGetValue(AAction, Result) then
+    if not mKeys.TryGetValue(AAction, Result) then
     begin
       Result := '';
     end;
   finally
-    Keys.Free;
+    mKeys.Free;
   end;
 end;
 
 class function TAtlasIdeActionKeys.ActionCaption(AAction: TCustomAction): string;
 var
-  Tab: Integer;
+  mTab: Integer;
 begin
   Result := AAction.Caption;
-  Tab := Pos(#9, Result);
-  if Tab > 0 then
+  mTab := Pos(#9, Result);
+  if mTab > 0 then
   begin
-    Result := Copy(Result, 1, Tab - 1);
+    Result := Copy(Result, 1, mTab - 1);
   end;
   Result := TAtlasCommandPalette.CleanCaption(Result);
   if Result = '' then
@@ -332,18 +332,18 @@ end;
 
 class function TAtlasIdeActionKeys.AtlasKeyText(AFunc: TAtlasKeyFunction): string;
 var
-  Entry: TAtlasKeyEntry;
+  mEntry: TAtlasKeyEntry;
 begin
   Result := '';
-  for Entry in TAtlasIdeKeyMap.AtlasEntries do
+  for mEntry in TAtlasIdeKeyMap.AtlasEntries do
   begin
-    if Entry.Func = AFunc then
+    if mEntry.Func = AFunc then
     begin
       // Das Suchfeld der Willkommensseite hat immer Vorrang; dort gibt es keinen Aufruf per Maus.
-      if (Entry.Key <> 0) and not Entry.Disabled and
-        TAtlasKeyConflicts.ShouldBind(Entry.Key, TAtlasIdeKeys.Owner(Entry.Key), Entry.Priority) then
+      if (mEntry.Key <> 0) and not mEntry.Disabled and
+        TAtlasKeyConflicts.ShouldBind(mEntry.Key, TAtlasIdeKeys.Owner(mEntry.Key), mEntry.Priority) then
       begin
-        Result := ShortCutToText(TShortCut(Entry.Key));
+        Result := ShortCutToText(TShortCut(mEntry.Key));
       end;
       Exit;
     end;
@@ -352,17 +352,17 @@ end;
 
 class function TAtlasIdeActionKeys.AtlasCommandKeyText(const AId: string; var AFunc: TAtlasKeyFunction): string;
 var
-  Func: TAtlasKeyFunction;
+  mFunc: TAtlasKeyFunction;
 begin
   Result := '';
-  for Func := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
+  for mFunc := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
   begin
-    if SameText(TAtlasShortcutTips.AtlasCommandId(Func), Trim(AId)) then
+    if SameText(TAtlasShortcutTips.AtlasCommandId(mFunc), Trim(AId)) then
     begin
-      Result := AtlasKeyText(Func);
+      Result := AtlasKeyText(mFunc);
       if Result <> '' then
       begin
-        AFunc := Func;
+        AFunc := mFunc;
         Exit;
       end;
     end;
@@ -371,26 +371,26 @@ end;
 
 class function TAtlasIdeActionKeys.KeyOnlyText(const AId: string; out AKeyText: string): Boolean;
 var
-  Func: TAtlasKeyFunction;
-  Entry: TAtlasKeyEntry;
+  mFunc: TAtlasKeyFunction;
+  mEntry: TAtlasKeyEntry;
 begin
   AKeyText := '';
-  Result := TAtlasShortcutTips.IsKeyOnly(AId, Func);
+  Result := TAtlasShortcutTips.IsKeyOnly(AId, mFunc);
   if not Result then
   begin
     Exit;
   end;
-  AKeyText := AtlasKeyText(Func);
+  AKeyText := AtlasKeyText(mFunc);
   if AKeyText <> '' then
   begin
     Exit;
   end;
   // Vervollständigung und Parameter-Hint ohne eigene Taste laufen über Code Insight mit der Taste der IDE.
-  for Entry in TAtlasKeyEntry.AllFromSettings(TAtlasIdeSettings.Current) do
+  for mEntry in TAtlasKeyEntry.AllFromSettings(TAtlasIdeSettings.Current) do
   begin
-    if (Entry.Func = Func) and (Entry.Key = 0) and (Entry.IdeKey <> 0) then
+    if (mEntry.Func = mFunc) and (mEntry.Key = 0) and (mEntry.IdeKey <> 0) then
     begin
-      AKeyText := ShortCutToText(TShortCut(Entry.IdeKey));
+      AKeyText := ShortCutToText(TShortCut(mEntry.IdeKey));
       Exit;
     end;
   end;
@@ -399,28 +399,28 @@ end;
 class procedure TAtlasIdeActionKeys.Describe(const AId: string; out AKeyText, ACaption: string;
   out AIsAtlas: Boolean);
 var
-  Func: TAtlasKeyFunction;
-  Action: TCustomAction;
+  mFunc: TAtlasKeyFunction;
+  mAction: TCustomAction;
 begin
   AKeyText := '';
   ACaption := '';
   AIsAtlas := True;
-  if TAtlasShortcutTips.AtlasFunctionOf(AId, Func) then
+  if TAtlasShortcutTips.AtlasFunctionOf(AId, mFunc) then
   begin
-    AKeyText := AtlasCommandKeyText(AId, Func);
-    ACaption := TAtlasKeyMapWindow.FunctionCaption(Func);
+    AKeyText := AtlasCommandKeyText(AId, mFunc);
+    ACaption := TAtlasKeyMapWindow.FunctionCaption(mFunc);
   end
   else if not AId.StartsWith('Atlas.', True) then
   begin
     // Aktion der IDE aus der Befehlspalette; ein Befehl von Atlas ohne eigene Taste bekommt keinen Tipp, aber
     // dieselbe Prüfung.
-    Action := FindAction(AId);
+    mAction := FindAction(AId);
     AIsAtlas := False;
-    if Action <> nil then
+    if mAction <> nil then
     begin
-      AKeyText := ActionKeyText(Action);
-      ACaption := ActionCaption(Action);
-      AIsAtlas := IsAtlasAction(Action);
+      AKeyText := ActionKeyText(mAction);
+      ACaption := ActionCaption(mAction);
+      AIsAtlas := IsAtlasAction(mAction);
     end;
   end;
 end;
@@ -443,38 +443,38 @@ end;
 
 procedure TAtlasIdeShortcutKeys.AddKeys(AShortCut: Word; const AId: string);
 var
-  Key: string;
-  Ids: TArray<string>;
+  mKey: string;
+  mIds: TArray<string>;
 begin
   if (AShortCut = 0) or (AId = '') then
   begin
     Exit;
   end;
-  Key := TAtlasShortcutTips.StepsKey([AShortCut]);
-  if not FKeys.TryGetValue(Key, Ids) then
+  mKey := TAtlasShortcutTips.StepsKey([AShortCut]);
+  if not FKeys.TryGetValue(mKey, mIds) then
   begin
-    Ids := nil;
+    mIds := nil;
   end;
-  FKeys.AddOrSetValue(Key, Ids + [AId]);
+  FKeys.AddOrSetValue(mKey, mIds + [AId]);
 end;
 
 procedure TAtlasIdeShortcutKeys.AddKeys(const AKeyText, AId: string);
 var
-  Steps: TArray<Word>;
-  Key: string;
-  Ids: TArray<string>;
+  mSteps: TArray<Word>;
+  mKey: string;
+  mIds: TArray<string>;
 begin
-  Steps := TAtlasShortcutTips.ParseSteps(AKeyText);
-  if (Length(Steps) = 0) or (AId = '') then
+  mSteps := TAtlasShortcutTips.ParseSteps(AKeyText);
+  if (Length(mSteps) = 0) or (AId = '') then
   begin
     Exit;
   end;
-  Key := TAtlasShortcutTips.StepsKey(Steps);
-  if not FKeys.TryGetValue(Key, Ids) then
+  mKey := TAtlasShortcutTips.StepsKey(mSteps);
+  if not FKeys.TryGetValue(mKey, mIds) then
   begin
-    Ids := nil;
+    mIds := nil;
   end;
-  FKeys.AddOrSetValue(Key, Ids + [AId]);
+  FKeys.AddOrSetValue(mKey, mIds + [AId]);
 end;
 
 procedure TAtlasIdeShortcutKeys.AddAtlasKeys;

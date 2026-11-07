@@ -81,16 +81,16 @@ end;
 
 function TAtlasOutlineLoadGuard.Remove(const AKey: string): Boolean;
 var
-  Existing: string;
+  mExisting: string;
 begin
   Result := FDepth = 0;
   if Result or FClearAll then
   begin
     Exit;
   end;
-  for Existing in FKeys do
+  for mExisting in FKeys do
   begin
-    if Existing = AKey then
+    if mExisting = AKey then
     begin
       Exit;
     end;

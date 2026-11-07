@@ -149,26 +149,26 @@ uses
 /// <summary>Angehaltene Debug-Sitzung (Haltepunkt, Ausnahme).</summary>
 function DebugPaused: Boolean;
 var
-  Debugger: IOTADebuggerServices;
-  Process: IOTAProcess;
+  mDebugger: IOTADebuggerServices;
+  mProcess: IOTAProcess;
 begin
   Result := False;
-  if not Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) then
+  if not Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
   begin
     Exit;
   end;
-  Process := Debugger.CurrentProcess;
-  Result := (Process <> nil) and (Process.ProcessState in [psStopped, psFault, psException]);
+  mProcess := mDebugger.CurrentProcess;
+  Result := (mProcess <> nil) and (mProcess.ProcessState in [psStopped, psFault, psException]);
 end;
 
 /// <summary>Ein modaler Dialog ist offen (VCL-Formular oder ein Dialog, der das Hauptfenster sperrt).</summary>
 function ModalOpen: Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to Screen.FormCount - 1 do
+  for mIndex := 0 to Screen.FormCount - 1 do
   begin
-    if Screen.Forms[Index].Visible and (fsModal in Screen.Forms[Index].FormState) then
+    if Screen.Forms[mIndex].Visible and (fsModal in Screen.Forms[mIndex].FormState) then
     begin
       Exit(True);
     end;
@@ -181,38 +181,38 @@ end;
 /// Hauptfenster.</summary>
 function TipArea: TRect;
 var
-  Services: INTAEditorServices;
-  Window: INTAEditWindow;
-  Editor: TWinControl;
-  Control: TWinControl;
+  mServices: INTAEditorServices;
+  mWindow: INTAEditWindow;
+  mEditor: TWinControl;
+  mControl: TWinControl;
 begin
-  Control := nil;
-  if Supports(BorlandIDEServices, INTAEditorServices, Services) then
+  mControl := nil;
+  if Supports(BorlandIDEServices, INTAEditorServices, mServices) then
   begin
-    Window := Services.TopEditWindow;
-    if (Window <> nil) and (Window.Form <> nil) and Window.Form.Visible then
+    mWindow := mServices.TopEditWindow;
+    if (mWindow <> nil) and (mWindow.Form <> nil) and mWindow.Form.Visible then
     begin
-      Editor := TAtlasEditorBarHost.EditorOf(Window);
-      if (Editor <> nil) and Editor.Showing then
+      mEditor := TAtlasEditorBarHost.EditorOf(mWindow);
+      if (mEditor <> nil) and mEditor.Showing then
       begin
-        Control := Editor;
+        mControl := mEditor;
       end
       else
       begin
-        Control := Window.Form;
+        mControl := mWindow.Form;
       end;
     end;
   end;
-  if (Control = nil) and (Application.MainForm <> nil) then
+  if (mControl = nil) and (Application.MainForm <> nil) then
   begin
-    Control := Application.MainForm;
+    mControl := Application.MainForm;
   end;
-  if (Control = nil) or not Control.HandleAllocated then
+  if (mControl = nil) or not mControl.HandleAllocated then
   begin
     Exit(Screen.WorkAreaRect);
   end;
-  Result.TopLeft := Control.ClientToScreen(Point(0, 0));
-  Result.BottomRight := Control.ClientToScreen(Point(Control.ClientWidth, Control.ClientHeight));
+  Result.TopLeft := mControl.ClientToScreen(Point(0, 0));
+  Result.BottomRight := mControl.ClientToScreen(Point(mControl.ClientWidth, mControl.ClientHeight));
 end;
 
 { TAtlasIdeShortcutTips }
@@ -251,12 +251,12 @@ end;
 
 function TAtlasIdeShortcutTips.TipTitle(const AId: string): string;
 var
-  Tip: TAtlasTip;
+  mTip: TAtlasTip;
 begin
   Result := '';
-  if TAtlasTipCatalog.FindByCommand(FHolder.Tips, AId, Tip) then
+  if TAtlasTipCatalog.FindByCommand(FHolder.Tips, AId, mTip) then
   begin
-    Result := Tip.TitleIn(TAtlasStrings.Language = TAtlasLanguage.English);
+    Result := mTip.TitleIn(TAtlasStrings.Language = TAtlasLanguage.English);
   end;
 end;
 
@@ -283,15 +283,15 @@ end;
 
 procedure TAtlasIdeShortcutTips.UpdateActive;
 var
-  Active: Boolean;
+  mActive: Boolean;
 begin
-  Active := (TAtlasIdeSettings.Current.ShortcutTips or FCountAlways) and
+  mActive := (TAtlasIdeSettings.Current.ShortcutTips or FCountAlways) and
     not TAtlasGuard.Disabled(TAtlasFeature.ShortcutTips);
-  if Active = FActive then
+  if mActive = FActive then
   begin
     Exit;
   end;
-  FActive := Active;
+  FActive := mActive;
   if FActive then
   begin
     FEvents.OnMessage := AppMessage;
@@ -392,7 +392,7 @@ end;
 
 procedure TAtlasIdeShortcutTips.AppActionExecute(Action: TBasicAction; var Handled: Boolean);
 var
-  Item: TCustomAction;
+  mItem: TCustomAction;
 begin
   // Handled bleibt False: Die Aktion läuft wie immer.
   if TAtlasGuard.Disabled(TAtlasFeature.ShortcutTips) or not (Action is TCustomAction) then
@@ -400,11 +400,11 @@ begin
     Exit;
   end;
   try
-    Item := TCustomAction(Action);
+    mItem := TCustomAction(Action);
     // Kürzel und Beschriftung jetzt, von der Aktion selbst: Sie steht nicht immer in INTAServices.ActionList.
-    if CountsAsMouseUse(Item) then
+    if CountsAsMouseUse(mItem) then
     begin
-      MouseUse(Item.Name, TAtlasIdeActionKeys.ActionKeyText(Item), TAtlasIdeActionKeys.ActionCaption(Item));
+      MouseUse(mItem.Name, TAtlasIdeActionKeys.ActionKeyText(mItem), TAtlasIdeActionKeys.ActionCaption(mItem));
     end;
   except
     on E: Exception do
@@ -429,18 +429,18 @@ end;
 
 procedure TAtlasIdeShortcutTips.Queue(const AId, AKeyText, ACaption: string; AKnown: Boolean);
 var
-  Id, KeyText, Caption: string;
-  Known: Boolean;
+  mId, mKeyText, mCaption: string;
+  mKnown: Boolean;
 begin
   if not TAtlasIdeSettings.Current.ShortcutTips then
   begin
     Exit;
   end;
   // Erst nach der Aktion: Sie kann einen modalen Dialog öffnen (dann kein Tipp) oder das Editorfenster wechseln.
-  Id := AId;
-  KeyText := AKeyText;
-  Caption := ACaption;
-  Known := AKnown;
+  mId := AId;
+  mKeyText := AKeyText;
+  mCaption := ACaption;
+  mKnown := AKnown;
   TAtlasMainThread.ForceQueue(TAtlasFeature.ShortcutTips,
     procedure
     begin
@@ -451,13 +451,13 @@ begin
           begin
             Exit;
           end;
-          if Known then
+          if mKnown then
           begin
-            FInstance.Consider(Id, KeyText, Caption, False);
+            FInstance.Consider(mId, mKeyText, mCaption, False);
           end
           else
           begin
-            FInstance.Consider(Id);
+            FInstance.Consider(mId);
           end;
         end);
     end);
@@ -474,36 +474,36 @@ end;
 
 procedure TAtlasIdeShortcutTips.Consider(const AId, AKeyText, ACaption: string; AIsAtlas: Boolean);
 var
-  Settings: TAtlasPluginSettings;
-  Situation: TAtlasTipSituation;
-  KeyText, Caption: string;
-  Verdict: TAtlasTipVerdict;
+  mSettings: TAtlasPluginSettings;
+  mSituation: TAtlasTipSituation;
+  mKeyText, mCaption: string;
+  mVerdict: TAtlasTipVerdict;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  KeyText := AKeyText;
+  mSettings := TAtlasIdeSettings.Current;
+  mKeyText := AKeyText;
   // Dieselbe Tippquelle wie „Atlas entdecken“ (#757): Titel aus tips.json, sonst der Aktion.
-  Caption := TipTitle(AId);
-  if Caption = '' then
+  mCaption := TipTitle(AId);
+  if mCaption = '' then
   begin
-    Caption := ACaption;
+    mCaption := ACaption;
   end;
-  if Caption = '' then
+  if mCaption = '' then
   begin
-    Caption := AId;
+    mCaption := AId;
   end;
-  Situation := TAtlasTipSituation.Create(Settings.ShortcutTips, TAtlasShortcutTips.ScopeOf(Settings.ShortcutTipsScope),
-    AIsAtlas, KeyText, Now);
-  Situation.LastTipAt := FLastTipAt;
+  mSituation := TAtlasTipSituation.Create(mSettings.ShortcutTips, TAtlasShortcutTips.ScopeOf(mSettings.ShortcutTipsScope),
+    AIsAtlas, mKeyText, Now);
+  mSituation.LastTipAt := FLastTipAt;
   // Nur, wo es darauf ankommt: Die Abfrage des Debuggers ist billig, aber nicht umsonst.
-  if KeyText <> '' then
+  if mKeyText <> '' then
   begin
-    Situation.DebugPaused := DebugPaused;
-    Situation.ModalOpen := ModalOpen;
+    mSituation.DebugPaused := DebugPaused;
+    mSituation.ModalOpen := ModalOpen;
   end;
-  Verdict := TAtlasShortcutTips.Decide(Usage.Entry(AId), Situation);
-  if Verdict = TAtlasTipVerdict.Show then
+  mVerdict := TAtlasShortcutTips.Decide(Usage.Entry(AId), mSituation);
+  if mVerdict = TAtlasTipVerdict.Show then
   begin
-    ShowTip(AId, KeyText, Caption);
+    ShowTip(AId, mKeyText, mCaption);
   end;
 end;
 
@@ -534,22 +534,22 @@ end;
 
 procedure TAtlasIdeShortcutTips.ShowTip(const AId, AKeyText, ACaption: string);
 var
-  Entry: TAtlasCommandUsageEntry;
-  Area: TRect;
-  Editor: IOTAEditorServices;
-  FontName: string;
-  FontSize: Integer;
-  Mode: TAtlasNotificationMode;
+  mEntry: TAtlasCommandUsageEntry;
+  mArea: TRect;
+  mEditor: IOTAEditorServices;
+  mFontName: string;
+  mFontSize: Integer;
+  mMode: TAtlasNotificationMode;
 begin
   // Benachrichtigungszentrale (#601): „nur sammeln“ zeigt kein Fenster, „aus“ unterdrückt den Tipp ganz.
-  Mode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.ShortcutTips,
+  mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.ShortcutTips,
     TAtlasNotificationSeverity.Info, TAtlasStrings.Fmt(TAtlasTextId.NotificationsTipTitle, [AKeyText]),
     TAtlasStrings.Fmt(TAtlasTextId.NotificationsTipText, [ACaption, AKeyText]), TipActions(AId));
-  if Mode = TAtlasNotificationMode.Off then
+  if mMode = TAtlasNotificationMode.Off then
   begin
     Exit;
   end;
-  if Mode = TAtlasNotificationMode.Show then
+  if mMode = TAtlasNotificationMode.Show then
   begin
     if FWindow = nil then
     begin
@@ -557,23 +557,23 @@ begin
       FWindow.OnNever := NeverClick;
       FWindow.OnAllKeys := AllKeysClick;
     end;
-    Area := TipArea;
-    FontName := FWindow.Font.Name;
-    FontSize := 10;
-    if Supports(BorlandIDEServices, IOTAEditorServices, Editor) and (Editor.EditOptions <> nil) then
+    mArea := TipArea;
+    mFontName := FWindow.Font.Name;
+    mFontSize := 10;
+    if Supports(BorlandIDEServices, IOTAEditorServices, mEditor) and (mEditor.EditOptions <> nil) then
     begin
-      FontName := Editor.EditOptions.FontName;
-      FontSize := Editor.EditOptions.FontSize;
+      mFontName := mEditor.EditOptions.FontName;
+      mFontSize := mEditor.EditOptions.FontSize;
     end;
     FWindow.Colors := TAtlasIdeStyle.Colors;
-    FWindow.SetScaling(TAtlasPopupWindow.MonitorPPI(Area.CenterPoint), 1, FontName, FontSize);
-    FWindow.ShowTip(TAtlasShortcutTipView.Create(AKeyText, ACaption, TAtlasIdeSettings.Current.KeyOverview), Area);
+    FWindow.SetScaling(TAtlasPopupWindow.MonitorPPI(mArea.CenterPoint), 1, mFontName, mFontSize);
+    FWindow.ShowTip(TAtlasShortcutTipView.Create(AKeyText, ACaption, TAtlasIdeSettings.Current.KeyOverview), mArea);
   end;
   FTipId := AId;
   FLastTipAt := Now;
-  Entry := Usage.Entry(AId);
-  TAtlasShortcutTips.MarkShown(Entry, FLastTipAt);
-  Usage.Put(Entry);
+  mEntry := Usage.Entry(AId);
+  TAtlasShortcutTips.MarkShown(mEntry, FLastTipAt);
+  Usage.Put(mEntry);
   Changed;
   // Anonym: kein Dateiname, kein Quelltext.
   TAtlasGuard.Log('Tastenkürzel-Tipp gezeigt (#600)');
@@ -586,20 +586,20 @@ end;
 
 procedure TAtlasIdeShortcutTips.SetNever(const AId: string);
 var
-  Entry: TAtlasCommandUsageEntry;
-  Id: string;
+  mEntry: TAtlasCommandUsageEntry;
+  mId: string;
 begin
-  Id := AId;
+  mId := AId;
   TAtlasGuard.Run(TAtlasFeature.ShortcutTips,
     procedure
     begin
-      if Id = '' then
+      if mId = '' then
       begin
         Exit;
       end;
-      Entry := Usage.Entry(Id);
-      Entry.Never := True;
-      Usage.Put(Entry);
+      mEntry := Usage.Entry(mId);
+      mEntry.Never := True;
+      Usage.Put(mEntry);
       // Gleich sichern: Die Wahl soll auch einen Absturz überstehen.
       Save;
     end);

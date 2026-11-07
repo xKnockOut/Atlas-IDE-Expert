@@ -59,10 +59,10 @@ uses
   Vcl.ExtCtrls;
 
 const
-  ToolbarName = 'TEditorNavigationToolbar';
-  ToolbarClassPart = 'NAVIGATIONTOOLBAR';
+  cToolbarName = 'TEditorNavigationToolbar';
+  cToolbarClassPart = 'NAVIGATIONTOOLBAR';
   /// <summary>Tiefe der Suche im Fensterbaum.</summary>
-  MaxSearchDepth = 8;
+  cMaxSearchDepth = 8;
 
 type
   /// <summary>Unsichtbarer Halter der IDE-Leiste.</summary>
@@ -70,7 +70,7 @@ type
 
 function IsToolbar(AControl: TControl): Boolean;
 begin
-  Result := SameText(AControl.Name, ToolbarName) or (Pos(ToolbarClassPart, UpperCase(AControl.ClassName)) > 0);
+  Result := SameText(AControl.Name, cToolbarName) or (Pos(cToolbarClassPart, UpperCase(AControl.ClassName)) > 0);
 end;
 
 { TAtlasNavigationToolbar }
@@ -92,26 +92,26 @@ class function TAtlasNavigationToolbar.Find(AParent: TWinControl): TWinControl;
 
   function Search(AControl: TWinControl; ADepth: Integer): TWinControl;
   var
-    Index: Integer;
-    Child: TControl;
+    mIndex: Integer;
+    mChild: TControl;
   begin
     Result := nil;
-    if ADepth > MaxSearchDepth then
+    if ADepth > cMaxSearchDepth then
     begin
       Exit;
     end;
-    for Index := 0 to AControl.ControlCount - 1 do
+    for mIndex := 0 to AControl.ControlCount - 1 do
     begin
-      Child := AControl.Controls[Index];
-      if not (Child is TWinControl) then
+      mChild := AControl.Controls[mIndex];
+      if not (mChild is TWinControl) then
       begin
         Continue;
       end;
-      if IsToolbar(Child) then
+      if IsToolbar(mChild) then
       begin
-        Exit(TWinControl(Child));
+        Exit(TWinControl(mChild));
       end;
-      Result := Search(TWinControl(Child), ADepth + 1);
+      Result := Search(TWinControl(mChild), ADepth + 1);
       if Result <> nil then
       begin
         Exit;
@@ -140,83 +140,83 @@ end;
 /// <summary>Fenster von AControl und allen Kindern jetzt im aufrufenden (Haupt-)Thread anlegen.</summary>
 procedure OwnHandles(AControl: TWinControl);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if (AControl = nil) or (AControl.Parent = nil) or not AControl.Parent.HandleAllocated then
   begin
     Exit;
   end;
   AControl.HandleNeeded;
-  for Index := 0 to AControl.ControlCount - 1 do
+  for mIndex := 0 to AControl.ControlCount - 1 do
   begin
-    if AControl.Controls[Index] is TWinControl then
+    if AControl.Controls[mIndex] is TWinControl then
     begin
-      OwnHandles(TWinControl(AControl.Controls[Index]));
+      OwnHandles(TWinControl(AControl.Controls[mIndex]));
     end;
   end;
 end;
 
 procedure TAtlasNavigationToolbar.Apply(AParent: TWinControl; AHide: Boolean);
 var
-  Toolbar: TWinControl;
-  Holder: TToolbarHolder;
+  mToolbar: TWinControl;
+  mHolder: TToolbarHolder;
 begin
-  Toolbar := Find(AParent);
-  if Toolbar = nil then
+  mToolbar := Find(AParent);
+  if mToolbar = nil then
   begin
     Exit;
   end;
-  if IsHidden(Toolbar) = AHide then
+  if IsHidden(mToolbar) = AHide then
   begin
     Exit;
   end;
   if not AHide then
   begin
-    Holder := TToolbarHolder(Toolbar.Parent);
-    Toolbar.Parent := Holder.Parent;
-    Toolbar.Top := Holder.Top;
-    FPanels.Remove(Holder);
-    Holder.Free;
-    OwnHandles(Toolbar);
+    mHolder := TToolbarHolder(mToolbar.Parent);
+    mToolbar.Parent := mHolder.Parent;
+    mToolbar.Top := mHolder.Top;
+    FPanels.Remove(mHolder);
+    mHolder.Free;
+    OwnHandles(mToolbar);
     Exit;
   end;
   // Halter an der Stelle der Leiste, damit die Reihenfolge der oben ausgerichteten Steuerelemente bleibt.
-  Holder := TToolbarHolder.Create(nil);
-  Holder.FreeNotification(Self);
-  FPanels.Add(Holder);
+  mHolder := TToolbarHolder.Create(nil);
+  mHolder.FreeNotification(Self);
+  FPanels.Add(mHolder);
   // Sichtbar, aber 0 Pixel hoch: Ein unsichtbarer Halter hätte kein Fenster, und das legte sonst der
   // Parser-Thread der IDE an (siehe oben); mit Fenster rutschte ein unsichtbarer Halter zudem nach oben.
-  Holder.BevelOuter := bvNone;
-  Holder.ShowCaption := False;
-  Holder.Height := 0;
-  Holder.Top := Toolbar.Top;
-  Holder.Align := Toolbar.Align;
-  Holder.Parent := Toolbar.Parent;
-  Toolbar.Parent := Holder;
-  OwnHandles(Holder);
+  mHolder.BevelOuter := bvNone;
+  mHolder.ShowCaption := False;
+  mHolder.Height := 0;
+  mHolder.Top := mToolbar.Top;
+  mHolder.Align := mToolbar.Align;
+  mHolder.Parent := mToolbar.Parent;
+  mToolbar.Parent := mHolder;
+  OwnHandles(mHolder);
 end;
 
 procedure TAtlasNavigationToolbar.RestoreAll;
 var
-  Holder: TWinControl;
-  Toolbar: TControl;
+  mHolder: TWinControl;
+  mToolbar: TControl;
 begin
   while FPanels.Count > 0 do
   begin
-    Holder := FPanels.Last;
+    mHolder := FPanels.Last;
     FPanels.Delete(FPanels.Count - 1);
-    Holder.RemoveFreeNotification(Self);
-    while Holder.ControlCount > 0 do
+    mHolder.RemoveFreeNotification(Self);
+    while mHolder.ControlCount > 0 do
     begin
-      Toolbar := Holder.Controls[0];
-      Toolbar.Parent := Holder.Parent;
-      Toolbar.Top := Holder.Top;
-      if Toolbar is TWinControl then
+      mToolbar := mHolder.Controls[0];
+      mToolbar.Parent := mHolder.Parent;
+      mToolbar.Top := mHolder.Top;
+      if mToolbar is TWinControl then
       begin
-        OwnHandles(TWinControl(Toolbar));
+        OwnHandles(TWinControl(mToolbar));
       end;
     end;
-    Holder.Free;
+    mHolder.Free;
   end;
 end;
 

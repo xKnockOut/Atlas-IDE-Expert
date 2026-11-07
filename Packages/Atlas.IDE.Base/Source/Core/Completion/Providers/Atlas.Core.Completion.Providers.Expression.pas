@@ -103,34 +103,34 @@ end;
 
 function TAtlasExpressionCompletionProvider.Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean;
 var
-  Session: TLspSession;
+  mSession: TLspSession;
 begin
   AData := nil;
   if AContext.Trigger = TAtlasTriggers.History then
   begin
     Exit(Assigned(FHistory));
   end;
-  Session := nil;
+  mSession := nil;
   if Assigned(FSession) then
   begin
-    Session := FSession();
+    mSession := FSession();
   end;
-  Result := (Session <> nil) and (AContext.FileName <> '') and (AContext.Line >= 0);
-  AData := Session;
+  Result := (mSession <> nil) and (AContext.FileName <> '') and (AContext.Line >= 0);
+  AData := mSession;
 end;
 
 function TAtlasExpressionCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
   const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState):
   TAtlasCompletionItems;
 var
-  Response: TJSONValue;
+  mResponse: TJSONValue;
 begin
   AState := Default(TAtlasFetchState);
   if AContext.Trigger = TAtlasTriggers.History then
   begin
     Exit(HistoryItems(FHistory(), FHistoryCaption));
   end;
-  Response := TLspSession(AData).ExpressionCompletion(AContext.FileName, AContext.Line, AContext.Text,
+  mResponse := TLspSession(AData).ExpressionCompletion(AContext.FileName, AContext.Line, AContext.Text,
     AContext.Character, FTimeoutMs);
   try
     if ACancelled() then
@@ -141,27 +141,27 @@ begin
     Result := nil;
     if Assigned(FItemsOf) then
     begin
-      Result := FItemsOf(Response);
+      Result := FItemsOf(mResponse);
     end;
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
 class function TAtlasExpressionCompletionProvider.HistoryItems(const AExpressions: TArray<string>;
   const ACaption: string): TAtlasCompletionItems;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
   SetLength(Result, Length(AExpressions));
-  for Index := 0 to High(AExpressions) do
+  for mIndex := 0 to High(AExpressions) do
   begin
-    Result[Index] := Default(TAtlasCompletionItem);
-    Result[Index].Name := AExpressions[Index];
-    Result[Index].Kind := TAtlasItemKind.Unknown;
-    Result[Index].Signature := ACaption;
-    Result[Index].Rank := Index;
+    Result[mIndex] := Default(TAtlasCompletionItem);
+    Result[mIndex].Name := AExpressions[mIndex];
+    Result[mIndex].Kind := TAtlasItemKind.Unknown;
+    Result[mIndex].Signature := ACaption;
+    Result[mIndex].Rank := mIndex;
   end;
 end;
 

@@ -86,29 +86,29 @@ uses
 {$R *.dfm}
 
 const
-  KeyLeft = 150;
-  ChoiceLeft = 290;
+  cKeyLeft = 150;
+  cChoiceLeft = 290;
 
 { TAtlasKeysPage }
 
 constructor TAtlasKeysPage.Create(AOwner: TComponent);
 var
-  Title: TLabel;
-  Panel: TPanel;
-  Index: Integer;
+  mTitle: TLabel;
+  mPanel: TPanel;
+  mIndex: Integer;
 begin
   inherited Create(AOwner);
   Name := 'AtlasKeysPage';
   Width := 480;
   Height := 480;
   FNextTop := 0;
-  Title := TLabel.Create(Self);
-  Title.Parent := Self;
-  Title.Align := alTop;
-  Title.AlignWithMargins := True;
-  Title.Caption := TAtlasStrings.Text(TAtlasTextId.KeysTitle);
-  Title.Font.Style := [fsBold];
-  Title.Top := FNextTop;
+  mTitle := TLabel.Create(Self);
+  mTitle.Parent := Self;
+  mTitle.Align := alTop;
+  mTitle.AlignWithMargins := True;
+  mTitle.Caption := TAtlasStrings.Text(TAtlasTextId.KeysTitle);
+  mTitle.Font.Style := [fsBold];
+  mTitle.Top := FNextTop;
   Inc(FNextTop, 100);
   FIntro := TLabel.Create(Self);
   FIntro.Parent := Self;
@@ -118,15 +118,15 @@ begin
   FIntro.Caption := TAtlasStrings.Text(TAtlasTextId.KeysIntro);
   FIntro.Top := FNextTop;
   Inc(FNextTop, 100);
-  Panel := AddPanel(20);
-  AddLabel(Panel, TAtlasStrings.Text(TAtlasTextId.KeysHeaderFunction), 0, 2).Font.Style := [fsBold];
-  AddLabel(Panel, TAtlasStrings.Text(TAtlasTextId.KeysHeaderKey), KeyLeft, 2).Font.Style := [fsBold];
-  AddLabel(Panel, TAtlasStrings.Text(TAtlasTextId.KeysHeaderChoice), ChoiceLeft, 2).Font.Style := [fsBold];
+  mPanel := AddPanel(20);
+  AddLabel(mPanel, TAtlasStrings.Text(TAtlasTextId.KeysHeaderFunction), 0, 2).Font.Style := [fsBold];
+  AddLabel(mPanel, TAtlasStrings.Text(TAtlasTextId.KeysHeaderKey), cKeyLeft, 2).Font.Style := [fsBold];
+  AddLabel(mPanel, TAtlasStrings.Text(TAtlasTextId.KeysHeaderChoice), cChoiceLeft, 2).Font.Style := [fsBold];
   FEntries := TAtlasKeyEntry.FromSettings(TAtlasPluginSettings.Defaults);
   SetLength(FRows, Length(FEntries));
-  for Index := 0 to High(FEntries) do
+  for mIndex := 0 to High(FEntries) do
   begin
-    AddRow(Index);
+    AddRow(mIndex);
   end;
   FForeign := TLabel.Create(Self);
   FForeign.Parent := Self;
@@ -195,13 +195,13 @@ end;
 
 procedure TAtlasKeysPage.AddRow(AIndex: Integer);
 var
-  Panel: TPanel;
+  mPanel: TPanel;
 begin
-  Panel := AddPanel(46);
-  AddLabel(Panel, FunctionCaption(FEntries[AIndex].Func), 0, 5);
+  mPanel := AddPanel(46);
+  AddLabel(mPanel, FunctionCaption(FEntries[AIndex].Func), 0, 5);
   FRows[AIndex].Key := TEdit.Create(Self);
-  FRows[AIndex].Key.Parent := Panel;
-  FRows[AIndex].Key.Left := KeyLeft;
+  FRows[AIndex].Key.Parent := mPanel;
+  FRows[AIndex].Key.Left := cKeyLeft;
   FRows[AIndex].Key.Top := 1;
   FRows[AIndex].Key.Width := 130;
   FRows[AIndex].Key.Tag := AIndex;
@@ -212,8 +212,8 @@ begin
   end;
   FRows[AIndex].Key.OnChange := KeyChange;
   FRows[AIndex].Choice := TAtlasChoiceBox.Create(Self);
-  FRows[AIndex].Choice.Parent := Panel;
-  FRows[AIndex].Choice.Left := ChoiceLeft;
+  FRows[AIndex].Choice.Parent := mPanel;
+  FRows[AIndex].Choice.Left := cChoiceLeft;
   FRows[AIndex].Choice.Top := 1;
   FRows[AIndex].Choice.Width := 180;
   FRows[AIndex].Choice.Anchors := [akLeft, akTop, akRight];
@@ -222,7 +222,7 @@ begin
   FRows[AIndex].Choice.SetChoices([TAtlasStrings.Text(TAtlasTextId.KeysChoiceAtlas),
     TAtlasStrings.Text(TAtlasTextId.KeysChoiceOther), TAtlasStrings.Text(TAtlasTextId.KeysChoiceNewKey)]);
   FRows[AIndex].Choice.OnChange := ChoiceChange;
-  FRows[AIndex].Status := AddLabel(Panel, '', KeyLeft, 27);
+  FRows[AIndex].Status := AddLabel(mPanel, '', cKeyLeft, 27);
   FRows[AIndex].Status.Font.Color := clGrayText;
 end;
 
@@ -266,7 +266,7 @@ end;
 procedure TAtlasKeysPage.UpdateRow(AIndex: Integer);
 var
   mOwner, mText: string;
-  Status: TAtlasKeyStatus;
+  mStatus: TAtlasKeyStatus;
 begin
   mText := Trim(FRows[AIndex].Key.Text);
   if (mText <> '') and (TextToShortCut(mText) = 0) then
@@ -279,13 +279,13 @@ begin
   begin
     mOwner := FOwnerOf(FEntries[AIndex].Key);
   end;
-  Status := FEntries[AIndex].Status(mOwner);
+  mStatus := FEntries[AIndex].Status(mOwner);
   FRows[AIndex].Status.Caption := StatusText(FEntries[AIndex], mOwner);
   FUpdating := True;
   try
     FRows[AIndex].Choice.Choice := Ord(FEntries[AIndex].Choice);
     // Zu entscheiden gibt es nur bei einer Belegung (bzw. bei der Taste der IDE).
-    FRows[AIndex].Choice.Enabled := (Status <> TAtlasKeyStatus.Free) and (Status <> TAtlasKeyStatus.NoKey);
+    FRows[AIndex].Choice.Enabled := (mStatus <> TAtlasKeyStatus.Free) and (mStatus <> TAtlasKeyStatus.NoKey);
   finally
     FUpdating := False;
   end;
@@ -293,84 +293,84 @@ end;
 
 procedure TAtlasKeysPage.KeyChange(Sender: TObject);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if FUpdating then
   begin
     Exit;
   end;
-  Index := TEdit(Sender).Tag;
-  FEntries[Index].Key := Word(TextToShortCut(Trim(TEdit(Sender).Text)));
-  UpdateRow(Index);
+  mIndex := TEdit(Sender).Tag;
+  FEntries[mIndex].Key := Word(TextToShortCut(Trim(TEdit(Sender).Text)));
+  UpdateRow(mIndex);
 end;
 
 procedure TAtlasKeysPage.ChoiceChange(Sender: TObject);
 var
-  Index: Integer;
-  Choice: TAtlasKeyChoice;
-  Key: TEdit;
+  mIndex: Integer;
+  mChoice: TAtlasKeyChoice;
+  mKey: TEdit;
 begin
   if FUpdating or (TAtlasChoiceBox(Sender).Choice < 0) then
   begin
     Exit;
   end;
-  Index := TAtlasChoiceBox(Sender).Tag;
-  Choice := TAtlasKeyChoice(TAtlasChoiceBox(Sender).Choice);
-  FEntries[Index].Choose(Choice);
-  Key := FRows[Index].Key;
+  mIndex := TAtlasChoiceBox(Sender).Tag;
+  mChoice := TAtlasKeyChoice(TAtlasChoiceBox(Sender).Choice);
+  FEntries[mIndex].Choose(mChoice);
+  mKey := FRows[mIndex].Key;
   FUpdating := True;
   try
     // „Atlas verwenden“ ohne eigene Taste übernimmt die Taste der IDE.
-    if (FEntries[Index].Key <> 0) and (Trim(Key.Text) = '') then
+    if (FEntries[mIndex].Key <> 0) and (Trim(mKey.Text) = '') then
     begin
-      Key.Text := ShortCutToText(TShortCut(FEntries[Index].Key));
+      mKey.Text := ShortCutToText(TShortCut(FEntries[mIndex].Key));
     end;
   finally
     FUpdating := False;
   end;
-  UpdateRow(Index);
-  if (Choice = TAtlasKeyChoice.OtherKey) and Key.CanFocus then
+  UpdateRow(mIndex);
+  if (mChoice = TAtlasKeyChoice.OtherKey) and mKey.CanFocus then
   begin
-    Key.SetFocus;
-    Key.SelectAll;
+    mKey.SetFocus;
+    mKey.SelectAll;
   end;
 end;
 
 procedure TAtlasKeysPage.SetOwnerOf(const AValue: TAtlasKeyOwnerFunc);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   FOwnerOf := AValue;
-  for Index := 0 to High(FRows) do
+  for mIndex := 0 to High(FRows) do
   begin
-    UpdateRow(Index);
+    UpdateRow(mIndex);
   end;
 end;
 
 procedure TAtlasKeysPage.LoadFrom(const ASettings: TAtlasPluginSettings);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   FEntries := TAtlasKeyEntry.FromSettings(ASettings);
   FUpdating := True;
   try
-    for Index := 0 to High(FRows) do
+    for mIndex := 0 to High(FRows) do
     begin
-      if FEntries[Index].Key = 0 then
+      if FEntries[mIndex].Key = 0 then
       begin
-        FRows[Index].Key.Text := '';
+        FRows[mIndex].Key.Text := '';
       end
       else
       begin
-        FRows[Index].Key.Text := ShortCutToText(TShortCut(FEntries[Index].Key));
+        FRows[mIndex].Key.Text := ShortCutToText(TShortCut(FEntries[mIndex].Key));
       end;
     end;
   finally
     FUpdating := False;
   end;
-  for Index := 0 to High(FRows) do
+  for mIndex := 0 to High(FRows) do
   begin
-    UpdateRow(Index);
+    UpdateRow(mIndex);
   end;
   FOverview.Checked := ASettings.KeyOverview;
   FStartupCheck.Checked := ASettings.KeyStartupCheck;

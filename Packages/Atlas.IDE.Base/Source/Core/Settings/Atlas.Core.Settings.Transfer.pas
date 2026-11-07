@@ -277,7 +277,7 @@ end;
 
 const
   /// <summary>Benutzerordner für Pfadmakros, der längste zuerst.</summary>
-  UserMacros: array[0..2] of string = ('LOCALAPPDATA', 'APPDATA', 'USERPROFILE');
+  cUserMacros: array[0..2] of string = ('LOCALAPPDATA', 'APPDATA', 'USERPROFILE');
 
 function IsText(AValue: TJSONValue): Boolean;
 begin
@@ -304,12 +304,12 @@ end;
 
 function Contains(const AList: TArray<string>; const AValue: string): Boolean;
 var
-  Item: string;
+  mItem: string;
 begin
   Result := False;
-  for Item in AList do
+  for mItem in AList do
   begin
-    if SameText(Item, AValue) then
+    if SameText(mItem, AValue) then
     begin
       Exit(True);
     end;
@@ -318,14 +318,14 @@ end;
 
 function LastSegment(const AKey: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AKey;
-  for Index := Length(AKey) downto 1 do
+  for mIndex := Length(AKey) downto 1 do
   begin
-    if AKey[Index] = '.' then
+    if AKey[mIndex] = '.' then
     begin
-      Exit(Copy(AKey, Index + 1, MaxInt));
+      Exit(Copy(AKey, mIndex + 1, MaxInt));
     end;
   end;
 end;
@@ -348,60 +348,60 @@ end;
 /// <summary>Ersetzt AFolder (ohne Groß-/Kleinschreibung, nur an Pfadgrenzen) durch AMacro.</summary>
 function ReplaceFolder(const AText, AFolder, AMacro: string): string;
 var
-  Lower, Needle: string;
-  Start, Found: Integer;
+  mLower, mNeedle: string;
+  mStart, mFound: Integer;
 begin
   Result := '';
-  Lower := LowerCase(AText);
-  Needle := LowerCase(AFolder);
-  Start := 1;
+  mLower := LowerCase(AText);
+  mNeedle := LowerCase(AFolder);
+  mStart := 1;
   repeat
-    Found := Pos(Needle, Copy(Lower, Start, MaxInt));
-    if Found = 0 then
+    mFound := Pos(mNeedle, Copy(mLower, mStart, MaxInt));
+    if mFound = 0 then
     begin
       Break;
     end;
-    Found := Found + Start - 1;
-    if AtBoundary(AText, Found + Length(Needle)) then
+    mFound := mFound + mStart - 1;
+    if AtBoundary(AText, mFound + Length(mNeedle)) then
     begin
-      Result := Result + Copy(AText, Start, Found - Start) + AMacro;
-      Start := Found + Length(Needle);
+      Result := Result + Copy(AText, mStart, mFound - mStart) + AMacro;
+      mStart := mFound + Length(mNeedle);
     end
     else
     begin
-      Result := Result + Copy(AText, Start, Found - Start + Length(Needle));
-      Start := Found + Length(Needle);
+      Result := Result + Copy(AText, mStart, mFound - mStart + Length(mNeedle));
+      mStart := mFound + Length(mNeedle);
     end;
   until False;
-  Result := Result + Copy(AText, Start, MaxInt);
+  Result := Result + Copy(AText, mStart, MaxInt);
 end;
 
 /// <summary>Enthält AText den Benutzernamen als Pfadstück (…\name\… oder …\name am Ende)?</summary>
 function HasUserName(const AText, AUser: string): Boolean;
 var
-  Lower, Needle: string;
-  Start, Found: Integer;
+  mLower, mNeedle: string;
+  mStart, mFound: Integer;
 begin
   Result := False;
   if AUser = '' then
   begin
     Exit;
   end;
-  Lower := LowerCase(AText);
-  Needle := LowerCase(AUser);
-  Start := 1;
+  mLower := LowerCase(AText);
+  mNeedle := LowerCase(AUser);
+  mStart := 1;
   repeat
-    Found := Pos(Needle, Copy(Lower, Start, MaxInt));
-    if Found = 0 then
+    mFound := Pos(mNeedle, Copy(mLower, mStart, MaxInt));
+    if mFound = 0 then
     begin
       Exit;
     end;
-    Found := Found + Start - 1;
-    if (Found > 1) and CharInSet(AText[Found - 1], ['\', '/']) and AtBoundary(AText, Found + Length(Needle)) then
+    mFound := mFound + mStart - 1;
+    if (mFound > 1) and CharInSet(AText[mFound - 1], ['\', '/']) and AtBoundary(AText, mFound + Length(mNeedle)) then
     begin
       Exit(True);
     end;
-    Start := Found + 1;
+    mStart := mFound + 1;
   until False;
 end;
 
@@ -427,36 +427,36 @@ end;
 
 class function TUserFolders.From(const AEnvironment: TAtlasSettingsEnvironment): TUserFolders;
 var
-  Name, Folder: string;
+  mName, mFolder: string;
 begin
   Result.Macros := nil;
   Result.Folders := nil;
-  for Name in UserMacros do
+  for mName in cUserMacros do
   begin
-    Folder := TrimSlash(EnvironmentValue(AEnvironment, Name));
-    if Folder <> '' then
+    mFolder := TrimSlash(EnvironmentValue(AEnvironment, mName));
+    if mFolder <> '' then
     begin
-      Result.Macros := Result.Macros + [Name];
-      Result.Folders := Result.Folders + [Folder];
+      Result.Macros := Result.Macros + [mName];
+      Result.Folders := Result.Folders + [mFolder];
     end;
   end;
   Result.User := EnvironmentValue(AEnvironment, 'USERNAME');
   if Result.User = '' then
   begin
-    Folder := TrimSlash(EnvironmentValue(AEnvironment, 'USERPROFILE'));
-    Result.User := LastSegment(StringReplace(StringReplace(Folder, '\', '.', [rfReplaceAll]), '/', '.',
+    mFolder := TrimSlash(EnvironmentValue(AEnvironment, 'USERPROFILE'));
+    Result.User := LastSegment(StringReplace(StringReplace(mFolder, '\', '.', [rfReplaceAll]), '/', '.',
       [rfReplaceAll]));
   end;
 end;
 
 function TUserFolders.Shorten(const AText: string; var AHasUser: Boolean): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AText;
-  for Index := 0 to High(Folders) do
+  for mIndex := 0 to High(Folders) do
   begin
-    Result := ReplaceFolder(Result, Folders[Index], '$(' + Macros[Index] + ')');
+    Result := ReplaceFolder(Result, Folders[mIndex], '$(' + Macros[mIndex] + ')');
   end;
   if HasUserName(Result, User) then
   begin
@@ -466,12 +466,12 @@ end;
 
 function TUserFolders.Expand(const AText: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AText;
-  for Index := 0 to High(Folders) do
+  for mIndex := 0 to High(Folders) do
   begin
-    Result := StringReplace(Result, '$(' + Macros[Index] + ')', Folders[Index], [rfReplaceAll, rfIgnoreCase]);
+    Result := StringReplace(Result, '$(' + Macros[mIndex] + ')', Folders[mIndex], [rfReplaceAll, rfIgnoreCase]);
   end;
 end;
 
@@ -479,10 +479,10 @@ end;
 function MapStrings(AValue: TJSONValue; const AFolders: TUserFolders; AExpand: Boolean;
   var AHasUser: Boolean): TJSONValue;
 var
-  Pair: TJSONPair;
-  Item: TJSONValue;
-  Obj: TJSONObject;
-  List: TJSONArray;
+  mPair: TJSONPair;
+  mItem: TJSONValue;
+  mObj: TJSONObject;
+  mList: TJSONArray;
 begin
   if IsText(AValue) then
   begin
@@ -497,21 +497,21 @@ begin
   end
   else if AValue is TJSONObject then
   begin
-    Obj := TJSONObject.Create;
-    for Pair in TJSONObject(AValue) do
+    mObj := TJSONObject.Create;
+    for mPair in TJSONObject(AValue) do
     begin
-      Obj.AddPair(Pair.JsonString.Value, MapStrings(Pair.JsonValue, AFolders, AExpand, AHasUser));
+      mObj.AddPair(mPair.JsonString.Value, MapStrings(mPair.JsonValue, AFolders, AExpand, AHasUser));
     end;
-    Result := Obj;
+    Result := mObj;
   end
   else if AValue is TJSONArray then
   begin
-    List := TJSONArray.Create;
-    for Item in TJSONArray(AValue) do
+    mList := TJSONArray.Create;
+    for mItem in TJSONArray(AValue) do
     begin
-      List.AddElement(MapStrings(Item, AFolders, AExpand, AHasUser));
+      mList.AddElement(MapStrings(mItem, AFolders, AExpand, AHasUser));
     end;
-    Result := List;
+    Result := mList;
   end
   else
   begin
@@ -523,8 +523,8 @@ end;
 /// Benutzer oder Token; Wahrheitswerte und Zahlen nie.</summary>
 function HasSecret(AValue: TJSONValue; const AKey: string; AMarked: Boolean): Boolean;
 var
-  Pair: TJSONPair;
-  Item: TJSONValue;
+  mPair: TJSONPair;
+  mItem: TJSONValue;
 begin
   Result := False;
   if IsText(AValue) then
@@ -534,9 +534,9 @@ begin
   end
   else if AValue is TJSONObject then
   begin
-    for Pair in TJSONObject(AValue) do
+    for mPair in TJSONObject(AValue) do
     begin
-      if HasSecret(Pair.JsonValue, Pair.JsonString.Value, AMarked) then
+      if HasSecret(mPair.JsonValue, mPair.JsonString.Value, AMarked) then
       begin
         Exit(True);
       end;
@@ -544,9 +544,9 @@ begin
   end
   else if AValue is TJSONArray then
   begin
-    for Item in TJSONArray(AValue) do
+    for mItem in TJSONArray(AValue) do
     begin
-      if HasSecret(Item, AKey, AMarked) then
+      if HasSecret(mItem, AKey, AMarked) then
       begin
         Exit(True);
       end;
@@ -588,7 +588,7 @@ end;
 
 function PluginJson(const AStore: IAtlasSettingsStore; const AEntry: TAtlasCatalogEntry): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   case AEntry.Kind of
     akBoolean:
@@ -599,14 +599,14 @@ begin
       begin
         // Liste oder Objekt als JSON-Text (issues.connections, #1260); Ungültiges wie der Standard.
         Result := AEntry.DefaultJson;
-        Value := TAtlasJsonValues.Parse(AStore.ReadString(AEntry.Name, ''));
+        mValue := TAtlasJsonValues.Parse(AStore.ReadString(AEntry.Name, ''));
         try
-          if (Value is TJSONArray) or (Value is TJSONObject) then
+          if (mValue is TJSONArray) or (mValue is TJSONObject) then
           begin
-            Result := Value.ToJSON;
+            Result := mValue.ToJSON;
           end;
         finally
-          Value.Free;
+          mValue.Free;
         end;
       end;
   else
@@ -639,17 +639,17 @@ end;
 
 function TStateValues.Get(AIndex: Integer): string;
 var
-  Entry: TAtlasCatalogEntry;
+  mEntry: TAtlasCatalogEntry;
 begin
-  Entry := FCatalog[AIndex];
-  if Entry.Source = asPlugin then
+  mEntry := FCatalog[AIndex];
+  if mEntry.Source = asPlugin then
   begin
-    Exit(PluginJson(FStore, Entry));
+    Exit(PluginJson(FStore, mEntry));
   end;
   Result := '';
   if Root <> nil then
   begin
-    Result := TAtlasJsonText.ValueAt(Root, Entry.Key);
+    Result := TAtlasJsonText.ValueAt(Root, mEntry.Key);
   end;
 end;
 
@@ -792,12 +792,12 @@ end;
 
 function TAtlasImportPreview.SelectedCount: Integer;
 var
-  Item: TAtlasImportItem;
+  mItem: TAtlasImportItem;
 begin
   Result := 0;
-  for Item in Items do
+  for mItem in Items do
   begin
-    if Item.Selected and Item.Selectable then
+    if mItem.Selected and mItem.Selectable then
     begin
       Inc(Result);
     end;
@@ -806,12 +806,12 @@ end;
 
 function TAtlasImportPreview.CountOf(AStatus: TAtlasImportStatus): Integer;
 var
-  Item: TAtlasImportItem;
+  mItem: TAtlasImportItem;
 begin
   Result := 0;
-  for Item in Items do
+  for mItem in Items do
   begin
-    if Item.Status = AStatus then
+    if mItem.Status = AStatus then
     begin
       Inc(Result);
     end;
@@ -823,13 +823,13 @@ end;
 class function TAtlasSettingsTransfer.CurrentJson(ACatalog: TAtlasSettingsCatalog;
   const AState: TAtlasSettingsState; AIndex: Integer): string;
 var
-  Values: TStateValues;
+  mValues: TStateValues;
 begin
-  Values := TStateValues.Create(ACatalog, AState);
+  mValues := TStateValues.Create(ACatalog, AState);
   try
-    Result := Values.Get(AIndex);
+    Result := mValues.Get(AIndex);
   finally
-    Values.Free;
+    mValues.Free;
   end;
 end;
 
@@ -847,143 +847,143 @@ end;
 
 function Modified(ACatalog: TAtlasSettingsCatalog; AValues: TStateValues; AIndex: Integer): Boolean;
 var
-  Current, Default: string;
+  mCurrent, mDefault: string;
 begin
   Result := False;
   if not ACatalog[AIndex].Transferable then
   begin
     Exit;
   end;
-  Current := AValues.Get(AIndex);
+  mCurrent := AValues.Get(AIndex);
   // settings.json: ein fehlender Schlüssel ist der Standard.
-  if Current = '' then
+  if mCurrent = '' then
   begin
     Exit;
   end;
-  Default := TAtlasSettingsTransfer.DefaultJson(ACatalog, AIndex);
-  Result := (Default = '') or ((Current <> Default) and not TAtlasJsonValues.Same(Current, Default));
+  mDefault := TAtlasSettingsTransfer.DefaultJson(ACatalog, AIndex);
+  Result := (mDefault = '') or ((mCurrent <> mDefault) and not TAtlasJsonValues.Same(mCurrent, mDefault));
 end;
 
 class function TAtlasSettingsTransfer.IsModified(ACatalog: TAtlasSettingsCatalog;
   const AState: TAtlasSettingsState; AIndex: Integer): Boolean;
 var
-  Values: TStateValues;
+  mValues: TStateValues;
 begin
-  Values := TStateValues.Create(ACatalog, AState);
+  mValues := TStateValues.Create(ACatalog, AState);
   try
-    Result := Modified(ACatalog, Values, AIndex);
+    Result := Modified(ACatalog, mValues, AIndex);
   finally
-    Values.Free;
+    mValues.Free;
   end;
 end;
 
 class function TAtlasSettingsTransfer.ModifiedKeys(ACatalog: TAtlasSettingsCatalog;
   const AState: TAtlasSettingsState): TArray<string>;
 var
-  Values: TStateValues;
-  Index: Integer;
+  mValues: TStateValues;
+  mIndex: Integer;
 begin
   Result := nil;
-  Values := TStateValues.Create(ACatalog, AState);
+  mValues := TStateValues.Create(ACatalog, AState);
   try
-    for Index := 0 to ACatalog.Count - 1 do
+    for mIndex := 0 to ACatalog.Count - 1 do
     begin
-      if Modified(ACatalog, Values, Index) then
+      if Modified(ACatalog, mValues, mIndex) then
       begin
-        Result := Result + [ACatalog[Index].Key];
+        Result := Result + [ACatalog[mIndex].Key];
       end;
     end;
   finally
-    Values.Free;
+    mValues.Free;
   end;
 end;
 
 class function TAtlasSettingsTransfer.ModifiedNames(ACatalog: TAtlasSettingsCatalog;
   const ASettings: TAtlasPluginSettings): TArray<string>;
 var
-  Values: TStateValues;
-  Index: Integer;
+  mValues: TStateValues;
+  mIndex: Integer;
 begin
   Result := nil;
-  Values := TStateValues.Create(ACatalog, TAtlasSettingsState.Create(ASettings, ''));
+  mValues := TStateValues.Create(ACatalog, TAtlasSettingsState.Create(ASettings, ''));
   try
-    for Index := 0 to ACatalog.Count - 1 do
+    for mIndex := 0 to ACatalog.Count - 1 do
     begin
-      if (ACatalog[Index].Source = asPlugin) and Modified(ACatalog, Values, Index) then
+      if (ACatalog[mIndex].Source = asPlugin) and Modified(ACatalog, mValues, mIndex) then
       begin
-        Result := Result + [ACatalog[Index].Name];
+        Result := Result + [ACatalog[mIndex].Name];
       end;
     end;
   finally
-    Values.Free;
+    mValues.Free;
   end;
 end;
 
 class function TAtlasSettingsTransfer.ResetNames(ACatalog: TAtlasSettingsCatalog;
   const ASettings: TAtlasPluginSettings; const ANames: TArray<string>): TAtlasPluginSettings;
 var
-  Values: TStateValues;
-  Name: string;
-  Index: Integer;
+  mValues: TStateValues;
+  mName: string;
+  mIndex: Integer;
 begin
-  Values := TStateValues.Create(ACatalog, TAtlasSettingsState.Create(ASettings, ''));
+  mValues := TStateValues.Create(ACatalog, TAtlasSettingsState.Create(ASettings, ''));
   try
-    for Name in ANames do
+    for mName in ANames do
     begin
-      Index := ACatalog.IndexOfName(Name);
-      if (Index >= 0) and ACatalog[Index].Transferable then
+      mIndex := ACatalog.IndexOfName(mName);
+      if (mIndex >= 0) and ACatalog[mIndex].Transferable then
       begin
-        Values.Put(Index, '');
+        mValues.Put(mIndex, '');
       end;
     end;
-    Result := Values.State.Plugin;
+    Result := mValues.State.Plugin;
   finally
-    Values.Free;
+    mValues.Free;
   end;
 end;
 
 class function TAtlasSettingsTransfer.ResetKeys(ACatalog: TAtlasSettingsCatalog;
   const AState: TAtlasSettingsState; const AKeys: TArray<string>): TAtlasSettingsState;
 var
-  Values: TStateValues;
-  Key: string;
-  Index: Integer;
+  mValues: TStateValues;
+  mKey: string;
+  mIndex: Integer;
 begin
-  Values := TStateValues.Create(ACatalog, AState);
+  mValues := TStateValues.Create(ACatalog, AState);
   try
-    for Key in AKeys do
+    for mKey in AKeys do
     begin
-      Index := ACatalog.IndexOfKey(Key);
-      if (Index >= 0) and ACatalog[Index].Transferable then
+      mIndex := ACatalog.IndexOfKey(mKey);
+      if (mIndex >= 0) and ACatalog[mIndex].Transferable then
       begin
-        Values.Put(Index, '');
+        mValues.Put(mIndex, '');
       end;
     end;
-    Result := Values.State;
+    Result := mValues.State;
   finally
-    Values.Free;
+    mValues.Free;
   end;
 end;
 
 class function TAtlasSettingsTransfer.ResetAreas(ACatalog: TAtlasSettingsCatalog;
   const AState: TAtlasSettingsState; const AAreas: TArray<string>): TAtlasSettingsState;
 var
-  Values: TStateValues;
-  Index: Integer;
+  mValues: TStateValues;
+  mIndex: Integer;
 begin
-  Values := TStateValues.Create(ACatalog, AState);
+  mValues := TStateValues.Create(ACatalog, AState);
   try
-    for Index := 0 to ACatalog.Count - 1 do
+    for mIndex := 0 to ACatalog.Count - 1 do
     begin
-      if ACatalog[Index].Transferable and Contains(AAreas, ACatalog[Index].Area) and
-        Modified(ACatalog, Values, Index) then
+      if ACatalog[mIndex].Transferable and Contains(AAreas, ACatalog[mIndex].Area) and
+        Modified(ACatalog, mValues, mIndex) then
       begin
-        Values.Put(Index, '');
+        mValues.Put(mIndex, '');
       end;
     end;
-    Result := Values.State;
+    Result := mValues.State;
   finally
-    Values.Free;
+    mValues.Free;
   end;
 end;
 
@@ -995,16 +995,16 @@ end;
 
 function JsonList(const AItems: TArray<string>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '[';
-  for Index := 0 to High(AItems) do
+  for mIndex := 0 to High(AItems) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
       Result := Result + ', ';
     end;
-    Result := Result + TAtlasJsonText.Quote(AItems[Index]);
+    Result := Result + TAtlasJsonText.Quote(AItems[mIndex]);
   end;
   Result := Result + ']';
 end;
@@ -1176,25 +1176,25 @@ end;
 
 function StringField(ARoot: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
-  Value := ARoot.GetValue(AName);
-  if IsText(Value) then
+  mValue := ARoot.GetValue(AName);
+  if IsText(mValue) then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end;
 end;
 
 function IntegerField(ARoot: TJSONObject; const AName: string): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := 0;
-  Value := ARoot.GetValue(AName);
-  if Value is TJSONNumber then
+  mValue := ARoot.GetValue(AName);
+  if mValue is TJSONNumber then
   begin
-    Result := TJSONNumber(Value).AsInt;
+    Result := TJSONNumber(mValue).AsInt;
   end;
 end;
 
@@ -1614,28 +1614,28 @@ end;
 class function TAtlasSettingsTransfer.Apply(ACatalog: TAtlasSettingsCatalog; const AState: TAtlasSettingsState;
   const APreview: TAtlasImportPreview): TAtlasSettingsState;
 var
-  Values: TStateValues;
-  Item: TAtlasImportItem;
+  mValues: TStateValues;
+  mItem: TAtlasImportItem;
 begin
-  Values := TStateValues.Create(ACatalog, AState);
+  mValues := TStateValues.Create(ACatalog, AState);
   try
-    for Item in APreview.Items do
+    for mItem in APreview.Items do
     begin
-      if Item.Selected and Item.Selectable and (Item.Entry >= 0) then
+      if mItem.Selected and mItem.Selectable and (mItem.Entry >= 0) then
       begin
-        if Item.Status = isReset then
+        if mItem.Status = isReset then
         begin
-          Values.Put(Item.Entry, '');
+          mValues.Put(mItem.Entry, '');
         end
         else
         begin
-          Values.Put(Item.Entry, Item.NewJson);
+          mValues.Put(mItem.Entry, mItem.NewJson);
         end;
       end;
     end;
-    Result := Values.State;
+    Result := mValues.State;
   finally
-    Values.Free;
+    mValues.Free;
   end;
 end;
 
@@ -1722,32 +1722,32 @@ end;
 
 class function TAtlasSettingsTransfer.BackupsToDelete(const AFiles: TArray<string>; AKeep: Integer): TArray<string>;
 var
-  Backups: TList<string>;
-  Name: string;
-  Index: Integer;
+  mBackups: TList<string>;
+  mName: string;
+  mIndex: Integer;
 begin
   Result := nil;
-  Backups := TList<string>.Create;
+  mBackups := TList<string>.Create;
   try
-    for Name in AFiles do
+    for mName in AFiles do
     begin
-      if SameText(Copy(Name, 1, Length(BackupPrefix)), BackupPrefix) and SameText(ExtractFileExt(Name), '.json') then
+      if SameText(Copy(mName, 1, Length(BackupPrefix)), BackupPrefix) and SameText(ExtractFileExt(mName), '.json') then
       begin
-        Backups.Add(Name);
+        mBackups.Add(mName);
       end;
     end;
     // Der Name enthält Datum und Uhrzeit: alphabetisch = zeitlich.
-    Backups.Sort(TComparer<string>.Construct(
+    mBackups.Sort(TComparer<string>.Construct(
       function(const ALeft, ARight: string): Integer
       begin
         Result := CompareText(ALeft, ARight);
       end));
-    for Index := 0 to Backups.Count - 1 - AKeep do
+    for mIndex := 0 to mBackups.Count - 1 - AKeep do
     begin
-      Result := Result + [Backups[Index]];
+      Result := Result + [mBackups[mIndex]];
     end;
   finally
-    Backups.Free;
+    mBackups.Free;
   end;
 end;
 

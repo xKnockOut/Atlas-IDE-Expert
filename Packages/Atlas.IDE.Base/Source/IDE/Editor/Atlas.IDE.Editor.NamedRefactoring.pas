@@ -65,7 +65,7 @@ uses
 
 const
   // Verweise, Überschreibungen und Formulare im Projekt suchen dauert; wie beim Umbenennen.
-  TimeoutMs = 60000;
+  cTimeoutMs = 60000;
 
 class procedure TAtlasIdeNamedRefactoring.Execute(ASession: TLspSession; const AArgumentsJson, AApplyCommand: string;
   const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
@@ -108,7 +108,7 @@ begin
   mFiles := 0;
   mExplanation := '';
   if not TAtlasIdeServerEdit.Fetch(ASession,
-    TAtlasServerEditCommand.Create(AApplyCommand, AApplyArguments, TimeoutMs, ATexts.Failed),
+    TAtlasServerEditCommand.Create(AApplyCommand, AApplyArguments, cTimeoutMs, ATexts.Failed),
     procedure(const AReply: TJSONObject)
     begin
       mPlaces := TAtlasIdeServerEdit.NumberOf(AReply, 'places');

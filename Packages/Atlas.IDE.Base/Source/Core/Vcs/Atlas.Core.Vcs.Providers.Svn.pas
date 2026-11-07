@@ -259,19 +259,19 @@ end;
 
 function TAtlasSvnVersionControl.Head(out AHead: TAtlasVcsHead): TAtlasVcsOutcome;
 var
-  Output: TBytes;
-  Info: TAtlasSvnInfo;
+  mOutput: TBytes;
+  mInfo: TAtlasSvnInfo;
 begin
   AHead := TAtlasVcsHead.Empty;
-  Result := Svn(['info', '--xml', '.'], Output);
+  Result := Svn(['info', '--xml', '.'], mOutput);
   if Result <> TAtlasVcsOutcome.Ok then
   begin
     Exit;
   end;
   try
-    Info := TAtlasSvnParser.ParseInfo(VcsUtf8(Output));
-    AHead.Branch := TAtlasSvnParser.BranchOf(Info.RelativeUrl);
-    AHead.Revision := Info.Revision;
+    mInfo := TAtlasSvnParser.ParseInfo(VcsUtf8(mOutput));
+    AHead.Branch := TAtlasSvnParser.BranchOf(mInfo.RelativeUrl);
+    AHead.Revision := mInfo.Revision;
   except
     on EAtlasVcsParse do
     begin
@@ -283,16 +283,16 @@ end;
 
 function TAtlasSvnVersionControl.Changes(out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
 var
-  Output: TBytes;
+  mOutput: TBytes;
 begin
   AChanges := nil;
-  Result := Svn(['status', '--xml', '.'], Output);
+  Result := Svn(['status', '--xml', '.'], mOutput);
   if Result <> TAtlasVcsOutcome.Ok then
   begin
     Exit;
   end;
   try
-    AChanges := TAtlasSvnParser.ParseStatus(VcsUtf8(Output), FRoot);
+    AChanges := TAtlasSvnParser.ParseStatus(VcsUtf8(mOutput), FRoot);
   except
     on EAtlasVcsParse do
     begin
@@ -304,44 +304,44 @@ end;
 
 function TAtlasSvnVersionControl.FileAt(const AFileName, ARevision: string; out AContent: TBytes): TAtlasVcsOutcome;
 var
-  Relative, Revision: string;
+  mRelative, mRevision: string;
 begin
   AContent := nil;
-  if not VcsRelativePath(FRoot, AFileName, Relative) then
+  if not VcsRelativePath(FRoot, AFileName, mRelative) then
   begin
     Exit(TAtlasVcsOutcome.Failed);
   end;
-  Revision := Trim(ARevision);
-  if Revision = '' then
+  mRevision := Trim(ARevision);
+  if mRevision = '' then
   begin
-    Revision := 'BASE';
+    mRevision := 'BASE';
   end;
-  if Revision[1] = '-' then
+  if mRevision[1] = '-' then
   begin
     Exit(TAtlasVcsOutcome.Failed);
   end;
   // "@" am Ende: ein "@" im Dateinamen wäre sonst eine Peg-Revision.
-  Result := Svn(['cat', '-r', Revision, Relative + '@'], AContent);
+  Result := Svn(['cat', '-r', mRevision, mRelative + '@'], AContent);
 end;
 
 function TAtlasSvnVersionControl.Blame(const AFileName: string;
   out ALines: TArray<TAtlasVcsBlameLine>): TAtlasVcsOutcome;
 var
-  Relative: string;
-  Output: TBytes;
+  mRelative: string;
+  mOutput: TBytes;
 begin
   ALines := nil;
-  if not VcsRelativePath(FRoot, AFileName, Relative) then
+  if not VcsRelativePath(FRoot, AFileName, mRelative) then
   begin
     Exit(TAtlasVcsOutcome.Failed);
   end;
-  Result := Svn(['blame', '--xml', Relative + '@'], Output);
+  Result := Svn(['blame', '--xml', mRelative + '@'], mOutput);
   if Result <> TAtlasVcsOutcome.Ok then
   begin
     Exit;
   end;
   try
-    ALines := TAtlasSvnParser.ParseBlame(VcsUtf8(Output));
+    ALines := TAtlasSvnParser.ParseBlame(VcsUtf8(mOutput));
   except
     on EAtlasVcsParse do
     begin
@@ -353,21 +353,21 @@ end;
 
 function TAtlasSvnVersionControl.ChangeMarker: string;
 var
-  Database: string;
-  Age: TDateTime;
-  Info: TSearchRec;
+  mDatabase: string;
+  mAge: TDateTime;
+  mInfo: TSearchRec;
 begin
-  Database := IncludeTrailingPathDelimiter(FRoot) + '.svn' + PathDelim + 'wc.db';
-  if not FileAge(Database, Age) then
+  mDatabase := IncludeTrailingPathDelimiter(FRoot) + '.svn' + PathDelim + 'wc.db';
+  if not FileAge(mDatabase, mAge) then
   begin
     Exit('');
   end;
-  Result := FloatToStr(Age, TFormatSettings.Invariant);
-  if FindFirst(Database, faAnyFile, Info) = 0 then
+  Result := FloatToStr(mAge, TFormatSettings.Invariant);
+  if FindFirst(mDatabase, faAnyFile, mInfo) = 0 then
   try
-    Result := Result + '|' + IntToStr(Info.Size);
+    Result := Result + '|' + IntToStr(mInfo.Size);
   finally
-    FindClose(Info);
+    FindClose(mInfo);
   end;
 end;
 
@@ -479,7 +479,7 @@ end;
 function TAtlasSvnVersionControl.BranchExists(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions;
   out AExists: Boolean): TAtlasVcsOutcome;
 var
-  Output: TBytes;
+  mOutput: TBytes;
   mPath: string;
 begin
   AExists := False;
@@ -489,7 +489,7 @@ begin
     Exit;
   end;
   // "@" am Ende: ein "@" im Namen ist dann keine Revision.
-  Result := Svn(['info', '^/' + mPath + '@'], Output);
+  Result := Svn(['info', '^/' + mPath + '@'], mOutput);
   AExists := Result = TAtlasVcsOutcome.Ok;
   // Fehlt der Branch, endet svn mit Fehler; das ist die Antwort, kein Fehler.
   if Result = TAtlasVcsOutcome.Failed then
@@ -507,7 +507,7 @@ end;
 
 function TAtlasSvnVersionControl.ServerRevision(const APath: string; out ARevision: string): TAtlasVcsOutcome;
 var
-  Output: TBytes;
+  mOutput: TBytes;
 begin
   ARevision := '';
   if not VcsSafeBranchName(APath) then
@@ -515,12 +515,12 @@ begin
     Exit(TAtlasVcsOutcome.Failed);
   end;
   Result := FCommand.RunRemote(TAtlasVcsKind.Svn, ['info', '--show-item', 'revision', '--non-interactive',
-    '^/' + APath + '@'], Output);
+    '^/' + APath + '@'], mOutput);
   if Result <> TAtlasVcsOutcome.Ok then
   begin
     Exit;
   end;
-  ARevision := Trim(VcsUtf8(Output));
+  ARevision := Trim(VcsUtf8(mOutput));
   if (ARevision = '') or (StrToIntDef(ARevision, -1) < 0) then
   begin
     ARevision := '';
@@ -530,27 +530,27 @@ end;
 
 function TAtlasSvnVersionControl.HasExternals(out AHas: Boolean): TAtlasVcsOutcome;
 var
-  Output: TBytes;
+  mOutput: TBytes;
 begin
   AHas := False;
-  Result := Svn(['propget', 'svn:externals', '-R', '.'], Output);
+  Result := Svn(['propget', 'svn:externals', '-R', '.'], mOutput);
   if Result = TAtlasVcsOutcome.Ok then
   begin
-    AHas := Trim(VcsUtf8(Output)) <> '';
+    AHas := Trim(VcsUtf8(mOutput)) <> '';
   end;
 end;
 
 function TAtlasSvnVersionControl.RepositoryPath(out APath: string): TAtlasVcsOutcome;
 var
-  Output: TBytes;
+  mOutput: TBytes;
 begin
   APath := '';
-  Result := Svn(['info', '--show-item', 'relative-url', '.'], Output);
+  Result := Svn(['info', '--show-item', 'relative-url', '.'], mOutput);
   if Result <> TAtlasVcsOutcome.Ok then
   begin
     Exit;
   end;
-  APath := Trim(VcsUtf8(Output));
+  APath := Trim(VcsUtf8(mOutput));
   if Copy(APath, 1, 2) = '^/' then
   begin
     Delete(APath, 1, 2);
@@ -568,7 +568,7 @@ end;
 
 function TAtlasSvnPart.RunStep(const AStep: TAtlasVcsBranchStep): TAtlasVcsOutcome;
 var
-  Output: TBytes;
+  mOutput: TBytes;
   mCommand: TAtlasVcsCommand;
 begin
   if Length(AStep.Arguments) = 0 then
@@ -597,11 +597,11 @@ begin
     // Wie Svn: nie nachfragen (--non-interactive hängt die Umsetzung an, der Plan zeigt es nicht).
     if AStep.Remote then
     begin
-      Result := mCommand.RunRemote(TAtlasVcsKind.Svn, AStep.Arguments + ['--non-interactive'], Output);
+      Result := mCommand.RunRemote(TAtlasVcsKind.Svn, AStep.Arguments + ['--non-interactive'], mOutput);
     end
     else
     begin
-      Result := mCommand.Run(AStep.Arguments + ['--non-interactive'], Output);
+      Result := mCommand.Run(AStep.Arguments + ['--non-interactive'], mOutput);
     end;
   finally
     if mCommand <> FCommand then
@@ -637,7 +637,7 @@ end;
 
 function TAtlasSvnWorkingCopyPart.WorkingRevisions(const AFolder: string; out AText: string): TAtlasVcsOutcome;
 var
-  Output: TBytes;
+  mOutput: TBytes;
   mCommand: TAtlasVcsCommand;
   mExecutable: string;
 begin
@@ -651,37 +651,37 @@ begin
   mExecutable := ExtractFilePath(FCommand.Executable) + 'svnversion' + ExtractFileExt(FCommand.Executable);
   mCommand := TAtlasVcsCommand.Create(FRunner, mExecutable, FRoot, FCommand.TimeoutMs);
   try
-    Result := mCommand.Run([AFolder], Output);
+    Result := mCommand.Run([AFolder], mOutput);
   finally
     mCommand.Free;
   end;
   if Result = TAtlasVcsOutcome.Ok then
   begin
-    AText := Trim(VcsUtf8(Output));
+    AText := Trim(VcsUtf8(mOutput));
   end;
 end;
 
 function TAtlasSvnWorkingCopyPart.ExternalsXml(out AText: string): TAtlasVcsOutcome;
 var
-  Output: TBytes;
+  mOutput: TBytes;
 begin
   AText := '';
-  Result := Svn(['propget', 'svn:externals', '--xml', '-R', '.'], Output);
+  Result := Svn(['propget', 'svn:externals', '--xml', '-R', '.'], mOutput);
   if Result = TAtlasVcsOutcome.Ok then
   begin
-    AText := VcsUtf8(Output);
+    AText := VcsUtf8(mOutput);
   end;
 end;
 
 function TAtlasSvnWorkingCopyPart.RepositoryRoot(out AUrl: string): TAtlasVcsOutcome;
 var
-  Output: TBytes;
+  mOutput: TBytes;
 begin
   AUrl := '';
-  Result := Svn(['info', '--show-item', 'repos-root-url', '.'], Output);
+  Result := Svn(['info', '--show-item', 'repos-root-url', '.'], mOutput);
   if Result = TAtlasVcsOutcome.Ok then
   begin
-    AUrl := Trim(VcsUtf8(Output));
+    AUrl := Trim(VcsUtf8(mOutput));
   end;
   if (Result = TAtlasVcsOutcome.Ok) and (AUrl = '') then
   begin
@@ -691,13 +691,13 @@ end;
 
 function TAtlasSvnWorkingCopyPart.ToolVersion(out AVersion: string): TAtlasVcsOutcome;
 var
-  Output: TBytes;
+  mOutput: TBytes;
 begin
   AVersion := '';
-  Result := FCommand.Run(['--version', '--quiet'], Output);
+  Result := FCommand.Run(['--version', '--quiet'], mOutput);
   if Result = TAtlasVcsOutcome.Ok then
   begin
-    AVersion := Trim(VcsUtf8(Output));
+    AVersion := Trim(VcsUtf8(mOutput));
   end;
 end;
 
@@ -705,20 +705,20 @@ end;
 
 function TAtlasSvnWorkingCopyPart.StatusXml(out AText: string): TAtlasVcsOutcome;
 var
-  Output: TBytes;
+  mOutput: TBytes;
 begin
   AText := '';
-  Result := Svn(['status', '--xml', '.'], Output);
+  Result := Svn(['status', '--xml', '.'], mOutput);
   if Result = TAtlasVcsOutcome.Ok then
   begin
-    AText := VcsUtf8(Output);
+    AText := VcsUtf8(mOutput);
   end;
 end;
 
 function TAtlasSvnWorkingCopyPart.Update(AIgnoreExternals: Boolean): TAtlasVcsOutcome;
 var
   mArguments: TArray<string>;
-  Output: TBytes;
+  mOutput: TBytes;
 begin
   mArguments := TArray<string>.Create('update', '.');
   if AIgnoreExternals then
@@ -727,12 +727,12 @@ begin
   end;
   // Mit dem Server (#1287): fehlt die Anmeldung, LoginNeeded statt Failed. Das Zeitlimit legt der Aufrufer
   // fest (Pull der Schnellaktionen: PullTimeoutMs).
-  Result := FCommand.RunRemote(TAtlasVcsKind.Svn, mArguments + ['--non-interactive'], Output);
+  Result := FCommand.RunRemote(TAtlasVcsKind.Svn, mArguments + ['--non-interactive'], mOutput);
 end;
 
 function TAtlasSvnWorkingCopyPart.CommitsSince(const APath, ARevision: string; out ACount: Integer): TAtlasVcsOutcome;
 var
-  Output: TBytes;
+  mOutput: TBytes;
   mReader: TAtlasVcsXmlReader;
   mBase: Integer;
 begin
@@ -743,13 +743,13 @@ begin
     Exit(TAtlasVcsOutcome.Failed);
   end;
   Result := FCommand.RunRemote(TAtlasVcsKind.Svn, ['log', '-q', '--xml', '-r', 'HEAD:' + ARevision,
-    '^/' + APath + '@HEAD', '--non-interactive'], Output);
+    '^/' + APath + '@HEAD', '--non-interactive'], mOutput);
   if Result <> TAtlasVcsOutcome.Ok then
   begin
     Exit;
   end;
   // Die Revision selbst steht mit drin, wenn sie den Pfad geändert hat; gezählt wird nur, was danach kam.
-  mReader := TAtlasVcsXmlReader.Create(VcsUtf8(Output));
+  mReader := TAtlasVcsXmlReader.Create(VcsUtf8(mOutput));
   try
     try
       while mReader.Next do

@@ -80,26 +80,26 @@ uses
 function NamedConfiguration(const AProject: IOTAProject; const AConfiguration,
   APlatform: string): IOTABuildConfiguration;
 var
-  Configurations: IOTAProjectOptionsConfigurations;
-  Platformed: IOTABuildConfiguration;
-  Index: Integer;
+  mConfigurations: IOTAProjectOptionsConfigurations;
+  mPlatformed: IOTABuildConfiguration;
+  mIndex: Integer;
 begin
   Result := nil;
-  if not Supports(AProject.ProjectOptions, IOTAProjectOptionsConfigurations, Configurations) then
+  if not Supports(AProject.ProjectOptions, IOTAProjectOptionsConfigurations, mConfigurations) then
   begin
     Exit;
   end;
   if AConfiguration = '' then
   begin
-    Result := Configurations.ActiveConfiguration;
+    Result := mConfigurations.ActiveConfiguration;
   end
   else
   begin
-    for Index := 0 to Configurations.ConfigurationCount - 1 do
+    for mIndex := 0 to mConfigurations.ConfigurationCount - 1 do
     begin
-      if SameText(Configurations.Configurations[Index].Name, AConfiguration) then
+      if SameText(mConfigurations.Configurations[mIndex].Name, AConfiguration) then
       begin
-        Result := Configurations.Configurations[Index];
+        Result := mConfigurations.Configurations[mIndex];
         Break;
       end;
     end;
@@ -109,10 +109,10 @@ begin
     Exit;
   end;
   // Plattformabhängige Werte (z. B. Suchpfade nur für Win64) stehen in der Plattformkonfiguration.
-  Platformed := Result.PlatformConfiguration[APlatform];
-  if Platformed <> nil then
+  mPlatformed := Result.PlatformConfiguration[APlatform];
+  if mPlatformed <> nil then
   begin
-    Result := Platformed;
+    Result := mPlatformed;
   end;
 end;
 
@@ -125,21 +125,21 @@ end;
 function ConfigValue(const ABuild: IOTABuildConfiguration; const AName: string; ADepth: Integer;
   var AResolved: Boolean): string;
 var
-  Parent: IOTABuildConfiguration;
+  mParent: IOTABuildConfiguration;
 begin
   Result := ABuild.GetValue(AName, True);
   if not TAtlasProjectContext.RefersToItself(Result, AName) then
   begin
     Exit;
   end;
-  Parent := ABuild.Parent;
-  if (Parent = nil) or (ADepth > 8) then
+  mParent := ABuild.Parent;
+  if (mParent = nil) or (ADepth > 8) then
   begin
     Result := TAtlasProjectContext.Inherit(Result, AName, '');
   end
   else
   begin
-    Result := TAtlasProjectContext.Inherit(Result, AName, ConfigValue(Parent, AName, ADepth + 1, AResolved));
+    Result := TAtlasProjectContext.Inherit(Result, AName, ConfigValue(mParent, AName, ADepth + 1, AResolved));
   end;
   AResolved := True;
 end;
@@ -156,19 +156,19 @@ end;
 
 procedure ReadOptions(const AProject: IOTAProject; var AContext: TAtlasProjectContext);
 var
-  Build: IOTABuildConfiguration;
-  Resolved: Boolean;
+  mBuild: IOTABuildConfiguration;
+  mResolved: Boolean;
 begin
-  Resolved := False;
+  mResolved := False;
   try
-    Build := BuildConfiguration(AProject, AContext.Platform);
-    if Build <> nil then
+    mBuild := BuildConfiguration(AProject, AContext.Platform);
+    if mBuild <> nil then
     begin
-      AContext.Defines := TAtlasProjectContext.List(ConfigValue(Build, 'DCC_Define', 0, Resolved));
-      AContext.SearchPaths := TAtlasProjectContext.List(ConfigValue(Build, 'DCC_UnitSearchPath', 0, Resolved));
-      AContext.Namespaces := TAtlasProjectContext.List(ConfigValue(Build, 'DCC_Namespace', 0, Resolved));
+      AContext.Defines := TAtlasProjectContext.List(ConfigValue(mBuild, 'DCC_Define', 0, mResolved));
+      AContext.SearchPaths := TAtlasProjectContext.List(ConfigValue(mBuild, 'DCC_UnitSearchPath', 0, mResolved));
+      AContext.Namespaces := TAtlasProjectContext.List(ConfigValue(mBuild, 'DCC_Namespace', 0, mResolved));
       AContext.Source := TAtlasProjectContext.SourceConfiguration;
-      if Resolved then
+      if mResolved then
       begin
         AContext.Source := TAtlasProjectContext.SourceResolved;
       end;
@@ -190,58 +190,58 @@ end;
 
 function LibraryPaths(const ABaseKey, APlatform: string): TArray<string>;
 var
-  Registry: TRegistry;
+  mRegistry: TRegistry;
 begin
   Result := nil;
   if (ABaseKey = '') or (APlatform = '') then
   begin
     Exit;
   end;
-  Registry := TRegistry.Create(KEY_READ);
+  mRegistry := TRegistry.Create(KEY_READ);
   try
-    Registry.RootKey := HKEY_CURRENT_USER;
-    if Registry.OpenKeyReadOnly(ABaseKey + '\Library\' + APlatform) and Registry.ValueExists('Search Path') then
+    mRegistry.RootKey := HKEY_CURRENT_USER;
+    if mRegistry.OpenKeyReadOnly(ABaseKey + '\Library\' + APlatform) and mRegistry.ValueExists('Search Path') then
     begin
-      Result := TAtlasProjectContext.List(Registry.ReadString('Search Path'));
+      Result := TAtlasProjectContext.List(mRegistry.ReadString('Search Path'));
     end;
   finally
-    Registry.Free;
+    mRegistry.Free;
   end;
 end;
 
 function BaseRegistryKey: string;
 var
-  Services: IOTAServices;
+  mServices: IOTAServices;
 begin
   Result := '';
-  if Supports(BorlandIDEServices, IOTAServices, Services) then
+  if Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
-    Result := Services.GetBaseRegistryKey;
+    Result := mServices.GetBaseRegistryKey;
   end;
 end;
 
 /// <summary>Umgebungsvariablen der IDE-Optionen unter ABaseKey in AMacros; nichts ohne Schlüssel.</summary>
 procedure AddIdeEnvironment(var AMacros: TAtlasPathMacros; const ABaseKey: string);
 var
-  Registry: TRegistry;
-  Names: TStringList;
-  Name: string;
+  mRegistry: TRegistry;
+  mNames: TStringList;
+  mName: string;
 begin
   if ABaseKey = '' then
   begin
     Exit;
   end;
-  Registry := TRegistry.Create(KEY_READ);
-  Names := TStringList.Create;
+  mRegistry := TRegistry.Create(KEY_READ);
+  mNames := TStringList.Create;
   try
-    Registry.RootKey := HKEY_CURRENT_USER;
-    if Registry.OpenKeyReadOnly(ABaseKey + '\Environment Variables') then
+    mRegistry.RootKey := HKEY_CURRENT_USER;
+    if mRegistry.OpenKeyReadOnly(ABaseKey + '\Environment Variables') then
     begin
-      Registry.GetValueNames(Names);
-      for Name in Names do
+      mRegistry.GetValueNames(mNames);
+      for mName in mNames do
       begin
         try
-          AMacros.Add(Name, Registry.ReadString(Name));
+          AMacros.Add(mName, mRegistry.ReadString(mName));
         except
           on Exception do
             ; // Kein Text (etwa REG_DWORD): übergehen.
@@ -249,43 +249,43 @@ begin
       end;
     end;
   finally
-    Names.Free;
-    Registry.Free;
+    mNames.Free;
+    mRegistry.Free;
   end;
 end;
 
 procedure ReadNaming(var AContext: TAtlasProjectContext);
 var
-  Team: TAtlasTeamSettings;
-  Kind: TAtlasNamingKind;
-  Item: TAtlasFormatFunction;
-  Entry: TAtlasProjectFormatFunction;
+  mTeam: TAtlasTeamSettings;
+  mKind: TAtlasNamingKind;
+  mItem: TAtlasFormatFunction;
+  mEntry: TAtlasProjectFormatFunction;
 begin
-  Team := TAtlasIdeTeamFile.ForProject(AContext.Project);
-  if not Team.Valid then
+  mTeam := TAtlasIdeTeamFile.ForProject(AContext.Project);
+  if not mTeam.Valid then
   begin
     Exit;
   end;
-  for Kind := Low(TAtlasNamingKind) to High(TAtlasNamingKind) do
+  for mKind := Low(TAtlasNamingKind) to High(TAtlasNamingKind) do
   begin
-    if Team.HasNaming[Kind] then
+    if mTeam.HasNaming[mKind] then
     begin
-      AContext.HasNaming[TAtlasProjectNamingKind(Ord(Kind))] := True;
-      AContext.Naming[TAtlasProjectNamingKind(Ord(Kind))] := Team.Naming[Kind];
+      AContext.HasNaming[TAtlasProjectNamingKind(Ord(mKind))] := True;
+      AContext.Naming[TAtlasProjectNamingKind(Ord(mKind))] := mTeam.Naming[mKind];
     end;
   end;
   // Eigene Formatroutinen für die Platzhalter im Parameter-Hint (#451).
-  for Item in Team.FormatFunctions do
+  for mItem in mTeam.FormatFunctions do
   begin
-    Entry.Name := Item.Name;
-    Entry.FormatIndex := Item.FormatIndex;
-    AContext.FormatFunctions := AContext.FormatFunctions + [Entry];
+    mEntry.Name := mItem.Name;
+    mEntry.FormatIndex := mItem.FormatIndex;
+    AContext.FormatFunctions := AContext.FormatFunctions + [mEntry];
   end;
 end;
 
 class function TAtlasIdeProjectContext.Read(const AProject: IOTAProject): TAtlasProjectContext;
 var
-  BaseKey: string;
+  mBaseKey: string;
 begin
   Result := Default(TAtlasProjectContext);
   if (AProject = nil) or not SameText(ExtractFileExt(AProject.FileName), '.dproj') or
@@ -296,17 +296,17 @@ begin
   Result.Project := AProject.FileName;
   Result.Configuration := AProject.CurrentConfiguration;
   Result.Platform := AProject.CurrentPlatform;
-  BaseKey := BaseRegistryKey;
-  Result.BdsVersion := TAtlasProjectContext.VersionOfRegistryKey(BaseKey);
+  mBaseKey := BaseRegistryKey;
+  Result.BdsVersion := TAtlasProjectContext.VersionOfRegistryKey(mBaseKey);
   ReadOptions(AProject, Result);
-  Result.LibraryPaths := LibraryPaths(BaseKey, Result.Platform);
+  Result.LibraryPaths := LibraryPaths(mBaseKey, Result.Platform);
   ReadNaming(Result);
 end;
 
 class function TAtlasIdeProjectContext.Macros(const AContext: TAtlasProjectContext): TAtlasPathMacros;
 var
-  Studio: string;
-  Services: IOTAServices;
+  mStudio: string;
+  mServices: IOTAServices;
 begin
   Result := TAtlasPathMacros.Create(
     function(const AName: string): string
@@ -316,18 +316,18 @@ begin
   // Umgebungsvariablen aus den IDE-Optionen (Tools › Optionen › Umgebungsvariablen) gehen allem vor.
   AddIdeEnvironment(Result, BaseRegistryKey);
   // Ordner der laufenden IDE.
-  if Supports(BorlandIDEServices, IOTAServices, Services) then
+  if Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
-    Result.AddBds(Services.GetRootDirectory);
+    Result.AddBds(mServices.GetRootDirectory);
   end;
   // Ordner der Version unter „Öffentliche Dokumente“ und „Dokumente“, wie sie die IDE setzt.
   if AContext.BdsVersion <> '' then
   begin
-    Studio := 'Embarcadero\Studio\' + AContext.BdsVersion;
+    mStudio := 'Embarcadero\Studio\' + AContext.BdsVersion;
     try
-      Result.AddDefault('BDSCOMMONDIR', IncludeTrailingPathDelimiter(TPath.GetSharedDocumentsPath) + Studio);
-      Result.AddDefault('BDSUSERDIR', IncludeTrailingPathDelimiter(TPath.GetDocumentsPath) + Studio);
-      Result.AddDefault('BDSCatalogRepository', IncludeTrailingPathDelimiter(TPath.GetDocumentsPath) + Studio +
+      Result.AddDefault('BDSCOMMONDIR', IncludeTrailingPathDelimiter(TPath.GetSharedDocumentsPath) + mStudio);
+      Result.AddDefault('BDSUSERDIR', IncludeTrailingPathDelimiter(TPath.GetDocumentsPath) + mStudio);
+      Result.AddDefault('BDSCatalogRepository', IncludeTrailingPathDelimiter(TPath.GetDocumentsPath) + mStudio +
         '\CatalogRepository');
     except
       on Exception do
@@ -340,20 +340,20 @@ end;
 class function TAtlasIdeProjectContext.ConfigurationValue(const AProject: IOTAProject; const AConfiguration,
   APlatform, AName: string): string;
 var
-  Build: IOTABuildConfiguration;
-  Resolved: Boolean;
+  mBuild: IOTABuildConfiguration;
+  mResolved: Boolean;
 begin
   Result := '';
   if AProject = nil then
   begin
     Exit;
   end;
-  Resolved := False;
+  mResolved := False;
   try
-    Build := NamedConfiguration(AProject, AConfiguration, APlatform);
-    if Build <> nil then
+    mBuild := NamedConfiguration(AProject, AConfiguration, APlatform);
+    if mBuild <> nil then
     begin
-      Exit(ConfigValue(Build, AName, 0, Resolved));
+      Exit(ConfigValue(mBuild, AName, 0, mResolved));
     end;
   except
     on Exception do
@@ -378,16 +378,16 @@ end;
 
 class function TAtlasIdeProjectContext.Configurations(const AProject: IOTAProject): TArray<string>;
 var
-  Items: IOTAProjectOptionsConfigurations;
-  Index: Integer;
+  mItems: IOTAProjectOptionsConfigurations;
+  mIndex: Integer;
 begin
   Result := nil;
   try
-    if (AProject <> nil) and Supports(AProject.ProjectOptions, IOTAProjectOptionsConfigurations, Items) then
+    if (AProject <> nil) and Supports(AProject.ProjectOptions, IOTAProjectOptionsConfigurations, mItems) then
     begin
-      for Index := 0 to Items.ConfigurationCount - 1 do
+      for mIndex := 0 to mItems.ConfigurationCount - 1 do
       begin
-        Result := Result + [Items.Configurations[Index].Name];
+        Result := Result + [mItems.Configurations[mIndex].Name];
       end;
     end;
   except
@@ -398,12 +398,12 @@ end;
 
 class function TAtlasIdeProjectContext.HasConfiguration(const AProject: IOTAProject; const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
   Result := False;
-  for Name in Configurations(AProject) do
+  for mName in Configurations(AProject) do
   begin
-    if SameText(Name, AName) then
+    if SameText(mName, AName) then
     begin
       Exit(True);
     end;
@@ -412,29 +412,29 @@ end;
 
 class function TAtlasIdeProjectContext.Group: TArray<TAtlasProjectContext>;
 var
-  Modules: IOTAModuleServices;
-  Projects: IOTAProjectGroup;
-  Index: Integer;
-  Context: TAtlasProjectContext;
+  mModules: IOTAModuleServices;
+  mProjects: IOTAProjectGroup;
+  mIndex: Integer;
+  mContext: TAtlasProjectContext;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
-  Projects := Modules.MainProjectGroup;
-  if Projects = nil then
+  mProjects := mModules.MainProjectGroup;
+  if mProjects = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Projects.ProjectCount - 1 do
+  for mIndex := 0 to mProjects.ProjectCount - 1 do
   begin
-    Context := Read(Projects.Projects[Index]);
+    mContext := Read(mProjects.Projects[mIndex]);
     // Aktives Projekt für Dateien, die zu mehreren Projekten gehören (#46).
-    Context.Active := Projects.Projects[Index] = Projects.ActiveProject;
-    if Context.Project <> '' then
+    mContext.Active := mProjects.Projects[mIndex] = mProjects.ActiveProject;
+    if mContext.Project <> '' then
     begin
-      Result := Result + [Context];
+      Result := Result + [mContext];
     end;
   end;
 end;

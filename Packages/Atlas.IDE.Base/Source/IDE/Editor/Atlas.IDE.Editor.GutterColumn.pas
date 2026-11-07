@@ -70,7 +70,7 @@ type
       procedure AddLink(const ACaption: string; const AAction: TProc);
     end;
   private const
-    HoverMs = 400;
+    cHoverMs = 400;
   private
     FOpenActions: TProc;
     FApply: TAtlasGutterColumnApplyProc;
@@ -99,7 +99,7 @@ type
     procedure Tick(Sender: TObject);
     /// <summary>Zeile von AContext mit ihrem Symbol; ALineText: Text der Zeile im Editor.</summary>
     function RowOf(const AContext: INTACodeEditorPaintContext; out ALineText: string): TRow;
-    function RowAt(X, Y: Integer; out ARow: TRow): Boolean;
+    function RowAt(AX, AY: Integer; out ARow: TRow): Boolean;
     procedure PaintGutter(const Rect: TRect; const Stage: TPaintGutterStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
@@ -639,7 +639,7 @@ begin
   end;
 end;
 
-function TAtlasIdeGutterColumn.RowAt(X, Y: Integer; out ARow: TRow): Boolean;
+function TAtlasIdeGutterColumn.RowAt(AX, AY: Integer; out ARow: TRow): Boolean;
 var
   mRow: TRow;
   mView: IOTAEditView;
@@ -653,7 +653,7 @@ begin
   end;
   for mRow in FRows.Values do
   begin
-    if (mRow.Symbol <> TAtlasGutterSymbol.None) and PtInRect(mRow.Rect, Point(X, Y)) then
+    if (mRow.Symbol <> TAtlasGutterSymbol.None) and PtInRect(mRow.Rect, Point(AX, AY)) then
     begin
       // Nur, wenn die Zeile noch dort steht: gleiche Datei, nicht gescrollt.
       Result := SameText(mRow.FileName, mView.Buffer.FileName) and (mRow.TopRow = mView.TopRow);
@@ -730,7 +730,7 @@ begin
     FHovering := False;
     HideTip;
   end
-  else if not FTip.IsShown and (TThread.GetTickCount64 - FHoverSince >= HoverMs) then
+  else if not FTip.IsShown and (TThread.GetTickCount64 - FHoverSince >= cHoverMs) then
   begin
     ShowPanel(FHover, False);
   end;

@@ -25,7 +25,7 @@ type
   TAtlasIdeRegionFolds = class
   private const
     /// <summary>Pause nach dem Wechsel der Ansicht, bis die IDE die Faltbereiche kennt.</summary>
-    DelayMs = 400;
+    cDelayMs = 400;
   private type
     TIdeNotifier = class(TNotifierObject, IOTAIDENotifier)
     private
@@ -116,7 +116,7 @@ begin
   FPending := TDictionary<string, Boolean>.Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := DelayMs;
+  FTimer.Interval := cDelayMs;
   FTimer.OnTimer := TimerTick;
   FNotifierIndex := -1;
   if Supports(BorlandIDEServices, IOTAServices, mServices) then

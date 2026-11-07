@@ -47,33 +47,33 @@ uses
 
 class function TAtlasIdeFiles.ProjectModule(const AFileName: string): IOTAModule;
 var
-  Services: IOTAModuleServices;
-  Index: Integer;
+  mServices: IOTAModuleServices;
+  mIndex: Integer;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
   begin
     Exit;
   end;
-  for Index := 0 to Services.ModuleCount - 1 do
+  for mIndex := 0 to mServices.ModuleCount - 1 do
   begin
-    if SameText(Services.Modules[Index].FileName, AFileName) then
+    if SameText(mServices.Modules[mIndex].FileName, AFileName) then
     begin
-      Exit(Services.Modules[Index]);
+      Exit(mServices.Modules[mIndex]);
     end;
   end;
 end;
 
 class function TAtlasIdeFiles.ProjectModified(const AModule: IOTAModule): Boolean;
 var
-  Project: IOTAProject;
-  Index: Integer;
+  mProject: IOTAProject;
+  mIndex: Integer;
 begin
-  Result := Supports(AModule, IOTAProject, Project) and (Project.ProjectOptions <> nil) and
-    Project.ProjectOptions.ModifiedState;
-  for Index := 0 to AModule.ModuleFileCount - 1 do
+  Result := Supports(AModule, IOTAProject, mProject) and (mProject.ProjectOptions <> nil) and
+    mProject.ProjectOptions.ModifiedState;
+  for mIndex := 0 to AModule.ModuleFileCount - 1 do
   begin
-    if AModule.ModuleFileEditors[Index].Modified then
+    if AModule.ModuleFileEditors[mIndex].Modified then
     begin
       Result := True;
     end;
@@ -98,24 +98,24 @@ end;
 
 class function TAtlasIdeFiles.BufferOf(const AFileName: string): IOTAEditBuffer;
 var
-  Services: IOTAModuleServices;
-  Index, FileIndex: Integer;
-  Module: IOTAModule;
-  Editor: IOTAEditor;
+  mServices: IOTAModuleServices;
+  mIndex, mFileIndex: Integer;
+  mModule: IOTAModule;
+  mEditor: IOTAEditor;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
   begin
     Exit;
   end;
   // Über die Editoren jedes Moduls: Die .dpr gehört zum Projektmodul (.dproj).
-  for Index := 0 to Services.ModuleCount - 1 do
+  for mIndex := 0 to mServices.ModuleCount - 1 do
   begin
-    Module := Services.Modules[Index];
-    for FileIndex := 0 to Module.ModuleFileCount - 1 do
+    mModule := mServices.Modules[mIndex];
+    for mFileIndex := 0 to mModule.ModuleFileCount - 1 do
     begin
-      Editor := Module.ModuleFileEditors[FileIndex];
-      if SameText(Editor.FileName, AFileName) and Supports(Editor, IOTAEditBuffer, Result) then
+      mEditor := mModule.ModuleFileEditors[mFileIndex];
+      if SameText(mEditor.FileName, AFileName) and Supports(mEditor, IOTAEditBuffer, Result) then
       begin
         Exit;
       end;
@@ -126,50 +126,50 @@ end;
 
 class function TAtlasIdeFiles.ProjectOfFile(const AFileName: string): string;
 var
-  Services: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  Index: Integer;
+  mServices: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+  mIndex: Integer;
 begin
   Result := '';
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
   begin
     Exit;
   end;
-  Group := Services.MainProjectGroup;
-  if Group = nil then
+  mGroup := mServices.MainProjectGroup;
+  if mGroup = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Group.ProjectCount - 1 do
+  for mIndex := 0 to mGroup.ProjectCount - 1 do
   begin
-    if Group.Projects[Index].FindModuleInfo(AFileName) <> nil then
+    if mGroup.Projects[mIndex].FindModuleInfo(AFileName) <> nil then
     begin
-      Exit(Group.Projects[Index].FileName);
+      Exit(mGroup.Projects[mIndex].FileName);
     end;
   end;
 end;
 
 class function TAtlasIdeFiles.GroupProject(const AProjectFile: string): IOTAProject;
 var
-  Services: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  Index: Integer;
+  mServices: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+  mIndex: Integer;
 begin
   Result := nil;
-  if (AProjectFile = '') or not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  if (AProjectFile = '') or not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
   begin
     Exit;
   end;
-  Group := Services.MainProjectGroup;
-  if Group = nil then
+  mGroup := mServices.MainProjectGroup;
+  if mGroup = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Group.ProjectCount - 1 do
+  for mIndex := 0 to mGroup.ProjectCount - 1 do
   begin
-    if SameFileName(Group.Projects[Index].FileName, AProjectFile) then
+    if SameFileName(mGroup.Projects[mIndex].FileName, AProjectFile) then
     begin
-      Exit(Group.Projects[Index]);
+      Exit(mGroup.Projects[mIndex]);
     end;
   end;
 end;
@@ -194,20 +194,20 @@ end;
 
 class function TAtlasIdeFiles.ProjectForNewFile(const AFileName: string): string;
 var
-  Services: IOTAModuleServices;
-  Project: IOTAProject;
+  mServices: IOTAModuleServices;
+  mProject: IOTAProject;
 begin
   Result := '';
   if not SameText(ExtractFileExt(AFileName), '.pas') or
-    not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+    not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
   begin
     Exit;
   end;
-  Project := Services.GetActiveProject;
-  if (Project <> nil) and
-    AFileName.StartsWith(IncludeTrailingPathDelimiter(ExtractFilePath(Project.FileName)), True) then
+  mProject := mServices.GetActiveProject;
+  if (mProject <> nil) and
+    AFileName.StartsWith(IncludeTrailingPathDelimiter(ExtractFilePath(mProject.FileName)), True) then
   begin
-    Result := Project.FileName;
+    Result := mProject.FileName;
   end;
 end;
 

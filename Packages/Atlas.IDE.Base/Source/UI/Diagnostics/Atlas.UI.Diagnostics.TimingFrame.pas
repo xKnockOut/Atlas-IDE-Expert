@@ -173,16 +173,16 @@ end;
 
 procedure TAtlasTimingFrame.UpdateTitle;
 var
-  Last: TAtlasQueryTiming;
+  mLast: TAtlasQueryTiming;
 begin
   if Length(FQueries) = 0 then
   begin
     FTitle.Caption := TAtlasStrings.Text(TAtlasTextId.DiagnosticNoQuery);
     Exit;
   end;
-  Last := FQueries[High(FQueries)];
-  FTitle.Caption := TAtlasStrings.Fmt(TAtlasTextId.DiagnosticLastQuery, [Last.Kind,
-    FormatDateTime('hh":"nn":"ss', Last.Started)]);
+  mLast := FQueries[High(FQueries)];
+  FTitle.Caption := TAtlasStrings.Fmt(TAtlasTextId.DiagnosticLastQuery, [mLast.Kind,
+    FormatDateTime('hh":"nn":"ss', mLast.Started)]);
 end;
 
 procedure TAtlasTimingFrame.SetQueries(const AQueries: TArray<TAtlasQueryTiming>);

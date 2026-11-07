@@ -201,14 +201,14 @@ end;
 /// <summary>Liegt AControl in AParent (oder ist es selbst)?</summary>
 function Inside(AControl, AParent: TControl): Boolean;
 var
-  Parent: TControl;
+  mParent: TControl;
 begin
-  Parent := AControl;
-  while (Parent <> nil) and (Parent <> AParent) do
+  mParent := AControl;
+  while (mParent <> nil) and (mParent <> AParent) do
   begin
-    Parent := Parent.Parent;
+    mParent := mParent.Parent;
   end;
-  Result := Parent <> nil;
+  Result := mParent <> nil;
 end;
 
 { TAtlasSettingsBindingList }
@@ -237,74 +237,74 @@ end;
 
 function TAtlasSettingsBindingList.IndexOfControl(AControl: TObject): Integer;
 var
-  Index: Integer;
-  Binding: TAtlasSettingsBinding;
+  mIndex: Integer;
+  mBinding: TAtlasSettingsBinding;
 begin
   Result := -1;
   if AControl = nil then
   begin
     Exit;
   end;
-  for Index := 0 to FBindings.Count - 1 do
+  for mIndex := 0 to FBindings.Count - 1 do
   begin
-    Binding := FBindings[Index];
-    if (Binding.Control = AControl) or ((Binding.Caption <> nil) and (Binding.Caption = AControl)) then
+    mBinding := FBindings[mIndex];
+    if (mBinding.Control = AControl) or ((mBinding.Caption <> nil) and (mBinding.Caption = AControl)) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   // Zeile: erste Bindung, deren Element darin liegt.
-  for Index := 0 to FBindings.Count - 1 do
+  for mIndex := 0 to FBindings.Count - 1 do
   begin
-    if FBindings[Index].Control.Parent = AControl then
+    if FBindings[mIndex].Control.Parent = AControl then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
 
 procedure TAtlasSettingsBindingList.Apply(AIndex: Integer; AMarked: Boolean);
 var
-  Binding: TAtlasSettingsBinding;
+  mBinding: TAtlasSettingsBinding;
 begin
-  Binding := FBindings[AIndex];
-  if Binding.Marked = AMarked then
+  mBinding := FBindings[AIndex];
+  if mBinding.Marked = AMarked then
   begin
     Exit;
   end;
-  Binding.Marked := AMarked;
-  FBindings[AIndex] := Binding;
+  mBinding.Marked := AMarked;
+  FBindings[AIndex] := mBinding;
   Render(AIndex);
 end;
 
 procedure TAtlasSettingsBindingList.Render(AIndex: Integer);
 var
-  Binding: TAtlasSettingsBinding;
-  Text, Hint: string;
+  mBinding: TAtlasSettingsBinding;
+  mText, mHint: string;
 begin
-  Binding := FBindings[AIndex];
-  Text := Binding.Text;
-  Hint := Binding.Hint;
-  if Binding.Experimental then
+  mBinding := FBindings[AIndex];
+  mText := mBinding.Text;
+  mHint := mBinding.Hint;
+  if mBinding.Experimental then
   begin
-    Text := Text + '  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']';
+    mText := mText + '  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']';
   end;
-  if Binding.Marked then
+  if mBinding.Marked then
   begin
-    Text := Dot + Text;
-    Hint := TAtlasStrings.Text(TAtlasTextId.SettingsModifiedHint);
+    mText := Dot + mText;
+    mHint := TAtlasStrings.Text(TAtlasTextId.SettingsModifiedHint);
   end;
-  if Binding.Control is TCheckBox then
+  if mBinding.Control is TCheckBox then
   begin
-    TCheckBox(Binding.Control).Caption := Text;
-    Binding.Control.Hint := Hint;
-    Binding.Control.ShowHint := Hint <> '';
+    TCheckBox(mBinding.Control).Caption := mText;
+    mBinding.Control.Hint := mHint;
+    mBinding.Control.ShowHint := mHint <> '';
   end
-  else if Binding.Caption <> nil then
+  else if mBinding.Caption <> nil then
   begin
-    Binding.Caption.Caption := Text;
-    Binding.Caption.Hint := Hint;
-    Binding.Caption.ShowHint := Hint <> '';
+    mBinding.Caption.Caption := mText;
+    mBinding.Caption.Hint := mHint;
+    mBinding.Caption.ShowHint := mHint <> '';
   end;
 end;
 
@@ -320,51 +320,51 @@ end;
 
 function TAtlasSettingsBindingList.NamesIn(AParent: TWinControl): TArray<string>;
 var
-  Binding: TAtlasSettingsBinding;
-  Parent: TWinControl;
+  mBinding: TAtlasSettingsBinding;
+  mParent: TWinControl;
 begin
   Result := nil;
-  for Binding in FBindings do
+  for mBinding in FBindings do
   begin
-    Parent := Binding.Control.Parent;
-    while (Parent <> nil) and (Parent <> AParent) do
+    mParent := mBinding.Control.Parent;
+    while (mParent <> nil) and (mParent <> AParent) do
     begin
-      Parent := Parent.Parent;
+      mParent := mParent.Parent;
     end;
-    if Parent <> nil then
+    if mParent <> nil then
     begin
-      Result := Result + Binding.Names;
+      Result := Result + mBinding.Names;
     end;
   end;
 end;
 
 function TAtlasSettingsBindingList.NamesWithin(AControl: TControl): TArray<string>;
 var
-  Binding: TAtlasSettingsBinding;
+  mBinding: TAtlasSettingsBinding;
 begin
   Result := nil;
-  for Binding in FBindings do
+  for mBinding in FBindings do
   begin
-    if Inside(Binding.Control, AControl) then
+    if Inside(mBinding.Control, AControl) then
     begin
-      Result := Result + Binding.Names;
+      Result := Result + mBinding.Names;
     end;
   end;
 end;
 
 function TAtlasSettingsBindingList.ControlOfName(const AName: string): TControl;
 var
-  Binding: TAtlasSettingsBinding;
+  mBinding: TAtlasSettingsBinding;
   mName: string;
 begin
   Result := nil;
-  for Binding in FBindings do
+  for mBinding in FBindings do
   begin
-    for mName in Binding.Names do
+    for mName in mBinding.Names do
     begin
       if SameText(mName, AName) then
       begin
-        Exit(Binding.Control);
+        Exit(mBinding.Control);
       end;
     end;
   end;
@@ -372,17 +372,17 @@ end;
 
 function TAtlasSettingsBindingList.TextOfName(const AName: string): string;
 var
-  Binding: TAtlasSettingsBinding;
+  mBinding: TAtlasSettingsBinding;
   mName: string;
 begin
   Result := '';
-  for Binding in FBindings do
+  for mBinding in FBindings do
   begin
-    for mName in Binding.Names do
+    for mName in mBinding.Names do
     begin
       if SameText(mName, AName) then
       begin
-        Exit(StringReplace(Binding.Text, '&', '', [rfReplaceAll]));
+        Exit(StringReplace(mBinding.Text, '&', '', [rfReplaceAll]));
       end;
     end;
   end;
@@ -390,11 +390,11 @@ end;
 
 function TAtlasSettingsBindingList.HasMarked(AParent: TWinControl): Boolean;
 var
-  Binding: TAtlasSettingsBinding;
+  mBinding: TAtlasSettingsBinding;
 begin
-  for Binding in FBindings do
+  for mBinding in FBindings do
   begin
-    if Binding.Marked and Inside(Binding.Control, AParent) then
+    if mBinding.Marked and Inside(mBinding.Control, AParent) then
     begin
       Exit(True);
     end;
@@ -404,22 +404,22 @@ end;
 
 function TAtlasSettingsBindingList.NamesOf(AControl: TObject): TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  Index := IndexOfControl(AControl);
-  if Index >= 0 then
+  mIndex := IndexOfControl(AControl);
+  if mIndex >= 0 then
   begin
-    Result := FBindings[Index].Names;
+    Result := FBindings[mIndex].Names;
   end;
 end;
 
 function TAtlasSettingsBindingList.IsMarked(AControl: TControl): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := IndexOfControl(AControl);
-  Result := (Index >= 0) and FBindings[Index].Marked;
+  mIndex := IndexOfControl(AControl);
+  Result := (mIndex >= 0) and FBindings[mIndex].Marked;
 end;
 
 procedure TAtlasSettingsBindingList.MarkExperimental(const ANames: TArray<string>);
@@ -443,11 +443,11 @@ end;
 
 function TAtlasSettingsBindingList.HasExperimental: Boolean;
 var
-  Binding: TAtlasSettingsBinding;
+  mBinding: TAtlasSettingsBinding;
 begin
-  for Binding in FBindings do
+  for mBinding in FBindings do
   begin
-    if Binding.Experimental then
+    if mBinding.Experimental then
     begin
       Exit(True);
     end;
@@ -457,10 +457,10 @@ end;
 
 function TAtlasSettingsBindingList.IsExperimental(AControl: TControl): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := IndexOfControl(AControl);
-  Result := (Index >= 0) and FBindings[Index].Experimental;
+  mIndex := IndexOfControl(AControl);
+  Result := (mIndex >= 0) and FBindings[mIndex].Experimental;
 end;
 
 { TAtlasSettingsMarks }
@@ -494,42 +494,42 @@ end;
 
 function TAtlasSettingsMarks.FindCaption(AControl: TControl): TLabel;
 var
-  Parent, Above: TWinControl;
-  Index: Integer;
-  Candidate: TControl;
+  mParent, mAbove: TWinControl;
+  mIndex: Integer;
+  mCandidate: TControl;
 begin
   Result := nil;
-  Parent := AControl.Parent;
-  if Parent = nil then
+  mParent := AControl.Parent;
+  if mParent = nil then
   begin
     Exit;
   end;
   // Zeile mit Beschriftung links und Feld (AddNumber, AddChoice, AddKey).
-  for Index := 0 to Parent.ControlCount - 1 do
+  for mIndex := 0 to mParent.ControlCount - 1 do
   begin
-    if (Parent.Controls[Index] is TLabel) and (Parent.Controls[Index] <> AControl) then
+    if (mParent.Controls[mIndex] is TLabel) and (mParent.Controls[mIndex] <> AControl) then
     begin
-      Exit(TLabel(Parent.Controls[Index]));
+      Exit(TLabel(mParent.Controls[mIndex]));
     end;
   end;
   // Feld in eigener Zeile unter seiner Beschriftung (AddTextLine): die Zeile direkt darüber.
-  if Parent.Parent = nil then
+  if mParent.Parent = nil then
   begin
     Exit;
   end;
-  Above := nil;
-  for Index := 0 to Parent.Parent.ControlCount - 1 do
+  mAbove := nil;
+  for mIndex := 0 to mParent.Parent.ControlCount - 1 do
   begin
-    Candidate := Parent.Parent.Controls[Index];
-    if (Candidate is TWinControl) and (Candidate <> Parent) and (Candidate.Top < Parent.Top) and
-      ((Above = nil) or (Candidate.Top > Above.Top)) then
+    mCandidate := mParent.Parent.Controls[mIndex];
+    if (mCandidate is TWinControl) and (mCandidate <> mParent) and (mCandidate.Top < mParent.Top) and
+      ((mAbove = nil) or (mCandidate.Top > mAbove.Top)) then
     begin
-      Above := TWinControl(Candidate);
+      mAbove := TWinControl(mCandidate);
     end;
   end;
-  if (Above <> nil) and (Above.ControlCount = 1) and (Above.Controls[0] is TLabel) then
+  if (mAbove <> nil) and (mAbove.ControlCount = 1) and (mAbove.Controls[0] is TLabel) then
   begin
-    Result := TLabel(Above.Controls[0]);
+    Result := TLabel(mAbove.Controls[0]);
   end;
 end;
 
@@ -540,47 +540,47 @@ end;
 
 procedure TAtlasSettingsMarks.Bind(AControl: TControl; const ANames: array of string; AMark: Boolean);
 var
-  Binding: TAtlasSettingsBinding;
+  mBinding: TAtlasSettingsBinding;
   mName: string;
 begin
   if AControl = nil then
   begin
     Exit;
   end;
-  Binding := Default(TAtlasSettingsBinding);
-  Binding.Control := AControl;
+  mBinding := Default(TAtlasSettingsBinding);
+  mBinding.Control := AControl;
   for mName in ANames do
   begin
-    Binding.Names := Binding.Names + [mName];
+    mBinding.Names := mBinding.Names + [mName];
   end;
-  Binding.Mark := AMark;
+  mBinding.Mark := AMark;
   if AControl is TCheckBox then
   begin
-    Binding.Text := TCheckBox(AControl).Caption;
-    Binding.Hint := AControl.Hint;
-    Binding.Changed := TCheckBox(AControl).OnClick;
+    mBinding.Text := TCheckBox(AControl).Caption;
+    mBinding.Hint := AControl.Hint;
+    mBinding.Changed := TCheckBox(AControl).OnClick;
     TCheckBox(AControl).OnClick := ControlChanged;
     TCheckBox(AControl).PopupMenu := FMenu;
   end
   else
   begin
-    Binding.Caption := FindCaption(AControl);
-    if Binding.Caption <> nil then
+    mBinding.Caption := FindCaption(AControl);
+    if mBinding.Caption <> nil then
     begin
-      Binding.Text := Binding.Caption.Caption;
-      Binding.Hint := Binding.Caption.Hint;
-      Binding.Caption.PopupMenu := FMenu;
+      mBinding.Text := mBinding.Caption.Caption;
+      mBinding.Hint := mBinding.Caption.Hint;
+      mBinding.Caption.PopupMenu := FMenu;
     end;
     if AControl is TComboBox then
     begin
-      Binding.Changed := TComboBox(AControl).OnChange;
+      mBinding.Changed := TComboBox(AControl).OnChange;
       TComboBox(AControl).OnChange := ControlChanged;
       TComboBox(AControl).PopupMenu := FMenu;
     end
     else if AControl is TEdit then
     begin
       // Textfelder behalten ihr Menü; Zurücksetzen über Beschriftung oder Zeile.
-      Binding.Changed := TEdit(AControl).OnChange;
+      mBinding.Changed := TEdit(AControl).OnChange;
       TEdit(AControl).OnChange := ControlChanged;
     end
     else
@@ -593,21 +593,21 @@ begin
       TControlAccess(AControl.Parent).PopupMenu := FMenu;
     end;
   end;
-  List.Add(Binding);
+  List.Add(mBinding);
 end;
 
 procedure TAtlasSettingsMarks.ControlChanged(Sender: TObject);
 var
-  Index: Integer;
-  Handler: TNotifyEvent;
+  mIndex: Integer;
+  mHandler: TNotifyEvent;
 begin
-  Index := IndexOfControl(Sender);
-  if Index >= 0 then
+  mIndex := IndexOfControl(Sender);
+  if mIndex >= 0 then
   begin
-    Handler := List[Index].Changed;
-    if Assigned(Handler) then
+    mHandler := List[mIndex].Changed;
+    if Assigned(mHandler) then
     begin
-      Handler(Sender);
+      mHandler(Sender);
     end;
   end;
   if (FLoading = 0) and Assigned(FOnChanged) then
@@ -618,11 +618,11 @@ end;
 
 function TAtlasSettingsMarks.HasMatch(AParent: TWinControl): Boolean;
 var
-  Binding: TAtlasSettingsBinding;
+  mBinding: TAtlasSettingsBinding;
 begin
-  for Binding in List do
+  for mBinding in List do
   begin
-    if Inside(Binding.Control, AParent) and Matches(Binding, FFilter) then
+    if Inside(mBinding.Control, AParent) and Matches(mBinding, FFilter) then
     begin
       Exit(True);
     end;
@@ -717,67 +717,67 @@ end;
 
 procedure TAtlasSettingsMarks.Restore;
 var
-  Row: TControl;
-  Pair: TPair<TControl, Integer>;
+  mRow: TControl;
+  mPair: TPair<TControl, Integer>;
 begin
   // Vorher ausgeblendete Zeilen wieder zeigen (sie waren beim Filtern sichtbar) und an ihren Platz rücken.
-  for Row in FHidden do
+  for mRow in FHidden do
   begin
-    Row.Visible := True;
+    mRow.Visible := True;
   end;
   FHidden.Clear;
-  for Pair in FTops do
+  for mPair in FTops do
   begin
-    if (Pair.Key.Parent is TScrollingWinControl) and Pair.Key.Parent.HandleAllocated then
+    if (mPair.Key.Parent is TScrollingWinControl) and mPair.Key.Parent.HandleAllocated then
     begin
-      TScrollingWinControl(Pair.Key.Parent).VertScrollBar.Position := 0;
+      TScrollingWinControl(mPair.Key.Parent).VertScrollBar.Position := 0;
     end;
   end;
-  for Pair in FTops do
+  for mPair in FTops do
   begin
-    Pair.Key.Top := Pair.Value;
+    mPair.Key.Top := mPair.Value;
   end;
   FTops.Clear;
 end;
 
 procedure TAtlasSettingsMarks.Compact(AContainer: TWinControl);
 var
-  Tops: TList<Integer>;
-  Child, Index, Shift, Top: Integer;
-  Visible: Boolean;
+  mTops: TList<Integer>;
+  mChild, mIndex, mShift, mTop: Integer;
+  mVisible: Boolean;
 begin
   // Die Reiter stapeln ihre Zeilen mit festen Abständen; ausgeblendete Zeilen hinterließen Lücken.
   // Zeilen mit gleicher Oberkante gelten als eine; sie fällt nur weg, wenn alle ihre Elemente ausgeblendet sind.
-  Tops := TList<Integer>.Create;
+  mTops := TList<Integer>.Create;
   try
-    for Child := 0 to AContainer.ControlCount - 1 do
+    for mChild := 0 to AContainer.ControlCount - 1 do
     begin
-      if not Tops.Contains(FTops[AContainer.Controls[Child]]) then
+      if not mTops.Contains(FTops[AContainer.Controls[mChild]]) then
       begin
-        Tops.Add(FTops[AContainer.Controls[Child]]);
+        mTops.Add(FTops[AContainer.Controls[mChild]]);
       end;
     end;
-    Tops.Sort;
-    Shift := 0;
-    for Index := 0 to Tops.Count - 1 do
+    mTops.Sort;
+    mShift := 0;
+    for mIndex := 0 to mTops.Count - 1 do
     begin
-      Top := Tops[Index];
-      Visible := False;
-      for Child := 0 to AContainer.ControlCount - 1 do
+      mTop := mTops[mIndex];
+      mVisible := False;
+      for mChild := 0 to AContainer.ControlCount - 1 do
       begin
-        if (FTops[AContainer.Controls[Child]] = Top) and AContainer.Controls[Child].Visible then
+        if (FTops[AContainer.Controls[mChild]] = mTop) and AContainer.Controls[mChild].Visible then
         begin
-          Visible := True;
-          AContainer.Controls[Child].Top := Top - Shift;
+          mVisible := True;
+          AContainer.Controls[mChild].Top := mTop - mShift;
         end;
       end;
-      if not Visible and (Index < Tops.Count - 1) then
+      if not mVisible and (mIndex < mTops.Count - 1) then
       begin
-        Inc(Shift, Tops[Index + 1] - Top);
+        Inc(mShift, mTops[mIndex + 1] - mTop);
       end;
     end;
   finally
-    Tops.Free;
+    mTops.Free;
   end;
 end;
 

@@ -72,25 +72,25 @@ end;
 
 function TAtlasVcsWatch.Check: TAtlasVcsSwitch;
 var
-  Marker: string;
-  Current: TAtlasVcsHead;
+  mMarker: string;
+  mCurrent: TAtlasVcsHead;
 begin
   Result := TAtlasVcsSwitch.None;
-  Marker := FVcs.ChangeMarker;
-  if FKnown and (Marker <> '') and (Marker = FMarker) then
+  mMarker := FVcs.ChangeMarker;
+  if FKnown and (mMarker <> '') and (mMarker = FMarker) then
   begin
     Exit;
   end;
-  if FVcs.Head(Current) <> TAtlasVcsOutcome.Ok then
+  if FVcs.Head(mCurrent) <> TAtlasVcsOutcome.Ok then
   begin
     Exit;
   end;
   if FKnown then
   begin
-    Result := TAtlasVcsSwitches.Compare(FHead, Current);
+    Result := TAtlasVcsSwitches.Compare(FHead, mCurrent);
   end;
-  FHead := Current;
-  FMarker := Marker;
+  FHead := mCurrent;
+  FMarker := mMarker;
   FKnown := True;
 end;
 

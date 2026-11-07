@@ -466,13 +466,13 @@ end;
 
 procedure TAtlasCompletionState.SelectByName(const AName: string);
 var
-  Position: Integer;
+  mPosition: Integer;
 begin
-  for Position := 0 to High(FOrder) do
+  for mPosition := 0 to High(FOrder) do
   begin
-    if not TAtlasRanking.IsHeader(FOrder[Position]) and (FItems[FOrder[Position]].Name = AName) then
+    if not TAtlasRanking.IsHeader(FOrder[mPosition]) and (FItems[FOrder[mPosition]].Name = AName) then
     begin
-      FSelected := Position;
+      FSelected := mPosition;
       Exit;
     end;
   end;
@@ -498,11 +498,11 @@ end;
 
 function TAtlasCompletionState.CanCommitOnCharacter: Boolean;
 var
-  Item: TAtlasCompletionItem;
+  mItem: TAtlasCompletionItem;
 begin
   // Code-Vorlagen (#51) nur über Enter oder Tab: "while(" soll keine Schleife einsetzen.
-  Result := (FPrefix <> '') and SelectedItem(Item) and (Item.Snippet = '') and
-    (TAtlasCompletionMatcher.Score(FPrefix, Item.Name) >= TAtlasCompletionMatcher.ScoreWordStarts);
+  Result := (FPrefix <> '') and SelectedItem(mItem) and (mItem.Snippet = '') and
+    (TAtlasCompletionMatcher.Score(FPrefix, mItem.Name) >= TAtlasCompletionMatcher.ScoreWordStarts);
 end;
 
 function TAtlasCompletionState.NeedsQuery(const APrefix: string): Boolean;
@@ -539,27 +539,27 @@ end;
 
 procedure TAtlasCompletionController.TControllerSink.AddItems(const AItems: TAtlasCompletionItems);
 var
-  Controller: TAtlasCompletionController;
-  Flag: TAliveFlag;
-  FlagRef: IInterface;
-  Generation: Integer;
-  Items: TAtlasCompletionItems;
+  mController: TAtlasCompletionController;
+  mFlag: TAliveFlag;
+  mFlagRef: IInterface;
+  mGeneration: Integer;
+  mItems: TAtlasCompletionItems;
 begin
-  Controller := FController;
-  Flag := FFlag;
-  FlagRef := FFlagRef;
-  Generation := FGeneration;
-  Items := AItems;
+  mController := FController;
+  mFlag := FFlag;
+  mFlagRef := FFlagRef;
+  mGeneration := FGeneration;
+  mItems := AItems;
   // Im Hauptthread läuft Queue sofort, sonst beim nächsten CheckSynchronize; beim Entladen verworfen (A-02).
   TAtlasMainThread.Queue(TAtlasFeature.Completion,
     procedure
     begin
-      if Flag.Alive and (FlagRef <> nil) then
+      if mFlag.Alive and (mFlagRef <> nil) then
       begin
         TAtlasGuard.Run(TAtlasFeature.Completion,
           procedure
           begin
-            Controller.ItemsArrived(Generation, Items);
+            mController.ItemsArrived(mGeneration, mItems);
           end);
       end;
     end);
@@ -567,24 +567,24 @@ end;
 
 procedure TAtlasCompletionController.TControllerSink.MarkIncomplete;
 var
-  Controller: TAtlasCompletionController;
-  Flag: TAliveFlag;
-  FlagRef: IInterface;
-  Generation: Integer;
+  mController: TAtlasCompletionController;
+  mFlag: TAliveFlag;
+  mFlagRef: IInterface;
+  mGeneration: Integer;
 begin
-  Controller := FController;
-  Flag := FFlag;
-  FlagRef := FFlagRef;
-  Generation := FGeneration;
+  mController := FController;
+  mFlag := FFlag;
+  mFlagRef := FFlagRef;
+  mGeneration := FGeneration;
   TAtlasMainThread.Queue(TAtlasFeature.Completion,
     procedure
     begin
-      if Flag.Alive and (FlagRef <> nil) then
+      if mFlag.Alive and (mFlagRef <> nil) then
       begin
         TAtlasGuard.Run(TAtlasFeature.Completion,
           procedure
           begin
-            Controller.IncompleteArrived(Generation);
+            mController.IncompleteArrived(mGeneration);
           end);
       end;
     end);
@@ -592,26 +592,26 @@ end;
 
 procedure TAtlasCompletionController.TControllerSink.MarkSyntax(const ANotice: TAtlasSyntaxNotice);
 var
-  Controller: TAtlasCompletionController;
-  Flag: TAliveFlag;
-  FlagRef: IInterface;
-  Generation: Integer;
-  Notice: TAtlasSyntaxNotice;
+  mController: TAtlasCompletionController;
+  mFlag: TAliveFlag;
+  mFlagRef: IInterface;
+  mGeneration: Integer;
+  mNotice: TAtlasSyntaxNotice;
 begin
-  Controller := FController;
-  Flag := FFlag;
-  FlagRef := FFlagRef;
-  Generation := FGeneration;
-  Notice := ANotice;
+  mController := FController;
+  mFlag := FFlag;
+  mFlagRef := FFlagRef;
+  mGeneration := FGeneration;
+  mNotice := ANotice;
   TAtlasMainThread.Queue(TAtlasFeature.Completion,
     procedure
     begin
-      if Flag.Alive and (FlagRef <> nil) then
+      if mFlag.Alive and (mFlagRef <> nil) then
       begin
         TAtlasGuard.Run(TAtlasFeature.Completion,
           procedure
           begin
-            Controller.SyntaxArrived(Generation, Notice);
+            mController.SyntaxArrived(mGeneration, mNotice);
           end);
       end;
     end);
@@ -619,24 +619,24 @@ end;
 
 procedure TAtlasCompletionController.TControllerSink.Complete;
 var
-  Controller: TAtlasCompletionController;
-  Flag: TAliveFlag;
-  FlagRef: IInterface;
-  Generation: Integer;
+  mController: TAtlasCompletionController;
+  mFlag: TAliveFlag;
+  mFlagRef: IInterface;
+  mGeneration: Integer;
 begin
-  Controller := FController;
-  Flag := FFlag;
-  FlagRef := FFlagRef;
-  Generation := FGeneration;
+  mController := FController;
+  mFlag := FFlag;
+  mFlagRef := FFlagRef;
+  mGeneration := FGeneration;
   TAtlasMainThread.Queue(TAtlasFeature.Completion,
     procedure
     begin
-      if Flag.Alive and (FlagRef <> nil) then
+      if mFlag.Alive and (mFlagRef <> nil) then
       begin
         TAtlasGuard.Run(TAtlasFeature.Completion,
           procedure
           begin
-            Controller.Completed(Generation);
+            mController.Completed(mGeneration);
           end);
       end;
     end);
@@ -691,14 +691,14 @@ end;
 
 procedure TAtlasCompletionController.SelectChipAt(AIndex: Integer);
 var
-  Counts: TAtlasChipCounts;
+  mCounts: TAtlasChipCounts;
   mChip: TAtlasChip;
 begin
   // Wie angezeigt: nur Chips mit Treffern, "Alle" immer.
-  Counts := TAtlasRanking.ChipCounts(FItems, FPrefix);
+  mCounts := TAtlasRanking.ChipCounts(FItems, FPrefix);
   for mChip := Low(TAtlasChip) to High(TAtlasChip) do
   begin
-    if (mChip = TAtlasChip.All) or (Counts[mChip] > 0) then
+    if (mChip = TAtlasChip.All) or (mCounts[mChip] > 0) then
     begin
       if AIndex = 0 then
       begin
@@ -753,13 +753,13 @@ end;
 
 procedure TAtlasCompletionController.Query(const AContext: TAtlasContext);
 var
-  Sink: IAtlasCompletionSink;
+  mSink: IAtlasCompletionSink;
 begin
   FIncomplete := False;
   FPendingSyntax := Default(TAtlasSyntaxNotice);
   FQueryPrefix := AContext.Prefix;
-  Sink := TControllerSink.Create(Self, FFlag, FGeneration);
-  FProvider.Query(AContext, Sink);
+  mSink := TControllerSink.Create(Self, FFlag, FGeneration);
+  FProvider.Query(AContext, mSink);
 end;
 
 procedure TAtlasCompletionController.Requery(const AContext: TAtlasContext);
@@ -799,11 +799,11 @@ end;
 
 procedure TAtlasCompletionController.ShowSyntax;
 var
-  View: IAtlasCompletionSyntaxView;
+  mView: IAtlasCompletionSyntaxView;
 begin
-  if Supports(FView, IAtlasCompletionSyntaxView, View) then
+  if Supports(FView, IAtlasCompletionSyntaxView, mView) then
   begin
-    View.ShowSyntax(FSyntax);
+    mView.ShowSyntax(FSyntax);
   end;
 end;
 
@@ -832,8 +832,8 @@ end;
 
 procedure TAtlasCompletionController.ItemsArrived(AGeneration: Integer; const AItems: TAtlasCompletionItems);
 var
-  Item: TAtlasCompletionItem;
-  SelectedName: string;
+  mItem: TAtlasCompletionItem;
+  mSelectedName: string;
 begin
   if not FActive or (AGeneration <> FGeneration) or (Length(AItems) = 0) then
   begin
@@ -842,18 +842,18 @@ begin
   if FReplace then
   begin
     // Neue Liste nach Requery: ersetzen, die Auswahl bleibt auf demselben Eintrag.
-    SelectedName := '';
-    if SelectedItem(Item) then
+    mSelectedName := '';
+    if SelectedItem(mItem) then
     begin
-      SelectedName := Item.Name;
+      mSelectedName := mItem.Name;
     end;
     FReplace := False;
     FItems := AItems;
     MarkItems(FItems, 0);
     Refresh(False);
-    if (SelectedName <> '') and (Length(FOrder) > 0) then
+    if (mSelectedName <> '') and (Length(FOrder) > 0) then
     begin
-      SelectByName(SelectedName);
+      SelectByName(mSelectedName);
       FView.ShowList(FItems, FOrder, FSelected, FPrefix);
     end;
     Exit;
@@ -1103,21 +1103,21 @@ end;
 
 procedure TAtlasCompletionController.ToggleSelected;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if (FSelected < 0) or (FSelected > High(FOrder)) or TAtlasRanking.IsHeader(FOrder[FSelected]) then
   begin
     Exit;
   end;
-  Index := FOrder[FSelected];
-  FItems[Index].Checked := not FItems[Index].Checked;
+  mIndex := FOrder[FSelected];
+  FItems[mIndex].Checked := not FItems[mIndex].Checked;
   FToggled := True;
   FView.ShowList(FItems, FOrder, FSelected, FPrefix);
 end;
 
 procedure TAtlasCompletionController.CommitSet;
 var
-  Item: TAtlasCompletionItem;
+  mItem: TAtlasCompletionItem;
 begin
   // Ohne Leertaste: Enter übernimmt den gewählten Wert zusätzlich zu den vorhandenen.
   if not FToggled and (FSelected >= 0) and (FSelected <= High(FOrder)) and
@@ -1125,11 +1125,11 @@ begin
   begin
     FItems[FOrder[FSelected]].Checked := True;
   end;
-  Item := TAtlasCompletionSets.CommitItem(FItems);
+  mItem := TAtlasCompletionSets.CommitItem(FItems);
   Close;
   if Assigned(FOnCommit) then
   begin
-    FOnCommit(Item);
+    FOnCommit(mItem);
   end;
 end;
 
@@ -1143,16 +1143,16 @@ end;
 
 procedure TAtlasCompletionController.CommitSelected;
 var
-  Item: TAtlasCompletionItem;
+  mItem: TAtlasCompletionItem;
 begin
-  if not SelectedItem(Item) then
+  if not SelectedItem(mItem) then
   begin
     Exit;
   end;
   // Alle Felder zuweisen mit vielen Feldern (#491): erst die Liste mit Kontrollkästchen, Enter übernimmt.
-  if Length(Item.Assignments) > 0 then
+  if Length(mItem.Assignments) > 0 then
   begin
-    FItems := TAtlasCompletionSets.AssignItems(Item);
+    FItems := TAtlasCompletionSets.AssignItems(mItem);
     FToggled := True;
     // Die Liste zeigt alle Felder, auch wenn hinter dem Punkt schon etwas getippt ist; späte Antworten der
     // alten Anfrage gehören nicht mehr dazu.
@@ -1165,12 +1165,12 @@ begin
   end;
   if FUsage <> nil then
   begin
-    FUsage.Record_(Item);
+    FUsage.Record_(mItem);
   end;
   Close;
   if Assigned(FOnCommit) then
   begin
-    FOnCommit(Item);
+    FOnCommit(mItem);
   end;
 end;
 

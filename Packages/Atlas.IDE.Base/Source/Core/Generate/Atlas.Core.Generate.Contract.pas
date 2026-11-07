@@ -33,19 +33,19 @@ uses
   System.StrUtils;
 
 const
-  DefaultGroups: array[0..2] of TAtlasGenerateGroup = (TAtlasGenerateGroup.Generate, TAtlasGenerateGroup.Surround,
+  cDefaultGroups: array[0..2] of TAtlasGenerateGroup = (TAtlasGenerateGroup.Generate, TAtlasGenerateGroup.Surround,
     TAtlasGenerateGroup.Templates);
 
 class function TAtlasGenerateLists.Split(const AText: string): TArray<string>;
 var
-  Item: string;
+  mItem: string;
 begin
   Result := nil;
-  for Item in AText.Split([',', ';', #10]) do
+  for mItem in AText.Split([',', ';', #10]) do
   begin
-    if Trim(Item) <> '' then
+    if Trim(mItem) <> '' then
     begin
-      Result := Result + [Trim(Item)];
+      Result := Result + [Trim(mItem)];
     end;
   end;
 end;
@@ -66,13 +66,13 @@ end;
 
 class function TAtlasGenerateLists.TryParseGroup(const AName: string; out AGroup: TAtlasGenerateGroup): Boolean;
 var
-  Group: TAtlasGenerateGroup;
+  mGroup: TAtlasGenerateGroup;
 begin
-  for Group := Low(TAtlasGenerateGroup) to High(TAtlasGenerateGroup) do
+  for mGroup := Low(TAtlasGenerateGroup) to High(TAtlasGenerateGroup) do
   begin
-    if SameText(Trim(AName), GroupName(Group)) then
+    if SameText(Trim(AName), GroupName(mGroup)) then
     begin
-      AGroup := Group;
+      AGroup := mGroup;
       Exit(True);
     end;
   end;
@@ -82,69 +82,69 @@ end;
 
 class function TAtlasGenerateLists.ParseGroups(const AText: string): TArray<TAtlasGenerateGroup>;
 var
-  Item: string;
-  Group, Known: TAtlasGenerateGroup;
-  Seen: Boolean;
+  mItem: string;
+  mGroup, mKnown: TAtlasGenerateGroup;
+  mSeen: Boolean;
 begin
   Result := nil;
-  for Item in Split(AText) do
+  for mItem in Split(AText) do
   begin
     // "recent" ist keine Gruppe der Liste; dafür gibt es recentFirst.
-    if not TryParseGroup(Item, Group) or (Group = TAtlasGenerateGroup.Recent) then
+    if not TryParseGroup(mItem, mGroup) or (mGroup = TAtlasGenerateGroup.Recent) then
     begin
       Continue;
     end;
-    Seen := False;
-    for Known in Result do
+    mSeen := False;
+    for mKnown in Result do
     begin
-      if Known = Group then
+      if mKnown = mGroup then
       begin
-        Seen := True;
+        mSeen := True;
       end;
     end;
-    if not Seen then
+    if not mSeen then
     begin
-      Result := Result + [Group];
+      Result := Result + [mGroup];
     end;
   end;
   if Length(Result) = 0 then
   begin
-    for Group in DefaultGroups do
+    for mGroup in cDefaultGroups do
     begin
-      Result := Result + [Group];
+      Result := Result + [mGroup];
     end;
   end;
 end;
 
 class function TAtlasGenerateLists.NormalizeGroups(const AText: string): string;
 var
-  Group: TAtlasGenerateGroup;
+  mGroup: TAtlasGenerateGroup;
 begin
   Result := '';
-  for Group in ParseGroups(AText) do
+  for mGroup in ParseGroups(AText) do
   begin
     if Result <> '' then
     begin
       Result := Result + ',';
     end;
-    Result := Result + GroupName(Group);
+    Result := Result + GroupName(mGroup);
   end;
 end;
 
 class function TAtlasGenerateLists.NormalizeHidden(const AText: string): string;
 var
-  Item: string;
-  Items: TArray<string>;
+  mItem: string;
+  mItems: TArray<string>;
 begin
-  Items := nil;
-  for Item in Split(AText) do
+  mItems := nil;
+  for mItem in Split(AText) do
   begin
-    if IndexText(Item, Items) < 0 then
+    if IndexText(mItem, mItems) < 0 then
     begin
-      Items := Items + [Item];
+      mItems := mItems + [mItem];
     end;
   end;
-  Result := string.Join(', ', Items);
+  Result := string.Join(', ', mItems);
 end;
 
 end.

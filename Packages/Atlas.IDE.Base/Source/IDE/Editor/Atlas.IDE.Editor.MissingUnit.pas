@@ -44,23 +44,23 @@ uses
 /// <summary>Konfiguration AName des Projekts; '' = Basis. nil, wenn es sie nicht gibt.</summary>
 function ConfigurationOf(const AProject: IOTAProject; const AName: string): IOTABuildConfiguration;
 var
-  Configurations: IOTAProjectOptionsConfigurations;
-  Index: Integer;
+  mConfigurations: IOTAProjectOptionsConfigurations;
+  mIndex: Integer;
 begin
   Result := nil;
-  if not Supports(AProject.ProjectOptions, IOTAProjectOptionsConfigurations, Configurations) then
+  if not Supports(AProject.ProjectOptions, IOTAProjectOptionsConfigurations, mConfigurations) then
   begin
     Exit;
   end;
   if AName = '' then
   begin
-    Exit(Configurations.BaseConfiguration);
+    Exit(mConfigurations.BaseConfiguration);
   end;
-  for Index := 0 to Configurations.ConfigurationCount - 1 do
+  for mIndex := 0 to mConfigurations.ConfigurationCount - 1 do
   begin
-    if SameText(Configurations.Configurations[Index].Name, AName) then
+    if SameText(mConfigurations.Configurations[mIndex].Name, AName) then
     begin
-      Exit(Configurations.Configurations[Index]);
+      Exit(mConfigurations.Configurations[mIndex]);
     end;
   end;
 end;
@@ -96,86 +96,86 @@ end;
 
 class procedure TAtlasIdeMissingUnit.AddSearchPath(const AArgumentsJson: string; const AMessage: TProc<string>);
 var
-  Request: TAtlasSearchPathRequest;
-  Project: IOTAProject;
-  Configuration: IOTABuildConfiguration;
-  Label_: string;
+  mRequest: TAtlasSearchPathRequest;
+  mProject: IOTAProject;
+  mConfiguration: IOTABuildConfiguration;
+  mLabel_: string;
 begin
-  if not TAtlasSearchPathRequest.TryParse(AArgumentsJson, Request) then
+  if not TAtlasSearchPathRequest.TryParse(AArgumentsJson, mRequest) then
   begin
     Exit;
   end;
-  Project := TAtlasIdeFiles.GroupProject(Request.ProjectFile);
-  if Project = nil then
+  mProject := TAtlasIdeFiles.GroupProject(mRequest.ProjectFile);
+  if mProject = nil then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitNoProject, [ExtractFileName(Request.ProjectFile)]));
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitNoProject, [ExtractFileName(mRequest.ProjectFile)]));
     Exit;
   end;
-  Label_ := Request.Config;
-  if Label_ = '' then
+  mLabel_ := mRequest.Config;
+  if mLabel_ = '' then
   begin
-    Label_ := TAtlasStrings.Text(TAtlasTextId.MissingUnitAllConfigs);
+    mLabel_ := TAtlasStrings.Text(TAtlasTextId.MissingUnitAllConfigs);
   end;
-  Configuration := ConfigurationOf(Project, Request.Config);
-  if Configuration = nil then
+  mConfiguration := ConfigurationOf(mProject, mRequest.Config);
+  if mConfiguration = nil then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitConfigNotFound, [Request.Config,
-      ExtractFileName(Project.FileName)]));
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitConfigNotFound, [mRequest.Config,
+      ExtractFileName(mProject.FileName)]));
     Exit;
   end;
-  if WriteSearchPath(Project, Configuration, Request, Label_, AMessage) then
+  if WriteSearchPath(mProject, mConfiguration, mRequest, mLabel_, AMessage) then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitSearchPathDone, [Label_, ExtractFileName(Project.FileName),
-      Request.Folder]));
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitSearchPathDone, [mLabel_, ExtractFileName(mProject.FileName),
+      mRequest.Folder]));
   end;
 end;
 
 class procedure TAtlasIdeMissingUnit.AddUnit(const AArgumentsJson: string; const AMessage: TProc<string>);
 var
-  Request: TAtlasAddUnitRequest;
-  Project: IOTAProject;
+  mRequest: TAtlasAddUnitRequest;
+  mProject: IOTAProject;
 begin
-  if not TAtlasAddUnitRequest.TryParse(AArgumentsJson, Request) then
+  if not TAtlasAddUnitRequest.TryParse(AArgumentsJson, mRequest) then
   begin
     Exit;
   end;
-  Project := TAtlasIdeFiles.GroupProject(Request.ProjectFile);
-  if Project = nil then
+  mProject := TAtlasIdeFiles.GroupProject(mRequest.ProjectFile);
+  if mProject = nil then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitNoProject, [ExtractFileName(Request.ProjectFile)]));
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitNoProject, [ExtractFileName(mRequest.ProjectFile)]));
     Exit;
   end;
-  if Project.FindModuleInfo(Request.FileName) <> nil then
+  if mProject.FindModuleInfo(mRequest.FileName) <> nil then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitAlreadyInProject, [ExtractFileName(Request.FileName),
-      ExtractFileName(Project.FileName)]));
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitAlreadyInProject, [ExtractFileName(mRequest.FileName),
+      ExtractFileName(mProject.FileName)]));
     Exit;
   end;
   try
-    Project.AddFile(Request.FileName, True);
+    mProject.AddFile(mRequest.FileName, True);
   except
     on E: Exception do
     begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitAddFailed, [ExtractFileName(Request.FileName),
+      AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitAddFailed, [ExtractFileName(mRequest.FileName),
         E.Message]));
       Exit;
     end;
   end;
-  AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitAdded, [ExtractFileName(Request.FileName),
-    ExtractFileName(Project.FileName)]));
+  AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitAdded, [ExtractFileName(mRequest.FileName),
+    ExtractFileName(mProject.FileName)]));
 end;
 
 class procedure TAtlasIdeMissingUnit.ShowInfo(const AArgumentsJson: string; const AMessage: TProc<string>);
 var
-  Text: string;
+  mText: string;
 begin
-  if not TAtlasSearchPaths.TryParseInfo(AArgumentsJson, Text) then
+  if not TAtlasSearchPaths.TryParseInfo(AArgumentsJson, mText) then
   begin
     Exit;
   end;
-  AMessage(Text);
+  AMessage(mText);
   // Die Liste der durchsuchten Orte ist zu lang für die Meldungsansicht allein.
-  MessageDlg(StringReplace(Text, '; ', sLineBreak, [rfReplaceAll]), mtInformation, [mbOK], 0);
+  MessageDlg(StringReplace(mText, '; ', sLineBreak, [rfReplaceAll]), mtInformation, [mbOK], 0);
 end;
 
 end.

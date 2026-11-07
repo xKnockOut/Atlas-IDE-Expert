@@ -41,19 +41,19 @@ end;
 
 procedure TAtlasChoiceBox.SetChoices(const AItems: array of string);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   SetLength(FChoices, Length(AItems));
-  for Index := 0 to High(AItems) do
+  for mIndex := 0 to High(AItems) do
   begin
-    FChoices[Index] := AItems[Index];
+    FChoices[mIndex] := AItems[mIndex];
   end;
   if HandleAllocated then
   begin
     Items.Clear;
-    for Index := 0 to High(FChoices) do
+    for mIndex := 0 to High(FChoices) do
     begin
-      Items.Add(FChoices[Index]);
+      Items.Add(FChoices[mIndex]);
     end;
     ItemIndex := FChoice;
   end;
@@ -61,14 +61,14 @@ end;
 
 procedure TAtlasChoiceBox.CreateWnd;
 var
-  Item: string;
+  mItem: string;
 begin
   inherited CreateWnd;
   if Items.Count = 0 then
   begin
-    for Item in FChoices do
+    for mItem in FChoices do
     begin
-      Items.Add(Item);
+      Items.Add(mItem);
     end;
   end;
   ItemIndex := FChoice;

@@ -88,18 +88,18 @@ uses
 
 function VcsUtf8(const ABytes: TBytes): string;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
-  Start := 0;
+  mStart := 0;
   if (Length(ABytes) >= 3) and (ABytes[0] = $EF) and (ABytes[1] = $BB) and (ABytes[2] = $BF) then
   begin
-    Start := 3;
+    mStart := 3;
   end;
-  if Length(ABytes) <= Start then
+  if Length(ABytes) <= mStart then
   begin
     Exit('');
   end;
-  Result := TEncoding.UTF8.GetString(ABytes, Start, Length(ABytes) - Start);
+  Result := TEncoding.UTF8.GetString(ABytes, mStart, Length(ABytes) - mStart);
 end;
 
 /// <summary>Anzahl der Folgebytes zum Startbyte AByte; -1, wenn AByte keine Folge beginnen darf.</summary>
@@ -184,41 +184,41 @@ end;
 
 function VcsRelativePath(const ARoot, AFileName: string; out ARelative: string): Boolean;
 var
-  Root, FileName, Prefix: string;
-  Matches: Boolean;
+  mRoot, mFileName, mPrefix: string;
+  mMatches: Boolean;
 begin
   ARelative := '';
-  Root := VcsNormalizeDir(ARoot);
-  FileName := VcsNormalizeDir(AFileName);
-  if (Root = '') or (FileName = '') then
+  mRoot := VcsNormalizeDir(ARoot);
+  mFileName := VcsNormalizeDir(AFileName);
+  if (mRoot = '') or (mFileName = '') then
   begin
     Exit(False);
   end;
-  Prefix := IncludeTrailingPathDelimiter(Root);
+  mPrefix := IncludeTrailingPathDelimiter(mRoot);
   if PathDelim = '\' then
   begin
-    Matches := SameText(Copy(FileName, 1, Length(Prefix)), Prefix);
+    mMatches := SameText(Copy(mFileName, 1, Length(mPrefix)), mPrefix);
   end
   else
   begin
-    Matches := Copy(FileName, 1, Length(Prefix)) = Prefix;
+    mMatches := Copy(mFileName, 1, Length(mPrefix)) = mPrefix;
   end;
-  if not Matches then
+  if not mMatches then
   begin
     Exit(False);
   end;
-  ARelative := StringReplace(Copy(FileName, Length(Prefix) + 1, MaxInt), '\', '/', [rfReplaceAll]);
+  ARelative := StringReplace(Copy(mFileName, Length(mPrefix) + 1, MaxInt), '\', '/', [rfReplaceAll]);
   Result := ARelative <> '';
 end;
 
 function VcsRelativeOrRoot(const ARoot, AFileName: string; out ARelative: string): Boolean;
 var
-  Root, FileName: string;
+  mRoot, mFileName: string;
 begin
   ARelative := '';
-  Root := VcsNormalizeDir(ARoot);
-  FileName := VcsNormalizeDir(AFileName);
-  if (Root <> '') and ((PathDelim = '\') and SameText(Root, FileName) or (Root = FileName)) then
+  mRoot := VcsNormalizeDir(ARoot);
+  mFileName := VcsNormalizeDir(AFileName);
+  if (mRoot <> '') and ((PathDelim = '\') and SameText(mRoot, mFileName) or (mRoot = mFileName)) then
   begin
     Exit(True);
   end;
@@ -227,44 +227,44 @@ end;
 
 function VcsFullPath(const ARoot, ARelative: string): string;
 var
-  Relative: string;
+  mRelative: string;
 begin
-  Relative := StringReplace(ARelative, '/', PathDelim, [rfReplaceAll]);
+  mRelative := StringReplace(ARelative, '/', PathDelim, [rfReplaceAll]);
   if PathDelim = '/' then
   begin
-    Relative := StringReplace(Relative, '\', '/', [rfReplaceAll]);
+    mRelative := StringReplace(mRelative, '\', '/', [rfReplaceAll]);
   end;
-  while (Relative <> '') and (Relative[1] = PathDelim) do
+  while (mRelative <> '') and (mRelative[1] = PathDelim) do
   begin
-    Delete(Relative, 1, 1);
+    Delete(mRelative, 1, 1);
   end;
-  if (Relative = '') or (Relative = '.') then
+  if (mRelative = '') or (mRelative = '.') then
   begin
     Exit(VcsNormalizeDir(ARoot));
   end;
-  if (Length(Relative) > 2) and (Relative[1] = '.') and (Relative[2] = PathDelim) then
+  if (Length(mRelative) > 2) and (mRelative[1] = '.') and (mRelative[2] = PathDelim) then
   begin
-    Delete(Relative, 1, 2);
+    Delete(mRelative, 1, 2);
   end;
-  Result := IncludeTrailingPathDelimiter(VcsNormalizeDir(ARoot)) + Relative;
+  Result := IncludeTrailingPathDelimiter(VcsNormalizeDir(ARoot)) + mRelative;
 end;
 
 function Digits(const AText: string; AStart, ACount: Integer; out AValue: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   AValue := 0;
   if AStart + ACount - 1 > Length(AText) then
   begin
     Exit(False);
   end;
-  for Index := AStart to AStart + ACount - 1 do
+  for mIndex := AStart to AStart + ACount - 1 do
   begin
-    if (AText[Index] < '0') or (AText[Index] > '9') then
+    if (AText[mIndex] < '0') or (AText[mIndex] > '9') then
     begin
       Exit(False);
     end;
-    AValue := AValue * 10 + Ord(AText[Index]) - Ord('0');
+    AValue := AValue * 10 + Ord(AText[mIndex]) - Ord('0');
   end;
   Result := True;
 end;
@@ -465,13 +465,13 @@ end;
 
 function TAtlasVcsXmlReader.Attr(const AName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FAttrNames) do
+  for mIndex := 0 to High(FAttrNames) do
   begin
-    if FAttrNames[Index] = AName then
+    if FAttrNames[mIndex] = AName then
     begin
-      Exit(FAttrValues[Index]);
+      Exit(FAttrValues[mIndex]);
     end;
   end;
   Result := '';

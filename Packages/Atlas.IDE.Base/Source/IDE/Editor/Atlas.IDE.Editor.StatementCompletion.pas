@@ -62,35 +62,35 @@ uses
 
 const
   // Wie ClassBodiesTag und CaseCompleteTag des Servers (Atlas.Common.Editing.CodeActions).
-  ClassBodiesTag = 'class.bodies';
-  CaseCompleteTag = 'case.complete';
+  cClassBodiesTag = 'class.bodies';
+  cCaseCompleteTag = 'case.complete';
 
 /// <summary>Ersetzt in ABuffer (Text AText) ab Zeichen AStart AOldLength Zeichen durch AInsert; ein
 /// Rückgängig-Schritt.</summary>
 procedure WriteBuffer(const ABuffer: IOTAEditBuffer; const AText: string; AStart, AOldLength: Integer;
   const AInsert: string);
 var
-  Writer: IOTAEditWriter;
+  mWriter: IOTAEditWriter;
 begin
-  Writer := ABuffer.CreateUndoableWriter;
-  Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
-  Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
+  mWriter := ABuffer.CreateUndoableWriter;
+  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
+  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
   if AInsert <> '' then
   begin
-    Writer.Insert(PAnsiChar(UTF8Encode(AInsert)));
+    mWriter.Insert(PAnsiChar(UTF8Encode(AInsert)));
   end;
-  Writer := nil;
+  mWriter := nil;
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
 function LineCount(const AText: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
-  for Index := 1 to Length(AText) do
+  for mIndex := 1 to Length(AText) do
   begin
-    if AText[Index] = #10 then
+    if AText[mIndex] = #10 then
     begin
       Inc(Result);
     end;
@@ -170,11 +170,11 @@ begin
   Result := '';
   if AFollowUp = TAtlasStatementFollowUp.MethodBody then
   begin
-    Result := ClassBodiesTag;
+    Result := cClassBodiesTag;
   end
   else if AFollowUp = TAtlasStatementFollowUp.CaseBranches then
   begin
-    Result := CaseCompleteTag;
+    Result := cCaseCompleteTag;
   end;
 end;
 

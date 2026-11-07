@@ -37,9 +37,9 @@ uses
   Atlas.IDE.Editor.ServerEdit;
 
 const
-  ApplyCommand = 'atlas.server.propertyFromAccessors';
+  cApplyCommand = 'atlas.server.propertyFromAccessors';
   // Aufrufe im Projekt suchen dauert; wie beim Umbenennen.
-  TimeoutMs = 60000;
+  cTimeoutMs = 60000;
 
 class procedure TAtlasIdePropertyFromAccessors.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
@@ -58,7 +58,7 @@ begin
   mProperties := 0;
   mCalls := 0;
   if not TAtlasIdeServerEdit.Fetch(ASession,
-    TAtlasServerEditCommand.Create(ApplyCommand, AArgumentsJson, TimeoutMs, TAtlasTextId.PropertyAccessorsFailed),
+    TAtlasServerEditCommand.Create(cApplyCommand, AArgumentsJson, cTimeoutMs, TAtlasTextId.PropertyAccessorsFailed),
     procedure(const AReply: TJSONObject)
     begin
       mProperties := TAtlasIdeServerEdit.NumberOf(AReply, 'properties');

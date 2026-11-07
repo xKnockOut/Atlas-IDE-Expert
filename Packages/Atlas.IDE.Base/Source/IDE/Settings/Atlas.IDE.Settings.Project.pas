@@ -135,30 +135,30 @@ end;
 
 class function TAtlasProjectSettings.ActiveProject: string;
 var
-  Modules: IOTAModuleServices;
-  Project: IOTAProject;
+  mModules: IOTAModuleServices;
+  mProject: IOTAProject;
 begin
   Result := '';
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
-  Project := Modules.GetActiveProject;
-  if Project <> nil then
+  mProject := mModules.GetActiveProject;
+  if mProject <> nil then
   begin
-    Result := Project.FileName;
+    Result := mProject.FileName;
   end;
 end;
 
 class function TAtlasProjectSettings.SettingsFile: string;
 var
-  Project: string;
+  mProject: string;
 begin
   Result := '';
-  Project := ActiveProject;
-  if Project <> '' then
+  mProject := ActiveProject;
+  if mProject <> '' then
   begin
-    Result := TPath.Combine(ExtractFileDir(Project), TAtlasSettingsFiles.ProjectName);
+    Result := TPath.Combine(ExtractFileDir(mProject), TAtlasSettingsFiles.ProjectName);
   end;
 end;
 
@@ -169,7 +169,7 @@ end;
 
 class function TAtlasProjectSettings.ReadText(const AFileName: string; out AHasBom: Boolean): string;
 var
-  Content: TAtlasTextFileContent;
+  mContent: TAtlasTextFileContent;
 begin
   Result := '';
   AHasBom := False;
@@ -177,37 +177,37 @@ begin
   begin
     Exit;
   end;
-  Content := TAtlasTextFile.Load(AFileName);
-  AHasBom := Content.Encoding = TAtlasTextEncoding.Utf8Bom;
-  Result := Content.Text;
+  mContent := TAtlasTextFile.Load(AFileName);
+  AHasBom := mContent.Encoding = TAtlasTextEncoding.Utf8Bom;
+  Result := mContent.Text;
 end;
 
 class function TAtlasProjectSettings.ReadProject: TJSONObject;
 var
-  HasBom: Boolean;
+  mHasBom: Boolean;
 begin
-  Result := TAtlasJsonText.Parse(ReadText(SettingsFile, HasBom));
+  Result := TAtlasJsonText.Parse(ReadText(SettingsFile, mHasBom));
 end;
 
 class function TAtlasProjectSettings.WriteValue(const APath, AJson: string): Boolean;
 var
-  FileName, NewText: string;
-  Content: TAtlasTextFileContent;
+  mFileName, mNewText: string;
+  mContent: TAtlasTextFileContent;
 begin
-  FileName := SettingsFile;
-  Result := FileName <> '';
+  mFileName := SettingsFile;
+  Result := mFileName <> '';
   if not Result then
   begin
     Exit;
   end;
-  Content := LoadContent(FileName);
-  NewText := TAtlasJsonText.SetValue(Content.Text, APath, AJson);
-  if NewText = Content.Text then
+  mContent := LoadContent(mFileName);
+  mNewText := TAtlasJsonText.SetValue(mContent.Text, APath, AJson);
+  if mNewText = mContent.Text then
   begin
     Exit;
   end;
-  Content.Text := NewText;
-  TAtlasTextFile.Save(FileName, Content);
+  mContent.Text := mNewText;
+  TAtlasTextFile.Save(mFileName, mContent);
 end;
 
 /// <summary>Versionsnummern unter Software\Embarcadero\BDS des Zweigs ARoot an AVersions anhängen.</summary>
@@ -248,45 +248,45 @@ end;
 
 class procedure TAtlasProjectSettings.Execute;
 var
-  FileName: string;
+  mFileName: string;
 begin
-  FileName := SettingsFile;
-  if FileName = '' then
+  mFileName := SettingsFile;
+  if mFileName = '' then
   begin
     MessageBox(Application.Handle, PChar(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject)),
       PChar(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsTitle)), MB_ICONINFORMATION or MB_OK);
     Exit;
   end;
-  ExecuteFile(FileName, False, '');
+  ExecuteFile(mFileName, False, '');
 end;
 
 class procedure TAtlasProjectSettings.ExecuteGlobal;
 var
-  FileName: string;
+  mFileName: string;
 begin
-  FileName := GlobalFile;
-  if FileName <> '' then
+  mFileName := GlobalFile;
+  if mFileName <> '' then
   begin
-    ExecuteFile(FileName, True, '');
+    ExecuteFile(mFileName, True, '');
   end;
 end;
 
 class procedure TAtlasProjectSettings.ShowRule(const ARuleId: string);
 var
-  FileName: string;
+  mFileName: string;
 begin
   // Im Projekt, wenn eins aktiv ist: Dort wirkt die Einstellung für diesen Befund; sonst global.
-  FileName := SettingsFile;
-  if FileName <> '' then
+  mFileName := SettingsFile;
+  if mFileName <> '' then
   begin
-    ExecuteFile(FileName, False, ARuleId);
+    ExecuteFile(mFileName, False, ARuleId);
   end
   else
   begin
-    FileName := GlobalFile;
-    if FileName <> '' then
+    mFileName := GlobalFile;
+    if mFileName <> '' then
     begin
-      ExecuteFile(FileName, True, ARuleId);
+      ExecuteFile(mFileName, True, ARuleId);
     end;
   end;
 end;

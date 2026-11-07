@@ -78,13 +78,13 @@ end;
 
 procedure WriteDefault(const AStore: IAtlasMemorySettingsStore; const AEntry: TAtlasCatalogEntry);
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := TAtlasJsonValues.Parse(AEntry.DefaultJson);
+  mValue := TAtlasJsonValues.Parse(AEntry.DefaultJson);
   try
-    if Value is TJSONBool then
+    if mValue is TJSONBool then
     begin
-      if TJSONBool(Value).AsBoolean then
+      if TJSONBool(mValue).AsBoolean then
       begin
         AStore.WriteInteger(AEntry.Name, 1);
       end
@@ -93,20 +93,20 @@ begin
         AStore.WriteInteger(AEntry.Name, 0);
       end;
     end
-    else if Value is TJSONNumber then
+    else if mValue is TJSONNumber then
     begin
-      AStore.WriteInteger(AEntry.Name, TJSONNumber(Value).AsInt);
+      AStore.WriteInteger(AEntry.Name, TJSONNumber(mValue).AsInt);
     end
-    else if Value is TJSONString then
+    else if mValue is TJSONString then
     begin
-      AStore.WriteString(AEntry.Name, TJSONString(Value).Value);
+      AStore.WriteString(AEntry.Name, TJSONString(mValue).Value);
     end
     else if AEntry.Kind = akBoolean then
     begin
       AStore.WriteInteger(AEntry.Name, 0);
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -114,52 +114,52 @@ end;
 
 class function TAtlasExperimental.IsExperimental(ACatalog: TAtlasSettingsCatalog; const AKey: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := ACatalog.IndexOfKey(AKey);
-  if Index < 0 then
+  mIndex := ACatalog.IndexOfKey(AKey);
+  if mIndex < 0 then
   begin
-    Index := ACatalog.IndexOfName(AKey);
+    mIndex := ACatalog.IndexOfName(AKey);
   end;
-  Result := (Index >= 0) and ACatalog[Index].Experimental;
+  Result := (mIndex >= 0) and ACatalog[mIndex].Experimental;
 end;
 
 class function TAtlasExperimental.Keys(ACatalog: TAtlasSettingsCatalog): TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to ACatalog.Count - 1 do
+  for mIndex := 0 to ACatalog.Count - 1 do
   begin
-    if ACatalog[Index].Experimental then
+    if ACatalog[mIndex].Experimental then
     begin
-      Result := Result + [ACatalog[Index].Key];
+      Result := Result + [ACatalog[mIndex].Key];
     end;
   end;
 end;
 
 class function TAtlasExperimental.PluginEntries(ACatalog: TAtlasSettingsCatalog): TArray<TAtlasCatalogEntry>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to ACatalog.Count - 1 do
+  for mIndex := 0 to ACatalog.Count - 1 do
   begin
-    if ACatalog[Index].Experimental and (ACatalog[Index].Source = asPlugin) then
+    if ACatalog[mIndex].Experimental and (ACatalog[mIndex].Source = asPlugin) then
     begin
-      Result := Result + [ACatalog[Index]];
+      Result := Result + [ACatalog[mIndex]];
     end;
   end;
 end;
 
 class function TAtlasExperimental.PluginNames(ACatalog: TAtlasSettingsCatalog): TArray<string>;
 var
-  Entry: TAtlasCatalogEntry;
+  mEntry: TAtlasCatalogEntry;
 begin
   Result := nil;
-  for Entry in PluginEntries(ACatalog) do
+  for mEntry in PluginEntries(ACatalog) do
   begin
-    Result := Result + [Entry.Name];
+    Result := Result + [mEntry.Name];
   end;
 end;
 
@@ -172,65 +172,65 @@ end;
 class function TAtlasExperimental.Apply(const ASettings: TAtlasPluginSettings;
   const AEntries: TArray<TAtlasCatalogEntry>): TAtlasPluginSettings;
 var
-  Store: IAtlasMemorySettingsStore;
-  Entry: TAtlasCatalogEntry;
+  mStore: IAtlasMemorySettingsStore;
+  mEntry: TAtlasCatalogEntry;
 begin
   Result := ASettings;
   if ASettings.ExperimentalEnabled or (Length(AEntries) = 0) then
   begin
     Exit;
   end;
-  Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
-  for Entry in AEntries do
+  mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
+  for mEntry in AEntries do
   begin
-    WriteDefault(Store, Entry);
+    WriteDefault(mStore, mEntry);
   end;
-  Result.Load(Store);
+  Result.Load(mStore);
 end;
 
 class function TAtlasExperimental.Active(const ASettings: TAtlasPluginSettings; const AGlobalText: string;
   ACatalog: TAtlasSettingsCatalog): TArray<string>;
 var
-  Store: IAtlasMemorySettingsStore;
-  Root: TJSONObject;
-  Index: Integer;
-  Entry: TAtlasCatalogEntry;
-  Value: string;
+  mStore: IAtlasMemorySettingsStore;
+  mRoot: TJSONObject;
+  mIndex: Integer;
+  mEntry: TAtlasCatalogEntry;
+  mValue: string;
 begin
   Result := nil;
   if not ASettings.ExperimentalEnabled then
   begin
     Exit;
   end;
-  Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
-  Root := TAtlasJsonText.Parse(AGlobalText);
+  mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
+  mRoot := TAtlasJsonText.Parse(AGlobalText);
   try
-    for Index := 0 to ACatalog.Count - 1 do
+    for mIndex := 0 to ACatalog.Count - 1 do
     begin
-      Entry := ACatalog[Index];
-      if not Entry.Experimental then
+      mEntry := ACatalog[mIndex];
+      if not mEntry.Experimental then
       begin
         Continue;
       end;
-      if Entry.Source = asPlugin then
+      if mEntry.Source = asPlugin then
       begin
-        Value := StoredText(Store, Entry);
+        mValue := StoredText(mStore, mEntry);
       end
-      else if Root <> nil then
+      else if mRoot <> nil then
       begin
-        Value := TAtlasJsonText.ValueAt(Root, Entry.Key);
+        mValue := TAtlasJsonText.ValueAt(mRoot, mEntry.Key);
       end
       else
       begin
-        Value := '';
+        mValue := '';
       end;
-      if (Value <> '') and not TAtlasJsonValues.Same(Value, Entry.DefaultJson) then
+      if (mValue <> '') and not TAtlasJsonValues.Same(mValue, mEntry.DefaultJson) then
       begin
-        Result := Result + [Entry.Key];
+        Result := Result + [mEntry.Key];
       end;
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 

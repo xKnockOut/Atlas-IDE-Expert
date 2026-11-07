@@ -99,84 +99,84 @@ end;
 
 class function TAtlasIdeNavigation.ShowFile(const AFileName: string): Boolean;
 var
-  Actions: IOTAActionServices;
-  Modules: IOTAModuleServices;
-  Module: IOTAModule;
-  Index: Integer;
-  Editor: IOTASourceEditor;
+  mActions: IOTAActionServices;
+  mModules: IOTAModuleServices;
+  mModule: IOTAModule;
+  mIndex: Integer;
+  mEditor: IOTASourceEditor;
 begin
   Result := False;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
   // Wie GoToLocation: OpenFile öffnete eine offene Datei erneut, bei Formular-Units samt Designer.
-  Module := Modules.FindModule(AFileName);
-  if Module <> nil then
+  mModule := mModules.FindModule(AFileName);
+  if mModule <> nil then
   begin
-    for Index := 0 to Module.ModuleFileCount - 1 do
+    for mIndex := 0 to mModule.ModuleFileCount - 1 do
     begin
-      if Supports(Module.ModuleFileEditors[Index], IOTASourceEditor, Editor) then
+      if Supports(mModule.ModuleFileEditors[mIndex], IOTASourceEditor, mEditor) then
       begin
-        Editor.Show;
+        mEditor.Show;
         Exit(True);
       end;
     end;
   end;
-  Result := Supports(BorlandIDEServices, IOTAActionServices, Actions) and Actions.OpenFile(AFileName);
+  Result := Supports(BorlandIDEServices, IOTAActionServices, mActions) and mActions.OpenFile(AFileName);
 end;
 
 class procedure TAtlasIdeNavigation.GoToPosition(ALine, ACharacter: Integer);
 var
-  Editors: IOTAEditorServices;
-  View: IOTAEditView;
-  Cursor: TOTAEditPos;
+  mEditors: IOTAEditorServices;
+  mView: IOTAEditView;
+  mCursor: TOTAEditPos;
 begin
-  if not Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  if not Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
     Exit;
   end;
-  View := Editors.TopView;
-  if View = nil then
+  mView := mEditors.TopView;
+  if mView = nil then
   begin
     Exit;
   end;
-  Cursor.Line := ALine + 1;
-  Cursor.Col := ACharacter + 1;
-  View.CursorPos := Cursor;
-  View.MoveViewToCursor;
-  View.Paint;
+  mCursor.Line := ALine + 1;
+  mCursor.Col := ACharacter + 1;
+  mView.CursorPos := mCursor;
+  mView.MoveViewToCursor;
+  mView.Paint;
 end;
 
 class procedure TAtlasIdeNavigation.MarkLine(const AFileName: string; ALine: Integer);
 var
-  Editors: IOTAEditorServices;
-  View: IOTAEditView;
-  Cursor: TOTAEditPos;
+  mEditors: IOTAEditorServices;
+  mView: IOTAEditView;
+  mCursor: TOTAEditPos;
 begin
   GoToLocation(AFileName, ALine, 0);
-  if not Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  if not Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
     Exit;
   end;
-  View := Editors.TopView;
-  if (View = nil) or (View.Buffer = nil) or not SameText(View.Buffer.FileName, AFileName) then
+  mView := mEditors.TopView;
+  if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, AFileName) then
   begin
     Exit;
   end;
   // Zeilenanfang markieren, Cursor an den Anfang der nächsten Zeile, Ende markieren, Cursor zurück.
-  View.Block.Style := btNonInclusive;
-  Cursor.Line := ALine + 1;
-  Cursor.Col := 1;
-  View.CursorPos := Cursor;
-  View.Block.BeginBlock;
-  Cursor.Line := ALine + 2;
-  View.CursorPos := Cursor;
-  View.Block.EndBlock;
-  Cursor.Line := ALine + 1;
-  View.CursorPos := Cursor;
-  View.MoveViewToCursor;
-  View.Paint;
+  mView.Block.Style := btNonInclusive;
+  mCursor.Line := ALine + 1;
+  mCursor.Col := 1;
+  mView.CursorPos := mCursor;
+  mView.Block.BeginBlock;
+  mCursor.Line := ALine + 2;
+  mView.CursorPos := mCursor;
+  mView.Block.EndBlock;
+  mCursor.Line := ALine + 1;
+  mView.CursorPos := mCursor;
+  mView.MoveViewToCursor;
+  mView.Paint;
 end;
 
 end.

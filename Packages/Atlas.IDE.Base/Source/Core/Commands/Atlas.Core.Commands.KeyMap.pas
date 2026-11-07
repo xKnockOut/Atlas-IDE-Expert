@@ -317,7 +317,7 @@ end;
 
 const
   /// <summary>Befehl der Befehlspalette je Atlas-Taste (CommandIdOf); '' ohne.</summary>
-  CommandIds: array[TAtlasKeyFunction] of string = (
+  cCommandIds: array[TAtlasKeyFunction] of string = (
     '', // Palette
     'Atlas.CheckNow', // Check
     '', // Completion
@@ -394,19 +394,19 @@ const
 
 class function TAtlasKeyMap.CommandIdOf(AFunc: TAtlasKeyFunction): string;
 begin
-  Result := CommandIds[AFunc];
+  Result := cCommandIds[AFunc];
 end;
 
 class function TAtlasKeyMap.ContextOfCategory(const ACategory: string): TAtlasKeyContext;
 var
-  Lower: string;
+  mLower: string;
 begin
-  Lower := LowerCase(ACategory);
-  if (Pos('designer', Lower) > 0) or (Pos('formular', Lower) > 0) then
+  mLower := LowerCase(ACategory);
+  if (Pos('designer', mLower) > 0) or (Pos('formular', mLower) > 0) then
   begin
     Result := TAtlasKeyContext.Designer;
   end
-  else if Pos('editor', Lower) > 0 then
+  else if Pos('editor', mLower) > 0 then
   begin
     Result := TAtlasKeyContext.Editor;
   end
@@ -419,22 +419,22 @@ end;
 class function TAtlasKeyMap.OriginOfModule(const AModule, AIdeFolder, AAtlasModule: string;
   out AName: string): TAtlasKeyOrigin;
 var
-  Folder, Name: string;
+  mFolder, mName: string;
 begin
   // Kein Pfad nach außen: nur der Package-Name einer Erweiterung.
-  Name := ExtractFileName(AModule.Replace('/', '\'));
+  mName := ExtractFileName(AModule.Replace('/', '\'));
   if (AAtlasModule <> '') and SameText(AModule, AAtlasModule) then
   begin
     AName := AtlasName;
     Exit(TAtlasKeyOrigin.Atlas);
   end;
-  Folder := IncludeTrailingPathDelimiter(AIdeFolder.Replace('/', '\'));
-  if (AModule = '') or ((AIdeFolder <> '') and AModule.Replace('/', '\').StartsWith(Folder, True)) then
+  mFolder := IncludeTrailingPathDelimiter(AIdeFolder.Replace('/', '\'));
+  if (AModule = '') or ((AIdeFolder <> '') and AModule.Replace('/', '\').StartsWith(mFolder, True)) then
   begin
     AName := IdeName;
     Exit(TAtlasKeyOrigin.Ide);
   end;
-  AName := ChangeFileExt(Name, '');
+  AName := ChangeFileExt(mName, '');
   Result := TAtlasKeyOrigin.Plugin;
 end;
 
@@ -471,28 +471,28 @@ end;
 function ClashContext(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer;
   const APartners: TArray<Integer>): TAtlasKeyContext;
 var
-  Partner: Integer;
-  Found: Boolean;
-  Context: TAtlasKeyContext;
+  mPartner: Integer;
+  mFound: Boolean;
+  mContext: TAtlasKeyContext;
 begin
   Result := AItems[AIndex].Context;
   if Result <> TAtlasKeyContext.Global then
   begin
     Exit;
   end;
-  for Context in [TAtlasKeyContext.Editor, TAtlasKeyContext.Designer, TAtlasKeyContext.WelcomePage] do
+  for mContext in [TAtlasKeyContext.Editor, TAtlasKeyContext.Designer, TAtlasKeyContext.WelcomePage] do
   begin
-    Found := False;
-    for Partner in APartners do
+    mFound := False;
+    for mPartner in APartners do
     begin
-      if AItems[Partner].Context = Context then
+      if AItems[mPartner].Context = mContext then
       begin
-        Found := True;
+        mFound := True;
       end;
     end;
-    if Found then
+    if mFound then
     begin
-      Exit(Context);
+      Exit(mContext);
     end;
   end;
 end;
@@ -501,14 +501,14 @@ end;
 /// </summary>
 function WindowWinner(const AItems: TArray<TAtlasKeyItem>; const ACandidates: TArray<Integer>): Integer;
 var
-  Candidate: Integer;
+  mCandidate: Integer;
 begin
   Result := -1;
-  for Candidate in ACandidates do
+  for mCandidate in ACandidates do
   begin
-    if (AItems[Candidate].Source = TAtlasKeySource.Window) and AItems[Candidate].Active then
+    if (AItems[mCandidate].Source = TAtlasKeySource.Window) and AItems[mCandidate].Active then
     begin
-      Exit(Candidate);
+      Exit(mCandidate);
     end;
   end;
 end;
@@ -523,21 +523,21 @@ end;
 function FirstBinding(const AItems: TArray<TAtlasKeyItem>; const ACandidates: TArray<Integer>;
   AAtlasFirst: Boolean): Integer;
 var
-  Candidate: Integer;
-  Item: TAtlasKeyItem;
+  mCandidate: Integer;
+  mItem: TAtlasKeyItem;
 begin
   Result := -1;
-  for Candidate in ACandidates do
+  for mCandidate in ACandidates do
   begin
-    Item := AItems[Candidate];
-    if not IsActiveBinding(Item) then
+    mItem := AItems[mCandidate];
+    if not IsActiveBinding(mItem) then
     begin
       Continue;
     end;
-    if (not AAtlasFirst and Item.Effective) or
-      (AAtlasFirst and (Item.Origin = TAtlasKeyOrigin.Atlas) and Item.Priority) then
+    if (not AAtlasFirst and mItem.Effective) or
+      (AAtlasFirst and (mItem.Origin = TAtlasKeyOrigin.Atlas) and mItem.Priority) then
     begin
-      Exit(Candidate);
+      Exit(mCandidate);
     end;
   end;
 end;
@@ -554,18 +554,18 @@ end;
 /// <summary>Editor: Tastaturbelegungen vor Menübefehlen; unter ihnen die wirksame (zuletzt angemeldete).</summary>
 function EditorWinner(const AItems: TArray<TAtlasKeyItem>; const ACandidates: TArray<Integer>): Integer;
 var
-  Candidate: Integer;
+  mCandidate: Integer;
 begin
   Result := FirstBinding(AItems, ACandidates, False);
   if Result < 0 then
   begin
     Result := FirstBinding(AItems, ACandidates, True);
   end;
-  for Candidate in ACandidates do
+  for mCandidate in ACandidates do
   begin
-    if IsActiveBinding(AItems[Candidate]) and Replaces(AItems, Candidate, Result) then
+    if IsActiveBinding(AItems[mCandidate]) and Replaces(AItems, mCandidate, Result) then
     begin
-      Result := Candidate;
+      Result := mCandidate;
     end;
   end;
 end;
@@ -573,15 +573,15 @@ end;
 /// <summary>Die erste aktive Aktion der Aktionsliste; -1 ohne.</summary>
 function ActionWinner(const AItems: TArray<TAtlasKeyItem>; const ACandidates: TArray<Integer>): Integer;
 var
-  Candidate: Integer;
+  mCandidate: Integer;
 begin
   Result := -1;
-  for Candidate in ACandidates do
+  for mCandidate in ACandidates do
   begin
-    if (AItems[Candidate].Source = TAtlasKeySource.Action) and AItems[Candidate].Active and
-      ((Result < 0) or (AItems[Candidate].Order < AItems[Result].Order)) then
+    if (AItems[mCandidate].Source = TAtlasKeySource.Action) and AItems[mCandidate].Active and
+      ((Result < 0) or (AItems[mCandidate].Order < AItems[Result].Order)) then
     begin
-      Result := Candidate;
+      Result := mCandidate;
     end;
   end;
 end;
@@ -590,12 +590,12 @@ end;
 function OnlyAtlasLeft(const AItems: TArray<TAtlasKeyItem>; const ACandidates: TArray<Integer>;
   AWinner: Integer): Boolean;
 var
-  Candidate: Integer;
+  mCandidate: Integer;
 begin
   Result := AItems[AWinner].Origin <> TAtlasKeyOrigin.Atlas;
-  for Candidate in ACandidates do
+  for mCandidate in ACandidates do
   begin
-    if (Candidate <> AWinner) and ((AItems[Candidate].Origin <> TAtlasKeyOrigin.Atlas) or AItems[Candidate].Active)
+    if (mCandidate <> AWinner) and ((AItems[mCandidate].Origin <> TAtlasKeyOrigin.Atlas) or AItems[mCandidate].Active)
       then
     begin
       Exit(False);
@@ -607,12 +607,12 @@ end;
 function ActionLoses(const AItems: TArray<TAtlasKeyItem>; const ACandidates: TArray<Integer>;
   AWinner: Integer): Boolean;
 var
-  Candidate: Integer;
+  mCandidate: Integer;
 begin
   Result := False;
-  for Candidate in ACandidates do
+  for mCandidate in ACandidates do
   begin
-    if (Candidate <> AWinner) and (AItems[Candidate].Source = TAtlasKeySource.Action) then
+    if (mCandidate <> AWinner) and (AItems[mCandidate].Source = TAtlasKeySource.Action) then
     begin
       Exit(True);
     end;
@@ -623,18 +623,18 @@ end;
 function ReasonOf(const AItems: TArray<TAtlasKeyItem>; const ACandidates: TArray<Integer>;
   AWinner: Integer): TAtlasKeyReason;
 var
-  Winner: TAtlasKeyItem;
+  mWinner: TAtlasKeyItem;
 begin
-  Winner := AItems[AWinner];
+  mWinner := AItems[AWinner];
   if OnlyAtlasLeft(AItems, ACandidates, AWinner) then
   begin
     Result := TAtlasKeyReason.AtlasYields;
   end
-  else if Winner.Source <> TAtlasKeySource.Binding then
+  else if mWinner.Source <> TAtlasKeySource.Binding then
   begin
     Result := TAtlasKeyReason.FirstAction;
   end
-  else if (Winner.Origin = TAtlasKeyOrigin.Atlas) and Winner.Priority then
+  else if (mWinner.Origin = TAtlasKeyOrigin.Atlas) and mWinner.Priority then
   begin
     Result := TAtlasKeyReason.AtlasPriority;
   end
@@ -681,14 +681,14 @@ end;
 /// <summary>Belegungen, die mit AItems[AIndex] kollidieren.</summary>
 function PartnersOf(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer): TArray<Integer>;
 var
-  Other: Integer;
+  mOther: Integer;
 begin
   Result := nil;
-  for Other := 0 to High(AItems) do
+  for mOther := 0 to High(AItems) do
   begin
-    if (Other <> AIndex) and TAtlasKeyMap.Collide(AItems[AIndex], AItems[Other]) then
+    if (mOther <> AIndex) and TAtlasKeyMap.Collide(AItems[AIndex], AItems[mOther]) then
     begin
-      Result := Result + [Other];
+      Result := Result + [mOther];
     end;
   end;
 end;
@@ -697,62 +697,62 @@ end;
 function CandidatesOf(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer; const APartners: TArray<Integer>;
   AClash: TAtlasKeyContext): TArray<Integer>;
 var
-  Other: Integer;
+  mOther: Integer;
 begin
   Result := [AIndex];
-  for Other in APartners do
+  for mOther in APartners do
   begin
-    if TAtlasKeyMap.Overlaps(AItems[Other].Context, AClash) then
+    if TAtlasKeyMap.Overlaps(AItems[mOther].Context, AClash) then
     begin
-      Result := Result + [Other];
+      Result := Result + [mOther];
     end;
   end;
 end;
 
 class procedure TAtlasKeyMap.Analyze(var AItems: TArray<TAtlasKeyItem>);
 var
-  Index, Winner: Integer;
-  Partners: TArray<Integer>;
-  Clash: TAtlasKeyContext;
-  Reason: TAtlasKeyReason;
+  mIndex, mWinner: Integer;
+  mPartners: TArray<Integer>;
+  mClash: TAtlasKeyContext;
+  mReason: TAtlasKeyReason;
 begin
-  for Index := 0 to High(AItems) do
+  for mIndex := 0 to High(AItems) do
   begin
-    AItems[Index].Conflict := False;
-    AItems[Index].Winner := -1;
-    AItems[Index].Wins := False;
-    AItems[Index].Reason := TAtlasKeyReason.None;
+    AItems[mIndex].Conflict := False;
+    AItems[mIndex].Winner := -1;
+    AItems[mIndex].Wins := False;
+    AItems[mIndex].Reason := TAtlasKeyReason.None;
   end;
-  for Index := 0 to High(AItems) do
+  for mIndex := 0 to High(AItems) do
   begin
-    if AItems[Index].ShortCut = 0 then
+    if AItems[mIndex].ShortCut = 0 then
     begin
       Continue;
     end;
-    Partners := PartnersOf(AItems, Index);
-    if Length(Partners) = 0 then
+    mPartners := PartnersOf(AItems, mIndex);
+    if Length(mPartners) = 0 then
     begin
-      AItems[Index].Winner := Index;
-      AItems[Index].Wins := AItems[Index].Active;
+      AItems[mIndex].Winner := mIndex;
+      AItems[mIndex].Wins := AItems[mIndex].Active;
       Continue;
     end;
-    AItems[Index].Conflict := True;
-    Clash := ClashContext(AItems, Index, Partners);
-    Decide(AItems, CandidatesOf(AItems, Index, Partners, Clash), Clash, Winner, Reason);
-    AItems[Index].Winner := Winner;
-    AItems[Index].Reason := Reason;
-    AItems[Index].Wins := Winner = Index;
+    AItems[mIndex].Conflict := True;
+    mClash := ClashContext(AItems, mIndex, mPartners);
+    Decide(AItems, CandidatesOf(AItems, mIndex, mPartners, mClash), mClash, mWinner, mReason);
+    AItems[mIndex].Winner := mWinner;
+    AItems[mIndex].Reason := mReason;
+    AItems[mIndex].Wins := mWinner = mIndex;
   end;
 end;
 
 class function TAtlasKeyMap.ConflictCount(const AItems: TArray<TAtlasKeyItem>): Integer;
 var
-  Item: TAtlasKeyItem;
+  mItem: TAtlasKeyItem;
 begin
   Result := 0;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if Item.Conflict then
+    if mItem.Conflict then
     begin
       Inc(Result);
     end;
@@ -761,7 +761,7 @@ end;
 
 class function TAtlasKeyMap.PartnerOf(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer): Integer;
 var
-  Other: Integer;
+  mOther: Integer;
 begin
   Result := -1;
   if (AIndex < 0) or (AIndex > High(AItems)) or not AItems[AIndex].Conflict then
@@ -772,26 +772,26 @@ begin
   begin
     Exit(AItems[AIndex].Winner);
   end;
-  for Other := 0 to High(AItems) do
+  for mOther := 0 to High(AItems) do
   begin
-    if (Other <> AIndex) and Collide(AItems[AIndex], AItems[Other]) then
+    if (mOther <> AIndex) and Collide(AItems[AIndex], AItems[mOther]) then
     begin
-      Exit(Other);
+      Exit(mOther);
     end;
   end;
 end;
 
 class function TAtlasKeyMap.AtlasConflicts(const AItems: TArray<TAtlasKeyItem>): TArray<Integer>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to High(AItems) do
+  for mIndex := 0 to High(AItems) do
   begin
-    if (AItems[Index].Origin = TAtlasKeyOrigin.Atlas) and AItems[Index].Conflict and
-      not (AItems[Index].Wins and AItems[Index].Priority) then
+    if (AItems[mIndex].Origin = TAtlasKeyOrigin.Atlas) and AItems[mIndex].Conflict and
+      not (AItems[mIndex].Wins and AItems[mIndex].Priority) then
     begin
-      Result := Result + [Index];
+      Result := Result + [mIndex];
     end;
   end;
 end;
@@ -799,42 +799,42 @@ end;
 class function TAtlasKeyMap.Filter(const AItems: TArray<TAtlasKeyItem>; const AQuery: string;
   AOnlyConflicts: Boolean): TArray<Integer>;
 var
-  Query: TAtlasKeyQuery;
-  Found: TList<Integer>;
-  Index: Integer;
-  Items: TArray<TAtlasKeyItem>;
+  mQuery: TAtlasKeyQuery;
+  mFound: TList<Integer>;
+  mIndex: Integer;
+  mItems: TArray<TAtlasKeyItem>;
 begin
-  Items := AItems;
-  Query := TAtlasKeyQuery.Parse(AQuery);
-  Found := TList<Integer>.Create;
+  mItems := AItems;
+  mQuery := TAtlasKeyQuery.Parse(AQuery);
+  mFound := TList<Integer>.Create;
   try
-    for Index := 0 to High(Items) do
+    for mIndex := 0 to High(mItems) do
     begin
-      if (not AOnlyConflicts or Items[Index].Conflict) and Query.Matches(Items[Index]) then
+      if (not AOnlyConflicts or mItems[mIndex].Conflict) and mQuery.Matches(mItems[mIndex]) then
       begin
-        Found.Add(Index);
+        mFound.Add(mIndex);
       end;
     end;
-    Found.Sort(TComparer<Integer>.Construct(
+    mFound.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
-        Result := CompareText(Items[A].KeyText, Items[B].KeyText);
+        Result := CompareText(mItems[A].KeyText, mItems[B].KeyText);
         if Result = 0 then
         begin
-          Result := Integer(Items[A].ShortCut) - Integer(Items[B].ShortCut);
+          Result := Integer(mItems[A].ShortCut) - Integer(mItems[B].ShortCut);
         end;
         if Result = 0 then
         begin
-          Result := CompareText(Items[A].Command, Items[B].Command);
+          Result := CompareText(mItems[A].Command, mItems[B].Command);
         end;
         if Result = 0 then
         begin
           Result := A - B;
         end;
       end));
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Found.Free;
+    mFound.Free;
   end;
 end;
 
@@ -868,7 +868,7 @@ type
   end;
 
 const
-  NamedKeys: array[0..14] of TNamedKey = (
+  cNamedKeys: array[0..14] of TNamedKey = (
     (Names: '|leer|leertaste|space|'; Key: $20),
     (Names: '|eingabe|enter|return|'; Key: $0D),
     (Names: '|esc|escape|'; Key: $1B),
@@ -907,7 +907,7 @@ end;
 /// <summary>Taste aus der Tabelle der benannten Tasten; 0, wenn unbekannt.</summary>
 function NamedKey(const AName: string): Word;
 var
-  Named: TNamedKey;
+  mNamed: TNamedKey;
 begin
   Result := 0;
   // „|“ trennt die Namen in der Tabelle und ist selbst keiner.
@@ -915,11 +915,11 @@ begin
   begin
     Exit;
   end;
-  for Named in NamedKeys do
+  for mNamed in cNamedKeys do
   begin
-    if Pos('|' + AName + '|', Named.Names) > 0 then
+    if Pos('|' + AName + '|', mNamed.Names) > 0 then
     begin
-      Exit(Named.Key);
+      Exit(mNamed.Key);
     end;
   end;
 end;
@@ -928,7 +928,7 @@ end;
 /// </summary>
 function KeyOf(const AName: string; out AFunctionKey: Boolean): Word;
 var
-  Number: Integer;
+  mNumber: Integer;
 begin
   AFunctionKey := False;
   if Length(AName) <= 1 then
@@ -939,10 +939,10 @@ begin
       Result := CharKey(AName[1]);
     end;
   end
-  else if (AName[1] = 'f') and TryStrToInt(Copy(AName, 2, MaxInt), Number) and (Number >= 1) and (Number <= 24) then
+  else if (AName[1] = 'f') and TryStrToInt(Copy(AName, 2, MaxInt), mNumber) and (mNumber >= 1) and (mNumber <= 24) then
   begin
     AFunctionKey := True;
-    Result := $70 + Number - 1;
+    Result := $70 + mNumber - 1;
   end
   else
   begin
@@ -952,80 +952,80 @@ end;
 
 class function TAtlasKeyMap.ParseShortCut(const AText: string; out AModifiers: Word): Word;
 var
-  Parts: TArray<string>;
-  Index: Integer;
-  Part: string;
-  Modifier, Key: Word;
-  FunctionKey: Boolean;
+  mParts: TArray<string>;
+  mIndex: Integer;
+  mPart: string;
+  mModifier, mKey: Word;
+  mFunctionKey: Boolean;
 begin
   Result := 0;
   AModifiers := 0;
-  Parts := LowerCase(Trim(AText)).Split(['+']);
-  if Length(Parts) = 0 then
+  mParts := LowerCase(Trim(AText)).Split(['+']);
+  if Length(mParts) = 0 then
   begin
     Exit;
   end;
-  for Index := 0 to High(Parts) do
+  for mIndex := 0 to High(mParts) do
   begin
-    Part := Trim(Parts[Index]);
-    if (Part = '') and (Index = High(Parts)) and (Index > 0) then
+    mPart := Trim(mParts[mIndex]);
+    if (mPart = '') and (mIndex = High(mParts)) and (mIndex > 0) then
     begin
       // „Strg+“: nur Umschalttasten.
       Exit;
     end;
-    Modifier := ModifierOf(Part);
-    if Modifier <> 0 then
+    mModifier := ModifierOf(mPart);
+    if mModifier <> 0 then
     begin
-      AModifiers := AModifiers or Modifier;
+      AModifiers := AModifiers or mModifier;
       Continue;
     end;
     // Eine Taste nur am Ende.
-    Key := KeyOf(Part, FunctionKey);
-    if (Key = 0) or (Index <> High(Parts)) then
+    mKey := KeyOf(mPart, mFunctionKey);
+    if (mKey = 0) or (mIndex <> High(mParts)) then
     begin
       AModifiers := 0;
       Exit;
     end;
     // Ein einzelnes Zeichen ohne Umschalttaste ist eine Textsuche, eine Funktionstaste nicht.
-    if (Length(Parts) = 1) and not FunctionKey then
+    if (Length(mParts) = 1) and not mFunctionKey then
     begin
       Exit;
     end;
-    Result := Key or AModifiers;
+    Result := mKey or AModifiers;
   end;
 end;
 
 class function TAtlasKeyMap.HtmlEscape(const AText: string): string;
 var
-  Builder: TStringBuilder;
-  Ch: Char;
+  mBuilder: TStringBuilder;
+  mCh: Char;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    for Ch in AText do
-      case Ch of
+    for mCh in AText do
+      case mCh of
         '&':
-          Builder.Append('&amp;');
+          mBuilder.Append('&amp;');
         '<':
-          Builder.Append('&lt;');
+          mBuilder.Append('&lt;');
         '>':
-          Builder.Append('&gt;');
+          mBuilder.Append('&gt;');
         '"':
-          Builder.Append('&quot;');
+          mBuilder.Append('&quot;');
         '''':
-          Builder.Append('&#39;');
+          mBuilder.Append('&#39;');
       else
-        Builder.Append(Ch);
+        mBuilder.Append(mCh);
       end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 const
   /// <summary>Kopf der Seite ab der Formatvorlage bis zum Beginn von body.</summary>
-  HtmlStyle = '<style>'#13#10 +
+  cHtmlStyle = '<style>'#13#10 +
     'body{font:13px "Segoe UI",Arial,sans-serif;color:#1f2328;margin:24px}'#13#10 +
     'h1{font-size:20px;margin:0 0 4px}'#13#10 +
     'p.sub{color:#59636e;margin:0 0 12px}'#13#10 +
@@ -1044,7 +1044,7 @@ const
 /// <summary>Tabellenzeile ARow; die erste Zelle ist die Taste, Zeilen mit Konflikt sind markiert.</summary>
 procedure AppendRow(ABuilder: TStringBuilder; const ARow: TAtlasKeyHtmlRow);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if ARow.Conflict then
   begin
@@ -1054,9 +1054,9 @@ begin
   begin
     ABuilder.Append('<tr>');
   end;
-  for Index := 0 to High(ARow.Cells) do
+  for mIndex := 0 to High(ARow.Cells) do
   begin
-    if Index = 0 then
+    if mIndex = 0 then
     begin
       ABuilder.Append('<td class="key">');
     end
@@ -1064,7 +1064,7 @@ begin
     begin
       ABuilder.Append('<td>');
     end;
-    ABuilder.Append(TAtlasKeyMap.HtmlEscape(ARow.Cells[Index])).Append('</td>');
+    ABuilder.Append(TAtlasKeyMap.HtmlEscape(ARow.Cells[mIndex])).Append('</td>');
   end;
   ABuilder.Append('</tr>'#13#10);
 end;
@@ -1072,40 +1072,40 @@ end;
 class function TAtlasKeyMap.Html(const ALanguage, ATitle, ASubtitle, APrint: string;
   const AHeaders: TArray<string>; const ARows: TArray<TAtlasKeyHtmlRow>): string;
 var
-  Builder: TStringBuilder;
-  Header: string;
-  Row: TAtlasKeyHtmlRow;
+  mBuilder: TStringBuilder;
+  mHeader: string;
+  mRow: TAtlasKeyHtmlRow;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.Append('<!DOCTYPE html>'#13#10'<html lang="').Append(HtmlEscape(ALanguage)).Append('">'#13#10);
-    Builder.Append('<head>'#13#10'<meta charset="utf-8">'#13#10);
-    Builder.Append('<title>').Append(HtmlEscape(ATitle)).Append('</title>'#13#10);
-    Builder.Append(HtmlStyle);
-    Builder.Append('<h1>').Append(HtmlEscape(ATitle)).Append('</h1>'#13#10);
+    mBuilder.Append('<!DOCTYPE html>'#13#10'<html lang="').Append(HtmlEscape(ALanguage)).Append('">'#13#10);
+    mBuilder.Append('<head>'#13#10'<meta charset="utf-8">'#13#10);
+    mBuilder.Append('<title>').Append(HtmlEscape(ATitle)).Append('</title>'#13#10);
+    mBuilder.Append(cHtmlStyle);
+    mBuilder.Append('<h1>').Append(HtmlEscape(ATitle)).Append('</h1>'#13#10);
     if ASubtitle <> '' then
     begin
-      Builder.Append('<p class="sub">').Append(HtmlEscape(ASubtitle)).Append('</p>'#13#10);
+      mBuilder.Append('<p class="sub">').Append(HtmlEscape(ASubtitle)).Append('</p>'#13#10);
     end;
     if APrint <> '' then
     begin
-      Builder.Append('<button class="print" onclick="window.print()">').Append(HtmlEscape(APrint))
+      mBuilder.Append('<button class="print" onclick="window.print()">').Append(HtmlEscape(APrint))
         .Append('</button>'#13#10);
     end;
-    Builder.Append('<table>'#13#10'<thead><tr>');
-    for Header in AHeaders do
+    mBuilder.Append('<table>'#13#10'<thead><tr>');
+    for mHeader in AHeaders do
     begin
-      Builder.Append('<th>').Append(HtmlEscape(Header)).Append('</th>');
+      mBuilder.Append('<th>').Append(HtmlEscape(mHeader)).Append('</th>');
     end;
-    Builder.Append('</tr></thead>'#13#10'<tbody>'#13#10);
-    for Row in ARows do
+    mBuilder.Append('</tr></thead>'#13#10'<tbody>'#13#10);
+    for mRow in ARows do
     begin
-      AppendRow(Builder, Row);
+      AppendRow(mBuilder, mRow);
     end;
-    Builder.Append('</tbody>'#13#10'</table>'#13#10'</body>'#13#10'</html>'#13#10);
-    Result := Builder.ToString;
+    mBuilder.Append('</tbody>'#13#10'</table>'#13#10'</body>'#13#10'</html>'#13#10);
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 

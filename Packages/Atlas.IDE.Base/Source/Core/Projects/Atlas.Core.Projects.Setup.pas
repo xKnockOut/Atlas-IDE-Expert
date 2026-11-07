@@ -96,10 +96,10 @@ uses
   Atlas.Core.Settings.SchemaCheck;
 
 const
-  TemplateIds: array[TAtlasSetupTemplate] of string = ('existing', 'strict', 'legacy');
+  cTemplateIds: array[TAtlasSetupTemplate] of string = ('existing', 'strict', 'legacy');
 
   // Gleich Setup\Vorlagen\atlas-*.json (Atlas.Core.Projects.Setup.Tests vergleicht beide).
-  ExistingText =
+  cExistingText =
     '{' + #10 +
     '  "$schema": "' + TAtlasProjectSetups.SchemaUrl + '",' + #10 +
     '  "profile": "standard",' + #10 +
@@ -107,7 +107,7 @@ const
     '  "testProfile": "fast",' + #10 +
     '  "exclude": ["ThirdParty/**", "__history/**", "__recovery/**"]' + #10 +
     '}' + #10;
-  StrictText =
+  cStrictText =
     '{' + #10 +
     '  "$schema": "' + TAtlasProjectSetups.SchemaUrl + '",' + #10 +
     '  "profile": "strict",' + #10 +
@@ -115,7 +115,7 @@ const
     '  "testProfile": "standard",' + #10 +
     '  "exclude": ["__history/**", "__recovery/**"]' + #10 +
     '}' + #10;
-  LegacyText =
+  cLegacyText =
     '{' + #10 +
     '  "$schema": "' + TAtlasProjectSetups.SchemaUrl + '",' + #10 +
     '  "profile": "standard",' + #10 +
@@ -129,15 +129,15 @@ const
 
 function FolderOf(const AFileName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // Ohne ExtractFileDir: Pfade haben immer „\“, auch wenn die Tests nicht unter Windows laufen.
   Result := '';
-  for Index := Length(AFileName) downto 1 do
+  for mIndex := Length(AFileName) downto 1 do
   begin
-    if CharInSet(AFileName[Index], ['\', '/']) then
+    if CharInSet(AFileName[mIndex], ['\', '/']) then
     begin
-      Exit(Copy(AFileName, 1, Index - 1));
+      Exit(Copy(AFileName, 1, mIndex - 1));
     end;
   end;
 end;
@@ -158,19 +158,19 @@ end;
 
 class function TAtlasProjectSetups.TemplateId(ATemplate: TAtlasSetupTemplate): string;
 begin
-  Result := TemplateIds[ATemplate];
+  Result := cTemplateIds[ATemplate];
 end;
 
 class function TAtlasProjectSetups.TemplateOf(const AId: string; out ATemplate: TAtlasSetupTemplate): Boolean;
 var
-  Each: TAtlasSetupTemplate;
+  mEach: TAtlasSetupTemplate;
 begin
   ATemplate := TAtlasSetupTemplate.Existing;
-  for Each := Low(TAtlasSetupTemplate) to High(TAtlasSetupTemplate) do
+  for mEach := Low(TAtlasSetupTemplate) to High(TAtlasSetupTemplate) do
   begin
-    if SameText(Trim(AId), TemplateIds[Each]) then
+    if SameText(Trim(AId), cTemplateIds[mEach]) then
     begin
-      ATemplate := Each;
+      ATemplate := mEach;
       Exit(True);
     end;
   end;
@@ -179,67 +179,67 @@ end;
 
 class function TAtlasProjectSetups.TemplateFile(ATemplate: TAtlasSetupTemplate): string;
 begin
-  Result := 'atlas-' + TemplateIds[ATemplate] + '.json';
+  Result := 'atlas-' + cTemplateIds[ATemplate] + '.json';
 end;
 
 class function TAtlasProjectSetups.BuiltIn(ATemplate: TAtlasSetupTemplate): string;
 begin
   case ATemplate of
     TAtlasSetupTemplate.NewStrict:
-      Result := StrictText;
+      Result := cStrictText;
     TAtlasSetupTemplate.Legacy:
-      Result := LegacyText;
+      Result := cLegacyText;
   else
-    Result := ExistingText;
+    Result := cExistingText;
   end;
 end;
 
 class function TAtlasProjectSetups.TemplateFolder(const APluginDir: string;
   const AExists: TAtlasSetupFileExists): string;
 var
-  Folder, Parent, Candidate: string;
+  mFolder, mParent, mCandidate: string;
 begin
   Result := '';
   if (Trim(APluginDir) = '') or not Assigned(AExists) then
   begin
     Exit;
   end;
-  Folder := APluginDir;
-  while (Folder <> '') and CharInSet(Folder[Length(Folder)], ['\', '/']) do
+  mFolder := APluginDir;
+  while (mFolder <> '') and CharInSet(mFolder[Length(mFolder)], ['\', '/']) do
   begin
-    Delete(Folder, Length(Folder), 1);
+    Delete(mFolder, Length(mFolder), 1);
   end;
-  Candidate := Joined(Folder, TemplatesFolder);
-  if AExists(Joined(Candidate, TemplateFile(TAtlasSetupTemplate.Existing))) then
+  mCandidate := Joined(mFolder, TemplatesFolder);
+  if AExists(Joined(mCandidate, TemplateFile(TAtlasSetupTemplate.Existing))) then
   begin
-    Exit(Candidate);
+    Exit(mCandidate);
   end;
   // BPL in Win32\ bzw. Win64\: Vorlagen eine Ebene darüber.
-  Parent := FolderOf(Folder);
-  if Parent = '' then
+  mParent := FolderOf(mFolder);
+  if mParent = '' then
   begin
     Exit;
   end;
-  Candidate := Joined(Parent, TemplatesFolder);
-  if AExists(Joined(Candidate, TemplateFile(TAtlasSetupTemplate.Existing))) then
+  mCandidate := Joined(mParent, TemplatesFolder);
+  if AExists(Joined(mCandidate, TemplateFile(TAtlasSetupTemplate.Existing))) then
   begin
-    Result := Candidate;
+    Result := mCandidate;
   end;
 end;
 
 class function TAtlasProjectSetups.TemplateText(ATemplate: TAtlasSetupTemplate; const AFolder: string;
   const ARead: TAtlasSetupReadText): string;
 var
-  Text: string;
+  mText: string;
 begin
   Result := BuiltIn(ATemplate);
   if (AFolder = '') or not Assigned(ARead) then
   begin
     Exit;
   end;
-  if ARead(Joined(AFolder, TemplateFile(ATemplate)), Text) and (Trim(Text) <> '') then
+  if ARead(Joined(AFolder, TemplateFile(ATemplate)), mText) and (Trim(mText) <> '') then
   begin
-    Result := Text;
+    Result := mText;
   end;
 end;
 
@@ -256,21 +256,21 @@ end;
 class function TAtlasProjectSetups.ExistingConfig(const AProject: string;
   const AExists: TAtlasSetupFileExists): string;
 var
-  Folder: string;
+  mFolder: string;
 begin
   Result := '';
   if (Trim(AProject) = '') or not Assigned(AExists) then
   begin
     Exit;
   end;
-  Folder := FolderOf(Trim(AProject));
-  if AExists(Joined(Folder, ConfigName)) then
+  mFolder := FolderOf(Trim(AProject));
+  if AExists(Joined(mFolder, ConfigName)) then
   begin
-    Result := Joined(Folder, ConfigName);
+    Result := Joined(mFolder, ConfigName);
   end
-  else if AExists(Joined(Folder, LegacyConfigName)) then
+  else if AExists(Joined(mFolder, LegacyConfigName)) then
   begin
-    Result := Joined(Folder, LegacyConfigName);
+    Result := Joined(mFolder, LegacyConfigName);
   end;
 end;
 
@@ -301,14 +301,14 @@ end;
 
 class function TAtlasProjectSetups.OpenSteps(const AFacts: TAtlasSetupFacts): TArray<TAtlasSetupStep>;
 var
-  Step: TAtlasSetupStep;
+  mStep: TAtlasSetupStep;
 begin
   Result := nil;
-  for Step := Low(TAtlasSetupStep) to High(TAtlasSetupStep) do
+  for mStep := Low(TAtlasSetupStep) to High(TAtlasSetupStep) do
   begin
-    if not StepDone(Step, AFacts) then
+    if not StepDone(mStep, AFacts) then
     begin
-      Result := Result + [Step];
+      Result := Result + [mStep];
     end;
   end;
 end;

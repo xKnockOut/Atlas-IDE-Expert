@@ -86,16 +86,16 @@ end;
 
 procedure TAtlasIdeEditInbox.Tick(Sender: TObject);
 var
-  RequestFile: string;
+  mRequestFile: string;
 begin
   if TAtlasGuard.Disabled(TAtlasFeature.Files) then
   begin
     Exit;
   end;
   try
-    for RequestFile in TAtlasEditInbox.Pending(FFolder) do
+    for mRequestFile in TAtlasEditInbox.Pending(FFolder) do
     begin
-      Process(RequestFile);
+      Process(mRequestFile);
     end;
   except
     on E: Exception do
@@ -105,12 +105,12 @@ end;
 
 function ModuleOf(const AFileName: string): IOTAModule;
 var
-  Modules: IOTAModuleServices;
+  mModules: IOTAModuleServices;
 begin
   Result := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
-    Result := Modules.FindModule(AFileName);
+    Result := mModules.FindModule(AFileName);
   end;
 end;
 
@@ -143,52 +143,52 @@ end;
 
 procedure TAtlasIdeEditInbox.Process(const ARequestFile: string);
 var
-  Request: TAtlasEditRequest;
-  Buffer: IOTAEditBuffer;
-  Outcome: TAtlasWorkspaceEditResult;
-  WasModified: Boolean;
+  mRequest: TAtlasEditRequest;
+  mBuffer: IOTAEditBuffer;
+  mOutcome: TAtlasWorkspaceEditResult;
+  mWasModified: Boolean;
 begin
-  if not TAtlasEditInbox.Take(ARequestFile, Request) then
+  if not TAtlasEditInbox.Take(ARequestFile, mRequest) then
   begin
     Exit;
   end;
-  Buffer := TAtlasIdeFiles.BufferOf(Request.FileName);
-  if Buffer = nil then
+  mBuffer := TAtlasIdeFiles.BufferOf(mRequest.FileName);
+  if mBuffer = nil then
   begin
-    TAtlasEditInbox.Answer(FFolder, Request, False, True, 'nicht offen');
+    TAtlasEditInbox.Answer(FFolder, mRequest, False, True, 'nicht offen');
     Exit;
   end;
   // Puffer weicht vom gelesenen Stand ab: Ungespeichert geändert lehnt der MCP-Server vorher ab; sonst
   // (z. B. andere Zeilenenden) schreibt er selbst, und das Neuladen der IDE (#536) holt die Datei.
-  if TAtlasEditorBuffer.Text(Buffer) <> Request.Expected then
+  if TAtlasEditorBuffer.Text(mBuffer) <> mRequest.Expected then
   begin
-    if Buffer.IsModified then
+    if mBuffer.IsModified then
     begin
-      TAtlasEditInbox.Answer(FFolder, Request, False, False, 'im Editor ungespeichert geändert');
+      TAtlasEditInbox.Answer(FFolder, mRequest, False, False, 'im Editor ungespeichert geändert');
     end
     else
     begin
-      TAtlasEditInbox.Answer(FFolder, Request, False, True, 'Puffer weicht von der Platte ab');
+      TAtlasEditInbox.Answer(FFolder, mRequest, False, True, 'Puffer weicht von der Platte ab');
     end;
     Exit;
   end;
-  WasModified := Buffer.IsModified;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(EditOf(Request), TAtlasUnopenedPolicy.WriteToDisk,
+  mWasModified := mBuffer.IsModified;
+  mOutcome := TAtlasIdeWorkspaceEdit.Apply(EditOf(mRequest), TAtlasUnopenedPolicy.WriteToDisk,
     TAtlasStrings.Text(TAtlasTextId.UndoActionMcp));
-  if Outcome.Error <> '' then
+  if mOutcome.Error <> '' then
   begin
-    TAtlasEditInbox.Answer(FFolder, Request, False, False, Outcome.Error);
+    TAtlasEditInbox.Answer(FFolder, mRequest, False, False, mOutcome.Error);
     Exit;
   end;
   // War die Datei gespeichert, bleibt sie es: Der MCP-Server liest und vergleicht über die Platte.
-  if not WasModified then
+  if not mWasModified then
   begin
-    SaveModule(Request.FileName);
+    SaveModule(mRequest.FileName);
   end;
-  TAtlasEditInbox.Answer(FFolder, Request, True, False, '');
+  TAtlasEditInbox.Answer(FFolder, mRequest, True, False, '');
   if Assigned(FOnMessage) then
   begin
-    FOnMessage(TAtlasStrings.Fmt(TAtlasTextId.McpEditApplied, [ExtractFileName(Request.FileName)]));
+    FOnMessage(TAtlasStrings.Fmt(TAtlasTextId.McpEditApplied, [ExtractFileName(mRequest.FileName)]));
   end;
 end;
 

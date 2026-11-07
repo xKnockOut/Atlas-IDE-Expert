@@ -85,23 +85,23 @@ end;
 
 function TAtlasVcsWorker.Run(const AWork, ADone: TProc): Boolean;
 var
-  Thread: TThread;
-  Work, Done: TProc;
+  mThread: TThread;
+  mWork, mDone: TProc;
 begin
   Result := False;
   if FStopped then
   begin
     Exit;
   end;
-  Work := AWork;
-  Done := ADone;
-  Thread := TThread.CreateAnonymousThread(
+  mWork := AWork;
+  mDone := ADone;
+  mThread := TThread.CreateAnonymousThread(
     procedure
     var
       Current: TThread;
     begin
       try
-        Work();
+        mWork();
       except
         // Die Arbeit meldet ihre Fehler selbst; ADone kommt trotzdem.
         on Exception do
@@ -116,80 +116,80 @@ begin
         procedure
         begin
           try
-            if Assigned(Done) then
+            if Assigned(mDone) then
             begin
-              Done();
+              mDone();
             end;
           finally
             Finished(Current);
           end;
         end);
     end);
-  Thread.FreeOnTerminate := False;
+  mThread.FreeOnTerminate := False;
   FLock.Enter;
   try
-    FThreads.Add(Thread);
+    FThreads.Add(mThread);
   finally
     FLock.Leave;
   end;
-  Thread.Start;
+  mThread.Start;
   Result := True;
 end;
 
 function TAtlasVcsWorker.Stop(AMs: Cardinal): Boolean;
 var
-  Threads: TArray<TThread>;
-  Thread: TThread;
-  Deadline: UInt64;
-  Running: Boolean;
+  mThreads: TArray<TThread>;
+  mThread: TThread;
+  mDeadline: UInt64;
+  mRunning: Boolean;
 begin
   FStopped := True;
   FLock.Enter;
   try
-    Threads := FThreads.ToArray;
+    mThreads := FThreads.ToArray;
   finally
     FLock.Leave;
   end;
-  for Thread in Threads do
+  for mThread in mThreads do
   begin
-    Thread.Terminate;
+    mThread.Terminate;
     // Noch nicht zugestellte Ergebnisse verwerfen.
-    TThread.RemoveQueuedEvents(Thread);
+    TThread.RemoveQueuedEvents(mThread);
   end;
-  Deadline := TThread.GetTickCount64 + AMs;
+  mDeadline := TThread.GetTickCount64 + AMs;
   repeat
-    Running := False;
-    for Thread in Threads do
+    mRunning := False;
+    for mThread in mThreads do
     begin
-      if not Thread.Finished then
+      if not mThread.Finished then
       begin
-        Running := True;
+        mRunning := True;
       end;
     end;
-    if not Running or (TThread.GetTickCount64 >= Deadline) then
+    if not mRunning or (TThread.GetTickCount64 >= mDeadline) then
     begin
       Break;
     end;
     Sleep(10);
   until False;
-  Result := not Running;
-  for Thread in Threads do
+  Result := not mRunning;
+  for mThread in mThreads do
   begin
     // Ein Thread, der nach dem Signal noch arbeitet, wird nicht freigegeben: lieber ein Rest im Speicher als
     // ein Absturz beim Entladen.
-    if not Thread.Finished then
+    if not mThread.Finished then
     begin
       Continue;
     end;
     // Ein Ergebnis kann zwischen RemoveQueuedEvents und dem Ende noch eingereiht worden sein.
-    TThread.RemoveQueuedEvents(Thread);
+    TThread.RemoveQueuedEvents(mThread);
     FLock.Enter;
     try
-      FThreads.Remove(Thread);
+      FThreads.Remove(mThread);
     finally
       FLock.Leave;
     end;
-    Thread.Free;
+    mThread.Free;
   end;
 end;
 

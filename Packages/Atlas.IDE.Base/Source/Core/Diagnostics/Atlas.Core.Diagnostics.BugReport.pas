@@ -138,19 +138,19 @@ end;
 
 class function TAtlasBugReport.ServerArguments(const AInput: TAtlasBugReportInput): string;
 var
-  Options: TJSONObject;
-  Arguments: TJSONArray;
+  mOptions: TJSONObject;
+  mArguments: TJSONArray;
 begin
-  Arguments := TJSONArray.Create;
+  mArguments := TJSONArray.Create;
   try
-    Options := TJSONObject.Create;
-    Arguments.AddElement(Options);
-    Options.AddPair('anonymize', TJSONBool.Create(AInput.Anonymize));
-    Options.AddPair('client', Format('Atlas-Plugin %s, IDE %s, %s', [AInput.PluginVersion, AInput.IdeVersion,
+    mOptions := TJSONObject.Create;
+    mArguments.AddElement(mOptions);
+    mOptions.AddPair('anonymize', TJSONBool.Create(AInput.Anonymize));
+    mOptions.AddPair('client', Format('Atlas-Plugin %s, IDE %s, %s', [AInput.PluginVersion, AInput.IdeVersion,
       AInput.Platform]));
-    Result := Arguments.ToJSON;
+    Result := mArguments.ToJSON;
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
 end;
 
@@ -273,36 +273,36 @@ end;
 
 class function TAtlasBugReport.Tail(const AFileName: string; ACount: Integer): TArray<string>;
 var
-  Stream: TFileStream;
-  Lines: TStringList;
-  Index, First: Integer;
+  mStream: TFileStream;
+  mLines: TStringList;
+  mIndex, mFirst: Integer;
 begin
   Result := nil;
   if not TFile.Exists(AFileName) then
   begin
     Exit;
   end;
-  Lines := TStringList.Create;
+  mLines := TStringList.Create;
   try
     // Das Protokoll kann gerade beschrieben werden: lesend ohne Sperre öffnen.
-    Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
+    mStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
     try
-      Lines.LoadFromStream(Stream, TEncoding.UTF8);
+      mLines.LoadFromStream(mStream, TEncoding.UTF8);
     finally
-      Stream.Free;
+      mStream.Free;
     end;
-    First := Lines.Count - ACount;
-    if First < 0 then
+    mFirst := mLines.Count - ACount;
+    if mFirst < 0 then
     begin
-      First := 0;
+      mFirst := 0;
     end;
-    SetLength(Result, Lines.Count - First);
-    for Index := First to Lines.Count - 1 do
+    SetLength(Result, mLines.Count - mFirst);
+    for mIndex := mFirst to mLines.Count - 1 do
     begin
-      Result[Index - First] := Lines[Index];
+      Result[mIndex - mFirst] := mLines[mIndex];
     end;
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 

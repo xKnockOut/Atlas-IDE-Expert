@@ -35,22 +35,22 @@ uses
   Atlas.IDE.Editor.NamedRefactoring;
 
 const
-  ApplyCommand = 'atlas.server.methodKind';
+  cApplyCommand = 'atlas.server.methodKind';
 
 class procedure TAtlasIdeMethodKind.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  Texts: TAtlasNamedRefactoringTexts;
+  mTexts: TAtlasNamedRefactoringTexts;
 begin
-  Texts.Title := TAtlasTextId.MethodKindTitle;
-  Texts.Prompt := TAtlasTextId.MethodKindTitle;
-  Texts.Failed := TAtlasTextId.MethodKindFailed;
-  Texts.Nothing := TAtlasTextId.MethodKindNothing;
-  Texts.PreviewHint := TAtlasTextId.MethodKindPreviewHint;
-  Texts.Apply := TAtlasTextId.MethodKindApply;
-  Texts.Done := TAtlasTextId.MethodKindDone;
-  Texts.Warning := TAtlasTextId.MethodKindWarning;
-  TAtlasIdeNamedRefactoring.ExecuteWithoutName(ASession, AArgumentsJson, ApplyCommand, Texts, APolicy, AMessage);
+  mTexts.Title := TAtlasTextId.MethodKindTitle;
+  mTexts.Prompt := TAtlasTextId.MethodKindTitle;
+  mTexts.Failed := TAtlasTextId.MethodKindFailed;
+  mTexts.Nothing := TAtlasTextId.MethodKindNothing;
+  mTexts.PreviewHint := TAtlasTextId.MethodKindPreviewHint;
+  mTexts.Apply := TAtlasTextId.MethodKindApply;
+  mTexts.Done := TAtlasTextId.MethodKindDone;
+  mTexts.Warning := TAtlasTextId.MethodKindWarning;
+  TAtlasIdeNamedRefactoring.ExecuteWithoutName(ASession, AArgumentsJson, cApplyCommand, mTexts, APolicy, AMessage);
 end;
 
 end.

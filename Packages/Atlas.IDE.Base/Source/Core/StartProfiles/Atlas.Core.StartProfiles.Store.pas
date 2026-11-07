@@ -191,13 +191,13 @@ uses
 
 function FolderOf(const AFileName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := Length(AFileName) downto 1 do
+  for mIndex := Length(AFileName) downto 1 do
   begin
-    if (AFileName[Index] = '\') or (AFileName[Index] = '/') then
+    if (AFileName[mIndex] = '\') or (AFileName[mIndex] = '/') then
     begin
-      Exit(Copy(AFileName, 1, Index - 1));
+      Exit(Copy(AFileName, 1, mIndex - 1));
     end;
   end;
   Result := '';
@@ -205,33 +205,33 @@ end;
 
 function Quote(const AText: string): string;
 var
-  Value: TJSONString;
+  mValue: TJSONString;
 begin
-  Value := TJSONString.Create(AText);
+  mValue := TJSONString.Create(AText);
   try
-    Result := Value.ToJSON;
+    Result := mValue.ToJSON;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 function StringOf(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end;
 end;
 
 function ReadProfile(AValue: TJSONValue; out AProfile: TAtlasStartProfile): Boolean;
 var
-  Entry, Environment: TJSONObject;
-  Index: Integer;
-  Variable: TAtlasTeamVariable;
+  mEntry, mEnvironment: TJSONObject;
+  mIndex: Integer;
+  mVariable: TAtlasTeamVariable;
 begin
   AProfile := Default(TAtlasStartProfile);
   Result := False;
@@ -239,23 +239,23 @@ begin
   begin
     Exit;
   end;
-  Entry := TJSONObject(AValue);
-  AProfile.Name := Trim(StringOf(Entry, 'name'));
-  AProfile.Parameters := StringOf(Entry, 'parameters');
-  AProfile.WorkingDir := Trim(StringOf(Entry, 'workingDir'));
-  AProfile.Host := Trim(StringOf(Entry, 'host'));
-  if Entry.GetValue('environment') is TJSONObject then
+  mEntry := TJSONObject(AValue);
+  AProfile.Name := Trim(StringOf(mEntry, 'name'));
+  AProfile.Parameters := StringOf(mEntry, 'parameters');
+  AProfile.WorkingDir := Trim(StringOf(mEntry, 'workingDir'));
+  AProfile.Host := Trim(StringOf(mEntry, 'host'));
+  if mEntry.GetValue('environment') is TJSONObject then
   begin
-    Environment := TJSONObject(Entry.GetValue('environment'));
-    for Index := 0 to Environment.Count - 1 do
+    mEnvironment := TJSONObject(mEntry.GetValue('environment'));
+    for mIndex := 0 to mEnvironment.Count - 1 do
     begin
-      if Environment.Pairs[Index].JsonValue is TJSONString then
+      if mEnvironment.Pairs[mIndex].JsonValue is TJSONString then
       begin
-        Variable.Name := Trim(Environment.Pairs[Index].JsonString.Value);
-        Variable.Value := TJSONString(Environment.Pairs[Index].JsonValue).Value;
-        if Variable.Name <> '' then
+        mVariable.Name := Trim(mEnvironment.Pairs[mIndex].JsonString.Value);
+        mVariable.Value := TJSONString(mEnvironment.Pairs[mIndex].JsonValue).Value;
+        if mVariable.Name <> '' then
         begin
-          AProfile.Environment := AProfile.Environment + [Variable];
+          AProfile.Environment := AProfile.Environment + [mVariable];
         end;
       end;
     end;
@@ -288,30 +288,30 @@ end;
 
 function SplitEnvironment(const AText: string): TArray<string>;
 var
-  Index: Integer;
-  Current: string;
-  Quoted: Boolean;
+  mIndex: Integer;
+  mCurrent: string;
+  mQuoted: Boolean;
 begin
   Result := nil;
-  Current := '';
-  Quoted := False;
-  for Index := 1 to Length(AText) do
+  mCurrent := '';
+  mQuoted := False;
+  for mIndex := 1 to Length(AText) do
   begin
-    if AText[Index] = '"' then
+    if AText[mIndex] = '"' then
     begin
-      Quoted := not Quoted;
+      mQuoted := not mQuoted;
     end
-    else if (AText[Index] = ';') and not Quoted then
+    else if (AText[mIndex] = ';') and not mQuoted then
     begin
-      Result := Result + [Current];
-      Current := '';
+      Result := Result + [mCurrent];
+      mCurrent := '';
     end
     else
     begin
-      Current := Current + AText[Index];
+      mCurrent := mCurrent + AText[mIndex];
     end;
   end;
-  Result := Result + [Current];
+  Result := Result + [mCurrent];
 end;
 
 { TAtlasStartOptions }
@@ -331,13 +331,13 @@ end;
 
 function TAtlasStartProfileState.IndexOf(const AName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Profiles) do
+  for mIndex := 0 to High(Profiles) do
   begin
-    if SameText(Profiles[Index].Name, Trim(AName)) then
+    if SameText(Profiles[mIndex].Name, Trim(AName)) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -358,10 +358,10 @@ end;
 
 class function TAtlasStartProfiles.Parse(const AText, AProject: string; out AValid: Boolean): TAtlasStartProfileState;
 var
-  Root: TJSONValue;
-  Value: TJSONValue;
-  Index: Integer;
-  Profile: TAtlasStartProfile;
+  mRoot: TJSONValue;
+  mValue: TJSONValue;
+  mIndex: Integer;
+  mProfile: TAtlasStartProfile;
 begin
   Result := Empty(AProject);
   AValid := False;
@@ -369,86 +369,86 @@ begin
   begin
     Exit;
   end;
-  Root := TJSONObject.ParseJSONValue(TJsoncScanner.StripComments(AText));
+  mRoot := TJSONObject.ParseJSONValue(TJsoncScanner.StripComments(AText));
   try
-    if not (Root is TJSONObject) then
+    if not (mRoot is TJSONObject) then
     begin
       Exit;
     end;
-    Value := TJSONObject(Root).GetValue('format');
-    if (Value is TJSONNumber) and (TJSONNumber(Value).AsInt > Format) then
+    mValue := TJSONObject(mRoot).GetValue('format');
+    if (mValue is TJSONNumber) and (TJSONNumber(mValue).AsInt > Format) then
     begin
       Exit;
     end;
     AValid := True;
-    if StringOf(TJSONObject(Root), 'project') <> '' then
+    if StringOf(TJSONObject(mRoot), 'project') <> '' then
     begin
-      Result.Project := StringOf(TJSONObject(Root), 'project');
+      Result.Project := StringOf(TJSONObject(mRoot), 'project');
     end;
-    Result.Active := Trim(StringOf(TJSONObject(Root), 'active'));
-    Value := TJSONObject(Root).GetValue('profiles');
-    if Value is TJSONArray then
+    Result.Active := Trim(StringOf(TJSONObject(mRoot), 'active'));
+    mValue := TJSONObject(mRoot).GetValue('profiles');
+    if mValue is TJSONArray then
     begin
-      for Index := 0 to TJSONArray(Value).Count - 1 do
+      for mIndex := 0 to TJSONArray(mValue).Count - 1 do
       begin
-        if ReadProfile(TJSONArray(Value).Items[Index], Profile) and (Result.IndexOf(Profile.Name) < 0) then
+        if ReadProfile(TJSONArray(mValue).Items[mIndex], mProfile) and (Result.IndexOf(mProfile.Name) < 0) then
         begin
-          Result.Profiles := Result.Profiles + [Profile];
+          Result.Profiles := Result.Profiles + [mProfile];
         end;
       end;
     end;
-    Result.HasOriginal := ReadOptions(TJSONObject(Root).GetValue('original'), Result.Original);
-    Result.HasTemporary := ReadTemporary(TJSONObject(Root).GetValue('temporary'), Result);
+    Result.HasOriginal := ReadOptions(TJSONObject(mRoot).GetValue('original'), Result.Original);
+    Result.HasTemporary := ReadTemporary(TJSONObject(mRoot).GetValue('temporary'), Result);
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasStartProfiles.Parse(const AText, AProject: string): TAtlasStartProfileState;
 var
-  Valid: Boolean;
+  mValid: Boolean;
 begin
-  Result := Parse(AText, AProject, Valid);
+  Result := Parse(AText, AProject, mValid);
 end;
 
 class function TAtlasStartProfiles.FormatOf(const AText: string): Integer;
 var
-  Root, Value: TJSONValue;
+  mRoot, mValue: TJSONValue;
 begin
   Result := 0;
   if Trim(AText) = '' then
   begin
     Exit;
   end;
-  Root := TJSONObject.ParseJSONValue(TJsoncScanner.StripComments(AText));
+  mRoot := TJSONObject.ParseJSONValue(TJsoncScanner.StripComments(AText));
   try
-    if not (Root is TJSONObject) then
+    if not (mRoot is TJSONObject) then
     begin
       Exit;
     end;
-    Value := TJSONObject(Root).GetValue('format');
-    if Value is TJSONNumber then
+    mValue := TJSONObject(mRoot).GetValue('format');
+    if mValue is TJSONNumber then
     begin
-      Result := TJSONNumber(Value).AsInt;
+      Result := TJSONNumber(mValue).AsInt;
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 /// <summary>Ein Profil als JSON-Objekt, eingerückt wie in ToJson.</summary>
 function ProfileJson(const AProfile: TAtlasStartProfile): string;
 const
-  NewLine = #13#10;
+  cNewLine = #13#10;
 var
   mVariable: Integer;
   mSeparator: string;
 begin
-  Result := NewLine + '    {' + NewLine +
-    '      "name": ' + Quote(AProfile.Name) + ',' + NewLine +
-    '      "parameters": ' + Quote(AProfile.Parameters) + ',' + NewLine +
-    '      "workingDir": ' + Quote(AProfile.WorkingDir) + ',' + NewLine +
-    '      "host": ' + Quote(AProfile.Host) + ',' + NewLine +
+  Result := cNewLine + '    {' + cNewLine +
+    '      "name": ' + Quote(AProfile.Name) + ',' + cNewLine +
+    '      "parameters": ' + Quote(AProfile.Parameters) + ',' + cNewLine +
+    '      "workingDir": ' + Quote(AProfile.WorkingDir) + ',' + cNewLine +
+    '      "host": ' + Quote(AProfile.Host) + ',' + cNewLine +
     '      "environment": {';
   mSeparator := '';
   for mVariable := 0 to High(AProfile.Environment) do
@@ -457,116 +457,116 @@ begin
       Quote(AProfile.Environment[mVariable].Value);
     mSeparator := ', ';
   end;
-  Result := Result + '}' + NewLine + '    }';
+  Result := Result + '}' + cNewLine + '    }';
 end;
 
 class function TAtlasStartProfiles.ToJson(const AState: TAtlasStartProfileState): string;
 const
-  NewLine = #13#10;
+  cNewLine = #13#10;
 var
-  Lines: TStringBuilder;
-  Index: Integer;
+  mLines: TStringBuilder;
+  mIndex: Integer;
 begin
-  Lines := TStringBuilder.Create;
+  mLines := TStringBuilder.Create;
   try
-    Lines.Append('{' + NewLine);
-    Lines.Append('  "format": ' + IntToStr(Format) + ',' + NewLine);
-    Lines.Append('  "project": ' + Quote(AState.Project) + ',' + NewLine);
-    Lines.Append('  "active": ' + Quote(AState.Active) + ',' + NewLine);
-    Lines.Append('  "profiles": [');
-    for Index := 0 to High(AState.Profiles) do
+    mLines.Append('{' + cNewLine);
+    mLines.Append('  "format": ' + IntToStr(Format) + ',' + cNewLine);
+    mLines.Append('  "project": ' + Quote(AState.Project) + ',' + cNewLine);
+    mLines.Append('  "active": ' + Quote(AState.Active) + ',' + cNewLine);
+    mLines.Append('  "profiles": [');
+    for mIndex := 0 to High(AState.Profiles) do
     begin
-      if Index > 0 then
+      if mIndex > 0 then
       begin
-        Lines.Append(',');
+        mLines.Append(',');
       end;
-      Lines.Append(ProfileJson(AState.Profiles[Index]));
+      mLines.Append(ProfileJson(AState.Profiles[mIndex]));
     end;
     if Length(AState.Profiles) > 0 then
     begin
-      Lines.Append(NewLine + '  ');
+      mLines.Append(cNewLine + '  ');
     end;
-    Lines.Append(']');
+    mLines.Append(']');
     if AState.HasOriginal then
     begin
-      Lines.Append(',' + NewLine + '  "original": {' + NewLine);
-      Lines.Append('    "parameters": ' + Quote(AState.Original.Parameters) + ',' + NewLine);
-      Lines.Append('    "workingDir": ' + Quote(AState.Original.WorkingDir) + ',' + NewLine);
-      Lines.Append('    "host": ' + Quote(AState.Original.Host) + ',' + NewLine);
-      Lines.Append('    "environment": ' + Quote(AState.Original.Environment) + NewLine);
-      Lines.Append('  }');
+      mLines.Append(',' + cNewLine + '  "original": {' + cNewLine);
+      mLines.Append('    "parameters": ' + Quote(AState.Original.Parameters) + ',' + cNewLine);
+      mLines.Append('    "workingDir": ' + Quote(AState.Original.WorkingDir) + ',' + cNewLine);
+      mLines.Append('    "host": ' + Quote(AState.Original.Host) + ',' + cNewLine);
+      mLines.Append('    "environment": ' + Quote(AState.Original.Environment) + cNewLine);
+      mLines.Append('  }');
     end;
     if AState.HasTemporary then
     begin
-      Lines.Append(',' + NewLine + '  "temporary": {' + NewLine);
-      Lines.Append('    "parameters": ' + Quote(AState.TemporaryBefore.Parameters) + ',' + NewLine);
-      Lines.Append('    "workingDir": ' + Quote(AState.TemporaryBefore.WorkingDir) + ',' + NewLine);
-      Lines.Append('    "host": ' + Quote(AState.TemporaryBefore.Host) + ',' + NewLine);
-      Lines.Append('    "environment": ' + Quote(AState.TemporaryBefore.Environment) + ',' + NewLine);
-      Lines.Append('    "written": ' + Quote(AState.TemporaryWritten) + NewLine);
-      Lines.Append('  }');
+      mLines.Append(',' + cNewLine + '  "temporary": {' + cNewLine);
+      mLines.Append('    "parameters": ' + Quote(AState.TemporaryBefore.Parameters) + ',' + cNewLine);
+      mLines.Append('    "workingDir": ' + Quote(AState.TemporaryBefore.WorkingDir) + ',' + cNewLine);
+      mLines.Append('    "host": ' + Quote(AState.TemporaryBefore.Host) + ',' + cNewLine);
+      mLines.Append('    "environment": ' + Quote(AState.TemporaryBefore.Environment) + ',' + cNewLine);
+      mLines.Append('    "written": ' + Quote(AState.TemporaryWritten) + cNewLine);
+      mLines.Append('  }');
     end;
-    Lines.Append(NewLine + '}' + NewLine);
-    Result := Lines.ToString;
+    mLines.Append(cNewLine + '}' + cNewLine);
+    Result := mLines.ToString;
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 
 class function TAtlasStartProfiles.Load(const AFolder, AProject: string): TAtlasStartProfileState;
 var
-  FileName: string;
-  State: TAtlasStartProfileState;
-  Valid: Boolean;
-  Load: TAtlasDataLoad;
+  mFileName: string;
+  mState: TAtlasStartProfileState;
+  mValid: Boolean;
+  mLoad: TAtlasDataLoad;
 begin
   Result := Empty(AProject);
   if (AFolder = '') or (Trim(AProject) = '') then
   begin
     Exit;
   end;
-  FileName := FileFor(AFolder, AProject);
-  Valid := False;
-  Load := TAtlasDataFile.Load(FileName, 'Startprofile',
+  mFileName := FileFor(AFolder, AProject);
+  mValid := False;
+  mLoad := TAtlasDataFile.Load(mFileName, 'Startprofile',
     function(const AText: string): Boolean
     begin
-      State := Parse(AText, AProject, Valid);
+      mState := Parse(AText, AProject, mValid);
       // Ein höheres Format ist nicht unbrauchbar: nicht beiseitelegen; Save überschreibt es nicht.
-      Result := Valid or (FormatOf(AText) > Format);
+      Result := mValid or (FormatOf(AText) > Format);
     end);
-  if Valid and (Load = TAtlasDataLoad.Loaded) then
+  if mValid and (mLoad = TAtlasDataLoad.Loaded) then
   begin
-    Result := State;
+    Result := mState;
   end
-  else if not TAtlasDataFile.Writable(Load) then
+  else if not TAtlasDataFile.Writable(mLoad) then
   begin
-    Result.KeptFile := FileName;
+    Result.KeptFile := mFileName;
   end;
 end;
 
 class function TAtlasStartProfiles.Save(const AFolder: string; const AState: TAtlasStartProfileState): Boolean;
 var
-  FileName, Text: string;
+  mFileName, mText: string;
 begin
   Result := False;
   if (AFolder = '') or (Trim(AState.Project) = '') then
   begin
     Exit;
   end;
-  FileName := FileFor(AFolder, AState.Project);
+  mFileName := FileFor(AFolder, AState.Project);
   // Beim Laden gesperrt: Der Stand kennt den Inhalt der Datei nicht.
-  if SameFileName(FileName, AState.KeptFile) then
+  if SameFileName(mFileName, AState.KeptFile) then
   begin
     Exit;
   end;
   try
     // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
-    if FileExists(FileName) and (not TAtlasDataFile.TryRead(FileName, Text) or (FormatOf(Text) > Format)) then
+    if FileExists(mFileName) and (not TAtlasDataFile.TryRead(mFileName, mText) or (FormatOf(mText) > Format)) then
     begin
       Exit;
     end;
     // Atomar ersetzt, UTF-8 ohne BOM.
-    TAtlasDataFile.Write(FileName, ToJson(AState));
+    TAtlasDataFile.Write(mFileName, ToJson(AState));
     Result := True;
   except
     on E: Exception do
@@ -577,44 +577,44 @@ end;
 class function TAtlasStartProfiles.Merge(const ATeam: TAtlasTeamSettings;
   const AState: TAtlasStartProfileState): TArray<TAtlasStartProfileEntry>;
 var
-  Entry, Known: TAtlasStartProfileEntry;
-  Profile: TAtlasStartProfile;
-  Candidates: TArray<TAtlasStartProfileEntry>;
-  Found: Boolean;
+  mEntry, mKnown: TAtlasStartProfileEntry;
+  mProfile: TAtlasStartProfile;
+  mCandidates: TArray<TAtlasStartProfileEntry>;
+  mFound: Boolean;
 begin
   Result := nil;
-  Candidates := nil;
+  mCandidates := nil;
   if ATeam.Valid then
   begin
-    for Profile in ATeam.StartProfiles do
+    for mProfile in ATeam.StartProfiles do
     begin
-      Entry.Profile := Profile;
-      Entry.Source := TAtlasStartProfileSource.Team;
-      Entry.BaseFolder := ATeam.Folder;
-      Candidates := Candidates + [Entry];
+      mEntry.Profile := mProfile;
+      mEntry.Source := TAtlasStartProfileSource.Team;
+      mEntry.BaseFolder := ATeam.Folder;
+      mCandidates := mCandidates + [mEntry];
     end;
   end;
-  for Profile in AState.Profiles do
+  for mProfile in AState.Profiles do
   begin
-    Entry.Profile := Profile;
-    Entry.Source := TAtlasStartProfileSource.Personal;
-    Entry.BaseFolder := FolderOf(AState.Project);
-    Candidates := Candidates + [Entry];
+    mEntry.Profile := mProfile;
+    mEntry.Source := TAtlasStartProfileSource.Personal;
+    mEntry.BaseFolder := FolderOf(AState.Project);
+    mCandidates := mCandidates + [mEntry];
   end;
-  for Entry in Candidates do
+  for mEntry in mCandidates do
   begin
-    Found := False;
-    for Known in Result do
+    mFound := False;
+    for mKnown in Result do
     begin
-      if SameText(Known.Profile.Name, Entry.Profile.Name) then
+      if SameText(mKnown.Profile.Name, mEntry.Profile.Name) then
       begin
-        Found := True;
+        mFound := True;
         Break;
       end;
     end;
-    if not Found then
+    if not mFound then
     begin
-      Result := Result + [Entry];
+      Result := Result + [mEntry];
     end;
   end;
 end;
@@ -628,7 +628,7 @@ end;
 class function TAtlasStartProfiles.Find(const AEntries: TArray<TAtlasStartProfileEntry>; const AName: string;
   out AEntry: TAtlasStartProfileEntry): Boolean;
 var
-  Entry: TAtlasStartProfileEntry;
+  mEntry: TAtlasStartProfileEntry;
 begin
   AEntry := Default(TAtlasStartProfileEntry);
   Result := False;
@@ -636,11 +636,11 @@ begin
   begin
     Exit;
   end;
-  for Entry in AEntries do
+  for mEntry in AEntries do
   begin
-    if SameText(Entry.Profile.Name, Trim(AName)) then
+    if SameText(mEntry.Profile.Name, Trim(AName)) then
     begin
-      AEntry := Entry;
+      AEntry := mEntry;
       Exit(True);
     end;
   end;
@@ -648,14 +648,14 @@ end;
 
 class function TAtlasStartProfiles.ResolvePath(const ABase, APath: string): string;
 var
-  Path: string;
+  mPath: string;
 begin
-  Path := Trim(APath);
-  if (Path = '') or (Copy(Path, 1, 2) = '$(') or TTextCheckin.IsAbsolutePath(Path) or (ABase = '') then
+  mPath := Trim(APath);
+  if (mPath = '') or (Copy(mPath, 1, 2) = '$(') or TTextCheckin.IsAbsolutePath(mPath) or (ABase = '') then
   begin
-    Exit(Path);
+    Exit(mPath);
   end;
-  Result := TAtlasTeamFile.Combine(ABase, Path);
+  Result := TAtlasTeamFile.Combine(ABase, mPath);
 end;
 
 class function TAtlasStartProfiles.OptionsOf(const AEntry: TAtlasStartProfileEntry): TAtlasStartOptions;
@@ -668,26 +668,26 @@ end;
 
 class function TAtlasStartProfiles.EncodeEnvironment(const AVariables: TArray<TAtlasTeamVariable>): string;
 var
-  Variable: TAtlasTeamVariable;
-  Item: string;
+  mVariable: TAtlasTeamVariable;
+  mItem: string;
 begin
   Result := '';
-  for Variable in AVariables do
+  for mVariable in AVariables do
   begin
-    if Trim(Variable.Name) = '' then
+    if Trim(mVariable.Name) = '' then
     begin
       Continue;
     end;
-    Item := Trim(Variable.Name) + '=' + StringReplace(Variable.Value, '"', '', [rfReplaceAll]);
-    if Pos(';', Item) > 0 then
+    mItem := Trim(mVariable.Name) + '=' + StringReplace(mVariable.Value, '"', '', [rfReplaceAll]);
+    if Pos(';', mItem) > 0 then
     begin
-      Item := '"' + Item + '"';
+      mItem := '"' + mItem + '"';
     end;
     if Result <> '' then
     begin
       Result := Result + ';';
     end;
-    Result := Result + Item;
+    Result := Result + mItem;
   end;
 end;
 
@@ -702,27 +702,27 @@ end;
 
 class function TAtlasStartProfiles.DecodeEnvironment(const AText: string): TArray<TAtlasTeamVariable>;
 var
-  Item: string;
-  Variable: TAtlasTeamVariable;
-  Equals: Integer;
+  mItem: string;
+  mVariable: TAtlasTeamVariable;
+  mEquals: Integer;
 begin
   Result := nil;
-  for Item in SplitEnvironment(AText) do
+  for mItem in SplitEnvironment(AText) do
   begin
-    if SameText(Trim(Item), InheritEnvironment) then
+    if SameText(Trim(mItem), InheritEnvironment) then
     begin
       Continue;
     end;
-    Equals := Pos('=', Item);
-    if Equals <= 1 then
+    mEquals := Pos('=', mItem);
+    if mEquals <= 1 then
     begin
       Continue;
     end;
-    Variable.Name := Trim(Copy(Item, 1, Equals - 1));
-    Variable.Value := Copy(Item, Equals + 1, MaxInt);
-    if Variable.Name <> '' then
+    mVariable.Name := Trim(Copy(mItem, 1, mEquals - 1));
+    mVariable.Value := Copy(mItem, mEquals + 1, MaxInt);
+    if mVariable.Name <> '' then
     begin
-      Result := Result + [Variable];
+      Result := Result + [mVariable];
     end;
   end;
 end;
@@ -741,24 +741,24 @@ end;
 class function TAtlasStartProfiles.PutPersonal(var AState: TAtlasStartProfileState;
   const AProfile: TAtlasStartProfile): Boolean;
 var
-  Index: Integer;
-  Profile: TAtlasStartProfile;
+  mIndex: Integer;
+  mProfile: TAtlasStartProfile;
 begin
-  Profile := AProfile;
-  Profile.Name := Trim(Profile.Name);
-  Result := Profile.Name <> '';
+  mProfile := AProfile;
+  mProfile.Name := Trim(mProfile.Name);
+  Result := mProfile.Name <> '';
   if not Result then
   begin
     Exit;
   end;
-  Index := AState.IndexOf(Profile.Name);
-  if Index >= 0 then
+  mIndex := AState.IndexOf(mProfile.Name);
+  if mIndex >= 0 then
   begin
-    AState.Profiles[Index] := Profile;
+    AState.Profiles[mIndex] := mProfile;
   end
   else
   begin
-    AState.Profiles := AState.Profiles + [Profile];
+    AState.Profiles := AState.Profiles + [mProfile];
   end;
 end;
 

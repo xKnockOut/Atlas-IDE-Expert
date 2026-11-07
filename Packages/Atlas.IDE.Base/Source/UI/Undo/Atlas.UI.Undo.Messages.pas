@@ -125,17 +125,17 @@ end;
 
 class function TAtlasUndoMessages.SetCaption(const ASet: TAtlasChangeSet; ANow: TDateTime): string;
 var
-  Time: string;
+  mTime: string;
 begin
   if SameDate(ASet.Time, ANow) then
   begin
-    Time := FormatDateTime('hh":"nn', ASet.Time);
+    mTime := FormatDateTime('hh":"nn', ASet.Time);
   end
   else
   begin
-    Time := FormatDateTime('dd.mm. hh":"nn', ASet.Time);
+    mTime := FormatDateTime('dd.mm. hh":"nn', ASet.Time);
   end;
-  Result := TAtlasStrings.Fmt(TAtlasTextId.UndoSetCaption, [ASet.Action, Length(ASet.Files), Time,
+  Result := TAtlasStrings.Fmt(TAtlasTextId.UndoSetCaption, [ASet.Action, Length(ASet.Files), mTime,
     StateText(ASet.State)]);
 end;
 
@@ -162,20 +162,20 @@ end;
 
 class function TAtlasUndoMessages.DiffLines(const ASet: TAtlasChangeSet; const AFileName: string): TArray<string>;
 var
-  Change: TAtlasFileChange;
-  Lines: TArray<string>;
+  mChange: TAtlasFileChange;
+  mLines: TArray<string>;
 begin
   Result := nil;
-  for Change in ASet.Files do
+  for mChange in ASet.Files do
   begin
-    if (AFileName <> '') and not SameText(Change.FileName, AFileName) then
+    if (AFileName <> '') and not SameText(mChange.FileName, AFileName) then
     begin
       Continue;
     end;
-    Lines := TAtlasUndoJournal.Diff(Change);
-    if Length(Lines) = 0 then
+    mLines := TAtlasUndoJournal.Diff(mChange);
+    if Length(mLines) = 0 then
     begin
-      Lines := [TAtlasStrings.Text(TAtlasTextId.UndoNoDiff)];
+      mLines := [TAtlasStrings.Text(TAtlasTextId.UndoNoDiff)];
     end;
     if AFileName = '' then
     begin
@@ -183,9 +183,9 @@ begin
       begin
         Result := Result + [''];
       end;
-      Result := Result + ['=== ' + FileCaption(Change) + ' ==='];
+      Result := Result + ['=== ' + FileCaption(mChange) + ' ==='];
     end;
-    Result := Result + Lines;
+    Result := Result + mLines;
   end;
 end;
 

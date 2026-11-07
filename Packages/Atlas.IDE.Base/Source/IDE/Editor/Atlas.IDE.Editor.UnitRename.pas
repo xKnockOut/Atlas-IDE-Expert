@@ -138,10 +138,10 @@ uses
 
 function IsProjectFile(const AFileName: string): Boolean;
 var
-  Extension: string;
+  mExtension: string;
 begin
-  Extension := LowerCase(ExtractFileExt(AFileName));
-  Result := (Extension = '.dproj') or (Extension = '.dpr') or (Extension = '.dpk') or (Extension = '.groupproj');
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExtension = '.dproj') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.groupproj');
 end;
 
 { TAtlasIdeUnitRename.TProjectNotifier }
@@ -178,34 +178,34 @@ end;
 
 procedure TAtlasIdeUnitRename.TProjectNotifier.ModuleRenamed(const AOldFileName, ANewFileName: string);
 var
-  Owner: TAtlasIdeUnitRename;
-  Project: IOTAProject;
-  OldName, NewName: string;
+  mOwner: TAtlasIdeUnitRename;
+  mProject: IOTAProject;
+  mOldName, mNewName: string;
 begin
-  Owner := FOwner;
-  Project := FProject;
-  if (Owner = nil) or (Project = nil) then
+  mOwner := FOwner;
+  mProject := FProject;
+  if (mOwner = nil) or (mProject = nil) then
   begin
     Exit;
   end;
-  OldName := AOldFileName;
-  NewName := ANewFileName;
+  mOldName := AOldFileName;
+  mNewName := ANewFileName;
   // Keine Exception an die IDE (#493).
   TAtlasGuard.Run(TAtlasFeature.Files,
     procedure
     begin
-      Owner.Renamed(Project, OldName, NewName);
+      mOwner.Renamed(mProject, mOldName, mNewName);
     end);
 end;
 
 procedure TAtlasIdeUnitRename.TProjectNotifier.Destroyed;
 var
-  Owner: TAtlasIdeUnitRename;
+  mOwner: TAtlasIdeUnitRename;
 begin
-  Owner := FOwner;
-  if Owner <> nil then
+  mOwner := FOwner;
+  if mOwner <> nil then
   begin
-    Owner.Forget(Self);
+    mOwner.Forget(Self);
   end;
   // Zuletzt: Mit dem Abmelden kann die IDE die letzte Referenz freigeben.
   Detach;
@@ -213,18 +213,18 @@ end;
 
 procedure TAtlasIdeUnitRename.TProjectNotifier.Detach;
 var
-  Project: IOTAProject;
-  Index: Integer;
+  mProject: IOTAProject;
+  mIndex: Integer;
 begin
-  Project := FProject;
-  Index := FIndex;
+  mProject := FProject;
+  mIndex := FIndex;
   FProject := nil;
   FOwner := nil;
   FIndex := -1;
   // Danach keine Felder mehr: RemoveNotifier kann dieses Objekt freigeben.
-  if (Project <> nil) and (Index >= 0) then
+  if (mProject <> nil) and (mIndex >= 0) then
   begin
-    Project.RemoveNotifier(Index);
+    mProject.RemoveNotifier(mIndex);
   end;
 end;
 
@@ -233,22 +233,22 @@ end;
 procedure TAtlasIdeUnitRename.TIdeNotifier.FileNotification(NotifyCode: TOTAFileNotification;
   const FileName: string; var Cancel: Boolean);
 var
-  Owner: TAtlasIdeUnitRename;
-  Name: string;
+  mOwner: TAtlasIdeUnitRename;
+  mName: string;
 begin
-  Owner := FOwner;
-  if (Owner = nil) or not ((NotifyCode = ofnFileOpened) or (NotifyCode = ofnFileClosing)) or
+  mOwner := FOwner;
+  if (mOwner = nil) or not ((NotifyCode = ofnFileOpened) or (NotifyCode = ofnFileClosing)) or
     not IsProjectFile(FileName) then
   begin
     Exit;
   end;
-  Name := FileName;
+  mName := FileName;
   if NotifyCode = ofnFileOpened then
   begin
     TAtlasGuard.Run(TAtlasFeature.Files,
       procedure
       begin
-        Owner.Sweep;
+        mOwner.Sweep;
       end);
   end
   else
@@ -256,7 +256,7 @@ begin
     TAtlasGuard.Run(TAtlasFeature.Files,
       procedure
       begin
-        Owner.Closing(Name);
+        mOwner.Closing(mName);
       end);
   end;
 end;
@@ -273,7 +273,7 @@ end;
 
 constructor TAtlasIdeUnitRename.Create(const ASessionOf: TFunc<TLspSession>; const AReport: TProc<string>);
 var
-  Services: IOTAServices;
+  mServices: IOTAServices;
 begin
   inherited Create;
   FSessionOf := ASessionOf;
@@ -281,12 +281,12 @@ begin
   FQueue := TAtlasUnitRenameQueue.Create;
   FProjects := TList<TProjectNotifier>.Create;
   FNotifierIndex := -1;
-  if Supports(BorlandIDEServices, IOTAServices, Services) then
+  if Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
     FNotifier := TIdeNotifier.Create;
     FNotifier.FOwner := Self;
     FNotifierRef := FNotifier;
-    FNotifierIndex := Services.AddNotifier(FNotifierRef);
+    FNotifierIndex := mServices.AddNotifier(FNotifierRef);
   end;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
@@ -299,8 +299,8 @@ end;
 
 destructor TAtlasIdeUnitRename.Destroy;
 var
-  Services: IOTAServices;
-  Notifier: TProjectNotifier;
+  mServices: IOTAServices;
+  mNotifier: TProjectNotifier;
 begin
   if FInstance = Self then
   begin
@@ -317,14 +317,14 @@ begin
   begin
     FNotifier.FOwner := nil;
   end;
-  if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAServices, Services) then
+  if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
-    Services.RemoveNotifier(FNotifierIndex);
+    mServices.RemoveNotifier(FNotifierIndex);
   end;
   FNotifierRef := nil;
-  for Notifier in FProjects.ToArray do
+  for mNotifier in FProjects.ToArray do
   begin
-    Notifier.Detach;
+    mNotifier.Detach;
   end;
   FProjects.Free;
   FQueue.Free;
@@ -333,61 +333,61 @@ end;
 
 procedure TAtlasIdeUnitRename.Sweep;
 var
-  Modules: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  Index: Integer;
+  mModules: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+  mIndex: Integer;
 begin
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
-  Group := Modules.MainProjectGroup;
-  if Group = nil then
+  mGroup := mModules.MainProjectGroup;
+  if mGroup = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Group.ProjectCount - 1 do
+  for mIndex := 0 to mGroup.ProjectCount - 1 do
   begin
-    Attach(Group.Projects[Index]);
+    Attach(mGroup.Projects[mIndex]);
   end;
 end;
 
 procedure TAtlasIdeUnitRename.Attach(const AProject: IOTAProject);
 var
-  Notifier: TProjectNotifier;
-  Reference: IOTAProjectNotifier;
+  mNotifier: TProjectNotifier;
+  mReference: IOTAProjectNotifier;
 begin
   if AProject = nil then
   begin
     Exit;
   end;
-  for Notifier in FProjects do
+  for mNotifier in FProjects do
   begin
-    if Notifier.FProject = AProject then
+    if mNotifier.FProject = AProject then
     begin
       Exit;
     end;
   end;
-  Notifier := TProjectNotifier.Create;
-  Notifier.FOwner := Self;
-  Notifier.FProject := AProject;
-  Reference := Notifier;
+  mNotifier := TProjectNotifier.Create;
+  mNotifier.FOwner := Self;
+  mNotifier.FProject := AProject;
+  mReference := mNotifier;
   // Die IDE hält die Referenz; Detach gibt sie frei.
-  Notifier.FIndex := AProject.AddNotifier(Reference);
-  FProjects.Add(Notifier);
+  mNotifier.FIndex := AProject.AddNotifier(mReference);
+  FProjects.Add(mNotifier);
 end;
 
 procedure TAtlasIdeUnitRename.Closing(const AFileName: string);
 var
-  Notifier: TProjectNotifier;
+  mNotifier: TProjectNotifier;
 begin
-  for Notifier in FProjects.ToArray do
+  for mNotifier in FProjects.ToArray do
   begin
-    if (Notifier.FProject <> nil) and (SameText(Notifier.FProject.FileName, AFileName) or
-      SameText(ChangeFileExt(Notifier.FProject.FileName, ExtractFileExt(AFileName)), AFileName)) then
+    if (mNotifier.FProject <> nil) and (SameText(mNotifier.FProject.FileName, AFileName) or
+      SameText(ChangeFileExt(mNotifier.FProject.FileName, ExtractFileExt(AFileName)), AFileName)) then
     begin
-      FProjects.Remove(Notifier);
-      Notifier.Detach;
+      FProjects.Remove(mNotifier);
+      mNotifier.Detach;
     end;
   end;
 end;
@@ -411,13 +411,13 @@ end;
 
 procedure TAtlasIdeUnitRename.Tick(Sender: TObject);
 var
-  Event: TAtlasUnitRenameEvent;
+  mEvent: TAtlasUnitRenameEvent;
 begin
   FTimer.Enabled := False;
   try
-    for Event in FQueue.Take do
+    for mEvent in FQueue.Take do
     begin
-      Offer(Event);
+      Offer(mEvent);
     end;
   except
     // Keine Exception an die IDE (#493).
@@ -437,47 +437,47 @@ end;
 class function TAtlasIdeUnitRename.RunAction(const AEvent: TAtlasUnitRenameEvent;
   AScope: TAtlasUnitRenameScope): TProc;
 var
-  Event: TAtlasUnitRenameEvent;
+  mEvent: TAtlasUnitRenameEvent;
 begin
   // Eigene Funktion: Jede Aktion fängt ihren Bereich als Wert ein, nicht die Schleifenvariable.
-  Event := AEvent;
+  mEvent := AEvent;
   Result :=
     procedure
     begin
       if FInstance <> nil then
       begin
-        FInstance.Run(Event, AScope);
+        FInstance.Run(mEvent, AScope);
       end;
     end;
 end;
 
 class function TAtlasIdeUnitRename.FilesOf(const AProject: IOTAProject): TArray<string>;
 var
-  Mains: array[0..1] of string;
-  Main: string;
-  Index: Integer;
-  Info: IOTAModuleInfo;
+  mMains: array[0..1] of string;
+  mMain: string;
+  mIndex: Integer;
+  mInfo: IOTAModuleInfo;
 begin
   Result := nil;
   if AProject = nil then
   begin
     Exit;
   end;
-  Mains[0] := ChangeFileExt(AProject.FileName, '.dpr');
-  Mains[1] := ChangeFileExt(AProject.FileName, '.dpk');
-  for Main in Mains do
+  mMains[0] := ChangeFileExt(AProject.FileName, '.dpr');
+  mMains[1] := ChangeFileExt(AProject.FileName, '.dpk');
+  for mMain in mMains do
   begin
-    if FileExists(Main) then
+    if FileExists(mMain) then
     begin
-      Result := Result + [Main];
+      Result := Result + [mMain];
     end;
   end;
-  for Index := 0 to AProject.GetModuleCount - 1 do
+  for mIndex := 0 to AProject.GetModuleCount - 1 do
   begin
-    Info := AProject.GetModule(Index);
-    if (Info <> nil) and (Info.FileName <> '') then
+    mInfo := AProject.GetModule(mIndex);
+    if (mInfo <> nil) and (mInfo.FileName <> '') then
     begin
-      Result := Result + [Info.FileName];
+      Result := Result + [mInfo.FileName];
     end;
   end;
   Result := TAtlasUnitRename.SourceFiles(Result);
@@ -486,24 +486,24 @@ end;
 class function TAtlasIdeUnitRename.ScopeFiles(const AProjectFile: string;
   AScope: TAtlasUnitRenameScope): TArray<string>;
 var
-  Modules: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  Project: IOTAProject;
-  Index: Integer;
+  mModules: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+  mProject: IOTAProject;
+  mIndex: Integer;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
   if AScope = TAtlasUnitRenameScope.Group then
   begin
-    Group := Modules.MainProjectGroup;
-    if Group <> nil then
+    mGroup := mModules.MainProjectGroup;
+    if mGroup <> nil then
     begin
-      for Index := 0 to Group.ProjectCount - 1 do
+      for mIndex := 0 to mGroup.ProjectCount - 1 do
       begin
-        Result := Result + FilesOf(Group.Projects[Index]);
+        Result := Result + FilesOf(mGroup.Projects[mIndex]);
       end;
     end;
     Result := TAtlasUnitRename.SourceFiles(Result);
@@ -511,9 +511,9 @@ begin
   // Ohne Gruppe (oder Projekt außerhalb) zählt das Projekt.
   if (AScope = TAtlasUnitRenameScope.Project) or (Result = nil) then
   begin
-    if Supports(Modules.FindModule(AProjectFile), IOTAProject, Project) then
+    if Supports(mModules.FindModule(AProjectFile), IOTAProject, mProject) then
     begin
-      Result := TAtlasUnitRename.SourceFiles(Result + FilesOf(Project));
+      Result := TAtlasUnitRename.SourceFiles(Result + FilesOf(mProject));
     end;
   end;
 end;

@@ -103,13 +103,13 @@ end;
 
 function TXmlNode.Child(const AName: string): TXmlNode;
 var
-  Node: TXmlNode;
+  mNode: TXmlNode;
 begin
-  for Node in FChildren do
+  for mNode in FChildren do
   begin
-    if SameText(Node.Name, AName) then
+    if SameText(mNode.Name, AName) then
     begin
-      Exit(Node);
+      Exit(mNode);
     end;
   end;
   Result := nil;
@@ -117,16 +117,16 @@ end;
 
 function TXmlNode.ChildText(const AName: string): string;
 var
-  Node: TXmlNode;
+  mNode: TXmlNode;
 begin
-  Node := Child(AName);
-  if Node = nil then
+  mNode := Child(AName);
+  if mNode = nil then
   begin
     Result := '';
   end
   else
   begin
-    Result := Node.Text;
+    Result := mNode.Text;
   end;
 end;
 
@@ -603,28 +603,28 @@ class function TAtlasLiveTemplates.Parse(const AXml, AFileName: string;
 
   procedure Collect(ANode: TXmlNode);
   var
-    Node: TXmlNode;
-    Snippet: TAtlasSnippet;
-    Body: string;
+    mNode: TXmlNode;
+    mSnippet: TAtlasSnippet;
+    mBody: string;
   begin
-    for Node in ANode.Children do
+    for mNode in ANode.Children do
     begin
-      if SameText(Node.Name, 'template') then
+      if SameText(mNode.Name, 'template') then
       begin
-        if (Trim(Node.Attribute('name')) <> '') and ConvertCode(Node, Body, AStats) then
+        if (Trim(mNode.Attribute('name')) <> '') and ConvertCode(mNode, mBody, AStats) then
         begin
-          Snippet := Default(TAtlasSnippet);
-          Snippet.Prefix := Trim(Node.Attribute('name'));
-          Snippet.Description := Trim(Node.ChildText('description'));
-          Snippet.Name := Snippet.Description;
-          if Snippet.Name = '' then
+          mSnippet := Default(TAtlasSnippet);
+          mSnippet.Prefix := Trim(mNode.Attribute('name'));
+          mSnippet.Description := Trim(mNode.ChildText('description'));
+          mSnippet.Name := mSnippet.Description;
+          if mSnippet.Name = '' then
           begin
-            Snippet.Name := Snippet.Prefix;
+            mSnippet.Name := mSnippet.Prefix;
           end;
-          Snippet.Body := Body;
-          Snippet.Origin := TAtlasSnippetOrigin.Ide;
-          Snippet.FileName := AFileName;
-          Result := Result + [Snippet];
+          mSnippet.Body := mBody;
+          mSnippet.Origin := TAtlasSnippetOrigin.Ide;
+          mSnippet.FileName := AFileName;
+          Result := Result + [mSnippet];
           Inc(AStats.Templates);
         end
         else
@@ -634,17 +634,17 @@ class function TAtlasLiveTemplates.Parse(const AXml, AFileName: string;
       end
       else
       begin
-        Collect(Node);
+        Collect(mNode);
       end;
     end;
   end;
 
 var
-  Root: TXmlNode;
+  mRoot: TXmlNode;
 begin
   Result := nil;
   try
-    Root := ParseXml(AXml);
+    mRoot := ParseXml(AXml);
   except
     on EXmlError do
     begin
@@ -653,17 +653,17 @@ begin
     end;
   end;
   try
-    Collect(Root);
+    Collect(mRoot);
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasLiveTemplates.LoadFolder(const APath: string;
   out AStats: TAtlasLiveTemplateStats): TAtlasSnippetList;
 var
-  FileName: string;
-  Text: string;
+  mFileName: string;
+  mText: string;
 begin
   Result := nil;
   AStats := Default(TAtlasLiveTemplateStats);
@@ -671,10 +671,10 @@ begin
   begin
     Exit;
   end;
-  for FileName in TDirectory.GetFiles(APath, '*.xml', TSearchOption.soAllDirectories) do
+  for mFileName in TDirectory.GetFiles(APath, '*.xml', TSearchOption.soAllDirectories) do
   begin
     try
-      Text := TFile.ReadAllText(FileName, TEncoding.UTF8);
+      mText := TFile.ReadAllText(mFileName, TEncoding.UTF8);
     except
       on EInOutError do
       begin
@@ -692,14 +692,14 @@ begin
         Continue;
       end;
     end;
-    Result := Result + Parse(Text, FileName, AStats);
+    Result := Result + Parse(mText, mFileName, AStats);
   end;
 end;
 
 class function TAtlasLiveTemplates.FolderStamp(const APath: string): string;
 var
-  FileName: string;
-  Age: TDateTime;
+  mFileName: string;
+  mAge: TDateTime;
 begin
   Result := '';
   if (APath = '') or not TDirectory.Exists(APath) then
@@ -707,13 +707,13 @@ begin
     Exit;
   end;
   Result := '+';
-  for FileName in TDirectory.GetFiles(APath, '*.xml', TSearchOption.soAllDirectories) do
+  for mFileName in TDirectory.GetFiles(APath, '*.xml', TSearchOption.soAllDirectories) do
   begin
-    if not FileAge(FileName, Age) then
+    if not FileAge(mFileName, mAge) then
     begin
-      Age := 0;
+      mAge := 0;
     end;
-    Result := Result + FileName + '|' + FloatToStr(Age, TFormatSettings.Invariant) + ';';
+    Result := Result + mFileName + '|' + FloatToStr(mAge, TFormatSettings.Invariant) + ';';
   end;
 end;
 

@@ -89,15 +89,15 @@ end;
 
 function ReadDate(AObject: TJSONObject; const AName: string): TDateTime;
 var
-  Field: TJSONValue;
+  mField: TJSONValue;
 begin
   Result := 0;
-  Field := AObject.GetValue(AName);
-  if not (Field is TJSONString) or (Field.Value = '') then
+  mField := AObject.GetValue(AName);
+  if not (mField is TJSONString) or (mField.Value = '') then
   begin
     Exit;
   end;
-  if not TryISO8601ToDate(Field.Value, Result, False) then
+  if not TryISO8601ToDate(mField.Value, Result, False) then
   begin
     Result := 0;
   end;
@@ -106,14 +106,14 @@ end;
 /// <summary>Ganze Zahl des Felds AName; False ohne Zahl.</summary>
 function ReadInteger(AObject: TJSONObject; const AName: string; out AValue: Integer): Boolean;
 var
-  Field: TJSONValue;
+  mField: TJSONValue;
 begin
   AValue := 0;
-  Field := AObject.GetValue(AName);
-  Result := Field is TJSONNumber;
+  mField := AObject.GetValue(AName);
+  Result := mField is TJSONNumber;
   if Result then
   begin
-    AValue := TJSONNumber(Field).AsInt;
+    AValue := TJSONNumber(mField).AsInt;
   end;
 end;
 
@@ -133,57 +133,57 @@ end;
 
 function TAtlasIndexSnapshot.ToJson: string;
 var
-  Root: TJSONObject;
+  mRoot: TJSONObject;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Root.AddPair('format', TJSONNumber.Create(FormatVersion));
-    Root.AddPair('units', TJSONNumber.Create(Units));
+    mRoot.AddPair('format', TJSONNumber.Create(FormatVersion));
+    mRoot.AddPair('units', TJSONNumber.Create(Units));
     if FullAt > 0 then
     begin
-      Root.AddPair('fullIndexAt', DateText(FullAt));
+      mRoot.AddPair('fullIndexAt', DateText(FullAt));
     end;
     if At > 0 then
     begin
-      Root.AddPair('at', DateText(At));
+      mRoot.AddPair('at', DateText(At));
     end;
-    Result := Root.ToJSON;
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasIndexSnapshot.FromJson(const AText: string): TAtlasIndexSnapshot;
 var
-  Value: TJSONValue;
-  Root: TJSONObject;
-  Number: Integer;
+  mValue: TJSONValue;
+  mRoot: TJSONObject;
+  mNumber: Integer;
 begin
   Result := Empty;
   try
-    Value := TJSONObject.ParseJSONValue(AText);
+    mValue := TJSONObject.ParseJSONValue(AText);
   except
     on Exception do
-      Value := nil;
+      mValue := nil;
   end;
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    Root := TJSONObject(Value);
-    if not ReadInteger(Root, 'format', Number) or (Number <> FormatVersion) then
+    mRoot := TJSONObject(mValue);
+    if not ReadInteger(mRoot, 'format', mNumber) or (mNumber <> FormatVersion) then
     begin
       Exit;
     end;
-    if ReadInteger(Root, 'units', Number) and (Number >= 0) then
+    if ReadInteger(mRoot, 'units', mNumber) and (mNumber >= 0) then
     begin
-      Result.Units := Number;
+      Result.Units := mNumber;
     end;
-    Result.FullAt := ReadDate(Root, 'fullIndexAt');
-    Result.At := ReadDate(Root, 'at');
+    Result.FullAt := ReadDate(mRoot, 'fullIndexAt');
+    Result.At := ReadDate(mRoot, 'at');
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -271,13 +271,13 @@ end;
 
 class function TAtlasIndexStore.Load(const AFileName: string): TAtlasIndexSnapshot;
 var
-  Text: string;
+  mText: string;
 begin
   // Fehlt, gesperrt oder unbrauchbar: kein gespeicherter Stand.
   Result := TAtlasIndexSnapshot.Empty;
-  if TAtlasDataFile.TryRead(AFileName, Text) then
+  if TAtlasDataFile.TryRead(AFileName, mText) then
     try
-      Result := TAtlasIndexSnapshot.FromJson(Text);
+      Result := TAtlasIndexSnapshot.FromJson(mText);
     except
       // Unerwarteter Inhalt, den FromJson nicht abfängt: ebenso kein gespeicherter Stand.
       on Exception do

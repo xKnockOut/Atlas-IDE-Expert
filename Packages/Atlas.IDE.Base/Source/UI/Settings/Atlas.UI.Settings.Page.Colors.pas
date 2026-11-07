@@ -54,9 +54,9 @@ uses
 
 procedure TAtlasSettingsColorsPart.Build;
 var
-  Panel: TWinControl;
-  Title: TLabel;
-  Button: TButton;
+  mPanel: TWinControl;
+  mTitle: TLabel;
+  mButton: TButton;
 begin
   // Eigene Paarfarben und deren Reihenfolge je Thema.
   AddSheet(TAtlasTextId.SettingsTabColors);
@@ -64,22 +64,22 @@ begin
   AddSwatches(TAtlasStrings.Text(TAtlasTextId.SettingsPairColorsDark), FDarkSwatches);
   AddSwatches(TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutineColorLight), FNestedLight);
   AddSwatches(TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutineColorDark), FNestedDark);
-  Panel := AddPanel(22);
-  Title := TLabel.Create(FPage);
-  Title.Parent := Panel;
-  Title.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsPairColorsHint);
-  Title.Left := 0;
-  Title.Top := 3;
-  Title.Font.Color := clGrayText;
-  Panel := AddPanel(32);
-  Button := TButton.Create(FPage);
-  Button.Parent := Panel;
-  Button.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsPairColorsReset);
-  Button.Left := 0;
-  Button.Top := 3;
-  Button.Width := 150;
-  Button.OnClick := ResetColorsClick;
-  Attach(Panel, FLightSwatches[0]);
+  mPanel := AddPanel(22);
+  mTitle := TLabel.Create(FPage);
+  mTitle.Parent := mPanel;
+  mTitle.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsPairColorsHint);
+  mTitle.Left := 0;
+  mTitle.Top := 3;
+  mTitle.Font.Color := clGrayText;
+  mPanel := AddPanel(32);
+  mButton := TButton.Create(FPage);
+  mButton.Parent := mPanel;
+  mButton.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsPairColorsReset);
+  mButton.Left := 0;
+  mButton.Top := 3;
+  mButton.Width := 150;
+  mButton.OnClick := ResetColorsClick;
+  Attach(mPanel, FLightSwatches[0]);
 end;
 
 procedure TAtlasSettingsColorsPart.BindMarks;
@@ -92,48 +92,48 @@ end;
 
 procedure TAtlasSettingsColorsPart.AddSwatches(const ACaption: string; var ASwatches: array of TShape);
 var
-  Panel: TWinControl;
+  mPanel: TWinControl;
   mCaption: TLabel;
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Panel := AddPanel(26);
+  mPanel := AddPanel(26);
   mCaption := TLabel.Create(FPage);
-  mCaption.Parent := Panel;
+  mCaption.Parent := mPanel;
   mCaption.Caption := ACaption;
   mCaption.Left := 0;
   mCaption.Top := 5;
-  for Index := 0 to High(ASwatches) do
+  for mIndex := 0 to High(ASwatches) do
   begin
-    ASwatches[Index] := TShape.Create(FPage);
-    ASwatches[Index].Parent := Panel;
-    ASwatches[Index].SetBounds(FieldLeft + Index * 34, 1, 28, 22);
-    ASwatches[Index].Pen.Color := clGray;
-    ASwatches[Index].Cursor := crHandPoint;
-    ASwatches[Index].Hint := IntToStr(Index + 1);
-    ASwatches[Index].ShowHint := True;
-    ASwatches[Index].OnMouseDown := SwatchMouseDown;
+    ASwatches[mIndex] := TShape.Create(FPage);
+    ASwatches[mIndex].Parent := mPanel;
+    ASwatches[mIndex].SetBounds(FieldLeft + mIndex * 34, 1, 28, 22);
+    ASwatches[mIndex].Pen.Color := clGray;
+    ASwatches[mIndex].Cursor := crHandPoint;
+    ASwatches[mIndex].Hint := IntToStr(mIndex + 1);
+    ASwatches[mIndex].ShowHint := True;
+    ASwatches[mIndex].OnMouseDown := SwatchMouseDown;
   end;
 end;
 
 procedure TAtlasSettingsColorsPart.SwatchMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
   X, Y: Integer);
 var
-  Dialog: TColorDialog;
+  mDialog: TColorDialog;
 begin
   if Button <> mbLeft then
   begin
     Exit;
   end;
-  Dialog := TColorDialog.Create(nil);
+  mDialog := TColorDialog.Create(nil);
   try
-    Dialog.Color := TShape(Sender).Brush.Color;
-    Dialog.Options := Dialog.Options + [cdFullOpen];
-    if Dialog.Execute then
+    mDialog.Color := TShape(Sender).Brush.Color;
+    mDialog.Options := mDialog.Options + [cdFullOpen];
+    if mDialog.Execute then
     begin
-      TShape(Sender).Brush.Color := Dialog.Color;
+      TShape(Sender).Brush.Color := mDialog.Color;
     end;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
@@ -147,25 +147,25 @@ end;
 
 class procedure TAtlasSettingsColorsPart.ShowPairs(const ASwatches: array of TShape; const APairs: TAtlasPairColors);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ASwatches) do
+  for mIndex := 0 to High(ASwatches) do
   begin
-    ASwatches[Index].Brush.Color := TColor(APairs[Index]);
+    ASwatches[mIndex].Brush.Color := TColor(APairs[mIndex]);
   end;
 end;
 
 class function TAtlasSettingsColorsPart.PairsSetting(const ASwatches: array of TShape;
   const ADefault: TAtlasPairColors): string;
 var
-  Pairs: TAtlasPairColors;
-  Index: Integer;
+  mPairs: TAtlasPairColors;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Pairs) do
+  for mIndex := 0 to High(mPairs) do
   begin
-    Pairs[Index] := TAtlasColor(ColorToRGB(ASwatches[Index].Brush.Color));
+    mPairs[mIndex] := TAtlasColor(ColorToRGB(ASwatches[mIndex].Brush.Color));
   end;
-  Result := TAtlasColors.PairsText(Pairs);
+  Result := TAtlasColors.PairsText(mPairs);
   if Result = TAtlasColors.PairsText(ADefault) then
   begin
     Result := '';

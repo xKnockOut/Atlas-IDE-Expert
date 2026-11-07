@@ -340,65 +340,65 @@ end;
 
 procedure TAtlasCommandHistory.Executed(const AId: string);
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
-  if not FEntries.TryGetValue(AId, Entry) then
+  if not FEntries.TryGetValue(AId, mEntry) then
   begin
-    Entry := Default(TEntry);
+    mEntry := Default(TEntry);
   end;
-  Inc(Entry.Count);
+  Inc(mEntry.Count);
   Inc(FTick);
-  Entry.Last := FTick;
-  FEntries.AddOrSetValue(AId, Entry);
+  mEntry.Last := FTick;
+  FEntries.AddOrSetValue(AId, mEntry);
 end;
 
 function TAtlasCommandHistory.Boost(const AId: string): Integer;
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
   Result := 0;
-  if not FEntries.TryGetValue(AId, Entry) then
+  if not FEntries.TryGetValue(AId, mEntry) then
   begin
     Exit;
   end;
   // Der zuletzt ausgeführte Befehl steht vorn (bis 70), Häufigkeit gibt bis 29 dazu.
-  Result := Max(0, 70 - Integer(FTick - Entry.Last) * 10) + Min(29, Entry.Count * 3);
+  Result := Max(0, 70 - Integer(FTick - mEntry.Last) * 10) + Min(29, mEntry.Count * 3);
 end;
 
 function TAtlasCommandHistory.Parse(const AText: string): Boolean;
 var
-  Root: TJSONValue;
-  Pair: TJSONPair;
-  Values: TJSONArray;
-  Entry: TEntry;
+  mRoot: TJSONValue;
+  mPair: TJSONPair;
+  mValues: TJSONArray;
+  mEntry: TEntry;
 begin
   FEntries.Clear;
   FTick := 0;
-  Root := TJSONObject.ParseJSONValue(AText);
+  mRoot := TJSONObject.ParseJSONValue(AText);
   try
-    Result := Root is TJSONObject;
+    Result := mRoot is TJSONObject;
     if not Result then
     begin
       Exit;
     end;
-    for Pair in TJSONObject(Root) do
+    for mPair in TJSONObject(mRoot) do
     begin
       // Früher brach ein kurzes oder falsch getyptes Paar das Lesen mit einer Ausnahme ab.
-      if not (Pair.JsonValue is TJSONArray) then
+      if not (mPair.JsonValue is TJSONArray) then
       begin
         Continue;
       end;
-      Values := TJSONArray(Pair.JsonValue);
-      if (Values.Count < 2) or not Values.Items[0].TryGetValue<Integer>(Entry.Count) or
-        not Values.Items[1].TryGetValue<Int64>(Entry.Last) then
+      mValues := TJSONArray(mPair.JsonValue);
+      if (mValues.Count < 2) or not mValues.Items[0].TryGetValue<Integer>(mEntry.Count) or
+        not mValues.Items[1].TryGetValue<Int64>(mEntry.Last) then
       begin
         Continue;
       end;
-      FEntries.AddOrSetValue(Pair.JsonString.Value, Entry);
-      FTick := Max(FTick, Entry.Last);
+      FEntries.AddOrSetValue(mPair.JsonString.Value, mEntry);
+      FTick := Max(FTick, mEntry.Last);
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
@@ -425,68 +425,68 @@ end;
 
 function TAtlasCommandHistory.SaveToFile(const AFileName: string): Boolean;
 var
-  Root: TJSONObject;
-  Pair: TPair<string, TEntry>;
+  mRoot: TJSONObject;
+  mPair: TPair<string, TEntry>;
 begin
   Result := not SameFileName(AFileName, FKept);
   if not Result then
   begin
     Exit;
   end;
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    for Pair in FEntries do
+    for mPair in FEntries do
     begin
-      Root.AddPair(Pair.Key, TJSONArray.Create.Add(Pair.Value.Count).Add(Pair.Value.Last));
+      mRoot.AddPair(mPair.Key, TJSONArray.Create.Add(mPair.Value.Count).Add(mPair.Value.Last));
     end;
-    TAtlasDataFile.Write(AFileName, Root.ToJSON);
+    TAtlasDataFile.Write(AFileName, mRoot.ToJSON);
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 /// <summary>Alle Zeichen von APattern kommen in AText in dieser Reihenfolge vor (Großschreibung egal).</summary>
 function IsSubsequence(const APattern, AText: string): Boolean;
 var
-  PatternIndex, TextIndex: Integer;
+  mPatternIndex, mTextIndex: Integer;
 begin
-  PatternIndex := 1;
-  for TextIndex := 1 to Length(AText) do
+  mPatternIndex := 1;
+  for mTextIndex := 1 to Length(AText) do
   begin
-    if (PatternIndex <= Length(APattern)) and (UpCase(AText[TextIndex]) = UpCase(APattern[PatternIndex])) then
+    if (mPatternIndex <= Length(APattern)) and (UpCase(AText[mTextIndex]) = UpCase(APattern[mPatternIndex])) then
     begin
-      Inc(PatternIndex);
+      Inc(mPatternIndex);
     end;
   end;
-  Result := PatternIndex > Length(APattern);
+  Result := mPatternIndex > Length(APattern);
 end;
 
 const
-  ScoreLoose = 100;
+  cScoreLoose = 100;
 
 { TAtlasCommandPalette }
 
 class function TAtlasCommandPalette.CleanCaption(const ACaption: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  Index := 1;
-  while Index <= Length(ACaption) do
+  mIndex := 1;
+  while mIndex <= Length(ACaption) do
   begin
-    if ACaption[Index] = '&' then
+    if ACaption[mIndex] = '&' then
     begin
-      if (Index < Length(ACaption)) and (ACaption[Index + 1] = '&') then
+      if (mIndex < Length(ACaption)) and (ACaption[mIndex + 1] = '&') then
       begin
         Result := Result + '&';
-        Inc(Index);
+        Inc(mIndex);
       end;
     end
     else
     begin
-      Result := Result + ACaption[Index];
+      Result := Result + ACaption[mIndex];
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
   Result := Trim(Result);
   if Result.EndsWith('...') then
@@ -520,7 +520,7 @@ begin
   end;
   if (Result = TAtlasCompletionMatcher.NoMatch) and IsSubsequence(APattern.Replace(' ', ''), ACommand.Caption) then
   begin
-    Result := ScoreLoose;
+    Result := cScoreLoose;
   end;
 end;
 
@@ -554,32 +554,32 @@ end;
 class function TAtlasCommandPalette.Order(const ACommands: TArray<TAtlasCommand>; const APattern: string;
   AHistory: TAtlasCommandHistory; AKeepOrder: Boolean): TArray<Integer>;
 var
-  Scores, Boosts: TArray<Integer>;
-  Found: TList<Integer>;
-  Index, Score: Integer;
+  mScores, mBoosts: TArray<Integer>;
+  mFound: TList<Integer>;
+  mIndex, mScore: Integer;
 begin
-  SetLength(Scores, Length(ACommands));
-  SetLength(Boosts, Length(ACommands));
-  Found := TList<Integer>.Create;
+  SetLength(mScores, Length(ACommands));
+  SetLength(mBoosts, Length(ACommands));
+  mFound := TList<Integer>.Create;
   try
-    for Index := 0 to High(ACommands) do
+    for mIndex := 0 to High(ACommands) do
     begin
-      Score := MatchScore(APattern, ACommands[Index]);
-      if Score = TAtlasCompletionMatcher.NoMatch then
+      mScore := MatchScore(APattern, ACommands[mIndex]);
+      if mScore = TAtlasCompletionMatcher.NoMatch then
       begin
         Continue;
       end;
-      Scores[Index] := Score;
+      mScores[mIndex] := mScore;
       if AHistory <> nil then
       begin
-        Boosts[Index] := AHistory.Boost(ACommands[Index].Id);
+        mBoosts[mIndex] := AHistory.Boost(ACommands[mIndex].Id);
       end;
-      Found.Add(Index);
+      mFound.Add(mIndex);
     end;
-    Found.Sort(OrderComparer(ACommands, Scores, Boosts, APattern, AKeepOrder));
-    Result := Found.ToArray;
+    mFound.Sort(OrderComparer(ACommands, mScores, mBoosts, APattern, AKeepOrder));
+    Result := mFound.ToArray;
   finally
-    Found.Free;
+    mFound.Free;
   end;
 end;
 

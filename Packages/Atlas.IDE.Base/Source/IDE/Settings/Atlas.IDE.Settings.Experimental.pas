@@ -39,24 +39,24 @@ uses
 
 class procedure TAtlasIdeExperimental.ApplySettings;
 var
-  Active: TArray<string>;
-  Text: string;
+  mActive: TArray<string>;
+  mText: string;
 begin
-  Active := TAtlasIdeSettings.ActiveExperimental;
-  Text := TAtlasExperimental.Summary(Active, TAtlasStrings.Language = TAtlasLanguage.English);
-  if Text <> FLast then
+  mActive := TAtlasIdeSettings.ActiveExperimental;
+  mText := TAtlasExperimental.Summary(mActive, TAtlasStrings.Language = TAtlasLanguage.English);
+  if mText <> FLast then
   begin
-    if Text = '' then
+    if mText = '' then
     begin
       TAtlasGuard.Log('Experimentelle Funktionen: keine wirksam (#834)');
     end
     else
     begin
-      TAtlasGuard.Log('Experimentelle Funktionen wirksam (#834): ' + string.Join(', ', Active));
+      TAtlasGuard.Log('Experimentelle Funktionen wirksam (#834): ' + string.Join(', ', mActive));
     end;
-    FLast := Text;
+    FLast := mText;
   end;
-  if Text = '' then
+  if mText = '' then
   begin
     Stop;
     Exit;
@@ -67,7 +67,7 @@ begin
     FLineRef := FLine;
     TAtlasStatusRegistry.Default.Add(FLineRef);
   end;
-  FLine.Update(Text, TAtlasStatusState.Neutral, Text);
+  FLine.Update(mText, TAtlasStatusState.Neutral, mText);
 end;
 
 class procedure TAtlasIdeExperimental.Stop;

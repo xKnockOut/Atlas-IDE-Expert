@@ -96,11 +96,11 @@ uses
 /// <summary>Eigene Paarfarben einheitlich schreiben; ungültig = leer (Standardpalette).</summary>
 function NormalPairs(const AText: string): string;
 var
-  Pairs: TAtlasPairColors;
+  mPairs: TAtlasPairColors;
 begin
-  if TAtlasColors.ParsePairs(AText, Pairs) then
+  if TAtlasColors.ParsePairs(AText, mPairs) then
   begin
-    Result := TAtlasColors.PairsText(Pairs);
+    Result := TAtlasColors.PairsText(mPairs);
   end
   else
   begin

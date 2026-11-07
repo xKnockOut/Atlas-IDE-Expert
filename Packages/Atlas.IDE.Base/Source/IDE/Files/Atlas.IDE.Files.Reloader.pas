@@ -113,36 +113,36 @@ end;
 
 class function TAtlasFileReloader.DiskStamp(const AFileName: string; out AStamp: Int64): Boolean;
 var
-  Data: TWin32FileAttributeData;
+  mData: TWin32FileAttributeData;
 begin
   AStamp := 0;
-  Result := GetFileAttributesEx(PChar(AFileName), GetFileExInfoStandard, @Data);
+  Result := GetFileAttributesEx(PChar(AFileName), GetFileExInfoStandard, @mData);
   if Result then
   begin
-    AStamp := Int64(Data.ftLastWriteTime.dwHighDateTime) shl 32 or Data.ftLastWriteTime.dwLowDateTime;
+    AStamp := Int64(mData.ftLastWriteTime.dwHighDateTime) shl 32 or mData.ftLastWriteTime.dwLowDateTime;
   end;
 end;
 
 class function TAtlasFileReloader.SourceEditorOf(const AModule: IOTAModule): IOTASourceEditor;
 var
-  Index: Integer;
-  Editor: IOTAEditor;
-  First: IOTASourceEditor;
+  mIndex: Integer;
+  mEditor: IOTAEditor;
+  mFirst: IOTASourceEditor;
 begin
   Result := nil;
-  First := nil;
-  for Index := 0 to AModule.ModuleFileCount - 1 do
+  mFirst := nil;
+  for mIndex := 0 to AModule.ModuleFileCount - 1 do
   begin
-    Editor := AModule.ModuleFileEditors[Index];
-    if Supports(Editor, IOTASourceEditor, Result) then
+    mEditor := AModule.ModuleFileEditors[mIndex];
+    if Supports(mEditor, IOTASourceEditor, Result) then
     begin
-      if SameText(Editor.FileName, AModule.FileName) then
+      if SameText(mEditor.FileName, AModule.FileName) then
       begin
         Exit;
       end;
-      if First = nil then
+      if mFirst = nil then
       begin
-        First := Result;
+        mFirst := Result;
       end;
     end;
     Result := nil;
@@ -150,57 +150,57 @@ begin
   // Projekte (.dproj): ihr Quelltext ist die .dpr bzw. .dpk.
   if Supports(AModule, IOTAProject) then
   begin
-    Result := First;
+    Result := mFirst;
   end;
 end;
 
 class function TAtlasFileReloader.FindModule(const AFileName: string): IOTAModule;
 var
-  Services: IOTAModuleServices;
-  Index: Integer;
-  Editor: IOTASourceEditor;
+  mServices: IOTAModuleServices;
+  mIndex: Integer;
+  mEditor: IOTASourceEditor;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
   begin
     Exit;
   end;
   // Über den Quelltexteditor: Die .dpr gehört zum Projektmodul (.dproj).
-  for Index := 0 to Services.ModuleCount - 1 do
+  for mIndex := 0 to mServices.ModuleCount - 1 do
   begin
-    Editor := SourceEditorOf(Services.Modules[Index]);
-    if (Editor <> nil) and SameText(Editor.FileName, AFileName) then
+    mEditor := SourceEditorOf(mServices.Modules[mIndex]);
+    if (mEditor <> nil) and SameText(mEditor.FileName, AFileName) then
     begin
-      Exit(Services.Modules[Index]);
+      Exit(mServices.Modules[mIndex]);
     end;
   end;
 end;
 
 function TAtlasFileReloader.OpenFiles: TArray<TAtlasObservedFile>;
 var
-  Services: IOTAModuleServices;
-  Index: Integer;
-  Module: IOTAModule;
-  Editor: IOTASourceEditor;
-  Stamp: Int64;
-  Exists: Boolean;
+  mServices: IOTAModuleServices;
+  mIndex: Integer;
+  mModule: IOTAModule;
+  mEditor: IOTASourceEditor;
+  mStamp: Int64;
+  mExists: Boolean;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
   begin
     Exit;
   end;
-  for Index := 0 to Services.ModuleCount - 1 do
+  for mIndex := 0 to mServices.ModuleCount - 1 do
   begin
-    Module := Services.Modules[Index];
+    mModule := mServices.Modules[mIndex];
     // Nur Quelltexte im Editor; Projekte und Gruppen verwaltet die IDE selbst.
-    Editor := SourceEditorOf(Module);
-    if Editor = nil then
+    mEditor := SourceEditorOf(mModule);
+    if mEditor = nil then
     begin
       Continue;
     end;
-    Exists := DiskStamp(Editor.FileName, Stamp);
-    Result := Result + [TAtlasObservedFile.Create(Editor.FileName, Exists, Stamp, Editor.Modified)];
+    mExists := DiskStamp(mEditor.FileName, mStamp);
+    Result := Result + [TAtlasObservedFile.Create(mEditor.FileName, mExists, mStamp, mEditor.Modified)];
   end;
 end;
 
@@ -231,21 +231,21 @@ end;
 
 class function TAtlasFileReloader.SameAsDisk(const AEditor: IOTASourceEditor; const AFileName: string): Boolean;
 var
-  Buffer: IOTAEditBuffer;
-  Current, Disk: string;
+  mBuffer: IOTAEditBuffer;
+  mCurrent, mDisk: string;
 begin
   Result := False;
-  if not Supports(AEditor, IOTAEditBuffer, Buffer) then
+  if not Supports(AEditor, IOTAEditBuffer, mBuffer) then
   begin
     Exit;
   end;
-  Current := TAtlasEditorBuffer.Text(Buffer).Replace(#13, '');
+  mCurrent := TAtlasEditorBuffer.Text(mBuffer).Replace(#13, '');
   try
-    Disk := DiskText(AFileName).Replace(#13, '');
+    mDisk := DiskText(AFileName).Replace(#13, '');
   except
     Exit;
   end;
-  Result := Current = Disk;
+  Result := mCurrent = mDisk;
 end;
 
 type
@@ -291,23 +291,23 @@ end;
 
 function TAtlasFileReloader.Reload(const AFileName: string): Boolean;
 var
-  Module: IOTAModule;
-  Editor: IOTASourceEditor;
-  States: TArray<TViewState>;
+  mModule: IOTAModule;
+  mEditor: IOTASourceEditor;
+  mStates: TArray<TViewState>;
 begin
   Result := False;
-  Module := FindModule(AFileName);
-  if Module = nil then
+  mModule := FindModule(AFileName);
+  if mModule = nil then
   begin
     Exit;
   end;
-  Editor := SourceEditorOf(Module);
-  if (Editor = nil) or Editor.Modified then
+  mEditor := SourceEditorOf(mModule);
+  if (mEditor = nil) or mEditor.Modified then
   begin
     Exit;
   end;
   // Nur der Zeitstempel (eigenes Speichern, Touch): nichts neu laden, Rückgängig bleibt.
-  if SameAsDisk(Editor, AFileName) then
+  if SameAsDisk(mEditor, AFileName) then
   begin
     if Assigned(FOnSaved) then
     begin
@@ -319,82 +319,82 @@ begin
   begin
     Exit;
   end;
-  States := SaveViews(Editor);
-  Module.Refresh(True);
+  mStates := SaveViews(mEditor);
+  mModule.Refresh(True);
   // Neu geladen ohne Editorereignis: gemeinsamen Pufferstand verwerfen (P-04).
   TAtlasEditorSnapshots.Invalidate(AFileName);
-  RestoreViews(SourceEditorOf(Module), States);
+  RestoreViews(SourceEditorOf(mModule), mStates);
   Result := True;
 end;
 
 class procedure TAtlasFileReloader.ShowDiff(const AFileName: string; AShow: Boolean);
 const
-  MaxDiffLines = 40;
+  cMaxDiffLines = 40;
 var
-  Module: IOTAModule;
-  Editor: IOTASourceEditor;
-  Buffer: IOTAEditBuffer;
-  Disk: string;
-  Lines: TArray<string>;
-  Index: Integer;
-  Messages: IOTAMessageServices;
+  mModule: IOTAModule;
+  mEditor: IOTASourceEditor;
+  mBuffer: IOTAEditBuffer;
+  mDisk: string;
+  mLines: TArray<string>;
+  mIndex: Integer;
+  mMessages: IOTAMessageServices;
 begin
   // Die Rückfrage der IDE lässt sich nicht unterdrücken (sie hat „Alle Ja/Alle Nein“); der
   // Unterschied steht im Meldungsfenster, damit man nachsehen kann.
-  Module := FindModule(AFileName);
-  Editor := nil;
-  if Module <> nil then
+  mModule := FindModule(AFileName);
+  mEditor := nil;
+  if mModule <> nil then
   begin
-    Editor := SourceEditorOf(Module);
+    mEditor := SourceEditorOf(mModule);
   end;
-  if not Supports(Editor, IOTAEditBuffer, Buffer) then
+  if not Supports(mEditor, IOTAEditBuffer, mBuffer) then
   begin
     Exit;
   end;
   try
-    Disk := DiskText(AFileName);
+    mDisk := DiskText(AFileName);
   except
     on Exception do
       Exit;
   end;
-  Lines := TAtlasTextDiff.Lines(TAtlasEditorBuffer.Text(Buffer), Disk);
-  if Length(Lines) = 0 then
+  mLines := TAtlasTextDiff.Lines(TAtlasEditorBuffer.Text(mBuffer), mDisk);
+  if Length(mLines) = 0 then
   begin
     Exit;
   end;
   AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDiffTitle, [ExtractFileName(AFileName)]));
-  for Index := 0 to High(Lines) do
+  for mIndex := 0 to High(mLines) do
   begin
-    if Index < MaxDiffLines then
+    if mIndex < cMaxDiffLines then
     begin
-      AddMessage('    ' + Lines[Index]);
+      AddMessage('    ' + mLines[mIndex]);
     end;
   end;
-  if Length(Lines) > MaxDiffLines then
+  if Length(mLines) > cMaxDiffLines then
   begin
     AddMessage('    …');
   end;
-  if AShow and Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if AShow and Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
-    Messages.ShowMessageView(Messages.GetGroup('Atlas'));
+    mMessages.ShowMessageView(mMessages.GetGroup('Atlas'));
   end;
 end;
 
 class procedure TAtlasFileReloader.AddMessage(const AText: string);
 var
-  Messages: IOTAMessageServices;
-  Group: IOTAMessageGroup;
+  mMessages: IOTAMessageServices;
+  mGroup: IOTAMessageGroup;
 begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     Exit;
   end;
-  Group := Messages.GetGroup('Atlas');
-  if Group = nil then
+  mGroup := mMessages.GetGroup('Atlas');
+  if mGroup = nil then
   begin
-    Group := Messages.AddMessageGroup('Atlas');
+    mGroup := mMessages.AddMessageGroup('Atlas');
   end;
-  Messages.AddTitleMessage(AText, Group);
+  mMessages.AddTitleMessage(AText, mGroup);
 end;
 
 class function TAtlasFileReloader.CompareAction(const AFileName: string): TAtlasNotificationAction;
@@ -463,45 +463,45 @@ end;
 
 procedure TAtlasFileReloader.Process(const ADecisions: TArray<TAtlasReloadDecision>);
 var
-  Decision: TAtlasReloadDecision;
-  Reloaded: TArray<string>;
-  Activity: IInterface;
-  Center: IAtlasNotificationCenter;
-  Active: Boolean;
+  mDecision: TAtlasReloadDecision;
+  mReloaded: TArray<string>;
+  mActivity: IInterface;
+  mCenter: IAtlasNotificationCenter;
+  mActive: Boolean;
 begin
-  Activity := TAtlasActivity.Scope('Dateien neu laden');
-  Center := TAtlasNotificationCenter.Default;
-  Reloaded := nil;
-  Active := TAtlasIdeSettings.Current.ReloadExternal;
-  for Decision in ADecisions do
+  mActivity := TAtlasActivity.Scope('Dateien neu laden');
+  mCenter := TAtlasNotificationCenter.Default;
+  mReloaded := nil;
+  mActive := TAtlasIdeSettings.Current.ReloadExternal;
+  for mDecision in ADecisions do
   begin
-    if Assigned(FReport) and Active then
+    if Assigned(FReport) and mActive then
     begin
-      FReport(Format('Extern geändert: %s (%s)', [Decision.FileName,
-        TAtlasExternalChanges.ActionText(Decision.Action)]));
+      FReport(Format('Extern geändert: %s (%s)', [mDecision.FileName,
+        TAtlasExternalChanges.ActionText(mDecision.Action)]));
     end;
   end;
-  for Decision in ADecisions do
+  for mDecision in ADecisions do
   begin
-    if Decision.Action = TAtlasReloadAction.Reload then
+    if mDecision.Action = TAtlasReloadAction.Reload then
     begin
-      if Reload(Decision.FileName) then
+      if Reload(mDecision.FileName) then
       begin
-        Reloaded := Reloaded + [Decision.FileName];
+        mReloaded := mReloaded + [mDecision.FileName];
       end;
     end
-    else if Active and (Decision.Action = TAtlasReloadAction.KeepModified) then
+    else if mActive and (mDecision.Action = TAtlasReloadAction.KeepModified) then
     begin
-      NotifyKept(Center, Decision.FileName);
+      NotifyKept(mCenter, mDecision.FileName);
     end
-    else if Active and (Decision.Action = TAtlasReloadAction.Deleted) then
+    else if mActive and (mDecision.Action = TAtlasReloadAction.Deleted) then
     begin
-      NotifyDeleted(Center, Decision.FileName);
+      NotifyDeleted(mCenter, mDecision.FileName);
     end;
   end;
-  if Length(Reloaded) > 0 then
+  if Length(mReloaded) > 0 then
   begin
-    NotifyReloaded(Center, Reloaded);
+    NotifyReloaded(mCenter, mReloaded);
   end;
 end;
 

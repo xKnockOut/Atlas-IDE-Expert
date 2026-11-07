@@ -186,23 +186,23 @@ end;
 
 function TScanner.ReadKey(var APos: Integer): string;
 var
-  Start: Integer;
-  Value: TJSONValue;
+  mStart: Integer;
+  mValue: TJSONValue;
 begin
-  Start := APos;
+  mStart := APos;
   SkipString(APos);
-  Value := TJSONObject.ParseJSONValue(Copy(Text, Start, APos - Start));
+  mValue := TJSONObject.ParseJSONValue(Copy(Text, mStart, APos - mStart));
   try
-    if Value is TJSONString then
+    if mValue is TJSONString then
     begin
-      Result := TJSONString(Value).Value;
+      Result := TJSONString(mValue).Value;
     end
     else
     begin
-      Result := Copy(Text, Start + 1, APos - Start - 2);
+      Result := Copy(Text, mStart + 1, APos - mStart - 2);
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -272,19 +272,19 @@ end;
 
 function TScanner.LineIndent(APos: Integer): string;
 var
-  Start, Stop: Integer;
+  mStart, mStop: Integer;
 begin
-  Start := APos;
-  while (Start > 1) and not CharInSet(Text[Start - 1], [#10, #13]) do
+  mStart := APos;
+  while (mStart > 1) and not CharInSet(Text[mStart - 1], [#10, #13]) do
   begin
-    Dec(Start);
+    Dec(mStart);
   end;
-  Stop := Start;
-  while (Stop <= Length(Text)) and CharInSet(Text[Stop], [' ', #9]) do
+  mStop := mStart;
+  while (mStop <= Length(Text)) and CharInSet(Text[mStop], [' ', #9]) do
   begin
-    Inc(Stop);
+    Inc(mStop);
   end;
-  Result := Copy(Text, Start, Stop - Start);
+  Result := Copy(Text, mStart, mStop - mStart);
 end;
 
 function TScanner.LineBreak: string;
@@ -479,14 +479,14 @@ end;
 
 class function TAtlasJsonText.Quote(const AValue: string): string;
 var
-  Value: TJSONString;
+  mValue: TJSONString;
 begin
-  Value := TJSONString.Create(AValue);
+  mValue := TJSONString.Create(AValue);
   try
     // Ohne Option: Umlaute bleiben lesbar (die Dateien sind UTF-8); ToJSON allein schreibt \u-Folgen.
-    Result := Value.ToJSON([]);
+    Result := mValue.ToJSON([]);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -497,44 +497,44 @@ end;
 
 class function TAtlasJsonText.Parse(const AText: string): TJSONObject;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := nil;
   if Trim(AText) = '' then
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(StripComments(AText));
-  if Value is TJSONObject then
+  mValue := TJSONObject.ParseJSONValue(StripComments(AText));
+  if mValue is TJSONObject then
   begin
-    Result := TJSONObject(Value);
+    Result := TJSONObject(mValue);
   end
   else
   begin
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TAtlasJsonText.ValueAt(ARoot: TJSONObject; const APath: string): string;
 var
-  Current: TJSONValue;
-  Segment: string;
+  mCurrent: TJSONValue;
+  mSegment: string;
 begin
   Result := '';
-  Current := ARoot;
-  for Segment in Segments(APath) do
+  mCurrent := ARoot;
+  for mSegment in Segments(APath) do
   begin
-    if not (Current is TJSONObject) then
+    if not (mCurrent is TJSONObject) then
     begin
       Exit;
     end;
-    Current := TJSONObject(Current).GetValue(Segment);
-    if Current = nil then
+    mCurrent := TJSONObject(mCurrent).GetValue(mSegment);
+    if mCurrent = nil then
     begin
       Exit;
     end;
   end;
-  Result := Current.ToJSON;
+  Result := mCurrent.ToJSON;
 end;
 
 class function TAtlasJsonText.SetValue(const AText, APath, AJson: string): string;
@@ -555,18 +555,18 @@ end;
 class function TAtlasJsonText.ApplyChanges(const AText: string;
   const AChanges: TArray<TPair<string, string>>): string;
 var
-  Change: TPair<string, string>;
+  mChange: TPair<string, string>;
 begin
   Result := AText;
-  for Change in AChanges do
+  for mChange in AChanges do
   begin
-    if Change.Value = '' then
+    if mChange.Value = '' then
     begin
-      Result := Remove(Result, Change.Key);
+      Result := Remove(Result, mChange.Key);
     end
     else
     begin
-      Result := SetValue(Result, Change.Key, Change.Value);
+      Result := SetValue(Result, mChange.Key, mChange.Value);
     end;
   end;
 end;

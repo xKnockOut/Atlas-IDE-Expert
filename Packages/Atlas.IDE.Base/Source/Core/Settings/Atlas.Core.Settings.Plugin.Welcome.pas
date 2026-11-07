@@ -215,34 +215,34 @@ uses
 /// Reihenfolge, jeder einmal; '' = keiner.</summary>
 function NormalizedQuickActionItems(const AText: string): string;
 var
-  Part: string;
-  Index: Integer;
-  Wanted: array[Low(QuickActionNames)..High(QuickActionNames)] of Boolean;
+  mPart: string;
+  mIndex: Integer;
+  mWanted: array[Low(QuickActionNames)..High(QuickActionNames)] of Boolean;
 begin
-  for Index := Low(Wanted) to High(Wanted) do
+  for mIndex := Low(mWanted) to High(mWanted) do
   begin
-    Wanted[Index] := False;
+    mWanted[mIndex] := False;
   end;
-  for Part in AText.Split([',', ';', ' ']) do
+  for mPart in AText.Split([',', ';', ' ']) do
   begin
-    for Index := Low(QuickActionNames) to High(QuickActionNames) do
+    for mIndex := Low(QuickActionNames) to High(QuickActionNames) do
     begin
-      if SameText(Trim(Part), QuickActionNames[Index]) then
+      if SameText(Trim(mPart), QuickActionNames[mIndex]) then
       begin
-        Wanted[Index] := True;
+        mWanted[mIndex] := True;
       end;
     end;
   end;
   Result := '';
-  for Index := Low(QuickActionNames) to High(QuickActionNames) do
+  for mIndex := Low(QuickActionNames) to High(QuickActionNames) do
   begin
-    if Wanted[Index] then
+    if mWanted[mIndex] then
     begin
       if Result <> '' then
       begin
         Result := Result + ',';
       end;
-      Result := Result + QuickActionNames[Index];
+      Result := Result + QuickActionNames[mIndex];
     end;
   end;
 end;
@@ -260,13 +260,13 @@ end;
 /// <summary>Bekannter CI-Anbieter in Kleinbuchstaben; sonst die Vorgabe.</summary>
 function NormalizedCiProvider(const AText: string): string;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in CiProviders do
+  for mName in CiProviders do
   begin
-    if SameText(Trim(AText), Name) then
+    if SameText(Trim(AText), mName) then
     begin
-      Exit(Name);
+      Exit(mName);
     end;
   end;
   Result := DefaultCiProvider;
@@ -276,36 +276,36 @@ end;
 /// Reihenfolge, jede einmal.</summary>
 function NormalizedTrendSeries(const AText: string): string;
 var
-  Parts: TArray<string>;
-  Part: string;
-  Index: Integer;
-  Wanted: array[0..4] of Boolean;
+  mParts: TArray<string>;
+  mPart: string;
+  mIndex: Integer;
+  mWanted: array[0..4] of Boolean;
 begin
-  for Index := Low(Wanted) to High(Wanted) do
+  for mIndex := Low(mWanted) to High(mWanted) do
   begin
-    Wanted[Index] := False;
+    mWanted[mIndex] := False;
   end;
-  Parts := AText.Split([',', ';', ' ']);
-  for Part in Parts do
+  mParts := AText.Split([',', ';', ' ']);
+  for mPart in mParts do
   begin
-    for Index := Low(TrendSeriesNames) to High(TrendSeriesNames) do
+    for mIndex := Low(TrendSeriesNames) to High(TrendSeriesNames) do
     begin
-      if SameText(Trim(Part), TrendSeriesNames[Index]) then
+      if SameText(Trim(mPart), TrendSeriesNames[mIndex]) then
       begin
-        Wanted[Index] := True;
+        mWanted[mIndex] := True;
       end;
     end;
   end;
   Result := '';
-  for Index := Low(TrendSeriesNames) to High(TrendSeriesNames) do
+  for mIndex := Low(TrendSeriesNames) to High(TrendSeriesNames) do
   begin
-    if Wanted[Index] then
+    if mWanted[mIndex] then
     begin
       if Result <> '' then
       begin
         Result := Result + ',';
       end;
-      Result := Result + TrendSeriesNames[Index];
+      Result := Result + TrendSeriesNames[mIndex];
     end;
   end;
 end;
@@ -313,7 +313,7 @@ end;
 /// <summary>http:// oder https:// mit etwas danach, ohne Leer- und Steuerzeichen (#766).</summary>
 function IsWebAddress(const AValue: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := (StartsText('https://', AValue) and (Length(AValue) > 8)) or
     (StartsText('http://', AValue) and (Length(AValue) > 7));
@@ -321,9 +321,9 @@ begin
   begin
     Exit;
   end;
-  for Index := 1 to Length(AValue) do
+  for mIndex := 1 to Length(AValue) do
   begin
-    if Ord(AValue[Index]) <= 32 then
+    if Ord(AValue[mIndex]) <= 32 then
     begin
       Exit(False);
     end;

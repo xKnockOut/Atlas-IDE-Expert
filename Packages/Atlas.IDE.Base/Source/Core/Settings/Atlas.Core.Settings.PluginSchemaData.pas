@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Chunks: array[0..334] of string = (
+  cChunks: array[0..334] of string = (
     '{' + #10 + '  "$schema": "http://json-schema.org/draft-07/schema#",' + #10 + '  "title": "Atlas-Plugin-Einstellungen",' + #10,
     '  "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDAT' +
       'A%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht ' +
@@ -365,7 +365,7 @@ var
   mChunk: string;
 begin
   Result := '';
-  for mChunk in Chunks do
+  for mChunk in cChunks do
   begin
     Result := Result + mChunk;
   end;

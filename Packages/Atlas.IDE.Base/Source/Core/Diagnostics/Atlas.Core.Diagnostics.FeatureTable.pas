@@ -113,35 +113,35 @@ end;
 procedure TAtlasFeatureTable.AddWanted(const AName: string; const AWanted: TAtlasFeatureWanted;
   const AIsActive: TFunc<Boolean>; const AStart, AStop: TProc);
 var
-  Slot: TSlot;
+  mSlot: TSlot;
 begin
-  Slot.Name := AName;
-  Slot.Wanted := AWanted;
-  Slot.IsActive := AIsActive;
-  Slot.Start := AStart;
-  Slot.Stop := AStop;
-  Slot.Module := '';
-  FSlots.Add(Slot);
+  mSlot.Name := AName;
+  mSlot.Wanted := AWanted;
+  mSlot.IsActive := AIsActive;
+  mSlot.Start := AStart;
+  mSlot.Stop := AStop;
+  mSlot.Module := '';
+  FSlots.Add(mSlot);
 end;
 
 procedure TAtlasFeatureTable.StartWanted(ALevel: TAtlasSafeLevel);
 var
-  Index: Integer;
-  Slot: TSlot;
+  mIndex: Integer;
+  mSlot: TSlot;
 begin
   // Über den Index: Ein Start darf die Tabelle nicht ändern, liest aber den Stand der früheren.
-  for Index := 0 to FSlots.Count - 1 do
+  for mIndex := 0 to FSlots.Count - 1 do
   begin
-    Slot := FSlots[Index];
-    if SlotModuleOn(Slot) and not Slot.IsActive() and Slot.Wanted(ALevel) then
+    mSlot := FSlots[mIndex];
+    if SlotModuleOn(mSlot) and not mSlot.IsActive() and mSlot.Wanted(ALevel) then
     begin
       if FTimes <> nil then
       begin
-        FTimes.Measure(Slot.Name, Slot.Start);
+        FTimes.Measure(mSlot.Name, mSlot.Start);
       end
       else
       begin
-        Slot.Start();
+        mSlot.Start();
       end;
     end;
   end;
@@ -149,25 +149,25 @@ end;
 
 function TAtlasFeatureTable.StopAll: TArray<string>;
 var
-  Index: Integer;
-  Slot: TSlot;
-  Teardown: TAtlasTeardown;
+  mIndex: Integer;
+  mSlot: TSlot;
+  mTeardown: TAtlasTeardown;
 begin
-  Teardown := TAtlasTeardown.Create;
-  for Index := FSlots.Count - 1 downto 0 do
+  mTeardown := TAtlasTeardown.Create;
+  for mIndex := FSlots.Count - 1 downto 0 do
   begin
-    Slot := FSlots[Index];
+    mSlot := FSlots[mIndex];
     // Auch IsActive gehört zum Schritt: Es fragt oft das Teil selbst ab.
-    Teardown.Step(Slot.Name,
+    mTeardown.Step(mSlot.Name,
       procedure
       begin
-        if Slot.IsActive() then
+        if mSlot.IsActive() then
         begin
-          Slot.Stop();
+          mSlot.Stop();
         end;
       end);
   end;
-  Result := Teardown.Failures;
+  Result := mTeardown.Failures;
 end;
 
 function TAtlasFeatureTable.SlotModuleOn(const ASlot: TSlot): Boolean;
@@ -273,13 +273,13 @@ end;
 
 function TAtlasFeatureTable.Names: TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
   SetLength(Result, FSlots.Count);
-  for Index := 0 to FSlots.Count - 1 do
+  for mIndex := 0 to FSlots.Count - 1 do
   begin
-    Result[Index] := FSlots[Index].Name;
+    Result[mIndex] := FSlots[mIndex].Name;
   end;
 end;
 

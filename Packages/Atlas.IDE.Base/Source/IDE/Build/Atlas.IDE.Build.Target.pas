@@ -95,25 +95,25 @@ end;
 
 procedure TAtlasIdeBuildTarget.TRequest.Execute;
 var
-  Arguments: TJSONArray;
-  Answer: TJSONValue;
+  mArguments: TJSONArray;
+  mAnswer: TJSONValue;
 begin
-  Arguments := FArguments;
+  mArguments := FArguments;
   // ExecuteCommand übernimmt die Argumente.
   FArguments := nil;
-  Answer := FSession.ExecuteCommand(SelectBuildCommand, Arguments, RequestTimeoutMs);
+  mAnswer := FSession.ExecuteCommand(SelectBuildCommand, mArguments, RequestTimeoutMs);
   if Terminated then
   begin
-    Answer.Free;
+    mAnswer.Free;
     Exit;
   end;
   Queue(
     procedure
     begin
       try
-        FDone(Answer);
+        FDone(mAnswer);
       finally
-        Answer.Free;
+        mAnswer.Free;
       end;
     end);
 end;
@@ -138,37 +138,37 @@ end;
 
 class function TAtlasIdeBuildTarget.Read(out ATarget: TAtlasBuildTarget): Boolean;
 var
-  Modules: IOTAModuleServices;
-  Project: IOTAProject;
-  Configurations: IOTAProjectOptionsConfigurations;
-  Config, Platform: IOTABuildConfiguration;
+  mModules: IOTAModuleServices;
+  mProject: IOTAProject;
+  mConfigurations: IOTAProjectOptionsConfigurations;
+  mConfig, mPlatform: IOTABuildConfiguration;
 begin
   ATarget := Default(TAtlasBuildTarget);
   Result := False;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
-  Project := Modules.GetActiveProject;
-  if (Project = nil) or not SameText(ExtractFileExt(Project.FileName), '.dproj') then
+  mProject := mModules.GetActiveProject;
+  if (mProject = nil) or not SameText(ExtractFileExt(mProject.FileName), '.dproj') then
   begin
     Exit;
   end;
-  ATarget.Project := Project.FileName;
-  ATarget.Config := Project.CurrentConfiguration;
-  ATarget.Platform := Project.CurrentPlatform;
-  if Supports(Project.ProjectOptions, IOTAProjectOptionsConfigurations, Configurations) then
+  ATarget.Project := mProject.FileName;
+  ATarget.Config := mProject.CurrentConfiguration;
+  ATarget.Platform := mProject.CurrentPlatform;
+  if Supports(mProject.ProjectOptions, IOTAProjectOptionsConfigurations, mConfigurations) then
   begin
-    Config := Configurations.ActiveConfiguration;
-    if Config <> nil then
+    mConfig := mConfigurations.ActiveConfiguration;
+    if mConfig <> nil then
     begin
       // Werte der Plattform enthalten die der Konfiguration (geerbt).
-      Platform := Config.PlatformConfiguration[ATarget.Platform];
-      if Platform <> nil then
+      mPlatform := mConfig.PlatformConfiguration[ATarget.Platform];
+      if mPlatform <> nil then
       begin
-        Config := Platform;
+        mConfig := mPlatform;
       end;
-      ATarget.Defines := TAtlasBuildTarget.ParseDefines(Config.GetValue('DCC_Define', True));
+      ATarget.Defines := TAtlasBuildTarget.ParseDefines(mConfig.GetValue('DCC_Define', True));
     end;
   end;
   Result := True;
@@ -176,22 +176,22 @@ end;
 
 procedure TAtlasIdeBuildTarget.FreeFinished;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := FRequests.Count - 1 downto 0 do
+  for mIndex := FRequests.Count - 1 downto 0 do
   begin
-    if FRequests[Index].Finished then
+    if FRequests[mIndex].Finished then
     begin
-      TThread.RemoveQueuedEvents(FRequests[Index]);
-      FRequests.Delete(Index);
+      TThread.RemoveQueuedEvents(FRequests[mIndex]);
+      FRequests.Delete(mIndex);
     end;
   end;
 end;
 
 procedure TAtlasIdeBuildTarget.Tick(ASession: TLspSession; ANow: Cardinal);
 var
-  Target: TAtlasBuildTarget;
-  Action: TAtlasBuildTargetAction;
+  mTarget: TAtlasBuildTarget;
+  mAction: TAtlasBuildTargetAction;
 begin
   FreeFinished;
   if ASession <> FSession then
@@ -210,23 +210,23 @@ begin
     Exit;
   end;
   FRetryPending := False;
-  if not Read(Target) then
+  if not Read(mTarget) then
   begin
     Exit;
   end;
-  Action := FTracker.Decide(Target);
-  if Action <> TAtlasBuildTargetAction.None then
+  mAction := FTracker.Decide(mTarget);
+  if mAction <> TAtlasBuildTargetAction.None then
   begin
-    Send(ASession, Target, Action);
+    Send(ASession, mTarget, mAction);
   end;
 end;
 
 procedure TAtlasIdeBuildTarget.Send(ASession: TLspSession; const ATarget: TAtlasBuildTarget;
   AAction: TAtlasBuildTargetAction);
 var
-  Generation: Integer;
+  mGeneration: Integer;
 begin
-  Generation := FGeneration;
+  mGeneration := FGeneration;
   if AAction = TAtlasBuildTargetAction.Select then
   begin
     FLog(Format('Build-Auswahl an den Server: %s, %s, %d Symbole',
@@ -237,7 +237,7 @@ begin
     var
       Config, Platform: string;
     begin
-      if Generation <> FGeneration then
+      if mGeneration <> FGeneration then
       begin
         Exit;
       end;
@@ -265,22 +265,22 @@ end;
 
 procedure TAtlasIdeBuildTarget.Stop(AWait: Boolean);
 var
-  Request: TThread;
+  mRequest: TThread;
 begin
   Inc(FGeneration);
   FTracker.Reset;
-  for Request in FRequests do
+  for mRequest in FRequests do
   begin
-    Request.Terminate;
+    mRequest.Terminate;
   end;
   if not AWait then
   begin
     Exit;
   end;
-  for Request in FRequests do
+  for mRequest in FRequests do
   begin
-    Request.WaitFor;
-    TThread.RemoveQueuedEvents(Request);
+    mRequest.WaitFor;
+    TThread.RemoveQueuedEvents(mRequest);
   end;
   FRequests.Clear;
 end;

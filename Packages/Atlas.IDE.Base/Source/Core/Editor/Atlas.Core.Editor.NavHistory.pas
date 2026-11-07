@@ -225,7 +225,7 @@ end;
 
 function TAtlasNavHistory.LastEdit(const ACurrent: TAtlasNavPlace; out ATarget: TAtlasNavPlace): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := FEdits.Count > 0;
   if not Result then
@@ -235,43 +235,43 @@ begin
   if FEditCursor < 0 then
   begin
     // Erster Aufruf: die jüngste Änderung, außer der Cursor steht schon dort.
-    Index := FEdits.Count - 1;
-    if FEdits[Index].SameLine(ACurrent) and (Index > 0) then
+    mIndex := FEdits.Count - 1;
+    if FEdits[mIndex].SameLine(ACurrent) and (mIndex > 0) then
     begin
-      Dec(Index);
+      Dec(mIndex);
     end;
   end
   else
   begin
-    Index := Max(0, FEditCursor - 1);
+    mIndex := Max(0, FEditCursor - 1);
   end;
-  FEditCursor := Index;
-  ATarget := FEdits[Index];
+  FEditCursor := mIndex;
+  ATarget := FEdits[mIndex];
 end;
 
 class procedure TAtlasNavHistory.ShiftList(AList: TList<TAtlasNavPlace>; const AFileName: string;
   AAnchor, ADelta: Integer);
 var
-  Index: Integer;
-  Place: TAtlasNavPlace;
+  mIndex: Integer;
+  mPlace: TAtlasNavPlace;
 begin
-  for Index := 0 to AList.Count - 1 do
+  for mIndex := 0 to AList.Count - 1 do
   begin
-    Place := AList[Index];
-    if not SameText(Place.FileName, AFileName) or (Place.Line <= AAnchor) then
+    mPlace := AList[mIndex];
+    if not SameText(mPlace.FileName, AFileName) or (mPlace.Line <= AAnchor) then
     begin
       Continue;
     end;
-    if (ADelta < 0) and (Place.Line <= AAnchor - ADelta) then
+    if (ADelta < 0) and (mPlace.Line <= AAnchor - ADelta) then
     begin
       // In den gelöschten Zeilen: an die Stelle der Löschung.
-      Place.Line := AAnchor;
+      mPlace.Line := AAnchor;
     end
     else
     begin
-      Place.Line := Place.Line + ADelta;
+      mPlace.Line := mPlace.Line + ADelta;
     end;
-    AList[Index] := Place;
+    AList[mIndex] := mPlace;
   end;
 end;
 
@@ -288,30 +288,30 @@ end;
 
 function TAtlasNavHistory.Entries: TArray<TAtlasNavListEntry>;
 var
-  Index: Integer;
-  Entry: TAtlasNavListEntry;
+  mIndex: Integer;
+  mEntry: TAtlasNavListEntry;
 begin
   Result := nil;
-  for Index := 0 to FForward.Count - 1 do
+  for mIndex := 0 to FForward.Count - 1 do
   begin
-    Entry.Kind := TAtlasNavKind.Ahead;
-    Entry.Index := Index;
-    Entry.Place := FForward[Index];
-    Result := Result + [Entry];
+    mEntry.Kind := TAtlasNavKind.Ahead;
+    mEntry.Index := mIndex;
+    mEntry.Place := FForward[mIndex];
+    Result := Result + [mEntry];
   end;
-  for Index := FBack.Count - 1 downto 0 do
+  for mIndex := FBack.Count - 1 downto 0 do
   begin
-    Entry.Kind := TAtlasNavKind.Back;
-    Entry.Index := Index;
-    Entry.Place := FBack[Index];
-    Result := Result + [Entry];
+    mEntry.Kind := TAtlasNavKind.Back;
+    mEntry.Index := mIndex;
+    mEntry.Place := FBack[mIndex];
+    Result := Result + [mEntry];
   end;
-  for Index := FEdits.Count - 1 downto 0 do
+  for mIndex := FEdits.Count - 1 downto 0 do
   begin
-    Entry.Kind := TAtlasNavKind.Edit;
-    Entry.Index := Index;
-    Entry.Place := FEdits[Index];
-    Result := Result + [Entry];
+    mEntry.Kind := TAtlasNavKind.Edit;
+    mEntry.Index := mIndex;
+    mEntry.Place := FEdits[mIndex];
+    Result := Result + [mEntry];
   end;
 end;
 

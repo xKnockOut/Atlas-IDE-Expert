@@ -157,13 +157,13 @@ end;
 
 function TAtlasStatusRegistry.IndexOf(const AId: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to FItems.Count - 1 do
+  for mIndex := 0 to FItems.Count - 1 do
   begin
-    if SameText(FItems[Index].Id, AId) then
+    if SameText(FItems[mIndex].Id, AId) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -183,7 +183,7 @@ end;
 
 procedure TAtlasStatusRegistry.Add(const AItem: IAtlasStatusItem);
 var
-  Index, Existing: Integer;
+  mIndex, mExisting: Integer;
 begin
   if AItem = nil then
   begin
@@ -191,17 +191,17 @@ begin
   end;
   FLock.Enter;
   try
-    Existing := IndexOf(AItem.Id);
-    if Existing >= 0 then
+    mExisting := IndexOf(AItem.Id);
+    if mExisting >= 0 then
     begin
-      FItems.Delete(Existing);
+      FItems.Delete(mExisting);
     end;
-    Index := 0;
-    while (Index < FItems.Count) and not Comes(AItem, FItems[Index]) do
+    mIndex := 0;
+    while (mIndex < FItems.Count) and not Comes(AItem, FItems[mIndex]) do
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
-    FItems.Insert(Index, AItem);
+    FItems.Insert(mIndex, AItem);
   finally
     FLock.Leave;
   end;
@@ -210,16 +210,16 @@ end;
 
 procedure TAtlasStatusRegistry.Remove(const AId: string);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   FLock.Enter;
   try
-    Index := IndexOf(AId);
-    if Index < 0 then
+    mIndex := IndexOf(AId);
+    if mIndex < 0 then
     begin
       Exit;
     end;
-    FItems.Delete(Index);
+    FItems.Delete(mIndex);
   finally
     FLock.Leave;
   end;
@@ -228,14 +228,14 @@ end;
 
 function TAtlasStatusRegistry.Find(const AId: string): IAtlasStatusItem;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   FLock.Enter;
   try
-    Index := IndexOf(AId);
-    if Index >= 0 then
+    mIndex := IndexOf(AId);
+    if mIndex >= 0 then
     begin
-      Result := FItems[Index];
+      Result := FItems[mIndex];
     end
     else
     begin
@@ -263,20 +263,20 @@ end;
 
 procedure TAtlasStatusRegistry.Notify;
 var
-  Listeners: TArray<TProc>;
-  Listener: TProc;
+  mListeners: TArray<TProc>;
+  mListener: TProc;
 begin
   FLock.Enter;
   try
     Inc(FVersion);
-    Listeners := FListeners.Values.ToArray;
+    mListeners := FListeners.Values.ToArray;
   finally
     FLock.Leave;
   end;
   // Außerhalb der Sperre: Beobachter dürfen die Registry lesen.
-  for Listener in Listeners do
+  for mListener in mListeners do
     try
-      Listener();
+      mListener();
     except
       // Ein Fehler im Beobachter darf die meldende Zeile nicht stören.
       on Exception do
@@ -434,25 +434,25 @@ end;
 procedure TAtlasStatusLine.Update(const AText: string; AState: TAtlasStatusState; const ASummary, ABrief,
   ADetail: string);
 var
-  Different: Boolean;
-  Registry: Pointer;
+  mDifferent: Boolean;
+  mRegistry: Pointer;
 begin
   FLock.Enter;
   try
-    Different := (FText <> AText) or (FState <> AState) or (FSummary <> ASummary) or (FBrief <> ABrief) or
+    mDifferent := (FText <> AText) or (FState <> AState) or (FSummary <> ASummary) or (FBrief <> ABrief) or
       (FDetail <> ADetail);
     FText := AText;
     FState := AState;
     FSummary := ASummary;
     FBrief := ABrief;
     FDetail := ADetail;
-    Registry := FRegistry;
+    mRegistry := FRegistry;
   finally
     FLock.Leave;
   end;
-  if Different and (Registry <> nil) then
+  if mDifferent and (mRegistry <> nil) then
   begin
-    IAtlasStatusRegistry(Registry).Changed;
+    IAtlasStatusRegistry(mRegistry).Changed;
   end;
 end;
 
@@ -471,53 +471,53 @@ end;
 class function TAtlasStatusSummary.Visible(const AItems: TArray<IAtlasStatusItem>;
   const AHidden: TArray<string>): TArray<IAtlasStatusItem>;
 var
-  Item: IAtlasStatusItem;
-  Hidden: string;
-  Skip: Boolean;
+  mItem: IAtlasStatusItem;
+  mHidden: string;
+  mSkip: Boolean;
 begin
   Result := nil;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    Skip := False;
-    for Hidden in AHidden do
+    mSkip := False;
+    for mHidden in AHidden do
     begin
-      if SameText(Trim(Hidden), Item.Id) then
+      if SameText(Trim(mHidden), mItem.Id) then
       begin
-        Skip := True;
+        mSkip := True;
       end;
     end;
-    if not Skip then
+    if not mSkip then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
 end;
 
 class function TAtlasStatusSummary.Overall(const AItems: TArray<IAtlasStatusItem>): TAtlasStatusState;
 var
-  Item: IAtlasStatusItem;
+  mItem: IAtlasStatusItem;
 begin
   Result := TAtlasStatusState.Neutral;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if Ord(Item.State) > Ord(Result) then
+    if Ord(mItem.State) > Ord(Result) then
     begin
-      Result := Item.State;
+      Result := mItem.State;
     end;
   end;
 end;
 
 class function TAtlasStatusSummary.Leading(const AItems: TArray<IAtlasStatusItem>): IAtlasStatusItem;
 var
-  Item: IAtlasStatusItem;
+  mItem: IAtlasStatusItem;
 begin
   // AItems ist nach Reihenfolge sortiert: die erste Zeile mit dem schlechtesten Zustand.
   Result := nil;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if (Result = nil) or (Ord(Item.State) > Ord(Result.State)) then
+    if (Result = nil) or (Ord(mItem.State) > Ord(Result.State)) then
     begin
-      Result := Item;
+      Result := mItem;
     end;
   end;
 end;
@@ -531,32 +531,32 @@ end;
 class function TAtlasStatusSummary.FieldText(const AItems: TArray<IAtlasStatusItem>; AShowSummary: Boolean;
   const AAlwaysId: string): string;
 var
-  Lead, Item: IAtlasStatusItem;
+  mLead, mItem: IAtlasStatusItem;
 begin
   Result := FieldCaption;
-  Lead := nil;
+  mLead := nil;
   if AShowSummary then
   begin
-    Lead := Leading(AItems);
+    mLead := Leading(AItems);
   end;
-  if (Lead <> nil) and (Ord(Lead.State) >= Ord(TAtlasStatusState.Yellow)) and (Lead.Summary <> '') then
+  if (mLead <> nil) and (Ord(mLead.State) >= Ord(TAtlasStatusState.Yellow)) and (mLead.Summary <> '') then
   begin
-    Result := Result + Separator + Lead.Summary;
+    Result := Result + Separator + mLead.Summary;
   end
   else
   begin
-    Lead := nil;
+    mLead := nil;
   end;
   if AAlwaysId = '' then
   begin
     Exit;
   end;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if SameText(Item.Id, AAlwaysId) and (Item <> Lead) and (Ord(Item.State) >= Ord(TAtlasStatusState.Yellow)) and
-      (Item.Summary <> '') then
+    if SameText(mItem.Id, AAlwaysId) and (mItem <> mLead) and (Ord(mItem.State) >= Ord(TAtlasStatusState.Yellow)) and
+      (mItem.Summary <> '') then
     begin
-      Result := Result + Separator + Item.Summary;
+      Result := Result + Separator + mItem.Summary;
       Exit;
     end;
   end;
@@ -564,37 +564,37 @@ end;
 
 class function TAtlasStatusSummary.Tooltip(const AItems: TArray<IAtlasStatusItem>): string;
 var
-  Item: IAtlasStatusItem;
-  Lines: TArray<string>;
+  mItem: IAtlasStatusItem;
+  mLines: TArray<string>;
 begin
-  Lines := nil;
-  for Item in AItems do
+  mLines := nil;
+  for mItem in AItems do
   begin
-    if (Item.State <> TAtlasStatusState.Green) and (Item.Text <> '') then
+    if (mItem.State <> TAtlasStatusState.Green) and (mItem.Text <> '') then
     begin
-      Lines := Lines + [Item.Text];
+      mLines := mLines + [mItem.Text];
     end;
   end;
-  if Length(Lines) = 0 then
+  if Length(mLines) = 0 then
   begin
     Result := FieldCaption + ': alles in Ordnung';
   end
   else
   begin
-    Result := string.Join(sLineBreak, Lines);
+    Result := string.Join(sLineBreak, mLines);
   end;
 end;
 
 class function TAtlasStatusSummary.ParseIds(const AText: string): TArray<string>;
 var
-  Part: string;
+  mPart: string;
 begin
   Result := nil;
-  for Part in AText.Split([',', ';', ' ', #9, #13, #10]) do
+  for mPart in AText.Split([',', ';', ' ', #9, #13, #10]) do
   begin
-    if Trim(Part) <> '' then
+    if Trim(mPart) <> '' then
     begin
-      Result := Result + [Trim(Part)];
+      Result := Result + [Trim(mPart)];
     end;
   end;
 end;
@@ -606,9 +606,9 @@ end;
 
 class function TAtlasStatusSummary.StateName(AState: TAtlasStatusState): string;
 const
-  Names: array[TAtlasStatusState] of string = ('neutral', 'grün', 'gelb', 'rot');
+  cNames: array[TAtlasStatusState] of string = ('neutral', 'grün', 'gelb', 'rot');
 begin
-  Result := Names[AState];
+  Result := cNames[AState];
 end;
 
 end.

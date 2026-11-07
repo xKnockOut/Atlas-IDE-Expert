@@ -142,29 +142,29 @@ end;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    Result := Trim(TJSONString(Value).Value);
+    Result := Trim(TJSONString(mValue).Value);
   end;
 end;
 
 function NumberOf(AObject: TJSONObject; const AName: string): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := 0;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONNumber then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONNumber then
   begin
-    Result := TJSONNumber(Value).AsInt;
+    Result := TJSONNumber(mValue).AsInt;
   end
-  else if Value is TJSONString then
+  else if mValue is TJSONString then
   begin
-    Result := StrToIntDef(TJSONString(Value).Value, 0);
+    Result := StrToIntDef(TJSONString(mValue).Value, 0);
   end;
   if Result < 0 then
   begin
@@ -174,27 +174,27 @@ end;
 
 function ListOf(AObject: TJSONObject; const AName: string): TArray<string>;
 var
-  Value, Item: TJSONValue;
+  mValue, mItem: TJSONValue;
 begin
   Result := nil;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    if Trim(TJSONString(Value).Value) <> '' then
+    if Trim(TJSONString(mValue).Value) <> '' then
     begin
-      Result := [Trim(TJSONString(Value).Value)];
+      Result := [Trim(TJSONString(mValue).Value)];
     end;
     Exit;
   end;
-  if not (Value is TJSONArray) then
+  if not (mValue is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(Value) do
+  for mItem in TJSONArray(mValue) do
   begin
-    if (Item is TJSONString) and (Trim(TJSONString(Item).Value) <> '') then
+    if (mItem is TJSONString) and (Trim(TJSONString(mItem).Value) <> '') then
     begin
-      Result := Result + [Trim(TJSONString(Item).Value)];
+      Result := Result + [Trim(TJSONString(mItem).Value)];
     end;
   end;
 end;
@@ -226,8 +226,8 @@ end;
 
 class function TAtlasTipCatalog.Parse(const AJson: string): TAtlasTips;
 var
-  Root, Tips, Value: TJSONValue;
-  Tip: TAtlasTip;
+  mRoot, mTips, mValue: TJSONValue;
+  mTip: TAtlasTip;
 begin
   Result := nil;
   // Kein Objekt: gar nicht erst parsen.
@@ -236,49 +236,49 @@ begin
     Exit;
   end;
   try
-    Root := TJSONObject.ParseJSONValue(AJson);
+    mRoot := TJSONObject.ParseJSONValue(AJson);
   except
     // Kaputte Datei: keine Tipps, kein Fehler in der IDE.
     on Exception do
-      Root := nil;
+      mRoot := nil;
   end;
   try
-    if not (Root is TJSONObject) then
+    if not (mRoot is TJSONObject) then
     begin
       Exit;
     end;
-    Tips := TJSONObject(Root).GetValue('tips');
-    if not (Tips is TJSONArray) then
+    mTips := TJSONObject(mRoot).GetValue('tips');
+    if not (mTips is TJSONArray) then
     begin
       Exit;
     end;
-    for Value in TJSONArray(Tips) do
+    for mValue in TJSONArray(mTips) do
     begin
-      if not (Value is TJSONObject) then
+      if not (mValue is TJSONObject) then
       begin
         Continue;
       end;
-      Tip := TipOf(TJSONObject(Value));
-      if (Tip.Id = '') or (Tip.Title = '') or (IndexOf(Result, Tip.Id) >= 0) then
+      mTip := TipOf(TJSONObject(mValue));
+      if (mTip.Id = '') or (mTip.Title = '') or (IndexOf(Result, mTip.Id) >= 0) then
       begin
         Continue;
       end;
-      Result := Result + [Tip];
+      Result := Result + [mTip];
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasTipCatalog.IndexOf(const ATips: TAtlasTips; const AId: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ATips) do
+  for mIndex := 0 to High(ATips) do
   begin
-    if SameText(ATips[Index].Id, Trim(AId)) then
+    if SameText(ATips[mIndex].Id, Trim(AId)) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -287,18 +287,18 @@ end;
 class function TAtlasTipCatalog.FindByCommand(const ATips: TAtlasTips; const ACommand: string;
   out ATip: TAtlasTip): Boolean;
 var
-  Tip: TAtlasTip;
+  mTip: TAtlasTip;
 begin
   ATip := Default(TAtlasTip);
   if Trim(ACommand) = '' then
   begin
     Exit(False);
   end;
-  for Tip in ATips do
+  for mTip in ATips do
   begin
-    if SameText(Tip.Command, Trim(ACommand)) then
+    if SameText(mTip.Command, Trim(ACommand)) then
     begin
-      ATip := Tip;
+      ATip := mTip;
       Exit(True);
     end;
   end;
@@ -307,46 +307,46 @@ end;
 
 class function TAtlasTipCatalog.FileIn(const AFolder, ARelative: string): string;
 var
-  Relative: string;
+  mRelative: string;
 begin
   Result := '';
-  Relative := Trim(ARelative);
-  if (Trim(AFolder) = '') or (Relative = '') or (Pos('..', Relative) > 0) or (Pos(':', Relative) > 0) or
-    CharInSet(Relative[1], ['\', '/']) then
+  mRelative := Trim(ARelative);
+  if (Trim(AFolder) = '') or (mRelative = '') or (Pos('..', mRelative) > 0) or (Pos(':', mRelative) > 0) or
+    CharInSet(mRelative[1], ['\', '/']) then
   begin
     Exit;
   end;
-  Relative := StringReplace(Relative, '/', PathDelim, [rfReplaceAll]);
-  Relative := StringReplace(Relative, '\', PathDelim, [rfReplaceAll]);
-  Result := IncludeTrailingPathDelimiter(AFolder) + Relative;
+  mRelative := StringReplace(mRelative, '/', PathDelim, [rfReplaceAll]);
+  mRelative := StringReplace(mRelative, '\', PathDelim, [rfReplaceAll]);
+  Result := IncludeTrailingPathDelimiter(AFolder) + mRelative;
 end;
 
 class function TAtlasTipCatalog.HighDpiName(const AFileName: string): string;
 var
-  Extension: string;
+  mExtension: string;
 begin
   Result := '';
   if Trim(AFileName) = '' then
   begin
     Exit;
   end;
-  Extension := ExtractFileExt(AFileName);
-  Result := Copy(AFileName, 1, Length(AFileName) - Length(Extension)) + HighDpiSuffix + Extension;
+  mExtension := ExtractFileExt(AFileName);
+  Result := Copy(AFileName, 1, Length(AFileName) - Length(mExtension)) + HighDpiSuffix + mExtension;
 end;
 
 class function TAtlasTipCatalog.ImageFor(const AFileName: string; AShownWidth: Integer): string;
 var
-  Large: string;
+  mLarge: string;
 begin
   Result := AFileName;
   if (AFileName = '') or (AShownWidth <= ImageWidth) then
   begin
     Exit;
   end;
-  Large := HighDpiName(AFileName);
-  if FileExists(Large) then
+  mLarge := HighDpiName(AFileName);
+  if FileExists(mLarge) then
   begin
-    Result := Large;
+    Result := mLarge;
   end;
 end;
 

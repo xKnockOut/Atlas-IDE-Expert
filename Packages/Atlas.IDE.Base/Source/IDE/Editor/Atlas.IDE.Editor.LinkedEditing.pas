@@ -51,7 +51,7 @@ type
 
   TAtlasIdeLinkedEditing = class
   private const
-    TickMs = 100;
+    cTickMs = 100;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -110,8 +110,8 @@ type
     FHighSurrogate: Char;
     function IsBusy: Boolean;
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
-    procedure KeyDown(const Msg: TMsg; var Handled: Boolean);
-    procedure CharTyped(const Msg: TMsg; var Handled: Boolean);
+    procedure KeyDown(const AMsg: TMsg; var AHandled: Boolean);
+    procedure CharTyped(const AMsg: TMsg; var AHandled: Boolean);
     /// <summary>Hälfte eines Zeichens außerhalb der Grundebene behandeln; True, wenn ATyped eine war.</summary>
     function Surrogate(ATyped: Char; var AHandled: Boolean): Boolean;
     procedure TimerTick(Sender: TObject);
@@ -495,7 +495,7 @@ begin
   FMessages := TApplicationEvents.Create(nil);
   FMessages.OnMessage := AppMessage;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := TimerTick;
   FTimer.Enabled := True;
   FEvents := TEvents.Create;
@@ -934,11 +934,11 @@ begin
   end;
 end;
 
-procedure TAtlasIdeLinkedEditing.KeyDown(const Msg: TMsg; var Handled: Boolean);
+procedure TAtlasIdeLinkedEditing.KeyDown(const AMsg: TMsg; var AHandled: Boolean);
 var
   mKey: Word;
 begin
-  if not IsEditorWindow(Msg.hwnd) then
+  if not IsEditorWindow(AMsg.hwnd) then
   begin
     Exit;
   end;
@@ -947,7 +947,7 @@ begin
     Finish;
     Exit;
   end;
-  mKey := Word(Msg.wParam);
+  mKey := Word(AMsg.wParam);
   // Mit Strg, Alt oder Umschalt (Wort löschen, Rückgängig ...) arbeitet die IDE; Follow bzw. der Takt ziehen nach.
   if (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) or (CurrentShift <> []) then
   begin
@@ -962,18 +962,18 @@ begin
           Restore;
         end;
         Finish;
-        Handled := True;
+        AHandled := True;
       end;
     VK_RETURN:
       if FRun.Active then
       begin
         Finish;
-        Handled := True;
+        AHandled := True;
       end;
     VK_BACK:
-      Handled := Edit(TAtlasLinkedKey.Backspace, '');
+      AHandled := Edit(TAtlasLinkedKey.Backspace, '');
     VK_DELETE:
-      Handled := Edit(TAtlasLinkedKey.Delete, '');
+      AHandled := Edit(TAtlasLinkedKey.Delete, '');
   end;
 end;
 
@@ -1005,16 +1005,16 @@ begin
   end;
 end;
 
-procedure TAtlasIdeLinkedEditing.CharTyped(const Msg: TMsg; var Handled: Boolean);
+procedure TAtlasIdeLinkedEditing.CharTyped(const AMsg: TMsg; var AHandled: Boolean);
 var
   mTyped: Char;
 begin
-  if not IsEditorWindow(Msg.hwnd) or not Enabled or IsBusy then
+  if not IsEditorWindow(AMsg.hwnd) or not Enabled or IsBusy then
   begin
     Exit;
   end;
-  mTyped := Char(Msg.wParam);
-  if (mTyped < ' ') or (mTyped = #127) or Surrogate(mTyped, Handled) then
+  mTyped := Char(AMsg.wParam);
+  if (mTyped < ' ') or (mTyped = #127) or Surrogate(mTyped, AHandled) then
   begin
     Exit;
   end;
@@ -1022,7 +1022,7 @@ begin
   // Leerzeichen, Punkt, Klammer ...: Sitzung zu Ende, das Zeichen schreibt die IDE.
   if TTextChars.IsIdentChar(mTyped) then
   begin
-    Handled := Edit(TAtlasLinkedKey.Insert, mTyped);
+    AHandled := Edit(TAtlasLinkedKey.Insert, mTyped);
   end
   else
   begin

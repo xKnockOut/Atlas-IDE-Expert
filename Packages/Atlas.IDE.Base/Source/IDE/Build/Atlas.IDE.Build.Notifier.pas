@@ -67,7 +67,7 @@ uses
   Atlas.Core.Diagnostics.Guard;
 
 const
-  MessageGroup = 'Atlas';
+  cMessageGroup = 'Atlas';
 
 { TAtlasIdeCompileEvents.TIdeNotifier }
 
@@ -83,23 +83,23 @@ end;
 procedure TAtlasIdeCompileEvents.TIdeNotifier.BeforeCompile(const Project: IOTAProject; IsCodeInsight: Boolean;
   var Cancel: Boolean);
 var
-  Info: TAtlasCompileProject;
-  Reason: string;
+  mInfo: TAtlasCompileProject;
+  mReason: string;
 begin
   if (FOwner = nil) or (Project = nil) then
   begin
     Exit;
   end;
   try
-    Info := FOwner.ProjectInfo(Project);
-    if FOwner.FEvents.BeforeCompile(Info, IsCodeInsight, Reason) then
+    mInfo := FOwner.ProjectInfo(Project);
+    if FOwner.FEvents.BeforeCompile(mInfo, IsCodeInsight, mReason) then
     begin
       Cancel := True;
-      FOwner.ShowCancel(Reason);
+      FOwner.ShowCancel(mReason);
     end
     else if not IsCodeInsight then
     begin
-      FOwner.FEvents.ProjectStarted(Info);
+      FOwner.FEvents.ProjectStarted(mInfo);
     end;
   except
     // Keine Exception an die IDE (#493); der Compile läuft weiter.
@@ -143,7 +143,7 @@ end;
 procedure TAtlasIdeCompileEvents.TCompileNotifier.ProjectCompileStarted(const Project: IOTAProject;
   Mode: TOTACompileMode);
 var
-  Info: TAtlasCompileProject;
+  mInfo: TAtlasCompileProject;
 begin
   if (FOwner = nil) or (Project = nil) then
   begin
@@ -151,8 +151,8 @@ begin
   end;
   try
     FOwner.FKind := TAtlasIdeCompileEvents.KindOf(Mode);
-    Info := FOwner.ProjectInfo(Project);
-    FOwner.FEvents.ProjectStarted(Info);
+    mInfo := FOwner.ProjectInfo(Project);
+    FOwner.FEvents.ProjectStarted(mInfo);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Build, E);
@@ -209,34 +209,34 @@ end;
 
 constructor TAtlasIdeCompileEvents.Create(AEvents: TAtlasCompileEvents);
 var
-  Services: IOTAServices;
-  CompileServices: IOTACompileServices;
+  mServices: IOTAServices;
+  mCompileServices: IOTACompileServices;
 begin
   inherited Create;
   FEvents := AEvents;
   FKind := TAtlasCompileKind.Make;
   FIdeIndex := -1;
   FCompileIndex := -1;
-  if Supports(BorlandIDEServices, IOTAServices, Services) then
+  if Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
     FIde := TIdeNotifier.Create;
     FIde.FOwner := Self;
     FIdeRef := FIde;
-    FIdeIndex := Services.AddNotifier(FIdeRef);
+    FIdeIndex := mServices.AddNotifier(FIdeRef);
   end;
-  if Supports(BorlandIDEServices, IOTACompileServices, CompileServices) then
+  if Supports(BorlandIDEServices, IOTACompileServices, mCompileServices) then
   begin
     FCompile := TCompileNotifier.Create;
     FCompile.FOwner := Self;
     FCompileRef := FCompile;
-    FCompileIndex := CompileServices.AddNotifier(FCompileRef);
+    FCompileIndex := mCompileServices.AddNotifier(FCompileRef);
   end;
 end;
 
 destructor TAtlasIdeCompileEvents.Destroy;
 var
-  Services: IOTAServices;
-  CompileServices: IOTACompileServices;
+  mServices: IOTAServices;
+  mCompileServices: IOTACompileServices;
 begin
   // Erst abmelden, dann freigeben (#493); die IDE hält die Notifier evtl. noch.
   if FIde <> nil then
@@ -247,13 +247,13 @@ begin
   begin
     FCompile.FOwner := nil;
   end;
-  if (FIdeIndex >= 0) and Supports(BorlandIDEServices, IOTAServices, Services) then
+  if (FIdeIndex >= 0) and Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
-    Services.RemoveNotifier(FIdeIndex);
+    mServices.RemoveNotifier(FIdeIndex);
   end;
-  if (FCompileIndex >= 0) and Supports(BorlandIDEServices, IOTACompileServices, CompileServices) then
+  if (FCompileIndex >= 0) and Supports(BorlandIDEServices, IOTACompileServices, mCompileServices) then
   begin
-    CompileServices.RemoveNotifier(FCompileIndex);
+    mCompileServices.RemoveNotifier(FCompileIndex);
   end;
   FIdeRef := nil;
   FCompileRef := nil;
@@ -276,37 +276,37 @@ end;
 
 function TAtlasIdeCompileEvents.ProjectInfo(const AProject: IOTAProject): TAtlasCompileProject;
 var
-  Options: IOTAProjectOptions;
+  mOptions: IOTAProjectOptions;
 begin
   Result := Default(TAtlasCompileProject);
   Result.FileName := AProject.FileName;
   Result.Kind := FKind;
   Result.Configuration := AProject.CurrentConfiguration;
   Result.Platform := AProject.CurrentPlatform;
-  Options := AProject.ProjectOptions;
-  if Options <> nil then
+  mOptions := AProject.ProjectOptions;
+  if mOptions <> nil then
   begin
-    Result.OutputFile := Options.TargetName;
+    Result.OutputFile := mOptions.TargetName;
   end;
 end;
 
 procedure TAtlasIdeCompileEvents.ShowCancel(const AReason: string);
 var
-  Messages: IOTAMessageServices;
-  Group: IOTAMessageGroup;
+  mMessages: IOTAMessageServices;
+  mGroup: IOTAMessageGroup;
 begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     Exit;
   end;
   // Gruppe nicht dauerhaft halten (Hinweis in ToolsAPI); bei Bedarf neu anlegen.
-  Group := Messages.GetGroup(MessageGroup);
-  if Group = nil then
+  mGroup := mMessages.GetGroup(cMessageGroup);
+  if mGroup = nil then
   begin
-    Group := Messages.AddMessageGroup(MessageGroup);
+    mGroup := mMessages.AddMessageGroup(cMessageGroup);
   end;
-  Messages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.CompileCancelled, [AReason]), Group);
-  Messages.ShowMessageView(Group);
+  mMessages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.CompileCancelled, [AReason]), mGroup);
+  mMessages.ShowMessageView(mGroup);
 end;
 
 end.

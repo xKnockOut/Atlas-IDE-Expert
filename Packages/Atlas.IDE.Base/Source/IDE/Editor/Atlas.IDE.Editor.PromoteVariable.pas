@@ -34,22 +34,22 @@ uses
   Atlas.IDE.Editor.NamedRefactoring;
 
 const
-  ApplyCommand = 'atlas.server.promoteVariable';
+  cApplyCommand = 'atlas.server.promoteVariable';
 
 class procedure TAtlasIdePromoteVariable.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  Texts: TAtlasNamedRefactoringTexts;
+  mTexts: TAtlasNamedRefactoringTexts;
 begin
-  Texts.Title := TAtlasTextId.PromoteVariableTitle;
-  Texts.Prompt := TAtlasTextId.PromoteVariablePrompt;
-  Texts.Failed := TAtlasTextId.PromoteVariableFailed;
-  Texts.Nothing := TAtlasTextId.PromoteVariableNothing;
-  Texts.PreviewHint := TAtlasTextId.PromoteVariablePreviewHint;
-  Texts.Apply := TAtlasTextId.PromoteVariableApply;
-  Texts.Done := TAtlasTextId.PromoteVariableDone;
-  Texts.Warning := TAtlasTextId.PromoteVariableWarning;
-  TAtlasIdeNamedRefactoring.Execute(ASession, AArgumentsJson, ApplyCommand, Texts, APolicy, AMessage);
+  mTexts.Title := TAtlasTextId.PromoteVariableTitle;
+  mTexts.Prompt := TAtlasTextId.PromoteVariablePrompt;
+  mTexts.Failed := TAtlasTextId.PromoteVariableFailed;
+  mTexts.Nothing := TAtlasTextId.PromoteVariableNothing;
+  mTexts.PreviewHint := TAtlasTextId.PromoteVariablePreviewHint;
+  mTexts.Apply := TAtlasTextId.PromoteVariableApply;
+  mTexts.Done := TAtlasTextId.PromoteVariableDone;
+  mTexts.Warning := TAtlasTextId.PromoteVariableWarning;
+  TAtlasIdeNamedRefactoring.Execute(ASession, AArgumentsJson, cApplyCommand, mTexts, APolicy, AMessage);
 end;
 
 end.

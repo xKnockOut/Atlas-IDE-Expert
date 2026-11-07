@@ -94,7 +94,7 @@ end;
 
 procedure TTimingDock.FrameCreated(AFrame: TCustomFrame);
 var
-  Frame: TAtlasDiagnosticsFrame;
+  mFrame: TAtlasDiagnosticsFrame;
 begin
   if not (AFrame is TAtlasDiagnosticsFrame) then
   begin
@@ -104,12 +104,12 @@ begin
   begin
     Host.FrameCreated(AFrame);
   end;
-  Frame := TAtlasDiagnosticsFrame(AFrame);
+  mFrame := TAtlasDiagnosticsFrame(AFrame);
   TAtlasIdeTimingWindow.UpdateIcon;
-  Theme(Frame);
+  Theme(mFrame);
   if Assigned(TAtlasIdeTimingWindow.OnFrame) then
   begin
-    TAtlasIdeTimingWindow.OnFrame(Frame);
+    TAtlasIdeTimingWindow.OnFrame(mFrame);
   end;
 end;
 
@@ -172,12 +172,12 @@ end;
 
 class function TAtlasIdeTimingWindow.Show: TAtlasDiagnosticsFrame;
 var
-  Created: Boolean;
+  mCreated: Boolean;
 begin
   // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
   EnsureHost;
-  Host.Show(Created);
-  if Created then
+  Host.Show(mCreated);
+  if mCreated then
   begin
     UpdateIcon;
   end;
@@ -209,29 +209,29 @@ end;
 
 class procedure TAtlasIdeTimingWindow.UpdateIcon;
 var
-  Icon: TIcon;
+  mIcon: TIcon;
 begin
   if (Host = nil) or (Host.Form = nil) then
   begin
     Exit;
   end;
-  Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
+  mIcon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
-    TForm(Host.Form).Icon.Assign(Icon);
+    TForm(Host.Form).Icon.Assign(mIcon);
   finally
-    Icon.Free;
+    mIcon.Free;
   end;
 end;
 
 class procedure TAtlasIdeTimingWindow.ApplyTheme;
 var
-  Frame: TAtlasDiagnosticsFrame;
+  mFrame: TAtlasDiagnosticsFrame;
 begin
-  Frame := ExistingFrame;
-  if Frame <> nil then
+  mFrame := ExistingFrame;
+  if mFrame <> nil then
   begin
-    Theme(Frame);
+    Theme(mFrame);
   end;
   UpdateIcon;
 end;

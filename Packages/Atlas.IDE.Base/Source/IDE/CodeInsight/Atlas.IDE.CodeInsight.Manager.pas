@@ -122,11 +122,11 @@ const
 
 /// <summary>Fehler eines Einstiegspunkts an die Sicherung (#493, Code-Review S-05); ein beendeter Server oder sein
 /// Zeitlimit (ELspClientError) ist erwartbar und zählt nicht.</summary>
-procedure ReportFailure(AFeature: TAtlasFeature; E: Exception);
+procedure ReportFailure(AFeature: TAtlasFeature; AE: Exception);
 begin
-  if not (E is ELspClientError) then
+  if not (AE is ELspClientError) then
   begin
-    TAtlasGuard.Report(AFeature, E);
+    TAtlasGuard.Report(AFeature, AE);
   end;
 end;
 

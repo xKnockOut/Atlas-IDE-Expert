@@ -210,13 +210,13 @@ uses
 
 const
   // Name des Menüs „Tools“ in der IDE; Atlas steht dahinter, sonst am Ende.
-  ToolsMenu = 'ToolsMenu';
+  cToolsMenu = 'ToolsMenu';
   // Menü „Ansicht“ der IDE; dort steht das Untermenü „Atlas“ (#909, #1455).
-  ViewsMenu = 'ViewsMenu';
-  ToggleTexts: array[TAtlasToggle] of TAtlasTextId = (TAtlasTextId.MenuToggleEnabled, TAtlasTextId.MenuToggleHover,
+  cViewsMenu = 'ViewsMenu';
+  cToggleTexts: array[TAtlasToggle] of TAtlasTextId = (TAtlasTextId.MenuToggleEnabled, TAtlasTextId.MenuToggleHover,
     TAtlasTextId.MenuTogglePairs, TAtlasTextId.MenuToggleGuides, TAtlasTextId.MenuToggleOwners,
     TAtlasTextId.MenuToggleProblems, TAtlasTextId.MenuToggleInactive, TAtlasTextId.MenuToggleInlayHints);
-  ToggleKeys: array[TAtlasToggle] of string = ('Enabled', 'HoverTooltip', 'PairColors', 'PairGuides', 'PairOwners',
+  cToggleKeys: array[TAtlasToggle] of string = ('Enabled', 'HoverTooltip', 'PairColors', 'PairGuides', 'PairOwners',
     'Problems', 'InactiveDim', 'InlayHints');
 
 /// <summary>Namen der von der Sicherung abgeschalteten Funktionen und Quellen (#493), mit Komma getrennt.</summary>
@@ -243,13 +243,13 @@ end;
 
 procedure TAtlasMainMenuItems.UpdateImage;
 var
-  Item: TMenuItem;
-  Image: Integer;
+  mItem: TMenuItem;
+  mImage: Integer;
 begin
-  Image := TAtlasIdeSymbol.MenuImage;
-  for Item in FImageItems do
+  mImage := TAtlasIdeSymbol.MenuImage;
+  for mItem in FImageItems do
   begin
-    Item.ImageIndex := Image;
+    mItem.ImageIndex := mImage;
   end;
 end;
 
@@ -266,7 +266,7 @@ end;
 
 procedure TAtlasMainMenuItems.UpdateKeyMap;
 var
-  Item: TMenuItem;
+  mItem: TMenuItem;
 begin
   if FKeyMapItem <> nil then
   begin
@@ -327,9 +327,9 @@ begin
     FImpactItem.Visible := TAtlasIdeImpact.Enabled;
   end;
   // Datenfluss (#690) nach navigation.dataFlow.
-  for Item in FDataFlowItems do
+  for mItem in FDataFlowItems do
   begin
-    Item.Visible := TAtlasIdeSettings.Current.DataFlow;
+    mItem.Visible := TAtlasIdeSettings.Current.DataFlow;
   end;
 end;
 
@@ -360,13 +360,13 @@ end;
 constructor TAtlasMainMenu.Create(const AProgress: TFunc<string>; const ACommand: TProc<string, TProc<TJSONValue>>;
   const AMessage: TProc<string>);
 var
-  Services: INTAServices;
+  mServices: INTAServices;
 begin
   inherited Create;
   FProgress := AProgress;
   FCommand := ACommand;
   FMessage := AMessage;
-  if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.MainMenu = nil) then
+  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.MainMenu = nil) then
   begin
     Exit;
   end;
@@ -381,7 +381,7 @@ begin
   AddSearchGroups;
   AddSettingsGroups;
   AddSettingsItems;
-  InsertIntoIde(Services.MainMenu);
+  InsertIntoIde(mServices.MainMenu);
   UpdateKeyMap;
   UpdateImage;
   FTimer := TTimer.Create(nil);
@@ -468,7 +468,7 @@ begin
   AddGroup(TAtlasTextId.MenuGroupView);
   for mToggle := Low(TAtlasToggle) to High(TAtlasToggle) do
   begin
-    FToggles[mToggle] := AddItem(ToggleTexts[mToggle], Ord(mToggle), ToggleClick);
+    FToggles[mToggle] := AddItem(cToggleTexts[mToggle], Ord(mToggle), ToggleClick);
   end;
   AddGroup(TAtlasTextId.MenuGroupIndex);
   AddItem(TAtlasTextId.MenuIndexStatus, 0, IndexStatusClick);
@@ -512,7 +512,7 @@ begin
   mPosition := AMainMenu.Items.Count;
   for mIndex := 0 to AMainMenu.Items.Count - 1 do
   begin
-    if SameText(AMainMenu.Items[mIndex].Name, ToolsMenu) then
+    if SameText(AMainMenu.Items[mIndex].Name, cToolsMenu) then
     begin
       mPosition := mIndex + 1;
     end;
@@ -520,7 +520,7 @@ begin
   AMainMenu.Items.Insert(mPosition, FRoot);
   for mIndex := 0 to AMainMenu.Items.Count - 1 do
   begin
-    if SameText(AMainMenu.Items[mIndex].Name, ViewsMenu) then
+    if SameText(AMainMenu.Items[mIndex].Name, cViewsMenu) then
     begin
       // Gehört dem Atlas-Menü, damit es mit ihm freigegeben wird; Freigeben nimmt es aus „Ansicht“.
       // Ansicht › Atlas › Prüfung (#909) und Architektur (#1118).
@@ -551,28 +551,28 @@ end;
 
 class function TAtlasMainMenu.ToggleKey(AToggle: TAtlasToggle): string;
 begin
-  Result := ToggleKeys[AToggle];
+  Result := cToggleKeys[AToggle];
 end;
 
 procedure TAtlasMainMenu.RootClick(Sender: TObject);
 var
-  Toggle: TAtlasToggle;
-  Names: string;
+  mToggle: TAtlasToggle;
+  mNames: string;
 begin
   try
     // Falls der Themenwechsel nicht gemeldet wurde.
     UpdateImage;
     UpdateKeyMap;
     FModules.Update;
-    for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
+    for mToggle := Low(TAtlasToggle) to High(TAtlasToggle) do
     begin
-      FToggles[Toggle].Checked := TAtlasIdeQuickToggles.Checked(ToggleKey(Toggle));
+      FToggles[mToggle].Checked := TAtlasIdeQuickToggles.Checked(ToggleKey(mToggle));
     end;
     // Anweisungen mitfärben wirkt nur mit der Paarfärbung (#653).
     FToggles[TAtlasToggle.PairOwners].Enabled := TAtlasIdeQuickToggles.Checked('PairColors');
-    Names := DisabledNames;
-    FEnableAll.Visible := Names <> '';
-    FEnableAll.Caption := TAtlasStrings.Fmt(TAtlasTextId.MenuEnableAll, [Names]);
+    mNames := DisabledNames;
+    FEnableAll.Visible := mNames <> '';
+    FEnableAll.Caption := TAtlasStrings.Fmt(TAtlasTextId.MenuEnableAll, [mNames]);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Menu, E);
@@ -581,12 +581,12 @@ end;
 
 procedure TAtlasMainMenu.ToggleClick(Sender: TObject);
 var
-  Toggle: TAtlasToggle;
+  mToggle: TAtlasToggle;
 begin
   try
-    Toggle := TAtlasToggle(TMenuItem(Sender).Tag);
+    mToggle := TAtlasToggle(TMenuItem(Sender).Tag);
     // Speichert wie die Optionsseite, gleicht die Strukturhervorhebung ab und zeichnet neu (#604).
-    TAtlasIdeQuickToggles.Switch(ToggleKey(Toggle));
+    TAtlasIdeQuickToggles.Switch(ToggleKey(mToggle));
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Menu, E);
@@ -595,29 +595,29 @@ end;
 
 procedure TAtlasMainMenu.TimerTick(Sender: TObject);
 var
-  Text: string;
+  mText: string;
 begin
   TAtlasGuard.Run(TAtlasFeature.Menu,
     procedure
     begin
-      Text := '';
+      mText := '';
       if Assigned(FProgress) then
       begin
-        Text := FProgress();
+        mText := FProgress();
       end;
-      if Text = FShownProgress then
+      if mText = FShownProgress then
       begin
         Exit;
       end;
-      FShownProgress := Text;
+      FShownProgress := mText;
       // Nur bei Änderung: Der Titel im Hauptmenü zeichnet die ganze Leiste neu.
-      if Text = '' then
+      if mText = '' then
       begin
         FRoot.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas);
       end
       else
       begin
-        FRoot.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas) + ' – ' + Text;
+        FRoot.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas) + ' – ' + mText;
       end;
     end);
 end;
@@ -822,14 +822,14 @@ end;
 
 procedure TAtlasMainMenu.OptionsClick(Sender: TObject);
 var
-  Options: IOTAEnvironmentOptions140;
-  Services: IOTAServices;
+  mOptions: IOTAEnvironmentOptions140;
+  mServices: IOTAServices;
 begin
   try
-    if Supports(BorlandIDEServices, IOTAServices, Services) and
-      Supports(Services.GetEnvironmentOptions, IOTAEnvironmentOptions140, Options) then
+    if Supports(BorlandIDEServices, IOTAServices, mServices) and
+      Supports(mServices.GetEnvironmentOptions, IOTAEnvironmentOptions140, mOptions) then
     begin
-      Options.EditOptions('', 'Atlas');
+      mOptions.EditOptions('', 'Atlas');
     end;
   except
     on E: Exception do

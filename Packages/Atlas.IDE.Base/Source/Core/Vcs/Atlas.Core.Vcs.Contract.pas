@@ -678,27 +678,27 @@ end;
 
 function AtlasVcsOutcomeName(AOutcome: TAtlasVcsOutcome): string;
 const
-  Names: array[TAtlasVcsOutcome] of string = ('Ok', 'NoWorkingCopy', 'Disabled', 'ToolMissing', 'Failed',
+  cNames: array[TAtlasVcsOutcome] of string = ('Ok', 'NoWorkingCopy', 'Disabled', 'ToolMissing', 'Failed',
     'TimedOut', 'Cancelled', 'MainThread', 'LoginNeeded');
 begin
-  Result := Names[AOutcome];
+  Result := cNames[AOutcome];
 end;
 
 function AtlasVcsProviderOf(const AText: string): TAtlasVcsProvider;
 var
-  Text: string;
+  mText: string;
 begin
   // Auch als JSON-Text mit Anführungszeichen, wie ihn TAtlasJsonText.ValueAt liefert.
-  Text := LowerCase(Trim(AText).Trim(['"']));
-  if Text = 'git' then
+  mText := LowerCase(Trim(AText).Trim(['"']));
+  if mText = 'git' then
   begin
     Result := TAtlasVcsProvider.Git;
   end
-  else if Text = 'svn' then
+  else if mText = 'svn' then
   begin
     Result := TAtlasVcsProvider.Svn;
   end
-  else if Text = 'off' then
+  else if mText = 'off' then
   begin
     Result := TAtlasVcsProvider.Off;
   end

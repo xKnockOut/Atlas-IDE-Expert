@@ -150,12 +150,12 @@ end;
 /// <summary>Unit-Name mit Punkten, jeder Teil ein Bezeichner.</summary>
 function IsUnitName(const AName: string): Boolean;
 var
-  Part: string;
+  mPart: string;
 begin
   Result := AName <> '';
-  for Part in AName.Split(['.']) do
+  for mPart in AName.Split(['.']) do
   begin
-    if not IsValidIdent(Part) then
+    if not IsValidIdent(mPart) then
     begin
       Exit(False);
     end;
@@ -164,32 +164,32 @@ end;
 
 function StringOf(AObject: TJSONObject; const AKey: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AKey);
-  if (Value <> nil) and not (Value is TJSONNull) then
+  mValue := AObject.GetValue(AKey);
+  if (mValue <> nil) and not (mValue is TJSONNull) then
   begin
-    Result := Value.Value;
+    Result := mValue.Value;
   end;
 end;
 
 function BoolOf(AObject: TJSONObject; const AKey: string; ADefault: Boolean): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := nil;
+  mValue := nil;
   if AObject <> nil then
   begin
-    Value := AObject.GetValue(AKey);
+    mValue := AObject.GetValue(AKey);
   end;
-  if Value is TJSONBool then
+  if mValue is TJSONBool then
   begin
-    Result := TJSONBool(Value).AsBoolean;
+    Result := TJSONBool(mValue).AsBoolean;
   end
   else
   begin
@@ -199,17 +199,17 @@ end;
 
 function IdsOf(AObject: TJSONObject; const AKey: string): TArray<Integer>;
 var
-  Value, Item: TJSONValue;
+  mValue, mItem: TJSONValue;
 begin
   Result := nil;
-  Value := AObject.GetValue(AKey);
-  if Value is TJSONArray then
+  mValue := AObject.GetValue(AKey);
+  if mValue is TJSONArray then
   begin
-    for Item in TJSONArray(Value) do
+    for mItem in TJSONArray(mValue) do
     begin
-      if Item is TJSONNumber then
+      if mItem is TJSONNumber then
       begin
-        Result := Result + [TJSONNumber(Item).AsInt];
+        Result := Result + [TJSONNumber(mItem).AsInt];
       end;
     end;
   end;
@@ -217,19 +217,19 @@ end;
 
 function StringsOf(AObject: TJSONObject; const AKey: string): TArray<string>;
 var
-  Value, Item: TJSONValue;
+  mValue, mItem: TJSONValue;
 begin
   Result := nil;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AKey);
-  if Value is TJSONArray then
+  mValue := AObject.GetValue(AKey);
+  if mValue is TJSONArray then
   begin
-    for Item in TJSONArray(Value) do
+    for mItem in TJSONArray(mValue) do
     begin
-      Result := Result + [Item.Value];
+      Result := Result + [mItem.Value];
     end;
   end;
 end;
@@ -397,7 +397,7 @@ end;
 
 procedure TAtlasClassExtractionModel.SetTargetChecked(AIndex: Integer; AChecked: Boolean);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if (AIndex < 0) or (AIndex > High(FTargets)) then
   begin
@@ -406,9 +406,9 @@ begin
   if not FSource.MultiTarget then
   begin
     // Ein Vorfahr: genau einer gewählt.
-    for Index := 0 to High(FTargets) do
+    for mIndex := 0 to High(FTargets) do
     begin
-      FTargets[Index].Checked := Index = AIndex;
+      FTargets[mIndex].Checked := mIndex = AIndex;
     end;
     Exit;
   end;
@@ -417,14 +417,14 @@ end;
 
 function TAtlasClassExtractionModel.CheckedTargets: TArray<string>;
 var
-  Item: TAtlasExtractionTarget;
+  mItem: TAtlasExtractionTarget;
 begin
   Result := nil;
-  for Item in FTargets do
+  for mItem in FTargets do
   begin
-    if Item.Checked then
+    if mItem.Checked then
     begin
-      Result := Result + [Item.Name];
+      Result := Result + [mItem.Name];
     end;
   end;
 end;
@@ -445,22 +445,22 @@ end;
 
 procedure TAtlasClassExtractionModel.CheckAll(AChecked: Boolean);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FMembers) do
+  for mIndex := 0 to High(FMembers) do
   begin
-    SetChecked(Index, AChecked);
+    SetChecked(mIndex, AChecked);
   end;
 end;
 
 function TAtlasClassExtractionModel.CheckedCount: Integer;
 var
-  Member: TAtlasExtractionMember;
+  mMember: TAtlasExtractionMember;
 begin
   Result := 0;
-  for Member in FMembers do
+  for mMember in FMembers do
   begin
-    if Member.Checked then
+    if mMember.Checked then
     begin
       Inc(Result);
     end;
@@ -478,12 +478,12 @@ end;
 
 function TAtlasClassExtractionModel.HasModes: Boolean;
 var
-  Member: TAtlasExtractionMember;
+  mMember: TAtlasExtractionMember;
 begin
   Result := False;
-  for Member in FMembers do
+  for mMember in FMembers do
   begin
-    if Member.CanAbstract then
+    if mMember.CanAbstract then
     begin
       Exit(True);
     end;
@@ -492,12 +492,12 @@ end;
 
 function TAtlasClassExtractionModel.HasNeeds: Boolean;
 var
-  Member: TAtlasExtractionMember;
+  mMember: TAtlasExtractionMember;
 begin
   Result := False;
-  for Member in FMembers do
+  for mMember in FMembers do
   begin
-    if Member.Needs <> nil then
+    if mMember.Needs <> nil then
     begin
       Exit(True);
     end;
@@ -506,23 +506,23 @@ end;
 
 function TAtlasClassExtractionModel.MissingDependency(out AMember, ANeeded: string): Boolean;
 var
-  Member: TAtlasExtractionMember;
-  Need, Index: Integer;
+  mMember: TAtlasExtractionMember;
+  mNeed, mIndex: Integer;
 begin
   AMember := '';
   ANeeded := '';
   // Eine abstrakte Methode nimmt ihren Rumpf nicht mit und braucht oben nichts.
-  for Member in FMembers do
+  for mMember in FMembers do
   begin
-    if Member.Checked and not Member.Abstract then
+    if mMember.Checked and not mMember.Abstract then
     begin
-      for Need in Member.Needs do
+      for mNeed in mMember.Needs do
       begin
-        Index := IndexOfId(Need);
-        if (Index >= 0) and not FMembers[Index].Checked then
+        mIndex := IndexOfId(mNeed);
+        if (mIndex >= 0) and not FMembers[mIndex].Checked then
         begin
-          AMember := Member.Name;
-          ANeeded := FMembers[Index].Name;
+          AMember := mMember.Name;
+          ANeeded := FMembers[mIndex].Name;
           Exit(True);
         end;
       end;
@@ -596,9 +596,9 @@ end;
 
 function TAtlasClassExtractionModel.Validate: TAtlasExtractionProblem;
 var
-  Subject: string;
+  mSubject: string;
 begin
-  Result := Validate(Subject);
+  Result := Validate(mSubject);
 end;
 
 function TAtlasClassExtractionModel.Target: string;
@@ -612,8 +612,8 @@ end;
 
 function TAtlasClassExtractionModel.RequestJson: TJSONObject;
 var
-  List, Abstracts: TJSONArray;
-  Member: TAtlasExtractionMember;
+  mList, mAbstracts: TJSONArray;
+  mMember: TAtlasExtractionMember;
   mName: string;
 begin
   Result := TJSONObject.Create;
@@ -622,41 +622,41 @@ begin
     Result.AddPair('name', Trim(FName));
     Result.AddPair('unit', Target);
   end;
-  List := TJSONArray.Create;
-  for Member in FMembers do
+  mList := TJSONArray.Create;
+  for mMember in FMembers do
   begin
-    if Member.Checked then
+    if mMember.Checked then
     begin
-      List.AddElement(TJSONNumber.Create(Member.Id));
+      mList.AddElement(TJSONNumber.Create(mMember.Id));
     end;
   end;
-  Result.AddPair('members', List);
-  Abstracts := nil;
-  for Member in FMembers do
+  Result.AddPair('members', mList);
+  mAbstracts := nil;
+  for mMember in FMembers do
   begin
-    if Member.Checked and Member.Abstract then
+    if mMember.Checked and mMember.Abstract then
     begin
-      if Abstracts = nil then
+      if mAbstracts = nil then
       begin
-        Abstracts := TJSONArray.Create;
+        mAbstracts := TJSONArray.Create;
       end;
-      Abstracts.AddElement(TJSONNumber.Create(Member.Id));
+      mAbstracts.AddElement(TJSONNumber.Create(mMember.Id));
     end;
   end;
-  if Abstracts <> nil then
+  if mAbstracts <> nil then
   begin
-    Result.AddPair('abstract', Abstracts);
+    Result.AddPair('abstract', mAbstracts);
   end;
   if not IsMove then
   begin
     Exit;
   end;
-  List := TJSONArray.Create;
+  mList := TJSONArray.Create;
   for mName in CheckedTargets do
   begin
-    List.Add(mName);
+    mList.Add(mName);
   end;
-  Result.AddPair('targets', List);
+  Result.AddPair('targets', mList);
   if FSource.OptionKind <> '' then
   begin
     Result.AddPair('option', TJSONBool.Create(FOption));

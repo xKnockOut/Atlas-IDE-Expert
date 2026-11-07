@@ -100,74 +100,74 @@ end;
 
 class function TAtlasNotificationSources.TryMode(const AName: string; out AMode: TAtlasNotificationMode): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := LowerCase(Trim(AName));
+  mName := LowerCase(Trim(AName));
   Result := True;
-  if Name = 'collect' then
+  if mName = 'collect' then
   begin
     AMode := TAtlasNotificationMode.Collect;
   end
-  else if Name = 'off' then
+  else if mName = 'off' then
   begin
     AMode := TAtlasNotificationMode.Off;
   end
   else
   begin
     AMode := TAtlasNotificationMode.Show;
-    Result := Name = 'show';
+    Result := mName = 'show';
   end;
 end;
 
 class function TAtlasNotificationSources.Parse(const ASpec: string): TArray<TAtlasNotificationSourceMode>;
 var
-  Parts: TArray<string>;
-  Part, Source: string;
-  Equals, Index, Found: Integer;
-  Mode: TAtlasNotificationMode;
-  Entry: TAtlasNotificationSourceMode;
+  mParts: TArray<string>;
+  mPart, mSource: string;
+  mEquals, mIndex, mFound: Integer;
+  mMode: TAtlasNotificationMode;
+  mEntry: TAtlasNotificationSourceMode;
 begin
   Result := nil;
-  Parts := ASpec.Split([',', ';', #13, #10]);
-  for Part in Parts do
+  mParts := ASpec.Split([',', ';', #13, #10]);
+  for mPart in mParts do
   begin
-    Equals := Pos('=', Part);
-    if Equals <= 0 then
+    mEquals := Pos('=', mPart);
+    if mEquals <= 0 then
     begin
       Continue;
     end;
-    Source := Trim(Copy(Part, 1, Equals - 1));
-    if (Source = '') or not TryMode(Copy(Part, Equals + 1, MaxInt), Mode) then
+    mSource := Trim(Copy(mPart, 1, mEquals - 1));
+    if (mSource = '') or not TryMode(Copy(mPart, mEquals + 1, MaxInt), mMode) then
     begin
       Continue;
     end;
-    Found := -1;
-    for Index := 0 to High(Result) do
+    mFound := -1;
+    for mIndex := 0 to High(Result) do
     begin
-      if SameText(Result[Index].Source, Source) then
+      if SameText(Result[mIndex].Source, mSource) then
       begin
-        Found := Index;
+        mFound := mIndex;
       end;
     end;
-    if Found >= 0 then
+    if mFound >= 0 then
     begin
-      Result[Found].Mode := Mode;
+      Result[mFound].Mode := mMode;
       Continue;
     end;
-    Entry.Source := Source;
-    Entry.Mode := Mode;
-    Result := Result + [Entry];
+    mEntry.Source := mSource;
+    mEntry.Mode := mMode;
+    Result := Result + [mEntry];
   end;
 end;
 
 class function TAtlasNotificationSources.ToText(const AModes: TArray<TAtlasNotificationSourceMode>): string;
 var
-  Entry: TAtlasNotificationSourceMode;
+  mEntry: TAtlasNotificationSourceMode;
 begin
   Result := '';
-  for Entry in AModes do
+  for mEntry in AModes do
   begin
-    if (Entry.Mode = TAtlasNotificationMode.Show) or (Trim(Entry.Source) = '') then
+    if (mEntry.Mode = TAtlasNotificationMode.Show) or (Trim(mEntry.Source) = '') then
     begin
       Continue;
     end;
@@ -175,20 +175,20 @@ begin
     begin
       Result := Result + ', ';
     end;
-    Result := Result + Trim(Entry.Source) + '=' + ModeName(Entry.Mode);
+    Result := Result + Trim(mEntry.Source) + '=' + ModeName(mEntry.Mode);
   end;
 end;
 
 class function TAtlasNotificationSources.ModeIn(const ASpec, ASource: string): TAtlasNotificationMode;
 var
-  Entry: TAtlasNotificationSourceMode;
+  mEntry: TAtlasNotificationSourceMode;
 begin
   Result := TAtlasNotificationMode.Show;
-  for Entry in Parse(ASpec) do
+  for mEntry in Parse(ASpec) do
   begin
-    if SameText(Entry.Source, ASource) then
+    if SameText(mEntry.Source, ASource) then
     begin
-      Result := Entry.Mode;
+      Result := mEntry.Mode;
     end;
   end;
 end;
@@ -196,28 +196,28 @@ end;
 class function TAtlasNotificationSources.WithMode(const ASpec, ASource: string;
   AMode: TAtlasNotificationMode): string;
 var
-  Modes: TArray<TAtlasNotificationSourceMode>;
-  Index: Integer;
-  Found: Boolean;
-  Entry: TAtlasNotificationSourceMode;
+  mModes: TArray<TAtlasNotificationSourceMode>;
+  mIndex: Integer;
+  mFound: Boolean;
+  mEntry: TAtlasNotificationSourceMode;
 begin
-  Modes := Parse(ASpec);
-  Found := False;
-  for Index := 0 to High(Modes) do
+  mModes := Parse(ASpec);
+  mFound := False;
+  for mIndex := 0 to High(mModes) do
   begin
-    if SameText(Modes[Index].Source, ASource) then
+    if SameText(mModes[mIndex].Source, ASource) then
     begin
-      Modes[Index].Mode := AMode;
-      Found := True;
+      mModes[mIndex].Mode := AMode;
+      mFound := True;
     end;
   end;
-  if not Found and (Trim(ASource) <> '') then
+  if not mFound and (Trim(ASource) <> '') then
   begin
-    Entry.Source := Trim(ASource);
-    Entry.Mode := AMode;
-    Modes := Modes + [Entry];
+    mEntry.Source := Trim(ASource);
+    mEntry.Mode := AMode;
+    mModes := mModes + [mEntry];
   end;
-  Result := ToText(Modes);
+  Result := ToText(mModes);
 end;
 
 class function TAtlasNotificationSources.Normalize(const ASpec: string): string;
