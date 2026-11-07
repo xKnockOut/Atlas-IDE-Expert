@@ -14,7 +14,7 @@ uses
 type
   TAtlasEventBreakSettings = class
   public const
-    DefaultExcluded = 'OnPaint, OnMouseMove, OnUpdate';
+    cDefaultExcluded = 'OnPaint, OnMouseMove, OnUpdate';
   public
     /// <summary>Namen aus einer durch Komma, Semikolon oder Leerraum getrennten Liste: getrimmt, ohne Leere und
     /// Doppelte (ohne Rücksicht auf Groß-/Kleinschreibung), Reihenfolge bleibt.</summary>
@@ -29,29 +29,29 @@ implementation
 
 class function TAtlasEventBreakSettings.ExcludedList(const AText: string): TArray<string>;
 var
-  Part, Name: string;
-  Found: Boolean;
-  Existing: string;
+  mPart, mName: string;
+  mFound: Boolean;
+  mExisting: string;
 begin
   Result := nil;
-  for Part in AText.Split([',', ';', ' ', #9, #13, #10]) do
+  for mPart in AText.Split([',', ';', ' ', #9, #13, #10]) do
   begin
-    Name := Trim(Part);
-    if Name = '' then
+    mName := Trim(mPart);
+    if mName = '' then
     begin
       Continue;
     end;
-    Found := False;
-    for Existing in Result do
+    mFound := False;
+    for mExisting in Result do
     begin
-      if SameText(Existing, Name) then
+      if SameText(mExisting, mName) then
       begin
-        Found := True;
+        mFound := True;
       end;
     end;
-    if not Found then
+    if not mFound then
     begin
-      Result := Result + [Name];
+      Result := Result + [mName];
     end;
   end;
 end;

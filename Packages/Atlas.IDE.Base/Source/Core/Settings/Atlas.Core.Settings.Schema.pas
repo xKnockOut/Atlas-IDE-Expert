@@ -79,14 +79,14 @@ uses
 
 function TypeOf(ASchema: TJSONObject): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := ASchema.GetValue('type');
-  if Value is TJSONString then
+  mValue := ASchema.GetValue('type');
+  if mValue is TJSONString then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end
-  else if Value is TJSONArray then
+  else if mValue is TJSONArray then
   begin
     Result := 'mixed';
   end
@@ -405,71 +405,71 @@ end;
 class function TAtlasSettingsSchema.ForScope(const AFields: TArray<TAtlasSettingField>; AGlobal: Boolean;
   const AExclude: TArray<string>): TArray<TAtlasSettingField>;
 var
-  Field: TAtlasSettingField;
-  Path: string;
-  Excluded: Boolean;
+  mField: TAtlasSettingField;
+  mPath: string;
+  mExcluded: Boolean;
 begin
   Result := nil;
-  for Field in AFields do
+  for mField in AFields do
   begin
-    if (Field.Global <> AGlobal) and not Field.Both then
+    if (mField.Global <> AGlobal) and not mField.Both then
     begin
       Continue;
     end;
-    Excluded := False;
-    for Path in AExclude do
+    mExcluded := False;
+    for mPath in AExclude do
     begin
       // Ein zusammengesetztes Feld (ganzes Objekt als JSON, z. B. "vcs" seit #1285) mit einem ausgeschlossenen
       // Glied fällt mit weg: Es im Dialog als Ganzes zu bearbeiten, überschriebe die Werte der eigenen Seite.
-      if SameText(Path, Field.Path) or SameText(Copy(Path, 1, Length(Field.Path) + 1), Field.Path + '.') then
+      if SameText(mPath, mField.Path) or SameText(Copy(mPath, 1, Length(mField.Path) + 1), mField.Path + '.') then
       begin
-        Excluded := True;
+        mExcluded := True;
       end;
     end;
-    if not Excluded then
+    if not mExcluded then
     begin
-      Result := Result + [Field];
+      Result := Result + [mField];
     end;
   end;
 end;
 
 class function TAtlasSettingsSchema.Pages(const AFields: TArray<TAtlasSettingField>): TArray<string>;
 var
-  Field: TAtlasSettingField;
-  Page: string;
-  Known: Boolean;
+  mField: TAtlasSettingField;
+  mPage: string;
+  mKnown: Boolean;
 begin
   Result := nil;
-  for Field in AFields do
+  for mField in AFields do
   begin
-    Known := False;
-    for Page in Result do
+    mKnown := False;
+    for mPage in Result do
     begin
-      if SameText(Page, Field.Page) then
+      if SameText(mPage, mField.Page) then
       begin
-        Known := True;
+        mKnown := True;
       end;
     end;
-    if not Known then
+    if not mKnown then
     begin
-      Result := Result + [Field.Page];
+      Result := Result + [mField.Page];
     end;
   end;
 end;
 
 class function TAtlasSettingsSchema.Display(const AJson: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := AJson;
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    if Value is TJSONString then
+    if mValue is TJSONString then
     begin
-      Result := TJSONString(Value).Value;
+      Result := TJSONString(mValue).Value;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 

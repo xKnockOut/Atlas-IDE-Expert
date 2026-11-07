@@ -209,19 +209,19 @@ end;
 procedure TAtlasIdeKeys.TPackageWatch.FileNotification(NotifyCode: TOTAFileNotification; const FileName: string;
   var Cancel: Boolean);
 var
-  Changed: TProc;
+  mChanged: TProc;
 begin
   if not (NotifyCode in [ofnPackageInstalled, ofnPackageUninstalled]) or not Assigned(FChanged) then
   begin
     Exit;
   end;
-  Changed := FChanged;
+  mChanged := FChanged;
   // Nach der Meldung: Das Package ist dann fertig geladen bzw. entladen.
   TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
     procedure
     begin
       // Keine Exception an die IDE (#493).
-      TAtlasGuard.Run(TAtlasFeature.Settings, Changed);
+      TAtlasGuard.Run(TAtlasFeature.Settings, mChanged);
     end);
 end;
 
@@ -237,21 +237,21 @@ end;
 
 class procedure TAtlasIdeKeys.WatchPackages(const AChanged: TProc);
 var
-  Services: IOTAServices;
+  mServices: IOTAServices;
 begin
   UnwatchPackages;
-  if not Supports(BorlandIDEServices, IOTAServices, Services) then
+  if not Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
     Exit;
   end;
   FWatch := TPackageWatch.Create;
   FWatch.FChanged := AChanged;
-  FWatchIndex := Services.AddNotifier(FWatch);
+  FWatchIndex := mServices.AddNotifier(FWatch);
 end;
 
 class procedure TAtlasIdeKeys.UnwatchPackages;
 var
-  Services: IOTAServices;
+  mServices: IOTAServices;
 begin
   if FWatch = nil then
   begin
@@ -259,9 +259,9 @@ begin
   end;
   FWatch.FChanged := nil;
   // RemoveNotifier gibt die Referenz der IDE frei und damit FWatch.
-  if Supports(BorlandIDEServices, IOTAServices, Services) then
+  if Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
-    Services.RemoveNotifier(FWatchIndex);
+    mServices.RemoveNotifier(FWatchIndex);
   end;
   FWatch := nil;
 end;
@@ -319,35 +319,35 @@ end;
 
 class function TAtlasIdeKeys.Decide(AShortCut: Word; APriority: Boolean; const AWhat: string): Boolean;
 var
-  Holder, Key, Seen: string;
+  mHolder, mKey, mSeen: string;
 begin
-  Holder := Owner(AShortCut);
-  Result := TAtlasKeyConflicts.ShouldBind(AShortCut, Holder, APriority);
-  if Result or (Holder = '') then
+  mHolder := Owner(AShortCut);
+  Result := TAtlasKeyConflicts.ShouldBind(AShortCut, mHolder, APriority);
+  if Result or (mHolder = '') then
   begin
     Exit;
   end;
-  Key := ShortCutToText(AShortCut) + '|' + Holder;
-  for Seen in FReported do
+  mKey := ShortCutToText(AShortCut) + '|' + mHolder;
+  for mSeen in FReported do
   begin
-    if Seen = Key then
+    if mSeen = mKey then
     begin
       Exit;
     end;
   end;
-  FReported := FReported + [Key];
-  AddMessage(TAtlasStrings.Fmt(TAtlasTextId.KeyConflict, [ShortCutToText(AShortCut), Holder, AWhat]));
+  FReported := FReported + [mKey];
+  AddMessage(TAtlasStrings.Fmt(TAtlasTextId.KeyConflict, [ShortCutToText(AShortCut), mHolder, AWhat]));
   MarkReported(AShortCut);
 end;
 
 class function TAtlasIdeKeys.Reported(AShortCut: Word): Boolean;
 var
-  Key: Word;
+  mKey: Word;
 begin
   Result := False;
-  for Key in FReportedKeys do
+  for mKey in FReportedKeys do
   begin
-    if Key = AShortCut then
+    if mKey = AShortCut then
     begin
       Exit(True);
     end;
@@ -364,88 +364,88 @@ end;
 
 class procedure TAtlasIdeKeys.Bind(const ABinding: IOTAKeyboardBinding; var AIndex: Integer);
 var
-  Keyboard: IOTAKeyboardServices;
+  mKeyboard: IOTAKeyboardServices;
 begin
   Unbind(AIndex);
-  if Supports(BorlandIDEServices, IOTAKeyboardServices, Keyboard) then
+  if Supports(BorlandIDEServices, IOTAKeyboardServices, mKeyboard) then
   begin
-    AIndex := Keyboard.AddKeyboardBinding(ABinding);
+    AIndex := mKeyboard.AddKeyboardBinding(ABinding);
   end;
 end;
 
 class procedure TAtlasIdeKeys.Unbind(var AIndex: Integer);
 var
-  Keyboard: IOTAKeyboardServices;
+  mKeyboard: IOTAKeyboardServices;
 begin
-  if (AIndex >= 0) and Supports(BorlandIDEServices, IOTAKeyboardServices, Keyboard) then
+  if (AIndex >= 0) and Supports(BorlandIDEServices, IOTAKeyboardServices, mKeyboard) then
   begin
-    Keyboard.RemoveKeyboardBinding(AIndex);
+    mKeyboard.RemoveKeyboardBinding(AIndex);
   end;
   AIndex := -1;
 end;
 
 class procedure TAtlasIdeKeys.AddMessage(const AText: string);
 var
-  Messages: IOTAMessageServices;
-  Group: IOTAMessageGroup;
+  mMessages: IOTAMessageServices;
+  mGroup: IOTAMessageGroup;
 begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     Exit;
   end;
-  Group := Messages.GetGroup('Atlas');
-  if Group = nil then
+  mGroup := mMessages.GetGroup('Atlas');
+  if mGroup = nil then
   begin
-    Group := Messages.AddMessageGroup('Atlas');
+    mGroup := mMessages.AddMessageGroup('Atlas');
   end;
-  Messages.AddTitleMessage(AText, Group);
+  mMessages.AddTitleMessage(AText, mGroup);
 end;
 
 class function TAtlasIdeKeys.ForeignCompletions: TArray<string>;
 var
-  Modules: array[0..1023] of HMODULE;
-  Needed: DWORD;
-  Index: Integer;
-  Names: TArray<string>;
-  Name: array[0..MAX_PATH] of Char;
+  mModules: array[0..1023] of HMODULE;
+  mNeeded: DWORD;
+  mIndex: Integer;
+  mNames: TArray<string>;
+  mName: array[0..MAX_PATH] of Char;
 begin
   Result := nil;
-  Names := nil;
-  if not EnumProcessModules(GetCurrentProcess, @Modules[0], SizeOf(Modules), Needed) then
+  mNames := nil;
+  if not EnumProcessModules(GetCurrentProcess, @mModules[0], SizeOf(mModules), mNeeded) then
   begin
     Exit;
   end;
-  for Index := 0 to Integer(Needed div SizeOf(HMODULE)) - 1 do
+  for mIndex := 0 to Integer(mNeeded div SizeOf(HMODULE)) - 1 do
   begin
-    if (Index <= High(Modules)) and (GetModuleFileName(Modules[Index], Name, Length(Name)) > 0) then
+    if (mIndex <= High(mModules)) and (GetModuleFileName(mModules[mIndex], mName, Length(mName)) > 0) then
     begin
-      Names := Names + [string(Name)];
+      mNames := mNames + [string(mName)];
     end;
   end;
-  Result := TAtlasKeyConflicts.CompletionExtensions(Names);
+  Result := TAtlasKeyConflicts.CompletionExtensions(mNames);
 end;
 
 class procedure TAtlasIdeKeys.ReportForeignCompletion;
 var
-  Extension, Seen: string;
-  Known: Boolean;
+  mExtension, mSeen: string;
+  mKnown: Boolean;
 begin
-  for Extension in ForeignCompletions do
+  for mExtension in ForeignCompletions do
   begin
-    Known := False;
-    for Seen in FForeignReported do
+    mKnown := False;
+    for mSeen in FForeignReported do
     begin
-      if SameText(Seen, Extension) then
+      if SameText(mSeen, mExtension) then
       begin
-        Known := True;
+        mKnown := True;
       end;
     end;
-    if Known then
+    if mKnown then
     begin
       Continue;
     end;
-    FForeignReported := FForeignReported + [Extension];
-    AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ForeignCompletion, [Extension]));
+    FForeignReported := FForeignReported + [mExtension];
+    AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ForeignCompletion, [mExtension]));
   end;
 end;
 

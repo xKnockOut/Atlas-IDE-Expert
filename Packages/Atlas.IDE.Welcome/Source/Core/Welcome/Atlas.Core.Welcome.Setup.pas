@@ -117,7 +117,7 @@ type
     /// <summary>Dateiname ohne Ordner und Endung.</summary>
     class function NameOf(const AProject: string): string; static;
     /// <summary>Abschnitt "setup" nach einer Prüfung: „nicht mehr fragen“ aus APrevious bleibt, Funde mit Pfaden
-    /// relativ zu AProject, je Liste höchstens TAtlasProjectSetup.MaxFindings.</summary>
+    /// relativ zu AProject, je Liste höchstens TAtlasProjectSetup.cMaxFindings.</summary>
     class function Checked(const APrevious: TAtlasProjectSetup; const AProject: string;
       const AResult: TAtlasPathCheckResult; AAtUtc: TDateTime): TAtlasProjectSetup; static;
     /// <summary>Abschnitt "rules" nach dem Erzeugen der Baseline: Alle Treffer stehen darin, neue gibt es keine.
@@ -282,7 +282,7 @@ class function TAtlasWelcomeSetup.Checked(const APrevious: TAtlasProjectSetup; c
     Result := nil;
     for mItem in AList do
     begin
-      if Length(Result) >= TAtlasProjectSetup.MaxFindings then
+      if Length(Result) >= TAtlasProjectSetup.cMaxFindings then
       begin
         Break;
       end;
@@ -387,7 +387,7 @@ class function TAtlasWelcomeSetup.Combined(const AGroupProject: string; const AG
   begin
     for mFinding in AFrom do
     begin
-      if Length(AList) >= TAtlasProjectSetup.MaxFindings then
+      if Length(AList) >= TAtlasProjectSetup.cMaxFindings then
       begin
         Exit;
       end;

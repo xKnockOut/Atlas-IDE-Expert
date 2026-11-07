@@ -87,7 +87,7 @@ uses
   Atlas.Core.Diagnostics.MainThread;
 
 const
-  BufferSize = 4096;
+  cBufferSize = 4096;
 
 type
   TOutcome = record
@@ -98,22 +98,22 @@ type
 function RunEvaluate(const AThread: IOTAThread; const AExpression, AFileName: string;
   ALine: Integer; ASideEffects: Boolean): TOutcome;
 var
-  Buffer: array[0..BufferSize - 1] of Char;
-  CanModify: Boolean;
-  ResultAddr, ResultSize, ResultVal: LongWord;
+  mBuffer: array[0..cBufferSize - 1] of Char;
+  mCanModify: Boolean;
+  mResultAddr, mResultSize, mResultVal: LongWord;
 begin
-  FillChar(Buffer, SizeOf(Buffer), 0);
+  FillChar(mBuffer, SizeOf(mBuffer), 0);
   if ASideEffects then
   begin
-    Result.Code := AThread.Evaluate(AExpression, @Buffer[0], Length(Buffer), CanModify, eseAll, '', ResultAddr,
-      ResultSize, ResultVal, AFileName, ALine);
+    Result.Code := AThread.Evaluate(AExpression, @mBuffer[0], Length(mBuffer), mCanModify, eseAll, '', mResultAddr,
+      mResultSize, mResultVal, AFileName, ALine);
   end
   else
   begin
-    Result.Code := AThread.Evaluate(AExpression, @Buffer[0], Length(Buffer), CanModify, eseNone, '', ResultAddr,
-      ResultSize, ResultVal, AFileName, ALine);
+    Result.Code := AThread.Evaluate(AExpression, @mBuffer[0], Length(mBuffer), mCanModify, eseNone, '', mResultAddr,
+      mResultSize, mResultVal, AFileName, ALine);
   end;
-  Result.Text := Buffer;
+  Result.Text := mBuffer;
 end;
 
 { TAtlasIdeDebugValues.TDeferred }
@@ -129,9 +129,9 @@ end;
 
 procedure TAtlasIdeDebugValues.TDeferred.Complete(const AResult: string; AReturnCode: Integer);
 var
-  Keep: IOTAThreadNotifier;
-  Deferred: TDeferred;
-  Value: TAtlasDebugValue;
+  mKeep: IOTAThreadNotifier;
+  mDeferred: TDeferred;
+  mValue: TAtlasDebugValue;
 begin
   if FDone then
   begin
@@ -140,32 +140,32 @@ begin
   FDone := True;
   if AReturnCode = 0 then
   begin
-    Value := TAtlasDebugValue.Evaluated(FExpression, AResult);
+    mValue := TAtlasDebugValue.Evaluated(FExpression, AResult);
   end
   else
   begin
-    Value := TAtlasDebugValue.Failed(FExpression, AResult);
+    mValue := TAtlasDebugValue.Failed(FExpression, AResult);
   end;
   // Der Debugger ruft aus seiner Benachrichtigung; abmelden und anzeigen erst danach im Hauptthread.
   // Keep hält den Notifier bis dahin am Leben.
-  Keep := Self;
-  Deferred := Self;
+  mKeep := Self;
+  mDeferred := Self;
   TAtlasMainThread.ForceQueue(TAtlasFeature.Hover,
     procedure
     begin
-      if Keep <> nil then
+      if mKeep <> nil then
       begin
         TAtlasGuard.Run(TAtlasFeature.Hover,
         procedure
         begin
-          if Deferred.FOwner = nil then
+          if mDeferred.FOwner = nil then
           begin
             Exit;
           end;
-          Deferred.FOwner.Release(Deferred);
-          if Assigned(Deferred.FOnDone) then
+          mDeferred.FOwner.Release(mDeferred);
+          if Assigned(mDeferred.FOnDone) then
           begin
-            Deferred.FOnDone(Value);
+            mDeferred.FOnDone(mValue);
           end;
         end);
       end;
@@ -217,20 +217,20 @@ end;
 
 class function TAtlasIdeDebugValues.StoppedThread: IOTAThread;
 var
-  Debugger: IOTADebuggerServices;
-  Process: IOTAProcess;
+  mDebugger: IOTADebuggerServices;
+  mProcess: IOTAProcess;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) then
+  if not Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
   begin
     Exit;
   end;
-  Process := Debugger.CurrentProcess;
-  if (Process = nil) or not (Process.ProcessState in [psStopped, psFault, psException]) then
+  mProcess := mDebugger.CurrentProcess;
+  if (mProcess = nil) or not (mProcess.ProcessState in [psStopped, psFault, psException]) then
   begin
     Exit;
   end;
-  Result := Process.CurrentThread;
+  Result := mProcess.CurrentThread;
 end;
 
 class function TAtlasIdeDebugValues.Stopped: Boolean;
@@ -275,85 +275,85 @@ end;
 function TAtlasIdeDebugValues.Evaluate(const AExpression, AFileName: string; ALine: Integer; ASideEffects: Boolean;
   const AOnDone: TAtlasDebugValueEvent): TAtlasDebugValue;
 var
-  Thread: IOTAThread;
-  Outcome: TOutcome;
+  mThread: IOTAThread;
+  mOutcome: TOutcome;
 begin
   Cancel;
   Result := Default(TAtlasDebugValue);
-  Thread := StoppedThread;
-  if (Thread = nil) or (AExpression = '') then
+  mThread := StoppedThread;
+  if (mThread = nil) or (AExpression = '') then
   begin
     Exit;
   end;
-  Outcome := RunEvaluate(Thread, AExpression, AFileName, ALine, ASideEffects);
-  case Outcome.Code of
+  mOutcome := RunEvaluate(mThread, AExpression, AFileName, ALine, ASideEffects);
+  case mOutcome.Code of
     erOK:
-      Result := TAtlasDebugValue.Evaluated(AExpression, Outcome.Text);
+      Result := TAtlasDebugValue.Evaluated(AExpression, mOutcome.Text);
     erDeferred:
       begin
         // Antwort kommt über den Notifier des Threads.
         FDeferred := TDeferred.Create(Self, AExpression, AOnDone);
         FDeferredRef := FDeferred;
-        FThread := Thread;
-        FIndex := Thread.AddNotifier(FDeferredRef);
+        FThread := mThread;
+        FIndex := mThread.AddNotifier(FDeferredRef);
         Result := TAtlasDebugValue.Pending(AExpression);
       end;
   else
     // erError, erBusy: kein Wert.
-    Result := TAtlasDebugValue.Failed(AExpression, Outcome.Text);
+    Result := TAtlasDebugValue.Failed(AExpression, mOutcome.Text);
   end;
 end;
 
 class function TAtlasIdeDebugValues.EvaluateNow(const AExpression, AFileName: string;
   ALine: Integer): TAtlasDebugValue;
 var
-  Thread: IOTAThread;
-  Outcome: TOutcome;
+  mThread: IOTAThread;
+  mOutcome: TOutcome;
 begin
   Result := Default(TAtlasDebugValue);
-  Thread := StoppedThread;
-  if (Thread = nil) or (AExpression = '') then
+  mThread := StoppedThread;
+  if (mThread = nil) or (AExpression = '') then
   begin
     Exit;
   end;
-  Outcome := RunEvaluate(Thread, AExpression, AFileName, ALine, False);
-  if Outcome.Code = erOK then
+  mOutcome := RunEvaluate(mThread, AExpression, AFileName, ALine, False);
+  if mOutcome.Code = erOK then
   begin
-    Result := TAtlasDebugValue.Evaluated(AExpression, Outcome.Text);
+    Result := TAtlasDebugValue.Evaluated(AExpression, mOutcome.Text);
   end
   else
   begin
-    Result := TAtlasDebugValue.Failed(AExpression, Outcome.Text);
+    Result := TAtlasDebugValue.Failed(AExpression, mOutcome.Text);
   end;
 end;
 
 class function TAtlasIdeDebugValues.Modify(const AExpression, AFileName: string; ALine: Integer;
   const ANewValue: string; out AResult: string): Boolean;
 var
-  Thread: IOTAThread;
-  Outcome: TOutcome;
-  Buffer: array[0..BufferSize - 1] of Char;
-  ResultVal: Integer;
-  Code: TOTAEvaluateResult;
+  mThread: IOTAThread;
+  mOutcome: TOutcome;
+  mBuffer: array[0..cBufferSize - 1] of Char;
+  mResultVal: Integer;
+  mCode: TOTAEvaluateResult;
 begin
   AResult := '';
-  Thread := StoppedThread;
-  if (Thread = nil) or (AExpression = '') then
+  mThread := StoppedThread;
+  if (mThread = nil) or (AExpression = '') then
   begin
     Exit(False);
   end;
   // Modify ändert den zuletzt ausgewerteten Ausdruck: erst auswerten, ohne Nebenwirkungen.
-  Outcome := RunEvaluate(Thread, AExpression, AFileName, ALine, False);
-  if Outcome.Code <> erOK then
+  mOutcome := RunEvaluate(mThread, AExpression, AFileName, ALine, False);
+  if mOutcome.Code <> erOK then
   begin
-    AResult := Outcome.Text;
+    AResult := mOutcome.Text;
     Exit(False);
   end;
-  FillChar(Buffer, SizeOf(Buffer), 0);
-  ResultVal := 0;
-  Code := Thread.Modify(ANewValue, @Buffer[0], Length(Buffer), ResultVal);
-  AResult := Buffer;
-  Result := Code in [erOK, erDeferred];
+  FillChar(mBuffer, SizeOf(mBuffer), 0);
+  mResultVal := 0;
+  mCode := mThread.Modify(ANewValue, @mBuffer[0], Length(mBuffer), mResultVal);
+  AResult := mBuffer;
+  Result := mCode in [erOK, erDeferred];
 end;
 
 end.

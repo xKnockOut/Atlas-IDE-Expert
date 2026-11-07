@@ -28,9 +28,9 @@ type
   TAtlasStartTimes = class
   public const
     /// <summary>Kürzere Teile fallen aus der Aufzählung (Rauschen).</summary>
-    MinPartMs = 20;
+    cMinPartMs = 20;
     /// <summary>Höchstens so viele Teile in der Aufzählung.</summary>
-    MaxParts = 5;
+    cMaxParts = 5;
   private
     FLock: TCriticalSection;
     FParts: TArray<TAtlasStartPart>;
@@ -72,15 +72,15 @@ uses
 
 constructor TAtlasStartTimes.Create;
 var
-  Ticks: TFunc<Int64>;
+  mTicks: TFunc<Int64>;
 begin
   // Typisierte Variable: Delphi wählt zwischen Überladungen mit anonymer Methode als Argument nicht (E2250).
-  Ticks :=
+  mTicks :=
     function: Int64
     begin
       Result := TStopwatch.GetTimeStamp div (TStopwatch.Frequency div 1000);
     end;
-  Create(Ticks);
+  Create(mTicks);
 end;
 
 constructor TAtlasStartTimes.Create(const AClock: TFunc<Int64>);
@@ -103,22 +103,22 @@ end;
 
 procedure TAtlasStartTimes.Add(const AName: string; AMs: Int64);
 var
-  Index: Integer;
-  Part: TAtlasStartPart;
+  mIndex: Integer;
+  mPart: TAtlasStartPart;
 begin
   FLock.Enter;
   try
-    for Index := 0 to High(FParts) do
+    for mIndex := 0 to High(FParts) do
     begin
-      if SameText(FParts[Index].Name, AName) then
+      if SameText(FParts[mIndex].Name, AName) then
       begin
-        FParts[Index].Ms := FParts[Index].Ms + Max(AMs, Int64(0));
+        FParts[mIndex].Ms := FParts[mIndex].Ms + Max(AMs, Int64(0));
         Exit;
       end;
     end;
-    Part.Name := AName;
-    Part.Ms := Max(AMs, Int64(0));
-    FParts := FParts + [Part];
+    mPart.Name := AName;
+    mPart.Ms := Max(AMs, Int64(0));
+    FParts := FParts + [mPart];
   finally
     FLock.Leave;
   end;
@@ -126,26 +126,26 @@ end;
 
 procedure TAtlasStartTimes.Measure(const AName: string; const AProc: TProc);
 var
-  Started: Int64;
+  mStarted: Int64;
 begin
-  Started := Clock;
+  mStarted := Clock;
   try
     AProc();
   finally
-    Add(AName, Clock - Started);
+    Add(AName, Clock - mStarted);
   end;
 end;
 
 function TAtlasStartTimes.Total: Int64;
 var
-  Part: TAtlasStartPart;
+  mPart: TAtlasStartPart;
 begin
   Result := 0;
   FLock.Enter;
   try
-    for Part in FParts do
+    for mPart in FParts do
     begin
-      Inc(Result, Part.Ms);
+      Inc(Result, mPart.Ms);
     end;
   finally
     FLock.Leave;
@@ -154,30 +154,30 @@ end;
 
 function TAtlasStartTimes.Slowest(AMax: Integer): TArray<TAtlasStartPart>;
 var
-  Parts: TArray<TAtlasStartPart>;
-  Part: TAtlasStartPart;
-  Target: Integer;
+  mParts: TArray<TAtlasStartPart>;
+  mPart: TAtlasStartPart;
+  mTarget: Integer;
 begin
   FLock.Enter;
   try
-    Parts := Copy(FParts);
+    mParts := Copy(FParts);
   finally
     FLock.Leave;
   end;
   // Einfügen nach Dauer: stabil, wenige Teile.
   Result := nil;
-  for Part in Parts do
+  for mPart in mParts do
   begin
-    if Part.Ms < MinPartMs then
+    if mPart.Ms < cMinPartMs then
     begin
       Continue;
     end;
-    Target := Length(Result);
-    while (Target > 0) and (Result[Target - 1].Ms < Part.Ms) do
+    mTarget := Length(Result);
+    while (mTarget > 0) and (Result[mTarget - 1].Ms < mPart.Ms) do
     begin
-      Dec(Target);
+      Dec(mTarget);
     end;
-    Insert(Part, Result, Target);
+    Insert(mPart, Result, mTarget);
   end;
   if Length(Result) > Max(AMax, 0) then
   begin
@@ -187,16 +187,16 @@ end;
 
 function TAtlasStartTimes.SlowestText: string;
 var
-  Part: TAtlasStartPart;
+  mPart: TAtlasStartPart;
 begin
   Result := '';
-  for Part in Slowest(MaxParts) do
+  for mPart in Slowest(cMaxParts) do
   begin
     if Result <> '' then
     begin
       Result := Result + ', ';
     end;
-    Result := Result + Format('%s %d ms', [Part.Name, Part.Ms]);
+    Result := Result + Format('%s %d ms', [mPart.Name, mPart.Ms]);
   end;
 end;
 
@@ -207,7 +207,7 @@ end;
 
 function TAtlasStartTimes.LogLine(ALoadMs: Int64; ALimitMs: Integer): string;
 var
-  Parts: string;
+  mParts: string;
 begin
   Result := Format('Start: %d ms bis zur freien Nachrichtenschleife', [ALoadMs]);
   if IsSlow(ALoadMs, ALimitMs) then
@@ -215,10 +215,10 @@ begin
     Result := Result + Format(' (länger als %d ms)', [ALimitMs]);
   end;
   Result := Result + Format(', davon Atlas %d ms', [Total]);
-  Parts := SlowestText;
-  if Parts <> '' then
+  mParts := SlowestText;
+  if mParts <> '' then
   begin
-    Result := Result + ': ' + Parts;
+    Result := Result + ': ' + mParts;
   end;
 end;
 

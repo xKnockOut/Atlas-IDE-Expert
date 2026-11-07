@@ -35,7 +35,7 @@ type
 
   TAtlasServerSignatureProvider = class(TInterfacedObject, IAtlasSignatureSource)
   public const
-    DefaultTimeoutMs = 2000;
+    cDefaultTimeoutMs = 2000;
   public
     /// <summary>Name der Quelle für die Sicherung (#493) und ihre Meldungen, in der Sprache der Oberfläche.
     /// </summary>
@@ -112,7 +112,7 @@ end;
 
 constructor TAtlasServerSignatureProvider.Create(const ASession: TAtlasSessionFunc);
 begin
-  Create(ASession, DefaultTimeoutMs);
+  Create(ASession, cDefaultTimeoutMs);
 end;
 
 constructor TAtlasServerSignatureProvider.Create(const ASession: TAtlasSessionFunc; ATimeoutMs: Cardinal);
@@ -363,16 +363,16 @@ end;
 
 procedure TAtlasServerSignatureProvider.ReapWorkers;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   FLock.Enter;
   try
-    for Index := FWorkers.Count - 1 downto 0 do
+    for mIndex := FWorkers.Count - 1 downto 0 do
     begin
-      if FWorkers[Index].Finished then
+      if FWorkers[mIndex].Finished then
       begin
-        FWorkers[Index].Free;
-        FWorkers.Delete(Index);
+        FWorkers[mIndex].Free;
+        FWorkers.Delete(mIndex);
       end;
     end;
   finally
@@ -387,21 +387,21 @@ end;
 
 procedure TAtlasServerSignatureProvider.Shutdown;
 var
-  Workers: TArray<TThread>;
-  Worker: TThread;
+  mWorkers: TArray<TThread>;
+  mWorker: TThread;
 begin
   Cancel;
   FLock.Enter;
   try
-    Workers := FWorkers.ToArray;
+    mWorkers := FWorkers.ToArray;
     FWorkers.Clear;
   finally
     FLock.Leave;
   end;
-  for Worker in Workers do
+  for mWorker in mWorkers do
   begin
-    Worker.WaitFor;
-    Worker.Free;
+    mWorker.WaitFor;
+    mWorker.Free;
   end;
 end;
 

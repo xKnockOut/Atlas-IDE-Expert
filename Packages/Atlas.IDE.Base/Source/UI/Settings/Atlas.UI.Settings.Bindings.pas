@@ -29,8 +29,10 @@ type
   TAtlasSettingsBindings = class
   private
     FItems: TList<TAtlasSettingsValueBinding>;
-    class procedure LoadOne(const AStore: IAtlasMemorySettingsStore; const ABinding: TAtlasSettingsValueBinding); static;
-    class procedure SaveOne(const AStore: IAtlasMemorySettingsStore; const ABinding: TAtlasSettingsValueBinding); static;
+    class procedure LoadOne(const AStore: IAtlasMemorySettingsStore; const ABinding: TAtlasSettingsValueBinding);
+      static;
+    class procedure SaveOne(const AStore: IAtlasMemorySettingsStore; const ABinding: TAtlasSettingsValueBinding);
+      static;
   public
     constructor Create;
     destructor Destroy; override;

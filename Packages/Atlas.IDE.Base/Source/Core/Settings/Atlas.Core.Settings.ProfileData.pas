@@ -16,7 +16,7 @@ uses
   System.SysUtils;
 
 const
-  Profile0: array[0..68] of string = (
+  cProfile0: array[0..68] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -86,7 +86,7 @@ const
     '    "search.enabled": true',
     '  }',
     '}');
-  Profile1: array[0..58] of string = (
+  cProfile1: array[0..58] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -146,7 +146,7 @@ const
     '    "search.enabled": true',
     '  }',
     '}');
-  Profile2: array[0..10] of string = (
+  cProfile2: array[0..10] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -158,7 +158,7 @@ const
     '  "mode": "replace",',
     '  "settings": {}',
     '}');
-  Profile3: array[0..58] of string = (
+  cProfile3: array[0..58] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -218,7 +218,7 @@ const
     '    "search.enabled": false',
     '  }',
     '}');
-  Profile4: array[0..22] of string = (
+  cProfile4: array[0..22] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -247,12 +247,12 @@ const
 
 function Joined(const ALines: array of string): string;
 var
-  Line: string;
+  mLine: string;
 begin
   Result := '';
-  for Line in ALines do
+  for mLine in ALines do
   begin
-    Result := Result + Line + #10;
+    Result := Result + mLine + #10;
   end;
 end;
 
@@ -271,23 +271,23 @@ begin
   Result := '';
   if SameText(AFileName, 'alles-an-experimentell.json') then
   begin
-    Result := Joined(Profile0);
+    Result := Joined(cProfile0);
   end;
   if SameText(AFileName, 'alles-an.json') then
   begin
-    Result := Joined(Profile1);
+    Result := Joined(cProfile1);
   end;
   if SameText(AFileName, 'atlas-standard.json') then
   begin
-    Result := Joined(Profile2);
+    Result := Joined(cProfile2);
   end;
   if SameText(AFileName, 'minimal.json') then
   begin
-    Result := Joined(Profile3);
+    Result := Joined(cProfile3);
   end;
   if SameText(AFileName, 'nur-code-insight.json') then
   begin
-    Result := Joined(Profile4);
+    Result := Joined(cProfile4);
   end;
 end;
 

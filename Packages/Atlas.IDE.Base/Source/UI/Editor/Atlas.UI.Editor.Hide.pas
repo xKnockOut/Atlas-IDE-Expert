@@ -69,9 +69,9 @@ type
 
   TAtlasHideNoticeWindow = class(TAtlasPopupWindow)
   public const
-    VisibleMs = 6000;
+    cVisibleMs = 6000;
     /// <summary>Abstand unter dem Element, logische Pixel.</summary>
-    Gap = 4;
+    cGap = 4;
   private
     FTitle: string;
     FDetail: string;
@@ -117,8 +117,8 @@ uses
   Atlas.UI.Popup.Accessibility;
 
 const
-  Pad = 10;
-  RowGap = 4;
+  cPad = 10;
+  cRowGap = 4;
 
 { TAtlasHideMenu }
 
@@ -131,7 +131,7 @@ end;
 
 class function TAtlasHideMenu.ElementName(AElement: TAtlasDrawnElement; APlural: Boolean): string;
 const
-  Singular: array[TAtlasDrawnElement] of TAtlasTextId = (TAtlasTextId.ElementCodeLensMetrics,
+  cSingular: array[TAtlasDrawnElement] of TAtlasTextId = (TAtlasTextId.ElementCodeLensMetrics,
     TAtlasTextId.ElementCodeLensTests, TAtlasTextId.ElementCodeLensTestUnit, TAtlasTextId.ElementBlockEndLabels,
     TAtlasTextId.ElementInlayHints, TAtlasTextId.ElementProblems, TAtlasTextId.ElementNotes,
     TAtlasTextId.ElementBookmarks, TAtlasTextId.ElementPairColors, TAtlasTextId.ElementPairGuides,
@@ -142,7 +142,7 @@ const
     TAtlasTextId.ElementInlayDefineHints, TAtlasTextId.ElementInlayCharHints, TAtlasTextId.ElementQuickBookmarks,
     TAtlasTextId.ElementInlayMethodHints,
     TAtlasTextId.ElementExitPoints, TAtlasTextId.ElementReassigned);
-  Plural: array[TAtlasDrawnElement] of TAtlasTextId = (TAtlasTextId.ElementCodeLensMetricsPlural,
+  cPlural: array[TAtlasDrawnElement] of TAtlasTextId = (TAtlasTextId.ElementCodeLensMetricsPlural,
     TAtlasTextId.ElementCodeLensTestsPlural, TAtlasTextId.ElementCodeLensTestUnitPlural,
     TAtlasTextId.ElementBlockEndLabelsPlural, TAtlasTextId.ElementInlayHintsPlural,
     TAtlasTextId.ElementProblemsPlural, TAtlasTextId.ElementNotesPlural, TAtlasTextId.ElementBookmarksPlural,
@@ -159,11 +159,11 @@ const
 begin
   if APlural then
   begin
-    Result := TAtlasStrings.Text(Plural[AElement]);
+    Result := TAtlasStrings.Text(cPlural[AElement]);
   end
   else
   begin
-    Result := TAtlasStrings.Text(Singular[AElement]);
+    Result := TAtlasStrings.Text(cSingular[AElement]);
   end;
 end;
 
@@ -189,88 +189,88 @@ end;
 
 procedure TAtlasHideMenu.AddChoice(AParent: TMenuItem; const ACaption: string; const AChoice: TAtlasHideChoice);
 var
-  Item: TMenuItem;
+  mItem: TMenuItem;
 begin
-  Item := NewItem(AParent, ACaption);
-  Item.Tag := Length(FChoices);
-  Item.OnClick := ItemClick;
+  mItem := NewItem(AParent, ACaption);
+  mItem.Tag := Length(FChoices);
+  mItem.OnClick := ItemClick;
   FChoices := FChoices + [AChoice];
 end;
 
 procedure TAtlasHideMenu.AddTarget(AParent: TMenuItem; const ATarget: TAtlasHideTarget);
 var
-  Scope: TAtlasHideScope;
-  Choice: TAtlasHideChoice;
+  mScope: TAtlasHideScope;
+  mChoice: TAtlasHideChoice;
 begin
-  for Scope := Low(TAtlasHideScope) to High(TAtlasHideScope) do
+  for mScope := Low(TAtlasHideScope) to High(TAtlasHideScope) do
   begin
-    if ATarget.Offers(Scope) then
+    if ATarget.Offers(mScope) then
     begin
-      Choice := Default(TAtlasHideChoice);
-      Choice.Target := ATarget;
-      Choice.Scope := Scope;
-      AddChoice(AParent, ScopeCaption(ATarget.Element, Scope), Choice);
+      mChoice := Default(TAtlasHideChoice);
+      mChoice.Target := ATarget;
+      mChoice.Scope := mScope;
+      AddChoice(AParent, ScopeCaption(ATarget.Element, mScope), mChoice);
     end;
   end;
   NewItem(AParent, '-');
-  Choice := Default(TAtlasHideChoice);
-  Choice.Target := ATarget;
-  Choice.Scope := TAtlasHideScope.Everywhere;
-  Choice.Settings := True;
-  AddChoice(AParent, TAtlasStrings.Text(TAtlasTextId.HideSettings), Choice);
+  mChoice := Default(TAtlasHideChoice);
+  mChoice.Target := ATarget;
+  mChoice.Scope := TAtlasHideScope.Everywhere;
+  mChoice.Settings := True;
+  AddChoice(AParent, TAtlasStrings.Text(TAtlasTextId.HideSettings), mChoice);
 end;
 
 procedure TAtlasHideMenu.Build(const ATargets: TArray<TAtlasHideTarget>);
 var
-  Targets: TArray<TAtlasHideTarget>;
-  Target, Seen: TAtlasHideTarget;
-  Known: Boolean;
-  Sub: TMenuItem;
+  mTargets: TArray<TAtlasHideTarget>;
+  mTarget, mSeen: TAtlasHideTarget;
+  mKnown: Boolean;
+  mSub: TMenuItem;
 begin
   FMenu.Items.Clear;
   FChoices := nil;
-  Targets := nil;
-  for Target in ATargets do
+  mTargets := nil;
+  for mTarget in ATargets do
   begin
-    Known := False;
-    for Seen in Targets do
+    mKnown := False;
+    for mSeen in mTargets do
     begin
-      if Seen.Element = Target.Element then
+      if mSeen.Element = mTarget.Element then
       begin
-        Known := True;
+        mKnown := True;
       end;
     end;
-    if not Known then
+    if not mKnown then
     begin
-      Targets := Targets + [Target];
+      mTargets := mTargets + [mTarget];
     end;
   end;
-  if Length(Targets) = 1 then
+  if Length(mTargets) = 1 then
   begin
-    AddTarget(FMenu.Items, Targets[0]);
+    AddTarget(FMenu.Items, mTargets[0]);
   end
   else
   begin
-    for Target in Targets do
+    for mTarget in mTargets do
     begin
-      Sub := NewItem(FMenu.Items, ElementName(Target.Element, False));
-      AddTarget(Sub, Target);
+      mSub := NewItem(FMenu.Items, ElementName(mTarget.Element, False));
+      AddTarget(mSub, mTarget);
     end;
   end;
 end;
 
 procedure TAtlasHideMenu.Choose(AIndex: Integer);
 var
-  Choice: TAtlasHideChoice;
+  mChoice: TAtlasHideChoice;
 begin
   if (AIndex < 0) or (AIndex > High(FChoices)) then
   begin
     Exit;
   end;
-  Choice := FChoices[AIndex];
+  mChoice := FChoices[AIndex];
   if Assigned(FOnChoose) then
   begin
-    FOnChoose(Choice);
+    FOnChoose(mChoice);
   end;
 end;
 
@@ -298,10 +298,10 @@ constructor TAtlasHideNoticeWindow.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.Hide;
-  SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.HideNotice));
+  SetAccessible(cUiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.HideNotice));
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
-  FTimer.Interval := VisibleMs;
+  FTimer.Interval := cVisibleMs;
   FTimer.OnTimer := TimerTick;
 end;
 
@@ -345,8 +345,8 @@ var
 begin
   Canvas.Font := UIFont;
   mTextHeight := Canvas.TextHeight('Wg');
-  mX := Scale(Pad);
-  mY := Scale(Pad);
+  mX := Scale(cPad);
+  mY := Scale(cPad);
   if ADraw then
   begin
     Canvas.Brush.Style := bsClear;
@@ -368,8 +368,8 @@ begin
   mWidth := mX;
   if mDetail <> '' then
   begin
-    mY := mY + mTextHeight + Scale(RowGap);
-    mX := Scale(Pad);
+    mY := mY + mTextHeight + Scale(cRowGap);
+    mX := Scale(cPad);
     PutText(Canvas, ADraw, mX, mY, mDetail, ToColor(Colors.Muted));
     mWidth := Max(mWidth, mX);
   end;
@@ -377,8 +377,8 @@ begin
   begin
     Canvas.Brush.Style := bsSolid;
   end;
-  Result.cx := mWidth + Scale(Pad);
-  Result.cy := mY + mTextHeight + Scale(Pad);
+  Result.cx := mWidth + Scale(cPad);
+  Result.cy := mY + mTextHeight + Scale(cPad);
 end;
 
 procedure TAtlasHideNoticeWindow.LayoutUndo(ADraw: Boolean; var AX: Integer; AY, ATextHeight: Integer);
@@ -404,18 +404,18 @@ end;
 procedure TAtlasHideNoticeWindow.ShowNotice(const ATitle, ADetail: string; ACanUndo: Boolean;
   const APoint: TPoint);
 var
-  Size: TSize;
+  mSize: TSize;
 begin
   FTitle := ATitle;
   FDetail := ADetail;
   FCanUndo := ACanUndo;
   FUndoHot := False;
   HandleNeeded;
-  Size := Layout(False);
-  ShowAt(PlaceBelow(APoint, Size.cx, Size.cy, Scale(Gap), WorkAreaAt(APoint)));
+  mSize := Layout(False);
+  ShowAt(PlaceBelow(APoint, mSize.cx, mSize.cy, Scale(cGap), WorkAreaAt(APoint)));
   Announce(Trim(ATitle + ' ' + ADetail));
   FTimer.Enabled := False;
-  FTimer.Interval := VisibleMs;
+  FTimer.Interval := cVisibleMs;
   FTimer.Enabled := True;
 end;
 
@@ -479,11 +479,11 @@ end;
 
 procedure TAtlasHideNoticeWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  Hot: Boolean;
+  mHot: Boolean;
 begin
   inherited;
-  Hot := not FUndoRect.IsEmpty and PtInRect(FUndoRect, Point(X, Y));
-  if Hot then
+  mHot := not FUndoRect.IsEmpty and PtInRect(FUndoRect, Point(X, Y));
+  if mHot then
   begin
     Cursor := crHandPoint;
   end
@@ -491,9 +491,9 @@ begin
   begin
     Cursor := crDefault;
   end;
-  if Hot <> FUndoHot then
+  if mHot <> FUndoHot then
   begin
-    FUndoHot := Hot;
+    FUndoHot := mHot;
     Invalidate;
   end;
 end;

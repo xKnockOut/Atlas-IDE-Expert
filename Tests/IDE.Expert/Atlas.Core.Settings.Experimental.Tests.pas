@@ -162,9 +162,9 @@ begin
   Assert.IsFalse(TAtlasPluginSettings.Defaults.ExperimentalEnabled, 'Vorgabe aus');
   Catalog := TAtlasSettingsCatalog.CreateDefault;
   try
-    Index := Catalog.IndexOfKey(TAtlasExperimental.MasterKey);
+    Index := Catalog.IndexOfKey(TAtlasExperimental.cMasterKey);
     Assert.IsTrue(Index >= 0, 'experimental.enabled im Katalog');
-    Assert.AreEqual(TAtlasExperimental.MasterName, Catalog[Index].Name);
+    Assert.AreEqual(TAtlasExperimental.cMasterName, Catalog[Index].Name);
     Assert.AreEqual('false', Catalog[Index].DefaultJson);
     Assert.IsFalse(Catalog[Index].Experimental, 'der Hauptschalter ist selbst nicht experimentell');
     // Jede experimentelle Einstellung hat aus als Vorgabe (wie der Wächter in Update-ConfigDoc.ps1).
@@ -192,7 +192,7 @@ begin
   Assert.IsFalse(Toggle.Experimental);
   // Eintrag für den Hauptschalter im echten Katalog.
   Toggles := TAtlasQuickToggles.Build(TAtlasQuickToggles.PluginCatalog, AtlasSchemaJson);
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, TAtlasExperimental.MasterName, Toggle));
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, TAtlasExperimental.cMasterName, Toggle));
   Assert.AreEqual('Allgemein', Toggle.Page);
   Assert.IsFalse(Toggle.Experimental);
 end;
@@ -213,7 +213,7 @@ begin
     Assert.IsNotNull(AllOn);
     Assert.IsNotNull(AllOnExperimental, 'Profil „Alles an, auch experimentell“ ist eingebaut');
     Keys := TAtlasExperimental.Keys(Catalog);
-    Keys := Keys + [TAtlasExperimental.MasterKey];
+    Keys := Keys + [TAtlasExperimental.cMasterKey];
     // „Alles an“ schaltet weder den Hauptschalter noch eine experimentelle Funktion ein.
     Values := AllOn.GetValue('settings') as TJSONObject;
     for Key in Keys do

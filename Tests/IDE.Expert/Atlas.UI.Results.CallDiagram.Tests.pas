@@ -160,7 +160,7 @@ begin
     end;
     Assert.IsTrue(More >= 0, '„+ N …“ bei zehn Kindern');
     Assert.AreEqual(2, View.Layout.Boxes[More].Hidden);
-    Assert.AreEqual(1 + TAtlasCallDiagram.MaxChildren + 1, Integer(Length(View.Layout.Boxes)));
+    Assert.AreEqual(1 + TAtlasCallDiagram.cMaxChildren + 1, Integer(Length(View.Layout.Boxes)));
     View.ClickBox(More);
     Assert.AreEqual(11, Integer(Length(View.Layout.Boxes)), 'Klick zeigt alle');
   finally

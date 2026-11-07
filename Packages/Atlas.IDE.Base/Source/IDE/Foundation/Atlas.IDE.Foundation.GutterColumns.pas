@@ -26,7 +26,7 @@ type
   TAtlasIdeGutterColumns = class
   public const
     /// <summary>So lange nach dem Abbau eines Editorfensters keine Spalte anfordern.</summary>
-    PauseMs = 2000;
+    cPauseMs = 2000;
   public
     /// <summary>ADrop gibt die Spalte des Dienstes ab; Ergebnis für Unregister.</summary>
     class function Register(const ADrop: TProc): Integer; static;
@@ -66,16 +66,16 @@ var
 
 procedure DropAll;
 var
-  Drop: TProc;
+  mDrop: TProc;
 begin
   if Drops = nil then
   begin
     Exit;
   end;
-  PausedUntil := TThread.GetTickCount64 + TAtlasIdeGutterColumns.PauseMs;
-  for Drop in Drops.Values do
+  PausedUntil := TThread.GetTickCount64 + TAtlasIdeGutterColumns.cPauseMs;
+  for mDrop in Drops.Values do
     try
-      Drop();
+      mDrop();
     except
       on E: Exception do
         TAtlasGuard.Log('Spalten der Zeilenleiste: Abgabe fehlgeschlagen: ' + E.ClassName);
@@ -128,15 +128,15 @@ end;
 
 class function TAtlasIdeGutterColumns.Register(const ADrop: TProc): Integer;
 var
-  Editors: IOTAEditorServices;
+  mEditors: IOTAEditorServices;
 begin
   if Drops = nil then
   begin
     Drops := TDictionary<Integer, TProc>.Create;
   end;
-  if (WatchIndex < 0) and Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  if (WatchIndex < 0) and Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
-    WatchIndex := Editors.AddNotifier(TWindowWatch.Create);
+    WatchIndex := mEditors.AddNotifier(TWindowWatch.Create);
   end;
   Inc(NextHandle);
   Result := NextHandle;
@@ -145,7 +145,7 @@ end;
 
 class procedure TAtlasIdeGutterColumns.Unregister(AHandle: Integer);
 var
-  Editors: IOTAEditorServices;
+  mEditors: IOTAEditorServices;
 begin
   if Drops = nil then
   begin
@@ -156,9 +156,9 @@ begin
   begin
     Exit;
   end;
-  if (WatchIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  if (WatchIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
-    Editors.RemoveNotifier(WatchIndex);
+    mEditors.RemoveNotifier(WatchIndex);
   end;
   WatchIndex := -1;
   FreeAndNil(Drops);

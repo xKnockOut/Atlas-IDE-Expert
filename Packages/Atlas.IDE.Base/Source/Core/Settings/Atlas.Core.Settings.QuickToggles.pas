@@ -147,10 +147,10 @@ end;
 
 function IsTrue(ASchema: TJSONObject; const AName: string): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := ASchema.GetValue(AName);
-  Result := (Value is TJSONBool) and TJSONBool(Value).AsBoolean;
+  mValue := ASchema.GetValue(AName);
+  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
 end;
 
 type
@@ -158,10 +158,10 @@ type
 
 function IsBoolean(ASchema: TJSONObject): Boolean;
 var
-  Kind: TJSONValue;
+  mKind: TJSONValue;
 begin
-  Kind := ASchema.GetValue('type');
-  Result := (Kind is TJSONString) and (TJSONString(Kind).Value = 'boolean');
+  mKind := ASchema.GetValue('type');
+  Result := (mKind is TJSONString) and (TJSONString(mKind).Value = 'boolean');
 end;
 
 function IsQuickToggle(AValue: TJSONValue): Boolean;
@@ -280,13 +280,13 @@ end;
 
 procedure TAtlasToggleSession.Put(const AKey: string; AValue: Boolean);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Overrides) do
+  for mIndex := 0 to High(Overrides) do
   begin
-    if SameText(Overrides[Index].Key, AKey) then
+    if SameText(Overrides[mIndex].Key, AKey) then
     begin
-      Overrides[Index] := TPair<string, Boolean>.Create(Overrides[Index].Key, AValue);
+      Overrides[mIndex] := TPair<string, Boolean>.Create(Overrides[mIndex].Key, AValue);
       Exit;
     end;
   end;
@@ -295,27 +295,27 @@ end;
 
 procedure TAtlasToggleSession.Drop(const AKey: string);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := High(Overrides) downto 0 do
+  for mIndex := High(Overrides) downto 0 do
   begin
-    if SameText(Overrides[Index].Key, AKey) then
+    if SameText(Overrides[mIndex].Key, AKey) then
     begin
-      Delete(Overrides, Index, 1);
+      Delete(Overrides, mIndex, 1);
     end;
   end;
 end;
 
 function TAtlasToggleSession.TryGet(const AKey: string; out AValue: Boolean): Boolean;
 var
-  Pair: TPair<string, Boolean>;
+  mPair: TPair<string, Boolean>;
 begin
   AValue := False;
-  for Pair in Overrides do
+  for mPair in Overrides do
   begin
-    if SameText(Pair.Key, AKey) then
+    if SameText(mPair.Key, AKey) then
     begin
-      AValue := Pair.Value;
+      AValue := mPair.Value;
       Exit(True);
     end;
   end;
@@ -325,21 +325,21 @@ end;
 function TAtlasToggleSession.Apply(const AStored: TAtlasPluginSettings;
   const AToggles: TArray<TAtlasQuickToggle>): TAtlasPluginSettings;
 var
-  Pair: TPair<string, Boolean>;
-  Toggle: TAtlasQuickToggle;
+  mPair: TPair<string, Boolean>;
+  mToggle: TAtlasQuickToggle;
 begin
   Result := AStored;
-  for Pair in Overrides do
+  for mPair in Overrides do
   begin
-    TAtlasQuickToggles.SetFlag(Result, Pair.Key, Pair.Value);
+    TAtlasQuickToggles.SetFlag(Result, mPair.Key, mPair.Value);
   end;
   if AllOff then
   begin
-    for Toggle in AToggles do
+    for mToggle in AToggles do
     begin
-      if Toggle.Drawing then
+      if mToggle.Drawing then
       begin
-        TAtlasQuickToggles.SetFlag(Result, Toggle.Key, False);
+        TAtlasQuickToggles.SetFlag(Result, mToggle.Key, False);
       end;
     end;
   end;
@@ -387,43 +387,43 @@ end;
 
 class function TAtlasQuickToggles.Groups(const AToggles: TArray<TAtlasQuickToggle>): TArray<TAtlasQuickToggleGroup>;
 var
-  Toggle: TAtlasQuickToggle;
-  Index, Found: Integer;
-  Group: TAtlasQuickToggleGroup;
+  mToggle: TAtlasQuickToggle;
+  mIndex, mFound: Integer;
+  mGroup: TAtlasQuickToggleGroup;
 begin
   Result := nil;
-  for Toggle in AToggles do
+  for mToggle in AToggles do
   begin
-    Found := -1;
-    for Index := 0 to High(Result) do
+    mFound := -1;
+    for mIndex := 0 to High(Result) do
     begin
-      if SameText(Result[Index].Page, Toggle.Page) then
+      if SameText(Result[mIndex].Page, mToggle.Page) then
       begin
-        Found := Index;
+        mFound := mIndex;
       end;
     end;
-    if Found < 0 then
+    if mFound < 0 then
     begin
-      Group.Page := Toggle.Page;
-      Group.Toggles := nil;
-      Result := Result + [Group];
-      Found := High(Result);
+      mGroup.Page := mToggle.Page;
+      mGroup.Toggles := nil;
+      Result := Result + [mGroup];
+      mFound := High(Result);
     end;
-    Result[Found].Toggles := Result[Found].Toggles + [Toggle];
+    Result[mFound].Toggles := Result[mFound].Toggles + [mToggle];
   end;
 end;
 
 class function TAtlasQuickToggles.Find(const AToggles: TArray<TAtlasQuickToggle>; const AKey: string;
   out AToggle: TAtlasQuickToggle): Boolean;
 var
-  Toggle: TAtlasQuickToggle;
+  mToggle: TAtlasQuickToggle;
 begin
   AToggle := Default(TAtlasQuickToggle);
-  for Toggle in AToggles do
+  for mToggle in AToggles do
   begin
-    if SameText(Toggle.Key, AKey) then
+    if SameText(mToggle.Key, AKey) then
     begin
-      AToggle := Toggle;
+      AToggle := mToggle;
       Exit(True);
     end;
   end;
@@ -433,41 +433,41 @@ end;
 class function TAtlasQuickToggles.GetFlag(const ASettings: TAtlasPluginSettings; const AKey: string;
   out AValue: Boolean): Boolean;
 var
-  Store: IAtlasMemorySettingsStore;
+  mStore: IAtlasMemorySettingsStore;
 begin
   // Über Save statt eines eigenen Falls je Feld: jede neue Einstellung ist ohne Änderung hier erreichbar.
-  Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
-  Result := Store.HasInteger(AKey);
-  AValue := Result and (Store.ReadInteger(AKey, 0) <> 0);
+  mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
+  Result := mStore.HasInteger(AKey);
+  AValue := Result and (mStore.ReadInteger(AKey, 0) <> 0);
 end;
 
 class function TAtlasQuickToggles.SetFlag(var ASettings: TAtlasPluginSettings; const AKey: string;
   AValue: Boolean): Boolean;
 var
-  Store: IAtlasMemorySettingsStore;
+  mStore: IAtlasMemorySettingsStore;
 begin
-  Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
-  Result := Store.HasInteger(AKey);
+  mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
+  Result := mStore.HasInteger(AKey);
   if not Result then
   begin
     Exit;
   end;
   if AValue then
   begin
-    Store.WriteInteger(AKey, 1);
+    mStore.WriteInteger(AKey, 1);
   end
   else
   begin
-    Store.WriteInteger(AKey, 0);
+    mStore.WriteInteger(AKey, 0);
   end;
-  ASettings.Load(Store);
+  ASettings.Load(mStore);
 end;
 
 class function TAtlasQuickToggles.ProjectValue(AProject: TJSONObject; const APath: string;
   out AValue: Boolean): Boolean;
 var
-  Current: TJSONValue;
-  Segment: string;
+  mCurrent: TJSONValue;
+  mSegment: string;
 begin
   AValue := False;
   Result := False;
@@ -475,18 +475,18 @@ begin
   begin
     Exit;
   end;
-  Current := AProject;
-  for Segment in APath.Split(['.']) do
+  mCurrent := AProject;
+  for mSegment in APath.Split(['.']) do
   begin
-    if not (Current is TJSONObject) then
+    if not (mCurrent is TJSONObject) then
     begin
       Exit;
     end;
-    Current := TJSONObject(Current).GetValue(Segment);
+    mCurrent := TJSONObject(mCurrent).GetValue(mSegment);
   end;
-  if Current is TJSONBool then
+  if mCurrent is TJSONBool then
   begin
-    AValue := TJSONBool(Current).AsBoolean;
+    AValue := TJSONBool(mCurrent).AsBoolean;
     Result := True;
   end;
 end;
@@ -495,27 +495,27 @@ class function TAtlasQuickToggles.Items(const AToggles: TArray<TAtlasQuickToggle
   const AStored: TAtlasPluginSettings; const ASession: TAtlasToggleSession;
   AProject: TJSONObject): TArray<TAtlasQuickToggleItem>;
 var
-  Toggle: TAtlasQuickToggle;
-  Item: TAtlasQuickToggleItem;
-  Value: Boolean;
+  mToggle: TAtlasQuickToggle;
+  mItem: TAtlasQuickToggleItem;
+  mValue: Boolean;
 begin
   Result := nil;
-  for Toggle in AToggles do
+  for mToggle in AToggles do
   begin
-    Item := Default(TAtlasQuickToggleItem);
-    Item.Toggle := Toggle;
-    GetFlag(AStored, Toggle.Key, Item.Checked);
-    Item.Project := ProjectValue(AProject, Toggle.ProjectPath, Value);
-    if Item.Project then
+    mItem := Default(TAtlasQuickToggleItem);
+    mItem.Toggle := mToggle;
+    GetFlag(AStored, mToggle.Key, mItem.Checked);
+    mItem.Project := ProjectValue(AProject, mToggle.ProjectPath, mValue);
+    if mItem.Project then
     begin
-      Item.Checked := Value;
+      mItem.Checked := mValue;
     end;
-    Item.Session := ASession.TryGet(Toggle.Key, Value);
-    if Item.Session then
+    mItem.Session := ASession.TryGet(mToggle.Key, mValue);
+    if mItem.Session then
     begin
-      Item.Checked := Value;
+      mItem.Checked := mValue;
     end;
-    Result := Result + [Item];
+    Result := Result + [mItem];
   end;
 end;
 

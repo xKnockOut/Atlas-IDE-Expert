@@ -148,7 +148,7 @@ begin
   end;
   FButtons := Copy(AButtons);
   Layout;
-  SetHot(PartNone);
+  SetHot(cPartNone);
   Invalidate;
 end;
 
@@ -215,7 +215,7 @@ begin
       Exit(2 * mIndex + 1);
     end;
   end;
-  Result := PartNone;
+  Result := cPartNone;
 end;
 
 function TAtlasDesignerBar.PartHint(APart: Integer): string;

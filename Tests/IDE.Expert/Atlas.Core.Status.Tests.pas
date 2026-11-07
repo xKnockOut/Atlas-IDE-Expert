@@ -487,9 +487,9 @@ var
   Items: TArray<IAtlasStatusItem>;
 begin
   Registry := TAtlasStatusRegistry.Create;
-  Registry.Add(Line(nil, TAtlasStatusLines.ServerId, TAtlasStatusLines.ServerOrder, TAtlasStatusState.Green,
+  Registry.Add(Line(nil, TAtlasStatusLines.cServerId, TAtlasStatusLines.cServerOrder, TAtlasStatusState.Green,
     'Server: läuft', ''));
-  Registry.Add(Line(nil, TAtlasStatusLines.IndexId, TAtlasStatusLines.IndexOrder, TAtlasStatusState.Green,
+  Registry.Add(Line(nil, TAtlasStatusLines.cIndexId, TAtlasStatusLines.cIndexOrder, TAtlasStatusState.Green,
     'Index: 10 Units', ''));
   Foreign := TForeignItem.Create;
   Ref := Foreign;
@@ -540,7 +540,7 @@ var
 begin
   Info := Default(TAtlasServerInfo);
   Info.Phase := TAtlasServerPhase.Running;
-  Info.AverageMs := TAtlasStatusLines.SlowMs;
+  Info.AverageMs := TAtlasStatusLines.cSlowMs;
   Info.Samples := 3;
   Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(TAtlasStatusLines.ServerState(Info)));
   Assert.Contains(TAtlasStatusLines.ServerText(Info), '(langsam)');
@@ -745,12 +745,12 @@ begin
     begin
       Client.AddResponseTime(1000);
     end;
-    for Index := 1 to TLspResponseTimes.Samples do
+    for Index := 1 to TLspResponseTimes.cSamples do
     begin
       Client.AddResponseTime(4);
     end;
     Assert.AreEqual(4.0, Client.AverageMs(Samples), 0.001);
-    Assert.AreEqual(TLspResponseTimes.Samples, Samples);
+    Assert.AreEqual(TLspResponseTimes.cSamples, Samples);
   finally
     Client.Free;
   end;

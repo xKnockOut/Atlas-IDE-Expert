@@ -321,7 +321,7 @@ end;
 
 procedure TAtlasTrackerWorkflowTests.EndCommentFollowsLanguage;
 begin
-  Assert.AreEqual(TAtlasPluginSettings.DefaultIssuesEndComment, TAtlasTrackerWorkflow.cDefaultEndComment);
+  Assert.AreEqual(TAtlasPluginSettings.cDefaultIssuesEndComment, TAtlasTrackerWorkflow.cDefaultEndComment);
   Assert.AreEqual(TAtlasTrackerWorkflow.cDefaultEndCommentEn,
     TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.cDefaultEndComment, True));
   Assert.AreEqual(TAtlasTrackerWorkflow.cDefaultEndComment,

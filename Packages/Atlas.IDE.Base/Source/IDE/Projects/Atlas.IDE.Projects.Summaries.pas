@@ -397,7 +397,7 @@ begin
     Exit;
   end;
   if not FFresh.TryGetValue(TAtlasProjectSummaries.NormalizedPath(AProject), mLast) or
-    (GetTickCount64 - mLast >= TAtlasProjectRecording.VcsRefreshMs) then
+    (GetTickCount64 - mLast >= TAtlasProjectRecording.cVcsRefreshMs) then
   begin
     Query(AProject, 0);
   end;
@@ -462,7 +462,7 @@ begin
     procedure
     begin
       // Geänderte Dateien nur im Projektordner: Eine Arbeitskopie kann mehrere Projekte enthalten.
-      mOk := TAtlasProjectRecording.Probe(TAtlasIdeVcs.ForFolder(mDir, TAtlasProjectRecording.VcsCallTimeoutMs),
+      mOk := TAtlasProjectRecording.Probe(TAtlasIdeVcs.ForFolder(mDir, TAtlasProjectRecording.cVcsCallTimeoutMs),
         mDir, mStamp, mState);
     end,
     procedure

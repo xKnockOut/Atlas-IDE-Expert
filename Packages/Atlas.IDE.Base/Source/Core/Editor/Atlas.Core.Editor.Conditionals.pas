@@ -94,7 +94,7 @@ type
 
 const
   /// <summary>Wert für Unbekanntes: gilt als wahr bzw. als erfüllter Vergleich.</summary>
-  UnknownValue = 1.0;
+  cUnknownValue = 1.0;
 
 function IsOneOf(const AText: string; const AList: array of string): Boolean;
 var
@@ -249,27 +249,27 @@ end;
 
 function TExprParser.ParseOr: Double;
 var
-  Right: Double;
+  mRight: Double;
 begin
   Result := ParseAnd;
   while IsWord('or') do
   begin
     Take;
-    Right := ParseAnd;
-    Result := Truth((Result <> 0) or (Right <> 0));
+    mRight := ParseAnd;
+    Result := Truth((Result <> 0) or (mRight <> 0));
   end;
 end;
 
 function TExprParser.ParseAnd: Double;
 var
-  Right: Double;
+  mRight: Double;
 begin
   Result := ParseNot;
   while IsWord('and') do
   begin
     Take;
-    Right := ParseNot;
-    Result := Truth((Result <> 0) and (Right <> 0));
+    mRight := ParseNot;
+    Result := Truth((Result <> 0) and (mRight <> 0));
   end;
 end;
 
@@ -286,40 +286,40 @@ end;
 
 function TExprParser.ParseCompare: Double;
 var
-  Op: string;
-  Right: Double;
+  mOp: string;
+  mRight: Double;
 begin
   Result := ParseValue;
   if not IsCompareOperator(Peek) then
   begin
     Exit;
   end;
-  Op := Take.Text;
-  Right := ParseValue;
+  mOp := Take.Text;
+  mRight := ParseValue;
   // $IF vergleicht wie dcc exakt; eine Toleranz würde Zweige anders wählen als der Compiler.
-  if Op = '=' then
+  if mOp = '=' then
   begin
-    Result := Truth(Result = Right); // lsp-ignore: float-equality
+    Result := Truth(Result = mRight); // lsp-ignore: float-equality
   end
-  else if Op = '<>' then
+  else if mOp = '<>' then
   begin
-    Result := Truth(Result <> Right); // lsp-ignore: float-equality
+    Result := Truth(Result <> mRight); // lsp-ignore: float-equality
   end
-  else if Op = '<' then
+  else if mOp = '<' then
   begin
-    Result := Truth(Result < Right);
+    Result := Truth(Result < mRight);
   end
-  else if Op = '>' then
+  else if mOp = '>' then
   begin
-    Result := Truth(Result > Right);
+    Result := Truth(Result > mRight);
   end
-  else if Op = '<=' then
+  else if mOp = '<=' then
   begin
-    Result := Truth(Result <= Right);
+    Result := Truth(Result <= mRight);
   end
   else
   begin
-    Result := Truth(Result >= Right);
+    Result := Truth(Result >= mRight);
   end;
 end;
 
@@ -327,7 +327,7 @@ function TExprParser.ParseDefined(const AWord: string): Double;
 var
   mName: string;
 begin
-  Result := UnknownValue;
+  Result := cUnknownValue;
   mName := '';
   if IsSymbol('(') then
   begin
@@ -347,7 +347,7 @@ end;
 
 function TExprParser.ParseIdent(const AWord: string): Double;
 begin
-  Result := UnknownValue;
+  Result := cUnknownValue;
   if SameText(AWord, 'Defined') or SameText(AWord, 'Declared') then
   begin
     Result := ParseDefined(AWord);
@@ -371,13 +371,13 @@ var
   mToken: TExprToken;
 begin
   mToken := Take;
-  Result := UnknownValue;
+  Result := cUnknownValue;
   // Ende des Ausdrucks und Unbekanntes bleiben unbekannt.
   if mToken.Kind = etNumber then
   begin
     if not TryStrToFloat(mToken.Text, Result, TFormatSettings.Invariant) then
     begin
-      Result := UnknownValue;
+      Result := cUnknownValue;
     end;
   end
   else if mToken.Kind = etIdent then
@@ -398,17 +398,17 @@ end;
 
 constructor TAtlasConditionals.Create(const ADefines: TArray<string>; ACompilerVersion: Double);
 var
-  Symbol: string;
+  mSymbol: string;
 begin
   inherited Create;
   FDefines := TDictionary<string, Boolean>.Create;
   FFrames := TList<TFrame>.Create;
   FCompilerVersion := ACompilerVersion;
-  for Symbol in ADefines do
+  for mSymbol in ADefines do
   begin
-    if Trim(Symbol) <> '' then
+    if Trim(mSymbol) <> '' then
     begin
-      FDefines.AddOrSetValue(UpperCase(Trim(Symbol)), True);
+      FDefines.AddOrSetValue(UpperCase(Trim(mSymbol)), True);
     end;
   end;
 end;
@@ -432,13 +432,13 @@ end;
 
 function TAtlasConditionals.Evaluate(const AExpression: string): Boolean;
 var
-  Parser: TExprParser;
+  mParser: TExprParser;
 begin
-  Parser := TExprParser.Create(Self, AExpression);
+  mParser := TExprParser.Create(Self, AExpression);
   try
-    Result := Parser.Run;
+    Result := mParser.Run;
   finally
-    Parser.Free;
+    mParser.Free;
   end;
 end;
 

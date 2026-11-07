@@ -91,7 +91,7 @@ uses
   Atlas.Core.Completion.Matching;
 
 const
-  KindNamespace = 3;
+  cKindNamespace = 3;
 
 function MakeBadge(AKind: TAtlasBadgeKind; const ACode: string): TAtlasBadge;
 begin
@@ -103,14 +103,14 @@ end;
 /// Zeichen beginnt.</summary>
 function LeadingWord(const ALine: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := 1;
-  while (Index <= Length(ALine)) and CharInSet(ALine[Index], ['a'..'z', 'A'..'Z', '_']) do
+  mIndex := 1;
+  while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], ['a'..'z', 'A'..'Z', '_']) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := LowerCase(Copy(ALine, 1, Index - 1));
+  Result := LowerCase(Copy(ALine, 1, mIndex - 1));
 end;
 
 /// <summary>Abschnitt nach dem Schlüsselwort AWord am Zeilenanfang; sonst ACurrent.</summary>
@@ -261,7 +261,7 @@ end;
 class function TAtlasBreadcrumbs.BadgeOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
   ANode: Integer): TAtlasBadge;
 var
-  Head: string;
+  mHead: string;
 begin
   case ANodes[ANode].Category of
     TAtlasOutlineCategory.TypeDecl:
@@ -274,17 +274,17 @@ begin
       Result := MakeBadge(TAtlasBadgeKind.Constant, 'co');
     TAtlasOutlineCategory.Method, TAtlasOutlineCategory.Routine:
       begin
-        Head := '';
+        mHead := '';
         if (ANodes[ANode].StartLine >= 0) and (ANodes[ANode].StartLine <= High(ALines)) then
         begin
-          Head := LowerCase(TrimLeft(Copy(ALines[ANodes[ANode].StartLine], ANodes[ANode].StartCharacter + 1, MaxInt)));
+          mHead := LowerCase(TrimLeft(Copy(ALines[ANodes[ANode].StartLine], ANodes[ANode].StartCharacter + 1, MaxInt)));
         end;
         // class procedure/class function: das Wort nach class zählt.
-        if Head.StartsWith('class ') then
+        if mHead.StartsWith('class ') then
         begin
-          Head := TrimLeft(Copy(Head, 7, MaxInt));
+          mHead := TrimLeft(Copy(mHead, 7, MaxInt));
         end;
-        if Head.StartsWith('procedure') or Head.StartsWith('destructor') then
+        if mHead.StartsWith('procedure') or mHead.StartsWith('destructor') then
         begin
           Result := MakeBadge(TAtlasBadgeKind.Procedure_, 'pr');
         end
@@ -305,7 +305,7 @@ end;
 
 function IsSection(const ANode: TAtlasOutlineNode): Boolean;
 begin
-  Result := (ANode.Kind = KindNamespace) or (ANode.Category = TAtlasOutlineCategory.Section);
+  Result := (ANode.Kind = cKindNamespace) or (ANode.Category = TAtlasOutlineCategory.Section);
 end;
 
 function Contains(const ANode: TAtlasOutlineNode; ALine, ACharacter: Integer): Boolean;
@@ -375,7 +375,7 @@ end;
 
 function NewCrumb(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ANode: Integer): TAtlasCrumb;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result.Text := TAtlasBreadcrumbs.ShortName(ANodes[ANode].Name);
   Result.Badge := TAtlasBreadcrumbs.BadgeOf(ANodes, ALines, ANode);
@@ -383,11 +383,11 @@ begin
   Result.Siblings := SiblingsOf(ANodes, ANode);
   Result.Children := TAtlasBreadcrumbs.Children(ANodes, ANode);
   Result.Current := -1;
-  for Index := 0 to High(Result.Siblings) do
+  for mIndex := 0 to High(Result.Siblings) do
   begin
-    if Result.Siblings[Index] = ANode then
+    if Result.Siblings[mIndex] = ANode then
     begin
-      Result.Current := Index;
+      Result.Current := mIndex;
     end;
   end;
 end;
@@ -506,44 +506,44 @@ end;
 
 class function TAtlasBreadcrumbs.UnitMembers(const ANodes: TAtlasOutlineNodes): TArray<Integer>;
 var
-  Index, Parent: Integer;
+  mIndex, mParent: Integer;
 begin
   Result := nil;
-  for Index := 0 to High(ANodes) do
+  for mIndex := 0 to High(ANodes) do
   begin
-    Parent := ANodes[Index].Parent;
-    if ANodes[Index].Hidden or IsSection(ANodes[Index]) or ((Parent >= 0) and not IsSection(ANodes[Parent])) then
+    mParent := ANodes[mIndex].Parent;
+    if ANodes[mIndex].Hidden or IsSection(ANodes[mIndex]) or ((mParent >= 0) and not IsSection(ANodes[mParent])) then
     begin
       Continue;
     end;
-    Result := Result + [Index];
+    Result := Result + [mIndex];
   end;
 end;
 
 class function TAtlasBreadcrumbs.Routines(const ANodes: TAtlasOutlineNodes): TArray<Integer>;
 var
-  Index, Parent: Integer;
+  mIndex, mParent: Integer;
 begin
   Result := nil;
-  for Index := 0 to High(ANodes) do
+  for mIndex := 0 to High(ANodes) do
   begin
-    if ANodes[Index].Hidden or ANodes[Index].InBody or not IsRoutine(ANodes[Index]) then
+    if ANodes[mIndex].Hidden or ANodes[mIndex].InBody or not IsRoutine(ANodes[mIndex]) then
     begin
       Continue;
     end;
     // Lokale Routinen (Eltern ist eine Routine) nicht.
-    Parent := ANodes[Index].Parent;
-    if (Parent >= 0) and IsRoutine(ANodes[Parent]) then
+    mParent := ANodes[mIndex].Parent;
+    if (mParent >= 0) and IsRoutine(ANodes[mParent]) then
     begin
       Continue;
     end;
-    Result := Result + [Index];
+    Result := Result + [mIndex];
   end;
 end;
 
 class function TAtlasBreadcrumbs.QualifiedName(const ANodes: TAtlasOutlineNodes; ANode: Integer): string;
 var
-  Owner: Integer;
+  mOwner: Integer;
 begin
   if (ANode < 0) or (ANode > High(ANodes)) then
   begin
@@ -555,18 +555,18 @@ begin
   begin
     Exit;
   end;
-  Owner := ANodes[ANode].Parent;
-  while (Owner >= 0) and (ANodes[Owner].Category = TAtlasOutlineCategory.TypeDecl) do
+  mOwner := ANodes[ANode].Parent;
+  while (mOwner >= 0) and (ANodes[mOwner].Category = TAtlasOutlineCategory.TypeDecl) do
   begin
-    Result := ANodes[Owner].Name + '.' + Result;
-    Owner := ANodes[Owner].Parent;
+    Result := ANodes[mOwner].Name + '.' + Result;
+    mOwner := ANodes[mOwner].Parent;
   end;
 end;
 
 class function TAtlasBreadcrumbs.Children(const ANodes: TAtlasOutlineNodes; ANode: Integer): TArray<Integer>;
 var
-  Owner, Index: Integer;
-  Routine: Boolean;
+  mOwner, mIndex: Integer;
+  mRoutine: Boolean;
 begin
   Result := nil;
   if (ANode < 0) or (ANode > High(ANodes)) then
@@ -574,27 +574,27 @@ begin
     Exit;
   end;
   // Bei Routinen liegen die lokalen Routinen im Rumpf, nicht an der Deklaration.
-  Owner := Target(ANodes, ANode, True);
-  Routine := IsRoutine(ANodes[Owner]);
-  for Index := 0 to High(ANodes) do
+  mOwner := Target(ANodes, ANode, True);
+  mRoutine := IsRoutine(ANodes[mOwner]);
+  for mIndex := 0 to High(ANodes) do
   begin
-    if ANodes[Index].Parent <> Owner then
+    if ANodes[mIndex].Parent <> mOwner then
     begin
       Continue;
     end;
-    if Routine then
+    if mRoutine then
     begin
       // Nur lokale Routinen, keine lokalen Variablen und Konstanten.
-      if not IsRoutine(ANodes[Index]) then
+      if not IsRoutine(ANodes[mIndex]) then
       begin
         Continue;
       end;
     end
-    else if ANodes[Index].Hidden then
+    else if ANodes[mIndex].Hidden then
     begin
       Continue;
     end;
-    Result := Result + [Index];
+    Result := Result + [mIndex];
   end;
 end;
 
@@ -621,19 +621,19 @@ end;
 
 class function TAtlasBreadcrumbs.MatchesAtWordStart(const APattern, AName: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if APattern = '' then
   begin
     Exit(True);
   end;
-  if TAtlasCompletionMatcher.Score(APattern, AName) >= TAtlasCompletionMatcher.ScoreWordStarts then
+  if TAtlasCompletionMatcher.Score(APattern, AName) >= TAtlasCompletionMatcher.cScoreWordStarts then
   begin
     Exit(True);
   end;
-  for Index := 2 to Length(AName) - Length(APattern) + 1 do
+  for mIndex := 2 to Length(AName) - Length(APattern) + 1 do
   begin
-    if TAtlasCompletionMatcher.IsWordStart(AName, Index) and SameText(Copy(AName, Index, Length(APattern)),
+    if TAtlasCompletionMatcher.IsWordStart(AName, mIndex) and SameText(Copy(AName, mIndex, Length(APattern)),
       APattern) then
     begin
       Exit(True);
@@ -645,14 +645,14 @@ end;
 class function TAtlasBreadcrumbs.Filter(const ANodes: TAtlasOutlineNodes; const ASiblings: TArray<Integer>;
   const APattern: string): TArray<Integer>;
 var
-  Item: Integer;
+  mItem: Integer;
 begin
   Result := nil;
-  for Item in ASiblings do
+  for mItem in ASiblings do
   begin
-    if MatchesAtWordStart(APattern, ShortName(ANodes[Item].Name)) then
+    if MatchesAtWordStart(APattern, ShortName(ANodes[mItem].Name)) then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
 end;

@@ -117,10 +117,10 @@ type
 
   TAtlasExpressionType = class
   public const
-    Command = 'atlas.server.expressionType';
+    cCommand = 'atlas.server.expressionType';
     /// <summary>Strg+Umschalt+T.</summary>
-    DefaultKey = $6054;
-    ErrorNoExpression = 'noExpression';
+    cDefaultKey = $6054;
+    cErrorNoExpression = 'noExpression';
   public
     /// <summary>[uri, {start, end}, {expand, conversions, constValue}].</summary>
     class function Arguments(const AUri: string; const ARange: TLspRange; AExpand, AConversions,
@@ -145,13 +145,13 @@ implementation
 
 function ReadPosition(const AValue: TJSONValue; out APosition: TLspTextPosition): Boolean;
 var
-  Line, Character: Integer;
+  mLine, mCharacter: Integer;
 begin
-  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Integer>('line', Line) and
-    TJSONObject(AValue).TryGetValue<Integer>('character', Character);
+  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Integer>('line', mLine) and
+    TJSONObject(AValue).TryGetValue<Integer>('character', mCharacter);
   if Result then
   begin
-    APosition := TLspTextPosition.Create(Line, Character);
+    APosition := TLspTextPosition.Create(mLine, mCharacter);
   end;
 end;
 
@@ -182,16 +182,16 @@ end;
 /// </summary>
 function OperatorText(const ADetail: string; const ATexts: TAtlasExpressionTypeTexts): string;
 var
-  Parts: TArray<string>;
+  mParts: TArray<string>;
 begin
-  Parts := ADetail.Split(['|']);
-  if (Length(Parts) = 3) and (Parts[1] = '') then
+  mParts := ADetail.Split(['|']);
+  if (Length(mParts) = 3) and (mParts[1] = '') then
   begin
-    Result := Format(ATexts.OperatorUnary, [Parts[0], Parts[2]]);
+    Result := Format(ATexts.OperatorUnary, [mParts[0], mParts[2]]);
   end
-  else if Length(Parts) = 3 then
+  else if Length(mParts) = 3 then
   begin
-    Result := Format(ATexts.OperatorMismatch, [Parts[0], Parts[1], Parts[2]]);
+    Result := Format(ATexts.OperatorMismatch, [mParts[0], mParts[1], mParts[2]]);
   end
   else
   begin
@@ -280,7 +280,7 @@ begin
   begin
     mDetail := AInfo.Expression;
   end;
-  if AInfo.Error = TAtlasExpressionType.ErrorNoExpression then
+  if AInfo.Error = TAtlasExpressionType.cErrorNoExpression then
   begin
     Result := ATexts.NoExpression;
   end
@@ -362,24 +362,24 @@ end;
 class function TAtlasExpressionType.Arguments(const AUri: string; const ARange: TLspRange; AExpand, AConversions,
   AConstValue: Boolean): string;
 var
-  List: TJSONArray;
-  Range, Options: TJSONObject;
+  mList: TJSONArray;
+  mRange, mOptions: TJSONObject;
 begin
-  List := TJSONArray.Create;
+  mList := TJSONArray.Create;
   try
-    List.Add(AUri);
-    Range := TJSONObject.Create;
-    Range.AddPair('start', PositionJson(ARange.StartPos));
-    Range.AddPair('end', PositionJson(ARange.EndPos));
-    List.AddElement(Range);
-    Options := TJSONObject.Create;
-    Options.AddPair('expand', TJSONBool.Create(AExpand));
-    Options.AddPair('conversions', TJSONBool.Create(AConversions));
-    Options.AddPair('constValue', TJSONBool.Create(AConstValue));
-    List.AddElement(Options);
-    Result := List.ToJSON;
+    mList.Add(AUri);
+    mRange := TJSONObject.Create;
+    mRange.AddPair('start', PositionJson(ARange.StartPos));
+    mRange.AddPair('end', PositionJson(ARange.EndPos));
+    mList.AddElement(mRange);
+    mOptions := TJSONObject.Create;
+    mOptions.AddPair('expand', TJSONBool.Create(AExpand));
+    mOptions.AddPair('conversions', TJSONBool.Create(AConversions));
+    mOptions.AddPair('constValue', TJSONBool.Create(AConstValue));
+    mList.AddElement(mOptions);
+    Result := mList.ToJSON;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
@@ -422,7 +422,7 @@ begin
     Result := Result + TypeRows(AInfo, ATexts);
   end;
   // Erweitern nur, wo es einen Ausdruck gibt.
-  if (ATexts.Expand <> '') and (AInfo.Error <> ErrorNoExpression) then
+  if (ATexts.Expand <> '') and (AInfo.Error <> cErrorNoExpression) then
   begin
     Result := Result + [Row(TAtlasExpressionTypeRowKind.Hint, ATexts.Expand, False)];
   end;
@@ -445,7 +445,7 @@ end;
 
 class function TAtlasExpressionType.KeepShown(AExpand: Boolean; const AInfo: TAtlasExpressionTypeInfo): Boolean;
 begin
-  Result := AExpand and (AInfo.Error = ErrorNoExpression);
+  Result := AExpand and (AInfo.Error = cErrorNoExpression);
 end;
 
 class function TAtlasExpressionType.SpanOnLine(const ARange: TLspRange; ALine, ALength: Integer;

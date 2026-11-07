@@ -305,9 +305,9 @@ begin
   mSettings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(mSettings.WelcomePageTrends);
   Assert.AreEqual(30, mSettings.WelcomePageTrendsPoints);
-  Assert.AreEqual(TAtlasProjectTrendLog.DefaultPoints, mSettings.WelcomePageTrendsPoints);
+  Assert.AreEqual(TAtlasProjectTrendLog.cDefaultPoints, mSettings.WelcomePageTrendsPoints);
   Assert.AreEqual('warnings,ruleHits,todos,duration,methodLength', mSettings.WelcomePageTrendsSeries, 'alle fünf');
-  Assert.AreEqual(TAtlasWelcomeTrends.cDefaultSeries, TAtlasPluginSettings.DefaultTrendSeries);
+  Assert.AreEqual(TAtlasWelcomeTrends.cDefaultSeries, TAtlasPluginSettings.cDefaultTrendSeries);
 end;
 
 procedure TAtlasTrendSettingsTests.NormalizeClampsAndCleans;
@@ -318,15 +318,15 @@ begin
   mSettings.WelcomePageTrendsPoints := 1;
   mSettings.WelcomePageTrendsSeries := ' TODOS; foo warnings ';
   mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinTrendPoints, mSettings.WelcomePageTrendsPoints);
+  Assert.AreEqual(TAtlasPluginSettings.cMinTrendPoints, mSettings.WelcomePageTrendsPoints);
   Assert.AreEqual('warnings,todos', mSettings.WelcomePageTrendsSeries);
   mSettings.WelcomePageTrendsPoints := 1000;
   mSettings.WelcomePageTrendsSeries := '';
   mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MaxTrendPoints, mSettings.WelcomePageTrendsPoints);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTrendPoints, mSettings.WelcomePageTrendsPoints);
   Assert.AreEqual('', mSettings.WelcomePageTrendsSeries, 'leer = keine Kachel');
-  Assert.AreEqual(TAtlasProjectTrendLog.MinPoints, TAtlasPluginSettings.MinTrendPoints);
-  Assert.AreEqual(TAtlasProjectTrendLog.MaxPoints, TAtlasPluginSettings.MaxTrendPoints);
+  Assert.AreEqual(TAtlasProjectTrendLog.cMinPoints, TAtlasPluginSettings.cMinTrendPoints);
+  Assert.AreEqual(TAtlasProjectTrendLog.cMaxPoints, TAtlasPluginSettings.cMaxTrendPoints);
 end;
 
 procedure TAtlasTrendSettingsTests.SeriesNamesMatchFileKeys;
@@ -338,10 +338,10 @@ begin
   for mSeries := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
   begin
     mSettings := TAtlasPluginSettings.Defaults;
-    mSettings.WelcomePageTrendsSeries := TAtlasProjectSummaries.TrendKeys[mSeries];
+    mSettings.WelcomePageTrendsSeries := TAtlasProjectSummaries.cTrendKeys[mSeries];
     mSettings.Normalize;
-    Assert.AreEqual(TAtlasProjectSummaries.TrendKeys[mSeries], mSettings.WelcomePageTrendsSeries);
-    Assert.AreEqual(TAtlasProjectSummaries.TrendKeys[mSeries], TAtlasWelcomeTrends.SeriesKey(mSeries));
+    Assert.AreEqual(TAtlasProjectSummaries.cTrendKeys[mSeries], mSettings.WelcomePageTrendsSeries);
+    Assert.AreEqual(TAtlasProjectSummaries.cTrendKeys[mSeries], TAtlasWelcomeTrends.SeriesKey(mSeries));
   end;
 end;
 

@@ -102,29 +102,29 @@ end;
 
 function TAtlasSignatureController.FirstFitting(AParameter: Integer): Integer;
 var
-  Index, Best: Integer;
+  mIndex, mBest: Integer;
 begin
   // Die kürzeste passende Signatur; gibt es keine, die längste.
-  Best := -1;
-  for Index := 0 to High(FHelp.Signatures) do
+  mBest := -1;
+  for mIndex := 0 to High(FHelp.Signatures) do
   begin
-    if Fits(Index, AParameter) and ((Best < 0) or
-      (Length(FHelp.Signatures[Index].Parameters) < Length(FHelp.Signatures[Best].Parameters))) then
+    if Fits(mIndex, AParameter) and ((mBest < 0) or
+      (Length(FHelp.Signatures[mIndex].Parameters) < Length(FHelp.Signatures[mBest].Parameters))) then
     begin
-      Best := Index;
+      mBest := mIndex;
     end;
   end;
-  if Best < 0 then
+  if mBest < 0 then
   begin
-    for Index := 0 to High(FHelp.Signatures) do
+    for mIndex := 0 to High(FHelp.Signatures) do
     begin
-      if (Best < 0) or (Length(FHelp.Signatures[Index].Parameters) > Length(FHelp.Signatures[Best].Parameters)) then
+      if (mBest < 0) or (Length(FHelp.Signatures[mIndex].Parameters) > Length(FHelp.Signatures[mBest].Parameters)) then
       begin
-        Best := Index;
+        mBest := mIndex;
       end;
     end;
   end;
-  Result := Best;
+  Result := mBest;
 end;
 
 procedure TAtlasSignatureController.Show(const AHelp: TAtlasSignatureHelp; AParameter: Integer);

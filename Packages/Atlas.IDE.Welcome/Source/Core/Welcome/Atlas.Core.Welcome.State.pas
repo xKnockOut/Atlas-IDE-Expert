@@ -81,15 +81,15 @@ class function TAtlasWelcomeState.IdOf(AKind: TAtlasStateRowKind): string;
 begin
   case AKind of
     TAtlasStateRowKind.Server:
-      Result := TAtlasStatusLines.ServerId;
+      Result := TAtlasStatusLines.cServerId;
     TAtlasStateRowKind.Version:
-      Result := TAtlasStatusLines.VersionId;
+      Result := TAtlasStatusLines.cVersionId;
     TAtlasStateRowKind.Index:
-      Result := TAtlasStatusLines.IndexId;
+      Result := TAtlasStatusLines.cIndexId;
     TAtlasStateRowKind.Setup:
-      Result := TAtlasStatusLines.SetupId;
+      Result := TAtlasStatusLines.cSetupId;
   else
-    Result := TAtlasStatusLines.DiagnosticModeId;
+    Result := TAtlasStatusLines.cDiagnosticModeId;
   end;
 end;
 

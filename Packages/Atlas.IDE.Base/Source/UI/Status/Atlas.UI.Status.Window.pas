@@ -139,13 +139,13 @@ end;
 
 function TAtlasStatusWindow.RowAt(const APoint: TPoint): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FItems) do
+  for mIndex := 0 to High(FItems) do
   begin
-    if PtInRect(RowRect(Index), APoint) then
+    if PtInRect(RowRect(mIndex), APoint) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -153,24 +153,24 @@ end;
 
 procedure TAtlasStatusWindow.Layout;
 var
-  Width_, Index, ButtonWidth: Integer;
-  Item: IAtlasStatusItem;
+  mWidth_, mIndex, mButtonWidth: Integer;
+  mItem: IAtlasStatusItem;
 begin
   Canvas.Font := Font;
-  Width_ := ScaleValue(280);
-  for Item in FItems do
+  mWidth_ := ScaleValue(280);
+  for mItem in FItems do
   begin
-    Width_ := Max(Width_, Canvas.TextWidth(Item.Text) + ScaleValue(44));
+    mWidth_ := Max(mWidth_, Canvas.TextWidth(mItem.Text) + ScaleValue(44));
   end;
-  Width_ := Min(Width_, ScaleValue(720));
-  ButtonWidth := Max(Canvas.TextWidth(FLogButton.Caption), Canvas.TextWidth(FRestartButton.Caption)) +
+  mWidth_ := Min(mWidth_, ScaleValue(720));
+  mButtonWidth := Max(Canvas.TextWidth(FLogButton.Caption), Canvas.TextWidth(FRestartButton.Caption)) +
     ScaleValue(24);
-  Width_ := Max(Width_, 2 * ButtonWidth + ScaleValue(30));
-  ClientWidth := Width_;
+  mWidth_ := Max(mWidth_, 2 * mButtonWidth + ScaleValue(30));
+  ClientWidth := mWidth_;
   ClientHeight := HeaderHeight + Length(FItems) * RowHeight + ButtonsHeight;
-  Index := ClientHeight - ButtonsHeight + ScaleValue(8);
-  FLogButton.SetBounds(ScaleValue(10), Index, ButtonWidth, ScaleValue(25));
-  FRestartButton.SetBounds(ScaleValue(20) + ButtonWidth, Index, ButtonWidth, ScaleValue(25));
+  mIndex := ClientHeight - ButtonsHeight + ScaleValue(8);
+  FLogButton.SetBounds(ScaleValue(10), mIndex, mButtonWidth, ScaleValue(25));
+  FRestartButton.SetBounds(ScaleValue(20) + mButtonWidth, mIndex, mButtonWidth, ScaleValue(25));
 end;
 
 procedure TAtlasStatusWindow.SetItems(const AItems: TArray<IAtlasStatusItem>);
@@ -190,15 +190,15 @@ end;
 
 procedure TAtlasStatusWindow.ShowAbove(const AAnchor: TPoint);
 var
-  Area: TRect;
-  Left_, Top_: Integer;
+  mArea: TRect;
+  mLeft_, mTop_: Integer;
 begin
   Layout;
-  Area := Screen.MonitorFromPoint(AAnchor).WorkareaRect;
-  Left_ := EnsureRange(AAnchor.X, Area.Left, Max(Area.Left, Area.Right - Width));
-  Top_ := Max(Area.Top, AAnchor.Y - Height);
-  FAnchor := Point(Left_, Top_ + Height);
-  SetBounds(Left_, Top_, Width, Height);
+  mArea := Screen.MonitorFromPoint(AAnchor).WorkareaRect;
+  mLeft_ := EnsureRange(AAnchor.X, mArea.Left, Max(mArea.Left, mArea.Right - Width));
+  mTop_ := Max(mArea.Top, AAnchor.Y - Height);
+  FAnchor := Point(mLeft_, mTop_ + Height);
+  SetBounds(mLeft_, mTop_, Width, Height);
   Show;
   SetFocus;
 end;
@@ -260,15 +260,15 @@ end;
 
 procedure TAtlasStatusWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  Row: Integer;
+  mRow: Integer;
 begin
   inherited;
-  Row := RowAt(Point(X, Y));
-  if (Row >= 0) and not FItems[Row].HasAction then
+  mRow := RowAt(Point(X, Y));
+  if (mRow >= 0) and not FItems[mRow].HasAction then
   begin
-    Row := -1;
+    mRow := -1;
   end;
-  if Row >= 0 then
+  if mRow >= 0 then
   begin
     Cursor := crHandPoint;
   end
@@ -276,9 +276,9 @@ begin
   begin
     Cursor := crDefault;
   end;
-  if Row <> FHot then
+  if mRow <> FHot then
   begin
-    FHot := Row;
+    FHot := mRow;
     Invalidate;
   end;
 end;
@@ -295,81 +295,81 @@ end;
 
 procedure TAtlasStatusWindow.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  Row: Integer;
-  Item: IAtlasStatusItem;
-  Handler: TProc<IAtlasStatusItem>;
+  mRow: Integer;
+  mItem: IAtlasStatusItem;
+  mHandler: TProc<IAtlasStatusItem>;
 begin
   inherited;
-  Row := RowAt(Point(X, Y));
-  if (Button <> mbLeft) or (Row < 0) or not FItems[Row].HasAction then
+  mRow := RowAt(Point(X, Y));
+  if (Button <> mbLeft) or (mRow < 0) or not FItems[mRow].HasAction then
   begin
     Exit;
   end;
-  Item := FItems[Row];
-  Handler := FOnItem;
+  mItem := FItems[mRow];
+  mHandler := FOnItem;
   CloseAndRun(
     procedure
     begin
-      if Assigned(Handler) then
+      if Assigned(mHandler) then
       begin
-        Handler(Item);
+        mHandler(mItem);
       end
       else
       begin
-        Item.Execute;
+        mItem.Execute;
       end;
     end);
 end;
 
 procedure TAtlasStatusWindow.DrawDot(const ACenter: TPoint; AState: TAtlasStatusState);
 var
-  Radius: Integer;
+  mRadius: Integer;
 begin
-  Radius := ScaleValue(4);
+  mRadius := ScaleValue(4);
   // Signalfarbe mit Rand (#1255), nicht die Textfarben Add/Warn/Error.
   Canvas.Pen.Color := ToColor(FColors.Signals.ForStatus(AState).Ring);
   Canvas.Brush.Color := ToColor(FColors.Signals.ForStatus(AState).Fill);
   Canvas.Brush.Style := bsSolid;
-  Canvas.Ellipse(ACenter.X - Radius, ACenter.Y - Radius, ACenter.X + Radius + 1, ACenter.Y + Radius + 1);
+  Canvas.Ellipse(ACenter.X - mRadius, ACenter.Y - mRadius, ACenter.X + mRadius + 1, ACenter.Y + mRadius + 1);
 end;
 
 procedure TAtlasStatusWindow.Paint;
 var
-  Index: Integer;
-  Row, Part: TRect;
-  Item: IAtlasStatusItem;
+  mIndex: Integer;
+  mRow, mPart: TRect;
+  mItem: IAtlasStatusItem;
   mText: string;
 begin
   Canvas.Font := Font;
   Canvas.Brush.Color := ToColor(FColors.Surface);
   Canvas.FillRect(ClientRect);
   // Kopf: Punkt des Gesamtzustands und „Atlas“.
-  Part := Rect(ScaleValue(12), 0, ClientWidth - ScaleValue(8), HeaderHeight);
-  DrawDot(Point(Part.Left + ScaleValue(4), (Part.Top + Part.Bottom) div 2), TAtlasStatusSummary.Overall(FItems));
+  mPart := Rect(ScaleValue(12), 0, ClientWidth - ScaleValue(8), HeaderHeight);
+  DrawDot(Point(mPart.Left + ScaleValue(4), (mPart.Top + mPart.Bottom) div 2), TAtlasStatusSummary.Overall(FItems));
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(FColors.Text);
-  Part.Left := Part.Left + ScaleValue(16);
-  mText := TAtlasStatusSummary.FieldCaption;
-  DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+  mPart.Left := mPart.Left + ScaleValue(16);
+  mText := TAtlasStatusSummary.cFieldCaption;
+  DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   Canvas.Font.Style := [];
   Canvas.Pen.Color := ToColor(FColors.Line);
   Canvas.MoveTo(0, HeaderHeight - ScaleValue(3));
   Canvas.LineTo(ClientWidth, HeaderHeight - ScaleValue(3));
-  for Index := 0 to High(FItems) do
+  for mIndex := 0 to High(FItems) do
   begin
-    Item := FItems[Index];
-    Row := RowRect(Index);
-    if Index = FHot then
+    mItem := FItems[mIndex];
+    mRow := RowRect(mIndex);
+    if mIndex = FHot then
     begin
       Canvas.Brush.Style := bsSolid;
       Canvas.Brush.Color := ToColor(FColors.Selection);
-      Canvas.FillRect(Row);
+      Canvas.FillRect(mRow);
     end;
-    DrawDot(Point(Row.Left + ScaleValue(12), (Row.Top + Row.Bottom) div 2), Item.State);
+    DrawDot(Point(mRow.Left + ScaleValue(12), (mRow.Top + mRow.Bottom) div 2), mItem.State);
     Canvas.Brush.Style := bsClear;
-    Part := Rect(Row.Left + ScaleValue(24), Row.Top, Row.Right - ScaleValue(4), Row.Bottom);
-    if Item.HasAction then
+    mPart := Rect(mRow.Left + ScaleValue(24), mRow.Top, mRow.Right - ScaleValue(4), mRow.Bottom);
+    if mItem.HasAction then
     begin
       Canvas.Font.Color := ToColor(FColors.Accent);
     end
@@ -377,8 +377,8 @@ begin
     begin
       Canvas.Font.Color := ToColor(FColors.Text);
     end;
-    mText := Item.Text;
-    DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+    mText := mItem.Text;
+    DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
   end;
   Canvas.Pen.Color := ToColor(FColors.Line);
   Canvas.MoveTo(0, ClientHeight - ButtonsHeight);

@@ -432,7 +432,7 @@ begin
         OpenInEditor(TAtlasGuard.RotatingLog.FileName);
       end;
     end;
-  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Fuse, TAtlasNotificationSeverity.Error,
+  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cFuse, TAtlasNotificationSeverity.Error,
     TAtlasStrings.Fmt(TAtlasTextId.FuseTrippedTitle, [TAtlasGuard.FeatureName(mFeature)]), AMessage,
     [mEnable, mLog]);
 end;
@@ -450,7 +450,7 @@ begin
   OutputDebugString(PChar('Atlas: Protokoll gestört: ' + mReason));
   mText := TAtlasStrings.Text(TAtlasTextId.LogBrokenTitle);
   mDetail := TAtlasStrings.Fmt(TAtlasTextId.LogBrokenText, [TAtlasGuard.RotatingLog.FileName, mReason]);
-  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Fuse, TAtlasNotificationSeverity.Warning,
+  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cFuse, TAtlasNotificationSeverity.Warning,
     mText, mDetail) <> TAtlasNotificationMode.Show then
   begin
     Exit;

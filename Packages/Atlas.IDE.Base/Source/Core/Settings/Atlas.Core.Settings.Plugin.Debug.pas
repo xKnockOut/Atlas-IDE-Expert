@@ -11,8 +11,8 @@ uses
 
 const
   /// <summary>Grenzen für debug.inlineValuesPerLine (#508).</summary>
-  MinInlineValuesPerLine = 1;
-  MaxInlineValuesPerLine = 20;
+  cMinInlineValuesPerLine = 1;
+  cMaxInlineValuesPerLine = 20;
 
 type
   /// <summary>Plugin-Einstellungen: Debuggen.</summary>
@@ -140,7 +140,8 @@ type
     /// <summary>Aktives Startprofil als Feld in der Statusleiste des Editors (#575, startProfiles.statusField);
     /// Klick öffnet die Auswahl.</summary>
     StartProfilesStatusField: Boolean;
-    /// <summary>Modul-Schalter debug.enabled (#1454): Debugger; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// <summary>Modul-Schalter debug.enabled (#1454): Debugger; aus = die wirksamen Werte aller Einstellungen des
+    /// Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     DebugEnabled: Boolean;
     /// <summary>Vorgaben.</summary>
@@ -168,12 +169,12 @@ begin
   Result.TestBreakAtStart := True;
   Result.DebugHoverValues := True;
   Result.DebugVisualizers := True;
-  Result.DebugVisualizerTypes := TAtlasVisualizerSettings.KindsText(TAtlasVisualizerSettings.AllKinds);
-  Result.DebugVisualizerNameFields := TAtlasVisualizerSettings.DefaultNameFields;
-  Result.DebugVisualizerMaxLength := TAtlasVisualizerSettings.DefaultMaxLength;
-  Result.DebugVisualizerTimeoutMs := TAtlasVisualizerSettings.DefaultTimeoutMs;
-  Result.DebugVisualizerMaxImagePixels := TAtlasVisualizerSettings.DefaultMaxImagePixels;
-  Result.DebugVisualizerEvaluation := TAtlasVisualizerSettings.EvaluationNames[TAtlasVisualizerEvaluation.Properties];
+  Result.DebugVisualizerTypes := TAtlasVisualizerSettings.KindsText(TAtlasVisualizerSettings.cAllKinds);
+  Result.DebugVisualizerNameFields := TAtlasVisualizerSettings.cDefaultNameFields;
+  Result.DebugVisualizerMaxLength := TAtlasVisualizerSettings.cDefaultMaxLength;
+  Result.DebugVisualizerTimeoutMs := TAtlasVisualizerSettings.cDefaultTimeoutMs;
+  Result.DebugVisualizerMaxImagePixels := TAtlasVisualizerSettings.cDefaultMaxImagePixels;
+  Result.DebugVisualizerEvaluation := TAtlasVisualizerSettings.cEvaluationNames[TAtlasVisualizerEvaluation.Properties];
   Result.DebugDisplayRules := True;
   Result.DebugDisplayRulesAllowCalls := False;
   Result.DebugStepIntoTarget := True;
@@ -182,7 +183,7 @@ begin
   Result.DebugStepFilterPatterns := '';
   Result.DebugStepIntoTargetKey := $C076; // Strg+Alt+F7
   Result.DebugBreakOnNextEvent := True;
-  Result.DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.DefaultExcluded;
+  Result.DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.cDefaultExcluded;
   Result.DebugExplainUnavailable := True;
   Result.DebugCompletionInDialogs := True;
   Result.DebugEvaluateWindow := True;
@@ -205,20 +206,20 @@ procedure TAtlasPluginDebugSettings.Normalize;
 begin
   // Bereinigt (Trenner, doppelte) wird beim Speichern der Seite und beim Lesen in TAtlasFolderList.Parse (#1455).
   DebugOwnCodeFolders := Trim(DebugOwnCodeFolders);
-  DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, MinInlineValuesPerLine, MaxInlineValuesPerLine);
+  DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
   DebugVisualizerTypes := TAtlasVisualizerSettings.NormalizeKinds(DebugVisualizerTypes);
   DebugStepFilterKinds := TStepFilterNames.NormalizeKinds(DebugStepFilterKinds);
   DebugStepFilterPatterns := TStepFilterNames.NormalizePatterns(DebugStepFilterPatterns);
   DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.NormalizeExcluded(DebugBreakOnNextEventExcluded);
   DebugVisualizerNameFields := TAtlasVisualizerSettings.NormalizeNameFields(DebugVisualizerNameFields);
-  DebugVisualizerMaxLength := EnsureRange(DebugVisualizerMaxLength, TAtlasVisualizerSettings.MinMaxLength,
-    TAtlasVisualizerSettings.MaxMaxLength);
-  DebugVisualizerTimeoutMs := EnsureRange(DebugVisualizerTimeoutMs, TAtlasVisualizerSettings.MinTimeoutMs,
-    TAtlasVisualizerSettings.MaxTimeoutMs);
+  DebugVisualizerMaxLength := EnsureRange(DebugVisualizerMaxLength, TAtlasVisualizerSettings.cMinMaxLength,
+    TAtlasVisualizerSettings.cMaxMaxLength);
+  DebugVisualizerTimeoutMs := EnsureRange(DebugVisualizerTimeoutMs, TAtlasVisualizerSettings.cMinTimeoutMs,
+    TAtlasVisualizerSettings.cMaxTimeoutMs);
   DebugVisualizerMaxImagePixels := EnsureRange(DebugVisualizerMaxImagePixels,
-    TAtlasVisualizerSettings.MinMaxImagePixels, TAtlasVisualizerSettings.MaxMaxImagePixels);
-  DebugVisualizerEvaluation := Choice(DebugVisualizerEvaluation, TAtlasVisualizerSettings.EvaluationNames);
+    TAtlasVisualizerSettings.cMinMaxImagePixels, TAtlasVisualizerSettings.cMaxMaxImagePixels);
+  DebugVisualizerEvaluation := Choice(DebugVisualizerEvaluation, TAtlasVisualizerSettings.cEvaluationNames);
 end;
 
 procedure TAtlasPluginDebugSettings.Exchange(const AIo: TAtlasSettingsExchange);

@@ -43,7 +43,7 @@ type
   TAtlasIdeUpdates = class(TComponent)
   public const
     /// <summary>So lange nach dem Laden warten, damit Frage und Abfrage den Start nicht stören.</summary>
-    StartDelayMs = 8000;
+    cStartDelayMs = 8000;
   private
     FStateFile: string;
     FState: TAtlasUpdateState;
@@ -132,7 +132,7 @@ begin
   inherited Create(AOwner);
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
-  FTimer.Interval := StartDelayMs;
+  FTimer.Interval := cStartDelayMs;
   FTimer.OnTimer := Tick;
   FInstaller := TAtlasIdeUpdateInstaller.Create(Self);
 end;
@@ -162,14 +162,14 @@ end;
 
 procedure TAtlasIdeUpdates.LoadState;
 var
-  Text: string;
+  mText: string;
 begin
   // Fehlt, gesperrt oder unbrauchbar: wie beim ersten Start. Kein .defekt (Bericht N3): Die Datei hält nur
   // Zeitpunkt und Ergebnis der letzten Abfrage und ob schon gefragt wurde.
   FState := Default(TAtlasUpdateState);
-  if TAtlasDataFile.TryRead(FStateFile, Text) then
+  if TAtlasDataFile.TryRead(FStateFile, mText) then
     try
-      FState := TAtlasUpdateState.FromJson(Text);
+      FState := TAtlasUpdateState.FromJson(mText);
     except
       // Unerwarteter Inhalt, den FromJson nicht abfängt: wie beim ersten Start.
       on E: Exception do
@@ -228,7 +228,7 @@ begin
 {$ENDIF}
   mEnvironment.Ide := TAtlasUpdates.IdeVersion;
   mEnvironment.RegistryKey := RegistryKey;
-  mEnvironment.Installed := TAtlasPluginVersion.Version;
+  mEnvironment.Installed := TAtlasPluginVersion.cVersion;
   mEnvironment.UpdaterExists := FileExists(TAtlasUpdateInstall.UpdaterOf(mEnvironment.PluginDir));
   FInstaller.Start(mEnvironment, TAtlasUpdateInstall.UpdatesRoot(GetEnvironmentVariable('LOCALAPPDATA')), FOnMessage,
     FOnLog,
@@ -267,7 +267,7 @@ end;
 
 procedure TAtlasIdeUpdates.ShowConsent;
 var
-  Area: TRect;
+  mArea: TRect;
 begin
   if (FConsent <> nil) or TAtlasShutdown.Signalled then
   begin
@@ -287,13 +287,13 @@ begin
     end;
   if Application.MainForm <> nil then
   begin
-    Area := Application.MainForm.BoundsRect;
+    mArea := Application.MainForm.BoundsRect;
   end
   else
   begin
-    Area := Screen.WorkAreaRect;
+    mArea := Screen.WorkAreaRect;
   end;
-  FConsent.ShowIn(Area);
+  FConsent.ShowIn(mArea);
 end;
 
 procedure TAtlasIdeUpdates.ApplySettings;
@@ -322,7 +322,7 @@ end;
 
 procedure TAtlasIdeUpdates.CheckNow;
 var
-  Source: IAtlasVersionSource;
+  mSource: IAtlasVersionSource;
   mState: TAtlasUpdateState;
   mQuery: TAtlasUpdateQuery;
 begin
@@ -331,11 +331,11 @@ begin
   begin
     Exit;
   end;
-  Source := FSource;
+  mSource := FSource;
   mState := FState;
   mQuery.Url := TAtlasUpdateInstall.ChannelUrl(TAtlasIdeSettings.Current.UpdatesChannel,
-    TAtlasPluginVersion.Version);
-  mQuery.Installed := TAtlasPluginVersion.Version;
+    TAtlasPluginVersion.cVersion);
+  mQuery.Installed := TAtlasPluginVersion.cVersion;
   mQuery.IdeVersion := TAtlasUpdates.IdeVersion;
   FThread := TThread.CreateAnonymousThread(
     procedure
@@ -345,7 +345,7 @@ begin
     begin
       Checked := mState;
       try
-        Outcome := TAtlasUpdates.Run(Source, mQuery, Checked, True, Now);
+        Outcome := TAtlasUpdates.Run(mSource, mQuery, Checked, True, Now);
       except
         on E: Exception do
         begin
@@ -372,7 +372,7 @@ end;
 
 procedure TAtlasIdeUpdates.Answer(AYes: Boolean);
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
   FState.Asked := True;
   SaveState;
@@ -389,9 +389,9 @@ begin
     Exit;
   end;
   // Über die Einstellungen: Optionsseite und Schnellzugriff zeigen den neuen Wert, ApplySettings prüft.
-  Settings := TAtlasIdeSettings.Stored;
-  Settings.UpdatesCheck := True;
-  TAtlasIdeSettings.Update(Settings);
+  mSettings := TAtlasIdeSettings.Stored;
+  mSettings.UpdatesCheck := True;
+  TAtlasIdeSettings.Update(mSettings);
 end;
 
 procedure TAtlasIdeUpdates.Finished(const AResult: TAtlasUpdateResult; const AState: TAtlasUpdateState);
@@ -413,7 +413,7 @@ begin
         if Assigned(FOnMessage) then
         begin
           FOnMessage(TAtlasStrings.Fmt(TAtlasTextId.UpdatesAvailable, [AResult.Release.Version,
-            TAtlasPluginVersion.Version, AResult.Release.ChangesUrl]));
+            TAtlasPluginVersion.cVersion, AResult.Release.ChangesUrl]));
         end;
         AutoPrepare;
       end;
@@ -443,7 +443,7 @@ begin
   end;
   if FRegistry <> nil then
   begin
-    FRegistry.Remove(TAtlasStatusLines.VersionId);
+    FRegistry.Remove(TAtlasStatusLines.cVersionId);
   end;
   FLine := nil;
   FLineRef := nil;
@@ -479,40 +479,40 @@ end;
 
 function TAtlasIdeUpdates.UpdateReady(out ARelease: TAtlasRelease): Boolean;
 begin
-  Result := TAtlasUpdates.Pending(FState, TAtlasPluginVersion.Version, ARelease);
+  Result := TAtlasUpdates.Pending(FState, TAtlasPluginVersion.cVersion, ARelease);
 end;
 
 procedure TAtlasIdeUpdates.UpdateLine;
 var
-  Info: TAtlasVersionInfo;
-  Release: TAtlasRelease;
-  Ready: Boolean;
-  Stage: TUpdateStage;
+  mInfo: TAtlasVersionInfo;
+  mRelease: TAtlasRelease;
+  mReady: Boolean;
+  mStage: TUpdateStage;
 begin
   if FRegistry = nil then
   begin
     Exit;
   end;
-  Ready := UpdateReady(Release);
-  Info := Default(TAtlasVersionInfo);
-  Info.Installed := TAtlasPluginVersion.Version;
-  Info.Available := Release.Version;
-  Info.CheckEnabled := TAtlasIdeSettings.Current.UpdatesCheck;
-  Info.Checked := FState.LastCheck > 0;
-  if Ready and FInstaller.TryStage(Release.Version, Stage) then
+  mReady := UpdateReady(mRelease);
+  mInfo := Default(TAtlasVersionInfo);
+  mInfo.Installed := TAtlasPluginVersion.cVersion;
+  mInfo.Available := mRelease.Version;
+  mInfo.CheckEnabled := TAtlasIdeSettings.Current.UpdatesCheck;
+  mInfo.Checked := FState.LastCheck > 0;
+  if mReady and FInstaller.TryStage(mRelease.Version, mStage) then
   begin
-    Info.Install := TAtlasUpdateTexts.StageText(Stage);
+    mInfo.Install := TAtlasUpdateTexts.StageText(mStage);
   end;
   // Anklickbar nur mit Update: Die Zeile wird dafür ersetzt (die Aktion gehört zur Zeile).
-  if (FLine = nil) or (FLineAction <> Ready) then
+  if (FLine = nil) or (FLineAction <> mReady) then
   begin
     if FLine <> nil then
     begin
       FLine.Detach;
     end;
-    if Ready then
+    if mReady then
     begin
-      FLine := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.VersionId, TAtlasStatusLines.VersionOrder,
+      FLine := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.cVersionId, TAtlasStatusLines.cVersionOrder,
         procedure
         begin
           OpenUpdate;
@@ -520,19 +520,19 @@ begin
     end
     else
     begin
-      FLine := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.VersionId, TAtlasStatusLines.VersionOrder);
+      FLine := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.cVersionId, TAtlasStatusLines.cVersionOrder);
     end;
     FLineRef := FLine;
-    FLineAction := Ready;
-    FLine.Update(TAtlasStatusLines.VersionText(Info), TAtlasStatusLines.VersionState(Info),
-      TAtlasStatusLines.VersionSummary(Info), TAtlasStatusLines.VersionBrief(Info),
-      TAtlasStatusLines.VersionDetail(Info));
+    FLineAction := mReady;
+    FLine.Update(TAtlasStatusLines.VersionText(mInfo), TAtlasStatusLines.VersionState(mInfo),
+      TAtlasStatusLines.VersionSummary(mInfo), TAtlasStatusLines.VersionBrief(mInfo),
+      TAtlasStatusLines.VersionDetail(mInfo));
     FRegistry.Add(FLineRef);
     Exit;
   end;
-  FLine.Update(TAtlasStatusLines.VersionText(Info), TAtlasStatusLines.VersionState(Info),
-    TAtlasStatusLines.VersionSummary(Info), TAtlasStatusLines.VersionBrief(Info),
-    TAtlasStatusLines.VersionDetail(Info));
+  FLine.Update(TAtlasStatusLines.VersionText(mInfo), TAtlasStatusLines.VersionState(mInfo),
+    TAtlasStatusLines.VersionSummary(mInfo), TAtlasStatusLines.VersionBrief(mInfo),
+    TAtlasStatusLines.VersionDetail(mInfo));
 end;
 
 procedure TAtlasIdeUpdates.OpenChanges(const ARelease: TAtlasRelease);
@@ -545,7 +545,7 @@ end;
 procedure TAtlasIdeUpdates.PrepareUpdate(const ARelease: TAtlasRelease);
 begin
   FInstaller.Prepare(ARelease.Version, TAtlasUpdateInstall.ChannelUrl(TAtlasIdeSettings.Current.UpdatesChannel,
-    TAtlasPluginVersion.Version), TAtlasIdeSettings.Current.UpdatesNewModules);
+    TAtlasPluginVersion.cVersion), TAtlasIdeSettings.Current.UpdatesNewModules);
   UpdateLine;
 end;
 
@@ -557,7 +557,7 @@ begin
   // updates.install = auto (#1519): ohne Frage vorbereiten, eine neue Hauptversion nur nach Frage. Ein schon
   // vorbereitetes oder gescheitertes Update bleibt, wie es ist.
   if UpdateReady(mRelease) and not FInstaller.Preparing and not FInstaller.TryStage(mRelease.Version, mStage) and
-    TAtlasUpdateInstall.PrepareWithoutAsking(InstallMode, TAtlasPluginVersion.Version, mRelease.Version) then
+    TAtlasUpdateInstall.PrepareWithoutAsking(InstallMode, TAtlasPluginVersion.cVersion, mRelease.Version) then
   begin
     PrepareUpdate(mRelease);
   end;
@@ -584,8 +584,8 @@ begin
     UpdateLine;
     Exit;
   end;
-  case TAtlasUpdateOffer.Offer(ARelease.Version, TAtlasPluginVersion.Version,
-    TAtlasUpdateInstall.IsMajorJump(TAtlasPluginVersion.Version, ARelease.Version)) of
+  case TAtlasUpdateOffer.Offer(ARelease.Version, TAtlasPluginVersion.cVersion,
+    TAtlasUpdateInstall.IsMajorJump(TAtlasPluginVersion.cVersion, ARelease.Version)) of
     TAtlasUpdateOfferAnswer.Install:
       PrepareUpdate(ARelease);
     TAtlasUpdateOfferAnswer.Changes:
@@ -596,10 +596,10 @@ end;
 
 procedure TAtlasIdeUpdates.OpenUpdate;
 var
-  Release: TAtlasRelease;
+  mRelease: TAtlasRelease;
   mBlock: TAtlasUpdateBlock;
 begin
-  if not UpdateReady(Release) then
+  if not UpdateReady(mRelease) then
   begin
     Exit;
   end;
@@ -608,15 +608,15 @@ begin
     TAtlasUpdateInstallMode.Off) and Assigned(FOnMessage) then
   begin
     // Warum Atlas nicht selbst installiert (#1519), dann wie bisher der Browser.
-    FOnMessage(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesBlockedMessage, [Release.Version,
-      TAtlasUpdateTexts.BlockText(mBlock), Release.ChangesUrl]));
+    FOnMessage(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesBlockedMessage, [mRelease.Version,
+      TAtlasUpdateTexts.BlockText(mBlock), mRelease.ChangesUrl]));
   end;
   if (InstallMode = TAtlasUpdateInstallMode.Off) or FInstaller.Preparing then
   begin
-    OpenChanges(Release);
+    OpenChanges(mRelease);
     Exit;
   end;
-  OfferUpdate(Release);
+  OfferUpdate(mRelease);
 end;
 
 end.

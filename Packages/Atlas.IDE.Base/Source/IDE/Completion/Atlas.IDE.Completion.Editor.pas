@@ -123,7 +123,8 @@ const
   /// <summary>Ruhe nach einem Wechsel der Auswahl, bevor die Details nachgefragt werden (#424).</summary>
   cDetailDelayMs = 80;
 
-/// <summary>Anzeige der XMLDoc im Panel (#654): hints aus settings.json meldet der Server, sonst die Optionen.</summary>
+/// <summary>Anzeige der XMLDoc im Panel (#654): hints aus settings.json meldet der Server, sonst die
+/// Optionen.</summary>
 function WithDisplay(const ADetails: TAtlasItemDetails): TAtlasItemDetails;
 begin
   Result := ADetails;
@@ -191,24 +192,24 @@ end;
 
 function TCompletionKeys.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 var
-  Navigation: TAtlasNavigationKey;
+  mNavigation: TAtlasNavigationKey;
 begin
-  Result := ((AShift = []) and NavigationKey(AKey, Navigation) and FOwner.WantsKey(Navigation)) or
+  Result := ((AShift = []) and NavigationKey(AKey, mNavigation) and FOwner.WantsKey(mNavigation)) or
     FOwner.WantsCommand(AKey, AShift);
 end;
 
 procedure TCompletionKeys.HandleKey(AKey: Word; AShift: TShiftState);
 var
-  Navigation: TAtlasNavigationKey;
+  mNavigation: TAtlasNavigationKey;
 begin
   try
     if FOwner.WantsCommand(AKey, AShift) then
     begin
       FOwner.HandleCommand(AKey, AShift);
     end
-    else if NavigationKey(AKey, Navigation) then
+    else if NavigationKey(AKey, mNavigation) then
     begin
-      FOwner.HandleKey(Navigation);
+      FOwner.HandleKey(mNavigation);
     end;
   except
     on E: Exception do
@@ -415,7 +416,7 @@ begin
       end;
     // Ein sechster Favorit ersetzt keinen (#458).
     TAtlasFavoriteToggle.Full:
-      FPopup.ShowNotice(TAtlasStrings.Fmt(TAtlasTextId.FavoritesFull, [TAtlasFavorites.MaxPerType,
+      FPopup.ShowNotice(TAtlasStrings.Fmt(TAtlasTextId.FavoritesFull, [TAtlasFavorites.cMaxPerType,
         TAtlasFavorites.TypeNameOf(mItem)]));
   else
     if FController.Favorites <> nil then

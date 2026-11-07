@@ -27,9 +27,9 @@ type
 
   TAtlasEditInbox = class
   public const
-    RequestExtension = '.json';
-    TakenExtension = '.taken';
-    ResultSuffix = '.result.json';
+    cRequestExtension = '.json';
+    cTakenExtension = '.taken';
+    cResultSuffix = '.result.json';
   public
     /// <summary>Eingang des Prozesses APid unter ABase (%LOCALAPPDATA%\Atlas).</summary>
     class function Folder(const ABase: string; APid: Cardinal): string; static;
@@ -58,56 +58,56 @@ end;
 
 class function TAtlasEditInbox.Pending(const AFolder: string): TArray<string>;
 var
-  Name: string;
-  Found: TList<string>;
+  mName: string;
+  mFound: TList<string>;
 begin
   Result := nil;
   if not TDirectory.Exists(AFolder) then
   begin
     Exit;
   end;
-  Found := TList<string>.Create;
+  mFound := TList<string>.Create;
   try
-    for Name in TDirectory.GetFiles(AFolder, '*' + RequestExtension) do
+    for mName in TDirectory.GetFiles(AFolder, '*' + cRequestExtension) do
     begin
-      if Name.EndsWith(RequestExtension, True) and not Name.EndsWith(ResultSuffix, True) then
+      if mName.EndsWith(cRequestExtension, True) and not mName.EndsWith(cResultSuffix, True) then
       begin
-        Found.Add(Name);
+        mFound.Add(mName);
       end;
     end;
-    Found.Sort;
-    Result := Found.ToArray;
+    mFound.Sort;
+    Result := mFound.ToArray;
   finally
-    Found.Free;
+    mFound.Free;
   end;
 end;
 
 class function TAtlasEditInbox.Take(const AFileName: string; out ARequest: TAtlasEditRequest): Boolean;
 var
-  Taken, Text: string;
-  Json: TJSONValue;
+  mTaken, mText: string;
+  mJson: TJSONValue;
 begin
   ARequest := Default(TAtlasEditRequest);
   ARequest.Id := ChangeFileExt(ExtractFileName(AFileName), '');
-  Taken := ChangeFileExt(AFileName, TakenExtension);
+  mTaken := ChangeFileExt(AFileName, cTakenExtension);
   // Umbenennen ist der Zuschlag: Hat der MCP-Server inzwischen gelöscht, schlägt es fehl.
-  if not RenameFile(AFileName, Taken) then
+  if not RenameFile(AFileName, mTaken) then
   begin
     Exit(False);
   end;
   try
-    Text := TFile.ReadAllText(Taken, TEncoding.UTF8);
+    mText := TFile.ReadAllText(mTaken, TEncoding.UTF8);
   except
     on Exception do
-      Text := '';
+      mText := '';
   end;
-  Json := TJSONObject.ParseJSONValue(Text);
+  mJson := TJSONObject.ParseJSONValue(mText);
   try
-    Result := (Json is TJSONObject) and TJSONObject(Json).TryGetValue<string>('file', ARequest.FileName) and
-      TJSONObject(Json).TryGetValue<string>('expected', ARequest.Expected) and
-      TJSONObject(Json).TryGetValue<string>('text', ARequest.Text);
+    Result := (mJson is TJSONObject) and TJSONObject(mJson).TryGetValue<string>('file', ARequest.FileName) and
+      TJSONObject(mJson).TryGetValue<string>('expected', ARequest.Expected) and
+      TJSONObject(mJson).TryGetValue<string>('text', ARequest.Text);
   finally
-    Json.Free;
+    mJson.Free;
   end;
   if not Result then
   begin
@@ -118,35 +118,35 @@ end;
 class procedure TAtlasEditInbox.Answer(const AFolder: string; const ARequest: TAtlasEditRequest; AApplied,
   ANotOpen: Boolean; const AReason: string);
 var
-  Json: TJSONObject;
-  Target, Temporary, Text: string;
+  mJson: TJSONObject;
+  mTarget, mTemporary, mText: string;
 begin
-  Json := TJSONObject.Create;
+  mJson := TJSONObject.Create;
   try
-    Json.AddPair('applied', TJSONBool.Create(AApplied));
+    mJson.AddPair('applied', TJSONBool.Create(AApplied));
     if ANotOpen then
     begin
-      Json.AddPair('notOpen', TJSONBool.Create(True));
+      mJson.AddPair('notOpen', TJSONBool.Create(True));
     end;
     if AReason <> '' then
     begin
-      Json.AddPair('reason', AReason);
+      mJson.AddPair('reason', AReason);
     end;
-    Text := Json.ToJSON;
+    mText := mJson.ToJSON;
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Target := TPath.Combine(AFolder, ARequest.Id + ResultSuffix);
-  Temporary := Target + '.tmp';
-  TFile.WriteAllText(Temporary, Text, TEncoding.UTF8);
-  if FileExists(Target) then
+  mTarget := TPath.Combine(AFolder, ARequest.Id + cResultSuffix);
+  mTemporary := mTarget + '.tmp';
+  TFile.WriteAllText(mTemporary, mText, TEncoding.UTF8);
+  if FileExists(mTarget) then
   begin
-    TFile.Delete(Target);
+    TFile.Delete(mTarget);
   end;
-  TFile.Move(Temporary, Target);
-  if FileExists(TPath.Combine(AFolder, ARequest.Id + TakenExtension)) then
+  TFile.Move(mTemporary, mTarget);
+  if FileExists(TPath.Combine(AFolder, ARequest.Id + cTakenExtension)) then
   begin
-    TFile.Delete(TPath.Combine(AFolder, ARequest.Id + TakenExtension));
+    TFile.Delete(TPath.Combine(AFolder, ARequest.Id + cTakenExtension));
   end;
 end;
 

@@ -67,7 +67,8 @@ type
     function Next: Boolean;
     /// <summary>Umschalt+Tab: zum vorigen; am ersten bleibt es dort.</summary>
     procedure Previous;
-    /// <summary>Text geändert. False, wenn die Änderung nicht in einem Platzhalter der aktuellen Nummer liegt.</summary>
+    /// <summary>Text geändert. False, wenn die Änderung nicht in einem Platzhalter der aktuellen Nummer
+    /// liegt.</summary>
     function Update(const ADocument: string): Boolean;
     /// <summary>Änderungen, die die verknüpften Platzhalter an den aktuellen angleichen; aufsteigend.</summary>
     function MirrorEdits: TAtlasPlaceholderEdits;
@@ -241,13 +242,13 @@ end;
 
 function TAtlasPlaceholderSession.FirstOf(ANumber: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FFields) do
+  for mIndex := 0 to High(FFields) do
   begin
-    if FFields[Index].Number = ANumber then
+    if FFields[mIndex].Number = ANumber then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -275,14 +276,14 @@ end;
 
 function TAtlasPlaceholderSession.Fields: TArray<TAtlasPlaceholderField>;
 var
-  Field: TAtlasPlaceholderField;
+  mField: TAtlasPlaceholderField;
 begin
   Result := nil;
-  for Field in FFields do
+  for mField in FFields do
   begin
-    if Field.Number > 0 then
+    if mField.Number > 0 then
     begin
-      Result := Result + [Field];
+      Result := Result + [mField];
     end;
   end;
 end;
@@ -319,34 +320,34 @@ end;
 class procedure TAtlasPlaceholderSession.Locate(const AText: string; AOffset: Integer; out ALine,
   ACharacter: Integer);
 var
-  Index, LineStart: Integer;
+  mIndex, mLineStart: Integer;
 begin
   ALine := 0;
-  LineStart := 0;
+  mLineStart := 0;
   if AOffset > Length(AText) then
   begin
     AOffset := Length(AText);
   end;
-  for Index := 1 to AOffset do
+  for mIndex := 1 to AOffset do
   begin
-    if AText[Index] = #10 then
+    if AText[mIndex] = #10 then
     begin
       Inc(ALine);
-      LineStart := Index;
+      mLineStart := mIndex;
     end;
   end;
-  ACharacter := AOffset - LineStart;
+  ACharacter := AOffset - mLineStart;
 end;
 
 procedure TAtlasPlaceholderSession.Shift(AFrom, ADelta, AExcept: Integer);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FFields) do
+  for mIndex := 0 to High(FFields) do
   begin
-    if (Index <> AExcept) and (FFields[Index].Start >= AFrom) then
+    if (mIndex <> AExcept) and (FFields[mIndex].Start >= AFrom) then
     begin
-      Inc(FFields[Index].Start, ADelta);
+      Inc(FFields[mIndex].Start, ADelta);
     end;
   end;
 end;
@@ -381,36 +382,36 @@ end;
 
 function TAtlasPlaceholderSession.MirrorEdits: TAtlasPlaceholderEdits;
 var
-  Index, Inner: Integer;
-  Value: string;
-  Edit: TAtlasPlaceholderEdit;
+  mIndex, mInner: Integer;
+  mValue: string;
+  mEdit: TAtlasPlaceholderEdit;
 begin
   Result := nil;
   if CurrentNumber = 0 then
   begin
     Exit;
   end;
-  Value := FieldText(FFields[FPrimary]);
-  for Index := 0 to High(FFields) do
+  mValue := FieldText(FFields[FPrimary]);
+  for mIndex := 0 to High(FFields) do
   begin
-    if (Index <> FPrimary) and (FFields[Index].Number = CurrentNumber) and (FieldText(FFields[Index]) <> Value) then
+    if (mIndex <> FPrimary) and (FFields[mIndex].Number = CurrentNumber) and (FieldText(FFields[mIndex]) <> mValue) then
     begin
-      Edit.Start := FFields[Index].Start;
-      Edit.Stop := FFields[Index].Stop;
-      Edit.Text := Value;
-      Result := Result + [Edit];
+      mEdit.Start := FFields[mIndex].Start;
+      mEdit.Stop := FFields[mIndex].Stop;
+      mEdit.Text := mValue;
+      Result := Result + [mEdit];
     end;
   end;
   // Aufsteigend: Verknüpfte Platzhalter außerhalb der Vorlage (#473) können vor ihr liegen.
-  for Index := 1 to High(Result) do
+  for mIndex := 1 to High(Result) do
   begin
-    for Inner := Index downto 1 do
+    for mInner := mIndex downto 1 do
     begin
-      if Result[Inner].Start < Result[Inner - 1].Start then
+      if Result[mInner].Start < Result[mInner - 1].Start then
       begin
-        Edit := Result[Inner];
-        Result[Inner] := Result[Inner - 1];
-        Result[Inner - 1] := Edit;
+        mEdit := Result[mInner];
+        Result[mInner] := Result[mInner - 1];
+        Result[mInner - 1] := mEdit;
       end;
     end;
   end;
@@ -418,25 +419,25 @@ end;
 
 procedure TAtlasPlaceholderSession.Applied(const AEdits: TAtlasPlaceholderEdits);
 var
-  Edit: TAtlasPlaceholderEdit;
-  Index, Offset, Delta: Integer;
+  mEdit: TAtlasPlaceholderEdit;
+  mIndex, mOffset, mDelta: Integer;
 begin
   // Rückwärts, damit die Offsets der früheren Änderungen gelten.
-  for Index := High(AEdits) downto 0 do
+  for mIndex := High(AEdits) downto 0 do
   begin
-    Edit := AEdits[Index];
-    Delta := Length(Edit.Text) - (Edit.Stop - Edit.Start);
-    FText := Copy(FText, 1, Edit.Start) + Edit.Text + Copy(FText, Edit.Stop + 1, MaxInt);
-    for Offset := 0 to High(FFields) do
+    mEdit := AEdits[mIndex];
+    mDelta := Length(mEdit.Text) - (mEdit.Stop - mEdit.Start);
+    FText := Copy(FText, 1, mEdit.Start) + mEdit.Text + Copy(FText, mEdit.Stop + 1, MaxInt);
+    for mOffset := 0 to High(FFields) do
     begin
-      if (FFields[Offset].Start = Edit.Start) and (FFields[Offset].Stop = Edit.Stop) and
-        (FFields[Offset].Number = CurrentNumber) then
+      if (FFields[mOffset].Start = mEdit.Start) and (FFields[mOffset].Stop = mEdit.Stop) and
+        (FFields[mOffset].Number = CurrentNumber) then
       begin
-        FFields[Offset].Length := Length(Edit.Text);
+        FFields[mOffset].Length := Length(mEdit.Text);
       end
-      else if FFields[Offset].Start >= Edit.Stop then
+      else if FFields[mOffset].Start >= mEdit.Stop then
       begin
-        Inc(FFields[Offset].Start, Delta);
+        Inc(FFields[mOffset].Start, mDelta);
       end;
     end;
   end;

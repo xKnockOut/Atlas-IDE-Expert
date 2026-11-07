@@ -38,7 +38,8 @@ type
     /// <summary>ASessionOf: laufende Sitzung oder nil; AMessage: Zeile für die Meldungsansicht.</summary>
     class procedure Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>); static;
     class procedure Uninstall; static;
-    /// <summary>Laufende Sitzung oder nil; startet keinen Server (auch für das Suchfeld der Willkommensseite, #760).</summary>
+    /// <summary>Laufende Sitzung oder nil; startet keinen Server (auch für das Suchfeld der Willkommensseite,
+    /// #760).</summary>
     class function Session: TLspSession; static;
     /// <summary>Zeile für die Meldungsansicht (auch für Definition einblenden, #505).</summary>
     class procedure Say(const AText: string); static;
@@ -62,7 +63,8 @@ type
       ACharacter: Integer; const AName: string); overload; static;
     class procedure SearchSymbol; static;
     /// <summary>Referenzen auf ein Symbol an einem Fundort (z. B. aus dem Tooltip); Anzahl der Fundstellen.</summary>
-    class function ShowReferences(const AFileName: string; ALine, ACharacter: Integer; const AName: string): Integer; static;
+    class function ShowReferences(const AFileName: string; ALine, ACharacter: Integer; const AName: string): Integer;
+      static;
     /// <summary>Ergebnisfenster zeigen.</summary>
     class procedure ShowWindow; static;
     class procedure Open(const AFileName: string; ALine, ACharacter: Integer); static;
@@ -92,7 +94,7 @@ uses
 
 const
   // Beim Tippen: lieber leer als die IDE aufhalten.
-  SymbolTimeoutMs = 1500;
+  cSymbolTimeoutMs = 1500;
 
 function ReadText(const AFileName: string): string;
 begin
@@ -153,7 +155,7 @@ begin
     Exit;
   end;
   try
-    Result := mCurrent.WorkspaceSymbols(Trim(APattern), SymbolTimeoutMs);
+    Result := mCurrent.WorkspaceSymbols(Trim(APattern), cSymbolTimeoutMs);
   except
     on ELspClientError do
       Result := nil;
@@ -287,66 +289,66 @@ end;
 class function TAtlasIdeResults.AtCursor(out AFileName: string; out ALine, ACharacter: Integer;
   out AName: string): Boolean;
 var
-  Current: TLspSession;
-  Editors: IOTAEditorServices;
-  View: IOTAEditView;
-  Text: string;
-  Lines: TArray<string>;
-  Cursor: TOTAEditPos;
-  First, Last: Integer;
+  mCurrent: TLspSession;
+  mEditors: IOTAEditorServices;
+  mView: IOTAEditView;
+  mText: string;
+  mLines: TArray<string>;
+  mCursor: TOTAEditPos;
+  mFirst, mLast: Integer;
 begin
   Result := False;
   AFileName := '';
   ALine := 0;
   ACharacter := 0;
   AName := '';
-  Current := Session;
-  if Current = nil then
+  mCurrent := Session;
+  if mCurrent = nil then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  View := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  mView := nil;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
-    View := Editors.TopView;
+    mView := mEditors.TopView;
   end;
-  if (View = nil) or (View.Buffer = nil) then
+  if (mView = nil) or (mView.Buffer = nil) then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
     Exit;
   end;
-  AFileName := View.Buffer.FileName;
+  AFileName := mView.Buffer.FileName;
   // Projektweite Anfragen: Der Server soll den Stand aller offenen Puffer kennen.
-  TAtlasIdeRename.SyncOpenBuffers(Current);
-  Text := TAtlasEditorBuffer.Text(View.Buffer);
-  Current.Sync(AFileName, Text);
-  Lines := Text.Split([#13#10, #10]);
-  Cursor := View.CursorPos;
-  if (Cursor.Line < 1) or (Cursor.Line > Length(Lines)) then
+  TAtlasIdeRename.SyncOpenBuffers(mCurrent);
+  mText := TAtlasEditorBuffer.Text(mView.Buffer);
+  mCurrent.Sync(AFileName, mText);
+  mLines := mText.Split([#13#10, #10]);
+  mCursor := mView.CursorPos;
+  if (mCursor.Line < 1) or (mCursor.Line > Length(mLines)) then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
     Exit;
   end;
-  ALine := Cursor.Line - 1;
-  ACharacter := TLspSession.ColumnToIndex(Lines[ALine], Cursor.Col, TAtlasEditorBuffer.TabWidth(View.Buffer));
-  First := TAtlasWord.StartBefore(Lines[ALine], ACharacter);
-  Last := TAtlasWord.EndAfter(Lines[ALine], ACharacter);
-  AName := Copy(Lines[ALine], First + 1, Last - First);
+  ALine := mCursor.Line - 1;
+  ACharacter := TLspSession.ColumnToIndex(mLines[ALine], mCursor.Col, TAtlasEditorBuffer.TabWidth(mView.Buffer));
+  mFirst := TAtlasWord.StartBefore(mLines[ALine], ACharacter);
+  mLast := TAtlasWord.EndAfter(mLines[ALine], ACharacter);
+  AName := Copy(mLines[ALine], mFirst + 1, mLast - mFirst);
   Result := True;
 end;
 
 class function TAtlasIdeResults.Entries(const ALocations: TArray<TLspLocation>): TArray<TAtlasResultEntry>;
 var
-  Location: TLspLocation;
-  Entry: TAtlasResultEntry;
+  mLocation: TLspLocation;
+  mEntry: TAtlasResultEntry;
 begin
   Result := nil;
-  for Location in ALocations do
+  for mLocation in ALocations do
   begin
-    Entry := TAtlasResultEntry.Create(Location.FileName, Location.Line, Location.Character);
-    Entry.Confidence := Location.Confidence;
-    Result := Result + [Entry];
+    mEntry := TAtlasResultEntry.Create(mLocation.FileName, mLocation.Line, mLocation.Character);
+    mEntry.Confidence := mLocation.Confidence;
+    Result := Result + [mEntry];
   end;
   TAtlasResults.FillText(Result,
     function(const AFileName: string): string
@@ -358,12 +360,12 @@ end;
 class function TAtlasIdeResults.ShowReferences(const AFileName: string; ALine, ACharacter: Integer;
   const AName: string): Integer;
 var
-  Current: TLspSession;
-  Found: TArray<TAtlasResultEntry>;
+  mCurrent: TLspSession;
+  mFound: TArray<TAtlasResultEntry>;
 begin
   Result := 0;
-  Current := Session;
-  if Current = nil then
+  mCurrent := Session;
+  if mCurrent = nil then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
@@ -371,7 +373,7 @@ begin
   Screen.Cursor := crHourGlass;
   try
     try
-      Found := Entries(Current.References(AFileName, ALine, ACharacter));
+      mFound := Entries(mCurrent.References(AFileName, ALine, ACharacter));
     except
       on E: ELspClientError do
       begin
@@ -382,36 +384,36 @@ begin
   finally
     Screen.Cursor := crDefault;
   end;
-  Result := Length(Found);
+  Result := Length(mFound);
   TAtlasIdeResultsWindow.ShowReferences(TAtlasStrings.Fmt(TAtlasTextId.ResultsReferences,
-    [AName, Length(Found), Length(TAtlasResults.Group(Found))]), Found);
+    [AName, Length(mFound), Length(TAtlasResults.Group(mFound))]), mFound);
 end;
 
 class procedure TAtlasIdeResults.FindReferences;
 var
-  FileName, Name: string;
-  Line, Character: Integer;
+  mFileName, mName: string;
+  mLine, mCharacter: Integer;
 begin
-  if AtCursor(FileName, Line, Character, Name) then
+  if AtCursor(mFileName, mLine, mCharacter, mName) then
   begin
-    ShowReferences(FileName, Line, Character, Name);
+    ShowReferences(mFileName, mLine, mCharacter, mName);
   end;
 end;
 
 class procedure TAtlasIdeResults.FindImplementations;
 var
-  FileName, Name: string;
-  Line, Character: Integer;
-  Found: TArray<TAtlasResultEntry>;
+  mFileName, mName: string;
+  mLine, mCharacter: Integer;
+  mFound: TArray<TAtlasResultEntry>;
 begin
-  if not AtCursor(FileName, Line, Character, Name) then
+  if not AtCursor(mFileName, mLine, mCharacter, mName) then
   begin
     Exit;
   end;
   Screen.Cursor := crHourGlass;
   try
     try
-      Found := Entries(Session.Implementations(FileName, Line, Character));
+      mFound := Entries(Session.Implementations(mFileName, mLine, mCharacter));
     except
       on E: ELspClientError do
       begin
@@ -423,18 +425,18 @@ begin
     Screen.Cursor := crDefault;
   end;
   // Genau eine Implementierung: gleich hinspringen wie „Gehe zu“.
-  if Length(Found) = 1 then
+  if Length(mFound) = 1 then
   begin
-    Open(Found[0].FileName, Found[0].Line, Found[0].Character);
+    Open(mFound[0].FileName, mFound[0].Line, mFound[0].Character);
     Exit;
   end;
-  if Length(Found) = 0 then
+  if Length(mFound) = 0 then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
     Exit;
   end;
   TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.ResultsImplementations,
-    [Name, Length(Found), Length(TAtlasResults.Group(Found))]), Found);
+    [mName, Length(mFound), Length(TAtlasResults.Group(mFound))]), mFound);
 end;
 
 class procedure TAtlasIdeResults.ShowHierarchy(ADirection: TAtlasHierarchyDirection);
@@ -457,21 +459,21 @@ end;
 
 class procedure TAtlasIdeResults.ShowHierarchy(ADirection: TAtlasHierarchyDirection; AAsDiagram: Boolean);
 const
-  Titles: array[TAtlasHierarchyDirection] of TAtlasTextId = (TAtlasTextId.ResultsIncoming,
+  cTitles: array[TAtlasHierarchyDirection] of TAtlasTextId = (TAtlasTextId.ResultsIncoming,
     TAtlasTextId.ResultsOutgoing, TAtlasTextId.ResultsSupertypes, TAtlasTextId.ResultsSubtypes);
 var
-  FileName, Name: string;
-  Line, Character: Integer;
-  Roots: TArray<TAtlasHierarchyItem>;
+  mFileName, mName: string;
+  mLine, mCharacter: Integer;
+  mRoots: TArray<TAtlasHierarchyItem>;
 begin
-  if not AtCursor(FileName, Line, Character, Name) then
+  if not AtCursor(mFileName, mLine, mCharacter, mName) then
   begin
     Exit;
   end;
   Screen.Cursor := crHourGlass;
   try
     try
-      Roots := Session.PrepareHierarchy(ADirection, FileName, Line, Character);
+      mRoots := Session.PrepareHierarchy(ADirection, mFileName, mLine, mCharacter);
     except
       on E: ELspClientError do
       begin
@@ -482,19 +484,19 @@ begin
   finally
     Screen.Cursor := crDefault;
   end;
-  if Length(Roots) = 0 then
+  if Length(mRoots) = 0 then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
     Exit;
   end;
-  TAtlasIdeResultsWindow.ShowHierarchy(TAtlasStrings.Fmt(Titles[ADirection], [Roots[0].Name]), ADirection, Roots,
+  TAtlasIdeResultsWindow.ShowHierarchy(TAtlasStrings.Fmt(cTitles[ADirection], [mRoots[0].Name]), ADirection, mRoots,
     AAsDiagram);
 end;
 
 class procedure TAtlasIdeResults.ShowDataFlow(ADirection: TAtlasDataFlowDirection);
 var
-  FileName, Name: string;
-  Line, Character: Integer;
+  mFileName, mName: string;
+  mLine, mCharacter: Integer;
 begin
   // Abgeschaltet: Befehl und Menüeintrag sind verborgen; über die Palette nur eine Zeile.
   if not TAtlasIdeSettings.Current.DataFlow then
@@ -502,34 +504,34 @@ begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsDataFlowOff));
     Exit;
   end;
-  if not AtCursor(FileName, Line, Character, Name) then
+  if not AtCursor(mFileName, mLine, mCharacter, mName) then
   begin
     Exit;
   end;
-  FFlowRequest := TAtlasDataFlowRequest.Create(ADirection, FileName, Line, Character);
+  FFlowRequest := TAtlasDataFlowRequest.Create(ADirection, mFileName, mLine, mCharacter);
   FFlowRequest.ExcludeTests := TAtlasIdeSettings.Current.DataFlowExcludeTests;
-  FFlowName := Name;
+  FFlowName := mName;
   RunDataFlow(False);
 end;
 
 class procedure TAtlasIdeResults.ShowDataFlow(ADirection: TAtlasDataFlowDirection; const AFileName: string; ALine,
   ACharacter: Integer; const AName: string);
 var
-  Current: TLspSession;
+  mCurrent: TLspSession;
 begin
   if not TAtlasIdeSettings.Current.DataFlow then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsDataFlowOff));
     Exit;
   end;
-  Current := Session;
-  if Current = nil then
+  mCurrent := Session;
+  if mCurrent = nil then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
   // Projektweite Anfrage: wie am Cursor alle offenen Puffer abgleichen.
-  TAtlasIdeRename.SyncOpenBuffers(Current);
+  TAtlasIdeRename.SyncOpenBuffers(mCurrent);
   FFlowRequest := TAtlasDataFlowRequest.Create(ADirection, AFileName, ALine, ACharacter);
   FFlowRequest.ExcludeTests := TAtlasIdeSettings.Current.DataFlowExcludeTests;
   FFlowName := AName;
@@ -538,14 +540,14 @@ end;
 
 class procedure TAtlasIdeResults.RunDataFlow(AFromFilter: Boolean);
 const
-  Titles: array[TAtlasDataFlowDirection] of TAtlasTextId = (TAtlasTextId.ResultsDataFlowSources,
+  cTitles: array[TAtlasDataFlowDirection] of TAtlasTextId = (TAtlasTextId.ResultsDataFlowSources,
     TAtlasTextId.ResultsDataFlowTargets);
 var
-  Current: TLspSession;
-  Found: TAtlasDataFlowResult;
+  mCurrent: TLspSession;
+  mFound: TAtlasDataFlowResult;
 begin
-  Current := Session;
-  if Current = nil then
+  mCurrent := Session;
+  if mCurrent = nil then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
@@ -553,7 +555,7 @@ begin
   Screen.Cursor := crHourGlass;
   try
     try
-      Found := Current.DataFlow(FFlowRequest);
+      mFound := mCurrent.DataFlow(FFlowRequest);
     except
       on E: ELspClientError do
       begin
@@ -565,41 +567,41 @@ begin
     Screen.Cursor := crDefault;
   end;
   // Nach einem Filterwechsel bleibt der Baum stehen, auch wenn er leer wird: Die Filter lassen sich zurücknehmen.
-  if (not Found.Found) and (not AFromFilter) then
+  if (not mFound.Found) and (not AFromFilter) then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
     Exit;
   end;
-  if not Found.Found then
+  if not mFound.Found then
   begin
-    Found.Symbol.Name := FFlowName;
+    mFound.Symbol.Name := FFlowName;
   end;
-  TAtlasIdeResultsWindow.ShowDataFlow(TAtlasStrings.Fmt(Titles[FFlowRequest.Direction],
-    [Found.Symbol.Name, Length(Found.Nodes)]), FFlowRequest.Direction, Found,
+  TAtlasIdeResultsWindow.ShowDataFlow(TAtlasStrings.Fmt(cTitles[FFlowRequest.Direction],
+    [mFound.Symbol.Name, Length(mFound.Nodes)]), FFlowRequest.Direction, mFound,
     TAtlasIdeSettings.Current.DataFlowMaxDepth, FFlowRequest.OnlyProject, FFlowRequest.ExcludeTests);
 end;
 
 class function TAtlasIdeResults.ExpandDataFlow(ADirection: TAtlasDataFlowDirection;
   const ASource: TAtlasDataFlowSymbol; const APath: TArray<string>): TAtlasDataFlowResult;
 var
-  Current: TLspSession;
-  Request: TAtlasDataFlowRequest;
+  mCurrent: TLspSession;
+  mRequest: TAtlasDataFlowRequest;
 begin
   Result := Default(TAtlasDataFlowResult);
-  Current := Session;
-  if Current = nil then
+  mCurrent := Session;
+  if mCurrent = nil then
   begin
     Exit;
   end;
   // Gefragt wird an der Deklaration der Quelle; der Pfad lässt den Server Zyklen erkennen.
-  Request := TAtlasDataFlowRequest.Create(ADirection, ASource.FileName, ASource.Line, ASource.Character);
-  Request.Path := APath;
-  Request.OnlyProject := FFlowRequest.OnlyProject;
-  Request.ExcludeTests := FFlowRequest.ExcludeTests;
+  mRequest := TAtlasDataFlowRequest.Create(ADirection, ASource.FileName, ASource.Line, ASource.Character);
+  mRequest.Path := APath;
+  mRequest.OnlyProject := FFlowRequest.OnlyProject;
+  mRequest.ExcludeTests := FFlowRequest.ExcludeTests;
   Screen.Cursor := crHourGlass;
   try
     try
-      Result := Current.DataFlow(Request);
+      Result := mCurrent.DataFlow(mRequest);
     except
       on E: ELspClientError do
         Say(TAtlasStrings.Fmt(TAtlasTextId.ResultsFailed, [E.Message]));
@@ -611,35 +613,35 @@ end;
 
 class procedure TAtlasIdeResults.SearchSymbol;
 var
-  Window: TAtlasPaletteWindow;
-  Symbols: TArray<TAtlasSymbol>;
+  mWindow: TAtlasPaletteWindow;
+  mSymbols: TArray<TAtlasSymbol>;
 begin
   if Session = nil then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  Symbols := nil;
-  Window := TAtlasPaletteWindow.CreatePalette(Application, nil, nil, TAtlasIdeStyle.Colors);
-  Window.Prompt := '#';
-  Window.OnQuery :=
+  mSymbols := nil;
+  mWindow := TAtlasPaletteWindow.CreatePalette(Application, nil, nil, TAtlasIdeStyle.Colors);
+  mWindow.Prompt := '#';
+  mWindow.OnQuery :=
     function(APattern: string): TArray<TAtlasCommand>
     begin
-      Symbols := QuerySymbols(APattern);
-      Result := SymbolCommands(Symbols);
+      mSymbols := QuerySymbols(APattern);
+      Result := SymbolCommands(mSymbols);
     end;
-  Window.OnExecute :=
+  mWindow.OnExecute :=
     procedure(ACommand: TAtlasCommand)
     var
       Index: Integer;
     begin
       Index := StrToIntDef(ACommand.Id, -1);
-      if (Index >= 0) and (Index <= High(Symbols)) then
+      if (Index >= 0) and (Index <= High(mSymbols)) then
       begin
-        Open(Symbols[Index].FileName, Symbols[Index].Line, Symbols[Index].Character);
+        Open(mSymbols[Index].FileName, mSymbols[Index].Line, mSymbols[Index].Character);
       end;
     end;
-  Window.ShowOver(PaletteArea);
+  mWindow.ShowOver(PaletteArea);
 end;
 
 class procedure TAtlasIdeResults.ShowWindow;

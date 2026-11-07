@@ -24,20 +24,20 @@ type
 
   TAtlasVisualizerSettings = class
   public const
-    DefaultMaxLength = 120;
-    MinMaxLength = 20;
-    MaxMaxLength = 2000;
-    DefaultTimeoutMs = 200;
-    MinTimeoutMs = 20;
-    MaxTimeoutMs = 5000;
-    DefaultMaxImagePixels = 4000000;
-    MinMaxImagePixels = 10000;
-    MaxMaxImagePixels = 64000000;
-    AllKinds = [Low(TAtlasVisualizerKind)..High(TAtlasVisualizerKind)];
-    KindNames: array[TAtlasVisualizerKind] of string = ('lists', 'dictionaries', 'dataSets', 'bytes', 'json',
+    cDefaultMaxLength = 120;
+    cMinMaxLength = 20;
+    cMaxMaxLength = 2000;
+    cDefaultTimeoutMs = 200;
+    cMinTimeoutMs = 20;
+    cMaxTimeoutMs = 5000;
+    cDefaultMaxImagePixels = 4000000;
+    cMinMaxImagePixels = 10000;
+    cMaxMaxImagePixels = 64000000;
+    cAllKinds = [Low(TAtlasVisualizerKind)..High(TAtlasVisualizerKind)];
+    cKindNames: array[TAtlasVisualizerKind] of string = ('lists', 'dictionaries', 'dataSets', 'bytes', 'json',
       'colors', 'guid', 'geometry', 'graphics');
-    EvaluationNames: array[TAtlasVisualizerEvaluation] of string = ('fields', 'properties', 'calls');
-    DefaultNameFields = 'Name,Caption,Text';
+    cEvaluationNames: array[TAtlasVisualizerEvaluation] of string = ('fields', 'properties', 'calls');
+    cDefaultNameFields = 'Name,Caption,Text';
   public
     /// <summary>Kommagetrennte Arten wie in debug.visualizers.types; unbekannte fallen weg, '' = keine.</summary>
     class function ParseKinds(const AText: string): TAtlasVisualizerKinds; static;
@@ -56,17 +56,17 @@ implementation
 
 class function TAtlasVisualizerSettings.ParseKinds(const AText: string): TAtlasVisualizerKinds;
 var
-  Part: string;
-  Kind: TAtlasVisualizerKind;
+  mPart: string;
+  mKind: TAtlasVisualizerKind;
 begin
   Result := [];
-  for Part in AText.Split([',', ';']) do
+  for mPart in AText.Split([',', ';']) do
   begin
-    for Kind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+    for mKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
     begin
-      if SameText(Trim(Part), KindNames[Kind]) then
+      if SameText(Trim(mPart), cKindNames[mKind]) then
       begin
-        Include(Result, Kind);
+        Include(Result, mKind);
       end;
     end;
   end;
@@ -74,18 +74,18 @@ end;
 
 class function TAtlasVisualizerSettings.KindsText(AKinds: TAtlasVisualizerKinds): string;
 var
-  Kind: TAtlasVisualizerKind;
+  mKind: TAtlasVisualizerKind;
 begin
   Result := '';
-  for Kind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+  for mKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
   begin
-    if Kind in AKinds then
+    if mKind in AKinds then
     begin
       if Result <> '' then
       begin
         Result := Result + ',';
       end;
-      Result := Result + KindNames[Kind];
+      Result := Result + cKindNames[mKind];
     end;
   end;
 end;
@@ -97,13 +97,13 @@ end;
 
 class function TAtlasVisualizerSettings.ParseEvaluation(const AText: string): TAtlasVisualizerEvaluation;
 var
-  Item: TAtlasVisualizerEvaluation;
+  mItem: TAtlasVisualizerEvaluation;
 begin
-  for Item := Low(TAtlasVisualizerEvaluation) to High(TAtlasVisualizerEvaluation) do
+  for mItem := Low(TAtlasVisualizerEvaluation) to High(TAtlasVisualizerEvaluation) do
   begin
-    if SameText(Trim(AText), EvaluationNames[Item]) then
+    if SameText(Trim(AText), cEvaluationNames[mItem]) then
     begin
-      Exit(Item);
+      Exit(mItem);
     end;
   end;
   Result := TAtlasVisualizerEvaluation.Properties;
@@ -111,28 +111,28 @@ end;
 
 class function TAtlasVisualizerSettings.ParseNameFields(const AText: string): TArray<string>;
 var
-  Part, Name, Known: string;
-  Seen: Boolean;
+  mPart, mName, mKnown: string;
+  mSeen: Boolean;
 begin
   Result := nil;
-  for Part in AText.Split([',', ';']) do
+  for mPart in AText.Split([',', ';']) do
   begin
-    Name := Trim(Part);
-    if (Name = '') or not IsValidIdent(Name) then
+    mName := Trim(mPart);
+    if (mName = '') or not IsValidIdent(mName) then
     begin
       Continue;
     end;
-    Seen := False;
-    for Known in Result do
+    mSeen := False;
+    for mKnown in Result do
     begin
-      if SameText(Known, Name) then
+      if SameText(mKnown, mName) then
       begin
-        Seen := True;
+        mSeen := True;
       end;
     end;
-    if not Seen then
+    if not mSeen then
     begin
-      Result := Result + [Name];
+      Result := Result + [mName];
     end;
   end;
 end;

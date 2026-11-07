@@ -16,8 +16,8 @@ uses
 type
   TAtlasIdeExperimental = class
   public const
-    StatusId = 'atlas.experimental';
-    StatusOrder = 90;
+    cStatusId = 'atlas.experimental';
+    cStatusOrder = 90;
   private class var
     FLine: TAtlasStatusLine;
     FLineRef: IAtlasStatusItem;
@@ -39,35 +39,35 @@ uses
 
 class procedure TAtlasIdeExperimental.ApplySettings;
 var
-  Active: TArray<string>;
-  Text: string;
+  mActive: TArray<string>;
+  mText: string;
 begin
-  Active := TAtlasIdeSettings.ActiveExperimental;
-  Text := TAtlasExperimental.Summary(Active, TAtlasStrings.Language = TAtlasLanguage.English);
-  if Text <> FLast then
+  mActive := TAtlasIdeSettings.ActiveExperimental;
+  mText := TAtlasExperimental.Summary(mActive, TAtlasStrings.Language = TAtlasLanguage.English);
+  if mText <> FLast then
   begin
-    if Text = '' then
+    if mText = '' then
     begin
       TAtlasGuard.Log('Experimentelle Funktionen: keine wirksam (#834)');
     end
     else
     begin
-      TAtlasGuard.Log('Experimentelle Funktionen wirksam (#834): ' + string.Join(', ', Active));
+      TAtlasGuard.Log('Experimentelle Funktionen wirksam (#834): ' + string.Join(', ', mActive));
     end;
-    FLast := Text;
+    FLast := mText;
   end;
-  if Text = '' then
+  if mText = '' then
   begin
     Stop;
     Exit;
   end;
   if FLineRef = nil then
   begin
-    FLine := TAtlasStatusLine.Create(TAtlasStatusRegistry.Default, StatusId, StatusOrder);
+    FLine := TAtlasStatusLine.Create(TAtlasStatusRegistry.Default, cStatusId, cStatusOrder);
     FLineRef := FLine;
     TAtlasStatusRegistry.Default.Add(FLineRef);
   end;
-  FLine.Update(Text, TAtlasStatusState.Neutral, Text);
+  FLine.Update(mText, TAtlasStatusState.Neutral, mText);
 end;
 
 class procedure TAtlasIdeExperimental.Stop;
@@ -76,7 +76,7 @@ begin
   begin
     Exit;
   end;
-  TAtlasStatusRegistry.Default.Remove(StatusId);
+  TAtlasStatusRegistry.Default.Remove(cStatusId);
   FLine := nil;
   FLineRef := nil;
 end;

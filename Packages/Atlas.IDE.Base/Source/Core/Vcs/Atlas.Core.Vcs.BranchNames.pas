@@ -17,12 +17,12 @@ uses
 type
   TAtlasVcsBranchNames = class
   public const
-    GitBase = 'main';
+    cGitBase = 'main';
     /// <summary>Zweiter Versuch unter Git, wenn es main nicht gibt.</summary>
-    GitBaseFallback = 'master';
-    SvnBase = 'trunk';
+    cGitBaseFallback = 'master';
+    cSvnBase = 'trunk';
     /// <summary>Höchstlänge eines Branch-Namens.</summary>
-    MaxLength = 100;
+    cMaxLength = 100;
   public
     /// <summary>Name nach git check-ref-format: nicht leer, ohne Leer- und Steuerzeichen, ~ ^ : ? * [ \, "..",
     /// "@{", "//"; kein "/", "-" oder "." am Anfang, kein "/" oder "." am Ende, kein ".lock" am Ende eines Stücks.
@@ -76,11 +76,11 @@ begin
   end
   else if ASvn then
   begin
-    Result := TArray<string>.Create(SvnBase);
+    Result := TArray<string>.Create(cSvnBase);
   end
   else
   begin
-    Result := TArray<string>.Create(GitBase, GitBaseFallback);
+    Result := TArray<string>.Create(cGitBase, cGitBaseFallback);
   end;
 end;
 

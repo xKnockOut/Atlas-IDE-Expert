@@ -100,22 +100,22 @@ uses
   Atlas.Text.Chars;
 
 const
-  KindNames: array[TAtlasExitPointKind] of string = ('exit', 'raise', 'halt', 'call', 'end', 'result', 'source',
+  cKindNames: array[TAtlasExitPointKind] of string = ('exit', 'raise', 'halt', 'call', 'end', 'result', 'source',
     'handler', 'loop', 'jump');
-  QueryNames: array[TAtlasExitPointQuery] of string = ('', 'routine', 'result', 'exceptions', 'loop');
-  TriggerWords: array[0..9] of string = ('exit', 'raise', 'abort', 'halt', 'runerror', 'result', 'except', 'on',
+  cQueryNames: array[TAtlasExitPointQuery] of string = ('', 'routine', 'result', 'exceptions', 'loop');
+  cTriggerWords: array[0..9] of string = ('exit', 'raise', 'abort', 'halt', 'runerror', 'result', 'except', 'on',
     'break', 'continue');
-  HeaderWords: array[0..4] of string = ('procedure', 'function', 'constructor', 'destructor', 'operator');
+  cHeaderWords: array[0..4] of string = ('procedure', 'function', 'constructor', 'destructor', 'operator');
 
 function KindOf(const AName: string; out AKind: TAtlasExitPointKind): Boolean;
 var
-  Kind: TAtlasExitPointKind;
+  mKind: TAtlasExitPointKind;
 begin
-  for Kind := Low(TAtlasExitPointKind) to High(TAtlasExitPointKind) do
+  for mKind := Low(TAtlasExitPointKind) to High(TAtlasExitPointKind) do
   begin
-    if KindNames[Kind] = AName then
+    if cKindNames[mKind] = AName then
     begin
-      AKind := Kind;
+      AKind := mKind;
       Exit(True);
     end;
   end;
@@ -124,21 +124,21 @@ end;
 
 function QueryOf(const AName: string): TAtlasExitPointQuery;
 var
-  Query: TAtlasExitPointQuery;
+  mQuery: TAtlasExitPointQuery;
 begin
-  for Query := Low(TAtlasExitPointQuery) to High(TAtlasExitPointQuery) do
+  for mQuery := Low(TAtlasExitPointQuery) to High(TAtlasExitPointQuery) do
   begin
-    if QueryNames[Query] = AName then
+    if cQueryNames[mQuery] = AName then
     begin
-      Exit(Query);
+      Exit(mQuery);
     end;
   end;
   Result := TAtlasExitPointQuery.None;
 end;
 
-function Before(ALine, ACharacter, BLine, BCharacter: Integer): Boolean;
+function Before(ALine, ACharacter, ABLine, ABCharacter: Integer): Boolean;
 begin
-  Result := (ALine < BLine) or ((ALine = BLine) and (ACharacter < BCharacter));
+  Result := (ALine < ABLine) or ((ALine = ABLine) and (ACharacter < ABCharacter));
 end;
 
 { TAtlasExitPoint }
@@ -173,10 +173,10 @@ end;
 
 class function TAtlasExitPointSet.FromJson(AValue: TJSONValue): TAtlasExitPointSet;
 var
-  Root, Routine, Item: TJSONObject;
-  Value: TJSONValue;
-  Point: TAtlasExitPoint;
-  Kind: TAtlasExitPointKind;
+  mRoot, mRoutine, mItem: TJSONObject;
+  mValue: TJSONValue;
+  mPoint: TAtlasExitPoint;
+  mKind: TAtlasExitPointKind;
 begin
   Result := Default(TAtlasExitPointSet);
   Result.RoutineLine := -1;
@@ -184,47 +184,47 @@ begin
   begin
     Exit;
   end;
-  Root := TJSONObject(AValue);
-  Result.Query := QueryOf(Root.GetValue<string>('query', ''));
-  if Root.GetValue('routine') is TJSONObject then
+  mRoot := TJSONObject(AValue);
+  Result.Query := QueryOf(mRoot.GetValue<string>('query', ''));
+  if mRoot.GetValue('routine') is TJSONObject then
   begin
-    Routine := TJSONObject(Root.GetValue('routine'));
-    Result.RoutineName := Routine.GetValue<string>('name', '');
-    Result.RoutineLine := Routine.GetValue<Integer>('line', -1);
-    Result.RoutineCharacter := Routine.GetValue<Integer>('character', 0);
-    Result.RoutineEnd := Routine.GetValue<Integer>('endCharacter', Result.RoutineCharacter);
+    mRoutine := TJSONObject(mRoot.GetValue('routine'));
+    Result.RoutineName := mRoutine.GetValue<string>('name', '');
+    Result.RoutineLine := mRoutine.GetValue<Integer>('line', -1);
+    Result.RoutineCharacter := mRoutine.GetValue<Integer>('character', 0);
+    Result.RoutineEnd := mRoutine.GetValue<Integer>('endCharacter', Result.RoutineCharacter);
     Result.HasRoutine := Result.RoutineLine >= 0;
   end;
-  Result.IsFunction := Root.GetValue<Boolean>('function', False);
-  Result.Exits := Root.GetValue<Integer>('exits', 0);
-  Result.ResultMissing := Root.GetValue<Boolean>('resultMissing', False);
+  Result.IsFunction := mRoot.GetValue<Boolean>('function', False);
+  Result.Exits := mRoot.GetValue<Integer>('exits', 0);
+  Result.ResultMissing := mRoot.GetValue<Boolean>('resultMissing', False);
   // Typen selbst prüfen: GetValue<TJSONArray> wandelt eine Zahl ungeprüft um.
-  if not (Root.GetValue('points') is TJSONArray) then
+  if not (mRoot.GetValue('points') is TJSONArray) then
   begin
     Exit;
   end;
-  for Value in TJSONArray(Root.GetValue('points')) do
+  for mValue in TJSONArray(mRoot.GetValue('points')) do
   begin
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Continue;
     end;
-    Item := TJSONObject(Value);
-    if not KindOf(Item.GetValue<string>('kind', ''), Kind) then
+    mItem := TJSONObject(mValue);
+    if not KindOf(mItem.GetValue<string>('kind', ''), mKind) then
     begin
       Continue;
     end;
-    Point := Default(TAtlasExitPoint);
-    Point.Kind := Kind;
-    Point.Line := Item.GetValue<Integer>('line', -1);
-    Point.Character := Item.GetValue<Integer>('character', 0);
-    Point.EndCharacter := Item.GetValue<Integer>('endCharacter', Point.Character);
-    Point.ResultMissing := Item.GetValue<Boolean>('resultMissing', False);
-    Point.Detail := Item.GetValue<string>('detail', '');
-    Point.ExceptionClass := Item.GetValue<string>('exception', '');
-    if Point.Line >= 0 then
+    mPoint := Default(TAtlasExitPoint);
+    mPoint.Kind := mKind;
+    mPoint.Line := mItem.GetValue<Integer>('line', -1);
+    mPoint.Character := mItem.GetValue<Integer>('character', 0);
+    mPoint.EndCharacter := mItem.GetValue<Integer>('endCharacter', mPoint.Character);
+    mPoint.ResultMissing := mItem.GetValue<Boolean>('resultMissing', False);
+    mPoint.Detail := mItem.GetValue<string>('detail', '');
+    mPoint.ExceptionClass := mItem.GetValue<string>('exception', '');
+    if mPoint.Line >= 0 then
     begin
-      Result.Points := Result.Points + [Point];
+      Result.Points := Result.Points + [mPoint];
     end;
   end;
 end;
@@ -236,27 +236,27 @@ end;
 
 function TAtlasExitPointSet.PointsAt(ALine: Integer): TArray<TAtlasExitPoint>;
 var
-  Point: TAtlasExitPoint;
+  mPoint: TAtlasExitPoint;
 begin
   Result := nil;
-  for Point in Points do
+  for mPoint in Points do
   begin
-    if Point.Line = ALine then
+    if mPoint.Line = ALine then
     begin
-      Result := Result + [Point];
+      Result := Result + [mPoint];
     end;
   end;
 end;
 
 function TAtlasExitPointSet.IndexAt(ALine, ACharacter: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Points) do
+  for mIndex := 0 to High(Points) do
   begin
-    if Points[Index].Contains(ALine, ACharacter) then
+    if Points[mIndex].Contains(ALine, ACharacter) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -271,7 +271,7 @@ end;
 function TAtlasExitPointSet.Next(ALine, ACharacter: Integer; ABackward: Boolean;
   out APoint: TAtlasExitPoint): Boolean;
 var
-  Index, Current: Integer;
+  mIndex, mCurrent: Integer;
 begin
   Result := Length(Points) > 0;
   if not Result then
@@ -279,19 +279,19 @@ begin
     Exit;
   end;
   // Auf einer Stelle zählt ihr Anfang, damit der Sprung nicht auf derselben Stelle landet.
-  Current := IndexAt(ALine, ACharacter);
-  if Current >= 0 then
+  mCurrent := IndexAt(ALine, ACharacter);
+  if mCurrent >= 0 then
   begin
-    ACharacter := Points[Current].Character;
+    ACharacter := Points[mCurrent].Character;
   end;
   if ABackward then
   begin
     APoint := Points[High(Points)];
-    for Index := High(Points) downto 0 do
+    for mIndex := High(Points) downto 0 do
     begin
-      if Before(Points[Index].Line, Points[Index].Character, ALine, ACharacter) then
+      if Before(Points[mIndex].Line, Points[mIndex].Character, ALine, ACharacter) then
       begin
-        APoint := Points[Index];
+        APoint := Points[mIndex];
         Exit;
       end;
     end;
@@ -299,11 +299,11 @@ begin
   else
   begin
     APoint := Points[0];
-    for Index := 0 to High(Points) do
+    for mIndex := 0 to High(Points) do
     begin
-      if Before(ALine, ACharacter, Points[Index].Line, Points[Index].Character) then
+      if Before(ALine, ACharacter, Points[mIndex].Line, Points[mIndex].Character) then
       begin
-        APoint := Points[Index];
+        APoint := Points[mIndex];
         Exit;
       end;
     end;
@@ -346,7 +346,7 @@ var
   mHead: string;
 begin
   Result := False;
-  for mHead in TriggerWords do
+  for mHead in cTriggerWords do
   begin
     Result := Result or (AWord = mHead);
   end;
@@ -371,7 +371,7 @@ begin
       mHead := TrimLeft(Copy(mHead, 7, MaxInt));
     end;
     Result := False;
-    for mWord in HeaderWords do
+    for mWord in cHeaderWords do
     begin
       Result := Result or (mHead = mWord) or mHead.StartsWith(mWord + ' ');
     end;

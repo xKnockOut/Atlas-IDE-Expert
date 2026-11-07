@@ -22,8 +22,8 @@ uses
 type
   TAtlasIdeDisableWarning = class
   public const
-    ClientCommand = 'atlas.disableWarning';
-    ProjectCommand = 'atlas.disableWarningProject';
+    cClientCommand = 'atlas.disableWarning';
+    cProjectCommand = 'atlas.disableWarningProject';
   public
     /// <summary>atlas.disableWarning; ASession: laufende Sitzung oder nil; AMessage: Zeile für die
     /// Meldungsansicht.</summary>
@@ -49,8 +49,8 @@ uses
   Atlas.IDE.Foundation.Files;
 
 const
-  ApplyCommand = 'atlas.server.disableWarning';
-  TimeoutMs = 10000;
+  cApplyCommand = 'atlas.server.disableWarning';
+  cTimeoutMs = 10000;
 
 /// <summary>Fragt nach dem Grund, wenn ARequest es verlangt; False bei Abbruch.</summary>
 function AskReason(const ARequest: TAtlasDisableWarningRequest; out AReason: string): Boolean;
@@ -72,7 +72,7 @@ begin
   AAllWarnings := False;
   TAtlasIdeRename.SyncOpenBuffers(ASession);
   try
-    mAnswer := ASession.RunCommand(ApplyCommand, ARequest.ApplyArguments(AReason), TimeoutMs);
+    mAnswer := ASession.RunCommand(cApplyCommand, ARequest.ApplyArguments(AReason), cTimeoutMs);
     try
       if mAnswer is TJSONObject then
       begin
@@ -139,7 +139,7 @@ function SwitchOff(const ABase: IOTABuildConfiguration; const AProject: IOTAProj
 begin
   Result := False;
   try
-    ABase.SetValue(ARequest.OptionName, AtlasWarningOptionOff);
+    ABase.SetValue(ARequest.OptionName, cAtlasWarningOptionOff);
     AProject.MarkModified;
     Result := True;
   except

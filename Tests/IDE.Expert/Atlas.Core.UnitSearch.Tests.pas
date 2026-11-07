@@ -543,7 +543,7 @@ begin
   try
     TFile.WriteAllText(mFileName, '[1, 2]');
     Assert.IsTrue(mState.LoadFromFile(mFileName) = TAtlasDataLoad.Renewed);
-    Assert.IsTrue(TFile.Exists(mFileName + TAtlasDataFile.DefectExtension), 'beiseitegelegt');
+    Assert.IsTrue(TFile.Exists(mFileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
     mState.Width := 937;
     Assert.IsTrue(mState.SaveToFile(mFileName));
     mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
@@ -559,7 +559,7 @@ begin
   finally
     mState.Free;
     System.SysUtils.DeleteFile(mFileName);
-    System.SysUtils.DeleteFile(mFileName + TAtlasDataFile.DefectExtension);
+    System.SysUtils.DeleteFile(mFileName + TAtlasDataFile.cDefectExtension);
   end;
   // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
   TAtlasDataFile.ForgetReports;

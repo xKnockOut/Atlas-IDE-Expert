@@ -115,11 +115,11 @@ type
 
   TAtlasCompletionPopupState = class(TAtlasPopupWindow)
   public const
-    DefaultVisibleRows = 9;
-    MinWidth = TAtlasPopupWidth.MinListWidth;
-    MaxWidth = TAtlasPopupWidth.MaxListWidth;
-    DefaultPanelWidth = 320;
-    CollapsedPanelWidth = 22;
+    cDefaultVisibleRows = 9;
+    cMinWidth = TAtlasPopupWidth.cMinListWidth;
+    cMaxWidth = TAtlasPopupWidth.cMaxListWidth;
+    cDefaultPanelWidth = 320;
+    cCollapsedPanelWidth = 22;
   protected const
     /// <summary>Platz für das Kontrollkästchen im Mengenmodus (#448): Rand 7, Kästchen 13, Abstand 6.</summary>
     cCheckWidth = 19;
@@ -189,8 +189,8 @@ const
 constructor TAtlasCompletionPopupState.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  SetAccessible(UiaListControlType, TAtlasStrings.Text(TAtlasTextId.AccessCompletion));
-  FVisibleRows := DefaultVisibleRows;
+  SetAccessible(cUiaListControlType, TAtlasStrings.Text(TAtlasTextId.AccessCompletion));
+  FVisibleRows := cDefaultVisibleRows;
   FSelected := -1;
   FRestFrom := -1;
   FDetailView := TAtlasDetailView.Create;
@@ -199,7 +199,7 @@ begin
   FTipTimer := TTimer.Create(Self);
   FTipTimer.Enabled := False;
   FTipTimer.Interval := cTipDelayMs;
-  FPanel.Width := DefaultPanelWidth;
+  FPanel.Width := cDefaultPanelWidth;
   FOptions.SelectionMarker := True;
   FOptions.ShowVariantBranch := True;
 end;
@@ -224,7 +224,7 @@ end;
 
 procedure TAtlasCompletionPopupState.EnsureMetrics;
 var
-  UIHeight: Integer;
+  mUIHeight: Integer;
 begin
   // Dichte zusätzlich prüfen: Scale hängt an PPI, auch wenn die Schrift gleich bleibt.
   if FMetrics.Valid and (FMetrics.PPI = PPI) then
@@ -232,11 +232,11 @@ begin
     Exit;
   end;
   Canvas.Font := UIFont;
-  UIHeight := Canvas.TextHeight('Wg');
+  mUIHeight := Canvas.TextHeight('Wg');
   Canvas.Font := Font;
   FMetrics.RowHeight := Max(Canvas.TextHeight('Wg') + Scale(9), Scale(24));
-  FMetrics.ChipsHeight := UIHeight + Scale(12);
-  FMetrics.FooterHeight := UIHeight + Scale(10);
+  FMetrics.ChipsHeight := mUIHeight + Scale(12);
+  FMetrics.FooterHeight := mUIHeight + Scale(10);
   FMetrics.PPI := PPI;
   FMetrics.Valid := True;
 end;

@@ -104,11 +104,11 @@ begin
     try
       Assert.IsTrue(Window.IsShown);
       Bounds := Window.BoundsRect;
-      Assert.AreEqual(Area.Right - TAtlasShortcutTipWindow.Margin, Bounds.Right, 'rechts mit Abstand');
-      Assert.AreEqual(Area.Bottom - TAtlasShortcutTipWindow.Margin, Bounds.Bottom, 'unten mit Abstand');
+      Assert.AreEqual(Area.Right - TAtlasShortcutTipWindow.cMargin, Bounds.Right, 'rechts mit Abstand');
+      Assert.AreEqual(Area.Bottom - TAtlasShortcutTipWindow.cMargin, Bounds.Bottom, 'unten mit Abstand');
       Assert.IsTrue(Bounds.Width > 0);
       Assert.IsTrue(Window.Timer.Enabled);
-      Assert.AreEqual(Integer(TAtlasShortcutTips.VisibleMs), Integer(Window.Timer.Interval), '4 s');
+      Assert.AreEqual(Integer(TAtlasShortcutTips.cVisibleMs), Integer(Window.Timer.Interval), '4 s');
       Assert.AreEqual(4000, Integer(Window.Timer.Interval));
     finally
       Window.Dismiss;

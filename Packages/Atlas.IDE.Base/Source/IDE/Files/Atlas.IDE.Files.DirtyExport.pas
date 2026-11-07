@@ -77,25 +77,25 @@ end;
 
 class function TAtlasDirtyExport.ModifiedFiles: TArray<string>;
 var
-  Modules: IOTAModuleServices;
-  Module: IOTAModule;
-  Index, FileIndex: Integer;
-  Editor: IOTAEditor;
+  mModules: IOTAModuleServices;
+  mModule: IOTAModule;
+  mIndex, mFileIndex: Integer;
+  mEditor: IOTAEditor;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
-  for Index := 0 to Modules.ModuleCount - 1 do
+  for mIndex := 0 to mModules.ModuleCount - 1 do
   begin
-    Module := Modules.Modules[Index];
-    for FileIndex := 0 to Module.ModuleFileCount - 1 do
+    mModule := mModules.Modules[mIndex];
+    for mFileIndex := 0 to mModule.ModuleFileCount - 1 do
     begin
-      Editor := Module.ModuleFileEditors[FileIndex];
-      if (Editor <> nil) and Editor.Modified and (Editor.FileName <> '') then
+      mEditor := mModule.ModuleFileEditors[mFileIndex];
+      if (mEditor <> nil) and mEditor.Modified and (mEditor.FileName <> '') then
       begin
-        Result := Result + [Editor.FileName];
+        Result := Result + [mEditor.FileName];
       end;
     end;
   end;
@@ -103,26 +103,26 @@ end;
 
 class function TAtlasDirtyExport.OpenFiles: TArray<string>;
 var
-  Modules: IOTAModuleServices;
-  Module: IOTAModule;
-  Index, FileIndex: Integer;
-  Editor: IOTAEditor;
-  Buffer: IOTAEditBuffer;
+  mModules: IOTAModuleServices;
+  mModule: IOTAModule;
+  mIndex, mFileIndex: Integer;
+  mEditor: IOTAEditor;
+  mBuffer: IOTAEditBuffer;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
-  for Index := 0 to Modules.ModuleCount - 1 do
+  for mIndex := 0 to mModules.ModuleCount - 1 do
   begin
-    Module := Modules.Modules[Index];
-    for FileIndex := 0 to Module.ModuleFileCount - 1 do
+    mModule := mModules.Modules[mIndex];
+    for mFileIndex := 0 to mModule.ModuleFileCount - 1 do
     begin
-      Editor := Module.ModuleFileEditors[FileIndex];
-      if (Editor <> nil) and (Editor.FileName <> '') and Supports(Editor, IOTAEditBuffer, Buffer) then
+      mEditor := mModule.ModuleFileEditors[mFileIndex];
+      if (mEditor <> nil) and (mEditor.FileName <> '') and Supports(mEditor, IOTAEditBuffer, mBuffer) then
       begin
-        Result := Result + [Editor.FileName];
+        Result := Result + [mEditor.FileName];
       end;
     end;
   end;
@@ -130,71 +130,71 @@ end;
 
 class function TAtlasDirtyExport.OpenProjects(out AActive: string): TArray<string>;
 var
-  Modules: IOTAModuleServices;
-  Project: IOTAProject;
-  Index: Integer;
+  mModules: IOTAModuleServices;
+  mProject: IOTAProject;
+  mIndex: Integer;
 begin
   Result := nil;
   AActive := '';
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
-  for Index := 0 to Modules.ModuleCount - 1 do
+  for mIndex := 0 to mModules.ModuleCount - 1 do
   begin
-    if Supports(Modules.Modules[Index], IOTAProject, Project) and
-      SameText(ExtractFileExt(Project.FileName), '.dproj') then
+    if Supports(mModules.Modules[mIndex], IOTAProject, mProject) and
+      SameText(ExtractFileExt(mProject.FileName), '.dproj') then
     begin
-      Result := Result + [Project.FileName];
+      Result := Result + [mProject.FileName];
     end;
   end;
-  Project := Modules.GetActiveProject;
-  if (Project <> nil) and SameText(ExtractFileExt(Project.FileName), '.dproj') then
+  mProject := mModules.GetActiveProject;
+  if (mProject <> nil) and SameText(ExtractFileExt(mProject.FileName), '.dproj') then
   begin
-    AActive := Project.FileName;
+    AActive := mProject.FileName;
   end;
 end;
 
 procedure TAtlasDirtyExport.Tick(Sender: TObject);
 var
-  Json: TJSONObject;
-  Files, Open, Projects: TJSONArray;
-  Name, Text, Active: string;
+  mJson: TJSONObject;
+  mFiles, mOpen, mProjects: TJSONArray;
+  mName, mText, mActive: string;
 begin
   try
-    Files := TJSONArray.Create;
-    for Name in ModifiedFiles do
+    mFiles := TJSONArray.Create;
+    for mName in ModifiedFiles do
     begin
-      Files.Add(Name);
+      mFiles.Add(mName);
     end;
-    Open := TJSONArray.Create;
-    for Name in OpenFiles do
+    mOpen := TJSONArray.Create;
+    for mName in OpenFiles do
     begin
-      Open.Add(Name);
+      mOpen.Add(mName);
     end;
-    Projects := TJSONArray.Create;
-    for Name in OpenProjects(Active) do
+    mProjects := TJSONArray.Create;
+    for mName in OpenProjects(mActive) do
     begin
-      Projects.Add(Name);
+      mProjects.Add(mName);
     end;
-    Json := TJSONObject.Create;
+    mJson := TJSONObject.Create;
     try
-      Json.AddPair('pid', TJSONNumber.Create(GetCurrentProcessId));
-      Json.AddPair('files', Files);
-      Json.AddPair('open', Open);
-      Json.AddPair('projects', Projects);
-      Json.AddPair('activeProject', Active);
-      Text := Json.ToJSON;
+      mJson.AddPair('pid', TJSONNumber.Create(GetCurrentProcessId));
+      mJson.AddPair('files', mFiles);
+      mJson.AddPair('open', mOpen);
+      mJson.AddPair('projects', mProjects);
+      mJson.AddPair('activeProject', mActive);
+      mText := mJson.ToJSON;
     finally
-      Json.Free;
+      mJson.Free;
     end;
-    if Text = FLast then
+    if mText = FLast then
     begin
       Exit;
     end;
     // Atomar (Bericht N3): Der Server liest die Liste jederzeit und sah sonst womöglich eine halbe.
-    TAtlasDataFile.Write(FFileName, Text);
-    FLast := Text;
+    TAtlasDataFile.Write(FFileName, mText);
+    FLast := mText;
   except
     // Ohne Liste schützt der Server weiter über den Vergleich mit der Platte; der Grund steht einmal im Protokoll.
     on E: Exception do

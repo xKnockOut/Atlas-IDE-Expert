@@ -140,7 +140,8 @@ type
     class function UriToPath(const AUri: string): string; static;
     /// <summary>Text aus contents einer Hover-Antwort: String, MarkupContent oder MarkedString-Liste.</summary>
     class function HoverText(const AHover: TJSONValue): string; static;
-    /// <summary>Zeichenindex (0-basiert) zur Editorspalte (1-basiert); Tabs springen zur nächsten Tabulatorposition.</summary>
+    /// <summary>Zeichenindex (0-basiert) zur Editorspalte (1-basiert); Tabs springen zur nächsten
+    /// Tabulatorposition.</summary>
     class function ColumnToIndex(const ALine: string; AColumn, ATabWidth: Integer): Integer; static;
     /// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert); Umkehrung von ColumnToIndex.</summary>
     class function IndexToColumn(const ALine: string; AIndex, ATabWidth: Integer): Integer; static;
@@ -198,38 +199,38 @@ end;
 
 class function TLspSessionJson.HoverText(const AHover: TJSONValue): string;
 var
-  Contents: TJSONValue;
-  Item: TJSONValue;
+  mContents: TJSONValue;
+  mItem: TJSONValue;
 begin
   Result := '';
   if not (AHover is TJSONObject) then
   begin
     Exit;
   end;
-  Contents := TJSONObject(AHover).GetValue('contents');
-  if Contents is TJSONString then
+  mContents := TJSONObject(AHover).GetValue('contents');
+  if mContents is TJSONString then
   begin
-    Result := TJSONString(Contents).Value;
+    Result := TJSONString(mContents).Value;
   end
-  else if Contents is TJSONObject then
+  else if mContents is TJSONObject then
   begin
-    Result := TJSONObject(Contents).GetValue<string>('value', '');
+    Result := TJSONObject(mContents).GetValue<string>('value', '');
   end
-  else if Contents is TJSONArray then
+  else if mContents is TJSONArray then
   begin
-    for Item in TJSONArray(Contents) do
+    for mItem in TJSONArray(mContents) do
     begin
       if Result <> '' then
       begin
         Result := Result + sLineBreak;
       end;
-      if Item is TJSONString then
+      if mItem is TJSONString then
       begin
-        Result := Result + TJSONString(Item).Value;
+        Result := Result + TJSONString(mItem).Value;
       end
-      else if Item is TJSONObject then
+      else if mItem is TJSONObject then
       begin
-        Result := Result + TJSONObject(Item).GetValue<string>('value', '');
+        Result := Result + TJSONObject(mItem).GetValue<string>('value', '');
       end;
     end;
   end;
@@ -237,20 +238,20 @@ end;
 
 class function TLspSessionJson.ColumnToIndex(const ALine: string; AColumn, ATabWidth: Integer): Integer;
 var
-  Visual: Integer;
+  mVisual: Integer;
 begin
   // Spalte 1 = erstes Zeichen. Tabs springen zur nächsten Tabulatorposition.
   Result := 0;
-  Visual := 1;
-  while (Result < Length(ALine)) and (Visual < AColumn) do
+  mVisual := 1;
+  while (Result < Length(ALine)) and (mVisual < AColumn) do
   begin
     if ALine[Result + 1] = #9 then
     begin
-      Visual := ((Visual - 1) div ATabWidth + 1) * ATabWidth + 1;
+      mVisual := ((mVisual - 1) div ATabWidth + 1) * ATabWidth + 1;
     end
     else
     begin
-      Inc(Visual);
+      Inc(mVisual);
     end;
     Inc(Result);
   end;
@@ -272,25 +273,25 @@ end;
 
 class function TLspSessionJson.ClientCapabilities(AApplyEdit: Boolean): TJSONObject;
 var
-  TextDocument, Hover: TJSONObject;
-  Formats: TJSONArray;
+  mTextDocument, mHover: TJSONObject;
+  mFormats: TJSONArray;
 begin
-  Formats := TJSONArray.Create;
-  Formats.Add('plaintext');
-  Hover := TJSONObject.Create;
-  Hover.AddPair('contentFormat', Formats);
-  TextDocument := TJSONObject.Create;
-  TextDocument.AddPair('hover', Hover);
+  mFormats := TJSONArray.Create;
+  mFormats.Add('plaintext');
+  mHover := TJSONObject.Create;
+  mHover.AddPair('contentFormat', mFormats);
+  mTextDocument := TJSONObject.Create;
+  mTextDocument.AddPair('hover', mHover);
   // Dokumentation der Vervollständigung als Klartext (#408). Snippets setzt das Plugin selbst mit Platzhalter-Modus
   // ein (#51); ob sie in der Liste erscheinen, regelt completion.snippets im Plugin.
-  TextDocument.AddPair('completion', TJSONObject.Create(TJSONPair.Create('completionItem',
+  mTextDocument.AddPair('completion', TJSONObject.Create(TJSONPair.Create('completionItem',
     TJSONObject.Create.AddPair('snippetSupport', TJSONBool.Create(True))
       .AddPair('documentationFormat', TJSONArray.Create.Add('plaintext')))));
   // Diagnosen holt das Plugin selbst (#398); der Server bittet per refresh um neues Holen.
-  TextDocument.AddPair('diagnostic', TJSONObject.Create.AddPair('dynamicRegistration', TJSONBool.Create(False))
+  mTextDocument.AddPair('diagnostic', TJSONObject.Create.AddPair('dynamicRegistration', TJSONBool.Create(False))
     .AddPair('relatedDocumentSupport', TJSONBool.Create(False)));
   Result := TJSONObject.Create;
-  Result.AddPair('textDocument', TextDocument);
+  Result.AddPair('textDocument', mTextDocument);
   Result.AddPair('workspace', TJSONObject.Create(TJSONPair.Create('diagnostics',
     TJSONObject.Create(TJSONPair.Create('refreshSupport', TJSONBool.Create(True)))))
     .AddPair('workspaceFolders', TJSONBool.Create(True))
@@ -306,9 +307,9 @@ end;
 class function TLspSessionJson.InitializeParams(const AProjects: TArray<string>; const AServerSettings: string;
   const AContexts: TArray<TAtlasProjectContext>; AApplyEdit: Boolean; const ALocale: string): TJSONObject;
 var
-  Options: TJSONObject;
-  Contexts: TJSONArray;
-  Context: TAtlasProjectContext;
+  mOptions: TJSONObject;
+  mContexts: TJSONArray;
+  mContext: TAtlasProjectContext;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('processId', TJSONNull.Create);
@@ -321,37 +322,37 @@ begin
   end;
   // Einstellungen der Atlas-Optionen (#652) und Projektkontexte vor dem ersten Laden der Projekte, sonst
   // indiziert der Server sie zweimal (#396).
-  Options := nil;
+  mOptions := nil;
   if AServerSettings <> '' then
   begin
-    Options := SettingsParams(AServerSettings);
+    mOptions := SettingsParams(AServerSettings);
   end;
   if Length(AContexts) > 0 then
   begin
-    Contexts := TJSONArray.Create;
-    for Context in AContexts do
+    mContexts := TJSONArray.Create;
+    for mContext in AContexts do
     begin
-      Contexts.AddElement(Context.ToJson);
+      mContexts.AddElement(mContext.ToJson);
     end;
-    if Options = nil then
+    if mOptions = nil then
     begin
-      Options := TJSONObject.Create;
+      mOptions := TJSONObject.Create;
     end;
-    Options.AddPair('projectContexts', Contexts);
+    mOptions.AddPair('projectContexts', mContexts);
   end;
   // Sprache der Oberfläche (#1458): eigener Schlüssel für Atlas und das Feld locale aus LSP 3.16.
   if ALocale <> '' then
   begin
     Result.AddPair('locale', ALocale);
-    if Options = nil then
+    if mOptions = nil then
     begin
-      Options := TJSONObject.Create;
+      mOptions := TJSONObject.Create;
     end;
-    Options.AddPair('locale', ALocale);
+    mOptions.AddPair('locale', ALocale);
   end;
-  if Options <> nil then
+  if mOptions <> nil then
   begin
-    Result.AddPair('initializationOptions', Options);
+    Result.AddPair('initializationOptions', mOptions);
   end;
 end;
 
@@ -369,42 +370,42 @@ class function TLspSessionJson.LocationsOf(const AResponse: TJSONValue): TArray<
 
   procedure Add(const AItem: TJSONValue);
   var
-    Location: TLspLocation;
-    Uri, Prefix: string;
+    mLocation: TLspLocation;
+    mUri, mPrefix: string;
   begin
     if not (AItem is TJSONObject) then
     begin
       Exit;
     end;
     // LocationLink: targetUri und targetSelectionRange; Location: uri und range.
-    Prefix := 'range';
-    if TJSONObject(AItem).TryGetValue<string>('targetUri', Uri) then
+    mPrefix := 'range';
+    if TJSONObject(AItem).TryGetValue<string>('targetUri', mUri) then
     begin
-      Prefix := 'targetSelectionRange';
+      mPrefix := 'targetSelectionRange';
     end
     else
     begin
-      Uri := TJSONObject(AItem).GetValue<string>('uri', '');
+      mUri := TJSONObject(AItem).GetValue<string>('uri', '');
     end;
-    Location.FileName := UriToPath(Uri);
-    Location.Line := TJSONObject(AItem).GetValue<Integer>(Prefix + '.start.line', 0);
-    Location.Character := TJSONObject(AItem).GetValue<Integer>(Prefix + '.start.character', 0);
-    Location.Confidence := TAtlasConfidence.FromJson(AItem);
-    if Location.FileName <> '' then
+    mLocation.FileName := UriToPath(mUri);
+    mLocation.Line := TJSONObject(AItem).GetValue<Integer>(mPrefix + '.start.line', 0);
+    mLocation.Character := TJSONObject(AItem).GetValue<Integer>(mPrefix + '.start.character', 0);
+    mLocation.Confidence := TAtlasConfidence.FromJson(AItem);
+    if mLocation.FileName <> '' then
     begin
-      Result := Result + [Location];
+      Result := Result + [mLocation];
     end;
   end;
 
 var
-  Item: TJSONValue;
+  mItem: TJSONValue;
 begin
   Result := nil;
   if AResponse is TJSONArray then
   begin
-    for Item in TJSONArray(AResponse) do
+    for mItem in TJSONArray(AResponse) do
     begin
-      Add(Item);
+      Add(mItem);
     end;
   end
   else
@@ -415,13 +416,13 @@ end;
 
 class function TLspSessionJson.IndexToColumn(const ALine: string; AIndex, ATabWidth: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // Wie ColumnToIndex: Tabs springen zur nächsten Tabulatorposition, hinter dem Zeilenende je Zeichen eine Spalte.
   Result := 1;
-  for Index := 1 to AIndex do
+  for mIndex := 1 to AIndex do
   begin
-    if (Index <= Length(ALine)) and (ALine[Index] = #9) and (ATabWidth > 0) then
+    if (mIndex <= Length(ALine)) and (ALine[mIndex] = #9) and (ATabWidth > 0) then
     begin
       Result := ((Result - 1) div ATabWidth + 1) * ATabWidth + 1;
     end
@@ -435,102 +436,102 @@ end;
 class function TLspSessionJson.SymbolsOfDocument(const AResponse: TJSONValue;
   const AFileName: string): TArray<TAtlasSymbol>;
 var
-  Found: TArray<TAtlasSymbol>;
+  mFound: TArray<TAtlasSymbol>;
 
   procedure AddAll(const AItems: TJSONValue; const AContainer: string);
   var
-    Item: TJSONValue;
-    Entry: TJSONObject;
-    Symbol: TAtlasSymbol;
-    Locations: TArray<TLspLocation>;
+    mItem: TJSONValue;
+    mEntry: TJSONObject;
+    mSymbol: TAtlasSymbol;
+    mLocations: TArray<TLspLocation>;
   begin
     if not (AItems is TJSONArray) then
     begin
       Exit;
     end;
-    for Item in TJSONArray(AItems) do
+    for mItem in TJSONArray(AItems) do
     begin
-      if not (Item is TJSONObject) then
+      if not (mItem is TJSONObject) then
       begin
         Continue;
       end;
-      Entry := TJSONObject(Item);
-      Symbol := Default(TAtlasSymbol);
-      Symbol.Name := Entry.GetValue<string>('name', '');
-      Symbol.Kind := Entry.GetValue<Integer>('kind', 0);
-      Symbol.FileName := AFileName;
-      if Entry.GetValue('location') <> nil then
+      mEntry := TJSONObject(mItem);
+      mSymbol := Default(TAtlasSymbol);
+      mSymbol.Name := mEntry.GetValue<string>('name', '');
+      mSymbol.Kind := mEntry.GetValue<Integer>('kind', 0);
+      mSymbol.FileName := AFileName;
+      if mEntry.GetValue('location') <> nil then
       begin
         // SymbolInformation: Ort und Container stehen am Eintrag.
-        Symbol.Container := Entry.GetValue<string>('containerName', '');
-        Locations := LocationsOf(Entry.GetValue('location'));
-        if Length(Locations) > 0 then
+        mSymbol.Container := mEntry.GetValue<string>('containerName', '');
+        mLocations := LocationsOf(mEntry.GetValue('location'));
+        if Length(mLocations) > 0 then
         begin
-          Symbol.FileName := Locations[0].FileName;
-          Symbol.Line := Locations[0].Line;
-          Symbol.Character := Locations[0].Character;
+          mSymbol.FileName := mLocations[0].FileName;
+          mSymbol.Line := mLocations[0].Line;
+          mSymbol.Character := mLocations[0].Character;
         end;
       end
       else
       begin
-        Symbol.Container := AContainer;
-        Symbol.Line := Entry.GetValue<Integer>('selectionRange.start.line',
-          Entry.GetValue<Integer>('range.start.line', 0));
-        Symbol.Character := Entry.GetValue<Integer>('selectionRange.start.character',
-          Entry.GetValue<Integer>('range.start.character', 0));
+        mSymbol.Container := AContainer;
+        mSymbol.Line := mEntry.GetValue<Integer>('selectionRange.start.line',
+          mEntry.GetValue<Integer>('range.start.line', 0));
+        mSymbol.Character := mEntry.GetValue<Integer>('selectionRange.start.character',
+          mEntry.GetValue<Integer>('range.start.character', 0));
       end;
-      if Symbol.Name <> '' then
+      if mSymbol.Name <> '' then
       begin
-        Found := Found + [Symbol];
+        mFound := mFound + [mSymbol];
       end;
-      AddAll(Entry.GetValue('children'), Symbol.Name);
+      AddAll(mEntry.GetValue('children'), mSymbol.Name);
     end;
   end;
 
 begin
-  Found := nil;
+  mFound := nil;
   AddAll(AResponse, '');
-  Result := Found;
+  Result := mFound;
 end;
 
 class function TLspSessionJson.HierarchyItemOf(const AValue: TJSONValue): TAtlasHierarchyItem;
 var
-  Entry: TJSONObject;
+  mEntry: TJSONObject;
 begin
   Result := Default(TAtlasHierarchyItem);
   if not (AValue is TJSONObject) then
   begin
     Exit;
   end;
-  Entry := TJSONObject(AValue);
-  Result.Name := Entry.GetValue<string>('name', '');
-  Result.Detail := Entry.GetValue<string>('detail', '');
-  Result.Kind := Entry.GetValue<Integer>('kind', 0);
-  Result.FileName := UriToPath(Entry.GetValue<string>('uri', ''));
-  Result.Line := Entry.GetValue<Integer>('selectionRange.start.line', 0);
-  Result.Character := Entry.GetValue<Integer>('selectionRange.start.character', 0);
-  Result.Raw := Entry.ToJSON;
+  mEntry := TJSONObject(AValue);
+  Result.Name := mEntry.GetValue<string>('name', '');
+  Result.Detail := mEntry.GetValue<string>('detail', '');
+  Result.Kind := mEntry.GetValue<Integer>('kind', 0);
+  Result.FileName := UriToPath(mEntry.GetValue<string>('uri', ''));
+  Result.Line := mEntry.GetValue<Integer>('selectionRange.start.line', 0);
+  Result.Character := mEntry.GetValue<Integer>('selectionRange.start.character', 0);
+  Result.Raw := mEntry.ToJSON;
 end;
 
 function ImpactFormsOf(const AValue: TJSONValue): TArray<TAtlasImpactForm>;
 var
-  Item: TJSONValue;
-  Form: TAtlasImpactForm;
+  mItem: TJSONValue;
+  mForm: TAtlasImpactForm;
 begin
   Result := nil;
   if not (AValue is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(AValue) do
+  for mItem in TJSONArray(AValue) do
   begin
-    if Item is TJSONObject then
+    if mItem is TJSONObject then
     begin
-      Form.FileName := TLspSessionJson.UriToPath(TJSONObject(Item).GetValue<string>('uri', ''));
-      Form.Line := TJSONObject(Item).GetValue<Integer>('range.start.line', 0);
-      Form.Character := TJSONObject(Item).GetValue<Integer>('range.start.character', 0);
-      Form.Text := TJSONObject(Item).GetValue<string>('text', '');
-      Result := Result + [Form];
+      mForm.FileName := TLspSessionJson.UriToPath(TJSONObject(mItem).GetValue<string>('uri', ''));
+      mForm.Line := TJSONObject(mItem).GetValue<Integer>('range.start.line', 0);
+      mForm.Character := TJSONObject(mItem).GetValue<Integer>('range.start.character', 0);
+      mForm.Text := TJSONObject(mItem).GetValue<string>('text', '');
+      Result := Result + [mForm];
     end;
   end;
 end;
@@ -538,14 +539,14 @@ end;
 /// <summary>Namen aus einem JSON-Array von Strings; ohne Einträge AFallback allein.</summary>
 function RunNamesOf(const AValue: TJSONValue; const AFallback: string): TArray<string>;
 var
-  Name: TJSONValue;
+  mName: TJSONValue;
 begin
   Result := nil;
   if AValue is TJSONArray then
   begin
-    for Name in TJSONArray(AValue) do
+    for mName in TJSONArray(AValue) do
     begin
-      Result := Result + [Name.Value];
+      Result := Result + [mName.Value];
     end;
   end;
   if Result = nil then
@@ -557,7 +558,7 @@ end;
 /// <summary>Eine betroffene Stelle aus places der Antwort auf atlas/impact.</summary>
 function ImpactPlaceOf(AEntry: TJSONObject): TAtlasImpactPlace;
 var
-  Ranges, First: TJSONValue;
+  mRanges, mFirst: TJSONValue;
 begin
   Result := Default(TAtlasImpactPlace);
   Result.Item := TLspSessionJson.HierarchyItemOf(AEntry.GetValue('item'));
@@ -567,13 +568,13 @@ begin
   Result.Cause := AEntry.GetValue<Integer>('cause', -1);
   Result.UseLine := Result.Item.Line;
   Result.UseCharacter := Result.Item.Character;
-  Ranges := AEntry.GetValue('ranges');
-  if (Ranges is TJSONArray) and (TJSONArray(Ranges).Count > 0) then
+  mRanges := AEntry.GetValue('ranges');
+  if (mRanges is TJSONArray) and (TJSONArray(mRanges).Count > 0) then
   begin
-    Result.UseCount := TJSONArray(Ranges).Count;
-    First := TJSONArray(Ranges).Items[0];
-    Result.UseLine := First.GetValue<Integer>('start.line', Result.UseLine);
-    Result.UseCharacter := First.GetValue<Integer>('start.character', Result.UseCharacter);
+    Result.UseCount := TJSONArray(mRanges).Count;
+    mFirst := TJSONArray(mRanges).Items[0];
+    Result.UseLine := mFirst.GetValue<Integer>('start.line', Result.UseLine);
+    Result.UseCharacter := mFirst.GetValue<Integer>('start.character', Result.UseCharacter);
   end;
   Result.Forms := ImpactFormsOf(AEntry.GetValue('forms'));
   Result.Terminal := AEntry.GetValue<Boolean>('terminal', False);
@@ -594,62 +595,62 @@ end;
 /// <summary>Die Objekte eines JSON-Arrays; anderes und Nicht-Arrays ergeben nichts.</summary>
 function ObjectsOf(const AValue: TJSONValue): TArray<TJSONObject>;
 var
-  Item: TJSONValue;
+  mItem: TJSONValue;
 begin
   Result := nil;
   if not (AValue is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(AValue) do
+  for mItem in TJSONArray(AValue) do
   begin
-    if Item is TJSONObject then
+    if mItem is TJSONObject then
     begin
-      Result := Result + [TJSONObject(Item)];
+      Result := Result + [TJSONObject(mItem)];
     end;
   end;
 end;
 
 class function TLspSessionJson.ImpactFromJson(const AValue: TJSONValue): TAtlasImpact;
 var
-  Root, Entry: TJSONObject;
+  mRoot, mEntry: TJSONObject;
 begin
   Result := Default(TAtlasImpact);
   if not (AValue is TJSONObject) then
   begin
     Exit;
   end;
-  Root := TJSONObject(AValue);
-  Result.Symbol := HierarchyItemOf(Root.GetValue('symbol'));
-  Result.SymbolForms := ImpactFormsOf(Root.GetValue('symbolForms'));
-  Result.Depth := Root.GetValue<Integer>('depth', 0);
-  Result.DepthReached := Root.GetValue<Boolean>('limits.depth', False);
-  Result.CountReached := Root.GetValue<Boolean>('limits.count', False);
-  Result.TimeReached := Root.GetValue<Boolean>('limits.time', False);
-  Result.Unexpanded := Root.GetValue<Integer>('unexpanded', 0);
-  Result.MaxPlaces := Root.GetValue<Integer>('maxPlaces', 0);
-  Result.TimeoutMs := Root.GetValue<Integer>('timeoutMs', 0);
-  for Entry in ObjectsOf(Root.GetValue('places')) do
+  mRoot := TJSONObject(AValue);
+  Result.Symbol := HierarchyItemOf(mRoot.GetValue('symbol'));
+  Result.SymbolForms := ImpactFormsOf(mRoot.GetValue('symbolForms'));
+  Result.Depth := mRoot.GetValue<Integer>('depth', 0);
+  Result.DepthReached := mRoot.GetValue<Boolean>('limits.depth', False);
+  Result.CountReached := mRoot.GetValue<Boolean>('limits.count', False);
+  Result.TimeReached := mRoot.GetValue<Boolean>('limits.time', False);
+  Result.Unexpanded := mRoot.GetValue<Integer>('unexpanded', 0);
+  Result.MaxPlaces := mRoot.GetValue<Integer>('maxPlaces', 0);
+  Result.TimeoutMs := mRoot.GetValue<Integer>('timeoutMs', 0);
+  for mEntry in ObjectsOf(mRoot.GetValue('places')) do
   begin
-    Result.Places := Result.Places + [ImpactPlaceOf(Entry)];
+    Result.Places := Result.Places + [ImpactPlaceOf(mEntry)];
   end;
-  for Entry in ObjectsOf(Root.GetValue('tests')) do
+  for mEntry in ObjectsOf(mRoot.GetValue('tests')) do
   begin
-    Result.Tests := Result.Tests + [ImpactTestOf(Entry)];
+    Result.Tests := Result.Tests + [ImpactTestOf(mEntry)];
   end;
 end;
 
 /// <summary>Die Werte eines JSON-Arrays als Text; kein Array ergibt nichts.</summary>
 function ValuesOf(const AValue: TJSONValue): TArray<string>;
 var
-  Item: TJSONValue;
+  mItem: TJSONValue;
 begin
   Result := nil;
   if AValue is TJSONArray then
   begin
-    for Item in TJSONArray(AValue) do
+    for mItem in TJSONArray(AValue) do
     begin
-      Result := Result + [Item.Value];
+      Result := Result + [mItem.Value];
     end;
   end;
 end;
@@ -673,16 +674,16 @@ end;
 /// <summary>Ein Test aus tests der Antwort auf atlas/affectedTests.</summary>
 function AffectedTestOf(AEntry: TJSONObject): TAtlasAffectedTest;
 var
-  Reason: TJSONObject;
+  mReason: TJSONObject;
 begin
   Result := Default(TAtlasAffectedTest);
   Result.Name := AEntry.GetValue<string>('name', '');
   Result.RunNames := RunNamesOf(AEntry.GetValue('run'), Result.Name);
   Result.FileName := TLspSessionJson.UriToPath(AEntry.GetValue<string>('uri', ''));
   Result.Line := AEntry.GetValue<Integer>('line', 0);
-  for Reason in ObjectsOf(AEntry.GetValue('reasons')) do
+  for mReason in ObjectsOf(AEntry.GetValue('reasons')) do
   begin
-    Result.Reasons := Result.Reasons + [AffectedReasonOf(Reason)];
+    Result.Reasons := Result.Reasons + [AffectedReasonOf(mReason)];
   end;
 end;
 
@@ -713,65 +714,65 @@ end;
 
 class function TLspSessionJson.InlineValueRefsOf(const AResponse: TJSONValue): TAtlasInlineValueRefs;
 var
-  Item: TJSONValue;
-  Entry: TJSONObject;
-  Name: string;
+  mItem: TJSONValue;
+  mEntry: TJSONObject;
+  mName: string;
 begin
   Result := nil;
   if not (AResponse is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(AResponse) do
+  for mItem in TJSONArray(AResponse) do
   begin
-    if not (Item is TJSONObject) then
+    if not (mItem is TJSONObject) then
     begin
       Continue;
     end;
-    Entry := TJSONObject(Item);
+    mEntry := TJSONObject(mItem);
     // InlineValueText (text) und InlineValueEvaluatableExpression (expression) wertet Atlas nicht aus.
-    Name := Entry.GetValue<string>('variableName', '');
-    if Name = '' then
+    mName := mEntry.GetValue<string>('variableName', '');
+    if mName = '' then
     begin
       Continue;
     end;
-    Result := Result + [TAtlasInlineValueRef.Create(Entry.GetValue<Integer>('range.start.line', -1),
-      Entry.GetValue<Integer>('range.start.character', 0), Name, Entry.GetValue<string>('atlasType', ''))];
+    Result := Result + [TAtlasInlineValueRef.Create(mEntry.GetValue<Integer>('range.start.line', -1),
+      mEntry.GetValue<Integer>('range.start.character', 0), mName, mEntry.GetValue<string>('atlasType', ''))];
   end;
 end;
 
 class function TLspSessionJson.SettingsParams(const AJson: string): TJSONObject;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := TJSONObject.ParseJSONValue(AJson);
-  if not (Value is TJSONObject) then
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  if not (mValue is TJSONObject) then
   begin
-    Value.Free;
-    Value := TJSONObject.Create;
+    mValue.Free;
+    mValue := TJSONObject.Create;
   end;
-  Result := TJSONObject.Create(TJSONPair.Create('settings', TJSONObject.Create(TJSONPair.Create('atlas', Value))));
+  Result := TJSONObject.Create(TJSONPair.Create('settings', TJSONObject.Create(TJSONPair.Create('atlas', mValue))));
 end;
 
 class function TLspSessionJson.ProjectFolders(const AProjects: TArray<string>): TJSONArray;
 var
-  Project: string;
+  mProject: string;
 begin
   Result := TJSONArray.Create;
-  for Project in AProjects do
+  for mProject in AProjects do
   begin
-    Result.AddElement(TJSONObject.Create.AddPair('uri', PathToUri(Project))
-      .AddPair('name', ChangeFileExt(ExtractFileName(Project), '')));
+    Result.AddElement(TJSONObject.Create.AddPair('uri', PathToUri(mProject))
+      .AddPair('name', ChangeFileExt(ExtractFileName(mProject), '')));
   end;
 end;
 
 function ContainsText_(const AValues: TArray<string>; const AValue: string): Boolean;
 var
-  Value: string;
+  mValue: string;
 begin
-  for Value in AValues do
+  for mValue in AValues do
   begin
-    if SameText(Value, AValue) then
+    if SameText(mValue, AValue) then
     begin
       Exit(True);
     end;
@@ -781,22 +782,22 @@ end;
 
 class procedure TLspSessionJson.ProjectChanges(const AOld, ANew: TArray<string>; out AAdded, ARemoved: TArray<string>);
 var
-  Project: string;
+  mProject: string;
 begin
   AAdded := nil;
   ARemoved := nil;
-  for Project in ANew do
+  for mProject in ANew do
   begin
-    if not ContainsText_(AOld, Project) and not ContainsText_(AAdded, Project) then
+    if not ContainsText_(AOld, mProject) and not ContainsText_(AAdded, mProject) then
     begin
-      AAdded := AAdded + [Project];
+      AAdded := AAdded + [mProject];
     end;
   end;
-  for Project in AOld do
+  for mProject in AOld do
   begin
-    if not ContainsText_(ANew, Project) and not ContainsText_(ARemoved, Project) then
+    if not ContainsText_(ANew, mProject) and not ContainsText_(ARemoved, mProject) then
     begin
-      ARemoved := ARemoved + [Project];
+      ARemoved := ARemoved + [mProject];
     end;
   end;
 end;
@@ -805,9 +806,9 @@ end;
 
 class function TLspCodeAction.FromJson(const AValue: TJSONValue; out AAction: TLspCodeAction): Boolean;
 var
-  Item, Command: TJSONObject;
-  Arguments: TJSONArray;
-  Value: TJSONValue;
+  mItem, mCommand: TJSONObject;
+  mArguments: TJSONArray;
+  mValue: TJSONValue;
 begin
   AAction := Default(TLspCodeAction);
   AAction.ArgumentsJson := '[]';
@@ -816,43 +817,43 @@ begin
   begin
     Exit;
   end;
-  Item := TJSONObject(AValue);
+  mItem := TJSONObject(AValue);
   // Ein Command hat "command" als String, eine CodeAction als Objekt.
-  Value := Item.GetValue('command');
-  if Value is TJSONString then
+  mValue := mItem.GetValue('command');
+  if mValue is TJSONString then
   begin
-    Command := Item;
+    mCommand := mItem;
   end
-  else if Value is TJSONObject then
+  else if mValue is TJSONObject then
   begin
-    Command := TJSONObject(Value);
+    mCommand := TJSONObject(mValue);
   end
   else
   begin
-    Command := nil;
+    mCommand := nil;
   end;
-  if Command <> nil then
+  if mCommand <> nil then
   begin
-    AAction.Command := Command.GetValue<string>('command', '');
-    if Command.TryGetValue<TJSONArray>('arguments', Arguments) then
+    AAction.Command := mCommand.GetValue<string>('command', '');
+    if mCommand.TryGetValue<TJSONArray>('arguments', mArguments) then
     begin
-      AAction.ArgumentsJson := Arguments.ToJSON;
+      AAction.ArgumentsJson := mArguments.ToJSON;
     end;
   end;
-  if Command = Item then
+  if mCommand = mItem then
   begin
     Exit;
   end;
-  AAction.Kind := Item.GetValue<string>('kind', '');
-  AAction.Preferred := Item.GetValue<Boolean>('isPreferred', False);
-  AAction.Disabled := Item.GetValue<string>('disabled.reason', '');
-  AAction.Edit := TLspWorkspaceEdit.FromJson(Item.GetValue('edit'));
-  AAction.Tag := Item.GetValue<string>('data.tag', '');
-  AAction.Preview := Item.GetValue<string>('data.preview', '');
-  if Item.TryGetValue<TJSONArray>('diagnostics', Arguments) and (Arguments.Count > 0) and
-    (Arguments.Items[0] is TJSONObject) then
+  AAction.Kind := mItem.GetValue<string>('kind', '');
+  AAction.Preferred := mItem.GetValue<Boolean>('isPreferred', False);
+  AAction.Disabled := mItem.GetValue<string>('disabled.reason', '');
+  AAction.Edit := TLspWorkspaceEdit.FromJson(mItem.GetValue('edit'));
+  AAction.Tag := mItem.GetValue<string>('data.tag', '');
+  AAction.Preview := mItem.GetValue<string>('data.preview', '');
+  if mItem.TryGetValue<TJSONArray>('diagnostics', mArguments) and (mArguments.Count > 0) and
+    (mArguments.Items[0] is TJSONObject) then
   begin
-    AAction.Rule := TJSONObject(Arguments.Items[0]).GetValue<string>('code', '');
+    AAction.Rule := TJSONObject(mArguments.Items[0]).GetValue<string>('code', '');
   end;
 end;
 
@@ -881,14 +882,14 @@ end;
 
 class function TLspDiagnosticReport.FromJson(const AReport: TJSONObject; const AFileName: string): TLspDiagnosticReport;
 var
-  Items: TJSONValue;
-  Uri: string;
+  mItems: TJSONValue;
+  mUri: string;
 begin
   Result := Default(TLspDiagnosticReport);
-  Uri := AReport.GetValue<string>('uri', '');
-  if Uri <> '' then
+  mUri := AReport.GetValue<string>('uri', '');
+  if mUri <> '' then
   begin
-    Result.FileName := TLspSessionJson.UriToPath(Uri);
+    Result.FileName := TLspSessionJson.UriToPath(mUri);
   end
   else
   begin
@@ -896,10 +897,10 @@ begin
   end;
   Result.ResultId := AReport.GetValue<string>('resultId', '');
   Result.Unchanged := AReport.GetValue<string>('kind', 'full') = 'unchanged';
-  Items := AReport.GetValue('items');
-  if Items is TJSONArray then
+  mItems := AReport.GetValue('items');
+  if mItems is TJSONArray then
   begin
-    Result.Problems := TAtlasProblem.ListFromJson(TJSONArray(Items));
+    Result.Problems := TAtlasProblem.ListFromJson(TJSONArray(mItems));
   end;
 end;
 
@@ -912,41 +913,41 @@ end;
 
 class function TLspHoverParts.FromHover(const AHover: TJSONValue): TLspHoverParts;
 var
-  Parts: TJSONValue;
-  Text: string;
-  Paragraphs: TArray<string>;
+  mParts: TJSONValue;
+  mText: string;
+  mParagraphs: TArray<string>;
 begin
   Result := Default(TLspHoverParts);
   if not (AHover is TJSONObject) then
   begin
     Exit;
   end;
-  Parts := TJSONObject(AHover).GetValue('atlas');
-  if Parts is TJSONObject then
+  mParts := TJSONObject(AHover).GetValue('atlas');
+  if mParts is TJSONObject then
   begin
-    Result.Declaration := TJSONObject(Parts).GetValue<string>('declaration', '');
-    Result.UnitName := TJSONObject(Parts).GetValue<string>('unit', '');
+    Result.Declaration := TJSONObject(mParts).GetValue<string>('declaration', '');
+    Result.UnitName := TJSONObject(mParts).GetValue<string>('unit', '');
     // Seit #654 ist "documentation" strukturiert; der Klartext steht in "documentationText".
-    if not TJSONObject(Parts).TryGetValue<string>('documentationText', Result.Documentation) and
-      (TJSONObject(Parts).GetValue('documentation') is TJSONString) then
+    if not TJSONObject(mParts).TryGetValue<string>('documentationText', Result.Documentation) and
+      (TJSONObject(mParts).GetValue('documentation') is TJSONString) then
     begin
-      Result.Documentation := TJSONObject(Parts).GetValue('documentation').Value;
+      Result.Documentation := TJSONObject(mParts).GetValue('documentation').Value;
     end;
-    Result.Value := TJSONObject(Parts).GetValue<string>('value', '');
-    Result.Deprecation := TJSONObject(Parts).GetValue<string>('deprecation', '');
+    Result.Value := TJSONObject(mParts).GetValue<string>('value', '');
+    Result.Deprecation := TJSONObject(mParts).GetValue<string>('deprecation', '');
     Exit;
   end;
   // Ältere Server: Klartext, erster Absatz ist die Deklaration, der Rest Doku.
-  Text := TLspSessionJson.HoverText(AHover).Replace(#13#10, #10).Trim;
-  if Text = '' then
+  mText := TLspSessionJson.HoverText(AHover).Replace(#13#10, #10).Trim;
+  if mText = '' then
   begin
     Exit;
   end;
-  Paragraphs := Text.Split([#10#10], 2);
-  Result.Declaration := Paragraphs[0];
-  if Length(Paragraphs) > 1 then
+  mParagraphs := mText.Split([#10#10], 2);
+  Result.Declaration := mParagraphs[0];
+  if Length(mParagraphs) > 1 then
   begin
-    Result.Documentation := Paragraphs[1];
+    Result.Documentation := mParagraphs[1];
   end;
 end;
 

@@ -111,89 +111,89 @@ end;
 
 class procedure TAtlasIdeImpact.Reap(AWait: Boolean);
 var
-  Index: Integer;
-  Remaining: TArray<TThread>;
+  mIndex: Integer;
+  mRemaining: TArray<TThread>;
 begin
   // Fertige Arbeiter freigeben; ein laufender liefert nur noch eine verworfene Antwort und hält den
   // Hauptthread nicht auf. Beim Entladen (AWait) auf alle warten.
-  Remaining := nil;
-  for Index := 0 to High(FWorkers) do
+  mRemaining := nil;
+  for mIndex := 0 to High(FWorkers) do
   begin
-    if AWait or FWorkers[Index].Finished then
+    if AWait or FWorkers[mIndex].Finished then
     begin
-      FWorkers[Index].WaitFor;
-      FWorkers[Index].Free;
+      FWorkers[mIndex].WaitFor;
+      FWorkers[mIndex].Free;
     end
     else
     begin
-      Remaining := Remaining + [FWorkers[Index]];
+      mRemaining := mRemaining + [FWorkers[mIndex]];
     end;
   end;
-  FWorkers := Remaining;
+  FWorkers := mRemaining;
 end;
 
 class procedure TAtlasIdeImpact.ShowAtCursor;
 var
-  FileName, Name: string;
-  Line, Character: Integer;
+  mFileName, mName: string;
+  mLine, mCharacter: Integer;
 begin
   if not Enabled then
   begin
     TAtlasIdeResults.Say(TAtlasStrings.Text(TAtlasTextId.ImpactOff));
     Exit;
   end;
-  if not TAtlasIdeResults.AtCursor(FileName, Line, Character, Name) then
+  if not TAtlasIdeResults.AtCursor(mFileName, mLine, mCharacter, mName) then
   begin
     Exit;
   end;
-  FFileName := FileName;
-  FLine := Line;
-  FCharacter := Character;
-  FName := Name;
-  Start(EnsureRange(TAtlasIdeSettings.Current.ImpactDepth, TAtlasPluginSettings.MinImpactDepth,
-    TAtlasPluginSettings.MaxImpactDepth));
+  FFileName := mFileName;
+  FLine := mLine;
+  FCharacter := mCharacter;
+  FName := mName;
+  Start(EnsureRange(TAtlasIdeSettings.Current.ImpactDepth, TAtlasPluginSettings.cMinImpactDepth,
+    TAtlasPluginSettings.cMaxImpactDepth));
 end;
 
 class procedure TAtlasIdeImpact.Recalculate(ADepth: Integer);
 var
-  Session: TLspSession;
+  mSession: TLspSession;
 begin
   if not Enabled or (FFileName = '') then
   begin
     Exit;
   end;
-  Session := TAtlasIdeResults.Session;
-  if Session = nil then
+  mSession := TAtlasIdeResults.Session;
+  if mSession = nil then
   begin
     TAtlasIdeResults.Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
   // Seit der ersten Anfrage kann sich der Text geändert haben.
-  TAtlasIdeRename.SyncOpenBuffers(Session);
-  Start(EnsureRange(ADepth, TAtlasPluginSettings.MinImpactDepth, TAtlasPluginSettings.MaxImpactDepth));
+  TAtlasIdeRename.SyncOpenBuffers(mSession);
+  Start(EnsureRange(ADepth, TAtlasPluginSettings.cMinImpactDepth, TAtlasPluginSettings.cMaxImpactDepth));
 end;
 
 class procedure TAtlasIdeImpact.Start(ADepth: Integer);
 var
-  Session: TLspSession;
-  Request, Line, Character: Integer;
-  FileName: string;
-  Worker: TThread;
+  mSession: TLspSession;
+  mRequest, mLine, mCharacter: Integer;
+  mFileName: string;
+  mWorker: TThread;
 begin
-  Session := TAtlasIdeResults.Session;
-  if Session = nil then
+  mSession := TAtlasIdeResults.Session;
+  if mSession = nil then
   begin
     TAtlasIdeResults.Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
   Inc(FRequest);
-  Request := FRequest;
-  FileName := FFileName;
-  Line := FLine;
-  Character := FCharacter;
+  mRequest := FRequest;
+  mFileName := FFileName;
+  mLine := FLine;
+  mCharacter := FCharacter;
   TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.ImpactRunning, [FName, ADepth]), nil);
   Reap(False);
-  Worker := TThread.CreateAnonymousThread(
+  mWorker := TThread.CreateAnonymousThread(
     procedure
     var
       Impact: TAtlasImpact;
@@ -202,7 +202,7 @@ begin
       Impact := Default(TAtlasImpact);
       Error := '';
       try
-        Impact := Session.Impact(FileName, Line, Character, ADepth);
+        Impact := mSession.Impact(mFileName, mLine, mCharacter, ADepth);
       except
         on E: Exception do
           Error := E.Message;
@@ -210,12 +210,12 @@ begin
       TAtlasMainThread.Queue(TAtlasFeature.Results,
         procedure
         begin
-          Show(Request, Impact, Error);
+          Show(mRequest, Impact, Error);
         end);
     end);
-  Worker.FreeOnTerminate := False;
-  FWorkers := FWorkers + [Worker];
-  Worker.Start;
+  mWorker.FreeOnTerminate := False;
+  FWorkers := FWorkers + [mWorker];
+  mWorker.Start;
 end;
 
 class procedure TAtlasIdeImpact.Show(ARequest: Integer; const AImpact: TAtlasImpact; const AError: string);

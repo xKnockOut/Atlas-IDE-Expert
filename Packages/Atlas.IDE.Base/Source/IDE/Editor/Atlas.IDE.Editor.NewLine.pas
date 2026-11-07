@@ -45,30 +45,30 @@ uses
 procedure WriteBuffer(const ABuffer: IOTAEditBuffer; const AText: string; AStart, AOldLength: Integer;
   const AInsert: string);
 var
-  Writer: IOTAEditWriter;
+  mWriter: IOTAEditWriter;
 begin
-  Writer := ABuffer.CreateUndoableWriter;
-  Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
-  Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
+  mWriter := ABuffer.CreateUndoableWriter;
+  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
+  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
   if AInsert <> '' then
   begin
-    Writer.Insert(PAnsiChar(UTF8Encode(AInsert)));
+    mWriter.Insert(PAnsiChar(UTF8Encode(AInsert)));
   end;
-  Writer := nil;
+  mWriter := nil;
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
 function EditPos(const ALines: TArray<string>; const APosition: TLspTextPosition; ATabWidth: Integer): TOTAEditPos;
 var
-  LineText: string;
+  mLineText: string;
 begin
-  LineText := '';
+  mLineText := '';
   if (APosition.Line >= 0) and (APosition.Line < Length(ALines)) then
   begin
-    LineText := ALines[APosition.Line];
+    mLineText := ALines[APosition.Line];
   end;
   Result.Line := APosition.Line + 1;
-  Result.Col := TLspSession.IndexToColumn(LineText, APosition.Character, ATabWidth);
+  Result.Col := TLspSession.IndexToColumn(mLineText, APosition.Character, ATabWidth);
 end;
 
 { TAtlasIdeNewLine }
@@ -89,45 +89,45 @@ end;
 
 class procedure TAtlasIdeNewLine.Run(ADirection: TAtlasNewLineDirection);
 var
-  View: IOTAEditView;
-  Buffer: IOTAEditBuffer;
-  Text, NewText, LineBreak, Insert: string;
-  Lines: TArray<string>;
-  TabWidth, Start, OldLength: Integer;
-  Done: TAtlasNewLineResult;
+  mView: IOTAEditView;
+  mBuffer: IOTAEditBuffer;
+  mText, mNewText, mLineBreak, mInsert: string;
+  mLines: TArray<string>;
+  mTabWidth, mStart, mOldLength: Integer;
+  mDone: TAtlasNewLineResult;
 begin
   if not Enabled then
   begin
     Exit;
   end;
-  View := TAtlasEditorBuffer.ActiveView;
-  if (View = nil) or (View.Buffer = nil) then
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView = nil) or (mView.Buffer = nil) then
   begin
     Exit;
   end;
-  Buffer := View.Buffer;
-  if Buffer.IsReadOnly then
+  mBuffer := mView.Buffer;
+  if mBuffer.IsReadOnly then
   begin
     Exit;
   end;
-  Text := TAtlasEditorBuffer.Text(Buffer);
-  LineBreak := #10;
-  if Pos(#13#10, Text) > 0 then
+  mText := TAtlasEditorBuffer.Text(mBuffer);
+  mLineBreak := #10;
+  if Pos(#13#10, mText) > 0 then
   begin
-    LineBreak := #13#10;
+    mLineBreak := #13#10;
   end;
-  Lines := Text.Split([#13#10, #10]);
-  TabWidth := TAtlasEditorBuffer.TabWidth(Buffer);
-  Done := TAtlasNewLine.Insert(Lines, View.CursorPos.Line - 1, ADirection,
-    Options(TAtlasEditorBuffer.BlockIndent(Buffer)));
-  NewText := string.Join(LineBreak, Done.Lines);
-  if TAtlasLineMover.Difference(Text, NewText, Start, OldLength, Insert) then
+  mLines := mText.Split([#13#10, #10]);
+  mTabWidth := TAtlasEditorBuffer.TabWidth(mBuffer);
+  mDone := TAtlasNewLine.Insert(mLines, mView.CursorPos.Line - 1, ADirection,
+    Options(TAtlasEditorBuffer.BlockIndent(mBuffer)));
+  mNewText := string.Join(mLineBreak, mDone.Lines);
+  if TAtlasLineMover.Difference(mText, mNewText, mStart, mOldLength, mInsert) then
   begin
-    WriteBuffer(Buffer, Text, Start, OldLength, Insert);
+    WriteBuffer(mBuffer, mText, mStart, mOldLength, mInsert);
   end;
-  View.CursorPos := EditPos(Done.Lines, Done.Cursor, TabWidth);
-  View.MoveViewToCursor;
-  View.Paint;
+  mView.CursorPos := EditPos(mDone.Lines, mDone.Cursor, mTabWidth);
+  mView.MoveViewToCursor;
+  mView.Paint;
 end;
 
 end.

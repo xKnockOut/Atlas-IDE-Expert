@@ -32,7 +32,8 @@ type
     class procedure Hide; static;
     class procedure UpdateIcon; static;
     class procedure ApplyTheme; static;
-    /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt (#879).</summary>
+    /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt
+    /// (#879).</summary>
     class procedure Prepare; static;
     class procedure Release; static;
   end;
@@ -100,7 +101,7 @@ end;
 
 procedure TProblemsDock.FrameCreated(AFrame: TCustomFrame);
 var
-  Frame: TAtlasProblemsFrame;
+  mFrame: TAtlasProblemsFrame;
 begin
   if not (AFrame is TAtlasProblemsFrame) then
   begin
@@ -110,12 +111,12 @@ begin
   begin
     Host.FrameCreated(AFrame);
   end;
-  Frame := TAtlasProblemsFrame(AFrame);
+  mFrame := TAtlasProblemsFrame(AFrame);
   TAtlasIdeProblemsWindow.UpdateIcon;
-  Theme(Frame);
+  Theme(mFrame);
   if Assigned(TAtlasIdeProblemsWindow.OnFrame) then
   begin
-    TAtlasIdeProblemsWindow.OnFrame(Frame);
+    TAtlasIdeProblemsWindow.OnFrame(mFrame);
   end;
 end;
 
@@ -181,12 +182,12 @@ end;
 
 class function TAtlasIdeProblemsWindow.Show: TAtlasProblemsFrame;
 var
-  Created: Boolean;
+  mCreated: Boolean;
 begin
   // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
   EnsureHost;
-  Host.Show(Created);
-  if Created then
+  Host.Show(mCreated);
+  if mCreated then
   begin
     UpdateIcon;
   end;
@@ -218,29 +219,29 @@ end;
 
 class procedure TAtlasIdeProblemsWindow.UpdateIcon;
 var
-  Icon: TIcon;
+  mIcon: TIcon;
 begin
   if (Host = nil) or (Host.Form = nil) then
   begin
     Exit;
   end;
-  Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
+  mIcon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
-    TForm(Host.Form).Icon.Assign(Icon);
+    TForm(Host.Form).Icon.Assign(mIcon);
   finally
-    Icon.Free;
+    mIcon.Free;
   end;
 end;
 
 class procedure TAtlasIdeProblemsWindow.ApplyTheme;
 var
-  Frame: TAtlasProblemsFrame;
+  mFrame: TAtlasProblemsFrame;
 begin
-  Frame := ExistingFrame;
-  if Frame <> nil then
+  mFrame := ExistingFrame;
+  if mFrame <> nil then
   begin
-    Theme(Frame);
+    Theme(mFrame);
   end;
   UpdateIcon;
 end;

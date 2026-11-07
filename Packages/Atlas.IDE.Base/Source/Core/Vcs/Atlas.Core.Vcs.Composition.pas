@@ -43,7 +43,7 @@ type
     /// <summary>Umsetzung für AFolder. ALocate liefert den Pfad von git bzw. svn ('' = fehlt).</summary>
     class function Open(const AFolder: string; AProvider: TAtlasVcsProvider; const ARunner: IAtlasVcsRunner;
       const ALocate: TAtlasVcsLocate; ATimeoutMs: Cardinal): IAtlasVersionControl; overload; static;
-    /// <summary>Wie oben; Programme über TAtlasVcsTools.Find, Zeitlimit TAtlasVcsCommand.DefaultTimeoutMs.</summary>
+    /// <summary>Wie oben; Programme über TAtlasVcsTools.Find, Zeitlimit TAtlasVcsCommand.cDefaultTimeoutMs.</summary>
     class function Open(const AFolder: string; AProvider: TAtlasVcsProvider;
       const ARunner: IAtlasVcsRunner): IAtlasVersionControl; overload; static;
     /// <summary>Umsetzung für eine schon gefundene Arbeitskopie; ohne Programm die leere (ToolMissing).</summary>
@@ -75,31 +75,31 @@ end;
 
 class function TAtlasVcsNotices.ToolMissing(AKind: TAtlasVcsKind): Boolean;
 var
-  Handler: TProc<TAtlasVcsKind>;
+  mHandler: TProc<TAtlasVcsKind>;
 begin
   FLock.Enter;
   try
     Result := not FReported[AKind];
     FReported[AKind] := True;
-    Handler := FOnToolMissing;
+    mHandler := FOnToolMissing;
   finally
     FLock.Leave;
   end;
-  if Result and Assigned(Handler) then
+  if Result and Assigned(mHandler) then
   begin
-    Handler(AKind);
+    mHandler(AKind);
   end;
 end;
 
 class procedure TAtlasVcsNotices.Reset;
 var
-  Kind: TAtlasVcsKind;
+  mKind: TAtlasVcsKind;
 begin
   FLock.Enter;
   try
-    for Kind := Low(TAtlasVcsKind) to High(TAtlasVcsKind) do
+    for mKind := Low(TAtlasVcsKind) to High(TAtlasVcsKind) do
     begin
-      FReported[Kind] := False;
+      FReported[mKind] := False;
     end;
   finally
     FLock.Leave;
@@ -133,18 +133,18 @@ end;
 class function TAtlasVersionControl.Open(const AFolder: string; AProvider: TAtlasVcsProvider;
   const ARunner: IAtlasVcsRunner; const ALocate: TAtlasVcsLocate; ATimeoutMs: Cardinal): IAtlasVersionControl;
 var
-  WorkingCopy: TAtlasVcsWorkingCopy;
+  mWorkingCopy: TAtlasVcsWorkingCopy;
 begin
   if AProvider = TAtlasVcsProvider.Off then
   begin
     Exit(TAtlasNullVersionControl.Create(TAtlasVcsOutcome.Disabled));
   end;
-  WorkingCopy := TAtlasVcsDetection.Find(AFolder, AProvider);
-  if WorkingCopy.Kind = TAtlasVcsKind.None then
+  mWorkingCopy := TAtlasVcsDetection.Find(AFolder, AProvider);
+  if mWorkingCopy.Kind = TAtlasVcsKind.None then
   begin
     Exit(TAtlasNullVersionControl.Create(TAtlasVcsOutcome.NoWorkingCopy));
   end;
-  Result := ForWorkingCopy(WorkingCopy, ARunner, ALocate(WorkingCopy.Kind), ATimeoutMs);
+  Result := ForWorkingCopy(mWorkingCopy, ARunner, ALocate(mWorkingCopy.Kind), ATimeoutMs);
 end;
 
 class function TAtlasVersionControl.Open(const AFolder: string; AProvider: TAtlasVcsProvider;
@@ -155,7 +155,7 @@ begin
     begin
       Result := TAtlasVcsTools.Find(AKind);
     end,
-    TAtlasVcsCommand.DefaultTimeoutMs);
+    TAtlasVcsCommand.cDefaultTimeoutMs);
 end;
 
 end.

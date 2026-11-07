@@ -13,7 +13,8 @@ type
     class function IsIdentifierChar(AChar: Char): Boolean; static;
     /// <summary>Anfang des Bezeichners vor ACharacter (0-basiert, Zeichen vor dem Cursor).</summary>
     class function StartBefore(const ALine: string; ACharacter: Integer): Integer; static;
-    /// <summary>Ende des Bezeichners ab ACharacter (0-basiert, exklusiv); ACharacter, wenn dort keiner weitergeht.</summary>
+    /// <summary>Ende des Bezeichners ab ACharacter (0-basiert, exklusiv); ACharacter, wenn dort keiner
+    /// weitergeht.</summary>
     class function EndAfter(const ALine: string; ACharacter: Integer): Integer; static;
     /// <summary>Steht der Cursor (ACharacter Zeichen vor ihm) im ersten String-Argument von FieldByName,
     /// FindField oder ParamByName (#461)? Dort öffnet Atlas die Vervollständigung trotz String (#435).</summary>
@@ -61,35 +62,35 @@ end;
 
 class function TAtlasWord.InDataNameString(const ALine: string; ACharacter: Integer): Boolean;
 var
-  Index, Open: Integer;
+  mIndex, mOpen: Integer;
 begin
   // Öffnendes Anführungszeichen des Strings, in dem der Cursor steht; '' zählt als Inhalt.
-  Open := 0;
-  Index := 1;
-  while (Index <= ACharacter) and (Index <= Length(ALine)) do
+  mOpen := 0;
+  mIndex := 1;
+  while (mIndex <= ACharacter) and (mIndex <= Length(ALine)) do
   begin
-    if ALine[Index] = '''' then
+    if ALine[mIndex] = '''' then
     begin
-      if Open = 0 then
+      if mOpen = 0 then
       begin
-        Open := Index;
+        mOpen := mIndex;
       end
-      else if (Index < Length(ALine)) and (Index < ACharacter) and (ALine[Index + 1] = '''') then
+      else if (mIndex < Length(ALine)) and (mIndex < ACharacter) and (ALine[mIndex + 1] = '''') then
       begin
-        Inc(Index);
+        Inc(mIndex);
       end
       else
       begin
-        Open := 0;
+        mOpen := 0;
       end;
     end
-    else if (Open = 0) and (ALine[Index] = '/') and (Index < Length(ALine)) and (ALine[Index + 1] = '/') then
+    else if (mOpen = 0) and (ALine[mIndex] = '/') and (mIndex < Length(ALine)) and (ALine[mIndex + 1] = '/') then
     begin
       Exit(False);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := (Open > 0) and TRegEx.IsMatch(Copy(ALine, 1, Open - 1),
+  Result := (mOpen > 0) and TRegEx.IsMatch(Copy(ALine, 1, mOpen - 1),
     '\w\s*\.\s*(FieldByName|FindField|ParamByName)\s*\(\s*$', [roIgnoreCase]);
 end;
 

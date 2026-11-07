@@ -39,9 +39,9 @@ type
 
   TAtlasSmartIndent = class
   public const
-    Command = 'atlas.server.smartIndent';
+    cCommand = 'atlas.server.smartIndent';
     /// <summary>Beim Tippen: lieber nichts tun als spät noch einrücken.</summary>
-    TimeoutMs = 1500;
+    cTimeoutMs = 1500;
   public
     /// <summary>Soll Atlas nach Enter fragen? Nicht unter einer Zeile "/befehl" (Schnellbefehl, #293).</summary>
     class function Applies(const APreviousText: string): Boolean; static;

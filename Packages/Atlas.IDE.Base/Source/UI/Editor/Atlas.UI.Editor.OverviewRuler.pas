@@ -84,10 +84,10 @@ uses
 
 const
   /// <summary>Breite bei 96 DPI.</summary>
-  BaseWidth = 14;
+  cBaseWidth = 14;
   /// <summary>Mindesthöhe einer Marke und Spiel beim Klick bei 96 DPI.</summary>
-  BaseMinHeight = 3;
-  BaseTolerance = 3;
+  cBaseMinHeight = 3;
+  cBaseTolerance = 3;
 
 { TAtlasOverviewRuler }
 
@@ -108,7 +108,7 @@ end;
 
 class function TAtlasOverviewRuler.RulerWidth(APPI: Integer): Integer;
 begin
-  Result := MulDiv(BaseWidth, Max(APPI, 96), 96);
+  Result := MulDiv(cBaseWidth, Max(APPI, 96), 96);
 end;
 
 class function TAtlasOverviewRuler.ColorOf(const AColors: TAtlasColors; AKind: TAtlasOverviewMarkKind): TAtlasColor;
@@ -181,7 +181,7 @@ begin
   begin
     Exit;
   end;
-  FBars := TAtlasOverview.Layout(FMarks, FLineCount, ClientHeight, Scale(BaseMinHeight));
+  FBars := TAtlasOverview.Layout(FMarks, FLineCount, ClientHeight, Scale(cBaseMinHeight));
   FLaidOut := True;
 end;
 
@@ -200,7 +200,7 @@ end;
 function TAtlasOverviewRuler.MarkAtY(AY: Integer): Integer;
 begin
   Layout;
-  if not TAtlasOverview.Hit(FBars, AY, Scale(BaseTolerance), Result) then
+  if not TAtlasOverview.Hit(FBars, AY, Scale(cBaseTolerance), Result) then
   begin
     Result := -1;
   end;
@@ -208,12 +208,12 @@ end;
 
 function TAtlasOverviewRuler.TargetAtY(AY: Integer): Integer;
 var
-  Mark: Integer;
+  mMark: Integer;
 begin
-  Mark := MarkAtY(AY);
-  if Mark >= 0 then
+  mMark := MarkAtY(AY);
+  if mMark >= 0 then
   begin
-    Result := Min(FMarks[Mark].Line, Max(0, FLineCount - 1));
+    Result := Min(FMarks[mMark].Line, Max(0, FLineCount - 1));
   end
   else
   begin
@@ -223,9 +223,9 @@ end;
 
 procedure TAtlasOverviewRuler.Paint;
 var
-  Bar: TAtlasOverviewBar;
-  Inner, Lane, mLeft, Right, mTop, Bottom: Integer;
-  Area: TRect;
+  mBar: TAtlasOverviewBar;
+  mInner, mLane, mLeft, mRight, mTop, mBottom: Integer;
+  mArea: TRect;
 begin
   Layout;
   Canvas.Brush.Style := bsSolid;
@@ -239,44 +239,44 @@ begin
   if FLastVisible >= FFirstVisible then
   begin
     mTop := TAtlasOverview.PixelOf(FFirstVisible, FLineCount, ClientHeight);
-    Bottom := Max(mTop + Scale(4), TAtlasOverview.PixelOf(FLastVisible + 1, FLineCount, ClientHeight));
+    mBottom := Max(mTop + Scale(4), TAtlasOverview.PixelOf(FLastVisible + 1, FLineCount, ClientHeight));
     Canvas.Brush.Color := TColor(TAtlasColorMath.Mix(FColors.Text, FColors.Surface, 0.1));
-    Canvas.FillRect(TRect.Create(0, mTop, ClientWidth, Min(Bottom, ClientHeight)));
+    Canvas.FillRect(TRect.Create(0, mTop, ClientWidth, Min(mBottom, ClientHeight)));
   end;
-  Inner := Max(Scale(3), (ClientWidth - Scale(2)) div 3);
-  for Bar in FBars do
+  mInner := Max(Scale(3), (ClientWidth - Scale(2)) div 3);
+  for mBar in FBars do
   begin
-    Lane := Scale(1);
-    case Bar.Lane of
+    mLane := Scale(1);
+    case mBar.Lane of
       TAtlasOverviewLane.Left:
         begin
-          mLeft := Lane;
-          Right := mLeft + Inner;
+          mLeft := mLane;
+          mRight := mLeft + mInner;
         end;
       TAtlasOverviewLane.Middle:
         begin
-          mLeft := Lane + Inner;
-          Right := mLeft + Inner;
+          mLeft := mLane + mInner;
+          mRight := mLeft + mInner;
         end;
       TAtlasOverviewLane.Right:
         begin
-          mLeft := Lane + 2 * Inner;
-          Right := ClientWidth - Lane;
+          mLeft := mLane + 2 * mInner;
+          mRight := ClientWidth - mLane;
         end;
     else
       begin
         mLeft := 0;
-        Right := ClientWidth;
+        mRight := ClientWidth;
       end;
     end;
-    Area := TRect.Create(mLeft, Bar.Top, Right, Bar.Bottom);
+    mArea := TRect.Create(mLeft, mBar.Top, mRight, mBar.Bottom);
     // Der Cursor ist eine dünne Linie über die ganze Breite.
-    if Bar.Kind = TAtlasOverviewMarkKind.Cursor then
+    if mBar.Kind = TAtlasOverviewMarkKind.Cursor then
     begin
-      Area.Bottom := Min(Area.Bottom, Area.Top + Scale(2));
+      mArea.Bottom := Min(mArea.Bottom, mArea.Top + Scale(2));
     end;
-    Canvas.Brush.Color := TColor(ColorOf(FColors, Bar.Kind));
-    Canvas.FillRect(Area);
+    Canvas.Brush.Color := TColor(ColorOf(FColors, mBar.Kind));
+    Canvas.FillRect(mArea);
   end;
 end;
 
@@ -300,24 +300,24 @@ end;
 
 procedure TAtlasOverviewRuler.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  Mark, Line: Integer;
+  mMark, mLine: Integer;
 begin
   inherited MouseMove(Shift, X, Y);
   if FLineCount <= 0 then
   begin
     Exit;
   end;
-  Mark := MarkAtY(Y);
-  Line := TargetAtY(Y);
-  if (Line = FHoverLine) and (Mark = FHoverMark) then
+  mMark := MarkAtY(Y);
+  mLine := TargetAtY(Y);
+  if (mLine = FHoverLine) and (mMark = FHoverMark) then
   begin
     Exit;
   end;
-  FHoverLine := Line;
-  FHoverMark := Mark;
+  FHoverLine := mLine;
+  FHoverMark := mMark;
   if Assigned(FOnHover) then
   begin
-    FOnHover(Line, Mark, ClientToScreen(Point(X, Y)));
+    FOnHover(mLine, mMark, ClientToScreen(Point(X, Y)));
   end;
 end;
 

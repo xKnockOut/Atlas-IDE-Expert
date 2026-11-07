@@ -25,16 +25,16 @@ implementation
 class function TAtlasWrap.AtSpaces(const AText: string; const ACum: TArray<Integer>; AWidth, AIndent: Integer):
   TArray<TPoint>;
 var
-  Index, LineStart, Last, Limit, Count, Candidate: Integer;
+  mIndex, mLineStart, mLast, mLimit, mCount, mCandidate: Integer;
 
   procedure Add(AStart, AStop: Integer);
   begin
-    if Count = Length(Result) then
+    if mCount = Length(Result) then
     begin
-      SetLength(Result, 2 * Count + 4);
+      SetLength(Result, 2 * mCount + 4);
     end;
-    Result[Count] := Point(AStart, AStop);
-    Inc(Count);
+    Result[mCount] := Point(AStart, AStop);
+    Inc(mCount);
   end;
 
   function Width(AFrom, ATill: Integer): Integer;
@@ -44,46 +44,46 @@ var
 
   procedure Consider(ACandidate: Integer);
   begin
-    if Count = 0 then
+    if mCount = 0 then
     begin
-      Limit := AWidth;
+      mLimit := AWidth;
     end
     else
     begin
-      Limit := AWidth - AIndent;
+      mLimit := AWidth - AIndent;
     end;
-    if (Last > LineStart) and (Width(LineStart, ACandidate) > Limit) then
+    if (mLast > mLineStart) and (Width(mLineStart, ACandidate) > mLimit) then
     begin
-      Add(LineStart, Last);
-      LineStart := Last;
+      Add(mLineStart, mLast);
+      mLineStart := mLast;
     end;
-    Last := ACandidate;
+    mLast := ACandidate;
   end;
 
 begin
   Result := nil;
-  Count := 0;
+  mCount := 0;
   if Length(ACum) < Length(AText) + 1 then
   begin
     Exit;
   end;
-  LineStart := 0;
-  Last := -1;
+  mLineStart := 0;
+  mLast := -1;
   // Kandidaten wie bisher: hinter jedem Leerzeichen (außer dem letzten Zeichen) und das Textende.
-  for Index := 1 to Length(AText) - 1 do
+  for mIndex := 1 to Length(AText) - 1 do
   begin
-    if AText[Index] = ' ' then
+    if AText[mIndex] = ' ' then
     begin
-      Candidate := Index;
-      Consider(Candidate);
+      mCandidate := mIndex;
+      Consider(mCandidate);
     end;
   end;
   Consider(Length(AText));
-  if LineStart < Length(AText) then
+  if mLineStart < Length(AText) then
   begin
-    Add(LineStart, Length(AText));
+    Add(mLineStart, Length(AText));
   end;
-  SetLength(Result, Count);
+  SetLength(Result, mCount);
 end;
 
 end.

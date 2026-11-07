@@ -77,7 +77,7 @@ begin
   Result := [Problem(40, 2, TAtlasProblemSeverity.Warning, 'Atlas'),
     Problem(10, 4, TAtlasProblemSeverity.Error, 'Atlas'), Problem(25, 0, TAtlasProblemSeverity.Warning, 'Atlas'),
     Problem(12, 1, TAtlasProblemSeverity.Information, 'Atlas'), Problem(13, 1, TAtlasProblemSeverity.Hint, 'Atlas'),
-    Problem(30, 0, TAtlasProblemSeverity.Error, TAtlasProblem.CompilerSource), Dimmed];
+    Problem(30, 0, TAtlasProblemSeverity.Error, TAtlasProblem.cCompilerSource), Dimmed];
 end;
 
 function Texts: TAtlasStatusLiveTexts;
@@ -190,7 +190,7 @@ var
 begin
   Assert.IsFalse(TAtlasStatusBarContent.NextOf(nil, TAtlasFindingKind.Error, True, 0, 0, Target));
   Assert.IsFalse(TAtlasStatusBarContent.NextOf([Problem(1, 0, TAtlasProblemSeverity.Error,
-    TAtlasProblem.CompilerSource)], TAtlasFindingKind.Error, False, 0, 0, Target));
+    TAtlasProblem.cCompilerSource)], TAtlasFindingKind.Error, False, 0, 0, Target));
 end;
 
 procedure TAtlasStatusBarContentTests.LiveTexts;

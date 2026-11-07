@@ -73,28 +73,28 @@ type
 
 function LinesOf(const AText: string): TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AText.Split([#10]);
-  for Index := 0 to High(Result) do
+  for mIndex := 0 to High(Result) do
   begin
-    if Result[Index].EndsWith(#13) then
+    if Result[mIndex].EndsWith(#13) then
     begin
-      Result[Index] := Copy(Result[Index], 1, Length(Result[Index]) - 1);
+      Result[mIndex] := Copy(Result[mIndex], 1, Length(Result[mIndex]) - 1);
     end;
   end;
 end;
 
 function LeadingSpace(const ALine: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := 1;
-  while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
+  mIndex := 1;
+  while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Copy(ALine, 1, Index - 1);
+  Result := Copy(ALine, 1, mIndex - 1);
 end;
 
 function CharAt(const AText: string; AIndex: Integer): Char;
@@ -379,7 +379,7 @@ end;
 
 class function TAtlasCommentContinuation.ListItem(const AContent: string; out AMarker, ANext: string): Boolean;
 var
-  Index, Number: Integer;
+  mIndex, mNumber: Integer;
 begin
   AMarker := '';
   ANext := '';
@@ -395,19 +395,19 @@ begin
     end;
     Exit(True);
   end;
-  Index := 1;
-  while (Index <= Length(AContent)) and CharInSet(AContent[Index], ['0'..'9']) do
+  mIndex := 1;
+  while (mIndex <= Length(AContent)) and CharInSet(AContent[mIndex], ['0'..'9']) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  if not IsNumberMarker(AContent, Index) then
+  if not IsNumberMarker(AContent, mIndex) then
   begin
     Exit;
   end;
-  Number := StrToInt(Copy(AContent, 1, Index - 1));
-  AMarker := Copy(AContent, 1, Index) + LeadingSpace(Copy(AContent, Index + 1, MaxInt));
-  ANext := IntToStr(Number + 1) + AContent[Index] + Copy(AMarker, Index + 1, MaxInt);
-  if Length(ANext) = Length(IntToStr(Number + 1)) + 1 then
+  mNumber := StrToInt(Copy(AContent, 1, mIndex - 1));
+  AMarker := Copy(AContent, 1, mIndex) + LeadingSpace(Copy(AContent, mIndex + 1, MaxInt));
+  ANext := IntToStr(mNumber + 1) + AContent[mIndex] + Copy(AMarker, mIndex + 1, MaxInt);
+  if Length(ANext) = Length(IntToStr(mNumber + 1)) + 1 then
   begin
     ANext := ANext + ' ';
   end;

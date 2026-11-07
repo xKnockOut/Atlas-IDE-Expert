@@ -271,7 +271,7 @@ begin
     Assert.IsNotNull(mVcs);
     mAreas := TopLevelNodes(mPage);
     // Mit Punkt: svn, Pfad und Zeitlimit weichen von der Vorgabe ab.
-    Assert.AreEqual(TAtlasSettingsMarks.Dot + TAtlasStrings.Text(TAtlasTextId.SettingsTabVcs), mAreas[13].Text,
+    Assert.AreEqual(TAtlasSettingsMarks.cDot + TAtlasStrings.Text(TAtlasTextId.SettingsTabVcs), mAreas[13].Text,
       'eigener Bereich');
     AssertVcsPageControls(mPage, mVcs);
     Assert.AreEqual(0, mProbe.FProjectCalls, 'kein Prozess, solange die Seite nicht gezeigt wurde');

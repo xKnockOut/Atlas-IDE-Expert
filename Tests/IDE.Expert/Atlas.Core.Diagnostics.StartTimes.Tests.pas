@@ -118,7 +118,7 @@ var
 begin
   Times := TAtlasStartTimes.Create;
   try
-    Times.Add('Klein', TAtlasStartTimes.MinPartMs - 1);
+    Times.Add('Klein', TAtlasStartTimes.cMinPartMs - 1);
     Times.Add('Forms', 200);
     Times.Add('Manager', 300);
     Times.Add('Palette', 200);

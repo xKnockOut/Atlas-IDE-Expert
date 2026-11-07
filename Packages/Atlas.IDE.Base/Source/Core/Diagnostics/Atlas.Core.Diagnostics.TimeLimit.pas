@@ -24,11 +24,11 @@ type
 
   TAtlasTimeLimit = class
   public const
-    DefaultMs = 200;
-    MinMs = 50;
-    MaxMs = 5000;
+    cDefaultMs = 200;
+    cMinMs = 50;
+    cMaxMs = 5000;
     /// <summary>Nachwarten auf hängende Arbeiter beim Beenden (Code-Review A-13).</summary>
-    HangGraceMs = 2000;
+    cHangGraceMs = 2000;
   private type
     TWorker = class(TThread)
     private
@@ -64,7 +64,8 @@ type
   public
     class constructor Create;
     class destructor Destroy;
-    /// <summary>AProc mit Zeitlimit ausführen (ALimitMs &lt; 0: LimitMs). AError: Klasse und Meldung bei Failed.</summary>
+    /// <summary>AProc mit Zeitlimit ausführen (ALimitMs &lt; 0: LimitMs). AError: Klasse und Meldung bei
+    /// Failed.</summary>
     class function Run(const AProc: TProc; out AError: string; ALimitMs: Integer): TAtlasTimedOutcome;
       overload; static;
     /// <summary>Wie oben mit ALimitMs = -1 (LimitMs).</summary>
@@ -201,7 +202,7 @@ begin
   FLock := TCriticalSection.Create;
   FIdle := TList<TWorker>.Create;
   FAll := TList<TWorker>.Create;
-  FLimitMs := DefaultMs;
+  FLimitMs := cDefaultMs;
   FReleased := TEvent.Create(nil, False, False, '');
 end;
 
@@ -216,13 +217,13 @@ end;
 
 class procedure TAtlasTimeLimit.SetLimitMs(AValue: Integer);
 begin
-  if AValue < MinMs then
+  if AValue < cMinMs then
   begin
-    AValue := MinMs;
+    AValue := cMinMs;
   end;
-  if AValue > MaxMs then
+  if AValue > cMaxMs then
   begin
-    AValue := MaxMs;
+    AValue := cMaxMs;
   end;
   FLimitMs := AValue;
 end;
@@ -279,9 +280,9 @@ end;
 
 class function TAtlasTimeLimit.Run(const AProc: TProc; out AError: string; ALimitMs: Integer): TAtlasTimedOutcome;
 var
-  Worker: TWorker;
-  Limit: Cardinal;
-  Finished: Boolean;
+  mWorker: TWorker;
+  mLimit: Cardinal;
+  mFinished: Boolean;
 begin
   AError := '';
   if TAtlasShutdown.Signalled then
@@ -291,35 +292,35 @@ begin
   end;
   if ALimitMs < 0 then
   begin
-    Limit := FLimitMs;
+    mLimit := FLimitMs;
   end
   else
   begin
-    Limit := ALimitMs;
+    mLimit := ALimitMs;
   end;
-  Worker := Take;
-  Worker.FProc := AProc;
-  Worker.FStart.SetEvent;
-  Worker.FDone.WaitFor(Limit);
+  mWorker := Take;
+  mWorker.FProc := AProc;
+  mWorker.FStart.SetEvent;
+  mWorker.FDone.WaitFor(mLimit);
   FLock.Enter;
   try
-    Finished := Worker.FFinished;
-    if Finished then
+    mFinished := mWorker.FFinished;
+    if mFinished then
     begin
-      AError := Worker.FError;
+      AError := mWorker.FError;
     end
     else
     begin
-      Worker.FAbandoned := True;
+      mWorker.FAbandoned := True;
     end;
   finally
     FLock.Leave;
   end;
-  if not Finished then
+  if not mFinished then
   begin
     Exit(TAtlasTimedOutcome.TimedOut);
   end;
-  Release(Worker);
+  Release(mWorker);
   if AError <> '' then
   begin
     Result := TAtlasTimedOutcome.Failed;
@@ -342,24 +343,24 @@ end;
 
 class function TAtlasTimeLimit.WaitIdle(AMs: Cardinal): Boolean;
 var
-  Watch: TStopwatch;
-  Left: Int64;
+  mWatch: TStopwatch;
+  mLeft: Int64;
 begin
   if (FLock = nil) or (FReleased = nil) then
   begin
     Exit(True);
   end;
-  Watch := TStopwatch.StartNew;
+  mWatch := TStopwatch.StartNew;
   Result := BusyCount = 0;
   while not Result do
   begin
-    Left := Int64(AMs) - Watch.ElapsedMilliseconds;
-    if Left <= 0 then
+    mLeft := Int64(AMs) - mWatch.ElapsedMilliseconds;
+    if mLeft <= 0 then
     begin
       Exit;
     end;
     // Auto-Reset: Ein Release zwischen Prüfung und Warten bleibt gesetzt und weckt sofort.
-    FReleased.WaitFor(Cardinal(Left));
+    FReleased.WaitFor(Cardinal(mLeft));
     Result := BusyCount = 0;
   end;
 end;
@@ -371,10 +372,10 @@ end;
 
 class function TAtlasTimeLimit.StopAll(AMs: Cardinal): Boolean;
 var
-  Workers: TArray<TWorker>;
-  Worker: TWorker;
-  Threads: TArray<TThread>;
-  Hung: Integer;
+  mWorkers: TArray<TWorker>;
+  mWorker: TWorker;
+  mThreads: TArray<TThread>;
+  mHung: Integer;
 begin
   if FLock = nil then
   begin
@@ -382,41 +383,41 @@ begin
   end;
   FLock.Enter;
   try
-    Workers := FAll.ToArray;
+    mWorkers := FAll.ToArray;
     FAll.Clear;
     FIdle.Clear;
   finally
     FLock.Leave;
   end;
-  Threads := nil;
-  for Worker in Workers do
+  mThreads := nil;
+  for mWorker in mWorkers do
   begin
-    Worker.Terminate;
-    Worker.FStart.SetEvent;
-    Threads := Threads + [TThread(Worker)];
+    mWorker.Terminate;
+    mWorker.FStart.SetEvent;
+    mThreads := mThreads + [TThread(mWorker)];
   end;
-  Result := TAtlasShutdown.WaitForThreads(Threads, AMs);
+  Result := TAtlasShutdown.WaitForThreads(mThreads, AMs);
   if not Result then
   begin
-    Hung := 0;
-    for Worker in Workers do
+    mHung := 0;
+    for mWorker in mWorkers do
     begin
-      if not Worker.Finished then
+      if not mWorker.Finished then
       begin
-        Inc(Hung);
+        Inc(mHung);
       end;
     end;
     // Ein Aufruf steckt in nicht abbrechbarem Code (A-13). Kehrt er erst nach dem Entladen zurück, läuft er in
     // nicht mehr geladenem Code: protokollieren und noch etwas warten.
     TAtlasGuard.Log(Format('Zeitlimit: %d Arbeiter beim Beenden noch beschäftigt, warte bis %d ms nach',
-      [Hung, HangGraceMs]));
-    Result := TAtlasShutdown.WaitForThreads(Threads, HangGraceMs);
+      [mHung, cHangGraceMs]));
+    Result := TAtlasShutdown.WaitForThreads(mThreads, cHangGraceMs);
   end;
-  for Worker in Workers do
+  for mWorker in mWorkers do
   begin
-    if Worker.Finished then
+    if mWorker.Finished then
     begin
-      Worker.Free;
+      mWorker.Free;
     end
     else
     begin
@@ -424,7 +425,7 @@ begin
       // Letzter Ausweg: Ohne FreeOnTerminate bliebe das Objekt liegen, und der Thread kehrte trotzdem in diesen
       // Code zurück. Liest der Thread FreeOnTerminate vor dem Setzen, bleibt im ungünstigsten Fall ein Leck,
       // nie eine Doppelfreigabe.
-      Worker.FreeOnTerminate := True;
+      mWorker.FreeOnTerminate := True;
     end;
   end;
   // WaitIdle nicht länger warten lassen: Die Arbeiter gehören nicht mehr zum Vorrat.

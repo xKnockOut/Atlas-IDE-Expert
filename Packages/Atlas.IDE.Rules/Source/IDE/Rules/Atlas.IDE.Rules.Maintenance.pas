@@ -69,10 +69,10 @@ begin
     Exit;
   end;
   mFolder := IncludeTrailingPathDelimiter(ExtractFileDir(TAtlasProjectSettings.SettingsFile));
-  Result := mFolder + TAtlasBaselineInfo.FileName;
-  if not FileExists(Result) and FileExists(mFolder + TAtlasBaselineInfo.LegacyFileName) then
+  Result := mFolder + TAtlasBaselineInfo.cFileName;
+  if not FileExists(Result) and FileExists(mFolder + TAtlasBaselineInfo.cLegacyFileName) then
   begin
-    Result := mFolder + TAtlasBaselineInfo.LegacyFileName;
+    Result := mFolder + TAtlasBaselineInfo.cLegacyFileName;
   end;
 end;
 
@@ -108,7 +108,7 @@ begin
     Exit(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject));
   end;
   Result := TAtlasIdeServerActions.RunTool('--check "' + TAtlasProjectSettings.ActiveProject + '" --update-baseline',
-    TAtlasServerTool.CheckTimeoutMs, mOutput);
+    TAtlasServerTool.cCheckTimeoutMs, mOutput);
   if Result = '' then
   begin
     Result := BaselineText;
@@ -139,7 +139,7 @@ begin
   mOutputFile := TPath.GetTempFileName;
   try
     mError := TAtlasIdeServerActions.RunTool('--check "' + TAtlasProjectSettings.ActiveProject +
-      '" --suppression-stats --format json --output "' + mOutputFile + '"', TAtlasServerTool.CheckTimeoutMs,
+      '" --suppression-stats --format json --output "' + mOutputFile + '"', TAtlasServerTool.cCheckTimeoutMs,
       mOutput);
     if mError <> '' then
     begin

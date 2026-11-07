@@ -72,7 +72,7 @@ implementation
 
 constructor TAtlasServerPage.Create(AOwner: TComponent);
 var
-  Panel: TPanel;
+  mPanel: TPanel;
 begin
   inherited Create(AOwner);
   Name := 'AtlasServerPage';
@@ -80,16 +80,16 @@ begin
   Height := 520;
   FNextTop := 100;
   AddTitle(TAtlasStrings.Text(TAtlasTextId.ServerPageGlobalTitle));
-  Panel := AddPanel(32);
-  FEditGlobal := AddButton(Panel, TAtlasStrings.Text(TAtlasTextId.ServerPageGlobalEdit), 0, EditGlobalClick);
-  FEditProject := AddButton(Panel, TAtlasStrings.Text(TAtlasTextId.ServerPageProjectEdit), 230, EditProjectClick);
+  mPanel := AddPanel(32);
+  FEditGlobal := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.ServerPageGlobalEdit), 0, EditGlobalClick);
+  FEditProject := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.ServerPageProjectEdit), 230, EditProjectClick);
 
   AddTitle(TAtlasStrings.Text(TAtlasTextId.ServerPageCacheTitle));
-  Panel := AddPanel(32);
-  FCacheClear := AddButton(Panel, TAtlasStrings.Text(TAtlasTextId.ServerPageCacheClear), 0, CacheClearClick);
-  Panel := AddPanel(20);
+  mPanel := AddPanel(32);
+  FCacheClear := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.ServerPageCacheClear), 0, CacheClearClick);
+  mPanel := AddPanel(20);
   FCacheInfo := TLabel.Create(Self);
-  FCacheInfo.Parent := Panel;
+  FCacheInfo.Parent := mPanel;
   FCacheInfo.Left := 0;
   FCacheInfo.Top := 2;
   FCacheInfo.Font.Color := clGrayText;
@@ -112,11 +112,11 @@ end;
 
 function TAtlasServerPage.AddTitle(const ACaption: string): TLabel;
 var
-  Panel: TPanel;
+  mPanel: TPanel;
 begin
-  Panel := AddPanel(22);
+  mPanel := AddPanel(22);
   Result := TLabel.Create(Self);
-  Result.Parent := Panel;
+  Result.Parent := mPanel;
   Result.Caption := ACaption;
   Result.Font.Style := [fsBold];
   Result.Left := 0;

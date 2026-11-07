@@ -120,10 +120,10 @@ begin
   mSettings := TAtlasPluginSettings.Defaults;
   mSettings.DiagnosticSlowMs := 0;
   mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinSlowThreshold, mSettings.DiagnosticSlowMs);
+  Assert.AreEqual(TAtlasPluginSettings.cMinSlowThreshold, mSettings.DiagnosticSlowMs);
   mSettings.DiagnosticSlowMs := 5000;
   mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MaxSlowThreshold, mSettings.DiagnosticSlowMs);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxSlowThreshold, mSettings.DiagnosticSlowMs);
 end;
 
 initialization

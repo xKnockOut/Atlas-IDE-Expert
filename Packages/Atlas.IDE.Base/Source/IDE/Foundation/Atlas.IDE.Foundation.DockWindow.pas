@@ -99,24 +99,24 @@ type
 
 constructor TAtlasIdeDockWindow.Create(const ADock: INTACustomDockableForm; APersistent: Boolean);
 var
-  Services: INTAServices;
+  mServices: INTAServices;
 begin
   inherited Create(nil);
   FDock := ADock;
-  if APersistent and Supports(BorlandIDEServices, INTAServices, Services) then
+  if APersistent and Supports(BorlandIDEServices, INTAServices, mServices) then
   begin
-    Services.RegisterDockableForm(FDock);
+    mServices.RegisterDockableForm(FDock);
     FRegistered := True;
   end;
 end;
 
 destructor TAtlasIdeDockWindow.Destroy;
 var
-  Services: INTAServices;
+  mServices: INTAServices;
 begin
-  if FRegistered and Supports(BorlandIDEServices, INTAServices, Services) then
+  if FRegistered and Supports(BorlandIDEServices, INTAServices, mServices) then
   begin
-    Services.UnregisterDockableForm(FDock);
+    mServices.UnregisterDockableForm(FDock);
   end;
   FRegistered := False;
   FreeForm;
@@ -145,16 +145,16 @@ end;
 
 class function TAtlasIdeDockWindow.IsDockForm(AForm: TCustomForm): Boolean;
 var
-  Form: TCustomForm;
+  mForm: TCustomForm;
 begin
   Result := False;
   if AForm = nil then
   begin
     Exit;
   end;
-  for Form in FDockForms do
+  for mForm in FDockForms do
   begin
-    if Form = AForm then
+    if mForm = AForm then
     begin
       Exit(True);
     end;
@@ -163,7 +163,7 @@ end;
 
 procedure TAtlasIdeDockWindow.SetForm(AForm: TCustomForm);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if AForm = FForm then
   begin
@@ -177,11 +177,11 @@ begin
       FForm.WindowProc := FOldWndProc;
     end;
     FOldWndProc := nil;
-    for Index := High(FDockForms) downto 0 do
+    for mIndex := High(FDockForms) downto 0 do
     begin
-      if FDockForms[Index] = FForm then
+      if FDockForms[mIndex] = FForm then
       begin
-        Delete(FDockForms, Index, 1);
+        Delete(FDockForms, mIndex, 1);
       end;
     end;
   end;
@@ -202,7 +202,7 @@ end;
 
 procedure TAtlasIdeDockWindow.FrameCreated(AFrame: TCustomFrame);
 var
-  ParentForm: TCustomForm;
+  mParentForm: TCustomForm;
 begin
   if AFrame = nil then
   begin
@@ -217,23 +217,23 @@ begin
   // Legt die IDE die Form selbst an (Desktop laden), kennen wir sie nur über den Frame.
   if AFrame.Owner is TCustomForm then
   begin
-    ParentForm := TCustomForm(AFrame.Owner);
+    mParentForm := TCustomForm(AFrame.Owner);
   end
   else
   begin
-    ParentForm := GetParentForm(AFrame, False);
+    mParentForm := GetParentForm(AFrame, False);
   end;
-  if ParentForm <> nil then
+  if mParentForm <> nil then
   begin
-    SetForm(ParentForm);
+    SetForm(mParentForm);
   end;
 end;
 
 procedure TAtlasIdeDockWindow.FreeForm;
 var
-  Old: TCustomForm;
+  mOld: TCustomForm;
 begin
-  Old := FForm;
+  mOld := FForm;
   if FFrame <> nil then
   begin
     FFrame.RemoveFreeNotification(Self);
@@ -241,36 +241,36 @@ begin
   FFrame := nil;
   SetForm(nil);
   // Nur freigeben, was noch lebt: Hat die IDE die Form schon zerstört, ist Old hier nil.
-  Old.Free;
+  mOld.Free;
 end;
 
 function TAtlasIdeDockWindow.Show(out ACreated: Boolean): Boolean;
 var
-  Services: INTAServices;
-  HasServices: Boolean;
-  Step: TAtlasDockStep;
-  Created: TCustomForm;
+  mServices: INTAServices;
+  mHasServices: Boolean;
+  mStep: TAtlasDockStep;
+  mCreated: TCustomForm;
 begin
   ACreated := False;
-  HasServices := Supports(BorlandIDEServices, INTAServices, Services);
-  Step := TAtlasDockPlan.ShowStep(HasServices, FForm <> nil, FFrame <> nil);
-  if Step = TAtlasDockStep.Unavailable then
+  mHasServices := Supports(BorlandIDEServices, INTAServices, mServices);
+  mStep := TAtlasDockPlan.ShowStep(mHasServices, FForm <> nil, FFrame <> nil);
+  if mStep = TAtlasDockStep.Unavailable then
   begin
     Exit(False);
   end;
-  if Step = TAtlasDockStep.RecreateForm then
+  if mStep = TAtlasDockStep.RecreateForm then
   begin
     FreeForm;
   end;
-  if Step <> TAtlasDockStep.RevealForm then
+  if mStep <> TAtlasDockStep.RevealForm then
   begin
     // FrameCreated läuft schon während CreateDockableForm und setzt Frame und Form.
-    Created := Services.CreateDockableForm(FDock);
-    if Created = nil then
+    mCreated := mServices.CreateDockableForm(FDock);
+    if mCreated = nil then
     begin
       Exit(False);
     end;
-    SetForm(Created);
+    SetForm(mCreated);
     ACreated := True;
   end;
   Reveal;
@@ -279,8 +279,8 @@ end;
 
 procedure TAtlasIdeDockWindow.Reveal;
 var
-  Host: TWinControl;
-  Sheet: TTabSheet;
+  mHost: TWinControl;
+  mSheet: TTabSheet;
 begin
   if FForm = nil then
   begin
@@ -288,22 +288,22 @@ begin
   end;
   FForm.Visible := True;
   // Angedockt: Reiterseite wählen und versteckte Gastgeber (Dock-Fenster, Leisten) wieder zeigen.
-  Host := FForm.Parent;
-  while Host <> nil do
+  mHost := FForm.Parent;
+  while mHost <> nil do
   begin
-    if Host is TTabSheet then
+    if mHost is TTabSheet then
     begin
-      Sheet := TTabSheet(Host);
-      if Sheet.PageControl <> nil then
+      mSheet := TTabSheet(mHost);
+      if mSheet.PageControl <> nil then
       begin
-        Sheet.PageControl.ActivePage := Sheet;
+        mSheet.PageControl.ActivePage := mSheet;
       end;
     end
-    else if not Host.Visible then
+    else if not mHost.Visible then
     begin
-      Host.Visible := True;
+      mHost.Visible := True;
     end;
-    Host := Host.Parent;
+    mHost := mHost.Parent;
   end;
   FForm.BringToFront;
 end;
@@ -324,21 +324,21 @@ end;
 
 function TAtlasIdeDockWindow.Shown: Boolean;
 var
-  Hosts: TArray<Boolean>;
-  Host: TWinControl;
+  mHosts: TArray<Boolean>;
+  mHost: TWinControl;
 begin
   if FForm = nil then
   begin
     Exit(False);
   end;
-  Hosts := nil;
-  Host := FForm.Parent;
-  while Host <> nil do
+  mHosts := nil;
+  mHost := FForm.Parent;
+  while mHost <> nil do
   begin
-    Hosts := Hosts + [Host.Visible];
-    Host := Host.Parent;
+    mHosts := mHosts + [mHost.Visible];
+    mHost := mHost.Parent;
   end;
-  Result := TAtlasDockPlan.Shown(FForm.Visible, Hosts);
+  Result := TAtlasDockPlan.Shown(FForm.Visible, mHosts);
 end;
 
 procedure TAtlasIdeDockWindow.Hide;
@@ -351,85 +351,85 @@ end;
 
 class procedure TAtlasIdeDockWindow.ApplyIdeTheme(AControl: TWinControl);
 var
-  Theming: IOTAIDEThemingServices;
-  Style: TCustomStyleServices;
+  mTheming: IOTAIDEThemingServices;
+  mStyle: TCustomStyleServices;
 
   procedure ResetColors(AParent: TWinControl);
   var
-    Index: Integer;
-    Child: TControl;
+    mIndex: Integer;
+    mChild: TControl;
   begin
-    for Index := 0 to AParent.ControlCount - 1 do
+    for mIndex := 0 to AParent.ControlCount - 1 do
     begin
-      Child := AParent.Controls[Index];
-      if Child is TListView then
+      mChild := AParent.Controls[mIndex];
+      if mChild is TListView then
       begin
-        TListView(Child).Color := clWindow;
-        TListView(Child).Font.Color := clWindowText;
+        TListView(mChild).Color := clWindow;
+        TListView(mChild).Font.Color := clWindowText;
       end
-      else if Child is TTreeView then
+      else if mChild is TTreeView then
       begin
-        TTreeView(Child).Color := clWindow;
-        TTreeView(Child).Font.Color := clWindowText;
+        TTreeView(mChild).Color := clWindow;
+        TTreeView(mChild).Font.Color := clWindowText;
       end;
-      if Child is TWinControl then
+      if mChild is TWinControl then
       begin
-        ResetColors(TWinControl(Child));
+        ResetColors(TWinControl(mChild));
       end;
     end;
   end;
 
   procedure Inherit(AParent: TWinControl);
   var
-    Index: Integer;
-    Child: TControl;
+    mIndex: Integer;
+    mChild: TControl;
   begin
-    for Index := 0 to AParent.ControlCount - 1 do
+    for mIndex := 0 to AParent.ControlCount - 1 do
     begin
-      Child := AParent.Controls[Index];
-      Child.StyleName := '';
-      if Child is TWinControl then
+      mChild := AParent.Controls[mIndex];
+      mChild.StyleName := '';
+      if mChild is TWinControl then
       begin
-        Inherit(TWinControl(Child));
+        Inherit(TWinControl(mChild));
       end;
     end;
   end;
 
   function Chain: string;
   var
-    Control: TControl;
+    mControl: TControl;
   begin
     Result := '';
-    Control := AControl;
-    while Control <> nil do
+    mControl := AControl;
+    while mControl <> nil do
     begin
-      Result := Result + Format(' < %s "%s"', [Control.ClassName, Control.StyleName]);
-      Control := Control.Parent;
+      Result := Result + Format(' < %s "%s"', [mControl.ClassName, mControl.StyleName]);
+      mControl := mControl.Parent;
     end;
   end;
 
 begin
-  if (AControl = nil) or not Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) or
-    not Theming.IDEThemingEnabled then
+  if (AControl = nil) or not Supports(BorlandIDEServices, IOTAIDEThemingServices, mTheming) or
+    not mTheming.IDEThemingEnabled then
   begin
     Exit;
   end;
   ResetColors(AControl);
-  Theming.ApplyTheme(AControl);
-  Style := Theming.StyleServices;
-  if Style = nil then
+  mTheming.ApplyTheme(AControl);
+  mStyle := mTheming.StyleServices;
+  if mStyle = nil then
   begin
     Exit;
   end;
   Inherit(AControl);
-  if TStyleManager.Style[Style.Name] = Style then
+  if TStyleManager.Style[mStyle.Name] = mStyle then
   begin
-    AControl.StyleName := Style.Name;
+    AControl.StyleName := mStyle.Name;
   end;
-  if StyleServices(AControl) <> Style then
+  if StyleServices(AControl) <> mStyle then
   begin
     TAtlasGuard.Log(Format('Thema: %s zeichnet mit Stil "%s" statt "%s";%s', [AControl.ClassName,
-      StyleServices(AControl).Name, Style.Name, Chain]));
+      StyleServices(AControl).Name, mStyle.Name, Chain]));
   end;
   // Auch die Form eines Atlas-Dockfensters (schwebend sonst Titelleiste und Grund im Systemstil).
   if not (AControl is TCustomForm) and IsDockForm(GetParentForm(AControl, False)) then
@@ -441,23 +441,23 @@ end;
 class procedure TAtlasIdeDockWindow.ApplyDarkCaption(AForm: TCustomForm);
 const
   // Fehlt in Delphi 12 (Winapi.Dwmapi): ab Windows 10 20H1.
-  DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+  cDWMWA_USE_IMMERSIVE_DARK_MODE = 20;
 var
-  Theming: IOTAIDEThemingServices;
-  Window: TColor;
-  Dark: BOOL;
+  mTheming: IOTAIDEThemingServices;
+  mWindow: TColor;
+  mDark: BOOL;
 begin
   if (AForm = nil) or not AForm.HandleAllocated or
-    not Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) or not Theming.IDEThemingEnabled or
-    (Theming.StyleServices = nil) then
+    not Supports(BorlandIDEServices, IOTAIDEThemingServices, mTheming) or not mTheming.IDEThemingEnabled or
+    (mTheming.StyleServices = nil) then
   begin
     Exit;
   end;
   // Dunkel, wenn der Fenstergrund des IDE-Stils dunkel ist (Helligkeit nach Rec. 601).
-  Window := ColorToRGB(Theming.StyleServices.GetSystemColor(clWindow));
-  Dark := (GetRValue(Window) * 299 + GetGValue(Window) * 587 + GetBValue(Window) * 114) div 1000 < 128;
+  mWindow := ColorToRGB(mTheming.StyleServices.GetSystemColor(clWindow));
+  mDark := (GetRValue(mWindow) * 299 + GetGValue(mWindow) * 587 + GetBValue(mWindow) * 114) div 1000 < 128;
   // Ältere Windows-Versionen kennen den Wert nicht und lehnen ihn ab: dann bleibt die Titelleiste hell.
-  DwmSetWindowAttribute(AForm.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, @Dark, SizeOf(Dark));
+  DwmSetWindowAttribute(AForm.Handle, cDWMWA_USE_IMMERSIVE_DARK_MODE, @mDark, SizeOf(mDark));
 end;
 
 procedure TAtlasIdeDockWindow.FormWndProc(var AMessage: TMessage);
@@ -478,20 +478,20 @@ end;
 
 class procedure TAtlasIdeDockWindow.ThemeForm(AForm: TCustomForm);
 var
-  Theming: IOTAIDEThemingServices;
+  mTheming: IOTAIDEThemingServices;
 begin
-  if (AForm = nil) or not Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) or
-    not Theming.IDEThemingEnabled then
+  if (AForm = nil) or not Supports(BorlandIDEServices, IOTAIDEThemingServices, mTheming) or
+    not mTheming.IDEThemingEnabled then
   begin
     Exit;
   end;
   try
-    Theming.ApplyTheme(AForm);
+    mTheming.ApplyTheme(AForm);
     // Der Frame ist durchsichtig und zeigt den Grund der Form; ApplyTheme setzt ihn nicht (schwebend hellgrau
     // unter weißer Schrift).
-    if Theming.StyleServices <> nil then
+    if mTheming.StyleServices <> nil then
     begin
-      TFormAccess(AForm).Color := Theming.StyleServices.GetSystemColor(clBtnFace);
+      TFormAccess(AForm).Color := mTheming.StyleServices.GetSystemColor(clBtnFace);
     end;
     ApplyDarkCaption(AForm);
   except

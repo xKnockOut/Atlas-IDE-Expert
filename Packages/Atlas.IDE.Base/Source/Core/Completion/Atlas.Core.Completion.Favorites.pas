@@ -58,8 +58,8 @@ type
 
   TAtlasFavorites = class
   public const
-    MaxPerType = 5;
-    FormatVersion = 1;
+    cMaxPerType = 5;
+    cFormatVersion = 1;
   private
     FItems: TList<TAtlasFavorite>;
     FChanged: Boolean;
@@ -114,7 +114,7 @@ uses
   Atlas.Core.Completion.Usage;
 
 const
-  KindNames: array[TAtlasItemKind] of string = ('unknown', 'method', 'function', 'procedure', 'constructor',
+  cKindNames: array[TAtlasItemKind] of string = ('unknown', 'method', 'function', 'procedure', 'constructor',
     'destructor', 'property', 'field', 'event', 'variable', 'parameter', 'constant', 'type', 'class', 'interface',
     'record', 'enum', 'enumMember', 'unit', 'keyword', 'snippet', 'xmlDocTag');
 
@@ -135,7 +135,7 @@ end;
 
 function TryDigits(const AText: string; AStart, ACount: Integer; out AValue: Word): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   AValue := 0;
   Result := Length(AText) >= AStart + ACount - 1;
@@ -143,13 +143,13 @@ begin
   begin
     Exit;
   end;
-  for Index := AStart to AStart + ACount - 1 do
+  for mIndex := AStart to AStart + ACount - 1 do
   begin
-    if not CharInSet(AText[Index], ['0'..'9']) then
+    if not CharInSet(AText[mIndex], ['0'..'9']) then
     begin
       Exit(False);
     end;
-    AValue := AValue * 10 + Word(Ord(AText[Index]) - Ord('0'));
+    AValue := AValue * 10 + Word(Ord(AText[mIndex]) - Ord('0'));
   end;
 end;
 
@@ -244,18 +244,18 @@ end;
 
 class function TAtlasFavorites.KindName(AKind: TAtlasItemKind): string;
 begin
-  Result := KindNames[AKind];
+  Result := cKindNames[AKind];
 end;
 
 class function TAtlasFavorites.KindFromName(const AName: string): TAtlasItemKind;
 var
-  Kind: TAtlasItemKind;
+  mKind: TAtlasItemKind;
 begin
-  for Kind := Low(TAtlasItemKind) to High(TAtlasItemKind) do
+  for mKind := Low(TAtlasItemKind) to High(TAtlasItemKind) do
   begin
-    if SameText(KindNames[Kind], AName) then
+    if SameText(cKindNames[mKind], AName) then
     begin
-      Exit(Kind);
+      Exit(mKind);
     end;
   end;
   Result := TAtlasItemKind.Unknown;
@@ -263,13 +263,13 @@ end;
 
 function TAtlasFavorites.IndexOf(const AKey: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to FItems.Count - 1 do
+  for mIndex := 0 to FItems.Count - 1 do
   begin
-    if FItems[Index].Key = AKey then
+    if FItems[mIndex].Key = AKey then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -277,12 +277,12 @@ end;
 
 function TAtlasFavorites.TypeCount(const ATypeKey: string): Integer;
 var
-  Favorite: TAtlasFavorite;
+  mFavorite: TAtlasFavorite;
 begin
   Result := 0;
-  for Favorite in FItems do
+  for mFavorite in FItems do
   begin
-    if LowerCase(Favorite.TypeName) = ATypeKey then
+    if LowerCase(mFavorite.TypeName) = ATypeKey then
     begin
       Inc(Result);
     end;
@@ -292,7 +292,7 @@ end;
 function TAtlasFavorites.TryAdd(const AFavorite: TAtlasFavorite): Boolean;
 begin
   Result := (Trim(AFavorite.Member) <> '') and (IndexOf(AFavorite.Key) < 0) and
-    (TypeCount(LowerCase(AFavorite.TypeName)) < MaxPerType);
+    (TypeCount(LowerCase(AFavorite.TypeName)) < cMaxPerType);
   if Result then
   begin
     FItems.Add(AFavorite);
@@ -321,29 +321,29 @@ end;
 
 function TAtlasFavorites.Toggle(const AItem: TAtlasCompletionItem; AAdded: TDateTime): TAtlasFavoriteToggle;
 var
-  Index: Integer;
-  Favorite: TAtlasFavorite;
+  mIndex: Integer;
+  mFavorite: TAtlasFavorite;
 begin
   if not CanPin(AItem) then
   begin
     Exit(TAtlasFavoriteToggle.NotAllowed);
   end;
-  Index := IndexOf(KeyOf(AItem));
-  if Index >= 0 then
+  mIndex := IndexOf(KeyOf(AItem));
+  if mIndex >= 0 then
   begin
-    FItems.Delete(Index);
+    FItems.Delete(mIndex);
     FChanged := True;
     Exit(TAtlasFavoriteToggle.Removed);
   end;
-  Favorite := Default(TAtlasFavorite);
-  Favorite.TypeName := TypeNameOf(AItem);
-  Favorite.Member := AItem.Name;
-  Favorite.Kind := AItem.Kind;
-  Favorite.UnitName := AItem.DeclaringUnit;
-  Favorite.Signature := AItem.Signature;
-  Favorite.Added := AAdded;
+  mFavorite := Default(TAtlasFavorite);
+  mFavorite.TypeName := TypeNameOf(AItem);
+  mFavorite.Member := AItem.Name;
+  mFavorite.Kind := AItem.Kind;
+  mFavorite.UnitName := AItem.DeclaringUnit;
+  mFavorite.Signature := AItem.Signature;
+  mFavorite.Added := AAdded;
   // Ein sechster ersetzt nichts (#458): erst einen anderen lösen.
-  if not TryAdd(Favorite) then
+  if not TryAdd(mFavorite) then
   begin
     Exit(TAtlasFavoriteToggle.Full);
   end;
@@ -353,15 +353,15 @@ end;
 
 function TAtlasFavorites.Remove(const AKey: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := IndexOf(LowerCase(AKey));
-  Result := Index >= 0;
+  mIndex := IndexOf(LowerCase(AKey));
+  Result := mIndex >= 0;
   if not Result then
   begin
     Exit;
   end;
-  FItems.Delete(Index);
+  FItems.Delete(mIndex);
   FChanged := True;
 end;
 
@@ -386,77 +386,77 @@ end;
 
 function TAtlasFavorites.ToJson: string;
 var
-  Root, Entry: TJSONObject;
-  List: TJSONArray;
-  Favorite: TAtlasFavorite;
+  mRoot, mEntry: TJSONObject;
+  mList: TJSONArray;
+  mFavorite: TAtlasFavorite;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Root.AddPair('version', TJSONNumber.Create(FormatVersion));
-    List := TJSONArray.Create;
-    Root.AddPair('favorites', List);
-    for Favorite in FItems do
+    mRoot.AddPair('version', TJSONNumber.Create(cFormatVersion));
+    mList := TJSONArray.Create;
+    mRoot.AddPair('favorites', mList);
+    for mFavorite in FItems do
     begin
-      Entry := TJSONObject.Create;
-      Entry.AddPair('type', Favorite.TypeName);
-      Entry.AddPair('member', Favorite.Member);
-      Entry.AddPair('kind', KindName(Favorite.Kind));
-      Entry.AddPair('unit', Favorite.UnitName);
-      Entry.AddPair('signature', Favorite.Signature);
-      Entry.AddPair('added', StampText(Favorite.Added));
-      List.AddElement(Entry);
+      mEntry := TJSONObject.Create;
+      mEntry.AddPair('type', mFavorite.TypeName);
+      mEntry.AddPair('member', mFavorite.Member);
+      mEntry.AddPair('kind', KindName(mFavorite.Kind));
+      mEntry.AddPair('unit', mFavorite.UnitName);
+      mEntry.AddPair('signature', mFavorite.Signature);
+      mEntry.AddPair('added', StampText(mFavorite.Added));
+      mList.AddElement(mEntry);
     end;
-    Result := Root.ToJSON;
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 function TAtlasFavorites.Parse(const AJson: string): Boolean;
 var
-  Root, List: TJSONValue;
-  Value: TJSONValue;
-  Entry: TJSONObject;
-  Favorite: TAtlasFavorite;
+  mRoot, mList: TJSONValue;
+  mValue: TJSONValue;
+  mEntry: TJSONObject;
+  mFavorite: TAtlasFavorite;
 begin
   Result := False;
   FItems.Clear;
   FChanged := False;
   // Ungültiges JSON ergibt nil; was damit geschieht, entscheidet der Aufrufer (TAtlasDataFile.Load).
-  Root := TJSONObject.ParseJSONValue(AJson);
-  if Root = nil then
+  mRoot := TJSONObject.ParseJSONValue(AJson);
+  if mRoot = nil then
   begin
     Exit;
   end;
   try
-    if not (Root is TJSONObject) then
+    if not (mRoot is TJSONObject) then
     begin
       Exit;
     end;
-    List := TJSONObject(Root).GetValue('favorites');
-    if not (List is TJSONArray) then
+    mList := TJSONObject(mRoot).GetValue('favorites');
+    if not (mList is TJSONArray) then
     begin
       Exit;
     end;
     Result := True;
-    for Value in TJSONArray(List) do
+    for mValue in TJSONArray(mList) do
     begin
-      if not (Value is TJSONObject) then
+      if not (mValue is TJSONObject) then
       begin
         Continue;
       end;
-      Entry := TJSONObject(Value);
-      Favorite := Default(TAtlasFavorite);
-      Favorite.TypeName := Entry.GetValue<string>('type', '');
-      Favorite.Member := Entry.GetValue<string>('member', '');
-      Favorite.Kind := KindFromName(Entry.GetValue<string>('kind', ''));
-      Favorite.UnitName := Entry.GetValue<string>('unit', '');
-      Favorite.Signature := Entry.GetValue<string>('signature', '');
-      Favorite.Added := ParseStamp(Entry.GetValue<string>('added', ''));
-      TryAdd(Favorite);
+      mEntry := TJSONObject(mValue);
+      mFavorite := Default(TAtlasFavorite);
+      mFavorite.TypeName := mEntry.GetValue<string>('type', '');
+      mFavorite.Member := mEntry.GetValue<string>('member', '');
+      mFavorite.Kind := KindFromName(mEntry.GetValue<string>('kind', ''));
+      mFavorite.UnitName := mEntry.GetValue<string>('unit', '');
+      mFavorite.Signature := mEntry.GetValue<string>('signature', '');
+      mFavorite.Added := ParseStamp(mEntry.GetValue<string>('added', ''));
+      TryAdd(mFavorite);
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 

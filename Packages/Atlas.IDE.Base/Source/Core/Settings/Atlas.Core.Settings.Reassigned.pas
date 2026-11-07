@@ -24,9 +24,9 @@ type
 
   TAtlasReassignedNames = class
   public const
-    DefaultTargets = [TAtlasReassignedTarget.Locals, TAtlasReassignedTarget.ValueParams];
-    Styles: array[TAtlasReassignedStyle] of string = ('dotted', 'solid', 'wavy');
-    ThemeColor = 'theme';
+    cDefaultTargets = [TAtlasReassignedTarget.Locals, TAtlasReassignedTarget.ValueParams];
+    cStyles: array[TAtlasReassignedStyle] of string = ('dotted', 'solid', 'wavy');
+    cThemeColor = 'theme';
   public
     class function TargetName(ATarget: TAtlasReassignedTarget): string; static;
     class function TryTarget(const AName: string; out ATarget: TAtlasReassignedTarget): Boolean; static;
@@ -48,23 +48,23 @@ uses
   System.SysUtils;
 
 const
-  TargetNames: array[TAtlasReassignedTarget] of string = ('locals', 'loopVars', 'valueParams', 'varParams',
+  cTargetNames: array[TAtlasReassignedTarget] of string = ('locals', 'loopVars', 'valueParams', 'varParams',
     'fields');
 
 class function TAtlasReassignedNames.TargetName(ATarget: TAtlasReassignedTarget): string;
 begin
-  Result := TargetNames[ATarget];
+  Result := cTargetNames[ATarget];
 end;
 
 class function TAtlasReassignedNames.TryTarget(const AName: string; out ATarget: TAtlasReassignedTarget): Boolean;
 var
-  Target: TAtlasReassignedTarget;
+  mTarget: TAtlasReassignedTarget;
 begin
-  for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
+  for mTarget := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
   begin
-    if SameText(Trim(AName), TargetNames[Target]) then
+    if SameText(Trim(AName), cTargetNames[mTarget]) then
     begin
-      ATarget := Target;
+      ATarget := mTarget;
       Exit(True);
     end;
   end;
@@ -74,33 +74,33 @@ end;
 
 class function TAtlasReassignedNames.ParseTargets(const AText: string): TAtlasReassignedTargets;
 var
-  Part: string;
-  Target: TAtlasReassignedTarget;
+  mPart: string;
+  mTarget: TAtlasReassignedTarget;
 begin
   Result := [];
-  for Part in AText.Split([',', ';', ' ']) do
+  for mPart in AText.Split([',', ';', ' ']) do
   begin
-    if TryTarget(Part, Target) then
+    if TryTarget(mPart, mTarget) then
     begin
-      Include(Result, Target);
+      Include(Result, mTarget);
     end;
   end;
 end;
 
 class function TAtlasReassignedNames.TargetsText(ATargets: TAtlasReassignedTargets): string;
 var
-  Target: TAtlasReassignedTarget;
+  mTarget: TAtlasReassignedTarget;
 begin
   Result := '';
-  for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
+  for mTarget := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
   begin
-    if Target in ATargets then
+    if mTarget in ATargets then
     begin
       if Result <> '' then
       begin
         Result := Result + ',';
       end;
-      Result := Result + TargetNames[Target];
+      Result := Result + cTargetNames[mTarget];
     end;
   end;
 end;
@@ -112,13 +112,13 @@ end;
 
 class function TAtlasReassignedNames.StyleOf(const AText: string): TAtlasReassignedStyle;
 var
-  Style: TAtlasReassignedStyle;
+  mStyle: TAtlasReassignedStyle;
 begin
-  for Style := Low(TAtlasReassignedStyle) to High(TAtlasReassignedStyle) do
+  for mStyle := Low(TAtlasReassignedStyle) to High(TAtlasReassignedStyle) do
   begin
-    if SameText(Trim(AText), Styles[Style]) then
+    if SameText(Trim(AText), cStyles[mStyle]) then
     begin
-      Exit(Style);
+      Exit(mStyle);
     end;
   end;
   Result := TAtlasReassignedStyle.Dotted;
@@ -126,29 +126,29 @@ end;
 
 class function TAtlasReassignedNames.TryColor(const AText: string; out AColor: TAtlasColor): Boolean;
 var
-  Value: Integer;
-  Text: string;
+  mValue: Integer;
+  mText: string;
 begin
   AColor := 0;
-  Text := Trim(AText);
-  Result := (Length(Text) = 7) and (Text[1] = '#') and TryStrToInt('$' + Copy(Text, 2, 6), Value);
+  mText := Trim(AText);
+  Result := (Length(mText) = 7) and (mText[1] = '#') and TryStrToInt('$' + Copy(mText, 2, 6), mValue);
   if Result then
   begin
-    AColor := TAtlasColorMath.FromHex(Text);
+    AColor := TAtlasColorMath.FromHex(mText);
   end;
 end;
 
 class function TAtlasReassignedNames.NormalizeColor(const AText: string): string;
 var
-  Color: TAtlasColor;
+  mColor: TAtlasColor;
 begin
-  if TryColor(AText, Color) then
+  if TryColor(AText, mColor) then
   begin
-    Result := TAtlasColorMath.ToHex(Color);
+    Result := TAtlasColorMath.ToHex(mColor);
   end
   else
   begin
-    Result := ThemeColor;
+    Result := cThemeColor;
   end;
 end;
 

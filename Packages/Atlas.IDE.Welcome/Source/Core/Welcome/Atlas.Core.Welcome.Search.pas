@@ -148,7 +148,7 @@ begin
     Exit(cNoMatch);
   end;
   Result := TAtlasCompletionMatcher.Score(mPattern, AText);
-  if Result <> TAtlasCompletionMatcher.NoMatch then
+  if Result <> TAtlasCompletionMatcher.cNoMatch then
   begin
     Exit;
   end;

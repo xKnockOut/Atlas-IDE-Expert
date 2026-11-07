@@ -17,7 +17,7 @@ interface
 type
   TAtlasBuildIdleGate = class
   public const
-    QuietMs = 3000;
+    cQuietMs = 3000;
   private
     FProjects: Integer;
     FGroup: Boolean;
@@ -84,7 +84,7 @@ end;
 
 function TAtlasBuildIdleGate.Idle(ANow: UInt64): Boolean;
 begin
-  Result := not FGroup and (FProjects = 0) and (ANow >= FLastEvent + QuietMs);
+  Result := not FGroup and (FProjects = 0) and (ANow >= FLastEvent + cQuietMs);
 end;
 
 end.

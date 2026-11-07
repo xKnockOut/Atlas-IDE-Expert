@@ -144,28 +144,28 @@ end;
 
 class procedure TAtlasIdeSettingsTransfer.ProjectTexts(out AProject, ATeam: string);
 var
-  Project, FileName: string;
+  mProject, mFileName: string;
 begin
   AProject := '';
   ATeam := '';
-  Project := TAtlasIdeTeamFile.ActiveProject;
-  if Project = '' then
+  mProject := TAtlasIdeTeamFile.ActiveProject;
+  if mProject = '' then
   begin
     Exit;
   end;
-  FileName := TAtlasProjectSetups.ExistingConfig(Project,
+  mFileName := TAtlasProjectSetups.ExistingConfig(mProject,
     function(const AFileName: string): Boolean
     begin
       Result := FileExists(AFileName);
     end);
-  if FileName <> '' then
+  if mFileName <> '' then
   begin
-    ReadText(FileName, AProject);
+    ReadText(mFileName, AProject);
   end;
-  FileName := TAtlasIdeTeamFile.LocateFor(Project);
-  if FileName <> '' then
+  mFileName := TAtlasIdeTeamFile.LocateFor(mProject);
+  if mFileName <> '' then
   begin
-    ReadText(FileName, ATeam);
+    ReadText(mFileName, ATeam);
   end;
 end;
 
@@ -179,26 +179,27 @@ end;
 
 class function TAtlasIdeSettingsTransfer.Backup(const ACurrent: TAtlasPluginSettings; out AFileName: string): Boolean;
 var
-  Export_: TAtlasExportResult;
-  Old: string;
-  Files: TArray<string>;
+  mExport_: TAtlasExportResult;
+  mOld: string;
+  mFiles: TArray<string>;
 begin
   AFileName := '';
   Result := False;
   try
-    Export_ := TAtlasSettingsTransfer.ExportSettings(Catalog, State(ACurrent), TAtlasExportOptions.ForBackup, Macros());
+    mExport_ := TAtlasSettingsTransfer.ExportSettings(Catalog, State(ACurrent), TAtlasExportOptions.ForBackup,
+      Macros());
     AFileName := TPath.Combine(BackupFolder, TAtlasSettingsTransfer.BackupFileName(Now));
-    WriteText(AFileName, Export_.Text);
+    WriteText(AFileName, mExport_.Text);
     Result := True;
     // Ältere Sicherungen aufräumen.
-    Files := nil;
-    for Old in TDirectory.GetFiles(BackupFolder, TAtlasSettingsTransfer.BackupPrefix + '*.json') do
+    mFiles := nil;
+    for mOld in TDirectory.GetFiles(BackupFolder, TAtlasSettingsTransfer.cBackupPrefix + '*.json') do
     begin
-      Files := Files + [ExtractFileName(Old)];
+      mFiles := mFiles + [ExtractFileName(mOld)];
     end;
-    for Old in TAtlasSettingsTransfer.BackupsToDelete(Files, TAtlasSettingsTransfer.KeepBackups) do
+    for mOld in TAtlasSettingsTransfer.BackupsToDelete(mFiles, TAtlasSettingsTransfer.cKeepBackups) do
     begin
-      System.SysUtils.DeleteFile(TPath.Combine(BackupFolder, Old));
+      System.SysUtils.DeleteFile(TPath.Combine(BackupFolder, mOld));
     end;
   except
     on E: Exception do
@@ -213,34 +214,34 @@ end;
 
 class procedure TAtlasIdeSettingsTransfer.ExportSettings(const ACurrent: TAtlasPluginSettings);
 var
-  Options: TAtlasExportOptions;
-  Dialog: TSaveDialog;
-  Export_: TAtlasExportResult;
-  Message, Keys: string;
-  Omission: TAtlasExportOmission;
+  mOptions: TAtlasExportOptions;
+  mDialog: TSaveDialog;
+  mExport_: TAtlasExportResult;
+  mMessage, mKeys: string;
+  mOmission: TAtlasExportOmission;
 begin
-  Options := TAtlasExportOptions.Create(nil, smOmit);
+  mOptions := TAtlasExportOptions.Create(nil, smOmit);
   if ACurrent.SettingsExportSecrets = 'placeholder' then
   begin
-    Options.Secrets := smPlaceholder;
+    mOptions.Secrets := smPlaceholder;
   end;
-  if not TAtlasExportDialog.Execute(Catalog, Options, nil) then
+  if not TAtlasExportDialog.Execute(Catalog, mOptions, nil) then
   begin
     Exit;
   end;
-  Dialog := TSaveDialog.Create(nil);
+  mDialog := TSaveDialog.Create(nil);
   try
-    Dialog.FileName := TAtlasSettingsTransfer.FileName;
-    Dialog.DefaultExt := 'json';
-    Dialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsFileFilter);
-    Dialog.Options := Dialog.Options + [ofOverwritePrompt, ofPathMustExist];
-    if not Dialog.Execute then
+    mDialog.FileName := TAtlasSettingsTransfer.cFileName;
+    mDialog.DefaultExt := 'json';
+    mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsFileFilter);
+    mDialog.Options := mDialog.Options + [ofOverwritePrompt, ofPathMustExist];
+    if not mDialog.Execute then
     begin
       Exit;
     end;
     try
-      Export_ := TAtlasSettingsTransfer.ExportSettings(Catalog, State(ACurrent), Options, Macros());
-      WriteText(Dialog.FileName, Export_.Text);
+      mExport_ := TAtlasSettingsTransfer.ExportSettings(Catalog, State(ACurrent), mOptions, Macros());
+      WriteText(mDialog.FileName, mExport_.Text);
     except
       on E: Exception do
       begin
@@ -249,165 +250,166 @@ begin
         Exit;
       end;
     end;
-    Message := TAtlasStrings.Fmt(TAtlasTextId.SettingsExportDone, [Export_.Count, Dialog.FileName]);
-    if Length(Export_.Omitted) > 0 then
+    mMessage := TAtlasStrings.Fmt(TAtlasTextId.SettingsExportDone, [mExport_.Count, mDialog.FileName]);
+    if Length(mExport_.Omitted) > 0 then
     begin
-      Keys := '';
-      for Omission in Export_.Omitted do
+      mKeys := '';
+      for mOmission in mExport_.Omitted do
       begin
-        Keys := Keys + ', ' + Omission.Key;
+        mKeys := mKeys + ', ' + mOmission.Key;
       end;
-      Message := Message + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsExportOmitted, [Copy(Keys, 3, MaxInt)]);
+      mMessage := mMessage + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsExportOmitted, [Copy(mKeys, 3,
+        MaxInt)]);
     end;
-    if Length(Export_.Placeholders) > 0 then
+    if Length(mExport_.Placeholders) > 0 then
     begin
-      Message := Message + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsExportPlaceholders,
-        [string.Join(', ', Export_.Placeholders)]);
+      mMessage := mMessage + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsExportPlaceholders,
+        [string.Join(', ', mExport_.Placeholders)]);
     end;
-    Inform(Message);
+    Inform(mMessage);
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
 class function TAtlasIdeSettingsTransfer.ChooseFile(out AText, AFileName: string): Boolean;
 var
-  Dialog: TOpenDialog;
+  mDialog: TOpenDialog;
 begin
   AText := '';
   AFileName := '';
-  Dialog := TOpenDialog.Create(nil);
+  mDialog := TOpenDialog.Create(nil);
   try
-    Dialog.FileName := TAtlasSettingsTransfer.FileName;
-    Dialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsFileFilter);
-    Dialog.Options := Dialog.Options + [ofFileMustExist];
-    Result := Dialog.Execute and ReadText(Dialog.FileName, AText);
-    AFileName := Dialog.FileName;
+    mDialog.FileName := TAtlasSettingsTransfer.cFileName;
+    mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsFileFilter);
+    mDialog.Options := mDialog.Options + [ofFileMustExist];
+    Result := mDialog.Execute and ReadText(mDialog.FileName, AText);
+    AFileName := mDialog.FileName;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
 class function TAtlasIdeSettingsTransfer.ChooseProfile(out AText, AFileName: string): Boolean;
 var
-  Files, Names, Descriptions: TArray<string>;
-  Source: TAtlasSettingsFile;
-  Name: string;
-  Index: Integer;
+  mFiles, mNames, mDescriptions: TArray<string>;
+  mSource: TAtlasSettingsFile;
+  mName: string;
+  mIndex: Integer;
 begin
   AText := '';
   AFileName := '';
-  Files := AtlasProfileFiles;
-  Names := nil;
-  Descriptions := nil;
-  for Name in Files do
+  mFiles := AtlasProfileFiles;
+  mNames := nil;
+  mDescriptions := nil;
+  for mName in mFiles do
   begin
-    Source := TAtlasSettingsTransfer.ParseFile(AtlasProfileJson(Name));
-    if (TAtlasStrings.Language = TAtlasLanguage.English) and (Source.NameEn <> '') then
+    mSource := TAtlasSettingsTransfer.ParseFile(AtlasProfileJson(mName));
+    if (TAtlasStrings.Language = TAtlasLanguage.English) and (mSource.NameEn <> '') then
     begin
-      Names := Names + [Source.NameEn];
-      Descriptions := Descriptions + [Source.DescriptionEn];
+      mNames := mNames + [mSource.NameEn];
+      mDescriptions := mDescriptions + [mSource.DescriptionEn];
     end
     else
     begin
-      Names := Names + [Source.Name];
-      Descriptions := Descriptions + [Source.Description];
+      mNames := mNames + [mSource.Name];
+      mDescriptions := mDescriptions + [mSource.Description];
     end;
   end;
   // Letzter Eintrag: eigene Datei.
-  Names := Names + [TAtlasStrings.Text(TAtlasTextId.SettingsProfileFromFile)];
-  Descriptions := Descriptions + [''];
-  Result := TAtlasProfileDialog.Choose(Names, Descriptions, Index, nil);
+  mNames := mNames + [TAtlasStrings.Text(TAtlasTextId.SettingsProfileFromFile)];
+  mDescriptions := mDescriptions + [''];
+  Result := TAtlasProfileDialog.Choose(mNames, mDescriptions, mIndex, nil);
   if not Result then
   begin
     Exit;
   end;
-  if Index > High(Files) then
+  if mIndex > High(mFiles) then
   begin
     Exit(ChooseFile(AText, AFileName));
   end;
-  AFileName := Files[Index];
+  AFileName := mFiles[mIndex];
   AText := AtlasProfileJson(AFileName);
 end;
 
 class function TAtlasIdeSettingsTransfer.Import(const ACurrent: TAtlasPluginSettings; const AText, AFileName: string;
   out AResult: TAtlasPluginSettings): Boolean;
 var
-  Source: TAtlasSettingsFile;
-  Current: TAtlasSettingsState;
-  Preview: TAtlasImportPreview;
-  ProjectText, TeamText, BackupFile, Message: string;
-  Next: TAtlasSettingsState;
-  Count: Integer;
+  mSource: TAtlasSettingsFile;
+  mCurrent: TAtlasSettingsState;
+  mPreview: TAtlasImportPreview;
+  mProjectText, mTeamText, mBackupFile, mMessage: string;
+  mNext: TAtlasSettingsState;
+  mCount: Integer;
 begin
   AResult := ACurrent;
   Result := False;
-  Source := TAtlasSettingsTransfer.ParseFile(AText);
-  if not Source.Valid then
+  mSource := TAtlasSettingsTransfer.ParseFile(AText);
+  if not mSource.Valid then
   begin
-    MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.SettingsImportInvalidFile, [ExtractFileName(AFileName), Source.Error]),
+    MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.SettingsImportInvalidFile, [ExtractFileName(AFileName), mSource.Error]),
       TMsgDlgType.mtWarning, [TMsgDlgBtn.mbOK], 0);
     Exit;
   end;
-  Current := State(ACurrent);
-  ProjectTexts(ProjectText, TeamText);
-  Preview := TAtlasSettingsTransfer.Preview(Catalog, Current, Source,
-    TAtlasImportOptions.Create(TAtlasSettingsTransfer.ModeOf(Source), nil, Macros(), ProjectText, TeamText));
-  if not TAtlasImportDialog.Execute(Catalog, AFileName, Preview,
+  mCurrent := State(ACurrent);
+  ProjectTexts(mProjectText, mTeamText);
+  mPreview := TAtlasSettingsTransfer.Preview(Catalog, mCurrent, mSource,
+    TAtlasImportOptions.Create(TAtlasSettingsTransfer.ModeOf(mSource), nil, Macros(), mProjectText, mTeamText));
+  if not TAtlasImportDialog.Execute(Catalog, AFileName, mPreview,
     function(AMode: TAtlasImportMode; const AAreas: TArray<string>): TAtlasImportPreview
     begin
-      Result := TAtlasSettingsTransfer.Preview(Catalog, Current, Source, TAtlasImportOptions.Create(AMode, AAreas,
-        Macros(), ProjectText, TeamText));
+      Result := TAtlasSettingsTransfer.Preview(Catalog, mCurrent, mSource, TAtlasImportOptions.Create(AMode, AAreas,
+        Macros(), mProjectText, mTeamText));
     end, nil) then
   begin
     Exit;
   end;
-  Count := Preview.SelectedCount;
-  if Count = 0 then
+  mCount := mPreview.SelectedCount;
+  if mCount = 0 then
   begin
     Inform(TAtlasStrings.Text(TAtlasTextId.SettingsImportNothing));
     Exit;
   end;
   // Vor jedem Import sichern (settings.backupBeforeImport); ohne Sicherung kein Import.
-  BackupFile := '';
-  if ACurrent.SettingsBackupBeforeImport and not Backup(ACurrent, BackupFile) then
+  mBackupFile := '';
+  if ACurrent.SettingsBackupBeforeImport and not Backup(ACurrent, mBackupFile) then
   begin
     Exit;
   end;
-  Next := TAtlasSettingsTransfer.Apply(Catalog, Current, Preview);
-  Save(Next);
+  mNext := TAtlasSettingsTransfer.Apply(Catalog, mCurrent, mPreview);
+  Save(mNext);
   AResult := TAtlasIdeSettings.Stored;
   Result := True;
-  Message := TAtlasStrings.Fmt(TAtlasTextId.SettingsImportDone, [Count]);
-  if BackupFile <> '' then
+  mMessage := TAtlasStrings.Fmt(TAtlasTextId.SettingsImportDone, [mCount]);
+  if mBackupFile <> '' then
   begin
-    Message := Message + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsBackupDone, [BackupFile]);
+    mMessage := mMessage + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsBackupDone, [mBackupFile]);
   end;
-  Inform(Message);
+  Inform(mMessage);
 end;
 
 class function TAtlasIdeSettingsTransfer.ImportSettings(const ACurrent: TAtlasPluginSettings; AProfile: Boolean;
   out AResult: TAtlasPluginSettings): Boolean;
 var
-  Text, FileName: string;
-  Chosen: Boolean;
+  mText, mFileName: string;
+  mChosen: Boolean;
 begin
   AResult := ACurrent;
   if AProfile then
   begin
-    Chosen := ChooseProfile(Text, FileName);
+    mChosen := ChooseProfile(mText, mFileName);
   end
   else
   begin
-    Chosen := ChooseFile(Text, FileName);
+    mChosen := ChooseFile(mText, mFileName);
   end;
-  Result := Chosen and Import(ACurrent, Text, FileName, AResult);
+  Result := mChosen and Import(ACurrent, mText, mFileName, AResult);
 end;
 
 class function TAtlasIdeSettingsTransfer.ResetAll(const ACurrent: TAtlasPluginSettings;
   out AResult: TAtlasPluginSettings): Boolean;
 var
-  BackupFile, Message: string;
+  mBackupFile, mMessage: string;
 begin
   AResult := ACurrent;
   Result := False;
@@ -416,20 +418,20 @@ begin
   begin
     Exit;
   end;
-  BackupFile := '';
-  if ACurrent.SettingsBackupBeforeImport and not Backup(ACurrent, BackupFile) then
+  mBackupFile := '';
+  if ACurrent.SettingsBackupBeforeImport and not Backup(ACurrent, mBackupFile) then
   begin
     Exit;
   end;
   Save(TAtlasSettingsTransfer.ResetAll(Catalog, State(ACurrent)));
   AResult := TAtlasIdeSettings.Stored;
   Result := True;
-  Message := TAtlasStrings.Text(TAtlasTextId.SettingsResetAllDone);
-  if BackupFile <> '' then
+  mMessage := TAtlasStrings.Text(TAtlasTextId.SettingsResetAllDone);
+  if mBackupFile <> '' then
   begin
-    Message := Message + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsBackupDone, [BackupFile]);
+    mMessage := mMessage + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsBackupDone, [mBackupFile]);
   end;
-  Inform(Message);
+  Inform(mMessage);
 end;
 
 class procedure TAtlasIdeSettingsTransfer.ExportCommand;
@@ -439,23 +441,23 @@ end;
 
 class procedure TAtlasIdeSettingsTransfer.ImportCommand;
 var
-  Imported: TAtlasPluginSettings;
+  mImported: TAtlasPluginSettings;
 begin
-  ImportSettings(TAtlasIdeSettings.Stored, False, Imported);
+  ImportSettings(TAtlasIdeSettings.Stored, False, mImported);
 end;
 
 class procedure TAtlasIdeSettingsTransfer.ProfileCommand;
 var
-  Imported: TAtlasPluginSettings;
+  mImported: TAtlasPluginSettings;
 begin
-  ImportSettings(TAtlasIdeSettings.Stored, True, Imported);
+  ImportSettings(TAtlasIdeSettings.Stored, True, mImported);
 end;
 
 class procedure TAtlasIdeSettingsTransfer.ResetCommand;
 var
-  Reset: TAtlasPluginSettings;
+  mReset: TAtlasPluginSettings;
 begin
-  ResetAll(TAtlasIdeSettings.Stored, Reset);
+  ResetAll(TAtlasIdeSettings.Stored, mReset);
 end;
 
 end.

@@ -340,7 +340,7 @@ begin
   Assert.AreEqual(BeforeX, View.ScreenX(TAtlasCallView.BoxX(Box)), 0.001);
   Assert.AreEqual(2.0, View.Scale, 0.001);
   View.ZoomAt(100, 0, 0);
-  Assert.AreEqual(TAtlasCallView.MaxScale, View.Scale, 0.001);
+  Assert.AreEqual(TAtlasCallView.cMaxScale, View.Scale, 0.001);
   View.Pan(5, -5);
   Assert.AreEqual(Layout.BoxOf(2), View.BoxAt(Layout, View.ScreenX(TAtlasCallView.BoxX(Box)) + 1,
     View.ScreenY(TAtlasCallView.BoxY(Box)) + 1));

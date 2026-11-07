@@ -185,7 +185,7 @@ begin
   mCheck.Files := 7;
   mCheck.Unreadable := 1;
   mCheck.MissingUnits := [PathFinding('Xml.Helpers', 'C:\Projekte\XmlInspector\Src\Main.pas', 12, 3)];
-  for mIndex := 1 to TAtlasProjectSetup.MaxFindings + 4 do
+  for mIndex := 1 to TAtlasProjectSetup.cMaxFindings + 4 do
   begin
     mCheck.UndefinedDefines := mCheck.UndefinedDefines + [PathFinding('SYM' + IntToStr(mIndex),
       'D:\Fremd\Lib.pas', mIndex, 1)];
@@ -198,8 +198,8 @@ begin
   Assert.AreEqual(7, mSetup.Files);
   Assert.AreEqual(1, mSetup.Unreadable);
   Assert.AreEqual(1, mSetup.MissingUnitCount);
-  Assert.AreEqual(TAtlasProjectSetup.MaxFindings + 4, mSetup.UndefinedDefineCount);
-  Assert.AreEqual(TAtlasProjectSetup.MaxFindings, Integer(Length(mSetup.UndefinedDefines)));
+  Assert.AreEqual(TAtlasProjectSetup.cMaxFindings + 4, mSetup.UndefinedDefineCount);
+  Assert.AreEqual(TAtlasProjectSetup.cMaxFindings, Integer(Length(mSetup.UndefinedDefines)));
   Assert.AreEqual('Xml.Helpers', mSetup.MissingUnits[0].Name);
   Assert.AreEqual('Src\Main.pas', mSetup.MissingUnits[0].FileName, 'relativ zum Projekt');
   Assert.AreEqual('D:\Fremd\Lib.pas', mSetup.UndefinedDefines[0].FileName, 'außerhalb bleibt der Pfad');

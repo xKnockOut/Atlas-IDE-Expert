@@ -174,14 +174,14 @@ uses
   Atlas.Core.Problems.Colors;
 
 const
-  BandChain = 0;
-  BandActions = 1;
+  cBandChain = 0;
+  cBandActions = 1;
   /// <summary>So viele Zeilen zeigen die Tabellen der published-Mitglieder, bis „+ n weitere“ geklickt ist.
   /// </summary>
-  PropertyRows = 7;
-  EventRows = 4;
+  cPropertyRows = 7;
+  cEventRows = 4;
   /// <summary>Höchstens so viele weitere Stellen je Problem im Hover (#896).</summary>
-  MaxRelated = 64;
+  cMaxRelated = 64;
 
 type
   /// <summary>Klickfläche und Hervorhebung eines Stücks Fließtext: Index >= 0 legt eine Klickfläche an,
@@ -617,7 +617,7 @@ var
 begin
   // Schalter als umrandetes Kästchen: an in Akzentfarbe, aus gedämpft.
   mTextFace := Face(TAtlasHoverFont.SmallUi, False);
-  mCell := Rect(AX, FY, AX + Width(mTextFace, ACaption) + Scale(AtlasChipPad), FY + Height(mTextFace) + Scale(2));
+  mCell := Rect(AX, FY, AX + Width(mTextFace, ACaption) + Scale(cAtlasChipPad), FY + Height(mTextFace) + Scale(2));
   if AOn then
   begin
     mLineColor := FColors.Accent;
@@ -630,7 +630,7 @@ begin
   end;
   mItem := NewItem(TAtlasHoverItemKind.Frame, mCell, mLineColor);
   mItem.Back := FColors.Surface;
-  mItem.Radius := AtlasChipRadius;
+  mItem.Radius := cAtlasChipRadius;
   MakeHot(mItem, TAtlasHoverHitKind.Published, Ord(AToggle), FColors.Accent);
   Add(mItem);
   mItem := NewItem(TAtlasHoverItemKind.CenterText, mCell, mTextColor);
@@ -647,11 +647,11 @@ var
   mItem: TAtlasHoverItem;
 begin
   mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
-  Result := Rect(FX, FY + Scale(1), FX + Width(mSmallFace, ACaption) + Scale(AtlasChipPad),
+  Result := Rect(FX, FY + Scale(1), FX + Width(mSmallFace, ACaption) + Scale(cAtlasChipPad),
     FY + Height(mSmallFace) + Scale(3));
   mItem := NewItem(TAtlasHoverItemKind.Frame, Result, ALineColor);
   mItem.Back := FColors.Surface;
-  mItem.Radius := AtlasChipRadius;
+  mItem.Radius := cAtlasChipRadius;
   Add(mItem);
   mItem := NewItem(TAtlasHoverItemKind.CenterText, Result, ATextColor);
   mItem.Text := ACaption;
@@ -670,7 +670,7 @@ begin
     Result.ShowAll := FInput.View.AllEvents;
     Result.Toggle := TAtlasHoverPublishedToggle.Events;
     Result.More := TAtlasHoverPublishedToggle.MoreEvents;
-    Result.Limit := EventRows;
+    Result.Limit := cEventRows;
   end
   else
   begin
@@ -680,7 +680,7 @@ begin
     Result.ShowAll := FInput.View.AllProperties;
     Result.Toggle := TAtlasHoverPublishedToggle.Properties;
     Result.More := TAtlasHoverPublishedToggle.MoreProperties;
-    Result.Limit := PropertyRows;
+    Result.Limit := cPropertyRows;
   end;
 end;
 
@@ -869,9 +869,9 @@ begin
   // „published: 38 Properties · 24 Ereignisse“, rechts die Schalter; ohne Platz darunter.
   mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
   mSummary := Format(FInput.Texts.PublishedSummary, [FData.MemberCount(False), FData.MemberCount(True)]);
-  mInheritedWidth := Width(mSmallFace, FInput.Texts.PublishedInherited) + Scale(AtlasChipPad);
+  mInheritedWidth := Width(mSmallFace, FInput.Texts.PublishedInherited) + Scale(cAtlasChipPad);
   mChipsWidth := mInheritedWidth + Scale(6) + Width(mSmallFace, FInput.Texts.PublishedOnlyDefaults) +
-    Scale(AtlasChipPad);
+    Scale(cAtlasChipPad);
   AddText(FLeft, FY + Scale(1), mSummary, mSmallFace, FColors.Muted);
   if FLeft + Width(mSmallFace, mSummary) + Scale(12) + mChipsWidth > FRight then
   begin
@@ -982,16 +982,16 @@ begin
   mTextFace := Face(TAtlasHoverFont.Mono, ACurrent);
   mTextWidth := Width(mTextFace, AText);
   mTextHeight := Height(mTextFace) + Scale(2);
-  if (FX + mTextWidth + Scale(AtlasChipPad) > FRight) and (FX > FLeft) then
+  if (FX + mTextWidth + Scale(cAtlasChipPad) > FRight) and (FX > FLeft) then
   begin
     FX := FLeft;
     Inc(FY, FRowHeight + Scale(4));
     FRowHeight := 0;
   end;
-  mCell := Rect(FX, FY, FX + mTextWidth + Scale(AtlasChipPad), FY + mTextHeight);
+  mCell := Rect(FX, FY, FX + mTextWidth + Scale(cAtlasChipPad), FY + mTextHeight);
   mFrame := NewItem(TAtlasHoverItemKind.Frame, mCell, FColors.Accent);
-  mText := NewItem(TAtlasHoverItemKind.Text, Rect(mCell.Left + Scale(AtlasChipPad div 2), mCell.Top + Scale(1),
-    mCell.Left + Scale(AtlasChipPad div 2), mCell.Top + Scale(1)), FColors.Accent);
+  mText := NewItem(TAtlasHoverItemKind.Text, Rect(mCell.Left + Scale(cAtlasChipPad div 2), mCell.Top + Scale(1),
+    mCell.Left + Scale(cAtlasChipPad div 2), mCell.Top + Scale(1)), FColors.Accent);
   if not ACurrent then
   begin
     mFrame.Color := FColors.Line;
@@ -1001,7 +1001,7 @@ begin
     MakeHot(mText, TAtlasHoverHitKind.Ancestor, AIndex, FColors.Accent);
   end;
   mFrame.Back := FColors.Surface;
-  mFrame.Radius := AtlasChipRadius;
+  mFrame.Radius := cAtlasChipRadius;
   Add(mFrame);
   mText.Text := AText;
   mText.Face := mTextFace;
@@ -1065,7 +1065,7 @@ var
   mCycle: Boolean;
   mSeparator: string;
 begin
-  mCycle := AProblem.Code = TAtlasProblem.UsesCycleCode;
+  mCycle := AProblem.Code = TAtlasProblem.cUsesCycleCode;
   if (AProblem.Related = nil) and not mCycle then
   begin
     Exit;
@@ -1076,7 +1076,7 @@ begin
     mSeparator := ' → ';
   end;
   mOldFont := BeginLinkRow;
-  for mItem := 0 to Min(High(AProblem.Related), MaxRelated - 1) do
+  for mItem := 0 to Min(High(AProblem.Related), cMaxRelated - 1) do
   begin
     if mItem > 0 then
     begin
@@ -1122,7 +1122,7 @@ begin
   end;
   if AProblem.Stale then
   begin
-    mColor := TAtlasColorMath.Mix(mColor, FColors.Surface, AtlasMixFaded);
+    mColor := TAtlasColorMath.Mix(mColor, FColors.Surface, cAtlasMixFaded);
   end;
   // Kleine UI-Schrift statt Badge: Die Badge-Schrift richtet sich beim Zeichnen nach der Höhe des Kästchens, das
   // Kästchen hier nach der gemessenen Schrift; gemessen wurde sie ohne Kästchen (Windows-Standardschrift), das
@@ -1175,7 +1175,7 @@ var
   mOldFont: TAtlasHoverFont;
 begin
   mOldFont := BeginLinkRow;
-  if AProblem.UsesState = TAtlasProblem.UsesUnused then
+  if AProblem.UsesState = TAtlasProblem.cUsesUnused then
   begin
     ProblemLink(FInput.Texts.UsesRemove, AIndex, TAtlasHoverProblemAction.RemoveUses);
     if AProblem.UsesUnusedCount > 1 then
@@ -1201,7 +1201,7 @@ begin
   end;
   if AProblem.Confirmed then
   begin
-    Result := TAtlasProblem.ConfirmedSource;
+    Result := TAtlasProblem.cConfirmedSource;
   end;
   if AProblem.Code <> '' then
   begin
@@ -1287,7 +1287,7 @@ begin
   ProblemDetails(mProblem, AIndex);
   // Weitere Stellen (#896), z. B. die Units eines Zyklus mit Sprung an ihren uses-Eintrag.
   RelatedLinks(mProblem, AIndex);
-  if (mProblem.UsesState = TAtlasProblem.UsesUnused) or (mProblem.UsesState = TAtlasProblem.UsesImplementation) then
+  if (mProblem.UsesState = TAtlasProblem.cUsesUnused) or (mProblem.UsesState = TAtlasProblem.cUsesImplementation) then
   begin
     UsesActions(mProblem, AIndex);
   end
@@ -1320,7 +1320,7 @@ var
   mCaptionFace: TAtlasHoverFace;
 begin
   Inc(FY, Scale(8));
-  if FData.Kind = TAtlasHoverData.KindClassRef then
+  if FData.Kind = TAtlasHoverData.cKindClassRef then
   begin
     mCaption := Format(FInput.Texts.TargetType, [FData.ChainOf]);
   end
@@ -1397,9 +1397,9 @@ begin
   FX := FLeft;
   FRowHeight := 0;
   case AKind of
-    BandChain:
+    cBandChain:
       ChainBand;
-    BandActions:
+    cBandActions:
       ActionsBand;
   end;
   FFlowFont := TAtlasHoverFont.Ui;
@@ -1803,11 +1803,11 @@ begin
   // Vererbung bzw. Zieltyp und Aktionsleiste auf eigener Randfläche.
   if Length(FData.Ancestors) > 0 then
   begin
-    Band(BandChain, not FData.Location.HasLocation);
+    Band(cBandChain, not FData.Location.HasLocation);
   end;
   if FData.Location.HasLocation then
   begin
-    Band(BandActions, True);
+    Band(cBandActions, True);
   end;
 end;
 
@@ -1827,25 +1827,25 @@ end;
 class function TAtlasHoverLayout.Build(const AInput: TAtlasHoverInput;
   const AMeasure: IAtlasHoverMeasure): TAtlasHoverLayout;
 var
-  Builder: TBuilder;
+  mBuilder: TBuilder;
 begin
-  Builder := TBuilder.Create(AInput, AMeasure);
+  mBuilder := TBuilder.Create(AInput, AMeasure);
   try
-    Result := Builder.Layout;
+    Result := mBuilder.Layout;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 function TAtlasHoverLayout.HitAt(const APoint: TPoint): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Hits) do
+  for mIndex := 0 to High(Hits) do
   begin
-    if Hits[Index].Rect.Contains(APoint) then
+    if Hits[mIndex].Rect.Contains(APoint) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -1859,79 +1859,79 @@ end;
 class function TAtlasHoverLayout.ProblemActionCode(AProblem: Integer; AAction: TAtlasHoverProblemAction;
   AItem: Integer): Integer;
 begin
-  Result := (AProblem * MaxRelated + AItem) * (Ord(High(TAtlasHoverProblemAction)) + 1) + Ord(AAction);
+  Result := (AProblem * cMaxRelated + AItem) * (Ord(High(TAtlasHoverProblemAction)) + 1) + Ord(AAction);
 end;
 
 class procedure TAtlasHoverLayout.DecodeProblemAction(ACode: Integer; out AProblem: Integer;
   out AAction: TAtlasHoverProblemAction);
 var
-  Item: Integer;
+  mItem: Integer;
 begin
-  DecodeProblemAction(ACode, AProblem, AAction, Item);
+  DecodeProblemAction(ACode, AProblem, AAction, mItem);
 end;
 
 class procedure TAtlasHoverLayout.DecodeProblemAction(ACode: Integer; out AProblem: Integer;
   out AAction: TAtlasHoverProblemAction; out AItem: Integer);
 var
-  Rest: Integer;
+  mRest: Integer;
 begin
   AAction := TAtlasHoverProblemAction(ACode mod (Ord(High(TAtlasHoverProblemAction)) + 1));
-  Rest := ACode div (Ord(High(TAtlasHoverProblemAction)) + 1);
-  AProblem := Rest div MaxRelated;
-  AItem := Rest mod MaxRelated;
+  mRest := ACode div (Ord(High(TAtlasHoverProblemAction)) + 1);
+  AProblem := mRest div cMaxRelated;
+  AItem := mRest mod cMaxRelated;
 end;
 
 class function TAtlasHoverLayout.ProblemOrder(const AProblems: TArray<TAtlasProblem>): TArray<Integer>;
 var
-  Index, Count: Integer;
+  mIndex, mCount: Integer;
 begin
   // Fehler zuerst, die übrigen in ihrer Reihenfolge (stabil).
   Result := nil;
   SetLength(Result, Length(AProblems));
-  Count := 0;
-  for Index := 0 to High(AProblems) do
+  mCount := 0;
+  for mIndex := 0 to High(AProblems) do
   begin
-    if AProblems[Index].Severity = TAtlasProblemSeverity.Error then
+    if AProblems[mIndex].Severity = TAtlasProblemSeverity.Error then
     begin
-      Result[Count] := Index;
-      Inc(Count);
+      Result[mCount] := mIndex;
+      Inc(mCount);
     end;
   end;
-  for Index := 0 to High(AProblems) do
+  for mIndex := 0 to High(AProblems) do
   begin
-    if AProblems[Index].Severity <> TAtlasProblemSeverity.Error then
+    if AProblems[mIndex].Severity <> TAtlasProblemSeverity.Error then
     begin
-      Result[Count] := Index;
-      Inc(Count);
+      Result[mCount] := mIndex;
+      Inc(mCount);
     end;
   end;
 end;
 
 function TAtlasHoverLayout.NextProblemHit(AHot: Integer; AForward: Boolean): Integer;
 var
-  Step, Index, Tries: Integer;
+  mStep, mIndex, mTries: Integer;
 begin
   Result := -1;
   if Length(Hits) = 0 then
   begin
     Exit;
   end;
-  Step := 1;
+  mStep := 1;
   if not AForward then
   begin
-    Step := -1;
+    mStep := -1;
   end;
-  Index := AHot;
-  if (Index < 0) and not AForward then
+  mIndex := AHot;
+  if (mIndex < 0) and not AForward then
   begin
-    Index := 0;
+    mIndex := 0;
   end;
-  for Tries := 1 to Length(Hits) do
+  for mTries := 1 to Length(Hits) do
   begin
-    Index := (Index + Step + Length(Hits)) mod Length(Hits);
-    if Hits[Index].Kind = TAtlasHoverHitKind.ProblemAction then
+    mIndex := (mIndex + mStep + Length(Hits)) mod Length(Hits);
+    if Hits[mIndex].Kind = TAtlasHoverHitKind.ProblemAction then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
@@ -1943,27 +1943,27 @@ end;
 
 procedure TAtlasHoverLayout.Anchor(AClientHeight: Integer);
 var
-  Wanted, Delta, Index: Integer;
+  mWanted, mDelta, mIndex: Integer;
 begin
   if AnchorItem < 0 then
   begin
     Exit;
   end;
-  Wanted := Max(0, AClientHeight - AnchorHeight - AnchorTop);
-  Delta := Wanted - AnchorShift;
-  if Delta = 0 then
+  mWanted := Max(0, AClientHeight - AnchorHeight - AnchorTop);
+  mDelta := mWanted - AnchorShift;
+  if mDelta = 0 then
   begin
     Exit;
   end;
-  for Index := AnchorItem to High(Items) do
+  for mIndex := AnchorItem to High(Items) do
   begin
-    Items[Index].Rect.Offset(0, Delta);
+    Items[mIndex].Rect.Offset(0, mDelta);
   end;
-  for Index := AnchorHit to High(Hits) do
+  for mIndex := AnchorHit to High(Hits) do
   begin
-    Hits[Index].Rect.Offset(0, Delta);
+    Hits[mIndex].Rect.Offset(0, mDelta);
   end;
-  AnchorShift := Wanted;
+  AnchorShift := mWanted;
 end;
 
 end.

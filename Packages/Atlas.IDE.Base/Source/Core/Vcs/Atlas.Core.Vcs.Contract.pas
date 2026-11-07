@@ -427,7 +427,7 @@ type
       ALong: Boolean): TAtlasVcsBranchStep; overload; static;
   public const
     /// <summary>Zeitlimit für Schritte mit Long (10 Minuten).</summary>
-    LongTimeoutMs = 600000;
+    cLongTimeoutMs = 600000;
   end;
 
   /// <summary>Startet git bzw. svn unsichtbar (ohne Konsolenfenster) und wartet höchstens ATimeoutMs.</summary>
@@ -644,7 +644,8 @@ type
 function AtlasVcsKindName(AKind: TAtlasVcsKind): string;
 /// <summary>Name des Ergebnisses für Protokoll und Meldungen, z. B. "TimedOut".</summary>
 function AtlasVcsOutcomeName(AOutcome: TAtlasVcsOutcome): string;
-/// <summary>vcs.provider aus dem Text der Einstellung (auch in Anführungszeichen); unbekannt oder leer = Auto.</summary>
+/// <summary>vcs.provider aus dem Text der Einstellung (auch in Anführungszeichen); unbekannt oder leer =
+/// Auto.</summary>
 function AtlasVcsProviderOf(const AText: string): TAtlasVcsProvider;
 /// <summary>Text der Einstellung: "auto", "git", "svn" oder "off".</summary>
 function AtlasVcsProviderText(AProvider: TAtlasVcsProvider): string;
@@ -678,27 +679,27 @@ end;
 
 function AtlasVcsOutcomeName(AOutcome: TAtlasVcsOutcome): string;
 const
-  Names: array[TAtlasVcsOutcome] of string = ('Ok', 'NoWorkingCopy', 'Disabled', 'ToolMissing', 'Failed',
+  cNames: array[TAtlasVcsOutcome] of string = ('Ok', 'NoWorkingCopy', 'Disabled', 'ToolMissing', 'Failed',
     'TimedOut', 'Cancelled', 'MainThread', 'LoginNeeded');
 begin
-  Result := Names[AOutcome];
+  Result := cNames[AOutcome];
 end;
 
 function AtlasVcsProviderOf(const AText: string): TAtlasVcsProvider;
 var
-  Text: string;
+  mText: string;
 begin
   // Auch als JSON-Text mit Anführungszeichen, wie ihn TAtlasJsonText.ValueAt liefert.
-  Text := LowerCase(Trim(AText).Trim(['"']));
-  if Text = 'git' then
+  mText := LowerCase(Trim(AText).Trim(['"']));
+  if mText = 'git' then
   begin
     Result := TAtlasVcsProvider.Git;
   end
-  else if Text = 'svn' then
+  else if mText = 'svn' then
   begin
     Result := TAtlasVcsProvider.Svn;
   end
-  else if Text = 'off' then
+  else if mText = 'off' then
   begin
     Result := TAtlasVcsProvider.Off;
   end

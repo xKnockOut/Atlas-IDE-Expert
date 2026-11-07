@@ -1094,7 +1094,7 @@ begin
   Assert.IsTrue(mSettings.TipsUsageTracking);
   // #766: Bereich „Hilfe und Rückmeldung“ an, Issue-Seite des Repositorys, Desktop.
   Assert.IsTrue(mSettings.WelcomePageHelp);
-  Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, mSettings.WelcomePageHelpReportUrl);
+  Assert.AreEqual(TAtlasPluginSettings.cDefaultHelpReportUrl, mSettings.WelcomePageHelpReportUrl);
   Assert.AreEqual('https://github.com/xKnockOut/Atlas-IDE-Expert/issues/new', mSettings.WelcomePageHelpReportUrl);
   Assert.AreEqual('', mSettings.WelcomePageHelpReportFolder, 'leer = Desktop');
   // #759: Einrichtungskarte und „Neu mit Atlas“ an.
@@ -1159,20 +1159,20 @@ begin
   Assert.AreEqual('http://intern/issues', mSettings.WelcomePageHelpReportUrl);
   mSettings.WelcomePageHelpReportUrl := 'file:///C:/Windows/System32/cmd.exe';
   mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, mSettings.WelcomePageHelpReportUrl, 'keine Datei');
+  Assert.AreEqual(TAtlasPluginSettings.cDefaultHelpReportUrl, mSettings.WelcomePageHelpReportUrl, 'keine Datei');
   mSettings.WelcomePageHelpReportUrl := 'cmd.exe';
   mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, mSettings.WelcomePageHelpReportUrl, 'kein Programm');
+  Assert.AreEqual(TAtlasPluginSettings.cDefaultHelpReportUrl, mSettings.WelcomePageHelpReportUrl, 'kein Programm');
   mSettings.WelcomePageHelpReportUrl := '';
   mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, mSettings.WelcomePageHelpReportUrl, 'leer = Vorgabe');
+  Assert.AreEqual(TAtlasPluginSettings.cDefaultHelpReportUrl, mSettings.WelcomePageHelpReportUrl, 'leer = Vorgabe');
   // #755: Anzahl der Arbeitsstände 1–20.
   mSettings.WelcomePageContinueCount := 0;
   mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinContinueCount, mSettings.WelcomePageContinueCount);
+  Assert.AreEqual(TAtlasPluginSettings.cMinContinueCount, mSettings.WelcomePageContinueCount);
   mSettings.WelcomePageContinueCount := 99;
   mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MaxContinueCount, mSettings.WelcomePageContinueCount);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxContinueCount, mSettings.WelcomePageContinueCount);
   // #767: Spalten 1–3, leeres aktives Layout = „Standard“.
   mSettings.WelcomePageColumns := 0;
   mSettings.WelcomePageActiveLayout := '  ';

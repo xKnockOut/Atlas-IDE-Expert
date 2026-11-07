@@ -117,7 +117,7 @@ end;
 
 class function TAtlasResultsTexts.ImpactPlaceText(const APlace: TAtlasImpactPlace): string;
 var
-  Edge: string;
+  mEdge: string;
 begin
   if APlace.Terminal then
   begin
@@ -128,30 +128,30 @@ begin
   begin
     Result := HierarchyText(APlace.Item);
   end;
-  Edge := '';
+  mEdge := '';
   if APlace.Edge = 'reference' then
   begin
-    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeReference);
+    mEdge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeReference);
   end
   else if APlace.Edge = 'override' then
   begin
-    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeOverride);
+    mEdge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeOverride);
   end
   else if APlace.Edge = 'baseMethod' then
   begin
-    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeBase);
+    mEdge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeBase);
   end
   else if APlace.Edge = 'interfaceMethod' then
   begin
-    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeInterface);
+    mEdge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeInterface);
   end
   else if APlace.Edge = 'implementation' then
   begin
-    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeImplementation);
+    mEdge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeImplementation);
   end;
-  if Edge <> '' then
+  if mEdge <> '' then
   begin
-    Result := Result + '  · ' + Edge;
+    Result := Result + '  · ' + mEdge;
   end;
   if APlace.UseCount > 1 then
   begin
@@ -189,14 +189,14 @@ end;
 
 class function TAtlasResultsTexts.FlowKindText(AKind: TAtlasDataFlowKind; ACount: Integer): string;
 const
-  Singular: array[TAtlasDataFlowKind] of TAtlasTextId = (TAtlasTextId.DataFlowAssignment,
+  cSingular: array[TAtlasDataFlowKind] of TAtlasTextId = (TAtlasTextId.DataFlowAssignment,
     TAtlasTextId.DataFlowVarArgument, TAtlasTextId.DataFlowOutArgument, TAtlasTextId.DataFlowInput,
     TAtlasTextId.DataFlowInitializer, TAtlasTextId.DataFlowLoop, TAtlasTextId.DataFlowCallerArgument,
     TAtlasTextId.DataFlowReturn, TAtlasTextId.DataFlowPropertyWrite, TAtlasTextId.DataFlowPropertyRead,
     TAtlasTextId.DataFlowModify, TAtlasTextId.DataFlowArgument, TAtlasTextId.DataFlowOutput, TAtlasTextId.DataFlowUse,
     TAtlasTextId.DataFlowConstant, TAtlasTextId.DataFlowOutside, TAtlasTextId.DataFlowAddress,
     TAtlasTextId.DataFlowPlace);
-  Plural: array[TAtlasDataFlowKind] of TAtlasTextId = (TAtlasTextId.DataFlowAssignments,
+  cPlural: array[TAtlasDataFlowKind] of TAtlasTextId = (TAtlasTextId.DataFlowAssignments,
     TAtlasTextId.DataFlowVarArguments, TAtlasTextId.DataFlowOutArguments, TAtlasTextId.DataFlowInputs,
     TAtlasTextId.DataFlowInitializers, TAtlasTextId.DataFlowLoops, TAtlasTextId.DataFlowCallerArguments,
     TAtlasTextId.DataFlowReturns, TAtlasTextId.DataFlowPropertyWrites, TAtlasTextId.DataFlowPropertyReads,
@@ -206,11 +206,11 @@ const
 begin
   if ACount > 1 then
   begin
-    Result := Format('%d %s', [ACount, TAtlasStrings.Text(Plural[AKind])]);
+    Result := Format('%d %s', [ACount, TAtlasStrings.Text(cPlural[AKind])]);
   end
   else
   begin
-    Result := TAtlasStrings.Text(Singular[AKind]);
+    Result := TAtlasStrings.Text(cSingular[AKind]);
   end;
 end;
 
@@ -245,7 +245,7 @@ end;
 
 class function TAtlasResultsTexts.FlowNodeText(const ANode: TAtlasDataFlowNode): string;
 var
-  Origin: TAtlasDataFlowOrigin;
+  mOrigin: TAtlasDataFlowOrigin;
 begin
   Result := FlowKindText(ANode.Kind, Length(ANode.Places));
   if ANode.Detail <> '' then
@@ -257,8 +257,8 @@ begin
     Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.DataFlowVia, [ANode.Via]);
   end;
   // Herkunft eines Blatts nur, wo die Art sie nicht schon nennt.
-  Origin := TAtlasDataFlowTree.Origin(ANode);
-  case Origin of
+  mOrigin := TAtlasDataFlowTree.Origin(ANode);
+  case mOrigin of
     TAtlasDataFlowOrigin.Literal:
       Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginLiteral);
     TAtlasDataFlowOrigin.Open:

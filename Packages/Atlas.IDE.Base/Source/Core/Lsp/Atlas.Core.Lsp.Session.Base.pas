@@ -307,29 +307,29 @@ end;
 
 procedure TLspSessionBase.Initialize;
 var
-  Params: TJSONObject;
-  Context: TAtlasProjectContext;
-  Response: TJSONValue;
+  mParams: TJSONObject;
+  mContext: TAtlasProjectContext;
+  mResponse: TJSONValue;
 begin
-  Params := InitializeParams(FProjects, FInitializeOptions.Settings, FContexts, Assigned(FOnApplyEdit),
+  mParams := InitializeParams(FProjects, FInitializeOptions.Settings, FContexts, Assigned(FOnApplyEdit),
     FInitializeOptions.Locale);
   // Gesendete Kontexte merken: SetProjectContexts schickt danach nur neue oder geänderte (#396).
-  for Context in FContexts do
+  for mContext in FContexts do
   begin
-    FSentContexts.AddOrSetValue(AnsiUpperCase(Context.Project), Context.Key);
+    FSentContexts.AddOrSetValue(AnsiUpperCase(mContext.Project), mContext.Key);
   end;
   // Empfänger vor initialize setzen: Der Server darf gleich danach Nachrichten schicken.
   AttachClientHandlers;
   // Ohne Arbeitsbereich leitet der Server ihn aus den geöffneten Dateien ab, ebenso für Dateien
   // außerhalb der gemeldeten Projekte.
-  Response := FClient.Request('initialize', Params, 15000);
+  mResponse := FClient.Request('initialize', mParams, 15000);
   try
-    if Response is TJSONObject then
+    if mResponse is TJSONObject then
     begin
-      FServerVersion := TJSONObject(Response).GetValue<string>('serverInfo.version', '');
+      FServerVersion := TJSONObject(mResponse).GetValue<string>('serverInfo.version', '');
     end;
   finally
-    Response.Free;
+    mResponse.Free;
   end;
   FClient.Notify('initialized', TJSONObject.Create);
   FInitialized := True;
@@ -347,65 +347,65 @@ end;
 
 procedure TLspSessionBase.SyncLocked(const AFileName, AText: string);
 var
-  State: TDocumentState;
-  Key: string;
-  Params, Document, Change: TJSONObject;
-  Changes: TJSONArray;
-  Edit: TLspTextChange;
+  mState: TDocumentState;
+  mKey: string;
+  mParams, mDocument, mChange: TJSONObject;
+  mChanges: TJSONArray;
+  mEdit: TLspTextChange;
 begin
-  Key := AnsiLowerCase(AFileName);
-  Document := TJSONObject.Create;
-  Document.AddPair('uri', PathToUri(AFileName));
-  if not FDocuments.TryGetValue(Key, State) then
+  mKey := AnsiLowerCase(AFileName);
+  mDocument := TJSONObject.Create;
+  mDocument.AddPair('uri', PathToUri(AFileName));
+  if not FDocuments.TryGetValue(mKey, mState) then
   begin
-    State.FileName := AFileName;
-    State.Version := 1;
-    State.Text := AText;
-    FDocuments.Add(Key, State);
-    Document.AddPair('languageId', 'delphi');
-    Document.AddPair('version', TJSONNumber.Create(State.Version));
-    Document.AddPair('text', AText);
-    FClient.Notify('textDocument/didOpen', TJSONObject.Create(TJSONPair.Create('textDocument', Document)));
+    mState.FileName := AFileName;
+    mState.Version := 1;
+    mState.Text := AText;
+    FDocuments.Add(mKey, mState);
+    mDocument.AddPair('languageId', 'delphi');
+    mDocument.AddPair('version', TJSONNumber.Create(mState.Version));
+    mDocument.AddPair('text', AText);
+    FClient.Notify('textDocument/didOpen', TJSONObject.Create(TJSONPair.Create('textDocument', mDocument)));
     Exit;
   end;
-  if State.Text = AText then
+  if mState.Text = AText then
   begin
-    Document.Free;
+    mDocument.Free;
     Exit;
   end;
   // Nur der geänderte Bereich (#395); der Server meldet textDocumentSync.change = Incremental.
-  Edit := TLspTextChanges.Between(State.Text, AText);
-  Inc(State.Version);
-  State.Text := AText;
-  FDocuments[Key] := State;
-  Document.AddPair('version', TJSONNumber.Create(State.Version));
-  Change := TJSONObject.Create;
-  Change.AddPair('range', TJSONObject.Create
+  mEdit := TLspTextChanges.Between(mState.Text, AText);
+  Inc(mState.Version);
+  mState.Text := AText;
+  FDocuments[mKey] := mState;
+  mDocument.AddPair('version', TJSONNumber.Create(mState.Version));
+  mChange := TJSONObject.Create;
+  mChange.AddPair('range', TJSONObject.Create
     .AddPair('start', TJSONObject.Create
-      .AddPair('line', TJSONNumber.Create(Edit.StartPos.Line))
-      .AddPair('character', TJSONNumber.Create(Edit.StartPos.Character)))
+      .AddPair('line', TJSONNumber.Create(mEdit.StartPos.Line))
+      .AddPair('character', TJSONNumber.Create(mEdit.StartPos.Character)))
     .AddPair('end', TJSONObject.Create
-      .AddPair('line', TJSONNumber.Create(Edit.EndPos.Line))
-      .AddPair('character', TJSONNumber.Create(Edit.EndPos.Character))));
-  Change.AddPair('text', Edit.Text);
-  Changes := TJSONArray.Create;
-  Changes.AddElement(Change);
-  Params := TJSONObject.Create;
-  Params.AddPair('textDocument', Document);
-  Params.AddPair('contentChanges', Changes);
-  FClient.Notify('textDocument/didChange', Params);
+      .AddPair('line', TJSONNumber.Create(mEdit.EndPos.Line))
+      .AddPair('character', TJSONNumber.Create(mEdit.EndPos.Character))));
+  mChange.AddPair('text', mEdit.Text);
+  mChanges := TJSONArray.Create;
+  mChanges.AddElement(mChange);
+  mParams := TJSONObject.Create;
+  mParams.AddPair('textDocument', mDocument);
+  mParams.AddPair('contentChanges', mChanges);
+  FClient.Notify('textDocument/didChange', mParams);
 end;
 
 function TLspSessionBase.PositionParams(const AFileName: string; ALine, ACharacter: Integer): TJSONObject;
 var
-  Position: TJSONObject;
+  mPosition: TJSONObject;
 begin
-  Position := TJSONObject.Create;
-  Position.AddPair('line', TJSONNumber.Create(ALine));
-  Position.AddPair('character', TJSONNumber.Create(ACharacter));
+  mPosition := TJSONObject.Create;
+  mPosition.AddPair('line', TJSONNumber.Create(ALine));
+  mPosition.AddPair('character', TJSONNumber.Create(ACharacter));
   Result := TJSONObject.Create;
   Result.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
-  Result.AddPair('position', Position);
+  Result.AddPair('position', mPosition);
 end;
 
 function TLspSessionBase.IsSynced(const AFileName: string): Boolean;
@@ -430,28 +430,28 @@ end;
 
 procedure TLspSessionBase.CloseLocked(const AFileName: string);
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := AnsiLowerCase(AFileName);
-  if not FDocuments.ContainsKey(Key) then
+  mKey := AnsiLowerCase(AFileName);
+  if not FDocuments.ContainsKey(mKey) then
   begin
     Exit;
   end;
-  FDocuments.Remove(Key);
+  FDocuments.Remove(mKey);
   FClient.Notify('textDocument/didClose', TJSONObject.Create(TJSONPair.Create('textDocument',
     TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))))));
 end;
 
 function TLspSessionBase.SyncedFiles: TArray<string>;
 var
-  State: TDocumentState;
+  mState: TDocumentState;
 begin
   Result := nil;
   TMonitor.Enter(FDocLock);
   try
-    for State in FDocuments.Values do
+    for mState in FDocuments.Values do
     begin
-      Result := Result + [State.FileName];
+      Result := Result + [mState.FileName];
     end;
   finally
     TMonitor.Exit(FDocLock);
@@ -460,17 +460,17 @@ end;
 
 function TLspSessionBase.SyncedText(const AFileName: string; out AText: string): Boolean;
 var
-  State: TDocumentState;
+  mState: TDocumentState;
 begin
   TMonitor.Enter(FDocLock);
   try
-    Result := FDocuments.TryGetValue(AnsiLowerCase(AFileName), State);
+    Result := FDocuments.TryGetValue(AnsiLowerCase(AFileName), mState);
   finally
     TMonitor.Exit(FDocLock);
   end;
   if Result then
   begin
-    AText := State.Text;
+    AText := mState.Text;
   end
   else
   begin
@@ -480,59 +480,59 @@ end;
 
 function TLspSessionBase.OpenDocuments: TArray<TLspOpenDocument>;
 var
-  State: TDocumentState;
-  Document: TLspOpenDocument;
+  mState: TDocumentState;
+  mDocument: TLspOpenDocument;
 begin
   Result := nil;
-  for State in FDocuments.Values do
+  for mState in FDocuments.Values do
   begin
-    Document.FileName := State.FileName;
-    Document.Text := State.Text;
-    Result := Result + [Document];
+    mDocument.FileName := mState.FileName;
+    mDocument.Text := mState.Text;
+    Result := Result + [mDocument];
   end;
 end;
 
 procedure TLspSessionBase.Reopen(const ADocuments: TArray<TLspOpenDocument>);
 var
-  Document: TLspOpenDocument;
+  mDocument: TLspOpenDocument;
 begin
-  for Document in ADocuments do
+  for mDocument in ADocuments do
   begin
-    if not FDocuments.ContainsKey(AnsiLowerCase(Document.FileName)) then
+    if not FDocuments.ContainsKey(AnsiLowerCase(mDocument.FileName)) then
     begin
-      Sync(Document.FileName, Document.Text);
+      Sync(mDocument.FileName, mDocument.Text);
     end;
   end;
 end;
 
 procedure TLspSessionBase.SetProjects(const AProjects: TArray<string>);
 var
-  Added, Removed: TArray<string>;
+  mAdded, mRemoved: TArray<string>;
 begin
   if not FInitialized then
   begin
     FProjects := AProjects;
     Exit;
   end;
-  ProjectChanges(FProjects, AProjects, Added, Removed);
+  ProjectChanges(FProjects, AProjects, mAdded, mRemoved);
   FProjects := AProjects;
-  if (Length(Added) = 0) and (Length(Removed) = 0) then
+  if (Length(mAdded) = 0) and (Length(mRemoved) = 0) then
   begin
     Exit;
   end;
-  if Length(Removed) > 0 then
+  if Length(mRemoved) > 0 then
   begin
     Inc(FProjectsRemoved);
   end;
   FClient.Notify('workspace/didChangeWorkspaceFolders', TJSONObject.Create(TJSONPair.Create('event',
-    TJSONObject.Create.AddPair('added', ProjectFolders(Added)).AddPair('removed', ProjectFolders(Removed)))));
+    TJSONObject.Create.AddPair('added', ProjectFolders(mAdded)).AddPair('removed', ProjectFolders(mRemoved)))));
 end;
 
 function TLspSessionBase.SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>):
   TArray<TAtlasProjectContext>;
 var
-  Context: TAtlasProjectContext;
-  Known: string;
+  mContext: TAtlasProjectContext;
+  mKnown: string;
 begin
   Result := nil;
   if not FInitialized then
@@ -540,13 +540,13 @@ begin
     FContexts := AContexts;
     Exit(AContexts);
   end;
-  for Context in AContexts do
+  for mContext in AContexts do
   begin
-    if not FSentContexts.TryGetValue(AnsiUpperCase(Context.Project), Known) or (Known <> Context.Key) then
+    if not FSentContexts.TryGetValue(AnsiUpperCase(mContext.Project), mKnown) or (mKnown <> mContext.Key) then
     begin
-      FSentContexts.AddOrSetValue(AnsiUpperCase(Context.Project), Context.Key);
-      FClient.Notify('atlas/projectContext', Context.ToJson);
-      Result := Result + [Context];
+      FSentContexts.AddOrSetValue(AnsiUpperCase(mContext.Project), mContext.Key);
+      FClient.Notify('atlas/projectContext', mContext.ToJson);
+      Result := Result + [mContext];
     end;
   end;
 end;

@@ -35,24 +35,24 @@ uses
 
 procedure TAtlasTextTip.ShowText(const AText: string; const APoint: TPoint);
 var
-  Area, Bounds: TRect;
+  mArea, mBounds: TRect;
   mWidth, mHeight: Integer;
 begin
   FText := AText;
   Canvas.Font := Font;
-  Area := WorkAreaAt(APoint);
-  mWidth := Min(Canvas.TextWidth(AText) + Scale(18), Area.Width);
+  mArea := WorkAreaAt(APoint);
+  mWidth := Min(Canvas.TextWidth(AText) + Scale(18), mArea.Width);
   mHeight := Canvas.TextHeight('Wg') + Scale(10);
-  Bounds := TRect.Create(APoint, mWidth, mHeight);
-  if Bounds.Right > Area.Right then
+  mBounds := TRect.Create(APoint, mWidth, mHeight);
+  if mBounds.Right > mArea.Right then
   begin
-    Bounds.SetLocation(Max(Area.Left, Area.Right - mWidth), Bounds.Top);
+    mBounds.SetLocation(Max(mArea.Left, mArea.Right - mWidth), mBounds.Top);
   end;
-  if Bounds.Bottom > Area.Bottom then
+  if mBounds.Bottom > mArea.Bottom then
   begin
-    Bounds.SetLocation(Bounds.Left, Area.Bottom - mHeight);
+    mBounds.SetLocation(mBounds.Left, mArea.Bottom - mHeight);
   end;
-  ShowAt(Bounds);
+  ShowAt(mBounds);
   Invalidate;
 end;
 

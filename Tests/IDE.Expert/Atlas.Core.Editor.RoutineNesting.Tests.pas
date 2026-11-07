@@ -61,7 +61,7 @@ var
 begin
   for mStyle := Low(TAtlasNestedRoutineStyle) to High(TAtlasNestedRoutineStyle) do
   begin
-    Assert.IsTrue(mStyle = TAtlasRoutineNesting.StyleOf(TAtlasRoutineNesting.StyleNames[mStyle]));
+    Assert.IsTrue(mStyle = TAtlasRoutineNesting.StyleOf(TAtlasRoutineNesting.cStyleNames[mStyle]));
   end;
   Assert.IsTrue(TAtlasNestedRoutineStyle.OwnColor = TAtlasRoutineNesting.StyleOf(' COLOR '));
   Assert.IsTrue(TAtlasNestedRoutineStyle.Deeper = TAtlasRoutineNesting.StyleOf('irgendwas'));

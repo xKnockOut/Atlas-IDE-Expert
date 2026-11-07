@@ -906,7 +906,7 @@ begin
   WriteText(mFileName, '{"bookmarks": [');
   Assert.IsFalse(TAtlasBookmarks.Load(Project, False, mList));
   Assert.AreEqual(Project, mList.Project);
-  Assert.IsTrue(FileExists(mFileName + TAtlasDataFile.DefectExtension), 'beiseitegelegt');
+  Assert.IsTrue(FileExists(mFileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
   Assert.IsFalse(FileExists(mFileName));
   mList.Add(UnitFile, Join(Code), 18, 'Rundung', 0);
   Assert.IsTrue(TAtlasBookmarks.Save(mList, False));

@@ -241,7 +241,7 @@ function TAtlasReleaseSettings.IsRelease(const AConfiguration: string): Boolean;
 var
   mName: string;
 begin
-  Result := SameText(Trim(AConfiguration), TAtlasBuildPipelineSettings.ReleaseConfiguration);
+  Result := SameText(Trim(AConfiguration), TAtlasBuildPipelineSettings.cReleaseConfiguration);
   if Result or (Trim(AConfiguration) = '') then
   begin
     Exit;

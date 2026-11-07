@@ -80,15 +80,15 @@ uses
   Atlas.IDE.Foundation.Host;
 
 const
-  RunAction = 'RunRunCommand';
-  RunNoDebugAction = 'RunRunNoDebugCommand';
+  cRunAction = 'RunRunCommand';
+  cRunNoDebugAction = 'RunRunNoDebugCommand';
 
 { TAtlasIdeStartOptions }
 
 class function TAtlasIdeStartOptions.Folder: string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
-    TAtlasStartProfiles.FolderName);
+    TAtlasStartProfiles.cFolderName);
 end;
 
 class procedure TAtlasIdeStartOptions.Say(const AText: string);
@@ -178,10 +178,10 @@ begin
       Exit;
     end;
     // Roh, ohne geerbte Werte: genau das, was „Kein Startprofil“ zurückschreibt.
-    AOptions.Parameters := mBuild.GetValue(TAtlasStartProfiles.ParametersOption, False);
-    AOptions.WorkingDir := mBuild.GetValue(TAtlasStartProfiles.WorkingDirOption, False);
-    AOptions.Host := mBuild.GetValue(TAtlasStartProfiles.HostOption, False);
-    AOptions.Environment := mBuild.GetValue(TAtlasStartProfiles.EnvironmentOption, False);
+    AOptions.Parameters := mBuild.GetValue(TAtlasStartProfiles.cParametersOption, False);
+    AOptions.WorkingDir := mBuild.GetValue(TAtlasStartProfiles.cWorkingDirOption, False);
+    AOptions.Host := mBuild.GetValue(TAtlasStartProfiles.cHostOption, False);
+    AOptions.Environment := mBuild.GetValue(TAtlasStartProfiles.cEnvironmentOption, False);
     Result := True;
   except
     on Exception do
@@ -208,10 +208,10 @@ begin
     begin
       Exit(True);
     end;
-    mBuild.SetValue(TAtlasStartProfiles.ParametersOption, AOptions.Parameters);
-    mBuild.SetValue(TAtlasStartProfiles.WorkingDirOption, AOptions.WorkingDir);
-    mBuild.SetValue(TAtlasStartProfiles.HostOption, AOptions.Host);
-    mBuild.SetValue(TAtlasStartProfiles.EnvironmentOption, AOptions.Environment);
+    mBuild.SetValue(TAtlasStartProfiles.cParametersOption, AOptions.Parameters);
+    mBuild.SetValue(TAtlasStartProfiles.cWorkingDirOption, AOptions.WorkingDir);
+    mBuild.SetValue(TAtlasStartProfiles.cHostOption, AOptions.Host);
+    mBuild.SetValue(TAtlasStartProfiles.cEnvironmentOption, AOptions.Environment);
     Result := True;
   except
     on E: Exception do
@@ -229,11 +229,11 @@ begin
   AReason := '';
   if ADebugger then
   begin
-    mName := RunAction;
+    mName := cRunAction;
   end
   else
   begin
-    mName := RunNoDebugAction;
+    mName := cRunNoDebugAction;
   end;
   if Supports(BorlandIDEServices, INTAServices, mActions) and (mActions.ActionList <> nil) then
   begin

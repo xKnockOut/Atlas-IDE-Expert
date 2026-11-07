@@ -22,7 +22,7 @@ type
   TAtlasSnapshotPolicy = class
   public const
     /// <summary>Spätestens nach dieser Zeit neu lesen, auch ohne Ereignis.</summary>
-    SafetyMs = 2000;
+    cSafetyMs = 2000;
   public
     /// <summary>True, wenn der Puffer gelesen werden muss; ALines und AModified sind der jetzige Stand.</summary>
     class function MustRead(const AState: TAtlasSnapshotState; ALines: Integer; AModified: Boolean;
@@ -43,7 +43,7 @@ begin
   begin
     Exit(True);
   end;
-  Result := ANow - AState.ReadAt >= SafetyMs;
+  Result := ANow - AState.ReadAt >= cSafetyMs;
 end;
 
 end.

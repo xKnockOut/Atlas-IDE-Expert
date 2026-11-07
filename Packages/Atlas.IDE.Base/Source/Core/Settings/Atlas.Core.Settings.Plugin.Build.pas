@@ -10,13 +10,13 @@ uses
   Atlas.Core.Settings.Plugin.Store;
 
 const
-  MinCheckDelay = 500;
-  MaxCheckDelay = 10000;
-  MinCheckMax = 200;
-  MaxCheckMax = 20000;
+  cMinCheckDelay = 500;
+  cMaxCheckDelay = 10000;
+  cMinCheckMax = 200;
+  cMaxCheckMax = 20000;
   /// <summary>Grenzen für tests.affectedDepth (#1353).</summary>
-  MinTestsAffectedDepth = 1;
-  MaxTestsAffectedDepth = 5;
+  cMinTestsAffectedDepth = 1;
+  cMaxTestsAffectedDepth = 5;
 
 type
   /// <summary>Plugin-Einstellungen: Compiler, Build, Tests und Aufgaben.</summary>
@@ -129,10 +129,12 @@ type
     /// <summary>Prüfungen des Release-Wächters mit an/aus und Sollwert (build.releaseChecks), Textform wie
     /// TAtlasReleaseChecks.ToText, z. B. "debugDefine,debugInfo=off,-assertions=off,…".</summary>
     ReleaseChecks: string;
-    /// <summary>Modul-Schalter tests.enabled (#1454): DUnitX-Tests; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// <summary>Modul-Schalter tests.enabled (#1454): DUnitX-Tests; aus = die wirksamen Werte aller Einstellungen des
+    /// Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     TestsEnabled: Boolean;
-    /// <summary>Modul-Schalter buildTools.enabled (#1454): Build-Werkzeuge; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// <summary>Modul-Schalter buildTools.enabled (#1454): Build-Werkzeuge; aus = die wirksamen Werte aller
+    /// Einstellungen des Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     BuildToolsEnabled: Boolean;
     /// <summary>Modul-Schalter buildPipeline.enabled (#1455): Build-Pipeline; aus = die wirksamen Werte aller
@@ -159,16 +161,16 @@ uses
 /// <summary>tasks.beforeBuild: bekannter Wert klein, sonst „off“.</summary>
 function NormalizedTasksBeforeBuild(const AText: string): string;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in TasksBeforeBuildNames do
+  for mName in cTasksBeforeBuildNames do
   begin
-    if SameText(Trim(AText), Name) then
+    if SameText(Trim(AText), mName) then
     begin
-      Exit(Name);
+      Exit(mName);
     end;
   end;
-  Result := TasksBeforeBuildNames[0];
+  Result := cTasksBeforeBuildNames[0];
 end;
 
 { TAtlasPluginBuildSettings }
@@ -183,8 +185,8 @@ begin
   Result.McpBuild := True;
   Result.BuildOnOpen := False;
   Result.BuildOnOpenKind := TAtlasOpenBuildSettings.KindName(TAtlasCompileKind.Make);
-  Result.BuildOnOpenScope := TAtlasOpenBuildSettings.ScopeNames[TAtlasOpenBuildScope.All];
-  Result.BuildOnOpenDelayMs := TAtlasOpenBuildSettings.DefaultDelayMs;
+  Result.BuildOnOpenScope := TAtlasOpenBuildSettings.cScopeNames[TAtlasOpenBuildScope.All];
+  Result.BuildOnOpenDelayMs := TAtlasOpenBuildSettings.cDefaultDelayMs;
   Result.BuildOnOpenExclude := '';
   Result.BuildOnOpenConfig := '';
   Result.BuildOnOpenPlatform := '';
@@ -208,8 +210,8 @@ begin
   Result.TasksSaveBeforeRun := True;
   Result.TasksRunChecksParallel := False;
   Result.TasksOnlyFindings := False;
-  Result.BuildGateTimeoutMs := TAtlasBuildPipelineSettings.GateDefaultTimeoutMs;
-  Result.ReleaseConfigs := TAtlasBuildPipelineSettings.ReleaseConfiguration;
+  Result.BuildGateTimeoutMs := TAtlasBuildPipelineSettings.cGateDefaultTimeoutMs;
+  Result.ReleaseConfigs := TAtlasBuildPipelineSettings.cReleaseConfiguration;
   Result.ReleaseChecks := TAtlasReleaseChecks.Defaults.ToText;
   Result.TestsEnabled := True;
   Result.BuildToolsEnabled := True;
@@ -218,12 +220,12 @@ end;
 
 procedure TAtlasPluginBuildSettings.Normalize;
 begin
-  CheckOnSaveDelayMs := EnsureRange(CheckOnSaveDelayMs, MinCheckDelay, MaxCheckDelay);
-  CheckOnSaveMaxMs := EnsureRange(CheckOnSaveMaxMs, MinCheckMax, MaxCheckMax);
+  CheckOnSaveDelayMs := EnsureRange(CheckOnSaveDelayMs, cMinCheckDelay, cMaxCheckDelay);
+  CheckOnSaveMaxMs := EnsureRange(CheckOnSaveMaxMs, cMinCheckMax, cMaxCheckMax);
   BuildOnOpenKind := TAtlasOpenBuildSettings.KindName(TAtlasOpenBuildSettings.KindOf(BuildOnOpenKind));
-  BuildOnOpenScope := TAtlasOpenBuildSettings.ScopeNames[TAtlasOpenBuildSettings.ScopeOf(BuildOnOpenScope)];
-  BuildOnOpenDelayMs := EnsureRange(BuildOnOpenDelayMs, TAtlasOpenBuildSettings.MinDelayMs,
-    TAtlasOpenBuildSettings.MaxDelayMs);
+  BuildOnOpenScope := TAtlasOpenBuildSettings.cScopeNames[TAtlasOpenBuildSettings.ScopeOf(BuildOnOpenScope)];
+  BuildOnOpenDelayMs := EnsureRange(BuildOnOpenDelayMs, TAtlasOpenBuildSettings.cMinDelayMs,
+    TAtlasOpenBuildSettings.cMaxDelayMs);
   BuildOnOpenExclude := TAtlasOpenBuildSettings.NormalizedExclude(BuildOnOpenExclude);
   BuildOnOpenConfig := Trim(BuildOnOpenConfig);
   BuildOnOpenPlatform := Trim(BuildOnOpenPlatform);
@@ -232,14 +234,14 @@ begin
   begin
     CompileOnSave := False;
   end;
-  BuildGate := TAtlasBuildPipelineSettings.GateNames[TAtlasBuildPipelineSettings.GateOf(BuildGate)];
+  BuildGate := TAtlasBuildPipelineSettings.cGateNames[TAtlasBuildPipelineSettings.GateOf(BuildGate)];
   TasksBeforeBuild := NormalizedTasksBeforeBuild(TasksBeforeBuild);
-  BuildGateTimeoutMs := EnsureRange(BuildGateTimeoutMs, TAtlasBuildPipelineSettings.GateMinTimeoutMs,
-    TAtlasBuildPipelineSettings.GateMaxTimeoutMs);
+  BuildGateTimeoutMs := EnsureRange(BuildGateTimeoutMs, TAtlasBuildPipelineSettings.cGateMinTimeoutMs,
+    TAtlasBuildPipelineSettings.cGateMaxTimeoutMs);
   ReleaseConfigs := TAtlasBuildPipelineSettings.NormalizedConfigurations(ReleaseConfigs);
   BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(BuildWarningsAsErrors);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
-  TestsAffectedDepth := EnsureRange(TestsAffectedDepth, MinTestsAffectedDepth, MaxTestsAffectedDepth);
+  TestsAffectedDepth := EnsureRange(TestsAffectedDepth, cMinTestsAffectedDepth, cMaxTestsAffectedDepth);
 end;
 
 procedure TAtlasPluginBuildSettings.Exchange(const AIo: TAtlasSettingsExchange);

@@ -92,51 +92,51 @@ uses
 
 class function TAtlasLineChanges.Compute(const AOld, ANew: TArray<string>): TAtlasLineChangeList;
 var
-  Hunk: TTextLineHunk;
-  Change: TAtlasLineChange;
+  mHunk: TTextLineHunk;
+  mChange: TAtlasLineChange;
 begin
   Result := nil;
-  for Hunk in TTextDiff.Hunks(AOld, ANew) do
+  for mHunk in TTextDiff.Hunks(AOld, ANew) do
   begin
-    Change := Default(TAtlasLineChange);
-    Change.Line := Hunk.NewStart;
-    Change.Count := Hunk.NewCount;
-    Change.OldLine := Hunk.OldStart;
-    Change.OldLines := Copy(AOld, Hunk.OldStart, Hunk.OldCount);
-    if Hunk.OldCount = 0 then
+    mChange := Default(TAtlasLineChange);
+    mChange.Line := mHunk.NewStart;
+    mChange.Count := mHunk.NewCount;
+    mChange.OldLine := mHunk.OldStart;
+    mChange.OldLines := Copy(AOld, mHunk.OldStart, mHunk.OldCount);
+    if mHunk.OldCount = 0 then
     begin
-      Change.Kind := TAtlasLineChangeKind.Added;
+      mChange.Kind := TAtlasLineChangeKind.Added;
     end
-    else if Hunk.NewCount = 0 then
+    else if mHunk.NewCount = 0 then
     begin
-      Change.Kind := TAtlasLineChangeKind.Deleted;
+      mChange.Kind := TAtlasLineChangeKind.Deleted;
     end
     else
     begin
-      Change.Kind := TAtlasLineChangeKind.Modified;
+      mChange.Kind := TAtlasLineChangeKind.Modified;
     end;
-    Result := Result + [Change];
+    Result := Result + [mChange];
   end;
 end;
 
 class function TAtlasLineChanges.MarkAt(const AChanges: TAtlasLineChangeList; ALine: Integer;
   out AIndex: Integer): TAtlasLineMark;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   AIndex := -1;
   Result := TAtlasLineMark.None;
-  for Index := 0 to High(AChanges) do
+  for mIndex := 0 to High(AChanges) do
   begin
-    if AChanges[Index].Line > ALine then
+    if AChanges[mIndex].Line > ALine then
     begin
       Break;
     end;
-    if (AChanges[Index].Kind <> TAtlasLineChangeKind.Deleted) and
-      (ALine < AChanges[Index].Line + AChanges[Index].Count) then
+    if (AChanges[mIndex].Kind <> TAtlasLineChangeKind.Deleted) and
+      (ALine < AChanges[mIndex].Line + AChanges[mIndex].Count) then
     begin
-      AIndex := Index;
-      if AChanges[Index].Kind = TAtlasLineChangeKind.Added then
+      AIndex := mIndex;
+      if AChanges[mIndex].Kind = TAtlasLineChangeKind.Added then
       begin
         Result := TAtlasLineMark.Added;
       end
@@ -151,14 +151,14 @@ end;
 
 class function TAtlasLineChanges.DeletedAt(const AChanges: TAtlasLineChangeList; ALine, ALineCount: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(AChanges) do
+  for mIndex := 0 to High(AChanges) do
   begin
-    if (AChanges[Index].Kind = TAtlasLineChangeKind.Deleted) and ((AChanges[Index].Line = ALine) or
-      ((ALine = ALineCount - 1) and (AChanges[Index].Line >= ALineCount))) then
+    if (AChanges[mIndex].Kind = TAtlasLineChangeKind.Deleted) and ((AChanges[mIndex].Line = ALine) or
+      ((ALine = ALineCount - 1) and (AChanges[mIndex].Line >= ALineCount))) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -176,7 +176,7 @@ end;
 class function TAtlasLineChanges.Next(const AChanges: TAtlasLineChangeList; ALine, ALineCount: Integer;
   AForward: Boolean; out ATarget: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 
   function StartOf(AIndex: Integer): Integer;
   begin
@@ -202,11 +202,11 @@ begin
   end;
   if AForward then
   begin
-    for Index := 0 to High(AChanges) do
+    for mIndex := 0 to High(AChanges) do
     begin
-      if (StartOf(Index) > ALine) and not Contains(Index) then
+      if (StartOf(mIndex) > ALine) and not Contains(mIndex) then
       begin
-        ATarget := StartOf(Index);
+        ATarget := StartOf(mIndex);
         Exit;
       end;
     end;
@@ -214,11 +214,11 @@ begin
   end
   else
   begin
-    for Index := High(AChanges) downto 0 do
+    for mIndex := High(AChanges) downto 0 do
     begin
-      if (StartOf(Index) < ALine) and not Contains(Index) then
+      if (StartOf(mIndex) < ALine) and not Contains(mIndex) then
       begin
-        ATarget := StartOf(Index);
+        ATarget := StartOf(mIndex);
         Exit;
       end;
     end;
@@ -229,12 +229,12 @@ end;
 class function TAtlasLineChanges.Revert(const AChange: TAtlasLineChange; const ALines: TArray<string>;
   const ALineBreak: string): TAtlasLineEdit;
 var
-  Old: string;
-  Last: Integer;
+  mOld: string;
+  mLast: Integer;
 begin
   Result := Default(TAtlasLineEdit);
-  Old := string.Join(ALineBreak, AChange.OldLines);
-  Last := AChange.Line + AChange.Count;
+  mOld := string.Join(ALineBreak, AChange.OldLines);
+  mLast := AChange.Line + AChange.Count;
   if AChange.Kind = TAtlasLineChangeKind.Deleted then
   begin
     if AChange.Line < Length(ALines) then
@@ -242,7 +242,7 @@ begin
       // Vor der Zeile einfügen.
       Result.StartLine := AChange.Line;
       Result.EndLine := AChange.Line;
-      Result.NewText := Old + ALineBreak;
+      Result.NewText := mOld + ALineBreak;
     end
     else
     begin
@@ -254,19 +254,19 @@ begin
       end;
       Result.EndLine := Result.StartLine;
       Result.EndCharacter := Result.StartCharacter;
-      Result.NewText := ALineBreak + Old;
+      Result.NewText := ALineBreak + mOld;
     end;
     Exit;
   end;
-  if Last < Length(ALines) then
+  if mLast < Length(ALines) then
   begin
     // Ganze Zeilen samt Umbruch ersetzen.
     Result.StartLine := AChange.Line;
-    Result.EndLine := Last;
-    Result.NewText := Old;
+    Result.EndLine := mLast;
+    Result.NewText := mOld;
     if AChange.Kind = TAtlasLineChangeKind.Modified then
     begin
-      Result.NewText := Old + ALineBreak;
+      Result.NewText := mOld + ALineBreak;
     end;
     Exit;
   end;
@@ -286,29 +286,29 @@ begin
   else
   begin
     Result.StartLine := AChange.Line;
-    Result.NewText := Old;
+    Result.NewText := mOld;
   end;
 end;
 
 class function TAtlasLineChanges.BlameLine(const AHunks: TArray<TTextLineHunk>; ABufferLine: Integer): Integer;
 var
-  Hunk: TTextLineHunk;
-  Shift: Integer;
+  mHunk: TTextLineHunk;
+  mShift: Integer;
 begin
-  Shift := 0;
-  for Hunk in AHunks do
+  mShift := 0;
+  for mHunk in AHunks do
   begin
-    if ABufferLine < Hunk.NewStart then
+    if ABufferLine < mHunk.NewStart then
     begin
       Break;
     end;
-    if ABufferLine < Hunk.NewStart + Hunk.NewCount then
+    if ABufferLine < mHunk.NewStart + mHunk.NewCount then
     begin
       Exit(-1);
     end;
-    Shift := Hunk.OldCount - Hunk.NewCount + Shift;
+    mShift := mHunk.OldCount - mHunk.NewCount + mShift;
   end;
-  Result := ABufferLine + Shift;
+  Result := ABufferLine + mShift;
 end;
 
 class function TAtlasLineChanges.BlameLine(const ADisk, ABuffer: TArray<string>; ABufferLine: Integer): Integer;
@@ -318,46 +318,46 @@ end;
 
 class function TAtlasLineChanges.Age(ANow, ADate: TDateTime): TAtlasAge;
 var
-  Minutes: Int64;
+  mMinutes: Int64;
 begin
   Result.Count := 0;
-  Minutes := Max(0, MinutesBetween(ANow, ADate));
+  mMinutes := Max(0, MinutesBetween(ANow, ADate));
   if ANow < ADate then
   begin
-    Minutes := 0;
+    mMinutes := 0;
   end;
-  if Minutes < 1 then
+  if mMinutes < 1 then
   begin
     Result.Unit_ := TAtlasAgeUnit.JustNow;
   end
-  else if Minutes < 60 then
+  else if mMinutes < 60 then
   begin
     Result.Unit_ := TAtlasAgeUnit.Minutes;
-    Result.Count := Integer(Minutes);
+    Result.Count := Integer(mMinutes);
   end
-  else if Minutes < 24 * 60 then
+  else if mMinutes < 24 * 60 then
   begin
     Result.Unit_ := TAtlasAgeUnit.Hours;
-    Result.Count := Integer(Minutes div 60);
+    Result.Count := Integer(mMinutes div 60);
   end
-  else if Minutes < 2 * 24 * 60 then
+  else if mMinutes < 2 * 24 * 60 then
   begin
     Result.Unit_ := TAtlasAgeUnit.Yesterday;
   end
-  else if Minutes < 30 * 24 * 60 then
+  else if mMinutes < 30 * 24 * 60 then
   begin
     Result.Unit_ := TAtlasAgeUnit.Days;
-    Result.Count := Integer(Minutes div (24 * 60));
+    Result.Count := Integer(mMinutes div (24 * 60));
   end
-  else if Minutes < 365 * 24 * 60 then
+  else if mMinutes < 365 * 24 * 60 then
   begin
     Result.Unit_ := TAtlasAgeUnit.Months;
-    Result.Count := Integer(Minutes div (30 * 24 * 60));
+    Result.Count := Integer(mMinutes div (30 * 24 * 60));
   end
   else
   begin
     Result.Unit_ := TAtlasAgeUnit.Years;
-    Result.Count := Integer(Minutes div (365 * 24 * 60));
+    Result.Count := Integer(mMinutes div (365 * 24 * 60));
   end;
 end;
 

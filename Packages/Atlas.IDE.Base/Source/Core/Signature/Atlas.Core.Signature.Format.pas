@@ -47,7 +47,7 @@ type
   TAtlasSignatureFormats = record
   public const
     /// <summary>Zahl der Farben; danach wiederholen sie sich.</summary>
-    SlotCount = 6;
+    cSlotCount = 6;
   public
     /// <summary>Zeile zum Eintrag AArgument (-1 außerhalb der Liste: nur ein Problem).</summary>
     class function Line(const AFormat: TAtlasSignatureFormat; AArgument: Integer): TAtlasFormatLine; static;
@@ -184,7 +184,7 @@ begin
   mMark.Line := ARange.StartLine;
   mMark.Start := ARange.StartCharacter;
   mMark.Stop := ARange.EndCharacter;
-  mMark.Slot := ASlot mod TAtlasSignatureFormats.SlotCount;
+  mMark.Slot := ASlot mod TAtlasSignatureFormats.cSlotCount;
   AMarks := AMarks + [mMark];
 end;
 

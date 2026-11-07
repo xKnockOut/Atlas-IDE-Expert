@@ -233,8 +233,8 @@ begin
   begin
     Exit(TAtlasRulesStrings.Text(TAtlasRulesTextId.BaselineUpdateFailed));
   end;
-  if not TAtlasIdeHost.RunCommandAsync(FScope, TAtlasFeature.Menu, TAtlasProjectBaselines.Command,
-    TAtlasProjectBaselines.Arguments(TLspSession.PathToUri(AProject)), TAtlasProjectBaselines.TimeoutMs,
+  if not TAtlasIdeHost.RunCommandAsync(FScope, TAtlasFeature.Menu, TAtlasProjectBaselines.cCommand,
+    TAtlasProjectBaselines.Arguments(TLspSession.PathToUri(AProject)), TAtlasProjectBaselines.cTimeoutMs,
     UpdateAnswer(AProject, ADone)) then
   begin
     // Ein Befehl im Hintergrund läuft schon (etwa die Werte nach einem Build): später noch einmal.
@@ -337,8 +337,8 @@ begin
   end;
   // Startet den Server bei Bedarf; der Befehl selbst läuft nebenläufig im Hintergrund.
   if (TAtlasIdeHost.ActiveSession = nil) or not TAtlasIdeHost.RunServerCommandAsync(FScope, TAtlasFeature.Menu,
-    TAtlasBuildVerdicts.AddCommand, TAtlasBuildVerdicts.Arguments(TLspSession.PathToUri(mFileName), mMessages),
-    TAtlasBuildVerdicts.AddTimeoutMs, ReportCompilerBaseline) then
+    TAtlasBuildVerdicts.cAddCommand, TAtlasBuildVerdicts.Arguments(TLspSession.PathToUri(mFileName), mMessages),
+    TAtlasBuildVerdicts.cAddTimeoutMs, ReportCompilerBaseline) then
   begin
     TAtlasIdeHost.Warning(TAtlasRulesStrings.Text(TAtlasRulesTextId.CompilerBaselineFailed));
   end;

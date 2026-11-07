@@ -135,7 +135,7 @@ var
 begin
   mList := SvnList;
   mCells := TAtlasWorkingCopiesDialog.Cells(TAtlasVcsKind.Svn, mList.Rows[0], 'Kasse', False);
-  Assert.AreEqual(Integer(TAtlasWorkingCopiesDialog.ColumnCount), Integer(Length(mCells)));
+  Assert.AreEqual(Integer(TAtlasWorkingCopiesDialog.cColumnCount), Integer(Length(mCells)));
   Assert.AreEqual('Kasse', mCells[0]);
   Assert.AreEqual('^/Kasse/branches/KASSE-42', mCells[1]);
   Assert.AreEqual('r48231', mCells[2]);

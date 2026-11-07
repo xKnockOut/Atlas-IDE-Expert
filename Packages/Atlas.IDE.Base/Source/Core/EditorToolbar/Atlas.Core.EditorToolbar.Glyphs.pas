@@ -31,9 +31,9 @@ type
   TAtlasGlyphs = class
   public const
     /// <summary>Kantenlänge des Felds in Einheiten.</summary>
-    Size = 16;
+    cSize = 16;
     /// <summary>Linienbreite in Einheiten.</summary>
-    StrokeWidth = 1.4;
+    cStrokeWidth = 1.4;
   public
     class function Shapes(AIcon: TAtlasToolbarIcon): TArray<TAtlasGlyphShape>; static;
   end;
@@ -43,20 +43,20 @@ implementation
 uses
   System.Math;
 
-function P(X, Y: Single): TAtlasGlyphPoint;
+function P(AX, AY: Single): TAtlasGlyphPoint;
 begin
-  Result.X := X;
-  Result.Y := Y;
+  Result.X := AX;
+  Result.Y := AY;
 end;
 
 function Stroke(const APoints: array of TAtlasGlyphPoint): TAtlasGlyphShape;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   SetLength(Result.Points, Length(APoints));
-  for Index := 0 to High(APoints) do
+  for mIndex := 0 to High(APoints) do
   begin
-    Result.Points[Index] := APoints[Index];
+    Result.Points[mIndex] := APoints[mIndex];
   end;
   Result.Closed := False;
   Result.Filled := False;
@@ -77,22 +77,22 @@ end;
 
 /// <summary>Punkte eines Bogens um CX/CY mit Radius R von AFrom bis ATo Grad (Bildschirmrichtung, 0 = rechts,
 /// 90 = unten), ohne den Anfangspunkt.</summary>
-function ArcPoints(CX, CY, R, AFrom, ATo: Single; ASteps: Integer): TArray<TAtlasGlyphPoint>;
+function ArcPoints(ACX, ACY, AR, AFrom, ATo: Single; ASteps: Integer): TArray<TAtlasGlyphPoint>;
 var
-  Index: Integer;
-  Angle: Single;
+  mIndex: Integer;
+  mAngle: Single;
 begin
   SetLength(Result, ASteps);
-  for Index := 1 to ASteps do
+  for mIndex := 1 to ASteps do
   begin
-    Angle := DegToRad(AFrom + (ATo - AFrom) * Index / ASteps);
-    Result[Index - 1] := P(CX + R * Cos(Angle), CY + R * Sin(Angle));
+    mAngle := DegToRad(AFrom + (ATo - AFrom) * mIndex / ASteps);
+    Result[mIndex - 1] := P(ACX + AR * Cos(mAngle), ACY + AR * Sin(mAngle));
   end;
 end;
 
-function Circle(CX, CY, R: Single; AFilled: Boolean): TAtlasGlyphShape;
+function Circle(ACX, ACY, AR: Single; AFilled: Boolean): TAtlasGlyphShape;
 begin
-  Result.Points := ArcPoints(CX, CY, R, 0, 360, 24);
+  Result.Points := ArcPoints(ACX, ACY, AR, 0, 360, 24);
   Result.Closed := True;
   Result.Filled := AFilled;
 end;
@@ -102,59 +102,60 @@ end;
 function EyeOutline: TAtlasGlyphShape;
 const
   // Je Bogen Start, zwei Stützpunkte, Ende.
-  Arcs: array[0..3, 0..3, 0..1] of Single = (
+  cArcs: array[0..3, 0..3, 0..1] of Single = (
     ((1.5, 8), (1.5, 8), (3.9, 3.5), (8, 3.5)),
     ((8, 3.5), (12.1, 3.5), (14.5, 8), (14.5, 8)),
     ((14.5, 8), (14.5, 8), (12.1, 12.5), (8, 12.5)),
     ((8, 12.5), (3.9, 12.5), (1.5, 8), (1.5, 8)));
-  Steps = 8;
+  cSteps = 8;
 var
-  Points: TArray<TAtlasGlyphPoint>;
-  Arc, Step: Integer;
+  mPoints: TArray<TAtlasGlyphPoint>;
+  mArc, mStep: Integer;
   T, U: Single;
 begin
-  Points := nil;
-  for Arc := 0 to High(Arcs) do
+  mPoints := nil;
+  for mArc := 0 to High(cArcs) do
   begin
-    for Step := 0 to Steps - 1 do
+    for mStep := 0 to cSteps - 1 do
     begin
-      T := Step / Steps;
+      T := mStep / cSteps;
       U := 1 - T;
-      Points := Points + [P(U * U * U * Arcs[Arc, 0, 0] + 3 * U * U * T * Arcs[Arc, 1, 0] + 3 * U * T * T * Arcs[Arc, 2, 0] +
-        T * T * T * Arcs[Arc, 3, 0], U * U * U * Arcs[Arc, 0, 1] + 3 * U * U * T * Arcs[Arc, 1, 1] +
-        3 * U * T * T * Arcs[Arc, 2, 1] + T * T * T * Arcs[Arc, 3, 1])];
+      mPoints := mPoints + [P(U * U * U * cArcs[mArc, 0, 0] + 3 * U * U * T * cArcs[mArc, 1, 0] + 3 * U * T * T *
+        cArcs[mArc, 2, 0] +
+        T * T * T * cArcs[mArc, 3, 0], U * U * U * cArcs[mArc, 0, 1] + 3 * U * U * T * cArcs[mArc, 1, 1] +
+        3 * U * T * T * cArcs[mArc, 2, 1] + T * T * T * cArcs[mArc, 3, 1])];
     end;
   end;
-  Result.Points := Points;
+  Result.Points := mPoints;
   Result.Closed := True;
   Result.Filled := False;
 end;
 
 /// <summary>Umriss eines Zahnrads um CX/CY mit ATeeth Zähnen: Kopf auf AOuter, Fuß auf AInner, Zahn und Lücke etwa
 /// gleich breit. Je Zahn vier Punkte (Fuß, Flanke hinauf, Kopf, Flanke hinab).</summary>
-function GearOutline(CX, CY, AOuter, AInner: Single; ATeeth: Integer): TAtlasGlyphShape;
+function GearOutline(ACX, ACY, AOuter, AInner: Single; ATeeth: Integer): TAtlasGlyphShape;
 var
-  Points: TArray<TAtlasGlyphPoint>;
-  Tooth: Integer;
-  Step, Start: Single;
+  mPoints: TArray<TAtlasGlyphPoint>;
+  mTooth: Integer;
+  mStep, mStart: Single;
 
   procedure Add(AAngle, ARadius: Single);
   begin
-    Points := Points + [P(CX + ARadius * Cos(AAngle), CY + ARadius * Sin(AAngle))];
+    mPoints := mPoints + [P(ACX + ARadius * Cos(AAngle), ACY + ARadius * Sin(AAngle))];
   end;
 
 begin
-  Points := nil;
-  Step := 2 * Pi / ATeeth;
-  for Tooth := 0 to ATeeth - 1 do
+  mPoints := nil;
+  mStep := 2 * Pi / ATeeth;
+  for mTooth := 0 to ATeeth - 1 do
   begin
-    Start := Tooth * Step - Step / 4;
-    Add(Start, AInner);
-    Add(Start + Step * 0.12, AOuter);
-    Add(Start + Step * 0.38, AOuter);
-    Add(Start + Step * 0.5, AInner);
+    mStart := mTooth * mStep - mStep / 4;
+    Add(mStart, AInner);
+    Add(mStart + mStep * 0.12, AOuter);
+    Add(mStart + mStep * 0.38, AOuter);
+    Add(mStart + mStep * 0.5, AInner);
   end;
-  Result.Points := Points;
+  Result.Points := mPoints;
   Result.Closed := True;
   Result.Filled := False;
 end;
@@ -162,17 +163,17 @@ end;
 function Join(const A: array of TAtlasGlyphPoint; const B: TArray<TAtlasGlyphPoint>;
   const C: array of TAtlasGlyphPoint): TArray<TAtlasGlyphPoint>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to High(A) do
+  for mIndex := 0 to High(A) do
   begin
-    Result := Result + [A[Index]];
+    Result := Result + [A[mIndex]];
   end;
   Result := Result + B;
-  for Index := 0 to High(C) do
+  for mIndex := 0 to High(C) do
   begin
-    Result := Result + [C[Index]];
+    Result := Result + [C[mIndex]];
   end;
 end;
 
@@ -265,7 +266,8 @@ begin
   end;
 end;
 
-/// <summary>Formen der Symbole für Designer-Leiste (#1442): Formen wie in den Mockups (Strichsymbole, viewBox 0 0 16 16); nil für andere.</summary>
+/// <summary>Formen der Symbole für Designer-Leiste (#1442): Formen wie in den Mockups (Strichsymbole, viewBox 0 0 16
+/// 16); nil für andere.</summary>
 function DesignerShapes(AIcon: TAtlasToolbarIcon): TArray<TAtlasGlyphShape>;
 begin
   case AIcon of

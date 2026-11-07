@@ -204,7 +204,8 @@ begin
   case AHost.FShowIn of
     TAtlasEditorBarView.Code:
       // Nicht im Designer und nicht auf der Willkommensseite (#1442).
-      Result := TAtlasIdeDesignerView.CodeShown(TAtlasEditorBarHost.EditorIn(AEditorParent)) and not TAtlasIdeDesignerView.Shown(AEditorParent);
+      Result := TAtlasIdeDesignerView.CodeShown(TAtlasEditorBarHost.EditorIn(AEditorParent)) and
+        not TAtlasIdeDesignerView.Shown(AEditorParent);
     TAtlasEditorBarView.Designer:
       Result := TAtlasIdeDesignerView.Shown(AEditorParent);
   else

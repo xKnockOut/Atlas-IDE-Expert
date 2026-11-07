@@ -77,7 +77,8 @@ end;
 
 class procedure TAtlasSettingsSection.ProvideIn(const AScope: IAtlasModuleScope);
 begin
-  AScope.Provide(IAtlasSettingsSectionProvider, TAtlasSettingsSectionFactory.Create(Self) as IAtlasSettingsSectionProvider);
+  AScope.Provide(IAtlasSettingsSectionProvider,
+    TAtlasSettingsSectionFactory.Create(Self) as IAtlasSettingsSectionProvider);
 end;
 
 procedure TAtlasSettingsSection.Build(const AHost: IAtlasSettingsSectionHost);

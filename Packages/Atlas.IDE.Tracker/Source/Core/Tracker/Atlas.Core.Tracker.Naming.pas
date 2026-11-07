@@ -253,9 +253,9 @@ end;
 function Sanitize(const AName: string): string;
 begin
   Result := TrimParts(CollapseRepeats(ReplaceForbidden(AName)));
-  if Length(Result) > TAtlasVcsBranchNames.MaxLength then
+  if Length(Result) > TAtlasVcsBranchNames.cMaxLength then
   begin
-    Result := Copy(Result, 1, TAtlasVcsBranchNames.MaxLength);
+    Result := Copy(Result, 1, TAtlasVcsBranchNames.cMaxLength);
     while (Result <> '') and CharInSet(Result[Length(Result)], ['.', '-', '/']) do
     begin
       Delete(Result, Length(Result), 1);

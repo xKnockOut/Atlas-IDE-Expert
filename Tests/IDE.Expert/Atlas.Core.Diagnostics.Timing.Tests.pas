@@ -120,7 +120,7 @@ begin
       Timings.BeginQuery(0, 'Bezeichner', '');
     end;
     Queries := Timings.Snapshot;
-    Assert.AreEqual(TAtlasQueryTimings.Capacity, Integer(Length(Queries)));
+    Assert.AreEqual(TAtlasQueryTimings.cCapacity, Integer(Length(Queries)));
     Assert.AreEqual(11, Queries[0].Id, 'die ältesten fallen heraus');
     Assert.AreEqual(60, Queries[High(Queries)].Id);
     Assert.AreEqual(60, Timings.Current);

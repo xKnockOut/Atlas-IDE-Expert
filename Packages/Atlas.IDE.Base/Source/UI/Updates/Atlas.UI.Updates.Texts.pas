@@ -34,7 +34,7 @@ const
     TUpdateErrors.cNoCompiler, TUpdateErrors.cDownload, TUpdateErrors.cHash, TUpdateErrors.cArchive,
     TUpdateErrors.cUnsigned, TUpdateErrors.cSignature, TUpdateErrors.cBuild, TUpdateErrors.cLocked,
     TUpdateErrors.cCopyFailed, TUpdateErrors.cRegistry, TUpdateErrors.cCancelled, TUpdateErrors.cElevation,
-    TUpdateErrors.cSelection, TUpdateErrors.cUnexpected, TAtlasUpdateInstall.StartFailed);
+    TUpdateErrors.cSelection, TUpdateErrors.cUnexpected, TAtlasUpdateInstall.cStartFailed);
   cCodeTexts: array[0..17] of TAtlasUpdatesTextId = (
     TAtlasUpdatesTextId.UpdatesErrorManifest, TAtlasUpdatesTextId.UpdatesErrorVersion,
     TAtlasUpdatesTextId.UpdatesErrorNoPackage, TAtlasUpdatesTextId.UpdatesErrorNoCompiler,

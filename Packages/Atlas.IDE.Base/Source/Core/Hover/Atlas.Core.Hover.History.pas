@@ -23,9 +23,9 @@ type
 
   TAtlasHoverHistory = class
   public const
-    MaxSteps = 10;
+    cMaxSteps = 10;
     /// <summary>Mehr Einträge zeigt die Pfadzeile nicht; davor steht "…".</summary>
-    MaxPathShown = 4;
+    cMaxPathShown = 4;
   private
     FItems: TArray<TAtlasHoverData>;
     FPinned: Boolean;
@@ -101,7 +101,7 @@ end;
 
 function TAtlasHoverHistory.Open(const ARef: TAtlasHoverTypeRef): Boolean;
 var
-  Data: TAtlasHoverData;
+  mData: TAtlasHoverData;
 begin
   if Length(FItems) = 0 then
   begin
@@ -113,18 +113,18 @@ begin
     FPinned := True;
     Exit(True);
   end;
-  if not (Assigned(FFetch) and FFetch(ARef, Data) and Data.Found) then
+  if not (Assigned(FFetch) and FFetch(ARef, mData) and mData.Found) then
   begin
     Exit(False);
   end;
-  if Data.Location.Name = '' then
+  if mData.Location.Name = '' then
   begin
-    Data.Location.Name := ARef.Name;
+    mData.Location.Name := ARef.Name;
   end;
-  FItems := FItems + [Data];
-  if Length(FItems) > MaxSteps then
+  FItems := FItems + [mData];
+  if Length(FItems) > cMaxSteps then
   begin
-    Delete(FItems, 0, Length(FItems) - MaxSteps);
+    Delete(FItems, 0, Length(FItems) - cMaxSteps);
   end;
   FPinned := True;
   Result := True;
@@ -155,23 +155,23 @@ end;
 
 function TAtlasHoverHistory.Path: TArray<TAtlasHoverPathItem>;
 var
-  First, Index: Integer;
-  Item: TAtlasHoverPathItem;
+  mFirst, mIndex: Integer;
+  mItem: TAtlasHoverPathItem;
 begin
   Result := nil;
-  First := 0;
-  if Length(FItems) > MaxPathShown then
+  mFirst := 0;
+  if Length(FItems) > cMaxPathShown then
   begin
-    First := Length(FItems) - MaxPathShown + 1;
-    Item.Index := -1;
-    Item.Caption := '…';
-    Result := Result + [Item];
+    mFirst := Length(FItems) - cMaxPathShown + 1;
+    mItem.Index := -1;
+    mItem.Caption := '…';
+    Result := Result + [mItem];
   end;
-  for Index := First to High(FItems) do
+  for mIndex := mFirst to High(FItems) do
   begin
-    Item.Index := Index;
-    Item.Caption := FItems[Index].Title;
-    Result := Result + [Item];
+    mItem.Index := mIndex;
+    mItem.Caption := FItems[mIndex].Title;
+    Result := Result + [mItem];
   end;
 end;
 

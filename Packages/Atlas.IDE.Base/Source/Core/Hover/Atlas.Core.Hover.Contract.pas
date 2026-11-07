@@ -66,11 +66,11 @@ type
 
   TAtlasHoverData = record
   public const
-    KindClassRef = 'classref';
+    cKindClassRef = 'classref';
     /// <summary>Bis zu so vielen Gliedern zeigt der Tooltip die ganze Kette.</summary>
-    MaxChainShown = 5;
+    cMaxChainShown = 5;
     /// <summary>So viele Zeilen nennt ReassignedText.</summary>
-    MaxReassignedLines = 5;
+    cMaxReassignedLines = 5;
   public
     Declaration: string;
     UnitName: string;
@@ -209,34 +209,34 @@ end;
 
 function TAtlasHoverData.ReassignedText(const AOne, ACount: string): string;
 var
-  Index: Integer;
-  Lines: string;
+  mIndex: Integer;
+  mLines: string;
 begin
   Result := '';
   if (ReassignedTarget = '') or (ReassignedWrites <= 0) then
   begin
     Exit;
   end;
-  Lines := '';
-  for Index := 0 to Min(High(ReassignedLines), MaxReassignedLines - 1) do
+  mLines := '';
+  for mIndex := 0 to Min(High(ReassignedLines), cMaxReassignedLines - 1) do
   begin
-    if Lines <> '' then
+    if mLines <> '' then
     begin
-      Lines := Lines + ', ';
+      mLines := mLines + ', ';
     end;
-    Lines := Lines + IntToStr(ReassignedLines[Index] + 1);
+    mLines := mLines + IntToStr(ReassignedLines[mIndex] + 1);
   end;
-  if Length(ReassignedLines) > MaxReassignedLines then
+  if Length(ReassignedLines) > cMaxReassignedLines then
   begin
-    Lines := Lines + ', …';
+    mLines := mLines + ', …';
   end;
   if ReassignedWrites = 1 then
   begin
-    Result := Format(AOne, [Lines]);
+    Result := Format(AOne, [mLines]);
   end
   else
   begin
-    Result := Format(ACount, [ReassignedWrites, Lines]);
+    Result := Format(ACount, [ReassignedWrites, mLines]);
   end;
 end;
 
@@ -249,12 +249,12 @@ end;
 
 function TAtlasHoverData.MemberCount(AEvents: Boolean): Integer;
 var
-  Member: TAtlasHoverMember;
+  mMember: TAtlasHoverMember;
 begin
   Result := 0;
-  for Member in Members do
+  for mMember in Members do
   begin
-    if Member.IsEvent = AEvents then
+    if mMember.IsEvent = AEvents then
     begin
       Inc(Result);
     end;
@@ -263,35 +263,36 @@ end;
 
 function TAtlasHoverData.VisibleMembers(AEvents, AInherited, AOnlyDefaults: Boolean): TArray<Integer>;
 var
-  Index: Integer;
-  Own: string;
+  mIndex: Integer;
+  mOwn: string;
 begin
   Result := nil;
-  Own := Title;
-  for Index := 0 to High(Members) do
+  mOwn := Title;
+  for mIndex := 0 to High(Members) do
   begin
-    if Members[Index].Matches(AEvents, AOnlyDefaults) and (AInherited or SameText(Members[Index].DeclaringClass, Own))
+    if Members[mIndex].Matches(AEvents, AOnlyDefaults) and
+      (AInherited or SameText(Members[mIndex].DeclaringClass, mOwn))
     then
     begin
-      Result := Result + [Index];
+      Result := Result + [mIndex];
     end;
   end;
 end;
 
 function TAtlasHoverData.MembersText(AInherited, AOnlyDefaults: Boolean; const AImplicit: string): string;
 var
-  Index, Pass: Integer;
-  Member: TAtlasHoverMember;
+  mIndex, mPass: Integer;
+  mMember: TAtlasHoverMember;
 begin
   Result := Title;
   // Erst Properties, dann Ereignisse.
-  for Pass := 0 to 1 do
+  for mPass := 0 to 1 do
   begin
-    for Index in VisibleMembers(Pass = 1, AInherited, AOnlyDefaults) do
+    for mIndex in VisibleMembers(mPass = 1, AInherited, AOnlyDefaults) do
     begin
-      Member := Members[Index];
-      Result := Result + sLineBreak + Member.Name + #9 + Member.TypeName + #9 + Member.DefaultText(AImplicit) + #9 +
-        Member.DeclaringClass;
+      mMember := Members[mIndex];
+      Result := Result + sLineBreak + mMember.Name + #9 + mMember.TypeName + #9 + mMember.DefaultText(AImplicit) + #9 +
+        mMember.DeclaringClass;
     end;
   end;
   if DefaultProperty <> '' then
@@ -302,9 +303,9 @@ end;
 
 function TAtlasHoverData.Title: string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  if (Length(Ancestors) > 0) and (Kind <> KindClassRef) then
+  if (Length(Ancestors) > 0) and (Kind <> cKindClassRef) then
   begin
     Exit(Ancestors[0].Name);
   end;
@@ -314,11 +315,11 @@ begin
   end;
   // Erster Bezeichner der Deklaration (TFoo = class, Name: Typ, procedure Bar).
   Result := Trim(Declaration);
-  for Index := 1 to Length(Result) do
+  for mIndex := 1 to Length(Result) do
   begin
-    if not CharInSet(Result[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '&']) then
+    if not CharInSet(Result[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '&']) then
     begin
-      Result := Copy(Result, 1, Index - 1);
+      Result := Copy(Result, 1, mIndex - 1);
       Break;
     end;
   end;
@@ -326,11 +327,11 @@ begin
     'var', 'const']) then
   begin
     Result := Trim(Copy(Trim(Declaration), Length(Result) + 1, MaxInt));
-    for Index := 1 to Length(Result) do
+    for mIndex := 1 to Length(Result) do
     begin
-      if not CharInSet(Result[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '&']) then
+      if not CharInSet(Result[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '&']) then
       begin
-        Result := Copy(Result, 1, Index - 1);
+        Result := Copy(Result, 1, mIndex - 1);
         Break;
       end;
     end;
@@ -387,34 +388,34 @@ end;
 
 function TAtlasHoverData.VisibleChain: TArray<Integer>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  if Length(Ancestors) <= MaxChainShown then
+  if Length(Ancestors) <= cMaxChainShown then
   begin
-    for Index := 0 to High(Ancestors) do
+    for mIndex := 0 to High(Ancestors) do
     begin
-      Result := Result + [Index];
+      Result := Result + [mIndex];
     end;
     Exit;
   end;
   // Die ersten vier, dann "…", dann das letzte (meist TObject).
-  for Index := 0 to MaxChainShown - 2 do
+  for mIndex := 0 to cMaxChainShown - 2 do
   begin
-    Result := Result + [Index];
+    Result := Result + [mIndex];
   end;
   Result := Result + [-1, High(Ancestors)];
 end;
 
 function TAtlasHoverData.LinkAt(AIndex: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Links) do
+  for mIndex := 0 to High(Links) do
   begin
-    if (AIndex >= Links[Index].Start) and (AIndex < Links[Index].Start + Links[Index].Length) then
+    if (AIndex >= Links[mIndex].Start) and (AIndex < Links[mIndex].Start + Links[mIndex].Length) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -422,42 +423,42 @@ end;
 
 function PlainText(const AHover: TJSONValue): string;
 var
-  Contents: TJSONValue;
+  mContents: TJSONValue;
 begin
   Result := '';
   if not (AHover is TJSONObject) then
   begin
     Exit;
   end;
-  Contents := TJSONObject(AHover).GetValue('contents');
-  if Contents is TJSONString then
+  mContents := TJSONObject(AHover).GetValue('contents');
+  if mContents is TJSONString then
   begin
-    Result := Contents.Value;
+    Result := mContents.Value;
   end
-  else if Contents is TJSONObject then
+  else if mContents is TJSONObject then
   begin
-    Result := TJSONObject(Contents).GetValue<string>('value', '');
+    Result := TJSONObject(mContents).GetValue<string>('value', '');
   end;
 end;
 
 function MemberFromJson(AObject: TJSONObject): TAtlasHoverMember;
 var
-  Kind: string;
+  mKind: string;
 begin
   Result := Default(TAtlasHoverMember);
   Result.Name := AObject.GetValue<string>('name', '');
   Result.TypeName := AObject.GetValue<string>('type', '');
   Result.DefaultValue := AObject.GetValue<string>('default', '');
-  Kind := AObject.GetValue<string>('defaultKind', '');
-  if Kind = 'explicit' then
+  mKind := AObject.GetValue<string>('defaultKind', '');
+  if mKind = 'explicit' then
   begin
     Result.DefaultKind := hdExplicit;
   end
-  else if Kind = 'implicit' then
+  else if mKind = 'implicit' then
   begin
     Result.DefaultKind := hdImplicit;
   end
-  else if Kind = 'nodefault' then
+  else if mKind = 'nodefault' then
   begin
     Result.DefaultKind := hdNoDefault;
   end;

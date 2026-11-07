@@ -79,13 +79,13 @@ uses
   Atlas.IDE.Editor.LineChanges;
 
 const
-  TickMs = 200;
+  cTickMs = 200;
   /// <summary>Tipp-Pause, bevor die Treffer neu gesucht werden.</summary>
-  QuietMs = 400;
-  HoverMs = 250;
+  cQuietMs = 400;
+  cHoverMs = 250;
   /// <summary>Höchstlänge der Zeile in der Vorschau.</summary>
-  MaxPreview = 160;
-  BookmarkCount = 10;
+  cMaxPreview = 160;
+  cBookmarkCount = 10;
 
 type
   TOverviewState = class
@@ -165,7 +165,7 @@ begin
   FTip := TAtlasTitledTip.Create(nil);
   FTip.GuardFeature := TAtlasFeature.OverviewRuler;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
   Reset;
@@ -211,26 +211,26 @@ end;
 /// <summary>Eigene Methode: Jeder Streifen braucht seine eigene gefangene Variable.</summary>
 function TOverviewState.CreateRuler: TAtlasOverviewRuler;
 var
-  Ruler: TAtlasOverviewRuler;
+  mRuler: TAtlasOverviewRuler;
 begin
-  Ruler := TAtlasOverviewRuler.Create(nil);
-  Result := Ruler;
-  Ruler.SetColors(TAtlasIdeStyle.Colors);
-  Ruler.OnJump :=
+  mRuler := TAtlasOverviewRuler.Create(nil);
+  Result := mRuler;
+  mRuler.SetColors(TAtlasIdeStyle.Colors);
+  mRuler.OnJump :=
     procedure(ALine: Integer)
     begin
       TAtlasGuard.Run(TAtlasFeature.OverviewRuler,
         procedure
         begin
-          Jump(Ruler, ALine);
+          Jump(mRuler, ALine);
         end);
     end;
-  Ruler.OnHover :=
+  mRuler.OnHover :=
     procedure(ALine, AMark: Integer; const APoint: TPoint)
     begin
-      Hover(Ruler, ALine, AMark, APoint);
+      Hover(mRuler, ALine, AMark, APoint);
     end;
-  Ruler.OnHoverEnd :=
+  mRuler.OnHoverEnd :=
     procedure
     begin
       HoverEnd;
@@ -394,7 +394,7 @@ begin
     Exit;
   end;
   Result := nil;
-  for mIndex := 0 to BookmarkCount - 1 do
+  for mIndex := 0 to cBookmarkCount - 1 do
   begin
     mBookmark := AView.BookmarkPos[mIndex];
     if mBookmark.Line > 0 then
@@ -502,7 +502,7 @@ begin
     FChangedAt := TThread.GetTickCount64;
   end;
   if (ATerm = FSearchTerm) and (AKey = FSearchOptions) and
-    ((FText = FSearchText) or (TThread.GetTickCount64 - FChangedAt < QuietMs)) then
+    ((FText = FSearchText) or (TThread.GetTickCount64 - FChangedAt < cQuietMs)) then
   begin
     Exit;
   end;
@@ -542,7 +542,7 @@ begin
   mRuler.SetMarks(Collect(mView, mLineCount), mLineCount, mView.TopRow - 1, mView.BottomRow - 1);
   // Vorschau nach kurzer Zeit über der Marke.
   if (FHoverRuler <> nil) and (FHoverLine >= 0) and not FTip.IsShown and
-    (TThread.GetTickCount64 - FHoverSince >= HoverMs) then
+    (TThread.GetTickCount64 - FHoverSince >= cHoverMs) then
   begin
     ShowPreview;
   end;
@@ -550,15 +550,15 @@ end;
 
 procedure TOverviewState.Jump(ARuler: TAtlasOverviewRuler; ALine: Integer);
 var
-  View: IOTAEditView;
+  mView: IOTAEditView;
 begin
   HoverEnd;
-  View := TAtlasEditorBuffer.ActiveView;
-  if (ARuler <> ActiveRuler) or (View = nil) or (View.Buffer = nil) or (ALine < 0) then
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (ARuler <> ActiveRuler) or (mView = nil) or (mView.Buffer = nil) or (ALine < 0) then
   begin
     Exit;
   end;
-  TAtlasIdeNavigation.GoToLocation(View.Buffer.FileName, ALine, 0);
+  TAtlasIdeNavigation.GoToLocation(mView.Buffer.FileName, ALine, 0);
 end;
 
 procedure TOverviewState.Hover(ARuler: TAtlasOverviewRuler; ALine, AMark: Integer; const APoint: TPoint);
@@ -587,34 +587,34 @@ end;
 
 procedure TOverviewState.ShowPreview;
 var
-  View: IOTAEditView;
-  Title, Text: string;
-  Width: Integer;
+  mView: IOTAEditView;
+  mTitle, mText: string;
+  mWidth: Integer;
 begin
-  View := TAtlasEditorBuffer.ActiveView;
-  if (FHoverRuler <> ActiveRuler) or (View = nil) or (View.Buffer = nil) then
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (FHoverRuler <> ActiveRuler) or (mView = nil) or (mView.Buffer = nil) then
   begin
     HoverEnd;
     Exit;
   end;
-  Title := TAtlasStrings.Fmt(TAtlasTextId.OverviewLine, [FHoverLine + 1]);
-  Text := Trim(TAtlasEditorBuffer.LineText(View, FHoverLine + 1));
-  if Length(Text) > MaxPreview then
+  mTitle := TAtlasStrings.Fmt(TAtlasTextId.OverviewLine, [FHoverLine + 1]);
+  mText := Trim(TAtlasEditorBuffer.LineText(mView, FHoverLine + 1));
+  if Length(mText) > cMaxPreview then
   begin
-    Text := Copy(Text, 1, MaxPreview) + '…';
+    mText := Copy(mText, 1, cMaxPreview) + '…';
   end;
   if (FHoverMark >= 0) and (FHoverMark <= High(FHoverRuler.Marks)) and (FHoverRuler.Marks[FHoverMark].Text <> '') then
   begin
-    Title := Title + ' · ' + FHoverRuler.Marks[FHoverMark].Text;
+    mTitle := mTitle + ' · ' + FHoverRuler.Marks[FHoverMark].Text;
   end;
-  if Text = '' then
+  if mText = '' then
   begin
-    Text := ' ';
+    mText := ' ';
   end;
   TAtlasIdeStyle.Apply(FTip, TRect.Create(FHoverPoint, FHoverPoint));
   // Links neben dem Streifen, damit die Maus ihn nicht verdeckt.
-  Width := FTip.Measure(Title, Text).cx;
-  FTip.ShowNote(Title, Text, Point(FHoverPoint.X - Width - MulDiv(12, FHoverRuler.CurrentPPI, 96), FHoverPoint.Y));
+  mWidth := FTip.Measure(mTitle, mText).cx;
+  FTip.ShowNote(mTitle, mText, Point(FHoverPoint.X - mWidth - MulDiv(12, FHoverRuler.CurrentPPI, 96), FHoverPoint.Y));
 end;
 
 procedure TOverviewState.Tick(Sender: TObject);

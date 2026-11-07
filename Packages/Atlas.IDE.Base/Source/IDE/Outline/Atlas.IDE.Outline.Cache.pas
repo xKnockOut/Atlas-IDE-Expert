@@ -73,13 +73,13 @@ uses
 
 const
   /// <summary>Tipppause, nach der neu gefragt wird.</summary>
-  PauseMs = 600;
+  cPauseMs = 600;
   /// <summary>Ohne Server oder nach Zeitgrenze: so oft neu versuchen.</summary>
-  RetryMs = 2000;
-  RequestTimeoutMs = 5000;
+  cRetryMs = 2000;
+  cRequestTimeoutMs = 5000;
   /// <summary>So viele Dateien bleiben gemerkt.</summary>
-  KeptFiles = 8;
-  PascalExtensions: array[0..4] of string = ('.pas', '.dpr', '.dpk', '.inc', '.pp');
+  cKeptFiles = 8;
+  cPascalExtensions: array[0..4] of string = ('.pas', '.dpr', '.dpk', '.inc', '.pp');
 
 type
   TEntry = class
@@ -111,23 +111,23 @@ end;
 
 procedure TrimEntries;
 var
-  Oldest: string;
-  Pair: TPair<string, TEntry>;
-  Time: UInt64;
+  mOldest: string;
+  mPair: TPair<string, TEntry>;
+  mTime: UInt64;
 begin
-  while Entries.Count > KeptFiles do
+  while Entries.Count > cKeptFiles do
   begin
-    Oldest := '';
-    Time := High(UInt64);
-    for Pair in Entries do
+    mOldest := '';
+    mTime := High(UInt64);
+    for mPair in Entries do
     begin
-      if Pair.Value.Used < Time then
+      if mPair.Value.Used < mTime then
       begin
-        Time := Pair.Value.Used;
-        Oldest := Pair.Key;
+        mTime := mPair.Value.Used;
+        mOldest := mPair.Key;
       end;
     end;
-    Entries.Remove(Oldest);
+    Entries.Remove(mOldest);
   end;
 end;
 
@@ -145,7 +145,7 @@ begin
   begin
     // Zeitgrenze oder Fehler: der alte Stand bleibt, später neu versuchen.
     mEntry.Loaded := False;
-    mEntry.RetryAt := GetTickCount64 + RetryMs;
+    mEntry.RetryAt := GetTickCount64 + cRetryMs;
     Exit;
   end;
   mEntry.Loaded := True;
@@ -172,7 +172,7 @@ begin
   AEntry.PendingVersion := ASnapshot.Version;
   // Bis die Antwort da ist (oder ausbleibt), nicht neu fragen.
   AEntry.Loaded := False;
-  AEntry.RetryAt := GetTickCount64 + RetryMs;
+  AEntry.RetryAt := GetTickCount64 + cRetryMs;
   mSession := nil;
   // Kann den Server starten und die Projektkontexte abgleichen (InvalidateAll); der Wächter hält das zurück.
   if Assigned(SessionOf) then
@@ -197,7 +197,7 @@ begin
     var
       mResponse: TJSONValue;
     begin
-      mResponse := mSession.DocumentSymbolTree(mFileName, RequestTimeoutMs);
+      mResponse := mSession.DocumentSymbolTree(mFileName, cRequestTimeoutMs);
       try
         mAnswered := mResponse <> nil;
         if mAnswered then
@@ -223,25 +223,25 @@ end;
 /// <summary>Load unter dem Wächter; danach Vorgemerktes nachholen. Der Eintrag kann danach freigegeben sein.</summary>
 procedure GuardedLoad(AEntry: TEntry; const ASnapshot: TAtlasEditorSnapshot);
 var
-  Clear: Boolean;
-  Keys: TArray<string>;
-  Pending: string;
+  mClear: Boolean;
+  mKeys: TArray<string>;
+  mPending: string;
 begin
   Guard.Enter;
   try
     Load(AEntry, ASnapshot);
   finally
-    if Guard.Leave(Clear, Keys) and (Entries <> nil) then
+    if Guard.Leave(mClear, mKeys) and (Entries <> nil) then
     begin
-      if Clear then
+      if mClear then
       begin
         Entries.Clear;
       end
       else
       begin
-        for Pending in Keys do
+        for mPending in mKeys do
         begin
-          Entries.Remove(Pending);
+          Entries.Remove(mPending);
         end;
       end;
     end;
@@ -278,11 +278,11 @@ end;
 
 class function TAtlasIdeOutlineCache.IsPascal(const AFileName: string): Boolean;
 var
-  Extension: string;
+  mExtension: string;
 begin
-  for Extension in PascalExtensions do
+  for mExtension in cPascalExtensions do
   begin
-    if SameText(ExtractFileExt(AFileName), Extension) then
+    if SameText(ExtractFileExt(AFileName), mExtension) then
     begin
       Exit(True);
     end;
@@ -310,37 +310,37 @@ end;
 /// einem Fehlschlag. Ein Takt mitten in einer Abfrage (Nachrichten beim Warten) lädt nichts.</summary>
 procedure UpdateEntry(const AFileName: string; const ASnapshot: TAtlasEditorSnapshot; AMoment: UInt64);
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
   if Guard.Busy or Request.Busy then
   begin
     Exit;
   end;
-  if not Entries.TryGetValue(Key(AFileName), Entry) then
+  if not Entries.TryGetValue(Key(AFileName), mEntry) then
   begin
-    Entry := TEntry.Create;
-    Entry.FileName := AFileName;
-    Entries.Add(Key(AFileName), Entry);
-    Entry.Used := AMoment;
+    mEntry := TEntry.Create;
+    mEntry.FileName := AFileName;
+    Entries.Add(Key(AFileName), mEntry);
+    mEntry.Used := AMoment;
     TrimEntries;
-    GuardedLoad(Entry, ASnapshot);
+    GuardedLoad(mEntry, ASnapshot);
   end
-  else if ASnapshot.Version = Entry.Version then
+  else if ASnapshot.Version = mEntry.Version then
   begin
-    if not Entry.Loaded and (AMoment >= Entry.RetryAt) then
+    if not mEntry.Loaded and (AMoment >= mEntry.RetryAt) then
     begin
-      GuardedLoad(Entry, ASnapshot);
+      GuardedLoad(mEntry, ASnapshot);
     end;
   end
   // Erst nach einer Tipppause neu fragen.
-  else if ASnapshot.Version <> Entry.PendingVersion then
+  else if ASnapshot.Version <> mEntry.PendingVersion then
   begin
-    Entry.PendingVersion := ASnapshot.Version;
-    Entry.PendingSince := AMoment;
+    mEntry.PendingVersion := ASnapshot.Version;
+    mEntry.PendingSince := AMoment;
   end
-  else if AMoment - Entry.PendingSince >= PauseMs then
+  else if AMoment - mEntry.PendingSince >= cPauseMs then
   begin
-    GuardedLoad(Entry, ASnapshot);
+    GuardedLoad(mEntry, ASnapshot);
   end;
 end;
 
@@ -366,9 +366,9 @@ end;
 
 class function TAtlasIdeOutlineCache.Refresh(const AView: IOTAEditView): TAtlasOutlineSnapshot;
 var
-  Entry: TEntry;
-  FileName: string;
-  Moment: UInt64;
+  mEntry: TEntry;
+  mFileName: string;
+  mMoment: UInt64;
 begin
   Result := Default(TAtlasOutlineSnapshot);
   Result.Status := TAtlasOutlineStatus.NoFile;
@@ -376,18 +376,18 @@ begin
   begin
     Exit;
   end;
-  FileName := AView.Buffer.FileName;
-  Result.FileName := FileName;
+  mFileName := AView.Buffer.FileName;
+  Result.FileName := mFileName;
   Result.Status := TAtlasOutlineStatus.Waiting;
-  Moment := GetTickCount64;
-  UpdateEntry(FileName, TAtlasEditorSnapshots.Get(AView), Moment);
+  mMoment := GetTickCount64;
+  UpdateEntry(mFileName, TAtlasEditorSnapshots.Get(AView), mMoment);
   // Nach dem Laden neu nachschlagen: Vorgemerktes Leeren kann den Eintrag freigegeben haben.
-  if (Entries = nil) or not Entries.TryGetValue(Key(FileName), Entry) then
+  if (Entries = nil) or not Entries.TryGetValue(Key(mFileName), mEntry) then
   begin
     Exit;
   end;
-  Entry.Used := Moment;
-  FillSnapshot(Entry, Result);
+  mEntry.Used := mMoment;
+  FillSnapshot(mEntry, Result);
 end;
 
 end.

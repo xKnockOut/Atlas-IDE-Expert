@@ -21,15 +21,15 @@ function ProblemColor(const AColors: TAtlasColors; const AProblem: TAtlasProblem
 
 const
   /// <summary>Mindestkontrast ausgegrauter Zeilen (WCAG AA).</summary>
-  AtlasDimmedMinContrast = 4.5;
+  cAtlasDimmedMinContrast = 4.5;
   /// <summary>Anteil des Textes über der Fläche für ausgegraute Zeilen, bevor der Kontrast nachgezogen wird.</summary>
-  AtlasMixDimmedText = 0.55;
+  cAtlasMixDimmedText = 0.55;
   /// <summary>Anteil der Symbolfarbe über der Fläche für ausgegraute Symbole.</summary>
-  AtlasMixDimmedIcon = 0.45;
+  cAtlasMixDimmedIcon = 0.45;
   /// <summary>Anteil des Akzents über der Fläche für die angepinnte aktive Unit (hell etwa #EEF4FB).</summary>
-  AtlasMixPinned = 0.07;
+  cAtlasMixPinned = 0.07;
   /// <summary>Anteil der Warnfarbe über der Fläche für neu dazugekommene Befunde.</summary>
-  AtlasMixNew = 0.2;
+  cAtlasMixNew = 0.2;
 
 /// <summary>Text einer ausgegrauten Zeile: AText zur Fläche ABack hin gemischt, aber mit mindestens 4,5 : 1
 /// Kontrast.</summary>
@@ -57,30 +57,30 @@ begin
   end;
   if AProblem.Stale then
   begin
-    Result := TAtlasColorMath.Mix(Result, AColors.Surface, AtlasMixFaded);
+    Result := TAtlasColorMath.Mix(Result, AColors.Surface, cAtlasMixFaded);
   end;
 end;
 
 function DimmedTextColor(AText, ABack: TAtlasColor): TAtlasColor;
 var
-  Alpha: Double;
-  Steps: Integer;
+  mAlpha: Double;
+  mSteps: Integer;
 begin
-  Alpha := AtlasMixDimmedText;
-  Result := TAtlasColorMath.Mix(AText, ABack, Alpha);
+  mAlpha := cAtlasMixDimmedText;
+  Result := TAtlasColorMath.Mix(AText, ABack, mAlpha);
   // Schrittweise zurück zum vollen Text, bis der Kontrast reicht; der volle Text ist die Untergrenze.
-  while (TAtlasColorMath.Contrast(Result, ABack) < AtlasDimmedMinContrast) and (Alpha < 1) do
+  while (TAtlasColorMath.Contrast(Result, ABack) < cAtlasDimmedMinContrast) and (mAlpha < 1) do
   begin
-    Alpha := Alpha + 0.05;
-    if Alpha > 1 then
+    mAlpha := mAlpha + 0.05;
+    if mAlpha > 1 then
     begin
-      Alpha := 1;
+      mAlpha := 1;
     end;
-    Result := TAtlasColorMath.Mix(AText, ABack, Alpha);
+    Result := TAtlasColorMath.Mix(AText, ABack, mAlpha);
   end;
   // Schon der volle Text ist zu blass (manche Themen): vom Hintergrund weg verstärken.
-  Steps := 0;
-  while (TAtlasColorMath.Contrast(Result, ABack) < AtlasDimmedMinContrast) and (Steps < 20) do
+  mSteps := 0;
+  while (TAtlasColorMath.Contrast(Result, ABack) < cAtlasDimmedMinContrast) and (mSteps < 20) do
   begin
     if TAtlasColorMath.IsDark(ABack) then
     begin
@@ -90,23 +90,23 @@ begin
     begin
       Result := TAtlasColorMath.Darken(Result, 0.05);
     end;
-    Inc(Steps);
+    Inc(mSteps);
   end;
 end;
 
 function DimmedIconColor(AIcon, ABack: TAtlasColor): TAtlasColor;
 begin
-  Result := TAtlasColorMath.Mix(AIcon, ABack, AtlasMixDimmedIcon);
+  Result := TAtlasColorMath.Mix(AIcon, ABack, cAtlasMixDimmedIcon);
 end;
 
 function PinnedBackColor(ABack: TAtlasColor): TAtlasColor;
 begin
-  Result := TAtlasColorMath.Mix(TAtlasColors.ForBackground(ABack).Accent, ABack, AtlasMixPinned);
+  Result := TAtlasColorMath.Mix(TAtlasColors.ForBackground(ABack).Accent, ABack, cAtlasMixPinned);
 end;
 
 function NewBackColor(ABack: TAtlasColor): TAtlasColor;
 begin
-  Result := TAtlasColorMath.Mix(TAtlasColors.ForBackground(ABack).Warn, ABack, AtlasMixNew);
+  Result := TAtlasColorMath.Mix(TAtlasColors.ForBackground(ABack).Warn, ABack, cAtlasMixNew);
 end;
 
 end.

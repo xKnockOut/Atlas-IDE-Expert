@@ -75,9 +75,9 @@ type
   TAtlasToolbarPlaces = record
   public const
     /// <summary>Teile ohne Index in den Knöpfen (PartNone vom Vorfahr ist -1).</summary>
-    PartReturn = -2;
-    PartMore = -3;
-    PartGear = -4;
+    cPartReturn = -2;
+    cPartMore = -3;
+    cPartGear = -4;
   public
     Ids: TArray<string>;
     Separators: TArray<Boolean>;
@@ -160,9 +160,9 @@ type
     /// <summary>Lage der Teile nach dem Layout (Client).</summary>
     function Places: TAtlasToolbarPlaces;
     /// <summary>Tooltip über dem Punkt (Client); '' = keiner.</summary>
-    function HintAt(X, Y: Integer): string;
+    function HintAt(AX, AY: Integer): string;
     /// <summary>Klick wie mit der Maus (für Tests): Knopf, Rücksprung, », Zahnrad unter dem Punkt.</summary>
-    procedure ClickAt(X, Y: Integer);
+    procedure ClickAt(AX, AY: Integer);
     property Labels: Boolean read FLabels write SetLabels;
     /// <summary>In der Brotkrumenzeile: ohne eigene Fläche unten, Trennlinie links.</summary>
     property InlineMode: Boolean read FInline write SetInline;
@@ -183,12 +183,12 @@ uses
   Atlas.UI.EditorToolbar.Glyphs;
 
 const
-  BaseButton = 24;
-  BaseSeparator = 9;
-  Margin = 4;
-  PartReturn = TAtlasToolbarPlaces.PartReturn;
-  PartMore = TAtlasToolbarPlaces.PartMore;
-  PartGear = TAtlasToolbarPlaces.PartGear;
+  cBaseButton = 24;
+  cBaseSeparator = 9;
+  cMargin = 4;
+  cPartReturn = TAtlasToolbarPlaces.cPartReturn;
+  cPartMore = TAtlasToolbarPlaces.cPartMore;
+  cPartGear = TAtlasToolbarPlaces.cPartGear;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -211,7 +211,7 @@ end;
 class function TAtlasToolbarButton.Separator: TAtlasToolbarButton;
 begin
   Result := Default(TAtlasToolbarButton);
-  Result.Id := TAtlasToolbarItems.Separator;
+  Result.Id := TAtlasToolbarItems.cSeparator;
 end;
 
 function TAtlasToolbarButton.IsSeparator: Boolean;
@@ -258,7 +258,7 @@ begin
     begin
       Continue;
     end;
-    if AOrder[mIndex] = PartReturn then
+    if AOrder[mIndex] = cPartReturn then
     begin
       Return := Rect(mLeft, ABand.Top, mLeft + ASlots[mIndex].Width, ABand.Bottom);
     end
@@ -317,15 +317,15 @@ var
 begin
   if Return.Contains(APoint) then
   begin
-    Exit(PartReturn);
+    Exit(cPartReturn);
   end;
   if More.Contains(APoint) then
   begin
-    Exit(PartMore);
+    Exit(cPartMore);
   end;
   if Gear.Contains(APoint) then
   begin
-    Exit(PartGear);
+    Exit(cPartGear);
   end;
   for mIndex := 0 to High(Rects) do
   begin
@@ -334,7 +334,7 @@ begin
       Exit(mIndex);
     end;
   end;
-  Result := TAtlasEditorBar.PartNone;
+  Result := TAtlasEditorBar.cPartNone;
 end;
 
 type
@@ -382,9 +382,9 @@ function TAtlasToolbarMeasure.ButtonWidth(const AButton: TAtlasToolbarButton): I
 begin
   if AButton.IsSeparator then
   begin
-    Exit(Bar.Scale(BaseSeparator));
+    Exit(Bar.Scale(cBaseSeparator));
   end;
-  Result := Bar.Scale(BaseButton);
+  Result := Bar.Scale(cBaseButton);
   if Bar.FLabels and (AButton.Caption <> '') then
   begin
     Bar.Canvas.Font := Bar.Font;
@@ -412,14 +412,14 @@ begin
     // Rücksprung hinter den angehefteten Abschnittssymbolen am Anfang.
     if not mPlaced and not Bar.FButtons[mIndex].Pinned then
     begin
-      Result := Result + [PartReturn];
+      Result := Result + [cPartReturn];
       mPlaced := True;
     end;
     Result := Result + [mIndex];
   end;
   if not mPlaced then
   begin
-    Result := Result + [PartReturn];
+    Result := Result + [cPartReturn];
   end;
 end;
 
@@ -431,7 +431,7 @@ begin
   SetLength(Result, Length(AOrder));
   for mIndex := 0 to High(AOrder) do
   begin
-    if AOrder[mIndex] = PartReturn then
+    if AOrder[mIndex] = cPartReturn then
     begin
       Result[mIndex] := TAtlasToolbarSlot.Create(ReturnWidth, False, True);
     end
@@ -702,10 +702,10 @@ begin
   mMeasure.Bar := Self;
   mOrder := mMeasure.Entries;
   mSlots := mMeasure.Slots(mOrder);
-  mWidth := Scale(BaseButton);
+  mWidth := Scale(cBaseButton);
   FPlaces := TAtlasToolbarPlaces.Create(FButtons);
-  FPlaces.Arrange(mOrder, mSlots, TAtlasToolbarLayout.Fit(mSlots, ClientWidth - 2 * Scale(Margin) - mWidth, mWidth),
-    Rect(Scale(Margin), Scale(1), ClientWidth - Scale(Margin), ClientHeight - Scale(1)), mWidth);
+  FPlaces.Arrange(mOrder, mSlots, TAtlasToolbarLayout.Fit(mSlots, ClientWidth - 2 * Scale(cMargin) - mWidth, mWidth),
+    Rect(Scale(cMargin), Scale(1), ClientWidth - Scale(cMargin), ClientHeight - Scale(1)), mWidth);
 end;
 
 function TAtlasEditorToolbar.PreferredWidth: Integer;
@@ -713,10 +713,10 @@ var
   mMeasure: TAtlasToolbarMeasure;
 begin
   mMeasure.Bar := Self;
-  Result := TAtlasToolbarLayout.FullWidth(mMeasure.Slots(mMeasure.Entries)) + 2 * Scale(Margin) + Scale(BaseButton);
+  Result := TAtlasToolbarLayout.FullWidth(mMeasure.Slots(mMeasure.Entries)) + 2 * Scale(cMargin) + Scale(cBaseButton);
   if FInline then
   begin
-    Inc(Result, Scale(Margin));
+    Inc(Result, Scale(cMargin));
   end;
 end;
 
@@ -735,13 +735,13 @@ end;
 function TAtlasEditorToolbar.PartHint(APart: Integer): string;
 begin
   case APart of
-    PartNone:
+    cPartNone:
       Result := '';
-    PartReturn:
+    cPartReturn:
       Result := FReturn.Hint;
-    PartMore:
+    cPartMore:
       Result := FTexts.More;
-    PartGear:
+    cPartGear:
       Result := FTexts.Gear;
   else
     Result := FButtons[APart].Hint;
@@ -757,9 +757,9 @@ begin
   Result := (APart < 0) or FButtons[APart].Enabled;
 end;
 
-function TAtlasEditorToolbar.HintAt(X, Y: Integer): string;
+function TAtlasEditorToolbar.HintAt(AX, AY: Integer): string;
 begin
-  Result := PartHint(PartAt(X, Y));
+  Result := PartHint(PartAt(AX, AY));
 end;
 
 procedure TAtlasEditorToolbar.Paint;
@@ -801,14 +801,14 @@ begin
   end;
   if not FPlaces.More.IsEmpty then
   begin
-    mPainter.Button(FPlaces.More, TAtlasToolbarButton.Create('', '', '', TAtlasToolbarIcon.More), Hot = PartMore, '');
+    mPainter.Button(FPlaces.More, TAtlasToolbarButton.Create('', '', '', TAtlasToolbarIcon.More), Hot = cPartMore, '');
   end;
-  mPainter.Button(FPlaces.Gear, TAtlasToolbarButton.Create('', '', '', TAtlasToolbarIcon.Gear), Hot = PartGear, '');
+  mPainter.Button(FPlaces.Gear, TAtlasToolbarButton.Create('', '', '', TAtlasToolbarIcon.Gear), Hot = cPartGear, '');
 end;
 
-procedure TAtlasEditorToolbar.ClickAt(X, Y: Integer);
+procedure TAtlasEditorToolbar.ClickAt(AX, AY: Integer);
 begin
-  Fire(PartAt(X, Y));
+  Fire(PartAt(AX, AY));
 end;
 
 procedure TAtlasEditorToolbar.PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer);
@@ -830,16 +830,16 @@ end;
 procedure TAtlasEditorToolbar.Fire(APart: Integer);
 begin
   case APart of
-    PartNone:
+    cPartNone:
       ;
-    PartReturn:
+    cPartReturn:
       if Assigned(FEvents.Return) then
       begin
         FEvents.Return();
       end;
-    PartMore:
+    cPartMore:
       ShowMenu(ClientToScreen(Point(FPlaces.More.Left, FPlaces.More.Bottom)), True);
-    PartGear:
+    cPartGear:
       if Assigned(FEvents.Customize) then
       begin
         FEvents.Customize();

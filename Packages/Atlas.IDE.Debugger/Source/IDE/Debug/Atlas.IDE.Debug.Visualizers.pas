@@ -201,7 +201,7 @@ end;
 
 function TAtlasIdeVisualizer.GetVisualizerIdentifier: string;
 begin
-  Result := cIdentifierPrefix + TAtlasVisualizerSettings.KindNames[FKind];
+  Result := cIdentifierPrefix + TAtlasVisualizerSettings.cKindNames[FKind];
 end;
 
 function TAtlasIdeVisualizer.GetVisualizerName: string;

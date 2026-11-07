@@ -240,24 +240,24 @@ end;
 
 procedure TAtlasCompletionMatcherTests.RanksExactBeforePrefixBeforeWordStarts;
 begin
-  Assert.AreEqual(TAtlasCompletionMatcher.ScoreExact, TAtlasCompletionMatcher.Score('add', 'Add'));
-  Assert.AreEqual(TAtlasCompletionMatcher.ScorePrefixCase, TAtlasCompletionMatcher.Score('Add', 'AddItem'));
-  Assert.AreEqual(TAtlasCompletionMatcher.ScorePrefix, TAtlasCompletionMatcher.Score('add', 'AddItem'));
-  Assert.AreEqual(TAtlasCompletionMatcher.ScoreWordStarts, TAtlasCompletionMatcher.Score('ai', 'AddItem'));
-  Assert.AreEqual(TAtlasCompletionMatcher.ScoreSubstring, TAtlasCompletionMatcher.Score('dIt', 'AddItem'));
-  Assert.AreEqual(TAtlasCompletionMatcher.NoMatch, TAtlasCompletionMatcher.Score('xy', 'AddItem'));
+  Assert.AreEqual(TAtlasCompletionMatcher.cScoreExact, TAtlasCompletionMatcher.Score('add', 'Add'));
+  Assert.AreEqual(TAtlasCompletionMatcher.cScorePrefixCase, TAtlasCompletionMatcher.Score('Add', 'AddItem'));
+  Assert.AreEqual(TAtlasCompletionMatcher.cScorePrefix, TAtlasCompletionMatcher.Score('add', 'AddItem'));
+  Assert.AreEqual(TAtlasCompletionMatcher.cScoreWordStarts, TAtlasCompletionMatcher.Score('ai', 'AddItem'));
+  Assert.AreEqual(TAtlasCompletionMatcher.cScoreSubstring, TAtlasCompletionMatcher.Score('dIt', 'AddItem'));
+  Assert.AreEqual(TAtlasCompletionMatcher.cNoMatch, TAtlasCompletionMatcher.Score('xy', 'AddItem'));
 end;
 
 procedure TAtlasCompletionMatcherTests.MatchesCamelCaseAndSubsequence;
 begin
-  Assert.AreEqual(TAtlasCompletionMatcher.ScoreWordStarts, TAtlasCompletionMatcher.Score('TSL', 'TStringList'));
-  Assert.AreEqual(TAtlasCompletionMatcher.ScoreWordStarts, TAtlasCompletionMatcher.Score('gtc', 'Get_Tick_Count'));
+  Assert.AreEqual(TAtlasCompletionMatcher.cScoreWordStarts, TAtlasCompletionMatcher.Score('TSL', 'TStringList'));
+  Assert.AreEqual(TAtlasCompletionMatcher.cScoreWordStarts, TAtlasCompletionMatcher.Score('gtc', 'Get_Tick_Count'));
   // Teilfolge nur an Wortgrenzen bzw. zusammenhängend.
-  Assert.AreEqual(TAtlasCompletionMatcher.ScoreSubsequence, TAtlasCompletionMatcher.Score('stl', 'TStringList'));
-  Assert.AreEqual(TAtlasCompletionMatcher.ScoreSubsequence, TAtlasCompletionMatcher.Score('', 'Beliebig'));
+  Assert.AreEqual(TAtlasCompletionMatcher.cScoreSubsequence, TAtlasCompletionMatcher.Score('stl', 'TStringList'));
+  Assert.AreEqual(TAtlasCompletionMatcher.cScoreSubsequence, TAtlasCompletionMatcher.Score('', 'Beliebig'));
   // Verstreute Treffer sind Rauschen (Fall aus der IDE: "myLis" bei nicht deklariertem myList).
-  Assert.AreEqual(TAtlasCompletionMatcher.NoMatch, TAtlasCompletionMatcher.Score('myLis', 'ERROR_TOO_MANY_LINKS'));
-  Assert.AreEqual(TAtlasCompletionMatcher.NoMatch, TAtlasCompletionMatcher.Score('tsit', 'TStringList'));
+  Assert.AreEqual(TAtlasCompletionMatcher.cNoMatch, TAtlasCompletionMatcher.Score('myLis', 'ERROR_TOO_MANY_LINKS'));
+  Assert.AreEqual(TAtlasCompletionMatcher.cNoMatch, TAtlasCompletionMatcher.Score('tsit', 'TStringList'));
 end;
 
 procedure TAtlasCompletionMatcherTests.FiltersAndKeepsSourceOrderOnTies;

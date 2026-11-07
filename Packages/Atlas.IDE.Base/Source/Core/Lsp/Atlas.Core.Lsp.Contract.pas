@@ -30,21 +30,21 @@ type
 
   TAtlasProblem = record
   public const
-    CompilerSource = 'dcc';
+    cCompilerSource = 'dcc';
     /// <summary>Herkunft eines vom Build bestätigten Atlas-Befunds (#1024).</summary>
-    ConfirmedSource = 'Atlas + dcc';
+    cConfirmedSource = 'Atlas + dcc';
     /// <summary>Regel der Syntaxfehler des Servers (#1022); lässt sich nicht per Kommentar unterdrücken.</summary>
-    SyntaxCode = 'syntax';
+    cSyntaxCode = 'syntax';
     /// <summary>Sprachmerkmal einer neueren Delphi-Version (#1126); ebenfalls ohne Unterdrückung per Kommentar.
     /// </summary>
-    LanguageFeatureCode = 'language-feature';
+    cLanguageFeatureCode = 'language-feature';
     /// <summary>Regel der Unit-Zyklen (#64, #896): Pfad mit anklickbaren Units und „Graph zeigen“ im Hover.</summary>
-    UsesCycleCode = 'uses-cycle';
+    cUsesCycleCode = 'uses-cycle';
     /// <summary>Zustände aus data.uses.state (#621).</summary>
-    UsesUnused = 'unused';
-    UsesInitialization = 'initialization';
-    UsesAllowlist = 'allowlist';
-    UsesImplementation = 'implementation';
+    cUsesUnused = 'unused';
+    cUsesInitialization = 'initialization';
+    cUsesAllowlist = 'allowlist';
+    cUsesImplementation = 'implementation';
   public
     StartLine: Integer;
     StartCharacter: Integer;
@@ -279,23 +279,23 @@ implementation
 
 class function TAtlasConfidence.FromJson(const AItem: TJSONValue): TAtlasConfidence;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := Default(TAtlasConfidence);
   if not (AItem is TJSONObject) then
   begin
     Exit;
   end;
-  Value := TJSONObject(AItem).GetValue('atlasConfidence');
-  if not (Value is TJSONObject) then
+  mValue := TJSONObject(AItem).GetValue('atlasConfidence');
+  if not (mValue is TJSONObject) then
   begin
     Exit;
   end;
-  Result.Inferred := TJSONObject(Value).GetValue<string>('level', '') = 'inferred';
+  Result.Inferred := TJSONObject(mValue).GetValue<string>('level', '') = 'inferred';
   if Result.Inferred then
   begin
-    Result.Reason := TJSONObject(Value).GetValue<string>('reason', '');
-    Result.Explanation := TJSONObject(Value).GetValue<string>('detail', '');
+    Result.Reason := TJSONObject(mValue).GetValue<string>('reason', '');
+    Result.Explanation := TJSONObject(mValue).GetValue<string>('detail', '');
   end;
 end;
 
@@ -303,26 +303,26 @@ end;
 
 function TAtlasImpact.Children(ACause: Integer): TArray<Integer>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to High(Places) do
+  for mIndex := 0 to High(Places) do
   begin
-    if Places[Index].Cause = ACause then
+    if Places[mIndex].Cause = ACause then
     begin
-      Result := Result + [Index];
+      Result := Result + [mIndex];
     end;
   end;
 end;
 
 function TAtlasImpact.LevelCount(ALevel: Integer): Integer;
 var
-  Place: TAtlasImpactPlace;
+  mPlace: TAtlasImpactPlace;
 begin
   Result := 0;
-  for Place in Places do
+  for mPlace in Places do
   begin
-    if Place.Level = ALevel then
+    if mPlace.Level = ALevel then
     begin
       Inc(Result);
     end;
@@ -331,12 +331,12 @@ end;
 
 function TAtlasImpact.CountFrom(ALevel: Integer): Integer;
 var
-  Place: TAtlasImpactPlace;
+  mPlace: TAtlasImpactPlace;
 begin
   Result := 0;
-  for Place in Places do
+  for mPlace in Places do
   begin
-    if Place.Level >= ALevel then
+    if mPlace.Level >= ALevel then
     begin
       Inc(Result);
     end;
@@ -345,19 +345,19 @@ end;
 
 function TAtlasImpact.RunNames: TArray<string>;
 var
-  Test: TAtlasImpactTest;
-  Name, Seen: string;
+  mTest: TAtlasImpactTest;
+  mName, mSeen: string;
 begin
   Result := nil;
-  Seen := '|';
-  for Test in Tests do
+  mSeen := '|';
+  for mTest in Tests do
   begin
-    for Name in Test.RunNames do
+    for mName in mTest.RunNames do
     begin
-      if Pos('|' + UpperCase(Name) + '|', Seen) = 0 then
+      if Pos('|' + UpperCase(mName) + '|', mSeen) = 0 then
       begin
-        Seen := Seen + UpperCase(Name) + '|';
-        Result := Result + [Name];
+        mSeen := mSeen + UpperCase(mName) + '|';
+        Result := Result + [mName];
       end;
     end;
   end;
@@ -372,49 +372,49 @@ end;
 
 function TAtlasProblem.IsCompiler: Boolean;
 begin
-  Result := SameText(Source, CompilerSource);
+  Result := SameText(Source, cCompilerSource);
 end;
 
 class function TAtlasProblem.WithoutCompilerCode(const AMessage: string): string;
 const
-  Opening = ' (wie ';
+  cOpening = ' (wie ';
 var
-  Start, Stop, Index: Integer;
-  Inner: string;
-  Codes: Boolean;
+  mStart, mStop, mIndex: Integer;
+  mInner: string;
+  mCodes: Boolean;
 begin
   Result := AMessage;
-  Start := Pos(Opening, Result);
-  while Start > 0 do
+  mStart := Pos(cOpening, Result);
+  while mStart > 0 do
   begin
-    Stop := Pos(')', Copy(Result, Start, MaxInt)) + Start - 1;
-    if Stop < Start then
+    mStop := Pos(')', Copy(Result, mStart, MaxInt)) + mStart - 1;
+    if mStop < mStart then
     begin
       Break;
     end;
-    Inner := Copy(Result, Start + Length(Opening), Stop - Start - Length(Opening));
+    mInner := Copy(Result, mStart + Length(cOpening), mStop - mStart - Length(cOpening));
     // Nur Codes wie E2034, W1000–W1007 und Trenner; anderer Text in Klammern bleibt.
-    Codes := Inner <> '';
-    for Index := 1 to Length(Inner) do
+    mCodes := mInner <> '';
+    for mIndex := 1 to Length(mInner) do
     begin
-      if not CharInSet(Inner[Index], ['A'..'Z', '0'..'9', ',', ' ']) and (Inner[Index] <> #$2013) then
+      if not CharInSet(mInner[mIndex], ['A'..'Z', '0'..'9', ',', ' ']) and (mInner[mIndex] <> #$2013) then
       begin
-        Codes := False;
+        mCodes := False;
       end;
     end;
-    if Codes then
+    if mCodes then
     begin
-      Delete(Result, Start, Stop - Start + 1);
-      Start := Pos(Opening, Result);
+      Delete(Result, mStart, mStop - mStart + 1);
+      mStart := Pos(cOpening, Result);
     end
     else
     begin
-      Index := Pos(Opening, Copy(Result, Stop + 1, MaxInt));
-      if Index = 0 then
+      mIndex := Pos(cOpening, Copy(Result, mStop + 1, MaxInt));
+      if mIndex = 0 then
       begin
         Break;
       end;
-      Start := Stop + Index;
+      mStart := mStop + mIndex;
     end;
   end;
 end;
@@ -442,18 +442,18 @@ end;
 
 function TAtlasProblem.Contains(ALine, ACharacter: Integer): Boolean;
 var
-  Last: Integer;
+  mLast: Integer;
 begin
   if (ALine < StartLine) or (ALine > EndLine) then
   begin
     Exit(False);
   end;
-  Last := EndCharacter;
+  mLast := EndCharacter;
   if (StartLine = EndLine) and (EndCharacter <= StartCharacter) then
   begin
-    Last := StartCharacter + 1;
+    mLast := StartCharacter + 1;
   end;
-  Result := ((ALine > StartLine) or (ACharacter >= StartCharacter)) and ((ALine < EndLine) or (ACharacter <= Last));
+  Result := ((ALine > StartLine) or (ACharacter >= StartCharacter)) and ((ALine < EndLine) or (ACharacter <= mLast));
 end;
 
 function TAtlasProblem.Caption: string;
@@ -470,12 +470,12 @@ end;
 
 function TAtlasProblem.CanSuppress: Boolean;
 begin
-  Result := (Code <> '') and not SameText(Code, SyntaxCode) and not SameText(Code, LanguageFeatureCode);
+  Result := (Code <> '') and not SameText(Code, cSyntaxCode) and not SameText(Code, cLanguageFeatureCode);
 end;
 
 function TAtlasProblem.InactiveHint(const AConditionFormat, ATargetFormat, AFallback: string): string;
 var
-  Platform, Config: string;
+  mPlatform, mConfig: string;
 begin
   if InactiveCondition = '' then
   begin
@@ -486,17 +486,17 @@ begin
   begin
     Exit;
   end;
-  Platform := InactivePlatform;
-  Config := InactiveConfig;
-  if Platform = '' then
+  mPlatform := InactivePlatform;
+  mConfig := InactiveConfig;
+  if mPlatform = '' then
   begin
-    Platform := '?';
+    mPlatform := '?';
   end;
-  if Config = '' then
+  if mConfig = '' then
   begin
-    Config := '?';
+    mConfig := '?';
   end;
-  Result := Result + Format(ATargetFormat, [Platform, Config]);
+  Result := Result + Format(ATargetFormat, [mPlatform, mConfig]);
 end;
 
 /// <summary>LSP-Schweregrad (1 Fehler … 4 Hinweis); Unbekanntes gilt als Fehler.</summary>
@@ -531,18 +531,18 @@ end;
 /// <summary>Die Zeichenketten eines JSON-Arrays; anderes wird übergangen.</summary>
 function ProblemStringsOf(AValue: TJSONValue): TArray<string>;
 var
-  Item: TJSONValue;
+  mItem: TJSONValue;
 begin
   Result := nil;
   if not (AValue is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(AValue) do
+  for mItem in TJSONArray(AValue) do
   begin
-    if Item is TJSONString then
+    if mItem is TJSONString then
     begin
-      Result := Result + [TJSONString(Item).Value];
+      Result := Result + [TJSONString(mItem).Value];
     end;
   end;
 end;
@@ -550,66 +550,66 @@ end;
 /// <summary>Liest data.inactive und data.uses eines Befunds.</summary>
 procedure ReadProblemContext(var AProblem: TAtlasProblem; AData: TJSONObject);
 var
-  Inactive, UsesData: TJSONValue;
+  mInactive, mUsesData: TJSONValue;
 begin
-  Inactive := AData.GetValue('inactive');
-  if Inactive is TJSONObject then
+  mInactive := AData.GetValue('inactive');
+  if mInactive is TJSONObject then
   begin
-    AProblem.InactiveCondition := TJSONObject(Inactive).GetValue<string>('condition', '');
-    AProblem.InactivePlatform := TJSONObject(Inactive).GetValue<string>('platform', '');
-    AProblem.InactiveConfig := TJSONObject(Inactive).GetValue<string>('config', '');
+    AProblem.InactiveCondition := TJSONObject(mInactive).GetValue<string>('condition', '');
+    AProblem.InactivePlatform := TJSONObject(mInactive).GetValue<string>('platform', '');
+    AProblem.InactiveConfig := TJSONObject(mInactive).GetValue<string>('config', '');
   end;
-  UsesData := AData.GetValue('uses');
-  if UsesData is TJSONObject then
+  mUsesData := AData.GetValue('uses');
+  if mUsesData is TJSONObject then
   begin
-    AProblem.UsesUnit := TJSONObject(UsesData).GetValue<string>('unit', '');
-    AProblem.UsesState := TJSONObject(UsesData).GetValue<string>('state', '');
+    AProblem.UsesUnit := TJSONObject(mUsesData).GetValue<string>('unit', '');
+    AProblem.UsesState := TJSONObject(mUsesData).GetValue<string>('state', '');
   end;
 end;
 
 /// <summary>Liest das Feld data eines Befunds (Angaben von Atlas).</summary>
 procedure ReadProblemData(var AProblem: TAtlasProblem; AData: TJSONValue);
 var
-  Data: TJSONObject;
+  mData: TJSONObject;
 begin
   if not (AData is TJSONObject) then
   begin
     Exit;
   end;
-  Data := TJSONObject(AData);
-  AProblem.Confidence := Data.GetValue<string>('confidence', '');
-  AProblem.Category := Data.GetValue<string>('category', '');
-  AProblem.Group := Data.GetValue<string>('group', '');
-  AProblem.FixTitle := Data.GetValue<string>('fix', '');
-  AProblem.CompilerCodes := ProblemStringsOf(Data.GetValue('compilerCodes'));
-  AProblem.Details := Data.GetValue<string>('details', '');
-  ReadProblemContext(AProblem, Data);
+  mData := TJSONObject(AData);
+  AProblem.Confidence := mData.GetValue<string>('confidence', '');
+  AProblem.Category := mData.GetValue<string>('category', '');
+  AProblem.Group := mData.GetValue<string>('group', '');
+  AProblem.FixTitle := mData.GetValue<string>('fix', '');
+  AProblem.CompilerCodes := ProblemStringsOf(mData.GetValue('compilerCodes'));
+  AProblem.Details := mData.GetValue<string>('details', '');
+  ReadProblemContext(AProblem, mData);
 end;
 
 /// <summary>Verweise aus relatedInformation; Einträge ohne URI fallen weg.</summary>
 function ProblemRelatedOf(AItems: TJSONValue): TArray<TAtlasProblemRelated>;
 var
-  Item: TJSONValue;
-  Related: TAtlasProblemRelated;
+  mItem: TJSONValue;
+  mRelated: TAtlasProblemRelated;
 begin
   Result := nil;
   if not (AItems is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(AItems) do
+  for mItem in TJSONArray(AItems) do
   begin
-    if not (Item is TJSONObject) then
+    if not (mItem is TJSONObject) then
     begin
       Continue;
     end;
-    Related.Uri := TJSONObject(Item).GetValue<string>('location.uri', '');
-    Related.Line := TJSONObject(Item).GetValue<Integer>('location.range.start.line', 0);
-    Related.Character := TJSONObject(Item).GetValue<Integer>('location.range.start.character', 0);
-    Related.Message := TJSONObject(Item).GetValue<string>('message', '');
-    if Related.Uri <> '' then
+    mRelated.Uri := TJSONObject(mItem).GetValue<string>('location.uri', '');
+    mRelated.Line := TJSONObject(mItem).GetValue<Integer>('location.range.start.line', 0);
+    mRelated.Character := TJSONObject(mItem).GetValue<Integer>('location.range.start.character', 0);
+    mRelated.Message := TJSONObject(mItem).GetValue<string>('message', '');
+    if mRelated.Uri <> '' then
     begin
-      Result := Result + [Related];
+      Result := Result + [mRelated];
     end;
   end;
 end;
@@ -617,16 +617,16 @@ end;
 /// <summary>Liest tags (1 unnötig, 2 veraltet).</summary>
 procedure ReadProblemTags(var AProblem: TAtlasProblem; ATags: TJSONValue);
 var
-  Tag: TJSONValue;
+  mTag: TJSONValue;
 begin
   if not (ATags is TJSONArray) then
   begin
     Exit;
   end;
-  for Tag in TJSONArray(ATags) do
+  for mTag in TJSONArray(ATags) do
   begin
-    if Tag is TJSONNumber then
-      case TJSONNumber(Tag).AsInt of
+    if mTag is TJSONNumber then
+      case TJSONNumber(mTag).AsInt of
         1:
           AProblem.Unnecessary := True;
         2:
@@ -653,18 +653,18 @@ end;
 
 class function TAtlasProblem.ListFromJson(const AItems: TJSONArray): TArray<TAtlasProblem>;
 var
-  Item: TJSONValue;
+  mItem: TJSONValue;
 begin
   Result := nil;
   if AItems = nil then
   begin
     Exit;
   end;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if Item is TJSONObject then
+    if mItem is TJSONObject then
     begin
-      Result := Result + [FromJson(TJSONObject(Item))];
+      Result := Result + [FromJson(TJSONObject(mItem))];
     end;
   end;
 end;

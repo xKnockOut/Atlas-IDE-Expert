@@ -85,7 +85,7 @@ var
   mPlatform: string;
 begin
   Title(TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsOpenBuildTitle));
-  // Reihenfolge: nicht bauen, dann wie TAtlasOpenBuildSettings.KindNames (check, make, build).
+  // Reihenfolge: nicht bauen, dann wie TAtlasOpenBuildSettings.cKindNames (check, make, build).
   FOpenBuild := OwnChoice(TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsOpenBuild),
     [TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsOpenBuildNone),
     TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsOpenBuildCheck),
@@ -94,7 +94,7 @@ begin
   mScopes := nil;
   for mScope := Low(TAtlasOpenBuildScope) to High(TAtlasOpenBuildScope) do
   begin
-    mScopes := mScopes + [TAtlasOpenBuildSettings.ScopeNames[mScope]];
+    mScopes := mScopes + [TAtlasOpenBuildSettings.cScopeNames[mScope]];
   end;
   Choice('build.onOpenScope', TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsOpenBuildScope),
     [TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsOpenBuildScopeAll),
@@ -122,9 +122,9 @@ begin
   Switch('taskRunner.enabled', TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsTasksEnabled));
   Switch('taskRunner.problemsFromOutput', TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsTasksProblemsFromOutput));
   mNames := nil;
-  for mIndex := Low(TasksBeforeBuildNames) to High(TasksBeforeBuildNames) do
+  for mIndex := Low(cTasksBeforeBuildNames) to High(cTasksBeforeBuildNames) do
   begin
-    mNames := mNames + [TasksBeforeBuildNames[mIndex]];
+    mNames := mNames + [cTasksBeforeBuildNames[mIndex]];
   end;
   Choice('taskRunner.beforeBuild', TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsTasksBeforeBuild),
     [TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsTasksBeforeBuildOff),
@@ -148,9 +148,9 @@ begin
   if AValues.ReadBoolean(cOnOpenKey) then
   begin
     mKind := TAtlasOpenBuildSettings.KindName(TAtlasOpenBuildSettings.KindOf(AValues.ReadString(cOnOpenKindKey)));
-    for mIndex := Low(TAtlasOpenBuildSettings.KindNames) to High(TAtlasOpenBuildSettings.KindNames) do
+    for mIndex := Low(TAtlasOpenBuildSettings.cKindNames) to High(TAtlasOpenBuildSettings.cKindNames) do
     begin
-      if SameText(TAtlasOpenBuildSettings.KindNames[mIndex], mKind) then
+      if SameText(TAtlasOpenBuildSettings.cKindNames[mIndex], mKind) then
       begin
         FOpenBuild.Choice := mIndex + 1;
       end;
@@ -167,9 +167,9 @@ begin
   end;
   // „nicht bauen“ behält die Art für das nächste Einschalten (Schnellschalter).
   AValues.WriteBoolean(cOnOpenKey, FOpenBuild.Choice > 0);
-  if (FOpenBuild.Choice > 0) and (FOpenBuild.Choice - 1 <= High(TAtlasOpenBuildSettings.KindNames)) then
+  if (FOpenBuild.Choice > 0) and (FOpenBuild.Choice - 1 <= High(TAtlasOpenBuildSettings.cKindNames)) then
   begin
-    AValues.WriteString(cOnOpenKindKey, TAtlasOpenBuildSettings.KindNames[FOpenBuild.Choice - 1]);
+    AValues.WriteString(cOnOpenKindKey, TAtlasOpenBuildSettings.cKindNames[FOpenBuild.Choice - 1]);
   end;
   AValues.WriteString(cOnOpenExcludeKey,
     TAtlasOpenBuildSettings.NormalizedExclude(AValues.ReadString(cOnOpenExcludeKey)));

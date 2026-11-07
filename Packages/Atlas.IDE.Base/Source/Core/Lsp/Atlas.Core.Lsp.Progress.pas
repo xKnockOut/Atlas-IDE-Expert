@@ -155,57 +155,57 @@ end;
 
 procedure TLspProgress.Handle(const AParams: TJSONValue);
 var
-  Token, Kind: string;
-  Value: TJSONValue;
-  Entry: TEntry;
-  Changed: TProc;
+  mToken, mKind: string;
+  mValue: TJSONValue;
+  mEntry: TEntry;
+  mChanged: TProc;
 begin
   if not (AParams is TJSONObject) then
   begin
     Exit;
   end;
-  Token := TJSONObject(AParams).GetValue<string>('token', '');
-  Value := TJSONObject(AParams).GetValue('value');
-  if not (Value is TJSONObject) then
+  mToken := TJSONObject(AParams).GetValue<string>('token', '');
+  mValue := TJSONObject(AParams).GetValue('value');
+  if not (mValue is TJSONObject) then
   begin
     Exit;
   end;
-  Kind := TJSONObject(Value).GetValue<string>('kind', '');
+  mKind := TJSONObject(mValue).GetValue<string>('kind', '');
   FLock.Enter;
   try
-    Changed := FOnChanged;
-    if Kind = 'end' then
+    mChanged := FOnChanged;
+    if mKind = 'end' then
     begin
-      FRunning.Remove(Token);
-      if FLast = Token then
+      FRunning.Remove(mToken);
+      if FLast = mToken then
       begin
         FLast := '';
       end;
     end
     else
     begin
-      if not FRunning.TryGetValue(Token, Entry) then
+      if not FRunning.TryGetValue(mToken, mEntry) then
       begin
-        Entry.Title := '';
-        Entry.Percent := -1;
+        mEntry.Title := '';
+        mEntry.Percent := -1;
       end;
-      if TJSONObject(Value).GetValue('title') <> nil then
+      if TJSONObject(mValue).GetValue('title') <> nil then
       begin
-        Entry.Title := TJSONObject(Value).GetValue<string>('title', '');
+        mEntry.Title := TJSONObject(mValue).GetValue<string>('title', '');
       end;
-      if TJSONObject(Value).GetValue('percentage') <> nil then
+      if TJSONObject(mValue).GetValue('percentage') <> nil then
       begin
-        Entry.Percent := TJSONObject(Value).GetValue<Integer>('percentage', -1);
+        mEntry.Percent := TJSONObject(mValue).GetValue<Integer>('percentage', -1);
       end;
-      FRunning.AddOrSetValue(Token, Entry);
-      FLast := Token;
+      FRunning.AddOrSetValue(mToken, mEntry);
+      FLast := mToken;
     end;
   finally
     FLock.Leave;
   end;
-  if Assigned(Changed) then
+  if Assigned(mChanged) then
   begin
-    Changed();
+    mChanged();
   end;
 end;
 
@@ -221,25 +221,25 @@ end;
 
 function TLspProgress.Active(out APercent: Integer): Boolean;
 var
-  Entry: TEntry;
-  Key: string;
+  mEntry: TEntry;
+  mKey: string;
 begin
   APercent := -1;
   FLock.Enter;
   try
-    Key := FLast;
-    Result := (Key <> '') and FRunning.TryGetValue(Key, Entry);
+    mKey := FLast;
+    Result := (mKey <> '') and FRunning.TryGetValue(mKey, mEntry);
     if not Result then
     begin
-      for Key in FRunning.Keys do
+      for mKey in FRunning.Keys do
       begin
-        Result := FRunning.TryGetValue(Key, Entry);
+        Result := FRunning.TryGetValue(mKey, mEntry);
         Break;
       end;
     end;
     if Result then
     begin
-      APercent := Entry.Percent;
+      APercent := mEntry.Percent;
     end;
   finally
     FLock.Leave;
@@ -248,34 +248,34 @@ end;
 
 function TLspProgress.Text: string;
 var
-  Entry: TEntry;
-  Key, Candidate: string;
+  mEntry: TEntry;
+  mKey, mCandidate: string;
 begin
   FLock.Enter;
   try
     Result := '';
-    Key := FLast;
-    if (Key = '') or not FRunning.ContainsKey(Key) then
+    mKey := FLast;
+    if (mKey = '') or not FRunning.ContainsKey(mKey) then
     begin
-      Key := '';
-      for Candidate in FRunning.Keys do
+      mKey := '';
+      for mCandidate in FRunning.Keys do
       begin
-        Key := Candidate;
+        mKey := mCandidate;
         Break;
       end;
     end;
-    if (Key = '') or not FRunning.TryGetValue(Key, Entry) then
+    if (mKey = '') or not FRunning.TryGetValue(mKey, mEntry) then
     begin
       Exit;
     end;
-    Result := Entry.Title;
+    Result := mEntry.Title;
     if Result = '' then
     begin
       Result := '…';
     end;
-    if Entry.Percent >= 0 then
+    if mEntry.Percent >= 0 then
     begin
-      Result := Format('%s %d %%', [Result, Entry.Percent]);
+      Result := Format('%s %d %%', [Result, mEntry.Percent]);
     end;
   finally
     FLock.Leave;
@@ -300,28 +300,28 @@ end;
 
 function TLspProgress.IndexingText: string;
 var
-  Entry: TEntry;
-  Key: string;
-  Active: Boolean;
+  mEntry: TEntry;
+  mKey: string;
+  mActive: Boolean;
 begin
   FLock.Enter;
   try
-    Key := FLast;
-    Active := (Key <> '') and FRunning.TryGetValue(Key, Entry);
-    if not Active then
+    mKey := FLast;
+    mActive := (mKey <> '') and FRunning.TryGetValue(mKey, mEntry);
+    if not mActive then
     begin
-      for Key in FRunning.Keys do
+      for mKey in FRunning.Keys do
       begin
-        Active := FRunning.TryGetValue(Key, Entry);
+        mActive := FRunning.TryGetValue(mKey, mEntry);
         Break;
       end;
     end;
   finally
     FLock.Leave;
   end;
-  if Active then
+  if mActive then
   begin
-    Result := IndexingTextOf(True, Entry.Percent);
+    Result := IndexingTextOf(True, mEntry.Percent);
   end
   else
   begin
@@ -363,17 +363,17 @@ end;
 
 class function TLspIndexStatus.SizeText(ABytes: Int64): string;
 var
-  Settings: TFormatSettings;
+  mSettings: TFormatSettings;
 begin
-  Settings := TFormatSettings.Invariant;
-  Settings.DecimalSeparator := ',';
+  mSettings := TFormatSettings.Invariant;
+  mSettings.DecimalSeparator := ',';
   if ABytes < 1024 * 1024 then
   begin
-    Result := FormatFloat('0.0', ABytes / 1024, Settings) + ' KB';
+    Result := FormatFloat('0.0', ABytes / 1024, mSettings) + ' KB';
   end
   else
   begin
-    Result := FormatFloat('0.0', ABytes / (1024 * 1024), Settings) + ' MB';
+    Result := FormatFloat('0.0', ABytes / (1024 * 1024), mSettings) + ' MB';
   end;
 end;
 
@@ -394,38 +394,38 @@ end;
 
 class function TLspIndexStatus.Metrics(const AStatus: TJSONValue): TLspIndexMetrics;
 var
-  Status: TJSONObject;
-  Workspaces, Item: TJSONValue;
-  Update: TDateTime;
+  mStatus: TJSONObject;
+  mWorkspaces, mItem: TJSONValue;
+  mUpdate: TDateTime;
 begin
   Result := Default(TLspIndexMetrics);
   if not (AStatus is TJSONObject) then
   begin
     Exit;
   end;
-  Status := TJSONObject(AStatus);
-  if Status.GetValue('units') = nil then
+  mStatus := TJSONObject(AStatus);
+  if mStatus.GetValue('units') = nil then
   begin
     Exit;
   end;
   Result.Valid := True;
-  Result.Units := Status.GetValue<Integer>('units', 0);
-  Result.Declarations := Status.GetValue<Integer>('symbols', 0);
-  Result.MemoryBytes := Status.GetValue<Int64>('indexBytes', 0);
-  Result.BudgetBytes := Status.GetValue<Int64>('budgetBytes', 0);
-  Result.OffloadedUnits := Status.GetValue<Integer>('offloadedUnits', 0);
-  Result.DiskBytes := Status.GetValue<Int64>('diskBytes', 0);
-  Workspaces := Status.GetValue('workspaces');
-  if Workspaces is TJSONArray then
+  Result.Units := mStatus.GetValue<Integer>('units', 0);
+  Result.Declarations := mStatus.GetValue<Integer>('symbols', 0);
+  Result.MemoryBytes := mStatus.GetValue<Int64>('indexBytes', 0);
+  Result.BudgetBytes := mStatus.GetValue<Int64>('budgetBytes', 0);
+  Result.OffloadedUnits := mStatus.GetValue<Integer>('offloadedUnits', 0);
+  Result.DiskBytes := mStatus.GetValue<Int64>('diskBytes', 0);
+  mWorkspaces := mStatus.GetValue('workspaces');
+  if mWorkspaces is TJSONArray then
   begin
-    for Item in TJSONArray(Workspaces) do
+    for mItem in TJSONArray(mWorkspaces) do
     begin
-      if Item is TJSONObject then
+      if mItem is TJSONObject then
       begin
-        Update := LocalTimeOf(TJSONObject(Item).GetValue<string>('lastUpdate', ''));
-        if Update > Result.LastUpdate then
+        mUpdate := LocalTimeOf(TJSONObject(mItem).GetValue<string>('lastUpdate', ''));
+        if mUpdate > Result.LastUpdate then
         begin
-          Result.LastUpdate := Update;
+          Result.LastUpdate := mUpdate;
         end;
       end;
     end;
@@ -445,35 +445,35 @@ end;
 
 class function TLspIndexStatus.Lines(const AStatus: TJSONValue): TArray<string>;
 var
-  Status: TJSONObject;
-  Workspaces: TJSONValue;
-  Item: TJSONValue;
-  Bytes: Int64;
+  mStatus: TJSONObject;
+  mWorkspaces: TJSONValue;
+  mItem: TJSONValue;
+  mBytes: Int64;
 begin
   Result := nil;
   if not (AStatus is TJSONObject) then
   begin
     Exit;
   end;
-  Status := TJSONObject(AStatus);
-  Bytes := Status.GetValue<Int64>('indexBytes', 0);
+  mStatus := TJSONObject(AStatus);
+  mBytes := mStatus.GetValue<Int64>('indexBytes', 0);
   // Beide Größen wie SizeText mit Dezimalkomma, unabhängig vom Gebietsschema.
   Result := Result + [Format(UiText(TProgressText.AtlasIndexUnitsSymbolsIn),
-    [Status.GetValue<Integer>('units', 0), Status.GetValue<Integer>('symbols', 0), SizeText(Bytes),
-     SizeText(Status.GetValue<Int64>('diskBytes', 0))])];
-  Workspaces := Status.GetValue('workspaces');
-  if Workspaces is TJSONArray then
+    [mStatus.GetValue<Integer>('units', 0), mStatus.GetValue<Integer>('symbols', 0), SizeText(mBytes),
+     SizeText(mStatus.GetValue<Int64>('diskBytes', 0))])];
+  mWorkspaces := mStatus.GetValue('workspaces');
+  if mWorkspaces is TJSONArray then
   begin
-    for Item in TJSONArray(Workspaces) do
+    for mItem in TJSONArray(mWorkspaces) do
     begin
-      if Item is TJSONObject then
+      if mItem is TJSONObject then
       begin
         Result := Result + [Format(UiText(TProgressText.LastRunMsReadFrom),
-          [TJSONObject(Item).GetValue<string>('name', ''), TJSONObject(Item).GetValue<Integer>('lastIndexMs', 0),
-          TJSONObject(Item).GetValue<Integer>('parsed', 0), TJSONObject(Item).GetValue<Integer>('fromCache', 0),
-          TJSONObject(Item).GetValue<Integer>('missing', 0),
-          SizeText(TJSONObject(Item).GetValue<Int64>('cacheBytes', 0) +
-            TJSONObject(Item).GetValue<Int64>('libraryCacheBytes', 0))])];
+          [TJSONObject(mItem).GetValue<string>('name', ''), TJSONObject(mItem).GetValue<Integer>('lastIndexMs', 0),
+          TJSONObject(mItem).GetValue<Integer>('parsed', 0), TJSONObject(mItem).GetValue<Integer>('fromCache', 0),
+          TJSONObject(mItem).GetValue<Integer>('missing', 0),
+          SizeText(TJSONObject(mItem).GetValue<Int64>('cacheBytes', 0) +
+            TJSONObject(mItem).GetValue<Int64>('libraryCacheBytes', 0))])];
       end;
     end;
   end;

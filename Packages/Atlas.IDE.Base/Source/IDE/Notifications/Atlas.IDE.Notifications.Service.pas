@@ -101,29 +101,29 @@ uses
 
 constructor TAtlasIdeNotifications.Create(AOwner: TComponent);
 var
-  Service: TAtlasIdeNotifications;
+  mService: TAtlasIdeNotifications;
 begin
   inherited Create(AOwner);
   FInstance := Self;
   FCheckErrors := TDictionary<string, Integer>.Create;
-  Service := Self;
+  mService := Self;
   FListener := TAtlasNotificationCenter.Default.AddListener(
     procedure
     begin
       // Aus jedem Thread: gesammelt einmal im Hauptthread nachführen.
-      if AtomicExchange(Service.FPending, 1) <> 0 then
+      if AtomicExchange(mService.FPending, 1) <> 0 then
       begin
         Exit;
       end;
       TAtlasMainThread.ForceQueue(TAtlasFeature.Notifications,
         procedure
         begin
-          if FInstance <> Service then
+          if FInstance <> mService then
           begin
             Exit;
           end;
-          AtomicExchange(Service.FPending, 0);
-          Service.Refresh;
+          AtomicExchange(mService.FPending, 0);
+          mService.Refresh;
         end);
     end);
   ApplySettings;
@@ -175,24 +175,24 @@ end;
 
 class procedure TAtlasIdeNotifications.SaveMode(const ASource: string; AMode: TAtlasNotificationMode);
 var
-  Stored: TAtlasPluginSettings;
+  mStored: TAtlasPluginSettings;
 begin
-  Stored := TAtlasIdeSettings.Stored;
-  Stored.NotificationsSources := TAtlasNotificationSources.WithMode(Stored.NotificationsSources, ASource, AMode);
-  TAtlasIdeSettings.Update(Stored);
+  mStored := TAtlasIdeSettings.Stored;
+  mStored.NotificationsSources := TAtlasNotificationSources.WithMode(mStored.NotificationsSources, ASource, AMode);
+  TAtlasIdeSettings.Update(mStored);
 end;
 
 procedure TAtlasIdeNotifications.ApplySettings;
 var
-  Settings: TAtlasPluginSettings;
-  Center: TAtlasNotificationCenter;
+  mSettings: TAtlasPluginSettings;
+  mCenter: TAtlasNotificationCenter;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Center := TAtlasNotificationCenter.DefaultCenter;
-  Center.SetMaxEntries(Settings.NotificationsMaxEntries);
-  Center.ApplyModes(Settings.NotificationsSources);
-  Center.Enabled := Active;
-  if not Center.Enabled then
+  mSettings := TAtlasIdeSettings.Current;
+  mCenter := TAtlasNotificationCenter.DefaultCenter;
+  mCenter.SetMaxEntries(mSettings.NotificationsMaxEntries);
+  mCenter.ApplyModes(mSettings.NotificationsSources);
+  mCenter.Enabled := Active;
+  if not mCenter.Enabled then
   begin
     FCheckErrors.Clear;
     if FWindow <> nil then
@@ -210,20 +210,20 @@ end;
 
 procedure TAtlasIdeNotifications.Refresh;
 var
-  Center: IAtlasNotificationCenter;
-  Worst: TAtlasNotificationSeverity;
-  Unread: Integer;
+  mCenter: IAtlasNotificationCenter;
+  mWorst: TAtlasNotificationSeverity;
+  mUnread: Integer;
 begin
-  Center := TAtlasNotificationCenter.Default;
-  Unread := 0;
-  Worst := TAtlasNotificationSeverity.Info;
-  if Active and Center.WorstUnread(Worst) then
+  mCenter := TAtlasNotificationCenter.Default;
+  mUnread := 0;
+  mWorst := TAtlasNotificationSeverity.Info;
+  if Active and mCenter.WorstUnread(mWorst) then
   begin
-    Unread := Center.UnreadCount;
+    mUnread := mCenter.UnreadCount;
   end;
   if Assigned(FOnBadge) then
   begin
-    FOnBadge(Unread, Worst);
+    FOnBadge(mUnread, mWorst);
   end;
   if FWindow <> nil then
   begin
@@ -260,57 +260,57 @@ end;
 
 procedure TAtlasIdeNotifications.Show;
 var
-  Anchor: TPoint;
-  Area: TRect;
+  mAnchor: TPoint;
+  mArea: TRect;
 begin
-  Anchor := Point(MaxInt, MaxInt);
+  mAnchor := Point(MaxInt, MaxInt);
   if Assigned(FOnAnchor) then
   begin
-    Anchor := FOnAnchor();
+    mAnchor := FOnAnchor();
   end;
-  if Anchor.X = MaxInt then
+  if mAnchor.X = MaxInt then
   begin
     // Ohne Statusfeld: unten links im aktiven Fenster.
     if Screen.ActiveForm <> nil then
     begin
-      Area := Screen.ActiveForm.BoundsRect;
+      mArea := Screen.ActiveForm.BoundsRect;
     end
     else if Application.MainForm <> nil then
     begin
-      Area := Application.MainForm.BoundsRect;
+      mArea := Application.MainForm.BoundsRect;
     end
     else
     begin
-      Area := Screen.WorkAreaRect;
+      mArea := Screen.WorkAreaRect;
     end;
-    Anchor := Point(Area.Left + 40, Area.Bottom - 40);
+    mAnchor := Point(mArea.Left + 40, mArea.Bottom - 40);
   end;
-  Show(Anchor);
+  Show(mAnchor);
 end;
 
 procedure TAtlasIdeNotifications.BuildFinished(const AMessages: TArray<TAtlasCompilerMessage>;
   const AProject: TAtlasCompileProject; ASucceeded, AReadable: Boolean);
 var
-  Notice: TAtlasBuildNotice;
-  Previous: Integer;
-  Key: string;
+  mNotice: TAtlasBuildNotice;
+  mPrevious: Integer;
+  mKey: string;
 begin
   if not Active then
   begin
     Exit;
   end;
-  Key := LowerCase(AProject.FileName);
-  Previous := -1;
-  if AProject.Background and not FCheckErrors.TryGetValue(Key, Previous) then
+  mKey := LowerCase(AProject.FileName);
+  mPrevious := -1;
+  if AProject.Background and not FCheckErrors.TryGetValue(mKey, mPrevious) then
   begin
-    Previous := -1;
+    mPrevious := -1;
   end;
-  Notice := TAtlasBuildNotices.FromRun(AMessages, ASucceeded, AReadable, AProject.Background, Previous);
+  mNotice := TAtlasBuildNotices.FromRun(AMessages, ASucceeded, AReadable, AProject.Background, mPrevious);
   if AProject.Background and AReadable then
   begin
-    FCheckErrors.AddOrSetValue(Key, Notice.Errors);
+    FCheckErrors.AddOrSetValue(mKey, mNotice.Errors);
   end;
-  Post(Notice, AProject);
+  Post(mNotice, AProject);
 end;
 
 procedure TAtlasIdeNotifications.BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>;
@@ -324,62 +324,62 @@ end;
 
 procedure TAtlasIdeNotifications.Post(const ANotice: TAtlasBuildNotice; const AProject: TAtlasCompileProject);
 var
-  Notice: TAtlasBuildNotice;
-  Project, Title, Text, Action: string;
-  Actions: TArray<TAtlasNotificationAction>;
-  Target: TAtlasCompilerMessage;
+  mNotice: TAtlasBuildNotice;
+  mProject, mTitle, mText, mAction: string;
+  mActions: TArray<TAtlasNotificationAction>;
+  mTarget: TAtlasCompilerMessage;
 begin
-  Notice := ANotice;
-  Project := ChangeFileExt(ExtractFileName(AProject.FileName), '');
-  Action := TAtlasStrings.Text(TAtlasTextId.NotificationsGoToError);
-  case Notice.Kind of
+  mNotice := ANotice;
+  mProject := ChangeFileExt(ExtractFileName(AProject.FileName), '');
+  mAction := TAtlasStrings.Text(TAtlasTextId.NotificationsGoToError);
+  case mNotice.Kind of
     TAtlasBuildNoticeKind.Errors:
-      Title := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildErrors, [Notice.Errors]);
+      mTitle := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildErrors, [mNotice.Errors]);
     TAtlasBuildNoticeKind.Warnings:
-      Title := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildWarnings, [Notice.Warnings]);
+      mTitle := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildWarnings, [mNotice.Warnings]);
     TAtlasBuildNoticeKind.Succeeded:
-      Title := TAtlasStrings.Text(TAtlasTextId.NotificationsBuildSucceeded);
+      mTitle := TAtlasStrings.Text(TAtlasTextId.NotificationsBuildSucceeded);
     TAtlasBuildNoticeKind.Failed:
-      Title := TAtlasStrings.Text(TAtlasTextId.NotificationsBuildFailed);
+      mTitle := TAtlasStrings.Text(TAtlasTextId.NotificationsBuildFailed);
     TAtlasBuildNoticeKind.CheckErrors:
-      Title := TAtlasStrings.Fmt(TAtlasTextId.NotificationsCheckErrors, [Notice.Errors]);
+      mTitle := TAtlasStrings.Fmt(TAtlasTextId.NotificationsCheckErrors, [mNotice.Errors]);
     TAtlasBuildNoticeKind.CheckClean:
-      Title := TAtlasStrings.Text(TAtlasTextId.NotificationsCheckClean);
+      mTitle := TAtlasStrings.Text(TAtlasTextId.NotificationsCheckClean);
     TAtlasBuildNoticeKind.Rejected:
       begin
-        if Notice.Reason = TAtlasBuildVerdictReason.WarningsAsErrors then
+        if mNotice.Reason = TAtlasBuildVerdictReason.WarningsAsErrors then
         begin
-          Title := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildRejectedCodes, [Notice.PromotedCode]);
+          mTitle := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildRejectedCodes, [mNotice.PromotedCode]);
         end
         else
         begin
-          Title := TAtlasStrings.Text(TAtlasTextId.NotificationsBuildRejected);
+          mTitle := TAtlasStrings.Text(TAtlasTextId.NotificationsBuildRejected);
         end;
-        Action := TAtlasStrings.Text(TAtlasTextId.NotificationsGoToMessage);
+        mAction := TAtlasStrings.Text(TAtlasTextId.NotificationsGoToMessage);
       end;
   else
     Exit;
   end;
-  Text := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildText, [Project, Notice.Errors, Notice.Warnings,
-    Notice.Hints]);
-  if Notice.Baselined > 0 then
+  mText := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildText, [mProject, mNotice.Errors, mNotice.Warnings,
+    mNotice.Hints]);
+  if mNotice.Baselined > 0 then
   begin
-    Text := Text + ' ' + TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildBaselined, [Notice.Baselined]);
+    mText := mText + ' ' + TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildBaselined, [mNotice.Baselined]);
   end;
-  Actions := nil;
-  if Notice.HasTarget then
+  mActions := nil;
+  if mNotice.HasTarget then
   begin
-    Target := Notice.Target;
-    Text := Text + ' · ' + Format('%s(%d): %s', [ExtractFileName(Target.FileName), Target.Line, Target.Text]);
-    Actions := [TAtlasNotificationCenter.Action(Action,
+    mTarget := mNotice.Target;
+    mText := mText + ' · ' + Format('%s(%d): %s', [ExtractFileName(mTarget.FileName), mTarget.Line, mTarget.Text]);
+    mActions := [TAtlasNotificationCenter.Action(mAction,
       procedure
       begin
         // Meldungen zählen ab 1, der Editor ab 0.
-        TAtlasIdeNavigation.GoToLocation(Target.FileName, Max(0, Target.Line - 1), Max(0, Target.Column - 1));
+        TAtlasIdeNavigation.GoToLocation(mTarget.FileName, Max(0, mTarget.Line - 1), Max(0, mTarget.Column - 1));
       end)];
   end;
-  TAtlasNotificationCenter.Default.Notify(TAtlasBuildNotices.SourceOf(AProject.Background), Notice.Severity, Title,
-    Text, Actions);
+  TAtlasNotificationCenter.Default.Notify(TAtlasBuildNotices.SourceOf(AProject.Background), mNotice.Severity, mTitle,
+    mText, mActions);
 end;
 
 end.

@@ -224,7 +224,7 @@ begin
   Assert.AreEqual(cUnitFile, mItems[0].Key);
   Assert.AreEqual('Test TRechnerTests.Summe.Gross fehlgeschlagen: erwartet 30, erhalten 31', mItems[0].Value.Message);
   Assert.AreEqual(18, mItems[0].Value.StartLine);
-  Assert.AreEqual(TAtlasProblemStore.TestSource, mItems[0].Value.Source);
+  Assert.AreEqual(TAtlasProblemStore.cTestSource, mItems[0].Value.Source);
   Assert.IsTrue(mItems[0].Value.Severity = TAtlasProblemSeverity.Error);
   Assert.AreEqual('', mItems[0].Value.Code, 'kein Regeltreffer');
   Assert.AreEqual('Test TRechnerTests.Teilt fehlgeschlagen: EZeroDivide: Division durch 0', mItems[1].Value.Message,

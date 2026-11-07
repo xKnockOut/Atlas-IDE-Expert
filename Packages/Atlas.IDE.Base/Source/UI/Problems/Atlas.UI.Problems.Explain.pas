@@ -49,15 +49,15 @@ uses
   Atlas.UI.Strings;
 
 const
-  Gap = 8;
-  DialogWidth = 560;
+  cGap = 8;
+  cDialogWidth = 560;
 
 { TAtlasRuleExplainDialog }
 
 constructor TAtlasRuleExplainDialog.CreateDialog(AOwner: TComponent; const AExplanation: TAtlasRuleExplanation);
 var
-  Bottom: TPanel;
-  Heading: TLabel;
+  mBottom: TPanel;
+  mHeading: TLabel;
 begin
   inherited CreateNew(AOwner);
   Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsExplainTitle, [AExplanation.Id]);
@@ -67,22 +67,22 @@ begin
   KeyPreview := True;
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  ClientWidth := ScaleValue(DialogWidth);
+  ClientWidth := ScaleValue(cDialogWidth);
   ClientHeight := ScaleValue(420);
 
-  Bottom := TPanel.Create(Self);
-  Bottom.Parent := Self;
-  Bottom.Align := alBottom;
-  Bottom.Height := ScaleValue(44);
-  Bottom.BevelOuter := bvNone;
-  Bottom.ShowCaption := False;
+  mBottom := TPanel.Create(Self);
+  mBottom.Parent := Self;
+  mBottom.Align := alBottom;
+  mBottom.Height := ScaleValue(44);
+  mBottom.BevelOuter := bvNone;
+  mBottom.ShowCaption := False;
   FClose := TButton.Create(Self);
-  FClose.Parent := Bottom;
+  FClose.Parent := mBottom;
   FClose.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsExplainClose);
   FClose.Width := ScaleValue(90);
   FClose.Height := ScaleValue(28);
-  FClose.Top := ScaleValue(Gap);
-  FClose.Left := Bottom.ClientWidth - FClose.Width - ScaleValue(Gap);
+  FClose.Top := ScaleValue(cGap);
+  FClose.Left := mBottom.ClientWidth - FClose.Width - ScaleValue(cGap);
   FClose.Anchors := [akTop, akRight];
   FClose.Cancel := True;
   FClose.Default := True;
@@ -101,14 +101,14 @@ begin
   FDescription.WordWrap := True;
   if AExplanation.Bad <> '' then
   begin
-    Heading := AddLabel(TAtlasStrings.Text(TAtlasTextId.ProblemsExplainBad));
-    Heading.Font.Color := $003C3CD8;
+    mHeading := AddLabel(TAtlasStrings.Text(TAtlasTextId.ProblemsExplainBad));
+    mHeading.Font.Color := $003C3CD8;
     FBad := AddExample(AExplanation.Bad);
   end;
   if AExplanation.Good <> '' then
   begin
-    Heading := AddLabel(TAtlasStrings.Text(TAtlasTextId.ProblemsExplainGood));
-    Heading.Font.Color := $0050A030;
+    mHeading := AddLabel(TAtlasStrings.Text(TAtlasTextId.ProblemsExplainGood));
+    mHeading.Font.Color := $0050A030;
     FGood := AddExample(AExplanation.Good);
   end;
   ActiveControl := FClose;
@@ -120,7 +120,7 @@ begin
   Result.Parent := Self;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(ScaleValue(Gap), ScaleValue(Gap div 2), ScaleValue(Gap), 0);
+  Result.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap div 2), ScaleValue(cGap), 0);
   Result.ShowAccelChar := False;
   Result.Caption := ACaption;
   // Unter die bisherigen: alTop ordnet nach Top.
@@ -133,7 +133,7 @@ begin
   Result.Parent := Self;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(ScaleValue(Gap), ScaleValue(2), ScaleValue(Gap), 0);
+  Result.Margins.SetBounds(ScaleValue(cGap), ScaleValue(2), ScaleValue(cGap), 0);
   Result.ReadOnly := True;
   Result.ScrollBars := ssBoth;
   Result.WordWrap := False;
@@ -151,13 +151,13 @@ end;
 
 class procedure TAtlasRuleExplainDialog.Execute(const AExplanation: TAtlasRuleExplanation);
 var
-  Dialog: TAtlasRuleExplainDialog;
+  mDialog: TAtlasRuleExplainDialog;
 begin
-  Dialog := TAtlasRuleExplainDialog.CreateDialog(nil, AExplanation);
+  mDialog := TAtlasRuleExplainDialog.CreateDialog(nil, AExplanation);
   try
-    Dialog.ShowModal;
+    mDialog.ShowModal;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 

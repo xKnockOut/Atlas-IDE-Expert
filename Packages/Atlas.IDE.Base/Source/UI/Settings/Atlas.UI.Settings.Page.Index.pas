@@ -77,35 +77,35 @@ end;
 
 procedure TAtlasSettingsIndexPart.AddIndexSection;
 var
-  Panel: TWinControl;
+  mPanel: TWinControl;
 begin
   // Symbolindex (#492): Verwendungen, Speichergrenze, Kennzahlen und Verwaltung.
   AddTitle(TAtlasTextId.SettingsIndexTitle);
   BindCheck('IndexUsages', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexUsages)));
   BindText('MemoryBudgetMb', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMemoryBudget)));
-  Panel := AddPanel(66);
+  mPanel := AddPanel(66);
   FIndexInfo := TLabel.Create(FPage);
-  FIndexInfo.Parent := Panel;
+  FIndexInfo.Parent := mPanel;
   FIndexInfo.Left := 0;
   FIndexInfo.Top := 2;
   FIndexInfo.Font.Color := clGrayText;
-  Panel := AddPanel(32);
+  mPanel := AddPanel(32);
   FIndexRefresh := TButton.Create(FPage);
-  FIndexRefresh.Parent := Panel;
+  FIndexRefresh.Parent := mPanel;
   FIndexRefresh.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIndexRefresh);
   FIndexRefresh.Left := 0;
   FIndexRefresh.Top := 3;
   FIndexRefresh.Width := 150;
   FIndexRefresh.OnClick := IndexRefreshClick;
   FIndexRebuild := TButton.Create(FPage);
-  FIndexRebuild.Parent := Panel;
+  FIndexRebuild.Parent := mPanel;
   FIndexRebuild.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIndexRebuild);
   FIndexRebuild.Left := 160;
   FIndexRebuild.Top := 3;
   FIndexRebuild.Width := 150;
   FIndexRebuild.OnClick := IndexRebuildClick;
   FIndexClear := TButton.Create(FPage);
-  FIndexClear.Parent := Panel;
+  FIndexClear.Parent := mPanel;
   FIndexClear.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIndexClear);
   FIndexClear.Left := 320;
   FIndexClear.Top := 3;
@@ -171,7 +171,7 @@ end;
 
 procedure TAtlasSettingsIndexPart.IndexClearClick(Sender: TObject);
 var
-  Confirmed: Boolean;
+  mConfirmed: Boolean;
 begin
   if not Assigned(FOnIndexClear) then
   begin
@@ -179,14 +179,14 @@ begin
   end;
   if Assigned(FConfirmClear) then
   begin
-    Confirmed := FConfirmClear();
+    mConfirmed := FConfirmClear();
   end
   else
   begin
-    Confirmed := MessageDlg(TAtlasStrings.Text(TAtlasTextId.SettingsIndexClearConfirm), mtConfirmation,
+    mConfirmed := MessageDlg(TAtlasStrings.Text(TAtlasTextId.SettingsIndexClearConfirm), mtConfirmation,
       [mbYes, mbNo], 0) = mrYes;
   end;
-  if Confirmed then
+  if mConfirmed then
   begin
     StartIndexCommand(FOnIndexClear);
   end;

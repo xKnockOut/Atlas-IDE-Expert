@@ -34,8 +34,8 @@ type
   TAtlasServerTool = class
   public const
     /// <summary>Zeitlimit für einen Lauf über das ganze Projekt.</summary>
-    CheckTimeoutMs = 600000;
-    ShortTimeoutMs = 60000;
+    cCheckTimeoutMs = 600000;
+    cShortTimeoutMs = 60000;
   public
     /// <summary>Startet ACall.Exe mit den Argumenten im Arbeitsordner und wartet höchstens bis zum Zeitlimit.
     /// False, wenn der Prozess nicht startet oder abgebrochen wurde (AResult.Error sagt, warum).</summary>
@@ -183,27 +183,27 @@ end;
 
 class function TAtlasServerTool.FileVersion(const AFileName: string): string;
 var
-  Handle, Size, Length_: Cardinal;
-  Buffer: TBytes;
-  Info: PVSFixedFileInfo;
+  mHandle, mSize, mLength_: Cardinal;
+  mBuffer: TBytes;
+  mInfo: PVSFixedFileInfo;
 begin
   Result := '';
-  Size := GetFileVersionInfoSize(PChar(AFileName), Handle);
-  if Size = 0 then
+  mSize := GetFileVersionInfoSize(PChar(AFileName), mHandle);
+  if mSize = 0 then
   begin
     Exit;
   end;
-  SetLength(Buffer, Size);
-  if not GetFileVersionInfo(PChar(AFileName), 0, Size, @Buffer[0]) then
+  SetLength(mBuffer, mSize);
+  if not GetFileVersionInfo(PChar(AFileName), 0, mSize, @mBuffer[0]) then
   begin
     Exit;
   end;
-  if not VerQueryValue(@Buffer[0], '\', Pointer(Info), Length_) or (Length_ = 0) then
+  if not VerQueryValue(@mBuffer[0], '\', Pointer(mInfo), mLength_) or (mLength_ = 0) then
   begin
     Exit;
   end;
-  Result := Format('%d.%d.%d.%d', [HiWord(Info.dwFileVersionMS), LoWord(Info.dwFileVersionMS),
-    HiWord(Info.dwFileVersionLS), LoWord(Info.dwFileVersionLS)]);
+  Result := Format('%d.%d.%d.%d', [HiWord(mInfo.dwFileVersionMS), LoWord(mInfo.dwFileVersionMS),
+    HiWord(mInfo.dwFileVersionLS), LoWord(mInfo.dwFileVersionLS)]);
 end;
 
 end.

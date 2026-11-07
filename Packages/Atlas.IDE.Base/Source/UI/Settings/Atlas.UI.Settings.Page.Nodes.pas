@@ -96,32 +96,32 @@ type
 /// <summary>Liegt AControl in AParent (oder ist es selbst)?</summary>
 function Inside(AControl, AParent: TControl): Boolean;
 var
-  Parent: TControl;
+  mParent: TControl;
 begin
-  Parent := AControl;
-  while (Parent <> nil) and (Parent <> AParent) do
+  mParent := AControl;
+  while (mParent <> nil) and (mParent <> AParent) do
   begin
-    Parent := Parent.Parent;
+    mParent := mParent.Parent;
   end;
-  Result := Parent <> nil;
+  Result := mParent <> nil;
 end;
 
 /// <summary>Zeilen von ABox in der Reihenfolge von oben nach unten.</summary>
 function SortedRows(ABox: TWinControl): TArray<TControl>;
 var
-  Index, Position: Integer;
-  Control: TControl;
+  mIndex, mPosition: Integer;
+  mControl: TControl;
 begin
   Result := nil;
-  for Index := 0 to ABox.ControlCount - 1 do
+  for mIndex := 0 to ABox.ControlCount - 1 do
   begin
-    Control := ABox.Controls[Index];
-    Position := Length(Result);
-    while (Position > 0) and (Result[Position - 1].Top > Control.Top) do
+    mControl := ABox.Controls[mIndex];
+    mPosition := Length(Result);
+    while (mPosition > 0) and (Result[mPosition - 1].Top > mControl.Top) do
     begin
-      Dec(Position);
+      Dec(mPosition);
     end;
-    Insert(Control, Result, Position);
+    Insert(mControl, Result, mPosition);
   end;
 end;
 
@@ -449,7 +449,8 @@ begin
   end
   else
   begin
-    Result := AddNodePageCaption(AArea, ANode, FGroups.NodeCaption(ANode, TAtlasStrings.Language = TAtlasLanguage.English));
+    Result := AddNodePageCaption(AArea, ANode,
+      FGroups.NodeCaption(ANode, TAtlasStrings.Language = TAtlasLanguage.English));
   end;
 end;
 
@@ -460,50 +461,50 @@ end;
 
 function TAtlasSettingsPageNodes.AddNodePageCaption(AArea: Integer; const ANode, ACaption: string): Integer;
 var
-  Page: TAtlasSettingsNodePage;
-  Index: Integer;
+  mPage: TAtlasSettingsNodePage;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FNodePages) do
+  for mIndex := 0 to High(FNodePages) do
   begin
-    if (FNodePages[Index].Area = AArea) and SameText(FNodePages[Index].Node, ANode) then
+    if (FNodePages[mIndex].Area = AArea) and SameText(FNodePages[mIndex].Node, ANode) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
-  Page := Default(TAtlasSettingsNodePage);
-  Page.Area := AArea;
-  Page.Node := ANode;
+  mPage := Default(TAtlasSettingsNodePage);
+  mPage.Area := AArea;
+  mPage.Node := ANode;
   if ANode = '' then
   begin
-    Page.Sheet := FSheets[AArea];
-    Page.Box := FBoxes[AArea];
-    Page.Caption := FSheets[AArea].Caption;
+    mPage.Sheet := FSheets[AArea];
+    mPage.Box := FBoxes[AArea];
+    mPage.Caption := FSheets[AArea].Caption;
   end
   else
   begin
-    Page.Caption := ACaption;
-    Page.Sheet := TTabSheet.Create(Self);
-    Page.Sheet.Caption := Page.Caption;
-    Page.Box := TScrollBox.Create(Self);
-    Page.Box.Parent := Page.Sheet;
-    Page.Box.Align := alClient;
-    Page.Box.BorderStyle := bsNone;
-    Page.Box.ParentBackground := True;
-    Page.Box.VertScrollBar.Tracking := True;
-    Page.Box.HorzScrollBar.Visible := False;
+    mPage.Caption := ACaption;
+    mPage.Sheet := TTabSheet.Create(Self);
+    mPage.Sheet.Caption := mPage.Caption;
+    mPage.Box := TScrollBox.Create(Self);
+    mPage.Box.Parent := mPage.Sheet;
+    mPage.Box.Align := alClient;
+    mPage.Box.BorderStyle := bsNone;
+    mPage.Box.ParentBackground := True;
+    mPage.Box.VertScrollBar.Tracking := True;
+    mPage.Box.HorzScrollBar.Visible := False;
   end;
   // Hinweis auf eine Sperre durch einen Hauptschalter auf einer anderen Seite, immer ganz oben.
-  Page.Banner := TLabel.Create(Self);
-  Page.Banner.Parent := Page.Box;
-  Page.Banner.Align := alTop;
-  Page.Banner.AlignWithMargins := True;
-  Page.Banner.Top := 0;
-  Page.Banner.WordWrap := True;
-  Page.Banner.ShowAccelChar := False;
-  Page.Banner.Font.Style := [fsItalic];
-  Page.Banner.Visible := False;
-  FMarks.Pin(Page.Banner);
-  FNodePages := FNodePages + [Page];
+  mPage.Banner := TLabel.Create(Self);
+  mPage.Banner.Parent := mPage.Box;
+  mPage.Banner.Align := alTop;
+  mPage.Banner.AlignWithMargins := True;
+  mPage.Banner.Top := 0;
+  mPage.Banner.WordWrap := True;
+  mPage.Banner.ShowAccelChar := False;
+  mPage.Banner.Font.Style := [fsItalic];
+  mPage.Banner.Visible := False;
+  FMarks.Pin(mPage.Banner);
+  FNodePages := FNodePages + [mPage];
   Result := High(FNodePages);
 end;
 
@@ -526,29 +527,29 @@ end;
 
 procedure TAtlasSettingsPageNodes.BuildNodes;
 var
-  Area: Integer;
-  Frame: TAtlasSettingsGroup;
+  mArea: Integer;
+  mFrame: TAtlasSettingsGroup;
   mPart: TAtlasSettingsPagePart;
 begin
   FGroups := TAtlasSettingsGroups.Create(Catalog);
-  for Area := 0 to High(FSheets) do
+  for mArea := 0 to High(FSheets) do
   begin
-    BuildArea(Area);
+    BuildArea(mArea);
   end;
   for mPart in FParts do
   begin
     mPart.AddNodePages;
   end;
-  for Frame in FFrames do
+  for mFrame in FFrames do
   begin
-    if not (Frame.Parent is TAtlasSettingsGroup) then
+    if not (mFrame.Parent is TAtlasSettingsGroup) then
     begin
-      Frame.AdjustHeight;
+      mFrame.AdjustHeight;
     end;
   end;
-  for Area := 0 to High(FSheets) do
+  for mArea := 0 to High(FSheets) do
   begin
-    AddOverview(Area);
+    AddOverview(mArea);
   end;
 end;
 
@@ -660,16 +661,16 @@ end;
 
 procedure TAtlasSettingsPageNodes.MirrorClick(Sender: TObject);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if FSyncing or not (Sender is TCheckBox) then
   begin
     Exit;
   end;
-  Index := TCheckBox(Sender).Tag;
-  if (Index >= 0) and (Index <= High(FMirrored)) then
+  mIndex := TCheckBox(Sender).Tag;
+  if (mIndex >= 0) and (mIndex <= High(FMirrored)) then
   begin
-    FMirrored[Index].Checked := TCheckBox(Sender).Checked;
+    FMirrored[mIndex].Checked := TCheckBox(Sender).Checked;
   end;
 end;
 
@@ -683,11 +684,11 @@ end;
 
 function TAtlasSettingsPageNodes.IsOverview(AFrame: TAtlasSettingsGroup): Boolean;
 var
-  Overview: TAtlasSettingsGroup;
+  mOverview: TAtlasSettingsGroup;
 begin
-  for Overview in FOverviews do
+  for mOverview in FOverviews do
   begin
-    if Overview = AFrame then
+    if mOverview = AFrame then
     begin
       Exit(True);
     end;
@@ -698,7 +699,7 @@ end;
 function TAtlasSettingsPageNodes.PageOf(AControl: TControl): Integer;
 var
   mParent: TControl;
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
   mParent := AControl;
@@ -710,24 +711,24 @@ begin
   begin
     Exit;
   end;
-  for Index := 0 to High(FNodePages) do
+  for mIndex := 0 to High(FNodePages) do
   begin
-    if FNodePages[Index].Sheet = mParent then
+    if FNodePages[mIndex].Sheet = mParent then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
 
 function TAtlasSettingsPageNodes.FrameOf(const AName: string): TAtlasSettingsGroup;
 var
-  Frame: TAtlasSettingsGroup;
+  mFrame: TAtlasSettingsGroup;
 begin
-  for Frame in FFrames do
+  for mFrame in FFrames do
   begin
-    if SameText(Frame.MasterName, AName) then
+    if SameText(mFrame.MasterName, AName) then
     begin
-      Exit(Frame);
+      Exit(mFrame);
     end;
   end;
   Result := nil;
@@ -735,13 +736,13 @@ end;
 
 function TAtlasSettingsPageNodes.NodeSheet(const ANode: string): TTabSheet;
 var
-  Page: TAtlasSettingsNodePage;
+  mPage: TAtlasSettingsNodePage;
 begin
-  for Page in FNodePages do
+  for mPage in FNodePages do
   begin
-    if (ANode <> '') and SameText(Page.Node, ANode) then
+    if (ANode <> '') and SameText(mPage.Node, ANode) then
     begin
-      Exit(Page.Sheet);
+      Exit(mPage.Sheet);
     end;
   end;
   Result := nil;
@@ -749,33 +750,33 @@ end;
 
 function TAtlasSettingsPageNodes.OverviewMirror(const AName: string): TCheckBox;
 var
-  Frame: TAtlasSettingsGroup;
-  Index: Integer;
+  mFrame: TAtlasSettingsGroup;
+  mIndex: Integer;
 begin
   Result := nil;
-  Frame := FrameOf(AName);
-  if Frame = nil then
+  mFrame := FrameOf(AName);
+  if mFrame = nil then
   begin
     Exit;
   end;
-  for Index := 0 to High(FMirrored) do
+  for mIndex := 0 to High(FMirrored) do
   begin
-    if FMirrored[Index] = Frame.Master then
+    if FMirrored[mIndex] = mFrame.Master then
     begin
-      Exit(FMirrors[Index]);
+      Exit(FMirrors[mIndex]);
     end;
   end;
 end;
 
 function TAtlasSettingsPageNodes.NodeOfSheet(ASheet: TTabSheet): string;
 var
-  Page: TAtlasSettingsNodePage;
+  mPage: TAtlasSettingsNodePage;
 begin
-  for Page in FNodePages do
+  for mPage in FNodePages do
   begin
-    if Page.Sheet = ASheet then
+    if mPage.Sheet = ASheet then
     begin
-      Exit(Page.Node);
+      Exit(mPage.Node);
     end;
   end;
   Result := '';

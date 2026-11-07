@@ -70,8 +70,8 @@ type
       Slot: Integer;
     end;
   private const
-    Category = 'Atlas';
-    SubCategory = 'Atlas.Eintrag';
+    cCategory = 'Atlas';
+    cSubCategory = 'Atlas.Eintrag';
   private
     FEntries: TArray<TEntry>;
     FActions: TActionList;
@@ -149,13 +149,13 @@ end;
 
 destructor TAtlasIdeContextMenu.Destroy;
 var
-  Services: IOTAEditorServices;
+  mServices: IOTAEditorServices;
 begin
   // Vor dem Entladen abmelden, sonst greift die IDE auf freigegebene Aktionen zu.
-  if FRegistered and Supports(BorlandIDEServices, IOTAEditorServices, Services) and
-    (Services.GetEditorLocalMenu <> nil) then
+  if FRegistered and Supports(BorlandIDEServices, IOTAEditorServices, mServices) and
+    (mServices.GetEditorLocalMenu <> nil) then
   begin
-    Services.GetEditorLocalMenu.UnregisterActionList(Category);
+    mServices.GetEditorLocalMenu.UnregisterActionList(cCategory);
   end;
   FActions.Free;
   inherited;
@@ -275,10 +275,10 @@ end;
 
 function TAtlasIdeContextMenu.CategoryOf(AIndex: Integer): string;
 begin
-  Result := SubCategory;
+  Result := cSubCategory;
   if FEntries[AIndex].Parent >= 0 then
   begin
-    Result := SubCategory + '.' + IntToStr(FEntries[AIndex].Parent);
+    Result := cSubCategory + '.' + IntToStr(FEntries[AIndex].Parent);
   end;
 end;
 
@@ -441,40 +441,40 @@ end;
 
 procedure TAtlasIdeContextMenu.Register;
 var
-  Services: IOTAEditorServices;
-  Root, Item: TAction;
-  Index: Integer;
+  mServices: IOTAEditorServices;
+  mRoot, mItem: TAction;
+  mIndex: Integer;
 begin
-  if FRegistered or not Supports(BorlandIDEServices, IOTAEditorServices, Services) or
-    (Services.GetEditorLocalMenu = nil) then
+  if FRegistered or not Supports(BorlandIDEServices, IOTAEditorServices, mServices) or
+    (mServices.GetEditorLocalMenu = nil) then
   begin
     Exit;
   end;
   // Elternaktion zuerst, die Einträge direkt danach, die einer Gruppe direkt nach ihr (so verlangt es
   // INTAEditorLocalMenu).
-  Root := TAction.Create(FActions);
-  Root.ActionList := FActions;
-  Root.Category := Category;
-  Root.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas);
-  Root.OnExecute := RootExecute;
-  for Index := 0 to High(FEntries) do
+  mRoot := TAction.Create(FActions);
+  mRoot.ActionList := FActions;
+  mRoot.Category := cCategory;
+  mRoot.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas);
+  mRoot.OnExecute := RootExecute;
+  for mIndex := 0 to High(FEntries) do
   begin
-    Item := TAction.Create(FActions);
-    Item.ActionList := FActions;
-    Item.Category := CategoryOf(Index);
-    Item.Caption := FEntries[Index].Caption;
-    FItems := FItems + [Item];
-    case FEntries[Index].Kind of
+    mItem := TAction.Create(FActions);
+    mItem.ActionList := FActions;
+    mItem.Category := CategoryOf(mIndex);
+    mItem.Caption := FEntries[mIndex].Caption;
+    FItems := FItems + [mItem];
+    case FEntries[mIndex].Kind of
       TEntryKind.ekCommand, TEntryKind.ekModuleSlot:
-        Item.OnExecute := ItemExecute;
+        mItem.OnExecute := ItemExecute;
       TEntryKind.ekGroup, TEntryKind.ekModuleGroup:
-        Item.OnExecute := RootExecute;
+        mItem.OnExecute := RootExecute;
     end;
     // Plätze der Module bleiben aus, bis UpdateModuleSlots sie belegt.
-    Item.Visible := not (FEntries[Index].Kind in [TEntryKind.ekModuleGroup, TEntryKind.ekModuleSlot]);
+    mItem.Visible := not (FEntries[mIndex].Kind in [TEntryKind.ekModuleGroup, TEntryKind.ekModuleSlot]);
   end;
   UpdateVisibility;
-  Services.GetEditorLocalMenu.RegisterActionList(FActions, Category, cEdMenuCatLast);
+  mServices.GetEditorLocalMenu.RegisterActionList(FActions, cCategory, cEdMenuCatLast);
   FRegistered := True;
 end;
 

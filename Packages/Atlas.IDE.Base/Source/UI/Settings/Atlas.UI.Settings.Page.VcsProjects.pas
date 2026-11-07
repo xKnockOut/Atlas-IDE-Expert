@@ -298,7 +298,8 @@ begin
   FVcsProjectProvider := TAtlasChoiceBox.Create(FPage);
   FVcsProjectProvider.OnChange := VcsProjectProviderChange;
   Attach(AddFieldRow(TAtlasTextId.SettingsVcsProjectsKind, FVcsProjectProvider, cVcsField), FVcsProjectList);
-  FVcsProjectProvider.SetChoices(TArray<string>.Create(TAtlasSettingsVcsPart.VcsProviderCaption('auto'), TAtlasSettingsVcsPart.VcsProviderCaption('git'),
+  FVcsProjectProvider.SetChoices(TArray<string>.Create(TAtlasSettingsVcsPart.VcsProviderCaption('auto'),
+    TAtlasSettingsVcsPart.VcsProviderCaption('git'),
     TAtlasSettingsVcsPart.VcsProviderCaption('svn'), TAtlasSettingsVcsPart.VcsProviderCaption('off')));
   FVcsProjectMainBranch := TEdit.Create(FPage);
   FVcsProjectMainBranch.OnChange := VcsProjectMainBranchChange;
@@ -751,7 +752,8 @@ begin
   FVcsServerList.RowSelect := True;
   FVcsServerList.HideSelection := False;
   FVcsServerList.OnSelectItem := VcsServerSelectItem;
-  TAtlasSettingsPageSheets.AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerProject, cVcsServerProjectColumn);
+  TAtlasSettingsPageSheets.AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerProject,
+    cVcsServerProjectColumn);
   TAtlasSettingsPageSheets.AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerServer, cVcsServerServerColumn);
   TAtlasSettingsPageSheets.AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerState, cVcsServerStateColumn);
   mPanel := AddPanel(32);

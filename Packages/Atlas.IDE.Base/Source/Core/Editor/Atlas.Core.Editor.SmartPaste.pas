@@ -55,17 +55,17 @@ type
 
   TAtlasSmartPaste = class
   public const
-    Command = 'atlas.server.pasteUses';
+    cCommand = 'atlas.server.pasteUses';
     /// <summary>Reindent ohne Spalte vom Server: die Heuristik bestimmt sie.</summary>
-    NoColumn = -1;
-    ModeOff = 'off';
-    ModeUses = 'uses';
-    ModeIndent = 'indent';
-    ModeBoth = 'both';
+    cNoColumn = -1;
+    cModeOff = 'off';
+    cModeUses = 'uses';
+    cModeIndent = 'indent';
+    cModeBoth = 'both';
     /// <summary>Kürzere Einfügungen ohne Zeilenumbruch übergeht Atlas.</summary>
-    MinChars = 20;
+    cMinChars = 20;
     /// <summary>So viele Unit-Namen nennt die Überschrift, dann „…“.</summary>
-    MaxNamed = 3;
+    cMaxNamed = 3;
   public
     class function ModeOf(const AValue: string): TAtlasPasteMode; static;
     class function WantsUses(AMode: TAtlasPasteMode): Boolean; static;
@@ -106,18 +106,18 @@ uses
   System.Generics.Collections;
 
 const
-  Openers: array[0..15] of string = ('begin', 'try', 'finally', 'except', 'repeat', 'then', 'do', 'else', 'of',
+  cOpeners: array[0..15] of string = ('begin', 'try', 'finally', 'except', 'repeat', 'then', 'do', 'else', 'of',
     'record', 'class', 'var', 'const', 'type', 'private', 'public');
   /// <summary>Wörter, mit denen eine Zeile auf der Ebene des öffnenden Worts steht.</summary>
-  Closers: array[0..4] of string = ('end', 'else', 'until', 'except', 'finally');
+  cClosers: array[0..4] of string = ('end', 'else', 'until', 'except', 'finally');
 
 function Contains(const ANames: TArray<string>; const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in ANames do
+  for mName in ANames do
   begin
-    if SameText(Name, AName) then
+    if SameText(mName, AName) then
     begin
       Exit(True);
     end;
@@ -136,13 +136,13 @@ end;
 
 function Quoted(const AText: string): string;
 var
-  Value: TJSONString;
+  mValue: TJSONString;
 begin
-  Value := TJSONString.Create(AText);
+  mValue := TJSONString.Create(AText);
   try
-    Result := Value.ToJSON;
+    Result := mValue.ToJSON;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -153,16 +153,16 @@ end;
 
 function Closes(const ALine: string): Boolean;
 var
-  Text: string;
-  Stop: Integer;
+  mText: string;
+  mStop: Integer;
 begin
-  Text := TrimLeft(ALine);
-  Stop := 0;
-  while (Stop < Length(Text)) and CharInSet(Text[Stop + 1], ['A'..'Z', 'a'..'z']) do
+  mText := TrimLeft(ALine);
+  mStop := 0;
+  while (mStop < Length(mText)) and CharInSet(mText[mStop + 1], ['A'..'Z', 'a'..'z']) do
   begin
-    Inc(Stop);
+    Inc(mStop);
   end;
-  Result := MatchText(Copy(Text, 1, Stop), Closers);
+  Result := MatchText(Copy(mText, 1, mStop), cClosers);
 end;
 
 /// <summary>Stimmen die Zeilen zwischen der ersten und der letzten überein?</summary>
@@ -326,15 +326,15 @@ end;
 
 class function TAtlasSmartPaste.ModeOf(const AValue: string): TAtlasPasteMode;
 begin
-  if SameText(AValue, ModeBoth) then
+  if SameText(AValue, cModeBoth) then
   begin
     Result := TAtlasPasteMode.Both;
   end
-  else if SameText(AValue, ModeUses) then
+  else if SameText(AValue, cModeUses) then
   begin
     Result := TAtlasPasteMode.UsesOnly;
   end
-  else if SameText(AValue, ModeIndent) then
+  else if SameText(AValue, cModeIndent) then
   begin
     Result := TAtlasPasteMode.IndentOnly;
   end
@@ -356,7 +356,7 @@ end;
 
 class function TAtlasSmartPaste.Qualifies(const AText: string): Boolean;
 begin
-  Result := (Pos(#10, AText) > 0) or (Pos(#13, AText) > 0) or (Length(AText) >= MinChars);
+  Result := (Pos(#10, AText) > 0) or (Pos(#13, AText) > 0) or (Length(AText) >= cMinChars);
 end;
 
 class function TAtlasSmartPaste.Match(const ALines: TArray<string>; ACaret: Integer; const APasted: TArray<string>;
@@ -384,16 +384,16 @@ end;
 
 class function TAtlasSmartPaste.IndentWidth(const ALine: string; ATabWidth: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
   if ATabWidth < 1 then
   begin
     ATabWidth := 1;
   end;
-  for Index := 1 to LeadLength(ALine) do
+  for mIndex := 1 to LeadLength(ALine) do
   begin
-    if ALine[Index] = #9 then
+    if ALine[mIndex] = #9 then
     begin
       Result := (Result div ATabWidth + 1) * ATabWidth;
     end
@@ -406,24 +406,24 @@ end;
 
 class function TAtlasSmartPaste.Opens(const ALine: string): Boolean;
 var
-  Text, Word: string;
-  Cut, Start: Integer;
+  mText, mWord: string;
+  mCut, mStart: Integer;
 begin
-  Text := ALine;
-  Cut := Pos('//', Text);
-  if Cut > 0 then
+  mText := ALine;
+  mCut := Pos('//', mText);
+  if mCut > 0 then
   begin
-    Text := Copy(Text, 1, Cut - 1);
+    mText := Copy(mText, 1, mCut - 1);
   end;
-  Text := TrimRight(Text);
-  Start := Length(Text);
-  while (Start > 0) and CharInSet(Text[Start], ['A'..'Z', 'a'..'z', '_']) do
+  mText := TrimRight(mText);
+  mStart := Length(mText);
+  while (mStart > 0) and CharInSet(mText[mStart], ['A'..'Z', 'a'..'z', '_']) do
   begin
-    Dec(Start);
+    Dec(mStart);
   end;
-  Word := Copy(Text, Start + 1, MaxInt);
+  mWord := Copy(mText, mStart + 1, MaxInt);
   // „class“ nur als Typdeklaration (= class), nicht in „class function“.
-  Result := (Word <> '') and MatchText(Word, Openers) and ((Start = 0) or (Text[Start] <> '.'));
+  Result := (mWord <> '') and MatchText(mWord, cOpeners) and ((mStart = 0) or (mText[mStart] <> '.'));
 end;
 
 class function TAtlasSmartPaste.Reindent(const APrefix, AAbove: string; const APasted: TArray<string>;
@@ -442,7 +442,7 @@ begin
   if mFirst >= 0 then
   begin
     mTarget := AColumn;
-    if mTarget = NoColumn then
+    if mTarget = cNoColumn then
     begin
       mTarget := TargetIndent(APrefix, AAbove, ATabWidth, AStep);
     end;
@@ -504,36 +504,36 @@ end;
 
 class function TAtlasSmartPaste.Selected(const AAnalysis: TAtlasPasteAnalysis): TArray<string>;
 var
-  Name: string;
-  Choice: TAtlasPasteChoice;
+  mName: string;
+  mChoice: TAtlasPasteChoice;
 begin
   Result := nil;
-  for Name in AAnalysis.Units do
+  for mName in AAnalysis.Units do
   begin
-    if not Contains(Result, Name) then
+    if not Contains(Result, mName) then
     begin
-      Result := Result + [Name];
+      Result := Result + [mName];
     end;
   end;
-  for Choice in AAnalysis.Choices do
+  for mChoice in AAnalysis.Choices do
   begin
-    if (Choice.Chosen >= 0) and (Choice.Chosen <= High(Choice.Units)) and
-      not Contains(Result, Choice.Units[Choice.Chosen]) then
+    if (mChoice.Chosen >= 0) and (mChoice.Chosen <= High(mChoice.Units)) and
+      not Contains(Result, mChoice.Units[mChoice.Chosen]) then
     begin
-      Result := Result + [Choice.Units[Choice.Chosen]];
+      Result := Result + [mChoice.Units[mChoice.Chosen]];
     end;
   end;
 end;
 
 class function TAtlasSmartPaste.Named(const AUnits: TArray<string>): string;
 begin
-  if Length(AUnits) <= MaxNamed then
+  if Length(AUnits) <= cMaxNamed then
   begin
     Result := string.Join(', ', AUnits);
   end
   else
   begin
-    Result := string.Join(', ', Copy(AUnits, 0, MaxNamed)) + ', …';
+    Result := string.Join(', ', Copy(AUnits, 0, cMaxNamed)) + ', …';
   end;
 end;
 
@@ -547,20 +547,20 @@ end;
 class function TAtlasSmartPaste.Arguments(const AUri: string; AStartLine, AStartCharacter, AEndLine,
   AEndCharacter: Integer; const AUnits: TArray<string>): string;
 var
-  List: TJSONArray;
-  Name: string;
+  mList: TJSONArray;
+  mName: string;
 begin
-  List := TJSONArray.Create;
+  mList := TJSONArray.Create;
   try
-    for Name in AUnits do
+    for mName in AUnits do
     begin
-      List.Add(Name);
+      mList.Add(mName);
     end;
     Result := Arguments(AUri, AStartLine, AStartCharacter, AEndLine, AEndCharacter);
     // Die Liste kommt vor die schließende Klammer.
-    Result := Copy(Result, 1, Length(Result) - 1) + ',' + List.ToJSON + ']';
+    Result := Copy(Result, 1, Length(Result) - 1) + ',' + mList.ToJSON + ']';
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 

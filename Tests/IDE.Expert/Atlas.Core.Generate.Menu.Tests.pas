@@ -297,7 +297,7 @@ begin
     begin
       Recent.Chosen('slash:c' + IntToStr(Index));
     end;
-    Assert.AreEqual(TAtlasGenerateRecent.MaxCount, Integer(Length(Recent.Ids)));
+    Assert.AreEqual(TAtlasGenerateRecent.cMaxCount, Integer(Length(Recent.Ids)));
     Recent.Clear;
     Assert.AreEqual('', Recent.ToText);
   finally

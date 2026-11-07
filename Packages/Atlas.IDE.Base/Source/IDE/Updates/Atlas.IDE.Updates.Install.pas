@@ -27,7 +27,7 @@ uses
 type
   TAtlasIdeUpdateInstaller = class(TComponent)
   public const
-    PollMs = 1000;
+    cPollMs = 1000;
   private
     FEnvironment: TAtlasUpdateEnvironment;
     FRoot: string;
@@ -84,7 +84,7 @@ begin
   inherited Create(AOwner);
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
-  FTimer.Interval := PollMs;
+  FTimer.Interval := cPollMs;
   FTimer.OnTimer := Poll;
 end;
 
@@ -206,7 +206,7 @@ begin
   if FProcess = 0 then
   begin
     Say(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesPrepareFailedMessage, [AVersion,
-      TAtlasUpdateTexts.ErrorText(TAtlasUpdateInstall.StartFailed, ''), TUpdateChannels.cReleasesUrl]));
+      TAtlasUpdateTexts.ErrorText(TAtlasUpdateInstall.cStartFailed, ''), TUpdateChannels.cReleasesUrl]));
     Exit;
   end;
   FPreparing := AVersion;

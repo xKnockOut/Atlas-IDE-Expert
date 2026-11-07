@@ -152,7 +152,7 @@ begin
   Log := TReportLog.Create;
   try
     Dialog := TAtlasReportDialog.CreateDialog(nil, Input(FFolder), FFolder,
-      TAtlasPluginSettings.DefaultHelpReportUrl, Log.Actions);
+      TAtlasPluginSettings.cDefaultHelpReportUrl, Log.Actions);
     try
       // Vorgabe: Logs, Versionen, Einstellungen; die Diagnosedaten nur auf Wunsch.
       Assert.IsTrue(Dialog.Check(TAtlasPackagePart.Logs).Checked);
@@ -162,7 +162,7 @@ begin
       Assert.IsTrue(Dialog.Check(TAtlasPackagePart.LastData).Enabled, 'Datei vorhanden');
       Assert.AreEqual(4, Integer(Length(Dialog.Files)));
       Assert.AreEqual(4, Integer(Dialog.List.Items.Count), 'jede Datei in der Vorschau');
-      Assert.AreEqual(TAtlasDiagnosticPackage.InfoFileName, Dialog.List.Items[0].Caption);
+      Assert.AreEqual(TAtlasDiagnosticPackage.cInfoFileName, Dialog.List.Items[0].Caption);
       Assert.AreEqual(TAtlasReportDialog.SizeText(Dialog.Files[0].Size), Dialog.List.Items[0].SubItems[0]);
       Assert.IsTrue(Dialog.ZipButton.Enabled);
       Assert.AreNotEqual(TAtlasStrings.Text(TAtlasTextId.ReportEmpty), Dialog.SummaryLabel.Caption);
@@ -170,12 +170,12 @@ begin
       Dialog.Check(TAtlasPackagePart.Logs).Checked := False;
       Dialog.Reload;
       Assert.AreEqual(2, Integer(Dialog.List.Items.Count));
-      Assert.AreEqual(TAtlasDiagnosticPackage.SettingsFileName, Dialog.List.Items[1].Caption);
+      Assert.AreEqual(TAtlasDiagnosticPackage.cSettingsFileName, Dialog.List.Items[1].Caption);
       // Mit den letzten Diagnosedaten.
       Dialog.Check(TAtlasPackagePart.LastData).Checked := True;
       Dialog.Reload;
       Assert.AreEqual(3, Integer(Dialog.List.Items.Count));
-      Assert.AreEqual(TAtlasDiagnosticPackage.LastDataFileName, Dialog.List.Items[2].Caption);
+      Assert.AreEqual(TAtlasDiagnosticPackage.cLastDataFileName, Dialog.List.Items[2].Caption);
       // Nichts gewählt: nichts anzulegen.
       Dialog.Check(TAtlasPackagePart.Versions).Checked := False;
       Dialog.Check(TAtlasPackagePart.Settings).Checked := False;
@@ -203,7 +203,7 @@ begin
   try
     Data := Input(FFolder);
     Data.LastDataFile := TPath.Combine(FFolder, 'fehlt.txt');
-    Dialog := TAtlasReportDialog.CreateDialog(nil, Data, FFolder, TAtlasPluginSettings.DefaultHelpReportUrl,
+    Dialog := TAtlasReportDialog.CreateDialog(nil, Data, FFolder, TAtlasPluginSettings.cDefaultHelpReportUrl,
       Log.Actions);
     try
       Assert.IsFalse(Dialog.Check(TAtlasPackagePart.LastData).Enabled, 'ohne Diagnosedaten ausgegraut');
@@ -231,7 +231,7 @@ begin
   Log := TReportLog.Create;
   try
     Dialog := TAtlasReportDialog.CreateDialog(nil, Input(FFolder), FFolder,
-      TAtlasPluginSettings.DefaultHelpReportUrl, Log.Actions);
+      TAtlasPluginSettings.cDefaultHelpReportUrl, Log.Actions);
     try
       for Index := 0 to High(Dialog.Files) do
       begin
@@ -261,14 +261,14 @@ begin
   try
     Target := TPath.Combine(FFolder, 'Ablage');
     Dialog := TAtlasReportDialog.CreateDialog(nil, Input(FFolder), Target,
-      TAtlasPluginSettings.DefaultHelpReportUrl, Log.Actions);
+      TAtlasPluginSettings.cDefaultHelpReportUrl, Log.Actions);
     try
       Assert.AreEqual('', Dialog.ZipFile);
       Assert.IsTrue(Dialog.CreateZip);
       First := Dialog.ZipFile;
       Assert.IsTrue(FileExists(First), 'Ordner wird angelegt');
       Assert.AreEqual(IncludeTrailingPathDelimiter(Target), ExtractFilePath(First));
-      Assert.IsTrue(StartsText(TAtlasDiagnosticPackage.ZipPrefix, ExtractFileName(First)));
+      Assert.IsTrue(StartsText(TAtlasDiagnosticPackage.cZipPrefix, ExtractFileName(First)));
       Assert.IsTrue(EndsText('.zip', First));
       Assert.AreEqual(1, Integer(Length(Log.Shown)), 'im Explorer zeigen');
       Assert.AreEqual(First, Log.Shown[0]);
@@ -324,7 +324,7 @@ begin
       Dialog.Reload;
       Dialog.OpenIssue;
       Assert.AreEqual(2, Integer(Length(Log.Opened)));
-      Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Log.Opened[1]);
+      Assert.AreEqual(TAtlasPluginSettings.cDefaultHelpReportUrl, Log.Opened[1]);
       Assert.IsFalse(ContainsText(Log.Copied[1], 'Delphi 13 (37.0)'), 'Versionen nur mit Häkchen');
     finally
       Dialog.Free;

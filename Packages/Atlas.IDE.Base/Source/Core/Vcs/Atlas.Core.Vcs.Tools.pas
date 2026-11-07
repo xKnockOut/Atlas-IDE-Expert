@@ -89,7 +89,7 @@ type
     FTimeoutMs: Cardinal;
   public
     /// <summary>Vorgabe für das Zeitlimit eines Aufrufs.</summary>
-    const DefaultTimeoutMs = 15000;
+    const cDefaultTimeoutMs = 15000;
     constructor Create(const ARunner: IAtlasVcsRunner; const AExecutable, AWorkingDir: string;
       ATimeoutMs: Cardinal);
     /// <summary>Startet das Programm; Outcome Failed bei Exit-Code ungleich 0, ToolMissing ohne Programm.</summary>
@@ -142,26 +142,26 @@ end;
 
 class function TAtlasVcsTools.KnownDirs(AKind: TAtlasVcsKind; const AProgramDirs: TArray<string>): TArray<string>;
 var
-  Dir: string;
+  mDir: string;
 begin
   Result := nil;
-  for Dir in AProgramDirs do
+  for mDir in AProgramDirs do
   begin
-    if Trim(Dir) = '' then
+    if Trim(mDir) = '' then
     begin
       Continue;
     end;
     case AKind of
       TAtlasVcsKind.Git:
         Result := Result + [
-          IncludeTrailingPathDelimiter(Dir) + 'Git' + PathDelim + 'cmd',
-          IncludeTrailingPathDelimiter(Dir) + 'Git' + PathDelim + 'bin'];
+          IncludeTrailingPathDelimiter(mDir) + 'Git' + PathDelim + 'cmd',
+          IncludeTrailingPathDelimiter(mDir) + 'Git' + PathDelim + 'bin'];
       TAtlasVcsKind.Svn:
         Result := Result + [
-          IncludeTrailingPathDelimiter(Dir) + 'TortoiseSVN' + PathDelim + 'bin',
-          IncludeTrailingPathDelimiter(Dir) + 'SlikSvn' + PathDelim + 'bin',
-          IncludeTrailingPathDelimiter(Dir) + 'CollabNet' + PathDelim + 'Subversion Client',
-          IncludeTrailingPathDelimiter(Dir) + 'VisualSVN Server' + PathDelim + 'bin'];
+          IncludeTrailingPathDelimiter(mDir) + 'TortoiseSVN' + PathDelim + 'bin',
+          IncludeTrailingPathDelimiter(mDir) + 'SlikSvn' + PathDelim + 'bin',
+          IncludeTrailingPathDelimiter(mDir) + 'CollabNet' + PathDelim + 'Subversion Client',
+          IncludeTrailingPathDelimiter(mDir) + 'VisualSVN Server' + PathDelim + 'bin'];
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;
@@ -171,24 +171,24 @@ end;
 class function TAtlasVcsTools.Locate(const AName, APath: string; const AExtraDirs: TArray<string>;
   const AExists: TAtlasVcsPathExists): string;
 var
-  FileName, Dir, Candidate: string;
+  mFileName, mDir, mCandidate: string;
 begin
-  FileName := AName;
+  mFileName := AName;
   if PathDelim = '\' then
   begin
-    FileName := FileName + '.exe';
+    mFileName := mFileName + '.exe';
   end;
-  for Dir in APath.Split([PathSep]) + AExtraDirs do
+  for mDir in APath.Split([PathSep]) + AExtraDirs do
   begin
-    Candidate := Trim(Dir).Trim(['"']);
-    if Candidate = '' then
+    mCandidate := Trim(mDir).Trim(['"']);
+    if mCandidate = '' then
     begin
       Continue;
     end;
-    Candidate := IncludeTrailingPathDelimiter(Candidate) + FileName;
-    if AExists(Candidate) then
+    mCandidate := IncludeTrailingPathDelimiter(mCandidate) + mFileName;
+    if AExists(mCandidate) then
     begin
-      Exit(Candidate);
+      Exit(mCandidate);
     end;
   end;
   Result := '';
@@ -318,14 +318,14 @@ end;
 
 class procedure TAtlasVcsTools.Forget;
 var
-  Kind: TAtlasVcsKind;
+  mKind: TAtlasVcsKind;
 begin
   FLock.Enter;
   try
-    for Kind := Low(TAtlasVcsKind) to High(TAtlasVcsKind) do
+    for mKind := Low(TAtlasVcsKind) to High(TAtlasVcsKind) do
     begin
-      FFound[Kind] := TAtlasVcsToolLocation.Empty;
-      FSearched[Kind] := False;
+      FFound[mKind] := TAtlasVcsToolLocation.Empty;
+      FSearched[mKind] := False;
     end;
   finally
     FLock.Leave;
@@ -362,40 +362,40 @@ end;
 
 function TAtlasVcsCommand.Run(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
 var
-  Answer: TAtlasVcsRunResult;
+  mAnswer: TAtlasVcsRunResult;
 begin
   AOutput := nil;
   if (FExecutable = '') or (FRunner = nil) then
   begin
     Exit(TAtlasVcsOutcome.ToolMissing);
   end;
-  Answer := FRunner.Run(FExecutable, AArguments, FWorkingDir, FTimeoutMs);
-  Result := Answer.Outcome;
-  if (Result = TAtlasVcsOutcome.Ok) and (Answer.ExitCode <> 0) then
+  mAnswer := FRunner.Run(FExecutable, AArguments, FWorkingDir, FTimeoutMs);
+  Result := mAnswer.Outcome;
+  if (Result = TAtlasVcsOutcome.Ok) and (mAnswer.ExitCode <> 0) then
   begin
     Result := TAtlasVcsOutcome.Failed;
   end;
   if Result = TAtlasVcsOutcome.Ok then
   begin
-    AOutput := Answer.Output;
+    AOutput := mAnswer.Output;
   end;
 end;
 
 function TAtlasVcsCommand.RunRemote(AKind: TAtlasVcsKind; const AArguments: TArray<string>;
   out AOutput: TBytes): TAtlasVcsOutcome;
 var
-  Answer: TAtlasVcsRunResult;
+  mAnswer: TAtlasVcsRunResult;
 begin
   AOutput := nil;
   if (FExecutable = '') or (FRunner = nil) then
   begin
     Exit(TAtlasVcsOutcome.ToolMissing);
   end;
-  Answer := FRunner.Run(FExecutable, AArguments, FWorkingDir, FTimeoutMs);
-  Result := TAtlasVcsServerAccess.OutcomeOf(AKind, Answer);
+  mAnswer := FRunner.Run(FExecutable, AArguments, FWorkingDir, FTimeoutMs);
+  Result := TAtlasVcsServerAccess.OutcomeOf(AKind, mAnswer);
   if Result = TAtlasVcsOutcome.Ok then
   begin
-    AOutput := Answer.Output;
+    AOutput := mAnswer.Output;
   end;
 end;
 

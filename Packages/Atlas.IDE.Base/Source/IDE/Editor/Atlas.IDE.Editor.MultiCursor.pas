@@ -61,9 +61,9 @@ type
   TAtlasIdeMultiCursor = class
   private const
     /// <summary>Deckkraft der Markierungen über dem Text (0–255).</summary>
-    SelectionAlpha = 70;
+    cSelectionAlpha = 70;
     /// <summary>Breite der gezeichneten Marken in Pixeln.</summary>
-    CaretWidth = 2;
+    cCaretWidth = 2;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -147,7 +147,7 @@ uses
 
 const
   // Fehlt in älteren Fassungen von Winapi.Windows.
-  SpiGetClientAreaAnimation = $1042;
+  cSpiGetClientAreaAnimation = $1042;
 
 {$SCOPEDENUMS ON}
 
@@ -257,7 +257,7 @@ var
   mAnimate: BOOL;
 begin
   mAnimate := True;
-  if not SystemParametersInfo(SpiGetClientAreaAnimation, 0, @mAnimate, 0) then
+  if not SystemParametersInfo(cSpiGetClientAreaAnimation, 0, @mAnimate, 0) then
   begin
     mAnimate := True;
   end;
@@ -297,7 +297,7 @@ var
 begin
   mSettings := TAtlasIdeSettings.Current;
   mWanted := [ssAlt];
-  if mSettings.MultiCursorModifier = TAtlasPluginSettings.MultiCursorModifierCtrl then
+  if mSettings.MultiCursorModifier = TAtlasPluginSettings.cMultiCursorModifierCtrl then
   begin
     mWanted := [ssCtrl];
   end;
@@ -416,7 +416,7 @@ begin
     SetPixel(mMemory, 0, 0, AColor);
     mFunc.BlendOp := AC_SRC_OVER;
     mFunc.BlendFlags := 0;
-    mFunc.SourceConstantAlpha := TAtlasIdeMultiCursor.SelectionAlpha;
+    mFunc.SourceConstantAlpha := TAtlasIdeMultiCursor.cSelectionAlpha;
     mFunc.AlphaFormat := 0;
     AlphaBlend(ADC, ARect.Left, ARect.Top, ARect.Right - ARect.Left, ARect.Bottom - ARect.Top, mMemory, 0, 0, 1, 1,
       mFunc);
@@ -473,7 +473,7 @@ begin
   if (ACaret.Line = ARun.Line) and ABlink then
   begin
     mFirst := PixelAt(ARun, ACaret.Character);
-    FillRect(ARun.DC, TRect.Create(mFirst.Left, ARun.Rect.Top, mFirst.Left + TAtlasIdeMultiCursor.CaretWidth,
+    FillRect(ARun.DC, TRect.Create(mFirst.Left, ARun.Rect.Top, mFirst.Left + TAtlasIdeMultiCursor.cCaretWidth,
       ARun.Rect.Bottom), ARun.Brush);
   end;
 end;

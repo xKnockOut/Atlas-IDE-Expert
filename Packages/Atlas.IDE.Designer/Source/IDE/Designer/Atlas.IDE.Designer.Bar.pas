@@ -1154,7 +1154,7 @@ var
 begin
   Result := FSearchChoice;
   Result.Compact := SameText(TAtlasIdeSettings.Current.DesignerSearchStyle,
-    TAtlasPluginSettings.DesignerSearchPopup);
+    TAtlasPluginSettings.cDesignerSearchPopup);
   Result.FormName := ARoot.Name;
   Result.FormBounds := TRect.Empty;
   if ARoot is TWinControl then

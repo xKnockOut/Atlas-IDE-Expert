@@ -53,48 +53,48 @@ const
 
 procedure TAtlasEditorCompletionSnippets.RefreshSnippets;
 var
-  Folder, IdeFolder, TeamFolder, Stamp: string;
-  Errors, TeamErrors: TArray<string>;
-  Own, Ide, Team: TAtlasSnippetList;
-  Stats: TAtlasLiveTemplateStats;
+  mFolder, mIdeFolder, mTeamFolder, mStamp: string;
+  mErrors, mTeamErrors: TArray<string>;
+  mOwn, mIde, mTeam: TAtlasSnippetList;
+  mStats: TAtlasLiveTemplateStats;
 begin
   if (FSnippets.Checked <> 0) and (TThread.GetTickCount64 - FSnippets.Checked < cSnippetCheckMs) then
   begin
     Exit;
   end;
   FSnippets.Checked := TThread.GetTickCount64;
-  Folder := SnippetFolder;
-  IdeFolder := '';
+  mFolder := SnippetFolder;
+  mIdeFolder := '';
   if TAtlasIdeSettings.Current.ImportIdeTemplates then
   begin
-    IdeFolder := IdeTemplateFolder;
+    mIdeFolder := IdeTemplateFolder;
   end;
   // Vorlagen des Projekts aus der Projektdatei .atlas (#486): gelten für alle im Team, vor den eigenen.
-  TeamFolder := TAtlasIdeTeamFile.Current.SnippetFolder;
-  Stamp := TAtlasSnippets.FolderStamp(Folder) + '#' + TAtlasLiveTemplates.FolderStamp(IdeFolder) + '#' +
-    TeamFolder + '#' + TAtlasSnippets.FolderStamp(TeamFolder);
-  if Stamp = FSnippets.Stamp then
+  mTeamFolder := TAtlasIdeTeamFile.Current.SnippetFolder;
+  mStamp := TAtlasSnippets.FolderStamp(mFolder) + '#' + TAtlasLiveTemplates.FolderStamp(mIdeFolder) + '#' +
+    mTeamFolder + '#' + TAtlasSnippets.FolderStamp(mTeamFolder);
+  if mStamp = FSnippets.Stamp then
   begin
     Exit;
   end;
-  FSnippets.Stamp := Stamp;
-  Own := TAtlasSnippets.LoadFolder(Folder, Errors);
-  Team := TAtlasSnippets.LoadFolder(TeamFolder, TeamErrors);
-  Own := TAtlasSnippets.Merge(Own, Team);
+  FSnippets.Stamp := mStamp;
+  mOwn := TAtlasSnippets.LoadFolder(mFolder, mErrors);
+  mTeam := TAtlasSnippets.LoadFolder(mTeamFolder, mTeamErrors);
+  mOwn := TAtlasSnippets.Merge(mOwn, mTeam);
   // Postfix-Vorlagen (#188) bietet der Server hinter Ausdrücken an, nicht die Liste am Anweisungsanfang.
-  FSnippets.Postfix := TAtlasSnippets.Postfixes(Own);
+  FSnippets.Postfix := TAtlasSnippets.Postfixes(mOwn);
   FSnippets.PostfixSession := nil;
-  Own := TAtlasSnippets.WithoutPostfix(Own);
+  mOwn := TAtlasSnippets.WithoutPostfix(mOwn);
   // Dateivorlagen (#759) legen eine ganze Datei an; „Neu mit Atlas“ holt sie über FileSnippets.
-  FSnippets.Files := TAtlasSnippets.FileTemplates(Own);
-  Own := TAtlasSnippets.WithoutFileTemplates(Own);
-  Ide := TAtlasLiveTemplates.LoadFolder(IdeFolder, Stats);
+  FSnippets.Files := TAtlasSnippets.FileTemplates(mOwn);
+  mOwn := TAtlasSnippets.WithoutFileTemplates(mOwn);
+  mIde := TAtlasLiveTemplates.LoadFolder(mIdeFolder, mStats);
   // Ohne Datei- und Ordnernamen: Das Diagnoselog nennt keine Namen (#647).
   Log(Format('Code-Vorlagen: %d eigene, %d fehlerhafte übersprungen; %d aus der IDE, %d übersprungen, ' +
-    '%d Skripte entfallen; %d aus der Projektdatei, %d fehlerhafte übersprungen', [Integer(Length(Own)),
-    Integer(Length(Errors)), Stats.Templates, Stats.Skipped, Stats.Scripts, Integer(Length(Team)),
-    Integer(Length(TeamErrors))]));
-  FSources.SetSnippetList(TAtlasSnippets.Merge(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, Ide), Own));
+    '%d Skripte entfallen; %d aus der Projektdatei, %d fehlerhafte übersprungen', [Integer(Length(mOwn)),
+    Integer(Length(mErrors)), mStats.Templates, mStats.Skipped, mStats.Scripts, Integer(Length(mTeam)),
+    Integer(Length(mTeamErrors))]));
+  FSources.SetSnippetList(TAtlasSnippets.Merge(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, mIde), mOwn));
 end;
 
 procedure TAtlasEditorCompletionSnippets.SendPostfixTemplates;

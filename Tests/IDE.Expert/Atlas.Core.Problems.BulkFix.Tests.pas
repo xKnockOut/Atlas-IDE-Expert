@@ -56,7 +56,7 @@ begin
   Result.FileName := AFileName;
   Result.Problem.Code := ARule;
   Result.Problem.Source := ASource;
-  if ASource = TAtlasProblem.CompilerSource then
+  if ASource = TAtlasProblem.cCompilerSource then
   begin
     Result.Category := TAtlasFindingCategory.Compiler;
   end
@@ -84,7 +84,7 @@ var
 begin
   mFiles := TAtlasBulkFixPreview.FilesOf(TArray<TAtlasFinding>.Create(Finding('B.pas', 'unused-uses', 'atlas'),
     Finding('A.pas', 'redundant-cast', 'atlas'), Finding('A.pas', 'unused-uses', 'atlas'),
-    Finding('b.pas', 'UNUSED-USES', 'atlas'), Finding('C.pas', 'unused-uses', TAtlasProblem.CompilerSource)),
+    Finding('b.pas', 'UNUSED-USES', 'atlas'), Finding('C.pas', 'unused-uses', TAtlasProblem.cCompilerSource)),
     'unused-uses');
   Assert.AreEqual('B.pas|A.pas', string.Join('|', mFiles));
 end;

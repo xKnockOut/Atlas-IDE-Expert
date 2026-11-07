@@ -93,7 +93,8 @@ type
     destructor Destroy; override;
     /// <summary>Laufende, initialisierte Sitzung oder nil; startet keinen Server (#402).</summary>
     function RunningSession: TLspSession;
-    /// <summary>Fortschritt des Servers ("Index 45 %"); '' ohne Sitzung oder Vorgang. Startet keinen Server (#492).</summary>
+    /// <summary>Fortschritt des Servers ("Index 45 %"); '' ohne Sitzung oder Vorgang. Startet keinen Server
+    /// (#492).</summary>
     function ServerProgress: string;
     /// <summary>Stand des Servers für das Statusfeld (#591); startet keinen Server.</summary>
     function ServerInfo: TAtlasServerInfo;
@@ -224,7 +225,7 @@ begin
   end;
   FLastError := AMessage;
   // Benachrichtigungszentrale (#601): bei „nur sammeln“ oder „aus“ keine Zeile im Meldungsfenster.
-  mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server,
+  mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer,
     TAtlasNotificationSeverity.Error, TAtlasStrings.Text(TAtlasTextId.NotificationsServerError), AMessage,
     LogActions);
   if (mMode = TAtlasNotificationMode.Show) and Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then

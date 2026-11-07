@@ -130,7 +130,7 @@ begin
   try
     Page.LoadFrom(Settings);
     Assert.IsFalse(CheckOf(Page, 'UpdatesCheck').Checked, 'Vorgabe aus');
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVersion, [TAtlasPluginVersion.Version,
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVersion, [TAtlasPluginVersion.cVersion,
       TAtlasUpdates.IdeVersion]), Page.Part<TAtlasSettingsStartupPart>.VersionLabel.Caption);
     CheckOf(Page, 'UpdatesCheck').Checked := True;
     // Fehlerbericht (#108): anonymisiert als Vorgabe, abschaltbar.

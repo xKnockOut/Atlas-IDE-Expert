@@ -72,7 +72,7 @@ type
   /// <summary>Inhalt des Tooltips: Satz, Doku und Zeichnen (P-09).</summary>
   TAtlasHoverTipView = class(TAtlasPopupWindow)
   public const
-    MaxWidth = 460;
+    cMaxWidth = 460;
   private
     FDeclaration: TAtlasStyledText;
     FProblemActions: Boolean;
@@ -146,14 +146,14 @@ type
     FOnProblemAction: TAtlasHoverProblemActionEvent;
     FOnDebugFix: TAtlasHoverIndexEvent;
     /// <summary>Klick in die Doku: Verweis, Link oder Beginn einer Markierung.</summary>
-    procedure DocMouseDown(Shift: TShiftState; X, Y: Integer);
+    procedure DocMouseDown(AShift: TShiftState; AX, AY: Integer);
     /// <summary>Schalter der published-Mitglieder (#110): schaltet um und passt die Höhe an.</summary>
     procedure TogglePublished(AToggle: TAtlasHoverPublishedToggle);
     /// <summary>Löst die Aktion der Klickfläche AHit (Index in FLayout.Hits) aus, wenn sie zu einem Problem gehört.
     /// </summary>
     function FireProblemAction(AHit: Integer): Boolean;
     /// <summary>Klick auf die Klickfläche AHit (Index in FLayout.Hits).</summary>
-    procedure FireHit(AHit: Integer; Shift: TShiftState);
+    procedure FireHit(AHit: Integer; AShift: TShiftState);
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -202,9 +202,9 @@ uses
 
 function HoverKindCaption(const AKind: string): string;
 const
-  Kinds: array[0..15] of string = ('class', 'classref', 'object', 'record', 'interface', 'helper', 'enum', 'type',
+  cKinds: array[0..15] of string = ('class', 'classref', 'object', 'record', 'interface', 'helper', 'enum', 'type',
     'method', 'constructor', 'routine', 'property', 'field', 'variable', 'constant', 'enumMember');
-  Ids: array[0..15] of TAtlasTextId = (TAtlasTextId.KindClass, TAtlasTextId.KindClassRef, TAtlasTextId.KindObject,
+  cIds: array[0..15] of TAtlasTextId = (TAtlasTextId.KindClass, TAtlasTextId.KindClassRef, TAtlasTextId.KindObject,
     TAtlasTextId.KindRecord, TAtlasTextId.KindInterface, TAtlasTextId.KindHelper, TAtlasTextId.KindEnum,
     TAtlasTextId.KindType, TAtlasTextId.KindMethod, TAtlasTextId.KindConstructor, TAtlasTextId.KindRoutine,
     TAtlasTextId.KindProperty, TAtlasTextId.KindField, TAtlasTextId.KindVariable, TAtlasTextId.KindConstant,
@@ -212,14 +212,14 @@ const
 var
   mIndex: Integer;
 begin
-  mIndex := IndexStr(AKind, Kinds);
+  mIndex := IndexStr(AKind, cKinds);
   if mIndex < 0 then
   begin
     Result := '';
   end
   else
   begin
-    Result := TAtlasStrings.Text(Ids[mIndex]);
+    Result := TAtlasStrings.Text(cIds[mIndex]);
   end;
 end;
 
@@ -391,12 +391,12 @@ end;
 
 function TTipMeasure.BlockHeight(const AText: string; AWidth: Integer): Integer;
 var
-  Area: TRect;
+  mArea: TRect;
 begin
   FTip.Canvas.Font := FTip.UIFont;
-  Area := Rect(0, 0, AWidth, 0);
-  DrawText(FTip.Canvas.Handle, PChar(AText), -1, Area, DT_WORDBREAK or DT_NOPREFIX or DT_CALCRECT);
-  Result := Area.Bottom;
+  mArea := Rect(0, 0, AWidth, 0);
+  DrawText(FTip.Canvas.Handle, PChar(AText), -1, mArea, DT_WORDBREAK or DT_NOPREFIX or DT_CALCRECT);
+  Result := mArea.Bottom;
 end;
 
 function TTipMeasure.DeclarationWidth(AFrom, ATill: Integer): Integer;
@@ -429,21 +429,21 @@ end;
 
 procedure TAtlasHoverTipView.PrepareDoc(AWidth: Integer);
 var
-  Doc: TAtlasDoc;
+  mDoc: TAtlasDoc;
 begin
   // Fremde Server liefern nur Klartext: als Beschreibung setzen, ohne Kürzen.
-  Doc := FView.Data.Doc;
-  if Doc.IsEmpty then
+  mDoc := FView.Data.Doc;
+  if mDoc.IsEmpty then
   begin
-    Doc := TAtlasDoc.FromText(FView.Data.Documentation);
+    mDoc := TAtlasDoc.FromText(FView.Data.Documentation);
   end;
-  if Doc.IsEmpty then
+  if mDoc.IsEmpty then
   begin
     FDoc.Clear;
     Exit;
   end;
   HandleNeeded;
-  FDoc.Build(Canvas, TAtlasDocContent.Create(Doc, TAtlasDocSignature.Parse(FView.Data.Declaration),
+  FDoc.Build(Canvas, TAtlasDocContent.Create(mDoc, TAtlasDocSignature.Parse(FView.Data.Declaration),
     TAtlasDocExpandState.Initial(FView.Display.Expand, TAtlasDocSurface.Tooltip)), AWidth - Scale(22),
     TAtlasDocFonts.Create(Font, UIFont, PPI), TAtlasStrings.DocLabels);
 end;
@@ -466,48 +466,49 @@ end;
 
 procedure TAtlasHoverTipView.Refit;
 var
-  Area, Bounds: TRect;
-  NewHeight: Integer;
+  mArea, mBounds: TRect;
+  mNewHeight: Integer;
 begin
-  Area := WorkAreaAt(BoundsRect.TopLeft);
-  NewHeight := FitHeight(Width, Area.Height - Scale(8));
-  Bounds := TRect.Create(BoundsRect.TopLeft, Width, NewHeight);
+  mArea := WorkAreaAt(BoundsRect.TopLeft);
+  mNewHeight := FitHeight(Width, mArea.Height - Scale(8));
+  mBounds := TRect.Create(BoundsRect.TopLeft, Width, mNewHeight);
   // Wächst nach unten; über dem Wort bzw. ohne Platz darunter nach oben.
-  if FAbove or (Bounds.Bottom > Area.Bottom) then
+  if FAbove or (mBounds.Bottom > mArea.Bottom) then
   begin
-    Bounds.SetLocation(Bounds.Left, Max(Area.Top, BoundsRect.Bottom - NewHeight));
+    mBounds.SetLocation(mBounds.Left, Max(mArea.Top, BoundsRect.Bottom - mNewHeight));
   end;
-  ShowAt(Bounds);
+  ShowAt(mBounds);
   Invalidate;
 end;
 
 function TAtlasHoverTipView.FitHeight(AWidth, AAvailable: Integer): Integer;
 var
-  Natural: Integer;
+  mNatural: Integer;
 begin
   FDoc.FitHeight(FView.Display.MaxLines, 0);
   FMembers.Limit := 0;
   BuildLayout(AWidth);
-  Natural := FLayout.Height;
+  mNatural := FLayout.Height;
   // Mitglieder zuerst kürzen (#1841): Sie sind aufgeklappt, um gelesen zu werden; die Doku teilt sich den Rest.
-  if (Natural > AAvailable) and (FLayout.Members.View.Height > 0) then
+  if (mNatural > AAvailable) and (FLayout.Members.View.Height > 0) then
   begin
-    FMembers.Limit := Max(1, FLayout.Members.View.Height - (Natural - AAvailable));
+    FMembers.Limit := Max(1, FLayout.Members.View.Height - (mNatural - AAvailable));
     BuildLayout(AWidth);
-    Natural := FLayout.Height;
+    mNatural := FLayout.Height;
   end;
-  if (Natural > AAvailable) and not FDoc.IsEmpty then
+  if (mNatural > AAvailable) and not FDoc.IsEmpty then
   begin
-    FDoc.FitHeight(FView.Display.MaxLines, FDoc.Height - (Natural - AAvailable));
+    FDoc.FitHeight(FView.Display.MaxLines, FDoc.Height - (mNatural - AAvailable));
     BuildLayout(AWidth);
-    Natural := FLayout.Height;
+    mNatural := FLayout.Height;
   end;
-  Result := Natural;
+  Result := mNatural;
 end;
 
 function TAtlasHoverTipView.InDoc(AX, AY: Integer): Boolean;
 begin
-  Result := not FDoc.IsEmpty and (AX >= FLayout.DocLeft - Scale(4)) and (AX < FLayout.DocLeft + FDoc.Width + Scale(8)) and
+  Result := not FDoc.IsEmpty and (AX >= FLayout.DocLeft - Scale(4)) and
+    (AX < FLayout.DocLeft + FDoc.Width + Scale(8)) and
     (AY >= FLayout.DocTop) and (AY < FLayout.DocTop + FDoc.Height);
 end;
 
@@ -520,43 +521,43 @@ begin
   end;
 end;
 
-procedure TAtlasHoverTip.DocMouseDown(Shift: TShiftState; X, Y: Integer);
+procedure TAtlasHoverTip.DocMouseDown(AShift: TShiftState; AX, AY: Integer);
 var
-  Index: Integer;
-  Link: TAtlasDocLink;
-  Ref: TAtlasHoverTypeRef;
+  mIndex: Integer;
+  mLink: TAtlasDocLink;
+  mRef: TAtlasHoverTypeRef;
 begin
-  Index := DocLinkAt(X, Y);
-  if Index >= 0 then
+  mIndex := DocLinkAt(AX, AY);
+  if mIndex >= 0 then
   begin
-    Link := FDoc.Link(Index);
-    if Link.Kind = TAtlasDocLinkKind.Toggle then
+    mLink := FDoc.Link(mIndex);
+    if mLink.Kind = TAtlasDocLinkKind.Toggle then
     begin
       ToggleDoc;
     end
-    else if Link.Kind = TAtlasDocLinkKind.Url then
+    else if mLink.Kind = TAtlasDocLinkKind.Url then
     begin
       if Assigned(FOnUrl) then
       begin
-        FOnUrl(Self, Link.Url);
+        FOnUrl(Self, mLink.Url);
       end;
     end
     else if Assigned(FOnLink) then
     begin
       // Wie Typnamen der Deklaration (#588): Klick zeigt den Typ, Strg+Klick springt hin.
-      Ref := Default(TAtlasHoverTypeRef);
-      Ref.Name := Link.Target.Name;
-      Ref.UnitName := Link.Target.UnitName;
-      Ref.FileName := Link.Target.FileName;
-      Ref.Line := Link.Target.Line;
-      Ref.Character := Link.Target.Character;
-      FOnLink(Self, Ref, ssCtrl in Shift);
+      mRef := Default(TAtlasHoverTypeRef);
+      mRef.Name := mLink.Target.Name;
+      mRef.UnitName := mLink.Target.UnitName;
+      mRef.FileName := mLink.Target.FileName;
+      mRef.Line := mLink.Target.Line;
+      mRef.Character := mLink.Target.Character;
+      FOnLink(Self, mRef, ssCtrl in AShift);
     end;
     Exit;
   end;
-  if InDoc(X, Y) then
+  if InDoc(AX, AY) then
   begin
-    FDoc.StartSelection(Canvas, X - FLayout.DocLeft, Y - FLayout.DocTop);
+    FDoc.StartSelection(Canvas, AX - FLayout.DocLeft, AY - FLayout.DocTop);
   end
   else
   begin
@@ -610,22 +611,22 @@ end;
 
 procedure TAtlasHoverTipView.BuildLayout(AWidth: Integer);
 var
-  Input: TAtlasHoverInput;
+  mInput: TAtlasHoverInput;
 begin
   HandleNeeded;
-  Input := Default(TAtlasHoverInput);
-  Input.View := FView;
-  Input.Width := AWidth;
-  Input.PPI := PPI;
-  Input.Colors := Colors;
-  Input.Texts := HoverTexts(FView);
-  Input.HasDoc := not FDoc.IsEmpty;
-  Input.DocHeight := FDoc.Height;
-  Input.HasSelection := FDoc.HasSelection;
-  Input.ProblemActions := FProblemActions;
-  Input.HideCompilerCode := FHideCompilerCode;
-  Input.Members := FMembers;
-  FLayout := TAtlasHoverLayout.Build(Input, TTipMeasure.Create(Self));
+  mInput := Default(TAtlasHoverInput);
+  mInput.View := FView;
+  mInput.Width := AWidth;
+  mInput.PPI := PPI;
+  mInput.Colors := Colors;
+  mInput.Texts := HoverTexts(FView);
+  mInput.HasDoc := not FDoc.IsEmpty;
+  mInput.DocHeight := FDoc.Height;
+  mInput.HasSelection := FDoc.HasSelection;
+  mInput.ProblemActions := FProblemActions;
+  mInput.HideCompilerCode := FHideCompilerCode;
+  mInput.Members := FMembers;
+  FLayout := TAtlasHoverLayout.Build(mInput, TTipMeasure.Create(Self));
   // Nach Umschalten oder Kürzen kann der Versatz zu groß sein; der Satz hat ihn begrenzt.
   FMembers.Scroll := FLayout.Members.Scroll;
   FLayoutKey := LayoutKey(AWidth);
@@ -727,40 +728,40 @@ end;
 
 function TAtlasHoverTipView.PreferredWidth: Integer;
 var
-  Widest: Integer;
-  Problem: TAtlasProblem;
+  mWidest: Integer;
+  mProblem: TAtlasProblem;
 begin
   HandleNeeded;
   // Breite: Deklaration in einer Zeile, sonst die Höchstbreite.
   Canvas.Font := Font;
   Canvas.Font.Style := [fsBold];
-  Widest := Canvas.TextWidth(FView.Data.Declaration);
+  mWidest := Canvas.TextWidth(FView.Data.Declaration);
   if FView.DebugValue.Visible then
   begin
-    Widest := Max(Widest, Canvas.TextWidth(FView.DebugValue.Expression) + Scale(9));
+    mWidest := Max(mWidest, Canvas.TextWidth(FView.DebugValue.Expression) + Scale(9));
   end;
   Canvas.Font := UIFont;
   if FView.DebugValue.Visible then
   begin
-    Widest := Max(Widest, Canvas.TextWidth(FView.DebugValue.Text) + Scale(9));
+    mWidest := Max(mWidest, Canvas.TextWidth(FView.DebugValue.Text) + Scale(9));
   end;
-  Widest := Max(Widest, Canvas.TextWidth(FView.Data.UnitName));
-  for Problem in FView.Problems do
+  mWidest := Max(mWidest, Canvas.TextWidth(FView.Data.UnitName));
+  for mProblem in FView.Problems do
   begin
-    Widest := Max(Widest, Canvas.TextWidth(Problem.Caption) + Scale(9));
+    mWidest := Max(mWidest, Canvas.TextWidth(mProblem.Caption) + Scale(9));
   end;
   if NeedsFullWidth(FView) then
   begin
-    Widest := Scale(MaxWidth);
+    mWidest := Scale(cMaxWidth);
   end;
-  Result := EnsureRange(Widest + Scale(26), Scale(200), Scale(MaxWidth));
+  Result := EnsureRange(mWidest + Scale(26), Scale(200), Scale(cMaxWidth));
 end;
 
 procedure TAtlasHoverTipView.ShowContent(const AView: TAtlasHoverView; const AWord: TRect);
 var
   mWidth, mHeight: Integer;
-  Spoken: string;
-  Area, Bounds: TRect;
+  mSpoken: string;
+  mArea, mBounds: TRect;
 begin
   FView := AView;
   FDeclaration := TAtlasStyledText.Create(AView.Data.Declaration);
@@ -768,35 +769,35 @@ begin
   FMembers.Scroll := 0;
   mWidth := PreferredWidth;
   PrepareDoc(mWidth);
-  Area := WorkAreaAt(AWord.TopLeft);
+  mArea := WorkAreaAt(AWord.TopLeft);
   // Höchstens so hoch wie der größere Platz unter bzw. über dem Wort; darüber scrollt die Doku.
-  mHeight := FitHeight(mWidth, Max(Area.Bottom - AWord.Bottom, AWord.Top - Area.Top) - Scale(12));
-  Bounds := TRect.Create(Point(AWord.Left, AWord.Bottom + Scale(4)), mWidth, mHeight);
-  FAbove := Bounds.Bottom > Area.Bottom;
+  mHeight := FitHeight(mWidth, Max(mArea.Bottom - AWord.Bottom, AWord.Top - mArea.Top) - Scale(12));
+  mBounds := TRect.Create(Point(AWord.Left, AWord.Bottom + Scale(4)), mWidth, mHeight);
+  FAbove := mBounds.Bottom > mArea.Bottom;
   if FAbove then
   begin
-    Bounds.SetLocation(Bounds.Left, AWord.Top - mHeight - Scale(4));
+    mBounds.SetLocation(mBounds.Left, AWord.Top - mHeight - Scale(4));
   end;
-  if Bounds.Right > Area.Right then
+  if mBounds.Right > mArea.Right then
   begin
-    Bounds.SetLocation(Max(Area.Left, Area.Right - mWidth), Bounds.Top);
+    mBounds.SetLocation(Max(mArea.Left, mArea.Right - mWidth), mBounds.Top);
   end;
-  ShowAt(Bounds);
+  ShowAt(mBounds);
   // Sprachausgabe (#447): Deklaration und Anfang der Doku.
-  SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessHover));
-  Spoken := Trim(AView.Data.Declaration + '. ' + Copy(AView.Data.Documentation, 1, 300));
+  SetAccessible(cUiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessHover));
+  mSpoken := Trim(AView.Data.Declaration + '. ' + Copy(AView.Data.Documentation, 1, 300));
   // Wert im Debugger (#891) zuerst.
   if AView.DebugValue.PlainText <> '' then
   begin
-    Spoken := AView.DebugValue.PlainText + '. ' + Spoken;
+    mSpoken := AView.DebugValue.PlainText + '. ' + mSpoken;
   end;
-  Announce(Spoken);
+  Announce(mSpoken);
 end;
 
 procedure TAtlasHoverTipView.UpdateContent(const AView: TAtlasHoverView);
 var
   mWidth, mHeight: Integer;
-  Bounds, Area: TRect;
+  mBounds, mArea: TRect;
 begin
   if not IsShown then
   begin
@@ -808,17 +809,17 @@ begin
   FMembers.Scroll := 0;
   mWidth := Max(BoundsRect.Width, PreferredWidth);
   PrepareDoc(mWidth);
-  Area := WorkAreaAt(BoundsRect.TopLeft);
-  mHeight := Max(BoundsRect.Height, FitHeight(mWidth, Area.Bottom - BoundsRect.Top - Scale(4)));
-  mHeight := Min(mHeight, Max(Area.Bottom - BoundsRect.Top, Scale(80)));
-  Bounds := TRect.Create(BoundsRect.TopLeft, mWidth, mHeight);
-  ShowAt(Bounds);
+  mArea := WorkAreaAt(BoundsRect.TopLeft);
+  mHeight := Max(BoundsRect.Height, FitHeight(mWidth, mArea.Bottom - BoundsRect.Top - Scale(4)));
+  mHeight := Min(mHeight, Max(mArea.Bottom - BoundsRect.Top, Scale(80)));
+  mBounds := TRect.Create(BoundsRect.TopLeft, mWidth, mHeight);
+  ShowAt(mBounds);
   Invalidate;
 end;
 
 procedure TAtlasHoverTip.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  Hot, DocHot: Integer;
+  mHot, mDocHot: Integer;
 begin
   inherited;
   // Markieren in der Doku (#654).
@@ -828,9 +829,9 @@ begin
     Invalidate;
     Exit;
   end;
-  Hot := FLayout.HitAt(Point(X, Y));
-  DocHot := DocLinkAt(X, Y);
-  if (Hot >= 0) or (DocHot >= 0) then
+  mHot := FLayout.HitAt(Point(X, Y));
+  mDocHot := DocLinkAt(X, Y);
+  if (mHot >= 0) or (mDocHot >= 0) then
   begin
     Cursor := crHandPoint;
   end
@@ -842,10 +843,10 @@ begin
   begin
     Cursor := crDefault;
   end;
-  if (Hot <> FHot) or (DocHot <> FDoc.HotLink) then
+  if (mHot <> FHot) or (mDocHot <> FDoc.HotLink) then
   begin
-    FHot := Hot;
-    FDoc.HotLink := DocHot;
+    FHot := mHot;
+    FDoc.HotLink := mDocHot;
     Invalidate;
   end;
 end;
@@ -900,7 +901,7 @@ begin
   end;
 end;
 
-procedure TAtlasHoverTip.FireHit(AHit: Integer; Shift: TShiftState);
+procedure TAtlasHoverTip.FireHit(AHit: Integer; AShift: TShiftState);
 var
   mHit: TAtlasHoverHit;
 begin
@@ -909,12 +910,12 @@ begin
     TAtlasHoverHitKind.Link:
       if Assigned(FOnLink) then
       begin
-        FOnLink(Self, FView.Data.Links[mHit.Index].Target, ssCtrl in Shift);
+        FOnLink(Self, FView.Data.Links[mHit.Index].Target, ssCtrl in AShift);
       end;
     TAtlasHoverHitKind.Ancestor:
       if Assigned(FOnLink) then
       begin
-        FOnLink(Self, FView.Data.Ancestors[mHit.Index], ssCtrl in Shift);
+        FOnLink(Self, FView.Data.Ancestors[mHit.Index], ssCtrl in AShift);
       end;
     TAtlasHoverHitKind.Path:
       if Assigned(FOnPath) then
@@ -989,8 +990,8 @@ end;
 
 function TAtlasHoverTip.FireProblemAction(AHit: Integer): Boolean;
 var
-  ProblemIndex, Item: Integer;
-  ProblemAction: TAtlasHoverProblemAction;
+  mProblemIndex, mItem: Integer;
+  mProblemAction: TAtlasHoverProblemAction;
 begin
   Result := (AHit >= 0) and (AHit <= High(FLayout.Hits)) and
     (FLayout.Hits[AHit].Kind = TAtlasHoverHitKind.ProblemAction) and Assigned(FOnProblemAction);
@@ -998,8 +999,8 @@ begin
   begin
     Exit;
   end;
-  TAtlasHoverLayout.DecodeProblemAction(FLayout.Hits[AHit].Index, ProblemIndex, ProblemAction, Item);
-  FOnProblemAction(Self, ProblemIndex, ProblemAction, Item);
+  TAtlasHoverLayout.DecodeProblemAction(FLayout.Hits[AHit].Index, mProblemIndex, mProblemAction, mItem);
+  FOnProblemAction(Self, mProblemIndex, mProblemAction, mItem);
 end;
 
 function TAtlasHoverTip.HasProblemActions: Boolean;
@@ -1020,13 +1021,13 @@ end;
 
 function TAtlasHoverTip.StepProblemAction(AForward: Boolean): Boolean;
 var
-  Next: Integer;
+  mNext: Integer;
 begin
-  Next := FLayout.NextProblemHit(FHot, AForward);
-  Result := Next >= 0;
-  if Result and (Next <> FHot) then
+  mNext := FLayout.NextProblemHit(FHot, AForward);
+  Result := mNext >= 0;
+  if Result and (mNext <> FHot) then
   begin
-    FHot := Next;
+    FHot := mNext;
     Invalidate;
   end;
 end;

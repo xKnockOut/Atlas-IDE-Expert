@@ -52,10 +52,10 @@ uses
 function SampleCenter: IAtlasNotificationCenter;
 begin
   Result := TAtlasNotificationCenter.Create;
-  Result.Notify(TAtlasNotificationSources.Server, TAtlasNotificationSeverity.Info, 'Server neu gestartet', '');
-  Result.Notify(TAtlasNotificationSources.Build, TAtlasNotificationSeverity.Error, 'Build fertig: 2 Fehler',
+  Result.Notify(TAtlasNotificationSources.cServer, TAtlasNotificationSeverity.Info, 'Server neu gestartet', '');
+  Result.Notify(TAtlasNotificationSources.cBuild, TAtlasNotificationSeverity.Error, 'Build fertig: 2 Fehler',
     'Projekt1: 2 Fehler', [TAtlasNotificationCenter.Action('Zum Fehler', nil)]);
-  Result.Notify(TAtlasNotificationSources.Server, TAtlasNotificationSeverity.Warning, 'Meldung des Servers', 'x');
+  Result.Notify(TAtlasNotificationSources.cServer, TAtlasNotificationSeverity.Warning, 'Meldung des Servers', 'x');
 end;
 
 procedure TAtlasNotificationsWindowTests.WarmUpFirstUse;
@@ -78,7 +78,7 @@ begin
     Assert.AreEqual(3, Integer(Window.FilterBox.Items.Count));
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsFilterAll), Window.FilterBox.Items[0]);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsSourceServer), Window.FilterBox.Items[1]);
-    Window.SetFilter(TAtlasNotificationSources.Build);
+    Window.SetFilter(TAtlasNotificationSources.cBuild);
     Assert.AreEqual(1, Integer(Length(Window.Rows)));
     Assert.AreEqual(2, Window.FilterBox.ItemIndex);
     // Gewählte Quelle bleibt im Filter, auch wenn sie keine Einträge mehr hat.
@@ -121,7 +121,7 @@ var
 begin
   Count := 0;
   Center := TAtlasNotificationCenter.Create;
-  Center.Notify(TAtlasNotificationSources.Build, TAtlasNotificationSeverity.Error, 'Build fertig: 2 Fehler', '',
+  Center.Notify(TAtlasNotificationSources.cBuild, TAtlasNotificationSeverity.Error, 'Build fertig: 2 Fehler', '',
     [TAtlasNotificationCenter.Action('Zum Fehler',
     procedure
     begin
@@ -169,9 +169,9 @@ begin
     Assert.IsTrue(Menu.Items[3].Checked, 'Vorgabe: einblenden');
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsModeCollect), Menu.Items[4].Caption);
     Menu.Items[4].Click;
-    Assert.AreEqual(TAtlasNotificationSources.Server, Changed);
+    Assert.AreEqual(TAtlasNotificationSources.cServer, Changed);
     Assert.IsTrue(ChangedMode = TAtlasNotificationMode.Collect);
-    Assert.IsTrue(Center.ModeOf(TAtlasNotificationSources.Server) = TAtlasNotificationMode.Collect);
+    Assert.IsTrue(Center.ModeOf(TAtlasNotificationSources.cServer) = TAtlasNotificationMode.Collect);
     Menu := Window.BuildMenu(0);
     Assert.IsTrue(Menu.Items[4].Checked);
     Menu.Items[0].Click;
