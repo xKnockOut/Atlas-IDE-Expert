@@ -279,7 +279,7 @@ begin
   end;
   Inc(FCatalogRequest);
   mRequest := FCatalogRequest;
-  FRequest(TAtlasQueryRequest.CatalogMethod, TAtlasQueryRequest.CatalogParams(mUri), cCatalogTimeoutMs, nil,
+  FRequest(TAtlasQueryRequest.cCatalogMethod, TAtlasQueryRequest.CatalogParams(mUri), cCatalogTimeoutMs, nil,
     procedure(AAnswer: string)
     var
       mCatalog: TAtlasQueryCatalog;
@@ -316,7 +316,7 @@ begin
   Inc(TAtlasIdeCodeQuery.FCurrent);
   mRequest := TAtlasIdeCodeQuery.FCurrent;
   mFrame.SetRunning(True);
-  if not FRequest(TAtlasQueryRequest.Method, TAtlasQueryRequest.Params(mUri, AQuery, cLimit), cTimeoutMs,
+  if not FRequest(TAtlasQueryRequest.cMethod, TAtlasQueryRequest.Params(mUri, AQuery, cLimit), cTimeoutMs,
     CancelledFor(mRequest),
     procedure(AAnswer: string)
     var

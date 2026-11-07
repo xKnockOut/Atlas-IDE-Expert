@@ -67,7 +67,7 @@ type
     procedure PreviewTick(Sender: TObject);
     procedure MenuClick(Sender: TObject);
     procedure ClickArea(const AArea: TAtlasUnitSearchHitArea; AButton: TMouseButton; AShift: TShiftState;
-      X, Y: Integer);
+      AX, AY: Integer);
     /// <summary>Taste außer Navigation verarbeiten; False, wenn sie nichts tut.</summary>
     function KeyCommand(AKey: Word; AShift: TShiftState): Boolean;
     /// <summary>Strg+Buchstabe; False, wenn er nichts tut.</summary>
@@ -240,13 +240,13 @@ begin
 end;
 
 /// <summary>Zeile an der Höhe Y; -1 außerhalb der Liste.</summary>
-function RowAt(AData: TAtlasUnitSearchData; Y: Integer): Integer;
+function RowAt(AData: TAtlasUnitSearchData; AY: Integer): Integer;
 var
   mOffset, mIndex: Integer;
 begin
   Result := -1;
-  mOffset := Y - AData.List.Rect.Top + AData.List.Scroll;
-  if (Y < AData.List.Rect.Top) or (Y >= AData.List.Rect.Bottom) then
+  mOffset := AY - AData.List.Rect.Top + AData.List.Scroll;
+  if (AY < AData.List.Rect.Top) or (AY >= AData.List.Rect.Bottom) then
   begin
     Exit;
   end;
@@ -784,7 +784,7 @@ begin
 end;
 
 procedure TAtlasUnitSearchWindow.ClickArea(const AArea: TAtlasUnitSearchHitArea; AButton: TMouseButton;
-  AShift: TShiftState; X, Y: Integer);
+  AShift: TShiftState; AX, AY: Integer);
 var
   mPoint: TPoint;
 begin
@@ -794,7 +794,7 @@ begin
     Changed;
     if (AButton = mbRight) and not FData.List.Rows[AArea.Value].IsGroup then
     begin
-      mPoint := ClientToScreen(Point(X, Y));
+      mPoint := ClientToScreen(Point(AX, AY));
       FActionMenu.Popup(mPoint.X, mPoint.Y);
     end;
   end;

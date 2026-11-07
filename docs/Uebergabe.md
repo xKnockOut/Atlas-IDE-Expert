@@ -41,6 +41,10 @@
 - Falle: `fixer-safefix.patch` passt seit den Common-Präfixen nicht mehr auf `Builtin.Naming.pas` (`mFixes`/`mNewName`); die Zeile von Hand um `, True` ergänzen.
 - Geprüft (Cloud): AtlasServer `--check` mit Metriken über `Atlas.IDE.Rules.dproj` und die 6 Testunits: 0 Befunde. FPC-Tests `Atlas.Core.Rules.Table.Tests`/`Atlas.Core.Problems.BulkFix.Tests` wie auf main-merging (ein FPC-Kodierungsfehlschlag in ArgumentsNameRuleAndFiles auf beiden). VCL- und ToolsAPI-Units nicht übersetzbar: Delphi-Build offen.
 
+## Präfixe und Zeilenlänge in Atlas.IDE.Search (07.11.2026, Branch `claude/project-thread-mecm9l` auf `main-merging`)
+- naming-prefix und line-length im Modul Suche und seinen 13 Testunits (`[Category('Atlas.IDE.Search')]`) behoben: 463 lokale Namen über `--fix naming-prefix` (Server mit safeFix-Patch), 11 öffentliche Konstanten von Hand samt Verwendungen (`TAtlasQueryRequest.cMethod`/`cCatalogMethod`, `TAtlasTextSearch.cCodeMask`, `TAtlasSearchResults.cMaxEntries`, `TAtlasUnitSearch.cScoreSubsequence`/`cScoreCaption`, `TAtlasPreviewSections.cPriority`, `TAtlasUseUnit.cCommand`/`cFormsFilter`, `TAtlasSearchModule.cModuleId`/`cSwitch`), 5 lange Zeilen umgebrochen. Verwendungen außerhalb des Moduls gab es nicht.
+- Geprüft (Cloud): AtlasServer `--check` über Atlas.IDE.Search.dproj mit naming-prefix, line-length und allen `metric-*`: 0 Befunde; Testunits über Tests/Atlas.Tests.dproj: 0 Befunde. FPC-Tests Query.Model 10/10, UseUnit 9/9, Sections 7/7, History 5/6 wie auf main-merging (Umlaut-Fehlschlag schon vorher); die übrigen Testunits brauchen Winapi.Windows. Prüfskripte und Generatoren mit `-Check` grün. IDE- und UI-Units nicht übersetzt: Delphi-Build nötig.
+
 ## IDE-Start 60 s mit Willkommensseite (06.11.2026, Branch `claude/project-thread-a48wa8` auf `Pilot-2.0.0-beta.1`)
 
 - **Befund:** Nach der Installation von 2.0.0-beta.1 aus dem Release-Paket dauerte Marcos IDE-Start 60 s (vorher 0,7–6,5 s), `atlas.log`: „davon Atlas 9563 ms: Welcome 9091 ms“. Ohne „Neu in Atlas“ und „Atlas entdecken“ wieder 4,8 s.

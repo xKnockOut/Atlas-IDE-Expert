@@ -32,7 +32,7 @@ type
 implementation
 
 const
-  None_: TAtlasSectionChoices = (TAtlasSectionChoice.Auto, TAtlasSectionChoice.Auto, TAtlasSectionChoice.Auto,
+  cNone_: TAtlasSectionChoices = (TAtlasSectionChoice.Auto, TAtlasSectionChoice.Auto, TAtlasSectionChoice.Auto,
     TAtlasSectionChoice.Auto, TAtlasSectionChoice.Auto, TAtlasSectionChoice.Auto);
 
 function Input(AOpen: Integer): TAtlasSectionInput;
@@ -55,73 +55,73 @@ end;
 
 procedure TAtlasPreviewSectionsTests.EverythingOpenWithEnoughRoom;
 var
-  States: TAtlasSectionStates;
+  mStates: TAtlasSectionStates;
 begin
-  States := TAtlasPreviewSections.Arrange(Inputs, None_, 380, True);
-  Assert.IsTrue(States[TAtlasPreviewSection.Path] = TAtlasSectionState.Open);
-  Assert.IsTrue(States[TAtlasPreviewSection.Types] = TAtlasSectionState.Open);
-  Assert.IsTrue(States[TAtlasPreviewSection.Uses_] = TAtlasSectionState.Open);
-  Assert.IsTrue(States[TAtlasPreviewSection.UsedBy] = TAtlasSectionState.Open);
-  Assert.IsTrue(States[TAtlasPreviewSection.Header] = TAtlasSectionState.Hidden);
-  Assert.AreEqual(380, TAtlasPreviewSections.Height(Inputs, States));
+  mStates := TAtlasPreviewSections.Arrange(Inputs, cNone_, 380, True);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.Path] = TAtlasSectionState.Open);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.Types] = TAtlasSectionState.Open);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.Uses_] = TAtlasSectionState.Open);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.UsedBy] = TAtlasSectionState.Open);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.Header] = TAtlasSectionState.Hidden);
+  Assert.AreEqual(380, TAtlasPreviewSections.Height(Inputs, mStates));
 end;
 
 procedure TAtlasPreviewSectionsTests.LessImportantCollapseFirst;
 var
-  States: TAtlasSectionStates;
+  mStates: TAtlasSectionStates;
 begin
   // 340 Platz: der Pfad (380 - 20 = 360) reicht nicht, uses dazu (320) reicht.
-  States := TAtlasPreviewSections.Arrange(Inputs, None_, 340, True);
-  Assert.IsTrue(States[TAtlasPreviewSection.Path] = TAtlasSectionState.AutoCollapsed);
-  Assert.IsTrue(States[TAtlasPreviewSection.Uses_] = TAtlasSectionState.AutoCollapsed);
-  Assert.IsTrue(States[TAtlasPreviewSection.UsedBy] = TAtlasSectionState.Open);
-  Assert.IsTrue(States[TAtlasPreviewSection.Types] = TAtlasSectionState.Open);
+  mStates := TAtlasPreviewSections.Arrange(Inputs, cNone_, 340, True);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.Path] = TAtlasSectionState.AutoCollapsed);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.Uses_] = TAtlasSectionState.AutoCollapsed);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.UsedBy] = TAtlasSectionState.Open);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.Types] = TAtlasSectionState.Open);
 end;
 
 procedure TAtlasPreviewSectionsTests.MostImportantStaysOpen;
 var
-  States: TAtlasSectionStates;
+  mStates: TAtlasSectionStates;
 begin
-  States := TAtlasPreviewSections.Arrange(Inputs, None_, 50, True);
-  Assert.IsTrue(States[TAtlasPreviewSection.Types] = TAtlasSectionState.Open);
-  Assert.IsTrue(States[TAtlasPreviewSection.UsedBy] = TAtlasSectionState.AutoCollapsed);
-  Assert.IsTrue(States[TAtlasPreviewSection.Uses_] = TAtlasSectionState.AutoCollapsed);
-  Assert.IsTrue(States[TAtlasPreviewSection.Path] = TAtlasSectionState.AutoCollapsed);
+  mStates := TAtlasPreviewSections.Arrange(Inputs, cNone_, 50, True);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.Types] = TAtlasSectionState.Open);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.UsedBy] = TAtlasSectionState.AutoCollapsed);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.Uses_] = TAtlasSectionState.AutoCollapsed);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.Path] = TAtlasSectionState.AutoCollapsed);
 end;
 
 procedure TAtlasPreviewSectionsTests.HandOpenedStaysOpen;
 var
-  Choices: TAtlasSectionChoices;
-  States: TAtlasSectionStates;
+  mChoices: TAtlasSectionChoices;
+  mStates: TAtlasSectionStates;
 begin
-  Choices := None_;
-  Choices[TAtlasPreviewSection.UsedBy] := TAtlasSectionChoice.HandOpen;
-  States := TAtlasPreviewSections.Arrange(Inputs, Choices, 160, True);
-  Assert.IsTrue(States[TAtlasPreviewSection.UsedBy] = TAtlasSectionState.Open);
-  Assert.IsTrue(States[TAtlasPreviewSection.Types] = TAtlasSectionState.AutoCollapsed,
+  mChoices := cNone_;
+  mChoices[TAtlasPreviewSection.UsedBy] := TAtlasSectionChoice.HandOpen;
+  mStates := TAtlasPreviewSections.Arrange(Inputs, mChoices, 160, True);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.UsedBy] = TAtlasSectionState.Open);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.Types] = TAtlasSectionState.AutoCollapsed,
     'ein von Hand geöffneter Abschnitt bleibt offen, dafür klappen die übrigen ein');
-  Assert.IsTrue(States[TAtlasPreviewSection.Uses_] = TAtlasSectionState.AutoCollapsed);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.Uses_] = TAtlasSectionState.AutoCollapsed);
 end;
 
 procedure TAtlasPreviewSectionsTests.HandClosedStaysClosed;
 var
-  Choices: TAtlasSectionChoices;
-  States: TAtlasSectionStates;
+  mChoices: TAtlasSectionChoices;
+  mStates: TAtlasSectionStates;
 begin
-  Choices := None_;
-  Choices[TAtlasPreviewSection.Types] := TAtlasSectionChoice.HandClosed;
-  States := TAtlasPreviewSections.Arrange(Inputs, Choices, 1000, True);
-  Assert.IsTrue(States[TAtlasPreviewSection.Types] = TAtlasSectionState.Collapsed);
-  Assert.IsTrue(States[TAtlasPreviewSection.Path] = TAtlasSectionState.Open);
+  mChoices := cNone_;
+  mChoices[TAtlasPreviewSection.Types] := TAtlasSectionChoice.HandClosed;
+  mStates := TAtlasPreviewSections.Arrange(Inputs, mChoices, 1000, True);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.Types] = TAtlasSectionState.Collapsed);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.Path] = TAtlasSectionState.Open);
 end;
 
 procedure TAtlasPreviewSectionsTests.SwitchedOffNothingCollapses;
 var
-  States: TAtlasSectionStates;
+  mStates: TAtlasSectionStates;
 begin
-  States := TAtlasPreviewSections.Arrange(Inputs, None_, 50, False);
-  Assert.IsTrue(States[TAtlasPreviewSection.Path] = TAtlasSectionState.Open);
-  Assert.IsTrue(States[TAtlasPreviewSection.UsedBy] = TAtlasSectionState.Open);
+  mStates := TAtlasPreviewSections.Arrange(Inputs, cNone_, 50, False);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.Path] = TAtlasSectionState.Open);
+  Assert.IsTrue(mStates[TAtlasPreviewSection.UsedBy] = TAtlasSectionState.Open);
 end;
 
 procedure TAtlasPreviewSectionsTests.ToggleFlipsTheState;

@@ -82,23 +82,23 @@ end;
 
 procedure TAtlasSearchHistory.Remember(const AText: string);
 var
-  Index: Integer;
-  Next: TArray<string>;
+  mIndex: Integer;
+  mNext: TArray<string>;
 begin
   Reset;
   if (AText = '') or (FCapacity = 0) then
   begin
     Exit;
   end;
-  Next := [AText];
-  for Index := 0 to High(FItems) do
+  mNext := [AText];
+  for mIndex := 0 to High(FItems) do
   begin
-    if (FItems[Index] <> AText) and (Length(Next) < FCapacity) then
+    if (FItems[mIndex] <> AText) and (Length(mNext) < FCapacity) then
     begin
-      Next := Next + [FItems[Index]];
+      mNext := mNext + [FItems[mIndex]];
     end;
   end;
-  FItems := Next;
+  FItems := mNext;
 end;
 
 function TAtlasSearchHistory.Step(const ACurrent: string; AOlder: Boolean): string;
@@ -157,39 +157,39 @@ end;
 
 function TAtlasSearchHistory.ToJson: TJSONArray;
 var
-  Item: string;
+  mItem: string;
 begin
   Result := TJSONArray.Create;
-  for Item in FItems do
+  for mItem in FItems do
   begin
-    Result.Add(Item);
+    Result.Add(mItem);
   end;
 end;
 
 procedure TAtlasSearchHistory.LoadFromJson(const AValue: TJSONValue);
 var
-  Element: TJSONValue;
-  Loaded: TArray<string>;
-  Index: Integer;
+  mElement: TJSONValue;
+  mLoaded: TArray<string>;
+  mIndex: Integer;
 begin
   Clear;
   if not (AValue is TJSONArray) then
   begin
     Exit;
   end;
-  Loaded := nil;
-  for Element in TJSONArray(AValue) do
+  mLoaded := nil;
+  for mElement in TJSONArray(AValue) do
   begin
     // TJSONNumber erbt von TJSONString; Zahlen sind keine Einträge.
-    if (Element is TJSONString) and not (Element is TJSONNumber) and (Element.Value <> '') then
+    if (mElement is TJSONString) and not (mElement is TJSONNumber) and (mElement.Value <> '') then
     begin
-      Loaded := Loaded + [Element.Value];
+      mLoaded := mLoaded + [mElement.Value];
     end;
   end;
   // Von hinten merken: so steht der erste Eintrag der Datei wieder vorn, Doppelte fallen weg.
-  for Index := High(Loaded) downto 0 do
+  for mIndex := High(mLoaded) downto 0 do
   begin
-    Remember(Loaded[Index]);
+    Remember(mLoaded[mIndex]);
   end;
 end;
 
@@ -197,35 +197,35 @@ end;
 
 class function TAtlasSearchHistories.ToText(ASearch, AReplace: TAtlasSearchHistory): string;
 var
-  Root: TJSONObject;
+  mRoot: TJSONObject;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Root.AddPair('search', ASearch.ToJson);
-    Root.AddPair('replace', AReplace.ToJson);
-    Result := Root.ToJSON;
+    mRoot.AddPair('search', ASearch.ToJson);
+    mRoot.AddPair('replace', AReplace.ToJson);
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasSearchHistories.FromText(const AText: string; ASearch, AReplace: TAtlasSearchHistory): Boolean;
 var
-  Root: TJSONValue;
+  mRoot: TJSONValue;
 begin
   ASearch.Clear;
   AReplace.Clear;
-  Root := TJSONObject.ParseJSONValue(AText);
+  mRoot := TJSONObject.ParseJSONValue(AText);
   try
-    Result := Root is TJSONObject;
+    Result := mRoot is TJSONObject;
     if not Result then
     begin
       Exit;
     end;
-    ASearch.LoadFromJson(TJSONObject(Root).GetValue('search'));
-    AReplace.LoadFromJson(TJSONObject(Root).GetValue('replace'));
+    ASearch.LoadFromJson(TJSONObject(mRoot).GetValue('search'));
+    AReplace.LoadFromJson(TJSONObject(mRoot).GetValue('replace'));
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 

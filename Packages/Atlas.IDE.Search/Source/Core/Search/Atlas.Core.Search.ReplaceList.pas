@@ -95,34 +95,34 @@ end;
 
 procedure TAtlasReplaceList.Add(const AFile: TAtlasFileHits);
 var
-  Checks: TArray<Boolean>;
-  Index: Integer;
+  mChecks: TArray<Boolean>;
+  mIndex: Integer;
 begin
   if Length(AFile.Hits) = 0 then
   begin
     Exit;
   end;
-  Checks := nil;
-  SetLength(Checks, Length(AFile.Hits));
-  for Index := 0 to High(Checks) do
+  mChecks := nil;
+  SetLength(mChecks, Length(AFile.Hits));
+  for mIndex := 0 to High(mChecks) do
   begin
-    Checks[Index] := True;
+    mChecks[mIndex] := True;
   end;
   FResults := FResults + [AFile];
-  FChecked := FChecked + [Checks];
+  FChecked := FChecked + [mChecks];
 end;
 
 procedure TAtlasReplaceList.SetFileChecked(AFile: Integer; AValue: Boolean);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if (AFile < 0) or (AFile > High(FChecked)) then
   begin
     Exit;
   end;
-  for Index := 0 to High(FChecked[AFile]) do
+  for mIndex := 0 to High(FChecked[AFile]) do
   begin
-    FChecked[AFile][Index] := AValue;
+    FChecked[AFile][mIndex] := AValue;
   end;
 end;
 
@@ -137,16 +137,16 @@ end;
 
 function TAtlasReplaceList.FileChecked(AFile: Integer): Boolean;
 var
-  Value: Boolean;
+  mValue: Boolean;
 begin
   Result := (AFile >= 0) and (AFile <= High(FChecked));
   if not Result then
   begin
     Exit;
   end;
-  for Value in FChecked[AFile] do
+  for mValue in FChecked[AFile] do
   begin
-    if not Value then
+    if not mValue then
     begin
       Exit(False);
     end;
@@ -161,15 +161,15 @@ end;
 
 function TAtlasReplaceList.CheckedCount: Integer;
 var
-  Checks: TArray<Boolean>;
-  Value: Boolean;
+  mChecks: TArray<Boolean>;
+  mValue: Boolean;
 begin
   Result := 0;
-  for Checks in FChecked do
+  for mChecks in FChecked do
   begin
-    for Value in Checks do
+    for mValue in mChecks do
     begin
-      if Value then
+      if mValue then
       begin
         Inc(Result);
       end;
@@ -184,34 +184,34 @@ end;
 
 function TAtlasReplaceList.Rows: TArray<TAtlasReplaceRow>;
 var
-  FileIndex, HitIndex: Integer;
-  Row: TAtlasReplaceRow;
-  Item: TAtlasFileHits;
+  mFileIndex, mHitIndex: Integer;
+  mRow: TAtlasReplaceRow;
+  mItem: TAtlasFileHits;
 begin
   Result := nil;
-  for FileIndex := 0 to High(FResults) do
+  for mFileIndex := 0 to High(FResults) do
   begin
-    Item := FResults[FileIndex];
-    Row := Default(TAtlasReplaceRow);
-    Row.Kind := TAtlasReplaceRowKind.FileRow;
-    Row.FileIndex := FileIndex;
-    Row.HitIndex := -1;
-    Row.Checked := FileChecked(FileIndex);
-    Row.FileName := Item.FileName;
-    Row.Text := ExtractFileName(Item.FileName);
-    Result := Result + [Row];
-    for HitIndex := 0 to High(Item.Hits) do
+    mItem := FResults[mFileIndex];
+    mRow := Default(TAtlasReplaceRow);
+    mRow.Kind := TAtlasReplaceRowKind.FileRow;
+    mRow.FileIndex := mFileIndex;
+    mRow.HitIndex := -1;
+    mRow.Checked := FileChecked(mFileIndex);
+    mRow.FileName := mItem.FileName;
+    mRow.Text := ExtractFileName(mItem.FileName);
+    Result := Result + [mRow];
+    for mHitIndex := 0 to High(mItem.Hits) do
     begin
-      Row := Default(TAtlasReplaceRow);
-      Row.Kind := TAtlasReplaceRowKind.HitRow;
-      Row.FileIndex := FileIndex;
-      Row.HitIndex := HitIndex;
-      Row.Checked := FChecked[FileIndex][HitIndex];
-      Row.FileName := Item.FileName;
-      Row.Line := Item.Hits[HitIndex].Line + 1;
-      Row.Text := TAtlasTextSearch.HitText(Item.Lines, Item.Hits[HitIndex]);
-      Row.Preview := TAtlasSearchReplace.Preview(Item.Lines, Item.Hits[HitIndex], FQuery, FReplace).Caption;
-      Result := Result + [Row];
+      mRow := Default(TAtlasReplaceRow);
+      mRow.Kind := TAtlasReplaceRowKind.HitRow;
+      mRow.FileIndex := mFileIndex;
+      mRow.HitIndex := mHitIndex;
+      mRow.Checked := FChecked[mFileIndex][mHitIndex];
+      mRow.FileName := mItem.FileName;
+      mRow.Line := mItem.Hits[mHitIndex].Line + 1;
+      mRow.Text := TAtlasTextSearch.HitText(mItem.Lines, mItem.Hits[mHitIndex]);
+      mRow.Preview := TAtlasSearchReplace.Preview(mItem.Lines, mItem.Hits[mHitIndex], FQuery, FReplace).Caption;
+      Result := Result + [mRow];
     end;
   end;
 end;
@@ -219,41 +219,41 @@ end;
 function TAtlasReplaceList.Plan(const AIsReadOnly: TAtlasReplaceFileCheck;
   const ACurrentText: TAtlasReplaceFileText): TAtlasReplacePlan;
 var
-  FileIndex, HitIndex: Integer;
-  Item: TAtlasFileHits;
-  Chosen: TArray<TAtlasSearchHit>;
-  Edits: TLspFileEdits;
+  mFileIndex, mHitIndex: Integer;
+  mItem: TAtlasFileHits;
+  mChosen: TArray<TAtlasSearchHit>;
+  mEdits: TLspFileEdits;
 begin
   Result := Default(TAtlasReplacePlan);
-  for FileIndex := 0 to High(FResults) do
+  for mFileIndex := 0 to High(FResults) do
   begin
-    Item := FResults[FileIndex];
-    Chosen := nil;
-    for HitIndex := 0 to High(Item.Hits) do
+    mItem := FResults[mFileIndex];
+    mChosen := nil;
+    for mHitIndex := 0 to High(mItem.Hits) do
     begin
-      if FChecked[FileIndex][HitIndex] then
+      if FChecked[mFileIndex][mHitIndex] then
       begin
-        Chosen := Chosen + [Item.Hits[HitIndex]];
+        mChosen := mChosen + [mItem.Hits[mHitIndex]];
       end;
     end;
-    if Length(Chosen) = 0 then
+    if Length(mChosen) = 0 then
     begin
       Continue;
     end;
-    if Assigned(AIsReadOnly) and AIsReadOnly(Item.FileName) then
+    if Assigned(AIsReadOnly) and AIsReadOnly(mItem.FileName) then
     begin
-      Result.ReadOnly := Result.ReadOnly + [Item.FileName];
+      Result.ReadOnly := Result.ReadOnly + [mItem.FileName];
       Continue;
     end;
-    if Assigned(ACurrentText) and (ACurrentText(Item.FileName) <> Item.Text) then
+    if Assigned(ACurrentText) and (ACurrentText(mItem.FileName) <> mItem.Text) then
     begin
-      Result.Changed := Result.Changed + [Item.FileName];
+      Result.Changed := Result.Changed + [mItem.FileName];
       Continue;
     end;
-    Edits.FileName := Item.FileName;
-    Edits.Edits := TAtlasSearchReplace.Edits(Item.Lines, Chosen, FQuery, FReplace);
-    Result.Edit.Files := Result.Edit.Files + [Edits];
-    Inc(Result.Replacements, Length(Chosen));
+    mEdits.FileName := mItem.FileName;
+    mEdits.Edits := TAtlasSearchReplace.Edits(mItem.Lines, mChosen, FQuery, FReplace);
+    Result.Edit.Files := Result.Edit.Files + [mEdits];
+    Inc(Result.Replacements, Length(mChosen));
     Inc(Result.Files);
   end;
 end;
