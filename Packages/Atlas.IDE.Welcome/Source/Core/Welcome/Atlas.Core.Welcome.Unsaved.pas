@@ -205,9 +205,6 @@ type
   public const
     /// <summary>Abschnitt in der Projekt-Zusammenfassung.</summary>
     cSectionName = 'unsaved';
-    cDefaultMinAgeHours = 0;
-    cDefaultWarnHours = 24;
-    cDefaultAlertHours = 72;
     /// <summary>Obergrenze der Stunden-Einstellungen (ein Jahr).</summary>
     cMaxHours = 8760;
     /// <summary>Zeitlimit je Projekt; danach startet die Abfrage keinen weiteren Aufruf.</summary>

@@ -56,11 +56,8 @@ type
 
   TAtlasSafeDelete = class
   public const
-    cClientCommand = 'atlas.safeDelete';
     cPrepareCommand = 'atlas.server.safeDelete.prepare';
     cApplyCommand = 'atlas.server.safeDelete';
-    /// <summary>Alt+Entf.</summary>
-    cDefaultKey = $802E;
   public
     /// <summary>[uri, position].</summary>
     class function Arguments(const AUri: string; ALine, ACharacter: Integer): string; static;

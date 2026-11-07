@@ -229,8 +229,6 @@ type
       APersonal: TArray<TAtlasStartProfile>): TArray<TAtlasStartProfile>; static;
     /// <summary>Gesetzte Werte zur Anzeige „aus .atlas“, in der Reihenfolge des Formats.</summary>
     class function Values(const ATeam: TAtlasTeamSettings): TArray<TAtlasTeamValue>; static;
-    /// <summary>Schlüssel einer Präfix-Art: "field", "parameter", "local", "constant".</summary>
-    class function NamingKey(AKind: TAtlasNamingKind): string; static;
     /// <summary>ARelative an AFolder gehängt, „.“ und „..“ aufgelöst, Trenner „\“.</summary>
     class function Combine(const AFolder, ARelative: string): string; static;
   end;
@@ -1788,11 +1786,6 @@ begin
   end;
   AddList(Result, TAtlasHiddenPlaces.cKey, HiddenItems(ATeam.Hidden));
   AddList(Result, cDisplayRulesKey, RuleItems(ATeam.DisplayRules));
-end;
-
-class function TAtlasTeamFile.NamingKey(AKind: TAtlasNamingKind): string;
-begin
-  Result := cNamingKeys[AKind];
 end;
 
 /// <summary>Teil eines Pfads anhängen: '' und '.' entfallen, '..' nimmt den letzten Teil weg (nie den ersten).

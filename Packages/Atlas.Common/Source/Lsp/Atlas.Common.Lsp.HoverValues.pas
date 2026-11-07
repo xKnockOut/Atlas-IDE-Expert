@@ -237,12 +237,48 @@ begin
   Result := 0;
 end;
 
+/// <summary>ATail ohne angehängtes "deprecated 'Grund'"; sonst unverändert.</summary>
+function WithoutDeprecatedMessage(const ATail: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := ATail;
+  if not EndsStr('''', ATail) then
+  begin
+    Exit;
+  end;
+  mIndex := Length(ATail) - 1;
+  while (mIndex > 0) and (ATail[mIndex] <> '''') do
+  begin
+    Dec(mIndex);
+  end;
+  if (mIndex > 1) and EndsText('deprecated', TrimRight(Copy(ATail, 1, mIndex - 1))) then
+  begin
+    Result := TrimRight(Copy(ATail, 1, mIndex - 1));
+  end;
+end;
+
+/// <summary>Entfernt ein angehängtes Hinweiswort (deprecated, platform …) von AText; False ohne.</summary>
+function StripHintWord(var AText: string): Boolean;
+var
+  mTail, mWord: string;
+begin
+  mTail := WithoutDeprecatedMessage(AText);
+  for mWord in cHintWords do
+  begin
+    if EndsText(' ' + mWord, mTail) then
+    begin
+      AText := TrimRight(Copy(mTail, 1, Length(mTail) - Length(mWord)));
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 class function THoverValues.ConstantExpression(const ADeclaration: string): string;
 var
-  mEquals, mIndex: Integer;
+  mEquals: Integer;
   mParts: TArray<string>;
-  mLast, mWord: string;
-  mChanged: Boolean;
 begin
   Result := '';
   mEquals := PosTop('=', ADeclaration);
@@ -255,30 +291,7 @@ begin
   Result := mParts[0];
   // Angehängte Direktiven wie "deprecated 'Grund'" gehören nicht zum Wert.
   repeat
-    mChanged := False;
-    mLast := Result;
-    if EndsStr('''', mLast) then
-    begin
-      mIndex := Length(mLast) - 1;
-      while (mIndex > 0) and (mLast[mIndex] <> '''') do
-      begin
-        Dec(mIndex);
-      end;
-      if (mIndex > 1) and EndsText('deprecated', TrimRight(Copy(mLast, 1, mIndex - 1))) then
-      begin
-        mLast := TrimRight(Copy(mLast, 1, mIndex - 1));
-      end;
-    end;
-    for mWord in cHintWords do
-    begin
-      if EndsText(' ' + mWord, mLast) then
-      begin
-        Result := TrimRight(Copy(mLast, 1, Length(mLast) - Length(mWord)));
-        mChanged := True;
-        Break;
-      end;
-    end;
-  until not mChanged;
+  until not StripHintWord(Result);
 end;
 
 class function THoverValues.ConstantValue(const ADeclaration: string): string;
@@ -378,11 +391,74 @@ begin
   end;
 end;
 
+/// <summary>Liest das Literal ab AText[AIndex] = '''' in ABuilder; AIndex steht danach hinter dem Literal.
+/// False ohne schließendes Hochkomma.</summary>
+function ReadQuoted(const AText: string; var AIndex: Integer; ABuilder: TStringBuilder): Boolean;
+var
+  mClose: Integer;
+begin
+  mClose := AIndex + 1;
+  while mClose <= Length(AText) do
+  begin
+    if AText[mClose] = '''' then
+    begin
+      if (mClose < Length(AText)) and (AText[mClose + 1] = '''') then
+      begin
+        ABuilder.Append('''');
+        Inc(mClose, 2);
+        Continue;
+      end;
+      AIndex := mClose + 1;
+      Exit(True);
+    end;
+    ABuilder.Append(AText[mClose]);
+    Inc(mClose);
+  end;
+  Result := False;
+end;
+
+/// <summary>Liest den Zeichencode ab AText[AIndex] = '#' in ABuilder; False bei ungültigem Code.</summary>
+function ReadCharCode(const AText: string; var AIndex: Integer; ABuilder: TStringBuilder): Boolean;
+var
+  mClose: Integer;
+  mCode: Int64;
+begin
+  mClose := AIndex + 1;
+  while (mClose <= Length(AText)) and CharInSet(AText[mClose], ['$', '0'..'9', 'a'..'f', 'A'..'F']) do
+  begin
+    Inc(mClose);
+  end;
+  Result := THoverValues.TryParseNumber(Copy(AText, AIndex + 1, mClose - AIndex - 1), mCode) and (mCode >= 0) and
+    (mCode <= $FFFF);
+  if Result then
+  begin
+    ABuilder.Append(Char(mCode));
+    AIndex := mClose;
+  end;
+end;
+
+/// <summary>Eine Folge aus 'Literal' und #Code ohne Leerraum dazwischen in ABuilder; False bei anderem
+/// Text.</summary>
+function ReadStringPart(const APart: string; ABuilder: TStringBuilder): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := APart <> '';
+  mIndex := 1;
+  while Result and (mIndex <= Length(APart)) do
+  begin
+    case APart[mIndex] of
+      '''': Result := ReadQuoted(APart, mIndex, ABuilder);
+      '#': Result := ReadCharCode(APart, mIndex, ABuilder);
+    else
+      Result := False;
+    end;
+  end;
+end;
+
 class function THoverValues.StringValue(const AExpression: string): string;
 var
   mPart, mText: string;
-  mIndex, mClose: Integer;
-  mCode: Int64;
   mBuilder: TStringBuilder;
 begin
   Result := '';
@@ -390,58 +466,9 @@ begin
   try
     for mPart in SplitTop(AExpression, '+') do
     begin
-      mText := mPart;
-      if mText = '' then
+      if not ReadStringPart(mPart, mBuilder) then
       begin
         Exit;
-      end;
-      // Eine Folge aus 'Literal' und #Code ohne Leerraum dazwischen.
-      mIndex := 1;
-      while mIndex <= Length(mText) do
-      begin
-        if mText[mIndex] = '''' then
-        begin
-          mClose := mIndex + 1;
-          while mClose <= Length(mText) do
-          begin
-            if mText[mClose] = '''' then
-            begin
-              if (mClose < Length(mText)) and (mText[mClose + 1] = '''') then
-              begin
-                mBuilder.Append('''');
-                Inc(mClose, 2);
-                Continue;
-              end;
-              Break;
-            end;
-            mBuilder.Append(mText[mClose]);
-            Inc(mClose);
-          end;
-          if mClose > Length(mText) then
-          begin
-            Exit;
-          end;
-          mIndex := mClose + 1;
-        end
-        else if mText[mIndex] = '#' then
-        begin
-          mClose := mIndex + 1;
-          while (mClose <= Length(mText)) and CharInSet(mText[mClose], ['$', '0'..'9', 'a'..'f', 'A'..'F']) do
-          begin
-            Inc(mClose);
-          end;
-          if not TryParseNumber(Copy(mText, mIndex + 1, mClose - mIndex - 1), mCode) or (mCode < 0) or
-            (mCode > $FFFF) then
-          begin
-            Exit;
-          end;
-          mBuilder.Append(Char(mCode));
-          mIndex := mClose;
-        end
-        else
-        begin
-          Exit;
-        end;
       end;
     end;
     mText := mBuilder.ToString;
@@ -502,25 +529,77 @@ begin
   end;
 end;
 
+/// <summary>Beginnt bei AIndex ein Wort (nicht mitten in einem Namen oder nach ".")?</summary>
+function IsWordStart(const AText: string; AIndex: Integer): Boolean;
+begin
+  Result := CharInSet(AText[AIndex], ['a'..'z', 'A'..'Z', '_']);
+  if Result and (AIndex > 1) then
+  begin
+    Result := not CharInSet(AText[AIndex - 1], ['a'..'z', 'A'..'Z', '0'..'9', '_', '.']);
+  end;
+end;
+
+/// <summary>Erste Stelle ab AIndex, die kein Leerzeichen ist.</summary>
+function SkipSpaces(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result <= Length(AText)) and (AText[Result] = ' ') do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>"**Veraltet**: Grund" für deprecated 'Grund'; AIndex steht hinter dem Wort.</summary>
+function DeprecatedText(const ADeclaration: string; AIndex: Integer): string;
+var
+  mStart, mClose: Integer;
+begin
+  Result := cTexts[THoverValuesText.Deprecated].Text;
+  mStart := SkipSpaces(ADeclaration, AIndex);
+  if (mStart > Length(ADeclaration)) or (ADeclaration[mStart] <> '''') then
+  begin
+    Exit;
+  end;
+  mClose := PosEx('''', ADeclaration, mStart + 1);
+  if mClose > mStart + 1 then
+  begin
+    Result := Result + ': ' + Copy(ADeclaration, mStart + 1, mClose - mStart - 1);
+  end;
+end;
+
+/// <summary>Hinweis zum Direktivenwort AWord (klein), das vor AIndex endet; '' bei anderen Wörtern.</summary>
+function DirectiveHint(const ADeclaration, AWord: string; AIndex: Integer): string;
+begin
+  Result := '';
+  if AWord = 'deprecated' then
+  begin
+    Result := DeprecatedText(ADeclaration, AIndex);
+  end
+  else if AWord = 'platform' then
+  begin
+    Result := cTexts[THoverValuesText.PlatformSpecific].Text;
+  end
+  else if AWord = 'experimental' then
+  begin
+    Result := cTexts[THoverValuesText.Experimental].Text;
+  end;
+end;
+
 class function THoverValues.Deprecation(const ADeclaration: string): string;
 var
   mIndex, mStart, mClose: Integer;
-  mWord, mMessage: string;
   mInString: Boolean;
 begin
   Result := '';
   mInString := False;
   mIndex := 1;
-  while mIndex <= Length(ADeclaration) do
+  while (Result = '') and (mIndex <= Length(ADeclaration)) do
   begin
     if ADeclaration[mIndex] = '''' then
     begin
       mInString := not mInString;
-      Inc(mIndex);
-      Continue;
     end;
-    if mInString or not CharInSet(ADeclaration[mIndex], ['a'..'z', 'A'..'Z', '_']) or
-      ((mIndex > 1) and CharInSet(ADeclaration[mIndex - 1], ['a'..'z', 'A'..'Z', '0'..'9', '_', '.'])) then
+    if mInString or not IsWordStart(ADeclaration, mIndex) then
     begin
       Inc(mIndex);
       Continue;
@@ -530,48 +609,11 @@ begin
     begin
       Inc(mIndex);
     end;
-    mWord := LowerCase(Copy(ADeclaration, mStart, mIndex - mStart));
     // Direktiven stehen vor ";", einem String oder am Ende; Namen wie "Platform: string" nicht.
-    mClose := mIndex;
-    while (mClose <= Length(ADeclaration)) and (ADeclaration[mClose] = ' ') do
+    mClose := SkipSpaces(ADeclaration, mIndex);
+    if (mClose > Length(ADeclaration)) or CharInSet(ADeclaration[mClose], [';', '''']) then
     begin
-      Inc(mClose);
-    end;
-    if (mClose <= Length(ADeclaration)) and not CharInSet(ADeclaration[mClose], [';', '''']) then
-    begin
-      Continue;
-    end;
-    if mWord = 'deprecated' then
-    begin
-      // deprecated 'Stattdessen Bar verwenden'
-      mMessage := '';
-      mStart := mIndex;
-      while (mStart <= Length(ADeclaration)) and (ADeclaration[mStart] = ' ') do
-      begin
-        Inc(mStart);
-      end;
-      if (mStart <= Length(ADeclaration)) and (ADeclaration[mStart] = '''') then
-      begin
-        mClose := PosEx('''', ADeclaration, mStart + 1);
-        if mClose > 0 then
-        begin
-          mMessage := Copy(ADeclaration, mStart + 1, mClose - mStart - 1);
-        end;
-      end;
-      Result := cTexts[THoverValuesText.Deprecated].Text;
-      if mMessage <> '' then
-      begin
-        Result := Result + ': ' + mMessage;
-      end;
-      Exit;
-    end;
-    if mWord = 'platform' then
-    begin
-      Exit(cTexts[THoverValuesText.PlatformSpecific].Text);
-    end;
-    if mWord = 'experimental' then
-    begin
-      Exit(cTexts[THoverValuesText.Experimental].Text);
+      Result := DirectiveHint(ADeclaration, LowerCase(Copy(ADeclaration, mStart, mIndex - mStart)), mIndex);
     end;
   end;
 end;

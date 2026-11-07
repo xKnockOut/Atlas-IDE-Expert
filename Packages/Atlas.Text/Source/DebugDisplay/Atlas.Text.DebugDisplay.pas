@@ -71,8 +71,6 @@ type
     cChildrenKey = 'atlas-debug-children:';
     cAttributeName = 'AtlasDebugDisplay';
     cChildrenAttributeName = 'AtlasDebugChildren';
-    /// <summary>Name der mitgelieferten Unit mit den Attributen.</summary>
-    cAttributeUnit = 'Atlas.Debug.Attributes';
   public
     /// <summary>Pascal-Zeichenkette ab AStart (1-basiert, auf dem Anführungszeichen); AEnd hinter dem
     /// schließenden. False ohne gültige Zeichenkette.</summary>

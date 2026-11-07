@@ -118,8 +118,6 @@ type
   TAtlasExpressionType = class
   public const
     cCommand = 'atlas.server.expressionType';
-    /// <summary>Strg+Umschalt+T.</summary>
-    cDefaultKey = $6054;
     cErrorNoExpression = 'noExpression';
   public
     /// <summary>[uri, {start, end}, {expand, conversions, constValue}].</summary>

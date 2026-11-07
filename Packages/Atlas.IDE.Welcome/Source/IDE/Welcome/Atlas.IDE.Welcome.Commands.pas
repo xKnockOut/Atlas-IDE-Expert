@@ -183,8 +183,6 @@ type
     /// Willkommensseite im Fenster „Atlas-Start“ (öffnet es beim Einschalten).</summary>
     procedure Customize;
     procedure ThemeChanged;
-    /// <summary>Layout der Willkommensseite der IDE (Registry, Sicherung, Marke).</summary>
-    property IdeLayout: TAtlasIdeWelcomeIdeLayout read FIdeLayout;
     /// <summary>Suchfeld (#760); gehört danach der Steuerung. nil = ohne Suchfeld.</summary>
     property Search: TAtlasIdeWelcomeSearch read FSearch write FSearch;
     /// <summary>Quellen der Bereiche; gehören der Steuerung (Start beim Setzen).</summary>

@@ -183,7 +183,6 @@ type
     property Items: TAtlasCompletionItems read FItems;
     property Order: TArray<Integer> read FOrder;
     property Selected: Integer read FSelected;
-    property Chip: TAtlasChip read FChip;
     /// <summary>Position des ersten Eintrags ohne Treffer in Order (#497); -1 ohne.</summary>
     property RestStart: Integer read FRestStart;
   end;

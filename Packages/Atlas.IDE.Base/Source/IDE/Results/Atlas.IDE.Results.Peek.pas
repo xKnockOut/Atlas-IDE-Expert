@@ -33,7 +33,6 @@ type
     class procedure Uninstall; static;
     class procedure PeekDefinition; static;
     class procedure PeekReferences; static;
-    class function IsShown: Boolean; static;
     class procedure Close; static;
   end;
 
@@ -623,11 +622,6 @@ end;
 class procedure TAtlasIdePeek.PeekReferences;
 begin
   Run(TAtlasPeekMode.References);
-end;
-
-class function TAtlasIdePeek.IsShown: Boolean;
-begin
-  Result := (State <> nil) and State.Window.IsShown;
 end;
 
 class procedure TAtlasIdePeek.Close;

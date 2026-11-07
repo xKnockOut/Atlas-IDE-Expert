@@ -1566,6 +1566,22 @@ begin
   end;
 end;
 
+/// <summary>Steht vor dem '$' bei AStart "{" oder "(*", beginnt dort also eine Direktive?</summary>
+function OpensDirective(const AText: string; AStart: Integer): Boolean;
+begin
+  Result := (AStart > 1) and (AText[AStart - 1] = '{');
+  if not Result and (AStart > 2) then
+  begin
+    Result := (AText[AStart - 1] = '*') and (AText[AStart - 2] = '(');
+  end;
+end;
+
+/// <summary>Geht es bei ANext (hinter "$I") mit Leerraum, Hochkomma oder "NCLUDE" weiter?</summary>
+function ContinuesInclude(const AText: string; ANext: Integer): Boolean;
+begin
+  Result := (ANext <= Length(AText)) and (CharInSet(AText[ANext], [' ', #9, '''']) or UpperAt(AText, ANext, 'NCLUDE'));
+end;
+
 class function TPascalPreprocessor.HasConditionals(const AText: string): Boolean;
 var
   mStart: Integer;
@@ -1575,8 +1591,7 @@ begin
   mStart := Pos('$', AText);
   while mStart > 0 do
   begin
-    if (mStart > 1) and UpperAt(AText, mStart + 1, 'IF') and ((AText[mStart - 1] = '{') or
-      ((mStart > 2) and (AText[mStart - 1] = '*') and (AText[mStart - 2] = '('))) then
+    if UpperAt(AText, mStart + 1, 'IF') and OpensDirective(AText, mStart) then
     begin
       Exit(True);
     end;
@@ -1594,7 +1609,7 @@ begin
   begin
     mNext := mStart + 2;
     if (mStart > 1) and CharInSet(AText[mStart - 1], ['{', '*']) and UpperAt(AText, mStart + 1, 'I') and
-      (mNext <= Length(AText)) and (CharInSet(AText[mNext], [' ', #9, '''']) or UpperAt(AText, mNext, 'NCLUDE')) then
+      ContinuesInclude(AText, mNext) then
     begin
       Exit(True);
     end;

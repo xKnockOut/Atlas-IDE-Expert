@@ -41,7 +41,6 @@ type
     /// <summary>Wartet, bis nichts mehr geplant ist und keine Aktion läuft (#177: Messung erst in Ruhe).
     /// False, wenn das nicht innerhalb von ATimeoutMs geschieht.</summary>
     function WaitIdle(ATimeoutMs: Cardinal): Boolean;
-    property Delay: Cardinal read FDelay;
     /// <summary>Wird bei Ausnahmen einer Aktion aufgerufen; der Thread läuft weiter.</summary>
     property OnError: TProc<Exception> read FOnError write FOnError;
   end;

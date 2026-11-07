@@ -126,7 +126,6 @@ type
     property OnBrowseProject: TAtlasProjectBrowseEvent read FOnBrowseProject write FOnBrowseProject;
     /// <summary>Zum Testen.</summary>
     property AddCurrentButton: TButton read FAddCurrent;
-    property AddButton: TButton read FAdd;
     property AddMenu: TPopupMenu read FAddMenu;
   end;
 
@@ -182,7 +181,6 @@ type
     property VcsServerCheckAll: TButton read FVcsServerCheckAll;
     property VcsServerLogin: TButton read FVcsServerLogin;
     property VcsServerNote: TLabel read FVcsServerNote;
-    property VcsServerRows: TArray<TAtlasVcsServerRow> read FVcsServerRows;
   end;
 
 implementation

@@ -110,7 +110,6 @@ type
     /// </summary>
     function Computations: Integer;
     function HistoryReads: Integer;
-    function LineLogReads: Integer;
   end;
 
   /// <summary>Kognitive Komplexität einer Unit: Summe über alle Routinen (lokale zählen für sich).</summary>
@@ -773,16 +772,6 @@ begin
   System.TMonitor.Enter(FLock);
   try
     Result := FHistoryReads;
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
-end;
-
-function THotspotService.LineLogReads: Integer;
-begin
-  System.TMonitor.Enter(FLock);
-  try
-    Result := FLineLogReads;
   finally
     System.TMonitor.Exit(FLock);
   end;

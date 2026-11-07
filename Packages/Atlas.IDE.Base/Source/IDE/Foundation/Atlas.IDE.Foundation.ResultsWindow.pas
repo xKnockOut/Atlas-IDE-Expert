@@ -77,8 +77,6 @@ type
     /// <summary>Liste mit Kennungen eines Moduls (#1455, etwa die Notizen #545); die Aktionen kommen mit der
     /// Liste.</summary>
     class procedure ShowItems(const AList: TAtlasResultsItemList); static;
-    /// <summary>Zeigt das Fenster gerade die Liste von AOwner? Legt das Fenster nicht an.</summary>
-    class function ShowsItemsOf(const AOwner: string): Boolean; static;
     /// <summary>Aktionen der Liste von AOwner vergessen (Modul stoppt, Regel 3).</summary>
     class procedure ReleaseItems(const AOwner: string); static;
     /// <summary>Weg zwischen Symbolen (#1117) als gezeichnete Kette.</summary>
@@ -445,11 +443,6 @@ begin
   begin
     mTarget.Items.Show(AList);
   end;
-end;
-
-class function TAtlasIdeResultsWindow.ShowsItemsOf(const AOwner: string): Boolean;
-begin
-  Result := (ExistingFrame <> nil) and ExistingFrame.Items.ShowsItemsOf(AOwner);
 end;
 
 class procedure TAtlasIdeResultsWindow.ReleaseItems(const AOwner: string);

@@ -32,8 +32,6 @@ type
     class function Installed: Boolean; static;
     /// <summary>Stacktrace zur gerade behandelten Ausnahme E (im except-Block aufrufen); '' ohne Mitschnitt.</summary>
     class function StackOf(AE: Exception): string; static;
-    /// <summary>Aufrufstapel des laufenden Threads ohne die ASkip innersten Rahmen (ohne diese Routine).</summary>
-    class function CurrentStack(ASkip: Integer): string; static;
     /// <summary>Hängt an Rahmen "Atlas…bpl+Offset" (z. B. aus dem Einfrier-Wächter) Unit, Routine und Zeile an.
     /// </summary>
     class function Symbolize(const AFrames: TArray<string>): TArray<string>; static;
@@ -314,25 +312,6 @@ begin
     Exit;
   end;
   Result := TAtlasStackFrames.Describe(mItem.Addresses, Modules, LoadedMap, OwnName, cMaxLines);
-end;
-
-class function TAtlasIdeStackCapture.CurrentStack(ASkip: Integer): string;
-var
-  mFrames: array[0..TAtlasStackRecord.cMaxFrames - 1] of Pointer;
-  mCount, mIndex: Integer;
-  mAddresses: TArray<UInt64>;
-begin
-  mCount := CaptureStackBackTrace(ASkip + 1, Length(mFrames), @mFrames[0], nil);
-  SetLength(mAddresses, mCount);
-  for mIndex := 0 to mCount - 1 do
-  begin
-    mAddresses[mIndex] := UInt64(NativeUInt(mFrames[mIndex]));
-  end;
-  if OwnName = '' then
-  begin
-    OwnName := ExtractFileName(GetModuleName(HInstance));
-  end;
-  Result := TAtlasStackFrames.Describe(mAddresses, Modules, LoadedMap, OwnName, cMaxLines);
 end;
 
 class function TAtlasIdeStackCapture.Symbolize(const AFrames: TArray<string>): TArray<string>;

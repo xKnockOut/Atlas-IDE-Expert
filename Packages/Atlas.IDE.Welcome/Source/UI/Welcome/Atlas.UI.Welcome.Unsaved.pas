@@ -129,7 +129,6 @@ type
     procedure ClickAt(const AHit: TAtlasUnsavedHit);
     property Source: IAtlasUnsavedSource read FSource write SetSource;
     property View: TAtlasUnsavedView read FView;
-    property PaintBox: TAtlasWelcomeCanvas read FBox;
     property Menu: TPopupMenu read FMenu;
     property OpenFolderItem: TMenuItem read FOpenFolderItem;
     property IgnoreItem: TMenuItem read FIgnoreItem;

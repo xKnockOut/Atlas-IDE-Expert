@@ -319,7 +319,6 @@ type
   TAtlasProjectSetup = Atlas.Core.Projects.Summary.Sections.TAtlasProjectSetup;
   TAtlasProjectTestFailure = Atlas.Core.Projects.Summary.Sections.TAtlasProjectTestFailure;
   TAtlasProjectTests = Atlas.Core.Projects.Summary.Sections.TAtlasProjectTests;
-  TAtlasProjectReleaseBuild = Atlas.Core.Projects.Summary.Sections.TAtlasProjectReleaseBuild;
   TAtlasProjectRelease = Atlas.Core.Projects.Summary.Sections.TAtlasProjectRelease;
   TAtlasProjectCi = Atlas.Core.Projects.Summary.Sections.TAtlasProjectCi;
 

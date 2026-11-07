@@ -238,8 +238,8 @@ var
   Keywords: array[TTextLanguage] of TArray<TKeywordInfo>;
 
 
-/// <summary>Methoden und Routinen.</summary>
-function RoutineKeywords(ALanguage: TTextLanguage): TArray<TKeywordInfo>;
+/// <summary>Methodendirektiven.</summary>
+function MethodKeywords(ALanguage: TTextLanguage): TArray<TKeywordInfo>;
 begin
   Result := [
     K('reintroduce', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
@@ -261,7 +261,13 @@ begin
       cTexts[TKeywordReferenceText.ClassMethodWithoutSelfNot].TextIn(ALanguage), cMethods),
     K('message', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.MessageHandlerTheMethodIs].TextIn(ALanguage),
-      cMethods + '#Message_Methods'),
+      cMethods + '#Message_Methods')];
+end;
+
+/// <summary>Routinen und Aufrufkonventionen.</summary>
+function RoutineKeywords(ALanguage: TTextLanguage): TArray<TKeywordInfo>;
+begin
+  Result := [
     K('inline', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.AsksTheCompilerToInsert].TextIn(ALanguage),
       'Calling_Procedures_and_Functions_(Delphi)#Using_the_inline_Directive'),
@@ -450,8 +456,8 @@ var
 begin
   for mLanguage := Low(TTextLanguage) to High(TTextLanguage) do
   begin
-    Keywords[mLanguage] := RoutineKeywords(mLanguage) + ClassKeywords(mLanguage) + PropertyKeywords(mLanguage) +
-      StatementKeywords(mLanguage);
+    Keywords[mLanguage] := MethodKeywords(mLanguage) + RoutineKeywords(mLanguage) + ClassKeywords(mLanguage) +
+      PropertyKeywords(mLanguage) + StatementKeywords(mLanguage);
   end;
 end;
 

@@ -31,7 +31,6 @@ type
 
   TAtlasDataFlowTree = class
   public const
-    cDefaultMaxDepth = 6;
     cMinMaxDepth = 1;
     cMaxMaxDepth = 20;
   public

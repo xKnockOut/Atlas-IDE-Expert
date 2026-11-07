@@ -30,8 +30,6 @@ type
     /// <summary>Bereich „Projekt für Atlas einrichten“ (#759) mit Baseline und „Neu mit Atlas“; AMessage bekommt
     /// die Zeilen der Einrichtung.</summary>
     class function CreateSetup(const AMessage: TProc<string>): TAtlasIdeSetup; static;
-    /// <summary>Läuft gerade ein Testlauf des Moduls Tests?</summary>
-    class function TestsBusy: Boolean; static;
     /// <summary>Notizen und Lesezeichen neben AProjects vom Modul Lesezeichen; leer ohne das Modul.</summary>
     class function SavedPlaces(const AProjects: TArray<string>): TAtlasSavedPlaces; static;
     /// <summary>Lesezeichen über das Modul Lesezeichen öffnen (#622); False, wenn es fehlt oder das gerade nicht
@@ -289,11 +287,6 @@ end;
 class function TAtlasWelcomeNeighbors.CreateSetup(const AMessage: TProc<string>): TAtlasIdeSetup;
 begin
   Result := TAtlasIdeSetup.Create(AMessage, StartBaselineOf, NewFile);
-end;
-
-class function TAtlasWelcomeNeighbors.TestsBusy: Boolean;
-begin
-  Result := TestsRunning;
 end;
 
 class function TAtlasWelcomeNeighbors.SavedPlaces(const AProjects: TArray<string>): TAtlasSavedPlaces;

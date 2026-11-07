@@ -75,7 +75,6 @@ type
     /// (Indexaufbau, Code-Review A-03). Ohne laufende Schleife False; AWork läuft dann nicht. Threadsicher.
     /// Ausnahmen von AWork gehen an OnError.</summary>
     function Queue(const AWork: TProc): Boolean;
-    property Stopped: Boolean read FStopped;
     /// <summary>Wird aus der Schleife und aus Worker-Threads aufgerufen.</summary>
     property OnError: TJsonRpcErrorEvent read FOnError write FOnError;
     property WorkTimeout: Cardinal read FWorkTimeout write FWorkTimeout;

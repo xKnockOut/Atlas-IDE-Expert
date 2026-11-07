@@ -606,10 +606,13 @@ var
   Params: TJSONObject;
   Document: ITextDocument;
   Item: TJSONValue;
+  Input: TSyntaxDiagnosticsInput;
 begin
   Document := FStore.Open(Uri, 'objectpascal', 1, ValidCode);
-  Params := TLspSyntaxDiagnostics.BuildParams(Document,
+  Input := Default(TSyntaxDiagnosticsInput);
+  Input.Inactive := TLspInactiveRegions.FromRanges(
     [TTextRange.Create(TTextPosition.Create(1, 0), TTextPosition.Create(2, 0))]);
+  Params := TLspSyntaxDiagnostics.BuildParams(Document, Input);
   try
     Assert.AreEqual(1, Params.GetValue<TJSONArray>('diagnostics').Count);
     Item := Params.GetValue<TJSONArray>('diagnostics').Items[0];

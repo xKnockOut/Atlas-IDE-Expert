@@ -37,7 +37,7 @@ type
     /// <summary>Ein Abbruch wirkt vor der nächsten Prüfregel, nicht erst am Ende (Diagnoselog 15.10.2026).</summary>
     [Test]
     procedure CancelStopsRuleChecks;
-    /// <summary>#1761: Dauert die Prüfung einer geöffneten Datei länger als DocumentWaitMs, antwortet die Anfrage
+    /// <summary>#1761: Dauert die Prüfung einer geöffneten Datei länger als OpenJobs.WaitMs, antwortet die Anfrage
     /// mit ServerCancelled statt ins Zeitlimit zu laufen; die Prüfung rechnet zu Ende und legt ab, die nächste
     /// Anfrage prüft nicht neu.</summary>
     [Test]
@@ -513,7 +513,7 @@ begin
       end;
     mFixture.Init(mRules);
     try
-      mFixture.Pull.DocumentWaitMs := 50;
+      mFixture.Pull.OpenJobs.WaitMs := 50;
       mUri := TDocumentUris.FromPath(OpenFile);
       mCode := 0;
       try

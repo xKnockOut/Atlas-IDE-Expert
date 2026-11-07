@@ -651,6 +651,35 @@ begin
   end;
 end;
 
+/// <summary>Klasse unter dem Cursor und ihre Komponentenfelder für /notification; sonst der Grund, warum der
+/// Befehl hier nicht passt.</summary>
+function NotificationTarget(ASource: TCommandSource; const AContext: TSlashContext; out AClass: TIndexSymbol;
+  out AFields: TArray<string>): string;
+begin
+  Result := '';
+  AFields := nil;
+  if not ASource.ClassAt(AClass) then
+  begin
+    Result := cTexts[TComponentCommandsText.NotificationOnlyAppliesInA].Text;
+  end
+  else if not DescendsFrom(Ancestors(ASource, AContext.Index, AClass.Name), cComponentRoots) then
+  begin
+    Result := cTexts[TComponentCommandsText.DoesNotDescendFromTComponent2].Fmt([AClass.Name]);
+  end
+  else
+  begin
+    AFields := NotificationFields(ASource, AContext, AClass.Name);
+    if (AFields = nil) and (AContext.Arguments = '') then
+    begin
+      Result := cTexts[TComponentCommandsText.NoFieldsWithAComponent].Text;
+    end
+    else if AFields = nil then
+    begin
+      Result := cTexts[TComponentCommandsText.HasNoField].Fmt([AClass.Name, AContext.Arguments]);
+    end;
+  end;
+end;
+
 function ExecuteNotification(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
@@ -662,22 +691,10 @@ begin
   AEdits := nil;
   mSource := TCommandSource.Create(AContext);
   try
-    if not mSource.ClassAt(mClass) then
+    AReason := NotificationTarget(mSource, AContext, mClass, mFields);
+    if AReason <> '' then
     begin
-      Exit(Fail(cTexts[TComponentCommandsText.NotificationOnlyAppliesInA].Text, AReason));
-    end;
-    if not DescendsFrom(Ancestors(mSource, AContext.Index, mClass.Name), cComponentRoots) then
-    begin
-      Exit(Fail(cTexts[TComponentCommandsText.DoesNotDescendFromTComponent2].Fmt([mClass.Name]), AReason));
-    end;
-    mFields := NotificationFields(mSource, AContext, mClass.Name);
-    if (mFields = nil) and (AContext.Arguments = '') then
-    begin
-      Exit(Fail(cTexts[TComponentCommandsText.NoFieldsWithAComponent].Text, AReason));
-    end;
-    if mFields = nil then
-    begin
-      Exit(Fail(cTexts[TComponentCommandsText.HasNoField].Fmt([mClass.Name, AContext.Arguments]), AReason));
+      Exit(False);
     end;
     // Vorhandene Bedingungen nicht verdoppeln.
     mRoutine := FindBody(mSource, mClass.Name, 'Notification');

@@ -305,8 +305,6 @@ type
     class function Acquire(const AFileSystem: IIndexFileSystem; const AFileName: string; out AStamp: Int64;
       const ARead: TFunc<TArray<TIndexCacheEntry>>): TArray<TIndexCacheEntry>; static;
     class procedure Release(const AFileSystem: IIndexFileSystem; const AFileName: string; AStamp: Int64); static;
-    /// <summary>Zahl der gehaltenen Dateien (für Tests).</summary>
-    class function HeldCount: Integer; static;
   end;
 
   /// <summary>Hält eine Kopie aus TSharedCacheReads für die Dauer eines Aufbaus; gibt sie frei, sobald die letzte
@@ -512,16 +510,6 @@ begin
   if mUnused then
   begin
     TSharedCacheWrites.Forget(AFileSystem, AFileName);
-  end;
-end;
-
-class function TSharedCacheReads.HeldCount: Integer;
-begin
-  TMonitor.Enter(FLock);
-  try
-    Result := FFiles.Count;
-  finally
-    TMonitor.Exit(FLock);
   end;
 end;
 

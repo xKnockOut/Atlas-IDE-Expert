@@ -190,13 +190,10 @@ type
     /// <summary>Kontextmenü der Zeilen: „Fortsetzen“ und die Schnellaktionen.</summary>
     property Menu: TPopupMenu read FMenu;
     property Entries: TAtlasContinueEntries read FEntries;
-    property IncomingView: TAtlasContinueIncoming read FIncoming;
-    property PaintBox: TAtlasWelcomeCanvas read FBox;
   end;
 
   TAtlasWelcomeContinueFrame = class(TAtlasWelcomeSectionFrame)
   public const
-    cRowHeight = TAtlasContinueRecentView.cRowHeight;
     cLineHeight = TAtlasContinueRecentView.cLineHeight;
     cIndent = TAtlasContinueRecentView.cIndent;
     cTabHeight = 26;

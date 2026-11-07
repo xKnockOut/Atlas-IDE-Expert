@@ -144,11 +144,8 @@ type
     property Pages: TPageControl read FParts.Pages;
     property RefreshButton: TButton read FParts.Refresh;
     property SaveButton: TButton read FParts.Save;
-    property LevelCombo: TComboBox read FParts.Level;
     property Filter: TEdit read FParts.Filter;
     property HotspotList: TListView read FParts.Hotspots;
-    property CouplingList: TListView read FParts.Coupling;
-    property HistoryList: TListView read FParts.History;
     property HistoryInfo: TLabel read FParts.HistoryInfo;
     property StatusLabel: TLabel read FParts.Status;
     property Menu: TPopupMenu read FParts.Menu;

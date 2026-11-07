@@ -50,8 +50,6 @@ type
   TLspDataFlow = class
   public const
     cMethod = 'atlas/dataFlow';
-    /// <summary>Höchstzahl der Knoten einer Antwort.</summary>
-    cMaxNodes = cMaxDataFlowNodes;
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;

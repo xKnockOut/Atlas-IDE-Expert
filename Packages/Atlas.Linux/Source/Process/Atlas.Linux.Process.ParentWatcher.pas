@@ -24,7 +24,6 @@ type
   public
     constructor Create(AProcessId: Cardinal; const AOnExited: TProc);
     destructor Destroy; override;
-    function Watching: Boolean;
     class function CurrentProcessId: Cardinal; static;
     /// <summary>True, solange der Prozess APid läuft.</summary>
     class function Running(APid: Cardinal): Boolean; static;
@@ -93,11 +92,6 @@ end;
 class function TParentWatcher.CurrentProcessId: Cardinal;
 begin
   Result := Cardinal(FpGetPid);
-end;
-
-function TParentWatcher.Watching: Boolean;
-begin
-  Result := FThread <> nil;
 end;
 
 end.

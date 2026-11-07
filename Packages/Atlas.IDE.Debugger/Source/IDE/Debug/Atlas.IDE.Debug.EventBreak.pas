@@ -108,8 +108,6 @@ type
     class procedure Uninstall; static;
     /// <summary>debug.breakOnNextEvent an und Atlas an?</summary>
     class function Enabled: Boolean; static;
-    /// <summary>Läuft eine Beobachtung?</summary>
-    class function Watching: Boolean; static;
     /// <summary>Befehl Atlas.BreakOnNextEvent (Menü Start, Palette); während der Beobachtung beendet er sie.
     /// </summary>
     class procedure Run; static;
@@ -284,11 +282,6 @@ var
 begin
   mSettings := TAtlasIdeSettings.Current;
   Result := mSettings.Enabled and mSettings.DebugBreakOnNextEvent;
-end;
-
-class function TAtlasIdeEventBreak.Watching: Boolean;
-begin
-  Result := (FInstance <> nil) and (FInstance.FWatch.Phase <> TPhase.Idle);
 end;
 
 class procedure TAtlasIdeEventBreak.Run;

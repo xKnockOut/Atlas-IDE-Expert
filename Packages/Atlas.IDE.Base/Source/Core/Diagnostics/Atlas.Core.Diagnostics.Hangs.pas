@@ -85,7 +85,6 @@ type
     property ThresholdMs: Integer read FThresholdMs write FThresholdMs;
     property Count: Integer read FCount;
     property WithAtlas: Integer read FWithAtlas;
-    property LongestMs: Int64 read FLongestMs;
   end;
 
 implementation

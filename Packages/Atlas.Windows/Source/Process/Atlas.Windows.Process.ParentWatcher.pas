@@ -21,8 +21,6 @@ type
     /// Thread. Gibt es den Prozess nicht (mehr), wird AOnExited sofort aufgerufen.</summary>
     constructor Create(AProcessId: Cardinal; const AOnExited: TProc);
     destructor Destroy; override;
-    /// <summary>True, wenn der Prozess beim Start überwacht werden konnte.</summary>
-    function Watching: Boolean;
     /// <summary>Nummer des eigenen Prozesses, z. B. für Ausweich-Dateinamen.</summary>
     class function CurrentProcessId: Cardinal; static;
   end;
@@ -90,11 +88,6 @@ end;
 class function TParentWatcher.CurrentProcessId: Cardinal;
 begin
   Result := GetCurrentProcessId;
-end;
-
-function TParentWatcher.Watching: Boolean;
-begin
-  Result := FThread <> nil;
 end;
 
 end.

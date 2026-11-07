@@ -49,9 +49,6 @@ type
   public
     /// <summary>Antwort für ASet (siehe Kopf der Unit).</summary>
     class function Json(const ASet: TExitPointSet): TJSONObject; static;
-    /// <summary>Name einer Art in der Antwort (exit, raise, halt, call, end, result, source, handler, loop,
-    /// jump).</summary>
-    class function KindName(AKind: TExitPointKind): string; static;
     /// <summary>Exceptions laut XMLDoc: erst der Baum, dann über AResolver die deklarierende Unit.</summary>
     class function ExceptionLookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
       const ALines: TArray<string>; const AReadText: TDocReadText): TExitPointExceptionLookup; static;
@@ -106,11 +103,6 @@ begin
 end;
 
 { TLspExitPoints }
-
-class function TLspExitPoints.KindName(AKind: TExitPointKind): string;
-begin
-  Result := cKindNames[AKind];
-end;
 
 function RangeJson(const ARange: TTextRange): TJSONObject;
 begin

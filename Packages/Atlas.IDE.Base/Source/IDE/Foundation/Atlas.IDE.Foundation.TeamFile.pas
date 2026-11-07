@@ -11,7 +11,7 @@
 //   geöffneten .groupproj (LocateFor).
 // - Ein Zeitgeber prüft alle 2 s im Hauptthread, ob sich aktives Projekt,
 //   Ort oder Zeitstempel der Datei geändert haben; nur dann wird neu gelesen
-//   und OnChanged gerufen. Den Ort sucht er (Ordner aufwärts bis zur Wurzel
+//   und die Version erhöht. Den Ort sucht er (Ordner aufwärts bis zur Wurzel
 //   des Repositorys) nur bei anderem Projekt oder anderer Gruppe, nach
 //   Refresh, wenn die Datei verschwunden ist, und sonst alle 10 s; je Takt
 //   fragt er nur den Zeitstempel der Datei (Dateizugriffe im Hauptthread). Ist die Datei gerade gesperrt, folgt der
@@ -40,7 +40,6 @@ type
   TAtlasIdeTeamFile = class
   private class var
     FInstance: TAtlasIdeTeamFile;
-    FOnChanged: TProc;
     FVersion: Integer;
   private
     FTimer: TTimer;
@@ -86,8 +85,6 @@ type
     class procedure Refresh; static;
     /// <summary>Befehl Atlas.TeamFile: anlegen, falls nötig, und im Editor öffnen.</summary>
     class procedure OpenInEditor; static;
-    /// <summary>Nach jedem neu gelesenen Stand (z. B. Code-Vorlagen neu laden).</summary>
-    class property OnChanged: TProc read FOnChanged write FOnChanged;
   end;
 
 implementation
@@ -316,10 +313,6 @@ begin
   FCurrent := mTeam;
   Inc(FVersion);
   Report(mTeam);
-  if Assigned(FOnChanged) then
-  begin
-    FOnChanged();
-  end;
 end;
 
 function TAtlasIdeTeamFile.LocatedFor(const AProject: string): string;

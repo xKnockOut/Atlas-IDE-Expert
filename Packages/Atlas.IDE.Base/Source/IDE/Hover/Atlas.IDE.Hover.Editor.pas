@@ -4,7 +4,7 @@
 //   - Mausbewegung im Editor → Bezeichner unter der Maus (Zeile, Wortgrenzen).
 //   - Nach 500 ms Verweilen auf demselben Bezeichner: textDocument/hover (im Hintergrund; die IDE wartet nie auf den
 //   Server)
-//     (TLspSession.HoverData) und Tooltip unter dem Wort (Kurzform).
+//     (TLspSession.HoverDataAt) und Tooltip unter dem Wort (Kurzform).
 //   - Schließen 300 ms nachdem die Maus Bezeichner und Tooltip verlassen hat;
 //     sofort bei Taste (außer Umschalt, Strg, Alt allein), Mausklick, Scrollen,
 //     Größenänderung, IDE inaktiv (ein Wächter prüft das, solange der Tooltip
