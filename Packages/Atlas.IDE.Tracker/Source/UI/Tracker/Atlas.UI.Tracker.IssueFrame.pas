@@ -38,7 +38,8 @@
 // „Anhängen …“ (#1276) als Knopf und im Kontextmenü nur mit CanAttach
 // (issues.attach); die IDE-Schicht öffnet den Dialog für dieses Issue.
 // Ein Fenster, der Inhalt wechselt; Verlauf über Zurück/Vor (Alt+Links,
-// Alt+Rechts). Schließen des Fensters (Events.Hidden) bricht das Laden ab. Laden, Netz, Verlauf und Zwischenspeicher liegen in der
+// Alt+Rechts). Schließen des Fensters (Events.Hidden) bricht das Laden ab. Laden, Netz, Verlauf und Zwischenspeicher
+// liegen in der
 // IDE-Schicht; der Frame meldet nur Wünsche (Events). Text in der Beschreibung
 // und den Kommentaren lässt sich markieren und mit Strg+C kopieren. Die DFM
 // ist leer, weil TCustomFrame.Create für abgeleitete Frames eine Ressource
@@ -73,7 +74,7 @@ uses
 const
   /// <summary>Nachricht an den Frame: Inhalt neu bzw. verknüpftes Issue öffnen, nach dem auslösenden Klick (das
   /// Steuerelement des Klicks wird dabei freigegeben). Mit dem Fenster verfällt sie.</summary>
-  WM_ATLAS_ISSUE_DEFERRED = WM_APP + 1264;
+  cWM_ATLAS_ISSUE_DEFERRED = WM_APP + 1264;
 
 type
   {$SCOPEDENUMS ON}
@@ -187,7 +188,7 @@ type
     FixKind: TAtlasIssueFix;
     /// <summary>Anker einer Meldung (#1271): Zeit des ersten neuen Kommentars (UTC); 0 = oben.</summary>
     Anchor: TDateTime;
-    /// <summary>Nach dem auslösenden Klick (WM_ATLAS_ISSUE_DEFERRED): neu aufbauen, Link öffnen, Kästchen
+    /// <summary>Nach dem auslösenden Klick (cWM_ATLAS_ISSUE_DEFERRED): neu aufbauen, Link öffnen, Kästchen
     /// melden, „Punkt hinzufügen …“ melden.</summary>
     PendingRebuild: Boolean;
     PendingLink: TAtlasTrackerLink;
@@ -251,7 +252,7 @@ type
     procedure LinkTreeExpanded(Sender: TObject; Node: TTreeNode);
     procedure ScrollWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint;
       var Handled: Boolean);
-    procedure WMDeferred(var AMessage: TMessage); message WM_ATLAS_ISSUE_DEFERRED;
+    procedure WMDeferred(var AMessage: TMessage); message cWM_ATLAS_ISSUE_DEFERRED;
     procedure CMShowingChanged(var AMessage: TMessage); message CM_SHOWINGCHANGED;
   protected
     procedure CreateWnd; override;
@@ -352,12 +353,12 @@ begin
   Result := AFlag in AFrame.FFlags;
 end;
 
-/// <summary>Nach dem Klick weiterarbeiten (WM_ATLAS_ISSUE_DEFERRED).</summary>
+/// <summary>Nach dem Klick weiterarbeiten (cWM_ATLAS_ISSUE_DEFERRED).</summary>
 procedure Defer(AFrame: TAtlasIssueFrame);
 begin
   if AFrame.HandleAllocated then
   begin
-    PostMessage(AFrame.Handle, WM_ATLAS_ISSUE_DEFERRED, 0, 0);
+    PostMessage(AFrame.Handle, cWM_ATLAS_ISSUE_DEFERRED, 0, 0);
   end;
 end;
 
@@ -1648,7 +1649,7 @@ begin
   end;
   AFrame.FParts.Scroll.VertScrollBar.Position := mLabel.Top - mLabel.Margins.Top;
   if AFrame.FState.Details.Comments[AFrame.FContent.AnchorComment].Created >=
-    AFrame.FState.Anchor - TAtlasIssuePreview.AnchorSlackMs / MSecsPerDay then
+    AFrame.FState.Anchor - TAtlasIssuePreview.cAnchorSlackMs / MSecsPerDay then
   begin
     AFrame.FState.Anchor := 0;
   end;

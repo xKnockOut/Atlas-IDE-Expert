@@ -91,9 +91,9 @@ type
     IAtlasTrackerTimeWriter, IAtlasTrackerDescriptions, IAtlasTrackerLinkWriter, IAtlasTrackerBoards,
     IAtlasTrackerWorkDays, IAtlasTrackerPeople, IAtlasTrackerAttach)
   public const
-    ProviderName = TAtlasYouTrackApi.ProviderName;
-    Query = TAtlasYouTrackApi.DefaultQuery;
-    MaxValues = TAtlasYouTrackApi.MaxValues;
+    cProviderName = TAtlasYouTrackApi.cProviderName;
+    cQuery = TAtlasYouTrackApi.cDefaultQuery;
+    cMaxValues = TAtlasYouTrackApi.cMaxValues;
   public
     { IAtlasTrackerProvider }
     function Name: string;
@@ -185,7 +185,7 @@ end;
 
 function TAtlasYouTrackTracker.Name: string;
 begin
-  Result := TAtlasYouTrackApi.ProviderName;
+  Result := TAtlasYouTrackApi.cProviderName;
 end;
 
 function TAtlasYouTrackTracker.Caption: string;
@@ -195,7 +195,7 @@ end;
 
 function TAtlasYouTrackTracker.DefaultQuery: string;
 begin
-  Result := Query;
+  Result := cQuery;
 end;
 
 function TAtlasYouTrackTracker.ApiServer(const ATarget: TAtlasTrackerTarget): string;
@@ -206,8 +206,8 @@ end;
 function TAtlasYouTrackTracker.Fetch(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
   ATimeoutMs, AMax: Integer; out AIssues: TArray<TAtlasTrackerIssue>; out AError: TAtlasCiFetchError): Boolean;
 var
-  Status: Integer;
-  Text: string;
+  mStatus: Integer;
+  mText: string;
 begin
   AIssues := nil;
   AError := TAtlasCiFetchError.None;
@@ -217,16 +217,16 @@ begin
     AError := TAtlasCiFetchError.NotConfigured;
     Exit;
   end;
-  if not ATransport.Get(TAtlasYouTrackApi.IssuesUrl(ATarget, AMax), ATimeoutMs, Status, Text, AError) then
+  if not ATransport.Get(TAtlasYouTrackApi.IssuesUrl(ATarget, AMax), ATimeoutMs, mStatus, mText, AError) then
   begin
     Exit;
   end;
-  if Status <> 200 then
+  if mStatus <> 200 then
   begin
-    AError := TAtlasYouTrackApi.ErrorOfStatus(Status);
+    AError := TAtlasYouTrackApi.ErrorOfStatus(mStatus);
     Exit;
   end;
-  if not TAtlasYouTrackParse.ParseIssues(Text, AMax, AIssues) then
+  if not TAtlasYouTrackParse.ParseIssues(mText, AMax, AIssues) then
   begin
     AError := TAtlasCiFetchError.Invalid;
     Exit;
@@ -269,7 +269,7 @@ begin
   Result := '';
   if ATarget.Server <> '' then
   begin
-    Result := ATarget.Url + TAtlasYouTrackApi.LocalePath;
+    Result := ATarget.Url + TAtlasYouTrackApi.cLocalePath;
   end;
 end;
 
@@ -324,16 +324,16 @@ begin
   if AKind = TAtlasTrackerValueKind.Users then
   begin
     mUrl := ATarget.Url + '/api/users?fields=' + TTextUris.PercentEncode('login,banned') + '&$top=' +
-      IntToStr(TAtlasYouTrackApi.MaxValues);
+      IntToStr(TAtlasYouTrackApi.cMaxValues);
   end
   else if (ATarget.Project = '') and (AKind <> TAtlasTrackerValueKind.States) then
   begin
     mUrl := ATarget.Url + '/api/admin/customFieldSettings/customFields?fields=' +
-      TTextUris.PercentEncode('name,fieldType(id)') + '&$top=' + IntToStr(TAtlasYouTrackApi.MaxValues);
+      TTextUris.PercentEncode('name,fieldType(id)') + '&$top=' + IntToStr(TAtlasYouTrackApi.cMaxValues);
   end
   else
   begin
-    mUrl := ATarget.Url + '/api/admin/projects?fields=' + TTextUris.PercentEncode(TAtlasYouTrackApi.ProjectFields) + '&$top=500';
+    mUrl := ATarget.Url + '/api/admin/projects?fields=' + TTextUris.PercentEncode(TAtlasYouTrackApi.cProjectFields) + '&$top=500';
   end;
   if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) then
   begin
@@ -341,7 +341,8 @@ begin
   end;
   if mStatus <> 200 then
   begin
-    Exit(TAtlasTrackerWriteResult.Failed(TAtlasYouTrackApi.ErrorOfStatus(mStatus), mStatus, TAtlasYouTrackApi.ErrorMessage(mText)));
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasYouTrackApi.ErrorOfStatus(mStatus), mStatus,
+      TAtlasYouTrackApi.ErrorMessage(mText)));
   end;
   if AKind = TAtlasTrackerValueKind.Users then
   begin
@@ -378,7 +379,7 @@ begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
   end;
   mUrl := ATarget.Url + '/api/admin/projects/' + TTextUris.PercentEncode(mProject) + '/timeTrackingSettings?fields=' +
-    TTextUris.PercentEncode(TAtlasYouTrackApi.TimeSettingsFields);
+    TTextUris.PercentEncode(TAtlasYouTrackApi.cTimeSettingsFields);
   if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) then
   begin
     Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
@@ -393,10 +394,11 @@ begin
   end;
   if (mStatus <> 403) and (mStatus <> 404) then
   begin
-    Exit(TAtlasTrackerWriteResult.Failed(TAtlasYouTrackApi.ErrorOfStatus(mStatus), mStatus, TAtlasYouTrackApi.ErrorMessage(mText)));
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasYouTrackApi.ErrorOfStatus(mStatus), mStatus,
+      TAtlasYouTrackApi.ErrorMessage(mText)));
   end;
   // Ohne Leserecht auf das Projekt: Zeiterfassung gilt als an, Arbeitstypen allgemein (sonst frei).
-  mUrl := ATarget.Url + '/api/admin/timeTrackingSettings/workItemTypes?fields=name&$top=' + IntToStr(TAtlasYouTrackApi.MaxValues);
+  mUrl := ATarget.Url + '/api/admin/timeTrackingSettings/workItemTypes?fields=name&$top=' + IntToStr(TAtlasYouTrackApi.cMaxValues);
   if ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) and (mStatus = 200) and
     not TAtlasYouTrackParse.ParseTimeSettings(mText, True, ASettings) then
   begin
@@ -414,7 +416,8 @@ begin
   begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
   end;
-  if (ATarget.Server = '') or not TAtlasYouTrackJson.ValidKey(Trim(AKey)) or not Supports(ATransport, IAtlasCiSend, mSend) then
+  if (ATarget.Server = '') or not TAtlasYouTrackJson.ValidKey(Trim(AKey)) or
+    not Supports(ATransport, IAtlasCiSend, mSend) then
   begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
   end;
@@ -455,7 +458,8 @@ begin
     AError := TAtlasYouTrackApi.ErrorOfStatus(mStatus);
     Exit;
   end;
-  if not TAtlasYouTrackParse.ParseDescription(mJson, AText) or (Length(AText) > TAtlasTrackerDetails.MaxDescription) then
+  if not TAtlasYouTrackParse.ParseDescription(mJson, AText) or
+    (Length(AText) > TAtlasTrackerDetails.cMaxDescription) then
   begin
     AText := '';
     AError := TAtlasCiFetchError.Invalid;
@@ -480,7 +484,7 @@ begin
     AError := TAtlasCiFetchError.NotConfigured;
     Exit;
   end;
-  if Length(AText) > TAtlasTrackerDetails.MaxDescription then
+  if Length(AText) > TAtlasTrackerDetails.cMaxDescription then
   begin
     AError := TAtlasCiFetchError.Invalid;
     Exit;
@@ -636,13 +640,15 @@ begin
     Exit;
   end;
   if not (AKind in [TAtlasTrackerLinkKind.DependsOn, TAtlasTrackerLinkKind.Blocks]) or
-    not TAtlasYouTrackJson.ValidKey(Trim(AKey)) or not TAtlasYouTrackJson.ValidKey(Trim(AOtherKey)) or SameText(Trim(AKey), Trim(AOtherKey)) then
+    not TAtlasYouTrackJson.ValidKey(Trim(AKey)) or not TAtlasYouTrackJson.ValidKey(Trim(AOtherKey)) or
+      SameText(Trim(AKey), Trim(AOtherKey)) then
   begin
     AError := TAtlasCiFetchError.Invalid;
     Exit;
   end;
   mWatch := TStopwatch.StartNew;
-  Result := FindLinkType(ACall, AKind, mType, AError) and PostLink(Later(ACall, mWatch), AKey, mType, AOtherKey, AError);
+  Result := FindLinkType(ACall, AKind, mType, AError) and
+    PostLink(Later(ACall, mWatch), AKey, mType, AOtherKey, AError);
 end;
 
 
@@ -889,7 +895,7 @@ begin
   end;
   Result := True;
   APoll.Latest := LatestOf(mIssues, APoll.Latest);
-  for mIndex := 0 to Min(High(mIssues), TAtlasYouTrackApi.MaxChangedIssues - 1) do
+  for mIndex := 0 to Min(High(mIssues), TAtlasYouTrackApi.cMaxChangedIssues - 1) do
   begin
     AChanges := AChanges + IssueActivities(ATarget, ATransport, mIssues[mIndex], APoll,
       ATimeoutMs - Integer(mWatch.ElapsedMilliseconds));

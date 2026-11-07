@@ -198,7 +198,7 @@ begin
   Assert.AreEqual('- [ ] a'#10, mResult);
   Assert.IsFalse(TAtlasTrackerChecklist.Append('Kein Punkt'#10, 'c', mResult), 'ohne Checkliste');
   Assert.IsTrue(TAtlasTrackerChecklist.Append('- [ ] a'#10, StringOfChar('z', 600), mResult));
-  Assert.AreEqual(Integer(Length('- [ ] a'#10'- [ ] ' + #10) + TAtlasTrackerChecklist.MaxItemText),
+  Assert.AreEqual(Integer(Length('- [ ] a'#10'- [ ] ' + #10) + TAtlasTrackerChecklist.cMaxItemText),
     Integer(Length(mResult)), 'gekürzt');
 end;
 

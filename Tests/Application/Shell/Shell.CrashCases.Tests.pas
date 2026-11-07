@@ -184,7 +184,7 @@ begin
   Assert.AreEqual('unit UI.Auftrag;', mCase.Text);
   Assert.AreEqual('ECrashTest', mCase.ExceptionClass);
   Assert.AreEqual(1, Integer(Length(FSent)));
-  Assert.IsTrue(FSent[0].StartsWith(TShellCrashCases.CaseNotification));
+  Assert.IsTrue(FSent[0].StartsWith(TShellCrashCases.cCaseNotification));
   Assert.IsTrue(FSent[0].Contains('"skipping":false'));
   Assert.IsFalse(GuardRejects);
 end;
@@ -196,7 +196,7 @@ begin
   Assert.AreEqual(1, Integer(Length(FCases.Skipped)));
   // atlas/crashSkip vor dem zweiten atlas/crashCase.
   Assert.AreEqual(3, Integer(Length(FSent)));
-  Assert.IsTrue(FSent[1].StartsWith(TShellCrashCases.SkipNotification));
+  Assert.IsTrue(FSent[1].StartsWith(TShellCrashCases.cSkipNotification));
   Assert.IsTrue(FSent[1].Contains('"active":true'));
   Assert.IsTrue(FSent[2].Contains('"skipping":true'));
   Assert.IsTrue(GuardRejects);
@@ -220,11 +220,11 @@ procedure TShellCrashCasesTests.SkipSurvivesRestart;
 begin
   Crash;
   Crash;
-  Assert.IsTrue(TFile.Exists(TPath.Combine(FRoot, TShellCrashCases.SkipsFileName)));
+  Assert.IsTrue(TFile.Exists(TPath.Combine(FRoot, TShellCrashCases.cSkipsFileName)));
   CreateCases;
   Assert.IsTrue(GuardRejects);
   FCases.Announce;
-  Assert.IsTrue(FSent[High(FSent)].StartsWith(TShellCrashCases.SkipNotification));
+  Assert.IsTrue(FSent[High(FSent)].StartsWith(TShellCrashCases.cSkipNotification));
 end;
 
 procedure TShellCrashCasesTests.DisabledWritesNothing;

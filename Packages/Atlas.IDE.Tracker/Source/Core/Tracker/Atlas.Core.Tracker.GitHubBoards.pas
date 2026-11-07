@@ -29,10 +29,10 @@ type
   TAtlasGitHubBoards = class(TInterfacedObject, IAtlasTrackerBoards)
   public const
     /// <summary>Projekte des Repositorys und eigener Anmeldename.</summary>
-    ProjectsQuery = 'query($owner:String!,$name:String!){viewer{login}repository(owner:$owner,name:$name)' +
+    cProjectsQuery = 'query($owner:String!,$name:String!){viewer{login}repository(owner:$owner,name:$name)' +
       '{projectsV2(first:50){nodes{id title closed}}}}';
     /// <summary>Ein Projekt mit Feldern und Einträgen.</summary>
-    ProjectQuery = 'query($id:ID!){node(id:$id){... on ProjectV2{id title url ' +
+    cProjectQuery = 'query($id:ID!){node(id:$id){... on ProjectV2{id title url ' +
       'fields(first:50){nodes{... on ProjectV2SingleSelectField{id name options{id name}} ' +
       '... on ProjectV2Field{id name dataType} ' +
       '... on ProjectV2IterationField{id name configuration{iterations{id title startDate duration} ' +
@@ -43,11 +43,11 @@ type
       '... on ProjectV2ItemFieldNumberValue{number field{... on ProjectV2Field{name}}}}} ' +
       'content{... on Issue{number title url state closedAt body repository{nameWithOwner} ' +
       'assignees(first:5){nodes{login name}}}}}}}}}';
-    MoveMutation = 'mutation($project:ID!,$item:ID!,$field:ID!,$option:String!){updateProjectV2ItemFieldValue(' +
+    cMoveMutation = 'mutation($project:ID!,$item:ID!,$field:ID!,$option:String!){updateProjectV2ItemFieldValue(' +
       'input:{projectId:$project,itemId:$item,fieldId:$field,value:{singleSelectOptionId:$option}})' +
       '{projectV2Item{id}}}';
     /// <summary>Höchstens so viele geschlossene Issues ohne Projekt.</summary>
-    MaxClosed = 30;
+    cMaxClosed = 30;
   public
     /// <summary>Adresse der GraphQL-Schnittstelle; '' ohne Server.</summary>
     class function GraphQlUrl(const ATarget: TAtlasTrackerTarget): string; static;
@@ -152,7 +152,7 @@ begin
   begin
     Exit;
   end;
-  if mBase = TAtlasGitHubApi.ApiHost then
+  if mBase = TAtlasGitHubApi.cApiHost then
   begin
     Result := mBase + '/graphql';
   end
@@ -278,7 +278,7 @@ begin
         end;
       end;
     end;
-    ASnapshot.Boards := Copy(mOpen + mClosed, 0, TAtlasBoardSnapshot.MaxBoards);
+    ASnapshot.Boards := Copy(mOpen + mClosed, 0, TAtlasBoardSnapshot.cMaxBoards);
     Result := True;
   finally
     mValue.Free;
@@ -307,13 +307,13 @@ end;
 /// </summary>
 function IsPointsName(const AName: string): Boolean;
 const
-  Names: array[0..7] of string = ('Estimate', 'Estimation', 'Story Points', 'Points', 'Size', 'Schätzung',
+  cNames: array[0..7] of string = ('Estimate', 'Estimation', 'Story Points', 'Points', 'Size', 'Schätzung',
     'Punkte', 'Aufwand');
 var
   mName: string;
 begin
   Result := False;
-  for mName in Names do
+  for mName in cNames do
   begin
     if SameText(Trim(AName), mName) then
     begin
@@ -349,7 +349,7 @@ begin
   Result := nil;
   AddIterations(AConfig.Values['iterations'], False, Result);
   AddIterations(AConfig.Values['completedIterations'], True, Result);
-  Result := Copy(Result, 0, TAtlasBoardSnapshot.MaxSprints);
+  Result := Copy(Result, 0, TAtlasBoardSnapshot.cMaxSprints);
 end;
 
 /// <summary>Spalten aus den Optionen eines Auswahlfelds.</summary>
@@ -601,7 +601,7 @@ begin
   ACard.ItemId := TAtlasGitHubJson.TextOf(AEntry, 'id');
   ACard.Number := TAtlasGitHubJson.IntOf(mIssue, 'number');
   ACard.Key := KeyOf(mIssue, AProject);
-  ACard.Title := Copy(TAtlasGitHubJson.TextOf(mIssue, 'title'), 1, TAtlasBoardCard.MaxTitle);
+  ACard.Title := Copy(TAtlasGitHubJson.TextOf(mIssue, 'title'), 1, TAtlasBoardCard.cMaxTitle);
   ACard.Page := TAtlasGitHubJson.TextOf(mIssue, 'url');
   ACard.Checklist := TAtlasTrackerChecklist.Progress(TAtlasGitHubJson.TextOf(mIssue, 'body'));
   ACard.ResolvedAt := TimeOfText(TAtlasGitHubJson.TextOf(mIssue, 'closedAt'));
@@ -622,7 +622,7 @@ begin
   Result := (ASnapshot.Sprint.Id = '') or SameText(mIteration, ASnapshot.Sprint.Id);
 end;
 
-/// <summary>Karten aus items, höchstens TAtlasBoardSnapshot.MaxCards.</summary>
+/// <summary>Karten aus items, höchstens TAtlasBoardSnapshot.cMaxCards.</summary>
 procedure ReadProjectCards(AProject: TJSONObject; const ATarget: TAtlasTrackerTarget; const AScan: TFieldScan;
   var ASnapshot: TAtlasBoardSnapshot);
 var
@@ -638,7 +638,7 @@ begin
   end;
   for mItem in mNodes do
   begin
-    if (mItem is TJSONObject) and (Length(ASnapshot.Cards) < TAtlasBoardSnapshot.MaxCards)
+    if (mItem is TJSONObject) and (Length(ASnapshot.Cards) < TAtlasBoardSnapshot.cMaxCards)
       and ProjectCardOf(TJSONObject(mItem), ATarget.Project, ASnapshot, AScan, mCard) then
     begin
       ASnapshot.Cards := ASnapshot.Cards + [mCard];
@@ -690,7 +690,7 @@ begin
     end;
     for mItem in TJSONArray(mValue) do
     begin
-      if not (mItem is TJSONObject) or (Length(ASnapshot.Cards) >= TAtlasBoardSnapshot.MaxCards) then
+      if not (mItem is TJSONObject) or (Length(ASnapshot.Cards) >= TAtlasBoardSnapshot.cMaxCards) then
       begin
         Continue;
       end;
@@ -703,7 +703,7 @@ begin
       mCard := Default(TAtlasBoardCard);
       mCard.Number := TAtlasGitHubJson.IntOf(mIssue, 'number');
       mCard.Key := '#' + IntToStr(mCard.Number);
-      mCard.Title := Copy(TAtlasGitHubJson.TextOf(mIssue, 'title'), 1, TAtlasBoardCard.MaxTitle);
+      mCard.Title := Copy(TAtlasGitHubJson.TextOf(mIssue, 'title'), 1, TAtlasBoardCard.cMaxTitle);
       mCard.State := LowerCase(TAtlasGitHubJson.TextOf(mIssue, 'state'));
       mCard.Page := TAtlasGitHubJson.TextOf(mIssue, 'html_url');
       mCard.Checklist := TAtlasTrackerChecklist.Progress(TAtlasGitHubJson.TextOf(mIssue, 'body'));
@@ -779,7 +779,7 @@ begin
     Exit;
   end;
   if TAtlasGitHubApi.GetText(ATransport,
-    mBase + '?state=closed&sort=updated&per_page=' + IntToStr(TAtlasGitHubBoards.MaxClosed),
+    mBase + '?state=closed&sort=updated&per_page=' + IntToStr(TAtlasGitHubBoards.cMaxClosed),
     TAtlasGitHubApi.Remaining(AWatch, ATimeoutMs), mText, mError) then
   begin
     TAtlasGitHubBoards.ParseIssues(mText, ATarget, ASnapshot);
@@ -831,7 +831,7 @@ begin
   mAt := Pos('/', ARequest.Target.Project);
   mOwner := Copy(ARequest.Target.Project, 1, mAt - 1);
   mName := Copy(ARequest.Target.Project, mAt + 1, MaxInt);
-  if Query(ASend, AUrl, TAtlasGitHubBoards.GraphQlBody(TAtlasGitHubBoards.ProjectsQuery, ['owner', mOwner, 'name',
+  if Query(ASend, AUrl, TAtlasGitHubBoards.GraphQlBody(TAtlasGitHubBoards.cProjectsQuery, ['owner', mOwner, 'name',
     mName]), ARequest.TimeoutMs, mText, AError) and TAtlasGitHubBoards.ParseProjects(mText, ASnapshot) then
   begin
     Result := ChosenProject(ASnapshot, ARequest.BoardId);
@@ -868,7 +868,7 @@ begin
     Result := LoadRepository(ARequest.Target, ARequest.Transport, mWatch, ARequest.TimeoutMs, ASnapshot, AError);
     ASnapshot.ProjectsDenied := mError = TAtlasCiFetchError.Unauthorized;
   end
-  else if Query(mSend, mUrl, GraphQlBody(ProjectQuery, ['id', mProject]), TAtlasGitHubApi.Remaining(mWatch,
+  else if Query(mSend, mUrl, GraphQlBody(cProjectQuery, ['id', mProject]), TAtlasGitHubApi.Remaining(mWatch,
     ARequest.TimeoutMs), mText, AError) then
   begin
     Result := ParseProject(mText, ARequest.Target, ARequest.SprintId, TTimeZone.Local.ToUniversalTime(Now),
@@ -916,7 +916,7 @@ begin
   begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
   end;
-  mBody := TAtlasGitHubBoards.GraphQlBody(TAtlasGitHubBoards.MoveMutation, ['project', ASnapshot.ProjectId, 'item',
+  mBody := TAtlasGitHubBoards.GraphQlBody(TAtlasGitHubBoards.cMoveMutation, ['project', ASnapshot.ProjectId, 'item',
     AMove.Card.ItemId, 'field', ASnapshot.FieldId, 'option', mColumn.OptionId]);
   Result := GraphQlWriteResult(ASend.Send('POST', TAtlasGitHubBoards.GraphQlUrl(AMove.Target), mBody, ATimeoutMs,
     mResponse), mResponse);

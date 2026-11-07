@@ -57,13 +57,13 @@ type
   TAtlasCommentEditing = class
   public const
     /// <summary>Höchstens so viele Einträge in der Vorschlagsliste.</summary>
-    MaxSuggestions = 8;
+    cMaxSuggestions = 8;
     /// <summary>Sprache des Code-Blocks (Strg+Umschalt+K).</summary>
-    CodeLanguage = 'pascal';
-    BoldMarker = '**';
-    ItalicMarker = '_';
+    cCodeLanguage = 'pascal';
+    cBoldMarker = '**';
+    cItalicMarker = '_';
     /// <summary>Zeilenumbruch im Memo.</summary>
-    LineBreak = #13#10;
+    cLineBreak = #13#10;
   public
     /// <summary>Auslöser an der Schreibmarke ACaret (Zeichen davor, wie SelStart) für den Tracker ATarget.
     /// </summary>
@@ -112,9 +112,9 @@ type
 
   TAtlasCommentSnippets = class
   public const
-    MaxSnippets = 50;
-    MaxName = 80;
-    MaxText = 4000;
+    cMaxSnippets = 50;
+    cMaxName = 80;
+    cMaxText = 4000;
   public
     /// <summary>Vorgaben von issues.commentSnippets in der Sprache der Oberfläche: deutsch wie im Schema, mit
     /// AEnglish englisch (#1458).</summary>
@@ -139,14 +139,14 @@ type
   /// <summary>Entwürfe der Kommentarfelder (#1278).</summary>
   TAtlasCommentDrafts = class
   public const
-    Version = 1;
-    MaxDrafts = 100;
+    cVersion = 1;
+    cMaxDrafts = 100;
     /// <summary>Felder: Vorschau (#1264), Beenden-Dialog (#1266), Beschreibung (#1268), Rückfrage (#1272).</summary>
-    FieldPreview = 'preview';
-    FieldEnd = 'end';
-    FieldDescription = 'description';
-    FieldAsk = 'ask';
-    FileName = 'drafts.json';
+    cFieldPreview = 'preview';
+    cFieldEnd = 'end';
+    cFieldDescription = 'description';
+    cFieldAsk = 'ask';
+    cFileName = 'drafts.json';
   private type
     TEntry = record
       Tracker: string;
@@ -442,15 +442,15 @@ begin
     mAfter := mCode[Length(mCode)] + mAfter;
     Delete(mCode, Length(mCode), 1);
   end;
-  mOpen := cFence + CodeLanguage + LineBreak;
+  mOpen := cFence + cCodeLanguage + cLineBreak;
   if (mBefore <> '') and not IsBreak(mBefore[Length(mBefore)]) then
   begin
-    mOpen := LineBreak + mOpen;
+    mOpen := cLineBreak + mOpen;
   end;
-  Result := mBefore + mOpen + mCode + LineBreak + cFence;
+  Result := mBefore + mOpen + mCode + cLineBreak + cFence;
   if (mAfter <> '') and not IsBreak(mAfter[1]) then
   begin
-    Result := Result + LineBreak;
+    Result := Result + cLineBreak;
   end;
   Result := Result + mAfter;
   AStart := Length(mBefore) + Length(mOpen);
@@ -551,7 +551,7 @@ begin
     end;
     for mItem in TJSONArray(mValue) do
     begin
-      if Length(ASnippets) >= MaxSnippets then
+      if Length(ASnippets) >= cMaxSnippets then
       begin
         Break;
       end;
@@ -563,8 +563,8 @@ begin
       mText := '';
       TJSONObject(mItem).TryGetValue<string>('name', mName);
       TJSONObject(mItem).TryGetValue<string>('text', mText);
-      mName := Copy(Trim(mName), 1, MaxName);
-      mText := Copy(mText, 1, MaxText);
+      mName := Copy(Trim(mName), 1, cMaxName);
+      mText := Copy(mText, 1, cMaxText);
       if (mName = '') or (Trim(mText) = '') then
       begin
         Continue;
@@ -692,10 +692,10 @@ begin
   mEntry.Tracker := Trim(ATracker);
   mEntry.Issue := Trim(AIssue);
   mEntry.Field := Trim(AField);
-  mEntry.Text := Copy(AText, 1, TAtlasTrackerDetails.MaxText);
+  mEntry.Text := Copy(AText, 1, TAtlasTrackerDetails.cMaxText);
   mEntry.Saved := ASaved;
   FEntries.Insert(0, mEntry);
-  while FEntries.Count > MaxDrafts do
+  while FEntries.Count > cMaxDrafts do
   begin
     FEntries.Delete(FEntries.Count - 1);
   end;
@@ -731,7 +731,7 @@ var
 begin
   mRoot := TJSONObject.Create;
   try
-    mRoot.AddPair('version', TJSONNumber.Create(Version));
+    mRoot.AddPair('version', TJSONNumber.Create(cVersion));
     mList := TJSONArray.Create;
     mRoot.AddPair('drafts', mList);
     for mEntry in FEntries do
@@ -782,7 +782,7 @@ begin
     begin
       TryISO8601ToDate(mSaved, AEntry.Saved, True);
     end;
-    AEntry.Text := Copy(AEntry.Text, 1, TAtlasTrackerDetails.MaxText);
+    AEntry.Text := Copy(AEntry.Text, 1, TAtlasTrackerDetails.cMaxText);
   end;
 end;
 
@@ -796,7 +796,7 @@ begin
   mRoot := TJSONObject.ParseJSONValue(AText);
   try
     Result := (mRoot is TJSONObject) and TJSONObject(mRoot).TryGetValue<Integer>('version', mVersion) and
-      (mVersion = Version);
+      (mVersion = cVersion);
     if not Result then
     begin
       Exit;
@@ -808,7 +808,7 @@ begin
     end;
     for mItem in TJSONArray(mList) do
     begin
-      if FEntries.Count >= MaxDrafts then
+      if FEntries.Count >= cMaxDrafts then
       begin
         Break;
       end;

@@ -103,7 +103,7 @@ end;
 function CiProvider(const AName: string): IAtlasCiProvider;
 begin
   Result := nil;
-  if SameText(AName, TAtlasJenkinsProvider.ProviderName) then
+  if SameText(AName, TAtlasJenkinsProvider.cProviderName) then
   begin
     Result := TAtlasJenkinsProvider.Create;
   end;
@@ -132,7 +132,7 @@ begin
   Result := Default(TAtlasModuleInfo);
   Result.Id := cModuleId;
   Result.Name := 'Issue-Tracker';
-  Result.Version := TAtlasVersion.Version;
+  Result.Version := TAtlasVersion.cVersion;
   Result.Handle := HInstance;
   // Lief mit der Willkommensseite schon im abgesicherten Start.
   Result.MinLevel := TAtlasSafeLevel.Safe;

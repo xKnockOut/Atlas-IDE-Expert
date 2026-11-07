@@ -143,7 +143,7 @@ end;
 
 function TAtlasIdeUpdateInstaller.StateFile(const AVersion: string): string;
 begin
-  Result := TUpdateLayout.Join(TAtlasUpdateInstall.StagingDir(FRoot, AVersion), TUpdateLayout.StateFile);
+  Result := TUpdateLayout.Join(TAtlasUpdateInstall.StagingDir(FRoot, AVersion), TUpdateLayout.cStateFile);
 end;
 
 function TAtlasIdeUpdateInstaller.TryStage(const AVersion: string; out AStage: TUpdateStage): Boolean;
@@ -206,7 +206,7 @@ begin
   if FProcess = 0 then
   begin
     Say(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesPrepareFailedMessage, [AVersion,
-      TAtlasUpdateTexts.ErrorText(TAtlasUpdateInstall.StartFailed, ''), TUpdateChannels.ReleasesUrl]));
+      TAtlasUpdateTexts.ErrorText(TAtlasUpdateInstall.StartFailed, ''), TUpdateChannels.cReleasesUrl]));
     Exit;
   end;
   FPreparing := AVersion;
@@ -237,7 +237,7 @@ begin
     // Beendet ohne fertigen Stand (abgestürzt, beendet): als Fehler melden.
     mStage.Version := FPreparing;
     mStage.Phase := TUpdatePhase.Failed;
-    mStage.Error := TUpdateErrors.Unexpected;
+    mStage.Error := TUpdateErrors.cUnexpected;
   end;
   if mExited or TAtlasUpdateInstall.IsFinished(mStage) then
   begin
@@ -256,7 +256,7 @@ begin
   begin
     Log('Update ' + AStage.Version + ' not prepared: ' + AStage.Error);
     Say(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesPrepareFailedMessage, [AStage.Version,
-      TAtlasUpdateTexts.ErrorText(AStage.Error, AStage.Detail), TUpdateChannels.ReleasesUrl]));
+      TAtlasUpdateTexts.ErrorText(AStage.Error, AStage.Detail), TUpdateChannels.cReleasesUrl]));
   end
   else if AStage.AskSelection then
   begin
@@ -322,7 +322,7 @@ var
   mFile, mText, mDir, mName: string;
   mOutcome: TUpdateOutcome;
 begin
-  mFile := TUpdateLayout.Join(FRoot, TUpdateLayout.ResultFile);
+  mFile := TUpdateLayout.Join(FRoot, TUpdateLayout.cResultFile);
   if TAtlasDataFile.TryRead(mFile, mText) then
   begin
     mOutcome := TUpdateOutcome.FromJson(mText);

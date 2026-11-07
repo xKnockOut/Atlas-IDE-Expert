@@ -45,25 +45,25 @@ uses
 
 const
   /// <summary>Normierte Namen (klein, ohne Trenner) von Schlüsseln mit Zugangsdaten.</summary>
-  CredentialKeys: array[0..30] of string = ('password', 'passwort', 'passwd', 'pwd', 'pass', 'kennwort',
+  cCredentialKeys: array[0..30] of string = ('password', 'passwort', 'passwd', 'pwd', 'pass', 'kennwort',
     'token', 'apitoken', 'accesstoken', 'authtoken', 'bearertoken', 'privatetoken', 'personalaccesstoken',
     'refreshtoken', 'idtoken', 'apikey', 'secret', 'clientsecret', 'secretkey', 'privatekey', 'credential',
     'credentials', 'zugangsdaten', 'user', 'username', 'benutzer', 'benutzername', 'login', 'auth',
     'authorization', 'cookie');
   /// <summary>Endungen normierter Namen, die ein Geheimnis tragen.</summary>
-  CredentialEndings: array[0..7] of string = ('password', 'passwort', 'pwd', 'token', 'secret', 'apikey',
+  cCredentialEndings: array[0..7] of string = ('password', 'passwort', 'pwd', 'token', 'secret', 'apikey',
     'credentials', 'credential');
 
 function Normalized(const AName: string): string;
 var
-  Ch: Char;
+  mCh: Char;
 begin
   Result := '';
-  for Ch in AName do
+  for mCh in AName do
   begin
-    if (Ch <> '-') and (Ch <> '_') and (Ch <> '.') and (Ch <> ' ') then
+    if (mCh <> '-') and (mCh <> '_') and (mCh <> '.') and (mCh <> ' ') then
     begin
-      Result := Result + Ch;
+      Result := Result + mCh;
     end;
   end;
   Result := LowerCase(Result);
@@ -82,21 +82,21 @@ end;
 /// <summary>Teile eines Pfads ohne leere Teile und ohne „.“, klein geschrieben.</summary>
 function Segments(const APath: string): TArray<string>;
 var
-  Start, Index: Integer;
-  Part: string;
+  mStart, mIndex: Integer;
+  mPart: string;
 begin
   Result := nil;
-  Start := 1;
-  for Index := 1 to Length(APath) + 1 do
+  mStart := 1;
+  for mIndex := 1 to Length(APath) + 1 do
   begin
-    if (Index > Length(APath)) or IsSeparator(APath[Index]) then
+    if (mIndex > Length(APath)) or IsSeparator(APath[mIndex]) then
     begin
-      Part := Trim(Copy(APath, Start, Index - Start));
-      if (Part <> '') and (Part <> '.') then
+      mPart := Trim(Copy(APath, mStart, mIndex - mStart));
+      if (mPart <> '') and (mPart <> '.') then
       begin
-        Result := Result + [LowerCase(Part)];
+        Result := Result + [LowerCase(mPart)];
       end;
-      Start := Index + 1;
+      mStart := mIndex + 1;
     end;
   end;
 end;
@@ -105,12 +105,12 @@ end;
 
 class function TTextCheckin.IsCredentialKey(const AKey: string): Boolean;
 var
-  Name, Item: string;
+  mName, mItem: string;
 begin
-  Name := Normalized(AKey);
-  for Item in CredentialKeys do
+  mName := Normalized(AKey);
+  for mItem in cCredentialKeys do
   begin
-    if Name = Item then
+    if mName = mItem then
     begin
       Exit(True);
     end;
@@ -120,16 +120,16 @@ end;
 
 class function TTextCheckin.IsCredentialName(const AName: string): Boolean;
 var
-  Name, Item: string;
+  mName, mItem: string;
 begin
   if IsCredentialKey(AName) then
   begin
     Exit(True);
   end;
-  Name := Normalized(AName);
-  for Item in CredentialEndings do
+  mName := Normalized(AName);
+  for mItem in cCredentialEndings do
   begin
-    if (Length(Name) > Length(Item)) and (Copy(Name, Length(Name) - Length(Item) + 1, Length(Item)) = Item) then
+    if (Length(mName) > Length(mItem)) and (Copy(mName, Length(mName) - Length(mItem) + 1, Length(mItem)) = mItem) then
     begin
       Exit(True);
     end;
@@ -217,45 +217,45 @@ end;
 
 class function TTextCheckin.IsMachinePath(const APath: string): Boolean;
 var
-  Path: string;
+  mPath: string;
 begin
-  Path := Trim(APath);
-  if (Length(Path) >= 2) and IsLetter(Path[1]) and (Path[2] = ':') then
+  mPath := Trim(APath);
+  if (Length(mPath) >= 2) and IsLetter(mPath[1]) and (mPath[2] = ':') then
   begin
     Exit(True);
   end;
-  Result := (Length(Path) >= 3) and IsSeparator(Path[1]) and IsSeparator(Path[2]) and not IsSeparator(Path[3]) and
-    (Path[3] <> '*');
+  Result := (Length(mPath) >= 3) and IsSeparator(mPath[1]) and IsSeparator(mPath[2]) and not IsSeparator(mPath[3]) and
+    (mPath[3] <> '*');
 end;
 
 class function TTextCheckin.IsAbsolutePath(const APath: string): Boolean;
 var
-  Path: string;
+  mPath: string;
 begin
   if IsMachinePath(APath) then
   begin
     Exit(True);
   end;
-  Path := Trim(APath);
-  Result := (Path <> '') and (IsSeparator(Path[1]) or (Path[1] = '~'));
+  mPath := Trim(APath);
+  Result := (mPath <> '') and (IsSeparator(mPath[1]) or (mPath[1] = '~'));
 end;
 
 class function TTextCheckin.ContainsMachinePath(const AText: string): Boolean;
 var
-  Start, Index: Integer;
-  Word: string;
+  mStart, mIndex: Integer;
+  mWord: string;
 begin
-  Start := 1;
-  for Index := 1 to Length(AText) + 1 do
+  mStart := 1;
+  for mIndex := 1 to Length(AText) + 1 do
   begin
-    if (Index > Length(AText)) or CharInSet(AText[Index], [' ', #9, #10, #13, '"', '''', '=', ';', ',']) then
+    if (mIndex > Length(AText)) or CharInSet(AText[mIndex], [' ', #9, #10, #13, '"', '''', '=', ';', ',']) then
     begin
-      Word := Copy(AText, Start, Index - Start);
-      if (Word <> '') and IsMachinePath(Word) then
+      mWord := Copy(AText, mStart, mIndex - mStart);
+      if (mWord <> '') and IsMachinePath(mWord) then
       begin
         Exit(True);
       end;
-      Start := Index + 1;
+      mStart := mIndex + 1;
     end;
   end;
   Result := False;
@@ -263,41 +263,41 @@ end;
 
 class function TTextCheckin.StaysInside(const ARoot, ABase, ARelative: string): Boolean;
 var
-  Root, Base, Relative: TArray<string>;
-  Index, Depth: Integer;
+  mRoot, mBase, mRelative: TArray<string>;
+  mIndex, mDepth: Integer;
 begin
   if IsAbsolutePath(ARelative) then
   begin
     Exit(False);
   end;
-  Root := Segments(ARoot);
-  Base := Segments(ABase);
-  if Length(Base) < Length(Root) then
+  mRoot := Segments(ARoot);
+  mBase := Segments(ABase);
+  if Length(mBase) < Length(mRoot) then
   begin
     Exit(False);
   end;
-  for Index := 0 to High(Root) do
+  for mIndex := 0 to High(mRoot) do
   begin
-    if Root[Index] <> Base[Index] then
+    if mRoot[mIndex] <> mBase[mIndex] then
     begin
       Exit(False);
     end;
   end;
-  Depth := Length(Base) - Length(Root);
-  Relative := Segments(ARelative);
-  for Index := 0 to High(Relative) do
+  mDepth := Length(mBase) - Length(mRoot);
+  mRelative := Segments(ARelative);
+  for mIndex := 0 to High(mRelative) do
   begin
-    if Relative[Index] = '..' then
+    if mRelative[mIndex] = '..' then
     begin
-      Dec(Depth);
-      if Depth < 0 then
+      Dec(mDepth);
+      if mDepth < 0 then
       begin
         Exit(False);
       end;
     end
     else
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end;
   end;
   Result := True;

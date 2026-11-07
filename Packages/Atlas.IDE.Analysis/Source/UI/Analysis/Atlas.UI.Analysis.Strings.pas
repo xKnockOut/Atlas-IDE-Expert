@@ -82,7 +82,7 @@ uses
   Atlas.UI.Strings;
 
 const
-  Texts: array[TAtlasLanguage, TAtlasAnalysisTextId] of string = (
+  cTexts: array[TAtlasLanguage, TAtlasAnalysisTextId] of string = (
     ('Atlas-Architektur',
      'Architekturübersicht',
      'Architektur',
@@ -575,12 +575,12 @@ const
 
 class function TAtlasAnalysisStrings.Text(AId: TAtlasAnalysisTextId): string;
 begin
-  Result := Texts[TAtlasStrings.Language, AId];
+  Result := cTexts[TAtlasStrings.Language, AId];
 end;
 
 class function TAtlasAnalysisStrings.Fmt(AId: TAtlasAnalysisTextId; const AArgs: array of const): string;
 begin
-  Result := Format(Texts[TAtlasStrings.Language, AId], AArgs);
+  Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
 end;
 
 end.

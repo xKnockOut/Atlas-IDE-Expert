@@ -29,27 +29,27 @@ uses
 
 function ProgramNameOf(const AProcDir: string): string;
 var
-  Lines: TStringList;
+  mLines: TStringList;
 begin
   Result := ExtractFileName(string(FpReadLink(RawByteString(AProcDir + '/exe'))));
   if Result <> '' then
   begin
     Exit;
   end;
-  Lines := TStringList.Create;
+  mLines := TStringList.Create;
   try
     try
-      Lines.LoadFromFile(AProcDir + '/comm', TEncoding.UTF8);
+      mLines.LoadFromFile(AProcDir + '/comm', TEncoding.UTF8);
     except
       on EStreamError do
         Exit('');
     end;
-    if Lines.Count > 0 then
+    if mLines.Count > 0 then
     begin
-      Result := Trim(Lines[0]);
+      Result := Trim(mLines[0]);
     end;
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 
@@ -57,24 +57,24 @@ end;
 
 class function TProcessInstances.IdsOf(const AExeName: string): TArray<Cardinal>;
 var
-  Search: TSearchRec;
-  Pid: Integer;
+  mSearch: TSearchRec;
+  mPid: Integer;
 begin
   Result := nil;
-  if FindFirst('/proc/*', faDirectory, Search) <> 0 then
+  if FindFirst('/proc/*', faDirectory, mSearch) <> 0 then
   begin
     Exit;
   end;
   try
     repeat
-      if TryStrToInt(Search.Name, Pid) and (Pid > 0) and
-        SameText(ProgramNameOf('/proc/' + Search.Name), AExeName) then
+      if TryStrToInt(mSearch.Name, mPid) and (mPid > 0) and
+        SameText(ProgramNameOf('/proc/' + mSearch.Name), AExeName) then
       begin
-        Result := Result + [Cardinal(Pid)];
+        Result := Result + [Cardinal(mPid)];
       end;
-    until FindNext(Search) <> 0;
+    until FindNext(mSearch) <> 0;
   finally
-    FindClose(Search);
+    FindClose(mSearch);
   end;
 end;
 

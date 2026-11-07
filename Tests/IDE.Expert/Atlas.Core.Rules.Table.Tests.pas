@@ -60,7 +60,7 @@ uses
   Atlas.Core.Rules.Table;
 
 const
-  CatalogText =
+  cCatalogText =
     '{"rules": [' +
     '{"id": "magic-number", "name": "Magische Zahl", "category": "code-smell", "severity": "hint",' +
     ' "group": "style", "description": "Zahl ohne Namen", "bad": "X := 42;", "good": "X := Answer;",' +
@@ -71,159 +71,159 @@ const
 
 function Catalog: TJSONValue;
 begin
-  Result := TJSONObject.ParseJSONValue(CatalogText);
+  Result := TJSONObject.ParseJSONValue(cCatalogText);
 end;
 
 procedure TAtlasRuleTableTests.RowsCarryCatalogFieldsAndOptionValues;
 var
-  Value: TJSONValue;
-  Rows: TArray<TAtlasRuleRow>;
+  mValue: TJSONValue;
+  mRows: TArray<TAtlasRuleRow>;
 begin
-  Value := Catalog;
+  mValue := Catalog;
   try
-    Rows := TAtlasRuleTable.Rows(Value,
+    mRows := TAtlasRuleTable.Rows(mValue,
       '{"magic-number": {"severity": "warning", "ignore": ["2"], "own": 5, "exclude": ["Legacy/**"]}}');
-    Assert.AreEqual(2, Integer(Length(Rows)));
-    Assert.AreEqual('style', Rows[0].Group);
-    Assert.AreEqual('Zahl ohne Namen', Rows[0].Description);
-    Assert.AreEqual('X := 42;', Rows[0].Bad);
-    Assert.AreEqual('X := Answer;', Rows[0].Good);
-    Assert.IsTrue(Rows[0].Experimental);
-    Assert.AreEqual(2, Integer(Length(Rows[0].Options)));
-    Assert.AreEqual('ignore', Rows[0].Options[0].Name);
-    Assert.AreEqual('string-list', Rows[0].Options[0].Kind);
-    Assert.AreEqual('["0","1"]', Rows[0].Options[0].DefaultJson);
-    Assert.AreEqual('["2"]', Rows[0].Options[0].ValueJson);
+    Assert.AreEqual(2, Integer(Length(mRows)));
+    Assert.AreEqual('style', mRows[0].Group);
+    Assert.AreEqual('Zahl ohne Namen', mRows[0].Description);
+    Assert.AreEqual('X := 42;', mRows[0].Bad);
+    Assert.AreEqual('X := Answer;', mRows[0].Good);
+    Assert.IsTrue(mRows[0].Experimental);
+    Assert.AreEqual(2, Integer(Length(mRows[0].Options)));
+    Assert.AreEqual('ignore', mRows[0].Options[0].Name);
+    Assert.AreEqual('string-list', mRows[0].Options[0].Kind);
+    Assert.AreEqual('["0","1"]', mRows[0].Options[0].DefaultJson);
+    Assert.AreEqual('["2"]', mRows[0].Options[0].ValueJson);
     // Unbekannte Option aus der Datei bleibt sichtbar.
-    Assert.AreEqual('own', Rows[0].Options[1].Name);
-    Assert.AreEqual('json', Rows[0].Options[1].Kind);
-    Assert.AreEqual('5', Rows[0].Options[1].ValueJson);
-    Assert.AreEqual(1, Integer(Length(Rows[0].Exclude)));
-    Assert.AreEqual('Legacy/**', Rows[0].Exclude[0]);
-    Assert.IsFalse(Rows[1].Experimental);
-    Assert.AreEqual(0, Integer(Length(Rows[1].Options)));
+    Assert.AreEqual('own', mRows[0].Options[1].Name);
+    Assert.AreEqual('json', mRows[0].Options[1].Kind);
+    Assert.AreEqual('5', mRows[0].Options[1].ValueJson);
+    Assert.AreEqual(1, Integer(Length(mRows[0].Exclude)));
+    Assert.AreEqual('Legacy/**', mRows[0].Exclude[0]);
+    Assert.IsFalse(mRows[1].Experimental);
+    Assert.AreEqual(0, Integer(Length(mRows[1].Options)));
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 procedure TAtlasRuleTableTests.GroupKeysAreNoRuleRows;
 var
-  Rows: TArray<TAtlasRuleRow>;
+  mRows: TArray<TAtlasRuleRow>;
 begin
-  Rows := TAtlasRuleTable.Rows(nil, '{"group:style": "off", "no-with": "error"}');
-  Assert.AreEqual(1, Integer(Length(Rows)));
-  Assert.AreEqual('no-with', Rows[0].Id);
+  mRows := TAtlasRuleTable.Rows(nil, '{"group:style": "off", "no-with": "error"}');
+  Assert.AreEqual(1, Integer(Length(mRows)));
+  Assert.AreEqual('no-with', mRows[0].Id);
 end;
 
 procedure TAtlasRuleTableTests.OptionTurnsTextIntoObjectAndBack;
 var
-  Rules: string;
+  mRules: string;
 begin
-  Rules := TAtlasRuleTable.WithOption('{"magic-number": "warning"}', 'magic-number', 'ignore', '["0"]');
-  Assert.AreEqual('{"magic-number":{"severity":"warning","ignore":["0"]}}', Rules);
-  Rules := TAtlasRuleTable.WithOption(Rules, 'magic-number', 'ignore', '');
-  Assert.AreEqual('{"magic-number":"warning"}', Rules);
-  Rules := TAtlasRuleTable.WithOption('', 'metric-method-length', 'max', '80');
-  Assert.AreEqual('{"metric-method-length":{"max":80}}', Rules);
-  Rules := TAtlasRuleTable.WithOption(Rules, 'metric-method-length', 'max', '');
-  Assert.AreEqual('', Rules);
+  mRules := TAtlasRuleTable.WithOption('{"magic-number": "warning"}', 'magic-number', 'ignore', '["0"]');
+  Assert.AreEqual('{"magic-number":{"severity":"warning","ignore":["0"]}}', mRules);
+  mRules := TAtlasRuleTable.WithOption(mRules, 'magic-number', 'ignore', '');
+  Assert.AreEqual('{"magic-number":"warning"}', mRules);
+  mRules := TAtlasRuleTable.WithOption('', 'metric-method-length', 'max', '80');
+  Assert.AreEqual('{"metric-method-length":{"max":80}}', mRules);
+  mRules := TAtlasRuleTable.WithOption(mRules, 'metric-method-length', 'max', '');
+  Assert.AreEqual('', mRules);
   // Kein gültiges JSON: nichts ändert sich.
-  Rules := TAtlasRuleTable.WithOption('{"a": "off"}', 'a', 'max', '{kaputt');
-  Assert.AreEqual('{"a":"off"}', Rules);
+  mRules := TAtlasRuleTable.WithOption('{"a": "off"}', 'a', 'max', '{kaputt');
+  Assert.AreEqual('{"a":"off"}', mRules);
 end;
 
 procedure TAtlasRuleTableTests.ExcludeIsWrittenAndRemoved;
 var
-  Rules: string;
+  mRules: string;
 begin
-  Rules := TAtlasRuleTable.WithExclude('{"no-with": "error"}', 'no-with', ['Legacy/**', ' ', 'Alt.Unit ']);
-  Assert.AreEqual('{"no-with":{"severity":"error","exclude":["Legacy/**","Alt.Unit"]}}', Rules);
-  Rules := TAtlasRuleTable.WithExclude(Rules, 'no-with', nil);
-  Assert.AreEqual('{"no-with":"error"}', Rules);
+  mRules := TAtlasRuleTable.WithExclude('{"no-with": "error"}', 'no-with', ['Legacy/**', ' ', 'Alt.Unit ']);
+  Assert.AreEqual('{"no-with":{"severity":"error","exclude":["Legacy/**","Alt.Unit"]}}', mRules);
+  mRules := TAtlasRuleTable.WithExclude(mRules, 'no-with', nil);
+  Assert.AreEqual('{"no-with":"error"}', mRules);
 end;
 
 procedure TAtlasRuleTableTests.GroupSwitchWritesAndRemovesKey;
 var
-  Rules: string;
+  mRules: string;
 begin
   Assert.AreEqual('group:style', TAtlasRuleTable.GroupKey('style'));
-  Rules := TAtlasRuleTable.WithGroup('{"no-with": "error"}', 'style', False);
-  Assert.AreEqual('{"no-with":"error","group:style":"off"}', Rules);
-  Assert.IsTrue(TAtlasRuleTable.GroupOff(Rules, 'style'));
-  Assert.IsFalse(TAtlasRuleTable.GroupOff(Rules, 'exceptions'));
-  Rules := TAtlasRuleTable.WithGroup(Rules, 'style', True);
-  Assert.AreEqual('{"no-with":"error"}', Rules);
+  mRules := TAtlasRuleTable.WithGroup('{"no-with": "error"}', 'style', False);
+  Assert.AreEqual('{"no-with":"error","group:style":"off"}', mRules);
+  Assert.IsTrue(TAtlasRuleTable.GroupOff(mRules, 'style'));
+  Assert.IsFalse(TAtlasRuleTable.GroupOff(mRules, 'exceptions'));
+  mRules := TAtlasRuleTable.WithGroup(mRules, 'style', True);
+  Assert.AreEqual('{"no-with":"error"}', mRules);
   Assert.IsFalse(TAtlasRuleTable.GroupOff('', 'style'));
 end;
 
 procedure TAtlasRuleTableTests.GroupOptionKeepsSwitchAndBack;
 var
-  Rules: string;
+  mRules: string;
 begin
   // #1024: "typeLevel" der Gruppe „Compiler vorab“ macht den Schlüssel zum Objekt; der Hauptschalter bleibt.
-  Rules := TAtlasRuleTable.WithGroupOption('{"group:compiler": "off"}', 'compiler', 'typeLevel', 'off');
-  Assert.AreEqual('{"group:compiler":{"severity":"off","typeLevel":"off"}}', Rules);
-  Assert.IsTrue(TAtlasRuleTable.GroupOff(Rules, 'compiler'));
-  Assert.AreEqual('off', TAtlasRuleTable.GroupOption(Rules, 'compiler', 'typeLevel'));
-  Rules := TAtlasRuleTable.WithGroup(Rules, 'compiler', True);
-  Assert.AreEqual('{"group:compiler":{"typeLevel":"off"}}', Rules);
-  Assert.IsFalse(TAtlasRuleTable.GroupOff(Rules, 'compiler'));
-  Rules := TAtlasRuleTable.WithGroup(Rules, 'compiler', False);
-  Rules := TAtlasRuleTable.WithGroupOption(Rules, 'compiler', 'typeLevel', '');
-  Assert.AreEqual('{"group:compiler":"off"}', Rules);
-  Assert.AreEqual('', TAtlasRuleTable.GroupOption(Rules, 'compiler', 'typeLevel'));
-  Assert.AreEqual('off', TAtlasRuleTable.GroupOption(Rules, 'compiler', 'severity'));
-  Rules := TAtlasRuleTable.WithGroup(Rules, 'compiler', True);
-  Assert.AreEqual('', Rules);
+  mRules := TAtlasRuleTable.WithGroupOption('{"group:compiler": "off"}', 'compiler', 'typeLevel', 'off');
+  Assert.AreEqual('{"group:compiler":{"severity":"off","typeLevel":"off"}}', mRules);
+  Assert.IsTrue(TAtlasRuleTable.GroupOff(mRules, 'compiler'));
+  Assert.AreEqual('off', TAtlasRuleTable.GroupOption(mRules, 'compiler', 'typeLevel'));
+  mRules := TAtlasRuleTable.WithGroup(mRules, 'compiler', True);
+  Assert.AreEqual('{"group:compiler":{"typeLevel":"off"}}', mRules);
+  Assert.IsFalse(TAtlasRuleTable.GroupOff(mRules, 'compiler'));
+  mRules := TAtlasRuleTable.WithGroup(mRules, 'compiler', False);
+  mRules := TAtlasRuleTable.WithGroupOption(mRules, 'compiler', 'typeLevel', '');
+  Assert.AreEqual('{"group:compiler":"off"}', mRules);
+  Assert.AreEqual('', TAtlasRuleTable.GroupOption(mRules, 'compiler', 'typeLevel'));
+  Assert.AreEqual('off', TAtlasRuleTable.GroupOption(mRules, 'compiler', 'severity'));
+  mRules := TAtlasRuleTable.WithGroup(mRules, 'compiler', True);
+  Assert.AreEqual('', mRules);
   Assert.AreEqual(1, Integer(Length(TAtlasRuleTable.Rows(nil,
     '{"group:compiler": {"typeLevel": "off"}, "no-with": "error"}'))));
 end;
 
 procedure TAtlasRuleTableTests.FilterByGroupAndText;
 var
-  Value: TJSONValue;
-  Rows: TArray<TAtlasRuleRow>;
-  Hits: TArray<Integer>;
-  Groups: TArray<string>;
+  mValue: TJSONValue;
+  mRows: TArray<TAtlasRuleRow>;
+  mHits: TArray<Integer>;
+  mGroups: TArray<string>;
 begin
-  Value := Catalog;
+  mValue := Catalog;
   try
-    Rows := TAtlasRuleTable.Rows(Value, '');
-    Groups := TAtlasRuleTable.Groups(Rows);
-    Assert.AreEqual(2, Integer(Length(Groups)));
-    Assert.AreEqual('style', Groups[0]);
-    Assert.AreEqual('exceptions', Groups[1]);
-    Assert.AreEqual(2, Integer(Length(TAtlasRuleTable.Filter(Rows, '', ''))));
-    Hits := TAtlasRuleTable.Filter(Rows, 'exceptions', '');
-    Assert.AreEqual(1, Integer(Length(Hits)));
-    Assert.AreEqual(1, Hits[0]);
+    mRows := TAtlasRuleTable.Rows(mValue, '');
+    mGroups := TAtlasRuleTable.Groups(mRows);
+    Assert.AreEqual(2, Integer(Length(mGroups)));
+    Assert.AreEqual('style', mGroups[0]);
+    Assert.AreEqual('exceptions', mGroups[1]);
+    Assert.AreEqual(2, Integer(Length(TAtlasRuleTable.Filter(mRows, '', ''))));
+    mHits := TAtlasRuleTable.Filter(mRows, 'exceptions', '');
+    Assert.AreEqual(1, Integer(Length(mHits)));
+    Assert.AreEqual(1, mHits[0]);
     // Suche in Kennung, Name und Beschreibung.
-    Hits := TAtlasRuleTable.Filter(Rows, '', 'VERSCHLUCKT');
-    Assert.AreEqual(1, Integer(Length(Hits)));
-    Assert.AreEqual(1, Hits[0]);
-    Hits := TAtlasRuleTable.Filter(Rows, '', 'magic');
-    Assert.AreEqual(1, Integer(Length(Hits)));
-    Assert.AreEqual(0, Hits[0]);
-    Assert.AreEqual(0, Integer(Length(TAtlasRuleTable.Filter(Rows, 'style', 'except'))));
+    mHits := TAtlasRuleTable.Filter(mRows, '', 'VERSCHLUCKT');
+    Assert.AreEqual(1, Integer(Length(mHits)));
+    Assert.AreEqual(1, mHits[0]);
+    mHits := TAtlasRuleTable.Filter(mRows, '', 'magic');
+    Assert.AreEqual(1, Integer(Length(mHits)));
+    Assert.AreEqual(0, mHits[0]);
+    Assert.AreEqual(0, Integer(Length(TAtlasRuleTable.Filter(mRows, 'style', 'except'))));
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 procedure TAtlasRuleTableTests.EffectiveSeverityFallsBackToGlobalAndDefault;
 var
-  Row: TAtlasRuleRow;
+  mRow: TAtlasRuleRow;
 begin
-  Row := Default(TAtlasRuleRow);
-  Row.DefaultSeverity := 'warning';
-  Assert.AreEqual('warning', Row.Effective);
-  Row.GlobalSeverity := 'off';
-  Assert.AreEqual('off', Row.Effective);
-  Assert.IsFalse(Row.Enabled);
-  Row.Severity := 'error';
-  Assert.AreEqual('error', Row.Effective);
-  Assert.IsTrue(Row.Enabled);
+  mRow := Default(TAtlasRuleRow);
+  mRow.DefaultSeverity := 'warning';
+  Assert.AreEqual('warning', mRow.Effective);
+  mRow.GlobalSeverity := 'off';
+  Assert.AreEqual('off', mRow.Effective);
+  Assert.IsFalse(mRow.Enabled);
+  mRow.Severity := 'error';
+  Assert.AreEqual('error', mRow.Effective);
+  Assert.IsTrue(mRow.Enabled);
 end;
 
 function Option(const AKind, ADefault, AValue: string): TAtlasRuleOption;
@@ -249,98 +249,98 @@ end;
 
 procedure TAtlasRuleTableTests.OptionJsonChecksKind;
 var
-  Json: string;
+  mJson: string;
 begin
-  Assert.IsTrue(TAtlasRuleTable.OptionJson('integer', ' 80 ', Json));
-  Assert.AreEqual('80', Json);
-  Assert.IsFalse(TAtlasRuleTable.OptionJson('integer', 'acht', Json));
-  Assert.IsTrue(TAtlasRuleTable.OptionJson('boolean', 'True', Json));
-  Assert.AreEqual('true', Json);
-  Assert.IsFalse(TAtlasRuleTable.OptionJson('boolean', 'ja', Json));
-  Assert.IsTrue(TAtlasRuleTable.OptionJson('string', 'a"b', Json));
-  Assert.AreEqual('"a\"b"', Json);
-  Assert.IsTrue(TAtlasRuleTable.OptionJson('string-list', '0; 1;; 2 ', Json));
-  Assert.AreEqual('["0","1","2"]', Json);
-  Assert.IsTrue(TAtlasRuleTable.OptionJson('number-list', '0; -1; 2.5', Json));
-  Assert.AreEqual('[0,-1,2.5]', Json);
-  Assert.IsFalse(TAtlasRuleTable.OptionJson('number-list', '1; zwei', Json));
-  Assert.IsTrue(TAtlasRuleTable.OptionJson('json', '{"a": 1}', Json));
-  Assert.AreEqual('{"a":1}', Json);
-  Assert.IsFalse(TAtlasRuleTable.OptionJson('json', '{a', Json));
+  Assert.IsTrue(TAtlasRuleTable.OptionJson('integer', ' 80 ', mJson));
+  Assert.AreEqual('80', mJson);
+  Assert.IsFalse(TAtlasRuleTable.OptionJson('integer', 'acht', mJson));
+  Assert.IsTrue(TAtlasRuleTable.OptionJson('boolean', 'True', mJson));
+  Assert.AreEqual('true', mJson);
+  Assert.IsFalse(TAtlasRuleTable.OptionJson('boolean', 'ja', mJson));
+  Assert.IsTrue(TAtlasRuleTable.OptionJson('string', 'a"b', mJson));
+  Assert.AreEqual('"a\"b"', mJson);
+  Assert.IsTrue(TAtlasRuleTable.OptionJson('string-list', '0; 1;; 2 ', mJson));
+  Assert.AreEqual('["0","1","2"]', mJson);
+  Assert.IsTrue(TAtlasRuleTable.OptionJson('number-list', '0; -1; 2.5', mJson));
+  Assert.AreEqual('[0,-1,2.5]', mJson);
+  Assert.IsFalse(TAtlasRuleTable.OptionJson('number-list', '1; zwei', mJson));
+  Assert.IsTrue(TAtlasRuleTable.OptionJson('json', '{"a": 1}', mJson));
+  Assert.AreEqual('{"a":1}', mJson);
+  Assert.IsFalse(TAtlasRuleTable.OptionJson('json', '{a', mJson));
   // Leeres Feld: Vorgabe.
-  Assert.IsTrue(TAtlasRuleTable.OptionJson('integer', '  ', Json));
-  Assert.AreEqual('', Json);
+  Assert.IsTrue(TAtlasRuleTable.OptionJson('integer', '  ', mJson));
+  Assert.AreEqual('', mJson);
 end;
 
 procedure TAtlasRuleTableTests.ListTextRoundTrips;
 var
-  Items: TArray<string>;
+  mItems: TArray<string>;
 begin
-  Items := TAtlasRuleTable.ParseList(' Tests\*.pas ;; Vendor.* ');
-  Assert.AreEqual(2, Integer(Length(Items)));
-  Assert.AreEqual('Tests\*.pas', Items[0]);
-  Assert.AreEqual('Vendor.*', Items[1]);
-  Assert.AreEqual('Tests\*.pas; Vendor.*', TAtlasRuleTable.ListText(Items));
+  mItems := TAtlasRuleTable.ParseList(' Tests\*.pas ;; Vendor.* ');
+  Assert.AreEqual(2, Integer(Length(mItems)));
+  Assert.AreEqual('Tests\*.pas', mItems[0]);
+  Assert.AreEqual('Vendor.*', mItems[1]);
+  Assert.AreEqual('Tests\*.pas; Vendor.*', TAtlasRuleTable.ListText(mItems));
   Assert.AreEqual(0, Integer(Length(TAtlasRuleTable.ParseList(''))));
-  Items := nil;
+  mItems := nil;
 end;
 
 procedure TAtlasRuleTableTests.SearchFindsCategory;
 var
-  Value: TJSONValue;
-  Rows: TArray<TAtlasRuleRow>;
-  Found: TArray<Integer>;
+  mValue: TJSONValue;
+  mRows: TArray<TAtlasRuleRow>;
+  mFound: TArray<Integer>;
 begin
-  Value := Catalog;
+  mValue := Catalog;
   try
-    Rows := TAtlasRuleTable.Rows(Value, '');
-    Found := TAtlasRuleTable.Filter(Rows, '', 'CODE-SMELL');
-    Assert.AreEqual(1, Integer(Length(Found)));
-    Assert.AreEqual('magic-number', Rows[Found[0]].Id);
-    Assert.AreEqual(14, Integer(Length(TAtlasRuleTable.GroupIds)));
-    Assert.AreEqual('find-bugs', TAtlasRuleTable.GroupIds[0]);
+    mRows := TAtlasRuleTable.Rows(mValue, '');
+    mFound := TAtlasRuleTable.Filter(mRows, '', 'CODE-SMELL');
+    Assert.AreEqual(1, Integer(Length(mFound)));
+    Assert.AreEqual('magic-number', mRows[mFound[0]].Id);
+    Assert.AreEqual(14, Integer(Length(TAtlasRuleTable.cGroupIds)));
+    Assert.AreEqual('find-bugs', TAtlasRuleTable.cGroupIds[0]);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 procedure TAtlasRuleTableTests.ChangesListOnlyChangedRules;
 var
-  Changes: TArray<TPair<string, string>>;
+  mChanges: TArray<TPair<string, string>>;
 begin
-  Changes := TAtlasRuleTable.Changes('{"a": "off", "b": {"severity": "error"}, "c": "hint"}',
+  mChanges := TAtlasRuleTable.Changes('{"a": "off", "b": {"severity": "error"}, "c": "hint"}',
     '{"a": "off", "b": {"severity": "warning"}, "group:style": "off"}');
-  Assert.AreEqual(3, Integer(Length(Changes)));
-  Assert.AreEqual('rules.b', Changes[0].Key);
-  Assert.AreEqual('{"severity":"warning"}', Changes[0].Value);
-  Assert.AreEqual('rules.group:style', Changes[1].Key);
-  Assert.AreEqual('"off"', Changes[1].Value);
-  Assert.AreEqual('rules.c', Changes[2].Key);
-  Assert.AreEqual('', Changes[2].Value);
+  Assert.AreEqual(3, Integer(Length(mChanges)));
+  Assert.AreEqual('rules.b', mChanges[0].Key);
+  Assert.AreEqual('{"severity":"warning"}', mChanges[0].Value);
+  Assert.AreEqual('rules.group:style', mChanges[1].Key);
+  Assert.AreEqual('"off"', mChanges[1].Value);
+  Assert.AreEqual('rules.c', mChanges[2].Key);
+  Assert.AreEqual('', mChanges[2].Value);
   Assert.AreEqual(0, Integer(Length(TAtlasRuleTable.Changes('', ''))));
-  Changes := nil;
+  mChanges := nil;
 end;
 
 procedure TAtlasRuleTableTests.OverridingRuleOnlyWhenEnabled;
 const
-  Text = '{"rules": [' +
+  cText = '{"rules": [' +
     '{"id": "redundant-begin-end", "category": "code-smell", "severity": "hint", "group": "style",' +
     ' "overriddenBy": ["missing-begin-end"]},' +
     '{"id": "missing-begin-end", "category": "code-smell", "severity": "hint", "group": "style"}]}';
 var
-  Value: TJSONValue;
-  Rows: TArray<TAtlasRuleRow>;
+  mValue: TJSONValue;
+  mRows: TArray<TAtlasRuleRow>;
 begin
-  Value := TJSONObject.ParseJSONValue(Text);
+  mValue := TJSONObject.ParseJSONValue(cText);
   try
-    Rows := TAtlasRuleTable.Rows(Value, '');
-    Assert.AreEqual('missing-begin-end', string.Join(',', Rows[0].OverriddenBy));
-    Assert.AreEqual('missing-begin-end', TAtlasRuleTable.OverridingRule(Rows, Rows[0]));
-    Assert.AreEqual('', TAtlasRuleTable.OverridingRule(Rows, Rows[1]));
-    Rows := TAtlasRuleTable.Rows(Value, '{"missing-begin-end": "off"}');
-    Assert.AreEqual('', TAtlasRuleTable.OverridingRule(Rows, Rows[0]));
+    mRows := TAtlasRuleTable.Rows(mValue, '');
+    Assert.AreEqual('missing-begin-end', string.Join(',', mRows[0].OverriddenBy));
+    Assert.AreEqual('missing-begin-end', TAtlasRuleTable.OverridingRule(mRows, mRows[0]));
+    Assert.AreEqual('', TAtlasRuleTable.OverridingRule(mRows, mRows[1]));
+    mRows := TAtlasRuleTable.Rows(mValue, '{"missing-begin-end": "off"}');
+    Assert.AreEqual('', TAtlasRuleTable.OverridingRule(mRows, mRows[0]));
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -389,29 +389,29 @@ end;
 procedure TAtlasRuleTableTests.RuleRowsFromCatalogAndFile;
 var
   mCatalog: TJSONValue;
-  Rows: TArray<TAtlasRuleRow>;
+  mRows: TArray<TAtlasRuleRow>;
 begin
   mCatalog := TJSONObject.ParseJSONValue('{"rules": [' +
     '{"id": "no-with", "name": "Kein with", "category": "code-smell", "severity": "warning"},' +
     '{"id": "empty-except", "name": "Leeres except", "category": "bug", "severity": "error"}]}');
   try
-    Rows := TAtlasRuleTable.Rows(mCatalog, '{"no-with": "off", "own-rule": {"severity": "hint", "x": 1}}');
-    Assert.AreEqual(3, Integer(Length(Rows)));
-    Assert.AreEqual('no-with', Rows[0].Id);
-    Assert.AreEqual('off', Rows[0].Severity);
-    Assert.AreEqual('warning', Rows[0].DefaultSeverity);
-    Assert.IsTrue(Rows[0].Known);
-    Assert.AreEqual('', Rows[1].Severity);
-    Assert.AreEqual('own-rule', Rows[2].Id);
-    Assert.IsFalse(Rows[2].Known);
-    Assert.IsTrue(Rows[2].HasOptions);
-    Assert.AreEqual('hint', Rows[2].Severity);
+    mRows := TAtlasRuleTable.Rows(mCatalog, '{"no-with": "off", "own-rule": {"severity": "hint", "x": 1}}');
+    Assert.AreEqual(3, Integer(Length(mRows)));
+    Assert.AreEqual('no-with', mRows[0].Id);
+    Assert.AreEqual('off', mRows[0].Severity);
+    Assert.AreEqual('warning', mRows[0].DefaultSeverity);
+    Assert.IsTrue(mRows[0].Known);
+    Assert.AreEqual('', mRows[1].Severity);
+    Assert.AreEqual('own-rule', mRows[2].Id);
+    Assert.IsFalse(mRows[2].Known);
+    Assert.IsTrue(mRows[2].HasOptions);
+    Assert.AreEqual('hint', mRows[2].Severity);
     // Ohne Server: nur die Regeln aus der Datei.
     Assert.AreEqual(2, Integer(Length(TAtlasRuleTable.Rows(nil, '{"a": "off", "b": "error"}'))));
     // Im Projekt: globaler Wert je Regel, das Projekt übersteuert ihn.
-    Rows := TAtlasRuleTable.Rows(nil, '{"a": "off"}', '{"a": "hint", "b": "error"}');
-    Assert.AreEqual('off', Rows[0].Severity);
-    Assert.AreEqual('hint', Rows[0].GlobalSeverity);
+    mRows := TAtlasRuleTable.Rows(nil, '{"a": "off"}', '{"a": "hint", "b": "error"}');
+    Assert.AreEqual('off', mRows[0].Severity);
+    Assert.AreEqual('hint', mRows[0].GlobalSeverity);
   finally
     mCatalog.Free;
   end;
@@ -419,16 +419,16 @@ end;
 
 procedure TAtlasRuleTableTests.RuleSeverityKeepsOptions;
 var
-  Rules: string;
+  mRules: string;
 begin
-  Rules := TAtlasRuleTable.WithSeverity('{"magic-number": {"severity": "hint", "ignore": [0]}}', 'magic-number',
+  mRules := TAtlasRuleTable.WithSeverity('{"magic-number": {"severity": "hint", "ignore": [0]}}', 'magic-number',
     'error');
-  Assert.IsTrue(Pos('"ignore":[0]', Rules) > 0);
-  Assert.IsTrue(Pos('"severity":"error"', Rules) > 0);
-  Rules := TAtlasRuleTable.WithSeverity('{"no-with": "error"}', 'no-with', '');
-  Assert.AreEqual('', Rules);
-  Rules := TAtlasRuleTable.WithSeverity('', 'no-with', 'off');
-  Assert.AreEqual('{"no-with":"off"}', Rules);
+  Assert.IsTrue(Pos('"ignore":[0]', mRules) > 0);
+  Assert.IsTrue(Pos('"severity":"error"', mRules) > 0);
+  mRules := TAtlasRuleTable.WithSeverity('{"no-with": "error"}', 'no-with', '');
+  Assert.AreEqual('', mRules);
+  mRules := TAtlasRuleTable.WithSeverity('', 'no-with', 'off');
+  Assert.AreEqual('{"no-with":"off"}', mRules);
 end;
 
 procedure TAtlasRuleTableTests.SeverityChangeTouchesOnlyThatRule;

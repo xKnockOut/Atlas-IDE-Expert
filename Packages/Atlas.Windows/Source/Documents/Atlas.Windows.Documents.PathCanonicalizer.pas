@@ -23,10 +23,10 @@ uses
 
 const
   // FILE_NAME_NORMALIZED or VOLUME_NAME_DOS
-  FinalPathFlags = $0;
+  cFinalPathFlags = $0;
 
-function FinalPathNameByHandle(hFile: THandle; lpszFilePath: PWideChar; cchFilePath: DWORD;
-  dwFlags: DWORD): DWORD; stdcall; external kernel32 name 'GetFinalPathNameByHandleW';
+function FinalPathNameByHandle(AHFile: THandle; ALpszFilePath: PWideChar; ACchFilePath: DWORD;
+  ADwFlags: DWORD): DWORD; stdcall; external kernel32 name 'GetFinalPathNameByHandleW';
 
 function LongPathForApi(const APath: string): string;
 begin
@@ -46,9 +46,9 @@ end;
 
 class function TWindowsPathCanonicalizer.Canonicalize(const APath: string): string;
 var
-  Handle: THandle;
-  Buffer: string;
-  Len: DWORD;
+  mHandle: THandle;
+  mBuffer: string;
+  mLen: DWORD;
 begin
   Result := APath;
   if APath = '' then
@@ -56,43 +56,43 @@ begin
     Exit;
   end;
   // FILE_FLAG_BACKUP_SEMANTICS erlaubt auch Ordner.
-  Handle := CreateFile(PChar(LongPathForApi(APath)), 0,
+  mHandle := CreateFile(PChar(LongPathForApi(APath)), 0,
     FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil, OPEN_EXISTING,
     FILE_FLAG_BACKUP_SEMANTICS, 0);
-  if Handle = INVALID_HANDLE_VALUE then
+  if mHandle = INVALID_HANDLE_VALUE then
   begin
     Exit;
   end;
   try
-    SetLength(Buffer, MAX_PATH);
-    Len := FinalPathNameByHandle(Handle, PWideChar(Buffer), Length(Buffer),
-      FinalPathFlags);
-    if Len >= DWORD(Length(Buffer)) then
+    SetLength(mBuffer, MAX_PATH);
+    mLen := FinalPathNameByHandle(mHandle, PWideChar(mBuffer), Length(mBuffer),
+      cFinalPathFlags);
+    if mLen >= DWORD(Length(mBuffer)) then
     begin
-      SetLength(Buffer, Len + 1);
-      Len := FinalPathNameByHandle(Handle, PWideChar(Buffer), Length(Buffer),
-        FinalPathFlags);
+      SetLength(mBuffer, mLen + 1);
+      mLen := FinalPathNameByHandle(mHandle, PWideChar(mBuffer), Length(mBuffer),
+        cFinalPathFlags);
     end;
-    if (Len = 0) or (Len >= DWORD(Length(Buffer))) then
+    if (mLen = 0) or (mLen >= DWORD(Length(mBuffer))) then
     begin
       Exit;
     end;
-    SetLength(Buffer, Len);
+    SetLength(mBuffer, mLen);
     // \\?\C:\... bzw. \\?\UNC\server\... zurück in die gewohnte Form
-    if SameText(Copy(Buffer, 1, 8), '\\?\UNC\') then
+    if SameText(Copy(mBuffer, 1, 8), '\\?\UNC\') then
     begin
-      Result := '\\' + Copy(Buffer, 9, MaxInt);
+      Result := '\\' + Copy(mBuffer, 9, MaxInt);
     end
-    else if Copy(Buffer, 1, 4) = '\\?\' then
+    else if Copy(mBuffer, 1, 4) = '\\?\' then
     begin
-      Result := Copy(Buffer, 5, MaxInt);
+      Result := Copy(mBuffer, 5, MaxInt);
     end
     else
     begin
-      Result := Buffer;
+      Result := mBuffer;
     end;
   finally
-    CloseHandle(Handle);
+    CloseHandle(mHandle);
   end;
 end;
 
