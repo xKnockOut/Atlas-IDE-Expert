@@ -22,16 +22,16 @@ uses
   BaseUnix;
 
 const
-  StdErrorFd = 2;
+  cStdErrorFd = 2;
 
 class procedure TDebugOutput.Write(const AText: string);
 var
-  Bytes: TBytes;
+  mBytes: TBytes;
 begin
-  Bytes := TEncoding.UTF8.GetBytes(AText + #10);
-  if Length(Bytes) > 0 then
+  mBytes := TEncoding.UTF8.GetBytes(AText + #10);
+  if Length(mBytes) > 0 then
   begin
-    FpWrite(StdErrorFd, Bytes[0], Length(Bytes));
+    FpWrite(cStdErrorFd, mBytes[0], Length(mBytes));
   end;
 end;
 
