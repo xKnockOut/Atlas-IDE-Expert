@@ -26,8 +26,8 @@
 
     Exit-Code 0: keine Verstöße, 1: mindestens ein Verstoß.
 
-    Mit -Files nur diese Dateien (z. B. aus dem PostToolUse-Hook in
-    .claude/hooks/nach-bearbeitung.sh nach jeder Änderung durch Claude).
+    Mit -Files nur diese Dateien (z. B. aus einem PostToolUse-Hook nach jeder
+    Änderung einer Datei).
 
 .EXAMPLE
     pwsh Tools/Check-Delphi12.ps1

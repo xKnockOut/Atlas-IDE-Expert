@@ -56,3 +56,6 @@ benchmark/
 # Reste von Merge-Werkzeugen (git mergetool), z. B. Shell.Linter.pas.orig
 *.orig
 *.rej
+
+# Lokale Einstellungen der Claude-Sitzungen
+.claude/settings.local.json

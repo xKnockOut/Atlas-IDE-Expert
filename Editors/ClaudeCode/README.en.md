@@ -43,7 +43,6 @@ done
 exit 0
 ```
 
-In addition, the SessionStart hook of this repository (`.claude/hooks/session-start.sh`) calls the same script; if the server is already there, this only costs the fingerprint comparison. Hooks from `.claude/settings.json` apply in Claude projects only if the project has exactly one repository.
 
 Check: `claude mcp list` shows `plugin:atlas:delphi` as connected.
 

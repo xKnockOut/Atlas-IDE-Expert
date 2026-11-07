@@ -43,7 +43,6 @@ done
 exit 0
 ```
 
-Zusätzlich ruft der SessionStart-Hook dieses Repositorys (`.claude/hooks/session-start.sh`) dasselbe Skript auf; ist der Server schon da, kostet das nur den Vergleich des Fingerabdrucks. Hooks aus `.claude/settings.json` gelten in Claude-Projekten nur, wenn das Projekt genau ein Repository hat.
 
 Prüfen: `claude mcp list` zeigt `plugin:atlas:delphi` als verbunden.
 
