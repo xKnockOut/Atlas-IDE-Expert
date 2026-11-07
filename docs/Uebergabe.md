@@ -1,8 +1,6 @@
-﻿## Präfixe und Zeilenlänge in Atlas.IDE.Welcome (07.11.2026, Branch `claude/project-thread-q5i0jf` auf `main-merging`)
-- Vorgehen nach `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`: lokale Namen, Felder und Parameter über `--fix naming-prefix` (safeFix-Server), 192 öffentliche Konstanten über `rename_symbol` (Vorschau, gesammelt angewendet), klassenqualifizierte Verwendungen (`TAtlasWelcomeIds.cHeader` usw., auch in Base-Kommentaren und Testunits anderer Bereiche) per Regex nachgezogen; alle 192 Konstanten gehören zu Klassen oder Records.
-- Mit eingeschalteten Regeln naming-prefix und line-length: Package (Atlas.IDE.Welcome.dproj) und die 31 Testunits mit `[Category('Atlas.IDE.Welcome')]` 0 Befunde.
-- Geprüft (Cloud): FPC-Harness für die übersetzbaren Core-Testunits wie auf main-merging (gleiche Fehlschläge, keine neuen); viele Core-Testunits übersetzen im Harness schon auf main-merging nicht. UI- und IDE-Units nicht übersetzbar: Delphi-Build nötig.
-
+﻿## Präfixe und Zeilenlänge in Atlas.IDE.Tests (07.11.2026, Branch `claude/project-thread-1epvgo` auf `main-merging`)
+- 124 naming-prefix und 1 line-length im Package, 38 bzw. 1 in den Testunits des Moduls (`Tests/IDE.Expert/Atlas.Core.Tests.*.Tests.pas`) behoben; lokale Namen über `--fix naming-prefix` (safeFix-Server), öffentliche Konstanten von Hand samt Verwendungen: `TAtlasAffectedHook.cHookName/cConfigFile/cMarker`, `TAtlasTestDebug.cStartTimeoutMs`, `TAtlasTestProjectChoices.cFormat/cFileName/cMaxEntries`, `TAtlasTestRun.cTimeoutMs/cRequestedBy`, `TAtlasTestsModule.cModuleId/cSwitch`.
+- Geprüft (Cloud): AtlasServer mit naming-prefix, line-length und allen Metriken: 0 Befunde im Package und den Testunits; FPC-Tests AffectedHook 3/3, Debug 7/7; ProjectChoice und Run übersetzen unter FPC nicht (Windows-Units DataFile/TextFile, wie auf main-merging). germantext unverändert. Nicht mit Delphi übersetzt.
 ## Präfixe in Atlas.IDE.Designer (07.11.2026, Branch `claude/project-thread-8p5mhb` auf `main-merging`)
 - 30 naming-prefix, 0 line-length. 28 über `--fix naming-prefix` (Server mit safeFix-Patch), Rest von Hand: öffentliche Konstanten `TAtlasDesignerModule.cModuleId`/`cSwitch` (nur in der Composition verwendet) und `cChipKinds`/`cChipFields` im verschachtelten `TPainter` (die Korrektur erfasste Verwendungen der Konstanten der umgebenden Klasse nicht).
 - Geprüft (Cloud): AtlasServer `--check` über Atlas.IDE.Designer.dproj mit naming-prefix/line-length an: 0 Befunde; Prüfskripte und Generatoren mit `-Check` grün. Units sind VCL/ToolsAPI: nicht übersetzt, Delphi-Build offen.
@@ -12,6 +10,11 @@
 - `TAtlasVersion.Version` heißt jetzt `cVersion`; die Versionsskripte (Check-/Set-Version, Build-Docs, Workflow) suchen weiter `Version\s*=\s*'` und treffen damit auch `cVersion`.
 - Testdaten mit `http://` in `Tests/Text` tragen `lsp-ignore: security-insecure-http`.
 - Geprüft (Cloud): AtlasServer übersetzt (FPC trunk); FPC-Tests aller Text-Testunits und der Common-Update-Tests wie auf main-merging (226, gleicher Fehlschlag `SplitHelperDropsTrailingEmpty`); Atlas mit naming-prefix, line-length und Metriken über Package und Tests: 0 Befunde. IDE-Units nicht übersetzt: Delphi-Build nötig.
+## Präfixe und Zeilenlänge in Atlas.IDE.Welcome (07.11.2026, Branch `claude/project-thread-q5i0jf` auf `main-merging`)
+- Vorgehen nach `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`: lokale Namen, Felder und Parameter über `--fix naming-prefix` (safeFix-Server), 192 öffentliche Konstanten über `rename_symbol` (Vorschau, gesammelt angewendet), klassenqualifizierte Verwendungen (`TAtlasWelcomeIds.cHeader` usw., auch in Base-Kommentaren und Testunits anderer Bereiche) per Regex nachgezogen; alle 192 Konstanten gehören zu Klassen oder Records.
+- Mit eingeschalteten Regeln naming-prefix und line-length: Package (Atlas.IDE.Welcome.dproj) und die 31 Testunits mit `[Category('Atlas.IDE.Welcome')]` 0 Befunde.
+- Geprüft (Cloud): FPC-Harness für die übersetzbaren Core-Testunits wie auf main-merging (gleiche Fehlschläge, keine neuen); viele Core-Testunits übersetzen im Harness schon auf main-merging nicht. UI- und IDE-Units nicht übersetzbar: Delphi-Build nötig.
+
 ## Präfixe und Zeilenlänge in Atlas.Linux (07.11.2026, Branch `claude/project-thread-64k5j8` auf `main-merging`)
 ## Präfixe und Zeilenlänge in Atlas.Windows (07.11.2026, Branch `claude/project-thread-1v6ywd` auf `main-merging`)
 - 76 naming-prefix und 3 line-length in Atlas.Windows, 42 naming-prefix und 1 line-length in `Tests/Windows`; lokale Namen und Parameter über `--fix naming-prefix` (Server mit safeFix, nur lokal), Rest von Hand.

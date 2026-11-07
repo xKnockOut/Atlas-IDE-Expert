@@ -193,7 +193,7 @@ end;
 class function TAtlasIdeTestProjects.ChoiceFile: string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
-    TAtlasTestProjectChoices.FileName);
+    TAtlasTestProjectChoices.cFileName);
 end;
 
 class procedure TAtlasIdeTestProjects.Apply(const AFiles: TArray<string>; AChosen: Integer;

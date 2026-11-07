@@ -40,7 +40,7 @@ uses
   Atlas.UI.Strings;
 
 const
-  Texts: array[TAtlasLanguage, TAtlasTestsTextId] of string = (
+  cTexts: array[TAtlasLanguage, TAtlasTestsTextId] of string = (
     ('Tests ausführen',
      'Fehlgeschlagene Tests erneut ausführen',
      'Tests: Kein DUnitX-Testprojekt in der Projektgruppe (Hauptdatei mit DUnitX.TestFramework).',
@@ -178,12 +178,12 @@ const
 
 class function TAtlasTestsStrings.Text(AId: TAtlasTestsTextId): string;
 begin
-  Result := Texts[TAtlasStrings.Language, AId];
+  Result := cTexts[TAtlasStrings.Language, AId];
 end;
 
 class function TAtlasTestsStrings.Fmt(AId: TAtlasTestsTextId; const AArgs: array of const): string;
 begin
-  Result := Format(Texts[TAtlasStrings.Language, AId], AArgs);
+  Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
 end;
 
 end.

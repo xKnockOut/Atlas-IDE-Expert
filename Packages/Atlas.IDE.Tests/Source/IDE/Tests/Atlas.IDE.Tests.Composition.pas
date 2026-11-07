@@ -14,9 +14,10 @@
 //   Laufs schreibt das Modul in die Projekt-Zusammenfassung von Base
 //   (TAtlasIdeProjectSummaries, #69) und meldet es jedem IAtlasTestsListener.
 // Gebaut wird über den Läufer der Builds auf Auftrag der Build-Pipeline
-// (IAtlasBuildJobs aus Atlas.IDE.Contracts.BuildPipeline, ohne Modul nicht), die Probleme gehen an das Problemfenster von
-// Base; die fehlgeschlagenen Tests des letzten Laufs liest das Modul aus den
-// Projektdateien (TAtlasProjectSummaries), auch ohne Willkommensseite.
+// (IAtlasBuildJobs aus Atlas.IDE.Contracts.BuildPipeline, ohne Modul nicht), die
+// Probleme gehen an das Problemfenster von Base; die fehlgeschlagenen Tests des
+// letzten Laufs liest das Modul aus den Projektdateien (TAtlasProjectSummaries),
+// auch ohne Willkommensseite.
 // Diese Haken stehen in Atlas.IDE.Tests.Composition.Hooks.
 // Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt die
 // Vertragsversion von Base nicht, meldet sich das Modul nicht an (Regel 7).
@@ -35,8 +36,8 @@ type
   TAtlasTestsModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
     IAtlasAppliesSettings, IAtlasBuildVerdictListener, IAtlasTestRunner, IAtlasTestsSource)
   public const
-    ModuleId = 'atlas.tests';
-    Switch = 'tests';
+    cModuleId = 'atlas.tests';
+    cSwitch = 'tests';
   private
     FActive: Boolean;
     class function Parts: TArray<IAtlasFeaturePart>; static;
@@ -274,13 +275,13 @@ end;
 function TAtlasTestsModule.Info: TAtlasModuleInfo;
 begin
   Result := Default(TAtlasModuleInfo);
-  Result.Id := ModuleId;
+  Result.Id := cModuleId;
   Result.Name := 'Tests';
   Result.Version := TAtlasVersion.cVersion;
   Result.Handle := HInstance;
   // Der Läufer baut und startet Programme: nur im normalen Start.
   Result.MinLevel := TAtlasSafeLevel.Normal;
-  Result.Switch := Switch;
+  Result.Switch := cSwitch;
 end;
 
 procedure TAtlasTestsModule.Start;
@@ -434,7 +435,7 @@ begin
   if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
     ccMatch then
   begin
-    TAtlasGuard.Log('Modul ' + ModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
+    TAtlasGuard.Log('Modul ' + cModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
     Exit;
   end;
   mModule := TAtlasTestsModule.Create;
@@ -469,9 +470,9 @@ begin
   mRegistry := AtlasModuleRegistry;
   if mRegistry <> nil then
   begin
-    for mFailure in mRegistry.UnregisterModule(ModuleId) do
+    for mFailure in mRegistry.UnregisterModule(cModuleId) do
     begin
-      TAtlasGuard.Log('Modul ' + ModuleId + ' nicht sauber abgemeldet: ' + mFailure);
+      TAtlasGuard.Log('Modul ' + cModuleId + ' nicht sauber abgemeldet: ' + mFailure);
     end;
   end;
 end;

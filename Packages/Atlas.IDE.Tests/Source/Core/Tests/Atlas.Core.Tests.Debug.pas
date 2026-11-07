@@ -43,7 +43,7 @@ type
   public const
     /// <summary>So lange wartet Atlas nach „Start“ auf den Prozess, bevor es die Startparameter zurückstellt.
     /// </summary>
-    StartTimeoutMs = 60000;
+    cStartTimeoutMs = 60000;
   public
     /// <summary>Auswahl für Fixture AFixtureIndex, Test ATestIndex (-1 = Fixture) und Fall ACaseIndex (-1 = alle).
     /// </summary>
@@ -87,7 +87,7 @@ implementation
 
 const
   /// <summary>Optionen von DUnitX (lang und kurz), die Atlas beim Debuggen weglässt.</summary>
-  DroppedOptions: array[0..13] of string = ('run', 'r', 'runlist', 'rl', 'include', 'i', 'exclude', 'e',
+  cDroppedOptions: array[0..13] of string = ('run', 'r', 'runlist', 'rl', 'include', 'i', 'exclude', 'e',
     'xmlfile', 'xml', 'exitbehavior', 'exit', 'h', '?');
 
 { TAtlasTestSelection }
@@ -110,7 +110,7 @@ end;
 class function TAtlasTestDebug.Selection(const AUnit: TDUnitXUnit; AFixtureIndex, ATestIndex,
   ACaseIndex: Integer): TAtlasTestSelection;
 var
-  Test: TDUnitXTest;
+  mTest: TDUnitXTest;
 begin
   Result := Default(TAtlasTestSelection);
   Result.BreakLine := -1;
@@ -125,26 +125,26 @@ begin
   begin
     Exit;
   end;
-  Test := AUnit.Fixtures[AFixtureIndex].Tests[ATestIndex];
-  Result.Method := Test.Method;
-  if (ACaseIndex >= 0) and (ACaseIndex <= High(Test.Cases)) and not Test.Ignored then
+  mTest := AUnit.Fixtures[AFixtureIndex].Tests[ATestIndex];
+  Result.Method := mTest.Method;
+  if (ACaseIndex >= 0) and (ACaseIndex <= High(mTest.Cases)) and not mTest.Ignored then
   begin
-    Result.CaseName := Test.Cases[ACaseIndex];
+    Result.CaseName := mTest.Cases[ACaseIndex];
   end;
-  Result.BreakLine := Test.BeginLine;
+  Result.BreakLine := mTest.BeginLine;
 end;
 
 class function TAtlasTestDebug.SelectAt(const AUnit: TDUnitXUnit; ALine: Integer;
   out ASelection: TAtlasTestSelection): Boolean;
 var
-  FixtureIndex, TestIndex, CaseIndex: Integer;
+  mFixtureIndex, mTestIndex, mCaseIndex: Integer;
 begin
   ASelection := Default(TAtlasTestSelection);
   ASelection.BreakLine := -1;
-  Result := AUnit.TestAt(ALine, FixtureIndex, TestIndex, CaseIndex);
+  Result := AUnit.TestAt(ALine, mFixtureIndex, mTestIndex, mCaseIndex);
   if Result then
   begin
-    ASelection := Selection(AUnit, FixtureIndex, TestIndex, CaseIndex);
+    ASelection := Selection(AUnit, mFixtureIndex, mTestIndex, mCaseIndex);
   end;
 end;
 
@@ -210,37 +210,37 @@ end;
 
 class function TAtlasTestDebug.SplitArguments(const AText: string): TArray<string>;
 var
-  Index: Integer;
-  Current: string;
-  Quoted, Started: Boolean;
+  mIndex: Integer;
+  mCurrent: string;
+  mQuoted, mStarted: Boolean;
 begin
   Result := nil;
-  Current := '';
-  Quoted := False;
-  Started := False;
-  for Index := 1 to Length(AText) do
+  mCurrent := '';
+  mQuoted := False;
+  mStarted := False;
+  for mIndex := 1 to Length(AText) do
   begin
-    if not Quoted and ((AText[Index] = ' ') or (AText[Index] = #9) or (AText[Index] = #13) or
-      (AText[Index] = #10)) then
+    if not mQuoted and ((AText[mIndex] = ' ') or (AText[mIndex] = #9) or (AText[mIndex] = #13) or
+      (AText[mIndex] = #10)) then
     begin
-      if Started then
+      if mStarted then
       begin
-        Result := Result + [Current];
+        Result := Result + [mCurrent];
       end;
-      Current := '';
-      Started := False;
+      mCurrent := '';
+      mStarted := False;
       Continue;
     end;
-    if AText[Index] = '"' then
+    if AText[mIndex] = '"' then
     begin
-      Quoted := not Quoted;
+      mQuoted := not mQuoted;
     end;
-    Current := Current + AText[Index];
-    Started := True;
+    mCurrent := mCurrent + AText[mIndex];
+    mStarted := True;
   end;
-  if Started then
+  if mStarted then
   begin
-    Result := Result + [Current];
+    Result := Result + [mCurrent];
   end;
 end;
 
@@ -255,29 +255,29 @@ end;
 
 class function TAtlasTestDebug.OptionName(const AArgument: string): string;
 var
-  Text: string;
-  Colon: Integer;
+  mText: string;
+  mColon: Integer;
 begin
   Result := '';
-  Text := StringReplace(AArgument, '"', '', [rfReplaceAll]);
-  if Copy(Text, 1, 2) = '--' then
+  mText := StringReplace(AArgument, '"', '', [rfReplaceAll]);
+  if Copy(mText, 1, 2) = '--' then
   begin
-    Delete(Text, 1, 2);
+    Delete(mText, 1, 2);
   end
-  else if (Copy(Text, 1, 1) = '-') or (Copy(Text, 1, 1) = '/') then
+  else if (Copy(mText, 1, 1) = '-') or (Copy(mText, 1, 1) = '/') then
   begin
-    Delete(Text, 1, 1);
+    Delete(mText, 1, 1);
   end
   else
   begin
     Exit;
   end;
-  Colon := Pos(':', Text);
-  if Colon > 0 then
+  mColon := Pos(':', mText);
+  if mColon > 0 then
   begin
-    Text := Copy(Text, 1, Colon - 1);
+    mText := Copy(mText, 1, mColon - 1);
   end;
-  Result := LowerCase(Text);
+  Result := LowerCase(mText);
 end;
 
 /// <summary>Bisherige Argumente ohne die Optionen, die der Testlauf selbst setzt.</summary>
@@ -291,7 +291,7 @@ begin
   begin
     mName := TAtlasTestDebug.OptionName(mArgument);
     mDrop := False;
-    for mDropped in DroppedOptions do
+    for mDropped in cDroppedOptions do
     begin
       if mName = mDropped then
       begin
