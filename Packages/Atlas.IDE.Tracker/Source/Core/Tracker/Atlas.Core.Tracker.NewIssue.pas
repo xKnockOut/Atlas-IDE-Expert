@@ -153,15 +153,15 @@ type
   TAtlasNewIssues = class
   public const
     /// <summary>Zeilen über und unter dem Cursor im Codeausschnitt ohne Auswahl.</summary>
-    ContextLines = 5;
+    cContextLines = 5;
     /// <summary>Höchstens so lang wird der vorgeschlagene Titel.</summary>
-    MaxTitle = 120;
+    cMaxTitle = 120;
     /// <summary>Höchstens so viele Zeilen hat der Codeausschnitt einer Auswahl.</summary>
-    MaxCodeLines = 60;
+    cMaxCodeLines = 60;
     /// <summary>Zeitgrenze für Anlegen bzw. Listen laden insgesamt.</summary>
-    TimeoutMs = 10000;
+    cTimeoutMs = 10000;
     /// <summary>Höchstens so viele Einträge je Auswahlliste.</summary>
-    MaxValues = 100;
+    cMaxValues = 100;
   public
     /// <summary>TODO- bzw. FIXME-Kommentar in ALine; False ohne.</summary>
     class function TodoAt(const ALine: string; out ATodo: TAtlasTodoComment): Boolean; static;
@@ -248,9 +248,9 @@ uses
 
 const
   // Übliche Namen der Felder in YouTrack, auch auf Deutsch angelegte Projekte.
-  YouTrackTypeNames: array[0..1] of string = ('Type', 'Typ');
-  YouTrackPriorityNames: array[0..1] of string = ('Priority', 'Priorität');
-  YouTrackAssigneeNames: array[0..2] of string = ('Assignee', 'Zuständig', 'Bearbeiter');
+  cYouTrackTypeNames: array[0..1] of string = ('Type', 'Typ');
+  cYouTrackPriorityNames: array[0..1] of string = ('Priority', 'Priorität');
+  cYouTrackAssigneeNames: array[0..2] of string = ('Assignee', 'Zuständig', 'Bearbeiter');
 
 { TAtlasNewIssueContext }
 
@@ -612,9 +612,9 @@ class function TAtlasNewIssues.ShortTitle(const AText: string): string;
 begin
   Result := Trim(StringReplace(StringReplace(StringReplace(AText, #13#10, ' ', [rfReplaceAll]), #10, ' ',
     [rfReplaceAll]), #9, ' ', [rfReplaceAll]));
-  if Length(Result) > MaxTitle then
+  if Length(Result) > cMaxTitle then
   begin
-    Result := TrimRight(Copy(Result, 1, MaxTitle - 1)) + '…';
+    Result := TrimRight(Copy(Result, 1, cMaxTitle - 1)) + '…';
   end;
 end;
 
@@ -705,9 +705,9 @@ begin
   if Trim(AContext.Selection) <> '' then
   begin
     mLines := TTextLines.SplitLines(AContext.Selection);
-    if Length(mLines) > MaxCodeLines then
+    if Length(mLines) > cMaxCodeLines then
     begin
-      SetLength(mLines, MaxCodeLines);
+      SetLength(mLines, cMaxCodeLines);
     end;
     Exit(Dedent(mLines));
   end;
@@ -716,12 +716,12 @@ begin
   begin
     Exit;
   end;
-  mFrom := AContext.Line - 1 - ContextLines;
+  mFrom := AContext.Line - 1 - cContextLines;
   if mFrom < 0 then
   begin
     mFrom := 0;
   end;
-  mTo := AContext.Line - 1 + ContextLines;
+  mTo := AContext.Line - 1 + cContextLines;
   if mTo > High(AContext.Lines) then
   begin
     mTo := High(AContext.Lines);
@@ -960,7 +960,7 @@ var
   mItem: string;
 begin
   Result := AItems;
-  if (AValue = '') or (Length(Result) >= TAtlasNewIssues.MaxValues) then
+  if (AValue = '') or (Length(Result) >= TAtlasNewIssues.cMaxValues) then
   begin
     Exit;
   end;
@@ -1141,17 +1141,17 @@ begin
       begin
         mBundle := nil;
       end;
-      if IsOneOf(mName, YouTrackTypeNames) and (AFields.TypeField = '') then
+      if IsOneOf(mName, cYouTrackTypeNames) and (AFields.TypeField = '') then
       begin
         AFields.TypeField := mName;
         AFields.Types := BundleValues(TJSONObject(mBundle), False);
       end
-      else if IsOneOf(mName, YouTrackPriorityNames) and (AFields.PriorityField = '') then
+      else if IsOneOf(mName, cYouTrackPriorityNames) and (AFields.PriorityField = '') then
       begin
         AFields.PriorityField := mName;
         AFields.Priorities := BundleValues(TJSONObject(mBundle), False);
       end
-      else if IsOneOf(mName, YouTrackAssigneeNames) and (AFields.AssigneeField = '') then
+      else if IsOneOf(mName, cYouTrackAssigneeNames) and (AFields.AssigneeField = '') then
       begin
         AFields.AssigneeField := mName;
         AFields.Assignees := BundleValues(TJSONObject(mBundle), True);
@@ -1358,7 +1358,7 @@ end;
 
 function Remaining(const AWatch: TStopwatch): Integer;
 begin
-  Result := TAtlasNewIssues.TimeoutMs - Integer(AWatch.ElapsedMilliseconds);
+  Result := TAtlasNewIssues.cTimeoutMs - Integer(AWatch.ElapsedMilliseconds);
   if Result < 1 then
   begin
     Result := 1;
@@ -1367,7 +1367,7 @@ end;
 
 function IsYouTrack(const AProvider: IAtlasTrackerProvider): Boolean;
 begin
-  Result := SameText(AProvider.Name, TAtlasTrackerTarget.YouTrack);
+  Result := SameText(AProvider.Name, TAtlasTrackerTarget.cYouTrack);
 end;
 
 /// <summary>GET mit Status 200 und Text; False sonst.</summary>

@@ -1,10 +1,10 @@
-﻿## Präfixe und Zeilenlänge in Atlas.IDE.Rules (07.11.2026, Branch `claude/project-thread-9v3vm5` auf `main-merging`)
-- Wie bei Atlas.Common (Anleitung `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`): lokale Namen über `--fix naming-prefix` (Server mit safeFix, im Worktree), 8 lange Zeilen mit `wrap.py`, Testunits des Moduls (`[Category('Atlas.IDE.Rules')]`) mit.
-- Öffentliche Konstanten umbenannt, mit allen Verwendungen: `TAtlasBulkFixPreview.cCommand`, `TAtlasRulesModule.cModuleId`/`cSwitch`, `TAtlasRuleTable.cSeverities`/`cGroupIds`/`cCompilerGroup`. Außerhalb des Moduls verwendet sie nichts.
-- Falle: `fixer-safefix.patch` passt seit den Common-Präfixen nicht mehr auf `Builtin.Naming.pas` (`mFixes`/`mNewName`); die Zeile von Hand um `, True` ergänzen.
-- Geprüft (Cloud): AtlasServer `--check` mit Metriken über `Atlas.IDE.Rules.dproj` und die 6 Testunits: 0 Befunde. FPC-Tests `Atlas.Core.Rules.Table.Tests`/`Atlas.Core.Problems.BulkFix.Tests` wie auf main-merging (ein FPC-Kodierungsfehlschlag in ArgumentsNameRuleAndFiles auf beiden). VCL- und ToolsAPI-Units nicht übersetzbar: Delphi-Build offen.
-
-## Präfixe und Zeilenlänge in Atlas.Windows (07.11.2026, Branch `claude/project-thread-1v6ywd` auf `main-merging`)
+﻿## Präfixe und Zeilenlänge in Atlas.Text (07.11.2026, Branch `claude/project-thread-y7kbtc` auf `main-merging`)
+- Wie Atlas.Common (Anleitung `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`): lokale Namen und Parameter per `--fix naming-prefix` (Package und `Tests/Text`), die 57 öffentlichen Klassenkonstanten (`TUpdateErrors`, `TUpdateLayout`, `TStepFilterNames`, `TTextAnonymizer`, `TUpdateVersions`, `TUpdateChannels`, `TDebugDisplayText`, `TLogMarks`, `TAtlasVersion.cVersion` …) mit allen Verwendungen in Application, Common, Base und den Modulen per Skript (`TKlasse.Name` → `TKlasse.cName`, im eigenen Rumpf unqualifiziert).
+- `TAtlasVersion.Version` heißt jetzt `cVersion`; die Versionsskripte (Check-/Set-Version, Build-Docs, Workflow) suchen weiter `Version\s*=\s*'` und treffen damit auch `cVersion`.
+- Testdaten mit `http://` in `Tests/Text` tragen `lsp-ignore: security-insecure-http`.
+- Geprüft (Cloud): AtlasServer übersetzt (FPC trunk); FPC-Tests aller Text-Testunits und der Common-Update-Tests wie auf main-merging (226, gleicher Fehlschlag `SplitHelperDropsTrailingEmpty`); Atlas mit naming-prefix, line-length und Metriken über Package und Tests: 0 Befunde. IDE-Units nicht übersetzt: Delphi-Build nötig.
+﻿## Präfixe und Zeilenlänge in Atlas.Linux (07.11.2026, Branch `claude/project-thread-64k5j8` auf `main-merging`)
+﻿## Präfixe und Zeilenlänge in Atlas.Windows (07.11.2026, Branch `claude/project-thread-1v6ywd` auf `main-merging`)
 - 76 naming-prefix und 3 line-length in Atlas.Windows, 42 naming-prefix und 1 line-length in `Tests/Windows`; lokale Namen und Parameter über `--fix naming-prefix` (Server mit safeFix, nur lokal), Rest von Hand.
 - Öffentliche Konstanten: nur `TFileWatcher.PollMs`/`SettleMs` (jetzt `cPollMs`/`cSettleMs`), außerhalb der Unit nirgends benutzt. Das Linux-Gegenstück heißt seit #1856 ebenso.
 - Geprüft (Cloud): Atlas mit Metriken 0 Befunde (Package und `Tests/Windows`), Check-Skripte und Generatoren mit `-Check` grün. Windows-Units lassen sich unter Linux nicht übersetzen und nicht testen: Delphi-Build nötig.
@@ -20,6 +20,12 @@
 - `Tools/Update-RuleCatalog.ps1` erzeugt jetzt `cCatalogLines*`.
 - Geprüft (Cloud): AtlasServer übersetzt; FPC-Tests aller Common-Testunits wie auf Pilot (gleiche Fehlschläge, keine neuen); Check-Skripte grün. IDE-Packages nicht übersetzbar in der Cloud: Delphi-Build nötig.
 - Offen: Atlas.IDE.Base (dieser Thread), danach je Modul ein Thread über den Koordinator.
+## Präfixe und Zeilenlänge in Atlas.IDE.Rules (07.11.2026, Branch `claude/project-thread-9v3vm5` auf `main-merging`)
+- Wie bei Atlas.Common (Anleitung `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`): lokale Namen über `--fix naming-prefix` (Server mit safeFix, im Worktree), 8 lange Zeilen mit `wrap.py`, Testunits des Moduls (`[Category('Atlas.IDE.Rules')]`) mit.
+- Öffentliche Konstanten umbenannt, mit allen Verwendungen: `TAtlasBulkFixPreview.cCommand`, `TAtlasRulesModule.cModuleId`/`cSwitch`, `TAtlasRuleTable.cSeverities`/`cGroupIds`/`cCompilerGroup`. Außerhalb des Moduls verwendet sie nichts.
+- Falle: `fixer-safefix.patch` passt seit den Common-Präfixen nicht mehr auf `Builtin.Naming.pas` (`mFixes`/`mNewName`); die Zeile von Hand um `, True` ergänzen.
+- Geprüft (Cloud): AtlasServer `--check` mit Metriken über `Atlas.IDE.Rules.dproj` und die 6 Testunits: 0 Befunde. FPC-Tests `Atlas.Core.Rules.Table.Tests`/`Atlas.Core.Problems.BulkFix.Tests` wie auf main-merging (ein FPC-Kodierungsfehlschlag in ArgumentsNameRuleAndFiles auf beiden). VCL- und ToolsAPI-Units nicht übersetzbar: Delphi-Build offen.
+
 ## IDE-Start 60 s mit Willkommensseite (06.11.2026, Branch `claude/project-thread-a48wa8` auf `Pilot-2.0.0-beta.1`)
 
 - **Befund:** Nach der Installation von 2.0.0-beta.1 aus dem Release-Paket dauerte Marcos IDE-Start 60 s (vorher 0,7–6,5 s), `atlas.log`: „davon Atlas 9563 ms: Welcome 9091 ms“. Ohne „Neu in Atlas“ und „Atlas entdecken“ wieder 4,8 s.

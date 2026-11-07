@@ -31,7 +31,7 @@ uses
 
 const
   // Ausschnitt einer detaillierten Map (DCC_MapFile=3) im Aufbau des Delphi-Linkers.
-  SampleMap =
+  cSampleMap =
     ''#13#10 +
     ' Start         Length     Name                   Class'#13#10 +
     ' 0001:00401000 0000A000H .text                   CODE'#13#10 +
@@ -72,82 +72,82 @@ const
 
 procedure TMapFileTests.ReadsPublicsAndLines;
 var
-  Map: TMapFile;
+  mMap: TMapFile;
 begin
-  Map := TMapFile.Create(SampleMap);
+  mMap := TMapFile.Create(cSampleMap);
   try
     // Publics by Name wird übergangen, Datensegment zählt nicht.
-    Assert.AreEqual(4, Map.SymbolCount);
+    Assert.AreEqual(4, mMap.SymbolCount);
   finally
-    Map.Free;
+    mMap.Free;
   end;
 end;
 
 procedure TMapFileTests.ResolvesOffsetToRoutineAndLine;
 var
-  Map: TMapFile;
-  Location: TMapLocation;
+  mMap: TMapFile;
+  mLocation: TMapLocation;
 begin
-  Map := TMapFile.Create(SampleMap);
+  mMap := TMapFile.Create(cSampleMap);
   try
     // Codesegment ab Modulbasis + $1000: Offset $1124 ist Adresse $124 in TComposition.Run.
-    Location := Map.Resolve($1124);
-    Assert.IsTrue(Location.Found);
-    Assert.AreEqual('Shell.Composition.TComposition.Run', Location.Routine);
-    Assert.AreEqual('Shell.Composition', Location.UnitName);
-    Assert.AreEqual('Shell.Composition.pas', Location.FileName);
-    Assert.AreEqual(503, Location.Line);
-    Assert.AreEqual('Shell.Composition.TComposition.Run (Shell.Composition.pas:503)', Location.ToString);
-    Location := Map.Resolve($1044);
-    Assert.AreEqual('System.TObject.Free', Location.Routine);
-    Assert.AreEqual(110, Location.Line);
+    mLocation := mMap.Resolve($1124);
+    Assert.IsTrue(mLocation.Found);
+    Assert.AreEqual('Shell.Composition.TComposition.Run', mLocation.Routine);
+    Assert.AreEqual('Shell.Composition', mLocation.UnitName);
+    Assert.AreEqual('Shell.Composition.pas', mLocation.FileName);
+    Assert.AreEqual(503, mLocation.Line);
+    Assert.AreEqual('Shell.Composition.TComposition.Run (Shell.Composition.pas:503)', mLocation.ToString);
+    mLocation := mMap.Resolve($1044);
+    Assert.AreEqual('System.TObject.Free', mLocation.Routine);
+    Assert.AreEqual(110, mLocation.Line);
   finally
-    Map.Free;
+    mMap.Free;
   end;
 end;
 
 procedure TMapFileTests.OffsetsOutsideCodeAreNotFound;
 var
-  Map: TMapFile;
+  mMap: TMapFile;
 begin
-  Map := TMapFile.Create(SampleMap);
+  mMap := TMapFile.Create(cSampleMap);
   try
-    Assert.IsFalse(Map.Resolve($200).Found);
-    Assert.AreEqual('', Map.Resolve($10).ToString);
+    Assert.IsFalse(mMap.Resolve($200).Found);
+    Assert.AreEqual('', mMap.Resolve($10).ToString);
   finally
-    Map.Free;
+    mMap.Free;
   end;
 end;
 
 procedure TMapFileTests.SymbolizesStackTrace;
 var
-  Map: TMapFile;
-  Trace: string;
+  mMap: TMapFile;
+  mTrace: string;
 begin
-  Map := TMapFile.Create(SampleMap);
+  mMap := TMapFile.Create(cSampleMap);
   try
-    Trace := Map.Symbolize('AtlasServer.exe+$1124'#13#10'kernel32.dll+$1A2B'#13#10'AtlasServer.exe+$1004'#13#10,
+    mTrace := mMap.Symbolize('AtlasServer.exe+$1124'#13#10'kernel32.dll+$1A2B'#13#10'AtlasServer.exe+$1004'#13#10,
       'AtlasServer.exe');
     Assert.AreEqual(
       'AtlasServer.exe+$1124 Shell.Composition.TComposition.Run (Shell.Composition.pas:503)' + sLineBreak +
       'kernel32.dll+$1A2B' + sLineBreak +
-      'AtlasServer.exe+$1004 System.TObject.Create (System.pas:100)' + sLineBreak, Trace);
+      'AtlasServer.exe+$1004 System.TObject.Create (System.pas:100)' + sLineBreak, mTrace);
   finally
-    Map.Free;
+    mMap.Free;
   end;
 end;
 
 procedure TMapFileTests.OtherTextGivesEmptyMap;
 var
-  Map: TMapFile;
+  mMap: TMapFile;
 begin
-  Map := TMapFile.Create('keine Map');
+  mMap := TMapFile.Create('keine Map');
   try
-    Assert.AreEqual(0, Map.SymbolCount);
-    Assert.IsFalse(Map.Resolve($1000).Found);
-    Assert.AreEqual('A+$1000' + sLineBreak, Map.Symbolize('A+$1000', 'A'));
+    Assert.AreEqual(0, mMap.SymbolCount);
+    Assert.IsFalse(mMap.Resolve($1000).Found);
+    Assert.AreEqual('A+$1000' + sLineBreak, mMap.Symbolize('A+$1000', 'A'));
   finally
-    Map.Free;
+    mMap.Free;
   end;
 end;
 

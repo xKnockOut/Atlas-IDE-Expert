@@ -89,88 +89,88 @@ end;
 
 procedure TTextLinesTests.DominantOfPrefersGivenOnTie;
 var
-  Mixed: Boolean;
+  mMixed: Boolean;
 begin
-  Assert.IsTrue(TTextLines.DominantOf('a'#10'b'#13#10'c'#10, Mixed) = TTextLineBreak.LF);
-  Assert.IsTrue(Mixed);
-  Assert.IsTrue(TTextLines.DominantOf('a'#10'b'#13#10, Mixed) = TTextLineBreak.CRLF);
-  Assert.IsTrue(TTextLines.DominantOf('a'#10'b'#13#10, TTextLineBreak.LF, Mixed) = TTextLineBreak.LF);
-  Assert.IsTrue(TTextLines.DominantOf('a'#13#10'b', TTextLineBreak.LF, Mixed) = TTextLineBreak.CRLF);
-  Assert.IsFalse(Mixed);
-  Assert.IsTrue(TTextLines.DominantOf('abc', Mixed) = TTextLineBreak.None);
-  Assert.IsFalse(Mixed);
+  Assert.IsTrue(TTextLines.DominantOf('a'#10'b'#13#10'c'#10, mMixed) = TTextLineBreak.LF);
+  Assert.IsTrue(mMixed);
+  Assert.IsTrue(TTextLines.DominantOf('a'#10'b'#13#10, mMixed) = TTextLineBreak.CRLF);
+  Assert.IsTrue(TTextLines.DominantOf('a'#10'b'#13#10, TTextLineBreak.LF, mMixed) = TTextLineBreak.LF);
+  Assert.IsTrue(TTextLines.DominantOf('a'#13#10'b', TTextLineBreak.LF, mMixed) = TTextLineBreak.CRLF);
+  Assert.IsFalse(mMixed);
+  Assert.IsTrue(TTextLines.DominantOf('abc', mMixed) = TTextLineBreak.None);
+  Assert.IsFalse(mMixed);
 end;
 
 procedure TTextLinesTests.SplitLinesCrLfCr;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := TTextLines.SplitLines('a'#13#10'b'#10'c'#13'd');
-  Assert.AreEqual<Integer>(4, Length(Lines));
-  Assert.AreEqual('a', Lines[0]);
-  Assert.AreEqual('b', Lines[1]);
-  Assert.AreEqual('c', Lines[2]);
-  Assert.AreEqual('d', Lines[3]);
+  mLines := TTextLines.SplitLines('a'#13#10'b'#10'c'#13'd');
+  Assert.AreEqual<Integer>(4, Length(mLines));
+  Assert.AreEqual('a', mLines[0]);
+  Assert.AreEqual('b', mLines[1]);
+  Assert.AreEqual('c', mLines[2]);
+  Assert.AreEqual('d', mLines[3]);
 end;
 
 procedure TTextLinesTests.SplitLinesTrailingBreakGivesEmptyLine;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := TTextLines.SplitLines('a'#13#10);
-  Assert.AreEqual<Integer>(2, Length(Lines));
-  Assert.AreEqual('a', Lines[0]);
-  Assert.AreEqual('', Lines[1]);
+  mLines := TTextLines.SplitLines('a'#13#10);
+  Assert.AreEqual<Integer>(2, Length(mLines));
+  Assert.AreEqual('a', mLines[0]);
+  Assert.AreEqual('', mLines[1]);
 end;
 
 procedure TTextLinesTests.SplitLinesEmptyGivesOneLine;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := TTextLines.SplitLines('');
-  Assert.AreEqual<Integer>(1, Length(Lines));
-  Assert.AreEqual('', Lines[0]);
+  mLines := TTextLines.SplitLines('');
+  Assert.AreEqual<Integer>(1, Length(mLines));
+  Assert.AreEqual('', mLines[0]);
 end;
 
 procedure TTextLinesTests.SplitLinesReturnsLineBreak;
 var
-  Lines: TArray<string>;
-  LineBreak: string;
+  mLines: TArray<string>;
+  mLineBreak: string;
 begin
-  Lines := TTextLines.SplitLines('a'#13#10'b'#10'c', LineBreak);
-  Assert.AreEqual(#13#10, LineBreak);
-  Assert.AreEqual<Integer>(3, Length(Lines));
-  Assert.AreEqual('c', Lines[2]);
+  mLines := TTextLines.SplitLines('a'#13#10'b'#10'c', mLineBreak);
+  Assert.AreEqual(#13#10, mLineBreak);
+  Assert.AreEqual<Integer>(3, Length(mLines));
+  Assert.AreEqual('c', mLines[2]);
 end;
 
 procedure TTextLinesTests.SplitKeepingBreaksKeepsEnds;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := TTextLines.SplitKeepingBreaks('a'#13#10'b'#10'c'#13'd');
-  Assert.AreEqual<Integer>(4, Length(Lines));
-  Assert.AreEqual('a'#13#10, Lines[0]);
-  Assert.AreEqual('b'#10, Lines[1]);
-  Assert.AreEqual('c'#13, Lines[2]);
-  Assert.AreEqual('d', Lines[3]);
-  Lines := TTextLines.SplitKeepingBreaks('a'#10);
-  Assert.AreEqual<Integer>(1, Length(Lines));
-  Assert.AreEqual('a'#10, Lines[0]);
+  mLines := TTextLines.SplitKeepingBreaks('a'#13#10'b'#10'c'#13'd');
+  Assert.AreEqual<Integer>(4, Length(mLines));
+  Assert.AreEqual('a'#13#10, mLines[0]);
+  Assert.AreEqual('b'#10, mLines[1]);
+  Assert.AreEqual('c'#13, mLines[2]);
+  Assert.AreEqual('d', mLines[3]);
+  mLines := TTextLines.SplitKeepingBreaks('a'#10);
+  Assert.AreEqual<Integer>(1, Length(mLines));
+  Assert.AreEqual('a'#10, mLines[0]);
   Assert.AreEqual<Integer>(0, Length(TTextLines.SplitKeepingBreaks('')));
 end;
 
 procedure TTextLinesTests.SplitHelperDropsTrailingEmpty;
 var
-  Text: string;
+  mText: string;
 begin
   // Verhalten der Laufzeitbibliothek: FPC verwirft die leere letzte Zeile, Delphi nicht. SplitLines gilt für beide.
   {$IFDEF FPC}
-  Text := 'a'#10;
-  Assert.AreEqual<Integer>(1, Length(Text.Split([#10])), 'Split verwirft die leere letzte Zeile');
-  Text := '';
-  Assert.AreEqual<Integer>(0, Length(Text.Split([#10])), 'Split liefert für leeren Text nichts');
+  mText := 'a'#10;
+  Assert.AreEqual<Integer>(1, Length(mText.Split([#10])), 'Split verwirft die leere letzte Zeile');
+  mText := '';
+  Assert.AreEqual<Integer>(0, Length(mText.Split([#10])), 'Split liefert für leeren Text nichts');
   {$ELSE}
-  Text := '';
+  mText := '';
   {$ENDIF}
   Assert.AreEqual<Integer>(2, Length(TTextLines.SplitLines('a'#10)));
   Assert.AreEqual<Integer>(1, Length(TTextLines.SplitLines('')));
@@ -192,14 +192,14 @@ end;
 
 procedure TTextLinesTests.IndentOfLineOfText;
 const
-  Text = 'begin'#13#10'    x := 1;'#13'  y'#10'z';
+  cText = 'begin'#13#10'    x := 1;'#13'  y'#10'z';
 begin
-  Assert.AreEqual('', TTextLines.IndentOf(Text, 0));
-  Assert.AreEqual('    ', TTextLines.IndentOf(Text, 1));
-  Assert.AreEqual('  ', TTextLines.IndentOf(Text, 2));
-  Assert.AreEqual('', TTextLines.IndentOf(Text, 3));
-  Assert.AreEqual('', TTextLines.IndentOf(Text, 4));
-  Assert.AreEqual('', TTextLines.IndentOf(Text, -1));
+  Assert.AreEqual('', TTextLines.IndentOf(cText, 0));
+  Assert.AreEqual('    ', TTextLines.IndentOf(cText, 1));
+  Assert.AreEqual('  ', TTextLines.IndentOf(cText, 2));
+  Assert.AreEqual('', TTextLines.IndentOf(cText, 3));
+  Assert.AreEqual('', TTextLines.IndentOf(cText, 4));
+  Assert.AreEqual('', TTextLines.IndentOf(cText, -1));
 end;
 
 procedure TTextLinesTests.JoinLines;
@@ -225,88 +225,89 @@ end;
 
 procedure TLineTableTests.PositionAtCrlf;
 var
-  Table: TLineTable;
+  mTable: TLineTable;
 begin
-  Table := TLineTable.Build('ab'#13#10'cd'#10'e');
-  Assert.AreEqual<Integer>(3, Table.LineCount);
-  Assert.IsTrue(Table.PositionAt(0) = TTextPosition.Create(0, 0));
-  Assert.IsTrue(Table.PositionAt(4) = TTextPosition.Create(1, 0));
-  Assert.IsTrue(Table.PositionAt(6) = TTextPosition.Create(1, 2));
-  Assert.IsTrue(Table.PositionAt(7) = TTextPosition.Create(2, 0));
+  mTable := TLineTable.Build('ab'#13#10'cd'#10'e');
+  Assert.AreEqual<Integer>(3, mTable.LineCount);
+  Assert.IsTrue(mTable.PositionAt(0) = TTextPosition.Create(0, 0));
+  Assert.IsTrue(mTable.PositionAt(4) = TTextPosition.Create(1, 0));
+  Assert.IsTrue(mTable.PositionAt(6) = TTextPosition.Create(1, 2));
+  Assert.IsTrue(mTable.PositionAt(7) = TTextPosition.Create(2, 0));
 end;
 
 procedure TLineTableTests.PositionAtInsideCrlfStaysOnLine;
 var
-  Table: TLineTable;
+  mTable: TLineTable;
 begin
-  Table := TLineTable.Build('ab'#13#10'cd');
+  mTable := TLineTable.Build('ab'#13#10'cd');
   // Offset 3 liegt zwischen CR und LF: Ende der ersten Zeile.
-  Assert.IsTrue(Table.PositionAt(3) = TTextPosition.Create(0, 2));
-  Assert.IsTrue(Table.PositionAt(2) = TTextPosition.Create(0, 2));
+  Assert.IsTrue(mTable.PositionAt(3) = TTextPosition.Create(0, 2));
+  Assert.IsTrue(mTable.PositionAt(2) = TTextPosition.Create(0, 2));
 end;
 
 procedure TLineTableTests.PositionAtClampsBeyondEnd;
 var
-  Table: TLineTable;
+  mTable: TLineTable;
 begin
-  Table := TLineTable.Build('ab'#10'c');
-  Assert.IsTrue(Table.PositionAt(99) = TTextPosition.Create(1, 1));
-  Assert.IsTrue(Table.PositionAt(-5) = TTextPosition.Create(0, 0));
+  mTable := TLineTable.Build('ab'#10'c');
+  Assert.IsTrue(mTable.PositionAt(99) = TTextPosition.Create(1, 1));
+  Assert.IsTrue(mTable.PositionAt(-5) = TTextPosition.Create(0, 0));
 end;
 
 procedure TLineTableTests.OffsetAtClampsToLineEnd;
 var
-  Table: TLineTable;
+  mTable: TLineTable;
 begin
-  Table := TLineTable.Build('ab'#13#10'cd');
-  Assert.AreEqual<Integer>(2, Table.OffsetAt(TTextPosition.Create(0, 10)));
-  Assert.AreEqual<Integer>(5, Table.OffsetAt(TTextPosition.Create(1, 1)));
-  Assert.AreEqual<Integer>(4, Table.OffsetAt(TTextPosition.Create(1, -3)));
+  mTable := TLineTable.Build('ab'#13#10'cd');
+  Assert.AreEqual<Integer>(2, mTable.OffsetAt(TTextPosition.Create(0, 10)));
+  Assert.AreEqual<Integer>(5, mTable.OffsetAt(TTextPosition.Create(1, 1)));
+  Assert.AreEqual<Integer>(4, mTable.OffsetAt(TTextPosition.Create(1, -3)));
 end;
 
 procedure TLineTableTests.OffsetAtLineBeyondEnd;
 var
-  Table: TLineTable;
+  mTable: TLineTable;
 begin
-  Table := TLineTable.Build('ab'#10'cd');
-  Assert.AreEqual<Integer>(5, Table.OffsetAt(TTextPosition.Create(9, 0)));
-  Assert.AreEqual<Integer>(0, Table.OffsetAt(TTextPosition.Create(-1, 4)));
+  mTable := TLineTable.Build('ab'#10'cd');
+  Assert.AreEqual<Integer>(5, mTable.OffsetAt(TTextPosition.Create(9, 0)));
+  Assert.AreEqual<Integer>(0, mTable.OffsetAt(TTextPosition.Create(-1, 4)));
 end;
 
 procedure TLineTableTests.RoundTripAllOffsets;
 const
   // CR, LF, CRLF und ein Surrogatpaar (U+1F600).
-  Text = 'a'#13'b'#10'c'#13#10#$D83D#$DE00'd'#10;
+  cText = 'a'#13'b'#10'c'#13#10#$D83D#$DE00'd'#10;
 var
-  Table: TLineTable;
-  Offset: Integer;
+  mTable: TLineTable;
+  mOffset: Integer;
 begin
-  Table := TLineTable.Build(Text);
-  Assert.AreEqual<Integer>(5, Table.LineCount);
-  for Offset := 0 to Length(Text) do // lsp-ignore: loop-off-by-one -- Offsets zwischen den Zeichen; Text[Offset] nur ab 1
+  mTable := TLineTable.Build(cText);
+  Assert.AreEqual<Integer>(5, mTable.LineCount);
+  // Text[Offset] gilt nur ab 1.
+  for mOffset := 0 to Length(cText) do // lsp-ignore: loop-off-by-one -- Offsets zwischen den Zeichen
   begin
     // Der Offset zwischen CR und LF hat keine eigene Position.
-    if (Offset > 0) and (Offset < Length(Text)) and (Text[Offset] = #13) and (Text[Offset + 1] = #10) then
+    if (mOffset > 0) and (mOffset < Length(cText)) and (cText[mOffset] = #13) and (cText[mOffset + 1] = #10) then
     begin
       Continue;
     end;
-    Assert.AreEqual<Integer>(Offset, Table.OffsetAt(Table.PositionAt(Offset)), Format('Offset %d', [Offset]));
+    Assert.AreEqual<Integer>(mOffset, mTable.OffsetAt(mTable.PositionAt(mOffset)), Format('Offset %d', [mOffset]));
   end;
 end;
 
 procedure TLineTableTests.LineStartsAndEnds;
 var
-  Table: TLineTable;
+  mTable: TLineTable;
 begin
-  Table := TLineTable.Build('ab'#13#10'c'#13);
-  Assert.AreEqual<Integer>(3, Table.LineCount);
-  Assert.AreEqual<Integer>(0, Table.LineStart(0));
-  Assert.AreEqual<Integer>(2, Table.LineContentEnd(0));
-  Assert.AreEqual<Integer>(4, Table.LineStart(1));
-  Assert.AreEqual<Integer>(5, Table.LineContentEnd(1));
-  Assert.AreEqual<Integer>(6, Table.LineStart(2));
-  Assert.AreEqual<Integer>(6, Table.LineContentEnd(2));
-  Assert.AreEqual<Integer>(6, Table.TextLength);
+  mTable := TLineTable.Build('ab'#13#10'c'#13);
+  Assert.AreEqual<Integer>(3, mTable.LineCount);
+  Assert.AreEqual<Integer>(0, mTable.LineStart(0));
+  Assert.AreEqual<Integer>(2, mTable.LineContentEnd(0));
+  Assert.AreEqual<Integer>(4, mTable.LineStart(1));
+  Assert.AreEqual<Integer>(5, mTable.LineContentEnd(1));
+  Assert.AreEqual<Integer>(6, mTable.LineStart(2));
+  Assert.AreEqual<Integer>(6, mTable.LineContentEnd(2));
+  Assert.AreEqual<Integer>(6, mTable.TextLength);
 end;
 
 initialization
