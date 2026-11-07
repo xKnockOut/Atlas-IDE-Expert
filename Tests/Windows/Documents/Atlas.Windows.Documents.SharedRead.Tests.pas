@@ -77,12 +77,12 @@ end;
 
 procedure TWindowsSharedReadTests.ReadsWholeFile;
 var
-  Bytes: TBytes;
+  mBytes: TBytes;
 begin
-  Bytes := TWindowsSharedRead.ReadAllBytes(FFile);
-  Assert.AreEqual(2, Integer(Length(Bytes)));
-  Assert.AreEqual(Integer($7B), Integer(Bytes[0]));
-  Assert.AreEqual(Integer($7D), Integer(Bytes[1]));
+  mBytes := TWindowsSharedRead.ReadAllBytes(FFile);
+  Assert.AreEqual(2, Integer(Length(mBytes)));
+  Assert.AreEqual(Integer($7B), Integer(mBytes[0]));
+  Assert.AreEqual(Integer($7D), Integer(mBytes[1]));
 end;
 
 procedure TWindowsSharedReadTests.ReadsEmptyFile;
@@ -102,21 +102,21 @@ end;
 
 procedure TWindowsSharedReadTests.ReadsWhileSomeoneWrites;
 var
-  Handle: THandle;
+  mHandle: THandle;
 begin
-  Handle := OpenFor(GENERIC_READ or GENERIC_WRITE);
+  mHandle := OpenFor(GENERIC_READ or GENERIC_WRITE);
   try
     Assert.AreEqual(2, Integer(Length(TWindowsSharedRead.ReadAllBytes(FFile))));
   finally
-    CloseHandle(Handle);
+    CloseHandle(mHandle);
   end;
 end;
 
 procedure TWindowsSharedReadTests.ReadsWhileSomeoneReplaces;
 var
-  Handle: THandle;
+  mHandle: THandle;
 begin
-  Handle := OpenFor(_DELETE or SYNCHRONIZE);
+  mHandle := OpenFor(_DELETE or SYNCHRONIZE);
   try
     Assert.AreEqual(2, Integer(Length(TWindowsSharedRead.ReadAllBytes(FFile))));
     // Gegenprobe: So las der Server bisher. Delphi meldet EInOutError, FPC EFOpenError.
@@ -126,27 +126,27 @@ begin
         TFile.ReadAllBytes(FFile);
       end);
   finally
-    CloseHandle(Handle);
+    CloseHandle(mHandle);
   end;
 end;
 
 procedure TWindowsSharedReadTests.InstallRoutesFileEncoding;
 var
-  Handle: THandle;
-  Reader: TFileBytesReader;
+  mHandle: THandle;
+  mReader: TFileBytesReader;
 begin
   TWindowsSharedRead.Install;
-  Reader := TFileEncoding.Reader;
-  Assert.IsTrue(Assigned(Reader));
-  Handle := OpenFor(_DELETE or SYNCHRONIZE);
+  mReader := TFileEncoding.Reader;
+  Assert.IsTrue(Assigned(mReader));
+  mHandle := OpenFor(_DELETE or SYNCHRONIZE);
   try
     Assert.AreEqual(2, Integer(Length(TFileEncoding.ReadAllBytes(FFile))));
   finally
-    CloseHandle(Handle);
+    CloseHandle(mHandle);
   end;
   TWindowsSharedRead.Uninstall;
-  Reader := TFileEncoding.Reader;
-  Assert.IsFalse(Assigned(Reader));
+  mReader := TFileEncoding.Reader;
+  Assert.IsFalse(Assigned(mReader));
 end;
 
 initialization

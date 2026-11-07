@@ -49,14 +49,14 @@ end;
 
 procedure TWindowsPathCanonicalizerTests.ResolvesCaseAndDots;
 var
-  Expected, Actual: string;
+  mExpected, mActual: string;
 begin
-  Expected := TWindowsPathCanonicalizer.Canonicalize(FFile);
-  Actual := TWindowsPathCanonicalizer.Canonicalize(
+  mExpected := TWindowsPathCanonicalizer.Canonicalize(FFile);
+  mActual := TWindowsPathCanonicalizer.Canonicalize(
     UpperCase(TPath.Combine(TPath.Combine(FDir, 'Sub'), '..\datei.PAS')));
-  Assert.AreEqual(Expected, Actual);
-  Assert.IsTrue(Actual.EndsWith('\Datei.pas'));
-  Assert.AreNotEqual('\\?\', Copy(Actual, 1, 4));
+  Assert.AreEqual(mExpected, mActual);
+  Assert.IsTrue(mActual.EndsWith('\Datei.pas'));
+  Assert.AreNotEqual('\\?\', Copy(mActual, 1, 4));
 end;
 
 procedure TWindowsPathCanonicalizerTests.KeepsMissingPathUnchanged;

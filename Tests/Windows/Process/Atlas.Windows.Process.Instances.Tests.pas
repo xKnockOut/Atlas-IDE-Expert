@@ -29,21 +29,21 @@ uses
 
 procedure TProcessInstancesTests.FindsOwnProcess;
 var
-  Ids: TArray<Cardinal>;
-  Id: Cardinal;
-  Found: Boolean;
+  mIds: TArray<Cardinal>;
+  mId: Cardinal;
+  mFound: Boolean;
 begin
   // Groß- und Kleinschreibung egal.
-  Ids := TProcessInstances.IdsOf(UpperCase(ExtractFileName(ParamStr(0))));
-  Found := False;
-  for Id in Ids do
+  mIds := TProcessInstances.IdsOf(UpperCase(ExtractFileName(ParamStr(0))));
+  mFound := False;
+  for mId in mIds do
   begin
-    if Id = GetCurrentProcessId then
+    if mId = GetCurrentProcessId then
     begin
-      Found := True;
+      mFound := True;
     end;
   end;
-  Assert.IsTrue(Found, 'eigener Prozess fehlt');
+  Assert.IsTrue(mFound, 'eigener Prozess fehlt');
 end;
 
 procedure TProcessInstancesTests.UnknownProgramHasNoInstances;
