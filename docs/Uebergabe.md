@@ -1,4 +1,9 @@
-﻿## Präfixe und Zeilenlänge in Atlas.Common (06./07.11.2026, Branch `claude/project-thread-i9dwl9` auf `Pilot-2.0.0-beta.1`)
+﻿## Präfixe und Zeilenlänge in Atlas.IDE.Welcome (07.11.2026, Branch `claude/project-thread-q5i0jf` auf `main-merging`)
+- Vorgehen nach `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`: lokale Namen, Felder und Parameter über `--fix naming-prefix` (safeFix-Server), 192 öffentliche Konstanten über `rename_symbol` (Vorschau, gesammelt angewendet), klassenqualifizierte Verwendungen (`TAtlasWelcomeIds.cHeader` usw., auch in Base-Kommentaren und Testunits anderer Bereiche) per Regex nachgezogen; alle 192 Konstanten gehören zu Klassen oder Records.
+- Mit eingeschalteten Regeln naming-prefix und line-length: Package (Atlas.IDE.Welcome.dproj) und die 31 Testunits mit `[Category('Atlas.IDE.Welcome')]` 0 Befunde.
+- Geprüft (Cloud): FPC-Harness für die übersetzbaren Core-Testunits wie auf main-merging (gleiche Fehlschläge, keine neuen); viele Core-Testunits übersetzen im Harness schon auf main-merging nicht. UI- und IDE-Units nicht übersetzbar: Delphi-Build nötig.
+
+## Präfixe und Zeilenlänge in Atlas.Common (06./07.11.2026, Branch `claude/project-thread-i9dwl9` auf `Pilot-2.0.0-beta.1`)
 - Wunsch Marco: naming-prefix und line-length im Code beheben, je Package ein PR; öffentliche Konstanten bekommen auch `c` (Marco 06.11. 18:48), mit allen Verwendungen in allen Packages.
 - Lokale Namen über die Umbenennen-Korrektur der Regel (`--fix naming-prefix` mit einem Server, dessen Korrektur als safeFix markiert ist, nur lokal gebaut), der Rest über MCP `rename_symbol` als Vorschau und gesammelt angewendet; lange Zeilen mit eigenem Umbrecher. Werkzeuge und Fallen: `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`.
 - Falle: rename_symbol lässt Stellen aus, die es nicht sicher zuordnen kann (Array-Grenzen, `Unit.Name`, unbekannte Ausdruckstypen, Unit-Konstanten in anderen Units); nachgezogen per Übersetzen und Grep. Parallele schreibende rename_symbol-Aufrufe überschreiben sich.

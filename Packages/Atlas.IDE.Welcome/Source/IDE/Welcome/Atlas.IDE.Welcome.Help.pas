@@ -28,7 +28,7 @@ type
   TAtlasIdeHelp = class(TInterfacedObject, IAtlasHelpSource)
   public const
     /// <summary>Reihenfolge außerhalb des Atlas-Layouts: zuletzt in der rechten Spalte.</summary>
-    Order = 90;
+    cOrder = 90;
   private
     FShowKeys: TProc;
     FStarted: Boolean;
@@ -90,12 +90,12 @@ end;
 
 function DesktopFolder: string;
 var
-  Buffer: array[0..MAX_PATH] of Char;
+  mBuffer: array[0..MAX_PATH] of Char;
 begin
   Result := '';
-  if SHGetFolderPath(0, CSIDL_DESKTOPDIRECTORY, 0, 0, @Buffer[0]) = S_OK then
+  if SHGetFolderPath(0, CSIDL_DESKTOPDIRECTORY, 0, 0, @mBuffer[0]) = S_OK then
   begin
-    Result := Buffer;
+    Result := mBuffer;
   end;
   if Result = '' then
   begin
@@ -119,7 +119,7 @@ end;
 procedure TAtlasIdeHelp.Start;
 begin
   FStarted := True;
-  TAtlasWelcomeViews.Register(TAtlasWelcomeIds.Help,
+  TAtlasWelcomeViews.Register(TAtlasWelcomeIds.cHelp,
     function(AOwner: TComponent): TAtlasWelcomeSectionFrame
     var
       Frame: TAtlasWelcomeHelpFrame;
@@ -135,13 +135,13 @@ end;
 procedure TAtlasIdeHelp.Stop;
 begin
   FStarted := False;
-  TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.Help);
-  TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.Help);
+  TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.cHelp);
+  TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.cHelp);
 end;
 
 function TAtlasIdeHelp.Section: TAtlasWelcomeSection;
 begin
-  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.Help, TAtlasWelcomeHelpFrame.TitleText, Order,
+  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.cHelp, TAtlasWelcomeHelpFrame.TitleText, cOrder,
     TAtlasWelcomeColumn.Right,
     function: Boolean
     begin
@@ -151,19 +151,19 @@ end;
 
 procedure TAtlasIdeHelp.Refresh;
 var
-  Next: TAtlasWelcomeSection;
+  mNext: TAtlasWelcomeSection;
 begin
   if not FStarted then
   begin
     Exit;
   end;
-  Next := Section;
+  mNext := Section;
   // Nur beim ersten Mal (oder nach einem Sprachwechsel) anmelden: Add meldet allen Beobachtern.
-  if Next.Title <> FTitle then
+  if mNext.Title <> FTitle then
   begin
-    FTitle := Next.Title;
+    FTitle := mNext.Title;
     FActive := Active;
-    TAtlasWelcomeSections.Default.Add(Next);
+    TAtlasWelcomeSections.Default.Add(mNext);
     Exit;
   end;
   // welcomePage.help umgeschaltet: Auswahl neu; sonst nur die Knöpfe (keys.overview).
@@ -172,7 +172,7 @@ begin
     FActive := Active;
     TAtlasWelcomeSections.Default.Changed;
   end;
-  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.Help);
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cHelp);
 end;
 
 function TAtlasIdeHelp.KeysAvailable: Boolean;
@@ -221,7 +221,7 @@ begin
     begin
       if Active then
       begin
-        OpenTarget(TAtlasHelp.DonateUrl);
+        OpenTarget(TAtlasHelp.cDonateUrl);
       end;
     end);
 end;

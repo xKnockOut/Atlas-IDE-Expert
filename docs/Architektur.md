@@ -517,7 +517,7 @@ Entscheidung in [ADR 0010](adr/0010-binaerer-index-cache.md) (ersetzt ADR 0003).
 %LOCALAPPDATA%\Atlas\Index\<IDE-Version>\Bibliothek\<Hash>\index-<Format>.atlasidx   (RTL, VCL, FMX je Plattform)
 ```
 
-`TIndexCache` schreibt ein Binärformat mit String-Tabelle (Formatversion: `TIndexCache.FormatVersion`; das Plugin liest das Format für die Suche der Willkommensseite selbst, `TAtlasWelcomeIndexFiles.FormatVersion`, #760):
+`TIndexCache` schreibt ein Binärformat mit String-Tabelle (Formatversion: `TIndexCache.FormatVersion`; das Plugin liest das Format für die Suche der Willkommensseite selbst, `TAtlasWelcomeIndexFiles.cFormatVersion`, #760):
 
 ```text
 Kopf:       'ATLASIDX' Version Prüfsumme (4 Byte, FNV-1a über alles dahinter)

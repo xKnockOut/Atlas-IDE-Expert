@@ -84,11 +84,11 @@ type
 
   TAtlasWelcomeWhatsNewFrame = class(TAtlasWelcomeSectionFrame)
   public const
-    Indent = 8;
-    RowGap = 10;
-    SwitchWidth = 52;
-    TryWidth = 100;
-    ButtonHeight = 24;
+    cIndent = 8;
+    cRowGap = 10;
+    cSwitchWidth = 52;
+    cTryWidth = 100;
+    cButtonHeight = 24;
   private
     FSource: IAtlasWhatsNewSource;
     FMenu: TAtlasWhatsNewMenu;
@@ -316,10 +316,10 @@ end;
 
 procedure TAtlasWhatsNewMenu.ItemClick(Sender: TObject);
 var
-  View: TAtlasWhatsNewView;
+  mView: TAtlasWhatsNewView;
   mSource: IAtlasWhatsNewSource;
 begin
-  View := TAtlasWhatsNewView(TMenuItem(Sender).Tag);
+  mView := TAtlasWhatsNewView(TMenuItem(Sender).Tag);
   mSource := FSource;
   // Die Quelle baut Karte und Bereiche neu; das Menü darf nicht in seinem eigenen Klick verschwinden.
   if mSource <> nil then
@@ -327,7 +327,7 @@ begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
       procedure
       begin
-        mSource.Show(View);
+        mSource.Show(mView);
       end);
   end;
 end;
@@ -448,22 +448,22 @@ end;
 
 procedure TAtlasWelcomeWhatsNewFrame.UpdateContent;
 var
-  View: TAtlasWhatsNewView;
+  mView: TAtlasWhatsNewView;
 begin
   // Ohne Fenster später: Die Tafel ruft UpdateContent nach dem Einhängen.
   if not HasWindow then
   begin
     Exit;
   end;
-  View := TAtlasWhatsNewView.Hidden;
+  mView := TAtlasWhatsNewView.Hidden;
   FVersions := nil;
   if FSource <> nil then
   begin
-    View := FSource.View;
+    mView := FSource.View;
     FVersions := FSource.Versions;
   end;
   // Beim Wechsel nach „Alle Versionen“ ist nur die neueste aufgeklappt.
-  if (View = TAtlasWhatsNewView.All) and (FView <> TAtlasWhatsNewView.All) then
+  if (mView = TAtlasWhatsNewView.All) and (FView <> TAtlasWhatsNewView.All) then
   begin
     FExpanded.Clear;
     if Length(FVersions) > 0 then
@@ -471,7 +471,7 @@ begin
       FExpanded.AddOrSetValue(FVersions[0].Version, True);
     end;
   end;
-  FView := View;
+  FView := mView;
   Build;
   inherited;
 end;
@@ -513,52 +513,52 @@ end;
 
 procedure TAtlasWelcomeWhatsNewFrame.Arrange;
 var
-  mWidth, mTop, Gap, ButtonH, Index: Integer;
-  Version: TAtlasWhatsNewVersion;
-  Row: TAtlasWhatsNewRow;
+  mWidth, mTop, mGap, mButtonH, mIndex: Integer;
+  mVersion: TAtlasWhatsNewVersion;
+  mRow: TAtlasWhatsNewRow;
 
   procedure PlaceRow(const ARow: TAtlasWhatsNewRow);
   var
-    mLeft, Right, Bottom: Integer;
+    mLeft, mRight, mBottom: Integer;
   begin
-    mLeft := ScaleValue(Indent);
-    Right := mWidth - ScaleValue(Indent);
+    mLeft := ScaleValue(cIndent);
+    mRight := mWidth - ScaleValue(cIndent);
     if ARow.Section <> nil then
     begin
       ARow.Section.SetBounds(mLeft, mTop, ARow.Section.Width, ARow.Section.Height);
-      Inc(mTop, ARow.Section.Height + Gap div 2);
+      Inc(mTop, ARow.Section.Height + mGap div 2);
     end;
     if ARow.TryButton <> nil then
     begin
-      Dec(Right, ScaleValue(TryWidth));
-      ARow.TryButton.SetBounds(Right, mTop, ScaleValue(TryWidth), ButtonH);
-      Dec(Right, Gap);
+      Dec(mRight, ScaleValue(cTryWidth));
+      ARow.TryButton.SetBounds(mRight, mTop, ScaleValue(cTryWidth), mButtonH);
+      Dec(mRight, mGap);
     end;
     if ARow.Switch <> nil then
     begin
-      Dec(Right, ScaleValue(SwitchWidth));
-      ARow.Switch.SetBounds(Right, mTop + (ButtonH - ARow.Switch.Height) div 2, ScaleValue(SwitchWidth),
+      Dec(mRight, ScaleValue(cSwitchWidth));
+      ARow.Switch.SetBounds(mRight, mTop + (mButtonH - ARow.Switch.Height) div 2, ScaleValue(cSwitchWidth),
         ARow.Switch.Height);
-      Dec(Right, Gap);
+      Dec(mRight, mGap);
     end;
-    ARow.Title.SetBounds(mLeft, mTop + (ButtonH - ARow.Title.Height) div 2, ARow.Title.Width, ARow.Title.Height);
+    ARow.Title.SetBounds(mLeft, mTop + (mButtonH - ARow.Title.Height) div 2, ARow.Title.Width, ARow.Title.Height);
     if ARow.Key <> nil then
     begin
-      ARow.Key.SetBounds(mLeft + ARow.Title.Width + Gap, ARow.Title.Top, ARow.Key.Width, ARow.Key.Height);
+      ARow.Key.SetBounds(mLeft + ARow.Title.Width + mGap, ARow.Title.Top, ARow.Key.Width, ARow.Key.Height);
     end;
-    Bottom := mTop + ButtonH;
+    mBottom := mTop + mButtonH;
     if ARow.Text <> nil then
     begin
       // Breite zuerst: Das Label bricht danach um und passt seine Höhe an.
-      ARow.Text.Width := Max(Right - mLeft, ScaleValue(120));
+      ARow.Text.Width := Max(mRight - mLeft, ScaleValue(120));
       // AutoSize neu setzen: Erst das misst den umbrochenen Text für die neue Breite.
       ARow.Text.AutoSize := False;
       ARow.Text.AutoSize := True;
       ARow.Text.Left := mLeft;
-      ARow.Text.Top := Bottom + 2;
-      Bottom := ARow.Text.Top + ARow.Text.Height;
+      ARow.Text.Top := mBottom + 2;
+      mBottom := ARow.Text.Top + ARow.Text.Height;
     end;
-    mTop := Bottom + Gap;
+    mTop := mBottom + mGap;
   end;
 
 begin
@@ -568,37 +568,37 @@ begin
   end;
   FArranging := True;
   try
-    Gap := ScaleValue(RowGap);
-    ButtonH := ScaleValue(ButtonHeight);
+    mGap := ScaleValue(cRowGap);
+    mButtonH := ScaleValue(cButtonHeight);
     // Breite des Frames statt der Scrollbox: Die richtet sich erst später nach dem Frame aus.
     mWidth := ClientWidth;
     if FScroll.VertScrollBar.IsScrollBarVisible then
     begin
       Dec(mWidth, GetSystemMetrics(SM_CXVSCROLL));
     end;
-    mTop := Gap div 2 - FScroll.VertScrollBar.Position;
-    for Version in FVersions do
+    mTop := mGap div 2 - FScroll.VertScrollBar.Position;
+    for mVersion in FVersions do
     begin
-      for Index := 0 to High(FHeadings) do
+      for mIndex := 0 to High(FHeadings) do
       begin
-        if FHeadingVersions[Index] = Version.Version then
+        if FHeadingVersions[mIndex] = mVersion.Version then
         begin
-          FHeadings[Index].SetBounds(ScaleValue(Indent), mTop, FHeadings[Index].Width, FHeadings[Index].Height);
-          Inc(mTop, FHeadings[Index].Height + Gap div 2);
+          FHeadings[mIndex].SetBounds(ScaleValue(cIndent), mTop, FHeadings[mIndex].Width, FHeadings[mIndex].Height);
+          Inc(mTop, FHeadings[mIndex].Height + mGap div 2);
         end;
       end;
-      for Row in FRows do
+      for mRow in FRows do
       begin
-        if Row.Version = Version.Version then
+        if mRow.Version = mVersion.Version then
         begin
-          PlaceRow(Row);
+          PlaceRow(mRow);
         end;
       end;
     end;
     if FDismiss <> nil then
     begin
-      FDismiss.SetBounds(mWidth - ScaleValue(Indent) - ScaleValue(TryWidth), mTop, ScaleValue(TryWidth), ButtonH);
-      Inc(mTop, ButtonH + Gap div 2);
+      FDismiss.SetBounds(mWidth - ScaleValue(cIndent) - ScaleValue(cTryWidth), mTop, ScaleValue(cTryWidth), mButtonH);
+      Inc(mTop, mButtonH + mGap div 2);
     end;
     FContentHeight := mTop + FScroll.VertScrollBar.Position;
   finally
@@ -619,18 +619,18 @@ end;
 
 procedure TAtlasWelcomeWhatsNewFrame.HeadingClick(Sender: TObject);
 var
-  Version: string;
-  Frame: TAtlasWelcomeWhatsNewFrame;
+  mVersion: string;
+  mFrame: TAtlasWelcomeWhatsNewFrame;
 begin
-  Version := FHeadingVersions[TLabel(Sender).Tag];
-  Frame := Self;
+  mVersion := FHeadingVersions[TLabel(Sender).Tag];
+  mFrame := Self;
   // Nicht im Klick des Labels neu bauen: Toggle gibt es frei.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      if Live.Contains(Frame) then
+      if Live.Contains(mFrame) then
       begin
-        Frame.Toggle(Version);
+        mFrame.Toggle(mVersion);
       end;
     end);
 end;
@@ -638,38 +638,38 @@ end;
 procedure TAtlasWelcomeWhatsNewFrame.SwitchClick(Sender: TObject);
 var
   mSource: IAtlasWhatsNewSource;
-  Setting: string;
-  Value: Boolean;
+  mSetting: string;
+  mValue: Boolean;
 begin
   if FUpdating or (FSource = nil) then
   begin
     Exit;
   end;
   mSource := FSource;
-  Setting := FRows[TCheckBox(Sender).Tag].Item.Setting;
-  Value := TCheckBox(Sender).Checked;
+  mSetting := FRows[TCheckBox(Sender).Tag].Item.Setting;
+  mValue := TCheckBox(Sender).Checked;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      mSource.SetSwitch(Setting, Value);
+      mSource.SetSwitch(mSetting, mValue);
     end);
 end;
 
 procedure TAtlasWelcomeWhatsNewFrame.TryClick(Sender: TObject);
 var
   mSource: IAtlasWhatsNewSource;
-  Item: TAtlasWhatsNewItem;
+  mItem: TAtlasWhatsNewItem;
 begin
   if FSource = nil then
   begin
     Exit;
   end;
   mSource := FSource;
-  Item := FRows[TButton(Sender).Tag].Item;
+  mItem := FRows[TButton(Sender).Tag].Item;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      mSource.TryItem(Item);
+      mSource.TryItem(mItem);
     end);
 end;
 

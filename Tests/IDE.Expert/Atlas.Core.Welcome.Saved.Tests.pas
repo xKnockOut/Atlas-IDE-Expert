@@ -119,59 +119,59 @@ end;
 
 procedure TAtlasWelcomeSavedTests.FilterNeedsEveryWord;
 var
-  Items, Found: TAtlasSavedItems;
+  mItems, mFound: TAtlasSavedItems;
   mPlaces: TAtlasSavedPlaces;
 begin
   mPlaces := TAtlasSavedPlaces.Create(
     Place(TAtlasSavedPlaceKind.Note, 'n1', 'Prüfen', 'C:\Atlas\Kunde.pas', 'C:\Atlas\Atlas.dproj', 1),
     Place(TAtlasSavedPlaceKind.Bookmark, 'b1', 'Speichern', 'C:\Zeta\Haupt.pas', 'C:\Zeta\Zeta.dproj', 2));
   mPlaces[1].Detail := 'THaupt.Speichern';
-  Items := TAtlasWelcomeSaved.Collect(mPlaces, TArray<TAtlasFavorite>.Create(Favorite('TDataSet', 'Open', 'Data.DB')));
+  mItems := TAtlasWelcomeSaved.Collect(mPlaces, TArray<TAtlasFavorite>.Create(Favorite('TDataSet', 'Open', 'Data.DB')));
   mPlaces := nil;
-  Assert.AreEqual(3, Integer(Length(TAtlasWelcomeSaved.Filter(Items, '  '))), 'leer: alle');
-  Found := TAtlasWelcomeSaved.Filter(Items, 'kunde');
-  Assert.AreEqual(1, Integer(Length(Found)), 'Datei');
-  Found := TAtlasWelcomeSaved.Filter(Items, 'ZETA haupt');
-  Assert.AreEqual(1, Integer(Length(Found)), 'Projekt und Datei');
-  Assert.AreEqual('b1', Found[0].Id);
-  Found := TAtlasWelcomeSaved.Filter(Items, 'data.db');
-  Assert.AreEqual(1, Integer(Length(Found)), 'Unit des Favoriten');
-  Found := TAtlasWelcomeSaved.Filter(Items, 'speichern atlas');
-  Assert.AreEqual(0, Integer(Length(Found)), 'jedes Wort muss passen');
+  Assert.AreEqual(3, Integer(Length(TAtlasWelcomeSaved.Filter(mItems, '  '))), 'leer: alle');
+  mFound := TAtlasWelcomeSaved.Filter(mItems, 'kunde');
+  Assert.AreEqual(1, Integer(Length(mFound)), 'Datei');
+  mFound := TAtlasWelcomeSaved.Filter(mItems, 'ZETA haupt');
+  Assert.AreEqual(1, Integer(Length(mFound)), 'Projekt und Datei');
+  Assert.AreEqual('b1', mFound[0].Id);
+  mFound := TAtlasWelcomeSaved.Filter(mItems, 'data.db');
+  Assert.AreEqual(1, Integer(Length(mFound)), 'Unit des Favoriten');
+  mFound := TAtlasWelcomeSaved.Filter(mItems, 'speichern atlas');
+  Assert.AreEqual(0, Integer(Length(mFound)), 'jedes Wort muss passen');
 end;
 
 procedure TAtlasWelcomeSavedTests.DeclarationLineOfMethodPropertyAndRoutine;
 const
-  Text = 'unit Data.DB;'#10 + 'interface'#10 + 'type'#10 + '  TDataSet = class(TComponent)'#10 + '  private'#10 +
+  cText = 'unit Data.DB;'#10 + 'interface'#10 + 'type'#10 + '  TDataSet = class(TComponent)'#10 + '  private'#10 +
     '    FActive: Boolean;'#10 + '  public'#10 + '    procedure Open;'#10 + '    property Active: Boolean read FActive;'#10 +
     '  end;'#10 + 'function Format(const S: string): string;'#10 + 'implementation'#10 +
     'procedure TDataSet.Open;'#10 + 'begin'#10 + 'end;'#10 + 'function Format(const S: string): string;'#10 +
     'begin'#10 + 'end;'#10 + 'end.'#10;
 begin
-  Assert.AreEqual(7, TAtlasWelcomeSaved.DeclarationLine(Text, 'TDataSet', 'Open'), 'Methodenkopf im Typ');
-  Assert.AreEqual(8, TAtlasWelcomeSaved.DeclarationLine(Text, 'TDataSet', 'Active'), 'Eigenschaft');
-  Assert.AreEqual(10, TAtlasWelcomeSaved.DeclarationLine(Text, '', 'Format'), 'Routine ohne Typ');
-  Assert.AreEqual(-1, TAtlasWelcomeSaved.DeclarationLine(Text, 'TDataSet', 'Gibts'));
-  Assert.AreEqual(-1, TAtlasWelcomeSaved.DeclarationLine(Text, 'TDataSet', ''));
+  Assert.AreEqual(7, TAtlasWelcomeSaved.DeclarationLine(cText, 'TDataSet', 'Open'), 'Methodenkopf im Typ');
+  Assert.AreEqual(8, TAtlasWelcomeSaved.DeclarationLine(cText, 'TDataSet', 'Active'), 'Eigenschaft');
+  Assert.AreEqual(10, TAtlasWelcomeSaved.DeclarationLine(cText, '', 'Format'), 'Routine ohne Typ');
+  Assert.AreEqual(-1, TAtlasWelcomeSaved.DeclarationLine(cText, 'TDataSet', 'Gibts'));
+  Assert.AreEqual(-1, TAtlasWelcomeSaved.DeclarationLine(cText, 'TDataSet', ''));
 end;
 
 procedure TAtlasWelcomeSavedTests.FindUnitIgnoresCase;
 var
-  Files: TArray<TAtlasIndexFile>;
+  mFiles: TArray<TAtlasIndexFile>;
 begin
-  SetLength(Files, 2);
-  Files[0].UnitName := 'System.SysUtils';
-  Files[0].FileName := 'C:\RAD\source\rtl\sys\System.SysUtils.pas';
-  Files[1].UnitName := 'Data.DB';
-  Files[1].FileName := 'C:\RAD\source\data\Data.DB.pas';
-  Assert.AreEqual('C:\RAD\source\data\Data.DB.pas', TAtlasWelcomeSaved.FindUnit(Files, ' data.db '));
-  Assert.AreEqual('', TAtlasWelcomeSaved.FindUnit(Files, 'Vcl.Forms'));
-  Assert.AreEqual('', TAtlasWelcomeSaved.FindUnit(Files, ''));
+  SetLength(mFiles, 2);
+  mFiles[0].UnitName := 'System.SysUtils';
+  mFiles[0].FileName := 'C:\RAD\source\rtl\sys\System.SysUtils.pas';
+  mFiles[1].UnitName := 'Data.DB';
+  mFiles[1].FileName := 'C:\RAD\source\data\Data.DB.pas';
+  Assert.AreEqual('C:\RAD\source\data\Data.DB.pas', TAtlasWelcomeSaved.FindUnit(mFiles, ' data.db '));
+  Assert.AreEqual('', TAtlasWelcomeSaved.FindUnit(mFiles, 'Vcl.Forms'));
+  Assert.AreEqual('', TAtlasWelcomeSaved.FindUnit(mFiles, ''));
 end;
 
 procedure TAtlasWelcomeSavedTests.GroupProjectsResolveRelativePaths;
 const
-  Group = '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10 +
+  cGroup = '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10 +
     '  <ItemGroup>'#13#10 +
     '    <Projects Include="Atlas.dproj">'#13#10 + '      <Dependencies/>'#13#10 + '    </Projects>'#13#10 +
     '    <Projects Include="..\Werkzeuge\Werkzeug.dproj">'#13#10 + '    </Projects>'#13#10 +
@@ -179,14 +179,14 @@ const
     '    <Projects Include="D:\Fremd\Fremd.dproj"/>'#13#10 +
     '  </ItemGroup>'#13#10 + '</Project>';
 var
-  Projects: TArray<string>;
+  mProjects: TArray<string>;
 begin
-  Projects := TAtlasWelcomeSaved.GroupProjects('C:\Code\Atlas\Atlas.groupproj', Group);
-  Assert.AreEqual(4, Integer(Length(Projects)));
-  Assert.AreEqual('C:\Code\Atlas\Atlas.dproj', Projects[0]);
-  Assert.AreEqual('C:\Code\Werkzeuge\Werkzeug.dproj', Projects[1]);
-  Assert.AreEqual('C:\Code\Atlas\Tests\Tests.dproj', Projects[2]);
-  Assert.AreEqual('D:\Fremd\Fremd.dproj', Projects[3]);
+  mProjects := TAtlasWelcomeSaved.GroupProjects('C:\Code\Atlas\Atlas.groupproj', cGroup);
+  Assert.AreEqual(4, Integer(Length(mProjects)));
+  Assert.AreEqual('C:\Code\Atlas\Atlas.dproj', mProjects[0]);
+  Assert.AreEqual('C:\Code\Werkzeuge\Werkzeug.dproj', mProjects[1]);
+  Assert.AreEqual('C:\Code\Atlas\Tests\Tests.dproj', mProjects[2]);
+  Assert.AreEqual('D:\Fremd\Fremd.dproj', mProjects[3]);
   Assert.AreEqual(0, Integer(Length(TAtlasWelcomeSaved.GroupProjects('C:\X.groupproj', '<Project/>'))));
   Assert.AreEqual('\\server\share\A.dproj', TAtlasWelcomeSaved.ResolvePath('C:\X', '\\server\share\A.dproj'));
   Assert.AreEqual('C:\A.dproj', TAtlasWelcomeSaved.ResolvePath('C:\X', '..\..\A.dproj'), 'nie über das Laufwerk');

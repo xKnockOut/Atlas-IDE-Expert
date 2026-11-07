@@ -116,12 +116,12 @@ end;
 
 function Checksum(const AData: TBytes; AFrom: Integer): Cardinal;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 2166136261;
-  for Index := AFrom to High(AData) do
+  for mIndex := AFrom to High(AData) do
   begin
-    Result := Cardinal(UInt64(Result xor AData[Index]) * 16777619);
+    Result := Cardinal(UInt64(Result xor AData[mIndex]) * 16777619);
   end;
 end;
 
@@ -184,41 +184,41 @@ end;
 /// <summary>Cache im Format von Atlas.Common.Index.Cache (Version AVersion).</summary>
 function CacheBytes(const AUnits: TArray<TUnitSpec>; AVersion: Integer): TBytes;
 var
-  Strings: TList<string>;
-  Body, Text: TBytes;
-  Spec_: TUnitSpec;
-  Value: string;
-  Index, ChecksumAt: Integer;
-  Sum: Cardinal;
+  mStrings: TList<string>;
+  mBody, mText: TBytes;
+  mSpec_: TUnitSpec;
+  mValue: string;
+  mIndex, mChecksumAt: Integer;
+  mSum: Cardinal;
 begin
-  Strings := TList<string>.Create;
+  mStrings := TList<string>.Create;
   try
-    Strings.Add('');
-    Body := nil;
-    PutVar(Body, Length(AUnits));
-    for Spec_ in AUnits do
+    mStrings.Add('');
+    mBody := nil;
+    PutVar(mBody, Length(AUnits));
+    for mSpec_ in AUnits do
     begin
-      PutUnitRecord(Body, Strings, Spec_);
+      PutUnitRecord(mBody, mStrings, mSpec_);
     end;
     Result := TEncoding.ASCII.GetBytes('ATLASIDX');
     PutVar(Result, AVersion);
-    ChecksumAt := Length(Result);
+    mChecksumAt := Length(Result);
     Result := Result + [0, 0, 0, 0];
-    PutVar(Result, Strings.Count);
-    for Value in Strings do
+    PutVar(Result, mStrings.Count);
+    for mValue in mStrings do
     begin
-      Text := TEncoding.UTF8.GetBytes(Value);
-      PutVar(Result, Length(Text));
-      Result := Result + Text;
+      mText := TEncoding.UTF8.GetBytes(mValue);
+      PutVar(Result, Length(mText));
+      Result := Result + mText;
     end;
-    Result := Result + Body;
-    Sum := Checksum(Result, ChecksumAt + 4);
-    for Index := 0 to 3 do
+    Result := Result + mBody;
+    mSum := Checksum(Result, mChecksumAt + 4);
+    for mIndex := 0 to 3 do
     begin
-      Result[ChecksumAt + Index] := Byte(Sum shr (8 * Index));
+      Result[mChecksumAt + mIndex] := Byte(mSum shr (8 * mIndex));
     end;
   finally
-    Strings.Free;
+    mStrings.Free;
   end;
 end;
 
@@ -238,44 +238,44 @@ end;
 
 procedure WriteCache(const AFileName: string; const AUnits: TArray<TUnitSpec>; AAge: TDateTime);
 var
-  Stream: TFileStream;
-  Data: TBytes;
+  mStream: TFileStream;
+  mData: TBytes;
 begin
   ForceDirectories(ExtractFileDir(AFileName));
-  Data := CacheBytes(AUnits, TAtlasWelcomeIndexFiles.FormatVersion);
-  Stream := TFileStream.Create(AFileName, fmCreate);
+  mData := CacheBytes(AUnits, TAtlasWelcomeIndexFiles.cFormatVersion);
+  mStream := TFileStream.Create(AFileName, fmCreate);
   try
-    Stream.WriteBuffer(Data[0], Length(Data));
+    mStream.WriteBuffer(mData[0], Length(mData));
   finally
-    Stream.Free;
+    mStream.Free;
   end;
   FileSetDate(AFileName, DateTimeToFileDate(AAge));
 end;
 
 procedure RemoveTree(const AFolder: string);
 var
-  Search: TSearchRec;
-  Path: string;
+  mSearch: TSearchRec;
+  mPath: string;
 begin
-  Path := IncludeTrailingPathDelimiter(AFolder);
-  if FindFirst(Path + '*', faAnyFile, Search) = 0 then
+  mPath := IncludeTrailingPathDelimiter(AFolder);
+  if FindFirst(mPath + '*', faAnyFile, mSearch) = 0 then
     try
       repeat
-        if (Search.Name = '.') or (Search.Name = '..') then
+        if (mSearch.Name = '.') or (mSearch.Name = '..') then
         begin
           Continue;
         end;
-        if (Search.Attr and faDirectory) <> 0 then
+        if (mSearch.Attr and faDirectory) <> 0 then
         begin
-          RemoveTree(Path + Search.Name);
+          RemoveTree(mPath + mSearch.Name);
         end
         else
         begin
-          DeleteFile(Path + Search.Name);
+          DeleteFile(mPath + mSearch.Name);
         end;
-      until FindNext(Search) <> 0;
+      until FindNext(mSearch) <> 0;
     finally
-      FindClose(Search);
+      FindClose(mSearch);
     end;
   RemoveDir(AFolder);
 end;
@@ -284,31 +284,31 @@ end;
 
 procedure TAtlasWelcomeIndexFilesTests.ReadsProjectUnitsWithoutLibrary;
 var
-  Files: TArray<TAtlasIndexFile>;
-  Reason: string;
+  mFiles: TArray<TAtlasIndexFile>;
+  mReason: string;
 begin
-  Files := TAtlasWelcomeIndexFiles.Read(CacheBytes(SampleUnits, TAtlasWelcomeIndexFiles.FormatVersion), Reason);
-  Assert.AreEqual('', Reason);
-  Assert.AreEqual(3, Integer(Length(Files)));
-  Assert.AreEqual('Atlas', Files[0].UnitName);
-  Assert.AreEqual('C:\Projekte\Atlas\Atlas.IDE.Expert.WelcomePage.pas', Files[1].FileName);
-  Assert.AreEqual('Haupt', Files[2].UnitName);
+  mFiles := TAtlasWelcomeIndexFiles.Read(CacheBytes(SampleUnits, TAtlasWelcomeIndexFiles.cFormatVersion), mReason);
+  Assert.AreEqual('', mReason);
+  Assert.AreEqual(3, Integer(Length(mFiles)));
+  Assert.AreEqual('Atlas', mFiles[0].UnitName);
+  Assert.AreEqual('C:\Projekte\Atlas\Atlas.IDE.Expert.WelcomePage.pas', mFiles[1].FileName);
+  Assert.AreEqual('Haupt', mFiles[2].UnitName);
 end;
 
 procedure TAtlasWelcomeIndexFilesTests.RejectsOtherVersion;
 var
-  Reason: string;
+  mReason: string;
 begin
-  Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.Read(CacheBytes(SampleUnits, 15), Reason))));
-  Assert.AreEqual('andere Formatversion', Reason);
-  Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.Read(TEncoding.ASCII.GetBytes('{"units":[]}'), Reason))));
-  Assert.AreNotEqual('', Reason);
+  Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.Read(CacheBytes(SampleUnits, 15), mReason))));
+  Assert.AreEqual('andere Formatversion', mReason);
+  Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.Read(TEncoding.ASCII.GetBytes('{"units":[]}'), mReason))));
+  Assert.AreNotEqual('', mReason);
 end;
 
 procedure TAtlasWelcomeIndexFilesTests.FormatVersionMatchesServer;
 begin
   // Code-Review K-05: Plugin und Server lesen dasselbe Cache-Format.
-  Assert.AreEqual(TIndexCache.cFormatVersion, TAtlasWelcomeIndexFiles.FormatVersion,
+  Assert.AreEqual(TIndexCache.cFormatVersion, TAtlasWelcomeIndexFiles.cFormatVersion,
     'Plugin und Server lesen dasselbe Cache-Format; beide Konstanten zusammen erhöhen.');
 end;
 
@@ -354,40 +354,40 @@ end;
 
 procedure TAtlasWelcomeIndexFilesTests.RejectsBadChecksum;
 var
-  Data: TBytes;
-  Reason: string;
+  mData: TBytes;
+  mReason: string;
 begin
-  Data := CacheBytes(SampleUnits, TAtlasWelcomeIndexFiles.FormatVersion);
-  Data[High(Data) - 10] := Data[High(Data) - 10] xor $55;
-  Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.Read(Data, Reason))));
-  Assert.AreEqual('Prüfsumme stimmt nicht', Reason);
+  mData := CacheBytes(SampleUnits, TAtlasWelcomeIndexFiles.cFormatVersion);
+  mData[High(mData) - 10] := mData[High(mData) - 10] xor $55;
+  Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.Read(mData, mReason))));
+  Assert.AreEqual('Prüfsumme stimmt nicht', mReason);
 end;
 
 procedure TAtlasWelcomeIndexFilesTests.RejectsTruncatedData;
 var
-  Data, Cut: TBytes;
-  Sum: Cardinal;
-  Index: Integer;
-  Reason: string;
+  mData, mCut: TBytes;
+  mSum: Cardinal;
+  mIndex: Integer;
+  mReason: string;
 begin
   // Abgeschnitten, Prüfsumme passend neu berechnet: der Inhalt selbst muss auffallen.
-  Data := CacheBytes(SampleUnits, TAtlasWelcomeIndexFiles.FormatVersion);
-  Cut := Copy(Data, 0, Length(Data) - 50);
-  Sum := Checksum(Cut, 13);
-  for Index := 0 to 3 do
+  mData := CacheBytes(SampleUnits, TAtlasWelcomeIndexFiles.cFormatVersion);
+  mCut := Copy(mData, 0, Length(mData) - 50);
+  mSum := Checksum(mCut, 13);
+  for mIndex := 0 to 3 do
   begin
-    Cut[9 + Index] := Byte(Sum shr (8 * Index));
+    mCut[9 + mIndex] := Byte(mSum shr (8 * mIndex));
   end;
-  Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.Read(Cut, Reason))));
-  Assert.AreEqual('Inhalt beschädigt', Reason);
+  Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.Read(mCut, mReason))));
+  Assert.AreEqual('Inhalt beschädigt', mReason);
 end;
 
 procedure TAtlasWelcomeIndexFilesTests.MainFileAndSameProject;
 var
-  Files: TArray<TAtlasIndexFile>;
+  mFiles: TArray<TAtlasIndexFile>;
 begin
-  Files := TAtlasWelcomeIndexFiles.Read(CacheBytes(SampleUnits, TAtlasWelcomeIndexFiles.FormatVersion));
-  Assert.AreEqual('C:\Projekte\Atlas\Atlas.dpr', TAtlasWelcomeIndexFiles.MainFileOf(Files));
+  mFiles := TAtlasWelcomeIndexFiles.Read(CacheBytes(SampleUnits, TAtlasWelcomeIndexFiles.cFormatVersion));
+  Assert.AreEqual('C:\Projekte\Atlas\Atlas.dpr', TAtlasWelcomeIndexFiles.MainFileOf(mFiles));
   Assert.IsTrue(TAtlasWelcomeIndexFiles.SameProject('c:\projekte\atlas\Atlas.dproj', 'C:\Projekte\Atlas\Atlas.dpr'));
   Assert.IsFalse(TAtlasWelcomeIndexFiles.SameProject('C:\Projekte\Atlas\AtlasTests.dproj',
     'C:\Projekte\Atlas\Atlas.dpr'));
@@ -397,57 +397,61 @@ end;
 
 procedure TAtlasWelcomeIndexFilesTests.FindsCachesOfAllVersionsWithoutLibrary;
 var
-  Root: string;
-  Found: TArray<string>;
+  mRoot: string;
+  mFound: TArray<string>;
 begin
-  Root := TempFolder;
+  mRoot := TempFolder;
   try
-    WriteCache(Root + PathDelim + 'Index' + PathDelim + '23.0' + PathDelim + 'AAAA' + PathDelim + TAtlasWelcomeIndexFiles.CacheFileName,
+    WriteCache(mRoot + PathDelim + 'Index' + PathDelim + '23.0' + PathDelim + 'AAAA' + PathDelim +
+      TAtlasWelcomeIndexFiles.CacheFileName,
       SampleUnits, Now);
-    WriteCache(Root + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'BBBB' + PathDelim + TAtlasWelcomeIndexFiles.CacheFileName,
+    WriteCache(mRoot + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'BBBB' + PathDelim +
+      TAtlasWelcomeIndexFiles.CacheFileName,
       SampleUnits, Now);
-    WriteCache(Root + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'Bibliothek' + PathDelim +
+    WriteCache(mRoot + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'Bibliothek' + PathDelim +
       TAtlasWelcomeIndexFiles.CacheFileName, SampleUnits, Now);
-    ForceDirectories(Root + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'LEER');
-    Found := TAtlasWelcomeIndexFiles.CacheFiles(Root);
-    Assert.AreEqual(2, Integer(Length(Found)));
-    Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.CacheFiles(Root + PathDelim + 'fehlt'))));
+    ForceDirectories(mRoot + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'LEER');
+    mFound := TAtlasWelcomeIndexFiles.CacheFiles(mRoot);
+    Assert.AreEqual(2, Integer(Length(mFound)));
+    Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.CacheFiles(mRoot + PathDelim + 'fehlt'))));
   finally
-    RemoveTree(Root);
+    RemoveTree(mRoot);
   end;
 end;
 
 procedure TAtlasWelcomeIndexFilesTests.NewestCacheWinsPerProject;
 var
-  Root: string;
-  Projects: TAtlasIndexProjects;
-  List: TArray<TAtlasIndexProject>;
+  mRoot: string;
+  mProjects: TAtlasIndexProjects;
+  mList: TArray<TAtlasIndexProject>;
 begin
-  Root := TempFolder;
-  Projects := TAtlasIndexProjects.Create(Root);
+  mRoot := TempFolder;
+  mProjects := TAtlasIndexProjects.Create(mRoot);
   try
     // Zwei Konfigurationen desselben Projekts und ein zweites Projekt.
-    WriteCache(Root + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'DEBUG' + PathDelim + TAtlasWelcomeIndexFiles.CacheFileName,
+    WriteCache(mRoot + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'DEBUG' + PathDelim +
+      TAtlasWelcomeIndexFiles.CacheFileName,
       SampleUnits, IncDay(Now, -3));
-    WriteCache(Root + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'RELEASE' + PathDelim +
+    WriteCache(mRoot + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'RELEASE' + PathDelim +
       TAtlasWelcomeIndexFiles.CacheFileName, [Spec('Atlas', 'C:\Projekte\Atlas\Atlas.dpr', False),
       Spec('Neu', 'C:\Projekte\Atlas\Neu.pas', False)], IncDay(Now, -1));
-    WriteCache(Root + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'TOOLS' + PathDelim + TAtlasWelcomeIndexFiles.CacheFileName,
+    WriteCache(mRoot + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'TOOLS' + PathDelim +
+      TAtlasWelcomeIndexFiles.CacheFileName,
       [Spec('Tools', 'C:\Projekte\Tools\Tools.dpk', False)], IncDay(Now, -2));
-    Projects.Refresh;
-    List := Projects.Projects;
-    Assert.AreEqual(2, Integer(Length(List)));
-    Assert.AreEqual('C:\Projekte\Atlas\Atlas.dpr', List[0].MainFile);
-    Assert.AreEqual('C:\Projekte\Tools\Tools.dpk', List[1].MainFile);
-    Assert.AreEqual('Neu', Projects.FilesOf('C:\Projekte\Atlas\Atlas.dproj')[1].UnitName);
-    Assert.AreEqual(0, Integer(Length(Projects.FilesOf('C:\Projekte\Fremd\Fremd.dproj'))));
+    mProjects.Refresh;
+    mList := mProjects.Projects;
+    Assert.AreEqual(2, Integer(Length(mList)));
+    Assert.AreEqual('C:\Projekte\Atlas\Atlas.dpr', mList[0].MainFile);
+    Assert.AreEqual('C:\Projekte\Tools\Tools.dpk', mList[1].MainFile);
+    Assert.AreEqual('Neu', mProjects.FilesOf('C:\Projekte\Atlas\Atlas.dproj')[1].UnitName);
+    Assert.AreEqual(0, Integer(Length(mProjects.FilesOf('C:\Projekte\Fremd\Fremd.dproj'))));
     // Gelöschter Cache verschwindet beim nächsten Refresh.
-    RemoveTree(Root + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'TOOLS');
-    Projects.Refresh;
-    Assert.AreEqual(1, Integer(Length(Projects.Projects)));
+    RemoveTree(mRoot + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'TOOLS');
+    mProjects.Refresh;
+    Assert.AreEqual(1, Integer(Length(mProjects.Projects)));
   finally
-    Projects.Free;
-    RemoveTree(Root);
+    mProjects.Free;
+    RemoveTree(mRoot);
   end;
 end;
 
@@ -478,13 +482,13 @@ end;
 function GroupOf(const AResults: TArray<TAtlasWelcomeSearchResult>; AGroup: TAtlasWelcomeSearchGroup;
   out AResult: TAtlasWelcomeSearchResult): Boolean;
 var
-  Entry: TAtlasWelcomeSearchResult;
+  mEntry: TAtlasWelcomeSearchResult;
 begin
-  for Entry in AResults do
+  for mEntry in AResults do
   begin
-    if Entry.Group = AGroup then
+    if mEntry.Group = AGroup then
     begin
-      AResult := Entry;
+      AResult := mEntry;
       Exit(True);
     end;
   end;
@@ -493,32 +497,32 @@ end;
 
 procedure TAtlasWelcomeSearchTests.WelFindsFileAndCommand;
 var
-  Results: TArray<TAtlasWelcomeSearchResult>;
-  Group: TAtlasWelcomeSearchResult;
+  mResults: TArray<TAtlasWelcomeSearchResult>;
+  mGroup: TAtlasWelcomeSearchResult;
 begin
-  Results := TAtlasWelcomeSearch.Search('wel', Candidates, '');
-  Assert.IsTrue(GroupOf(Results, TAtlasWelcomeSearchGroup.Files, Group));
-  Assert.AreEqual(1, Integer(Length(Group.Hits)));
-  Assert.AreEqual('Atlas.IDE.Expert.WelcomePage.pas', Group.Hits[0].Caption);
-  Assert.IsTrue(GroupOf(Results, TAtlasWelcomeSearchGroup.Commands, Group));
-  Assert.AreEqual(1, Integer(Length(Group.Hits)));
-  Assert.AreEqual('Atlas-Start', Group.Hits[0].Caption);
-  Assert.IsFalse(GroupOf(Results, TAtlasWelcomeSearchGroup.Projects, Group));
+  mResults := TAtlasWelcomeSearch.Search('wel', Candidates, '');
+  Assert.IsTrue(GroupOf(mResults, TAtlasWelcomeSearchGroup.Files, mGroup));
+  Assert.AreEqual(1, Integer(Length(mGroup.Hits)));
+  Assert.AreEqual('Atlas.IDE.Expert.WelcomePage.pas', mGroup.Hits[0].Caption);
+  Assert.IsTrue(GroupOf(mResults, TAtlasWelcomeSearchGroup.Commands, mGroup));
+  Assert.AreEqual(1, Integer(Length(mGroup.Hits)));
+  Assert.AreEqual('Atlas-Start', mGroup.Hits[0].Caption);
+  Assert.IsFalse(GroupOf(mResults, TAtlasWelcomeSearchGroup.Projects, mGroup));
 end;
 
 procedure TAtlasWelcomeSearchTests.TypoFindsSameFile;
 var
-  Results: TArray<TAtlasWelcomeSearchResult>;
-  Group: TAtlasWelcomeSearchResult;
+  mResults: TArray<TAtlasWelcomeSearchResult>;
+  mGroup: TAtlasWelcomeSearchResult;
 begin
-  Results := TAtlasWelcomeSearch.Search('Wlecome', Candidates, '');
-  Assert.IsTrue(GroupOf(Results, TAtlasWelcomeSearchGroup.Files, Group));
-  Assert.AreEqual('Atlas.IDE.Expert.WelcomePage.pas', Group.Hits[0].Caption);
-  Assert.IsTrue(Group.Hits[0].Score < 200);
+  mResults := TAtlasWelcomeSearch.Search('Wlecome', Candidates, '');
+  Assert.IsTrue(GroupOf(mResults, TAtlasWelcomeSearchGroup.Files, mGroup));
+  Assert.AreEqual('Atlas.IDE.Expert.WelcomePage.pas', mGroup.Hits[0].Caption);
+  Assert.IsTrue(mGroup.Hits[0].Score < 200);
   // Zu viele Fehler: kein Treffer.
-  Assert.AreEqual(TAtlasWelcomeSearch.NoMatch, TAtlasWelcomeSearch.Score('Wxyzome', 'Atlas.IDE.Expert.WelcomePage.pas'));
+  Assert.AreEqual(TAtlasWelcomeSearch.cNoMatch, TAtlasWelcomeSearch.Score('Wxyzome', 'Atlas.IDE.Expert.WelcomePage.pas'));
   // Kurze Muster ohne Tippfehler-Toleranz.
-  Assert.AreEqual(TAtlasWelcomeSearch.NoMatch, TAtlasWelcomeSearch.Score('Wx', 'WelcomePage'));
+  Assert.AreEqual(TAtlasWelcomeSearch.cNoMatch, TAtlasWelcomeSearch.Score('Wx', 'WelcomePage'));
 end;
 
 procedure TAtlasWelcomeSearchTests.EmptyPatternFindsNothing;
@@ -529,135 +533,135 @@ end;
 
 procedure TAtlasWelcomeSearchTests.GroupsInFixedOrder;
 var
-  Results: TArray<TAtlasWelcomeSearchResult>;
+  mResults: TArray<TAtlasWelcomeSearchResult>;
 begin
   // "a" passt auf Projekt, Dateien und Befehle; Kandidaten in gemischter Reihenfolge.
-  Results := TAtlasWelcomeSearch.Search('a', [Candidates[3], Candidates[1], Candidates[0]], 'Hinweis');
-  Assert.AreEqual(4, Integer(Length(Results)));
-  Assert.IsTrue(Results[0].Group = TAtlasWelcomeSearchGroup.Projects);
-  Assert.IsTrue(Results[1].Group = TAtlasWelcomeSearchGroup.Files);
-  Assert.IsTrue(Results[2].Group = TAtlasWelcomeSearchGroup.Symbols);
-  Assert.IsTrue(Results[3].Group = TAtlasWelcomeSearchGroup.Commands);
+  mResults := TAtlasWelcomeSearch.Search('a', [Candidates[3], Candidates[1], Candidates[0]], 'Hinweis');
+  Assert.AreEqual(4, Integer(Length(mResults)));
+  Assert.IsTrue(mResults[0].Group = TAtlasWelcomeSearchGroup.Projects);
+  Assert.IsTrue(mResults[1].Group = TAtlasWelcomeSearchGroup.Files);
+  Assert.IsTrue(mResults[2].Group = TAtlasWelcomeSearchGroup.Symbols);
+  Assert.IsTrue(mResults[3].Group = TAtlasWelcomeSearchGroup.Commands);
 end;
 
 procedure TAtlasWelcomeSearchTests.LimitsEachGroupToFour;
 var
-  Hits: TArray<TAtlasWelcomeHit>;
-  Index: Integer;
-  Results: TArray<TAtlasWelcomeSearchResult>;
+  mHits: TArray<TAtlasWelcomeHit>;
+  mIndex: Integer;
+  mResults: TArray<TAtlasWelcomeSearchResult>;
 begin
-  Hits := nil;
-  for Index := 1 to 7 do
+  mHits := nil;
+  for mIndex := 1 to 7 do
   begin
-    Hits := Hits + [FileHit(Format('Unit%d.pas', [Index]), 'P')];
+    mHits := mHits + [FileHit(Format('Unit%d.pas', [mIndex]), 'P')];
   end;
-  for Index := 1 to 2 do
+  for mIndex := 1 to 2 do
   begin
-    Hits := Hits + [CommandHit(Format('Unit-Befehl %d', [Index]), 'Atlas.U' + IntToStr(Index))];
+    mHits := mHits + [CommandHit(Format('Unit-Befehl %d', [mIndex]), 'Atlas.U' + IntToStr(mIndex))];
   end;
-  Results := TAtlasWelcomeSearch.Search('unit', Hits, '');
-  Assert.AreEqual(2, Integer(Length(Results)));
-  Assert.AreEqual(4, Integer(Length(Results[0].Hits)));
-  Assert.AreEqual(3, Results[0].More);
-  Assert.AreEqual(2, Integer(Length(Results[1].Hits)));
-  Assert.AreEqual(0, Results[1].More);
-  Results := TAtlasWelcomeSearch.Search('unit', Hits, '', 2);
-  Assert.AreEqual(2, Integer(Length(Results[0].Hits)));
-  Assert.AreEqual(5, Results[0].More);
+  mResults := TAtlasWelcomeSearch.Search('unit', mHits, '');
+  Assert.AreEqual(2, Integer(Length(mResults)));
+  Assert.AreEqual(4, Integer(Length(mResults[0].Hits)));
+  Assert.AreEqual(3, mResults[0].More);
+  Assert.AreEqual(2, Integer(Length(mResults[1].Hits)));
+  Assert.AreEqual(0, mResults[1].More);
+  mResults := TAtlasWelcomeSearch.Search('unit', mHits, '', 2);
+  Assert.AreEqual(2, Integer(Length(mResults[0].Hits)));
+  Assert.AreEqual(5, mResults[0].More);
 end;
 
 procedure TAtlasWelcomeSearchTests.BetterMatchFirstThenSourceOrder;
 var
-  Results: TArray<TAtlasWelcomeSearchResult>;
+  mResults: TArray<TAtlasWelcomeSearchResult>;
 begin
-  Results := TAtlasWelcomeSearch.Search('haupt',
+  mResults := TAtlasWelcomeSearch.Search('haupt',
     [FileHit('Nebenhaupt.pas', 'P'), FileHit('Haupt.pas', 'P'), FileHit('HauptForm.pas', 'P'),
     FileHit('HauptDaten.pas', 'P')], '');
-  Assert.AreEqual('Haupt.pas', Results[0].Hits[0].Caption);
+  Assert.AreEqual('Haupt.pas', mResults[0].Hits[0].Caption);
   // Gleiche Stufe: Reihenfolge der Quelle (zuletzt geöffnet zuerst).
-  Assert.AreEqual('HauptForm.pas', Results[0].Hits[1].Caption);
-  Assert.AreEqual('HauptDaten.pas', Results[0].Hits[2].Caption);
-  Assert.AreEqual('Nebenhaupt.pas', Results[0].Hits[3].Caption);
+  Assert.AreEqual('HauptForm.pas', mResults[0].Hits[1].Caption);
+  Assert.AreEqual('HauptDaten.pas', mResults[0].Hits[2].Caption);
+  Assert.AreEqual('Nebenhaupt.pas', mResults[0].Hits[3].Caption);
 end;
 
 procedure TAtlasWelcomeSearchTests.SymbolHintWithoutServer;
 var
-  Results: TArray<TAtlasWelcomeSearchResult>;
-  Group: TAtlasWelcomeSearchResult;
+  mResults: TArray<TAtlasWelcomeSearchResult>;
+  mGroup: TAtlasWelcomeSearchResult;
 begin
-  Results := TAtlasWelcomeSearch.Search('wel', Candidates, 'Symbole nach dem Öffnen eines Projekts');
-  Assert.IsTrue(GroupOf(Results, TAtlasWelcomeSearchGroup.Symbols, Group));
-  Assert.AreEqual(0, Integer(Length(Group.Hits)));
-  Assert.AreEqual('Symbole nach dem Öffnen eines Projekts', Group.Hint);
+  mResults := TAtlasWelcomeSearch.Search('wel', Candidates, 'Symbole nach dem Öffnen eines Projekts');
+  Assert.IsTrue(GroupOf(mResults, TAtlasWelcomeSearchGroup.Symbols, mGroup));
+  Assert.AreEqual(0, Integer(Length(mGroup.Hits)));
+  Assert.AreEqual('Symbole nach dem Öffnen eines Projekts', mGroup.Hint);
   // Auch wenn sonst nichts passt, steht der Hinweis da.
   Assert.AreEqual(1, Integer(Length(TAtlasWelcomeSearch.Search('qqq', Candidates, 'Hinweis'))));
 end;
 
 procedure TAtlasWelcomeSearchTests.NoSymbolGroupWithoutHintAndHits;
 var
-  Group: TAtlasWelcomeSearchResult;
+  mGroup: TAtlasWelcomeSearchResult;
 begin
   // welcomePage.search.symbols aus: keine Kandidaten, kein Hinweis, keine Gruppe.
   Assert.IsFalse(GroupOf(TAtlasWelcomeSearch.Search('wel', Candidates, ''), TAtlasWelcomeSearchGroup.Symbols,
-    Group));
+    mGroup));
 end;
 
 procedure TAtlasWelcomeSearchTests.ServerSymbolsKeepOrder;
 var
-  First, Second: TAtlasWelcomeHit;
-  Results: TArray<TAtlasWelcomeSearchResult>;
+  mFirst, mSecond: TAtlasWelcomeHit;
+  mResults: TArray<TAtlasWelcomeSearchResult>;
 begin
-  First := TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Symbols, 'TWelcomeBoard', 'Atlas.UI', 'a.pas');
-  First.Prefiltered := True;
-  Second := TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Symbols, 'Wel', 'Atlas.UI', 'b.pas');
-  Second.Prefiltered := True;
-  Results := TAtlasWelcomeSearch.Search('wel', [First, Second], 'Hinweis');
-  Assert.AreEqual(1, Integer(Length(Results)));
-  Assert.AreEqual('TWelcomeBoard', Results[0].Hits[0].Caption);
-  Assert.AreEqual('Wel', Results[0].Hits[1].Caption);
-  Assert.AreEqual('', Results[0].Hint);
+  mFirst := TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Symbols, 'TWelcomeBoard', 'Atlas.UI', 'a.pas');
+  mFirst.Prefiltered := True;
+  mSecond := TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Symbols, 'Wel', 'Atlas.UI', 'b.pas');
+  mSecond.Prefiltered := True;
+  mResults := TAtlasWelcomeSearch.Search('wel', [mFirst, mSecond], 'Hinweis');
+  Assert.AreEqual(1, Integer(Length(mResults)));
+  Assert.AreEqual('TWelcomeBoard', mResults[0].Hits[0].Caption);
+  Assert.AreEqual('Wel', mResults[0].Hits[1].Caption);
+  Assert.AreEqual('', mResults[0].Hint);
 end;
 
 procedure TAtlasWelcomeSearchTests.FlattenFollowsDisplayOrder;
 var
-  Flat: TArray<TAtlasWelcomeHit>;
+  mFlat: TArray<TAtlasWelcomeHit>;
 begin
-  Flat := TAtlasWelcomeSearch.Flatten(TAtlasWelcomeSearch.Search('a', Candidates, 'Hinweis'));
-  Assert.IsTrue(Flat[0].Group = TAtlasWelcomeSearchGroup.Projects);
-  Assert.IsTrue(Flat[High(Flat)].Group = TAtlasWelcomeSearchGroup.Commands);
+  mFlat := TAtlasWelcomeSearch.Flatten(TAtlasWelcomeSearch.Search('a', Candidates, 'Hinweis'));
+  Assert.IsTrue(mFlat[0].Group = TAtlasWelcomeSearchGroup.Projects);
+  Assert.IsTrue(mFlat[High(mFlat)].Group = TAtlasWelcomeSearchGroup.Commands);
 end;
 
 procedure TAtlasWelcomeSearchTests.RowsWithHeadersHintAndMore;
 var
-  Hits: TArray<TAtlasWelcomeHit>;
-  Index: Integer;
-  Rows: TArray<TAtlasWelcomeSearchRow>;
+  mHits: TArray<TAtlasWelcomeHit>;
+  mIndex: Integer;
+  mRows: TArray<TAtlasWelcomeSearchRow>;
 begin
-  Hits := [CommandHit('Unit-Befehl', 'Atlas.U')];
-  for Index := 1 to 6 do
+  mHits := [CommandHit('Unit-Befehl', 'Atlas.U')];
+  for mIndex := 1 to 6 do
   begin
-    Hits := Hits + [FileHit(Format('Unit%d.pas', [Index]), 'P')];
+    mHits := mHits + [FileHit(Format('Unit%d.pas', [mIndex]), 'P')];
   end;
-  Rows := TAtlasWelcomeSearch.Rows(TAtlasWelcomeSearch.Search('unit', Hits, 'Hinweis'));
+  mRows := TAtlasWelcomeSearch.Rows(TAtlasWelcomeSearch.Search('unit', mHits, 'Hinweis'));
   // Dateien: Kopf, 4 Treffer, „2 weitere“; Symbole: Kopf, Hinweis; Befehle: Kopf, Treffer.
-  Assert.AreEqual(10, Integer(Length(Rows)));
-  Assert.IsTrue(Rows[0].Kind = TAtlasWelcomeRowKind.Group);
-  Assert.IsTrue(Rows[0].Group = TAtlasWelcomeSearchGroup.Files);
-  Assert.AreEqual(0, Rows[1].Index);
-  Assert.AreEqual(3, Rows[4].Index);
-  Assert.IsTrue(Rows[5].Kind = TAtlasWelcomeRowKind.More);
-  Assert.AreEqual(2, Rows[5].Index);
-  Assert.IsTrue(Rows[7].Kind = TAtlasWelcomeRowKind.Hint);
-  Assert.AreEqual('Hinweis', Rows[7].Text);
-  Assert.IsTrue(Rows[9].Kind = TAtlasWelcomeRowKind.Hit);
-  Assert.AreEqual(4, Rows[9].Index);
+  Assert.AreEqual(10, Integer(Length(mRows)));
+  Assert.IsTrue(mRows[0].Kind = TAtlasWelcomeRowKind.Group);
+  Assert.IsTrue(mRows[0].Group = TAtlasWelcomeSearchGroup.Files);
+  Assert.AreEqual(0, mRows[1].Index);
+  Assert.AreEqual(3, mRows[4].Index);
+  Assert.IsTrue(mRows[5].Kind = TAtlasWelcomeRowKind.More);
+  Assert.AreEqual(2, mRows[5].Index);
+  Assert.IsTrue(mRows[7].Kind = TAtlasWelcomeRowKind.Hint);
+  Assert.AreEqual('Hinweis', mRows[7].Text);
+  Assert.IsTrue(mRows[9].Kind = TAtlasWelcomeRowKind.Hit);
+  Assert.AreEqual(4, mRows[9].Index);
 end;
 
 procedure TAtlasWelcomeSearchTests.RecentProjectsInOrderWithoutDuplicates;
 var
-  Projects: TArray<string>;
+  mProjects: TArray<string>;
 begin
-  Projects := TAtlasWelcomeSearch.RecentProjects([
+  mProjects := TAtlasWelcomeSearch.RecentProjects([
     TPair<string, string>.Create('File_10', 'TProject,C:\P\Zehn.dproj,0,0'),
     TPair<string, string>.Create('File_0', 'TProjectGroup,C:\P\Gruppe.groupproj,1'),
     TPair<string, string>.Create('File_1', 'TProject,c:\p\gruppe.groupproj'),
@@ -666,11 +670,11 @@ begin
     // Delphi 13: Pfad in Hochkommas.
     TPair<string, string>.Create('File_4', 'TProjectGroup,''C:\P\Atlas.groupproj'',1'),
     TPair<string, string>.Create('Max Closed Files', '10')]);
-  Assert.AreEqual(4, Integer(Length(Projects)));
-  Assert.AreEqual('C:\P\Gruppe.groupproj', Projects[0]);
-  Assert.AreEqual('C:\P\Ohne Klasse.dproj', Projects[1]);
-  Assert.AreEqual('C:\P\Atlas.groupproj', Projects[2]);
-  Assert.AreEqual('C:\P\Zehn.dproj', Projects[3]);
+  Assert.AreEqual(4, Integer(Length(mProjects)));
+  Assert.AreEqual('C:\P\Gruppe.groupproj', mProjects[0]);
+  Assert.AreEqual('C:\P\Ohne Klasse.dproj', mProjects[1]);
+  Assert.AreEqual('C:\P\Atlas.groupproj', mProjects[2]);
+  Assert.AreEqual('C:\P\Zehn.dproj', mProjects[3]);
 end;
 
 initialization
