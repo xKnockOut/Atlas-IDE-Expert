@@ -57,8 +57,8 @@ uses
   Atlas.Text.TestResults;
 
 const
-  UnitFile = 'C:\Projekt\Tests\Rechner.Tests.pas';
-  Report =
+  cUnitFile = 'C:\Projekt\Tests\Rechner.Tests.pas';
+  cReport =
     '<test-results total="3">' +
     '<test-suite type="Assembly" name="Rechner.Tests.exe" time="0.5"><results>' +
     '<test-suite type="Namespace" name="Rechner"><results>' +
@@ -102,22 +102,22 @@ end;
 
 function Failures(out AReads: Integer): TArray<TAtlasTestFailure>;
 var
-  Reads: Integer;
+  mReads: Integer;
 begin
-  Reads := 0;
-  Result := TAtlasTestRun.Failures(TTestResults.Parse(Report),
+  mReads := 0;
+  Result := TAtlasTestRun.Failures(TTestResults.Parse(cReport),
     function(const AUnitName: string): string
     begin
       Result := '';
       if SameText(AUnitName, 'Rechner.Tests') then
       begin
-        Result := UnitFile;
+        Result := cUnitFile;
       end;
     end,
     function(const AFileName: string; out ALines: TArray<string>): Boolean
     begin
-      Inc(Reads);
-      Result := SameText(AFileName, UnitFile);
+      Inc(mReads);
+      Result := SameText(AFileName, cUnitFile);
       if Result then
       begin
         ALines := Source;
@@ -127,7 +127,7 @@ begin
         ALines := nil;
       end;
     end);
-  AReads := Reads;
+  AReads := mReads;
 end;
 
 function Settings: TAtlasPluginSettings;
@@ -151,132 +151,132 @@ end;
 
 procedure TAtlasTestRunTests.RunsAfterSuccessfulUserBuildOnly;
 var
-  Value: TAtlasPluginSettings;
+  mValue: TAtlasPluginSettings;
 begin
-  Value := Settings;
-  Assert.IsTrue(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, '', True));
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, False, False, '', True), 'Build fehlgeschlagen');
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, True, '', True), 'Hintergrundprüfung');
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, TAtlasTestRun.RequestedBy, True),
+  mValue := Settings;
+  Assert.IsTrue(TAtlasTestRun.ShouldRunAfterBuild(mValue, True, False, '', True));
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(mValue, False, False, '', True), 'Build fehlgeschlagen');
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(mValue, True, True, '', True), 'Hintergrundprüfung');
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(mValue, True, False, TAtlasTestRun.cRequestedBy, True),
     'Build vor den Tests');
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, 'mcp', True), 'Build für Claude Code');
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, '', False), 'kein Testprogramm');
-  Value.TestsAfterBuild := False;
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, '', True), 'Vorgabe aus');
-  Value := Settings;
-  Value.TestRun := False;
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, '', True), 'Tests ausführen aus');
-  Value := Settings;
-  Value.Enabled := False;
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, True, False, '', True), 'Atlas aus');
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(mValue, True, False, 'mcp', True), 'Build für Claude Code');
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(mValue, True, False, '', False), 'kein Testprogramm');
+  mValue.TestsAfterBuild := False;
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(mValue, True, False, '', True), 'Vorgabe aus');
+  mValue := Settings;
+  mValue.TestRun := False;
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(mValue, True, False, '', True), 'Tests ausführen aus');
+  mValue := Settings;
+  mValue.Enabled := False;
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(mValue, True, False, '', True), 'Atlas aus');
 end;
 
 procedure TAtlasTestRunTests.ZeroHintsNeedsCleanBuild;
 var
-  Value: TAtlasPluginSettings;
-  Messages: TArray<TAtlasCompilerMessage>;
-  Verdict: TAtlasBuildVerdict;
+  mValue: TAtlasPluginSettings;
+  mMessages: TArray<TAtlasCompilerMessage>;
+  mVerdict: TAtlasBuildVerdict;
 begin
   // Abnahme #530: Mit zeroHints gilt ein Build mit Hinweis als gescheitert, Tests nach dem Build starten nicht.
-  SetLength(Messages, 2);
-  Messages[0] := TAtlasCompilerMessages.FromIde('Hint', 'H2164 Variable X wurde deklariert, aber nicht verwendet',
+  SetLength(mMessages, 2);
+  mMessages[0] := TAtlasCompilerMessages.FromIde('Hint', 'H2164 Variable X wurde deklariert, aber nicht verwendet',
     'C:\P\U.pas', 5, 3);
-  Messages[1] := TAtlasCompilerMessages.FromIde('Info', 'Erfolg', '', 0, 0);
-  Value := Settings;
-  Value.BuildZeroHints := True;
-  Verdict := TAtlasBuildVerdicts.Evaluate(Messages, nil, True, TAtlasBuildVerdictSettings.Create(
-    Value.BuildZeroHints, Value.BuildWarningsAsErrors));
-  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(Value, Verdict.Effective, False, '', True), 'mit Hinweisen nicht');
+  mMessages[1] := TAtlasCompilerMessages.FromIde('Info', 'Erfolg', '', 0, 0);
+  mValue := Settings;
+  mValue.BuildZeroHints := True;
+  mVerdict := TAtlasBuildVerdicts.Evaluate(mMessages, nil, True, TAtlasBuildVerdictSettings.Create(
+    mValue.BuildZeroHints, mValue.BuildWarningsAsErrors));
+  Assert.IsFalse(TAtlasTestRun.ShouldRunAfterBuild(mValue, mVerdict.Effective, False, '', True), 'mit Hinweisen nicht');
   // Derselbe Hinweis in der Basislinie zählt nicht.
-  Verdict := TAtlasBuildVerdicts.Evaluate(Messages, TArray<Boolean>.Create(True, False), True,
-    TAtlasBuildVerdictSettings.Create(Value.BuildZeroHints, Value.BuildWarningsAsErrors));
-  Assert.IsTrue(TAtlasTestRun.ShouldRunAfterBuild(Value, Verdict.Effective, False, '', True), 'in der Basislinie');
-  Value.BuildZeroHints := False;
-  Verdict := TAtlasBuildVerdicts.Evaluate(Messages, nil, True, TAtlasBuildVerdictSettings.Create(
-    Value.BuildZeroHints, Value.BuildWarningsAsErrors));
-  Assert.IsTrue(TAtlasTestRun.ShouldRunAfterBuild(Value, Verdict.Effective, False, '', True), 'ohne zeroHints');
+  mVerdict := TAtlasBuildVerdicts.Evaluate(mMessages, TArray<Boolean>.Create(True, False), True,
+    TAtlasBuildVerdictSettings.Create(mValue.BuildZeroHints, mValue.BuildWarningsAsErrors));
+  Assert.IsTrue(TAtlasTestRun.ShouldRunAfterBuild(mValue, mVerdict.Effective, False, '', True), 'in der Basislinie');
+  mValue.BuildZeroHints := False;
+  mVerdict := TAtlasBuildVerdicts.Evaluate(mMessages, nil, True, TAtlasBuildVerdictSettings.Create(
+    mValue.BuildZeroHints, mValue.BuildWarningsAsErrors));
+  Assert.IsTrue(TAtlasTestRun.ShouldRunAfterBuild(mValue, mVerdict.Effective, False, '', True), 'ohne zeroHints');
 end;
 
 procedure TAtlasTestRunTests.FailureSitsOnTestMethod;
 var
-  Found: TArray<TAtlasTestFailure>;
-  Reads: Integer;
+  mFound: TArray<TAtlasTestFailure>;
+  mReads: Integer;
 begin
-  Found := Failures(Reads);
-  Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual(1, Reads, 'jede Testunit einmal lesen');
-  Assert.AreEqual(UnitFile, Found[0].FileName);
-  Assert.AreEqual(18, Found[0].Line, 'Methodenkopf im implementation-Teil, nicht die Deklaration');
-  Assert.AreEqual(2, Found[0].StartCharacter, 'ab dem ersten Zeichen');
-  Assert.AreEqual(Integer(Length('  procedure TRechnerTests.Summe(A, B, C: Integer);')), Found[0].EndCharacter);
-  Assert.AreEqual(21, Found[1].Line);
+  mFound := Failures(mReads);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual(1, mReads, 'jede Testunit einmal lesen');
+  Assert.AreEqual(cUnitFile, mFound[0].FileName);
+  Assert.AreEqual(18, mFound[0].Line, 'Methodenkopf im implementation-Teil, nicht die Deklaration');
+  Assert.AreEqual(2, mFound[0].StartCharacter, 'ab dem ersten Zeichen');
+  Assert.AreEqual(Integer(Length('  procedure TRechnerTests.Summe(A, B, C: Integer);')), mFound[0].EndCharacter);
+  Assert.AreEqual(21, mFound[1].Line);
 end;
 
 procedure TAtlasTestRunTests.ProblemsCarryExpectedAndActual;
 var
-  Found: TArray<TAtlasTestFailure>;
-  Reads: Integer;
-  Items: TArray<TPair<string, TAtlasProblem>>;
+  mFound: TArray<TAtlasTestFailure>;
+  mReads: Integer;
+  mItems: TArray<TPair<string, TAtlasProblem>>;
 begin
-  Found := Failures(Reads);
-  Items := TAtlasTestRun.Problems(Found, 'Test %s fehlgeschlagen: %s', 'Test %s fehlgeschlagen: erwartet %s, erhalten %s');
-  Assert.AreEqual(2, Integer(Length(Items)));
-  Assert.AreEqual(UnitFile, Items[0].Key);
-  Assert.AreEqual('Test TRechnerTests.Summe.Gross fehlgeschlagen: erwartet 30, erhalten 31', Items[0].Value.Message);
-  Assert.AreEqual(18, Items[0].Value.StartLine);
-  Assert.AreEqual(TAtlasProblemStore.cTestSource, Items[0].Value.Source);
-  Assert.IsTrue(Items[0].Value.Severity = TAtlasProblemSeverity.Error);
-  Assert.AreEqual('', Items[0].Value.Code, 'kein Regeltreffer');
-  Assert.AreEqual('Test TRechnerTests.Teilt fehlgeschlagen: EZeroDivide: Division durch 0', Items[1].Value.Message,
+  mFound := Failures(mReads);
+  mItems := TAtlasTestRun.Problems(mFound, 'Test %s fehlgeschlagen: %s', 'Test %s fehlgeschlagen: erwartet %s, erhalten %s');
+  Assert.AreEqual(2, Integer(Length(mItems)));
+  Assert.AreEqual(cUnitFile, mItems[0].Key);
+  Assert.AreEqual('Test TRechnerTests.Summe.Gross fehlgeschlagen: erwartet 30, erhalten 31', mItems[0].Value.Message);
+  Assert.AreEqual(18, mItems[0].Value.StartLine);
+  Assert.AreEqual(TAtlasProblemStore.cTestSource, mItems[0].Value.Source);
+  Assert.IsTrue(mItems[0].Value.Severity = TAtlasProblemSeverity.Error);
+  Assert.AreEqual('', mItems[0].Value.Code, 'kein Regeltreffer');
+  Assert.AreEqual('Test TRechnerTests.Teilt fehlgeschlagen: EZeroDivide: Division durch 0', mItems[1].Value.Message,
     'nur die erste Zeile');
   // Ohne Fundstelle kein Problem.
-  Found[1].FileName := '';
-  Assert.AreEqual(1, Integer(Length(TAtlasTestRun.Problems(Found, '%s %s', '%s %s %s'))));
+  mFound[1].FileName := '';
+  Assert.AreEqual(1, Integer(Length(TAtlasTestRun.Problems(mFound, '%s %s', '%s %s %s'))));
 end;
 
 procedure TAtlasTestRunTests.SummaryForWelcomePage;
 var
-  Target: TAtlasTestTarget;
-  Found: TArray<TAtlasTestFailure>;
-  Reads: Integer;
-  Tests: TAtlasProjectTests;
+  mTarget: TAtlasTestTarget;
+  mFound: TArray<TAtlasTestFailure>;
+  mReads: Integer;
+  mTests: TAtlasProjectTests;
 begin
-  Target := Default(TAtlasTestTarget);
-  Target.Project := 'C:\Projekt\Rechner.Tests.dproj';
-  Target.Configuration := 'Debug';
-  Target.Platform := 'Win64';
-  Found := Failures(Reads);
-  Tests := TAtlasTestRun.SummaryOf(Target, TTestResults.Parse(Report), Found, EncodeDate(2026, 10, 16));
-  Assert.IsTrue(Tests.Known);
-  Assert.AreEqual('Win64', Tests.Platform);
-  Assert.AreEqual(1, Tests.Passed);
-  Assert.AreEqual(1, Tests.Failed);
-  Assert.AreEqual(1, Tests.Errors);
-  Assert.AreEqual(500, Tests.DurationMs);
-  Assert.AreEqual(2, Integer(Length(Tests.Failures)));
-  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', Tests.Failures[0].Test, 'voller Name für --run');
-  Assert.AreEqual(19, Tests.Failures[0].Line, '1-basiert');
-  Assert.AreEqual(UnitFile, Tests.Failures[0].FileName);
-  Assert.AreEqual(2, Integer(Length(Tests.FailedTests)));
+  mTarget := Default(TAtlasTestTarget);
+  mTarget.Project := 'C:\Projekt\Rechner.Tests.dproj';
+  mTarget.Configuration := 'Debug';
+  mTarget.Platform := 'Win64';
+  mFound := Failures(mReads);
+  mTests := TAtlasTestRun.SummaryOf(mTarget, TTestResults.Parse(cReport), mFound, EncodeDate(2026, 10, 16));
+  Assert.IsTrue(mTests.Known);
+  Assert.AreEqual('Win64', mTests.Platform);
+  Assert.AreEqual(1, mTests.Passed);
+  Assert.AreEqual(1, mTests.Failed);
+  Assert.AreEqual(1, mTests.Errors);
+  Assert.AreEqual(500, mTests.DurationMs);
+  Assert.AreEqual(2, Integer(Length(mTests.Failures)));
+  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', mTests.Failures[0].Test, 'voller Name für --run');
+  Assert.AreEqual(19, mTests.Failures[0].Line, '1-basiert');
+  Assert.AreEqual(cUnitFile, mTests.Failures[0].FileName);
+  Assert.AreEqual(2, Integer(Length(mTests.FailedTests)));
 end;
 
 procedure TAtlasTestRunTests.StatusForLens;
 var
-  Cases: TArray<TTestCaseResult>;
+  mCases: TArray<TTestCaseResult>;
 begin
-  Cases := TTestResults.Parse(Report).Cases;
-  Assert.IsTrue(TAtlasTestRun.StatusOf(Cases, 'Rechner.Tests', 'TRechnerTests', 'Addiert') = TAtlasTestStatus.Passed);
-  Assert.IsTrue(TAtlasTestRun.StatusOf(Cases, 'Rechner.Tests', 'TRechnerTests', 'Summe') = TAtlasTestStatus.Failed,
+  mCases := TTestResults.Parse(cReport).Cases;
+  Assert.IsTrue(TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', 'Addiert') = TAtlasTestStatus.Passed);
+  Assert.IsTrue(TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', 'Summe') = TAtlasTestStatus.Failed,
     'ein Fall fehlgeschlagen');
-  Assert.IsTrue(TAtlasTestRun.StatusOf(Cases, 'Rechner.Tests', 'TRechnerTests', '') = TAtlasTestStatus.Failed,
+  Assert.IsTrue(TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', '') = TAtlasTestStatus.Failed,
     'Fixture mit Fehlschlag');
-  Assert.IsTrue(TAtlasTestRun.StatusOf(Cases, 'Rechner.Tests', 'TRechnerTests', 'Neu') = TAtlasTestStatus.Unknown);
-  Assert.IsTrue(TAtlasTestRun.StatusOf(Cases, 'Andere.Tests', 'TRechnerTests', 'Addiert') = TAtlasTestStatus.Unknown,
+  Assert.IsTrue(TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', 'Neu') = TAtlasTestStatus.Unknown);
+  Assert.IsTrue(TAtlasTestRun.StatusOf(mCases, 'Andere.Tests', 'TRechnerTests', 'Addiert') = TAtlasTestStatus.Unknown,
     'andere Unit');
   // Einzelner Fall (#585, Marke je [TestCase]).
-  Assert.IsTrue(TAtlasTestRun.StatusOf(Cases, 'Rechner.Tests', 'TRechnerTests', 'Summe', 'Gross') =
+  Assert.IsTrue(TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', 'Summe', 'Gross') =
     TAtlasTestStatus.Failed);
-  Assert.IsTrue(TAtlasTestRun.StatusOf(Cases, 'Rechner.Tests', 'TRechnerTests', 'Summe', 'Mittel') =
+  Assert.IsTrue(TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', 'Summe', 'Mittel') =
     TAtlasTestStatus.Unknown, 'Fall nicht im Bericht');
 end;
 

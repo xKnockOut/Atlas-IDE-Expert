@@ -31,7 +31,8 @@ type
     class procedure Hide; static;
     class procedure UpdateIcon; static;
     class procedure ApplyTheme; static;
-    /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt (#879).</summary>
+    /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt
+    /// (#879).</summary>
     class procedure Prepare; static;
     class procedure Release; static;
   end;
@@ -100,7 +101,7 @@ end;
 
 procedure TStartDock.FrameCreated(AFrame: TCustomFrame);
 var
-  Board: TAtlasWelcomeBoardFrame;
+  mBoard: TAtlasWelcomeBoardFrame;
 begin
   if not (AFrame is TAtlasWelcomeBoardFrame) then
   begin
@@ -110,12 +111,12 @@ begin
   begin
     Host.FrameCreated(AFrame);
   end;
-  Board := TAtlasWelcomeBoardFrame(AFrame);
+  mBoard := TAtlasWelcomeBoardFrame(AFrame);
   TAtlasIdeWelcomeWindow.UpdateIcon;
-  Theme(Board);
+  Theme(mBoard);
   if Assigned(TAtlasIdeWelcomeWindow.OnFrame) then
   begin
-    TAtlasIdeWelcomeWindow.OnFrame(Board);
+    TAtlasIdeWelcomeWindow.OnFrame(mBoard);
   end;
 end;
 
@@ -167,8 +168,8 @@ end;
 
 const
   // Fenstergröße beim ersten Öffnen (logische Pixel).
-  DefaultWidth = 410;
-  DefaultHeight = 530;
+  cDefaultWidth = 410;
+  cDefaultHeight = 530;
 
 procedure EnsureHost;
 begin
@@ -182,18 +183,18 @@ end;
 
 class function TAtlasIdeWelcomeWindow.Show: TAtlasWelcomeBoardFrame;
 var
-  Created: Boolean;
+  mCreated: Boolean;
 begin
   // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
   EnsureHost;
-  Host.Show(Created);
-  if Created then
+  Host.Show(mCreated);
+  if mCreated then
   begin
     // Vorgabe für das frei schwebende Fenster: alle Bereiche ohne Scrollen (410 × 530 bei 100 %).
     if Host.Form.Floating then
     begin
-      Host.Form.Width := MulDiv(DefaultWidth, Screen.PixelsPerInch, 96);
-      Host.Form.Height := MulDiv(DefaultHeight, Screen.PixelsPerInch, 96);
+      Host.Form.Width := MulDiv(cDefaultWidth, Screen.PixelsPerInch, 96);
+      Host.Form.Height := MulDiv(cDefaultHeight, Screen.PixelsPerInch, 96);
     end;
     UpdateIcon;
   end;
@@ -225,30 +226,30 @@ end;
 
 class procedure TAtlasIdeWelcomeWindow.UpdateIcon;
 var
-  Icon: TIcon;
+  mIcon: TIcon;
 begin
   if (Host = nil) or (Host.Form = nil) then
   begin
     Exit;
   end;
-  Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
+  mIcon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
-    TForm(Host.Form).Icon.Assign(Icon);
+    TForm(Host.Form).Icon.Assign(mIcon);
   finally
-    Icon.Free;
+    mIcon.Free;
   end;
 end;
 
 class procedure TAtlasIdeWelcomeWindow.ApplyTheme;
 var
-  Board: TAtlasWelcomeBoardFrame;
+  mBoard: TAtlasWelcomeBoardFrame;
 begin
-  Board := ExistingBoard;
-  if Board <> nil then
+  mBoard := ExistingBoard;
+  if mBoard <> nil then
   begin
-    Theme(Board);
-    Board.UpdateContent;
+    Theme(mBoard);
+    mBoard.UpdateContent;
   end;
   UpdateIcon;
 end;

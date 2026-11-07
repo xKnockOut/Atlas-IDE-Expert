@@ -169,7 +169,7 @@ function CaptionOf(const AConnection: string; const ATarget: TAtlasTrackerTarget
 var
   mProvider: string;
 begin
-  if SameText(ATarget.Provider, TAtlasTrackerTarget.GitHub) then
+  if SameText(ATarget.Provider, TAtlasTrackerTarget.cGitHub) then
   begin
     mProvider := 'GitHub';
   end

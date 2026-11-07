@@ -139,23 +139,23 @@ uses
 procedure TAtlasIdeOpenBuild.TIdeNotifier.FileNotification(NotifyCode: TOTAFileNotification;
   const FileName: string; var Cancel: Boolean);
 var
-  Owner: TAtlasIdeOpenBuild;
-  Name: string;
+  mOwner: TAtlasIdeOpenBuild;
+  mName: string;
 begin
-  Owner := FOwner;
-  if (Owner = nil) or not ((NotifyCode = ofnFileOpened) or (NotifyCode = ofnFileClosing)) or
+  mOwner := FOwner;
+  if (mOwner = nil) or not ((NotifyCode = ofnFileOpened) or (NotifyCode = ofnFileClosing)) or
     not TAtlasOpenBuild.IsProjectFile(FileName) then
   begin
     Exit;
   end;
-  Name := FileName;
+  mName := FileName;
   // Keine Exception an die IDE (#493).
   if NotifyCode = ofnFileOpened then
   begin
     TAtlasGuard.Run(TAtlasFeature.Build,
       procedure
       begin
-        Owner.Opened(Name);
+        mOwner.Opened(mName);
       end);
   end
   else
@@ -163,7 +163,7 @@ begin
     TAtlasGuard.Run(TAtlasFeature.Build,
       procedure
       begin
-        Owner.Closing(Name);
+        mOwner.Closing(mName);
       end);
   end;
 end;
@@ -209,7 +209,7 @@ end;
 
 procedure TAtlasIdeOpenBuild.TWatcher.ProjectStarted(const AProject: TAtlasCompileProject);
 begin
-  if (FOwner = nil) or AProject.Background or SameText(AProject.RequestedBy, TAtlasOpenBuild.RequestedBy) then
+  if (FOwner = nil) or AProject.Background or SameText(AProject.RequestedBy, TAtlasOpenBuild.cRequestedBy) then
   begin
     Exit;
   end;
@@ -223,7 +223,7 @@ begin
   begin
     Exit;
   end;
-  if SameText(AProject.RequestedBy, TAtlasOpenBuild.RequestedBy) then
+  if SameText(AProject.RequestedBy, TAtlasOpenBuild.cRequestedBy) then
   begin
     FOwner.FCore.ProjectFinished(AProject.FileName, ASucceeded);
     Exit;
@@ -237,7 +237,7 @@ end;
 
 procedure TAtlasIdeOpenBuild.TWatcher.CompileCancelled(const AProject: TAtlasCompileProject; const AReason: string);
 begin
-  if (FOwner <> nil) and SameText(AProject.RequestedBy, TAtlasOpenBuild.RequestedBy) then
+  if (FOwner <> nil) and SameText(AProject.RequestedBy, TAtlasOpenBuild.cRequestedBy) then
   begin
     FOwner.FCore.ProjectCancelled(AProject.FileName, AReason);
   end;
@@ -247,9 +247,9 @@ end;
 
 constructor TAtlasIdeOpenBuild.Create(AEvents: TAtlasCompileEvents; const AReport: TProc<string>);
 var
-  Services: IOTAServices;
-  Modules: IOTAModuleServices;
-  Group: IOTAProjectGroup;
+  mServices: IOTAServices;
+  mModules: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
 begin
   inherited Create;
   FEvents := AEvents;
@@ -260,23 +260,23 @@ begin
   // Der Dienst übernimmt den Wächter; Destroy meldet ihn ab (danach erreicht ihn kein Ereignis mehr, #1455).
   FEvents.Add(FWatcher);
   FNotifierIndex := -1;
-  if Supports(BorlandIDEServices, IOTAServices, Services) then
+  if Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
     FNotifier := TIdeNotifier.Create;
     FNotifier.FOwner := Self;
     FNotifierRef := FNotifier;
-    FNotifierIndex := Services.AddNotifier(FNotifierRef);
+    FNotifierIndex := mServices.AddNotifier(FNotifierRef);
   end;
   // Erster Start in dieser IDE-Sitzung: Eine schon geladene Gruppe gilt als eben geöffnet.
   if not FStartedOnce then
   begin
     FStartedOnce := True;
-    if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+    if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
     begin
-      Group := Modules.MainProjectGroup;
-      if (Group <> nil) and (Group.ProjectCount > 0) then
+      mGroup := mModules.MainProjectGroup;
+      if (mGroup <> nil) and (mGroup.ProjectCount > 0) then
       begin
-        FCore.Opened(Group.FileName, NowMs);
+        FCore.Opened(mGroup.FileName, NowMs);
       end;
     end;
   end;
@@ -288,7 +288,7 @@ end;
 
 destructor TAtlasIdeOpenBuild.Destroy;
 var
-  Services: IOTAServices;
+  mServices: IOTAServices;
 begin
   if FTimer <> nil then
   begin
@@ -300,16 +300,16 @@ begin
   begin
     FNotifier.FOwner := nil;
   end;
-  if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAServices, Services) then
+  if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
-    Services.RemoveNotifier(FNotifierIndex);
+    mServices.RemoveNotifier(FNotifierIndex);
   end;
   FNotifierRef := nil;
   FWatcher.FOwner := nil;
   FEvents.Remove(FWatcher);
   FWatcher := nil;
   RestoreTargets;
-  if FCore.Running and SameText(FEvents.RequestedBy, TAtlasOpenBuild.RequestedBy) then
+  if FCore.Running and SameText(FEvents.RequestedBy, TAtlasOpenBuild.cRequestedBy) then
   begin
     FEvents.RequestedBy := '';
   end;
@@ -324,19 +324,19 @@ end;
 
 class function TAtlasIdeOpenBuild.IdleMs: Int64;
 var
-  Info: TLastInputInfo;
-  Ticks: Cardinal;
+  mInfo: TLastInputInfo;
+  mTicks: Cardinal;
 begin
   // Zeit seit der letzten Eingabe in Windows; ohne Angabe gilt die IDE als ruhig.
-  Info.cbSize := SizeOf(Info);
-  if not GetLastInputInfo(Info) then
+  mInfo.cbSize := SizeOf(mInfo);
+  if not GetLastInputInfo(mInfo) then
   begin
     Exit(High(Integer));
   end;
-  Ticks := GetTickCount;
-  if Ticks >= Info.dwTime then
+  mTicks := GetTickCount;
+  if mTicks >= mInfo.dwTime then
   begin
-    Result := Ticks - Info.dwTime;
+    Result := mTicks - mInfo.dwTime;
   end
   else
   begin
@@ -346,9 +346,9 @@ end;
 
 class function TAtlasIdeOpenBuild.Debugging: Boolean;
 var
-  Debugger: IOTADebuggerServices;
+  mDebugger: IOTADebuggerServices;
 begin
-  Result := Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) and (Debugger.ProcessCount > 0);
+  Result := Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) and (mDebugger.ProcessCount > 0);
 end;
 
 procedure TAtlasIdeOpenBuild.Opened(const AFileName: string);
@@ -361,19 +361,19 @@ end;
 
 procedure TAtlasIdeOpenBuild.Closing(const AFileName: string);
 var
-  Modules: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  Index: Integer;
+  mModules: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+  mIndex: Integer;
 begin
   // Eine Gruppe gibt beim Schließen auch ihre Projekte frei (falls die IDE sie nicht einzeln meldet).
-  if TAtlasOpenBuild.IsGroupFile(AFileName) and Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if TAtlasOpenBuild.IsGroupFile(AFileName) and Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
-    Group := Modules.MainProjectGroup;
-    if (Group <> nil) and SameText(Group.FileName, AFileName) then
+    mGroup := mModules.MainProjectGroup;
+    if (mGroup <> nil) and SameText(mGroup.FileName, AFileName) then
     begin
-      for Index := 0 to Group.ProjectCount - 1 do
+      for mIndex := 0 to mGroup.ProjectCount - 1 do
       begin
-        FCore.Closed(Group.Projects[Index].FileName);
+        FCore.Closed(mGroup.Projects[mIndex].FileName);
       end;
     end;
   end;
@@ -383,31 +383,31 @@ end;
 class function TAtlasIdeOpenBuild.ResolveGroup(const AFileName: string; AScope: TAtlasOpenBuildScope;
   out AProjects, AMembers: TArray<string>): Boolean;
 var
-  Modules: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  Index: Integer;
+  mModules: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+  mIndex: Integer;
 begin
   AProjects := nil;
   AMembers := nil;
   Result := False;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
-  Group := Modules.MainProjectGroup;
-  if (Group = nil) or not SameText(Group.FileName, AFileName) or (Group.ProjectCount = 0) then
+  mGroup := mModules.MainProjectGroup;
+  if (mGroup = nil) or not SameText(mGroup.FileName, AFileName) or (mGroup.ProjectCount = 0) then
   begin
     Exit;
   end;
-  for Index := 0 to Group.ProjectCount - 1 do
+  for mIndex := 0 to mGroup.ProjectCount - 1 do
   begin
-    AMembers := AMembers + [Group.Projects[Index].FileName];
+    AMembers := AMembers + [mGroup.Projects[mIndex].FileName];
   end;
   if AScope = TAtlasOpenBuildScope.Active then
   begin
-    if Group.ActiveProject <> nil then
+    if mGroup.ActiveProject <> nil then
     begin
-      AProjects := [Group.ActiveProject.FileName];
+      AProjects := [mGroup.ActiveProject.FileName];
     end;
   end
   else
@@ -419,17 +419,17 @@ end;
 
 class function TAtlasIdeOpenBuild.FindProject(const AFileName: string): IOTAProject;
 var
-  Modules: IOTAModuleServices;
+  mModules: IOTAModuleServices;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
   // Die IDE kennt das Projekt meist unter der .dproj, die .dpr/.dpk nur als Quelltext.
-  if not Supports(Modules.FindModule(AFileName), IOTAProject, Result) then
+  if not Supports(mModules.FindModule(AFileName), IOTAProject, Result) then
   begin
-    if not Supports(Modules.FindModule(ChangeFileExt(AFileName, '.dproj')), IOTAProject, Result) then
+    if not Supports(mModules.FindModule(ChangeFileExt(AFileName, '.dproj')), IOTAProject, Result) then
     begin
       Result := nil;
     end;
@@ -438,7 +438,7 @@ end;
 
 procedure TAtlasIdeOpenBuild.Tick(Sender: TObject);
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
   try
     // Läuft auch in der modalen Schleife des Compilers weiter.
@@ -459,8 +459,8 @@ begin
       end;
       Exit;
     end;
-    Settings := TAtlasIdeSettings.Current;
-    if not Settings.BuildOnOpen then
+    mSettings := TAtlasIdeSettings.Current;
+    if not mSettings.BuildOnOpen then
     begin
       Exit;
     end;
@@ -469,7 +469,7 @@ begin
     begin
       Exit;
     end;
-    if FCore.Due(NowMs, Settings.BuildOnOpenDelayMs, IdleMs, Debugging) then
+    if FCore.Due(NowMs, mSettings.BuildOnOpenDelayMs, IdleMs, Debugging) then
     begin
       Run;
     end;
@@ -687,17 +687,17 @@ end;
 
 procedure TAtlasIdeOpenBuild.RestoreTargets;
 var
-  Switch: TSwitch;
+  mSwitch: TSwitch;
 begin
-  for Switch in FSwitched do
+  for mSwitch in FSwitched do
     try
-      if not SameText(Switch.Project.CurrentConfiguration, Switch.Configuration) then
+      if not SameText(mSwitch.Project.CurrentConfiguration, mSwitch.Configuration) then
       begin
-        Switch.Project.CurrentConfiguration := Switch.Configuration;
+        mSwitch.Project.CurrentConfiguration := mSwitch.Configuration;
       end;
-      if not SameText(Switch.Project.CurrentPlatform, Switch.Platform) then
+      if not SameText(mSwitch.Project.CurrentPlatform, mSwitch.Platform) then
       begin
-        Switch.Project.CurrentPlatform := Switch.Platform;
+        mSwitch.Project.CurrentPlatform := mSwitch.Platform;
       end;
     except
       // Ein inzwischen geschlossenes Projekt hält die anderen nicht auf (#493).
@@ -709,14 +709,14 @@ end;
 
 procedure TAtlasIdeOpenBuild.Compile(const AProjects: TArray<IOTAProject>; const AFiles: TArray<string>);
 const
-  Modes: array[TAtlasCompileKind] of TOTACompileMode = (cmOTAMake, cmOTABuild, cmOTACheck, cmOTAMakeUnit,
+  cModes: array[TAtlasCompileKind] of TOTACompileMode = (cmOTAMake, cmOTABuild, cmOTACheck, cmOTAMakeUnit,
     cmOTAClean, cmOTALink);
 var
-  CompileServices: IOTACompileServices;
-  Outcome: TOTACompileResult;
-  Activity: IInterface;
+  mCompileServices: IOTACompileServices;
+  mOutcome: TOTACompileResult;
+  mActivity: IInterface;
 begin
-  if not Supports(BorlandIDEServices, IOTACompileServices, CompileServices) then
+  if not Supports(BorlandIDEServices, IOTACompileServices, mCompileServices) then
   begin
     Exit;
   end;
@@ -724,13 +724,13 @@ begin
   FStartedAt := NowMs;
   FWaiting := False;
   // Bis zum Ende des Laufs (auch im Hintergrund) tragen die Compile-Ereignisse den Auftraggeber "open".
-  FEvents.RequestedBy := TAtlasOpenBuild.RequestedBy;
-  Activity := TAtlasActivity.Scope('Bauen beim Öffnen');
+  FEvents.RequestedBy := TAtlasOpenBuild.cRequestedBy;
+  mActivity := TAtlasActivity.Scope('Bauen beim Öffnen');
   FCompiling := True;
   try
     try
       ApplyTargets(AProjects);
-      Outcome := CompileServices.CompileProjects(AProjects, Modes[FKind], False, True);
+      mOutcome := mCompileServices.CompileProjects(AProjects, cModes[FKind], False, True);
     finally
       FCompiling := False;
     end;
@@ -742,7 +742,7 @@ begin
       Exit;
     end;
   end;
-  if (Outcome = crOTABackground) and FCore.Running and not FCore.RunComplete then
+  if (mOutcome = crOTABackground) and FCore.Running and not FCore.RunComplete then
   begin
     FWaiting := True;
   end
@@ -803,7 +803,7 @@ begin
   FWaiting := False;
   // Erst nach dem ganzen Lauf, auch im Hintergrund: Die Auswahl des Benutzers kommt zurück (#1293).
   RestoreTargets;
-  if SameText(FEvents.RequestedBy, TAtlasOpenBuild.RequestedBy) then
+  if SameText(FEvents.RequestedBy, TAtlasOpenBuild.cRequestedBy) then
   begin
     FEvents.RequestedBy := '';
   end;

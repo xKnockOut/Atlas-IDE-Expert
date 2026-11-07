@@ -153,7 +153,8 @@ begin
   FFinishedEvent := TEvent.Create(nil, False, False, '');
   FOthers := TObjectList<TShellWorkspace>.Create(True);
   FCacheRoot := TIndexCacheDirectory.DefaultRoot;
-  FMain := TShellWorkspace.Create(ARoot, ExtractFileName(ARoot), TShellWorkspaceServices.Create(AStore, FTransport, ALogger,
+  FMain := TShellWorkspace.Create(ARoot, ExtractFileName(ARoot),
+    TShellWorkspaceServices.Create(AStore, FTransport, ALogger,
     AIndex, AProgressToken));
   FUsesGraph := TUsesGraphService.Create(AIndex, TUsesGraphOptions.Default);
   FQueries := TCodeQueryService.Create(QuerySource);
@@ -201,9 +202,9 @@ end;
 
 procedure TShellWorkspaceGroup.Load(const AGlobalSettings: string);
 var
-  Info: TProjectInfo;
-  ProjectFile: string;
-  Other: TShellWorkspace;
+  mInfo: TProjectInfo;
+  mProjectFile: string;
+  mOther: TShellWorkspace;
 begin
   Prepare(FMain);
   FMain.Load(AGlobalSettings);
@@ -213,72 +214,72 @@ begin
   begin
     Exit;
   end;
-  for ProjectFile in TShellBootstrap.GroupProjects(FRoot, FLogger) do
+  for mProjectFile in TShellBootstrap.GroupProjects(FRoot, FLogger) do
   begin
-    if FMain.State.Project(Info) and SameText(Info.FileName, ProjectFile) then
+    if FMain.State.Project(mInfo) and SameText(mInfo.FileName, mProjectFile) then
     begin
       Continue;
     end;
-    Other := TShellWorkspace.Create(ExtractFileDir(ProjectFile), ChangeFileExt(ExtractFileName(ProjectFile), ''),
+    mOther := TShellWorkspace.Create(ExtractFileDir(mProjectFile), ChangeFileExt(ExtractFileName(mProjectFile), ''),
       TShellWorkspaceServices.Create(FStore, FTransport, FLogger, FIndex, Format('%s-%d', [FProgressToken,
       FOthers.Count + 1])));
-    Other.Setup.ProjectFile := ProjectFile;
-    Prepare(Other);
-    FOthers.Add(Other);
-    Other.Load(AGlobalSettings);
+    mOther.Setup.ProjectFile := mProjectFile;
+    Prepare(mOther);
+    FOthers.Add(mOther);
+    mOther.Load(AGlobalSettings);
   end;
 end;
 
 procedure TShellWorkspaceGroup.Stop;
 var
-  Workspace: TShellWorkspace;
+  mWorkspace: TShellWorkspace;
 begin
-  for Workspace in FOthers do
+  for mWorkspace in FOthers do
   begin
-    Workspace.Stop;
+    mWorkspace.Stop;
   end;
   FMain.Stop;
 end;
 
 function TShellWorkspaceGroup.Workspaces: TArray<TShellWorkspace>;
 var
-  Other: TShellWorkspace;
+  mOther: TShellWorkspace;
 begin
   Result := [FMain];
-  for Other in FOthers do
+  for mOther in FOthers do
   begin
-    Result := Result + [Other];
+    Result := Result + [mOther];
   end;
 end;
 
 function TShellWorkspaceGroup.WaitForIndex(ATimeoutMs: Cardinal): Boolean;
 var
-  Workspace: TShellWorkspace;
-  Info: TProjectInfo;
-  Watch: TStopwatch;
-  Missing: Boolean;
+  mWorkspace: TShellWorkspace;
+  mInfo: TProjectInfo;
+  mWatch: TStopwatch;
+  mMissing: Boolean;
 begin
-  Watch := TStopwatch.StartNew;
+  mWatch := TStopwatch.StartNew;
   repeat
     // Nur Arbeitsbereiche mit Projekt bauen einen Index; ohne Projekt gibt es nichts abzuwarten.
-    Missing := False;
+    mMissing := False;
     System.TMonitor.Enter(FLock);
     try
-      for Workspace in Workspaces do
+      for mWorkspace in Workspaces do
       begin
-        if Workspace.State.Project(Info) and not FFinished.Contains(Workspace) then
+        if mWorkspace.State.Project(mInfo) and not FFinished.Contains(mWorkspace) then
         begin
-          Missing := True;
+          mMissing := True;
         end;
       end;
     finally
       System.TMonitor.Exit(FLock);
     end;
-    if not Missing then
+    if not mMissing then
     begin
       Exit(True);
     end;
-    if Watch.ElapsedMilliseconds >= ATimeoutMs then
+    if mWatch.ElapsedMilliseconds >= ATimeoutMs then
     begin
       Exit(False);
     end;
@@ -288,12 +289,12 @@ end;
 
 function TShellWorkspaceGroup.Ready(out AReason: string): Boolean;
 var
-  Workspace: TShellWorkspace;
+  mWorkspace: TShellWorkspace;
 begin
   AReason := '';
-  for Workspace in Workspaces do
+  for mWorkspace in Workspaces do
   begin
-    if not Workspace.RuleReady(AReason) then
+    if not mWorkspace.RuleReady(AReason) then
     begin
       Exit(False);
     end;
@@ -303,22 +304,22 @@ end;
 
 function TShellWorkspaceGroup.AllFiles: TArray<string>;
 var
-  Workspace: TShellWorkspace;
+  mWorkspace: TShellWorkspace;
 begin
   Result := nil;
-  for Workspace in Workspaces do
+  for mWorkspace in Workspaces do
   begin
-    Result := Result + Workspace.State.ProjectFiles;
+    Result := Result + mWorkspace.State.ProjectFiles;
   end;
 end;
 
 function TShellWorkspaceGroup.EnsureUnit(const AUnitName: string): Boolean;
 var
-  Workspace: TShellWorkspace;
+  mWorkspace: TShellWorkspace;
 begin
-  for Workspace in Workspaces do
+  for mWorkspace in Workspaces do
   begin
-    if Workspace.EnsureUnit(AUnitName) then
+    if mWorkspace.EnsureUnit(AUnitName) then
     begin
       Exit(True);
     end;
@@ -328,13 +329,13 @@ end;
 
 function TShellWorkspaceGroup.WorkspaceOf(const AFileName: string): TShellWorkspace;
 var
-  Workspace: TShellWorkspace;
+  mWorkspace: TShellWorkspace;
 begin
-  for Workspace in Workspaces do
+  for mWorkspace in Workspaces do
   begin
-    if Workspace.State.ContainsFile(AFileName) then
+    if mWorkspace.State.ContainsFile(AFileName) then
     begin
-      Exit(Workspace);
+      Exit(mWorkspace);
     end;
   end;
   Result := FMain;
@@ -352,9 +353,9 @@ end;
 
 function TShellWorkspaceGroup.RuleProjects: TArray<TRuleProject>;
 var
-  Workspace: TShellWorkspace;
-  Project: TRuleProject;
-  MainSource: string;
+  mWorkspace: TShellWorkspace;
+  mProject: TRuleProject;
+  mMainSource: string;
 begin
   System.TMonitor.Enter(FLock);
   try
@@ -366,11 +367,11 @@ begin
     System.TMonitor.Exit(FLock);
   end;
   Result := nil;
-  for Workspace in Workspaces do
+  for mWorkspace in Workspaces do
   begin
-    if Workspace.State.RuleProject(Project, MainSource) then
+    if mWorkspace.State.RuleProject(mProject, mMainSource) then
     begin
-      Result := Result + [TRuleProjectFiles.ProjectOf(Project.FileName, MainSource, Project.Sources, FReadText)];
+      Result := Result + [TRuleProjectFiles.ProjectOf(mProject.FileName, mMainSource, mProject.Sources, FReadText)];
     end;
   end;
   System.TMonitor.Enter(FLock);
@@ -384,27 +385,27 @@ end;
 
 function TShellWorkspaceGroup.RuleProject(const AFileName: string): TCheckProject;
 var
-  Workspace, Other: TShellWorkspace;
-  Info: TProjectInfo;
-  Projects: TArray<TProjectInfo>;
+  mWorkspace, mOther: TShellWorkspace;
+  mInfo: TProjectInfo;
+  mProjects: TArray<TProjectInfo>;
 begin
   // Alle Projekte der Gruppe, die die Datei enthalten, das gewählte zuerst: Eine Unit im Testprogramm und
   // im Package hat keine eindeutige Anwendungsart (MergeRuleProjects).
-  Workspace := WorkspaceOf(AFileName);
-  Projects := nil;
-  if Workspace.State.Project(Info) then
+  mWorkspace := WorkspaceOf(AFileName);
+  mProjects := nil;
+  if mWorkspace.State.Project(mInfo) then
   begin
-    Projects := Projects + [Info];
+    mProjects := mProjects + [mInfo];
   end;
-  for Other in Workspaces do
+  for mOther in Workspaces do
   begin
-    if (Other <> Workspace) and Other.State.ContainsFile(AFileName) and Other.State.Project(Info) then
+    if (mOther <> mWorkspace) and mOther.State.ContainsFile(AFileName) and mOther.State.Project(mInfo) then
     begin
-      Projects := Projects + [Info];
+      mProjects := mProjects + [mInfo];
     end;
   end;
-  Result := TShellRuleProjects.RuleProjectOf(Projects, AFileName, FReadText);
-  Result.Services := Workspace.RuleServices;
+  Result := TShellRuleProjects.RuleProjectOf(mProjects, AFileName, FReadText);
+  Result.Services := mWorkspace.RuleServices;
   // Nachladen über alle Projekte der Gruppe und projektweite Regeln (#1102) wie im Server.
   Result.Services.EnsureUnit :=
     function(const AUnitName: string): Boolean

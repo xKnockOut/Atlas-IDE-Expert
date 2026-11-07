@@ -12,7 +12,7 @@ uses
 type
   TAtlasPluginVersion = class
   public const
-    cVersion = TAtlasVersion.Version;
+    cVersion = TAtlasVersion.cVersion;
   end;
 
 implementation

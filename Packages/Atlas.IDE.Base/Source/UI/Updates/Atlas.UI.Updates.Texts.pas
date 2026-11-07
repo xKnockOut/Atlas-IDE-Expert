@@ -30,11 +30,11 @@ uses
   Atlas.UI.Updates.Strings;
 
 const
-  cCodes: array[0..17] of string = (TUpdateErrors.Manifest, TUpdateErrors.VersionChanged, TUpdateErrors.NoPackage,
-    TUpdateErrors.NoCompiler, TUpdateErrors.Download, TUpdateErrors.Hash, TUpdateErrors.Archive,
-    TUpdateErrors.Unsigned, TUpdateErrors.Signature, TUpdateErrors.Build, TUpdateErrors.Locked,
-    TUpdateErrors.CopyFailed, TUpdateErrors.Registry, TUpdateErrors.Cancelled, TUpdateErrors.Elevation,
-    TUpdateErrors.Selection, TUpdateErrors.Unexpected, TAtlasUpdateInstall.cStartFailed);
+  cCodes: array[0..17] of string = (TUpdateErrors.cManifest, TUpdateErrors.cVersionChanged, TUpdateErrors.cNoPackage,
+    TUpdateErrors.cNoCompiler, TUpdateErrors.cDownload, TUpdateErrors.cHash, TUpdateErrors.cArchive,
+    TUpdateErrors.cUnsigned, TUpdateErrors.cSignature, TUpdateErrors.cBuild, TUpdateErrors.cLocked,
+    TUpdateErrors.cCopyFailed, TUpdateErrors.cRegistry, TUpdateErrors.cCancelled, TUpdateErrors.cElevation,
+    TUpdateErrors.cSelection, TUpdateErrors.cUnexpected, TAtlasUpdateInstall.cStartFailed);
   cCodeTexts: array[0..17] of TAtlasUpdatesTextId = (
     TAtlasUpdatesTextId.UpdatesErrorManifest, TAtlasUpdatesTextId.UpdatesErrorVersion,
     TAtlasUpdatesTextId.UpdatesErrorNoPackage, TAtlasUpdatesTextId.UpdatesErrorNoCompiler,

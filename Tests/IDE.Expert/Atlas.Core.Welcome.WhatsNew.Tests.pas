@@ -50,7 +50,7 @@ type
 implementation
 
 const
-  Sample =
+  cSample =
     '{"versions": [' +
     '{"version": "1.1.0", "items": [' +
     '  {"title": "Suchfeld", "text": "Sucht Projekte und Dateien.", "setting": "WelcomePageSearch",' +
@@ -61,36 +61,36 @@ const
 
 function Versions: TAtlasWhatsNewVersions;
 begin
-  Result := TAtlasWhatsNew.Parse(Sample);
+  Result := TAtlasWhatsNew.Parse(cSample);
 end;
 
 function Names(const AVersions: TAtlasWhatsNewVersions): string;
 var
-  Version: TAtlasWhatsNewVersion;
+  mVersion: TAtlasWhatsNewVersion;
 begin
   Result := '';
-  for Version in AVersions do
+  for mVersion in AVersions do
   begin
     if Result <> '' then
     begin
       Result := Result + ',';
     end;
-    Result := Result + Version.Version;
+    Result := Result + mVersion.Version;
   end;
 end;
 
 function Titles(const AItems: TArray<TAtlasWhatsNewItem>): string;
 var
-  Item: TAtlasWhatsNewItem;
+  mItem: TAtlasWhatsNewItem;
 begin
   Result := '';
-  for Item in AItems do
+  for mItem in AItems do
   begin
     if Result <> '' then
     begin
       Result := Result + ',';
     end;
-    Result := Result + Item.Title;
+    Result := Result + mItem.Title;
   end;
 end;
 
@@ -98,43 +98,43 @@ end;
 
 procedure TAtlasWhatsNewTests.ExperimentalItemsComeLast;
 var
-  Parsed: TAtlasWhatsNewVersions;
-  Items: TArray<TAtlasWhatsNewItem>;
+  mParsed: TAtlasWhatsNewVersions;
+  mItems: TArray<TAtlasWhatsNewItem>;
 begin
   // #834: experimental als Wahrheitswert oder Text; ohne Feld nicht experimentell.
-  Parsed := TAtlasWhatsNew.Parse('{"versions": [{"version": "1.1.0", "items": [' +
+  mParsed := TAtlasWhatsNew.Parse('{"versions": [{"version": "1.1.0", "items": [' +
     '{"title": "Mehrfachcursor", "experimental": true}, {"title": "Suche"},' +
     '{"title": "Live-Umbenennen", "experimental": "true"}, {"title": "Karte", "experimental": false}]}]}');
-  Assert.AreEqual(4, Integer(Length(Parsed[0].Items)));
-  Assert.IsTrue(Parsed[0].Items[0].Experimental);
-  Assert.IsFalse(Parsed[0].Items[1].Experimental);
-  Assert.IsTrue(Parsed[0].Items[2].Experimental);
-  Assert.IsFalse(Parsed[0].Items[3].Experimental);
-  Items := TAtlasWhatsNew.Ordered(Parsed[0].Items);
-  Assert.AreEqual('Suche,Karte,Mehrfachcursor,Live-Umbenennen', Titles(Items));
+  Assert.AreEqual(4, Integer(Length(mParsed[0].Items)));
+  Assert.IsTrue(mParsed[0].Items[0].Experimental);
+  Assert.IsFalse(mParsed[0].Items[1].Experimental);
+  Assert.IsTrue(mParsed[0].Items[2].Experimental);
+  Assert.IsFalse(mParsed[0].Items[3].Experimental);
+  mItems := TAtlasWhatsNew.Ordered(mParsed[0].Items);
+  Assert.AreEqual('Suche,Karte,Mehrfachcursor,Live-Umbenennen', Titles(mItems));
   Assert.AreEqual('', Titles(TAtlasWhatsNew.Ordered(nil)));
 end;
 
 procedure TAtlasWhatsNewTests.ParsesAllFields;
 var
-  Parsed: TAtlasWhatsNewVersions;
-  Item: TAtlasWhatsNewItem;
+  mParsed: TAtlasWhatsNewVersions;
+  mItem: TAtlasWhatsNewItem;
 begin
-  Parsed := Versions;
-  Assert.AreEqual('1.1.0', Parsed[1].Version);
-  Assert.AreEqual(2, Integer(Length(Parsed[1].Items)));
-  Item := Parsed[1].Items[0];
-  Assert.AreEqual('Suchfeld', Item.Title);
-  Assert.AreEqual('Sucht Projekte und Dateien.', Item.Text);
-  Assert.AreEqual('WelcomePageSearch', Item.Setting);
-  Assert.AreEqual('WelcomePageSearchKey', Item.Key);
-  Assert.AreEqual('Atlas.WelcomeStart', Item.Command);
-  Assert.AreEqual('', Item.Sample);
-  Assert.AreEqual(0, Item.Line);
-  Item := Parsed[1].Items[1];
-  Assert.AreEqual('Beispiele\Neu.pas', Item.Sample);
-  Assert.AreEqual(12, Item.Line);
-  Assert.AreEqual('', Item.Setting);
+  mParsed := Versions;
+  Assert.AreEqual('1.1.0', mParsed[1].Version);
+  Assert.AreEqual(2, Integer(Length(mParsed[1].Items)));
+  mItem := mParsed[1].Items[0];
+  Assert.AreEqual('Suchfeld', mItem.Title);
+  Assert.AreEqual('Sucht Projekte und Dateien.', mItem.Text);
+  Assert.AreEqual('WelcomePageSearch', mItem.Setting);
+  Assert.AreEqual('WelcomePageSearchKey', mItem.Key);
+  Assert.AreEqual('Atlas.WelcomeStart', mItem.Command);
+  Assert.AreEqual('', mItem.Sample);
+  Assert.AreEqual(0, mItem.Line);
+  mItem := mParsed[1].Items[1];
+  Assert.AreEqual('Beispiele\Neu.pas', mItem.Sample);
+  Assert.AreEqual(12, mItem.Line);
+  Assert.AreEqual('', mItem.Setting);
 end;
 
 procedure TAtlasWhatsNewTests.EnglishFieldsWithFallback;
@@ -157,21 +157,21 @@ end;
 
 procedure TAtlasWhatsNewTests.SortsNewestFirstAndDropsEmpty;
 var
-  Parsed: TAtlasWhatsNewVersions;
+  mParsed: TAtlasWhatsNewVersions;
 begin
   Assert.AreEqual('1.2.0,1.1.0,1.0.0', Names(Versions));
   // Version ohne Einträge, Eintrag ohne Titel, Version ohne Namen und fremde Werte fallen weg.
-  Parsed := TAtlasWhatsNew.Parse('{"versions": [{"version": "2.0.0", "items": []},' +
+  mParsed := TAtlasWhatsNew.Parse('{"versions": [{"version": "2.0.0", "items": []},' +
     '{"version": "1.9.0", "items": [{"text": "ohne Titel"}, 5, {"title": " Mit "}]},' +
     '{"items": [{"title": "ohne Version"}]}, "Text", {"version": "1.8.0"}]}');
-  Assert.AreEqual('1.9.0', Names(Parsed));
-  Assert.AreEqual(1, Integer(Length(Parsed[0].Items)));
-  Assert.AreEqual('Mit', Parsed[0].Items[0].Title);
+  Assert.AreEqual('1.9.0', Names(mParsed));
+  Assert.AreEqual(1, Integer(Length(mParsed[0].Items)));
+  Assert.AreEqual('Mit', mParsed[0].Items[0].Title);
   // Zeile als Text und negative Zeile.
-  Parsed := TAtlasWhatsNew.Parse('{"versions": [{"version": "1.0.0", "items": [{"title": "A", "line": "7"},' +
+  mParsed := TAtlasWhatsNew.Parse('{"versions": [{"version": "1.0.0", "items": [{"title": "A", "line": "7"},' +
     '{"title": "B", "line": -3}]}]}');
-  Assert.AreEqual(7, Parsed[0].Items[0].Line);
-  Assert.AreEqual(0, Parsed[0].Items[1].Line);
+  Assert.AreEqual(7, mParsed[0].Items[0].Line);
+  Assert.AreEqual(0, mParsed[0].Items[1].Line);
 end;
 
 procedure TAtlasWhatsNewTests.InvalidJsonGivesNothing;
@@ -264,11 +264,11 @@ end;
 
 procedure TAtlasWhatsNewTests.ModeNamesRoundTrip;
 var
-  Mode: TAtlasWhatsNewMode;
+  mMode: TAtlasWhatsNewMode;
 begin
-  for Mode := Low(TAtlasWhatsNewMode) to High(TAtlasWhatsNewMode) do
+  for mMode := Low(TAtlasWhatsNewMode) to High(TAtlasWhatsNewMode) do
   begin
-    Assert.IsTrue(TAtlasWhatsNew.ModeOf(TAtlasWhatsNew.ModeName(Mode)) = Mode);
+    Assert.IsTrue(TAtlasWhatsNew.ModeOf(TAtlasWhatsNew.ModeName(mMode)) = mMode);
   end;
   Assert.IsTrue(TAtlasWhatsNew.ModeOf('ALWAYS') = TAtlasWhatsNewMode.Always);
   Assert.IsTrue(TAtlasWhatsNew.ModeOf('irgendwas') = TAtlasWhatsNewMode.AfterUpdate);
@@ -283,28 +283,28 @@ end;
 
 procedure TAtlasWhatsNewTests.AnnouncedItemsJoinTheirVersion;
 var
-  Known, Joined: TAtlasWhatsNewVersions;
+  mKnown, mJoined: TAtlasWhatsNewVersions;
 begin
   // Neue Bereiche nach einem Update (#767) kommen zur laufenden Version, ohne doppelte Titel.
-  SetLength(Known, 2);
-  Known[0].Version := '1.3.0';
-  Known[0].Items := [Item('A')];
-  Known[1].Version := '1.1.0';
-  Known[1].Items := [Item('B')];
-  Joined := TAtlasWhatsNew.WithItems(Known, '1.3.0', [Item('Neu'), Item('a'), Item('')]);
-  Assert.AreEqual(2, Integer(Length(Joined)));
-  Assert.AreEqual(2, Integer(Length(Joined[0].Items)), 'gleicher Titel und leerer Titel fallen weg');
-  Assert.AreEqual('Neu', Joined[0].Items[1].Title);
-  Assert.AreEqual(1, Integer(Length(Known[0].Items)), 'Eingabe unverändert');
+  SetLength(mKnown, 2);
+  mKnown[0].Version := '1.3.0';
+  mKnown[0].Items := [Item('A')];
+  mKnown[1].Version := '1.1.0';
+  mKnown[1].Items := [Item('B')];
+  mJoined := TAtlasWhatsNew.WithItems(mKnown, '1.3.0', [Item('Neu'), Item('a'), Item('')]);
+  Assert.AreEqual(2, Integer(Length(mJoined)));
+  Assert.AreEqual(2, Integer(Length(mJoined[0].Items)), 'gleicher Titel und leerer Titel fallen weg');
+  Assert.AreEqual('Neu', mJoined[0].Items[1].Title);
+  Assert.AreEqual(1, Integer(Length(mKnown[0].Items)), 'Eingabe unverändert');
   // Unbekannte Version: neu angelegt, neueste zuerst.
-  Joined := TAtlasWhatsNew.WithItems(Known, '1.2.0', [Item('Neu')]);
-  Assert.AreEqual(3, Integer(Length(Joined)));
-  Assert.AreEqual('1.2.0', Joined[1].Version);
-  Joined := TAtlasWhatsNew.WithItems(Known, '2.0.0', [Item('Neu')]);
-  Assert.AreEqual('2.0.0', Joined[0].Version);
+  mJoined := TAtlasWhatsNew.WithItems(mKnown, '1.2.0', [Item('Neu')]);
+  Assert.AreEqual(3, Integer(Length(mJoined)));
+  Assert.AreEqual('1.2.0', mJoined[1].Version);
+  mJoined := TAtlasWhatsNew.WithItems(mKnown, '2.0.0', [Item('Neu')]);
+  Assert.AreEqual('2.0.0', mJoined[0].Version);
   // Nichts Neues: keine leere Version.
-  Joined := TAtlasWhatsNew.WithItems(Known, '1.2.0', [Item('')]);
-  Assert.AreEqual(2, Integer(Length(Joined)));
+  mJoined := TAtlasWhatsNew.WithItems(mKnown, '1.2.0', [Item('')]);
+  Assert.AreEqual(2, Integer(Length(mJoined)));
 end;
 
 initialization

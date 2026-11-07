@@ -38,10 +38,10 @@ type
 
   TAtlasWelcomeHelpFrame = class(TAtlasWelcomeSectionFrame)
   public const
-    Indent = 8;
-    Gap = 8;
-    ButtonHeight = 24;
-    ButtonPadding = 16;
+    cIndent = 8;
+    cGap = 8;
+    cButtonHeight = 24;
+    cButtonPadding = 16;
   private
     FSource: IAtlasHelpSource;
     FButtons: array[TAtlasHelpButton] of TButton;
@@ -79,16 +79,16 @@ uses
 
 constructor TAtlasWelcomeHelpFrame.Create(AOwner: TComponent);
 var
-  Kind: TAtlasHelpButton;
+  mKind: TAtlasHelpButton;
 begin
   inherited Create(AOwner);
-  for Kind := Low(TAtlasHelpButton) to High(TAtlasHelpButton) do
+  for mKind := Low(TAtlasHelpButton) to High(TAtlasHelpButton) do
   begin
-    FButtons[Kind] := TButton.Create(Self);
-    FButtons[Kind].Parent := Body;
-    FButtons[Kind].Caption := ButtonCaption(Kind);
-    FButtons[Kind].Tag := Ord(Kind);
-    FButtons[Kind].OnClick := ButtonClick;
+    FButtons[mKind] := TButton.Create(Self);
+    FButtons[mKind].Parent := Body;
+    FButtons[mKind].Caption := ButtonCaption(mKind);
+    FButtons[mKind].Tag := Ord(mKind);
+    FButtons[mKind].OnClick := ButtonClick;
   end;
   FNote := TLabel.Create(Self);
   FNote.Parent := Body;
@@ -131,19 +131,19 @@ end;
 
 procedure TAtlasWelcomeHelpFrame.UpdateContent;
 var
-  Kind: TAtlasHelpButton;
-  Keys: Boolean;
-  OldHeight: Integer;
+  mKind: TAtlasHelpButton;
+  mKeys: Boolean;
+  mOldHeight: Integer;
 begin
-  OldHeight := FContentHeight;
-  Keys := (FSource <> nil) and FSource.KeysAvailable;
-  for Kind := Low(TAtlasHelpButton) to High(TAtlasHelpButton) do
+  mOldHeight := FContentHeight;
+  mKeys := (FSource <> nil) and FSource.KeysAvailable;
+  for mKind := Low(TAtlasHelpButton) to High(TAtlasHelpButton) do
   begin
-    FButtons[Kind].Enabled := (FSource <> nil) and TAtlasHelp.Enabled(Kind, Keys);
+    FButtons[mKind].Enabled := (FSource <> nil) and TAtlasHelp.Enabled(mKind, mKeys);
   end;
   Arrange;
   inherited;
-  if OldHeight <> FContentHeight then
+  if mOldHeight <> FContentHeight then
   begin
     HeightChanged;
   end;
@@ -151,12 +151,12 @@ end;
 
 procedure TAtlasWelcomeHelpFrame.BodyResize(Sender: TObject);
 var
-  OldHeight: Integer;
+  mOldHeight: Integer;
 begin
-  OldHeight := FContentHeight;
+  mOldHeight := FContentHeight;
   Arrange;
   // Andere Reihen bei neuer Breite: Der Frame „Atlas“ ordnet die Spalten neu.
-  if OldHeight <> FContentHeight then
+  if mOldHeight <> FContentHeight then
   begin
     HeightChanged;
   end;
@@ -164,9 +164,9 @@ end;
 
 procedure TAtlasWelcomeHelpFrame.Arrange;
 var
-  mLeft, Right, ButtonLeft, ButtonTop, ButtonWidth: Integer;
-  Kind: TAtlasHelpButton;
-  Measure: TBitmap;
+  mLeft, mRight, mButtonLeft, mButtonTop, mButtonWidth: Integer;
+  mKind: TAtlasHelpButton;
+  mMeasure: TBitmap;
 begin
   // Ohne Fenster lässt sich kein Text messen; CreateWnd holt UpdateContent nach.
   if FArranging or (FNote = nil) or not HasWindow then
@@ -176,29 +176,29 @@ begin
   FArranging := True;
   try
     // Breite des Frames statt der Inhaltsfläche: Die richtet sich erst später nach dem Frame aus.
-    mLeft := ScaleValue(Indent);
-    Right := ClientWidth - ScaleValue(Indent);
-    ButtonLeft := mLeft;
-    ButtonTop := ScaleValue(Gap) div 2;
-    Measure := TBitmap.Create;
+    mLeft := ScaleValue(cIndent);
+    mRight := ClientWidth - ScaleValue(cIndent);
+    mButtonLeft := mLeft;
+    mButtonTop := ScaleValue(cGap) div 2;
+    mMeasure := TBitmap.Create;
     try
-      Measure.Canvas.Font.Assign(Font);
-      for Kind := Low(TAtlasHelpButton) to High(TAtlasHelpButton) do
+      mMeasure.Canvas.Font.Assign(Font);
+      for mKind := Low(TAtlasHelpButton) to High(TAtlasHelpButton) do
       begin
-        ButtonWidth := Measure.Canvas.TextWidth(FButtons[Kind].Caption) + 2 * ScaleValue(ButtonPadding);
-        if (ButtonLeft > mLeft) and (ButtonLeft + ButtonWidth > Right) then
+        mButtonWidth := mMeasure.Canvas.TextWidth(FButtons[mKind].Caption) + 2 * ScaleValue(cButtonPadding);
+        if (mButtonLeft > mLeft) and (mButtonLeft + mButtonWidth > mRight) then
         begin
-          ButtonLeft := mLeft;
-          Inc(ButtonTop, ScaleValue(ButtonHeight) + ScaleValue(Gap) div 2);
+          mButtonLeft := mLeft;
+          Inc(mButtonTop, ScaleValue(cButtonHeight) + ScaleValue(cGap) div 2);
         end;
-        FButtons[Kind].SetBounds(ButtonLeft, ButtonTop, ButtonWidth, ScaleValue(ButtonHeight));
-        Inc(ButtonLeft, ButtonWidth + ScaleValue(Gap) div 2);
+        FButtons[mKind].SetBounds(mButtonLeft, mButtonTop, mButtonWidth, ScaleValue(cButtonHeight));
+        Inc(mButtonLeft, mButtonWidth + ScaleValue(cGap) div 2);
       end;
     finally
-      Measure.Free;
+      mMeasure.Free;
     end;
-    FNote.SetBounds(mLeft, ButtonTop + ScaleValue(ButtonHeight) + ScaleValue(Gap) div 2, FNote.Width, FNote.Height);
-    FContentHeight := FNote.Top + FNote.Height + ScaleValue(Gap) div 2;
+    FNote.SetBounds(mLeft, mButtonTop + ScaleValue(cButtonHeight) + ScaleValue(cGap) div 2, FNote.Width, FNote.Height);
+    FContentHeight := FNote.Top + FNote.Height + ScaleValue(cGap) div 2;
   finally
     FArranging := False;
   end;

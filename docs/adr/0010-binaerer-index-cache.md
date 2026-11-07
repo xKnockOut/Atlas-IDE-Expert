@@ -30,5 +30,5 @@ Das Format beschreibt `docs/Architektur.md` (Abschnitt Cache-Format) und der Kop
 
 - Der Start großer Projekte hängt vor allem an den Köpfen; Units, die das Projekt nicht braucht, kosten fast nichts.
 - Mit einem Texteditor lässt sich der Cache nicht mehr prüfen. Untersucht wird über den Index selbst (`atlas.server.status`, MCP-Werkzeuge) und die Protokollzeile beim Verwerfen.
-- Ändert sich `TIndexSymbol` oder die Reihenfolge der Felder, muss `FormatVersion` steigen, und `TAtlasWelcomeIndexFiles.FormatVersion` im Plugin mit (der Test `FormatVersionMatchesServer` prüft das); Tests lesen und schreiben das Format im Kreis.
+- Ändert sich `TIndexSymbol` oder die Reihenfolge der Felder, muss `FormatVersion` steigen, und `TAtlasWelcomeIndexFiles.cFormatVersion` im Plugin mit (der Test `FormatVersionMatchesServer` prüft das); Tests lesen und schreiben das Format im Kreis.
 - Alte Caches (`index-*.json`) räumt die Größenbegrenzung des Cache-Ordners zuerst weg.

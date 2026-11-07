@@ -35,7 +35,7 @@ uses
 
 const
   /// <summary>Marker unnummerierter schneller Lesezeichen in der Spalte „Nr.“.</summary>
-  AtlasQuickBookmarkDot = '•';
+  cAtlasQuickBookmarkDot = '•';
 
 type
   TAtlasBookmarksFrame = class(TFrame)
@@ -113,7 +113,7 @@ type
     procedure CreateWnd; override;
   public const
     /// <summary>Index der Spalte „Nr.“ (hinten angelegt, vorn angezeigt).</summary>
-    NumberColumn = 4;
+    cNumberColumn = 4;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Datei im oberen Editor für „nur diese Datei“ (#1104).</summary>
@@ -570,7 +570,7 @@ end;
 
 procedure TAtlasBookmarksFrame.ApplyColumnOrder;
 var
-  mOrder: array[0..NumberColumn] of Integer;
+  mOrder: array[0..cNumberColumn] of Integer;
   mIndex: Integer;
 begin
   // Ohne Fenster gibt es keine Reihenfolge; Refill versucht es erneut.
@@ -578,8 +578,8 @@ begin
   begin
     Exit;
   end;
-  mOrder[0] := NumberColumn;
-  for mIndex := 1 to NumberColumn do
+  mOrder[0] := cNumberColumn;
+  for mIndex := 1 to cNumberColumn do
   begin
     mOrder[mIndex] := mIndex - 1;
   end;
@@ -588,24 +588,24 @@ end;
 
 class function TAtlasBookmarksFrame.Cells(const ABookmark: TAtlasBookmark): TArray<string>;
 var
-  Preview, Number: string;
+  mPreview, mNumber: string;
 begin
-  Preview := ABookmark.Preview;
+  mPreview := ABookmark.Preview;
   if ABookmark.Lost then
   begin
-    Preview := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksLost) + ' · ' + Preview;
+    mPreview := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksLost) + ' · ' + mPreview;
   end;
-  Number := '';
+  mNumber := '';
   if ABookmark.Number > 0 then
   begin
-    Number := IntToStr(ABookmark.Number);
+    mNumber := IntToStr(ABookmark.Number);
   end
   else if ABookmark.Kind = TAtlasBookmarkKind.Quick then
   begin
-    Number := AtlasQuickBookmarkDot;
+    mNumber := cAtlasQuickBookmarkDot;
   end;
   Result := [ABookmark.DisplayName, ExtractFileName(ABookmark.FileName) + ':' + IntToStr(ABookmark.Line + 1),
-    ABookmark.Method, Preview, Number];
+    ABookmark.Method, mPreview, mNumber];
 end;
 
 procedure TAtlasBookmarksFrame.SetCurrentFile(const AFileName: string);
@@ -623,64 +623,64 @@ end;
 
 procedure TAtlasBookmarksFrame.NumberSelected(ANumber: Integer);
 var
-  Id: string;
+  mId: string;
 begin
-  Id := SelectedId;
-  if (Id <> '') and (ANumber >= 1) and (ANumber <= 9) and Assigned(FHandlers.OnNumber) then
+  mId := SelectedId;
+  if (mId <> '') and (ANumber >= 1) and (ANumber <= 9) and Assigned(FHandlers.OnNumber) then
   begin
-    FHandlers.OnNumber(Id, ANumber);
+    FHandlers.OnNumber(mId, ANumber);
   end;
 end;
 
 procedure TAtlasBookmarksFrame.SetBookmarks(const AList: TAtlasBookmarkList; const APlace, ASelectId: string);
 var
-  Select: string;
+  mSelect: string;
 begin
-  Select := ASelectId;
-  if Select = '' then
+  mSelect := ASelectId;
+  if mSelect = '' then
   begin
-    Select := SelectedId;
+    mSelect := SelectedId;
   end;
   FBookmarks := AList;
   FParts.Place.Caption := APlace;
-  Refill(Select);
+  Refill(mSelect);
 end;
 
 procedure TAtlasBookmarksFrame.Refill(const ASelectId: string);
 var
-  Index: Integer;
-  Item: TListItem;
-  Texts: TArray<string>;
-  Part: Integer;
+  mIndex: Integer;
+  mItem: TListItem;
+  mTexts: TArray<string>;
+  mPart: Integer;
   mList: TListView;
 begin
   mList := FParts.List;
   FShown := nil;
-  for Index in FBookmarks.Filter(FParts.Filter.Text) do
+  for mIndex in FBookmarks.Filter(FParts.Filter.Text) do
   begin
     // „nur diese Datei“ (#1104): ohne bekannte Datei alle.
     if not FParts.OnlyFile.Checked or (FCurrentFile = '') or
-      TAtlasBookmarks.SameFile(FBookmarks.Bookmarks[Index].FileName, FCurrentFile) then
+      TAtlasBookmarks.SameFile(FBookmarks.Bookmarks[mIndex].FileName, FCurrentFile) then
     begin
-      FShown := FShown + [FBookmarks.Bookmarks[Index]];
+      FShown := FShown + [FBookmarks.Bookmarks[mIndex]];
     end;
   end;
   mList.Items.BeginUpdate;
   try
     mList.Items.Clear;
-    for Index := 0 to High(FShown) do
+    for mIndex := 0 to High(FShown) do
     begin
-      Texts := Cells(FShown[Index]);
-      Item := mList.Items.Add;
-      Item.Caption := Texts[0];
-      for Part := 1 to High(Texts) do
+      mTexts := Cells(FShown[mIndex]);
+      mItem := mList.Items.Add;
+      mItem.Caption := mTexts[0];
+      for mPart := 1 to High(mTexts) do
       begin
-        Item.SubItems.Add(Texts[Part]);
+        mItem.SubItems.Add(mTexts[mPart]);
       end;
-      if SameText(FShown[Index].Id, ASelectId) then
+      if SameText(FShown[mIndex].Id, ASelectId) then
       begin
-        Item.Selected := True;
-        Item.Focused := True;
+        mItem.Selected := True;
+        mItem.Focused := True;
       end;
     end;
   finally
@@ -721,12 +721,12 @@ end;
 
 procedure TAtlasBookmarksFrame.OpenSelected;
 var
-  Id: string;
+  mId: string;
 begin
-  Id := SelectedId;
-  if (Id <> '') and Assigned(FHandlers.OnOpen) then
+  mId := SelectedId;
+  if (mId <> '') and Assigned(FHandlers.OnOpen) then
   begin
-    FHandlers.OnOpen(Id);
+    FHandlers.OnOpen(mId);
   end;
 end;
 
@@ -746,43 +746,43 @@ end;
 
 procedure TAtlasBookmarksFrame.DeleteSelected;
 var
-  Id: string;
+  mId: string;
 begin
-  Id := SelectedId;
-  if (Id <> '') and Assigned(FHandlers.OnDelete) then
+  mId := SelectedId;
+  if (mId <> '') and Assigned(FHandlers.OnDelete) then
   begin
-    FHandlers.OnDelete(Id);
+    FHandlers.OnDelete(mId);
   end;
 end;
 
 procedure TAtlasBookmarksFrame.MoveSelected(ADelta: Integer);
 var
-  Index: Integer;
-  Before: string;
+  mIndex: Integer;
+  mBefore: string;
 begin
   if FParts.List.Selected = nil then
   begin
     Exit;
   end;
-  Index := FParts.List.Selected.Index;
+  mIndex := FParts.List.Selected.Index;
   if ADelta < 0 then
   begin
-    if Index <= 0 then
+    if mIndex <= 0 then
     begin
       Exit;
     end;
-    Before := IdAt(Index - 1);
+    mBefore := IdAt(mIndex - 1);
   end
   else
   begin
-    if Index >= High(FShown) then
+    if mIndex >= High(FShown) then
     begin
       Exit;
     end;
     // Hinter den nächsten: vor den übernächsten bzw. ans Ende.
-    Before := IdAt(Index + 2);
+    mBefore := IdAt(mIndex + 2);
   end;
-  Drop(IdAt(Index), Before);
+  Drop(IdAt(mIndex), mBefore);
 end;
 
 procedure TAtlasBookmarksFrame.Drop(const AId, ABeforeId: string);

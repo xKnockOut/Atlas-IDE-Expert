@@ -59,7 +59,7 @@ begin
       TAtlasAvTexts.OffsetText(AVerdict.FieldOffset)]);
   end
   else if AMessage.AddressKnown and (AMessage.Address > 0) and
-    (AMessage.Address < TAtlasAvAnalysis.NearNil) then
+    (AMessage.Address < TAtlasAvAnalysis.cNearNil) then
   begin
     Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvOffset,
       [TAtlasAvTexts.OffsetText(Integer(AMessage.Address))]);
@@ -118,27 +118,27 @@ end;
 
 function CopyTextOf(const AExplanation: TAtlasDebugBannerExplanation; const AHeader: string): string;
 var
-  Parts: TArray<string>;
-  Line: TAtlasDebugBannerLine;
+  mParts: TArray<string>;
+  mLine: TAtlasDebugBannerLine;
 begin
-  Parts := TArray<string>.Create(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvCopyHeader), AExplanation.Headline);
+  mParts := TArray<string>.Create(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvCopyHeader), AExplanation.Headline);
   if AExplanation.Detail <> '' then
   begin
-    Parts := Parts + [AExplanation.Detail];
+    mParts := mParts + [AExplanation.Detail];
   end;
   if AHeader <> '' then
   begin
-    Parts := Parts + [AHeader];
+    mParts := mParts + [AHeader];
   end;
   if AExplanation.Lines <> nil then
   begin
-    Parts := Parts + [TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvCopyChecked)];
-    for Line in AExplanation.Lines do
+    mParts := mParts + [TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvCopyChecked)];
+    for mLine in AExplanation.Lines do
     begin
-      Parts := Parts + ['  ' + TAtlasDebugBannerLine.MarkText(Line.Mark) + ' ' + Line.Text];
+      mParts := mParts + ['  ' + TAtlasDebugBannerLine.MarkText(mLine.Mark) + ' ' + mLine.Text];
     end;
   end;
-  Result := string.Join(sLineBreak, Parts);
+  Result := string.Join(sLineBreak, mParts);
 end;
 
 { TAtlasAvTexts }
@@ -168,45 +168,45 @@ end;
 
 class function TAtlasAvTexts.CheckLine(AAnalysis: TAtlasAvAnalysis; AIndex: Integer): TAtlasDebugBannerLine;
 var
-  Check: TAtlasAvCheck;
-  Value: string;
+  mCheck: TAtlasAvCheck;
+  mValue: string;
 begin
-  Check := AAnalysis.Checks[AIndex];
-  Value := Check.Value;
-  if Check.State = TAtlasAvCheckState.NilValue then
+  mCheck := AAnalysis.Checks[AIndex];
+  mValue := mCheck.Value;
+  if mCheck.State = TAtlasAvCheckState.NilValue then
   begin
-    Value := 'nil';
+    mValue := 'nil';
   end;
-  case Check.State of
+  case mCheck.State of
     TAtlasAvCheckState.Ok:
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Ok, Check.Expression + ' = ' + Value);
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Ok, mCheck.Expression + ' = ' + mValue);
     TAtlasAvCheckState.NilValue:
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, Check.Expression + ' = ' + Value);
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, mCheck.Expression + ' = ' + mValue);
     TAtlasAvCheckState.Freed:
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, Check.Expression + ' = ' + Value + ' (' +
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, mCheck.Expression + ' = ' + mValue + ' (' +
         TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateFreed) + ')');
     TAtlasAvCheckState.Invalid:
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, Check.Expression + ' = ' + Value + ' (' +
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, mCheck.Expression + ' = ' + mValue + ' (' +
         TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateInvalid) + ')');
     TAtlasAvCheckState.OutOfRange:
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, Check.Expression + ' = ' + Value + ' (' +
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, mCheck.Expression + ' = ' + mValue + ' (' +
         TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateOutOfRange) + ')');
     TAtlasAvCheckState.NotReached:
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, Check.Expression + ': ' +
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, mCheck.Expression + ': ' +
         TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateNotReached));
     TAtlasAvCheckState.Failed:
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, Check.Expression + ': ' +
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, mCheck.Expression + ': ' +
         TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateFailed));
   else
     // Nicht ausgewertet: wegen eines Aufrufs ohne allowCalls oder weil die Prüfung abbrach.
     if AAnalysis.LinkOf(AIndex).Call and not AAnalysis.AllowCalls then
     begin
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, Check.Expression + ': ' +
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, mCheck.Expression + ': ' +
         TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateCall));
     end
     else
     begin
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, Check.Expression + ': ' +
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, mCheck.Expression + ': ' +
         TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateNotEvaluated));
     end;
   end;
@@ -215,17 +215,17 @@ end;
 class function TAtlasAvTexts.FromAnalysis(AAnalysis: TAtlasAvAnalysis; ACanWhere, ACanEvaluate: Boolean;
   const AHeader: string): TAtlasDebugBannerExplanation;
 var
-  Verdict: TAtlasAvVerdict;
-  Index: Integer;
-  Detail: string;
+  mVerdict: TAtlasAvVerdict;
+  mIndex: Integer;
+  mDetail: string;
 begin
   Result := Default(TAtlasDebugBannerExplanation);
   Result.Active := True;
-  Verdict := AAnalysis.Verdict;
+  mVerdict := AAnalysis.Verdict;
   // Die Zeigergröße steckt in der Erkennung; für den Text genügt die größere Musterliste.
-  Result.Headline := HeadlineOf(Verdict, AAnalysis.AccessMessage, 8, Detail);
-  Result.Detail := Detail;
-  if Verdict.HasCulprit or (Verdict.Kind = TAtlasAvVerdictKind.FreedMemory) then
+  Result.Headline := HeadlineOf(mVerdict, AAnalysis.AccessMessage, 8, mDetail);
+  Result.Detail := mDetail;
+  if mVerdict.HasCulprit or (mVerdict.Kind = TAtlasAvVerdictKind.FreedMemory) then
   begin
     Result.HeadlineMark := TAtlasDebugBannerMark.Bad;
   end
@@ -233,7 +233,7 @@ begin
   begin
     Result.HeadlineMark := TAtlasDebugBannerMark.Neutral;
   end;
-  if (AAnalysis.Chains.Statements > 1) and not Verdict.HasCulprit then
+  if (AAnalysis.Chains.Statements > 1) and not mVerdict.HasCulprit then
   begin
     if Result.Detail <> '' then
     begin
@@ -245,21 +245,21 @@ begin
       Result.Detail := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvStatements, [AAnalysis.Chains.Statements]);
     end;
   end;
-  for Index := 0 to High(AAnalysis.Checks) do
+  for mIndex := 0 to High(AAnalysis.Checks) do
   begin
-    Result.Lines := Result.Lines + [CheckLine(AAnalysis, Index)];
+    Result.Lines := Result.Lines + [CheckLine(AAnalysis, mIndex)];
   end;
   // „Wo wird X zugewiesen?“ nur für ein benanntes Glied; Self wird nicht zugewiesen.
-  if ACanWhere and Verdict.HasCulprit and (Verdict.Culprit.Name <> '') and
-    not SameText(Verdict.Culprit.Name, 'Self') then
+  if ACanWhere and mVerdict.HasCulprit and (mVerdict.Culprit.Name <> '') and
+    not SameText(mVerdict.Culprit.Name, 'Self') then
   begin
-    Result.WhereName := Verdict.Culprit.Name;
+    Result.WhereName := mVerdict.Culprit.Name;
   end;
   if ACanEvaluate then
   begin
-    if Verdict.HasCulprit then
+    if mVerdict.HasCulprit then
     begin
-      Result.EvaluateExpression := Verdict.Culprit.Expression;
+      Result.EvaluateExpression := mVerdict.Culprit.Expression;
     end
     else if AAnalysis.Chains.Chains <> nil then
     begin
@@ -272,18 +272,18 @@ end;
 class function TAtlasAvTexts.MessageLines(const AExplanation: TAtlasDebugBannerExplanation;
   const APlace: string): TArray<string>;
 var
-  Text: string;
-  Line: TAtlasDebugBannerLine;
+  mText: string;
+  mLine: TAtlasDebugBannerLine;
 begin
-  Text := AExplanation.Headline;
+  mText := AExplanation.Headline;
   if AExplanation.Detail <> '' then
   begin
-    Text := Text + ' ' + #$00B7 + ' ' + AExplanation.Detail;
+    mText := mText + ' ' + #$00B7 + ' ' + AExplanation.Detail;
   end;
-  Result := TArray<string>.Create(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvMessage, [APlace, Text]));
-  for Line in AExplanation.Lines do
+  Result := TArray<string>.Create(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvMessage, [APlace, mText]));
+  for mLine in AExplanation.Lines do
   begin
-    Result := Result + ['  ' + TAtlasDebugBannerLine.MarkText(Line.Mark) + ' ' + Line.Text];
+    Result := Result + ['  ' + TAtlasDebugBannerLine.MarkText(mLine.Mark) + ' ' + mLine.Text];
   end;
 end;
 

@@ -188,13 +188,13 @@ type
   /// (Projekte), Maus und Zeichnen; die Leiste ruft die Quelle.</summary>
   TAtlasQuickActionsBar = class(TComponent)
   public const
-    ButtonHeight = 20;
-    ButtonPadding = 8;
-    ButtonGap = 4;
-    LineGap = 2;
+    cButtonHeight = 20;
+    cButtonPadding = 8;
+    cButtonGap = 4;
+    cLineGap = 2;
     /// <summary>Breite des Teils ▾ von „Öffnen und bauen“.</summary>
-    MenuPart = 16;
-    TickMs = 1000;
+    cMenuPart = 16;
+    cTickMs = 1000;
   private type
     /// <summary>Projekte der Zeilen mit Knöpfen, Stand und Rechtecken der Knöpfe (entstehen beim Zeichnen).
     /// </summary>
@@ -245,7 +245,7 @@ type
     /// <summary>Zeile mit Knopfleiste: unter der Maus bzw. mit der Tastatur gewählt; -1 = keine.</summary>
     function ActiveRow: Integer;
     /// <summary>Maus über ARow (-1 = keine Zeile) an X, Y; zeichnet bei Wechsel neu.</summary>
-    procedure MouseMove(ARow, X, Y: Integer);
+    procedure MouseMove(ARow, AX, AY: Integer);
     procedure MouseLeave;
     /// <summary>Maus gedrückt in ARow: Tastatur übernimmt die Zeile und den Fokus.</summary>
     procedure MouseDown(ARow: Integer);
@@ -256,13 +256,13 @@ type
     /// <summary>Hintergrund der aktiven Zeile und Fokusrahmen der Tastaturzeile.</summary>
     procedure PaintBackground(ACanvas: TCanvas; ARow: Integer; const ARowRect: TRect);
     /// <summary>Knopf an X, Y in der aktiven Zeile; AMenu: auf dem Teil ▾.</summary>
-    function HitTest(X, Y: Integer; out ARow, AIndex: Integer; out AMenu: Boolean): Boolean;
+    function HitTest(AX, AY: Integer; out ARow, AIndex: Integer; out AMenu: Boolean): Boolean;
     /// <summary>Klick an X, Y: True, wenn ein Knopf getroffen war (dann klickt der Bereich nicht).</summary>
-    function ClickAt(X, Y: Integer): Boolean;
+    function ClickAt(AX, AY: Integer): Boolean;
     /// <summary>Knopf AIndex der Zeile ARow wie geklickt; AMenu: Teil ▾.</summary>
     procedure Activate(ARow, AIndex: Integer; AMenu: Boolean);
     /// <summary>Tooltip des Knopfs an X, Y; False ohne Knopf.</summary>
-    function HintAt(X, Y: Integer; out AHint: string): Boolean;
+    function HintAt(AX, AY: Integer; out AHint: string): Boolean;
     /// <summary>Taste wie in der Tastatur des Bereichs gedrückt.</summary>
     function HandleKey(AKey: Word; AShift: TShiftState): Boolean;
     property Source: IAtlasQuickActionsSource read FSource write SetSource;
@@ -308,8 +308,8 @@ uses
   Atlas.Core.Vcs.Pull;
 
 const
-  Separator = ' · ';
-  MenuArrow = #$25BE;
+  cSeparator = ' · ';
+  cMenuArrow = #$25BE;
 
 type
   /// <summary>Ordnet die Knöpfe einer Zeile rechtsbündig an, bei wenig Platz in zwei Zeilen.</summary>
@@ -652,7 +652,7 @@ begin
     end;
     if AButton.AskExternals then
     begin
-      Result := Result + ' ' + MenuArrow;
+      Result := Result + ' ' + cMenuArrow;
     end;
   end
   else
@@ -977,14 +977,14 @@ begin
     Exit;
   end;
   // Teil ▾ rechts, durch einen Strich getrennt.
-  mPart := Scaled(TAtlasQuickActionsBar.MenuPart);
+  mPart := Scaled(TAtlasQuickActionsBar.cMenuPart);
   Canvas.TextOut(AArea.Left + (AArea.Width - mPart - Canvas.TextWidth(mText)) div 2,
     AArea.Top + (AArea.Height - Canvas.TextHeight(mText)) div 2, mText);
   Canvas.Pen.Color := Canvas.Font.Color;
   Canvas.MoveTo(AArea.Right - mPart, AArea.Top + Scaled(4));
   Canvas.LineTo(AArea.Right - mPart, AArea.Bottom - Scaled(4));
-  Canvas.TextOut(AArea.Right - mPart + (mPart - Canvas.TextWidth(MenuArrow)) div 2,
-    AArea.Top + (AArea.Height - Canvas.TextHeight(MenuArrow)) div 2, MenuArrow);
+  Canvas.TextOut(AArea.Right - mPart + (mPart - Canvas.TextWidth(cMenuArrow)) div 2,
+    AArea.Top + (AArea.Height - Canvas.TextHeight(cMenuArrow)) div 2, cMenuArrow);
 end;
 
 procedure TQuickRowPainter.PaintFocus(AIndex: Integer; const AArea: TRect);
@@ -1196,112 +1196,112 @@ end;
 
 procedure TAtlasQuickActionsMenus.FillTargets(AParent: TMenuItem; const AProject: string);
 var
-  Targets: TAtlasProjectTargets;
-  Configuration, Platform, Wanted, WantedPlatform: string;
-  Choice: TChoice;
-  Text: string;
+  mTargets: TAtlasProjectTargets;
+  mConfiguration, mPlatform, mWanted, mWantedPlatform: string;
+  mChoice: TChoice;
+  mText: string;
 begin
-  Targets := FBar.FSource.Targets(AProject, Wanted, WantedPlatform);
-  Choice := Default(TChoice);
-  Choice.Kind := TChoiceKind.Target;
-  Choice.Project := AProject;
+  mTargets := FBar.FSource.Targets(AProject, mWanted, mWantedPlatform);
+  mChoice := Default(TChoice);
+  mChoice.Kind := TChoiceKind.Target;
+  mChoice.Project := AProject;
   // Erst „wie in der IDE“, dann jede Konfiguration je Plattform; die Vorgabe (zuletzt benutzt) ist fett.
-  AddChoice(AParent, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTargetsIde), Choice,
-    (Wanted = '') and (WantedPlatform = ''));
-  for Configuration in Targets.Configurations do
+  AddChoice(AParent, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTargetsIde), mChoice,
+    (mWanted = '') and (mWantedPlatform = ''));
+  for mConfiguration in mTargets.Configurations do
   begin
-    if Length(Targets.Platforms) = 0 then
+    if Length(mTargets.Platforms) = 0 then
     begin
-      Choice.A := Configuration;
-      Choice.B := '';
-      Text := Configuration;
-      if SameText(Configuration, Wanted) then
+      mChoice.A := mConfiguration;
+      mChoice.B := '';
+      mText := mConfiguration;
+      if SameText(mConfiguration, mWanted) then
       begin
-        Text := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTargetLast, [Text]);
+        mText := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTargetLast, [mText]);
       end;
-      AddChoice(AParent, Text, Choice, SameText(Configuration, Wanted));
+      AddChoice(AParent, mText, mChoice, SameText(mConfiguration, mWanted));
       Continue;
     end;
-    for Platform in Targets.Platforms do
+    for mPlatform in mTargets.Platforms do
     begin
-      Choice.A := Configuration;
-      Choice.B := Platform;
-      Text := Configuration + Separator + Platform;
-      if SameText(Configuration, Wanted) and SameText(Platform, WantedPlatform) then
+      mChoice.A := mConfiguration;
+      mChoice.B := mPlatform;
+      mText := mConfiguration + cSeparator + mPlatform;
+      if SameText(mConfiguration, mWanted) and SameText(mPlatform, mWantedPlatform) then
       begin
-        Text := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTargetLast, [Text]);
+        mText := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTargetLast, [mText]);
       end;
-      AddChoice(AParent, Text, Choice, SameText(Configuration, Wanted) and SameText(Platform, WantedPlatform));
+      AddChoice(AParent, mText, mChoice, SameText(mConfiguration, mWanted) and SameText(mPlatform, mWantedPlatform));
     end;
   end;
 end;
 
 procedure TAtlasQuickActionsMenus.FillProfiles(AParent: TMenuItem; const AProject: string);
 var
-  Names: TArray<string>;
-  mName, Active, Text: string;
-  Choice: TChoice;
+  mNames: TArray<string>;
+  mName, mActive, mText: string;
+  mChoice: TChoice;
 begin
-  Names := FBar.FSource.Profiles(AProject, Active);
-  Choice := Default(TChoice);
-  Choice.Kind := TChoiceKind.Profile;
-  Choice.Project := AProject;
-  for mName in Names do
+  mNames := FBar.FSource.Profiles(AProject, mActive);
+  mChoice := Default(TChoice);
+  mChoice.Kind := TChoiceKind.Profile;
+  mChoice.Project := AProject;
+  for mName in mNames do
   begin
-    Choice.A := mName;
-    Text := mName;
-    if SameText(mName, Active) then
+    mChoice.A := mName;
+    mText := mName;
+    if SameText(mName, mActive) then
     begin
-      Text := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickProfileActive, [mName]);
+      mText := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickProfileActive, [mName]);
     end;
-    AddChoice(AParent, Text, Choice, SameText(mName, Active));
+    AddChoice(AParent, mText, mChoice, SameText(mName, mActive));
   end;
-  Choice.A := '';
-  AddChoice(AParent, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickProfileNone), Choice, Active = '');
+  mChoice.A := '';
+  AddChoice(AParent, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickProfileNone), mChoice, mActive = '');
 end;
 
 procedure TAtlasQuickActionsMenus.FillTestProjects(AParent: TMenuItem; const AProject: string;
   const ACandidates: TArray<string>);
 var
-  Candidate: string;
-  Choice: TChoice;
+  mCandidate: string;
+  mChoice: TChoice;
 begin
-  Choice := Default(TChoice);
-  Choice.Kind := TChoiceKind.TestProject;
-  Choice.Project := AProject;
-  for Candidate in ACandidates do
+  mChoice := Default(TChoice);
+  mChoice.Kind := TChoiceKind.TestProject;
+  mChoice.Project := AProject;
+  for mCandidate in ACandidates do
   begin
-    Choice.A := Candidate;
-    AddChoice(AParent, ChangeFileExt(ExtractFileName(Candidate), ''), Choice, False);
+    mChoice.A := mCandidate;
+    AddChoice(AParent, ChangeFileExt(ExtractFileName(mCandidate), ''), mChoice, False);
   end;
 end;
 
 procedure TAtlasQuickActionsMenus.FillTasks(AParent: TMenuItem; const AProject: string);
 var
-  Name: string;
-  Choice: TChoice;
+  mName: string;
+  mChoice: TChoice;
 begin
-  Choice := Default(TChoice);
-  Choice.Kind := TChoiceKind.Task;
-  Choice.Project := AProject;
-  for Name in FBar.FSource.TaskNames(AProject) do
+  mChoice := Default(TChoice);
+  mChoice.Kind := TChoiceKind.Task;
+  mChoice.Project := AProject;
+  for mName in FBar.FSource.TaskNames(AProject) do
   begin
-    Choice.A := Name;
-    AddChoice(AParent, Name, Choice, False);
+    mChoice.A := mName;
+    AddChoice(AParent, mName, mChoice, False);
   end;
 end;
 
 procedure TAtlasQuickActionsMenus.FillUpdate(AParent: TMenuItem; const AProject: string);
 var
-  Choice: TChoice;
+  mChoice: TChoice;
 begin
-  Choice := Default(TChoice);
-  Choice.Kind := TChoiceKind.Update;
-  Choice.Project := AProject;
-  Choice.A := 'with';
-  AddChoice(AParent, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdateWithExternals), Choice, True);
-  Choice.A := 'without';
-  AddChoice(AParent, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdateWithoutExternals), Choice, False);
+  mChoice := Default(TChoice);
+  mChoice.Kind := TChoiceKind.Update;
+  mChoice.Project := AProject;
+  mChoice.A := 'with';
+  AddChoice(AParent, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdateWithExternals), mChoice, True);
+  mChoice.A := 'without';
+  AddChoice(AParent, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdateWithoutExternals), mChoice, False);
 end;
 
 procedure TAtlasQuickActionsMenus.AddTitle(AParent: TMenuItem; AId: TAtlasWelcomeTextId);
@@ -1554,7 +1554,7 @@ begin
   FSink.OnKey := HandleKey;
   FSink.OnFocusChange := SinkFocusChange;
   FTimer := TTimer.Create(Self);
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.Enabled := False;
   FTimer.OnTimer := TimerTick;
   FMenus := TAtlasQuickActionsMenus.Create(Self);
@@ -1709,7 +1709,7 @@ begin
   InvalidateBox(Self);
 end;
 
-procedure TAtlasQuickActionsBar.MouseMove(ARow, X, Y: Integer);
+procedure TAtlasQuickActionsBar.MouseMove(ARow, AX, AY: Integer);
 var
   mRow, mIndex, mOldButton: Integer;
   mMenu, mChanged: Boolean;
@@ -1722,7 +1722,7 @@ begin
   end;
   FSelection.HoverRow := ARow;
   mOldButton := FSelection.HoverButton;
-  if not HitTest(X, Y, mRow, mIndex, mMenu) or (mRow <> ARow) then
+  if not HitTest(AX, AY, mRow, mIndex, mMenu) or (mRow <> ARow) then
   begin
     mIndex := -1;
   end;
@@ -1780,26 +1780,26 @@ begin
     Exit;
   end;
   mLayout.Area := AArea;
-  mLayout.Gap := ScaleOf(Self, ButtonGap);
+  mLayout.Gap := ScaleOf(Self, cButtonGap);
   SetLength(mLayout.Widths, Length(mButtons));
   SetLength(mLayout.Rects, Length(mButtons));
   for mIndex := 0 to High(mButtons) do
   begin
     mLayout.Widths[mIndex] := ACanvas.TextWidth(TAtlasQuickActionTexts.Caption(mButtons[mIndex], FRows.States[ARow],
-      FRows.NowMs)) + 2 * ScaleOf(Self, ButtonPadding);
+      FRows.NowMs)) + 2 * ScaleOf(Self, cButtonPadding);
     if mButtons[mIndex].Action = TAtlasQuickAction.Build then
     begin
-      Inc(mLayout.Widths[mIndex], ScaleOf(Self, MenuPart));
+      Inc(mLayout.Widths[mIndex], ScaleOf(Self, cMenuPart));
     end;
   end;
-  mHeight := ScaleOf(Self, ButtonHeight);
+  mHeight := ScaleOf(Self, cButtonHeight);
   if (mLayout.Span(0, High(mButtons)) <= AArea.Width) or (Length(mButtons) < 2) then
   begin
     mLayout.Place(0, High(mButtons), AArea.Top + (AArea.Height - mHeight) div 2, mHeight);
   end
   else
   begin
-    mLayout.PlaceTwoLines(ScaleOf(Self, LineGap), mHeight);
+    mLayout.PlaceTwoLines(ScaleOf(Self, cLineGap), mHeight);
   end;
   Result := mLayout.LeftEdge;
   FRows.Rects[ARow] := mLayout.Rects;
@@ -1855,7 +1855,7 @@ begin
   end;
 end;
 
-function TAtlasQuickActionsBar.HitTest(X, Y: Integer; out ARow, AIndex: Integer; out AMenu: Boolean): Boolean;
+function TAtlasQuickActionsBar.HitTest(AX, AY: Integer; out ARow, AIndex: Integer; out AMenu: Boolean): Boolean;
 var
   mRects: TArray<TRect>;
   mIndex: Integer;
@@ -1875,22 +1875,22 @@ begin
   end;
   for mIndex := 0 to High(mRects) do
   begin
-    if mRects[mIndex].Contains(Point(X, Y)) then
+    if mRects[mIndex].Contains(Point(AX, AY)) then
     begin
       AIndex := mIndex;
       AMenu := (FRows.Buttons[ARow][mIndex].Action = TAtlasQuickAction.Build) and
-        (X >= mRects[mIndex].Right - ScaleOf(Self, MenuPart));
+        (AX >= mRects[mIndex].Right - ScaleOf(Self, cMenuPart));
       Exit(True);
     end;
   end;
 end;
 
-function TAtlasQuickActionsBar.ClickAt(X, Y: Integer): Boolean;
+function TAtlasQuickActionsBar.ClickAt(AX, AY: Integer): Boolean;
 var
   mRow, mIndex: Integer;
   mMenu: Boolean;
 begin
-  Result := HitTest(X, Y, mRow, mIndex, mMenu);
+  Result := HitTest(AX, AY, mRow, mIndex, mMenu);
   if Result then
   begin
     Activate(mRow, mIndex, mMenu);
@@ -1923,7 +1923,7 @@ begin
     end);
 end;
 
-function TAtlasQuickActionsBar.HintAt(X, Y: Integer; out AHint: string): Boolean;
+function TAtlasQuickActionsBar.HintAt(AX, AY: Integer; out AHint: string): Boolean;
 var
   mRow, mIndex, mKey: Integer;
   mMenu: Boolean;
@@ -1931,7 +1931,7 @@ var
   mConsole: string;
 begin
   AHint := '';
-  Result := HitTest(X, Y, mRow, mIndex, mMenu);
+  Result := HitTest(AX, AY, mRow, mIndex, mMenu);
   if not Result then
   begin
     Exit;

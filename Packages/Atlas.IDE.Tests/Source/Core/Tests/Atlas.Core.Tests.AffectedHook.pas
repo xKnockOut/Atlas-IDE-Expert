@@ -52,10 +52,10 @@ type
 
   TAtlasAffectedHook = class
   public const
-    HookName = 'pre-commit';
-    ConfigFile = 'atlas-affected-tests';
+    cHookName = 'pre-commit';
+    cConfigFile = 'atlas-affected-tests';
     /// <summary>Zweite Zeile des eigenen Hooks.</summary>
-    Marker = '# atlas-affected-tests (#1353)';
+    cMarker = '# atlas-affected-tests (#1353)';
   public
     /// <summary>Inhalt des Hooks mit ATexts, Zeilenende LF.</summary>
     class function Script(const ATexts: TAtlasAffectedHookTexts): string; static;
@@ -108,11 +108,11 @@ class function TAtlasAffectedHook.Script(const ATexts: TAtlasAffectedHookTexts):
 begin
   Result :=
     '#!/bin/sh' + cLf +
-    Marker + cLf +
+    cMarker + cLf +
     Comment(ATexts.Purpose) + cLf +
     Comment(ATexts.Removal) + cLf +
     'dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0' + cLf +
-    'conf="$dir/' + ConfigFile + '"' + cLf +
+    'conf="$dir/' + cConfigFile + '"' + cLf +
     '[ -f "$conf" ] || exit 0' + cLf +
     'server=$(sed -n 1p "$conf")' + cLf +
     'project=$(sed -n 2p "$conf")' + cLf +
@@ -142,17 +142,17 @@ end;
 
 class function TAtlasAffectedHook.IsOwn(const AContent: string): Boolean;
 begin
-  Result := Pos(Marker, Copy(AContent, 1, 200)) > 0;
+  Result := Pos(cMarker, Copy(AContent, 1, 200)) > 0;
 end;
 
 class function TAtlasAffectedHook.HookFile(const AHooksDir: string): string;
 begin
-  Result := IncludeTrailingPathDelimiter(AHooksDir) + HookName;
+  Result := IncludeTrailingPathDelimiter(AHooksDir) + cHookName;
 end;
 
 class function TAtlasAffectedHook.ConfigFileOf(const AGitDir: string): string;
 begin
-  Result := IncludeTrailingPathDelimiter(AGitDir) + ConfigFile;
+  Result := IncludeTrailingPathDelimiter(AGitDir) + cConfigFile;
 end;
 
 class function TAtlasAffectedHook.ShellPath(const AFileName: string): string;

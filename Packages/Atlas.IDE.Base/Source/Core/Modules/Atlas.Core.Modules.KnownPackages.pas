@@ -125,9 +125,9 @@ end;
 class function TAtlasKnownPackages.ModuleName(const AFile: string): string;
 begin
   Result := TUpdateVersions.PackageName(AFile);
-  if StartsText(TUpdateVersions.PackagePrefix, Result) then
+  if StartsText(TUpdateVersions.cPackagePrefix, Result) then
   begin
-    Result := Result.Substring(Length(TUpdateVersions.PackagePrefix));
+    Result := Result.Substring(Length(TUpdateVersions.cPackagePrefix));
   end;
 end;
 
@@ -148,7 +148,7 @@ var
   mName: string;
 begin
   mName := FileNameOf(AFile);
-  Result := StartsText(TUpdateVersions.PackagePrefix, mName) and EndsText('.bpl', mName);
+  Result := StartsText(TUpdateVersions.cPackagePrefix, mName) and EndsText('.bpl', mName);
 end;
 
 class function TAtlasKnownPackages.IsModuleFile(const AFile, ABaseFile: string): Boolean;

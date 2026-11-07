@@ -179,7 +179,7 @@ begin
   Result.DebugDisplayRulesAllowCalls := False;
   Result.DebugStepIntoTarget := True;
   Result.DebugStepFilters := True;
-  Result.DebugStepFilterKinds := TStepFilterNames.KindsText(TStepFilterNames.DefaultKinds);
+  Result.DebugStepFilterKinds := TStepFilterNames.KindsText(TStepFilterNames.cDefaultKinds);
   Result.DebugStepFilterPatterns := '';
   Result.DebugStepIntoTargetKey := $C076; // Strg+Alt+F7
   Result.DebugBreakOnNextEvent := True;

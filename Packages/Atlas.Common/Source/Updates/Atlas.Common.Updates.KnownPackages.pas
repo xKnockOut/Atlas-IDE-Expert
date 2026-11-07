@@ -136,7 +136,7 @@ var
   mName: string;
 begin
   mName := FileNameOf(AValueName);
-  Result := mName.StartsWith(TUpdateVersions.PackagePrefix, True) and mName.EndsWith('.bpl', True) and
+  Result := mName.StartsWith(TUpdateVersions.cPackagePrefix, True) and mName.EndsWith('.bpl', True) and
     not IsLegacyPackage(AValueName);
 end;
 
@@ -157,7 +157,7 @@ end;
 
 class function TUpdateKnownPackages.Description(const AName: string): string;
 begin
-  Result := 'Atlas ' + AName.Substring(Length(TUpdateVersions.PackagePrefix));
+  Result := 'Atlas ' + AName.Substring(Length(TUpdateVersions.cPackagePrefix));
 end;
 
 class function TUpdateKnownPackages.Registered(const ARegistry: IUpdateRegistry;
@@ -278,7 +278,7 @@ var
 begin
   mList := TList<string>.Create;
   try
-    for mName in [TUpdateVersions.BasePackage, TUpdateVersions.ContractsPackage] do
+    for mName in [TUpdateVersions.cBasePackage, TUpdateVersions.cContractsPackage] do
     begin
       if IsSelected(ASelected, mName) then
       begin

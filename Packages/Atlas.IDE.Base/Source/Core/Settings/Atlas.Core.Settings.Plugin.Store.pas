@@ -15,7 +15,7 @@ const
   cAtlasRegionFoldModes: array[0..3] of string = ('keep', 'collapse', 'expand', 'off');
   /// <summary>Höchstlänge der Texte unter issues.* (#765).</summary>
   cMaxIssuesText = 200;
-  /// <summary>Werte von tasks.beforeBuild (#900) wie TAtlasTasks.BeforeBuildNames, in der Reihenfolge der Auswahl
+  /// <summary>Werte von tasks.beforeBuild (#900) wie TAtlasTasks.cBeforeBuildNames, in der Reihenfolge der Auswahl
   /// im Optionsdialog; die Einstellungen kennen die Projektaufgaben nicht (A-09, sonst Feature-Zyklus, und Base
   /// nicht das Modul Build, #1455), der Test hält beide gleich.</summary>
   cTasksBeforeBuildNames: array[0..2] of string = ('off', 'warn', 'block');

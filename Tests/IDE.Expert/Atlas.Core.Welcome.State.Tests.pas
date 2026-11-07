@@ -181,11 +181,11 @@ end;
 function Line(const ARegistry: IAtlasStatusRegistry; const AId, AText: string; AState: TAtlasStatusState;
   const ABrief, ADetail: string): IAtlasStatusItem;
 var
-  Item: TAtlasStatusLine;
+  mItem: TAtlasStatusLine;
 begin
-  Item := TAtlasStatusLine.Create(ARegistry, AId, 0);
-  Result := Item;
-  Item.Update(AText, AState, '', ABrief, ADetail);
+  mItem := TAtlasStatusLine.Create(ARegistry, AId, 0);
+  Result := mItem;
+  mItem.Update(AText, AState, '', ABrief, ADetail);
   ARegistry.Add(Result);
 end;
 
@@ -213,193 +213,193 @@ end;
 
 procedure TAtlasWelcomeStateTests.RowsComeFromStatusFieldInFixedOrder;
 var
-  Rows: TAtlasStateRows;
+  mRows: TAtlasStateRows;
 begin
-  Rows := TAtlasWelcomeState.Rows(HealthyRegistry.Items);
-  Assert.AreEqual(5, Integer(Length(Rows)));
-  Assert.AreEqual(Ord(TAtlasStateRowKind.Server), Ord(Rows[0].Kind));
-  Assert.AreEqual(Ord(TAtlasStateRowKind.Version), Ord(Rows[1].Kind));
-  Assert.AreEqual(Ord(TAtlasStateRowKind.Index), Ord(Rows[2].Kind));
-  Assert.AreEqual(Ord(TAtlasStateRowKind.Setup), Ord(Rows[3].Kind));
-  Assert.AreEqual(Ord(TAtlasStateRowKind.Diagnostic), Ord(Rows[4].Kind));
-  Assert.AreEqual('atlas.server', Rows[0].Id);
-  Assert.AreEqual('atlas.version', Rows[1].Id);
-  Assert.AreEqual('atlas.index', Rows[2].Id);
-  Assert.AreEqual('atlas.setup', Rows[3].Id);
-  Assert.AreEqual('atlas.diagnosticMode', Rows[4].Id);
+  mRows := TAtlasWelcomeState.Rows(HealthyRegistry.Items);
+  Assert.AreEqual(5, Integer(Length(mRows)));
+  Assert.AreEqual(Ord(TAtlasStateRowKind.Server), Ord(mRows[0].Kind));
+  Assert.AreEqual(Ord(TAtlasStateRowKind.Version), Ord(mRows[1].Kind));
+  Assert.AreEqual(Ord(TAtlasStateRowKind.Index), Ord(mRows[2].Kind));
+  Assert.AreEqual(Ord(TAtlasStateRowKind.Setup), Ord(mRows[3].Kind));
+  Assert.AreEqual(Ord(TAtlasStateRowKind.Diagnostic), Ord(mRows[4].Kind));
+  Assert.AreEqual('atlas.server', mRows[0].Id);
+  Assert.AreEqual('atlas.version', mRows[1].Id);
+  Assert.AreEqual('atlas.index', mRows[2].Id);
+  Assert.AreEqual('atlas.setup', mRows[3].Id);
+  Assert.AreEqual('atlas.diagnosticMode', mRows[4].Id);
 end;
 
 procedure TAtlasWelcomeStateTests.RowsShowSameStateAsStatusField;
 var
-  Registry: IAtlasStatusRegistry;
-  State: TAtlasStatusState;
-  Row: TAtlasStateRow;
-  Item: IAtlasStatusItem;
+  mRegistry: IAtlasStatusRegistry;
+  mState: TAtlasStatusState;
+  mRow: TAtlasStateRow;
+  mItem: IAtlasStatusItem;
 begin
   // In jedem Zustand dieselbe Ampel wie die Zeile im Statusfeld.
-  for State := Low(TAtlasStatusState) to High(TAtlasStatusState) do
+  for mState := Low(TAtlasStatusState) to High(TAtlasStatusState) do
   begin
-    Registry := HealthyRegistry;
-    Line(Registry, TAtlasStatusLines.cServerId, 'Server', State, '', '');
-    Line(Registry, TAtlasStatusLines.cIndexId, 'Index', State, '', '');
-    Line(Registry, TAtlasStatusLines.cDiagnosticModeId, 'Diagnosemodus: an', State, '', '');
-    for Row in TAtlasWelcomeState.Rows(Registry.Items) do
+    mRegistry := HealthyRegistry;
+    Line(mRegistry, TAtlasStatusLines.cServerId, 'Server', mState, '', '');
+    Line(mRegistry, TAtlasStatusLines.cIndexId, 'Index', mState, '', '');
+    Line(mRegistry, TAtlasStatusLines.cDiagnosticModeId, 'Diagnosemodus: an', mState, '', '');
+    for mRow in TAtlasWelcomeState.Rows(mRegistry.Items) do
     begin
-      Item := Registry.Find(Row.Id);
-      Assert.IsTrue(Item <> nil, Row.Id);
-      Assert.AreEqual(Ord(Item.State), Ord(Row.State), Row.Id);
-      Assert.AreEqual(Ord(Item.HasAction), Ord(Row.HasAction), Row.Id);
+      mItem := mRegistry.Find(mRow.Id);
+      Assert.IsTrue(mItem <> nil, mRow.Id);
+      Assert.AreEqual(Ord(mItem.State), Ord(mRow.State), mRow.Id);
+      Assert.AreEqual(Ord(mItem.HasAction), Ord(mRow.HasAction), mRow.Id);
     end;
-    Assert.AreEqual(Ord(TAtlasStatusSummary.Overall(Registry.Items)),
-      Ord(TAtlasWelcomeState.Overall(TAtlasWelcomeState.Rows(Registry.Items))), 'Gesamtampel');
+    Assert.AreEqual(Ord(TAtlasStatusSummary.Overall(mRegistry.Items)),
+      Ord(TAtlasWelcomeState.Overall(TAtlasWelcomeState.Rows(mRegistry.Items))), 'Gesamtampel');
   end;
 end;
 
 procedure TAtlasWelcomeStateTests.MissingLinesAreNeutralFallbacks;
 var
-  Rows: TAtlasStateRows;
-  Row: TAtlasStateRow;
+  mRows: TAtlasStateRows;
+  mRow: TAtlasStateRow;
 begin
-  Rows := TAtlasWelcomeState.Rows(nil);
-  Assert.AreEqual(5, Integer(Length(Rows)));
-  for Row in Rows do
+  mRows := TAtlasWelcomeState.Rows(nil);
+  Assert.AreEqual(5, Integer(Length(mRows)));
+  for mRow in mRows do
   begin
-    Assert.IsFalse(Row.Present, Row.Id);
-    Assert.AreEqual(Ord(TAtlasStatusState.Neutral), Ord(Row.State), Row.Id);
-    Assert.AreEqual('', Row.Text, Row.Id);
-    Assert.IsFalse(Row.HasAction, Row.Id);
+    Assert.IsFalse(mRow.Present, mRow.Id);
+    Assert.AreEqual(Ord(TAtlasStatusState.Neutral), Ord(mRow.State), mRow.Id);
+    Assert.AreEqual('', mRow.Text, mRow.Id);
+    Assert.IsFalse(mRow.HasAction, mRow.Id);
   end;
   // Diagnosemodus aus: keine Zeile im Statusfeld, in der Kachel neutral.
-  Rows := TAtlasWelcomeState.Rows(HealthyRegistry.Items);
-  Assert.IsFalse(Rows[4].Present);
-  Assert.AreEqual(Ord(TAtlasStatusState.Neutral), Ord(Rows[4].State));
+  mRows := TAtlasWelcomeState.Rows(HealthyRegistry.Items);
+  Assert.IsFalse(mRows[4].Present);
+  Assert.AreEqual(Ord(TAtlasStatusState.Neutral), Ord(mRows[4].State));
 end;
 
 procedure TAtlasWelcomeStateTests.BriefAndDetailFromLine;
 var
-  Rows: TAtlasStateRows;
+  mRows: TAtlasStateRows;
 begin
-  Rows := TAtlasWelcomeState.Rows(HealthyRegistry.Items);
-  Assert.AreEqual('Server läuft', Rows[0].Text);
-  Assert.AreEqual('seit 19:02', Rows[0].Detail);
-  Assert.AreEqual('Server: läuft seit 19:02', Rows[0].Hint, 'Tooltip mit dem vollen Text');
+  mRows := TAtlasWelcomeState.Rows(HealthyRegistry.Items);
+  Assert.AreEqual('Server läuft', mRows[0].Text);
+  Assert.AreEqual('seit 19:02', mRows[0].Detail);
+  Assert.AreEqual('Server: läuft seit 19:02', mRows[0].Hint, 'Tooltip mit dem vollen Text');
   // Ohne Kurzform: Text der Zeile, kein Zusatz.
-  Assert.AreEqual('Einrichtung: vollständig (6 von 6)', Rows[3].Text);
-  Assert.AreEqual('', Rows[3].Detail);
+  Assert.AreEqual('Einrichtung: vollständig (6 von 6)', mRows[3].Text);
+  Assert.AreEqual('', mRows[3].Detail);
 end;
 
 procedure TAtlasWelcomeStateTests.ForeignLineWithoutBriefShowsText;
 var
-  Registry: IAtlasStatusRegistry;
-  Rows: TAtlasStateRows;
+  mRegistry: IAtlasStatusRegistry;
+  mRows: TAtlasStateRows;
 begin
-  Registry := TAtlasStatusRegistry.Create;
-  Registry.Add(TPlainItem.Create('ATLAS.SETUP', 'Einrichtung: 5 von 6 erledigt', TAtlasStatusState.Yellow));
-  Rows := TAtlasWelcomeState.Rows(Registry.Items);
-  Assert.IsTrue(Rows[3].Present, 'Kennung ohne Groß-/Kleinschreibung');
-  Assert.AreEqual('Einrichtung: 5 von 6 erledigt', Rows[3].Text);
-  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(Rows[3].State));
+  mRegistry := TAtlasStatusRegistry.Create;
+  mRegistry.Add(TPlainItem.Create('ATLAS.SETUP', 'Einrichtung: 5 von 6 erledigt', TAtlasStatusState.Yellow));
+  mRows := TAtlasWelcomeState.Rows(mRegistry.Items);
+  Assert.IsTrue(mRows[3].Present, 'Kennung ohne Groß-/Kleinschreibung');
+  Assert.AreEqual('Einrichtung: 5 von 6 erledigt', mRows[3].Text);
+  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(mRows[3].State));
 end;
 
 procedure TAtlasWelcomeStateTests.OverallIsWorstRow;
 var
-  Registry: IAtlasStatusRegistry;
+  mRegistry: IAtlasStatusRegistry;
 begin
-  Registry := HealthyRegistry;
+  mRegistry := HealthyRegistry;
   Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(TAtlasWelcomeState.Overall(TAtlasWelcomeState.Rows(
-    Registry.Items))));
-  Line(Registry, TAtlasStatusLines.cSetupId, 'Einrichtung: 5 von 6 erledigt', TAtlasStatusState.Yellow, '', '');
+    mRegistry.Items))));
+  Line(mRegistry, TAtlasStatusLines.cSetupId, 'Einrichtung: 5 von 6 erledigt', TAtlasStatusState.Yellow, '', '');
   Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(TAtlasWelcomeState.Overall(TAtlasWelcomeState.Rows(
-    Registry.Items))));
-  Line(Registry, TAtlasStatusLines.cServerId, 'Server: abgestürzt um 14:32', TAtlasStatusState.Red, '', '');
+    mRegistry.Items))));
+  Line(mRegistry, TAtlasStatusLines.cServerId, 'Server: abgestürzt um 14:32', TAtlasStatusState.Red, '', '');
   Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(TAtlasWelcomeState.Overall(TAtlasWelcomeState.Rows(
-    Registry.Items))));
+    mRegistry.Items))));
   // Eine rote Datei-Zeile gehört nicht zur Kachel.
-  Registry := HealthyRegistry;
-  Line(Registry, TAtlasStatusLines.cFileId, 'Datei: gemischt', TAtlasStatusState.Red, '', '');
+  mRegistry := HealthyRegistry;
+  Line(mRegistry, TAtlasStatusLines.cFileId, 'Datei: gemischt', TAtlasStatusState.Red, '', '');
   Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(TAtlasWelcomeState.Overall(TAtlasWelcomeState.Rows(
-    Registry.Items))));
+    mRegistry.Items))));
   Assert.AreEqual(Ord(TAtlasStatusState.Neutral), Ord(TAtlasWelcomeState.Overall(nil)), 'ohne Zeilen');
 end;
 
 procedure TAtlasWelcomeStateTests.AllGreenOrNeutralIsNoProblem;
 var
-  Registry: IAtlasStatusRegistry;
+  mRegistry: IAtlasStatusRegistry;
 begin
-  Registry := HealthyRegistry;
-  Assert.IsFalse(TAtlasWelcomeState.HasProblem(TAtlasWelcomeState.Rows(Registry.Items)));
-  Line(Registry, TAtlasStatusLines.cServerId, 'Server: beendet', TAtlasStatusState.Neutral, '', '');
-  Assert.IsFalse(TAtlasWelcomeState.HasProblem(TAtlasWelcomeState.Rows(Registry.Items)), 'neutral');
-  Line(Registry, TAtlasStatusLines.cDiagnosticModeId, 'Diagnosemodus: an', TAtlasStatusState.Yellow, '', '');
-  Assert.IsTrue(TAtlasWelcomeState.HasProblem(TAtlasWelcomeState.Rows(Registry.Items)), 'gelb');
+  mRegistry := HealthyRegistry;
+  Assert.IsFalse(TAtlasWelcomeState.HasProblem(TAtlasWelcomeState.Rows(mRegistry.Items)));
+  Line(mRegistry, TAtlasStatusLines.cServerId, 'Server: beendet', TAtlasStatusState.Neutral, '', '');
+  Assert.IsFalse(TAtlasWelcomeState.HasProblem(TAtlasWelcomeState.Rows(mRegistry.Items)), 'neutral');
+  Line(mRegistry, TAtlasStatusLines.cDiagnosticModeId, 'Diagnosemodus: an', TAtlasStatusState.Yellow, '', '');
+  Assert.IsTrue(TAtlasWelcomeState.HasProblem(TAtlasWelcomeState.Rows(mRegistry.Items)), 'gelb');
 end;
 
 procedure TAtlasWelcomeStateTests.OnlyProblemsHidesTileWhenAllGreen;
 var
-  Registry: IAtlasStatusRegistry;
+  mRegistry: IAtlasStatusRegistry;
 begin
-  Registry := HealthyRegistry;
-  Assert.IsTrue(TAtlasWelcomeState.Visible(True, False, TAtlasWelcomeState.Rows(Registry.Items)),
+  mRegistry := HealthyRegistry;
+  Assert.IsTrue(TAtlasWelcomeState.Visible(True, False, TAtlasWelcomeState.Rows(mRegistry.Items)),
     'ohne onlyProblems immer');
-  Assert.IsFalse(TAtlasWelcomeState.Visible(True, True, TAtlasWelcomeState.Rows(Registry.Items)),
+  Assert.IsFalse(TAtlasWelcomeState.Visible(True, True, TAtlasWelcomeState.Rows(mRegistry.Items)),
     'alles grün: unsichtbar');
-  Line(Registry, TAtlasStatusLines.cVersionId, 'Version: Update 1.0.1', TAtlasStatusState.Yellow, '', '');
-  Assert.IsTrue(TAtlasWelcomeState.Visible(True, True, TAtlasWelcomeState.Rows(Registry.Items)), 'gelb: sichtbar');
-  Line(Registry, TAtlasStatusLines.cVersionId, 'Version', TAtlasStatusState.Green, '', '');
-  Line(Registry, TAtlasStatusLines.cServerId, 'Server: abgestürzt', TAtlasStatusState.Red, '', '');
-  Assert.IsTrue(TAtlasWelcomeState.Visible(True, True, TAtlasWelcomeState.Rows(Registry.Items)), 'rot: sichtbar');
+  Line(mRegistry, TAtlasStatusLines.cVersionId, 'Version: Update 1.0.1', TAtlasStatusState.Yellow, '', '');
+  Assert.IsTrue(TAtlasWelcomeState.Visible(True, True, TAtlasWelcomeState.Rows(mRegistry.Items)), 'gelb: sichtbar');
+  Line(mRegistry, TAtlasStatusLines.cVersionId, 'Version', TAtlasStatusState.Green, '', '');
+  Line(mRegistry, TAtlasStatusLines.cServerId, 'Server: abgestürzt', TAtlasStatusState.Red, '', '');
+  Assert.IsTrue(TAtlasWelcomeState.Visible(True, True, TAtlasWelcomeState.Rows(mRegistry.Items)), 'rot: sichtbar');
 end;
 
 procedure TAtlasWelcomeStateTests.StatusTileOffHidesTile;
 var
-  Registry: IAtlasStatusRegistry;
+  mRegistry: IAtlasStatusRegistry;
 begin
-  Registry := HealthyRegistry;
-  Line(Registry, TAtlasStatusLines.cServerId, 'Server: abgestürzt', TAtlasStatusState.Red, '', '');
-  Assert.IsFalse(TAtlasWelcomeState.Visible(False, False, TAtlasWelcomeState.Rows(Registry.Items)));
-  Assert.IsFalse(TAtlasWelcomeState.Visible(False, True, TAtlasWelcomeState.Rows(Registry.Items)));
+  mRegistry := HealthyRegistry;
+  Line(mRegistry, TAtlasStatusLines.cServerId, 'Server: abgestürzt', TAtlasStatusState.Red, '', '');
+  Assert.IsFalse(TAtlasWelcomeState.Visible(False, False, TAtlasWelcomeState.Rows(mRegistry.Items)));
+  Assert.IsFalse(TAtlasWelcomeState.Visible(False, True, TAtlasWelcomeState.Rows(mRegistry.Items)));
 end;
 
 procedure TAtlasWelcomeStateTests.UpdateButtonOnlyWithUpdate;
 var
-  Registry: IAtlasStatusRegistry;
-  Buttons: TArray<TAtlasStateButton>;
+  mRegistry: IAtlasStatusRegistry;
+  mButtons: TArray<TAtlasStateButton>;
 begin
-  Registry := HealthyRegistry;
-  Buttons := TAtlasWelcomeState.Buttons(TAtlasWelcomeState.Rows(Registry.Items));
-  Assert.AreEqual(3, Integer(Length(Buttons)));
-  Assert.AreEqual(Ord(TAtlasStateButton.Restart), Ord(Buttons[0]));
-  Assert.AreEqual(Ord(TAtlasStateButton.Settings), Ord(Buttons[1]));
-  Assert.AreEqual(Ord(TAtlasStateButton.LogFolder), Ord(Buttons[2]));
-  Assert.IsFalse(TAtlasWelcomeState.UpdateReady(TAtlasWelcomeState.Rows(Registry.Items)));
-  Line(Registry, TAtlasStatusLines.cVersionId, 'Version: Atlas 1.0.0, Update 1.0.1 bereit', TAtlasStatusState.Yellow,
+  mRegistry := HealthyRegistry;
+  mButtons := TAtlasWelcomeState.Buttons(TAtlasWelcomeState.Rows(mRegistry.Items));
+  Assert.AreEqual(3, Integer(Length(mButtons)));
+  Assert.AreEqual(Ord(TAtlasStateButton.Restart), Ord(mButtons[0]));
+  Assert.AreEqual(Ord(TAtlasStateButton.Settings), Ord(mButtons[1]));
+  Assert.AreEqual(Ord(TAtlasStateButton.LogFolder), Ord(mButtons[2]));
+  Assert.IsFalse(TAtlasWelcomeState.UpdateReady(TAtlasWelcomeState.Rows(mRegistry.Items)));
+  Line(mRegistry, TAtlasStatusLines.cVersionId, 'Version: Atlas 1.0.0, Update 1.0.1 bereit', TAtlasStatusState.Yellow,
     'Update 1.0.1 bereit', 'installiert 1.0.0');
-  Buttons := TAtlasWelcomeState.Buttons(TAtlasWelcomeState.Rows(Registry.Items));
-  Assert.AreEqual(4, Integer(Length(Buttons)));
-  Assert.AreEqual(Ord(TAtlasStateButton.Update), Ord(Buttons[3]));
+  mButtons := TAtlasWelcomeState.Buttons(TAtlasWelcomeState.Rows(mRegistry.Items));
+  Assert.AreEqual(4, Integer(Length(mButtons)));
+  Assert.AreEqual(Ord(TAtlasStateButton.Update), Ord(mButtons[3]));
   // Eine gelbe Zeile anderswo ist kein Update.
-  Registry := HealthyRegistry;
-  Line(Registry, TAtlasStatusLines.cSetupId, 'Einrichtung', TAtlasStatusState.Yellow, '', '');
-  Assert.AreEqual(3, Integer(Length(TAtlasWelcomeState.Buttons(TAtlasWelcomeState.Rows(Registry.Items)))));
+  mRegistry := HealthyRegistry;
+  Line(mRegistry, TAtlasStatusLines.cSetupId, 'Einrichtung', TAtlasStatusState.Yellow, '', '');
+  Assert.AreEqual(3, Integer(Length(TAtlasWelcomeState.Buttons(TAtlasWelcomeState.Rows(mRegistry.Items)))));
 end;
 
 procedure TAtlasWelcomeStateTests.SignatureChangesOnlyWithVisibleChange;
 var
-  Registry: IAtlasStatusRegistry;
-  Before: string;
+  mRegistry: IAtlasStatusRegistry;
+  mBefore: string;
 begin
-  Registry := HealthyRegistry;
-  Before := TAtlasWelcomeState.Signature(TAtlasWelcomeState.Rows(Registry.Items));
+  mRegistry := HealthyRegistry;
+  mBefore := TAtlasWelcomeState.Signature(TAtlasWelcomeState.Rows(mRegistry.Items));
   // Die Datei-Zeile ändert die Kachel nicht.
-  Line(Registry, TAtlasStatusLines.cFileId, 'Datei Main.pas: UTF-8', TAtlasStatusState.Green, '', '');
-  Assert.AreEqual(Before, TAtlasWelcomeState.Signature(TAtlasWelcomeState.Rows(Registry.Items)));
-  Line(Registry, TAtlasStatusLines.cIndexId, 'Index: 1284 Units', TAtlasStatusState.Green, 'Index: 1284 Units',
+  Line(mRegistry, TAtlasStatusLines.cFileId, 'Datei Main.pas: UTF-8', TAtlasStatusState.Green, '', '');
+  Assert.AreEqual(mBefore, TAtlasWelcomeState.Signature(TAtlasWelcomeState.Rows(mRegistry.Items)));
+  Line(mRegistry, TAtlasStatusLines.cIndexId, 'Index: 1284 Units', TAtlasStatusState.Green, 'Index: 1284 Units',
     'indiziert 18:41');
-  Assert.AreNotEqual(Before, TAtlasWelcomeState.Signature(TAtlasWelcomeState.Rows(Registry.Items)), 'Zusatz');
-  Registry := HealthyRegistry;
-  Line(Registry, TAtlasStatusLines.cServerId, 'Server: läuft seit 19:02', TAtlasStatusState.Yellow, 'Server läuft',
+  Assert.AreNotEqual(mBefore, TAtlasWelcomeState.Signature(TAtlasWelcomeState.Rows(mRegistry.Items)), 'Zusatz');
+  mRegistry := HealthyRegistry;
+  Line(mRegistry, TAtlasStatusLines.cServerId, 'Server: läuft seit 19:02', TAtlasStatusState.Yellow, 'Server läuft',
     'seit 19:02');
-  Assert.AreNotEqual(Before, TAtlasWelcomeState.Signature(TAtlasWelcomeState.Rows(Registry.Items)), 'Ampel');
+  Assert.AreNotEqual(mBefore, TAtlasWelcomeState.Signature(TAtlasWelcomeState.Rows(mRegistry.Items)), 'Ampel');
 end;
 
 { TAtlasStateLinesTests }
@@ -413,365 +413,365 @@ end;
 
 procedure TAtlasStateLinesTests.RunningServerShowsSince;
 var
-  Info: TAtlasServerInfo;
+  mInfo: TAtlasServerInfo;
 begin
-  Info := Default(TAtlasServerInfo);
-  Info.Phase := TAtlasServerPhase.Running;
-  Info.Version := '1.0.0';
-  Info.Since := Today(19, 2);
-  Assert.AreEqual('Server: läuft seit 19:02, Version 1.0.0', TAtlasStatusLines.ServerText(Info, Today(20, 0)));
-  Assert.AreEqual('Server läuft', TAtlasStatusLines.ServerBrief(Info));
-  Assert.AreEqual('seit 19:02', TAtlasStatusLines.ServerDetail(Info, Today(20, 0)));
-  Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(TAtlasStatusLines.ServerState(Info)));
-  Info.Samples := 3;
-  Info.AverageMs := TAtlasStatusLines.cSlowMs;
-  Assert.AreEqual('Server läuft langsam', TAtlasStatusLines.ServerBrief(Info));
-  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(TAtlasStatusLines.ServerState(Info)));
+  mInfo := Default(TAtlasServerInfo);
+  mInfo.Phase := TAtlasServerPhase.Running;
+  mInfo.Version := '1.0.0';
+  mInfo.Since := Today(19, 2);
+  Assert.AreEqual('Server: läuft seit 19:02, Version 1.0.0', TAtlasStatusLines.ServerText(mInfo, Today(20, 0)));
+  Assert.AreEqual('Server läuft', TAtlasStatusLines.ServerBrief(mInfo));
+  Assert.AreEqual('seit 19:02', TAtlasStatusLines.ServerDetail(mInfo, Today(20, 0)));
+  Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(TAtlasStatusLines.ServerState(mInfo)));
+  mInfo.Samples := 3;
+  mInfo.AverageMs := TAtlasStatusLines.cSlowMs;
+  Assert.AreEqual('Server läuft langsam', TAtlasStatusLines.ServerBrief(mInfo));
+  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(TAtlasStatusLines.ServerState(mInfo)));
 end;
 
 procedure TAtlasStateLinesTests.CrashedServerIsRedWithTime;
 var
-  Info: TAtlasServerInfo;
+  mInfo: TAtlasServerInfo;
 begin
-  Info := Default(TAtlasServerInfo);
-  Info.Phase := TAtlasServerPhase.Stopped;
-  Info.Since := Today(14, 32);
-  Assert.AreEqual('Server: abgestürzt um 14:32', TAtlasStatusLines.ServerText(Info, Today(15, 0)));
-  Assert.AreEqual('Server abgestürzt', TAtlasStatusLines.ServerBrief(Info));
-  Assert.AreEqual('um 14:32', TAtlasStatusLines.ServerDetail(Info, Today(15, 0)));
-  Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(TAtlasStatusLines.ServerState(Info)));
-  Assert.AreEqual('Server abgestürzt', TAtlasStatusLines.ServerSummary(Info));
+  mInfo := Default(TAtlasServerInfo);
+  mInfo.Phase := TAtlasServerPhase.Stopped;
+  mInfo.Since := Today(14, 32);
+  Assert.AreEqual('Server: abgestürzt um 14:32', TAtlasStatusLines.ServerText(mInfo, Today(15, 0)));
+  Assert.AreEqual('Server abgestürzt', TAtlasStatusLines.ServerBrief(mInfo));
+  Assert.AreEqual('um 14:32', TAtlasStatusLines.ServerDetail(mInfo, Today(15, 0)));
+  Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(TAtlasStatusLines.ServerState(mInfo)));
+  Assert.AreEqual('Server abgestürzt', TAtlasStatusLines.ServerSummary(mInfo));
   // Ursache aus dem Exit-Code (Bericht H5).
-  Info.Error := 'Stapelüberlauf (0xC00000FD)';
+  mInfo.Error := 'Stapelüberlauf (0xC00000FD)';
   Assert.AreEqual('Server: abgestürzt um 14:32 (Stapelüberlauf (0xC00000FD))',
-    TAtlasStatusLines.ServerText(Info, Today(15, 0)));
-  Assert.AreEqual('um 14:32, Stapelüberlauf (0xC00000FD)', TAtlasStatusLines.ServerDetail(Info, Today(15, 0)));
+    TAtlasStatusLines.ServerText(mInfo, Today(15, 0)));
+  Assert.AreEqual('um 14:32, Stapelüberlauf (0xC00000FD)', TAtlasStatusLines.ServerDetail(mInfo, Today(15, 0)));
   // Von Atlas beendet: keine Ursache, auch wenn noch eine gesetzt ist.
-  Info.Ended := True;
-  Assert.AreEqual('Server: beendet um 14:32', TAtlasStatusLines.ServerText(Info, Today(15, 0)));
+  mInfo.Ended := True;
+  Assert.AreEqual('Server: beendet um 14:32', TAtlasStatusLines.ServerText(mInfo, Today(15, 0)));
 end;
 
 procedure TAtlasStateLinesTests.EndedServerIsNeutral;
 var
-  Info: TAtlasServerInfo;
+  mInfo: TAtlasServerInfo;
 begin
-  Info := Default(TAtlasServerInfo);
-  Info.Phase := TAtlasServerPhase.Stopped;
-  Info.Ended := True;
-  Info.Since := Today(8, 5);
-  Assert.AreEqual('Server: beendet um 08:05', TAtlasStatusLines.ServerText(Info, Today(9, 0)));
-  Assert.AreEqual('Server beendet', TAtlasStatusLines.ServerBrief(Info));
-  Assert.AreEqual(Ord(TAtlasStatusState.Neutral), Ord(TAtlasStatusLines.ServerState(Info)));
-  Assert.AreEqual('', TAtlasStatusLines.ServerSummary(Info));
+  mInfo := Default(TAtlasServerInfo);
+  mInfo.Phase := TAtlasServerPhase.Stopped;
+  mInfo.Ended := True;
+  mInfo.Since := Today(8, 5);
+  Assert.AreEqual('Server: beendet um 08:05', TAtlasStatusLines.ServerText(mInfo, Today(9, 0)));
+  Assert.AreEqual('Server beendet', TAtlasStatusLines.ServerBrief(mInfo));
+  Assert.AreEqual(Ord(TAtlasStatusState.Neutral), Ord(TAtlasStatusLines.ServerState(mInfo)));
+  Assert.AreEqual('', TAtlasStatusLines.ServerSummary(mInfo));
 end;
 
 procedure TAtlasStateLinesTests.FailedServerShowsError;
 var
-  Info: TAtlasServerInfo;
+  mInfo: TAtlasServerInfo;
 begin
-  Info := Default(TAtlasServerInfo);
-  Info.Phase := TAtlasServerPhase.Failed;
-  Info.Error := 'AtlasServer.exe nicht gefunden';
-  Assert.AreEqual('Server-Start fehlgeschlagen', TAtlasStatusLines.ServerBrief(Info));
-  Assert.AreEqual('AtlasServer.exe nicht gefunden', TAtlasStatusLines.ServerDetail(Info, Today(9, 0)));
-  Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(TAtlasStatusLines.ServerState(Info)));
-  Info := Default(TAtlasServerInfo);
-  Assert.AreEqual('Server nicht gestartet', TAtlasStatusLines.ServerBrief(Info));
-  Assert.AreEqual('', TAtlasStatusLines.ServerDetail(Info, Today(9, 0)));
+  mInfo := Default(TAtlasServerInfo);
+  mInfo.Phase := TAtlasServerPhase.Failed;
+  mInfo.Error := 'AtlasServer.exe nicht gefunden';
+  Assert.AreEqual('Server-Start fehlgeschlagen', TAtlasStatusLines.ServerBrief(mInfo));
+  Assert.AreEqual('AtlasServer.exe nicht gefunden', TAtlasStatusLines.ServerDetail(mInfo, Today(9, 0)));
+  Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(TAtlasStatusLines.ServerState(mInfo)));
+  mInfo := Default(TAtlasServerInfo);
+  Assert.AreEqual('Server nicht gestartet', TAtlasStatusLines.ServerBrief(mInfo));
+  Assert.AreEqual('', TAtlasStatusLines.ServerDetail(mInfo, Today(9, 0)));
 end;
 
 procedure TAtlasStateLinesTests.IndexShowsLastFullIndexing;
 var
-  Info: TAtlasIndexInfo;
+  mInfo: TAtlasIndexInfo;
 begin
-  Info := Default(TAtlasIndexInfo);
-  Info.Units := 1284;
-  Info.Percent := -1;
-  Info.FullAt := Today(18, 40);
-  Assert.AreEqual('Index: 1284 Units, vollständig indiziert 18:40', TAtlasStatusLines.IndexText(Info, Today(19, 0)));
-  Assert.AreEqual('Index: 1284 Units', TAtlasStatusLines.IndexBrief(Info));
-  Assert.AreEqual('indiziert 18:40', TAtlasStatusLines.IndexDetail(Info, Today(19, 0)));
-  Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(TAtlasStatusLines.IndexState(Info)));
+  mInfo := Default(TAtlasIndexInfo);
+  mInfo.Units := 1284;
+  mInfo.Percent := -1;
+  mInfo.FullAt := Today(18, 40);
+  Assert.AreEqual('Index: 1284 Units, vollständig indiziert 18:40', TAtlasStatusLines.IndexText(mInfo, Today(19, 0)));
+  Assert.AreEqual('Index: 1284 Units', TAtlasStatusLines.IndexBrief(mInfo));
+  Assert.AreEqual('indiziert 18:40', TAtlasStatusLines.IndexDetail(mInfo, Today(19, 0)));
+  Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(TAtlasStatusLines.IndexState(mInfo)));
 end;
 
 procedure TAtlasStateLinesTests.IndexWhileBuildingShowsPercent;
 var
-  Info: TAtlasIndexInfo;
+  mInfo: TAtlasIndexInfo;
 begin
-  Info := Default(TAtlasIndexInfo);
-  Info.Units := -1;
-  Info.Indexing := True;
-  Info.Percent := 45;
-  Info.FullAt := Today(18, 40);
-  Assert.AreEqual('Index wird aufgebaut', TAtlasStatusLines.IndexBrief(Info));
-  Assert.AreEqual('45 %', TAtlasStatusLines.IndexDetail(Info, Today(19, 0)));
-  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(TAtlasStatusLines.IndexState(Info)));
-  Info.Percent := -1;
-  Assert.AreEqual('', TAtlasStatusLines.IndexDetail(Info, Today(19, 0)));
+  mInfo := Default(TAtlasIndexInfo);
+  mInfo.Units := -1;
+  mInfo.Indexing := True;
+  mInfo.Percent := 45;
+  mInfo.FullAt := Today(18, 40);
+  Assert.AreEqual('Index wird aufgebaut', TAtlasStatusLines.IndexBrief(mInfo));
+  Assert.AreEqual('45 %', TAtlasStatusLines.IndexDetail(mInfo, Today(19, 0)));
+  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(TAtlasStatusLines.IndexState(mInfo)));
+  mInfo.Percent := -1;
+  Assert.AreEqual('', TAtlasStatusLines.IndexDetail(mInfo, Today(19, 0)));
 end;
 
 procedure TAtlasStateLinesTests.OfflineIndexShowsStoredValues;
 var
-  Info: TAtlasIndexInfo;
+  mInfo: TAtlasIndexInfo;
 begin
-  Info := Default(TAtlasIndexInfo);
-  Info.Offline := True;
-  Info.Units := 1284;
-  Info.Percent := -1;
-  Info.StoredAt := Today(17, 45) - 1;
+  mInfo := Default(TAtlasIndexInfo);
+  mInfo.Offline := True;
+  mInfo.Units := 1284;
+  mInfo.Percent := -1;
+  mInfo.StoredAt := Today(17, 45) - 1;
   Assert.AreEqual('Index: 1284 Units, Stand vom 14.10. 17:45 (Server läuft nicht)',
-    TAtlasStatusLines.IndexText(Info, Today(9, 0)));
-  Assert.AreEqual('Index: 1284 Units', TAtlasStatusLines.IndexBrief(Info));
-  Assert.AreEqual('Stand vom 14.10. 17:45', TAtlasStatusLines.IndexDetail(Info, Today(9, 0)));
-  Assert.AreEqual(Ord(TAtlasStatusState.Neutral), Ord(TAtlasStatusLines.IndexState(Info)));
-  Assert.AreEqual('', TAtlasStatusLines.IndexSummary(Info));
+    TAtlasStatusLines.IndexText(mInfo, Today(9, 0)));
+  Assert.AreEqual('Index: 1284 Units', TAtlasStatusLines.IndexBrief(mInfo));
+  Assert.AreEqual('Stand vom 14.10. 17:45', TAtlasStatusLines.IndexDetail(mInfo, Today(9, 0)));
+  Assert.AreEqual(Ord(TAtlasStatusState.Neutral), Ord(TAtlasStatusLines.IndexState(mInfo)));
+  Assert.AreEqual('', TAtlasStatusLines.IndexSummary(mInfo));
 end;
 
 procedure TAtlasStateLinesTests.OfflineIndexWithoutStoredValues;
 var
-  Info: TAtlasIndexInfo;
+  mInfo: TAtlasIndexInfo;
 begin
-  Info := Default(TAtlasIndexInfo);
-  Info.Offline := True;
-  Info.Units := -1;
-  Assert.AreEqual('Index: Server läuft nicht', TAtlasStatusLines.IndexText(Info, Today(9, 0)));
-  Assert.AreEqual('Index unbekannt', TAtlasStatusLines.IndexBrief(Info));
-  Assert.AreEqual('Server läuft nicht', TAtlasStatusLines.IndexDetail(Info, Today(9, 0)));
-  Assert.AreEqual(Ord(TAtlasStatusState.Neutral), Ord(TAtlasStatusLines.IndexState(Info)));
+  mInfo := Default(TAtlasIndexInfo);
+  mInfo.Offline := True;
+  mInfo.Units := -1;
+  Assert.AreEqual('Index: Server läuft nicht', TAtlasStatusLines.IndexText(mInfo, Today(9, 0)));
+  Assert.AreEqual('Index unbekannt', TAtlasStatusLines.IndexBrief(mInfo));
+  Assert.AreEqual('Server läuft nicht', TAtlasStatusLines.IndexDetail(mInfo, Today(9, 0)));
+  Assert.AreEqual(Ord(TAtlasStatusState.Neutral), Ord(TAtlasStatusLines.IndexState(mInfo)));
 end;
 
 procedure TAtlasStateLinesTests.VersionWithUpdateIsYellow;
 var
-  Info: TAtlasVersionInfo;
+  mInfo: TAtlasVersionInfo;
 begin
-  Info := Default(TAtlasVersionInfo);
-  Info.Installed := '1.0.0';
-  Info.Available := '1.0.1';
-  Info.CheckEnabled := True;
-  Info.Checked := True;
-  Assert.IsTrue(TAtlasStatusLines.UpdateAvailable(Info));
-  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(TAtlasStatusLines.VersionState(Info)));
-  Assert.AreEqual('Version: Atlas 1.0.0, Update 1.0.1 bereit', TAtlasStatusLines.VersionText(Info));
-  Assert.AreEqual('Update 1.0.1 bereit', TAtlasStatusLines.VersionBrief(Info));
-  Assert.AreEqual('installiert 1.0.0', TAtlasStatusLines.VersionDetail(Info));
-  Assert.AreEqual('Update 1.0.1', TAtlasStatusLines.VersionSummary(Info));
+  mInfo := Default(TAtlasVersionInfo);
+  mInfo.Installed := '1.0.0';
+  mInfo.Available := '1.0.1';
+  mInfo.CheckEnabled := True;
+  mInfo.Checked := True;
+  Assert.IsTrue(TAtlasStatusLines.UpdateAvailable(mInfo));
+  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(TAtlasStatusLines.VersionState(mInfo)));
+  Assert.AreEqual('Version: Atlas 1.0.0, Update 1.0.1 bereit', TAtlasStatusLines.VersionText(mInfo));
+  Assert.AreEqual('Update 1.0.1 bereit', TAtlasStatusLines.VersionBrief(mInfo));
+  Assert.AreEqual('installiert 1.0.0', TAtlasStatusLines.VersionDetail(mInfo));
+  Assert.AreEqual('Update 1.0.1', TAtlasStatusLines.VersionSummary(mInfo));
   // Stand der Installation (#1519) in Zeile und Einzelheiten.
-  Info.Install := 'wird beim Beenden installiert';
+  mInfo.Install := 'wird beim Beenden installiert';
   Assert.AreEqual('Version: Atlas 1.0.0, Update 1.0.1 bereit (wird beim Beenden installiert)',
-    TAtlasStatusLines.VersionText(Info));
-  Assert.AreEqual('wird beim Beenden installiert', TAtlasStatusLines.VersionDetail(Info));
+    TAtlasStatusLines.VersionText(mInfo));
+  Assert.AreEqual('wird beim Beenden installiert', TAtlasStatusLines.VersionDetail(mInfo));
 end;
 
 procedure TAtlasStateLinesTests.VersionWithoutUpdate;
 var
-  Info: TAtlasVersionInfo;
+  mInfo: TAtlasVersionInfo;
 begin
-  Info := Default(TAtlasVersionInfo);
-  Info.Installed := '1.0.0';
-  Info.CheckEnabled := True;
-  Info.Checked := True;
-  Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(TAtlasStatusLines.VersionState(Info)));
-  Assert.AreEqual('Atlas 1.0.0', TAtlasStatusLines.VersionBrief(Info));
-  Assert.AreEqual('aktuell', TAtlasStatusLines.VersionDetail(Info));
-  Assert.AreEqual('', TAtlasStatusLines.VersionSummary(Info));
-  Info.Checked := False;
-  Assert.AreEqual(Ord(TAtlasStatusState.Neutral), Ord(TAtlasStatusLines.VersionState(Info)));
-  Assert.AreEqual('noch nicht geprüft', TAtlasStatusLines.VersionDetail(Info));
-  Info.CheckEnabled := False;
-  Assert.AreEqual(Ord(TAtlasStatusState.Neutral), Ord(TAtlasStatusLines.VersionState(Info)));
-  Assert.AreEqual('Version: Atlas 1.0.0 (Update-Prüfung aus)', TAtlasStatusLines.VersionText(Info));
-  Assert.AreEqual('Update-Prüfung aus', TAtlasStatusLines.VersionDetail(Info));
+  mInfo := Default(TAtlasVersionInfo);
+  mInfo.Installed := '1.0.0';
+  mInfo.CheckEnabled := True;
+  mInfo.Checked := True;
+  Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(TAtlasStatusLines.VersionState(mInfo)));
+  Assert.AreEqual('Atlas 1.0.0', TAtlasStatusLines.VersionBrief(mInfo));
+  Assert.AreEqual('aktuell', TAtlasStatusLines.VersionDetail(mInfo));
+  Assert.AreEqual('', TAtlasStatusLines.VersionSummary(mInfo));
+  mInfo.Checked := False;
+  Assert.AreEqual(Ord(TAtlasStatusState.Neutral), Ord(TAtlasStatusLines.VersionState(mInfo)));
+  Assert.AreEqual('noch nicht geprüft', TAtlasStatusLines.VersionDetail(mInfo));
+  mInfo.CheckEnabled := False;
+  Assert.AreEqual(Ord(TAtlasStatusState.Neutral), Ord(TAtlasStatusLines.VersionState(mInfo)));
+  Assert.AreEqual('Version: Atlas 1.0.0 (Update-Prüfung aus)', TAtlasStatusLines.VersionText(mInfo));
+  Assert.AreEqual('Update-Prüfung aus', TAtlasStatusLines.VersionDetail(mInfo));
 end;
 
 procedure TAtlasStateLinesTests.LineKeepsBriefAndDetail;
 var
-  Registry: IAtlasStatusRegistry;
-  Item: TAtlasStatusLine;
-  Ref: IAtlasStatusItem;
-  Brief: IAtlasStatusBrief;
-  Before: Integer;
+  mRegistry: IAtlasStatusRegistry;
+  mItem: TAtlasStatusLine;
+  mRef: IAtlasStatusItem;
+  mBrief: IAtlasStatusBrief;
+  mBefore: Integer;
 begin
-  Registry := TAtlasStatusRegistry.Create;
-  Item := TAtlasStatusLine.Create(Registry, 'atlas.server', 0);
-  Ref := Item;
-  Registry.Add(Ref);
-  Item.Update('Server: läuft', TAtlasStatusState.Green, '', 'Server läuft', 'seit 19:02');
-  Assert.IsTrue(Supports(Ref, IAtlasStatusBrief, Brief));
-  Assert.AreEqual('Server läuft', Brief.Brief);
-  Assert.AreEqual('seit 19:02', Brief.Detail);
-  Before := Registry.Version;
-  Item.Update('Server: läuft', TAtlasStatusState.Green, '', 'Server läuft', 'seit 19:02');
-  Assert.AreEqual(Before, Registry.Version, 'nichts geändert');
-  Item.Update('Server: läuft', TAtlasStatusState.Green, '', 'Server läuft', 'seit 19:03');
-  Assert.AreEqual(Before + 1, Registry.Version, 'Zusatz geändert');
+  mRegistry := TAtlasStatusRegistry.Create;
+  mItem := TAtlasStatusLine.Create(mRegistry, 'atlas.server', 0);
+  mRef := mItem;
+  mRegistry.Add(mRef);
+  mItem.Update('Server: läuft', TAtlasStatusState.Green, '', 'Server läuft', 'seit 19:02');
+  Assert.IsTrue(Supports(mRef, IAtlasStatusBrief, mBrief));
+  Assert.AreEqual('Server läuft', mBrief.Brief);
+  Assert.AreEqual('seit 19:02', mBrief.Detail);
+  mBefore := mRegistry.Version;
+  mItem.Update('Server: läuft', TAtlasStatusState.Green, '', 'Server läuft', 'seit 19:02');
+  Assert.AreEqual(mBefore, mRegistry.Version, 'nichts geändert');
+  mItem.Update('Server: läuft', TAtlasStatusState.Green, '', 'Server läuft', 'seit 19:03');
+  Assert.AreEqual(mBefore + 1, mRegistry.Version, 'Zusatz geändert');
   // Ohne Kurzform sind beide leer.
-  Item.Update('Server: läuft', TAtlasStatusState.Green);
-  Assert.AreEqual('', Brief.Brief);
-  Assert.AreEqual('', Brief.Detail);
-  Item.Detach;
+  mItem.Update('Server: läuft', TAtlasStatusState.Green);
+  Assert.AreEqual('', mBrief.Brief);
+  Assert.AreEqual('', mBrief.Detail);
+  mItem.Detach;
 end;
 
 { TAtlasIndexStoreTests }
 
 procedure TAtlasIndexStoreTests.SnapshotRoundTrip;
 var
-  Snapshot, Back: TAtlasIndexSnapshot;
+  mSnapshot, mBack: TAtlasIndexSnapshot;
 begin
-  Snapshot := TAtlasIndexSnapshot.Empty;
-  Assert.IsFalse(Snapshot.Known);
-  Snapshot.Units := 1284;
-  Snapshot.FullAt := Today(18, 40);
-  Snapshot.At := Today(19, 5);
-  Assert.IsTrue(Snapshot.Known);
-  Back := TAtlasIndexSnapshot.FromJson(Snapshot.ToJson);
-  Assert.AreEqual(1284, Back.Units);
-  Assert.AreEqual(FormatDateTime('yyyy-mm-dd hh:nn:ss', Snapshot.FullAt), FormatDateTime('yyyy-mm-dd hh:nn:ss',
-    Back.FullAt));
-  Assert.AreEqual(FormatDateTime('yyyy-mm-dd hh:nn:ss', Snapshot.At), FormatDateTime('yyyy-mm-dd hh:nn:ss', Back.At));
-  Assert.IsTrue(Back.Known);
+  mSnapshot := TAtlasIndexSnapshot.Empty;
+  Assert.IsFalse(mSnapshot.Known);
+  mSnapshot.Units := 1284;
+  mSnapshot.FullAt := Today(18, 40);
+  mSnapshot.At := Today(19, 5);
+  Assert.IsTrue(mSnapshot.Known);
+  mBack := TAtlasIndexSnapshot.FromJson(mSnapshot.ToJson);
+  Assert.AreEqual(1284, mBack.Units);
+  Assert.AreEqual(FormatDateTime('yyyy-mm-dd hh:nn:ss', mSnapshot.FullAt), FormatDateTime('yyyy-mm-dd hh:nn:ss',
+    mBack.FullAt));
+  Assert.AreEqual(FormatDateTime('yyyy-mm-dd hh:nn:ss', mSnapshot.At), FormatDateTime('yyyy-mm-dd hh:nn:ss', mBack.At));
+  Assert.IsTrue(mBack.Known);
   // Keine Pfade und Namen in der Datei.
-  Assert.IsFalse(Snapshot.ToJson.Contains('\'));
+  Assert.IsFalse(mSnapshot.ToJson.Contains('\'));
 end;
 
 procedure TAtlasIndexStoreTests.InvalidJsonIsEmpty;
 var
-  Back: TAtlasIndexSnapshot;
+  mBack: TAtlasIndexSnapshot;
 begin
-  Back := TAtlasIndexSnapshot.FromJson('kein JSON');
-  Assert.AreEqual(-1, Back.Units);
-  Assert.IsFalse(Back.Known);
-  Back := TAtlasIndexSnapshot.FromJson('{"format": 2, "units": 5, "at": "2026-10-15T10:00:00Z"}');
-  Assert.AreEqual(-1, Back.Units, 'anderes Format');
-  Back := TAtlasIndexSnapshot.FromJson('{"format": 1, "units": -3, "at": "Unsinn"}');
-  Assert.AreEqual(-1, Back.Units);
-  Assert.IsTrue(Back.At = 0);
+  mBack := TAtlasIndexSnapshot.FromJson('kein JSON');
+  Assert.AreEqual(-1, mBack.Units);
+  Assert.IsFalse(mBack.Known);
+  mBack := TAtlasIndexSnapshot.FromJson('{"format": 2, "units": 5, "at": "2026-10-15T10:00:00Z"}');
+  Assert.AreEqual(-1, mBack.Units, 'anderes Format');
+  mBack := TAtlasIndexSnapshot.FromJson('{"format": 1, "units": -3, "at": "Unsinn"}');
+  Assert.AreEqual(-1, mBack.Units);
+  Assert.IsTrue(mBack.At = 0);
 end;
 
 procedure TAtlasIndexStoreTests.TrackerRecordsEndOfIndexing;
 var
-  Tracker: TAtlasIndexTracker;
+  mTracker: TAtlasIndexTracker;
 begin
-  Tracker := TAtlasIndexTracker.Create(TAtlasIndexSnapshot.Empty);
+  mTracker := TAtlasIndexTracker.Create(TAtlasIndexSnapshot.Empty);
   try
-    Assert.IsFalse(Tracker.Observe(True, True, -1, Today(18, 30)), 'Indizierung läuft');
-    Assert.IsTrue(Tracker.Snapshot.FullAt = 0);
-    Assert.IsTrue(Tracker.Observe(True, False, 1284, Today(18, 40)), 'Ende der Indizierung');
-    Assert.IsTrue(Tracker.Snapshot.FullAt = Today(18, 40));
-    Assert.AreEqual(1284, Tracker.Snapshot.Units);
-    Assert.IsTrue(Tracker.Snapshot.At = Today(18, 40));
+    Assert.IsFalse(mTracker.Observe(True, True, -1, Today(18, 30)), 'Indizierung läuft');
+    Assert.IsTrue(mTracker.Snapshot.FullAt = 0);
+    Assert.IsTrue(mTracker.Observe(True, False, 1284, Today(18, 40)), 'Ende der Indizierung');
+    Assert.IsTrue(mTracker.Snapshot.FullAt = Today(18, 40));
+    Assert.AreEqual(1284, mTracker.Snapshot.Units);
+    Assert.IsTrue(mTracker.Snapshot.At = Today(18, 40));
   finally
-    Tracker.Free;
+    mTracker.Free;
   end;
 end;
 
 procedure TAtlasIndexStoreTests.TrackerIgnoresUnitsWhileIndexing;
 var
-  Tracker: TAtlasIndexTracker;
+  mTracker: TAtlasIndexTracker;
 begin
-  Tracker := TAtlasIndexTracker.Create(TAtlasIndexSnapshot.Empty);
+  mTracker := TAtlasIndexTracker.Create(TAtlasIndexSnapshot.Empty);
   try
-    Tracker.Observe(True, True, 80, Today(18, 30));
-    Assert.AreEqual(-1, Tracker.Snapshot.Units, 'Zwischenstand zählt nicht');
+    mTracker.Observe(True, True, 80, Today(18, 30));
+    Assert.AreEqual(-1, mTracker.Snapshot.Units, 'Zwischenstand zählt nicht');
   finally
-    Tracker.Free;
+    mTracker.Free;
   end;
 end;
 
 procedure TAtlasIndexStoreTests.TrackerSavesWhenServerStops;
 var
-  Tracker: TAtlasIndexTracker;
+  mTracker: TAtlasIndexTracker;
 begin
-  Tracker := TAtlasIndexTracker.Create(TAtlasIndexSnapshot.Empty);
+  mTracker := TAtlasIndexTracker.Create(TAtlasIndexSnapshot.Empty);
   try
-    Assert.IsFalse(Tracker.Observe(False, False, -1, Today(9, 0)), 'lief nie: nichts zu sichern');
-    Tracker.Observe(True, False, 1284, Today(9, 1));
-    Tracker.Observe(True, False, 1284, Today(9, 30));
-    Assert.IsTrue(Tracker.Observe(False, False, -1, Today(9, 31)), 'Server hört auf');
-    Assert.IsTrue(Tracker.Snapshot.At = Today(9, 30), 'zuletzt bestätigt');
-    Assert.IsFalse(Tracker.Observe(False, False, -1, Today(9, 32)), 'nur einmal');
+    Assert.IsFalse(mTracker.Observe(False, False, -1, Today(9, 0)), 'lief nie: nichts zu sichern');
+    mTracker.Observe(True, False, 1284, Today(9, 1));
+    mTracker.Observe(True, False, 1284, Today(9, 30));
+    Assert.IsTrue(mTracker.Observe(False, False, -1, Today(9, 31)), 'Server hört auf');
+    Assert.IsTrue(mTracker.Snapshot.At = Today(9, 30), 'zuletzt bestätigt');
+    Assert.IsFalse(mTracker.Observe(False, False, -1, Today(9, 32)), 'nur einmal');
   finally
-    Tracker.Free;
+    mTracker.Free;
   end;
 end;
 
 procedure TAtlasIndexStoreTests.TrackerSavesOnlyOnChange;
 var
-  Stored: TAtlasIndexSnapshot;
-  Tracker: TAtlasIndexTracker;
+  mStored: TAtlasIndexSnapshot;
+  mTracker: TAtlasIndexTracker;
 begin
-  Stored := TAtlasIndexSnapshot.Empty;
-  Stored.Units := 1200;
-  Stored.FullAt := Today(8, 0);
-  Stored.At := Today(8, 30);
-  Tracker := TAtlasIndexTracker.Create(Stored);
+  mStored := TAtlasIndexSnapshot.Empty;
+  mStored.Units := 1200;
+  mStored.FullAt := Today(8, 0);
+  mStored.At := Today(8, 30);
+  mTracker := TAtlasIndexTracker.Create(mStored);
   try
-    Assert.IsFalse(Tracker.Observe(True, False, -1, Today(9, 0)), 'Units noch unbekannt');
-    Assert.IsFalse(Tracker.Observe(True, False, 1200, Today(9, 1)), 'unverändert');
-    Assert.IsTrue(Tracker.Snapshot.At = Today(9, 1), 'Stand im Speicher nachgeführt');
-    Assert.IsTrue(Tracker.Observe(True, False, 1210, Today(9, 2)), 'Units geändert');
-    Assert.IsTrue(Tracker.Snapshot.FullAt = Today(8, 0), 'keine neue Indizierung');
+    Assert.IsFalse(mTracker.Observe(True, False, -1, Today(9, 0)), 'Units noch unbekannt');
+    Assert.IsFalse(mTracker.Observe(True, False, 1200, Today(9, 1)), 'unverändert');
+    Assert.IsTrue(mTracker.Snapshot.At = Today(9, 1), 'Stand im Speicher nachgeführt');
+    Assert.IsTrue(mTracker.Observe(True, False, 1210, Today(9, 2)), 'Units geändert');
+    Assert.IsTrue(mTracker.Snapshot.FullAt = Today(8, 0), 'keine neue Indizierung');
   finally
-    Tracker.Free;
+    mTracker.Free;
   end;
 end;
 
 procedure TAtlasIndexStoreTests.InfoUsesStoredValuesOffline;
 var
-  Stored: TAtlasIndexSnapshot;
-  Tracker: TAtlasIndexTracker;
-  Info: TAtlasIndexInfo;
+  mStored: TAtlasIndexSnapshot;
+  mTracker: TAtlasIndexTracker;
+  mInfo: TAtlasIndexInfo;
 begin
-  Stored := TAtlasIndexSnapshot.Empty;
-  Stored.Units := 1284;
-  Stored.FullAt := Today(8, 0);
-  Stored.At := Today(8, 30);
-  Tracker := TAtlasIndexTracker.Create(Stored);
+  mStored := TAtlasIndexSnapshot.Empty;
+  mStored.Units := 1284;
+  mStored.FullAt := Today(8, 0);
+  mStored.At := Today(8, 30);
+  mTracker := TAtlasIndexTracker.Create(mStored);
   try
-    Info := Tracker.Info(False, False, -1, -1);
-    Assert.IsTrue(Info.Offline);
-    Assert.AreEqual(1284, Info.Units);
-    Assert.IsTrue(Info.StoredAt = Today(8, 30));
-    Assert.AreEqual('Stand vom 08:30', TAtlasStatusLines.IndexDetail(Info, Today(9, 0)));
-    Info := Tracker.Info(True, True, 45, 300);
-    Assert.IsFalse(Info.Offline);
-    Assert.IsTrue(Info.Indexing);
-    Assert.AreEqual(45, Info.Percent);
-    Assert.AreEqual(300, Info.Units);
-    Assert.IsTrue(Info.FullAt = Today(8, 0), 'letzte vollständige Indizierung');
+    mInfo := mTracker.Info(False, False, -1, -1);
+    Assert.IsTrue(mInfo.Offline);
+    Assert.AreEqual(1284, mInfo.Units);
+    Assert.IsTrue(mInfo.StoredAt = Today(8, 30));
+    Assert.AreEqual('Stand vom 08:30', TAtlasStatusLines.IndexDetail(mInfo, Today(9, 0)));
+    mInfo := mTracker.Info(True, True, 45, 300);
+    Assert.IsFalse(mInfo.Offline);
+    Assert.IsTrue(mInfo.Indexing);
+    Assert.AreEqual(45, mInfo.Percent);
+    Assert.AreEqual(300, mInfo.Units);
+    Assert.IsTrue(mInfo.FullAt = Today(8, 0), 'letzte vollständige Indizierung');
   finally
-    Tracker.Free;
+    mTracker.Free;
   end;
-  Tracker := TAtlasIndexTracker.Create(TAtlasIndexSnapshot.Empty);
+  mTracker := TAtlasIndexTracker.Create(TAtlasIndexSnapshot.Empty);
   try
-    Info := Tracker.Info(False, False, -1, -1);
-    Assert.AreEqual(-1, Info.Units, 'nichts gespeichert');
-    Assert.AreEqual('Index: Server läuft nicht', TAtlasStatusLines.IndexText(Info, Today(9, 0)));
+    mInfo := mTracker.Info(False, False, -1, -1);
+    Assert.AreEqual(-1, mInfo.Units, 'nichts gespeichert');
+    Assert.AreEqual('Index: Server läuft nicht', TAtlasStatusLines.IndexText(mInfo, Today(9, 0)));
   finally
-    Tracker.Free;
+    mTracker.Free;
   end;
 end;
 
 procedure TAtlasIndexStoreTests.FileRoundTrip;
 var
-  Folder, FileName: string;
-  Snapshot, Back: TAtlasIndexSnapshot;
+  mFolder, mFileName: string;
+  mSnapshot, mBack: TAtlasIndexSnapshot;
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'atlas-index-store-' + IntToStr(Random(MaxInt)));
-  FileName := TPath.Combine(TPath.Combine(Folder, 'Atlas'), TAtlasIndexStore.cFileName);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-index-store-' + IntToStr(Random(MaxInt)));
+  mFileName := TPath.Combine(TPath.Combine(mFolder, 'Atlas'), TAtlasIndexStore.cFileName);
   try
-    Back := TAtlasIndexStore.Load(FileName);
-    Assert.AreEqual(-1, Back.Units, 'fehlende Datei');
-    Snapshot := TAtlasIndexSnapshot.Empty;
-    Snapshot.Units := 77;
-    Snapshot.At := Today(10, 0);
-    Assert.IsTrue(TAtlasIndexStore.Save(FileName, Snapshot), 'legt den Ordner an');
-    Back := TAtlasIndexStore.Load(FileName);
-    Assert.AreEqual(77, Back.Units);
-    Assert.IsTrue(Back.Known);
+    mBack := TAtlasIndexStore.Load(mFileName);
+    Assert.AreEqual(-1, mBack.Units, 'fehlende Datei');
+    mSnapshot := TAtlasIndexSnapshot.Empty;
+    mSnapshot.Units := 77;
+    mSnapshot.At := Today(10, 0);
+    Assert.IsTrue(TAtlasIndexStore.Save(mFileName, mSnapshot), 'legt den Ordner an');
+    mBack := TAtlasIndexStore.Load(mFileName);
+    Assert.AreEqual(77, mBack.Units);
+    Assert.IsTrue(mBack.Known);
   finally
-    if TDirectory.Exists(Folder) then
+    if TDirectory.Exists(mFolder) then
     begin
-      TDirectory.Delete(Folder, True);
+      TDirectory.Delete(mFolder, True);
     end;
   end;
 end;
@@ -780,73 +780,73 @@ end;
 
 procedure TAtlasStateUpdateTests.RememberKeepsNewVersionAndForgetsAfterCurrent;
 var
-  State: TAtlasUpdateState;
-  Outcome: TAtlasUpdateResult;
+  mState: TAtlasUpdateState;
+  mOutcome: TAtlasUpdateResult;
 begin
-  State := Default(TAtlasUpdateState);
-  Outcome := Default(TAtlasUpdateResult);
-  Outcome.Outcome := TAtlasUpdateOutcome.NewVersion;
-  Outcome.Release.Version := '1.0.1';
-  Outcome.Release.ChangesUrl := 'https://example.org/changes';
-  TAtlasUpdates.Remember(State, Outcome);
-  Assert.AreEqual('1.0.1', State.Available);
-  Assert.AreEqual('https://example.org/changes', State.ChangesUrl);
-  Outcome := Default(TAtlasUpdateResult);
-  Outcome.Outcome := TAtlasUpdateOutcome.Failed;
-  TAtlasUpdates.Remember(State, Outcome);
-  Assert.AreEqual('1.0.1', State.Available, 'Fehlschlag ändert nichts');
-  Outcome.Outcome := TAtlasUpdateOutcome.NotDue;
-  TAtlasUpdates.Remember(State, Outcome);
-  Assert.AreEqual('1.0.1', State.Available, 'nicht fällig ändert nichts');
-  Outcome.Outcome := TAtlasUpdateOutcome.Current;
-  TAtlasUpdates.Remember(State, Outcome);
-  Assert.AreEqual('', State.Available, 'aktuell');
-  Assert.AreEqual('', State.ChangesUrl);
+  mState := Default(TAtlasUpdateState);
+  mOutcome := Default(TAtlasUpdateResult);
+  mOutcome.Outcome := TAtlasUpdateOutcome.NewVersion;
+  mOutcome.Release.Version := '1.0.1';
+  mOutcome.Release.ChangesUrl := 'https://example.org/changes';
+  TAtlasUpdates.Remember(mState, mOutcome);
+  Assert.AreEqual('1.0.1', mState.Available);
+  Assert.AreEqual('https://example.org/changes', mState.ChangesUrl);
+  mOutcome := Default(TAtlasUpdateResult);
+  mOutcome.Outcome := TAtlasUpdateOutcome.Failed;
+  TAtlasUpdates.Remember(mState, mOutcome);
+  Assert.AreEqual('1.0.1', mState.Available, 'Fehlschlag ändert nichts');
+  mOutcome.Outcome := TAtlasUpdateOutcome.NotDue;
+  TAtlasUpdates.Remember(mState, mOutcome);
+  Assert.AreEqual('1.0.1', mState.Available, 'nicht fällig ändert nichts');
+  mOutcome.Outcome := TAtlasUpdateOutcome.Current;
+  TAtlasUpdates.Remember(mState, mOutcome);
+  Assert.AreEqual('', mState.Available, 'aktuell');
+  Assert.AreEqual('', mState.ChangesUrl);
 end;
 
 procedure TAtlasStateUpdateTests.PendingOnlyWhenNewerThanInstalled;
 var
-  State: TAtlasUpdateState;
-  Release: TAtlasRelease;
+  mState: TAtlasUpdateState;
+  mRelease: TAtlasRelease;
 begin
-  State := Default(TAtlasUpdateState);
-  Assert.IsFalse(TAtlasUpdates.Pending(State, '1.0.0', Release));
-  State.Available := '1.0.1';
-  State.ChangesUrl := 'https://example.org/changes';
-  Assert.IsTrue(TAtlasUpdates.Pending(State, '1.0.0', Release));
-  Assert.AreEqual('1.0.1', Release.Version);
-  Assert.AreEqual('https://example.org/changes', Release.ChangesUrl);
+  mState := Default(TAtlasUpdateState);
+  Assert.IsFalse(TAtlasUpdates.Pending(mState, '1.0.0', mRelease));
+  mState.Available := '1.0.1';
+  mState.ChangesUrl := 'https://example.org/changes';
+  Assert.IsTrue(TAtlasUpdates.Pending(mState, '1.0.0', mRelease));
+  Assert.AreEqual('1.0.1', mRelease.Version);
+  Assert.AreEqual('https://example.org/changes', mRelease.ChangesUrl);
   // Nach der Installation gilt das Update nicht mehr.
-  Assert.IsFalse(TAtlasUpdates.Pending(State, '1.0.1', Release));
-  Assert.AreEqual('', Release.Version);
-  Assert.IsFalse(TAtlasUpdates.Pending(State, '1.1.0', Release));
+  Assert.IsFalse(TAtlasUpdates.Pending(mState, '1.0.1', mRelease));
+  Assert.AreEqual('', mRelease.Version);
+  Assert.IsFalse(TAtlasUpdates.Pending(mState, '1.1.0', mRelease));
   // Keine https-Adresse: Release-Seite der Version.
-  State.ChangesUrl := 'file:///C:/x';
-  Assert.IsTrue(TAtlasUpdates.Pending(State, '1.0.0', Release));
-  Assert.AreEqual(TAtlasUpdates.cReleasesUrl + '/tag/v1.0.1', Release.ChangesUrl);
+  mState.ChangesUrl := 'file:///C:/x';
+  Assert.IsTrue(TAtlasUpdates.Pending(mState, '1.0.0', mRelease));
+  Assert.AreEqual(TAtlasUpdates.cReleasesUrl + '/tag/v1.0.1', mRelease.ChangesUrl);
 end;
 
 procedure TAtlasStateUpdateTests.StateKeepsAvailableVersion;
 var
-  State, Back: TAtlasUpdateState;
+  mState, mBack: TAtlasUpdateState;
 begin
-  State := Default(TAtlasUpdateState);
-  State.Asked := True;
-  State.Available := '1.0.1';
-  State.ChangesUrl := 'https://example.org/changes';
-  Back := TAtlasUpdateState.FromJson(State.ToJson);
-  Assert.IsTrue(Back.Asked);
-  Assert.AreEqual('1.0.1', Back.Available);
-  Assert.AreEqual('https://example.org/changes', Back.ChangesUrl);
+  mState := Default(TAtlasUpdateState);
+  mState.Asked := True;
+  mState.Available := '1.0.1';
+  mState.ChangesUrl := 'https://example.org/changes';
+  mBack := TAtlasUpdateState.FromJson(mState.ToJson);
+  Assert.IsTrue(mBack.Asked);
+  Assert.AreEqual('1.0.1', mBack.Available);
+  Assert.AreEqual('https://example.org/changes', mBack.ChangesUrl);
   // Ungültige Version gilt nicht; fremde Adresse wird zur Release-Seite.
-  Back := TAtlasUpdateState.FromJson('{"asked": true, "available": "neu", "changes": "https://x"}');
-  Assert.AreEqual('', Back.Available);
-  Back := TAtlasUpdateState.FromJson('{"available": "1.2.0", "changes": "http://x"}');
-  Assert.AreEqual('1.2.0', Back.Available);
-  Assert.AreEqual(TAtlasUpdates.cReleasesUrl + '/tag/v1.2.0', Back.ChangesUrl);
+  mBack := TAtlasUpdateState.FromJson('{"asked": true, "available": "neu", "changes": "https://x"}');
+  Assert.AreEqual('', mBack.Available);
+  mBack := TAtlasUpdateState.FromJson('{"available": "1.2.0", "changes": "http://x"}');
+  Assert.AreEqual('1.2.0', mBack.Available);
+  Assert.AreEqual(TAtlasUpdates.cReleasesUrl + '/tag/v1.2.0', mBack.ChangesUrl);
   // Ohne gefundene Version kein Feld in der Datei.
-  State.Available := '';
-  Assert.IsFalse(State.ToJson.Contains('available'));
+  mState.Available := '';
+  Assert.IsFalse(mState.ToJson.Contains('available'));
 end;
 
 initialization

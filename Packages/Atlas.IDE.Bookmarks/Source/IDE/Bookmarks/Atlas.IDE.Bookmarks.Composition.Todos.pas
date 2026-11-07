@@ -32,8 +32,8 @@ uses
   Atlas.UI.Bookmarks.Strings;
 
 const
-  TodosCommand = 'atlas.server.todos';
-  TodosTimeoutMs = 120000;
+  cTodosCommand = 'atlas.server.todos';
+  cTodosTimeoutMs = 120000;
 
 var
   /// <summary>Letzter Filter der TODO-Liste (#68) in dieser Sitzung; Vorgabe für den Filterdialog.</summary>
@@ -131,8 +131,8 @@ begin
     TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoListFailed));
     Exit;
   end;
-  if not TAtlasIdeHost.RunCommandAsync(AScope, TAtlasFeature.Palette, TodosCommand,
-    TodoArguments(mProject.FileName, mFilter), TodosTimeoutMs, TodosDone(mName, mDescribed, mFilter)) then
+  if not TAtlasIdeHost.RunCommandAsync(AScope, TAtlasFeature.Palette, cTodosCommand,
+    TodoArguments(mProject.FileName, mFilter), cTodosTimeoutMs, TodosDone(mName, mDescribed, mFilter)) then
   begin
     // Ein Befehl im Hintergrund läuft schon (etwa die Werte nach einem Build): später noch einmal.
     TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoListBusy));

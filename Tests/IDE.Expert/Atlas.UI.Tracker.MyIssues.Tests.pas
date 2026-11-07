@@ -103,21 +103,21 @@ end;
 /// <summary>Zwei GitHub-Issues wie im Mockup, eines mit Pull Request; Git.</summary>
 function SampleView: TAtlasIssuesView;
 var
-  Target: TAtlasTrackerTarget;
-  State: TAtlasIssuesState;
-  First, Second: TAtlasTrackerIssue;
-  Items: TArray<TAtlasTrackerIssue>;
+  mTarget: TAtlasTrackerTarget;
+  mState: TAtlasIssuesState;
+  mFirst, mSecond: TAtlasTrackerIssue;
+  mItems: TArray<TAtlasTrackerIssue>;
 begin
-  Target := TAtlasMyIssues.TargetFor('github', 'https://github.com/beispiel/atlas', '', '', '');
-  First := Issue('#753', 753, 'Atlas-Bereiche und Layout der Willkommensseite');
-  First.Labels := ['plugin', 'welcome'];
-  First.PullRequest.Number := 760;
-  First.PullRequest.Checks := TAtlasTrackerChecks.Success;
-  Second := Issue('#612', 612, 'Parser für Generics');
-  Items := [First, Second];
-  State := TAtlasIssuesState.Empty;
-  TAtlasMyIssues.Recorded(State, Target, NowUtc0, True, Items, TAtlasCiFetchError.None);
-  Result := TAtlasMyIssues.View(State, Target, 'main');
+  mTarget := TAtlasMyIssues.TargetFor('github', 'https://github.com/beispiel/atlas', '', '', '');
+  mFirst := Issue('#753', 753, 'Atlas-Bereiche und Layout der Willkommensseite');
+  mFirst.Labels := ['plugin', 'welcome'];
+  mFirst.PullRequest.Number := 760;
+  mFirst.PullRequest.Checks := TAtlasTrackerChecks.Success;
+  mSecond := Issue('#612', 612, 'Parser für Generics');
+  mItems := [mFirst, mSecond];
+  mState := TAtlasIssuesState.Empty;
+  TAtlasMyIssues.Recorded(mState, mTarget, NowUtc0, True, mItems, TAtlasCiFetchError.None);
+  Result := TAtlasMyIssues.View(mState, mTarget, 'main');
   Result.Project := 'C:\Projekte\Atlas\Atlas.groupproj';
   Result.ProjectName := 'Atlas-IDE-Expert';
   Result.Tracker := 'GitHub';
@@ -211,178 +211,178 @@ end;
 
 procedure TAtlasTrackerIssuesViewTests.TextsFollowMockup;
 var
-  Saved: TAtlasLanguage;
-  View: TAtlasIssuesView;
-  Pull: TAtlasTrackerPullRequest;
+  mSaved: TAtlasLanguage;
+  mView: TAtlasIssuesView;
+  mPull: TAtlasTrackerPullRequest;
 begin
-  Saved := TAtlasStrings.Language;
+  mSaved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
-    View := SampleView;
-    Assert.AreEqual('Meine Issues · Atlas-IDE-Expert', TAtlasTrackerIssuesText.TitleText(View.ProjectName));
+    mView := SampleView;
+    Assert.AreEqual('Meine Issues · Atlas-IDE-Expert', TAtlasTrackerIssuesText.TitleText(mView.ProjectName));
     Assert.AreEqual('Meine Issues', TAtlasTrackerIssuesText.TitleText(''));
     // #1271: Punkt im Titel, solange ein Issue neue Änderungen hat; die Zeile trägt ihn auch.
-    Assert.AreEqual('● Meine Issues · Atlas-IDE-Expert', TAtlasTrackerIssuesText.TitleText(View.ProjectName, True));
+    Assert.AreEqual('● Meine Issues · Atlas-IDE-Expert', TAtlasTrackerIssuesText.TitleText(mView.ProjectName, True));
     Assert.AreEqual('Meine Issues', TAtlasTrackerIssuesText.TitleText('', False));
-    Assert.IsFalse(View.IsUnseen(View.Items[0].Key));
-    View.Unseen := [UpperCase(View.Items[0].Key)];
-    Assert.IsTrue(View.IsUnseen(View.Items[0].Key));
-    Assert.IsFalse(View.IsUnseen(View.Items[1].Key));
-    Assert.IsFalse(View.IsUnseen(''));
-    View.Unseen := nil;
+    Assert.IsFalse(mView.IsUnseen(mView.Items[0].Key));
+    mView.Unseen := [UpperCase(mView.Items[0].Key)];
+    Assert.IsTrue(mView.IsUnseen(mView.Items[0].Key));
+    Assert.IsFalse(mView.IsUnseen(mView.Items[1].Key));
+    Assert.IsFalse(mView.IsUnseen(''));
+    mView.Unseen := nil;
     // Mockup: Chip „PR #640 · CI grün“.
-    Assert.AreEqual('PR #760 · CI grün', TAtlasTrackerIssuesText.PullRequestText(View.Items[0].PullRequest));
-    Pull := View.Items[0].PullRequest;
-    Pull.Checks := TAtlasTrackerChecks.Failure;
-    Assert.AreEqual('PR #760 · CI rot', TAtlasTrackerIssuesText.PullRequestText(Pull));
-    Pull.Checks := TAtlasTrackerChecks.Unknown;
-    Pull.Draft := True;
-    Assert.AreEqual('PR #760 (Entwurf)', TAtlasTrackerIssuesText.PullRequestText(Pull));
-    Assert.AreEqual('', TAtlasTrackerIssuesText.PullRequestText(View.Items[1].PullRequest));
+    Assert.AreEqual('PR #760 · CI grün', TAtlasTrackerIssuesText.PullRequestText(mView.Items[0].PullRequest));
+    mPull := mView.Items[0].PullRequest;
+    mPull.Checks := TAtlasTrackerChecks.Failure;
+    Assert.AreEqual('PR #760 · CI rot', TAtlasTrackerIssuesText.PullRequestText(mPull));
+    mPull.Checks := TAtlasTrackerChecks.Unknown;
+    mPull.Draft := True;
+    Assert.AreEqual('PR #760 (Entwurf)', TAtlasTrackerIssuesText.PullRequestText(mPull));
+    Assert.AreEqual('', TAtlasTrackerIssuesText.PullRequestText(mView.Items[1].PullRequest));
     Assert.IsTrue(TAtlasTrackerIssuesText.ChecksColor(TAtlasTrackerChecks.Success) <>
       TAtlasTrackerIssuesText.ChecksColor(TAtlasTrackerChecks.Failure), 'rot ist nicht grün');
     // Hinweis auf „Beginnen“ mit dem Branch nach Muster (Abnahme: feature/753-atlas-bereiche-und).
-    Assert.AreEqual('Branch: feature/753-atlas-bereiche-und', TAtlasTrackerIssuesText.StartHint(View,
-      View.Items[0]));
-    View.Options.Start := TAtlasIssueStart.Remember;
-    Assert.AreEqual('Merkt #753 als aktuelles Issue', TAtlasTrackerIssuesText.StartHint(View, View.Items[0]));
+    Assert.AreEqual('Branch: feature/753-atlas-bereiche-und', TAtlasTrackerIssuesText.StartHint(mView,
+      mView.Items[0]));
+    mView.Options.Start := TAtlasIssueStart.Remember;
+    Assert.AreEqual('Merkt #753 als aktuelles Issue', TAtlasTrackerIssuesText.StartHint(mView, mView.Items[0]));
     // Kurztext wie die Kachel im Mockup: „ATL-123 · 3 offen“.
-    Assert.AreEqual('GitHub · 2 offen', TAtlasTrackerIssuesText.TileText(View));
-    View.Active.Key := 'ATL-123';
-    View.Items := View.Items + [Issue('ATL-124', 124, 'x')];
-    Assert.AreEqual('ATL-123 · 3 offen', TAtlasTrackerIssuesText.TileText(View));
+    Assert.AreEqual('GitHub · 2 offen', TAtlasTrackerIssuesText.TileText(mView));
+    mView.Active.Key := 'ATL-123';
+    mView.Items := mView.Items + [Issue('ATL-124', 124, 'x')];
+    Assert.AreEqual('ATL-123 · 3 offen', TAtlasTrackerIssuesText.TileText(mView));
   finally
-    TAtlasStrings.Language := Saved;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 
 procedure TAtlasTrackerIssuesViewTests.StatusAndFooter;
 var
-  Saved: TAtlasLanguage;
-  View: TAtlasIssuesView;
+  mSaved: TAtlasLanguage;
+  mView: TAtlasIssuesView;
 begin
-  Saved := TAtlasStrings.Language;
+  mSaved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
-    View := SampleView;
+    mView := SampleView;
     // Frischer Stand: keine Zeile über der Liste; Fußzeile wie im Mockup.
-    Assert.AreEqual('', TAtlasTrackerIssuesText.StatusText(View));
+    Assert.AreEqual('', TAtlasTrackerIssuesText.StatusText(mView));
     Assert.AreEqual('„Beginnen“ legt den Branch an und öffnet das Projekt.',
-      TAtlasTrackerIssuesText.FooterText(View));
+      TAtlasTrackerIssuesText.FooterText(mView));
     // Nach dem Klick: der Hinweis der Quelle.
-    View.Notice := 'Branch feature/753-atlas-bereiche-und von main angelegt, Projekt wird geöffnet.';
-    Assert.AreEqual(View.Notice, TAtlasTrackerIssuesText.FooterText(View));
-    View.Notice := '';
+    mView.Notice := 'Branch feature/753-atlas-bereiche-und von main angelegt, Projekt wird geöffnet.';
+    Assert.AreEqual(mView.Notice, TAtlasTrackerIssuesText.FooterText(mView));
+    mView.Notice := '';
     // Ohne Netz: der letzte Stand mit „Stand vom …“, kein Dialog.
-    View.Status := TAtlasIssuesStatus.Stale;
-    View.Error := TAtlasCiFetchError.Network;
-    View.At := NowUtc0;
-    Assert.StartsWith('GitHub · nicht erreichbar · Stand vom ', TAtlasTrackerIssuesText.StatusText(View));
-    View.Status := TAtlasIssuesStatus.Failed;
-    View.Error := TAtlasCiFetchError.Unauthorized;
+    mView.Status := TAtlasIssuesStatus.Stale;
+    mView.Error := TAtlasCiFetchError.Network;
+    mView.At := NowUtc0;
+    Assert.StartsWith('GitHub · nicht erreichbar · Stand vom ', TAtlasTrackerIssuesText.StatusText(mView));
+    mView.Status := TAtlasIssuesStatus.Failed;
+    mView.Error := TAtlasCiFetchError.Unauthorized;
     Assert.AreEqual('GitHub · Anmeldung vom Tracker abgelehnt: Token ungültig, abgelaufen oder ohne Rechte ' +
-      '(Zugang zum Issue-Tracker neu hinterlegen)', TAtlasTrackerIssuesText.StatusText(View));
+      '(Zugang zum Issue-Tracker neu hinterlegen)', TAtlasTrackerIssuesText.StatusText(mView));
     // Ohne Token gibt es keine Anfrage: eigener Hinweis statt „abgelehnt“.
-    View.Error := TAtlasCiFetchError.NoCredentials;
+    mView.Error := TAtlasCiFetchError.NoCredentials;
     Assert.AreEqual('GitHub · Noch kein Token: Rechtsklick › Zugang zum Issue-Tracker hinterlegen …',
-      TAtlasTrackerIssuesText.StatusText(View));
-    View.Status := TAtlasIssuesStatus.Waiting;
-    View.Querying := True;
-    Assert.AreEqual('Issues werden abgefragt …', TAtlasTrackerIssuesText.StatusText(View));
-    View.Status := TAtlasIssuesStatus.Ready;
-    View.Querying := False;
-    View.Items := nil;
-    Assert.AreEqual('Keine offenen Issues für diese Abfrage.', TAtlasTrackerIssuesText.StatusText(View));
+      TAtlasTrackerIssuesText.StatusText(mView));
+    mView.Status := TAtlasIssuesStatus.Waiting;
+    mView.Querying := True;
+    Assert.AreEqual('Issues werden abgefragt …', TAtlasTrackerIssuesText.StatusText(mView));
+    mView.Status := TAtlasIssuesStatus.Ready;
+    mView.Querying := False;
+    mView.Items := nil;
+    Assert.AreEqual('Keine offenen Issues für diese Abfrage.', TAtlasTrackerIssuesText.StatusText(mView));
     // Aktuelles Issue, das die Liste nicht (mehr) zeigt.
-    View.Active.Key := 'ATL-123';
-    View.Active.Title := 'Tracker';
-    Assert.AreEqual('Aktuelles Issue: ATL-123 Tracker', TAtlasTrackerIssuesText.FooterText(View));
+    mView.Active.Key := 'ATL-123';
+    mView.Active.Title := 'Tracker';
+    Assert.AreEqual('Aktuelles Issue: ATL-123 Tracker', TAtlasTrackerIssuesText.FooterText(mView));
     // Ohne Tracker in .atlas bzw. ohne Projekt.
-    View.Status := TAtlasIssuesStatus.NotConfigured;
-    Assert.AreEqual('', TAtlasTrackerIssuesText.StatusText(View));
-    Assert.Contains(TAtlasTrackerIssuesText.FooterText(View), 'tracker');
-    View.Project := '';
-    Assert.Contains(TAtlasTrackerIssuesText.FooterText(View), 'Noch kein Projekt');
+    mView.Status := TAtlasIssuesStatus.NotConfigured;
+    Assert.AreEqual('', TAtlasTrackerIssuesText.StatusText(mView));
+    Assert.Contains(TAtlasTrackerIssuesText.FooterText(mView), 'tracker');
+    mView.Project := '';
+    Assert.Contains(TAtlasTrackerIssuesText.FooterText(mView), 'Noch kein Projekt');
     // Ohne Git und SVN wird nur gemerkt.
-    View := SampleView;
-    View.VcsKind := TAtlasVcsKind.None;
-    Assert.Contains(TAtlasTrackerIssuesText.FooterText(View), 'merkt');
+    mView := SampleView;
+    mView.VcsKind := TAtlasVcsKind.None;
+    Assert.Contains(TAtlasTrackerIssuesText.FooterText(mView), 'merkt');
   finally
-    TAtlasStrings.Language := Saved;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 
 procedure TAtlasTrackerIssuesViewTests.EnglishTexts;
 var
-  Saved: TAtlasLanguage;
-  View: TAtlasIssuesView;
+  mSaved: TAtlasLanguage;
+  mView: TAtlasIssuesView;
 begin
-  Saved := TAtlasStrings.Language;
+  mSaved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.English;
-    View := SampleView;
-    Assert.AreEqual('My issues · Atlas-IDE-Expert', TAtlasTrackerIssuesText.TitleText(View.ProjectName));
-    Assert.AreEqual('PR #760 · CI green', TAtlasTrackerIssuesText.PullRequestText(View.Items[0].PullRequest));
-    Assert.AreEqual('“Start” creates the branch and opens the project.', TAtlasTrackerIssuesText.FooterText(View));
-    Assert.AreEqual('GitHub · 2 open', TAtlasTrackerIssuesText.TileText(View));
+    mView := SampleView;
+    Assert.AreEqual('My issues · Atlas-IDE-Expert', TAtlasTrackerIssuesText.TitleText(mView.ProjectName));
+    Assert.AreEqual('PR #760 · CI green', TAtlasTrackerIssuesText.PullRequestText(mView.Items[0].PullRequest));
+    Assert.AreEqual('“Start” creates the branch and opens the project.', TAtlasTrackerIssuesText.FooterText(mView));
+    Assert.AreEqual('GitHub · 2 open', TAtlasTrackerIssuesText.TileText(mView));
   finally
-    TAtlasStrings.Language := Saved;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 
 procedure TAtlasTrackerIssuesViewTests.ClicksReachSource;
 var
-  Host: TForm;
-  Fake: TFakeIssues;
-  Source: IAtlasIssuesSource;
-  Frame: TAtlasTrackerIssuesView;
+  mHost: TForm;
+  mFake: TFakeIssues;
+  mSource: IAtlasIssuesSource;
+  mFrame: TAtlasTrackerIssuesView;
 begin
-  Fake := TFakeIssues.Create;
-  Source := Fake;
-  Fake.FView := SampleView;
-  Host := TForm.CreateNew(nil);
+  mFake := TFakeIssues.Create;
+  mSource := mFake;
+  mFake.FView := SampleView;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasTrackerIssuesView.Create(Host);
-    Frame.Parent := Host;
-    Frame.Width := 600;
-    Frame.Source := Source;
-    Assert.AreEqual(1, Integer(Length(Fake.Calls)), 'Shown beim Setzen der Quelle');
-    Assert.AreEqual('shown', Fake.Calls[0]);
-    Fake.Calls := nil;
-    Assert.IsTrue(Frame.CanStart);
-    Frame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Key, 0));
-    Frame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.PullRequest, 0));
-    Frame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Start, 0));
+    mFrame := TAtlasTrackerIssuesView.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Width := 600;
+    mFrame.Source := mSource;
+    Assert.AreEqual(1, Integer(Length(mFake.Calls)), 'Shown beim Setzen der Quelle');
+    Assert.AreEqual('shown', mFake.Calls[0]);
+    mFake.Calls := nil;
+    Assert.IsTrue(mFrame.CanStart);
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Key, 0));
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.PullRequest, 0));
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Start, 0));
     // Zeile selbst und Zeilen außerhalb tun nichts.
-    Frame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Row, 1));
-    Frame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Start, 9));
-    Frame.Menus.MenuRow := 1;
-    Frame.Menus.StartRememberItem.Click;
-    Frame.Menus.QueryItem.Click;
-    Frame.Menus.CredentialsItem.Click;
-    Frame.Menus.EndItem.Click;
-    Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'alles über die Nachrichtenschleife');
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Row, 1));
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Start, 9));
+    mFrame.Menus.MenuRow := 1;
+    mFrame.Menus.StartRememberItem.Click;
+    mFrame.Menus.QueryItem.Click;
+    mFrame.Menus.CredentialsItem.Click;
+    mFrame.Menus.EndItem.Click;
+    Assert.AreEqual(0, Integer(Length(mFake.Calls)), 'alles über die Nachrichtenschleife');
     CheckSynchronize;
-    Assert.AreEqual(7, Integer(Length(Fake.Calls)));
-    Assert.AreEqual('browse #753', Fake.Calls[0]);
-    Assert.AreEqual('pr 760', Fake.Calls[1]);
-    Assert.AreEqual('start #753 branch', Fake.Calls[2]);
-    Assert.AreEqual('start #612 remember', Fake.Calls[3]);
-    Assert.AreEqual('query', Fake.Calls[4]);
-    Assert.AreEqual('login', Fake.Calls[5]);
-    Assert.AreEqual('end', Fake.Calls[6]);
+    Assert.AreEqual(7, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('browse #753', mFake.Calls[0]);
+    Assert.AreEqual('pr 760', mFake.Calls[1]);
+    Assert.AreEqual('start #753 branch', mFake.Calls[2]);
+    Assert.AreEqual('start #612 remember', mFake.Calls[3]);
+    Assert.AreEqual('query', mFake.Calls[4]);
+    Assert.AreEqual('login', mFake.Calls[5]);
+    Assert.AreEqual('end', mFake.Calls[6]);
     // Während „Beginnen“ läuft, kein zweites.
-    Fake.Calls := nil;
-    Fake.FView.Starting := True;
-    Frame.UpdateContent;
-    Assert.IsFalse(Frame.CanStart);
-    Frame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Start, 0));
+    mFake.Calls := nil;
+    mFake.FView.Starting := True;
+    mFrame.UpdateContent;
+    Assert.IsFalse(mFrame.CanStart);
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Start, 0));
     CheckSynchronize;
-    Assert.AreEqual(0, Integer(Length(Fake.Calls)));
-    Assert.IsTrue(Frame.HitTest(20, -5).Kind = TAtlasIssuesHitKind.None, 'über der ersten Zeile');
+    Assert.AreEqual(0, Integer(Length(mFake.Calls)));
+    Assert.IsTrue(mFrame.HitTest(20, -5).Kind = TAtlasIssuesHitKind.None, 'über der ersten Zeile');
   finally
-    Host.Free;
-    Fake.Calls := nil;
+    mHost.Free;
+    mFake.Calls := nil;
   end;
 end;
 

@@ -61,7 +61,7 @@ type
   TAtlasIdeSetup = class(TInterfacedObject, IAtlasSetupSource)
   public const
     /// <summary>Reihenfolge außerhalb des Atlas-Layouts: vor „Projekte“.</summary>
-    Order = 15;
+    cOrder = 15;
   private type
     /// <summary>Was die Komposition hereinreicht.</summary>
     THooks = record
@@ -479,17 +479,17 @@ end;
 
 procedure TAtlasIdeSetup.Start;
 var
-  Keep: IAtlasSetupSource;
+  mKeep: IAtlasSetupSource;
 begin
   FStarted := True;
-  Keep := Self;
-  TAtlasWelcomeViews.Register(TAtlasWelcomeIds.Setup,
+  mKeep := Self;
+  TAtlasWelcomeViews.Register(TAtlasWelcomeIds.cSetup,
     function(AOwner: TComponent): TAtlasWelcomeSectionFrame
     var
       Frame: TAtlasWelcomeSetupFrame;
     begin
       Frame := TAtlasWelcomeSetupFrame.Create(AOwner);
-      Frame.Source := Keep;
+      Frame.Source := mKeep;
       Result := Frame;
     end);
   // Projekte geöffnet, geschlossen oder gebaut: Ziel und Schritte neu.
@@ -515,19 +515,19 @@ end;
 
 procedure TAtlasIdeSetup.TargetMayChange;
 var
-  Open: Boolean;
-  Project: string;
+  mOpen: Boolean;
+  mProject: string;
 begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
       // Anderes aktives Projekt in der Projektverwaltung: Karte für dieses Projekt.
-      Project := Target(Open);
-      if SameText(Project, FWatched) then
+      mProject := Target(mOpen);
+      if SameText(mProject, FWatched) then
       begin
         Exit;
       end;
-      FWatched := Project;
+      FWatched := mProject;
       Refresh;
     end);
 end;
@@ -545,8 +545,8 @@ begin
     TAtlasWelcomeSections.Default.RemoveListener(FListener);
   end;
   FListener := -1;
-  TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.Setup);
-  TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.Setup);
+  TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.cSetup);
+  TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.cSetup);
   if FThread <> nil then
   begin
     // ReadText liest nach dem Abbruchsignal nichts mehr; die Prüfung endet gleich.
@@ -565,20 +565,20 @@ end;
 
 procedure TAtlasIdeSetup.ProjectsChanged(const AId: string);
 var
-  Keep: IAtlasSetupSource;
+  mKeep: IAtlasSetupSource;
 begin
   // Nur auf „Projekte“: Ein eigenes Changed löst hier nichts aus (keine Schleife).
-  if not FStarted or (AId <> TAtlasWelcomeIds.Projects) or FQueued then
+  if not FStarted or (AId <> TAtlasWelcomeIds.cProjects) or FQueued then
   begin
     Exit;
   end;
   FQueued := True;
   // Keep hält die Quelle, bis der Eintrag gelaufen ist.
-  Keep := Self;
+  mKeep := Self;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      if Keep = nil then
+      if mKeep = nil then
       begin
         Exit;
       end;
@@ -594,7 +594,7 @@ end;
 
 function TAtlasIdeSetup.Section: TAtlasWelcomeSection;
 begin
-  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.Setup, TAtlasSetupTexts.TitleText(Card), Order,
+  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.cSetup, TAtlasSetupTexts.TitleText(Card), cOrder,
     TAtlasWelcomeColumn.Left,
     function: Boolean
     begin
@@ -606,8 +606,8 @@ end;
 
 procedure TAtlasIdeSetup.Refresh;
 var
-  Next: TAtlasWelcomeSection;
-  Shown: Boolean;
+  mNext: TAtlasWelcomeSection;
+  mShown: Boolean;
 begin
   if not FStarted then
   begin
@@ -616,24 +616,24 @@ begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Next := Section;
+      mNext := Section;
       // Titel mit dem Projektnamen (oder nach einem Sprachwechsel): neu anmelden; Add meldet allen Beobachtern.
-      if Next.Title <> FTitle then
+      if mNext.Title <> FTitle then
       begin
-        FTitle := Next.Title;
+        FTitle := mNext.Title;
         FShown := ShouldShow;
-        TAtlasWelcomeSections.Default.Add(Next);
+        TAtlasWelcomeSections.Default.Add(mNext);
         Exit;
       end;
-      Shown := ShouldShow;
-      if Shown <> FShown then
+      mShown := ShouldShow;
+      if mShown <> FShown then
       begin
         // Karte erscheint oder verschwindet: Die Willkommensseite ordnet neu.
-        FShown := Shown;
+        FShown := mShown;
         TAtlasWelcomeSections.Default.Changed;
         Exit;
       end;
-      TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.Setup);
+      TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cSetup);
     end);
 end;
 
@@ -753,7 +753,7 @@ end;
 procedure TAtlasIdeSetup.BaselineFinished(const AProject: string; ASucceeded: Boolean; ATotal, AFiles: Integer;
   const AError: string);
 var
-  Stamp: TDateTime;
+  mStamp: TDateTime;
 begin
   if not FStarted then
   begin
@@ -761,12 +761,12 @@ begin
   end;
   if ASucceeded then
   begin
-    Stamp := TAtlasIdeProjectSummaries.StampUtc;
+    mStamp := TAtlasIdeProjectSummaries.StampUtc;
     // Abnahme: Nach der Baseline sind die neuen Treffer 0 (alle stehen in der Baseline).
     TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, AProject,
       procedure(var ASummary: TAtlasProjectSummary)
       begin
-        TAtlasWelcomeSetup.BaselineWritten(ASummary.Rules, Stamp);
+        TAtlasWelcomeSetup.BaselineWritten(ASummary.Rules, mStamp);
       end);
   end;
   if not SameText(FBaseline.Project, AProject) then
@@ -967,9 +967,9 @@ end;
 
 procedure TAtlasIdeSetup.NewFile(AKind: TAtlasNewFileKind);
 var
-  Kind: TAtlasNewFileKind;
+  mKind: TAtlasNewFileKind;
 begin
-  Kind := AKind;
+  mKind := AKind;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
@@ -978,7 +978,7 @@ begin
       begin
         Exit;
       end;
-      FHooks.NewFile(Kind);
+      FHooks.NewFile(mKind);
     end);
 end;
 

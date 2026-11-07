@@ -34,8 +34,8 @@ uses
 type
   TAtlasIdeWelcomeSearch = class
   private const
-    RefreshMs = 5000;
-    SymbolTimeoutMs = 2000;
+    cRefreshMs = 5000;
+    cSymbolTimeoutMs = 2000;
   private
     FCommands: TFunc<TArray<TAtlasCommand>>;
     FRun: TProc<string>;
@@ -120,14 +120,14 @@ end;
 
 destructor TAtlasIdeWelcomeSearch.Destroy;
 var
-  Box: TAtlasWelcomeSearchBox;
+  mBox: TAtlasWelcomeSearchBox;
 begin
   FEvents.Free;
-  for Box in FBoxes do
+  for mBox in FBoxes do
   begin
-    Box.RemoveFreeNotification(FWatch);
-    Box.OnQuery := nil;
-    Box.OnOpen := nil;
+    mBox.RemoveFreeNotification(FWatch);
+    mBox.OnQuery := nil;
+    mBox.OnOpen := nil;
   end;
   TBoxWatch(FWatch).FOwner := nil;
   FWatch.Free;
@@ -143,26 +143,26 @@ end;
 
 function ReadProjectValues(ARegistry: TRegistry; const AKey: string): TArray<TPair<string, string>>;
 var
-  Names: TStringList;
-  Name: string;
+  mNames: TStringList;
+  mName: string;
 begin
   Result := nil;
   if not ARegistry.OpenKeyReadOnly('\' + AKey) then
   begin
     Exit;
   end;
-  Names := TStringList.Create;
+  mNames := TStringList.Create;
   try
-    ARegistry.GetValueNames(Names);
-    for Name in Names do
+    ARegistry.GetValueNames(mNames);
+    for mName in mNames do
     begin
-      if ARegistry.GetDataType(Name) in [rdString, rdExpandString] then
+      if ARegistry.GetDataType(mName) in [rdString, rdExpandString] then
       begin
-        Result := Result + [TPair<string, string>.Create(Name, ARegistry.ReadString(Name))];
+        Result := Result + [TPair<string, string>.Create(mName, ARegistry.ReadString(mName))];
       end;
     end;
   finally
-    Names.Free;
+    mNames.Free;
     ARegistry.CloseKey;
   end;
 end;
@@ -170,34 +170,34 @@ end;
 /// <summary>Projekte aus den Registry-Schlüsseln AKeys unter der Basis der IDE, jedes einmal.</summary>
 function ProjectsIn(const AKeys: array of string): TArray<string>;
 var
-  Registry: TRegistry;
-  Base, Key, Project: string;
-  Seen: TDictionary<string, Boolean>;
+  mRegistry: TRegistry;
+  mBase, mKey, mProject: string;
+  mSeen: TDictionary<string, Boolean>;
 begin
   Result := nil;
-  Base := TAtlasIdeRegistryAccess.IdeBaseKey;
-  if Base = '' then
+  mBase := TAtlasIdeRegistryAccess.IdeBaseKey;
+  if mBase = '' then
   begin
     Exit;
   end;
-  Registry := TRegistry.Create(KEY_READ);
-  Seen := TDictionary<string, Boolean>.Create;
+  mRegistry := TRegistry.Create(KEY_READ);
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    Registry.RootKey := HKEY_CURRENT_USER;
-    for Key in AKeys do
+    mRegistry.RootKey := HKEY_CURRENT_USER;
+    for mKey in AKeys do
     begin
-      for Project in TAtlasWelcomeSearch.RecentProjects(ReadProjectValues(Registry, Base + '\' + Key)) do
+      for mProject in TAtlasWelcomeSearch.RecentProjects(ReadProjectValues(mRegistry, mBase + '\' + mKey)) do
       begin
-        if not Seen.ContainsKey(AnsiUpperCase(Project)) then
+        if not mSeen.ContainsKey(AnsiUpperCase(mProject)) then
         begin
-          Seen.Add(AnsiUpperCase(Project), True);
-          Result := Result + [Project];
+          mSeen.Add(AnsiUpperCase(mProject), True);
+          Result := Result + [mProject];
         end;
       end;
     end;
   finally
-    Seen.Free;
-    Registry.Free;
+    mSeen.Free;
+    mRegistry.Free;
   end;
 end;
 
@@ -214,48 +214,48 @@ end;
 
 function TAtlasIdeWelcomeSearch.ProjectFiles: TArray<string>;
 var
-  Seen: TDictionary<string, Boolean>;
-  Project: string;
-  Cached: TAtlasIndexProject;
+  mSeen: TDictionary<string, Boolean>;
+  mProject: string;
+  mCached: TAtlasIndexProject;
 
   procedure Add(const AFileName: string);
   var
-    Key: string;
+    mKey: string;
   begin
     // Ein Projekt zählt einmal, egal ob als .dproj oder .dpr bekannt.
-    Key := AnsiUpperCase(ChangeFileExt(AFileName, ''));
-    if Seen.ContainsKey(Key) then
+    mKey := AnsiUpperCase(ChangeFileExt(AFileName, ''));
+    if mSeen.ContainsKey(mKey) then
     begin
       Exit;
     end;
-    Seen.Add(Key, True);
+    mSeen.Add(mKey, True);
     Result := Result + [AFileName];
   end;
 
 begin
   Result := nil;
-  Seen := TDictionary<string, Boolean>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    for Project in RecentProjects do
+    for mProject in RecentProjects do
     begin
-      if not SameText(ExtractFileExt(Project), '.groupproj') then
+      if not SameText(ExtractFileExt(mProject), '.groupproj') then
       begin
-        Add(Project);
+        Add(mProject);
       end;
     end;
-    for Cached in FIndex.Projects do
+    for mCached in FIndex.Projects do
     begin
-      if FileExists(ChangeFileExt(Cached.MainFile, '.dproj')) then
+      if FileExists(ChangeFileExt(mCached.MainFile, '.dproj')) then
       begin
-        Add(ChangeFileExt(Cached.MainFile, '.dproj'));
+        Add(ChangeFileExt(mCached.MainFile, '.dproj'));
       end
       else
       begin
-        Add(Cached.MainFile);
+        Add(mCached.MainFile);
       end;
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
 end;
 
@@ -379,7 +379,7 @@ var
 begin
   ASymbolHint := '';
   mNow := GetTickCount64;
-  if (FRefreshed = 0) or (mNow - FRefreshed >= RefreshMs) then
+  if (FRefreshed = 0) or (mNow - FRefreshed >= cRefreshMs) then
   begin
     FIndex.Refresh;
     FRefreshed := mNow;
@@ -399,7 +399,7 @@ begin
   end;
   if TAtlasIdeSettings.Current.WelcomePageSearchSymbols then
   begin
-    Result := Result + SymbolHits(APattern, SymbolTimeoutMs, ASymbolHint);
+    Result := Result + SymbolHits(APattern, cSymbolTimeoutMs, ASymbolHint);
   end;
   if Assigned(FCommands) then
   begin
@@ -409,25 +409,25 @@ end;
 
 function TAtlasIdeWelcomeSearch.Query(const APattern: string): TArray<TAtlasWelcomeSearchResult>;
 var
-  Hits: TArray<TAtlasWelcomeHit>;
-  Hint: string;
+  mHits: TArray<TAtlasWelcomeHit>;
+  mHint: string;
 begin
   Result := nil;
-  Hits := nil;
-  Hint := '';
+  mHits := nil;
+  mHint := '';
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Hits := Candidates(APattern, Hint);
+      mHits := Candidates(APattern, mHint);
     end);
-  Result := TAtlasWelcomeSearch.Search(APattern, Hits, Hint);
+  Result := TAtlasWelcomeSearch.Search(APattern, mHits, mHint);
 end;
 
 function ProjectOpen(const AFileName: string): Boolean;
 var
-  Modules: IOTAModuleServices;
+  mModules: IOTAModuleServices;
 begin
-  Result := Supports(BorlandIDEServices, IOTAModuleServices, Modules) and (Modules.FindModule(AFileName) <> nil);
+  Result := Supports(BorlandIDEServices, IOTAModuleServices, mModules) and (mModules.FindModule(AFileName) <> nil);
 end;
 
 procedure TAtlasIdeWelcomeSearch.Open(const AHit: TAtlasWelcomeHit);
@@ -494,13 +494,13 @@ end;
 
 function TAtlasIdeWelcomeSearch.ActiveBox: TAtlasWelcomeSearchBox;
 var
-  Box: TAtlasWelcomeSearchBox;
-  Form: TCustomForm;
+  mBox: TAtlasWelcomeSearchBox;
+  mForm: TCustomForm;
 begin
   Result := nil;
-  for Box in FBoxes do
+  for mBox in FBoxes do
   begin
-    if not Box.Showing or not Box.Edit.CanFocus then
+    if not mBox.Showing or not mBox.Edit.CanFocus then
     begin
       Continue;
     end;
@@ -510,43 +510,43 @@ begin
     // Editor nicht die inkrementelle Suche der IDE. Auf der Willkommensseite
     // der IDE ist es das Editorfenster; Showing gilt dort nur, solange die
     // Willkommensseite der sichtbare Reiter ist.
-    Form := GetParentForm(Box, False);
-    if Form = nil then
+    mForm := GetParentForm(mBox, False);
+    if mForm = nil then
     begin
       Continue;
     end;
-    if (Form = Screen.ActiveCustomForm) or
-      ((Screen.ActiveControl <> nil) and Form.ContainsControl(Screen.ActiveControl)) then
+    if (mForm = Screen.ActiveCustomForm) or
+      ((Screen.ActiveControl <> nil) and mForm.ContainsControl(Screen.ActiveControl)) then
     begin
-      Exit(Box);
+      Exit(mBox);
     end;
   end;
 end;
 
 procedure TAtlasIdeWelcomeSearch.AppMessage(var Msg: TMsg; var Handled: Boolean);
 var
-  Key: TShortCut;
-  Box: TAtlasWelcomeSearchBox;
+  mKey: TShortCut;
+  mBox: TAtlasWelcomeSearchBox;
 begin
   if ((Msg.message <> WM_KEYDOWN) and (Msg.message <> WM_SYSKEYDOWN)) or (FBoxes.Count = 0) then
   begin
     Exit;
   end;
-  Key := TShortCut(TAtlasIdeSettings.Current.WelcomePageSearchKey);
-  if (Key = 0) or not TAtlasIdeSettings.Current.WelcomePageSearch then
+  mKey := TShortCut(TAtlasIdeSettings.Current.WelcomePageSearchKey);
+  if (mKey = 0) or not TAtlasIdeSettings.Current.WelcomePageSearch then
   begin
     Exit;
   end;
-  if ShortCut(Word(Msg.wParam), KeyDataToShiftState(Msg.lParam)) <> Key then
+  if ShortCut(Word(Msg.wParam), KeyDataToShiftState(Msg.lParam)) <> mKey then
   begin
     Exit;
   end;
-  Box := ActiveBox;
-  if Box = nil then
+  mBox := ActiveBox;
+  if mBox = nil then
   begin
     Exit;
   end;
-  Box.FocusSearch;
+  mBox.FocusSearch;
   Handled := True;
 end;
 

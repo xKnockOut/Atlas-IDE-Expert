@@ -34,7 +34,8 @@
 // und ihr Abschnitt im Optionsdialog. Meldet sich in der Unit-Initialisierung von
 // Atlas.IDE.Welcome.Composition über die Registry des Kern-Packages Atlas.IDE.Base an und lässt sich
 // ohne Neustart der IDE laden und entladen (Regeln 1 bis 4). Requiret nur das Kern-Package
-// (mit den Verträgen zwischen Modulen), kein anderes Modul (Regel 9); Kacheln anderer Module kommen über den Vertrag Atlas.IDE.Contracts.WelcomeTiles in Base.
+// (mit den Verträgen zwischen Modulen), kein anderes Modul (Regel 9); Kacheln anderer Module kommen über den Vertrag
+// Atlas.IDE.Contracts.WelcomeTiles in Base.
 
 requires
   rtl,

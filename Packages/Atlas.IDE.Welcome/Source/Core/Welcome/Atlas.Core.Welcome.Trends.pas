@@ -54,7 +54,7 @@ type
   TAtlasWelcomeTrends = class
   public const
     /// <summary>Vorgabe für welcomePage.trends.series: alle Reihen.</summary>
-    DefaultSeries = 'warnings,ruleHits,todos,duration,methodLength';
+    cDefaultSeries = 'warnings,ruleHits,todos,duration,methodLength';
   public
     class function SeriesKey(ASeries: TAtlasTrendSeries): string; static;
     /// <summary>Reihen aus einer Liste von Namen (Komma, Semikolon oder Leerzeichen; Groß-/Kleinschreibung egal),
@@ -94,16 +94,16 @@ uses
 /// <summary>Round(AValue * ANumerator / ADenominator) ohne Überlauf; ADenominator &gt; 0.</summary>
 function Scaled(AValue, ANumerator, ADenominator: Integer): Integer;
 var
-  Product: Int64;
+  mProduct: Int64;
 begin
-  Product := Int64(AValue) * ANumerator;
-  if Product >= 0 then
+  mProduct := Int64(AValue) * ANumerator;
+  if mProduct >= 0 then
   begin
-    Result := Integer((Product + ADenominator div 2) div ADenominator);
+    Result := Integer((mProduct + ADenominator div 2) div ADenominator);
   end
   else
   begin
-    Result := -Integer((-Product + ADenominator div 2) div ADenominator);
+    Result := -Integer((-mProduct + ADenominator div 2) div ADenominator);
   end;
 end;
 
@@ -125,14 +125,14 @@ end;
 
 function TAtlasTrendTile.Previous(out AValue: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   AValue := 0;
-  for Index := System.High(Has) - 1 downto 0 do
+  for mIndex := System.High(Has) - 1 downto 0 do
   begin
-    if Has[Index] then
+    if Has[mIndex] then
     begin
-      AValue := Values[Index];
+      AValue := Values[mIndex];
       Exit(True);
     end;
   end;
@@ -143,10 +143,10 @@ end;
 
 function TAtlasTrendView.Name: string;
 var
-  Summary: TAtlasProjectSummary;
+  mSummary: TAtlasProjectSummary;
 begin
-  Summary := TAtlasProjectSummary.Create(Project);
-  Result := Summary.Name;
+  mSummary := TAtlasProjectSummary.Create(Project);
+  Result := mSummary.Name;
 end;
 
 { TAtlasWelcomeTrends }
@@ -158,48 +158,48 @@ end;
 
 class function TAtlasWelcomeTrends.ParseSeries(const AText: string): TAtlasTrendSeriesList;
 var
-  Parts: TArray<string>;
-  Part: string;
-  Series: TAtlasTrendSeries;
-  Wanted: TAtlasTrendFlags;
+  mParts: TArray<string>;
+  mPart: string;
+  mSeries: TAtlasTrendSeries;
+  mWanted: TAtlasTrendFlags;
 begin
   Result := nil;
-  for Series := System.Low(TAtlasTrendSeries) to System.High(TAtlasTrendSeries) do
+  for mSeries := System.Low(TAtlasTrendSeries) to System.High(TAtlasTrendSeries) do
   begin
-    Wanted[Series] := False;
+    mWanted[mSeries] := False;
   end;
-  Parts := AText.Split([',', ';', ' ']);
-  for Part in Parts do
+  mParts := AText.Split([',', ';', ' ']);
+  for mPart in mParts do
   begin
-    for Series := System.Low(TAtlasTrendSeries) to System.High(TAtlasTrendSeries) do
+    for mSeries := System.Low(TAtlasTrendSeries) to System.High(TAtlasTrendSeries) do
     begin
-      if SameText(Trim(Part), SeriesKey(Series)) then
+      if SameText(Trim(mPart), SeriesKey(mSeries)) then
       begin
-        Wanted[Series] := True;
+        mWanted[mSeries] := True;
       end;
     end;
   end;
-  for Series := System.Low(TAtlasTrendSeries) to System.High(TAtlasTrendSeries) do
+  for mSeries := System.Low(TAtlasTrendSeries) to System.High(TAtlasTrendSeries) do
   begin
-    if Wanted[Series] then
+    if mWanted[mSeries] then
     begin
-      Result := Result + [Series];
+      Result := Result + [mSeries];
     end;
   end;
 end;
 
 class function TAtlasWelcomeTrends.SeriesText(const ASeries: TAtlasTrendSeriesList): string;
 var
-  Series: TAtlasTrendSeries;
+  mSeries: TAtlasTrendSeries;
 begin
   Result := '';
-  for Series in ASeries do
+  for mSeries in ASeries do
   begin
     if Result <> '' then
     begin
       Result := Result + ',';
     end;
-    Result := Result + SeriesKey(Series);
+    Result := Result + SeriesKey(mSeries);
   end;
 end;
 
@@ -210,21 +210,21 @@ end;
 
 class function TAtlasWelcomeTrends.Choose(const AProjects: TArray<string>; const ASelected: string): string;
 var
-  Project, Wanted: string;
+  mProject, mWanted: string;
 begin
   Result := '';
   if Length(AProjects) = 0 then
   begin
     Exit;
   end;
-  Wanted := TAtlasProjectSummaries.NormalizedPath(ASelected);
-  if Wanted <> '' then
+  mWanted := TAtlasProjectSummaries.NormalizedPath(ASelected);
+  if mWanted <> '' then
   begin
-    for Project in AProjects do
+    for mProject in AProjects do
     begin
-      if TAtlasProjectSummaries.NormalizedPath(Project) = Wanted then
+      if TAtlasProjectSummaries.NormalizedPath(mProject) = mWanted then
       begin
-        Exit(Project);
+        Exit(mProject);
       end;
     end;
   end;
@@ -234,17 +234,17 @@ end;
 class procedure TAtlasWelcomeTrends.Scale(const AValues: TArray<Integer>; const AHas: TArray<Boolean>; out ALow,
   AHigh: Integer);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // Die Nulllinie ist immer sichtbar.
   ALow := 0;
   AHigh := 0;
-  for Index := 0 to Min(System.High(AValues), System.High(AHas)) do
+  for mIndex := 0 to Min(System.High(AValues), System.High(AHas)) do
   begin
-    if AHas[Index] then
+    if AHas[mIndex] then
     begin
-      ALow := Min(ALow, AValues[Index]);
-      AHigh := Max(AHigh, AValues[Index]);
+      ALow := Min(ALow, AValues[mIndex]);
+      AHigh := Max(AHigh, AValues[mIndex]);
     end;
   end;
   // Nur Nullen (oder nichts): eine Einheit Luft nach oben.
@@ -257,49 +257,49 @@ end;
 class function TAtlasWelcomeTrends.View(const ASummary: TAtlasProjectSummary; const ASeries: TAtlasTrendSeriesList;
   ALimit: Integer): TAtlasTrendView;
 var
-  Points: TArray<TAtlasTrendPoint>;
-  Limit, Index: Integer;
-  Series: TAtlasTrendSeries;
-  Tile: TAtlasTrendTile;
+  mPoints: TArray<TAtlasTrendPoint>;
+  mLimit, mIndex: Integer;
+  mSeries: TAtlasTrendSeries;
+  mTile: TAtlasTrendTile;
 begin
   Result := Default(TAtlasTrendView);
   Result.Project := ASummary.Project;
-  Limit := EnsureRange(ALimit, 2, 100);
-  Result.Limit := Limit;
-  Points := ASummary.Trends.Points;
-  if Length(Points) > Limit then
+  mLimit := EnsureRange(ALimit, 2, 100);
+  Result.Limit := mLimit;
+  mPoints := ASummary.Trends.Points;
+  if Length(mPoints) > mLimit then
   begin
-    Points := Copy(Points, Length(Points) - Limit, Limit);
+    mPoints := Copy(mPoints, Length(mPoints) - mLimit, mLimit);
   end;
-  Result.Points := Points;
+  Result.Points := mPoints;
   Result.Tiles := nil;
-  for Series in ASeries do
+  for mSeries in ASeries do
   begin
-    Tile := Default(TAtlasTrendTile);
-    Tile.Series := Series;
-    SetLength(Tile.Values, Length(Points));
-    SetLength(Tile.Has, Length(Points));
-    for Index := 0 to System.High(Points) do
+    mTile := Default(TAtlasTrendTile);
+    mTile.Series := mSeries;
+    SetLength(mTile.Values, Length(mPoints));
+    SetLength(mTile.Has, Length(mPoints));
+    for mIndex := 0 to System.High(mPoints) do
     begin
-      Tile.Values[Index] := Points[Index].Values[Series];
-      Tile.Has[Index] := Points[Index].Has[Series];
+      mTile.Values[mIndex] := mPoints[mIndex].Values[mSeries];
+      mTile.Has[mIndex] := mPoints[mIndex].Has[mSeries];
     end;
-    Scale(Tile.Values, Tile.Has, Tile.Bottom, Tile.Top);
-    Result.Tiles := Result.Tiles + [Tile];
+    Scale(mTile.Values, mTile.Has, mTile.Bottom, mTile.Top);
+    Result.Tiles := Result.Tiles + [mTile];
   end;
 end;
 
 class function TAtlasWelcomeTrends.ValueText(ASeries: TAtlasTrendSeries; ATenths: Integer; ADecimal: Char): string;
 var
-  Whole, Tenth: Integer;
+  mWhole, mTenth: Integer;
 begin
   if not TAtlasProjectSummaries.cTrendDecimals[ASeries] then
   begin
     Exit(IntToStr(ATenths div 10));
   end;
-  Whole := Abs(ATenths) div 10;
-  Tenth := Abs(ATenths) mod 10;
-  Result := IntToStr(Whole) + ADecimal + IntToStr(Tenth);
+  mWhole := Abs(ATenths) div 10;
+  mTenth := Abs(ATenths) mod 10;
+  Result := IntToStr(mWhole) + ADecimal + IntToStr(mTenth);
   if ATenths < 0 then
   begin
     Result := '-' + Result;
@@ -308,16 +308,16 @@ end;
 
 class function TAtlasWelcomeTrends.ShortCommit(const ARevision: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Trim(ARevision);
   if (Length(Result) <> 40) and (Length(Result) <> 64) then
   begin
     Exit;
   end;
-  for Index := 1 to Length(Result) do
+  for mIndex := 1 to Length(Result) do
   begin
-    if not CharInSet(Result[Index], ['0'..'9', 'a'..'f', 'A'..'F']) then
+    if not CharInSet(Result[mIndex], ['0'..'9', 'a'..'f', 'A'..'F']) then
     begin
       Exit;
     end;
@@ -345,17 +345,17 @@ end;
 
 class function TAtlasWelcomeTrends.NearestPoint(AX, ACount, ALeft, AWidth: Integer): Integer;
 var
-  Index, Best, Distance: Integer;
+  mIndex, mBest, mDistance: Integer;
 begin
   Result := -1;
-  Best := MaxInt;
-  for Index := 0 to ACount - 1 do
+  mBest := MaxInt;
+  for mIndex := 0 to ACount - 1 do
   begin
-    Distance := Abs(PointX(Index, ACount, ALeft, AWidth) - AX);
-    if Distance < Best then
+    mDistance := Abs(PointX(mIndex, ACount, ALeft, AWidth) - AX);
+    if mDistance < mBest then
     begin
-      Best := Distance;
-      Result := Index;
+      mBest := mDistance;
+      Result := mIndex;
     end;
   end;
 end;

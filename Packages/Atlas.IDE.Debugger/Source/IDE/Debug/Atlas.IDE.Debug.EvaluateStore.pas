@@ -18,10 +18,10 @@ uses
 type
   TAtlasIdeEvaluateStore = class
   public const
-    HistoryLimit = 50;
-    PinnedLimit = 100;
-    HistoryFileName = 'debug-evaluate-history.json';
-    PinnedFileName = 'debug-evaluate-pinned.json';
+    cHistoryLimit = 50;
+    cPinnedLimit = 100;
+    cHistoryFileName = 'debug-evaluate-history.json';
+    cPinnedFileName = 'debug-evaluate-pinned.json';
   private
     FHistory: TAtlasExpressionHistory;
     FPinned: TAtlasExpressionHistory;
@@ -86,8 +86,8 @@ end;
 constructor TAtlasIdeEvaluateStore.Create;
 begin
   inherited Create;
-  FHistory := TAtlasExpressionHistory.Create(HistoryLimit);
-  FPinned := TAtlasExpressionHistory.Create(PinnedLimit);
+  FHistory := TAtlasExpressionHistory.Create(cHistoryLimit);
+  FPinned := TAtlasExpressionHistory.Create(cPinnedLimit);
 end;
 
 destructor TAtlasIdeEvaluateStore.Destroy;
@@ -122,12 +122,12 @@ begin
   end;
   FLoaded := True;
   // Gesperrt: leer beginnen und die Datei nicht überschreiben; TAtlasDataFile protokolliert ohne Pfad.
-  FHistoryKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(StoreFile(HistoryFileName), cHistoryWhat,
+  FHistoryKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(StoreFile(cHistoryFileName), cHistoryWhat,
     function(const AText: string): Boolean
     begin
       Result := FHistory.LoadFromText(AText);
     end));
-  FPinnedKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(StoreFile(PinnedFileName), cPinnedWhat,
+  FPinnedKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(StoreFile(cPinnedFileName), cPinnedWhat,
     function(const AText: string): Boolean
     begin
       Result := FPinned.LoadFromText(AText);
@@ -136,7 +136,7 @@ end;
 
 procedure TAtlasIdeEvaluateStore.SavePinned;
 begin
-  SaveStore(FPinned, PinnedFileName, cPinnedWhat, FPinnedKept);
+  SaveStore(FPinned, cPinnedFileName, cPinnedWhat, FPinnedKept);
 end;
 
 function TAtlasIdeEvaluateStore.HistoryItems: TArray<string>;
@@ -164,7 +164,7 @@ begin
   Load;
   if FHistory.Add(CurrentProject, AExpression) then
   begin
-    SaveStore(FHistory, HistoryFileName, cHistoryWhat, FHistoryKept);
+    SaveStore(FHistory, cHistoryFileName, cHistoryWhat, FHistoryKept);
   end;
 end;
 

@@ -77,12 +77,12 @@ end;
 
 procedure TTextEncodingProbeTests.Utf8ReportsNonAscii;
 var
-  HasNonAscii: Boolean;
+  mHasNonAscii: Boolean;
 begin
-  Assert.IsTrue(TTextEncodingProbe.IsValidUtf8(TBytes.Create(Ord('a'), Ord('b')), 0, HasNonAscii));
-  Assert.IsFalse(HasNonAscii);
-  Assert.IsTrue(TTextEncodingProbe.IsValidUtf8(TBytes.Create($C3, $A4), 0, HasNonAscii));
-  Assert.IsTrue(HasNonAscii);
+  Assert.IsTrue(TTextEncodingProbe.IsValidUtf8(TBytes.Create(Ord('a'), Ord('b')), 0, mHasNonAscii));
+  Assert.IsFalse(mHasNonAscii);
+  Assert.IsTrue(TTextEncodingProbe.IsValidUtf8(TBytes.Create($C3, $A4), 0, mHasNonAscii));
+  Assert.IsTrue(mHasNonAscii);
 end;
 
 procedure TTextEncodingProbeTests.BomDetection;
@@ -99,22 +99,22 @@ end;
 
 procedure TTextEncodingProbeTests.ParseCodePageVariants;
 var
-  CodePage: Integer;
+  mCodePage: Integer;
 begin
-  Assert.IsTrue(TTextEncodingProbe.ParseCodePage(' UTF-8 ', CodePage));
-  Assert.AreEqual<Integer>(65001, CodePage);
-  Assert.IsTrue(TTextEncodingProbe.ParseCodePage('utf8', CodePage));
-  Assert.AreEqual<Integer>(65001, CodePage);
-  Assert.IsTrue(TTextEncodingProbe.ParseCodePage('65001', CodePage));
-  Assert.IsTrue(TTextEncodingProbe.ParseCodePage('windows-1250', CodePage));
-  Assert.AreEqual<Integer>(1250, CodePage);
-  Assert.IsTrue(TTextEncodingProbe.ParseCodePage('CP1251', CodePage));
-  Assert.AreEqual<Integer>(1251, CodePage);
-  Assert.IsTrue(TTextEncodingProbe.ParseCodePage('1252', CodePage));
-  Assert.IsFalse(TTextEncodingProbe.ParseCodePage('932', CodePage));
-  Assert.AreEqual<Integer>(0, CodePage);
-  Assert.IsFalse(TTextEncodingProbe.ParseCodePage('latin', CodePage));
-  Assert.AreEqual<Integer>(0, CodePage);
+  Assert.IsTrue(TTextEncodingProbe.ParseCodePage(' UTF-8 ', mCodePage));
+  Assert.AreEqual<Integer>(65001, mCodePage);
+  Assert.IsTrue(TTextEncodingProbe.ParseCodePage('utf8', mCodePage));
+  Assert.AreEqual<Integer>(65001, mCodePage);
+  Assert.IsTrue(TTextEncodingProbe.ParseCodePage('65001', mCodePage));
+  Assert.IsTrue(TTextEncodingProbe.ParseCodePage('windows-1250', mCodePage));
+  Assert.AreEqual<Integer>(1250, mCodePage);
+  Assert.IsTrue(TTextEncodingProbe.ParseCodePage('CP1251', mCodePage));
+  Assert.AreEqual<Integer>(1251, mCodePage);
+  Assert.IsTrue(TTextEncodingProbe.ParseCodePage('1252', mCodePage));
+  Assert.IsFalse(TTextEncodingProbe.ParseCodePage('932', mCodePage));
+  Assert.AreEqual<Integer>(0, mCodePage);
+  Assert.IsFalse(TTextEncodingProbe.ParseCodePage('latin', mCodePage));
+  Assert.AreEqual<Integer>(0, mCodePage);
 end;
 
 procedure TTextEncodingProbeTests.BinaryFormWithResourceHeader;
@@ -127,18 +127,18 @@ end;
 
 procedure TTextEncodingProbeTests.Cp1252RoundTrip;
 var
-  Bytes: TBytes;
-  Text: string;
+  mBytes: TBytes;
+  mText: string;
 begin
-  Bytes := TBytes.Create($80, $E4, $9F, Ord('x'));
-  Text := TTextEncodingProbe.DecodeCp1252(Bytes, 0);
-  Assert.AreEqual(#$20AC#$00E4#$0178'x', Text);
-  Assert.AreEqual<Integer>(4, Length(TTextEncodingProbe.EncodeCp1252(Text)));
-  Assert.AreEqual<Byte>($80, TTextEncodingProbe.EncodeCp1252(Text)[0]);
-  Assert.AreEqual<Byte>($9F, TTextEncodingProbe.EncodeCp1252(Text)[2]);
+  mBytes := TBytes.Create($80, $E4, $9F, Ord('x'));
+  mText := TTextEncodingProbe.DecodeCp1252(mBytes, 0);
+  Assert.AreEqual(#$20AC#$00E4#$0178'x', mText);
+  Assert.AreEqual<Integer>(4, Length(TTextEncodingProbe.EncodeCp1252(mText)));
+  Assert.AreEqual<Byte>($80, TTextEncodingProbe.EncodeCp1252(mText)[0]);
+  Assert.AreEqual<Byte>($9F, TTextEncodingProbe.EncodeCp1252(mText)[2]);
   Assert.AreEqual<Byte>(Ord('?'), TTextEncodingProbe.EncodeCp1252(#$0416)[0]);
-  Assert.AreEqual('x', TTextEncodingProbe.DecodeCp1252(Bytes, 3));
-  Assert.AreEqual('', TTextEncodingProbe.DecodeCp1252(Bytes, 4));
+  Assert.AreEqual('x', TTextEncodingProbe.DecodeCp1252(mBytes, 3));
+  Assert.AreEqual('', TTextEncodingProbe.DecodeCp1252(mBytes, 4));
 end;
 
 procedure TTextEncodingProbeTests.AsciiOnly;

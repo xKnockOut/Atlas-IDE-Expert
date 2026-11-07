@@ -74,8 +74,8 @@ uses
   Atlas.Core.Projects.Summary;
 
 const
-  Project = 'C:\Projekte\Demo.dproj';
-  UnitFile = 'C:\Projekte\Kunde.pas';
+  cProject = 'C:\Projekte\Demo.dproj';
+  cUnitFile = 'C:\Projekte\Kunde.pas';
 
 function Code: TArray<string>;
 begin
@@ -122,264 +122,264 @@ end;
 
 procedure TAtlasNoteStoreTests.AddFindChangeAndRemove;
 var
-  Book: TAtlasNoteBook;
-  Id: string;
-  Index: Integer;
+  mBook: TAtlasNoteBook;
+  mId: string;
+  mIndex: Integer;
 begin
-  Book := TAtlasNoteBook.Create(Project);
-  Id := Book.Add(UnitFile, Code, 8, 'hier noch Rundung prüfen', At(2026, 10, 15, 9, 0, 0));
-  Assert.AreNotEqual('', Id);
-  Assert.AreEqual(1, Integer(Book.Count));
-  Index := Book.IndexAt('c:/projekte/kunde.pas', 8);
-  Assert.AreEqual(0, Index, 'Pfad ohne Groß-/Kleinschreibung');
-  Assert.AreEqual(-1, Book.IndexAt(UnitFile, 7));
-  Assert.AreEqual(1, Integer(Length(Book.AtLine(UnitFile, 8))));
-  Assert.AreEqual('Result := Round(X * 100) / 100;', Book.Notes[0].Anchor.Text);
-  Assert.IsTrue(SameTime(At(2026, 10, 15, 9, 0, 0), Book.Notes[0].Created));
-  Assert.IsTrue(Book.SetText(Id, 'Rundung prüfen'#10'und testen', At(2026, 10, 15, 10, 0, 0)));
-  Assert.AreEqual('Rundung prüfen'#10'und testen', Book.Notes[0].Text);
-  Assert.IsTrue(SameTime(At(2026, 10, 15, 10, 0, 0), Book.Notes[0].Changed));
-  Assert.IsFalse(Book.SetText('gibt-es-nicht', 'x', Now));
-  Assert.AreNotEqual(Id, Book.Add(UnitFile, Code, 2, 'zweite', Now), 'Kennungen eindeutig');
-  Assert.AreEqual(1, Integer(Length(Book.Files)), 'eine Datei');
-  Assert.IsTrue(Book.Remove(Id));
-  Assert.IsFalse(Book.Remove(Id));
-  Assert.AreEqual(1, Integer(Book.Count));
+  mBook := TAtlasNoteBook.Create(cProject);
+  mId := mBook.Add(cUnitFile, Code, 8, 'hier noch Rundung prüfen', At(2026, 10, 15, 9, 0, 0));
+  Assert.AreNotEqual('', mId);
+  Assert.AreEqual(1, Integer(mBook.Count));
+  mIndex := mBook.IndexAt('c:/projekte/kunde.pas', 8);
+  Assert.AreEqual(0, mIndex, 'Pfad ohne Groß-/Kleinschreibung');
+  Assert.AreEqual(-1, mBook.IndexAt(cUnitFile, 7));
+  Assert.AreEqual(1, Integer(Length(mBook.AtLine(cUnitFile, 8))));
+  Assert.AreEqual('Result := Round(X * 100) / 100;', mBook.Notes[0].Anchor.Text);
+  Assert.IsTrue(SameTime(At(2026, 10, 15, 9, 0, 0), mBook.Notes[0].Created));
+  Assert.IsTrue(mBook.SetText(mId, 'Rundung prüfen'#10'und testen', At(2026, 10, 15, 10, 0, 0)));
+  Assert.AreEqual('Rundung prüfen'#10'und testen', mBook.Notes[0].Text);
+  Assert.IsTrue(SameTime(At(2026, 10, 15, 10, 0, 0), mBook.Notes[0].Changed));
+  Assert.IsFalse(mBook.SetText('gibt-es-nicht', 'x', Now));
+  Assert.AreNotEqual(mId, mBook.Add(cUnitFile, Code, 2, 'zweite', Now), 'Kennungen eindeutig');
+  Assert.AreEqual(1, Integer(Length(mBook.Files)), 'eine Datei');
+  Assert.IsTrue(mBook.Remove(mId));
+  Assert.IsFalse(mBook.Remove(mId));
+  Assert.AreEqual(1, Integer(mBook.Count));
 end;
 
 procedure TAtlasNoteStoreTests.RelocateFollowsAndOrphans;
 var
-  Book: TAtlasNoteBook;
-  Changed: TArray<string>;
+  mBook: TAtlasNoteBook;
+  mChanged: TArray<string>;
 begin
-  Book := TAtlasNoteBook.Create(Project);
-  Book.Add(UnitFile, Code, 8, 'Rundung', Now);
-  Book.Add('C:\Projekte\Andere.pas', Code, 8, 'andere Datei', Now);
-  Assert.IsFalse(Book.Relocate(UnitFile, Code), 'nichts geändert');
-  Changed := Insert(Code, 0, ['// 1', '// 2']);
-  Assert.IsTrue(Book.Relocate(UnitFile, Changed));
-  Assert.AreEqual(10, Book.Notes[0].Line);
-  Assert.AreEqual(8, Book.Notes[1].Line, 'andere Datei unberührt');
-  Assert.IsTrue(Book.Notes[0].Anchor.SameAs(TAtlasLineAnchors.Capture(Changed, 10)), 'neuer Stand gemerkt');
+  mBook := TAtlasNoteBook.Create(cProject);
+  mBook.Add(cUnitFile, Code, 8, 'Rundung', Now);
+  mBook.Add('C:\Projekte\Andere.pas', Code, 8, 'andere Datei', Now);
+  Assert.IsFalse(mBook.Relocate(cUnitFile, Code), 'nichts geändert');
+  mChanged := Insert(Code, 0, ['// 1', '// 2']);
+  Assert.IsTrue(mBook.Relocate(cUnitFile, mChanged));
+  Assert.AreEqual(10, mBook.Notes[0].Line);
+  Assert.AreEqual(8, mBook.Notes[1].Line, 'andere Datei unberührt');
+  Assert.IsTrue(mBook.Notes[0].Anchor.SameAs(TAtlasLineAnchors.Capture(mChanged, 10)), 'neuer Stand gemerkt');
   // Zeile gelöscht: verwaist; wieder eingefügt (Rückgängig): wieder zugeordnet.
-  Assert.IsTrue(Book.Relocate(UnitFile, Without(Changed, 10, 1)));
-  Assert.IsTrue(Book.Notes[0].Orphaned);
-  Assert.AreEqual(-1, Book.IndexAt(UnitFile, 10), 'verwaiste Notizen hängen an keiner Zeile');
-  Assert.IsFalse(Book.Relocate(UnitFile, Without(Changed, 10, 1)), 'bleibt verwaist');
-  Assert.IsTrue(Book.Relocate(UnitFile, Changed));
-  Assert.IsFalse(Book.Notes[0].Orphaned);
-  Assert.AreEqual(10, Book.Notes[0].Line);
+  Assert.IsTrue(mBook.Relocate(cUnitFile, Without(mChanged, 10, 1)));
+  Assert.IsTrue(mBook.Notes[0].Orphaned);
+  Assert.AreEqual(-1, mBook.IndexAt(cUnitFile, 10), 'verwaiste Notizen hängen an keiner Zeile');
+  Assert.IsFalse(mBook.Relocate(cUnitFile, Without(mChanged, 10, 1)), 'bleibt verwaist');
+  Assert.IsTrue(mBook.Relocate(cUnitFile, mChanged));
+  Assert.IsFalse(mBook.Notes[0].Orphaned);
+  Assert.AreEqual(10, mBook.Notes[0].Line);
 end;
 
 procedure TAtlasNoteStoreTests.OrphanFileMarksAllNotes;
 var
-  Book: TAtlasNoteBook;
+  mBook: TAtlasNoteBook;
 begin
-  Book := TAtlasNoteBook.Create(Project);
-  Book.Add(UnitFile, Code, 8, 'a', Now);
-  Book.Add(UnitFile, Code, 2, 'b', Now);
-  Assert.IsTrue(Book.OrphanFile(UnitFile));
-  Assert.AreEqual(2, Book.OrphanCount);
-  Assert.IsFalse(Book.OrphanFile(UnitFile));
+  mBook := TAtlasNoteBook.Create(cProject);
+  mBook.Add(cUnitFile, Code, 8, 'a', Now);
+  mBook.Add(cUnitFile, Code, 2, 'b', Now);
+  Assert.IsTrue(mBook.OrphanFile(cUnitFile));
+  Assert.AreEqual(2, mBook.OrphanCount);
+  Assert.IsFalse(mBook.OrphanFile(cUnitFile));
 end;
 
 procedure TAtlasNoteStoreTests.GroupsListEveryNoteWithOrphansLast;
 var
-  Book: TAtlasNoteBook;
-  Groups: TArray<TAtlasNoteGroup>;
-  Total, Index: Integer;
+  mBook: TAtlasNoteBook;
+  mGroups: TArray<TAtlasNoteGroup>;
+  mTotal, mIndex: Integer;
 begin
-  Book := TAtlasNoteBook.Create(Project);
-  Book.Add('C:\Projekte\Zahlung.pas', Code, 8, 'z', Now);
-  Book.Add(UnitFile, Code, 9, 'k2', Now);
-  Book.Add(UnitFile, Code, 2, 'k1', Now);
-  Book.Add('C:\Projekte\Alt.pas', Code, 4, 'verwaist', Now);
-  Book.OrphanFile('C:\Projekte\Alt.pas');
-  Groups := Book.Groups;
-  Assert.AreEqual(3, Integer(Length(Groups)));
-  Assert.AreEqual(UnitFile, Groups[0].FileName, 'nach Dateiname');
-  Assert.AreEqual('k1', Groups[0].Notes[0].Text, 'nach Zeile');
-  Assert.AreEqual('k2', Groups[0].Notes[1].Text);
-  Assert.AreEqual('C:\Projekte\Zahlung.pas', Groups[1].FileName);
-  Assert.IsTrue(Groups[2].Orphaned, 'verwaiste am Ende');
-  Assert.AreEqual('verwaist', Groups[2].Notes[0].Text);
-  Total := 0;
-  for Index := 0 to High(Groups) do
+  mBook := TAtlasNoteBook.Create(cProject);
+  mBook.Add('C:\Projekte\Zahlung.pas', Code, 8, 'z', Now);
+  mBook.Add(cUnitFile, Code, 9, 'k2', Now);
+  mBook.Add(cUnitFile, Code, 2, 'k1', Now);
+  mBook.Add('C:\Projekte\Alt.pas', Code, 4, 'verwaist', Now);
+  mBook.OrphanFile('C:\Projekte\Alt.pas');
+  mGroups := mBook.Groups;
+  Assert.AreEqual(3, Integer(Length(mGroups)));
+  Assert.AreEqual(cUnitFile, mGroups[0].FileName, 'nach Dateiname');
+  Assert.AreEqual('k1', mGroups[0].Notes[0].Text, 'nach Zeile');
+  Assert.AreEqual('k2', mGroups[0].Notes[1].Text);
+  Assert.AreEqual('C:\Projekte\Zahlung.pas', mGroups[1].FileName);
+  Assert.IsTrue(mGroups[2].Orphaned, 'verwaiste am Ende');
+  Assert.AreEqual('verwaist', mGroups[2].Notes[0].Text);
+  mTotal := 0;
+  for mIndex := 0 to High(mGroups) do
   begin
-    Inc(Total, Length(Groups[Index].Notes));
+    Inc(mTotal, Length(mGroups[mIndex].Notes));
   end;
-  Assert.AreEqual(Book.Count, Total, 'alle Notizen des Projekts');
+  Assert.AreEqual(mBook.Count, mTotal, 'alle Notizen des Projekts');
 end;
 
 procedure TAtlasNoteStoreTests.TitleIsFirstLine;
 var
-  Note: TAtlasNote;
+  mNote: TAtlasNote;
 begin
-  Note := Default(TAtlasNote);
-  Note.Text := #10'  Rundung prüfen  '#10'Details';
-  Assert.AreEqual('Rundung prüfen …', Note.Title);
-  Note.Text := 'einzeilig';
-  Assert.AreEqual('einzeilig', Note.Title);
-  Note.Text := '';
-  Assert.AreEqual('', Note.Title);
+  mNote := Default(TAtlasNote);
+  mNote.Text := #10'  Rundung prüfen  '#10'Details';
+  Assert.AreEqual('Rundung prüfen …', mNote.Title);
+  mNote.Text := 'einzeilig';
+  Assert.AreEqual('einzeilig', mNote.Title);
+  mNote.Text := '';
+  Assert.AreEqual('', mNote.Title);
 end;
 
 procedure TAtlasNoteStoreTests.JsonRoundTrip;
 var
-  Book, Read: TAtlasNoteBook;
+  mBook, mRead: TAtlasNoteBook;
 begin
-  Book := TAtlasNoteBook.Create(Project);
-  Book.Add(UnitFile, Code, 8, 'Rundung'#10'prüfen "genau"', At(2026, 10, 15, 9, 30, 0));
-  Book.Add(UnitFile, Code, 2, 'zweite', At(2026, 10, 15, 9, 31, 0));
-  Book.Notes[1].Orphaned := True;
-  Assert.IsTrue(TAtlasNotes.Parse(TAtlasNotes.ToJson(Book), Read));
-  Assert.AreEqual(Project, Read.Project);
-  Assert.AreEqual(2, Integer(Read.Count));
-  Assert.AreEqual(Book.Notes[0].Id, Read.Notes[0].Id);
-  Assert.AreEqual(UnitFile, Read.Notes[0].FileName);
-  Assert.AreEqual('Rundung'#10'prüfen "genau"', Read.Notes[0].Text);
-  Assert.IsTrue(Book.Notes[0].Anchor.SameAs(Read.Notes[0].Anchor), 'Anker vollständig');
-  Assert.IsTrue(SameTime(Book.Notes[0].Created, Read.Notes[0].Created));
-  Assert.IsTrue(SameTime(Book.Notes[0].Changed, Read.Notes[0].Changed));
-  Assert.IsFalse(Read.Notes[0].Orphaned);
-  Assert.IsTrue(Read.Notes[1].Orphaned);
+  mBook := TAtlasNoteBook.Create(cProject);
+  mBook.Add(cUnitFile, Code, 8, 'Rundung'#10'prüfen "genau"', At(2026, 10, 15, 9, 30, 0));
+  mBook.Add(cUnitFile, Code, 2, 'zweite', At(2026, 10, 15, 9, 31, 0));
+  mBook.Notes[1].Orphaned := True;
+  Assert.IsTrue(TAtlasNotes.Parse(TAtlasNotes.ToJson(mBook), mRead));
+  Assert.AreEqual(cProject, mRead.Project);
+  Assert.AreEqual(2, Integer(mRead.Count));
+  Assert.AreEqual(mBook.Notes[0].Id, mRead.Notes[0].Id);
+  Assert.AreEqual(cUnitFile, mRead.Notes[0].FileName);
+  Assert.AreEqual('Rundung'#10'prüfen "genau"', mRead.Notes[0].Text);
+  Assert.IsTrue(mBook.Notes[0].Anchor.SameAs(mRead.Notes[0].Anchor), 'Anker vollständig');
+  Assert.IsTrue(SameTime(mBook.Notes[0].Created, mRead.Notes[0].Created));
+  Assert.IsTrue(SameTime(mBook.Notes[0].Changed, mRead.Notes[0].Changed));
+  Assert.IsFalse(mRead.Notes[0].Orphaned);
+  Assert.IsTrue(mRead.Notes[1].Orphaned);
 end;
 
 procedure TAtlasNoteStoreTests.ParsesDocumentedFormat;
 var
-  Book: TAtlasNoteBook;
+  mBook: TAtlasNoteBook;
 begin
   Assert.IsTrue(TAtlasNotes.Parse(
     '{"format": 1, "project": "C:\\Projekte\\Demo.dproj", "notes": [' +
     '{"id": "a1", "file": "C:\\Projekte\\Kunde.pas", "line": 42, "text": "hier noch Rundung prüfen",' +
     ' "lineText": "Result := Round(X);", "before": ["begin", "var X: Double;"], "after": ["end;"],' +
     ' "created": "2026-10-15T09:30:00Z", "changed": "2026-10-15T10:00:00Z"},' +
-    '{"file": "ohne Kennung"}, 7]}', Book));
-  Assert.AreEqual(1, Integer(Book.Count), 'unvollständige Einträge übergangen');
-  Assert.AreEqual(41, Book.Notes[0].Line, '"line" zählt ab 1');
-  Assert.AreEqual('Result := Round(X);', Book.Notes[0].Anchor.Text);
-  Assert.AreEqual('var X: Double;', Book.Notes[0].Anchor.Before[1]);
-  Assert.AreEqual(1, Integer(Length(Book.Notes[0].Anchor.After)));
-  Assert.IsTrue(SameTime(At(2026, 10, 15, 9, 30, 0), Book.Notes[0].Created));
-  Assert.IsFalse(Book.Notes[0].Orphaned);
+    '{"file": "ohne Kennung"}, 7]}', mBook));
+  Assert.AreEqual(1, Integer(mBook.Count), 'unvollständige Einträge übergangen');
+  Assert.AreEqual(41, mBook.Notes[0].Line, '"line" zählt ab 1');
+  Assert.AreEqual('Result := Round(X);', mBook.Notes[0].Anchor.Text);
+  Assert.AreEqual('var X: Double;', mBook.Notes[0].Anchor.Before[1]);
+  Assert.AreEqual(1, Integer(Length(mBook.Notes[0].Anchor.After)));
+  Assert.IsTrue(SameTime(At(2026, 10, 15, 9, 30, 0), mBook.Notes[0].Created));
+  Assert.IsFalse(mBook.Notes[0].Orphaned);
   // Ohne "format" gilt 1.
-  Assert.IsTrue(TAtlasNotes.Parse('{"project": "x", "notes": []}', Book));
+  Assert.IsTrue(TAtlasNotes.Parse('{"project": "x", "notes": []}', mBook));
 end;
 
 procedure TAtlasNoteStoreTests.KeepsUnknownFields;
 var
-  Book: TAtlasNoteBook;
-  Root, Note: TJSONObject;
+  mBook: TAtlasNoteBook;
+  mRoot, mNote: TJSONObject;
 begin
   Assert.IsTrue(TAtlasNotes.Parse('{"format": 1, "project": "p", "zukunft": {"a": 1}, "notes": [' +
-    '{"id": "a1", "file": "f.pas", "line": 1, "text": "t", "farbe": "gelb"}]}', Book));
-  Book.SetText('a1', 'neu', Now);
-  Root := TJSONObject.ParseJSONValue(TAtlasNotes.ToJson(Book)) as TJSONObject;
+    '{"id": "a1", "file": "f.pas", "line": 1, "text": "t", "farbe": "gelb"}]}', mBook));
+  mBook.SetText('a1', 'neu', Now);
+  mRoot := TJSONObject.ParseJSONValue(TAtlasNotes.ToJson(mBook)) as TJSONObject;
   try
-    Assert.IsTrue(Root.GetValue('zukunft') is TJSONObject, 'oben');
-    Note := (Root.GetValue('notes') as TJSONArray).Items[0] as TJSONObject;
-    Assert.AreEqual('gelb', Note.GetValue('farbe').Value, 'je Notiz');
-    Assert.AreEqual('neu', Note.GetValue('text').Value);
+    Assert.IsTrue(mRoot.GetValue('zukunft') is TJSONObject, 'oben');
+    mNote := (mRoot.GetValue('notes') as TJSONArray).Items[0] as TJSONObject;
+    Assert.AreEqual('gelb', mNote.GetValue('farbe').Value, 'je Notiz');
+    Assert.AreEqual('neu', mNote.GetValue('text').Value);
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 procedure TAtlasNoteStoreTests.RejectsInvalidAndNewerFormat;
 var
-  Book: TAtlasNoteBook;
+  mBook: TAtlasNoteBook;
 begin
-  Assert.IsFalse(TAtlasNotes.Parse('', Book));
-  Assert.IsFalse(TAtlasNotes.Parse('kein JSON', Book));
-  Assert.IsFalse(TAtlasNotes.Parse('[1, 2]', Book));
-  Assert.IsFalse(TAtlasNotes.Parse('{"format": 2, "project": "p", "notes": []}', Book));
-  Assert.AreEqual(0, Integer(Book.Count));
+  Assert.IsFalse(TAtlasNotes.Parse('', mBook));
+  Assert.IsFalse(TAtlasNotes.Parse('kein JSON', mBook));
+  Assert.IsFalse(TAtlasNotes.Parse('[1, 2]', mBook));
+  Assert.IsFalse(TAtlasNotes.Parse('{"format": 2, "project": "p", "notes": []}', mBook));
+  Assert.AreEqual(0, Integer(mBook.Count));
   Assert.AreEqual(2, TAtlasNotes.FormatOf('{"format": 2}'));
 end;
 
 procedure TAtlasNoteStoreTests.SaveAndLoadOnDisk;
 var
-  Book, Read: TAtlasNoteBook;
+  mBook, mRead: TAtlasNoteBook;
 begin
-  Assert.IsFalse(TAtlasNotes.Load(FFolder, Project, Read), 'noch keine Datei');
-  Assert.AreEqual(Project, Read.Project);
-  Book := TAtlasNoteBook.Create(Project);
-  Book.Add(UnitFile, Code, 8, 'Rundung', Now);
-  Assert.IsTrue(TAtlasNotes.Save(FFolder, Book), 'legt den Ordner an');
-  Assert.IsTrue(FileExists(TAtlasNotes.FileFor(FFolder, Project)));
-  Assert.IsFalse(FileExists(TAtlasNotes.FileFor(FFolder, Project) + '.tmp'));
-  Assert.IsTrue(TAtlasNotes.Load(FFolder, 'c:/projekte/DEMO.dproj', Read));
-  Assert.AreEqual(1, Integer(Read.Count));
-  Assert.AreEqual('Rundung', Read.Notes[0].Text);
+  Assert.IsFalse(TAtlasNotes.Load(FFolder, cProject, mRead), 'noch keine Datei');
+  Assert.AreEqual(cProject, mRead.Project);
+  mBook := TAtlasNoteBook.Create(cProject);
+  mBook.Add(cUnitFile, Code, 8, 'Rundung', Now);
+  Assert.IsTrue(TAtlasNotes.Save(FFolder, mBook), 'legt den Ordner an');
+  Assert.IsTrue(FileExists(TAtlasNotes.FileFor(FFolder, cProject)));
+  Assert.IsFalse(FileExists(TAtlasNotes.FileFor(FFolder, cProject) + '.tmp'));
+  Assert.IsTrue(TAtlasNotes.Load(FFolder, 'c:/projekte/DEMO.dproj', mRead));
+  Assert.AreEqual(1, Integer(mRead.Count));
+  Assert.AreEqual('Rundung', mRead.Notes[0].Text);
 end;
 
 procedure TAtlasNoteStoreTests.EmptyBookRemovesFile;
 var
-  Book: TAtlasNoteBook;
-  Id: string;
+  mBook: TAtlasNoteBook;
+  mId: string;
 begin
-  Book := TAtlasNoteBook.Create(Project);
-  Id := Book.Add(UnitFile, Code, 8, 'Rundung', Now);
-  Assert.IsTrue(TAtlasNotes.Save(FFolder, Book));
-  Book.Remove(Id);
-  Assert.IsTrue(TAtlasNotes.Save(FFolder, Book));
-  Assert.IsFalse(FileExists(TAtlasNotes.FileFor(FFolder, Project)));
-  Assert.IsTrue(TAtlasNotes.Save(FFolder, Book), 'auch ohne Datei');
+  mBook := TAtlasNoteBook.Create(cProject);
+  mId := mBook.Add(cUnitFile, Code, 8, 'Rundung', Now);
+  Assert.IsTrue(TAtlasNotes.Save(FFolder, mBook));
+  mBook.Remove(mId);
+  Assert.IsTrue(TAtlasNotes.Save(FFolder, mBook));
+  Assert.IsFalse(FileExists(TAtlasNotes.FileFor(FFolder, cProject)));
+  Assert.IsTrue(TAtlasNotes.Save(FFolder, mBook), 'auch ohne Datei');
 end;
 
 procedure TAtlasNoteStoreTests.SaveKeepsNewerFormatFile;
 var
-  Book: TAtlasNoteBook;
-  FileName, Newer: string;
+  mBook: TAtlasNoteBook;
+  mFileName, mNewer: string;
 begin
-  FileName := TAtlasNotes.FileFor(FFolder, Project);
+  mFileName := TAtlasNotes.FileFor(FFolder, cProject);
   ForceDirectories(FFolder);
-  Newer := '{"format": 2, "project": "C:\\Projekte\\Demo.dproj"}';
-  TFile.WriteAllText(FileName, Newer);
-  Book := TAtlasNoteBook.Create(Project);
-  Book.Add(UnitFile, Code, 8, 'x', Now);
-  Assert.IsFalse(TAtlasNotes.Save(FFolder, Book));
-  Assert.AreEqual(Newer, TFile.ReadAllText(FileName, TEncoding.UTF8));
+  mNewer := '{"format": 2, "project": "C:\\Projekte\\Demo.dproj"}';
+  TFile.WriteAllText(mFileName, mNewer);
+  mBook := TAtlasNoteBook.Create(cProject);
+  mBook.Add(cUnitFile, Code, 8, 'x', Now);
+  Assert.IsFalse(TAtlasNotes.Save(FFolder, mBook));
+  Assert.AreEqual(mNewer, TFile.ReadAllText(mFileName, TEncoding.UTF8));
 end;
 
 procedure TAtlasNoteStoreTests.LoadAllWithoutOpenProject;
 var
-  Book: TAtlasNoteBook;
-  Books: TArray<TAtlasNoteBook>;
+  mBook: TAtlasNoteBook;
+  mBooks: TArray<TAtlasNoteBook>;
 begin
-  Book := TAtlasNoteBook.Create('C:\Projekte\Zweites.dproj');
-  Book.Add(UnitFile, Code, 2, 'b', Now);
-  TAtlasNotes.Save(FFolder, Book);
-  Book := TAtlasNoteBook.Create(Project);
-  Book.Add(UnitFile, Code, 8, 'a', Now);
-  TAtlasNotes.Save(FFolder, Book);
+  mBook := TAtlasNoteBook.Create('C:\Projekte\Zweites.dproj');
+  mBook.Add(cUnitFile, Code, 2, 'b', Now);
+  TAtlasNotes.Save(FFolder, mBook);
+  mBook := TAtlasNoteBook.Create(cProject);
+  mBook.Add(cUnitFile, Code, 8, 'a', Now);
+  TAtlasNotes.Save(FFolder, mBook);
   // Kaputte Datei stört nicht.
   TFile.WriteAllText(TPath.Combine(FFolder, 'kaputt.json'), '{');
-  Books := TAtlasNotes.LoadAll(FFolder);
-  Assert.AreEqual(2, Integer(Length(Books)));
-  Assert.AreEqual(Project, Books[0].Project, 'nach Projektpfad');
-  Assert.AreEqual('a', Books[0].Notes[0].Text);
-  Assert.AreEqual('C:\Projekte\Zweites.dproj', Books[1].Project);
+  mBooks := TAtlasNotes.LoadAll(FFolder);
+  Assert.AreEqual(2, Integer(Length(mBooks)));
+  Assert.AreEqual(cProject, mBooks[0].Project, 'nach Projektpfad');
+  Assert.AreEqual('a', mBooks[0].Notes[0].Text);
+  Assert.AreEqual('C:\Projekte\Zweites.dproj', mBooks[1].Project);
   Assert.AreEqual(0, Integer(Length(TAtlasNotes.LoadAll(TPath.Combine(FFolder, 'fehlt')))));
 end;
 
 procedure TAtlasNoteStoreTests.StorageLivesOutsideTheProject;
 var
-  Base: string;
+  mBase: string;
 begin
   // Derselbe Schlüssel wie die Projekt-Zusammenfassung (#592); nur der Ordner unterscheidet sich.
-  Assert.AreEqual(IncludeTrailingPathDelimiter(FFolder) + TAtlasProjectSummaries.KeyOf(Project) + '.json',
-    TAtlasNotes.FileFor(FFolder, Project));
+  Assert.AreEqual(IncludeTrailingPathDelimiter(FFolder) + TAtlasProjectSummaries.KeyOf(cProject) + '.json',
+    TAtlasNotes.FileFor(FFolder, cProject));
   Assert.AreEqual(IncludeTrailingPathDelimiter(FFolder) + 'cea7b8ab83412c7a.json',
-    TAtlasNotes.FileFor(FFolder, Project));
-  Base := GetEnvironmentVariable('LOCALAPPDATA');
-  if Base = '' then
+    TAtlasNotes.FileFor(FFolder, cProject));
+  mBase := GetEnvironmentVariable('LOCALAPPDATA');
+  if mBase = '' then
   begin
     Assert.AreEqual('', TAtlasNotes.DefaultFolder);
   end
   else
   begin
-    Assert.AreEqual(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(Base) + 'Atlas') + 'Notes',
+    Assert.AreEqual(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(mBase) + 'Atlas') + 'Notes',
       TAtlasNotes.DefaultFolder);
   end;
 end;
@@ -392,30 +392,30 @@ end;
 
 procedure TAtlasNoteStoreTests.BrokenFileSetAsideLockedFileKept;
 var
-  Book: TAtlasNoteBook;
-  FileName: string;
-  Lock: TFileStream;
+  mBook: TAtlasNoteBook;
+  mFileName: string;
+  mLock: TFileStream;
 begin
-  FileName := TAtlasNotes.FileFor(FFolder, Project);
+  mFileName := TAtlasNotes.FileFor(FFolder, cProject);
   ForceDirectories(FFolder);
-  TFile.WriteAllText(FileName, '{"notes": [');
-  Assert.IsFalse(TAtlasNotes.Load(FFolder, Project, Book));
-  Assert.AreEqual(Project, Book.Project);
-  Assert.IsTrue(FileExists(FileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
-  Book.Add(UnitFile, Code, 8, 'Rundung', Now);
-  Assert.IsTrue(TAtlasNotes.Save(FFolder, Book));
-  Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
+  TFile.WriteAllText(mFileName, '{"notes": [');
+  Assert.IsFalse(TAtlasNotes.Load(FFolder, cProject, mBook));
+  Assert.AreEqual(cProject, mBook.Project);
+  Assert.IsTrue(FileExists(mFileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
+  mBook.Add(cUnitFile, Code, 8, 'Rundung', Now);
+  Assert.IsTrue(TAtlasNotes.Save(FFolder, mBook));
+  mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
   try
-    Assert.IsFalse(TAtlasNotes.Load(FFolder, Project, Book));
+    Assert.IsFalse(TAtlasNotes.Load(FFolder, cProject, mBook));
   finally
-    Lock.Free;
+    mLock.Free;
   end;
-  Assert.AreEqual(0, Integer(Book.Count));
-  Assert.AreEqual(FileName, Book.KeptFile);
-  Book.Add(UnitFile, Code, 8, 'Ersatz', Now);
-  Assert.IsFalse(TAtlasNotes.Save(FFolder, Book), 'beim Laden gesperrt: nicht überschreiben');
-  Assert.Contains(TFile.ReadAllText(FileName, TEncoding.UTF8), 'Rundung');
-  Assert.DoesNotContain(TFile.ReadAllText(FileName, TEncoding.UTF8), 'Ersatz');
+  Assert.AreEqual(0, Integer(mBook.Count));
+  Assert.AreEqual(mFileName, mBook.KeptFile);
+  mBook.Add(cUnitFile, Code, 8, 'Ersatz', Now);
+  Assert.IsFalse(TAtlasNotes.Save(FFolder, mBook), 'beim Laden gesperrt: nicht überschreiben');
+  Assert.Contains(TFile.ReadAllText(mFileName, TEncoding.UTF8), 'Rundung');
+  Assert.DoesNotContain(TFile.ReadAllText(mFileName, TEncoding.UTF8), 'Ersatz');
   // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
   TAtlasDataFile.ForgetReports;
 end;

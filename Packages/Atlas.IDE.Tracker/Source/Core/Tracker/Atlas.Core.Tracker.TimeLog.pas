@@ -69,7 +69,7 @@ type
 
   TAtlasTimeLog = record
   public const
-    Version = 1;
+    cVersion = 1;
   public
     Entries: TArray<TAtlasTimeEntry>;
     class function Empty: TAtlasTimeLog; static;
@@ -97,10 +97,10 @@ type
 
   TAtlasTimeFile = class
   public const
-    FileName = 'time.json';
-    LockExtension = '.lock';
+    cFileName = 'time.json';
+    cLockExtension = '.lock';
     /// <summary>So lange wartet ein Zugriff auf die Sperre einer anderen IDE-Instanz.</summary>
-    LockWaitMs = 2000;
+    cLockWaitMs = 2000;
   public
     /// <summary>%LOCALAPPDATA%\Atlas\time.json.</summary>
     class function DefaultPath: string; static;
@@ -115,7 +115,7 @@ type
   TAtlasTimeRounding = class
   public const
     /// <summary>Größte Dauer, die die Eingabe annimmt (eine Woche).</summary>
-    MaxMinutes = 7 * 24 * 60;
+    cMaxMinutes = 7 * 24 * 60;
   public
     /// <summary>ASeconds auf AStep Minuten gerundet (kaufmännisch); mindestens AStep, sobald Zeit da ist.</summary>
     class function Minutes(ASeconds: Int64; AStep: Integer): Integer; static;
@@ -293,7 +293,7 @@ begin
   if Result then
   begin
     mVersion := TJSONObject(AValue).Values['version'];
-    Result := (mVersion is TJSONNumber) and (TJSONNumber(mVersion).AsInt = TAtlasTimeLog.Version);
+    Result := (mVersion is TJSONNumber) and (TJSONNumber(mVersion).AsInt = TAtlasTimeLog.cVersion);
   end;
 end;
 
@@ -348,7 +348,7 @@ var
 begin
   mRoot := TJSONObject.Create;
   try
-    mRoot.AddPair('version', TJSONNumber.Create(Version));
+    mRoot.AddPair('version', TJSONNumber.Create(cVersion));
     mItems := TJSONArray.Create;
     mRoot.AddPair('entries', mItems);
     for mEntry in Entries do
@@ -603,12 +603,12 @@ end;
 class function TAtlasTimeFile.DefaultPath: string;
 begin
   Result := TAtlasTrackerFiles.Join(TAtlasTrackerFiles.Join(TAtlasTrackerFiles.Files.Environment(cLocalAppData),
-    cAtlasFolder), FileName);
+    cAtlasFolder), cFileName);
 end;
 
 function TakeLock(const APath: string): IInterface;
 begin
-  Result := TAtlasTrackerFiles.Files.Lock(APath + TAtlasTimeFile.LockExtension, TAtlasTimeFile.LockWaitMs);
+  Result := TAtlasTrackerFiles.Files.Lock(APath + TAtlasTimeFile.cLockExtension, TAtlasTimeFile.cLockWaitMs);
 end;
 
 function ReadLocked(const APath: string; out ALog: TAtlasTimeLog): Boolean;
@@ -792,7 +792,7 @@ begin
     ATotal := ATotal + mValue * mFactor;
     mAny := True;
   end;
-  Result := mAny and (ATotal <= TAtlasTimeRounding.MaxMinutes);
+  Result := mAny and (ATotal <= TAtlasTimeRounding.cMaxMinutes);
 end;
 
 class function TAtlasTimeRounding.ParseDuration(const AText: string; out AMinutes: Integer): Boolean;
@@ -816,7 +816,7 @@ begin
       AMinutes := Trunc(mTotal + 0.5);
     end;
   end;
-  Result := Result and (AMinutes > 0) and (AMinutes <= MaxMinutes);
+  Result := Result and (AMinutes > 0) and (AMinutes <= cMaxMinutes);
   if not Result then
   begin
     AMinutes := 0;

@@ -23,13 +23,13 @@ type
   TAtlasTrackerNaming = class
   public const
     /// <summary>Vorgabe für issues.branchPattern unter Git.</summary>
-    GitBranchPattern = 'feature/{kennung}-{kurztitel}';
+    cGitBranchPattern = 'feature/{kennung}-{kurztitel}';
     /// <summary>Vorgabe unter SVN: der Name unter ^/branches/.</summary>
-    SvnBranchPattern = '{kennung}-{kurztitel}';
+    cSvnBranchPattern = '{kennung}-{kurztitel}';
     /// <summary>Vorgabe für issues.commitPattern.</summary>
-    CommitPattern = '{kennung} ';
+    cCommitPattern = '{kennung} ';
     /// <summary>Höchstens so viele Wörter im Kurztitel.</summary>
-    ShortTitleWords = 3;
+    cShortTitleWords = 3;
   public
     /// <summary>Erste drei Wörter, klein, nur a–z, 0–9 und „-“; '' ohne Wörter.</summary>
     class function ShortTitle(const ATitle: string): string; static;
@@ -57,12 +57,12 @@ uses
 
 const
   // Paare: Zeichen und Ersatz. Großbuchstaben mit, weil LowerCase nur ASCII kennt.
-  Folding: array[0..63] of string = (
+  cFolding: array[0..63] of string = (
     'ä', 'ae', 'ö', 'oe', 'ü', 'ue', 'ß', 'ss', 'Ä', 'ae', 'Ö', 'oe', 'Ü', 'ue', 'ẞ', 'ss',
     'à', 'a', 'á', 'a', 'â', 'a', 'ã', 'a', 'å', 'a', 'æ', 'ae', 'ç', 'c', 'è', 'e',
     'é', 'e', 'ê', 'e', 'ë', 'e', 'ì', 'i', 'í', 'i', 'î', 'i', 'ï', 'i', 'ñ', 'n',
     'ò', 'o', 'ó', 'o', 'ô', 'o', 'õ', 'o', 'ø', 'o', 'œ', 'oe', 'ù', 'u', 'ú', 'u');
-  FoldingMore: array[0..27] of string = (
+  cFoldingMore: array[0..27] of string = (
     'û', 'u', 'ý', 'y', 'ÿ', 'y', 'À', 'a', 'Á', 'a', 'Â', 'a', 'Ç', 'c', 'È', 'e',
     'É', 'e', 'Ê', 'e', 'Î', 'i', 'Ñ', 'n', 'Ó', 'o', 'Ô', 'o');
 
@@ -79,20 +79,20 @@ end;
 
 function Fold(const AText: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AText;
-  Index := 0;
-  while Index < High(Folding) do
+  mIndex := 0;
+  while mIndex < High(cFolding) do
   begin
-    Result := StringReplace(Result, Folding[Index], Folding[Index + 1], [rfReplaceAll]);
-    Inc(Index, 2);
+    Result := StringReplace(Result, cFolding[mIndex], cFolding[mIndex + 1], [rfReplaceAll]);
+    Inc(mIndex, 2);
   end;
-  Index := 0;
-  while Index < High(FoldingMore) do
+  mIndex := 0;
+  while mIndex < High(cFoldingMore) do
   begin
-    Result := StringReplace(Result, FoldingMore[Index], FoldingMore[Index + 1], [rfReplaceAll]);
-    Inc(Index, 2);
+    Result := StringReplace(Result, cFoldingMore[mIndex], cFoldingMore[mIndex + 1], [rfReplaceAll]);
+    Inc(mIndex, 2);
   end;
   Result := LowerCase(Result);
 end;
@@ -100,41 +100,41 @@ end;
 /// <summary>"Plugin: Titel" → "Titel": ein Wort ohne Leerzeichen vor ": ".</summary>
 function WithoutPrefix(const ATitle: string): string;
 var
-  Colon, Index: Integer;
+  mColon, mIndex: Integer;
 begin
   Result := Trim(ATitle);
-  Colon := Pos(': ', Result);
-  if Colon <= 1 then
+  mColon := Pos(': ', Result);
+  if mColon <= 1 then
   begin
     Exit;
   end;
-  for Index := 1 to Colon - 1 do
+  for mIndex := 1 to mColon - 1 do
   begin
-    if Result[Index] = ' ' then
+    if Result[mIndex] = ' ' then
     begin
       Exit;
     end;
   end;
-  Result := Trim(Copy(Result, Colon + 2, MaxInt));
+  Result := Trim(Copy(Result, mColon + 2, MaxInt));
 end;
 
 class function TAtlasTrackerNaming.ShortTitle(const ATitle: string): string;
 var
-  Text, Word: string;
-  Index, Count: Integer;
+  mText, mWord: string;
+  mIndex, mCount: Integer;
 begin
   Result := '';
-  Text := Fold(WithoutPrefix(ATitle));
-  Count := 0;
-  Word := '';
-  for Index := 1 to Length(Text) + 1 do
+  mText := Fold(WithoutPrefix(ATitle));
+  mCount := 0;
+  mWord := '';
+  for mIndex := 1 to Length(mText) + 1 do
   begin
-    if (Index <= Length(Text)) and IsAsciiAlnum(Text[Index]) then
+    if (mIndex <= Length(mText)) and IsAsciiAlnum(mText[mIndex]) then
     begin
-      Word := Word + Text[Index];
+      mWord := mWord + mText[mIndex];
       Continue;
     end;
-    if Word = '' then
+    if mWord = '' then
     begin
       Continue;
     end;
@@ -142,10 +142,10 @@ begin
     begin
       Result := Result + '-';
     end;
-    Result := Result + Word;
-    Word := '';
-    Inc(Count);
-    if Count >= ShortTitleWords then
+    Result := Result + mWord;
+    mWord := '';
+    Inc(mCount);
+    if mCount >= cShortTitleWords then
     begin
       Break;
     end;
@@ -163,15 +163,15 @@ end;
 
 function Fill(const APattern, AKey: string; const AIssue: TAtlasTrackerIssue): string;
 var
-  Number: string;
+  mNumber: string;
 begin
-  Number := '';
+  mNumber := '';
   if AIssue.Number > 0 then
   begin
-    Number := IntToStr(AIssue.Number);
+    mNumber := IntToStr(AIssue.Number);
   end;
   Result := StringReplace(APattern, '{kennung}', AKey, [rfReplaceAll, rfIgnoreCase]);
-  Result := StringReplace(Result, '{nummer}', Number, [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '{nummer}', mNumber, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '{kurztitel}', TAtlasTrackerNaming.ShortTitle(AIssue.Title),
     [rfReplaceAll, rfIgnoreCase]);
 end;
@@ -286,15 +286,15 @@ end;
 
 class function TAtlasTrackerNaming.Prefixed(const AMessage, APrefix: string): string;
 var
-  Bare: string;
+  mBare: string;
 begin
   Result := AMessage;
   if APrefix = '' then
   begin
     Exit;
   end;
-  Bare := TrimRight(APrefix);
-  if (Copy(AMessage, 1, Length(APrefix)) = APrefix) or ((Bare <> '') and (Copy(AMessage, 1, Length(Bare)) = Bare))
+  mBare := TrimRight(APrefix);
+  if (Copy(AMessage, 1, Length(APrefix)) = APrefix) or ((mBare <> '') and (Copy(AMessage, 1, Length(mBare)) = mBare))
   then
   begin
     Exit;
@@ -405,11 +405,11 @@ end;
 class function TAtlasTrackerNaming.KeyOfBranch(const AProvider, AProject, ABranch: string): string;
 begin
   Result := '';
-  if SameText(AProvider, TAtlasTrackerTarget.GitHub) then
+  if SameText(AProvider, TAtlasTrackerTarget.cGitHub) then
   begin
     Result := GitHubKeyOf(Trim(ABranch));
   end
-  else if SameText(AProvider, TAtlasTrackerTarget.YouTrack) then
+  else if SameText(AProvider, TAtlasTrackerTarget.cYouTrack) then
   begin
     Result := YouTrackKeyOf(AProject, Trim(ABranch));
   end;

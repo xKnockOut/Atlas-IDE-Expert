@@ -50,13 +50,13 @@ begin
     TStepFilterNames.NormalizeKinds(' Operators, getters ;TRIVIAL, quatsch'));
   Assert.AreEqual('', TStepFilterNames.NormalizeKinds(''));
   Assert.AreEqual('getters,setters,trivial,operators,emptyConstructors',
-    TStepFilterNames.KindsText(TStepFilterNames.AllKinds));
+    TStepFilterNames.KindsText(TStepFilterNames.cAllKinds));
   Assert.IsTrue(TStepFilterNames.ParseKinds('emptyconstructors') = [TStepFilterKind.EmptyConstructors]);
 end;
 
 procedure TStepFilterNamesTests.DefaultKindsAreGettersAndTrivial;
 begin
-  Assert.AreEqual('getters,trivial', TStepFilterNames.KindsText(TStepFilterNames.DefaultKinds));
+  Assert.AreEqual('getters,trivial', TStepFilterNames.KindsText(TStepFilterNames.cDefaultKinds));
 end;
 
 procedure TStepFilterNamesTests.WildcardMatchesAcrossDots;

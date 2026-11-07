@@ -158,9 +158,9 @@ uses
   Atlas.Text.DUnitX;
 
 const
-  MessageGroup = 'Atlas';
+  cMessageGroup = 'Atlas';
   /// <summary>So viele letzte Zeilen der Ausgabe zeigt die Meldung „kein Bericht“.</summary>
-  OutputLines = 5;
+  cOutputLines = 5;
 
 /// <summary>Zeilen einer Datei: offener Puffer, sonst die Platte.</summary>
 function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
@@ -239,72 +239,72 @@ end;
 
 procedure TAtlasIdeTests.Say(const AText: string);
 var
-  Messages: IOTAMessageServices;
-  Group: IOTAMessageGroup;
+  mMessages: IOTAMessageServices;
+  mGroup: IOTAMessageGroup;
 begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     Exit;
   end;
-  Group := Messages.GetGroup(MessageGroup);
-  if Group = nil then
+  mGroup := mMessages.GetGroup(cMessageGroup);
+  if mGroup = nil then
   begin
-    Group := Messages.AddMessageGroup(MessageGroup);
+    mGroup := mMessages.AddMessageGroup(cMessageGroup);
   end;
-  Messages.AddTitleMessage(AText, Group);
+  mMessages.AddTitleMessage(AText, mGroup);
 end;
 
 procedure TAtlasIdeTests.ResolveProject(const AFileName: string; const AThen: TAtlasTestsProjectProc);
 var
-  Found: TArray<IOTAProject>;
+  mFound: TArray<IOTAProject>;
 begin
-  Found := nil;
+  mFound := nil;
   // Testunit der Code Lens bzw. am Cursor: ihre Testprojekte.
   if AFileName <> '' then
   begin
-    Found := TAtlasIdeTestProjects.TestProjects(AFileName);
+    mFound := TAtlasIdeTestProjects.TestProjects(AFileName);
   end;
-  if Length(Found) = 0 then
+  if Length(mFound) = 0 then
   begin
     if TAtlasIdeTestProjects.IsTestProject(GetActiveProject) then
     begin
       AThen(GetActiveProject);
       Exit;
     end;
-    Found := TAtlasIdeTestProjects.TestProjects('');
+    mFound := TAtlasIdeTestProjects.TestProjects('');
   end;
-  if Length(Found) = 0 then
+  if Length(mFound) = 0 then
   begin
     Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoProject));
     Exit;
   end;
-  TAtlasIdeTestProjects.Choose(Found, AliveCheck(FAlive, FAliveRef), SayProc(Self), AThen);
+  TAtlasIdeTestProjects.Choose(mFound, AliveCheck(FAlive, FAliveRef), SayProc(Self), AThen);
 end;
 
 class function TAtlasIdeTests.UnitFileOf(const AProjectFile, AUnitName: string): string;
 var
-  Project: IOTAProject;
-  Index: Integer;
-  FileName: string;
+  mProject: IOTAProject;
+  mIndex: Integer;
+  mFileName: string;
 begin
   Result := '';
-  Project := ProjectByFile(AProjectFile);
-  if Project <> nil then
+  mProject := ProjectByFile(AProjectFile);
+  if mProject <> nil then
   begin
-    for Index := 0 to Project.GetModuleCount - 1 do
+    for mIndex := 0 to mProject.GetModuleCount - 1 do
     begin
-      FileName := Project.GetModule(Index).FileName;
-      if SameText(ExtractFileExt(FileName), '.pas') and SameText(ProjectName(FileName), AUnitName) then
+      mFileName := mProject.GetModule(mIndex).FileName;
+      if SameText(ExtractFileExt(mFileName), '.pas') and SameText(ProjectName(mFileName), AUnitName) then
       begin
-        Exit(FileName);
+        Exit(mFileName);
       end;
     end;
   end;
   // Nicht im Projekt eingetragen: neben der .dproj.
-  FileName := TPath.Combine(ExtractFileDir(AProjectFile), AUnitName + '.pas');
-  if FileExists(FileName) then
+  mFileName := TPath.Combine(ExtractFileDir(AProjectFile), AUnitName + '.pas');
+  if FileExists(mFileName) then
   begin
-    Result := FileName;
+    Result := mFileName;
   end;
 end;
 
@@ -347,23 +347,23 @@ end;
 
 procedure TAtlasIdeTests.RunTests(const AFileName: string; const ATests: TArray<string>);
 var
-  Tests: TArray<string>;
+  mTests: TArray<string>;
 begin
   if not TAtlasIdeSettings.Current.TestRun then
   begin
     Exit;
   end;
-  Tests := ATests;
+  mTests := ATests;
   ResolveProject(AFileName,
     procedure(const AProject: IOTAProject)
     begin
-      Start(AProject, Tests, TAtlasIdeSettings.Current.TestsBuildFirst);
+      Start(AProject, mTests, TAtlasIdeSettings.Current.TestsBuildFirst);
     end);
 end;
 
 function TAtlasIdeTests.RunProject(const AProject: string; out AReason: string): Boolean;
 var
-  Project: IOTAProject;
+  mProject: IOTAProject;
 begin
   Result := False;
   AReason := '';
@@ -377,48 +377,48 @@ begin
     AReason := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBusy);
     Exit;
   end;
-  Project := ProjectByFile(AProject);
-  if Project = nil then
+  mProject := ProjectByFile(AProject);
+  if mProject = nil then
   begin
     AReason := TAtlasTestsStrings.Text(TAtlasTestsTextId.WelcomeQuickReasonNotOpened);
     Exit;
   end;
-  Start(Project, nil, True);
+  Start(mProject, nil, True);
   Result := True;
 end;
 
 procedure TAtlasIdeTests.BuildFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean);
 var
-  Project: IOTAProject;
+  mProject: IOTAProject;
 begin
   if Busy or (AProject.FileName = '') or AProject.Background or (AProject.RequestedBy <> '') then
   begin
     Exit;
   end;
-  Project := ProjectByFile(AProject.FileName);
+  mProject := ProjectByFile(AProject.FileName);
   if not TAtlasTestRun.ShouldRunAfterBuild(TAtlasIdeSettings.Current, ASucceeded, AProject.Background,
-    AProject.RequestedBy, Project <> nil) then
+    AProject.RequestedBy, mProject <> nil) then
   begin
     Exit;
   end;
   // Gerade gebaut: nicht noch einmal.
-  Start(Project, nil, False);
+  Start(mProject, nil, False);
 end;
 
 class function TAtlasIdeTests.TargetOf(const AProject: IOTAProject;
   const ATests: TArray<string>): TAtlasTestTarget;
 var
-  Options: IOTAProjectOptions;
+  mOptions: IOTAProjectOptions;
 begin
   Result := Default(TAtlasTestTarget);
   Result.Project := AProject.FileName;
   Result.Configuration := AProject.CurrentConfiguration;
   Result.Platform := AProject.CurrentPlatform;
   Result.Tests := ATests;
-  Options := AProject.ProjectOptions;
-  if Options <> nil then
+  mOptions := AProject.ProjectOptions;
+  if mOptions <> nil then
   begin
-    Result.Executable := Options.TargetName;
+    Result.Executable := mOptions.TargetName;
   end;
 end;
 
@@ -460,36 +460,36 @@ end;
 
 procedure TAtlasIdeTests.Start(const AProject: IOTAProject; const ATests: TArray<string>; ABuildFirst: Boolean);
 var
-  Target: TAtlasTestTarget;
-  Reason: string;
-  Alive: TAlive;
-  Keep: IInterface;
+  mTarget: TAtlasTestTarget;
+  mReason: string;
+  mAlive: TAlive;
+  mKeep: IInterface;
 begin
   if Busy then
   begin
     Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBusy));
     Exit;
   end;
-  Target := TargetOf(AProject, ATests);
-  if not TAtlasTestRun.CanRun(Target.Platform) then
+  mTarget := TargetOf(AProject, ATests);
+  if not TAtlasTestRun.CanRun(mTarget.Platform) then
   begin
-    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsPlatform, [ProjectName(Target.Project), Target.Platform]));
+    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsPlatform, [ProjectName(mTarget.Project), mTarget.Platform]));
     Exit;
   end;
   if not ABuildFirst or not Assigned(FHooks.OnBuild) then
   begin
-    Execute(Target);
+    Execute(mTarget);
     Exit;
   end;
   FBusy := True;
   Inc(FVersion);
-  Alive := FAlive;
-  Keep := FAliveRef;
-  if not FHooks.OnBuild(Target.Project,
+  mAlive := FAlive;
+  mKeep := FAliveRef;
+  if not FHooks.OnBuild(mTarget.Project,
     procedure(ASucceeded: Boolean; const AOutputFile, AError: string)
     begin
       // Keep hält den Merker am Leben, auch wenn der Läufer schon frei ist.
-      if (Keep = nil) or not Alive.Alive then
+      if (mKeep = nil) or not mAlive.Alive then
       begin
         Exit;
       end;
@@ -497,25 +497,25 @@ begin
       Inc(FVersion);
       if AError <> '' then
       begin
-        Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(Target.Project), AError]));
+        Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(mTarget.Project), AError]));
       end
       else if not ASucceeded then
       begin
-        Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildFailed, [ProjectName(Target.Project)]));
+        Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildFailed, [ProjectName(mTarget.Project)]));
       end
       else
       begin
         if AOutputFile <> '' then
         begin
-          Target.Executable := AOutputFile;
+          mTarget.Executable := AOutputFile;
         end;
-        Execute(Target);
+        Execute(mTarget);
       end;
-    end, Reason) then
+    end, mReason) then
   begin
     FBusy := False;
     Inc(FVersion);
-    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(Target.Project), Reason]));
+    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(mTarget.Project), mReason]));
   end;
 end;
 
@@ -540,13 +540,13 @@ begin
         Result := TAtlasShutdown.Signalled;
       end);
     Result := mRunner.Run(ATarget.Executable, TDUnitXCommandLine.Arguments(mResultFile, ATarget.Tests),
-      ExtractFileDir(ATarget.Executable), TAtlasTestRun.TimeoutMs);
+      ExtractFileDir(ATarget.Executable), TAtlasTestRun.cTimeoutMs);
     if FileExists(mResultFile) then
     begin
       AXml := TFile.ReadAllText(mResultFile, TEncoding.UTF8);
     end;
     mLines := TTextLines.SplitLines(TrimRight(TEncoding.ANSI.GetString(Result.Output)));
-    for mIndex := Max(0, Length(mLines) - OutputLines) to High(mLines) do
+    for mIndex := Max(0, Length(mLines) - cOutputLines) to High(mLines) do
     begin
       AOutput := AOutput + [mLines[mIndex]];
     end;
@@ -618,27 +618,27 @@ end;
 
 procedure TAtlasIdeTests.Merge(const ARun: TTestRunResult);
 var
-  Kept: TArray<TTestCaseResult>;
-  Item, Fresh: TTestCaseResult;
-  Replaced: Boolean;
+  mKept: TArray<TTestCaseResult>;
+  mItem, mFresh: TTestCaseResult;
+  mReplaced: Boolean;
 begin
-  Kept := nil;
-  for Item in FCases do
+  mKept := nil;
+  for mItem in FCases do
   begin
-    Replaced := False;
-    for Fresh in ARun.Cases do
+    mReplaced := False;
+    for mFresh in ARun.Cases do
     begin
-      if SameText(Fresh.FullName, Item.FullName) then
+      if SameText(mFresh.FullName, mItem.FullName) then
       begin
-        Replaced := True;
+        mReplaced := True;
       end;
     end;
-    if not Replaced then
+    if not mReplaced then
     begin
-      Kept := Kept + [Item];
+      mKept := mKept + [mItem];
     end;
   end;
-  FCases := Kept + ARun.Cases;
+  FCases := mKept + ARun.Cases;
 end;
 
 /// <summary>Datei einer Unit im Testprojekt AProjectFile, als Rückruf für TAtlasTestRun.Failures.</summary>
@@ -672,10 +672,10 @@ begin
   begin
     Exit;
   end;
-  mGroup := mMessages.GetGroup(MessageGroup);
+  mGroup := mMessages.GetGroup(cMessageGroup);
   if mGroup = nil then
   begin
-    mGroup := mMessages.AddMessageGroup(MessageGroup);
+    mGroup := mMessages.AddMessageGroup(cMessageGroup);
   end;
   for mFailure in AFailures do
   begin
@@ -706,7 +706,7 @@ begin
   if AOutcome = TAtlasVcsOutcome.TimedOut then
   begin
     Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsTimedOut, [ProjectName(ATarget.Project),
-      TAtlasTestRun.TimeoutMs div 1000]));
+      TAtlasTestRun.cTimeoutMs div 1000]));
     Exit;
   end;
   mRun := TTestResults.Parse(AXml);

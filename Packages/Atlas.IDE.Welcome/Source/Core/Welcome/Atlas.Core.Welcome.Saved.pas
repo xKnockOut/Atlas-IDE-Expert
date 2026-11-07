@@ -91,14 +91,14 @@ uses
 
 function NameOfPath(const APath: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Trim(APath);
-  for Index := Length(Result) downto 1 do
+  for mIndex := Length(Result) downto 1 do
   begin
-    if CharInSet(Result[Index], ['\', '/']) then
+    if CharInSet(Result[mIndex], ['\', '/']) then
     begin
-      Exit(Copy(Result, Index + 1, MaxInt));
+      Exit(Copy(Result, mIndex + 1, MaxInt));
     end;
   end;
 end;
@@ -120,15 +120,15 @@ end;
 
 function TAtlasSavedItem.ProjectName: string;
 var
-  Summary: TAtlasProjectSummary;
+  mSummary: TAtlasProjectSummary;
 begin
   Result := '';
   if Project = '' then
   begin
     Exit;
   end;
-  Summary := TAtlasProjectSummary.Create(Project);
-  Result := Summary.Name;
+  mSummary := TAtlasProjectSummary.Create(Project);
+  Result := mSummary.Name;
 end;
 
 { Sortieren }
@@ -161,19 +161,19 @@ end;
 /// <summary>Stabil sortieren (Einfügen); die Listen sind klein.</summary>
 procedure SortItems(var AItems: TAtlasSavedItems);
 var
-  Index, Position: Integer;
-  Item: TAtlasSavedItem;
+  mIndex, mPosition: Integer;
+  mItem: TAtlasSavedItem;
 begin
-  for Index := 1 to High(AItems) do
+  for mIndex := 1 to High(AItems) do
   begin
-    Item := AItems[Index];
-    Position := Index - 1;
-    while (Position >= 0) and (Compare(AItems[Position], Item) > 0) do
+    mItem := AItems[mIndex];
+    mPosition := mIndex - 1;
+    while (mPosition >= 0) and (Compare(AItems[mPosition], mItem) > 0) do
     begin
-      AItems[Position + 1] := AItems[Position];
-      Dec(Position);
+      AItems[mPosition + 1] := AItems[mPosition];
+      Dec(mPosition);
     end;
-    AItems[Position + 1] := Item;
+    AItems[mPosition + 1] := mItem;
   end;
 end;
 
@@ -206,22 +206,22 @@ end;
 
 class function TAtlasWelcomeSaved.FromFavorites(const AFavorites: TArray<TAtlasFavorite>): TAtlasSavedItems;
 var
-  Favorite: TAtlasFavorite;
-  Item: TAtlasSavedItem;
+  mFavorite: TAtlasFavorite;
+  mItem: TAtlasSavedItem;
 begin
   Result := nil;
-  for Favorite in AFavorites do
+  for mFavorite in AFavorites do
   begin
-    Item := Default(TAtlasSavedItem);
-    Item.Kind := TAtlasSavedKind.Favorite;
-    Item.Id := Favorite.Key;
-    Item.Text := Favorite.DisplayName;
-    Item.Line := -1;
-    Item.Detail := Favorite.Signature;
-    Item.UnitName := Favorite.UnitName;
-    Item.TypeName := Favorite.TypeName;
-    Item.Member := Favorite.Member;
-    Result := Result + [Item];
+    mItem := Default(TAtlasSavedItem);
+    mItem.Kind := TAtlasSavedKind.Favorite;
+    mItem.Id := mFavorite.Key;
+    mItem.Text := mFavorite.DisplayName;
+    mItem.Line := -1;
+    mItem.Detail := mFavorite.Signature;
+    mItem.UnitName := mFavorite.UnitName;
+    mItem.TypeName := mFavorite.TypeName;
+    mItem.Member := mFavorite.Member;
+    Result := Result + [mItem];
   end;
 end;
 
@@ -235,33 +235,33 @@ end;
 
 class function TAtlasWelcomeSaved.Filter(const AItems: TAtlasSavedItems; const APattern: string): TAtlasSavedItems;
 var
-  Words: TArray<string>;
-  Word, Haystack: string;
-  Item: TAtlasSavedItem;
-  Matches: Boolean;
+  mWords: TArray<string>;
+  mWord, mHaystack: string;
+  mItem: TAtlasSavedItem;
+  mMatches: Boolean;
 begin
-  Words := LowerCase(APattern).Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
-  if Length(Words) = 0 then
+  mWords := LowerCase(APattern).Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
+  if Length(mWords) = 0 then
   begin
     Exit(AItems);
   end;
   Result := nil;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    Haystack := LowerCase(Item.Text + #1 + NameOfPath(Item.FileName) + #1 + Item.ProjectName + #1 + Item.Detail +
-      #1 + Item.UnitName);
-    Matches := True;
-    for Word in Words do
+    mHaystack := LowerCase(mItem.Text + #1 + NameOfPath(mItem.FileName) + #1 + mItem.ProjectName + #1 + mItem.Detail +
+      #1 + mItem.UnitName);
+    mMatches := True;
+    for mWord in mWords do
     begin
-      if Pos(Word, Haystack) = 0 then
+      if Pos(mWord, mHaystack) = 0 then
       begin
-        Matches := False;
+        mMatches := False;
         Break;
       end;
     end;
-    if Matches then
+    if mMatches then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
 end;
@@ -269,63 +269,63 @@ end;
 /// <summary>Enthält ALine AWord als ganzes Wort (Groß/klein egal)?</summary>
 function HasWord(const ALine, AWord: string): Boolean;
 var
-  Lower, Wanted: string;
-  Start, Found: Integer;
+  mLower, mWanted: string;
+  mStart, mFound: Integer;
 begin
   Result := False;
   if AWord = '' then
   begin
     Exit;
   end;
-  Lower := LowerCase(ALine);
-  Wanted := LowerCase(AWord);
-  Start := 1;
+  mLower := LowerCase(ALine);
+  mWanted := LowerCase(AWord);
+  mStart := 1;
   repeat
-    Found := Pos(Wanted, Lower, Start);
-    if Found = 0 then
+    mFound := Pos(mWanted, mLower, mStart);
+    if mFound = 0 then
     begin
       Exit;
     end;
-    if ((Found = 1) or not TTextChars.IsIdentChar(Lower[Found - 1])) and
-      ((Found + Length(Wanted) > Length(Lower)) or not TTextChars.IsIdentChar(Lower[Found + Length(Wanted)])) then
+    if ((mFound = 1) or not TTextChars.IsIdentChar(mLower[mFound - 1])) and
+      ((mFound + Length(mWanted) > Length(mLower)) or not TTextChars.IsIdentChar(mLower[mFound + Length(mWanted)])) then
     begin
       Exit(True);
     end;
-    Start := Found + 1;
+    mStart := mFound + 1;
   until False;
 end;
 
 /// <summary>Beginnt ALine (ohne Leerraum) mit "ATypeName =" bzw. "ATypeName&lt;…&gt; ="?</summary>
 function IsTypeHead(const ALine, ATypeName: string): Boolean;
 var
-  Text: string;
-  Index: Integer;
+  mText: string;
+  mIndex: Integer;
 begin
-  Text := TrimLeft(ALine);
+  mText := TrimLeft(ALine);
   Result := False;
-  if not SameText(Copy(Text, 1, Length(ATypeName)), ATypeName) then
+  if not SameText(Copy(mText, 1, Length(ATypeName)), ATypeName) then
   begin
     Exit;
   end;
-  Index := Length(ATypeName) + 1;
-  if (Index <= Length(Text)) and TTextChars.IsIdentChar(Text[Index]) then
+  mIndex := Length(ATypeName) + 1;
+  if (mIndex <= Length(mText)) and TTextChars.IsIdentChar(mText[mIndex]) then
   begin
     Exit;
   end;
   // Generische Parameter überspringen.
-  if (Index <= Length(Text)) and (Text[Index] = '<') then
+  if (mIndex <= Length(mText)) and (mText[mIndex] = '<') then
   begin
-    while (Index <= Length(Text)) and (Text[Index] <> '>') do
+    while (mIndex <= Length(mText)) and (mText[mIndex] <> '>') do
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  while (Index <= Length(Text)) and (Text[Index] = ' ') do
+  while (mIndex <= Length(mText)) and (mText[mIndex] = ' ') do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := (Index <= Length(Text)) and (Text[Index] = '=');
+  Result := (mIndex <= Length(mText)) and (mText[mIndex] = '=');
 end;
 
 /// <summary>Erste Deklaration und erste Implementierung der Methode bzw. Routine AWanted in AText; -1 ohne.
@@ -382,22 +382,22 @@ end;
 
 class function TAtlasWelcomeSaved.DeclarationLine(const AText, ATypeName, AMember: string): Integer;
 var
-  Wanted: string;
-  Declaration, Body: Integer;
+  mWanted: string;
+  mDeclaration, mBody: Integer;
 begin
   Result := -1;
   if Trim(AMember) = '' then
   begin
     Exit;
   end;
-  Wanted := AMember;
+  mWanted := AMember;
   if ATypeName <> '' then
   begin
-    Wanted := ATypeName + '.' + AMember;
+    mWanted := ATypeName + '.' + AMember;
   end;
   // Methoden und Routinen: zuerst die Deklaration, sonst die Implementierung.
-  FindMethod(AText, Wanted, Declaration, Body);
-  Result := Declaration;
+  FindMethod(AText, mWanted, mDeclaration, mBody);
+  Result := mDeclaration;
   // Eigenschaften, Felder und Ereignisse: in der Deklaration des Typs.
   if (Result < 0) and (ATypeName <> '') then
   begin
@@ -405,107 +405,107 @@ begin
   end;
   if Result < 0 then
   begin
-    Result := Body;
+    Result := mBody;
   end;
 end;
 
 class function TAtlasWelcomeSaved.ResolvePath(const AFolder, ARelative: string): string;
 var
-  Parts, Kept: TArray<string>;
-  Part, Path: string;
+  mParts, mKept: TArray<string>;
+  mPart, mPath: string;
 begin
-  Path := Trim(ARelative).Replace('/', '\');
+  mPath := Trim(ARelative).Replace('/', '\');
   // Laufwerk („C:\…“) oder Netzwerkpfad („\\server\…“): schon absolut.
-  if ((Length(Path) >= 2) and (Path[2] = ':')) or Path.StartsWith('\\') or (Trim(AFolder) = '') then
+  if ((Length(mPath) >= 2) and (mPath[2] = ':')) or mPath.StartsWith('\\') or (Trim(AFolder) = '') then
   begin
-    Exit(Path);
+    Exit(mPath);
   end;
-  Path := Trim(AFolder).Replace('/', '\');
-  if not Path.EndsWith('\') then
+  mPath := Trim(AFolder).Replace('/', '\');
+  if not mPath.EndsWith('\') then
   begin
-    Path := Path + '\';
+    mPath := mPath + '\';
   end;
-  Path := Path + Trim(ARelative).Replace('/', '\');
-  Parts := Path.Split(['\']);
-  Kept := nil;
-  for Part in Parts do
+  mPath := mPath + Trim(ARelative).Replace('/', '\');
+  mParts := mPath.Split(['\']);
+  mKept := nil;
+  for mPart in mParts do
   begin
-    if Part = '.' then
+    if mPart = '.' then
     begin
       Continue;
     end;
     // „..“ nimmt den letzten Teil weg, aber nie das Laufwerk.
-    if Part = '..' then
+    if mPart = '..' then
     begin
-      if Length(Kept) > 1 then
+      if Length(mKept) > 1 then
       begin
-        SetLength(Kept, Length(Kept) - 1);
+        SetLength(mKept, Length(mKept) - 1);
       end;
       Continue;
     end;
-    Kept := Kept + [Part];
+    mKept := mKept + [mPart];
   end;
-  Result := string.Join('\', Kept);
+  Result := string.Join('\', mKept);
 end;
 
 class function TAtlasWelcomeSaved.GroupProjects(const AGroupFile, AText: string): TArray<string>;
 const
-  Marker = 'include="';
+  cMarker = 'include="';
 var
-  Lower, Folder, Value: string;
-  Start, Found, Stop, Index: Integer;
+  mLower, mFolder, mValue: string;
+  mStart, mFound, mStop, mIndex: Integer;
 begin
   Result := nil;
-  Folder := '';
-  for Index := Length(AGroupFile) downto 1 do
+  mFolder := '';
+  for mIndex := Length(AGroupFile) downto 1 do
   begin
-    if CharInSet(AGroupFile[Index], ['\', '/']) then
+    if CharInSet(AGroupFile[mIndex], ['\', '/']) then
     begin
-      Folder := Copy(AGroupFile, 1, Index - 1);
+      mFolder := Copy(AGroupFile, 1, mIndex - 1);
       Break;
     end;
   end;
-  Lower := LowerCase(AText);
-  Start := 1;
+  mLower := LowerCase(AText);
+  mStart := 1;
   repeat
-    Found := Pos('<projects ', Lower, Start);
-    if Found = 0 then
+    mFound := Pos('<projects ', mLower, mStart);
+    if mFound = 0 then
     begin
       Break;
     end;
-    Stop := Pos('>', Lower, Found);
-    if Stop = 0 then
+    mStop := Pos('>', mLower, mFound);
+    if mStop = 0 then
     begin
       Break;
     end;
-    Index := Pos(Marker, Lower, Found);
-    if (Index > 0) and (Index < Stop) then
+    mIndex := Pos(cMarker, mLower, mFound);
+    if (mIndex > 0) and (mIndex < mStop) then
     begin
-      Inc(Index, Length(Marker));
-      Value := Copy(AText, Index, Pos('"', AText, Index) - Index);
-      if Trim(Value) <> '' then
+      Inc(mIndex, Length(cMarker));
+      mValue := Copy(AText, mIndex, Pos('"', AText, mIndex) - mIndex);
+      if Trim(mValue) <> '' then
       begin
-        Result := Result + [ResolvePath(Folder, Value)];
+        Result := Result + [ResolvePath(mFolder, mValue)];
       end;
     end;
-    Start := Stop + 1;
+    mStart := mStop + 1;
   until False;
 end;
 
 class function TAtlasWelcomeSaved.FindUnit(const AFiles: TArray<TAtlasIndexFile>; const AUnitName: string): string;
 var
-  Entry: TAtlasIndexFile;
+  mEntry: TAtlasIndexFile;
 begin
   Result := '';
   if Trim(AUnitName) = '' then
   begin
     Exit;
   end;
-  for Entry in AFiles do
+  for mEntry in AFiles do
   begin
-    if SameText(Entry.UnitName, Trim(AUnitName)) then
+    if SameText(mEntry.UnitName, Trim(AUnitName)) then
     begin
-      Exit(Entry.FileName);
+      Exit(mEntry.FileName);
     end;
   end;
 end;

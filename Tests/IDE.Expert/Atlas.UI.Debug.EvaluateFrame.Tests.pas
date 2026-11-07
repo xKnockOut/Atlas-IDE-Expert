@@ -79,187 +79,187 @@ end;
 
 procedure TAtlasDebugEvaluateFrameTests.DetailViews;
 var
-  List: TAtlasEvalList;
-  Node: TAtlasEvalNode;
-  Unfit: Boolean;
+  mList: TAtlasEvalList;
+  mNode: TAtlasEvalNode;
+  mUnfit: Boolean;
 begin
-  List := TAtlasEvalList.Create;
+  mList := TAtlasEvalList.Create;
   try
     Assert.AreEqual('Eine Zeile wählen, um ihren Wert zu sehen.',
-      TAtlasDebugEvaluateFrame.DetailText(nil, TAtlasEvalView.Text, False, '', Unfit));
-    Node := List.Add('S');
-    List.SetResult(Node, True, '''a''#9''b''');
-    Assert.AreEqual('a'#$2192'b', TAtlasDebugEvaluateFrame.DetailText(Node, TAtlasEvalView.Text, False, '', Unfit));
-    Assert.IsFalse(Unfit);
-    TAtlasDebugEvaluateFrame.DetailText(Node, TAtlasEvalView.Hex, False, '', Unfit);
-    Assert.IsTrue(Unfit, 'String ist keine Zahl');
-    Assert.AreEqual('eins' + sLineBreak + 'zwei', TAtlasDebugEvaluateFrame.DetailText(Node, TAtlasEvalView.Lines,
-      True, '''eins''#13#10''zwei''#13#10', Unfit), 'Zeilen aus .Text');
-    Assert.IsFalse(Unfit);
-    Assert.IsTrue(TAtlasDebugEvaluateFrame.DetailText(Node, TAtlasEvalView.Lines, False, 'E2003', Unfit)
+      TAtlasDebugEvaluateFrame.DetailText(nil, TAtlasEvalView.Text, False, '', mUnfit));
+    mNode := mList.Add('S');
+    mList.SetResult(mNode, True, '''a''#9''b''');
+    Assert.AreEqual('a'#$2192'b', TAtlasDebugEvaluateFrame.DetailText(mNode, TAtlasEvalView.Text, False, '', mUnfit));
+    Assert.IsFalse(mUnfit);
+    TAtlasDebugEvaluateFrame.DetailText(mNode, TAtlasEvalView.Hex, False, '', mUnfit);
+    Assert.IsTrue(mUnfit, 'String ist keine Zahl');
+    Assert.AreEqual('eins' + sLineBreak + 'zwei', TAtlasDebugEvaluateFrame.DetailText(mNode, TAtlasEvalView.Lines,
+      True, '''eins''#13#10''zwei''#13#10', mUnfit), 'Zeilen aus .Text');
+    Assert.IsFalse(mUnfit);
+    Assert.IsTrue(TAtlasDebugEvaluateFrame.DetailText(mNode, TAtlasEvalView.Lines, False, 'E2003', mUnfit)
       .StartsWith('Keine Zeilen: „S.Text“ ließ sich nicht auswerten (E2003).'));
-    Assert.IsTrue(Unfit);
-    List.SetResult(Node, True, '''{"a":1}''');
+    Assert.IsTrue(mUnfit);
+    mList.SetResult(mNode, True, '''{"a":1}''');
     Assert.AreEqual('{' + sLineBreak + '  "a": 1' + sLineBreak + '}',
-      TAtlasDebugEvaluateFrame.DetailText(Node, TAtlasEvalView.Json, False, '', Unfit));
-    List.SetResult(Node, True, '255');
-    Assert.AreEqual('$000000FF (255)', TAtlasDebugEvaluateFrame.DetailText(Node, TAtlasEvalView.Hex, False, '',
-      Unfit));
+      TAtlasDebugEvaluateFrame.DetailText(mNode, TAtlasEvalView.Json, False, '', mUnfit));
+    mList.SetResult(mNode, True, '255');
+    Assert.AreEqual('$000000FF (255)', TAtlasDebugEvaluateFrame.DetailText(mNode, TAtlasEvalView.Hex, False, '',
+      mUnfit));
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 procedure TAtlasDebugEvaluateFrameTests.TreeWithPlaceholderAndParts;
 var
-  Host: TForm;
-  Frame: TAtlasDebugEvaluateFrame;
-  List: TAtlasEvalList;
-  Node: TAtlasEvalNode;
-  Expanded: string;
+  mHost: TForm;
+  mFrame: TAtlasDebugEvaluateFrame;
+  mList: TAtlasEvalList;
+  mNode: TAtlasEvalNode;
+  mExpanded: string;
 begin
-  Expanded := '';
-  List := TAtlasEvalList.Create;
-  Host := TForm.CreateNew(nil);
+  mExpanded := '';
+  mList := TAtlasEvalList.Create;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasDebugEvaluateFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.HandleNeeded;
-    Frame.Hooks.Expand :=
+    mFrame := TAtlasDebugEvaluateFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.HandleNeeded;
+    mFrame.Hooks.Expand :=
       procedure(ANode: TAtlasEvalNode)
       begin
-        Expanded := ANode.Key;
+        mExpanded := ANode.Key;
       end;
-    Node := List.Add('Self');
-    List.SetResult(Node, True, '(FName: ''Meier''; FCount: 3)');
-    List.SetResult(List.Add('Zahl'), True, '7');
-    Frame.SetList(List);
-    Assert.AreEqual(3, Integer(Frame.Parts.Tree.Items.Count), 'Self, Platzhalter, Zahl');
-    Assert.AreEqual('Self = (FName: ''Meier''; FCount: 3)', Frame.Parts.Tree.Items[0].Text);
-    Frame.Parts.Tree.Items[0].Expand(False);
-    Assert.AreEqual('Self', Expanded, 'Felder holt die IDE-Schicht');
-    Assert.IsTrue(Node.Expanded);
-    List.SetParts(Node);
-    Frame.Refresh;
-    Assert.AreEqual(4, Integer(Frame.Parts.Tree.Items.Count));
-    Assert.AreEqual('FName = ''Meier''', Frame.Parts.Tree.Items[1].Text);
-    Assert.IsTrue(Frame.Parts.Tree.Items[0].Expanded);
-    Frame.Parts.Tree.Items[1].Selected := True;
-    Assert.AreEqual('Meier', Frame.Parts.Detail.Text);
-    Assert.IsFalse(Frame.Parts.ModifyButton.Enabled, 'Teil ohne Ausdruck');
-    Frame.SetList(nil);
+    mNode := mList.Add('Self');
+    mList.SetResult(mNode, True, '(FName: ''Meier''; FCount: 3)');
+    mList.SetResult(mList.Add('Zahl'), True, '7');
+    mFrame.SetList(mList);
+    Assert.AreEqual(3, Integer(mFrame.Parts.Tree.Items.Count), 'Self, Platzhalter, Zahl');
+    Assert.AreEqual('Self = (FName: ''Meier''; FCount: 3)', mFrame.Parts.Tree.Items[0].Text);
+    mFrame.Parts.Tree.Items[0].Expand(False);
+    Assert.AreEqual('Self', mExpanded, 'Felder holt die IDE-Schicht');
+    Assert.IsTrue(mNode.Expanded);
+    mList.SetParts(mNode);
+    mFrame.Refresh;
+    Assert.AreEqual(4, Integer(mFrame.Parts.Tree.Items.Count));
+    Assert.AreEqual('FName = ''Meier''', mFrame.Parts.Tree.Items[1].Text);
+    Assert.IsTrue(mFrame.Parts.Tree.Items[0].Expanded);
+    mFrame.Parts.Tree.Items[1].Selected := True;
+    Assert.AreEqual('Meier', mFrame.Parts.Detail.Text);
+    Assert.IsFalse(mFrame.Parts.ModifyButton.Enabled, 'Teil ohne Ausdruck');
+    mFrame.SetList(nil);
   finally
-    Host.Free;
-    List.Free;
+    mHost.Free;
+    mList.Free;
   end;
-  Expanded := '';
+  mExpanded := '';
 end;
 
 procedure TAtlasDebugEvaluateFrameTests.InputKeys;
 var
-  Host: TForm;
-  Frame: TAtlasDebugEvaluateFrame;
-  Added, Pinned: string;
-  Key: Word;
+  mHost: TForm;
+  mFrame: TAtlasDebugEvaluateFrame;
+  mAdded, mPinned: string;
+  mKey: Word;
 begin
-  Added := '';
-  Pinned := '';
-  Host := TForm.CreateNew(nil);
+  mAdded := '';
+  mPinned := '';
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasDebugEvaluateFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.HandleNeeded;
-    Frame.Hooks.Add :=
+    mFrame := TAtlasDebugEvaluateFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.HandleNeeded;
+    mFrame.Hooks.Add :=
       procedure(AExpression: string)
       begin
-        Added := AExpression;
+        mAdded := AExpression;
       end;
-    Frame.Hooks.PinExpression :=
+    mFrame.Hooks.PinExpression :=
       procedure(AExpression: string)
       begin
-        Pinned := AExpression;
+        mPinned := AExpression;
       end;
-    Frame.Parts.Input.Text := ' Kunde.Name ';
-    Key := VK_RETURN;
-    Frame.Parts.Input.OnKeyDown(Frame.Parts.Input, Key, []);
-    Assert.AreEqual('Kunde.Name', Added);
-    Assert.AreEqual('', Frame.Parts.Input.Text, 'Feld leer für den nächsten');
-    Frame.Parts.Input.Text := 'Liste.Count';
-    Key := VK_RETURN;
-    Frame.Parts.Input.OnKeyDown(Frame.Parts.Input, Key, [ssCtrl]);
-    Assert.AreEqual('Liste.Count', Pinned);
-    Added := '';
-    Key := VK_RETURN;
-    Frame.Parts.Input.OnKeyDown(Frame.Parts.Input, Key, []);
-    Assert.AreEqual('', Added, 'leer fügt nichts an');
+    mFrame.Parts.Input.Text := ' Kunde.Name ';
+    mKey := VK_RETURN;
+    mFrame.Parts.Input.OnKeyDown(mFrame.Parts.Input, mKey, []);
+    Assert.AreEqual('Kunde.Name', mAdded);
+    Assert.AreEqual('', mFrame.Parts.Input.Text, 'Feld leer für den nächsten');
+    mFrame.Parts.Input.Text := 'Liste.Count';
+    mKey := VK_RETURN;
+    mFrame.Parts.Input.OnKeyDown(mFrame.Parts.Input, mKey, [ssCtrl]);
+    Assert.AreEqual('Liste.Count', mPinned);
+    mAdded := '';
+    mKey := VK_RETURN;
+    mFrame.Parts.Input.OnKeyDown(mFrame.Parts.Input, mKey, []);
+    Assert.AreEqual('', mAdded, 'leer fügt nichts an');
   finally
-    Host.Free;
+    mHost.Free;
   end;
-  Added := '';
-  Pinned := '';
+  mAdded := '';
+  mPinned := '';
 end;
 
 procedure TAtlasDebugEvaluateFrameTests.DeleteRemovesWholeRow;
 var
-  Host: TForm;
-  Frame: TAtlasDebugEvaluateFrame;
-  List: TAtlasEvalList;
-  Node: TAtlasEvalNode;
-  Deleted: string;
-  Key: Word;
+  mHost: TForm;
+  mFrame: TAtlasDebugEvaluateFrame;
+  mList: TAtlasEvalList;
+  mNode: TAtlasEvalNode;
+  mDeleted: string;
+  mKey: Word;
 begin
-  Deleted := '';
-  List := TAtlasEvalList.Create;
-  Host := TForm.CreateNew(nil);
+  mDeleted := '';
+  mList := TAtlasEvalList.Create;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasDebugEvaluateFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.HandleNeeded;
-    Frame.Hooks.Delete :=
+    mFrame := TAtlasDebugEvaluateFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.HandleNeeded;
+    mFrame.Hooks.Delete :=
       procedure(ANode: TAtlasEvalNode)
       begin
-        Deleted := ANode.Key;
+        mDeleted := ANode.Key;
       end;
-    Node := List.Add('P');
-    List.SetResult(Node, True, '(X: 1; Y: 2)');
-    Node.Expanded := True;
-    List.SetParts(Node);
-    Frame.SetList(List);
-    Frame.Parts.Tree.Items[2].Selected := True;
-    Key := VK_DELETE;
-    Frame.Parts.Tree.OnKeyDown(Frame.Parts.Tree, Key, []);
-    Assert.AreEqual('P', Deleted);
-    Frame.SetList(nil);
+    mNode := mList.Add('P');
+    mList.SetResult(mNode, True, '(X: 1; Y: 2)');
+    mNode.Expanded := True;
+    mList.SetParts(mNode);
+    mFrame.SetList(mList);
+    mFrame.Parts.Tree.Items[2].Selected := True;
+    mKey := VK_DELETE;
+    mFrame.Parts.Tree.OnKeyDown(mFrame.Parts.Tree, mKey, []);
+    Assert.AreEqual('P', mDeleted);
+    mFrame.SetList(nil);
   finally
-    Host.Free;
-    List.Free;
+    mHost.Free;
+    mList.Free;
   end;
-  Deleted := '';
+  mDeleted := '';
 end;
 
 procedure TAtlasDebugEvaluateFrameTests.PinCaption;
 var
-  Host: TForm;
-  Frame: TAtlasDebugEvaluateFrame;
-  List: TAtlasEvalList;
+  mHost: TForm;
+  mFrame: TAtlasDebugEvaluateFrame;
+  mList: TAtlasEvalList;
 begin
-  List := TAtlasEvalList.Create;
-  Host := TForm.CreateNew(nil);
+  mList := TAtlasEvalList.Create;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasDebugEvaluateFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.HandleNeeded;
-    List.Add('A').Pinned := True;
-    List.Add('B');
-    Frame.SetList(List);
-    Frame.Parts.Tree.Items[0].Selected := True;
-    Assert.AreEqual('Lösen', Frame.Parts.PinButton.Caption);
-    Frame.Parts.Tree.Items[1].Selected := True;
-    Assert.AreEqual('Festheften', Frame.Parts.PinButton.Caption);
-    Frame.SetList(nil);
+    mFrame := TAtlasDebugEvaluateFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.HandleNeeded;
+    mList.Add('A').Pinned := True;
+    mList.Add('B');
+    mFrame.SetList(mList);
+    mFrame.Parts.Tree.Items[0].Selected := True;
+    Assert.AreEqual('Lösen', mFrame.Parts.PinButton.Caption);
+    mFrame.Parts.Tree.Items[1].Selected := True;
+    Assert.AreEqual('Festheften', mFrame.Parts.PinButton.Caption);
+    mFrame.SetList(nil);
   finally
-    Host.Free;
-    List.Free;
+    mHost.Free;
+    mList.Free;
   end;
 end;
 

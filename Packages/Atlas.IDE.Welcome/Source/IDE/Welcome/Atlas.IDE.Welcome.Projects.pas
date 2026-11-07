@@ -35,7 +35,7 @@ type
   TAtlasIdeProjects = class(TInterfacedObject, IAtlasProjectsSource, IAtlasProjectSummaryListener)
   public const
     /// <summary>Reihenfolge außerhalb des Atlas-Layouts.</summary>
-    Order = 20;
+    cOrder = 20;
   private
     FMessage: TProc<string>;
     FStopped: Boolean;
@@ -118,9 +118,9 @@ end;
 
 class function TAtlasIdeProjects.ProjectOpen(const AFileName: string): Boolean;
 var
-  Modules: IOTAModuleServices;
+  mModules: IOTAModuleServices;
 begin
-  Result := Supports(BorlandIDEServices, IOTAModuleServices, Modules) and (Modules.FindModule(AFileName) <> nil);
+  Result := Supports(BorlandIDEServices, IOTAModuleServices, mModules) and (mModules.FindModule(AFileName) <> nil);
 end;
 
 class function TAtlasIdeProjects.Summaries: TAtlasIdeProjectSummaries;
@@ -130,17 +130,17 @@ end;
 
 procedure TAtlasIdeProjects.Start;
 var
-  Keep: IAtlasProjectsSource;
+  mKeep: IAtlasProjectsSource;
 begin
   FStopped := False;
-  Keep := Self;
-  TAtlasWelcomeViews.Register(TAtlasWelcomeIds.Projects,
+  mKeep := Self;
+  TAtlasWelcomeViews.Register(TAtlasWelcomeIds.cProjects,
     function(AOwner: TComponent): TAtlasWelcomeSectionFrame
     var
       Frame: TAtlasWelcomeProjectsFrame;
     begin
       Frame := TAtlasWelcomeProjectsFrame.Create(AOwner);
-      Frame.Source := Keep;
+      Frame.Source := mKeep;
       // Schnellaktionen (#764): dieselbe Quelle für jeden Frame.
       Frame.QuickActions := QuickActions;
       Result := Frame;
@@ -162,15 +162,15 @@ begin
     FListening.Revoke;
   end;
   FListening := nil;
-  TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.Projects);
-  TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.Projects);
+  TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.cProjects);
+  TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.cProjects);
   FQuickActions := nil;
 end;
 
 function TAtlasIdeProjects.Section: TAtlasWelcomeSection;
 begin
-  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.Projects,
-    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsTitle), Order, TAtlasWelcomeColumn.Left,
+  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.cProjects,
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsTitle), cOrder, TAtlasWelcomeColumn.Left,
     function: Boolean
     begin
       Result := TAtlasIdeSettings.Current.WelcomePageProjectStatus;
@@ -183,13 +183,13 @@ begin
   begin
     Exit;
   end;
-  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.Projects);
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cProjects);
   // Der Projektverlauf (#758) liest dieselben Zusammenfassungen und folgt der Auswahl.
-  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.History);
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cHistory);
   // Ebenso die Testergebnisse (#763, Abschnitt "tests" und Branch für den Multibranch-Job).
-  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.Tests);
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cTests);
   // Und „Meine Issues“ (#765): Auswahl, Branch (Branch → Ticket) und Art der Versionsverwaltung.
-  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.Issues);
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cIssues);
 end;
 
 class function TAtlasIdeProjects.TrendsOn: Boolean;
@@ -229,10 +229,10 @@ end;
 
 function TAtlasIdeProjects.Entries: TAtlasProjectEntries;
 var
-  Recent: TArray<string>;
-  Index: Integer;
-  Vcs: TAtlasProjectVcs;
-  Root: string;
+  mRecent: TArray<string>;
+  mIndex: Integer;
+  mVcs: TAtlasProjectVcs;
+  mRoot: string;
   mSummaries: TAtlasIdeProjectSummaries;
 begin
   Result := nil;
@@ -240,19 +240,19 @@ begin
   begin
     Exit;
   end;
-  Recent := nil;
+  mRecent := nil;
   try
-    Recent := TAtlasIdeWelcomeSearch.ClosedProjects;
+    mRecent := TAtlasIdeWelcomeSearch.ClosedProjects;
   except
     // Registry nicht lesbar: leere Liste statt eines Fehlers in der Willkommensseite.
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
   end;
-  Root := TAtlasIdeProjectSummaries.Folder;
-  Result := TAtlasWelcomeProjects.Entries(Recent,
+  mRoot := TAtlasIdeProjectSummaries.Folder;
+  Result := TAtlasWelcomeProjects.Entries(mRecent,
     function(const AProject: string; out ASummary: TAtlasProjectSummary): Boolean
     begin
-      Result := TAtlasProjectSummaries.Load(Root, AProject, ASummary);
+      Result := TAtlasProjectSummaries.Load(mRoot, AProject, ASummary);
     end,
     TAtlasIdeSettings.Current.WelcomePageMaxProjects);
   mSummaries := Summaries;
@@ -260,28 +260,28 @@ begin
   begin
     Exit;
   end;
-  for Index := 0 to High(Result) do
+  for mIndex := 0 to High(Result) do
   begin
-    if mSummaries.LiveVcs(Result[Index].Project, Vcs) then
+    if mSummaries.LiveVcs(Result[mIndex].Project, mVcs) then
     begin
-      Result[Index].Summary.Vcs := Vcs;
-      Result[Index].VcsFresh := True;
+      Result[mIndex].Summary.Vcs := mVcs;
+      Result[mIndex].VcsFresh := True;
     end;
-    Result[Index].VcsQuerying := mSummaries.Querying(Result[Index].Project);
+    Result[mIndex].VcsQuerying := mSummaries.Querying(Result[mIndex].Project);
   end;
 end;
 
 procedure TAtlasIdeProjects.Shown;
 var
-  Entry: TAtlasProjectEntry;
+  mEntry: TAtlasProjectEntry;
 begin
   if FStopped or (Summaries = nil) or not TAtlasIdeSettings.Current.WelcomePageRefreshVcs then
   begin
     Exit;
   end;
-  for Entry in Entries do
+  for mEntry in Entries do
   begin
-    Summaries.QueryIfStale(Entry.Project);
+    Summaries.QueryIfStale(mEntry.Project);
   end;
 end;
 
@@ -328,9 +328,9 @@ end;
 
 procedure TAtlasIdeProjects.OpenAt(const AProject: string; const ATarget: TAtlasProjectLocation);
 var
-  Target: TAtlasProjectLocation;
+  mTarget: TAtlasProjectLocation;
 begin
-  Target := ATarget;
+  mTarget := ATarget;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     var
@@ -347,22 +347,22 @@ begin
       begin
         Actions.OpenProject(AProject, True);
       end;
-      if Target.IsEmpty or not FileExists(Target.FileName) then
+      if mTarget.IsEmpty or not FileExists(mTarget.FileName) then
       begin
         Exit;
       end;
       // Die Zusammenfassung zählt ab 1, der Editor ab 0.
-      Line := Target.Line - 1;
+      Line := mTarget.Line - 1;
       if Line < 0 then
       begin
         Line := 0;
       end;
-      Column := Target.Column - 1;
+      Column := mTarget.Column - 1;
       if Column < 0 then
       begin
         Column := 0;
       end;
-      TAtlasIdeResults.Open(Target.FileName, Line, Column);
+      TAtlasIdeResults.Open(mTarget.FileName, Line, Column);
     end);
 end;
 

@@ -213,7 +213,7 @@ uses
   Atlas.IDE.Welcome.Window;
 
 const
-  NameDisplay = 3;
+  cNameDisplay = 3;
 
 function GetUserNameExW(ANameFormat: Integer; ABuffer: PWideChar; var ASize: ULONG): BOOL; stdcall;
   external 'secur32.dll' name 'GetUserNameExW';
@@ -226,17 +226,17 @@ var
 /// aufrufen, siehe TAtlasWelcomeAccountName).</summary>
 function DisplayName: string;
 var
-  Size: ULONG;
-  Buffer: array[0..255] of WideChar;
+  mSize: ULONG;
+  mBuffer: array[0..255] of WideChar;
 begin
   // Puffer leeren und nur die gemeldete Länge übernehmen: Bei lokalen Konten meldet die Funktion teils
   // Erfolg, ohne etwas zu schreiben; dann stand Speicherrest als Vorname im Gruß.
-  FillChar(Buffer, SizeOf(Buffer), 0);
-  Size := Length(Buffer);
+  FillChar(mBuffer, SizeOf(mBuffer), 0);
+  mSize := Length(mBuffer);
   Result := '';
-  if GetUserNameExW(NameDisplay, @Buffer[0], Size) and (Size > 0) and (Size < ULONG(Length(Buffer))) then
+  if GetUserNameExW(cNameDisplay, @mBuffer[0], mSize) and (mSize > 0) and (mSize < ULONG(Length(mBuffer))) then
   begin
-    SetString(Result, PWideChar(@Buffer[0]), Size);
+    SetString(Result, PWideChar(@mBuffer[0]), mSize);
   end;
   Result := Trim(Result);
 end;
@@ -264,7 +264,7 @@ begin
     begin
       if Instance <> nil then
       begin
-        Instance.SectionChanged(TAtlasWelcomeIds.Header);
+        Instance.SectionChanged(TAtlasWelcomeIds.cHeader);
       end;
     end;
 end;
@@ -273,7 +273,7 @@ end;
 
 function BoardId: string;
 begin
-  Result := TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.Board);
+  Result := TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.cBoard);
 end;
 
 /// <summary>Gezeigte Köpfe: eigener Bereich und Tafel auf der Willkommensseite der IDE, Tafel im Fenster
@@ -284,7 +284,7 @@ var
   mBoard: TAtlasWelcomeBoardFrame;
 begin
   Result := nil;
-  mClient := TAtlasIdeWelcomePage.Client(TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.Header));
+  mClient := TAtlasIdeWelcomePage.Client(TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.cHeader));
   if mClient is TAtlasWelcomeHeaderFrame then
   begin
     Result := Result + [TAtlasWelcomeHeaderFrame(mClient)];
@@ -320,11 +320,11 @@ var
   mSection: TAtlasWelcomeSection;
 begin
   mId := TAtlasWelcomeIds.SectionOf(APluginId);
-  if SameText(mId, TAtlasWelcomeIds.Header) then
+  if SameText(mId, TAtlasWelcomeIds.cHeader) then
   begin
     Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHeaderTitle);
   end
-  else if SameText(mId, TAtlasWelcomeIds.Board) then
+  else if SameText(mId, TAtlasWelcomeIds.cBoard) then
   begin
     Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeBoardTitle);
   end
@@ -389,7 +389,7 @@ begin
   end;
   if ACurrent.WelcomePageHeader then
   begin
-    Result := [TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.Header)];
+    Result := [TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.cHeader)];
   end;
   for mSection in TAtlasWelcomeSections.Default.Visible do
   begin
@@ -499,7 +499,7 @@ var
   mView: TAtlasWelcomeSectionFrame;
 begin
   mView := ABoard.View(AId);
-  Result := TAtlasWelcomeSectionFrame.DefaultBodyHeight;
+  Result := TAtlasWelcomeSectionFrame.cDefaultBodyHeight;
   if mView <> nil then
   begin
     Result := mView.Height;
@@ -545,7 +545,7 @@ begin
   FListeners.Status := TAtlasStatusRegistry.Default.AddListener(
     procedure
     begin
-      SectionChanged(TAtlasWelcomeIds.Header);
+      SectionChanged(TAtlasWelcomeIds.cHeader);
     end);
   TAtlasIdeWelcomeWindow.OnFrame :=
     procedure(ABoard: TAtlasWelcomeBoardFrame)
@@ -595,32 +595,32 @@ end;
 /// <summary>Kontextmenü „Neu in Atlas“ an Frame „Atlas“ bzw. Kopf hängen oder (off) entfernen.</summary>
 procedure TAtlasIdeWelcome.AttachMenu(AFrame: TAtlasWelcomeFrame);
 var
-  Menu: TAtlasWhatsNewMenu;
+  mMenu: TAtlasWhatsNewMenu;
 begin
   if AFrame = nil then
   begin
     Exit;
   end;
-  Menu := nil;
+  mMenu := nil;
   if AFrame.PopupMenu is TAtlasWhatsNewMenu then
   begin
-    Menu := TAtlasWhatsNewMenu(AFrame.PopupMenu);
+    mMenu := TAtlasWhatsNewMenu(AFrame.PopupMenu);
   end;
   if (FAreas.WhatsNew = nil) or not FAreas.WhatsNew.Active then
   begin
-    if Menu <> nil then
+    if mMenu <> nil then
     begin
       AFrame.PopupMenu := nil;
-      Menu.Free;
+      mMenu.Free;
     end;
     Exit;
   end;
-  if Menu = nil then
+  if mMenu = nil then
   begin
-    Menu := TAtlasWhatsNewMenu.Create(AFrame);
-    AFrame.PopupMenu := Menu;
+    mMenu := TAtlasWhatsNewMenu.Create(AFrame);
+    AFrame.PopupMenu := mMenu;
   end;
-  Menu.Source := FAreas.WhatsNew;
+  mMenu.Source := FAreas.WhatsNew;
 end;
 
 function TAtlasIdeWelcome.HeaderInfo: TAtlasWelcomeHeaderInfo;
@@ -694,7 +694,7 @@ begin
   // Nach einem Update steht „Neu in Atlas“ oben in der ersten Spalte (#756); beim Anpassen der echte Platz.
   if (FAreas.WhatsNew <> nil) and FAreas.WhatsNew.OnTop and not FLayouts.Editing then
   begin
-    mLayout := mLayout.MovedToTop(TAtlasWelcomeIds.News);
+    mLayout := mLayout.MovedToTop(TAtlasWelcomeIds.cNews);
   end;
   ABoard.Header.Visible := Settings.WelcomePageHeader;
   FillHeader(ABoard.Header);
@@ -706,30 +706,30 @@ end;
 
 procedure TAtlasIdeWelcome.Announce(const AIds: TArray<string>);
 var
-  Items: TArray<TAtlasWhatsNewItem>;
-  Item: TAtlasWhatsNewItem;
-  Section: TAtlasWelcomeSection;
-  Id: string;
+  mItems: TArray<TAtlasWhatsNewItem>;
+  mItem: TAtlasWhatsNewItem;
+  mSection: TAtlasWelcomeSection;
+  mId: string;
 begin
   if FAreas.WhatsNew = nil then
   begin
     Exit;
   end;
-  Items := nil;
-  for Id in AIds do
+  mItems := nil;
+  for mId in AIds do
   begin
-    if not TAtlasWelcomeSections.Default.Find(Id, Section) then
+    if not TAtlasWelcomeSections.Default.Find(mId, mSection) then
     begin
       Continue;
     end;
-    Item := Default(TAtlasWhatsNewItem);
-    Item.Title := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeNewSection, [Section.Title]);
-    Item.Text := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeNewSectionText);
-    Item.Setting := TAtlasWelcomeCustomizing.SettingOf(Id);
-    Item.Command := TAtlasIdeWelcomeLayouts.CommandId;
-    Items := Items + [Item];
+    mItem := Default(TAtlasWhatsNewItem);
+    mItem.Title := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeNewSection, [mSection.Title]);
+    mItem.Text := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeNewSectionText);
+    mItem.Setting := TAtlasWelcomeCustomizing.SettingOf(mId);
+    mItem.Command := TAtlasIdeWelcomeLayouts.cCommandId;
+    mItems := mItems + [mItem];
   end;
-  FAreas.WhatsNew.Announce(Items);
+  FAreas.WhatsNew.Announce(mItems);
 end;
 
 procedure TAtlasIdeWelcome.Customize;
@@ -798,33 +798,33 @@ end;
 
 function TAtlasIdeWelcome.CreateClient(const APluginId: string; AOwner: TComponent): TAtlasWelcomeFrame;
 var
-  Id: string;
-  Header: TAtlasWelcomeHeaderFrame;
-  Board: TAtlasWelcomeBoardFrame;
-  View: TAtlasWelcomeSectionFrame;
+  mId: string;
+  mHeader: TAtlasWelcomeHeaderFrame;
+  mBoard: TAtlasWelcomeBoardFrame;
+  mView: TAtlasWelcomeSectionFrame;
 begin
-  Id := TAtlasWelcomeIds.SectionOf(APluginId);
-  if SameText(Id, TAtlasWelcomeIds.Header) then
+  mId := TAtlasWelcomeIds.SectionOf(APluginId);
+  if SameText(mId, TAtlasWelcomeIds.cHeader) then
   begin
-    Header := TAtlasWelcomeHeaderFrame.Create(AOwner);
-    FillHeader(Header);
-    Result := Header;
+    mHeader := TAtlasWelcomeHeaderFrame.Create(AOwner);
+    FillHeader(mHeader);
+    Result := mHeader;
   end
-  else if SameText(Id, TAtlasWelcomeIds.Board) then
+  else if SameText(mId, TAtlasWelcomeIds.cBoard) then
   begin
-    Board := TAtlasWelcomeBoardFrame.Create(AOwner);
-    FillBoard(Board, False);
-    Result := Board;
+    mBoard := TAtlasWelcomeBoardFrame.Create(AOwner);
+    FillBoard(mBoard, False);
+    Result := mBoard;
   end
   else
   begin
     // Die IDE zeigt den Titel im Rahmen; der Bereich selbst ohne Titelzeile.
-    View := TAtlasWelcomeViews.CreateView(Id, AOwner);
-    if View <> nil then
+    mView := TAtlasWelcomeViews.CreateView(mId, AOwner);
+    if mView <> nil then
     begin
-      View.ShowTitle := False;
+      mView.ShowTitle := False;
     end;
-    Result := View;
+    Result := mView;
   end;
 end;
 
@@ -867,13 +867,13 @@ end;
 
 procedure TAtlasIdeWelcome.Flush;
 var
-  Ids: TArray<string>;
+  mIds: TArray<string>;
 begin
   FDirty.Queued := False;
-  Ids := FDirty.Ids;
+  mIds := FDirty.Ids;
   FDirty.Ids := nil;
   // Bereiche kamen hinzu, fielen weg oder wurden ein- oder ausgeschaltet.
-  if Contains(Ids, '') then
+  if Contains(mIds, '') then
   begin
     Sync;
     Exit;
@@ -883,9 +883,9 @@ begin
     var
       Item: string;
     begin
-      for Item in Ids do
+      for Item in mIds do
       begin
-        if SameText(Item, TAtlasWelcomeIds.Header) then
+        if SameText(Item, TAtlasWelcomeIds.cHeader) then
         begin
           // Statusfeld oder Kontoname: nur Gruß und Kurzstatus, und nur, wenn sich daran etwas ändert.
           UpdateHeaderInfos;
@@ -917,25 +917,25 @@ end;
 
 procedure TAtlasIdeWelcome.UpdateHeaders;
 var
-  Client: TAtlasWelcomeFrame;
-  Board: TAtlasWelcomeBoardFrame;
+  mClient: TAtlasWelcomeFrame;
+  mBoard: TAtlasWelcomeBoardFrame;
 begin
-  Client := TAtlasIdeWelcomePage.Client(TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.Header));
-  if Client is TAtlasWelcomeHeaderFrame then
+  mClient := TAtlasIdeWelcomePage.Client(TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.cHeader));
+  if mClient is TAtlasWelcomeHeaderFrame then
   begin
-    FillHeader(TAtlasWelcomeHeaderFrame(Client));
+    FillHeader(TAtlasWelcomeHeaderFrame(mClient));
   end;
-  Client := TAtlasIdeWelcomePage.Client(BoardId);
-  if Client is TAtlasWelcomeBoardFrame then
+  mClient := TAtlasIdeWelcomePage.Client(BoardId);
+  if mClient is TAtlasWelcomeBoardFrame then
   begin
-    TAtlasWelcomeBoardFrame(Client).Header.Visible := Settings.WelcomePageHeader;
-    FillHeader(TAtlasWelcomeBoardFrame(Client).Header);
+    TAtlasWelcomeBoardFrame(mClient).Header.Visible := Settings.WelcomePageHeader;
+    FillHeader(TAtlasWelcomeBoardFrame(mClient).Header);
   end;
-  Board := TAtlasIdeWelcomeWindow.ExistingBoard;
-  if Board <> nil then
+  mBoard := TAtlasIdeWelcomeWindow.ExistingBoard;
+  if mBoard <> nil then
   begin
-    Board.Header.Visible := Settings.WelcomePageHeader;
-    FillHeader(Board.Header);
+    mBoard.Header.Visible := Settings.WelcomePageHeader;
+    FillHeader(mBoard.Header);
   end;
 end;
 
@@ -959,17 +959,17 @@ end;
 
 procedure TAtlasIdeWelcome.SetLayout(const AValue: string);
 var
-  Next: TAtlasPluginSettings;
+  mNext: TAtlasPluginSettings;
 begin
-  Next := TAtlasIdeSettings.Stored;
-  if SameText(Next.WelcomePageLayout, AValue) then
+  mNext := TAtlasIdeSettings.Stored;
+  if SameText(mNext.WelcomePageLayout, AValue) then
   begin
     Sync;
     Exit;
   end;
-  Next.WelcomePageLayout := AValue;
+  mNext.WelcomePageLayout := AValue;
   // Update meldet OnChanged; die Komposition ruft daraufhin Sync.
-  TAtlasIdeSettings.Update(Next);
+  TAtlasIdeSettings.Update(mNext);
 end;
 
 procedure TAtlasIdeWelcome.ApplyLayout;

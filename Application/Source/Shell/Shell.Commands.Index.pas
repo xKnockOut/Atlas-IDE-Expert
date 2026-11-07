@@ -27,11 +27,11 @@ uses
 
 class function TIndexCommands.ClearCaches(const ARoot: string; out AFreed: Int64): Integer;
 var
-  Before: Int64;
+  mBefore: Int64;
 begin
-  Before := TIndexCacheDirectory.TotalSize(ARoot);
+  mBefore := TIndexCacheDirectory.TotalSize(ARoot);
   Result := TIndexCacheDirectory.Clear(ARoot);
-  AFreed := Before - TIndexCacheDirectory.TotalSize(ARoot);
+  AFreed := mBefore - TIndexCacheDirectory.TotalSize(ARoot);
 end;
 
 class function TIndexCommands.Answer(ARemoved: Integer; AFreed: Int64): TJSONObject;

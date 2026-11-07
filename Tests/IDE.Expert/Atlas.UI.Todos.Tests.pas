@@ -73,74 +73,74 @@ end;
 
 procedure TAtlasTodoFilterDialogTests.ShowsChoicesAndCurrentFilter;
 var
-  Dialog: TAtlasTodoFilterDialog;
-  Filter: TAtlasTodoFilter;
+  mDialog: TAtlasTodoFilterDialog;
+  mFilter: TAtlasTodoFilter;
 begin
-  Filter := Default(TAtlasTodoFilter);
-  Filter.Owner := 'Marco';
-  Filter.IncludeDone := True;
-  Dialog := TAtlasTodoFilterDialog.CreateDialog(nil, SampleChoices, Filter);
+  mFilter := Default(TAtlasTodoFilter);
+  mFilter.Owner := 'Marco';
+  mFilter.IncludeDone := True;
+  mDialog := TAtlasTodoFilterDialog.CreateDialog(nil, SampleChoices, mFilter);
   try
-    Assert.AreEqual('TODOs filtern', Dialog.Caption);
-    Assert.AreEqual(2, Integer(Dialog.CategoryBox.Items.Count));
-    Assert.AreEqual('GUI', Dialog.CategoryBox.Items[1]);
-    Assert.AreEqual('Rechnung', Dialog.UnitBox.Items[1]);
-    Assert.AreEqual('FIXME', Dialog.KeywordBox.Items[0]);
-    Assert.AreEqual('', Dialog.CategoryBox.Text);
-    Assert.AreEqual('Marco', Dialog.OwnerBox.Text, 'letzter Filter');
-    Assert.IsTrue(Dialog.IncludeDoneCheck.Checked);
-    Assert.IsTrue(Dialog.OkButton.Default, 'Enter zeigt an');
-    Assert.IsTrue(Dialog.CancelButton.Cancel, 'Esc bricht ab');
-    Assert.AreEqual('Anzeigen', Dialog.OkButton.Caption);
-    Dialog.OkButton.Click;
-    Assert.AreEqual(Integer(mrOk), Integer(Dialog.ModalResult));
+    Assert.AreEqual('TODOs filtern', mDialog.Caption);
+    Assert.AreEqual(2, Integer(mDialog.CategoryBox.Items.Count));
+    Assert.AreEqual('GUI', mDialog.CategoryBox.Items[1]);
+    Assert.AreEqual('Rechnung', mDialog.UnitBox.Items[1]);
+    Assert.AreEqual('FIXME', mDialog.KeywordBox.Items[0]);
+    Assert.AreEqual('', mDialog.CategoryBox.Text);
+    Assert.AreEqual('Marco', mDialog.OwnerBox.Text, 'letzter Filter');
+    Assert.IsTrue(mDialog.IncludeDoneCheck.Checked);
+    Assert.IsTrue(mDialog.OkButton.Default, 'Enter zeigt an');
+    Assert.IsTrue(mDialog.CancelButton.Cancel, 'Esc bricht ab');
+    Assert.AreEqual('Anzeigen', mDialog.OkButton.Caption);
+    mDialog.OkButton.Click;
+    Assert.AreEqual(Integer(mrOk), Integer(mDialog.ModalResult));
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
 procedure TAtlasTodoFilterDialogTests.FilterFromFieldsTrimmed;
 var
-  Dialog: TAtlasTodoFilterDialog;
-  Filter: TAtlasTodoFilter;
+  mDialog: TAtlasTodoFilterDialog;
+  mFilter: TAtlasTodoFilter;
 begin
-  Dialog := TAtlasTodoFilterDialog.CreateDialog(nil, SampleChoices, Default(TAtlasTodoFilter));
+  mDialog := TAtlasTodoFilterDialog.CreateDialog(nil, SampleChoices, Default(TAtlasTodoFilter));
   try
-    Dialog.CategoryBox.Text := ' GUI ';
+    mDialog.CategoryBox.Text := ' GUI ';
     // Freier Text: auch Werte, die nicht in den Vorschlägen stehen.
-    Dialog.UnitBox.Text := 'Lager';
-    Dialog.KeywordBox.Text := 'HACK';
-    Filter := Dialog.Filter;
-    Assert.AreEqual('GUI', Filter.Category);
-    Assert.AreEqual('', Filter.Owner);
-    Assert.AreEqual('Lager', Filter.UnitName);
-    Assert.AreEqual('HACK', Filter.Keyword);
-    Assert.IsFalse(Filter.IncludeDone);
-    Dialog.CancelButton.Click;
-    Assert.AreEqual(Integer(mrCancel), Integer(Dialog.ModalResult));
+    mDialog.UnitBox.Text := 'Lager';
+    mDialog.KeywordBox.Text := 'HACK';
+    mFilter := mDialog.Filter;
+    Assert.AreEqual('GUI', mFilter.Category);
+    Assert.AreEqual('', mFilter.Owner);
+    Assert.AreEqual('Lager', mFilter.UnitName);
+    Assert.AreEqual('HACK', mFilter.Keyword);
+    Assert.IsFalse(mFilter.IncludeDone);
+    mDialog.CancelButton.Click;
+    Assert.AreEqual(Integer(mrCancel), Integer(mDialog.ModalResult));
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
 procedure TAtlasTodoFilterDialogTests.ResetClearsAllFields;
 var
-  Dialog: TAtlasTodoFilterDialog;
-  Filter: TAtlasTodoFilter;
+  mDialog: TAtlasTodoFilterDialog;
+  mFilter: TAtlasTodoFilter;
 begin
-  Filter := Default(TAtlasTodoFilter);
-  Filter.Category := 'GUI';
-  Filter.Owner := 'Anna';
-  Filter.UnitName := 'Kasse';
-  Filter.Keyword := 'TODO';
-  Filter.IncludeDone := True;
-  Dialog := TAtlasTodoFilterDialog.CreateDialog(nil, SampleChoices, Filter);
+  mFilter := Default(TAtlasTodoFilter);
+  mFilter.Category := 'GUI';
+  mFilter.Owner := 'Anna';
+  mFilter.UnitName := 'Kasse';
+  mFilter.Keyword := 'TODO';
+  mFilter.IncludeDone := True;
+  mDialog := TAtlasTodoFilterDialog.CreateDialog(nil, SampleChoices, mFilter);
   try
-    Dialog.ResetButton.Click;
-    Assert.IsTrue(Dialog.Filter.IsEmpty);
-    Assert.AreEqual(Integer(mrNone), Integer(Dialog.ModalResult), 'Zurücksetzen schließt nicht');
+    mDialog.ResetButton.Click;
+    Assert.IsTrue(mDialog.Filter.IsEmpty);
+    Assert.AreEqual(Integer(mrNone), Integer(mDialog.ModalResult), 'Zurücksetzen schließt nicht');
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
