@@ -226,7 +226,7 @@ begin
   Assert.AreEqual('Bad credentials', TAtlasTrackerQueryTest.TrackerMessage('{"message": "Bad credentials"}'));
   Assert.AreEqual('kein JSON', TAtlasTrackerQueryTest.TrackerMessage('  kein' + #10 + 'JSON '));
   mLong := StringOfChar('x', 400);
-  Assert.AreEqual(TAtlasTrackerQueryTest.MaxMessage, Length(TAtlasTrackerQueryTest.TrackerMessage(mLong)));
+  Assert.AreEqual(TAtlasTrackerQueryTest.cMaxMessage, Length(TAtlasTrackerQueryTest.TrackerMessage(mLong)));
 end;
 
 procedure TAtlasTrackerQueryTestTests.SentQueryMatchesRequest;

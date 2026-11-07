@@ -98,7 +98,7 @@ begin
   FOutcome := Default(TUpdateOutcome);
   FOutcome.Version := AInput.Version;
   FOutcome.Previous := AInput.Previous;
-  FOutcome.LogFile := TUpdateLayout.Join(AInput.WorkDir, TUpdateLayout.LogFile);
+  FOutcome.LogFile := TUpdateLayout.Join(AInput.WorkDir, TUpdateLayout.cLogFile);
 end;
 
 function TUpdateInstallation.PackageTarget: TUpdatePackageTarget;
@@ -164,7 +164,7 @@ var
 begin
   mParts := APath.Split(['\']);
   Result := (Length(mParts) = 2) and TUpdateIdes.IsPlatform(mParts[0]) and
-    mParts[1].StartsWith(TUpdateVersions.PackagePrefix, True) and
+    mParts[1].StartsWith(TUpdateVersions.cPackagePrefix, True) and
     (mParts[1].EndsWith('.bpl', True) or mParts[1].EndsWith('.map', True));
   APlatform := '';
   AName := '';
@@ -240,7 +240,7 @@ begin
     if not mStep.Deleted and not SameText(FSystem.Trust.Sha256(TUpdateLayout.Join(FArgs.Target, mStep.Path)),
       FSystem.Trust.Sha256(TUpdateLayout.Join(FInput.FilesDir, mStep.Path))) then
     begin
-      raise EUpdateError.CreateCode(TUpdateErrors.Hash, mStep.Path);
+      raise EUpdateError.CreateCode(TUpdateErrors.cHash, mStep.Path);
     end;
   end;
 end;
@@ -250,7 +250,7 @@ var
   mSwap: TUpdateFileSwap;
   mBackup: string;
 begin
-  mBackup := TUpdateLayout.Join(FInput.WorkDir, TUpdateLayout.BackupFolder);
+  mBackup := TUpdateLayout.Join(FInput.WorkDir, TUpdateLayout.cBackupFolder);
   FSystem.Files.DeleteDirectory(mBackup);
   mSwap := TUpdateFileSwap.Create(FSystem.Files, FArgs.Target, mBackup);
   try
@@ -288,7 +288,7 @@ begin
       FOutcome.Removed := FOutcome.Removed + [mCandidate.Name];
     end;
   end;
-  mDeclinedFile := TUpdateLayout.Join(FInput.RootDir, TUpdateLayout.DeclinedFile);
+  mDeclinedFile := TUpdateLayout.Join(FInput.RootDir, TUpdateLayout.cDeclinedFile);
   mOld := TUpdateSelection.ParseLines(FSystem.Files.ReadText(mDeclinedFile));
   FSystem.Files.WriteText(mDeclinedFile, TUpdateSelection.JoinLines(TUpdateSelection.Declined(mOld,
     FInput.Candidates, FSelected)));
@@ -298,7 +298,7 @@ end;
 
 procedure TUpdateInstallation.WriteOutcome;
 begin
-  FSystem.Files.WriteText(TUpdateLayout.Join(FInput.RootDir, TUpdateLayout.ResultFile), FOutcome.ToJson);
+  FSystem.Files.WriteText(TUpdateLayout.Join(FInput.RootDir, TUpdateLayout.cResultFile), FOutcome.ToJson);
 end;
 
 procedure TUpdateInstallation.Fail(const ACode, ADetail: string);
@@ -323,7 +323,7 @@ begin
     if not WaitForIde then
     begin
       FOutcome.Kind := TUpdateOutcomeKind.Cancelled;
-      FOutcome.Reason := TUpdateErrors.Cancelled;
+      FOutcome.Reason := TUpdateErrors.cCancelled;
     end
     else
     begin
@@ -339,11 +339,11 @@ begin
     end;
     on mError: EInOutError do
     begin
-      Fail(TUpdateErrors.CopyFailed, mError.Message);
+      Fail(TUpdateErrors.cCopyFailed, mError.Message);
     end;
     on mError: Exception do
     begin
-      Fail(TUpdateErrors.Unexpected, mError.Message);
+      Fail(TUpdateErrors.cUnexpected, mError.Message);
     end;
   end;
   FSystem.Log(cTexts[TApplyText.Outcome].Fmt([TUpdateNames.OutcomeName(FOutcome.Kind), FOutcome.Reason,

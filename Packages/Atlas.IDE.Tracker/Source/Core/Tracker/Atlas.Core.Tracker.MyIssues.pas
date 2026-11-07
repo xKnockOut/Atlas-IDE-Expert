@@ -698,7 +698,7 @@ begin
   begin
     mProvider := LowerCase(Trim(ATeamProvider));
   end;
-  if (mProvider <> TAtlasTrackerTarget.GitHub) and (mProvider <> TAtlasTrackerTarget.YouTrack) then
+  if (mProvider <> TAtlasTrackerTarget.cGitHub) and (mProvider <> TAtlasTrackerTarget.cYouTrack) then
   begin
     mProvider := '';
   end;
@@ -879,11 +879,11 @@ begin
   begin
     if AKind = TAtlasVcsKind.Svn then
     begin
-      mPattern := TAtlasTrackerNaming.SvnBranchPattern;
+      mPattern := TAtlasTrackerNaming.cSvnBranchPattern;
     end
     else
     begin
-      mPattern := TAtlasTrackerNaming.GitBranchPattern;
+      mPattern := TAtlasTrackerNaming.cGitBranchPattern;
     end;
   end;
   Result.Branch := TAtlasTrackerNaming.BranchName(mPattern, AIssue);
@@ -1199,7 +1199,7 @@ begin
   begin
     for mLabelValue in TJSONArray(mLabels) do
     begin
-      if (mLabelValue is TJSONString) and (Length(Result) < TAtlasTrackerIssue.MaxLabels) then
+      if (mLabelValue is TJSONString) and (Length(Result) < TAtlasTrackerIssue.cMaxLabels) then
       begin
         Result := Result + [TJSONString(mLabelValue).Value];
       end;

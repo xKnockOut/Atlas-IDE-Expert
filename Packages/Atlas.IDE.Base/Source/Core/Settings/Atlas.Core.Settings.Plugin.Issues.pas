@@ -17,7 +17,7 @@ const
   /// <summary>Werte von issues.start (#765); wie TAtlasMyIssues.StartName.</summary>
   IssuesStartBranch = 'branch';
   IssuesStartRemember = 'remember';
-  /// <summary>Vorgabe für issues.commitPattern (#765); wie TAtlasTrackerNaming.CommitPattern.
+  /// <summary>Vorgabe für issues.commitPattern (#765); wie TAtlasTrackerNaming.cCommitPattern.
   /// </summary>
   DefaultIssuesCommitPattern = '{kennung} ';
   /// <summary>Grenzen und Vorgabe von issues.blameLinks.maxRevisions (#1275).</summary>
@@ -41,7 +41,7 @@ const
   MinIssuesTimeRounding = 1;
   MaxIssuesTimeRounding = 60;
   DefaultIssuesTimeRounding = 5;
-  /// <summary>Grenzen und Vorgabe von issues.notify.intervalMinutes (#1271); wie TAtlasTrackerNotify.MinInterval
+  /// <summary>Grenzen und Vorgabe von issues.notify.intervalMinutes (#1271); wie TAtlasTrackerNotify.cMinInterval
   /// und DefaultInterval (Test prüft Gleichheit).</summary>
   MinIssuesNotifyMinutes = 2;
   MaxIssuesNotifyMinutes = 1440;

@@ -249,7 +249,7 @@ begin
   Result := Default(TAtlasModuleInfo);
   Result.Id := cModuleId;
   Result.Name := 'Debugger';
-  Result.Version := TAtlasVersion.Version;
+  Result.Version := TAtlasVersion.cVersion;
   Result.Handle := HInstance;
   // „Gezielt hineinspringen“ und die Befehle des Schrittfilters gab es schon im abgesicherten Start.
   Result.MinLevel := TAtlasSafeLevel.Safe;

@@ -49,7 +49,7 @@ type
   TAtlasTrackerLinks = class
   public const
     /// <summary>Höchstens so viele Nummern liest TextDependencies.</summary>
-    MaxTextDependencies = 10;
+    cMaxTextDependencies = 10;
   public
     /// <summary>Art eines YouTrack-Links. AName: Name des Linktyps (auch lokalisiert), ASourceToTarget/
     /// ATargetToSource: Beschriftungen, ADirection: OUTWARD, INWARD oder BOTH, AAggregation: Eltern-Kind-Typ.
@@ -91,32 +91,32 @@ type
 
 const
   // Reihenfolge der Gruppen im Baum.
-  GroupOrder: array[0..9] of TAtlasTrackerLinkKind = (TAtlasTrackerLinkKind.DependsOn,
+  cGroupOrder: array[0..9] of TAtlasTrackerLinkKind = (TAtlasTrackerLinkKind.DependsOn,
     TAtlasTrackerLinkKind.Blocks, TAtlasTrackerLinkKind.Subtask, TAtlasTrackerLinkKind.Parent,
     TAtlasTrackerLinkKind.Duplicates, TAtlasTrackerLinkKind.DuplicatedBy, TAtlasTrackerLinkKind.Relates,
     TAtlasTrackerLinkKind.Mentioned, TAtlasTrackerLinkKind.PullRequest, TAtlasTrackerLinkKind.Other);
   // Namen der Linktypen (englische Vorgaben von YouTrack, deutsche Oberfläche, verbreitete eigene Typen).
-  DependNames: array[0..6] of string = ('Depend', 'Depends', 'Dependency', 'Abhängigkeit', 'Blocks', 'Block',
+  cDependNames: array[0..6] of string = ('Depend', 'Depends', 'Dependency', 'Abhängigkeit', 'Blocks', 'Block',
     'Blockiert');
-  SubtaskNames: array[0..3] of string = ('Subtask', 'Sub-task', 'Unteraufgabe', 'Parent-Child');
-  DuplicateNames: array[0..2] of string = ('Duplicate', 'Duplikat', 'Duplicates');
-  RelatesNames: array[0..4] of string = ('Relates', 'Relate', 'Bezieht sich auf', 'Verwandt', 'Relation');
+  cSubtaskNames: array[0..3] of string = ('Subtask', 'Sub-task', 'Unteraufgabe', 'Parent-Child');
+  cDuplicateNames: array[0..2] of string = ('Duplicate', 'Duplikat', 'Duplicates');
+  cRelatesNames: array[0..4] of string = ('Relates', 'Relate', 'Bezieht sich auf', 'Verwandt', 'Relation');
   // Beschriftungen auf der Seite der Quelle (sourceToTarget) bzw. des Ziels (targetToSource).
-  DependSource: array[0..4] of string = ('is required for', 'ist erforderlich für', 'wird benötigt von', 'blocks',
+  cDependSource: array[0..4] of string = ('is required for', 'ist erforderlich für', 'wird benötigt von', 'blocks',
     'blockiert');
-  DependTarget: array[0..5] of string = ('depends on', 'hängt ab von', 'ist abhängig von', 'is blocked by',
+  cDependTarget: array[0..5] of string = ('depends on', 'hängt ab von', 'ist abhängig von', 'is blocked by',
     'wird blockiert von', 'wird blockiert durch');
-  SubtaskSource: array[0..4] of string = ('parent for', 'übergeordnet zu', 'übergeordnet für',
+  cSubtaskSource: array[0..4] of string = ('parent for', 'übergeordnet zu', 'übergeordnet für',
     'ist übergeordnet zu', 'Elternteil von');
-  SubtaskTarget: array[0..2] of string = ('subtask of', 'Unteraufgabe von', 'ist Unteraufgabe von');
-  DuplicateSource: array[0..3] of string = ('is duplicated by', 'wird dupliziert durch', 'wird dupliziert von',
+  cSubtaskTarget: array[0..2] of string = ('subtask of', 'Unteraufgabe von', 'ist Unteraufgabe von');
+  cDuplicateSource: array[0..3] of string = ('is duplicated by', 'wird dupliziert durch', 'wird dupliziert von',
     'hat Duplikat');
-  DuplicateTarget: array[0..3] of string = ('duplicates', 'dupliziert', 'ist Duplikat von', 'ist ein Duplikat von');
-  RelatesPhrases: array[0..2] of string = ('relates to', 'bezieht sich auf', 'ist verwandt mit');
+  cDuplicateTarget: array[0..3] of string = ('duplicates', 'dupliziert', 'ist Duplikat von', 'ist ein Duplikat von');
+  cRelatesPhrases: array[0..2] of string = ('relates to', 'bezieht sich auf', 'ist verwandt mit');
   // Wörter vor "#12" im Fließtext bzw. nur am Zeilenanfang (sonst passte „Wird benötigt von: #227“).
-  InlinePhrases: array[0..5] of string = ('depends on', 'blocked by', 'hängt ab von', 'abhängig von',
+  cInlinePhrases: array[0..5] of string = ('depends on', 'blocked by', 'hängt ab von', 'abhängig von',
     'is blocked by', 'wird blockiert von');
-  LeadingPhrases: array[0..4] of string = ('benötigt', 'requires', 'needs', 'depends on', 'blocked by');
+  cLeadingPhrases: array[0..4] of string = ('benötigt', 'requires', 'needs', 'depends on', 'blocked by');
 
 function IsOneOf(const AText: string; const ANames: array of string): Boolean;
 var
@@ -141,19 +141,19 @@ end;
 function FamilyByName(const AName: string; AAggregation: Boolean): TFamily;
 begin
   Result := TFamily.None;
-  if IsOneOf(AName, DependNames) then
+  if IsOneOf(AName, cDependNames) then
   begin
     Result := TFamily.Depend;
   end
-  else if IsOneOf(AName, SubtaskNames) then
+  else if IsOneOf(AName, cSubtaskNames) then
   begin
     Result := TFamily.Subtask;
   end
-  else if IsOneOf(AName, DuplicateNames) then
+  else if IsOneOf(AName, cDuplicateNames) then
   begin
     Result := TFamily.Duplicate;
   end
-  else if IsOneOf(AName, RelatesNames) then
+  else if IsOneOf(AName, cRelatesNames) then
   begin
     Result := TFamily.Relates;
   end
@@ -175,19 +175,19 @@ end;
 function FamilyByPhrases(const ASourceToTarget, ATargetToSource: string): TFamily;
 begin
   Result := TFamily.None;
-  if EitherSide(ASourceToTarget, ATargetToSource, DependSource, DependTarget) then
+  if EitherSide(ASourceToTarget, ATargetToSource, cDependSource, cDependTarget) then
   begin
     Result := TFamily.Depend;
   end
-  else if EitherSide(ASourceToTarget, ATargetToSource, SubtaskSource, SubtaskTarget) then
+  else if EitherSide(ASourceToTarget, ATargetToSource, cSubtaskSource, cSubtaskTarget) then
   begin
     Result := TFamily.Subtask;
   end
-  else if EitherSide(ASourceToTarget, ATargetToSource, DuplicateSource, DuplicateTarget) then
+  else if EitherSide(ASourceToTarget, ATargetToSource, cDuplicateSource, cDuplicateTarget) then
   begin
     Result := TFamily.Duplicate;
   end
-  else if IsOneOf(ASourceToTarget, RelatesPhrases) or IsOneOf(ATargetToSource, RelatesPhrases) then
+  else if IsOneOf(ASourceToTarget, cRelatesPhrases) or IsOneOf(ATargetToSource, cRelatesPhrases) then
   begin
     Result := TFamily.Relates;
   end;
@@ -199,11 +199,11 @@ begin
   Result := False;
   case AFamily of
     TFamily.Depend:
-      Result := IsOneOf(ASourceToTarget, DependTarget) and not IsOneOf(ASourceToTarget, DependSource);
+      Result := IsOneOf(ASourceToTarget, cDependTarget) and not IsOneOf(ASourceToTarget, cDependSource);
     TFamily.Subtask:
-      Result := IsOneOf(ASourceToTarget, SubtaskTarget) and not IsOneOf(ASourceToTarget, SubtaskSource);
+      Result := IsOneOf(ASourceToTarget, cSubtaskTarget) and not IsOneOf(ASourceToTarget, cSubtaskSource);
     TFamily.Duplicate:
-      Result := IsOneOf(ASourceToTarget, DuplicateTarget) and not IsOneOf(ASourceToTarget, DuplicateSource);
+      Result := IsOneOf(ASourceToTarget, cDuplicateTarget) and not IsOneOf(ASourceToTarget, cDuplicateSource);
     TFamily.None, TFamily.Relates: ;
   end;
 end;
@@ -280,7 +280,7 @@ var
   mGroup: TAtlasTrackerLinkGroup;
 begin
   Result := nil;
-  for mKind in GroupOrder do
+  for mKind in cGroupOrder do
   begin
     mGroup := Default(TAtlasTrackerLinkGroup);
     mGroup.Kind := mKind;
@@ -428,7 +428,7 @@ begin
       Exit(True);
     end;
   end;
-  Result := Length(ANumbers) < TAtlasTrackerLinks.MaxTextDependencies;
+  Result := Length(ANumbers) < TAtlasTrackerLinks.cMaxTextDependencies;
   if Result then
   begin
     ANumbers := ANumbers + [ANumber];
@@ -463,7 +463,7 @@ var
   mPhrase: string;
   mAt: Integer;
 begin
-  for mPhrase in InlinePhrases do
+  for mPhrase in cInlinePhrases do
   begin
     mAt := Pos(mPhrase, ALower);
     while mAt > 0 do
@@ -493,7 +493,7 @@ begin
     begin
       Inc(mStart);
     end;
-    for mLead in LeadingPhrases do
+    for mLead in cLeadingPhrases do
     begin
       if Copy(mLower, mStart, Length(mLead)) = mLead then
       begin

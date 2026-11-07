@@ -23,8 +23,8 @@ uses
 type
   TAtlasBoardMoveDialog = class(TForm)
   public const
-    DialogWidth = 460;
-    CommentHeight = 110;
+    cDialogWidth = 460;
+    cCommentHeight = 110;
   private
     FQuestion: TLabel;
     FComment: TMemo;
@@ -56,7 +56,7 @@ uses
   Atlas.UI.Tracker.Strings;
 
 const
-  Gap = 10;
+  cGap = 10;
 
 { TAtlasBoardMoveDialog }
 
@@ -70,7 +70,7 @@ begin
   Position := poMainFormCenter;
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  ClientWidth := ScaleValue(DialogWidth);
+  ClientWidth := ScaleValue(cDialogWidth);
   KeyPreview := True;
   OnKeyDown := DialogKeyDown;
 
@@ -78,7 +78,7 @@ begin
   FQuestion.Parent := Self;
   FQuestion.Align := alTop;
   FQuestion.AlignWithMargins := True;
-  FQuestion.Margins.SetBounds(Gap, Gap, Gap, 0);
+  FQuestion.Margins.SetBounds(cGap, cGap, cGap, 0);
   FQuestion.Font.Style := [fsBold];
   FQuestion.WordWrap := True;
   FQuestion.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoveQuestion, [AKey, AColumn]);
@@ -87,7 +87,7 @@ begin
   mLabel.Parent := Self;
   mLabel.Align := alTop;
   mLabel.AlignWithMargins := True;
-  mLabel.Margins.SetBounds(Gap, Gap, Gap, 0);
+  mLabel.Margins.SetBounds(cGap, cGap, cGap, 0);
   mLabel.Top := FQuestion.Top + FQuestion.Height + 1;
   mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveComment);
 
@@ -95,9 +95,9 @@ begin
   FComment.Parent := Self;
   FComment.Align := alTop;
   FComment.AlignWithMargins := True;
-  FComment.Margins.SetBounds(Gap, Gap div 2, Gap, 0);
+  FComment.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
   FComment.Top := mLabel.Top + mLabel.Height + 1;
-  FComment.Height := ScaleValue(CommentHeight);
+  FComment.Height := ScaleValue(cCommentHeight);
   FComment.ScrollBars := ssVertical;
   FComment.WantReturns := True;
 
@@ -105,7 +105,7 @@ begin
   FDontAsk.Parent := Self;
   FDontAsk.Align := alTop;
   FDontAsk.AlignWithMargins := True;
-  FDontAsk.Margins.SetBounds(Gap, Gap div 2, Gap, 0);
+  FDontAsk.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
   FDontAsk.Top := FComment.Top + FComment.Height + 1;
   FDontAsk.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveDontAsk);
 
@@ -120,7 +120,7 @@ begin
   Result.Caption := ACaption;
   Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, Gap, 0);
+  Result.Margins.SetBounds(0, 0, cGap, 0);
 end;
 
 procedure TAtlasBoardMoveDialog.AddButtons(ATop: Integer);
@@ -133,7 +133,7 @@ begin
   mButtons.AutoSize := True;
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(Gap, Gap, Gap, Gap);
+  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
   mButtons.Top := ATop;
   Canvas.Font := Font;
   FMove := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveOk));
@@ -142,7 +142,7 @@ begin
   FCancel := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDialogCancel));
   FCancel.Cancel := True;
   FCancel.ModalResult := mrCancel;
-  ClientHeight := mButtons.Top + mButtons.Height + Gap;
+  ClientHeight := mButtons.Top + mButtons.Height + cGap;
 end;
 
 procedure TAtlasBoardMoveDialog.DialogKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);

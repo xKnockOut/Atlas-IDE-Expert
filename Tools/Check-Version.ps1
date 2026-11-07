@@ -3,7 +3,7 @@
     Prüft, dass Server und Claude-Code-Plugin dieselbe SemVer-Version tragen (#83).
 
 .DESCRIPTION
-    Quellen: TAtlasVersion.Version in Atlas.Text.Product.Version.pas (Server, IDE-Plugin und
+    Quellen: TAtlasVersion.cVersion in Atlas.Text.Product.Version.pas (Server, IDE-Plugin und
     Installer, ADR 0012), plugin.json des Claude-Code-Plugins und marketplace.json. Mit -Expected (z. B. aus dem
     Release-Tag) muss auch diese übereinstimmen. CHANGELOG.md braucht einen
     Abschnitt "## [<Version>]". Atlas.Common.Product.Version.pas und
@@ -39,7 +39,7 @@ $Errors = @()
 if ($Server -notmatch $SemVer) { $Errors += "Server-Version '$Server' ist keine SemVer-Version" }
 foreach ($Copy in $Copies) {
     if ((Get-Content -Raw (Join-Path $Root $Copy)) -match "Version\s*=\s*'") {
-        $Errors += "$Copy trägt eine eigene Version; sie muss auf TAtlasVersion.Version verweisen"
+        $Errors += "$Copy trägt eine eigene Version; sie muss auf TAtlasVersion.cVersion verweisen"
     }
 }
 if ($Server -ne $Plugin) { $Errors += "Server $Server und Claude-Code-Plugin $Plugin weichen ab" }

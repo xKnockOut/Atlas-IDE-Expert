@@ -48,11 +48,11 @@ type
   TAtlasIssuePaletteSearch = class
   public const
     /// <summary>Höchstens so viele Treffer je Suche.</summary>
-    MaxResults = 20;
+    cMaxResults = 20;
     /// <summary>Wartezeit nach der letzten Eingabe und Mindestabstand zweier Anfragen.</summary>
-    DelayMs = 300;
+    cDelayMs = 300;
     /// <summary>Zeitgrenze einer Anfrage.</summary>
-    TimeoutMs = 5000;
+    cTimeoutMs = 5000;
   public
     /// <summary>Auslöser in APattern für den Tracker ATarget; Kind None, wenn die Eingabe den Befehlen gehört
     /// (auch ohne Tracker).</summary>
@@ -94,10 +94,10 @@ type
   TAtlasRecentIssues = class
   public const
     /// <summary>So viele je Tracker zeigt die Palette.</summary>
-    MaxRecent = 10;
+    cMaxRecent = 10;
     /// <summary>So viele werden über alle Tracker gespeichert.</summary>
-    MaxStored = 50;
-    Version = 1;
+    cMaxStored = 50;
+    cVersion = 1;
   private type
     TEntry = record
       Tracker: string;
@@ -193,7 +193,7 @@ begin
   begin
     Exit;
   end;
-  if SameText(ATarget.Provider, TAtlasTrackerTarget.GitHub) then
+  if SameText(ATarget.Provider, TAtlasTrackerTarget.cGitHub) then
   begin
     Result := '#' + IntToStr(StrToIntDef(ANumber, 0));
   end
@@ -206,7 +206,7 @@ end;
 /// <summary>ARest ist eine Kennung des YouTrack-Projekts ("ATL-12").</summary>
 function IsProjectKey(const ATarget: TAtlasTrackerTarget; const ARest: string): Boolean;
 begin
-  Result := not SameText(ATarget.Provider, TAtlasTrackerTarget.GitHub) and (ATarget.Project <> '') and
+  Result := not SameText(ATarget.Provider, TAtlasTrackerTarget.cGitHub) and (ATarget.Project <> '') and
     StartsText(ATarget.Project + '-', ARest) and IsDigits(Copy(ARest, Length(ATarget.Project) + 2, MaxInt));
 end;
 
@@ -241,7 +241,7 @@ var
 begin
   Result := TAtlasIssueSearchQuery.None;
   mPrefix := ATarget.Project + '-';
-  if SameText(ATarget.Provider, TAtlasTrackerTarget.GitHub) or (ATarget.Project = '') or
+  if SameText(ATarget.Provider, TAtlasTrackerTarget.cGitHub) or (ATarget.Project = '') or
     (Pos(' ', ATarget.Project) > 0) or not StartsText(mPrefix, APattern) then
   begin
     Exit;
@@ -415,7 +415,7 @@ begin
     end;
   end;
   FEntries.Insert(0, mEntry);
-  while FEntries.Count > MaxStored do
+  while FEntries.Count > cMaxStored do
   begin
     FEntries.Delete(FEntries.Count - 1);
   end;
@@ -430,7 +430,7 @@ begin
   mTracker := TrackerKey(ATarget);
   for mEntry in FEntries do
   begin
-    if Length(Result) >= MaxRecent then
+    if Length(Result) >= cMaxRecent then
     begin
       Break;
     end;
@@ -459,7 +459,7 @@ var
 begin
   mRoot := TJSONObject.Create;
   try
-    mRoot.AddPair('version', TJSONNumber.Create(Version));
+    mRoot.AddPair('version', TJSONNumber.Create(cVersion));
     mList := TJSONArray.Create;
     mRoot.AddPair('issues', mList);
     for mEntry in FEntries do
@@ -490,7 +490,7 @@ begin
   mRoot := TJSONObject.ParseJSONValue(AText);
   try
     Result := (mRoot is TJSONObject) and TJSONObject(mRoot).TryGetValue<Integer>('version', mVersion) and
-      (mVersion = Version);
+      (mVersion = cVersion);
     if not Result then
     begin
       Exit;
@@ -502,7 +502,7 @@ begin
     end;
     for mItem in TJSONArray(mList) do
     begin
-      if FEntries.Count >= MaxStored then
+      if FEntries.Count >= cMaxStored then
       begin
         Break;
       end;
@@ -526,7 +526,7 @@ begin
       mObject.TryGetValue<string>('title', mEntry.Issue.Title);
       mObject.TryGetValue<string>('state', mEntry.Issue.State);
       mObject.TryGetValue<string>('assignee', mEntry.Issue.Assignee);
-      mEntry.Issue.Title := Copy(mEntry.Issue.Title, 1, TAtlasTrackerIssue.MaxTitle);
+      mEntry.Issue.Title := Copy(mEntry.Issue.Title, 1, TAtlasTrackerIssue.cMaxTitle);
       FEntries.Add(mEntry);
     end;
   finally

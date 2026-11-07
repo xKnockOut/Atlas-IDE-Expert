@@ -43,11 +43,11 @@ type
 
   TAtlasIdeTrackerTime = class(TInterfacedObject)
   public const
-    TickMs = 5000;
+    cTickMs = 5000;
     /// <summary>Alle so viele Takte in die Datei (eine Minute).</summary>
-    SaveTicks = 12;
+    cSaveTicks = 12;
     /// <summary>Weniger Zeit bietet Atlas nicht zum Buchen an.</summary>
-    MinOfferSeconds = 60;
+    cMinOfferSeconds = 60;
   private
     FSync: TAtlasIdeTrackerSync;
     FProvider: TAtlasIdeTimeProvider;
@@ -151,7 +151,7 @@ begin
 end;
 
 const
-  DecisionNames: array[TAtlasTimeDecision] of string = ('später', 'gebucht', 'verworfen');
+  cDecisionNames: array[TAtlasTimeDecision] of string = ('später', 'gebucht', 'verworfen');
 
 type
 {$SCOPEDENUMS ON}
@@ -359,7 +359,7 @@ begin
     Exit;
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := TimerTick;
   FTimer.Enabled := True;
 end;
@@ -413,7 +413,7 @@ begin
       Detect;
       FClock.Tick;
       Inc(FTicks);
-      if FTicks mod SaveTicks = 0 then
+      if FTicks mod cSaveTicks = 0 then
       begin
         Flush;
       end;
@@ -732,7 +732,7 @@ begin
       mVcs: IAtlasVersionControl;
       mWork: IAtlasVcsLocalWork;
     begin
-      mVcs := TAtlasIdeVcs.ForFolder(mFolder, TAtlasIdeTrackerSync.VcsTimeoutMs);
+      mVcs := TAtlasIdeVcs.ForFolder(mFolder, TAtlasIdeTrackerSync.cVcsTimeoutMs);
       if Supports(mVcs, IAtlasVcsLocalWork, mWork) then
       begin
         mCommits := TAtlasTrackerWorkflow.CommitsFor(mWork, mBranch, mBase, mIssue.Key);
@@ -780,7 +780,7 @@ begin
   end;
   Flush;
   mTotal := SavedTotal(AIssue);
-  if mTotal < MinOfferSeconds then
+  if mTotal < cMinOfferSeconds then
   begin
     Exit;
   end;
@@ -808,7 +808,7 @@ begin
     Exit;
   end;
   // Anonym: Anbieter und Entscheidung, nie Kennung oder Beschreibung.
-  TAtlasGuard.Log(Format('Zeiterfassung: Buchungsdialog %s, %s', [AIssue.Provider, DecisionNames[mDecision]]));
+  TAtlasGuard.Log(Format('Zeiterfassung: Buchungsdialog %s, %s', [AIssue.Provider, cDecisionNames[mDecision]]));
   case mDecision of
     TAtlasTimeDecision.Booked:
       begin
