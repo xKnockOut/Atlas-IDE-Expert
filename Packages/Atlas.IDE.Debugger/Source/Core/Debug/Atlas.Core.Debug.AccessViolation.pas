@@ -79,8 +79,8 @@ type
   TAtlasAvAnalysis = class
   public const
     /// <summary>Darunter zeigt ein Zeiger ins Leere (erste Seite des Adressraums).</summary>
-    NearNil = $10000;
-    MaxOffsetChecks = 32;
+    cNearNil = $10000;
+    cMaxOffsetChecks = 32;
   private type
     {$SCOPEDENUMS ON}
     TPhase = (Links, Headers, Offsets, Done);
@@ -170,8 +170,8 @@ uses
   System.StrUtils;
 
 const
-  FreedPatterns32: array[0..2] of UInt64 = ($80808080, $FEEEFEEE, $DDDDDDDD);
-  FreedPatterns64: array[0..2] of UInt64 = ($8080808080808080, $FEEEFEEEFEEEFEEE, $DDDDDDDDDDDDDDDD);
+  cFreedPatterns32: array[0..2] of UInt64 = ($80808080, $FEEEFEEE, $DDDDDDDD);
+  cFreedPatterns64: array[0..2] of UInt64 = ($8080808080808080, $FEEEFEEEFEEEFEEE, $DDDDDDDDDDDDDDDD);
 
 function LowerTrim(const AText: string): string;
 begin
@@ -181,11 +181,11 @@ end;
 /// <summary>Hexzahl ab APos (Leerzeichen davor erlaubt); False ohne Ziffer.</summary>
 function ReadHex(const AText: string; APos: Integer; out AValue: UInt64): Boolean;
 var
-  Digits: Integer;
-  Ch: Char;
+  mDigits: Integer;
+  mCh: Char;
 begin
   AValue := 0;
-  Digits := 0;
+  mDigits := 0;
   while (APos <= Length(AText)) and (AText[APos] = ' ') do
   begin
     Inc(APos);
@@ -194,29 +194,29 @@ begin
   begin
     Inc(APos);
   end;
-  while (APos <= Length(AText)) and (Digits < 16) do
+  while (APos <= Length(AText)) and (mDigits < 16) do
   begin
-    Ch := AText[APos];
-    if CharInSet(Ch, ['0'..'9']) then
+    mCh := AText[APos];
+    if CharInSet(mCh, ['0'..'9']) then
     begin
-      AValue := AValue * 16 + UInt64(Ord(Ch) - Ord('0'));
+      AValue := AValue * 16 + UInt64(Ord(mCh) - Ord('0'));
     end
-    else if CharInSet(Ch, ['a'..'f']) then
+    else if CharInSet(mCh, ['a'..'f']) then
     begin
-      AValue := AValue * 16 + UInt64(Ord(Ch) - Ord('a') + 10);
+      AValue := AValue * 16 + UInt64(Ord(mCh) - Ord('a') + 10);
     end
-    else if CharInSet(Ch, ['A'..'F']) then
+    else if CharInSet(mCh, ['A'..'F']) then
     begin
-      AValue := AValue * 16 + UInt64(Ord(Ch) - Ord('A') + 10);
+      AValue := AValue * 16 + UInt64(Ord(mCh) - Ord('A') + 10);
     end
     else
     begin
       Break;
     end;
-    Inc(Digits);
+    Inc(mDigits);
     Inc(APos);
   end;
-  Result := Digits > 0;
+  Result := mDigits > 0;
 end;
 
 { TAtlasAvMessage }
@@ -224,37 +224,37 @@ end;
 class function TAtlasAvMessage.Parse(const AClassName, AMessage: string): TAtlasAvMessage;
 const
   // Wörter vor der Zieladresse, deutsch und englisch; die Adresse des Codes steht davor ("bei Adresse").
-  Operations: array[0..5] of string = ('lesen von adresse', 'schreiben von adresse', 'ausführung von adresse',
+  cOperations: array[0..5] of string = ('lesen von adresse', 'schreiben von adresse', 'ausführung von adresse',
     'read of address', 'write of address', 'execution of address');
-  Kinds: array[0..5] of TAtlasAvOperation = (TAtlasAvOperation.Read, TAtlasAvOperation.Write,
+  cKinds: array[0..5] of TAtlasAvOperation = (TAtlasAvOperation.Read, TAtlasAvOperation.Write,
     TAtlasAvOperation.Execute, TAtlasAvOperation.Read, TAtlasAvOperation.Write, TAtlasAvOperation.Execute);
 var
-  Text, ClassName_: string;
-  Index, At: Integer;
-  Value: UInt64;
+  mText, mClassName_: string;
+  mIndex, mAt: Integer;
+  mValue: UInt64;
 begin
   Result := Default(TAtlasAvMessage);
-  Text := LowerCase(AMessage);
-  ClassName_ := LowerTrim(AClassName);
-  Result.IsAccessViolation := (ClassName_ = 'eaccessviolation') or (Pos('zugriffsverletzung', Text) > 0) or
-    (Pos('access violation', Text) > 0);
+  mText := LowerCase(AMessage);
+  mClassName_ := LowerTrim(AClassName);
+  Result.IsAccessViolation := (mClassName_ = 'eaccessviolation') or (Pos('zugriffsverletzung', mText) > 0) or
+    (Pos('access violation', mText) > 0);
   // EExternalException trägt nur mit passender Meldung eine Zugriffsverletzung (C0000005).
-  if (ClassName_ = 'eexternalexception') and not Result.IsAccessViolation then
+  if (mClassName_ = 'eexternalexception') and not Result.IsAccessViolation then
   begin
-    Result.IsAccessViolation := Pos('c0000005', Text) > 0;
+    Result.IsAccessViolation := Pos('c0000005', mText) > 0;
   end;
   if not Result.IsAccessViolation then
   begin
     Exit;
   end;
-  for Index := Low(Operations) to High(Operations) do
+  for mIndex := Low(cOperations) to High(cOperations) do
   begin
-    At := Pos(Operations[Index], Text);
-    if (At > 0) and ReadHex(AMessage, At + Length(Operations[Index]), Value) then
+    mAt := Pos(cOperations[mIndex], mText);
+    if (mAt > 0) and ReadHex(AMessage, mAt + Length(cOperations[mIndex]), mValue) then
     begin
       Result.AddressKnown := True;
-      Result.Address := Value;
-      Result.Operation := Kinds[Index];
+      Result.Address := mValue;
+      Result.Operation := cKinds[mIndex];
       Exit;
     end;
   end;
@@ -265,23 +265,23 @@ end;
 constructor TAtlasAvAnalysis.Create(const AChains: TAtlasAvChains; const AMessage: TAtlasAvMessage;
   APointerSize: Integer; AAllowCalls: Boolean);
 var
-  ChainIndex, LinkIndex: Integer;
-  Check: TAtlasAvCheck;
+  mChainIndex, mLinkIndex: Integer;
+  mCheck: TAtlasAvCheck;
 begin
   inherited Create;
   FChains := AChains;
   FMessage := AMessage;
   FPointerSize := APointerSize;
   FAllowCalls := AAllowCalls;
-  for ChainIndex := 0 to High(FChains.Chains) do
+  for mChainIndex := 0 to High(FChains.Chains) do
   begin
-    for LinkIndex := 0 to High(FChains.Chains[ChainIndex].Links) do
+    for mLinkIndex := 0 to High(FChains.Chains[mChainIndex].Links) do
     begin
-      Check := Default(TAtlasAvCheck);
-      Check.Chain := ChainIndex;
-      Check.Link := LinkIndex;
-      Check.Expression := FChains.Chains[ChainIndex].Links[LinkIndex].Expression;
-      FChecks := FChecks + [Check];
+      mCheck := Default(TAtlasAvCheck);
+      mCheck.Chain := mChainIndex;
+      mCheck.Link := mLinkIndex;
+      mCheck.Expression := FChains.Chains[mChainIndex].Links[mLinkIndex].Expression;
+      FChecks := FChecks + [mCheck];
     end;
   end;
   SetLength(FData, Length(FChecks));
@@ -303,74 +303,74 @@ end;
 
 class function TAtlasAvValues.ParseAddress(const AText: string; out AValue: UInt64): Boolean;
 var
-  Text: string;
-  Signed: Int64;
+  mText: string;
+  mSigned: Int64;
 begin
   AValue := 0;
-  Text := Trim(AText);
+  mText := Trim(AText);
   // Typumwandlungen zeigt der Debugger mitunter eingeklammert.
-  if (Length(Text) > 2) and (Text[1] = '(') and (Text[Length(Text)] = ')') then
+  if (Length(mText) > 2) and (mText[1] = '(') and (mText[Length(mText)] = ')') then
   begin
-    Text := Trim(Copy(Text, 2, Length(Text) - 2));
+    mText := Trim(Copy(mText, 2, Length(mText) - 2));
   end;
-  if SameText(Text, 'nil') then
+  if SameText(mText, 'nil') then
   begin
     Exit(True);
   end;
-  if Text = '' then
+  if mText = '' then
   begin
     Exit(False);
   end;
-  if Text[1] = '$' then
+  if mText[1] = '$' then
   begin
-    Exit(ReadHex(Text, 1, AValue) and (Length(Text) <= 17));
+    Exit(ReadHex(mText, 1, AValue) and (Length(mText) <= 17));
   end;
-  if StartsText('0x', Text) then
+  if StartsText('0x', mText) then
   begin
-    Exit(ReadHex(Text, 3, AValue) and (Length(Text) <= 18));
+    Exit(ReadHex(mText, 3, AValue) and (Length(mText) <= 18));
   end;
-  Result := TryStrToInt64(Text, Signed);
+  Result := TryStrToInt64(mText, mSigned);
   if Result then
   begin
-    AValue := UInt64(Signed);
+    AValue := UInt64(mSigned);
   end
   else
   begin
     // Dezimal über Int64 hinaus (Füllmuster unter Win64 als Zahl).
-    Result := TryStrToUInt64(Text, AValue);
+    Result := TryStrToUInt64(mText, AValue);
   end;
 end;
 
 class function TAtlasAvValues.ParseInteger(const AText: string; out AValue: Int64): Boolean;
 var
-  Address: UInt64;
+  mAddress: UInt64;
 begin
   Result := TryStrToInt64(Trim(AText), AValue);
-  if not Result and TAtlasAvValues.ParseAddress(AText, Address) then
+  if not Result and TAtlasAvValues.ParseAddress(AText, mAddress) then
   begin
-    AValue := Int64(Address);
+    AValue := Int64(mAddress);
     Result := True;
   end;
 end;
 
 class function TAtlasAvValues.IsFreedPattern(AValue: UInt64; APointerSize: Integer): Boolean;
 var
-  Pattern: UInt64;
+  mPattern: UInt64;
 begin
   if APointerSize = 8 then
   begin
-    for Pattern in FreedPatterns64 do
+    for mPattern in cFreedPatterns64 do
     begin
-      if AValue = Pattern then
+      if AValue = mPattern then
       begin
         Exit(True);
       end;
     end;
   end;
   // Auch unter Win64 stehen in 32-Bit-Feldern die kurzen Muster.
-  for Pattern in FreedPatterns32 do
+  for mPattern in cFreedPatterns32 do
   begin
-    if AValue = Pattern then
+    if AValue = mPattern then
     begin
       Exit(True);
     end;
@@ -380,20 +380,20 @@ end;
 
 class function TAtlasAvValues.NearFreedPattern(AValue: UInt64; APointerSize: Integer): Boolean;
 var
-  Pattern: UInt64;
+  mPattern: UInt64;
 begin
-  for Pattern in FreedPatterns32 do
+  for mPattern in cFreedPatterns32 do
   begin
-    if (AValue >= Pattern) and (AValue - Pattern < TAtlasAvAnalysis.NearNil) then
+    if (AValue >= mPattern) and (AValue - mPattern < TAtlasAvAnalysis.cNearNil) then
     begin
       Exit(True);
     end;
   end;
   if APointerSize = 8 then
   begin
-    for Pattern in FreedPatterns64 do
+    for mPattern in cFreedPatterns64 do
     begin
-      if (AValue >= Pattern) and (AValue - Pattern < TAtlasAvAnalysis.NearNil) then
+      if (AValue >= mPattern) and (AValue - mPattern < TAtlasAvAnalysis.cNearNil) then
       begin
         Exit(True);
       end;
@@ -409,16 +409,16 @@ end;
 
 procedure TAtlasAvAnalysis.SkipRestOfChain(ACheck: Integer; AState: TAtlasAvCheckState);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := ACheck + 1;
-  while (Index <= High(FChecks)) and (FChecks[Index].Chain = FChecks[ACheck].Chain) do
+  mIndex := ACheck + 1;
+  while (mIndex <= High(FChecks)) and (FChecks[mIndex].Chain = FChecks[ACheck].Chain) do
   begin
-    if FChecks[Index].State = TAtlasAvCheckState.Pending then
+    if FChecks[mIndex].State = TAtlasAvCheckState.Pending then
     begin
-      FChecks[Index].State := AState;
+      FChecks[mIndex].State := AState;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
@@ -434,7 +434,7 @@ end;
 
 function TAtlasAvAnalysis.NextLinkRequest(out ARequest: TAtlasAvRequest): Boolean;
 var
-  Link: TAtlasAvLink;
+  mLink: TAtlasAvLink;
 begin
   Result := False;
   while FCheck <= High(FChecks) do
@@ -444,8 +444,8 @@ begin
       Inc(FCheck);
       Continue;
     end;
-    Link := LinkOf(FCheck);
-    if Link.Call and not FAllowCalls then
+    mLink := LinkOf(FCheck);
+    if mLink.Call and not FAllowCalls then
     begin
       // Getter oder Funktion: ohne allowCalls nichts ausführen, auch nichts dahinter.
       FChecks[FCheck].State := TAtlasAvCheckState.NotEvaluated;
@@ -454,9 +454,9 @@ begin
       Continue;
     end;
     ARequest := Default(TAtlasAvRequest);
-    ARequest.Expression := 'Pointer(' + Link.Expression + ')';
+    ARequest.Expression := 'Pointer(' + mLink.Expression + ')';
     ARequest.Purpose := TAtlasAvPurpose.Value;
-    ARequest.SideEffects := Link.Call;
+    ARequest.SideEffects := mLink.Call;
     Exit(True);
   end;
 end;
@@ -472,7 +472,7 @@ begin
   begin
     Result := TAtlasAvCheckState.Freed;
   end
-  else if AValue < TAtlasAvAnalysis.NearNil then
+  else if AValue < TAtlasAvAnalysis.cNearNil then
   begin
     Result := TAtlasAvCheckState.Invalid;
   end
@@ -552,29 +552,29 @@ end;
 
 procedure TAtlasAvAnalysis.AnswerLink(AOk: Boolean; const AText: string);
 var
-  Link: TAtlasAvLink;
-  Number: Int64;
-  Asked: Boolean;
+  mLink: TAtlasAvLink;
+  mNumber: Int64;
+  mAsked: Boolean;
 begin
-  Link := LinkOf(FCheck);
-  Asked := False;
+  mLink := LinkOf(FCheck);
+  mAsked := False;
   case FPending.Purpose of
     TAtlasAvPurpose.Value, TAtlasAvPurpose.PlainValue:
-      Asked := AnswerValue(AOk, AText, Link);
+      mAsked := AnswerValue(AOk, AText, mLink);
     TAtlasAvPurpose.Length:
       begin
-        Asked := AOk and TAtlasAvValues.ParseInteger(AText, Number);
-        if Asked then
+        mAsked := AOk and TAtlasAvValues.ParseInteger(AText, mNumber);
+        if mAsked then
         begin
-          FData[FCheck].Length := Number;
-          Ask(Link.IndexText, TAtlasAvPurpose.Index);
+          FData[FCheck].Length := mNumber;
+          Ask(mLink.IndexText, TAtlasAvPurpose.Index);
         end;
       end;
     TAtlasAvPurpose.Index:
-      AnswerIndex(AOk, AText, Link);
+      AnswerIndex(AOk, AText, mLink);
     TAtlasAvPurpose.Header, TAtlasAvPurpose.Offset: ;
   end;
-  if not Asked then
+  if not mAsked then
   begin
     Inc(FCheck);
   end;
@@ -582,14 +582,14 @@ end;
 
 function TAtlasAvAnalysis.NextHeaderRequest(out ARequest: TAtlasAvRequest): Boolean;
 var
-  Link: TAtlasAvLink;
+  mLink: TAtlasAvLink;
 begin
   Result := False;
   while FCheck <= High(FChecks) do
   begin
-    Link := LinkOf(FCheck);
+    mLink := LinkOf(FCheck);
     if (FChecks[FCheck].State = TAtlasAvCheckState.Ok) and FData[FCheck].Known and
-      (Link.Kind = TAtlasAvLinkKind.ClassRef) then
+      (mLink.Kind = TAtlasAvLinkKind.ClassRef) then
     begin
       ARequest := Default(TAtlasAvRequest);
       // Erstes Wort der Instanz (VMT-Zeiger) bzw. das zweite; nach der Freigabe das Füllmuster.
@@ -604,9 +604,9 @@ end;
 
 procedure TAtlasAvAnalysis.AnswerHeader(AOk: Boolean; const AText: string);
 var
-  Value: UInt64;
+  mValue: UInt64;
 begin
-  if AOk and TAtlasAvValues.ParseAddress(AText, Value) and TAtlasAvValues.IsFreedPattern(Value, FPointerSize) then
+  if AOk and TAtlasAvValues.ParseAddress(AText, mValue) and TAtlasAvValues.IsFreedPattern(mValue, FPointerSize) then
   begin
     FChecks[FCheck].State := TAtlasAvCheckState.Freed;
     AddCause(FCheck);
@@ -624,50 +624,50 @@ end;
 
 procedure TAtlasAvAnalysis.StartOffsets;
 var
-  Link: TAtlasAvLink;
-  Index: Integer;
+  mLink: TAtlasAvLink;
+  mIndex: Integer;
 begin
   FOffsets.Candidates := nil;
   FOffsets.Next := 0;
   FOffsets.Estimate := -1;
   if (Length(FCauses) <> 1) or (FChecks[FCauses[0]].State <> TAtlasAvCheckState.NilValue) or
-    not FMessage.AddressKnown or (FMessage.Address >= NearNil) then
+    not FMessage.AddressKnown or (FMessage.Address >= cNearNil) then
   begin
     Exit;
   end;
-  Link := LinkOf(FCauses[0]);
-  if not (Link.Kind in [TAtlasAvLinkKind.ClassRef, TAtlasAvLinkKind.InterfaceRef]) then
+  mLink := LinkOf(FCauses[0]);
+  if not (mLink.Kind in [TAtlasAvLinkKind.ClassRef, TAtlasAvLinkKind.InterfaceRef]) then
   begin
     Exit;
   end;
-  if (FMessage.Address = 0) or (Link.Kind = TAtlasAvLinkKind.InterfaceRef) then
+  if (FMessage.Address = 0) or (mLink.Kind = TAtlasAvLinkKind.InterfaceRef) then
   begin
     Exit;
   end;
   // Geschätzter Treffer zuerst prüfen, dann alle Felder der Reihe nach.
-  for Index := 0 to High(Link.Fields) do
+  for mIndex := 0 to High(mLink.Fields) do
   begin
-    if Link.Fields[Index].Offset = Integer(FMessage.Address) then
+    if mLink.Fields[mIndex].Offset = Integer(FMessage.Address) then
     begin
-      FOffsets.Estimate := Index;
+      FOffsets.Estimate := mIndex;
     end;
   end;
   if FOffsets.Estimate >= 0 then
   begin
     FOffsets.Candidates := FOffsets.Candidates + [FOffsets.Estimate];
   end;
-  for Index := 0 to Min(High(Link.Fields), MaxOffsetChecks - 1) do
+  for mIndex := 0 to Min(High(mLink.Fields), cMaxOffsetChecks - 1) do
   begin
-    if Index <> FOffsets.Estimate then
+    if mIndex <> FOffsets.Estimate then
     begin
-      FOffsets.Candidates := FOffsets.Candidates + [Index];
+      FOffsets.Candidates := FOffsets.Candidates + [mIndex];
     end;
   end;
 end;
 
 function TAtlasAvAnalysis.NextOffsetRequest(out ARequest: TAtlasAvRequest): Boolean;
 var
-  Link: TAtlasAvLink;
+  mLink: TAtlasAvLink;
 begin
   Result := False;
   if FOffsets.Next > High(FOffsets.Candidates) then
@@ -680,36 +680,36 @@ begin
     FOffsets.Candidates := nil;
     Exit;
   end;
-  Link := LinkOf(FCauses[0]);
+  mLink := LinkOf(FCauses[0]);
   ARequest := Default(TAtlasAvRequest);
-  ARequest.Expression := 'NativeInt(@' + Link.TypeName + '(nil).' +
-    Link.Fields[FOffsets.Candidates[FOffsets.Next]].Name + ')';
+  ARequest.Expression := 'NativeInt(@' + mLink.TypeName + '(nil).' +
+    mLink.Fields[FOffsets.Candidates[FOffsets.Next]].Name + ')';
   ARequest.Purpose := TAtlasAvPurpose.Offset;
   Result := True;
 end;
 
 procedure TAtlasAvAnalysis.AnswerOffset(AOk: Boolean; const AText: string);
 var
-  Number: Int64;
-  Link: TAtlasAvLink;
+  mNumber: Int64;
+  mLink: TAtlasAvLink;
 begin
-  Link := LinkOf(FCauses[0]);
-  if not (AOk and TAtlasAvValues.ParseInteger(AText, Number)) then
+  mLink := LinkOf(FCauses[0]);
+  if not (AOk and TAtlasAvValues.ParseInteger(AText, mNumber)) then
   begin
     // Der Debugger kann den Versatz nicht ausrechnen: bei der Schätzung bleiben.
     if FOffsets.Estimate >= 0 then
     begin
-      FVerdict.Field := Link.Fields[FOffsets.Estimate].Name;
-      FVerdict.FieldOffset := Link.Fields[FOffsets.Estimate].Offset;
+      FVerdict.Field := mLink.Fields[FOffsets.Estimate].Name;
+      FVerdict.FieldOffset := mLink.Fields[FOffsets.Estimate].Offset;
       FVerdict.FieldExact := False;
     end;
     FOffsets.Candidates := nil;
     Exit;
   end;
-  if UInt64(Number) = FMessage.Address then
+  if UInt64(mNumber) = FMessage.Address then
   begin
-    FVerdict.Field := Link.Fields[FOffsets.Candidates[FOffsets.Next]].Name;
-    FVerdict.FieldOffset := Integer(Number);
+    FVerdict.Field := mLink.Fields[FOffsets.Candidates[FOffsets.Next]].Name;
+    FVerdict.FieldOffset := Integer(mNumber);
     FVerdict.FieldExact := True;
     FOffsets.Candidates := nil;
     Exit;
@@ -795,14 +795,14 @@ end;
 
 procedure TAtlasAvAnalysis.Abort;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   FHasPending := False;
-  for Index := 0 to High(FChecks) do
+  for mIndex := 0 to High(FChecks) do
   begin
-    if FChecks[Index].State = TAtlasAvCheckState.Pending then
+    if FChecks[mIndex].State = TAtlasAvCheckState.Pending then
     begin
-      FChecks[Index].State := TAtlasAvCheckState.NotEvaluated;
+      FChecks[mIndex].State := TAtlasAvCheckState.NotEvaluated;
     end;
   end;
   Finish;
@@ -810,7 +810,7 @@ end;
 
 procedure TAtlasAvAnalysis.Finish;
 var
-  Check: Integer;
+  mCheck: Integer;
 begin
   if FPhase = TPhase.Done then
   begin
@@ -821,11 +821,11 @@ begin
   FVerdict.Causes := Length(FCauses);
   if Length(FCauses) = 1 then
   begin
-    Check := FCauses[0];
+    mCheck := FCauses[0];
     FVerdict.HasCulprit := True;
-    FVerdict.Culprit := LinkOf(Check);
-    FVerdict.Value := FData[Check].Value;
-    case FChecks[Check].State of
+    FVerdict.Culprit := LinkOf(mCheck);
+    FVerdict.Value := FData[mCheck].Value;
+    case FChecks[mCheck].State of
       TAtlasAvCheckState.NilValue:
         begin
           FVerdict.Kind := TAtlasAvVerdictKind.NilLink;
@@ -845,8 +845,8 @@ begin
       TAtlasAvCheckState.OutOfRange:
         begin
           FVerdict.Kind := TAtlasAvVerdictKind.OutOfRange;
-          FVerdict.Index := Int64(FData[Check].Value);
-          FVerdict.Length := FData[Check].Length;
+          FVerdict.Index := Int64(FData[mCheck].Value);
+          FVerdict.Length := FData[mCheck].Length;
         end;
     end;
   end

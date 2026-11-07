@@ -53,13 +53,13 @@ type
   TAtlasIdeDebugInlineValues = class
   public const
     /// <summary>Höchstens so lange wertet Atlas am Stück aus.</summary>
-    SliceMs = 30;
-    TickMs = 10;
+    cSliceMs = 30;
+    cTickMs = 10;
     /// <summary>So lange wartet Atlas auf einen verzögerten Wert (LLDB).</summary>
-    DeferredTimeoutMs = 500;
-    RequestTimeoutMs = 3000;
+    cDeferredTimeoutMs = 500;
+    cRequestTimeoutMs = 3000;
     /// <summary>Versuche, bis der Aufrufstapel bzw. der Editor der Datei da ist (je TickMs * 5).</summary>
-    LocationRetries = 20;
+    cLocationRetries = 20;
   private type
     TListener = class(TAtlasIdeDebugListener)
     public
@@ -227,7 +227,7 @@ end;
 
 constructor TAtlasIdeDebugInlineValues.Create(const ASession: TAtlasInlineValuesSessionFunc);
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   inherited Create;
   FSession := ASession;
@@ -238,25 +238,25 @@ begin
   FStyle := TPaintStyle.Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+    FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
 end;
 
 destructor TAtlasIdeDebugInlineValues.Destroy;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   // Erst abmelden, dann freigeben (#493).
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    Services.RemoveEditorEventsNotifier(FIndex);
+    mServices.RemoveEditorEventsNotifier(FIndex);
   end;
   if FEvents <> nil then
   begin
@@ -295,20 +295,20 @@ end;
 
 class procedure TAtlasIdeDebugInlineValues.Release;
 var
-  Instance: TAtlasIdeDebugInlineValues;
+  mInstance: TAtlasIdeDebugInlineValues;
 begin
   if FInstance = nil then
   begin
     Exit;
   end;
-  Instance := FInstance;
+  mInstance := FInstance;
   FInstance := nil;
-  if Instance.FListener <> nil then
+  if mInstance.FListener <> nil then
   begin
-    TAtlasIdeDebugSession.RemoveListener(Instance.FListener);
+    TAtlasIdeDebugSession.RemoveListener(mInstance.FListener);
   end;
-  Instance.FListener := nil;
-  Instance.Free;
+  mInstance.FListener := nil;
+  mInstance.Free;
   Invalidate;
 end;
 
@@ -319,19 +319,19 @@ end;
 
 class function TAtlasIdeDebugInlineValues.Enabled: Boolean;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := Settings.Enabled and Settings.DebugInlineValues;
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.DebugInlineValues;
 end;
 
 class procedure TAtlasIdeDebugInlineValues.Invalidate;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(Services);
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 
@@ -346,9 +346,9 @@ end;
 
 procedure TAtlasIdeDebugInlineValues.Drop(AForget: Boolean);
 var
-  Had: Boolean;
+  mHad: Boolean;
 begin
-  Had := FValues.Active;
+  mHad := FValues.Active;
   if FTimer <> nil then
   begin
     FTimer.Enabled := False;
@@ -370,7 +370,7 @@ begin
   FText := '';
   FLines := nil;
   ReapWorkers(False);
-  if Had then
+  if mHad then
   begin
     Invalidate;
   end;
@@ -400,17 +400,17 @@ end;
 
 function TAtlasIdeDebugInlineValues.ReadLocation: Boolean;
 var
-  Frames: TAtlasDebugFrames;
-  Buffer: IOTAEditBuffer;
+  mFrames: TAtlasDebugFrames;
+  mBuffer: IOTAEditBuffer;
 begin
   Result := False;
-  case TAtlasIdeDebugSession.ReadStack(TAtlasIdeDebugSession.StoppedThread, 1, Frames) of
+  case TAtlasIdeDebugSession.ReadStack(TAtlasIdeDebugSession.StoppedThread, 1, mFrames) of
     TAtlasDebugStackRead.Wait:
       begin
         // LLDB: Stapel kommt später.
         Inc(FProgress.Retries);
-        FTimer.Interval := TickMs * 5;
-        FTimer.Enabled := FProgress.Retries <= LocationRetries;
+        FTimer.Interval := cTickMs * 5;
+        FTimer.Enabled := FProgress.Retries <= cLocationRetries;
         if not FTimer.Enabled then
         begin
           FProgress.Phase := TPhase.Idle;
@@ -423,30 +423,30 @@ begin
         Exit;
       end;
   end;
-  if (Length(Frames) = 0) or not Frames[0].HasSource then
+  if (Length(mFrames) = 0) or not mFrames[0].HasSource then
   begin
     // Kein Quelltext am Ausführungspunkt (RTL ohne Quellen, Assembler).
     FProgress.Phase := TPhase.Idle;
     Exit;
   end;
-  TAtlasIdeDebugSources.MarkFrames(Frames);
-  Buffer := TAtlasIdeFiles.BufferOf(Frames[0].FileName);
-  if Buffer = nil then
+  TAtlasIdeDebugSources.MarkFrames(mFrames);
+  mBuffer := TAtlasIdeFiles.BufferOf(mFrames[0].FileName);
+  if mBuffer = nil then
   begin
     // Die IDE öffnet die Datei des Halts gleich danach.
     Inc(FProgress.Retries);
-    FTimer.Interval := TickMs * 5;
-    FTimer.Enabled := FProgress.Retries <= LocationRetries;
+    FTimer.Interval := cTickMs * 5;
+    FTimer.Enabled := FProgress.Retries <= cLocationRetries;
     if not FTimer.Enabled then
     begin
       FProgress.Phase := TPhase.Idle;
     end;
     Exit;
   end;
-  FFileName := Buffer.FileName;
-  FContext := FFileName + '|' + Frames[0].Routine;
-  FLine := Frames[0].Line - 1;
-  FText := TAtlasEditorBuffer.Text(Buffer);
+  FFileName := mBuffer.FileName;
+  FContext := FFileName + '|' + mFrames[0].Routine;
+  FLine := mFrames[0].Line - 1;
+  FText := TAtlasEditorBuffer.Text(mBuffer);
   FLines := FText.Split([#13#10, #10]);
   FProgress.Phase := TPhase.Request;
   Result := True;
@@ -454,30 +454,30 @@ end;
 
 procedure TAtlasIdeDebugInlineValues.Ask;
 var
-  Session: TLspSession;
-  FileName: string;
-  Line, Request: Integer;
-  Worker: TThread;
+  mSession: TLspSession;
+  mFileName: string;
+  mLine, mRequest: Integer;
+  mWorker: TThread;
 begin
   FTimer.Enabled := False;
-  Session := nil;
+  mSession := nil;
   if Assigned(FSession) then
   begin
-    Session := FSession();
+    mSession := FSession();
   end;
-  if Session = nil then
+  if mSession = nil then
   begin
     FProgress.Phase := TPhase.Idle;
     Exit;
   end;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
-  FileName := FFileName;
-  Line := FLine;
-  Session.Sync(FileName, FText);
+  mFileName := FFileName;
+  mLine := FLine;
+  mSession.Sync(mFileName, FText);
   ReapWorkers(False);
   Inc(FProgress.Request);
-  Request := FProgress.Request;
-  Worker := TThread.CreateAnonymousThread(
+  mRequest := FProgress.Request;
+  mWorker := TThread.CreateAnonymousThread(
     procedure
     var
       Refs: TAtlasInlineValueRefs;
@@ -485,7 +485,7 @@ begin
       Refs := nil;
       try
         // Vom Dateianfang bis zum Halt; der Server beschränkt auf die Routine.
-        Refs := Session.InlineValues(FileName, 0, Line, Line, RequestTimeoutMs);
+        Refs := mSession.InlineValues(mFileName, 0, mLine, mLine, cRequestTimeoutMs);
       except
         // Server langsam oder weg: keine Werte.
         Refs := nil;
@@ -501,15 +501,15 @@ begin
               begin
                 if FInstance <> nil then
                 begin
-                  FInstance.Accept(Request, Refs);
+                  FInstance.Accept(mRequest, Refs);
                 end;
               end);
           end;
         end);
     end);
-  Worker.FreeOnTerminate := False;
-  FWorkers.Add(Worker);
-  Worker.Start;
+  mWorker.FreeOnTerminate := False;
+  FWorkers.Add(mWorker);
+  mWorker.Start;
 end;
 
 procedure TAtlasIdeDebugInlineValues.Accept(ARequest: Integer; const ARefs: TAtlasInlineValueRefs);
@@ -526,7 +526,7 @@ begin
   end;
   FValues.Start(FFileName, FContext, FLine, ARefs, TAtlasIdeSettings.Current.DebugInlineValuesPerLine);
   FProgress.Phase := TPhase.Evaluate;
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.Enabled := True;
   EvaluateSlice;
 end;
@@ -585,7 +585,7 @@ begin
   mChanged := False;
   mStep := TSliceStep.Next;
   mStartedAt := GetTickCount;
-  while (mStep = TSliceStep.Next) and (GetTickCount - mStartedAt < SliceMs) and FValues.NextPending(mName) do
+  while (mStep = TSliceStep.Next) and (GetTickCount - mStartedAt < cSliceMs) and FValues.NextPending(mName) do
   begin
     mStep := EvaluateOne(mName, mChanged);
   end;
@@ -612,7 +612,7 @@ begin
   begin
     Exit;
   end;
-  Result := GetTickCount - FDeferred.Since < DeferredTimeoutMs;
+  Result := GetTickCount - FDeferred.Since < cDeferredTimeoutMs;
   if not Result then
   begin
     FEvaluator.Cancel;
@@ -674,19 +674,19 @@ end;
 
 procedure TAtlasIdeDebugInlineValues.ReapWorkers(AWait: Boolean);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if FWorkers = nil then
   begin
     Exit;
   end;
-  for Index := FWorkers.Count - 1 downto 0 do
+  for mIndex := FWorkers.Count - 1 downto 0 do
   begin
-    if AWait or FWorkers[Index].Finished then
+    if AWait or FWorkers[mIndex].Finished then
     begin
-      FWorkers[Index].WaitFor;
-      FWorkers[Index].Free;
-      FWorkers.Delete(Index);
+      FWorkers[mIndex].WaitFor;
+      FWorkers[mIndex].Free;
+      FWorkers.Delete(mIndex);
     end;
   end;
 end;
