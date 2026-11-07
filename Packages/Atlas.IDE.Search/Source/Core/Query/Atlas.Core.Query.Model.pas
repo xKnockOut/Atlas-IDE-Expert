@@ -148,8 +148,8 @@ type
 
   TAtlasQueryRequest = class
   public const
-    Method = 'atlas/query';
-    CatalogMethod = 'atlas/queryCatalog';
+    cMethod = 'atlas/query';
+    cCatalogMethod = 'atlas/queryCatalog';
   public
     /// <summary>{"uri", "query", "limit", "format": "json"} für atlas/query.</summary>
     class function Params(const AUri, AQuery: string; ALimit: Integer): string; static;
