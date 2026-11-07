@@ -567,14 +567,21 @@ begin
   if mResolved.Kind = TResolvedKind.None then
   begin
     Result := TMemberLevel.Unknown;
-    if TSystemIntrinsics.IsKnown(TMethodLookup.HeadName(ANode.Name)) then
+    if TSystemIntrinsics.IsKnown(TMethodLookup.HeadName(ANode.Name)) and
+      not AResolver.MayBeHiddenMember(ATree, AFileName, ANode, mResolved) then
     begin
       Result := TMemberLevel.NotMember;
     end;
   end
   else if (mResolved.Kind <> TResolvedKind.Symbol) or mResolved.Builtin or (mResolved.Container = '') then
   begin
+    // Eine freie oder eingebaute Routine verdeckt ein Mitglied eines Vorfahren außerhalb des Index nicht: Close
+    // in einem Formular ist TCustomForm.Close, nicht System.Close.
     Result := TMemberLevel.NotMember;
+    if AResolver.MayBeHiddenMember(ATree, AFileName, ANode, mResolved) then
+    begin
+      Result := TMemberLevel.Unknown;
+    end;
   end
   else
   begin
