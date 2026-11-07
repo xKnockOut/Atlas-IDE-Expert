@@ -24,6 +24,9 @@
 - `Tools/Update-RuleCatalog.ps1` erzeugt jetzt `cCatalogLines*`.
 - Geprüft (Cloud): AtlasServer übersetzt; FPC-Tests aller Common-Testunits wie auf Pilot (gleiche Fehlschläge, keine neuen); Check-Skripte grün. IDE-Packages nicht übersetzbar in der Cloud: Delphi-Build nötig.
 - Offen: Atlas.IDE.Base (dieser Thread), danach je Modul ein Thread über den Koordinator.
+## Präfixe und Zeilenlänge in Atlas.IDE.Bookmarks (07.11.2026, Branch `claude/project-thread-r8hau9` auf `main-merging`)
+- naming-prefix und line-length im Package und in seinen Testunits behoben (Anleitung `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`): lokale Namen per `--fix naming-prefix`, 15 öffentliche Konstanten per `rename_symbol` (Vorschau, gesammelt angewendet), z. B. `TAtlasBookmarks.cFormat`, `TAtlasQuickBookmarks.cMaxNumber`, `TAtlasNotesList.cOwner`, `TAtlasBookmarksModule.cModuleId`, `cAtlasQuickBookmarkDot`. Keine Verwendung außerhalb des Packages.
+- Geprüft (Cloud): AtlasServer `--check` über Atlas.IDE.Bookmarks.dproj mit naming-prefix/line-length an: 0 Befunde. FPC-Tests der Core-Testunits (Bookmarks, Quick, Notes, SavedPlaces) 73/74 wie auf main-merging (JsonRoundTrip scheitert unter FPC an Umlauten, auch auf der Basis). Prüfskripte und Generatoren (`-Check`) grün. UI/IDE-Units nicht übersetzt: Delphi-Build nötig.
 ## Präfixe und Zeilenlänge in Atlas.IDE.Rules (07.11.2026, Branch `claude/project-thread-9v3vm5` auf `main-merging`)
 - Wie bei Atlas.Common (Anleitung `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`): lokale Namen über `--fix naming-prefix` (Server mit safeFix, im Worktree), 8 lange Zeilen mit `wrap.py`, Testunits des Moduls (`[Category('Atlas.IDE.Rules')]`) mit.
 - Öffentliche Konstanten umbenannt, mit allen Verwendungen: `TAtlasBulkFixPreview.cCommand`, `TAtlasRulesModule.cModuleId`/`cSwitch`, `TAtlasRuleTable.cSeverities`/`cGroupIds`/`cCompilerGroup`. Außerhalb des Moduls verwendet sie nichts.
