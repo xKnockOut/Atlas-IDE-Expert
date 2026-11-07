@@ -135,7 +135,7 @@ uses
 {$R *.dfm}
 
 const
-  KindTexts: array[TStepFilterKind] of TAtlasTextId = (TAtlasTextId.StepFilterKindGetters,
+  cKindTexts: array[TStepFilterKind] of TAtlasTextId = (TAtlasTextId.StepFilterKindGetters,
     TAtlasTextId.StepFilterKindSetters, TAtlasTextId.StepFilterKindTrivial, TAtlasTextId.StepFilterKindOperators,
     TAtlasTextId.StepFilterKindEmptyConstructors);
 
@@ -623,7 +623,7 @@ class function TAtlasStepFilterTexts.VerdictText(const AVerdict: TAtlasStepVerdi
 begin
   case AVerdict.Kind of
     TAtlasStepVerdictKind.Kind:
-      Result := TAtlasStrings.Text(KindTexts[AVerdict.FilterKind]);
+      Result := TAtlasStrings.Text(cKindTexts[AVerdict.FilterKind]);
     TAtlasStepVerdictKind.Pattern:
       Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterByPattern, [AVerdict.Pattern]);
   else
@@ -634,7 +634,7 @@ end;
 class function TAtlasStepFilterTexts.KindCaption(AKind: TStepFilterKind; AState: TAtlasStepCountsState;
   const ACounts: TAtlasStepCounts): string;
 begin
-  Result := TAtlasStrings.Text(KindTexts[AKind]);
+  Result := TAtlasStrings.Text(cKindTexts[AKind]);
   if AState = TAtlasStepCountsState.Ready then
   begin
     Result := Result + ' – ' + IntToStr(ACounts.Kinds[AKind]);

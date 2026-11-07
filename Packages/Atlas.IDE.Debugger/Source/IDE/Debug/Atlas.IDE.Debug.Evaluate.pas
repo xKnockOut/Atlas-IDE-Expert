@@ -62,13 +62,13 @@ type
 
   TAtlasIdeDebugEvaluate = class
   public const
-    SliceMs = 30;
-    TickMs = 10;
+    cSliceMs = 30;
+    cTickMs = 10;
     /// <summary>So lange wartet Atlas auf einen verzögerten Wert (LLDB).</summary>
-    DeferredTimeoutMs = 2000;
-    RequestTimeoutMs = 3000;
+    cDeferredTimeoutMs = 2000;
+    cRequestTimeoutMs = 3000;
     /// <summary>Versuche, bis der Aufrufstapel da ist (je TickMs * 5).</summary>
-    LocationRetries = 20;
+    cLocationRetries = 20;
   private type
     TListener = class(TAtlasIdeDebugListener)
     public
@@ -346,7 +346,7 @@ begin
   Result := nil;
   try
     mResponse := ASession.ExpressionCompletion(AFileName, ALine, AExpression, Length(AExpression),
-      TAtlasIdeDebugEvaluate.RequestTimeoutMs);
+      TAtlasIdeDebugEvaluate.cRequestTimeoutMs);
     try
       Result := TAtlasEvalText.FieldsOf(mResponse, AWithProperties);
     finally
@@ -610,7 +610,7 @@ end;
 
 function TAtlasIdeDebugEvaluate.TEvaluation.Overdue: Boolean;
 begin
-  Result := Waiting and (TThread.GetTickCount - FWaitAt >= DeferredTimeoutMs);
+  Result := Waiting and (TThread.GetTickCount - FWaitAt >= cDeferredTimeoutMs);
 end;
 
 procedure TAtlasIdeDebugEvaluate.TEvaluation.Expire;
@@ -682,7 +682,7 @@ begin
   mStartedAt := TThread.GetTickCount;
   for mNode in FList.Pending do
   begin
-    if TThread.GetTickCount - mStartedAt >= SliceMs then
+    if TThread.GetTickCount - mStartedAt >= cSliceMs then
     begin
       Exit;
     end;
@@ -777,7 +777,7 @@ begin
   FStore := TAtlasIdeEvaluateStore.Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
 end;
 
@@ -1058,9 +1058,9 @@ begin
       begin
         // LLDB: Stapel kommt später; nach LocationRetries ohne Ort weiter.
         Inc(FProgress.Retries);
-        if FProgress.Retries <= LocationRetries then
+        if FProgress.Retries <= cLocationRetries then
         begin
-          FTimer.Interval := TickMs * 5;
+          FTimer.Interval := cTickMs * 5;
           FTimer.Enabled := True;
           Result := False;
         end;
@@ -1082,7 +1082,7 @@ begin
     Exit;
   end;
   FProgress.Phase := TPhase.Evaluate;
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.Enabled := True;
 end;
 

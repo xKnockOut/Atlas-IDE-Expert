@@ -32,25 +32,25 @@ uses
 
 procedure TAtlasDebugCallStackTests.FirstWithSourceSkipsLibraryFrames;
 var
-  Frames: TAtlasDebugFrames;
+  mFrames: TAtlasDebugFrames;
 begin
-  Frames := [TAtlasDebugFrame.Create(':7714C3E2 KERNELBASE.RaiseException + 0x62', '', 0),
+  mFrames := [TAtlasDebugFrame.Create(':7714C3E2 KERNELBASE.RaiseException + 0x62', '', 0),
     TAtlasDebugFrame.Create('System._RaiseExcept', 'System.pas', 0),
     TAtlasDebugFrame.Create('Unit1.TForm1.Button1Click(Self=$02A3F2C0)', 'C:\P\Unit1.pas', 42)];
-  Assert.AreEqual(2, TAtlasDebugCallStack.FirstWithSource(Frames), 'Datei ohne Zeile zählt nicht');
-  Assert.IsTrue(Frames[2].HasSource);
-  Assert.IsFalse(Frames[1].HasSource);
-  Assert.AreEqual(64, TAtlasDebugCallStack.MaxFrames);
+  Assert.AreEqual(2, TAtlasDebugCallStack.FirstWithSource(mFrames), 'Datei ohne Zeile zählt nicht');
+  Assert.IsTrue(mFrames[2].HasSource);
+  Assert.IsFalse(mFrames[1].HasSource);
+  Assert.AreEqual(64, TAtlasDebugCallStack.cMaxFrames);
 end;
 
 procedure TAtlasDebugCallStackTests.FirstWithSourceWithoutSource;
 var
-  Frames: TAtlasDebugFrames;
+  mFrames: TAtlasDebugFrames;
 begin
-  Frames := nil;
-  Assert.AreEqual(-1, TAtlasDebugCallStack.FirstWithSource(Frames));
-  Frames := [TAtlasDebugFrame.Create(':00401000 Project1.exe', '', 0)];
-  Assert.AreEqual(-1, TAtlasDebugCallStack.FirstWithSource(Frames));
+  mFrames := nil;
+  Assert.AreEqual(-1, TAtlasDebugCallStack.FirstWithSource(mFrames));
+  mFrames := [TAtlasDebugFrame.Create(':00401000 Project1.exe', '', 0)];
+  Assert.AreEqual(-1, TAtlasDebugCallStack.FirstWithSource(mFrames));
 end;
 
 procedure TAtlasDebugCallStackTests.RoutineWithoutParameters;

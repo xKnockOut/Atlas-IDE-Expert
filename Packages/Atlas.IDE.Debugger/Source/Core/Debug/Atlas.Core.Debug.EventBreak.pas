@@ -72,12 +72,12 @@ type
 
   TAtlasEventBreak = class
   public const
-    Command = 'atlas.server.eventHandlers';
+    cCommand = 'atlas.server.eventHandlers';
     /// <summary>Timer, die öfter feuern, zählen als häufig.</summary>
-    FastTimerMs = 100;
+    cFastTimerMs = 100;
     /// <summary>Ab so vielen Haltepunkten weist Atlas auf die Dauer hin.</summary>
-    ManyBreakpoints = 500;
-    AllCategories: TAtlasEventCategories = [TAtlasEventCategory.Mouse, TAtlasEventCategory.Keyboard,
+    cManyBreakpoints = 500;
+    cAllCategories: TAtlasEventCategories = [TAtlasEventCategory.Mouse, TAtlasEventCategory.Keyboard,
       TAtlasEventCategory.Timer, TAtlasEventCategory.Window, TAtlasEventCategory.Database,
       TAtlasEventCategory.Actions, TAtlasEventCategory.Other];
   public
@@ -124,18 +124,18 @@ uses
   System.Generics.Defaults;
 
 const
-  MouseEvents: array[0..19] of string = ('OnClick', 'OnDblClick', 'OnMouseDown', 'OnMouseUp', 'OnMouseMove',
+  cMouseEvents: array[0..19] of string = ('OnClick', 'OnDblClick', 'OnMouseDown', 'OnMouseUp', 'OnMouseMove',
     'OnMouseEnter', 'OnMouseLeave', 'OnMouseWheel', 'OnMouseWheelUp', 'OnMouseWheelDown', 'OnMouseActivate',
     'OnContextPopup', 'OnDragDrop', 'OnDragOver', 'OnStartDrag', 'OnEndDrag', 'OnCellClick', 'OnTitleClick',
     'OnGesture', 'OnTap');
-  KeyboardEvents: array[0..3] of string = ('OnKeyDown', 'OnKeyUp', 'OnKeyPress', 'OnShortCut');
-  WindowEvents: array[0..14] of string = ('OnShow', 'OnHide', 'OnActivate', 'OnDeactivate', 'OnResize',
+  cKeyboardEvents: array[0..3] of string = ('OnKeyDown', 'OnKeyUp', 'OnKeyPress', 'OnShortCut');
+  cWindowEvents: array[0..14] of string = ('OnShow', 'OnHide', 'OnActivate', 'OnDeactivate', 'OnResize',
     'OnClose', 'OnCloseQuery', 'OnCreate', 'OnDestroy', 'OnPaint', 'OnCanResize', 'OnConstrainedResize',
     'OnAfterMonitorDpiChanged', 'OnBeforeMonitorDpiChanged', 'OnHelp');
-  DatabaseEvents: array[0..15] of string = ('OnCalcFields', 'OnNewRecord', 'OnFilterRecord', 'OnPostError',
+  cDatabaseEvents: array[0..15] of string = ('OnCalcFields', 'OnNewRecord', 'OnFilterRecord', 'OnPostError',
     'OnDeleteError', 'OnEditError', 'OnUpdateError', 'OnUpdateRecord', 'OnReconcileError', 'OnDataChange',
     'OnStateChange', 'OnUpdateData', 'OnValidate', 'OnGetText', 'OnSetText', 'OnCalcAggregates');
-  ActionEvents: array[0..1] of string = ('OnExecute', 'OnUpdate');
+  cActionEvents: array[0..1] of string = ('OnExecute', 'OnUpdate');
 
 { TAtlasEventChoice }
 
@@ -150,30 +150,30 @@ end;
 
 class function TAtlasEventBreak.Arguments(const AProjectUri: string): string;
 var
-  Values: TJSONArray;
+  mValues: TJSONArray;
 begin
-  Values := TJSONArray.Create;
+  mValues := TJSONArray.Create;
   try
     if AProjectUri = '' then
     begin
-      Values.AddElement(TJSONNull.Create);
+      mValues.AddElement(TJSONNull.Create);
     end
     else
     begin
-      Values.Add(AProjectUri);
+      mValues.Add(AProjectUri);
     end;
-    Result := Values.ToJSON;
+    Result := mValues.ToJSON;
   finally
-    Values.Free;
+    mValues.Free;
   end;
 end;
 
 class function TAtlasEventBreak.ReadAnswer(AJson: TJSONValue; out AAnswer: TAtlasEventAnswer): Boolean;
 var
-  Root, Item: TJSONObject;
-  List: TJSONArray;
-  Index: Integer;
-  Handler: TAtlasEventHandler;
+  mRoot, mItem: TJSONObject;
+  mList: TJSONArray;
+  mIndex: Integer;
+  mHandler: TAtlasEventHandler;
 begin
   AAnswer := Default(TAtlasEventAnswer);
   Result := False;
@@ -181,40 +181,40 @@ begin
   begin
     Exit;
   end;
-  Root := TJSONObject(AJson);
-  if Root.GetValue<Integer>('format', 0) <> 1 then
+  mRoot := TJSONObject(AJson);
+  if mRoot.GetValue<Integer>('format', 0) <> 1 then
   begin
     Exit;
   end;
-  AAnswer.Unresolved := Root.GetValue<Integer>('unresolved', 0);
-  if Root.TryGetValue<TJSONArray>('handlers', List) then
+  AAnswer.Unresolved := mRoot.GetValue<Integer>('unresolved', 0);
+  if mRoot.TryGetValue<TJSONArray>('handlers', mList) then
   begin
-    for Index := 0 to List.Count - 1 do
+    for mIndex := 0 to mList.Count - 1 do
     begin
-      if not (List.Items[Index] is TJSONObject) then
+      if not (mList.Items[mIndex] is TJSONObject) then
       begin
         Continue;
       end;
-      Item := TJSONObject(List.Items[Index]);
-      Handler := Default(TAtlasEventHandler);
-      Handler.Form := Item.GetValue<string>('form', '');
-      Handler.Component := Item.GetValue<string>('component', '');
-      Handler.ComponentClass := Item.GetValue<string>('componentClass', '');
-      Handler.Event := Item.GetValue<string>('event', '');
-      Handler.Handler := Item.GetValue<string>('handler', '');
-      Handler.Container := Item.GetValue<string>('container', '');
-      Handler.Code := SameText(Item.GetValue<string>('origin', ''), 'code');
-      Handler.FileName := Item.GetValue<string>('file', '');
-      Handler.Line := Item.GetValue<Integer>('line', -1);
-      Handler.BreakLine := Item.GetValue<Integer>('bodyLine', -1);
-      if Handler.BreakLine < 0 then
+      mItem := TJSONObject(mList.Items[mIndex]);
+      mHandler := Default(TAtlasEventHandler);
+      mHandler.Form := mItem.GetValue<string>('form', '');
+      mHandler.Component := mItem.GetValue<string>('component', '');
+      mHandler.ComponentClass := mItem.GetValue<string>('componentClass', '');
+      mHandler.Event := mItem.GetValue<string>('event', '');
+      mHandler.Handler := mItem.GetValue<string>('handler', '');
+      mHandler.Container := mItem.GetValue<string>('container', '');
+      mHandler.Code := SameText(mItem.GetValue<string>('origin', ''), 'code');
+      mHandler.FileName := mItem.GetValue<string>('file', '');
+      mHandler.Line := mItem.GetValue<Integer>('line', -1);
+      mHandler.BreakLine := mItem.GetValue<Integer>('bodyLine', -1);
+      if mHandler.BreakLine < 0 then
       begin
-        Handler.BreakLine := Handler.Line;
+        mHandler.BreakLine := mHandler.Line;
       end;
-      Handler.Interval := Item.GetValue<Integer>('interval', -1);
-      if (Handler.Event <> '') and (Handler.Handler <> '') and (Handler.FileName <> '') and (Handler.Line >= 0) then
+      mHandler.Interval := mItem.GetValue<Integer>('interval', -1);
+      if (mHandler.Event <> '') and (mHandler.Handler <> '') and (mHandler.FileName <> '') and (mHandler.Line >= 0) then
       begin
-        AAnswer.Handlers := AAnswer.Handlers + [Handler];
+        AAnswer.Handlers := AAnswer.Handlers + [mHandler];
       end;
     end;
   end;
@@ -223,11 +223,11 @@ end;
 
 class function TAtlasEventBreak.CategoryOf(const AEvent: string): TAtlasEventCategory;
 begin
-  if MatchText(AEvent, MouseEvents) then
+  if MatchText(AEvent, cMouseEvents) then
   begin
     Result := TAtlasEventCategory.Mouse;
   end
-  else if MatchText(AEvent, KeyboardEvents) then
+  else if MatchText(AEvent, cKeyboardEvents) then
   begin
     Result := TAtlasEventCategory.Keyboard;
   end
@@ -235,15 +235,15 @@ begin
   begin
     Result := TAtlasEventCategory.Timer;
   end
-  else if MatchText(AEvent, WindowEvents) then
+  else if MatchText(AEvent, cWindowEvents) then
   begin
     Result := TAtlasEventCategory.Window;
   end
-  else if StartsText('Before', AEvent) or StartsText('After', AEvent) or MatchText(AEvent, DatabaseEvents) then
+  else if StartsText('Before', AEvent) or StartsText('After', AEvent) or MatchText(AEvent, cDatabaseEvents) then
   begin
     Result := TAtlasEventCategory.Database;
   end
-  else if MatchText(AEvent, ActionEvents) then
+  else if MatchText(AEvent, cActionEvents) then
   begin
     Result := TAtlasEventCategory.Actions;
   end
@@ -257,64 +257,64 @@ class function TAtlasEventBreak.IsFrequent(const AHandler: TAtlasEventHandler;
   const AExcluded: TArray<string>): Boolean;
 begin
   Result := MatchText(AHandler.Event, AExcluded) or
-    (SameText(AHandler.Event, 'OnTimer') and (AHandler.Interval >= 0) and (AHandler.Interval < FastTimerMs));
+    (SameText(AHandler.Event, 'OnTimer') and (AHandler.Interval >= 0) and (AHandler.Interval < cFastTimerMs));
 end;
 
 class function TAtlasEventBreak.Select(const AHandlers: TArray<TAtlasEventHandler>;
   const AChoice: TAtlasEventChoice; const AExcluded, AVisibleForms: TArray<string>): TArray<Integer>;
 var
-  Index: Integer;
-  Handler: TAtlasEventHandler;
+  mIndex: Integer;
+  mHandler: TAtlasEventHandler;
 begin
   Result := nil;
-  for Index := 0 to High(AHandlers) do
+  for mIndex := 0 to High(AHandlers) do
   begin
-    Handler := AHandlers[Index];
-    if not (CategoryOf(Handler.Event) in AChoice.Categories) then
+    mHandler := AHandlers[mIndex];
+    if not (CategoryOf(mHandler.Event) in AChoice.Categories) then
     begin
       Continue;
     end;
-    if not AChoice.Frequent and IsFrequent(Handler, AExcluded) then
+    if not AChoice.Frequent and IsFrequent(mHandler, AExcluded) then
     begin
       Continue;
     end;
     case AChoice.Scope of
       TAtlasEventScope.OneForm:
-        if not SameText(Handler.Form, AChoice.Form) then
+        if not SameText(mHandler.Form, AChoice.Form) then
         begin
           Continue;
         end;
       TAtlasEventScope.VisibleForms:
-        if not MatchText(Handler.Form, AVisibleForms) then
+        if not MatchText(mHandler.Form, AVisibleForms) then
         begin
           Continue;
         end;
       TAtlasEventScope.AllForms: ;
     end;
-    Result := Result + [Index];
+    Result := Result + [mIndex];
   end;
 end;
 
 class function TAtlasEventBreak.Locations(const AHandlers: TArray<TAtlasEventHandler>;
   const ASelected: TArray<Integer>): TArray<TAtlasEventLocation>;
 var
-  Index, Found: Integer;
-  Location: TAtlasEventLocation;
+  mIndex, mFound: Integer;
+  mLocation: TAtlasEventLocation;
 begin
   Result := nil;
-  for Index in ASelected do
+  for mIndex in ASelected do
   begin
-    Found := LocationAt(Result, AHandlers[Index].FileName, AHandlers[Index].BreakLine);
-    if Found < 0 then
+    mFound := LocationAt(Result, AHandlers[mIndex].FileName, AHandlers[mIndex].BreakLine);
+    if mFound < 0 then
     begin
-      Location.FileName := AHandlers[Index].FileName;
-      Location.Line := AHandlers[Index].BreakLine;
-      Location.Handlers := [Index];
-      Result := Result + [Location];
+      mLocation.FileName := AHandlers[mIndex].FileName;
+      mLocation.Line := AHandlers[mIndex].BreakLine;
+      mLocation.Handlers := [mIndex];
+      Result := Result + [mLocation];
     end
     else
     begin
-      Result[Found].Handlers := Result[Found].Handlers + [Index];
+      Result[mFound].Handlers := Result[mFound].Handlers + [mIndex];
     end;
   end;
 end;
@@ -322,13 +322,13 @@ end;
 class function TAtlasEventBreak.LocationAt(const ALocations: TArray<TAtlasEventLocation>;
   const AFileName: string; ALine: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ALocations) do
+  for mIndex := 0 to High(ALocations) do
   begin
-    if (ALocations[Index].Line = ALine) and SameText(ALocations[Index].FileName, AFileName) then
+    if (ALocations[mIndex].Line = ALine) and SameText(ALocations[mIndex].FileName, AFileName) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -337,16 +337,16 @@ end;
 /// <summary>Letzter Teil eines Ausdrucks: FTimer → FTimer, Self.FTimer → FTimer.</summary>
 function LastPart(const AText: string): string;
 var
-  Dot: Integer;
+  mDot: Integer;
 begin
-  Dot := LastDelimiter('.', AText);
-  Result := Copy(AText, Dot + 1, MaxInt);
+  mDot := LastDelimiter('.', AText);
+  Result := Copy(AText, mDot + 1, MaxInt);
 end;
 
 class function TAtlasEventBreak.Identify(const AHandlers: TArray<TAtlasEventHandler>;
   const ALocation: TAtlasEventLocation; const ASenderName: string): Integer;
 var
-  Index, Found: Integer;
+  mIndex, mFound: Integer;
 begin
   if Length(ALocation.Handlers) = 1 then
   begin
@@ -357,17 +357,17 @@ begin
   begin
     Exit;
   end;
-  Found := 0;
-  for Index in ALocation.Handlers do
+  mFound := 0;
+  for mIndex in ALocation.Handlers do
   begin
-    if SameText(LastPart(AHandlers[Index].Component), ASenderName) then
+    if SameText(LastPart(AHandlers[mIndex].Component), ASenderName) then
     begin
-      Result := Index;
-      Inc(Found);
+      Result := mIndex;
+      Inc(mFound);
     end;
   end;
   // Derselbe Name zweimal (etwa auf zwei Formularen): offen lassen.
-  if Found <> 1 then
+  if mFound <> 1 then
   begin
     Result := -1;
   end;
@@ -388,17 +388,17 @@ end;
 class function TAtlasEventBreak.Caption(const AHandlers: TArray<TAtlasEventHandler>;
   const ALocation: TAtlasEventLocation; AIdentified: Integer): string;
 var
-  Index: Integer;
-  Sources: TArray<string>;
-  Handler: TAtlasEventHandler;
+  mIndex: Integer;
+  mSources: TArray<string>;
+  mHandler: TAtlasEventHandler;
 begin
   if (AIdentified >= 0) and (AIdentified <= High(AHandlers)) then
   begin
-    Handler := AHandlers[AIdentified];
+    mHandler := AHandlers[AIdentified];
   end
   else if Length(ALocation.Handlers) > 0 then
   begin
-    Handler := AHandlers[ALocation.Handlers[0]];
+    mHandler := AHandlers[ALocation.Handlers[0]];
   end
   else
   begin
@@ -406,33 +406,33 @@ begin
   end;
   if (AIdentified >= 0) and (AIdentified <= High(AHandlers)) then
   begin
-    Result := Source(Handler);
+    Result := Source(mHandler);
   end
   else
   begin
-    Sources := nil;
-    for Index in ALocation.Handlers do
+    mSources := nil;
+    for mIndex in ALocation.Handlers do
     begin
-      if IndexText(Source(AHandlers[Index]), Sources) < 0 then
+      if IndexText(Source(AHandlers[mIndex]), mSources) < 0 then
       begin
-        Sources := Sources + [Source(AHandlers[Index])];
+        mSources := mSources + [Source(AHandlers[mIndex])];
       end;
     end;
-    Result := string.Join(' / ', Sources);
+    Result := string.Join(' / ', mSources);
   end;
-  Result := Result + ' → ' + Handler.Container + '.' + Handler.Handler;
+  Result := Result + ' → ' + mHandler.Container + '.' + mHandler.Handler;
 end;
 
 class function TAtlasEventBreak.Forms(const AHandlers: TArray<TAtlasEventHandler>): TArray<string>;
 var
-  Handler: TAtlasEventHandler;
+  mHandler: TAtlasEventHandler;
 begin
   Result := nil;
-  for Handler in AHandlers do
+  for mHandler in AHandlers do
   begin
-    if (Handler.Form <> '') and (IndexText(Handler.Form, Result) < 0) then
+    if (mHandler.Form <> '') and (IndexText(mHandler.Form, Result) < 0) then
     begin
-      Result := Result + [Handler.Form];
+      Result := Result + [mHandler.Form];
     end;
   end;
   TArray.Sort<string>(Result, TComparer<string>.Construct(

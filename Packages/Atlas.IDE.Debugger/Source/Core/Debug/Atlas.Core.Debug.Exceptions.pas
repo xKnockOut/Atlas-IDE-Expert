@@ -71,7 +71,7 @@ type
 
   TAtlasDebugExceptionHistory = class
   public const
-    MaxEntries = 1000;
+    cMaxEntries = 1000;
   private
     FItems: TAtlasDebugExceptions;
     FSession: Integer;
@@ -154,15 +154,15 @@ end;
 
 function TAtlasDebugException.Key: string;
 var
-  Where: string;
+  mWhere: string;
 begin
-  Where := FileName;
+  mWhere := FileName;
   // Ohne Datei unterscheidet die Routine die Orte (Bibliothekscode ohne Quelltext).
-  if Where = '' then
+  if mWhere = '' then
   begin
-    Where := Routine;
+    mWhere := Routine;
   end;
-  Result := LowerCase(ExceptionClass) + '|' + LowerCase(Where) + '|' + IntToStr(Line);
+  Result := LowerCase(ExceptionClass) + '|' + LowerCase(mWhere) + '|' + IntToStr(Line);
 end;
 
 function TAtlasDebugException.HasSource: Boolean;
@@ -172,32 +172,32 @@ end;
 
 class function TAtlasDebugException.FilterWords(const AText: string): TArray<string>;
 var
-  Part: string;
+  mPart: string;
 begin
   Result := nil;
-  for Part in AText.ToLower.Split([' ', #9]) do
+  for mPart in AText.ToLower.Split([' ', #9]) do
   begin
-    if Part <> '' then
+    if mPart <> '' then
     begin
-      Result := Result + [Part];
+      Result := Result + [mPart];
     end;
   end;
 end;
 
 function TAtlasDebugException.Matches(const AClass: string; const AWords: TArray<string>): Boolean;
 var
-  Haystack, Word: string;
+  mHaystack, mWord: string;
 begin
   Result := (AClass = '') or SameText(ExceptionClass, AClass);
   if not Result or (AWords = nil) then
   begin
     Exit;
   end;
-  Haystack := (ExceptionClass + ' ' + Message + ' ' + LocationText + ' ' + Routine + ' ' + ThreadName + ' ' +
+  mHaystack := (ExceptionClass + ' ' + Message + ' ' + LocationText + ' ' + Routine + ' ' + ThreadName + ' ' +
     IntToStr(ThreadId)).ToLower;
-  for Word in AWords do
+  for mWord in AWords do
   begin
-    if Pos(Word, Haystack) = 0 then
+    if Pos(mWord, mHaystack) = 0 then
     begin
       Exit(False);
     end;
@@ -238,47 +238,47 @@ end;
 
 function TAtlasDebugException.CopyText: string;
 var
-  Lines: TStringBuilder;
-  Frame: TAtlasDebugFrame;
+  mLines: TStringBuilder;
+  mFrame: TAtlasDebugFrame;
 begin
-  Lines := TStringBuilder.Create;
+  mLines := TStringBuilder.Create;
   try
-    Lines.Append(ExceptionClass);
+    mLines.Append(ExceptionClass);
     if Message <> '' then
     begin
-      Lines.Append(': ').Append(Message);
+      mLines.Append(': ').Append(Message);
     end;
-    Lines.AppendLine;
+    mLines.AppendLine;
     if Routine <> '' then
     begin
-      Lines.Append(Routine).AppendLine;
+      mLines.Append(Routine).AppendLine;
     end;
     if FileName <> '' then
     begin
-      Lines.Append(FileName);
+      mLines.Append(FileName);
       if Line > 0 then
       begin
-        Lines.Append('(').Append(Line).Append(')');
+        mLines.Append('(').Append(Line).Append(')');
       end;
-      Lines.AppendLine;
+      mLines.AppendLine;
     end;
-    Lines.Append('Thread ').Append(ThreadText('')).AppendLine;
+    mLines.Append('Thread ').Append(ThreadText('')).AppendLine;
     if Count > 1 then
     begin
-      Lines.Append(Count).Append(' x').AppendLine;
+      mLines.Append(Count).Append(' x').AppendLine;
     end;
-    for Frame in Frames do
+    for mFrame in Frames do
     begin
-      Lines.Append('  ').Append(Frame.Header);
-      if Frame.HasSource then
+      mLines.Append('  ').Append(mFrame.Header);
+      if mFrame.HasSource then
       begin
-        Lines.Append(' (').Append(ExtractFileName(Frame.FileName)).Append(':').Append(Frame.Line).Append(')');
+        mLines.Append(' (').Append(ExtractFileName(mFrame.FileName)).Append(':').Append(mFrame.Line).Append(')');
       end;
-      Lines.AppendLine;
+      mLines.AppendLine;
     end;
-    Result := Lines.ToString.TrimRight;
+    Result := mLines.ToString.TrimRight;
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 
@@ -286,7 +286,7 @@ end;
 
 constructor TAtlasDebugExceptionHistory.Create;
 begin
-  Create(MaxEntries);
+  Create(cMaxEntries);
 end;
 
 constructor TAtlasDebugExceptionHistory.Create(AMaxEntries: Integer);
@@ -326,13 +326,13 @@ end;
 
 function TAtlasDebugExceptionHistory.IndexOfKey(const AKey: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FItems) do
+  for mIndex := 0 to High(FItems) do
   begin
-    if FItems[Index].Key = AKey then
+    if FItems[mIndex].Key = AKey then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -340,69 +340,69 @@ end;
 
 function TAtlasDebugExceptionHistory.OldestIndex: Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
-  for Index := 1 to High(FItems) do
+  for mIndex := 1 to High(FItems) do
   begin
-    if FItems[Index].LastTime < FItems[Result].LastTime then
+    if FItems[mIndex].LastTime < FItems[Result].LastTime then
     begin
-      Result := Index;
+      Result := mIndex;
     end;
   end;
 end;
 
 function TAtlasDebugExceptionHistory.Add(const AException: TAtlasDebugException): Integer;
 var
-  Entry: TAtlasDebugException;
+  mEntry: TAtlasDebugException;
 begin
   FChanged := True;
   Result := IndexOfKey(AException.Key);
   if Result >= 0 then
   begin
-    Entry := FItems[Result];
-    Inc(Entry.Count, Max(1, AException.Count));
-    Entry.LastTime := AException.LastTime;
-    Entry.Message := AException.Message;
-    Entry.ThreadId := AException.ThreadId;
-    Entry.ThreadName := AException.ThreadName;
-    Entry.Frames := AException.Frames;
+    mEntry := FItems[Result];
+    Inc(mEntry.Count, Max(1, AException.Count));
+    mEntry.LastTime := AException.LastTime;
+    mEntry.Message := AException.Message;
+    mEntry.ThreadId := AException.ThreadId;
+    mEntry.ThreadName := AException.ThreadName;
+    mEntry.Frames := AException.Frames;
     // Ein Halt mit Dialog zählt als „nicht ignoriert“.
-    Entry.Ignored := Entry.Ignored and AException.Ignored;
-    FItems[Result] := Entry;
+    mEntry.Ignored := mEntry.Ignored and AException.Ignored;
+    FItems[Result] := mEntry;
     Exit;
   end;
-  Entry := AException;
-  if Entry.Count < 1 then
+  mEntry := AException;
+  if mEntry.Count < 1 then
   begin
-    Entry.Count := 1;
+    mEntry.Count := 1;
   end;
   if Length(FItems) >= FMaxEntries then
   begin
     Delete(FItems, OldestIndex, 1);
   end;
-  FItems := FItems + [Entry];
+  FItems := FItems + [mEntry];
   Result := High(FItems);
 end;
 
 function TAtlasDebugExceptionHistory.Filter(const AClass, AText: string): TArray<Integer>;
 var
-  Words: TArray<string>;
-  Index: Integer;
-  List: TList<Integer>;
+  mWords: TArray<string>;
+  mIndex: Integer;
+  mList: TList<Integer>;
 begin
-  Words := TAtlasDebugException.FilterWords(AText);
-  List := TList<Integer>.Create;
+  mWords := TAtlasDebugException.FilterWords(AText);
+  mList := TList<Integer>.Create;
   try
-    for Index := 0 to High(FItems) do
+    for mIndex := 0 to High(FItems) do
     begin
-      if FItems[Index].Matches(AClass, Words) then
+      if FItems[mIndex].Matches(AClass, mWords) then
       begin
-        List.Add(Index);
+        mList.Add(mIndex);
       end;
     end;
     // Zuletzt gesehen zuerst; bei gleicher Zeit der spätere Eintrag zuerst (TList.Sort ist nicht stabil).
-    List.Sort(TComparer<Integer>.Construct(
+    mList.Sort(TComparer<Integer>.Construct(
       function(const ALeft, ARight: Integer): Integer
       begin
         if FItems[ALeft].LastTime > FItems[ARight].LastTime then
@@ -418,38 +418,38 @@ begin
           Result := ARight - ALeft;
         end;
       end));
-    Result := List.ToArray;
+    Result := mList.ToArray;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 function TAtlasDebugExceptionHistory.Classes: TArray<string>;
 var
-  Entry: TAtlasDebugException;
-  Known: TList<string>;
-  Name: string;
-  Found: Boolean;
+  mEntry: TAtlasDebugException;
+  mKnown: TList<string>;
+  mName: string;
+  mFound: Boolean;
 begin
-  Known := TList<string>.Create;
+  mKnown := TList<string>.Create;
   try
-    for Entry in FItems do
+    for mEntry in FItems do
     begin
-      Found := False;
-      for Name in Known do
+      mFound := False;
+      for mName in mKnown do
       begin
-        if SameText(Name, Entry.ExceptionClass) then
+        if SameText(mName, mEntry.ExceptionClass) then
         begin
-          Found := True;
+          mFound := True;
           Break;
         end;
       end;
-      if not Found then
+      if not mFound then
       begin
-        Known.Add(Entry.ExceptionClass);
+        mKnown.Add(mEntry.ExceptionClass);
       end;
     end;
-    Known.Sort(TComparer<string>.Construct(
+    mKnown.Sort(TComparer<string>.Construct(
       function(const ALeft, ARight: string): Integer
       begin
         Result := CompareText(ALeft, ARight);
@@ -458,32 +458,32 @@ begin
           Result := CompareStr(ALeft, ARight);
         end;
       end));
-    Result := Known.ToArray;
+    Result := mKnown.ToArray;
   finally
-    Known.Free;
+    mKnown.Free;
   end;
 end;
 
 function TAtlasDebugExceptionHistory.Total: Integer;
 var
-  Entry: TAtlasDebugException;
+  mEntry: TAtlasDebugException;
 begin
   Result := 0;
-  for Entry in FItems do
+  for mEntry in FItems do
   begin
-    Inc(Result, Entry.Count);
+    Inc(Result, mEntry.Count);
   end;
 end;
 
 function TAtlasDebugExceptionHistory.TryFind(const AKey: string; out AException: TAtlasDebugException): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := IndexOfKey(AKey);
-  Result := Index >= 0;
+  mIndex := IndexOfKey(AKey);
+  Result := mIndex >= 0;
   if Result then
   begin
-    AException := FItems[Index];
+    AException := FItems[mIndex];
   end
   else
   begin
@@ -501,7 +501,7 @@ end;
 
 class function TAtlasDebugExceptionText.IsClassName(const AText: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AText <> '';
   if not Result then
@@ -512,9 +512,9 @@ begin
   begin
     Exit(False);
   end;
-  for Index := 2 to Length(AText) do
+  for mIndex := 2 to Length(AText) do
   begin
-    if not CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) then
+    if not CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) then
     begin
       Exit(False);
     end;
@@ -523,75 +523,75 @@ end;
 
 function TokenAfter(const AText, AKeyword: string; out AToken: string): Boolean;
 var
-  Start, Stop: Integer;
+  mStart, mStop: Integer;
 begin
   AToken := '';
-  Start := Pos(LowerCase(AKeyword), LowerCase(AText));
-  Result := Start > 0;
+  mStart := Pos(LowerCase(AKeyword), LowerCase(AText));
+  Result := mStart > 0;
   if not Result then
   begin
     Exit;
   end;
-  Start := Start + Length(AKeyword);
-  while (Start <= Length(AText)) and (AText[Start] = ' ') do
+  mStart := mStart + Length(AKeyword);
+  while (mStart <= Length(AText)) and (AText[mStart] = ' ') do
   begin
-    Inc(Start);
+    Inc(mStart);
   end;
-  Stop := Start;
-  while (Stop <= Length(AText)) and CharInSet(AText[Stop], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '$']) do
+  mStop := mStart;
+  while (mStop <= Length(AText)) and CharInSet(AText[mStop], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '$']) do
   begin
-    Inc(Stop);
+    Inc(mStop);
   end;
   // Ein Punkt am Ende gehört zum Satz.
-  while (Stop > Start) and (AText[Stop - 1] = '.') do
+  while (mStop > mStart) and (AText[mStop - 1] = '.') do
   begin
-    Dec(Stop);
+    Dec(mStop);
   end;
-  AToken := Copy(AText, Start, Stop - Start);
+  AToken := Copy(AText, mStart, mStop - mStart);
   Result := AToken <> '';
 end;
 
 function QuotedAfter(const AText, AKeyword: string; out AQuoted: string): Boolean;
 var
-  Start, Stop: Integer;
+  mStart, mStop: Integer;
 begin
   AQuoted := '';
-  Start := Pos(LowerCase(AKeyword), LowerCase(AText));
-  Result := Start > 0;
+  mStart := Pos(LowerCase(AKeyword), LowerCase(AText));
+  Result := mStart > 0;
   if not Result then
   begin
     Exit;
   end;
-  Start := PosEx('''', AText, Start + Length(AKeyword));
-  if Start = 0 then
+  mStart := PosEx('''', AText, mStart + Length(AKeyword));
+  if mStart = 0 then
   begin
     Exit(False);
   end;
   // Die Meldung selbst darf Hochkommas enthalten; sie endet am letzten Hochkomma des Texts.
-  Stop := LastDelimiter('''', AText);
-  if Stop <= Start then
+  mStop := LastDelimiter('''', AText);
+  if mStop <= mStart then
   begin
     Exit(False);
   end;
-  AQuoted := Copy(AText, Start + 1, Stop - Start - 1);
+  AQuoted := Copy(AText, mStart + 1, mStop - mStart - 1);
 end;
 
 class function TAtlasDebugExceptionText.Parse(const AText: string; out AClass, AMessage: string): Boolean;
 const
   // Englisch und deutsch; „class“ zuletzt, weil es auch in anderen Wörtern steckt.
-  ClassKeywords: array[0..3] of string = ('exception class', 'der Klasse', 'Exception-Klasse', 'class');
-  MessageKeywords: array[0..2] of string = ('with message', 'mit der Meldung', 'Meldung');
+  cClassKeywords: array[0..3] of string = ('exception class', 'der Klasse', 'Exception-Klasse', 'class');
+  cMessageKeywords: array[0..2] of string = ('with message', 'mit der Meldung', 'Meldung');
 var
-  Keyword: string;
-  Text: string;
+  mKeyword: string;
+  mText: string;
 begin
   AClass := '';
   AMessage := '';
-  Text := StringReplace(AText, sLineBreak, ' ', [rfReplaceAll]);
-  Text := StringReplace(Text, #10, ' ', [rfReplaceAll]);
-  for Keyword in ClassKeywords do
+  mText := StringReplace(AText, sLineBreak, ' ', [rfReplaceAll]);
+  mText := StringReplace(mText, #10, ' ', [rfReplaceAll]);
+  for mKeyword in cClassKeywords do
   begin
-    if TokenAfter(Text, Keyword + ' ', AClass) then
+    if TokenAfter(mText, mKeyword + ' ', AClass) then
     begin
       if IsClassName(AClass) or (Copy(AClass, 1, 1) = '$') then
       begin
@@ -608,9 +608,9 @@ begin
   begin
     Exit;
   end;
-  for Keyword in MessageKeywords do
+  for mKeyword in cMessageKeywords do
   begin
-    if QuotedAfter(Text, Keyword, AMessage) then
+    if QuotedAfter(mText, mKeyword, AMessage) then
     begin
       Break;
     end;
@@ -619,16 +619,16 @@ end;
 
 class function TAtlasDebugExceptionText.Unquote(const AText: string): string;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Trim(AText);
-  if (Length(Text) >= 2) and (Text[1] = '''') and (Text[Length(Text)] = '''') then
+  mText := Trim(AText);
+  if (Length(mText) >= 2) and (mText[1] = '''') and (mText[Length(mText)] = '''') then
   begin
-    Result := StringReplace(Copy(Text, 2, Length(Text) - 2), '''''', '''', [rfReplaceAll]);
+    Result := StringReplace(Copy(mText, 2, Length(mText) - 2), '''''', '''', [rfReplaceAll]);
   end
   else
   begin
-    Result := Text;
+    Result := mText;
   end;
 end;
 
