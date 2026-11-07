@@ -134,12 +134,12 @@ begin
   Assert.AreEqual(Ord(TAtlasMinimapRender.Characters), Ord(Options.Render));
   Assert.AreEqual(Ord(TAtlasMinimapSide.Right), Ord(Options.Side));
   Assert.AreEqual(Ord(TAtlasMinimapSlider.Always), Ord(Options.Slider));
-  Assert.AreEqual(TAtlasMinimap.MinWidth, Options.Width);
-  Assert.AreEqual(TAtlasMinimap.MaxScale, Options.Scale);
-  Assert.AreEqual(TAtlasMinimap.MaxColumnLimit, Options.MaxColumn);
-  Assert.AreEqual(TAtlasMinimap.MaxWidth, TAtlasMinimap.ClampWidth(1000));
-  Assert.AreEqual(TAtlasMinimap.MinScale, TAtlasMinimap.ClampScale(0));
-  Assert.AreEqual(TAtlasMinimap.MinColumn, TAtlasMinimap.ClampColumn(1));
+  Assert.AreEqual(TAtlasMinimap.cMinWidth, Options.Width);
+  Assert.AreEqual(TAtlasMinimap.cMaxScale, Options.Scale);
+  Assert.AreEqual(TAtlasMinimap.cMaxColumnLimit, Options.MaxColumn);
+  Assert.AreEqual(TAtlasMinimap.cMaxWidth, TAtlasMinimap.ClampWidth(1000));
+  Assert.AreEqual(TAtlasMinimap.cMinScale, TAtlasMinimap.ClampScale(0));
+  Assert.AreEqual(TAtlasMinimap.cMinColumn, TAtlasMinimap.ClampColumn(1));
 end;
 
 procedure TAtlasMinimapTests.LinesAndRowsWithFolds;

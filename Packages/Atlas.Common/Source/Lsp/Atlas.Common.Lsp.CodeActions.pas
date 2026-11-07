@@ -23,7 +23,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Rules.CodeActions,
-  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Configuration.Contract,
@@ -59,10 +58,10 @@ type
 
   TLspCodeActions = class
   public const
-    Method = 'textDocument/codeAction';
+    cMethod = 'textDocument/codeAction';
     /// <summary>So lange wartet die Glühbirne auf einen laufenden Lauf der Prüfregeln am selben Text (#1761).
     /// </summary>
-    RuleWaitMs = 1500;
+    cRuleWaitMs = 1500;
   private
     FStore: IDocumentStore;
     FRuleProvider: TRuleContextProvider;
@@ -135,7 +134,6 @@ uses
   Atlas.Common.Editing.MemberOrder,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Dfm.Parser,
-  Atlas.Common.Index.Contract,
   Atlas.Common.Editing.AssignmentSwap,
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.FreeFields,
@@ -167,47 +165,47 @@ end;
 
 procedure TLspCodeActions.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method, HandleCodeAction);
+  ADispatcher.RegisterConcurrentRequest(cMethod, HandleCodeAction);
 end;
 
 class function TLspCodeActions.Capability: TJSONObject;
 var
-  Kinds: TJSONArray;
+  mKinds: TJSONArray;
 begin
-  Kinds := TJSONArray.Create;
-  Kinds.Add(QuickFixKind);
-  Kinds.Add(RewriteKind);
-  Kinds.Add(ExtractKind);
-  Kinds.Add(OrganizeImportsKind);
-  Kinds.Add(FixAllKind);
-  Kinds.Add(RemoveUnusedKind);
+  mKinds := TJSONArray.Create;
+  mKinds.Add(cQuickFixKind);
+  mKinds.Add(cRewriteKind);
+  mKinds.Add(cExtractKind);
+  mKinds.Add(cOrganizeImportsKind);
+  mKinds.Add(cFixAllKind);
+  mKinds.Add(cRemoveUnusedKind);
   Result := TJSONObject.Create;
-  Result.AddPair('codeActionKinds', Kinds);
+  Result.AddPair('codeActionKinds', mKinds);
 end;
 
 function EditsToJson(const AEdits: TArray<TTextEdit>): TJSONArray;
 var
-  Edit: TTextEdit;
-  Item: TJSONObject;
+  mEdit: TTextEdit;
+  mItem: TJSONObject;
 begin
   Result := TJSONArray.Create;
-  for Edit in AEdits do
+  for mEdit in AEdits do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-    Item.AddPair('newText', Edit.NewText);
-    Result.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mItem.AddPair('newText', mEdit.NewText);
+    Result.AddElement(mItem);
   end;
 end;
 
 class function TLspCodeActions.WorkspaceEditJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
 var
-  Changes: TJSONObject;
+  mChanges: TJSONObject;
 begin
-  Changes := TJSONObject.Create;
-  Changes.AddPair(AUri, EditsToJson(AEdits));
+  mChanges := TJSONObject.Create;
+  mChanges.AddPair(AUri, EditsToJson(AEdits));
   Result := TJSONObject.Create;
-  Result.AddPair('changes', Changes);
+  Result.AddPair('changes', mChanges);
 end;
 
 function CommandJson(const AAction: TCodeAction): TJSONObject;
@@ -248,7 +246,7 @@ begin
   mDiagnostic := TJSONObject.Create;
   mDiagnostic.AddPair('range', TLspPositions.RangeToJson(AAction.DiagnosticRange));
   mDiagnostic.AddPair('code', AAction.RuleId);
-  mDiagnostic.AddPair('source', TLspSyntaxDiagnostics.Source);
+  mDiagnostic.AddPair('source', TLspSyntaxDiagnostics.cSource);
   mDiagnostic.AddPair('message', '');
   Result := TJSONArray.Create;
   Result.AddElement(mDiagnostic);
@@ -305,21 +303,12 @@ end;
 
 /// <summary>Schreibzugriff über den Index prüfen (#313); ohne Index nil.</summary>
 function ReadOnlyCheck(AHasRules: Boolean; const ARules: TRuleCheckContext; const AUri, AText: string): TReadOnlyCheck;
-var
-  Index: ISymbolIndex;
-  FileName: string;
 begin
-  if not AHasRules or (ARules.Services.Index = nil) then
+  if not AHasRules then
   begin
     Exit(nil);
   end;
-  Index := ARules.Services.Index;
-  FileName := TDocumentUris.ToPath(AUri);
-  Result :=
-    function(const AExpression: string): Boolean
-    begin
-      Result := TAssignmentSwap.ReadOnlyByIndex(Index, FileName, AText, AExpression);
-    end;
+  Result := TAssignmentSwap.ReadOnlyCheckOf(ARules.Services.Index, TDocumentUris.ToPath(AUri), AText);
 end;
 
 type
@@ -386,12 +375,12 @@ end;
 
 procedure TCodeActionBuilder.ReadWanted(const AOnly: TArray<string>);
 begin
-  FWantsEditing := TCodeActions.KindRequested(QuickFixKind, AOnly) or TCodeActions.KindRequested(RewriteKind, AOnly)
-    or TCodeActions.KindRequested(ExtractKind, AOnly);
+  FWantsEditing := TCodeActions.KindRequested(cQuickFixKind, AOnly) or TCodeActions.KindRequested(cRewriteKind, AOnly)
+    or TCodeActions.KindRequested(cExtractKind, AOnly);
   // source.* nur auf ausdrückliche Anfrage, nicht bei jeder Cursorbewegung.
-  FWantsOrganize := (AOnly <> nil) and TCodeActions.KindRequested(OrganizeImportsKind, AOnly);
-  FWantsFixAll := (AOnly <> nil) and TCodeActions.KindRequested(FixAllKind, AOnly);
-  FWantsRemoveUnused := (AOnly <> nil) and TCodeActions.KindRequested(RemoveUnusedKind, AOnly);
+  FWantsOrganize := (AOnly <> nil) and TCodeActions.KindRequested(cOrganizeImportsKind, AOnly);
+  FWantsFixAll := (AOnly <> nil) and TCodeActions.KindRequested(cFixAllKind, AOnly);
+  FWantsRemoveUnused := (AOnly <> nil) and TCodeActions.KindRequested(cRemoveUnusedKind, AOnly);
 end;
 
 /// <summary>Warten auf einen fremden Lauf endet nach RuleWaitMs oder mit dem Signal von ACancellation.</summary>
@@ -403,7 +392,7 @@ begin
   Result :=
     function: Boolean
     begin
-      Result := (mClock.ElapsedMilliseconds >= TLspCodeActions.RuleWaitMs) or
+      Result := (mClock.ElapsedMilliseconds >= TLspCodeActions.cRuleWaitMs) or
         ((ACancellation <> nil) and ACancellation.IsCancellationRequested);
     end;
 end;
@@ -442,6 +431,10 @@ end;
 procedure TCodeActionBuilder.CollectFindings;
 begin
   FHasRules := Assigned(FOwner.FRuleProvider) and FOwner.FRuleProvider(FUri, FRules);
+  if not FHasRules then
+  begin
+    FRules := Default(TRuleCheckContext);
+  end;
   // Syntaxfehler mit der Korrektur des Parsers (#1022), auch ohne Prüfregeln; Schweregrad und Abschalten wie
   // in den Diagnosen. Die Regeltreffer im selben Regelkontext wie in den Diagnosen (#1112).
   if FHasRules then
@@ -558,16 +551,9 @@ begin
 end;
 
 procedure TCodeActionBuilder.AddFreeFieldActions(const ARefactoring: TRefactoringSettings);
-var
-  mFieldIndex: ISymbolIndex;
 begin
-  mFieldIndex := nil;
-  if FHasRules then
-  begin
-    mFieldIndex := FRules.Services.Index;
-  end;
-  // Die Aktion am Feld bringt die Regel mit, wenn sie läuft.
-  Add(TFreeFields.Actions(FTree, FText, mFieldIndex, FRange.StartPos.Line,
+  // Die Aktion am Feld bringt die Regel mit, wenn sie läuft. Ohne Prüfregeln ist FRules leer, also ohne Index.
+  Add(TFreeFields.Actions(FTree, FText, FRules.Services.Index, FRange.StartPos.Line,
     TFreeFields.StyleOf(ARefactoring.FreeFieldsStyle), not RuleOffersFreeField));
 end;
 
@@ -583,8 +569,8 @@ begin
     begin
       mAction := Default(TCodeAction);
       mAction.Title := cTexts[TLspCodeActionsText.CopyFindingAsPrompt].Fmt([mFinding.RuleId]);
-      mAction.Kind := QuickFixKind;
-      mAction.Command := CopyTextCommand;
+      mAction.Kind := cQuickFixKind;
+      mAction.Command := cCopyTextCommand;
       mAction.CommandArguments := [TFindingPrompt.Markdown(mFinding, TDocumentUris.ToPath(FUri), FText,
         TFindingPrompt.SharedCatalog)];
       Add(mAction);
@@ -636,7 +622,7 @@ begin
   begin
     mAction := Default(TCodeAction);
     mAction.Title := cTexts[TLspCodeActionsText.SortClassMembers].Text;
-    mAction.Kind := RewriteKind;
+    mAction.Kind := cRewriteKind;
     mAction.Edits := [mEdit];
     Add(mAction);
   end;
@@ -790,8 +776,8 @@ begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', mRangeValue)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TLspCodeActionsText.FieldsTextDocumentUriAndRange].Text + Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TLspCodeActionsText.FieldsTextDocumentUriAndRange].Text + cMethod);
   end;
   if not FStore.TryGet(mUri, mDocument) then
   begin

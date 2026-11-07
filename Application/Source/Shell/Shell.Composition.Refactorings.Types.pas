@@ -58,11 +58,11 @@ const
 
 procedure TShellTypeRefactorings.Register(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspTypeAlias.ApplyCommand, TypeAlias);
-  ACommands.Register(TLspTypeAlias.InlineApplyCommand, InlineTypeAlias);
-  ACommands.Register(TLspEnumTables.ApplyCommand, EnumTable);
-  ACommands.Register(TLspEnumTables.SyncApplyCommand, EnumTablesSync);
-  ACommands.Register(TLspOverloads.ApplyCommand, CreateOverload);
+  ACommands.Register(TLspTypeAlias.cApplyCommand, TypeAlias);
+  ACommands.Register(TLspTypeAlias.cInlineApplyCommand, InlineTypeAlias);
+  ACommands.Register(TLspEnumTables.cApplyCommand, EnumTable);
+  ACommands.Register(TLspEnumTables.cSyncApplyCommand, EnumTablesSync);
+  ACommands.Register(TLspOverloads.cApplyCommand, CreateOverload);
 end;
 
 function TShellTypeRefactorings.Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;

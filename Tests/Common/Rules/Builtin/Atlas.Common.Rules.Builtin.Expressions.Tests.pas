@@ -124,7 +124,7 @@ begin
   Findings := TRuleAssert.Findings(TOperatorPrecedenceRule.Create,
     Body('  if not Zustand in [zsOffen, zsGesperrt] then'#10'    Bearbeiten;'#10));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(OperatorPrecedenceRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cOperatorPrecedenceRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
   Assert.AreEqual('„not“ gilt nur für Zustand, nicht für den in-Ausdruck. ' +
@@ -209,7 +209,7 @@ begin
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = OperatorPrecedenceRuleId then
+    if Rule.Descriptor.Id = cOperatorPrecedenceRuleId then
     begin
       Found := True;
     end;
@@ -658,7 +658,7 @@ var
 begin
   Findings := VersionFindings(Werte('  Wert := if Fertig then 1 else 2;'#10), '23.0', '');
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(ConditionalExpressionVersionRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cConditionalExpressionVersionRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
   Assert.AreEqual('Bedingungsausdrücke gibt es erst ab Delphi 13 Florence (eingestellt: Delphi 12 Athens)',
     Findings[0].Message);

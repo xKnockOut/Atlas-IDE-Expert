@@ -77,9 +77,9 @@ uses
   Atlas.UI.Strings;
 
 const
-  Gap = 8;
-  DialogWidth = 640;
-  DialogHeight = 520;
+  cGap = 8;
+  cDialogWidth = 640;
+  cDialogHeight = 520;
 
 /// <summary>Panel ohne Rahmen in AParent, an AAlign ausgerichtet; ASize ist Höhe bzw. Breite (schon skaliert).
 /// </summary>
@@ -106,7 +106,7 @@ begin
   Result.Parent := AForm;
   Result.Align := alBottom;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(Gap, ATopMargin, Gap, Gap div 2);
+  Result.Margins.SetBounds(cGap, ATopMargin, cGap, cGap div 2);
   Result.WordWrap := True;
   Result.ShowAccelChar := False;
 end;
@@ -119,7 +119,7 @@ begin
   Result.Caption := ACaption;
   Result.OnClick := AClick;
   Result.Width := ADialog.ScaleValue(100);
-  Result.Top := ADialog.ScaleValue(Gap);
+  Result.Top := ADialog.ScaleValue(cGap);
   Result.Height := ADialog.ScaleValue(28);
   Result.Anchors := [akTop, akRight];
 end;
@@ -134,11 +134,11 @@ begin
   mCaption := TLabel.Create(ADialog);
   mCaption.Parent := AParent;
   mCaption.Caption := ACaption;
-  mCaption.SetBounds(ADialog.ScaleValue(Gap), ATop + ADialog.ScaleValue(3), ADialog.ScaleValue(190),
+  mCaption.SetBounds(ADialog.ScaleValue(cGap), ATop + ADialog.ScaleValue(3), ADialog.ScaleValue(190),
     ADialog.ScaleValue(20));
   mCaption.FocusControl := AControl;
   AControl.Parent := AParent;
-  AControl.SetBounds(ADialog.ScaleValue(200), ATop, ADialog.ScaleValue(DialogWidth - 200 - Gap),
+  AControl.SetBounds(ADialog.ScaleValue(200), ATop, ADialog.ScaleValue(cDialogWidth - 200 - cGap),
     ADialog.ScaleValue(23));
   AControl.Anchors := [akLeft, akTop, akRight];
   Result := ATop + ADialog.ScaleValue(28);
@@ -186,8 +186,8 @@ begin
   Position := poMainFormCenter;
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  ClientWidth := ScaleValue(DialogWidth);
-  ClientHeight := ScaleValue(DialogHeight);
+  ClientWidth := ScaleValue(cDialogWidth);
+  ClientHeight := ScaleValue(cDialogHeight);
   // Reihenfolge zählt: Was zuerst unten ausgerichtet wird, steht zuunterst.
   CreateBottom;
   CreateOptions;
@@ -197,7 +197,7 @@ begin
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(Gap, Gap, 0, 0);
+  FList.Margins.SetBounds(cGap, cGap, 0, 0);
   FList.ViewStyle := vsReport;
   FList.ReadOnly := True;
   FList.RowSelect := True;
@@ -218,15 +218,15 @@ begin
   FCancel := AddButton(Self, mBottom, TAtlasStrings.Text(TAtlasTextId.SigCancel), nil);
   FCancel.Cancel := True;
   FCancel.ModalResult := mrCancel;
-  FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(Gap);
+  FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
   FOk := AddButton(Self, mBottom, TAtlasStrings.Text(TAtlasTextId.SigPreviewButton), OkClick);
   FOk.Default := True;
-  FOk.Left := FCancel.Left - FOk.Width - ScaleValue(Gap);
+  FOk.Left := FCancel.Left - FOk.Width - ScaleValue(cGap);
   FNotes := AddNoteLabel(Self, 0);
   FNotes.Caption := NotesOf(FModel);
   FError := AddNoteLabel(Self, 0);
   FError.Font.Color := clRed;
-  FPreview := AddNoteLabel(Self, Gap div 2);
+  FPreview := AddNoteLabel(Self, cGap div 2);
   FPreview.Font.Name := 'Consolas';
 end;
 
@@ -237,17 +237,17 @@ begin
   mOptions := AddPanel(Self, alBottom, ScaleValue(72));
   FOverload := TRadioButton.Create(Self);
   FOverload.Parent := mOptions;
-  FOverload.SetBounds(ScaleValue(Gap), ScaleValue(4), ScaleValue(DialogWidth - 2 * Gap), ScaleValue(20));
+  FOverload.SetBounds(ScaleValue(cGap), ScaleValue(4), ScaleValue(cDialogWidth - 2 * cGap), ScaleValue(20));
   FOverload.Caption := TAtlasStrings.Text(TAtlasTextId.SigModeOverload);
   FOverload.OnClick := ModeClick;
   FCallers := TRadioButton.Create(Self);
   FCallers.Parent := mOptions;
-  FCallers.SetBounds(ScaleValue(Gap), ScaleValue(26), ScaleValue(DialogWidth - 2 * Gap), ScaleValue(20));
+  FCallers.SetBounds(ScaleValue(cGap), ScaleValue(26), ScaleValue(cDialogWidth - 2 * cGap), ScaleValue(20));
   FCallers.Caption := TAtlasStrings.Text(TAtlasTextId.SigModeCallers);
   FCallers.OnClick := ModeClick;
   FVirtual := TCheckBox.Create(Self);
   FVirtual.Parent := mOptions;
-  FVirtual.SetBounds(ScaleValue(Gap + 16), ScaleValue(48), ScaleValue(DialogWidth - 2 * Gap - 16), ScaleValue(20));
+  FVirtual.SetBounds(ScaleValue(cGap + 16), ScaleValue(48), ScaleValue(cDialogWidth - 2 * cGap - 16), ScaleValue(20));
   FVirtual.Caption := TAtlasStrings.Text(TAtlasTextId.SigVirtual);
   FVirtual.Checked := FModel.VirtualOverload;
   FVirtual.OnClick := ModeClick;
@@ -292,14 +292,14 @@ begin
   FRemove := AddButton(Self, mRight, TAtlasStrings.Text(TAtlasTextId.SigRemove), RemoveClick);
   FUp := AddButton(Self, mRight, TAtlasStrings.Text(TAtlasTextId.SigUp), UpClick);
   FDown := AddButton(Self, mRight, TAtlasStrings.Text(TAtlasTextId.SigDown), DownClick);
-  FAdd.Top := ScaleValue(Gap);
+  FAdd.Top := ScaleValue(cGap);
   FRemove.Top := FAdd.Top + FAdd.Height + ScaleValue(4);
-  FUp.Top := FRemove.Top + FRemove.Height + ScaleValue(Gap * 2);
+  FUp.Top := FRemove.Top + FRemove.Height + ScaleValue(cGap * 2);
   FDown.Top := FUp.Top + FUp.Height + ScaleValue(4);
   for mIndex := 0 to mRight.ControlCount - 1 do
   begin
-    mRight.Controls[mIndex].Left := ScaleValue(Gap);
-    mRight.Controls[mIndex].Width := mRight.Width - ScaleValue(2 * Gap);
+    mRight.Controls[mIndex].Left := ScaleValue(cGap);
+    mRight.Controls[mIndex].Width := mRight.Width - ScaleValue(2 * cGap);
     mRight.Controls[mIndex].Anchors := [akLeft, akTop];
   end;
 end;
@@ -333,33 +333,33 @@ end;
 
 procedure TAtlasChangeSignatureDialog.FillList(ASelect: Integer);
 var
-  Index: Integer;
-  Item: TListItem;
-  Row: TAtlasSignatureRow;
+  mIndex: Integer;
+  mItem: TListItem;
+  mRow: TAtlasSignatureRow;
 begin
   FUpdating := True;
   try
     FList.Items.BeginUpdate;
     try
       FList.Items.Clear;
-      for Index := 0 to FModel.Count - 1 do
+      for mIndex := 0 to FModel.Count - 1 do
       begin
-        Row := FModel[Index];
-        Item := FList.Items.Add;
-        Item.Caption := Row.Name;
-        Item.SubItems.Add(Row.TypeName);
-        Item.SubItems.Add(Row.Modifier);
-        if Row.IsNew then
+        mRow := FModel[mIndex];
+        mItem := FList.Items.Add;
+        mItem.Caption := mRow.Name;
+        mItem.SubItems.Add(mRow.TypeName);
+        mItem.SubItems.Add(mRow.Modifier);
+        if mRow.IsNew then
         begin
-          Item.SubItems.Add(Row.Value);
+          mItem.SubItems.Add(mRow.Value);
         end
-        else if Row.DefaultValue <> '' then
+        else if mRow.DefaultValue <> '' then
         begin
-          Item.SubItems.Add('= ' + Row.DefaultValue);
+          mItem.SubItems.Add('= ' + mRow.DefaultValue);
         end
         else
         begin
-          Item.SubItems.Add('');
+          mItem.SubItems.Add('');
         end;
       end;
     finally
@@ -378,25 +378,25 @@ end;
 
 procedure TAtlasChangeSignatureDialog.ShowRow;
 var
-  Index: Integer;
-  Row: TAtlasSignatureRow;
-  HasRow: Boolean;
+  mIndex: Integer;
+  mRow: TAtlasSignatureRow;
+  mHasRow: Boolean;
 begin
-  Index := Selected;
-  HasRow := Index >= 0;
-  Row := Default(TAtlasSignatureRow);
+  mIndex := Selected;
+  mHasRow := mIndex >= 0;
+  mRow := Default(TAtlasSignatureRow);
   FUpdating := True;
   try
-    if HasRow then
+    if mHasRow then
     begin
-      Row := FModel[Index];
-      FName.Text := Row.Name;
-      FType.Text := Row.TypeName;
-      FModifier.ItemIndex := FModifier.Items.IndexOf(Row.Modifier);
-      FValue.Text := Row.Value;
-      if not Row.IsNew then
+      mRow := FModel[mIndex];
+      FName.Text := mRow.Name;
+      FType.Text := mRow.TypeName;
+      FModifier.ItemIndex := FModifier.Items.IndexOf(mRow.Modifier);
+      FValue.Text := mRow.Value;
+      if not mRow.IsNew then
       begin
-        FValue.Text := Row.DefaultValue;
+        FValue.Text := mRow.DefaultValue;
       end;
     end
     else
@@ -407,13 +407,13 @@ begin
       FValue.Text := '';
     end;
     // Vorhandene Parameter behalten Typ und Modifizierer; nur neue bekommen einen Wert für die Aufrufer.
-    FName.Enabled := HasRow;
-    FType.Enabled := HasRow and Row.IsNew;
-    FModifier.Enabled := HasRow and Row.IsNew;
-    FValue.Enabled := HasRow and Row.IsNew;
-    FRemove.Enabled := HasRow;
-    FUp.Enabled := HasRow and (Index > 0);
-    FDown.Enabled := HasRow and (Index < FModel.Count - 1);
+    FName.Enabled := mHasRow;
+    FType.Enabled := mHasRow and mRow.IsNew;
+    FModifier.Enabled := mHasRow and mRow.IsNew;
+    FValue.Enabled := mHasRow and mRow.IsNew;
+    FRemove.Enabled := mHasRow;
+    FUp.Enabled := mHasRow and (mIndex > 0);
+    FDown.Enabled := mHasRow and (mIndex < FModel.Count - 1);
   finally
     FUpdating := False;
   end;
@@ -442,38 +442,38 @@ end;
 
 procedure TAtlasChangeSignatureDialog.Refresh;
 var
-  Problem: TAtlasSignatureProblem;
-  Subject: string;
+  mProblem: TAtlasSignatureProblem;
+  mSubject: string;
 begin
   FVirtual.Enabled := FOverload.Checked and FOverload.Enabled;
   FPreview.Caption := FModel.Preview;
-  Problem := FModel.Validate(Subject);
-  FError.Caption := ProblemText(Problem, Subject);
-  FOk.Enabled := (Problem = TAtlasSignatureProblem.None) and FModel.Changed;
+  mProblem := FModel.Validate(mSubject);
+  FError.Caption := ProblemText(mProblem, mSubject);
+  FOk.Enabled := (mProblem = TAtlasSignatureProblem.None) and FModel.Changed;
 end;
 
 procedure TAtlasChangeSignatureDialog.AddClick(Sender: TObject);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := FModel.Add(Selected, TAtlasStrings.Text(TAtlasTextId.SigNewName) + IntToStr(FModel.Count + 1), 'Integer',
+  mIndex := FModel.Add(Selected, TAtlasStrings.Text(TAtlasTextId.SigNewName) + IntToStr(FModel.Count + 1), 'Integer',
     '', '0');
-  FillList(Index);
+  FillList(mIndex);
   FName.SetFocus;
   FName.SelectAll;
 end;
 
 procedure TAtlasChangeSignatureDialog.RemoveClick(Sender: TObject);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := Selected;
-  FModel.Remove(Index);
-  if Index >= FModel.Count then
+  mIndex := Selected;
+  FModel.Remove(mIndex);
+  if mIndex >= FModel.Count then
   begin
-    Index := FModel.Count - 1;
+    mIndex := FModel.Count - 1;
   end;
-  FillList(Index);
+  FillList(mIndex);
 end;
 
 procedure TAtlasChangeSignatureDialog.UpClick(Sender: TObject);
@@ -494,30 +494,30 @@ end;
 
 procedure TAtlasChangeSignatureDialog.FieldChange(Sender: TObject);
 var
-  Index: Integer;
-  Item: TListItem;
-  Row: TAtlasSignatureRow;
+  mIndex: Integer;
+  mItem: TListItem;
+  mRow: TAtlasSignatureRow;
 begin
   if FUpdating then
   begin
     Exit;
   end;
-  Index := Selected;
-  if Index < 0 then
+  mIndex := Selected;
+  if mIndex < 0 then
   begin
     Exit;
   end;
-  FModel.Rename(Index, FName.Text);
-  FModel.Change(Index, FType.Text, FModifier.Text, FValue.Text);
+  FModel.Rename(mIndex, FName.Text);
+  FModel.Change(mIndex, FType.Text, FModifier.Text, FValue.Text);
   // Nur die Zeile auffrischen, damit der Fokus im Feld bleibt.
-  Row := FModel[Index];
-  Item := FList.Items[Index];
-  Item.Caption := Row.Name;
-  Item.SubItems[0] := Row.TypeName;
-  Item.SubItems[1] := Row.Modifier;
-  if Row.IsNew then
+  mRow := FModel[mIndex];
+  mItem := FList.Items[mIndex];
+  mItem.Caption := mRow.Name;
+  mItem.SubItems[0] := mRow.TypeName;
+  mItem.SubItems[1] := mRow.Modifier;
+  if mRow.IsNew then
   begin
-    Item.SubItems[2] := Row.Value;
+    mItem.SubItems[2] := mRow.Value;
   end;
   Refresh;
 end;
@@ -547,13 +547,13 @@ end;
 
 class function TAtlasChangeSignatureDialog.Execute(AModel: TAtlasSignatureModel): Boolean;
 var
-  Dialog: TAtlasChangeSignatureDialog;
+  mDialog: TAtlasChangeSignatureDialog;
 begin
-  Dialog := TAtlasChangeSignatureDialog.CreateDialog(nil, AModel);
+  mDialog := TAtlasChangeSignatureDialog.CreateDialog(nil, AModel);
   try
-    Result := Dialog.ShowModal = mrOk;
+    Result := mDialog.ShowModal = mrOk;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 

@@ -40,9 +40,9 @@ type
   TAtlasDebugOwnCode = record
   public const
     /// <summary>So oft setzt Atlas nach einem Hineinspringen höchstens „Bis zur Rückkehr“ fort.</summary>
-    MaxReturns = 16;
+    cMaxReturns = 16;
     /// <summary>Ab so vielen Bibliotheksrahmen in Folge fasst die Anzeige zusammen.</summary>
-    GroupFrom = 2;
+    cGroupFrom = 2;
   public
     Folders: TArray<string>;
     class function Create(const AFolders: TArray<string>): TAtlasDebugOwnCode; static;
@@ -92,11 +92,11 @@ end;
 
 function Contains(const AList: TArray<Integer>; AValue: Integer): Boolean;
 var
-  Item: Integer;
+  mItem: Integer;
 begin
-  for Item in AList do
+  for mItem in AList do
   begin
-    if Item = AValue then
+    if mItem = AValue then
     begin
       Exit(True);
     end;
@@ -116,32 +116,32 @@ end;
 
 class function TAtlasDebugOwnCode.Create(const AFolders: TArray<string>): TAtlasDebugOwnCode;
 var
-  Folder: string;
+  mFolder: string;
 begin
   Result.Folders := nil;
-  for Folder in AFolders do
+  for mFolder in AFolders do
   begin
-    Result.AddFolder(Folder);
+    Result.AddFolder(mFolder);
   end;
 end;
 
 procedure TAtlasDebugOwnCode.AddFolder(const AFolder: string);
 var
-  Folder, Known: string;
+  mFolder, mKnown: string;
 begin
-  Folder := NormalFolder(AFolder);
-  if Folder = '' then
+  mFolder := NormalFolder(AFolder);
+  if mFolder = '' then
   begin
     Exit;
   end;
-  for Known in Folders do
+  for mKnown in Folders do
   begin
-    if SameText(Known, Folder) then
+    if SameText(mKnown, mFolder) then
     begin
       Exit;
     end;
   end;
-  Folders := Folders + [Folder];
+  Folders := Folders + [mFolder];
 end;
 
 class function TAtlasDebugOwnCode.ParseFolders(const AText: string): TArray<string>;
@@ -156,17 +156,17 @@ end;
 
 function TAtlasDebugOwnCode.IsOwnFile(const APath: string): Boolean;
 var
-  Path, Folder: string;
+  mPath, mFolder: string;
 begin
-  Path := NormalPath(APath);
-  if Path = '' then
+  mPath := NormalPath(APath);
+  if mPath = '' then
   begin
     Exit(False);
   end;
-  for Folder in Folders do
+  for mFolder in Folders do
   begin
     // Nur ganze Ordner: „C:\Projekt“ umfasst nicht „C:\Projekt2\A.pas“.
-    if SameText(Copy(Path, 1, Length(Folder) + 1), Folder + '\') then
+    if SameText(Copy(mPath, 1, Length(mFolder) + 1), mFolder + '\') then
     begin
       Exit(True);
     end;
@@ -176,13 +176,13 @@ end;
 
 class function TAtlasDebugOwnCode.FirstOwn(const AFrames: TAtlasDebugFrames): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(AFrames) do
+  for mIndex := 0 to High(AFrames) do
   begin
-    if AFrames[Index].Own and AFrames[Index].HasSource then
+    if AFrames[mIndex].Own and AFrames[mIndex].HasSource then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -221,41 +221,41 @@ class function TAtlasDebugOwnCode.ShouldReturn(AJustMyCode, AStepping: Boolean; 
 begin
   // Ohne Rahmen (Stapel nicht lesbar) nichts tun: lieber die CPU-Ansicht als ein Lauf ins Ungewisse.
   Result := AJustMyCode and AStepping and (AFrames <> nil) and not AFrames[0].HasSource and
-    (AReturns < MaxReturns);
+    (AReturns < cMaxReturns);
 end;
 
 class function TAtlasDebugOwnCode.Rows(const AFrames: TAtlasDebugFrames; AJustMyCode: Boolean;
   const AExpanded: TArray<Integer>): TAtlasDebugStackRows;
 var
-  Index, Stop, Inner: Integer;
+  mIndex, mStop, mInner: Integer;
 begin
   Result := nil;
-  Index := 0;
-  while Index <= High(AFrames) do
+  mIndex := 0;
+  while mIndex <= High(AFrames) do
   begin
-    if not AJustMyCode or AFrames[Index].Own then
+    if not AJustMyCode or AFrames[mIndex].Own then
     begin
-      Result := Result + [Row(TAtlasDebugStackRowKind.Frame, Index, 1, False)];
-      Inc(Index);
+      Result := Result + [Row(TAtlasDebugStackRowKind.Frame, mIndex, 1, False)];
+      Inc(mIndex);
       Continue;
     end;
-    Stop := Index;
-    while (Stop <= High(AFrames)) and not AFrames[Stop].Own do
+    mStop := mIndex;
+    while (mStop <= High(AFrames)) and not AFrames[mStop].Own do
     begin
-      Inc(Stop);
+      Inc(mStop);
     end;
-    if (Stop - Index >= GroupFrom) and not Contains(AExpanded, Index) then
+    if (mStop - mIndex >= cGroupFrom) and not Contains(AExpanded, mIndex) then
     begin
-      Result := Result + [Row(TAtlasDebugStackRowKind.LibraryGroup, Index, Stop - Index, True)];
+      Result := Result + [Row(TAtlasDebugStackRowKind.LibraryGroup, mIndex, mStop - mIndex, True)];
     end
     else
     begin
-      for Inner := Index to Stop - 1 do
+      for mInner := mIndex to mStop - 1 do
       begin
-        Result := Result + [Row(TAtlasDebugStackRowKind.Frame, Inner, 1, True)];
+        Result := Result + [Row(TAtlasDebugStackRowKind.Frame, mInner, 1, True)];
       end;
     end;
-    Index := Stop;
+    mIndex := mStop;
   end;
 end;
 

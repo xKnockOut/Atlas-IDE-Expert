@@ -23,7 +23,7 @@ type
   end;
 
 const
-  HandleLeakRuleId = 'handle-leak';
+  cHandleLeakRuleId = 'handle-leak';
 
 implementation
 
@@ -89,22 +89,22 @@ end;
 /// <summary>Bedingung (erster Ausdruck) und then-Zweig (erste Anweisung) einer if-Anweisung.</summary>
 procedure SplitIf(AIf: TSyntaxNode; out ACondition, AThen: TSyntaxNode);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   ACondition := nil;
   AThen := nil;
-  for Index := 0 to AIf.ChildCount - 1 do
+  for mIndex := 0 to AIf.ChildCount - 1 do
   begin
-    if not (AIf[Index].Kind in FlowStatementKinds) then
+    if not (AIf[mIndex].Kind in cFlowStatementKinds) then
     begin
       if ACondition = nil then
       begin
-        ACondition := AIf[Index];
+        ACondition := AIf[mIndex];
       end;
     end
     else if AThen = nil then
     begin
-      AThen := AIf[Index];
+      AThen := AIf[mIndex];
     end;
   end;
 end;
@@ -120,31 +120,31 @@ end;
 /// eine Zuweisung, die AFrom umschließt, zählt mit.</summary>
 function AssignmentsTo(ABody: TSyntaxNode; const AName: string; AFrom, ATo: Integer): TArray<TSyntaxNode>;
 var
-  Found: TArray<TSyntaxNode>;
-  Body: TSyntaxNode;
-  Name: string;
-  From, Till: Integer;
+  mFound: TArray<TSyntaxNode>;
+  mBody: TSyntaxNode;
+  mName: string;
+  mFrom, mTill: Integer;
 begin
-  Found := nil;
-  Body := ABody;
-  Name := AName;
-  From := AFrom;
-  Till := ATo;
+  mFound := nil;
+  mBody := ABody;
+  mName := AName;
+  mFrom := AFrom;
+  mTill := ATo;
   // Iterativ (Bericht M1).
   ABody.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
       Result := TSyntaxSearchStep.Descend;
-      if (ANode <> Body) and IsRoutineBody(ANode) then
+      if (ANode <> mBody) and IsRoutineBody(ANode) then
       begin
         Result := TSyntaxSearchStep.Skip;
       end
-      else if IsAssignTo(ANode, Name) and (ANode.EndOffset > From) and (ANode.EndOffset < Till) then
+      else if IsAssignTo(ANode, mName) and (ANode.EndOffset > mFrom) and (ANode.EndOffset < mTill) then
       begin
-        Found := Found + [ANode];
+        mFound := mFound + [ANode];
       end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 /// <summary>Merker als Bedingung (#1519): Result := H &lt;&gt; INVALID_HANDLE_VALUE; if Result then …. Die
@@ -155,41 +155,41 @@ end;
 function FlagSuccess(ABody, AIf, ACondition: TSyntaxNode; const AHandle: TOpenedHandle;
   AOpenCall: TSyntaxNode): Integer;
 var
-  Node: TSyntaxNode;
-  Sign: Integer;
-  Assignments: TArray<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mSign: Integer;
+  mAssignments: TArray<TSyntaxNode>;
 begin
   Result := 0;
-  Sign := 1;
-  Node := ACondition;
-  while (Node.ChildCount = 1) and ((Node.Kind = TSyntaxKind.ParenExpr) or
-    ((Node.Kind = TSyntaxKind.UnaryExpr) and SameText(Node.Name, 'not'))) do
+  mSign := 1;
+  mNode := ACondition;
+  while (mNode.ChildCount = 1) and ((mNode.Kind = TSyntaxKind.ParenExpr) or
+    ((mNode.Kind = TSyntaxKind.UnaryExpr) and SameText(mNode.Name, 'not'))) do
   begin
-    if Node.Kind = TSyntaxKind.UnaryExpr then
+    if mNode.Kind = TSyntaxKind.UnaryExpr then
     begin
-      Sign := -Sign;
+      mSign := -mSign;
     end;
-    Node := Node[0];
+    mNode := mNode[0];
   end;
-  if (ABody = nil) or (Node.Kind <> TSyntaxKind.Identifier) then
+  if (ABody = nil) or (mNode.Kind <> TSyntaxKind.Identifier) then
   begin
     Exit;
   end;
-  Assignments := AssignmentsTo(ABody, Node.Name, AOpenCall.StartOffset, AIf.StartOffset);
-  if Length(Assignments) = 1 then
+  mAssignments := AssignmentsTo(ABody, mNode.Name, AOpenCall.StartOffset, AIf.StartOffset);
+  if Length(mAssignments) = 1 then
   begin
-    Result := Sign * OpenSuccess(Assignments[0][1], AHandle, AOpenCall);
+    Result := mSign * OpenSuccess(mAssignments[0][1], AHandle, AOpenCall);
   end;
 end;
 
 /// <summary>Variablen und Inline-Variablen der Routine (ohne Parameter und eingebettete Routinen).</summary>
 function DeclaredLocals(ARoutine: TSyntaxNode): TArray<string>;
 var
-  Names: TArray<string>;
-  Routine: TSyntaxNode;
+  mNames: TArray<string>;
+  mRoutine: TSyntaxNode;
 begin
-  Names := nil;
-  Routine := ARoutine;
+  mNames := nil;
+  mRoutine := ARoutine;
   // Iterativ (Bericht M1).
   ARoutine.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
@@ -197,7 +197,7 @@ begin
       Name: string;
     begin
       Result := TSyntaxSearchStep.Descend;
-      if (ANode <> Routine) and IsRoutineBody(ANode) then
+      if (ANode <> mRoutine) and IsRoutineBody(ANode) then
       begin
         Result := TSyntaxSearchStep.Skip;
       end
@@ -205,46 +205,46 @@ begin
       begin
         for Name in ANode.Name.Split([',']) do
         begin
-          Names := Names + [Trim(Name)];
+          mNames := mNames + [Trim(Name)];
         end;
       end;
     end);
-  Result := Names;
+  Result := mNames;
 end;
 
 /// <summary>Pfade der Handles, mit und verbunden.</summary>
 function HandleNames(const AHandles: TArray<TOpenedHandle>): string;
 var
-  Handle: TOpenedHandle;
+  mHandle: TOpenedHandle;
 begin
   Result := '';
-  for Handle in AHandles do
+  for mHandle in AHandles do
   begin
     if Result <> '' then
     begin
       Result := Result + cTexts[TFlowHandleLeakText.AndWord].Text;
     end;
-    Result := Result + Handle.Path;
+    Result := Result + mHandle.Path;
   end;
 end;
 
 function LeakMessage(const ALeaked: TArray<TOpenedHandle>; ANever: Boolean): string;
 var
-  Verb: string;
+  mVerb: string;
 begin
-  Verb := cTexts[TFlowHandleLeakText.VerbOne].Text;
+  mVerb := cTexts[TFlowHandleLeakText.VerbOne].Text;
   if Length(ALeaked) > 1 then
   begin
-    Verb := cTexts[TFlowHandleLeakText.VerbMany].Text;
+    mVerb := cTexts[TFlowHandleLeakText.VerbMany].Text;
   end;
   if ANever then
   begin
-    Result := cTexts[TFlowHandleLeakText.NeverClosed].Fmt([HandleNames(ALeaked), Verb,
+    Result := cTexts[TFlowHandleLeakText.NeverClosed].Fmt([HandleNames(ALeaked), mVerb,
       ALeaked[0].CloseName]);
   end
   else
   begin
-    Result := cTexts[TFlowHandleLeakText.NotAlwaysClosed].Fmt([HandleNames(ALeaked), Verb,
+    Result := cTexts[TFlowHandleLeakText.NotAlwaysClosed].Fmt([HandleNames(ALeaked), mVerb,
       ALeaked[0].CloseName]);
   end;
 end;
@@ -304,14 +304,14 @@ end;
 
 function THandleCheck.PairOf(const AName: string; out APair: THandlePair): Boolean;
 var
-  Pair: THandlePair;
+  mPair: THandlePair;
 begin
   Result := False;
-  for Pair in FTable do
+  for mPair in FTable do
   begin
-    if not Result and SameRoutine(AName, Pair.Open) then
+    if not Result and SameRoutine(AName, mPair.Open) then
     begin
-      APair := Pair;
+      APair := mPair;
       Result := True;
     end;
   end;
@@ -336,64 +336,64 @@ end;
 procedure THandleCheck.AddArgumentHandles(const APair: THandlePair; ACall: TSyntaxNode; AIndex: Integer;
   const AFields: TArray<string>; var AHandles: TArray<TOpenedHandle>);
 var
-  Arg, Field: string;
+  mArg, mField: string;
 begin
   if (AIndex < 1) or (AIndex >= ACall.ChildCount) then
   begin
     Exit;
   end;
-  Arg := HandlePath(ACall[AIndex]);
-  if (Arg = '') or (Pos('.', Arg) > 0) or not MatchText(Arg, FLocals) then
+  mArg := HandlePath(ACall[AIndex]);
+  if (mArg = '') or (Pos('.', mArg) > 0) or not MatchText(mArg, FLocals) then
   begin
     Exit;
   end;
   if AFields = nil then
   begin
-    AHandles := AHandles + [NewHandle(APair, ACall, Arg, Arg)];
+    AHandles := AHandles + [NewHandle(APair, ACall, mArg, mArg)];
   end;
-  for Field in AFields do
+  for mField in AFields do
   begin
-    AHandles := AHandles + [NewHandle(APair, ACall, Arg, Arg + '.' + Field)];
+    AHandles := AHandles + [NewHandle(APair, ACall, mArg, mArg + '.' + mField)];
   end;
 end;
 
 /// <summary>Handles in out-Argumenten: Ort wie '4', '0,1' oder '9:hProcess,hThread'.</summary>
 function THandleCheck.ArgumentHandles(const APair: THandlePair; ACall: TSyntaxNode): TArray<TOpenedHandle>;
 var
-  Where, Part: string;
-  Fields: TArray<string>;
+  mWhere, mPart: string;
+  mFields: TArray<string>;
 begin
   Result := nil;
-  Fields := nil;
-  Where := APair.Where;
-  if Pos(':', Where) > 0 then
+  mFields := nil;
+  mWhere := APair.Where;
+  if Pos(':', mWhere) > 0 then
   begin
-    Fields := Copy(Where, Pos(':', Where) + 1, MaxInt).Split([',']);
-    Where := Copy(Where, 1, Pos(':', Where) - 1);
+    mFields := Copy(mWhere, Pos(':', mWhere) + 1, MaxInt).Split([',']);
+    mWhere := Copy(mWhere, 1, Pos(':', mWhere) - 1);
   end;
-  for Part in Where.Split([',']) do
+  for mPart in mWhere.Split([',']) do
   begin
-    AddArgumentHandles(APair, ACall, StrToIntDef(Part, -1) + 1, Fields, Result);
+    AddArgumentHandles(APair, ACall, StrToIntDef(mPart, -1) + 1, mFields, Result);
   end;
 end;
 
 /// <summary>Handles, die ACall öffnet; ATarget ist das Ziel einer Zuweisung ('' ohne).</summary>
 function THandleCheck.Opened(ACall: TSyntaxNode; const ATarget: string; out AHandles: TArray<TOpenedHandle>): Boolean;
 var
-  Pair: THandlePair;
+  mPair: THandlePair;
 begin
   AHandles := nil;
-  if not PairOf(CallName(FContext.Text, ACall), Pair) then
+  if not PairOf(CallName(FContext.Text, ACall), mPair) then
   begin
     Exit(False);
   end;
-  if Pair.Where <> 'r' then
+  if mPair.Where <> 'r' then
   begin
-    AHandles := ArgumentHandles(Pair, ACall);
+    AHandles := ArgumentHandles(mPair, ACall);
   end
   else if (ATarget <> '') and MatchText(ATarget, FLocals) then
   begin
-    AHandles := AHandles + [NewHandle(Pair, ACall, ATarget, ATarget)];
+    AHandles := AHandles + [NewHandle(mPair, ACall, ATarget, ATarget)];
   end;
   Result := AHandles <> nil;
 end;
@@ -403,7 +403,7 @@ end;
 function THandleCheck.IfVerdict(ANode: TFlowNode; const AHandle: TOpenedHandle; AOpenCall: TSyntaxNode;
   out AThen: TSyntaxNode): Integer;
 var
-  Condition: TSyntaxNode;
+  mCondition: TSyntaxNode;
 begin
   Result := 0;
   AThen := nil;
@@ -411,14 +411,14 @@ begin
   begin
     Exit;
   end;
-  SplitIf(ANode.Syntax, Condition, AThen);
-  if Condition <> nil then
+  SplitIf(ANode.Syntax, mCondition, AThen);
+  if mCondition <> nil then
   begin
-    Result := OpenSuccess(Condition, AHandle, AOpenCall);
+    Result := OpenSuccess(mCondition, AHandle, AOpenCall);
   end;
-  if (Result = 0) and (Condition <> nil) then
+  if (Result = 0) and (mCondition <> nil) then
   begin
-    Result := FlagSuccess(FRoutine.FindChild(TSyntaxKind.Block), ANode.Syntax, Condition, AHandle, AOpenCall);
+    Result := FlagSuccess(FRoutine.FindChild(TSyntaxKind.Block), ANode.Syntax, mCondition, AHandle, AOpenCall);
   end;
 end;
 
@@ -427,23 +427,23 @@ end;
 function THandleCheck.Followed(ANode: TFlowNode; const AHandle: TOpenedHandle;
   AOpenCall: TSyntaxNode): TArray<TFlowNode>;
 var
-  Next: TFlowNode;
-  ThenPart: TSyntaxNode;
-  Verdict: Integer;
-  Follows: Boolean;
+  mNext: TFlowNode;
+  mThenPart: TSyntaxNode;
+  mVerdict: Integer;
+  mFollows: Boolean;
 begin
   Result := nil;
-  Verdict := IfVerdict(ANode, AHandle, AOpenCall, ThenPart);
-  for Next in ANode.Successors do
+  mVerdict := IfVerdict(ANode, AHandle, AOpenCall, mThenPart);
+  for mNext in ANode.Successors do
   begin
-    Follows := not ANode.IsImplicitRaiseEdge(Next) and (Next <> FGraph.RaiseExit);
-    if Follows and (Verdict <> 0) then
+    mFollows := not ANode.IsImplicitRaiseEdge(mNext) and (mNext <> FGraph.RaiseExit);
+    if mFollows and (mVerdict <> 0) then
     begin
-      Follows := InRange(Next.Syntax, ThenPart) = (Verdict > 0);
+      mFollows := InRange(mNext.Syntax, mThenPart) = (mVerdict > 0);
     end;
-    if Follows then
+    if mFollows then
     begin
-      Result := Result + [Next];
+      Result := Result + [mNext];
     end;
   end;
 end;
@@ -452,45 +452,45 @@ end;
 /// verfolgt)?</summary>
 function THandleCheck.StopsHandle(ANode: TFlowNode; const AHandle: TOpenedHandle; AOpenCall: TSyntaxNode): Boolean;
 var
-  Part, Syntax: TSyntaxNode;
+  mPart, mSyntax: TSyntaxNode;
 begin
   Result := False;
-  for Part in NodeParts(ANode) do
+  for mPart in NodeParts(ANode) do
   begin
-    Result := Result or ClosesHandle(FContext.Text, Part, AHandle) or
-      PassesOn(FContext.Text, Part, AHandle, AOpenCall, FLocals);
+    Result := Result or ClosesHandle(FContext.Text, mPart, AHandle) or
+      PassesOn(FContext.Text, mPart, AHandle, AOpenCall, FLocals);
   end;
-  Syntax := ANode.Syntax;
-  Result := Result or ((Syntax <> nil) and (Syntax.Kind = TSyntaxKind.AssignStatement) and
-    (Syntax.ChildCount = 2) and SameText(HandlePath(Syntax[0]), AHandle.Path));
+  mSyntax := ANode.Syntax;
+  Result := Result or ((mSyntax <> nil) and (mSyntax.Kind = TSyntaxKind.AssignStatement) and
+    (mSyntax.ChildCount = 2) and SameText(HandlePath(mSyntax[0]), AHandle.Path));
 end;
 
 /// <summary>Erreicht ein Weg vom Öffnen das normale Ende, ohne das Handle zu schließen oder weiterzugeben?
 /// </summary>
 function THandleCheck.LeaksFrom(AOpen: TFlowNode; const AHandle: TOpenedHandle; AOpenCall: TSyntaxNode): Boolean;
 var
-  Visited: TArray<Boolean>;
-  Queue: TArray<TFlowNode>;
-  Head: Integer;
-  Current: TFlowNode;
+  mVisited: TArray<Boolean>;
+  mQueue: TArray<TFlowNode>;
+  mHead: Integer;
+  mCurrent: TFlowNode;
 begin
   Result := False;
-  SetLength(Visited, FGraph.Nodes.Count);
-  Queue := Followed(AOpen, AHandle, AOpenCall);
-  Head := 0;
-  while not Result and (Head < Length(Queue)) do
+  SetLength(mVisited, FGraph.Nodes.Count);
+  mQueue := Followed(AOpen, AHandle, AOpenCall);
+  mHead := 0;
+  while not Result and (mHead < Length(mQueue)) do
   begin
-    Current := Queue[Head];
-    Inc(Head);
-    if Visited[Current.Index] or (Current = AOpen) then
+    mCurrent := mQueue[mHead];
+    Inc(mHead);
+    if mVisited[mCurrent.Index] or (mCurrent = AOpen) then
     begin
       Continue;
     end;
-    Visited[Current.Index] := True;
-    Result := Current = FGraph.ExitNode;
-    if not Result and not StopsHandle(Current, AHandle, AOpenCall) then
+    mVisited[mCurrent.Index] := True;
+    Result := mCurrent = FGraph.ExitNode;
+    if not Result and not StopsHandle(mCurrent, AHandle, AOpenCall) then
     begin
-      Queue := Queue + Followed(Current, AHandle, AOpenCall);
+      mQueue := mQueue + Followed(mCurrent, AHandle, AOpenCall);
     end;
   end;
 end;
@@ -498,39 +498,39 @@ end;
 /// <summary>Schließt die Routine das Handle irgendwo (im Rumpf, ohne eingebettete Routinen)?</summary>
 function THandleCheck.ClosedAnywhere(const AHandle: TOpenedHandle): Boolean;
 var
-  Body: TSyntaxNode;
+  mBody: TSyntaxNode;
 begin
-  Body := FRoutine.FindChild(TSyntaxKind.Block);
-  Result := (Body <> nil) and ClosesHandle(FContext.Text, Body, AHandle);
+  mBody := FRoutine.FindChild(TSyntaxKind.Block);
+  Result := (mBody <> nil) and ClosesHandle(FContext.Text, mBody, AHandle);
 end;
 
 function THandleCheck.PositionAt(AOffset: Integer): TTextPosition;
 var
-  Index, Line, LineStart: Integer;
+  mIndex, mLine, mLineStart: Integer;
 begin
-  Line := 0;
-  LineStart := 0;
-  for Index := 1 to AOffset do
+  mLine := 0;
+  mLineStart := 0;
+  for mIndex := 1 to AOffset do
   begin
-    if FContext.Text[Index] = #10 then
+    if FContext.Text[mIndex] = #10 then
     begin
-      Inc(Line);
-      LineStart := Index;
+      Inc(mLine);
+      mLineStart := mIndex;
     end;
   end;
-  Result := TTextPosition.Create(Line, AOffset - LineStart);
+  Result := TTextPosition.Create(mLine, AOffset - mLineStart);
 end;
 
 /// <summary>Schließen in umgekehrter Reihenfolge: zuletzt geöffnet, zuerst geschlossen (PI.hThread vor
 /// PI.hProcess).</summary>
 function THandleCheck.ClosingLines(const AHandles: TArray<TOpenedHandle>; const AOuter: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := High(AHandles) downto 0 do
+  for mIndex := High(AHandles) downto 0 do
   begin
-    Result := Result + AOuter + '  ' + AHandles[Index].CloseText + ';' + FLineBreak;
+    Result := Result + AOuter + '  ' + AHandles[mIndex].CloseText + ';' + FLineBreak;
   end;
 end;
 
@@ -538,33 +538,33 @@ end;
 function THandleCheck.AppendFix(AStatement: TSyntaxNode; const AHandles: TArray<TOpenedHandle>;
   const AOuter: string): TArray<TRuleFix>;
 var
-  Index: Integer;
-  Body: string;
+  mIndex: Integer;
+  mBody: string;
 begin
-  Body := '';
-  for Index := High(AHandles) downto 0 do
+  mBody := '';
+  for mIndex := High(AHandles) downto 0 do
   begin
-    Body := Body + ';' + FLineBreak + AOuter + AHandles[Index].CloseText;
+    mBody := mBody + ';' + FLineBreak + AOuter + AHandles[mIndex].CloseText;
   end;
   Result := [TRuleFix.Create(cTexts[TFlowHandleLeakText.Add].Fmt([AHandles[0].CloseName]),
-    [TRuleEdit.Create(TTextRange.Create(AStatement.EndPos, AStatement.EndPos), Body)])];
+    [TRuleEdit.Create(TTextRange.Create(AStatement.EndPos, AStatement.EndPos), mBody)])];
 end;
 
 /// <summary>Zeilen ab ALineStart bis zum Ende von ALast, zwei Stellen weiter eingerückt.</summary>
 function THandleCheck.IndentedBody(ALineStart: Integer; ALast: TSyntaxNode): string;
 var
-  Line: string;
+  mLine: string;
 begin
   Result := '';
-  for Line in Copy(FContext.Text, ALineStart + 1, ALast.EndOffset - ALineStart).Replace(#13#10, #10).Split([#10]) do
+  for mLine in Copy(FContext.Text, ALineStart + 1, ALast.EndOffset - ALineStart).Replace(#13#10, #10).Split([#10]) do
   begin
-    if Trim(Line) = '' then
+    if Trim(mLine) = '' then
     begin
       Result := Result + FLineBreak;
     end
     else
     begin
-      Result := Result + '  ' + Line + FLineBreak;
+      Result := Result + '  ' + mLine + FLineBreak;
     end;
   end;
   // Die letzte Anweisung endet vor ihrem Semikolon; das alte Semikolon steht danach hinter end.
@@ -578,47 +578,47 @@ end;
 /// </summary>
 function THandleCheck.WrapFix(AStatement: TSyntaxNode; const AHandles: TArray<TOpenedHandle>): TArray<TRuleFix>;
 var
-  Block, First, Last: TSyntaxNode;
-  Position, LineStart: Integer;
-  Outer, Inner: string;
+  mBlock, mFirst, mLast: TSyntaxNode;
+  mPosition, mLineStart: Integer;
+  mOuter, mInner: string;
 begin
   Result := nil;
-  Block := AStatement.Parent;
-  if (Block = nil) or (Block.Kind <> TSyntaxKind.Block) then
+  mBlock := AStatement.Parent;
+  if (mBlock = nil) or (mBlock.Kind <> TSyntaxKind.Block) then
   begin
     Exit;
   end;
-  Position := PositionIn(Block, AStatement);
-  if (Position < 0) or not LineIndent(FContext.Text, AStatement, Outer) then
+  mPosition := PositionIn(mBlock, AStatement);
+  if (mPosition < 0) or not LineIndent(FContext.Text, AStatement, mOuter) then
   begin
     Exit;
   end;
-  if Position = Block.ChildCount - 1 then
+  if mPosition = mBlock.ChildCount - 1 then
   begin
-    Result := AppendFix(AStatement, AHandles, Outer);
+    Result := AppendFix(AStatement, AHandles, mOuter);
     Exit;
   end;
-  First := Block[Position + 1];
-  Last := Block[Block.ChildCount - 1];
-  if (First.Kind = TSyntaxKind.EmptyStatement) or not LineIndent(FContext.Text, First, Inner) then
+  mFirst := mBlock[mPosition + 1];
+  mLast := mBlock[mBlock.ChildCount - 1];
+  if (mFirst.Kind = TSyntaxKind.EmptyStatement) or not LineIndent(FContext.Text, mFirst, mInner) then
   begin
     Exit;
   end;
-  LineStart := First.StartOffset - Length(Inner);
+  mLineStart := mFirst.StartOffset - Length(mInner);
   Result := [TRuleFix.Create(cTexts[TFlowHandleLeakText.WrapTry].Fmt([AHandles[0].CloseName]),
-    [TRuleEdit.Create(TTextRange.Create(PositionAt(LineStart), Last.EndPos),
-    Outer + 'try' + FLineBreak + IndentedBody(LineStart, Last) + Outer + 'finally' + FLineBreak +
-    ClosingLines(AHandles, Outer) + Outer + 'end')])];
+    [TRuleEdit.Create(TTextRange.Create(PositionAt(mLineStart), mLast.EndPos),
+    mOuter + 'try' + FLineBreak + IndentedBody(mLineStart, mLast) + mOuter + 'finally' + FLineBreak +
+    ClosingLines(AHandles, mOuter) + mOuter + 'end')])];
 end;
 
 /// <summary>Aufrufe unter ARoot, die Handles öffnen; ihr Ziel ist zunächst ''.</summary>
 procedure THandleCheck.CollectOpens(ARoot: TSyntaxNode; var ACalls: TArray<TSyntaxNode>;
   var ATargets: TArray<string>);
 var
-  Calls: TArray<TSyntaxNode>;
-  Call: TSyntaxNode;
+  mCalls: TArray<TSyntaxNode>;
+  mCall: TSyntaxNode;
 begin
-  Calls := nil;
+  mCalls := nil;
   // Iterativ (Bericht M1).
   ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
@@ -632,12 +632,12 @@ begin
       end
       else if (ANode.Kind = TSyntaxKind.Call) and PairOf(CallName(FContext.Text, ANode), Pair) then
       begin
-        Calls := Calls + [ANode];
+        mCalls := mCalls + [ANode];
       end;
     end);
-  for Call in Calls do
+  for mCall in mCalls do
   begin
-    ACalls := ACalls + [Call];
+    ACalls := ACalls + [mCall];
     ATargets := ATargets + [''];
   end;
 end;
@@ -646,20 +646,20 @@ end;
 procedure THandleCheck.NoteTargets(APart: TSyntaxNode; AFirst: Integer; const ACalls: TArray<TSyntaxNode>;
   var ATargets: TArray<string>);
 var
-  Index: Integer;
-  IsAssign: Boolean;
+  mIndex: Integer;
+  mIsAssign: Boolean;
 begin
-  IsAssign := (APart.Kind = TSyntaxKind.AssignStatement) and (APart.ChildCount = 2) and
+  mIsAssign := (APart.Kind = TSyntaxKind.AssignStatement) and (APart.ChildCount = 2) and
     (APart[0].Kind = TSyntaxKind.Identifier);
-  for Index := AFirst to High(ACalls) do
+  for mIndex := AFirst to High(ACalls) do
   begin
-    if IsAssign and (ACalls[Index] = APart[1]) then
+    if mIsAssign and (ACalls[mIndex] = APart[1]) then
     begin
-      ATargets[Index] := APart[0].Name;
+      ATargets[mIndex] := APart[0].Name;
     end
-    else if (APart.Kind = TSyntaxKind.InlineVar) and (ACalls[Index].Parent = APart) then
+    else if (APart.Kind = TSyntaxKind.InlineVar) and (ACalls[mIndex].Parent = APart) then
     begin
-      ATargets[Index] := Trim(APart.Name);
+      ATargets[mIndex] := Trim(APart.Name);
     end;
   end;
 end;
@@ -669,51 +669,51 @@ end;
 function THandleCheck.LeakedHandles(ANode: TFlowNode; ACall: TSyntaxNode; const AHandles: TArray<TOpenedHandle>;
   out ANever: Boolean): TArray<TOpenedHandle>;
 var
-  Handle: TOpenedHandle;
+  mHandle: TOpenedHandle;
 begin
   Result := nil;
   ANever := True;
-  for Handle in AHandles do
+  for mHandle in AHandles do
   begin
-    if LeaksFrom(ANode, Handle, ACall) then
+    if LeaksFrom(ANode, mHandle, ACall) then
     begin
-      Result := Result + [Handle];
-      ANever := ANever and not ClosedAnywhere(Handle);
+      Result := Result + [mHandle];
+      ANever := ANever and not ClosedAnywhere(mHandle);
     end;
   end;
 end;
 
 procedure THandleCheck.CheckOpen(ANode: TFlowNode; ACall: TSyntaxNode; const ATarget: string);
 var
-  Handles, Leaked: TArray<TOpenedHandle>;
-  Never: Boolean;
-  Fixes: TArray<TRuleFix>;
-  Statement: TSyntaxNode;
+  mHandles, mLeaked: TArray<TOpenedHandle>;
+  mNever: Boolean;
+  mFixes: TArray<TRuleFix>;
+  mStatement: TSyntaxNode;
 begin
-  if not Opened(ACall, ATarget, Handles) then
+  if not Opened(ACall, ATarget, mHandles) then
   begin
     Exit;
   end;
-  Leaked := LeakedHandles(ANode, ACall, Handles, Never);
-  if Leaked = nil then
+  mLeaked := LeakedHandles(ANode, ACall, mHandles, mNever);
+  if mLeaked = nil then
   begin
     Exit;
   end;
-  Fixes := nil;
-  Statement := ANode.Syntax;
-  if Never and (ANode.Kind = TFlowNodeKind.Statement) and (Statement.StartPos.Line = Statement.EndPos.Line) then
+  mFixes := nil;
+  mStatement := ANode.Syntax;
+  if mNever and (ANode.Kind = TFlowNodeKind.Statement) and (mStatement.StartPos.Line = mStatement.EndPos.Line) then
   begin
-    Fixes := WrapFix(Statement, Leaked);
+    mFixes := WrapFix(mStatement, mLeaked);
   end;
-  FReport.Add(NodeRange(ACall), LeakMessage(Leaked, Never), TRuleConfidence.Medium, Fixes);
+  FReport.Add(NodeRange(ACall), LeakMessage(mLeaked, mNever), TRuleConfidence.Medium, mFixes);
 end;
 
 procedure THandleCheck.CheckNode(ANode: TFlowNode);
 var
-  Calls: TArray<TSyntaxNode>;
-  Targets: TArray<string>;
-  Part: TSyntaxNode;
-  Index, First: Integer;
+  mCalls: TArray<TSyntaxNode>;
+  mTargets: TArray<string>;
+  mPart: TSyntaxNode;
+  mIndex, mFirst: Integer;
 begin
   // with: die Anweisungen darin sind eigene Knoten.
   if (ANode.Syntax = nil) or not (ANode.Kind in [TFlowNodeKind.Statement, TFlowNodeKind.Condition]) or
@@ -721,23 +721,23 @@ begin
   begin
     Exit;
   end;
-  Calls := nil;
-  Targets := nil;
-  for Part in NodeParts(ANode) do
+  mCalls := nil;
+  mTargets := nil;
+  for mPart in NodeParts(ANode) do
   begin
-    First := Length(Calls);
-    CollectOpens(Part, Calls, Targets);
-    NoteTargets(Part, First, Calls, Targets);
+    mFirst := Length(mCalls);
+    CollectOpens(mPart, mCalls, mTargets);
+    NoteTargets(mPart, mFirst, mCalls, mTargets);
   end;
-  for Index := 0 to High(Calls) do
+  for mIndex := 0 to High(mCalls) do
   begin
-    CheckOpen(ANode, Calls[Index], Targets[Index]);
+    CheckOpen(ANode, mCalls[mIndex], mTargets[mIndex]);
   end;
 end;
 
 procedure THandleCheck.CheckRoutine(const ACache: IRuleDerivedCache; ARoutine: TSyntaxNode);
 var
-  Node: TFlowNode;
+  mNode: TFlowNode;
 begin
   FRoutine := ARoutine;
   FLocals := DeclaredLocals(ARoutine);
@@ -750,26 +750,26 @@ begin
   begin
     Exit;
   end;
-  for Node in FGraph.Nodes do
+  for mNode in FGraph.Nodes do
   begin
-    CheckNode(Node);
+    CheckNode(mNode);
   end;
 end;
 
 procedure THandleCheck.Run;
 var
-  Cache: IRuleDerivedCache;
-  Routine: TSyntaxNode;
+  mCache: IRuleDerivedCache;
+  mRoutine: TSyntaxNode;
 begin
   if FContext.Tree = nil then
   begin
     Exit;
   end;
   FTable := HandleTable(HandlePairs(FContext.Options));
-  Cache := TRuleDerived.Open(FContext);
-  for Routine in TRuleDerived.Routines(Cache, FContext) do
+  mCache := TRuleDerived.Open(FContext);
+  for mRoutine in TRuleDerived.Routines(mCache, FContext) do
   begin
-    CheckRoutine(Cache, Routine);
+    CheckRoutine(mCache, mRoutine);
   end;
 end;
 
@@ -777,7 +777,7 @@ end;
 
 function THandleLeakRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(HandleLeakRuleId, TRuleSeverity.Warning, cTexts[TFlowHandleLeakText.Title].Text);
+  Result := TRuleDescriptor.Create(cHandleLeakRuleId, TRuleSeverity.Warning, cTexts[TFlowHandleLeakText.Title].Text);
 end;
 
 class function THandleLeakRule.Pairs(const AOptions: string): TArray<string>;
@@ -787,13 +787,13 @@ end;
 
 procedure THandleLeakRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Check: THandleCheck;
+  mCheck: THandleCheck;
 begin
-  Check := THandleCheck.Create(AContext, AReport);
+  mCheck := THandleCheck.Create(AContext, AReport);
   try
-    Check.Run;
+    mCheck.Run;
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 

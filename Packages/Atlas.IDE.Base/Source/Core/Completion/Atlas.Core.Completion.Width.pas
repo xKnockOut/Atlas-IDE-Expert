@@ -12,10 +12,10 @@ interface
 type
   TAtlasPopupWidth = class
   public const
-    MinListWidth = 280;
-    MaxListWidth = 720;
-    MinPanelWidth = 220;
-    MaxPanelWidth = 600;
+    cMinListWidth = 280;
+    cMaxListWidth = 720;
+    cMinPanelWidth = 220;
+    cMaxPanelWidth = 600;
   public
     /// <summary>AMeasured in die Grenzen AMin bis AMax.</summary>
     class function Fit(AMeasured, AMin, AMax: Integer): Integer; static;

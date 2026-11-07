@@ -143,8 +143,8 @@ type
   /// <summary>Sucht im offenen Optionsdialog die Seite „Atlas“ und wählt sie (#628).</summary>
   TAtlasOptionsSelector = class
   private const
-    IntervalMs = 200;
-    MaxTries = 50;
+    cIntervalMs = 200;
+    cMaxTries = 50;
   private
     FTimer: TTimer;
     FTries: Integer;
@@ -167,7 +167,7 @@ begin
   inherited Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := IntervalMs;
+  FTimer.Interval := cIntervalMs;
   FTimer.OnTimer := Tick;
 end;
 
@@ -190,18 +190,18 @@ end;
 
 class function TAtlasOptionsSelector.FindTree(AParent: TWinControl): TTreeView;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to AParent.ControlCount - 1 do
+  for mIndex := 0 to AParent.ControlCount - 1 do
   begin
-    if AParent.Controls[Index] is TTreeView then
+    if AParent.Controls[mIndex] is TTreeView then
     begin
-      Exit(TTreeView(AParent.Controls[Index]));
+      Exit(TTreeView(AParent.Controls[mIndex]));
     end;
-    if AParent.Controls[Index] is TWinControl then
+    if AParent.Controls[mIndex] is TWinControl then
     begin
-      Result := FindTree(TWinControl(AParent.Controls[Index]));
+      Result := FindTree(TWinControl(AParent.Controls[mIndex]));
       if Result <> nil then
       begin
         Exit;
@@ -212,45 +212,45 @@ end;
 
 procedure TAtlasOptionsSelector.Tick(Sender: TObject);
 var
-  Form: TCustomForm;
-  Tree: TTreeView;
-  Node: TTreeNode;
+  mForm: TCustomForm;
+  mTree: TTreeView;
+  mNode: TTreeNode;
 begin
   try
     Inc(FTries);
-    if (FTries > MaxTries) or (PendingReveal = '') then
+    if (FTries > cMaxTries) or (PendingReveal = '') then
     begin
       Stop;
       Exit;
     end;
-    Form := Screen.ActiveCustomForm;
-    if (Form = nil) or not (fsModal in Form.FormState) then
+    mForm := Screen.ActiveCustomForm;
+    if (mForm = nil) or not (fsModal in mForm.FormState) then
     begin
       Exit;
     end;
-    Tree := FindTree(Form);
-    if Tree = nil then
+    mTree := FindTree(mForm);
+    if mTree = nil then
     begin
       Exit;
     end;
     // Die Seite heißt „Atlas“ (GetCaption) und hängt unter „Drittanbieter“, nicht oben im Baum.
-    for Node in Tree.Items do
+    for mNode in mTree.Items do
     begin
-      if SameText(Node.Text, 'Atlas') and (Node.Parent <> nil) then
+      if SameText(mNode.Text, 'Atlas') and (mNode.Parent <> nil) then
       begin
         Stop;
-        Node.MakeVisible;
-        Tree.Selected := Node;
+        mNode.MakeVisible;
+        mTree.Selected := mNode;
         Exit;
       end;
     end;
     // Nicht gefunden: Delphi 13 legt die Unterseiten erst beim Aufklappen an ("Fremdhersteller" zu). Obere
     // Zweige aufklappen und beim nächsten Takt erneut suchen, statt aufzugeben.
-    for Node in Tree.Items do
+    for mNode in mTree.Items do
     begin
-      if (Node.Parent = nil) and Node.HasChildren and not Node.Expanded then
+      if (mNode.Parent = nil) and mNode.HasChildren and not mNode.Expanded then
       begin
-        Node.Expand(False);
+        mNode.Expand(False);
       end;
     end;
   except
@@ -426,7 +426,7 @@ end;
 
 procedure TAtlasAddInOptions.DialogClosed(Accepted: Boolean);
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
   PendingReveal := '';
   PendingArgument := '';
@@ -434,9 +434,9 @@ begin
   try
     if Accepted and (FPage <> nil) then
     begin
-      Settings := TAtlasIdeSettings.Stored;
-      FPage.SaveTo(Settings);
-      TAtlasIdeSettings.Update(Settings);
+      mSettings := TAtlasIdeSettings.Stored;
+      FPage.SaveTo(mSettings);
+      TAtlasIdeSettings.Update(mSettings);
       // vcs.* (#1285) liegen in settings.json: neuer Pfad und neues Zeitlimit gelten sofort.
       TAtlasIdeVcs.Reload;
     end;
@@ -481,44 +481,44 @@ end;
 
 class procedure TAtlasOptionsRegistration.Register(const AHooks: TAtlasOptionsHooks);
 var
-  Services: INTAEnvironmentOptionsServices;
+  mServices: INTAEnvironmentOptionsServices;
 begin
-  if (Options = nil) and Supports(BorlandIDEServices, INTAEnvironmentOptionsServices, Services) then
+  if (Options = nil) and Supports(BorlandIDEServices, INTAEnvironmentOptionsServices, mServices) then
   begin
     Hooks := AHooks;
     TAtlasIdeServerActions.ServerPath := AHooks.ServerPath;
     Options := TAtlasAddInOptions.Create;
-    Services.RegisterAddInOptions(Options);
+    mServices.RegisterAddInOptions(Options);
     SnippetOptions := TAtlasSnippetOptions.Create(AHooks.IdeTemplateFolder, AHooks.SnippetFolder);
-    Services.RegisterAddInOptions(SnippetOptions);
+    mServices.RegisterAddInOptions(SnippetOptions);
     KeysOptions := TAtlasKeysOptions.Create;
-    Services.RegisterAddInOptions(KeysOptions);
+    mServices.RegisterAddInOptions(KeysOptions);
     ServerOptions := TAtlasServerOptions.Create;
-    Services.RegisterAddInOptions(ServerOptions);
+    mServices.RegisterAddInOptions(ServerOptions);
   end;
 end;
 
 class procedure TAtlasOptionsRegistration.Unregister;
 var
-  Services: INTAEnvironmentOptionsServices;
+  mServices: INTAEnvironmentOptionsServices;
 begin
-  if Supports(BorlandIDEServices, INTAEnvironmentOptionsServices, Services) then
+  if Supports(BorlandIDEServices, INTAEnvironmentOptionsServices, mServices) then
   begin
     if SnippetOptions <> nil then
     begin
-      Services.UnregisterAddInOptions(SnippetOptions);
+      mServices.UnregisterAddInOptions(SnippetOptions);
     end;
     if KeysOptions <> nil then
     begin
-      Services.UnregisterAddInOptions(KeysOptions);
+      mServices.UnregisterAddInOptions(KeysOptions);
     end;
     if ServerOptions <> nil then
     begin
-      Services.UnregisterAddInOptions(ServerOptions);
+      mServices.UnregisterAddInOptions(ServerOptions);
     end;
     if Options <> nil then
     begin
-      Services.UnregisterAddInOptions(Options);
+      mServices.UnregisterAddInOptions(Options);
     end;
   end;
   SnippetOptions := nil;
@@ -536,24 +536,24 @@ end;
 /// <summary>Aktion bzw. Menüpunkt „Optionen…“ der IDE ausführen; False, wenn keins zu finden ist.</summary>
 function RunOptionsDialog: Boolean;
 const
-  ActionName = 'ToolsOptionsCommand';
-  ItemName = 'ToolsOptionsItem';
+  cActionName = 'ToolsOptionsCommand';
+  cItemName = 'ToolsOptionsItem';
 var
-  Services: INTAServices;
-  Index: Integer;
+  mServices: INTAServices;
+  mIndex: Integer;
 
   function FindItem(AItem: TMenuItem): TMenuItem;
   var
-    Child: Integer;
+    mChild: Integer;
   begin
     Result := nil;
-    if SameText(AItem.Name, ItemName) then
+    if SameText(AItem.Name, cItemName) then
     begin
       Exit(AItem);
     end;
-    for Child := 0 to AItem.Count - 1 do
+    for mChild := 0 to AItem.Count - 1 do
     begin
-      Result := FindItem(AItem.Items[Child]);
+      Result := FindItem(AItem.Items[mChild]);
       if Result <> nil then
       begin
         Exit;
@@ -562,30 +562,30 @@ var
   end;
 
 var
-  Item: TMenuItem;
+  mItem: TMenuItem;
 begin
   Result := False;
-  if not Supports(BorlandIDEServices, INTAServices, Services) then
+  if not Supports(BorlandIDEServices, INTAServices, mServices) then
   begin
     Exit;
   end;
-  if Services.ActionList <> nil then
+  if mServices.ActionList <> nil then
   begin
-    for Index := 0 to Services.ActionList.ActionCount - 1 do
+    for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
     begin
-      if SameText(Services.ActionList.Actions[Index].Name, ActionName) then
+      if SameText(mServices.ActionList.Actions[mIndex].Name, cActionName) then
       begin
-        Services.ActionList.Actions[Index].Execute;
+        mServices.ActionList.Actions[mIndex].Execute;
         Exit(True);
       end;
     end;
   end;
-  if Services.MainMenu <> nil then
+  if mServices.MainMenu <> nil then
   begin
-    Item := FindItem(Services.MainMenu.Items);
-    if Item <> nil then
+    mItem := FindItem(mServices.MainMenu.Items);
+    if mItem <> nil then
     begin
-      Item.Click;
+      mItem.Click;
       Exit(True);
     end;
   end;
@@ -595,14 +595,14 @@ end;
 /// IDE das nicht anbietet.</summary>
 function EditAtlasOptions: Boolean;
 var
-  Services: IOTAServices;
-  Environment: IOTAEnvironmentOptions140;
+  mServices: IOTAServices;
+  mEnvironment: IOTAEnvironmentOptions140;
 begin
-  Result := Supports(BorlandIDEServices, IOTAServices, Services) and (Services.GetEnvironmentOptions <> nil) and
-    Supports(Services.GetEnvironmentOptions, IOTAEnvironmentOptions140, Environment);
+  Result := Supports(BorlandIDEServices, IOTAServices, mServices) and (mServices.GetEnvironmentOptions <> nil) and
+    Supports(mServices.GetEnvironmentOptions, IOTAEnvironmentOptions140, mEnvironment);
   if Result then
   begin
-    Environment.EditOptions('', Options.GetCaption);
+    mEnvironment.EditOptions('', Options.GetCaption);
   end;
 end;
 

@@ -682,39 +682,39 @@ end;
 
 function FindMethod(const AText: string; ALine, ACharacter: Integer; out AMatch: TAtlasMatch): Boolean;
 var
-  Places: TArray<TAtlasMethodPlace>;
-  Source, Target: TAtlasMethodPlace;
-  Name: string;
-  Spot, Other: TAtlasMatchSpot;
+  mPlaces: TArray<TAtlasMethodPlace>;
+  mSource, mTarget: TAtlasMethodPlace;
+  mName: string;
+  mSpot, mOther: TAtlasMatchSpot;
 begin
   Result := False;
   AMatch := Default(TAtlasMatch);
-  Places := TAtlasMethodToggle.Places(AText);
-  if not TAtlasMethodToggle.PlaceAt(Places, ALine, ACharacter, Source) then
+  mPlaces := TAtlasMethodToggle.Places(AText);
+  if not TAtlasMethodToggle.PlaceAt(mPlaces, ALine, ACharacter, mSource) then
   begin
     Exit;
   end;
   // Nur auf dem Namen (letzter Teil von TFoo.Bar).
-  Name := Copy(Source.Name, LastDelimiter('.', Source.Name) + 1, MaxInt);
-  Spot := TAtlasMatchSpot.Create(Source.Line, Source.Character, Length(Name));
-  if not Touches(Spot, ALine, ACharacter) then
+  mName := Copy(mSource.Name, LastDelimiter('.', mSource.Name) + 1, MaxInt);
+  mSpot := TAtlasMatchSpot.Create(mSource.Line, mSource.Character, Length(mName));
+  if not Touches(mSpot, ALine, ACharacter) then
   begin
     Exit;
   end;
-  if not TAtlasMethodToggle.Match(Places, Source, Target) then
+  if not TAtlasMethodToggle.Match(mPlaces, mSource, mTarget) then
   begin
     Exit;
   end;
-  Other := TAtlasMatchSpot.Create(Target.Line, Target.Character, Length(Name));
+  mOther := TAtlasMatchSpot.Create(mTarget.Line, mTarget.Character, Length(mName));
   AMatch.Kind := TAtlasMatchKind.Method;
-  if Before(Spot.Line, Spot.Character, Other) then
+  if Before(mSpot.Line, mSpot.Character, mOther) then
   begin
-    AMatch.Spots := [Spot, Other];
+    AMatch.Spots := [mSpot, mOther];
     AMatch.Current := 0;
   end
   else
   begin
-    AMatch.Spots := [Other, Spot];
+    AMatch.Spots := [mOther, mSpot];
     AMatch.Current := 1;
   end;
   Result := True;
@@ -736,35 +736,35 @@ end;
 class function TAtlasJumpToMatch.Target(const AText: string; ALine, ACharacter: Integer;
   out ATarget: TAtlasMatchSpot): Boolean;
 var
-  Match: TAtlasMatch;
+  mMatch: TAtlasMatch;
 begin
   ATarget := Default(TAtlasMatchSpot);
-  Result := Find(AText, ALine, ACharacter, Match);
+  Result := Find(AText, ALine, ACharacter, mMatch);
   if Result then
   begin
-    ATarget := Match.Next;
+    ATarget := mMatch.Next;
   end;
 end;
 
 class function TAtlasJumpToMatch.Selection(const AText: string; ALine, ACharacter: Integer; out AStart,
   AEnd: TAtlasMatchSpot): Boolean;
 var
-  Target_: TAtlasMatchSpot;
+  mTarget_: TAtlasMatchSpot;
 begin
   AStart := TAtlasMatchSpot.Create(ALine, ACharacter, 0);
   AEnd := AStart;
-  Result := Target(AText, ALine, ACharacter, Target_);
+  Result := Target(AText, ALine, ACharacter, mTarget_);
   if not Result then
   begin
     Exit;
   end;
-  if Before(ALine, ACharacter, Target_) then
+  if Before(ALine, ACharacter, mTarget_) then
   begin
-    AEnd := TAtlasMatchSpot.Create(Target_.Line, Target_.Character + Target_.Length, 0);
+    AEnd := TAtlasMatchSpot.Create(mTarget_.Line, mTarget_.Character + mTarget_.Length, 0);
   end
   else
   begin
-    AStart := TAtlasMatchSpot.Create(Target_.Line, Target_.Character, 0);
+    AStart := TAtlasMatchSpot.Create(mTarget_.Line, mTarget_.Character, 0);
   end;
 end;
 

@@ -43,7 +43,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  UnusedPublicMemberRuleId = 'unused-public-member';
+  cUnusedPublicMemberRuleId = 'unused-public-member';
 
 type
   TUnusedPublicMemberRule = class(TInterfacedObject, IRule)
@@ -63,6 +63,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Index.Extractor.TypeText,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
@@ -115,7 +116,7 @@ const
 
 const
   /// <summary>Aufrufe, die Klassen für Streaming und Objektinspektor bekannt machen.</summary>
-  RegisterCalls: array[0..2] of string = ('RegisterComponents', 'RegisterClass', 'RegisterClasses');
+  cRegisterCalls: array[0..2] of string = ('RegisterComponents', 'RegisterClass', 'RegisterClasses');
 
 type
 {$SCOPEDENUMS ON}
@@ -134,8 +135,8 @@ type
 /// <summary>"Öffentliche Methode", "Published-Property", "Geschütztes Feld" …</summary>
 function KindText(const ASymbol: TIndexSymbol): string;
 var
-  Noun: string;
-  Neuter: Boolean;
+  mNoun: string;
+  mNeuter: Boolean;
 begin
   // Unit-Ebene (#64): Typen und globale Variablen.
   if ASymbol.Container = '' then
@@ -148,42 +149,42 @@ begin
     else
       // Übrige Arten: nichts zu tun.
     end;
-  Neuter := ASymbol.Kind = TIndexSymbolKind.Field;
+  mNeuter := ASymbol.Kind = TIndexSymbolKind.Field;
   case ASymbol.Kind of
     TIndexSymbolKind.Field:
-      Noun := cTexts[TPublicMembersText.FieldNoun].Text;
+      mNoun := cTexts[TPublicMembersText.FieldNoun].Text;
     TIndexSymbolKind.Constant:
-      Noun := cTexts[TPublicMembersText.ConstantNoun].Text;
+      mNoun := cTexts[TPublicMembersText.ConstantNoun].Text;
     TIndexSymbolKind.Property_:
-      Noun := cTexts[TPublicMembersText.PropertyNoun].Text;
+      mNoun := cTexts[TPublicMembersText.PropertyNoun].Text;
     TIndexSymbolKind.Variable:
-      Noun := cTexts[TPublicMembersText.ClassVariableNoun].Text;
+      mNoun := cTexts[TPublicMembersText.ClassVariableNoun].Text;
     TIndexSymbolKind.Routine:
-      Noun := cTexts[TPublicMembersText.RoutineNoun].Text;
+      mNoun := cTexts[TPublicMembersText.RoutineNoun].Text;
   else
-    Noun := cTexts[TPublicMembersText.MethodNoun].Text;
+    mNoun := cTexts[TPublicMembersText.MethodNoun].Text;
   end;
   // Das Geschlecht des Nomens zählt nur im Deutschen; die englischen Texte sind gleich.
   case ASymbol.Visibility of
     TIndexVisibility.Published:
-      Result := cTexts[TPublicMembersText.PublishedKind].Fmt([Noun]);
+      Result := cTexts[TPublicMembersText.PublishedKind].Fmt([mNoun]);
     TIndexVisibility.Protected, TIndexVisibility.StrictProtected:
-      if Neuter then
+      if mNeuter then
       begin
-        Result := cTexts[TPublicMembersText.ProtectedNeuter].Fmt([Noun]);
+        Result := cTexts[TPublicMembersText.ProtectedNeuter].Fmt([mNoun]);
       end
       else
       begin
-        Result := cTexts[TPublicMembersText.ProtectedKind].Fmt([Noun]);
+        Result := cTexts[TPublicMembersText.ProtectedKind].Fmt([mNoun]);
       end;
   else
-    if Neuter then
+    if mNeuter then
     begin
-      Result := cTexts[TPublicMembersText.PublicNeuter].Fmt([Noun]);
+      Result := cTexts[TPublicMembersText.PublicNeuter].Fmt([mNoun]);
     end
     else
     begin
-      Result := cTexts[TPublicMembersText.PublicKind].Fmt([Noun]);
+      Result := cTexts[TPublicMembersText.PublicKind].Fmt([mNoun]);
     end;
   end;
 end;
@@ -247,23 +248,23 @@ end;
 /// <summary>Name ohne Typparameter: TListe&lt;T&gt;.Add -> TListe.Add.</summary>
 function WithoutTypeParams(const AName: string): string;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   Result := '';
-  Depth := 0;
-  for Index := 1 to Length(AName) do
+  mDepth := 0;
+  for mIndex := 1 to Length(AName) do
   begin
-    if AName[Index] = '<' then
+    if AName[mIndex] = '<' then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if AName[Index] = '>' then
+    else if AName[mIndex] = '>' then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if Depth = 0 then
+    else if mDepth = 0 then
     begin
-      Result := Result + AName[Index];
+      Result := Result + AName[mIndex];
     end;
   end;
 end;
@@ -303,6 +304,27 @@ begin
   begin
     Result := ASymbol.Name;
   end;
+end;
+
+/// <summary>Ist ARoutine (Rumpf im implementation-Teil) die Umsetzung von ASymbol? Bei Überladungen zählen nur
+/// gleiche Parametertypen; der Rumpf einer anderen Überladung ruft ASymbol auf, das ist eine Verwendung.</summary>
+function IsOwnOverload(const ASymbol: TIndexSymbol; ARoutine: TSyntaxNode): Boolean;
+var
+  mMin, mMax: Integer;
+  mTypes: TArray<string>;
+begin
+  Result := True;
+  if not ASymbol.HasDirective('overload') then
+  begin
+    Exit;
+  end;
+  TIndexTypeText.ParamInfo(ARoutine, mMin, mMax, mTypes);
+  // Rumpf ohne Parameterliste (Delphi erlaubt sie wegzulassen): nicht zuzuordnen, wie bisher als eigener Rumpf.
+  if (mTypes = nil) and (ASymbol.ParamTypes <> nil) then
+  begin
+    Exit;
+  end;
+  Result := AnsiSameText(string.Join(',', mTypes), string.Join(',', ASymbol.ParamTypes));
 end;
 
 function CleanName(const AText: string): string;
@@ -372,7 +394,7 @@ end;
 function IsRegisterCall(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 begin
   Result := (ATokens[AIndex].Kind = TPascalTokenKind.Identifier) and
-    (IndexText(CleanName(ATokens[AIndex].Text), RegisterCalls) >= 0) and ATokens[AIndex + 1].IsSymbol('(');
+    (IndexText(CleanName(ATokens[AIndex].Text), cRegisterCalls) >= 0) and ATokens[AIndex + 1].IsSymbol('(');
 end;
 
 /// <summary>Nennen die Argumente ab der öffnenden Klammer bei AOpen bis zur schließenden die Klasse AClass?
@@ -499,6 +521,12 @@ type
     FTexts: TDictionary<string, string>;
     // Klassen (Kurzname, klein) -> in RegisterComponents/RegisterClass(es) genannt; je Prüfung einmal.
     FRegistered: TDictionary<string, Boolean>;
+    // Dateien, die einen Registrieraufruf nennen (samt der eigenen); nil, solange nicht gesucht. Einmal je
+    // Prüfung statt je Klasse: Sonst fragt jede Klasse alle Dateien des Projekts erneut ab.
+    FRegisterFiles: TList<TSearchFile>;
+    // Nennt eine Datei einen Registrieraufruf, ohne dass der Index es sicher sagt? Dann gilt jede Klasse als
+    // registriert.
+    FRegisterUnknown: Boolean;
     // 0 = noch nicht geprüft, 1 = alle Formulardateien lesbar, 2 = mindestens eine nicht.
     FFormsState: Integer;
     procedure AddSource(ASeen: TDictionary<string, Integer>; const AProject: TRuleProject; const ASource: string);
@@ -506,6 +534,8 @@ type
     /// <summary>Nennt AFile einen der Registrieraufrufe? AUnknown: für einen ist es nicht sicher.</summary>
     function MentionsRegisterCall(const AFile: string; out AUnknown: Boolean): Boolean;
     function FileRegisters(const AEntry: TSearchFile; const AShort: string): Boolean;
+    /// <summary>Sucht einmal die Dateien mit Registrieraufruf (FRegisterFiles, FRegisterUnknown).</summary>
+    procedure FindRegisterFiles;
     function LiteralInFile(const AFile, AText, ALiteral: string): Boolean;
   public
     constructor Create(const AContext: TRuleContext);
@@ -657,6 +687,7 @@ destructor TSearchArea.Destroy;
 begin
   FTexts.Free;
   FRegistered.Free;
+  FRegisterFiles.Free;
   FForms.Free;
   FFiles.Free;
   inherited;
@@ -802,7 +833,7 @@ var
 begin
   Result := False;
   AUnknown := False;
-  for mCall in RegisterCalls do
+  for mCall in cRegisterCalls do
   begin
     case FContext.ProjectFiles.NameIn(AFile, mCall) of
       TRuleNameAnswer.Present:
@@ -815,19 +846,38 @@ begin
   end;
 end;
 
+procedure TSearchArea.FindRegisterFiles;
+var
+  mEntry: TSearchFile;
+  mUnknown: Boolean;
+begin
+  FRegisterFiles := TList<TSearchFile>.Create;
+  FRegisterUnknown := False;
+  for mEntry in FFiles do
+  begin
+    if IsOwnFile(mEntry.FileName) then
+    begin
+      FRegisterFiles.Add(mEntry);
+    end
+    else if MentionsRegisterCall(mEntry.FileName, mUnknown) and not mUnknown then
+    begin
+      FRegisterFiles.Add(mEntry);
+    end
+    else if mUnknown then
+    begin
+      FRegisterUnknown := True;
+    end;
+  end;
+end;
+
 function TSearchArea.FileRegisters(const AEntry: TSearchFile; const AShort: string): Boolean;
 var
   mText: string;
-  mUnknown: Boolean;
   mTree: TSyntaxTree;
 begin
   if IsOwnFile(AEntry.FileName) then
   begin
     Exit(RegistersIn(FContext.Tree.Tokens, AShort));
-  end;
-  if not MentionsRegisterCall(AEntry.FileName, mUnknown) or mUnknown then
-  begin
-    Exit(mUnknown);
   end;
   if not TextOf(AEntry.FileName, mText) then
   begin
@@ -851,10 +901,14 @@ begin
   begin
     Exit;
   end;
-  Result := False;
-  for mEntry in FFiles do
+  if FRegisterFiles = nil then
   begin
-    Result := FileRegisters(mEntry, mShort);
+    FindRegisterFiles;
+  end;
+  Result := FRegisterUnknown;
+  for mEntry in FRegisterFiles do
+  begin
+    Result := Result or FileRegisters(mEntry, mShort);
     if Result then
     begin
       Break;
@@ -1004,7 +1058,8 @@ begin
   end;
   for mNode in TRuleDerived.Routines(FCache, FContext) do
   begin
-    if SameText(mNode.Name, mWanted) or (mIsType and StartsText(ASymbol.Name + '.', WithoutTypeParams(mNode.Name))) then
+    if (SameText(mNode.Name, mWanted) and (mIsType or IsOwnOverload(ASymbol, mNode))) or
+      (mIsType and StartsText(ASymbol.Name + '.', WithoutTypeParams(mNode.Name))) then
     begin
       Result := Result + [TTextRange.Create(mNode.StartPos, mNode.EndPos)];
     end;
@@ -1019,7 +1074,7 @@ var
 begin
   if Assigned(FContext.Cancelled) and FContext.Cancelled() then
   begin
-    raise ERuleCheckCancelled.Create(UnusedPublicMemberRuleId);
+    raise ERuleCheckCancelled.Create(cUnusedPublicMemberRuleId);
   end;
   mResults := FResolver.ResolveAll(ATree, AFile, APosition);
   if (mResults = nil) or not mResults[0].Found then
@@ -1186,7 +1241,7 @@ begin
   end;
   Result := TRuleFix.Create(cTexts[TPublicMembersText.MarkPublic].Text,
     [TTextEdit.Create(TTextRange.Create(mLine, 0, mLine, 0), mIndent + '// lsp-ignore: ' +
-    UnusedPublicMemberRuleId + FLineBreak)]);
+    cUnusedPublicMemberRuleId + FLineBreak)]);
   Result.Alternative := True;
 end;
 
@@ -1251,7 +1306,7 @@ end;
 
 function TUnusedPublicMemberRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UnusedPublicMemberRuleId, TRuleSeverity.Hint,
+  Result := TRuleDescriptor.Create(cUnusedPublicMemberRuleId, TRuleSeverity.Hint,
     cTexts[TPublicMembersText.Title].Text);
 end;
 

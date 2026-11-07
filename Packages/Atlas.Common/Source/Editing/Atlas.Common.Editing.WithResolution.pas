@@ -49,7 +49,7 @@ type
 
   TWithResolution = class
   public const
-    ItemName = 'Item';
+    cItemName = 'Item';
   public
     /// <summary>Innerste with-Anweisung, in der APosition liegt; nil ohne.</summary>
     class function WithAt(ATree: TSyntaxTree; const APosition: TTextPosition): TSyntaxNode; static;
@@ -108,88 +108,88 @@ end;
 
 class function TWithResolution.WithAt(ATree: TSyntaxTree; const APosition: TTextPosition): TSyntaxNode;
 var
-  Node: TSyntaxNode;
-  Index: Integer;
-  Descended: Boolean;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+  mDescended: Boolean;
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
   begin
     Exit;
   end;
-  Node := ATree.Root;
+  mNode := ATree.Root;
   repeat
-    Descended := False;
-    for Index := 0 to Node.ChildCount - 1 do
+    mDescended := False;
+    for mIndex := 0 to mNode.ChildCount - 1 do
     begin
-      if (Compare(Node[Index].StartPos, APosition) <= 0) and (Compare(APosition, Node[Index].EndPos) <= 0) then
+      if (Compare(mNode[mIndex].StartPos, APosition) <= 0) and (Compare(APosition, mNode[mIndex].EndPos) <= 0) then
       begin
-        Node := Node[Index];
-        if Node.Kind = TSyntaxKind.WithStatement then
+        mNode := mNode[mIndex];
+        if mNode.Kind = TSyntaxKind.WithStatement then
         begin
-          Result := Node;
+          Result := mNode;
         end;
-        Descended := True;
+        mDescended := True;
         Break;
       end;
     end;
-  until not Descended;
+  until not mDescended;
 end;
 
 /// <summary>Offset des "do" der with-Anweisung; -1 ohne.</summary>
 function DoOffset(ATree: TSyntaxTree; AWith: TSyntaxNode): Integer;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Depth: Integer;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mDepth: Integer;
 begin
   Result := -1;
-  Tokens := ATree.Tokens;
-  Index := TRoutineBody.TokenAt(Tokens, AWith.StartOffset);
-  Depth := 0;
-  while (Index <= High(Tokens)) and (Tokens[Index].Offset < AWith.EndOffset) do
+  mTokens := ATree.Tokens;
+  mIndex := TRoutineBody.TokenAt(mTokens, AWith.StartOffset);
+  mDepth := 0;
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < AWith.EndOffset) do
   begin
-    if Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol('[') then
+    if mTokens[mIndex].IsSymbol('(') or mTokens[mIndex].IsSymbol('[') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if Tokens[Index].IsSymbol(')') or Tokens[Index].IsSymbol(']') then
+    else if mTokens[mIndex].IsSymbol(')') or mTokens[mIndex].IsSymbol(']') then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (Depth = 0) and Tokens[Index].IsKeyword('do') then
+    else if (mDepth = 0) and mTokens[mIndex].IsKeyword('do') then
     begin
-      Exit(Tokens[Index].Offset);
+      Exit(mTokens[mIndex].Offset);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
 class function TWithResolution.Elements(ATree: TSyntaxTree; AWith: TSyntaxNode): TArray<TSyntaxNode>;
 var
-  Offset, Index: Integer;
+  mOffset, mIndex: Integer;
 begin
   Result := nil;
-  Offset := DoOffset(ATree, AWith);
-  if Offset < 0 then
+  mOffset := DoOffset(ATree, AWith);
+  if mOffset < 0 then
   begin
     Exit;
   end;
-  for Index := 0 to AWith.ChildCount - 1 do
+  for mIndex := 0 to AWith.ChildCount - 1 do
   begin
-    if AWith[Index].EndOffset <= Offset then
+    if AWith[mIndex].EndOffset <= mOffset then
     begin
-      Result := Result + [AWith[Index]];
+      Result := Result + [AWith[mIndex]];
     end;
   end;
 end;
 
 class function TWithResolution.BodyOf(ATree: TSyntaxTree; AWith: TSyntaxNode): TSyntaxNode;
 var
-  Offset: Integer;
+  mOffset: Integer;
 begin
   Result := nil;
-  Offset := DoOffset(ATree, AWith);
-  if (Offset >= 0) and (AWith.ChildCount > 0) and (AWith[AWith.ChildCount - 1].StartOffset > Offset) then
+  mOffset := DoOffset(ATree, AWith);
+  if (mOffset >= 0) and (AWith.ChildCount > 0) and (AWith[AWith.ChildCount - 1].StartOffset > mOffset) then
   begin
     Result := AWith[AWith.ChildCount - 1];
   end;
@@ -197,16 +197,16 @@ end;
 
 procedure CollectIdentifiers(ANode: TSyntaxNode; AList: TList<TSyntaxNode>);
 var
-  List: TList<TSyntaxNode>;
+  mList: TList<TSyntaxNode>;
 begin
-  List := AList;
+  mList := AList;
   // Walk statt Rekursion (Bericht M1).
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     begin
       if AChild.Kind = TSyntaxKind.Identifier then
       begin
-        List.Add(AChild);
+        mList.Add(AChild);
       end;
       Result := True;
     end);
@@ -215,16 +215,16 @@ end;
 /// <summary>Kette aus Namen und Indizes (A, A.B, A[I], Self): wird unverändert vorangestellt.</summary>
 function IsSimple(ANode: TSyntaxNode): Boolean;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   // Schleife statt Rekursion (Bericht M1).
-  Node := ANode;
-  while (Node.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Dereference, TSyntaxKind.IndexAccess]) and
-    (Node.ChildCount > 0) do
+  mNode := ANode;
+  while (mNode.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Dereference, TSyntaxKind.IndexAccess]) and
+    (mNode.ChildCount > 0) do
   begin
-    Node := Node[0];
+    mNode := mNode[0];
   end;
-  Result := Node.Kind = TSyntaxKind.Identifier;
+  Result := mNode.Kind = TSyntaxKind.Identifier;
 end;
 
 /// <summary>Name der Variablen für einen Typ: TKunde → Kunde, sonst Item.</summary>
@@ -242,7 +242,7 @@ begin
   end;
   if (Result = '') or not CharInSet(Result[1], ['A'..'Z', 'a'..'z', '_']) then
   begin
-    Result := TWithResolution.ItemName;
+    Result := TWithResolution.cItemName;
   end;
 end;
 
@@ -562,7 +562,7 @@ begin
     mNewText := AlignedStatement(mBodyText);
   end;
   AResolved.Action.Title := cTexts[TWithResolutionText.ResolveWith].Text;
-  AResolved.Action.Kind := RewriteKind;
+  AResolved.Action.Kind := cRewriteKind;
   AResolved.Action.Edits := FEdits + [TTextEdit.Create(TTextRange.Create(FWith.StartPos, FWith.EndPos),
     FDeclarations + mNewText)];
 end;

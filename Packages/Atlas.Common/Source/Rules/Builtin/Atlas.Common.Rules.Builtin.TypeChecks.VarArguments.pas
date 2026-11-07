@@ -16,7 +16,7 @@ uses
   Atlas.Common.Rules.Contract;
 
 const
-  InvalidVarArgumentRuleId = 'invalid-var-argument';
+  cInvalidVarArgumentRuleId = 'invalid-var-argument';
 
 type
   TInvalidVarArgumentRule = class(TInterfacedObject, IRule)
@@ -122,13 +122,13 @@ type
 
 function ModifierWord(const AModifier: string): string;
 var
-  Words: TArray<string>;
+  mWords: TArray<string>;
 begin
-  Words := Trim(AModifier).Split([' ']);
+  mWords := Trim(AModifier).Split([' ']);
   Result := '';
-  if Length(Words) > 0 then
+  if Length(mWords) > 0 then
   begin
-    Result := LowerCase(Words[High(Words)]);
+    Result := LowerCase(mWords[High(mWords)]);
   end;
 end;
 
@@ -180,16 +180,16 @@ end;
 
 function TVarArgumentScan.Resolve(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol): Boolean;
 var
-  TypeInfo: TResolvedSymbol;
-  TypeFound: Boolean;
+  mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
 begin
-  Result := FResolver.NodeType(FContext.Tree, FFileName, ANode, ASymbol, TypeInfo, TypeFound);
+  Result := FResolver.NodeType(FContext.Tree, FFileName, ANode, ASymbol, mTypeInfo, mTypeFound);
 end;
 
 function TVarArgumentScan.IsTypedConstant(const ASymbol: TResolvedSymbol): Boolean;
 var
-  Decl: TSyntaxNode;
-  Colon, Equal: Integer;
+  mDecl: TSyntaxNode;
+  mColon, mEqual: Integer;
 begin
   // Typisierte Konstante? Aus dem Kopf im Index ("C: Integer = 2") bzw. dem Baum.
   if (ASymbol.Kind <> TResolvedKind.Local) and (ASymbol.TypeName <> '') then
@@ -198,21 +198,21 @@ begin
   end;
   if ASymbol.Signature <> '' then
   begin
-    Colon := Pos(':', ASymbol.Signature);
-    Equal := Pos('=', ASymbol.Signature);
-    Exit((Colon > 0) and ((Equal = 0) or (Colon < Equal)));
+    mColon := Pos(':', ASymbol.Signature);
+    mEqual := Pos('=', ASymbol.Signature);
+    Exit((mColon > 0) and ((mEqual = 0) or (mColon < mEqual)));
   end;
   Result := False;
   if (ASymbol.Kind = TResolvedKind.Local) and (FContext.Tree <> nil) then
   begin
-    Decl := DeclarationAt(FContext.Tree.Root, ASymbol.SelectionRange.StartPos);
-    Result := (Decl <> nil) and (Decl.Kind = TSyntaxKind.ConstDecl) and (NodeTypeText(FContext.Text, Decl) <> '');
+    mDecl := DeclarationAt(FContext.Tree.Root, ASymbol.SelectionRange.StartPos);
+    Result := (mDecl <> nil) and (mDecl.Kind = TSyntaxKind.ConstDecl) and (NodeTypeText(FContext.Text, mDecl) <> '');
   end;
 end;
 
 function TVarArgumentScan.IsConstParameter(const ASymbol: TResolvedSymbol): Boolean;
 var
-  Decl: TSyntaxNode;
+  mDecl: TSyntaxNode;
 begin
   // Lokaler const- bzw. constref-Parameter?
   Result := False;
@@ -220,18 +220,18 @@ begin
   begin
     Exit;
   end;
-  Decl := DeclarationAt(FContext.Tree.Root, ASymbol.SelectionRange.StartPos);
-  Result := (Decl <> nil) and (Decl.Kind = TSyntaxKind.Parameter) and
-    (Decl.Modifier in [TParameterModifier.ConstParam, TParameterModifier.ConstRefParam]);
+  mDecl := DeclarationAt(FContext.Tree.Root, ASymbol.SelectionRange.StartPos);
+  Result := (mDecl <> nil) and (mDecl.Kind = TSyntaxKind.Parameter) and
+    (mDecl.Modifier in [TParameterModifier.ConstParam, TParameterModifier.ConstRefParam]);
 end;
 
 function TVarArgumentScan.IsConstantIdentifier(ANode: TSyntaxNode): Boolean;
 var
-  Symbol: TResolvedSymbol;
+  mSymbol: TResolvedSymbol;
 begin
   // Untypisierte Konstante oder Aufzählungswert.
-  Result := Resolve(ANode, Symbol) and (Symbol.SymbolKind in [TIndexSymbolKind.Constant,
-    TIndexSymbolKind.EnumMember]) and not IsTypedConstant(Symbol);
+  Result := Resolve(ANode, mSymbol) and (mSymbol.SymbolKind in [TIndexSymbolKind.Constant,
+    TIndexSymbolKind.EnumMember]) and not IsTypedConstant(mSymbol);
 end;
 
 function TVarArgumentScan.IsConstantExpression(AExpression: TSyntaxNode): Boolean;
@@ -291,21 +291,21 @@ end;
 
 function TVarArgumentScan.IsStringElement(AArgument: TSyntaxNode; const AParamType: string): Boolean;
 var
-  Symbol: TResolvedSymbol;
+  mSymbol: TResolvedSymbol;
 begin
   // S[I] mit S vom Typ string an einen Zeichen-Parameter: übersetzt dcc (#1383), erkannt nur, damit das Element
   // nicht als Ausdruck gilt.
   Result := (AArgument.ChildCount = 2) and MatchText(AParamType, ['Char', 'WideChar', 'AnsiChar']) and
     (AArgument[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]);
-  Result := Result and Resolve(AArgument[0], Symbol) and
-    (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) and
-    IsStringText(DeclaredTypeText(FContext, Symbol));
+  Result := Result and Resolve(AArgument[0], mSymbol) and
+    (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) and
+    IsStringText(DeclaredTypeText(FContext, mSymbol));
 end;
 
 procedure TVarArgumentScan.ClassifyCall(AArgument: TSyntaxNode; AOpenArray: Boolean;
   var AResult: TVarArgument);
 var
-  Symbol: TResolvedSymbol;
+  mSymbol: TResolvedSymbol;
 begin
   if AArgument.ChildCount = 0 then
   begin
@@ -316,8 +316,8 @@ begin
   begin
     AResult.Kind := TVarArgumentKind.SliceCall;
   end
-  else if Resolve(AArgument[0], Symbol) and not Symbol.IsType and
-    (Symbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) and (Symbol.TypeName <> '') then
+  else if Resolve(AArgument[0], mSymbol) and not mSymbol.IsType and
+    (mSymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) and (mSymbol.TypeName <> '') then
   begin
     // Aufruf einer Funktion (keine Typumwandlung): ihr Ergebnis ist keine Variable.
     AResult.Description := cTexts[TTypeChecksVarArgumentsText.ResultOf].Fmt([NodeText(FContext, AArgument[0])]);
@@ -348,23 +348,23 @@ end;
 procedure TVarArgumentScan.ClassifySymbol(AArgument: TSyntaxNode; AOpenArray: Boolean;
   var AResult: TVarArgument);
 var
-  Symbol: TResolvedSymbol;
+  mSymbol: TResolvedSymbol;
 begin
-  if not Resolve(AArgument, Symbol) then
+  if not Resolve(AArgument, mSymbol) then
   begin
     Exit;
   end;
-  case Symbol.SymbolKind of
+  case mSymbol.SymbolKind of
     TIndexSymbolKind.Constant, TIndexSymbolKind.EnumMember:
-      ClassifyConstant(Symbol, AOpenArray, AResult);
+      ClassifyConstant(mSymbol, AOpenArray, AResult);
     TIndexSymbolKind.Property_:
       begin
         AResult.Description := cTexts[TTypeChecksVarArgumentsText.PropertyArg].Fmt([AResult.Description]);
-        AResult.WriteBack := ContainsText(' ' + Symbol.Signature.Replace(';', ' ') + ' ', ' write ');
+        AResult.WriteBack := ContainsText(' ' + mSymbol.Signature.Replace(';', ' ') + ' ', ' write ');
         AResult.Kind := TVarArgumentKind.ConstantObject;
       end;
     TIndexSymbolKind.Variable:
-      if IsConstParameter(Symbol) then
+      if IsConstParameter(mSymbol) then
       begin
         AResult.Description := cTexts[TTypeChecksVarArgumentsText.ConstParameter].Fmt([AResult.Description]);
         AResult.Kind := TVarArgumentKind.ConstantObject;
@@ -376,15 +376,15 @@ end;
 
 function TVarArgumentScan.Classify(AArgument: TSyntaxNode; const AParamType: string): TVarArgument;
 var
-  OpenArray: Boolean;
+  mOpenArray: Boolean;
 begin
   // Was ist AArgument für einen var- bzw. out-Parameter vom Typ AParamType?
   Result := Default(TVarArgument);
   Result.Description := NodeText(FContext, AArgument);
-  OpenArray := StartsText('array of ', AParamType) and not SameText(NormalizedType(AParamType), 'array of const');
+  mOpenArray := StartsText('array of ', AParamType) and not SameText(NormalizedType(AParamType), 'array of const');
   case AArgument.Kind of
     TSyntaxKind.Literal:
-      if OpenArray then
+      if mOpenArray then
       begin
         Result.Kind := TVarArgumentKind.OpenArrayConstant;
       end
@@ -394,7 +394,7 @@ begin
         Result.Kind := TVarArgumentKind.ConstantObject;
       end;
     TSyntaxKind.SetConstructor:
-      if OpenArray then
+      if mOpenArray then
       begin
         Result.Kind := TVarArgumentKind.OpenArrayConstant;
       end
@@ -405,16 +405,16 @@ begin
     TSyntaxKind.AddressOf:
       Result.Kind := TVarArgumentKind.Expression;
     TSyntaxKind.UnaryExpr, TSyntaxKind.BinaryExpr, TSyntaxKind.ParenExpr:
-      ClassifyExpression(AArgument, OpenArray, Result);
+      ClassifyExpression(AArgument, mOpenArray, Result);
     TSyntaxKind.IndexAccess:
       if IsStringElement(AArgument, AParamType) then
       begin
         Result.Kind := TVarArgumentKind.StringElement;
       end;
     TSyntaxKind.Call:
-      ClassifyCall(AArgument, OpenArray, Result);
+      ClassifyCall(AArgument, mOpenArray, Result);
     TSyntaxKind.Identifier, TSyntaxKind.MemberAccess:
-      ClassifySymbol(AArgument, OpenArray, Result);
+      ClassifySymbol(AArgument, mOpenArray, Result);
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -422,146 +422,146 @@ end;
 
 function TVarArgumentScan.FixHost(ACall: TSyntaxNode): TSyntaxNode;
 var
-  Host: TSyntaxNode;
-  Fits: Boolean;
-  Rest: string;
+  mHost: TSyntaxNode;
+  mFits: Boolean;
+  mRest: string;
 begin
   // Anweisung um ACall, vor die die Korrektur ihre Zeilen setzt: ein Aufruf oder X := Aufruf, allein in einer
   // Zeile einer Anweisungsliste; nil sonst.
   Result := nil;
-  Host := ACall.Parent;
-  if Host = nil then
+  mHost := ACall.Parent;
+  if mHost = nil then
   begin
     Exit;
   end;
-  Fits := (Host.Kind = TSyntaxKind.CallStatement) or
-    ((Host.Kind = TSyntaxKind.AssignStatement) and (Host.ChildCount = 2) and (Host[1] = ACall));
-  Fits := Fits and TRoutineBody.InList(Host) and (Host.StartPos.Line = Host.EndPos.Line);
-  Fits := Fits and (Host.EndPos.Line <= High(FLines));
-  if not Fits then
+  mFits := (mHost.Kind = TSyntaxKind.CallStatement) or
+    ((mHost.Kind = TSyntaxKind.AssignStatement) and (mHost.ChildCount = 2) and (mHost[1] = ACall));
+  mFits := mFits and TRoutineBody.InList(mHost) and (mHost.StartPos.Line = mHost.EndPos.Line);
+  mFits := mFits and (mHost.EndPos.Line <= High(FLines));
+  if not mFits then
   begin
     Exit;
   end;
-  Rest := Trim(Copy(FLines[Host.EndPos.Line], Host.EndPos.Character + 1, MaxInt));
-  if (Rest = '') or (Rest = ';') then
+  mRest := Trim(Copy(FLines[mHost.EndPos.Line], mHost.EndPos.Character + 1, MaxInt));
+  if (mRest = '') or (mRest = ';') then
   begin
-    Result := Host;
+    Result := mHost;
   end;
 end;
 
 function TVarArgumentScan.KnownParamType(const AParamType: string): Boolean;
 var
-  TypeSymbol: TResolvedSymbol;
+  mTypeSymbol: TResolvedSymbol;
 begin
   Result := (AParamType <> '') and not StartsText('array of', AParamType);
   Result := Result and (TResolverText.IsBuiltinTypeName(AParamType) or
-    FResolver.ResolveTypeFrom(FLocal, AParamType, TypeSymbol));
+    FResolver.ResolveTypeFrom(FLocal, AParamType, mTypeSymbol));
 end;
 
 function TVarArgumentScan.LocalVariableFix(ACall, AArgument: TSyntaxNode; const AParamType: string; AOut,
   AWriteBack: Boolean; out AFix: TRuleFix): Boolean;
 var
-  Host, Routine: TSyntaxNode;
-  Name, Argument, Indent: string;
-  Edits: TArray<TTextEdit>;
-  Line: Integer;
+  mHost, mRoutine: TSyntaxNode;
+  mName, mArgument, mIndent: string;
+  mEdits: TArray<TTextEdit>;
+  mLine: Integer;
 begin
   // Korrektur: das Argument über eine lokale Variable vom Typ des Parameters übergeben, bei String-Elementen und
   // beschreibbaren Eigenschaften mit Rückschreiben.
   Result := False;
-  Host := FixHost(ACall);
-  if Host = nil then
+  mHost := FixHost(ACall);
+  if mHost = nil then
   begin
     Exit;
   end;
-  Routine := TRoutineBody.RoutineAt(FContext.Tree, Host.StartOffset);
-  if (Routine = nil) or not KnownParamType(AParamType) then
+  mRoutine := TRoutineBody.RoutineAt(FContext.Tree, mHost.StartOffset);
+  if (mRoutine = nil) or not KnownParamType(AParamType) then
   begin
     Exit;
   end;
-  Name := TRoutineBody.UniqueName(FContext.Tree.Tokens, 'Wert');
-  Argument := NodeText(FContext, AArgument);
-  Indent := TTextLines.IndentOf(FLines[Host.StartPos.Line]);
-  Edits := [TRoutineBody.AddVariable(FContext.Text, Routine, Name, AParamType, FContext.Formatting)];
+  mName := TRoutineBody.UniqueName(FContext.Tree.Tokens, 'Wert');
+  mArgument := NodeText(FContext, AArgument);
+  mIndent := TTextLines.IndentOf(FLines[mHost.StartPos.Line]);
+  mEdits := [TRoutineBody.AddVariable(FContext.Text, mRoutine, mName, AParamType, FContext.Formatting)];
   if not AOut then
   begin
-    Edits := Edits + [TRoutineBody.InsertBefore(FContext.Text, Host, Name + ' := ' + Argument + ';')];
+    mEdits := mEdits + [TRoutineBody.InsertBefore(FContext.Text, mHost, mName + ' := ' + mArgument + ';')];
   end;
-  Edits := Edits + [TTextEdit.Create(TTextRange.Create(AArgument.StartPos, AArgument.EndPos), Name)];
+  mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(AArgument.StartPos, AArgument.EndPos), mName)];
   if AWriteBack then
   begin
-    Line := Host.EndPos.Line;
-    Edits := Edits + [TTextEdit.Create(TTextRange.Create(Line, Length(FLines[Line]), Line, Length(FLines[Line])),
-      FLineBreak + Indent + Argument + ' := ' + Name + ';')];
+    mLine := mHost.EndPos.Line;
+    mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(mLine, Length(FLines[mLine]), mLine, Length(FLines[mLine])),
+      FLineBreak + mIndent + mArgument + ' := ' + mName + ';')];
   end;
-  AFix := TRuleFix.Create(cTexts[TTypeChecksVarArgumentsText.ViaLocal].Fmt([Name]), Edits);
+  AFix := TRuleFix.Create(cTexts[TTypeChecksVarArgumentsText.ViaLocal].Fmt([mName]), mEdits);
   Result := True;
 end;
 
 function TVarArgumentScan.CalledParams(ACall: TSyntaxNode; out AParams: TArray<TSignatureParameter>): Boolean;
 var
-  Symbol: TResolvedSymbol;
-  ArgCount: Integer;
+  mSymbol: TResolvedSymbol;
+  mArgCount: Integer;
 begin
   AParams := nil;
-  Result := (ACall.ChildCount >= 2) and (ACall[0].Kind <> TSyntaxKind.InheritedExpr) and Resolve(ACall, Symbol);
-  Result := Result and not Symbol.IsType and
-    (Symbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_]);
-  Result := Result and RoutineParams(FContext, Symbol, AParams);
-  if not Result or (Symbol.Signature = '') then
+  Result := (ACall.ChildCount >= 2) and (ACall[0].Kind <> TSyntaxKind.InheritedExpr) and Resolve(ACall, mSymbol);
+  Result := Result and not mSymbol.IsType and
+    (mSymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_]);
+  Result := Result and RoutineParams(FContext, mSymbol, AParams);
+  if not Result or (mSymbol.Signature = '') then
   begin
     Exit;
   end;
   // Passt die Zahl der Argumente nicht zum Kopf, ist es eine andere Routine (bzw. ein anderer Fehler).
-  ArgCount := ACall.ChildCount - 1;
-  Result := (ArgCount >= Symbol.MinArgs) and (ArgCount <= Symbol.MaxArgs);
+  mArgCount := ACall.ChildCount - 1;
+  Result := (mArgCount >= mSymbol.MinArgs) and (mArgCount <= mSymbol.MaxArgs);
 end;
 
 procedure TVarArgumentScan.CheckArgument(ACall: TSyntaxNode; AIndex: Integer; const AParam: TSignatureParameter);
 var
-  Modifier, Message, ParamType: string;
-  Argument: TSyntaxNode;
-  Found: TVarArgument;
-  Fix: TRuleFix;
-  Fixes: TArray<TRuleFix>;
+  mModifier, mMessage, mParamType: string;
+  mArgument: TSyntaxNode;
+  mFound: TVarArgument;
+  mFix: TRuleFix;
+  mFixes: TArray<TRuleFix>;
 begin
-  Modifier := ModifierWord(AParam.Modifier);
-  if (Modifier <> 'var') and (Modifier <> 'out') then
+  mModifier := ModifierWord(AParam.Modifier);
+  if (mModifier <> 'var') and (mModifier <> 'out') then
   begin
     Exit;
   end;
-  Argument := ACall[AIndex];
-  ParamType := NormalizedType(AParam.TypeName);
-  Found := Classify(Argument, ParamType);
-  if not ArgumentMessage(Found.Kind, Found.Description, Modifier, Message) then
+  mArgument := ACall[AIndex];
+  mParamType := NormalizedType(AParam.TypeName);
+  mFound := Classify(mArgument, mParamType);
+  if not ArgumentMessage(mFound.Kind, mFound.Description, mModifier, mMessage) then
   begin
     Exit;
   end;
-  Fixes := nil;
-  if (Found.Kind in [TVarArgumentKind.ConstantObject, TVarArgumentKind.Expression]) and
-    LocalVariableFix(ACall, Argument, ParamType, Modifier = 'out', Found.WriteBack, Fix) then
+  mFixes := nil;
+  if (mFound.Kind in [TVarArgumentKind.ConstantObject, TVarArgumentKind.Expression]) and
+    LocalVariableFix(ACall, mArgument, mParamType, mModifier = 'out', mFound.WriteBack, mFix) then
   begin
-    Fixes := [Fix];
+    mFixes := [mFix];
   end;
-  FReport.Add(TTextRange.Create(Argument.StartPos, Argument.EndPos), Message, TRuleConfidence.High, Fixes);
+  FReport.Add(TTextRange.Create(mArgument.StartPos, mArgument.EndPos), mMessage, TRuleConfidence.High, mFixes);
 end;
 
 procedure TVarArgumentScan.CheckCall(ACall: TSyntaxNode);
 var
-  Params: TArray<TSignatureParameter>;
-  Index: Integer;
+  mParams: TArray<TSignatureParameter>;
+  mIndex: Integer;
 begin
-  if not CalledParams(ACall, Params) then
+  if not CalledParams(ACall, mParams) then
   begin
     Exit;
   end;
-  for Index := 1 to ACall.ChildCount - 1 do
+  for mIndex := 1 to ACall.ChildCount - 1 do
   begin
-    if Index > Length(Params) then
+    if mIndex > Length(mParams) then
     begin
       Break;
     end;
-    CheckArgument(ACall, Index, Params[Index - 1]);
+    CheckArgument(ACall, mIndex, mParams[mIndex - 1]);
   end;
 end;
 
@@ -592,46 +592,46 @@ end;
 
 function TInvalidVarArgumentRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(InvalidVarArgumentRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cInvalidVarArgumentRuleId, TRuleSeverity.Error,
     cTexts[TTypeChecksVarArgumentsText.Title].Text);
 end;
 
 procedure TInvalidVarArgumentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName: string;
-  Node: TSyntaxNode;
-  Scan: TVarArgumentScan;
+  mFileName: string;
+  mNode: TSyntaxNode;
+  mScan: TVarArgumentScan;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  FileName := ResolverFileName(AContext);
+  mFileName := ResolverFileName(AContext);
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
-  Resolver.PinTree(AContext.Tree, FileName);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver.PinTree(AContext.Tree, mFileName);
   try
-    Scan := TVarArgumentScan.Create(AContext, AReport, Resolver, FileName);
+    mScan := TVarArgumentScan.Create(AContext, AReport, mResolver, mFileName);
     try
-      for Node in PreOrder(AContext.Tree.Root) do
+      for mNode in PreOrder(AContext.Tree.Root) do
       begin
-        if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 1) then
+        if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount > 1) then
         begin
-          Scan.CheckCall(Node);
+          mScan.CheckCall(mNode);
         end
-        else if Node.Kind = TSyntaxKind.AddressOf then
+        else if mNode.Kind = TSyntaxKind.AddressOf then
         begin
-          Scan.CheckAddress(Node);
+          mScan.CheckAddress(mNode);
         end;
       end;
     finally
-      Scan.Free;
+      mScan.Free;
     end;
   finally
-    Resolver.UnpinTree;
+    mResolver.UnpinTree;
   end;
 end;
 

@@ -56,12 +56,10 @@ type
 
   TAtlasQuickBookmarks = class
   public const
-    MaxNumber = 9;
+    cMaxNumber = 9;
     /// <summary>Zweite Teile der Faltungsakkorde nach Strg+Umschalt+K in der Standard-Tastaturbelegung.</summary>
-    FoldLetters = 'ACEGMNOPRTU';
-    /// <summary>Vorgabe von bookmarks.quick.chordWait in ms.</summary>
-    DefaultChordWait = 800;
-    MinColumnWidth = 10;
+    cFoldLetters = 'ACEGMNOPRTU';
+    cMinColumnWidth = 10;
   public
     /// <summary>Steht in der Spalte: schnelles oder nummeriertes Lesezeichen.</summary>
     class function InColumn(const ABookmark: TAtlasBookmark): Boolean; static;
@@ -111,7 +109,7 @@ type
     /// <summary>Entscheidung nach Strg+Umschalt+K: AWaitMs Wartezeit (0 = Atlas belegt die Taste nicht),
     /// AElapsedMs seit dem ersten Teil, AKey die nächste Taste (virtueller Tastencode, 0 = noch keine).</summary>
     class function Chord(AWaitMs, AElapsedMs: Integer; AKey: Word): TAtlasChordAction; static;
-    /// <summary>Breite der Spalte in Pixeln zur Zeilenhöhe: Platz für Band und Ziffer, mindestens MinColumnWidth.
+    /// <summary>Breite der Spalte in Pixeln zur Zeilenhöhe: Platz für Band und Ziffer, mindestens cMinColumnWidth.
     /// </summary>
     class function ColumnWidth(ALineHeight: Integer): Integer; static;
     /// <summary>Editorzeile unter der Höhe AY, geschätzt aus einer gezeichneten Zeile (AKnownLine, Oberkante
@@ -130,10 +128,10 @@ uses
   System.Generics.Defaults;
 
 const
-  KeyMask = $00FF;
-  ModifierMask = $FF00;
+  cKeyMask = $00FF;
+  cModifierMask = $FF00;
   // Umschalttasten selbst (VK_SHIFT, VK_CONTROL, VK_MENU, linke/rechte Varianten): Der Nutzer hält sie noch.
-  ModifierKeys: array[0..8] of Word = ($10, $11, $12, $A0, $A1, $A2, $A3, $A4, $A5);
+  cModifierKeys: array[0..8] of Word = ($10, $11, $12, $A0, $A1, $A2, $A3, $A4, $A5);
 
 { TAtlasIdeBookmarkPos }
 
@@ -153,41 +151,41 @@ end;
 class function TAtlasQuickBookmarks.ColumnMarks(const AList: TAtlasBookmarkList; const AFileName: string;
   ALine: Integer): TArray<TAtlasBookmark>;
 var
-  Mark: TAtlasBookmark;
-  Numbered, Plain: TArray<TAtlasBookmark>;
+  mMark: TAtlasBookmark;
+  mNumbered, mPlain: TArray<TAtlasBookmark>;
 begin
-  Numbered := nil;
-  Plain := nil;
-  for Mark in AList.AtLine(AFileName, ALine) do
+  mNumbered := nil;
+  mPlain := nil;
+  for mMark in AList.AtLine(AFileName, ALine) do
   begin
-    if InColumn(Mark) then
+    if InColumn(mMark) then
     begin
-      if Mark.Number > 0 then
+      if mMark.Number > 0 then
       begin
-        Numbered := Numbered + [Mark];
+        mNumbered := mNumbered + [mMark];
       end
       else
       begin
-        Plain := Plain + [Mark];
+        mPlain := mPlain + [mMark];
       end;
     end;
   end;
-  TArray.Sort<TAtlasBookmark>(Numbered, TComparer<TAtlasBookmark>.Construct(
+  TArray.Sort<TAtlasBookmark>(mNumbered, TComparer<TAtlasBookmark>.Construct(
     function(const A, B: TAtlasBookmark): Integer
     begin
       Result := A.Number - B.Number;
     end));
-  Result := Numbered + Plain;
+  Result := mNumbered + mPlain;
 end;
 
 class function TAtlasQuickBookmarks.HasColumnMarks(const AList: TAtlasBookmarkList; const AFileName: string): Boolean;
 var
-  Mark: TAtlasBookmark;
+  mMark: TAtlasBookmark;
 begin
   Result := False;
-  for Mark in AList.ForFile(AFileName) do
+  for mMark in AList.ForFile(AFileName) do
   begin
-    if InColumn(Mark) then
+    if InColumn(mMark) then
     begin
       Exit(True);
     end;
@@ -197,14 +195,14 @@ end;
 class function TAtlasQuickBookmarks.AddQuick(var AList: TAtlasBookmarkList; const AFileName, AText: string;
   ALine, ANumber: Integer; ANowUtc: TDateTime): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AList.Add(AFileName, AText, ALine, '', ANowUtc);
-  Index := AList.IndexOf(Result);
-  AList.Bookmarks[Index].Kind := TAtlasBookmarkKind.Quick;
-  if (ANumber >= 1) and (ANumber <= MaxNumber) then
+  mIndex := AList.IndexOf(Result);
+  AList.Bookmarks[mIndex].Kind := TAtlasBookmarkKind.Quick;
+  if (ANumber >= 1) and (ANumber <= cMaxNumber) then
   begin
-    AList.Bookmarks[Index].Number := ANumber;
+    AList.Bookmarks[mIndex].Number := ANumber;
   end;
 end;
 
@@ -225,21 +223,21 @@ end;
 class function TAtlasQuickBookmarks.SetNumber(var AList: TAtlasBookmarkList; const AFileName, AText: string;
   ALine, ANumber: Integer; ANowUtc: TDateTime): TAtlasQuickChange;
 var
-  Index: Integer;
-  Mark: TAtlasBookmark;
+  mIndex: Integer;
+  mMark: TAtlasBookmark;
 begin
   Result := TAtlasQuickChange.None;
-  if (ANumber < 1) or (ANumber > MaxNumber) or (ALine < 0) then
+  if (ANumber < 1) or (ANumber > cMaxNumber) or (ALine < 0) then
   begin
     Exit;
   end;
-  Index := AList.IndexOfNumber(ANumber);
-  if Index >= 0 then
+  mIndex := AList.IndexOfNumber(ANumber);
+  if mIndex >= 0 then
   begin
-    Mark := AList.Bookmarks[Index];
-    DropNumber(AList, Index);
+    mMark := AList.Bookmarks[mIndex];
+    DropNumber(AList, mIndex);
     // Stand schon in dieser Zeile: nur entfernen.
-    if not Mark.Lost and (Mark.Line = ALine) and TAtlasBookmarks.SameFile(Mark.FileName, AFileName) then
+    if not mMark.Lost and (mMark.Line = ALine) and TAtlasBookmarks.SameFile(mMark.FileName, AFileName) then
     begin
       Exit(TAtlasQuickChange.Removed);
     end;
@@ -255,46 +253,46 @@ end;
 class function TAtlasQuickBookmarks.AssignNumber(var AList: TAtlasBookmarkList; const AId: string;
   ANumber: Integer): TAtlasQuickChange;
 var
-  Index, Holder: Integer;
+  mIndex, mHolder: Integer;
 begin
   Result := TAtlasQuickChange.None;
-  Index := AList.IndexOf(AId);
-  if (Index < 0) or (ANumber < 1) or (ANumber > MaxNumber) then
+  mIndex := AList.IndexOf(AId);
+  if (mIndex < 0) or (ANumber < 1) or (ANumber > cMaxNumber) then
   begin
     Exit;
   end;
-  if AList.Bookmarks[Index].Number = ANumber then
+  if AList.Bookmarks[mIndex].Number = ANumber then
   begin
     // Hat sie schon: Nummer weg, das Lesezeichen bleibt (auch ein schnelles, es wird unnummeriert).
-    AList.Bookmarks[Index].Number := 0;
+    AList.Bookmarks[mIndex].Number := 0;
     Exit(TAtlasQuickChange.Removed);
   end;
   Result := TAtlasQuickChange.Added;
-  Holder := AList.IndexOfNumber(ANumber);
-  if Holder >= 0 then
+  mHolder := AList.IndexOfNumber(ANumber);
+  if mHolder >= 0 then
   begin
     // Der bisherige Träger behält sich selbst, nur ohne Nummer.
-    AList.Bookmarks[Holder].Number := 0;
+    AList.Bookmarks[mHolder].Number := 0;
     Result := TAtlasQuickChange.Moved;
   end;
-  AList.Bookmarks[Index].Number := ANumber;
+  AList.Bookmarks[mIndex].Number := ANumber;
 end;
 
 class function TAtlasQuickBookmarks.Toggle(var AList: TAtlasBookmarkList; const AFileName, AText: string;
   ALine: Integer; ANowUtc: TDateTime): TAtlasQuickChange;
 var
-  Mark: TAtlasBookmark;
+  mMark: TAtlasBookmark;
 begin
   Result := TAtlasQuickChange.None;
   if ALine < 0 then
   begin
     Exit;
   end;
-  for Mark in AList.AtLine(AFileName, ALine) do
+  for mMark in AList.AtLine(AFileName, ALine) do
   begin
-    if (Mark.Kind = TAtlasBookmarkKind.Quick) and (Mark.Number = 0) then
+    if (mMark.Kind = TAtlasBookmarkKind.Quick) and (mMark.Number = 0) then
     begin
-      AList.Remove(Mark.Id);
+      AList.Remove(mMark.Id);
       Exit(TAtlasQuickChange.Removed);
     end;
   end;
@@ -305,11 +303,11 @@ end;
 class function TAtlasQuickBookmarks.FreeNumber(const AList: TAtlasBookmarkList): Integer;
 begin
   Result := 1;
-  while (Result <= MaxNumber) and (AList.IndexOfNumber(Result) >= 0) do
+  while (Result <= cMaxNumber) and (AList.IndexOfNumber(Result) >= 0) do
   begin
     Inc(Result);
   end;
-  if Result > MaxNumber then
+  if Result > cMaxNumber then
   begin
     Result := 0;
   end;
@@ -335,24 +333,24 @@ end;
 class function TAtlasQuickBookmarks.RemoveAt(var AList: TAtlasBookmarkList; const AFileName: string;
   ALine: Integer): Integer;
 var
-  Mark: TAtlasBookmark;
-  Index: Integer;
+  mMark: TAtlasBookmark;
+  mIndex: Integer;
 begin
   Result := 0;
-  for Mark in ColumnMarks(AList, AFileName, ALine) do
+  for mMark in ColumnMarks(AList, AFileName, ALine) do
   begin
-    Index := AList.IndexOf(Mark.Id);
-    if Index < 0 then
+    mIndex := AList.IndexOf(mMark.Id);
+    if mIndex < 0 then
     begin
       Continue;
     end;
-    if AList.Bookmarks[Index].Kind = TAtlasBookmarkKind.Quick then
+    if AList.Bookmarks[mIndex].Kind = TAtlasBookmarkKind.Quick then
     begin
-      Delete(AList.Bookmarks, Index, 1);
+      Delete(AList.Bookmarks, mIndex, 1);
     end
     else
     begin
-      AList.Bookmarks[Index].Number := 0;
+      AList.Bookmarks[mIndex].Number := 0;
     end;
     Inc(Result);
   end;
@@ -360,20 +358,20 @@ end;
 
 class function TAtlasQuickBookmarks.RemoveFile(var AList: TAtlasBookmarkList; const AFileName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
-  for Index := High(AList.Bookmarks) downto 0 do
+  for mIndex := High(AList.Bookmarks) downto 0 do
   begin
-    if TAtlasBookmarks.SameFile(AList.Bookmarks[Index].FileName, AFileName) and InColumn(AList.Bookmarks[Index]) then
+    if TAtlasBookmarks.SameFile(AList.Bookmarks[mIndex].FileName, AFileName) and InColumn(AList.Bookmarks[mIndex]) then
     begin
-      if AList.Bookmarks[Index].Kind = TAtlasBookmarkKind.Quick then
+      if AList.Bookmarks[mIndex].Kind = TAtlasBookmarkKind.Quick then
       begin
-        Delete(AList.Bookmarks, Index, 1);
+        Delete(AList.Bookmarks, mIndex, 1);
       end
       else
       begin
-        AList.Bookmarks[Index].Number := 0;
+        AList.Bookmarks[mIndex].Number := 0;
       end;
       Inc(Result);
     end;
@@ -442,7 +440,7 @@ var
   mModifier: Word;
 begin
   Result := False;
-  for mModifier in ModifierKeys do
+  for mModifier in cModifierKeys do
   begin
     if AKey = mModifier then
     begin
@@ -484,7 +482,7 @@ begin
   for mMark in AMarks do
   begin
     // Lesezeichen 0 bleibt bei der IDE (Strg+0 und Strg+Umschalt+0 gehören ihr).
-    if (mMark.Number < 1) or (mMark.Number > MaxNumber) or (mMark.Line < 0) then
+    if (mMark.Number < 1) or (mMark.Number > cMaxNumber) or (mMark.Line < 0) then
     begin
       Continue;
     end;
@@ -522,7 +520,7 @@ begin
       Result := TAtlasChordAction.Wait;
     end;
   end
-  else if not mLate and (AKey < $80) and (Pos(Char(AKey), FoldLetters) > 0) then
+  else if not mLate and (AKey < $80) and (Pos(Char(AKey), cFoldLetters) > 0) then
   begin
     Result := TAtlasChordAction.PassOn;
   end
@@ -536,15 +534,15 @@ end;
 class function TAtlasQuickBookmarks.ColumnWidth(ALineHeight: Integer): Integer;
 begin
   Result := (ALineHeight * 4) div 5;
-  if Result < MinColumnWidth then
+  if Result < cMinColumnWidth then
   begin
-    Result := MinColumnWidth;
+    Result := cMinColumnWidth;
   end;
 end;
 
 class function TAtlasQuickBookmarks.RowGuess(AKnownLine, AKnownTop, ALineHeight, AY: Integer): Integer;
 var
-  Offset: Integer;
+  mOffset: Integer;
 begin
   Result := AKnownLine;
   if ALineHeight <= 0 then
@@ -552,40 +550,40 @@ begin
     Exit;
   end;
   // Abrunden auch oberhalb der bekannten Zeile (div rundet zur Null).
-  Offset := AY - AKnownTop;
-  if Offset >= 0 then
+  mOffset := AY - AKnownTop;
+  if mOffset >= 0 then
   begin
-    Result := AKnownLine + Offset div ALineHeight;
+    Result := AKnownLine + mOffset div ALineHeight;
   end
   else
   begin
-    Result := AKnownLine - (ALineHeight - 1 - Offset) div ALineHeight;
+    Result := AKnownLine - (ALineHeight - 1 - mOffset) div ALineHeight;
   end;
 end;
 
 class function TAtlasQuickBookmarks.KeyFor(ABase: Word; ANumber: Integer): Word;
 begin
   Result := 0;
-  if (ABase = 0) or (ANumber < 1) or (ANumber > MaxNumber) then
+  if (ABase = 0) or (ANumber < 1) or (ANumber > cMaxNumber) then
   begin
     Exit;
   end;
-  Result := Word((ABase and ModifierMask) or (Ord('0') + ANumber));
+  Result := Word((ABase and cModifierMask) or (Ord('0') + ANumber));
 end;
 
 class function TAtlasQuickBookmarks.NumberOfKey(AShortCut, ABase: Word): Integer;
 var
-  Digit: Integer;
+  mDigit: Integer;
 begin
   Result := 0;
-  if (ABase = 0) or ((AShortCut and ModifierMask) <> (ABase and ModifierMask)) then
+  if (ABase = 0) or ((AShortCut and cModifierMask) <> (ABase and cModifierMask)) then
   begin
     Exit;
   end;
-  Digit := Integer(AShortCut and KeyMask) - Ord('0');
-  if (Digit >= 1) and (Digit <= MaxNumber) then
+  mDigit := Integer(AShortCut and cKeyMask) - Ord('0');
+  if (mDigit >= 1) and (mDigit <= cMaxNumber) then
   begin
-    Result := Digit;
+    Result := mDigit;
   end;
 end;
 

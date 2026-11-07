@@ -115,7 +115,7 @@ uses
   Atlas.UI.Strings;
 
 const
-  Gap = 8;
+  cGap = 8;
 
 function NewButton(AOwner: TForm; AParent: TWinControl; const ACaption: string): TButton;
 begin
@@ -125,7 +125,7 @@ begin
   AOwner.Canvas.Font := AOwner.Font;
   Result.Width := AOwner.Canvas.TextWidth(ACaption) + AOwner.ScaleValue(32);
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, Gap, Gap div 2);
+  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
 end;
 
 function NewButtons(AOwner: TForm): TFlowPanel;
@@ -136,7 +136,7 @@ begin
   Result.AutoSize := True;
   Result.BevelOuter := bvNone;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(Gap, Gap, Gap, Gap);
+  Result.Margins.SetBounds(cGap, cGap, cGap, cGap);
 end;
 
 procedure SetupForm(AForm: TForm; const ACaption: string; AWidth: Integer);
@@ -151,12 +151,12 @@ end;
 
 function HasArea(const AAreas: TArray<string>; const AArea: string): Boolean;
 var
-  Area: string;
+  mArea: string;
 begin
   Result := False;
-  for Area in AAreas do
+  for mArea in AAreas do
   begin
-    if SameText(Area, AArea) then
+    if SameText(mArea, AArea) then
     begin
       Exit(True);
     end;
@@ -175,7 +175,7 @@ begin
   Result.Parent := AOwner;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(Gap, Gap, Gap, 0);
+  Result.Margins.SetBounds(cGap, cGap, cGap, 0);
   Result.Top := ATop;
   Result.Caption := ACaption;
 end;
@@ -198,13 +198,18 @@ begin
   Result.Parent := AOwner;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(Gap, Gap, Gap, 0);
+  Result.Margins.SetBounds(cGap, cGap, cGap, 0);
   Result.Top := ATop;
   Result.Height := AOwner.ScaleValue(64);
   Result.Caption := ACaption;
-  for mItem in AItems do
-  begin
-    Result.Items.Add(mItem);
+  Result.Items.BeginUpdate;
+  try
+    for mItem in AItems do
+    begin
+      Result.Items.Add(mItem);
+    end;
+  finally
+    Result.Items.EndUpdate;
   end;
 end;
 
@@ -225,7 +230,7 @@ begin
   mPanel.AutoSize := True;
   mPanel.BevelOuter := bvNone;
   mPanel.AlignWithMargins := True;
-  mPanel.Margins.SetBounds(Gap, 4, Gap, 0);
+  mPanel.Margins.SetBounds(cGap, 4, cGap, 0);
   mPanel.Top := 2000;
   for mArea in ACatalog.Areas do
   begin
@@ -312,12 +317,12 @@ end;
 
 procedure TAtlasExportDialog.AreaClick(Sender: TObject);
 var
-  Box: TCheckBox;
+  mBox: TCheckBox;
 begin
   FSave.Enabled := False;
-  for Box in FAreas do
+  for mBox in FAreas do
   begin
-    if Box.Checked then
+    if mBox.Checked then
     begin
       FSave.Enabled := True;
     end;
@@ -326,16 +331,16 @@ end;
 
 function TAtlasExportDialog.Options: TAtlasExportOptions;
 var
-  Index: Integer;
-  Areas: TArray<string>;
+  mIndex: Integer;
+  mAreas: TArray<string>;
   mSecrets: TAtlasSecretMode;
 begin
-  Areas := nil;
-  for Index := 0 to High(FAreas) do
+  mAreas := nil;
+  for mIndex := 0 to High(FAreas) do
   begin
-    if FAreas[Index].Checked then
+    if FAreas[mIndex].Checked then
     begin
-      Areas := Areas + [FAreaIds[Index]];
+      mAreas := mAreas + [FAreaIds[mIndex]];
     end;
   end;
   mSecrets := smOmit;
@@ -343,27 +348,27 @@ begin
   begin
     mSecrets := smPlaceholder;
   end;
-  Result := TAtlasExportOptions.Create(Areas, mSecrets);
+  Result := TAtlasExportOptions.Create(mAreas, mSecrets);
 end;
 
 class function TAtlasExportDialog.Execute(ACatalog: TAtlasSettingsCatalog; var AOptions: TAtlasExportOptions;
   const APrepare: TProc<TForm>): Boolean;
 var
-  Dialog: TAtlasExportDialog;
+  mDialog: TAtlasExportDialog;
 begin
-  Dialog := TAtlasExportDialog.CreateDialog(nil, ACatalog, AOptions.Secrets);
+  mDialog := TAtlasExportDialog.CreateDialog(nil, ACatalog, AOptions.Secrets);
   try
     if Assigned(APrepare) then
     begin
-      APrepare(Dialog);
+      APrepare(mDialog);
     end;
-    Result := Dialog.ShowModal = mrOk;
+    Result := mDialog.ShowModal = mrOk;
     if Result then
     begin
-      AOptions := Dialog.Options;
+      AOptions := mDialog.Options;
     end;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
@@ -383,7 +388,7 @@ begin
   FCount := TLabel.Create(Self);
   FCount.Parent := mButtons;
   FCount.AlignWithMargins := True;
-  FCount.Margins.SetBounds(Gap, 4, 0, 0);
+  FCount.Margins.SetBounds(cGap, 4, 0, 0);
   FInfo := NewInfoLabel(Self, ImportInfo(APreview));
   FInfo.Visible := FInfo.Caption <> '';
   FMode := NewChoice(Self, '', 1000, [TAtlasStrings.Text(TAtlasTextId.SettingsImportMerge),
@@ -395,7 +400,7 @@ begin
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(Gap, Gap, Gap, 0);
+  FList.Margins.SetBounds(cGap, cGap, cGap, 0);
   FList.ViewStyle := vsReport;
   FList.Checkboxes := True;
   FList.ReadOnly := True;
@@ -422,7 +427,7 @@ end;
 
 function TAtlasImportDialog.ValueText(const AItem: TAtlasImportItem; const AJson: string): string;
 var
-  Value: Integer;
+  mValue: Integer;
 begin
   if AJson = '' then
   begin
@@ -430,9 +435,9 @@ begin
   end;
   Result := TAtlasJsonValues.Display(AJson);
   // Tastenkürzel wie im Menü.
-  if (AItem.Entry >= 0) and (FCatalog[AItem.Entry].Format = 'shortcut') and TryStrToInt(Result, Value) then
+  if (AItem.Entry >= 0) and (FCatalog[AItem.Entry].Format = 'shortcut') and TryStrToInt(Result, mValue) then
   begin
-    Result := ShortCutToText(TShortCut(Value));
+    Result := ShortCutToText(TShortCut(mValue));
     if Result = '' then
     begin
       Result := '–';
@@ -477,38 +482,38 @@ end;
 
 procedure TAtlasImportDialog.Fill;
 var
-  Index: Integer;
-  Item: TAtlasImportItem;
-  Row: TListItem;
-  Area: string;
+  mIndex: Integer;
+  mItem: TAtlasImportItem;
+  mRow: TListItem;
+  mArea: string;
 begin
   FFilled := True;
   FList.Items.BeginUpdate;
   try
     FList.Items.Clear;
-    for Index := 0 to High(FPreview.Items) do
+    for mIndex := 0 to High(FPreview.Items) do
     begin
-      Item := FPreview.Items[Index];
-      Row := FList.Items.Add;
-      Row.Caption := Item.Key;
-      Area := '';
-      if Item.Area <> '' then
+      mItem := FPreview.Items[mIndex];
+      mRow := FList.Items.Add;
+      mRow.Caption := mItem.Key;
+      mArea := '';
+      if mItem.Area <> '' then
       begin
-        Area := FCatalog.AreaCaption(Item.Area, English);
+        mArea := FCatalog.AreaCaption(mItem.Area, English);
       end;
-      Row.SubItems.Add(Area);
-      Row.SubItems.Add(ValueText(Item, Item.CurrentJson));
-      if Item.Selectable then
+      mRow.SubItems.Add(mArea);
+      mRow.SubItems.Add(ValueText(mItem, mItem.CurrentJson));
+      if mItem.Selectable then
       begin
-        Row.SubItems.Add(ValueText(Item, Item.NewJson));
+        mRow.SubItems.Add(ValueText(mItem, mItem.NewJson));
       end
       else
       begin
-        Row.SubItems.Add(TAtlasJsonValues.Display(Item.NewJson));
+        mRow.SubItems.Add(TAtlasJsonValues.Display(mItem.NewJson));
       end;
-      Row.SubItems.Add(NoteText(Item));
-      Row.Data := Pointer(NativeInt(Index));
-      Row.Checked := Item.Selected and Item.Selectable;
+      mRow.SubItems.Add(NoteText(mItem));
+      mRow.Data := Pointer(NativeInt(mIndex));
+      mRow.Checked := mItem.Selected and mItem.Selectable;
     end;
   finally
     FList.Items.EndUpdate;
@@ -518,36 +523,36 @@ end;
 
 procedure TAtlasImportDialog.SyncChecks;
 var
-  Row: TListItem;
-  Index, Selected, Selectable: Integer;
+  mRow: TListItem;
+  mIndex, mSelected, mSelectable: Integer;
 begin
-  Selected := 0;
-  Selectable := 0;
-  for Row in FList.Items do
+  mSelected := 0;
+  mSelectable := 0;
+  for mRow in FList.Items do
   begin
-    Index := NativeInt(Row.Data);
-    if (Index < 0) or (Index > High(FPreview.Items)) then
+    mIndex := NativeInt(mRow.Data);
+    if (mIndex < 0) or (mIndex > High(FPreview.Items)) then
     begin
       Continue;
     end;
     // Übersprungene Einträge lassen sich nicht wählen.
-    if not FPreview.Items[Index].Selectable then
+    if not FPreview.Items[mIndex].Selectable then
     begin
-      if Row.Checked then
+      if mRow.Checked then
       begin
-        Row.Checked := False;
+        mRow.Checked := False;
       end;
       Continue;
     end;
-    Inc(Selectable);
-    FPreview.Items[Index].Selected := Row.Checked;
-    if Row.Checked then
+    Inc(mSelectable);
+    FPreview.Items[mIndex].Selected := mRow.Checked;
+    if mRow.Checked then
     begin
-      Inc(Selected);
+      Inc(mSelected);
     end;
   end;
-  FCount.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsImportCount, [Selected, Selectable]);
-  FApply.Enabled := Selected > 0;
+  FCount.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsImportCount, [mSelected, mSelectable]);
+  FApply.Enabled := mSelected > 0;
 end;
 
 procedure TAtlasImportDialog.ListChanged(Sender: TObject);
@@ -562,20 +567,20 @@ end;
 
 procedure TAtlasImportDialog.Recalculate(Sender: TObject);
 var
-  Areas: TArray<string>;
-  Index: Integer;
+  mAreas: TArray<string>;
+  mIndex: Integer;
   mMode: TAtlasImportMode;
 begin
   if not Assigned(FOnPreview) then
   begin
     Exit;
   end;
-  Areas := nil;
-  for Index := 0 to High(FAreaBoxes) do
+  mAreas := nil;
+  for mIndex := 0 to High(FAreaBoxes) do
   begin
-    if FAreaBoxes[Index].Checked then
+    if FAreaBoxes[mIndex].Checked then
     begin
-      Areas := Areas + [FAreaIds[Index]];
+      mAreas := mAreas + [FAreaIds[mIndex]];
     end;
   end;
   mMode := imMerge;
@@ -584,7 +589,7 @@ begin
     mMode := imReplace;
   end;
   // Keine Bereiche gewählt: leere Vorschau statt „alle“.
-  if Length(Areas) = 0 then
+  if Length(mAreas) = 0 then
   begin
     FPreview.Items := nil;
     FPreview.Areas := nil;
@@ -592,7 +597,7 @@ begin
   end
   else
   begin
-    FPreview := FOnPreview(mMode, Areas);
+    FPreview := FOnPreview(mMode, mAreas);
   end;
   if HandleAllocated then
   begin
@@ -612,21 +617,21 @@ end;
 class function TAtlasImportDialog.Execute(ACatalog: TAtlasSettingsCatalog; const AFileName: string;
   var APreview: TAtlasImportPreview; const AOnPreview: TAtlasImportPreviewFunc; const APrepare: TProc<TForm>): Boolean;
 var
-  Dialog: TAtlasImportDialog;
+  mDialog: TAtlasImportDialog;
 begin
-  Dialog := TAtlasImportDialog.CreateDialog(nil, ACatalog, AFileName, APreview, AOnPreview);
+  mDialog := TAtlasImportDialog.CreateDialog(nil, ACatalog, AFileName, APreview, AOnPreview);
   try
     if Assigned(APrepare) then
     begin
-      APrepare(Dialog);
+      APrepare(mDialog);
     end;
-    Result := Dialog.ShowModal = mrOk;
+    Result := mDialog.ShowModal = mrOk;
     if Result then
     begin
-      APreview := Dialog.Result_;
+      APreview := mDialog.Result_;
     end;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
@@ -634,23 +639,23 @@ end;
 
 constructor TAtlasProfileDialog.CreateDialog(AOwner: TComponent; const ANames, ADescriptions: TArray<string>);
 var
-  Buttons: TFlowPanel;
+  mButtons: TFlowPanel;
 begin
   inherited CreateNew(AOwner);
   SetupForm(Self, TAtlasStrings.Text(TAtlasTextId.SettingsProfileTitle), 420);
   FDescriptions := ADescriptions;
-  Buttons := NewButtons(Self);
-  FLoad := NewButton(Self, Buttons, TAtlasStrings.Text(TAtlasTextId.SettingsImportButton));
+  mButtons := NewButtons(Self);
+  FLoad := NewButton(Self, mButtons, TAtlasStrings.Text(TAtlasTextId.SettingsImportButton));
   FLoad.ModalResult := mrOk;
   FLoad.Default := True;
-  FCancel := NewButton(Self, Buttons, TAtlasStrings.Text(TAtlasTextId.SettingsDialogCancel));
+  FCancel := NewButton(Self, mButtons, TAtlasStrings.Text(TAtlasTextId.SettingsDialogCancel));
   FCancel.ModalResult := mrCancel;
   FCancel.Cancel := True;
   FDescription := TLabel.Create(Self);
   FDescription.Parent := Self;
   FDescription.Align := alBottom;
   FDescription.AlignWithMargins := True;
-  FDescription.Margins.SetBounds(Gap, Gap, Gap, 0);
+  FDescription.Margins.SetBounds(cGap, cGap, cGap, 0);
   FDescription.WordWrap := True;
   FDescription.ShowAccelChar := False;
   FDescription.AutoSize := False;
@@ -659,7 +664,7 @@ begin
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(Gap, Gap, Gap, 0);
+  FList.Margins.SetBounds(cGap, cGap, cGap, 0);
   FList.OnClick := ListClick;
   FList.OnDblClick := ListDblClick;
   ClientHeight := ScaleValue(240);
@@ -707,22 +712,22 @@ end;
 class function TAtlasProfileDialog.Choose(const ANames, ADescriptions: TArray<string>; out AIndex: Integer;
   const APrepare: TProc<TForm>): Boolean;
 var
-  Dialog: TAtlasProfileDialog;
+  mDialog: TAtlasProfileDialog;
 begin
   AIndex := -1;
-  Dialog := TAtlasProfileDialog.CreateDialog(nil, ANames, ADescriptions);
+  mDialog := TAtlasProfileDialog.CreateDialog(nil, ANames, ADescriptions);
   try
     if Assigned(APrepare) then
     begin
-      APrepare(Dialog);
+      APrepare(mDialog);
     end;
-    Result := (Dialog.ShowModal = mrOk) and (Dialog.List.ItemIndex >= 0);
+    Result := (mDialog.ShowModal = mrOk) and (mDialog.List.ItemIndex >= 0);
     if Result then
     begin
-      AIndex := Dialog.List.ItemIndex;
+      AIndex := mDialog.List.ItemIndex;
     end;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 

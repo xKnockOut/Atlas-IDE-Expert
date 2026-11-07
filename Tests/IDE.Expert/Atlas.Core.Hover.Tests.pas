@@ -296,7 +296,7 @@ var
 begin
   Data := Default(TAtlasHoverData);
   Data.Declaration := 'TGalleryFrameClass = class of TBFrame;';
-  Data.Kind := TAtlasHoverData.KindClassRef;
+  Data.Kind := TAtlasHoverData.cKindClassRef;
   Data.ChainOf := 'TBFrame';
   Data.Ancestors := [Ref('TBFrame', 19), Ref('TObject', 10)];
   // Die Kette gehört zum Zieltyp, der Titel ist die Klassenreferenz selbst.
@@ -358,13 +358,13 @@ begin
     begin
       Assert.IsTrue(History.Open(Ref('T' + IntToStr(Index), Index)));
     end;
-    Assert.AreEqual(TAtlasHoverHistory.MaxSteps, History.Count);
+    Assert.AreEqual(TAtlasHoverHistory.cMaxSteps, History.Count);
     Assert.AreEqual('T2', History.Items[0].Location.Name);
     Assert.AreEqual('T11', History.Current.Location.Name);
     Path := History.Path;
     Assert.AreEqual('…', Path[0].Caption, 'Pfad beginnt mit …');
     Assert.AreEqual(-1, Path[0].Index);
-    Assert.AreEqual(TAtlasHoverHistory.MaxPathShown, Integer(Length(Path)));
+    Assert.AreEqual(TAtlasHoverHistory.cMaxPathShown, Integer(Length(Path)));
     Assert.AreEqual('T11', Path[High(Path)].Caption);
     Assert.AreEqual(History.Count - 1, Path[High(Path)].Index);
   finally

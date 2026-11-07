@@ -24,7 +24,8 @@ type
     ProjectFile: string;
     /// <summary>ProjectVersion der .dproj; '' ohne.</summary>
     ProjectVersion: string;
-    /// <summary>Gewählte Delphi-Version; ohne Installation die erwartete, sie liefert nur die Symbole (#1321).</summary>
+    /// <summary>Gewählte Delphi-Version; ohne Installation die erwartete, sie liefert nur die Symbole
+    /// (#1321).</summary>
     Version: string;
     /// <summary>nil ohne Installation.</summary>
     Installation: ILibraryPathProvider;
@@ -187,7 +188,7 @@ begin
   else if Length(mCandidates) > 1 then
   begin
     FLogger.Info(Format('%d Projektdateien in %s; "project" in %s wählt eine aus',
-      [Length(mCandidates), TLogMarks.Path(FRoot), ConfigurationFileName]));
+      [Length(mCandidates), TLogMarks.Path(FRoot), cConfigurationFileName]));
   end;
 end;
 

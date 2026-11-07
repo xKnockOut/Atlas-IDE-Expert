@@ -711,7 +711,7 @@ procedure TAtlasYouTrackBoardTests.SprintCardsReadWorkflow;
 var
   mSnapshot: TAtlasBoardSnapshot;
 begin
-  Assert.IsTrue(Pos('possibleEvents(id,presentation)', TAtlasYouTrackBoards.CardFields) > 0);
+  Assert.IsTrue(Pos('possibleEvents(id,presentation)', TAtlasYouTrackBoards.cCardFields) > 0);
   mSnapshot := YouTrackSnapshot;
   Assert.IsFalse(mSnapshot.Cards[0].Workflow.StateMachine, 'ATL-123 ohne Zustandsmaschine');
   Assert.IsTrue(TAtlasBoardTransitions.Allowed(mSnapshot, 0, 3));
@@ -1099,7 +1099,7 @@ begin
   Assert.IsFalse(TAtlasYouTrackBoards.ParseWorkDays('kaputt', mDays));
   mTransport := TFakeBoardTransport.Create;
   mKeep := mTransport;
-  mTransport.Answer('https://firma.youtrack.cloud' + TAtlasYouTrackBoards.WorkDaysPath, '', 200,
+  mTransport.Answer('https://firma.youtrack.cloud' + TAtlasYouTrackBoards.cWorkDaysPath, '', 200,
     Fixture('YouTrack', 'workdays.json'));
   // Über den Anbieter, wie die Sprint-Kachel fragt (weitergeleitet an TAtlasYouTrackBoards).
   mWork := TAtlasYouTrackTracker.Create;

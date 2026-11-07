@@ -20,7 +20,8 @@ type
 
   TIncludeFiles = class
   public
-    /// <summary>Datei zu AName (z. B. aus $R oder $I) ohne Endungsergänzung; ABaseDir ist der Ordner der einbindenden Datei.</summary>
+    /// <summary>Datei zu AName (z. B. aus $R oder $I) ohne Endungsergänzung; ABaseDir ist der Ordner der einbindenden
+    /// Datei.</summary>
     class function FindFile(const AName, ABaseDir: string; const ASearchPaths: TArray<string>;
       const AFileExists: TIncludeFileExists; out AFileName: string): Boolean; static;
     /// <summary>Include-Datei zu AName aus $I/$INCLUDE in AFromFile, mit ".inc"/".pas" bei fehlender Endung.</summary>
@@ -29,9 +30,6 @@ type
     /// <summary>Resolver für den Präprozessor. Ohne AFileExists/AReadText gilt das Dateisystem.</summary>
     class function Resolver(const ASearchPaths: TArray<string>; const AFileExists: TIncludeFileExists;
       const AReadText: TIncludeReadText): TIncludeResolver; overload; static;
-    /// <summary>Wie oben mit AReadText = nil.</summary>
-    class function Resolver(const ASearchPaths: TArray<string>;
-      const AFileExists: TIncludeFileExists): TIncludeResolver; overload; static;
     /// <summary>Wie oben über das Dateisystem (AFileExists = nil, AReadText = nil).</summary>
     class function Resolver(const ASearchPaths: TArray<string>): TIncludeResolver; overload; static;
     /// <summary>Liest eine Datei über TFileEncoding; False, wenn sie fehlt oder nicht lesbar ist.</summary>
@@ -59,32 +57,32 @@ end;
 class function TIncludeFiles.FindFile(const AName, ABaseDir: string; const ASearchPaths: TArray<string>;
   const AFileExists: TIncludeFileExists; out AFileName: string): Boolean;
 var
-  Name, Dir: string;
+  mName, mDir: string;
 begin
   AFileName := '';
-  Name := Unquote(AName);
-  if Name = '' then
+  mName := Unquote(AName);
+  if mName = '' then
   begin
     Exit(False);
   end;
-  if (ExtractFileDrive(Name) <> '') or Name.StartsWith('\') or Name.StartsWith('/') then
+  if (ExtractFileDrive(mName) <> '') or mName.StartsWith('\') or mName.StartsWith('/') then
   begin
-    AFileName := Name;
+    AFileName := mName;
     Exit(AFileExists(AFileName));
   end;
   if ABaseDir <> '' then
   begin
-    AFileName := ExpandFileName(IncludeTrailingPathDelimiter(ABaseDir) + Name);
+    AFileName := ExpandFileName(IncludeTrailingPathDelimiter(ABaseDir) + mName);
     if AFileExists(AFileName) then
     begin
       Exit(True);
     end;
   end;
-  for Dir in ASearchPaths do
+  for mDir in ASearchPaths do
   begin
-    if Dir <> '' then
+    if mDir <> '' then
     begin
-      AFileName := ExpandFileName(IncludeTrailingPathDelimiter(Dir) + Name);
+      AFileName := ExpandFileName(IncludeTrailingPathDelimiter(mDir) + mName);
       if AFileExists(AFileName) then
       begin
         Exit(True);
@@ -98,26 +96,26 @@ end;
 class function TIncludeFiles.FindInclude(const AName, AFromFile: string; const ASearchPaths: TArray<string>;
   const AFileExists: TIncludeFileExists; out AFileName: string): Boolean;
 var
-  Name, BaseDir: string;
+  mName, mBaseDir: string;
 begin
-  Name := Unquote(AName);
-  BaseDir := ExtractFileDir(AFromFile);
-  if FindFile(Name, BaseDir, ASearchPaths, AFileExists, AFileName) then
+  mName := Unquote(AName);
+  mBaseDir := ExtractFileDir(AFromFile);
+  if FindFile(mName, mBaseDir, ASearchPaths, AFileExists, AFileName) then
   begin
     Exit(True);
   end;
-  Result := (ExtractFileExt(Name) = '') and
-    (FindFile(Name + '.inc', BaseDir, ASearchPaths, AFileExists, AFileName) or
-     FindFile(Name + '.pas', BaseDir, ASearchPaths, AFileExists, AFileName));
+  Result := (ExtractFileExt(mName) = '') and
+    (FindFile(mName + '.inc', mBaseDir, ASearchPaths, AFileExists, AFileName) or
+     FindFile(mName + '.pas', mBaseDir, ASearchPaths, AFileExists, AFileName));
 end;
 
 class function TIncludeFiles.ReadFile(const AFileName: string; out AText: string): Boolean;
 var
-  FileFormat: TFileFormat;
+  mFileFormat: TFileFormat;
 begin
   AText := '';
   try
-    AText := TFileEncoding.LoadFromFile(AFileName, FileFormat);
+    AText := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
     Result := True;
   except
     // Gesperrt, gelöscht oder nicht lesbar: wie eine fehlende Datei behandeln.
@@ -150,12 +148,6 @@ begin
     end;
 end;
 
-class function TIncludeFiles.Resolver(const ASearchPaths: TArray<string>;
-  const AFileExists: TIncludeFileExists): TIncludeResolver;
-begin
-  Result := Resolver(ASearchPaths, AFileExists, nil);
-end;
-
 class function TIncludeFiles.Resolver(const ASearchPaths: TArray<string>): TIncludeResolver;
 begin
   Result := Resolver(ASearchPaths, nil, nil);
@@ -164,26 +156,26 @@ end;
 class function TIncludeFiles.Resolver(const ASearchPaths: TArray<string>; const AFileExists: TIncludeFileExists;
   const AReadText: TIncludeReadText): TIncludeResolver;
 var
-  Paths: TArray<string>;
-  Exists: TIncludeFileExists;
-  Read: TIncludeReadText;
+  mPaths: TArray<string>;
+  mExists: TIncludeFileExists;
+  mRead: TIncludeReadText;
 begin
-  Paths := ASearchPaths;
-  Exists := AFileExists;
-  if not Assigned(Exists) then
+  mPaths := ASearchPaths;
+  mExists := AFileExists;
+  if not Assigned(mExists) then
   begin
-    Exists := DiskExists();
+    mExists := DiskExists();
   end;
-  Read := AReadText;
-  if not Assigned(Read) then
+  mRead := AReadText;
+  if not Assigned(mRead) then
   begin
-    Read := DiskReadText();
+    mRead := DiskReadText();
   end;
   Result :=
     function(const AName, AFromFile: string; out AFileName, AText: string): Boolean
     begin
       AText := '';
-      Result := TIncludeFiles.FindInclude(AName, AFromFile, Paths, Exists, AFileName) and Read(AFileName, AText);
+      Result := TIncludeFiles.FindInclude(AName, AFromFile, mPaths, mExists, AFileName) and mRead(AFileName, AText);
     end;
 end;
 

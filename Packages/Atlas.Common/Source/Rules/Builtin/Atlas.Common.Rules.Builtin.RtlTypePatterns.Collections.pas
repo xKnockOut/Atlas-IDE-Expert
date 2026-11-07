@@ -96,11 +96,11 @@ const
 { TStringListUnsortedRule }
 
 const
-  StringListClasses: array[0..1] of string = ('TStringList', 'THashedStringList');
+  cStringListClasses: array[0..1] of string = ('TStringList', 'THashedStringList');
   // Aufrufe, die eine Liste nicht weitergeben: sie bleibt in der Hand der Routine.
-  NonEscapingCalls: array[0..2] of string = ('FreeAndNil', 'Assigned', 'Free');
+  cNonEscapingCalls: array[0..2] of string = ('FreeAndNil', 'Assigned', 'Free');
   // Methoden, die mit Sorted := True eine Ausnahme auslösen: dann keine Korrektur mit Sorted.
-  UnsortedOnlyMethods: array[0..2] of string = ('Insert', 'Move', 'Exchange');
+  cUnsortedOnlyMethods: array[0..2] of string = ('Insert', 'Move', 'Exchange');
 
 type
   // Was die Regel über eine Liste (lokal je Routine, sonst Feld) gesammelt hat.
@@ -160,10 +160,10 @@ end;
 
 procedure TStringListUnsortedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Keys: TArray<string>;
-  Facts: TArray<TStringListFacts>;
-  Routines: TArray<TSyntaxNode>;
-  LineBreak: string;
+  mKeys: TArray<string>;
+  mFacts: TArray<TStringListFacts>;
+  mRoutines: TArray<TSyntaxNode>;
+  mLineBreak: string;
 
   function Text(ANode: TSyntaxNode): string;
   begin
@@ -192,17 +192,17 @@ var
   // Schlüssel der Liste an ANode: Routine und Name für lokale Variablen, sonst der Feldname.
   function KeyOf(ANode: TSyntaxNode; const AName: string): string;
   var
-    Index: Integer;
-    Routine: TSyntaxNode;
+    mIndex: Integer;
+    mRoutine: TSyntaxNode;
   begin
     // Routines ist nach Start sortiert; die innerste umgebende Routine liegt hinten.
-    for Index := High(Routines) downto 0 do
+    for mIndex := High(mRoutines) downto 0 do
     begin
-      Routine := Routines[Index];
-      if (Routine.StartOffset <= ANode.StartOffset) and (Routine.EndOffset >= ANode.EndOffset) and
-        RoutineDeclares(Routine, AName, [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar]) then
+      mRoutine := mRoutines[mIndex];
+      if (mRoutine.StartOffset <= ANode.StartOffset) and (mRoutine.EndOffset >= ANode.EndOffset) and
+        RoutineDeclares(mRoutine, AName, [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar]) then
       begin
-        Exit(IntToStr(Routine.StartOffset) + ':' + LowerCase(AName));
+        Exit(IntToStr(mRoutine.StartOffset) + ':' + LowerCase(AName));
       end;
     end;
     Result := 'F:' + LowerCase(AName);
@@ -210,36 +210,36 @@ var
 
   function FactIndex(const AKey: string): Integer;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
-    for Index := 0 to High(Keys) do
+    for mIndex := 0 to High(mKeys) do
     begin
-      if Keys[Index] = AKey then
+      if mKeys[mIndex] = AKey then
       begin
-        Exit(Index);
+        Exit(mIndex);
       end;
     end;
-    Result := Length(Keys);
-    SetLength(Keys, Result + 1);
-    SetLength(Facts, Result + 1);
-    Keys[Result] := AKey;
-    Facts[Result].Creation := nil;
-    Facts[Result].Sorted := False;
-    Facts[Result].UnsortedOnly := False;
-    Facts[Result].Hits := nil;
+    Result := Length(mKeys);
+    SetLength(mKeys, Result + 1);
+    SetLength(mFacts, Result + 1);
+    mKeys[Result] := AKey;
+    mFacts[Result].Creation := nil;
+    mFacts[Result].Sorted := False;
+    mFacts[Result].UnsortedOnly := False;
+    mFacts[Result].Hits := nil;
   end;
 
   // Index der Liste, auf die ANode (X oder Self.X) zeigt; -1 ohne Namen.
   function ListOf(ANode: TSyntaxNode): Integer;
   var
-    Name: string;
+    mName: string;
   begin
-    Name := BaseName(ANode);
-    if Name = '' then
+    mName := BaseName(ANode);
+    if mName = '' then
     begin
       Exit(-1);
     end;
-    Result := FactIndex(KeyOf(ANode, Name));
+    Result := FactIndex(KeyOf(ANode, mName));
   end;
 
   function IsFalse(ANode: TSyntaxNode): Boolean;
@@ -250,17 +250,17 @@ var
   // TStringList.Create(...); ASorted, wenn Create(Duplicates, Sorted, CaseSensitive) sortiert.
   function IsCreation(AValue: TSyntaxNode; out ASorted: Boolean): Boolean;
   var
-    Callee: TSyntaxNode;
+    mCallee: TSyntaxNode;
   begin
     ASorted := False;
-    Callee := AValue;
+    mCallee := AValue;
     if (AValue <> nil) and (AValue.Kind = TSyntaxKind.Call) and (AValue.ChildCount > 0) then
     begin
-      Callee := AValue[0];
+      mCallee := AValue[0];
     end;
-    Result := (Callee <> nil) and (Callee.Kind = TSyntaxKind.MemberAccess) and SameText(Callee.Name, 'Create') and
-      (Callee.ChildCount = 1) and (Callee[0].Kind = TSyntaxKind.Identifier) and
-      MatchText(Callee[0].Name, StringListClasses);
+    Result := (mCallee <> nil) and (mCallee.Kind = TSyntaxKind.MemberAccess) and SameText(mCallee.Name, 'Create') and
+      (mCallee.ChildCount = 1) and (mCallee[0].Kind = TSyntaxKind.Identifier) and
+      MatchText(mCallee[0].Name, cStringListClasses);
     if Result and (AValue.Kind = TSyntaxKind.Call) and (AValue.ChildCount = 4) then
     begin
       ASorted := not IsFalse(AValue[2]);
@@ -269,117 +269,117 @@ var
 
   procedure NoteCreation(AStatement: TSyntaxNode; AList: Integer; AValue: TSyntaxNode);
   var
-    ConstructorSorted: Boolean;
+    mConstructorSorted: Boolean;
   begin
-    if (AList < 0) or not IsCreation(AValue, ConstructorSorted) then
+    if (AList < 0) or not IsCreation(AValue, mConstructorSorted) then
     begin
       Exit;
     end;
-    if Facts[AList].Creation = nil then
+    if mFacts[AList].Creation = nil then
     begin
-      Facts[AList].Creation := AStatement;
+      mFacts[AList].Creation := AStatement;
     end;
-    if ConstructorSorted then
+    if mConstructorSorted then
     begin
-      Facts[AList].Sorted := True;
+      mFacts[AList].Sorted := True;
     end;
   end;
 
   // Die Liste wird weitergegeben: was der Empfänger damit macht, ist unbekannt.
   procedure NoteEscape(ANode: TSyntaxNode);
   var
-    List: Integer;
+    mList: Integer;
   begin
-    List := ListOf(ANode);
-    if List >= 0 then
+    mList := ListOf(ANode);
+    if mList >= 0 then
     begin
-      Facts[List].Sorted := True;
+      mFacts[mList].Sorted := True;
     end;
   end;
 
   procedure VisitAssign(AStatement: TSyntaxNode);
   var
-    Target, Value: TSyntaxNode;
-    List: Integer;
+    mTarget, mValue: TSyntaxNode;
+    mList: Integer;
   begin
-    Target := AStatement[0];
-    Value := AStatement[1];
-    NoteCreation(AStatement, ListOf(Target), Value);
-    NoteEscape(Value);
-    if (Target.Kind <> TSyntaxKind.MemberAccess) or (Target.ChildCount <> 1) then
+    mTarget := AStatement[0];
+    mValue := AStatement[1];
+    NoteCreation(AStatement, ListOf(mTarget), mValue);
+    NoteEscape(mValue);
+    if (mTarget.Kind <> TSyntaxKind.MemberAccess) or (mTarget.ChildCount <> 1) then
     begin
       Exit;
     end;
-    List := ListOf(Target[0]);
-    if List < 0 then
+    mList := ListOf(mTarget[0]);
+    if mList < 0 then
     begin
       Exit;
     end;
-    if SameText(Target.Name, 'Sorted') and not IsFalse(Value) then
+    if SameText(mTarget.Name, 'Sorted') and not IsFalse(mValue) then
     begin
-      Facts[List].Sorted := True;
+      mFacts[mList].Sorted := True;
     end
-    else if SameText(Target.Name, 'Duplicates') and (Value.Kind = TSyntaxKind.Identifier) and
-      MatchText(Value.Name, ['dupIgnore', 'dupError']) then
+    else if SameText(mTarget.Name, 'Duplicates') and (mValue.Kind = TSyntaxKind.Identifier) and
+      MatchText(mValue.Name, ['dupIgnore', 'dupError']) then
     begin
-      Facts[List].Hits := Facts[List].Hits + [AStatement];
+      mFacts[mList].Hits := mFacts[mList].Hits + [AStatement];
     end;
   end;
 
   // X.Methode oder X.Methode(...): Sortieren, Find und Methoden, die nur unsortiert gehen.
   procedure VisitMember(AMember, ACall: TSyntaxNode);
   var
-    List: Integer;
+    mList: Integer;
   begin
     if AMember.ChildCount <> 1 then
     begin
       Exit;
     end;
-    List := ListOf(AMember[0]);
-    if List < 0 then
+    mList := ListOf(AMember[0]);
+    if mList < 0 then
     begin
       Exit;
     end;
     if SameText(AMember.Name, 'Sort') or SameText(AMember.Name, 'CustomSort') then
     begin
-      Facts[List].Sorted := True;
+      mFacts[mList].Sorted := True;
     end;
-    if MatchText(AMember.Name, UnsortedOnlyMethods) then
+    if MatchText(AMember.Name, cUnsortedOnlyMethods) then
     begin
-      Facts[List].UnsortedOnly := True;
+      mFacts[mList].UnsortedOnly := True;
     end;
     if SameText(AMember.Name, 'Find') and (ACall <> nil) and (ACall.ChildCount = 3) then
     begin
-      Facts[List].Hits := Facts[List].Hits + [ACall];
+      mFacts[mList].Hits := mFacts[mList].Hits + [ACall];
     end;
   end;
 
   procedure VisitInlineVar(ANode: TSyntaxNode);
   var
-    Value: TSyntaxNode;
+    mValue: TSyntaxNode;
   begin
     if (ANode.ChildCount > 0) and (Pos(',', ANode.Name) = 0) then
     begin
-      Value := ANode[ANode.ChildCount - 1];
-      NoteEscape(Value);
-      NoteCreation(ANode, FactIndex(KeyOf(ANode, Trim(ANode.Name))), Value);
+      mValue := ANode[ANode.ChildCount - 1];
+      NoteEscape(mValue);
+      NoteCreation(ANode, FactIndex(KeyOf(ANode, Trim(ANode.Name))), mValue);
     end;
   end;
 
   procedure VisitCall(ANode: TSyntaxNode);
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
     if (ANode.ChildCount > 0) and (ANode[0].Kind = TSyntaxKind.MemberAccess) then
     begin
       VisitMember(ANode[0], ANode);
     end;
     // Als Argument übergeben: der Aufgerufene kann sortieren.
-    if not MatchText(ANode.Name, NonEscapingCalls) then
+    if not MatchText(ANode.Name, cNonEscapingCalls) then
     begin
-      for Index := 1 to ANode.ChildCount - 1 do
+      for mIndex := 1 to ANode.ChildCount - 1 do
       begin
-        NoteEscape(ANode[Index]);
+        NoteEscape(ANode[mIndex]);
       end;
     end;
   end;
@@ -387,11 +387,11 @@ var
   // with X do Sorted := True ist nicht nachvollziehbar: als sortiert betrachten.
   procedure VisitWith(ANode: TSyntaxNode);
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
-    for Index := 0 to ANode.ChildCount - 2 do
+    for mIndex := 0 to ANode.ChildCount - 2 do
     begin
-      NoteEscape(ANode[Index]);
+      NoteEscape(ANode[mIndex]);
     end;
   end;
 
@@ -421,52 +421,52 @@ var
 
   procedure Visit(ANode: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion.
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        VisitNode(Node);
-        for Index := Node.ChildCount - 1 downto 0 do
+        mNode := mPending.Pop;
+        VisitNode(mNode);
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   procedure CollectRoutines(ANode: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion (nach Start sortiert).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.RoutineDecl then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.RoutineDecl then
         begin
-          Routines := Routines + [Node];
+          mRoutines := mRoutines + [mNode];
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -490,82 +490,82 @@ var
   // Sorted := True direkt nach dem Erzeugen; nur in einem Anweisungsblock.
   function SortedFix(const AFacts: TStringListFacts): TArray<TRuleFix>;
   var
-    Creation: TSyntaxNode;
+    mCreation: TSyntaxNode;
   begin
     Result := nil;
-    Creation := AFacts.Creation;
-    if AFacts.UnsortedOnly or (Creation.Parent = nil) or (Creation.Parent.Kind <> TSyntaxKind.Block) then
+    mCreation := AFacts.Creation;
+    if AFacts.UnsortedOnly or (mCreation.Parent = nil) or (mCreation.Parent.Kind <> TSyntaxKind.Block) then
     begin
       Exit;
     end;
     Result := [TRuleFix.Create(cTexts[TRtlTypePatternsCollectionsText.AddSorted].Text,
-      [TRuleEdit.Create(TTextRange.Create(Creation.EndPos, Creation.EndPos),
-      ';' + LineBreak + Indent(Creation) + ListName(AFacts) + '.Sorted := True')])];
+      [TRuleEdit.Create(TTextRange.Create(mCreation.EndPos, mCreation.EndPos),
+      ';' + mLineBreak + Indent(mCreation) + ListName(AFacts) + '.Sorted := True')])];
   end;
 
   // if X.Find(S, I) then: vorher I := X.IndexOf(S), im if I >= 0.
   function IndexOfFix(AFind: TSyntaxNode): TArray<TRuleFix>;
   var
-    Statement: TSyntaxNode;
-    IndexText: string;
+    mStatement: TSyntaxNode;
+    mIndexText: string;
   begin
     Result := nil;
-    Statement := AFind.Parent;
-    if not IsIfInBlock(Statement, AFind) then
+    mStatement := AFind.Parent;
+    if not IsIfInBlock(mStatement, AFind) then
     begin
       Exit;
     end;
-    IndexText := Text(AFind[2]);
+    mIndexText := Text(AFind[2]);
     Result := [TRuleFix.Create(cTexts[TRtlTypePatternsCollectionsText.UseIndexOf].Text,
-      [TRuleEdit.Create(TTextRange.Create(Statement.StartPos, Statement.StartPos),
-      Format('%s := %s.IndexOf(%s);', [IndexText, Text(AFind[0][0]), Text(AFind[1])]) + LineBreak +
-      Indent(Statement)),
-      TRuleEdit.Create(TTextRange.Create(AFind.StartPos, AFind.EndPos), IndexText + ' >= 0')])];
+      [TRuleEdit.Create(TTextRange.Create(mStatement.StartPos, mStatement.StartPos),
+      Format('%s := %s.IndexOf(%s);', [mIndexText, Text(AFind[0][0]), Text(AFind[1])]) + mLineBreak +
+      Indent(mStatement)),
+      TRuleEdit.Create(TTextRange.Create(AFind.StartPos, AFind.EndPos), mIndexText + ' >= 0')])];
   end;
 
   procedure ReportUses(const AFacts: TStringListFacts);
   var
-    Use: TSyntaxNode;
-    Name: string;
-    Fixes: TArray<TRuleFix>;
+    mUse: TSyntaxNode;
+    mName: string;
+    mFixes: TArray<TRuleFix>;
   begin
-    Name := ListName(AFacts);
-    for Use in AFacts.Hits do
+    mName := ListName(AFacts);
+    for mUse in AFacts.Hits do
     begin
-      if Use.Kind = TSyntaxKind.Call then
+      if mUse.Kind = TSyntaxKind.Call then
       begin
-        Fixes := SortedFix(AFacts);
-        Fixes := Fixes + IndexOfFix(Use);
-        AReport.Add(TTextRange.Create(Use.StartPos, Use.EndPos),
-          cTexts[TRtlTypePatternsCollectionsText.FindUnsorted].Fmt([Name]), TRuleConfidence.Medium, Fixes);
+        mFixes := SortedFix(AFacts);
+        mFixes := mFixes + IndexOfFix(mUse);
+        AReport.Add(TTextRange.Create(mUse.StartPos, mUse.EndPos),
+          cTexts[TRtlTypePatternsCollectionsText.FindUnsorted].Fmt([mName]), TRuleConfidence.Medium, mFixes);
       end
       else
       begin
-        AReport.Add(TTextRange.Create(Use.StartPos, Use.EndPos),
-          cTexts[TRtlTypePatternsCollectionsText.DuplicatesUnsorted].Fmt([Name]), TRuleConfidence.Medium,
+        AReport.Add(TTextRange.Create(mUse.StartPos, mUse.EndPos),
+          cTexts[TRtlTypePatternsCollectionsText.DuplicatesUnsorted].Fmt([mName]), TRuleConfidence.Medium,
           SortedFix(AFacts));
       end;
     end;
   end;
 
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  LineBreak := TTextLines.LineBreakOf(AContext.Text);
-  Keys := nil;
-  Facts := nil;
-  Routines := nil;
+  mLineBreak := TTextLines.LineBreakOf(AContext.Text);
+  mKeys := nil;
+  mFacts := nil;
+  mRoutines := nil;
   CollectRoutines(AContext.Tree.Root);
   Visit(AContext.Tree.Root);
-  for Index := 0 to High(Facts) do
+  for mIndex := 0 to High(mFacts) do
   begin
-    if (Facts[Index].Creation <> nil) and not Facts[Index].Sorted then
+    if (mFacts[mIndex].Creation <> nil) and not mFacts[mIndex].Sorted then
     begin
-      ReportUses(Facts[Index]);
+      ReportUses(mFacts[mIndex]);
     end;
   end;
 end;
@@ -574,9 +574,9 @@ end;
 
 const
   // Aufrufe, die den Schlüssel prüfen.
-  DictionaryKeyChecks: array[0..1] of string = ('ContainsKey', 'TryGetValue');
+  cDictionaryKeyChecks: array[0..1] of string = ('ContainsKey', 'TryGetValue');
   // Aufrufe, mit denen die Routine das Dictionary selbst füllt.
-  DictionaryFills: array[0..2] of string = ('Add', 'AddOrSetValue', 'TryAdd');
+  cDictionaryFills: array[0..2] of string = ('Add', 'AddOrSetValue', 'TryAdd');
 
 /// <summary>Deklariert die Routine ARoutine AName lokal (Variable, Parameter)? Sonst ist es ein Feld der Klasse
 /// oder global.</summary>
@@ -664,8 +664,8 @@ end;
 
 procedure TDictionaryGetWithoutCheckRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Types: TDeclaredTypes;
-  LineBreak: string;
+  mTypes: TDeclaredTypes;
+  mLineBreak: string;
 
   function Text(ANode: TSyntaxNode): string;
   begin
@@ -675,16 +675,16 @@ var
   // Vergleichsschlüssel: Quelltext ohne Leerraum, klein.
   function Key(ANode: TSyntaxNode): string;
   var
-    Index: Integer;
-    Source: string;
+    mIndex: Integer;
+    mSource: string;
   begin
-    Source := Text(ANode);
+    mSource := Text(ANode);
     Result := '';
-    for Index := 1 to Length(Source) do
+    for mIndex := 1 to Length(mSource) do
     begin
-      if not CharInSet(Source[Index], [' ', #9, #10, #13]) then
+      if not CharInSet(mSource[mIndex], [' ', #9, #10, #13]) then
       begin
-        Result := Result + Source[Index];
+        Result := Result + mSource[mIndex];
       end;
     end;
     Result := LowerCase(Result);
@@ -697,24 +697,24 @@ var
   // Typtext einer Typdeklaration der Datei (TPreise = TDictionary<string, Double>), sonst ''.
   function AliasOf(ANode: TSyntaxNode; const AName: string): string;
   var
-    Pending: TStack<TSyntaxNode>;
-    Node, Reference: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode, mReference: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1), Vorordnung wie die frühere Rekursion: der erste passende Typ mit Verweis zählt.
     Result := '';
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if (Node.Kind = TSyntaxKind.TypeDecl) and SameText(Node.Name, AName) then
+        mNode := mPending.Pop;
+        if (mNode.Kind = TSyntaxKind.TypeDecl) and SameText(mNode.Name, AName) then
         begin
-          Reference := Node.FindChild(TSyntaxKind.TypeReference);
-          if Reference <> nil then
+          mReference := mNode.FindChild(TSyntaxKind.TypeReference);
+          if mReference <> nil then
           begin
-            Result := Text(Reference);
+            Result := Text(mReference);
           end;
           if Result <> '' then
           begin
@@ -722,13 +722,13 @@ var
           end;
           Continue;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -744,7 +744,7 @@ var
     begin
       Exit;
     end;
-    mTypeName := Types.DeclaredType(mName, ADict.StartPos);
+    mTypeName := mTypes.DeclaredType(mName, ADict.StartPos);
     if (mTypeName <> '') and (Pos('<', mTypeName) = 0) then
     begin
       mTypeName := AliasOf(AContext.Tree.Root, mTypeName);
@@ -758,73 +758,73 @@ var
   // Äußerste Routine: anonyme Methoden (Vergleicher, Aufgaben) sehen die Anweisungen davor.
   function Routine(ANode: TSyntaxNode): TSyntaxNode;
   var
-    Parent: TSyntaxNode;
+    mParent: TSyntaxNode;
   begin
     Result := AContext.Tree.Root;
-    Parent := ANode.Parent;
-    while Parent <> nil do
+    mParent := ANode.Parent;
+    while mParent <> nil do
     begin
-      if Parent.Kind = TSyntaxKind.RoutineDecl then
+      if mParent.Kind = TSyntaxKind.RoutineDecl then
       begin
-        Result := Parent;
+        Result := mParent;
       end;
-      Parent := Parent.Parent;
+      mParent := mParent.Parent;
     end;
   end;
 
   function MentionsKeys(ANode: TSyntaxNode): Boolean;
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1).
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if (Node.Kind = TSyntaxKind.MemberAccess) and SameText(Node.Name, 'Keys') then
+        mNode := mPending.Pop;
+        if (mNode.Kind = TSyntaxKind.MemberAccess) and SameText(mNode.Name, 'Keys') then
         begin
           Exit(True);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   function MentionsAny(ANode: TSyntaxNode; const ANames: TArray<string>): Boolean;
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1).
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if (Node.Kind = TSyntaxKind.Identifier) and MatchText(Node.Name, ANames) then
+        mNode := mPending.Pop;
+        if (mNode.Kind = TSyntaxKind.Identifier) and MatchText(mNode.Name, ANames) then
         begin
           Exit(True);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -833,66 +833,66 @@ var
   // Variablen gehen.
   function KeyNames(AScope: TSyntaxNode): TArray<string>;
   var
-    Names: TArray<string>;
-    Changed: Boolean;
+    mNames: TArray<string>;
+    mChanged: Boolean;
 
     // Stammt ASource (bei ANode) aus Keys, aus einem schon bekannten Namen oder als for-in aus einem Dictionary?
     function DerivesFromKeys(ANode, ASource: TSyntaxNode): Boolean;
     begin
-      Result := MentionsKeys(ASource) or MentionsAny(ASource, Names) or
+      Result := MentionsKeys(ASource) or MentionsAny(ASource, mNames) or
         ((ANode.Kind = TSyntaxKind.ForInStatement) and (ValueType(ASource) <> ''));
     end;
 
     procedure Collect(ANode: TSyntaxNode);
     var
-      Pending: TStack<TSyntaxNode>;
-      Node: TSyntaxNode;
-      Index: Integer;
-      Source: TSyntaxNode;
-      Name: string;
+      mPending: TStack<TSyntaxNode>;
+      mNode: TSyntaxNode;
+      mIndex: Integer;
+      mSource: TSyntaxNode;
+      mName: string;
     begin
       // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion.
-      Pending := TStack<TSyntaxNode>.Create;
+      mPending := TStack<TSyntaxNode>.Create;
       try
-        Pending.Push(ANode);
-        while Pending.Count > 0 do
+        mPending.Push(ANode);
+        while mPending.Count > 0 do
         begin
-          Node := Pending.Pop;
-          Name := '';
-          Source := nil;
-          if (Node.Kind = TSyntaxKind.ForInStatement) and (Node.ChildCount >= 2) then
+          mNode := mPending.Pop;
+          mName := '';
+          mSource := nil;
+          if (mNode.Kind = TSyntaxKind.ForInStatement) and (mNode.ChildCount >= 2) then
           begin
-            Name := Node.Name;
-            Source := Node[Node.ChildCount - 2];
+            mName := mNode.Name;
+            mSource := mNode[mNode.ChildCount - 2];
           end
-          else if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and
-            (Node[0].Kind = TSyntaxKind.Identifier) then
+          else if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount = 2) and
+            (mNode[0].Kind = TSyntaxKind.Identifier) then
           begin
-            Name := Node[0].Name;
-            Source := Node[1];
+            mName := mNode[0].Name;
+            mSource := mNode[1];
           end;
-          if (Source <> nil) and not MatchText(Name, Names) and DerivesFromKeys(Node, Source) then
+          if (mSource <> nil) and not MatchText(mName, mNames) and DerivesFromKeys(mNode, mSource) then
           begin
-            Names := Names + [Name];
-            Changed := True;
+            mNames := mNames + [mName];
+            mChanged := True;
           end;
-          for Index := Node.ChildCount - 1 downto 0 do
+          for mIndex := mNode.ChildCount - 1 downto 0 do
           begin
-            Pending.Push(Node[Index]);
+            mPending.Push(mNode[mIndex]);
           end;
         end;
       finally
-        Pending.Free;
+        mPending.Free;
       end;
     end;
 
   begin
-    Names := nil;
+    mNames := nil;
     repeat
-      Changed := False;
+      mChanged := False;
       Collect(AScope);
-    until not Changed;
-    Result := Names;
+    until not mChanged;
+    Result := mNames;
   end;
 
   // Add, AddOrSetValue oder TryAdd auf ADict?
@@ -900,7 +900,7 @@ var
   begin
     Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount >= 2) and
       (ANode[0].Kind = TSyntaxKind.MemberAccess) and (ANode[0].ChildCount = 1);
-    Result := Result and (Key(ANode[0][0]) = ADict) and MatchText(ANode.Name, DictionaryFills);
+    Result := Result and (Key(ANode[0][0]) = ADict) and MatchText(ANode.Name, cDictionaryFills);
   end;
 
   // ADict[K] := …, aber nicht der geprüfte Zugriff AAccess selbst?
@@ -978,9 +978,9 @@ var
   // Aufbau); das sieht die Prüfung einer einzelnen Routine nicht (#1109).
   function FieldFilledInUnit(AScope, AAccess, ADictNode: TSyntaxNode; const ADict: string): Boolean;
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
     Result := False;
     if (ADictNode.Kind = TSyntaxKind.Identifier) and DeclaredLocally(AScope, ADictNode.Name) then
@@ -991,23 +991,23 @@ var
     begin
       Exit;
     end;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(AContext.Tree.Root);
-      while Pending.Count > 0 do
+      mPending.Push(AContext.Tree.Root);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Fills(Node, AAccess, ADict) then
+        mNode := mPending.Pop;
+        if Fills(mNode, AAccess, ADict) then
         begin
           Exit(True);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -1016,7 +1016,7 @@ var
   begin
     Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount >= 2) and
       (ANode[0].Kind = TSyntaxKind.MemberAccess) and (ANode[0].ChildCount = 1);
-    Result := Result and (Key(ANode[0][0]) = ADict) and MatchText(ANode.Name, DictionaryKeyChecks) and
+    Result := Result and (Key(ANode[0][0]) = ADict) and MatchText(ANode.Name, cDictionaryKeyChecks) and
       (Key(ANode[1]) = AKey);
   end;
 
@@ -1067,42 +1067,42 @@ var
   // X := Dict[K]; für sich, X eine Variable vom Wertetyp: if not Dict.TryGetValue(K, X) then X := 0.
   function Fixes(AAccess, ADictNode: TSyntaxNode; const AValueType: string): TArray<TRuleFix>;
   var
-    Statement, Target: TSyntaxNode;
-    Indent: string;
+    mStatement, mTarget: TSyntaxNode;
+    mIndent: string;
   begin
     Result := nil;
-    Statement := AAccess.Parent;
-    if not IsListedAssignment(Statement, AAccess) then
+    mStatement := AAccess.Parent;
+    if not IsListedAssignment(mStatement, AAccess) then
     begin
       Exit;
     end;
-    Target := Statement[0];
-    if (Target.Kind <> TSyntaxKind.Identifier) or
-      not SameText(Types.DeclaredType(Target.Name, Target.StartPos), AValueType) then
+    mTarget := mStatement[0];
+    if (mTarget.Kind <> TSyntaxKind.Identifier) or
+      not SameText(mTypes.DeclaredType(mTarget.Name, mTarget.StartPos), AValueType) then
     begin
       Exit;
     end;
-    Indent := StringOfChar(' ', Statement.StartPos.Character);
+    mIndent := StringOfChar(' ', mStatement.StartPos.Character);
     Result := [TRuleFix.Create(cTexts[TRtlTypePatternsCollectionsText.ToTryGetValue].Text,
-      [TRuleEdit.Create(TTextRange.Create(Statement.StartPos,
-      Statement.EndPos), 'if not ' + Text(ADictNode) + '.TryGetValue(' + Text(AAccess[AAccess.ChildCount - 1]) +
-      ', ' + Target.Name + ') then' + LineBreak + Indent + '  ' + Target.Name + ' := ' + DefaultValue(AValueType))])];
+      [TRuleEdit.Create(TTextRange.Create(mStatement.StartPos,
+      mStatement.EndPos), 'if not ' + Text(ADictNode) + '.TryGetValue(' + Text(AAccess[AAccess.ChildCount - 1]) +
+      ', ' + mTarget.Name + ') then' + mLineBreak + mIndent + '  ' + mTarget.Name + ' := ' + DefaultValue(AValueType))])];
   end;
 
   procedure CheckAccess(AAccess: TSyntaxNode);
   var
-    DictNode, Scope: TSyntaxNode;
-    Value: string;
+    mDictNode, mScope: TSyntaxNode;
+    mValue: string;
   begin
     if AAccess.ChildCount <> 2 then
     begin
       Exit;
     end;
-    DictNode := AAccess[0];
+    mDictNode := AAccess[0];
     // Dict.Items[K]
-    if (DictNode.Kind = TSyntaxKind.MemberAccess) and SameText(DictNode.Name, 'Items') and (DictNode.ChildCount = 1) then
+    if (mDictNode.Kind = TSyntaxKind.MemberAccess) and SameText(mDictNode.Name, 'Items') and (mDictNode.ChildCount = 1) then
     begin
-      DictNode := DictNode[0];
+      mDictNode := mDictNode[0];
     end;
     // Schreiben: Dict[K] := V legt an bzw. überschreibt.
     if (AAccess.Parent <> nil) and (AAccess.Parent.Kind = TSyntaxKind.AssignStatement) and
@@ -1110,46 +1110,46 @@ var
     begin
       Exit;
     end;
-    Value := ValueType(DictNode);
-    if Value = '' then
+    mValue := ValueType(mDictNode);
+    if mValue = '' then
     begin
       Exit;
     end;
-    Scope := Routine(AAccess);
-    if Checked(Scope, AAccess, Key(DictNode), Key(AAccess[1])) or MentionsAny(AAccess[1], KeyNames(Scope)) or
-      FieldFilledInUnit(Scope, AAccess, DictNode, Key(DictNode)) then
+    mScope := Routine(AAccess);
+    if Checked(mScope, AAccess, Key(mDictNode), Key(AAccess[1])) or MentionsAny(AAccess[1], KeyNames(mScope)) or
+      FieldFilledInUnit(mScope, AAccess, mDictNode, Key(mDictNode)) then
     begin
       Exit;
     end;
     AReport.Add(TTextRange.Create(AAccess.StartPos, AAccess.EndPos),
-      cTexts[TRtlTypePatternsCollectionsText.KeyNotChecked].Text, TRuleConfidence.Medium, Fixes(AAccess, DictNode,
-      Value));
+      cTexts[TRtlTypePatternsCollectionsText.KeyNotChecked].Text, TRuleConfidence.Medium, Fixes(AAccess, mDictNode,
+      mValue));
   end;
 
   procedure Visit(ANode: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.IndexAccess then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.IndexAccess then
         begin
-          CheckAccess(Node);
+          CheckAccess(mNode);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -1158,12 +1158,12 @@ begin
   begin
     Exit;
   end;
-  LineBreak := TTextLines.LineBreakOf(AContext.Text);
-  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  mLineBreak := TTextLines.LineBreakOf(AContext.Text);
+  mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
     Visit(AContext.Tree.Root);
   finally
-    Types.Free;
+    mTypes.Free;
   end;
 end;
 
@@ -1177,22 +1177,22 @@ end;
 
 procedure TDelimitedTextWithoutStrictRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
-  Code: TArray<Integer>;
+  mTokens: TTokens;
+  mCode: TArray<Integer>;
 
   function Token(APosition: Integer): TPascalToken;
   begin
-    Result := Tokens[Code[APosition]];
+    Result := mTokens[mCode[APosition]];
   end;
 
   function IsSym(APosition: Integer; const ASymbol: string): Boolean;
   begin
-    Result := (APosition >= 0) and (APosition <= High(Code)) and Token(APosition).IsSymbol(ASymbol);
+    Result := (APosition >= 0) and (APosition <= High(mCode)) and Token(APosition).IsSymbol(ASymbol);
   end;
 
   function IsName(APosition: Integer; const AName: string): Boolean;
   begin
-    Result := (APosition >= 0) and (APosition <= High(Code)) and
+    Result := (APosition >= 0) and (APosition <= High(mCode)) and
       (Token(APosition).Kind = TPascalTokenKind.Identifier) and SameText(Token(APosition).Text, AName);
   end;
 
@@ -1215,14 +1215,14 @@ var
   // Wird in [AFrom, ATo) "Liste.AProperty := …" gesetzt? AValue liefert das erste Token des Werts.
   function Assigns(AFrom, ATo: Integer; const AList, AProperty: string; out AValue: string): Boolean;
   var
-    Position: Integer;
+    mPosition: Integer;
   begin
-    for Position := 0 to High(Code) - 2 do
+    for mPosition := 0 to High(mCode) - 2 do
     begin
-      if (Token(Position).Offset >= AFrom) and (Token(Position).Offset < ATo) and
-        IsName(Position, AProperty) and IsSym(Position + 1, ':=') and SameText(ListBefore(Position), AList) then
+      if (Token(mPosition).Offset >= AFrom) and (Token(mPosition).Offset < ATo) and
+        IsName(mPosition, AProperty) and IsSym(mPosition + 1, ':=') and SameText(ListBefore(mPosition), AList) then
       begin
-        AValue := Token(Position + 2).Text;
+        AValue := Token(mPosition + 2).Text;
         Exit(True);
       end;
     end;
@@ -1233,13 +1233,13 @@ var
   // Erstes Kind von ANode, das AOffset enthält; nil ohne.
   function ChildAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
-    for Index := 0 to ANode.ChildCount - 1 do
+    for mIndex := 0 to ANode.ChildCount - 1 do
     begin
-      if (AOffset >= ANode[Index].StartOffset) and (AOffset < ANode[Index].EndOffset) then
+      if (AOffset >= ANode[mIndex].StartOffset) and (AOffset < ANode[mIndex].EndOffset) then
       begin
-        Exit(ANode[Index]);
+        Exit(ANode[mIndex]);
       end;
     end;
     Result := nil;
@@ -1247,105 +1247,105 @@ var
 
   function RoutineAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
   var
-    Node: TSyntaxNode;
+    mNode: TSyntaxNode;
   begin
     // Iterativ (Bericht M1): je Ebene in das Kind, das AOffset enthält.
     Result := nil;
-    Node := ChildAt(ANode, AOffset);
-    while Node <> nil do
+    mNode := ChildAt(ANode, AOffset);
+    while mNode <> nil do
     begin
-      if Node.Kind = TSyntaxKind.RoutineDecl then
+      if mNode.Kind = TSyntaxKind.RoutineDecl then
       begin
-        Result := Node;
+        Result := mNode;
       end;
-      Node := ChildAt(Node, AOffset);
+      mNode := ChildAt(mNode, AOffset);
     end;
   end;
 
   // Innerste Zuweisung unter ANode, die AOffset enthält.
   function StatementAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
   var
-    Node: TSyntaxNode;
+    mNode: TSyntaxNode;
   begin
     // Iterativ (Bericht M1) wie RoutineAt.
     Result := nil;
-    Node := ChildAt(ANode, AOffset);
-    while Node <> nil do
+    mNode := ChildAt(ANode, AOffset);
+    while mNode <> nil do
     begin
-      if Node.Kind = TSyntaxKind.AssignStatement then
+      if mNode.Kind = TSyntaxKind.AssignStatement then
       begin
-        Result := Node;
+        Result := mNode;
       end;
-      Node := ChildAt(Node, AOffset);
+      mNode := ChildAt(mNode, AOffset);
     end;
   end;
 
   procedure CheckAt(APosition: Integer);
   var
-    List, Value, Prefix: string;
-    Routine, Statement: TSyntaxNode;
-    From, Till: Integer;
-    Fixes: TArray<TRuleFix>;
+    mList, mValue, mPrefix: string;
+    mRoutine, mStatement: TSyntaxNode;
+    mFrom, mTill: Integer;
+    mFixes: TArray<TRuleFix>;
   begin
-    List := ListBefore(APosition);
-    Routine := RoutineAt(AContext.Tree.Root, Token(APosition).Offset);
-    if (List = '') or (Routine = nil) then
+    mList := ListBefore(APosition);
+    mRoutine := RoutineAt(AContext.Tree.Root, Token(APosition).Offset);
+    if (mList = '') or (mRoutine = nil) then
     begin
       Exit;
     end;
     // Lokal: die Routine; Feld: die ganze Unit (StrictDelimiter oft im Konstruktor).
-    From := Routine.StartOffset;
-    Till := Routine.EndOffset;
-    if not DeclaredLocally(Routine, List) then
+    mFrom := mRoutine.StartOffset;
+    mTill := mRoutine.EndOffset;
+    if not DeclaredLocally(mRoutine, mList) then
     begin
-      From := 0;
-      Till := MaxInt;
+      mFrom := 0;
+      mTill := MaxInt;
     end;
     // Ohne eigenen Delimiter bleibt die Regel still; StrictDelimiter := False ist bewusst.
-    if not Assigns(Routine.StartOffset, Routine.EndOffset, List, 'Delimiter', Value) or
-      Assigns(From, Till, List, 'StrictDelimiter', Value) then
+    if not Assigns(mRoutine.StartOffset, mRoutine.EndOffset, mList, 'Delimiter', mValue) or
+      Assigns(mFrom, mTill, mList, 'StrictDelimiter', mValue) then
     begin
       Exit;
     end;
-    Fixes := nil;
-    Statement := StatementAt(Routine, Token(APosition).Offset);
-    if (Statement <> nil) and (Statement.Parent <> nil) and (Statement.Parent.Kind in [TSyntaxKind.Block,
+    mFixes := nil;
+    mStatement := StatementAt(mRoutine, Token(APosition).Offset);
+    if (mStatement <> nil) and (mStatement.Parent <> nil) and (mStatement.Parent.Kind in [TSyntaxKind.Block,
       TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement]) then
     begin
-      Prefix := '';
+      mPrefix := '';
       if IsSym(APosition - 3, '.') then
       begin
-        Prefix := 'Self.';
+        mPrefix := 'Self.';
       end;
-      Fixes := [TRuleFix.Create(cTexts[TRtlTypePatternsCollectionsText.InsertStrict].Text,
-        [TRoutineBody.InsertBefore(AContext.Text, Statement, Prefix + List + '.StrictDelimiter := True;')])];
+      mFixes := [TRuleFix.Create(cTexts[TRtlTypePatternsCollectionsText.InsertStrict].Text,
+        [TRoutineBody.InsertBefore(AContext.Text, mStatement, mPrefix + mList + '.StrictDelimiter := True;')])];
     end;
     AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(APosition).EndPos),
       cTexts[TRtlTypePatternsCollectionsText.Delimiter].Text,
-      Fixes);
+      mFixes);
   end;
 
 var
-  Index, Position: Integer;
+  mIndex, mPosition: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'DelimitedText') then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Code := nil;
-  for Index := 0 to High(Tokens) do
+  mTokens := AContext.Tree.Tokens;
+  mCode := nil;
+  for mIndex := 0 to High(mTokens) do
   begin
-    if not IsTrivia(Tokens[Index]) then
+    if not IsTrivia(mTokens[mIndex]) then
     begin
-      Code := Code + [Index];
+      mCode := mCode + [mIndex];
     end;
   end;
-  for Position := 0 to High(Code) - 1 do
+  for mPosition := 0 to High(mCode) - 1 do
   begin
-    if IsName(Position, 'DelimitedText') and IsSym(Position + 1, ':=') then
+    if IsName(mPosition, 'DelimitedText') and IsSym(mPosition + 1, ':=') then
     begin
-      CheckAt(Position);
+      CheckAt(mPosition);
     end;
   end;
 end;

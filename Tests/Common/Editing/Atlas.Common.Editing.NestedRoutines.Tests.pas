@@ -765,7 +765,7 @@ begin
     Assert.AreEqual(2, Integer(Length(Actions)));
     Assert.AreEqual(TNestedRoutines.EmbedRoutineTitle, Actions[0].Title);
     Assert.AreEqual(TNestedRoutines.EmbedRoutineTitle + TNestedRoutines.PassThroughSuffix, Actions[1].Title);
-    Assert.AreEqual(RewriteKind, Actions[0].Kind);
+    Assert.AreEqual(cRewriteKind, Actions[0].Kind);
     // Im Rumpf: keine Aktion.
     Actions := TNestedRoutines.Actions(Text, Tree, PositionOf(Text, 'Show(Count)'), NoLookup(Tree),
       TFormatStyle.Default);

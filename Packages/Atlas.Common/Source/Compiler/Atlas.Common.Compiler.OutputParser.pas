@@ -32,17 +32,18 @@ uses
 
 function IsCodeAt(const AText: string; AIndex: Integer): Boolean;
 var
-  Offset: Integer;
+  mOffset: Integer;
 begin
-  // Buchstabe E/W/H/F/X und vier Ziffern, davor Anfang oder Leerzeichen/Doppelpunkt, danach Ende oder Leerzeichen/Doppelpunkt.
+  // Buchstabe E/W/H/F/X und vier Ziffern, davor Anfang oder Leerzeichen/Doppelpunkt, danach Ende oder
+  // Leerzeichen/Doppelpunkt.
   Result := (AIndex + 4 <= Length(AText)) and CharInSet(AText[AIndex], ['E', 'W', 'H', 'F', 'X']) and
     ((AIndex = 1) or CharInSet(AText[AIndex - 1], [' ', ':'])) and
     ((AIndex + 5 > Length(AText)) or CharInSet(AText[AIndex + 5], [' ', ':']));
   if Result then
   begin
-    for Offset := 1 to 4 do
+    for mOffset := 1 to 4 do
     begin
-      if not CharInSet(AText[AIndex + Offset], ['0'..'9']) then
+      if not CharInSet(AText[AIndex + mOffset], ['0'..'9']) then
       begin
         Exit(False);
       end;
@@ -50,7 +51,8 @@ begin
   end;
 end;
 
-/// <summary>Klammern der Fundstelle "(…)" vor dem ersten ")"; False ohne Klammern oder mit Meldungsnummer davor.</summary>
+/// <summary>Klammern der Fundstelle "(…)" vor dem ersten ")"; False ohne Klammern oder mit Meldungsnummer
+/// davor.</summary>
 function FindLocationParens(const AText: string; out AOpen, AClose: Integer): Boolean;
 var
   mIndex: Integer;
@@ -195,32 +197,32 @@ end;
 class function TCompilerOutputParser.Parse(const ALines: TArray<string>;
   const AWorkingDir: string): TArray<TCompilerMessage>;
 var
-  Line, Key: string;
-  Item: TCompilerMessage;
-  Seen: TDictionary<string, Boolean>;
-  Found: TList<TCompilerMessage>;
+  mLine, mKey: string;
+  mItem: TCompilerMessage;
+  mSeen: TDictionary<string, Boolean>;
+  mFound: TList<TCompilerMessage>;
 begin
-  Seen := TDictionary<string, Boolean>.Create;
-  Found := TList<TCompilerMessage>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
+  mFound := TList<TCompilerMessage>.Create;
   try
-    for Line in ALines do
+    for mLine in ALines do
     begin
-      if ParseLine(Line, AWorkingDir, Item) then
+      if ParseLine(mLine, AWorkingDir, mItem) then
       begin
-        Key := LowerCase(Item.FileName) + '|' + IntToStr(Item.Line) + '|' + IntToStr(Item.Column) + '|' +
-          Item.Code + '|' + Item.Text;
-        if Seen.ContainsKey(Key) then
+        mKey := LowerCase(mItem.FileName) + '|' + IntToStr(mItem.Line) + '|' + IntToStr(mItem.Column) + '|' +
+          mItem.Code + '|' + mItem.Text;
+        if mSeen.ContainsKey(mKey) then
         begin
           Continue;
         end;
-        Seen.Add(Key, True);
-        Found.Add(Item);
+        mSeen.Add(mKey, True);
+        mFound.Add(mItem);
       end;
     end;
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Found.Free;
-    Seen.Free;
+    mFound.Free;
+    mSeen.Free;
   end;
 end;
 

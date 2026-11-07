@@ -35,7 +35,7 @@ uses
 
 const
   /// <summary>Art der Einbetten-Aktionen (LSP).</summary>
-  InlineKind = Atlas.Common.Editing.Inlining.Types.InlineKind;
+  cInlineKind = Atlas.Common.Editing.Inlining.Types.cInlineKind;
 
 type
   TInlineVisibility = Atlas.Common.Editing.Inlining.Types.TInlineVisibility;
@@ -47,8 +47,6 @@ type
   TInlineCall = Atlas.Common.Editing.Inlining.Types.TInlineCall;
 
   TInlineRefactoring = class
-  public const
-    ResultSuffix = InlineResultSuffix;
   public
     /// <summary>„Variable einbetten“ für die lokale Variable an APosition; False mit Grund in AReason.</summary>
     class function InlineVariable(const ASource: TInlineSource; const APosition: TTextPosition;
@@ -191,37 +189,37 @@ type
 /// <summary>Knoten des Graphen für ANode: die Anweisung oder Bedingung, in der er steht.</summary>
 function FlowNodeAt(AGraph: TControlFlowGraph; ANode: TSyntaxNode): TFlowNode;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   Result := nil;
-  Node := ANode;
-  while (Node <> nil) and (Result = nil) do
+  mNode := ANode;
+  while (mNode <> nil) and (Result = nil) do
   begin
-    Result := AGraph.NodeOf(Node);
-    Node := Node.Parent;
+    Result := AGraph.NodeOf(mNode);
+    mNode := mNode.Parent;
   end;
 end;
 
 function SameNodes(const A, B: TArray<TFlowNode>): Boolean;
 var
-  Node, Other: TFlowNode;
-  Found: Boolean;
+  mNode, mOther: TFlowNode;
+  mFound: Boolean;
 begin
   if Length(A) <> Length(B) then
   begin
     Exit(False);
   end;
-  for Node in A do
+  for mNode in A do
   begin
-    Found := False;
-    for Other in B do
+    mFound := False;
+    for mOther in B do
     begin
-      if Other = Node then
+      if mOther = mNode then
       begin
-        Found := True;
+        mFound := True;
       end;
     end;
-    if not Found then
+    if not mFound then
     begin
       Exit(False);
     end;
@@ -293,25 +291,25 @@ end;
 /// <summary>Ausdruck nur aus Literalen, lokalen Namen, Operatoren und reinen Aufrufen darauf.</summary>
 function LocalOnly(ANode: TSyntaxNode; const ALocals: TArray<TLocal>): Boolean;
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index, First: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex, mFirst: Integer;
 begin
   // Eigener Stapel statt Rekursion (Bericht M1); jeder Knoten muss passen, die Reihenfolge ist gleich.
   Result := True;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      case Node.Kind of
+      mNode := mPending.Pop;
+      case mNode.Kind of
         TSyntaxKind.Literal:
           Continue;
         TSyntaxKind.Identifier:
           begin
-            if (TRoutineLocals.IndexOf(ALocals, Node.Name, Node.StartOffset) < 0) and
-              not MatchText(Node.Name, ConstantNames) then
+            if (TRoutineLocals.IndexOf(ALocals, mNode.Name, mNode.StartOffset) < 0) and
+              not MatchText(mNode.Name, cConstantNames) then
             begin
               Exit(False);
             end;
@@ -319,25 +317,25 @@ begin
           end;
         TSyntaxKind.Call:
           begin
-            if (Node[0].Kind <> TSyntaxKind.Identifier) or not TPureRoutines.IsPure(Node[0].Name) then
+            if (mNode[0].Kind <> TSyntaxKind.Identifier) or not TPureRoutines.IsPure(mNode[0].Name) then
             begin
               Exit(False);
             end;
-            First := 1;
+            mFirst := 1;
           end;
         TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr, TSyntaxKind.SetConstructor,
         TSyntaxKind.RangeExpr, TSyntaxKind.IfExpr:
-          First := 0;
+          mFirst := 0;
       else
         Exit(False);
       end;
-      for Index := Node.ChildCount - 1 downto First do
+      for mIndex := mNode.ChildCount - 1 downto mFirst do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -346,24 +344,24 @@ end;
 /// aufgerufener Routinen)?</summary>
 function ReadsBetween(ABody: TSyntaxNode; AFrom, ATo: Integer): Boolean;
 var
-  Nodes: TList<TSyntaxNode>;
-  Node: TSyntaxNode;
+  mNodes: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
 begin
   Result := False;
-  Nodes := TList<TSyntaxNode>.Create;
+  mNodes := TList<TSyntaxNode>.Create;
   try
-    TRoutineLocals.CollectKind(ABody, TSyntaxKind.Identifier, Nodes);
-    TRoutineLocals.CollectKind(ABody, TSyntaxKind.Call, Nodes);
-    for Node in Nodes do
+    TRoutineLocals.CollectKind(ABody, TSyntaxKind.Identifier, mNodes);
+    TRoutineLocals.CollectKind(ABody, TSyntaxKind.Call, mNodes);
+    for mNode in mNodes do
     begin
-      if (Node.StartOffset >= AFrom) and (Node.EndOffset <= ATo) and not TInlineSyntax.IsCallee(Node) and
-        not ((Node.Parent.Kind = TSyntaxKind.AssignStatement) and (Node.Parent[0] = Node)) then
+      if (mNode.StartOffset >= AFrom) and (mNode.EndOffset <= ATo) and not TInlineSyntax.IsCallee(mNode) and
+        not ((mNode.Parent.Kind = TSyntaxKind.AssignStatement) and (mNode.Parent[0] = mNode)) then
       begin
         Exit(True);
       end;
     end;
   finally
-    Nodes.Free;
+    mNodes.Free;
   end;
 end;
 
@@ -371,30 +369,30 @@ end;
 /// in einem Zweig von if-Ausdrücken, nicht in einer Schleifenbedingung oder case-Marke?</summary>
 function EvaluatedOnce(ANode: TSyntaxNode): Boolean;
 var
-  Node, Child: TSyntaxNode;
+  mNode, mChild: TSyntaxNode;
 begin
   Result := False;
-  Child := ANode;
-  Node := ANode.Parent;
-  while (Node <> nil) and not TRoutineBody.IsStatement(Node) do
+  mChild := ANode;
+  mNode := ANode.Parent;
+  while (mNode <> nil) and not TRoutineBody.IsStatement(mNode) do
   begin
-    if (Node.Kind = TSyntaxKind.IfExpr) and (Child <> Node[0]) then
+    if (mNode.Kind = TSyntaxKind.IfExpr) and (mChild <> mNode[0]) then
     begin
       Exit;
     end;
-    if (Node.Kind = TSyntaxKind.BinaryExpr) and (Child <> Node[0]) and (SameText(Node.Name, 'and') or
-      SameText(Node.Name, 'or')) then
+    if (mNode.Kind = TSyntaxKind.BinaryExpr) and (mChild <> mNode[0]) and (SameText(mNode.Name, 'and') or
+      SameText(mNode.Name, 'or')) then
     begin
       Exit;
     end;
-    if Node.Kind = TSyntaxKind.CaseItem then
+    if mNode.Kind = TSyntaxKind.CaseItem then
     begin
       Exit;
     end;
-    Child := Node;
-    Node := Node.Parent;
+    mChild := mNode;
+    mNode := mNode.Parent;
   end;
-  Result := (Node <> nil) and not (Node.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement]);
+  Result := (mNode <> nil) and not (mNode.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement]);
 end;
 
 function IdentifiersOf(ANode: TSyntaxNode): TArray<TSyntaxNode>;
@@ -473,7 +471,7 @@ begin
   end;
   Result := Default(TCodeAction);
   Result.Title := Format('Variable %s einbetten', [Name]);
-  Result.Kind := InlineKind;
+  Result.Kind := cInlineKind;
   Result.Edits := mEdits;
 end;
 
@@ -599,7 +597,7 @@ begin
   Definition := nil;
   Expression := nil;
   if (Local.Kind = TLocalKind.InlineVariable) and (Local.Decl.ChildCount > 0) and
-    not (Local.Decl[Local.Decl.ChildCount - 1].Kind in TRoutineLocals.TypeKinds) then
+    not (Local.Decl[Local.Decl.ChildCount - 1].Kind in TRoutineLocals.cTypeKinds) then
   begin
     Definition := Local.Decl;
     Expression := Local.Decl[Local.Decl.ChildCount - 1];

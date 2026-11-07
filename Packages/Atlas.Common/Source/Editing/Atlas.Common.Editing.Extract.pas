@@ -55,7 +55,7 @@ uses
 
 const
   /// <summary>Art der Extrahieren-Aktionen (LSP).</summary>
-  ExtractKind = cExtractKind;
+  cExtractKind = cExtractKind;
 
 type
   /// <summary>Typ eines Ausdrucks laut Namensauflösung (Typ aus Extract.Shared).</summary>
@@ -65,11 +65,11 @@ type
 
   TExtractRefactoring = class
   public const
-    MethodName = cExtractedMethodName;
-    VariableName = 'Value';
-    ConstantName = 'NewConstant';
-    ConditionName = 'ExtractedCondition';
-    ProbeName = cExtractProbeName;
+    cMethodName = cExtractedMethodName;
+    cVariableName = 'Value';
+    cConstantName = 'NewConstant';
+    cConditionName = 'ExtractedCondition';
+    cProbeName = cExtractProbeName;
   public
     /// <summary>„Methode extrahieren“ für die Anweisungen in ARange; False mit Grund in AReason.</summary>
     class function ExtractMethod(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
@@ -210,7 +210,7 @@ begin
   end;
   if (Result = '') or not CharInSet(Result[1], ['A'..'Z', 'a'..'z']) or (Pos('<', Result) > 0) then
   begin
-    Result := TExtractRefactoring.VariableName;
+    Result := TExtractRefactoring.cVariableName;
   end
   else
   begin
@@ -428,7 +428,7 @@ begin
   begin
     AAction.Title := cTexts[TExtractText.IntroduceVariableAllOccurrences].Fmt([Length(FTargets)]);
   end;
-  AAction.Kind := ExtractKind;
+  AAction.Kind := cExtractKind;
   AAction.Edits := mEdits;
 end;
 
@@ -570,7 +570,7 @@ begin
   begin
     Exit;
   end;
-  mName := TRoutineBody.UniqueName(FTree.Tokens, FOptions.Names.Constant(TExtractRefactoring.ConstantName));
+  mName := TRoutineBody.UniqueName(FTree.Tokens, FOptions.Names.Constant(TExtractRefactoring.cConstantName));
   mValue := TRoutineBody.TextOf(FText, FLiteral);
   if AUnit then
   begin
@@ -582,7 +582,7 @@ begin
     mEdit := TRoutineBody.AddConstant(FText, FRoutine, mName, mValue, FOptions.Style);
     AAction.Title := 'Konstante extrahieren';
   end;
-  AAction.Kind := ExtractKind;
+  AAction.Kind := cExtractKind;
   AAction.Edits := [mEdit, TTextEdit.Create(TTextRange.Create(FLiteral.StartPos, FLiteral.EndPos), mName)];
 end;
 
@@ -804,7 +804,7 @@ begin
   mRequest := Default(TRoutineHeadRequest);
   mRequest.Routine := FRoutine;
   mRequest.Body := FBody;
-  mRequest.BaseName := TExtractRefactoring.ConditionName;
+  mRequest.BaseName := TExtractRefactoring.cConditionName;
   mRequest.Kind := 'function';
   mRequest.Params := ASignature.ParamsText;
   mRequest.ResultType := ': Boolean';
@@ -848,7 +848,7 @@ begin
   if Result then
   begin
     AAction.Title := cTexts[TExtractText.MoveConditionIntoAFunction].Text;
-    AAction.Kind := ExtractKind;
+    AAction.Kind := cExtractKind;
     AAction.Edits := mEdits;
   end;
   AReason := FReason;

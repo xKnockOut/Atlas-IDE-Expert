@@ -52,19 +52,19 @@ uses
 
 const
   // Projektweit über viele Units; deutlich länger als eine Hover-Anfrage.
-  RenameTimeoutMs = 60000;
+  cRenameTimeoutMs = 60000;
 
 class procedure TAtlasIdeRename.SyncOpenBuffers(ASession: TLspSession);
 var
-  FileName: string;
-  Buffer: IOTAEditBuffer;
+  mFileName: string;
+  mBuffer: IOTAEditBuffer;
 begin
-  for FileName in ASession.SyncedFiles do
+  for mFileName in ASession.SyncedFiles do
   begin
-    Buffer := TAtlasIdeFiles.BufferOf(FileName);
-    if Buffer <> nil then
+    mBuffer := TAtlasIdeFiles.BufferOf(mFileName);
+    if mBuffer <> nil then
     begin
-      ASession.Sync(FileName, TAtlasEditorBuffer.Text(Buffer));
+      ASession.Sync(mFileName, TAtlasEditorBuffer.Text(mBuffer));
     end;
   end;
   TAtlasIdeForms.SyncNow(ASession);
@@ -148,7 +148,7 @@ begin
   Result := False;
   AEdit := TLspWorkspaceEdit.FromJson(nil);
   try
-    mResponse := ASession.Rename(ATarget.FileName, ATarget.Line, ATarget.Character, ANewName, RenameTimeoutMs);
+    mResponse := ASession.Rename(ATarget.FileName, ATarget.Line, ATarget.Character, ANewName, cRenameTimeoutMs);
     try
       AEdit := TLspWorkspaceEdit.FromJson(mResponse);
     finally

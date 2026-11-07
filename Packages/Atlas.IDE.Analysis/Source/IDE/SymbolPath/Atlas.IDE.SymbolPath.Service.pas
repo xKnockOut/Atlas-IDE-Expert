@@ -66,9 +66,9 @@ uses
 const
   /// <summary>Der Server bricht nach vier Fünfteln von requestTimeoutMs selbst ab; das hier ist nur die Grenze
   /// für eine hängende Verbindung.</summary>
-  TimeoutMs = 120000;
+  cTimeoutMs = 120000;
   /// <summary>Beim Tippen: lieber keine Vorschläge als die IDE aufhalten.</summary>
-  SuggestTimeoutMs = 1500;
+  cSuggestTimeoutMs = 1500;
 
 { TAtlasIdeSymbolPath }
 
@@ -78,7 +78,7 @@ begin
   FRun := ARun;
   FSessionOf := ASessionOf;
   FLast := Default(TAtlasSymbolPathRequestInput);
-  FLast.MaxSteps := TAtlasSymbolPathCommands.DefaultSteps;
+  FLast.MaxSteps := TAtlasSymbolPathCommands.cDefaultSteps;
   FInstalled := True;
   TAtlasIdeResultsWindow.OnShowRoute :=
     procedure(const AUnits: TArray<string>)
@@ -113,78 +113,78 @@ end;
 
 class function TAtlasIdeSymbolPath.Suggestions(const APattern: string): TArray<string>;
 var
-  Session: TLspSession;
-  Symbols: TArray<TAtlasSymbol>;
-  Symbol: TAtlasSymbol;
+  mSession: TLspSession;
+  mSymbols: TArray<TAtlasSymbol>;
+  mSymbol: TAtlasSymbol;
 begin
   Result := nil;
-  Session := nil;
+  mSession := nil;
   if Assigned(FSessionOf) then
   begin
-    Session := FSessionOf();
+    mSession := FSessionOf();
   end;
-  if Session = nil then
+  if mSession = nil then
   begin
     Exit;
   end;
   try
-    Symbols := Session.WorkspaceSymbols(APattern, SuggestTimeoutMs);
+    mSymbols := mSession.WorkspaceSymbols(APattern, cSuggestTimeoutMs);
   except
     on ELspClientError do
-      Symbols := nil;
+      mSymbols := nil;
   end;
-  for Symbol in Symbols do
+  for mSymbol in mSymbols do
   begin
-    Result := Result + [TAtlasSymbolPathCommands.QualifiedName(Symbol.Name, Symbol.Container)];
+    Result := Result + [TAtlasSymbolPathCommands.QualifiedName(mSymbol.Name, mSymbol.Container)];
   end;
 end;
 
 class procedure TAtlasIdeSymbolPath.ShowDialogFrom(const AFrom: string);
 var
-  Input: TAtlasSymbolPathRequestInput;
-  Suggest: TAtlasSymbolPathSuggest;
+  mInput: TAtlasSymbolPathRequestInput;
+  mSuggest: TAtlasSymbolPathSuggest;
 begin
   if not FInstalled or not Enabled then
   begin
     Exit;
   end;
-  Input := FLast;
-  Input.From := AFrom;
-  Suggest :=
+  mInput := FLast;
+  mInput.From := AFrom;
+  mSuggest :=
     function(const APattern: string): TArray<string>
     begin
       Result := Suggestions(APattern);
     end;
-  if not TAtlasSymbolPathDialog.Execute(Suggest, Input) then
+  if not TAtlasSymbolPathDialog.Execute(mSuggest, mInput) then
   begin
     Exit;
   end;
-  FLast := Input;
-  Search(Input);
+  FLast := mInput;
+  Search(mInput);
 end;
 
 class procedure TAtlasIdeSymbolPath.Search(const AInput: TAtlasSymbolPathRequestInput);
 var
-  Project: IOTAProject;
-  Title: string;
-  Request: Integer;
+  mProject: IOTAProject;
+  mTitle: string;
+  mRequest: Integer;
 begin
-  Title := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.SymbolPathTitle, [AInput.From, AInput.To_]);
-  Project := GetActiveProject;
-  if (Project = nil) or (Project.FileName = '') then
+  mTitle := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.SymbolPathTitle, [AInput.From, AInput.To_]);
+  mProject := GetActiveProject;
+  if (mProject = nil) or (mProject.FileName = '') then
   begin
-    TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title,
+    TAtlasIdeResultsWindow.ShowSymbolPathMessage(mTitle,
       TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoProject));
     Exit;
   end;
   Inc(FRequest);
-  Request := FRequest;
-  TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title,
+  mRequest := FRequest;
+  TAtlasIdeResultsWindow.ShowSymbolPathMessage(mTitle,
     TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.SymbolPathSearching,
     [AInput.From, AInput.To_]));
-  if not Assigned(FRun) or not FRun(TAtlasSymbolPathCommands.Command,
-    TAtlasSymbolPathCommands.Arguments(TLspSession.PathToUri(Project.FileName), AInput.From, AInput.To_,
-      AInput.MaxSteps, AInput.All), TimeoutMs,
+  if not Assigned(FRun) or not FRun(TAtlasSymbolPathCommands.cCommand,
+    TAtlasSymbolPathCommands.Arguments(TLspSession.PathToUri(mProject.FileName), AInput.From, AInput.To_,
+      AInput.MaxSteps, AInput.All), cTimeoutMs,
     procedure(AAnswer: string)
     var
       Answer: TAtlasSymbolPathAnswer;
@@ -194,28 +194,28 @@ begin
       TAtlasMainThread.Queue(TAtlasFeature.SymbolPath,
         procedure
         begin
-          if not FInstalled or (Request <> FRequest) then
+          if not FInstalled or (mRequest <> FRequest) then
           begin
             Exit;
           end;
           if not Parsed then
           begin
-            TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title,
+            TAtlasIdeResultsWindow.ShowSymbolPathMessage(mTitle,
               TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathFailed));
           end
           else if not Answer.Enabled then
           begin
-            TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title,
+            TAtlasIdeResultsWindow.ShowSymbolPathMessage(mTitle,
               TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathDisabled));
           end
           else
           begin
-            TAtlasIdeResultsWindow.ShowSymbolPath(Title, Answer, TAtlasIdeArchitecture.Enabled);
+            TAtlasIdeResultsWindow.ShowSymbolPath(mTitle, Answer, TAtlasIdeArchitecture.Enabled);
           end;
         end);
     end) then
   begin
-    TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title,
+    TAtlasIdeResultsWindow.ShowSymbolPathMessage(mTitle,
       TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoServer));
   end;
 end;

@@ -38,7 +38,6 @@ type
   private
     FOnResetUsage: TProc;
     FOnUnblockTips: TProc;
-    FOnBrowseFolder: TFunc<string, string>;
     FHost: IAtlasSettingsSectionHost;
     FFolder: TEdit;
     function BrowseFolder(const AFolder: string): string;
@@ -57,9 +56,6 @@ type
     property OnResetUsage: TProc read FOnResetUsage write FOnResetUsage;
     /// <summary>„Gesperrte Tipps wieder zeigen“ (#757).</summary>
     property OnUnblockTips: TProc read FOnUnblockTips write FOnUnblockTips;
-    /// <summary>Ordner für die ZIP der Hilfe wählen, Vorgabe der bisherige; '' bei Abbruch. nil = Ordnerauswahl von
-    /// Windows.</summary>
-    property OnBrowseFolder: TFunc<string, string> read FOnBrowseFolder write FOnBrowseFolder;
   end;
 
   /// <summary>Start, Layout, Kopf, Suche und „Neu in Atlas“.</summary>
@@ -286,14 +282,7 @@ begin
   begin
     Exit;
   end;
-  if Assigned(FOnBrowseFolder) then
-  begin
-    mFolder := FOnBrowseFolder(FFolder.Text);
-  end
-  else
-  begin
-    mFolder := BrowseFolder(FFolder.Text);
-  end;
+  mFolder := BrowseFolder(FFolder.Text);
   if mFolder <> '' then
   begin
     FFolder.Text := mFolder;

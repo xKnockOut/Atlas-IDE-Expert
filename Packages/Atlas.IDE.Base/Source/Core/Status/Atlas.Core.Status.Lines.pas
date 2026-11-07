@@ -40,7 +40,8 @@ type
     /// <summary>Grund bei Failed (ohne Pfade); bei einem abgestürzten Server die Ursache, etwa
     /// „Stapelüberlauf (0xC00000FD)“ (Bericht H5).</summary>
     Error: string;
-    /// <summary>Beginn der Phase in Ortszeit: Start bei Running, Ende bei Stopped und Failed; 0 = unbekannt (#754).</summary>
+    /// <summary>Beginn der Phase in Ortszeit: Start bei Running, Ende bei Stopped und Failed; 0 = unbekannt
+    /// (#754).</summary>
     Since: TDateTime;
     /// <summary>Stopped: von Atlas beendet (Neustart, Abschalten), nicht abgestürzt (#754).</summary>
     Ended: Boolean;
@@ -57,7 +58,8 @@ type
     Percent: Integer;
     /// <summary>Ende der letzten vollständigen Indizierung in Ortszeit; 0 = unbekannt (#754).</summary>
     FullAt: TDateTime;
-    /// <summary>Der Server läuft nicht: Units und FullAt sind gespeicherte Werte vom Zeitpunkt StoredAt (#754).</summary>
+    /// <summary>Der Server läuft nicht: Units und FullAt sind gespeicherte Werte vom Zeitpunkt StoredAt
+    /// (#754).</summary>
     Offline: Boolean;
     /// <summary>Stand der gespeicherten Werte in Ortszeit; 0 = keine gespeicherten Werte.</summary>
     StoredAt: TDateTime;
@@ -89,25 +91,25 @@ type
 
   TAtlasStatusLines = class
   public const
-    ServerId = 'atlas.server';
-    IndexId = 'atlas.index';
-    FileId = 'atlas.file';
+    cServerId = 'atlas.server';
+    cIndexId = 'atlas.index';
+    cFileId = 'atlas.file';
     /// <summary>Installierte Version und Update (#495, #754); gemeldet von der Update-Prüfung.</summary>
-    VersionId = 'atlas.version';
+    cVersionId = 'atlas.version';
     /// <summary>Kennungen anderer Zeilen, die die Zustandskachel (#754) liest: Diagnosemodus (#479) und
-    /// Einrichtung (#625, wie TAtlasSetupChecklist.StatusId).</summary>
-    DiagnosticModeId = 'atlas.diagnosticMode';
-    SetupId = 'atlas.setup';
-    ServerOrder = 0;
-    VersionOrder = 1;
-    IndexOrder = 10;
-    FileOrder = 20;
+    /// Einrichtung (#625, wie TAtlasSetupChecklist.cStatusId).</summary>
+    cDiagnosticModeId = 'atlas.diagnosticMode';
+    cSetupId = 'atlas.setup';
+    cServerOrder = 0;
+    cVersionOrder = 1;
+    cIndexOrder = 10;
+    cFileOrder = 20;
     /// <summary>Ab dieser mittleren Antwortzeit gilt der Server als langsam.</summary>
-    SlowMs = 500;
+    cSlowMs = 500;
     /// <summary>Status-Befehl des Servers (#28); liefert u. a. "units".</summary>
-    StatusCommand = 'atlas.server.status';
+    cStatusCommand = 'atlas.server.status';
     /// <summary>Abstand der Abfrage im Hintergrund (Antwortzeit, Units).</summary>
-    PollMs = 5000;
+    cPollMs = 5000;
   public
     /// <summary>Uhrzeit "19:02", an einem anderen Tag als ANow "14.10. 19:02"; '' für 0.</summary>
     class function When(AValue, ANow: TDateTime): string; static;
@@ -278,7 +280,7 @@ end;
 
 function IsSlow(const AInfo: TAtlasServerInfo): Boolean;
 begin
-  Result := (AInfo.Samples > 0) and (AInfo.AverageMs >= TAtlasStatusLines.SlowMs);
+  Result := (AInfo.Samples > 0) and (AInfo.AverageMs >= TAtlasStatusLines.cSlowMs);
 end;
 
 /// <summary>„1 Anfrage übersprungen nach Absturz“ (#1355); '' ohne.</summary>
@@ -329,7 +331,7 @@ begin
   begin
     Result := Result + Format(UiText(TLinesText.OnAverageOverTheLast), [Milliseconds(AInfo.AverageMs),
       AInfo.Samples]);
-    if AInfo.AverageMs >= TAtlasStatusLines.SlowMs then
+    if AInfo.AverageMs >= TAtlasStatusLines.cSlowMs then
     begin
       Result := Result + UiText(TLinesText.Slow);
     end;
@@ -802,17 +804,17 @@ end;
 
 class function TAtlasStatusLines.UnitsOf(const AStatusJson: string): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := -1;
-  Value := TJSONObject.ParseJSONValue(AStatusJson);
+  mValue := TJSONObject.ParseJSONValue(AStatusJson);
   try
-    if Value is TJSONObject then
+    if mValue is TJSONObject then
     begin
-      Result := TJSONObject(Value).GetValue<Integer>('units', -1);
+      Result := TJSONObject(mValue).GetValue<Integer>('units', -1);
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 

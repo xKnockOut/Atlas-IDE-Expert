@@ -291,7 +291,7 @@ begin
   mParams := TJSONObject.Create;
   mParams.AddPair('units', mUnits);
   FServices.Logger.Info(Format('IDE-Units ohne Quelltext erfragt: %d', [Length(mWanted)]));
-  FServices.Notify(TIdeUnits.WantedMethod, mParams);
+  FServices.Notify(TIdeUnits.cWantedMethod, mParams);
 end;
 
 procedure TShellIde.MembersChanged(ACount: Integer);

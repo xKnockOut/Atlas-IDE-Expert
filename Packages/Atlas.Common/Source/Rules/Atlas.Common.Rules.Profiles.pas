@@ -27,7 +27,7 @@ type
   TRuleProfiles = class
   public const
     /// <summary>Höchstzahl verketteter eigener Profile, schützt vor Zyklen.</summary>
-    MaxDepth = 8;
+    cMaxDepth = 8;
   public
     /// <summary>Wirksamer Schweregrad der Regel für ARelativePath unter AProfile.
     /// ACategory ist der Katalogname (bug, code-smell, …), '' wenn unbekannt.
@@ -61,11 +61,11 @@ var
 
 function Contains(const AItems: TArray<string>; const AText: string): Boolean;
 var
-  Item: string;
+  mItem: string;
 begin
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if SameText(Item, AText) then
+    if SameText(mItem, AText) then
     begin
       Exit(True);
     end;
@@ -77,15 +77,15 @@ end;
 procedure ApplyRules(const AItems: TArray<TRuleSetting>; const ARuleId: string; var ASeverity: TRuleSeverity;
   var AEnabled: Boolean; AWildcard: Boolean);
 var
-  Rule: TRuleSetting;
+  mRule: TRuleSetting;
 begin
-  for Rule in AItems do
+  for mRule in AItems do
   begin
-    if (SameText(Rule.Id, ARuleId) or (AWildcard and (Rule.Id = '*'))) and
-      (Rule.Severity <> TRuleSeverity.Default) then
+    if (SameText(mRule.Id, ARuleId) or (AWildcard and (mRule.Id = '*'))) and
+      (mRule.Severity <> TRuleSeverity.Default) then
     begin
-      ASeverity := Rule.Severity;
-      AEnabled := Rule.Severity <> TRuleSeverity.Off;
+      ASeverity := mRule.Severity;
+      AEnabled := mRule.Severity <> TRuleSeverity.Off;
     end;
   end;
 end;
@@ -123,39 +123,39 @@ end;
 class function TRuleProfiles.Severity(const ASettings: TServerSettings; const AProfile: string;
   const ADescriptor: TRuleDescriptor; const ACategory, ARelativePath: string; out AEnabled: Boolean): TRuleSeverity;
 var
-  Chain: TArray<TRuleProfile>;
-  Profile: TRuleProfile;
-  Name: string;
-  Index: Integer;
-  Item: TPathOverride;
-  Pattern: string;
+  mChain: TArray<TRuleProfile>;
+  mProfile: TRuleProfile;
+  mName: string;
+  mIndex: Integer;
+  mItem: TPathOverride;
+  mPattern: string;
 begin
   Result := ADescriptor.DefaultSeverity;
   AEnabled := False;
   // Kette eigener Profile bis zum eingebauten Grundprofil.
-  Chain := nil;
-  Name := AProfile;
-  while (Name <> '') and (Length(Chain) < MaxDepth) and ASettings.TryFindProfile(Name, Profile) do
+  mChain := nil;
+  mName := AProfile;
+  while (mName <> '') and (Length(mChain) < cMaxDepth) and ASettings.TryFindProfile(mName, mProfile) do
   begin
-    Chain := [Profile] + Chain;
-    Name := Profile.Extends;
+    mChain := [mProfile] + mChain;
+    mName := mProfile.Extends;
   end;
-  ApplyBuiltin(Name, ACategory, Result, AEnabled);
-  for Index := 0 to High(Chain) do
+  ApplyBuiltin(mName, ACategory, Result, AEnabled);
+  for mIndex := 0 to High(mChain) do
   begin
-    ApplyCategories(Chain[Index].Categories, ACategory, Result);
-    ApplyRules(Chain[Index].Rules, ADescriptor.Id, Result, AEnabled, False);
+    ApplyCategories(mChain[mIndex].Categories, ACategory, Result);
+    ApplyRules(mChain[mIndex].Rules, ADescriptor.Id, Result, AEnabled, False);
   end;
   ApplyRules(ASettings.Rules, ADescriptor.Id, Result, AEnabled, False);
   if ARelativePath <> '' then
   begin
-    for Item in ASettings.Overrides do
+    for mItem in ASettings.Overrides do
     begin
-      for Pattern in Item.Files do
+      for mPattern in mItem.Files do
       begin
-        if MatchesGlob(Pattern, ARelativePath) then
+        if MatchesGlob(mPattern, ARelativePath) then
         begin
-          ApplyRules(Item.Rules, ADescriptor.Id, Result, AEnabled, True);
+          ApplyRules(mItem.Rules, ADescriptor.Id, Result, AEnabled, True);
           Break;
         end;
       end;
@@ -165,15 +165,15 @@ end;
 
 class function TRuleProfiles.BaseProfile(const ASettings: TServerSettings; const AProfile: string): string;
 var
-  Profile: TRuleProfile;
-  Depth: Integer;
+  mProfile: TRuleProfile;
+  mDepth: Integer;
 begin
   Result := AProfile;
-  Depth := 0;
-  while (Result <> '') and (Depth < MaxDepth) and ASettings.TryFindProfile(Result, Profile) do
+  mDepth := 0;
+  while (Result <> '') and (mDepth < cMaxDepth) and ASettings.TryFindProfile(Result, mProfile) do
   begin
-    Result := Profile.Extends;
-    Inc(Depth);
+    Result := mProfile.Extends;
+    Inc(mDepth);
   end;
 end;
 
@@ -199,8 +199,8 @@ end;
 
 class function TRuleProfiles.KnownRuleIds: TArray<string>;
 var
-  Pair: TPair<string, string>;
-  Index: Integer;
+  mPair: TPair<string, string>;
+  mIndex: Integer;
 begin
   Result := nil;
   if Categories = nil then
@@ -209,11 +209,11 @@ begin
   end;
   // Ohne Categories.Keys: Die Sammlung entstünde beim ersten Zugriff und bliebe bis Programmende.
   SetLength(Result, Categories.Count);
-  Index := 0;
-  for Pair in Categories do
+  mIndex := 0;
+  for mPair in Categories do
   begin
-    Result[Index] := Pair.Key;
-    Inc(Index);
+    Result[mIndex] := mPair.Key;
+    Inc(mIndex);
   end;
   TArray.Sort<string>(Result);
 end;
@@ -225,19 +225,19 @@ end;
 
 procedure LoadCategories;
 var
-  Catalog: TRuleCatalog;
-  Entry: TRuleCatalogEntry;
+  mCatalog: TRuleCatalog;
+  mEntry: TRuleCatalogEntry;
 begin
   Categories := TDictionary<string, string>.Create;
   try
-    Catalog := TRuleCatalog.Create(RuleCatalogBaseJson);
+    mCatalog := TRuleCatalog.Create(RuleCatalogBaseJson);
     try
-      for Entry in Catalog.Entries do
+      for mEntry in mCatalog.Entries do
       begin
-        Categories.AddOrSetValue(LowerCase(Entry.Id), TRuleCatalog.CategoryName(Entry.Category));
+        Categories.AddOrSetValue(LowerCase(mEntry.Id), TRuleCatalog.CategoryName(mEntry.Category));
       end;
     finally
-      Catalog.Free;
+      mCatalog.Free;
     end;
   except
     // Ohne Katalog wirken Profile nur über "rules"; die Kategorie bleibt dann unbekannt.

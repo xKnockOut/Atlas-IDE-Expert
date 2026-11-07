@@ -295,7 +295,7 @@ begin
       end;
     Lock := Subject.LockOf('Exp', IsOn, False);
     Assert.IsTrue(Lock.Reason = lrExperimental, 'auch der Hauptschalter der Funktion');
-    Assert.AreEqual(TAtlasExperimental.MasterName, Lock.Master);
+    Assert.AreEqual(TAtlasExperimental.cMasterName, Lock.Master);
     Assert.IsTrue(Subject.LockOf('ExpWidth', IsOn, False).Reason = lrExperimental, 'Unteroption mit gesperrt');
     Assert.IsTrue(Subject.IsExperimental('ExpWidth'));
     Assert.IsFalse(Subject.LockOf('Plain', IsOn, False).Locked);

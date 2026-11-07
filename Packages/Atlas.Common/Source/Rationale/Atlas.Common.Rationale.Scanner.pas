@@ -148,9 +148,9 @@ var
     if mOpen then
     begin
       mEntry.Text := Collapse(mEntry.Text);
-      if Length(mEntry.Text) > TRationale.MaxText then
+      if Length(mEntry.Text) > TRationale.cMaxText then
       begin
-        mEntry.Text := Copy(mEntry.Text, 1, TRationale.MaxText - 1) + '…';
+        mEntry.Text := Copy(mEntry.Text, 1, TRationale.cMaxText - 1) + '…';
       end;
       if mEntry.Text <> '' then
       begin
@@ -356,7 +356,8 @@ begin
   Result := FromComments(ATokens, mIndices);
 end;
 
-class function TRationaleScanner.ForNode(const ATokens: TArray<TPascalToken>; ANode: TSyntaxNode): TArray<TRationaleEntry>;
+class function TRationaleScanner.ForNode(const ATokens: TArray<TPascalToken>;
+  ANode: TSyntaxNode): TArray<TRationaleEntry>;
 var
   mHeader: TSyntaxNode;
 begin

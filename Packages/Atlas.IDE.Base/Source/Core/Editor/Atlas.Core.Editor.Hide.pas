@@ -93,8 +93,8 @@ type
 
   TAtlasHide = class
   public const
-    LineMarker = '// lsp-ignore: ';
-    FileMarker = '// lsp-ignore-file: ';
+    cLineMarker = '// lsp-ignore: ';
+    cFileMarker = '// lsp-ignore-file: ';
   public
     /// <summary>Plan für ATarget im Bereich AScope. AText: aktueller Text der Datei (für Kommentare);
     /// ATeamFolder: Ordner der .atlas des Projekts ('' = keiner bekannt).</summary>
@@ -124,32 +124,32 @@ uses
 /// (1-basiert) hinter der letzten Kennung.</summary>
 function IdsOf(const ALine: string; AStart: Integer; out AEnd: Integer): TArray<string>;
 var
-  Index, Stop, From: Integer;
+  mIndex, mStop, mFrom: Integer;
 begin
   Result := nil;
-  Stop := Length(ALine) + 1;
-  Index := AStart;
-  while Index <= Length(ALine) do
+  mStop := Length(ALine) + 1;
+  mIndex := AStart;
+  while mIndex <= Length(ALine) do
   begin
     // Begründung nach "--" am Anfang einer Kennung (wie TSuppressions).
-    if Copy(ALine, Index, 2) = '--' then
+    if Copy(ALine, mIndex, 2) = '--' then
     begin
-      Stop := Index;
+      mStop := mIndex;
       Break;
     end;
-    if CharInSet(ALine[Index], [',', ' ', #9]) then
+    if CharInSet(ALine[mIndex], [',', ' ', #9]) then
     begin
-      Inc(Index);
+      Inc(mIndex);
       Continue;
     end;
-    From := Index;
-    while (Index <= Length(ALine)) and not CharInSet(ALine[Index], [',', ' ', #9]) do
+    mFrom := mIndex;
+    while (mIndex <= Length(ALine)) and not CharInSet(ALine[mIndex], [',', ' ', #9]) do
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
-    Result := Result + [LowerCase(Copy(ALine, From, Index - From))];
+    Result := Result + [LowerCase(Copy(ALine, mFrom, mIndex - mFrom))];
   end;
-  AEnd := Stop;
+  AEnd := mStop;
   while (AEnd > AStart) and CharInSet(ALine[AEnd - 1], [',', ' ', #9]) do
   begin
     Dec(AEnd);
@@ -158,11 +158,11 @@ end;
 
 function Covers(const AIds: TArray<string>; const ARuleId: string): Boolean;
 var
-  Id: string;
+  mId: string;
 begin
-  for Id in AIds do
+  for mId in AIds do
   begin
-    if (Id = '*') or SameText(Id, ARuleId) then
+    if (mId = '*') or SameText(mId, ARuleId) then
     begin
       Exit(True);
     end;
@@ -175,40 +175,40 @@ end;
 function ExtendComment(const ALine: string; ALineIndex: Integer; const AWord, ARuleId: string;
   out AInsert: TAtlasTextInsert): Boolean;
 var
-  Start, Stop: Integer;
-  Ids: TArray<string>;
+  mStart, mStop: Integer;
+  mIds: TArray<string>;
 begin
   AInsert := Default(TAtlasTextInsert);
   // "//", Leerraum, Schlüsselwort; davor nur Einrückung.
-  Start := 1;
-  while (Start <= Length(ALine)) and CharInSet(ALine[Start], [' ', #9]) do
+  mStart := 1;
+  while (mStart <= Length(ALine)) and CharInSet(ALine[mStart], [' ', #9]) do
   begin
-    Inc(Start);
+    Inc(mStart);
   end;
-  Result := Copy(ALine, Start, 2) = '//';
+  Result := Copy(ALine, mStart, 2) = '//';
   if not Result then
   begin
     Exit;
   end;
-  Inc(Start, 2);
-  while (Start <= Length(ALine)) and CharInSet(ALine[Start], [' ', #9]) do
+  Inc(mStart, 2);
+  while (mStart <= Length(ALine)) and CharInSet(ALine[mStart], [' ', #9]) do
   begin
-    Inc(Start);
+    Inc(mStart);
   end;
-  Result := SameText(Copy(ALine, Start, Length(AWord)), AWord);
+  Result := SameText(Copy(ALine, mStart, Length(AWord)), AWord);
   if not Result then
   begin
     Exit;
   end;
-  Inc(Start, Length(AWord));
-  Ids := IdsOf(ALine, Start, Stop);
+  Inc(mStart, Length(AWord));
+  mIds := IdsOf(ALine, mStart, mStop);
   AInsert.Line := ALineIndex;
-  AInsert.Character := Stop - 1;
-  if Covers(Ids, ARuleId) then
+  AInsert.Character := mStop - 1;
+  if Covers(mIds, ARuleId) then
   begin
     Exit;
   end;
-  if Length(Ids) = 0 then
+  if Length(mIds) = 0 then
   begin
     AInsert.Text := ' ' + ARuleId;
   end
@@ -261,30 +261,30 @@ end;
 
 function TAtlasTextInsert.ApplyTo(const AText: string): string;
 var
-  Offset: Integer;
+  mOffset: Integer;
 begin
   if IsEmpty then
   begin
     Exit(AText);
   end;
-  Offset := OffsetIn(AText);
-  Result := Copy(AText, 1, Offset) + Text + Copy(AText, Offset + 1, MaxInt);
+  mOffset := OffsetIn(AText);
+  Result := Copy(AText, 1, mOffset) + Text + Copy(AText, mOffset + 1, MaxInt);
 end;
 
 function TAtlasTextInsert.RevertIn(const AText: string; out AResult: string): Boolean;
 var
-  Offset: Integer;
+  mOffset: Integer;
 begin
   AResult := AText;
   if IsEmpty then
   begin
     Exit(True);
   end;
-  Offset := OffsetIn(AText);
-  Result := Copy(AText, Offset + 1, Length(Text)) = Text;
+  mOffset := OffsetIn(AText);
+  Result := Copy(AText, mOffset + 1, Length(Text)) = Text;
   if Result then
   begin
-    AResult := Copy(AText, 1, Offset) + Copy(AText, Offset + Length(Text) + 1, MaxInt);
+    AResult := Copy(AText, 1, mOffset) + Copy(AText, mOffset + Length(Text) + 1, MaxInt);
   end;
 end;
 
@@ -292,42 +292,42 @@ end;
 
 class function TAtlasHide.SuppressLine(const AText: string; ALine: Integer; const ARuleId: string): TAtlasTextInsert;
 var
-  Lines: TArray<string>;
-  Line: string;
+  mLines: TArray<string>;
+  mLine: string;
 begin
-  Lines := TTextLines.SplitLines(AText);
+  mLines := TTextLines.SplitLines(AText);
   // Steht darüber schon ein Kommentar allein in seiner Zeile, kommt die Regel dazu.
-  if (ALine > 0) and (ALine - 1 <= High(Lines)) and
-    ExtendComment(Lines[ALine - 1], ALine - 1, 'lsp-ignore:', ARuleId, Result) then
+  if (ALine > 0) and (ALine - 1 <= High(mLines)) and
+    ExtendComment(mLines[ALine - 1], ALine - 1, 'lsp-ignore:', ARuleId, Result) then
   begin
     Exit;
   end;
-  Line := '';
-  if (ALine >= 0) and (ALine <= High(Lines)) then
+  mLine := '';
+  if (ALine >= 0) and (ALine <= High(mLines)) then
   begin
-    Line := Lines[ALine];
+    mLine := mLines[ALine];
   end;
   Result := Default(TAtlasTextInsert);
   Result.Line := ALine;
   Result.Character := 0;
-  Result.Text := TTextLines.IndentOf(Line) + LineMarker + ARuleId + TTextLines.LineBreakOf(AText);
+  Result.Text := TTextLines.IndentOf(mLine) + cLineMarker + ARuleId + TTextLines.LineBreakOf(AText);
 end;
 
 class function TAtlasHide.SuppressFile(const AText, ARuleId: string): TAtlasTextInsert;
 var
-  Lines: TArray<string>;
-  Index: Integer;
+  mLines: TArray<string>;
+  mIndex: Integer;
 begin
-  Lines := TTextLines.SplitLines(AText);
-  for Index := 0 to High(Lines) do
+  mLines := TTextLines.SplitLines(AText);
+  for mIndex := 0 to High(mLines) do
   begin
-    if ExtendComment(Lines[Index], Index, 'lsp-ignore-file:', ARuleId, Result) then
+    if ExtendComment(mLines[mIndex], mIndex, 'lsp-ignore-file:', ARuleId, Result) then
     begin
       Exit;
     end;
   end;
   Result := Default(TAtlasTextInsert);
-  Result.Text := FileMarker + ARuleId + TTextLines.LineBreakOf(AText);
+  Result.Text := cFileMarker + ARuleId + TTextLines.LineBreakOf(AText);
 end;
 
 /// <summary>Befund mit Regel: Unterdrückungskommentar (#147); False mit AlreadyHidden, wenn er schon steht.
@@ -417,61 +417,61 @@ end;
 
 class function TAtlasHide.IsOn(const ASettings: TAtlasPluginSettings; const AKey: string): Boolean;
 var
-  Store: IAtlasMemorySettingsStore;
+  mStore: IAtlasMemorySettingsStore;
 begin
-  Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
-  if Store.HasInteger(AKey) then
+  mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
+  if mStore.HasInteger(AKey) then
   begin
-    Result := Store.ReadInteger(AKey, 0) <> 0;
+    Result := mStore.ReadInteger(AKey, 0) <> 0;
   end
   else
   begin
-    Result := (Store.Text(AKey) <> '') and not SameText(Store.Text(AKey), 'off');
+    Result := (mStore.Text(AKey) <> '') and not SameText(mStore.Text(AKey), 'off');
   end;
 end;
 
 class function TAtlasHide.SwitchOff(var ASettings: TAtlasPluginSettings; const AKey: string;
   out AOldValue: string): Boolean;
 var
-  Store: IAtlasMemorySettingsStore;
+  mStore: IAtlasMemorySettingsStore;
 begin
-  Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
-  AOldValue := Store.Text(AKey);
+  mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
+  AOldValue := mStore.Text(AKey);
   Result := (AOldValue <> '') and IsOn(ASettings, AKey);
   if not Result then
   begin
     Exit;
   end;
-  if Store.HasInteger(AKey) then
+  if mStore.HasInteger(AKey) then
   begin
-    Store.WriteInteger(AKey, 0);
+    mStore.WriteInteger(AKey, 0);
   end
   else
   begin
-    Store.WriteString(AKey, 'off');
+    mStore.WriteString(AKey, 'off');
   end;
-  ASettings.Load(Store);
+  ASettings.Load(mStore);
 end;
 
 class function TAtlasHide.Restore(var ASettings: TAtlasPluginSettings; const AKey, AOldValue: string): Boolean;
 var
-  Store: IAtlasMemorySettingsStore;
+  mStore: IAtlasMemorySettingsStore;
 begin
-  Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
-  Result := Store.Text(AKey) <> '';
+  mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
+  Result := mStore.Text(AKey) <> '';
   if not Result then
   begin
     Exit;
   end;
-  if Store.HasInteger(AKey) then
+  if mStore.HasInteger(AKey) then
   begin
-    Store.WriteInteger(AKey, StrToIntDef(AOldValue, 1));
+    mStore.WriteInteger(AKey, StrToIntDef(AOldValue, 1));
   end
   else
   begin
-    Store.WriteString(AKey, AOldValue);
+    mStore.WriteString(AKey, AOldValue);
   end;
-  ASettings.Load(Store);
+  ASettings.Load(mStore);
 end;
 
 end.

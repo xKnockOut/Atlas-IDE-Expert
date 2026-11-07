@@ -763,7 +763,7 @@ begin
   // Fundament zuerst, mit Logging und der Unit, die nur Logging verwendet.
   mFoundation := mOverview.Subsystems[0];
   Assert.IsTrue(mFoundation.Foundation);
-  Assert.AreEqual(TArchitectureAnalyzer.FoundationName, mFoundation.Name);
+  Assert.AreEqual(TArchitectureAnalyzer.cFoundationName, mFoundation.Name);
   Assert.AreEqual('App.Common.Logging,App.Tool.Only', SortedNames(mOverview, mFoundation.Units));
   Assert.AreEqual(-1, mFoundation.ColorSlot);
   Assert.AreEqual(Double(0), mFoundation.Cohesion, 1E-9);
@@ -877,8 +877,8 @@ begin
   Result.Subsystem := ASubsystem;
   Result.Interfaces := AInterfaces;
   Result.Implementations := AImplementations;
-  Result.Sum := AInterfaces * TArchitectureAnalyzer.InterfaceWeight +
-    AImplementations * TArchitectureAnalyzer.ImplementationWeight;
+  Result.Sum := AInterfaces * TArchitectureAnalyzer.cInterfaceWeight +
+    AImplementations * TArchitectureAnalyzer.cImplementationWeight;
   Result.Counts := True;
 end;
 

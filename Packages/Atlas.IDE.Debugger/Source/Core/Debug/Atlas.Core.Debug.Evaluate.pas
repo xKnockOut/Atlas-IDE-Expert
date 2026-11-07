@@ -177,8 +177,8 @@ uses
 
 const
   // Bildzeichen für Steuerzeichen: U+2400 + Code; Tab als Pfeil.
-  ControlPictureBase = $2400;
-  TabPicture = #$2192;
+  cControlPictureBase = $2400;
+  cTabPicture = #$2192;
 
 /// <summary>AText[AIndex] ist ein Anführungszeichen: Index (1-basiert) hinter dem schließenden ('' zählt als
 /// Inhalt); 0, wenn der String nicht endet.</summary>
@@ -209,20 +209,20 @@ end;
 /// <summary>Teile von AInner (ohne äußere Klammern) an ";" bzw. "," der obersten Ebene.</summary>
 function SplitTop(const AInner: string): TArray<string>;
 var
-  Index, Depth, Start: Integer;
+  mIndex, mDepth, mStart: Integer;
   C: Char;
 begin
   Result := nil;
-  Depth := 0;
-  Start := 1;
-  Index := 1;
-  while Index <= Length(AInner) do
+  mDepth := 0;
+  mStart := 1;
+  mIndex := 1;
+  while mIndex <= Length(AInner) do
   begin
-    C := AInner[Index];
+    C := AInner[mIndex];
     if C = '''' then
     begin
-      Index := SkipString(AInner, Index);
-      if Index = 0 then
+      mIndex := SkipString(AInner, mIndex);
+      if mIndex = 0 then
       begin
         Break;
       end;
@@ -230,55 +230,55 @@ begin
     end;
     if CharInSet(C, ['(', '[', '{']) then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
     else if CharInSet(C, [')', ']', '}']) then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (Depth = 0) and CharInSet(C, [';', ',']) then
+    else if (mDepth = 0) and CharInSet(C, [';', ',']) then
     begin
-      Result := Result + [Trim(Copy(AInner, Start, Index - Start))];
-      Start := Index + 1;
+      Result := Result + [Trim(Copy(AInner, mStart, mIndex - mStart))];
+      mStart := mIndex + 1;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  if Trim(Copy(AInner, Start, MaxInt)) <> '' then
+  if Trim(Copy(AInner, mStart, MaxInt)) <> '' then
   begin
-    Result := Result + [Trim(Copy(AInner, Start, MaxInt))];
+    Result := Result + [Trim(Copy(AInner, mStart, MaxInt))];
   end;
 end;
 
 /// <summary>"Name: Wert" bzw. "Name = Wert" mit Bezeichner (auch qualifiziert) vorn.</summary>
 function SplitNamed(const APart: string; out AName, AValue: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
-  Index := 1;
+  mIndex := 1;
   if (APart = '') or not TTextChars.IsIdentStart(APart[1]) then
   begin
     Exit;
   end;
-  while (Index <= Length(APart)) and (TTextChars.IsIdentChar(APart[Index]) or (APart[Index] = '.')) do
+  while (mIndex <= Length(APart)) and (TTextChars.IsIdentChar(APart[mIndex]) or (APart[mIndex] = '.')) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  AName := Copy(APart, 1, Index - 1);
-  while (Index <= Length(APart)) and (APart[Index] = ' ') do
+  AName := Copy(APart, 1, mIndex - 1);
+  while (mIndex <= Length(APart)) and (APart[mIndex] = ' ') do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  if (Index > Length(APart)) or not CharInSet(APart[Index], [':', '=']) then
+  if (mIndex > Length(APart)) or not CharInSet(APart[mIndex], [':', '=']) then
   begin
     Exit;
   end;
   // ":=" ist keine Benennung.
-  if (APart[Index] = ':') and (Index < Length(APart)) and (APart[Index + 1] = '=') then
+  if (APart[mIndex] = ':') and (mIndex < Length(APart)) and (APart[mIndex + 1] = '=') then
   begin
     Exit;
   end;
-  AValue := Trim(Copy(APart, Index + 1, MaxInt));
+  AValue := Trim(Copy(APart, mIndex + 1, MaxInt));
   Result := True;
 end;
 
@@ -286,73 +286,73 @@ end;
 
 class function TAtlasEvalText.IsStructured(const AValue: string): Boolean;
 var
-  Text: string;
-  Index, Depth: Integer;
+  mText: string;
+  mIndex, mDepth: Integer;
 begin
-  Text := Trim(AValue);
-  Result := (Length(Text) >= 2) and (Text[1] = '(') and (Text[Length(Text)] = ')');
+  mText := Trim(AValue);
+  Result := (Length(mText) >= 2) and (mText[1] = '(') and (mText[Length(mText)] = ')');
   if not Result then
   begin
     Exit;
   end;
   // Die erste Klammer muss die letzte schließen: "(1) + (2)" ist kein Wert.
-  Depth := 0;
-  Index := 1;
-  while Index <= Length(Text) do
+  mDepth := 0;
+  mIndex := 1;
+  while mIndex <= Length(mText) do
   begin
-    if Text[Index] = '''' then
+    if mText[mIndex] = '''' then
     begin
-      Index := SkipString(Text, Index);
-      if Index = 0 then
+      mIndex := SkipString(mText, mIndex);
+      if mIndex = 0 then
       begin
         Exit(False);
       end;
       Continue;
     end;
-    if Text[Index] = '(' then
+    if mText[mIndex] = '(' then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if Text[Index] = ')' then
+    else if mText[mIndex] = ')' then
     begin
-      Dec(Depth);
-      if (Depth = 0) and (Index < Length(Text)) then
+      Dec(mDepth);
+      if (mDepth = 0) and (mIndex < Length(mText)) then
       begin
         Exit(False);
       end;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Depth = 0;
+  Result := mDepth = 0;
 end;
 
 class function TAtlasEvalText.Parts(const AValue: string): TAtlasEvalParts;
 var
-  Text, Name, Value: string;
-  Items: TArray<string>;
-  Index: Integer;
+  mText, mName, mValue: string;
+  mItems: TArray<string>;
+  mIndex: Integer;
 begin
   Result := nil;
   if not IsStructured(AValue) then
   begin
     Exit;
   end;
-  Text := Trim(AValue);
-  Items := SplitTop(Copy(Text, 2, Length(Text) - 2));
-  SetLength(Result, Length(Items));
-  for Index := 0 to High(Items) do
+  mText := Trim(AValue);
+  mItems := SplitTop(Copy(mText, 2, Length(mText) - 2));
+  SetLength(Result, Length(mItems));
+  for mIndex := 0 to High(mItems) do
   begin
-    Result[Index] := Default(TAtlasEvalPart);
-    if SplitNamed(Items[Index], Name, Value) then
+    Result[mIndex] := Default(TAtlasEvalPart);
+    if SplitNamed(mItems[mIndex], mName, mValue) then
     begin
-      Result[Index].Name := Name;
-      Result[Index].Value := Value;
+      Result[mIndex].Name := mName;
+      Result[mIndex].Value := mValue;
     end
     else
     begin
-      Result[Index].Name := '[' + IntToStr(Index) + ']';
-      Result[Index].Value := Items[Index];
-      Result[Index].Indexed := True;
+      Result[mIndex].Name := '[' + IntToStr(mIndex) + ']';
+      Result[mIndex].Value := mItems[mIndex];
+      Result[mIndex].Indexed := True;
     end;
   end;
 end;
@@ -387,32 +387,32 @@ end;
 
 class function TAtlasEvalText.TryDecodeString(const AValue: string; out AText: string): Boolean;
 var
-  Text: string;
-  Index, Stop: Integer;
-  Code: Char;
+  mText: string;
+  mIndex, mStop: Integer;
+  mCode: Char;
 begin
   AText := '';
-  Text := Trim(AValue);
-  Result := (Text <> '') and CharInSet(Text[1], ['''', '#']);
-  Index := 1;
-  while Result and (Index <= Length(Text)) do
+  mText := Trim(AValue);
+  Result := (mText <> '') and CharInSet(mText[1], ['''', '#']);
+  mIndex := 1;
+  while Result and (mIndex <= Length(mText)) do
   begin
-    if Text[Index] = '''' then
+    if mText[mIndex] = '''' then
     begin
-      Stop := SkipString(Text, Index);
-      Result := Stop <> 0;
+      mStop := SkipString(mText, mIndex);
+      Result := mStop <> 0;
       if Result then
       begin
-        AText := AText + StringReplace(Copy(Text, Index + 1, Stop - Index - 2), '''''', '''', [rfReplaceAll]);
-        Index := Stop;
+        AText := AText + StringReplace(Copy(mText, mIndex + 1, mStop - mIndex - 2), '''''', '''', [rfReplaceAll]);
+        mIndex := mStop;
       end;
     end
-    else if Text[Index] = '#' then
+    else if mText[mIndex] = '#' then
     begin
-      Result := DecodeCharCode(Text, Index, Code);
+      Result := DecodeCharCode(mText, mIndex, mCode);
       if Result then
       begin
-        AText := AText + Code;
+        AText := AText + mCode;
       end;
     end
     else
@@ -424,28 +424,28 @@ end;
 
 class function TAtlasEvalText.IsSimple(const AValue: string): Boolean;
 var
-  Text, Decoded: string;
-  Number: Double;
-  Index: Integer;
+  mText, mDecoded: string;
+  mNumber: Double;
+  mIndex: Integer;
 begin
-  Text := Trim(AValue);
-  if (Text = '') or SameText(Text, 'nil') or SameText(Text, 'True') or SameText(Text, 'False') then
+  mText := Trim(AValue);
+  if (mText = '') or SameText(mText, 'nil') or SameText(mText, 'True') or SameText(mText, 'False') then
   begin
     Exit(True);
   end;
-  if TryDecodeString(Text, Decoded) then
+  if TryDecodeString(mText, mDecoded) then
   begin
     Exit(True);
   end;
-  if TryStrToFloat(Text, Number, TFormatSettings.Invariant) then
+  if TryStrToFloat(mText, mNumber, TFormatSettings.Invariant) then
   begin
     Exit(True);
   end;
   // Aufzählungswert: ein Bezeichner.
-  Result := TTextChars.IsIdentStart(Text[1]);
-  for Index := 2 to Length(Text) do
+  Result := TTextChars.IsIdentStart(mText[1]);
+  for mIndex := 2 to Length(mText) do
   begin
-    if not TTextChars.IsIdentChar(Text[Index]) then
+    if not TTextChars.IsIdentChar(mText[mIndex]) then
     begin
       Exit(False);
     end;
@@ -464,20 +464,20 @@ end;
 
 class function TAtlasEvalText.FieldExpression(const AExpression, AField: string): string;
 var
-  Index: Integer;
-  Simple: Boolean;
+  mIndex: Integer;
+  mSimple: Boolean;
 begin
   // Bezeichner, Punkte, Indizes und ^ bleiben ohne Klammern: Kunde.Adresse.Ort, Liste[0].Name, P^.X.
-  Simple := AExpression <> '';
-  for Index := 1 to Length(AExpression) do
+  mSimple := AExpression <> '';
+  for mIndex := 1 to Length(AExpression) do
   begin
-    if not (TTextChars.IsIdentChar(AExpression[Index]) or CharInSet(AExpression[Index], ['.', '[', ']', '^'])) then
+    if not (TTextChars.IsIdentChar(AExpression[mIndex]) or CharInSet(AExpression[mIndex], ['.', '[', ']', '^'])) then
     begin
-      Simple := False;
+      mSimple := False;
       Break;
     end;
   end;
-  if Simple then
+  if mSimple then
   begin
     Result := AExpression + '.' + AField;
   end
@@ -489,114 +489,114 @@ end;
 
 class function TAtlasEvalText.ExpressionAt(const ALine: string; ACharacter: Integer): string;
 var
-  First, Last: Integer;
+  mFirst, mLast: Integer;
 begin
   Result := '';
   // 1-basiert: Zeichen rechts vom Cursor; steht er hinter dem Wort, zählt das Wort davor.
-  Last := ACharacter + 1;
-  if (Last > Length(ALine)) or not TTextChars.IsIdentChar(ALine[Last]) then
+  mLast := ACharacter + 1;
+  if (mLast > Length(ALine)) or not TTextChars.IsIdentChar(ALine[mLast]) then
   begin
-    Dec(Last);
+    Dec(mLast);
   end;
-  if (Last < 1) or (Last > Length(ALine)) or not TTextChars.IsIdentChar(ALine[Last]) then
+  if (mLast < 1) or (mLast > Length(ALine)) or not TTextChars.IsIdentChar(ALine[mLast]) then
   begin
     Exit;
   end;
-  while (Last < Length(ALine)) and TTextChars.IsIdentChar(ALine[Last + 1]) do
+  while (mLast < Length(ALine)) and TTextChars.IsIdentChar(ALine[mLast + 1]) do
   begin
-    Inc(Last);
+    Inc(mLast);
   end;
-  First := Last;
-  while (First > 1) and (TTextChars.IsIdentChar(ALine[First - 1]) or CharInSet(ALine[First - 1], ['.', '^'])) do
+  mFirst := mLast;
+  while (mFirst > 1) and (TTextChars.IsIdentChar(ALine[mFirst - 1]) or CharInSet(ALine[mFirst - 1], ['.', '^'])) do
   begin
-    Dec(First);
+    Dec(mFirst);
   end;
   // Vorn nur ein Bezeichner: „.Name“ oder „^P“ gehören nicht dazu, Zahlen auch nicht.
-  while (First <= Last) and not TTextChars.IsIdentStart(ALine[First]) do
+  while (mFirst <= mLast) and not TTextChars.IsIdentStart(ALine[mFirst]) do
   begin
-    Inc(First);
+    Inc(mFirst);
   end;
-  Result := Copy(ALine, First, Last - First + 1);
+  Result := Copy(ALine, mFirst, mLast - mFirst + 1);
 end;
 
 class function TAtlasEvalText.FieldsOf(const AResponse: TJSONValue; AWithProperties: Boolean): TArray<string>;
 const
-  FieldKind = 5;
-  PropertyKind = 10;
+  cFieldKind = 5;
+  cPropertyKind = 10;
 var
-  Items: TJSONArray;
-  Item: TJSONValue;
-  Name: string;
-  Kind: Integer;
+  mItems: TJSONArray;
+  mItem: TJSONValue;
+  mName: string;
+  mKind: Integer;
 begin
   Result := nil;
   if not (AResponse is TJSONObject) or not (TJSONObject(AResponse).GetValue('items') is TJSONArray) then
   begin
     Exit;
   end;
-  Items := TJSONArray(TJSONObject(AResponse).GetValue('items'));
-  for Item in Items do
+  mItems := TJSONArray(TJSONObject(AResponse).GetValue('items'));
+  for mItem in mItems do
   begin
-    if not (Item is TJSONObject) or not (TJSONObject(Item).GetValue('kind') is TJSONNumber) then
+    if not (mItem is TJSONObject) or not (TJSONObject(mItem).GetValue('kind') is TJSONNumber) then
     begin
       Continue;
     end;
-    Kind := TJSONNumber(TJSONObject(Item).GetValue('kind')).AsInt;
-    if (Kind <> FieldKind) and not (AWithProperties and (Kind = PropertyKind)) then
+    mKind := TJSONNumber(TJSONObject(mItem).GetValue('kind')).AsInt;
+    if (mKind <> cFieldKind) and not (AWithProperties and (mKind = cPropertyKind)) then
     begin
       Continue;
     end;
-    if not TJSONObject(Item).TryGetValue<string>('label', Name) then
+    if not TJSONObject(mItem).TryGetValue<string>('label', mName) then
     begin
       Continue;
     end;
-    Name := Trim(Name);
-    if (Name <> '') and (IndexText(Name, Result) < 0) then
+    mName := Trim(mName);
+    if (mName <> '') and (IndexText(mName, Result) < 0) then
     begin
-      Result := Result + [Name];
+      Result := Result + [mName];
     end;
   end;
 end;
 
 class function TAtlasEvalText.VisibleText(const AText: string): string;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
   C: Char;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Index := 1;
-    while Index <= Length(AText) do
+    mIndex := 1;
+    while mIndex <= Length(AText) do
     begin
-      C := AText[Index];
-      if (C = #13) and (Index < Length(AText)) and (AText[Index + 1] = #10) then
+      C := AText[mIndex];
+      if (C = #13) and (mIndex < Length(AText)) and (AText[mIndex + 1] = #10) then
       begin
-        Builder.Append(Char(ControlPictureBase + 13)).Append(Char(ControlPictureBase + 10)).Append(sLineBreak);
-        Inc(Index, 2);
+        mBuilder.Append(Char(cControlPictureBase + 13)).Append(Char(cControlPictureBase + 10)).Append(sLineBreak);
+        Inc(mIndex, 2);
         Continue;
       end;
       if CharInSet(C, [#10, #13]) then
       begin
-        Builder.Append(Char(ControlPictureBase + Ord(C))).Append(sLineBreak);
+        mBuilder.Append(Char(cControlPictureBase + Ord(C))).Append(sLineBreak);
       end
       else if C = #9 then
       begin
-        Builder.Append(TabPicture);
+        mBuilder.Append(cTabPicture);
       end
       else if Ord(C) < 32 then
       begin
-        Builder.Append(Char(ControlPictureBase + Ord(C)));
+        mBuilder.Append(Char(cControlPictureBase + Ord(C)));
       end
       else
       begin
-        Builder.Append(C);
+        mBuilder.Append(C);
       end;
-      Inc(Index);
+      Inc(mIndex);
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -651,101 +651,101 @@ end;
 
 class function TAtlasEvalText.TryFormatJson(const AText: string; out AFormatted: string): Boolean;
 var
-  Builder: TStringBuilder;
-  Index, Depth: Integer;
-  Source: string;
+  mBuilder: TStringBuilder;
+  mIndex, mDepth: Integer;
+  mSource: string;
 begin
   AFormatted := '';
-  Source := Trim(AText);
-  Result := IsJsonContainer(Source);
+  mSource := Trim(AText);
+  Result := IsJsonContainer(mSource);
   if not Result then
   begin
     Exit;
   end;
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Depth := 0;
-    Index := 1;
-    while Index <= Length(Source) do
+    mDepth := 0;
+    mIndex := 1;
+    while mIndex <= Length(mSource) do
     begin
-      case Source[Index] of
+      case mSource[mIndex] of
         '"':
-          AppendJsonString(Builder, Source, Index);
+          AppendJsonString(mBuilder, mSource, mIndex);
         '{', '[':
           begin
-            Builder.Append(Source[Index]);
-            Inc(Depth);
-            AppendJsonLine(Builder, Depth);
+            mBuilder.Append(mSource[mIndex]);
+            Inc(mDepth);
+            AppendJsonLine(mBuilder, mDepth);
           end;
         '}', ']':
           begin
-            Dec(Depth);
-            AppendJsonLine(Builder, Depth);
-            Builder.Append(Source[Index]);
+            Dec(mDepth);
+            AppendJsonLine(mBuilder, mDepth);
+            mBuilder.Append(mSource[mIndex]);
           end;
         ',':
           begin
-            Builder.Append(',');
-            AppendJsonLine(Builder, Depth);
+            mBuilder.Append(',');
+            AppendJsonLine(mBuilder, mDepth);
           end;
         ':':
-          Builder.Append(': ');
+          mBuilder.Append(': ');
         ' ', #9, #10, #13:
           ;
       else
-        Builder.Append(Source[Index]);
+        mBuilder.Append(mSource[mIndex]);
       end;
-      Inc(Index);
+      Inc(mIndex);
     end;
-    AFormatted := Builder.ToString;
+    AFormatted := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 class function TAtlasEvalText.TryHex(const AValue: string; out AHex: string): Boolean;
 var
-  Number: Int64;
+  mNumber: Int64;
 begin
   AHex := '';
-  Result := TryStrToInt64(Trim(AValue), Number);
+  Result := TryStrToInt64(Trim(AValue), mNumber);
   if not Result then
   begin
     Exit;
   end;
-  if (Number >= Low(Integer)) and (Number <= High(Integer)) then
+  if (mNumber >= Low(Integer)) and (mNumber <= High(Integer)) then
   begin
-    AHex := '$' + IntToHex(Integer(Number), 8);
+    AHex := '$' + IntToHex(Integer(mNumber), 8);
   end
   else
   begin
-    AHex := '$' + IntToHex(Number, 16);
+    AHex := '$' + IntToHex(mNumber, 16);
   end;
-  AHex := AHex + ' (' + IntToStr(Number) + ')';
+  AHex := AHex + ' (' + IntToStr(mNumber) + ')';
 end;
 
 class function TAtlasEvalText.Render(const AValue: string; AView: TAtlasEvalView; out AText: string): Boolean;
 var
-  Decoded: string;
+  mDecoded: string;
 begin
-  if not TryDecodeString(AValue, Decoded) then
+  if not TryDecodeString(AValue, mDecoded) then
   begin
-    Decoded := AValue;
+    mDecoded := AValue;
   end;
   Result := True;
   case AView of
     TAtlasEvalView.Lines:
-      AText := string.Join(sLineBreak, StringsLines(Decoded));
+      AText := string.Join(sLineBreak, StringsLines(mDecoded));
     TAtlasEvalView.Json:
-      Result := TryFormatJson(Decoded, AText);
+      Result := TryFormatJson(mDecoded, AText);
     TAtlasEvalView.Hex:
       Result := TryHex(AValue, AText);
   else
-    AText := VisibleText(Decoded);
+    AText := VisibleText(mDecoded);
   end;
   if not Result then
   begin
-    AText := VisibleText(Decoded);
+    AText := VisibleText(mDecoded);
   end;
 end;
 
@@ -825,32 +825,32 @@ end;
 
 function TAtlasEvalList.Add(const AExpression: string): TAtlasEvalNode;
 var
-  Expression: string;
-  Index, Number: Integer;
-  Key: string;
+  mExpression: string;
+  mIndex, mNumber: Integer;
+  mKey: string;
 begin
   Result := nil;
-  Expression := Trim(AExpression);
-  if Expression = '' then
+  mExpression := Trim(AExpression);
+  if mExpression = '' then
   begin
     Exit;
   end;
   // Gleicher Ausdruck zweimal: eigener Schlüssel, damit die Markierung je Zeile gilt.
-  Key := Expression;
-  Number := 1;
-  Index := 0;
-  while Index < FRoots.Count do
+  mKey := mExpression;
+  mNumber := 1;
+  mIndex := 0;
+  while mIndex < FRoots.Count do
   begin
-    if FRoots[Index].Key = Key then
+    if FRoots[mIndex].Key = mKey then
     begin
-      Inc(Number);
-      Key := Expression + #2 + IntToStr(Number);
-      Index := 0;
+      Inc(mNumber);
+      mKey := mExpression + #2 + IntToStr(mNumber);
+      mIndex := 0;
       Continue;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := TAtlasEvalNode.Create(nil, Expression, Expression, Key);
+  Result := TAtlasEvalNode.Create(nil, mExpression, mExpression, mKey);
   FRoots.Add(Result);
 end;
 
@@ -866,7 +866,7 @@ end;
 
 procedure TAtlasEvalList.Restart(ANode: TAtlasEvalNode);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if ANode.FromParts then
   begin
@@ -878,26 +878,26 @@ begin
     ANode.State := TAtlasEvalState.Pending;
     ANode.Changed := False;
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    Restart(ANode.Children[Index]);
+    Restart(ANode.Children[mIndex]);
   end;
 end;
 
 procedure TAtlasEvalList.BeginStop;
 var
-  Pair: TPair<string, string>;
-  Index: Integer;
+  mPair: TPair<string, string>;
+  mIndex: Integer;
 begin
   // Was in diesem Halt nicht ausgewertet wurde, behält den Stand des Halts davor.
-  for Pair in FCurrent do
+  for mPair in FCurrent do
   begin
-    FPrevious.AddOrSetValue(Pair.Key, Pair.Value);
+    FPrevious.AddOrSetValue(mPair.Key, mPair.Value);
   end;
   FCurrent.Clear;
-  for Index := 0 to FRoots.Count - 1 do
+  for mIndex := 0 to FRoots.Count - 1 do
   begin
-    Restart(FRoots[Index]);
+    Restart(FRoots[mIndex]);
   end;
 end;
 
@@ -905,28 +905,28 @@ procedure TAtlasEvalList.Unavailable;
 
   procedure Mark(ANode: TAtlasEvalNode);
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
     ANode.State := TAtlasEvalState.Unavailable;
     ANode.Changed := False;
-    for Index := 0 to ANode.ChildCount - 1 do
+    for mIndex := 0 to ANode.ChildCount - 1 do
     begin
-      Mark(ANode.Children[Index]);
+      Mark(ANode.Children[mIndex]);
     end;
   end;
 
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to FRoots.Count - 1 do
+  for mIndex := 0 to FRoots.Count - 1 do
   begin
-    Mark(FRoots[Index]);
+    Mark(FRoots[mIndex]);
   end;
 end;
 
 procedure TAtlasEvalList.SetResult(ANode: TAtlasEvalNode; AOk: Boolean; const AText: string);
 var
-  Previous: string;
+  mPrevious: string;
 begin
   ANode.Value := AText;
   if AOk then
@@ -937,7 +937,7 @@ begin
   begin
     ANode.State := TAtlasEvalState.Error;
   end;
-  ANode.Changed := AOk and FPrevious.TryGetValue(ANode.Key, Previous) and (Previous <> AText);
+  ANode.Changed := AOk and FPrevious.TryGetValue(ANode.Key, mPrevious) and (mPrevious <> AText);
   if AOk then
   begin
     FCurrent.AddOrSetValue(ANode.Key, AText);
@@ -951,12 +951,12 @@ end;
 
 procedure TAtlasEvalList.SetFields(ANode: TAtlasEvalNode; const AFields: TArray<string>);
 var
-  Field: string;
+  mField: string;
 begin
   ANode.ClearChildren;
-  for Field in AFields do
+  for mField in AFields do
   begin
-    ANode.AddChild(Field, TAtlasEvalText.FieldExpression(ANode.Expression, Field)).State :=
+    ANode.AddChild(mField, TAtlasEvalText.FieldExpression(ANode.Expression, mField)).State :=
       TAtlasEvalState.Pending;
   end;
   ANode.ChildrenLoaded := True;
@@ -964,21 +964,21 @@ end;
 
 function TAtlasEvalList.SetParts(ANode: TAtlasEvalNode): Boolean;
 var
-  Parts: TAtlasEvalParts;
-  Part: TAtlasEvalPart;
-  Child: TAtlasEvalNode;
+  mParts: TAtlasEvalParts;
+  mPart: TAtlasEvalPart;
+  mChild: TAtlasEvalNode;
 begin
-  Parts := TAtlasEvalText.Parts(ANode.Value);
-  Result := Length(Parts) > 0;
+  mParts := TAtlasEvalText.Parts(ANode.Value);
+  Result := Length(mParts) > 0;
   if not Result then
   begin
     Exit;
   end;
   ANode.ClearChildren;
-  for Part in Parts do
+  for mPart in mParts do
   begin
-    Child := ANode.AddChild(Part.Name, '');
-    SetResult(Child, True, Part.Value);
+    mChild := ANode.AddChild(mPart.Name, '');
+    SetResult(mChild, True, mPart.Value);
   end;
   ANode.ChildrenLoaded := True;
   ANode.FromParts := True;
@@ -986,7 +986,7 @@ end;
 
 procedure TAtlasEvalList.CollectPending(ANode: TAtlasEvalNode; AList: TList<TAtlasEvalNode>);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if (ANode.Expression <> '') and (ANode.State = TAtlasEvalState.Pending) then
   begin
@@ -994,27 +994,27 @@ begin
   end;
   if ANode.Expanded then
   begin
-    for Index := 0 to ANode.ChildCount - 1 do
+    for mIndex := 0 to ANode.ChildCount - 1 do
     begin
-      CollectPending(ANode.Children[Index], AList);
+      CollectPending(ANode.Children[mIndex], AList);
     end;
   end;
 end;
 
 function TAtlasEvalList.Pending: TArray<TAtlasEvalNode>;
 var
-  List: TList<TAtlasEvalNode>;
-  Index: Integer;
+  mList: TList<TAtlasEvalNode>;
+  mIndex: Integer;
 begin
-  List := TList<TAtlasEvalNode>.Create;
+  mList := TList<TAtlasEvalNode>.Create;
   try
-    for Index := 0 to FRoots.Count - 1 do
+    for mIndex := 0 to FRoots.Count - 1 do
     begin
-      CollectPending(FRoots[Index], List);
+      CollectPending(FRoots[mIndex], mList);
     end;
-    Result := List.ToArray;
+    Result := mList.ToArray;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
@@ -1031,7 +1031,7 @@ function TAtlasEvalList.Find(const AKey: string): TAtlasEvalNode;
 
   function Search(ANode: TAtlasEvalNode): TAtlasEvalNode;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
     if ANode.Key = AKey then
     begin
@@ -1043,9 +1043,9 @@ function TAtlasEvalList.Find(const AKey: string): TAtlasEvalNode;
     begin
       Exit(nil);
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
+    for mIndex := 0 to ANode.ChildCount - 1 do
     begin
-      Result := Search(ANode.Children[Index]);
+      Result := Search(ANode.Children[mIndex]);
       if Result <> nil then
       begin
         Exit;
@@ -1055,11 +1055,11 @@ function TAtlasEvalList.Find(const AKey: string): TAtlasEvalNode;
   end;
 
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to FRoots.Count - 1 do
+  for mIndex := 0 to FRoots.Count - 1 do
   begin
-    Result := Search(FRoots[Index]);
+    Result := Search(FRoots[mIndex]);
     if Result <> nil then
     begin
       Exit;
@@ -1070,14 +1070,14 @@ end;
 
 function TAtlasEvalList.PinnedExpressions: TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to FRoots.Count - 1 do
+  for mIndex := 0 to FRoots.Count - 1 do
   begin
-    if FRoots[Index].Pinned then
+    if FRoots[mIndex].Pinned then
     begin
-      Result := Result + [FRoots[Index].Expression];
+      Result := Result + [FRoots[mIndex].Expression];
     end;
   end;
 end;

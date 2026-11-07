@@ -85,7 +85,6 @@ type
     property ThresholdMs: Integer read FThresholdMs write FThresholdMs;
     property Count: Integer read FCount;
     property WithAtlas: Integer read FWithAtlas;
-    property LongestMs: Int64 read FLongestMs;
   end;
 
 implementation
@@ -136,23 +135,23 @@ end;
 
 class function TAtlasActivity.Scope(const AName: string): IInterface;
 var
-  Timed: Boolean;
-  Started: Int64;
+  mTimed: Boolean;
+  mStarted: Int64;
 begin
-  Started := 0;
+  mStarted := 0;
   FLock.Enter;
   try
     // Nur die äußerste Aktion zählt: Verschachtelte stecken in ihrer Dauer.
-    Timed := (Length(FNames) = 0) and (FTimes <> nil);
-    if Timed then
+    mTimed := (Length(FNames) = 0) and (FTimes <> nil);
+    if mTimed then
     begin
-      Started := FTimes.Clock;
+      mStarted := FTimes.Clock;
     end;
     FNames := FNames + [AName];
   finally
     FLock.Leave;
   end;
-  Result := TActivityScope.Create(AName, Timed, Started);
+  Result := TActivityScope.Create(AName, mTimed, mStarted);
 end;
 
 class procedure TAtlasActivity.Leave(const AName: string; ATimed: Boolean; AStarted: Int64);
@@ -211,25 +210,25 @@ end;
 class function TAtlasStackScan.Frames(const AAddresses: TArray<UInt64>; const AModules: TArray<TAtlasModuleRange>;
   AMax: Integer): TArray<string>;
 var
-  Address: UInt64;
-  Module: TAtlasModuleRange;
-  Frame: string;
+  mAddress: UInt64;
+  mModule: TAtlasModuleRange;
+  mFrame: string;
 begin
   Result := nil;
-  for Address in AAddresses do
+  for mAddress in AAddresses do
   begin
     if Length(Result) >= AMax then
     begin
       Break;
     end;
-    for Module in AModules do
+    for mModule in AModules do
     begin
-      if (Address >= Module.Base) and (Address < Module.Base + Module.Size) then
+      if (mAddress >= mModule.Base) and (mAddress < mModule.Base + mModule.Size) then
       begin
-        Frame := Format('%s+%x', [Module.Name, Address - Module.Base]);
-        if (Length(Result) = 0) or (Result[High(Result)] <> Frame) then
+        mFrame := Format('%s+%x', [mModule.Name, mAddress - mModule.Base]);
+        if (Length(Result) = 0) or (Result[High(Result)] <> mFrame) then
         begin
-          Result := Result + [Frame];
+          Result := Result + [mFrame];
         end;
         Break;
       end;
@@ -252,12 +251,12 @@ end;
 
 class function TAtlasHangMonitor.InvolvesAtlas(const AHang: TAtlasHang): Boolean;
 var
-  Frame: string;
+  mFrame: string;
 begin
   Result := AHang.Activity <> '';
-  for Frame in AHang.Frames do
+  for mFrame in AHang.Frames do
   begin
-    if Frame.StartsWith('Atlas', True) then
+    if mFrame.StartsWith('Atlas', True) then
     begin
       Result := True;
     end;
@@ -266,8 +265,8 @@ end;
 
 function TAtlasHangMonitor.Finish(const AHang: TAtlasHang): string;
 var
-  Lines: TStringBuilder;
-  Frame: string;
+  mLines: TStringBuilder;
+  mFrame: string;
 begin
   Result := '';
   if AHang.DurationMs < FThresholdMs then
@@ -285,33 +284,33 @@ begin
   end;
   // Diagnose-Fenster, Reiter „Hänger“.
   TAtlasPluginTimings.NoteHang(AHang.At, AHang.DurationMs, AHang.Activity, InvolvesAtlas(AHang));
-  Lines := TStringBuilder.Create;
+  mLines := TStringBuilder.Create;
   try
-    Lines.AppendFormat('Hänger %d ms um %s', [AHang.DurationMs, FormatDateTime('hh":"nn":"ss', AHang.At)]);
+    mLines.AppendFormat('Hänger %d ms um %s', [AHang.DurationMs, FormatDateTime('hh":"nn":"ss', AHang.At)]);
     if AHang.Activity <> '' then
     begin
-      Lines.AppendFormat('; Atlas: %s, %d ms', [AHang.Activity, AHang.DurationMs]);
+      mLines.AppendFormat('; Atlas: %s, %d ms', [AHang.Activity, AHang.DurationMs]);
     end
     else if InvolvesAtlas(AHang) then
     begin
-      Lines.Append('; Atlas im Aufrufstapel');
+      mLines.Append('; Atlas im Aufrufstapel');
     end;
     if AHang.Window <> '' then
     begin
-      Lines.AppendFormat('; Fenster: %s', [AHang.Window]);
+      mLines.AppendFormat('; Fenster: %s', [AHang.Window]);
     end;
     if AHang.CodeInsightCount > 0 then
     begin
-      Lines.AppendFormat('; Code Insight bisher %d-mal, %d ms', [AHang.CodeInsightCount, AHang.CodeInsightMs]);
+      mLines.AppendFormat('; Code Insight bisher %d-mal, %d ms', [AHang.CodeInsightCount, AHang.CodeInsightMs]);
     end;
-    for Frame in AHang.Frames do
+    for mFrame in AHang.Frames do
     begin
-      Lines.Append(sLineBreak).Append('    ').Append(Frame);
+      mLines.Append(sLineBreak).Append('    ').Append(mFrame);
     end;
-    Lines.Append(sLineBreak).Append('    ').Append(Summary);
-    Result := Lines.ToString;
+    mLines.Append(sLineBreak).Append('    ').Append(Summary);
+    Result := mLines.ToString;
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 

@@ -23,12 +23,11 @@ type
   TLspDfmPropertyRules = class
   public const
     /// <summary>Argumente: URI einer Unit oder Formulardatei, Bereich form, project oder group.</summary>
-    Command = 'atlas.server.applyDfmPropertyRules';
-    RuleId = 'dfm-property';
-    AnnotationId = 'dfmPropertyRules';
-    ScopeForm = 'form';
-    ScopeProject = 'project';
-    ScopeGroup = 'group';
+    cCommand = 'atlas.server.applyDfmPropertyRules';
+    cRuleId = 'dfm-property';
+    cAnnotationId = 'dfmPropertyRules';
+    cScopeForm = 'form';
+    cScopeGroup = 'group';
   public
     /// <summary>Unit zu einer Formulardatei (.dfm/.fmx → .pas); andere Dateien bleiben.</summary>
     class function UnitOf(const AFileName: string): string; static;
@@ -60,9 +59,9 @@ const
 
 {$SCOPEDENUMS OFF}
 
-function Before(const X, Y: TTextPosition): Boolean;
+function Before(const AX, AY: TTextPosition): Boolean;
 begin
-  Result := (X.Line < Y.Line) or ((X.Line = Y.Line) and (X.Character <= Y.Character));
+  Result := (AX.Line < AY.Line) or ((AX.Line = AY.Line) and (AX.Character <= AY.Character));
 end;
 
 function Overlaps(const A, B: TTextRange): Boolean;
@@ -206,7 +205,7 @@ begin
   end;
   for mFinding in mFindings do
   begin
-    if SameText(mFinding.RuleId, TLspDfmPropertyRules.RuleId) then
+    if SameText(mFinding.RuleId, TLspDfmPropertyRules.cRuleId) then
     begin
       AddFinding(mFinding);
     end;
@@ -228,7 +227,7 @@ begin
     begin
       Continue;
     end;
-    Result.AddElement(DocumentChange(mFileName, mExisting, TLspDfmPropertyRules.AnnotationId));
+    Result.AddElement(DocumentChange(mFileName, mExisting, TLspDfmPropertyRules.cAnnotationId));
     Inc(AFiles);
     Inc(AEdits, Length(mExisting));
   end;
@@ -267,7 +266,7 @@ begin
   end;
   Result := TJSONObject.Create;
   Result.AddPair('documentChanges', mChanges);
-  Result.AddPair('changeAnnotations', ChangeAnnotations(AnnotationId, AFiles, AEdits));
+  Result.AddPair('changeAnnotations', ChangeAnnotations(cAnnotationId, AFiles, AEdits));
 end;
 
 initialization

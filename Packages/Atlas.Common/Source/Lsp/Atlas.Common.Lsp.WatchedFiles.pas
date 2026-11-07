@@ -25,9 +25,9 @@ type
 
   TLspWatchedFiles = class
   public const
-    Method = 'workspace/didChangeWatchedFiles';
-    RegisterMethod = 'client/registerCapability';
-    GlobPattern = '**/*.{pas,inc,dpr,dpk,dfm,dproj,groupproj,json}';
+    cMethod = 'workspace/didChangeWatchedFiles';
+    cRegisterMethod = 'client/registerCapability';
+    cGlobPattern = '**/*.{pas,inc,dpr,dpk,dfm,dproj,groupproj,json}';
   private
     FTransport: IJsonRpcTransport;
     FOnChanged: TWatchedFilesEvent;
@@ -67,132 +67,132 @@ end;
 
 procedure TLspWatchedFiles.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterNotification(Method, HandleChanged);
+  ADispatcher.RegisterNotification(cMethod, HandleChanged);
 end;
 
 class function TLspWatchedFiles.SupportsDynamicRegistration(const AInitializeParams: TJSONObject): Boolean;
 var
-  Value: Boolean;
+  mValue: Boolean;
 begin
   Result := (AInitializeParams <> nil) and
-    AInitializeParams.TryGetValue<Boolean>('capabilities.workspace.didChangeWatchedFiles.dynamicRegistration', Value) and
-    Value;
+    AInitializeParams.TryGetValue<Boolean>('capabilities.workspace.didChangeWatchedFiles.dynamicRegistration', mValue) and
+    mValue;
 end;
 
 class function TLspWatchedFiles.BuildRegistration: TJSONObject;
 var
-  Watcher, Options, Registration, Params: TJSONObject;
-  Watchers, Registrations: TJSONArray;
+  mWatcher, mOptions, mRegistration, mParams: TJSONObject;
+  mWatchers, mRegistrations: TJSONArray;
 begin
-  Watcher := TJSONObject.Create;
-  Watcher.AddPair('globPattern', GlobPattern);
-  Watchers := TJSONArray.Create;
-  Watchers.AddElement(Watcher);
-  Options := TJSONObject.Create;
-  Options.AddPair('watchers', Watchers);
-  Registration := TJSONObject.Create;
-  Registration.AddPair('id', 'atlas/watchedFiles');
-  Registration.AddPair('method', Method);
-  Registration.AddPair('registerOptions', Options);
-  Registrations := TJSONArray.Create;
-  Registrations.AddElement(Registration);
-  Params := TJSONObject.Create;
-  Params.AddPair('registrations', Registrations);
+  mWatcher := TJSONObject.Create;
+  mWatcher.AddPair('globPattern', cGlobPattern);
+  mWatchers := TJSONArray.Create;
+  mWatchers.AddElement(mWatcher);
+  mOptions := TJSONObject.Create;
+  mOptions.AddPair('watchers', mWatchers);
+  mRegistration := TJSONObject.Create;
+  mRegistration.AddPair('id', 'atlas/watchedFiles');
+  mRegistration.AddPair('method', cMethod);
+  mRegistration.AddPair('registerOptions', mOptions);
+  mRegistrations := TJSONArray.Create;
+  mRegistrations.AddElement(mRegistration);
+  mParams := TJSONObject.Create;
+  mParams.AddPair('registrations', mRegistrations);
   Result := TJSONObject.Create;
   Result.AddPair('jsonrpc', '2.0');
   Result.AddPair('id', 'atlas/registerWatchers');
-  Result.AddPair('method', RegisterMethod);
-  Result.AddPair('params', Params);
+  Result.AddPair('method', cRegisterMethod);
+  Result.AddPair('params', mParams);
 end;
 
 procedure TLspWatchedFiles.RegisterWatchers(const AInitializeParams: TJSONObject);
 var
-  Request: TJSONObject;
+  mRequest: TJSONObject;
 begin
   // Die Antwort des Clients wird nicht ausgewertet.
   if not SupportsDynamicRegistration(AInitializeParams) then
   begin
     Exit;
   end;
-  Request := BuildRegistration;
+  mRequest := BuildRegistration;
   try
-    FTransport.WriteMessage(Request);
+    FTransport.WriteMessage(mRequest);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
 class function TLspWatchedFiles.ParseChanges(const AParams: TJSONValue): TArray<TFileChange>;
 var
-  Changes: TJSONArray;
-  Item: TJSONValue;
-  Uri, Path: string;
-  ChangeType: Integer;
+  mChanges: TJSONArray;
+  mItem: TJSONValue;
+  mUri, mPath: string;
+  mChangeType: Integer;
 begin
   Result := nil;
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONArray>('changes', Changes)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONArray>('changes', mChanges)) then
   begin
     Exit;
   end;
-  for Item in Changes do
+  for mItem in mChanges do
   begin
-    if not (Item.TryGetValue<string>('uri', Uri) and Item.TryGetValue<Integer>('type', ChangeType)) then
+    if not (mItem.TryGetValue<string>('uri', mUri) and mItem.TryGetValue<Integer>('type', mChangeType)) then
     begin
       Continue;
     end;
-    Path := TDocumentUris.ToPath(Uri);
-    if Path = '' then
+    mPath := TDocumentUris.ToPath(mUri);
+    if mPath = '' then
     begin
       Continue;
     end;
     // FileChangeType des LSP: 1 Created, 2 Changed, 3 Deleted.
-    case ChangeType of
-      1: Result := Result + [TFileChange.Create(Path, TFileChangeKind.Created)];
-      2: Result := Result + [TFileChange.Create(Path, TFileChangeKind.Changed)];
-      3: Result := Result + [TFileChange.Create(Path, TFileChangeKind.Deleted)];
+    case mChangeType of
+      1: Result := Result + [TFileChange.Create(mPath, TFileChangeKind.Created)];
+      2: Result := Result + [TFileChange.Create(mPath, TFileChangeKind.Changed)];
+      3: Result := Result + [TFileChange.Create(mPath, TFileChangeKind.Deleted)];
     end;
   end;
 end;
 
 class function TLspWatchedFiles.IsProjectFile(const AFileName: string): Boolean;
 var
-  Extension: string;
+  mExtension: string;
 begin
-  Extension := LowerCase(ExtractFileExt(AFileName));
-  Result := (Extension = '.dproj') or (Extension = '.dpk') or (Extension = '.groupproj');
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExtension = '.dproj') or (mExtension = '.dpk') or (mExtension = '.groupproj');
 end;
 
 class function TLspWatchedFiles.Notification(const AFiles: TArray<string>): TJSONObject;
 var
-  Changes: TJSONArray;
-  Change, Params: TJSONObject;
-  FileName: string;
+  mChanges: TJSONArray;
+  mChange, mParams: TJSONObject;
+  mFileName: string;
 begin
-  Changes := TJSONArray.Create;
-  for FileName in AFiles do
+  mChanges := TJSONArray.Create;
+  for mFileName in AFiles do
   begin
     // Auch neu angelegte oder gelöschte Dateien als „geändert“: Der Empfänger liest sie neu ein.
-    Change := TJSONObject.Create;
-    Change.AddPair('uri', TDocumentUris.FromPath(FileName));
-    Change.AddPair('type', TJSONNumber.Create(2));
-    Changes.AddElement(Change);
+    mChange := TJSONObject.Create;
+    mChange.AddPair('uri', TDocumentUris.FromPath(mFileName));
+    mChange.AddPair('type', TJSONNumber.Create(2));
+    mChanges.AddElement(mChange);
   end;
-  Params := TJSONObject.Create;
-  Params.AddPair('changes', Changes);
+  mParams := TJSONObject.Create;
+  mParams.AddPair('changes', mChanges);
   Result := TJSONObject.Create;
   Result.AddPair('jsonrpc', '2.0');
-  Result.AddPair('method', Method);
-  Result.AddPair('params', Params);
+  Result.AddPair('method', cMethod);
+  Result.AddPair('params', mParams);
 end;
 
 procedure TLspWatchedFiles.HandleChanged(const AParams: TJSONValue);
 var
-  Changes: TArray<TFileChange>;
+  mChanges: TArray<TFileChange>;
 begin
-  Changes := ParseChanges(AParams);
-  if (Length(Changes) > 0) and Assigned(FOnChanged) then
+  mChanges := ParseChanges(AParams);
+  if (Length(mChanges) > 0) and Assigned(FOnChanged) then
   begin
-    FOnChanged(Changes);
+    FOnChanged(mChanges);
   end;
 end;
 

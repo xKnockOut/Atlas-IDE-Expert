@@ -26,12 +26,13 @@ type
   TAtlasVcsProcessRunner = class(TInterfacedObject, IAtlasVcsRunner)
   public const
     /// <summary>Mehr Ausgabe gilt als Fehler (Failed); schützt vor riesigen Dateien bei FileAt.</summary>
-    MaxOutputBytes = 64 * 1024 * 1024;
+    cMaxOutputBytes = 64 * 1024 * 1024;
   private
     FAllowMainThread: Boolean;
     FCancelled: TFunc<Boolean>;
     function IsCancelled: Boolean;
-    /// <summary>True, wenn gar nicht gestartet wird (Hauptthread, Programm fehlt, Abbruch); AOutcome sagt warum.</summary>
+    /// <summary>True, wenn gar nicht gestartet wird (Hauptthread, Programm fehlt, Abbruch); AOutcome sagt
+    /// warum.</summary>
     function Refused(const AExecutable: string; out AOutcome: TAtlasVcsOutcome): Boolean;
   public
     /// <summary>Lehnt den Hauptthread ab; Abbruch nur über das Ende des aufrufenden Threads.</summary>
@@ -55,8 +56,8 @@ uses
   Atlas.Core.Vcs.ServerAccess;
 
 const
-  SliceMs = 10;
-  MaxErrorBytes = 4096;
+  cSliceMs = 10;
+  cMaxErrorBytes = 4096;
 
 type
   TPipeBuffer = record
@@ -68,24 +69,24 @@ type
 
 procedure TPipeBuffer.Append(const ABuffer; ACount: Integer);
 var
-  Capacity: Integer;
+  mCapacity: Integer;
 begin
   if ACount <= 0 then
   begin
     Exit;
   end;
-  Capacity := Length(Data);
-  if Count + ACount > Capacity then
+  mCapacity := Length(Data);
+  if Count + ACount > mCapacity then
   begin
-    if Capacity < 4096 then
+    if mCapacity < 4096 then
     begin
-      Capacity := 4096;
+      mCapacity := 4096;
     end;
-    while Capacity < Count + ACount do
+    while mCapacity < Count + ACount do
     begin
-      Capacity := Capacity * 2;
+      mCapacity := mCapacity * 2;
     end;
-    SetLength(Data, Capacity);
+    SetLength(Data, mCapacity);
   end;
   Move(ABuffer, Data[Count], ACount);
   Inc(Count, ACount);
@@ -99,35 +100,35 @@ end;
 /// <summary>Liest, was in der Pipe bereitliegt, ohne zu blockieren; False, wenn die Pipe geschlossen ist.</summary>
 function Drain(APipe: THandle; var ABuffer: TPipeBuffer; ALimit: Integer): Boolean;
 var
-  Available, BytesRead: DWORD;
-  Chunk: array[0..16383] of Byte;
-  ToRead: DWORD;
+  mAvailable, mBytesRead: DWORD;
+  mChunk: array[0..16383] of Byte;
+  mToRead: DWORD;
 begin
   Result := True;
   while True do
   begin
-    Available := 0;
-    if not PeekNamedPipe(APipe, nil, 0, nil, @Available, nil) then
+    mAvailable := 0;
+    if not PeekNamedPipe(APipe, nil, 0, nil, @mAvailable, nil) then
     begin
       Exit(False);
     end;
-    if Available = 0 then
+    if mAvailable = 0 then
     begin
       Exit;
     end;
-    ToRead := Available;
-    if ToRead > SizeOf(Chunk) then
+    mToRead := mAvailable;
+    if mToRead > SizeOf(mChunk) then
     begin
-      ToRead := SizeOf(Chunk);
+      mToRead := SizeOf(mChunk);
     end;
-    if not ReadFile(APipe, Chunk, ToRead, BytesRead, nil) or (BytesRead = 0) then
+    if not ReadFile(APipe, mChunk, mToRead, mBytesRead, nil) or (mBytesRead = 0) then
     begin
       Exit(False);
     end;
     // Über der Grenze weiterlesen, aber verwerfen: Der Prozess soll nicht an einer vollen Pipe hängen.
     if ABuffer.Count < ALimit then
     begin
-      ABuffer.Append(Chunk, Integer(BytesRead));
+      ABuffer.Append(mChunk, Integer(mBytesRead));
     end;
   end;
 end;
@@ -207,31 +208,31 @@ end;
 
 class function TAtlasVcsProcessRunner.QuoteArgument(const AArgument: string): string;
 var
-  Index, Backslashes: Integer;
+  mIndex, mBackslashes: Integer;
 begin
   if (AArgument <> '') and (LastDelimiter(' '#9'"', AArgument) = 0) then
   begin
     Exit(AArgument);
   end;
   Result := '"';
-  Backslashes := 0;
-  for Index := 1 to Length(AArgument) do
+  mBackslashes := 0;
+  for mIndex := 1 to Length(AArgument) do
   begin
-    if AArgument[Index] = '\' then
+    if AArgument[mIndex] = '\' then
     begin
-      Inc(Backslashes);
+      Inc(mBackslashes);
     end
     else
     begin
-      if AArgument[Index] = '"' then
+      if AArgument[mIndex] = '"' then
       begin
-        Result := Result + StringOfChar('\', Backslashes + 1);
+        Result := Result + StringOfChar('\', mBackslashes + 1);
       end;
-      Backslashes := 0;
+      mBackslashes := 0;
     end;
-    Result := Result + AArgument[Index];
+    Result := Result + AArgument[mIndex];
   end;
-  Result := Result + StringOfChar('\', Backslashes) + '"';
+  Result := Result + StringOfChar('\', mBackslashes) + '"';
 end;
 
 function TAtlasVcsProcessRunner.Refused(const AExecutable: string; out AOutcome: TAtlasVcsOutcome): Boolean;
@@ -388,8 +389,8 @@ end;
 
 procedure TChildProcess.DrainAll;
 begin
-  Drain(FOutRead, FOutput, TAtlasVcsProcessRunner.MaxOutputBytes + 1);
-  Drain(FErrRead, FErrors, MaxErrorBytes);
+  Drain(FOutRead, FOutput, TAtlasVcsProcessRunner.cMaxOutputBytes + 1);
+  Drain(FErrRead, FErrors, cMaxErrorBytes);
 end;
 
 function TChildProcess.Wait(ARunner: TAtlasVcsProcessRunner; ATimeoutMs: Cardinal): TAtlasVcsOutcome;
@@ -399,7 +400,7 @@ begin
   mDeadline := TThread.GetTickCount64 + ATimeoutMs;
   repeat
     DrainAll;
-    if WaitForSingleObject(FProcess.hProcess, SliceMs) = WAIT_OBJECT_0 then
+    if WaitForSingleObject(FProcess.hProcess, cSliceMs) = WAIT_OBJECT_0 then
     begin
       Result := TAtlasVcsOutcome.Ok;
       Break;
@@ -425,7 +426,7 @@ begin
     mExitCode := $FFFFFFFF;
   end;
   mOutcome := AOutcome;
-  if (mOutcome = TAtlasVcsOutcome.Ok) and (FOutput.Count > TAtlasVcsProcessRunner.MaxOutputBytes) then
+  if (mOutcome = TAtlasVcsOutcome.Ok) and (FOutput.Count > TAtlasVcsProcessRunner.cMaxOutputBytes) then
   begin
     mOutcome := TAtlasVcsOutcome.Failed;
   end;

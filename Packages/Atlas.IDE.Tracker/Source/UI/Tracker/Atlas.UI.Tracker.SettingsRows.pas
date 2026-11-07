@@ -44,8 +44,6 @@ type
     const AStateField: string);
   /// <summary>Eine Tabelle hat sich geändert; die folgenden bauen neu auf.</summary>
   TAtlasTrackerTableChanged = procedure of object;
-  /// <summary>Eine Verbindung heißt jetzt ANew (vorher AOld).</summary>
-  TAtlasTrackerRenamed = procedure(const AOld, ANew: string) of object;
 
   /// <summary>Haken des Abschnitts zur IDE; nil = Knopf gesperrt bzw. Vorgabe.</summary>
   TAtlasTrackerSettingsHooks = class

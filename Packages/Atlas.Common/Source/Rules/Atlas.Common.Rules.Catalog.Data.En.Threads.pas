@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesEnThreads: array[0..211] of string = (
+  cCatalogLinesEnThreads: array[0..211] of string = (
     '{',
     '      "id": "thread-vcl-access",',
     '      "name": "VCL access from a thread",',

@@ -10,7 +10,7 @@ Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnoc
 
 ## Schnellstart
 
-Voraussetzung ist RAD Studio bzw. Delphi ab Version 12. Fertige Pakete stehen unter [Releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases); Die Releases 1.0.0 bis 1.2.0 enthalten das Plugin nur für Delphi 13. Was mit 1.2.0 neu ist, steht im [Changelog](CHANGELOG.md).
+Voraussetzung ist RAD Studio bzw. Delphi ab Version 12. Fertige Pakete stehen unter [Releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases); Die Releases 1.0.0 bis 1.2.0 enthalten das Plugin nur für Delphi 13. Was mit 1.2.0 und der Vorabversion 2.0.0-beta.1 neu ist, steht im [Changelog](CHANGELOG.md), eine kurze zweisprachige Fassung zu 2.0.0-beta.1 in [docs/Release-Notizen/2.0.0-beta.1.md](docs/Release-Notizen/2.0.0-beta.1.md). Die Handtests für 2.0 sammelt [docs/Handtests-2.0.md](docs/Handtests-2.0.md).
 
 **Weg A – Release-Paket von Hand einbinden:**
 
@@ -65,6 +65,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **„Compiler vorab“:** Fehler und Warnungen von dcc vor dem Build, mit Schnellkorrekturen; Units sucht Atlas wie dcc, samt Namespaces und Unit-Aliasen (`WinTypes`, `WinProcs`)
 - **Fenster „Atlas-Prüfung“** für Datei, Projekt oder Gruppe, mit Sammelkorrekturen; bei offener Gruppe bietet die Bereichsliste auch jedes Projekt der Gruppe einzeln an
 - **Profile, Konfidenz, Baseline und Unterdrückungen** für gewachsene Projekte
+- **Experimentelle Stilregeln mit wenig Fehlalarmen:** `hardcoded-string` übergeht Protokoll-, Prüf- und Vergleichsaufrufe, Datumsmasken und Markup; `magic-number` übergeht die DPI-Basis 96, volle Bitmasken, Zeiteinheiten und Punktlisten; `naming-prefix` lässt Ereignis-Handlern, die der Code zuweist, ihre Parameternamen; `public-field` übergeht Hilfsklassen unter `private type`
 - **Typen aus installierten Packages:** Die IDE meldet Atlas die Typen ihrer Packages (auch ohne .pas). „Typ ist nicht deklariert“ schweigt für sie, die Schnellkorrektur schlägt ihre Unit vor, die Vervollständigung bietet sie mit `uses`-Eintrag an
 - **Mitglieder der Typen aus installierten Packages:** Für Units ohne Quelltext fragt Atlas die IDE nach den Mitgliedern, die sie über die RTTI kennt (Properties, Methoden mit Parametertypen, Felder, Interfaces, Aufzählungswerte). Hover, Vervollständigung nach `.`, Parameterhilfe und Aufzählungswerte für Parameter funktionieren dann auch für diese Typen, ohne „Gehe zu Deklaration“.
 - **Linter für CI** mit Ausgabe als Text, JSON oder SARIF. Alle Regeln: [docs/Regeln.md](docs/Regeln.md)
@@ -243,6 +244,7 @@ pwsh Tools/Test-PackageDependencies.ps1    # Selbsttest der Modulgrenzen mit abs
 pwsh Tools/Check-ConsoleOutput.ps1         # kein Write/Writeln auf stdout
 pwsh Tools/Check-TestCoverage.ps1          # jede Unit mit Logik hat Tests, jede Testunit läuft
 pwsh Tools/Check-WindowHosts.ps1           # Fenster und Editorleisten über die gemeinsamen Hüllen
+pwsh Tools/Check-ProjectFiles.ps1          # Projektdateien für MSBuild lesbar (Quelltext-Bau Delphi 12)
 ```
 
 `Tests/DccFaelle` enthält Minimalfälle für die Compilerregeln, je Fall mit der Angabe, ob dcc meldet oder übersetzt. `pwsh Tools/Build-DccFaelle.ps1` baut sie in einer Zweit-IDE über `cc.ps1` (Win32 und Win64) und schreibt die dcc-Meldungen je Fall nach `Output/DccFaelle-Ergebnis.txt`; die Regeln dürfen nicht strenger sein als dieses Ergebnis (#1328).
@@ -251,8 +253,8 @@ pwsh Tools/Check-WindowHosts.ps1           # Fenster und Editorleisten über die
 
 ## Branches
 
-- `Pilot-2.0.0-beta.1` (unstable): Hierher gehen alle Änderungen für v2.0, sobald Atlas und die CI (FPC) grün sind. Noch nicht unbedingt mit Delphi gebaut.
-- `Pilot-2.0-stable` (stable): zeigt nur auf Pilot-Commits, die mit Delphi ohne Fehler, Warnungen und Hinweise gebaut wurden und deren Tests grün sind. Der Branch wird nur vorgerückt (fast-forward), nie direkt bearbeitet. Tags `delphi-ok-JJJJ-MM-TT` markieren jeden bestätigten Stand.
+- `main`: nächste Version. Hierher gehen alle neuen Änderungen.
+- `release/X.Y`: Fehlerkorrekturen der veröffentlichten Version, ab ihrem Tag. Jede Korrektur wird danach vorwärts nach `main` gemergt.
 
 ## CI
 
@@ -260,6 +262,7 @@ pwsh Tools/Check-WindowHosts.ps1           # Fenster und Editorleisten über die
   - Der Job braucht einen selbst gehosteten Windows-Runner (Labels `self-hosted`, `windows`, `delphi`) auf dem Arbeitsrechner des Entwicklers. Er läuft im angemeldeten Benutzerkontext und nicht als Dienst, weil `cc.ps1` eine IDE startet, und nur, solange dieser Rechner eingeschaltet ist. Jeder Job startet eine eigene Scratch-IDE.
   - Er läuft nur mit der Repository-Variablen `DELPHI_RUNNER=true`; sonst meldet der Job „uebersprungen“ das in der Zusammenfassung des Laufs. `CC_SCRIPT` überschreibt den Pfad zu `cc.ps1`.
   - Ein neuer Push auf denselben Branch bricht den laufenden Build ab (`concurrency`).
+- `release.yml`: Release zum Tag `v<Version>`. Ohne Delphi-Runner fehlt das Release-Paket; `pwsh Tools/Publish-ReleasePackage.ps1 -Version <Version>` hängt danach ein lokal gebautes an und trägt es in die Versionsdateien des Update-Installers ein (#1849, [docs/Release.md](docs/Release.md)).
 - `package-dependencies.yml`: Package-Abhängigkeiten, stdout-Regel, Delphi-12-Verträglichkeit, Regelkatalog, Konfigurationsdoku, keine Embarcadero-Quellen in `Tests/` und Atlas-Fenster und Editorleisten nur über ihre gemeinsamen Hüllen.
 
 ## Kommandozeile

@@ -143,8 +143,8 @@ var
 begin
   Assert.AreEqual('abc', TAtlasDebugExpression.Shorten('abc', 3));
   Assert.AreEqual('ab …', TAtlasDebugExpression.Shorten('abc', 2));
-  Value := TAtlasDebugValue.Evaluated('S', StringOfChar('x', TAtlasDebugExpression.MaxValueLength + 10));
-  Assert.AreEqual(TAtlasDebugExpression.MaxValueLength + 2, Integer(Length(Value.Text)));
+  Value := TAtlasDebugValue.Evaluated('S', StringOfChar('x', TAtlasDebugExpression.cMaxValueLength + 10));
+  Assert.AreEqual(TAtlasDebugExpression.cMaxValueLength + 2, Integer(Length(Value.Text)));
 end;
 
 procedure TDebugValueTests.StatesAndPlainText;

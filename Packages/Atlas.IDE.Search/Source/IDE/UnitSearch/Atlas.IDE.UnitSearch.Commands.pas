@@ -92,9 +92,9 @@ uses
 
 const
   // Aktionen der IDE je Modus (#777, #786) und ihre Standardtasten als Ersatz.
-  IdeActionNames: array[TAtlasUnitSearchMode] of string = ('ViewUnitCommand', 'FileUseUnitCommand',
+  cIdeActionNames: array[TAtlasUnitSearchMode] of string = ('ViewUnitCommand', 'FileUseUnitCommand',
     'ViewFormCommand');
-  IdeActionKeys: array[TAtlasUnitSearchMode] of string = ('Ctrl+F12', 'Alt+F11', 'Shift+F12');
+  cIdeActionKeys: array[TAtlasUnitSearchMode] of string = ('Ctrl+F12', 'Alt+F11', 'Shift+F12');
 
 type
   /// <summary>Hängt sich an OnExecute der IDE-Aktion „Units“, „Unit verwenden“ oder „Formulare“ und gibt sie
@@ -131,32 +131,32 @@ var
 
 function FindIdeAction(AMode: TAtlasUnitSearchMode): TContainedAction;
 var
-  Services: INTAServices;
-  Index: Integer;
-  Action: TContainedAction;
-  Key: TShortCut;
+  mServices: INTAServices;
+  mIndex: Integer;
+  mAction: TContainedAction;
+  mKey: TShortCut;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
+  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
   begin
     Exit;
   end;
-  for Index := 0 to Services.ActionList.ActionCount - 1 do
+  for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
   begin
-    Action := Services.ActionList.Actions[Index];
-    if SameText(Action.Name, IdeActionNames[AMode]) then
+    mAction := mServices.ActionList.Actions[mIndex];
+    if SameText(mAction.Name, cIdeActionNames[AMode]) then
     begin
-      Exit(Action);
+      Exit(mAction);
     end;
   end;
   // Ersatz: die Aktion mit der Standardtaste.
-  Key := TextToShortCut(IdeActionKeys[AMode]);
-  for Index := 0 to Services.ActionList.ActionCount - 1 do
+  mKey := TextToShortCut(cIdeActionKeys[AMode]);
+  for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
   begin
-    Action := Services.ActionList.Actions[Index];
-    if (Action is TCustomAction) and (TCustomAction(Action).ShortCut = Key) then
+    mAction := mServices.ActionList.Actions[mIndex];
+    if (mAction is TCustomAction) and (TCustomAction(mAction).ShortCut = mKey) then
     begin
-      Exit(Action);
+      Exit(mAction);
     end;
   end;
 end;
@@ -235,15 +235,15 @@ end;
 
 procedure TUnitDialogHook.Execute(Sender: TObject);
 var
-  Plugin: TAtlasPluginSettings;
+  mPlugin: TAtlasPluginSettings;
 begin
   if FBypass then
   begin
     Exit;
   end;
-  Plugin := Settings;
+  mPlugin := Settings;
   // Umschalttaste (etwa beim Klick ins Menü Ansicht) holt den IDE-Dialog.
-  if not Plugin.UnitSearchEnabled or not Replaces(Plugin, FMode) or (GetKeyState(VK_SHIFT) < 0) then
+  if not mPlugin.UnitSearchEnabled or not Replaces(mPlugin, FMode) or (GetKeyState(VK_SHIFT) < 0) then
   begin
     RunOriginal;
     Exit;
@@ -276,29 +276,29 @@ end;
 
 procedure GroupInfo(out AGroupFile, AActiveProject, ARoot: string);
 var
-  Services: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  Project: IOTAProject;
+  mServices: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+  mProject: IOTAProject;
 begin
   AGroupFile := '';
   AActiveProject := '';
   ARoot := '';
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
   begin
     Exit;
   end;
-  Group := Services.MainProjectGroup;
-  if Group <> nil then
+  mGroup := mServices.MainProjectGroup;
+  if mGroup <> nil then
   begin
-    AGroupFile := Group.FileName;
+    AGroupFile := mGroup.FileName;
   end;
-  Project := Services.GetActiveProject;
-  if Project <> nil then
+  mProject := mServices.GetActiveProject;
+  if mProject <> nil then
   begin
-    AActiveProject := ChangeFileExt(ExtractFileName(Project.FileName), '');
+    AActiveProject := ChangeFileExt(ExtractFileName(mProject.FileName), '');
     if AGroupFile = '' then
     begin
-      AGroupFile := Project.FileName;
+      AGroupFile := mProject.FileName;
     end;
   end;
   if AGroupFile <> '' then
@@ -309,12 +309,12 @@ end;
 
 function TopFile: string;
 var
-  Editors: IOTAEditorServices;
+  mEditors: IOTAEditorServices;
 begin
   Result := '';
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) and (Editors.TopBuffer <> nil) then
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) and (mEditors.TopBuffer <> nil) then
   begin
-    Result := Editors.TopBuffer.FileName;
+    Result := mEditors.TopBuffer.FileName;
   end;
 end;
 
@@ -322,28 +322,28 @@ end;
 
 class procedure TAtlasIdeUnitSearch.Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>);
 var
-  Action: TContainedAction;
-  Mode: TAtlasUnitSearchMode;
+  mAction: TContainedAction;
+  mMode: TAtlasUnitSearchMode;
 begin
   TAtlasIdeUnitSearchActions.Install(ASessionOf, AMessage);
-  for Mode := Low(TAtlasUnitSearchMode) to High(TAtlasUnitSearchMode) do
+  for mMode := Low(TAtlasUnitSearchMode) to High(TAtlasUnitSearchMode) do
   begin
-    FHooks[Mode] := nil;
-    Action := FindIdeAction(Mode);
-    if Action <> nil then
+    FHooks[mMode] := nil;
+    mAction := FindIdeAction(mMode);
+    if mAction <> nil then
     begin
-      FHooks[Mode] := TUnitDialogHook.Create(Action, Mode);
+      FHooks[mMode] := TUnitDialogHook.Create(mAction, mMode);
     end
     else
     begin
-      TAtlasGuard.Log('Units suchen: IDE-Aktion für ' + IdeActionKeys[Mode] + ' nicht gefunden');
+      TAtlasGuard.Log('Units suchen: IDE-Aktion für ' + cIdeActionKeys[mMode] + ' nicht gefunden');
     end;
   end;
 end;
 
 class procedure TAtlasIdeUnitSearch.Uninstall;
 var
-  Mode: TAtlasUnitSearchMode;
+  mMode: TAtlasUnitSearchMode;
 begin
   if Current <> nil then
   begin
@@ -351,9 +351,9 @@ begin
     Current.Window.Free;
     FreeAndNil(Current);
   end;
-  for Mode := Low(TAtlasUnitSearchMode) to High(TAtlasUnitSearchMode) do
+  for mMode := Low(TAtlasUnitSearchMode) to High(TAtlasUnitSearchMode) do
   begin
-    FreeAndNil(FHooks[Mode]);
+    FreeAndNil(FHooks[mMode]);
   end;
   TAtlasIdeUnitSearchActions.Uninstall;
 end;
@@ -395,7 +395,7 @@ begin
   end
   else
   begin
-    TAtlasIdeUnitSearchActions.RunNamedAction(IdeActionNames[AMode]);
+    TAtlasIdeUnitSearchActions.RunNamedAction(cIdeActionNames[AMode]);
   end;
 end;
 

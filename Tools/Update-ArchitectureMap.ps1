@@ -68,7 +68,7 @@ foreach ($Line in @(
     "/// <summary>Inhalt von $($Template.Source) mit den Platzhaltern {{TITLE}} und {{DATA}}.</summary>",
     "function $($Template.Function): string;", '',
     'implementation', '', 'const',
-    "  Lines: array[0..$($Lines.Count - 1)] of string = (")) { $Text.Add($Line) }
+    "  cLines: array[0..$($Lines.Count - 1)] of string = (")) { $Text.Add($Line) }
 for ($Index = 0; $Index -lt $Lines.Count; $Index++) {
     $Escaped = $Lines[$Index].Replace("'", "''")
     $Pieces = @()
@@ -83,8 +83,8 @@ for ($Index = 0; $Index -lt $Lines.Count; $Index++) {
     $End = if ($Index -eq $Lines.Count - 1) { ');' } else { ',' }
     $Text.Add('    ' + ($Pieces -join " +`r`n      ") + $End)
 }
-foreach ($Line in @('', "function $($Template.Function): string;", 'var', '  Line: string;', 'begin', "  Result := '';",
-    '  for Line in Lines do', '  begin', '    Result := Result + Line + #10;', '  end;', 'end;', '', 'end.')) { $Text.Add($Line) }
+foreach ($Line in @('', "function $($Template.Function): string;", 'var', '  mLine: string;', 'begin', "  Result := '';",
+    '  for mLine in cLines do', '  begin', '    Result := Result + mLine + #10;', '  end;', 'end;', '', 'end.')) { $Text.Add($Line) }
 $Result = ($Text -join "`r`n") + "`r`n"
 
 $Current = if (Test-Path $UnitPath) { [IO.File]::ReadAllText($UnitPath).TrimStart([char]0xFEFF) } else { '' }

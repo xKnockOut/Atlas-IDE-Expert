@@ -25,7 +25,7 @@ type
     end;
   private const
     /// <summary>Höchstzahl gemerkter Dateien; darüber beginnt der Speicher von vorn.</summary>
-    MaxEntries = 20000;
+    cMaxEntries = 20000;
   private
     FLock: TObject;
     FCache: TDictionary<string, TEntry>;
@@ -71,12 +71,12 @@ end;
 
 class function TMetricsCollector.Checksum(const AText: string): Cardinal;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 2166136261;
-  for Index := 1 to Length(AText) do
+  for mIndex := 1 to Length(AText) do
   begin
-    Result := Result xor Ord(AText[Index]);
+    Result := Result xor Ord(AText[mIndex]);
     // In 64 Bit gerechnet und abgeschnitten: kein Überlauf, auch mit Überlaufprüfung.
     Result := Cardinal((UInt64(Result) * 16777619) and $FFFFFFFF);
   end;
@@ -84,25 +84,25 @@ end;
 
 class function TMetricsCollector.IsSource(const AFileName: string): Boolean;
 var
-  Extension: string;
+  mExtension: string;
 begin
-  Extension := LowerCase(ExtractFileExt(AFileName));
-  Result := (Extension = '.pas') or (Extension = '.dpr') or (Extension = '.dpk');
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk');
 end;
 
 class function TMetricsCollector.RelativePath(const ARoot, AFileName: string): string;
 var
-  Root, Path: string;
+  mRoot, mPath: string;
 begin
-  Path := StringReplace(AFileName, '\', '/', [rfReplaceAll]);
-  Root := StringReplace(ARoot, '\', '/', [rfReplaceAll]);
-  if (Root <> '') and (Root[Length(Root)] <> '/') then
+  mPath := StringReplace(AFileName, '\', '/', [rfReplaceAll]);
+  mRoot := StringReplace(ARoot, '\', '/', [rfReplaceAll]);
+  if (mRoot <> '') and (mRoot[Length(mRoot)] <> '/') then
   begin
-    Root := Root + '/';
+    mRoot := mRoot + '/';
   end;
-  if (Root <> '/') and (Root <> '') and SameText(Copy(Path, 1, Length(Root)), Root) then
+  if (mRoot <> '/') and (mRoot <> '') and SameText(Copy(mPath, 1, Length(mRoot)), mRoot) then
   begin
-    Result := Copy(Path, Length(Root) + 1, MaxInt);
+    Result := Copy(mPath, Length(mRoot) + 1, MaxInt);
   end
   else
   begin
@@ -122,32 +122,32 @@ end;
 
 function TMetricsCollector.FileRoutines(const AFileName, AText: string): TArray<TRoutineMetrics>;
 var
-  Key: string;
-  Entry: TEntry;
-  Sum: Cardinal;
+  mKey: string;
+  mEntry: TEntry;
+  mSum: Cardinal;
 begin
-  Key := UpperCase(AFileName);
-  Sum := Checksum(AText);
+  mKey := UpperCase(AFileName);
+  mSum := Checksum(AText);
   TMonitor.Enter(FLock);
   try
-    if FCache.TryGetValue(Key, Entry) and (Entry.Size = Length(AText)) and (Entry.Checksum = Sum) then
+    if FCache.TryGetValue(mKey, mEntry) and (mEntry.Size = Length(AText)) and (mEntry.Checksum = mSum) then
     begin
-      Exit(Entry.Routines);
+      Exit(mEntry.Routines);
     end;
   finally
     TMonitor.Exit(FLock);
   end;
   Result := TMetricsCalculator.ForText(AText);
-  Entry.Size := Length(AText);
-  Entry.Checksum := Sum;
-  Entry.Routines := Result;
+  mEntry.Size := Length(AText);
+  mEntry.Checksum := mSum;
+  mEntry.Routines := Result;
   TMonitor.Enter(FLock);
   try
-    if (FCache.Count >= MaxEntries) and not FCache.ContainsKey(Key) then
+    if (FCache.Count >= cMaxEntries) and not FCache.ContainsKey(mKey) then
     begin
       FCache.Clear;
     end;
-    FCache.AddOrSetValue(Key, Entry);
+    FCache.AddOrSetValue(mKey, mEntry);
   finally
     TMonitor.Exit(FLock);
   end;
@@ -156,30 +156,30 @@ end;
 function TMetricsCollector.Collect(const AFiles: TArray<string>; const ARoot: string;
   const AReadText: TMetricsReadText): TArray<TFileMetrics>;
 var
-  Seen: TDictionary<string, Boolean>;
-  List: TList<TFileMetrics>;
-  FileName, Text: string;
+  mSeen: TDictionary<string, Boolean>;
+  mList: TList<TFileMetrics>;
+  mFileName, mText: string;
 begin
-  Seen := TDictionary<string, Boolean>.Create;
-  List := TList<TFileMetrics>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
+  mList := TList<TFileMetrics>.Create;
   try
-    for FileName in AFiles do
+    for mFileName in AFiles do
     begin
-      if not IsSource(FileName) or Seen.ContainsKey(UpperCase(FileName)) then
+      if not IsSource(mFileName) or mSeen.ContainsKey(UpperCase(mFileName)) then
       begin
         Continue;
       end;
-      Seen.Add(UpperCase(FileName), True);
-      if not Assigned(AReadText) or not AReadText(FileName, Text) then
+      mSeen.Add(UpperCase(mFileName), True);
+      if not Assigned(AReadText) or not AReadText(mFileName, mText) then
       begin
         Continue;
       end;
-      List.Add(TFileMetrics.Create(RelativePath(ARoot, FileName), FileRoutines(FileName, Text)));
+      mList.Add(TFileMetrics.Create(RelativePath(ARoot, mFileName), FileRoutines(mFileName, mText)));
     end;
-    Result := List.ToArray;
+    Result := mList.ToArray;
   finally
-    List.Free;
-    Seen.Free;
+    mList.Free;
+    mSeen.Free;
   end;
 end;
 

@@ -56,7 +56,7 @@ uses
 
 const
   /// <summary>So tief sucht der Hinweis die Minimap der IDE im Editorfenster.</summary>
-  MaxSearchDepth = 6;
+  cMaxSearchDepth = 6;
 
 function FindIn(AControl: TWinControl; ADepth: Integer): TControl;
 var
@@ -64,7 +64,7 @@ var
   mChild: TControl;
 begin
   Result := nil;
-  if ADepth > MaxSearchDepth then
+  if ADepth > cMaxSearchDepth then
   begin
     Exit;
   end;
@@ -167,7 +167,7 @@ begin
   mAction.Caption := TAtlasStrings.Text(TAtlasTextId.MinimapTurnOff);
   mAction.Run := FOnTurnOff;
   mActions := mActions + [mAction];
-  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Minimap, TAtlasNotificationSeverity.Info,
+  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cMinimap, TAtlasNotificationSeverity.Info,
     mTitle, mText, mActions) = TAtlasNotificationMode.Show then
   begin
     ShowWindow(mTitle, mText);

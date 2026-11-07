@@ -45,13 +45,10 @@ type
 
   TLspExitPoints = class
   public const
-    Command = 'atlas.server.exitPoints';
+    cCommand = 'atlas.server.exitPoints';
   public
     /// <summary>Antwort für ASet (siehe Kopf der Unit).</summary>
     class function Json(const ASet: TExitPointSet): TJSONObject; static;
-    /// <summary>Name einer Art in der Antwort (exit, raise, halt, call, end, result, source, handler, loop,
-    /// jump).</summary>
-    class function KindName(AKind: TExitPointKind): string; static;
     /// <summary>Exceptions laut XMLDoc: erst der Baum, dann über AResolver die deklarierende Unit.</summary>
     class function ExceptionLookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
       const ALines: TArray<string>; const AReadText: TDocReadText): TExitPointExceptionLookup; static;
@@ -92,9 +89,9 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  KindNames: array[TExitPointKind] of string = ('exit', 'raise', 'halt', 'call', 'end', 'result', 'source',
+  cKindNames: array[TExitPointKind] of string = ('exit', 'raise', 'halt', 'call', 'end', 'result', 'source',
     'handler', 'loop', 'jump');
-  QueryNames: array[TExitPointQuery] of string = ('', 'routine', 'result', 'exceptions', 'loop');
+  cQueryNames: array[TExitPointQuery] of string = ('', 'routine', 'result', 'exceptions', 'loop');
 
 { TExitPointsReaders }
 
@@ -107,11 +104,6 @@ end;
 
 { TLspExitPoints }
 
-class function TLspExitPoints.KindName(AKind: TExitPointKind): string;
-begin
-  Result := KindNames[AKind];
-end;
-
 function RangeJson(const ARange: TTextRange): TJSONObject;
 begin
   Result := TJSONObject.Create;
@@ -122,48 +114,48 @@ end;
 
 class function TLspExitPoints.Json(const ASet: TExitPointSet): TJSONObject;
 var
-  Points: TJSONArray;
-  Item, Routine: TJSONObject;
-  Point: TExitPoint;
+  mPoints: TJSONArray;
+  mItem, mRoutine: TJSONObject;
+  mPoint: TExitPoint;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('query', QueryNames[ASet.Query]);
+  Result.AddPair('query', cQueryNames[ASet.Query]);
   if ASet.HasRoutine then
   begin
-    Routine := RangeJson(ASet.RoutineRange);
-    Routine.AddPair('name', ASet.RoutineName);
-    Result.AddPair('routine', Routine);
+    mRoutine := RangeJson(ASet.RoutineRange);
+    mRoutine.AddPair('name', ASet.RoutineName);
+    Result.AddPair('routine', mRoutine);
   end;
   Result.AddPair('function', TJSONBool.Create(ASet.IsFunction));
   Result.AddPair('exits', TJSONNumber.Create(ASet.ExitCount));
   Result.AddPair('resultMissing', TJSONBool.Create(ASet.ResultMissing));
-  Points := TJSONArray.Create;
-  Result.AddPair('points', Points);
-  for Point in ASet.Points do
+  mPoints := TJSONArray.Create;
+  Result.AddPair('points', mPoints);
+  for mPoint in ASet.Points do
   begin
-    Item := RangeJson(Point.Range);
-    Item.AddPair('kind', KindNames[Point.Kind]);
-    Item.AddPair('resultMissing', TJSONBool.Create(Point.ResultMissing));
-    Item.AddPair('detail', Point.Detail);
-    Item.AddPair('exception', Point.ExceptionClass);
-    Points.AddElement(Item);
+    mItem := RangeJson(mPoint.Range);
+    mItem.AddPair('kind', cKindNames[mPoint.Kind]);
+    mItem.AddPair('resultMissing', TJSONBool.Create(mPoint.ResultMissing));
+    mItem.AddPair('detail', mPoint.Detail);
+    mItem.AddPair('exception', mPoint.ExceptionClass);
+    mPoints.AddElement(mItem);
   end;
 end;
 
 class function TLspExitPoints.ExceptionLookup(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName: string; const ALines: TArray<string>; const AReadText: TDocReadText): TExitPointExceptionLookup;
 var
-  Own: TExitPointExceptionLookup;
-  Resolver: TNameResolver;
-  Tree: TSyntaxTree;
-  FileName: string;
-  Reader: TDocReadText;
+  mOwn: TExitPointExceptionLookup;
+  mResolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mFileName: string;
+  mReader: TDocReadText;
 begin
-  Own := TExitPoints.TreeExceptions(ATree, ALines);
-  Resolver := AResolver;
-  Tree := ATree;
-  FileName := AFileName;
-  Reader := AReadText;
+  mOwn := TExitPoints.TreeExceptions(ATree, ALines);
+  mResolver := AResolver;
+  mTree := ATree;
+  mFileName := AFileName;
+  mReader := AReadText;
   Result :=
     function(ACallee: TSyntaxNode): TArray<string>
     var
@@ -175,29 +167,29 @@ begin
       Doc: TXmlDoc;
       Entry: TXmlDocEntry;
     begin
-      Result := Own(ACallee);
-      if (Result <> nil) or (Resolver = nil) or (ACallee = nil) then
+      Result := mOwn(ACallee);
+      if (Result <> nil) or (mResolver = nil) or (ACallee = nil) then
       begin
         Exit;
       end;
       // Name am Ende des Ziels (Bar in Obj.Bar) über die Namensauflösung.
-      Tokens := Tree.Tokens;
+      Tokens := mTree.Tokens;
       Symbol := Default(TResolvedSymbol);
       for Index := High(Tokens) downto 0 do
       begin
         if (Tokens[Index].Offset < ACallee.EndOffset) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) then
         begin
-          Symbol := Resolver.Resolve(Tree, FileName, Tokens[Index].StartPos);
+          Symbol := mResolver.Resolve(mTree, mFileName, Tokens[Index].StartPos);
           Break;
         end;
       end;
-      if not Symbol.Found or (Symbol.FileName = '') or not Assigned(Reader) or
-        not Reader(Symbol.FileName, Text) then
+      if not Symbol.Found or (Symbol.FileName = '') or not Assigned(mReader) or
+        not mReader(Symbol.FileName, Text) then
       begin
         Exit;
       end;
       Lines := TTextLines.SplitLines(Text);
-      Doc := TLspDocumentation.Load(Resolver, Symbol, Lines, Symbol.Range.StartPos.Line, Reader);
+      Doc := TLspDocumentation.Load(mResolver, Symbol, Lines, Symbol.Range.StartPos.Line, mReader);
       for Entry in Doc.Exceptions do
       begin
         Result := Result + [TXmlDoc.NormalizeCref(Entry.Name)];
@@ -208,20 +200,20 @@ end;
 class function TLspExitPoints.ClassTest(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName: string): TExitPointClassTest;
 var
-  Own: TExitPointClassTest;
-  Resolver: TNameResolver;
-  Tree: TSyntaxTree;
-  FileName: string;
+  mOwn: TExitPointClassTest;
+  mResolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mFileName: string;
 begin
-  Own := TExitPoints.TreeClassTest(ATree);
-  Resolver := AResolver;
-  Tree := ATree;
-  FileName := AFileName;
+  mOwn := TExitPoints.TreeClassTest(ATree);
+  mResolver := AResolver;
+  mTree := ATree;
+  mFileName := AFileName;
   Result :=
     function(const AClass, AHandler: string; AOffset: Integer): Boolean
     begin
-      Result := Own(AClass, AHandler, AOffset) or
-        ((Resolver <> nil) and Resolver.Queries.TypeDescendsFrom(Tree, FileName, AOffset, AClass, AHandler));
+      Result := mOwn(AClass, AHandler, AOffset) or
+        ((mResolver <> nil) and mResolver.Queries.TypeDescendsFrom(mTree, mFileName, AOffset, AClass, AHandler));
     end;
 end;
 
@@ -229,58 +221,58 @@ class function TLspExitPoints.Execute(const AStore: IDocumentStore; const AIndex
   const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReaders: TExitPointsReaders;
   const AArguments: TJSONArray): TJSONValue;
 var
-  Uri, FileName: string;
-  Document: ITextDocument;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
-  Options: TExitPointOptions;
-  Settings: TJSONObject;
-  Lines: TArray<string>;
-  Flag: TJSONValue;
+  mUri, mFileName: string;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mOptions: TExitPointOptions;
+  mSettings: TJSONObject;
+  mLines: TArray<string>;
+  mFlag: TJSONValue;
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[0] is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TExitPointsText.URIAndPositionExpected].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TExitPointsText.URIAndPositionExpected].Text);
   end;
-  Uri := AArguments.Items[0].Value;
-  if not AStore.TryGet(Uri, Document) then
+  mUri := AArguments.Items[0].Value;
+  if not AStore.TryGet(mUri, mDocument) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TExitPointsText.DocumentIsNotOpen].Text + Uri);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TExitPointsText.DocumentIsNotOpen].Text + mUri);
   end;
-  Options := TExitPointOptions.Default;
+  mOptions := TExitPointOptions.Default;
   if Assigned(AReaders.SettingsFor) then
   begin
-    Options.Keywords := AReaders.SettingsFor(Uri).ExitKeywords;
+    mOptions.Keywords := AReaders.SettingsFor(mUri).ExitKeywords;
   end
   else
   begin
-    Options.Keywords := THighlightSettings.Default.ExitKeywords;
+    mOptions.Keywords := THighlightSettings.Default.ExitKeywords;
   end;
   if (AArguments.Count > 2) and (AArguments.Items[2] is TJSONObject) then
   begin
-    Settings := TJSONObject(AArguments.Items[2]);
-    Flag := Settings.GetValue('exceptions');
-    if Flag is TJSONBool then
+    mSettings := TJSONObject(AArguments.Items[2]);
+    mFlag := mSettings.GetValue('exceptions');
+    if mFlag is TJSONBool then
     begin
-      Options.Exceptions := TJSONBool(Flag).AsBoolean;
+      mOptions.Exceptions := TJSONBool(mFlag).AsBoolean;
     end;
-    Flag := Settings.GetValue('loops');
-    if Flag is TJSONBool then
+    mFlag := mSettings.GetValue('loops');
+    if mFlag is TJSONBool then
     begin
-      Options.Loops := TJSONBool(Flag).AsBoolean;
+      mOptions.Loops := TJSONBool(mFlag).AsBoolean;
     end;
   end;
-  FileName := TDocumentUris.ToPath(Uri);
-  Shared := TSyntaxTreeCache.Get(Document);
-  Lines := TTextLines.SplitLines(Document.Text);
-  Resolver := TNameResolver.Create(AIndex, AEnsureUnit);
+  mFileName := TDocumentUris.ToPath(mUri);
+  mShared := TSyntaxTreeCache.Get(mDocument);
+  mLines := TTextLines.SplitLines(mDocument.Text);
+  mResolver := TNameResolver.Create(AIndex, AEnsureUnit);
   try
-    Resolver.Namespaces := ANamespaces;
-    Result := Json(TExitPoints.Find(Shared.Tree, TLspPositions.ReadPosition(AArguments.Items[1]), Options,
-      ExceptionLookup(Resolver, Shared.Tree, FileName, Lines, TLspDocumentation.Reader(FileName, Document.Text,
-      AReaders.ReadText)), ClassTest(Resolver, Shared.Tree, FileName)));
+    mResolver.Namespaces := ANamespaces;
+    Result := Json(TExitPoints.Find(mShared.Tree, TLspPositions.ReadPosition(AArguments.Items[1]), mOptions,
+      ExceptionLookup(mResolver, mShared.Tree, mFileName, mLines, TLspDocumentation.Reader(mFileName, mDocument.Text,
+      AReaders.ReadText)), ClassTest(mResolver, mShared.Tree, mFileName)));
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
 

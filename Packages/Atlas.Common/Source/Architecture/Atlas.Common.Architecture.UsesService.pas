@@ -92,10 +92,10 @@ end;
 
 procedure TUsesGraphService.Refresh;
 var
-  Current: Int64;
+  mCurrent: Int64;
 begin
-  Current := FIndex.Generation;
-  if (FGraph <> nil) and (Current = FGeneration) then
+  mCurrent := FIndex.Generation;
+  if (FGraph <> nil) and (mCurrent = FGeneration) then
   begin
     Exit;
   end;
@@ -109,7 +109,7 @@ begin
     FGraph.Synchronize(FIndex.Units);
     Inc(FUpdates);
   end;
-  FGeneration := Current;
+  FGeneration := mCurrent;
 end;
 
 procedure TUsesGraphService.Read(const AReader: TUsesGraphReader);

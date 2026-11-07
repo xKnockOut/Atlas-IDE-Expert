@@ -41,7 +41,7 @@ end;
 procedure TAtlasVisualizerSettingsTests.KindsTextOfAllKinds;
 begin
   Assert.AreEqual('lists,dictionaries,dataSets,bytes,json,colors,guid,geometry,graphics',
-    TAtlasVisualizerSettings.KindsText(TAtlasVisualizerSettings.AllKinds));
+    TAtlasVisualizerSettings.KindsText(TAtlasVisualizerSettings.cAllKinds));
   Assert.AreEqual('', TAtlasVisualizerSettings.KindsText([]));
 end;
 
@@ -51,7 +51,7 @@ begin
   Assert.AreEqual(Ord(TAtlasVisualizerEvaluation.Fields), Ord(TAtlasVisualizerSettings.ParseEvaluation(' fields ')));
   Assert.AreEqual(Ord(TAtlasVisualizerEvaluation.Properties),
     Ord(TAtlasVisualizerSettings.ParseEvaluation('quatsch')));
-  Assert.AreEqual('properties', TAtlasVisualizerSettings.EvaluationNames[TAtlasVisualizerEvaluation.Properties]);
+  Assert.AreEqual('properties', TAtlasVisualizerSettings.cEvaluationNames[TAtlasVisualizerEvaluation.Properties]);
 end;
 
 procedure TAtlasVisualizerSettingsTests.NameFieldsWithoutEmptyDuplicatesAndInvalid;
@@ -64,7 +64,7 @@ begin
   Assert.AreEqual('Name,caption,Text',
     TAtlasVisualizerSettings.NormalizeNameFields(' Name, caption,, NAME, 1x, Text'));
   Assert.AreEqual('Name,Caption,Text', TAtlasVisualizerSettings.NormalizeNameFields(
-    TAtlasVisualizerSettings.DefaultNameFields));
+    TAtlasVisualizerSettings.cDefaultNameFields));
 end;
 
 procedure TAtlasVisualizerSettingsTests.DefaultsLieWithinLimits;
@@ -76,12 +76,12 @@ procedure TAtlasVisualizerSettingsTests.DefaultsLieWithinLimits;
   end;
 
 begin
-  Within(TAtlasVisualizerSettings.DefaultMaxLength, TAtlasVisualizerSettings.MinMaxLength,
-    TAtlasVisualizerSettings.MaxMaxLength, 'MaxLength');
-  Within(TAtlasVisualizerSettings.DefaultTimeoutMs, TAtlasVisualizerSettings.MinTimeoutMs,
-    TAtlasVisualizerSettings.MaxTimeoutMs, 'TimeoutMs');
-  Within(TAtlasVisualizerSettings.DefaultMaxImagePixels, TAtlasVisualizerSettings.MinMaxImagePixels,
-    TAtlasVisualizerSettings.MaxMaxImagePixels, 'MaxImagePixels');
+  Within(TAtlasVisualizerSettings.cDefaultMaxLength, TAtlasVisualizerSettings.cMinMaxLength,
+    TAtlasVisualizerSettings.cMaxMaxLength, 'MaxLength');
+  Within(TAtlasVisualizerSettings.cDefaultTimeoutMs, TAtlasVisualizerSettings.cMinTimeoutMs,
+    TAtlasVisualizerSettings.cMaxTimeoutMs, 'TimeoutMs');
+  Within(TAtlasVisualizerSettings.cDefaultMaxImagePixels, TAtlasVisualizerSettings.cMinMaxImagePixels,
+    TAtlasVisualizerSettings.cMaxMaxImagePixels, 'MaxImagePixels');
 end;
 
 initialization

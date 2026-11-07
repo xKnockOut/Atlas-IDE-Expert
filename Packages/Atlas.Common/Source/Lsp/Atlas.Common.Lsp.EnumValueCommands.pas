@@ -20,7 +20,7 @@ uses
 type
   TEnumValueCommands = class
   public const
-    Command = 'atlas.server.enumValues';
+    cCommand = 'atlas.server.enumValues';
   public
     /// <summary>Befehl atlas.server.enumValues mit den Argumenten URI und Position {line, character}.</summary>
     class function Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -56,46 +56,46 @@ class function TEnumValueCommands.Execute(const AStore: IDocumentStore; const AI
   const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReadText: TCompletionReadText;
   const AArguments: TJSONArray): TJSONValue;
 var
-  Uri, Value: string;
-  Document: ITextDocument;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
-  Values: TArray<string>;
-  Answer: TJSONArray;
-  Lookup: TEnumLookup;
+  mUri, mValue: string;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mValues: TArray<string>;
+  mAnswer: TJSONArray;
+  mLookup: TEnumLookup;
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[0] is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TEnumValueCommandsText.URIAndPositionExpected].Text);
   end;
-  Uri := AArguments.Items[0].Value;
-  if not AStore.TryGet(Uri, Document) then
+  mUri := AArguments.Items[0].Value;
+  if not AStore.TryGet(mUri, mDocument) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TEnumValueCommandsText.DocumentIsNotOpen].Text +
-      Uri);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TEnumValueCommandsText.DocumentIsNotOpen].Text +
+      mUri);
   end;
-  Shared := TSyntaxTreeCache.Get(Document);
-  Values := nil;
-  Resolver := TNameResolver.Create(AIndex, AEnsureUnit);
+  mShared := TSyntaxTreeCache.Get(mDocument);
+  mValues := nil;
+  mResolver := TNameResolver.Create(AIndex, AEnsureUnit);
   try
-    Resolver.Namespaces := ANamespaces;
-    Lookup.Resolver := Resolver;
-    Lookup.Index := AIndex;
-    Lookup.Tree := Shared.Tree;
-    Lookup.Text := Document.Text;
-    Lookup.FileName := TDocumentUris.ToPath(Uri);
-    Lookup.ReadText := AReadText;
-    TCompletionValues.EnumValuesAt(Lookup, TLspPositions.ReadPosition(AArguments.Items[1]), Values);
+    mResolver.Namespaces := ANamespaces;
+    mLookup.Resolver := mResolver;
+    mLookup.Index := AIndex;
+    mLookup.Tree := mShared.Tree;
+    mLookup.Text := mDocument.Text;
+    mLookup.FileName := TDocumentUris.ToPath(mUri);
+    mLookup.ReadText := AReadText;
+    TCompletionValues.EnumValuesAt(mLookup, TLspPositions.ReadPosition(AArguments.Items[1]), mValues);
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
-  Answer := TJSONArray.Create;
-  for Value in Values do
+  mAnswer := TJSONArray.Create;
+  for mValue in mValues do
   begin
-    Answer.Add(Value);
+    mAnswer.Add(mValue);
   end;
-  Result := Answer;
+  Result := mAnswer;
 end;
 
 initialization

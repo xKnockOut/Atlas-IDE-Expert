@@ -197,25 +197,25 @@ end;
 /// <summary>Feld, das der Getter-Rumpf liefert; '' wenn er mehr tut.</summary>
 function GetterField(ABody: TSyntaxNode; const AMethod: string): string;
 var
-  Block, Statement: TSyntaxNode;
+  mBlock, mStatement: TSyntaxNode;
 begin
   Result := '';
-  Block := BodyBlock(ABody);
-  if (Block = nil) or (Block.ChildCount <> 1) then
+  mBlock := BodyBlock(ABody);
+  if (mBlock = nil) or (mBlock.ChildCount <> 1) then
   begin
     Exit;
   end;
-  Statement := Block[0];
-  if (Statement.Kind = TSyntaxKind.AssignStatement) and (Statement.ChildCount = 2) and
-    (IsIdentifierNamed(Statement[0], 'Result') or IsIdentifierNamed(Statement[0], AMethod)) then
+  mStatement := mBlock[0];
+  if (mStatement.Kind = TSyntaxKind.AssignStatement) and (mStatement.ChildCount = 2) and
+    (IsIdentifierNamed(mStatement[0], 'Result') or IsIdentifierNamed(mStatement[0], AMethod)) then
   begin
-    Result := FieldRef(Statement[1]);
+    Result := FieldRef(mStatement[1]);
   end
-  else if (Statement.Kind = TSyntaxKind.CallStatement) and (Statement.ChildCount = 1) and
-    (Statement[0].Kind = TSyntaxKind.Call) and (Statement[0].ChildCount = 2) and
-    IsIdentifierNamed(Statement[0][0], 'Exit') then
+  else if (mStatement.Kind = TSyntaxKind.CallStatement) and (mStatement.ChildCount = 1) and
+    (mStatement[0].Kind = TSyntaxKind.Call) and (mStatement[0].ChildCount = 2) and
+    IsIdentifierNamed(mStatement[0][0], 'Exit') then
   begin
-    Result := FieldRef(Statement[0][1]);
+    Result := FieldRef(mStatement[0][1]);
   end;
 end;
 
@@ -355,19 +355,19 @@ end;
 function NameRangeIn(ALayout: TClassLayout; ANode: TSyntaxNode; const AName: string; out ARange: TTextRange):
   Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
 begin
-  Tokens := ALayout.Tree.Tokens;
-  Index := TokenIndexAt(Tokens, ANode.StartOffset);
-  while (Index <= High(Tokens)) and (Tokens[Index].Offset < ANode.EndOffset) do
+  mTokens := ALayout.Tree.Tokens;
+  mIndex := TokenIndexAt(mTokens, ANode.StartOffset);
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ANode.EndOffset) do
   begin
-    if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AName) then
+    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, AName) then
     begin
-      ARange := TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos);
+      ARange := TTextRange.Create(mTokens[mIndex].StartPos, mTokens[mIndex].EndPos);
       Exit(True);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
   Result := False;
 end;
@@ -382,41 +382,41 @@ end;
 class function TInlineAccessor.LocalInterfaceDeclares(ATree: TSyntaxTree; const AInterface,
   AMethod: string): TInterfaceAnswer;
 var
-  Found: TSyntaxNode;
-  Name: string;
-  Declared: Boolean;
+  mFound: TSyntaxNode;
+  mName: string;
+  mDeclared: Boolean;
 begin
-  Found := nil;
-  Name := StripGenerics(AInterface);
-  if Pos('.', Name) > 0 then
+  mFound := nil;
+  mName := StripGenerics(AInterface);
+  if Pos('.', mName) > 0 then
   begin
-    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+    mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
   end;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
-      if (Found = nil) and (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(StripGenerics(ANode.Name), Name) and
+      if (mFound = nil) and (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(StripGenerics(ANode.Name), mName) and
         (ANode.FindChild(TSyntaxKind.InterfaceType) <> nil) then
       begin
-        Found := ANode;
+        mFound := ANode;
       end;
-      Result := Found = nil;
+      Result := mFound = nil;
     end);
-  if Found = nil then
+  if mFound = nil then
   begin
     Exit(TInterfaceAnswer.Unknown);
   end;
-  Declared := False;
-  Found.FindChild(TSyntaxKind.InterfaceType).Walk(
+  mDeclared := False;
+  mFound.FindChild(TSyntaxKind.InterfaceType).Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if (ANode.Kind = TSyntaxKind.RoutineHeader) and SameText(ANode.Name, AMethod) then
       begin
-        Declared := True;
+        mDeclared := True;
       end;
-      Result := not Declared;
+      Result := not mDeclared;
     end);
-  if Declared then
+  if mDeclared then
   begin
     Exit(TInterfaceAnswer.Yes);
   end;
@@ -718,16 +718,16 @@ end;
 class function TInlineAccessor.InClass(ALayout: TClassLayout; const AOptions: TInlineAccessorOptions;
   const AInterfaces: TInterfaceDeclares): TArray<TTrivialAccessor>;
 var
-  Index: Integer;
-  Accessor: TTrivialAccessor;
-  Reason: string;
+  mIndex: Integer;
+  mAccessor: TTrivialAccessor;
+  mReason: string;
 begin
   Result := nil;
-  for Index := 0 to High(ALayout.Members) do
+  for mIndex := 0 to High(ALayout.Members) do
   begin
-    if ALayout.Members[Index].IsMethod and Check(ALayout, Index, AOptions, AInterfaces, Accessor, Reason) then
+    if ALayout.Members[mIndex].IsMethod and Check(ALayout, mIndex, AOptions, AInterfaces, mAccessor, mReason) then
     begin
-      Result := Result + [Accessor];
+      Result := Result + [mAccessor];
     end;
   end;
 end;
@@ -833,52 +833,54 @@ end;
 class function TInlineAccessor.Edits(ALayout: TClassLayout;
   const AAccessors: TArray<TTrivialAccessor>): TArray<TTextEdit>;
 var
-  Accessor: TTrivialAccessor;
-  Index: Integer;
-  Removed: TArray<Integer>;
-  Edit: TTextEdit;
-  Keyword: string;
+  mAccessor: TTrivialAccessor;
+  mIndex: Integer;
+  mRemoved: TArray<Integer>;
+  mEdit: TTextEdit;
+  mKeyword: string;
 begin
   Result := nil;
-  Removed := nil;
-  for Accessor in AAccessors do
+  mRemoved := nil;
+  for mAccessor in AAccessors do
   begin
-    Keyword := 'write';
-    if Accessor.IsGetter then
+    mKeyword := 'write';
+    if mAccessor.IsGetter then
     begin
-      Keyword := 'read';
+      mKeyword := 'read';
     end;
-    for Index in Accessor.Properties do
+    for mIndex in mAccessor.Properties do
     begin
-      if TClassEdits.ReplaceAccessor(ALayout, Index, Keyword, Accessor.Field, Edit) then
+      if TClassEdits.ReplaceAccessor(ALayout, mIndex, mKeyword, mAccessor.Field, mEdit) then
       begin
-        Result := Result + [Edit];
+        Result := Result + [mEdit];
       end;
     end;
-    Removed := Removed + [Accessor.Member];
+    mRemoved := mRemoved + [mAccessor.Member];
   end;
-  Result := Result + TClassEdits.DeleteMembers(ALayout, Removed, True) +
-    TMemberTransfer.EmptiedSections(ALayout, Removed);
+  Result := Result + TClassEdits.DeleteMembers(ALayout, mRemoved, True) +
+    TMemberTransfer.EmptiedSections(ALayout, mRemoved);
 end;
 
 class function TInlineAccessor.IsOwnReference(ALayout: TClassLayout; const AAccessor: TTrivialAccessor;
   const APosition: TTextPosition): Boolean;
 var
-  Member: TClassMember;
-  Index: Integer;
+  mMember: TClassMember;
+  mIndex: Integer;
 begin
-  Member := ALayout.Members[AAccessor.Member];
-  if (APosition.Line >= Member.FirstLine) and (APosition.Line <= Member.LastLine) then
+  mMember := ALayout.Members[AAccessor.Member];
+  if (APosition.Line >= mMember.FirstLine) and (APosition.Line <= mMember.LastLine) then
   begin
     Exit(True);
   end;
-  if (Member.Body <> nil) and (APosition.Line >= Member.BodyFirstLine) and (APosition.Line <= Member.BodyLastLine) then
+  if (mMember.Body <> nil) and (APosition.Line >= mMember.BodyFirstLine) and
+    (APosition.Line <= mMember.BodyLastLine) then
   begin
     Exit(True);
   end;
-  for Index in AAccessor.Properties do
+  for mIndex in AAccessor.Properties do
   begin
-    if (APosition.Line >= ALayout.Members[Index].FirstLine) and (APosition.Line <= ALayout.Members[Index].LastLine) then
+    if (APosition.Line >= ALayout.Members[mIndex].FirstLine) and
+      (APosition.Line <= ALayout.Members[mIndex].LastLine) then
     begin
       Exit(True);
     end;

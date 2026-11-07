@@ -271,7 +271,7 @@ begin
   // Gültiges UTF-8 bleibt UTF-8, auch mit ANSI-Vorgabe.
   Assert.IsTrue(TAtlasTextFile.Decode(TBytes.Create($61, $C3, $A4), 1250).Encoding = TAtlasTextEncoding.Utf8);
   // Vorgabe UTF-8: ANSI in der Codepage des Systems.
-  Assert.AreEqual(0, TAtlasTextFile.Decode(TBytes.Create($61, $E4), TAtlasTextFile.Utf8CodePage).CodePage);
+  Assert.AreEqual(0, TAtlasTextFile.Decode(TBytes.Create($61, $E4), TAtlasTextFile.cUtf8CodePage).CodePage);
 end;
 
 procedure TAtlasTextFileTests.PureAsciiFollowsDefault;

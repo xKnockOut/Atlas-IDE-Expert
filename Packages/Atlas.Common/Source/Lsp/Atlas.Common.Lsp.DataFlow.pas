@@ -49,9 +49,7 @@ type
 
   TLspDataFlow = class
   public const
-    Method = 'atlas/dataFlow';
-    /// <summary>Höchstzahl der Knoten einer Antwort.</summary>
-    MaxNodes = cMaxDataFlowNodes;
+    cMethod = 'atlas/dataFlow';
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -168,7 +166,7 @@ end;
 
 procedure TLspDataFlow.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method, HandleDataFlow);
+  ADispatcher.RegisterConcurrentRequest(cMethod, HandleDataFlow);
 end;
 
 class function TLspDataFlow.Analyze(const ARequest: TDataFlowRequest): TDataFlowResult;
@@ -185,18 +183,18 @@ end;
 
 class function TLspDataFlow.KindName(AKind: TDataFlowKind): string;
 const
-  Names: array[TDataFlowKind] of string = ('assignment', 'varArgument', 'outArgument', 'input', 'initialization',
+  cNames: array[TDataFlowKind] of string = ('assignment', 'varArgument', 'outArgument', 'input', 'initialization',
     'loop', 'callerArgument', 'return', 'propertyWrite', 'propertyRead', 'modify', 'argument', 'output', 'use',
     'constant', 'outside', 'address');
 begin
-  Result := Names[AKind];
+  Result := cNames[AKind];
 end;
 
 class function TLspDataFlow.LeafName(ALeaf: TDataFlowLeaf): string;
 const
-  Names: array[TDataFlowLeaf] of string = ('', 'constant', 'outside', 'cycle');
+  cNames: array[TDataFlowLeaf] of string = ('', 'constant', 'outside', 'cycle');
 begin
-  Result := Names[ALeaf];
+  Result := cNames[ALeaf];
 end;
 
 function SymbolToJson(const ASymbol: TDataFlowSymbol): TJSONObject;
@@ -216,11 +214,11 @@ end;
 
 class function TLspDataFlow.ToJson(const AResult: TDataFlowResult): TJSONObject;
 var
-  Nodes, Places, Sources: TJSONArray;
-  Node: TDataFlowNode;
-  Item, Entry: TJSONObject;
-  Place: TDataFlowPlace;
-  Source: TDataFlowSymbol;
+  mNodes, mPlaces, mSources: TJSONArray;
+  mNode: TDataFlowNode;
+  mItem, mEntry: TJSONObject;
+  mPlace: TDataFlowPlace;
+  mSource: TDataFlowSymbol;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('found', TJSONBool.Create(AResult.Found));
@@ -229,43 +227,43 @@ begin
     Exit;
   end;
   Result.AddPair('symbol', SymbolToJson(AResult.Symbol));
-  Nodes := TJSONArray.Create;
-  Result.AddPair('nodes', Nodes);
-  for Node in AResult.Nodes do
+  mNodes := TJSONArray.Create;
+  Result.AddPair('nodes', mNodes);
+  for mNode in AResult.Nodes do
   begin
-    Item := TJSONObject.Create;
-    Nodes.AddElement(Item);
-    Item.AddPair('kind', KindName(Node.Kind));
-    Item.AddPair('detail', Node.Detail);
-    if Node.Via <> '' then
+    mItem := TJSONObject.Create;
+    mNodes.AddElement(mItem);
+    mItem.AddPair('kind', KindName(mNode.Kind));
+    mItem.AddPair('detail', mNode.Detail);
+    if mNode.Via <> '' then
     begin
-      Item.AddPair('via', Node.Via);
+      mItem.AddPair('via', mNode.Via);
     end;
-    if Node.Literal then
+    if mNode.Literal then
     begin
-      Item.AddPair('literal', TJSONBool.Create(True));
+      mItem.AddPair('literal', TJSONBool.Create(True));
     end;
-    if Node.Unsafe then
+    if mNode.Unsafe then
     begin
-      Item.AddPair('unsafe', TJSONBool.Create(True));
-      Item.AddPair('unsafeReason', Node.UnsafeReason);
+      mItem.AddPair('unsafe', TJSONBool.Create(True));
+      mItem.AddPair('unsafeReason', mNode.UnsafeReason);
     end;
-    Places := TJSONArray.Create;
-    Item.AddPair('places', Places);
-    for Place in Node.Places do
+    mPlaces := TJSONArray.Create;
+    mItem.AddPair('places', mPlaces);
+    for mPlace in mNode.Places do
     begin
-      Entry := TJSONObject.Create;
-      Places.AddElement(Entry);
-      Entry.AddPair('uri', TDocumentUris.FromPath(Place.FileName));
-      Entry.AddPair('line', TJSONNumber.Create(Place.Position.Line));
-      Entry.AddPair('character', TJSONNumber.Create(Place.Position.Character));
-      Entry.AddPair('lineText', Place.LineText);
+      mEntry := TJSONObject.Create;
+      mPlaces.AddElement(mEntry);
+      mEntry.AddPair('uri', TDocumentUris.FromPath(mPlace.FileName));
+      mEntry.AddPair('line', TJSONNumber.Create(mPlace.Position.Line));
+      mEntry.AddPair('character', TJSONNumber.Create(mPlace.Position.Character));
+      mEntry.AddPair('lineText', mPlace.LineText);
     end;
-    Sources := TJSONArray.Create;
-    Item.AddPair('sources', Sources);
-    for Source in Node.Sources do
+    mSources := TJSONArray.Create;
+    mItem.AddPair('sources', mSources);
+    for mSource in mNode.Sources do
     begin
-      Sources.AddElement(SymbolToJson(Source));
+      mSources.AddElement(SymbolToJson(mSource));
     end;
   end;
 end;
@@ -336,8 +334,8 @@ begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPosition)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TDataFlowText.FieldsTextDocumentUriAndPosition].Text + Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TDataFlowText.FieldsTextDocumentUriAndPosition].Text + cMethod);
   end;
   mCancellation := TRequestCancellation.Create(ACancellation);
   mTree := TreeOf(mUri, mCancellation, mShared, mOwnTree);

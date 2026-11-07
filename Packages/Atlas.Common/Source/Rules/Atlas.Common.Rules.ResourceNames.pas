@@ -32,7 +32,7 @@ end;
 /// <summary>Typ oder Name ab AAt; AName = '' bei Ordinalzahl. False, wenn die Daten nicht reichen.</summary>
 function ReadId(const AData: TBytes; var AAt: Integer; ALimit: Integer; out AName: string): Boolean;
 var
-  Ch: Integer;
+  mCh: Integer;
 begin
   AName := '';
   Result := False;
@@ -47,44 +47,44 @@ begin
   end;
   while AAt + 2 <= ALimit do
   begin
-    Ch := ReadWord(AData, AAt);
+    mCh := ReadWord(AData, AAt);
     Inc(AAt, 2);
-    if Ch = 0 then
+    if mCh = 0 then
     begin
       Exit(True);
     end;
-    AName := AName + Char(Ch);
+    AName := AName + Char(mCh);
   end;
 end;
 
 class function TResourceNames.Read(const AData: TBytes): TArray<string>;
 var
-  At, Next, HeaderEnd, Pos: Integer;
-  DataSize, HeaderSize: Int64;
-  TypeName, Name: string;
+  mAt, mNext, mHeaderEnd, mPos: Integer;
+  mDataSize, mHeaderSize: Int64;
+  mTypeName, mName: string;
 begin
   Result := nil;
-  At := 0;
-  while At + 8 <= Length(AData) do
+  mAt := 0;
+  while mAt + 8 <= Length(AData) do
   begin
-    DataSize := ReadCardinal(AData, At);
-    HeaderSize := ReadCardinal(AData, At + 4);
-    if (HeaderSize < 8) or (At + HeaderSize + DataSize > Length(AData)) then
+    mDataSize := ReadCardinal(AData, mAt);
+    mHeaderSize := ReadCardinal(AData, mAt + 4);
+    if (mHeaderSize < 8) or (mAt + mHeaderSize + mDataSize > Length(AData)) then
     begin
       Exit;
     end;
-    HeaderEnd := At + Integer(HeaderSize);
-    Pos := At + 8;
-    if not ReadId(AData, Pos, HeaderEnd, TypeName) or not ReadId(AData, Pos, HeaderEnd, Name) then
+    mHeaderEnd := mAt + Integer(mHeaderSize);
+    mPos := mAt + 8;
+    if not ReadId(AData, mPos, mHeaderEnd, mTypeName) or not ReadId(AData, mPos, mHeaderEnd, mName) then
     begin
       Exit;
     end;
-    if Name <> '' then
+    if mName <> '' then
     begin
-      Result := Result + [UpperCase(Name)];
+      Result := Result + [UpperCase(mName)];
     end;
-    Next := HeaderEnd + Integer(DataSize);
-    At := (Next + 3) and not 3;
+    mNext := mHeaderEnd + Integer(mDataSize);
+    mAt := (mNext + 3) and not 3;
   end;
 end;
 

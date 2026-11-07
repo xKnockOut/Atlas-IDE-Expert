@@ -200,7 +200,7 @@ begin
   mTitle := TAtlasStrings.Text(TAtlasTextId.RuleChecksNoticeTitle);
   mText := TAtlasStrings.Fmt(TAtlasTextId.RuleChecksNoticeText, [ExtractFileName(AProjectFile)]);
   mCaption := TAtlasStrings.Text(TAtlasTextId.RuleChecksTurnOn);
-  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.RuleChecks, TAtlasNotificationSeverity.Info,
+  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cRuleChecks, TAtlasNotificationSeverity.Info,
     mTitle, mText, [TAtlasNotificationCenter.Action(mCaption, TurnOn)]) <> TAtlasNotificationMode.Show then
   begin
     Exit;

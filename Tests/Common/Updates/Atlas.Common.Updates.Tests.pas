@@ -85,7 +85,7 @@ function Target: TUpdatePackageTarget;
 begin
   Result := Default(TUpdatePackageTarget);
   Result.RegistryKey := cKey;
-  Result.Platform := TUpdateIdes.Win32;
+  Result.Platform := TUpdateIdes.cWin32;
   Result.PackageDir := cDir;
   Result.Suffix := '370';
 end;
@@ -352,13 +352,13 @@ begin
     mSwap.Free;
   end;
   Assert.AreEqual('neu', FFake.Files.ReadText('C:\Atlas\AtlasServer.exe'));
-  Assert.AreEqual('alt', FFake.Files.ReadText('C:\Atlas\AtlasServer.exe' + TUpdateLayout.OldSuffix));
+  Assert.AreEqual('alt', FFake.Files.ReadText('C:\Atlas\AtlasServer.exe' + TUpdateLayout.cOldSuffix));
   // Noch gesperrt: bleibt bis zum nächsten Update.
   TUpdateFileSwap.CleanupOld(FFake.System.Files, 'C:\Atlas', FFake.System.Log);
-  Assert.IsTrue(FFake.Files.FileExists('C:\Atlas\AtlasServer.exe' + TUpdateLayout.OldSuffix));
-  FFake.Files.Unlock('C:\Atlas\AtlasServer.exe' + TUpdateLayout.OldSuffix);
+  Assert.IsTrue(FFake.Files.FileExists('C:\Atlas\AtlasServer.exe' + TUpdateLayout.cOldSuffix));
+  FFake.Files.Unlock('C:\Atlas\AtlasServer.exe' + TUpdateLayout.cOldSuffix);
   TUpdateFileSwap.CleanupOld(FFake.System.Files, 'C:\Atlas', FFake.System.Log);
-  Assert.IsFalse(FFake.Files.FileExists('C:\Atlas\AtlasServer.exe' + TUpdateLayout.OldSuffix));
+  Assert.IsFalse(FFake.Files.FileExists('C:\Atlas\AtlasServer.exe' + TUpdateLayout.cOldSuffix));
 end;
 
 end.

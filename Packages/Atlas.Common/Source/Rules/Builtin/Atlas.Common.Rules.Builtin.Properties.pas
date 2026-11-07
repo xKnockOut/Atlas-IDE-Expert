@@ -62,10 +62,10 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  PropertyAccessorInvalidRuleId = 'property-accessor-invalid';
-  DefaultPropertyInvalidRuleId = 'default-property-invalid';
-  PropertyRedeclarationInvalidRuleId = 'property-redeclaration-invalid';
-  WriteOnlyPropertyRuleId = 'write-only-property';
+  cPropertyAccessorInvalidRuleId = 'property-accessor-invalid';
+  cDefaultPropertyInvalidRuleId = 'default-property-invalid';
+  cPropertyRedeclarationInvalidRuleId = 'property-redeclaration-invalid';
+  cWriteOnlyPropertyRuleId = 'write-only-property';
 
 type
   TPropertyAccessorInvalidRule = class(TInterfacedObject, IRule)
@@ -1130,7 +1130,7 @@ end;
 
 function TPropertyAccessorInvalidRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(PropertyAccessorInvalidRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cPropertyAccessorInvalidRuleId, TRuleSeverity.Error,
     cTexts[TPropertiesText.AccessorTitle].Text);
 end;
 
@@ -1450,7 +1450,7 @@ end;
 
 function TDefaultPropertyInvalidRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(DefaultPropertyInvalidRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cDefaultPropertyInvalidRuleId, TRuleSeverity.Error,
     cTexts[TPropertiesText.DefaultTitle].Text);
 end;
 
@@ -1647,7 +1647,7 @@ end;
 
 function TPropertyRedeclarationInvalidRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(PropertyRedeclarationInvalidRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cPropertyRedeclarationInvalidRuleId, TRuleSeverity.Error,
     cTexts[TPropertiesText.RedeclaredTitle].Text);
 end;
 
@@ -1925,7 +1925,7 @@ end;
 
 function TWriteOnlyPropertyRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(WriteOnlyPropertyRuleId, TRuleSeverity.Hint,
+  Result := TRuleDescriptor.Create(cWriteOnlyPropertyRuleId, TRuleSeverity.Hint,
     cTexts[TPropertiesText.WriteOnlyTitle].Text);
 end;
 

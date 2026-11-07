@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesEnCompilerTypes: array[0..294] of string = (
+  cCatalogLinesEnCompilerTypes: array[0..294] of string = (
     '{',
     '      "id": "assign-to-property-member",',
     '      "name": "Assignment to a field of a property record",',

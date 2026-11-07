@@ -174,7 +174,7 @@ begin
   end
   else
   begin
-    Result := TJsonRpcMessages.Error(AId, TJsonRpcErrorCode.InternalError, AError.ClassName + ': ' + AError.Message);
+    Result := TJsonRpcMessages.Error(AId, TJsonRpcErrorCode.cInternalError, AError.ClassName + ': ' + AError.Message);
   end;
 end;
 
@@ -273,6 +273,7 @@ begin
     end;
     Result := SucceededResponse(ARun, mValue, mWatch.ElapsedMilliseconds);
   except
+    // lsp-ignore: catch-all-without-raise -- Fehlergrenze der Anfrage; Fehler geht als Antwort zurück
     on E: Exception do
     begin
       Result := FailedResponse(ARun, E, True, mWatch.ElapsedMilliseconds);
@@ -297,6 +298,7 @@ begin
     end;
     Result := SucceededResponse(ARun, mValue, mWatch.ElapsedMilliseconds);
   except
+    // lsp-ignore: catch-all-without-raise -- Fehlergrenze der Anfrage; Fehler geht als Antwort zurück
     on E: Exception do
     begin
       Result := FailedResponse(ARun, E, True, mWatch.ElapsedMilliseconds);
@@ -423,6 +425,7 @@ begin
       Result := mWhen(AParams);
     except
       // Unlesbare Parameter: in der Reihenfolge laufen; der Handler meldet den Fehler selbst.
+      // lsp-ignore: catch-all-without-raise -- Fehlergrenze der Anfrage; Fehler geht als Antwort zurück
       on Exception do
         Result := False;
     end;
@@ -441,6 +444,7 @@ begin
       ARecent.Add(AMessage);
     except
       // Das Mitschreiben für Absturzfälle darf keine Nachricht verhindern.
+      // lsp-ignore: catch-all-without-raise -- Fehlergrenze der Anfrage; Fehler geht als Antwort zurück
       on Exception do
         ;
     end;
@@ -626,14 +630,14 @@ begin
   end
   else if mMethodValue = nil then
   begin
-    Result := TJsonRpcMessages.Error(mId, TJsonRpcErrorCode.InvalidRequest,
+    Result := TJsonRpcMessages.Error(mId, TJsonRpcErrorCode.cInvalidRequest,
       cTexts[TDispatcherText.FieldMethodMissing].Text);
   end
   else if not (mMethodValue is TJSONString) then
   begin
     if mId <> nil then
     begin
-      Result := TJsonRpcMessages.Error(mId, TJsonRpcErrorCode.InvalidRequest,
+      Result := TJsonRpcMessages.Error(mId, TJsonRpcErrorCode.cInvalidRequest,
         cTexts[TDispatcherText.FieldMethodIsNotA].Text);
     end;
   end
@@ -654,7 +658,7 @@ begin
   end
   // $/cancelRequest ist Teil des Protokolls und gilt in jedem Zustand. Über
   // die Verbindung erledigt das schon der Lese-Thread (IJsonRpcPendingRequests.Observe).
-  else if (AMethod = JsonRpcCancelRequestMethod) or (AMethod = McpCancelledMethod) then
+  else if (AMethod = cJsonRpcCancelRequestMethod) or (AMethod = cMcpCancelledMethod) then
   begin
     FPending.Observe(AMessage);
   end
@@ -701,7 +705,7 @@ begin
       end;
       if not FRequestHandlers.TryGetValue(AMethod, mHandler) then
       begin
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.MethodNotFound, cTexts[TDispatcherText.MethodNotSupported].Text +
+        raise EJsonRpcError.Create(TJsonRpcErrorCode.cMethodNotFound, cTexts[TDispatcherText.MethodNotSupported].Text +
           AMethod);
       end;
       // Abgebrochen, während die Anfrage noch in der Warteschlange stand.
@@ -712,6 +716,7 @@ begin
       end;
       Result := RunOrdered(mRun, mHandler);
     except
+      // lsp-ignore: catch-all-without-raise -- Fehlergrenze der Anfrage; Fehler geht als Antwort zurück
       on E: Exception do
       begin
         Result := FailedResponse(mRun, E, False, 0);

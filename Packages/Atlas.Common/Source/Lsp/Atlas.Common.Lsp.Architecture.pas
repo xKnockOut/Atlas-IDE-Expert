@@ -57,9 +57,9 @@ type
 
   TLspArchitecture = class
   public const
-    Method = 'atlas/architecture';
-    Command = 'atlas.architecture';
-    SaveCommand = 'atlas.architecture.saveReport';
+    cMethod = 'atlas/architecture';
+    cCommand = 'atlas.architecture';
+    cSaveCommand = 'atlas.architecture.saveReport';
   private
     FService: TArchitectureService;
     FSourceFor: TLspArchitectureSourceFunc;
@@ -119,33 +119,33 @@ const
 
 function StringOf(const AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    Result := Trim(Value.Value);
+    Result := Trim(mValue.Value);
   end;
 end;
 
 function FlagOf(const AObject: TJSONObject; const AName: string; ADefault: Boolean): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := ADefault;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONBool then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONBool then
   begin
-    Result := TJSONBool(Value).AsBoolean;
+    Result := TJSONBool(mValue).AsBoolean;
   end;
 end;
 
@@ -168,7 +168,8 @@ begin
   end;
   if not (mValue is TJSONNumber) or not TArchitectureGrouping.ValidResolution(TJSONNumber(mValue).AsDouble) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TArchitectureText.ResolutionIsANumberFrom].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TArchitectureText.ResolutionIsANumberFrom].Text);
   end;
   AFound := True;
   Result := TJSONNumber(mValue).AsDouble;
@@ -200,7 +201,7 @@ procedure TLspArchitecture.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   // Bei einigen tausend Units dauert die Rechnung Sekundenbruchteile: nebenläufig, damit Editoranfragen nicht
   // warten.
-  ADispatcher.RegisterConcurrentRequest(Method,
+  ADispatcher.RegisterConcurrentRequest(cMethod,
     function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
     begin
       Result := Request(AParams);
@@ -236,41 +237,41 @@ end;
 function TLspArchitecture.OverviewFor(const AParams: TJSONObject; out AEnabled: Boolean; out ARoot: string;
   out ASettings: TServerSettings): TArchitectureOverview;
 var
-  FileName, Scope: string;
-  Request: TArchitectureRequest;
+  mFileName, mScope: string;
+  mRequest: TArchitectureRequest;
   mResolution: Double;
   mFound: Boolean;
 begin
   Result := Default(TArchitectureOverview);
   ARoot := '';
   AEnabled := False;
-  FileName := StringOf(AParams, 'uri');
-  FileName := PathOf(FileName);
-  Scope := StringOf(AParams, 'scope');
-  if (Scope <> '') and (Scope <> 'project') and (Scope <> 'projectGroup') then
+  mFileName := StringOf(AParams, 'uri');
+  mFileName := PathOf(mFileName);
+  mScope := StringOf(AParams, 'scope');
+  if (mScope <> '') and (mScope <> 'project') and (mScope <> 'projectGroup') then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TArchitectureText.ScopeIsProjectOrProjectGroup].Text);
   end;
   mResolution := ResolutionOf(AParams, mFound);
-  if not (Assigned(FSourceFor) and FSourceFor(FileName, Scope, Request, ASettings)) then
+  if not (Assigned(FSourceFor) and FSourceFor(mFileName, mScope, mRequest, ASettings)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TArchitectureText.NoProjectLoaded].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TArchitectureText.NoProjectLoaded].Text);
   end;
   AEnabled := ASettings.ArchitectureEnabled;
   if not AEnabled then
   begin
     Exit;
   end;
-  ARoot := Request.Root;
-  Request.IncludeLibrary := FlagOf(AParams, 'includeLibraryUnits', Request.IncludeLibrary);
+  ARoot := mRequest.Root;
+  mRequest.IncludeLibrary := FlagOf(AParams, 'includeLibraryUnits', mRequest.IncludeLibrary);
   // Nur für diesen Aufruf; die Einstellung bleibt (#1366).
   if mFound then
   begin
-    Request.Grouping.Resolution := mResolution;
+    mRequest.Grouping.Resolution := mResolution;
   end;
-  Request.Rename := FlagOf(AParams, 'renameSubsystems', False);
-  Result := FService.Overview(Request);
+  mRequest.Rename := FlagOf(AParams, 'renameSubsystems', False);
+  Result := FService.Overview(mRequest);
 end;
 
 /// <summary>Stand für den Vergleich (#1121): "compareWith", sonst architecture.baseline (außer "compare": false);
@@ -288,9 +289,9 @@ end;
 /// <summary>Abweichungen aus architecture.failOn; unbekannte Namen hat der Parser schon gemeldet.</summary>
 function FailOnOf(const ASettings: TServerSettings): TArchitectureFailKinds;
 var
-  Error: string;
+  mError: string;
 begin
-  if not TArchitectureComparer.ParseKinds(ASettings.ArchitectureFailOn, Result, Error) then
+  if not TArchitectureComparer.ParseKinds(ASettings.ArchitectureFailOn, Result, mError) then
   begin
     Result := TArchitectureComparer.DefaultFailOn;
   end;
@@ -341,7 +342,8 @@ begin
   Result := TJSONObject.ParseJSONValue(AText);
   if Result = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, AWhat + cTexts[TArchitectureText.AreNotValidJSON].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInternalError,
+      AWhat + cTexts[TArchitectureText.AreNotValidJSON].Text);
   end;
 end;
 
@@ -368,11 +370,11 @@ begin
   end
   else if AState.Compared then
   begin
-    Result := TArchitectureComparer.Text(AState.Comparison, AState.FailOn, TArchitectureReport.TextLimit);
+    Result := TArchitectureComparer.Text(AState.Comparison, AState.FailOn, TArchitectureReport.cTextLimit);
   end
   else
   begin
-    Result := TArchitectureReport.Text(AState.Overview, ASection, TArchitectureReport.TextLimit);
+    Result := TArchitectureReport.Text(AState.Overview, ASection, TArchitectureReport.cTextLimit);
   end;
 end;
 
@@ -453,12 +455,12 @@ begin
   end;
   if not TryParseFormat(StringOf(mParams, 'format'), mFormat) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TArchitectureText.FormatIsJsonMarkdownHtml].Text);
   end;
   if not TArchitectureReport.ParseSection(StringOf(mParams, 'section'), mSection) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TArchitectureText.SectionIsOverviewCentralSubsystems].Text);
   end;
   mState := StateFor(Self, mParams);
@@ -468,30 +470,30 @@ end;
 
 function TLspArchitecture.Execute(const AArguments: TJSONArray): TJSONValue;
 var
-  Params: TJSONObject;
-  Options: TJSONObject;
-  Pair: TJSONPair;
+  mParams: TJSONObject;
+  mOptions: TJSONObject;
+  mPair: TJSONPair;
 begin
-  Params := TJSONObject.Create;
+  mParams := TJSONObject.Create;
   try
     if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
     begin
-      Params.AddPair('uri', AArguments.Items[0].Value);
+      mParams.AddPair('uri', AArguments.Items[0].Value);
     end;
     if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONObject) then
     begin
-      Options := TJSONObject(AArguments.Items[1]);
-      for Pair in Options do
+      mOptions := TJSONObject(AArguments.Items[1]);
+      for mPair in mOptions do
       begin
-        if Pair.JsonString.Value <> 'uri' then
+        if mPair.JsonString.Value <> 'uri' then
         begin
-          Params.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
+          mParams.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
         end;
       end;
     end;
-    Result := Request(Params);
+    Result := Request(mParams);
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 
@@ -530,7 +532,8 @@ begin
   end;
   if Result = '' then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TArchitectureText.TargetFileMissingMdHtml].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TArchitectureText.TargetFileMissingMdHtml].Text);
   end;
 end;
 
@@ -586,7 +589,7 @@ begin
   end;
   if not mState.Enabled then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidRequest,
       cTexts[TArchitectureText.ArchitectureOverviewIsSwitchedOff].Text);
   end;
   mAnswer := TJSONObject.Create;

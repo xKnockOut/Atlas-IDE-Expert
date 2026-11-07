@@ -81,7 +81,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TJumpOutsideAllowedScopeRule.Create, Suche(Statements));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(JumpOutsideAllowedScopeRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cJumpOutsideAllowedScopeRuleId, Findings[0].RuleId);
   Assert.AreEqual('Break außerhalb einer Schleife (wie E2097).', Findings[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
@@ -183,7 +183,7 @@ begin
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = JumpOutsideAllowedScopeRuleId then
+    if Rule.Descriptor.Id = cJumpOutsideAllowedScopeRuleId then
     begin
       Found := True;
     end;
@@ -208,7 +208,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TLabelMisuseRule.Create, Ablauf('label Weiter;'#10, Statements));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(LabelMisuseRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cLabelMisuseRuleId, Findings[0].RuleId);
   Assert.AreEqual('goto Weiter verlässt einen try-Block (wie E2127).', Findings[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));

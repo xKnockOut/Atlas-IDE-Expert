@@ -6,7 +6,7 @@
 // Tastenkappen, bei Kürzeln mit zwei Schritten beide („[Strg]+[K], [Strg]+[D]“);
 // darunter die Links „Nicht mehr zeigen“ (OnNever, nur für diesen Befehl) und
 // „Alle Kürzel“ (OnAllKeys, öffnet die Übersicht aus #520; nur, wenn die
-// Übersicht eingeschaltet ist). Nach TAtlasShortcutTips.VisibleMs (4 s)
+// Übersicht eingeschaltet ist). Nach TAtlasShortcutTips.cVisibleMs (4 s)
 // verschwindet der Tipp von selbst, solange die Maus nicht darüber steht; die
 // nächste Taste schließt ihn über die IDE-Schicht (Dismiss). Reine VCL, ohne
 // Open Tools API.
@@ -33,9 +33,9 @@ type
   TAtlasShortcutTipWindow = class(TAtlasPopupWindow)
   public const
     /// <summary>Abstand zum Rand der Fläche, logische Pixel.</summary>
-    Margin = 12;
+    cMargin = 12;
     /// <summary>Höchste Breite des Befehlsnamens, logische Pixel; länger endet mit „…“.</summary>
-    MaxCommandWidth = 360;
+    cMaxCommandWidth = 360;
   private
     FView: TAtlasShortcutTipView;
     FLinks: array[TAtlasShortcutTipLink] of TRect;
@@ -97,12 +97,12 @@ uses
   Atlas.UI.Popup.Accessibility;
 
 const
-  Pad = 10;
-  RowGap = 6;
-  CapPadX = 6;
-  CapPadY = 2;
-  CapRadius = 3;
-  KeyGap = 3;
+  cPad = 10;
+  cRowGap = 6;
+  cCapPadX = 6;
+  cCapPadY = 2;
+  cCapRadius = 3;
+  cKeyGap = 3;
 
 { TAtlasShortcutTipWindow }
 
@@ -110,11 +110,11 @@ constructor TAtlasShortcutTipWindow.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.ShortcutTips;
-  SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessShortcutTip));
+  SetAccessible(cUiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessShortcutTip));
   FHot := TAtlasShortcutTipLink.None;
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
-  FTimer.Interval := TAtlasShortcutTips.VisibleMs;
+  FTimer.Interval := TAtlasShortcutTips.cVisibleMs;
   FTimer.OnTimer := TimerTick;
 end;
 
@@ -161,11 +161,11 @@ procedure TAtlasShortcutTipWindow.PutCap(const AText: string);
 var
   mCap: TRect;
 begin
-  mCap := Rect(FX, FY, FX + Canvas.TextWidth(AText) + Scale(2 * CapPadX), FY + FRowHeight);
+  mCap := Rect(FX, FY, FX + Canvas.TextWidth(AText) + Scale(2 * cCapPadX), FY + FRowHeight);
   if FDraw then
   begin
-    FillRounded(mCap, Colors.Gutter, CapRadius);
-    FrameRounded(mCap, Colors.Line, CapRadius);
+    FillRounded(mCap, Colors.Gutter, cCapRadius);
+    FrameRounded(mCap, Colors.Line, cCapRadius);
     Canvas.Font.Color := ToColor(Colors.Text);
     Canvas.Brush.Style := bsClear;
     DrawText(Canvas.Handle, PChar(AText), -1, mCap, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
@@ -183,15 +183,15 @@ begin
     if mStep > 0 then
     begin
       PutText(',', ToColor(Colors.Muted));
-      Inc(FX, Scale(KeyGap * 2));
+      Inc(FX, Scale(cKeyGap * 2));
     end;
     for mKey := 0 to High(FView.Steps[mStep]) do
     begin
       if mKey > 0 then
       begin
-        Inc(FX, Scale(KeyGap));
+        Inc(FX, Scale(cKeyGap));
         PutText('+', ToColor(Colors.Muted));
-        Inc(FX, Scale(KeyGap));
+        Inc(FX, Scale(cKeyGap));
       end;
       PutCap(FView.Steps[mStep][mKey]);
     end;
@@ -205,7 +205,7 @@ var
   mArea: TRect;
 begin
   mCommand := TAtlasStrings.Fmt(TAtlasTextId.ShortcutTipCommand, [FView.Command]);
-  mWidth := Min(Canvas.TextWidth(mCommand), Scale(MaxCommandWidth));
+  mWidth := Min(Canvas.TextWidth(mCommand), Scale(cMaxCommandWidth));
   if FDraw then
   begin
     mArea := Rect(FX, FY, FX + mWidth, FY + FRowHeight);
@@ -227,47 +227,47 @@ begin
   Canvas.Font := UIFont;
   FTextHeight := Canvas.TextHeight('Wg');
   // Zeilenhöhe = Höhe der Tastenkappen.
-  FRowHeight := FTextHeight + Scale(2 * CapPadY);
+  FRowHeight := FTextHeight + Scale(2 * cCapPadY);
   for mKind := Low(TAtlasShortcutTipLink) to High(TAtlasShortcutTipLink) do
   begin
     FLinks[mKind] := TRect.Empty;
   end;
   // Erste Zeile: „Tipp:“, Tastenkappen, Befehl.
-  FX := Scale(Pad);
-  FY := Scale(Pad);
+  FX := Scale(cPad);
+  FY := Scale(cPad);
   Canvas.Font.Style := [fsBold];
   PutText(TAtlasStrings.Text(TAtlasTextId.ShortcutTipLabel), ToColor(Colors.Text));
   Canvas.Font.Style := [];
-  Inc(FX, Scale(KeyGap * 2));
+  Inc(FX, Scale(cKeyGap * 2));
   PutKeys;
-  Inc(FX, Scale(KeyGap * 2));
+  Inc(FX, Scale(cKeyGap * 2));
   PutCommand;
   mLineWidth := FX;
   // Zweite Zeile: Links.
-  FX := Scale(Pad);
-  FY := FY + FRowHeight + Scale(RowGap);
+  FX := Scale(cPad);
+  FY := FY + FRowHeight + Scale(cRowGap);
   PutLink(TAtlasShortcutTipLink.Never, TAtlasStrings.Text(TAtlasTextId.ShortcutTipNever));
   if FView.ShowAllKeys then
   begin
     PutText('  ·  ', ToColor(Colors.Muted));
     PutLink(TAtlasShortcutTipLink.AllKeys, TAtlasStrings.Text(TAtlasTextId.ShortcutTipAllKeys));
   end;
-  Result.cx := Max(mLineWidth, FX) + Scale(Pad);
-  Result.cy := FY + FTextHeight + Scale(Pad);
+  Result.cx := Max(mLineWidth, FX) + Scale(cPad);
+  Result.cy := FY + FTextHeight + Scale(cPad);
 end;
 
 procedure TAtlasShortcutTipWindow.ShowTip(const AView: TAtlasShortcutTipView; const AArea: TRect);
 var
-  Size: TSize;
+  mSize: TSize;
 begin
   FView := AView;
   FHot := TAtlasShortcutTipLink.None;
   HandleNeeded;
-  Size := Layout(False);
-  ShowAt(TAtlasShortcutTips.PlaceBottomRight(AArea, Size.cx, Size.cy, Scale(Margin)));
+  mSize := Layout(False);
+  ShowAt(TAtlasShortcutTips.PlaceBottomRight(AArea, mSize.cx, mSize.cy, Scale(cMargin)));
   Announce(SpokenText);
   FTimer.Enabled := False;
-  FTimer.Interval := TAtlasShortcutTips.VisibleMs;
+  FTimer.Interval := TAtlasShortcutTips.cVisibleMs;
   FTimer.Enabled := True;
 end;
 
@@ -295,14 +295,14 @@ end;
 
 function TAtlasShortcutTipWindow.LinkAt(AX, AY: Integer): TAtlasShortcutTipLink;
 var
-  Link: TAtlasShortcutTipLink;
+  mLink: TAtlasShortcutTipLink;
 begin
   Result := TAtlasShortcutTipLink.None;
-  for Link := TAtlasShortcutTipLink.Never to TAtlasShortcutTipLink.AllKeys do
+  for mLink := TAtlasShortcutTipLink.Never to TAtlasShortcutTipLink.AllKeys do
   begin
-    if not FLinks[Link].IsEmpty and PtInRect(FLinks[Link], Point(AX, AY)) then
+    if not FLinks[mLink].IsEmpty and PtInRect(FLinks[mLink], Point(AX, AY)) then
     begin
-      Exit(Link);
+      Exit(mLink);
     end;
   end;
 end;
@@ -351,11 +351,11 @@ end;
 
 procedure TAtlasShortcutTipWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  Hot: TAtlasShortcutTipLink;
+  mHot: TAtlasShortcutTipLink;
 begin
   inherited;
-  Hot := LinkAt(X, Y);
-  if Hot <> TAtlasShortcutTipLink.None then
+  mHot := LinkAt(X, Y);
+  if mHot <> TAtlasShortcutTipLink.None then
   begin
     Cursor := crHandPoint;
   end
@@ -363,9 +363,9 @@ begin
   begin
     Cursor := crDefault;
   end;
-  if Hot <> FHot then
+  if mHot <> FHot then
   begin
-    FHot := Hot;
+    FHot := mHot;
     Invalidate;
   end;
 end;

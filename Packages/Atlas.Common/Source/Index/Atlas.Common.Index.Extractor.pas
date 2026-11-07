@@ -142,22 +142,22 @@ uses
 
 const
   // Direktiven nach Routinenköpfen und Hinweise (wie im Parser); zählen nicht als Verwendung.
-  DirectiveWords: array[0..32] of string = (
+  cDirectiveWords: array[0..32] of string = (
     'abstract', 'assembler', 'cdecl', 'deprecated', 'dispid', 'dynamic', 'experimental',
     'export', 'external', 'far', 'final', 'forward', 'inline', 'library', 'local',
     'near', 'noreturn', 'overload', 'override', 'pascal', 'platform',
     'register', 'reintroduce', 'safecall', 'static', 'stdcall', 'unsafe', 'varargs',
     'virtual', 'winapi', 'delayed', 'sealed', 'nodefault');
   /// <summary>Arten mit Typverweis (A: TFoo, function F: TFoo, TAlias = TFoo).</summary>
-  TypedKinds = [TIndexSymbolKind.TypeAlias, TIndexSymbolKind.Constant, TIndexSymbolKind.Variable,
+  cTypedKinds = [TIndexSymbolKind.TypeAlias, TIndexSymbolKind.Constant, TIndexSymbolKind.Variable,
     TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Routine];
   /// <summary>Rümpfe mit Mitgliedern.</summary>
-  MemberBodies = [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.HelperType, TSyntaxKind.RecordType,
+  cMemberBodies = [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.HelperType, TSyntaxKind.RecordType,
     TSyntaxKind.InterfaceType];
   /// <summary>Höchste Verschachtelung von $I-Dateien.</summary>
-  MaxIncludeDepth = 16;
+  cMaxIncludeDepth = 16;
   /// <summary>Name des Hilfstyps, in den AddIncluded eine .inc aus einem Klassenrumpf einbettet (#849).</summary>
-  IncludeHost = 'TAtlasIncludeHost__';
+  cIncludeHost = 'TAtlasIncludeHost__';
 
 function VisibilityOf(const AText: string): TIndexVisibility;
 var
@@ -203,10 +203,10 @@ begin
   Result := Copy(AFileName, mStart, mStop - mStart);
 end;
 
-/// <summary>Höchstens TRationale.MaxEntries Begründungen für den Index.</summary>
+/// <summary>Höchstens TRationale.cMaxEntries Begründungen für den Index.</summary>
 function RationaleOf(const AEntries: TArray<TRationaleEntry>): TArray<string>;
 begin
-  Result := TRationale.EncodeAll(Copy(AEntries, 0, TRationale.MaxEntries));
+  Result := TRationale.EncodeAll(Copy(AEntries, 0, TRationale.cMaxEntries));
 end;
 
 /// <summary>Rumpf einer Typdeklaration: das erste Kind außer Typparametern und Attributen; nil ohne.</summary>
@@ -380,7 +380,7 @@ var
   mTypeText: string;
 begin
   mTypeText := '';
-  if AKind in TypedKinds then
+  if AKind in cTypedKinds then
   begin
     mTypeNode := TIndexTypeText.DeclaredTypeNode(ANode);
     ASymbol.TypeName := TIndexTypeText.DeclaredType(ANode);
@@ -424,7 +424,7 @@ begin
     ASymbol.Directives := ASymbol.Directives + ['default'];
   end;
   // Methodenzeiger und Methodenreferenzen als Merkmal (#1326): Die Signatur kann bei langen Parameterlisten
-  // vor "of object" abgeschnitten sein (TIndexSymbol.MaxSignature).
+  // vor "of object" abgeschnitten sein (TIndexSymbol.cMaxSignature).
   if AKind = TIndexSymbolKind.TypeAlias then
   begin
     mProcedureKind := FReader.ProcedureKindOf(TIndexTypeText.ProcedureTypeOf(ANode));
@@ -552,7 +552,7 @@ begin
   begin
     AddEnumMembers(mBody, QualifiedOf(AContainer, ADecl.Name));
   end
-  else if mBody.Kind in MemberBodies then
+  else if mBody.Kind in cMemberBodies then
   begin
     AddBodyMembers(mBody, QualifiedOf(AContainer, ADecl.Name), mCount);
   end;
@@ -827,8 +827,8 @@ end;
 
 type
   TUsageBucket = class
-    Name: string;
-    Positions: TList<TTextPosition>;
+    FName: string;
+    FPositions: TList<TTextPosition>;
     constructor Create(const AName: string);
     destructor Destroy; override;
   end;
@@ -836,13 +836,13 @@ type
 constructor TUsageBucket.Create(const AName: string);
 begin
   inherited Create;
-  Name := AName;
-  Positions := TList<TTextPosition>.Create;
+  FName := AName;
+  FPositions := TList<TTextPosition>.Create;
 end;
 
 destructor TUsageBucket.Destroy;
 begin
-  Positions.Free;
+  FPositions.Free;
   inherited;
 end;
 
@@ -864,7 +864,7 @@ begin
   begin
     Result := Copy(Result, 2, MaxInt);
   end;
-  if MatchText(Result, ['Self', 'Result']) or (IndexText(Result, DirectiveWords) >= 0) or
+  if MatchText(Result, ['Self', 'Result']) or (IndexText(Result, cDirectiveWords) >= 0) or
     ADeclared.ContainsKey(PositionKey(AToken.StartPos)) then
   begin
     Result := '';
@@ -884,8 +884,8 @@ begin
   for mIndex := 0 to High(mNames) do
   begin
     mBucket := ABuckets[mNames[mIndex]];
-    Result[mIndex].Name := mBucket.Name;
-    Result[mIndex].Positions := mBucket.Positions.ToArray;
+    Result[mIndex].Name := mBucket.FName;
+    Result[mIndex].Positions := mBucket.FPositions.ToArray;
   end;
 end;
 
@@ -924,7 +924,7 @@ begin
         mBucket := TUsageBucket.Create(mName);
         mBuckets.Add(UpperCase(mName), mBucket);
       end;
-      mBucket.Positions.Add(mToken.StartPos);
+      mBucket.FPositions.Add(mToken.StartPos);
     end;
     Result := UsagesOf(mBuckets);
   finally
@@ -1013,7 +1013,7 @@ begin
   begin
     if (ANode[mIndex].StartOffset < AOffset) and (AOffset < ANode[mIndex].EndOffset) then
     begin
-      if ANode[mIndex].Kind in MemberBodies then
+      if ANode[mIndex].Kind in cMemberBodies then
       begin
         Result := ANode[mIndex];
       end;
@@ -1052,7 +1052,7 @@ begin
   else
     Result := 'class';
   end;
-  Result := 'type' + #10 + IncludeHost + ' = ' + Result + ' ' + mVisibility + #10;
+  Result := 'type' + #10 + cIncludeHost + ' = ' + Result + ' ' + mVisibility + #10;
 end;
 
 /// <summary>Inhalt einer .inc als eine Zeile für die Signatur einer Konstanten (#849).</summary>
@@ -1104,13 +1104,13 @@ begin
   begin
     Exit;
   end;
-  if SameText(AContainer, IncludeHost) then
+  if SameText(AContainer, cIncludeHost) then
   begin
     Result := AHost;
   end
-  else if StartsText(IncludeHost + '.', AContainer) then
+  else if StartsText(cIncludeHost + '.', AContainer) then
   begin
-    Result := AHost + Copy(AContainer, Length(IncludeHost) + 1, MaxInt);
+    Result := AHost + Copy(AContainer, Length(cIncludeHost) + 1, MaxInt);
   end;
 end;
 
@@ -1209,7 +1209,7 @@ begin
       TIndexConditions.InRange(AToken.StartPos, mSymbol.Range) then
     begin
       mSymbol.Signature := TIndexTokenReader.Shortened(StringReplace(mSymbol.Signature, AToken.Text,
-        OneLine(AText), []), TIndexSymbol.MaxSignature);
+        OneLine(AText), []), TIndexSymbol.cMaxSignature);
       FSymbols[mPosition] := mSymbol;
     end;
   end;
@@ -1224,7 +1224,7 @@ begin
   for mSymbol in AIncluded.Symbols do
   begin
     // Der Hilfstyp selbst gehört nicht in den Index.
-    if (AHost = '') or not SameText(mSymbol.Container, '') or not SameText(mSymbol.Name, IncludeHost) then
+    if (AHost = '') or not SameText(mSymbol.Container, '') or not SameText(mSymbol.Name, cIncludeHost) then
     begin
       FSymbols.Add(Relocated(mSymbol, AFile, AHost, AShift, AInInterface));
     end;
@@ -1333,7 +1333,7 @@ begin
       Result.Usages := CollectUsages(mTree.Tokens, Result.Symbols);
       Result.UsagesIndexed := True;
     end;
-    if Assigned(AResolver) and (Length(AStack) <= MaxIncludeDepth) then
+    if Assigned(AResolver) and (Length(AStack) <= cMaxIncludeDepth) then
     begin
       mMerger := TIncludeMerger.Create(mTree, AFileName, ADefines, AResolver, AStack);
       try

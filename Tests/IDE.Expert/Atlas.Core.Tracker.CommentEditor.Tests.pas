@@ -261,20 +261,20 @@ var
   mText: string;
   mStart, mLength: Integer;
 begin
-  mText := TAtlasCommentEditing.ToggleInline('ab cd', 3, 2, TAtlasCommentEditing.BoldMarker, mStart, mLength);
+  mText := TAtlasCommentEditing.ToggleInline('ab cd', 3, 2, TAtlasCommentEditing.cBoldMarker, mStart, mLength);
   Assert.AreEqual('ab **cd**', mText);
   Assert.AreEqual(5, mStart);
   Assert.AreEqual(2, mLength);
-  mText := TAtlasCommentEditing.ToggleInline(mText, mStart, mLength, TAtlasCommentEditing.BoldMarker, mStart,
+  mText := TAtlasCommentEditing.ToggleInline(mText, mStart, mLength, TAtlasCommentEditing.cBoldMarker, mStart,
     mLength);
   Assert.AreEqual('ab cd', mText, 'zweites Mal: aus');
   Assert.AreEqual(3, mStart);
   Assert.AreEqual(2, mLength);
-  mText := TAtlasCommentEditing.ToggleInline('ab **cd**', 3, 6, TAtlasCommentEditing.BoldMarker, mStart, mLength);
+  mText := TAtlasCommentEditing.ToggleInline('ab **cd**', 3, 6, TAtlasCommentEditing.cBoldMarker, mStart, mLength);
   Assert.AreEqual('ab cd', mText, 'Auswahl samt Zeichen');
   Assert.AreEqual(3, mStart);
   Assert.AreEqual(2, mLength);
-  mText := TAtlasCommentEditing.ToggleInline('ab', 2, 0, TAtlasCommentEditing.ItalicMarker, mStart, mLength);
+  mText := TAtlasCommentEditing.ToggleInline('ab', 2, 0, TAtlasCommentEditing.cItalicMarker, mStart, mLength);
   Assert.AreEqual('ab__', mText, 'ohne Auswahl ein leeres Paar');
   Assert.AreEqual(3, mStart, 'Schreibmarke dazwischen');
   Assert.AreEqual(0, mLength);
@@ -369,7 +369,7 @@ var
   mSetting, mDefaults: TArray<TAtlasCommentSnippet>;
   mIndex: Integer;
 begin
-  Assert.IsTrue(TAtlasCommentSnippets.Parse(TAtlasPluginSettings.DefaultIssuesCommentSnippets, mSetting));
+  Assert.IsTrue(TAtlasCommentSnippets.Parse(TAtlasPluginSettings.cDefaultIssuesCommentSnippets, mSetting));
   mDefaults := TAtlasCommentSnippets.Defaults(False);
   Assert.AreEqual(Integer(Length(mDefaults)), Integer(Length(mSetting)));
   for mIndex := 0 to High(mDefaults) do
@@ -386,7 +386,7 @@ procedure TAtlasCommentEditorTests.SnippetDefaultsFollowLanguage;
 var
   mRead: TArray<TAtlasCommentSnippet>;
 begin
-  mRead := TAtlasCommentSnippets.Read(TAtlasPluginSettings.DefaultIssuesCommentSnippets, True);
+  mRead := TAtlasCommentSnippets.Read(TAtlasPluginSettings.cDefaultIssuesCommentSnippets, True);
   Assert.AreEqual(2, Integer(Length(mRead)));
   Assert.AreEqual('Please check with the current build', mRead[0].Name, 'deutsche Vorgabe in englischer IDE');
   Assert.AreEqual('Fixed in {commit}.', mRead[1].Text);
@@ -412,32 +412,32 @@ var
 begin
   mDrafts := TAtlasCommentDrafts.Create;
   try
-    mDrafts.Put('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.FieldPreview, 'Entwurf eins', 1);
-    mDrafts.Put('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.FieldEnd, 'Beim Beenden', 2);
-    mDrafts.Put('github.com/beispiel/atlas', 'ATL-1', TAtlasCommentDrafts.FieldPreview, 'anderer Tracker', 3);
+    mDrafts.Put('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldPreview, 'Entwurf eins', 1);
+    mDrafts.Put('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldEnd, 'Beim Beenden', 2);
+    mDrafts.Put('github.com/beispiel/atlas', 'ATL-1', TAtlasCommentDrafts.cFieldPreview, 'anderer Tracker', 3);
     Assert.AreEqual(3, mDrafts.Count);
-    Assert.IsTrue(mDrafts.Get('YT.firma.de/ATL', 'atl-1', TAtlasCommentDrafts.FieldPreview, mText, mSaved));
+    Assert.IsTrue(mDrafts.Get('YT.firma.de/ATL', 'atl-1', TAtlasCommentDrafts.cFieldPreview, mText, mSaved));
     Assert.AreEqual('Entwurf eins', mText, 'ohne Groß-/Kleinschreibung');
-    Assert.IsTrue(mDrafts.Get('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.FieldEnd, mText, mSaved));
+    Assert.IsTrue(mDrafts.Get('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldEnd, mText, mSaved));
     Assert.AreEqual('Beim Beenden', mText, 'je Feld');
-    mDrafts.Put('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.FieldPreview, 'Entwurf zwei', 4);
+    mDrafts.Put('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldPreview, 'Entwurf zwei', 4);
     Assert.AreEqual(3, mDrafts.Count, 'ersetzt, nicht doppelt');
-    Assert.IsTrue(mDrafts.Get('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.FieldPreview, mText, mSaved));
+    Assert.IsTrue(mDrafts.Get('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldPreview, mText, mSaved));
     Assert.AreEqual('Entwurf zwei', mText);
-    mDrafts.Put('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.FieldPreview, '  '#13#10, 5);
-    Assert.IsFalse(mDrafts.Get('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.FieldPreview, mText, mSaved),
+    mDrafts.Put('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldPreview, '  '#13#10, 5);
+    Assert.IsFalse(mDrafts.Get('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldPreview, mText, mSaved),
       'nur Leerraum löscht');
-    Assert.IsTrue(mDrafts.Delete('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.FieldEnd));
-    Assert.IsFalse(mDrafts.Delete('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.FieldEnd), 'schon weg');
+    Assert.IsTrue(mDrafts.Delete('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldEnd));
+    Assert.IsFalse(mDrafts.Delete('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldEnd), 'schon weg');
     Assert.AreEqual(1, mDrafts.Count);
     mDrafts.Clear;
-    for mIndex := 1 to TAtlasCommentDrafts.MaxDrafts + 5 do
+    for mIndex := 1 to TAtlasCommentDrafts.cMaxDrafts + 5 do
     begin
-      mDrafts.Put('t', 'ATL-' + IntToStr(mIndex), TAtlasCommentDrafts.FieldPreview, 'x', mIndex);
+      mDrafts.Put('t', 'ATL-' + IntToStr(mIndex), TAtlasCommentDrafts.cFieldPreview, 'x', mIndex);
     end;
-    Assert.AreEqual(TAtlasCommentDrafts.MaxDrafts, mDrafts.Count, 'höchstens MaxDrafts');
-    Assert.IsFalse(mDrafts.Get('t', 'ATL-1', TAtlasCommentDrafts.FieldPreview, mText, mSaved), 'älteste weg');
-    Assert.IsTrue(mDrafts.Get('t', 'ATL-105', TAtlasCommentDrafts.FieldPreview, mText, mSaved), 'neueste bleibt');
+    Assert.AreEqual(TAtlasCommentDrafts.cMaxDrafts, mDrafts.Count, 'höchstens MaxDrafts');
+    Assert.IsFalse(mDrafts.Get('t', 'ATL-1', TAtlasCommentDrafts.cFieldPreview, mText, mSaved), 'älteste weg');
+    Assert.IsTrue(mDrafts.Get('t', 'ATL-105', TAtlasCommentDrafts.cFieldPreview, mText, mSaved), 'neueste bleibt');
   finally
     mDrafts.Free;
   end;
@@ -454,10 +454,10 @@ begin
   mRead := TAtlasCommentDrafts.Create;
   mFile := TPath.Combine(TPath.GetTempPath, 'atlas-drafts-' + TGUID.NewGuid.ToString + '.json');
   try
-    mDrafts.Put('yt.firma.de/atl', 'ATL-12', TAtlasCommentDrafts.FieldPreview, 'Zeile 1'#10'**fett** "zitiert"',
+    mDrafts.Put('yt.firma.de/atl', 'ATL-12', TAtlasCommentDrafts.cFieldPreview, 'Zeile 1'#10'**fett** "zitiert"',
       mWhen);
     Assert.IsTrue(mRead.Parse(mDrafts.ToJson));
-    Assert.IsTrue(mRead.Get('yt.firma.de/atl', 'ATL-12', TAtlasCommentDrafts.FieldPreview, mText, mSaved));
+    Assert.IsTrue(mRead.Get('yt.firma.de/atl', 'ATL-12', TAtlasCommentDrafts.cFieldPreview, mText, mSaved));
     Assert.AreEqual('Zeile 1'#10'**fett** "zitiert"', mText);
     Assert.IsTrue(SameDateTime(mWhen, mSaved), 'Zeit unverändert (UTC)');
     Assert.IsFalse(mRead.Parse('{"version":99,"drafts":[]}'), 'fremde Version');

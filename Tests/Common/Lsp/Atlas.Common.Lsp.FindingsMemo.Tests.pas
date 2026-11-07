@@ -143,8 +143,14 @@ end;
 { TRuleFindingsMemoTests }
 
 procedure TRuleFindingsMemoTests.WarmUp;
+var
+  mMemo: IRuleFindingsMemo;
 begin
-  ActionTitles(TRuleFindingsMemo.Create, 2);
+  mMemo := TRuleFindingsMemo.Create;
+  ActionTitles(mMemo, 2);
+  // Ein Treffer ohne bekannte Regel lädt den Katalog: wie CodeActionReadsMemo.
+  mMemo.Put(cFileName, cText, [Finding('aus-dem-memo', 2, 'Korrektur aus dem Memo')]);
+  ActionTitles(mMemo, 2);
 end;
 
 procedure TRuleFindingsMemoTests.GivesFindingsForSameText;
@@ -192,7 +198,7 @@ var
   mIndex: Integer;
 begin
   mMemo := TRuleFindingsMemo.Create;
-  for mIndex := 1 to TRuleFindingsMemo.MaxEntries do
+  for mIndex := 1 to TRuleFindingsMemo.cMaxEntries do
   begin
     mMemo.Put(Format('C:\P\U%d.pas', [mIndex]), cText, nil);
   end;

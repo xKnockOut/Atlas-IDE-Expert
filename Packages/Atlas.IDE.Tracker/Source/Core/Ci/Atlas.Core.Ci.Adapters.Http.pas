@@ -118,9 +118,9 @@ uses
 
 const
   // Testberichte mit tree=… bleiben klein; mehr wird nicht gelesen.
-  MaxBytes = 8 * 1024 * 1024;
-  MaxRedirects = 3;
-  SliceMs = 50;
+  cMaxBytes = 8 * 1024 * 1024;
+  cMaxRedirects = 3;
+  cSliceMs = 50;
 
 function IsRedirect(AStatus: Integer): Boolean;
 begin
@@ -160,7 +160,7 @@ var
   mReply: TReply;
 begin
   AText := '';
-  Result := Request(TRequest.Create('GET', AUrl, 'application/json', ATimeoutMs, MaxBytes), mReply);
+  Result := Request(TRequest.Create('GET', AUrl, 'application/json', ATimeoutMs, cMaxBytes), mReply);
   AStatus := mReply.Status;
   AError := mReply.Error;
   if Result then
@@ -208,7 +208,7 @@ begin
   begin
     Exit;
   end;
-  mRequest := TRequest.Create(UpperCase(AMethod), AUrl, 'application/json', ATimeoutMs, MaxBytes);
+  mRequest := TRequest.Create(UpperCase(AMethod), AUrl, 'application/json', ATimeoutMs, cMaxBytes);
   mRequest.Body := TEncoding.UTF8.GetBytes(ABody);
   Result := Request(mRequest, mReply);
   AResponse := ResponseOf(mReply, Result);
@@ -232,7 +232,7 @@ begin
     AResponse.Error := TAtlasCiFetchError.Invalid;
     Exit;
   end;
-  mRequest := TRequest.Create('POST', AUrl, 'application/json', ATimeoutMs, MaxBytes);
+  mRequest := TRequest.Create('POST', AUrl, 'application/json', ATimeoutMs, cMaxBytes);
   mRequest.ContentType := AContentType;
   mRequest.Body := ABody;
   Result := Request(mRequest, mReply);
@@ -260,7 +260,7 @@ var
   mRequest: TRequest;
   mReply: TReply;
 begin
-  mRequest := TRequest.Create('GET', AUrl, 'application/json', ATimeoutMs, MaxBytes);
+  mRequest := TRequest.Create('GET', AUrl, 'application/json', ATimeoutMs, cMaxBytes);
   mRequest.ContentType := '';
   mRequest.IfModifiedSince := AIfModifiedSince;
   Result := Request(mRequest, mReply);
@@ -285,7 +285,7 @@ end;
 
 function TAtlasCiHttpTransport.AuthHeaders(const AUrl: string): TNetHeaders;
 var
-  Encoding: TBase64Encoding;
+  mEncoding: TBase64Encoding;
 begin
   Result := nil;
   // Anmeldung nur über https beim eingetragenen Server.
@@ -295,12 +295,12 @@ begin
   end
   else if (FUser <> '') and (FToken <> '') and TAtlasCiAddresses.MayAuthenticate(AUrl, FServer) then
   begin
-    Encoding := TBase64Encoding.Create(0);
+    mEncoding := TBase64Encoding.Create(0);
     try
       Result := [TNetHeader.Create('Authorization', 'Basic ' +
-        Encoding.EncodeBytesToString(TEncoding.UTF8.GetBytes(FUser + ':' + FToken)))];
+        mEncoding.EncodeBytesToString(TEncoding.UTF8.GetBytes(FUser + ':' + FToken)))];
     finally
-      Encoding.Free;
+      mEncoding.Free;
     end;
   end;
 end;
@@ -353,7 +353,7 @@ begin
   Result := True;
   while Result and not AAsync.IsCompleted do
   begin
-    Result := not (TAtlasShutdown.Wait(SliceMs) or Cancelled or (AWatch.ElapsedMilliseconds > ATimeoutMs));
+    Result := not (TAtlasShutdown.Wait(cSliceMs) or Cancelled or (AWatch.ElapsedMilliseconds > ATimeoutMs));
   end;
   if Result then
   begin
@@ -370,7 +370,7 @@ begin
   AAsync.Cancel;
   // Kurz auf das Ende warten, damit der Client danach freigegeben werden darf.
   mWait := TStopwatch.StartNew;
-  while not AAsync.IsCompleted and (mWait.ElapsedMilliseconds < TAtlasShutdown.StopMs div 2) do
+  while not AAsync.IsCompleted and (mWait.ElapsedMilliseconds < TAtlasShutdown.cStopMs div 2) do
   begin
     Sleep(10);
   end;
@@ -394,7 +394,7 @@ begin
   end;
   Inc(ARedirects);
   mNext := TAtlasCiAddresses.Resolve(AUrl, AResponse.HeaderValue['Location']);
-  if (ARedirects > MaxRedirects) or not TAtlasCiAddresses.RedirectAllowed(AUrl, mNext) then
+  if (ARedirects > cMaxRedirects) or not TAtlasCiAddresses.RedirectAllowed(AUrl, mNext) then
   begin
     // Fremdes Ziel (z. B. Anmeldeseite eines anderen Rechners): wie eine abgelehnte Anmeldung.
     AReply.Error := TAtlasCiFetchError.Unauthorized;

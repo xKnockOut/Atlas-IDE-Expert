@@ -807,7 +807,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(Members));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(FieldAfterMethodRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cFieldAfterMethodRuleId, Findings[0].RuleId);
   Assert.AreEqual('Feld nach Methoden im selben Abschnitt (wie E2169).', Findings[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
@@ -903,7 +903,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(Members));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(OverloadDirectiveMissingRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cOverloadDirectiveMissingRuleId, Findings[0].RuleId);
   Assert.AreEqual('Laden ist überladen, aber nicht mit overload markiert (wie E2254).', Findings[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
   Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
@@ -1129,7 +1129,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('var'#10'  Betrag: Currency;'#10));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(DuplicateDeclarationRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cDuplicateDeclarationRuleId, Findings[0].RuleId);
   Assert.AreEqual('Betrag ist schon als Parameter deklariert (wie E2004).', Findings[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
   Assert.AreEqual(5, Findings[0].Range.StartPos.Line);

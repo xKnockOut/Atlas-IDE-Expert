@@ -31,7 +31,7 @@ uses
 
 function FindObject(AObject: TDfmObject; const AName: string): TDfmObject;
 var
-  Child: TDfmObject;
+  mChild: TDfmObject;
 begin
   Result := nil;
   if AObject = nil then
@@ -42,9 +42,9 @@ begin
   begin
     Exit(AObject);
   end;
-  for Child in AObject.Children do
+  for mChild in AObject.Children do
   begin
-    Result := FindObject(Child, AName);
+    Result := FindObject(mChild, AName);
     if Result <> nil then
     begin
       Exit;
@@ -54,62 +54,62 @@ end;
 
 procedure Collect(AObject: TDfmObject; const AOldName, ANewName: string; var AResult: TArray<THandlerRename>);
 var
-  Item: TDfmProperty;
-  Child: TDfmObject;
-  Rename: THandlerRename;
-  Known: THandlerRename;
-  Seen: Boolean;
+  mItem: TDfmProperty;
+  mChild: TDfmObject;
+  mRename: THandlerRename;
+  mKnown: THandlerRename;
+  mSeen: Boolean;
 begin
-  for Item in AObject.Properties do
+  for mItem in AObject.Properties do
   begin
     // Nur "<Komponente><Ereignis>", nicht der Komponentenname allein.
-    if not Item.IsEvent or (Length(Item.Value) <= Length(AOldName)) or
-      not SameText(Copy(Item.Value, 1, Length(AOldName)), AOldName) then
+    if not mItem.IsEvent or (Length(mItem.Value) <= Length(AOldName)) or
+      not SameText(Copy(mItem.Value, 1, Length(AOldName)), AOldName) then
     begin
       Continue;
     end;
-    Seen := False;
-    for Known in AResult do
+    mSeen := False;
+    for mKnown in AResult do
     begin
-      if SameText(Known.OldName, Item.Value) then
+      if SameText(mKnown.OldName, mItem.Value) then
       begin
-        Seen := True;
+        mSeen := True;
       end;
     end;
-    if Seen then
+    if mSeen then
     begin
       Continue;
     end;
-    Rename.OldName := Item.Value;
-    Rename.NewName := ANewName + Copy(Item.Value, Length(AOldName) + 1, MaxInt);
-    AResult := AResult + [Rename];
+    mRename.OldName := mItem.Value;
+    mRename.NewName := ANewName + Copy(mItem.Value, Length(AOldName) + 1, MaxInt);
+    AResult := AResult + [mRename];
   end;
-  for Child in AObject.Children do
+  for mChild in AObject.Children do
   begin
-    Collect(Child, AOldName, ANewName, AResult);
+    Collect(mChild, AOldName, ANewName, AResult);
   end;
 end;
 
 class function TDfmComponentRename.Handlers(const ADfmText, AOldName, ANewName: string): TArray<THandlerRename>;
 var
-  Document: TDfmDocument;
+  mDocument: TDfmDocument;
 begin
   Result := nil;
   if (AOldName = '') or SameText(AOldName, ANewName) then
   begin
     Exit;
   end;
-  Document := TDfmParser.Parse(ADfmText);
+  mDocument := TDfmParser.Parse(ADfmText);
   try
     // Das Formular selbst ist keine Komponente; sein Name ist die Klasse ohne T.
-    if (Document.Root = nil) or (FindObject(Document.Root, AOldName) = nil) or
-      SameText(Document.Root.Name, AOldName) then
+    if (mDocument.Root = nil) or (FindObject(mDocument.Root, AOldName) = nil) or
+      SameText(mDocument.Root.Name, AOldName) then
     begin
       Exit;
     end;
-    Collect(Document.Root, AOldName, ANewName, Result);
+    Collect(mDocument.Root, AOldName, ANewName, Result);
   finally
-    Document.Free;
+    mDocument.Free;
   end;
 end;
 

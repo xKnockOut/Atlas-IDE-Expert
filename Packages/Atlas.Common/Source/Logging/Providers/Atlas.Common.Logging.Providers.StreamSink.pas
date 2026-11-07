@@ -24,7 +24,7 @@ type
     /// AMaxBytes wird rotiert (#283).</summary>
     class function CreateForFile(const AFileName, AFallbackTag: string;
       AMaxBytes: Int64): TStreamLogSink; overload; static;
-    /// <summary>Wie oben mit AMaxBytes = TRotatingFileStream.DefaultMaxBytes.</summary>
+    /// <summary>Wie oben mit AMaxBytes = TRotatingFileStream.cDefaultMaxBytes.</summary>
     class function CreateForFile(const AFileName, AFallbackTag: string): TStreamLogSink; overload; static;
     /// <summary>Wie oben ohne Ausweichnamen (AFallbackTag = '').</summary>
     class function CreateForFile(const AFileName: string): TStreamLogSink; overload; static;
@@ -57,12 +57,12 @@ end;
 
 class function TStreamLogSink.CreateForFile(const AFileName, AFallbackTag: string): TStreamLogSink;
 begin
-  Result := CreateForFile(AFileName, AFallbackTag, TRotatingFileStream.DefaultMaxBytes);
+  Result := CreateForFile(AFileName, AFallbackTag, TRotatingFileStream.cDefaultMaxBytes);
 end;
 
 class function TStreamLogSink.CreateForFile(const AFileName: string): TStreamLogSink;
 begin
-  Result := CreateForFile(AFileName, '', TRotatingFileStream.DefaultMaxBytes);
+  Result := CreateForFile(AFileName, '', TRotatingFileStream.cDefaultMaxBytes);
 end;
 
 class function TStreamLogSink.CreateForFile(const AFileName, AFallbackTag: string;
@@ -73,10 +73,10 @@ end;
 
 procedure TStreamLogSink.Write(const AEntry: TLogEntry);
 var
-  Data: TBytes;
+  mData: TBytes;
 begin
-  Data := TEncoding.UTF8.GetBytes(TLogEntryText.PlainLine(AEntry) + sLineBreak);
-  FStream.WriteBuffer(Data, Length(Data));
+  mData := TEncoding.UTF8.GetBytes(TLogEntryText.PlainLine(AEntry) + sLineBreak);
+  FStream.WriteBuffer(mData, Length(mData));
 end;
 
 end.

@@ -41,14 +41,14 @@ type
 
   TAtlasIdeRecursionGutter = class(TAtlasGutterLayer)
   public const
-    Command = 'atlas.server.recursion';
+    cCommand = 'atlas.server.recursion';
   private const
-    QuietMs = 700;
+    cQuietMs = 700;
     // Im Hintergrund: Ein langsamer Server hält nur die Symbole auf, nicht die IDE.
-    TimeoutMs = 5000;
-    RetryMs = 5000;
+    cTimeoutMs = 5000;
+    cRetryMs = 5000;
     // Gleicher Stand und gleiche Tiefe: nie neu fragen.
-    RefreshMs = High(Cardinal);
+    cRefreshMs = High(Cardinal);
   private
     FSession: TAtlasRecursionSessionFunc;
     FRun: TAtlasLensCommandProc;
@@ -93,10 +93,10 @@ uses
 
 function IsSource(const AFileName: string): Boolean;
 var
-  Extension: string;
+  mExtension: string;
 begin
-  Extension := ExtractFileExt(AFileName);
-  Result := SameText(Extension, '.pas') or SameText(Extension, '.dpr') or SameText(Extension, '.dpk');
+  mExtension := ExtractFileExt(AFileName);
+  Result := SameText(mExtension, '.pas') or SameText(mExtension, '.dpr') or SameText(mExtension, '.dpk');
 end;
 
 { TAtlasIdeRecursionGutter }
@@ -138,12 +138,12 @@ end;
 
 procedure TAtlasIdeRecursionGutter.Clear;
 var
-  Had: Boolean;
+  mHad: Boolean;
 begin
-  Had := FMarks.HasCalls;
+  mHad := FMarks.HasCalls;
   FMarks := Default(TAtlasFileRecursion);
   FPoll.Forget;
-  if Had then
+  if mHad then
   begin
     TAtlasIdeGutterMarks.Invalidate;
   end;
@@ -187,7 +187,7 @@ begin
     begin
       Clear;
     end;
-    if FPoll.Due(mView, QuietMs, RefreshMs) then
+    if FPoll.Due(mView, cQuietMs, cRefreshMs) then
     begin
       Fetch(mDepth);
     end;
@@ -210,7 +210,8 @@ begin
   finally
     mValues.Free;
   end;
-  FPoll.AskAsync(FSession(), FRun, Feature, Command, mArguments, RetryMs, TimeoutMs, Answer(ADepth));
+  FPoll.AskAsync(FSession(), FRun, Feature, TAtlasLensRequest.Create(cCommand, mArguments, cTimeoutMs), cRetryMs,
+    Answer(ADepth));
 end;
 
 function TAtlasIdeRecursionGutter.Answer(ADepth: Integer): TProc<TJSONValue>;
@@ -225,7 +226,7 @@ end;
 procedure TAtlasIdeRecursionGutter.Take(AAnswer: TJSONValue; ADepth: Integer);
 begin
   // Den Wert gibt der Manager frei.
-  if not FPoll.Answered(AAnswer, RetryMs) then
+  if not FPoll.Answered(AAnswer, cRetryMs) then
   begin
     Exit;
   end;
@@ -267,59 +268,59 @@ end;
 procedure TAtlasIdeRecursionGutter.PaintIcon(ACanvas: TCanvas; const AIcon: TRect; const AColors: TAtlasColors;
   ABack: TAtlasColor);
 var
-  Size, Left, Top, Head: Integer;
-  Box: TRect;
+  mSize, mLeft, mTop, mHead: Integer;
+  mBox: TRect;
 begin
   // Kreispfeil (↻): Dreiviertelbogen im Uhrzeigersinn, Spitze oben rechts, in der Warnfarbe.
-  Size := Min(AIcon.Width, AIcon.Height);
-  Left := AIcon.Left + (AIcon.Width - Size) div 2;
-  Top := AIcon.Top + (AIcon.Height - Size) div 2;
-  Box := TRect.Create(Left + 1, Top + 1, Left + Size - 1, Top + Size - 1);
+  mSize := Min(AIcon.Width, AIcon.Height);
+  mLeft := AIcon.Left + (AIcon.Width - mSize) div 2;
+  mTop := AIcon.Top + (AIcon.Height - mSize) div 2;
+  mBox := TRect.Create(mLeft + 1, mTop + 1, mLeft + mSize - 1, mTop + mSize - 1);
   ACanvas.Brush.Style := bsClear;
   ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.9));
-  ACanvas.Pen.Width := Max(1, Size div 8);
+  ACanvas.Pen.Width := Max(1, mSize div 8);
   // Arc läuft gegen den Uhrzeigersinn vom Start- zum Endpunkt: von oben rechts über links bis oben.
-  ACanvas.Arc(Box.Left, Box.Top, Box.Right, Box.Bottom, Box.Right, Box.Top + Box.Height div 3,
-    Box.Left + Box.Width div 2, Box.Top);
-  Head := Max(2, Size div 3);
+  ACanvas.Arc(mBox.Left, mBox.Top, mBox.Right, mBox.Bottom, mBox.Right, mBox.Top + mBox.Height div 3,
+    mBox.Left + mBox.Width div 2, mBox.Top);
+  mHead := Max(2, mSize div 3);
   ACanvas.Pen.Width := 1;
   ACanvas.Brush.Style := bsSolid;
   ACanvas.Brush.Color := ACanvas.Pen.Color;
-  ACanvas.Polygon([Point(Box.Right, Box.Top + Box.Height div 3 + 1),
-    Point(Box.Right - Head, Box.Top + Box.Height div 3 - Head div 2),
-    Point(Box.Right + 1, Box.Top + Box.Height div 3 - Head)]);
+  ACanvas.Polygon([Point(mBox.Right, mBox.Top + mBox.Height div 3 + 1),
+    Point(mBox.Right - mHead, mBox.Top + mBox.Height div 3 - mHead div 2),
+    Point(mBox.Right + 1, mBox.Top + mBox.Height div 3 - mHead)]);
 end;
 
 function TAtlasIdeRecursionGutter.TipText(const AFileName: string; ALine: Integer;
   out ATitle, AText: string): Boolean;
 var
-  Calls: TArray<TAtlasRecursionCall>;
+  mCalls: TArray<TAtlasRecursionCall>;
 begin
-  Calls := CallsAt(AFileName, ALine);
-  TAtlasRecursionMarks.TipText(Calls, TAtlasStrings.Text(TAtlasTextId.RecursionTipDirect),
+  mCalls := CallsAt(AFileName, ALine);
+  TAtlasRecursionMarks.TipText(mCalls, TAtlasStrings.Text(TAtlasTextId.RecursionTipDirect),
     TAtlasStrings.Text(TAtlasTextId.RecursionTipChain), ATitle, AText);
-  Result := Length(Calls) > 0;
+  Result := Length(mCalls) > 0;
 end;
 
 function TAtlasIdeRecursionGutter.TipLinks(const AFileName: string; ALine: Integer): TArray<string>;
 var
-  Step: TAtlasRecursionStep;
+  mStep: TAtlasRecursionStep;
 begin
   Result := nil;
-  for Step in TAtlasRecursionMarks.Links(CallsAt(AFileName, ALine)) do
+  for mStep in TAtlasRecursionMarks.Links(CallsAt(AFileName, ALine)) do
   begin
-    Result := Result + [Step.Name];
+    Result := Result + [mStep.Name];
   end;
 end;
 
 procedure TAtlasIdeRecursionGutter.OpenLink(const AFileName: string; ALine, AIndex: Integer);
 var
-  Links: TArray<TAtlasRecursionStep>;
+  mLinks: TArray<TAtlasRecursionStep>;
 begin
-  Links := TAtlasRecursionMarks.Links(CallsAt(AFileName, ALine));
-  if (AIndex >= 0) and (AIndex <= High(Links)) then
+  mLinks := TAtlasRecursionMarks.Links(CallsAt(AFileName, ALine));
+  if (AIndex >= 0) and (AIndex <= High(mLinks)) then
   begin
-    TAtlasIdeNavigation.GoToLocation(AFileName, Links[AIndex].Line, Links[AIndex].Character);
+    TAtlasIdeNavigation.GoToLocation(AFileName, mLinks[AIndex].Line, mLinks[AIndex].Character);
   end;
 end;
 

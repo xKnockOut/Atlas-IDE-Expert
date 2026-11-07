@@ -41,23 +41,23 @@ const
 /// <summary>Erstes Token ab AOffset (Index), High + 1 ohne.</summary>
 function TokenAtOffset(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 var
-  Low, High, Middle: Integer;
+  mLow, mHigh, mMiddle: Integer;
 begin
-  Low := 0;
-  High := Length(ATokens);
-  while Low < High do
+  mLow := 0;
+  mHigh := Length(ATokens);
+  while mLow < mHigh do
   begin
-    Middle := (Low + High) div 2;
-    if ATokens[Middle].Offset < AOffset then
+    mMiddle := (mLow + mHigh) div 2;
+    if ATokens[mMiddle].Offset < AOffset then
     begin
-      Low := Middle + 1;
+      mLow := mMiddle + 1;
     end
     else
     begin
-      High := Middle;
+      mHigh := mMiddle;
     end;
   end;
-  Result := Low;
+  Result := mLow;
 end;
 
 /// <summary>Steht vor APosition in ihrer Zeile nur Leerraum?</summary>
@@ -69,36 +69,36 @@ end;
 /// <summary>Steht hinter APosition in ihrer Zeile nur Leerraum oder ein //-Kommentar?</summary>
 function BlankAfter(const ALines: TArray<string>; const APosition: TTextPosition): Boolean;
 var
-  Rest: string;
+  mRest: string;
 begin
   Result := False;
   if APosition.Line >= Length(ALines) then
   begin
     Exit;
   end;
-  Rest := Trim(Copy(ALines[APosition.Line], APosition.Character + 1, MaxInt));
-  Result := (Rest = '') or Rest.StartsWith('//');
+  mRest := Trim(Copy(ALines[APosition.Line], APosition.Character + 1, MaxInt));
+  Result := (mRest = '') or mRest.StartsWith('//');
 end;
 
 /// <summary>"A", "A und B", "A, B und C".</summary>
 function JoinedList(const AItems: TArray<string>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(AItems) do
+  for mIndex := 0 to High(AItems) do
   begin
-    if Index = 0 then
+    if mIndex = 0 then
     begin
-      Result := AItems[Index];
+      Result := AItems[mIndex];
     end
-    else if Index = High(AItems) then
+    else if mIndex = High(AItems) then
     begin
-      Result := Result + cTexts[TDeclarationsSharedText.AndWord].Text + AItems[Index];
+      Result := Result + cTexts[TDeclarationsSharedText.AndWord].Text + AItems[mIndex];
     end
     else
     begin
-      Result := Result + ', ' + AItems[Index];
+      Result := Result + ', ' + AItems[mIndex];
     end;
   end;
 end;

@@ -31,6 +31,12 @@ jobs:
       - name: Einreihen in den Hauptthread nur über TAtlasMainThread (Code-Review A-02)
         shell: pwsh
         run: ./Tools/Check-MainThreadQueue.ps1
+      - name: Projektdateien für MSBuild lesbar, Selbsttest
+        shell: pwsh
+        run: ./Tools/Check-ProjectFiles.ps1 -SelfTest
+      - name: Projektdateien für MSBuild lesbar (Quelltext-Bau Delphi 12)
+        shell: pwsh
+        run: ./Tools/Check-ProjectFiles.ps1
       - name: Fenster und Editorleisten über die gemeinsamen Hüllen (#1248)
         shell: pwsh
         run: ./Tools/Check-WindowHosts.ps1
@@ -69,6 +75,9 @@ jobs:
         run: ./Tools/Build-Docs.ps1 -OutDir "$env:RUNNER_TEMP/Doku"
       - name: Benchmark-Hilfsfunktionen testen
         run: node --test Tools/Benchmark/lib.test.mjs Tools/Benchmark/ready-lib.test.mjs
+      - name: Release-Paket und Versionsdatei (#1519), Selbsttest
+        shell: pwsh
+        run: ./Tools/Test-ReleasePackage.ps1
       - name: Versionen von Server und Claude-Code-Plugin gleich
         shell: pwsh
         run: ./Tools/Check-Version.ps1

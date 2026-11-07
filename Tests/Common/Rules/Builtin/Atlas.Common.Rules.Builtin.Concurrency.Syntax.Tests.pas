@@ -43,8 +43,8 @@ end;
 
 procedure TConcurrencySyntaxTests.ListsAndNames;
 begin
-  Assert.IsTrue(InList(VclGlobals, 'application'));
-  Assert.IsFalse(InList(VclGlobals, 'Form1'));
+  Assert.IsTrue(InList(cVclGlobals, 'application'));
+  Assert.IsFalse(InList(cVclGlobals, 'Form1'));
   Assert.AreEqual('TA', ClassPart('TA.Destroy'));
   Assert.AreEqual('', ClassPart('Destroy'));
   Assert.AreEqual('Destroy', MethodPart('TA.Destroy'));

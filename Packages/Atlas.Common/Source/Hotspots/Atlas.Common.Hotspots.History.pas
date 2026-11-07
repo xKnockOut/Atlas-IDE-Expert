@@ -33,8 +33,8 @@ uses
 type
   THotspotHistory = record
   public const
-    GitRecord = #$1E;
-    GitField = #$1F;
+    cGitRecord = #$1E;
+    cGitField = #$1F;
   public
     /// <summary>Argumente für git log ab ASince (UTC), ohne die festen Optionen der Umsetzung.</summary>
     class function GitLogArguments(ASince: TDateTime): TArray<string>; static;
@@ -47,7 +47,8 @@ type
     /// <summary>Zerlegt svn log -v --xml; nur Dateien unter APrefix (Pfad im Repository wie "/trunk"),
     /// relativ dazu.</summary>
     class function ParseSvnLog(const AXml, APrefix: string): TArray<THotspotCommit>; static;
-    /// <summary>SVN-Zeitpunkt "2026-10-29T21:24:52.123456Z" bzw. ISO ohne Bruchteil; False bei anderem Format.</summary>
+    /// <summary>SVN-Zeitpunkt "2026-10-29T21:24:52.123456Z" bzw. ISO ohne Bruchteil; False bei anderem
+    /// Format.</summary>
     class function TryParseIsoDate(const AText: string; out ADate: TDateTime): Boolean; static;
     /// <summary>Zeitpunkt für --since bzw. -r {…}: "2026-10-29T21:24:52Z".</summary>
     class function IsoDate(ADate: TDateTime): string; static;
@@ -135,7 +136,7 @@ var
   mSeconds: Int64;
 begin
   ACommit := Default(THotspotCommit);
-  mHead := ALine.Split([THotspotHistory.GitField], 4);
+  mHead := ALine.Split([THotspotHistory.cGitField], 4);
   Result := (Length(mHead) >= 3) and TryStrToInt64(Trim(mHead[1]), mSeconds);
   if not Result then
   begin
@@ -193,7 +194,7 @@ var
 begin
   mList := TList<THotspotCommit>.Create;
   try
-    for mRecord in AText.Split([GitRecord]) do
+    for mRecord in AText.Split([cGitRecord]) do
     begin
       mLines := StringReplace(mRecord, #13, '', [rfReplaceAll]).Split([#10]);
       if (Length(mLines) = 0) or (Trim(mLines[0]) = '') or not TryReadGitHead(mLines[0], mCommit) then

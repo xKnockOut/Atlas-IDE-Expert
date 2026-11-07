@@ -68,15 +68,15 @@ uses
   Atlas.Common.Pascal.Lexer;
 
 const
-  OrdinalCasts: array[0..23] of string = ('Byte', 'Word', 'Integer', 'Cardinal', 'Int64', 'UInt64', 'ShortInt',
+  cOrdinalCasts: array[0..23] of string = ('Byte', 'Word', 'Integer', 'Cardinal', 'Int64', 'UInt64', 'ShortInt',
     'SmallInt', 'LongInt', 'LongWord', 'NativeInt', 'NativeUInt', 'Char', 'AnsiChar', 'WideChar', 'Ord', 'Int8',
     'UInt8', 'Int16', 'UInt16', 'Int32', 'UInt32', 'FixedInt', 'FixedUInt');
   // Tiefe der Klammern und Aufrufe, damit ein Ausdruck aus fremdem Quelltext den Stapel nicht sprengt.
-  MaxDepth = 64;
+  cMaxDepth = 64;
   // Grenzen für den sicheren Überlauf als Gleitkommaschätzung: unter Low(Int64) bzw. deutlich über
   // High(UInt64); knapp daneben bleibt der Ausdruck nur unbekannt.
-  OverflowBelow = -9.2233720368547758e18;
-  OverflowAbove = 1.85e19;
+  cOverflowBelow = -9.2233720368547758e18;
+  cOverflowAbove = 1.85e19;
 
 /// <summary>Vorzeichenloser Typ, der auf einer Plattform 64 Bit breit ist (UInt64, NativeUInt, LongWord).</summary>
 function UnsignedWide(const ATypeName: string): Boolean;
@@ -274,7 +274,7 @@ begin
   // Erst grob schätzen: Liegt das Ergebnis sicher außerhalb dessen, was Delphi rechnet, ist es ein Überlauf.
   Result := 0;
   mEstimate := Estimate(AOperation, ALeft, ARight);
-  if (mEstimate < OverflowBelow) or (mEstimate > OverflowAbove) or BelowLowest(AOperation, ALeft, ARight) then
+  if (mEstimate < cOverflowBelow) or (mEstimate > cOverflowAbove) or BelowLowest(AOperation, ALeft, ARight) then
   begin
     FailWith(TOrdinalStatus.Overflow);
     Exit;
@@ -336,7 +336,7 @@ end;
 
 function TEvaluator.Expression: Int64;
 var
-  Right: Int64;
+  mRight: Int64;
 begin
   Result := Term;
   while not FFailed and (IsSym('+') or IsSym('-') or IsWord('or') or IsWord('xor')) do
@@ -344,34 +344,34 @@ begin
     if IsSym('+') then
     begin
       Advance;
-      Right := Term;
+      mRight := Term;
       if FFailed then
       begin
         Exit;
       end;
-      Result := Arith('+', Result, Right);
+      Result := Arith('+', Result, mRight);
     end
     else if IsSym('-') then
     begin
       Advance;
-      Right := Term;
+      mRight := Term;
       if FFailed then
       begin
         Exit;
       end;
-      Result := Arith('-', Result, Right);
+      Result := Arith('-', Result, mRight);
     end
     else if IsWord('or') then
     begin
       Advance;
-      Right := Term;
-      Result := Result or Right;
+      mRight := Term;
+      Result := Result or mRight;
     end
     else
     begin
       Advance;
-      Right := Term;
-      Result := Result xor Right;
+      mRight := Term;
+      Result := Result xor mRight;
     end;
   end;
 end;
@@ -569,12 +569,12 @@ end;
 
 function TEvaluator.TypeArgument(out AName: string): Boolean;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
   // ( Typname ) ohne Punkt; danach steht der Zeiger hinter der Klammer.
   Result := False;
   AName := '';
-  Start := FIndex;
+  mStart := FIndex;
   if not IsSym('(') then
   begin
     Exit;
@@ -582,14 +582,14 @@ begin
   Advance;
   if AtEnd or not (Current.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
   begin
-    FIndex := Start;
+    FIndex := mStart;
     Exit;
   end;
   AName := Current.Text;
   Advance;
   if not IsSym(')') then
   begin
-    FIndex := Start;
+    FIndex := mStart;
     Exit;
   end;
   Advance;
@@ -702,7 +702,7 @@ begin
   begin
     Result := Arguments;
   end
-  else if IndexText(AName, OrdinalCasts) >= 0 then
+  else if IndexText(AName, cOrdinalCasts) >= 0 then
   begin
     Result := Cast(AName, Arguments);
   end
@@ -816,7 +816,7 @@ begin
   end;
   Inc(FDepth);
   try
-    if FDepth > MaxDepth then
+    if FDepth > cMaxDepth then
     begin
       Fail;
     end
@@ -970,28 +970,28 @@ end;
 class function TOrdinalConstants.Check(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer;
   const ALookup: TOrdinalNameLookup; out AValue: Int64): TOrdinalStatus;
 var
-  Evaluator: TEvaluator;
+  mEvaluator: TEvaluator;
 begin
   AValue := 0;
   if (AFirst < 0) or (AFirst > ALast) then
   begin
     Exit(TOrdinalStatus.Unknown);
   end;
-  Evaluator := TEvaluator.Create(ATokens, AFirst, ALast, ALookup);
+  mEvaluator := TEvaluator.Create(ATokens, AFirst, ALast, ALookup);
   try
-    Result := Evaluator.Run(AValue);
+    Result := mEvaluator.Run(AValue);
   finally
-    Evaluator.Free;
+    mEvaluator.Free;
   end;
 end;
 
 class function TOrdinalConstants.Check(const AText: string; const ALookup: TOrdinalNameLookup;
   out AValue: Int64): TOrdinalStatus;
 var
-  Tokens: TArray<TPascalToken>;
+  mTokens: TArray<TPascalToken>;
 begin
-  Tokens := TPascalLexer.Tokenize(AText);
-  Result := Check(Tokens, 0, High(Tokens), ALookup, AValue);
+  mTokens := TPascalLexer.Tokenize(AText);
+  Result := Check(mTokens, 0, High(mTokens), ALookup, AValue);
 end;
 
 class function TOrdinalConstants.Evaluate(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer;
@@ -1003,10 +1003,10 @@ end;
 class function TOrdinalConstants.Evaluate(const AText: string; const ALookup: TOrdinalNameLookup;
   out AValue: Int64): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
+  mTokens: TArray<TPascalToken>;
 begin
-  Tokens := TPascalLexer.Tokenize(AText);
-  Result := Evaluate(Tokens, 0, High(Tokens), ALookup, AValue);
+  mTokens := TPascalLexer.Tokenize(AText);
+  Result := Evaluate(mTokens, 0, High(mTokens), ALookup, AValue);
 end;
 
 end.

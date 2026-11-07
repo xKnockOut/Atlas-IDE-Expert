@@ -88,7 +88,7 @@ type
   TCreateMethod = class
   public const
     /// <summary>Rückgabetyp, wenn er sich nicht ableiten lässt; als Kommentar meldet ihn der Compiler.</summary>
-    TypePlaceholder = '{Typ}';
+    cTypePlaceholder = '{Typ}';
   public
     /// <summary>Aufruf am Cursor: auf seinem Namen oder direkt hinter "Name(". False sonst, auch bei
     /// Deklarationen und Qualifizierern mit Klammern oder Indizes.</summary>
@@ -137,16 +137,16 @@ end;
 
 function IsKeywordIn(const AToken: TPascalToken; const AWords: array of string): Boolean;
 var
-  Word: string;
+  mWord: string;
 begin
   Result := False;
   if AToken.Kind <> TPascalTokenKind.Keyword then
   begin
     Exit;
   end;
-  for Word in AWords do
+  for mWord in AWords do
   begin
-    if AToken.IsKeyword(Word) then
+    if AToken.IsKeyword(mWord) then
     begin
       Exit(True);
     end;
@@ -168,18 +168,19 @@ end;
 
 function TokensText(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := AFirst to ALast do
+  for mIndex := AFirst to ALast do
   begin
-    if not (ATokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    if not (ATokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
-      if (Result <> '') and (ATokens[Index].Offset > ATokens[Index - 1].Offset + Length(ATokens[Index - 1].Text)) then
+      if (Result <> '') and (ATokens[mIndex].Offset > ATokens[mIndex - 1].Offset + Length(ATokens[mIndex -
+        1].Text)) then
       begin
         Result := Result + ' ';
       end;
-      Result := Result + ATokens[Index].Text;
+      Result := Result + ATokens[mIndex].Text;
     end;
   end;
 end;
@@ -503,25 +504,25 @@ end;
 
 class function TCreateMethod.LiteralType(const ATokens: TArray<TPascalToken>; const AArgument: TCallArgument): string;
 var
-  Token: TPascalToken;
-  First: Integer;
+  mToken: TPascalToken;
+  mFirst: Integer;
 begin
   Result := '';
-  First := AArgument.First;
+  mFirst := AArgument.First;
   // Vorzeichen gehört zur Zahl.
-  if (First < AArgument.Last) and (ATokens[First].IsSymbol('-') or ATokens[First].IsSymbol('+')) then
+  if (mFirst < AArgument.Last) and (ATokens[mFirst].IsSymbol('-') or ATokens[mFirst].IsSymbol('+')) then
   begin
-    First := TRoutineBody.NextToken(ATokens, First);
+    mFirst := TRoutineBody.NextToken(ATokens, mFirst);
   end;
-  if First <> AArgument.Last then
+  if mFirst <> AArgument.Last then
   begin
     Exit;
   end;
-  Token := ATokens[First];
-  case Token.Kind of
+  mToken := ATokens[mFirst];
+  case mToken.Kind of
     TPascalTokenKind.Number:
-      if (Token.Text[1] <> '$') and (Token.Text[1] <> '%') and
-        ((Pos('.', Token.Text) > 0) or (Pos('e', LowerCase(Token.Text)) > 0)) then
+      if (mToken.Text[1] <> '$') and (mToken.Text[1] <> '%') and
+        ((Pos('.', mToken.Text) > 0) or (Pos('e', LowerCase(mToken.Text)) > 0)) then
       begin
         Result := 'Double';
       end
@@ -534,7 +535,7 @@ begin
     TPascalTokenKind.CharLiteral:
       Result := 'Char';
     TPascalTokenKind.Identifier:
-      if SameText(Token.Text, 'True') or SameText(Token.Text, 'False') then
+      if SameText(mToken.Text, 'True') or SameText(mToken.Text, 'False') then
       begin
         Result := 'Boolean';
       end;
@@ -728,52 +729,52 @@ end;
 
 class function TCreateMethod.UniqueNames(const ANames: TArray<string>): TArray<string>;
 var
-  Index, Other, Number: Integer;
-  Taken: Boolean;
+  mIndex, mOther, mNumber: Integer;
+  mTaken: Boolean;
 begin
   SetLength(Result, Length(ANames));
-  for Index := 0 to High(ANames) do
+  for mIndex := 0 to High(ANames) do
   begin
-    Result[Index] := ANames[Index];
-    Number := 1;
+    Result[mIndex] := ANames[mIndex];
+    mNumber := 1;
     repeat
-      Taken := False;
-      for Other := 0 to Index - 1 do
+      mTaken := False;
+      for mOther := 0 to mIndex - 1 do
       begin
-        if SameText(Result[Other], Result[Index]) then
+        if SameText(Result[mOther], Result[mIndex]) then
         begin
-          Taken := True;
+          mTaken := True;
         end;
       end;
-      if Taken then
+      if mTaken then
       begin
-        Inc(Number);
-        Result[Index] := ANames[Index] + IntToStr(Number);
+        Inc(mNumber);
+        Result[mIndex] := ANames[mIndex] + IntToStr(mNumber);
       end;
-    until not Taken;
+    until not mTaken;
   end;
 end;
 
 class function TCreateMethod.ParameterList(const AParameters: TArray<TCreateParameter>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
   if AParameters = nil then
   begin
     Exit;
   end;
-  for Index := 0 to High(AParameters) do
+  for mIndex := 0 to High(AParameters) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
       Result := Result + '; ';
     end;
-    if AParameters[Index].IsConst then
+    if AParameters[mIndex].IsConst then
     begin
       Result := Result + 'const ';
     end;
-    Result := Result + AParameters[Index].Name + ': ' + AParameters[Index].TypeName;
+    Result := Result + AParameters[mIndex].Name + ': ' + AParameters[mIndex].TypeName;
   end;
   Result := '(' + Result + ')';
 end;
@@ -805,62 +806,62 @@ end;
 
 function BodyText(const APlan: TCreateMethodPlan; const ALineBreak: string): string;
 var
-  Inner: string;
+  mInner: string;
 begin
-  Inner := '';
+  mInner := '';
   if APlan.CaretInBody then
   begin
-    Inner := TRoutineBody.IndentUnit(APlan.Style) + '$0';
+    mInner := TRoutineBody.IndentUnit(APlan.Style) + '$0';
   end;
-  Result := TCreateMethod.Header(APlan, True) + ';' + ALineBreak + 'begin' + ALineBreak + Inner + ALineBreak + 'end;';
+  Result := TCreateMethod.Header(APlan, True) + ';' + ALineBreak + 'begin' + ALineBreak + mInner + ALineBreak + 'end;';
 end;
 
 class function TCreateMethod.MethodEdits(const AText: string; ATree: TSyntaxTree; const APlan: TCreateMethodPlan;
   out AEdits: TArray<TTextEdit>): Boolean;
 var
-  Body: TSyntaxNode;
-  Edit: TTextEdit;
-  Section: string;
+  mBody: TSyntaxNode;
+  mEdit: TTextEdit;
+  mSection: string;
 begin
   AEdits := nil;
   Result := False;
-  Body := TRoutineBody.TypeBody(ATree.Root, APlan.TypeName.Substring(APlan.TypeName.LastIndexOf('.') + 1));
-  if Body = nil then
+  mBody := TRoutineBody.TypeBody(ATree.Root, APlan.TypeName.Substring(APlan.TypeName.LastIndexOf('.') + 1));
+  if mBody = nil then
   begin
     Exit;
   end;
-  Section := APlan.Section;
-  if Section = '' then
+  mSection := APlan.Section;
+  if mSection = '' then
   begin
-    Section := 'private';
+    mSection := 'private';
   end;
-  if not TRoutineBody.MemberDeclaration(AText, ATree, Body,
-    TMemberEntry.Create(Section, TCreateMethod.Header(APlan, False) + ';'), APlan.Style, Edit) then
+  if not TRoutineBody.MemberDeclaration(AText, ATree, mBody,
+    TMemberEntry.Create(mSection, TCreateMethod.Header(APlan, False) + ';'), APlan.Style, mEdit) then
   begin
     Exit;
   end;
-  AEdits := [Edit];
+  AEdits := [mEdit];
   if not TClassCompletion.BodyEdit(ATree, AText, APlan.TypeName, BodyText(APlan, TTextLines.LineBreakOf(AText)),
-    Edit) then
+    mEdit) then
   begin
     Exit;
   end;
-  AEdits := AEdits + [Edit];
+  AEdits := AEdits + [mEdit];
   Result := True;
 end;
 
 class function TCreateMethod.RoutineEdit(const AText: string; ARoutine: TSyntaxNode;
   const APlan: TCreateMethodPlan): TTextEdit;
 var
-  Line: Integer;
-  LineBreak: string;
-  Position: TTextPosition;
+  mLine: Integer;
+  mLineBreak: string;
+  mPosition: TTextPosition;
 begin
-  LineBreak := TTextLines.LineBreakOf(AText);
-  Line := TRoutineBody.RoutineInsertLine(AText, ARoutine);
-  Position := TTextPosition.Create(Line, 0);
-  Result := TTextEdit.Create(TTextRange.Create(Position, Position), BodyText(APlan, LineBreak) + LineBreak +
-    LineBreak);
+  mLineBreak := TTextLines.LineBreakOf(AText);
+  mLine := TRoutineBody.RoutineInsertLine(AText, ARoutine);
+  mPosition := TTextPosition.Create(mLine, 0);
+  Result := TTextEdit.Create(TTextRange.Create(mPosition, mPosition), BodyText(APlan, mLineBreak) + mLineBreak +
+    mLineBreak);
 end;
 
 end.

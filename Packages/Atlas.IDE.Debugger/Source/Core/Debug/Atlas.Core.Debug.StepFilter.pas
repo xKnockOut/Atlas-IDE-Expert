@@ -74,10 +74,10 @@ type
 
   TAtlasStepFilter = class
   public const
-    Command = 'atlas.server.stepFilter';
-    CountsCommand = 'atlas.server.stepFilterCounts';
+    cCommand = 'atlas.server.stepFilter';
+    cCountsCommand = 'atlas.server.stepFilterCounts';
     /// <summary>So viele gefilterte Routinen überspringt Atlas je F7 höchstens.</summary>
-    MaxSkips = 16;
+    cMaxSkips = 16;
   public
     /// <summary>JSON-Argumente [uri, line] für Command.</summary>
     class function Arguments(const AUri: string; ALine: Integer): string; static;
@@ -111,7 +111,6 @@ type
     /// <summary>Halt nach „Bis zur Rückkehr“.</summary>
     function AfterReturn(ADepth: Integer): TAtlasStepFilterAction;
     property Phase: TAtlasStepFilterPhase read FPhase;
-    property StartDepth: Integer read FStartDepth;
     property Skips: Integer read FSkips;
   end;
 
@@ -257,7 +256,7 @@ begin
   begin
     for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
     begin
-      ACounts.Kinds[mKind] := mKinds.GetValue<Integer>(TStepFilterNames.KindNames[mKind], 0);
+      ACounts.Kinds[mKind] := mKinds.GetValue<Integer>(TStepFilterNames.cKindNames[mKind], 0);
     end;
   end;
   if mRoot.TryGetValue<TJSONArray>('patterns', mPatterns) then
@@ -324,7 +323,7 @@ end;
 function TAtlasStepFilterRun.AfterStep(ADepth: Integer; AFiltered: Boolean): TAtlasStepFilterAction;
 begin
   Result := TAtlasStepFilterAction.Keep;
-  if not Entered(ADepth) or not AFiltered or (FSkips >= TAtlasStepFilter.MaxSkips) then
+  if not Entered(ADepth) or not AFiltered or (FSkips >= TAtlasStepFilter.cMaxSkips) then
   begin
     Cancel;
     Exit;

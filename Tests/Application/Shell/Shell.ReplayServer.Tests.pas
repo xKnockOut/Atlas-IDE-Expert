@@ -76,12 +76,12 @@ begin
   mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasCrashReplay_' + TGUID.NewGuid.ToString);
   TDirectory.CreateDirectory(mFolder);
   try
-    TFile.WriteAllText(TPath.Combine(mFolder, TCrashCases.RequestName), ARequest, TEncoding.UTF8);
+    TFile.WriteAllText(TPath.Combine(mFolder, TCrashCases.cRequestName), ARequest, TEncoding.UTF8);
     for mFile in AFiles do
     begin
       TFile.WriteAllText(TPath.Combine(mFolder, mFile.Name), mFile.Text, TEncoding.UTF8);
     end;
-    if not TCrashCases.Load(TPath.Combine(mFolder, TCrashCases.RequestName), mCase, mError) then
+    if not TCrashCases.Load(TPath.Combine(mFolder, TCrashCases.cRequestName), mCase, mError) then
     begin
       Result := Default(TReplayResult);
       Result.Outcome := TReplayOutcome.Unreadable;
@@ -103,18 +103,18 @@ end;
 { TShellReplayServerTests }
 
 const
-  HoverRequest = '{"format":1,"kind":"exception","method":"textDocument/hover","id":1,' +
+  cHoverRequest = '{"format":1,"kind":"exception","method":"textDocument/hover","id":1,' +
     '"params":{"textDocument":{"uri":"file:///C:/Fall/Demo.pas"},"position":{"line":2,"character":10}},' +
     '"uri":"file:///C:/Fall/Demo.pas","file":"C:\\Fall\\Demo.pas","line":2,' +
     '"exception":{"class":"EStackOverflow","message":"Stack overflow"},' +
     '"files":{"snapshot":"Demo.pas","stack":"stapel.txt","settings":[]}}';
-  DemoUnit = 'unit Demo;'#13#10'interface'#13#10'procedure Hallo;'#13#10'implementation'#13#10 +
+  cDemoUnit = 'unit Demo;'#13#10'interface'#13#10'procedure Hallo;'#13#10'implementation'#13#10 +
     'procedure Hallo;'#13#10'begin'#13#10'end;'#13#10'end.'#13#10;
 
 procedure TShellReplayServerTests.WarmUpFirstUse;
 begin
-  TCrashReplayTest.Replay(HoverRequest, TArray<TCrashReplayFile>.Create(TCrashReplayFile.Create('Demo.pas',
-    DemoUnit)));
+  TCrashReplayTest.Replay(cHoverRequest, TArray<TCrashReplayFile>.Create(TCrashReplayFile.Create('Demo.pas',
+    cDemoUnit)));
   TCrashReplayTest.LastLog := nil;
 end;
 
@@ -122,10 +122,10 @@ procedure TShellReplayServerTests.HealthyHoverIsNotReproduced;
 var
   mResult: TReplayResult;
 begin
-  mResult := TCrashReplayTest.Replay(HoverRequest, TArray<TCrashReplayFile>.Create(
-    TCrashReplayFile.Create('Demo.pas', DemoUnit)));
+  mResult := TCrashReplayTest.Replay(cHoverRequest, TArray<TCrashReplayFile>.Create(
+    TCrashReplayFile.Create('Demo.pas', cDemoUnit)));
   Assert.IsTrue(mResult.Outcome = TReplayOutcome.NotReproduced, mResult.Text);
-  Assert.AreEqual(TShellReplay.ExitNotReproduced, TShellReplay.ExitCodeOf(mResult));
+  Assert.AreEqual(TShellReplay.cExitNotReproduced, TShellReplay.ExitCodeOf(mResult));
   // Sauber beendet: Liefen beim Ende noch Anfragen, gibt die Komposition ihre Objekte absichtlich nicht frei.
   Assert.IsFalse(string.Join(#10, TCrashReplayTest.LastLog).Contains('liefen noch Anfragen'),
     string.Join(#10, TCrashReplayTest.LastLog));

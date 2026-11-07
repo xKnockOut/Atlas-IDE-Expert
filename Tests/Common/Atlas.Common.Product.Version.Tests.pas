@@ -28,7 +28,7 @@ uses
 
 procedure TProductVersionTests.NameIsAtlas;
 begin
-  Assert.AreEqual('Atlas', TProductVersion.Name);
+  Assert.AreEqual('Atlas', TProductVersion.cName);
 end;
 
 procedure TProductVersionTests.VersionHasMajorMinorPatch;
@@ -37,7 +37,7 @@ var
   Part: string;
 begin
   // SemVer: Vorabkennung wie -beta.1 steht hinter den drei Zahlen.
-  Version := TProductVersion.Version.Split(['-'])[0];
+  Version := TProductVersion.cVersion.Split(['-'])[0];
   Assert.AreEqual<NativeInt>(3, Length(Version.Split(['.'])), 'Version muss aus Major.Minor.Patch bestehen');
   for Part in Version.Split(['.']) do
   begin
@@ -47,8 +47,8 @@ end;
 
 procedure TProductVersionTests.ServerAndPluginShareVersion;
 begin
-  Assert.AreEqual(TAtlasVersion.Version, TProductVersion.Version);
-  Assert.AreEqual(TAtlasVersion.Version, TAtlasPluginVersion.Version);
+  Assert.AreEqual(TAtlasVersion.cVersion, TProductVersion.cVersion);
+  Assert.AreEqual(TAtlasVersion.cVersion, TAtlasPluginVersion.cVersion);
 end;
 
 initialization

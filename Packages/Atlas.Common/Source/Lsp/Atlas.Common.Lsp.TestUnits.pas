@@ -71,9 +71,9 @@ type
 
   TLspTestUnits = class
   public const
-    Command = 'atlas.server.testUnit';
+    cCommand = 'atlas.server.testUnit';
     /// <summary>Befehl des Clients: Datei öffnen (Argument: URI).</summary>
-    OpenFileCommand = 'atlas.openFile';
+    cOpenFileCommand = 'atlas.openFile';
   private
     FStore: IDocumentStore;
     FContextFor: TTestUnitContextProvider;
@@ -140,7 +140,7 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  LineBreak = #13#10;
+  cLineBreak = #13#10;
 
 { TLspTestUnits }
 
@@ -153,19 +153,19 @@ end;
 
 class function TLspTestUnits.TestFolder(const AContext: TTestUnitContext): string;
 var
-  Folder: string;
+  mFolder: string;
 begin
   if AContext.Settings.Folder <> '' then
   begin
-    Folder := StringReplace(StringReplace(AContext.Settings.Folder, '/', PathDelim, [rfReplaceAll]), '\', PathDelim,
+    mFolder := StringReplace(StringReplace(AContext.Settings.Folder, '/', PathDelim, [rfReplaceAll]), '\', PathDelim,
       [rfReplaceAll]);
-    if (Pos(':', Folder) > 0) or Folder.StartsWith(PathDelim) then
+    if (Pos(':', mFolder) > 0) or mFolder.StartsWith(PathDelim) then
     begin
-      Result := IncludeTrailingPathDelimiter(Folder);
+      Result := IncludeTrailingPathDelimiter(mFolder);
     end
     else
     begin
-      Result := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(AContext.Root) + Folder);
+      Result := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(AContext.Root) + mFolder);
     end;
   end
   else if AContext.TestProgram <> '' then
@@ -180,14 +180,14 @@ end;
 
 function IsUnitText(const ATokens: TArray<TPascalToken>): Boolean;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
   Result := False;
-  for Token in ATokens do
+  for mToken in ATokens do
   begin
-    if Token.Kind = TPascalTokenKind.Keyword then
+    if mToken.Kind = TPascalTokenKind.Keyword then
     begin
-      Exit(Token.IsKeyword('unit'));
+      Exit(mToken.IsKeyword('unit'));
     end;
   end;
 end;
@@ -290,202 +290,202 @@ end;
 
 function DocumentEdit(const AUri: string; const AEdits: TArray<TRuleEdit>): TJSONObject;
 var
-  Document, Item: TJSONObject;
-  Edits: TJSONArray;
-  Edit: TRuleEdit;
+  mDocument, mItem: TJSONObject;
+  mEdits: TJSONArray;
+  mEdit: TRuleEdit;
 begin
-  Document := TJSONObject.Create;
-  Document.AddPair('uri', AUri);
-  Document.AddPair('version', TJSONNull.Create);
-  Edits := TJSONArray.Create;
-  for Edit in AEdits do
+  mDocument := TJSONObject.Create;
+  mDocument.AddPair('uri', AUri);
+  mDocument.AddPair('version', TJSONNull.Create);
+  mEdits := TJSONArray.Create;
+  for mEdit in AEdits do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-    Item.AddPair('newText', Edit.NewText);
-    Edits.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mItem.AddPair('newText', mEdit.NewText);
+    mEdits.AddElement(mItem);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('textDocument', Document);
-  Result.AddPair('edits', Edits);
+  Result.AddPair('textDocument', mDocument);
+  Result.AddPair('edits', mEdits);
 end;
 
 class function TLspTestUnits.CreateEdit(const ATarget: TTestUnitTarget;
   const AContext: TTestUnitContext): TJSONObject;
 var
-  Changes: TJSONArray;
-  Creation, Options: TJSONObject;
-  NewUri, Relative, ProjectFile, Text: string;
-  Edit: TRuleEdit;
+  mChanges: TJSONArray;
+  mCreation, mOptions: TJSONObject;
+  mNewUri, mRelative, mProjectFile, mText: string;
+  mEdit: TRuleEdit;
 begin
   if not ATarget.CanCreate then
   begin
     Exit(nil);
   end;
-  NewUri := TDocumentUris.FromPath(ATarget.NewFile);
-  Changes := TJSONArray.Create;
-  Creation := TJSONObject.Create;
-  Creation.AddPair('kind', 'create');
-  Creation.AddPair('uri', NewUri);
-  Options := TJSONObject.Create;
-  Options.AddPair('ignoreIfExists', TJSONBool.Create(False));
-  Creation.AddPair('options', Options);
-  Changes.AddElement(Creation);
-  Changes.AddElement(DocumentEdit(NewUri, [TRuleEdit.Create(TTextRange.Create(0, 0, 0, 0),
-    TTestUnits.UnitText(ATarget.Counterpart, ATarget.Source, ATarget.ClassName, LineBreak))]));
+  mNewUri := TDocumentUris.FromPath(ATarget.NewFile);
+  mChanges := TJSONArray.Create;
+  mCreation := TJSONObject.Create;
+  mCreation.AddPair('kind', 'create');
+  mCreation.AddPair('uri', mNewUri);
+  mOptions := TJSONObject.Create;
+  mOptions.AddPair('ignoreIfExists', TJSONBool.Create(False));
+  mCreation.AddPair('options', mOptions);
+  mChanges.AddElement(mCreation);
+  mChanges.AddElement(DocumentEdit(mNewUri, [TRuleEdit.Create(TTextRange.Create(0, 0, 0, 0),
+    TTestUnits.UnitText(ATarget.Counterpart, ATarget.Source, ATarget.ClassName, cLineBreak))]));
   // Ins Testprojekt: uses der .dpr und DCCReference der .dproj, jeweils mit relativem Pfad.
-  Relative := TTestUnits.RelativePath(ExtractFilePath(AContext.TestProgram), ATarget.NewFile);
-  Text := AContext.ReadText(AContext.TestProgram);
-  if TUnitTemplates.UnitProgramEdit(Text, ATarget.Counterpart, Relative, Edit) then
+  mRelative := TTestUnits.RelativePath(ExtractFilePath(AContext.TestProgram), ATarget.NewFile);
+  mText := AContext.ReadText(AContext.TestProgram);
+  if TUnitTemplates.UnitProgramEdit(mText, ATarget.Counterpart, mRelative, mEdit) then
   begin
-    Changes.AddElement(DocumentEdit(TDocumentUris.FromPath(AContext.TestProgram), [Edit]));
+    mChanges.AddElement(DocumentEdit(TDocumentUris.FromPath(AContext.TestProgram), [mEdit]));
   end;
-  ProjectFile := ChangeFileExt(AContext.TestProgram, '.dproj');
-  if AContext.Exists(ProjectFile) then
+  mProjectFile := ChangeFileExt(AContext.TestProgram, '.dproj');
+  if AContext.Exists(mProjectFile) then
   begin
-    Text := AContext.ReadText(ProjectFile);
-    if (Pos('"' + Relative + '"', Text) = 0) and
-      TUnitTemplates.ProjectEdit(Text, Relative, '', TFormKind.Form, False, Edit) then
+    mText := AContext.ReadText(mProjectFile);
+    if (Pos('"' + mRelative + '"', mText) = 0) and
+      TUnitTemplates.ProjectEdit(mText, mRelative, '', TFormKind.Form, False, mEdit) then
     begin
-      Changes.AddElement(DocumentEdit(TDocumentUris.FromPath(ProjectFile), [Edit]));
+      mChanges.AddElement(DocumentEdit(TDocumentUris.FromPath(mProjectFile), [mEdit]));
     end;
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('documentChanges', Changes);
+  Result.AddPair('documentChanges', mChanges);
 end;
 
 function TLspTestUnits.ResolveUri(const AUri: string; ALine: Integer;
   const AContext: TTestUnitContext): TTestUnitTarget;
 var
-  Document: ITextDocument;
-  Shared: ISharedSyntaxTree;
-  FileName: string;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mFileName: string;
 begin
-  FileName := TDocumentUris.ToPath(AUri);
+  mFileName := TDocumentUris.ToPath(AUri);
   // Offenes Dokument: Index aus dem geteilten Syntaxbaum, ohne erneut zu parsen.
-  if FStore.TryGet(AUri, Document) then
+  if FStore.TryGet(AUri, mDocument) then
   begin
-    Shared := TSyntaxTreeCache.Get(Document);
-    Result := Resolve(FileName, Shared.Tree.Tokens, TTreeExtracts.ForTree(Shared.Tree).Extracted(FileName), ALine,
+    mShared := TSyntaxTreeCache.Get(mDocument);
+    Result := Resolve(mFileName, mShared.Tree.Tokens, TTreeExtracts.ForTree(mShared.Tree).Extracted(mFileName), ALine,
       AContext);
   end
   else
   begin
-    Result := Resolve(FileName, AContext.ReadText(FileName), ALine, AContext);
+    Result := Resolve(mFileName, AContext.ReadText(mFileName), ALine, AContext);
   end;
 end;
 
 function CommandJson(const ATitle, ACommand, AArgument: string): TJSONObject;
 var
-  Arguments: TJSONArray;
+  mArguments: TJSONArray;
 begin
-  Arguments := TJSONArray.Create;
-  Arguments.Add(AArgument);
+  mArguments := TJSONArray.Create;
+  mArguments.Add(AArgument);
   Result := TJSONObject.Create;
   Result.AddPair('title', ATitle);
   Result.AddPair('command', ACommand);
-  Result.AddPair('arguments', Arguments);
+  Result.AddPair('arguments', mArguments);
 end;
 
 function TLspTestUnits.Actions(const AUri: string; ALine: Integer): TArray<TJSONObject>;
 var
-  Context: TTestUnitContext;
-  Target: TTestUnitTarget;
-  Action, Edit: TJSONObject;
-  Title, Subject: string;
+  mContext: TTestUnitContext;
+  mTarget: TTestUnitTarget;
+  mAction, mEdit: TJSONObject;
+  mTitle, mSubject: string;
 begin
   Result := nil;
-  if not Assigned(FContextFor) or not FContextFor(AUri, Context) then
+  if not Assigned(FContextFor) or not FContextFor(AUri, mContext) then
   begin
     Exit;
   end;
-  Target := ResolveUri(AUri, ALine, Context);
-  if Target.UnitName = '' then
+  mTarget := ResolveUri(AUri, ALine, mContext);
+  if mTarget.UnitName = '' then
   begin
     Exit;
   end;
-  if Target.CounterpartFile <> '' then
+  if mTarget.CounterpartFile <> '' then
   begin
-    if Target.IsTest then
+    if mTarget.IsTest then
     begin
-      Title := cTexts[TLspTestUnitsText.SwitchToUnit].Fmt([Target.Counterpart]);
+      mTitle := cTexts[TLspTestUnitsText.SwitchToUnit].Fmt([mTarget.Counterpart]);
     end
     else
     begin
-      Title := cTexts[TLspTestUnitsText.SwitchToTestUnit].Fmt([Target.Counterpart]);
+      mTitle := cTexts[TLspTestUnitsText.SwitchToTestUnit].Fmt([mTarget.Counterpart]);
     end;
-    Action := TJSONObject.Create;
-    Action.AddPair('title', Title);
-    Action.AddPair('kind', RewriteKind);
-    Action.AddPair('command', CommandJson(Title, OpenFileCommand, TDocumentUris.FromPath(Target.CounterpartFile)));
-    Result := [Action];
+    mAction := TJSONObject.Create;
+    mAction.AddPair('title', mTitle);
+    mAction.AddPair('kind', cRewriteKind);
+    mAction.AddPair('command', CommandJson(mTitle, cOpenFileCommand, TDocumentUris.FromPath(mTarget.CounterpartFile)));
+    Result := [mAction];
     Exit;
   end;
   // Anlegen nur auf einer Klasse (#274) oder in einer Unit ohne Klassen.
-  if not Target.CanCreate or not (Target.ClassAtLine or (Target.ClassName = '')) then
+  if not mTarget.CanCreate or not (mTarget.ClassAtLine or (mTarget.ClassName = '')) then
   begin
     Exit;
   end;
-  Subject := Target.ClassName;
-  if Subject = '' then
+  mSubject := mTarget.ClassName;
+  if mSubject = '' then
   begin
-    Subject := Target.UnitName;
+    mSubject := mTarget.UnitName;
   end;
-  Title := cTexts[TLspTestUnitsText.CreateADUnitXTestUnit].Fmt([Subject]);
-  Edit := CreateEdit(Target, Context);
-  Action := TJSONObject.Create;
-  Action.AddPair('title', Title);
-  Action.AddPair('kind', RewriteKind);
-  Action.AddPair('edit', Edit);
-  Action.AddPair('command', CommandJson(Title, OpenFileCommand, TDocumentUris.FromPath(Target.NewFile)));
-  Result := [Action];
+  mTitle := cTexts[TLspTestUnitsText.CreateADUnitXTestUnit].Fmt([mSubject]);
+  mEdit := CreateEdit(mTarget, mContext);
+  mAction := TJSONObject.Create;
+  mAction.AddPair('title', mTitle);
+  mAction.AddPair('kind', cRewriteKind);
+  mAction.AddPair('edit', mEdit);
+  mAction.AddPair('command', CommandJson(mTitle, cOpenFileCommand, TDocumentUris.FromPath(mTarget.NewFile)));
+  Result := [mAction];
 end;
 
 function TLspTestUnits.Execute(const AArguments: TJSONArray): TJSONValue;
 var
-  Uri: string;
-  Line: Integer;
-  Context: TTestUnitContext;
-  Target: TTestUnitTarget;
-  Answer: TJSONObject;
+  mUri: string;
+  mLine: Integer;
+  mContext: TTestUnitContext;
+  mTarget: TTestUnitTarget;
+  mAnswer: TJSONObject;
 begin
   if (AArguments = nil) or (AArguments.Count = 0) then
   begin
-    raise EArgumentException.Create(Command + cTexts[TLspTestUnitsText.NeedsTheURIOfThe].Text);
+    raise EArgumentException.Create(cCommand + cTexts[TLspTestUnitsText.NeedsTheURIOfThe].Text);
   end;
-  Uri := AArguments.Items[0].Value;
-  Line := -1;
+  mUri := AArguments.Items[0].Value;
+  mLine := -1;
   if AArguments.Count > 1 then
   begin
-    Line := StrToIntDef(AArguments.Items[1].Value, -1);
+    mLine := StrToIntDef(AArguments.Items[1].Value, -1);
   end;
-  Answer := TJSONObject.Create;
-  Result := Answer;
-  if not Assigned(FContextFor) or not FContextFor(Uri, Context) then
+  mAnswer := TJSONObject.Create;
+  Result := mAnswer;
+  if not Assigned(FContextFor) or not FContextFor(mUri, mContext) then
   begin
-    Answer.AddPair('unit', '');
-    Answer.AddPair('reason', cTexts[TLspTestUnitsText.FileBelongsToNoWorkspace].Text);
+    mAnswer.AddPair('unit', '');
+    mAnswer.AddPair('reason', cTexts[TLspTestUnitsText.FileBelongsToNoWorkspace].Text);
     Exit;
   end;
-  Target := ResolveUri(Uri, Line, Context);
-  Answer.AddPair('unit', Target.UnitName);
-  Answer.AddPair('isTest', TJSONBool.Create(Target.IsTest));
-  Answer.AddPair('counterpart', Target.Counterpart);
-  if Target.CounterpartFile <> '' then
+  mTarget := ResolveUri(mUri, mLine, mContext);
+  mAnswer.AddPair('unit', mTarget.UnitName);
+  mAnswer.AddPair('isTest', TJSONBool.Create(mTarget.IsTest));
+  mAnswer.AddPair('counterpart', mTarget.Counterpart);
+  if mTarget.CounterpartFile <> '' then
   begin
-    Answer.AddPair('uri', TDocumentUris.FromPath(Target.CounterpartFile));
+    mAnswer.AddPair('uri', TDocumentUris.FromPath(mTarget.CounterpartFile));
   end
   else
   begin
-    Answer.AddPair('uri', TJSONNull.Create);
+    mAnswer.AddPair('uri', TJSONNull.Create);
   end;
-  Answer.AddPair('canCreate', TJSONBool.Create(Target.CanCreate));
-  if Target.CanCreate then
+  mAnswer.AddPair('canCreate', TJSONBool.Create(mTarget.CanCreate));
+  if mTarget.CanCreate then
   begin
-    Answer.AddPair('newUri', TDocumentUris.FromPath(Target.NewFile));
-    Answer.AddPair('edit', CreateEdit(Target, Context));
+    mAnswer.AddPair('newUri', TDocumentUris.FromPath(mTarget.NewFile));
+    mAnswer.AddPair('edit', CreateEdit(mTarget, mContext));
   end;
-  Answer.AddPair('reason', Target.Reason);
+  mAnswer.AddPair('reason', mTarget.Reason);
 end;
 
 initialization

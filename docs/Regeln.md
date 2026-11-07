@@ -946,7 +946,7 @@ FWorker.Start;
 
 **Funktionsergebnis eventuell nicht gesetzt** · Bug · Warnung · Gruppe Fehler finden
 
-Ein Pfad durch die Funktion endet, ohne Result zuzuweisen. Der Aufrufer liest dann einen undefinierten Wert.
+Ein Pfad durch die Funktion endet, ohne Result zuzuweisen. Der Aufrufer liest dann einen undefinierten Wert. Eine for-Schleife läuft sicher einmal, wenn beide Grenzen Zahlenliterale oder echte Konstanten der Unit sind (cVersuche = 3) und der Bereich nicht leer ist, wie Delphi es wertet.
 
 Mit Treffer:
 
@@ -1611,7 +1611,7 @@ ShellExecute(0, 'open', 'tool.exe', PChar(QuotedArgument), nil, SW_SHOW);  // va
 
 **Pfad-Traversal** · Schwachstelle · Warnung · Gruppe Sicherheit
 
-Ein Dateizugriff (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) verwendet einen Pfad aus Eingabedaten (Text, ParamStr, Request) ohne Prüfung über TPath.GetFullPath. Experimentell, bis die Datenflussanalyse verfügbar ist.
+Ein Dateizugriff (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) verwendet einen Pfad aus Eingabedaten (Text, ParamStr, Request) ohne Prüfung über TPath.GetFullPath. Nur der Pfad (erstes Argument) zählt, nicht der geschriebene Inhalt (WriteAllText(Pfad, Liste.Text)). Experimentell, bis die Datenflussanalyse verfügbar ist.
 
 Mit Treffer:
 
@@ -1992,7 +1992,7 @@ unit Tools;
 
 **Text im Code statt resourcestring** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-In einer Anweisung steht ein String mit Wörtern für Menschen. In einen resourcestring auslagern, damit er übersetzt werden kann. Standardmäßig aus, niedrige Konfidenz.
+In einer Anweisung steht ein String mit Wörtern für Menschen. In einen resourcestring auslagern, damit er übersetzt werden kann. Still bei Texten, die niemand übersetzt: Argumente von Protokoll- und Prüfaufrufen (…Log, Log…, Diagnose, Trace, Debug, Assert, OutputDebugString), Vergleichs- und Registry-Aufrufen (StartsText, Pos, ReadString …), Masken von FormatDateTime und FormatFloat, Markup (HTML ab <, JSON ab { oder "Schlüssel":, Markdown-Überschriften # und ##) und Font.Name; die Option ignoreCalls nennt weitere Routinen. Standardmäßig aus, niedrige Konfidenz.
 
 Mit Treffer:
 
@@ -2148,7 +2148,7 @@ if Assigned(X) then S := X.Name else S := '';
 
 **Random ohne Randomize** · Code Smell · Hinweis · Gruppe Robustheit und Muster
 
-Random wird verwendet, aber die Unit ruft nie Randomize auf; jeder Start liefert dieselbe Folge. Randomize steht oft in der .dpr, deshalb ist die Regel standardmäßig aus und hat niedrige Konfidenz.
+Random wird verwendet, aber die Unit ruft nie Randomize auf; jeder Start liefert dieselbe Folge. Ein eigenes Random (Aufzählungswert, Routine) ist nicht System.Random. Randomize steht oft in der .dpr, deshalb ist die Regel standardmäßig aus und hat niedrige Konfidenz.
 
 Mit Treffer:
 
@@ -2434,7 +2434,7 @@ on E: Exception do
 
 **String-Verkettung in einer Schleife** · Code Smell · Hinweis · Gruppe Performance
 
-Eine String-Variable wird in einer Schleife schrittweise verlängert. Delphi vergrößert Strings meist an Ort und Stelle, deshalb nur mit niedriger Konfidenz und standardmäßig aus; bei vielen Durchläufen ist TStringBuilder schneller.
+Eine String-Variable wird in einer Schleife schrittweise verlängert. Delphi vergrößert Strings meist an Ort und Stelle, deshalb nur mit niedriger Konfidenz und standardmäßig aus; bei vielen Durchläufen ist TStringBuilder schneller. Still, wenn die Variable in jedem Durchlauf vorher neu gesetzt wird, direkt im Schleifenrumpf und nicht hinter then, else oder einer case-Marke (sie wächst dann nicht über die Schleife).
 
 Mit Treffer:
 
@@ -2461,7 +2461,7 @@ end;
 
 **Teurer Aufruf in der Schleifenbedingung** · Code Smell · Hinweis · Gruppe Performance
 
-Die Bedingung von while und until wird bei jedem Durchlauf ausgewertet. Aufrufe wie Trim, Format oder FileExists und Eigenschaften wie Lines.Text werden dort jedes Mal neu berechnet; besser einmal vor der Schleife. Die Grenzen von for werden nur einmal ausgewertet und nicht gemeldet. Standardmäßig aus.
+Die Bedingung von while und until wird bei jedem Durchlauf ausgewertet. Aufrufe wie Trim oder Format und Eigenschaften wie Lines.Text werden dort jedes Mal neu berechnet; besser einmal vor der Schleife. Die Grenzen von for werden nur einmal ausgewertet und nicht gemeldet, ebenso .Text als Feld (Record-Feld eines Typs derselben Datei oder laut Namensauflösung ein Feld bzw. eine Property, die ein Feld liest), eine Property, deren Empfänger die Schleife ändert (Items[I].Text), FileExists und DirectoryExists (Warten auf eine Datei) und Aufrufe, deren Argument die Schleife ändert (Zuweisung, Inc, Dec, Delete, SetLength, Include, Exclude). Standardmäßig aus.
 
 Mit Treffer:
 
@@ -2483,7 +2483,7 @@ while I < Length(Text) do
 
 **Hinzufügen in einer Schleife ohne BeginUpdate** · Code Smell · Hinweis · Gruppe Performance
 
-Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen. Still bei Menüs (TMenuItem hat kein BeginUpdate) und bei for-Schleifen mit höchstens 10 Durchläufen (feste Grenzen oder ein statisches Array derselben Datei). Standardmäßig aus.
+Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen. Still bei Menüs (TMenuItem hat kein BeginUpdate, auch über Felder wie FParts.Menu.Items, auch in Records, die in der Klasse verschachtelt sind), bei Listen ohne Steuerelement (TObjectList<T>, TList, TDictionary), bei Typen im Index ohne BeginUpdate und bei for-Schleifen mit höchstens 10 Durchläufen (feste Grenzen oder ein statisches Array derselben Datei). Standardmäßig aus.
 
 Mit Treffer:
 
@@ -4052,7 +4052,7 @@ if SameText(Land, Standard) then
 
 **Zahl ohne Namen im Code** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Zahlenliterale (dezimal, $hex, Gleitkomma, mit Vorzeichen) in Anweisungen, außerhalb von const-Abschnitten, Typen, Array-Grenzen und Teilbereichen. Erlaubte Werte sind einstellbar; DFM-Koordinaten und Tests lassen sich über exclude ausnehmen. Standard aus und niedrige Konfidenz: Treffer erscheinen, wenn die Regel eingeschaltet und minConfidence low ist. Schnellkorrektur: Konstante einführen (#50) im const-Abschnitt der Routine.
+Zahlenliterale (dezimal, $hex, Gleitkomma, mit Vorzeichen) in Anweisungen, außerhalb von const-Abschnitten, Typen, Array-Grenzen und Teilbereichen. Still bei Zahlen, die für sich sprechen: DPI-Basis 96 in MulDiv, volle Bitmasken ($FF, $FFFF, $FFFFFFFF), Zeiteinheiten 24, 60, 1000 und 3600 in *, /, div und mod sowie Argumente von Aufrufen in einem Array-Literal, deren Argumente alle Zahlen sind (Punktlisten wie [P(3.5, 1.5), P(9.5, 1.5)]); SetBounds(12, 9, 360, 23) bleibt gemeldet. Erlaubte Werte sind einstellbar; DFM-Koordinaten und Tests lassen sich über exclude ausnehmen. Standard aus und niedrige Konfidenz: Treffer erscheinen, wenn die Regel eingeschaltet und minConfidence low ist. Schnellkorrektur: Konstante einführen (#50) im const-Abschnitt der Routine.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -4209,7 +4209,7 @@ TStufe2 = class(TBasis)
 
 **Öffentliches Feld** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Felder im public- oder published-Abschnitt einer Klasse. Der Abschnitt ohne Sichtbarkeitswort zählt nur bei Klassen ohne Vorfahren oder mit TObject, weil der Formulardesigner dort seine Felder anlegt. Records sind ausgenommen, außer mit includeRecords; class var wird nicht gemeldet. Standard aus. Schnellkorrektur: Feld kapseln legt das Feld als FName in einen private-Abschnitt am Ende der Klasse und ergänzt im alten Abschnitt property Name read FName write FName; Zugriffe von außen bleiben gültig.
+Felder im public- oder published-Abschnitt einer Klasse. Der Abschnitt ohne Sichtbarkeitswort zählt nur bei Klassen ohne Vorfahren oder mit TObject, weil der Formulardesigner dort seine Felder anlegt. Records sind ausgenommen, außer mit includeRecords; class var und Hilfsklassen unter einem private- oder protected-type-Abschnitt werden nicht gemeldet. Standard aus. Schnellkorrektur: Feld kapseln legt das Feld als FName in einen private-Abschnitt am Ende der Klasse und ergänzt im alten Abschnitt property Name read FName write FName; Zugriffe von außen bleiben gültig.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -7110,7 +7110,7 @@ end.
 
 **Member verdeckt einen Member des Vorfahren** · Bug · Warnung · Gruppe Compiler vorab
 
-Eine Property heißt wie ein Feld eines Vorfahren (wie W1009), ein Feld wie ein Feld oder eine Property eines Vorfahren oder eine nicht virtuelle Methode hat Namen und Parameter einer nicht virtuellen Methode eines Vorfahren (die beiden letzten ohne Code: Delphi 13 übersetzt sie still). Code, der über den Vorfahrtyp zugreift, sieht weiter den alten Member. Virtuelle Methoden meldet hides-virtual, lokale Namen shadowed-name. Neu veröffentlichte Properties (property Caption;), Properties mit neuem Typ über einer Property des Vorfahren, overload, reintroduce, Konstruktoren und Klassenmethoden bleiben unbeanstandet. Member, die der Nachfahre nicht sieht (private einer anderen Unit, strict private mit ignoreStrictPrivate), zählen nicht; Vorfahren kommen aus der Datei und dem Symbolindex. Korrektur für Felder und Properties: den Member in der Klassendeklaration und in den Rümpfen ihrer Methoden in dieser Unit umbenennen (aus FName wird FKundeName).
+Eine Property heißt wie ein Feld eines Vorfahren (wie W1009), ein Feld wie ein Feld oder eine Property eines Vorfahren oder eine nicht virtuelle Methode hat Namen und Parameter einer nicht virtuellen Methode eines Vorfahren (die beiden letzten ohne Code: Delphi 13 übersetzt sie still). Code, der über den Vorfahrtyp zugreift, sieht weiter den alten Member. Virtuelle Methoden meldet hides-virtual, lokale Namen shadowed-name. Neu veröffentlichte Properties (property Caption;), Properties mit neuem Typ über einer Property des Vorfahren, Methoden, die eine Methode eines Interfaces aus der eigenen Vorfahrenliste umsetzen (QueryInterface über TInterfacedObject), overload, reintroduce, Konstruktoren und Klassenmethoden bleiben unbeanstandet. Member, die der Nachfahre nicht sieht (private einer anderen Unit, strict private mit ignoreStrictPrivate), zählen nicht; Vorfahren kommen aus der Datei und dem Symbolindex. Korrektur für Felder und Properties: den Member in der Klassendeklaration und in den Rümpfen ihrer Methoden in dieser Unit umbenennen (aus FName wird FKundeName).
 
 Entspricht der Compilermeldung `W1009`.
 
@@ -8740,7 +8740,7 @@ Nimm(Round(1.5));
 
 **Methode braucht Self nicht** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Eine Methode einer Klasse oder eines Records nutzt weder Self noch Instanzmitglieder (Felder, Properties, Instanzmethoden, inherited). Sie ist nicht virtuell, kein Ereignis der Formulardatei, implementiert kein Interface und wird nicht als Methodenzeiger verwendet. Experimentell: nur aktiv, wenn in atlas.json eingeschaltet; schweigt mit refactoring.methodKind aus. Schnellkorrektur: in eine class-Methode umwandeln (class … static mit refactoring.methodKindStatic); die Code-Aktionen bieten außerdem Aufrufe über die Klasse, eine freie Routine und einen Record-Helper für den Typ des ersten Parameters, jeweils mit Vorschau aller geänderten Aufrufe.
+Eine Methode einer Klasse oder eines Records nutzt weder Self noch Instanzmitglieder (Felder, Properties, Instanzmethoden, inherited). Sie ist nicht virtuell, hat kein Attribut und ist nicht published (DUnitX-Tests und RTTI rufen sie an der Instanz auf), ist kein Ereignis der Formulardatei, implementiert kein Interface und wird nicht als Methodenzeiger verwendet. Experimentell: nur aktiv, wenn in atlas.json eingeschaltet; schweigt mit refactoring.methodKind aus. Schnellkorrektur: in eine class-Methode umwandeln (class … static mit refactoring.methodKindStatic); die Code-Aktionen bieten außerdem Aufrufe über die Klasse, eine freie Routine und einen Record-Helper für den Typ des ersten Parameters, jeweils mit Vorschau aller geänderten Aufrufe.
 
 Mit Treffer:
 

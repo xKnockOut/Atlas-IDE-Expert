@@ -43,7 +43,7 @@ type
   TNameSuggestions = class
   public const
     /// <summary>Mindestanteil in Prozent der Deklarationen mit Präfix, ab dem das Präfix gilt.</summary>
-    PrefixShare = 60;
+    cPrefixShare = 60;
   public
     /// <summary>Namensposition am Cursor (siehe Kopf); False ohne Deklaration mit bekanntem Typ.</summary>
     class function Site(ATree: TSyntaxTree; const APosition: TTextPosition; out ASite: TNameSite): Boolean; static;
@@ -81,10 +81,10 @@ type
   TSyntaxKindSet = set of TSyntaxKind;
 
 const
-  ListWords: array[0..5] of string = ('List', 'Array', 'Collection', 'Queue', 'Stack', 'Set');
-  VisibilityWords: array[0..6] of string = ('private', 'protected', 'public', 'published', 'strict', 'automated',
+  cListWords: array[0..5] of string = ('List', 'Array', 'Collection', 'Queue', 'Stack', 'Set');
+  cVisibilityWords: array[0..6] of string = ('private', 'protected', 'public', 'published', 'strict', 'automated',
     'class');
-  RoutineWords: array[0..4] of string = ('procedure', 'function', 'constructor', 'destructor', 'operator');
+  cRoutineWords: array[0..4] of string = ('procedure', 'function', 'constructor', 'destructor', 'operator');
 
 function Compare(const A, B: TTextPosition): Integer;
 begin
@@ -174,8 +174,8 @@ end;
 /// <summary>Innerster Knoten, der AOffset enthält; nil außerhalb.</summary>
 function NodeAt(ARoot: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 var
-  Index: Integer;
-  Found: Boolean;
+  mIndex: Integer;
+  mFound: Boolean;
 begin
   Result := ARoot;
   if Result = nil then
@@ -183,17 +183,17 @@ begin
     Exit;
   end;
   repeat
-    Found := False;
-    for Index := 0 to Result.ChildCount - 1 do
+    mFound := False;
+    for mIndex := 0 to Result.ChildCount - 1 do
     begin
-      if (Result[Index].StartOffset <= AOffset) and (AOffset <= Result[Index].EndOffset) then
+      if (Result[mIndex].StartOffset <= AOffset) and (AOffset <= Result[mIndex].EndOffset) then
       begin
-        Result := Result[Index];
-        Found := True;
+        Result := Result[mIndex];
+        mFound := True;
         Break;
       end;
     end;
-  until not Found;
+  until not mFound;
 end;
 
 /// <summary>Nächster umgebender Knoten einer der Arten AKinds; nil ohne.</summary>
@@ -209,50 +209,50 @@ end;
 /// <summary>Steht ATokens[AIndex] in der Parameterliste eines Routinenkopfs?</summary>
 function InParameters(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   Result := False;
-  Depth := 0;
-  Index := AIndex;
-  while Index >= 0 do
+  mDepth := 0;
+  mIndex := AIndex;
+  while mIndex >= 0 do
   begin
-    if ATokens[Index].IsSymbol(')') then
+    if ATokens[mIndex].IsSymbol(')') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if ATokens[Index].IsSymbol('(') then
+    else if ATokens[mIndex].IsSymbol('(') then
     begin
-      if Depth = 0 then
+      if mDepth = 0 then
       begin
         Break;
       end;
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if IsWordIn(ATokens[Index], ['begin', 'end', 'type', 'implementation', 'interface', 'uses']) then
+    else if IsWordIn(ATokens[mIndex], ['begin', 'end', 'type', 'implementation', 'interface', 'uses']) then
     begin
       Exit;
     end;
-    Index := TRoutineBody.PreviousToken(ATokens, Index);
+    mIndex := TRoutineBody.PreviousToken(ATokens, mIndex);
   end;
-  if Index < 0 then
+  if mIndex < 0 then
   begin
     Exit;
   end;
   // Name der Routine, auch qualifiziert (TFoo.Bar), davor das Schlüsselwort.
-  Index := TRoutineBody.PreviousToken(ATokens, Index);
-  while (Index >= 0) and (ATokens[Index].Kind = TPascalTokenKind.Identifier) do
+  mIndex := TRoutineBody.PreviousToken(ATokens, mIndex);
+  while (mIndex >= 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) do
   begin
-    Index := TRoutineBody.PreviousToken(ATokens, Index);
-    if (Index >= 0) and ATokens[Index].IsSymbol('.') then
+    mIndex := TRoutineBody.PreviousToken(ATokens, mIndex);
+    if (mIndex >= 0) and ATokens[mIndex].IsSymbol('.') then
     begin
-      Index := TRoutineBody.PreviousToken(ATokens, Index);
+      mIndex := TRoutineBody.PreviousToken(ATokens, mIndex);
     end
     else
     begin
       Break;
     end;
   end;
-  Result := (Index >= 0) and IsWordIn(ATokens[Index], RoutineWords);
+  Result := (mIndex >= 0) and IsWordIn(ATokens[mIndex], cRoutineWords);
 end;
 
 /// <summary>Was das Wort AToken über den Abschnitt sagt: True mit ASection 'var' bzw. 'type', True mit '' bei
@@ -265,7 +265,7 @@ begin
   begin
     ASection := 'var';
   end
-  else if IsWordIn(AToken, VisibilityWords) or IsWordIn(AToken, ['record', 'object']) then
+  else if IsWordIn(AToken, cVisibilityWords) or IsWordIn(AToken, ['record', 'object']) then
   begin
     ASection := 'type';
   end
@@ -371,7 +371,7 @@ function PrecedesName(const AToken: TPascalToken): Boolean;
 begin
   Result := AToken.IsSymbol(';') or AToken.IsSymbol(',') or AToken.IsSymbol('(') or AToken.IsSymbol(']') or
     IsWordIn(AToken, ['var', 'threadvar', 'const', 'out', 'constref', 'record', 'object']) or
-    IsWordIn(AToken, VisibilityWords);
+    IsWordIn(AToken, cVisibilityWords);
 end;
 
 /// <summary>Art der Deklaration nach dem Token APrev vor dem Namen; False, wenn es keine passende ist.</summary>
@@ -450,42 +450,42 @@ end;
 
 class function TNameSuggestions.LastWord(const AName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := Length(AName);
+  mIndex := Length(AName);
   // Endet der Name groß (FileIO), gilt die ganze Folge von Großbuchstaben.
-  if (Index > 0) and CharInSet(AName[Index], ['A'..'Z']) then
+  if (mIndex > 0) and CharInSet(AName[mIndex], ['A'..'Z']) then
   begin
-    while (Index > 1) and CharInSet(AName[Index - 1], ['A'..'Z']) do
+    while (mIndex > 1) and CharInSet(AName[mIndex - 1], ['A'..'Z']) do
     begin
-      Dec(Index);
+      Dec(mIndex);
     end;
-    Exit(Copy(AName, Index, MaxInt));
+    Exit(Copy(AName, mIndex, MaxInt));
   end;
   // HTTPClient: das Wort beginnt am letzten Großbuchstaben vor Kleinbuchstaben.
-  while (Index > 1) and not (CharInSet(AName[Index], ['A'..'Z']) and
-    ((Index = Length(AName)) or not CharInSet(AName[Index + 1], ['A'..'Z']))) do
+  while (mIndex > 1) and not (CharInSet(AName[mIndex], ['A'..'Z']) and
+    ((mIndex = Length(AName)) or not CharInSet(AName[mIndex + 1], ['A'..'Z']))) do
   begin
-    Dec(Index);
+    Dec(mIndex);
   end;
-  Result := Copy(AName, Index, MaxInt);
+  Result := Copy(AName, mIndex, MaxInt);
 end;
 
 class function TNameSuggestions.Plural(const AWord: string): string;
 var
-  Last: Char;
+  mLast: Char;
 begin
   Result := AWord;
   if AWord = '' then
   begin
     Exit;
   end;
-  Last := AWord[Length(AWord)];
-  if (Last = 'y') and (Length(AWord) > 1) and not CharInSet(AWord[Length(AWord) - 1], ['a', 'e', 'i', 'o', 'u']) then
+  mLast := AWord[Length(AWord)];
+  if (mLast = 'y') and (Length(AWord) > 1) and not CharInSet(AWord[Length(AWord) - 1], ['a', 'e', 'i', 'o', 'u']) then
   begin
     Result := Copy(AWord, 1, Length(AWord) - 1) + 'ies';
   end
-  else if CharInSet(Last, ['s', 'x', 'z']) or EndsStr('ch', AWord) or EndsStr('sh', AWord) then
+  else if CharInSet(mLast, ['s', 'x', 'z']) or EndsStr('ch', AWord) or EndsStr('sh', AWord) then
   begin
     Result := AWord + 'es';
   end
@@ -498,7 +498,7 @@ end;
 /// <summary>Elementtyp eines Listen- oder Array-Typs ('' ohne): array of T, TArray&lt;T&gt;, TList&lt;T&gt;.</summary>
 function ElementType(const ATypeText: string; out AContainer: string): string;
 var
-  Open, Close: Integer;
+  mOpen, mClose: Integer;
 begin
   Result := '';
   AContainer := '';
@@ -507,18 +507,18 @@ begin
     AContainer := 'Array';
     Exit(Trim(Copy(ATypeText, Pos(' of ', LowerCase(ATypeText)) + 4, MaxInt)));
   end;
-  Open := Pos('<', ATypeText);
-  Close := LastDelimiter('>', ATypeText);
-  if (Open = 0) or (Close < Open) then
+  mOpen := Pos('<', ATypeText);
+  mClose := LastDelimiter('>', ATypeText);
+  if (mOpen = 0) or (mClose < mOpen) then
   begin
     Exit;
   end;
-  AContainer := TCreateMethod.NameFromType(Copy(ATypeText, 1, Open - 1));
-  if not MatchText(TNameSuggestions.LastWord(AContainer), ListWords) then
+  AContainer := TCreateMethod.NameFromType(Copy(ATypeText, 1, mOpen - 1));
+  if not MatchText(TNameSuggestions.LastWord(AContainer), cListWords) then
   begin
     Exit;
   end;
-  Result := Trim(Copy(ATypeText, Open + 1, Close - Open - 1));
+  Result := Trim(Copy(ATypeText, mOpen + 1, mClose - mOpen - 1));
   // Nur ein Typargument (TDictionary<K, V> ist keine Liste).
   if Pos(',', Result) > 0 then
   begin
@@ -528,69 +528,69 @@ end;
 
 class function TNameSuggestions.IsListType(const ATypeText: string): Boolean;
 var
-  Container, Base: string;
+  mContainer, mBase: string;
 begin
-  if ElementType(ATypeText, Container) <> '' then
+  if ElementType(ATypeText, mContainer) <> '' then
   begin
     Exit(True);
   end;
-  Base := TCreateMethod.NameFromType(ATypeText);
-  Result := (Pos('<', ATypeText) = 0) and MatchText(LastWord(Base), ListWords) and (LastWord(Base) <> Base);
+  mBase := TCreateMethod.NameFromType(ATypeText);
+  Result := (Pos('<', ATypeText) = 0) and MatchText(LastWord(mBase), cListWords) and (LastWord(mBase) <> mBase);
 end;
 
 class function TNameSuggestions.Bases(const ATypeText: string): TArray<string>;
 var
-  Names: TArray<string>;
-  Container, Element, Base, Item: string;
+  mNames: TArray<string>;
+  mContainer, mElement, mBase, mItem: string;
 
   procedure Add(const AName: string);
   var
-    Known: string;
+    mKnown: string;
   begin
     if (AName = '') or not CharInSet(AName[1], ['A'..'Z', 'a'..'z', '_']) or TPascalLexer.IsReservedWord(AName) then
     begin
       Exit;
     end;
-    for Known in Names do
+    for mKnown in mNames do
     begin
-      if SameText(Known, AName) then
+      if SameText(mKnown, AName) then
       begin
         Exit;
       end;
     end;
-    Names := Names + [AName];
+    mNames := mNames + [AName];
   end;
 
 begin
-  Names := nil;
-  Element := ElementType(ATypeText, Container);
-  if Element <> '' then
+  mNames := nil;
+  mElement := ElementType(ATypeText, mContainer);
+  if mElement <> '' then
   begin
-    Element := TCreateMethod.NameFromType(Element);
-    Add(Plural(Element));
-    Add(Element + LastWord(Container));
-    Add(LastWord(Container));
+    mElement := TCreateMethod.NameFromType(mElement);
+    Add(Plural(mElement));
+    Add(mElement + LastWord(mContainer));
+    Add(LastWord(mContainer));
   end
   else
   begin
-    Base := TCreateMethod.NameFromType(ATypeText);
+    mBase := TCreateMethod.NameFromType(ATypeText);
     if IsListType(ATypeText) then
     begin
-      Add(Plural(Copy(Base, 1, Length(Base) - Length(LastWord(Base)))));
+      Add(Plural(Copy(mBase, 1, Length(mBase) - Length(LastWord(mBase)))));
     end;
-    Add(Base);
-    Add(LastWord(Base));
+    Add(mBase);
+    Add(LastWord(mBase));
   end;
   Result := nil;
-  for Item in Names do
+  for mItem in mNames do
   begin
-    Result := Result + [Item];
+    Result := Result + [mItem];
   end;
 end;
 
 class function TNameSuggestions.UsesPrefix(const ACount: TNamingCount): Boolean;
 begin
-  Result := (ACount.Total > 0) and (ACount.Prefixed * 100 >= ACount.Total * PrefixShare);
+  Result := (ACount.Total > 0) and (ACount.Prefixed * 100 >= ACount.Total * cPrefixShare);
 end;
 
 class function TNameSuggestions.Prefixed(const AName, APrefix: string): string;
@@ -605,42 +605,42 @@ end;
 
 class function TNameSuggestions.Unique(const AName: string; const ATaken: TArray<string>): string;
 var
-  Number: Integer;
-  Taken: Boolean;
-  Known: string;
+  mNumber: Integer;
+  mTaken: Boolean;
+  mKnown: string;
 begin
   Result := AName;
-  Number := 1;
+  mNumber := 1;
   repeat
-    Taken := False;
-    for Known in ATaken do
+    mTaken := False;
+    for mKnown in ATaken do
     begin
-      if SameText(Known, Result) then
+      if SameText(mKnown, Result) then
       begin
-        Taken := True;
+        mTaken := True;
       end;
     end;
-    if Taken then
+    if mTaken then
     begin
-      Inc(Number);
-      Result := AName + IntToStr(Number);
+      Inc(mNumber);
+      Result := AName + IntToStr(mNumber);
     end;
-  until not Taken;
+  until not mTaken;
 end;
 
 class function TNameSuggestions.Suggest(const ATypeText, APrefix: string;
   const ATaken: TArray<string>): TArray<string>;
 var
-  Base, Name: string;
-  Taken: TArray<string>;
+  mBase, mName: string;
+  mTaken: TArray<string>;
 begin
   Result := nil;
-  Taken := ATaken;
-  for Base in Bases(ATypeText) do
+  mTaken := ATaken;
+  for mBase in Bases(ATypeText) do
   begin
-    Name := Unique(Prefixed(Base, APrefix), Taken);
-    Result := Result + [Name];
-    Taken := Taken + [Name];
+    mName := Unique(Prefixed(mBase, APrefix), mTaken);
+    Result := Result + [mName];
+    mTaken := mTaken + [mName];
   end;
 end;
 

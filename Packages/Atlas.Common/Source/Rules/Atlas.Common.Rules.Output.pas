@@ -41,12 +41,12 @@ type
 
   TFindingsOutput = class
   public const
-    ExitClean = 0;
+    cExitClean = 0;
     /// <summary>Mindestens ein Treffer ab dem Schweregrad aus --fail-on.</summary>
-    ExitFindings = 1;
+    cExitFindings = 1;
     /// <summary>Aufruf- oder Lesefehler, vergibt der Aufrufer.</summary>
-    ExitFailure = 3;
-    SourceRootId = '%SRCROOT%';
+    cExitFailure = 3;
+    cSourceRootId = '%SRCROOT%';
   public
     class function TryParseFormat(const AText: string; out AFormat: TFindingsFormat): Boolean; static;
     class function TryParseFailOn(const AText: string; out AFailOn: TFailOn): Boolean; static;
@@ -99,19 +99,19 @@ const
 
 class function TFindingsOutput.TryParseFormat(const AText: string; out AFormat: TFindingsFormat): Boolean;
 var
-  Value: string;
+  mValue: string;
 begin
-  Value := LowerCase(Trim(AText));
+  mValue := LowerCase(Trim(AText));
   Result := True;
-  if Value = 'text' then
+  if mValue = 'text' then
   begin
     AFormat := TFindingsFormat.Text;
   end
-  else if Value = 'json' then
+  else if mValue = 'json' then
   begin
     AFormat := TFindingsFormat.Json;
   end
-  else if Value = 'sarif' then
+  else if mValue = 'sarif' then
   begin
     AFormat := TFindingsFormat.Sarif;
   end
@@ -155,19 +155,19 @@ end;
 
 class function TFindingsOutput.TryParseFailOn(const AText: string; out AFailOn: TFailOn): Boolean;
 var
-  Value: string;
+  mValue: string;
 begin
-  Value := LowerCase(Trim(AText));
+  mValue := LowerCase(Trim(AText));
   Result := True;
-  if Value = 'error' then
+  if mValue = 'error' then
   begin
     AFailOn := TFailOn.Error;
   end
-  else if Value = 'warning' then
+  else if mValue = 'warning' then
   begin
     AFailOn := TFailOn.Warning;
   end
-  else if Value = 'never' then
+  else if mValue = 'never' then
   begin
     AFailOn := TFailOn.Never;
   end
@@ -186,12 +186,12 @@ end;
 /// <summary>Prozent-Kodierung nach RFC 3986; "/" und ":" (Laufwerk) bleiben.</summary>
 function EncodeUri(const APath: string): string;
 var
-  Bytes: TBytes;
+  mBytes: TBytes;
   B: Byte;
 begin
   Result := '';
-  Bytes := TEncoding.UTF8.GetBytes(APath);
-  for B in Bytes do
+  mBytes := TEncoding.UTF8.GetBytes(APath);
+  for B in mBytes do
   begin
     if (B in [Ord('A')..Ord('Z'), Ord('a')..Ord('z'), Ord('0')..Ord('9')]) or
       (B in [Ord('-'), Ord('.'), Ord('_'), Ord('~'), Ord('/'), Ord(':')]) then
@@ -207,36 +207,36 @@ end;
 
 class function TFindingsOutput.FileUri(const AFullPath: string): string;
 var
-  Path: string;
+  mPath: string;
 begin
-  Path := UriPath(AFullPath);
+  mPath := UriPath(AFullPath);
   // UNC-Pfad \\server\freigabe wird zu file://server/freigabe.
-  if Copy(Path, 1, 2) = '//' then
+  if Copy(mPath, 1, 2) = '//' then
   begin
-    Exit('file:' + EncodeUri(Path));
+    Exit('file:' + EncodeUri(mPath));
   end;
-  if Copy(Path, 1, 1) <> '/' then
+  if Copy(mPath, 1, 1) <> '/' then
   begin
-    Path := '/' + Path;
+    mPath := '/' + mPath;
   end;
-  Result := 'file://' + EncodeUri(Path);
+  Result := 'file://' + EncodeUri(mPath);
 end;
 
 class function TFindingsOutput.SarifUri(const AFullPath, ASourceRoot: string; out ARelative: Boolean): string;
 var
-  Path, Root: string;
+  mPath, mRoot: string;
 begin
-  Path := UriPath(AFullPath);
-  Root := UriPath(ASourceRoot);
-  if (Root <> '') and (Root[Length(Root)] <> '/') then
+  mPath := UriPath(AFullPath);
+  mRoot := UriPath(ASourceRoot);
+  if (mRoot <> '') and (mRoot[Length(mRoot)] <> '/') then
   begin
-    Root := Root + '/';
+    mRoot := mRoot + '/';
   end;
   // Windows-Pfade unterscheiden keine Groß- und Kleinschreibung.
-  ARelative := (Root <> '') and (Length(Path) > Length(Root)) and SameText(Copy(Path, 1, Length(Root)), Root);
+  ARelative := (mRoot <> '') and (Length(mPath) > Length(mRoot)) and SameText(Copy(mPath, 1, Length(mRoot)), mRoot);
   if ARelative then
   begin
-    Result := EncodeUri(Copy(Path, Length(Root) + 1, MaxInt));
+    Result := EncodeUri(Copy(mPath, Length(mRoot) + 1, MaxInt));
   end
   else
   begin
@@ -246,58 +246,58 @@ end;
 
 class function TFindingsOutput.FindGitRoot(const AStart: string; const AExists: TPathExists): string;
 var
-  Dir, Parent: string;
+  mDir, mParent: string;
 begin
-  Dir := ExcludeTrailingPathDelimiter(AStart);
-  while Dir <> '' do
+  mDir := ExcludeTrailingPathDelimiter(AStart);
+  while mDir <> '' do
   begin
-    if AExists(IncludeTrailingPathDelimiter(Dir) + '.git') then
+    if AExists(IncludeTrailingPathDelimiter(mDir) + '.git') then
     begin
-      Exit(Dir);
+      Exit(mDir);
     end;
-    Parent := ExtractFileDir(Dir);
-    if (Parent = Dir) or (Parent = '') then
+    mParent := ExtractFileDir(mDir);
+    if (mParent = mDir) or (mParent = '') then
     begin
       Break;
     end;
-    Dir := Parent;
+    mDir := mParent;
   end;
   Result := '';
 end;
 
 function RenderText(const AFiles: TArray<TCheckedFile>): string;
 var
-  Builder: TStringBuilder;
-  CheckedFile: TCheckedFile;
-  Finding: TRuleFinding;
-  Count, FilesWithFindings: Integer;
+  mBuilder: TStringBuilder;
+  mCheckedFile: TCheckedFile;
+  mFinding: TRuleFinding;
+  mCount, mFilesWithFindings: Integer;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Count := 0;
-    FilesWithFindings := 0;
-    for CheckedFile in AFiles do
+    mCount := 0;
+    mFilesWithFindings := 0;
+    for mCheckedFile in AFiles do
     begin
-      if Length(CheckedFile.Findings) > 0 then
+      if Length(mCheckedFile.Findings) > 0 then
       begin
-        Inc(FilesWithFindings);
+        Inc(mFilesWithFindings);
       end;
-      for Finding in CheckedFile.Findings do
+      for mFinding in mCheckedFile.Findings do
       begin
-        Inc(Count);
+        Inc(mCount);
         // Konfidenz als eigene Spalte vor der Meldung, nicht im Meldungstext (#144).
-        Builder.Append(cTexts[TOutputText.FindingLine].Fmt([CheckedFile.Path,
-          Finding.Range.StartPos.Line + 1, Finding.Range.StartPos.Character + 1,
-          TFindingsOutput.SeverityName(Finding.Severity), Finding.RuleId, ConfidenceText(Finding.Confidence),
-          Finding.Message]));
-        Builder.Append(sLineBreak);
+        mBuilder.Append(cTexts[TOutputText.FindingLine].Fmt([mCheckedFile.Path,
+          mFinding.Range.StartPos.Line + 1, mFinding.Range.StartPos.Character + 1,
+          TFindingsOutput.SeverityName(mFinding.Severity), mFinding.RuleId, ConfidenceText(mFinding.Confidence),
+          mFinding.Message]));
+        mBuilder.Append(sLineBreak);
       end;
     end;
-    Builder.Append(cTexts[TOutputText.Summary].Fmt([Count, FilesWithFindings, Length(AFiles)]));
-    Builder.Append(sLineBreak);
-    Result := Builder.ToString;
+    mBuilder.Append(cTexts[TOutputText.Summary].Fmt([mCount, mFilesWithFindings, Length(AFiles)]));
+    mBuilder.Append(sLineBreak);
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -308,89 +308,89 @@ end;
 
 function RenderJson(const AFiles: TArray<TCheckedFile>): string;
 var
-  Builder: TStringBuilder;
-  CheckedFile: TCheckedFile;
-  Finding: TRuleFinding;
-  FirstFile, FirstFinding: Boolean;
-  Counts: array[TRuleSeverity] of Integer;
-  Severity: TRuleSeverity;
+  mBuilder: TStringBuilder;
+  mCheckedFile: TCheckedFile;
+  mFinding: TRuleFinding;
+  mFirstFile, mFirstFinding: Boolean;
+  mCounts: array[TRuleSeverity] of Integer;
+  mSeverity: TRuleSeverity;
 begin
-  for Severity := Low(TRuleSeverity) to High(TRuleSeverity) do
+  for mSeverity := Low(TRuleSeverity) to High(TRuleSeverity) do
   begin
-    Counts[Severity] := 0;
+    mCounts[mSeverity] := 0;
   end;
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.Append('{"files":[');
-    FirstFile := True;
-    for CheckedFile in AFiles do
+    mBuilder.Append('{"files":[');
+    mFirstFile := True;
+    for mCheckedFile in AFiles do
     begin
-      if not FirstFile then
+      if not mFirstFile then
       begin
-        Builder.Append(',');
+        mBuilder.Append(',');
       end;
-      FirstFile := False;
-      Builder.Append('{"path":').Append(TFindingsOutput.JsonString(UriPath(CheckedFile.Path))).Append(',"findings":[');
-      FirstFinding := True;
-      for Finding in CheckedFile.Findings do
+      mFirstFile := False;
+      mBuilder.Append('{"path":').Append(TFindingsOutput.JsonString(UriPath(mCheckedFile.Path))).Append(',"findings":[');
+      mFirstFinding := True;
+      for mFinding in mCheckedFile.Findings do
       begin
-        Inc(Counts[Finding.Severity]);
-        if not FirstFinding then
+        Inc(mCounts[mFinding.Severity]);
+        if not mFirstFinding then
         begin
-          Builder.Append(',');
+          mBuilder.Append(',');
         end;
-        FirstFinding := False;
-        Builder.Append('{"rule":').Append(TFindingsOutput.JsonString(Finding.RuleId));
-        Builder.Append(',"severity":').Append(TFindingsOutput.JsonString(TFindingsOutput.SeverityName(Finding.Severity)));
-        Builder.Append(',"confidence":').Append(TFindingsOutput.JsonString(ConfidenceName(Finding.Confidence)));
-        Builder.Append(',"message":').Append(TFindingsOutput.JsonString(Finding.Message));
-        Builder.Append(',"range":{"start":').Append(JsonPosition(Finding.Range.StartPos));
-        Builder.Append(',"end":').Append(JsonPosition(Finding.Range.EndPos)).Append('}');
+        mFirstFinding := False;
+        mBuilder.Append('{"rule":').Append(TFindingsOutput.JsonString(mFinding.RuleId));
+        mBuilder.Append(',"severity":').Append(TFindingsOutput.JsonString(TFindingsOutput.SeverityName(mFinding.Severity)));
+        mBuilder.Append(',"confidence":').Append(TFindingsOutput.JsonString(ConfidenceName(mFinding.Confidence)));
+        mBuilder.Append(',"message":').Append(TFindingsOutput.JsonString(mFinding.Message));
+        mBuilder.Append(',"range":{"start":').Append(JsonPosition(mFinding.Range.StartPos));
+        mBuilder.Append(',"end":').Append(JsonPosition(mFinding.Range.EndPos)).Append('}');
         // Wie in SARIF unter properties (#144); "confidence" oben bleibt für bestehende Auswertungen.
-        Builder.Append(',"properties":{"confidence":').Append(
-          TFindingsOutput.JsonString(ConfidenceName(Finding.Confidence))).Append('}}');
+        mBuilder.Append(',"properties":{"confidence":').Append(
+          TFindingsOutput.JsonString(ConfidenceName(mFinding.Confidence))).Append('}}');
       end;
-      Builder.Append(']}');
+      mBuilder.Append(']}');
     end;
-    Builder.Append(Format('],"summary":{"files":%d,"errors":%d,"warnings":%d,"information":%d,"hints":%d}}',
-      [Length(AFiles), Counts[TRuleSeverity.Error], Counts[TRuleSeverity.Warning],
-      Counts[TRuleSeverity.Information], Counts[TRuleSeverity.Hint]]));
-    Result := Builder.ToString;
+    mBuilder.Append(Format('],"summary":{"files":%d,"errors":%d,"warnings":%d,"information":%d,"hints":%d}}',
+      [Length(AFiles), mCounts[TRuleSeverity.Error], mCounts[TRuleSeverity.Warning],
+      mCounts[TRuleSeverity.Information], mCounts[TRuleSeverity.Hint]]));
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 /// <summary>artifactLocation ohne die schließende Klammer.</summary>
 function SarifLocation(const ACheckedFile: TCheckedFile; const ASourceRoot: string): string;
 var
-  Relative: Boolean;
-  Uri: string;
+  mRelative: Boolean;
+  mUri: string;
 begin
   if (ASourceRoot = '') or (ACheckedFile.FullPath = '') then
   begin
-    Uri := EncodeUri(UriPath(ACheckedFile.Path));
-    Relative := ASourceRoot <> '';
+    mUri := EncodeUri(UriPath(ACheckedFile.Path));
+    mRelative := ASourceRoot <> '';
   end
   else
   begin
-    Uri := TFindingsOutput.SarifUri(ACheckedFile.FullPath, ASourceRoot, Relative);
+    mUri := TFindingsOutput.SarifUri(ACheckedFile.FullPath, ASourceRoot, mRelative);
   end;
-  Result := '{"uri":' + TFindingsOutput.JsonString(Uri);
-  if Relative then
+  Result := '{"uri":' + TFindingsOutput.JsonString(mUri);
+  if mRelative then
   begin
-    Result := Result + ',"uriBaseId":' + TFindingsOutput.JsonString(TFindingsOutput.SourceRootId);
+    Result := Result + ',"uriBaseId":' + TFindingsOutput.JsonString(TFindingsOutput.cSourceRootId);
   end;
 end;
 
 /// <summary>Englischer Katalogname der Regel; ohne Katalogeintrag die Meldung ohne Konfidenz-Zusatz.</summary>
 function SarifMessage(ACatalog: TRuleCatalog; const AFinding: TRuleFinding): string;
 var
-  Entry: TRuleCatalogEntry;
+  mEntry: TRuleCatalogEntry;
 begin
-  if ACatalog.TryFind(AFinding.RuleId, Entry) and (Entry.Name <> '') then
+  if ACatalog.TryFind(AFinding.RuleId, mEntry) and (mEntry.Name <> '') then
   begin
-    Result := Entry.Name;
+    Result := mEntry.Name;
   end
   else
   begin
@@ -415,27 +415,27 @@ end;
 /// <summary>AKey mit ":n" für das n-te Vorkommen in ACounts.</summary>
 function Occurrence(ACounts: TDictionary<string, Integer>; const AKey: string): string;
 var
-  Count: Integer;
+  mCount: Integer;
 begin
-  if not ACounts.TryGetValue(AKey, Count) then
+  if not ACounts.TryGetValue(AKey, mCount) then
   begin
-    Count := 0;
+    mCount := 0;
   end;
-  Inc(Count);
-  ACounts.AddOrSetValue(AKey, Count);
-  Result := AKey + ':' + IntToStr(Count);
+  Inc(mCount);
+  ACounts.AddOrSetValue(AKey, mCount);
+  Result := AKey + ':' + IntToStr(mCount);
 end;
 
 /// <summary>Standard-Schweregrad der Regel ARuleId aus ARules; Hinweis, wenn sie fehlt.</summary>
 function DefaultSeverityOf(const ARules: TArray<TRuleDescriptor>; const ARuleId: string): TRuleSeverity;
 var
-  Rule: TRuleDescriptor;
+  mRule: TRuleDescriptor;
 begin
-  for Rule in ARules do
+  for mRule in ARules do
   begin
-    if SameText(Rule.Id, ARuleId) then
+    if SameText(mRule.Id, ARuleId) then
     begin
-      Exit(Rule.DefaultSeverity);
+      Exit(mRule.DefaultSeverity);
     end;
   end;
   Result := TRuleSeverity.Hint;
@@ -561,7 +561,7 @@ begin
   if AMark.State = TBaselineState.Unchanged then
   begin
     FBuilder.Append(',"suppressions":[{"kind":"external","justification":').Append(
-      TFindingsOutput.JsonString(BaselineFileName)).Append('}]');
+      TFindingsOutput.JsonString(cBaselineFileName)).Append('}]');
   end;
   FBuilder.Append(',"properties":{"confidence":').Append(TFindingsOutput.JsonString(
     ConfidenceName(mFinding.Confidence)));
@@ -620,8 +620,8 @@ var
   mRootUri: string;
 begin
   FBuilder.Append('{"$schema":"https://json.schemastore.org/sarif-2.1.0.json","version":"2.1.0","runs":[{');
-  FBuilder.Append('"tool":{"driver":{"name":').Append(TFindingsOutput.JsonString(TProductVersion.Name));
-  FBuilder.Append(',"version":').Append(TFindingsOutput.JsonString(TProductVersion.Version));
+  FBuilder.Append('"tool":{"driver":{"name":').Append(TFindingsOutput.JsonString(TProductVersion.cName));
+  FBuilder.Append(',"version":').Append(TFindingsOutput.JsonString(TProductVersion.cVersion));
   FBuilder.Append(',"informationUri":"https://github.com/xKnockOut/Atlas-IDE-Expert","rules":[');
   FFirst := True;
   for mRule in FRules do
@@ -636,7 +636,7 @@ begin
     begin
       mRootUri := mRootUri + '/';
     end;
-    FBuilder.Append(',"originalUriBaseIds":{').Append(TFindingsOutput.JsonString(TFindingsOutput.SourceRootId));
+    FBuilder.Append(',"originalUriBaseIds":{').Append(TFindingsOutput.JsonString(TFindingsOutput.cSourceRootId));
     FBuilder.Append(':{"uri":').Append(TFindingsOutput.JsonString(mRootUri)).Append('}}');
   end;
   FBuilder.Append(',"results":[');
@@ -688,23 +688,23 @@ end;
 
 class function TFindingsOutput.ExitCode(const AFiles: TArray<TCheckedFile>; AFailOn: TFailOn): Integer;
 var
-  CheckedFile: TCheckedFile;
-  Finding: TRuleFinding;
+  mCheckedFile: TCheckedFile;
+  mFinding: TRuleFinding;
 begin
-  Result := ExitClean;
+  Result := cExitClean;
   if AFailOn = TFailOn.Never then
   begin
     Exit;
   end;
   // Treffer aus der Baseline sind hier schon ausgeblendet und zählen deshalb nie.
-  for CheckedFile in AFiles do
+  for mCheckedFile in AFiles do
   begin
-    for Finding in CheckedFile.Findings do
+    for mFinding in mCheckedFile.Findings do
     begin
-      if (Finding.Severity = TRuleSeverity.Error) or
-        ((AFailOn = TFailOn.Warning) and (Finding.Severity = TRuleSeverity.Warning)) then
+      if (mFinding.Severity = TRuleSeverity.Error) or
+        ((AFailOn = TFailOn.Warning) and (mFinding.Severity = TRuleSeverity.Warning)) then
       begin
-        Exit(ExitFindings);
+        Exit(cExitFindings);
       end;
     end;
   end;

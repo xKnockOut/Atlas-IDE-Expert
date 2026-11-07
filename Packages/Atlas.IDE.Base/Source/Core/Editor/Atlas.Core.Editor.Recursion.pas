@@ -137,24 +137,24 @@ end;
 
 function TAtlasFileRecursion.CallsAt(ALine: Integer): TArray<TAtlasRecursionCall>;
 var
-  Call: TAtlasRecursionCall;
-  Index, Position: Integer;
+  mCall: TAtlasRecursionCall;
+  mIndex, mPosition: Integer;
 begin
   Result := nil;
-  for Call in Calls do
+  for mCall in Calls do
   begin
-    if Call.Line = ALine then
+    if mCall.Line = ALine then
     begin
-      Position := Length(Result);
-      for Index := 0 to High(Result) do
+      mPosition := Length(Result);
+      for mIndex := 0 to High(Result) do
       begin
-        if Call.Character < Result[Index].Character then
+        if mCall.Character < Result[mIndex].Character then
         begin
-          Position := Index;
+          mPosition := mIndex;
           Break;
         end;
       end;
-      Insert(Call, Result, Position);
+      Insert(mCall, Result, mPosition);
     end;
   end;
 end;
@@ -168,30 +168,30 @@ end;
 
 class function TAtlasRecursionMarks.LineOf(const AText: string; ALine: Integer): string;
 var
-  Index, Start, Line: Integer;
+  mIndex, mStart, mLine: Integer;
 begin
   Result := '';
   if ALine < 0 then
   begin
     Exit;
   end;
-  Line := 0;
-  Start := 1;
-  for Index := 1 to Length(AText) do
+  mLine := 0;
+  mStart := 1;
+  for mIndex := 1 to Length(AText) do
   begin
-    if AText[Index] = #10 then
+    if AText[mIndex] = #10 then
     begin
-      if Line = ALine then
+      if mLine = ALine then
       begin
-        Exit(Copy(AText, Start, Index - Start).TrimRight([#13]));
+        Exit(Copy(AText, mStart, mIndex - mStart).TrimRight([#13]));
       end;
-      Inc(Line);
-      Start := Index + 1;
+      Inc(mLine);
+      mStart := mIndex + 1;
     end;
   end;
-  if Line = ALine then
+  if mLine = ALine then
   begin
-    Result := Copy(AText, Start, MaxInt).TrimRight([#13]);
+    Result := Copy(AText, mStart, MaxInt).TrimRight([#13]);
   end;
 end;
 
@@ -203,60 +203,60 @@ end;
 class procedure TAtlasRecursionMarks.TipText(const ACalls: TArray<TAtlasRecursionCall>; const ATitleDirect,
   ATitleChain: string; out ATitle, AText: string);
 var
-  Call: TAtlasRecursionCall;
-  Most: Integer;
+  mCall: TAtlasRecursionCall;
+  mMost: Integer;
 begin
   ATitle := '';
   AText := '';
-  Most := 0;
-  for Call in ACalls do
+  mMost := 0;
+  for mCall in ACalls do
   begin
-    if Call.Methods > Most then
+    if mCall.Methods > mMost then
     begin
-      Most := Call.Methods;
+      mMost := mCall.Methods;
     end;
     if AText <> '' then
     begin
       AText := AText + #10;
     end;
-    AText := AText + Call.Text;
+    AText := AText + mCall.Text;
   end;
   if Length(ACalls) = 0 then
   begin
     Exit;
   end;
-  if Most <= 1 then
+  if mMost <= 1 then
   begin
     ATitle := ATitleDirect;
   end
   else
   begin
-    ATitle := Format(ATitleChain, [Most]);
+    ATitle := Format(ATitleChain, [mMost]);
   end;
 end;
 
 class function TAtlasRecursionMarks.Links(const ACalls: TArray<TAtlasRecursionCall>): TArray<TAtlasRecursionStep>;
 var
-  Call: TAtlasRecursionCall;
-  Step, Known: TAtlasRecursionStep;
-  Seen: Boolean;
+  mCall: TAtlasRecursionCall;
+  mStep, mKnown: TAtlasRecursionStep;
+  mSeen: Boolean;
 begin
   Result := nil;
-  for Call in ACalls do
+  for mCall in ACalls do
   begin
-    for Step in Call.Chain do
+    for mStep in mCall.Chain do
     begin
-      Seen := False;
-      for Known in Result do
+      mSeen := False;
+      for mKnown in Result do
       begin
-        if SameText(Known.Name, Step.Name) then
+        if SameText(mKnown.Name, mStep.Name) then
         begin
-          Seen := True;
+          mSeen := True;
         end;
       end;
-      if not Seen and (Step.Line >= 0) then
+      if not mSeen and (mStep.Line >= 0) then
       begin
-        Result := Result + [Step];
+        Result := Result + [mStep];
       end;
     end;
   end;

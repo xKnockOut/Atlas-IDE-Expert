@@ -136,7 +136,7 @@ begin
     '  TButton(mEdit).Caption := ''OK'';'#10);
   mFound := UnrelatedFindings(mSource);
   Assert.AreEqual(1, Integer(Length(mFound)));
-  Assert.AreEqual(UnrelatedClassCastRuleId, mFound[0].RuleId);
+  Assert.AreEqual(cUnrelatedClassCastRuleId, mFound[0].RuleId);
   Assert.AreEqual('TEdit und TButton sind nicht verwandt: Die Umwandlung zeigt auf ein Objekt mit anderem Aufbau.',
     mFound[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
@@ -303,7 +303,7 @@ begin
   mSource := ImportSource('', '  TStringList(FZeilen).Clear;'#10'  TObject(FStrom).Free;'#10);
   mFound := RedundantFindings(mSource);
   Assert.AreEqual(2, Integer(Length(mFound)));
-  Assert.AreEqual(RedundantCastRuleId, mFound[0].RuleId);
+  Assert.AreEqual(cRedundantCastRuleId, mFound[0].RuleId);
   Assert.AreEqual('FZeilen ist schon TStringList: Die Umwandlung ist überflüssig.', mFound[0].Message);
   Assert.AreEqual('Free ruft den virtuellen Destruktor: Die Umwandlung von FStrom nach TObject ist überflüssig.',
     mFound[1].Message);

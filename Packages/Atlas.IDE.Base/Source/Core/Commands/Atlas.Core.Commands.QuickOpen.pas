@@ -72,9 +72,9 @@ type
   TAtlasQuickOpen = class
   public const
     /// <summary>Höchstzahl der Dateien in der Liste (Schutz vor riesigen Bibliotheksordnern).</summary>
-    MaxFiles = 50000;
+    cMaxFiles = 50000;
     /// <summary>Höchstzahl der angezeigten Treffer.</summary>
-    MaxResults = 200;
+    cMaxResults = 200;
   public
     /// <summary>Gehört AFileName nach seiner Endung in die Liste?</summary>
     class function IsListed(const AFileName: string): Boolean; static;
@@ -136,67 +136,68 @@ uses
   Atlas.Core.Completion.Matching;
 
 const
-  Listed: array[0..7] of string = ('.pas', '.dpr', '.dpk', '.inc', '.dfm', '.fmx', '.rc', '.dproj');
+  cListed: array[0..7] of string = ('.pas', '.dpr', '.dpk', '.inc', '.dfm', '.fmx', '.rc', '.dproj');
 
 function ExtensionRank(const AFileName: string): Integer;
 var
-  Extension: string;
-  Index: Integer;
+  mExtension: string;
+  mIndex: Integer;
 begin
-  Extension := LowerCase(ExtractFileExt(AFileName));
-  for Index := 0 to High(Listed) do
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  for mIndex := 0 to High(cListed) do
   begin
-    if Listed[Index] = Extension then
+    if cListed[mIndex] = mExtension then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
-  Result := Length(Listed);
+  Result := Length(cListed);
 end;
 
 { TAtlasQuickOpenQuery }
 
 class function TAtlasQuickOpenQuery.Parse(const AInput: string): TAtlasQuickOpenQuery;
 var
-  Input, Tail: string;
-  Colon, Line: Integer;
+  mInput, mTail: string;
+  mColon, mLine: Integer;
 begin
   Result := Default(TAtlasQuickOpenQuery);
-  Input := TrimLeft(AInput);
-  if Input = '' then
+  mInput := TrimLeft(AInput);
+  if mInput = '' then
   begin
     Exit;
   end;
-  case Input[1] of
+  case mInput[1] of
     '@':
       begin
         Result.Mode := TAtlasQuickOpenMode.FileSymbols;
-        Result.Text := Trim(Copy(Input, 2, MaxInt));
+        Result.Text := Trim(Copy(mInput, 2, MaxInt));
         Exit;
       end;
     '#':
       begin
         Result.Mode := TAtlasQuickOpenMode.ProjectSymbols;
-        Result.Text := Trim(Copy(Input, 2, MaxInt));
+        Result.Text := Trim(Copy(mInput, 2, MaxInt));
         Exit;
       end;
     ':':
       begin
         Result.Mode := TAtlasQuickOpenMode.Line;
-        Result.Line := Max(0, StrToIntDef(Trim(Copy(Input, 2, MaxInt)), 0));
+        Result.Line := Max(0, StrToIntDef(Trim(Copy(mInput, 2, MaxInt)), 0));
         Exit;
       end;
   end;
-  Result.Text := Trim(Input);
+  Result.Text := Trim(mInput);
   // "Datei:123": nur Ziffern hinter dem letzten Doppelpunkt (ein Laufwerk "C:\" bleibt Suchtext).
-  Colon := LastDelimiter(':', Result.Text);
-  if Colon > 1 then
+  mColon := LastDelimiter(':', Result.Text);
+  if mColon > 1 then
   begin
-    Tail := Copy(Result.Text, Colon + 1, MaxInt);
-    if (Tail <> '') and TryStrToInt(Tail, Line) and (Line > 0) and (Pos('-', Tail) = 0) and (Pos('+', Tail) = 0) then
+    mTail := Copy(Result.Text, mColon + 1, MaxInt);
+    if (mTail <> '') and TryStrToInt(mTail, mLine) and (mLine > 0) and (Pos('-', mTail) = 0) and
+      (Pos('+', mTail) = 0) then
     begin
-      Result.Line := Line;
-      Result.Text := TrimRight(Copy(Result.Text, 1, Colon - 1));
+      Result.Line := mLine;
+      Result.Text := TrimRight(Copy(Result.Text, 1, mColon - 1));
     end;
   end;
 end;
@@ -213,12 +214,12 @@ end;
 
 class function TAtlasQuickOpen.IsListed(const AFileName: string): Boolean;
 begin
-  Result := ExtensionRank(AFileName) < Length(Listed);
+  Result := ExtensionRank(AFileName) < Length(cListed);
 end;
 
 class function TAtlasQuickOpen.RelativeTo(const AFileName, ARoot: string): string;
 var
-  Root: string;
+  mRoot: string;
 begin
   Result := AFileName;
   if ARoot = '' then
@@ -226,15 +227,15 @@ begin
     Exit;
   end;
   // Trenner selbst prüfen statt IncludeTrailingPathDelimiter: Pfade der IDE haben immer "\".
-  Root := ARoot;
-  while (Root <> '') and CharInSet(Root[Length(Root)], ['\', '/']) do
+  mRoot := ARoot;
+  while (mRoot <> '') and CharInSet(mRoot[Length(mRoot)], ['\', '/']) do
   begin
-    Delete(Root, Length(Root), 1);
+    Delete(mRoot, Length(mRoot), 1);
   end;
-  if (Length(AFileName) > Length(Root) + 1) and CharInSet(AFileName[Length(Root) + 1], ['\', '/']) and
-    SameText(Copy(AFileName, 1, Length(Root)), Root) then
+  if (Length(AFileName) > Length(mRoot) + 1) and CharInSet(AFileName[Length(mRoot) + 1], ['\', '/']) and
+    SameText(Copy(AFileName, 1, Length(mRoot)), mRoot) then
   begin
-    Result := Copy(AFileName, Length(Root) + 2, MaxInt);
+    Result := Copy(AFileName, Length(mRoot) + 2, MaxInt);
   end;
 end;
 
@@ -247,25 +248,25 @@ end;
 class function TAtlasQuickOpen.Collect(const ASources: TAtlasQuickOpenSources; const AList: TAtlasQuickOpenLister;
   const ACancelled: TFunc<Boolean>): TAtlasQuickOpenFiles;
 var
-  Seen: TDictionary<string, Boolean>;
-  Found: TList<TAtlasQuickOpenFile>;
+  mSeen: TDictionary<string, Boolean>;
+  mFound: TList<TAtlasQuickOpenFile>;
 
   procedure Add(const AFileName: string; AOrigin: TAtlasQuickOpenOrigin);
   var
-    Entry: TAtlasQuickOpenFile;
+    mEntry: TAtlasQuickOpenFile;
   begin
-    if (AFileName = '') or (Found.Count >= MaxFiles) or not IsListed(AFileName) or
-      Seen.ContainsKey(LowerCase(AFileName)) then
+    if (AFileName = '') or (mFound.Count >= cMaxFiles) or not IsListed(AFileName) or
+      mSeen.ContainsKey(LowerCase(AFileName)) then
     begin
       Exit;
     end;
-    Seen.Add(LowerCase(AFileName), True);
-    Entry.FileName := AFileName;
-    Entry.Name := ExtractFileName(AFileName);
-    Entry.Stem := ChangeFileExt(Entry.Name, '');
-    Entry.RelativePath := RelativeTo(AFileName, ASources.Root);
-    Entry.Origin := AOrigin;
-    Found.Add(Entry);
+    mSeen.Add(LowerCase(AFileName), True);
+    mEntry.FileName := AFileName;
+    mEntry.Name := ExtractFileName(AFileName);
+    mEntry.Stem := ChangeFileExt(mEntry.Name, '');
+    mEntry.RelativePath := RelativeTo(AFileName, ASources.Root);
+    mEntry.Origin := AOrigin;
+    mFound.Add(mEntry);
   end;
 
   function Cancelled: Boolean;
@@ -275,44 +276,44 @@ var
 
   procedure AddFolders(const AFolders: TArray<string>; ARecursive: Boolean; AOrigin: TAtlasQuickOpenOrigin);
   var
-    Folder, FileName: string;
-    Done: TDictionary<string, Boolean>;
+    mFolder, mFileName: string;
+    mDone: TDictionary<string, Boolean>;
   begin
-    Done := TDictionary<string, Boolean>.Create;
+    mDone := TDictionary<string, Boolean>.Create;
     try
-      for Folder in AFolders do
+      for mFolder in AFolders do
       begin
-        if (Folder = '') or Done.ContainsKey(LowerCase(Folder)) or Cancelled or (Found.Count >= MaxFiles) then
+        if (mFolder = '') or mDone.ContainsKey(LowerCase(mFolder)) or Cancelled or (mFound.Count >= cMaxFiles) then
         begin
           Continue;
         end;
-        Done.Add(LowerCase(Folder), True);
-        for FileName in AList(Folder, ARecursive) do
+        mDone.Add(LowerCase(mFolder), True);
+        for mFileName in AList(mFolder, ARecursive) do
         begin
-          Add(FileName, AOrigin);
+          Add(mFileName, AOrigin);
         end;
       end;
     finally
-      Done.Free;
+      mDone.Free;
     end;
   end;
 
 var
-  FileName: string;
+  mProjectFile: string;
 begin
-  Seen := TDictionary<string, Boolean>.Create;
-  Found := TList<TAtlasQuickOpenFile>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
+  mFound := TList<TAtlasQuickOpenFile>.Create;
   try
-    for FileName in ASources.ProjectFiles do
+    for mProjectFile in ASources.ProjectFiles do
     begin
-      Add(FileName, TAtlasQuickOpenOrigin.Project);
+      Add(mProjectFile, TAtlasQuickOpenOrigin.Project);
     end;
     AddFolders(ASources.Folders, False, TAtlasQuickOpenOrigin.SearchPath);
     AddFolders(ASources.LibraryFolders, True, TAtlasQuickOpenOrigin.Library_);
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Found.Free;
-    Seen.Free;
+    mFound.Free;
+    mSeen.Free;
   end;
 end;
 
@@ -351,30 +352,30 @@ end;
 
 class function TAtlasQuickOpen.Score(const AText: string; const AFile: TAtlasQuickOpenFile): Integer;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Trim(AText);
-  if Text = '' then
+  mText := Trim(AText);
+  if mText = '' then
   begin
-    Exit(TAtlasCompletionMatcher.ScoreSubsequence);
+    Exit(TAtlasCompletionMatcher.cScoreSubsequence);
   end;
-  if (Pos('\', Text) > 0) or (Pos('/', Text) > 0) then
+  if (Pos('\', mText) > 0) or (Pos('/', mText) > 0) then
   begin
-    Exit(TAtlasCompletionMatcher.Score(Text.Replace('/', '\'), AFile.RelativePath));
+    Exit(TAtlasCompletionMatcher.Score(mText.Replace('/', '\'), AFile.RelativePath));
   end;
-  if Pos('.', Text) > 0 then
+  if Pos('.', mText) > 0 then
   begin
-    Result := TAtlasCompletionMatcher.Score(Text, AFile.Name);
+    Result := TAtlasCompletionMatcher.Score(mText, AFile.Name);
   end
   else
   begin
-    Result := TAtlasCompletionMatcher.Score(Text, AFile.Stem);
+    Result := TAtlasCompletionMatcher.Score(mText, AFile.Stem);
   end;
-  if Result = TAtlasCompletionMatcher.NoMatch then
+  if Result = TAtlasCompletionMatcher.cNoMatch then
   begin
     // Ersatzweise der Pfad: "common lsp" findet Dateien unter Common\Lsp.
-    Result := TAtlasCompletionMatcher.Score(Text.Replace(' ', '\'), AFile.RelativePath);
-    if Result <> TAtlasCompletionMatcher.NoMatch then
+    Result := TAtlasCompletionMatcher.Score(mText.Replace(' ', '\'), AFile.RelativePath);
+    if Result <> TAtlasCompletionMatcher.cNoMatch then
     begin
       Result := Result div 2;
     end;
@@ -441,84 +442,84 @@ end;
 class function TAtlasQuickOpen.Order(const AFiles: TAtlasQuickOpenFiles; const AText: string;
   const AOpen: TArray<string>; ARecent: TAtlasCommandHistory): TArray<Integer>;
 var
-  Scores, Tiers, Boosts: TArray<Integer>;
-  Found: TList<Integer>;
-  Open: TDictionary<string, Boolean>;
-  Index, Points: Integer;
-  FileName: string;
-  Files: TAtlasQuickOpenFiles;
+  mScores, mTiers, mBoosts: TArray<Integer>;
+  mFound: TList<Integer>;
+  mOpen: TDictionary<string, Boolean>;
+  mIndex, mPoints: Integer;
+  mFileName: string;
+  mFiles: TAtlasQuickOpenFiles;
 begin
-  Files := AFiles;
-  SetLength(Scores, Length(Files));
-  SetLength(Tiers, Length(Files));
-  SetLength(Boosts, Length(Files));
-  Found := TList<Integer>.Create;
-  Open := TDictionary<string, Boolean>.Create;
+  mFiles := AFiles;
+  SetLength(mScores, Length(mFiles));
+  SetLength(mTiers, Length(mFiles));
+  SetLength(mBoosts, Length(mFiles));
+  mFound := TList<Integer>.Create;
+  mOpen := TDictionary<string, Boolean>.Create;
   try
-    for FileName in AOpen do
+    for mFileName in AOpen do
     begin
-      Open.AddOrSetValue(LowerCase(FileName), True);
+      mOpen.AddOrSetValue(LowerCase(mFileName), True);
     end;
-    for Index := 0 to High(Files) do
+    for mIndex := 0 to High(mFiles) do
     begin
-      Points := Score(AText, Files[Index]);
-      if Points = TAtlasCompletionMatcher.NoMatch then
+      mPoints := Score(AText, mFiles[mIndex]);
+      if mPoints = TAtlasCompletionMatcher.cNoMatch then
       begin
         Continue;
       end;
-      Scores[Index] := Points;
+      mScores[mIndex] := mPoints;
       if ARecent <> nil then
       begin
-        Boosts[Index] := ARecent.Boost(RecentKey(Files[Index].FileName));
+        mBoosts[mIndex] := ARecent.Boost(RecentKey(mFiles[mIndex].FileName));
       end;
-      Tiers[Index] := TierOf(Open, Files[Index], Boosts[Index]);
-      Found.Add(Index);
+      mTiers[mIndex] := TierOf(mOpen, mFiles[mIndex], mBoosts[mIndex]);
+      mFound.Add(mIndex);
     end;
-    Found.Sort(FileComparer(Files, Scores, Tiers, Boosts));
-    if Found.Count > MaxResults then
+    mFound.Sort(FileComparer(mFiles, mScores, mTiers, mBoosts));
+    if mFound.Count > cMaxResults then
     begin
-      Found.Count := MaxResults;
+      mFound.Count := cMaxResults;
     end;
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Open.Free;
-    Found.Free;
+    mOpen.Free;
+    mFound.Free;
   end;
 end;
 
 class function TAtlasQuickOpen.OrderSymbols(const ANames: TArray<string>; const AText: string): TArray<Integer>;
 var
-  Scores: TArray<Integer>;
-  Found: TList<Integer>;
-  Index: Integer;
+  mScores: TArray<Integer>;
+  mFound: TList<Integer>;
+  mIndex: Integer;
 begin
-  SetLength(Scores, Length(ANames));
-  Found := TList<Integer>.Create;
+  SetLength(mScores, Length(ANames));
+  mFound := TList<Integer>.Create;
   try
-    for Index := 0 to High(ANames) do
+    for mIndex := 0 to High(ANames) do
     begin
-      Scores[Index] := TAtlasCompletionMatcher.Score(AText, ANames[Index]);
-      if Scores[Index] <> TAtlasCompletionMatcher.NoMatch then
+      mScores[mIndex] := TAtlasCompletionMatcher.Score(AText, ANames[mIndex]);
+      if mScores[mIndex] <> TAtlasCompletionMatcher.cNoMatch then
       begin
-        Found.Add(Index);
+        mFound.Add(mIndex);
       end;
     end;
-    Found.Sort(TComparer<Integer>.Construct(
+    mFound.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
-        Result := Scores[B] - Scores[A];
+        Result := mScores[B] - mScores[A];
         if Result = 0 then
         begin
           Result := A - B;
         end;
       end));
-    if Found.Count > MaxResults then
+    if mFound.Count > cMaxResults then
     begin
-      Found.Count := MaxResults;
+      mFound.Count := cMaxResults;
     end;
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Found.Free;
+    mFound.Free;
   end;
 end;
 
@@ -534,7 +535,7 @@ end;
 
 destructor TAtlasQuickOpenList.Destroy;
 var
-  Thread: TThread;
+  mThread: TThread;
 begin
   System.TMonitor.Enter(FLock);
   try
@@ -542,10 +543,10 @@ begin
   finally
     System.TMonitor.Exit(FLock);
   end;
-  for Thread in FThreads do
+  for mThread in FThreads do
   begin
-    Thread.WaitFor;
-    Thread.Free;
+    mThread.WaitFor;
+    mThread.Free;
   end;
   FThreads.Free;
   FLock.Free;
@@ -569,56 +570,56 @@ end;
 
 procedure TAtlasQuickOpenList.Sweep;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := FThreads.Count - 1 downto 0 do
+  for mIndex := FThreads.Count - 1 downto 0 do
   begin
-    if FThreads[Index].Finished then
+    if FThreads[mIndex].Finished then
     begin
-      FThreads[Index].Free;
-      FThreads.Delete(Index);
+      FThreads[mIndex].Free;
+      FThreads.Delete(mIndex);
     end;
   end;
 end;
 
 procedure TAtlasQuickOpenList.Refresh(const ASources: TAtlasQuickOpenSources);
 var
-  Key: string;
-  Generation: Integer;
-  Sources: TAtlasQuickOpenSources;
-  Lister: TAtlasQuickOpenLister;
-  Thread: TThread;
+  mKey: string;
+  mGeneration: Integer;
+  mSources: TAtlasQuickOpenSources;
+  mLister: TAtlasQuickOpenLister;
+  mThread: TThread;
 begin
   Sweep;
-  Key := ASources.Key;
+  mKey := ASources.Key;
   System.TMonitor.Enter(FLock);
   try
-    if Key = FKey then
+    if mKey = FKey then
     begin
       Exit;
     end;
-    FKey := Key;
+    FKey := mKey;
     Inc(FGeneration);
-    Generation := FGeneration;
+    mGeneration := FGeneration;
     Inc(FBuilding);
   finally
     System.TMonitor.Exit(FLock);
   end;
-  Sources := ASources;
-  Lister := FLister;
-  Thread := TThread.CreateAnonymousThread(
+  mSources := ASources;
+  mLister := FLister;
+  mThread := TThread.CreateAnonymousThread(
     procedure
     var
       Files: TAtlasQuickOpenFiles;
     begin
       Files := nil;
       try
-        Files := TAtlasQuickOpen.Collect(Sources, Lister,
+        Files := TAtlasQuickOpen.Collect(mSources, mLister,
           function: Boolean
           begin
             System.TMonitor.Enter(FLock);
             try
-              Result := FStopping or (Generation <> FGeneration);
+              Result := FStopping or (mGeneration <> FGeneration);
             finally
               System.TMonitor.Exit(FLock);
             end;
@@ -626,13 +627,13 @@ begin
       except
         // Ein Fehler beim Lesen der Ordner lässt die bisherige Liste stehen.
         on Exception do
-          Generation := -1;
+          mGeneration := -1;
       end;
-      Store(Generation, Files);
+      Store(mGeneration, Files);
     end);
-  Thread.FreeOnTerminate := False;
-  FThreads.Add(Thread);
-  Thread.Start;
+  mThread.FreeOnTerminate := False;
+  FThreads.Add(mThread);
+  mThread.Start;
 end;
 
 function TAtlasQuickOpenList.Files: TAtlasQuickOpenFiles;
@@ -657,12 +658,12 @@ end;
 
 function TAtlasQuickOpenList.WaitIdle(ATimeoutMs: Cardinal): Boolean;
 var
-  Watch: TStopwatch;
+  mWatch: TStopwatch;
 begin
-  Watch := TStopwatch.StartNew;
+  mWatch := TStopwatch.StartNew;
   while Building do
   begin
-    if Watch.ElapsedMilliseconds >= ATimeoutMs then
+    if mWatch.ElapsedMilliseconds >= ATimeoutMs then
     begin
       Exit(False);
     end;

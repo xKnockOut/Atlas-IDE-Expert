@@ -236,7 +236,7 @@ end;
 
 function TPlanBuilder.ReadCurrent(const AFileName: string): TAtlasTextFileContent;
 var
-  Item: TReplacedFile;
+  mItem: TReplacedFile;
 begin
   if FPending.ContainsKey(KeyOf(AFileName)) then
   begin
@@ -246,67 +246,67 @@ begin
   begin
     raise ELspEditError.Create(UiText(TWorkspacePlanText.FileNotFound));
   end;
-  if FReplaced.TryGetValue(KeyOf(AFileName), Item) then
+  if FReplaced.TryGetValue(KeyOf(AFileName), mItem) then
   begin
-    Result.Text := Item.Base;
+    Result.Text := mItem.Base;
   end;
 end;
 
 procedure TPlanBuilder.Replace(const AFileName, ABase: string);
 var
-  Item: TReplacedFile;
+  mItem: TReplacedFile;
 begin
-  Item.FileName := AFileName;
-  Item.Base := ABase;
-  FReplaced.AddOrSetValue(KeyOf(AFileName), Item);
+  mItem.FileName := AFileName;
+  mItem.Base := ABase;
+  FReplaced.AddOrSetValue(KeyOf(AFileName), mItem);
 end;
 
 procedure TPlanBuilder.AddCreate(const AFileName, AProject: string; const AContent: TAtlasTextFileContent);
 var
-  Created: TAtlasPlannedOperation;
+  mCreated: TAtlasPlannedOperation;
 begin
-  Created := Default(TAtlasPlannedOperation);
-  Created.Kind := TAtlasFileChangeKind.Created;
-  Created.FileName := AFileName;
-  Created.Project := AProject;
-  Created.Content := AContent;
-  FPending.AddOrSetValue(KeyOf(AFileName), FCreates.Add(Created));
+  mCreated := Default(TAtlasPlannedOperation);
+  mCreated.Kind := TAtlasFileChangeKind.Created;
+  mCreated.FileName := AFileName;
+  mCreated.Project := AProject;
+  mCreated.Content := AContent;
+  FPending.AddOrSetValue(KeyOf(AFileName), FCreates.Add(mCreated));
 end;
 
 procedure TPlanBuilder.AddRemove(const AFileName: string);
 var
-  Removed: TAtlasPlannedOperation;
+  mRemoved: TAtlasPlannedOperation;
 begin
-  Removed := Default(TAtlasPlannedOperation);
-  Removed.Kind := TAtlasFileChangeKind.Deleted;
-  Removed.FileName := AFileName;
-  Removed.Project := FEnvironment.ProjectOfFile(AFileName);
-  Removed.Content := ReadCurrent(AFileName);
-  FGone.AddOrSetValue(KeyOf(AFileName), FRemoves.Add(Removed));
+  mRemoved := Default(TAtlasPlannedOperation);
+  mRemoved.Kind := TAtlasFileChangeKind.Deleted;
+  mRemoved.FileName := AFileName;
+  mRemoved.Project := FEnvironment.ProjectOfFile(AFileName);
+  mRemoved.Content := ReadCurrent(AFileName);
+  FGone.AddOrSetValue(KeyOf(AFileName), FRemoves.Add(mRemoved));
   FReplaced.Remove(KeyOf(AFileName));
 end;
 
 procedure TPlanBuilder.DropCreate(const AFileName: string);
 var
-  Dropped: TAtlasPlannedOperation;
+  mDropped: TAtlasPlannedOperation;
 begin
   // Angelegt und im selben Edit wieder gelöscht bzw. umbenannt: die Anlage entfällt.
-  Dropped := FCreates[FPending[KeyOf(AFileName)]];
-  Dropped.FileName := '';
-  FCreates[FPending[KeyOf(AFileName)]] := Dropped;
+  mDropped := FCreates[FPending[KeyOf(AFileName)]];
+  mDropped.FileName := '';
+  FCreates[FPending[KeyOf(AFileName)]] := mDropped;
   FPending.Remove(KeyOf(AFileName));
 end;
 
 procedure TPlanBuilder.PlanCreate(const AFileName, AProject: string; const AContent: TAtlasTextFileContent);
 var
-  Revived: TAtlasPlannedOperation;
+  mRevived: TAtlasPlannedOperation;
 begin
   if FGone.ContainsKey(KeyOf(AFileName)) then
   begin
     // Vorher im selben Edit entfernt: Die Datei bleibt und bekommt den neuen Inhalt.
-    Revived := FRemoves[FGone[KeyOf(AFileName)]];
-    Revived.FileName := '';
-    FRemoves[FGone[KeyOf(AFileName)]] := Revived;
+    mRevived := FRemoves[FGone[KeyOf(AFileName)]];
+    mRevived.FileName := '';
+    FRemoves[FGone[KeyOf(AFileName)]] := mRevived;
     FGone.Remove(KeyOf(AFileName));
     Replace(AFileName, AContent.Text);
   end
@@ -331,14 +331,14 @@ end;
 
 procedure TPlanBuilder.SetTarget(const AFileName, AProject: string; const AContent: TAtlasTextFileContent);
 var
-  Changed: TAtlasPlannedOperation;
+  mChanged: TAtlasPlannedOperation;
 begin
   // Neuer Inhalt für ein Ziel, das existiert (Überschreiben) oder neu ist.
   if FPending.ContainsKey(KeyOf(AFileName)) then
   begin
-    Changed := FCreates[FPending[KeyOf(AFileName)]];
-    Changed.Content.Text := AContent.Text;
-    FCreates[FPending[KeyOf(AFileName)]] := Changed;
+    mChanged := FCreates[FPending[KeyOf(AFileName)]];
+    mChanged.Content.Text := AContent.Text;
+    FCreates[FPending[KeyOf(AFileName)]] := mChanged;
   end
   else if Exists(AFileName) then
   begin
@@ -554,28 +554,28 @@ end;
 
 function TPlanBuilder.Operations(AList: TList<TAtlasPlannedOperation>): TArray<TAtlasPlannedOperation>;
 var
-  Kept: TList<TAtlasPlannedOperation>;
-  Item: TAtlasPlannedOperation;
+  mKept: TList<TAtlasPlannedOperation>;
+  mItem: TAtlasPlannedOperation;
 begin
   Result := nil;
-  Kept := TList<TAtlasPlannedOperation>.Create;
+  mKept := TList<TAtlasPlannedOperation>.Create;
   try
-    for Item in AList do
+    for mItem in AList do
     begin
-      if Item.FileName <> '' then
+      if mItem.FileName <> '' then
       begin
-        Kept.Add(Item);
+        mKept.Add(mItem);
       end;
     end;
-    Result := Kept.ToArray;
+    Result := mKept.ToArray;
   finally
-    Kept.Free;
+    mKept.Free;
   end;
 end;
 
 function TPlanBuilder.Build(const AEdit: TLspWorkspaceEdit): TAtlasEditPlan;
 var
-  Operation: TLspFileOperation;
+  mOperation: TLspFileOperation;
 begin
   Result := Default(TAtlasEditPlan);
   Result.Edit := AEdit;
@@ -585,13 +585,13 @@ begin
   begin
     Result.Edit := AEdit.WithoutProject(FOwner);
   end;
-  for Operation in Result.Edit.Operations do
+  for mOperation in Result.Edit.Operations do
     try
-      PlanOperation(Operation);
+      PlanOperation(mOperation);
     except
       on E: Exception do
       begin
-        Result.Error := Failure(Operation.FileName, E.Message);
+        Result.Error := Failure(mOperation.FileName, E.Message);
         Exit;
       end;
     end;
@@ -608,13 +608,13 @@ end;
 class function TAtlasEditPlanner.Plan(const AEdit: TLspWorkspaceEdit;
   const AEnvironment: IAtlasEditEnvironment): TAtlasEditPlan;
 var
-  Builder: TPlanBuilder;
+  mBuilder: TPlanBuilder;
 begin
-  Builder := TPlanBuilder.Create(AEnvironment);
+  mBuilder := TPlanBuilder.Create(AEnvironment);
   try
-    Result := Builder.Build(AEdit);
+    Result := mBuilder.Build(AEdit);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 

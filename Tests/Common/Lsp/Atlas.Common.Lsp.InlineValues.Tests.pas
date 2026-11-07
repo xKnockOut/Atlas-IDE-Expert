@@ -233,7 +233,7 @@ begin
   Dispatcher := TJsonRpcDispatcher.Create;
   try
     Values.Attach(Dispatcher);
-    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspInlineValues.Method +
+    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspInlineValues.cMethod +
       '","params":{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},' +
       '"range":{"start":{"line":23,"character":0},"end":{"line":24,"character":0}},' +
       '"context":{"frameId":1,"stoppedLocation":{"start":{"line":23,"character":2},' +

@@ -94,19 +94,19 @@ constructor TAtlasSnippetCatalog.Create(const ABuiltIn, AIde, AOwn: TAtlasSnippe
 
   procedure AddAll(const AList: TAtlasSnippetList; AOrigin: TAtlasSnippetOrigin);
   var
-    Snippet: TAtlasSnippet;
-    Item: TAtlasSnippetEntry;
+    mSnippet: TAtlasSnippet;
+    mItem: TAtlasSnippetEntry;
   begin
-    for Snippet in AList do
+    for mSnippet in AList do
     begin
-      Item := Default(TAtlasSnippetEntry);
-      Item.Snippet := Snippet;
-      Item.Snippet.Origin := AOrigin;
+      mItem := Default(TAtlasSnippetEntry);
+      mItem.Snippet := mSnippet;
+      mItem.Snippet.Origin := AOrigin;
       if AOrigin = TAtlasSnippetOrigin.User then
       begin
-        Item.LoadedFile := Snippet.FileName;
+        mItem.LoadedFile := mSnippet.FileName;
       end;
-      FEntries.Add(Item);
+      FEntries.Add(mItem);
     end;
   end;
 
@@ -143,18 +143,18 @@ end;
 
 function TAtlasSnippetCatalog.Replaced(AIndex: Integer): Boolean;
 var
-  Index: Integer;
-  Own: TAtlasSnippet;
+  mIndex: Integer;
+  mOwn: TAtlasSnippet;
 begin
-  Own := FEntries[AIndex].Snippet;
+  mOwn := FEntries[AIndex].Snippet;
   Result := False;
-  for Index := 0 to FEntries.Count - 1 do
+  for mIndex := 0 to FEntries.Count - 1 do
   begin
-    if (Index <> AIndex) and SameText(FEntries[Index].Snippet.Prefix, Own.Prefix) then
+    if (mIndex <> AIndex) and SameText(FEntries[mIndex].Snippet.Prefix, mOwn.Prefix) then
     begin
       // Höherer Vorrang, oder gleiche Herkunft und weiter vorn (die erste gilt).
-      if (FEntries[Index].Snippet.Origin > Own.Origin) or
-        ((FEntries[Index].Snippet.Origin = Own.Origin) and (Index < AIndex)) then
+      if (FEntries[mIndex].Snippet.Origin > mOwn.Origin) or
+        ((FEntries[mIndex].Snippet.Origin = mOwn.Origin) and (mIndex < AIndex)) then
       begin
         Exit(True);
       end;
@@ -164,86 +164,86 @@ end;
 
 function TAtlasSnippetCatalog.UniquePrefix(const ABase: string): string;
 var
-  Number, Index: Integer;
-  Taken: Boolean;
+  mNumber, mIndex: Integer;
+  mTaken: Boolean;
 begin
-  Number := 1;
+  mNumber := 1;
   repeat
     Result := ABase;
-    if Number > 1 then
+    if mNumber > 1 then
     begin
-      Result := ABase + IntToStr(Number);
+      Result := ABase + IntToStr(mNumber);
     end;
-    Taken := False;
-    for Index := 0 to FEntries.Count - 1 do
+    mTaken := False;
+    for mIndex := 0 to FEntries.Count - 1 do
     begin
-      if SameText(FEntries[Index].Snippet.Prefix, Result) then
+      if SameText(FEntries[mIndex].Snippet.Prefix, Result) then
       begin
-        Taken := True;
+        mTaken := True;
       end;
     end;
-    Inc(Number);
-  until not Taken;
+    Inc(mNumber);
+  until not mTaken;
 end;
 
 function TAtlasSnippetCatalog.AddNew: Integer;
 var
-  Item: TAtlasSnippetEntry;
+  mItem: TAtlasSnippetEntry;
 begin
-  Item := Default(TAtlasSnippetEntry);
-  Item.Snippet.Prefix := UniquePrefix('neu');
-  Item.Snippet.Name := Item.Snippet.Prefix;
-  Item.Snippet.Body := '$0';
-  Item.Snippet.Origin := TAtlasSnippetOrigin.User;
-  Item.Changed := True;
+  mItem := Default(TAtlasSnippetEntry);
+  mItem.Snippet.Prefix := UniquePrefix('neu');
+  mItem.Snippet.Name := mItem.Snippet.Prefix;
+  mItem.Snippet.Body := '$0';
+  mItem.Snippet.Origin := TAtlasSnippetOrigin.User;
+  mItem.Changed := True;
   // Eigene stehen vorn; die neue hinter den vorhandenen eigenen.
   Result := 0;
   while (Result < FEntries.Count) and (FEntries[Result].Snippet.Origin = TAtlasSnippetOrigin.User) do
   begin
     Inc(Result);
   end;
-  FEntries.Insert(Result, Item);
+  FEntries.Insert(Result, mItem);
   FModified := True;
 end;
 
 function TAtlasSnippetCatalog.CopyAsOwn(AIndex: Integer): Integer;
 var
-  Item: TAtlasSnippetEntry;
+  mItem: TAtlasSnippetEntry;
 begin
-  Item := Default(TAtlasSnippetEntry);
-  Item.Snippet := FEntries[AIndex].Snippet;
-  Item.Snippet.Origin := TAtlasSnippetOrigin.User;
-  Item.Snippet.FileName := '';
+  mItem := Default(TAtlasSnippetEntry);
+  mItem.Snippet := FEntries[AIndex].Snippet;
+  mItem.Snippet.Origin := TAtlasSnippetOrigin.User;
+  mItem.Snippet.FileName := '';
   // Eine Kopie einer eigenen bekäme sonst dasselbe Kürzel zweimal.
   if Editable(AIndex) then
   begin
-    Item.Snippet.Prefix := UniquePrefix(Item.Snippet.Prefix);
+    mItem.Snippet.Prefix := UniquePrefix(mItem.Snippet.Prefix);
   end;
-  Item.Changed := True;
+  mItem.Changed := True;
   Result := 0;
   while (Result < FEntries.Count) and (FEntries[Result].Snippet.Origin = TAtlasSnippetOrigin.User) do
   begin
     Inc(Result);
   end;
-  FEntries.Insert(Result, Item);
+  FEntries.Insert(Result, mItem);
   FModified := True;
 end;
 
 procedure TAtlasSnippetCatalog.Update(AIndex: Integer; const ASnippet: TAtlasSnippet);
 var
-  Item: TAtlasSnippetEntry;
+  mItem: TAtlasSnippetEntry;
 begin
   if not Editable(AIndex) then
   begin
     Exit;
   end;
-  Item := FEntries[AIndex];
-  Item.Snippet.Name := ASnippet.Name;
-  Item.Snippet.Prefix := ASnippet.Prefix;
-  Item.Snippet.Description := ASnippet.Description;
-  Item.Snippet.Body := ASnippet.Body;
-  Item.Changed := True;
-  FEntries[AIndex] := Item;
+  mItem := FEntries[AIndex];
+  mItem.Snippet.Name := ASnippet.Name;
+  mItem.Snippet.Prefix := ASnippet.Prefix;
+  mItem.Snippet.Description := ASnippet.Description;
+  mItem.Snippet.Body := ASnippet.Body;
+  mItem.Changed := True;
+  FEntries[AIndex] := mItem;
   FModified := True;
 end;
 
@@ -326,66 +326,66 @@ end;
 
 function TAtlasSnippetCatalog.TargetFile(const AFolder: string; AIndex: Integer): string;
 var
-  Base, Candidate: string;
-  Number, Index: Integer;
-  Taken: Boolean;
+  mBase, mCandidate: string;
+  mNumber, mIndex: Integer;
+  mTaken: Boolean;
 begin
   // Vorhandene Dateien behalten ihren Namen, auch wenn sich das Kürzel ändert.
   if FEntries[AIndex].LoadedFile <> '' then
   begin
     Exit(FEntries[AIndex].LoadedFile);
   end;
-  Base := ChangeFileExt(TAtlasSnippets.FileNameFor(FEntries[AIndex].Snippet.Prefix), '');
-  Number := 1;
+  mBase := ChangeFileExt(TAtlasSnippets.FileNameFor(FEntries[AIndex].Snippet.Prefix), '');
+  mNumber := 1;
   repeat
-    Candidate := Base;
-    if Number > 1 then
+    mCandidate := mBase;
+    if mNumber > 1 then
     begin
-      Candidate := Base + '_' + IntToStr(Number);
+      mCandidate := mBase + '_' + IntToStr(mNumber);
     end;
-    Result := TPath.Combine(AFolder, Candidate + TAtlasSnippets.FileExtension);
-    Taken := FileExists(Result) and (FRemovedFiles.IndexOf(Result) < 0);
-    for Index := 0 to FEntries.Count - 1 do
+    Result := TPath.Combine(AFolder, mCandidate + TAtlasSnippets.cFileExtension);
+    mTaken := FileExists(Result) and (FRemovedFiles.IndexOf(Result) < 0);
+    for mIndex := 0 to FEntries.Count - 1 do
     begin
-      if (Index <> AIndex) and SameText(FEntries[Index].LoadedFile, Result) then
+      if (mIndex <> AIndex) and SameText(FEntries[mIndex].LoadedFile, Result) then
       begin
-        Taken := True;
+        mTaken := True;
       end;
     end;
-    Inc(Number);
-  until not Taken;
+    Inc(mNumber);
+  until not mTaken;
 end;
 
 procedure TAtlasSnippetCatalog.Save(const AFolder: string);
 var
-  Index: Integer;
-  Item: TAtlasSnippetEntry;
-  FileName: string;
+  mIndex: Integer;
+  mItem: TAtlasSnippetEntry;
+  mFileName: string;
 begin
   ForceDirectories(AFolder);
-  for FileName in FRemovedFiles do
+  for mFileName in FRemovedFiles do
   begin
-    if FileExists(FileName) then
+    if FileExists(mFileName) then
     begin
-      System.SysUtils.DeleteFile(FileName);
+      System.SysUtils.DeleteFile(mFileName);
     end;
   end;
   FRemovedFiles.Clear;
-  for Index := 0 to FEntries.Count - 1 do
+  for mIndex := 0 to FEntries.Count - 1 do
   begin
-    Item := FEntries[Index];
-    if not (Editable(Index) and Item.Changed) then
+    mItem := FEntries[mIndex];
+    if not (Editable(mIndex) and mItem.Changed) then
     begin
       Continue;
     end;
-    FileName := TargetFile(AFolder, Index);
+    mFileName := TargetFile(AFolder, mIndex);
     // Atomar (Bericht N3): Ein Abbruch hinterlässt keine halbe Vorlage. UTF-8 mit BOM und CRLF wie bisher.
-    TAtlasTextFile.Replace(FileName, TEncoding.UTF8.GetPreamble + TEncoding.UTF8.GetBytes(
-      StringReplace(TAtlasSnippets.ToFileText(Item.Snippet), #10, #13#10, [rfReplaceAll])));
-    Item.LoadedFile := FileName;
-    Item.Snippet.FileName := FileName;
-    Item.Changed := False;
-    FEntries[Index] := Item;
+    TAtlasTextFile.Replace(mFileName, TEncoding.UTF8.GetPreamble + TEncoding.UTF8.GetBytes(
+      StringReplace(TAtlasSnippets.ToFileText(mItem.Snippet), #10, #13#10, [rfReplaceAll])));
+    mItem.LoadedFile := mFileName;
+    mItem.Snippet.FileName := mFileName;
+    mItem.Changed := False;
+    FEntries[mIndex] := mItem;
   end;
   FModified := False;
 end;

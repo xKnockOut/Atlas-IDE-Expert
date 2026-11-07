@@ -123,12 +123,12 @@ begin
   mFound := False;
   for mMethod in FDispatcher.Methods do
   begin
-    if mMethod = TAffectedTests.Method then
+    if mMethod = TAffectedTests.cMethod then
     begin
       mFound := True;
     end;
   end;
-  Assert.IsTrue(mFound, TAffectedTests.Method);
+  Assert.IsTrue(mFound, TAffectedTests.cMethod);
 end;
 
 procedure TShellAnalysisAreaTests.ImpactOptionsFollowSettings;

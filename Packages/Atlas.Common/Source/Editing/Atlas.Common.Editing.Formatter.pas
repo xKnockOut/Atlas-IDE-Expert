@@ -77,30 +77,30 @@ end;
 /// <summary>Führenden Leerraum nach Spalten umrechnen (AColumn &lt; 0: vorhandene Breite), Rest unverändert.</summary>
 function Reindent(const ALine: string; const ASettings: TFormatStyle; AColumn: Integer): string;
 var
-  Index, Columns: Integer;
+  mIndex, mColumns: Integer;
 begin
-  Columns := LeadingColumns(ALine, ASettings.IndentSize, Index);
-  Inc(Index);
-  if Index > Length(ALine) then
+  mColumns := LeadingColumns(ALine, ASettings.IndentSize, mIndex);
+  Inc(mIndex);
+  if mIndex > Length(ALine) then
   begin
     // Nur Leerraum: Zeile wird leer (falls getrimmt) oder bleibt.
     Exit(ALine);
   end;
   if AColumn >= 0 then
   begin
-    Columns := AColumn;
+    mColumns := AColumn;
   end;
-  Result := TBlockIndenter.IndentText(Columns, ASettings.IndentSize, ASettings.UseTabs) + Copy(ALine, Index, MaxInt);
+  Result := TBlockIndenter.IndentText(mColumns, ASettings.IndentSize, ASettings.UseTabs) + Copy(ALine, mIndex, MaxInt);
 end;
 
 procedure AddGap(AEdits: TList<TGapEdit>; AStart, AEnd: Integer; const AText: string);
 var
-  Edit: TGapEdit;
+  mEdit: TGapEdit;
 begin
-  Edit.StartColumn := AStart;
-  Edit.EndColumn := AEnd;
-  Edit.Text := AText;
-  AEdits.Add(Edit);
+  mEdit.StartColumn := AStart;
+  mEdit.EndColumn := AEnd;
+  mEdit.Text := AText;
+  AEdits.Add(mEdit);
 end;
 
 type
@@ -352,22 +352,22 @@ end;
 
 function JoinTexts(const ALines: TArray<TFormatLine>; const ALineBreak: string): string;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    for Index := 0 to High(ALines) do
+    for mIndex := 0 to High(ALines) do
     begin
-      if Index > 0 then
+      if mIndex > 0 then
       begin
-        Builder.Append(ALineBreak);
+        mBuilder.Append(ALineBreak);
       end;
-      Builder.Append(ALines[Index].Text);
+      mBuilder.Append(ALines[mIndex].Text);
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 

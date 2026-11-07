@@ -6,11 +6,12 @@
 interface
 
 const
-  CatalogLinesDeFindBugs: array[0..534] of string = (
+  cCatalogLinesDeFindBugs: array[0..534] of string = (
     '{',
     '      "id": "result-not-set",',
     '      "name": "Funktionsergebnis eventuell nicht gesetzt",',
-    '      "description": "Ein Pfad durch die Funktion endet, ohne Result zuzuweisen. Der Aufrufer liest dann einen undefinierten Wert."',
+    '      "description": "Ein Pfad durch die Funktion endet, ohne Result zuzuweisen. Der Aufrufer liest dann einen undefinierten Wert. Eine for-Schleife läuft sicher einmal, wenn beide Grenzen Zahlenliter' +
+    'ale oder echte Konstanten der Unit sind (cVersuche = 3) und der Bereich nicht leer ist, wie Delphi es wertet."',
     '    },',
     '{',
     '      "id": "possibly-uninitialized",',

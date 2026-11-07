@@ -191,7 +191,7 @@ begin
   begin
     Build(Summary, Stamp(Index), 0, 0, 1);
   end;
-  Assert.AreEqual(TAtlasProjectTrendLog.MinPoints, Integer(Length(Summary.Trends.Points)));
+  Assert.AreEqual(TAtlasProjectTrendLog.cMinPoints, Integer(Length(Summary.Trends.Points)));
   // Kleinere Grenze danach: kürzt beim nächsten Build.
   Summary := TAtlasProjectSummary.Create(Project);
   for Index := 1 to 10 do

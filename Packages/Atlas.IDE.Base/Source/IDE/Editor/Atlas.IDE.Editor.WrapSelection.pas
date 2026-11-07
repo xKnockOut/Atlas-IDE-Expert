@@ -67,10 +67,10 @@ uses
 
 function IsEditorWindow(AWnd: HWND): Boolean;
 var
-  Control: TWinControl;
+  mControl: TWinControl;
 begin
-  Control := FindControl(AWnd);
-  Result := (Control <> nil) and Control.ClassNameIs('TEditControl');
+  mControl := FindControl(AWnd);
+  Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
 end;
 
 /// <summary>Ersetzt in ABuffer (Text AText) ab Zeichen AStart AOldLength Zeichen durch AInsert; ein
@@ -78,16 +78,16 @@ end;
 procedure WriteBuffer(const ABuffer: IOTAEditBuffer; const AText: string; AStart, AOldLength: Integer;
   const AInsert: string);
 var
-  Writer: IOTAEditWriter;
+  mWriter: IOTAEditWriter;
 begin
-  Writer := ABuffer.CreateUndoableWriter;
-  Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
-  Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
+  mWriter := ABuffer.CreateUndoableWriter;
+  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
+  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
   if AInsert <> '' then
   begin
-    Writer.Insert(PAnsiChar(UTF8Encode(AInsert)));
+    mWriter.Insert(PAnsiChar(UTF8Encode(AInsert)));
   end;
-  Writer := nil;
+  mWriter := nil;
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
@@ -218,10 +218,10 @@ end;
 
 class function TAtlasIdeWrapSelection.Enabled: Boolean;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := Settings.Enabled and Settings.WrapSelection;
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.WrapSelection;
 end;
 
 class function TAtlasIdeWrapSelection.Chars: string;
@@ -231,15 +231,15 @@ end;
 
 procedure TAtlasIdeWrapSelection.AppMessage(var Msg: TMsg; var Handled: Boolean);
 var
-  Typed: Char;
+  mTyped: Char;
 begin
   if Handled or (Msg.message <> WM_CHAR) or TAtlasGuard.Disabled(TAtlasFeature.WrapSelection) then
   begin
     Exit;
   end;
   try
-    Typed := Char(Msg.wParam);
-    if not IsEditorWindow(Msg.hwnd) or not Enabled or not TAtlasWrapSelection.Accepts(Typed, Chars) then
+    mTyped := Char(Msg.wParam);
+    if not IsEditorWindow(Msg.hwnd) or not Enabled or not TAtlasWrapSelection.Accepts(mTyped, Chars) then
     begin
       Exit;
     end;
@@ -247,7 +247,7 @@ begin
     begin
       Exit;
     end;
-    Handled := Run(Typed);
+    Handled := Run(mTyped);
   except
     // Keine Exception an die IDE (#493); das Zeichen geht dann normal weiter.
     on E: Exception do

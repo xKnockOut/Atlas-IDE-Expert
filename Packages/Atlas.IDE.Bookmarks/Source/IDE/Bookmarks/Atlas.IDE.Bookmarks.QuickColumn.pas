@@ -136,12 +136,12 @@ type
       Miss: Boolean;
     end;
   private const
-    HoverMs = 400;
+    cHoverMs = 400;
     /// <summary>Tipp-Pause, bevor die Lesezeichen der Datei wiedergefunden werden.</summary>
-    QuietMs = 600;
+    cQuietMs = 600;
     /// <summary>So lange nach dem Anfordern darf die Spalte ungezeichnet bleiben, bevor das Protokoll es meldet.
     /// </summary>
-    PaintWaitMs = 5000;
+    cPaintWaitMs = 5000;
   private
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
@@ -165,7 +165,7 @@ type
     procedure CheckPainted;
     /// <summary>Zeile der Spalte unter X, Y im Editorfenster AWnd, aus dem aktuellen Zustand des Editors.
     /// </summary>
-    function RowAt(AWnd: HWND; X, Y: Integer; out ARow: TRow): Boolean; overload;
+    function RowAt(AWnd: HWND; AX, AY: Integer; out ARow: TRow): Boolean; overload;
     /// <summary>Zeile unter dem Bildschirmpunkt APoint einer Nachricht an AWnd: in einem Editorfenster mit
     /// gezeichneter Spalte, wenn AWnd dieses Fenster, ein Kind oder ein Vorfahr davon ist.</summary>
     function RowAt(AWnd: HWND; const APoint: TPoint; out ARow: TRow): Boolean; overload;
@@ -181,7 +181,7 @@ type
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
     /// <summary>Drücken auf die Spalte: rechts das eigene Menü, links (mit gutterClick) Lesezeichen setzen bzw.
     /// entfernen; beides an der IDE vorbei.</summary>
-    procedure TakePress(var Msg: TMsg; var Handled: Boolean);
+    procedure TakePress(var AMsg: TMsg; var AHandled: Boolean);
     procedure CheckHover;
     procedure HideTip;
     procedure SetHover(const ARow: TRow; AOn: Boolean);
@@ -204,7 +204,6 @@ uses
   Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Bookmarks.Quick,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.GutterColumns,
   Atlas.IDE.Foundation.Settings,
@@ -271,13 +270,13 @@ end;
 /// <summary>Ziffer auf dem Marker: Schwarz oder Weiß, je nachdem, was sich stärker von AFill abhebt.</summary>
 function DigitColor(AFill: TAtlasColor): TAtlasColor;
 const
-  Black = TAtlasColor($000000);
-  White = TAtlasColor($FFFFFF);
+  cBlack = TAtlasColor($000000);
+  cWhite = TAtlasColor($FFFFFF);
 begin
-  Result := Black;
-  if TAtlasColorMath.Contrast(White, AFill) > TAtlasColorMath.Contrast(Black, AFill) then
+  Result := cBlack;
+  if TAtlasColorMath.Contrast(cWhite, AFill) > TAtlasColorMath.Contrast(cBlack, AFill) then
   begin
-    Result := White;
+    Result := cWhite;
   end;
 end;
 
@@ -729,13 +728,13 @@ begin
     Exit;
   end;
   if (FSlot.Column < 0) or FLog.NotPainted or (FTrack.FileName = '') or
-    (TThread.GetTickCount64 - FLog.RequestedAt < PaintWaitMs) then
+    (TThread.GetTickCount64 - FLog.RequestedAt < cPaintWaitMs) then
   begin
     Exit;
   end;
   FLog.NotPainted := True;
   TAtlasGuard.Log(Format('Schnelle Lesezeichen: Spalte %d seit %d ms angefordert, die IDE hat sie aber noch nie ' +
-    'gezeichnet', [FSlot.Column, PaintWaitMs]));
+    'gezeichnet', [FSlot.Column, cPaintWaitMs]));
 end;
 
 procedure TAtlasIdeQuickColumn.Tick(Sender: TObject);
@@ -797,7 +796,7 @@ begin
     FTrack.Done := False;
     Exit;
   end;
-  if FTrack.Done or (TThread.GetTickCount64 - FTrack.ChangedAt < QuietMs) then
+  if FTrack.Done or (TThread.GetTickCount64 - FTrack.ChangedAt < cQuietMs) then
   begin
     Exit;
   end;
@@ -883,10 +882,10 @@ begin
   end;
 end;
 
-function TAtlasIdeQuickColumn.RowAt(AWnd: HWND; X, Y: Integer; out ARow: TRow): Boolean;
+function TAtlasIdeQuickColumn.RowAt(AWnd: HWND; AX, AY: Integer; out ARow: TRow): Boolean;
 const
   /// <summary>Geschätzte Zeile zuerst, dann die Nachbarn (Rundung an der Zeilengrenze).</summary>
-  Steps: array[0..2] of Integer = (0, -1, 1);
+  cSteps: array[0..2] of Integer = (0, -1, 1);
 var
   mPainted: TPainted;
   mPlace: TEditorPlace;
@@ -901,15 +900,15 @@ begin
   end;
   // Die Zeile schätzt die Zeilenhöhe der zuletzt gezeichneten; ob der Punkt wirklich in der Spalte dieser
   // Zeile liegt, sagt die IDE (auch nach dem Scrollen oder bei geänderter Breite der Rinne).
-  mGuess := TAtlasQuickBookmarks.RowGuess(mPainted.EditorLine, mPainted.Rect.Top, mPainted.Rect.Height, Y);
-  for mStep in Steps do
+  mGuess := TAtlasQuickBookmarks.RowGuess(mPainted.EditorLine, mPainted.Rect.Top, mPainted.Rect.Height, AY);
+  for mStep in cSteps do
   begin
     mCandidate := mGuess + mStep;
     if (mCandidate < FArea.FirstLine) or (mCandidate > FArea.LastLine) then
     begin
       Continue;
     end;
-    case LineRow(mPlace, FSlot.Column, mCandidate, Point(X, Y), ARow) of
+    case LineRow(mPlace, FSlot.Column, mCandidate, Point(AX, AY), ARow) of
       TLineHit.Miss:
         ;
       TLineHit.Found:
@@ -1082,7 +1081,7 @@ begin
     SetHover(Default(TRow), False);
     Exit;
   end;
-  if not FTip.IsShown and (TThread.GetTickCount64 - FHover.Since >= HoverMs) then
+  if not FTip.IsShown and (TThread.GetTickCount64 - FHover.Since >= cHoverMs) then
   begin
     FTip.Show(FHover.Row.Marks, Point(FHover.ScreenRect.Right + 4, FHover.ScreenRect.Bottom + 2));
   end;
@@ -1123,20 +1122,20 @@ begin
   end;
 end;
 
-procedure TAtlasIdeQuickColumn.TakePress(var Msg: TMsg; var Handled: Boolean);
+procedure TAtlasIdeQuickColumn.TakePress(var AMsg: TMsg; var AHandled: Boolean);
 var
   mRow: TRow;
 begin
   // Bildschirmpunkt der Nachricht, nicht lParam: Die Rinne kann in einem anderen Fenster liegen (#1281).
-  if not RowAt(Msg.hwnd, Msg.pt, mRow) then
+  if not RowAt(AMsg.hwnd, AMsg.pt, mRow) then
   begin
-    LogMiss(Msg.hwnd, Msg.pt);
+    LogMiss(AMsg.hwnd, AMsg.pt);
     Exit;
   end;
-  if Msg.message = WM_RBUTTONDOWN then
+  if AMsg.message = WM_RBUTTONDOWN then
   begin
     // Das eigene Menü ersetzt das Kontextmenü der IDE; es öffnet beim Loslassen.
-    Handled := True;
+    AHandled := True;
     FPress.SwallowUp := WM_RBUTTONUP;
     FPress.Row := mRow;
     HideTip;
@@ -1147,7 +1146,7 @@ begin
   begin
     Exit;
   end;
-  Handled := True;
+  AHandled := True;
   FPress.SwallowUp := WM_LBUTTONUP;
   FLog.ClickedAt := TThread.GetTickCount64;
   ClickRow(mRow);

@@ -53,14 +53,14 @@ type
 
   TAtlasIdeDebugAccessViolation = class
   public const
-    SliceMs = 30;
-    TickMs = 10;
-    WaitMs = 100;
+    cSliceMs = 30;
+    cTickMs = 10;
+    cWaitMs = 100;
     /// <summary>So lange wartet Atlas höchstens, bis der Dialog der IDE zu ist.</summary>
-    ShowWaitMs = 120000;
+    cShowWaitMs = 120000;
     /// <summary>So lange wartet Atlas auf einen verzögerten Wert (LLDB).</summary>
-    DeferredTimeoutMs = 2000;
-    RequestTimeoutMs = 5000;
+    cDeferredTimeoutMs = 2000;
+    cRequestTimeoutMs = 5000;
   private type
     TListener = class(TAtlasIdeDebugListener)
     public
@@ -167,7 +167,6 @@ uses
   Vcl.Clipbrd,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
@@ -222,7 +221,7 @@ begin
   FWorkers := TList<TThread>.Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FUnderline := TAtlasIdeAvUnderline.Create;
 end;
@@ -276,28 +275,28 @@ end;
 
 class procedure TAtlasIdeDebugAccessViolation.Release;
 var
-  Instance: TAtlasIdeDebugAccessViolation;
+  mInstance: TAtlasIdeDebugAccessViolation;
 begin
   if FInstance = nil then
   begin
     Exit;
   end;
-  Instance := FInstance;
-  Instance.Drop;
+  mInstance := FInstance;
+  mInstance.Drop;
   FInstance := nil;
   // Abgeschaltet: Die Leiste zeigt wieder nur die Meldung.
-  TAtlasIdeDebugExceptionBar.Explain(Instance.FProgress.Stop, Default(TAtlasDebugBannerExplanation));
+  TAtlasIdeDebugExceptionBar.Explain(mInstance.FProgress.Stop, Default(TAtlasDebugBannerExplanation));
   TAtlasIdeDebugExceptionBar.SetExplanationHandler(nil);
-  if Instance.FHandler <> 0 then
+  if mInstance.FHandler <> 0 then
   begin
-    TAtlasIdeDebugExceptions.RemoveExceptionHandler(Instance.FHandler);
+    TAtlasIdeDebugExceptions.RemoveExceptionHandler(mInstance.FHandler);
   end;
-  if Instance.FListener <> nil then
+  if mInstance.FListener <> nil then
   begin
-    TAtlasIdeDebugSession.RemoveListener(Instance.FListener);
+    TAtlasIdeDebugSession.RemoveListener(mInstance.FListener);
   end;
-  Instance.FListener := nil;
-  Instance.Free;
+  mInstance.FListener := nil;
+  mInstance.Free;
   TAtlasIdeAvUnderline.Invalidate;
 end;
 
@@ -307,11 +306,8 @@ begin
 end;
 
 class function TAtlasIdeDebugAccessViolation.Enabled: Boolean;
-var
-  Settings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := Settings.Enabled and Settings.DebugExplainAccessViolation;
+  Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.DebugExplainAccessViolation;
 end;
 
 class procedure TAtlasIdeDebugAccessViolation.SetWhereAssigned(const AProc: TAtlasAvWhereAssignedProc);
@@ -373,7 +369,7 @@ end;
 
 procedure TAtlasIdeDebugAccessViolation.ExceptionTaken(const AStop: TAtlasDebugExceptionStop);
 var
-  Frames: TAtlasDebugFrames;
+  mFrames: TAtlasDebugFrames;
 begin
   Drop;
   if AStop.Continued or not Enabled then
@@ -385,23 +381,23 @@ begin
   begin
     Exit;
   end;
-  Frames := AStop.Frames;
+  mFrames := AStop.Frames;
   // Der Debugger wertet im obersten Rahmen aus: Nur wenn der eigener Code mit Quelltext ist, passt die Zeile.
-  if (Length(Frames) = 0) or not Frames[0].HasSource or not Frames[0].Own then
+  if (Length(mFrames) = 0) or not mFrames[0].HasSource or not mFrames[0].Own then
   begin
     TAtlasGuard.Log('Zugriffsverletzung erklären: Halt nicht in eigenem Code mit Quelltext; nur die Meldung');
     Exit;
   end;
   FFacts.Exception := AStop.Exception;
   FProgress.Stop := AStop.Stop;
-  FFacts.FileName := Frames[0].FileName;
-  FFacts.Line := Frames[0].Line - 1;
+  FFacts.FileName := mFrames[0].FileName;
+  FFacts.Line := mFrames[0].Line - 1;
   FFacts.PointerSize := TAtlasAvJson.PointerSize(TAtlasIdeDebugSession.LaunchPlatform);
   FProgress.Since := TThread.GetTickCount64;
   FProgress.Quiet := 0;
   FProgress.Phase := TPhase.Wait;
   TAtlasIdeDebugExceptionBar.Explain(FProgress.Stop, TAtlasAvTexts.Busy);
-  FTimer.Interval := WaitMs;
+  FTimer.Interval := cWaitMs;
   FTimer.Enabled := True;
 end;
 
@@ -433,7 +429,7 @@ end;
 procedure TAtlasIdeDebugAccessViolation.CheckWait;
 begin
   // Weitergelaufen, neuer Halt, Sitzung zu oder zu lange gewartet: nichts.
-  if not StillStopped or (TThread.GetTickCount64 - FProgress.Since > ShowWaitMs) then
+  if not StillStopped or (TThread.GetTickCount64 - FProgress.Since > cShowWaitMs) then
   begin
     Drop;
     Exit;
@@ -501,7 +497,7 @@ begin
     begin
       mChains := Default(TAtlasAvChains);
       try
-        mChains := ASession.AccessChains(mFileName, mLine, mPointerSize, RequestTimeoutMs);
+        mChains := ASession.AccessChains(mFileName, mLine, mPointerSize, cRequestTimeoutMs);
       except
         // Server langsam oder weg: keine Ketten.
         mChains := Default(TAtlasAvChains);
@@ -553,7 +549,7 @@ begin
   FAnalysis := TAtlasAvAnalysis.Create(AChains, FFacts.Access, FFacts.PointerSize,
     TAtlasIdeSettings.Current.DebugExplainAccessViolationAllowCalls);
   FProgress.Phase := TPhase.Evaluate;
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.Enabled := True;
   EvaluateSlice;
 end;
@@ -575,7 +571,7 @@ begin
   end;
   mStep := TSliceStep.Next;
   mStartedAt := TThread.GetTickCount64;
-  while (mStep = TSliceStep.Next) and (TThread.GetTickCount64 - mStartedAt < SliceMs) do
+  while (mStep = TSliceStep.Next) and (TThread.GetTickCount64 - mStartedAt < cSliceMs) do
   begin
     if FAnalysis.Next(mRequest) then
     begin
@@ -597,7 +593,7 @@ begin
   begin
     Exit;
   end;
-  Result := TThread.GetTickCount64 - FDeferred.Since < DeferredTimeoutMs;
+  Result := TThread.GetTickCount64 - FDeferred.Since < cDeferredTimeoutMs;
   if not Result then
   begin
     FEvaluator.Cancel;
@@ -671,38 +667,37 @@ end;
 
 procedure TAtlasIdeDebugAccessViolation.Finish;
 var
-  Verdict: TAtlasAvVerdict;
-  Settings: TAtlasPluginSettings;
+  mVerdict: TAtlasAvVerdict;
   mEnd: Integer;
 begin
   FTimer.Enabled := False;
   FProgress.Phase := TPhase.Idle;
-  Settings := TAtlasIdeSettings.Current;
-  Verdict := FAnalysis.Verdict;
-  FOutcome.Culprit := Verdict.Culprit;
-  FOutcome.HasCulprit := Verdict.HasCulprit;
+  mVerdict := FAnalysis.Verdict;
+  FOutcome.Culprit := mVerdict.Culprit;
+  FOutcome.HasCulprit := mVerdict.HasCulprit;
   // Unterstreichen: das schuldige Glied in seiner ersten Zeile.
-  if Verdict.HasCulprit and (FFacts.Lines <> nil) and (Verdict.Culprit.StartLine >= 0) and
-    (Verdict.Culprit.StartLine <= High(FFacts.Lines)) then
+  if mVerdict.HasCulprit and (FFacts.Lines <> nil) and (mVerdict.Culprit.StartLine >= 0) and
+    (mVerdict.Culprit.StartLine <= High(FFacts.Lines)) then
   begin
-    if Verdict.Culprit.EndLine = Verdict.Culprit.StartLine then
+    if mVerdict.Culprit.EndLine = mVerdict.Culprit.StartLine then
     begin
-      mEnd := Verdict.Culprit.EndCharacter;
+      mEnd := mVerdict.Culprit.EndCharacter;
     end
     else
     begin
-      mEnd := Length(TrimRight(FFacts.Lines[Verdict.Culprit.StartLine]));
+      mEnd := Length(TrimRight(FFacts.Lines[mVerdict.Culprit.StartLine]));
     end;
-    FUnderline.Show(FFacts.FileName, Verdict.Culprit.StartLine, Verdict.Culprit.StartCharacter, mEnd,
-      FFacts.Lines[Verdict.Culprit.StartLine]);
+    FUnderline.Show(FFacts.FileName, mVerdict.Culprit.StartLine, mVerdict.Culprit.StartCharacter, mEnd,
+      FFacts.Lines[mVerdict.Culprit.StartLine]);
   end;
-  Publish(TAtlasAvTexts.FromAnalysis(FAnalysis, Assigned(FHooks.WhereAssigned) and Settings.DataFlow,
-    Assigned(FHooks.Evaluate) and Settings.DebugEvaluateWindow, FFacts.Header));
+  Publish(TAtlasAvTexts.FromAnalysis(FAnalysis, Assigned(FHooks.WhereAssigned) and
+    TAtlasIdeSettings.Current.DataFlow, Assigned(FHooks.Evaluate) and TAtlasIdeSettings.Current.DebugEvaluateWindow,
+    FFacts.Header));
 end;
 
 procedure TAtlasIdeDebugAccessViolation.Publish(const AExplanation: TAtlasDebugBannerExplanation);
 var
-  Line: string;
+  mLine: string;
 begin
   FTimer.Enabled := False;
   FProgress.Phase := TPhase.Idle;
@@ -716,9 +711,9 @@ begin
   end
   else if Assigned(FHooks.Message) then
   begin
-    for Line in TAtlasAvTexts.MessageLines(AExplanation, FFacts.Place) do
+    for mLine in TAtlasAvTexts.MessageLines(AExplanation, FFacts.Place) do
     begin
-      FHooks.Message(Line);
+      FHooks.Message(mLine);
     end;
   end;
 end;
@@ -754,19 +749,19 @@ end;
 
 procedure TAtlasIdeDebugAccessViolation.ReapWorkers(AWait: Boolean);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if FWorkers = nil then
   begin
     Exit;
   end;
-  for Index := FWorkers.Count - 1 downto 0 do
+  for mIndex := FWorkers.Count - 1 downto 0 do
   begin
-    if AWait or FWorkers[Index].Finished then
+    if AWait or FWorkers[mIndex].Finished then
     begin
-      FWorkers[Index].WaitFor;
-      FWorkers[Index].Free;
-      FWorkers.Delete(Index);
+      FWorkers[mIndex].WaitFor;
+      FWorkers[mIndex].Free;
+      FWorkers.Delete(mIndex);
     end;
   end;
 end;

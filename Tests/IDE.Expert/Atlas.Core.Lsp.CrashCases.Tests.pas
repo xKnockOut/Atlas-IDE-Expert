@@ -70,7 +70,7 @@ function TAtlasCrashCasesTests.WriteCase(const AName, ARequest: string): string;
 begin
   Result := TPath.Combine(FRoot, AName);
   TDirectory.CreateDirectory(Result);
-  TFile.WriteAllText(TPath.Combine(Result, TAtlasCrashCases.RequestName), ARequest, TEncoding.UTF8);
+  TFile.WriteAllText(TPath.Combine(Result, TAtlasCrashCases.cRequestName), ARequest, TEncoding.UTF8);
 end;
 
 procedure TAtlasCrashCasesTests.ParsesCaseNotification;
@@ -157,7 +157,7 @@ var
   mFolder, mText: string;
 begin
   mFolder := WriteCase('2026-10-29_211530_1', cRequest);
-  TFile.WriteAllText(TPath.Combine(mFolder, TAtlasCrashCases.StackName), 'Aufrufstapel:'#13#10'Parser.pas 40',
+  TFile.WriteAllText(TPath.Combine(mFolder, TAtlasCrashCases.cStackName), 'Aufrufstapel:'#13#10'Parser.pas 40',
     TEncoding.UTF8);
   Assert.IsTrue(TAtlasCrashCases.Load(mFolder, mCase));
   Assert.AreEqual('Absturz: textDocument/hover in UI.Auftrag.pas:812 löste EStackOverflow aus',
@@ -180,7 +180,7 @@ begin
   TFile.WriteAllText(TPath.Combine(mFolder, 'wiederholen.cmd'), '@echo off');
   mFiles := TAtlasCrashCases.AttachFiles(mFolder);
   Assert.AreEqual(3, Integer(Length(mFiles)));
-  Assert.AreEqual(TAtlasCrashCases.RequestName, mFiles[0].Name);
+  Assert.AreEqual(TAtlasCrashCases.cRequestName, mFiles[0].Name);
   Assert.AreEqual('atlas.json', mFiles[1].Name);
   Assert.AreEqual('UI.Auftrag.pas', mFiles[2].Name);
   Assert.AreEqual(0, Integer(Length(TAtlasCrashCases.AttachFiles(TPath.Combine(FRoot, 'fehlt')))));

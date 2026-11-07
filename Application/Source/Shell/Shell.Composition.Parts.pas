@@ -34,7 +34,7 @@ type
   TShellParts = class
   public const
     /// <summary>Anfragen, die länger laufen, werden abgebrochen und gemeldet.</summary>
-    RequestTimeoutMs = 10000;
+    cRequestTimeoutMs = 10000;
   private
     /// <summary>Teil von Destroy: gibt Features, Ordner und Index frei.</summary>
     procedure FreeFeatures;
@@ -63,7 +63,8 @@ type
     IdeArea: TShellIdeArea;
     /// <summary>Teilwurzel Bearbeiten: Gliederung, Formatieren, Erzeugen-Menü und Host der Schnellbefehle.</summary>
     EditingArea: TShellEditingArea;
-    /// <summary>Teilwurzel Index: Symbolindex, Uses-Graph, Ordner des Arbeitsbereichs und Ereignisse des Aufbaus.</summary>
+    /// <summary>Teilwurzel Index: Symbolindex, Uses-Graph, Ordner des Arbeitsbereichs und Ereignisse des
+    /// Aufbaus.</summary>
     IndexArea: TShellIndexArea;
     Connection: TJsonRpcConnection;
     /// <summary>Arbeitsbereiche, Einstellungen, Ordner und was je Datei aus ihnen folgt.</summary>
@@ -214,7 +215,7 @@ end;
 
 function TShellParts.CurrentRequestTimeout: Cardinal;
 begin
-  Result := RequestTimeoutMs;
+  Result := cRequestTimeoutMs;
   if Session <> nil then
   begin
     Result := Session.RequestTimeout;

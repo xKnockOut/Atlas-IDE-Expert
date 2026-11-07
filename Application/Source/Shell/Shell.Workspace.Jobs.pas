@@ -232,7 +232,7 @@ var
   mFileName: string;
   mTime: TDateTime;
 begin
-  mFileName := ExistingOrLegacyFile(FRoot, BaselineFileName, LegacyBaselineFileName);
+  mFileName := ExistingOrLegacyFile(FRoot, cBaselineFileName, cLegacyBaselineFileName);
   TMonitor.Enter(FLock);
   try
     if not TFile.Exists(mFileName) then

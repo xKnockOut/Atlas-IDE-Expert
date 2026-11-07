@@ -33,7 +33,7 @@ type
 
   TLspMethodOrder = class
   public const
-    Command = 'atlas.server.methodOrder';
+    cCommand = 'atlas.server.methodOrder';
   public
     /// <summary>Antwort für AResult (siehe Kopf der Unit); der Aufrufer übernimmt das Objekt.</summary>
     class function Json(const AResult: TMethodOrderResult): TJSONObject; static;
@@ -73,35 +73,35 @@ const
 
 class function TLspMethodOrder.Json(const AResult: TMethodOrderResult): TJSONObject;
 var
-  Edits, Moves: TJSONArray;
-  Edit: TTextEdit;
-  Move: TMethodMove;
-  Item: TJSONObject;
+  mEdits, mMoves: TJSONArray;
+  mEdit: TTextEdit;
+  mMove: TMethodMove;
+  mItem: TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Edits := TJSONArray.Create;
-  Result.AddPair('edits', Edits);
-  for Edit in AResult.Edits do
+  mEdits := TJSONArray.Create;
+  Result.AddPair('edits', mEdits);
+  for mEdit in AResult.Edits do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-    Item.AddPair('newText', Edit.NewText);
-    Edits.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mItem.AddPair('newText', mEdit.NewText);
+    mEdits.AddElement(mItem);
   end;
-  Moves := TJSONArray.Create;
-  Result.AddPair('moves', Moves);
-  for Move in AResult.Moves do
+  mMoves := TJSONArray.Create;
+  Result.AddPair('moves', mMoves);
+  for mMove in AResult.Moves do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('type', Move.TypeName);
-    Item.AddPair('name', Move.Name);
-    Item.AddPair('line', TJSONNumber.Create(Move.Line));
-    Item.AddPair('newLine', TJSONNumber.Create(Move.NewLine));
-    Item.AddPair('size', TJSONNumber.Create(Move.Size));
-    Item.AddPair('delta', TJSONNumber.Create(Move.Delta));
-    Item.AddPair('fixed', TJSONBool.Create(Move.Fixed));
-    Item.AddPair('reason', TMethodOrder.ReasonName(Move.Reason));
-    Moves.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('type', mMove.TypeName);
+    mItem.AddPair('name', mMove.Name);
+    mItem.AddPair('line', TJSONNumber.Create(mMove.Line));
+    mItem.AddPair('newLine', TJSONNumber.Create(mMove.NewLine));
+    mItem.AddPair('size', TJSONNumber.Create(mMove.Size));
+    mItem.AddPair('delta', TJSONNumber.Create(mMove.Delta));
+    mItem.AddPair('fixed', TJSONBool.Create(mMove.Fixed));
+    mItem.AddPair('reason', TMethodOrder.ReasonName(mMove.Reason));
+    mMoves.AddElement(mItem);
   end;
 end;
 
@@ -154,12 +154,12 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count < 1) or not (AArguments.Items[0] is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TMethodOrderText.TheURIIsExpected].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TMethodOrderText.TheURIIsExpected].Text);
   end;
   mUri := AArguments.Items[0].Value;
   if not AStore.TryGet(mUri, mDocument) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TMethodOrderText.DocumentIsNotOpen].Text + mUri);
   end;
   mArguments := TMethodOrderArguments.Read(AArguments);

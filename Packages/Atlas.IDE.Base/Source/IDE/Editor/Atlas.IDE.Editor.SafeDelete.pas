@@ -24,7 +24,7 @@ uses
 type
   TAtlasIdeSafeDelete = class
   public const
-    ClientCommand = 'atlas.safeDelete';
+    cClientCommand = 'atlas.safeDelete';
   public
     /// <summary>AArgumentsJson: [uri, position]; ASession: laufende Sitzung oder nil; AMessage: Zeile für die
     /// Meldungsansicht.</summary>
@@ -51,9 +51,9 @@ uses
 
 const
   // Referenzsuche im Projekt, Nachfahren und uses aller Units: dauert.
-  TimeoutMs = 120000;
+  cTimeoutMs = 120000;
   // Zeilen in einer Rückfrage.
-  MaxListed = 12;
+  cMaxListed = 12;
 
 type
   {$SCOPEDENUMS ON}
@@ -80,26 +80,26 @@ end;
 
 function Lines(const AUsages: TArray<TAtlasSafeDeleteUsage>): TArray<string>;
 var
-  Usage: TAtlasSafeDeleteUsage;
+  mUsage: TAtlasSafeDeleteUsage;
 begin
   Result := nil;
-  for Usage in AUsages do
+  for mUsage in AUsages do
   begin
-    Result := Result + [Format('%s:%d  %s', [ExtractFileName(Usage.FileName), Usage.Line + 1, Usage.Text])];
+    Result := Result + [Format('%s:%d  %s', [ExtractFileName(mUsage.FileName), mUsage.Line + 1, mUsage.Text])];
   end;
 end;
 
 function Entries(const AUsages: TArray<TAtlasSafeDeleteUsage>): TArray<TAtlasResultEntry>;
 var
-  Usage: TAtlasSafeDeleteUsage;
-  Entry: TAtlasResultEntry;
+  mUsage: TAtlasSafeDeleteUsage;
+  mEntry: TAtlasResultEntry;
 begin
   Result := nil;
-  for Usage in AUsages do
+  for mUsage in AUsages do
   begin
-    Entry := TAtlasResultEntry.Create(Usage.FileName, Usage.Line, Usage.Character);
-    Entry.Text := Usage.Text;
-    Result := Result + [Entry];
+    mEntry := TAtlasResultEntry.Create(mUsage.FileName, mUsage.Line, mUsage.Character);
+    mEntry.Text := mUsage.Text;
+    Result := Result + [mEntry];
   end;
 end;
 
@@ -107,32 +107,32 @@ end;
 function ChooseOnUsages(const AInfo: TAtlasSafeDeleteInfo; const AUsages: TArray<TAtlasSafeDeleteUsage>):
   TUsageChoice;
 var
-  Dialog: TForm;
-  Index: Integer;
-  Button: TButton;
+  mDialog: TForm;
+  mIndex: Integer;
+  mButton: TButton;
 begin
-  Dialog := CreateMessageDialog(TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteUsages, [AInfo.Name, Length(AUsages)]) +
-    sLineBreak + sLineBreak + TAtlasSafeDelete.Listing(Lines(AUsages), MaxListed,
+  mDialog := CreateMessageDialog(TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteUsages, [AInfo.Name, Length(AUsages)]) +
+    sLineBreak + sLineBreak + TAtlasSafeDelete.Listing(Lines(AUsages), cMaxListed,
     TAtlasStrings.Text(TAtlasTextId.SafeDeleteMore)), TMsgDlgType.mtWarning,
     [TMsgDlgBtn.mbYes, TMsgDlgBtn.mbAll, TMsgDlgBtn.mbCancel], TMsgDlgBtn.mbCancel);
   try
-    Dialog.Caption := TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand);
-    for Index := 0 to Dialog.ComponentCount - 1 do
+    mDialog.Caption := TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand);
+    for mIndex := 0 to mDialog.ComponentCount - 1 do
     begin
-      if Dialog.Components[Index] is TButton then
+      if mDialog.Components[mIndex] is TButton then
       begin
-        Button := TButton(Dialog.Components[Index]);
-        case Button.ModalResult of
+        mButton := TButton(mDialog.Components[mIndex]);
+        case mButton.ModalResult of
           mrYes:
-            Button.Caption := TAtlasStrings.Text(TAtlasTextId.SafeDeleteShow);
+            mButton.Caption := TAtlasStrings.Text(TAtlasTextId.SafeDeleteShow);
           mrAll:
-            Button.Caption := TAtlasStrings.Text(TAtlasTextId.SafeDeleteForce);
+            mButton.Caption := TAtlasStrings.Text(TAtlasTextId.SafeDeleteForce);
           mrCancel:
-            Button.Caption := TAtlasStrings.Text(TAtlasTextId.SafeDeleteCancel);
+            mButton.Caption := TAtlasStrings.Text(TAtlasTextId.SafeDeleteCancel);
         end;
       end;
     end;
-    case Dialog.ShowModal of
+    case mDialog.ShowModal of
       mrYes:
         Result := TUsageChoice.Show;
       mrAll:
@@ -141,7 +141,7 @@ begin
       Result := TUsageChoice.Cancel;
     end;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
@@ -155,7 +155,7 @@ begin
   Result := False;
   TAtlasIdeRename.SyncOpenBuffers(ASession);
   try
-    mAnswer := ASession.RunCommand(TAtlasSafeDelete.PrepareCommand, AArgumentsJson, TimeoutMs);
+    mAnswer := ASession.RunCommand(TAtlasSafeDelete.cPrepareCommand, AArgumentsJson, cTimeoutMs);
     try
       AInfo := TAtlasSafeDeleteInfo.FromJson(mAnswer);
     finally
@@ -181,7 +181,7 @@ begin
   // Erst die Überschreibungen: Bleiben sie, zählen sie als Verwendung.
   AOverrides := (AInfo.Overrides <> nil) and Decide(AInfo.OverridesMode, TAtlasStrings.Fmt(
     TAtlasTextId.SafeDeleteAskOverrides, [AInfo.Name, Length(AInfo.Overrides), sLineBreak,
-    TAtlasSafeDelete.Listing(Lines(AInfo.Overrides), MaxListed, TAtlasStrings.Text(TAtlasTextId.SafeDeleteMore)),
+    TAtlasSafeDelete.Listing(Lines(AInfo.Overrides), cMaxListed, TAtlasStrings.Text(TAtlasTextId.SafeDeleteMore)),
     sLineBreak + sLineBreak]));
   mBlocking := AInfo.Blocking(AOverrides);
   Result := mBlocking = nil;
@@ -203,7 +203,7 @@ begin
   if Result then
   begin
     ACascade := (AInfo.Cascade <> nil) and Decide(AInfo.CascadeMode, TAtlasStrings.Fmt(
-      TAtlasTextId.SafeDeleteAskCascade, [sLineBreak, TAtlasSafeDelete.Listing(AInfo.Cascade, MaxListed,
+      TAtlasTextId.SafeDeleteAskCascade, [sLineBreak, TAtlasSafeDelete.Listing(AInfo.Cascade, cMaxListed,
       TAtlasStrings.Text(TAtlasTextId.SafeDeleteMore)), sLineBreak + sLineBreak]));
   end;
 end;
@@ -234,8 +234,8 @@ begin
     mTitle := TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand);
   end;
   mDeleted := 0;
-  if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(TAtlasSafeDelete.ApplyCommand,
-    TAtlasSafeDelete.ApplyArguments(AArgumentsJson, mOverrides, mCascade, mForced), TimeoutMs,
+  if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(TAtlasSafeDelete.cApplyCommand,
+    TAtlasSafeDelete.ApplyArguments(AArgumentsJson, mOverrides, mCascade, mForced), cTimeoutMs,
     TAtlasTextId.SafeDeleteFailed),
     procedure(const AReply: TJSONObject)
     begin

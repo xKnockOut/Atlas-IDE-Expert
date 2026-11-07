@@ -34,11 +34,11 @@ type
   TAtlasIdeExceptionDialog = class
   public const
     /// <summary>So lange wartet Atlas nach dem Halt auf den Dialog.</summary>
-    WatchMs = 3000;
-    IntervalMs = 100;
+    cWatchMs = 3000;
+    cIntervalMs = 100;
     /// <summary>Steht ein ausgeblendeter Dialog so lange noch, wird er wieder sichtbar (die IDE nie verdeckt
     /// blockieren).</summary>
-    HiddenSafetyMs = 1500;
+    cHiddenSafetyMs = 1500;
   private
     FTimer: TTimer;
     // Beginn eines modalen Fensters (vor Show): den Dialog erkennen, bevor er gezeichnet ist.
@@ -88,7 +88,6 @@ type
     function BreakFound: Boolean;
     /// <summary>Für das Protokoll vergessen, dass der Dialog schon beschrieben ist (neue Sitzung).</summary>
     procedure NewSession;
-    function Watching: Boolean;
     /// <summary>Ohne Rückruf bleibt der Dialog immer sichtbar.</summary>
     property MayHide: TAtlasDebugDialogMayHide read FMayHide write FMayHide;
   end;
@@ -113,11 +112,11 @@ begin
   inherited Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := IntervalMs;
+  FTimer.Interval := cIntervalMs;
   FTimer.OnTimer := Tick;
   FSafety := TTimer.Create(nil);
   FSafety.Enabled := False;
-  FSafety.Interval := HiddenSafetyMs;
+  FSafety.Interval := cHiddenSafetyMs;
   FSafety.OnTimer := SafetyTick;
   FEvents := TApplicationEvents.Create(nil);
   FEvents.OnModalBegin := ModalBegin;
@@ -126,8 +125,8 @@ end;
 
 procedure TAtlasIdeExceptionDialog.ModalBegin(Sender: TObject);
 var
-  Index: Integer;
-  Form: TCustomForm;
+  mIndex: Integer;
+  mForm: TCustomForm;
 begin
   // Nur, solange Atlas auf den Dialog wartet; ShowModal hat das Fenster noch nicht gezeigt.
   if not FArmed or (FHidden <> nil) or not Assigned(FMayHide) then
@@ -135,21 +134,21 @@ begin
     Exit;
   end;
   try
-    for Index := 0 to Screen.CustomFormCount - 1 do
+    for mIndex := 0 to Screen.CustomFormCount - 1 do
     begin
-      Form := Screen.CustomForms[Index];
-      if Form.Visible or (Form = Application.MainForm) or (fsModal in Form.FormState) then
+      mForm := Screen.CustomForms[mIndex];
+      if mForm.Visible or (mForm = Application.MainForm) or (fsModal in mForm.FormState) then
       begin
         Continue;
       end;
-      if ScanForm(Form) then
+      if ScanForm(mForm) then
       begin
         if FMayHide(FScan) then
         begin
           // Vor dem ersten Zeichnen durchsichtig; der Takt drückt gleich „Anhalten“ bzw. „Fortsetzen“.
-          TFormAccess(Form).AlphaBlendValue := 0;
-          TFormAccess(Form).AlphaBlend := True;
-          FHidden := Form;
+          TFormAccess(mForm).AlphaBlendValue := 0;
+          TFormAccess(mForm).AlphaBlend := True;
+          FHidden := mForm;
           FSafety.Enabled := True;
         end;
         Exit;
@@ -180,7 +179,7 @@ end;
 
 procedure TAtlasIdeExceptionDialog.Unhide;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   FSafety.Enabled := False;
   if FHidden = nil then
@@ -188,9 +187,9 @@ begin
     Exit;
   end;
   // Nur ein noch angemeldetes Formular anfassen.
-  for Index := 0 to Screen.CustomFormCount - 1 do
+  for mIndex := 0 to Screen.CustomFormCount - 1 do
   begin
-    if Screen.CustomForms[Index] = FHidden then
+    if Screen.CustomForms[mIndex] = FHidden then
     begin
       TFormAccess(FHidden).AlphaBlend := False;
       TFormAccess(FHidden).AlphaBlendValue := 255;
@@ -216,11 +215,6 @@ end;
 procedure TAtlasIdeExceptionDialog.NewSession;
 begin
   FLogged := False;
-end;
-
-function TAtlasIdeExceptionDialog.Watching: Boolean;
-begin
-  Result := FTimer.Enabled;
 end;
 
 procedure TAtlasIdeExceptionDialog.Watch(const AOnFound: TAtlasDebugDialogFound; const AOnTimeout: TProc);
@@ -278,102 +272,102 @@ end;
 procedure TAtlasIdeExceptionDialog.Collect(AControl: TWinControl; var ATexts, AButtons: TArray<string>;
   var AButtonControls: TArray<TControl>);
 var
-  Index: Integer;
-  Child: TControl;
-  Text: string;
+  mIndex: Integer;
+  mChild: TControl;
+  mText: string;
 begin
-  for Index := 0 to AControl.ControlCount - 1 do
+  for mIndex := 0 to AControl.ControlCount - 1 do
   begin
-    Child := AControl.Controls[Index];
-    if not Child.Visible then
+    mChild := AControl.Controls[mIndex];
+    if not mChild.Visible then
     begin
       Continue;
     end;
-    if Child is TButtonControl then
+    if mChild is TButtonControl then
     begin
-      AButtons := AButtons + [TControlAccess(Child).Caption];
-      AButtonControls := AButtonControls + [Child];
+      AButtons := AButtons + [TControlAccess(mChild).Caption];
+      AButtonControls := AButtonControls + [mChild];
     end
     else
     begin
-      Text := TextOf(Child);
-      if Text <> '' then
+      mText := TextOf(mChild);
+      if mText <> '' then
       begin
-        ATexts := ATexts + [Text];
+        ATexts := ATexts + [mText];
       end;
     end;
-    if Child is TWinControl then
+    if mChild is TWinControl then
     begin
-      Collect(TWinControl(Child), ATexts, AButtons, AButtonControls);
+      Collect(TWinControl(mChild), ATexts, AButtons, AButtonControls);
     end;
   end;
 end;
 
 function TAtlasIdeExceptionDialog.ScanForm(AForm: TCustomForm): Boolean;
 var
-  Texts, Buttons: TArray<string>;
-  Controls: TArray<TControl>;
-  Scan: TAtlasDebugDialogScan;
+  mTexts, mButtons: TArray<string>;
+  mControls: TArray<TControl>;
+  mScan: TAtlasDebugDialogScan;
 begin
-  Texts := nil;
-  Buttons := nil;
-  Controls := nil;
-  Collect(AForm, Texts, Buttons, Controls);
-  Scan := TAtlasDebugExceptionDialog.Recognize(Texts, Buttons);
-  Result := Scan.HasException;
+  mTexts := nil;
+  mButtons := nil;
+  mControls := nil;
+  Collect(AForm, mTexts, mButtons, mControls);
+  mScan := TAtlasDebugExceptionDialog.Recognize(mTexts, mButtons);
+  Result := mScan.HasException;
   if not Result then
   begin
     Exit;
   end;
   FForm := AForm;
-  FScan := Scan;
-  FButtons := Controls;
+  FScan := mScan;
+  FButtons := mControls;
   if not FLogged then
   begin
     FLogged := True;
     TAtlasGuard.Log(Format('Exception-Dialog der IDE erkannt: %s, Knöpfe: %s, Fortsetzen möglich: %s',
-      [AForm.ClassName, string.Join(' | ', Buttons), BoolToStr(Scan.CanContinue, True)]));
+      [AForm.ClassName, string.Join(' | ', mButtons), BoolToStr(mScan.CanContinue, True)]));
   end;
 end;
 
 procedure TAtlasIdeExceptionDialog.NotifyFound;
 var
-  Found: TAtlasDebugDialogFound;
+  mFound: TAtlasDebugDialogFound;
 begin
   FTimer.Enabled := False;
   FArmed := False;
-  Found := FOnFound;
+  mFound := FOnFound;
   FOnFound := nil;
   FOnTimeout := nil;
-  if Assigned(Found) then
+  if Assigned(mFound) then
   begin
     TAtlasGuard.Run(TAtlasFeature.Debugger,
       procedure
       begin
-        Found(FScan);
+        mFound(FScan);
       end);
   end;
 end;
 
 function TAtlasIdeExceptionDialog.ScanOpenForms: Boolean;
 var
-  Index: Integer;
-  Form: TCustomForm;
+  mIndex: Integer;
+  mForm: TCustomForm;
 begin
   Result := False;
-  for Index := 0 to Screen.CustomFormCount - 1 do
+  for mIndex := 0 to Screen.CustomFormCount - 1 do
   begin
-    Form := Screen.CustomForms[Index];
-    if not Form.Visible or (Form = Application.MainForm) then
+    mForm := Screen.CustomForms[mIndex];
+    if not mForm.Visible or (mForm = Application.MainForm) then
     begin
       Continue;
     end;
     // Bereit (Programm läuft): nur modale Fenster, damit der Takt die IDE nicht durchsucht.
-    if FArmed and not (fsModal in Form.FormState) then
+    if FArmed and not (fsModal in mForm.FormState) then
     begin
       Continue;
     end;
-    if ScanForm(Form) then
+    if ScanForm(mForm) then
     begin
       NotifyFound;
       Exit(True);
@@ -383,21 +377,21 @@ end;
 
 procedure TAtlasIdeExceptionDialog.Tick(Sender: TObject);
 var
-  Timeout: TProc;
+  mTimeout: TProc;
 begin
   if not FTimer.Enabled or ScanOpenForms then
   begin
     Exit;
   end;
-  if not FArmed and (TThread.GetTickCount64 - FStartedAt >= WatchMs) then
+  if not FArmed and (TThread.GetTickCount64 - FStartedAt >= cWatchMs) then
   begin
     FTimer.Enabled := False;
-    Timeout := FOnTimeout;
+    mTimeout := FOnTimeout;
     FOnFound := nil;
     FOnTimeout := nil;
-    if Assigned(Timeout) then
+    if Assigned(mTimeout) then
     begin
-      TAtlasGuard.Run(TAtlasFeature.Debugger, Timeout);
+      TAtlasGuard.Run(TAtlasFeature.Debugger, mTimeout);
     end;
   end;
 end;
@@ -414,9 +408,9 @@ end;
 
 function TAtlasIdeExceptionDialog.ClickFound(AIndex: Integer): Boolean;
 var
-  Index: Integer;
-  Form: TCustomForm;
-  Alive: Boolean;
+  mIndex: Integer;
+  mForm: TCustomForm;
+  mAlive: Boolean;
 begin
   Result := False;
   if (FForm = nil) or (AIndex < 0) or (AIndex > High(FButtons)) then
@@ -424,17 +418,17 @@ begin
     Exit;
   end;
   // Das Fenster kann inzwischen zu sein; nur ein noch angemeldetes, sichtbares zählt.
-  Alive := False;
-  for Index := 0 to Screen.CustomFormCount - 1 do
+  mAlive := False;
+  for mIndex := 0 to Screen.CustomFormCount - 1 do
   begin
-    Form := Screen.CustomForms[Index];
-    if Form = FForm then
+    mForm := Screen.CustomForms[mIndex];
+    if mForm = FForm then
     begin
-      Alive := Form.Visible;
+      mAlive := mForm.Visible;
       Break;
     end;
   end;
-  if not Alive then
+  if not mAlive then
   begin
     Exit;
   end;

@@ -96,11 +96,11 @@ type
   TAtlasSafeMode = class
   public const
     /// <summary>Zwei Abstürze in dieser Zeit gelten als wiederholt.</summary>
-    RepeatWindowMinutes = 10;
-    EnvironmentName = 'ATLAS_SAFE_MODE';
-    SwitchName = 'AtlasSafeMode';
+    cRepeatWindowMinutes = 10;
+    cEnvironmentName = 'ATLAS_SAFE_MODE';
+    cSwitchName = 'AtlasSafeMode';
     /// <summary>Gesetzt ("1", "true", "yes"): Diese Sitzung führt kein Sitzungsbuch (TAtlasSessionBook).</summary>
-    NoMarkerEnvironmentName = 'ATLAS_NO_SESSION_MARKER';
+    cNoMarkerEnvironmentName = 'ATLAS_NO_SESSION_MARKER';
   public
     /// <summary>Entscheidung beim Start und neuer Zustand. ACrashed: Marken früherer Sitzungen, deren Prozess
     /// nicht mehr läuft; AKeyDown: welche Taste beim Laden gedrückt ist; AForced: Kommandozeile bzw.
@@ -212,17 +212,17 @@ begin
 end;
 
 const
-  LevelNames: array[TAtlasSafeLevel] of string = ('normal', 'safe', 'minimal');
+  cLevelNames: array[TAtlasSafeLevel] of string = ('normal', 'safe', 'minimal');
 
 function LevelOf(const AText: string): TAtlasSafeLevel;
 var
-  Level: TAtlasSafeLevel;
+  mLevel: TAtlasSafeLevel;
 begin
-  for Level := Low(TAtlasSafeLevel) to High(TAtlasSafeLevel) do
+  for mLevel := Low(TAtlasSafeLevel) to High(TAtlasSafeLevel) do
   begin
-    if SameText(LevelNames[Level], AText) then
+    if SameText(cLevelNames[mLevel], AText) then
     begin
-      Exit(Level);
+      Exit(mLevel);
     end;
   end;
   Result := TAtlasSafeLevel.Normal;
@@ -230,11 +230,11 @@ end;
 
 function ContainsText_(const AList: TArray<string>; const AText: string): Boolean;
 var
-  Item: string;
+  mItem: string;
 begin
-  for Item in AList do
+  for mItem in AList do
   begin
-    if SameText(Item, AText) then
+    if SameText(mItem, AText) then
     begin
       Exit(True);
     end;
@@ -256,13 +256,13 @@ end;
 
 procedure TAtlasSessionMarker.AddFailure(const AFeature: string);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Failures) do
+  for mIndex := 0 to High(Failures) do
   begin
-    if SameText(Failures[Index].Key, AFeature) then
+    if SameText(Failures[mIndex].Key, AFeature) then
     begin
-      Failures[Index] := TPair<string, Integer>.Create(Failures[Index].Key, Failures[Index].Value + 1);
+      Failures[mIndex] := TPair<string, Integer>.Create(Failures[mIndex].Key, Failures[mIndex].Value + 1);
       Exit;
     end;
   end;
@@ -271,13 +271,13 @@ end;
 
 function TAtlasSessionMarker.FailureCount(const AFeature: string): Integer;
 var
-  Pair: TPair<string, Integer>;
+  mPair: TPair<string, Integer>;
 begin
-  for Pair in Failures do
+  for mPair in Failures do
   begin
-    if SameText(Pair.Key, AFeature) then
+    if SameText(mPair.Key, AFeature) then
     begin
-      Exit(Pair.Value);
+      Exit(mPair.Value);
     end;
   end;
   Result := 0;
@@ -285,34 +285,34 @@ end;
 
 function TAtlasSessionMarker.ToJson: string;
 var
-  Root, Counts: TJSONObject;
-  List: TJSONArray;
-  Name: string;
-  Pair: TPair<string, Integer>;
+  mRoot, mCounts: TJSONObject;
+  mList: TJSONArray;
+  mName: string;
+  mPair: TPair<string, Integer>;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Root.AddPair('processId', TJSONNumber.Create(Int64(ProcessId)));
-    Root.AddPair('version', TJSONString.Create(Version));
-    Root.AddPair('startedAt', TJSONString.Create(DateToISO8601(StartedAt, True)));
-    Root.AddPair('loaded', TJSONBool.Create(Loaded));
-    Root.AddPair('loadMs', TJSONNumber.Create(LoadMs));
-    Root.AddPair('level', TJSONString.Create(LevelNames[Level]));
-    List := TJSONArray.Create;
-    for Name in Features do
+    mRoot.AddPair('processId', TJSONNumber.Create(Int64(ProcessId)));
+    mRoot.AddPair('version', TJSONString.Create(Version));
+    mRoot.AddPair('startedAt', TJSONString.Create(DateToISO8601(StartedAt, True)));
+    mRoot.AddPair('loaded', TJSONBool.Create(Loaded));
+    mRoot.AddPair('loadMs', TJSONNumber.Create(LoadMs));
+    mRoot.AddPair('level', TJSONString.Create(cLevelNames[Level]));
+    mList := TJSONArray.Create;
+    for mName in Features do
     begin
-      List.Add(Name);
+      mList.Add(mName);
     end;
-    Root.AddPair('features', List);
-    Counts := TJSONObject.Create;
-    for Pair in Failures do
+    mRoot.AddPair('features', mList);
+    mCounts := TJSONObject.Create;
+    for mPair in Failures do
     begin
-      Counts.AddPair(Pair.Key, TJSONNumber.Create(Pair.Value));
+      mCounts.AddPair(mPair.Key, TJSONNumber.Create(mPair.Value));
     end;
-    Root.AddPair('failures', Counts);
-    Result := Root.ToJSON;
+    mRoot.AddPair('failures', mCounts);
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
@@ -420,68 +420,68 @@ end;
 
 function TAtlasSafeState.ToJson: string;
 var
-  Root: TJSONObject;
-  Crashed: TJSONValue;
+  mRoot: TJSONObject;
+  mCrashed: TJSONValue;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Root.AddPair('crashCount', TJSONNumber.Create(CrashCount));
+    mRoot.AddPair('crashCount', TJSONNumber.Create(CrashCount));
     if LastCrashAt > 0 then
     begin
-      Root.AddPair('lastCrashAt', TJSONString.Create(DateToISO8601(LastCrashAt, True)));
+      mRoot.AddPair('lastCrashAt', TJSONString.Create(DateToISO8601(LastCrashAt, True)));
     end;
-    Crashed := nil;
+    mCrashed := nil;
     if CrashedMarker <> '' then
     begin
-      Crashed := TJSONObject.ParseJSONValue(CrashedMarker);
+      mCrashed := TJSONObject.ParseJSONValue(CrashedMarker);
     end;
-    if Crashed is TJSONObject then
+    if mCrashed is TJSONObject then
     begin
-      Root.AddPair('crashed', Crashed);
+      mRoot.AddPair('crashed', mCrashed);
     end
     else
     begin
-      Crashed.Free;
+      mCrashed.Free;
     end;
-    Result := Root.ToJSON;
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasSafeState.FromJson(const AText: string): TAtlasSafeState;
 var
-  Root, Value: TJSONValue;
-  Stamp: string;
+  mRoot, mValue: TJSONValue;
+  mStamp: string;
 begin
   Result := Default(TAtlasSafeState);
-  Root := TJSONObject.ParseJSONValue(AText);
+  mRoot := TJSONObject.ParseJSONValue(AText);
   try
-    if not (Root is TJSONObject) then
+    if not (mRoot is TJSONObject) then
     begin
       Exit;
     end;
-    Value := TJSONObject(Root).GetValue('crashCount');
-    if Value is TJSONNumber then
+    mValue := TJSONObject(mRoot).GetValue('crashCount');
+    if mValue is TJSONNumber then
     begin
-      Result.CrashCount := Max(0, TJSONNumber(Value).AsInt);
+      Result.CrashCount := Max(0, TJSONNumber(mValue).AsInt);
     end;
-    Stamp := TJSONObject(Root).GetValue<string>('lastCrashAt', '');
-    if Stamp <> '' then
+    mStamp := TJSONObject(mRoot).GetValue<string>('lastCrashAt', '');
+    if mStamp <> '' then
       try
-        Result.LastCrashAt := ISO8601ToDate(Stamp, True);
+        Result.LastCrashAt := ISO8601ToDate(mStamp, True);
       except
         on EConvertError do
           Result.LastCrashAt := 0;
       end;
     // "slowStart" älterer Fassungen bleibt unbeachtet: Ein langsamer Start ist kein Absturz (Bericht N4).
-    Value := TJSONObject(Root).GetValue('crashed');
-    if Value is TJSONObject then
+    mValue := TJSONObject(mRoot).GetValue('crashed');
+    if mValue is TJSONObject then
     begin
-      Result.CrashedMarker := Value.ToJSON;
+      Result.CrashedMarker := mValue.ToJSON;
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
@@ -525,7 +525,7 @@ var
 begin
   Result := Default(TAtlasSafeDecision);
   Result.Crashed := Length(ACrashed) > 0;
-  mRepeated := Result.Crashed and RecordCrash(AState, ACrashed, ANow, RepeatWindowMinutes);
+  mRepeated := Result.Crashed and RecordCrash(AState, ACrashed, ANow, cRepeatWindowMinutes);
   if AForced then
   begin
     Result.Level := TAtlasSafeLevel.Minimal;
@@ -565,15 +565,15 @@ end;
 
 class function TAtlasSafeMode.IsForced(const AEnvironment: string; const AArgs: TArray<string>): Boolean;
 var
-  Arg: string;
+  mArg: string;
 begin
   if IsSwitchOn(AEnvironment) then
   begin
     Exit(True);
   end;
-  for Arg in AArgs do
+  for mArg in AArgs do
   begin
-    if SameText(Arg, '-' + SwitchName) or SameText(Arg, '/' + SwitchName) or SameText(Arg, '--' + SwitchName) then
+    if SameText(mArg, '-' + cSwitchName) or SameText(mArg, '/' + cSwitchName) or SameText(mArg, '--' + cSwitchName) then
     begin
       Exit(True);
     end;
@@ -611,95 +611,95 @@ end;
 
 class function TAtlasSafeMode.SafeSession(const AToggles: TArray<TAtlasQuickToggle>): TAtlasToggleSession;
 var
-  Toggle: TAtlasQuickToggle;
+  mToggle: TAtlasQuickToggle;
 begin
   Result := Default(TAtlasToggleSession);
-  for Toggle in AToggles do
+  for mToggle in AToggles do
   begin
-    Result.Put(Toggle.Key, False);
+    Result.Put(mToggle.Key, False);
   end;
 end;
 
 class function TAtlasSafeMode.Suggest(const AToggles: TArray<TAtlasQuickToggle>; const AChangedKeys: TArray<string>;
   const ACrashed: TAtlasSessionMarker): TArray<string>;
 var
-  Toggle: TAtlasQuickToggle;
-  Key: string;
-  Candidates: TArray<TPair<string, Integer>>;
-  Index, Other: Integer;
-  Swap: TPair<string, Integer>;
+  mToggle: TAtlasQuickToggle;
+  mKey: string;
+  mCandidates: TArray<TPair<string, Integer>>;
+  mIndex, mOther: Integer;
+  mSwap: TPair<string, Integer>;
 begin
   Result := nil;
   // Zuerst, was zuletzt geändert wurde: das ist am ehesten die Ursache.
-  for Key in AChangedKeys do
+  for mKey in AChangedKeys do
   begin
-    if TAtlasQuickToggles.Find(AToggles, Key, Toggle) and not ContainsText_(Result, Toggle.Key) then
+    if TAtlasQuickToggles.Find(AToggles, mKey, mToggle) and not ContainsText_(Result, mToggle.Key) then
     begin
-      Result := Result + [Toggle.Key];
+      Result := Result + [mToggle.Key];
     end;
   end;
   // Dann Funktionen mit Fehlern in der abgestürzten Sitzung, die meisten zuerst; bei Gleichstand Katalog.
-  Candidates := nil;
-  for Toggle in AToggles do
+  mCandidates := nil;
+  for mToggle in AToggles do
   begin
-    if (Toggle.Feature <> '') and (ACrashed.FailureCount(Toggle.Feature) > 0) and
-      not ContainsText_(Result, Toggle.Key) then
+    if (mToggle.Feature <> '') and (ACrashed.FailureCount(mToggle.Feature) > 0) and
+      not ContainsText_(Result, mToggle.Key) then
     begin
-      Candidates := Candidates + [TPair<string, Integer>.Create(Toggle.Key, ACrashed.FailureCount(Toggle.Feature))];
+      mCandidates := mCandidates + [TPair<string, Integer>.Create(mToggle.Key, ACrashed.FailureCount(mToggle.Feature))];
     end;
   end;
-  for Index := 1 to High(Candidates) do
+  for mIndex := 1 to High(mCandidates) do
   begin
-    Other := Index;
-    while (Other > 0) and (Candidates[Other - 1].Value < Candidates[Other].Value) do
+    mOther := mIndex;
+    while (mOther > 0) and (mCandidates[mOther - 1].Value < mCandidates[mOther].Value) do
     begin
-      Swap := Candidates[Other - 1];
-      Candidates[Other - 1] := Candidates[Other];
-      Candidates[Other] := Swap;
-      Dec(Other);
+      mSwap := mCandidates[mOther - 1];
+      mCandidates[mOther - 1] := mCandidates[mOther];
+      mCandidates[mOther] := mSwap;
+      Dec(mOther);
     end;
   end;
-  for Index := 0 to High(Candidates) do
+  for mIndex := 0 to High(mCandidates) do
   begin
-    Result := Result + [Candidates[Index].Key];
+    Result := Result + [mCandidates[mIndex].Key];
   end;
 end;
 
 function LineStamp(const ALine: string; out AStamp: TDateTime): Boolean;
 var
-  Year, Month, Day, Hour, Minute, Second, Milli: Integer;
+  mYear, mMonth, mDay, mHour, mMinute, mSecond, mMilli: Integer;
 begin
   AStamp := 0;
   Result := (Length(ALine) >= 23) and (ALine[5] = '-') and (ALine[8] = '-') and (ALine[11] = ' ') and
     (ALine[14] = ':') and (ALine[17] = ':') and (ALine[20] = '.') and
-    TryStrToInt(Copy(ALine, 1, 4), Year) and TryStrToInt(Copy(ALine, 6, 2), Month) and
-    TryStrToInt(Copy(ALine, 9, 2), Day) and TryStrToInt(Copy(ALine, 12, 2), Hour) and
-    TryStrToInt(Copy(ALine, 15, 2), Minute) and TryStrToInt(Copy(ALine, 18, 2), Second) and
-    TryStrToInt(Copy(ALine, 21, 3), Milli);
+    TryStrToInt(Copy(ALine, 1, 4), mYear) and TryStrToInt(Copy(ALine, 6, 2), mMonth) and
+    TryStrToInt(Copy(ALine, 9, 2), mDay) and TryStrToInt(Copy(ALine, 12, 2), mHour) and
+    TryStrToInt(Copy(ALine, 15, 2), mMinute) and TryStrToInt(Copy(ALine, 18, 2), mSecond) and
+    TryStrToInt(Copy(ALine, 21, 3), mMilli);
   if Result then
   begin
-    Result := TryEncodeDateTime(Year, Month, Day, Hour, Minute, Second, Milli, AStamp);
+    Result := TryEncodeDateTime(mYear, mMonth, mDay, mHour, mMinute, mSecond, mMilli, AStamp);
   end;
 end;
 
 class function TAtlasSafeMode.LogLinesBetween(const ALines: TArray<string>; AFrom, ATo: TDateTime;
   AMax: Integer): TArray<string>;
 var
-  Line: string;
-  Stamp: TDateTime;
-  Inside: Boolean;
+  mLine: string;
+  mStamp: TDateTime;
+  mInside: Boolean;
 begin
   Result := nil;
-  Inside := False;
-  for Line in ALines do
+  mInside := False;
+  for mLine in ALines do
   begin
-    if LineStamp(Line, Stamp) then
+    if LineStamp(mLine, mStamp) then
     begin
-      Inside := (Stamp >= AFrom) and ((ATo = 0) or (Stamp < ATo));
+      mInside := (mStamp >= AFrom) and ((ATo = 0) or (mStamp < ATo));
     end;
-    if Inside then
+    if mInside then
     begin
-      Result := Result + [Line];
+      Result := Result + [mLine];
     end;
   end;
   if (AMax >= 0) and (Length(Result) > AMax) then
@@ -710,8 +710,8 @@ end;
 
 class function TAtlasSafeMode.Details(const AMarker: TAtlasSessionMarker): TArray<string>;
 var
-  Pair: TPair<string, Integer>;
-  Names: string;
+  mPair: TPair<string, Integer>;
+  mNames: string;
 begin
   Result := ['Atlas ' + AMarker.Version, 'Start: ' + DateToISO8601(AMarker.StartedAt, True)];
   if AMarker.Loaded then
@@ -722,22 +722,22 @@ begin
   begin
     Result := Result + [UiText(TSafeModeText.LoadingNotFinished)];
   end;
-  Result := Result + [UiText(TSafeModeText.Mode) + LevelNames[AMarker.Level]];
-  Names := string.Join(', ', AMarker.Features);
-  if Names = '' then
+  Result := Result + [UiText(TSafeModeText.Mode) + cLevelNames[AMarker.Level]];
+  mNames := string.Join(', ', AMarker.Features);
+  if mNames = '' then
   begin
-    Names := '–';
+    mNames := '–';
   end;
-  Result := Result + [UiText(TSafeModeText.ActiveFeatures) + Names];
+  Result := Result + [UiText(TSafeModeText.ActiveFeatures) + mNames];
   if Length(AMarker.Failures) = 0 then
   begin
     Result := Result + [UiText(TSafeModeText.ErrorsNone)];
   end
   else
   begin
-    for Pair in AMarker.Failures do
+    for mPair in AMarker.Failures do
     begin
-      Result := Result + [Format(UiText(TSafeModeText.Errors), [Pair.Key, Pair.Value])];
+      Result := Result + [Format(UiText(TSafeModeText.Errors), [mPair.Key, mPair.Value])];
     end;
   end;
 end;
@@ -745,7 +745,7 @@ end;
 { TAtlasSessionFiles }
 
 const
-  MarkerPrefix = 'session-';
+  cMarkerPrefix = 'session-';
 
 /// <summary>
 /// Ersetzt AFileName in einem Schritt (Bericht N3): erst vollständig daneben schreiben, dann TFile.Replace
@@ -756,47 +756,47 @@ const
 /// </summary>
 procedure WriteFileSafely(const AFileName, AText: string);
 var
-  Temp, Backup: string;
+  mTemp, mBackup: string;
 begin
   ForceDirectories(ExtractFileDir(AFileName));
-  Temp := AFileName + '.tmp';
+  mTemp := AFileName + '.tmp';
   // TFile.Replace braucht eine Sicherungsdatei, sobald das Ziel existiert.
-  Backup := AFileName + '.bak';
-  TFile.WriteAllText(Temp, AText, TEncoding.UTF8);
+  mBackup := AFileName + '.bak';
+  TFile.WriteAllText(mTemp, AText, TEncoding.UTF8);
   try
     if TFile.Exists(AFileName) then
     begin
-      TFile.Replace(Temp, AFileName, Backup);
+      TFile.Replace(mTemp, AFileName, mBackup);
     end
     else
     begin
-      TFile.Move(Temp, AFileName);
+      TFile.Move(mTemp, AFileName);
     end;
     // TFile.Replace meldet ein Scheitern von ReplaceFile nicht. Hat es das Ziel schon zur Sicherung umbenannt,
     // ohne die neue Datei nachzuschieben, gehört die vollständige neue an seine Stelle.
-    if TFile.Exists(Temp) and not TFile.Exists(AFileName) then
+    if TFile.Exists(mTemp) and not TFile.Exists(AFileName) then
     begin
-      TFile.Move(Temp, AFileName);
+      TFile.Move(mTemp, AFileName);
     end;
-    if TFile.Exists(Temp) then
+    if TFile.Exists(mTemp) then
     begin
       raise EInOutError.Create('Datei des abgesicherten Starts nicht ersetzt');
     end;
   finally
-    if TFile.Exists(Temp) then
+    if TFile.Exists(mTemp) then
     begin
-      TFile.Delete(Temp);
+      TFile.Delete(mTemp);
     end;
-    if TFile.Exists(Backup) then
+    if TFile.Exists(mBackup) then
     begin
-      TFile.Delete(Backup);
+      TFile.Delete(mBackup);
     end;
   end;
 end;
 
 class function TAtlasSessionFiles.MarkerFile(const AFolder: string; AProcessId: Cardinal): string;
 begin
-  Result := TPath.Combine(AFolder, MarkerPrefix + UIntToStr(AProcessId) + '.json');
+  Result := TPath.Combine(AFolder, cMarkerPrefix + UIntToStr(AProcessId) + '.json');
 end;
 
 class function TAtlasSessionFiles.StateFile(const AFolder: string): string;
@@ -820,36 +820,36 @@ end;
 class function TAtlasSessionFiles.TakeCrashed(const AFolder: string; AOwnProcessId: Cardinal;
   const AAlive: TAtlasProcessAlive): TArray<TAtlasSessionMarker>;
 var
-  FileName: string;
-  Marker: TAtlasSessionMarker;
-  Valid: Boolean;
+  mFileName: string;
+  mMarker: TAtlasSessionMarker;
+  mValid: Boolean;
 begin
   Result := nil;
   if not TDirectory.Exists(AFolder) then
   begin
     Exit;
   end;
-  for FileName in TDirectory.GetFiles(AFolder, MarkerPrefix + '*.json') do
+  for mFileName in TDirectory.GetFiles(AFolder, cMarkerPrefix + '*.json') do
   begin
     try
-      Valid := TAtlasSessionMarker.FromJson(TFile.ReadAllText(FileName, TEncoding.UTF8), Marker);
+      mValid := TAtlasSessionMarker.FromJson(TFile.ReadAllText(mFileName, TEncoding.UTF8), mMarker);
     except
-      Valid := False;
+      mValid := False;
     end;
-    if Valid and (Marker.ProcessId = AOwnProcessId) then
+    if mValid and (mMarker.ProcessId = AOwnProcessId) then
     begin
       Continue;
     end;
-    if Valid and Assigned(AAlive) and AAlive(Marker.ProcessId, Marker.StartedAt) then
+    if mValid and Assigned(AAlive) and AAlive(mMarker.ProcessId, mMarker.StartedAt) then
     begin
       Continue;
     end;
-    if Valid then
+    if mValid then
     begin
-      Result := Result + [Marker];
+      Result := Result + [mMarker];
     end;
     try
-      TFile.Delete(FileName);
+      TFile.Delete(mFileName);
     except
       // Gesperrt: beim nächsten Start noch einmal.
       on Exception do

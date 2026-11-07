@@ -103,10 +103,10 @@ const
     (De: 'Explizit umwandeln: %s(…) (%s)'; En: 'Cast explicitly: %s(…) (%s)'));
 
 const
-  FixCodes: array[0..5] of string = ('H2443', 'E2003', 'H2077', 'W1035', 'W1057', 'W1058');
-  FixAllCodes: array[0..4] of string = ('H2443', 'H2077', 'W1035', 'W1057', 'W1058');
+  cFixCodes: array[0..5] of string = ('H2443', 'E2003', 'H2077', 'W1035', 'W1057', 'W1058');
+  cFixAllCodes: array[0..4] of string = ('H2443', 'H2077', 'W1035', 'W1057', 'W1058');
   // Namespaces der RTL und der Bibliotheken von Delphi: bei E2003 zuerst.
-  LibraryNamespaces: array[0..12] of string = ('System', 'Winapi', 'Vcl', 'FMX', 'Data', 'Xml', 'Web', 'Soap',
+  cLibraryNamespaces: array[0..12] of string = ('System', 'Winapi', 'Vcl', 'FMX', 'Data', 'Xml', 'Web', 'Soap',
     'REST', 'Datasnap', 'FireDAC', 'IBX', 'Posix');
 
 { TFixMessage }
@@ -123,21 +123,21 @@ end;
 
 function OffsetOf(const AText: string; ALine: Integer): Integer;
 var
-  Index, Line: Integer;
+  mIndex, mLine: Integer;
 begin
   // Offset ab 0 des Zeilenanfangs; -1 hinter dem Text.
-  Line := 0;
-  Index := 1;
-  while (Line < ALine) and (Index <= Length(AText)) do
+  mLine := 0;
+  mIndex := 1;
+  while (mLine < ALine) and (mIndex <= Length(AText)) do
   begin
-    if AText[Index] = #10 then
+    if AText[mIndex] = #10 then
     begin
-      Inc(Line);
+      Inc(mLine);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Index - 1;
-  if Line < ALine then
+  Result := mIndex - 1;
+  if mLine < ALine then
   begin
     Result := -1;
   end;
@@ -146,9 +146,9 @@ end;
 /// <summary>Alle Knoten der Art AKind, die in Zeile ALine beginnen, in Baumreihenfolge.</summary>
 function NodesOnLine(ARoot: TSyntaxNode; ALine: Integer; AKind: TSyntaxKind): TArray<TSyntaxNode>;
 var
-  Found: TArray<TSyntaxNode>;
+  mFound: TArray<TSyntaxNode>;
 begin
-  Found := nil;
+  mFound := nil;
   if ARoot <> nil then
   begin
     ARoot.Walk(
@@ -157,11 +157,11 @@ begin
         Result := (ANode.StartPos.Line <= ALine) and (ANode.EndPos.Line >= ALine);
         if Result and (ANode.Kind = AKind) and (ANode.StartPos.Line = ALine) then
         begin
-          Found := Found + [ANode];
+          mFound := mFound + [ANode];
         end;
       end);
   end;
-  Result := Found;
+  Result := mFound;
 end;
 
 function Insertion(const APosition: TTextPosition; const AText: string): TTextEdit;
@@ -181,53 +181,53 @@ end;
 
 class function TCompilerFixes.Codes: TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  SetLength(Result, Length(FixCodes));
-  for Index := 0 to High(FixCodes) do
+  SetLength(Result, Length(cFixCodes));
+  for mIndex := 0 to High(cFixCodes) do
   begin
-    Result[Index] := FixCodes[Index];
+    Result[mIndex] := cFixCodes[mIndex];
   end;
 end;
 
 class function TCompilerFixes.CanFixAll(const ACode: string): Boolean;
 begin
-  Result := MatchText(Trim(ACode), FixAllCodes);
+  Result := MatchText(Trim(ACode), cFixAllCodes);
 end;
 
 class function TCompilerFixes.QuotedNames(const AText: string): TArray<string>;
 var
-  Index, Start: Integer;
+  mIndex, mStart: Integer;
 begin
   Result := nil;
-  Index := 1;
-  while Index <= Length(AText) do
+  mIndex := 1;
+  while mIndex <= Length(AText) do
   begin
-    if AText[Index] = '''' then
+    if AText[mIndex] = '''' then
     begin
-      Start := Index + 1;
-      Index := Start;
-      while (Index <= Length(AText)) and (AText[Index] <> '''') do
+      mStart := mIndex + 1;
+      mIndex := mStart;
+      while (mIndex <= Length(AText)) and (AText[mIndex] <> '''') do
       begin
-        Inc(Index);
+        Inc(mIndex);
       end;
-      if Index > Length(AText) then
+      if mIndex > Length(AText) then
       begin
         Break;
       end;
-      Result := Result + [Copy(AText, Start, Index - Start)];
+      Result := Result + [Copy(AText, mStart, mIndex - mStart)];
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
 function LibraryRank(const AUnit: string): Integer;
 var
-  Dot: Integer;
+  mDot: Integer;
 begin
-  Dot := Pos('.', AUnit);
+  mDot := Pos('.', AUnit);
   Result := 1;
-  if (Dot > 0) and MatchText(Copy(AUnit, 1, Dot - 1), LibraryNamespaces) then
+  if (mDot > 0) and MatchText(Copy(AUnit, 1, mDot - 1), cLibraryNamespaces) then
   begin
     Result := 0;
   end;
@@ -258,7 +258,7 @@ end;
 
 /// <summary>Korrektur "uses AUnit ergänzen" an AFixes anhängen; die erste in AFixes ist die bevorzugte.
 /// </summary>
-procedure AddUnitFix(const AText: string; ATokens: TArray<TPascalToken>; const AMessage: TFixMessage;
+procedure AddUnitFix(const AText: string; const ATokens: TArray<TPascalToken>; const AMessage: TFixMessage;
   const AUnit, ATitle: string; var AFixes: TArray<TCompilerFix>);
 var
   mEdit: TTextEdit;
@@ -271,29 +271,29 @@ begin
   end;
 end;
 
-function IsUsed(ATokens: TArray<TPascalToken>; const AUnit: string; const ANamespaces: TArray<string>): Boolean;
+function IsUsed(const ATokens: TArray<TPascalToken>; const AUnit: string; const ANamespaces: TArray<string>): Boolean;
 begin
   Result := TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ATokens), AUnit, ANamespaces);
 end;
 
-function H2443Fixes(const AText: string; ATokens: TArray<TPascalToken>; const AMessage: TFixMessage;
+function H2443Fixes(const AText: string; const ATokens: TArray<TPascalToken>; const AMessage: TFixMessage;
   const AContext: TCompilerFixContext): TArray<TCompilerFix>;
 var
-  Names: TArray<string>;
-  UnitName: string;
+  mNames: TArray<string>;
+  mUnitName: string;
 begin
   Result := nil;
-  Names := TCompilerFixes.QuotedNames(AMessage.Text);
-  if Length(Names) < 2 then
+  mNames := TCompilerFixes.QuotedNames(AMessage.Text);
+  if Length(mNames) < 2 then
   begin
     Exit;
   end;
-  UnitName := Names[High(Names)];
-  if IsUsed(ATokens, UnitName, AContext.Namespaces) then
+  mUnitName := mNames[High(mNames)];
+  if IsUsed(ATokens, mUnitName, AContext.Namespaces) then
   begin
     Exit;
   end;
-  AddUnitFix(AText, ATokens, AMessage, UnitName, cTexts[TCompilerFixesText.AddToUses].Fmt([UnitName, AMessage.Code]),
+  AddUnitFix(AText, ATokens, AMessage, mUnitName, cTexts[TCompilerFixesText.AddToUses].Fmt([mUnitName, AMessage.Code]),
     Result);
 end;
 
@@ -304,44 +304,44 @@ begin
     SameText(AToken.Text, AName);
 end;
 
-function E2003Fixes(const AText: string; ATokens: TArray<TPascalToken>; ATree: TSyntaxTree;
+function E2003Fixes(const AText: string; const ATokens: TArray<TPascalToken>; ATree: TSyntaxTree;
   const AMessage: TFixMessage; const AContext: TCompilerFixContext): TArray<TCompilerFix>;
 var
-  Names, Units: TArray<string>;
-  Name, UnitName: string;
-  Token: TPascalToken;
-  Position: TTextPosition;
-  Found: Boolean;
+  mNames, mUnits: TArray<string>;
+  mName, mUnitName: string;
+  mToken: TPascalToken;
+  mPosition: TTextPosition;
+  mFound: Boolean;
 begin
   Result := nil;
-  Names := TCompilerFixes.QuotedNames(AMessage.Text);
-  if (Length(Names) = 0) or not Assigned(AContext.Declaring) then
+  mNames := TCompilerFixes.QuotedNames(AMessage.Text);
+  if (Length(mNames) = 0) or not Assigned(AContext.Declaring) then
   begin
     Exit;
   end;
-  Name := Names[0];
+  mName := mNames[0];
   // Den Bezeichner in der Zeile suchen; MissingUnits prüft, ob er schon deklariert oder eingebunden ist.
-  Found := False;
-  Position := TTextPosition.Create(AMessage.Line, 0);
-  for Token in ATokens do
+  mFound := False;
+  mPosition := TTextPosition.Create(AMessage.Line, 0);
+  for mToken in ATokens do
   begin
-    if IsNameOnLine(Token, AMessage, Name) and ((AMessage.Column < 0) or not Found or
-      (Token.StartPos.Character <= AMessage.Column)) then
+    if IsNameOnLine(mToken, AMessage, mName) and ((AMessage.Column < 0) or not mFound or
+      (mToken.StartPos.Character <= AMessage.Column)) then
     begin
-      Position := Token.StartPos;
-      Found := True;
+      mPosition := mToken.StartPos;
+      mFound := True;
     end;
   end;
-  if not Found then
+  if not mFound then
   begin
     Exit;
   end;
-  Units := TCompilerFixes.RankUnits(TUsesActions.MissingUnits(ATokens, ATree, Position, AContext.Declaring,
+  mUnits := TCompilerFixes.RankUnits(TUsesActions.MissingUnits(ATokens, ATree, mPosition, AContext.Declaring,
     AContext.Namespaces));
-  for UnitName in Units do
+  for mUnitName in mUnits do
   begin
-    AddUnitFix(AText, ATokens, AMessage, UnitName, cTexts[TCompilerFixesText.AddToUses2].Fmt([UnitName, AMessage.Code,
-      Name]), Result);
+    AddUnitFix(AText, ATokens, AMessage, mUnitName, cTexts[TCompilerFixesText.AddToUses2].Fmt([mUnitName, AMessage.Code,
+      mName]), Result);
   end;
 end;
 
@@ -358,33 +358,33 @@ end;
 /// deklariert sind.</summary>
 function LocalNames(ARoutine: TSyntaxNode): TArray<string>;
 var
-  Names: TArray<string>;
-  Routine: TSyntaxNode;
+  mNames: TArray<string>;
+  mRoutine: TSyntaxNode;
 begin
-  Names := ['Result', 'nil', 'True', 'False'];
-  Routine := ARoutine;
-  while Routine <> nil do
+  mNames := ['Result', 'nil', 'True', 'False'];
+  mRoutine := ARoutine;
+  while mRoutine <> nil do
   begin
-    Routine.Walk(
+    mRoutine.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         // Nicht in Rümpfe und verschachtelte Routinen absteigen: Dort deklariert nichts Lokales.
         Result := not (ANode.Kind in [TSyntaxKind.Block]) and
-          ((ANode = Routine) or (ANode.Kind <> TSyntaxKind.RoutineDecl));
+          ((ANode = mRoutine) or (ANode.Kind <> TSyntaxKind.RoutineDecl));
         if ANode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.ConstDecl] then
         begin
-          Names := Names + [ANode.Name];
+          mNames := mNames + [ANode.Name];
         end;
       end);
-    Routine := RoutineOf(Routine.Parent);
+    mRoutine := RoutineOf(mRoutine.Parent);
   end;
-  Result := Names;
+  Result := mNames;
 end;
 
 /// <summary>Ausdruck ohne mögliche Nebenwirkung: nur Literale, Operatoren und lokale Namen.</summary>
 function IsPure(ANode: TSyntaxNode; const ALocals: TArray<string>): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   case ANode.Kind of
     TSyntaxKind.Literal:
@@ -395,9 +395,9 @@ begin
       TSyntaxKind.RangeExpr:
       begin
         // Klassenoperatoren könnten Nebenwirkungen haben; is/as und Mengen sind harmlos genug, Aufrufe nicht.
-        for Index := 0 to ANode.ChildCount - 1 do
+        for mIndex := 0 to ANode.ChildCount - 1 do
         begin
-          if not IsPure(ANode[Index], ALocals) then
+          if not IsPure(ANode[mIndex], ALocals) then
           begin
             Exit(False);
           end;
@@ -410,71 +410,72 @@ begin
   Result := False;
 end;
 
-function StatementRemoval(const AText: string; ATokens: TArray<TPascalToken>; AStatement: TSyntaxNode): TTextEdit;
+function StatementRemoval(const AText: string; const ATokens: TArray<TPascalToken>; AStatement: TSyntaxNode): TTextEdit;
 var
-  Index, Last: Integer;
-  Lines: TArray<string>;
-  Line: string;
-  EndPos: TTextPosition;
+  mIndex, mLast: Integer;
+  mLines: TArray<string>;
+  mLine: string;
+  mEndPos: TTextPosition;
 begin
-  EndPos := AStatement.EndPos;
+  mEndPos := AStatement.EndPos;
   if TRoutineBody.InList(AStatement) then
   begin
     // Mit dem Semikolon dahinter; steht die Anweisung allein in ihrer Zeile, verschwindet die ganze Zeile.
-    Index := TRoutineBody.TokenAt(ATokens, AStatement.EndOffset);
-    Last := TRoutineBody.NextToken(ATokens, Index - 1);
-    if (Last >= 0) and (Last < Length(ATokens)) and ATokens[Last].IsSymbol(';') then
+    mIndex := TRoutineBody.TokenAt(ATokens, AStatement.EndOffset);
+    mLast := TRoutineBody.NextToken(ATokens, mIndex - 1);
+    if (mLast >= 0) and (mLast < Length(ATokens)) and ATokens[mLast].IsSymbol(';') then
     begin
-      EndPos := ATokens[Last].EndPos;
+      mEndPos := ATokens[mLast].EndPos;
     end;
-    Lines := TTextLines.SplitLines(AText);
-    if (AStatement.StartPos.Line = EndPos.Line) and (EndPos.Line < High(Lines)) then
+    mLines := TTextLines.SplitLines(AText);
+    if (AStatement.StartPos.Line = mEndPos.Line) and (mEndPos.Line < High(mLines)) then
     begin
-      Line := Lines[EndPos.Line];
-      if (Trim(Copy(Line, 1, AStatement.StartPos.Character)) = '') and
-        (Trim(Copy(Line, EndPos.Character + 1, MaxInt)) = '') then
+      mLine := mLines[mEndPos.Line];
+      if (Trim(Copy(mLine, 1, AStatement.StartPos.Character)) = '') and
+        (Trim(Copy(mLine, mEndPos.Character + 1, MaxInt)) = '') then
       begin
-        Exit(TTextEdit.Create(TTextRange.Create(EndPos.Line, 0, EndPos.Line + 1, 0), ''));
+        Exit(TTextEdit.Create(TTextRange.Create(mEndPos.Line, 0, mEndPos.Line + 1, 0), ''));
       end;
     end;
   end;
-  Result := TTextEdit.Create(TTextRange.Create(AStatement.StartPos, EndPos), '');
+  Result := TTextEdit.Create(TTextRange.Create(AStatement.StartPos, mEndPos), '');
 end;
 
-function H2077Fixes(const AText: string; ATokens: TArray<TPascalToken>; ATree: TSyntaxTree;
+function H2077Fixes(const AText: string; const ATokens: TArray<TPascalToken>; ATree: TSyntaxTree;
   const AMessage: TFixMessage): TArray<TCompilerFix>;
 var
-  Names: TArray<string>;
-  Statement, Value: TSyntaxNode;
-  Name: string;
+  mNames: TArray<string>;
+  mStatement, mValue: TSyntaxNode;
+  mName: string;
 begin
   Result := nil;
-  Names := TCompilerFixes.QuotedNames(AMessage.Text);
-  if Length(Names) = 0 then
+  mNames := TCompilerFixes.QuotedNames(AMessage.Text);
+  if Length(mNames) = 0 then
   begin
     Exit;
   end;
-  Name := Names[0];
-  for Statement in NodesOnLine(ATree.Root, AMessage.Line, TSyntaxKind.AssignStatement) do
+  mName := mNames[0];
+  for mStatement in NodesOnLine(ATree.Root, AMessage.Line, TSyntaxKind.AssignStatement) do
   begin
-    if (Statement.ChildCount < 2) or (Statement[0].Kind <> TSyntaxKind.Identifier) or
-      not SameText(Statement[0].Name, Name) then
+    if (mStatement.ChildCount < 2) or (mStatement[0].Kind <> TSyntaxKind.Identifier) or
+      not SameText(mStatement[0].Name, mName) then
     begin
       Continue;
     end;
-    Value := Statement[1];
+    mValue := mStatement[1];
     // Erst Result, dann Exit: Exit([...]) liest Delphi als Menge (E2001).
-    if IsPure(Value, LocalNames(RoutineOf(Statement))) then
+    if IsPure(mValue, LocalNames(RoutineOf(mStatement))) then
     begin
-      Result := [Fix(AMessage.Code, cTexts[TCompilerFixesText.RemoveIneffectiveAssignmentTo].Fmt([Name, AMessage.Code]),
-        [StatementRemoval(AText, ATokens, Statement)], True)];
+      Result := [Fix(AMessage.Code, cTexts[TCompilerFixesText.RemoveIneffectiveAssignmentTo].Fmt([mName,
+        AMessage.Code]),
+        [StatementRemoval(AText, ATokens, mStatement)], True)];
       Exit;
     end
-    else if Value.Kind = TSyntaxKind.Call then
+    else if mValue.Kind = TSyntaxKind.Call then
     begin
       // Der Aufruf bleibt, nur die Zuweisung fällt weg.
-      Result := [Fix(AMessage.Code, cTexts[TCompilerFixesText.RemoveAssignmentToOnlyCall].Fmt([Name, Value.Name,
-        AMessage.Code]), [TTextEdit.Create(TTextRange.Create(Statement.StartPos, Value.StartPos), '')], True)];
+      Result := [Fix(AMessage.Code, cTexts[TCompilerFixesText.RemoveAssignmentToOnlyCall].Fmt([mName, mValue.Name,
+        AMessage.Code]), [TTextEdit.Create(TTextRange.Create(mStatement.StartPos, mValue.StartPos), '')], True)];
       Exit;
     end;
   end;
@@ -482,47 +483,47 @@ end;
 
 function W1035Fixes(const AText: string; ATree: TSyntaxTree; const AMessage: TFixMessage): TArray<TCompilerFix>;
 var
-  Routine, Header, Body, ResultType: TSyntaxNode;
-  Index: Integer;
-  TypeText, Indent: string;
-  Lines: TArray<string>;
-  LineBreak: string;
+  mRoutine, mHeader, mBody, mResultType: TSyntaxNode;
+  mIndex: Integer;
+  mTypeText, mIndent: string;
+  mLines: TArray<string>;
+  mLineBreak: string;
 begin
   Result := nil;
   // Die Meldung steht auf dem end der Funktion (oder ihrem Kopf): innerste Routine um die Zeile.
-  Routine := TDisableWarning.RoutineAt(ATree, AMessage.Line);
-  if Routine = nil then
+  mRoutine := TDisableWarning.RoutineAt(ATree, AMessage.Line);
+  if mRoutine = nil then
   begin
     Exit;
   end;
-  Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
-  Body := TRoutineBody.BodyOf(Routine);
-  if (Header = nil) or (Body = nil) then
+  mHeader := mRoutine.FindChild(TSyntaxKind.RoutineHeader);
+  mBody := TRoutineBody.BodyOf(mRoutine);
+  if (mHeader = nil) or (mBody = nil) then
   begin
     Exit;
   end;
-  ResultType := nil;
-  for Index := 0 to Header.ChildCount - 1 do
+  mResultType := nil;
+  for mIndex := 0 to mHeader.ChildCount - 1 do
   begin
-    if Header[Index].Kind = TSyntaxKind.TypeReference then
+    if mHeader[mIndex].Kind = TSyntaxKind.TypeReference then
     begin
-      ResultType := Header[Index];
+      mResultType := mHeader[mIndex];
     end;
   end;
-  if ResultType = nil then
+  if mResultType = nil then
   begin
     Exit;
   end;
-  TypeText := TRoutineBody.TextOf(AText, ResultType);
-  Lines := TTextLines.SplitLines(AText, LineBreak);
-  Indent := TTextLines.IndentOf(Lines[Body.StartPos.Line]) + '  ';
-  if (Body.ChildCount > 0) and (Body[0].StartPos.Line > Body.StartPos.Line) then
+  mTypeText := TRoutineBody.TextOf(AText, mResultType);
+  mLines := TTextLines.SplitLines(AText, mLineBreak);
+  mIndent := TTextLines.IndentOf(mLines[mBody.StartPos.Line]) + '  ';
+  if (mBody.ChildCount > 0) and (mBody[0].StartPos.Line > mBody.StartPos.Line) then
   begin
-    Indent := TTextLines.IndentOf(Lines[Body[0].StartPos.Line]);
+    mIndent := TTextLines.IndentOf(mLines[mBody[0].StartPos.Line]);
   end;
-  Result := [Fix(AMessage.Code, cTexts[TCompilerFixesText.InsertResultDefaultAtThe].Fmt([TypeText,
-    AMessage.Code]), [Insertion(TTextPosition.Create(Body.StartPos.Line, Body.StartPos.Character + Length('begin')),
-    LineBreak + Indent + Format('Result := Default(%s);', [TypeText]))], True)];
+  Result := [Fix(AMessage.Code, cTexts[TCompilerFixesText.InsertResultDefaultAtThe].Fmt([mTypeText,
+    AMessage.Code]), [Insertion(TTextPosition.Create(mBody.StartPos.Line, mBody.StartPos.Character + Length('begin')),
+    mLineBreak + mIndent + Format('Result := Default(%s);', [mTypeText]))], True)];
 end;
 
 /// <summary>Rechte Seiten der Zuweisungen in Zeile ALine.</summary>
@@ -627,25 +628,25 @@ end;
 class function TCompilerFixes.Fixes(const AText: string; ATree: TSyntaxTree; const AMessage: TFixMessage;
   const AContext: TCompilerFixContext): TArray<TCompilerFix>;
 var
-  Tokens: TArray<TPascalToken>;
+  mTokens: TArray<TPascalToken>;
 begin
   Result := nil;
   if (ATree = nil) or (AMessage.Line < 0) then
   begin
     Exit;
   end;
-  Tokens := ATree.Tokens;
+  mTokens := ATree.Tokens;
   if AMessage.Code = 'H2443' then
   begin
-    Result := H2443Fixes(AText, Tokens, AMessage, AContext);
+    Result := H2443Fixes(AText, mTokens, AMessage, AContext);
   end
   else if AMessage.Code = 'E2003' then
   begin
-    Result := E2003Fixes(AText, Tokens, ATree, AMessage, AContext);
+    Result := E2003Fixes(AText, mTokens, ATree, AMessage, AContext);
   end
   else if AMessage.Code = 'H2077' then
   begin
-    Result := H2077Fixes(AText, Tokens, ATree, AMessage);
+    Result := H2077Fixes(AText, mTokens, ATree, AMessage);
   end
   else if AMessage.Code = 'W1035' then
   begin
@@ -677,13 +678,13 @@ end;
 /// nicht, an derselben schon (die Reihenfolge wäre offen).</summary>
 function Overlaps(const AEdit: TTextEdit; const AEdits: TArray<TTextEdit>): Boolean;
 var
-  Other: TTextEdit;
+  mOther: TTextEdit;
 begin
-  for Other in AEdits do
+  for mOther in AEdits do
   begin
-    if (Compare(AEdit.Range.StartPos, Other.Range.EndPos) <= 0) and
-      (Compare(Other.Range.StartPos, AEdit.Range.EndPos) <= 0) and not StartsAtEndOf(AEdit, Other) and
-      not StartsAtEndOf(Other, AEdit) then
+    if (Compare(AEdit.Range.StartPos, mOther.Range.EndPos) <= 0) and
+      (Compare(mOther.Range.StartPos, AEdit.Range.EndPos) <= 0) and not StartsAtEndOf(AEdit, mOther) and
+      not StartsAtEndOf(mOther, AEdit) then
     begin
       Exit(True);
     end;
@@ -693,11 +694,11 @@ end;
 
 function OverlapsAny(const AEdits, AOthers: TArray<TTextEdit>): Boolean;
 var
-  Edit: TTextEdit;
+  mEdit: TTextEdit;
 begin
-  for Edit in AEdits do
+  for mEdit in AEdits do
   begin
-    if Overlaps(Edit, AOthers) then
+    if Overlaps(mEdit, AOthers) then
     begin
       Exit(True);
     end;

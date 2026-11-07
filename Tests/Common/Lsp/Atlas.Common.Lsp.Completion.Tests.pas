@@ -138,7 +138,7 @@ begin
   // Rückmeldung 15.10.2026: Bei einem Vorfahren mit mehr als MaxItems kurzen Mitgliedern fielen eigene
   // Methoden mit längerem Namen beim Kürzen heraus.
   Source := 'unit Gross;'#10'interface'#10'type'#10'  TGross = class'#10'  public'#10;
-  for Index := 0 to TLspCompletion.MaxItems + 199 do
+  for Index := 0 to TLspCompletion.cMaxItems + 199 do
   begin
     Source := Source + '    procedure R' + IntToStr(Index) + ';'#10;
   end;
@@ -150,7 +150,7 @@ begin
     '    procedure Bar(Anzahl: Integer);'#10'    procedure RechneSehrLangerName;', []);
   Items := ItemsAt(Text, #10'  R', TCompletionMatching.Fuzzy);
   Assert.IsTrue(Items.Incomplete);
-  Assert.AreEqual<NativeInt>(TLspCompletion.MaxItems, Length(Items.Items));
+  Assert.AreEqual<NativeInt>(TLspCompletion.cMaxItems, Length(Items.Items));
   Assert.IsTrue(Pos(' RechneSehrLangerName ', ' ' + Names(Items) + ' ') > 0, 'eigene Methode fehlt');
 end;
 procedure TLspCompletionTests.ScopeFiltersByPrefix;
@@ -382,7 +382,7 @@ var
   Items: TCompletionItems;
 begin
   // Mehr passende Importe als MaxImportItems: Beim Weitertippen können andere drankommen (#616).
-  for Index := 1 to TLspCompletion.MaxImportItems + 5 do
+  for Index := 1 to TLspCompletion.cMaxImportItems + 5 do
   begin
     Lib := TIndexExtractor.ExtractText(Format('unit Lib%d;'#10'interface'#10'type TTestLib%d = class end;'#10 +
       'implementation'#10'end.', [Index, Index]), Format('C:\Lib\Lib%d.pas', [Index]), nil);
@@ -390,7 +390,7 @@ begin
     FIndex.AddUnit(Lib);
   end;
   Items := ItemsAt(WithCode('  TTest'), '  TTest', TCompletionMatching.Fuzzy);
-  Assert.AreEqual(Integer(TLspCompletion.MaxImportItems), Integer(Length(Items.Items)));
+  Assert.AreEqual(Integer(TLspCompletion.cMaxImportItems), Integer(Length(Items.Items)));
   Assert.IsTrue(Items.Incomplete);
 end;
 procedure TLspCompletionTests.NameFilterSkipsIndexSymbols;

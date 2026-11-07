@@ -181,7 +181,7 @@ function TShellRefactoringPart.Open(const AUri: string): ITextDocument;
 begin
   if not FServices.Documents.TryGet(AUri, Result) then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, cTexts[TRefactoringServiceText.NotOpen].Text);
+    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed, cTexts[TRefactoringServiceText.NotOpen].Text);
   end;
 end;
 
@@ -262,7 +262,7 @@ class procedure TShellRefactoringPart.Allow(AEnabled: Boolean; const ADisabled: 
 begin
   if not AEnabled then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, ADisabled);
+    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed, ADisabled);
   end;
 end;
 
@@ -270,7 +270,7 @@ class procedure TShellRefactoringPart.Require(const AArguments: TJSONArray; ACou
 begin
   if (AArguments = nil) or (AArguments.Count < ACount) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, AMissing);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, AMissing);
   end;
 end;
 
@@ -278,7 +278,7 @@ class procedure TShellRefactoringPart.Require(const AArguments: TJSONArray; cons
 begin
   if (AArguments = nil) or (AArguments.Count < Length(ANames)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, TShellTexts.Missing(ANames));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TShellTexts.Missing(ANames));
   end;
 end;
 

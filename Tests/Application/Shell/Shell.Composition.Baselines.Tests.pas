@@ -196,8 +196,8 @@ begin
     finally
       mCapability.Free;
     end;
-    for mName in TArray<string>.Create(TLspBaseline.Command, TLspBulkFix.Command, TLspCompilerBaseline.AddCommand,
-      TLspCompilerBaseline.ClassifyCommand) do
+    for mName in TArray<string>.Create(TLspBaseline.cCommand, TLspBulkFix.cCommand, TLspCompilerBaseline.cAddCommand,
+      TLspCompilerBaseline.cClassifyCommand) do
     begin
       Assert.IsTrue(Pos('"' + mName + '"', mText) > 0, mName);
     end;

@@ -201,7 +201,7 @@ begin
     begin
       Flag := ',"atlasLocals":true';
     end;
-    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspLinkedEditing.Method +
+    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspLinkedEditing.cMethod +
       '","params":{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},"position":{"line":' +
       IntToStr(ALine) + ',"character":' + IntToStr(ACharacter) + '}' + Flag + '}}') as TJSONObject;
     try
@@ -279,7 +279,7 @@ begin
   Json := TLspLinkedEditing.ToJson(RangesAt(4, 16));
   try
     Assert.AreEqual(2, (Json as TJSONObject).GetValue<TJSONArray>('ranges').Count);
-    Assert.AreEqual(TLspLinkedEditing.WordPattern, (Json as TJSONObject).GetValue<string>('wordPattern'));
+    Assert.AreEqual(TLspLinkedEditing.cWordPattern, (Json as TJSONObject).GetValue<string>('wordPattern'));
   finally
     Json.Free;
   end;

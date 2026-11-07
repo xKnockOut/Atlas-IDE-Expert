@@ -57,55 +57,55 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  HighDpiVersion = 22;
+  cHighDpiVersion = 22;
 
 /// <summary>Dateiname aus {$R name.dcr} bzw. {$RESOURCE 'name.res'}; False bei {$R+} und anderen.</summary>
 function ResourceFile(const ADirective, AUnitName: string; out AFileName: string): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
   Result := False;
-  Text := Trim(ADirective);
-  if not (StartsText('{$R ', Text) or StartsText('{$RESOURCE ', Text)) or not EndsText('}', Text) then
+  mText := Trim(ADirective);
+  if not (StartsText('{$R ', mText) or StartsText('{$RESOURCE ', mText)) or not EndsText('}', mText) then
   begin
     Exit;
   end;
-  Text := Trim(Copy(Text, Pos(' ', Text) + 1, Length(Text) - Pos(' ', Text) - 1));
+  mText := Trim(Copy(mText, Pos(' ', mText) + 1, Length(mText) - Pos(' ', mText) - 1));
   // {$R 'a.res' 'a.rc'}: nur die erste Angabe.
-  if StartsText('''', Text) then
+  if StartsText('''', mText) then
   begin
-    Text := Copy(Text, 2, Pos('''', Copy(Text, 2, MaxInt)) - 1);
+    mText := Copy(mText, 2, Pos('''', Copy(mText, 2, MaxInt)) - 1);
   end
-  else if Pos(' ', Text) > 0 then
+  else if Pos(' ', mText) > 0 then
   begin
-    Text := Copy(Text, 1, Pos(' ', Text) - 1);
+    mText := Copy(mText, 1, Pos(' ', mText) - 1);
   end;
-  if not (EndsText('.dcr', Text) or EndsText('.res', Text)) then
+  if not (EndsText('.dcr', mText) or EndsText('.res', mText)) then
   begin
     Exit;
   end;
-  if StartsText('*', Text) then
+  if StartsText('*', mText) then
   begin
     if AUnitName = '' then
     begin
       Exit;
     end;
-    Text := AUnitName + Copy(Text, 2, MaxInt);
+    mText := AUnitName + Copy(mText, 2, MaxInt);
   end;
-  AFileName := Text;
+  AFileName := mText;
   Result := True;
 end;
 
 function MajorVersion(const AVersion: string): Integer;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := AVersion;
-  if Pos('.', Text) > 0 then
+  mText := AVersion;
+  if Pos('.', mText) > 0 then
   begin
-    Text := Copy(Text, 1, Pos('.', Text) - 1);
+    mText := Copy(mText, 1, Pos('.', mText) - 1);
   end;
-  Result := StrToIntDef(Text, 0);
+  Result := StrToIntDef(mText, 0);
 end;
 
 function HasName(const ANames: TArray<string>; const AName: string): Boolean;
@@ -247,7 +247,7 @@ begin
       cTexts[TPaletteIconsText.NoIcon].Fmt([mUpper]));
     Exit;
   end;
-  if MajorVersion(AContext.DelphiVersion) < HighDpiVersion then
+  if MajorVersion(AContext.DelphiVersion) < cHighDpiVersion then
   begin
     Exit;
   end;

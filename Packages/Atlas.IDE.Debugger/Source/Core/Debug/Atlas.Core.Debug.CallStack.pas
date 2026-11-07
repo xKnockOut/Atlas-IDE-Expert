@@ -32,7 +32,7 @@ type
   TAtlasDebugCallStack = record
   public const
     /// <summary>Höchstens so viele Rahmen liest die IDE-Schicht.</summary>
-    MaxFrames = 64;
+    cMaxFrames = 64;
   public
     /// <summary>Index des obersten Rahmens mit Quelltext; -1 ohne.</summary>
     class function FirstWithSource(const AFrames: TAtlasDebugFrames): Integer; static;
@@ -69,13 +69,13 @@ end;
 
 class function TAtlasDebugCallStack.FirstWithSource(const AFrames: TAtlasDebugFrames): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(AFrames) do
+  for mIndex := 0 to High(AFrames) do
   begin
-    if AFrames[Index].HasSource then
+    if AFrames[mIndex].HasSource then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -83,27 +83,27 @@ end;
 
 class function TAtlasDebugCallStack.RoutineOf(const AHeader: string): string;
 var
-  Stop: Integer;
+  mStop: Integer;
 begin
   Result := Trim(AHeader);
   // Rahmen ohne Symbole zeigen nur die Adresse („:7714C3E2 KERNELBASE.RaiseException + 0x62“).
   if (Result <> '') and (Result[1] = ':') then
   begin
-    Stop := Pos(' ', Result);
-    if Stop > 0 then
+    mStop := Pos(' ', Result);
+    if mStop > 0 then
     begin
-      Result := Trim(Copy(Result, Stop + 1, MaxInt));
+      Result := Trim(Copy(Result, mStop + 1, MaxInt));
     end;
   end;
-  Stop := Pos('(', Result);
-  if Stop > 0 then
+  mStop := Pos('(', Result);
+  if mStop > 0 then
   begin
-    Result := Trim(Copy(Result, 1, Stop - 1));
+    Result := Trim(Copy(Result, 1, mStop - 1));
   end;
-  Stop := Pos(' + ', Result);
-  if Stop > 0 then
+  mStop := Pos(' + ', Result);
+  if mStop > 0 then
   begin
-    Result := Trim(Copy(Result, 1, Stop - 1));
+    Result := Trim(Copy(Result, 1, mStop - 1));
   end;
 end;
 

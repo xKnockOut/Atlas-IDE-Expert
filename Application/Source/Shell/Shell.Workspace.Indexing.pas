@@ -118,7 +118,8 @@ const
   /// <summary>So lange wartet ein lesender Prozess höchstens auf den Cache des schreibenden (#62).</summary>
   cCacheWaitMs = 120000;
 
-/// <summary>Neu eingelesene Units nach Grund und belegter Speicher, fürs Diagnoselog (Rückmeldung 22.10.2026).</summary>
+/// <summary>Neu eingelesene Units nach Grund und belegter Speicher, fürs Diagnoselog (Rückmeldung
+/// 22.10.2026).</summary>
 function MissText(const AResult: TIndexBuildResult): string;
 begin
   Result := Format(' new %d changed %d includes %d usages %d compact %d damaged %d mem %d MB',
@@ -132,11 +133,11 @@ end;
 function CacheKindOf(const AFileName, AProject, ALibrary, ASearch: string): string;
 begin
   Result := AProject;
-  if Pos(PathDelim + TIndexCacheDirectory.LibraryFolder + PathDelim, AFileName) > 0 then
+  if Pos(PathDelim + TIndexCacheDirectory.cLibraryFolder + PathDelim, AFileName) > 0 then
   begin
     Result := ALibrary;
   end
-  else if Pos(PathDelim + TIndexCacheDirectory.SearchFolder + PathDelim, AFileName) > 0 then
+  else if Pos(PathDelim + TIndexCacheDirectory.cSearchFolder + PathDelim, AFileName) > 0 then
   begin
     Result := ASearch;
   end;
@@ -255,12 +256,12 @@ begin
   // Prozesse am Projekt (#62): Der Schreiber hat gespeichert, ein Leser den Stand übernommen.
   if FParts.Cache.Writes then
   begin
-    FParts.Cache.Report(TIndexProcessInfo.StateReady, True, Format('Index gespeichert (%d Units)',
+    FParts.Cache.Report(TIndexProcessInfo.cStateReady, True, Format('Index gespeichert (%d Units)',
       [AResult.Parsed + AResult.FromCache]));
   end
   else
   begin
-    FParts.Cache.Report(TIndexProcessInfo.StateReady, False,
+    FParts.Cache.Report(TIndexProcessInfo.cStateReady, False,
       cTexts[TWorkspaceIndexingText.FromCache].Fmt([AResult.FromCache]));
   end;
   FEncodings.Report(FParts.State.ProjectFiles);
@@ -270,7 +271,8 @@ end;
 procedure TShellWorkspaceIndexing.CacheWritten(ALibrary: Boolean; AUnits: Integer; ABytes, AElapsedMs: Int64);
 begin
   // Wie oft und wie groß geschrieben wird (Rückmeldung 22.10.2026); ohne Pfad. Das Zeilenformat ist festgelegt
-  // (#1478, docs/Diagnose.md): Einheiten außer „MB“ am Ende klein, damit ^\S+ index project#\d+ \w+ [\d a-z]+ mem \d+ MB$
+  // (#1478, docs/Diagnose.md): Einheiten außer „MB“ am Ende klein, damit ^\S+ index project#\d+ \w+ [\d a-z]+ mem \d+
+  // MB$
   // jede Speicherzeile trifft.
   IndexEvent(Format('index project#%d cacheWrite %s units %d %d kb %d ms mem %d MB',
     [FParts.Setup.Priority, IfThen(ALibrary, 'library', 'project'), AUnits, ABytes div 1024, AElapsedMs,
@@ -286,7 +288,7 @@ begin
   FParts.Logger.Info(Format('Index-Cache verworfen (%s); wird neu aufgebaut', [AReason]));
   IndexEvent(Format('index project#%d cache rejected %s reason %s', [FParts.Setup.Priority,
     CacheKindOf(AFileName, 'project', 'library', 'search'), AReason]));
-  FParts.Cache.Report(TIndexProcessInfo.StateBuilding, FParts.Cache.Writes, Format('Cache verworfen (%s)', [AReason]));
+  FParts.Cache.Report(TIndexProcessInfo.cStateBuilding, FParts.Cache.Writes, Format('Cache verworfen (%s)', [AReason]));
 end;
 
 procedure TShellWorkspaceIndexing.CacheNotWritten(const AFileName, AReason: string);

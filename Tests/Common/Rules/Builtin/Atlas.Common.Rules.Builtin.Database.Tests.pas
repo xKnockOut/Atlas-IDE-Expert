@@ -116,7 +116,7 @@ begin
   Findings := TRuleAssert.Findings(TSqlWriteWithoutWhereRule.Create,
     Body('  qry.SQL.Text := ''DELETE FROM Warenkorb'';'#10'  qry.ExecSQL;'#10));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(SqlWriteWithoutWhereRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cSqlWriteWithoutWhereRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
   Assert.AreEqual('DELETE ohne WHERE löscht alle Zeilen von Warenkorb.', Findings[0].Message);
@@ -318,7 +318,7 @@ var
 begin
   Findings := StarFindings(Body('  qry.SQL.Text := ''SELECT * FROM Kunden WHERE Ort = :Ort'';'#10'  qry.Open;'#10));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(SqlSelectStarRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cSqlSelectStarRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
   Assert.AreEqual('SELECT * holt alle Spalten; neue Spalten ändern still die Datenmenge.', Findings[0].Message);
@@ -453,11 +453,11 @@ begin
   FoundStar := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = SqlWriteWithoutWhereRuleId then
+    if Rule.Descriptor.Id = cSqlWriteWithoutWhereRuleId then
     begin
       Found := True;
     end
-    else if Rule.Descriptor.Id = SqlSelectStarRuleId then
+    else if Rule.Descriptor.Id = cSqlSelectStarRuleId then
     begin
       FoundStar := True;
     end;

@@ -41,9 +41,9 @@ type
 
   TRuleFindingsMemo = class(TInterfacedObject, IRuleFindingsMemo)
   public const
-    MaxEntries = 32;
+    cMaxEntries = 32;
     /// <summary>Takt, in dem Obtain auf einen laufenden Lauf wartet.</summary>
-    WaitSliceMs = 20;
+    cWaitSliceMs = 20;
   private type
     TEntry = record
       Text: string;
@@ -123,7 +123,7 @@ begin
   try
     Inc(FClock);
     mEntry.Used := FClock;
-    if not FEntries.ContainsKey(mKey) and (FEntries.Count >= MaxEntries) then
+    if not FEntries.ContainsKey(mKey) and (FEntries.Count >= cMaxEntries) then
     begin
       DropOldest;
     end;
@@ -209,7 +209,7 @@ begin
     begin
       raise ERuleCheckCancelled.Create(AFileName);
     end;
-    Sleep(WaitSliceMs);
+    Sleep(cWaitSliceMs);
   end;
   try
     Result := ARun();

@@ -373,7 +373,7 @@ begin
   Source := Routine('  Bericht.Free;'#10'  Protokoll.Add(''Seiten: '' + IntToStr(Bericht.Seiten));', FreeHeader);
   Findings := TRuleAssert.Findings(TUseAfterFreeRule.Create, Source);
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(UseAfterFreeRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cUseAfterFreeRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
   Assert.AreEqual('Bericht wurde in Zeile 6 freigegeben und wird hier wieder gelesen.', Findings[0].Message);
@@ -389,23 +389,23 @@ begin
   Assert.AreEqual(2, Findings[0].Fixes[0].JumpTo.Character);
   Actions := TRuleCodeActions.ForFindings(Findings, Source, Findings[0].Range);
   Assert.AreEqual('Zur Freigabe in Zeile 6 springen', Actions[0].Title);
-  Assert.AreEqual(GoToPositionCommand, Actions[0].Command);
+  Assert.AreEqual(cGoToPositionCommand, Actions[0].Command);
   Assert.AreEqual(2, Integer(Length(Actions[0].CommandArguments)));
   Assert.AreEqual('5', Actions[0].CommandArguments[0]);
   Assert.AreEqual('2', Actions[0].CommandArguments[1]);
-  Assert.AreEqual(RuleFixTag, Actions[0].Tag);
+  Assert.AreEqual(cRuleFixTag, Actions[0].Tag);
   Assert.AreEqual(0, Integer(Length(Actions[0].Edits)));
   // Gewöhnliche Korrekturen behalten keinen Befehl.
   Assert.AreEqual('', Actions[1].Command);
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = UseAfterFreeRuleId then
+    if Rule.Descriptor.Id = cUseAfterFreeRuleId then
     begin
       Found := True;
     end;
   end;
-  Assert.IsTrue(Found, UseAfterFreeRuleId);
+  Assert.IsTrue(Found, cUseAfterFreeRuleId);
 end;
 
 procedure TFlowRulesTests.UseAfterFreeAndNilAndConfidence;
@@ -505,7 +505,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine(Body, CheckHeader, CheckVars));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(DerefBeforeNilCheckRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cDerefBeforeNilCheckRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
   Assert.AreEqual('Kunde wird hier benutzt, aber erst in Zeile 9 auf nil geprüft.', Findings[0].Message);
@@ -526,12 +526,12 @@ begin
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = DerefBeforeNilCheckRuleId then
+    if Rule.Descriptor.Id = cDerefBeforeNilCheckRuleId then
     begin
       Found := True;
     end;
   end;
-  Assert.IsTrue(Found, DerefBeforeNilCheckRuleId);
+  Assert.IsTrue(Found, cDerefBeforeNilCheckRuleId);
 end;
 
 procedure TFlowRulesTests.DerefBeforeNilCheckBlockAndElse;
@@ -640,7 +640,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(Body));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(FieldFreeWithoutNilRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cFieldFreeWithoutNilRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
   Assert.AreEqual('FCache bleibt nach Free gesetzt; ein späterer Zugriff trifft freigegebenen Speicher.',
@@ -670,12 +670,12 @@ begin
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = FieldFreeWithoutNilRuleId then
+    if Rule.Descriptor.Id = cFieldFreeWithoutNilRuleId then
     begin
       Found := True;
     end;
   end;
-  Assert.IsTrue(Found, FieldFreeWithoutNilRuleId);
+  Assert.IsTrue(Found, cFieldFreeWithoutNilRuleId);
 end;
 
 procedure TFlowRulesTests.FieldFreeWithoutNilSilentCases;
@@ -830,7 +830,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate, Destroy));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(DestructorNotNilSafeRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cDestructorNotNilSafeRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
   Assert.AreEqual('Wirft TFileStream.Create, ist FZeilen beim Destruktor noch nil; FZeilen.Clear stürzt ab und ' +
@@ -860,12 +860,12 @@ begin
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = DestructorNotNilSafeRuleId then
+    if Rule.Descriptor.Id = cDestructorNotNilSafeRuleId then
     begin
       Found := True;
     end;
   end;
-  Assert.IsTrue(Found, DestructorNotNilSafeRuleId);
+  Assert.IsTrue(Found, cDestructorNotNilSafeRuleId);
 end;
 
 procedure TFlowRulesTests.DestructorNotNilSafeVariants;
@@ -1046,7 +1046,7 @@ var
 begin
   Findings := TRuleAssert.Findings(THandleLeakRule.Create, Prozess(Body));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(HandleLeakRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cHandleLeakRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
   Assert.AreEqual('PI.hProcess und PI.hThread werden nie mit CloseHandle geschlossen (Handle-Leck).',
@@ -1068,12 +1068,12 @@ begin
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = HandleLeakRuleId then
+    if Rule.Descriptor.Id = cHandleLeakRuleId then
     begin
       Found := True;
     end;
   end;
-  Assert.IsTrue(Found, HandleLeakRuleId);
+  Assert.IsTrue(Found, cHandleLeakRuleId);
 end;
 
 procedure TFlowRulesTests.HandleLeakVariants;

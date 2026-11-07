@@ -26,7 +26,7 @@ type
 
   TLspApplyEdit = class
   public const
-    Method = 'workspace/applyEdit';
+    cMethod = 'workspace/applyEdit';
   public
     /// <summary>Kündigt der Client in initialize capabilities.workspace.applyEdit an?</summary>
     class function ClientSupports(const AInitializeParams: TJSONObject): Boolean; static;
@@ -69,10 +69,10 @@ const
 
 class function TLspApplyEdit.ClientSupports(const AInitializeParams: TJSONObject): Boolean;
 var
-  Value: Boolean;
+  mValue: Boolean;
 begin
   Result := (AInitializeParams <> nil) and
-    AInitializeParams.TryGetValue<Boolean>('capabilities.workspace.applyEdit', Value) and Value;
+    AInitializeParams.TryGetValue<Boolean>('capabilities.workspace.applyEdit', mValue) and mValue;
 end;
 
 { TLspFileChange }
@@ -90,127 +90,127 @@ end;
 /// <summary>Bereich über den ganzen Text AText, Länge in UTF-16-Einheiten wie im LSP üblich.</summary>
 function WholeRange(const AText: string): TTextRange;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := AText.Split([#10]);
-  if Length(Lines) = 0 then
+  mLines := AText.Split([#10]);
+  if Length(mLines) = 0 then
   begin
-    Lines := [''];
+    mLines := [''];
   end;
-  Result := TTextRange.Create(0, 0, High(Lines), Length(Lines[High(Lines)]));
+  Result := TTextRange.Create(0, 0, High(mLines), Length(mLines[High(mLines)]));
 end;
 
 class function TLspApplyEdit.Files(const AChanges: TArray<TLspFileChange>): TJSONObject;
 var
-  Changes, Edits: TJSONArray;
-  Creation, Options, Document, Edit, Item: TJSONObject;
-  Change: TLspFileChange;
-  Uri: string;
-  Range: TTextRange;
+  mChanges, mEdits: TJSONArray;
+  mCreation, mOptions, mDocument, mEdit, mItem: TJSONObject;
+  mChange: TLspFileChange;
+  mUri: string;
+  mRange: TTextRange;
 begin
-  Changes := TJSONArray.Create;
-  for Change in AChanges do
+  mChanges := TJSONArray.Create;
+  for mChange in AChanges do
   begin
-    Uri := TDocumentUris.FromPath(Change.FileName);
-    if Change.New then
+    mUri := TDocumentUris.FromPath(mChange.FileName);
+    if mChange.New then
     begin
-      Creation := TJSONObject.Create;
-      Creation.AddPair('kind', 'create');
-      Creation.AddPair('uri', Uri);
-      Options := TJSONObject.Create;
-      Options.AddPair('ignoreIfExists', TJSONBool.Create(False));
-      Creation.AddPair('options', Options);
-      Changes.AddElement(Creation);
-      Range := TTextRange.Create(0, 0, 0, 0);
+      mCreation := TJSONObject.Create;
+      mCreation.AddPair('kind', 'create');
+      mCreation.AddPair('uri', mUri);
+      mOptions := TJSONObject.Create;
+      mOptions.AddPair('ignoreIfExists', TJSONBool.Create(False));
+      mCreation.AddPair('options', mOptions);
+      mChanges.AddElement(mCreation);
+      mRange := TTextRange.Create(0, 0, 0, 0);
     end
     else
     begin
-      Range := WholeRange(Change.OldText);
+      mRange := WholeRange(mChange.OldText);
     end;
-    Document := TJSONObject.Create;
-    Document.AddPair('uri', Uri);
-    Document.AddPair('version', TJSONNull.Create);
-    Edit := TJSONObject.Create;
-    Edit.AddPair('range', TLspPositions.RangeToJson(Range));
-    Edit.AddPair('newText', Change.NewText);
-    Edits := TJSONArray.Create;
-    Edits.AddElement(Edit);
-    Item := TJSONObject.Create;
-    Item.AddPair('textDocument', Document);
-    Item.AddPair('edits', Edits);
-    Changes.AddElement(Item);
+    mDocument := TJSONObject.Create;
+    mDocument.AddPair('uri', mUri);
+    mDocument.AddPair('version', TJSONNull.Create);
+    mEdit := TJSONObject.Create;
+    mEdit.AddPair('range', TLspPositions.RangeToJson(mRange));
+    mEdit.AddPair('newText', mChange.NewText);
+    mEdits := TJSONArray.Create;
+    mEdits.AddElement(mEdit);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('textDocument', mDocument);
+    mItem.AddPair('edits', mEdits);
+    mChanges.AddElement(mItem);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('documentChanges', Changes);
+  Result.AddPair('documentChanges', mChanges);
 end;
 
 class function TLspApplyEdit.ReplaceAll(const AFileName, AOldText, ANewText: string): TJSONObject;
 var
-  Lines: TArray<string>;
-  Last: string;
-  Edit: TJSONObject;
-  Edits: TJSONArray;
-  Changes: TJSONObject;
+  mLines: TArray<string>;
+  mLast: string;
+  mEdit: TJSONObject;
+  mEdits: TJSONArray;
+  mChanges: TJSONObject;
 begin
   // Ende des alten Texts: letzte Zeile, Länge in UTF-16-Einheiten wie im LSP üblich.
-  Lines := AOldText.Split([#10]);
-  if Length(Lines) = 0 then
+  mLines := AOldText.Split([#10]);
+  if Length(mLines) = 0 then
   begin
-    Lines := [''];
+    mLines := [''];
   end;
-  Last := Lines[High(Lines)];
-  Edit := TJSONObject.Create;
-  Edit.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(0, 0, High(Lines), Length(Last))));
-  Edit.AddPair('newText', ANewText);
-  Edits := TJSONArray.Create;
-  Edits.AddElement(Edit);
-  Changes := TJSONObject.Create;
-  Changes.AddPair(TDocumentUris.FromPath(AFileName), Edits);
+  mLast := mLines[High(mLines)];
+  mEdit := TJSONObject.Create;
+  mEdit.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(0, 0, High(mLines), Length(mLast))));
+  mEdit.AddPair('newText', ANewText);
+  mEdits := TJSONArray.Create;
+  mEdits.AddElement(mEdit);
+  mChanges := TJSONObject.Create;
+  mChanges.AddPair(TDocumentUris.FromPath(AFileName), mEdits);
   Result := TJSONObject.Create;
-  Result.AddPair('changes', Changes);
+  Result.AddPair('changes', mChanges);
 end;
 
 class function TLspApplyEdit.TextEdits(const AFileName: string; const AEdits: TArray<TTextEdit>): TJSONObject;
 var
-  Edits: TJSONArray;
-  Edit: TJSONObject;
-  Item: TTextEdit;
-  Changes: TJSONObject;
+  mEdits: TJSONArray;
+  mEdit: TJSONObject;
+  mItem: TTextEdit;
+  mChanges: TJSONObject;
 begin
-  Edits := TJSONArray.Create;
-  for Item in AEdits do
+  mEdits := TJSONArray.Create;
+  for mItem in AEdits do
   begin
-    Edit := TJSONObject.Create;
-    Edit.AddPair('range', TLspPositions.RangeToJson(Item.Range));
-    Edit.AddPair('newText', Item.NewText);
-    Edits.AddElement(Edit);
+    mEdit := TJSONObject.Create;
+    mEdit.AddPair('range', TLspPositions.RangeToJson(mItem.Range));
+    mEdit.AddPair('newText', mItem.NewText);
+    mEdits.AddElement(mEdit);
   end;
-  Changes := TJSONObject.Create;
-  Changes.AddPair(TDocumentUris.FromPath(AFileName), Edits);
+  mChanges := TJSONObject.Create;
+  mChanges.AddPair(TDocumentUris.FromPath(AFileName), mEdits);
   Result := TJSONObject.Create;
-  Result.AddPair('changes', Changes);
+  Result.AddPair('changes', mChanges);
 end;
 
 class function TLspApplyEdit.Request(const AId, ALabel: string; AEdit: TJSONObject): TJSONObject;
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
-  Params := TJSONObject.Create;
+  mParams := TJSONObject.Create;
   if ALabel <> '' then
   begin
-    Params.AddPair('label', ALabel);
+    mParams.AddPair('label', ALabel);
   end;
-  Params.AddPair('edit', AEdit);
+  mParams.AddPair('edit', AEdit);
   Result := TJSONObject.Create;
   Result.AddPair('jsonrpc', '2.0');
   Result.AddPair('id', AId);
-  Result.AddPair('method', Method);
-  Result.AddPair('params', Params);
+  Result.AddPair('method', cMethod);
+  Result.AddPair('params', mParams);
 end;
 
 class function TLspApplyEdit.ReadResult(const AResponse: TJSONObject; out AReason: string): Boolean;
 var
-  Applied: Boolean;
+  mApplied: Boolean;
 begin
   AReason := '';
   Result := False;
@@ -227,7 +227,7 @@ begin
     end;
     Exit;
   end;
-  Result := AResponse.TryGetValue<Boolean>('result.applied', Applied) and Applied;
+  Result := AResponse.TryGetValue<Boolean>('result.applied', mApplied) and mApplied;
   if not Result and not AResponse.TryGetValue<string>('result.failureReason', AReason) then
   begin
     AReason := cTexts[TApplyEditText.NotApplied].Text;

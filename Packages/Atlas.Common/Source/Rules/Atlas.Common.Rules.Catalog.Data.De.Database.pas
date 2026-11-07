@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesDeDatabase: array[0..36] of string = (
+  cCatalogLinesDeDatabase: array[0..36] of string = (
     '{',
     '      "id": "dataset-loop-without-next",',
     '      "name": "Datenmengen-Schleife ohne Next",',

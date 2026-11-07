@@ -92,8 +92,8 @@ begin
     finally
       mCapability.Free;
     end;
-    for mName in TArray<string>.Create(TUnitSearch.UnitsCommand, TUnitSearch.PreviewCommand,
-      TUnitSearch.AddUsesCommand) do
+    for mName in TArray<string>.Create(TUnitSearch.cUnitsCommand, TUnitSearch.cPreviewCommand,
+      TUnitSearch.cAddUsesCommand) do
     begin
       Assert.IsTrue(Pos('"' + mName + '"', mText) > 0, mName);
     end;
@@ -116,7 +116,7 @@ begin
   mArguments := TJSONArray.Create;
   try
     mSearch.RegisterCommands(mCommands);
-    mAnswer := mCommands.Execute(TUnitSearch.UnitsCommand, mArguments);
+    mAnswer := mCommands.Execute(TUnitSearch.cUnitsCommand, mArguments);
     try
       Assert.IsTrue(mAnswer is TJSONObject);
     finally
@@ -140,11 +140,11 @@ begin
   mCommands := TLspCommands.Create;
   try
     mSearch.RegisterCommands(mCommands);
-    for mName in TArray<string>.Create(TUnitSearch.UnitsCommand, TUnitSearch.PreviewCommand) do
+    for mName in TArray<string>.Create(TUnitSearch.cUnitsCommand, TUnitSearch.cPreviewCommand) do
     begin
       Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
     end;
-    for mName in TArray<string>.Create(TUnitSearch.AddUsesCommand) do
+    for mName in TArray<string>.Create(TUnitSearch.cAddUsesCommand) do
     begin
       Assert.IsFalse(mCommands.IsConcurrentCommand(mName), mName);
     end;

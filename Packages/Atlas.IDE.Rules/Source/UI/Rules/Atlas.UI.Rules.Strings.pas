@@ -47,7 +47,7 @@ uses
   Atlas.UI.Strings;
 
 const
-  Texts: array[TAtlasLanguage, TAtlasRulesTextId] of string = (
+  cTexts: array[TAtlasLanguage, TAtlasRulesTextId] of string = (
     ('Baseline des Projekts aktualisieren',
      'Baseline aktualisieren: kein aktives Projekt.',
      'Baseline aktualisieren: Der Atlas-Server hat keine Baseline geschrieben (Projekt noch nicht geladen, ' +
@@ -259,12 +259,12 @@ const
 
 class function TAtlasRulesStrings.Text(AId: TAtlasRulesTextId): string;
 begin
-  Result := Texts[TAtlasStrings.Language, AId];
+  Result := cTexts[TAtlasStrings.Language, AId];
 end;
 
 class function TAtlasRulesStrings.Fmt(AId: TAtlasRulesTextId; const AArgs: array of const): string;
 begin
-  Result := Format(Texts[TAtlasStrings.Language, AId], AArgs);
+  Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
 end;
 
 end.

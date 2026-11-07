@@ -68,7 +68,7 @@ uses
   Atlas.UI.Strings;
 
 const
-  Gap = 8;
+  cGap = 8;
 
 class function TAtlasExportDialogTexts.Create(const ATitle, AHint, APreview, ADefaultName, AFilter,
   ADefaultExt: string): TAtlasExportDialogTexts;
@@ -95,10 +95,10 @@ end;
 
 constructor TAtlasDiagnosticExportDialog.CreateDialog(AOwner: TComponent; const ATexts: TAtlasExportDialogTexts);
 var
-  Bottom: TPanel;
-  Button: TButton;
+  mBottom: TPanel;
+  mButton: TButton;
   mHint: TLabel;
-  Memo: TMemo;
+  mMemo: TMemo;
 begin
   inherited CreateNew(AOwner);
   FDefaultName := ATexts.DefaultName;
@@ -114,46 +114,46 @@ begin
   mHint.Parent := Self;
   mHint.Align := alTop;
   mHint.AlignWithMargins := True;
-  mHint.Margins.SetBounds(Gap, Gap, Gap, Gap);
+  mHint.Margins.SetBounds(cGap, cGap, cGap, cGap);
   mHint.WordWrap := True;
   // Breite vor dem Text: Sonst misst die Beschriftung mit ihrer Standardbreite, bricht nach jedem Wort um und
   // bleibt so hoch, dass die Vorschau kaum Platz hat.
-  mHint.Width := Width - 2 * Gap;
+  mHint.Width := Width - 2 * cGap;
   mHint.Caption := ATexts.Hint;
   FHint := mHint;
   OnResize := FitHint;
 
-  Bottom := TPanel.Create(Self);
-  Bottom.Parent := Self;
-  Bottom.Align := alBottom;
-  Bottom.Height := 44;
-  Bottom.BevelOuter := bvNone;
-  Button := TButton.Create(Self);
-  Button.Parent := Bottom;
-  Button.SetBounds(Bottom.Width - 2 * (100 + Gap), 8, 100, 28);
-  Button.Anchors := [akTop, akRight];
-  Button.Caption := TAtlasStrings.Text(TAtlasTextId.DiagExportSave);
-  Button.Default := True;
-  Button.OnClick := SaveClick;
-  Button := TButton.Create(Self);
-  Button.Parent := Bottom;
-  Button.SetBounds(Bottom.Width - (100 + Gap), 8, 100, 28);
-  Button.Anchors := [akTop, akRight];
-  Button.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel);
-  Button.Cancel := True;
-  Button.ModalResult := mrCancel;
+  mBottom := TPanel.Create(Self);
+  mBottom.Parent := Self;
+  mBottom.Align := alBottom;
+  mBottom.Height := 44;
+  mBottom.BevelOuter := bvNone;
+  mButton := TButton.Create(Self);
+  mButton.Parent := mBottom;
+  mButton.SetBounds(mBottom.Width - 2 * (100 + cGap), 8, 100, 28);
+  mButton.Anchors := [akTop, akRight];
+  mButton.Caption := TAtlasStrings.Text(TAtlasTextId.DiagExportSave);
+  mButton.Default := True;
+  mButton.OnClick := SaveClick;
+  mButton := TButton.Create(Self);
+  mButton.Parent := mBottom;
+  mButton.SetBounds(mBottom.Width - (100 + cGap), 8, 100, 28);
+  mButton.Anchors := [akTop, akRight];
+  mButton.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel);
+  mButton.Cancel := True;
+  mButton.ModalResult := mrCancel;
 
-  Memo := TMemo.Create(Self);
-  Memo.Parent := Self;
-  Memo.Align := alClient;
-  Memo.AlignWithMargins := True;
-  Memo.Margins.SetBounds(Gap, 0, Gap, 0);
-  Memo.ReadOnly := True;
-  Memo.ScrollBars := ssBoth;
-  Memo.WordWrap := False;
-  Memo.Font.Name := 'Consolas';
-  Memo.Font.Size := 9;
-  Memo.Lines.Text := ATexts.Preview;
+  mMemo := TMemo.Create(Self);
+  mMemo.Parent := Self;
+  mMemo.Align := alClient;
+  mMemo.AlignWithMargins := True;
+  mMemo.Margins.SetBounds(cGap, 0, cGap, 0);
+  mMemo.ReadOnly := True;
+  mMemo.ScrollBars := ssBoth;
+  mMemo.WordWrap := False;
+  mMemo.Font.Name := 'Consolas';
+  mMemo.Font.Size := 9;
+  mMemo.Lines.Text := ATexts.Preview;
 end;
 
 procedure TAtlasDiagnosticExportDialog.FitHint(Sender: TObject);
@@ -165,22 +165,22 @@ end;
 
 procedure TAtlasDiagnosticExportDialog.SaveClick(Sender: TObject);
 var
-  Dialog: TSaveDialog;
+  mDialog: TSaveDialog;
 begin
-  Dialog := TSaveDialog.Create(Self);
+  mDialog := TSaveDialog.Create(Self);
   try
-    Dialog.Filter := FFilter;
-    Dialog.DefaultExt := FDefaultExt;
-    Dialog.FileName := FDefaultName;
-    Dialog.Options := Dialog.Options + [ofOverwritePrompt, ofPathMustExist];
-    if not Dialog.Execute then
+    mDialog.Filter := FFilter;
+    mDialog.DefaultExt := FDefaultExt;
+    mDialog.FileName := FDefaultName;
+    mDialog.Options := mDialog.Options + [ofOverwritePrompt, ofPathMustExist];
+    if not mDialog.Execute then
     begin
       Exit;
     end;
-    FFileName := Dialog.FileName;
+    FFileName := mDialog.FileName;
     ModalResult := mrOk;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 

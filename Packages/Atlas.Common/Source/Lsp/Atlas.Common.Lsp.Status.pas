@@ -94,9 +94,9 @@ type
 
   TServerStatus = record
   public const
-    StateLoading = 'loading';
-    StateReady = 'ready';
-    StateChecking = 'checking';
+    cStateLoading = 'loading';
+    cStateReady = 'ready';
+    cStateChecking = 'checking';
   public
     Units: Integer;
     Symbols: Integer;
@@ -152,9 +152,9 @@ type
   end;
 
 const
-  StatusCommand = 'atlas.server.status';
+  cStatusCommand = 'atlas.server.status';
   /// <summary>Alle Index-Caches löschen und die Ordner neu indizieren (#492).</summary>
-  ClearIndexCommand = 'atlas.server.clearIndex';
+  cClearIndexCommand = 'atlas.server.clearIndex';
 
 implementation
 
@@ -348,11 +348,11 @@ end;
 
 function TServerStatus.StateText: string;
 begin
-  if State = StateLoading then
+  if State = cStateLoading then
   begin
     Result := cTexts[TStatusText.Loading].Text;
   end
-  else if State = StateChecking then
+  else if State = cStateChecking then
   begin
     Result := cTexts[TStatusText.Checking].Text;
   end
@@ -537,55 +537,55 @@ end;
 
 function TServerStatus.ToMarkdown: string;
 var
-  Builder: TStringBuilder;
+  mBuilder: TStringBuilder;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.Append('**Atlas**').Append(#10#10);
-    Builder.Append(cTexts[TStatusText.IndexUnitsSymbols].Fmt([Units, Symbols])).Append(#10);
+    mBuilder.Append('**Atlas**').Append(#10#10);
+    mBuilder.Append(cTexts[TStatusText.IndexUnitsSymbols].Fmt([Units, Symbols])).Append(#10);
     if MemoryBytes >= 0 then
     begin
-      Builder.Append(cTexts[TStatusText.Memory].Text).Append(MegaBytes(MemoryBytes)).Append(#10);
+      mBuilder.Append(cTexts[TStatusText.Memory].Text).Append(MegaBytes(MemoryBytes)).Append(#10);
     end;
-    Builder.Append(cTexts[TStatusText.OfThisSymbolIndex].Text).Append(MegaBytes(IndexBytes));
+    mBuilder.Append(cTexts[TStatusText.OfThisSymbolIndex].Text).Append(MegaBytes(IndexBytes));
     if BudgetBytes > 0 then
     begin
-      Builder.Append(cTexts[TStatusText.OfText].Text).Append(MegaBytes(BudgetBytes));
+      mBuilder.Append(cTexts[TStatusText.OfText].Text).Append(MegaBytes(BudgetBytes));
     end;
     if CompactUnits > 0 then
     begin
-      Builder.Append(cTexts[TStatusText.UnitsCompact].Fmt([CompactUnits]));
+      mBuilder.Append(cTexts[TStatusText.UnitsCompact].Fmt([CompactUnits]));
     end;
     if OffloadedUnits > 0 then
     begin
-      Builder.Append(cTexts[TStatusText.UsesOfUnitsSwappedOut].Fmt([OffloadedUnits]));
+      mBuilder.Append(cTexts[TStatusText.UsesOfUnitsSwappedOut].Fmt([OffloadedUnits]));
     end;
-    Builder.Append(#10);
-    Builder.Append(cTexts[TStatusText.CachesOnDisk].Text).Append(MegaBytes(DiskBytes)).Append(#10);
-    Builder.Append(cTexts[TStatusText.OfTheseOpenDocuments].Text).Append(MegaBytes(DocumentBytes)).Append(#10);
+    mBuilder.Append(#10);
+    mBuilder.Append(cTexts[TStatusText.CachesOnDisk].Text).Append(MegaBytes(DiskBytes)).Append(#10);
+    mBuilder.Append(cTexts[TStatusText.OfTheseOpenDocuments].Text).Append(MegaBytes(DocumentBytes)).Append(#10);
     if Compiler <> '' then
     begin
-      Builder.Append('- ').Append(Compiler).Append(#10);
+      mBuilder.Append('- ').Append(Compiler).Append(#10);
       if CompilerReason <> '' then
       begin
-        Builder.Append('  ').Append(CompilerReason).Append(#10);
+        mBuilder.Append('  ').Append(CompilerReason).Append(#10);
       end;
     end;
-    AppendWorkspaces(Builder, Workspaces);
+    AppendWorkspaces(mBuilder, Workspaces);
     if ProcessId <> 0 then
     begin
-      AppendDiagnostics(Builder);
+      AppendDiagnostics(mBuilder);
     end;
-    AppendRequests(Builder, Requests);
-    Result := Builder.ToString;
+    AppendRequests(mBuilder, Requests);
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 function TServerStatus.ToJson: TJSONObject;
 var
-  Item: TJSONObject;
+  mItem: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('units', TJSONNumber.Create(Units));
@@ -601,29 +601,29 @@ begin
   Result.AddPair('requests', RequestsJson(Requests));
   if Compiler <> '' then
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('status', Compiler);
-    Item.AddPair('backend', CompilerBackend);
-    Item.AddPair('reason', CompilerReason);
-    Result.AddPair('compiler', Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('status', Compiler);
+    mItem.AddPair('backend', CompilerBackend);
+    mItem.AddPair('reason', CompilerReason);
+    Result.AddPair('compiler', mItem);
   end;
   if ProcessId <> 0 then
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('pid', TJSONNumber.Create(ProcessId));
-    Item.AddPair('version', Version);
-    Item.AddPair('started', DateText(Started));
-    Item.AddPair('uptimeMs', TJSONNumber.Create(UptimeMs));
-    Item.AddPair('state', State);
-    Result.AddPair('process', Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('pid', TJSONNumber.Create(ProcessId));
+    mItem.AddPair('version', Version);
+    mItem.AddPair('started', DateText(Started));
+    mItem.AddPair('uptimeMs', TJSONNumber.Create(UptimeMs));
+    mItem.AddPair('state', State);
+    Result.AddPair('process', mItem);
     Result.AddPair('memory', MemoryJson(Memory, Memory.OverBudget(CompactUnits, OffloadedUnits)));
     Result.AddPair('checkRun', CheckRun.ToJson);
     Result.AddPair('queue', QueueJson(Queue));
-    Item := TJSONObject.Create;
-    Item.AddPair('index', TJSONNumber.Create(IndexCacheHitPercent));
-    Item.AddPair('trees', TJSONNumber.Create(TreeCacheHitPercent));
-    Item.AddPair('treeCount', TJSONNumber.Create(TreeCacheTrees));
-    Result.AddPair('cacheHits', Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('index', TJSONNumber.Create(IndexCacheHitPercent));
+    mItem.AddPair('trees', TJSONNumber.Create(TreeCacheHitPercent));
+    mItem.AddPair('treeCount', TJSONNumber.Create(TreeCacheTrees));
+    Result.AddPair('cacheHits', mItem);
   end;
   Result.AddPair('markdown', ToMarkdown);
 end;

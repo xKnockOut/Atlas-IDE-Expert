@@ -26,8 +26,8 @@ type
 
   TQueueNilInPackageRule = class(TInterfacedObject, IRule)
   public const
-    DefaultWrapper = 'TAtlasMainThread.Queue';
-    DefaultOkMarker = 'mainthread-ok';
+    cDefaultWrapper = 'TAtlasMainThread.Queue';
+    cDefaultOkMarker = 'mainthread-ok';
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -98,32 +98,32 @@ const
 /// <summary>Methode mit einem Parameter Sender: OnClick, OnTimer und Verwandte.</summary>
 function IsEventHandler(ARoutine: TSyntaxNode): Boolean;
 var
-  Header, Params: TSyntaxNode;
-  Index: Integer;
-  Name: string;
+  mHeader, mParams: TSyntaxNode;
+  mIndex: Integer;
+  mName: string;
 begin
   Result := False;
   if Pos('.', ARoutine.Name) = 0 then
   begin
     Exit;
   end;
-  Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-  if Header = nil then
+  mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if mHeader = nil then
   begin
     Exit;
   end;
-  Params := Header.FindChild(TSyntaxKind.Parameters);
-  if Params = nil then
+  mParams := mHeader.FindChild(TSyntaxKind.Parameters);
+  if mParams = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Params.ChildCount - 1 do
+  for mIndex := 0 to mParams.ChildCount - 1 do
   begin
-    if Params[Index].Kind = TSyntaxKind.Parameter then
+    if mParams[mIndex].Kind = TSyntaxKind.Parameter then
     begin
-      for Name in SplitString(Params[Index].Name, ',') do
+      for mName in SplitString(mParams[mIndex].Name, ',') do
       begin
-        if SameText(Trim(Name), 'Sender') then
+        if SameText(Trim(mName), 'Sender') then
         begin
           Exit(True);
         end;
@@ -143,15 +143,15 @@ end;
 
 procedure TProcessMessagesInLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  AllowIn: TArray<string>;
+  mAllowIn: TArray<string>;
 
   function Allowed(const ARoutineName: string): Boolean;
   var
-    Name: string;
+    mName: string;
   begin
-    for Name in AllowIn do
+    for mName in mAllowIn do
     begin
-      if SameText(Name, ARoutineName) or SameText(Name, MethodPart(ARoutineName)) then
+      if SameText(mName, ARoutineName) or SameText(mName, MethodPart(ARoutineName)) then
       begin
         Exit(True);
       end;
@@ -161,10 +161,10 @@ var
 
   function IsProcessMessages(ANode: TSyntaxNode): Boolean;
   var
-    Call: TMethodCall;
+    mCall: TMethodCall;
   begin
-    Result := TryMethodCall(ANode, Call) and SameText(Call.Method, 'ProcessMessages') and
-      (Call.Receiver <> nil) and SameText(MethodPart(NodeText(AContext.Text, Call.Receiver)), 'application');
+    Result := TryMethodCall(ANode, mCall) and SameText(mCall.Method, 'ProcessMessages') and
+      (mCall.Receiver <> nil) and SameText(MethodPart(NodeText(AContext.Text, mCall.Receiver)), 'application');
   end;
 
   // Meldet ProcessMessages an ANode in einer Schleife (ALoops > 0) oder direkt im Ereignis-Handler.
@@ -184,63 +184,63 @@ var
 
   procedure Visit(ANode: TSyntaxNode; ALoops: Integer; AHandler, AAllowed: Boolean);
   var
-    Pending: TStack<TSyntaxNode>;
-    LoopStack: TStack<Integer>;
-    Handlers, Alloweds: TStack<Boolean>;
-    Node: TSyntaxNode;
-    Index, Loops: Integer;
-    Handler, IsAllowed: Boolean;
+    mPending: TStack<TSyntaxNode>;
+    mLoopStack: TStack<Integer>;
+    mHandlers, mAlloweds: TStack<Boolean>;
+    mNode: TSyntaxNode;
+    mIndex, mLoops: Integer;
+    mHandler, mIsAllowed: Boolean;
   begin
     // Iterativ (Bericht M1); parallele Stapel führen ALoops, AHandler und AAllowed je Knoten mit.
-    Pending := TStack<TSyntaxNode>.Create;
-    LoopStack := TStack<Integer>.Create;
-    Handlers := TStack<Boolean>.Create;
-    Alloweds := TStack<Boolean>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    mLoopStack := TStack<Integer>.Create;
+    mHandlers := TStack<Boolean>.Create;
+    mAlloweds := TStack<Boolean>.Create;
     try
-      Pending.Push(ANode);
-      LoopStack.Push(ALoops);
-      Handlers.Push(AHandler);
-      Alloweds.Push(AAllowed);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      mLoopStack.Push(ALoops);
+      mHandlers.Push(AHandler);
+      mAlloweds.Push(AAllowed);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Loops := LoopStack.Pop;
-        Handler := Handlers.Pop;
-        IsAllowed := Alloweds.Pop;
+        mNode := mPending.Pop;
+        mLoops := mLoopStack.Pop;
+        mHandler := mHandlers.Pop;
+        mIsAllowed := mAlloweds.Pop;
         // Anonyme Methoden laufen später oder in einem Thread (dort meldet thread-vcl-access).
-        if Node.Kind = TSyntaxKind.AnonymousMethod then
+        if mNode.Kind = TSyntaxKind.AnonymousMethod then
         begin
           Continue;
         end;
-        if Node.Kind = TSyntaxKind.RoutineDecl then
+        if mNode.Kind = TSyntaxKind.RoutineDecl then
         begin
-          Handler := IsEventHandler(Node);
-          IsAllowed := Allowed(Node.Name);
-          Loops := 0;
+          mHandler := IsEventHandler(mNode);
+          mIsAllowed := Allowed(mNode.Name);
+          mLoops := 0;
         end
-        else if (Node.Kind = TSyntaxKind.CallStatement) and not IsAllowed and IsProcessMessages(Node) then
+        else if (mNode.Kind = TSyntaxKind.CallStatement) and not mIsAllowed and IsProcessMessages(mNode) then
         begin
-          ReportProcessMessages(Node, Loops, Handler);
+          ReportProcessMessages(mNode, mLoops, mHandler);
           Continue;
         end;
-        if Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+        if mNode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
           TSyntaxKind.RepeatStatement] then
         begin
-          Inc(Loops);
+          Inc(mLoops);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
-          LoopStack.Push(Loops);
-          Handlers.Push(Handler);
-          Alloweds.Push(IsAllowed);
+          mPending.Push(mNode[mIndex]);
+          mLoopStack.Push(mLoops);
+          mHandlers.Push(mHandler);
+          mAlloweds.Push(mIsAllowed);
         end;
       end;
     finally
-      Alloweds.Free;
-      Handlers.Free;
-      LoopStack.Free;
-      Pending.Free;
+      mAlloweds.Free;
+      mHandlers.Free;
+      mLoopStack.Free;
+      mPending.Free;
     end;
   end;
 
@@ -249,7 +249,7 @@ begin
   begin
     Exit;
   end;
-  AllowIn := TRuleOptions.Strings(AContext.Options, 'allowIn', nil);
+  mAllowIn := TRuleOptions.Strings(AContext.Options, 'allowIn', nil);
   Visit(AContext.Tree.Root, 0, False, False);
 end;
 
@@ -263,47 +263,47 @@ end;
 
 class function TQueueNilInPackageRule.WrapperCall(const AWrapper, AMethod: string): string;
 var
-  Name, Rest: string;
-  Paren: Integer;
+  mName, mRest: string;
+  mParen: Integer;
 begin
-  Paren := Pos('(', AWrapper);
-  if Paren > 0 then
+  mParen := Pos('(', AWrapper);
+  if mParen > 0 then
   begin
-    Name := TrimRight(Copy(AWrapper, 1, Paren - 1));
-    Rest := Copy(AWrapper, Paren, MaxInt);
+    mName := TrimRight(Copy(AWrapper, 1, mParen - 1));
+    mRest := Copy(AWrapper, mParen, MaxInt);
   end
   else
   begin
-    Name := AWrapper;
-    Rest := '(';
+    mName := AWrapper;
+    mRest := '(';
   end;
-  if SameText(AMethod, 'ForceQueue') and EndsText('Queue', Name) and not EndsText('ForceQueue', Name) then
+  if SameText(AMethod, 'ForceQueue') and EndsText('Queue', mName) and not EndsText('ForceQueue', mName) then
   begin
-    Name := Copy(Name, 1, Length(Name) - Length('Queue')) + 'ForceQueue';
+    mName := Copy(mName, 1, Length(mName) - Length('Queue')) + 'ForceQueue';
   end;
-  Result := Name + Rest;
+  Result := mName + mRest;
 end;
 
 procedure TQueueNilInPackageRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Code: TArray<Integer>;
-  Wrapper, OkMarker, Where: string;
+  mTokens: TArray<TPascalToken>;
+  mCode: TArray<Integer>;
+  mWrapper, mOkMarker, mWhere: string;
 
   function Token(APosition: Integer): TPascalToken;
   begin
-    Result := Tokens[Code[APosition]];
+    Result := mTokens[mCode[APosition]];
   end;
 
   // Steht in der Zeile ALine ein Kommentar mit der Ausnahme?
   function MarkedOk(ALine: Integer): Boolean;
   var
-    Item: TPascalToken;
+    mItem: TPascalToken;
   begin
-    for Item in Tokens do
+    for mItem in mTokens do
     begin
-      if (Item.Kind = TPascalTokenKind.Comment) and (Item.StartPos.Line <= ALine) and (Item.EndPos.Line >= ALine) and
-        ContainsText(Item.Text, OkMarker) then
+      if (mItem.Kind = TPascalTokenKind.Comment) and (mItem.StartPos.Line <= ALine) and (mItem.EndPos.Line >= ALine) and
+        ContainsText(mItem.Text, mOkMarker) then
       begin
         Exit(True);
       end;
@@ -314,26 +314,26 @@ var
   // Anzahl der Argumente ab der öffnenden Klammer AOpen; -1 ohne schließende Klammer.
   function ArgumentCount(AOpen: Integer): Integer;
   var
-    Position, Depth: Integer;
+    mPosition, mDepth: Integer;
   begin
     Result := 1;
-    Depth := 0;
-    for Position := AOpen to High(Code) do
+    mDepth := 0;
+    for mPosition := AOpen to High(mCode) do
     begin
-      if Token(Position).IsSymbol('(') or Token(Position).IsSymbol('[') then
+      if Token(mPosition).IsSymbol('(') or Token(mPosition).IsSymbol('[') then
       begin
-        Inc(Depth);
+        Inc(mDepth);
       end
-      else if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
+      else if Token(mPosition).IsSymbol(')') or Token(mPosition).IsSymbol(']') then
       begin
-        Dec(Depth);
-        if Depth = 0 then
+        Dec(mDepth);
+        if mDepth = 0 then
         begin
           Exit;
         end;
       end
       // Kommas in anonymen Methoden stehen in eigenen Klammern; begin … end zählt nicht.
-      else if (Depth = 1) and Token(Position).IsSymbol(',') then
+      else if (mDepth = 1) and Token(mPosition).IsSymbol(',') then
       begin
         Inc(Result);
       end;
@@ -344,7 +344,7 @@ var
   // Steht an AStart TThread.Queue(nil, bzw. TThread.ForceQueue(nil,?
   function IsQueueNilAt(AStart: Integer): Boolean;
   begin
-    Result := (AStart + 5 <= High(Code)) and SameText(Token(AStart).Text, 'TThread') and
+    Result := (AStart + 5 <= High(mCode)) and SameText(Token(AStart).Text, 'TThread') and
       Token(AStart + 1).IsSymbol('.') and Token(AStart + 3).IsSymbol('(');
     Result := Result and Token(AStart + 4).IsKeyword('nil') and Token(AStart + 5).IsSymbol(',') and
       MatchText(Token(AStart + 2).Text, ['Queue', 'ForceQueue']);
@@ -352,75 +352,75 @@ var
 
   procedure CheckAt(AStart: Integer);
   var
-    Method: string;
-    Comma: Integer;
-    Range, Replace: TTextRange;
-    Fixes: TArray<TRuleFix>;
+    mMethod: string;
+    mComma: Integer;
+    mRange, mReplace: TTextRange;
+    mFixes: TArray<TRuleFix>;
   begin
     // TThread . Queue|ForceQueue ( nil ,
     if not IsQueueNilAt(AStart) or MarkedOk(Token(AStart).StartPos.Line) then
     begin
       Exit;
     end;
-    Method := Token(AStart + 2).Text;
-    Comma := AStart + 5;
-    Range := TTextRange.Create(Token(AStart).StartPos, Token(AStart + 4).EndPos);
-    Fixes := nil;
+    mMethod := Token(AStart + 2).Text;
+    mComma := AStart + 5;
+    mRange := TTextRange.Create(Token(AStart).StartPos, Token(AStart + 4).EndPos);
+    mFixes := nil;
     // Nur mit genau zwei Argumenten: die Verzögerung von ForceQueue kennt der Wrapper nicht.
     if ArgumentCount(AStart + 3) = 2 then
     begin
-      Replace := TTextRange.Create(Token(AStart).StartPos, Token(Comma).EndPos);
+      mReplace := TTextRange.Create(Token(AStart).StartPos, Token(mComma).EndPos);
       // Steht das nächste Argument in derselben Zeile, fällt der Leerraum davor mit weg.
-      if (Comma < High(Code)) and (Token(Comma + 1).StartPos.Line = Token(Comma).EndPos.Line) then
+      if (mComma < High(mCode)) and (Token(mComma + 1).StartPos.Line = Token(mComma).EndPos.Line) then
       begin
-        Replace.EndPos := Token(Comma + 1).StartPos;
+        mReplace.EndPos := Token(mComma + 1).StartPos;
       end;
-      Fixes := [TRuleFix.Create(cTexts[TConcurrencyMainThreadText.ReplaceWith].Text + WrapperCall(Wrapper, Method) +
+      mFixes := [TRuleFix.Create(cTexts[TConcurrencyMainThreadText.ReplaceWith].Text + WrapperCall(mWrapper, mMethod) +
         cTexts[TConcurrencyMainThreadText.ReplaceWithEnd].Text,
-        [TTextEdit.Create(Replace, WrapperCall(Wrapper, Method))])];
+        [TTextEdit.Create(mReplace, WrapperCall(mWrapper, mMethod))])];
     end;
-    AReport.Add(Range, cTexts[TConcurrencyMainThreadText.AfterUnload].Fmt([Method, Where]), Fixes);
+    AReport.Add(mRange, cTexts[TConcurrencyMainThreadText.AfterUnload].Fmt([mMethod, mWhere]), mFixes);
   end;
 
 var
-  Kind: TRuleApplicationKind;
-  Index: Integer;
+  mKind: TRuleApplicationKind;
+  mIndex: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Text = '') then
   begin
     Exit;
   end;
-  Kind := AContext.Application;
+  mKind := AContext.Application;
   // Ohne Projekt: die .dpk selbst.
-  if Kind = TRuleApplicationKind.Unknown then
+  if mKind = TRuleApplicationKind.Unknown then
   begin
-    Kind := TWritelnInGuiAppRule.ApplicationKind('', AContext.Text);
+    mKind := TWritelnInGuiAppRule.ApplicationKind('', AContext.Text);
   end;
-  if Kind <> TRuleApplicationKind.Package then
+  if mKind <> TRuleApplicationKind.Package then
   begin
     Exit;
   end;
-  Where := cTexts[TConcurrencyMainThreadText.ThisPackage].Text;
+  mWhere := cTexts[TConcurrencyMainThreadText.ThisPackage].Text;
   if AContext.ProjectName <> '' then
   begin
-    Where := AContext.ProjectName + '.bpl';
+    mWhere := AContext.ProjectName + '.bpl';
   end;
-  Wrapper := TRuleOptions.Text(AContext.Options, 'wrapper', DefaultWrapper);
-  OkMarker := TRuleOptions.Text(AContext.Options, 'okMarker', DefaultOkMarker);
-  Tokens := AContext.Tree.Tokens;
-  Code := nil;
-  for Index := 0 to High(Tokens) do
+  mWrapper := TRuleOptions.Text(AContext.Options, 'wrapper', cDefaultWrapper);
+  mOkMarker := TRuleOptions.Text(AContext.Options, 'okMarker', cDefaultOkMarker);
+  mTokens := AContext.Tree.Tokens;
+  mCode := nil;
+  for mIndex := 0 to High(mTokens) do
   begin
-    if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    if not (mTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
-      Code := Code + [Index];
+      mCode := mCode + [mIndex];
     end;
   end;
-  for Index := 0 to High(Code) do
+  for mIndex := 0 to High(mCode) do
   begin
-    if Tokens[Code[Index]].Kind = TPascalTokenKind.Identifier then
+    if mTokens[mCode[mIndex]].Kind = TPascalTokenKind.Identifier then
     begin
-      CheckAt(Index);
+      CheckAt(mIndex);
     end;
   end;
 end;
@@ -428,8 +428,8 @@ end;
 { TBlockingCallInMainThreadRule }
 
 const
-  FormBaseClasses: array[0..3] of string = ('TCustomForm', 'TForm', 'TCustomFrame', 'TFrame');
-  WindowsWaitCalls: array[0..2] of string = ('Sleep', 'WaitForSingleObject', 'WaitForMultipleObjects');
+  cFormBaseClasses: array[0..3] of string = ('TCustomForm', 'TForm', 'TCustomFrame', 'TFrame');
+  cWindowsWaitCalls: array[0..2] of string = ('Sleep', 'WaitForSingleObject', 'WaitForMultipleObjects');
 
 function TBlockingCallInMainThreadRule.Descriptor: TRuleDescriptor;
 begin
@@ -460,24 +460,24 @@ end;
 
 procedure TBlockingCallInMainThreadRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Calls: TArray<string>;
-  MaxSleep: Integer;
-  Ancestry: TAncestry;
-  Threads: TArray<string>;
+  mCalls: TArray<string>;
+  mMaxSleep: Integer;
+  mAncestry: TAncestry;
+  mThreads: TArray<string>;
 
   // Methode eines Formulars oder Frames bzw. Ereignis-Handler außerhalb eines Threads.
   function InMainThread(ARoutine: TSyntaxNode): Boolean;
   var
-    Owner, Base: string;
+    mOwner, mBase: string;
   begin
-    Owner := ClassPart(ARoutine.Name);
-    if (Owner = '') or InList(Threads, Owner) or Ancestry.DescendsFrom(Owner, 'TThread') then
+    mOwner := ClassPart(ARoutine.Name);
+    if (mOwner = '') or InList(mThreads, mOwner) or mAncestry.DescendsFrom(mOwner, 'TThread') then
     begin
       Exit(False);
     end;
-    for Base in FormBaseClasses do
+    for mBase in cFormBaseClasses do
     begin
-      if Ancestry.DescendsFrom(Owner, Base) then
+      if mAncestry.DescendsFrom(mOwner, mBase) then
       begin
         Exit(True);
       end;
@@ -500,49 +500,49 @@ var
 
   function MentionsProcessMessages(ANode: TSyntaxNode): Boolean;
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1).
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
-          SameText(Node.Name, 'ProcessMessages') then
+        mNode := mPending.Pop;
+        if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+          SameText(mNode.Name, 'ProcessMessages') then
         begin
           Exit(True);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   function Where(ARoutine: TSyntaxNode): string;
   var
-    Method: string;
+    mMethod: string;
   begin
-    Method := MethodPart(ARoutine.Name);
-    if EndsText('Click', Method) then
+    mMethod := MethodPart(ARoutine.Name);
+    if EndsText('Click', mMethod) then
     begin
       Result := cTexts[TConcurrencyMainThreadText.InClickHandler].Text;
     end
     else if IsEventHandler(ARoutine) then
     begin
-      Result := cTexts[TConcurrencyMainThreadText.InEventHandler].Text + Method;
+      Result := cTexts[TConcurrencyMainThreadText.InEventHandler].Text + mMethod;
     end
     else
     begin
-      Result := 'in ' + Method;
+      Result := 'in ' + mMethod;
     end;
   end;
 
@@ -550,7 +550,7 @@ var
   // (oder Winapi.Windows.…), WaitFor und Wait mit Empfänger.
   function IsBlockingCall(ACallee: TSyntaxNode): Boolean;
   begin
-    if InList(WindowsWaitCalls, ACallee.Name) then
+    if InList(cWindowsWaitCalls, ACallee.Name) then
     begin
       Result := (ACallee.Kind <> TSyntaxKind.MemberAccess) or MatchText(SourceText(AContext.Text, ACallee[0]),
         ['Windows', 'Winapi.Windows']);
@@ -559,7 +559,7 @@ var
     begin
       Result := not MatchText(ACallee.Name, ['WaitFor', 'Wait']) or (ACallee.Kind = TSyntaxKind.MemberAccess);
     end;
-    Result := Result and InList(Calls, ACallee.Name);
+    Result := Result and InList(mCalls, ACallee.Name);
   end;
 
   // Timeout des Aufrufs AName mit den Argumenten AArgs (MaxInt ohne Timeout-Argument); False bei Sleep ohne
@@ -618,7 +618,7 @@ var
     begin
       Exit;
     end;
-    if (mTimeout < 0) or (mTimeout >= MaxSleep) then
+    if (mTimeout < 0) or (mTimeout >= mMaxSleep) then
     begin
       ReportBlocking(ACallee, AArgs, ARoutine);
     end
@@ -667,44 +667,44 @@ var
 
   procedure Visit(ANode: TSyntaxNode; ARoutine, ALoop: TSyntaxNode);
   var
-    Pending, RoutineStack, LoopStack: TStack<TSyntaxNode>;
-    Node, Routine, Loop: TSyntaxNode;
-    Index: Integer;
+    mPending, mRoutineStack, mLoopStack: TStack<TSyntaxNode>;
+    mNode, mRoutine, mLoop: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1); parallele Stapel führen ARoutine und ALoop je Knoten mit.
-    Pending := TStack<TSyntaxNode>.Create;
-    RoutineStack := TStack<TSyntaxNode>.Create;
-    LoopStack := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    mRoutineStack := TStack<TSyntaxNode>.Create;
+    mLoopStack := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      RoutineStack.Push(ARoutine);
-      LoopStack.Push(ALoop);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      mRoutineStack.Push(ARoutine);
+      mLoopStack.Push(ALoop);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Routine := RoutineStack.Pop;
-        Loop := LoopStack.Pop;
+        mNode := mPending.Pop;
+        mRoutine := mRoutineStack.Pop;
+        mLoop := mLoopStack.Pop;
         // Anonyme Methoden laufen oft in einem Thread oder später.
-        if Node.Kind = TSyntaxKind.AnonymousMethod then
+        if mNode.Kind = TSyntaxKind.AnonymousMethod then
         begin
           Continue;
         end;
-        Enter(Node, Routine, Loop);
-        if Routine <> nil then
+        Enter(mNode, mRoutine, mLoop);
+        if mRoutine <> nil then
         begin
-          CheckNode(Node, Routine, Loop);
+          CheckNode(mNode, mRoutine, mLoop);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
-          RoutineStack.Push(Routine);
-          LoopStack.Push(Loop);
+          mPending.Push(mNode[mIndex]);
+          mRoutineStack.Push(mRoutine);
+          mLoopStack.Push(mLoop);
         end;
       end;
     finally
-      LoopStack.Free;
-      RoutineStack.Free;
-      Pending.Free;
+      mLoopStack.Free;
+      mRoutineStack.Free;
+      mPending.Free;
     end;
   end;
 
@@ -713,15 +713,15 @@ begin
   begin
     Exit;
   end;
-  Calls := TRuleOptions.Strings(AContext.Options, 'calls', ['Sleep', 'WaitFor', 'WaitForSingleObject',
+  mCalls := TRuleOptions.Strings(AContext.Options, 'calls', ['Sleep', 'WaitFor', 'WaitForSingleObject',
     'WaitForMultipleObjects', 'Wait']);
-  MaxSleep := TRuleOptions.Int(AContext.Options, 'maxSleepMs', 50);
-  Threads := ThreadClasses(AContext.Tree.Root);
-  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
+  mMaxSleep := TRuleOptions.Int(AContext.Options, 'maxSleepMs', 50);
+  mThreads := ThreadClasses(AContext.Tree.Root);
+  mAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
   try
     Visit(AContext.Tree.Root, nil, nil);
   finally
-    Ancestry.Free;
+    mAncestry.Free;
   end;
 end;
 

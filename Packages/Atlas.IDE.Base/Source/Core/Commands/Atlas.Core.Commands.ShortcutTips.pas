@@ -75,17 +75,17 @@ type
   TAtlasShortcutTips = class
   public const
     /// <summary>Nach so vielen Aufrufen über das Kürzel kein Tipp mehr.</summary>
-    LearnedAfter = 3;
+    cLearnedAfter = 3;
     /// <summary>Mindestabstand zwischen zwei Tipps.</summary>
-    MinGapSeconds = 30;
+    cMinGapSeconds = 30;
     /// <summary>So lange bleibt der Tipp stehen.</summary>
-    VisibleMs = 4000;
-    ScopeAtlas = 'atlas';
-    ScopeAll = 'all';
+    cVisibleMs = 4000;
+    cScopeAtlas = 'atlas';
+    cScopeAll = 'all';
     /// <summary>Höchster Abstand zwischen den Schritten eines Kürzels mit zwei Schritten.</summary>
-    ChordMs = 2000;
+    cChordMs = 2000;
     /// <summary>Befehl der Taste, die die Befehlspalette öffnet (#502); kein Befehl der Palette selbst.</summary>
-    PaletteCommandId = 'Atlas.CommandPalette';
+    cPaletteCommandId = 'Atlas.CommandPalette';
   public
     /// <summary>shortcutTips.scope als Wert; Unbekanntes gilt als all.</summary>
     class function ScopeOf(const AText: string): TAtlasTipScope; static;
@@ -163,7 +163,7 @@ begin
   begin
     Result := TAtlasTipVerdict.Hidden;
   end
-  else if AEntry.Keyboard >= TAtlasShortcutTips.LearnedAfter then
+  else if AEntry.Keyboard >= TAtlasShortcutTips.cLearnedAfter then
   begin
     Result := TAtlasTipVerdict.Learned;
   end
@@ -181,7 +181,7 @@ end;
 function TooSoon(const ASituation: TAtlasTipSituation): Boolean;
 begin
   Result := (ASituation.LastTipAt > 0)
-    and (Abs(ASituation.Now - ASituation.LastTipAt) * SecsPerDay < TAtlasShortcutTips.MinGapSeconds);
+    and (Abs(ASituation.Now - ASituation.LastTipAt) * SecsPerDay < TAtlasShortcutTips.cMinGapSeconds);
 end;
 
 /// <summary>Der Augenblick: Debugger angehalten, modales Fenster, letzter Tipp zu kurz her; Show sonst.</summary>
@@ -238,7 +238,7 @@ end;
 
 class function TAtlasShortcutTips.ScopeOf(const AText: string): TAtlasTipScope;
 begin
-  if SameText(Trim(AText), ScopeAtlas) then
+  if SameText(Trim(AText), cScopeAtlas) then
   begin
     Result := TAtlasTipScope.Atlas;
   end
@@ -252,11 +252,11 @@ class function TAtlasShortcutTips.ScopeName(AScope: TAtlasTipScope): string;
 begin
   if AScope = TAtlasTipScope.Atlas then
   begin
-    Result := ScopeAtlas;
+    Result := cScopeAtlas;
   end
   else
   begin
-    Result := ScopeAll;
+    Result := cScopeAll;
   end;
 end;
 
@@ -288,131 +288,132 @@ end;
 /// </summary>
 function KeysOf(const AStep: string): TArray<string>;
 var
-  Text, Part: string;
-  Index: Integer;
+  mText, mPart: string;
+  mIndex: Integer;
 begin
   Result := nil;
-  Text := Trim(AStep);
-  if Text = '' then
+  mText := Trim(AStep);
+  if mText = '' then
   begin
     Exit;
   end;
-  Part := '';
-  Index := 1;
-  while Index <= Length(Text) do
+  mPart := '';
+  mIndex := 1;
+  while mIndex <= Length(mText) do
   begin
-    if (Text[Index] = '+') and (Trim(Part) <> '') then
+    if (mText[mIndex] = '+') and (Trim(mPart) <> '') then
     begin
-      Result := Result + [Trim(Part)];
-      Part := '';
+      Result := Result + [Trim(mPart)];
+      mPart := '';
     end
     else
     begin
-      Part := Part + Text[Index];
+      mPart := mPart + mText[mIndex];
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  if Trim(Part) <> '' then
+  if Trim(mPart) <> '' then
   begin
-    Result := Result + [Trim(Part)];
+    Result := Result + [Trim(mPart)];
   end;
 end;
 
 class function TAtlasShortcutTips.Steps(const AKeyText: string): TArray<TArray<string>>;
 var
-  Step: string;
-  Keys: TArray<string>;
+  mStep: string;
+  mKeys: TArray<string>;
 begin
   Result := nil;
   // „Strg+,“ hat ein Komma als Taste: nur „, “ bzw. ein Komma mit Text dahinter trennt Schritte.
-  for Step in Trim(AKeyText).Replace(', ', #1).Split([#1]) do
+  for mStep in Trim(AKeyText).Replace(', ', #1).Split([#1]) do
   begin
-    Keys := KeysOf(Step);
-    if Length(Keys) > 0 then
+    mKeys := KeysOf(mStep);
+    if Length(mKeys) > 0 then
     begin
-      Result := Result + [Keys];
+      Result := Result + [mKeys];
     end;
   end;
 end;
 
 class function TAtlasShortcutTips.StepsText(const ASteps: TArray<TArray<string>>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(ASteps) do
+  for mIndex := 0 to High(ASteps) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
       Result := Result + ', ';
     end;
-    Result := Result + string.Join('+', ASteps[Index]);
+    Result := Result + string.Join('+', ASteps[mIndex]);
   end;
 end;
 
 class function TAtlasShortcutTips.KeyTextOfCaption(const ACaption: string): string;
 var
-  Tab: Integer;
+  mTab: Integer;
 begin
-  Tab := Pos(#9, ACaption);
-  if Tab = 0 then
+  mTab := Pos(#9, ACaption);
+  if mTab = 0 then
   begin
     Exit('');
   end;
-  Result := Trim(Copy(ACaption, Tab + 1, MaxInt));
+  Result := Trim(Copy(ACaption, mTab + 1, MaxInt));
 end;
 
 class function TAtlasShortcutTips.ParseSteps(const AKeyText: string): TArray<Word>;
 var
-  Step: TArray<string>;
-  Modifiers, Key: Word;
-  Text: string;
+  mStep: TArray<string>;
+  mModifiers, mKey: Word;
+  mText: string;
 begin
   Result := nil;
-  for Step in Steps(AKeyText) do
+  for mStep in Steps(AKeyText) do
   begin
-    Text := string.Join('+', Step);
-    Key := TAtlasKeyMap.ParseShortCut(Text, Modifiers);
+    mText := string.Join('+', mStep);
+    mKey := TAtlasKeyMap.ParseShortCut(mText, mModifiers);
     // Ein zweiter Schritt darf eine einzelne Taste ohne Umschalttaste sein („Strg+K, D“).
-    if (Key = 0) and (Length(Step) = 1) and (Length(Step[0]) = 1) and CharInSet(UpCase(Step[0][1]), ['A'..'Z', '0'..'9'])
+    if (mKey = 0) and (Length(mStep) = 1) and (Length(mStep[0]) = 1) and
+      CharInSet(UpCase(mStep[0][1]), ['A'..'Z', '0'..'9'])
     then
     begin
-      Key := Ord(UpCase(Step[0][1]));
+      mKey := Ord(UpCase(mStep[0][1]));
     end;
-    if Key = 0 then
+    if mKey = 0 then
     begin
       Exit(nil);
     end;
-    Result := Result + [Key];
+    Result := Result + [mKey];
   end;
 end;
 
 class function TAtlasShortcutTips.StepsKey(const AShortCuts: TArray<Word>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(AShortCuts) do
+  for mIndex := 0 to High(AShortCuts) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
       Result := Result + ',';
     end;
-    Result := Result + IntToStr(AShortCuts[Index]);
+    Result := Result + IntToStr(AShortCuts[mIndex]);
   end;
 end;
 
 class function TAtlasShortcutTips.IsShortCutStroke(AShortCut: Word): Boolean;
 var
-  Key: Word;
+  mKey: Word;
 begin
-  Key := AShortCut and $FF;
-  if Key = 0 then
+  mKey := AShortCut and $FF;
+  if mKey = 0 then
   begin
     Exit(False);
   end;
-  Result := ((AShortCut and (TAtlasKeyConflicts.scCtrl or TAtlasKeyConflicts.scAlt)) <> 0) or
-    ((Key >= $70) and (Key <= $87));
+  Result := ((AShortCut and (TAtlasKeyConflicts.cScCtrl or TAtlasKeyConflicts.cScAlt)) <> 0) or
+    ((mKey >= $70) and (mKey <= $87));
 end;
 
 class function TAtlasShortcutTips.AtlasCommandId(AFunc: TAtlasKeyFunction): string;
@@ -424,7 +425,7 @@ begin
   end;
   case AFunc of
     TAtlasKeyFunction.Palette:
-      Result := PaletteCommandId;
+      Result := cPaletteCommandId;
     TAtlasKeyFunction.Completion:
       Result := 'Atlas.Completion';
     TAtlasKeyFunction.Signature:
@@ -445,14 +446,14 @@ end;
 
 class function TAtlasShortcutTips.AtlasFunctionOf(const AId: string; out AFunc: TAtlasKeyFunction): Boolean;
 var
-  Func: TAtlasKeyFunction;
+  mFunc: TAtlasKeyFunction;
 begin
   AFunc := TAtlasKeyFunction.Palette;
-  for Func := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
+  for mFunc := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
   begin
-    if SameText(AtlasCommandId(Func), Trim(AId)) then
+    if SameText(AtlasCommandId(mFunc), Trim(AId)) then
     begin
-      AFunc := Func;
+      AFunc := mFunc;
       Exit(True);
     end;
   end;
@@ -466,19 +467,19 @@ end;
 
 class function TAtlasShortcutTips.PlaceBottomRight(const AArea: TRect; AWidth, AHeight, AMargin: Integer): TRect;
 var
-  Left, Top: Integer;
+  mLeft, mTop: Integer;
 begin
-  Left := AArea.Right - AMargin - AWidth;
-  Top := AArea.Bottom - AMargin - AHeight;
-  if Left < AArea.Left then
+  mLeft := AArea.Right - AMargin - AWidth;
+  mTop := AArea.Bottom - AMargin - AHeight;
+  if mLeft < AArea.Left then
   begin
-    Left := AArea.Left;
+    mLeft := AArea.Left;
   end;
-  if Top < AArea.Top then
+  if mTop < AArea.Top then
   begin
-    Top := AArea.Top;
+    mTop := AArea.Top;
   end;
-  Result := Rect(Left, Top, Left + AWidth, Top + AHeight);
+  Result := Rect(mLeft, mTop, mLeft + AWidth, mTop + AHeight);
 end;
 
 end.

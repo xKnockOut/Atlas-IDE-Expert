@@ -157,7 +157,7 @@ begin
     Joined(TAtlasDiagnosticPackage.Build(Input, [TAtlasPackagePart.Logs])));
   Assert.AreEqual('atlas-diagnosemodus.txt',
     Joined(TAtlasDiagnosticPackage.Build(Input, [TAtlasPackagePart.LastData])));
-  Files := TAtlasDiagnosticPackage.Build(Input, TAtlasDiagnosticPackage.AllParts);
+  Files := TAtlasDiagnosticPackage.Build(Input, TAtlasDiagnosticPackage.cAllParts);
   Assert.AreEqual('atlas-info.txt,einstellungen.json,plugin/atlas.log,server/diag-20261015-4711.log,' +
     'atlas-diagnosemodus.txt', Joined(Files), 'feste Reihenfolge');
   Assert.IsTrue(Find(Files, 'atlas-info.txt', Item));
@@ -182,7 +182,7 @@ begin
   Input.ServerLogs := [TPath.Combine(FFolder, 'diag-fehlt.log'), TPath.Combine(FFolder, 'diag-20261015-4711.log')];
   Input.LastDataFile := '';
   Assert.AreEqual('server/diag-20261015-4711.log',
-    Joined(TAtlasDiagnosticPackage.Build(Input, TAtlasDiagnosticPackage.AllParts - [TAtlasPackagePart.Versions,
+    Joined(TAtlasDiagnosticPackage.Build(Input, TAtlasDiagnosticPackage.cAllParts - [TAtlasPackagePart.Versions,
     TAtlasPackagePart.Settings])), 'nur vorhandene Dateien');
 end;
 
@@ -194,7 +194,7 @@ var
   Text: string;
 begin
   Input := PackageInput(FFolder);
-  Files := TAtlasDiagnosticPackage.Build(Input, TAtlasDiagnosticPackage.AllParts);
+  Files := TAtlasDiagnosticPackage.Build(Input, TAtlasDiagnosticPackage.cAllParts);
   Assert.AreEqual(0, Integer(Length(TAtlasDiagnosticPackage.Leaks(Files, Input.Roots, Input.Identity))),
     'kein Projektpfad, Benutzer-, Rechner- oder Domänenname');
   for Item in Files do
@@ -229,7 +229,7 @@ var
 begin
   Builder := TStringBuilder.Create;
   try
-    for Index := 1 to TAtlasDiagnosticPackage.PluginLogLines + 5 do
+    for Index := 1 to TAtlasDiagnosticPackage.cPluginLogLines + 5 do
     begin
       Builder.Append('Zeile ').Append(Index).Append(sLineBreak);
     end;
@@ -242,9 +242,9 @@ begin
   Files := TAtlasDiagnosticPackage.Build(Input, [TAtlasPackagePart.Logs]);
   Assert.AreEqual(1, Integer(Length(Files)));
   Lines := Files[0].Text.TrimRight.Split([sLineBreak]);
-  Assert.AreEqual(TAtlasDiagnosticPackage.PluginLogLines, Integer(Length(Lines)));
+  Assert.AreEqual(TAtlasDiagnosticPackage.cPluginLogLines, Integer(Length(Lines)));
   Assert.AreEqual('Zeile 6', Lines[0], 'die letzten Zeilen');
-  Assert.AreEqual('Zeile ' + IntToStr(TAtlasDiagnosticPackage.PluginLogLines + 5), Lines[High(Lines)]);
+  Assert.AreEqual('Zeile ' + IntToStr(TAtlasDiagnosticPackage.cPluginLogLines + 5), Lines[High(Lines)]);
 end;
 
 procedure TAtlasDiagnosticPackageTests.SettingsLoseEveryPath;
@@ -358,7 +358,7 @@ var
 begin
   Input := PackageInput(FFolder);
   Text := TAtlasDiagnosticPackage.IssueTemplate('Vervollständigung hängt in ' + Root + '\Main.pas', Input,
-    TAtlasDiagnosticPackage.AllParts, TPath.Combine(FFolder, 'Atlas-Diagnose-2026-10-15.zip'), False);
+    TAtlasDiagnosticPackage.cAllParts, TPath.Combine(FFolder, 'Atlas-Diagnose-2026-10-15.zip'), False);
   Assert.Contains(Text, '## Beschreibung');
   Assert.Contains(Text, 'Vervollständigung hängt in <ws>/<datei>.pas', 'Beschreibung ohne Projektpfad');
   Assert.Contains(Text, '- Atlas: 0.1.0');
@@ -373,7 +373,7 @@ begin
   Assert.Contains(Text, 'Kein Diagnosepaket angelegt.');
   Assert.Contains(Text, '(Was ist passiert?', 'Platzhalter für die Beschreibung');
   // Englisch.
-  Text := TAtlasDiagnosticPackage.IssueTemplate('Hangs', Input, TAtlasDiagnosticPackage.AllParts,
+  Text := TAtlasDiagnosticPackage.IssueTemplate('Hangs', Input, TAtlasDiagnosticPackage.cAllParts,
     'Atlas-Diagnose-2026-10-15.zip', True);
   Assert.Contains(Text, '## Description');
   Assert.Contains(Text, '## Versions');
@@ -402,7 +402,7 @@ var
 begin
   Install := IncludeTrailingPathDelimiter(FFolder);
   Plugin := Install + 'Win32' + PathDelim;
-  Local := Install + TAtlasHelp.DocsFolder + PathDelim + TAtlasHelp.DocsIndex;
+  Local := Install + TAtlasHelp.cDocsFolder + PathDelim + TAtlasHelp.cDocsIndex;
   Exists :=
     function(AFileName: string): Boolean
     begin
@@ -413,12 +413,12 @@ begin
   // BPL direkt im Installationsordner.
   Assert.AreEqual(Local, TAtlasHelp.DocsTarget(Install, Exists));
   // Ohne Installation: Doku-Seite des Repositorys.
-  Assert.AreEqual(TAtlasHelp.DocsUrl, TAtlasHelp.DocsTarget(Plugin,
+  Assert.AreEqual(TAtlasHelp.cDocsUrl, TAtlasHelp.DocsTarget(Plugin,
     function(AFileName: string): Boolean
     begin
       Result := False;
     end));
-  Assert.AreEqual(TAtlasHelp.DocsUrl, TAtlasHelp.DocsTarget('', Exists));
+  Assert.AreEqual(TAtlasHelp.cDocsUrl, TAtlasHelp.DocsTarget('', Exists));
   Assert.IsTrue(TAtlasHelp.Enabled(TAtlasHelpButton.Docs, False));
   Assert.IsTrue(TAtlasHelp.Enabled(TAtlasHelpButton.Report, False));
   Assert.IsFalse(TAtlasHelp.Enabled(TAtlasHelpButton.Keys, False), 'ohne Übersicht (#520)');

@@ -128,7 +128,7 @@ end;
 
 class function TStatementText.Statements(ANode: TSyntaxNode): TArray<TSyntaxNode>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
   if ANode = nil then
@@ -137,11 +137,11 @@ begin
   end;
   if ANode.Kind = TSyntaxKind.Block then
   begin
-    for Index := 0 to ANode.ChildCount - 1 do
+    for mIndex := 0 to ANode.ChildCount - 1 do
     begin
-      if TRoutineBody.IsStatement(ANode[Index]) and (ANode[Index].Kind <> TSyntaxKind.EmptyStatement) then
+      if TRoutineBody.IsStatement(ANode[mIndex]) and (ANode[mIndex].Kind <> TSyntaxKind.EmptyStatement) then
       begin
-        Result := Result + [ANode[Index]];
+        Result := Result + [ANode[mIndex]];
       end;
     end;
   end
@@ -159,12 +159,12 @@ end;
 /// <summary>Zeile (ab 0) des Offsets AOffset.</summary>
 function LineOfOffset(const AText: string; AOffset: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
-  for Index := 1 to AOffset do
+  for mIndex := 1 to AOffset do
   begin
-    if AText[Index] = #10 then
+    if AText[mIndex] = #10 then
     begin
       Inc(Result);
     end;
@@ -174,112 +174,113 @@ end;
 class procedure TStatementText.Span(ATree: TSyntaxTree; AStatement: TSyntaxNode; ALast: Boolean; out AStart,
   AEnd: Integer);
 var
-  Tokens: TArray<TPascalToken>;
-  Index, EndLine, Previous: Integer;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mEndLine, mPrevious: Integer;
 begin
-  Tokens := ATree.Tokens;
+  mTokens := ATree.Tokens;
   // Davor: Kommentare zwischen dem vorigen Code-Token und der Anweisung. Steht ein Kommentar in der Zeile eines
   // Semikolons, gehört er zur vorigen Anweisung; hinter then, else, begin, do oder einer Marke zum Zweig.
   AStart := AStatement.StartOffset;
-  Index := TRoutineBody.TokenAt(Tokens, AStatement.StartOffset) - 1;
-  Previous := TRoutineBody.PreviousToken(Tokens, Index + 1);
-  while (Index >= 0) and IsTrivia(Tokens[Index]) do
+  mIndex := TRoutineBody.TokenAt(mTokens, AStatement.StartOffset) - 1;
+  mPrevious := TRoutineBody.PreviousToken(mTokens, mIndex + 1);
+  while (mIndex >= 0) and IsTrivia(mTokens[mIndex]) do
   begin
-    if (Previous >= 0) and Tokens[Previous].IsSymbol(';') and
-      (Tokens[Index].StartPos.Line = Tokens[Previous].EndPos.Line) then
+    if (mPrevious >= 0) and mTokens[mPrevious].IsSymbol(';') and
+      (mTokens[mIndex].StartPos.Line = mTokens[mPrevious].EndPos.Line) then
     begin
       Break;
     end;
-    AStart := Tokens[Index].Offset;
-    Dec(Index);
+    AStart := mTokens[mIndex].Offset;
+    Dec(mIndex);
   end;
   // Dahinter, hinter einem Semikolon: in derselben Zeile, bei der letzten Anweisung bis zum Code.
   AEnd := AStatement.EndOffset;
-  Index := TRoutineBody.TokenAt(Tokens, AStatement.EndOffset);
-  if (Index <= High(Tokens)) and Tokens[Index].IsSymbol(';') and (Tokens[Index].Offset = AStatement.EndOffset) then
+  mIndex := TRoutineBody.TokenAt(mTokens, AStatement.EndOffset);
+  if (mIndex <= High(mTokens)) and mTokens[mIndex].IsSymbol(';') and (mTokens[mIndex].Offset = AStatement.EndOffset) then
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  EndLine := AStatement.EndPos.Line;
-  while (Index <= High(Tokens)) and IsTrivia(Tokens[Index]) and (ALast or (Tokens[Index].StartPos.Line = EndLine)) do
+  mEndLine := AStatement.EndPos.Line;
+  while (mIndex <= High(mTokens)) and IsTrivia(mTokens[mIndex]) and
+    (ALast or (mTokens[mIndex].StartPos.Line = mEndLine)) do
   begin
-    AEnd := Tokens[Index].Offset + Length(Tokens[Index].Text);
-    Inc(Index);
+    AEnd := mTokens[mIndex].Offset + Length(mTokens[mIndex].Text);
+    Inc(mIndex);
   end;
 end;
 
 class function TStatementText.Text(const AText: string; ATree: TSyntaxTree; AStatement: TSyntaxNode; ALast: Boolean;
   const AIndent, ALineBreak: string): string;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Start, Stop, EndLine: Integer;
-  Trailing, Remove: string;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mStart, mStop, mEndLine: Integer;
+  mTrailing, mRemove: string;
 begin
-  Tokens := ATree.Tokens;
-  Span(ATree, AStatement, ALast, Start, Stop);
-  Remove := TTextLines.IndentOf(AText, LineOfOffset(AText, Start));
-  Result := TRoutineBody.Reindent(TTextLines.NormalizeLineBreaks(Copy(AText, Start + 1,
-    AStatement.EndOffset - Start), ALineBreak), Remove, AIndent, ALineBreak);
+  mTokens := ATree.Tokens;
+  Span(ATree, AStatement, ALast, mStart, mStop);
+  mRemove := TTextLines.IndentOf(AText, LineOfOffset(AText, mStart));
+  Result := TRoutineBody.Reindent(TTextLines.NormalizeLineBreaks(Copy(AText, mStart + 1,
+    AStatement.EndOffset - mStart), ALineBreak), mRemove, AIndent, ALineBreak);
   // Kommentare dahinter: dieselben Token wie in Span.
-  Index := TRoutineBody.TokenAt(Tokens, AStatement.EndOffset);
-  EndLine := AStatement.EndPos.Line;
-  Trailing := '';
-  while (Index <= High(Tokens)) and (Tokens[Index].Offset < Stop) do
+  mIndex := TRoutineBody.TokenAt(mTokens, AStatement.EndOffset);
+  mEndLine := AStatement.EndPos.Line;
+  mTrailing := '';
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < mStop) do
   begin
-    if IsTrivia(Tokens[Index]) then
+    if IsTrivia(mTokens[mIndex]) then
     begin
-      if Tokens[Index].StartPos.Line = EndLine then
+      if mTokens[mIndex].StartPos.Line = mEndLine then
       begin
-        if Trailing <> '' then
+        if mTrailing <> '' then
         begin
-          Trailing := Trailing + ' ';
+          mTrailing := mTrailing + ' ';
         end;
-        Trailing := Trailing + Tokens[Index].Text;
+        mTrailing := mTrailing + mTokens[mIndex].Text;
       end
       else
       begin
         // Kommentare in eigenen Zeilen: eigene Zeile, auch hinter dem Semikolon (Finish).
-        Trailing := Trailing + ALineBreak + AIndent + Tokens[Index].Text;
+        mTrailing := mTrailing + ALineBreak + AIndent + mTokens[mIndex].Text;
       end;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
   // Die Kommentare stehen hinter dem Semikolon bzw. else, das der Aufrufer anhängt (Finish); bis dahin hinter
   // der Marke #0.
-  if Trailing <> '' then
+  if mTrailing <> '' then
   begin
-    Result := Result + #0 + Trailing;
+    Result := Result + #0 + mTrailing;
   end;
 end;
 
 class function TStatementText.Uncovered(ATree: TSyntaxTree; AStart, AEnd: Integer;
   const ASpans: TArray<TStatementSpan>): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
-  Span_: TStatementSpan;
-  Covered: Boolean;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+  mSpan_: TStatementSpan;
+  mCovered: Boolean;
 begin
-  Tokens := ATree.Tokens;
-  Index := TRoutineBody.TokenAt(Tokens, AStart);
-  while (Index <= High(Tokens)) and (Tokens[Index].Offset < AEnd) do
+  mTokens := ATree.Tokens;
+  mIndex := TRoutineBody.TokenAt(mTokens, AStart);
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < AEnd) do
   begin
-    if Tokens[Index].Kind = TPascalTokenKind.Comment then
+    if mTokens[mIndex].Kind = TPascalTokenKind.Comment then
     begin
-      Covered := False;
-      for Span_ in ASpans do
+      mCovered := False;
+      for mSpan_ in ASpans do
       begin
-        if (Tokens[Index].Offset >= Span_.StartOffset) and (Tokens[Index].Offset < Span_.EndOffset) then
+        if (mTokens[mIndex].Offset >= mSpan_.StartOffset) and (mTokens[mIndex].Offset < mSpan_.EndOffset) then
         begin
-          Covered := True;
+          mCovered := True;
         end;
       end;
-      if not Covered then
+      if not mCovered then
       begin
         Exit(True);
       end;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
   Result := False;
 end;
@@ -291,38 +292,38 @@ end;
 
 class function TStatementText.Finish(const AStatement, ASuffix: string): string;
 var
-  Marker: Integer;
-  Rest: string;
+  mMarker: Integer;
+  mRest: string;
 begin
-  Marker := Pos(#0, AStatement);
-  if Marker = 0 then
+  mMarker := Pos(#0, AStatement);
+  if mMarker = 0 then
   begin
     Exit(AStatement + ASuffix);
   end;
-  Rest := Copy(AStatement, Marker + 1, MaxInt);
-  if (Rest <> '') and CharInSet(Rest[1], [#10, #13]) then
+  mRest := Copy(AStatement, mMarker + 1, MaxInt);
+  if (mRest <> '') and CharInSet(mRest[1], [#10, #13]) then
   begin
-    Result := Copy(AStatement, 1, Marker - 1) + ASuffix + Rest;
+    Result := Copy(AStatement, 1, mMarker - 1) + ASuffix + mRest;
   end
   else
   begin
-    Result := Copy(AStatement, 1, Marker - 1) + ASuffix + ' ' + Rest;
+    Result := Copy(AStatement, 1, mMarker - 1) + ASuffix + ' ' + mRest;
   end;
 end;
 
 class function TStatementText.List(const AText: string; ATree: TSyntaxTree; const AStatements: TArray<TSyntaxNode>;
   const AIndent, ALineBreak: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(AStatements) do
+  for mIndex := 0 to High(AStatements) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
       Result := Result + ALineBreak;
     end;
-    Result := Result + Finish(Text(AText, ATree, AStatements[Index], Index = High(AStatements), AIndent,
+    Result := Result + Finish(Text(AText, ATree, AStatements[mIndex], mIndex = High(AStatements), AIndent,
       ALineBreak), ';');
   end;
 end;
@@ -330,7 +331,7 @@ end;
 class function TStatementText.Branch(const AText: string; ATree: TSyntaxTree; const AStatements: TArray<TSyntaxNode>;
   const ALayout: TStatementLayout; AEmptyBlock: Boolean): string;
 var
-  Inner: string;
+  mInner: string;
 begin
   if AStatements = nil then
   begin
@@ -346,8 +347,8 @@ begin
   end;
   if Length(AStatements) = 1 then
   begin
-    Inner := Text(AText, ATree, AStatements[0], True, ALayout.Indent + ALayout.IndentUnit, ALayout.LineBreak);
-    Result := ALayout.LineBreak + Inner;
+    mInner := Text(AText, ATree, AStatements[0], True, ALayout.Indent + ALayout.IndentUnit, ALayout.LineBreak);
+    Result := ALayout.LineBreak + mInner;
     Exit;
   end;
   Result := ALayout.LineBreak + ALayout.Indent + 'begin' + ALayout.LineBreak +
@@ -357,35 +358,35 @@ end;
 
 class function TStatementText.HasComment(ATree: TSyntaxTree; AStart, AEnd: Integer): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
 begin
-  Tokens := ATree.Tokens;
-  Index := TRoutineBody.TokenAt(Tokens, AStart);
-  while (Index <= High(Tokens)) and (Tokens[Index].Offset < AEnd) do
+  mTokens := ATree.Tokens;
+  mIndex := TRoutineBody.TokenAt(mTokens, AStart);
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < AEnd) do
   begin
-    if Tokens[Index].Kind = TPascalTokenKind.Comment then
+    if mTokens[mIndex].Kind = TPascalTokenKind.Comment then
     begin
       Exit(True);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
   Result := False;
 end;
 
 class function TStatementText.Spans(ATree: TSyntaxTree; const ABranches: TArray<TSyntaxNode>): TArray<TStatementSpan>;
 var
-  Branch_: TSyntaxNode;
-  Items: TArray<TSyntaxNode>;
-  Index: Integer;
+  mBranch_: TSyntaxNode;
+  mItems: TArray<TSyntaxNode>;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Branch_ in ABranches do
+  for mBranch_ in ABranches do
   begin
-    Items := Statements(Branch_);
-    for Index := 0 to High(Items) do
+    mItems := Statements(mBranch_);
+    for mIndex := 0 to High(mItems) do
     begin
-      Result := Result + [SpanOf(ATree, Items[Index], Index = High(Items))];
+      Result := Result + [SpanOf(ATree, mItems[mIndex], mIndex = High(mItems))];
     end;
   end;
 end;
@@ -393,56 +394,56 @@ end;
 class function TStatementText.GuardedBranch(const AText: string; ATree: TSyntaxTree; ABranch: TSyntaxNode;
   const ALayout: TStatementLayout; ABeforeElse: Boolean): string;
 var
-  Items: TArray<TSyntaxNode>;
+  mItems: TArray<TSyntaxNode>;
 begin
-  Items := Statements(ABranch);
-  if ABeforeElse and (Length(Items) = 1) and (Items[0].Kind = TSyntaxKind.IfStatement) then
+  mItems := Statements(ABranch);
+  if ABeforeElse and (Length(mItems) = 1) and (mItems[0].Kind = TSyntaxKind.IfStatement) then
   begin
     Result := ALayout.LineBreak + ALayout.Indent + 'begin' + ALayout.LineBreak +
-      List(AText, ATree, Items, ALayout.Indent + ALayout.IndentUnit, ALayout.LineBreak) +
+      List(AText, ATree, mItems, ALayout.Indent + ALayout.IndentUnit, ALayout.LineBreak) +
       ALayout.LineBreak + ALayout.Indent + 'end';
   end
   else
   begin
-    Result := Branch(AText, ATree, Items, ALayout, True);
+    Result := Branch(AText, ATree, mItems, ALayout, True);
   end;
 end;
 
 class function TStatementText.ReplacementEnd(ATree: TSyntaxTree; ANode: TSyntaxNode;
   const ASpans: TArray<TStatementSpan>; out ASuffix: string): TTextPosition;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Stop: Integer;
-  Span_: TStatementSpan;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mStop: Integer;
+  mSpan_: TStatementSpan;
 begin
   Result := ANode.EndPos;
   ASuffix := '';
-  Stop := ANode.EndOffset;
-  for Span_ in ASpans do
+  mStop := ANode.EndOffset;
+  for mSpan_ in ASpans do
   begin
-    if Span_.EndOffset > Stop then
+    if mSpan_.EndOffset > mStop then
     begin
-      Stop := Span_.EndOffset;
+      mStop := mSpan_.EndOffset;
     end;
   end;
-  Tokens := ATree.Tokens;
-  Index := TRoutineBody.TokenAt(Tokens, ANode.EndOffset);
+  mTokens := ATree.Tokens;
+  mIndex := TRoutineBody.TokenAt(mTokens, ANode.EndOffset);
   // Das Semikolon gehört zur Ersetzung: Ein Kommentar hinter der letzten Anweisung (// …) stünde sonst vor ihm
   // und schlösse es aus.
-  if (Index <= High(Tokens)) and Tokens[Index].IsSymbol(';') then
+  if (mIndex <= High(mTokens)) and mTokens[mIndex].IsSymbol(';') then
   begin
     ASuffix := ';';
-    Result := Tokens[Index].EndPos;
-    Inc(Index);
+    Result := mTokens[mIndex].EndPos;
+    Inc(mIndex);
   end;
-  while (Index <= High(Tokens)) and (Tokens[Index].Offset < Stop) do
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < mStop) do
   begin
-    if Tokens[Index].IsSymbol(';') then
+    if mTokens[mIndex].IsSymbol(';') then
     begin
       ASuffix := ';';
     end;
-    Result := Tokens[Index].EndPos;
-    Inc(Index);
+    Result := mTokens[mIndex].EndPos;
+    Inc(mIndex);
   end;
 end;
 
@@ -455,13 +456,13 @@ end;
 
 class function TStatementText.ChildIndex(AParent, AChild: TSyntaxNode): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to AParent.ChildCount - 1 do
+  for mIndex := 0 to AParent.ChildCount - 1 do
   begin
-    if AParent[Index] = AChild then
+    if AParent[mIndex] = AChild then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -476,14 +477,14 @@ end;
 class function TStatementText.HeadAt(ATree: TSyntaxTree; const APosition: TTextPosition;
   AKind: TSyntaxKind): TSyntaxNode;
 var
-  Found: TSyntaxNode;
+  mFound: TSyntaxNode;
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
   begin
     Exit;
   end;
-  Found := nil;
+  mFound := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
@@ -495,11 +496,11 @@ begin
         HeadEnd := ANode[1].StartPos;
         if NotAfter(ANode.StartPos, APosition) and NotAfter(APosition, HeadEnd) then
         begin
-          Found := ANode;
+          mFound := ANode;
         end;
       end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 end.

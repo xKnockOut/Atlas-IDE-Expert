@@ -32,7 +32,7 @@ type
     Left: Integer;
     Right: Integer;
     function IsEmpty: Boolean;
-    function Contains(X: Integer): Boolean;
+    function Contains(AX: Integer): Boolean;
   end;
 
   TAtlasStatusBarLayout = class
@@ -44,7 +44,7 @@ type
     /// <summary>Elemente ab ALeft nebeneinander; weggefallene bekommen eine leere Spanne.</summary>
     class function Place(const AWidths: TArray<Integer>; ALeft, AGap: Integer): TArray<TAtlasStatusSpan>; static;
     /// <summary>Element unter X; -1 ohne (auch auf Trennstrichen).</summary>
-    class function IndexAt(const ASpans: TArray<TAtlasStatusSpan>; X: Integer): Integer; static;
+    class function IndexAt(const ASpans: TArray<TAtlasStatusSpan>; AX: Integer): Integer; static;
   end;
 
 implementation
@@ -72,157 +72,157 @@ begin
   Result := Right <= Left;
 end;
 
-function TAtlasStatusSpan.Contains(X: Integer): Boolean;
+function TAtlasStatusSpan.Contains(AX: Integer): Boolean;
 begin
-  Result := (X >= Left) and (X < Right);
+  Result := (AX >= Left) and (AX < Right);
 end;
 
 { TAtlasStatusBarLayout }
 
 function Total(const AWidths: TArray<Integer>; AGap: Integer): Integer;
 var
-  Width, Shown: Integer;
+  mWidth, mShown: Integer;
 begin
   Result := 0;
-  Shown := 0;
-  for Width in AWidths do
+  mShown := 0;
+  for mWidth in AWidths do
   begin
-    if Width > 0 then
+    if mWidth > 0 then
     begin
-      Inc(Result, Width);
-      Inc(Shown);
+      Inc(Result, mWidth);
+      Inc(mShown);
     end;
   end;
-  if Shown > 1 then
+  if mShown > 1 then
   begin
-    Inc(Result, (Shown - 1) * AGap);
+    Inc(Result, (mShown - 1) * AGap);
   end;
 end;
 
 /// <summary>Indizes in Kürzreihenfolge: kleine Stufe zuerst, bei Gleichstand das hintere Element zuerst.</summary>
 function ShrinkOrder(const ASlots: TArray<TAtlasStatusSlot>): TArray<Integer>;
 var
-  Index, Inner, Swap: Integer;
+  mIndex, mInner, mSwap: Integer;
 begin
   SetLength(Result, Length(ASlots));
-  for Index := 0 to High(Result) do
+  for mIndex := 0 to High(Result) do
   begin
-    Result[Index] := Index;
+    Result[mIndex] := mIndex;
   end;
   // Einfügesortierung: wenige Elemente, und die Reihenfolge bleibt eindeutig.
-  for Index := 1 to High(Result) do
+  for mIndex := 1 to High(Result) do
   begin
-    Inner := Index;
-    while (Inner > 0) and ((ASlots[Result[Inner]].Shrink < ASlots[Result[Inner - 1]].Shrink) or
-      ((ASlots[Result[Inner]].Shrink = ASlots[Result[Inner - 1]].Shrink) and
-      (Result[Inner] > Result[Inner - 1]))) do
+    mInner := mIndex;
+    while (mInner > 0) and ((ASlots[Result[mInner]].Shrink < ASlots[Result[mInner - 1]].Shrink) or
+      ((ASlots[Result[mInner]].Shrink = ASlots[Result[mInner - 1]].Shrink) and
+      (Result[mInner] > Result[mInner - 1]))) do
     begin
-      Swap := Result[Inner];
-      Result[Inner] := Result[Inner - 1];
-      Result[Inner - 1] := Swap;
-      Dec(Inner);
+      mSwap := Result[mInner];
+      Result[mInner] := Result[mInner - 1];
+      Result[mInner - 1] := mSwap;
+      Dec(mInner);
     end;
   end;
 end;
 
 class function TAtlasStatusBarLayout.FullWidth(const ASlots: TArray<TAtlasStatusSlot>; AGap: Integer): Integer;
 var
-  Widths: TArray<Integer>;
-  Index: Integer;
+  mWidths: TArray<Integer>;
+  mIndex: Integer;
 begin
-  SetLength(Widths, Length(ASlots));
-  for Index := 0 to High(ASlots) do
+  SetLength(mWidths, Length(ASlots));
+  for mIndex := 0 to High(ASlots) do
   begin
-    Widths[Index] := ASlots[Index].Width;
+    mWidths[mIndex] := ASlots[mIndex].Width;
   end;
-  Result := Total(Widths, AGap);
+  Result := Total(mWidths, AGap);
 end;
 
 class function TAtlasStatusBarLayout.Fit(const ASlots: TArray<TAtlasStatusSlot>; AAvailable,
   AGap: Integer): TArray<Integer>;
 var
-  Index, Excess, Cut: Integer;
-  Order: TArray<Integer>;
+  mIndex, mExcess, mCut: Integer;
+  mOrder: TArray<Integer>;
 begin
   Result := nil;
   SetLength(Result, Length(ASlots));
-  for Index := 0 to High(ASlots) do
+  for mIndex := 0 to High(ASlots) do
   begin
-    Result[Index] := ASlots[Index].Width;
+    Result[mIndex] := ASlots[mIndex].Width;
   end;
-  Excess := Total(Result, AGap) - AAvailable;
-  if Excess <= 0 then
+  mExcess := Total(Result, AGap) - AAvailable;
+  if mExcess <= 0 then
   begin
     Exit;
   end;
-  Order := ShrinkOrder(ASlots);
-  for Index in Order do
+  mOrder := ShrinkOrder(ASlots);
+  for mIndex in mOrder do
   begin
-    Cut := Result[Index] - ASlots[Index].MinWidth;
-    if Cut > Excess then
+    mCut := Result[mIndex] - ASlots[mIndex].MinWidth;
+    if mCut > mExcess then
     begin
-      Cut := Excess;
+      mCut := mExcess;
     end;
-    if Cut <= 0 then
+    if mCut <= 0 then
     begin
       Continue;
     end;
-    Dec(Result[Index], Cut);
-    Dec(Excess, Cut);
-    if Excess <= 0 then
+    Dec(Result[mIndex], mCut);
+    Dec(mExcess, mCut);
+    if mExcess <= 0 then
     begin
       Exit;
     end;
   end;
   // Auch gekürzt zu breit: ganze Elemente weglassen, in derselben Reihenfolge.
-  for Index in Order do
+  for mIndex in mOrder do
   begin
     if Total(Result, AGap) <= AAvailable then
     begin
       Exit;
     end;
-    Result[Index] := 0;
+    Result[mIndex] := 0;
   end;
 end;
 
 class function TAtlasStatusBarLayout.Place(const AWidths: TArray<Integer>; ALeft,
   AGap: Integer): TArray<TAtlasStatusSpan>;
 var
-  Index, Left: Integer;
-  Started: Boolean;
+  mIndex, mLeft: Integer;
+  mStarted: Boolean;
 begin
   Result := nil;
   SetLength(Result, Length(AWidths));
-  Left := ALeft;
-  Started := False;
-  for Index := 0 to High(AWidths) do
+  mLeft := ALeft;
+  mStarted := False;
+  for mIndex := 0 to High(AWidths) do
   begin
-    Result[Index].Left := Left;
-    Result[Index].Right := Left;
-    if AWidths[Index] <= 0 then
+    Result[mIndex].Left := mLeft;
+    Result[mIndex].Right := mLeft;
+    if AWidths[mIndex] <= 0 then
     begin
       Continue;
     end;
-    if Started then
+    if mStarted then
     begin
-      Inc(Left, AGap);
+      Inc(mLeft, AGap);
     end;
-    Started := True;
-    Result[Index].Left := Left;
-    Result[Index].Right := Left + AWidths[Index];
-    Left := Result[Index].Right;
+    mStarted := True;
+    Result[mIndex].Left := mLeft;
+    Result[mIndex].Right := mLeft + AWidths[mIndex];
+    mLeft := Result[mIndex].Right;
   end;
 end;
 
-class function TAtlasStatusBarLayout.IndexAt(const ASpans: TArray<TAtlasStatusSpan>; X: Integer): Integer;
+class function TAtlasStatusBarLayout.IndexAt(const ASpans: TArray<TAtlasStatusSpan>; AX: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ASpans) do
+  for mIndex := 0 to High(ASpans) do
   begin
-    if not ASpans[Index].IsEmpty and ASpans[Index].Contains(X) then
+    if not ASpans[mIndex].IsEmpty and ASpans[mIndex].Contains(AX) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;

@@ -30,8 +30,8 @@ begin
   Assert.AreEqual('OnPaint, OnMouseMove, OnUpdate',
     TAtlasEventBreakSettings.NormalizeExcluded(' OnPaint;OnMouseMove,,OnUpdate ,onpaint'));
   Assert.AreEqual('', TAtlasEventBreakSettings.NormalizeExcluded('  '));
-  Assert.AreEqual(TAtlasEventBreakSettings.DefaultExcluded,
-    TAtlasEventBreakSettings.NormalizeExcluded(TAtlasEventBreakSettings.DefaultExcluded));
+  Assert.AreEqual(TAtlasEventBreakSettings.cDefaultExcluded,
+    TAtlasEventBreakSettings.NormalizeExcluded(TAtlasEventBreakSettings.cDefaultExcluded));
 end;
 
 procedure TAtlasEventBreakSettingsTests.ExcludedListKeepsOrderWithoutDuplicates;
@@ -42,7 +42,7 @@ begin
   Assert.AreEqual(2, Integer(Length(mList)));
   Assert.AreEqual('OnResize', mList[0]);
   Assert.AreEqual('OnPaint', mList[1]);
-  Assert.AreEqual(3, Integer(Length(TAtlasEventBreakSettings.ExcludedList(TAtlasEventBreakSettings.DefaultExcluded))));
+  Assert.AreEqual(3, Integer(Length(TAtlasEventBreakSettings.ExcludedList(TAtlasEventBreakSettings.cDefaultExcluded))));
 end;
 
 initialization

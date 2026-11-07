@@ -33,9 +33,9 @@ type
   TAtlasRoutineNesting = record
   public const
     /// <summary>Namen in den Einstellungen, in der Reihenfolge von TAtlasNestedRoutineStyle.</summary>
-    StyleNames: array[TAtlasNestedRoutineStyle] of string = ('outer', 'deeper', 'color');
+    cStyleNames: array[TAtlasNestedRoutineStyle] of string = ('outer', 'deeper', 'color');
     /// <summary>Vorgabe von highlight.nestedRoutines.</summary>
-    DefaultStyle = TAtlasNestedRoutineStyle.Deeper;
+    cDefaultStyle = TAtlasNestedRoutineStyle.Deeper;
   public
     Style: TAtlasNestedRoutineStyle;
     Band: Boolean;
@@ -101,17 +101,17 @@ var
 begin
   for mStyle := Low(TAtlasNestedRoutineStyle) to High(TAtlasNestedRoutineStyle) do
   begin
-    if SameText(Trim(AName), StyleNames[mStyle]) then
+    if SameText(Trim(AName), cStyleNames[mStyle]) then
     begin
       Exit(mStyle);
     end;
   end;
-  Result := DefaultStyle;
+  Result := cDefaultStyle;
 end;
 
 class function TAtlasRoutineNesting.NormalizeName(const AName: string): string;
 begin
-  Result := StyleNames[StyleOf(AName)];
+  Result := cStyleNames[StyleOf(AName)];
 end;
 
 function TAtlasRoutineNesting.Depth(ADepth, ARoutine: Integer): Integer;

@@ -85,7 +85,7 @@ end;
 
 function PlatformCaption(const APlatform: string): string;
 begin
-  if SameText(APlatform, TUpdateIdes.Win64) then
+  if SameText(APlatform, TUpdateIdes.cWin64) then
   begin
     Result := cTexts[TInstallText.Ide64].Text;
   end
@@ -183,14 +183,14 @@ var
 begin
   Result := ExtractFileDir(ParamStr(0));
   if ASystem.Files.FileExists(TUpdateLayout.Join(TUpdateLayout.Join(Result, AArgs.Platform),
-    TUpdateVersions.BasePackage + TUpdateIdes.PackageSuffix(AArgs.Ide) + '.bpl')) then
+    TUpdateVersions.cBasePackage + TUpdateIdes.PackageSuffix(AArgs.Ide) + '.bpl')) then
   begin
     Exit;
   end;
   TShellUpdateSystem.Say(cTexts[TInstallText.Building].Text);
   mArgs := AArgs;
   mArgs.Command := 'prepare';
-  mArgs.Version := TProductVersion.Version;
+  mArgs.Version := TProductVersion.cVersion;
   if mArgs.ManifestUrl = '' then
   begin
     // Die eigene Version steht nur in der Versionsdatei ihres Kanals.
@@ -218,14 +218,14 @@ begin
   mInput.FilesDir := AFilesDir;
   mInput.WorkDir := AArgs.Staging;
   mInput.RootDir := TShellUpdateSystem.UpdatesRoot;
-  mInput.Version := TProductVersion.Version;
+  mInput.Version := TProductVersion.cVersion;
   mInput.Candidates := ACandidates;
   mInstallation := TUpdateInstallation.Create(ASystem, AArgs, mInput);
   try
     Result := mInstallation.Run;
     if Result = 0 then
     begin
-      TShellUpdateSystem.Say(cTexts[TInstallText.Installed].Fmt([TProductVersion.Version]));
+      TShellUpdateSystem.Say(cTexts[TInstallText.Installed].Fmt([TProductVersion.cVersion]));
     end
     else
     begin
@@ -242,7 +242,7 @@ var
   mFilesDir: string;
   mCandidates: TArray<TUpdateCandidate>;
 begin
-  if not ASystem.Files.FileExists(TUpdateLayout.Join(ExtractFileDir(ParamStr(0)), TUpdateLayout.ServerExe)) then
+  if not ASystem.Files.FileExists(TUpdateLayout.Join(ExtractFileDir(ParamStr(0)), TUpdateLayout.cServerExe)) then
   begin
     TShellUpdateSystem.Say(cTexts[TInstallText.NotUnpacked].Text);
     Exit(1);
@@ -280,8 +280,8 @@ begin
   mArgs.Command := 'install';
   mArgs.Staging := TUpdateLayout.Join(TShellUpdateSystem.UpdatesRoot, 'install');
   mArgs.NewModules := TUpdateNewModules.Install;
-  mSystem := TShellUpdateSystem.NewSystem(TUpdateLayout.Join(mArgs.Staging, TUpdateLayout.LogFile));
-  TShellUpdateSystem.Say(cTexts[TInstallText.Welcome].Fmt([TProductVersion.Version]));
+  mSystem := TShellUpdateSystem.NewSystem(TUpdateLayout.Join(mArgs.Staging, TUpdateLayout.cLogFile));
+  TShellUpdateSystem.Say(cTexts[TInstallText.Welcome].Fmt([TProductVersion.cVersion]));
   try
     Result := Install(mSystem, mArgs);
   except

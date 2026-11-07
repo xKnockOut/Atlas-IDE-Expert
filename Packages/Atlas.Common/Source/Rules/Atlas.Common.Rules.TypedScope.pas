@@ -103,56 +103,56 @@ end;
 
 function TTypedScope.Text(ANode: TSyntaxNode): string;
 var
-  Index: Integer;
-  Space: Boolean;
-  Raw: string;
+  mIndex: Integer;
+  mSpace: Boolean;
+  mRaw: string;
 begin
-  Raw := Copy(FContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  mRaw := Copy(FContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
   Result := '';
-  Space := False;
-  for Index := 1 to Length(Raw) do
+  mSpace := False;
+  for mIndex := 1 to Length(mRaw) do
   begin
-    if CharInSet(Raw[Index], [' ', #9, #10, #13]) then
+    if CharInSet(mRaw[mIndex], [' ', #9, #10, #13]) then
     begin
-      Space := True;
+      mSpace := True;
     end
     else
     begin
-      if Space and (Result <> '') then
+      if mSpace and (Result <> '') then
       begin
         Result := Result + ' ';
       end;
-      Space := False;
-      Result := Result + Raw[Index];
+      mSpace := False;
+      Result := Result + mRaw[mIndex];
     end;
   end;
 end;
 
 function TTypedScope.TokenAtPosition(const APosition: TTextPosition): Integer;
 var
-  Low, High, Middle: Integer;
+  mLow, mHigh, mMiddle: Integer;
 begin
-  Low := 0;
-  High := Length(FTokens);
-  while Low < High do
+  mLow := 0;
+  mHigh := Length(FTokens);
+  while mLow < mHigh do
   begin
-    Middle := (Low + High) div 2;
-    if (FTokens[Middle].StartPos.Line < APosition.Line) or ((FTokens[Middle].StartPos.Line = APosition.Line) and
-      (FTokens[Middle].StartPos.Character < APosition.Character)) then
+    mMiddle := (mLow + mHigh) div 2;
+    if (FTokens[mMiddle].StartPos.Line < APosition.Line) or ((FTokens[mMiddle].StartPos.Line = APosition.Line) and
+      (FTokens[mMiddle].StartPos.Character < APosition.Character)) then
     begin
-      Low := Middle + 1;
+      mLow := mMiddle + 1;
     end
     else
     begin
-      High := Middle;
+      mHigh := mMiddle;
     end;
   end;
-  Result := Low;
+  Result := mLow;
 end;
 
 function TTypedScope.DeclarationSure(const ASymbol: TResolvedSymbol; ANode: TSyntaxNode): Boolean;
 var
-  Use: Integer;
+  mUse: Integer;
 begin
   if ASymbol.Condition <> '' then
   begin
@@ -168,18 +168,18 @@ begin
   begin
     Exit(True);
   end;
-  Use := TConstantValues.TokenFrom(FTokens, ANode.StartOffset);
-  Result := TConditionalBranches.Implies(TConditionalBranches.PathAt(FPaths, Use),
+  mUse := TConstantValues.TokenFrom(FTokens, ANode.StartOffset);
+  Result := TConditionalBranches.Implies(TConditionalBranches.PathAt(FPaths, mUse),
     TConditionalBranches.PathAt(FPaths, TokenAtPosition(ASymbol.Range.StartPos)));
 end;
 
 function TTypedScope.SureType(ANode: TSyntaxNode; out ASymbol, AType: TResolvedSymbol): Boolean;
 var
-  TypeFound: Boolean;
+  mTypeFound: Boolean;
 begin
   Result := (ANode <> nil) and (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
-    TSyntaxKind.IndexAccess]) and FResolver.NodeType(FContext.Tree, FFileName, ANode, ASymbol, AType, TypeFound) and
-    TypeFound and (ASymbol.Kind <> TResolvedKind.UnitName) and DeclarationSure(ASymbol, ANode);
+    TSyntaxKind.IndexAccess]) and FResolver.NodeType(FContext.Tree, FFileName, ANode, ASymbol, AType, mTypeFound) and
+    mTypeFound and (ASymbol.Kind <> TResolvedKind.UnitName) and DeclarationSure(ASymbol, ANode);
 end;
 
 end.

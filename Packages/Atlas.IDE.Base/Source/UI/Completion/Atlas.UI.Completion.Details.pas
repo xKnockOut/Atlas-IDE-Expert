@@ -35,9 +35,19 @@ uses
   Atlas.UI.Popup.Styled;
 
 type
+  /// <summary>Wohin und womit TAtlasDetailView zeichnet: Zeichenfläche, Farben, Editorschrift (Font), Schrift der
+  /// Beschriftungen (UIFont) und Pixel je Zoll des Fensters.</summary>
+  TAtlasDetailSurface = record
+    Canvas: TCanvas;
+    Colors: TAtlasColors;
+    Font: TFont;
+    UIFont: TFont;
+    PPI: Integer;
+    class function Create(ACanvas: TCanvas; const AColors: TAtlasColors; AFont, AUIFont: TFont;
+      APPI: Integer): TAtlasDetailSurface; static;
+  end;
+
   TAtlasDetailView = class
-  public const
-    DefaultWidth = 320;
   private
     FDetails: TAtlasItemDetails;
     FOverloadIndex: Integer;
@@ -73,10 +83,9 @@ type
     property DocTop: Integer read FDocTop;
     /// <summary>Höchste Höhe des Panels; darüber scrollt die Doku (0 = unbegrenzt).</summary>
     property MaxHeight: Integer read FMaxHeight write FMaxHeight;
-    /// <summary>Zeichnet (ADraw) bzw. misst den Inhalt in ABounds; liefert die benötigte Höhe.
-    /// APPI: Pixel je Zoll des Fensters; AFont: Editorschrift; AUIFont: Beschriftungen.</summary>
-    function Render(ACanvas: TCanvas; const AColors: TAtlasColors; AFont, AUIFont: TFont; const ABounds: TRect;
-      APPI: Integer; ADraw: Boolean): Integer;
+    /// <summary>Zeichnet (ADraw) bzw. misst den Inhalt in ABounds auf ASurface; liefert die benötigte Höhe.
+    /// </summary>
+    function Render(const ASurface: TAtlasDetailSurface; const ABounds: TRect; ADraw: Boolean): Integer;
     property Details: TAtlasItemDetails read FDetails write SetDetails;
     /// <summary>Gezeigte Überladung (0-basiert) und Anzahl; Anzahl 1 = keine Kopfzeile.</summary>
     property OverloadIndex: Integer read FOverloadIndex write FOverloadIndex;
@@ -124,21 +133,21 @@ class function TAtlasDetailView.DocOf(const ADetails: TAtlasItemDetails): TAtlas
 
   procedure Add(AKind: TAtlasDocSectionKind; const AName, AText: string);
   var
-    Section: TAtlasDocSection;
+    mSection: TAtlasDocSection;
   begin
     if Trim(AText) = '' then
     begin
       Exit;
     end;
-    Section := Default(TAtlasDocSection);
-    Section.Kind := AKind;
-    Section.Name := AName;
-    Section.Runs := TAtlasDoc.FromText(AText).Sections[0].Runs;
-    Result.Sections := Result.Sections + [Section];
+    mSection := Default(TAtlasDocSection);
+    mSection.Kind := AKind;
+    mSection.Name := AName;
+    mSection.Runs := TAtlasDoc.FromText(AText).Sections[0].Runs;
+    Result.Sections := Result.Sections + [mSection];
   end;
 
 var
-  Entry: TAtlasDocEntry;
+  mEntry: TAtlasDocEntry;
 begin
   Result := ADetails.Doc;
   if not Result.IsEmpty then
@@ -146,14 +155,14 @@ begin
     Exit;
   end;
   Add(TAtlasDocSectionKind.Summary, '', ADetails.Summary);
-  for Entry in ADetails.Params do
+  for mEntry in ADetails.Params do
   begin
-    Add(TAtlasDocSectionKind.Param, Entry.Name, Entry.Text);
+    Add(TAtlasDocSectionKind.Param, mEntry.Name, mEntry.Text);
   end;
   Add(TAtlasDocSectionKind.Returns, '', ADetails.Returns);
-  for Entry in ADetails.Exceptions do
+  for mEntry in ADetails.Exceptions do
   begin
-    Add(TAtlasDocSectionKind.Exception, Entry.Name, Entry.Text);
+    Add(TAtlasDocSectionKind.Exception, mEntry.Name, mEntry.Text);
   end;
   Add(TAtlasDocSectionKind.Remarks, '', ADetails.Remarks);
 end;
@@ -242,8 +251,8 @@ begin
   Canvas.Brush.Style := bsClear;
   Canvas.Pen.Style := psSolid;
   Canvas.Pen.Color := ToColor(ALine);
-  Canvas.RoundRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom, Scale(2 * TAtlasDraw.ChipRadius),
-    Scale(2 * TAtlasDraw.ChipRadius));
+  Canvas.RoundRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom, Scale(2 * TAtlasDraw.cChipRadius),
+    Scale(2 * TAtlasDraw.cChipRadius));
 end;
 
 procedure TDetailRender.Block(const AText: string; AColor: TAtlasColor; AStyle: TFontStyles);
@@ -366,7 +375,7 @@ begin
       Continue;
     end;
     Canvas.Font := UIFont;
-    mBox := Rect(mTagX, Y, mTagX + Canvas.TextWidth(mTag) + Scale(TAtlasDraw.ChipPad), Y + mTagHeight);
+    mBox := Rect(mTagX, Y, mTagX + Canvas.TextWidth(mTag) + Scale(TAtlasDraw.cChipPad), Y + mTagHeight);
     if Draw then
     begin
       Tag(mTag, mBox);
@@ -618,17 +627,30 @@ begin
   Inc(Y, View.FDoc.Height);
 end;
 
-function TAtlasDetailView.Render(ACanvas: TCanvas; const AColors: TAtlasColors; AFont, AUIFont: TFont;
-  const ABounds: TRect; APPI: Integer; ADraw: Boolean): Integer;
+{ TAtlasDetailSurface }
+
+class function TAtlasDetailSurface.Create(ACanvas: TCanvas; const AColors: TAtlasColors; AFont, AUIFont: TFont;
+  APPI: Integer): TAtlasDetailSurface;
+begin
+  Result.Canvas := ACanvas;
+  Result.Colors := AColors;
+  Result.Font := AFont;
+  Result.UIFont := AUIFont;
+  Result.PPI := APPI;
+end;
+
+{ TAtlasDetailView }
+
+function TAtlasDetailView.Render(const ASurface: TAtlasDetailSurface; const ABounds: TRect; ADraw: Boolean): Integer;
 var
   mRender: TDetailRender;
 begin
   mRender.View := Self;
-  mRender.Canvas := ACanvas;
-  mRender.Colors := AColors;
-  mRender.Font := AFont;
-  mRender.UIFont := AUIFont;
-  mRender.PPI := APPI;
+  mRender.Canvas := ASurface.Canvas;
+  mRender.Colors := ASurface.Colors;
+  mRender.Font := ASurface.Font;
+  mRender.UIFont := ASurface.UIFont;
+  mRender.PPI := ASurface.PPI;
   mRender.Draw := ADraw;
   mRender.Left := ABounds.Left + mRender.Scale(13);
   mRender.Right := ABounds.Right - mRender.Scale(13);
@@ -641,7 +663,7 @@ begin
   end;
   if FDetails.IsEmpty then
   begin
-    mRender.Block(TAtlasStrings.Text(TAtlasTextId.NoDetails), AColors.Muted, []);
+    mRender.Block(TAtlasStrings.Text(TAtlasTextId.NoDetails), ASurface.Colors.Muted, []);
   end
   else
   begin
@@ -652,7 +674,7 @@ begin
     mRender.SameName;
     mRender.Notes;
     mRender.Doc(ABounds.Top);
-    ACanvas.Brush.Style := bsSolid;
+    ASurface.Canvas.Brush.Style := bsSolid;
   end;
   Result := mRender.Y - ABounds.Top + mRender.Scale(5);
 end;

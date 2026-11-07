@@ -18,7 +18,7 @@
 // umsetzt (Enabled); sonst bleibt „Beenden“ die Rückfrage von „Meine Issues“.
 // Einstellungen je Verbindung (issues.connections) vor den globalen. Netz im
 // Hintergrund über TAtlasVcsWorker (Stop beim Entladen), je Schreiben
-// höchstens TAtlasTrackerWorkflow.WriteTimeoutMs; nichts wird wiederholt.
+// höchstens TAtlasTrackerWorkflow.cWriteTimeoutMs; nichts wird wiederholt.
 // Protokoll anonym: Anbieter, Art und Ergebnis, nie Adresse, Kennung,
 // Kommentar oder Token.
 
@@ -60,7 +60,7 @@ type
   TAtlasIdeTrackerSync = class
   public const
     /// <summary>Zeitlimit je Aufruf der Versionsverwaltung für {commits}.</summary>
-    VcsTimeoutMs = 10000;
+    cVcsTimeoutMs = 10000;
   private
     FWorker: TAtlasVcsWorker;
     FTransport: TAtlasIdeTrackerTransport;
@@ -301,7 +301,7 @@ begin
         end
         else
         begin
-          mResult := mWriter.Apply(mTarget, mTransport, mKey, mChange, TAtlasTrackerWorkflow.WriteTimeoutMs);
+          mResult := mWriter.Apply(mTarget, mTransport, mKey, mChange, TAtlasTrackerWorkflow.cWriteTimeoutMs);
         end;
       except
         on E: Exception do
@@ -388,7 +388,7 @@ begin
       mVcs: IAtlasVersionControl;
       mWork: IAtlasVcsLocalWork;
     begin
-      mVcs := TAtlasIdeVcs.ForFolder(mInput.Folder, VcsTimeoutMs);
+      mVcs := TAtlasIdeVcs.ForFolder(mInput.Folder, cVcsTimeoutMs);
       if Supports(mVcs, IAtlasVcsLocalWork, mWork) then
       begin
         mCommits := TAtlasTrackerWorkflow.CommitsFor(mWork, mInput.Branch, mInput.Base, mInput.Key);
@@ -510,7 +510,7 @@ begin
   mAssist := nil;
   if Assigned(FCommentAssist) then
   begin
-    mAssist := FCommentAssist(ATarget, AKey, TAtlasCommentDrafts.FieldEnd);
+    mAssist := FCommentAssist(ATarget, AKey, TAtlasCommentDrafts.cFieldEnd);
   end;
   ADialog.Parts.Editor.Enhanced := mAssist <> nil;
   ADialog.Parts.Editor.Bind(mAssist);
@@ -551,10 +551,10 @@ begin
         begin
           Exit;
         end;
-        mWriter.Values(mTarget, mTransport, TAtlasTrackerValueKind.Users, '', TAtlasTrackerWorkflow.WriteTimeoutMs,
+        mWriter.Values(mTarget, mTransport, TAtlasTrackerValueKind.Users, '', TAtlasTrackerWorkflow.cWriteTimeoutMs,
           mUsers);
         mWriter.Values(mTarget, mTransport, TAtlasTrackerValueKind.States, mField,
-          TAtlasTrackerWorkflow.WriteTimeoutMs, mStates);
+          TAtlasTrackerWorkflow.cWriteTimeoutMs, mStates);
       except
         on E: Exception do
           TAtlasGuard.Log('Tracker nachführen: Werte mit ' + E.ClassName + ' abgebrochen');
@@ -617,7 +617,7 @@ begin
         end
         else
         begin
-          mResult := mWriter.BookTime(mTarget, mTransport, mKey, mItem, TAtlasTrackerWorkflow.WriteTimeoutMs);
+          mResult := mWriter.BookTime(mTarget, mTransport, mKey, mItem, TAtlasTrackerWorkflow.cWriteTimeoutMs);
         end;
       except
         on E: Exception do
@@ -676,7 +676,7 @@ begin
         end
         else
         begin
-          mResult := mWriter.TimeSettings(mTarget, mTransport, mKey, TAtlasTrackerWorkflow.WriteTimeoutMs, mSettings);
+          mResult := mWriter.TimeSettings(mTarget, mTransport, mKey, TAtlasTrackerWorkflow.cWriteTimeoutMs, mSettings);
         end;
       except
         on E: Exception do

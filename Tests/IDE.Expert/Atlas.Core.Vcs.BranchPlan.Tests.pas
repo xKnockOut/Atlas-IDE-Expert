@@ -1309,7 +1309,7 @@ begin
   Assert.IsFalse(mOptions.PushNow);
   Assert.IsTrue(mOptions.Uncommitted = TAtlasVcsGitUncommitted.Carry);
   Assert.IsFalse(mOptions.Worktree);
-  Assert.AreEqual(TAtlasVcsGitBranchOptions.DefaultWorktreeFolder, mOptions.WorktreeFolder, 'leer = Vorgabe');
+  Assert.AreEqual(TAtlasVcsGitBranchOptions.cDefaultWorktreeFolder, mOptions.WorktreeFolder, 'leer = Vorgabe');
   mOptions := TAtlasVcsGitBranchOptions.FromSettings(' Local ', 'now', 'stash', True, ' ..\{name} ');
   Assert.IsTrue(mOptions.Base = TAtlasVcsGitBaseOption.Local);
   Assert.IsTrue(mOptions.PushNow);

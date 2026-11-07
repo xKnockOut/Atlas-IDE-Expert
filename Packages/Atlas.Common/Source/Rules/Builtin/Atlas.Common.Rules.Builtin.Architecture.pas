@@ -104,7 +104,7 @@ type
 
   TRoleImportRule = class(TInterfacedObject, IRule)
   public const
-    RuleId = 'architecture-role-import';
+    cRuleId = 'architecture-role-import';
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -116,7 +116,7 @@ type
 
   TContractContentRule = class(TInterfacedObject, IRule)
   public const
-    RuleId = 'architecture-contract-content';
+    cRuleId = 'architecture-contract-content';
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -163,13 +163,13 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  RoleNames: array[TArchitectureRole] of string =
+  cRoleNames: array[TArchitectureRole] of string =
     ('', 'Contract', 'Internals', 'Providers', 'Adapters', 'Root', 'Composition', 'Hosting', 'Host');
-  FeatureRoles = [TArchitectureRole.Contract, TArchitectureRole.Internals, TArchitectureRole.Providers,
+  cFeatureRoles = [TArchitectureRole.Contract, TArchitectureRole.Internals, TArchitectureRole.Providers,
     TArchitectureRole.Adapters, TArchitectureRole.Composition, TArchitectureRole.Hosting];
   // Konzept 8.3: eigenes Feature, Rolle der Quelle -> erlaubte Rollen des Ziels.
   // Muss $OwnAllowed in Tools/Check-PackageDependencies.ps1 entsprechen.
-  OwnAllowed: array[TArchitectureRole] of TArchitectureRoles = (
+  cOwnAllowed: array[TArchitectureRole] of TArchitectureRoles = (
     [],
     [TArchitectureRole.Contract],
     [TArchitectureRole.Contract, TArchitectureRole.Internals],
@@ -182,7 +182,7 @@ const
      TArchitectureRole.Root, TArchitectureRole.Composition, TArchitectureRole.Hosting],
     []);
   // Fremdes Feature. Host (8.1, Annahme bis zur Bestätigung des Konzepts): alles außer Internals.
-  ForeignAllowed: array[TArchitectureRole] of TArchitectureRoles = (
+  cForeignAllowed: array[TArchitectureRole] of TArchitectureRoles = (
     [],
     [TArchitectureRole.Contract],
     [TArchitectureRole.Contract, TArchitectureRole.Root],
@@ -196,30 +196,30 @@ const
 
 function ReadStrings(const AObject: TJSONObject; const AName: string): TArray<string>;
 var
-  List: TJSONArray;
-  Item: TJSONValue;
+  mList: TJSONArray;
+  mItem: TJSONValue;
 begin
   Result := nil;
-  if not AObject.TryGetValue<TJSONArray>(AName, List) then
+  if not AObject.TryGetValue<TJSONArray>(AName, mList) then
   begin
     Exit;
   end;
-  for Item in List do
+  for mItem in mList do
   begin
-    if Item is TJSONString then
+    if mItem is TJSONString then
     begin
-      Result := Result + [Item.Value];
+      Result := Result + [mItem.Value];
     end;
   end;
 end;
 
 function MatchesAny(const APatterns: TArray<string>; const AName: string): Boolean;
 var
-  Pattern: string;
+  mPattern: string;
 begin
-  for Pattern in APatterns do
+  for mPattern in APatterns do
   begin
-    if MatchesGlob(Pattern, AName) then
+    if MatchesGlob(mPattern, AName) then
     begin
       Exit(True);
     end;
@@ -237,64 +237,64 @@ end;
 
 class function TForbiddenUsesRule.ParseLayers(const AOptions: string): TArray<TArchitectureLayer>;
 var
-  Value: TJSONValue;
-  List: TJSONArray;
-  Item: TJSONValue;
-  Layer: TArchitectureLayer;
+  mValue: TJSONValue;
+  mList: TJSONArray;
+  mItem: TJSONValue;
+  mLayer: TArchitectureLayer;
 begin
   Result := nil;
   if Trim(AOptions) = '' then
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(AOptions);
+  mValue := TJSONObject.ParseJSONValue(AOptions);
   try
-    if not ((Value is TJSONObject) and TJSONObject(Value).TryGetValue<TJSONArray>('layers', List)) then
+    if not ((mValue is TJSONObject) and TJSONObject(mValue).TryGetValue<TJSONArray>('layers', mList)) then
     begin
       Exit;
     end;
-    for Item in List do
+    for mItem in mList do
     begin
-      if not ((Item is TJSONObject) and TJSONObject(Item).TryGetValue<string>('from', Layer.From)) or
-        (Trim(Layer.From) = '') then
+      if not ((mItem is TJSONObject) and TJSONObject(mItem).TryGetValue<string>('from', mLayer.From)) or
+        (Trim(mLayer.From) = '') then
       begin
         Continue;
       end;
-      Layer.Deny := ReadStrings(TJSONObject(Item), 'deny');
-      Layer.Allow := ReadStrings(TJSONObject(Item), 'allow');
-      if Layer.Deny <> nil then
+      mLayer.Deny := ReadStrings(TJSONObject(mItem), 'deny');
+      mLayer.Allow := ReadStrings(TJSONObject(mItem), 'allow');
+      if mLayer.Deny <> nil then
       begin
-        Result := Result + [Layer];
+        Result := Result + [mLayer];
       end;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TForbiddenUsesRule.Violates(const ALayers: TArray<TArchitectureLayer>; const AUnitName,
   ARelativePath, AUsedUnit: string; out ALayer: TArchitectureLayer): Boolean;
 var
-  Layer: TArchitectureLayer;
-  Subject: string;
+  mLayer: TArchitectureLayer;
+  mSubject: string;
 begin
-  for Layer in ALayers do
+  for mLayer in ALayers do
   begin
-    if Pos('/', Layer.From) > 0 then
+    if Pos('/', mLayer.From) > 0 then
     begin
-      Subject := StringReplace(ARelativePath, '\', '/', [rfReplaceAll]);
+      mSubject := StringReplace(ARelativePath, '\', '/', [rfReplaceAll]);
     end
     else
     begin
-      Subject := AUnitName;
+      mSubject := AUnitName;
     end;
-    if (Subject = '') or not MatchesGlob(Layer.From, Subject) then
+    if (mSubject = '') or not MatchesGlob(mLayer.From, mSubject) then
     begin
       Continue;
     end;
-    if MatchesAny(Layer.Deny, AUsedUnit) and not MatchesAny(Layer.Allow, AUsedUnit) then
+    if MatchesAny(mLayer.Deny, AUsedUnit) and not MatchesAny(mLayer.Allow, AUsedUnit) then
     begin
-      ALayer := Layer;
+      ALayer := mLayer;
       Exit(True);
     end;
   end;
@@ -303,24 +303,25 @@ end;
 
 procedure TForbiddenUsesRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Layers: TArray<TArchitectureLayer>;
-  Layer: TArchitectureLayer;
-  Used: TUsesReference;
+  mLayers: TArray<TArchitectureLayer>;
+  mLayer: TArchitectureLayer;
+  mUsed: TUsesReference;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Layers := ParseLayers(AContext.Options);
-  if Layers = nil then
+  mLayers := ParseLayers(AContext.Options);
+  if mLayers = nil then
   begin
     Exit;
   end;
-  for Used in TUsesClauses.References(AContext.Tree.Tokens) do
+  for mUsed in TUsesClauses.References(AContext.Tree.Tokens) do
   begin
-    if Violates(Layers, AContext.UnitName, AContext.RelativePath, Used.Name, Layer) then
+    if Violates(mLayers, AContext.UnitName, AContext.RelativePath, mUsed.Name, mLayer) then
     begin
-      AReport.Add(Used.Range, cTexts[TArchitectureText.LayerViolation].Fmt([AContext.UnitName, Used.Name, Layer.From]));
+      AReport.Add(mUsed.Range, cTexts[TArchitectureText.LayerViolation].Fmt([AContext.UnitName, mUsed.Name,
+        mLayer.From]));
     end;
   end;
 end;
@@ -366,7 +367,7 @@ begin
   Result := TArchitectureRole.Root;
   for mRole := Low(TArchitectureRole) to High(TArchitectureRole) do
   begin
-    if (mRole in FeatureRoles) and SameText(RoleNames[mRole], ARoleName) then
+    if (mRole in cFeatureRoles) and SameText(cRoleNames[mRole], ARoleName) then
     begin
       Result := mRole;
     end;
@@ -444,24 +445,24 @@ begin
   end;
   if (ASource.Role <> TArchitectureRole.Host) and ASource.SameFeature(ATarget) then
   begin
-    Result := ATarget.Role in OwnAllowed[ASource.Role];
+    Result := ATarget.Role in cOwnAllowed[ASource.Role];
   end
   else
   begin
-    Result := ATarget.Role in ForeignAllowed[ASource.Role];
+    Result := ATarget.Role in cForeignAllowed[ASource.Role];
   end;
 end;
 
 class function TArchitectureMatrix.Describe(const ASource, ATarget: TArchitectureUnit): string;
 var
-  Kind: string;
+  mKind: string;
 begin
-  Kind := cTexts[TArchitectureText.Foreign].Text;
+  mKind := cTexts[TArchitectureText.Foreign].Text;
   if (ASource.Role <> TArchitectureRole.Host) and ASource.SameFeature(ATarget) then
   begin
-    Kind := cTexts[TArchitectureText.Own].Text;
+    mKind := cTexts[TArchitectureText.Own].Text;
   end;
-  Result := cTexts[TArchitectureText.Describe].Fmt([Kind, RoleNames[ATarget.Role], RoleNames[ASource.Role]]);
+  Result := cTexts[TArchitectureText.Describe].Fmt([mKind, cRoleNames[ATarget.Role], cRoleNames[ASource.Role]]);
 end;
 
 { TRoleImportRule }
@@ -474,7 +475,7 @@ end;
 
 class function TRoleImportRule.ParseOptions(const AOptions: string): TRoleImportOptions;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := Default(TRoleImportOptions);
   Result.HostRoles := TArchitectureMatrix.DefaultHostRoles;
@@ -482,37 +483,37 @@ begin
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(AOptions);
+  mValue := TJSONObject.ParseJSONValue(AOptions);
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    Result.Prefixes := ReadStrings(TJSONObject(Value), 'prefixes');
-    Result.Allow := ReadStrings(TJSONObject(Value), 'allow');
-    if TJSONObject(Value).GetValue('hostRoles') <> nil then
+    Result.Prefixes := ReadStrings(TJSONObject(mValue), 'prefixes');
+    Result.Allow := ReadStrings(TJSONObject(mValue), 'allow');
+    if TJSONObject(mValue).GetValue('hostRoles') <> nil then
     begin
-      Result.HostRoles := ReadStrings(TJSONObject(Value), 'hostRoles');
+      Result.HostRoles := ReadStrings(TJSONObject(mValue), 'hostRoles');
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TRoleImportRule.Approved(const AAllow: TArray<string>; const ASource, ATarget: string): Boolean;
 var
-  Entry: string;
-  Separator: Integer;
+  mEntry: string;
+  mSeparator: Integer;
 begin
-  for Entry in AAllow do
+  for mEntry in AAllow do
   begin
-    Separator := Pos('->', Entry);
-    if Separator = 0 then
+    mSeparator := Pos('->', mEntry);
+    if mSeparator = 0 then
     begin
       Continue;
     end;
-    if MatchesGlob(Trim(Copy(Entry, 1, Separator - 1)), ASource) and
-      MatchesGlob(Trim(Copy(Entry, Separator + 2, MaxInt)), ATarget) then
+    if MatchesGlob(Trim(Copy(mEntry, 1, mSeparator - 1)), ASource) and
+      MatchesGlob(Trim(Copy(mEntry, mSeparator + 2, MaxInt)), ATarget) then
     begin
       Exit(True);
     end;
@@ -531,18 +532,18 @@ end;
 
 procedure TRoleImportRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Options: TRoleImportOptions;
-  OwnName: string;
-  Source, Target: TArchitectureUnit;
-  Used: TUsesReference;
+  mOptions: TRoleImportOptions;
+  mOwnName: string;
+  mSource, mTarget: TArchitectureUnit;
+  mUsed: TUsesReference;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Options := ParseOptions(AContext.Options);
+  mOptions := ParseOptions(AContext.Options);
   // Ohne Präfixe schweigt die Regel: Projekte ohne Rollenkonzept sehen nichts.
-  if Options.Prefixes = nil then
+  if mOptions.Prefixes = nil then
   begin
     Exit;
   end;
@@ -552,26 +553,26 @@ begin
   begin
     Exit;
   end;
-  OwnName := OwnUnitName(AContext);
-  Source := TArchitectureMatrix.Classify(OwnName, Options.Prefixes, Options.HostRoles);
-  if not Source.Known then
+  mOwnName := OwnUnitName(AContext);
+  mSource := TArchitectureMatrix.Classify(mOwnName, mOptions.Prefixes, mOptions.HostRoles);
+  if not mSource.Known then
   begin
     Exit;
   end;
-  for Used in TUsesClauses.References(AContext.Tree.Tokens) do
+  for mUsed in TUsesClauses.References(AContext.Tree.Tokens) do
   begin
     // contains eines Packages nimmt Units auf, statt sie einzubinden (#1109): Das Package ist keine Rolle.
-    if Used.List = TUsesListKind.ContainsList then
+    if mUsed.List = TUsesListKind.ContainsList then
     begin
       Continue;
     end;
-    Target := TArchitectureMatrix.Classify(Used.Name, Options.Prefixes, Options.HostRoles);
-    if TArchitectureMatrix.Allowed(Source, Target) or Approved(Options.Allow, OwnName, Used.Name) then
+    mTarget := TArchitectureMatrix.Classify(mUsed.Name, mOptions.Prefixes, mOptions.HostRoles);
+    if TArchitectureMatrix.Allowed(mSource, mTarget) or Approved(mOptions.Allow, mOwnName, mUsed.Name) then
     begin
       Continue;
     end;
-    AReport.Add(Used.Range, cTexts[TArchitectureText.RoleViolation].Fmt(
-      [OwnName, Used.Name, TArchitectureMatrix.Describe(Source, Target)]));
+    AReport.Add(mUsed.Range, cTexts[TArchitectureText.RoleViolation].Fmt(
+      [mOwnName, mUsed.Name, TArchitectureMatrix.Describe(mSource, mTarget)]));
   end;
 end;
 
@@ -585,15 +586,15 @@ end;
 
 function IsExceptionName(const AName: string): Boolean;
 var
-  Last: string;
+  mLast: string;
 begin
-  Last := AName;
-  if LastDelimiter('.', Last) > 0 then
+  mLast := AName;
+  if LastDelimiter('.', mLast) > 0 then
   begin
-    Last := Copy(Last, LastDelimiter('.', Last) + 1, MaxInt);
+    mLast := Copy(mLast, LastDelimiter('.', mLast) + 1, MaxInt);
   end;
-  Result := SameText(Last, 'Exception') or
-    ((Length(Last) >= 2) and (Last[1] = 'E') and CharInSet(Last[2], ['A'..'Z']));
+  Result := SameText(mLast, 'Exception') or
+    ((Length(mLast) >= 2) and (mLast[1] = 'E') and CharInSet(mLast[2], ['A'..'Z']));
 end;
 
 /// <summary>True, wenn die Unit von AContext eine Contract-Unit ist, die die Regel prüft.</summary>

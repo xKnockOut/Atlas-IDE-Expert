@@ -49,10 +49,10 @@ type
 
   TLspExtractInterface = class
   public const
-    ClientCommand = 'atlas.extractInterface';
-    PrepareCommand = 'atlas.server.extractInterface.prepare';
-    ApplyCommand = 'atlas.server.extractInterface';
-    AnnotationId = 'extractInterface';
+    cClientCommand = 'atlas.extractInterface';
+    cPrepareCommand = 'atlas.server.extractInterface.prepare';
+    cApplyCommand = 'atlas.server.extractInterface';
+    cAnnotationId = 'extractInterface';
   public
     /// <summary>Die Code-Aktion an APosition, wenn eingeschaltet und die Klasse dort wählbare Mitglieder hat;
     /// sonst nil. Der Aufrufer übernimmt die Objekte.</summary>
@@ -123,7 +123,7 @@ const
 
 function Failed(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, cTexts[TLspExtractInterfaceText.ExtractInterface].Text +
+  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, cTexts[TLspExtractInterfaceText.ExtractInterface].Text +
     AMessage);
 end;
 
@@ -200,10 +200,10 @@ end;
 class function TLspExtractInterface.Actions(AEnabled: Boolean; ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition): TArray<TJSONObject>;
 var
-  Info: TExtractInterfaceInfo;
-  Reason, Title: string;
-  Arguments: TJSONArray;
-  Command, Action: TJSONObject;
+  mInfo: TExtractInterfaceInfo;
+  mReason, mTitle: string;
+  mArguments: TJSONArray;
+  mCommand, mAction: TJSONObject;
 begin
   Result := nil;
   if not AEnabled or (ATree = nil) or (TExtractInterface.ClassAt(ATree, APosition.Line) = nil) then
@@ -211,92 +211,92 @@ begin
     Exit;
   end;
   if not TExtractInterface.Prepare(TClassSource.Create(ATree, AText, APosition.Line),
-    TExtractInterfaceLookups.Create(nil, nil, nil), Info, Reason) then
+    TExtractInterfaceLookups.Create(nil, nil, nil), mInfo, mReason) then
   begin
     Exit;
   end;
-  Title := cTexts[TLspExtractInterfaceText.ExtractInterfaceFrom].Fmt([Info.ClassName]);
-  Arguments := TJSONArray.Create;
-  Arguments.Add(AUri);
-  Arguments.AddElement(TLspPositions.PositionToJson(APosition));
-  Command := TJSONObject.Create;
-  Command.AddPair('title', Title);
-  Command.AddPair('command', ClientCommand);
-  Command.AddPair('arguments', Arguments);
-  Action := TJSONObject.Create;
-  Action.AddPair('title', Title);
-  Action.AddPair('kind', TExtractInterface.Kind);
-  Action.AddPair('command', Command);
-  Result := [Action];
+  mTitle := cTexts[TLspExtractInterfaceText.ExtractInterfaceFrom].Fmt([mInfo.ClassName]);
+  mArguments := TJSONArray.Create;
+  mArguments.Add(AUri);
+  mArguments.AddElement(TLspPositions.PositionToJson(APosition));
+  mCommand := TJSONObject.Create;
+  mCommand.AddPair('title', mTitle);
+  mCommand.AddPair('command', cClientCommand);
+  mCommand.AddPair('arguments', mArguments);
+  mAction := TJSONObject.Create;
+  mAction.AddPair('title', mTitle);
+  mAction.AddPair('kind', TExtractInterface.cKind);
+  mAction.AddPair('command', mCommand);
+  Result := [mAction];
 end;
 
 class function TLspExtractInterface.Prepare(ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TExtractInterfaceContext): TJSONObject;
 var
-  Info: TExtractInterfaceInfo;
-  Reason, Note: string;
-  Item: TExtractCandidate;
-  List, Notes, Units: TJSONArray;
-  Entry: TJSONObject;
-  ProjectUnit: TProjectUnit;
+  mInfo: TExtractInterfaceInfo;
+  mReason, mNote: string;
+  mItem: TExtractCandidate;
+  mList, mNotes, mUnits: TJSONArray;
+  mEntry: TJSONObject;
+  mProjectUnit: TProjectUnit;
 begin
   if not TExtractInterface.Prepare(TClassSource.Create(ATree, AText, APosition.Line),
-    TExtractInterfaceLookups.Create(AncestorsLookup(ATree, AContext.Index), nil, MethodPointer(AContext.Index)), Info,
-    Reason) then
+    TExtractInterfaceLookups.Create(AncestorsLookup(ATree, AContext.Index), nil, MethodPointer(AContext.Index)), mInfo,
+    mReason) then
   begin
-    raise Failed(Reason);
+    raise Failed(mReason);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('className', Info.ClassName);
-  Result.AddPair('name', Info.SuggestedName);
+  Result.AddPair('className', mInfo.ClassName);
+  Result.AddPair('name', mInfo.SuggestedName);
   Result.AddPair('ownUnit', TUsesClauses.OwnName(ATree.Tokens));
-  List := TJSONArray.Create;
-  for Item in Info.Candidates do
+  mList := TJSONArray.Create;
+  for mItem in mInfo.Candidates do
   begin
-    Entry := TJSONObject.Create;
-    Entry.AddPair('id', TJSONNumber.Create(Item.Id));
-    Entry.AddPair('name', Item.Name);
-    if Item.Kind = TExtractCandidateKind.Property_ then
+    mEntry := TJSONObject.Create;
+    mEntry.AddPair('id', TJSONNumber.Create(mItem.Id));
+    mEntry.AddPair('name', mItem.Name);
+    if mItem.Kind = TExtractCandidateKind.Property_ then
     begin
-      Entry.AddPair('kind', 'property');
+      mEntry.AddPair('kind', 'property');
     end
     else
     begin
-      Entry.AddPair('kind', 'method');
+      mEntry.AddPair('kind', 'method');
     end;
-    Entry.AddPair('display', Item.Display);
-    Entry.AddPair('visibility', VisibilityText(Item.Visibility));
-    Entry.AddPair('checked', TJSONBool.Create(Item.Checked));
-    Entry.AddPair('enabled', TJSONBool.Create(Item.Enabled));
-    Entry.AddPair('reason', Item.Reason);
-    List.AddElement(Entry);
+    mEntry.AddPair('display', mItem.Display);
+    mEntry.AddPair('visibility', VisibilityText(mItem.Visibility));
+    mEntry.AddPair('checked', TJSONBool.Create(mItem.Checked));
+    mEntry.AddPair('enabled', TJSONBool.Create(mItem.Enabled));
+    mEntry.AddPair('reason', mItem.Reason);
+    mList.AddElement(mEntry);
   end;
-  Result.AddPair('candidates', List);
-  Notes := TJSONArray.Create;
-  for Note in Info.Notes do
+  Result.AddPair('candidates', mList);
+  mNotes := TJSONArray.Create;
+  for mNote in mInfo.Notes do
   begin
-    Notes.Add(Note);
+    mNotes.Add(mNote);
   end;
-  Result.AddPair('notes', Notes);
-  Units := TJSONArray.Create;
+  Result.AddPair('notes', mNotes);
+  mUnits := TJSONArray.Create;
   if AContext.HasProject then
   begin
-    for ProjectUnit in AContext.Project.Units do
+    for mProjectUnit in AContext.Project.Units do
     begin
-      Units.Add(ProjectUnit.Name);
+      mUnits.Add(mProjectUnit.Name);
     end;
   end;
-  Result.AddPair('units', Units);
+  Result.AddPair('units', mUnits);
 end;
 
 function ReadRequestJson(ARequest: TJSONValue; out AName, AUnit: string): TArray<Integer>;
 var
-  Item: TJSONValue;
-  Members: TJSONValue;
+  mItem: TJSONValue;
+  mMembers: TJSONValue;
 begin
   if not (ARequest is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TLspExtractInterfaceText.RequestWithNameUnitAnd].Text);
   end;
   AName := '';
@@ -310,14 +310,14 @@ begin
     AUnit := Trim(TJSONObject(ARequest).GetValue('unit').Value);
   end;
   Result := nil;
-  Members := TJSONObject(ARequest).GetValue('members');
-  if Members is TJSONArray then
+  mMembers := TJSONObject(ARequest).GetValue('members');
+  if mMembers is TJSONArray then
   begin
-    for Item in TJSONArray(Members) do
+    for mItem in TJSONArray(mMembers) do
     begin
-      if Item is TJSONNumber then
+      if mItem is TJSONNumber then
       begin
-        Result := Result + [TJSONNumber(Item).AsInt];
+        Result := Result + [TJSONNumber(mItem).AsInt];
       end;
     end;
   end;
@@ -326,22 +326,22 @@ end;
 /// <summary>Datei der Unit AUnitName aus Projekt oder Index; '' ohne.</summary>
 function UnitFile(const AContext: TExtractInterfaceContext; const AUnitName: string): string;
 var
-  ProjectUnit: TProjectUnit;
-  UnitIndex: TUnitIndex;
+  mProjectUnit: TProjectUnit;
+  mUnitIndex: TUnitIndex;
 begin
   if AContext.HasProject then
   begin
-    for ProjectUnit in AContext.Project.Units do
+    for mProjectUnit in AContext.Project.Units do
     begin
-      if SameText(ProjectUnit.Name, AUnitName) and (ProjectUnit.FileName <> '') then
+      if SameText(mProjectUnit.Name, AUnitName) and (mProjectUnit.FileName <> '') then
       begin
-        Exit(ProjectUnit.FileName);
+        Exit(mProjectUnit.FileName);
       end;
     end;
   end;
-  if (AContext.Index <> nil) and AContext.Index.FindUnit(AUnitName, UnitIndex) and (UnitIndex.FileName <> '') then
+  if (AContext.Index <> nil) and AContext.Index.FindUnit(AUnitName, mUnitIndex) and (mUnitIndex.FileName <> '') then
   begin
-    Exit(UnitIndex.FileName);
+    Exit(mUnitIndex.FileName);
   end;
   Result := '';
 end;
@@ -602,7 +602,7 @@ begin
   mCount := Length(FPlan.Methods);
   mDescription := cTexts[TLspExtractInterfaceText.WithMethodsFiles].Fmt([FRequest.Name, mCount, FChanges.FileCount]);
   Result := TJSONObject.Create;
-  Result.AddPair('edit', FChanges.ToJson(TLspExtractInterface.AnnotationId,
+  Result.AddPair('edit', FChanges.ToJson(TLspExtractInterface.cAnnotationId,
     cTexts[TLspExtractInterfaceText.ExtractInterface2].Text, mDescription));
   Result.AddPair('warnings', FChanges.WarningsJson);
   Result.AddPair('file', TDocumentUris.FromPath(FTargetFile));

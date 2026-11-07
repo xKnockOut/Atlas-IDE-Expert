@@ -59,9 +59,9 @@ const
 /// <summary>Deklaration "ATypeName = record" im Baum; nil ohne.</summary>
 function FindRecord(ARoot: TSyntaxNode; const ATypeName: string): TSyntaxNode;
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := nil;
   if ARoot = nil then
@@ -69,24 +69,24 @@ begin
     Exit;
   end;
   // Iterativ (Bericht M1); auch lokale Typen in Routinen zählen.
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ARoot);
-    while Pending.Count > 0 do
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if (Node.Kind = TSyntaxKind.TypeDecl) and SameText(Node.Name, ATypeName) and
-        (Node.FindChild(TSyntaxKind.RecordType) <> nil) then
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.TypeDecl) and SameText(mNode.Name, ATypeName) and
+        (mNode.FindChild(TSyntaxKind.RecordType) <> nil) then
       begin
-        Exit(Node);
+        Exit(mNode);
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 

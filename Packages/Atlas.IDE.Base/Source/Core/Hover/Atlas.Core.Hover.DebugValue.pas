@@ -49,7 +49,7 @@ type
     /// <summary>Erklärung eines Fehlers „kein Zugriff“ (#840).</summary>
     Note: TAtlasDebugValueNote;
     class function Pending(const AExpression: string): TAtlasDebugValue; static;
-    /// <summary>Ausgewerteter Wert, auf TAtlasDebugExpression.MaxValueLength gekürzt.</summary>
+    /// <summary>Ausgewerteter Wert, auf TAtlasDebugExpression.cMaxValueLength gekürzt.</summary>
     class function Evaluated(const AExpression, AText: string): TAtlasDebugValue; static;
     class function Failed(const AExpression, AText: string): TAtlasDebugValue; static;
     /// <summary>Zeigt der Tooltip den Abschnitt (ausstehend, Wert oder erklärter Fehler)?</summary>
@@ -62,7 +62,7 @@ type
 
   TAtlasDebugExpression = record
   public const
-    MaxValueLength = 2000;
+    cMaxValueLength = 2000;
   public
     /// <summary>Ausdruck zum Bezeichner [AStart, AStop) der Zeile (0-basiert, AStop exklusiv); '' wenn dort
     /// nichts ausgewertet werden soll.</summary>
@@ -84,7 +84,7 @@ uses
 
 const
   // Reservierte Wörter von Delphi; Direktiven (override, virtual …) wertet der Debugger ohnehin nicht aus.
-  ReservedWords: array[0..65] of string = ('and', 'array', 'as', 'asm', 'begin', 'case', 'class', 'const',
+  cReservedWords: array[0..65] of string = ('and', 'array', 'as', 'asm', 'begin', 'case', 'class', 'const',
     'constructor', 'destructor', 'dispinterface', 'div', 'do', 'downto', 'else', 'end', 'except', 'exports',
     'file', 'finalization', 'finally', 'for', 'function', 'goto', 'if', 'implementation', 'in', 'inherited',
     'initialization', 'inline', 'interface', 'is', 'label', 'library', 'mod', 'nil', 'not', 'object', 'of',
@@ -111,7 +111,7 @@ begin
   Result := Default(TAtlasDebugValue);
   Result.State := TAtlasDebugValueState.Value;
   Result.Expression := AExpression;
-  Result.Text := TAtlasDebugExpression.Shorten(AText, TAtlasDebugExpression.MaxValueLength);
+  Result.Text := TAtlasDebugExpression.Shorten(AText, TAtlasDebugExpression.cMaxValueLength);
 end;
 
 class function TAtlasDebugValue.Failed(const AExpression, AText: string): TAtlasDebugValue;
@@ -166,7 +166,7 @@ end;
 
 class function TAtlasDebugExpression.IsReserved(const AWord: string): Boolean;
 begin
-  Result := MatchText(AWord, ReservedWords);
+  Result := MatchText(AWord, cReservedWords);
 end;
 
 type
@@ -363,24 +363,24 @@ end;
 
 class function TAtlasDebugExpression.AtCharacter(const ALine: string; AIndex: Integer): string;
 var
-  Start, Stop: Integer;
+  mStart, mStop: Integer;
 begin
   Result := '';
   if (AIndex < 0) or (AIndex >= Length(ALine)) or not IsIdentifierChar(ALine[AIndex + 1]) then
   begin
     Exit;
   end;
-  Start := AIndex;
-  while (Start > 0) and IsIdentifierChar(ALine[Start]) do
+  mStart := AIndex;
+  while (mStart > 0) and IsIdentifierChar(ALine[mStart]) do
   begin
-    Dec(Start);
+    Dec(mStart);
   end;
-  Stop := AIndex + 1;
-  while (Stop < Length(ALine)) and IsIdentifierChar(ALine[Stop + 1]) do
+  mStop := AIndex + 1;
+  while (mStop < Length(ALine)) and IsIdentifierChar(ALine[mStop + 1]) do
   begin
-    Inc(Stop);
+    Inc(mStop);
   end;
-  Result := At(ALine, Start, Stop);
+  Result := At(ALine, mStart, mStop);
 end;
 
 class function TAtlasDebugExpression.Shorten(const AText: string; AMaxLength: Integer): string;

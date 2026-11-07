@@ -47,28 +47,28 @@ implementation
 
 const
   // Variablen, die jeder Prozess der Versionsverwaltung bekommt.
-  NoPromptVariables: array[0..1] of string = ('GIT_TERMINAL_PROMPT=0', 'GCM_INTERACTIVE=never');
+  cNoPromptVariables: array[0..1] of string = ('GIT_TERMINAL_PROMPT=0', 'GCM_INTERACTIVE=never');
   // git: Anmeldung fehlt oder wird abgelehnt (HTTPS, Credential Manager, SSH); englisch und deutsch, weil git
   // seine eigenen Meldungen übersetzt (curl und ssh nicht).
-  GitLogin: array[0..13] of string = ('authentication failed', 'could not read username',
+  cGitLogin: array[0..13] of string = ('authentication failed', 'could not read username',
     'could not read password', 'terminal prompts disabled', 'http basic: access denied',
     'permission denied (publickey', 'the requested url returned error: 401',
     'the requested url returned error: 403', 'invalid username or password', 'access denied',
     'authentifizierung', 'benutzername', 'passwort', 'terminal-prompts deaktiviert');
   // git: Server nicht erreichbar.
-  GitUnreachable: array[0..8] of string = ('could not resolve host', 'could not resolve hostname',
+  cGitUnreachable: array[0..8] of string = ('could not resolve host', 'could not resolve hostname',
     'failed to connect', 'connection refused', 'connection timed out', 'operation timed out',
     'network is unreachable', 'no route to host', 'connection reset');
   // git: kein Remote.
-  GitNoServer: array[0..4] of string = ('does not appear to be a git repository', 'no such remote',
+  cGitNoServer: array[0..4] of string = ('does not appear to be a git repository', 'no such remote',
     'no remote repository specified', 'scheint kein git-repository zu sein', 'kein solches remote'); // german-ok
   // svn: Anmeldung fehlt oder Zertifikat muss bestätigt werden.
-  SvnLogin: array[0..3] of string = ('e170001', 'e215004', 'e215000', 'e230001');
+  cSvnLogin: array[0..3] of string = ('e170001', 'e215004', 'e215000', 'e230001');
   // svn: Server nicht erreichbar.
-  SvnUnreachable: array[0..9] of string = ('e170013', 'e175002', 'e670002', 'e670008', 'e731001', 'e731004',
+  cSvnUnreachable: array[0..9] of string = ('e170013', 'e175002', 'e670002', 'e670008', 'e731001', 'e731004',
     'e730060', 'e730061', 'e730065', 'e730110');
   // svn: keine Arbeitskopie bzw. keine Repository-Wurzel.
-  SvnNoServer: array[0..2] of string = ('e155007', 'e155010', 'e200009');
+  cSvnNoServer: array[0..2] of string = ('e155007', 'e155010', 'e200009');
 
 function HasAny(const AText: string; const AMarkers: array of string): Boolean;
 var
@@ -113,15 +113,15 @@ function SvnState(const AText: string): TAtlasVcsServerState;
 begin
   // Feste Fehlerkennungen (svn: E170001: …); die Anmeldung zuerst, weil svn mehrere Zeilen schreibt.
   Result := TAtlasVcsServerState.Failed;
-  if HasAny(AText, SvnLogin) then
+  if HasAny(AText, cSvnLogin) then
   begin
     Result := TAtlasVcsServerState.LoginNeeded;
   end
-  else if HasAny(AText, SvnUnreachable) then
+  else if HasAny(AText, cSvnUnreachable) then
   begin
     Result := TAtlasVcsServerState.Unreachable;
   end
-  else if HasAny(AText, SvnNoServer) then
+  else if HasAny(AText, cSvnNoServer) then
   begin
     Result := TAtlasVcsServerState.NoServer;
   end;
@@ -132,15 +132,15 @@ function GitState(const AText: string): TAtlasVcsServerState;
 begin
   // git endet bei Fehlern mit dem Server mit 128; die Meldung unterscheidet die Ursache.
   Result := TAtlasVcsServerState.Failed;
-  if HasAny(AText, GitNoServer) then
+  if HasAny(AText, cGitNoServer) then
   begin
     Result := TAtlasVcsServerState.NoServer;
   end
-  else if HasAny(AText, GitLogin) then
+  else if HasAny(AText, cGitLogin) then
   begin
     Result := TAtlasVcsServerState.LoginNeeded;
   end
-  else if HasAny(AText, GitUnreachable) then
+  else if HasAny(AText, cGitUnreachable) then
   begin
     Result := TAtlasVcsServerState.Unreachable;
   end;
@@ -206,7 +206,7 @@ begin
   for mEntry in AEnvironment do
   begin
     mReplaced := False;
-    for mVariable in NoPromptVariables do
+    for mVariable in cNoPromptVariables do
     begin
       if SameText(VariableName(mEntry), VariableName(mVariable)) then
       begin
@@ -218,7 +218,7 @@ begin
       Result := Result + [mEntry];
     end;
   end;
-  for mVariable in NoPromptVariables do
+  for mVariable in cNoPromptVariables do
   begin
     Result := Result + [mVariable];
   end;

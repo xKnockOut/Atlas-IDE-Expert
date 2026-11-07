@@ -86,7 +86,7 @@ type
 
   TAtlasWorkingCopiesDialog = class(TForm)
   public const
-    ColumnCount = 5;
+    cColumnCount = 5;
   private
     FName: string;
     FList: TAtlasVcsWorkingCopyList;

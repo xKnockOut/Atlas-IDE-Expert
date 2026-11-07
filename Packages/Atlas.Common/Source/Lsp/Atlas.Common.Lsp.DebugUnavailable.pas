@@ -59,8 +59,8 @@ type
 
   TLspDebugUnavailable = class
   public const
-    Method = 'atlas/debugUnavailable';
-    LifetimeNames: array[TVariableLifetime] of string = ('unknown', 'unused', 'before', 'within', 'after');
+    cMethod = 'atlas/debugUnavailable';
+    cLifetimeNames: array[TVariableLifetime] of string = ('unknown', 'unused', 'before', 'within', 'after');
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -115,29 +115,29 @@ end;
 /// <summary>Innerste (AOuter: äußerste) benannte Routine, die AOffset enthält; nil außerhalb.</summary>
 function RoutineAt(ARoot: TSyntaxNode; AOffset: Integer; AOuter: Boolean): TSyntaxNode;
 var
-  Node, Child: TSyntaxNode;
-  Index: Integer;
-  Descended: Boolean;
+  mNode, mChild: TSyntaxNode;
+  mIndex: Integer;
+  mDescended: Boolean;
 begin
   Result := nil;
-  Node := ARoot;
+  mNode := ARoot;
   repeat
-    Descended := False;
-    for Index := 0 to Node.ChildCount - 1 do
+    mDescended := False;
+    for mIndex := 0 to mNode.ChildCount - 1 do
     begin
-      Child := Node[Index];
-      if (Child.StartOffset <= AOffset) and (AOffset < Child.EndOffset) then
+      mChild := mNode[mIndex];
+      if (mChild.StartOffset <= AOffset) and (AOffset < mChild.EndOffset) then
       begin
-        Node := Child;
-        if (Node.Kind = TSyntaxKind.RoutineDecl) and not (AOuter and (Result <> nil)) then
+        mNode := mChild;
+        if (mNode.Kind = TSyntaxKind.RoutineDecl) and not (AOuter and (Result <> nil)) then
         begin
-          Result := Node;
+          Result := mNode;
         end;
-        Descended := True;
+        mDescended := True;
         Break;
       end;
     end;
-  until not Descended;
+  until not mDescended;
 end;
 
 function Significant(const AToken: TPascalToken): Boolean;
@@ -148,13 +148,13 @@ end;
 /// <summary>Offset des ersten bedeutsamen Tokens in ALine bzw. danach; -1 ohne.</summary>
 function LineOffset(const ATokens: TArray<TPascalToken>; ALine: Integer): Integer;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
-  for Token in ATokens do
+  for mToken in ATokens do
   begin
-    if (Token.StartPos.Line >= ALine) and Significant(Token) then
+    if (mToken.StartPos.Line >= ALine) and Significant(mToken) then
     begin
-      Exit(Token.Offset);
+      Exit(mToken.Offset);
     end;
   end;
   Result := -1;
@@ -162,16 +162,16 @@ end;
 
 function HasInlineDirective(AHeader: TSyntaxNode): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
   if AHeader = nil then
   begin
     Exit;
   end;
-  for Index := 0 to AHeader.ChildCount - 1 do
+  for mIndex := 0 to AHeader.ChildCount - 1 do
   begin
-    if (AHeader[Index].Kind = TSyntaxKind.Directive) and SameText(AHeader[Index].Name, 'inline') then
+    if (AHeader[mIndex].Kind = TSyntaxKind.Directive) and SameText(AHeader[mIndex].Name, 'inline') then
     begin
       Exit(True);
     end;
@@ -181,37 +181,37 @@ end;
 /// <summary>Name des umgebenden Typs eines Kopfs in einer Klassen- bzw. Record-Deklaration; '' sonst.</summary>
 function OwnerTypeName(ANode: TSyntaxNode): string;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   Result := '';
-  Node := ANode.Parent;
-  while Node <> nil do
+  mNode := ANode.Parent;
+  while mNode <> nil do
   begin
-    if Node.Kind = TSyntaxKind.TypeDecl then
+    if mNode.Kind = TSyntaxKind.TypeDecl then
     begin
-      Exit(Node.Name);
+      Exit(mNode.Name);
     end;
-    if Node.Kind in [TSyntaxKind.ImplementationSection, TSyntaxKind.RoutineDecl] then
+    if mNode.Kind in [TSyntaxKind.ImplementationSection, TSyntaxKind.RoutineDecl] then
     begin
       Exit;
     end;
-    Node := Node.Parent;
+    mNode := mNode.Parent;
   end;
 end;
 
 function InInterface(ANode: TSyntaxNode): Boolean;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   Result := False;
-  Node := ANode.Parent;
-  while Node <> nil do
+  mNode := ANode.Parent;
+  while mNode <> nil do
   begin
-    if Node.Kind = TSyntaxKind.InterfaceSection then
+    if mNode.Kind = TSyntaxKind.InterfaceSection then
     begin
       Exit(True);
     end;
-    Node := Node.Parent;
+    mNode := mNode.Parent;
   end;
 end;
 
@@ -267,28 +267,28 @@ end;
 /// <summary>Zeile hinter dem Kopf "unit X;" bzw. "program X;"; 0 ohne Kopf.</summary>
 function LineAfterHeader(const ATokens: TArray<TPascalToken>): Integer;
 var
-  Index, Last: Integer;
+  mIndex, mLast: Integer;
 begin
   Result := 0;
-  Index := 0;
-  while (Index <= High(ATokens)) and not Significant(ATokens[Index]) do
+  mIndex := 0;
+  while (mIndex <= High(ATokens)) and not Significant(ATokens[mIndex]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  if (Index > High(ATokens)) or not (SameText(ATokens[Index].Text, 'unit') or
-    SameText(ATokens[Index].Text, 'program') or SameText(ATokens[Index].Text, 'library') or
-    SameText(ATokens[Index].Text, 'package')) then
+  if (mIndex > High(ATokens)) or not (SameText(ATokens[mIndex].Text, 'unit') or
+    SameText(ATokens[mIndex].Text, 'program') or SameText(ATokens[mIndex].Text, 'library') or
+    SameText(ATokens[mIndex].Text, 'package')) then
   begin
     Exit;
   end;
-  Last := Index;
-  while (Last <= High(ATokens)) and not ATokens[Last].IsSymbol(';') do
+  mLast := mIndex;
+  while (mLast <= High(ATokens)) and not ATokens[mLast].IsSymbol(';') do
   begin
-    Inc(Last);
+    Inc(mLast);
   end;
-  if Last <= High(ATokens) then
+  if mLast <= High(ATokens) then
   begin
-    Result := ATokens[Last].EndPos.Line + 1;
+    Result := ATokens[mLast].EndPos.Line + 1;
   end;
 end;
 
@@ -579,7 +579,7 @@ end;
 
 procedure TLspDebugUnavailable.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method, Handle);
+  ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
 end;
 
 class function TLspDebugUnavailable.Facts(AResolver: TNameResolver; ATree: TSyntaxTree;
@@ -598,95 +598,95 @@ end;
 class function TLspDebugUnavailable.ToJson(const AFacts: TUnavailableFacts; const AState: TCompilerSwitchState;
   const AFileName: string): TJSONObject;
 var
-  Switches: TJSONArray;
-  Entry: TSwitchEntry;
-  Routine, Variable, Fixes: TJSONObject;
+  mSwitches: TJSONArray;
+  mEntry: TSwitchEntry;
+  mRoutine, mVariable, mFixes: TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Switches := TJSONArray.Create;
-  for Entry in AState.Switches do
+  mSwitches := TJSONArray.Create;
+  for mEntry in AState.Switches do
   begin
-    if (Entry.Name = 'D') or (Entry.Name = 'L') or (Entry.Name = 'O') then
+    if (mEntry.Name = 'D') or (mEntry.Name = 'L') or (mEntry.Name = 'O') then
     begin
-      Switches.AddElement(TLspCompilerSwitches.EntryToJson(Entry));
+      mSwitches.AddElement(TLspCompilerSwitches.EntryToJson(mEntry));
     end;
   end;
-  Result.AddPair('switches', Switches);
+  Result.AddPair('switches', mSwitches);
   if AFacts.HasRoutine then
   begin
-    Routine := TJSONObject.Create;
-    Routine.AddPair('name', AFacts.RoutineName);
-    Routine.AddPair('inline', TJSONBool.Create(AFacts.RoutineInline));
-    Routine.AddPair('startLine', TJSONNumber.Create(AFacts.RoutineStartLine));
-    Routine.AddPair('endLine', TJSONNumber.Create(AFacts.RoutineEndLine));
-    Result.AddPair('routine', Routine);
+    mRoutine := TJSONObject.Create;
+    mRoutine.AddPair('name', AFacts.RoutineName);
+    mRoutine.AddPair('inline', TJSONBool.Create(AFacts.RoutineInline));
+    mRoutine.AddPair('startLine', TJSONNumber.Create(AFacts.RoutineStartLine));
+    mRoutine.AddPair('endLine', TJSONNumber.Create(AFacts.RoutineEndLine));
+    Result.AddPair('routine', mRoutine);
   end;
-  Variable := TJSONObject.Create;
-  Variable.AddPair('local', TJSONBool.Create(AFacts.Local));
-  Variable.AddPair('parameter', TJSONBool.Create(AFacts.IsParameter));
-  Variable.AddPair('firstUse', TJSONNumber.Create(AFacts.FirstUse));
-  Variable.AddPair('lastUse', TJSONNumber.Create(AFacts.LastUse));
-  Variable.AddPair('lifetime', LifetimeNames[AFacts.Lifetime]);
-  Result.AddPair('variable', Variable);
-  Fixes := TJSONObject.Create;
+  mVariable := TJSONObject.Create;
+  mVariable.AddPair('local', TJSONBool.Create(AFacts.Local));
+  mVariable.AddPair('parameter', TJSONBool.Create(AFacts.IsParameter));
+  mVariable.AddPair('firstUse', TJSONNumber.Create(AFacts.FirstUse));
+  mVariable.AddPair('lastUse', TJSONNumber.Create(AFacts.LastUse));
+  mVariable.AddPair('lifetime', cLifetimeNames[AFacts.Lifetime]);
+  Result.AddPair('variable', mVariable);
+  mFixes := TJSONObject.Create;
   if Length(AFacts.RoutineFix) > 0 then
   begin
-    Fixes.AddPair('routineOptimization', TLspApplyEdit.TextEdits(AFileName, AFacts.RoutineFix));
+    mFixes.AddPair('routineOptimization', TLspApplyEdit.TextEdits(AFileName, AFacts.RoutineFix));
   end;
   if Length(AFacts.UnitFix) > 0 then
   begin
-    Fixes.AddPair('unitOptimization', TLspApplyEdit.TextEdits(AFileName, AFacts.UnitFix));
+    mFixes.AddPair('unitOptimization', TLspApplyEdit.TextEdits(AFileName, AFacts.UnitFix));
   end;
-  Result.AddPair('fixes', Fixes);
+  Result.AddPair('fixes', mFixes);
 end;
 
 function TLspDebugUnavailable.Handle(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Cancellation: IPascalCancellation;
-  Uri, Name, FileName: string;
-  PositionValue: TJSONValue;
-  Position: TTextPosition;
-  Document: ITextDocument;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
-  Context: TCompilerSwitchContext;
-  Facts: TUnavailableFacts;
+  mCancellation: IPascalCancellation;
+  mUri, mName, mFileName: string;
+  mPositionValue: TJSONValue;
+  mPosition: TTextPosition;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mContext: TCompilerSwitchContext;
+  mFacts: TUnavailableFacts;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue) and
-    TJSONObject(AParams).TryGetValue<string>('name', Name)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue) and
+    TJSONObject(AParams).TryGetValue<string>('name', mName)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TDebugUnavailableText.FieldsTextDocumentUriPositionAnd].Text + Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TDebugUnavailableText.FieldsTextDocumentUriPositionAnd].Text + cMethod);
   end;
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONNull.Create);
   end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
-  Cancellation := TRequestCancellation.Create(ACancellation);
-  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
   ACancellation.ThrowIfCancellationRequested;
-  Position := TLspPositions.ReadPosition(PositionValue);
-  FileName := TDocumentUris.ToPath(Uri);
-  Context := Default(TCompilerSwitchContext);
+  mPosition := TLspPositions.ReadPosition(mPositionValue);
+  mFileName := TDocumentUris.ToPath(mUri);
+  mContext := Default(TCompilerSwitchContext);
   if Assigned(FContextFor) then
   begin
-    Context := FContextFor(Uri);
+    mContext := FContextFor(mUri);
   end;
-  Resolver := nil;
+  mResolver := nil;
   if FIndex <> nil then
   begin
-    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+    mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
   end;
   try
-    Facts := TLspDebugUnavailable.Facts(Resolver, Shared.Tree, FileName, Document.Text, Name, Position.Line);
+    mFacts := TLspDebugUnavailable.Facts(mResolver, mShared.Tree, mFileName, mDocument.Text, mName, mPosition.Line);
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
   ACancellation.ThrowIfCancellationRequested;
-  Result := ToJson(Facts, TLspCompilerSwitches.StateAt(Document.Text, Position, Context), FileName);
+  Result := ToJson(mFacts, TLspCompilerSwitches.StateAt(mDocument.Text, mPosition, mContext), mFileName);
 end;
 
 initialization

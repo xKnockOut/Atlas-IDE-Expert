@@ -21,8 +21,8 @@ type
 
   TWinApiDocs = class
   public const
-    ApiBase = 'https://learn.microsoft.com/windows/win32/api/';
-    SearchBase = 'https://learn.microsoft.com/search/?terms=';
+    cApiBase = 'https://learn.microsoft.com/windows/win32/api/';
+    cSearchBase = 'https://learn.microsoft.com/search/?terms=';
   public
     /// <summary>True für Units unter Winapi.*.</summary>
     class function IsWinApiUnit(const AUnitName: string): Boolean; static;
@@ -142,23 +142,23 @@ begin
 end;
 
 const
-  PtrPairs: array[0..3, 0..1] of string = (
+  cPtrPairs: array[0..3, 0..1] of string = (
     ('SetWindowLong', 'SetWindowLongPtr'), ('GetWindowLong', 'GetWindowLongPtr'),
     ('SetClassLong', 'SetClassLongPtr'), ('GetClassLong', 'GetClassLongPtr'));
 
 /// <summary>Sucht AName, auch mit A/W-Suffix; ASuffix ist dann 'a' oder 'w', sonst ''.</summary>
 function FindPage(const AName: string; out APage: TApiPage; out ASuffix: string): Boolean;
 var
-  Candidate: TApiPage;
-  Base: string;
+  mCandidate: TApiPage;
+  mBase: string;
 begin
   ASuffix := '';
-  for Candidate in Pages do
+  for mCandidate in Pages do
   begin
-    if SameText(Candidate.Name, AName) then
+    if SameText(mCandidate.Name, AName) then
     begin
-      APage := Candidate;
-      if Candidate.WideVariant then
+      APage := mCandidate;
+      if mCandidate.WideVariant then
       begin
         ASuffix := 'w';
       end;
@@ -167,12 +167,12 @@ begin
   end;
   if (Length(AName) > 1) and CharInSet(AName[Length(AName)], ['A', 'W']) then
   begin
-    Base := Copy(AName, 1, Length(AName) - 1);
-    for Candidate in Pages do
+    mBase := Copy(AName, 1, Length(AName) - 1);
+    for mCandidate in Pages do
     begin
-      if Candidate.WideVariant and SameText(Candidate.Name, Base) then
+      if mCandidate.WideVariant and SameText(mCandidate.Name, mBase) then
       begin
-        APage := Candidate;
+        APage := mCandidate;
         ASuffix := LowerCase(AName[Length(AName)]);
         Exit(True);
       end;
@@ -183,7 +183,7 @@ end;
 
 function PageUrl(const APage: TApiPage; const ASuffix: string): string;
 begin
-  Result := TWinApiDocs.ApiBase + APage.Header + '/' + APage.Kind + '-' + APage.Header + '-' +
+  Result := TWinApiDocs.cApiBase + APage.Header + '/' + APage.Kind + '-' + APage.Header + '-' +
     LowerCase(APage.Name) + ASuffix;
 end;
 
@@ -194,54 +194,54 @@ end;
 
 class function TWinApiDocs.IsKnown(const AName: string): Boolean;
 var
-  Found: TApiPage;
-  Suffix: string;
+  mFound: TApiPage;
+  mSuffix: string;
 begin
-  Result := FindPage(AName, Found, Suffix);
+  Result := FindPage(AName, mFound, mSuffix);
 end;
 
 class function TWinApiDocs.Url(const AName: string): string;
 var
-  Found: TApiPage;
-  Suffix: string;
+  mFound: TApiPage;
+  mSuffix: string;
 begin
-  if FindPage(AName, Found, Suffix) then
+  if FindPage(AName, mFound, mSuffix) then
   begin
-    Result := PageUrl(Found, Suffix);
+    Result := PageUrl(mFound, mSuffix);
   end
   else
   begin
-    Result := SearchBase + AName;
+    Result := cSearchBase + AName;
   end;
 end;
 
 class function TWinApiDocs.PtrVariants: TArray<TPtrVariant>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  SetLength(Result, Length(PtrPairs));
-  for Index := 0 to High(PtrPairs) do
+  SetLength(Result, Length(cPtrPairs));
+  for mIndex := 0 to High(cPtrPairs) do
   begin
-    Result[Index].Name := PtrPairs[Index, 0];
-    Result[Index].Replacement := PtrPairs[Index, 1];
+    Result[mIndex].Name := cPtrPairs[mIndex, 0];
+    Result[mIndex].Replacement := cPtrPairs[mIndex, 1];
   end;
 end;
 
 class function TWinApiDocs.PtrVariant(const AName: string): string;
 var
-  Variant: TPtrVariant;
-  Base: string;
+  mVariant: TPtrVariant;
+  mBase: string;
 begin
-  Base := AName;
-  if (Length(Base) > 1) and CharInSet(Base[Length(Base)], ['A', 'W']) then
+  mBase := AName;
+  if (Length(mBase) > 1) and CharInSet(mBase[Length(mBase)], ['A', 'W']) then
   begin
-    Base := Copy(Base, 1, Length(Base) - 1);
+    mBase := Copy(mBase, 1, Length(mBase) - 1);
   end;
-  for Variant in PtrVariants do
+  for mVariant in PtrVariants do
   begin
-    if SameText(Variant.Name, AName) or SameText(Variant.Name, Base) then
+    if SameText(mVariant.Name, AName) or SameText(mVariant.Name, mBase) then
     begin
-      Exit(Variant.Replacement);
+      Exit(mVariant.Replacement);
     end;
   end;
   Result := '';
@@ -249,31 +249,31 @@ end;
 
 class function TWinApiDocs.KnownUrls: TArray<string>;
 var
-  Candidate: TApiPage;
+  mCandidate: TApiPage;
 begin
   Result := nil;
-  for Candidate in Pages do
+  for mCandidate in Pages do
   begin
-    if Candidate.WideVariant then
+    if mCandidate.WideVariant then
     begin
-      Result := Result + [PageUrl(Candidate, 'w')];
+      Result := Result + [PageUrl(mCandidate, 'w')];
     end
     else
     begin
-      Result := Result + [PageUrl(Candidate, '')];
+      Result := Result + [PageUrl(mCandidate, '')];
     end;
   end;
 end;
 
 class function TWinApiDocs.HoverText(const AName: string): string;
 var
-  Replacement: string;
+  mReplacement: string;
 begin
   Result := cTexts[TWinApiDocsText.MicrosoftDocumentation].Fmt([Url(AName)]);
-  Replacement := PtrVariant(AName);
-  if Replacement <> '' then
+  mReplacement := PtrVariant(AName);
+  if mReplacement <> '' then
   begin
-    Result := Result + #10#10 + cTexts[TWinApiDocsText.For64BitUseTruncates].Fmt([Replacement, AName]);
+    Result := Result + #10#10 + cTexts[TWinApiDocsText.For64BitUseTruncates].Fmt([mReplacement, AName]);
   end;
 end;
 

@@ -117,9 +117,9 @@ uses
   Atlas.UI.Strings;
 
 const
-  Gap = 8;
-  NoticeWidth = 460;
-  DetailsHeight = 220;
+  cGap = 8;
+  cNoticeWidth = 460;
+  cDetailsHeight = 220;
 
 { TAtlasSafeModeNotice }
 
@@ -134,12 +134,12 @@ begin
   Position := poDesigned;
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  ClientWidth := NoticeWidth;
+  ClientWidth := cNoticeWidth;
   OnClose := FormClose;
   CreateTexts(AText, ASuggestion);
   CreateButtons(ARestore, Length(ADetails) > 0);
   CreateDetails(ADetails);
-  ClientHeight := FParts.Buttons.Top + FParts.Buttons.Height + Gap;
+  ClientHeight := FParts.Buttons.Top + FParts.Buttons.Height + cGap;
 end;
 
 procedure TAtlasSafeModeNotice.CreateTexts(const AText, ASuggestion: string);
@@ -148,7 +148,7 @@ begin
   FParts.Text.Parent := Self;
   FParts.Text.Align := alTop;
   FParts.Text.AlignWithMargins := True;
-  FParts.Text.Margins.SetBounds(Gap, Gap, Gap, 0);
+  FParts.Text.Margins.SetBounds(cGap, cGap, cGap, 0);
   FParts.Text.WordWrap := True;
   FParts.Text.Caption := AText;
 
@@ -156,7 +156,7 @@ begin
   FParts.Suggestion.Parent := Self;
   FParts.Suggestion.Align := alTop;
   FParts.Suggestion.AlignWithMargins := True;
-  FParts.Suggestion.Margins.SetBounds(Gap, Gap, Gap, 0);
+  FParts.Suggestion.Margins.SetBounds(cGap, cGap, cGap, 0);
   FParts.Suggestion.WordWrap := True;
   FParts.Suggestion.Caption := ASuggestion;
   FParts.Suggestion.Visible := ASuggestion <> '';
@@ -173,7 +173,7 @@ begin
   mButtons.AutoSize := True;
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(Gap, Gap, Gap, Gap);
+  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
   mButtons.Top := FParts.Suggestion.Top + FParts.Suggestion.Height + 1;
   FParts.Buttons := mButtons;
   if FKind = TAtlasSafeNoticeKind.Ask then
@@ -209,24 +209,29 @@ begin
   FParts.Details.Parent := mPanel;
   FParts.Details.Align := alClient;
   FParts.Details.AlignWithMargins := True;
-  FParts.Details.Margins.SetBounds(Gap, 0, Gap, 0);
+  FParts.Details.Margins.SetBounds(cGap, 0, cGap, 0);
   FParts.Details.ReadOnly := True;
   FParts.Details.ScrollBars := ssBoth;
   FParts.Details.WordWrap := False;
   FParts.Details.Font.Name := 'Consolas';
-  for mLine in ADetails do
-  begin
-    FParts.Details.Lines.Add(mLine);
+  FParts.Details.Lines.BeginUpdate;
+  try
+    for mLine in ADetails do
+    begin
+      FParts.Details.Lines.Add(mLine);
+    end;
+  finally
+    FParts.Details.Lines.EndUpdate;
   end;
 
   FParts.ExportButton := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.DiagExportMenu), ExportClick);
   FParts.ExportButton.Align := alBottom;
   FParts.ExportButton.AlignWithMargins := True;
-  FParts.ExportButton.Margins.SetBounds(Gap, Gap, Gap, Gap);
+  FParts.ExportButton.Margins.SetBounds(cGap, cGap, cGap, cGap);
   FParts.BugButton := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.SafeBugReport), BugClick);
   FParts.BugButton.Align := alBottom;
   FParts.BugButton.AlignWithMargins := True;
-  FParts.BugButton.Margins.SetBounds(Gap, 0, Gap, 0);
+  FParts.BugButton.Margins.SetBounds(cGap, 0, cGap, 0);
   FParts.BugButton.Visible := False;
 end;
 
@@ -240,13 +245,13 @@ begin
   Canvas.Font := Font;
   Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(24);
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, Gap, Gap div 2);
+  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
 end;
 
 procedure TAtlasSafeModeNotice.FitHeight;
 var
-  Index, Bottom, Extra: Integer;
-  Control: TControl;
+  mIndex, mBottom, mExtra: Integer;
+  mControl: TControl;
 begin
   HandleNeeded;
   // Umbrechende Beschriftungen messen erst mit Fenster richtig.
@@ -259,36 +264,36 @@ begin
   FParts.Buttons.AutoSize := False;
   FParts.Buttons.Height := ScaleValue(200);
   FParts.Buttons.Realign;
-  Bottom := 0;
-  for Index := 0 to FParts.Buttons.ControlCount - 1 do
+  mBottom := 0;
+  for mIndex := 0 to FParts.Buttons.ControlCount - 1 do
   begin
-    Control := FParts.Buttons.Controls[Index];
-    if Control.Visible then
+    mControl := FParts.Buttons.Controls[mIndex];
+    if mControl.Visible then
     begin
-      Bottom := Max(Bottom, Control.Top + Control.Height + Control.Margins.Bottom);
+      mBottom := Max(mBottom, mControl.Top + mControl.Height + mControl.Margins.Bottom);
     end;
   end;
-  FParts.Buttons.Height := Bottom;
+  FParts.Buttons.Height := mBottom;
   Realign;
-  Extra := 0;
+  mExtra := 0;
   if FParts.DetailsPanel.Visible then
   begin
-    Extra := ScaleValue(DetailsHeight);
+    mExtra := ScaleValue(cDetailsHeight);
   end;
-  ClientHeight := FParts.Buttons.Top + FParts.Buttons.Height + Gap + Extra;
+  ClientHeight := FParts.Buttons.Top + FParts.Buttons.Height + cGap + mExtra;
 end;
 
 procedure TAtlasSafeModeNotice.ShowIn(const AArea: TRect);
 begin
   FitHeight;
-  Left := AArea.Right - Width - Gap;
-  Top := AArea.Bottom - Height - Gap;
+  Left := AArea.Right - Width - cGap;
+  Top := AArea.Bottom - Height - cGap;
   // Nicht modal: Die IDE startet weiter, während der Hinweis offen ist.
   Show;
   // Beim Zeigen kann das Fenster auf die Skalierung des Bildschirms umgerechnet werden: neu messen,
   // unten bleibt unten.
   FitHeight;
-  Top := AArea.Bottom - Height - Gap;
+  Top := AArea.Bottom - Height - cGap;
 end;
 
 procedure TAtlasSafeModeNotice.Run(const AProc: TProc);
@@ -367,9 +372,9 @@ end;
 
 procedure TAtlasSafeModeNotice.ToggleDetails;
 var
-  Bottom: Integer;
+  mBottom: Integer;
 begin
-  Bottom := Top + Height;
+  mBottom := Top + Height;
   FParts.BugButton.Visible := Assigned(FHandlers.OnBugReport);
   FParts.ExportButton.Visible := Assigned(FHandlers.OnExportLog);
   FParts.DetailsPanel.Visible := not FParts.DetailsPanel.Visible;
@@ -377,7 +382,7 @@ begin
   // Unten bleibt unten: das Fenster wächst nach oben.
   if Visible then
   begin
-    Top := Bottom - Height;
+    Top := mBottom - Height;
   end;
 end;
 

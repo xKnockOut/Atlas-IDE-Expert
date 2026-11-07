@@ -353,7 +353,7 @@ begin
     end;
   finally
     System.SysUtils.DeleteFile(FileName);
-    System.SysUtils.DeleteFile(FileName + TAtlasDataFile.DefectExtension);
+    System.SysUtils.DeleteFile(FileName + TAtlasDataFile.cDefectExtension);
     TAtlasDataFile.ForgetReports;
   end;
 end;

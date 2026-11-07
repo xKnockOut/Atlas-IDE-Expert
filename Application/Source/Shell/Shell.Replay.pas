@@ -15,8 +15,8 @@
 //   Uri der Anfrage zeigt dorthin, initialize nennt nur diesen Ordner.
 // settings.json kommt in beiden Fällen aus dem Fall (Zugangsdaten sind dort
 // schon entfernt), nicht vom Benutzer. Vor der Anfrage wartet der Transport,
-// bis die Indizierung ruht ($/progress ohne offene Vorgänge für SettleQuietMs,
-// höchstens SettleMaxMs).
+// bis die Indizierung ruht ($/progress ohne offene Vorgänge für cSettleQuietMs,
+// höchstens cSettleMaxMs).
 // Ergebnis: „reproduziert“, wenn die Antwort wieder ein interner Fehler mit
 // derselben Ausnahmeklasse ist (beim Watchdog-Fall: wieder RequestCancelled
 // wegen des Zeitlimits), sonst „nicht reproduziert“. Der Server sichert beim
@@ -55,13 +55,13 @@ type
 
   TShellReplay = class
   public const
-    SettleQuietMs = 1500;
-    SettleMaxMs = 120000;
+    cSettleQuietMs = 1500;
+    cSettleMaxMs = 120000;
     /// <summary>So lange wartet das Nachstellen höchstens auf die Antwort (ohne Zeitlimit im Fall).</summary>
-    AnswerMs = 60000;
-    ExitReproduced = 1;
-    ExitNotReproduced = 0;
-    ExitUnreadable = 2;
+    cAnswerMs = 60000;
+    cExitReproduced = 1;
+    cExitNotReproduced = 0;
+    cExitUnreadable = 2;
   public
     /// <summary>Spielt ACase mit AServer nach; ALogger bekommt die Meldungen des Servers (nil = keine).</summary>
     class function Run(const ACase: TCrashCase; APlace: TReplayPlace; const ALogger: ILogger;
@@ -171,7 +171,7 @@ var
   mLast: UInt64;
 begin
   mStart := TThread.GetTickCount64;
-  while TThread.GetTickCount64 - mStart < TShellReplay.SettleMaxMs do
+  while TThread.GetTickCount64 - mStart < TShellReplay.cSettleMaxMs do
   begin
     System.TMonitor.Enter(FLock);
     try
@@ -180,7 +180,7 @@ begin
     finally
       System.TMonitor.Exit(FLock);
     end;
-    if (mOpen <= 0) and (TThread.GetTickCount64 - mLast >= TShellReplay.SettleQuietMs) then
+    if (mOpen <= 0) and (TThread.GetTickCount64 - mLast >= TShellReplay.cSettleQuietMs) then
     begin
       Exit;
     end;
@@ -333,7 +333,7 @@ end;
 function NewMessage(const AId: string; const AMethod: string; AParams: TJSONValue): TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('jsonrpc', TJsonRpcMessages.Version);
+  Result.AddPair('jsonrpc', TJsonRpcMessages.cVersion);
   if AId <> '' then
   begin
     Result.AddPair('id', AId);
@@ -453,11 +453,11 @@ begin
   ADetail := cTexts[TReplayText.Error].Fmt([mCode, mText]);
   if ACase.Kind = TCrashCaseKind.Timeout then
   begin
-    Result := mCode = TJsonRpcErrorCode.RequestCancelled;
+    Result := mCode = TJsonRpcErrorCode.cRequestCancelled;
   end
   else
   begin
-    Result := (mCode = TJsonRpcErrorCode.InternalError) and
+    Result := (mCode = TJsonRpcErrorCode.cInternalError) and
       ((ACase.ExceptionClass = '') or StartsText(ACase.ExceptionClass + ':', mText));
   end;
 end;
@@ -487,7 +487,7 @@ end;
 function NewReplayFolder: string;
 begin
   Result := TPath.Combine(TPath.GetTempPath, 'Atlas' + PathDelim + 'replay' + PathDelim +
-    FormatDateTime('yyyymmdd"-"hhnnsszzz', Now) + '-' + IntToStr(Random(1000000)));
+    FormatDateTime('yyyymmdd"-"hhnnsszzz', Now) + '-' + Copy(TGUID.NewGuid.ToString, 2, 8));
 end;
 
 /// <summary>Schreibt die Einstellungsdatei AName des Falls nach AFolder; False, wenn der Fall keine hat.</summary>
@@ -526,7 +526,7 @@ begin
   mFileName := ACase.SnapshotName;
   if mFileName = '' then
   begin
-    mFileName := TCrashCases.BufferName;
+    mFileName := TCrashCases.cBufferName;
   end;
   mFileName := TPath.Combine(ASetup.Folder, mFileName);
   if ACase.HasText then
@@ -645,7 +645,7 @@ begin
       IsolateCase(ACase, mSetup);
     end;
     mMessages := ReplayMessages(ACase, mSetup, mRequestIndex);
-    mTransport := TReplayTransport.Create(mMessages, mRequestIndex, AnswerMs + 2 * ACase.TimeoutMs);
+    mTransport := TReplayTransport.Create(mMessages, mRequestIndex, cAnswerMs + 2 * ACase.TimeoutMs);
     mTransportRef := mTransport;
     AServer(mTransportRef, mLogger, mSetup.SettingsFile);
     Judge(ACase, mTransport, Result);
@@ -676,11 +676,11 @@ class function TShellReplay.ExitCodeOf(const AResult: TReplayResult): Integer;
 begin
   case AResult.Outcome of
     TReplayOutcome.Reproduced:
-      Result := ExitReproduced;
+      Result := cExitReproduced;
     TReplayOutcome.NotReproduced:
-      Result := ExitNotReproduced;
+      Result := cExitNotReproduced;
   else
-    Result := ExitUnreadable;
+    Result := cExitUnreadable;
   end;
 end;
 

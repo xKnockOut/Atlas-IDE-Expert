@@ -36,7 +36,7 @@ type
 
   TAssertSideEffectRule = class(TInterfacedObject, IRule)
   public const
-    DefaultMutatingMethods: array[0..5] of string = ('Add', 'Delete', 'Remove', 'Extract', 'Clear', 'Insert');
+    cDefaultMutatingMethods: array[0..5] of string = ('Add', 'Delete', 'Remove', 'Extract', 'Clear', 'Insert');
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -71,6 +71,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.PureRoutines,
   Atlas.Common.Localization.Texts;
@@ -182,19 +183,19 @@ end;
 /// <summary>Index der zur öffnenden Klammer bei AOpen passenden schließenden; -1 ohne.</summary>
 function Closing(const ATokens: TTokens; AOpen: Integer): Integer;
 var
-  Depth: Integer;
+  mDepth: Integer;
 begin
-  Depth := 0;
+  mDepth := 0;
   for Result := AOpen to High(ATokens) do
   begin
     if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
     else if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
     begin
-      Dec(Depth);
-      if Depth = 0 then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
         Exit;
       end;
@@ -206,14 +207,14 @@ end;
 /// <summary>Code der Token AFirst..ALast ohne Kommentare, Wörter klein, mit Leerzeichen getrennt.</summary>
 function Normalized(const ATokens: TTokens; AFirst, ALast: Integer): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := AFirst to ALast do
+  for mIndex := AFirst to ALast do
   begin
-    if not IsTrivia(ATokens[Index]) then
+    if not IsTrivia(ATokens[mIndex]) then
     begin
-      Result := Result + ' ' + LowerCase(ATokens[Index].Text);
+      Result := Result + ' ' + LowerCase(ATokens[mIndex].Text);
     end;
   end;
 end;
@@ -221,34 +222,34 @@ end;
 /// <summary>Bezeichnerkette aus Bezeichnern, Punkten, Indizes und ^?</summary>
 function IsDesignator(const ATokens: TTokens; AFirst, ALast: Integer): Boolean;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   if (AFirst > ALast) or (ATokens[AFirst].Kind <> TPascalTokenKind.Identifier) then
   begin
     Exit(False);
   end;
-  Depth := 0;
-  for Index := AFirst to ALast do
+  mDepth := 0;
+  for mIndex := AFirst to ALast do
   begin
-    if IsTrivia(ATokens[Index]) then
+    if IsTrivia(ATokens[mIndex]) then
     begin
       Continue;
     end;
-    if ATokens[Index].IsSymbol('[') then
+    if ATokens[mIndex].IsSymbol('[') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if ATokens[Index].IsSymbol(']') then
+    else if ATokens[mIndex].IsSymbol(']') then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (Depth = 0) and not ((ATokens[Index].Kind = TPascalTokenKind.Identifier) or
-      ATokens[Index].IsSymbol('.') or ATokens[Index].IsSymbol('^')) then
+    else if (mDepth = 0) and not ((ATokens[mIndex].Kind = TPascalTokenKind.Identifier) or
+      ATokens[mIndex].IsSymbol('.') or ATokens[mIndex].IsSymbol('^')) then
     begin
       Exit(False);
     end;
   end;
-  Result := Depth = 0;
+  Result := mDepth = 0;
 end;
 
 function RangeOf(const ATokens: TTokens; AFirst, ALast: Integer): TTextRange;
@@ -259,28 +260,28 @@ end;
 /// <summary>Grenzen der Argumente zwischen AOpen und AClose (Klammern) auf oberster Ebene.</summary>
 function Arguments(const ATokens: TTokens; AOpen, AClose: Integer): TArray<TSpan>;
 var
-  Index, Depth, Start: Integer;
-  Span: TSpan;
+  mIndex, mDepth, mStart: Integer;
+  mSpan: TSpan;
 begin
   Result := nil;
-  Depth := 0;
-  Start := AOpen + 1;
-  for Index := AOpen + 1 to AClose do
+  mDepth := 0;
+  mStart := AOpen + 1;
+  for mIndex := AOpen + 1 to AClose do
   begin
-    if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
+    if ATokens[mIndex].IsSymbol('(') or ATokens[mIndex].IsSymbol('[') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if (ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']')) and (Index < AClose) then
+    else if (ATokens[mIndex].IsSymbol(')') or ATokens[mIndex].IsSymbol(']')) and (mIndex < AClose) then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (Depth = 0) and (ATokens[Index].IsSymbol(',') or (Index = AClose)) then
+    else if (mDepth = 0) and (ATokens[mIndex].IsSymbol(',') or (mIndex = AClose)) then
     begin
-      Span.First := Start;
-      Span.Last := Index - 1;
-      Result := Result + [Span];
-      Start := Index + 1;
+      mSpan.First := mStart;
+      mSpan.Last := mIndex - 1;
+      Result := Result + [mSpan];
+      mStart := mIndex + 1;
     end;
   end;
 end;
@@ -472,19 +473,19 @@ end;
 /// <summary>Beginnt der Ausdruck bei AIndex mit dem Aufruf AName( und endet er vor AStop?</summary>
 function IsCallUntil(const ATokens: TTokens; AIndex, AStop: Integer; const AName: string): Boolean;
 var
-  Open: Integer;
+  mOpen: Integer;
 begin
   Result := False;
   if (AIndex > High(ATokens)) or not SameText(ATokens[AIndex].Text, AName) then
   begin
     Exit;
   end;
-  Open := NextCode(ATokens, AIndex + 1);
-  if (Open > High(ATokens)) or not ATokens[Open].IsSymbol('(') then
+  mOpen := NextCode(ATokens, AIndex + 1);
+  if (mOpen > High(ATokens)) or not ATokens[mOpen].IsSymbol('(') then
   begin
     Exit;
   end;
-  Result := NextCode(ATokens, Closing(ATokens, Open) + 1) = AStop;
+  Result := NextCode(ATokens, Closing(ATokens, mOpen) + 1) = AStop;
 end;
 
 /// <summary>Wert eines einzelnen Zeichens (#13 bzw. 'a'); False für anderes.</summary>
@@ -694,45 +695,45 @@ end;
 
 procedure TExceptionNotRaisedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
-  Index, Dot, Ctor, Stop, Before: Integer;
+  mTokens: TTokens;
+  mIndex, mDot, mCtor, mStop, mBefore: Integer;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  for Index := 0 to High(Tokens) do
+  mTokens := AContext.Tree.Tokens;
+  for mIndex := 0 to High(mTokens) do
   begin
-    if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or not IsExceptionClass(Tokens[Index].Text) then
+    if (mTokens[mIndex].Kind <> TPascalTokenKind.Identifier) or not IsExceptionClass(mTokens[mIndex].Text) then
     begin
       Continue;
     end;
-    Before := PreviousCode(Tokens, Index);
-    if not EndsStatement(Tokens, Before) then
+    mBefore := PreviousCode(mTokens, mIndex);
+    if not EndsStatement(mTokens, mBefore) then
     begin
       Continue;
     end;
-    Dot := NextCode(Tokens, Index + 1);
-    Ctor := NextCode(Tokens, Dot + 1);
-    if (Ctor > High(Tokens)) or not Tokens[Dot].IsSymbol('.') or not StartsText('Create', Tokens[Ctor].Text) then
+    mDot := NextCode(mTokens, mIndex + 1);
+    mCtor := NextCode(mTokens, mDot + 1);
+    if (mCtor > High(mTokens)) or not mTokens[mDot].IsSymbol('.') or not StartsText('Create', mTokens[mCtor].Text) then
     begin
       Continue;
     end;
-    Stop := NextCode(Tokens, Ctor + 1);
-    if (Stop <= High(Tokens)) and Tokens[Stop].IsSymbol('(') then
+    mStop := NextCode(mTokens, mCtor + 1);
+    if (mStop <= High(mTokens)) and mTokens[mStop].IsSymbol('(') then
     begin
-      Stop := NextCode(Tokens, Closing(Tokens, Stop) + 1);
+      mStop := NextCode(mTokens, Closing(mTokens, mStop) + 1);
     end;
-    if not IsStatementEnd(Tokens, Stop) then
+    if not IsStatementEnd(mTokens, mStop) then
     begin
       Continue;
     end;
-    AReport.Add(RangeOf(Tokens, Index, PreviousCode(Tokens, Stop)),
-      cTexts[TRtlPatternsText.NotRaised].Fmt([Tokens[Index].Text]), TRuleConfidence.High,
+    AReport.Add(RangeOf(mTokens, mIndex, PreviousCode(mTokens, mStop)),
+      cTexts[TRtlPatternsText.NotRaised].Fmt([mTokens[mIndex].Text]), TRuleConfidence.High,
       [TRuleFix.Create(cTexts[TRtlPatternsText.PrependRaise].Text,
-        [TRuleEdit.Create(TTextRange.Create(Tokens[Index].StartPos,
-      Tokens[Index].StartPos), 'raise ')], True)]);
+        [TRuleEdit.Create(TTextRange.Create(mTokens[mIndex].StartPos,
+      mTokens[mIndex].StartPos), 'raise ')], True)]);
   end;
 end;
 
@@ -746,35 +747,35 @@ end;
 
 class function TAssertSideEffectRule.MutatingMethods(const AOptions: string): TArray<string>;
 var
-  Value: TJSONValue;
-  Items: TJSONArray;
-  Item: TJSONValue;
-  Index: Integer;
+  mValue: TJSONValue;
+  mItems: TJSONArray;
+  mItem: TJSONValue;
+  mIndex: Integer;
 begin
-  SetLength(Result, Length(DefaultMutatingMethods));
-  for Index := 0 to High(DefaultMutatingMethods) do
+  SetLength(Result, Length(cDefaultMutatingMethods));
+  for mIndex := 0 to High(cDefaultMutatingMethods) do
   begin
-    Result[Index] := DefaultMutatingMethods[Index];
+    Result[mIndex] := cDefaultMutatingMethods[mIndex];
   end;
   if Trim(AOptions) = '' then
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(AOptions);
+  mValue := TJSONObject.ParseJSONValue(AOptions);
   try
-    if (Value is TJSONObject) and TJSONObject(Value).TryGetValue<TJSONArray>('mutatingMethods', Items) then
+    if (mValue is TJSONObject) and TJSONObject(mValue).TryGetValue<TJSONArray>('mutatingMethods', mItems) then
     begin
       Result := nil;
-      for Item in Items do
+      for mItem in mItems do
       begin
-        if Item is TJSONString then
+        if mItem is TJSONString then
         begin
-          Result := Result + [Item.Value];
+          Result := Result + [mItem.Value];
         end;
       end;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -875,26 +876,26 @@ end;
 /// <summary>Namen, die die Bedingung auf nil prüft: Assigned(X), X &lt;&gt; nil.</summary>
 function CheckedNames(const ATokens: TTokens; AFirst, ALast: Integer): TArray<string>;
 var
-  Index, Next, Name: Integer;
+  mIndex, mNext, mName: Integer;
 begin
   Result := nil;
-  for Index := AFirst to ALast do
+  for mIndex := AFirst to ALast do
   begin
-    Next := NextCode(ATokens, Index + 1);
-    if SameText(ATokens[Index].Text, 'Assigned') and (Next <= ALast) and ATokens[Next].IsSymbol('(') then
+    mNext := NextCode(ATokens, mIndex + 1);
+    if SameText(ATokens[mIndex].Text, 'Assigned') and (mNext <= ALast) and ATokens[mNext].IsSymbol('(') then
     begin
-      Name := NextCode(ATokens, Next + 1);
-      if Name <= ALast then
+      mName := NextCode(ATokens, mNext + 1);
+      if mName <= ALast then
       begin
-        Result := Result + [LowerCase(ATokens[Name].Text)];
+        Result := Result + [LowerCase(ATokens[mName].Text)];
       end;
     end
-    else if ATokens[Index].IsKeyword('nil') then
+    else if ATokens[mIndex].IsKeyword('nil') then
     begin
-      Name := PreviousCode(ATokens, PreviousCode(ATokens, Index));
-      if (Name >= AFirst) and (ATokens[Name].Kind = TPascalTokenKind.Identifier) then
+      mName := PreviousCode(ATokens, PreviousCode(ATokens, mIndex));
+      if (mName >= AFirst) and (ATokens[mName].Kind = TPascalTokenKind.Identifier) then
       begin
-        Result := Result + [LowerCase(ATokens[Name].Text)];
+        Result := Result + [LowerCase(ATokens[mName].Text)];
       end;
     end;
   end;
@@ -904,15 +905,15 @@ end;
 /// Methoden eines Objekts (X.Name()) zählen nicht dazu.</summary>
 function PureCall(const ATokens: TTokens; AName: Integer): Boolean;
 var
-  Dot, Owner: Integer;
+  mDot, mOwner: Integer;
 begin
-  Dot := PreviousCode(ATokens, AName);
-  if (Dot < 0) or not ATokens[Dot].IsSymbol('.') then
+  mDot := PreviousCode(ATokens, AName);
+  if (mDot < 0) or not ATokens[mDot].IsSymbol('.') then
   begin
     Exit(TPureRoutines.IsPure(ATokens[AName].Text));
   end;
-  Owner := PreviousCode(ATokens, Dot);
-  Result := (Owner >= 0) and TPureRoutines.IsPure(ATokens[Owner].Text + '.' + ATokens[AName].Text);
+  mOwner := PreviousCode(ATokens, mDot);
+  Result := (mOwner >= 0) and TPureRoutines.IsPure(ATokens[mOwner].Text + '.' + ATokens[AName].Text);
 end;
 
 /// <summary>Quelltext der Token AFirst..ALast ungekürzt.</summary>
@@ -1042,35 +1043,85 @@ begin
     True);
 end;
 
+/// <summary>Steht AOffset in der Deklaration eines Aufzählungstyps? Ein Wert Random dort ist kein Aufruf
+/// (TTexte = (…, Random) unter SCOPEDENUMS löst der Index nicht als eigenen Namen auf).</summary>
+function InEnumDeclaration(ATree: TSyntaxTree; AOffset: Integer): Boolean;
+var
+  mOffset: Integer;
+begin
+  mOffset := AOffset;
+  Result := ATree.Root.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if (ANode.StartOffset > mOffset) or (ANode.EndOffset < mOffset) then
+      begin
+        Result := TSyntaxSearchStep.Skip;
+      end
+      else if ANode.Kind = TSyntaxKind.EnumType then
+      begin
+        Result := TSyntaxSearchStep.Found;
+      end;
+    end) <> nil;
+end;
+
+/// <summary>Meint Random bei AIndex etwas Eigenes (Aufzählungswert, lokale Routine) statt System.Random?</summary>
+function IsOwnRandom(const AContext: TRuleContext; const ATokens: TTokens; AIndex: Integer;
+  var ACache: IRuleDerivedCache): Boolean;
+var
+  mSymbol: TResolvedSymbol;
+begin
+  if ACache = nil then
+  begin
+    ACache := TRuleDerived.Open(AContext);
+  end;
+  mSymbol := TRuleDerived.Resolver(ACache, AContext).ResolveChain(AContext.Tree, AContext.RelativePath, ['Random'],
+    ATokens[AIndex].Offset, False);
+  Result := (mSymbol.Kind = TResolvedKind.Local) or
+    ((mSymbol.Kind = TResolvedKind.Symbol) and not SameText(mSymbol.UnitName, 'System'));
+end;
+
+/// <summary>Steht bei AIndex ein Aufruf von System.Random (unqualifiziert, kein Aufzählungswert, nichts
+/// Eigenes)?</summary>
+function IsSystemRandom(const AContext: TRuleContext; const ATokens: TTokens; AIndex: Integer;
+  var ACache: IRuleDerivedCache): Boolean;
+begin
+  Result := SameText(ATokens[AIndex].Text, 'Random') and
+    ((AIndex = 0) or not ATokens[PreviousCode(ATokens, AIndex)].IsSymbol('.')) and
+    not InEnumDeclaration(AContext.Tree, ATokens[AIndex].Offset) and
+    not IsOwnRandom(AContext, ATokens, AIndex, ACache);
+end;
+
 procedure TRandomWithoutRandomizeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
-  Index, First: Integer;
+  mTokens: TTokens;
+  mIndex, mFirst: Integer;
+  mCache: IRuleDerivedCache;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  First := -1;
-  for Index := 0 to High(Tokens) do
+  mTokens := AContext.Tree.Tokens;
+  mFirst := -1;
+  mCache := nil;
+  for mIndex := 0 to High(mTokens) do
   begin
-    if Tokens[Index].Kind = TPascalTokenKind.Identifier then
+    if mTokens[mIndex].Kind = TPascalTokenKind.Identifier then
     begin
-      if SameText(Tokens[Index].Text, 'Randomize') then
+      if SameText(mTokens[mIndex].Text, 'Randomize') then
       begin
         Exit;
       end
-      else if (First < 0) and SameText(Tokens[Index].Text, 'Random') and
-        ((Index = 0) or not Tokens[PreviousCode(Tokens, Index)].IsSymbol('.')) then
+      else if (mFirst < 0) and IsSystemRandom(AContext, mTokens, mIndex, mCache) then
       begin
-        First := Index;
+        mFirst := mIndex;
       end;
     end;
   end;
-  if First >= 0 then
+  if mFirst >= 0 then
   begin
-    AReport.Add(RangeOf(Tokens, First, First), cTexts[TRtlPatternsText.Random].Text, TRuleConfidence.Low);
+    AReport.Add(RangeOf(mTokens, mFirst, mFirst), cTexts[TRtlPatternsText.Random].Text, TRuleConfidence.Low);
   end;
 end;
 

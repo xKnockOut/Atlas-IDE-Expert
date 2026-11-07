@@ -52,7 +52,7 @@ type
       const ADone: TProc); static;
   public const
     /// <summary>Zeitlimit je Aufruf beim Anlegen (wie „Beginnen“, #765); vcs.timeoutSeconds, wenn größer.</summary>
-    TimeoutMs = 30000;
+    cTimeoutMs = 30000;
   private
     class var FServerCommand: TFunc<string, Boolean>;
   public
@@ -225,7 +225,7 @@ begin
       if not TAtlasIdeVcs.Run(
         procedure
         begin
-          TAtlasVcsBranchPlan.InspectServer(TAtlasIdeVcs.ForFolder(mFolder, TAtlasIdeVcs.AtLeast(TimeoutMs)), mFacts);
+          TAtlasVcsBranchPlan.InspectServer(TAtlasIdeVcs.ForFolder(mFolder, TAtlasIdeVcs.AtLeast(cTimeoutMs)), mFacts);
         end,
         procedure
         begin
@@ -255,7 +255,7 @@ end;
 
 class procedure TAtlasIdeBranching.RebuildIndex;
 begin
-  if not Assigned(FServerCommand) or not FServerCommand(TAtlasSetupChecklist.RebuildCommand) then
+  if not Assigned(FServerCommand) or not FServerCommand(TAtlasSetupChecklist.cRebuildCommand) then
   begin
     Exit;
   end;
@@ -456,7 +456,7 @@ begin
       mKind: TAtlasVcsKind;
       mItems: TArray<TAtlasVcsChange>;
     begin
-      mVcs := TAtlasIdeVcs.ForFolder(mFolder, TAtlasIdeVcs.AtLeast(TimeoutMs));
+      mVcs := TAtlasIdeVcs.ForFolder(mFolder, TAtlasIdeVcs.AtLeast(cTimeoutMs));
       mKind := TAtlasVcsKind.None;
       if mVcs <> nil then
       begin
@@ -529,7 +529,7 @@ var
   mVcs: IAtlasVersionControl;
   mBranching: IAtlasVcsBranching;
 begin
-  mVcs := TAtlasIdeVcs.ForFolder(FFolder, TAtlasIdeVcs.AtLeast(TAtlasIdeBranching.TimeoutMs));
+  mVcs := TAtlasIdeVcs.ForFolder(FFolder, TAtlasIdeVcs.AtLeast(TAtlasIdeBranching.cTimeoutMs));
   if (mVcs = nil) or not Supports(mVcs, IAtlasVcsBranching, mBranching) then
   begin
     FRun.Outcome := TAtlasVcsOutcome.NoWorkingCopy;

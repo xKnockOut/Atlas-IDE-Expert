@@ -70,24 +70,24 @@ end;
 
 class function TDocumentUris.Key(const AUri: string; const ACanonicalize: TPathCanonicalizer): string;
 var
-  Path: string;
+  mPath: string;
 begin
-  Path := ToPath(AUri);
-  if Path = '' then
+  mPath := ToPath(AUri);
+  if mPath = '' then
   begin
     Exit(AUri);
   end;
-  Path := NormalizePath(Path);
+  mPath := NormalizePath(mPath);
   if Assigned(ACanonicalize) then
   begin
-    Path := NormalizePath(ACanonicalize(Path));
+    mPath := NormalizePath(ACanonicalize(mPath));
   end;
   // Windows-Dateisysteme unterscheiden Groß-/Kleinschreibung nicht.
-  if TTextUris.IsWindowsPath(Path) then
+  if TTextUris.IsWindowsPath(mPath) then
   begin
-    Path := AnsiLowerCase(Path);
+    mPath := AnsiLowerCase(mPath);
   end;
-  Result := 'file:' + Path;
+  Result := 'file:' + mPath;
 end;
 
 class function TDocumentUris.SameFile(const AUriA, AUriB: string): Boolean;

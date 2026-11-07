@@ -26,7 +26,8 @@ type
     /// nicht rekursiv.</summary>
     class function PathFiles(const APaths: TArray<string>; const AListUnits: TIndexListUnits;
       const AExcluded: TIndexExcluded; const ASkip: TArray<string>): TArray<string>; static;
-    /// <summary>ABdsVersion wie in der Registry, z. B. '23.0' für Delphi 12 (ergibt VER360); '' = ohne VERxxx.</summary>
+    /// <summary>ABdsVersion wie in der Registry, z. B. '23.0' für Delphi 12 (ergibt VER360); '' = ohne
+    /// VERxxx.</summary>
     class function Defines(const AProject: TProjectInfo; const ABdsVersion: string): TArray<string>; static;
     /// <summary>Schlüssel für Projekt, Konfiguration, Plattform, Version, Symbole, Suchpfade und Namespaces;
     /// gleicher Schlüssel, gleicher Index. Ändert sich einer davon, gilt der Cache nicht mehr.</summary>
@@ -48,123 +49,124 @@ uses
 /// <summary>Symbole in Großschreibung, sortiert: Reihenfolge und Schreibweise ändern den Index nicht.</summary>
 function SortedKey(const AItems: TArray<string>): string;
 var
-  Items: TArray<string>;
-  Index: Integer;
+  mItems: TArray<string>;
+  mIndex: Integer;
 begin
-  SetLength(Items, Length(AItems));
-  for Index := 0 to High(AItems) do
+  SetLength(mItems, Length(AItems));
+  for mIndex := 0 to High(AItems) do
   begin
-    Items[Index] := UpperCase(Trim(AItems[Index]));
+    mItems[mIndex] := UpperCase(Trim(AItems[mIndex]));
   end;
-  TArray.Sort<string>(Items);
-  Result := String.Join(';', Items);
+  TArray.Sort<string>(mItems);
+  Result := String.Join(';', mItems);
 end;
 
 { TIndexProjectFiles }
 
 class function TIndexProjectFiles.Files(const AProject: TProjectInfo): TArray<string>;
 var
-  Found: TList<string>;
-  Seen: TDictionary<string, Boolean>;
-  ProjectUnit: TProjectUnit;
+  mFound: TList<string>;
+  mSeen: TDictionary<string, Boolean>;
+  mProjectUnit: TProjectUnit;
 
   procedure AddFile(const AFileName: string);
   begin
-    if (AFileName <> '') and not Seen.ContainsKey(AnsiUpperCase(AFileName)) then
+    if (AFileName <> '') and not mSeen.ContainsKey(AnsiUpperCase(AFileName)) then
     begin
-      Seen.Add(AnsiUpperCase(AFileName), True);
-      Found.Add(AFileName);
+      mSeen.Add(AnsiUpperCase(AFileName), True);
+      mFound.Add(AFileName);
     end;
   end;
 
 begin
-  Found := TList<string>.Create;
-  Seen := TDictionary<string, Boolean>.Create;
+  mFound := TList<string>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
     AddFile(AProject.MainSource);
-    for ProjectUnit in AProject.Units do
+    for mProjectUnit in AProject.Units do
     begin
-      AddFile(ProjectUnit.FileName);
+      AddFile(mProjectUnit.FileName);
     end;
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Seen.Free;
-    Found.Free;
+    mSeen.Free;
+    mFound.Free;
   end;
 end;
 
 class function TIndexProjectFiles.PathFiles(const APaths: TArray<string>; const AListUnits: TIndexListUnits;
   const AExcluded: TIndexExcluded; const ASkip: TArray<string>): TArray<string>;
 var
-  Found: TList<string>;
-  Seen, Folders: TDictionary<string, Boolean>;
-  Folder, Key, FileName: string;
-  Units: TArray<string>;
+  mFound: TList<string>;
+  mSeen, mFolders: TDictionary<string, Boolean>;
+  mFolder, mKey, mFileName: string;
+  mUnits: TArray<string>;
 begin
-  Found := TList<string>.Create;
-  Seen := TDictionary<string, Boolean>.Create;
-  Folders := TDictionary<string, Boolean>.Create;
+  mFound := TList<string>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
+  mFolders := TDictionary<string, Boolean>.Create;
   try
-    for FileName in ASkip do
+    for mFileName in ASkip do
     begin
-      Seen.AddOrSetValue(AnsiUpperCase(FileName), True);
+      mSeen.AddOrSetValue(AnsiUpperCase(mFileName), True);
     end;
-    for Folder in APaths do
+    for mFolder in APaths do
     begin
-      Key := AnsiUpperCase(ExcludeTrailingPathDelimiter(Trim(Folder)));
-      if (Key = '') or Folders.ContainsKey(Key) then
+      mKey := AnsiUpperCase(ExcludeTrailingPathDelimiter(Trim(mFolder)));
+      if (mKey = '') or mFolders.ContainsKey(mKey) then
       begin
         Continue;
       end;
-      Folders.Add(Key, True);
-      Units := AListUnits(ExcludeTrailingPathDelimiter(Trim(Folder)));
-      TArray.Sort<string>(Units);
-      for FileName in Units do
+      mFolders.Add(mKey, True);
+      mUnits := AListUnits(ExcludeTrailingPathDelimiter(Trim(mFolder)));
+      TArray.Sort<string>(mUnits);
+      for mFileName in mUnits do
       begin
-        Key := AnsiUpperCase(FileName);
-        if Seen.ContainsKey(Key) then
+        mKey := AnsiUpperCase(mFileName);
+        if mSeen.ContainsKey(mKey) then
         begin
           Continue;
         end;
-        Seen.Add(Key, True);
-        if Assigned(AExcluded) and AExcluded(FileName) then
+        mSeen.Add(mKey, True);
+        if Assigned(AExcluded) and AExcluded(mFileName) then
         begin
           Continue;
         end;
-        Found.Add(FileName);
+        mFound.Add(mFileName);
       end;
     end;
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Folders.Free;
-    Seen.Free;
-    Found.Free;
+    mFolders.Free;
+    mSeen.Free;
+    mFound.Free;
   end;
 end;
 
 class function TIndexProjectFiles.Defines(const AProject: TProjectInfo; const ABdsVersion: string): TArray<string>;
 var
-  Version: Double;
+  mVersion: Double;
 begin
-  if not TryStrToFloat(ABdsVersion, Version, TFormatSettings.Invariant) then
+  if not TryStrToFloat(ABdsVersion, mVersion, TFormatSettings.Invariant) then
   begin
-    Version := 0;
+    mVersion := 0;
   end;
   // Dazu die Schalterstände für $IFOPT ("$R+", #847).
   Result := AProject.Defines + TPascalPreprocessor.PredefinedSymbols(AProject.Platform,
-    TPascalPreprocessor.CompilerVersionOfBds(Version)) + TPascalPreprocessor.ProjectSwitches(AProject.Properties);
+    TPascalPreprocessor.CompilerVersionOfBds(mVersion)) + TPascalPreprocessor.ProjectSwitches(AProject.Properties);
 end;
 
 class function TIndexProjectFiles.LibraryDefines(const AProject: TProjectInfo;
   const ABdsVersion: string): TArray<string>;
 var
-  Version: Double;
+  mVersion: Double;
 begin
-  if not TryStrToFloat(ABdsVersion, Version, TFormatSettings.Invariant) then
+  if not TryStrToFloat(ABdsVersion, mVersion, TFormatSettings.Invariant) then
   begin
-    Version := 0;
+    mVersion := 0;
   end;
-  Result := TPascalPreprocessor.PredefinedSymbols(AProject.Platform, TPascalPreprocessor.CompilerVersionOfBds(Version));
+  Result := TPascalPreprocessor.PredefinedSymbols(AProject.Platform,
+    TPascalPreprocessor.CompilerVersionOfBds(mVersion));
 end;
 
 class function TIndexProjectFiles.LibrarySignature(const AProject: TProjectInfo;

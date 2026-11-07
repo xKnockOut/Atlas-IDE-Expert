@@ -56,7 +56,7 @@ type
   /// <summary>Nimmt atlas/ideTypes an und hält den Katalog.</summary>
   TLspIdeTypes = class
   public const
-    Method = 'atlas/ideTypes';
+    cMethod = 'atlas/ideTypes';
   private
     FCatalog: TIdeTypeCatalog;
     // Hält FCatalog am Leben, solange Regeldienste ihn über IRuleIdeTypes teilen.
@@ -247,7 +247,7 @@ end;
 
 procedure TLspIdeTypes.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterNotification(Method, HandleNotification);
+  ADispatcher.RegisterNotification(cMethod, HandleNotification);
 end;
 
 procedure TLspIdeTypes.HandleNotification(const AParams: TJSONValue);

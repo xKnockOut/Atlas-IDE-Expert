@@ -54,35 +54,35 @@ const
 
 function InlineAction(ATree: TSyntaxTree; const ASymbol: TReassignedSymbol; out AAction: TCodeAction): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Keyword, Assign: Integer;
+  mTokens: TArray<TPascalToken>;
+  mKeyword, mAssign: Integer;
 begin
   Result := False;
   if not ASymbol.Initialized or (Pos(',', ASymbol.Decl.Name) > 0) then
   begin
     Exit;
   end;
-  Tokens := ATree.Tokens;
-  Keyword := TRoutineBody.TokenAt(Tokens, ASymbol.Decl.StartOffset);
-  if (Keyword > High(Tokens)) or not Tokens[Keyword].IsKeyword('var') then
+  mTokens := ATree.Tokens;
+  mKeyword := TRoutineBody.TokenAt(mTokens, ASymbol.Decl.StartOffset);
+  if (mKeyword > High(mTokens)) or not mTokens[mKeyword].IsKeyword('var') then
   begin
     Exit;
   end;
-  Assign := Keyword;
-  while (Assign <= High(Tokens)) and (Tokens[Assign].Offset < ASymbol.Decl.EndOffset) and
-    not Tokens[Assign].IsSymbol(':=') do
+  mAssign := mKeyword;
+  while (mAssign <= High(mTokens)) and (mTokens[mAssign].Offset < ASymbol.Decl.EndOffset) and
+    not mTokens[mAssign].IsSymbol(':=') do
   begin
-    Inc(Assign);
+    Inc(mAssign);
   end;
-  if (Assign > High(Tokens)) or (Tokens[Assign].Offset >= ASymbol.Decl.EndOffset) then
+  if (mAssign > High(mTokens)) or (mTokens[mAssign].Offset >= ASymbol.Decl.EndOffset) then
   begin
     Exit;
   end;
   AAction := Default(TCodeAction);
   AAction.Title := cTexts[TSuggestConstText.DeclareAsConstantConst].Fmt([ASymbol.Name]);
-  AAction.Kind := RewriteKind;
-  AAction.Edits := [TTextEdit.Create(TTextRange.Create(Tokens[Keyword].StartPos, Tokens[Keyword].EndPos), 'const'),
-    TTextEdit.Create(TTextRange.Create(Tokens[Assign].StartPos, Tokens[Assign].EndPos), '=')];
+  AAction.Kind := cRewriteKind;
+  AAction.Edits := [TTextEdit.Create(TTextRange.Create(mTokens[mKeyword].StartPos, mTokens[mKeyword].EndPos), 'const'),
+    TTextEdit.Create(TTextRange.Create(mTokens[mAssign].StartPos, mTokens[mAssign].EndPos), '=')];
   Result := True;
 end;
 
@@ -141,63 +141,63 @@ end;
 function SectionAction(const AText: string; ATree: TSyntaxTree; const ASymbol: TReassignedSymbol;
   out AAction: TCodeAction): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Statement: TSyntaxNode;
-  Assign: Integer;
-  TypeText: string;
-  Edits: TArray<TTextEdit>;
+  mTokens: TArray<TPascalToken>;
+  mStatement: TSyntaxNode;
+  mAssign: Integer;
+  mTypeText: string;
+  mEdits: TArray<TTextEdit>;
 begin
   Result := False;
-  Statement := ConstStatement(ASymbol);
-  if Statement = nil then
+  mStatement := ConstStatement(ASymbol);
+  if mStatement = nil then
   begin
     Exit;
   end;
-  TypeText := Trim(TRoutineLocals.TypeChildText(AText, ASymbol.Decl));
-  if TypeText = '' then
+  mTypeText := Trim(TRoutineLocals.TypeChildText(AText, ASymbol.Decl));
+  if mTypeText = '' then
   begin
     Exit;
   end;
-  Tokens := ATree.Tokens;
-  Assign := TRoutineBody.TokenAt(Tokens, Statement[0].EndOffset);
-  while (Assign <= High(Tokens)) and (Tokens[Assign].Offset < Statement.EndOffset) and
-    not Tokens[Assign].IsSymbol(':=') do
+  mTokens := ATree.Tokens;
+  mAssign := TRoutineBody.TokenAt(mTokens, mStatement[0].EndOffset);
+  while (mAssign <= High(mTokens)) and (mTokens[mAssign].Offset < mStatement.EndOffset) and
+    not mTokens[mAssign].IsSymbol(':=') do
   begin
-    Inc(Assign);
+    Inc(mAssign);
   end;
-  if (Assign > High(Tokens)) or (Tokens[Assign].Offset >= Statement.EndOffset) then
+  if (mAssign > High(mTokens)) or (mTokens[mAssign].Offset >= mStatement.EndOffset) then
   begin
     Exit;
   end;
-  Edits := [TTextEdit.Create(TTextRange.Create(Statement.StartPos, Tokens[Assign].EndPos),
-    Format('const %s: %s =', [ASymbol.Name, TypeText]))];
-  TRoutineLocals.RemoveVariables(ATree, ASymbol.Decl, [ASymbol.Name], Edits);
+  mEdits := [TTextEdit.Create(TTextRange.Create(mStatement.StartPos, mTokens[mAssign].EndPos),
+    Format('const %s: %s =', [ASymbol.Name, mTypeText]))];
+  TRoutineLocals.RemoveVariables(ATree, ASymbol.Decl, [ASymbol.Name], mEdits);
   AAction := Default(TCodeAction);
   AAction.Title := cTexts[TSuggestConstText.DeclareAsConstantConst].Fmt([ASymbol.Name]);
-  AAction.Kind := RewriteKind;
-  AAction.Edits := Edits;
+  AAction.Kind := cRewriteKind;
+  AAction.Edits := mEdits;
   Result := True;
 end;
 
 class function TSuggestConst.Action(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   const ALookup: TFlowSignatureLookup; out AAction: TCodeAction): Boolean;
 var
-  Symbol: TReassignedSymbol;
+  mSymbol: TReassignedSymbol;
 begin
   AAction := Default(TCodeAction);
   Result := False;
-  if (ATree = nil) or not TReassigned.SymbolAt(TReassigned.Analyze(AText, ATree, ALookup), APosition, Symbol) or
-    not Symbol.IsConstCandidate then
+  if (ATree = nil) or not TReassigned.SymbolAt(TReassigned.Analyze(AText, ATree, ALookup), APosition, mSymbol) or
+    not mSymbol.IsConstCandidate then
   begin
     Exit;
   end;
-  if Symbol.Kind = TReassignedKind.InlineVariable then
+  if mSymbol.Kind = TReassignedKind.InlineVariable then
   begin
-    Result := InlineAction(ATree, Symbol, AAction);
+    Result := InlineAction(ATree, mSymbol, AAction);
   end
-  else if Symbol.Decl.Kind = TSyntaxKind.VarDecl then
+  else if mSymbol.Decl.Kind = TSyntaxKind.VarDecl then
   begin
-    Result := SectionAction(AText, ATree, Symbol, AAction);
+    Result := SectionAction(AText, ATree, mSymbol, AAction);
   end;
 end;
 

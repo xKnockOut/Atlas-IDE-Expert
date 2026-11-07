@@ -66,10 +66,10 @@ end;
 
 procedure TShellConversionRefactorings.Register(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspInvertBoolean.ApplyCommand, InvertBoolean);
-  ACommands.Register(TLspPromoteVariable.ApplyCommand, PromoteVariable);
-  ACommands.Register(TLspAnonymousMethods.ApplyCommand, AnonymousMethod);
-  ACommands.Register(TLspMethodWithoutSelf.ApplyCommand, MethodKind);
+  ACommands.Register(TLspInvertBoolean.cApplyCommand, InvertBoolean);
+  ACommands.Register(TLspPromoteVariable.cApplyCommand, PromoteVariable);
+  ACommands.Register(TLspAnonymousMethods.cApplyCommand, AnonymousMethod);
+  ACommands.Register(TLspMethodWithoutSelf.cApplyCommand, MethodKind);
 end;
 
 function TShellConversionRefactorings.Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;

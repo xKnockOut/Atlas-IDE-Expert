@@ -20,7 +20,7 @@ uses
   Atlas.Common.Rules.Contract;
 
 const
-  TypeInfoInvalidRuleId = 'typeinfo-invalid';
+  cTypeInfoInvalidRuleId = 'typeinfo-invalid';
 
 type
   TTypeInfoInvalidRule = class(TInterfacedObject, IRule)
@@ -77,7 +77,8 @@ const
 
 type
   /// <summary>Was ein Name an einer Stelle sicher ist: nichts in der Datei gefunden, Variable (auch Parameter,
-  /// Feld, Property, Result), Typ, etwas anderes oder unsicher (with, Helfer, fremde Klasse, bedingte Zweige).</summary>
+  /// Feld, Property, Result), Typ, etwas anderes oder unsicher (with, Helfer, fremde Klasse, bedingte
+  /// Zweige).</summary>
   TNameMeaning = (NotFound, Variable, TypeName, Other, Uncertain);
 
   /// <summary>Ergebnis der Auflösung: Bedeutung, Deklaration und – bei Variablen – der Typknoten oder nil.</summary>
@@ -98,11 +99,11 @@ end;
 /// <summary>Kommt AName in der Namensliste ANames ("A,B") vor?</summary>
 function InNameList(const ANames, AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in SplitString(ANames, ',') do
+  for mName in SplitString(ANames, ',') do
   begin
-    if SameText(Trim(Name), AName) then
+    if SameText(Trim(mName), AName) then
     begin
       Exit(True);
     end;
@@ -113,15 +114,15 @@ end;
 /// <summary>Erster Kindknoten, der einen Typ beschreibt (TypeReference, ArrayType …), nil ohne.</summary>
 function TypeChild(ANode: TSyntaxNode): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    if ANode[Index].Kind in [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.RecordType,
+    if ANode[mIndex].Kind in [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.RecordType,
       TSyntaxKind.SetType, TSyntaxKind.EnumType, TSyntaxKind.PointerType, TSyntaxKind.FileType,
       TSyntaxKind.ProcedureType, TSyntaxKind.SubrangeType, TSyntaxKind.ClassOfType] then
     begin
-      Exit(ANode[Index]);
+      Exit(ANode[mIndex]);
     end;
   end;
   Result := nil;
@@ -355,11 +356,11 @@ end;
 
 function HasExplicitValues(AEnum: TSyntaxNode): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to AEnum.ChildCount - 1 do
+  for mIndex := 0 to AEnum.ChildCount - 1 do
   begin
-    if AEnum[Index].Kind <> TSyntaxKind.Identifier then
+    if AEnum[mIndex].Kind <> TSyntaxKind.Identifier then
     begin
       Exit(True);
     end;
@@ -369,50 +370,50 @@ end;
 
 function TTypeInfoInvalidRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(TypeInfoInvalidRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cTypeInfoInvalidRuleId, TRuleSeverity.Error,
     cTexts[TTypeRestrictionsTypeInfoText.Title].Text);
 end;
 
 procedure TTypeInfoInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Types: TFileTypes;
-  Paths: TArray<string>;
-  Calls: TList<TSyntaxNode>;
-  Names: TDeclarationNames;
-  Call: TSyntaxNode;
+  mTokens: TArray<TPascalToken>;
+  mTypes: TFileTypes;
+  mPaths: TArray<string>;
+  mCalls: TList<TSyntaxNode>;
+  mNames: TDeclarationNames;
+  mCallNode: TSyntaxNode;
 
   function PathOf(ANode: TSyntaxNode): string;
   begin
-    Result := TConditionalBranches.PathAt(Paths, TRoutineBody.TokenAt(Tokens, ANode.StartOffset));
+    Result := TConditionalBranches.PathAt(mPaths, TRoutineBody.TokenAt(mTokens, ANode.StartOffset));
   end;
 
   /// <summary>Mitglieder des Typs, zu dem die Methode ARoutine gehört; Uncertain, wenn der Typ nicht in der Datei
   /// steht oder ein Helfer ist. Vorfahren außerhalb der Datei bleiben unbeachtet.</summary>
   function FindInOwner(ARoutine: TSyntaxNode; const AName: string; out AResolution: TNameResolution): Boolean;
   var
-    Qualifier: string;
-    Index: Integer;
-    Decl, Struct: TSyntaxNode;
+    mQualifier: string;
+    mIndex: Integer;
+    mDecl, mStruct: TSyntaxNode;
   begin
     AResolution := TNameResolution.Create(TNameMeaning.Uncertain, nil, nil);
-    Qualifier := Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1);
-    Index := Types.IndexOf(BareTypeName(Qualifier));
-    if Index < 0 then
+    mQualifier := Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1);
+    mIndex := mTypes.IndexOf(BareTypeName(mQualifier));
+    if mIndex < 0 then
     begin
       Exit(True);
     end;
-    Struct := Types.Types[Index];
-    if not (Struct.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType]) then
+    mStruct := mTypes.Types[mIndex];
+    if not (mStruct.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType]) then
     begin
       Exit(True);
     end;
-    if FindInSections(Struct, AName, -1, AResolution) then
+    if FindInSections(mStruct, AName, -1, AResolution) then
     begin
       Exit(True);
     end;
-    Decl := Struct.Parent;
-    Result := (Decl <> nil) and FindInHeader(Decl, AName, AResolution);
+    mDecl := mStruct.Parent;
+    Result := (mDecl <> nil) and FindInHeader(mDecl, AName, AResolution);
   end;
 
   /// <summary>Namen in der Routine ARoutine: Kopf, Abschnitte, ihr eigener Name, Mitglieder des eigenen Typs.
@@ -499,10 +500,10 @@ var
   /// </summary>
   function TypeBehind(ADecl: TSyntaxNode): TSyntaxNode;
   var
-    Depth, Index: Integer;
+    mDepth, mIndex: Integer;
   begin
     Result := TypeChild(ADecl);
-    for Depth := 1 to 16 do
+    for mDepth := 1 to 16 do
     begin
       if (Result = nil) or (Result.Kind <> TSyntaxKind.TypeReference) then
       begin
@@ -512,12 +513,12 @@ var
       begin
         Exit(nil);
       end;
-      Index := Types.IndexOf(Result.Name);
-      if Index < 0 then
+      mIndex := mTypes.IndexOf(Result.Name);
+      if mIndex < 0 then
       begin
         Exit;
       end;
-      Result := Types.Types[Index];
+      Result := mTypes.Types[mIndex];
     end;
     Result := nil;
   end;
@@ -525,15 +526,15 @@ var
   /// <summary>Deklariert eine Unit im Index AName auf oberster Ebene (eigene Routine Default o. ä.)?</summary>
   function DeclaredInIndex(const AName: string): Boolean;
   var
-    Location: TSymbolLocation;
+    mLocation: TSymbolLocation;
   begin
     if AContext.Index = nil then
     begin
       Exit(False);
     end;
-    for Location in AContext.Index.FindSymbols(AName) do
+    for mLocation in AContext.Index.FindSymbols(AName) do
     begin
-      if Location.Symbol.Container = '' then
+      if mLocation.Symbol.Container = '' then
       begin
         Exit(True);
       end;
@@ -594,7 +595,7 @@ var
   /// Datei macht still.</summary>
   function IsBuiltinFile(const ACall: TIntrinsicCall): Boolean;
   begin
-    Result := not Names.Declared(ACall.Name) and (Types.IndexOf(ACall.Name) < 0);
+    Result := not mNames.Declared(ACall.Name) and (mTypes.IndexOf(ACall.Name) < 0);
     Result := Result and (MatchText(ACall.Name, ['Text', 'TextFile']) or
       (not ACall.IsTypeInfo and SameText(ACall.Name, 'File')));
   end;
@@ -674,11 +675,11 @@ begin
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Types := TFileTypes.Collect(AContext.Tree.Root);
-  Paths := TConditionalBranches.Paths(Tokens);
-  Names := nil;
-  Calls := TList<TSyntaxNode>.Create;
+  mTokens := AContext.Tree.Tokens;
+  mTypes := TFileTypes.Collect(AContext.Tree.Root);
+  mPaths := TConditionalBranches.Paths(mTokens);
+  mNames := nil;
+  mCalls := TList<TSyntaxNode>.Create;
   try
     AContext.Tree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
@@ -687,25 +688,25 @@ begin
         if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2) and
           (ANode[0].Kind = TSyntaxKind.Identifier) and MatchText(ANode[0].Name, ['TypeInfo', 'Default']) then
         begin
-          Calls.Add(ANode);
+          mCalls.Add(ANode);
         end;
       end);
-    if Calls.Count = 0 then
+    if mCalls.Count = 0 then
     begin
       Exit;
     end;
-    Names := TDeclarationNames.Create(AContext.Tree.Root);
-    for Call in Calls do
+    mNames := TDeclarationNames.Create(AContext.Tree.Root);
+    for mCallNode in mCalls do
     begin
       // Eine eigene Routine TypeInfo bzw. Default (Datei oder Index) verdeckt die des Compilers.
-      if not Names.Declared(Call[0].Name) and not DeclaredInIndex(Call[0].Name) then
+      if not mNames.Declared(mCallNode[0].Name) and not DeclaredInIndex(mCallNode[0].Name) then
       begin
-        CheckCall(Call);
+        CheckCall(mCallNode);
       end;
     end;
   finally
-    Names.Free;
-    Calls.Free;
+    mNames.Free;
+    mCalls.Free;
   end;
 end;
 

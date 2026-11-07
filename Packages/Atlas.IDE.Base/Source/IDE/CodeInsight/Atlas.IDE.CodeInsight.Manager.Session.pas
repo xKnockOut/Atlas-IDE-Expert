@@ -37,7 +37,8 @@ type
     FQueryIdle: TEvent;
     FCommandIdle: TEvent;
     FServerCommandsIdle: TEvent;
-    /// <summary>Laufende Sitzung oder Start im Hauptthread; außerhalb des Hauptthreads nur, was schon läuft (A-01).</summary>
+    /// <summary>Laufende Sitzung oder Start im Hauptthread; außerhalb des Hauptthreads nur, was schon läuft
+    /// (A-01).</summary>
     function EnsureSession: Boolean;
     /// <summary>Server starten und Sitzung aufbauen; nur aus EnsureSession, nur im Hauptthread.</summary>
     function StartSession: Boolean;
@@ -202,7 +203,7 @@ begin
   // Eine Statusabfrage im Hintergrund kehrt nach Close sofort zurück (#591), ebenso ein Befehl (#66).
   FQueryIdle.WaitFor(5000);
   // Aufgegebene Zeitlimit-Arbeiter können noch in Prepare bzw. Sync der Sitzung stecken (A-01, A-13).
-  if not TAtlasTimeLimit.WaitIdle(TAtlasShutdown.StopMs) then
+  if not TAtlasTimeLimit.WaitIdle(TAtlasShutdown.cStopMs) then
   begin
     Diagnose('Sitzung beendet, während ein Zeitlimit-Arbeiter noch lief');
   end;
@@ -572,7 +573,7 @@ begin
     mWatch := TStopwatch.StartNew;
     mTypes := TAtlasIdeTypeCollector.Collect(mFailed);
     // Nach Initialize: Der Server ersetzt mit jeder Meldung den ganzen Stand und prüft offene Dateien neu.
-    FSession.Notify(TAtlasIdeTypes.Method, TAtlasIdeTypes.ToJson(mTypes));
+    FSession.Notify(TAtlasIdeTypes.cMethod, TAtlasIdeTypes.ToJson(mTypes));
     Diagnose(Format('IDE-Typen: %d, %d ms, RTTI unlesbar: %d', [Length(mTypes), mWatch.ElapsedMilliseconds,
       mFailed]));
   except
@@ -614,7 +615,7 @@ begin
   try
     mWatch := TStopwatch.StartNew;
     mDetails := TAtlasIdeMemberCollector.Details(AUnits, mFailed);
-    FSession.Notify(TAtlasIdeMembers.Method, TAtlasIdeMembers.ToJson(mDetails));
+    FSession.Notify(TAtlasIdeMembers.cMethod, TAtlasIdeMembers.ToJson(mDetails));
     Diagnose(Format('IDE-Mitglieder: %d Units, %d Typen, %d ms, RTTI unlesbar: %d', [Length(AUnits),
       Length(mDetails), mWatch.ElapsedMilliseconds, mFailed]));
   except

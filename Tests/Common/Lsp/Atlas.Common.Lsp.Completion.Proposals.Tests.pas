@@ -801,13 +801,13 @@ begin
   Abbreviation := MatchScore('SaveButton', 'sb', TCompletionMatching.Fuzzy);
   Substring := MatchScore('Ausbau', 'sb', TCompletionMatching.Fuzzy);
   WordSubstring := MatchScore('lstSbox', 'sb', TCompletionMatching.Fuzzy);
-  Assert.AreNotEqual(Integer(TFuzzyMatch.NoMatch), Abbreviation);
+  Assert.AreNotEqual(Integer(TFuzzyMatch.cNoMatch), Abbreviation);
   Assert.IsTrue(Prefix > Abbreviation, Format('Anfang %d vor Kürzel %d', [Prefix, Abbreviation]));
   Assert.IsTrue(Abbreviation > Substring, Format('Kürzel %d vor Teilwort %d', [Abbreviation, Substring]));
   Assert.IsTrue(Abbreviation > WordSubstring,
     Format('Kürzel %d vor Teilwort am Wortanfang %d', [Abbreviation, WordSubstring]));
   // Mit completion.matching = prefix bleibt es beim Anfang.
-  Assert.AreEqual(Integer(TFuzzyMatch.NoMatch), MatchScore('SaveButton', 'sb', TCompletionMatching.Prefix));
+  Assert.AreEqual(Integer(TFuzzyMatch.cNoMatch), MatchScore('SaveButton', 'sb', TCompletionMatching.Prefix));
 end;
 
 const
@@ -1168,7 +1168,7 @@ var
 begin
   // Mehr als 15 Felder: erst die Liste mit Kontrollkästchen, je Zeile samt Umbruch für die nächste.
   Fields := '';
-  for Index := 0 to TAssignFields.ListThreshold do
+  for Index := 0 to TAssignFields.cListThreshold do
   begin
     Fields := Fields + '    F' + IntToStr(Index) + ': Integer;'#13#10;
   end;

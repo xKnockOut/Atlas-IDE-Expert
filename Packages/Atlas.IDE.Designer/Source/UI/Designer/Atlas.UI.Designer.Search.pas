@@ -120,7 +120,7 @@ type
       function Canvas: TCanvas;
       function S(AValue: Integer): Integer;
       procedure AddArea(AKind: THit; const ARect: TRect; AValue: Integer);
-      procedure DrawChip(var X: Integer; Y: Integer; const ACaption: string; AOn: Boolean; AValue: Integer);
+      procedure DrawChip(var AX: Integer; AY: Integer; const ACaption: string; AOn: Boolean; AValue: Integer);
       function DrawGroupings: Integer;
       procedure DrawHeader;
       procedure DrawChips;
@@ -143,15 +143,15 @@ type
       function Metrics: TMetrics;
       procedure Layout;
       procedure Paint;
-      function HitAt(X, Y: Integer; out AArea: THitArea): Boolean;
-      function RowAt(Y: Integer): Integer;
+      function HitAt(AX, AY: Integer; out AArea: THitArea): Boolean;
+      function RowAt(AY: Integer): Integer;
       property Colors: TAtlasColors read FColors;
       property ListRect: TRect read FListRect;
       property UIFont: TFont read FUIFont;
     end;
   private const
-    ChipKinds = 0;
-    ChipFields = 100;
+    cChipKinds = 0;
+    cChipFields = 100;
   private
     FOptions: TAtlasComponentSearchOptions;
     FItems: TArray<TAtlasDesignerItem>;
@@ -215,10 +215,10 @@ uses
 
 const
   // Ab Windows 11; ältere Systeme ignorieren die Attribute.
-  CornerPreference = 33;
-  RoundCorners = 2;
-  BorderColorAttribute = 34;
-  CompactRows = 12;
+  cCornerPreference = 33;
+  cRoundCorners = 2;
+  cBorderColorAttribute = 34;
+  cCompactRows = 12;
 
 function C(AColor: TAtlasColor): TColor;
 begin
@@ -590,12 +590,12 @@ begin
   Result := Min(mX, ARect.Right);
 end;
 
-procedure TAtlasComponentSearchWindow.TPainter.DrawChip(var X: Integer; Y: Integer; const ACaption: string;
+procedure TAtlasComponentSearchWindow.TPainter.DrawChip(var AX: Integer; AY: Integer; const ACaption: string;
   AOn: Boolean; AValue: Integer);
 var
   mChip: TRect;
 begin
-  mChip := Rect(X, Y, X + Canvas.TextWidth(ACaption) + S(16), Y + S(22));
+  mChip := Rect(AX, AY, AX + Canvas.TextWidth(ACaption) + S(16), AY + S(22));
   if mChip.Right > FWindow.ClientWidth - S(10) then
   begin
     Exit;
@@ -617,7 +617,7 @@ begin
   DrawText(Canvas.Handle, PChar(ACaption), -1, mChip, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
   Canvas.Brush.Style := bsSolid;
   AddArea(THit.Chip, mChip, AValue);
-  X := mChip.Right + S(6);
+  AX := mChip.Right + S(6);
 end;
 
 /// <summary>Umschalter Hierarchie / Klasse / Flach rechts im Kopf; liefert die Breite eines Segments.</summary>
@@ -713,7 +713,7 @@ begin
   mY := mMetrics.Header + (mMetrics.Chips - S(22)) div 2 - S(2);
   for mKind := Low(TAtlasDesignerKind) to High(TAtlasDesignerKind) do
   begin
-    DrawChip(mX, mY, KindCaption(mKind), mKind = FWindow.FState.Kind, ChipKinds + Ord(mKind));
+    DrawChip(mX, mY, KindCaption(mKind), mKind = FWindow.FState.Kind, cChipKinds + Ord(mKind));
   end;
   Canvas.Pen.Color := C(FColors.Line);
   Canvas.MoveTo(mX + S(2), mY + S(3));
@@ -728,7 +728,7 @@ begin
   mX := mRect.Right + S(6);
   for mField := Low(TAtlasDesignerField) to High(TAtlasDesignerField) do
   begin
-    DrawChip(mX, mY, FieldCaption(mField), mField in FWindow.FState.Fields, ChipFields + Ord(mField));
+    DrawChip(mX, mY, FieldCaption(mField), mField in FWindow.FState.Fields, cChipFields + Ord(mField));
   end;
 end;
 
@@ -1143,18 +1143,18 @@ begin
   Canvas.Brush.Style := bsSolid;
 end;
 
-function TAtlasComponentSearchWindow.TPainter.RowAt(Y: Integer): Integer;
+function TAtlasComponentSearchWindow.TPainter.RowAt(AY: Integer): Integer;
 var
   mOffset, mRow: Integer;
   mTops: TArray<Integer>;
 begin
   Result := -1;
-  if (Y < FListRect.Top) or (Y >= FListRect.Bottom) then
+  if (AY < FListRect.Top) or (AY >= FListRect.Bottom) then
   begin
     Exit;
   end;
   mTops := FWindow.FState.RowTops;
-  mOffset := Y - FListRect.Top + FWindow.FState.Scroll;
+  mOffset := AY - FListRect.Top + FWindow.FState.Scroll;
   for mRow := 0 to High(FWindow.FState.Rows) do
   begin
     if (mOffset >= mTops[mRow]) and (mOffset < mTops[mRow + 1]) then
@@ -1164,13 +1164,13 @@ begin
   end;
 end;
 
-function TAtlasComponentSearchWindow.TPainter.HitAt(X, Y: Integer; out AArea: THitArea): Boolean;
+function TAtlasComponentSearchWindow.TPainter.HitAt(AX, AY: Integer; out AArea: THitArea): Boolean;
 var
   mIndex: Integer;
 begin
   for mIndex := FAreas.Count - 1 downto 0 do
   begin
-    if FAreas[mIndex].Rect.Contains(Point(X, Y)) then
+    if FAreas[mIndex].Rect.Contains(Point(AX, AY)) then
     begin
       AArea := FAreas[mIndex];
       Exit(True);
@@ -1233,10 +1233,10 @@ var
   mPreference, mBorder: DWORD;
 begin
   inherited CreateWnd;
-  mPreference := RoundCorners;
-  DwmSetWindowAttribute(Handle, CornerPreference, @mPreference, SizeOf(mPreference));
+  mPreference := cRoundCorners;
+  DwmSetWindowAttribute(Handle, cCornerPreference, @mPreference, SizeOf(mPreference));
   mBorder := DWORD(FPainter.Colors.Accent);
-  DwmSetWindowAttribute(Handle, BorderColorAttribute, @mBorder, SizeOf(mBorder));
+  DwmSetWindowAttribute(Handle, cBorderColorAttribute, @mBorder, SizeOf(mBorder));
 end;
 
 procedure TAtlasComponentSearchWindow.ShowOver(const AArea: TRect);
@@ -1248,7 +1248,7 @@ begin
   if FOptions.Compact then
   begin
     mWidth := Min(ScaleValue(560), AArea.Width - ScaleValue(40));
-    mHeight := mMetrics.Header + CompactRows * mMetrics.Entry + mMetrics.Footer + ScaleValue(4);
+    mHeight := mMetrics.Header + cCompactRows * mMetrics.Entry + mMetrics.Footer + ScaleValue(4);
     SetBounds(AArea.Left + (AArea.Width - mWidth) div 2, AArea.Top + ScaleValue(80), mWidth, mHeight);
   end
   else if not FOptions.Bounds.IsEmpty and (Screen.MonitorFromRect(FOptions.Bounds, mdNull) <> nil) then
@@ -1536,13 +1536,13 @@ begin
   end;
   case mArea.Kind of
     THit.Chip:
-      if mArea.Value < ChipFields then
+      if mArea.Value < cChipFields then
       begin
-        SetKind(TAtlasDesignerKind(mArea.Value - ChipKinds));
+        SetKind(TAtlasDesignerKind(mArea.Value - cChipKinds));
       end
       else
       begin
-        mField := TAtlasDesignerField(mArea.Value - ChipFields);
+        mField := TAtlasDesignerField(mArea.Value - cChipFields);
         if mField in FState.Fields then
         begin
           SetFields(FState.Fields - [mField]);

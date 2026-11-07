@@ -134,7 +134,7 @@ begin
   mCount := 0;
   for mItem in AItems do
   begin
-    if mItem.Kind <> KindKeyword then
+    if mItem.Kind <> cKindKeyword then
     begin
       Result[mCount] := mItem;
       Inc(mCount);
@@ -211,7 +211,7 @@ begin
     Exit;
   end;
   AItem.Name := cTexts[TCasesText.ResolveWith].Text;
-  AItem.Kind := KindSnippet;
+  AItem.Kind := cKindSnippet;
   AItem.Detail := 'Atlas';
   AItem.Fits := True;
   AItem.Pinned := True;
@@ -248,7 +248,7 @@ begin
     Exit;
   end;
   AItem.Name := mAction.Title;
-  AItem.Kind := KindSnippet;
+  AItem.Kind := cKindSnippet;
   AItem.Detail := 'Atlas';
   AItem.Fits := True;
   AItem.Pinned := True;
@@ -276,7 +276,7 @@ begin
     Exit;
   end;
   AItem.Name := mTitle;
-  AItem.Kind := KindMethod;
+  AItem.Kind := cKindMethod;
   AItem.Detail := mDetail;
   AItem.Fits := True;
   AItem.Pinned := True;

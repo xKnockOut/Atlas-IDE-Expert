@@ -30,7 +30,7 @@
 // Minuten weiterlaufen zu lassen. Fragen mehrere Anfragen dieselbe Datei im
 // selben Stand an, rechnet nur die erste; die übrigen warten auf ihr Ergebnis.
 // Geöffnete Dateien prüft ein eigener Thread je Stand (#1761). Die Anfrage
-// wartet höchstens DocumentWaitMs (vor dem Zeitlimit) und antwortet sonst mit
+// wartet höchstens OpenJobs.WaitMs (vor dem Zeitlimit) und antwortet sonst mit
 // ServerCancelled; die Prüfung rechnet zu Ende (höchstens DetachedMaxMs),
 // speichert die Befunde und bittet den Client mit refresh, sie abzuholen.
 // Vorher brach eine Unit, deren Prüfung länger als das Zeitlimit dauerte, bei
@@ -100,36 +100,70 @@ type
     function Items: TJSONArray;
   end;
 
+  TLspPullDiagnostics = class;
+
+  /// <summary>Prüfungen geöffneter Dateien in eigenen Threads (#1761), je Datei und Stand eine.</summary>
+  TPullOpenJobs = class
+  private
+    FOwner: TLspPullDiagnostics;
+    /// <summary>Laufende Prüfungen: Uri + #0 + Ergebnis-Id -> TPullDocumentJob. Sperre: das Wörterbuch selbst.
+    /// </summary>
+    FJobs: TDictionary<string, IPullDocumentJob>;
+    FRunning: Integer;
+    FStopping: Integer;
+    FWaitMs: Cardinal;
+    /// <summary>Wartezeit einer Anfrage auf die Prüfung, höchstens das Zeitlimit der Anfrage.</summary>
+    function Wait: Cardinal;
+    /// <summary>Prüfung von ADocument im Stand AResultId; eine laufende für denselben Stand wird geteilt.</summary>
+    function Start(const AResultId: string; const ADocument: ITextDocument; AGeneration: Integer): IPullDocumentJob;
+    /// <summary>Im Thread der Prüfung: rechnen, ablegen, Ende melden.</summary>
+    procedure Run(const AJob: IPullDocumentJob; const AKey, AResultId: string; const ADocument: ITextDocument;
+      AGeneration: Integer);
+    /// <summary>True ab dem Freigeben: Laufende Prüfungen enden vor der nächsten Regel.</summary>
+    function Stopping: Boolean;
+    /// <summary>ADocument ist nicht mehr der Stand im Speicher, oder die Generation ist nicht mehr AGeneration.
+    /// Threadsicher.</summary>
+    function Outdated(const ADocument: ITextDocument; AGeneration: Integer): Boolean;
+  public
+    constructor Create(AOwner: TLspPullDiagnostics);
+    /// <summary>Beendet die laufenden Prüfungen vor der nächsten Regel und wartet auf sie.</summary>
+    destructor Destroy; override;
+    /// <summary>Befunde der geöffneten Datei; nach Wait EJsonRpcError ServerCancelled.</summary>
+    function Items(const AResultId: string; const ADocument: ITextDocument; AGeneration: Integer;
+      const ACancellation: IJsonRpcCancellationToken): TJSONArray;
+    property WaitMs: Cardinal read FWaitMs write FWaitMs;
+  end;
+
   TLspPullDiagnostics = class
   public const
-    DocumentMethod = 'textDocument/diagnostic';
-    WorkspaceMethod = 'workspace/diagnostic';
-    RefreshMethod = 'workspace/diagnostic/refresh';
+    cDocumentMethod = 'textDocument/diagnostic';
+    cWorkspaceMethod = 'workspace/diagnostic';
+    cRefreshMethod = 'workspace/diagnostic/refresh';
     /// <summary>Pause der Projektprüfung vom Client (#1247), z. B. {"reason":"debug","paused":true} beim
     /// Debuggen (#1241).</summary>
-    PauseMethod = 'atlas/workspaceCheck/pause';
+    cPauseMethod = 'atlas/workspaceCheck/pause';
     /// <summary>Alle Dateien neu prüfen (#1231, Klick auf die Live-Prüfung der Atlas-Statusleiste): ruft Changed.
     /// </summary>
-    RecheckCommand = 'atlas.server.recheck';
-    Identifier = 'atlas';
-    DefaultWaitMs = 10000;
+    cRecheckCommand = 'atlas.server.recheck';
+    cIdentifier = 'atlas';
+    cDefaultWaitMs = 10000;
     /// <summary>Grundcodes leerer Antworten im Diagnoselog (#647).</summary>
-    ReasonIndexLoading = 'indexLoading';
-    ReasonNoChanges = 'noChanges';
+    cReasonIndexLoading = 'indexLoading';
+    cReasonNoChanges = 'noChanges';
     /// <summary>Höchstzahl Dateibefunde je Antwort; den Rest holt der Client gleich mit der nächsten.</summary>
-    MaxWorkspaceReports = 200;
+    cMaxWorkspaceReports = 200;
     /// <summary>Takt, in dem Wartende den Abbruch prüfen; Änderungen wecken sofort.</summary>
-    ChangeSliceMs = 100;
+    cChangeSliceMs = 100;
     /// <summary>Neuer Fortschritt ohne neue Befunde beendet das Long-Polling frühestens nach dieser Zeit.</summary>
-    ProgressMs = 1000;
+    cProgressMs = 1000;
     /// <summary>Neue Befunde während eines Laufs sammelt eine Anfrage so lange, bevor sie antwortet.</summary>
-    BatchMs = 1000;
+    cBatchMs = 1000;
     /// <summary>So lange rechnet die Prüfung einer geöffneten Datei nach abgelaufenem Zeitlimit höchstens weiter.
     /// </summary>
-    DetachedMaxMs = 120000;
+    cDetachedMaxMs = 120000;
     /// <summary>So lange wartet textDocument/diagnostic auf die Prüfung einer geöffneten Datei, höchstens bis
     /// TimeLimitMs; das Plugin wartet 8 s.</summary>
-    DefaultDocumentWaitMs = 5000;
+    cDefaultDocumentWaitMs = 5000;
   private
     FStore: IDocumentStore;
     FDiagnostics: TLspSyntaxDiagnostics;
@@ -147,26 +181,7 @@ type
     FReports: TPullReportCache;
     FComputed: Integer;
     FFileLabel: TPullFileLabel;
-    /// <summary>Laufende Prüfungen geöffneter Dateien: Uri + #0 + Ergebnis-Id -> TPullDocumentJob. Sperre: das
-    /// Wörterbuch selbst.</summary>
-    FJobs: TDictionary<string, IPullDocumentJob>;
-    FRunningJobs: Integer;
-    FStopping: Integer;
-    FDocumentWaitMs: Cardinal;
-    function IsBusy: Boolean;
-    /// <summary>True ab dem Freigeben: Laufende Prüfungen enden vor der nächsten Regel.</summary>
-    function Stopping: Boolean;
-    /// <summary>Wartezeit einer Anfrage auf die Prüfung einer geöffneten Datei.</summary>
-    function DocumentWait: Cardinal;
-    /// <summary>Prüfung von ADocument im Stand AResultId; eine laufende für denselben Stand wird geteilt.</summary>
-    function StartJob(const AResultId: string; const ADocument: ITextDocument;
-      AGeneration: Integer): IPullDocumentJob;
-    /// <summary>Im Thread der Prüfung: rechnen, ablegen, Ende melden.</summary>
-    procedure RunJob(const AJob: IPullDocumentJob; const AKey, AResultId: string; const ADocument: ITextDocument;
-      AGeneration: Integer);
-    /// <summary>Befunde der geöffneten Datei; nach DocumentWait EJsonRpcError ServerCancelled.</summary>
-    function OpenItems(const AResultId: string; const ADocument: ITextDocument; AGeneration: Integer;
-      const ACancellation: IJsonRpcCancellationToken): TJSONArray;
+    FOpenJobs: TPullOpenJobs;
     procedure SetBusy(const AValue: TPullBusy);
     /// <summary>Projektprüfung mit den Anbietern dieses Objekts anlegen.</summary>
     function CreateCheck(const AFiles: TPullFilesProvider): TLspWorkspaceCheck;
@@ -174,12 +189,6 @@ type
     procedure NextGeneration;
     /// <summary>Den Client bitten, die Befunde geöffneter Dokumente neu zu holen.</summary>
     procedure SendRefresh;
-    /// <summary>ADocument ist nicht mehr der Stand im Speicher, oder die Generation ist nicht mehr AGeneration.
-    /// Threadsicher.</summary>
-    function Outdated(const ADocument: ITextDocument; AGeneration: Integer): Boolean;
-    /// <summary>Zeitrahmen dieser Anfrage aus RequestTimeout; High(Cardinal) ohne Limit.</summary>
-    function TimeLimit: Cardinal;
-    function LabelOf(const AFileName: string): string;
     function HandleDocument(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     procedure HandlePause(const AParams: TJSONValue);
   public
@@ -209,7 +218,7 @@ type
     property Check: TLspWorkspaceCheck read FCheck;
     property WaitMs: Cardinal read FWaitMs write FWaitMs;
     /// <summary>Wartezeit von textDocument/diagnostic auf die Prüfung einer geöffneten Datei (#1761).</summary>
-    property DocumentWaitMs: Cardinal read FDocumentWaitMs write FDocumentWaitMs;
+    property OpenJobs: TPullOpenJobs read FOpenJobs;
     /// <summary>Ohne Provider gilt der Index als fertig.</summary>
     property Busy: TPullBusy read FBusy write SetBusy;
     /// <summary>Zeitlimit des Watchdogs; ohne Provider (Tests) gilt WaitMs unverändert.</summary>
@@ -248,6 +257,29 @@ const
 
 {$SCOPEDENUMS OFF}
 
+/// <summary>Kennzeichen von AFileName für das Diagnoselog; ohne AFileLabel "unit".</summary>
+function LabelOf(const AFileLabel: TPullFileLabel; const AFileName: string): string;
+begin
+  Result := 'unit';
+  if Assigned(AFileLabel) then
+  begin
+    Result := AFileLabel(AFileName);
+  end;
+end;
+
+/// <summary>Zeitrahmen einer Anfrage aus ARequestTimeout; High(Cardinal) ohne Limit.</summary>
+function TimeLimit(const ARequestTimeout: TPullTimeout): Cardinal;
+begin
+  if Assigned(ARequestTimeout) then
+  begin
+    Result := TLspPullProtocol.TimeLimitMs(ARequestTimeout());
+  end
+  else
+  begin
+    Result := High(Cardinal);
+  end;
+end;
+
 /// <summary>Abbruch der Regelprüfung beim Signal von ACancellation; nil ohne.</summary>
 function RequestCancelled(const ACancellation: IJsonRpcCancellationToken): TRuleCancelled;
 begin
@@ -266,10 +298,10 @@ end;
 function Diagnose(ADiagnostics: TLspSyntaxDiagnostics; const ADocument: ITextDocument;
   const ACancelled: TRuleCancelled; const ACancellation: IJsonRpcCancellationToken): TJSONArray;
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
   try
-    Params := ADiagnostics.Compute(ADocument, ACancelled);
+    mParams := ADiagnostics.Compute(ADocument, ACancelled);
   except
     on ERuleCheckCancelled do
     begin
@@ -283,9 +315,9 @@ begin
     end;
   end;
   try
-    Result := Params.GetValue('diagnostics').Clone as TJSONArray;
+    Result := mParams.GetValue('diagnostics').Clone as TJSONArray;
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 
@@ -302,10 +334,9 @@ begin
   FStamp := AStamp;
   FReadText := AReadText;
   FGeneration := 1;
-  FWaitMs := DefaultWaitMs;
+  FWaitMs := cDefaultWaitMs;
   FReports := TPullReportCache.Create;
-  FJobs := TDictionary<string, IPullDocumentJob>.Create;
-  FDocumentWaitMs := DefaultDocumentWaitMs;
+  FOpenJobs := TPullOpenJobs.Create(Self);
   FCheck := CreateCheck(AFiles);
 end;
 
@@ -329,7 +360,7 @@ begin
   Result.FileLabel :=
     function(const AFileName: string): string
     begin
-      Result := mOwner.LabelOf(AFileName);
+      Result := LabelOf(mOwner.FFileLabel, AFileName);
     end;
 end;
 
@@ -337,21 +368,11 @@ destructor TLspPullDiagnostics.Destroy;
 begin
   // Zuerst die Prüfungen geöffneter Dateien: Sie enden vor der nächsten Regel und rechnen mit FCheck, FReports,
   // FDiagnostics und FStore.
-  TInterlocked.Exchange(FStopping, 1);
-  while TInterlocked.CompareExchange(FRunningJobs, 0, 0) > 0 do
-  begin
-    Sleep(TPullReportCache.RunningPollMs);
-  end;
+  FOpenJobs.Free;
   // Dann: Der Thread der Projektprüfung rechnet mit FDiagnostics und FStore.
   FCheck.Free;
   FReports.Free;
-  FJobs.Free;
   inherited;
-end;
-
-function TLspPullDiagnostics.IsBusy: Boolean;
-begin
-  Result := Assigned(FBusy) and FBusy();
 end;
 
 procedure TLspPullDiagnostics.SetBusy(const AValue: TPullBusy);
@@ -362,9 +383,9 @@ end;
 
 procedure TLspPullDiagnostics.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(DocumentMethod, HandleDocument);
-  ADispatcher.RegisterConcurrentRequest(WorkspaceMethod, WorkspaceReport);
-  ADispatcher.RegisterNotification(PauseMethod, HandlePause);
+  ADispatcher.RegisterConcurrentRequest(cDocumentMethod, HandleDocument);
+  ADispatcher.RegisterConcurrentRequest(cWorkspaceMethod, WorkspaceReport);
+  ADispatcher.RegisterNotification(cPauseMethod, HandlePause);
 end;
 
 class function TLspPullProtocol.ClientSupportsPull(const AInitializeParams: TJSONObject): Boolean;
@@ -374,37 +395,37 @@ end;
 
 class function TLspPullProtocol.ClientSupportsRefresh(const AInitializeParams: TJSONObject): Boolean;
 var
-  Value: Boolean;
+  mValue: Boolean;
 begin
   Result := (AInitializeParams <> nil) and
-    AInitializeParams.TryGetValue<Boolean>('capabilities.workspace.diagnostics.refreshSupport', Value) and Value;
+    AInitializeParams.TryGetValue<Boolean>('capabilities.workspace.diagnostics.refreshSupport', mValue) and mValue;
 end;
 
 class function TLspPullProtocol.Capability: TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('identifier', TLspPullDiagnostics.Identifier);
+  Result.AddPair('identifier', TLspPullDiagnostics.cIdentifier);
   Result.AddPair('interFileDependencies', TJSONBool.Create(True));
   Result.AddPair('workspaceDiagnostics', TJSONBool.Create(True));
 end;
 
 class function TLspPullProtocol.TimeLimitMs(ATimeoutMs: Cardinal): Cardinal;
 var
-  Half, Reserved: Int64;
+  mHalf, mReserved: Int64;
 begin
   if ATimeoutMs = 0 then
   begin
     Exit(High(Cardinal));
   end;
-  Half := Int64(ATimeoutMs) div 2;
-  Reserved := Int64(ATimeoutMs) - 2000;
-  if Reserved > Half then
+  mHalf := Int64(ATimeoutMs) div 2;
+  mReserved := Int64(ATimeoutMs) - 2000;
+  if mReserved > mHalf then
   begin
-    Result := Cardinal(Reserved);
+    Result := Cardinal(mReserved);
   end
   else
   begin
-    Result := Cardinal(Half);
+    Result := Cardinal(mHalf);
   end;
 end;
 
@@ -417,26 +438,6 @@ begin
   end;
 end;
 
-function TLspPullDiagnostics.LabelOf(const AFileName: string): string;
-begin
-  Result := 'unit';
-  if Assigned(FFileLabel) then
-  begin
-    Result := FFileLabel(AFileName);
-  end;
-end;
-
-function TLspPullDiagnostics.TimeLimit: Cardinal;
-begin
-  if Assigned(FRequestTimeout) then
-  begin
-    Result := TLspPullProtocol.TimeLimitMs(FRequestTimeout());
-  end
-  else
-  begin
-    Result := High(Cardinal);
-  end;
-end;
 
 procedure TLspPullDiagnostics.NextGeneration;
 begin
@@ -446,23 +447,23 @@ end;
 
 procedure TLspPullDiagnostics.SendRefresh;
 var
-  Request: TJSONObject;
-  Counter: Integer;
+  mRequest: TJSONObject;
+  mCounter: Integer;
 begin
   if not FRefreshSupport or (FTransport = nil) then
   begin
     Exit;
   end;
   // Geöffnete Dokumente holt der Client nach refresh neu ab (z. B. nach einem Compilerlauf).
-  Counter := TInterlocked.Increment(FRefreshCounter);
-  Request := TJSONObject.Create;
+  mCounter := TInterlocked.Increment(FRefreshCounter);
+  mRequest := TJSONObject.Create;
   try
-    Request.AddPair('jsonrpc', '2.0');
-    Request.AddPair('id', Format('atlas/diagnostic-refresh-%d', [Counter]));
-    Request.AddPair('method', RefreshMethod);
-    FTransport.WriteMessage(Request);
+    mRequest.AddPair('jsonrpc', '2.0');
+    mRequest.AddPair('id', Format('atlas/diagnostic-refresh-%d', [mCounter]));
+    mRequest.AddPair('method', cRefreshMethod);
+    FTransport.WriteMessage(mRequest);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
@@ -497,17 +498,10 @@ begin
   FCheck.Pause(mReason, TJSONObject(AParams).GetValue<Boolean>('paused', False));
 end;
 
-function TLspPullDiagnostics.Outdated(const ADocument: ITextDocument; AGeneration: Integer): Boolean;
-var
-  mCurrent: ITextDocument;
-begin
-  Result := (TInterlocked.CompareExchange(FGeneration, 0, 0) <> AGeneration) or
-    not FStore.TryGet(ADocument.Uri, mCurrent) or (mCurrent.Version <> ADocument.Version);
-end;
 
 /// <summary>Abbruch der Prüfung der geöffneten Datei ADocument: bei geändertem Dokument oder neuer Generation,
 /// beim Beenden und nach DetachedMaxMs; nicht durch Zeitlimit oder Abbruch einer wartenden Anfrage.</summary>
-function DocumentCancelled(AOwner: TLspPullDiagnostics; const ADocument: ITextDocument;
+function DocumentCancelled(AJobs: TPullOpenJobs; const ADocument: ITextDocument;
   AGeneration: Integer): TRuleCancelled;
 var
   mClock: TStopwatch;
@@ -516,8 +510,8 @@ begin
   Result :=
     function: Boolean
     begin
-      Result := AOwner.Stopping or AOwner.Outdated(ADocument, AGeneration) or
-        (mClock.ElapsedMilliseconds > TLspPullDiagnostics.DetachedMaxMs);
+      Result := AJobs.Stopping or AJobs.Outdated(ADocument, AGeneration) or
+        (mClock.ElapsedMilliseconds > TLspPullDiagnostics.cDetachedMaxMs);
     end;
 end;
 
@@ -616,49 +610,79 @@ begin
   begin
     raise EJsonRpcError.Create(FErrorCode, FErrorMessage);
   end;
+  // Gewollt: dieselbe Klasse mit derselben Meldung; eigene Felder hat nur EJsonRpcError (oben).
+  // lsp-ignore: class-reference-nonvirtual-constructor -- nur die Meldung wird übertragen
   raise FErrorClass.Create(FErrorMessage);
 end;
 
-{ TLspPullDiagnostics }
+{ TPullOpenJobs }
 
-function TLspPullDiagnostics.Stopping: Boolean;
+constructor TPullOpenJobs.Create(AOwner: TLspPullDiagnostics);
+begin
+  inherited Create;
+  FOwner := AOwner;
+  FJobs := TDictionary<string, IPullDocumentJob>.Create;
+  FWaitMs := TLspPullDiagnostics.cDefaultDocumentWaitMs;
+end;
+
+destructor TPullOpenJobs.Destroy;
+begin
+  TInterlocked.Exchange(FStopping, 1);
+  while TInterlocked.CompareExchange(FRunning, 0, 0) > 0 do
+  begin
+    Sleep(TPullReportCache.cRunningPollMs);
+  end;
+  FJobs.Free;
+  inherited;
+end;
+
+function TPullOpenJobs.Stopping: Boolean;
 begin
   Result := TInterlocked.CompareExchange(FStopping, 0, 0) <> 0;
 end;
 
-function TLspPullDiagnostics.DocumentWait: Cardinal;
+function TPullOpenJobs.Outdated(const ADocument: ITextDocument; AGeneration: Integer): Boolean;
+var
+  mCurrent: ITextDocument;
 begin
-  Result := FDocumentWaitMs;
-  if TimeLimit < Result then
+  Result := (TInterlocked.CompareExchange(FOwner.FGeneration, 0, 0) <> AGeneration) or
+    not FOwner.FStore.TryGet(ADocument.Uri, mCurrent) or (mCurrent.Version <> ADocument.Version);
+end;
+
+function TPullOpenJobs.Wait: Cardinal;
+begin
+  Result := FWaitMs;
+  if TimeLimit(FOwner.FRequestTimeout) < Result then
   begin
-    Result := TimeLimit;
+    Result := TimeLimit(FOwner.FRequestTimeout);
   end;
 end;
 
-procedure TLspPullDiagnostics.RunJob(const AJob: IPullDocumentJob; const AKey, AResultId: string;
+procedure TPullOpenJobs.Run(const AJob: IPullDocumentJob; const AKey, AResultId: string;
   const ADocument: ITextDocument; AGeneration: Integer);
 var
   mItems: TJSONArray;
 begin
   // Vorrang vor der Projektprüfung (#1247): Sie beginnt solange keine neue Datei.
-  FCheck.EnterForeground;
+  FOwner.FCheck.EnterForeground;
   try
     try
-      mItems := FReports.Get(ADocument.Uri, AResultId,
-        Computation(Self, ADocument, DocumentCancelled(Self, ADocument, AGeneration), nil), nil);
+      mItems := FOwner.FReports.Get(ADocument.Uri, AResultId,
+        Computation(FOwner, ADocument, DocumentCancelled(Self, ADocument, AGeneration), nil), nil);
       try
         AJob.Succeed(mItems);
       finally
         mItems.Free;
       end;
     except
+      // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Hintergrundjobs; AJob.Fail meldet
       on E: Exception do
       begin
         AJob.Fail(E);
       end;
     end;
   finally
-    FCheck.LeaveForeground;
+    FOwner.FCheck.LeaveForeground;
   end;
   System.TMonitor.Enter(FJobs);
   try
@@ -669,26 +693,26 @@ begin
   // Keine Anfrage hat das Ergebnis abgewartet: Der Client holt es nach refresh ab.
   if AJob.Finish and not AJob.Failed then
   begin
-    SendRefresh;
+    FOwner.SendRefresh;
   end;
 end;
 
 /// <summary>Arbeit des Threads einer Dateiprüfung; hält AJob bis zum Ende.</summary>
-function JobProc(AOwner: TLspPullDiagnostics; const AJob: IPullDocumentJob; const AKey, AResultId: string;
+function JobProc(AJobs: TPullOpenJobs; const AJob: IPullDocumentJob; const AKey, AResultId: string;
   const ADocument: ITextDocument; AGeneration: Integer): TProc;
 begin
   Result :=
     procedure
     begin
       try
-        AOwner.RunJob(AJob, AKey, AResultId, ADocument, AGeneration);
+        AJobs.Run(AJob, AKey, AResultId, ADocument, AGeneration);
       finally
-        TInterlocked.Decrement(AOwner.FRunningJobs);
+        TInterlocked.Decrement(AJobs.FRunning);
       end;
     end;
 end;
 
-function TLspPullDiagnostics.StartJob(const AResultId: string; const ADocument: ITextDocument;
+function TPullOpenJobs.Start(const AResultId: string; const ADocument: ITextDocument;
   AGeneration: Integer): IPullDocumentJob;
 var
   mKey: string;
@@ -702,14 +726,14 @@ begin
     end;
     Result := TPullDocumentJob.Create;
     FJobs.Add(mKey, Result);
-    TInterlocked.Increment(FRunningJobs);
+    TInterlocked.Increment(FRunning);
   finally
     System.TMonitor.Exit(FJobs);
   end;
   TThread.CreateAnonymousThread(JobProc(Self, Result, mKey, AResultId, ADocument, AGeneration)).Start;
 end;
 
-function TLspPullDiagnostics.OpenItems(const AResultId: string; const ADocument: ITextDocument;
+function TPullOpenJobs.Items(const AResultId: string; const ADocument: ITextDocument;
   AGeneration: Integer; const ACancellation: IJsonRpcCancellationToken): TJSONArray;
 var
   mJob: IPullDocumentJob;
@@ -717,8 +741,8 @@ var
   mWait: Cardinal;
 begin
   mClock := TStopwatch.StartNew;
-  mWait := DocumentWait;
-  mJob := StartJob(AResultId, ADocument, AGeneration);
+  mWait := Wait;
+  mJob := Start(AResultId, ADocument, AGeneration);
   while not mJob.Finished do
   begin
     if (ACancellation <> nil) and ACancellation.IsCancellationRequested then
@@ -729,105 +753,117 @@ begin
     end;
     if (mClock.ElapsedMilliseconds >= Int64(mWait)) and mJob.Abandon then
     begin
-      raise EJsonRpcError.Create(TLspErrorCode.ServerCancelled, cTexts[TPullDiagnosticsText.StillChecking].Fmt([mWait]));
+      raise EJsonRpcError.Create(TLspErrorCode.cServerCancelled,
+        cTexts[TPullDiagnosticsText.StillChecking].Fmt([mWait]));
     end;
-    Sleep(TPullReportCache.RunningPollMs);
+    Sleep(TPullReportCache.cRunningPollMs);
   end;
   Result := mJob.Items;
+end;
+
+{ TLspPullDiagnostics }
+
+/// <summary>Stand der Datei AUri für textDocument/diagnostic: Ergebnis-Id ('' ohne Stand, etwa atlas.json, das
+/// TLspConfiguration prüft und per publishDiagnostics meldet), Generation, ADocument (nil ohne) und ob sie
+/// geöffnet ist.</summary>
+function DocumentState(AOwner: TLspPullDiagnostics; const AUri, AFileName: string; out AGeneration: Integer;
+  out ADocument: ITextDocument; out AOpen: Boolean): string;
+var
+  mText: string;
+  mStamp: Int64;
+begin
+  Result := '';
+  ADocument := nil;
+  AOpen := False;
+  AGeneration := TInterlocked.CompareExchange(AOwner.FGeneration, 0, 0);
+  if SameText(ExtractFileExt(AFileName), '.json') then
+  begin
+    Exit;
+  end;
+  if AOwner.FStore.TryGet(AUri, ADocument) then
+  begin
+    Result := Format('%d:v%d', [AGeneration, ADocument.Version]);
+    AOpen := True;
+  end
+  else if Assigned(AOwner.FStamp) and AOwner.FStamp(AFileName, mStamp) and AOwner.FReadText(AFileName, mText) then
+  begin
+    Result := Format('%d:t%d', [AGeneration, mStamp]);
+    ADocument := TTextDocument.Create(AUri, 'objectpascal', 0, mText);
+  end;
+end;
+
+/// <summary>Befunde von ADocument im Stand AResultId: geöffnet über eine eigene Prüfung (#1761), sonst über den
+/// Speicher mit Vorrang vor der Projektprüfung (#1247).</summary>
+function DocumentItems(AOwner: TLspPullDiagnostics; const ADocument: ITextDocument; const AResultId: string;
+  AGeneration: Integer; AOpen: Boolean; const ACancellation: IJsonRpcCancellationToken): TJSONArray;
+begin
+  if AOpen then
+  begin
+    // Die Prüfung läuft im eigenen Thread zu Ende, auch wenn die Anfrage vorher antwortet.
+    Exit(AOwner.FOpenJobs.Items(AResultId, ADocument, AGeneration, ACancellation));
+  end;
+  AOwner.FCheck.EnterForeground;
+  try
+    Result := AOwner.FReports.Get(ADocument.Uri, AResultId,
+      Computation(AOwner, ADocument, RequestCancelled(ACancellation), ACancellation), ACancellation);
+  finally
+    AOwner.FCheck.LeaveForeground;
+  end;
 end;
 
 function TLspPullDiagnostics.DocumentReport(const AUri, APreviousResultId: string;
   const ACancellation: IJsonRpcCancellationToken): TJSONObject;
 var
-  Document: ITextDocument;
-  FileName, Text, ResultId: string;
-  Stamp: Int64;
+  mDocument: ITextDocument;
+  mFileName, mResultId: string;
   mGeneration: Integer;
-  Open: Boolean;
+  mOpen: Boolean;
 begin
-  FileName := TDocumentUris.ToPath(AUri);
-  mGeneration := TInterlocked.CompareExchange(FGeneration, 0, 0);
-  Open := False;
-  // atlas.json prüft TLspConfiguration und meldet weiter per publishDiagnostics.
-  if SameText(ExtractFileExt(FileName), '.json') then
-  begin
-    ResultId := '';
-  end
-  else if FStore.TryGet(AUri, Document) then
-  begin
-    ResultId := Format('%d:v%d', [mGeneration, Document.Version]);
-    Open := True;
-  end
-  else if Assigned(FStamp) and FStamp(FileName, Stamp) and FReadText(FileName, Text) then
-  begin
-    ResultId := Format('%d:t%d', [mGeneration, Stamp]);
-    Document := TTextDocument.Create(AUri, 'objectpascal', 0, Text);
-  end
-  else
-  begin
-    ResultId := '';
-  end;
+  mFileName := TDocumentUris.ToPath(AUri);
+  mResultId := DocumentState(Self, AUri, mFileName, mGeneration, mDocument, mOpen);
   Result := TJSONObject.Create;
-  if (ResultId <> '') and (ResultId = APreviousResultId) then
+  if (mResultId <> '') and (mResultId = APreviousResultId) then
   begin
     Result.AddPair('kind', 'unchanged');
-    Result.AddPair('resultId', ResultId);
+    Result.AddPair('resultId', mResultId);
     Exit;
   end;
   Result.AddPair('kind', 'full');
-  if ResultId <> '' then
+  if mResultId <> '' then
   begin
-    Result.AddPair('resultId', ResultId);
+    Result.AddPair('resultId', mResultId);
   end;
-  if Document = nil then
+  if mDocument = nil then
   begin
     Result.AddPair('items', TJSONArray.Create);
-  end
-  else
-  begin
-    TRequestDiagnostics.Subject(LabelOf(FileName));
-    try
-      if Open then
-      begin
-        // Geöffnete Datei (#1761): Die Prüfung läuft im eigenen Thread zu Ende, auch wenn die Anfrage vorher
-        // antwortet.
-        Result.AddPair('items', OpenItems(ResultId, Document, mGeneration, ACancellation));
-      end
-      else
-      begin
-        // Vorrang vor der Projektprüfung (#1247): Sie beginnt solange keine neue Datei.
-        FCheck.EnterForeground;
-        try
-          Result.AddPair('items', FReports.Get(AUri, ResultId,
-            Computation(Self, Document, RequestCancelled(ACancellation), ACancellation), ACancellation));
-        finally
-          FCheck.LeaveForeground;
-        end;
-      end;
-      TRequestDiagnostics.Subject('');
-    except
-      Result.Free;
-      raise;
-    end;
+    Exit;
+  end;
+  TRequestDiagnostics.Subject(LabelOf(FFileLabel, mFileName));
+  try
+    Result.AddPair('items', DocumentItems(Self, mDocument, mResultId, mGeneration, mOpen, ACancellation));
+    TRequestDiagnostics.Subject('');
+  except
+    Result.Free;
+    raise;
   end;
 end;
 
 function TLspPullDiagnostics.HandleDocument(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Uri, Previous: string;
+  mUri, mPrevious: string;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TPullDiagnosticsText.FieldTextDocumentUriMissingIn].Text + DocumentMethod);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TPullDiagnosticsText.FieldTextDocumentUriMissingIn].Text + cDocumentMethod);
   end;
-  if not TJSONObject(AParams).TryGetValue<string>('previousResultId', Previous) then
+  if not TJSONObject(AParams).TryGetValue<string>('previousResultId', mPrevious) then
   begin
-    Previous := '';
+    mPrevious := '';
   end;
   ACancellation.ThrowIfCancellationRequested;
-  Result := DocumentReport(Uri, Previous, ACancellation);
+  Result := DocumentReport(mUri, mPrevious, ACancellation);
 end;
 
 /// <summary>previousResultIds der Anfrage AParams nach APrevious (Uri -> Ergebnis-Id).</summary>
@@ -855,8 +891,8 @@ end;
 /// einzeln, der Client fragte sofort neu, und das Plugin baute seine Ansicht je Unit neu auf.</summary>
 function ReadyToSend(ACheck: TLspWorkspaceCheck; AItems: TJSONArray; const AClock: TStopwatch): Boolean;
 begin
-  Result := (AItems.Count > 0) and ((AClock.ElapsedMilliseconds >= TLspPullDiagnostics.BatchMs) or
-    (AItems.Count >= TLspPullDiagnostics.MaxWorkspaceReports) or not ACheck.Run.Active);
+  Result := (AItems.Count > 0) and ((AClock.ElapsedMilliseconds >= TLspPullDiagnostics.cBatchMs) or
+    (AItems.Count >= TLspPullDiagnostics.cMaxWorkspaceReports) or not ACheck.Run.Active);
 end;
 
 /// <summary>Befunde der Projektprüfung; gibt es nichts Neues, wartet es bis APollMs auf neue Befunde oder einen
@@ -869,22 +905,22 @@ var
 begin
   mChange := ACheck.ChangeCount;
   mStart := ACheck.Run;
-  Result := ACheck.Collect(APrevious, TLspPullDiagnostics.MaxWorkspaceReports);
+  Result := ACheck.Collect(APrevious, TLspPullDiagnostics.cMaxWorkspaceReports);
   while (AClock.ElapsedMilliseconds < Int64(APollMs)) and not ACancellation.IsCancellationRequested and
     not ReadyToSend(ACheck, Result, AClock) do
   begin
-    mNext := ACheck.WaitForChange(mChange, TLspPullDiagnostics.ChangeSliceMs);
+    mNext := ACheck.WaitForChange(mChange, TLspPullDiagnostics.cChangeSliceMs);
     if mNext = mChange then
     begin
       Continue;
     end;
     mChange := mNext;
     Result.Free;
-    Result := ACheck.Collect(APrevious, TLspPullDiagnostics.MaxWorkspaceReports);
+    Result := ACheck.Collect(APrevious, TLspPullDiagnostics.cMaxWorkspaceReports);
     mNow := ACheck.Run;
     // Anfang, Ende, Pause sofort melden; bloßen Fortschritt höchstens alle ProgressMs.
     if mNow.StateDiffers(mStart) or ((mNow.Done <> mStart.Done) and
-      (AClock.ElapsedMilliseconds >= TLspPullDiagnostics.ProgressMs)) then
+      (AClock.ElapsedMilliseconds >= TLspPullDiagnostics.cProgressMs)) then
     begin
       Break;
     end;
@@ -896,11 +932,11 @@ procedure NoteEmpty(const ARun: TWorkspaceCheckRun; ABusy: Boolean);
 begin
   if (ARun.Paused = TLspWorkspaceCheck.cPauseIndex) or ABusy then
   begin
-    TRequestDiagnostics.Reason(TLspPullDiagnostics.ReasonIndexLoading);
+    TRequestDiagnostics.Reason(TLspPullDiagnostics.cReasonIndexLoading);
   end
   else
   begin
-    TRequestDiagnostics.DefaultReason(TLspPullDiagnostics.ReasonNoChanges);
+    TRequestDiagnostics.DefaultReason(TLspPullDiagnostics.cReasonNoChanges);
   end;
 end;
 
@@ -917,9 +953,9 @@ begin
   // Zeitrahmen der Anfrage: Antwort vor dem Zeitlimit des Watchdogs (P-14).
   mClock := TStopwatch.StartNew;
   mPollMs := FWaitMs;
-  if TimeLimit < mPollMs then
+  if TimeLimit(FRequestTimeout) < mPollMs then
   begin
-    mPollMs := TimeLimit;
+    mPollMs := TimeLimit(FRequestTimeout);
   end;
   // Die erste Anfrage startet die Projektprüfung.
   FCheck.Want;
@@ -930,7 +966,7 @@ begin
     mNow := FCheck.Run;
     if mItems.Count = 0 then
     begin
-      NoteEmpty(mNow, IsBusy);
+      NoteEmpty(mNow, Assigned(FBusy) and FBusy());
     end;
     Result := TJSONObject.Create;
     TJSONObject(Result).AddPair('items', mItems);

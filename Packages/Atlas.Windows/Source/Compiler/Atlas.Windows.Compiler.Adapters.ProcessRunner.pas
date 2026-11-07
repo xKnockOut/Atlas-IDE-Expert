@@ -49,7 +49,7 @@ uses
 
 const
   /// <summary>Exit-Code eines über Cancel beendeten Prozesses.</summary>
-  CancelledExitCode = 1;
+  cCancelledExitCode = 1;
 
 { TProcessRunner }
 
@@ -103,15 +103,15 @@ end;
 
 procedure TProcessRunner.Cancel;
 var
-  Process: THandle;
+  mProcess: THandle;
 begin
   TMonitor.Enter(FLock);
   try
     FCancelled := True;
     // Unter der Sperre: Run entfernt ein Handle erst (Untrack), bevor es es schließt.
-    for Process in FRunning do
+    for mProcess in FRunning do
     begin
-      TerminateProcess(Process, CancelledExitCode);
+      TerminateProcess(mProcess, cCancelledExitCode);
     end;
   finally
     TMonitor.Exit(FLock);
@@ -120,32 +120,32 @@ end;
 
 class function TProcessRunner.QuoteArgument(const AArgument: string): string;
 var
-  Index, Backslashes: Integer;
+  mIndex, mBackslashes: Integer;
 begin
   if (AArgument <> '') and (LastDelimiter(' '#9'"', AArgument) = 0) then
   begin
     Exit(AArgument);
   end;
   Result := '"';
-  Backslashes := 0;
-  for Index := 1 to Length(AArgument) do
+  mBackslashes := 0;
+  for mIndex := 1 to Length(AArgument) do
   begin
-    if AArgument[Index] = '\' then
+    if AArgument[mIndex] = '\' then
     begin
-      Inc(Backslashes);
+      Inc(mBackslashes);
     end
     else
     begin
-      if AArgument[Index] = '"' then
+      if AArgument[mIndex] = '"' then
       begin
-        Result := Result + StringOfChar('\', Backslashes + 1);
+        Result := Result + StringOfChar('\', mBackslashes + 1);
       end;
-      Backslashes := 0;
+      mBackslashes := 0;
     end;
-    Result := Result + AArgument[Index];
+    Result := Result + AArgument[mIndex];
   end;
   // Backslashes vor dem schließenden Anführungszeichen verdoppeln.
-  Result := Result + StringOfChar('\', Backslashes) + '"';
+  Result := Result + StringOfChar('\', mBackslashes) + '"';
 end;
 
 procedure RaiseCancelled(const ARequest: TCompilerRequest);
@@ -266,7 +266,7 @@ function TProcessRunner.Supervise(const ARequest: TCompilerRequest; AReadPipe, A
 begin
   if not Track(AProcess) then
   begin
-    TerminateProcess(AProcess, CancelledExitCode);
+    TerminateProcess(AProcess, cCancelledExitCode);
   end;
   try
     ReadOutput(AReadPipe, AOnLine);

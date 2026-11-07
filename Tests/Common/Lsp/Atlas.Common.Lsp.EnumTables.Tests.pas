@@ -182,13 +182,13 @@ begin
     Assert.AreEqual('Namenstabelle anlegen, im implementation-Teil (TOrderState)',
       Actions[1].GetValue<string>('title'));
     Assert.AreEqual('Tabellen von TOrderState nachziehen', Actions[2].GetValue<string>('title'));
-    Assert.AreEqual(TLspEnumTables.ClientCommand, Actions[0].GetValue<string>('command.command'));
+    Assert.AreEqual(TLspEnumTables.cClientCommand, Actions[0].GetValue<string>('command.command'));
     Arguments := Actions[0].GetValue<TJSONArray>('command.arguments');
     Assert.AreEqual(4, Arguments.Count);
     Assert.AreEqual('COrderStateNames', Arguments.Items[2].Value);
     Assert.AreEqual('afterType', Arguments.Items[3].Value);
     Assert.AreEqual('implementation', Actions[1].GetValue<TJSONArray>('command.arguments').Items[3].Value);
-    Assert.AreEqual(TLspEnumTables.SyncClientCommand, Actions[2].GetValue<string>('command.command'));
+    Assert.AreEqual(TLspEnumTables.cSyncClientCommand, Actions[2].GetValue<string>('command.command'));
     Assert.AreEqual(2, Actions[2].GetValue<TJSONArray>('command.arguments').Count);
   finally
     FreeAll(Actions);

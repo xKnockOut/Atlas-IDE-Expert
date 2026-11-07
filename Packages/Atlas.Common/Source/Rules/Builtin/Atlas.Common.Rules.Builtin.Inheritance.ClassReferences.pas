@@ -2,7 +2,9 @@
 
 // Regel class-reference-nonvirtual-constructor aus Atlas.Common.Rules.Builtin.Inheritance (#1032): Create über
 // eine Klassenreferenz (class of TBasis), deren Konstruktor nicht virtuell ist (E2391); es läuft immer der
-// Konstruktor der Basisklasse.
+// Konstruktor der Basisklasse. Kennt der Index die Klassenreferenz oder ihre Klasse nicht (RTL unter Linux:
+// ExceptClass, Exception), kann die Regel die Zeile nicht entscheiden (IRuleLineCertainty): Ein lsp-ignore dort
+// gilt dann nicht als unused-suppression.
 
 interface
 
@@ -10,10 +12,11 @@ uses
   Atlas.Common.Rules.Contract;
 
 type
-  TClassReferenceNonvirtualConstructorRule = class(TInterfacedObject, IRule)
+  TClassReferenceNonvirtualConstructorRule = class(TInterfacedObject, IRule, IRuleLineCertainty)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    function Decides(const AContext: TRuleContext; ALine: Integer): Boolean;
     /// <summary>Zieltyp aus "TPluginKlasse = class of TPlugin"; '' ohne class of.</summary>
     class function ClassRefTarget(const ASignature: string): string; static;
   end;
@@ -82,10 +85,14 @@ type
       out AMatching: TIndexSymbol): Integer;
     procedure CheckCall(AAccess: TSyntaxNode);
     function CollectCalls: TArray<TSyntaxNode>;
+    function Decided(AAccess: TSyntaxNode): Boolean;
+    procedure Prepare;
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     destructor Destroy; override;
     procedure Run;
+    /// <summary>Konnte die Regel jeden Aufruf X.Create in Zeile ALine (ab 0) entscheiden?</summary>
+    function DecidesLine(ALine: Integer): Boolean;
   end;
 
 /// <summary>Zahl der Argumente, wenn AAccess aufgerufen wird ("Klasse.Create(A, B)"), sonst 0.</summary>
@@ -102,15 +109,15 @@ end;
 /// </summary>
 function FindOwner(const AUnit: TUnitIndex; const AMember: TResolvedSymbol; out AOwner: TIndexSymbol): Boolean;
 var
-  Owner: TIndexSymbol;
+  mOwner: TIndexSymbol;
 begin
   AOwner := Default(TIndexSymbol);
-  for Owner in AUnit.Symbols do
+  for mOwner in AUnit.Symbols do
   begin
-    if (Owner.Kind = TIndexSymbolKind.ClassType) and SameText(Owner.QualifiedName, AMember.Container) and
-      ContainsLine(Owner.Range, AMember.Range.StartPos.Line) then
+    if (mOwner.Kind = TIndexSymbolKind.ClassType) and SameText(mOwner.QualifiedName, AMember.Container) and
+      ContainsLine(mOwner.Range, AMember.Range.StartPos.Line) then
     begin
-      AOwner := Owner;
+      AOwner := mOwner;
       Exit(True);
     end;
   end;
@@ -153,17 +160,33 @@ end;
 
 procedure TClassReferenceNonvirtualConstructorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Check: TClassRefCheck;
+  mCheck: TClassRefCheck;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  Check := TClassRefCheck.Create(AContext, AReport);
+  mCheck := TClassRefCheck.Create(AContext, AReport);
   try
-    Check.Run;
+    mCheck.Run;
   finally
-    Check.Free;
+    mCheck.Free;
+  end;
+end;
+
+function TClassReferenceNonvirtualConstructorRule.Decides(const AContext: TRuleContext; ALine: Integer): Boolean;
+var
+  mCheck: TClassRefCheck;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
+    Exit(True);
+  end;
+  mCheck := TClassRefCheck.Create(AContext, nil);
+  try
+    Result := mCheck.DecidesLine(ALine);
+  finally
+    mCheck.Free;
   end;
 end;
 
@@ -204,29 +227,29 @@ end;
 /// <summary>Zweig der bedingten Übersetzung an APosition ('' ohne {$IF…}).</summary>
 function TClassRefCheck.PathAt(const APosition: TTextPosition): string;
 var
-  Low, High, Middle: Integer;
+  mLow, mHigh, mMiddle: Integer;
 begin
   Result := '';
   if FPaths = nil then
   begin
     Exit;
   end;
-  Low := 0;
-  High := Length(FTokens) - 1;
-  while Low < High do
+  mLow := 0;
+  mHigh := Length(FTokens) - 1;
+  while mLow < mHigh do
   begin
-    Middle := (Low + High) div 2;
-    if (FTokens[Middle].StartPos.Line < APosition.Line) or ((FTokens[Middle].StartPos.Line = APosition.Line) and
-      (FTokens[Middle].StartPos.Character < APosition.Character)) then
+    mMiddle := (mLow + mHigh) div 2;
+    if (FTokens[mMiddle].StartPos.Line < APosition.Line) or ((FTokens[mMiddle].StartPos.Line = APosition.Line) and
+      (FTokens[mMiddle].StartPos.Character < APosition.Character)) then
     begin
-      Low := Middle + 1;
+      mLow := mMiddle + 1;
     end
     else
     begin
-      High := Middle;
+      mHigh := mMiddle;
     end;
   end;
-  Result := TConditionalBranches.PathAt(FPaths, Low);
+  Result := TConditionalBranches.PathAt(FPaths, mLow);
 end;
 
 /// <summary>Steht die Deklaration sicher, wo der Aufruf an ACall übersetzt wird? Aus dem Index ohne Bedingung,
@@ -252,23 +275,23 @@ end;
 /// Direktive nicht anzuhängen ist.</summary>
 function TClassRefCheck.VirtualEdits(const AConstructor: TIndexSymbol; out AEdits: TArray<TRuleEdit>): Boolean;
 var
-  Method: TMethodDecl;
-  Fix: TRuleFix;
+  mMethod: TMethodDecl;
+  mFix: TRuleFix;
 begin
   AEdits := nil;
   Result := False;
-  for Method in ClassMethodsOnce do
+  for mMethod in ClassMethodsOnce do
   begin
-    if (Method.Keyword <> 'constructor') or not (Method.Symbol.SelectionRange.StartPos =
+    if (mMethod.Keyword <> 'constructor') or not (mMethod.Symbol.SelectionRange.StartPos =
       AConstructor.SelectionRange.StartPos) then
     begin
       Continue;
     end;
-    if not AppendDirective(FContext, Method, 'virtual', Fix) then
+    if not AppendDirective(FContext, mMethod, 'virtual', mFix) then
     begin
       Exit(False);
     end;
-    AEdits := AEdits + Fix.Edits;
+    AEdits := AEdits + mFix.Edits;
     Result := True;
   end;
 end;
@@ -285,15 +308,15 @@ end;
 /// <summary>override an die gleichlautenden Konstruktoren der Nachfahren in dieser Datei.</summary>
 function TClassRefCheck.OverrideEdits(const AConstructor: TIndexSymbol): TArray<TRuleEdit>;
 var
-  Method: TMethodDecl;
-  Fix: TRuleFix;
+  mMethod: TMethodDecl;
+  mFix: TRuleFix;
 begin
   Result := nil;
-  for Method in ClassMethodsOnce do
+  for mMethod in ClassMethodsOnce do
   begin
-    if IsOverridingConstructor(Method, AConstructor) and AppendDirective(FContext, Method, 'override', Fix) then
+    if IsOverridingConstructor(mMethod, AConstructor) and AppendDirective(FContext, mMethod, 'override', mFix) then
     begin
-      Result := Result + Fix.Edits;
+      Result := Result + mFix.Edits;
     end;
   end;
 end;
@@ -302,24 +325,24 @@ end;
 /// gleichlautenden Konstruktoren der Nachfahren in dieser Datei.</summary>
 function TClassRefCheck.VirtualFix(const AConstructor: TIndexSymbol; out AFix: TRuleFix): Boolean;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
   AFix := Default(TRuleFix);
-  Result := VirtualEdits(AConstructor, Edits);
+  Result := VirtualEdits(AConstructor, mEdits);
   if not Result then
   begin
     Exit;
   end;
-  Edits := Edits + OverrideEdits(AConstructor);
-  if Length(Edits) > 1 then
+  mEdits := mEdits + OverrideEdits(AConstructor);
+  if Length(mEdits) > 1 then
   begin
     AFix := TRuleFix.Create(cTexts[TInheritanceClassReferencesText.VirtualOverride].Fmt([AConstructor.Container,
-      AConstructor.Name]), Edits);
+      AConstructor.Name]), mEdits);
   end
   else
   begin
     AFix := TRuleFix.Create(cTexts[TInheritanceClassReferencesText.VirtualOn].Fmt([AConstructor.Container,
-      AConstructor.Name]), Edits);
+      AConstructor.Name]), mEdits);
   end;
 end;
 
@@ -327,23 +350,24 @@ end;
 /// die Klasse hinter class of. Alle Deklarationen stehen sicher, wo der Aufruf übersetzt wird.</summary>
 function TClassRefCheck.ReceiverBase(AAccess: TSyntaxNode; out ABase: TResolvedSymbol): Boolean;
 var
-  Symbol, RefType: TResolvedSymbol;
-  TypeFound: Boolean;
-  Target: string;
-  TypeUnit: TUnitIndex;
+  mSymbol, mRefType: TResolvedSymbol;
+  mTypeFound: Boolean;
+  mTarget: string;
+  mTypeUnit: TUnitIndex;
 begin
   ABase := Default(TResolvedSymbol);
-  Result := FResolver.NodeType(FContext.Tree, FFileName, AAccess[0], Symbol, RefType, TypeFound) and TypeFound;
-  Result := Result and not Symbol.IsType and Symbol.Found and not RefType.Builtin and
-    (RefType.SymbolKind = TIndexSymbolKind.ClassType);
+  Result := FResolver.NodeType(FContext.Tree, FFileName, AAccess[0], mSymbol, mRefType, mTypeFound) and mTypeFound;
+  Result := Result and not mSymbol.IsType and mSymbol.Found and not mRefType.Builtin and
+    (mRefType.SymbolKind = TIndexSymbolKind.ClassType);
   if not Result then
   begin
     Exit;
   end;
-  Target := TClassReferenceNonvirtualConstructorRule.ClassRefTarget(RefType.Signature);
-  Result := (Target <> '') and Certain(Symbol.FileName, Symbol.Condition, Symbol.SelectionRange.StartPos, AAccess) and
-    Certain(RefType.FileName, RefType.Condition, RefType.SelectionRange.StartPos, AAccess);
-  Result := Result and UnitFor(RefType.FileName, TypeUnit) and FResolver.ResolveTypeFrom(TypeUnit, Target, ABase);
+  mTarget := TClassReferenceNonvirtualConstructorRule.ClassRefTarget(mRefType.Signature);
+  Result := (mTarget <> '') and Certain(mSymbol.FileName, mSymbol.Condition, mSymbol.SelectionRange.StartPos,
+    AAccess) and
+    Certain(mRefType.FileName, mRefType.Condition, mRefType.SelectionRange.StartPos, AAccess);
+  Result := Result and UnitFor(mRefType.FileName, mTypeUnit) and FResolver.ResolveTypeFrom(mTypeUnit, mTarget, ABase);
   Result := Result and (ABase.SymbolKind = TIndexSymbolKind.ClassType);
 end;
 
@@ -362,91 +386,110 @@ end;
 function TClassRefCheck.NonvirtualMatches(AAccess: TSyntaxNode; const AMember: TResolvedSymbol;
   const AUnit: TUnitIndex; out AMatching: TIndexSymbol): Integer;
 var
-  Owner, Candidate: TIndexSymbol;
-  Args: Integer;
+  mOwner, mCandidate: TIndexSymbol;
+  mArgs: Integer;
 begin
   AMatching := Default(TIndexSymbol);
   Result := 0;
-  if not FindOwner(AUnit, AMember, Owner) then
+  if not FindOwner(AUnit, AMember, mOwner) then
   begin
     Exit;
   end;
-  Args := ArgCount(AAccess);
-  for Candidate in AUnit.Symbols do
+  mArgs := ArgCount(AAccess);
+  for mCandidate in AUnit.Symbols do
   begin
-    if not IsOverloadOf(Candidate, AMember, Owner) then
+    if not IsOverloadOf(mCandidate, AMember, mOwner) then
     begin
       Continue;
     end;
-    if not Certain(AMember.FileName, Candidate.Condition, Candidate.SelectionRange.StartPos, AAccess) or
-      (AcceptsArgs(Candidate, Args) and IsVirtualConstructor(Candidate)) then
+    if not Certain(AMember.FileName, mCandidate.Condition, mCandidate.SelectionRange.StartPos, AAccess) or
+      (AcceptsArgs(mCandidate, mArgs) and IsVirtualConstructor(mCandidate)) then
     begin
       Exit(-1);
     end;
-    if AcceptsArgs(Candidate, Args) then
+    if AcceptsArgs(mCandidate, mArgs) then
     begin
       Inc(Result);
-      AMatching := Candidate;
+      AMatching := mCandidate;
     end;
   end;
 end;
 
 procedure TClassRefCheck.CheckCall(AAccess: TSyntaxNode);
 var
-  Base, Member: TResolvedSymbol;
-  MemberUnit: TUnitIndex;
-  Matching: TIndexSymbol;
-  Matches: Integer;
-  Fix: TRuleFix;
-  Fixes: TArray<TRuleFix>;
+  mBase, mMember: TResolvedSymbol;
+  mMemberUnit: TUnitIndex;
+  mMatching: TIndexSymbol;
+  mMatches: Integer;
+  mFix: TRuleFix;
+  mFixes: TArray<TRuleFix>;
 begin
-  if not ReceiverBase(AAccess, Base) or not ConstructorMember(AAccess, Base, Member, MemberUnit) then
+  if not ReceiverBase(AAccess, mBase) or not ConstructorMember(AAccess, mBase, mMember, mMemberUnit) then
   begin
     Exit;
   end;
-  Matches := NonvirtualMatches(AAccess, Member, MemberUnit, Matching);
-  if Matches <= 0 then
+  mMatches := NonvirtualMatches(AAccess, mMember, mMemberUnit, mMatching);
+  if mMatches <= 0 then
   begin
     Exit;
   end;
-  Fixes := nil;
-  if (Matches = 1) and IsLocal(Member.FileName) and VirtualFix(Matching, Fix) then
+  mFixes := nil;
+  if (mMatches = 1) and IsLocal(mMember.FileName) and VirtualFix(mMatching, mFix) then
   begin
-    Fixes := [Fix];
+    mFixes := [mFix];
   end;
   FReport.Add(TTextRange.Create(AAccess.StartPos, AAccess.EndPos),
-    cTexts[TInheritanceClassReferencesText.NotVirtual].Fmt([Member.Container, Member.Name, Member.Container,
-    Member.Name]), TRuleConfidence.High, Fixes);
+    cTexts[TInheritanceClassReferencesText.NotVirtual].Fmt([mMember.Container, mMember.Name, mMember.Container,
+    mMember.Name]), TRuleConfidence.High, mFixes);
 end;
 
 /// <summary>Alle Zugriffe X.Create mit Empfänger.</summary>
 function TClassRefCheck.CollectCalls: TArray<TSyntaxNode>;
 var
-  Calls: TArray<TSyntaxNode>;
+  mCalls: TArray<TSyntaxNode>;
 begin
-  Calls := nil;
+  mCalls := nil;
   FContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and SameText(ANode.Name, 'Create') then
       begin
-        Calls := Calls + [ANode];
+        mCalls := mCalls + [ANode];
       end;
       Result := True;
     end);
-  Result := Calls;
+  Result := mCalls;
 end;
 
-procedure TClassRefCheck.Run;
+/// <summary>Weiß der Index genug über AAccess? Unbekannt sind ein Empfänger ohne Typ und eine Klassenreferenz, deren
+/// Klasse oder Konstruktor der Index nicht kennt.</summary>
+function TClassRefCheck.Decided(AAccess: TSyntaxNode): Boolean;
 var
-  Calls: TArray<TSyntaxNode>;
-  Node: TSyntaxNode;
+  mSymbol, mRefType, mBase, mMember: TResolvedSymbol;
+  mTypeFound: Boolean;
+  mTarget: string;
+  mTypeUnit: TUnitIndex;
 begin
-  Calls := CollectCalls;
-  if Calls = nil then
+  if not FResolver.NodeType(FContext.Tree, FFileName, AAccess[0], mSymbol, mRefType, mTypeFound) or not mTypeFound or
+    not mSymbol.Found then
   begin
-    Exit;
+    Exit(False);
   end;
+  if mSymbol.IsType or mRefType.Builtin or (mRefType.SymbolKind <> TIndexSymbolKind.ClassType) then
+  begin
+    Exit(True);
+  end;
+  mTarget := TClassReferenceNonvirtualConstructorRule.ClassRefTarget(mRefType.Signature);
+  if mTarget = '' then
+  begin
+    Exit(True);
+  end;
+  Result := UnitFor(mRefType.FileName, mTypeUnit) and FResolver.ResolveTypeFrom(mTypeUnit, mTarget, mBase) and
+    FResolver.FindMember(mBase, AAccess.Name, mMember);
+end;
+
+procedure TClassRefCheck.Prepare;
+begin
   FCache := TRuleDerived.Open(FContext);
   FTokens := FContext.Tree.Tokens;
   FPaths := TConditionalBranches.Paths(FTokens);
@@ -454,12 +497,59 @@ begin
   FAncestry := TAncestry.Create(FContext.Index, TRuleDerived.UnitIndex(FCache, FContext));
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   FResolver := TRuleDerived.Resolver(FCache, FContext);
+end;
+
+function TClassRefCheck.DecidesLine(ALine: Integer): Boolean;
+var
+  mNode: TSyntaxNode;
+  mCalls: TArray<TSyntaxNode>;
+begin
+  Result := True;
+  mCalls := nil;
+  for mNode in CollectCalls do
+  begin
+    if (ALine < 0) or ((mNode.StartPos.Line <= ALine) and (mNode.EndPos.Line >= ALine)) then
+    begin
+      mCalls := mCalls + [mNode];
+    end;
+  end;
+  if mCalls = nil then
+  begin
+    Exit;
+  end;
+  Prepare;
   FResolver.PinTree(FContext.Tree, FFileName);
   try
     FLocal := FResolver.ExtractedUnit(FContext.Tree, FFileName);
-    for Node in Calls do
+    for mNode in mCalls do
     begin
-      CheckCall(Node);
+      if not Decided(mNode) then
+      begin
+        Exit(False);
+      end;
+    end;
+  finally
+    FResolver.UnpinTree;
+  end;
+end;
+
+procedure TClassRefCheck.Run;
+var
+  mCalls: TArray<TSyntaxNode>;
+  mNode: TSyntaxNode;
+begin
+  mCalls := CollectCalls;
+  if mCalls = nil then
+  begin
+    Exit;
+  end;
+  Prepare;
+  FResolver.PinTree(FContext.Tree, FFileName);
+  try
+    FLocal := FResolver.ExtractedUnit(FContext.Tree, FFileName);
+    for mNode in mCalls do
+    begin
+      CheckCall(mNode);
     end;
   finally
     FResolver.UnpinTree;

@@ -73,7 +73,7 @@ type
 
   TAtlasEventBreakBar = class(TAtlasPopupWindow)
   public const
-    Gap = 4;
+    cGap = 4;
   private
     FText: string;
     FContinueRect: TRect;
@@ -110,10 +110,10 @@ uses
   Atlas.UI.Popup.Accessibility;
 
 const
-  DialogGap = 8;
-  DialogWidth = 440;
-  Pad = 10;
-  ButtonGap = 18;
+  cDialogGap = 8;
+  cDialogWidth = 440;
+  cPad = 10;
+  cButtonGap = 18;
 
 function CategoryText(ACategory: TAtlasEventCategory): string;
 begin
@@ -144,8 +144,8 @@ begin
   Result := TGroupBox.Create(ADialog);
   Result.Parent := ADialog;
   Result.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCategories);
-  Result.SetBounds(ADialog.ScaleValue(DialogGap), ADialog.ScaleValue(DialogGap),
-    ADialog.ClientWidth - 2 * ADialog.ScaleValue(DialogGap), 0);
+  Result.SetBounds(ADialog.ScaleValue(cDialogGap), ADialog.ScaleValue(cDialogGap),
+    ADialog.ClientWidth - 2 * ADialog.ScaleValue(cDialogGap), 0);
   mTop := ADialog.ScaleValue(20);
   for mCategory := Low(TAtlasEventCategory) to High(TAtlasEventCategory) do
   begin
@@ -170,11 +170,11 @@ begin
   ADialog.FCancel := ADialog.AddButton(Result, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCancel),
     ADialog.CancelClick);
   ADialog.FCancel.Cancel := True;
-  ADialog.FCancel.Left := Result.ClientWidth - ADialog.FCancel.Width - ADialog.ScaleValue(DialogGap);
+  ADialog.FCancel.Left := Result.ClientWidth - ADialog.FCancel.Width - ADialog.ScaleValue(cDialogGap);
   ADialog.FOk := ADialog.AddButton(Result, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakOk),
     ADialog.OkClick);
   ADialog.FOk.Default := True;
-  ADialog.FOk.Left := ADialog.FCancel.Left - ADialog.FOk.Width - ADialog.ScaleValue(DialogGap);
+  ADialog.FOk.Left := ADialog.FCancel.Left - ADialog.FOk.Width - ADialog.ScaleValue(cDialogGap);
 end;
 
 { TAtlasEventBreakDialog }
@@ -182,10 +182,10 @@ end;
 constructor TAtlasEventBreakDialog.CreateDialog(AOwner: TComponent; const AChoice: TAtlasEventChoice;
   const AForms: TArray<string>; const AExcluded: string; const ACount: TAtlasEventBreakCount);
 var
-  Group: TGroupBox;
-  Bottom: TPanel;
-  Heading: TLabel;
-  Top: Integer;
+  mGroup: TGroupBox;
+  mBottom: TPanel;
+  mHeading: TLabel;
+  mTop: Integer;
 begin
   inherited CreateNew(AOwner);
   FChoice := AChoice;
@@ -197,39 +197,39 @@ begin
   Position := poMainFormCenter;
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  ClientWidth := ScaleValue(DialogWidth);
+  ClientWidth := ScaleValue(cDialogWidth);
 
-  Group := CreateCategories(Self, AExcluded);
+  mGroup := CreateCategories(Self, AExcluded);
 
-  Heading := TLabel.Create(Self);
-  Heading.Parent := Self;
-  Heading.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakScope);
-  Heading.Font.Style := [fsBold];
-  Heading.SetBounds(ScaleValue(DialogGap), Group.Top + Group.Height + ScaleValue(DialogGap), 0, 0);
-  Heading.AutoSize := True;
-  Top := Heading.Top + ScaleValue(20);
+  mHeading := TLabel.Create(Self);
+  mHeading.Parent := Self;
+  mHeading.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakScope);
+  mHeading.Font.Style := [fsBold];
+  mHeading.SetBounds(ScaleValue(cDialogGap), mGroup.Top + mGroup.Height + ScaleValue(cDialogGap), 0, 0);
+  mHeading.AutoSize := True;
+  mTop := mHeading.Top + ScaleValue(20);
   FAll := AddRadio(Self, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakAllForms));
-  FAll.Top := Top;
+  FAll.Top := mTop;
   FVisible := AddRadio(Self, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakVisibleForms));
-  FVisible.Top := Top + ScaleValue(22);
+  FVisible.Top := mTop + ScaleValue(22);
   FOne := AddRadio(Self, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakOneForm));
-  FOne.Top := Top + ScaleValue(44);
+  FOne.Top := mTop + ScaleValue(44);
   FOne.Width := ScaleValue(150);
   FForm := TComboBox.Create(Self);
   FForm.Parent := Self;
   FForm.Style := csDropDownList;
   FForm.SetBounds(FOne.Left + FOne.Width + ScaleValue(4), FOne.Top - ScaleValue(2),
-    ClientWidth - FOne.Left - FOne.Width - ScaleValue(4) - ScaleValue(DialogGap), FForm.Height);
+    ClientWidth - FOne.Left - FOne.Width - ScaleValue(4) - ScaleValue(cDialogGap), FForm.Height);
   FForm.OnChange := Changed;
 
   FCount := TLabel.Create(Self);
   FCount.Parent := Self;
   FCount.ShowAccelChar := False;
-  FCount.SetBounds(ScaleValue(DialogGap), FOne.Top + ScaleValue(32), ClientWidth - 2 * ScaleValue(DialogGap), 0);
+  FCount.SetBounds(ScaleValue(cDialogGap), FOne.Top + ScaleValue(32), ClientWidth - 2 * ScaleValue(cDialogGap), 0);
   FCount.AutoSize := True;
 
-  Bottom := CreateButtons(Self);
-  ClientHeight := FCount.Top + ScaleValue(28) + Bottom.Height;
+  mBottom := CreateButtons(Self);
+  ClientHeight := FCount.Top + ScaleValue(28) + mBottom.Height;
 end;
 
 function TAtlasEventBreakDialog.AddCheck(AParent: TWinControl; const ACaption: string): TCheckBox;
@@ -237,8 +237,8 @@ begin
   Result := TCheckBox.Create(Self);
   Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.Left := ScaleValue(DialogGap);
-  Result.Width := AParent.ClientWidth - 2 * ScaleValue(DialogGap);
+  Result.Left := ScaleValue(cDialogGap);
+  Result.Width := AParent.ClientWidth - 2 * ScaleValue(cDialogGap);
   Result.OnClick := Changed;
 end;
 
@@ -247,8 +247,8 @@ begin
   Result := TRadioButton.Create(Self);
   Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.Left := ScaleValue(DialogGap) * 2;
-  Result.Width := ClientWidth - 4 * ScaleValue(DialogGap);
+  Result.Left := ScaleValue(cDialogGap) * 2;
+  Result.Width := ClientWidth - 4 * ScaleValue(cDialogGap);
   Result.OnClick := Changed;
 end;
 
@@ -261,16 +261,16 @@ begin
   Result.OnClick := AClick;
   Canvas.Font := Font;
   Result.Width := Max(Canvas.TextWidth(ACaption) + ScaleValue(32), ScaleValue(90));
-  Result.Top := ScaleValue(DialogGap);
+  Result.Top := ScaleValue(cDialogGap);
   Result.Height := ScaleValue(28);
   Result.Anchors := [akTop, akRight];
 end;
 
 procedure TAtlasEventBreakDialog.Prepare;
 var
-  Category: TAtlasEventCategory;
-  Name: string;
-  Index: Integer;
+  mCategory: TAtlasEventCategory;
+  mName: string;
+  mIndex: Integer;
 begin
   if FPrepared then
   begin
@@ -280,22 +280,22 @@ begin
   HandleNeeded;
   FForm.Items.BeginUpdate;
   try
-    for Name in FForms do
+    for mName in FForms do
     begin
-      FForm.Items.Add(Name);
+      FForm.Items.Add(mName);
     end;
   finally
     FForm.Items.EndUpdate;
   end;
-  Index := FForm.Items.IndexOf(FChoice.Form);
-  if (Index < 0) and (FForm.Items.Count > 0) then
+  mIndex := FForm.Items.IndexOf(FChoice.Form);
+  if (mIndex < 0) and (FForm.Items.Count > 0) then
   begin
-    Index := 0;
+    mIndex := 0;
   end;
-  FForm.ItemIndex := Index;
-  for Category := Low(TAtlasEventCategory) to High(TAtlasEventCategory) do
+  FForm.ItemIndex := mIndex;
+  for mCategory := Low(TAtlasEventCategory) to High(TAtlasEventCategory) do
   begin
-    FCategories[Category].Checked := Category in FChoice.Categories;
+    FCategories[mCategory].Checked := mCategory in FChoice.Categories;
   end;
   FFrequent.Checked := FChoice.Frequent;
   FAll.Checked := FChoice.Scope = TAtlasEventScope.AllForms;
@@ -318,14 +318,14 @@ end;
 
 function TAtlasEventBreakDialog.Choice: TAtlasEventChoice;
 var
-  Category: TAtlasEventCategory;
+  mCategory: TAtlasEventCategory;
 begin
   Result := Default(TAtlasEventChoice);
-  for Category := Low(TAtlasEventCategory) to High(TAtlasEventCategory) do
+  for mCategory := Low(TAtlasEventCategory) to High(TAtlasEventCategory) do
   begin
-    if FCategories[Category].Checked then
+    if FCategories[mCategory].Checked then
     begin
-      Include(Result.Categories, Category);
+      Include(Result.Categories, mCategory);
     end;
   end;
   Result.Frequent := FFrequent.Checked;
@@ -343,7 +343,7 @@ end;
 
 procedure TAtlasEventBreakDialog.Changed(Sender: TObject);
 var
-  Current: TAtlasEventChoice;
+  mCurrent: TAtlasEventChoice;
 begin
   if not FPrepared then
   begin
@@ -353,11 +353,11 @@ begin
   begin
     FOne.Checked := True;
   end;
-  Current := Choice;
-  FOk.Enabled := Current.Categories <> [];
+  mCurrent := Choice;
+  FOk.Enabled := mCurrent.Categories <> [];
   if Assigned(FCountText) then
   begin
-    FCount.Caption := FCountText(Current);
+    FCount.Caption := FCountText(mCurrent);
   end
   else
   begin
@@ -382,17 +382,17 @@ end;
 class function TAtlasEventBreakDialog.Execute(var AChoice: TAtlasEventChoice; const AForms: TArray<string>;
   const AExcluded: string; const ACount: TAtlasEventBreakCount): Boolean;
 var
-  Dialog: TAtlasEventBreakDialog;
+  mDialog: TAtlasEventBreakDialog;
 begin
-  Dialog := TAtlasEventBreakDialog.CreateDialog(nil, AChoice, AForms, AExcluded, ACount);
+  mDialog := TAtlasEventBreakDialog.CreateDialog(nil, AChoice, AForms, AExcluded, ACount);
   try
-    Result := Dialog.ShowModal = mrOk;
+    Result := mDialog.ShowModal = mrOk;
     if Result then
     begin
-      AChoice := Dialog.Choice;
+      AChoice := mDialog.Choice;
     end;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
@@ -403,17 +403,17 @@ begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.Debugger;
   FHot := -1;
-  SetAccessible(UiaToolTipControlType, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakTitle));
+  SetAccessible(cUiaToolTipControlType, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakTitle));
 end;
 
 function TAtlasEventBreakBar.Layout(ADraw: Boolean): TSize;
 var
-  X, Y, TextHeight, Width: Integer;
+  X, Y, mTextHeight, mWidth: Integer;
   mText: string;
 
   procedure Link(const ACaption: string; AIndex: Integer; var ARect: TRect);
   begin
-    ARect := Rect(X, Y, X + Canvas.TextWidth(ACaption), Y + TextHeight);
+    ARect := Rect(X, Y, X + Canvas.TextWidth(ACaption), Y + mTextHeight);
     if ADraw then
     begin
       Canvas.Font.Color := ToColor(Colors.Accent);
@@ -428,18 +428,18 @@ var
       Canvas.TextOut(X, Y, ACaption);
       Canvas.Font.Style := [];
     end;
-    X := ARect.Right + Scale(ButtonGap);
+    X := ARect.Right + Scale(cButtonGap);
   end;
 
 begin
   Canvas.Font := UIFont;
-  TextHeight := Canvas.TextHeight('Wg');
+  mTextHeight := Canvas.TextHeight('Wg');
   if ADraw then
   begin
     Canvas.Brush.Style := bsClear;
   end;
-  X := Scale(Pad);
-  Y := Scale(Pad);
+  X := Scale(cPad);
+  Y := Scale(cPad);
   mText := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakStopped, [FText]);
   Canvas.Font.Style := [fsBold];
   if ADraw then
@@ -447,39 +447,39 @@ begin
     Canvas.Font.Color := ToColor(Colors.Text);
     Canvas.TextOut(X, Y, mText);
   end;
-  Width := X + Canvas.TextWidth(mText);
+  mWidth := X + Canvas.TextWidth(mText);
   Canvas.Font.Style := [];
-  Y := Y + TextHeight + Scale(Gap) * 2;
+  Y := Y + mTextHeight + Scale(cGap) * 2;
   Link(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakContinue), 0, FContinueRect);
   Link(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakClose), 1, FCloseRect);
-  Width := Max(Width, FCloseRect.Right);
+  mWidth := Max(mWidth, FCloseRect.Right);
   if ADraw then
   begin
     Canvas.Brush.Style := bsSolid;
   end;
-  Result.cx := Width + Scale(Pad);
-  Result.cy := Y + TextHeight + Scale(Pad);
+  Result.cx := mWidth + Scale(cPad);
+  Result.cy := Y + mTextHeight + Scale(cPad);
 end;
 
 procedure TAtlasEventBreakBar.ShowFor(const ACaption: string; const APoint: TPoint);
 var
-  Size: TSize;
-  Area: TRect;
-  Left, Top: Integer;
+  mSize: TSize;
+  mArea: TRect;
+  mLeft, mTop: Integer;
 begin
   FText := ACaption;
   FHot := -1;
   HandleNeeded;
-  Size := Layout(False);
-  Area := WorkAreaAt(APoint);
-  Left := Max(Area.Left, Min(APoint.X, Area.Right - Size.cx));
-  Top := APoint.Y + Scale(Gap);
-  if Top + Size.cy > Area.Bottom then
+  mSize := Layout(False);
+  mArea := WorkAreaAt(APoint);
+  mLeft := Max(mArea.Left, Min(APoint.X, mArea.Right - mSize.cx));
+  mTop := APoint.Y + Scale(cGap);
+  if mTop + mSize.cy > mArea.Bottom then
   begin
-    Top := APoint.Y - Scale(Gap) - Size.cy;
+    mTop := APoint.Y - Scale(cGap) - mSize.cy;
   end;
-  Top := Max(Top, Area.Top);
-  ShowAt(Rect(Left, Top, Left + Size.cx, Top + Size.cy));
+  mTop := Max(mTop, mArea.Top);
+  ShowAt(Rect(mLeft, mTop, mLeft + mSize.cx, mTop + mSize.cy));
   Announce(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakStopped, [FText]));
 end;
 
@@ -527,19 +527,19 @@ end;
 
 procedure TAtlasEventBreakBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  Point: TPoint;
+  mPoint: TPoint;
 begin
   inherited;
   if Button <> mbLeft then
   begin
     Exit;
   end;
-  Point := TPoint.Create(X, Y);
-  if PtInRect(FContinueRect, Point) then
+  mPoint := TPoint.Create(X, Y);
+  if PtInRect(FContinueRect, mPoint) then
   begin
     KeepWatching;
   end
-  else if PtInRect(FCloseRect, Point) then
+  else if PtInRect(FCloseRect, mPoint) then
   begin
     CloseBar;
   end;
@@ -547,21 +547,21 @@ end;
 
 procedure TAtlasEventBreakBar.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  Point: TPoint;
-  Hot: Integer;
+  mPoint: TPoint;
+  mHot: Integer;
 begin
   inherited;
-  Point := TPoint.Create(X, Y);
-  Hot := -1;
-  if PtInRect(FContinueRect, Point) then
+  mPoint := TPoint.Create(X, Y);
+  mHot := -1;
+  if PtInRect(FContinueRect, mPoint) then
   begin
-    Hot := 0;
+    mHot := 0;
   end
-  else if PtInRect(FCloseRect, Point) then
+  else if PtInRect(FCloseRect, mPoint) then
   begin
-    Hot := 1;
+    mHot := 1;
   end;
-  if Hot >= 0 then
+  if mHot >= 0 then
   begin
     Cursor := crHandPoint;
   end
@@ -569,9 +569,9 @@ begin
   begin
     Cursor := crDefault;
   end;
-  if Hot <> FHot then
+  if mHot <> FHot then
   begin
-    FHot := Hot;
+    FHot := mHot;
     Invalidate;
   end;
 end;

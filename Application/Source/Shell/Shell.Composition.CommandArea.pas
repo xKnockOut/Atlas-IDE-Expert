@@ -17,6 +17,7 @@ uses
   Shell.Composition.Editing,
   Shell.Composition.CodeArea,
   Shell.Composition.AnalysisArea,
+  Shell.Composition.Status.Contract,
   Shell.Composition.Status,
   Shell.Composition.ServerCommands,
   Shell.Composition.EditorCommands,

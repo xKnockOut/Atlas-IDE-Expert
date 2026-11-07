@@ -30,7 +30,8 @@ type
     /// <summary>Einrückung der case-Zeile bzw. der Zweige.</summary>
     CaseIndent: string;
     BranchIndent: string;
-    /// <summary>Was die neuen Zweige ersetzen: vom Ende des Tokens vor dem Cursor bis hinter das getippte Wort.</summary>
+    /// <summary>Was die neuen Zweige ersetzen: vom Ende des Tokens vor dem Cursor bis hinter das getippte
+    /// Wort.</summary>
     EditRange: TTextRange;
     /// <summary>Das abschließende "end" ist vorhanden.</summary>
     HasEnd: Boolean;
@@ -112,16 +113,16 @@ end;
 
 function IsKeywordIn(const AToken: TPascalToken; const AWords: array of string): Boolean;
 var
-  Word: string;
+  mWord: string;
 begin
   Result := False;
   if AToken.Kind <> TPascalTokenKind.Keyword then
   begin
     Exit;
   end;
-  for Word in AWords do
+  for mWord in AWords do
   begin
-    if AToken.IsKeyword(Word) then
+    if AToken.IsKeyword(mWord) then
     begin
       Exit(True);
     end;
@@ -143,12 +144,12 @@ end;
 /// <summary>Breite von AIndent, Tabulator als zwei Zeichen.</summary>
 function Width(const AIndent: string): Integer;
 var
-  Character: Char;
+  mCharacter: Char;
 begin
   Result := 0;
-  for Character in AIndent do
+  for mCharacter in AIndent do
   begin
-    if Character = #9 then
+    if mCharacter = #9 then
     begin
       Inc(Result, 2);
     end
@@ -312,7 +313,8 @@ begin
   Result := ABefore >= 0;
 end;
 
-/// <summary>Endet vor dem Cursor ein Zweig ("of" oder ";", Kommentar dazwischen erlaubt)? AIndex: dieses Token.</summary>
+/// <summary>Endet vor dem Cursor ein Zweig ("of" oder ";", Kommentar dazwischen erlaubt)? AIndex: dieses
+/// Token.</summary>
 function BranchStart(const ATokens: TArray<TPascalToken>; ABefore: Integer; out AIndex: Integer): Boolean;
 begin
   AIndex := ABefore;
@@ -615,57 +617,57 @@ class function TCaseCompletion.Missing(const AValues, ALabels: TArray<string>;
 
   function IndexOfValue(const AName: string): Integer;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
-    for Index := 0 to High(AValues) do
+    for mIndex := 0 to High(AValues) do
     begin
-      if SameText(AValues[Index], LastPart(AName)) then
+      if SameText(AValues[mIndex], LastPart(AName)) then
       begin
-        Exit(Index);
+        Exit(mIndex);
       end;
     end;
     Result := -1;
   end;
 
 var
-  Present: TArray<Boolean>;
-  Bounds: TArray<string>;
-  Element: string;
-  Low_, High_, Index: Integer;
+  mPresent: TArray<Boolean>;
+  mBounds: TArray<string>;
+  mElement: string;
+  mLow_, mHigh_, mIndex: Integer;
 begin
   AMissing := nil;
-  SetLength(Present, Length(AValues));
-  for Index := 0 to High(Present) do
+  SetLength(mPresent, Length(AValues));
+  for mIndex := 0 to High(mPresent) do
   begin
-    Present[Index] := False;
+    mPresent[mIndex] := False;
   end;
-  for Element in ALabels do
+  for mElement in ALabels do
   begin
-    Bounds := Element.Split(['..']);
-    if (Length(Bounds) < 1) or (Length(Bounds) > 2) then
+    mBounds := mElement.Split(['..']);
+    if (Length(mBounds) < 1) or (Length(mBounds) > 2) then
     begin
       Exit(False);
     end;
-    Low_ := IndexOfValue(Bounds[0]);
-    High_ := Low_;
-    if Length(Bounds) = 2 then
+    mLow_ := IndexOfValue(mBounds[0]);
+    mHigh_ := mLow_;
+    if Length(mBounds) = 2 then
     begin
-      High_ := IndexOfValue(Bounds[1]);
+      mHigh_ := IndexOfValue(mBounds[1]);
     end;
-    if (Low_ < 0) or (High_ < 0) then
+    if (mLow_ < 0) or (mHigh_ < 0) then
     begin
       Exit(False);
     end;
-    for Index := Low_ to High_ do
+    for mIndex := mLow_ to mHigh_ do
     begin
-      Present[Index] := True;
+      mPresent[mIndex] := True;
     end;
   end;
-  for Index := 0 to High(AValues) do
+  for mIndex := 0 to High(AValues) do
   begin
-    if not Present[Index] then
+    if not mPresent[mIndex] then
     begin
-      AMissing := AMissing + [AValues[Index]];
+      AMissing := AMissing + [AValues[mIndex]];
     end;
   end;
   Result := True;
@@ -674,13 +676,13 @@ end;
 class function TCaseCompletion.BranchesText(const ASlot: TCaseBranchSlot; const AMissing: TArray<string>;
   const APrefix, ALineBreak: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(AMissing) do
+  for mIndex := 0 to High(AMissing) do
   begin
-    Result := Result + ALineBreak + ASlot.BranchIndent + APrefix + AMissing[Index] + ': ';
-    if Index = 0 then
+    Result := Result + ALineBreak + ASlot.BranchIndent + APrefix + AMissing[mIndex] + ': ';
+    if mIndex = 0 then
     begin
       Result := Result + '$0';
     end;
@@ -708,32 +710,32 @@ end;
 
 class function TCaseCompletion.CaseAt(ATree: TSyntaxTree; const APosition: TTextPosition): TSyntaxNode;
 var
-  Node: TSyntaxNode;
-  Index: Integer;
-  Descended: Boolean;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+  mDescended: Boolean;
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
   begin
     Exit;
   end;
-  Node := ATree.Root;
+  mNode := ATree.Root;
   repeat
-    Descended := False;
-    for Index := 0 to Node.ChildCount - 1 do
+    mDescended := False;
+    for mIndex := 0 to mNode.ChildCount - 1 do
     begin
-      if Contains(Node[Index], APosition) then
+      if Contains(mNode[mIndex], APosition) then
       begin
-        Node := Node[Index];
-        if Node.Kind = TSyntaxKind.CaseStatement then
+        mNode := mNode[mIndex];
+        if mNode.Kind = TSyntaxKind.CaseStatement then
         begin
-          Result := Node;
+          Result := mNode;
         end;
-        Descended := True;
+        mDescended := True;
         Break;
       end;
     end;
-  until not Descended;
+  until not mDescended;
 end;
 
 /// <summary>Index des ersten Tokens ab AOffset.</summary>
@@ -749,29 +751,29 @@ end;
 class function TCaseCompletion.OfPosition(ATree: TSyntaxTree; ACase: TSyntaxNode;
   out APosition: TTextPosition): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Parens: Integer;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mParens: Integer;
 begin
   Result := False;
-  Tokens := ATree.Tokens;
-  Index := TokenAt(Tokens, ACase.StartOffset);
-  Parens := 0;
-  while (Index <= High(Tokens)) and (Tokens[Index].Offset < ACase.EndOffset) do
+  mTokens := ATree.Tokens;
+  mIndex := TokenAt(mTokens, ACase.StartOffset);
+  mParens := 0;
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ACase.EndOffset) do
   begin
-    if Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol('[') then
+    if mTokens[mIndex].IsSymbol('(') or mTokens[mIndex].IsSymbol('[') then
     begin
-      Inc(Parens);
+      Inc(mParens);
     end
-    else if Tokens[Index].IsSymbol(')') or Tokens[Index].IsSymbol(']') then
+    else if mTokens[mIndex].IsSymbol(')') or mTokens[mIndex].IsSymbol(']') then
     begin
-      Dec(Parens);
+      Dec(mParens);
     end
-    else if (Parens = 0) and Tokens[Index].IsKeyword('of') then
+    else if (mParens = 0) and mTokens[mIndex].IsKeyword('of') then
     begin
-      APosition := Tokens[Index].EndPos;
+      APosition := mTokens[mIndex].EndPos;
       Exit(True);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 

@@ -86,22 +86,22 @@ uses
 /// <summary>Erstes Token AText (Symbol) in AFrom..AStop-1 auf Klammerebene 0; -1 ohne.</summary>
 function SymbolAtDepthZero(const ATokens: TArray<TPascalToken>; AFrom, AStop: Integer; const AText: string): Integer;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
-  Depth := 0;
-  for Index := AFrom to AStop - 1 do
+  mDepth := 0;
+  for mIndex := AFrom to AStop - 1 do
   begin
-    if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
+    if ATokens[mIndex].IsSymbol('(') or ATokens[mIndex].IsSymbol('[') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']') then
+    else if ATokens[mIndex].IsSymbol(')') or ATokens[mIndex].IsSymbol(']') then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (Depth = 0) and ATokens[Index].IsSymbol(AText) then
+    else if (mDepth = 0) and ATokens[mIndex].IsSymbol(AText) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -144,25 +144,25 @@ end;
 
 function TConstantValues.TokenAt(const APosition: TTextPosition): Integer;
 var
-  Low, High, Middle: Integer;
+  mLow, mHigh, mMiddle: Integer;
 begin
   // Erstes Token, das an APosition oder dahinter beginnt.
-  Low := 0;
-  High := Length(FTokens);
-  while Low < High do
+  mLow := 0;
+  mHigh := Length(FTokens);
+  while mLow < mHigh do
   begin
-    Middle := (Low + High) div 2;
-    if (FTokens[Middle].StartPos.Line < APosition.Line) or ((FTokens[Middle].StartPos.Line = APosition.Line) and
-      (FTokens[Middle].StartPos.Character < APosition.Character)) then
+    mMiddle := (mLow + mHigh) div 2;
+    if (FTokens[mMiddle].StartPos.Line < APosition.Line) or ((FTokens[mMiddle].StartPos.Line = APosition.Line) and
+      (FTokens[mMiddle].StartPos.Character < APosition.Character)) then
     begin
-      Low := Middle + 1;
+      mLow := mMiddle + 1;
     end
     else
     begin
-      High := Middle;
+      mHigh := mMiddle;
     end;
   end;
-  Result := Low;
+  Result := mLow;
 end;
 
 /// <summary>Aufzählung ohne eigene Werte (a = 3) und mit ungekürzter Signatur: Positionen sind sicher.</summary>
@@ -172,7 +172,8 @@ begin
     not ASignature.EndsWith('…');
 end;
 
-/// <summary>Keine Deklaration der Aufzählung AContainer in AOwner hat unsichere Positionen; AKnown: es gibt eine.</summary>
+/// <summary>Keine Deklaration der Aufzählung AContainer in AOwner hat unsichere Positionen; AKnown: es gibt
+/// eine.</summary>
 function EnumPositionsSafe(const AOwner: TUnitIndex; const AContainer: string; out AKnown: Boolean): Boolean;
 var
   mSymbol: TIndexSymbol;
@@ -250,10 +251,10 @@ end;
 function TConstantValues.ForeignValue(const AOwner: TUnitIndex; const ASymbol: TIndexSymbol;
   out AValue: Int64): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Last: Integer;
-  Lookup: TOrdinalNameLookup;
-  Owner: TUnitIndex;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mLast: Integer;
+  mLookup: TOrdinalNameLookup;
+  mOwner: TUnitIndex;
 begin
   // "Max = Basis + 1" aus der Signatur; Namen darin gelten in der Unit der Konstanten.
   Result := False;
@@ -262,25 +263,25 @@ begin
   begin
     Exit;
   end;
-  Tokens := TPascalLexer.Tokenize(ASymbol.Signature);
-  Index := SymbolAtDepthZero(Tokens, 0, Length(Tokens), '=');
-  if Index < 0 then
+  mTokens := TPascalLexer.Tokenize(ASymbol.Signature);
+  mIndex := SymbolAtDepthZero(mTokens, 0, Length(mTokens), '=');
+  if mIndex < 0 then
   begin
     Exit;
   end;
-  Last := High(Tokens);
-  if (Last > Index) and Tokens[Last].IsSymbol(';') then
+  mLast := High(mTokens);
+  if (mLast > mIndex) and mTokens[mLast].IsSymbol(';') then
   begin
-    Dec(Last);
+    Dec(mLast);
   end;
-  Owner := AOwner;
-  Lookup :=
+  mOwner := AOwner;
+  mLookup :=
     function(const AParts: TArray<string>; AAt: Integer; out AResult: Int64): Boolean
     var
       Resolved: TResolvedSymbol;
     begin
       AResult := 0;
-      Result := (Length(AParts) = 1) and FResolver.ResolveNameFrom(Owner, AParts[0], Resolved) and
+      Result := (Length(AParts) = 1) and FResolver.ResolveNameFrom(mOwner, AParts[0], Resolved) and
         Resolved.Found;
       if not Result then
       begin
@@ -299,7 +300,7 @@ begin
         Result := False;
       end;
     end;
-  Result := TOrdinalConstants.Evaluate(Tokens, Index + 1, Last, Lookup, AValue);
+  Result := TOrdinalConstants.Evaluate(mTokens, mIndex + 1, mLast, mLookup, AValue);
 end;
 
 function TConstantValues.OwnValue(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
@@ -378,7 +379,7 @@ end;
 
 function TConstantValues.NameValue(const ANames: TArray<string>; ATokenIndex: Integer; out AValue: Int64): Boolean;
 var
-  Resolved: TResolvedSymbol;
+  mResolved: TResolvedSymbol;
 begin
   Result := False;
   AValue := 0;
@@ -386,40 +387,40 @@ begin
   begin
     Exit;
   end;
-  Resolved := FResolver.ResolveChain(FTree, FFileName, ANames, FTokens[ATokenIndex].Offset);
-  if not Resolved.Found then
+  mResolved := FResolver.ResolveChain(FTree, FFileName, ANames, FTokens[ATokenIndex].Offset);
+  if not mResolved.Found then
   begin
     Exit;
   end;
-  if Resolved.SymbolKind = TIndexSymbolKind.EnumMember then
+  if mResolved.SymbolKind = TIndexSymbolKind.EnumMember then
   begin
-    Result := EnumOrdinal(Resolved, AValue);
+    Result := EnumOrdinal(mResolved, AValue);
   end
-  else if Resolved.SymbolKind = TIndexSymbolKind.Constant then
+  else if mResolved.SymbolKind = TIndexSymbolKind.Constant then
   begin
-    Result := ConstantValue(Resolved, AValue);
+    Result := ConstantValue(mResolved, AValue);
   end;
 end;
 
 class function TConstantValues.TokenFrom(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 var
-  Lower, Upper, Middle: Integer;
+  mLower, mUpper, mMiddle: Integer;
 begin
-  Lower := 0;
-  Upper := Length(ATokens);
-  while Lower < Upper do
+  mLower := 0;
+  mUpper := Length(ATokens);
+  while mLower < mUpper do
   begin
-    Middle := (Lower + Upper) div 2;
-    if ATokens[Middle].Offset < AOffset then
+    mMiddle := (mLower + mUpper) div 2;
+    if ATokens[mMiddle].Offset < AOffset then
     begin
-      Lower := Middle + 1;
+      mLower := mMiddle + 1;
     end
     else
     begin
-      Upper := Middle;
+      mUpper := mMiddle;
     end;
   end;
-  Result := Lower;
+  Result := mLower;
 end;
 
 function TConstantValues.TokenRange(ANode: TSyntaxNode; out AFirst, ALast: Integer): Boolean;
@@ -432,10 +433,10 @@ end;
 
 function TConstantValues.EvaluateNode(ANode: TSyntaxNode; out AValue: Int64): Boolean;
 var
-  First, Last: Integer;
+  mFirst, mLast: Integer;
 begin
   AValue := 0;
-  Result := (ANode <> nil) and TokenRange(ANode, First, Last) and Evaluate(First, Last, AValue);
+  Result := (ANode <> nil) and TokenRange(ANode, mFirst, mLast) and Evaluate(mFirst, mLast, AValue);
 end;
 
 function TConstantValues.EnumMembers(const AEnum: TResolvedSymbol; out ANames: TArray<string>): Boolean;
@@ -518,14 +519,14 @@ end;
 
 function TConstantValues.Check(ANode: TSyntaxNode; out AValue: Int64): TOrdinalStatus;
 var
-  First, Last: Integer;
+  mFirst, mLast: Integer;
 begin
   AValue := 0;
-  if not TokenRange(ANode, First, Last) then
+  if not TokenRange(ANode, mFirst, mLast) then
   begin
     Exit(TOrdinalStatus.Unknown);
   end;
-  Result := Check(First, Last, AValue);
+  Result := Check(mFirst, mLast, AValue);
 end;
 
 end.

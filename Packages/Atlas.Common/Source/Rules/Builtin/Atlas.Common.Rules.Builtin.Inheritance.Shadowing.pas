@@ -65,15 +65,15 @@ const
 { TShadowedNameRule }
 
 const
-  ShadowDefaultIgnore: array[0..1] of string = ('Sender', 'Value');
+  cShadowDefaultIgnore: array[0..1] of string = ('Sender', 'Value');
   // Ohne VCL im Index: Mitglieder von TComponent bzw. TControl, wenn die Kette an einer dieser Klassen abbricht.
-  ComponentClasses: array[0..1] of string = ('TComponent', 'TDataModule');
-  ComponentMembers: array[0..5] of string = ('Name', 'Tag', 'Owner', 'ComponentCount', 'ComponentIndex',
+  cComponentClasses: array[0..1] of string = ('TComponent', 'TDataModule');
+  cComponentMembers: array[0..5] of string = ('Name', 'Tag', 'Owner', 'ComponentCount', 'ComponentIndex',
     'Components');
-  ControlClasses: array[0..14] of string = ('TControl', 'TWinControl', 'TCustomControl', 'TGraphicControl', 'TForm',
+  cControlClasses: array[0..14] of string = ('TControl', 'TWinControl', 'TCustomControl', 'TGraphicControl', 'TForm',
     'TCustomForm', 'TFrame', 'TCustomFrame', 'TScrollingWinControl', 'TPanel', 'TCustomPanel', 'TScrollBox',
     'TPageControl', 'TTabSheet', 'TGroupBox');
-  ControlMembers: array[0..20] of string = ('Left', 'Top', 'Width', 'Height', 'Caption', 'Text', 'Hint', 'Visible',
+  cControlMembers: array[0..20] of string = ('Left', 'Top', 'Width', 'Height', 'Caption', 'Text', 'Hint', 'Visible',
     'Enabled', 'Color', 'Font', 'Parent', 'Align', 'Anchors', 'Cursor', 'ShowHint', 'PopupMenu', 'ClientWidth',
     'ClientHeight', 'Action', 'Constraints');
 
@@ -150,14 +150,14 @@ type
 
 function SplitNames(const ANames: string): TArray<string>;
 var
-  Name: string;
+  mName: string;
 begin
   Result := nil;
-  for Name in SplitString(ANames, ',') do
+  for mName in SplitString(ANames, ',') do
   begin
-    if Trim(Name) <> '' then
+    if Trim(mName) <> '' then
     begin
-      Result := Result + [Trim(Name)];
+      Result := Result + [Trim(mName)];
     end;
   end;
 end;
@@ -165,32 +165,32 @@ end;
 /// <summary>Alle Parameter des Routinenkopfs AHeader (nil: keine), in ihrer Reihenfolge.</summary>
 function ParamEntries(AHeader: TSyntaxNode): TArray<TParamEntry>;
 var
-  Params: TSyntaxNode;
-  Index: Integer;
-  Name: string;
-  Entry: TParamEntry;
+  mParams: TSyntaxNode;
+  mIndex: Integer;
+  mName: string;
+  mEntry: TParamEntry;
 begin
   Result := nil;
-  Params := nil;
+  mParams := nil;
   if AHeader <> nil then
   begin
-    Params := AHeader.FindChild(TSyntaxKind.Parameters);
+    mParams := AHeader.FindChild(TSyntaxKind.Parameters);
   end;
-  if Params = nil then
+  if mParams = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Params.ChildCount - 1 do
+  for mIndex := 0 to mParams.ChildCount - 1 do
   begin
-    if Params[Index].Kind <> TSyntaxKind.Parameter then
+    if mParams[mIndex].Kind <> TSyntaxKind.Parameter then
     begin
       Continue;
     end;
-    Entry.Node := Params[Index];
-    for Name in SplitNames(Params[Index].Name) do
+    mEntry.Node := mParams[mIndex];
+    for mName in SplitNames(mParams[mIndex].Name) do
     begin
-      Entry.Name := Name;
-      Result := Result + [Entry];
+      mEntry.Name := mName;
+      Result := Result + [mEntry];
     end;
   end;
 end;
@@ -198,48 +198,48 @@ end;
 /// <summary>Zuweisung "AName := …" irgendwo unter ANode.</summary>
 function Assigned_(ANode: TSyntaxNode; const AName: string): Boolean;
 var
-  Index: Integer;
-  Node: TSyntaxNode;
-  Pending: TStack<TSyntaxNode>;
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
 begin
   // Iterativ (Bericht M1).
   Result := False;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while not Result and (Pending.Count > 0) do
+    mPending.Push(ANode);
+    while not Result and (mPending.Count > 0) do
     begin
-      Node := Pending.Pop;
-      Result := (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and
-        (Node[0].Kind = TSyntaxKind.Identifier) and SameText(Node[0].Name, AName);
-      for Index := Node.ChildCount - 1 downto 0 do
+      mNode := mPending.Pop;
+      Result := (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount = 2) and
+        (mNode[0].Kind = TSyntaxKind.Identifier) and SameText(mNode[0].Name, AName);
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 /// <summary>Kopf ARoutineHeader hat an Stelle AParamIndex den Parameter AParam.</summary>
 function HasParamAt(AHeader: TSyntaxNode; const AParam: string; AParamIndex: Integer): Boolean;
 var
-  Entries: TArray<TParamEntry>;
+  mEntries: TArray<TParamEntry>;
 begin
-  Entries := ParamEntries(AHeader);
-  Result := (AParamIndex >= 0) and (AParamIndex <= High(Entries)) and SameText(Entries[AParamIndex].Name, AParam);
+  mEntries := ParamEntries(AHeader);
+  Result := (AParamIndex >= 0) and (AParamIndex <= High(mEntries)) and SameText(mEntries[AParamIndex].Name, AParam);
 end;
 
 /// <summary>Legt die Kinder von ANode rückwärts auf die Stapel, jeweils mit AInClass.</summary>
 procedure PushChildren(APending: TStack<TSyntaxNode>; APendingInClass: TStack<Boolean>; ANode: TSyntaxNode;
   AInClass: Boolean);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := ANode.ChildCount - 1 downto 0 do
+  for mIndex := ANode.ChildCount - 1 downto 0 do
   begin
-    APending.Push(ANode[Index]);
+    APending.Push(ANode[mIndex]);
     APendingInClass.Push(AInClass);
   end;
 end;
@@ -249,39 +249,39 @@ end;
 function FindDeclarationHeader(ARoot: TSyntaxNode; const AClassName, AMethod, AParam: string;
   AParamIndex: Integer): TSyntaxNode;
 var
-  Node: TSyntaxNode;
-  InClass, IsHeader: Boolean;
-  Pending: TStack<TSyntaxNode>;
-  PendingInClass: TStack<Boolean>;
+  mNode: TSyntaxNode;
+  mInClass, mIsHeader: Boolean;
+  mPending: TStack<TSyntaxNode>;
+  mPendingInClass: TStack<Boolean>;
 begin
   // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel, ob er in der Klasse AClassName liegt.
   Result := nil;
-  Pending := TStack<TSyntaxNode>.Create;
-  PendingInClass := TStack<Boolean>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
+  mPendingInClass := TStack<Boolean>.Create;
   try
-    Pending.Push(ARoot);
-    PendingInClass.Push(False);
-    while (Result = nil) and (Pending.Count > 0) do
+    mPending.Push(ARoot);
+    mPendingInClass.Push(False);
+    while (Result = nil) and (mPending.Count > 0) do
     begin
-      Node := Pending.Pop;
-      InClass := PendingInClass.Pop;
-      if Node.Kind = TSyntaxKind.TypeDecl then
+      mNode := mPending.Pop;
+      mInClass := mPendingInClass.Pop;
+      if mNode.Kind = TSyntaxKind.TypeDecl then
       begin
-        InClass := SameText(Node.Name, AClassName);
+        mInClass := SameText(mNode.Name, AClassName);
       end;
-      IsHeader := InClass and (Node.Kind = TSyntaxKind.RoutineHeader) and SameText(Node.Name, AMethod);
-      if IsHeader and HasParamAt(Node, AParam, AParamIndex) then
+      mIsHeader := mInClass and (mNode.Kind = TSyntaxKind.RoutineHeader) and SameText(mNode.Name, AMethod);
+      if mIsHeader and HasParamAt(mNode, AParam, AParamIndex) then
       begin
-        Result := Node;
+        Result := mNode;
       end;
-      if not IsHeader and not (Node.Kind in [TSyntaxKind.ImplementationSection, TSyntaxKind.RoutineDecl]) then
+      if not mIsHeader and not (mNode.Kind in [TSyntaxKind.ImplementationSection, TSyntaxKind.RoutineDecl]) then
       begin
-        PushChildren(Pending, PendingInClass, Node, InClass);
+        PushChildren(mPending, mPendingInClass, mNode, mInClass);
       end;
     end;
   finally
-    PendingInClass.Free;
-    Pending.Free;
+    mPendingInClass.Free;
+    mPending.Free;
   end;
 end;
 
@@ -315,9 +315,9 @@ end;
 /// Kette abbricht. Diese Mitglieder gehören alle zur Instanz.</summary>
 function FrameworkMember(const AUnresolved, AName: string): Boolean;
 begin
-  Result := (MatchText(AUnresolved, ComponentClasses) or MatchText(AUnresolved, ControlClasses)) and
-    MatchText(AName, ComponentMembers);
-  Result := Result or (MatchText(AUnresolved, ControlClasses) and MatchText(AName, ControlMembers));
+  Result := (MatchText(AUnresolved, cComponentClasses) or MatchText(AUnresolved, cControlClasses)) and
+    MatchText(AName, cComponentMembers);
+  Result := Result or (MatchText(AUnresolved, cControlClasses) and MatchText(AName, cControlMembers));
 end;
 
 /// <summary>Klasse der Methode ARoutine ("TFoo.Bar" → "TFoo"), sonst AClassName der umgebenden Methode.</summary>
@@ -363,17 +363,17 @@ end;
 
 procedure TShadowedNameRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Check: TShadowCheck;
+  mCheck: TShadowCheck;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  Check := TShadowCheck.Create(AContext, AReport);
+  mCheck := TShadowCheck.Create(AContext, AReport);
   try
-    Check.Run;
+    mCheck.Run;
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 
@@ -381,18 +381,18 @@ end;
 
 constructor TShadowCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Defaults: TArray<string>;
-  Name: string;
+  mDefaults: TArray<string>;
+  mName: string;
 begin
   inherited Create;
   FContext := AContext;
   FReport := AReport;
-  Defaults := nil;
-  for Name in ShadowDefaultIgnore do
+  mDefaults := nil;
+  for mName in cShadowDefaultIgnore do
   begin
-    Defaults := Defaults + [Name];
+    mDefaults := mDefaults + [mName];
   end;
-  FIgnore := TRuleOptions.Strings(AContext.Options, 'ignore', Defaults);
+  FIgnore := TRuleOptions.Strings(AContext.Options, 'ignore', mDefaults);
   FFrameworkMembers := TRuleOptions.Bool(AContext.Options, 'frameworkMembers', False);
   FTokens := AContext.Tree.Tokens;
   FCache := TRuleDerived.Open(AContext);
@@ -424,19 +424,19 @@ end;
 /// <summary>Bezeichner-Token AName in ANode, die nicht hinter einem Punkt stehen (Self.Caption bleibt).</summary>
 function TShadowCheck.NameTokens(ANode: TSyntaxNode; const AName: string): TArray<Integer>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  Index := TSyntaxTree.FirstTokenOf(FTokens, ANode.StartOffset);
-  while (Index <= High(FTokens)) and (FTokens[Index].Offset < ANode.EndOffset) do
+  mIndex := TSyntaxTree.FirstTokenOf(FTokens, ANode.StartOffset);
+  while (mIndex <= High(FTokens)) and (FTokens[mIndex].Offset < ANode.EndOffset) do
   begin
-    if (FTokens[Index].Offset >= ANode.StartOffset) and (FTokens[Index].Kind in [TPascalTokenKind.Identifier,
-      TPascalTokenKind.Keyword]) and SameText(FTokens[Index].Text, AName) and not IsSymbolIn(Significant(Index, -1),
+    if (FTokens[mIndex].Offset >= ANode.StartOffset) and (FTokens[mIndex].Kind in [TPascalTokenKind.Identifier,
+      TPascalTokenKind.Keyword]) and SameText(FTokens[mIndex].Text, AName) and not IsSymbolIn(Significant(mIndex, -1),
       ['.']) then
     begin
-      Result := Result + [Index];
+      Result := Result + [mIndex];
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
@@ -448,16 +448,16 @@ end;
 /// <summary>Das Token AIndex (-1: keins) ist eines der Symbole ASymbols.</summary>
 function TShadowCheck.IsSymbolIn(AIndex: Integer; const ASymbols: array of string): Boolean;
 var
-  Symbol: string;
+  mSymbol: string;
 begin
   Result := False;
   if AIndex < 0 then
   begin
     Exit;
   end;
-  for Symbol in ASymbols do
+  for mSymbol in ASymbols do
   begin
-    Result := Result or FTokens[AIndex].IsSymbol(Symbol);
+    Result := Result or FTokens[AIndex].IsSymbol(mSymbol);
   end;
 end;
 
@@ -502,21 +502,21 @@ end;
 /// <summary>1, wenn die Inline-Variable ADeclaration vorbelegt wird (var X := …), sonst 0.</summary>
 function TShadowCheck.InlineInitWrites(ADeclaration: TSyntaxNode): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
   if ADeclaration.Kind <> TSyntaxKind.InlineVar then
   begin
     Exit;
   end;
-  Index := TSyntaxTree.FirstTokenOf(FTokens, ADeclaration.StartOffset);
-  while (Result = 0) and (Index <= High(FTokens)) and (FTokens[Index].Offset < ADeclaration.EndOffset) do
+  mIndex := TSyntaxTree.FirstTokenOf(FTokens, ADeclaration.StartOffset);
+  while (Result = 0) and (mIndex <= High(FTokens)) and (FTokens[mIndex].Offset < ADeclaration.EndOffset) do
   begin
-    if FTokens[Index].IsSymbol(':=') then
+    if FTokens[mIndex].IsSymbol(':=') then
     begin
       Result := 1;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
@@ -525,24 +525,24 @@ end;
 /// beides sein kann (Argument eines Aufrufs, @X, X.Feld, X[I]).</summary>
 function TShadowCheck.UsageOf(const ACandidate: TShadowCandidate): TNameUsage;
 var
-  Index, Next, Previous: Integer;
+  mIndex, mNext, mPrevious: Integer;
 begin
   Result := Default(TNameUsage);
   Result.Writes := InlineInitWrites(ACandidate.Declaration);
-  for Index in NameTokens(ACandidate.Routine, ACandidate.Name) do
+  for mIndex in NameTokens(ACandidate.Routine, ACandidate.Name) do
   begin
-    if (FTokens[Index].Offset >= ACandidate.Declaration.StartOffset) and
-      (FTokens[Index].Offset < ACandidate.Declaration.EndOffset) then
+    if (FTokens[mIndex].Offset >= ACandidate.Declaration.StartOffset) and
+      (FTokens[mIndex].Offset < ACandidate.Declaration.EndOffset) then
     begin
       Continue;
     end;
-    Next := Significant(Index, 1);
-    Previous := Significant(Index, -1);
-    if IsSymbolIn(Next, [':=']) or ((Previous >= 0) and FTokens[Previous].IsKeyword('for')) then
+    mNext := Significant(mIndex, 1);
+    mPrevious := Significant(mIndex, -1);
+    if IsSymbolIn(mNext, [':=']) or ((mPrevious >= 0) and FTokens[mPrevious].IsKeyword('for')) then
     begin
       Inc(Result.Writes);
     end
-    else if IsSymbolIn(Next, ['.', '[', '^']) or IsSymbolIn(Previous, ['(', ',', '@']) then
+    else if IsSymbolIn(mNext, ['.', '[', '^']) or IsSymbolIn(mPrevious, ['(', ',', '@']) then
     begin
       Inc(Result.Unclear);
     end
@@ -570,12 +570,12 @@ end;
 
 function TShadowCheck.Ignored(const AName: string): Boolean;
 var
-  Pattern: string;
+  mPattern: string;
 begin
   Result := False;
-  for Pattern in FIgnore do
+  for mPattern in FIgnore do
   begin
-    Result := Result or MatchesWildcard(AName, Pattern);
+    Result := Result or MatchesWildcard(AName, mPattern);
   end;
 end;
 
@@ -586,19 +586,19 @@ const
   cKind: array[Boolean] of TInheritanceShadowingText = (TInheritanceShadowingText.PropertyOf,
     TInheritanceShadowingText.FieldOf);
 var
-  Member: TIndexSymbol;
-  Unresolved, mUnitName: string;
+  mMember: TIndexSymbol;
+  mUnresolved, mUnitName: string;
   mClassMethod: Boolean;
 begin
   AHit := Default(TShadowHit);
   mClassMethod := IsClassMethod(ACandidate.Routine);
-  if FAncestry.FindMember(ACandidate.ClassName, ACandidate.Name, Member, Unresolved, mUnitName) then
+  if FAncestry.FindMember(ACandidate.ClassName, ACandidate.Name, mMember, mUnresolved, mUnitName) then
   begin
     AHit.Framework := (mUnitName <> '') and TLibraryUnits.IsLibrary(FContext.Index, mUnitName);
-    AHit.Kind := cTexts[cKind[Member.Kind = TIndexSymbolKind.Field]].Fmt([ACandidate.ClassName, Member.Name]);
-    Exit(not mClassMethod or MatchText('class', Member.Directives));
+    AHit.Kind := cTexts[cKind[mMember.Kind = TIndexSymbolKind.Field]].Fmt([ACandidate.ClassName, mMember.Name]);
+    Exit(not mClassMethod or MatchText('class', mMember.Directives));
   end;
-  Result := not mClassMethod and FrameworkMember(Unresolved, ACandidate.Name);
+  Result := not mClassMethod and FrameworkMember(mUnresolved, ACandidate.Name);
   AHit.Framework := True;
   AHit.Kind := cTexts[TInheritanceShadowingText.PropertyOf].Fmt([ACandidate.ClassName, ACandidate.Name]);
 end;
@@ -620,23 +620,23 @@ end;
 /// nur gelesen wird, ein Werteparameter, dem etwas zugewiesen wird. False: nicht melden.</summary>
 function TShadowCheck.FrameworkSuffix(const ACandidate: TShadowCandidate; out ASuffix: string): Boolean;
 var
-  Usage: TNameUsage;
+  mUsage: TNameUsage;
 begin
   ASuffix := '';
-  Usage := UsageOf(ACandidate);
+  mUsage := UsageOf(ACandidate);
   if ACandidate.IsParameter then
   begin
     Exit(not (ACandidate.Declaration.Modifier in [TParameterModifier.VarParam, TParameterModifier.OutParam]) and
-      (Usage.Writes <> 0));
+      (mUsage.Writes <> 0));
   end;
-  Result := Usage.Unclear = 0;
-  if Result and (Usage.Reads > 0) and (Usage.Writes = 0) then
+  Result := mUsage.Unclear = 0;
+  if Result and (mUsage.Reads > 0) and (mUsage.Writes = 0) then
   begin
     ASuffix := cTexts[TInheritanceShadowingText.ReadSuffix].Text;
   end
   else
   begin
-    Result := Result and (Usage.Reads = 0) and (Usage.Writes <> 0);
+    Result := Result and (mUsage.Reads = 0) and (mUsage.Writes <> 0);
   end;
 end;
 
@@ -644,65 +644,65 @@ end;
 /// (#1111, z. B. mName); alle Vorkommen in der Routine und im Kopf der Deklaration AHeader.</summary>
 function TShadowCheck.RenameFixes(const ACandidate: TShadowCandidate; AHeader: TSyntaxNode): TArray<TRuleFix>;
 var
-  NewName: string;
-  Edits: TArray<TRuleEdit>;
-  Index: Integer;
+  mNewName: string;
+  mEdits: TArray<TRuleEdit>;
+  mIndex: Integer;
 begin
   Result := nil;
   if ACandidate.IsParameter then
   begin
-    NewName := TNamingConvention.Expected(ACandidate.Name, NamingPrefixFor(FContext, TRuleNamingKind.Parameter, 'A'));
+    mNewName := TNamingConvention.Expected(ACandidate.Name, NamingPrefixFor(FContext, TRuleNamingKind.Parameter, 'A'));
   end
   else
   begin
-    NewName := TNamingConvention.Expected(ACandidate.Name, NamingPrefixFor(FContext, TRuleNamingKind.Local, 'L'));
+    mNewName := TNamingConvention.Expected(ACandidate.Name, NamingPrefixFor(FContext, TRuleNamingKind.Local, 'L'));
   end;
-  if (NameTokens(ACandidate.Routine, NewName) <> nil) or ((AHeader <> nil) and (NameTokens(AHeader, NewName) <> nil))
+  if (NameTokens(ACandidate.Routine, mNewName) <> nil) or ((AHeader <> nil) and (NameTokens(AHeader, mNewName) <> nil))
     then
   begin
     Exit;
   end;
-  Edits := nil;
-  for Index in NameTokens(ACandidate.Routine, ACandidate.Name) do
+  mEdits := nil;
+  for mIndex in NameTokens(ACandidate.Routine, ACandidate.Name) do
   begin
-    Edits := Edits + [TRuleEdit.Create(TokenRange(Index), NewName)];
+    mEdits := mEdits + [TRuleEdit.Create(TokenRange(mIndex), mNewName)];
   end;
   if AHeader <> nil then
   begin
-    for Index in NameTokens(AHeader, ACandidate.Name) do
+    for mIndex in NameTokens(AHeader, ACandidate.Name) do
     begin
-      Edits := Edits + [TRuleEdit.Create(TokenRange(Index), NewName)];
+      mEdits := mEdits + [TRuleEdit.Create(TokenRange(mIndex), mNewName)];
     end;
   end;
-  Result := [TRuleFix.Create(cTexts[TInheritanceShadowingText.RenameTo].Fmt([NewName]), Edits)];
+  Result := [TRuleFix.Create(cTexts[TInheritanceShadowingText.RenameTo].Fmt([mNewName]), mEdits)];
 end;
 
 procedure TShadowCheck.CheckName(const ACandidate: TShadowCandidate);
 var
-  Hit: TShadowHit;
-  Header: TSyntaxNode;
-  Suffix: string;
-  Positions: TArray<Integer>;
+  mHit: TShadowHit;
+  mHeader: TSyntaxNode;
+  mSuffix: string;
+  mPositions: TArray<Integer>;
 begin
-  if Ignored(ACandidate.Name) or not FindShadowed(ACandidate, Hit) then
+  if Ignored(ACandidate.Name) or not FindShadowed(ACandidate, mHit) then
   begin
     Exit;
   end;
-  Header := DeclarationHeader(ACandidate);
-  Suffix := '';
-  if ACandidate.IsParameter and SignatureFixed(ACandidate.Routine, Header) then
+  mHeader := DeclarationHeader(ACandidate);
+  mSuffix := '';
+  if ACandidate.IsParameter and SignatureFixed(ACandidate.Routine, mHeader) then
   begin
     Exit;
   end;
-  if Hit.Framework and not FFrameworkMembers and not FrameworkSuffix(ACandidate, Suffix) then
+  if mHit.Framework and not FFrameworkMembers and not FrameworkSuffix(ACandidate, mSuffix) then
   begin
     Exit;
   end;
-  Positions := NameTokens(ACandidate.Declaration, ACandidate.Name);
-  if Positions <> nil then
+  mPositions := NameTokens(ACandidate.Declaration, ACandidate.Name);
+  if mPositions <> nil then
   begin
-    FReport.Add(TokenRange(Positions[0]), ShadowMessage(ACandidate, Hit.Kind, Suffix), TRuleConfidence.High,
-      RenameFixes(ACandidate, Header));
+    FReport.Add(TokenRange(mPositions[0]), ShadowMessage(ACandidate, mHit.Kind, mSuffix), TRuleConfidence.High,
+      RenameFixes(ACandidate, mHeader));
   end;
 end;
 
@@ -710,54 +710,54 @@ end;
 /// z. B. FormClose(…; var Action).</summary>
 procedure TShadowCheck.CheckParameters(ARoutine: TSyntaxNode; const AClassName: string);
 var
-  Entries: TArray<TParamEntry>;
-  Entry: TParamEntry;
-  Candidate: TShadowCandidate;
-  Position: Integer;
+  mEntries: TArray<TParamEntry>;
+  mEntry: TParamEntry;
+  mCandidate: TShadowCandidate;
+  mPosition: Integer;
 begin
-  Entries := ParamEntries(ARoutine.FindChild(TSyntaxKind.RoutineHeader));
-  for Entry in Entries do
+  mEntries := ParamEntries(ARoutine.FindChild(TSyntaxKind.RoutineHeader));
+  for mEntry in mEntries do
   begin
-    if SameText(Entry.Name, 'Sender') then
+    if SameText(mEntry.Name, 'Sender') then
     begin
       Exit;
     end;
   end;
-  Candidate := Default(TShadowCandidate);
-  Candidate.Routine := ARoutine;
-  Candidate.ClassName := AClassName;
-  Candidate.IsParameter := True;
-  for Position := 0 to High(Entries) do
+  mCandidate := Default(TShadowCandidate);
+  mCandidate.Routine := ARoutine;
+  mCandidate.ClassName := AClassName;
+  mCandidate.IsParameter := True;
+  for mPosition := 0 to High(mEntries) do
   begin
-    Candidate.Name := Entries[Position].Name;
-    Candidate.Declaration := Entries[Position].Node;
-    Candidate.ParamIndex := Position;
-    CheckName(Candidate);
+    mCandidate.Name := mEntries[mPosition].Name;
+    mCandidate.Declaration := mEntries[mPosition].Node;
+    mCandidate.ParamIndex := mPosition;
+    CheckName(mCandidate);
   end;
 end;
 
 /// <summary>Variablen des var-Abschnitts ASection der Routine.</summary>
 procedure TShadowCheck.CheckVarSection(ARoutine, ASection: TSyntaxNode; const AClassName: string);
 var
-  Inner: Integer;
-  Name: string;
-  Candidate: TShadowCandidate;
+  mInner: Integer;
+  mName: string;
+  mCandidate: TShadowCandidate;
 begin
-  Candidate := Default(TShadowCandidate);
-  Candidate.Routine := ARoutine;
-  Candidate.ClassName := AClassName;
-  Candidate.ParamIndex := -1;
-  for Inner := 0 to ASection.ChildCount - 1 do
+  mCandidate := Default(TShadowCandidate);
+  mCandidate.Routine := ARoutine;
+  mCandidate.ClassName := AClassName;
+  mCandidate.ParamIndex := -1;
+  for mInner := 0 to ASection.ChildCount - 1 do
   begin
-    if ASection[Inner].Kind <> TSyntaxKind.VarDecl then
+    if ASection[mInner].Kind <> TSyntaxKind.VarDecl then
     begin
       Continue;
     end;
-    Candidate.Declaration := ASection[Inner];
-    for Name in SplitNames(ASection[Inner].Name) do
+    mCandidate.Declaration := ASection[mInner];
+    for mName in SplitNames(ASection[mInner].Name) do
     begin
-      Candidate.Name := Name;
-      CheckName(Candidate);
+      mCandidate.Name := mName;
+      CheckName(mCandidate);
     end;
   end;
 end;
@@ -765,97 +765,97 @@ end;
 /// <summary>Inline-Variablen im Rumpf ARoot, ohne verschachtelte Routinen und anonyme Methoden.</summary>
 procedure TShadowCheck.CheckInline(ARoutine, ARoot: TSyntaxNode; const AClassName: string);
 var
-  Item: Integer;
-  Name: string;
-  Node: TSyntaxNode;
-  Pending: TStack<TSyntaxNode>;
-  Candidate: TShadowCandidate;
+  mItem: Integer;
+  mName: string;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+  mCandidate: TShadowCandidate;
 begin
-  Candidate := Default(TShadowCandidate);
-  Candidate.Routine := ARoutine;
-  Candidate.ClassName := AClassName;
-  Candidate.ParamIndex := -1;
+  mCandidate := Default(TShadowCandidate);
+  mCandidate.Routine := ARoutine;
+  mCandidate.ClassName := AClassName;
+  mCandidate.ParamIndex := -1;
   // Iterativ (Bericht M1).
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ARoot);
-    while Pending.Count > 0 do
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      Candidate.Declaration := Node;
-      if Node.Kind = TSyntaxKind.InlineVar then
+      mNode := mPending.Pop;
+      mCandidate.Declaration := mNode;
+      if mNode.Kind = TSyntaxKind.InlineVar then
       begin
-        for Name in SplitNames(Node.Name) do
+        for mName in SplitNames(mNode.Name) do
         begin
-          Candidate.Name := Name;
-          CheckName(Candidate);
+          mCandidate.Name := mName;
+          CheckName(mCandidate);
         end;
       end;
-      if not (Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
+      if not (mNode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
       begin
-        for Item := Node.ChildCount - 1 downto 0 do
+        for mItem := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Item]);
+          mPending.Push(mNode[mItem]);
         end;
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 procedure TShadowCheck.CheckRoutine(ARoutine: TSyntaxNode; const AClassName: string);
 var
-  Index: Integer;
-  Child: TSyntaxNode;
-  ClassName: string;
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+  mClassName: string;
 begin
-  ClassName := OwnerClassName(ARoutine, AClassName);
-  CheckParameters(ARoutine, ClassName);
-  for Index := 0 to ARoutine.ChildCount - 1 do
+  mClassName := OwnerClassName(ARoutine, AClassName);
+  CheckParameters(ARoutine, mClassName);
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
   begin
-    Child := ARoutine[Index];
-    if Child.Kind = TSyntaxKind.VarSection then
+    mChild := ARoutine[mIndex];
+    if mChild.Kind = TSyntaxKind.VarSection then
     begin
-      CheckVarSection(ARoutine, Child, ClassName);
+      CheckVarSection(ARoutine, mChild, mClassName);
     end
-    else if Child.Kind = TSyntaxKind.Block then
+    else if mChild.Kind = TSyntaxKind.Block then
     begin
-      CheckInline(ARoutine, Child, ClassName);
+      CheckInline(ARoutine, mChild, mClassName);
     end
-    else if Child.Kind = TSyntaxKind.RoutineDecl then
+    else if mChild.Kind = TSyntaxKind.RoutineDecl then
     begin
       // Die Rekursion bleibt (Bericht M1): sie geht nur über verschachtelte Routinendeklarationen.
-      CheckRoutine(Child, ClassName);
+      CheckRoutine(mChild, mClassName);
     end;
   end;
 end;
 
 procedure TShadowCheck.Run;
 var
-  Index: Integer;
-  Node: TSyntaxNode;
-  Pending: TStack<TSyntaxNode>;
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
 begin
   // Iterativ (Bericht M1).
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(FContext.Tree.Root);
-    while Pending.Count > 0 do
+    mPending.Push(FContext.Tree.Root);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if Node.Kind = TSyntaxKind.RoutineDecl then
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.RoutineDecl then
       begin
-        CheckRoutine(Node, '');
+        CheckRoutine(mNode, '');
         Continue;
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 

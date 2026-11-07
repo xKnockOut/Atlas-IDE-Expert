@@ -293,7 +293,7 @@ begin
   // Formulare suchen: gesetzter, entfernbarer Filter; ohne Tippsyntax legt Refilter die Arten fest.
   if (AOptions.Mode = TAtlasUnitSearchMode.Forms) and AOptions.FilterSyntax then
   begin
-    Filter.Typed := TArray<string>.Create(TAtlasUseUnit.FormsFilter);
+    Filter.Typed := TArray<string>.Create(TAtlasUseUnit.cFormsFilter);
   end;
   Filter.Origins := AOptions.DefaultOrigins;
   if AOptions.Filters and AState.Filters(AOptions.GroupFile, mOrigins, mKinds) and (mOrigins <> []) then

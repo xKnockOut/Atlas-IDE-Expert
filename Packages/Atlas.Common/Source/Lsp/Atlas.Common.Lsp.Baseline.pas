@@ -70,8 +70,8 @@ type
 
   TLspBaseline = class
   public const
-    Command = 'atlas.updateBaseline';
-    Format = 1;
+    cCommand = 'atlas.updateBaseline';
+    cFormat = 1;
   private
     FSourceFor: TLspMetricsSourceFunc;
     FCheck: TLspBaselineCheckFunc;
@@ -143,10 +143,10 @@ begin
   ASetAsideFile := '';
   Result := 'none';
   // Bisherige Baseline: neuer Name, sonst der frühere (#403); nur für die Zähler.
-  mFileName := FileIn(ARoot, BaselineFileName);
-  if not FFiles.Exists(mFileName) and FFiles.Exists(FileIn(ARoot, LegacyBaselineFileName)) then
+  mFileName := FileIn(ARoot, cBaselineFileName);
+  if not FFiles.Exists(mFileName) and FFiles.Exists(FileIn(ARoot, cLegacyBaselineFileName)) then
   begin
-    mFileName := FileIn(ARoot, LegacyBaselineFileName);
+    mFileName := FileIn(ARoot, cLegacyBaselineFileName);
   end;
   if not (FFiles.Exists(mFileName) and FFiles.Read(mFileName, mText)) then
   begin
@@ -201,7 +201,7 @@ var
 begin
   if Length(ASource.Files) = 0 then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TBaselineText.NoProjectFilesBaselineNot].Text);
   end;
   mRoot := ASource.Root;
@@ -212,14 +212,14 @@ begin
     begin
       Result := FFiles.Exists(FileIn(mRoot, StringReplace(APath, '/', PathDelim, [rfReplaceAll])));
     end);
-  mFileName := FileIn(mRoot, BaselineFileName);
+  mFileName := FileIn(mRoot, cBaselineFileName);
   FFiles.Write(mFileName, mOutcome.Json);
   if Assigned(FOnWritten) then
   begin
     FOnWritten(mFileName);
   end;
   // Die Zähler stehen in CountersJson als eigenes Objekt; hier mit Kopf zusammengesetzt.
-  Result := '{"format": ' + IntToStr(Format) + ', "file": ' + TFindingsOutput.JsonString(mFileName) +
+  Result := '{"format": ' + IntToStr(cFormat) + ', "file": ' + TFindingsOutput.JsonString(mFileName) +
     ', "previous": ' + TFindingsOutput.JsonString(mPrevious) + ', ';
   if mSetAsideFile <> '' then
   begin
@@ -230,24 +230,24 @@ end;
 
 function TLspBaseline.Execute(const AArguments: TJSONArray): TJSONValue;
 var
-  FileName, Text: string;
-  Source: TLspMetricsSource;
+  mFileName, mText: string;
+  mSource: TLspMetricsSource;
 begin
-  FileName := '';
+  mFileName := '';
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
   begin
-    FileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
   end;
   // Auch für eine Quelltextdatei die Dateien ihres Arbeitsbereichs: Die Baseline gilt immer für alle.
-  if not (Assigned(FSourceFor) and FSourceFor(FileName, True, Source)) then
+  if not (Assigned(FSourceFor) and FSourceFor(mFileName, True, mSource)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TBaselineText.NoWorkspaceFoundForThe].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TBaselineText.NoWorkspaceFoundForThe].Text);
   end;
-  Text := Update(Source);
-  Result := TJSONObject.ParseJSONValue(Text);
+  mText := Update(mSource);
+  Result := TJSONObject.ParseJSONValue(mText);
   if Result = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, cTexts[TBaselineText.AnswerOfTheBaselineIs].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInternalError, cTexts[TBaselineText.AnswerOfTheBaselineIs].Text);
   end;
 end;
 

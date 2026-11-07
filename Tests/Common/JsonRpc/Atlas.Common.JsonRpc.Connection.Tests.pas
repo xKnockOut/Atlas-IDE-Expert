@@ -306,7 +306,7 @@ begin
       '{"jsonrpc":"2.0","id":2,"method":"echo","params":"weiter"}'], Dispatcher, nil);
     try
       Assert.AreEqual<NativeInt>(2, Responses.Count);
-      Assert.AreEqual(TJsonRpcErrorCode.ParseError, Responses[0].GetValue<Integer>('error.code'));
+      Assert.AreEqual(TJsonRpcErrorCode.cParseError, Responses[0].GetValue<Integer>('error.code'));
       Assert.IsTrue(Responses[0].GetValue('id') is TJSONNull);
       Assert.AreEqual('weiter', Responses[1].GetValue<string>('result'));
     finally
@@ -419,7 +419,7 @@ begin
     Workers.JoinAll;
     try
       Assert.AreEqual<NativeInt>(2, Responses.Count);
-      Assert.AreEqual(TJsonRpcErrorCode.RequestCancelled, FindResponse(Responses, 1).GetValue<Integer>('error.code'));
+      Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, FindResponse(Responses, 1).GetValue<Integer>('error.code'));
       Assert.IsTrue(FindResponse(Responses, 2).GetValue<Boolean>('result'));
     finally
       Responses.Free;
@@ -710,7 +710,7 @@ begin
         end;
       end;
       Assert.AreEqual(1, ForFirst, 'genau eine Antwort auf id 1');
-      Assert.AreEqual(TJsonRpcErrorCode.RequestCancelled, FindResponse(Responses, 1).GetValue<Integer>('error.code'));
+      Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, FindResponse(Responses, 1).GetValue<Integer>('error.code'));
       Assert.IsTrue(FindResponse(Responses, 1).GetValue('result') = nil, 'späte Antwort verworfen');
       Assert.IsTrue(FindResponse(Responses, 2).GetValue<Boolean>('result'));
     finally

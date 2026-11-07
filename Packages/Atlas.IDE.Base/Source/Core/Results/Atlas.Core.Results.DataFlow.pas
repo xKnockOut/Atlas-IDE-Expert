@@ -31,9 +31,8 @@ type
 
   TAtlasDataFlowTree = class
   public const
-    DefaultMaxDepth = 6;
-    MinMaxDepth = 1;
-    MaxMaxDepth = 20;
+    cMinMaxDepth = 1;
+    cMaxMaxDepth = 20;
   public
     /// <summary>Kinder einer Stelle auf Ebene ALevel (1 = erste Antwort).</summary>
     class function Children(const ANode: TAtlasDataFlowNode; ALevel, AMaxDepth: Integer): TArray<TAtlasDataFlowChild>;
@@ -55,17 +54,17 @@ uses
 
 class function TAtlasDataFlowTree.ClampDepth(AValue: Integer): Integer;
 begin
-  Result := EnsureRange(AValue, MinMaxDepth, MaxMaxDepth);
+  Result := EnsureRange(AValue, cMinMaxDepth, cMaxMaxDepth);
 end;
 
 class function TAtlasDataFlowTree.ChildPath(const APath: TArray<string>; const AKey: string): TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   SetLength(Result, Length(APath) + 1);
-  for Index := 0 to High(APath) do
+  for mIndex := 0 to High(APath) do
   begin
-    Result[Index] := APath[Index];
+    Result[mIndex] := APath[mIndex];
   end;
   Result[High(Result)] := AKey;
 end;
@@ -82,33 +81,33 @@ end;
 class function TAtlasDataFlowTree.Children(const ANode: TAtlasDataFlowNode; ALevel,
   AMaxDepth: Integer): TArray<TAtlasDataFlowChild>;
 var
-  Place: TAtlasDataFlowPlace;
-  Source: TAtlasDataFlowSymbol;
-  Child: TAtlasDataFlowChild;
+  mPlace: TAtlasDataFlowPlace;
+  mSource: TAtlasDataFlowSymbol;
+  mChild: TAtlasDataFlowChild;
 begin
   Result := nil;
   // Zusammengefasste Stellen: jeder Fundort einzeln zum Anspringen.
   if Length(ANode.Places) > 1 then
   begin
-    for Place in ANode.Places do
+    for mPlace in ANode.Places do
     begin
-      Child := Default(TAtlasDataFlowChild);
-      Child.Kind := TAtlasDataFlowChildKind.Place;
-      Child.Place := Place;
-      Result := Result + [Child];
+      mChild := Default(TAtlasDataFlowChild);
+      mChild.Kind := TAtlasDataFlowChildKind.Place;
+      mChild.Place := mPlace;
+      Result := Result + [mChild];
     end;
   end;
-  for Source in ANode.Sources do
+  for mSource in ANode.Sources do
   begin
-    Child := Default(TAtlasDataFlowChild);
-    Child.Kind := TAtlasDataFlowChildKind.Source;
-    Child.Source := Source;
-    if Source.Leaf = TAtlasDataFlowLeaf.None then
+    mChild := Default(TAtlasDataFlowChild);
+    mChild.Kind := TAtlasDataFlowChildKind.Source;
+    mChild.Source := mSource;
+    if mSource.Leaf = TAtlasDataFlowLeaf.None then
     begin
-      Child.Expandable := ALevel < ClampDepth(AMaxDepth);
-      Child.DepthReached := not Child.Expandable;
+      mChild.Expandable := ALevel < ClampDepth(AMaxDepth);
+      mChild.DepthReached := not mChild.Expandable;
     end;
-    Result := Result + [Child];
+    Result := Result + [mChild];
   end;
 end;
 

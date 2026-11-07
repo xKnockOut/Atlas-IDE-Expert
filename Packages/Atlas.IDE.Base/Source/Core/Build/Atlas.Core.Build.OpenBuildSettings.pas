@@ -17,11 +17,11 @@ type
 
   TAtlasOpenBuildSettings = class
   public const
-    DefaultDelayMs = 3000;
-    MinDelayMs = 500;
-    MaxDelayMs = 60000;
-    KindNames: array[0..2] of string = ('check', 'make', 'build');
-    ScopeNames: array[TAtlasOpenBuildScope] of string = ('all', 'active');
+    cDefaultDelayMs = 3000;
+    cMinDelayMs = 500;
+    cMaxDelayMs = 60000;
+    cKindNames: array[0..2] of string = ('check', 'make', 'build');
+    cScopeNames: array[TAtlasOpenBuildScope] of string = ('all', 'active');
   public
     /// <summary>AFileName ohne Endung .dproj, .dpr, .dpk bzw. .groupproj; andere Endungen bleiben.</summary>
     class function StripProjectExt(const AFileName: string): string; static;
@@ -66,27 +66,27 @@ end;
 
 class function TAtlasOpenBuildSettings.StripProjectExt(const AFileName: string): string;
 var
-  Ext: string;
+  mExt: string;
 begin
   // Nur Endungen von Projekten: Namen wie "Atlas.IDE.Expert" behalten ihre Punkte.
   Result := AFileName;
-  Ext := LowerCase(ExtractFileExt(Result));
-  if (Ext = '.dproj') or (Ext = '.dpr') or (Ext = '.dpk') or (Ext = '.groupproj') then
+  mExt := LowerCase(ExtractFileExt(Result));
+  if (mExt = '.dproj') or (mExt = '.dpr') or (mExt = '.dpk') or (mExt = '.groupproj') then
   begin
-    Result := Copy(Result, 1, Length(Result) - Length(Ext));
+    Result := Copy(Result, 1, Length(Result) - Length(mExt));
   end;
 end;
 
 class function TAtlasOpenBuildSettings.NameOf(const AFileName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AFileName;
-  for Index := Length(Result) downto 1 do
+  for mIndex := Length(Result) downto 1 do
   begin
-    if (Result[Index] = '\') or (Result[Index] = '/') then
+    if (Result[mIndex] = '\') or (Result[mIndex] = '/') then
     begin
-      Result := Copy(Result, Index + 1, MaxInt);
+      Result := Copy(Result, mIndex + 1, MaxInt);
       Break;
     end;
   end;
@@ -95,14 +95,14 @@ end;
 
 class function TAtlasOpenBuildSettings.KindOf(const AName: string): TAtlasCompileKind;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := LowerCase(Trim(AName));
-  if Name = 'check' then
+  mName := LowerCase(Trim(AName));
+  if mName = 'check' then
   begin
     Result := TAtlasCompileKind.Check;
   end
-  else if Name = 'build' then
+  else if mName = 'build' then
   begin
     Result := TAtlasCompileKind.Build;
   end
@@ -116,17 +116,17 @@ class function TAtlasOpenBuildSettings.KindName(AKind: TAtlasCompileKind): strin
 begin
   case AKind of
     TAtlasCompileKind.Check:
-      Result := KindNames[0];
+      Result := cKindNames[0];
     TAtlasCompileKind.Build:
-      Result := KindNames[2];
+      Result := cKindNames[2];
   else
-    Result := KindNames[1];
+    Result := cKindNames[1];
   end;
 end;
 
 class function TAtlasOpenBuildSettings.ScopeOf(const AName: string): TAtlasOpenBuildScope;
 begin
-  if SameText(Trim(AName), ScopeNames[TAtlasOpenBuildScope.Active]) then
+  if SameText(Trim(AName), cScopeNames[TAtlasOpenBuildScope.Active]) then
   begin
     Result := TAtlasOpenBuildScope.Active;
   end
@@ -138,24 +138,24 @@ end;
 
 class function TAtlasOpenBuildSettings.ParseExclude(const AText: string): TArray<string>;
 var
-  Part, Name: string;
-  Known: TDictionary<string, Boolean>;
+  mPart, mName: string;
+  mKnown: TDictionary<string, Boolean>;
 begin
   Result := nil;
-  Known := TDictionary<string, Boolean>.Create;
+  mKnown := TDictionary<string, Boolean>.Create;
   try
-    for Part in AText.Split([',', ';', #13, #10]) do
+    for mPart in AText.Split([',', ';', #13, #10]) do
     begin
-      Name := NameOf(Trim(Part));
-      if (Name = '') or Known.ContainsKey(LowerCase(Name)) then
+      mName := NameOf(Trim(mPart));
+      if (mName = '') or mKnown.ContainsKey(LowerCase(mName)) then
       begin
         Continue;
       end;
-      Known.Add(LowerCase(Name), True);
-      Result := Result + [Name];
+      mKnown.Add(LowerCase(mName), True);
+      Result := Result + [mName];
     end;
   finally
-    Known.Free;
+    mKnown.Free;
   end;
 end;
 
@@ -166,19 +166,19 @@ end;
 
 class function TAtlasOpenBuildSettings.PickTarget(const AWanted: string; const AAvailable: TArray<string>): string;
 var
-  Wanted, Name: string;
+  mWanted, mName: string;
 begin
   Result := '';
-  Wanted := TargetKey(AWanted);
-  if Wanted = '' then
+  mWanted := TargetKey(AWanted);
+  if mWanted = '' then
   begin
     Exit;
   end;
-  for Name in AAvailable do
+  for mName in AAvailable do
   begin
-    if TargetKey(Name) = Wanted then
+    if TargetKey(mName) = mWanted then
     begin
-      Exit(Name);
+      Exit(mName);
     end;
   end;
 end;

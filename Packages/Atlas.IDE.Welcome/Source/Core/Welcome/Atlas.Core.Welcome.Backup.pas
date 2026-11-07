@@ -46,11 +46,9 @@ type
     procedure SetValue(const AValue: TAtlasRegValue);
     function FindValue(const AName: string; out AValue: TAtlasRegValue): Boolean;
     function Clone: TAtlasRegKey;
-    /// <summary>Gleiche Werte (Name, Typ, Inhalt) und Unterschlüssel, Reihenfolge egal, Namen ohne Groß/klein.</summary>
+    /// <summary>Gleiche Werte (Name, Typ, Inhalt) und Unterschlüssel, Reihenfolge egal, Namen ohne
+    /// Groß/klein.</summary>
     function SameAs(AOther: TAtlasRegKey): Boolean;
-    function ToJsonText: string;
-    /// <summary>nil bei ungültigem Text.</summary>
-    class function FromJsonText(const AText: string): TAtlasRegKey; static;
     property Name: string read FName;
     property Values: TList<TAtlasRegValue> read FValues;
     property Keys: TObjectList<TAtlasRegKey> read FKeys;
@@ -78,7 +76,7 @@ type
 
   TAtlasWelcomeBackup = class
   public const
-    FileName = 'welcomepage-layout-backup.json';
+    cFileName = 'welcomepage-layout-backup.json';
   public
     /// <summary>JSON mit Pfad, ob der Schlüssel existierte, und seinem Inhalt.</summary>
     class function Snapshot(const AAccess: IAtlasRegistryAccess; const APath: string): string; static;
@@ -99,17 +97,17 @@ uses
   System.JSON;
 
 const
-  KindNames: array[TAtlasRegKind] of string = ('text', 'expand', 'multi', 'dword', 'qword', 'binary');
+  cKindNames: array[TAtlasRegKind] of string = ('text', 'expand', 'multi', 'dword', 'qword', 'binary');
 
 function KindOf(const AName: string; out AKind: TAtlasRegKind): Boolean;
 var
-  Kind: TAtlasRegKind;
+  mKind: TAtlasRegKind;
 begin
-  for Kind := Low(TAtlasRegKind) to High(TAtlasRegKind) do
+  for mKind := Low(TAtlasRegKind) to High(TAtlasRegKind) do
   begin
-    if SameText(KindNames[Kind], AName) then
+    if SameText(cKindNames[mKind], AName) then
     begin
-      AKind := Kind;
+      AKind := mKind;
       Exit(True);
     end;
   end;
@@ -129,7 +127,7 @@ end;
 
 class function TAtlasRegValue.Same(const ALeft, ARight: TAtlasRegValue): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := SameText(ALeft.Name, ARight.Name) and (ALeft.Kind = ARight.Kind) and (ALeft.Data = ARight.Data) and
     (Length(ALeft.Lines) = Length(ARight.Lines));
@@ -137,9 +135,9 @@ begin
   begin
     Exit;
   end;
-  for Index := 0 to High(ALeft.Lines) do
+  for mIndex := 0 to High(ALeft.Lines) do
   begin
-    if ALeft.Lines[Index] <> ARight.Lines[Index] then
+    if ALeft.Lines[mIndex] <> ARight.Lines[mIndex] then
     begin
       Exit(False);
     end;
@@ -176,13 +174,13 @@ end;
 
 function TAtlasRegKey.FindKey(const AName: string): TAtlasRegKey;
 var
-  Key: TAtlasRegKey;
+  mKey: TAtlasRegKey;
 begin
-  for Key in FKeys do
+  for mKey in FKeys do
   begin
-    if SameText(Key.Name, AName) then
+    if SameText(mKey.Name, AName) then
     begin
-      Exit(Key);
+      Exit(mKey);
     end;
   end;
   Result := nil;
@@ -190,13 +188,13 @@ end;
 
 procedure TAtlasRegKey.SetValue(const AValue: TAtlasRegValue);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to FValues.Count - 1 do
+  for mIndex := 0 to FValues.Count - 1 do
   begin
-    if SameText(FValues[Index].Name, AValue.Name) then
+    if SameText(FValues[mIndex].Name, AValue.Name) then
     begin
-      FValues[Index] := AValue;
+      FValues[mIndex] := AValue;
       Exit;
     end;
   end;
@@ -205,13 +203,13 @@ end;
 
 function TAtlasRegKey.FindValue(const AName: string; out AValue: TAtlasRegValue): Boolean;
 var
-  Value: TAtlasRegValue;
+  mValue: TAtlasRegValue;
 begin
-  for Value in FValues do
+  for mValue in FValues do
   begin
-    if SameText(Value.Name, AName) then
+    if SameText(mValue.Name, AName) then
     begin
-      AValue := Value;
+      AValue := mValue;
       Exit(True);
     end;
   end;
@@ -221,24 +219,24 @@ end;
 
 function TAtlasRegKey.Clone: TAtlasRegKey;
 var
-  Value: TAtlasRegValue;
-  Key: TAtlasRegKey;
+  mValue: TAtlasRegValue;
+  mKey: TAtlasRegKey;
 begin
   Result := TAtlasRegKey.Create(FName);
-  for Value in FValues do
+  for mValue in FValues do
   begin
-    Result.FValues.Add(Value);
+    Result.FValues.Add(mValue);
   end;
-  for Key in FKeys do
+  for mKey in FKeys do
   begin
-    Result.FKeys.Add(Key.Clone);
+    Result.FKeys.Add(mKey.Clone);
   end;
 end;
 
 function TAtlasRegKey.SameAs(AOther: TAtlasRegKey): Boolean;
 var
-  Value, Other: TAtlasRegValue;
-  Key, OtherKey: TAtlasRegKey;
+  mValue, mOther: TAtlasRegValue;
+  mKey, mOtherKey: TAtlasRegKey;
 begin
   if AOther = nil then
   begin
@@ -248,17 +246,17 @@ begin
   begin
     Exit(False);
   end;
-  for Value in FValues do
+  for mValue in FValues do
   begin
-    if not AOther.FindValue(Value.Name, Other) or not TAtlasRegValue.Same(Value, Other) then
+    if not AOther.FindValue(mValue.Name, mOther) or not TAtlasRegValue.Same(mValue, mOther) then
     begin
       Exit(False);
     end;
   end;
-  for Key in FKeys do
+  for mKey in FKeys do
   begin
-    OtherKey := AOther.FindKey(Key.Name);
-    if (OtherKey = nil) or not Key.SameAs(OtherKey) then
+    mOtherKey := AOther.FindKey(mKey.Name);
+    if (mOtherKey = nil) or not mKey.SameAs(mOtherKey) then
     begin
       Exit(False);
     end;
@@ -268,40 +266,40 @@ end;
 
 function KeyToJson(AKey: TAtlasRegKey): TJSONObject;
 var
-  Values, Lines: TJSONArray;
-  Keys, Item: TJSONObject;
-  Value: TAtlasRegValue;
-  Line: string;
-  Key: TAtlasRegKey;
+  mValues, mLines: TJSONArray;
+  mKeys, mItem: TJSONObject;
+  mValue: TAtlasRegValue;
+  mLine: string;
+  mKey: TAtlasRegKey;
 begin
   Result := TJSONObject.Create;
-  Values := TJSONArray.Create;
-  Result.AddPair('values', Values);
-  for Value in AKey.Values do
+  mValues := TJSONArray.Create;
+  Result.AddPair('values', mValues);
+  for mValue in AKey.Values do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('name', Value.Name);
-    Item.AddPair('kind', KindNames[Value.Kind]);
-    if Value.Kind = TAtlasRegKind.MultiText then
+    mItem := TJSONObject.Create;
+    mItem.AddPair('name', mValue.Name);
+    mItem.AddPair('kind', cKindNames[mValue.Kind]);
+    if mValue.Kind = TAtlasRegKind.MultiText then
     begin
-      Lines := TJSONArray.Create;
-      for Line in Value.Lines do
+      mLines := TJSONArray.Create;
+      for mLine in mValue.Lines do
       begin
-        Lines.Add(Line);
+        mLines.Add(mLine);
       end;
-      Item.AddPair('lines', Lines);
+      mItem.AddPair('lines', mLines);
     end
     else
     begin
-      Item.AddPair('data', Value.Data);
+      mItem.AddPair('data', mValue.Data);
     end;
-    Values.AddElement(Item);
+    mValues.AddElement(mItem);
   end;
-  Keys := TJSONObject.Create;
-  Result.AddPair('keys', Keys);
-  for Key in AKey.Keys do
+  mKeys := TJSONObject.Create;
+  Result.AddPair('keys', mKeys);
+  for mKey in AKey.Keys do
   begin
-    Keys.AddPair(Key.Name, KeyToJson(Key));
+    mKeys.AddPair(mKey.Name, KeyToJson(mKey));
   end;
 end;
 
@@ -427,34 +425,6 @@ begin
   end;
 end;
 
-function TAtlasRegKey.ToJsonText: string;
-var
-  Json: TJSONObject;
-begin
-  Json := KeyToJson(Self);
-  try
-    Result := Json.ToJSON;
-  finally
-    Json.Free;
-  end;
-end;
-
-class function TAtlasRegKey.FromJsonText(const AText: string): TAtlasRegKey;
-var
-  Value: TJSONValue;
-begin
-  Result := nil;
-  Value := TJSONObject.ParseJSONValue(AText);
-  try
-    if Value is TJSONObject then
-    begin
-      KeyFromJson('', TJSONObject(Value), Result);
-    end;
-  finally
-    Value.Free;
-  end;
-end;
-
 { TAtlasMemoryRegistry }
 
 constructor TAtlasMemoryRegistry.Create;
@@ -471,12 +441,12 @@ end;
 
 function TAtlasMemoryRegistry.Read(const APath: string): TAtlasRegKey;
 var
-  Key: TAtlasRegKey;
+  mKey: TAtlasRegKey;
 begin
   Result := nil;
-  if FKeys.TryGetValue(LowerCase(APath), Key) then
+  if FKeys.TryGetValue(LowerCase(APath), mKey) then
   begin
-    Result := Key.Clone;
+    Result := mKey.Clone;
   end;
 end;
 
@@ -493,138 +463,138 @@ end;
 
 class function TAtlasWelcomeBackup.Snapshot(const AAccess: IAtlasRegistryAccess; const APath: string): string;
 var
-  Root: TJSONObject;
-  Key: TAtlasRegKey;
+  mRoot: TJSONObject;
+  mKey: TAtlasRegKey;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Root.AddPair('path', APath);
-    Key := AAccess.Read(APath);
+    mRoot.AddPair('path', APath);
+    mKey := AAccess.Read(APath);
     try
-      Root.AddPair('existed', TJSONBool.Create(Key <> nil));
-      if Key <> nil then
+      mRoot.AddPair('existed', TJSONBool.Create(mKey <> nil));
+      if mKey <> nil then
       begin
-        Root.AddPair('key', KeyToJson(Key));
+        mRoot.AddPair('key', KeyToJson(mKey));
       end;
     finally
-      Key.Free;
+      mKey.Free;
     end;
-    Result := Root.ToJSON;
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasWelcomeBackup.Restore(const AAccess: IAtlasRegistryAccess; const ASnapshot: string): Boolean;
 var
-  Value, Field: TJSONValue;
-  Root: TJSONObject;
-  Path: string;
-  Key: TAtlasRegKey;
+  mValue, mField: TJSONValue;
+  mRoot: TJSONObject;
+  mPath: string;
+  mKey: TAtlasRegKey;
 begin
   Result := False;
-  Value := TJSONObject.ParseJSONValue(ASnapshot);
+  mValue := TJSONObject.ParseJSONValue(ASnapshot);
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    Root := TJSONObject(Value);
-    Field := Root.GetValue('path');
-    if not (Field is TJSONString) or (Field.Value = '') then
+    mRoot := TJSONObject(mValue);
+    mField := mRoot.GetValue('path');
+    if not (mField is TJSONString) or (mField.Value = '') then
     begin
       Exit;
     end;
-    Path := Field.Value;
-    Field := Root.GetValue('key');
-    if Field is TJSONObject then
+    mPath := mField.Value;
+    mField := mRoot.GetValue('key');
+    if mField is TJSONObject then
     begin
-      if not KeyFromJson('', TJSONObject(Field), Key) then
+      if not KeyFromJson('', TJSONObject(mField), mKey) then
       begin
         Exit;
       end;
       try
-        AAccess.Replace(Path, Key);
+        AAccess.Replace(mPath, mKey);
       finally
-        Key.Free;
+        mKey.Free;
       end;
     end
     else
     begin
       // Vorher gab es den Schlüssel nicht: wieder entfernen.
-      AAccess.Replace(Path, nil);
+      AAccess.Replace(mPath, nil);
     end;
     Result := True;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TAtlasWelcomeBackup.Matches(const AAccess: IAtlasRegistryAccess; const ASnapshot: string): Boolean;
 var
-  Value, Field: TJSONValue;
-  Root: TJSONObject;
-  Current, Key: TAtlasRegKey;
+  mValue, mField: TJSONValue;
+  mRoot: TJSONObject;
+  mCurrent, mKey: TAtlasRegKey;
 begin
   Result := False;
-  Value := TJSONObject.ParseJSONValue(ASnapshot);
+  mValue := TJSONObject.ParseJSONValue(ASnapshot);
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    Root := TJSONObject(Value);
-    Field := Root.GetValue('path');
-    if not (Field is TJSONString) or (Field.Value = '') then
+    mRoot := TJSONObject(mValue);
+    mField := mRoot.GetValue('path');
+    if not (mField is TJSONString) or (mField.Value = '') then
     begin
       Exit;
     end;
-    Current := AAccess.Read(Field.Value);
+    mCurrent := AAccess.Read(mField.Value);
     try
-      Field := Root.GetValue('key');
-      if Field is TJSONObject then
+      mField := mRoot.GetValue('key');
+      if mField is TJSONObject then
       begin
-        if not KeyFromJson('', TJSONObject(Field), Key) then
+        if not KeyFromJson('', TJSONObject(mField), mKey) then
         begin
           Exit;
         end;
         try
-          Result := Key.SameAs(Current);
+          Result := mKey.SameAs(mCurrent);
         finally
-          Key.Free;
+          mKey.Free;
         end;
       end
       else
       begin
-        Result := Current = nil;
+        Result := mCurrent = nil;
       end;
     finally
-      Current.Free;
+      mCurrent.Free;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TAtlasWelcomeBackup.BackupFile(const AAtlasFolder: string): string;
 begin
-  Result := IncludeTrailingPathDelimiter(AAtlasFolder) + FileName;
+  Result := IncludeTrailingPathDelimiter(AAtlasFolder) + cFileName;
 end;
 
 class function TAtlasWelcomeBackup.WelcomeKey(const ABaseKey: string): string;
 var
-  Base: string;
+  mBase: string;
 begin
-  Base := ABaseKey;
-  while (Base <> '') and (Base[1] = '\') do
+  mBase := ABaseKey;
+  while (mBase <> '') and (mBase[1] = '\') do
   begin
-    Delete(Base, 1, 1);
+    Delete(mBase, 1, 1);
   end;
-  while (Base <> '') and (Base[Length(Base)] = '\') do
+  while (mBase <> '') and (mBase[Length(mBase)] = '\') do
   begin
-    Delete(Base, Length(Base), 1);
+    Delete(mBase, Length(mBase), 1);
   end;
-  Result := Base + '\WelcomePage';
+  Result := mBase + '\WelcomePage';
 end;
 
 end.

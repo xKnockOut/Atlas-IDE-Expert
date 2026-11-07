@@ -41,34 +41,34 @@ end;
 
 class function TAtlasFormText.Write(ARoot: TComponent; const AMethodName: TFunc<TMethod, string>): string;
 var
-  Binary: TMemoryStream;
-  Text: TStringStream;
-  Writer: TWriter;
-  Namer: TMethodNamer;
+  mBinary: TMemoryStream;
+  mText: TStringStream;
+  mWriter: TWriter;
+  mNamer: TMethodNamer;
 begin
-  Binary := TMemoryStream.Create;
-  Text := TStringStream.Create('', TEncoding.UTF8);
-  Namer := TMethodNamer.Create;
+  mBinary := TMemoryStream.Create;
+  mText := TStringStream.Create('', TEncoding.UTF8);
+  mNamer := TMethodNamer.Create;
   try
-    Namer.FMethodName := AMethodName;
-    Writer := TWriter.Create(Binary, 4096);
+    mNamer.FMethodName := AMethodName;
+    mWriter := TWriter.Create(mBinary, 4096);
     try
       if Assigned(AMethodName) then
       begin
-        Writer.OnFindMethodName := Namer.FindMethodName;
+        mWriter.OnFindMethodName := mNamer.FindMethodName;
       end;
-      Writer.WriteDescendent(ARoot, nil);
+      mWriter.WriteDescendent(ARoot, nil);
     finally
       // Erst das Freigeben schreibt den Puffer in den Stream.
-      Writer.Free;
+      mWriter.Free;
     end;
-    Binary.Position := 0;
-    ObjectBinaryToText(Binary, Text);
-    Result := Text.DataString;
+    mBinary.Position := 0;
+    ObjectBinaryToText(mBinary, mText);
+    Result := mText.DataString;
   finally
-    Namer.Free;
-    Text.Free;
-    Binary.Free;
+    mNamer.Free;
+    mText.Free;
+    mBinary.Free;
   end;
 end;
 

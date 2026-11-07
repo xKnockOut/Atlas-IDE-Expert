@@ -51,7 +51,7 @@ uses
 
 procedure TAtlasSettingsRobustnessPart.Build;
 var
-  Panel: TWinControl;
+  mPanel: TWinControl;
 begin
   AddSheet(TAtlasTextId.SettingsTabRobustness);
   // Einfrier-Wächter (#501).
@@ -59,13 +59,13 @@ begin
   BindCheck('HangHint', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHangHint)));
   // Blockierschutz für Datenquellen (#493).
   BindText('ProviderTimeLimitMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsProviderTimeLimit)));
-  Panel := AddPanel(32);
+  mPanel := AddPanel(32);
   // Künstlicher Hänger (#501) nur im Diagnosemodus (#479), nicht neben den regulären Einstellungen (S-07).
-  FHangTestRow := Panel;
+  FHangTestRow := mPanel;
   FHangTestRow.Visible := False;
   FPage.Part<TAtlasSettingsGeneralPart>.DiagnosticMode.OnClick := DiagnosticModeClick;
   FHangTest := TButton.Create(FPage);
-  FHangTest.Parent := Panel;
+  FHangTest.Parent := mPanel;
   FHangTest.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsHangTest);
   FHangTest.Left := 0;
   FHangTest.Top := 3;
@@ -82,24 +82,24 @@ end;
 
 procedure TAtlasSettingsRobustnessPart.AddFuseSection;
 var
-  Panel: TWinControl;
+  mPanel: TWinControl;
 begin
   AddTitle(TAtlasTextId.SettingsFuseTitle);
-  Panel := AddPanel(64);
+  mPanel := AddPanel(64);
   FFuseList := TListBox.Create(FPage);
-  FFuseList.Parent := Panel;
+  FFuseList.Parent := mPanel;
   FFuseList.Align := alClient;
   FFuseList.MultiSelect := True;
-  Panel := AddPanel(32);
+  mPanel := AddPanel(32);
   FFuseEnableSelected := TButton.Create(FPage);
-  FFuseEnableSelected.Parent := Panel;
+  FFuseEnableSelected.Parent := mPanel;
   FFuseEnableSelected.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFuseEnableSelected);
   FFuseEnableSelected.Left := 0;
   FFuseEnableSelected.Top := 3;
   FFuseEnableSelected.Width := 150;
   FFuseEnableSelected.OnClick := FuseEnableSelectedClick;
   FFuseEnableAll := TButton.Create(FPage);
-  FFuseEnableAll.Parent := Panel;
+  FFuseEnableAll.Parent := mPanel;
   FFuseEnableAll.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFuseEnableAll);
   FFuseEnableAll.Left := 160;
   FFuseEnableAll.Top := 3;
@@ -109,9 +109,9 @@ end;
 
 procedure TAtlasSettingsRobustnessPart.RefreshFuse;
 var
-  Feature: TAtlasFeature;
+  mFeature: TAtlasFeature;
   mName: string;
-  Any: Boolean;
+  mAny: Boolean;
 begin
   // Ohne Fenster (IDE erzeugt die Seite vor dem Einhängen) folgt das in CreateWnd.
   if not FPage.HandleAllocated then
@@ -122,44 +122,44 @@ begin
   try
     FFuseList.Items.Clear;
     // Objects: Feature + 1; nil bei einer Quelle (Name im Text).
-    for Feature in TAtlasGuard.DisabledSet do
+    for mFeature in TAtlasGuard.DisabledSet do
     begin
-      FFuseList.Items.AddObject(TAtlasGuard.FeatureName(Feature), TObject(NativeInt(Ord(Feature) + 1)));
+      FFuseList.Items.AddObject(TAtlasGuard.FeatureName(mFeature), TObject(NativeInt(Ord(mFeature) + 1)));
     end;
     for mName in TAtlasGuard.DisabledProviders do
     begin
       FFuseList.Items.AddObject(mName, nil);
     end;
-    Any := FFuseList.Items.Count > 0;
-    if not Any then
+    mAny := FFuseList.Items.Count > 0;
+    if not mAny then
     begin
       FFuseList.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsFuseNone));
     end;
   finally
     FFuseList.Items.EndUpdate;
   end;
-  Allow(FFuseList, Any);
-  Allow(FFuseEnableSelected, Any);
-  Allow(FFuseEnableAll, Any);
+  Allow(FFuseList, mAny);
+  Allow(FFuseEnableSelected, mAny);
+  Allow(FFuseEnableAll, mAny);
 end;
 
 procedure TAtlasSettingsRobustnessPart.FuseEnableSelectedClick(Sender: TObject);
 var
-  Index: Integer;
+  mIndex: Integer;
   mTag: NativeInt;
 begin
-  for Index := 0 to FFuseList.Items.Count - 1 do
+  for mIndex := 0 to FFuseList.Items.Count - 1 do
   begin
-    if FFuseList.Selected[Index] then
+    if FFuseList.Selected[mIndex] then
     begin
-      mTag := NativeInt(FFuseList.Items.Objects[Index]);
+      mTag := NativeInt(FFuseList.Items.Objects[mIndex]);
       if mTag > 0 then
       begin
         TAtlasGuard.Enable(TAtlasFeature(mTag - 1));
       end
       else
       begin
-        TAtlasGuard.EnableProvider(FFuseList.Items[Index]);
+        TAtlasGuard.EnableProvider(FFuseList.Items[mIndex]);
       end;
     end;
   end;
@@ -181,10 +181,10 @@ end;
 
 procedure TAtlasSettingsRobustnessPart.HangTestClick(Sender: TObject);
 var
-  Activity: IInterface;
+  mActivity: IInterface;
 begin
   // Künstlicher Hänger für den Einfrier-Wächter (#501): erscheint im Protokoll mit dieser Aktion.
-  Activity := TAtlasActivity.Scope('Wächter-Test');
+  mActivity := TAtlasActivity.Scope('Wächter-Test');
   Sleep(1000); // lsp-ignore: blocking-call-in-main-thread
 end;
 

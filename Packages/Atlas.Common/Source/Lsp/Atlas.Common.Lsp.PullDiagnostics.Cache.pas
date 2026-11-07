@@ -21,9 +21,9 @@ type
   TPullReportCache = class
   public const
     /// <summary>Höchstzahl gespeicherter Dateibefunde, danach wird der Speicher geleert.</summary>
-    MaxCachedReports = 500;
+    cMaxCachedReports = 500;
     /// <summary>Takt, in dem eine Anfrage auf die gleiche Berechnung einer anderen wartet.</summary>
-    RunningPollMs = 20;
+    cRunningPollMs = 20;
   private
     // Uri -> Befunde bzw. Ergebnis-Id. Unter FLock.
     FReports: TDictionary<string, TBytes>;
@@ -99,7 +99,7 @@ begin
   mCompact := TCompactJson.Pack(AItems);
   TMonitor.Enter(FLock);
   try
-    if FReports.Count >= MaxCachedReports then
+    if FReports.Count >= cMaxCachedReports then
     begin
       FReports.Clear;
       FIds.Clear;
@@ -143,7 +143,7 @@ begin
     begin
       ACancellation.ThrowIfCancellationRequested;
     end;
-    Sleep(RunningPollMs);
+    Sleep(cRunningPollMs);
   end;
   try
     Result := ACompute();

@@ -18,7 +18,7 @@ type
 
   TAtlasRuleChecksNotice = class
   public const
-    ConfigName = 'atlas.json';
+    cConfigName = 'atlas.json';
   private
     /// <summary>Dateien, zu denen der Hinweis schon kam (volle Pfade).</summary>
     FShown: TArray<string>;
@@ -84,7 +84,7 @@ begin
   mFolder := ExtractFileDir(AProjectFile.Replace('/', PathDelim));
   while mFolder <> '' do
   begin
-    mFile := IncludeTrailingPathDelimiter(mFolder) + ConfigName;
+    mFile := IncludeTrailingPathDelimiter(mFolder) + cConfigName;
     if AExists(mFile) then
     begin
       Exit(mFile);

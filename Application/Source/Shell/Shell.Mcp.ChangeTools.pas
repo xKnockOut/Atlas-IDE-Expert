@@ -240,12 +240,12 @@ begin
   end;
 end;
 
-/// <summary>Höchstzahl der Einträge aus limit (Vorgabe THotspotReport.TextLimit).</summary>
+/// <summary>Höchstzahl der Einträge aus limit (Vorgabe THotspotReport.cTextLimit).</summary>
 function HotspotLimitOf(const AArguments: TJSONObject): Integer;
 begin
   if not AArguments.TryGetValue<Integer>('limit', Result) then
   begin
-    Result := THotspotReport.TextLimit;
+    Result := THotspotReport.cTextLimit;
   end;
   if Result < 1 then
   begin

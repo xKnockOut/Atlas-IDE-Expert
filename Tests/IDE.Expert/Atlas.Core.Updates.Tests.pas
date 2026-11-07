@@ -67,7 +67,7 @@ end;
 
 function Query(const AInstalled: string): TAtlasUpdateQuery;
 begin
-  Result.Url := TAtlasUpdates.VersionUrl;
+  Result.Url := TAtlasUpdates.cVersionUrl;
   Result.Installed := AInstalled;
   Result.IdeVersion := '37.0';
 end;
@@ -100,9 +100,9 @@ begin
   Assert.AreEqual('https://example.org/v1.2.0', Release.ChangesUrl);
   // Ohne oder mit unsicherer Adresse: die Release-Seite.
   Assert.IsTrue(TAtlasUpdates.TryParse('{"version":"1.2.0","changes":"http://example.org"}', Release));
-  Assert.AreEqual(TAtlasUpdates.ReleasesUrl + '/tag/v1.2.0', Release.ChangesUrl);
+  Assert.AreEqual(TAtlasUpdates.cReleasesUrl + '/tag/v1.2.0', Release.ChangesUrl);
   Assert.IsTrue(TAtlasUpdates.TryParse('{"version":"1.2.0"}', Release));
-  Assert.AreEqual(TAtlasUpdates.ReleasesUrl + '/tag/v1.2.0', Release.ChangesUrl);
+  Assert.AreEqual(TAtlasUpdates.cReleasesUrl + '/tag/v1.2.0', Release.ChangesUrl);
   Assert.IsFalse(TAtlasUpdates.TryParse('{"version":"neu"}', Release));
   Assert.IsFalse(TAtlasUpdates.TryParse('<html>', Release));
   Assert.IsFalse(TAtlasUpdates.TryParse('', Release));
@@ -124,11 +124,11 @@ procedure TAtlasUpdatesTests.RequestCarriesOnlyAtlasAndIdeVersion;
 var
   Url, Query: string;
 begin
-  Url := TAtlasUpdates.RequestUrl(TAtlasUpdates.VersionUrl, '1.0.0-beta.1', '37.0');
-  Assert.IsTrue(Url.StartsWith(TAtlasUpdates.VersionUrl + '?'));
-  Query := Copy(Url, Length(TAtlasUpdates.VersionUrl) + 2, MaxInt);
+  Url := TAtlasUpdates.RequestUrl(TAtlasUpdates.cVersionUrl, '1.0.0-beta.1', '37.0');
+  Assert.IsTrue(Url.StartsWith(TAtlasUpdates.cVersionUrl + '?'));
+  Query := Copy(Url, Length(TAtlasUpdates.cVersionUrl) + 2, MaxInt);
   Assert.AreEqual('atlas=1.0.0-beta.1&ide=37.0', Query);
-  Assert.IsTrue(TAtlasUpdates.VersionUrl.StartsWith('https://'));
+  Assert.IsTrue(TAtlasUpdates.cVersionUrl.StartsWith('https://'));
   Assert.AreEqual(FormatFloat('0.0', CompilerVersion, TFormatSettings.Invariant), TAtlasUpdates.IdeVersion);
 end;
 
@@ -174,7 +174,7 @@ begin
   Assert.AreEqual('1.1.0', Outcome.Release.Version);
   Assert.AreEqual('https://example.org/1.1.0', Outcome.Release.ChangesUrl);
   Assert.AreEqual(1, Source.Calls);
-  Assert.AreEqual(TAtlasUpdates.RequestUrl(TAtlasUpdates.VersionUrl, '1.0.0', '37.0'), Source.LastUrl);
+  Assert.AreEqual(TAtlasUpdates.RequestUrl(TAtlasUpdates.cVersionUrl, '1.0.0', '37.0'), Source.LastUrl);
   Assert.AreEqual(Double(Today), Double(State.LastCheck), 1 / SecsPerDay);
   // Am selben Tag nicht noch einmal.
   Outcome := TAtlasUpdates.Run(Keep, Query('1.0.0'), State, True, IncHour(Today, 5));

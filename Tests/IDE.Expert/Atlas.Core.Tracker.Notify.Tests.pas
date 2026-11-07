@@ -131,12 +131,12 @@ begin
   Assert.IsTrue(TAtlasTrackerNotify.ScopeOf(' WATCHED ') = TAtlasTrackerNotifyScope.Watched);
   Assert.IsTrue(TAtlasTrackerNotify.ScopeOf('alles') = TAtlasTrackerNotifyScope.AssignedOrCreated, 'Vorgabe');
   // Die Einstellungen kennen den Kern der Meldungen nicht (A-09): dieselben Werte wie dort.
-  Assert.AreEqual(TAtlasTrackerNotify.ScopeAssigned, TAtlasPluginSettings.IssuesNotifyAssigned);
-  Assert.AreEqual(TAtlasTrackerNotify.ScopeAssignedOrCreated, TAtlasPluginSettings.IssuesNotifyAssignedOrCreated);
-  Assert.AreEqual(TAtlasTrackerNotify.ScopeWatched, TAtlasPluginSettings.IssuesNotifyWatched);
-  Assert.AreEqual(Integer(TAtlasTrackerNotify.MinInterval), Integer(TAtlasPluginSettings.MinIssuesNotifyMinutes));
-  Assert.AreEqual(Integer(TAtlasTrackerNotify.DefaultInterval),
-    Integer(TAtlasPluginSettings.DefaultIssuesNotifyMinutes));
+  Assert.AreEqual(TAtlasTrackerNotify.cScopeAssigned, TAtlasPluginSettings.cIssuesNotifyAssigned);
+  Assert.AreEqual(TAtlasTrackerNotify.cScopeAssignedOrCreated, TAtlasPluginSettings.cIssuesNotifyAssignedOrCreated);
+  Assert.AreEqual(TAtlasTrackerNotify.cScopeWatched, TAtlasPluginSettings.cIssuesNotifyWatched);
+  Assert.AreEqual(Integer(TAtlasTrackerNotify.cMinInterval), Integer(TAtlasPluginSettings.cMinIssuesNotifyMinutes));
+  Assert.AreEqual(Integer(TAtlasTrackerNotify.cDefaultInterval),
+    Integer(TAtlasPluginSettings.cDefaultIssuesNotifyMinutes));
 end;
 
 procedure TAtlasTrackerNotifyTests.IntervalAndUserActive;
@@ -319,12 +319,12 @@ begin
   Assert.IsFalse(TAtlasTrackerNotify.Seen(mConnection, 'ATL-2', 'beispiel/atlas'), 'anderes Projekt');
   // Höchstens MaxUnseen: die ältesten fallen heraus.
   mNotices := nil;
-  for mIndex := 1 to TAtlasTrackerNotify.MaxUnseen + 5 do
+  for mIndex := 1 to TAtlasTrackerNotify.cMaxUnseen + 5 do
   begin
     mNotices := mNotices + [Notice('WEB-' + IntToStr(mIndex), 0)];
   end;
   TAtlasTrackerNotify.MarkUnseen(mConnection, mNotices);
-  Assert.AreEqual(Integer(TAtlasTrackerNotify.MaxUnseen), Integer(Length(mConnection.Unseen)));
+  Assert.AreEqual(Integer(TAtlasTrackerNotify.cMaxUnseen), Integer(Length(mConnection.Unseen)));
   Assert.AreEqual(-1, mConnection.IndexOfUnseen('ATL-2', ''));
   Assert.IsTrue(mConnection.IndexOfUnseen('WEB-55', '') >= 0);
 end;
@@ -387,12 +387,12 @@ begin
   mFile.Enabled := True;
   mFile.Put(TAtlasTrackerNotify.Fresh('github|https://github.com', At(4)));
   Assert.IsTrue(TAtlasTrackerNotify.Save(FDir, mFile), 'legt den Ordner an');
-  Assert.IsFalse(TFile.Exists(TPath.Combine(FDir, TAtlasTrackerNotify.FileName + '.tmp')), 'keine Zwischendatei');
+  Assert.IsFalse(TFile.Exists(TPath.Combine(FDir, TAtlasTrackerNotify.cFileName + '.tmp')), 'keine Zwischendatei');
   mRead := TAtlasTrackerNotify.Load(FDir);
   Assert.IsTrue(mRead.Enabled);
   Assert.AreEqual(Integer(1), Integer(Length(mRead.Connections)));
   Assert.IsTrue(TAtlasTrackerNotify.Save(FDir, mRead), 'überschreibt');
-  TFile.WriteAllText(TPath.Combine(FDir, TAtlasTrackerNotify.FileName), 'kaputt');
+  TFile.WriteAllText(TPath.Combine(FDir, TAtlasTrackerNotify.cFileName), 'kaputt');
   Assert.IsFalse(TAtlasTrackerNotify.Load(FDir).Enabled, 'kaputt: wie ohne Datei');
   Assert.IsFalse(TAtlasTrackerNotify.Save('', mFile));
 end;

@@ -21,8 +21,6 @@ type
     /// Thread. Gibt es den Prozess nicht (mehr), wird AOnExited sofort aufgerufen.</summary>
     constructor Create(AProcessId: Cardinal; const AOnExited: TProc);
     destructor Destroy; override;
-    /// <summary>True, wenn der Prozess beim Start überwacht werden konnte.</summary>
-    function Watching: Boolean;
     /// <summary>Nummer des eigenen Prozesses, z. B. für Ausweich-Dateinamen.</summary>
     class function CurrentProcessId: Cardinal; static;
   end;
@@ -34,8 +32,8 @@ uses
 
 constructor TParentWatcher.Create(AProcessId: Cardinal; const AOnExited: TProc);
 var
-  Process, Stop: THandle;
-  OnExited: TProc;
+  mProcess, mStop: THandle;
+  mOnExited: TProc;
 begin
   inherited Create;
   FProcess := OpenProcess(SYNCHRONIZE, False, AProcessId);
@@ -49,19 +47,19 @@ begin
     Exit;
   end;
   FStop := CreateEvent(nil, True, False, nil);
-  Process := FProcess;
-  Stop := FStop;
-  OnExited := AOnExited;
+  mProcess := FProcess;
+  mStop := FStop;
+  mOnExited := AOnExited;
   FThread := TThread.CreateAnonymousThread(
     procedure
     var
       Handles: array[0..1] of THandle;
     begin
-      Handles[0] := Process;
-      Handles[1] := Stop;
+      Handles[0] := mProcess;
+      Handles[1] := mStop;
       if WaitForMultipleObjects(2, @Handles[0], False, INFINITE) = WAIT_OBJECT_0 then
       begin
-        OnExited();
+        mOnExited();
       end;
     end);
   FThread.FreeOnTerminate := False;
@@ -90,11 +88,6 @@ end;
 class function TParentWatcher.CurrentProcessId: Cardinal;
 begin
   Result := GetCurrentProcessId;
-end;
-
-function TParentWatcher.Watching: Boolean;
-begin
-  Result := FThread <> nil;
 end;
 
 end.

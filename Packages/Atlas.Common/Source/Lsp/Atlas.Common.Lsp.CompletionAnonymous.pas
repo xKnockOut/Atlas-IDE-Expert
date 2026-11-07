@@ -35,9 +35,9 @@ type
   TCompletionAnonymous = class
   public const
     /// <summary>Einrückung je Ebene.</summary>
-    IndentUnit = '  ';
+    cIndentUnit = '  ';
     /// <summary>Höchstzahl verfolgter Aliase.</summary>
-    MaxAliasDepth = 8;
+    cMaxAliasDepth = 8;
   public
     /// <summary>Deklaration "Name&lt;T&gt; = reference to …" in AMethodRef, ATypeParams die Typparameter (T). Ist
     /// sie ein Alias, steht sein Ziel in ATarget (ohne ";") und das Ergebnis ist False; ebenso bei anderen
@@ -81,14 +81,14 @@ end;
 /// <summary>Tokens ohne Kommentare und Direktiven.</summary>
 function Significant(const AText: string): TArray<TPascalToken>;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
   Result := nil;
-  for Token in TPascalLexer.Tokenize(AText) do
+  for mToken in TPascalLexer.Tokenize(AText) do
   begin
-    if not IsTrivia(Token) then
+    if not IsTrivia(mToken) then
     begin
-      Result := Result + [Token];
+      Result := Result + [mToken];
     end;
   end;
 end;
@@ -96,7 +96,7 @@ end;
 /// <summary>Text von ATokens[AFirst] bis vor ATokens[AStop] aus AText (AStop = Length: bis zum Ende).</summary>
 function Slice(const AText: string; const ATokens: TArray<TPascalToken>; AFirst, AStop: Integer): string;
 var
-  StopOffset: Integer;
+  mStopOffset: Integer;
 begin
   if (AFirst < 0) or (AFirst >= AStop) or (AFirst > High(ATokens)) then
   begin
@@ -104,13 +104,13 @@ begin
   end;
   if AStop > High(ATokens) then
   begin
-    StopOffset := ATokens[High(ATokens)].Offset + Length(ATokens[High(ATokens)].Text);
+    mStopOffset := ATokens[High(ATokens)].Offset + Length(ATokens[High(ATokens)].Text);
   end
   else
   begin
-    StopOffset := ATokens[AStop].Offset;
+    mStopOffset := ATokens[AStop].Offset;
   end;
-  Result := Trim(Copy(AText, ATokens[AFirst].Offset + 1, StopOffset - ATokens[AFirst].Offset));
+  Result := Trim(Copy(AText, ATokens[AFirst].Offset + 1, mStopOffset - ATokens[AFirst].Offset));
 end;
 
 function Opens(const AToken: TPascalToken): Boolean;
@@ -126,20 +126,20 @@ end;
 /// <summary>Index der schließenden Klammer zu ATokens[AOpen]; Length(ATokens) ohne.</summary>
 function Matching(const ATokens: TArray<TPascalToken>; AOpen: Integer): Integer;
 var
-  Depth: Integer;
+  mDepth: Integer;
 begin
-  Depth := 0;
+  mDepth := 0;
   Result := AOpen;
   while Result <= High(ATokens) do
   begin
     if Opens(ATokens[Result]) then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
     else if Closes(ATokens[Result]) then
     begin
-      Dec(Depth);
-      if Depth = 0 then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
         Exit;
       end;
@@ -219,7 +219,8 @@ begin
 end;
 
 /// <summary>Parameter zwischen ATokens[AOpen] = "(" und ATokens[AClose] = ")".</summary>
-function ParseParams(const AText: string; const ATokens: TArray<TPascalToken>; AOpen, AClose: Integer): TArray<TMethodRefParam>;
+function ParseParams(const AText: string; const ATokens: TArray<TPascalToken>; AOpen,
+  AClose: Integer): TArray<TMethodRefParam>;
 var
   mIndex, mGroupStart, mDepth: Integer;
 begin
@@ -401,34 +402,34 @@ end;
 
 class function TCompletionAnonymous.TypeArgs(const ATypeText: string; out ABase: string): TArray<string>;
 var
-  Open, Index, Depth, Start: Integer;
-  Text: string;
+  mOpen, mIndex, mDepth, mStart: Integer;
+  mText: string;
 begin
   Result := nil;
-  Text := Trim(ATypeText);
-  Open := Pos('<', Text);
-  if (Open = 0) or not EndsStr('>', Text) then
+  mText := Trim(ATypeText);
+  mOpen := Pos('<', mText);
+  if (mOpen = 0) or not EndsStr('>', mText) then
   begin
-    ABase := Text;
+    ABase := mText;
     Exit;
   end;
-  ABase := Trim(Copy(Text, 1, Open - 1));
-  Depth := 0;
-  Start := Open + 1;
-  for Index := Open + 1 to Length(Text) - 1 do
-    case Text[Index] of
+  ABase := Trim(Copy(mText, 1, mOpen - 1));
+  mDepth := 0;
+  mStart := mOpen + 1;
+  for mIndex := mOpen + 1 to Length(mText) - 1 do
+    case mText[mIndex] of
       '<', '(', '[':
-        Inc(Depth);
+        Inc(mDepth);
       '>', ')', ']':
-        Dec(Depth);
+        Dec(mDepth);
       ',':
-        if Depth = 0 then
+        if mDepth = 0 then
         begin
-          Result := Result + [Trim(Copy(Text, Start, Index - Start))];
-          Start := Index + 1;
+          Result := Result + [Trim(Copy(mText, mStart, mIndex - mStart))];
+          mStart := mIndex + 1;
         end;
     end;
-  Result := Result + [Trim(Copy(Text, Start, Length(Text) - Start))];
+  Result := Result + [Trim(Copy(mText, mStart, Length(mText) - mStart))];
 end;
 
 /// <summary>Wert des Typparameters AWord aus ANames/AValues in AValue; False, wenn AWord keiner ist.</summary>
@@ -582,14 +583,14 @@ end;
 /// <summary>Arg1, Arg2 … (Namen der generischen RTL-Typen).</summary>
 function IsArgName(const AName: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := (Length(AName) > 3) and StartsStr('Arg', AName);
   if Result then
   begin
-    for Index := 4 to Length(AName) do
+    for mIndex := 4 to Length(AName) do
     begin
-      if not CharInSet(AName[Index], ['0'..'9']) then
+      if not CharInSet(AName[mIndex], ['0'..'9']) then
       begin
         Exit(False);
       end;
@@ -600,19 +601,19 @@ end;
 /// <summary>Benannter Typ mit Präfix T oder I (TKunde, IFoo): daraus ein Name; sonst ''.</summary>
 function TypeBase(const ATypeText: string): string;
 var
-  Bases: TArray<string>;
-  Plain: string;
+  mBases: TArray<string>;
+  mPlain: string;
 begin
   Result := '';
-  Plain := Copy(ATypeText, LastDelimiter('.', ATypeText) + 1, MaxInt);
-  if (Length(Plain) < 2) or not CharInSet(Plain[1], ['T', 'I']) or not CharInSet(Plain[2], ['A'..'Z']) then
+  mPlain := Copy(ATypeText, LastDelimiter('.', ATypeText) + 1, MaxInt);
+  if (Length(mPlain) < 2) or not CharInSet(mPlain[1], ['T', 'I']) or not CharInSet(mPlain[2], ['A'..'Z']) then
   begin
     Exit;
   end;
-  Bases := TNameSuggestions.Bases(ATypeText);
-  if Length(Bases) > 0 then
+  mBases := TNameSuggestions.Bases(ATypeText);
+  if Length(mBases) > 0 then
   begin
-    Result := Bases[0];
+    Result := mBases[0];
   end;
 end;
 
@@ -695,9 +696,9 @@ end;
 
 class function TCompletionAnonymous.Header(const AMethodRef: TMethodRef): string;
 var
-  Param: TMethodRefParam;
-  Parts: TArray<string>;
-  Part: string;
+  mParam: TMethodRefParam;
+  mParts: TArray<string>;
+  mPart: string;
 begin
   if AMethodRef.IsFunction then
   begin
@@ -707,23 +708,23 @@ begin
   begin
     Result := 'procedure';
   end;
-  Parts := nil;
-  for Param in AMethodRef.Params do
+  mParts := nil;
+  for mParam in AMethodRef.Params do
   begin
-    Part := Param.Name;
-    if Param.Modifier <> '' then
+    mPart := mParam.Name;
+    if mParam.Modifier <> '' then
     begin
-      Part := Param.Modifier + ' ' + Part;
+      mPart := mParam.Modifier + ' ' + mPart;
     end;
-    if Param.TypeText <> '' then
+    if mParam.TypeText <> '' then
     begin
-      Part := Part + ': ' + Param.TypeText;
+      mPart := mPart + ': ' + mParam.TypeText;
     end;
-    Parts := Parts + [Part];
+    mParts := mParts + [mPart];
   end;
-  if Length(Parts) > 0 then
+  if Length(mParts) > 0 then
   begin
-    Result := Result + '(' + string.Join('; ', Parts) + ')';
+    Result := Result + '(' + string.Join('; ', mParts) + ')';
   end;
   if AMethodRef.IsFunction then
   begin
@@ -741,29 +742,29 @@ end;
 
 class function TCompletionAnonymous.Snippet(const AMethodRef: TMethodRef): string;
 var
-  Body: string;
+  mBody: string;
 begin
-  Body := '$0';
+  mBody := '$0';
   if AMethodRef.IsFunction then
   begin
-    Body := 'Result := $0';
+    mBody := 'Result := $0';
   end;
-  Result := EscapeSnippet(Header(AMethodRef)) + #10 + IndentUnit + 'begin' + #10 + IndentUnit + IndentUnit + Body +
-    #10 + IndentUnit + 'end';
+  Result := EscapeSnippet(Header(AMethodRef)) + #10 + cIndentUnit + 'begin' + #10 + cIndentUnit + cIndentUnit + mBody +
+    #10 + cIndentUnit + 'end';
 end;
 
 class function TCompletionAnonymous.Plain(const AMethodRef: TMethodRef; const AIndent, ALineBreak: string): string;
 var
-  Body: string;
+  mBody: string;
 begin
   // Leere Rumpfzeile ohne Einrückung: sonst bliebe Leerraum am Zeilenende stehen.
-  Body := '';
+  mBody := '';
   if AMethodRef.IsFunction then
   begin
-    Body := AIndent + IndentUnit + IndentUnit + 'Result := ';
+    mBody := AIndent + cIndentUnit + cIndentUnit + 'Result := ';
   end;
-  Result := Header(AMethodRef) + ALineBreak + AIndent + IndentUnit + 'begin' + ALineBreak + Body + ALineBreak +
-    AIndent + IndentUnit + 'end';
+  Result := Header(AMethodRef) + ALineBreak + AIndent + cIndentUnit + 'begin' + ALineBreak + mBody + ALineBreak +
+    AIndent + cIndentUnit + 'end';
 end;
 
 end.

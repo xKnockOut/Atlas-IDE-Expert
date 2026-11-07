@@ -592,7 +592,7 @@ begin
   Assert.AreEqual<NativeInt>(1, Length(Findings));
   for Item in Findings do
   begin
-    Assert.AreNotEqual(UnusedSuppressionRuleId, Item.RuleId);
+    Assert.AreNotEqual(cUnusedSuppressionRuleId, Item.RuleId);
   end;
   // Der übrige Treffer steht in der Baseline (Zeile 6 hat ihren Fingerabdruck behalten).
   Findings := Baseline.Filter('U.pas', Text, Findings);

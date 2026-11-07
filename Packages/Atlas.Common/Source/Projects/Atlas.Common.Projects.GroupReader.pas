@@ -14,7 +14,8 @@ uses
 type
   TGroupProjReader = class
   public
-    /// <summary>Absolute Pfade der Delphi-Projekte aus AText der Gruppe AFileName. EProjectError bei ungültigem XML.</summary>
+    /// <summary>Absolute Pfade der Delphi-Projekte aus AText der Gruppe AFileName. EProjectError bei ungültigem
+    /// XML.</summary>
     class function Read(const AFileName, AText: string): TArray<string>; static;
     /// <summary>Liest die Datei von der Platte (Kodierung wird erkannt) und wertet sie aus.</summary>
     class function Load(const AFileName: string): TArray<string>; static;
@@ -105,9 +106,9 @@ end;
 
 class function TGroupProjReader.Load(const AFileName: string): TArray<string>;
 var
-  FileFormat: TFileFormat;
+  mFileFormat: TFileFormat;
 begin
-  Result := Read(AFileName, TFileEncoding.LoadFromFile(AFileName, FileFormat));
+  Result := Read(AFileName, TFileEncoding.LoadFromFile(AFileName, mFileFormat));
 end;
 
 initialization

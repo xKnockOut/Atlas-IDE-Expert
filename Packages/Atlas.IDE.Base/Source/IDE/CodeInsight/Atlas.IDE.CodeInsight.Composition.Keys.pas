@@ -187,7 +187,8 @@ begin
 end;
 
 /// <summary>Neue Packages können Tasten belegen oder eine eigene Vervollständigung mitbringen (#494): neu belegen,
-/// gegen die Atlas-Tasten prüfen (#520), einmal für alle Module, und die Tastenkürzel-Tipps nachführen (#600).</summary>
+/// gegen die Atlas-Tasten prüfen (#520), einmal für alle Module, und die Tastenkürzel-Tipps nachführen
+/// (#600).</summary>
 procedure PackagesChanged;
 begin
   RebindKeys;

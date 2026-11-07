@@ -92,7 +92,6 @@ type
     function ValuesConnection(out AConnection: TAtlasTrackerConnection): Boolean;
     property Items: TArray<TAtlasTrackerConnection> read FItems;
     property Selected: Integer read FSelected;
-    property ProviderNames: TArray<string> read FProviderNames;
     property ProviderCaptions: TArray<string> read FProviderCaptions;
   end;
 
@@ -260,7 +259,7 @@ constructor TAtlasTrackerConnectionTable.Create;
 begin
   inherited Create;
   FSelected := cNoRow;
-  FProviderNames := TArray<string>.Create(TAtlasTrackerTarget.YouTrack, TAtlasTrackerTarget.GitHub);
+  FProviderNames := TArray<string>.Create(TAtlasTrackerTarget.cYouTrack, TAtlasTrackerTarget.cGitHub);
   FProviderCaptions := TArray<string>.Create(cYouTrackCaption, cGitHubCaption);
 end;
 
@@ -958,7 +957,7 @@ end;
 
 function TAtlasTrackerSnippetTable.CanAdd: Boolean;
 begin
-  Result := Length(FItems) < TAtlasCommentSnippets.MaxSnippets;
+  Result := Length(FItems) < TAtlasCommentSnippets.cMaxSnippets;
 end;
 
 procedure TAtlasTrackerSnippetTable.Add(const AName: string);

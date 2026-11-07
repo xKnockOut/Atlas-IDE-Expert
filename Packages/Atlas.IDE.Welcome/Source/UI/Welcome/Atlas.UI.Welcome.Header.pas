@@ -39,11 +39,11 @@ type
 
   TAtlasWelcomeHeaderFrame = class(TAtlasWelcomeFrame)
   public const
-    HeaderHeight = 64;
-    SymbolSize = 40;
-    SearchWidth = 320;
+    cHeaderHeight = 64;
+    cSymbolSize = 40;
+    cSearchWidth = 320;
     /// <summary>Höhe der Suchzeile unter dem Gruß, wenn das Feld daneben keinen Platz hat.</summary>
-    SearchRowHeight = 36;
+    cSearchRowHeight = 36;
   private
     FSymbol: TAtlasSymbolImage;
     FGreeting: TLabel;
@@ -99,15 +99,15 @@ uses
 constructor TAtlasWelcomeHeaderFrame.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  Height := HeaderHeight;
+  Height := cHeaderHeight;
   FSymbol := TAtlasSymbolImage.Create(Self);
   FSymbol.Parent := Self;
-  FSymbol.LogicalSize := SymbolSize;
+  FSymbol.LogicalSize := cSymbolSize;
   FSymbol.Left := 8;
-  FSymbol.Top := (HeaderHeight - SymbolSize) div 2;
+  FSymbol.Top := (cHeaderHeight - cSymbolSize) div 2;
   FGreeting := TLabel.Create(Self);
   FGreeting.Parent := Self;
-  FGreeting.Left := SymbolSize + 20;
+  FGreeting.Left := cSymbolSize + 20;
   FGreeting.Top := 10;
   FGreeting.Font.Size := 14;
   FGreeting.Font.Style := [fsBold];
@@ -191,7 +191,7 @@ begin
   end;
   if AVisible then
   begin
-    FSearchHost.Width := ScaleValue(SearchWidth);
+    FSearchHost.Width := ScaleValue(cSearchWidth);
   end
   else
   begin
@@ -208,8 +208,8 @@ end;
 
 procedure TAtlasWelcomeHeaderFrame.Arrange;
 var
-  TextRight: Integer;
-  Below: Boolean;
+  mTextRight: Integer;
+  mBelow: Boolean;
 begin
   // Reicht die Breite nicht für Gruß und Suchfeld nebeneinander, steht das Feld in einer
   // eigenen Zeile darunter (schmales Fenster „Atlas-Start“).
@@ -223,27 +223,27 @@ begin
     if not FArranging and (FSearchHost.Align <> alRight) then
     begin
       FSearchHost.Align := alRight;
-      Height := ScaleValue(HeaderHeight);
+      Height := ScaleValue(cHeaderHeight);
     end;
     Exit;
   end;
   FArranging := True;
   try
-    TextRight := FGreeting.Left + Max(FGreeting.Width, FInfo.Width) + ScaleValue(16);
-    Below := ClientWidth - TextRight < ScaleValue(SearchWidth) + ScaleValue(20);
-    if Below then
+    mTextRight := FGreeting.Left + Max(FGreeting.Width, FInfo.Width) + ScaleValue(16);
+    mBelow := ClientWidth - mTextRight < ScaleValue(cSearchWidth) + ScaleValue(20);
+    if mBelow then
     begin
       FSearchHost.Align := alBottom;
       FSearchHost.Margins.SetBounds(FGreeting.Left, 0, ScaleValue(12), ScaleValue(8));
-      FSearchHost.Height := ScaleValue(SearchRowHeight) - ScaleValue(8);
-      Height := ScaleValue(HeaderHeight + SearchRowHeight);
+      FSearchHost.Height := ScaleValue(cSearchRowHeight) - ScaleValue(8);
+      Height := ScaleValue(cHeaderHeight + cSearchRowHeight);
     end
     else
     begin
       FSearchHost.Align := alRight;
       FSearchHost.Margins.SetBounds(8, 19, 12, 19);
-      FSearchHost.Width := ScaleValue(SearchWidth);
-      Height := ScaleValue(HeaderHeight);
+      FSearchHost.Width := ScaleValue(cSearchWidth);
+      Height := ScaleValue(cHeaderHeight);
     end;
   finally
     FArranging := False;
@@ -270,20 +270,20 @@ end;
 
 class function TAtlasWelcomeHeaderFrame.Thousands(AValue: Integer): string;
 var
-  Settings: TFormatSettings;
+  mSettings: TFormatSettings;
 begin
-  Settings := TFormatSettings.Invariant;
+  mSettings := TFormatSettings.Invariant;
   if TAtlasStrings.Language = TAtlasLanguage.German then
   begin
-    Settings.ThousandSeparator := '.';
-    Settings.DecimalSeparator := ',';
+    mSettings.ThousandSeparator := '.';
+    mSettings.DecimalSeparator := ',';
   end
   else
   begin
-    Settings.ThousandSeparator := ',';
-    Settings.DecimalSeparator := '.';
+    mSettings.ThousandSeparator := ',';
+    mSettings.DecimalSeparator := '.';
   end;
-  Result := FormatFloat('#,##0', AValue, Settings);
+  Result := FormatFloat('#,##0', AValue, mSettings);
 end;
 
 class function TAtlasWelcomeHeaderFrame.StatusText(APhase: TAtlasServerPhase; AUnits: Integer;

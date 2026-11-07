@@ -123,7 +123,7 @@ begin
     'begin'#10'  Result := AText;'#10'end;'#10'end.';
   mFound := Findings(mSource);
   Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
-  Assert.AreEqual(StringConversionRuleId, mFound[0].RuleId);
+  Assert.AreEqual(cStringConversionRuleId, mFound[0].RuleId);
   Assert.AreEqual('AText ist AnsiString; die Zuweisung an Result wandelt implizit um (wie W1057).',
     mFound[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));

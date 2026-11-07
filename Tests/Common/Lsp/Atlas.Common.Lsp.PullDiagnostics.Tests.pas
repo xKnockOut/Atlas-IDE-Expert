@@ -37,7 +37,7 @@ type
     /// <summary>Ein Abbruch wirkt vor der nächsten Prüfregel, nicht erst am Ende (Diagnoselog 15.10.2026).</summary>
     [Test]
     procedure CancelStopsRuleChecks;
-    /// <summary>#1761: Dauert die Prüfung einer geöffneten Datei länger als DocumentWaitMs, antwortet die Anfrage
+    /// <summary>#1761: Dauert die Prüfung einer geöffneten Datei länger als OpenJobs.WaitMs, antwortet die Anfrage
     /// mit ServerCancelled statt ins Zeitlimit zu laufen; die Prüfung rechnet zu Ende und legt ab, die nächste
     /// Anfrage prüft nicht neu.</summary>
     [Test]
@@ -513,7 +513,7 @@ begin
       end;
     mFixture.Init(mRules);
     try
-      mFixture.Pull.DocumentWaitMs := 50;
+      mFixture.Pull.OpenJobs.WaitMs := 50;
       mUri := TDocumentUris.FromPath(OpenFile);
       mCode := 0;
       try
@@ -522,7 +522,7 @@ begin
         on E: EJsonRpcError do
           mCode := E.Code;
       end;
-      Assert.AreEqual(TLspErrorCode.ServerCancelled, mCode, 'Antwort vor dem Zeitlimit');
+      Assert.AreEqual(TLspErrorCode.cServerCancelled, mCode, 'Antwort vor dem Zeitlimit');
       Assert.AreEqual(0, mFixture.Pull.Computed);
       // Die Prüfung rechnet weiter und legt ab.
       mGo.SetEvent;
@@ -954,12 +954,12 @@ begin
   Dispatcher := TJsonRpcDispatcher.Create;
   try
     Fixture.Pull.Attach(Dispatcher);
-    Notify(Dispatcher, TLspPullDiagnostics.PauseMethod, '{"reason":"debug","paused":true}');
+    Notify(Dispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":true}');
     Fixture.Pull.WorkspaceReport(nil, Token).Free;
     Sleep(300);
     Assert.AreEqual(0, Fixture.Pull.Computed);
     Assert.AreEqual('debug', Fixture.Pull.Check.Run.Paused);
-    Notify(Dispatcher, TLspPullDiagnostics.PauseMethod, '{"reason":"debug","paused":false}');
+    Notify(Dispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":false}');
     Assert.IsTrue(Fixture.Pull.Check.WaitIdle(5000));
     Assert.AreEqual(1, Fixture.Pull.Computed);
   finally

@@ -29,51 +29,51 @@ uses
 
 class function TAtlasEncodingDefault.FromJson(const AText: string): Integer;
 var
-  Root: TJSONObject;
-  Value: TJSONValue;
+  mRoot: TJSONObject;
+  mValue: TJSONValue;
 begin
   Result := 0;
-  Root := TAtlasJsonText.Parse(AText);
-  if Root = nil then
+  mRoot := TAtlasJsonText.Parse(AText);
+  if mRoot = nil then
   begin
     Exit;
   end;
   try
-    Value := Root.GetValue('encoding');
-    if (Value is TJSONString) and not TTextEncodingProbe.ParseCodePage(Value.Value, Result) then
+    mValue := mRoot.GetValue('encoding');
+    if (mValue is TJSONString) and not TTextEncodingProbe.ParseCodePage(mValue.Value, Result) then
     begin
       Result := 0;
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasEncodingDefault.CodePageFor(const AFileName: string): Integer;
 var
-  Folder, Parent, Settings: string;
+  mFolder, mParent, mSettings: string;
 begin
   Result := 0;
-  Folder := ExtractFileDir(TPath.GetFullPath(AFileName));
-  while Folder <> '' do
+  mFolder := ExtractFileDir(TPath.GetFullPath(AFileName));
+  while mFolder <> '' do
   begin
-    Settings := TPath.Combine(Folder, 'atlas.json');
-    if TFile.Exists(Settings) then
+    mSettings := TPath.Combine(mFolder, 'atlas.json');
+    if TFile.Exists(mSettings) then
     begin
       try
-        Result := FromJson(TAtlasTextFile.Load(Settings).Text);
+        Result := FromJson(TAtlasTextFile.Load(mSettings).Text);
       except
         on Exception do
           Result := 0;
       end;
       Exit;
     end;
-    Parent := ExtractFileDir(Folder);
-    if SameText(Parent, Folder) then
+    mParent := ExtractFileDir(mFolder);
+    if SameText(mParent, mFolder) then
     begin
       Exit;
     end;
-    Folder := Parent;
+    mFolder := mParent;
   end;
 end;
 

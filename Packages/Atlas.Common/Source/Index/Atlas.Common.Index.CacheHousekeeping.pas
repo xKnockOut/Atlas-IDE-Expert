@@ -30,9 +30,6 @@ type
   end;
 
   TIndexCacheHousekeeping = class
-  public const
-    /// <summary>Höchstgröße des Cache-Ordners.</summary>
-    DefaultMaxBytes = Int64(256) * 1024 * 1024;
   public
     /// <summary>
     /// Dateien, die gelöscht werden müssen, damit AFiles in AMaxBytes passt.
@@ -86,12 +83,12 @@ end;
 
 function IsKept(const AFileName: string; const AKeep: TArray<string>): Boolean;
 var
-  Keep: string;
+  mKeep: string;
 begin
   Result := False;
-  for Keep in AKeep do
+  for mKeep in AKeep do
   begin
-    if SameText(AFileName, Keep) then
+    if SameText(AFileName, mKeep) then
     begin
       Exit(True);
     end;
@@ -101,39 +98,39 @@ end;
 class function TIndexCacheHousekeeping.SelectForRemoval(const AFiles: TArray<TCacheFileInfo>;
   AMaxBytes: Int64; const AKeep: TArray<string>): TArray<string>;
 var
-  Sorted: TList<TCacheFileInfo>;
-  Info: TCacheFileInfo;
-  Total: Int64;
+  mSorted: TList<TCacheFileInfo>;
+  mInfo: TCacheFileInfo;
+  mTotal: Int64;
 begin
   Result := nil;
-  Total := 0;
-  for Info in AFiles do
+  mTotal := 0;
+  for mInfo in AFiles do
   begin
-    Inc(Total, Info.Size);
+    Inc(mTotal, mInfo.Size);
   end;
-  if Total <= AMaxBytes then
+  if mTotal <= AMaxBytes then
   begin
     Exit;
   end;
-  Sorted := TList<TCacheFileInfo>.Create(TComparer<TCacheFileInfo>.Construct(CompareOldestFirst));
+  mSorted := TList<TCacheFileInfo>.Create(TComparer<TCacheFileInfo>.Construct(CompareOldestFirst));
   try
-    Sorted.AddRange(AFiles);
-    Sorted.Sort;
-    for Info in Sorted do
+    mSorted.AddRange(AFiles);
+    mSorted.Sort;
+    for mInfo in mSorted do
     begin
-      if Total <= AMaxBytes then
+      if mTotal <= AMaxBytes then
       begin
         Break;
       end;
-      if Info.Locked or IsKept(Info.FileName, AKeep) then
+      if mInfo.Locked or IsKept(mInfo.FileName, AKeep) then
       begin
         Continue;
       end;
-      Result := Result + [Info.FileName];
-      Dec(Total, Info.Size);
+      Result := Result + [mInfo.FileName];
+      Dec(mTotal, mInfo.Size);
     end;
   finally
-    Sorted.Free;
+    mSorted.Free;
   end;
 end;
 
@@ -175,18 +172,18 @@ end;
 class function TIndexCacheHousekeeping.SelectUnused(const AFiles: TArray<TCacheFileInfo>;
   const AKeep: TArray<string>; ANow: TDateTime; AMaxAgeDays: Integer): TArray<string>;
 var
-  Info: TCacheFileInfo;
+  mInfo: TCacheFileInfo;
 begin
   Result := nil;
   if AMaxAgeDays <= 0 then
   begin
     Exit;
   end;
-  for Info in AFiles do
+  for mInfo in AFiles do
   begin
-    if not Info.Locked and not IsKept(Info.FileName, AKeep) and (Info.LastWrite < ANow - AMaxAgeDays) then
+    if not mInfo.Locked and not IsKept(mInfo.FileName, AKeep) and (mInfo.LastWrite < ANow - AMaxAgeDays) then
     begin
-      Result := Result + [Info.FileName];
+      Result := Result + [mInfo.FileName];
     end;
   end;
 end;

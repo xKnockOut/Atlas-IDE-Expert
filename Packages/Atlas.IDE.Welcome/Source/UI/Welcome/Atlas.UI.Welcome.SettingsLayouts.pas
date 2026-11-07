@@ -183,7 +183,7 @@ var
   mCheck: TCheckBox;
 begin
   AShown := False;
-  if SameText(AId, TAtlasWelcomeIds.News) then
+  if SameText(AId, TAtlasWelcomeIds.cNews) then
   begin
     Result := FWhatsNew <> nil;
     AShown := Result and (FWhatsNew.Choice > 0);
@@ -205,7 +205,7 @@ begin
   begin
     Exit;
   end;
-  if SameText(AId, TAtlasWelcomeIds.News) then
+  if SameText(AId, TAtlasWelcomeIds.cNews) then
   begin
     // Sichtbar = „nach einem Update“, unsichtbar = „aus“ (Reihenfolge wie TAtlasWhatsNewMode).
     if AShown then
@@ -234,7 +234,7 @@ begin
   if FColumns <> nil then
   begin
     mLayout := mLayout.WithColumns(EnsureRange(StrToIntDef(Trim(FColumns.Text), mLayout.Columns),
-      TAtlasWelcomeLayout.MinColumns, TAtlasWelcomeLayout.MaxColumns));
+      TAtlasWelcomeLayout.cMinColumns, TAtlasWelcomeLayout.cMaxColumns));
   end;
   for mItem in TAtlasWelcomeCustomizing.Catalog do
   begin

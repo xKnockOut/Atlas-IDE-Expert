@@ -500,10 +500,10 @@ begin
     Assert.IsFalse(Store.Contains('C:\P\T.pas'), 'nur Tests: für den Server neu');
     Assert.AreEqual(0, Integer(Length(Store.AllFiles)), 'nur Tests: nicht vom Server geprüft');
     Assert.AreEqual(1, Integer(Length(Store.ForFile('c:\p\t.pas'))));
-    Assert.AreEqual(TAtlasProblemStore.TestSource, Store.ForFile('C:\P\T.pas')[0].Source);
+    Assert.AreEqual(TAtlasProblemStore.cTestSource, Store.ForFile('C:\P\T.pas')[0].Source);
     // Erste Diagnosen des Servers ersetzen Compilermeldungen wie bei einer neuen Datei und lassen Tests stehen.
     Store.Update('C:\P\T.pas', 'a'#10'b'#10'c'#10'd'#10'e', True,
-      [Problem(1, 0, 'Undeklariert', TAtlasProblem.CompilerSource)], '1', False);
+      [Problem(1, 0, 'Undeklariert', TAtlasProblem.cCompilerSource)], '1', False);
     Shown := Store.ForFile('C:\P\T.pas');
     Assert.AreEqual(2, Integer(Length(Shown)));
     Assert.AreEqual('Undeklariert', Shown[0].Message);
@@ -637,8 +637,8 @@ begin
   Colors := TAtlasColors.Dark;
   Faded := Problem(0, 0, 'x', 'Atlas', TAtlasProblemSeverity.Warning);
   Faded.Stale := True;
-  Assert.AreEqual(TAtlasColorMath.Mix(Colors.Warn, Colors.Surface, AtlasMixFaded), ProblemColor(Colors, Faded));
-  Assert.AreEqual(0.55, AtlasMixFaded, 0.0001);
+  Assert.AreEqual(TAtlasColorMath.Mix(Colors.Warn, Colors.Surface, cAtlasMixFaded), ProblemColor(Colors, Faded));
+  Assert.AreEqual(0.55, cAtlasMixFaded, 0.0001);
 end;
 
 procedure TAtlasProblemsTests.UsesHintsAreKeptApart;
@@ -659,12 +659,12 @@ begin
   Assert.IsTrue(Unused.IsUses);
   Assert.IsTrue(Unused.Unnecessary);
   Assert.AreEqual('Vcl.Grids', Unused.UsesUnit);
-  Assert.AreEqual(TAtlasProblem.UsesUnused, Unused.UsesState);
+  Assert.AreEqual(TAtlasProblem.cUsesUnused, Unused.UsesState);
   Kept := Problem(3, 13, 'Units.Reg wird wegen initialization nicht als ungenutzt gezeigt', 'Atlas',
     TAtlasProblemSeverity.Hint);
   Kept.EndCharacter := 22;
   Kept.UsesUnit := 'Units.Reg';
-  Kept.UsesState := TAtlasProblem.UsesInitialization;
+  Kept.UsesState := TAtlasProblem.cUsesInitialization;
   Inactive := Problem(5, 0, 'inaktiv');
   Inactive.EndLine := 6;
   Inactive.Unnecessary := True;
@@ -681,7 +681,7 @@ begin
     Assert.AreEqual(11, Spans[0].Last);
     Assert.AreEqual(0, Integer(Length(Store.InactiveSpans('C:\P\U.pas', 3, 4))), 'kein inaktiver Zweig');
     Assert.AreEqual(1, Integer(Length(Store.UsesAt('C:\P\U.pas', 3, 5))));
-    Assert.AreEqual(TAtlasProblem.UsesInitialization, Store.UsesAt('C:\P\U.pas', 3, 15)[0].UsesState);
+    Assert.AreEqual(TAtlasProblem.cUsesInitialization, Store.UsesAt('C:\P\U.pas', 3, 15)[0].UsesState);
     Assert.AreEqual(0, Integer(Length(Store.UsesAt('C:\P\U.pas', 4, 1))));
     // Nach einer Änderung in der Zeile: nichts abgeblendet, bis neue Diagnosen kommen.
     Store.Edit('C:\P\U.pas', 'unit U;'#10'interface'#10'uses'#10'  Vcl.Grids, Units.Re;'#10'implementation'#10 +

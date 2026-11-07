@@ -11,10 +11,11 @@
 //   geöffneten .groupproj (LocateFor).
 // - Ein Zeitgeber prüft alle 2 s im Hauptthread, ob sich aktives Projekt,
 //   Ort oder Zeitstempel der Datei geändert haben; nur dann wird neu gelesen
-//   und OnChanged gerufen. Den Ort sucht er (Ordner aufwärts bis zur Wurzel
+//   und die Version erhöht. Den Ort sucht er (Ordner aufwärts bis zur Wurzel
 //   des Repositorys) nur bei anderem Projekt oder anderer Gruppe, nach
 //   Refresh, wenn die Datei verschwunden ist, und sonst alle 10 s; je Takt
-//   fragt er nur den Zeitstempel der Datei (Dateizugriffe im Hauptthread). Ist die Datei gerade gesperrt, folgt der nächste
+//   fragt er nur den Zeitstempel der Datei (Dateizugriffe im Hauptthread). Ist die Datei gerade gesperrt, folgt der
+//   nächste
 //   Versuch beim nächsten Takt.
 // - Meldungen zur Datei (fehlerhaft, Zugangsdaten, absolute Pfade …) stehen
 //   einmal je gelesenem Stand in der Meldungsansicht (Gruppe Atlas), nie als
@@ -39,7 +40,6 @@ type
   TAtlasIdeTeamFile = class
   private class var
     FInstance: TAtlasIdeTeamFile;
-    FOnChanged: TProc;
     FVersion: Integer;
   private
     FTimer: TTimer;
@@ -85,8 +85,6 @@ type
     class procedure Refresh; static;
     /// <summary>Befehl Atlas.TeamFile: anlegen, falls nötig, und im Editor öffnen.</summary>
     class procedure OpenInEditor; static;
-    /// <summary>Nach jedem neu gelesenen Stand (z. B. Code-Vorlagen neu laden).</summary>
-    class property OnChanged: TProc read FOnChanged write FOnChanged;
   end;
 
 implementation
@@ -101,9 +99,9 @@ uses
   Atlas.UI.Strings;
 
 const
-  CheckMs = 2000;
+  cCheckMs = 2000;
   /// <summary>Spätestens nach dieser Zeit den Ort neu suchen (neu angelegte Datei weiter oben).</summary>
-  RelocateMs = 10000;
+  cRelocateMs = 10000;
 
 { TAtlasIdeTeamFile }
 
@@ -112,7 +110,7 @@ begin
   inherited Create;
   FCurrent := TAtlasTeamFile.Empty;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := CheckMs;
+  FTimer.Interval := cCheckMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -136,36 +134,36 @@ end;
 
 class function TAtlasIdeTeamFile.ActiveProject: string;
 var
-  Services: IOTAModuleServices;
-  Project: IOTAProject;
+  mServices: IOTAModuleServices;
+  mProject: IOTAProject;
 begin
   Result := '';
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
   begin
     Exit;
   end;
-  Project := Services.GetActiveProject;
-  if Project <> nil then
+  mProject := mServices.GetActiveProject;
+  if mProject <> nil then
   begin
-    Result := Project.FileName;
+    Result := mProject.FileName;
   end;
 end;
 
 class function TAtlasIdeTeamFile.ActiveGroupFolder: string;
 var
-  Services: IOTAModuleServices;
-  Group: IOTAProjectGroup;
+  mServices: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
 begin
   Result := '';
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
   begin
     Exit;
   end;
-  Group := Services.MainProjectGroup;
+  mGroup := mServices.MainProjectGroup;
   // Ohne gespeicherte Gruppe ist der Name ohne Ordner (z. B. „ProjectGroup1.groupproj“).
-  if (Group <> nil) and (ExtractFileDir(Group.FileName) <> '') then
+  if (mGroup <> nil) and (ExtractFileDir(mGroup.FileName) <> '') then
   begin
-    Result := ExtractFileDir(Group.FileName);
+    Result := ExtractFileDir(mGroup.FileName);
   end;
 end;
 
@@ -180,33 +178,33 @@ end;
 
 class function TAtlasIdeTeamFile.Load(const AFileName: string; out ATeam: TAtlasTeamSettings): Boolean;
 var
-  Content: TAtlasTextFileContent;
+  mContent: TAtlasTextFileContent;
 begin
   ATeam := TAtlasTeamFile.Empty;
   try
-    Content := TAtlasTextFile.Load(AFileName);
+    mContent := TAtlasTextFile.Load(AFileName);
   except
     // Gesperrt (gerade gespeichert) oder gelöscht: wie noch nicht gelesen.
     on Exception do
       Exit(False);
   end;
-  ATeam := TAtlasTeamFile.Parse(Content.Text, AFileName,
+  ATeam := TAtlasTeamFile.Parse(mContent.Text, AFileName,
     TAtlasTeamFile.RootOf(ExtractFileDir(AFileName), PathExists));
   Result := True;
 end;
 
 class function TAtlasIdeTeamFile.Read(const AProject: string): TAtlasTeamSettings;
 var
-  FileName: string;
+  mFileName: string;
 begin
   Result := TAtlasTeamFile.Empty;
   if AProject <> '' then
   begin
-    FileName := LocateFor(AProject);
-    if (FileName <> '') and not Load(FileName, Result) then
+    mFileName := LocateFor(AProject);
+    if (mFileName <> '') and not Load(mFileName, Result) then
     begin
       // Nicht lesbar: als fehlerhaft zeigen, es gelten die persönlichen Einstellungen.
-      Result := TAtlasTeamFile.Parse('', FileName, '');
+      Result := TAtlasTeamFile.Parse('', mFileName, '');
     end;
   end;
   Result.Project := AProject;
@@ -228,32 +226,32 @@ end;
 
 class procedure TAtlasIdeTeamFile.MessageLine(const AText: string);
 var
-  Messages: IOTAMessageServices;
-  Group: IOTAMessageGroup;
+  mMessages: IOTAMessageServices;
+  mGroup: IOTAMessageGroup;
 begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     Exit;
   end;
-  Group := Messages.GetGroup('Atlas');
-  if Group = nil then
+  mGroup := mMessages.GetGroup('Atlas');
+  if mGroup = nil then
   begin
-    Group := Messages.AddMessageGroup('Atlas');
+    mGroup := mMessages.AddMessageGroup('Atlas');
   end;
-  Messages.AddTitleMessage(AText, Group);
+  mMessages.AddTitleMessage(AText, mGroup);
 end;
 
 class procedure TAtlasIdeTeamFile.Report(const ATeam: TAtlasTeamSettings);
 var
-  Issue: TAtlasTeamIssue;
+  mIssue: TAtlasTeamIssue;
 begin
-  for Issue in ATeam.Issues do
-    case Issue.Kind of
+  for mIssue in ATeam.Issues do
+    case mIssue.Kind of
       TAtlasTeamIssueKind.Syntax:
-        if Issue.Line > 0 then
+        if mIssue.Line > 0 then
         begin
-          MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueSyntaxAt, [ATeam.FileName, Issue.Line,
-            Issue.Column]));
+          MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueSyntaxAt, [ATeam.FileName, mIssue.Line,
+            mIssue.Column]));
         end
         else
         begin
@@ -262,38 +260,38 @@ begin
       TAtlasTeamIssueKind.Version:
         MessageLine(TAtlasStrings.Text(TAtlasTextId.TeamFileIssueVersion));
       TAtlasTeamIssueKind.UnknownKey:
-        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueUnknownKey, [Issue.Path]));
+        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueUnknownKey, [mIssue.Path]));
       TAtlasTeamIssueKind.WrongType:
-        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueWrongType, [Issue.Path]));
+        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueWrongType, [mIssue.Path]));
       TAtlasTeamIssueKind.InvalidValue:
-        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueInvalidValue, [Issue.Path]));
+        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueInvalidValue, [mIssue.Path]));
       TAtlasTeamIssueKind.Credential:
-        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueCredential, [Issue.Path]));
+        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueCredential, [mIssue.Path]));
       TAtlasTeamIssueKind.AbsolutePath:
-        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueAbsolutePath, [Issue.Path]));
+        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueAbsolutePath, [mIssue.Path]));
       TAtlasTeamIssueKind.OutsidePath:
-        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueOutsidePath, [Issue.Path]));
+        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueOutsidePath, [mIssue.Path]));
     end;
 end;
 
 procedure TAtlasIdeTeamFile.Check;
 var
-  Project, FileName, Stamp: string;
-  Team: TAtlasTeamSettings;
-  Age: TDateTime;
+  mProject, mFileName, mStamp: string;
+  mTeam: TAtlasTeamSettings;
+  mAge: TDateTime;
 begin
-  Project := '';
+  mProject := '';
   if Wanted then
   begin
-    Project := ActiveProject;
+    mProject := ActiveProject;
   end;
-  FileName := LocatedFor(Project);
-  Stamp := Project + '|' + FileName;
-  if FileName <> '' then
+  mFileName := LocatedFor(mProject);
+  mStamp := mProject + '|' + mFileName;
+  if mFileName <> '' then
   begin
-    if FileAge(FileName, Age) then
+    if FileAge(mFileName, mAge) then
     begin
-      Stamp := Stamp + '|' + FloatToStr(Age, TFormatSettings.Invariant);
+      mStamp := mStamp + '|' + FloatToStr(mAge, TFormatSettings.Invariant);
     end
     else
     begin
@@ -301,24 +299,20 @@ begin
       FLocatedAt := 0;
     end;
   end;
-  if Stamp = FStamp then
+  if mStamp = FStamp then
   begin
     Exit;
   end;
-  Team := TAtlasTeamFile.Empty;
-  if (FileName <> '') and not Load(FileName, Team) then
+  mTeam := TAtlasTeamFile.Empty;
+  if (mFileName <> '') and not Load(mFileName, mTeam) then
   begin
     Exit;
   end;
-  Team.Project := Project;
-  FStamp := Stamp;
-  FCurrent := Team;
+  mTeam.Project := mProject;
+  FStamp := mStamp;
+  FCurrent := mTeam;
   Inc(FVersion);
-  Report(Team);
-  if Assigned(FOnChanged) then
-  begin
-    FOnChanged();
-  end;
+  Report(mTeam);
 end;
 
 function TAtlasIdeTeamFile.LocatedFor(const AProject: string): string;
@@ -328,7 +322,7 @@ var
 begin
   mKey := AProject + '|' + ActiveGroupFolder;
   mNow := GetTickCount64;
-  if (mKey <> FLocateKey) or (FLocatedAt = 0) or (mNow - FLocatedAt >= RelocateMs) then
+  if (mKey <> FLocateKey) or (FLocatedAt = 0) or (mNow - FLocatedAt >= cRelocateMs) then
   begin
     FLocated := LocateFor(AProject);
     FLocateKey := mKey;
@@ -394,25 +388,25 @@ end;
 
 class procedure TAtlasIdeTeamFile.OpenInEditor;
 var
-  Project, FileName: string;
-  Content: TAtlasTextFileContent;
-  Actions: IOTAActionServices;
+  mProject, mFileName: string;
+  mContent: TAtlasTextFileContent;
+  mActions: IOTAActionServices;
 begin
-  Project := ActiveProject;
-  if Project = '' then
+  mProject := ActiveProject;
+  if mProject = '' then
   begin
     MessageLine(TAtlasStrings.Text(TAtlasTextId.TeamFileNoProject));
     Exit;
   end;
-  FileName := LocateFor(Project);
-  if FileName = '' then
+  mFileName := LocateFor(mProject);
+  if mFileName = '' then
   begin
-    FileName := TPath.Combine(ExtractFileDir(Project), TAtlasTeamFile.FileName);
-    Content := Default(TAtlasTextFileContent);
-    Content.Text := TAtlasTeamFile.Skeleton;
-    Content.Encoding := TAtlasTextEncoding.Utf8;
+    mFileName := TPath.Combine(ExtractFileDir(mProject), TAtlasTeamFile.cFileName);
+    mContent := Default(TAtlasTextFileContent);
+    mContent.Text := TAtlasTeamFile.Skeleton;
+    mContent.Encoding := TAtlasTextEncoding.Utf8;
     try
-      TAtlasTextFile.Save(FileName, Content);
+      TAtlasTextFile.Save(mFileName, mContent);
     except
       on E: Exception do
       begin
@@ -422,9 +416,9 @@ begin
     end;
     MessageLine(TAtlasStrings.Text(TAtlasTextId.TeamFileCreated));
   end;
-  if Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+  if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
   begin
-    Actions.OpenFile(FileName);
+    mActions.OpenFile(mFileName);
   end;
   Refresh;
 end;

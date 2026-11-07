@@ -48,9 +48,7 @@ type
 
   TAtlasUnwrap = class
   public const
-    Command = 'atlas.server.unwrap';
-    /// <summary>Strg+Umschalt+Entf.</summary>
-    DefaultKey = $602E;
+    cCommand = 'atlas.server.unwrap';
   public
     /// <summary>[uri, position, Einrückungsbreite]; AIndentWidth &lt;= 0 = Formatierstil des Servers.</summary>
     class function Arguments(const AUri: string; ALine, ACharacter, AIndentWidth: Integer): string; static;
@@ -76,13 +74,13 @@ uses
 
 function ReadPosition(const AValue: TJSONValue; out APosition: TLspTextPosition): Boolean;
 var
-  Line, Character: Integer;
+  mLine, mCharacter: Integer;
 begin
-  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Integer>('line', Line) and
-    TJSONObject(AValue).TryGetValue<Integer>('character', Character);
+  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Integer>('line', mLine) and
+    TJSONObject(AValue).TryGetValue<Integer>('character', mCharacter);
   if Result then
   begin
-    APosition := TLspTextPosition.Create(Line, Character);
+    APosition := TLspTextPosition.Create(mLine, mCharacter);
   end;
 end;
 
@@ -95,17 +93,17 @@ end;
 
 function ReadRanges(const AValue: TJSONValue): TArray<TLspRange>;
 var
-  Item: TJSONValue;
-  Range: TLspRange;
+  mItem: TJSONValue;
+  mRange: TLspRange;
 begin
   Result := nil;
   if AValue is TJSONArray then
   begin
-    for Item in TJSONArray(AValue) do
+    for mItem in TJSONArray(AValue) do
     begin
-      if ReadRange(Item, Range) then
+      if ReadRange(mItem, mRange) then
       begin
-        Result := Result + [Range];
+        Result := Result + [mRange];
       end;
     end;
   end;
@@ -113,17 +111,17 @@ end;
 
 function ReadEdits(const AValue: TJSONValue): TArray<TLspTextEdit>;
 var
-  Item: TJSONValue;
-  Edit: TLspTextEdit;
+  mItem: TJSONValue;
+  mEdit: TLspTextEdit;
 begin
   Result := nil;
   if AValue is TJSONArray then
   begin
-    for Item in TJSONArray(AValue) do
+    for mItem in TJSONArray(AValue) do
     begin
-      if TLspTextEdit.FromJson(Item, Edit) then
+      if TLspTextEdit.FromJson(mItem, mEdit) then
       begin
-        Result := Result + [Edit];
+        Result := Result + [mEdit];
       end;
     end;
   end;
@@ -149,20 +147,20 @@ end;
 
 class function TAtlasUnwrap.Arguments(const AUri: string; ALine, ACharacter, AIndentWidth: Integer): string;
 var
-  List: TJSONArray;
-  Position: TJSONObject;
+  mList: TJSONArray;
+  mPosition: TJSONObject;
 begin
-  List := TJSONArray.Create;
+  mList := TJSONArray.Create;
   try
-    List.Add(AUri);
-    Position := TJSONObject.Create;
-    Position.AddPair('line', TJSONNumber.Create(ALine));
-    Position.AddPair('character', TJSONNumber.Create(ACharacter));
-    List.AddElement(Position);
-    List.Add(AIndentWidth);
-    Result := List.ToJSON;
+    mList.Add(AUri);
+    mPosition := TJSONObject.Create;
+    mPosition.AddPair('line', TJSONNumber.Create(ALine));
+    mPosition.AddPair('character', TJSONNumber.Create(ACharacter));
+    mList.AddElement(mPosition);
+    mList.Add(AIndentWidth);
+    Result := mList.ToJSON;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
@@ -254,11 +252,11 @@ end;
 
 class function TAtlasUnwrap.NextAvailable(const AEntries: TArray<TAtlasUnwrapEntry>; AFrom, ADelta: Integer): Integer;
 var
-  Count, Step, Index: Integer;
+  mCount, mStep, mIndex: Integer;
 begin
   Result := -1;
-  Count := Length(AEntries);
-  if Count = 0 then
+  mCount := Length(AEntries);
+  if mCount = 0 then
   begin
     Exit;
   end;
@@ -266,12 +264,12 @@ begin
   begin
     ADelta := 1;
   end;
-  for Step := 0 to Count - 1 do
+  for mStep := 0 to mCount - 1 do
   begin
-    Index := ((AFrom + Step * ADelta) mod Count + Count) mod Count;
-    if AEntries[Index].Available then
+    mIndex := ((AFrom + mStep * ADelta) mod mCount + mCount) mod mCount;
+    if AEntries[mIndex].Available then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
@@ -280,29 +278,29 @@ class function TAtlasUnwrap.SpansOnLine(const AEntry: TAtlasUnwrapEntry; ALine: 
 
   procedure AddFrom(const ARanges: TArray<TLspRange>; AKeep: Boolean; var ASpans: TArray<TAtlasUnwrapSpan>);
   var
-    Range: TLspRange;
-    Span: TAtlasUnwrapSpan;
+    mRange: TLspRange;
+    mSpan: TAtlasUnwrapSpan;
   begin
-    for Range in ARanges do
+    for mRange in ARanges do
     begin
-      if (Range.StartPos.Line > ALine) or (Range.EndPos.Line < ALine) then
+      if (mRange.StartPos.Line > ALine) or (mRange.EndPos.Line < ALine) then
       begin
         Continue;
       end;
-      Span.Start := 0;
-      if Range.StartPos.Line = ALine then
+      mSpan.Start := 0;
+      if mRange.StartPos.Line = ALine then
       begin
-        Span.Start := Range.StartPos.Character;
+        mSpan.Start := mRange.StartPos.Character;
       end;
-      Span.Stop := MaxInt;
-      if Range.EndPos.Line = ALine then
+      mSpan.Stop := MaxInt;
+      if mRange.EndPos.Line = ALine then
       begin
-        Span.Stop := Range.EndPos.Character;
+        mSpan.Stop := mRange.EndPos.Character;
       end;
-      Span.Keep := AKeep;
-      if Span.Stop > Span.Start then
+      mSpan.Keep := AKeep;
+      if mSpan.Stop > mSpan.Start then
       begin
-        ASpans := ASpans + [Span];
+        ASpans := ASpans + [mSpan];
       end;
     end;
   end;
@@ -320,19 +318,19 @@ end;
 
 class function TAtlasUnwrap.LineSpan(const AEntry: TAtlasUnwrapEntry; out AFirst, ALast: Integer): Boolean;
 var
-  Range: TLspRange;
+  mRange: TLspRange;
 begin
   AFirst := MaxInt;
   ALast := -1;
-  for Range in AEntry.Keep + AEntry.Remove do
+  for mRange in AEntry.Keep + AEntry.Remove do
   begin
-    if Range.StartPos.Line < AFirst then
+    if mRange.StartPos.Line < AFirst then
     begin
-      AFirst := Range.StartPos.Line;
+      AFirst := mRange.StartPos.Line;
     end;
-    if Range.EndPos.Line > ALast then
+    if mRange.EndPos.Line > ALast then
     begin
-      ALast := Range.EndPos.Line;
+      ALast := mRange.EndPos.Line;
     end;
   end;
   Result := ALast >= 0;
@@ -344,16 +342,16 @@ end;
 
 class function TAtlasUnwrap.EditOf(const AEntry: TAtlasUnwrapEntry; const AFileName: string): TLspWorkspaceEdit;
 var
-  FileEdits: TLspFileEdits;
+  mFileEdits: TLspFileEdits;
 begin
   Result := TLspWorkspaceEdit.FromJson(nil);
   if not AEntry.Available then
   begin
     Exit;
   end;
-  FileEdits.FileName := AFileName;
-  FileEdits.Edits := AEntry.Edits;
-  Result.Files := [FileEdits];
+  mFileEdits.FileName := AFileName;
+  mFileEdits.Edits := AEntry.Edits;
+  Result.Files := [mFileEdits];
 end;
 
 end.

@@ -38,8 +38,8 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  UnrelatedClassCastRuleId = 'unrelated-class-cast';
-  RedundantCastRuleId = 'redundant-cast';
+  cUnrelatedClassCastRuleId = 'unrelated-class-cast';
+  cRedundantCastRuleId = 'redundant-cast';
 
 type
   TUnrelatedClassCastRule = class(TInterfacedObject, IRule)
@@ -158,7 +158,7 @@ end;
 
 function TUnrelatedClassCastRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UnrelatedClassCastRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cUnrelatedClassCastRuleId, TRuleSeverity.Warning,
     cTexts[TCastsText.UnrelatedTitle].Text);
 end;
 
@@ -370,7 +370,7 @@ end;
 
 function TRedundantCastRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(RedundantCastRuleId, TRuleSeverity.Hint, cTexts[TCastsText.RedundantTitle].Text);
+  Result := TRuleDescriptor.Create(cRedundantCastRuleId, TRuleSeverity.Hint, cTexts[TCastsText.RedundantTitle].Text);
 end;
 
 procedure TRedundantCastRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

@@ -21,13 +21,13 @@ type
 
   TIndexProcessInfo = record
   public const
-    StateBuilding = 'baut Index';
-    StateReading = 'liest Cache';
-    StateReady = 'bereit';
-    KindLsp = 'LSP';
-    KindMcp = 'MCP';
+    cStateBuilding = 'baut Index';
+    cStateReading = 'liest Cache';
+    cStateReady = 'bereit';
+    cKindLsp = 'LSP';
+    cKindMcp = 'MCP';
     /// <summary>Kommandozeilen-Linter --check mit Symbolindex (#1112).</summary>
-    KindCheck = 'Check';
+    cKindCheck = 'Check';
   public
     Pid: Cardinal;
     /// <summary>KindLsp, KindMcp oder KindCheck.</summary>
@@ -40,7 +40,7 @@ type
     /// <summary>Hält die Cache-Sperre und schreibt den Cache.</summary>
     Writer: Boolean;
     Started: TDateTime;
-    /// <summary>Letzte Ereignisse, älteste zuerst, höchstens TIndexProcessEntry.MaxEvents (Adapter).</summary>
+    /// <summary>Letzte Ereignisse, älteste zuerst, höchstens TIndexProcessEntry.cMaxEvents (Adapter).</summary>
     Events: TArray<TIndexProcessEvent>;
     function ToJson: TJSONObject;
     /// <summary>False bei ungültigem Inhalt (z. B. mitten im Schreiben gelesen).</summary>
@@ -62,9 +62,9 @@ uses
 
 function TIndexProcessInfo.ToJson: TJSONObject;
 var
-  Items: TJSONArray;
-  Event: TIndexProcessEvent;
-  Item: TJSONObject;
+  mItems: TJSONArray;
+  mEvent: TIndexProcessEvent;
+  mItem: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('pid', TJSONNumber.Create(Pid));
@@ -74,26 +74,27 @@ begin
   Result.AddPair('state', State);
   Result.AddPair('writer', TJSONBool.Create(Writer));
   Result.AddPair('started', DateToISO8601(Started, False));
-  Items := TJSONArray.Create;
-  for Event in Events do
+  mItems := TJSONArray.Create;
+  for mEvent in Events do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('time', DateToISO8601(Event.Time, False));
-    Item.AddPair('text', Event.Text);
-    Items.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('time', DateToISO8601(mEvent.Time, False));
+    mItem.AddPair('text', mEvent.Text);
+    mItems.AddElement(mItem);
   end;
-  Result.AddPair('events', Items);
+  Result.AddPair('events', mItems);
 end;
 
 function ReadTime(AObject: TJSONObject; const AName: string): TDateTime;
 var
-  Text: string;
+  mText: string;
 begin
   Result := 0;
-  if AObject.TryGetValue<string>(AName, Text) and (Text <> '') then
+  if AObject.TryGetValue<string>(AName, mText) and (mText <> '') then
     try
-      Result := ISO8601ToDate(Text, False);
+      Result := ISO8601ToDate(mText, False);
     except
+      // lsp-ignore: catch-all-without-raise -- Prozessdatei unlesbar heißt kein Eintrag
       on Exception do
         Result := 0;
     end;
@@ -123,38 +124,39 @@ end;
 
 class function TIndexProcessInfo.FromJson(const AText: string; out AInfo: TIndexProcessInfo): Boolean;
 var
-  Root: TJSONValue;
-  Item: TJSONObject;
-  Items: TJSONArray;
-  Pid: Integer;
+  mRoot: TJSONValue;
+  mItem: TJSONObject;
+  mItems: TJSONArray;
+  mPid: Integer;
 begin
   AInfo := Default(TIndexProcessInfo);
   try
-    Root := TJSONObject.ParseJSONValue(AText);
+    mRoot := TJSONObject.ParseJSONValue(AText);
   except
+    // lsp-ignore: catch-all-without-raise -- Prozessdatei unlesbar heißt kein Eintrag
     on Exception do
-      Root := nil;
+      mRoot := nil;
   end;
   try
-    Result := (Root is TJSONObject) and TJSONObject(Root).TryGetValue<Integer>('pid', Pid);
+    Result := (mRoot is TJSONObject) and TJSONObject(mRoot).TryGetValue<Integer>('pid', mPid);
     if not Result then
     begin
       Exit;
     end;
-    Item := TJSONObject(Root);
-    AInfo.Pid := Cardinal(Pid);
-    AInfo.Kind := Item.GetValue<string>('kind', '');
-    AInfo.Client := Item.GetValue<string>('client', '');
-    AInfo.Workspace := Item.GetValue<string>('workspace', '');
-    AInfo.State := Item.GetValue<string>('state', '');
-    AInfo.Writer := (Item.GetValue('writer') is TJSONBool) and TJSONBool(Item.GetValue('writer')).AsBoolean;
-    AInfo.Started := ReadTime(Item, 'started');
-    if Item.TryGetValue<TJSONArray>('events', Items) then
+    mItem := TJSONObject(mRoot);
+    AInfo.Pid := Cardinal(mPid);
+    AInfo.Kind := mItem.GetValue<string>('kind', '');
+    AInfo.Client := mItem.GetValue<string>('client', '');
+    AInfo.Workspace := mItem.GetValue<string>('workspace', '');
+    AInfo.State := mItem.GetValue<string>('state', '');
+    AInfo.Writer := (mItem.GetValue('writer') is TJSONBool) and TJSONBool(mItem.GetValue('writer')).AsBoolean;
+    AInfo.Started := ReadTime(mItem, 'started');
+    if mItem.TryGetValue<TJSONArray>('events', mItems) then
     begin
-      AInfo.Events := ReadEvents(Items);
+      AInfo.Events := ReadEvents(mItems);
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
@@ -162,47 +164,47 @@ end;
 
 class function TIndexProcessLog.Events(const AProcesses: TArray<TIndexProcessInfo>): TArray<TIndexProcessEvent>;
 var
-  Process: TIndexProcessInfo;
-  Event, Item: TIndexProcessEvent;
-  Kinds: TDictionary<string, Integer>;
-  Count, Index: Integer;
+  mProcess: TIndexProcessInfo;
+  mEvent, mItem: TIndexProcessEvent;
+  mKinds: TDictionary<string, Integer>;
+  mCount, mIndex: Integer;
 begin
   Result := nil;
   // Zwei Prozesse derselben Art unterscheidet die Prozessnummer.
-  Kinds := TDictionary<string, Integer>.Create;
+  mKinds := TDictionary<string, Integer>.Create;
   try
-    for Process in AProcesses do
+    for mProcess in AProcesses do
     begin
-      if not Kinds.TryGetValue(Process.Kind, Count) then
+      if not mKinds.TryGetValue(mProcess.Kind, mCount) then
       begin
-        Count := 0;
+        mCount := 0;
       end;
-      Kinds.AddOrSetValue(Process.Kind, Count + 1);
+      mKinds.AddOrSetValue(mProcess.Kind, mCount + 1);
     end;
-    for Process in AProcesses do
+    for mProcess in AProcesses do
     begin
-      for Event in Process.Events do
+      for mEvent in mProcess.Events do
       begin
-        Item.Time := Event.Time;
-        if Kinds[Process.Kind] > 1 then
+        mItem.Time := mEvent.Time;
+        if mKinds[mProcess.Kind] > 1 then
         begin
-          Item.Text := Format('%s %d: %s', [Process.Kind, Process.Pid, Event.Text]);
+          mItem.Text := Format('%s %d: %s', [mProcess.Kind, mProcess.Pid, mEvent.Text]);
         end
         else
         begin
-          Item.Text := Process.Kind + ': ' + Event.Text;
+          mItem.Text := mProcess.Kind + ': ' + mEvent.Text;
         end;
         // Stabil einsortieren: Gleichzeitige Ereignisse eines Prozesses behalten ihre Reihenfolge.
-        Index := Length(Result);
-        while (Index > 0) and (Result[Index - 1].Time > Item.Time) do
+        mIndex := Length(Result);
+        while (mIndex > 0) and (Result[mIndex - 1].Time > mItem.Time) do
         begin
-          Dec(Index);
+          Dec(mIndex);
         end;
-        Insert(Item, Result, Index);
+        Insert(mItem, Result, mIndex);
       end;
     end;
   finally
-    Kinds.Free;
+    mKinds.Free;
   end;
 end;
 

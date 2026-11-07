@@ -48,8 +48,8 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  GenericConstraintViolatedRuleId = 'generic-constraint-violated';
-  GenericInferenceFailedRuleId = 'generic-inference-failed';
+  cGenericConstraintViolatedRuleId = 'generic-constraint-violated';
+  cGenericInferenceFailedRuleId = 'generic-inference-failed';
 
 type
   /// <summary>Ein Typparameter mit seinen Einschränkungen aus "&lt;T: class, constructor; U&gt;".</summary>
@@ -145,8 +145,8 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  Keywords: array[0..2] of string = ('class', 'record', 'constructor');
-  ManagedBuiltins: array[0..6] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString',
+  cKeywords: array[0..2] of string = ('class', 'record', 'constructor');
+  cManagedBuiltins: array[0..6] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString',
     'Variant', 'OleVariant');
 
 type
@@ -162,14 +162,14 @@ end;
 
 function TGenericParam.TypeConstraints: TArray<string>;
 var
-  Constraint: string;
+  mConstraint: string;
 begin
   Result := nil;
-  for Constraint in Constraints do
+  for mConstraint in Constraints do
   begin
-    if not MatchText(Constraint, Keywords) then
+    if not MatchText(mConstraint, cKeywords) then
     begin
-      Result := Result + [Constraint];
+      Result := Result + [mConstraint];
     end;
   end;
 end;
@@ -178,7 +178,7 @@ end;
 
 function TGenericConstraintViolatedRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(GenericConstraintViolatedRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cGenericConstraintViolatedRuleId, TRuleSeverity.Error,
     cTexts[TGenericsText.ConstraintTitle].Text);
 end;
 
@@ -197,7 +197,7 @@ begin
     if (mIndex > Length(AText)) or ((AText[mIndex] = ',') and (mDepth = 0)) then
     begin
       mPart := Trim(Copy(AText, mStart, mIndex - mStart));
-      if MatchText(mPart, Keywords) then
+      if MatchText(mPart, cKeywords) then
       begin
         mPart := LowerCase(mPart);
       end;
@@ -245,7 +245,7 @@ end;
 
 class function TGenericConstraintViolatedRule.ParseParams(const AText: string): TArray<TGenericParam>;
 var
-  Position, Depth, GroupStart: Integer;
+  mPosition, mDepth, mGroupStart: Integer;
 
   procedure AddGroup(AEnd: Integer);
   var
@@ -254,11 +254,11 @@ var
     mNames, mConstraints: TArray<string>;
     mParam: TGenericParam;
   begin
-    mNames := GroupNames(Copy(AText, GroupStart, AEnd - GroupStart), mConstraintText);
+    mNames := GroupNames(Copy(AText, mGroupStart, AEnd - mGroupStart), mConstraintText);
     mConstraints := SplitConstraints(mConstraintText);
     // Hinter dem letzten Zeichen der Gruppe, ohne folgende Leerzeichen.
     mInner := AEnd - 1;
-    while (mInner > GroupStart) and CharInSet(AText[mInner], [' ', #9, #10, #13]) do
+    while (mInner > mGroupStart) and CharInSet(AText[mInner], [' ', #9, #10, #13]) do
     begin
       Dec(mInner);
     end;
@@ -275,35 +275,35 @@ var
 
 begin
   Result := nil;
-  Position := Pos('<', AText);
-  if Position = 0 then
+  mPosition := Pos('<', AText);
+  if mPosition = 0 then
   begin
     Exit;
   end;
-  Depth := 0;
-  GroupStart := Position + 1;
-  while Position <= Length(AText) do
+  mDepth := 0;
+  mGroupStart := mPosition + 1;
+  while mPosition <= Length(AText) do
   begin
-    case AText[Position] of
+    case AText[mPosition] of
       '<':
-        Inc(Depth);
+        Inc(mDepth);
       '>':
         begin
-          Dec(Depth);
-          if Depth = 0 then
+          Dec(mDepth);
+          if mDepth = 0 then
           begin
-            AddGroup(Position);
+            AddGroup(mPosition);
             Exit;
           end;
         end;
       ';':
-        if Depth = 1 then
+        if mDepth = 1 then
         begin
-          AddGroup(Position);
-          GroupStart := Position + 1;
+          AddGroup(mPosition);
+          mGroupStart := mPosition + 1;
         end;
     end;
-    Inc(Position);
+    Inc(mPosition);
   end;
 end;
 
@@ -323,13 +323,12 @@ end;
 
 procedure TGenericConstraintViolatedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Cache: IRuleDerivedCache;
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName: string;
-  Local: TUnitIndex;
+  mFileName: string;
+  mLocal: TUnitIndex;
   // Namen aller Typparameter der Datei: solche Argumente bleiben ungeprüft.
-  ParamNames: TDictionary<string, Boolean>;
+  mParamNames: TDictionary<string, Boolean>;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -361,7 +360,7 @@ var
     Result := TArgumentKind.Unknown;
     if AType.Builtin then
     begin
-      if MatchText(AType.Name, ManagedBuiltins) then
+      if MatchText(AType.Name, cManagedBuiltins) then
       begin
         Result := TArgumentKind.ManagedArg;
       end
@@ -387,28 +386,28 @@ var
   /// die Kette abbricht.</summary>
   function Descends(const AType, ATarget: TResolvedSymbol; out AKnown: Boolean): Boolean;
   var
-    Current, Next: TResolvedSymbol;
-    Depth: Integer;
+    mCurrent, mNext: TResolvedSymbol;
+    mDepth: Integer;
   begin
     AKnown := True;
-    Current := AType;
-    for Depth := 0 to 64 do
+    mCurrent := AType;
+    for mDepth := 0 to 64 do
     begin
-      if SameType(Current, ATarget) then
+      if SameType(mCurrent, ATarget) then
       begin
         Exit(True);
       end;
-      if (Length(Current.Ancestors) = 0) or SameText(BareName(Current.Ancestors[0]), 'TObject') or
-        SameText(BareName(Current.Ancestors[0]), 'IInterface') then
+      if (Length(mCurrent.Ancestors) = 0) or SameText(BareName(mCurrent.Ancestors[0]), 'TObject') or
+        SameText(BareName(mCurrent.Ancestors[0]), 'IInterface') then
       begin
         Exit(SameText(ATarget.Name, 'TObject') or SameText(ATarget.Name, 'IInterface') or
           SameText(ATarget.Name, 'IUnknown'));
       end;
-      if not Resolver.AncestorOf(Current, Next) then
+      if not mResolver.AncestorOf(mCurrent, mNext) then
       begin
         Break;
       end;
-      Current := Next;
+      mCurrent := mNext;
     end;
     AKnown := False;
     Result := False;
@@ -427,7 +426,7 @@ var
     mIndex := 1;
     while not AStop and (mIndex <= High(AType.Ancestors)) do
     begin
-      AStop := not Resolver.ResolveTypeTextFrom(Local, AType.Ancestors[mIndex], mInterface) or
+      AStop := not mResolver.ResolveTypeTextFrom(mLocal, AType.Ancestors[mIndex], mInterface) or
         (mInterface.SymbolKind <> TIndexSymbolKind.InterfaceType);
       if not AStop then
       begin
@@ -461,7 +460,7 @@ var
         AKnown := True;
         Exit;
       end;
-      if not Resolver.AncestorOf(mCurrent, mNext) then
+      if not mResolver.AncestorOf(mCurrent, mNext) then
       begin
         Exit;
       end;
@@ -530,7 +529,7 @@ var
     Result := '';
     for mConstraint in AParam.TypeConstraints do
     begin
-      if (Result <> '') or not Resolver.ResolveTypeTextFrom(Local, mConstraint, mTarget) or
+      if (Result <> '') or not mResolver.ResolveTypeTextFrom(mLocal, mConstraint, mTarget) or
         not (mTarget.SymbolKind in [TIndexSymbolKind.InterfaceType, TIndexSymbolKind.ClassType]) or
         not MissesTarget(AArg, AKind, mTarget) then
       begin
@@ -577,7 +576,7 @@ var
     mMessage: string;
   begin
     if (AParam.Constraints = nil) or (AArg.Kind <> TSyntaxKind.TypeReference) or
-      ParamNames.ContainsKey(LowerCase(BareName(AArgText))) or not Resolver.ResolveTypeTextFrom(Local, AArgText,
+      mParamNames.ContainsKey(LowerCase(BareName(AArgText))) or not mResolver.ResolveTypeTextFrom(mLocal, AArgText,
       mArg) then
     begin
       Exit;
@@ -616,7 +615,7 @@ var
     end;
     mBase := Trim(Copy(AContext.Text, mOwner.StartOffset + 1, AArgs.StartOffset - mOwner.StartOffset));
     mArgs := ArgumentTexts(AArgs);
-    if (mBase = '') or (mArgs = nil) or not Resolver.ResolveTypeTextFrom(Local, mBase + '<' +
+    if (mBase = '') or (mArgs = nil) or not mResolver.ResolveTypeTextFrom(mLocal, mBase + '<' +
       string.Join(',', mArgs) + '>', mGeneric) or not mGeneric.IsType then
     begin
       Exit;
@@ -637,48 +636,48 @@ var
   function ConstraintFix(const AParam: TGenericParam; AStart: Integer; const AText: string;
     out AFix: TRuleFix): Boolean;
   var
-    Offset: Integer;
+    mOffset: Integer;
   begin
     Result := AParam.Single;
     if not Result then
     begin
       Exit;
     end;
-    Offset := AStart + AParam.GroupEnd;
-    AFix := TRuleFix.Create(cTexts[TGenericsText.AddConstraint].Text, [TRuleEdit.Create(TRuleDerived.OffsetRange(Cache,
+    mOffset := AStart + AParam.GroupEnd;
+    AFix := TRuleFix.Create(cTexts[TGenericsText.AddConstraint].Text, [TRuleEdit.Create(TRuleDerived.OffsetRange(mCache,
       AContext,
-      Offset, Offset), AText)]);
+      mOffset, mOffset), AText)]);
   end;
 
   /// <summary>Typparameter des generischen Typs bzw. der Methode im Knoten ANode (TypeDecl oder RoutineHeader)
   /// samt Offset des Texts, aus dem sie gelesen wurden.</summary>
   function ParamsOf(ANode: TSyntaxNode; out AStart: Integer): TArray<TGenericParam>;
   var
-    Node: TSyntaxNode;
+    mNode: TSyntaxNode;
   begin
     Result := nil;
     AStart := 0;
-    Node := ANode.FindChild(TSyntaxKind.GenericParams);
-    if Node = nil then
+    mNode := ANode.FindChild(TSyntaxKind.GenericParams);
+    if mNode = nil then
     begin
       Exit;
     end;
-    AStart := Node.StartOffset;
-    Result := ParseParams(NodeText(Node));
+    AStart := mNode.StartOffset;
+    Result := ParseParams(NodeText(mNode));
   end;
 
   procedure CheckBody(ARoutine: TSyntaxNode; const AParams: TArray<TGenericParam>; const AStarts: TArray<Integer>);
 
     function FindParam(const AName: string; out AIndex: Integer): Boolean;
     var
-      Index: Integer;
+      mIndex: Integer;
     begin
       // Typparameter der Methode verdecken die der Klasse: sie stehen hinten.
-      for Index := High(AParams) downto 0 do
+      for mIndex := High(AParams) downto 0 do
       begin
-        if SameText(AParams[Index].Name, AName) then
+        if SameText(AParams[mIndex].Name, AName) then
         begin
-          AIndex := Index;
+          AIndex := mIndex;
           Exit(True);
         end;
       end;
@@ -721,7 +720,7 @@ var
       mFix: TRuleFix;
       mFixes: TArray<TRuleFix>;
     begin
-      mSymbol := Resolver.Resolve(AContext.Tree, FileName, AReceiver.StartPos);
+      mSymbol := mResolver.Resolve(AContext.Tree, mFileName, AReceiver.StartPos);
       if not mSymbol.Found or mSymbol.IsType or not FindParam(mSymbol.TypeName, mIndex) or
         (AParams[mIndex].Constraints <> nil) then
       begin
@@ -783,13 +782,13 @@ var
     end;
 
   var
-    Child: Integer;
+    mChild: Integer;
   begin
-    for Child := 0 to ARoutine.ChildCount - 1 do
+    for mChild := 0 to ARoutine.ChildCount - 1 do
     begin
-      if ARoutine[Child].Kind = TSyntaxKind.Block then
+      if ARoutine[mChild].Kind = TSyntaxKind.Block then
       begin
-        Visit(ARoutine[Child]);
+        Visit(ARoutine[mChild]);
       end;
     end;
   end;
@@ -798,64 +797,64 @@ var
   /// </summary>
   procedure CheckMethods;
   var
-    Types: TDictionary<string, TSyntaxNode>;
+    mTypes: TDictionary<string, TSyntaxNode>;
 
     // Iterativ (Bericht M1).
     procedure CollectTypes(ARoot: TSyntaxNode);
     var
-      Pending: TStack<TSyntaxNode>;
-      Node: TSyntaxNode;
-      Child: Integer;
+      mPending: TStack<TSyntaxNode>;
+      mNode: TSyntaxNode;
+      mChild: Integer;
     begin
-      Pending := TStack<TSyntaxNode>.Create;
+      mPending := TStack<TSyntaxNode>.Create;
       try
-        Pending.Push(ARoot);
-        while Pending.Count > 0 do
+        mPending.Push(ARoot);
+        while mPending.Count > 0 do
         begin
-          Node := Pending.Pop;
-          if (Node.Kind = TSyntaxKind.TypeDecl) and (Node.FindChild(TSyntaxKind.GenericParams) <> nil) then
+          mNode := mPending.Pop;
+          if (mNode.Kind = TSyntaxKind.TypeDecl) and (mNode.FindChild(TSyntaxKind.GenericParams) <> nil) then
           begin
-            Types.AddOrSetValue(LowerCase(Node.Name), Node);
+            mTypes.AddOrSetValue(LowerCase(mNode.Name), mNode);
           end;
-          if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.Block] then
+          if mNode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.Block] then
           begin
             Continue;
           end;
-          for Child := Node.ChildCount - 1 downto 0 do
+          for mChild := mNode.ChildCount - 1 downto 0 do
           begin
-            Pending.Push(Node[Child]);
+            mPending.Push(mNode[mChild]);
           end;
         end;
       finally
-        Pending.Free;
+        mPending.Free;
       end;
     end;
 
     /// <summary>Kopf der Methode AName im Typ ATypeDecl, wenn es genau einen gibt.</summary>
     function MethodHeader(ATypeDecl: TSyntaxNode; const AName: string): TSyntaxNode;
     var
-      Body: TSyntaxNode;
-      Index: Integer;
+      mBody: TSyntaxNode;
+      mIndex: Integer;
     begin
       Result := nil;
-      Body := ATypeDecl.FindChild(TSyntaxKind.ClassType);
-      if Body = nil then
+      mBody := ATypeDecl.FindChild(TSyntaxKind.ClassType);
+      if mBody = nil then
       begin
-        Body := ATypeDecl.FindChild(TSyntaxKind.RecordType);
+        mBody := ATypeDecl.FindChild(TSyntaxKind.RecordType);
       end;
-      if Body = nil then
+      if mBody = nil then
       begin
         Exit;
       end;
-      for Index := 0 to Body.ChildCount - 1 do
+      for mIndex := 0 to mBody.ChildCount - 1 do
       begin
-        if (Body[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(Body[Index].Name, AName) then
+        if (mBody[mIndex].Kind = TSyntaxKind.RoutineHeader) and SameText(mBody[mIndex].Name, AName) then
         begin
           if Result <> nil then
           begin
             Exit(nil);
           end;
-          Result := Body[Index];
+          Result := mBody[mIndex];
         end;
       end;
     end;
@@ -869,7 +868,7 @@ var
       mStarts: TArray<Integer>;
     begin
       mDot := LastDelimiter('.', ANode.Name);
-      if (mDot = 0) or not Types.TryGetValue(LowerCase(Copy(ANode.Name, 1, mDot - 1)), mTypeDecl) then
+      if (mDot = 0) or not mTypes.TryGetValue(LowerCase(Copy(ANode.Name, 1, mDot - 1)), mTypeDecl) then
       begin
         Exit;
       end;
@@ -924,15 +923,15 @@ var
     end;
 
   begin
-    Types := TDictionary<string, TSyntaxNode>.Create;
+    mTypes := TDictionary<string, TSyntaxNode>.Create;
     try
       CollectTypes(AContext.Tree.Root);
-      if Types.Count > 0 then
+      if mTypes.Count > 0 then
       begin
         Visit(AContext.Tree.Root);
       end;
     finally
-      Types.Free;
+      mTypes.Free;
     end;
   end;
 
@@ -959,7 +958,7 @@ var
           mHasParams := True;
           for mChild := 0 to ANode.ChildCount - 1 do
           begin
-            ParamNames.AddOrSetValue(LowerCase(ANode[mChild].Name), True);
+            mParamNames.AddOrSetValue(LowerCase(ANode[mChild].Name), True);
           end;
         end;
         Result := True;
@@ -977,21 +976,20 @@ begin
   begin
     Exit;
   end;
-  ParamNames := TDictionary<string, Boolean>.Create;
+  mParamNames := TDictionary<string, Boolean>.Create;
   try
     mHasParams := CollectGenerics(mArgsNodes);
     if (mArgsNodes = nil) and not mHasParams then
     begin
       Exit;
     end;
-    Cache := TRuleDerived.Open(AContext);
-    FileName := ResolverFileName(AContext);
+    mFileName := ResolverFileName(AContext);
     // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
     mCache := TRuleDerived.Open(AContext);
-    Resolver := TRuleDerived.Resolver(mCache, AContext);
-    Resolver.PinTree(AContext.Tree, FileName);
+    mResolver := TRuleDerived.Resolver(mCache, AContext);
+    mResolver.PinTree(AContext.Tree, mFileName);
     try
-      Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
+      mLocal := mResolver.ExtractedUnit(AContext.Tree, mFileName);
       for mNode in mArgsNodes do
       begin
         CheckArguments(mNode);
@@ -1001,10 +999,10 @@ begin
         CheckMethods;
       end;
     finally
-      Resolver.UnpinTree;
+      mResolver.UnpinTree;
     end;
   finally
-    ParamNames.Free;
+    mParamNames.Free;
   end;
 end;
 
@@ -1029,7 +1027,7 @@ const
 
 function TGenericInferenceFailedRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(GenericInferenceFailedRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cGenericInferenceFailedRuleId, TRuleSeverity.Error,
     cTexts[TGenericsText.InferTitle].Text);
 end;
 

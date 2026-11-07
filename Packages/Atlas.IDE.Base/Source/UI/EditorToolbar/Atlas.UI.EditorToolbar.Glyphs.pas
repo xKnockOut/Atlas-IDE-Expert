@@ -33,30 +33,30 @@ uses
 
 const
   /// <summary>Überabtastung für die Glättung.</summary>
-  Factor = 4;
+  cFactor = 4;
 
 procedure DrawLetter(ACanvas: TCanvas; const ARect: TRect; AFore: TColor; const ALetter: string);
 var
-  Box: TRect;
-  Text: string;
-  Radius: Integer;
+  mBox: TRect;
+  mText: string;
+  mRadius: Integer;
 begin
-  Box := ARect;
-  InflateRect(Box, -Max(1, ARect.Width div 16), -Max(1, ARect.Height div 16));
-  Radius := Max(2, ARect.Width div 4);
+  mBox := ARect;
+  InflateRect(mBox, -Max(1, ARect.Width div 16), -Max(1, ARect.Height div 16));
+  mRadius := Max(2, ARect.Width div 4);
   ACanvas.Brush.Style := bsClear;
   ACanvas.Pen.Color := AFore;
   ACanvas.Pen.Width := Max(1, ARect.Width div 14);
-  ACanvas.RoundRect(Box.Left, Box.Top, Box.Right, Box.Bottom, Radius, Radius);
-  Text := UpperCase(Copy(Trim(ALetter), 1, 1));
-  if Text = '' then
+  ACanvas.RoundRect(mBox.Left, mBox.Top, mBox.Right, mBox.Bottom, mRadius, mRadius);
+  mText := UpperCase(Copy(Trim(ALetter), 1, 1));
+  if mText = '' then
   begin
-    Text := '?';
+    mText := '?';
   end;
   ACanvas.Font.Color := AFore;
   ACanvas.Font.Style := [fsBold];
-  ACanvas.Font.Height := -Round(Box.Height * 0.7);
-  DrawText(ACanvas.Handle, PChar(Text), -1, Box, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+  ACanvas.Font.Height := -Round(mBox.Height * 0.7);
+  DrawText(ACanvas.Handle, PChar(mText), -1, mBox, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
   ACanvas.Pen.Width := 1;
 end;
 
@@ -72,7 +72,8 @@ begin
   end;
 end;
 
-/// <summary>Eine Form auf ADC; der Stift ist gewählt, gefüllte Formen wählen AFill für die Dauer des Zeichnens.</summary>
+/// <summary>Eine Form auf ADC; der Stift ist gewählt, gefüllte Formen wählen AFill für die Dauer des
+/// Zeichnens.</summary>
 procedure DrawShape(ADC: HDC; const AShape: TAtlasGlyphShape; AScale: Single; AFill: HBRUSH);
 var
   mPoints: TArray<TPoint>;
@@ -110,7 +111,7 @@ begin
   mBrush.lbColor := AFore;
   mBrush.lbHatch := 0;
   mPen := ExtCreatePen(PS_GEOMETRIC or PS_SOLID or PS_ENDCAP_ROUND or PS_JOIN_ROUND,
-    Max(1, Round(TAtlasGlyphs.StrokeWidth * AScale)), mBrush, 0, nil);
+    Max(1, Round(TAtlasGlyphs.cStrokeWidth * AScale)), mBrush, 0, nil);
   mFill := CreateSolidBrush(AFore);
   mOldPen := SelectObject(ABitmap.Canvas.Handle, mPen);
   mOldBrush := SelectObject(ABitmap.Canvas.Handle, GetStockObject(NULL_BRUSH));
@@ -157,10 +158,10 @@ begin
   mBitmap := TBitmap.Create;
   try
     mBitmap.PixelFormat := pf24bit;
-    mBitmap.SetSize(mSize * Factor, mSize * Factor);
+    mBitmap.SetSize(mSize * cFactor, mSize * cFactor);
     mBitmap.Canvas.Brush.Color := ABack;
     mBitmap.Canvas.FillRect(Rect(0, 0, mBitmap.Width, mBitmap.Height));
-    DrawShapes(mBitmap, mShapes, mSize * Factor / TAtlasGlyphs.Size, ColorToRGB(AFore));
+    DrawShapes(mBitmap, mShapes, mSize * cFactor / TAtlasGlyphs.cSize, ColorToRGB(AFore));
     StretchSmooth(ACanvas, mBitmap, ARect.TopLeft, mSize);
   finally
     mBitmap.Free;

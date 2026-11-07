@@ -68,7 +68,7 @@ begin
   mFiles := TAtlasServerDiagnostics.Build('# Bericht', [TAtlasPackageFile.Create('server/status.json',
     TAtlasPackagePart.Logs, '{}')]);
   Assert.AreEqual(2, Integer(Length(mFiles)));
-  Assert.AreEqual(TAtlasServerDiagnostics.ReportName, mFiles[0].Name);
+  Assert.AreEqual(TAtlasServerDiagnostics.cReportName, mFiles[0].Name);
   Assert.AreEqual('# Bericht', mFiles[0].Text);
   Assert.AreEqual('server/status.json', mFiles[1].Name);
   Assert.AreEqual(1, Integer(Length(TAtlasServerDiagnostics.Build('# Bericht', nil))), 'ohne Server nur der Bericht');
@@ -80,7 +80,7 @@ var
 begin
   mPreview := TAtlasServerDiagnostics.Preview(TAtlasServerDiagnostics.Build('# Bericht',
     [TAtlasPackageFile.Create('server/protokoll.txt', TAtlasPackagePart.Logs,
-    StringOfChar('a', TAtlasServerDiagnostics.PreviewChars + 10) + 'ENDE')]), '(gekürzt)');
+    StringOfChar('a', TAtlasServerDiagnostics.cPreviewChars + 10) + 'ENDE')]), '(gekürzt)');
   Assert.IsTrue(mPreview.StartsWith('Dateien im Paket:' + sLineBreak + '- fehlerbericht.md (9 Bytes)'), mPreview);
   Assert.IsTrue(mPreview.Contains('== fehlerbericht.md (9 Bytes) =='), mPreview);
   Assert.IsTrue(mPreview.Contains('== server/protokoll.txt ('), mPreview);

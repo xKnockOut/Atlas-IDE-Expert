@@ -23,7 +23,8 @@ uses
   Atlas.Common.Pascal.Contract;
 
 type
-  /// <summary>Art der Liste: uses bindet ein, contains (Package) nimmt auf, requires (Package) braucht ein Package.</summary>
+  /// <summary>Art der Liste: uses bindet ein, contains (Package) nimmt auf, requires (Package) braucht ein
+  /// Package.</summary>
   TUsesListKind = (UsesList, ContainsList, RequiresList);
 
   /// <summary>Eintrag einer uses-, contains- oder requires-Liste mit Position (#183).</summary>
@@ -70,6 +71,8 @@ type
       const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean; static;
     /// <summary>Alle Unit-Namen aus den uses-Listen (interface und implementation).</summary>
     class function UsedUnits(const ATokens: TArray<TPascalToken>): TArray<string>; static;
+    /// <summary>Wie UsedUnits für den Quelltext AText.</summary>
+    class function UsedUnitsOf(const AText: string): TArray<string>; static;
     /// <summary>True, wenn die Unit ein Test-Framework einbindet (DUnitX.TestFramework, TestFramework
     /// oder TestInsight.*). Hier statt in Rules.Profiles, damit Editing ohne Rules auskommt (A-11).</summary>
     class function IsTestUnit(const ATokens: TArray<TPascalToken>): Boolean; static;
@@ -98,6 +101,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Common.Pascal.Lexer;
 
 function IsTrivia(const AToken: TPascalToken): Boolean;
 begin
@@ -142,82 +148,82 @@ end;
 /// hinter dem Programmkopf; -1, wenn nicht vorhanden.</summary>
 function SectionStart(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 var
-  First, HeaderEnd, Index, Interface_, Implementation_: Integer;
+  mFirst, mHeaderEnd, mIndex, mInterface_, mImplementation_: Integer;
 begin
   Result := -1;
-  First := FirstIndex(ATokens);
-  if First < 0 then
+  mFirst := FirstIndex(ATokens);
+  if mFirst < 0 then
   begin
     Exit;
   end;
-  HeaderEnd := SemicolonAfter(ATokens, First);
-  if HeaderEnd < 0 then
+  mHeaderEnd := SemicolonAfter(ATokens, mFirst);
+  if mHeaderEnd < 0 then
   begin
     Exit;
   end;
-  if not ATokens[First].IsKeyword('unit') then
+  if not ATokens[mFirst].IsKeyword('unit') then
   begin
     // program, library, package: ein uses (bzw. contains) hinter dem Kopf.
-    Exit(HeaderEnd);
+    Exit(mHeaderEnd);
   end;
-  Interface_ := NextIndex(ATokens, HeaderEnd);
-  if (Interface_ > High(ATokens)) or not ATokens[Interface_].IsKeyword('interface') then
+  mInterface_ := NextIndex(ATokens, mHeaderEnd);
+  if (mInterface_ > High(ATokens)) or not ATokens[mInterface_].IsKeyword('interface') then
   begin
     Exit;
   end;
-  Implementation_ := -1;
-  for Index := Interface_ + 1 to High(ATokens) do
+  mImplementation_ := -1;
+  for mIndex := mInterface_ + 1 to High(ATokens) do
   begin
-    if ATokens[Index].IsKeyword('implementation') then
+    if ATokens[mIndex].IsKeyword('implementation') then
     begin
-      Implementation_ := Index;
+      mImplementation_ := mIndex;
       Break;
     end;
   end;
-  if (Implementation_ >= 0) and (AOffset >= ATokens[Implementation_].Offset) then
+  if (mImplementation_ >= 0) and (AOffset >= ATokens[mImplementation_].Offset) then
   begin
-    Result := Implementation_;
+    Result := mImplementation_;
   end
   else
   begin
-    Result := Interface_;
+    Result := mInterface_;
   end;
 end;
 
 function ReadNames(const ATokens: TArray<TPascalToken>; AUses: Integer; var ANames: TArray<string>): Integer;
 var
-  Index: Integer;
-  Name: string;
-  AfterIn: Boolean;
+  mIndex: Integer;
+  mName: string;
+  mAfterIn: Boolean;
 begin
   // uses A, B.C in 'b.pas', D; liefert den Index des Semikolons.
-  Index := AUses + 1;
-  Name := '';
-  AfterIn := False;
-  while Index <= High(ATokens) do
+  mIndex := AUses + 1;
+  mName := '';
+  mAfterIn := False;
+  while mIndex <= High(ATokens) do
   begin
-    if ATokens[Index].IsSymbol(';') or ATokens[Index].IsSymbol(',') then
+    if ATokens[mIndex].IsSymbol(';') or ATokens[mIndex].IsSymbol(',') then
     begin
-      if Name <> '' then
+      if mName <> '' then
       begin
-        ANames := ANames + [Name];
+        ANames := ANames + [mName];
       end;
-      Name := '';
-      AfterIn := False;
-      if ATokens[Index].IsSymbol(';') then
+      mName := '';
+      mAfterIn := False;
+      if ATokens[mIndex].IsSymbol(';') then
       begin
-        Exit(Index);
+        Exit(mIndex);
       end;
     end
-    else if ATokens[Index].IsKeyword('in') then
+    else if ATokens[mIndex].IsKeyword('in') then
     begin
-      AfterIn := True;
+      mAfterIn := True;
     end
-    else if not AfterIn and ((ATokens[Index].Kind = TPascalTokenKind.Identifier) or ATokens[Index].IsSymbol('.')) then
+    else if not mAfterIn and ((ATokens[mIndex].Kind = TPascalTokenKind.Identifier) or ATokens[mIndex].IsSymbol('.')) then
     begin
-      Name := Name + ATokens[Index].Text;
+      mName := mName + ATokens[mIndex].Text;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
   Result := -1;
 end;
@@ -231,12 +237,12 @@ end;
 
 class function TUsesClauses.UsesTestFramework(const AUsed: TArray<string>): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in AUsed do
+  for mName in AUsed do
   begin
-    if SameText(Name, 'DUnitX.TestFramework') or SameText(Name, 'TestFramework') or
-      Name.StartsWith('TestInsight.', True) then
+    if SameText(mName, 'DUnitX.TestFramework') or SameText(mName, 'TestFramework') or
+      mName.StartsWith('TestInsight.', True) then
     begin
       Exit(True);
     end;
@@ -244,23 +250,28 @@ begin
   Result := False;
 end;
 
+class function TUsesClauses.UsedUnitsOf(const AText: string): TArray<string>;
+begin
+  Result := UsedUnits(TPascalLexer.Tokenize(AText));
+end;
+
 class function TUsesClauses.UsedUnits(const ATokens: TArray<TPascalToken>): TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  Index := 0;
-  while Index <= High(ATokens) do
+  mIndex := 0;
+  while mIndex <= High(ATokens) do
   begin
-    if ATokens[Index].IsKeyword('uses') or ATokens[Index].IsKeyword('requires') then
+    if ATokens[mIndex].IsKeyword('uses') or ATokens[mIndex].IsKeyword('requires') then
     begin
-      Index := ReadNames(ATokens, Index, Result);
-      if Index < 0 then
+      mIndex := ReadNames(ATokens, mIndex, Result);
+      if mIndex < 0 then
       begin
         Exit;
       end;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
@@ -268,7 +279,7 @@ end;
 /// requires sind keine reservierten Wörter, nur am Anweisungsanfang gemeint.</summary>
 function IsListStart(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 var
-  Previous: Integer;
+  mPrevious: Integer;
 begin
   if ATokens[AIndex].IsKeyword('uses') or ATokens[AIndex].IsKeyword('requires') or
     ATokens[AIndex].IsKeyword('contains') then
@@ -280,12 +291,12 @@ begin
   begin
     Exit(False);
   end;
-  Previous := AIndex - 1;
-  while (Previous >= 0) and IsTrivia(ATokens[Previous]) do
+  mPrevious := AIndex - 1;
+  while (mPrevious >= 0) and IsTrivia(ATokens[mPrevious]) do
   begin
-    Dec(Previous);
+    Dec(mPrevious);
   end;
-  Result := (Previous >= 0) and ATokens[Previous].IsSymbol(';');
+  Result := (mPrevious >= 0) and ATokens[mPrevious].IsSymbol(';');
 end;
 
 /// <summary>Token-Index von "implementation"; Length(ATokens) ohne.</summary>
@@ -418,26 +429,26 @@ end;
 
 class function TUsesClauses.OwnName(const ATokens: TArray<TPascalToken>): string;
 var
-  First, HeaderEnd, Index: Integer;
+  mFirst, mHeaderEnd, mIndex: Integer;
 begin
   Result := '';
-  First := FirstIndex(ATokens);
-  if First < 0 then
+  mFirst := FirstIndex(ATokens);
+  if mFirst < 0 then
   begin
     Exit;
   end;
-  HeaderEnd := SemicolonAfter(ATokens, First);
-  if HeaderEnd < 0 then
+  mHeaderEnd := SemicolonAfter(ATokens, mFirst);
+  if mHeaderEnd < 0 then
   begin
     Exit;
   end;
-  for Index := First + 1 to HeaderEnd - 1 do
+  for mIndex := mFirst + 1 to mHeaderEnd - 1 do
   begin
-    if (ATokens[Index].Kind = TPascalTokenKind.Identifier) or ATokens[Index].IsSymbol('.') then
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) or ATokens[mIndex].IsSymbol('.') then
     begin
-      Result := Result + ATokens[Index].Text;
+      Result := Result + ATokens[mIndex].Text;
     end
-    else if not IsTrivia(ATokens[Index]) then
+    else if not IsTrivia(ATokens[mIndex]) then
     begin
       Break;
     end;
@@ -447,17 +458,17 @@ end;
 class function TUsesClauses.IsUsed(const AUsed: TArray<string>; const AUnitName: string;
   const ANamespaces: TArray<string>): Boolean;
 var
-  Used, Namespace: string;
+  mUsed, mNamespace: string;
 begin
-  for Used in AUsed do
+  for mUsed in AUsed do
   begin
-    if SameText(Used, AUnitName) then
+    if SameText(mUsed, AUnitName) then
     begin
       Exit(True);
     end;
-    for Namespace in ANamespaces do
+    for mNamespace in ANamespaces do
     begin
-      if SameText(Namespace + '.' + Used, AUnitName) then
+      if SameText(mNamespace + '.' + mUsed, AUnitName) then
       begin
         Exit(True);
       end;
@@ -481,61 +492,61 @@ end;
 /// <summary>Sortierschlüssel der Gruppe: Namespace, Units ohne Namespace zuletzt.</summary>
 function GroupOf(const AName: string): string;
 var
-  Dot: Integer;
+  mDot: Integer;
 begin
-  Dot := Pos('.', AName);
-  if Dot = 0 then
+  mDot := Pos('.', AName);
+  if mDot = 0 then
   begin
     Result := #$FFFF;
   end
   else
   begin
-    Result := Copy(AName, 1, Dot - 1);
+    Result := Copy(AName, 1, mDot - 1);
   end;
 end;
 
 function ItemLess(const A, B: TUsesItem; AByNamespace: Boolean): Boolean;
 var
-  Compared: Integer;
+  mCompared: Integer;
 begin
-  Compared := 0;
+  mCompared := 0;
   if AByNamespace then
   begin
-    Compared := CompareText(GroupOf(A.Name), GroupOf(B.Name));
+    mCompared := CompareText(GroupOf(A.Name), GroupOf(B.Name));
   end;
-  if Compared = 0 then
+  if mCompared = 0 then
   begin
-    Compared := CompareText(A.Name, B.Name);
+    mCompared := CompareText(A.Name, B.Name);
   end;
-  Result := (Compared < 0) or ((Compared = 0) and (A.Order < B.Order));
+  Result := (mCompared < 0) or ((mCompared = 0) and (A.Order < B.Order));
 end;
 
 /// <summary>Stabiles Sortieren durch Einfügen; uses-Listen sind kurz.</summary>
 procedure SortItems(var AItems: TArray<TUsesItem>; AByNamespace: Boolean);
 var
   I, J: Integer;
-  Item: TUsesItem;
+  mItem: TUsesItem;
 begin
   for I := 1 to High(AItems) do
   begin
-    Item := AItems[I];
+    mItem := AItems[I];
     J := I - 1;
-    while (J >= 0) and ItemLess(Item, AItems[J], AByNamespace) do
+    while (J >= 0) and ItemLess(mItem, AItems[J], AByNamespace) do
     begin
       AItems[J + 1] := AItems[J];
       Dec(J);
     end;
-    AItems[J + 1] := Item;
+    AItems[J + 1] := mItem;
   end;
 end;
 
 function ContainsName(const ANames: TArray<string>; const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in ANames do
+  for mName in ANames do
   begin
-    if SameText(Name, AName) then
+    if SameText(mName, AName) then
     begin
       Exit(True);
     end;
@@ -546,12 +557,12 @@ end;
 /// <summary>True, wenn die Liste zwischen AFirst und ALast keine Direktive und keinen //-Kommentar enthält.</summary>
 function IsPlainList(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := AFirst to ALast do
+  for mIndex := AFirst to ALast do
   begin
-    if (ATokens[Index].Kind = TPascalTokenKind.Directive) or
-      ((ATokens[Index].Kind = TPascalTokenKind.Comment) and (Copy(ATokens[Index].Text, 1, 2) = '//')) then
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Directive) or
+      ((ATokens[mIndex].Kind = TPascalTokenKind.Comment) and (Copy(ATokens[mIndex].Text, 1, 2) = '//')) then
     begin
       Exit(False);
     end;
@@ -561,36 +572,36 @@ end;
 
 class function TUsesClauses.Clauses(const ATokens: TArray<TPascalToken>): TArray<TUsesClauseInfo>;
 var
-  Index: Integer;
-  IsUnit, InImplementation: Boolean;
-  Clause: TUsesClauseInfo;
+  mIndex: Integer;
+  mIsUnit, mInImplementation: Boolean;
+  mClause: TUsesClauseInfo;
 begin
   Result := nil;
-  Index := FirstIndex(ATokens);
-  IsUnit := (Index >= 0) and ATokens[Index].IsKeyword('unit');
-  InImplementation := False;
-  Index := 0;
-  while Index <= High(ATokens) do
+  mIndex := FirstIndex(ATokens);
+  mIsUnit := (mIndex >= 0) and ATokens[mIndex].IsKeyword('unit');
+  mInImplementation := False;
+  mIndex := 0;
+  while mIndex <= High(ATokens) do
   begin
-    if ATokens[Index].IsKeyword('implementation') then
+    if ATokens[mIndex].IsKeyword('implementation') then
     begin
-      InImplementation := True;
+      mInImplementation := True;
     end
-    else if ATokens[Index].IsKeyword('uses') then
+    else if ATokens[mIndex].IsKeyword('uses') then
     begin
-      Clause.UsesIndex := Index;
-      Clause.Names := nil;
-      Clause.Semicolon := ReadNames(ATokens, Index, Clause.Names);
-      if Clause.Semicolon < 0 then
+      mClause.UsesIndex := mIndex;
+      mClause.Names := nil;
+      mClause.Semicolon := ReadNames(ATokens, mIndex, mClause.Names);
+      if mClause.Semicolon < 0 then
       begin
         Exit;
       end;
-      Clause.InInterface := IsUnit and not InImplementation;
-      Clause.Plain := IsPlainList(ATokens, Index + 1, Clause.Semicolon - 1);
-      Result := Result + [Clause];
-      Index := Clause.Semicolon;
+      mClause.InInterface := mIsUnit and not mInImplementation;
+      mClause.Plain := IsPlainList(ATokens, mIndex + 1, mClause.Semicolon - 1);
+      Result := Result + [mClause];
+      mIndex := mClause.Semicolon;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
@@ -603,13 +614,13 @@ end;
 class function TUsesClauses.Organize(const ATokens: TArray<TPascalToken>; const AText: string; ASort: Boolean;
   const ALineBreak: string; out AEdits: TArray<TTextEdit>; AByNamespace: Boolean): Boolean;
 var
-  Options: TUsesRewrite;
+  mOptions: TUsesRewrite;
 begin
-  Options := Default(TUsesRewrite);
-  Options.Dedupe := True;
-  Options.Sort := ASort;
-  Options.ByNamespace := AByNamespace;
-  Result := Rewrite(ATokens, AText, Options, ALineBreak, AEdits);
+  mOptions := Default(TUsesRewrite);
+  mOptions.Dedupe := True;
+  mOptions.Sort := ASort;
+  mOptions.ByNamespace := AByNamespace;
+  Result := Rewrite(ATokens, AText, mOptions, ALineBreak, AEdits);
 end;
 
 class function TUsesClauses.InClause(const ATokens: TArray<TPascalToken>;
@@ -826,48 +837,48 @@ end;
 class function TUsesClauses.AddUnit(const ATokens: TArray<TPascalToken>; AOffset: Integer;
   const AUnitName, ALineBreak: string; out AEdit: TTextEdit): Boolean;
 var
-  Start, UsesIndex, Semicolon, LastName: Integer;
-  Names: TArray<string>;
-  Indent: string;
+  mStart, mUsesIndex, mSemicolon, mLastName: Integer;
+  mNames: TArray<string>;
+  mIndent: string;
 begin
-  Start := SectionStart(ATokens, AOffset);
-  if Start < 0 then
+  mStart := SectionStart(ATokens, AOffset);
+  if mStart < 0 then
   begin
     Exit(False);
   end;
-  UsesIndex := NextIndex(ATokens, Start);
-  if (UsesIndex <= High(ATokens)) and (ATokens[UsesIndex].IsKeyword('uses')) then
+  mUsesIndex := NextIndex(ATokens, mStart);
+  if (mUsesIndex <= High(ATokens)) and (ATokens[mUsesIndex].IsKeyword('uses')) then
   begin
-    Names := nil;
-    Semicolon := ReadNames(ATokens, UsesIndex, Names);
-    if Semicolon < 0 then
+    mNames := nil;
+    mSemicolon := ReadNames(ATokens, mUsesIndex, mNames);
+    if mSemicolon < 0 then
     begin
       Exit(False);
     end;
-    LastName := Semicolon - 1;
-    while (LastName > UsesIndex) and IsTrivia(ATokens[LastName]) do
+    mLastName := mSemicolon - 1;
+    while (mLastName > mUsesIndex) and IsTrivia(ATokens[mLastName]) do
     begin
-      Dec(LastName);
+      Dec(mLastName);
     end;
-    if ATokens[LastName].StartPos.Line > ATokens[UsesIndex].StartPos.Line then
+    if ATokens[mLastName].StartPos.Line > ATokens[mUsesIndex].StartPos.Line then
     begin
       // Mehrzeilige Liste: eigene Zeile, eingerückt wie die Zeile des letzten Eintrags.
-      while (LastName > UsesIndex) and (ATokens[LastName - 1].StartPos.Line = ATokens[LastName].StartPos.Line) do
+      while (mLastName > mUsesIndex) and (ATokens[mLastName - 1].StartPos.Line = ATokens[mLastName].StartPos.Line) do
       begin
-        Dec(LastName);
+        Dec(mLastName);
       end;
-      Indent := StringOfChar(' ', ATokens[LastName].StartPos.Character);
-      AEdit := TTextEdit.Create(TTextRange.Create(ATokens[Semicolon].StartPos, ATokens[Semicolon].StartPos),
-        ',' + ALineBreak + Indent + AUnitName);
+      mIndent := StringOfChar(' ', ATokens[mLastName].StartPos.Character);
+      AEdit := TTextEdit.Create(TTextRange.Create(ATokens[mSemicolon].StartPos, ATokens[mSemicolon].StartPos),
+        ',' + ALineBreak + mIndent + AUnitName);
     end
     else
     begin
-      AEdit := TTextEdit.Create(TTextRange.Create(ATokens[Semicolon].StartPos, ATokens[Semicolon].StartPos),
+      AEdit := TTextEdit.Create(TTextRange.Create(ATokens[mSemicolon].StartPos, ATokens[mSemicolon].StartPos),
         ', ' + AUnitName);
     end;
     Exit(True);
   end;
-  AEdit := TTextEdit.Create(TTextRange.Create(ATokens[Start].EndPos, ATokens[Start].EndPos),
+  AEdit := TTextEdit.Create(TTextRange.Create(ATokens[mStart].EndPos, ATokens[mStart].EndPos),
     ALineBreak + ALineBreak + 'uses' + ALineBreak + '  ' + AUnitName + ';');
   Result := True;
 end;

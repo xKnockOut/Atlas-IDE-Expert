@@ -14,7 +14,8 @@ uses
   Atlas.Core.Modules.Contract;
 
 type
-  /// <summary>Art eines Werts. In der Ablage stehen alle Werte als Text: Wahrheitswerte „1“/„0“, Zahlen dezimal.</summary>
+  /// <summary>Art eines Werts. In der Ablage stehen alle Werte als Text: Wahrheitswerte „1“/„0“, Zahlen
+  /// dezimal.</summary>
   TAtlasSettingsValueKind = (svBoolean, svInteger, svString);
 
   /// <summary>Ein Schlüssel eines Moduls (z. B. „debug.visualizers.enabled“) mit Vorgabe als Text. Minimum und

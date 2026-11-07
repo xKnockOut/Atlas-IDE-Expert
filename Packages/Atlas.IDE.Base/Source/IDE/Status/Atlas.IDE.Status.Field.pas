@@ -111,7 +111,7 @@ type
 
   TAtlasStatusField = class(TComponent)
   public const
-    RedrawMs = 250;
+    cRedrawMs = 250;
   private type
     /// <summary>Eigenes Panel: meldet seine Freigabe über OnGone, auch wenn die IDE es löscht.</summary>
     TFieldPanel = class(TStatusPanel)
@@ -150,7 +150,7 @@ type
       SkipUp: Boolean;
       constructor Create;
       destructor Destroy; override;
-      procedure WndProc(var Message: TMessage);
+      procedure WndProc(var AMessage: TMessage);
       /// <summary>Neues eigenes Panel am Ende der Leiste.</summary>
       function NewPanel(AStyle: TStatusPanelStyle): TFieldPanel;
       /// <summary>APanel aus der Leiste entfernen, ohne PanelGone auszulösen.</summary>
@@ -163,7 +163,7 @@ type
       function PanelRect: TRect; overload;
       /// <summary>Linke Oberkante von ARect (Leiste) auf dem Bildschirm.</summary>
       function ScreenCorner(const ARect: TRect): TPoint;
-      function ZoneAt(X, Y: Integer): Integer;
+      function ZoneAt(AX, AY: Integer): Integer;
       function HintOf(AZone: Integer): string;
       procedure SyncExtras;
       /// <summary>Panels anlegen, beschriften und messen (Refresh); AShown: Atlas-Feld sichtbar.</summary>
@@ -175,9 +175,9 @@ type
       procedure BarMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
       procedure BarMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
       /// <summary>Linksklick in AZone an X; False, wenn die Zone keins unserer Panels ist.</summary>
-      function Click(AZone, X: Integer): Boolean;
+      function Click(AZone, AX: Integer): Boolean;
       /// <summary>Mausnachricht über dem Feld für die Schnellschalter abfangen; True, wenn geschluckt.</summary>
-      function Swallow(var Message: TMessage): Boolean;
+      function Swallow(var AMessage: TMessage): Boolean;
     end;
   private
     FRegistry: IAtlasStatusRegistry;
@@ -194,7 +194,7 @@ type
     FEvents: TAtlasStatusFieldEvents;
     FExtras: TArray<TExtra>;
     FBadge: TAtlasStatusBadge;
-    procedure WndProc(var Message: TMessage);
+    procedure WndProc(var AMessage: TMessage);
     procedure TimerTick(Sender: TObject);
     procedure Refresh;
   protected
@@ -266,9 +266,10 @@ uses
   Atlas.IDE.Foundation.Symbol;
 
 const
-  WM_ATLAS_STATUS = WM_USER + 591;
-  // LParam = TStatusBar; erst nach der Mausnachricht ausgeführt, ein freigegebenes Feld verwirft sie mit seinem Fenster.
-  WM_ATLAS_STATUS_CONTEXT = WM_USER + 592;
+  cWM_ATLAS_STATUS = WM_USER + 591;
+  // LParam = TStatusBar; erst nach der Mausnachricht ausgeführt, ein freigegebenes Feld verwirft sie mit seinem
+  // Fenster.
+  cWM_ATLAS_STATUS_CONTEXT = WM_USER + 592;
 
 type
   TFieldNotifier = class(TNotifierObject, INTAEditServicesNotifier)
@@ -345,7 +346,7 @@ end;
 /// <summary>Platz für das Symbol samt Abstand in Gerätepixeln.</summary>
 function SymbolWidth(APPI: Integer): Integer;
 begin
-  Result := TAtlasSymbol.PixelSize(TAtlasSymbol.MenuSize + 4, APPI);
+  Result := TAtlasSymbol.PixelSize(TAtlasSymbol.cMenuSize + 4, APPI);
 end;
 
 function BadgeText(ACount: Integer): string;
@@ -392,7 +393,7 @@ begin
   mProgressId := '';
   if mSettings.IndexProgressInField then
   begin
-    mProgressId := TAtlasStatusLines.IndexId;
+    mProgressId := TAtlasStatusLines.cIndexId;
   end;
   Result.Text := TAtlasStatusSummary.FieldText(Result.Items, mSettings.StatusFieldSummary, mProgressId);
   Result.Tooltip := TAtlasStatusSummary.Tooltip(Result.Items);
@@ -550,12 +551,12 @@ var
   mTarget: TRect;
 begin
   Result := ALeft;
-  mSymbol := TAtlasSymbolImages.Cached(TAtlasIdeSymbol.Current, TAtlasSymbol.MenuSize, APPI);
+  mSymbol := TAtlasSymbolImages.Cached(TAtlasIdeSymbol.Current, TAtlasSymbol.cMenuSize, APPI);
   if mSymbol = nil then
   begin
     Exit;
   end;
-  mPixels := TAtlasSymbol.PixelSize(TAtlasSymbol.MenuSize, APPI);
+  mPixels := TAtlasSymbol.PixelSize(TAtlasSymbol.cMenuSize, APPI);
   mTarget := Bounds(ALeft + 2, ACenter - mPixels div 2, mPixels, mPixels);
   if mSymbol.Width = mPixels then
   begin
@@ -653,18 +654,18 @@ end;
 
 destructor TAtlasStatusField.THook.Destroy;
 var
-  Item: TFieldPanel;
+  mItem: TFieldPanel;
 begin
   // Noch lebende Panels dürfen den freigegebenen Haken nicht mehr rufen.
   if Panel <> nil then
   begin
     Panel.OnGone := nil;
   end;
-  for Item in Extras do
+  for mItem in Extras do
   begin
-    if Item <> nil then
+    if mItem <> nil then
     begin
-      Item.OnGone := nil;
+      mItem.OnGone := nil;
     end;
   end;
   Extras.Free;
@@ -681,7 +682,7 @@ end;
 
 procedure TAtlasStatusField.THook.DropPanel(APanel: TFieldPanel);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if APanel = nil then
   begin
@@ -689,11 +690,11 @@ begin
   end;
   APanel.OnGone := nil;
   // Nur über Zeigervergleich suchen: APanel.Index liest schon die Sammlung.
-  for Index := Bar.Panels.Count - 1 downto 0 do
+  for mIndex := Bar.Panels.Count - 1 downto 0 do
   begin
-    if Bar.Panels[Index] = APanel then
+    if Bar.Panels[mIndex] = APanel then
     begin
-      Bar.Panels.Delete(Index);
+      Bar.Panels.Delete(mIndex);
       Exit;
     end;
   end;
@@ -701,17 +702,17 @@ end;
 
 procedure TAtlasStatusField.THook.PanelGone(Sender: TObject);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if Sender = Panel then
   begin
     Panel := nil;
   end;
-  for Index := 0 to Extras.Count - 1 do
+  for mIndex := 0 to Extras.Count - 1 do
   begin
-    if Extras[Index] = Sender then
+    if Extras[mIndex] = Sender then
     begin
-      Extras[Index] := nil;
+      Extras[mIndex] := nil;
     end;
   end;
   // Das nächste Refresh legt das Panel neu an.
@@ -721,36 +722,36 @@ begin
   end;
 end;
 
-procedure TAtlasStatusField.THook.WndProc(var Message: TMessage);
+procedure TAtlasStatusField.THook.WndProc(var AMessage: TMessage);
 begin
-  if (Field = nil) or not Swallow(Message) then
+  if (Field = nil) or not Swallow(AMessage) then
   begin
-    OldWndProc(Message);
+    OldWndProc(AMessage);
   end;
 end;
 
-function TAtlasStatusField.THook.Swallow(var Message: TMessage): Boolean;
+function TAtlasStatusField.THook.Swallow(var AMessage: TMessage): Boolean;
 var
   mPosition: TPoint;
   mContext: Boolean;
 begin
   Result := False;
   mContext := Assigned(Field.FEvents.OnContext);
-  case Message.Msg of
+  case AMessage.Msg of
     WM_LBUTTONDOWN:
       // Ging das Loslassen nach einem Doppelklick verloren, gilt der nächste Klick wieder.
       SkipUp := False;
     WM_RBUTTONDOWN, WM_RBUTTONUP:
       Result := mContext and TAtlasIdeSettings.Current.StatusTogglesOnRightClick and
-        PtInRect(PanelRect, SmallPointToPoint(TWMMouse(Message).Pos));
+        PtInRect(PanelRect, SmallPointToPoint(TWMMouse(AMessage).Pos));
     WM_LBUTTONDBLCLK:
       Result := mContext and TAtlasIdeSettings.Current.StatusTogglesOnDoubleClick and
-        PtInRect(PanelRect, SmallPointToPoint(TWMMouse(Message).Pos));
+        PtInRect(PanelRect, SmallPointToPoint(TWMMouse(AMessage).Pos));
     WM_CONTEXTMENU:
       // -1/-1 kommt von der Tastatur (Umschalt+F10): der IDE überlassen.
-      if (TWMContextMenu(Message).XPos <> -1) or (TWMContextMenu(Message).YPos <> -1) then
+      if (TWMContextMenu(AMessage).XPos <> -1) or (TWMContextMenu(AMessage).YPos <> -1) then
       begin
-        mPosition := Bar.ScreenToClient(SmallPointToPoint(TWMContextMenu(Message).Pos));
+        mPosition := Bar.ScreenToClient(SmallPointToPoint(TWMContextMenu(AMessage).Pos));
         Result := mContext and TAtlasIdeSettings.Current.StatusTogglesOnRightClick and
           PtInRect(PanelRect, mPosition);
       end;
@@ -760,15 +761,15 @@ begin
     Exit;
   end;
   // Über dem Feld weder die Standardbehandlung (erzeugt WM_CONTEXTMENU) noch die IDE.
-  if Message.Msg = WM_LBUTTONDBLCLK then
+  if AMessage.Msg = WM_LBUTTONDBLCLK then
   begin
     SkipUp := True;
   end;
-  if (Message.Msg = WM_RBUTTONUP) or (Message.Msg = WM_LBUTTONDBLCLK) then
+  if (AMessage.Msg = WM_RBUTTONUP) or (AMessage.Msg = WM_LBUTTONDBLCLK) then
   begin
-    PostMessage(Field.FWnd, WM_ATLAS_STATUS_CONTEXT, 0, LPARAM(Bar));
+    PostMessage(Field.FWnd, cWM_ATLAS_STATUS_CONTEXT, 0, LPARAM(Bar));
   end;
-  Message.Result := 0;
+  AMessage.Result := 0;
 end;
 
 function TAtlasStatusField.THook.PanelRect(APanel: TStatusPanel): TRect;
@@ -791,19 +792,19 @@ begin
   Result := Bar.ClientToScreen(Point(ARect.Left, ARect.Top));
 end;
 
-function TAtlasStatusField.THook.ZoneAt(X, Y: Integer): Integer;
+function TAtlasStatusField.THook.ZoneAt(AX, AY: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  if PtInRect(PanelRect, Point(X, Y)) then
+  if PtInRect(PanelRect, Point(AX, AY)) then
   begin
     Exit(0);
   end;
-  for Index := 0 to Extras.Count - 1 do
+  for mIndex := 0 to Extras.Count - 1 do
   begin
-    if PtInRect(PanelRect(Extras[Index]), Point(X, Y)) then
+    if PtInRect(PanelRect(Extras[mIndex]), Point(AX, AY)) then
     begin
-      Exit(Index + 1);
+      Exit(mIndex + 1);
     end;
   end;
   Result := -1;
@@ -824,34 +825,34 @@ end;
 
 procedure TAtlasStatusField.THook.SyncExtras;
 var
-  Index, Count: Integer;
-  Item: TFieldPanel;
+  mIndex, mCount: Integer;
+  mItem: TFieldPanel;
 begin
   // In die Atlas-Statusleiste umgezogen: Die Zusatzfelder stehen dort hinter dem Status.
-  Count := Length(Field.FExtras);
+  mCount := Length(Field.FExtras);
   if TAtlasStatusField.Relocated then
   begin
-    Count := 0;
+    mCount := 0;
   end;
-  while Extras.Count > Count do
+  while Extras.Count > mCount do
   begin
     DropPanel(Extras.Last);
     Extras.Delete(Extras.Count - 1);
   end;
-  while Extras.Count < Count do
+  while Extras.Count < mCount do
   begin
     Extras.Add(nil);
   end;
-  for Index := 0 to Extras.Count - 1 do
+  for mIndex := 0 to Extras.Count - 1 do
   begin
     // Neu oder von der IDE gelöscht.
-    if Extras[Index] = nil then
+    if Extras[mIndex] = nil then
     begin
-      Extras[Index] := NewPanel(psText);
+      Extras[mIndex] := NewPanel(psText);
     end;
-    Item := Extras[Index];
-    Item.Text := Field.FExtras[Index].Text;
-    Item.Width := Bar.Canvas.TextWidth(Field.FExtras[Index].Text) + MulDiv(16, Bar.CurrentPPI, 96);
+    mItem := Extras[mIndex];
+    mItem.Text := Field.FExtras[mIndex].Text;
+    mItem.Width := Bar.Canvas.TextWidth(Field.FExtras[mIndex].Text) + MulDiv(16, Bar.CurrentPPI, 96);
   end;
 end;
 
@@ -979,12 +980,12 @@ begin
   end;
 end;
 
-function TAtlasStatusField.THook.Click(AZone, X: Integer): Boolean;
+function TAtlasStatusField.THook.Click(AZone, AX: Integer): Boolean;
 begin
   Result := True;
   // Klick auf die Plakette (#601): Liste der Benachrichtigungen statt Statusfenster.
   if (AZone = 0) and (Field.FBadge.Count > 0) and Assigned(Field.FBadge.OnClick) and
-    (X >= PanelRect.Right - BadgeWidth(Bar, Field.FBadge.Count)) then
+    (AX >= PanelRect.Right - BadgeWidth(Bar, Field.FBadge.Count)) then
   begin
     if Field.FWindow <> nil then
     begin
@@ -1073,7 +1074,7 @@ end;
 
 constructor TAtlasStatusField.Create(const ARegistry: IAtlasStatusRegistry);
 var
-  Editor: IOTAEditorServices;
+  mEditor: IOTAEditorServices;
 begin
   inherited Create(nil);
   FRegistry := ARegistry;
@@ -1083,29 +1084,29 @@ begin
   FWnd := AllocateHWnd(WndProc);
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := RedrawMs;
+  FTimer.Interval := cRedrawMs;
   FTimer.OnTimer := TimerTick;
   FListener := FRegistry.AddListener(
     procedure
     begin
       RequestRefresh;
     end);
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editor) then
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditor) then
   begin
-    FNotifierIndex := Editor.AddNotifier(TFieldNotifier.Create(Self));
+    FNotifierIndex := mEditor.AddNotifier(TFieldNotifier.Create(Self));
   end;
   RequestRefresh;
 end;
 
 destructor TAtlasStatusField.Destroy;
 var
-  Editor: IOTAEditorServices;
+  mEditor: IOTAEditorServices;
 begin
   // Erst abmelden, dann freigeben (#493).
   FRegistry.RemoveListener(FListener);
-  if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, Editor) then
+  if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, mEditor) then
   begin
-    Editor.RemoveNotifier(FNotifierIndex);
+    mEditor.RemoveNotifier(FNotifierIndex);
   end;
   FreeAndNil(FTimer);
   if FWnd <> 0 then
@@ -1134,39 +1135,39 @@ begin
   // Nur eine Nachricht unterwegs; der Zeitgeber fasst alles in 250 ms zusammen.
   if (FWnd <> 0) and (AtomicExchange(FPosted, 1) = 0) then
   begin
-    PostMessage(FWnd, WM_ATLAS_STATUS, 0, 0);
+    PostMessage(FWnd, cWM_ATLAS_STATUS, 0, 0);
   end;
 end;
 
-procedure TAtlasStatusField.WndProc(var Message: TMessage);
+procedure TAtlasStatusField.WndProc(var AMessage: TMessage);
 var
-  Hook: THook;
+  mHook: THook;
 begin
-  if Message.Msg = WM_ATLAS_STATUS then
+  if AMessage.Msg = cWM_ATLAS_STATUS then
   begin
     if (FTimer <> nil) and not FTimer.Enabled then
     begin
       FTimer.Enabled := True;
     end;
-    Message.Result := 0;
+    AMessage.Result := 0;
   end
-  else if Message.Msg = WM_ATLAS_STATUS_CONTEXT then
+  else if AMessage.Msg = cWM_ATLAS_STATUS_CONTEXT then
   begin
     // Die Leiste kann inzwischen geschlossen sein: nur bekannte Leisten.
-    Hook := HookOf(FHooks, TStatusBar(Message.LParam));
-    if Hook <> nil then
+    mHook := HookOf(FHooks, TStatusBar(AMessage.LParam));
+    if mHook <> nil then
     begin
       TAtlasGuard.Run(TAtlasFeature.Status,
         procedure
         begin
-          ContextAt(Hook.ScreenCorner(Hook.PanelRect));
+          ContextAt(mHook.ScreenCorner(mHook.PanelRect));
         end);
     end;
-    Message.Result := 0;
+    AMessage.Result := 0;
   end
   else
   begin
-    Message.Result := DefWindowProc(FWnd, Message.Msg, Message.WParam, Message.LParam);
+    AMessage.Result := DefWindowProc(FWnd, AMessage.Msg, AMessage.WParam, AMessage.LParam);
   end;
 end;
 
@@ -1179,7 +1180,7 @@ end;
 
 procedure TAtlasStatusField.Notification(AComponent: TComponent; Operation: TOperation);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   inherited;
   if Operation <> opRemove then
@@ -1194,49 +1195,49 @@ begin
   begin
     Exit;
   end;
-  for Index := FHooks.Count - 1 downto 0 do
+  for mIndex := FHooks.Count - 1 downto 0 do
   begin
-    if FHooks[Index].Bar = AComponent then
+    if FHooks[mIndex].Bar = AComponent then
     begin
-      FHooks[Index].Field := nil;
-      FDead.Add(FHooks.Extract(FHooks[Index]));
+      FHooks[mIndex].Field := nil;
+      FDead.Add(FHooks.Extract(FHooks[mIndex]));
     end;
   end;
 end;
 
 procedure TAtlasStatusField.SetExtra(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
 var
-  Index, Found: Integer;
-  Extra: TExtra;
+  mIndex, mFound: Integer;
+  mExtra: TExtra;
 begin
-  Found := -1;
-  for Index := 0 to High(FExtras) do
+  mFound := -1;
+  for mIndex := 0 to High(FExtras) do
   begin
-    if FExtras[Index].Id = AId then
+    if FExtras[mIndex].Id = AId then
     begin
-      Found := Index;
+      mFound := mIndex;
     end;
   end;
   if AText = '' then
   begin
-    if Found >= 0 then
+    if mFound >= 0 then
     begin
-      Delete(FExtras, Found, 1);
+      Delete(FExtras, mFound, 1);
     end;
   end
   else
   begin
-    Extra.Id := AId;
-    Extra.Text := AText;
-    Extra.Hint := AHint;
-    Extra.OnClick := AOnClick;
-    if Found >= 0 then
+    mExtra.Id := AId;
+    mExtra.Text := AText;
+    mExtra.Hint := AHint;
+    mExtra.OnClick := AOnClick;
+    if mFound >= 0 then
     begin
-      FExtras[Found] := Extra;
+      FExtras[mFound] := mExtra;
     end
     else
     begin
-      FExtras := FExtras + [Extra];
+      FExtras := FExtras + [mExtra];
     end;
   end;
   RequestRefresh;
@@ -1338,11 +1339,12 @@ end;
 
 class function TAtlasStatusField.Relocated: Boolean;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := Settings.EditorStatusBar and TAtlasStatusBarItems.Contains(TAtlasStatusBarItems.Parse(
-    Settings.EditorStatusBarItems), TAtlasStatusBarItems.Status) and not TAtlasGuard.Disabled(TAtlasFeature.StatusBar);
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.EditorStatusBar and TAtlasStatusBarItems.Contains(TAtlasStatusBarItems.Parse(
+    mSettings.EditorStatusBarItems), TAtlasStatusBarItems.cStatus) and
+    not TAtlasGuard.Disabled(TAtlasFeature.StatusBar);
 end;
 
 function TAtlasStatusField.Anchor(out APoint: TPoint): Boolean;

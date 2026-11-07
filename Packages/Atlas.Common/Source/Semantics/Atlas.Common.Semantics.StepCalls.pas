@@ -58,14 +58,14 @@ type
 
   TStepCalls = class
   public const
-    StatementKinds = [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement, TSyntaxKind.IfStatement,
+    cStatementKinds = [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement, TSyntaxKind.IfStatement,
       TSyntaxKind.CaseStatement, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
       TSyntaxKind.RepeatStatement, TSyntaxKind.WithStatement, TSyntaxKind.TryStatement, TSyntaxKind.RaiseStatement,
       TSyntaxKind.GotoStatement, TSyntaxKind.LabeledStatement, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst];
     /// <summary>Anweisungen ohne eigene Unteranweisungen: Sie gelten immer ganz.</summary>
-    SimpleKinds = [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement, TSyntaxKind.RaiseStatement,
+    cSimpleKinds = [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement, TSyntaxKind.RaiseStatement,
       TSyntaxKind.GotoStatement, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst];
-    ExpressionKinds = [TSyntaxKind.Identifier, TSyntaxKind.Literal, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
+    cExpressionKinds = [TSyntaxKind.Identifier, TSyntaxKind.Literal, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
       TSyntaxKind.IndexAccess, TSyntaxKind.Dereference, TSyntaxKind.AddressOf, TSyntaxKind.GenericArgs,
       TSyntaxKind.SetConstructor, TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr,
       TSyntaxKind.InheritedExpr, TSyntaxKind.AnonymousMethod, TSyntaxKind.RangeExpr, TSyntaxKind.IfExpr];
@@ -153,14 +153,14 @@ end;
 class procedure TStepCalls.AddSite(var ASites: TArray<TStepCallSite>; ANode, ACallee: TSyntaxNode; AAssigned,
   AExplicit: Boolean);
 var
-  Site: TStepCallSite;
+  mSite: TStepCallSite;
 begin
-  Site.Node := ANode;
-  Site.Callee := ACallee;
-  Site.Receiver := ReceiverOf(ACallee);
-  Site.Assigned := AAssigned;
-  Site.Explicit := AExplicit;
-  ASites := ASites + [Site];
+  mSite.Node := ANode;
+  mSite.Callee := ACallee;
+  mSite.Receiver := ReceiverOf(ACallee);
+  mSite.Assigned := AAssigned;
+  mSite.Explicit := AExplicit;
+  ASites := ASites + [mSite];
 end;
 
 class procedure TStepCalls.VisitReceiver(ACallee: TSyntaxNode; var ASites: TArray<TStepCallSite>);
@@ -188,7 +188,7 @@ end;
 
 class procedure TStepCalls.Visit(ANode: TSyntaxNode; var ASites: TArray<TStepCallSite>);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if ANode = nil then
   begin
@@ -202,9 +202,9 @@ begin
           Exit;
         end;
         VisitReceiver(ANode[0], ASites);
-        for Index := 1 to ANode.ChildCount - 1 do
+        for mIndex := 1 to ANode.ChildCount - 1 do
         begin
-          Visit(ANode[Index], ASites);
+          Visit(ANode[mIndex], ASites);
         end;
         AddSite(ASites, ANode, ANode[0], False, True);
       end;
@@ -222,9 +222,9 @@ begin
           Exit;
         end;
         VisitReceiver(ANode[0], ASites);
-        for Index := 1 to ANode.ChildCount - 1 do
+        for mIndex := 1 to ANode.ChildCount - 1 do
         begin
-          Visit(ANode[Index], ASites);
+          Visit(ANode[mIndex], ASites);
         end;
         // Liste[i] bzw. Kunde.Items[i]: Getter der indizierten oder der Default-Property.
         AddSite(ASites, ANode, ANode[0], False, False);
@@ -233,11 +233,11 @@ begin
     TSyntaxKind.AddressOf, TSyntaxKind.AnonymousMethod, TSyntaxKind.Literal, TSyntaxKind.GenericArgs:
       ;
   else
-    for Index := 0 to ANode.ChildCount - 1 do
+    for mIndex := 0 to ANode.ChildCount - 1 do
     begin
-      if ANode[Index].Kind in ExpressionKinds then
+      if ANode[mIndex].Kind in cExpressionKinds then
       begin
-        Visit(ANode[Index], ASites);
+        Visit(ANode[mIndex], ASites);
       end;
     end;
   end;
@@ -245,7 +245,7 @@ end;
 
 class procedure TStepCalls.VisitTarget(ATarget: TSyntaxNode; var ASites: TArray<TStepCallSite>);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   case ATarget.Kind of
     TSyntaxKind.Identifier:
@@ -259,9 +259,9 @@ begin
       if ATarget.ChildCount > 0 then
       begin
         VisitReceiver(ATarget[0], ASites);
-        for Index := 1 to ATarget.ChildCount - 1 do
+        for mIndex := 1 to ATarget.ChildCount - 1 do
         begin
-          Visit(ATarget[Index], ASites);
+          Visit(ATarget[mIndex], ASites);
         end;
         AddSite(ASites, ATarget, ATarget[0], True, False);
       end;
@@ -293,7 +293,7 @@ end;
 procedure CollectChild(AStatement, AChild: TSyntaxNode; ALine: Integer; APartial: Boolean;
   var ASites: TArray<TStepCallSite>);
 begin
-  if AChild.Kind in TStepCalls.ExpressionKinds then
+  if AChild.Kind in TStepCalls.cExpressionKinds then
   begin
     if not APartial or ((AChild.StartPos.Line <= ALine) and (AChild.EndPos.Line >= ALine)) then
     begin
@@ -301,7 +301,7 @@ begin
     end;
   end
   // Nur, was in derselben Zeile beginnt: if A then B; zählt B mit.
-  else if not APartial and ((AChild.Kind in TStepCalls.StatementKinds) or (AChild.Kind in cNestedKinds)) and
+  else if not APartial and ((AChild.Kind in TStepCalls.cStatementKinds) or (AChild.Kind in cNestedKinds)) and
     (AChild.StartPos.Line = AStatement.StartPos.Line) then
   begin
     TStepCalls.CollectStatement(AChild, ALine, False, ASites);
@@ -324,7 +324,8 @@ begin
   end;
 end;
 
-/// <summary>Äußerste Anweisung, die in ALine beginnt (AStarting), und innerste, die ALine enthält (AContaining).</summary>
+/// <summary>Äußerste Anweisung, die in ALine beginnt (AStarting), und innerste, die ALine enthält
+/// (AContaining).</summary>
 procedure StatementsAt(ATree: TSyntaxTree; ALine: Integer; out AStarting, AContaining: TSyntaxNode);
 var
   mStarting, mContaining: TSyntaxNode;
@@ -335,7 +336,7 @@ begin
     function(ANode: TSyntaxNode): Boolean
     begin
       Result := (ANode.StartPos.Line <= ALine) and (ANode.EndPos.Line >= ALine);
-      if Result and (ANode.Kind in TStepCalls.StatementKinds) then
+      if Result and (ANode.Kind in TStepCalls.cStatementKinds) then
       begin
         // Vorordnung: Die erste, die in der Zeile beginnt, ist die äußerste.
         if (mStarting = nil) and (ANode.StartPos.Line = ALine) then
@@ -385,7 +386,7 @@ begin
   else if mContaining <> nil then
   begin
     AStatement.Node := mContaining;
-    CollectStatement(mContaining, ALine, not (mContaining.Kind in SimpleKinds), AStatement.Sites);
+    CollectStatement(mContaining, ALine, not (mContaining.Kind in cSimpleKinds), AStatement.Sites);
     AStatement.FollowLine := FollowLine(mContaining);
   end;
   Result := AStatement.Node <> nil;
@@ -393,18 +394,18 @@ end;
 
 class function TStepCalls.FirstStatement(ANode: TSyntaxNode): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    if ANode[Index].Kind in StatementKinds then
+    if ANode[mIndex].Kind in cStatementKinds then
     begin
-      Exit(ANode[Index]);
+      Exit(ANode[mIndex]);
     end
-    else if ANode[Index].Kind = TSyntaxKind.Block then
+    else if ANode[mIndex].Kind = TSyntaxKind.Block then
     begin
-      Result := FirstStatement(ANode[Index]);
+      Result := FirstStatement(ANode[mIndex]);
       if Result <> nil then
       begin
         Exit;
@@ -415,38 +416,38 @@ end;
 
 class function TStepCalls.NextStatement(ANode: TSyntaxNode): TSyntaxNode;
 var
-  Parent: TSyntaxNode;
-  Index, Own: Integer;
+  mParent: TSyntaxNode;
+  mIndex, mOwn: Integer;
 begin
   Result := nil;
-  Parent := ANode.Parent;
-  if Parent = nil then
+  mParent := ANode.Parent;
+  if mParent = nil then
   begin
     Exit;
   end;
-  Own := -1;
-  for Index := 0 to Parent.ChildCount - 1 do
+  mOwn := -1;
+  for mIndex := 0 to mParent.ChildCount - 1 do
   begin
-    if Parent[Index] = ANode then
+    if mParent[mIndex] = ANode then
     begin
-      Own := Index;
+      mOwn := mIndex;
       Break;
     end;
   end;
-  if Own < 0 then
+  if mOwn < 0 then
   begin
     Exit;
   end;
-  for Index := Own + 1 to Parent.ChildCount - 1 do
+  for mIndex := mOwn + 1 to mParent.ChildCount - 1 do
   begin
-    if Parent[Index].Kind in StatementKinds then
+    if mParent[mIndex].Kind in cStatementKinds then
     begin
-      Exit(Parent[Index]);
+      Exit(mParent[mIndex]);
     end
-    else if Parent[Index].Kind = TSyntaxKind.Block then
+    else if mParent[mIndex].Kind = TSyntaxKind.Block then
     begin
       // begin … end als Anweisung: seine erste Anweisung, sonst weiter.
-      Result := FirstStatement(Parent[Index]);
+      Result := FirstStatement(mParent[mIndex]);
       if Result <> nil then
       begin
         Exit;
@@ -507,7 +508,7 @@ begin
         Result := True;
       end;
     TSyntaxKind.RepeatStatement:
-      if (AParent.ChildCount > 0) and (AParent[AParent.ChildCount - 1].Kind in TStepCalls.ExpressionKinds) then
+      if (AParent.ChildCount > 0) and (AParent[AParent.ChildCount - 1].Kind in TStepCalls.cExpressionKinds) then
       begin
         ALine := AParent[AParent.ChildCount - 1].StartPos.Line;
         Result := True;

@@ -33,11 +33,11 @@ uses
 
 procedure TAtlasPopupWidthTests.FitsIntoLimits;
 begin
-  Assert.AreEqual(TAtlasPopupWidth.MinListWidth, TAtlasPopupWidth.Fit(100, TAtlasPopupWidth.MinListWidth,
-    TAtlasPopupWidth.MaxListWidth));
-  Assert.AreEqual(TAtlasPopupWidth.MaxListWidth, TAtlasPopupWidth.Fit(5000, TAtlasPopupWidth.MinListWidth,
-    TAtlasPopupWidth.MaxListWidth));
-  Assert.AreEqual(400, TAtlasPopupWidth.Fit(400, TAtlasPopupWidth.MinListWidth, TAtlasPopupWidth.MaxListWidth));
+  Assert.AreEqual(TAtlasPopupWidth.cMinListWidth, TAtlasPopupWidth.Fit(100, TAtlasPopupWidth.cMinListWidth,
+    TAtlasPopupWidth.cMaxListWidth));
+  Assert.AreEqual(TAtlasPopupWidth.cMaxListWidth, TAtlasPopupWidth.Fit(5000, TAtlasPopupWidth.cMinListWidth,
+    TAtlasPopupWidth.cMaxListWidth));
+  Assert.AreEqual(400, TAtlasPopupWidth.Fit(400, TAtlasPopupWidth.cMinListWidth, TAtlasPopupWidth.cMaxListWidth));
 end;
 
 procedure TAtlasPopupWidthTests.LongSignatureFitsWithinMaxWidth;
@@ -45,8 +45,8 @@ const
   // 60 Zeichen Signatur bei 7 px je Zeichen, Name, Badge und Ränder.
   Measured = 60 * 7 + 120 + 47 + 30;
 begin
-  Assert.AreEqual(Measured, TAtlasPopupWidth.Fit(Measured, TAtlasPopupWidth.MinListWidth,
-    TAtlasPopupWidth.MaxListWidth), 'Ohne Kürzung, solange MaxWidth reicht');
+  Assert.AreEqual(Measured, TAtlasPopupWidth.Fit(Measured, TAtlasPopupWidth.cMinListWidth,
+    TAtlasPopupWidth.cMaxListWidth), 'Ohne Kürzung, solange MaxWidth reicht');
 end;
 
 procedure TAtlasPopupWidthTests.GrowsButNeverShrinks;
@@ -73,13 +73,13 @@ var
   PanelMin, ListMin: Integer;
 begin
   // Gezogene Panelbreite (#416): eigene Grenzen, unabhängig von der Liste.
-  Assert.AreEqual(TAtlasPopupWidth.MaxPanelWidth, TAtlasPopupWidth.Fit(900, TAtlasPopupWidth.MinPanelWidth,
-    TAtlasPopupWidth.MaxPanelWidth));
-  Assert.AreEqual(TAtlasPopupWidth.MinPanelWidth, TAtlasPopupWidth.Fit(100, TAtlasPopupWidth.MinPanelWidth,
-    TAtlasPopupWidth.MaxPanelWidth));
+  Assert.AreEqual(TAtlasPopupWidth.cMaxPanelWidth, TAtlasPopupWidth.Fit(900, TAtlasPopupWidth.cMinPanelWidth,
+    TAtlasPopupWidth.cMaxPanelWidth));
+  Assert.AreEqual(TAtlasPopupWidth.cMinPanelWidth, TAtlasPopupWidth.Fit(100, TAtlasPopupWidth.cMinPanelWidth,
+    TAtlasPopupWidth.cMaxPanelWidth));
   // Über Variablen: Der Vergleich der Konstanten selbst ergibt W1022.
-  PanelMin := TAtlasPopupWidth.MinPanelWidth;
-  ListMin := TAtlasPopupWidth.MinListWidth;
+  PanelMin := TAtlasPopupWidth.cMinPanelWidth;
+  ListMin := TAtlasPopupWidth.cMinListWidth;
   Assert.IsTrue(PanelMin < ListMin);
 end;
 

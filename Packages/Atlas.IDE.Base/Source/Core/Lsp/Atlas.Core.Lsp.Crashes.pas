@@ -24,12 +24,12 @@ uses
 type
   TAtlasServerExits = class
   public const
-    StderrName = 'server-stderr.log';
-    StderrOldName = 'server-stderr.1.log';
+    cStderrName = 'server-stderr.log';
+    cStderrOldName = 'server-stderr.1.log';
     /// <summary>Ab dieser Größe wird die Datei beim Start beiseitegelegt.</summary>
-    StderrMaxBytes = 1024 * 1024;
+    cStderrMaxBytes = 1024 * 1024;
     /// <summary>STILL_ACTIVE: Der Prozess lief beim Ende der Verbindung noch; der Code ist unbekannt.</summary>
-    Unknown = 259;
+    cUnknown = 259;
   public
     /// <summary>Ursache zum Exit-Code, z. B. „Stapelüberlauf (0xC00000FD)“ oder „Code 3“.</summary>
     class function Describe(ACode: Cardinal): string; static;
@@ -44,7 +44,7 @@ type
 
   TAtlasServerCrashes = class
   public const
-    WindowMinutes = 10;
+    cWindowMinutes = 10;
   private
     FLock: TCriticalSection;
     FClock: TFunc<TDateTime>;
@@ -104,9 +104,9 @@ end;
 
 const
   // Bekannte Codes mit Namen; Describe nennt sie mit dem Code in Hex.
-  NamedExitCodes: array[0..13] of Cardinal = ($0EEDFADE, $40010004, $C0000005, $C0000017, $C000001D, $C0000094,
+  cNamedExitCodes: array[0..13] of Cardinal = ($0EEDFADE, $40010004, $C0000005, $C0000017, $C000001D, $C0000094,
     $C0000096, $C00000FD, $C000013A, $C0000135, $C0000142, $C0000374, $C0000409, $C0000420);
-  NamedExitTexts: array[TAtlasLanguage, 0..13] of string = (
+  cNamedExitTexts: array[TAtlasLanguage, 0..13] of string = (
     ('unbehandelte Delphi-Ausnahme',
      'von außen beendet (Abmelden oder Debugger)', 'Zugriffsverletzung', 'zu wenig Speicher',
      'unzulässiger Befehl', 'Ganzzahl-Division durch null', 'privilegierter Befehl', 'Stapelüberlauf',
@@ -120,13 +120,13 @@ const
 /// <summary>Name eines bekannten Codes aus NamedExitCodes; False für andere.</summary>
 function NamedExitText(ACode: Cardinal; out AText: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := Low(NamedExitCodes) to High(NamedExitCodes) do
+  for mIndex := Low(cNamedExitCodes) to High(cNamedExitCodes) do
   begin
-    if NamedExitCodes[Index] = ACode then
+    if cNamedExitCodes[mIndex] = ACode then
     begin
-      AText := NamedExitTexts[TAtlasTextLanguage.Current, Index];
+      AText := cNamedExitTexts[TAtlasTextLanguage.Current, mIndex];
       Exit(True);
     end;
   end;
@@ -137,11 +137,11 @@ end;
 /// <summary>Beschreibung eines Codes ohne eigenen Text: Name mit Hex-Code, sonst Ausnahme oder Zahl.</summary>
 function DescribeNamedExit(ACode: Cardinal): string;
 var
-  Name: string;
+  mName: string;
 begin
-  if NamedExitText(ACode, Name) then
+  if NamedExitText(ACode, mName) then
   begin
-    Result := Format('%s (0x%.8X)', [Name, ACode]);
+    Result := Format('%s (0x%.8X)', [mName, ACode]);
   end
   else if ACode >= $80000000 then
   begin
@@ -162,7 +162,7 @@ begin
       Result := UiText(TCrashesText.Code1UnhandledExceptionOr);
     217:
       Result := UiText(TCrashesText.RuntimeError217UnhandledException);
-    Unknown:
+    cUnknown:
       Result := UiText(TCrashesText.ExitCodeUnknownProcessWas);
   else
     Result := DescribeNamedExit(ACode);
@@ -171,22 +171,22 @@ end;
 
 class function TAtlasServerExits.Runtime(AMs: Int64): string;
 var
-  Seconds: Int64;
+  mSeconds: Int64;
 begin
   if AMs < 1000 then
   begin
     Exit('unter 1 s');
   end;
-  Seconds := AMs div 1000;
-  if Seconds < 60 then
+  mSeconds := AMs div 1000;
+  if mSeconds < 60 then
   begin
-    Exit(Format('%d s', [Seconds]));
+    Exit(Format('%d s', [mSeconds]));
   end;
-  if Seconds < 3600 then
+  if mSeconds < 3600 then
   begin
-    Exit(Format('%d min %d s', [Seconds div 60, Seconds mod 60]));
+    Exit(Format('%d min %d s', [mSeconds div 60, mSeconds mod 60]));
   end;
-  Result := Format('%d h %d min', [Seconds div 3600, (Seconds mod 3600) div 60]);
+  Result := Format('%d h %d min', [mSeconds div 3600, (mSeconds mod 3600) div 60]);
 end;
 
 class function TAtlasServerExits.Line(ACode: Cardinal; ARuntimeMs: Int64; const ALastMethod: string;
@@ -203,7 +203,7 @@ begin
   end;
   if AErrorLines > 0 then
   begin
-    Result := Result + Format('; %d Zeilen auf stderr (%s)', [AErrorLines, StderrName]);
+    Result := Result + Format('; %d Zeilen auf stderr (%s)', [AErrorLines, cStderrName]);
   end
   else
   begin
@@ -213,12 +213,12 @@ end;
 
 class function TAtlasServerExits.StderrFileName(const AFolder: string): string;
 begin
-  Result := TPath.Combine(AFolder, StderrName);
+  Result := TPath.Combine(AFolder, cStderrName);
 end;
 
 class function TAtlasServerExits.StderrOldFileName(const AFolder: string): string;
 begin
-  Result := TPath.Combine(AFolder, StderrOldName);
+  Result := TPath.Combine(AFolder, cStderrOldName);
 end;
 
 { TAtlasServerCrashes }
@@ -246,15 +246,15 @@ end;
 
 function TAtlasServerCrashes.Crashed(ACode: Cardinal): Boolean;
 var
-  Time: TDateTime;
+  mTime: TDateTime;
 begin
   FLock.Enter;
   try
-    Time := FClock();
-    Result := not (FHas and (FLastCode = ACode) and (MinutesBetween(Time, FLastAt) < WindowMinutes));
+    mTime := FClock();
+    Result := not (FHas and (FLastCode = ACode) and (MinutesBetween(mTime, FLastAt) < cWindowMinutes));
     FHas := True;
     FLastCode := ACode;
-    FLastAt := Time;
+    FLastAt := mTime;
     if not Result then
     begin
       FHeld := True;

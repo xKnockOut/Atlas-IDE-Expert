@@ -64,13 +64,13 @@ uses
 
 function IsIdentifier(const AValue: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AValue <> '';
-  for Index := 1 to Length(AValue) do
+  for mIndex := 1 to Length(AValue) do
   begin
-    if not (CharInSet(AValue[Index], ['A'..'Z', 'a'..'z', '_']) or
-      ((Index > 1) and CharInSet(AValue[Index], ['0'..'9']))) then
+    if not (CharInSet(AValue[mIndex], ['A'..'Z', 'a'..'z', '_']) or
+      ((mIndex > 1) and CharInSet(AValue[mIndex], ['0'..'9']))) then
     begin
       Exit(False);
     end;
@@ -79,12 +79,12 @@ end;
 
 function IsPath(const AValue: string): Boolean;
 var
-  Part: string;
+  mPart: string;
 begin
   Result := AValue <> '';
-  for Part in AValue.Split(['.']) do
+  for mPart in AValue.Split(['.']) do
   begin
-    if not IsIdentifier(Part) then
+    if not IsIdentifier(mPart) then
     begin
       Exit(False);
     end;
@@ -94,16 +94,16 @@ end;
 /// <summary>"Name = Wert" mit vollständigem, einzeiligem Wert; False sonst.</summary>
 function PropertyLine(const ALine: string; out AName, AValue: string): Boolean;
 var
-  Separator: Integer;
+  mSeparator: Integer;
 begin
-  Separator := Pos(' = ', ALine);
-  Result := Separator > 0;
+  mSeparator := Pos(' = ', ALine);
+  Result := mSeparator > 0;
   if not Result then
   begin
     Exit;
   end;
-  AName := Trim(Copy(ALine, 1, Separator - 1));
-  AValue := Trim(Copy(ALine, Separator + 3, MaxInt));
+  AName := Trim(Copy(ALine, 1, mSeparator - 1));
+  AValue := Trim(Copy(ALine, mSeparator + 3, MaxInt));
   // Mehrzeilige Werte beginnen mit (, < oder { bzw. enden mit +.
   Result := IsPath(AName) and (AValue <> '') and not CharInSet(AValue[1], ['(', '<', '{']) and
     not AValue.EndsWith('+');
@@ -113,9 +113,9 @@ end;
 /// entfernten Zeilen.</summary>
 function SameKey(const A, B: string): Boolean;
 var
-  NameA, ValueA, NameB, ValueB: string;
+  mNameA, mValueA, mNameB, mValueB: string;
 begin
-  Result := (A = B) or (PropertyLine(A, NameA, ValueA) and PropertyLine(B, NameB, ValueB) and (NameA = NameB));
+  Result := (A = B) or (PropertyLine(A, mNameA, mValueA) and PropertyLine(B, mNameB, mValueB) and (mNameA = mNameB));
 end;
 
 function IsEventName(const AName: string): Boolean;
@@ -327,23 +327,23 @@ end;
 
 class function TAtlasFormChanges.ObjectName(const ALine: string; out AIsObject: Boolean): string;
 var
-  Line, Keyword: string;
-  Colon: Integer;
+  mLine, mKeyword: string;
+  mColon: Integer;
 begin
   Result := '';
-  Line := Trim(ALine);
+  mLine := Trim(ALine);
   AIsObject := False;
-  for Keyword in TArray<string>.Create('object ', 'inherited ', 'inline ') do
+  for mKeyword in TArray<string>.Create('object ', 'inherited ', 'inline ') do
   begin
-    if Line.StartsWith(Keyword, True) then
+    if mLine.StartsWith(mKeyword, True) then
     begin
       AIsObject := True;
-      Line := Trim(Copy(Line, Length(Keyword) + 1, MaxInt));
-      Colon := Pos(':', Line);
+      mLine := Trim(Copy(mLine, Length(mKeyword) + 1, MaxInt));
+      mColon := Pos(':', mLine);
       // Ohne Doppelpunkt ("object TTimer") hat die Komponente keinen Namen.
-      if Colon > 0 then
+      if mColon > 0 then
       begin
-        Result := Trim(Copy(Line, 1, Colon - 1));
+        Result := Trim(Copy(mLine, 1, mColon - 1));
       end;
       Exit;
     end;
@@ -377,38 +377,38 @@ end;
 /// <summary>#Zahl ab AIndex (auf dem #) an AText hängen; False ohne Zahl.</summary>
 function TakeCharCode(const AValue: string; var AIndex: Integer; var AText: string): Boolean;
 var
-  Start, Code: Integer;
+  mStart, mCode: Integer;
 begin
   Inc(AIndex);
-  Start := AIndex;
+  mStart := AIndex;
   while (AIndex <= Length(AValue)) and CharInSet(AValue[AIndex], ['0'..'9']) do
   begin
     Inc(AIndex);
   end;
-  Result := TryStrToInt(Copy(AValue, Start, AIndex - Start), Code);
+  Result := TryStrToInt(Copy(AValue, mStart, AIndex - mStart), mCode);
   if Result then
   begin
-    AText := AText + Char(Code);
+    AText := AText + Char(mCode);
   end;
 end;
 
 class function TAtlasFormChanges.StringValue(const AValue: string; out AText: string): Boolean;
 var
-  Index: Integer;
-  Value: string;
+  mIndex: Integer;
+  mValue: string;
 begin
   AText := '';
-  Value := Trim(AValue);
-  Result := (Value <> '') and CharInSet(Value[1], ['''', '#']);
-  Index := 1;
-  while Result and (Index <= Length(Value)) do
-    case Value[Index] of
+  mValue := Trim(AValue);
+  Result := (mValue <> '') and CharInSet(mValue[1], ['''', '#']);
+  mIndex := 1;
+  while Result and (mIndex <= Length(mValue)) do
+    case mValue[mIndex] of
       '''':
-        TakeQuoted(Value, Index, AText);
+        TakeQuoted(mValue, mIndex, AText);
       '#':
-        Result := TakeCharCode(Value, Index, AText);
+        Result := TakeCharCode(mValue, mIndex, AText);
       ' ', '+', #13, #10, #9:
-        Inc(Index);
+        Inc(mIndex);
     else
       Result := False;
     end;
@@ -421,13 +421,13 @@ end;
 class function TAtlasFormChanges.Diff(const AOld, ANew: string; out AChanges: TArray<TAtlasFormEventChange>;
   out AReason: string): Boolean;
 var
-  Properties: TArray<TAtlasFormPropertyChange>;
+  mProperties: TArray<TAtlasFormPropertyChange>;
 begin
-  Result := Diff(AOld, ANew, AChanges, Properties, AReason);
-  if Result and (Length(Properties) > 0) then
+  Result := Diff(AOld, ANew, AChanges, mProperties, AReason);
+  if Result and (Length(mProperties) > 0) then
   begin
     AChanges := nil;
-    AReason := Format('Zeile %d: %s', [Properties[0].Line, Properties[0].PropertyPath]);
+    AReason := Format('Zeile %d: %s', [mProperties[0].Line, mProperties[0].PropertyPath]);
     Result := False;
   end;
 end;

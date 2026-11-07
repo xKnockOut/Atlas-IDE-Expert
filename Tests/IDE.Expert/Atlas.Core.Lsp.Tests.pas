@@ -1405,9 +1405,9 @@ begin
         Seen.Add(AMethod);
       end;
     // Kopf knapp unter der Grenze: ein langes Füllfeld vor Content-Length.
-    Header := 'X-Fill: ' + StringOfChar('a', TLspClient.MaxHeaderLength - 40) + #13#10 +
+    Header := 'X-Fill: ' + StringOfChar('a', TLspClient.cMaxHeaderLength - 40) + #13#10 +
       'Content-Length: ' + IntToStr(Length(Body)) + #13#10#13#10;
-    Assert.IsTrue(Length(Header) - 4 <= TLspClient.MaxHeaderLength, 'Kopf innerhalb der Grenze');
+    Assert.IsTrue(Length(Header) - 4 <= TLspClient.cMaxHeaderLength, 'Kopf innerhalb der Grenze');
     Incoming := TEncoding.UTF8.GetBytes(Header + Body);
     Client.Receive(Incoming, Length(Incoming));
     Assert.AreEqual(1, Integer(Seen.Count));

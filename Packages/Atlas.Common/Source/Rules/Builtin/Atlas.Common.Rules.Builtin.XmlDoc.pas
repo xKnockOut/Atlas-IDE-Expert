@@ -43,7 +43,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  XmlDocMismatchRuleId = 'xmldoc-mismatch';
+  cXmlDocMismatchRuleId = 'xmldoc-mismatch';
 
 type
   TXmlDocMismatchRule = class(TInterfacedObject, IRule)
@@ -106,7 +106,7 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  RoutineWords: array[0..5] of string = ('class', 'function', 'procedure', 'constructor', 'destructor', 'operator');
+  cRoutineWords: array[0..5] of string = ('class', 'function', 'procedure', 'constructor', 'destructor', 'operator');
 
 type
   /// <summary>Folge von ///-Zeilen: Inhalt ohne "///", Zeilen mit #10 verbunden.</summary>
@@ -143,33 +143,33 @@ end;
 
 function TDocBlock.OffsetOf(AIndex: Integer): Integer;
 var
-  Row: Integer;
+  mRow: Integer;
 begin
-  Row := RowOf(AIndex);
-  Result := Offsets[Row] + AIndex - Starts[Row];
+  mRow := RowOf(AIndex);
+  Result := Offsets[mRow] + AIndex - Starts[mRow];
 end;
 
 function TDocBlock.OwnsLines(AStart, AStop: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := Starts[RowOf(AStart)];
-  while Index < AStart do
+  mIndex := Starts[RowOf(AStart)];
+  while mIndex < AStart do
   begin
-    if not CharInSet(Xml[Index], [' ', #9]) then
+    if not CharInSet(Xml[mIndex], [' ', #9]) then
     begin
       Exit(False);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Index := AStop;
-  while (Index <= Length(Xml)) and (Xml[Index] <> #10) do
+  mIndex := AStop;
+  while (mIndex <= Length(Xml)) and (Xml[mIndex] <> #10) do
   begin
-    if not CharInSet(Xml[Index], [' ', #9]) then
+    if not CharInSet(Xml[mIndex], [' ', #9]) then
     begin
       Exit(False);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
   Result := True;
 end;
@@ -185,9 +185,9 @@ end;
 /// <summary>Alle ///-Blöcke: aufeinanderfolgende Zeilen, in denen der Kommentar das erste Token ist.</summary>
 function DocBlocks(const ATokens: TArray<TPascalToken>; const ALines: TArray<string>): TArray<TDocBlock>;
 var
-  Index: Integer;
-  Block: TDocBlock;
-  Line: string;
+  mIndex: Integer;
+  mBlock: TDocBlock;
+  mLine: string;
 
   function StartsLine(AIndex: Integer): Boolean;
   begin
@@ -196,59 +196,59 @@ var
 
 begin
   Result := nil;
-  Index := 0;
-  while Index <= High(ATokens) do
+  mIndex := 0;
+  while mIndex <= High(ATokens) do
   begin
-    if not IsDocToken(ATokens[Index]) or not StartsLine(Index) then
+    if not IsDocToken(ATokens[mIndex]) or not StartsLine(mIndex) then
     begin
-      Inc(Index);
+      Inc(mIndex);
       Continue;
     end;
-    Block := Default(TDocBlock);
-    Block.FirstToken := Index;
-    Line := '';
-    if ATokens[Index].StartPos.Line <= High(ALines) then
+    mBlock := Default(TDocBlock);
+    mBlock.FirstToken := mIndex;
+    mLine := '';
+    if ATokens[mIndex].StartPos.Line <= High(ALines) then
     begin
-      Line := ALines[ATokens[Index].StartPos.Line];
+      mLine := ALines[ATokens[mIndex].StartPos.Line];
     end;
-    Block.Indent := Copy(Line, 1, ATokens[Index].StartPos.Character);
+    mBlock.Indent := Copy(mLine, 1, ATokens[mIndex].StartPos.Character);
     repeat
-      if Block.Xml <> '' then
+      if mBlock.Xml <> '' then
       begin
-        Block.Xml := Block.Xml + #10;
+        mBlock.Xml := mBlock.Xml + #10;
       end;
-      Block.Starts := Block.Starts + [Length(Block.Xml) + 1];
-      Block.Offsets := Block.Offsets + [ATokens[Index].Offset + 3];
-      Block.Lines := Block.Lines + [ATokens[Index].StartPos.Line];
-      Block.Xml := Block.Xml + Copy(ATokens[Index].Text, 4, MaxInt);
-      Block.LastToken := Index;
-      Inc(Index);
-    until (Index > High(ATokens)) or not IsDocToken(ATokens[Index]) or
-      (ATokens[Index].StartPos.Line <> ATokens[Index - 1].StartPos.Line + 1);
-    Result := Result + [Block];
+      mBlock.Starts := mBlock.Starts + [Length(mBlock.Xml) + 1];
+      mBlock.Offsets := mBlock.Offsets + [ATokens[mIndex].Offset + 3];
+      mBlock.Lines := mBlock.Lines + [ATokens[mIndex].StartPos.Line];
+      mBlock.Xml := mBlock.Xml + Copy(ATokens[mIndex].Text, 4, MaxInt);
+      mBlock.LastToken := mIndex;
+      Inc(mIndex);
+    until (mIndex > High(ATokens)) or not IsDocToken(ATokens[mIndex]) or
+      (ATokens[mIndex].StartPos.Line <> ATokens[mIndex - 1].StartPos.Line + 1);
+    Result := Result + [mBlock];
   end;
 end;
 
 /// <summary>Erstes Token der Deklaration hinter dem Block (Attribute übersprungen); -1 ohne.</summary>
 function DeclarationToken(const ATokens: TArray<TPascalToken>; ALast: Integer): Integer;
 var
-  Depth: Integer;
+  mDepth: Integer;
 begin
   Result := ALast + 1;
   while (Result <= High(ATokens)) and ATokens[Result].IsSymbol('[') do
   begin
-    Depth := 0;
+    mDepth := 0;
     repeat
       if ATokens[Result].IsSymbol('[') then
       begin
-        Inc(Depth);
+        Inc(mDepth);
       end
       else if ATokens[Result].IsSymbol(']') then
       begin
-        Dec(Depth);
+        Dec(mDepth);
       end;
       Inc(Result);
-    until (Result > High(ATokens)) or (Depth = 0);
+    until (Result > High(ATokens)) or (mDepth = 0);
   end;
   if Result > High(ATokens) then
   begin
@@ -259,61 +259,61 @@ end;
 // Iterativ (Bericht M1).
 procedure CollectDeclarations(ARoot: TSyntaxNode; AMap: TDictionary<Integer, TSyntaxNode>);
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ARoot);
-    while Pending.Count > 0 do
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if (Node.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl, TSyntaxKind.TypeDecl,
-        TSyntaxKind.Field, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl]) and not AMap.ContainsKey(Node.StartOffset) then
+      mNode := mPending.Pop;
+      if (mNode.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl, TSyntaxKind.TypeDecl,
+        TSyntaxKind.Field, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl]) and not AMap.ContainsKey(mNode.StartOffset) then
       begin
-        AMap.Add(Node.StartOffset, Node);
+        AMap.Add(mNode.StartOffset, mNode);
       end;
-      if Node.Kind = TSyntaxKind.Block then
+      if mNode.Kind = TSyntaxKind.Block then
       begin
         Continue;
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 function SignatureOf(AHeader: TSyntaxNode): TDocSignature;
 var
-  Parameters: TSyntaxNode;
-  Index: Integer;
-  Name: string;
+  mParameters: TSyntaxNode;
+  mIndex: Integer;
+  mName: string;
 begin
   Result := Default(TDocSignature);
-  for Index := 0 to AHeader.ChildCount - 1 do
+  for mIndex := 0 to AHeader.ChildCount - 1 do
   begin
-    if AHeader[Index].Kind = TSyntaxKind.TypeReference then
+    if AHeader[mIndex].Kind = TSyntaxKind.TypeReference then
     begin
       Result.HasResult := True;
     end;
   end;
-  Parameters := AHeader.FindChild(TSyntaxKind.Parameters);
-  if Parameters = nil then
+  mParameters := AHeader.FindChild(TSyntaxKind.Parameters);
+  if mParameters = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Parameters.ChildCount - 1 do
+  for mIndex := 0 to mParameters.ChildCount - 1 do
   begin
-    if Parameters[Index].Kind = TSyntaxKind.Parameter then
+    if mParameters[mIndex].Kind = TSyntaxKind.Parameter then
     begin
-      for Name in Parameters[Index].Name.Split([',']) do
+      for mName in mParameters[mIndex].Name.Split([',']) do
       begin
-        Result.Params := Result.Params + [Trim(Name)];
+        Result.Params := Result.Params + [Trim(mName)];
       end;
     end;
   end;
@@ -323,50 +323,50 @@ end;
 /// bei Typen der Typ selbst.</summary>
 function ContainerOf(ANode: TSyntaxNode): string;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   Result := '';
   if (ANode.Kind = TSyntaxKind.RoutineHeader) and (LastDelimiter('.', ANode.Name) > 0) then
   begin
     Exit(Copy(ANode.Name, 1, LastDelimiter('.', ANode.Name) - 1));
   end;
-  Node := ANode;
-  while Node <> nil do
+  mNode := ANode;
+  while mNode <> nil do
   begin
-    if Node.Kind = TSyntaxKind.TypeDecl then
+    if mNode.Kind = TSyntaxKind.TypeDecl then
     begin
       if Result = '' then
       begin
-        Result := Node.Name;
+        Result := mNode.Name;
       end
       else
       begin
-        Result := Node.Name + '.' + Result;
+        Result := mNode.Name + '.' + Result;
       end;
     end;
-    Node := Node.Parent;
+    mNode := mNode.Parent;
   end;
 end;
 
 /// <summary>Name der Deklaration ab Token AStart (hinter class, function …), bei TFoo.Bar die ganze Kette.</summary>
 function NameRange(const ATokens: TArray<TPascalToken>; AStart: Integer; out AFrom, ATo: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := AStart;
-  while (Index <= High(ATokens)) and ((ATokens[Index].Kind = TPascalTokenKind.Comment) or
-    MatchText(ATokens[Index].Text, RoutineWords) or SameText(ATokens[Index].Text, 'property')) do
+  mIndex := AStart;
+  while (mIndex <= High(ATokens)) and ((ATokens[mIndex].Kind = TPascalTokenKind.Comment) or
+    MatchText(ATokens[mIndex].Text, cRoutineWords) or SameText(ATokens[mIndex].Text, 'property')) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := (Index <= High(ATokens)) and (ATokens[Index].Kind in [TPascalTokenKind.Identifier,
+  Result := (mIndex <= High(ATokens)) and (ATokens[mIndex].Kind in [TPascalTokenKind.Identifier,
     TPascalTokenKind.Keyword]);
   if not Result then
   begin
     Exit;
   end;
-  AFrom := Index;
-  ATo := Index;
+  AFrom := mIndex;
+  ATo := mIndex;
   while (ATo + 2 <= High(ATokens)) and ATokens[ATo + 1].IsSymbol('.') and
     (ATokens[ATo + 2].Kind = TPascalTokenKind.Identifier) do
   begin
@@ -377,8 +377,8 @@ end;
 /// <summary>Edits nach Anfang sortiert (stabil), wie Clients und Tests sie von hinten anwenden.</summary>
 function Sorted(const AEdits: TArray<TTextEdit>): TArray<TTextEdit>;
 var
-  Index, Position: Integer;
-  Edit: TTextEdit;
+  mIndex, mPosition: Integer;
+  mEdit: TTextEdit;
 
   function Before(const A, B: TTextPosition): Boolean;
   begin
@@ -387,48 +387,48 @@ var
 
 begin
   Result := Copy(AEdits);
-  for Index := 1 to High(Result) do
+  for mIndex := 1 to High(Result) do
   begin
-    Edit := Result[Index];
-    Position := Index;
-    while (Position > 0) and Before(Edit.Range.StartPos, Result[Position - 1].Range.StartPos) do
+    mEdit := Result[mIndex];
+    mPosition := mIndex;
+    while (mPosition > 0) and Before(mEdit.Range.StartPos, Result[mPosition - 1].Range.StartPos) do
     begin
-      Result[Position] := Result[Position - 1];
-      Dec(Position);
+      Result[mPosition] := Result[mPosition - 1];
+      Dec(mPosition);
     end;
-    Result[Position] := Edit;
+    Result[mPosition] := mEdit;
   end;
 end;
 
 function Joined(const ANames: TArray<string>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(ANames) do
+  for mIndex := 0 to High(ANames) do
   begin
-    if Index = 0 then
+    if mIndex = 0 then
     begin
-      Result := ANames[Index];
+      Result := ANames[mIndex];
     end
-    else if Index = High(ANames) then
+    else if mIndex = High(ANames) then
     begin
-      Result := Result + cTexts[TXmlDocText.AndSep].Text + ANames[Index];
+      Result := Result + cTexts[TXmlDocText.AndSep].Text + ANames[mIndex];
     end
     else
     begin
-      Result := Result + ', ' + ANames[Index];
+      Result := Result + ', ' + ANames[mIndex];
     end;
   end;
 end;
 
 function Contains(const ANames: TArray<string>; const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in ANames do
+  for mName in ANames do
   begin
-    if SameText(Name, AName) then
+    if SameText(mName, AName) then
     begin
       Exit(True);
     end;
@@ -1466,7 +1466,7 @@ end;
 
 function TXmlDocMismatchRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(XmlDocMismatchRuleId, TRuleSeverity.Hint,
+  Result := TRuleDescriptor.Create(cXmlDocMismatchRuleId, TRuleSeverity.Hint,
     cTexts[TXmlDocText.Title].Text);
 end;
 

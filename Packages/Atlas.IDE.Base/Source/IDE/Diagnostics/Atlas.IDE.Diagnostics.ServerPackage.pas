@@ -62,7 +62,7 @@ begin
   FBusy := True;
   mMessage(TAtlasStrings.Text(TAtlasTextId.ServerPackageCollecting));
   try
-    mServer(TAtlasBugReport.ServerCommand, TAtlasBugReport.ServerArguments(mInput),
+    mServer(TAtlasBugReport.cServerCommand, TAtlasBugReport.ServerArguments(mInput),
       procedure(AReport: TJSONValue)
       var
         mReport: string;
@@ -70,7 +70,7 @@ begin
         // Die Antwort gibt der Aufrufer nach diesem Aufruf frei: gleich zum Text machen.
         mReport := TAtlasIdeBugReport.ReportText(mInput, AReport);
         try
-          mServer(TAtlasServerDiagnostics.Command, TAtlasServerDiagnostics.ServerArguments(mInput.Anonymize),
+          mServer(TAtlasServerDiagnostics.cCommand, TAtlasServerDiagnostics.ServerArguments(mInput.Anonymize),
             procedure(AFiles: TJSONValue)
             begin
               FBusy := False;

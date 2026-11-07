@@ -17,7 +17,7 @@ type
   end;
 
 const
-  OutParamReadRuleId = 'out-param-read';
+  cOutParamReadRuleId = 'out-param-read';
 
 implementation
 
@@ -53,7 +53,7 @@ const
 /// <summary>Verwaltete Typen leert der Aufrufer vor dem Aufruf mit out.</summary>
 function IsManagedParamType(const ATypeName: string): Boolean;
 begin
-  Result := MatchText(ATypeName, ManagedTypes) or MatchText(ATypeName, ['IInterface', 'IUnknown', 'TBytes']) or
+  Result := MatchText(ATypeName, cManagedTypes) or MatchText(ATypeName, ['IInterface', 'IUnknown', 'TBytes']) or
     StartsText('TArray<', ATypeName) or StartsText('array of', ATypeName);
   // Interfaces: I gefolgt von einem Großbuchstaben.
   Result := Result or ((Length(ATypeName) > 1) and (ATypeName[1] = 'I') and CharInSet(ATypeName[2], ['A'..'Z']));
@@ -62,12 +62,12 @@ end;
 /// <summary>Übergibt der Aufruf ACall einen Teil von AName (AName.Feld, AName[I])?</summary>
 function PassesPartArgument(ACall: TSyntaxNode; const AName: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
-  for Index := 1 to ACall.ChildCount - 1 do
+  for mIndex := 1 to ACall.ChildCount - 1 do
   begin
-    Result := Result or ((ACall[Index].Kind <> TSyntaxKind.Identifier) and SameText(RootName(ACall[Index]), AName));
+    Result := Result or ((ACall[mIndex].Kind <> TSyntaxKind.Identifier) and SameText(RootName(ACall[mIndex]), AName));
   end;
 end;
 
@@ -75,9 +75,9 @@ end;
 /// dann, ohne dass der Graph es sieht.</summary>
 function PassesPart(ANode: TSyntaxNode; const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := AName;
+  mName := AName;
   // Iterativ (Bericht M1).
   Result := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
@@ -87,7 +87,7 @@ begin
       begin
         Result := TSyntaxSearchStep.Skip;
       end
-      else if (AVisited.Kind = TSyntaxKind.Call) and PassesPartArgument(AVisited, Name) then
+      else if (AVisited.Kind = TSyntaxKind.Call) and PassesPartArgument(AVisited, mName) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
@@ -188,20 +188,20 @@ end;
 /// <summary>Das Token "out" im Parameter AParam.</summary>
 function TOutParamCheck.ParamOutToken(AParam: TSyntaxNode; out AToken: TPascalToken): Boolean;
 var
-  Index: Integer;
-  Token: TPascalToken;
+  mIndex: Integer;
+  mToken: TPascalToken;
 begin
   Result := False;
-  for Index := FContext.Tree.FirstTokenFrom(AParam.StartOffset) to High(FContext.Tree.Tokens) do
+  for mIndex := FContext.Tree.FirstTokenFrom(AParam.StartOffset) to High(FContext.Tree.Tokens) do
   begin
-    Token := FContext.Tree.Tokens[Index];
-    if Result or (Token.Offset >= AParam.EndOffset) then
+    mToken := FContext.Tree.Tokens[mIndex];
+    if Result or (mToken.Offset >= AParam.EndOffset) then
     begin
       Break;
     end;
-    if (Token.Offset >= AParam.StartOffset) and SameText(Token.Text, 'out') then
+    if (mToken.Offset >= AParam.StartOffset) and SameText(mToken.Text, 'out') then
     begin
-      AToken := Token;
+      AToken := mToken;
       Result := True;
     end;
   end;
@@ -210,14 +210,14 @@ end;
 /// <summary>Das Token "out" vor dem Parameter mit den Namen FNames in AParams.</summary>
 function TOutParamCheck.OutToken(AParams: TSyntaxNode; out AToken: TPascalToken): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
-  for Index := 0 to AParams.ChildCount - 1 do
+  for mIndex := 0 to AParams.ChildCount - 1 do
   begin
-    if not Result and IsOutParam(AParams[Index], FNames) then
+    if not Result and IsOutParam(AParams[mIndex], FNames) then
     begin
-      Result := ParamOutToken(AParams[Index], AToken);
+      Result := ParamOutToken(AParams[mIndex], AToken);
     end;
   end;
 end;
@@ -238,9 +238,9 @@ end;
 /// <summary>out -&gt; var in jeder Deklaration mit gleicher Parameterliste AKey; in Textreihenfolge.</summary>
 function TOutParamCheck.DeclarationEdits(const AShort, AClassPart, AKey: string): TArray<TRuleEdit>;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Edits := nil;
+  mEdits := nil;
   // Iterativ (Bericht M1).
   FContext.Tree.Root.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
@@ -259,32 +259,32 @@ begin
         Other := ANode.FindChild(TSyntaxKind.Parameters);
         if (Other <> nil) and (Collapsed(Other) = AKey) and OutToken(Other, Found) then
         begin
-          Edits := Edits + [OutEdit(Found)];
+          mEdits := mEdits + [OutEdit(Found)];
         end;
       end;
     end);
-  Result := Edits;
+  Result := mEdits;
 end;
 
 /// <summary>out -&gt; var in der Implementierung und in jeder Deklaration mit gleicher Parameterliste.</summary>
 function TOutParamCheck.Fix: TArray<TRuleFix>;
 var
-  Edits: TArray<TRuleEdit>;
-  Token: TPascalToken;
-  Short: string;
+  mEdits: TArray<TRuleEdit>;
+  mToken: TPascalToken;
+  mShort: string;
 begin
   Result := nil;
-  Short := ShortName(FRoutine.Name);
+  mShort := ShortName(FRoutine.Name);
   // Deklarationen stehen vor der Implementierung; die Änderungen bleiben nach Stelle sortiert.
-  Edits := DeclarationEdits(Short, DeclaredClassName(Copy(FRoutine.Name, 1, Length(FRoutine.Name) -
-    Length(Short) - 1)), Collapsed(FParams));
-  if OutToken(FParams, Token) then
+  mEdits := DeclarationEdits(mShort, DeclaredClassName(Copy(FRoutine.Name, 1, Length(FRoutine.Name) -
+    Length(mShort) - 1)), Collapsed(FParams));
+  if OutToken(FParams, mToken) then
   begin
-    Edits := Edits + [OutEdit(Token)];
+    mEdits := mEdits + [OutEdit(mToken)];
   end;
-  if Edits <> nil then
+  if mEdits <> nil then
   begin
-    Result := [TRuleFix.Create(cTexts[TFlowOutParamReadText.OutToVar].Text, Edits)];
+    Result := [TRuleFix.Create(cTexts[TFlowOutParamReadText.OutToVar].Text, mEdits)];
   end;
 end;
 
@@ -292,40 +292,40 @@ end;
 /// </summary>
 function TOutParamCheck.ReadsUndefined(ANode: TSyntaxNode): Boolean;
 var
-  Flow: TFlowNode;
+  mFlow: TFlowNode;
 begin
   Result := IsName(ANode, FName) and not IsAssignTarget(ANode);
   if Result then
   begin
-    Flow := FlowNodeOf(ANode);
-    Result := (Flow <> nil) and (FGraph.IsReachable(Flow) = TFlowAnswer.Yes) and
-      FGraph.ReachingDefinitions(Flow, FName).FromEntry;
+    mFlow := FlowNodeOf(ANode);
+    Result := (mFlow <> nil) and (FGraph.IsReachable(mFlow) = TFlowAnswer.Yes) and
+      FGraph.ReachingDefinitions(mFlow, FName).FromEntry;
   end;
 end;
 
 procedure TOutParamCheck.ReportRead(ANode: TSyntaxNode);
 var
-  Detail: string;
+  mDetail: string;
 begin
   if IsManagedParamType(FTypeName) then
   begin
-    Detail := cTexts[TFlowOutParamReadText.AlwaysEmpty].Fmt([FTypeName]);
+    mDetail := cTexts[TFlowOutParamReadText.AlwaysEmpty].Fmt([FTypeName]);
   end
   else
   begin
-    Detail := cTexts[TFlowOutParamReadText.Undefined].Text;
+    mDetail := cTexts[TFlowOutParamReadText.Undefined].Text;
   end;
   FReport.Add(NodeRange(ANode), cTexts[TFlowOutParamReadText.ReadBeforeSet].Fmt(
-    [FName, Detail]), TRuleConfidence.High, Fix);
+    [FName, mDetail]), TRuleConfidence.High, Fix);
 end;
 
 /// <summary>Meldet den ersten Lesezugriff auf FName in ABlock, der vor dem Setzen liegt.</summary>
 procedure TOutParamCheck.CheckName(ABlock: TSyntaxNode);
 var
-  Read: TSyntaxNode;
+  mRead: TSyntaxNode;
 begin
   // Iterativ (Bericht M1).
-  Read := ABlock.Search(
+  mRead := ABlock.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
       Result := TSyntaxSearchStep.Descend;
@@ -338,9 +338,9 @@ begin
         Result := TSyntaxSearchStep.Found;
       end;
     end);
-  if Read <> nil then
+  if mRead <> nil then
   begin
-    ReportRead(Read);
+    ReportRead(mRead);
   end;
 end;
 
@@ -356,7 +356,7 @@ end;
 
 procedure TOutParamCheck.CheckParam(AParam, ABlock: TSyntaxNode);
 var
-  Name: string;
+  mName: string;
 begin
   if (AParam.Kind <> TSyntaxKind.Parameter) or (AParam.Modifier <> TParameterModifier.OutParam) then
   begin
@@ -368,9 +368,9 @@ begin
     FTypeName := AParam.FindChild(TSyntaxKind.TypeReference).Name;
   end;
   FNames := AParam.Name;
-  for Name in AParam.Name.Split([',']) do
+  for mName in AParam.Name.Split([',']) do
   begin
-    FName := Name.Trim;
+    FName := mName.Trim;
     if not HasOpaqueUse(ABlock, FName) and not PassesPart(ABlock, FName) and GraphComplete then
     begin
       CheckName(ABlock);
@@ -380,12 +380,12 @@ end;
 
 procedure TOutParamCheck.CheckRoutine(ARoutine: TSyntaxNode);
 var
-  Block: TSyntaxNode;
-  Index: Integer;
+  mBlock: TSyntaxNode;
+  mIndex: Integer;
 begin
-  Block := ARoutine.FindChild(TSyntaxKind.Block);
+  mBlock := ARoutine.FindChild(TSyntaxKind.Block);
   FHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-  if (Block = nil) or (FHeader = nil) then
+  if (mBlock = nil) or (FHeader = nil) then
   begin
     Exit;
   end;
@@ -396,24 +396,24 @@ begin
   end;
   FRoutine := ARoutine;
   FGraph := nil;
-  for Index := 0 to FParams.ChildCount - 1 do
+  for mIndex := 0 to FParams.ChildCount - 1 do
   begin
-    CheckParam(FParams[Index], Block);
+    CheckParam(FParams[mIndex], mBlock);
   end;
 end;
 
 procedure TOutParamCheck.Run;
 var
-  Routine: TSyntaxNode;
+  mRoutine: TSyntaxNode;
 begin
   if FContext.Tree = nil then
   begin
     Exit;
   end;
   FCache := TRuleDerived.Open(FContext);
-  for Routine in TRuleDerived.Routines(FCache, FContext) do
+  for mRoutine in TRuleDerived.Routines(FCache, FContext) do
   begin
-    CheckRoutine(Routine);
+    CheckRoutine(mRoutine);
   end;
 end;
 
@@ -421,19 +421,19 @@ end;
 
 function TOutParamReadRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(OutParamReadRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cOutParamReadRuleId, TRuleSeverity.Warning,
     cTexts[TFlowOutParamReadText.Title].Text);
 end;
 
 procedure TOutParamReadRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Check: TOutParamCheck;
+  mCheck: TOutParamCheck;
 begin
-  Check := TOutParamCheck.Create(AContext, AReport);
+  mCheck := TOutParamCheck.Create(AContext, AReport);
   try
-    Check.Run;
+    mCheck.Run;
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 

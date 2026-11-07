@@ -52,190 +52,190 @@ end;
 
 procedure TShellCommandsTests.SelectBuildArgs_Empty_NoChanges;
 var
-  Parsed: TSelectBuildArgs;
+  mParsed: TSelectBuildArgs;
 begin
-  Parsed := TSelectBuildArgs.Parse(nil);
-  Assert.IsFalse(Parsed.Changes);
-  Assert.AreEqual('', Parsed.Uri);
+  mParsed := TSelectBuildArgs.Parse(nil);
+  Assert.IsFalse(mParsed.Changes);
+  Assert.AreEqual('', mParsed.Uri);
 end;
 
 procedure TShellCommandsTests.SelectProjectArgs_QueryClearAndChoose;
 var
-  List: TJSONArray;
-  Parsed: TSelectProjectArgs;
+  mList: TJSONArray;
+  mParsed: TSelectProjectArgs;
 begin
-  Parsed := TSelectProjectArgs.Parse(nil);
-  Assert.IsFalse(Parsed.HasProject);
-  List := Args('[{"project": 3}]');
+  mParsed := TSelectProjectArgs.Parse(nil);
+  Assert.IsFalse(mParsed.HasProject);
+  mList := Args('[{"project": 3}]');
   try
-    Assert.IsFalse(TSelectProjectArgs.Parse(List).HasProject, 'Keine Zahl');
+    Assert.IsFalse(TSelectProjectArgs.Parse(mList).HasProject, 'Keine Zahl');
   finally
-    List.Free;
+    mList.Free;
   end;
-  List := Args('[{"project": ""}]');
+  mList := Args('[{"project": ""}]');
   try
-    Parsed := TSelectProjectArgs.Parse(List);
+    mParsed := TSelectProjectArgs.Parse(mList);
   finally
-    List.Free;
+    mList.Free;
   end;
-  Assert.IsTrue(Parsed.HasProject);
-  Assert.AreEqual('', Parsed.Project);
-  List := Args('[{"project": " Kern "}]');
+  Assert.IsTrue(mParsed.HasProject);
+  Assert.AreEqual('', mParsed.Project);
+  mList := Args('[{"project": " Kern "}]');
   try
-    Parsed := TSelectProjectArgs.Parse(List);
+    mParsed := TSelectProjectArgs.Parse(mList);
   finally
-    List.Free;
+    mList.Free;
   end;
-  Assert.AreEqual('Kern', Parsed.Project);
+  Assert.AreEqual('Kern', mParsed.Project);
 end;
 
 procedure TShellCommandsTests.ProjectChoices_NamesSelectedAndActive;
 var
-  Items: TArray<TProjectChoiceItem>;
-  Answer: TJSONObject;
+  mItems: TArray<TProjectChoiceItem>;
+  mAnswer: TJSONObject;
 begin
-  SetLength(Items, 2);
-  Items[0].Name := 'App';
-  Items[0].Project := 'C:\P\App.dproj';
-  Items[0].Active := True;
-  Items[1].Name := 'Kern';
-  Items[1].Project := 'C:\P\Kern.dproj';
-  Items[1].Selected := True;
-  Assert.AreEqual(1, TBuildCommands.FindProject(Items, 'kern'));
-  Assert.AreEqual(0, TBuildCommands.FindProject(Items, 'c:\p\app.dproj'));
-  Assert.AreEqual(-1, TBuildCommands.FindProject(Items, 'Fehlt'));
-  Answer := TBuildCommands.ProjectChoices(Items);
+  SetLength(mItems, 2);
+  mItems[0].Name := 'App';
+  mItems[0].Project := 'C:\P\App.dproj';
+  mItems[0].Active := True;
+  mItems[1].Name := 'Kern';
+  mItems[1].Project := 'C:\P\Kern.dproj';
+  mItems[1].Selected := True;
+  Assert.AreEqual(1, TBuildCommands.FindProject(mItems, 'kern'));
+  Assert.AreEqual(0, TBuildCommands.FindProject(mItems, 'c:\p\app.dproj'));
+  Assert.AreEqual(-1, TBuildCommands.FindProject(mItems, 'Fehlt'));
+  mAnswer := TBuildCommands.ProjectChoices(mItems);
   try
-    Assert.AreEqual('C:\P\Kern.dproj', Answer.GetValue<string>('selected'));
-    Assert.AreEqual('C:\P\App.dproj', Answer.GetValue<string>('active'));
-    Assert.AreEqual(2, Answer.GetValue<TJSONArray>('projects').Count);
+    Assert.AreEqual('C:\P\Kern.dproj', mAnswer.GetValue<string>('selected'));
+    Assert.AreEqual('C:\P\App.dproj', mAnswer.GetValue<string>('active'));
+    Assert.AreEqual(2, mAnswer.GetValue<TJSONArray>('projects').Count);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TShellCommandsTests.SelectBuildArgs_ReadsAllFields;
 var
-  List: TJSONArray;
-  Parsed: TSelectBuildArgs;
+  mList: TJSONArray;
+  mParsed: TSelectBuildArgs;
 begin
-  List := Args('[{"config": "Release", "platform": "Win64", "uri": "file:///c%3A/a.pas", "defines": ["A", {}, "B"]}]');
+  mList := Args('[{"config": "Release", "platform": "Win64", "uri": "file:///c%3A/a.pas", "defines": ["A", {}, "B"]}]');
   try
-    Parsed := TSelectBuildArgs.Parse(List);
+    mParsed := TSelectBuildArgs.Parse(mList);
   finally
-    List.Free;
+    mList.Free;
   end;
-  Assert.AreEqual('Release', Parsed.Config);
-  Assert.AreEqual('Win64', Parsed.Platform);
-  Assert.AreEqual('file:///c%3A/a.pas', Parsed.Uri);
-  Assert.IsTrue(Parsed.HasDefines);
-  Assert.AreEqual(2, Integer(Length(Parsed.Defines)), 'Nur Strings');
-  Assert.IsTrue(Parsed.Changes);
+  Assert.AreEqual('Release', mParsed.Config);
+  Assert.AreEqual('Win64', mParsed.Platform);
+  Assert.AreEqual('file:///c%3A/a.pas', mParsed.Uri);
+  Assert.IsTrue(mParsed.HasDefines);
+  Assert.AreEqual(2, Integer(Length(mParsed.Defines)), 'Nur Strings');
+  Assert.IsTrue(mParsed.Changes);
 end;
 
 procedure TShellCommandsTests.SelectBuildArgs_EmptyDefinesStillReplace;
 var
-  List: TJSONArray;
-  Parsed: TSelectBuildArgs;
+  mList: TJSONArray;
+  mParsed: TSelectBuildArgs;
 begin
-  List := Args('[{"defines": []}]');
+  mList := Args('[{"defines": []}]');
   try
-    Parsed := TSelectBuildArgs.Parse(List);
+    mParsed := TSelectBuildArgs.Parse(mList);
   finally
-    List.Free;
+    mList.Free;
   end;
-  Assert.IsTrue(Parsed.HasDefines);
-  Assert.IsTrue(Parsed.Changes);
+  Assert.IsTrue(mParsed.HasDefines);
+  Assert.IsTrue(mParsed.Changes);
 end;
 
 procedure TShellCommandsTests.ProjectItem_PrefersChosenValues;
 var
-  Project: TProjectInfo;
-  Chosen: TSelectBuildArgs;
-  Item: TJSONObject;
+  mProject: TProjectInfo;
+  mChosen: TSelectBuildArgs;
+  mItem: TJSONObject;
 begin
-  Project := Default(TProjectInfo);
-  Project.FileName := 'App.dproj';
-  Project.Config := 'Debug';
-  Project.Platform := 'Win32';
-  Project.Configs := ['Debug', 'Release'];
-  Project.Platforms := ['Win32', 'Win64'];
-  Chosen := Default(TSelectBuildArgs);
-  Chosen.Platform := 'Win64';
-  Item := TBuildCommands.ProjectItem('App', Project, Chosen);
+  mProject := Default(TProjectInfo);
+  mProject.FileName := 'App.dproj';
+  mProject.Config := 'Debug';
+  mProject.Platform := 'Win32';
+  mProject.Configs := ['Debug', 'Release'];
+  mProject.Platforms := ['Win32', 'Win64'];
+  mChosen := Default(TSelectBuildArgs);
+  mChosen.Platform := 'Win64';
+  mItem := TBuildCommands.ProjectItem('App', mProject, mChosen);
   try
-    Assert.AreEqual('App', Item.GetValue<string>('folder'));
-    Assert.AreEqual('App.dproj', Item.GetValue<string>('project'));
-    Assert.AreEqual('Debug', Item.GetValue<string>('config'));
-    Assert.AreEqual('Win64', Item.GetValue<string>('platform'));
-    Assert.AreEqual(2, Item.GetValue<TJSONArray>('configs').Count);
+    Assert.AreEqual('App', mItem.GetValue<string>('folder'));
+    Assert.AreEqual('App.dproj', mItem.GetValue<string>('project'));
+    Assert.AreEqual('Debug', mItem.GetValue<string>('config'));
+    Assert.AreEqual('Win64', mItem.GetValue<string>('platform'));
+    Assert.AreEqual(2, mItem.GetValue<TJSONArray>('configs').Count);
   finally
-    Item.Free;
+    mItem.Free;
   end;
 end;
 
 procedure TShellCommandsTests.FormFiles_UriGivesThatFile;
 var
-  List: TJSONArray;
-  Files: TArray<string>;
+  mList: TJSONArray;
+  mFiles: TArray<string>;
 begin
-  List := Args('["file:///c%3A/P/Main.dfm"]');
+  mList := Args('["file:///c%3A/P/Main.dfm"]');
   try
-    Files := TBuildCommands.FormFiles(List, ['x.pas'],
+    mFiles := TBuildCommands.FormFiles(mList, ['x.pas'],
       function(AFileName: string): Boolean
       begin
         Result := True;
       end);
   finally
-    List.Free;
+    mList.Free;
   end;
-  Assert.AreEqual(1, Integer(Length(Files)));
-  Assert.IsTrue(Files[0].EndsWith('Main.dfm'));
+  Assert.AreEqual(1, Integer(Length(mFiles)));
+  Assert.IsTrue(mFiles[0].EndsWith('Main.dfm'));
 end;
 
 procedure TShellCommandsTests.FormFiles_CollectsExistingForms;
 var
-  Files: TArray<string>;
+  mFiles: TArray<string>;
 begin
-  Files := TBuildCommands.FormFiles(nil, ['A.pas', 'B.pas', 'C.pas'],
+  mFiles := TBuildCommands.FormFiles(nil, ['A.pas', 'B.pas', 'C.pas'],
     function(AFileName: string): Boolean
     begin
       Result := (AFileName = 'A.dfm') or (AFileName = 'C.fmx');
     end);
-  Assert.AreEqual(2, Integer(Length(Files)));
-  Assert.AreEqual('A.dfm', Files[0]);
-  Assert.AreEqual('C.fmx', Files[1]);
+  Assert.AreEqual(2, Integer(Length(mFiles)));
+  Assert.AreEqual('A.dfm', mFiles[0]);
+  Assert.AreEqual('C.fmx', mFiles[1]);
 end;
 
 procedure TShellCommandsTests.IndexAnswer_HasCounts;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
-  Answer := TIndexCommands.Answer(3, 2048);
+  mAnswer := TIndexCommands.Answer(3, 2048);
   try
-    Assert.AreEqual(3, Answer.GetValue<Integer>('removed'));
-    Assert.AreEqual(Int64(2048), Answer.GetValue<Int64>('freedBytes'));
+    Assert.AreEqual(3, mAnswer.GetValue<Integer>('removed'));
+    Assert.AreEqual(Int64(2048), mAnswer.GetValue<Int64>('freedBytes'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TShellCommandsTests.ClearCaches_RemovesCacheFiles;
 var
-  Root: string;
-  Freed: Int64;
+  mRoot: string;
+  mFreed: Int64;
 begin
-  Root := TPath.Combine(TPath.GetTempPath, 'AtlasClear' + TGUID.NewGuid.ToString);
-  TDirectory.CreateDirectory(Root);
+  mRoot := TPath.Combine(TPath.GetTempPath, 'AtlasClear' + TGUID.NewGuid.ToString);
+  TDirectory.CreateDirectory(mRoot);
   try
-    TFile.WriteAllText(TPath.Combine(Root, 'index-abc.json'), '{"x": 1}');
-    Assert.AreEqual(1, TIndexCommands.ClearCaches(Root, Freed));
-    Assert.IsTrue(Freed > 0);
-    Assert.IsFalse(TFile.Exists(TPath.Combine(Root, 'index-abc.json')));
+    TFile.WriteAllText(TPath.Combine(mRoot, 'index-abc.json'), '{"x": 1}');
+    Assert.AreEqual(1, TIndexCommands.ClearCaches(mRoot, mFreed));
+    Assert.IsTrue(mFreed > 0);
+    Assert.IsFalse(TFile.Exists(TPath.Combine(mRoot, 'index-abc.json')));
   finally
-    if TDirectory.Exists(Root) then
+    if TDirectory.Exists(mRoot) then
     begin
-      TDirectory.Delete(Root, True);
+      TDirectory.Delete(mRoot, True);
     end;
   end;
 end;

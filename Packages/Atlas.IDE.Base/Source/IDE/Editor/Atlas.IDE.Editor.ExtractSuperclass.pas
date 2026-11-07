@@ -23,7 +23,7 @@ uses
 type
   TAtlasIdeExtractSuperclass = class
   public const
-    ClientCommand = 'atlas.extractSuperclass';
+    cClientCommand = 'atlas.extractSuperclass';
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position]); ASession: laufende Sitzung oder nil;
     /// AMessage: Zeile für die Meldungsansicht.</summary>
@@ -43,17 +43,17 @@ uses
   Atlas.IDE.Foundation.Navigation;
 
 const
-  PrepareCommand = 'atlas.server.extractSuperclass.prepare';
-  ApplyCommand = 'atlas.server.extractSuperclass';
+  cPrepareCommand = 'atlas.server.extractSuperclass.prepare';
+  cApplyCommand = 'atlas.server.extractSuperclass';
   // Namen für die neue Unit auflösen dauert; wie beim Umbenennen.
-  TimeoutMs = 60000;
+  cTimeoutMs = 60000;
 
 class procedure TAtlasIdeExtractSuperclass.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
   mChoice: TAtlasClassExtractionChoice;
   mReply: TAtlasServerEditReply;
-  mTargetFile, mHint: string;
+  mTargetFile, mHint, mApply: string;
   mMoved, mTargetLine: Integer;
   mOutcome: TAtlasWorkspaceEditResult;
 begin
@@ -62,8 +62,8 @@ begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  if not TAtlasIdeClassExtraction.Choose(ASession, TAtlasServerEditCommand.Create(PrepareCommand, AArgumentsJson,
-    TimeoutMs, TAtlasTextId.ExtractSuperFailed),
+  if not TAtlasIdeClassExtraction.Choose(ASession, TAtlasServerEditCommand.Create(cPrepareCommand, AArgumentsJson,
+    cTimeoutMs, TAtlasTextId.ExtractSuperFailed),
     function(AModel: TAtlasClassExtractionModel): string
     begin
       Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractSuperTitle, [AModel.Source.SourceClass]);
@@ -74,8 +74,8 @@ begin
   mTargetFile := '';
   mMoved := 0;
   mTargetLine := 0;
-  if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(ApplyCommand, mChoice.ApplyArguments,
-    TimeoutMs, TAtlasTextId.ExtractSuperFailed),
+  if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(cApplyCommand, mChoice.ApplyArguments,
+    cTimeoutMs, TAtlasTextId.ExtractSuperFailed),
     procedure(const AReply: TJSONObject)
     begin
       mTargetFile := TAtlasIdeServerEdit.TextOf(AReply, 'file');
@@ -97,8 +97,9 @@ begin
   // Vorschau wie beim Umbenennen (#400); Hinweise (gehobene Sichtbarkeit, aufgeteilte Konstruktoren) im Hinweis.
   mHint := TAtlasStrings.Fmt(TAtlasTextId.ExtractSuperPreviewHint, [mChoice.Name, mReply.Edit.EditCount,
     Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.ExtractIntfWarning);
-  if TAtlasIdeServerEdit.Confirm(mChoice.Title, mHint, TAtlasStrings.Text(TAtlasTextId.ExtractIntfApply), mReply.Edit) and
-    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.ExtractIntfApply), AMessage, mOutcome) then
+  mApply := TAtlasStrings.Text(TAtlasTextId.ExtractIntfApply);
+  if TAtlasIdeServerEdit.Confirm(mChoice.Title, mHint, mApply, mReply.Edit) and
+    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, mApply, AMessage, mOutcome) then
   begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.ExtractSuperDone, [mChoice.Name, mOutcome.Edits, mOutcome.Files]));
     TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.ExtractIntfWarning, AMessage);

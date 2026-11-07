@@ -32,7 +32,8 @@ type
     class function Check(AModule: HMODULE; AExpected: Integer): TAtlasContractCheck; static;
   end;
 
-/// <summary>Vertragsversion dieses Base (cAtlasCoreContractVersion); exportiert unter cAtlasCoreContractExport.</summary>
+/// <summary>Vertragsversion dieses Base (cAtlasCoreContractVersion); exportiert unter
+/// cAtlasCoreContractExport.</summary>
 function AtlasCoreContractVersion: Integer; stdcall;
 
 implementation

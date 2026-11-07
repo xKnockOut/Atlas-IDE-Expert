@@ -24,7 +24,7 @@ type
   TStringLiterals = class
   public const
     /// <summary>Zeilenende im Klartext (Zwischenablage unter Windows).</summary>
-    PlainLineBreak = #13#10;
+    cPlainLineBreak = #13#10;
   public
     /// <summary>Mehrzeiliger String? Auto nur, wenn AVersion bekannt ist und ihn kennt.</summary>
     class function UseMultiline(AStyle: TStringLiteralStyle; const AVersion: string): Boolean; static;
@@ -124,16 +124,16 @@ end;
 /// <summary>Mehrzeiliger String geht nur ohne ''' und ohne Steuerzeichen außer Tab.</summary>
 function FitsMultiline(const ALines: TArray<string>): Boolean;
 var
-  Line: string;
+  mLine: string;
   C: Char;
 begin
-  for Line in ALines do
+  for mLine in ALines do
   begin
-    if Pos('''''''', Line) > 0 then
+    if Pos('''''''', mLine) > 0 then
     begin
       Exit(False);
     end;
-    for C in Line do
+    for C in mLine do
     begin
       if (Ord(C) < 32) and (C <> #9) then
       begin
@@ -148,26 +148,26 @@ end;
 /// Text je Stück); getrennt wird möglichst hinter einem Leerzeichen.</summary>
 function Chunks(const ALine: string; AWidth: Integer): TArray<string>;
 var
-  Rest: string;
-  Size: Integer;
+  mRest: string;
+  mSize: Integer;
 begin
   Result := nil;
-  Rest := ALine;
-  while (Length(Rest) > 10) and (Length(TStringLiterals.Quote(Rest)) > AWidth) do
+  mRest := ALine;
+  while (Length(mRest) > 10) and (Length(TStringLiterals.Quote(mRest)) > AWidth) do
   begin
-    Size := Length(Rest) - 1;
-    while (Size > 10) and (Length(TStringLiterals.Quote(Copy(Rest, 1, Size))) > AWidth) do
+    mSize := Length(mRest) - 1;
+    while (mSize > 10) and (Length(TStringLiterals.Quote(Copy(mRest, 1, mSize))) > AWidth) do
     begin
-      Dec(Size);
+      Dec(mSize);
     end;
-    if LastDelimiter(' ', Copy(Rest, 1, Size)) > Size div 2 then
+    if LastDelimiter(' ', Copy(mRest, 1, mSize)) > mSize div 2 then
     begin
-      Size := LastDelimiter(' ', Copy(Rest, 1, Size));
+      mSize := LastDelimiter(' ', Copy(mRest, 1, mSize));
     end;
-    Result := Result + [Copy(Rest, 1, Size)];
-    Rest := Copy(Rest, Size + 1, MaxInt);
+    Result := Result + [Copy(mRest, 1, mSize)];
+    mRest := Copy(mRest, mSize + 1, MaxInt);
   end;
-  Result := Result + [Rest];
+  Result := Result + [mRest];
 end;
 
 /// <summary>Ausgabezeilen eines mehrzeiligen Strings; der Compiler entfernt die Einrückung der schließenden '''
@@ -281,39 +281,39 @@ end;
 /// <summary>Inhalt eines mehrzeiligen Strings: Einrückung der schließenden ''' entfernt.</summary>
 function MultilineText(const AToken: string): string;
 var
-  Lines: TArray<string>;
-  Indent: Integer;
-  Index: Integer;
+  mLines: TArray<string>;
+  mIndent: Integer;
+  mIndex: Integer;
 begin
-  Lines := TTextLines.SplitLines(AToken);
+  mLines := TTextLines.SplitLines(AToken);
   Result := '';
-  if Length(Lines) < 2 then
+  if Length(mLines) < 2 then
   begin
     Exit;
   end;
-  Indent := Length(Lines[High(Lines)]) - Length(TrimLeft(Lines[High(Lines)]));
-  for Index := 1 to High(Lines) - 1 do
+  mIndent := Length(mLines[High(mLines)]) - Length(TrimLeft(mLines[High(mLines)]));
+  for mIndex := 1 to High(mLines) - 1 do
   begin
-    if Index > 1 then
+    if mIndex > 1 then
     begin
-      Result := Result + TStringLiterals.PlainLineBreak;
+      Result := Result + TStringLiterals.cPlainLineBreak;
     end;
-    Result := Result + Copy(Lines[Index], Indent + 1, MaxInt);
+    Result := Result + Copy(mLines[mIndex], mIndent + 1, MaxInt);
   end;
 end;
 
 /// <summary>Wert von #13, #$0D oder #13#10.</summary>
 function CharValue(const AToken: string): string;
 var
-  Part: string;
-  Code: Integer;
+  mPart: string;
+  mCode: Integer;
 begin
   Result := '';
-  for Part in SplitString(Copy(AToken, 2, MaxInt), '#') do
+  for mPart in SplitString(Copy(AToken, 2, MaxInt), '#') do
   begin
-    if TryStrToInt(Part, Code) then
+    if TryStrToInt(mPart, mCode) then
     begin
-      Result := Result + Char(Code);
+      Result := Result + Char(mCode);
     end;
   end;
 end;
@@ -326,48 +326,48 @@ end;
 
 class function TStringLiterals.PlainText(const AExpression: string; out AText: string): Boolean;
 var
-  Token: TPascalToken;
-  HasString: Boolean;
+  mToken: TPascalToken;
+  mHasString: Boolean;
 begin
   AText := '';
-  HasString := False;
-  for Token in TPascalLexer.Tokenize(AExpression) do
-    case Token.Kind of
+  mHasString := False;
+  for mToken in TPascalLexer.Tokenize(AExpression) do
+    case mToken.Kind of
       TPascalTokenKind.StringLiteral:
         begin
-          HasString := True;
-          if StartsStr('''''''', Token.Text) then
+          mHasString := True;
+          if StartsStr('''''''', mToken.Text) then
           begin
-            AText := AText + MultilineText(Token.Text);
+            AText := AText + MultilineText(mToken.Text);
           end
           else
           begin
-            AText := AText + StringReplace(Copy(Token.Text, 2, Length(Token.Text) - 2), '''''', '''',
+            AText := AText + StringReplace(Copy(mToken.Text, 2, Length(mToken.Text) - 2), '''''', '''',
               [rfReplaceAll]);
           end;
         end;
       TPascalTokenKind.CharLiteral:
-        AText := AText + CharValue(Token.Text);
+        AText := AText + CharValue(mToken.Text);
       TPascalTokenKind.Comment:
         ;
       TPascalTokenKind.Identifier:
-        if SameText(Token.Text, 'sLineBreak') then
+        if SameText(mToken.Text, 'sLineBreak') then
         begin
-          AText := AText + PlainLineBreak;
+          AText := AText + cPlainLineBreak;
         end
         else
         begin
           Exit(False);
         end;
       TPascalTokenKind.Symbol:
-        if Token.Text <> '+' then
+        if mToken.Text <> '+' then
         begin
           Exit(False);
         end;
     else
       Exit(False);
     end;
-  Result := HasString;
+  Result := mHasString;
 end;
 
 function Before(const A, B: TTextPosition): Boolean;
@@ -462,37 +462,37 @@ end;
 
 class function TStringLiterals.TextOf(const AText: string; const ARange: TTextRange): string;
 var
-  Lines: TArray<string>;
-  Line: Integer;
+  mLines: TArray<string>;
+  mLine: Integer;
 begin
-  Lines := TTextLines.SplitLines(AText);
+  mLines := TTextLines.SplitLines(AText);
   Result := '';
-  for Line := ARange.StartPos.Line to ARange.EndPos.Line do
+  for mLine := ARange.StartPos.Line to ARange.EndPos.Line do
   begin
-    if (Line < 0) or (Line > High(Lines)) then
+    if (mLine < 0) or (mLine > High(mLines)) then
     begin
       Continue;
     end;
-    if Line > ARange.StartPos.Line then
+    if mLine > ARange.StartPos.Line then
     begin
       Result := Result + #10;
     end;
-    if (Line = ARange.StartPos.Line) and (Line = ARange.EndPos.Line) then
+    if (mLine = ARange.StartPos.Line) and (mLine = ARange.EndPos.Line) then
     begin
-      Result := Result + Copy(Lines[Line], ARange.StartPos.Character + 1, ARange.EndPos.Character -
+      Result := Result + Copy(mLines[mLine], ARange.StartPos.Character + 1, ARange.EndPos.Character -
         ARange.StartPos.Character);
     end
-    else if Line = ARange.StartPos.Line then
+    else if mLine = ARange.StartPos.Line then
     begin
-      Result := Result + Copy(Lines[Line], ARange.StartPos.Character + 1, MaxInt);
+      Result := Result + Copy(mLines[mLine], ARange.StartPos.Character + 1, MaxInt);
     end
-    else if Line = ARange.EndPos.Line then
+    else if mLine = ARange.EndPos.Line then
     begin
-      Result := Result + Copy(Lines[Line], 1, ARange.EndPos.Character);
+      Result := Result + Copy(mLines[mLine], 1, ARange.EndPos.Character);
     end
     else
     begin
-      Result := Result + Lines[Line];
+      Result := Result + mLines[mLine];
     end;
   end;
 end;

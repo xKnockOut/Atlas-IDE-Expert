@@ -51,7 +51,7 @@ var
 begin
   mFindings := TRuleAssert.Findings(TDestructorNotNilSafeRule.Create, ImportUnit(cCreate, '  FZeilen.Clear;'));
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual(DestructorNotNilSafeRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(cDestructorNotNilSafeRuleId, mFindings[0].RuleId);
 end;
 
 procedure TFlowDestructorNotNilSafeTests.AssignedGuardIsSilent;

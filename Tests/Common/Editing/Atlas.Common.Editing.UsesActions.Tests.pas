@@ -21,6 +21,8 @@ type
     [Test]
     procedure QualifiedAccessCountsAsUse;
     [Test]
+    procedure NameOfUnitWithoutDotIsNoUse;
+    [Test]
     procedure ConditionalBlockStaysUnchanged;
     [Test]
     procedure MovesUnitUsedOnlyInImplementation;
@@ -235,6 +237,13 @@ begin
   // C wird nur über ein Mitglied, B qualifiziert benutzt.
   Text := Source('Units.B, Units.C', '', '', 'procedure P;'#10'begin'#10'  X.Qux;'#10'  B.Irgendwas;'#10'end;'#10);
   Assert.AreEqual(Text, RemoveUnused(Text));
+end;
+
+procedure TUsesActionsTests.NameOfUnitWithoutDotIsNoUse;
+begin
+  // Eine Routine B ist kein Zugriff B.Name: Units.B bleibt unbenutzt.
+  Assert.AreEqual(Source('Units.A', '', '', 'procedure B;'#10'begin'#10'  Foo;'#10'end;'#10),
+    RemoveUnused(Source('Units.A, Units.B', '', '', 'procedure B;'#10'begin'#10'  Foo;'#10'end;'#10)));
 end;
 
 procedure TUsesActionsTests.ConditionalBlockStaysUnchanged;

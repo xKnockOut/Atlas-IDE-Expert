@@ -25,7 +25,7 @@ uses
 type
   TAtlasIdeMoveMember = class
   public const
-    ClientCommand = 'atlas.moveMember';
+    cClientCommand = 'atlas.moveMember';
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position]); ASession: laufende Sitzung oder nil;
     /// AMessage: Zeile für die Meldungsansicht.</summary>
@@ -45,10 +45,10 @@ uses
   Atlas.IDE.Foundation.Navigation;
 
 const
-  PrepareCommand = 'atlas.server.moveMember.prepare';
-  ApplyCommand = 'atlas.server.moveMember';
+  cPrepareCommand = 'atlas.server.moveMember.prepare';
+  cApplyCommand = 'atlas.server.moveMember';
   // Verweise suchen und Namen auflösen dauert; wie beim Umbenennen.
-  TimeoutMs = 60000;
+  cTimeoutMs = 60000;
 
 /// <summary>„… in Vorfahr verschieben“ bzw. „… in Nachfahren verschieben“ je nach Richtung von AModel.</summary>
 function TitleOf(AModel: TAtlasClassExtractionModel): string;
@@ -68,7 +68,7 @@ class procedure TAtlasIdeMoveMember.Execute(ASession: TLspSession; const AArgume
 var
   mChoice: TAtlasClassExtractionChoice;
   mReply: TAtlasServerEditReply;
-  mTargetFile, mHint: string;
+  mTargetFile, mHint, mApply: string;
   mMoved, mTargetLine: Integer;
   mOutcome: TAtlasWorkspaceEditResult;
 begin
@@ -77,8 +77,8 @@ begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  if not TAtlasIdeClassExtraction.Choose(ASession, TAtlasServerEditCommand.Create(PrepareCommand, AArgumentsJson,
-    TimeoutMs, TAtlasTextId.MoveMemberFailed),
+  if not TAtlasIdeClassExtraction.Choose(ASession, TAtlasServerEditCommand.Create(cPrepareCommand, AArgumentsJson,
+    cTimeoutMs, TAtlasTextId.MoveMemberFailed),
     function(AModel: TAtlasClassExtractionModel): string
     begin
       Result := TitleOf(AModel);
@@ -89,8 +89,8 @@ begin
   mTargetFile := '';
   mMoved := 0;
   mTargetLine := 0;
-  if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(ApplyCommand, mChoice.ApplyArguments,
-    TimeoutMs, TAtlasTextId.MoveMemberFailed),
+  if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(cApplyCommand, mChoice.ApplyArguments,
+    cTimeoutMs, TAtlasTextId.MoveMemberFailed),
     procedure(const AReply: TJSONObject)
     begin
       mTargetFile := TAtlasIdeServerEdit.TextOf(AReply, 'file');
@@ -112,8 +112,9 @@ begin
   // Vorschau wie beim Umbenennen (#400); Hinweise (gehobene Sichtbarkeit, override, uses) im Hinweis.
   mHint := TAtlasStrings.Fmt(TAtlasTextId.MoveMemberPreviewHint, [mMoved, mReply.Edit.EditCount,
     Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.ExtractIntfWarning);
-  if TAtlasIdeServerEdit.Confirm(mChoice.Title, mHint, TAtlasStrings.Text(TAtlasTextId.MoveMemberApply), mReply.Edit) and
-    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.MoveMemberApply), AMessage, mOutcome) then
+  mApply := TAtlasStrings.Text(TAtlasTextId.MoveMemberApply);
+  if TAtlasIdeServerEdit.Confirm(mChoice.Title, mHint, mApply, mReply.Edit) and
+    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, mApply, AMessage, mOutcome) then
   begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.MoveMemberDone, [mMoved, mOutcome.Edits, mOutcome.Files]));
     TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.ExtractIntfWarning, AMessage);

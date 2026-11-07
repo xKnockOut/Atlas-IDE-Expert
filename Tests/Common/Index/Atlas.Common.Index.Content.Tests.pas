@@ -323,7 +323,7 @@ begin
   Changed := Copy(Data);
   Changed[8] := 11;
   Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(Changed, Reason)));
-  Assert.AreEqual(Format('Formatversion 11 statt %d', [TIndexCache.FormatVersion]), Reason);
+  Assert.AreEqual(Format('Formatversion 11 statt %d', [TIndexCache.cFormatVersion]), Reason);
   Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(TEncoding.UTF8.GetBytes('{"units":[]}'), Reason)));
   Assert.IsTrue(Reason.StartsWith('kein Atlas-Index'), Reason);
   Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(nil, Reason)));

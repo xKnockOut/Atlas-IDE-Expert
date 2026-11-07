@@ -75,12 +75,12 @@ end;
 { TManagedParamWithoutConstRule }
 
 const
-  ManagedParamRuleId = 'managed-param-without-const';
-  StringTypes: array[0..6] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString',
+  cManagedParamRuleId = 'managed-param-without-const';
+  cStringTypes: array[0..6] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString',
     'UTF8String', 'ShortString');
-  KnownInterfaces: array[0..3] of string = ('IInterface', 'IUnknown', 'IDispatch', 'IInvokable');
+  cKnownInterfaces: array[0..3] of string = ('IInterface', 'IUnknown', 'IDispatch', 'IInvokable');
   /// <summary>Direktiven, bei denen die Signatur von außen vorgegeben ist (Vorfahr, Nachfahren, Aufrufer).</summary>
-  FixedSignatureDirectives: array[0..10] of string = ('virtual', 'dynamic', 'abstract', 'message', 'stdcall',
+  cFixedSignatureDirectives: array[0..10] of string = ('virtual', 'dynamic', 'abstract', 'message', 'stdcall',
     'cdecl', 'safecall', 'pascal', 'register', 'external', 'export');
 
 type
@@ -112,23 +112,23 @@ type
 /// <summary>Name ohne Typparameter: TListe&lt;T&gt; wird TListe.</summary>
 function WithoutTypeParams(const AName: string): string;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   Result := '';
-  Depth := 0;
-  for Index := 1 to Length(AName) do
+  mDepth := 0;
+  for mIndex := 1 to Length(AName) do
   begin
-    if AName[Index] = '<' then
+    if AName[mIndex] = '<' then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if AName[Index] = '>' then
+    else if AName[mIndex] = '>' then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if Depth = 0 then
+    else if mDepth = 0 then
     begin
-      Result := Result + AName[Index];
+      Result := Result + AName[mIndex];
     end;
   end;
 end;
@@ -136,14 +136,14 @@ end;
 /// <summary>Quelltext ohne Leerraum, klein geschrieben; für den Vergleich von Parameterlisten.</summary>
 function Squeezed(const AText: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 1 to Length(AText) do
+  for mIndex := 1 to Length(AText) do
   begin
-    if AText[Index] > ' ' then
+    if AText[mIndex] > ' ' then
     begin
-      Result := Result + AText[Index];
+      Result := Result + AText[mIndex];
     end;
   end;
   Result := LowerCase(Result);
@@ -151,13 +151,13 @@ end;
 
 function ParamsText(const AText: string; AHeader: TSyntaxNode): string;
 var
-  Params: TSyntaxNode;
+  mParams: TSyntaxNode;
 begin
   Result := '';
-  Params := AHeader.FindChild(TSyntaxKind.Parameters);
-  if Params <> nil then
+  mParams := AHeader.FindChild(TSyntaxKind.Parameters);
+  if mParams <> nil then
   begin
-    Result := Squeezed(NodeText(AText, Params));
+    Result := Squeezed(NodeText(AText, mParams));
   end;
 end;
 
@@ -165,19 +165,19 @@ end;
 /// </summary>
 function NodesOf(ARoot: TSyntaxNode; const AKinds, ASkip: TSyntaxKinds): TArray<TSyntaxNode>;
 var
-  Found: TArray<TSyntaxNode>;
+  mFound: TArray<TSyntaxNode>;
 begin
-  Found := nil;
+  mFound := nil;
   ARoot.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind in AKinds then
       begin
-        Found := Found + [ANode];
+        mFound := mFound + [ANode];
       end;
       Result := (ANode = ARoot) or not (ANode.Kind in ASkip);
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 type
@@ -320,13 +320,13 @@ end;
 
 function HasDirective(AHeader: TSyntaxNode; const ANames: array of string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if AHeader <> nil then
   begin
-    for Index := 0 to AHeader.ChildCount - 1 do
+    for mIndex := 0 to AHeader.ChildCount - 1 do
     begin
-      if (AHeader[Index].Kind = TSyntaxKind.Directive) and MatchText(AHeader[Index].Name, ANames) then
+      if (AHeader[mIndex].Kind = TSyntaxKind.Directive) and MatchText(AHeader[mIndex].Name, ANames) then
       begin
         Exit(True);
       end;
@@ -343,31 +343,31 @@ function RecordSize(const AText: string; ARecord: TSyntaxNode; const ARecords: T
 function TypeSize(const AText, ATypeName: string; const ARecords: TDictionary<string, TSyntaxNode>;
   ADepth: Integer): Integer;
 const
-  Sizes: array[0..30] of string = ('Byte=1', 'Boolean=1', 'ByteBool=1', 'AnsiChar=1', 'ShortInt=1', 'Int8=1',
+  cSizes: array[0..30] of string = ('Byte=1', 'Boolean=1', 'ByteBool=1', 'AnsiChar=1', 'ShortInt=1', 'Int8=1',
     'UInt8=1', 'Word=2', 'SmallInt=2', 'Char=2', 'WideChar=2', 'WordBool=2', 'Int16=2', 'UInt16=2', 'Integer=4',
     'Cardinal=4', 'LongInt=4', 'LongWord=4', 'Single=4', 'LongBool=4', 'Int32=4', 'UInt32=4', 'Int64=8',
     'UInt64=8', 'Double=8', 'Currency=8', 'TDateTime=8', 'Comp=8', 'Extended=8', 'TDate=8', 'TTime=8');
-  Pointers: array[0..7] of string = ('Pointer', 'NativeInt', 'NativeUInt', 'string', 'UnicodeString', 'TObject',
+  cPointers: array[0..7] of string = ('Pointer', 'NativeInt', 'NativeUInt', 'string', 'UnicodeString', 'TObject',
     'PChar', 'IInterface');
 var
-  Item: string;
-  Node: TSyntaxNode;
+  mItem: string;
+  mNode: TSyntaxNode;
 begin
   Result := -1;
-  for Item in Sizes do
+  for mItem in cSizes do
   begin
-    if SameText(Copy(Item, 1, Pos('=', Item) - 1), ATypeName) then
+    if SameText(Copy(mItem, 1, Pos('=', mItem) - 1), ATypeName) then
     begin
-      Exit(StrToInt(Copy(Item, Pos('=', Item) + 1, MaxInt)));
+      Exit(StrToInt(Copy(mItem, Pos('=', mItem) + 1, MaxInt)));
     end;
   end;
-  if MatchText(ATypeName, Pointers) or StartsText('TArray<', ATypeName) then
+  if MatchText(ATypeName, cPointers) or StartsText('TArray<', ATypeName) then
   begin
     Exit(8);
   end;
-  if (ADepth < 4) and ARecords.TryGetValue(LowerCase(ATypeName), Node) then
+  if (ADepth < 4) and ARecords.TryGetValue(LowerCase(ATypeName), mNode) then
   begin
-    Result := RecordSize(AText, Node, ARecords, ADepth + 1);
+    Result := RecordSize(AText, mNode, ARecords, ADepth + 1);
   end;
 end;
 
@@ -446,17 +446,17 @@ end;
 /// <summary>Feldnamen eines Records (Gruppen aufgeteilt).</summary>
 function RecordFields(ARecord: TSyntaxNode): TArray<string>;
 var
-  Index: Integer;
-  Name: string;
+  mIndex: Integer;
+  mName: string;
 begin
   Result := nil;
-  for Index := 0 to ARecord.ChildCount - 1 do
+  for mIndex := 0 to ARecord.ChildCount - 1 do
   begin
-    if ARecord[Index].Kind = TSyntaxKind.Field then
+    if ARecord[mIndex].Kind = TSyntaxKind.Field then
     begin
-      for Name in ARecord[Index].Name.Split([',']) do
+      for mName in ARecord[mIndex].Name.Split([',']) do
       begin
-        Result := Result + [Trim(Name)];
+        Result := Result + [Trim(mName)];
       end;
     end;
   end;
@@ -877,11 +877,11 @@ begin
   ACandidate.Name := Trim(AGroup.Name.Split([','])[APosition]);
   ACandidate.Group := AGroup;
   ACandidate.Position := APosition;
-  if MatchText(mTypeText, StringTypes) then
+  if MatchText(mTypeText, cStringTypes) then
   begin
     Result := StringCandidate(mTypeText, ACandidate);
   end
-  else if MatchText(mTypeText, FInterfaces) or MatchText(mTypeText, KnownInterfaces) then
+  else if MatchText(mTypeText, FInterfaces) or MatchText(mTypeText, cKnownInterfaces) then
   begin
     Result := True;
   end
@@ -963,8 +963,8 @@ end;
 /// <summary>Signatur von außen vorgegeben: Direktiven wie virtual, override bei ignoreOverrides.</summary>
 function TManagedParamScan.FixedSignature(const AInfo: TParamRoutine): Boolean;
 begin
-  Result := HasDirective(AInfo.Header, FixedSignatureDirectives) or
-    HasDirective(AInfo.Declaration, FixedSignatureDirectives) or (AInfo.IsOverride and FIgnoreOverrides);
+  Result := HasDirective(AInfo.Header, cFixedSignatureDirectives) or
+    HasDirective(AInfo.Declaration, cFixedSignatureDirectives) or (AInfo.IsOverride and FIgnoreOverrides);
 end;
 
 /// <summary>Darf die Regel die Parameter von ARoutine ändern? Kein asm, keine Direktiven im Kopf, Deklaration
@@ -1223,7 +1223,7 @@ end;
 
 function TManagedParamWithoutConstRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(ManagedParamRuleId, TRuleSeverity.Hint,
+  Result := TRuleDescriptor.Create(cManagedParamRuleId, TRuleSeverity.Hint,
     cTexts[TPerformanceManagedParamsText.Title].Text, True);
 end;
 

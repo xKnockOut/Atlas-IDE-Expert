@@ -183,42 +183,42 @@ end;
 
 class function TAtlasReassigned.Arguments(const AUri: string; ATargets: TAtlasReassignedTargets): string;
 var
-  Values, Targets: TJSONArray;
-  Options: TJSONObject;
-  Target: TAtlasReassignedTarget;
+  mValues, mTargets: TJSONArray;
+  mOptions: TJSONObject;
+  mTarget: TAtlasReassignedTarget;
 begin
-  Values := TJSONArray.Create;
+  mValues := TJSONArray.Create;
   try
-    Values.Add(AUri);
-    Options := TJSONObject.Create;
-    Targets := TJSONArray.Create;
-    for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
+    mValues.Add(AUri);
+    mOptions := TJSONObject.Create;
+    mTargets := TJSONArray.Create;
+    for mTarget := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
     begin
-      if Target in ATargets then
+      if mTarget in ATargets then
       begin
-        Targets.Add(TAtlasReassignedNames.TargetName(Target));
+        mTargets.Add(TAtlasReassignedNames.TargetName(mTarget));
       end;
     end;
-    Options.AddPair('targets', Targets);
-    Values.AddElement(Options);
-    Result := Values.ToJSON;
+    mOptions.AddPair('targets', mTargets);
+    mValues.AddElement(mOptions);
+    Result := mValues.ToJSON;
   finally
-    Values.Free;
+    mValues.Free;
   end;
 end;
 
 class function TAtlasReassigned.Segments(AStyle: TAtlasReassignedStyle; ALeft, ARight, ABaseline,
   AUnit: Integer): TArray<TAtlasUnderlineSegment>;
 var
-  Step, X, Next: Integer;
-  Up: Boolean;
+  mStep, X, mNext: Integer;
+  mUp: Boolean;
 begin
   Result := nil;
   if ARight <= ALeft then
   begin
     Exit;
   end;
-  Step := Max(1, AUnit);
+  mStep := Max(1, AUnit);
   case AStyle of
     TAtlasReassignedStyle.Solid:
       Result := [Segment(ALeft, ABaseline, ARight, ABaseline)];
@@ -226,20 +226,20 @@ begin
       begin
         // Je 2 Einheiten auf und ab wie die Wellenlinie der Probleme, nur flacher.
         X := ALeft;
-        Up := False;
+        mUp := False;
         while X < ARight do
         begin
-          Next := Min(ARight, X + 2 * Step);
-          if Up then
+          mNext := Min(ARight, X + 2 * mStep);
+          if mUp then
           begin
-            Result := Result + [Segment(X, ABaseline - Step, Next, ABaseline)];
+            Result := Result + [Segment(X, ABaseline - mStep, mNext, ABaseline)];
           end
           else
           begin
-            Result := Result + [Segment(X, ABaseline, Next, ABaseline - Step)];
+            Result := Result + [Segment(X, ABaseline, mNext, ABaseline - mStep)];
           end;
-          Up := not Up;
-          X := Next;
+          mUp := not mUp;
+          X := mNext;
         end;
       end;
   else
@@ -248,8 +248,8 @@ begin
       X := ALeft;
       while X < ARight do
       begin
-        Result := Result + [Segment(X, ABaseline, Min(ARight, X + Step), ABaseline)];
-        Inc(X, 2 * Step);
+        Result := Result + [Segment(X, ABaseline, Min(ARight, X + mStep), ABaseline)];
+        Inc(X, 2 * mStep);
       end;
     end;
   end;

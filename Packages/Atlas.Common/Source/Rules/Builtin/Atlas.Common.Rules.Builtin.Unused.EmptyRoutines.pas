@@ -59,22 +59,22 @@ end;
 /// <summary>Kopf der Methode in ihrem Typ und der Sichtbarkeitsabschnitt davor ('' ohne Angabe).</summary>
 function MemberHeader(ATypeBody: TSyntaxNode; const AName: string; out AVisibility: string): TSyntaxNode;
 var
-  Index: Integer;
-  Visibility: string;
+  mIndex: Integer;
+  mVisibility: string;
 begin
   Result := nil;
   AVisibility := '';
-  Visibility := '';
-  for Index := 0 to ATypeBody.ChildCount - 1 do
+  mVisibility := '';
+  for mIndex := 0 to ATypeBody.ChildCount - 1 do
   begin
-    if ATypeBody[Index].Kind = TSyntaxKind.Visibility then
+    if ATypeBody[mIndex].Kind = TSyntaxKind.Visibility then
     begin
-      Visibility := LowerCase(ATypeBody[Index].Name);
+      mVisibility := LowerCase(ATypeBody[mIndex].Name);
     end
-    else if (ATypeBody[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(ATypeBody[Index].Name, AName) then
+    else if (ATypeBody[mIndex].Kind = TSyntaxKind.RoutineHeader) and SameText(ATypeBody[mIndex].Name, AName) then
     begin
-      Result := ATypeBody[Index];
-      AVisibility := Visibility;
+      Result := ATypeBody[mIndex];
+      AVisibility := mVisibility;
       Exit;
     end;
   end;
@@ -82,19 +82,19 @@ end;
 
 function NodesOfKind(ARoot: TSyntaxNode; AKind: TSyntaxKind): TArray<TSyntaxNode>;
 var
-  Found: TArray<TSyntaxNode>;
+  mFound: TArray<TSyntaxNode>;
 begin
-  Found := nil;
+  mFound := nil;
   ARoot.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind = AKind then
       begin
-        Found := Found + [ANode];
+        mFound := mFound + [ANode];
       end;
       Result := True;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 /// <summary>Besteht der Block nur aus leeren Anweisungen?</summary>
@@ -222,8 +222,8 @@ begin
       Exit(True);
     end;
   end;
-  Result := ((FContext.FormText <> '') and TRegEx.IsMatch(FContext.FormText, '\b' + AName + '\b',
-    [roIgnoreCase]));
+  Result := (FContext.FormText <> '') and TRegEx.IsMatch(FContext.FormText, '\b' + AName + '\b',
+    [roIgnoreCase]);
 end;
 
 /// <summary>Anfang von ANode samt ///-Kommentaren direkt darüber.</summary>

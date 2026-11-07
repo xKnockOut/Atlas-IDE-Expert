@@ -251,7 +251,7 @@ begin
   Assert.AreEqual(Under('TortoiseSVN/bin/' + Exe('svn')), mRunner.Executable);
   Assert.AreEqual('--version --quiet', mRunner.Arguments);
   Assert.AreEqual(Under('TortoiseSVN/bin'), mRunner.WorkingDir);
-  Assert.AreEqual(Integer(TAtlasVcsToolChecks.TimeoutMs), Integer(mRunner.TimeoutMs));
+  Assert.AreEqual(Integer(TAtlasVcsToolChecks.cTimeoutMs), Integer(mRunner.TimeoutMs));
 end;
 
 procedure TAtlasVcsToolCheckTests.CheckWithoutProgramRunsNothing;

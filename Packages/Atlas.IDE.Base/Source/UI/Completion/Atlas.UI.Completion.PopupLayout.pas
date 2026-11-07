@@ -86,7 +86,8 @@ uses
   Atlas.Core.Completion.Sets,
   Atlas.Core.Completion.Favorites,
   Atlas.UI.Popup.Draw,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Completion.Details;
 
 { TAtlasCompletionPopupLayout }
 
@@ -103,7 +104,7 @@ begin
   end
   else if Collapsed then
   begin
-    Result := Scale(CollapsedPanelWidth);
+    Result := Scale(cCollapsedPanelWidth);
   end
   else
   begin
@@ -157,7 +158,8 @@ begin
     Exit(0);
   end;
   FDetailView.MaxHeight := PanelCap;
-  Result := FDetailView.Render(Canvas, Colors, Font, UIFont, Rect(0, 0, PanelWidth, 0), PPI, False);
+  Result := FDetailView.Render(TAtlasDetailSurface.Create(Canvas, Colors, Font, UIFont, PPI),
+    Rect(0, 0, PanelWidth, 0), False);
   Canvas.Font := Font;
 end;
 
@@ -175,10 +177,10 @@ end;
 
 function TAtlasCompletionPopupLayout.PanelCap: Integer;
 var
-  Area: TRect;
+  mArea: TRect;
 begin
-  Area := WorkAreaAt(FAnchor.TopLeft);
-  Result := Max(ListHeight, Max(Area.Bottom - FAnchor.Bottom, FAnchor.Top - Area.Top) - Scale(8));
+  mArea := WorkAreaAt(FAnchor.TopLeft);
+  Result := Max(ListHeight, Max(mArea.Bottom - FAnchor.Bottom, FAnchor.Top - mArea.Top) - Scale(8));
 end;
 
 function TAtlasCompletionPopupLayout.DocActive: Boolean;
@@ -293,7 +295,8 @@ var
   mHeight: Integer;
 begin
   mHeight := RowHeight;
-  Result := Rect(ListLeft + Pad, ListTop + ARow * mHeight, ListRight - Pad - ScrollReserve, ListTop + (ARow + 1) * mHeight);
+  Result := Rect(ListLeft + Pad, ListTop + ARow * mHeight, ListRight - Pad - ScrollReserve, ListTop + (ARow + 1) *
+    mHeight);
 end;
 
 function TAtlasCompletionPopupLayout.RowAt(AX, AY: Integer): Integer;
@@ -329,7 +332,7 @@ end;
 function TAtlasCompletionPopupLayout.TagWidth(const ATag: TAtlasTag): Integer;
 begin
   Canvas.Font := UIFont;
-  Result := Canvas.TextWidth(TAtlasCompletionTexts.TagText(ATag)) + Scale(TAtlasDraw.ChipPad);
+  Result := Canvas.TextWidth(TAtlasCompletionTexts.TagText(ATag)) + Scale(TAtlasDraw.cChipPad);
   Canvas.Font := Font;
 end;
 
@@ -349,49 +352,49 @@ end;
 
 function TAtlasCompletionPopupLayout.MeasureWidth: Integer;
 var
-  Position, Count, Widest, mWidth: Integer;
-  Item: TAtlasCompletionItem;
+  mPosition, mCount, mWidest, mWidth: Integer;
+  mItem: TAtlasCompletionItem;
   mTag: TAtlasTag;
-  Detail: string;
+  mDetail: string;
 begin
   // Nur die ersten Einträge messen; eine gezogene Breite (#416) hat Vorrang (ListWidth).
   Canvas.Font := Font;
-  Widest := 0;
-  Count := Min(Length(FOrder), 200);
-  for Position := 0 to Count - 1 do
+  mWidest := 0;
+  mCount := Min(Length(FOrder), 200);
+  for mPosition := 0 to mCount - 1 do
   begin
-    if TAtlasRanking.IsHeader(FOrder[Position]) then
+    if TAtlasRanking.IsHeader(FOrder[mPosition]) then
     begin
       Continue;
     end;
-    Item := FItems[FOrder[Position]];
-    mWidth := Canvas.TextWidth(Item.Name);
-    Detail := TAtlasCompletionTexts.DetailText(Item);
-    if Detail <> '' then
+    mItem := FItems[FOrder[mPosition]];
+    mWidth := Canvas.TextWidth(mItem.Name);
+    mDetail := TAtlasCompletionTexts.DetailText(mItem);
+    if mDetail <> '' then
     begin
-      Inc(mWidth, Scale(12) + Canvas.TextWidth(Detail));
+      Inc(mWidth, Scale(12) + Canvas.TextWidth(mDetail));
     end;
-    for mTag in ItemTags(Item) do
+    for mTag in ItemTags(mItem) do
     begin
       Inc(mWidth, Scale(6) + TagWidth(mTag));
     end;
-    Widest := Max(Widest, mWidth);
+    mWidest := Max(mWidest, mWidth);
   end;
   // Badge (7 + 24 + 9), rechter Rand der Zeile (7), Ränder und Scrollleiste.
-  Inc(Widest, Scale(7 + 24 + 9 + 7) + 2 * Pad + ScrollReserve);
+  Inc(mWidest, Scale(7 + 24 + 9 + 7) + 2 * Pad + ScrollReserve);
   if TAtlasCompletionSets.Active(FItems) then
   begin
-    Inc(Widest, Scale(cCheckWidth));
+    Inc(mWidest, Scale(cCheckWidth));
   end;
   if FOptions.FavoritesEnabled then
   begin
-    Inc(Widest, Scale(cStarWidth));
+    Inc(mWidest, Scale(cStarWidth));
   end;
   Canvas.Font := UIFont;
-  Widest := Max(Widest, Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.FooterKeys) + '    ' +
+  mWidest := Max(mWidest, Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.FooterKeys) + '    ' +
     TAtlasStrings.Fmt(TAtlasTextId.CountFits, [999, 9999])) + Scale(18));
   Canvas.Font := Font;
-  Result := TAtlasPopupWidth.Fit(Widest, Scale(MinWidth), Scale(MaxWidth));
+  Result := TAtlasPopupWidth.Fit(mWidest, Scale(cMinWidth), Scale(cMaxWidth));
 end;
 
 procedure TAtlasCompletionPopupLayout.PlaceAndShow;
@@ -403,10 +406,10 @@ end;
 
 procedure TAtlasCompletionPopupLayout.PlaceAt(AListWidth, AHeight: Integer);
 var
-  Bounds, Area: TRect;
+  mBounds, mArea: TRect;
   mLeft, mWidth: Integer;
 begin
-  Area := WorkAreaAt(FAnchor.TopLeft);
+  mArea := WorkAreaAt(FAnchor.TopLeft);
   // Die Liste bleibt am Wortanfang; das Panel rechts davon, ohne Platz dort links, ohne Platz auf
   // beiden Seiten eingeklappt (#428).
   mLeft := FAnchor.Left;
@@ -414,16 +417,16 @@ begin
   FPanel.Left := False;
   if FPanel.Shown then
   begin
-    if mLeft + AListWidth + PanelWidth > Area.Right then
+    if mLeft + AListWidth + PanelWidth > mArea.Right then
     begin
-      if mLeft - PanelWidth >= Area.Left then
+      if mLeft - PanelWidth >= mArea.Left then
       begin
         FPanel.Left := True;
       end
       else if not FPanel.Collapsed then
       begin
         FPanel.AutoCollapsed := True;
-        FPanel.Left := mLeft + AListWidth + PanelWidth > Area.Right;
+        FPanel.Left := mLeft + AListWidth + PanelWidth > mArea.Right;
       end;
     end;
   end;
@@ -432,26 +435,26 @@ begin
   begin
     Dec(mLeft, PanelWidth);
   end;
-  Bounds := TRect.Create(Point(mLeft, FAnchor.Bottom + 2), mWidth, AHeight);
+  mBounds := TRect.Create(Point(mLeft, FAnchor.Bottom + 2), mWidth, AHeight);
   // Unten kein Platz: über die Zeile.
-  if Bounds.Bottom > Area.Bottom then
+  if mBounds.Bottom > mArea.Bottom then
   begin
-    Bounds.SetLocation(Bounds.Left, FAnchor.Top - AHeight - 2);
+    mBounds.SetLocation(mBounds.Left, FAnchor.Top - AHeight - 2);
   end;
-  if Bounds.Right > Area.Right then
+  if mBounds.Right > mArea.Right then
   begin
-    Bounds.SetLocation(Max(Area.Left, Area.Right - mWidth), Bounds.Top);
+    mBounds.SetLocation(Max(mArea.Left, mArea.Right - mWidth), mBounds.Top);
   end;
-  if Bounds.Top < Area.Top then
+  if mBounds.Top < mArea.Top then
   begin
-    Bounds.SetLocation(Bounds.Left, Area.Top);
+    mBounds.SetLocation(mBounds.Left, mArea.Top);
   end;
-  ShowAt(Bounds);
+  ShowAt(mBounds);
 end;
 
 function TAtlasCompletionPopupLayout.StarAt(AX, AY: Integer): Integer;
 var
-  Row: TRect;
+  mRow: TRect;
 begin
   Result := -1;
   if not FOptions.FavoritesEnabled or FEmpty.Showing then
@@ -464,8 +467,8 @@ begin
   begin
     Exit(-1);
   end;
-  Row := RowRect(Result - FTop);
-  if (AX < Row.Left) or (AX >= Row.Left + Scale(cStarWidth + 3)) then
+  mRow := RowRect(Result - FTop);
+  if (AX < mRow.Left) or (AX >= mRow.Left + Scale(cStarWidth + 3)) then
   begin
     Result := -1;
   end;
@@ -481,11 +484,11 @@ end;
 
 function TAtlasCompletionPopupLayout.HitArea(AX, AY: Integer): TAtlasHitArea;
 var
-  Boundary, Zone: Integer;
+  mBoundary, mZone: Integer;
 begin
   Result := TAtlasHitArea.None;
-  Zone := Scale(4);
-  if AX >= ClientWidth - Zone then
+  mZone := Scale(4);
+  if AX >= ClientWidth - mZone then
   begin
     if AY >= ClientHeight - Scale(16) then
     begin
@@ -511,13 +514,13 @@ begin
   end;
   if FPanel.Left then
   begin
-    Boundary := PanelWidth;
+    mBoundary := PanelWidth;
   end
   else
   begin
-    Boundary := ListRight;
+    mBoundary := ListRight;
   end;
-  if Abs(AX - Boundary) <= Zone then
+  if Abs(AX - mBoundary) <= mZone then
   begin
     Result := TAtlasHitArea.Splitter;
   end;

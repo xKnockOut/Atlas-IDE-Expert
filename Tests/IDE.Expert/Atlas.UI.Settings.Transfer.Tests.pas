@@ -163,7 +163,7 @@ begin
     Settings.SettingsExportSecrets := 'placeholder';
     Page.LoadFrom(Settings);
     Assert.IsTrue(Page.Marks.IsMarked(CheckOf(Page, 'HoverProblemActions')), 'geändert: Punkt');
-    Assert.IsTrue(string(CheckOf(Page, 'HoverProblemActions').Caption).StartsWith(TAtlasSettingsMarks.Dot));
+    Assert.IsTrue(string(CheckOf(Page, 'HoverProblemActions').Caption).StartsWith(TAtlasSettingsMarks.cDot));
     Assert.IsTrue(Page.Marks.IsMarked(Page.Part<TAtlasSettingsTransferPart>.SettingsExportSecretsChoice), 'Punkt an der Beschriftung');
     Assert.IsFalse(Page.Marks.IsMarked(CheckOf(Page, 'SettingsBackupBeforeImport')));
     // Ändern auf der Seite setzt den Punkt sofort.
@@ -174,7 +174,7 @@ begin
     // settings.markModified aus: keine Punkte, gespeichert wird der Text ohne Punkt.
     Page.Part<TAtlasSettingsTransferPart>.SettingsMarkModifiedCheck.Checked := False;
     Assert.IsFalse(Page.Marks.IsMarked(CheckOf(Page, 'HoverProblemActions')));
-    Assert.IsFalse(string(CheckOf(Page, 'HoverProblemActions').Caption).StartsWith(TAtlasSettingsMarks.Dot));
+    Assert.IsFalse(string(CheckOf(Page, 'HoverProblemActions').Caption).StartsWith(TAtlasSettingsMarks.cDot));
   finally
     Page.Free;
   end;

@@ -64,7 +64,7 @@ type
   TAtlasIdeIssueNotify = class(TInterfacedObject)
   public const
     /// <summary>Takt der Prüfung, ob eine Verbindung fällig ist.</summary>
-    TickMs = 30000;
+    cTickMs = 30000;
   private type
     TJob = record
       Id: string;
@@ -226,7 +226,7 @@ begin
   end;
   FStarted := True;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := TimerTick;
   FTimer.Enabled := True;
 end;
@@ -483,12 +483,12 @@ begin
     Exit;
   end;
   if (Result.Job.Poll.Me = '') and (AJob.Provider.ProbeUrl(AJob.Target) <> '') and
-    mTransport.Get(AJob.Provider.ProbeUrl(AJob.Target), TAtlasTrackerNotify.TimeoutMs, mStatus, mText,
+    mTransport.Get(AJob.Provider.ProbeUrl(AJob.Target), TAtlasTrackerNotify.cTimeoutMs, mStatus, mText,
     mIgnored) and (mStatus = 200) then
   begin
     Result.Job.Poll.Me := TAtlasTrackerNotify.LoginOf(mText);
   end;
-  Result.Succeeded := AJob.Provider.Changes(AJob.Target, mTransport, TAtlasTrackerNotify.TimeoutMs,
+  Result.Succeeded := AJob.Provider.Changes(AJob.Target, mTransport, TAtlasTrackerNotify.cTimeoutMs,
     Result.Job.Poll, Result.Changes, Result.Error);
 end;
 
@@ -573,7 +573,7 @@ begin
   mConnection.LastModified := AOutcome.Job.Poll.LastModified;
   mConnection.Since := TAtlasTrackerNotify.NextSince(mConnection.Since, AOutcome.Job.Poll.Latest);
   mNotices := TAtlasTrackerNotify.Summarize(TAtlasTrackerNotify.Foreign(AOutcome.Changes, mConnection.Me),
-    TAtlasTrackerNotify.MaxNotices, mRest);
+    TAtlasTrackerNotify.cMaxNotices, mRest);
   TAtlasTrackerNotify.MarkUnseen(mConnection, mNotices);
   FFile.Put(mConnection);
   SaveFile;
@@ -635,7 +635,7 @@ begin
   mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyOpen);
   if ARest > 0 then
   begin
-    mCenter.Notify(TAtlasNotificationSources.Issues, TAtlasNotificationSeverity.Info,
+    mCenter.Notify(TAtlasNotificationSources.cIssues, TAtlasNotificationSeverity.Info,
       TAtlasTrackerNoticeText.MoreTitle(ARest), TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyMoreText));
   end;
   // Älteste zuerst in die Liste, damit die neueste oben steht; eingeblendet wird nur die neueste.
@@ -650,7 +650,7 @@ begin
     end;
     mOpen := OpenAction(Self, Self, mTarget, mNotice.Key, mNotice.Anchor);
     mTitle := TAtlasTrackerNoticeText.Title(mNotice);
-    mMode := mCenter.Notify(TAtlasNotificationSources.Issues, TAtlasNotificationSeverity.Info, mTitle, mNotice.Title,
+    mMode := mCenter.Notify(TAtlasNotificationSources.cIssues, TAtlasNotificationSeverity.Info, mTitle, mNotice.Title,
       [TAtlasNotificationCenter.Action(mCaption, mOpen)]);
     if (mIndex = 0) and (mMode = TAtlasNotificationMode.Show) then
     begin
@@ -668,7 +668,7 @@ begin
   mText := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyErrorText);
   mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFixSettings);
   mRun := SettingsAction(Self, Self);
-  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Issues, TAtlasNotificationSeverity.Warning,
+  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cIssues, TAtlasNotificationSeverity.Warning,
     mTitle, mText, [TAtlasNotificationCenter.Action(mCaption, mRun)]) = TAtlasNotificationMode.Show then
   begin
     ShowToast(mTitle, mText, mCaption, mRun);

@@ -23,9 +23,9 @@ uses
 type
   TCrashReserve = class
   public const
-    StackBytes = 1024 * 1024;
-    ReserveBytes = 4 * 1024 * 1024;
-    TimeoutMs = 10000;
+    cStackBytes = 1024 * 1024;
+    cReserveBytes = 4 * 1024 * 1024;
+    cTimeoutMs = 10000;
   private type
     TWorker = class(TThread)
     private
@@ -81,7 +81,7 @@ const
 
 constructor TCrashReserve.TWorker.Create(AOwner: TCrashReserve);
 begin
-  inherited Create(True, StackBytes);
+  inherited Create(True, cStackBytes);
   FreeOnTerminate := False;
   FOwner := AOwner;
 end;
@@ -107,12 +107,13 @@ begin
         mWork();
       end;
     except
+      // lsp-ignore: catch-all-without-raise -- Absturzvorsorge darf nie werfen; Fehler steht in FFailure
       on E: Exception do
         FOwner.FFailure := E.ClassName + ': ' + E.Message;
     end;
     mWork := nil;
     try
-      SetLength(FOwner.FReserve, ReserveBytes);
+      SetLength(FOwner.FReserve, cReserveBytes);
     except
       // Kein Speicher für die neue Reserve: Der nächste Fall schreibt ohne.
       on EOutOfMemory do
@@ -132,7 +133,7 @@ begin
   FLock := TObject.Create;
   FStart := TEvent.Create(nil, False, False, '');
   FDone := TEvent.Create(nil, False, False, '');
-  SetLength(FReserve, ReserveBytes);
+  SetLength(FReserve, cReserveBytes);
   FWorker := TWorker.Create(Self);
   FWorker.Start;
 end;
@@ -177,7 +178,7 @@ begin
     Inc(FPosted);
     FDone.ResetEvent;
     FStart.SetEvent;
-    Result := FDone.WaitFor(TimeoutMs) = wrSignaled;
+    Result := FDone.WaitFor(cTimeoutMs) = wrSignaled;
     if Result then
     begin
       // Der Arbeiter zählt FFinished erst nach dem Signal hoch; sonst hielte ein sofort folgender Run den Fall
@@ -192,7 +193,7 @@ begin
     end
     else
     begin
-      AFailure := cTexts[TCrashReserveText.TimeLimitOfMsExceeded].Fmt([TimeoutMs]);
+      AFailure := cTexts[TCrashReserveText.TimeLimitOfMsExceeded].Fmt([cTimeoutMs]);
     end;
   finally
     System.TMonitor.Exit(FLock);

@@ -17,7 +17,7 @@ uses
 type
   TAtlasProblemsList = class
   public const
-    MaxEntries = 1000;
+    cMaxEntries = 1000;
   private
     FSignature: string;
   public
@@ -51,13 +51,13 @@ end;
 
 function Group(const AMessages: IOTAMessageServices; ACreate: Boolean): IOTAMessageGroup;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := TAtlasStrings.Text(TAtlasTextId.ProblemsGroup);
-  Result := AMessages.GetGroup(Name);
+  mName := TAtlasStrings.Text(TAtlasTextId.ProblemsGroup);
+  Result := AMessages.GetGroup(mName);
   if (Result = nil) and ACreate then
   begin
-    Result := AMessages.AddMessageGroup(Name);
+    Result := AMessages.AddMessageGroup(mName);
   end;
 end;
 
@@ -118,7 +118,7 @@ var
   mTotal: Integer;
   mLineRef: Pointer;
 begin
-  mSignature := CollectEntries(AStore, MaxEntries, mEntries, mTotal);
+  mSignature := CollectEntries(AStore, cMaxEntries, mEntries, mTotal);
   if mSignature = FSignature then
   begin
     Exit;
@@ -147,32 +147,32 @@ end;
 
 class procedure TAtlasProblemsList.ShowList;
 var
-  Messages: IOTAMessageServices;
+  mMessages: IOTAMessageServices;
 begin
-  if Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
-    Messages.ShowMessageView(Group(Messages, False));
+    mMessages.ShowMessageView(Group(mMessages, False));
   end;
 end;
 
 procedure TAtlasProblemsList.Clear;
 var
-  Messages: IOTAMessageServices;
-  Target: IOTAMessageGroup;
+  mMessages: IOTAMessageServices;
+  mTarget: IOTAMessageGroup;
 begin
   if FSignature = '' then
   begin
     Exit;
   end;
   FSignature := '';
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     Exit;
   end;
-  Target := Group(Messages, False);
-  if Target <> nil then
+  mTarget := Group(mMessages, False);
+  if mTarget <> nil then
   begin
-    Messages.RemoveMessageGroup(Target);
+    mMessages.RemoveMessageGroup(mTarget);
   end;
 end;
 

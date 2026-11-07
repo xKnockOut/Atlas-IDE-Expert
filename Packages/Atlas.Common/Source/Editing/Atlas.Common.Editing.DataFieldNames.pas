@@ -40,7 +40,8 @@ type
     Method: string;
     /// <summary>Spalte hinter dem öffnenden Anführungszeichen (0-basiert).</summary>
     ContentStart: Integer;
-    /// <summary>Ende des Inhalts (exklusiv): vor dem schließenden Anführungszeichen, ohne eines das Zeilenende.</summary>
+    /// <summary>Ende des Inhalts (exklusiv): vor dem schließenden Anführungszeichen, ohne eines das
+    /// Zeilenende.</summary>
     ContentEnd: Integer;
     /// <summary>Inhalt des Literals, '' als ' gelesen.</summary>
     Content: string;
@@ -129,7 +130,7 @@ type
 
   TSqlTokens = TArray<TSqlToken>;
 
-  TCharTest = function(C: Char): Boolean;
+  TCharTest = function(AC: Char): Boolean;
 
 const
   cSuffixes: array[0..3] of string = ('.Params', '.Parameters', '.ParamData', '.Fields');
@@ -144,19 +145,19 @@ begin
   Result := (Kind = TSqlTokenKind.Symbol) and (Text = AText);
 end;
 
-function IsWordStart(C: Char): Boolean;
+function IsWordStart(AC: Char): Boolean;
 begin
-  Result := CharInSet(C, ['A'..'Z', 'a'..'z', '_', '@', '#']) or (Ord(C) > 127);
+  Result := CharInSet(AC, ['A'..'Z', 'a'..'z', '_', '@', '#']) or (Ord(AC) > 127);
 end;
 
-function IsWordChar(C: Char): Boolean;
+function IsWordChar(AC: Char): Boolean;
 begin
-  Result := IsWordStart(C) or CharInSet(C, ['0'..'9', '$']);
+  Result := IsWordStart(AC) or CharInSet(AC, ['0'..'9', '$']);
 end;
 
-function IsNumberChar(C: Char): Boolean;
+function IsNumberChar(AC: Char): Boolean;
 begin
-  Result := CharInSet(C, ['0'..'9', '.']);
+  Result := CharInSet(AC, ['0'..'9', '.']);
 end;
 
 function MakeToken(AKind: TSqlTokenKind; const AText: string): TSqlToken;
@@ -520,7 +521,8 @@ begin
   Result := AWidth > 0;
 end;
 
-/// <summary>Erstes Token der ersten SELECT-Liste hinter SELECT und ihren Zusätzen; hinter dem Ende ohne SELECT.</summary>
+/// <summary>Erstes Token der ersten SELECT-Liste hinter SELECT und ihren Zusätzen; hinter dem Ende ohne
+/// SELECT.</summary>
 function ListStart(const ATokens: TSqlTokens): Integer;
 var
   mWidth: Integer;
@@ -600,15 +602,15 @@ end;
 
 function FindObject(AObject: TDfmObject; const AName: string): TDfmObject;
 var
-  Child: TDfmObject;
+  mChild: TDfmObject;
 begin
   if (AObject.Kind <> TDfmObjectKind.Item) and SameText(AObject.Name, AName) then
   begin
     Exit(AObject);
   end;
-  for Child in AObject.Children do
+  for mChild in AObject.Children do
   begin
-    Result := FindObject(Child, AName);
+    Result := FindObject(mChild, AName);
     if Result <> nil then
     begin
       Exit;
@@ -619,16 +621,16 @@ end;
 
 function PropertyText(AObject: TDfmObject; const AName: string; out AText: string): Boolean;
 var
-  Prop: TDfmProperty;
+  mProp: TDfmProperty;
 begin
   AText := '';
-  for Prop in AObject.Properties do
+  for mProp in AObject.Properties do
   begin
-    if SameText(Prop.Name, AName) then
+    if SameText(mProp.Name, AName) then
     begin
-      if not TStringLiterals.PlainText(Prop.Value, AText) then
+      if not TStringLiterals.PlainText(mProp.Value, AText) then
       begin
-        AText := Trim(Prop.Value);
+        AText := Trim(mProp.Value);
       end;
       Exit(True);
     end;
@@ -638,27 +640,27 @@ end;
 
 procedure Add(var ANames: TArray<TDataName>; const AName, ATypeName: string);
 var
-  Index: Integer;
-  Item: TDataName;
+  mIndex: Integer;
+  mItem: TDataName;
 begin
   if AName = '' then
   begin
     Exit;
   end;
-  for Index := 0 to High(ANames) do
+  for mIndex := 0 to High(ANames) do
   begin
-    if SameText(ANames[Index].Name, AName) then
+    if SameText(ANames[mIndex].Name, AName) then
     begin
-      if ANames[Index].TypeName = '' then
+      if ANames[mIndex].TypeName = '' then
       begin
-        ANames[Index].TypeName := ATypeName;
+        ANames[mIndex].TypeName := ATypeName;
       end;
       Exit;
     end;
   end;
-  Item.Name := AName;
-  Item.TypeName := ATypeName;
-  ANames := ANames + [Item];
+  mItem.Name := AName;
+  mItem.TypeName := ATypeName;
+  ANames := ANames + [mItem];
 end;
 
 /// <summary>TIntegerField → Integer, TWideStringField → WideString.</summary>
@@ -804,17 +806,17 @@ end;
 /// <summary>Name des Wurzelobjekts der Formulardatei; '' ohne.</summary>
 function RootName(const AFormText: string): string;
 var
-  Document: TDfmDocument;
+  mDocument: TDfmDocument;
 begin
   Result := '';
-  Document := TDfmParser.Parse(AFormText);
+  mDocument := TDfmParser.Parse(AFormText);
   try
-    if Document.Root <> nil then
+    if mDocument.Root <> nil then
     begin
-      Result := Document.Root.Name;
+      Result := mDocument.Root.Name;
     end;
   finally
-    Document.Free;
+    mDocument.Free;
   end;
 end;
 
@@ -879,11 +881,11 @@ end;
 
 class function TDataFieldNames.Contains(const ANames: TArray<TDataName>; const AName: string): Boolean;
 var
-  Item: TDataName;
+  mItem: TDataName;
 begin
-  for Item in ANames do
+  for mItem in ANames do
   begin
-    if SameText(Item.Name, AName) then
+    if SameText(mItem.Name, AName) then
     begin
       Exit(True);
     end;

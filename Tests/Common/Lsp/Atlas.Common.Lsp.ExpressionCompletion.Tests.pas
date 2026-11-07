@@ -123,7 +123,7 @@ begin
   // Über den Dispatcher: Er liefert das Abbruchsignal, das Complete braucht.
   Inc(FId);
   Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":' + IntToStr(FId) + ',"method":"' +
-    TLspExpressionCompletion.Method + '","params":{"textDocument":{"uri":"' +
+    TLspExpressionCompletion.cMethod + '","params":{"textDocument":{"uri":"' +
     TDocumentUris.FromPath(FileName).Replace('\', '\\') + '"},"position":{"line":' + IntToStr(ALine) +
     ',"character":0},"expression":"' + AExpression + '","character":' + IntToStr(Length(AExpression)) +
     '}}') as TJSONObject;
@@ -242,7 +242,7 @@ var
   Uri: string;
 begin
   Uri := TDocumentUris.FromPath(FileName);
-  Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspExpressionCompletion.Method +
+  Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspExpressionCompletion.cMethod +
     '","params":{"textDocument":{"uri":"' + Uri.Replace('\', '\\') +
     '"},"position":{"line":15,"character":0},"expression":"Kunde.Na","character":8}}') as TJSONObject;
   try

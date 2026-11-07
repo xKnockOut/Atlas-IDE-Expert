@@ -25,6 +25,9 @@ type
     /// <summary>Farben für Leisten im Rahmen der IDE (Brotkrumenleiste): Fläche und Schrift wie die
     /// Werkzeugleisten des IDE-Themas (clBtnFace/clBtnText), ohne Thema die von Windows.</summary>
     class function ChromeColors: TAtlasColors; static;
+    /// <summary>Farben der Leisten im Editorfenster (Brotkrumen, Werkzeugleiste, Designer): ChromeColors mit
+    /// breadcrumbs.ideColors, sonst Colors.</summary>
+    class function BarColors: TAtlasColors; static;
     /// <summary>Farben, Editorschrift und Skalierung auf AWindow übertragen. ACaret: Caret-Rechteck in
     /// Bildschirmkoordinaten (Monitor und Zoom). Liefert eine Zeile für das Diagnoseprotokoll.</summary>
     class function Apply(AWindow: TAtlasPopupWindow; const ACaret: TRect): string; static;
@@ -33,7 +36,7 @@ type
     /// <summary>ARect halb durchsichtig mit AColor überziehen; der Text darunter bleibt lesbar.</summary>
     class procedure Blend(ADC: HDC; const ARect: TRect; AColor: COLORREF; AAlpha: Byte); static;
     /// <summary>Hintergrund des Editors an X, Y; ersatzweise die Pinselfarbe der Zeichenfläche.</summary>
-    class function SampleBack(ACanvas: TCanvas; X, Y: Integer): TAtlasColor; static;
+    class function SampleBack(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor; static;
   end;
 
 implementation
@@ -42,39 +45,40 @@ uses
   System.SysUtils,
   System.Win.Registry,
   ToolsAPI,
-  Atlas.Core.Style.Scaling;
+  Atlas.Core.Style.Scaling,
+  Atlas.IDE.Foundation.Settings;
 
 function WindowsUsesLightApps: Boolean;
 var
-  Registry: TRegistry;
+  mRegistry: TRegistry;
 begin
   Result := True;
-  Registry := TRegistry.Create(KEY_READ);
+  mRegistry := TRegistry.Create(KEY_READ);
   try
-    Registry.RootKey := HKEY_CURRENT_USER;
-    if Registry.OpenKeyReadOnly('Software\Microsoft\Windows\CurrentVersion\Themes\Personalize') and
-      Registry.ValueExists('AppsUseLightTheme') then
+    mRegistry.RootKey := HKEY_CURRENT_USER;
+    if mRegistry.OpenKeyReadOnly('Software\Microsoft\Windows\CurrentVersion\Themes\Personalize') and
+      mRegistry.ValueExists('AppsUseLightTheme') then
     begin
-      Result := Registry.ReadInteger('AppsUseLightTheme') <> 0;
+      Result := mRegistry.ReadInteger('AppsUseLightTheme') <> 0;
     end;
   finally
-    Registry.Free;
+    mRegistry.Free;
   end;
 end;
 
 /// <summary>Texthöhe der Schrift bei APPI ohne Zoom, in Gerätepixeln.</summary>
 function TextHeightAt(const AFontName: string; AFontSize, APPI: Integer): Integer;
 var
-  Bitmap: TBitmap;
+  mBitmap: TBitmap;
 begin
-  Bitmap := TBitmap.Create;
+  mBitmap := TBitmap.Create;
   try
-    Bitmap.Canvas.Font.Name := AFontName;
-    Bitmap.Canvas.Font.PixelsPerInch := APPI;
-    Bitmap.Canvas.Font.Size := AFontSize;
-    Result := Bitmap.Canvas.TextHeight('Wg');
+    mBitmap.Canvas.Font.Name := AFontName;
+    mBitmap.Canvas.Font.PixelsPerInch := APPI;
+    mBitmap.Canvas.Font.Size := AFontSize;
+    Result := mBitmap.Canvas.TextHeight('Wg');
   finally
-    Bitmap.Free;
+    mBitmap.Free;
   end;
 end;
 
@@ -82,54 +86,54 @@ end;
 
 class procedure TAtlasIdeStyle.Blend(ADC: HDC; const ARect: TRect; AColor: COLORREF; AAlpha: Byte);
 var
-  Memory: HDC;
-  Bitmap, Old: HBITMAP;
-  Func: TBlendFunction;
+  mMemory: HDC;
+  mBitmap, mOld: HBITMAP;
+  mFunc: TBlendFunction;
 begin
   if (ARect.Right <= ARect.Left) or (ARect.Bottom <= ARect.Top) then
   begin
     Exit;
   end;
-  Memory := CreateCompatibleDC(ADC);
-  Bitmap := CreateCompatibleBitmap(ADC, 1, 1);
-  Old := SelectObject(Memory, Bitmap);
+  mMemory := CreateCompatibleDC(ADC);
+  mBitmap := CreateCompatibleBitmap(ADC, 1, 1);
+  mOld := SelectObject(mMemory, mBitmap);
   try
-    SetPixel(Memory, 0, 0, AColor);
-    Func.BlendOp := AC_SRC_OVER;
-    Func.BlendFlags := 0;
-    Func.SourceConstantAlpha := AAlpha;
-    Func.AlphaFormat := 0;
-    AlphaBlend(ADC, ARect.Left, ARect.Top, ARect.Right - ARect.Left, ARect.Bottom - ARect.Top, Memory, 0, 0, 1, 1,
-      Func);
+    SetPixel(mMemory, 0, 0, AColor);
+    mFunc.BlendOp := AC_SRC_OVER;
+    mFunc.BlendFlags := 0;
+    mFunc.SourceConstantAlpha := AAlpha;
+    mFunc.AlphaFormat := 0;
+    AlphaBlend(ADC, ARect.Left, ARect.Top, ARect.Right - ARect.Left, ARect.Bottom - ARect.Top, mMemory, 0, 0, 1, 1,
+      mFunc);
   finally
-    SelectObject(Memory, Old);
-    DeleteObject(Bitmap);
-    DeleteDC(Memory);
+    SelectObject(mMemory, mOld);
+    DeleteObject(mBitmap);
+    DeleteDC(mMemory);
   end;
 end;
 
-class function TAtlasIdeStyle.SampleBack(ACanvas: TCanvas; X, Y: Integer): TAtlasColor;
+class function TAtlasIdeStyle.SampleBack(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor;
 var
-  Sample: COLORREF;
+  mSample: COLORREF;
 begin
-  Sample := GetPixel(ACanvas.Handle, X, Y);
-  if Sample = CLR_INVALID then
+  mSample := GetPixel(ACanvas.Handle, AX, AY);
+  if mSample = CLR_INVALID then
   begin
     Result := TAtlasColor(ColorToRGB(ACanvas.Brush.Color));
   end
   else
   begin
-    Result := TAtlasColor(Sample);
+    Result := TAtlasColor(mSample);
   end;
 end;
 
 class function TAtlasIdeStyle.Colors: TAtlasColors;
 var
-  Theming: IOTAIDEThemingServices;
+  mTheming: IOTAIDEThemingServices;
 begin
-  if Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) and Theming.IDEThemingEnabled then
+  if Supports(BorlandIDEServices, IOTAIDEThemingServices, mTheming) and mTheming.IDEThemingEnabled then
   begin
-    Exit(TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(Theming.StyleServices.GetSystemColor(clWindow)))));
+    Exit(TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clWindow)))));
   end;
   if WindowsUsesLightApps then
   begin
@@ -143,23 +147,35 @@ end;
 
 class function TAtlasIdeStyle.ChromeColors: TAtlasColors;
 var
-  Theming: IOTAIDEThemingServices;
+  mTheming: IOTAIDEThemingServices;
 begin
-  if Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) and Theming.IDEThemingEnabled then
+  if Supports(BorlandIDEServices, IOTAIDEThemingServices, mTheming) and mTheming.IDEThemingEnabled then
   begin
-    Exit(TAtlasColors.ForChrome(TAtlasColor(ColorToRGB(Theming.StyleServices.GetSystemColor(clBtnFace))),
-      TAtlasColor(ColorToRGB(Theming.StyleServices.GetSystemColor(clBtnText)))));
+    Exit(TAtlasColors.ForChrome(TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clBtnFace))),
+      TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clBtnText)))));
   end;
   Result := TAtlasColors.ForChrome(TAtlasColor(ColorToRGB(clBtnFace)), TAtlasColor(ColorToRGB(clBtnText)));
 end;
 
+class function TAtlasIdeStyle.BarColors: TAtlasColors;
+begin
+  if TAtlasIdeSettings.Current.BreadcrumbsIdeColors then
+  begin
+    Result := ChromeColors;
+  end
+  else
+  begin
+    Result := Colors;
+  end;
+end;
+
 class function TAtlasIdeStyle.BaseTextHeight: Integer;
 var
-  Editor: IOTAEditorServices;
+  mEditor: IOTAEditorServices;
 begin
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editor) and (Editor.EditOptions <> nil) then
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditor) and (mEditor.EditOptions <> nil) then
   begin
-    Result := TextHeightAt(Editor.EditOptions.FontName, Editor.EditOptions.FontSize, 96);
+    Result := TextHeightAt(mEditor.EditOptions.FontName, mEditor.EditOptions.FontSize, 96);
   end
   else
   begin
@@ -169,25 +185,25 @@ end;
 
 class function TAtlasIdeStyle.Apply(AWindow: TAtlasPopupWindow; const ACaret: TRect): string;
 var
-  Editor: IOTAEditorServices;
-  FontName: string;
-  FontSize, MonitorPPI, TextHeight: Integer;
-  Zoom: Double;
+  mEditor: IOTAEditorServices;
+  mFontName: string;
+  mFontSize, mMonitorPPI, mTextHeight: Integer;
+  mZoom: Double;
 begin
   AWindow.Colors := Colors;
-  FontName := AWindow.Font.Name;
-  FontSize := AWindow.Font.Size;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editor) and (Editor.EditOptions <> nil) then
+  mFontName := AWindow.Font.Name;
+  mFontSize := AWindow.Font.Size;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditor) and (mEditor.EditOptions <> nil) then
   begin
-    FontName := Editor.EditOptions.FontName;
-    FontSize := Editor.EditOptions.FontSize;
+    mFontName := mEditor.EditOptions.FontName;
+    mFontSize := mEditor.EditOptions.FontSize;
   end;
-  MonitorPPI := TAtlasPopupWindow.MonitorPPI(ACaret.CenterPoint);
-  TextHeight := TextHeightAt(FontName, FontSize, MonitorPPI);
-  Zoom := TAtlasScaling.ZoomFromCaret(ACaret.Height, TextHeight);
-  AWindow.SetScaling(MonitorPPI, Zoom, FontName, FontSize);
+  mMonitorPPI := TAtlasPopupWindow.MonitorPPI(ACaret.CenterPoint);
+  mTextHeight := TextHeightAt(mFontName, mFontSize, mMonitorPPI);
+  mZoom := TAtlasScaling.ZoomFromCaret(ACaret.Height, mTextHeight);
+  AWindow.SetScaling(mMonitorPPI, mZoom, mFontName, mFontSize);
   Result := Format('Darstellung: %s %d pt, Monitor %d dpi, Caret %d px, Text %d px, Zoom %.2f',
-    [FontName, FontSize, MonitorPPI, ACaret.Height, TextHeight, Zoom], TFormatSettings.Invariant);
+    [mFontName, mFontSize, mMonitorPPI, ACaret.Height, mTextHeight, mZoom], TFormatSettings.Invariant);
 end;
 
 end.

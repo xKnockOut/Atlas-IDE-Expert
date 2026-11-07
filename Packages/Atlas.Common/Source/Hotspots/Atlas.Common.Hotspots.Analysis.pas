@@ -41,7 +41,7 @@ type
     Added: Integer;
     Deleted: Integer;
     LastChange: TDateTime;
-    /// <summary>Commits neueste zuerst (höchstens THotspotAnalyzer.HistoryLimit).</summary>
+    /// <summary>Commits neueste zuerst (höchstens THotspotAnalyzer.cHistoryLimit).</summary>
     History: TArray<THotspotLineCommit>;
   end;
 
@@ -102,7 +102,7 @@ type
 
   THotspotAnalyzer = record
   public const
-    HistoryLimit = 50;
+    cHistoryLimit = 50;
   public
     /// <summary>Änderungen je Unit (Reihenfolge wie AUnits). ACommits mit heutigen Pfaden (FollowRenames).</summary>
     class function UnitChanges(const AUnits: TArray<THotspotUnit>;
@@ -217,7 +217,7 @@ begin
   begin
     AChanges.LastChange := ACommit.Date;
   end;
-  if Length(AChanges.History) < THotspotAnalyzer.HistoryLimit then
+  if Length(AChanges.History) < THotspotAnalyzer.cHistoryLimit then
   begin
     AChanges.History := AChanges.History + [HistoryEntry(ACommit, AFile)];
   end;
@@ -298,7 +298,7 @@ begin
     begin
       Result.LastChange := mCommit.Date;
     end;
-    if Length(Result.History) < HistoryLimit then
+    if Length(Result.History) < cHistoryLimit then
     begin
       Result.History := Result.History + [mCommit];
     end;

@@ -76,7 +76,7 @@ function TProbeBar.PartAt(X, Y: Integer): Integer;
 begin
   if (X < 0) or (Y < 0) or (X >= ClientWidth) or (Y >= ClientHeight) then
   begin
-    Exit(PartNone);
+    Exit(cPartNone);
   end;
   if X < ClientWidth div 2 then
   begin
@@ -90,7 +90,7 @@ end;
 
 function TProbeBar.PartHint(APart: Integer): string;
 begin
-  if APart = PartNone then
+  if APart = cPartNone then
   begin
     Result := '';
   end
@@ -220,13 +220,13 @@ end;
 
 procedure TAtlasEditorBarTests.HoverSetsHotAndHint;
 begin
-  Assert.AreEqual(TAtlasEditorBar.PartNone, Probe(FBar).HotPart);
+  Assert.AreEqual(TAtlasEditorBar.cPartNone, Probe(FBar).HotPart);
   FBar.Perform(WM_MOUSEMOVE, 0, MousePoint(FBar.ClientWidth - 5, 5));
   Assert.AreEqual(1, Probe(FBar).HotPart);
   Assert.AreEqual('Teil 1', FBar.Hint);
   Assert.AreEqual(Integer(crHandPoint), Integer(FBar.Cursor));
   FBar.Perform(CM_MOUSELEAVE, 0, 0);
-  Assert.AreEqual(TAtlasEditorBar.PartNone, Probe(FBar).HotPart, 'Verlassen löscht die Hervorhebung');
+  Assert.AreEqual(TAtlasEditorBar.cPartNone, Probe(FBar).HotPart, 'Verlassen löscht die Hervorhebung');
 end;
 
 procedure TAtlasEditorBarTests.ContextMenuStaysInBar;

@@ -27,7 +27,7 @@ type
   TAtlasEnterWatch = class
   private const
     /// <summary>So lange nach dem Tastendruck gilt eine Änderung als sein Zeilenumbruch.</summary>
-    PendingMs = 1000;
+    cPendingMs = 1000;
   private type
     THandler = record
       Name: string;
@@ -88,21 +88,21 @@ end;
 class procedure TAtlasEnterWatch.Add(const AName: string; const AEnabled: TFunc<Boolean>;
   const AHandler: TAtlasEnterHandler);
 var
-  Handler: THandler;
-  Index: Integer;
+  mHandler: THandler;
+  mIndex: Integer;
 begin
-  Handler.Name := AName;
-  Handler.Enabled := AEnabled;
-  Handler.Run := AHandler;
-  for Index := 0 to High(FHandlers) do
+  mHandler.Name := AName;
+  mHandler.Enabled := AEnabled;
+  mHandler.Run := AHandler;
+  for mIndex := 0 to High(FHandlers) do
   begin
-    if SameText(FHandlers[Index].Name, AName) then
+    if SameText(FHandlers[mIndex].Name, AName) then
     begin
-      FHandlers[Index] := Handler;
+      FHandlers[mIndex] := mHandler;
       Exit;
     end;
   end;
-  FHandlers := FHandlers + [Handler];
+  FHandlers := FHandlers + [mHandler];
   if FInstance = nil then
   begin
     FInstance := TAtlasEnterWatch.Create;
@@ -111,13 +111,13 @@ end;
 
 class procedure TAtlasEnterWatch.Remove(const AName: string);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := High(FHandlers) downto 0 do
+  for mIndex := High(FHandlers) downto 0 do
   begin
-    if SameText(FHandlers[Index].Name, AName) then
+    if SameText(FHandlers[mIndex].Name, AName) then
     begin
-      Delete(FHandlers, Index, 1);
+      Delete(FHandlers, mIndex, 1);
     end;
   end;
   if Length(FHandlers) = 0 then
@@ -129,12 +129,12 @@ end;
 
 class function TAtlasEnterWatch.AnyEnabled: Boolean;
 var
-  Handler: THandler;
+  mHandler: THandler;
 begin
   Result := False;
-  for Handler in FHandlers do
+  for mHandler in FHandlers do
   begin
-    if not Assigned(Handler.Enabled) or Handler.Enabled() then
+    if not Assigned(mHandler.Enabled) or mHandler.Enabled() then
     begin
       Exit(True);
     end;
@@ -143,7 +143,7 @@ end;
 
 procedure TAtlasEnterWatch.AppMessage(var Msg: TMsg; var Handled: Boolean);
 var
-  View: IOTAEditView;
+  mView: IOTAEditView;
 begin
   if (Msg.message <> WM_KEYDOWN) or (Msg.wParam <> VK_RETURN) then
   begin
@@ -157,13 +157,13 @@ begin
     begin
       Exit;
     end;
-    View := TAtlasEditorBuffer.ActiveView;
-    if (View = nil) or (View.Buffer = nil) then
+    mView := TAtlasEditorBuffer.ActiveView;
+    if (mView = nil) or (mView.Buffer = nil) then
     begin
       Exit;
     end;
-    FPendingFile := View.Buffer.FileName;
-    FPendingLines := View.Buffer.GetLinesInBuffer;
+    FPendingFile := mView.Buffer.FileName;
+    FPendingLines := mView.Buffer.GetLinesInBuffer;
     FPendingAt := TThread.GetTickCount64;
   except
     // Die Taste geht in jedem Fall an die IDE (Handled bleibt False).
@@ -174,57 +174,57 @@ end;
 
 class procedure TAtlasEnterWatch.EditorModified(const AView: IOTAEditView);
 var
-  FileName, LineText: string;
-  Cursor: TOTAEditPos;
-  View: IOTAEditView;
+  mFileName, mLineText: string;
+  mCursor: TOTAEditPos;
+  mView: IOTAEditView;
 begin
   if (FInstance = nil) or (FInstance.FPendingFile = '') then
   begin
     Exit;
   end;
-  FileName := FInstance.FPendingFile;
+  mFileName := FInstance.FPendingFile;
   // Nur die erste Änderung nach dem Tastendruck zählt.
   FInstance.FPendingFile := '';
-  if (AView = nil) or (AView.Buffer = nil) or not SameText(FileName, AView.Buffer.FileName) or
-    (TThread.GetTickCount64 - FInstance.FPendingAt > PendingMs) or
+  if (AView = nil) or (AView.Buffer = nil) or not SameText(mFileName, AView.Buffer.FileName) or
+    (TThread.GetTickCount64 - FInstance.FPendingAt > cPendingMs) or
     (AView.Buffer.GetLinesInBuffer <> FInstance.FPendingLines + 1) then
   begin
     Exit;
   end;
-  Cursor := AView.CursorPos;
-  if Cursor.Line <= 1 then
+  mCursor := AView.CursorPos;
+  if mCursor.Line <= 1 then
   begin
     Exit;
   end;
-  LineText := TAtlasEditorBuffer.LineText(AView, Cursor.Line);
-  if Trim(Copy(LineText, 1, TLspSession.ColumnToIndex(LineText, Cursor.Col,
+  mLineText := TAtlasEditorBuffer.LineText(AView, mCursor.Line);
+  if Trim(Copy(mLineText, 1, TLspSession.ColumnToIndex(mLineText, mCursor.Col,
     TAtlasEditorBuffer.TabWidth(AView.Buffer)))) <> '' then
   begin
     Exit;
   end;
   // Erst nach der Änderung, wenn die IDE den Cursor gesetzt hat.
-  View := AView;
+  mView := AView;
   TAtlasMainThread.ForceQueue(TAtlasFeature.ContinueLines,
     procedure
     begin
       TAtlasGuard.Run(TAtlasFeature.ContinueLines,
         procedure
         begin
-          Run(View);
+          Run(mView);
         end);
     end);
 end;
 
 class procedure TAtlasEnterWatch.Run(const AView: IOTAEditView);
 var
-  Handlers: TArray<THandler>;
-  Handler: THandler;
+  mHandlers: TArray<THandler>;
+  mHandler: THandler;
 begin
   // Eine Kopie: Ein Handler darf sich abmelden.
-  Handlers := Copy(FHandlers);
-  for Handler in Handlers do
+  mHandlers := Copy(FHandlers);
+  for mHandler in mHandlers do
   begin
-    if (not Assigned(Handler.Enabled) or Handler.Enabled()) and Handler.Run(AView) then
+    if (not Assigned(mHandler.Enabled) or mHandler.Enabled()) and mHandler.Run(AView) then
     begin
       Exit;
     end;

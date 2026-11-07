@@ -73,7 +73,7 @@ begin
   mJob := Default(TAtlasBuildJob);
   mJob.Project := AProject;
   mJob.Kind := TAtlasBuildJobKind.Make;
-  mJob.RequestedBy := TAtlasTestRun.RequestedBy;
+  mJob.RequestedBy := TAtlasTestRun.cRequestedBy;
   Result := mJobs.Start(mJob,
     procedure(const AResult: TAtlasBuildJobResult)
     begin

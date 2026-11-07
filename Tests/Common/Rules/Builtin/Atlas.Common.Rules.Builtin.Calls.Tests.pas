@@ -146,7 +146,7 @@ var
 begin
   Found := Findings(Post('  Versenden(Kunde.Mail, ''Rechnung'');'));
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(ArgumentCountMismatchRuleId, Found[0].RuleId);
+  Assert.AreEqual(cArgumentCountMismatchRuleId, Found[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Found[0].Confidence));
   Assert.AreEqual('Versenden erwartet 3 Argumente, übergeben sind 2; Text fehlt (wie E2035).', Found[0].Message);
@@ -381,15 +381,15 @@ begin
   Found := Findings(Source);
   Actions := TRuleCodeActions.ForFindings(Found, Source, Found[0].Range);
   Assert.AreEqual('Signaturhilfe öffnen', Actions[0].Title);
-  Assert.AreEqual(ShowSignatureHelpCommand, Actions[0].Command);
+  Assert.AreEqual(cShowSignatureHelpCommand, Actions[0].Command);
   Assert.AreEqual(2, Integer(Length(Actions[0].CommandArguments)));
   Assert.AreEqual('21', Actions[0].CommandArguments[0]);
   Assert.AreEqual('34', Actions[0].CommandArguments[1]);
-  Assert.AreEqual(RuleFixTag, Actions[0].Tag);
+  Assert.AreEqual(cRuleFixTag, Actions[0].Tag);
   // Ein gewöhnlicher Sprung bleibt atlas.goToPosition.
   Found[0].Fixes[0].OpensSignature := False;
   Actions := TRuleCodeActions.ForFindings(Found, Source, Found[0].Range);
-  Assert.AreEqual(GoToPositionCommand, Actions[0].Command);
+  Assert.AreEqual(cGoToPositionCommand, Actions[0].Command);
 end;
 
 procedure TCallRulesTests.HeaderParts;
@@ -492,7 +492,7 @@ var
 begin
   mFound := OverloadFindings(NimmUnit('', '  Nimm(1.5);'));
   Assert.AreEqual(1, Integer(Length(mFound)));
-  Assert.AreEqual(OverloadResolutionRuleId, mFound[0].RuleId);
+  Assert.AreEqual(cOverloadResolutionRuleId, mFound[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFound[0].Severity));
   Assert.AreEqual('Keine der 2 Überladungen von Nimm passt zu den Argumenten (Extended) (wie E2250).',
     mFound[0].Message);

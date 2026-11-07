@@ -34,6 +34,8 @@ type
     FBusy: TFunc<Boolean>;
   private
     class function Session: TLspSession; static;
+    /// <summary>Keine eigene Anfrage läuft und der Aufrufer meldet nichts Laufendes (ABusy von Install).</summary>
+    class function Idle: Boolean; static;
     /// <summary>Stand der Zeile ALine (0-basiert) in AView.</summary>
     class function AskedOf(const AView: IOTAEditView; ALine: Integer): TAtlasSmartIndentAsked; static;
     /// <summary>Nach Enter; False: Atlas übernimmt die Zeile nicht.</summary>
@@ -66,9 +68,9 @@ uses
   Atlas.IDE.Editor.EnterWatch;
 
 const
-  HandlerName = 'SmartIndent';
+  cHandlerName = 'SmartIndent';
   /// <summary>Spalte beim Einfügen: kurz, sonst bleibt die bisherige Heuristik.</summary>
-  ColumnTimeoutMs = 500;
+  cColumnTimeoutMs = 500;
 
 /// <summary>Schreibt AEdits (aufsteigend, ohne Überlappung) als einen Rückgängig-Schritt in ABuffer mit Text
 /// AText.</summary>
@@ -121,7 +123,7 @@ begin
   begin
     FRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.SmartIndent);
   end;
-  TAtlasEnterWatch.Add(HandlerName,
+  TAtlasEnterWatch.Add(cHandlerName,
     function: Boolean
     begin
       Result := Enabled;
@@ -134,7 +136,7 @@ end;
 
 class procedure TAtlasIdeSmartIndent.Uninstall;
 begin
-  TAtlasEnterWatch.Remove(HandlerName);
+  TAtlasEnterWatch.Remove(cHandlerName);
   // Wartet die laufende Anfrage ab und verwirft ihre Antwort.
   FreeAndNil(FRequest);
   FSessionOf := nil;
@@ -155,6 +157,11 @@ begin
   end;
 end;
 
+class function TAtlasIdeSmartIndent.Idle: Boolean;
+begin
+  Result := (FRequest <> nil) and not FRequest.Busy and not (Assigned(FBusy) and FBusy());
+end;
+
 class function TAtlasIdeSmartIndent.AskedOf(const AView: IOTAEditView; ALine: Integer): TAtlasSmartIndentAsked;
 begin
   Result := TAtlasSmartIndentAsked.Create(AView.Buffer.FileName, ALine, TAtlasEditorBuffer.LineText(AView, ALine + 1),
@@ -171,8 +178,8 @@ var
 begin
   Result := False;
   mSession := Session;
-  if (mSession = nil) or (FRequest = nil) or FRequest.Busy or (Assigned(FBusy) and FBusy()) or
-    AView.Buffer.IsReadOnly or not TAtlasSmartIndent.IsSource(AView.Buffer.FileName) then
+  if (mSession = nil) or not Idle or AView.Buffer.IsReadOnly or
+    not TAtlasSmartIndent.IsSource(AView.Buffer.FileName) then
   begin
     Exit;
   end;
@@ -192,7 +199,7 @@ begin
     var
       mValue: TJSONValue;
     begin
-      mValue := mSession.RunCommand(TAtlasSmartIndent.Command, mArguments, TAtlasSmartIndent.TimeoutMs);
+      mValue := mSession.RunCommand(TAtlasSmartIndent.cCommand, mArguments, TAtlasSmartIndent.cTimeoutMs);
       try
         TAtlasSmartIndent.ReadAnswer(mValue, mAnswer);
       finally
@@ -255,9 +262,9 @@ begin
   end;
   mSession.Sync(ABuffer.FileName, AText);
   try
-    mValue := mSession.RunCommand(TAtlasSmartIndent.Command, TAtlasSmartIndent.Arguments(
+    mValue := mSession.RunCommand(TAtlasSmartIndent.cCommand, TAtlasSmartIndent.Arguments(
       TLspSession.PathToUri(ABuffer.FileName), ALine, TAtlasEditorBuffer.BlockIndent(ABuffer), True, True),
-      ColumnTimeoutMs);
+      cColumnTimeoutMs);
   except
     on E: ELspClientError do
     begin

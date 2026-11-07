@@ -52,70 +52,70 @@ uses
 /// <summary>Bezeichner ab ACharacter (0-basiert) in ALine, klein.</summary>
 function WordAtPos(const ALine: string; ACharacter: Integer): string;
 var
-  Stop: Integer;
+  mStop: Integer;
 begin
-  Stop := ACharacter + 1;
-  while (Stop <= Length(ALine)) and TTextChars.IsIdentChar(ALine[Stop]) do
+  mStop := ACharacter + 1;
+  while (mStop <= Length(ALine)) and TTextChars.IsIdentChar(ALine[mStop]) do
   begin
-    Inc(Stop);
+    Inc(mStop);
   end;
-  Result := LowerCase(Copy(ALine, ACharacter + 1, Stop - ACharacter - 1));
+  Result := LowerCase(Copy(ALine, ACharacter + 1, mStop - ACharacter - 1));
 end;
 
 class function TAtlasSearchScopes.Routines(const AText: string): TArray<TAtlasSearchRoutine>;
 var
-  Lines: TArray<string>;
-  Blocks: TArray<TAtlasPairBlock>;
-  Block: TAtlasPairBlock;
-  Owner, Opener: string;
-  Routine: TAtlasSearchRoutine;
+  mLines: TArray<string>;
+  mBlocks: TArray<TAtlasPairBlock>;
+  mBlock: TAtlasPairBlock;
+  mOwner, mOpener: string;
+  mRoutine: TAtlasSearchRoutine;
 begin
   Result := nil;
-  Lines := TTextLines.SplitLines(AText);
-  TAtlasPairs.Analyze(AText, Blocks);
-  for Block in Blocks do
+  mLines := TTextLines.SplitLines(AText);
+  TAtlasPairs.Analyze(AText, mBlocks);
+  for mBlock in mBlocks do
   begin
-    if (Block.OwnerLine < 0) or (Block.OwnerLine > High(Lines)) or (Block.OpenLine > High(Lines)) then
+    if (mBlock.OwnerLine < 0) or (mBlock.OwnerLine > High(mLines)) or (mBlock.OpenLine > High(mLines)) then
     begin
       Continue;
     end;
     // Typdeklarationen (TFoo = class … end) haben sich selbst als Besitzer.
-    if (Block.OwnerLine = Block.OpenLine) and (Block.OwnerCharacter = Block.OpenCharacter) then
+    if (mBlock.OwnerLine = mBlock.OpenLine) and (mBlock.OwnerCharacter = mBlock.OpenCharacter) then
     begin
       Continue;
     end;
-    Owner := WordAtPos(Lines[Block.OwnerLine], Block.OwnerCharacter);
-    Opener := WordAtPos(Lines[Block.OpenLine], Block.OpenCharacter);
-    if not ((Opener = 'begin') or (Opener = 'asm')) then
+    mOwner := WordAtPos(mLines[mBlock.OwnerLine], mBlock.OwnerCharacter);
+    mOpener := WordAtPos(mLines[mBlock.OpenLine], mBlock.OpenCharacter);
+    if not ((mOpener = 'begin') or (mOpener = 'asm')) then
     begin
       Continue;
     end;
-    if not MatchStr(Owner, ['procedure', 'function', 'constructor', 'destructor', 'operator', 'class']) then
+    if not MatchStr(mOwner, ['procedure', 'function', 'constructor', 'destructor', 'operator', 'class']) then
     begin
       Continue;
     end;
     // Bis hinter das end des Rumpfs.
-    Routine.Area := TAtlasSearchArea.Create(Block.OwnerLine, Block.OwnerCharacter, Block.CloseLine,
-      Block.CloseCharacter + 3);
-    Routine.Caption := Trim(Copy(Lines[Block.OwnerLine], Block.OwnerCharacter + 1, MaxInt));
-    Result := Result + [Routine];
+    mRoutine.Area := TAtlasSearchArea.Create(mBlock.OwnerLine, mBlock.OwnerCharacter, mBlock.CloseLine,
+      mBlock.CloseCharacter + 3);
+    mRoutine.Caption := Trim(Copy(mLines[mBlock.OwnerLine], mBlock.OwnerCharacter + 1, MaxInt));
+    Result := Result + [mRoutine];
   end;
 end;
 
 class function TAtlasSearchScopes.RoutinesAt(const AText: string;
   const APos: TAtlasSearchPos): TArray<TAtlasSearchRoutine>;
 var
-  All: TArray<TAtlasSearchRoutine>;
-  Routine, Swap: TAtlasSearchRoutine;
+  mAll: TArray<TAtlasSearchRoutine>;
+  mRoutine, mSwap: TAtlasSearchRoutine;
   I, J: Integer;
 begin
   Result := nil;
-  All := Routines(AText);
-  for Routine in All do
+  mAll := Routines(AText);
+  for mRoutine in mAll do
   begin
-    if Routine.Area.Contains(APos) then
+    if mRoutine.Area.Contains(APos) then
     begin
-      Result := Result + [Routine];
+      Result := Result + [mRoutine];
     end;
   end;
   // Innerste zuerst: der späteste Anfang (umgebende Routinen beginnen vorher).
@@ -125,9 +125,9 @@ begin
     begin
       if TAtlasSearchPos.Compare(Result[J].Area.Start, Result[J - 1].Area.Start) > 0 then
       begin
-        Swap := Result[J];
+        mSwap := Result[J];
         Result[J] := Result[J - 1];
-        Result[J - 1] := Swap;
+        Result[J - 1] := mSwap;
       end;
     end;
   end;
@@ -137,28 +137,28 @@ class function TAtlasSearchScopes.AreaFor(const AText: string; AScope: TAtlasSea
   const ACursor: TAtlasSearchPos; const ASelection: TAtlasSearchArea; ALevel: Integer;
   out AArea: TAtlasSearchArea): Boolean;
 var
-  Around: TArray<TAtlasSearchRoutine>;
-  Level: Integer;
+  mAround: TArray<TAtlasSearchRoutine>;
+  mLevel: Integer;
 begin
   AArea := TAtlasSearchArea.Create(0, 0, 0, 0);
   case AScope of
     TAtlasSearchScope.Method:
       begin
-        Around := RoutinesAt(AText, ACursor);
-        if Length(Around) = 0 then
+        mAround := RoutinesAt(AText, ACursor);
+        if Length(mAround) = 0 then
         begin
           Exit(False);
         end;
-        Level := ALevel;
-        if Level < 0 then
+        mLevel := ALevel;
+        if mLevel < 0 then
         begin
-          Level := 0;
+          mLevel := 0;
         end;
-        if Level > High(Around) then
+        if mLevel > High(mAround) then
         begin
-          Level := High(Around);
+          mLevel := High(mAround);
         end;
-        AArea := Around[Level].Area;
+        AArea := mAround[mLevel].Area;
       end;
     TAtlasSearchScope.Selection:
       begin

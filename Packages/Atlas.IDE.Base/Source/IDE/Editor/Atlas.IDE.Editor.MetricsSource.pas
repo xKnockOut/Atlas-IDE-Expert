@@ -45,11 +45,11 @@ type
       Demand: TAtlasMetricsDemand;
     end;
   private const
-    QuietMs = 700;
+    cQuietMs = 700;
     // Im Hintergrund: Ein langsamer Server hält nur die Werte auf, nicht die IDE.
-    TimeoutMs = 5000;
-    RetryMs = 5000;
-    RefreshMs = 30000;
+    cTimeoutMs = 5000;
+    cRetryMs = 5000;
+    cRefreshMs = 30000;
   private
     FSession: TAtlasMetricsSourceSessionFunc;
     FRun: TAtlasLensCommandProc;
@@ -92,7 +92,7 @@ uses
   Atlas.IDE.Foundation.EditorRefresh;
 
 const
-  MetricsCommand = 'atlas.server.metrics';
+  cMetricsCommand = 'atlas.server.metrics';
 
 { TAtlasEditorMetricsSource }
 
@@ -253,7 +253,7 @@ begin
     end;
     mView := TAtlasLensPoll.TopView;
     if (mView <> nil) and (mView.Buffer <> nil) and IsSource(mView.Buffer.FileName) and
-      FPoll.Due(mView, QuietMs, RefreshMs) then
+      FPoll.Due(mView, cQuietMs, cRefreshMs) then
     begin
       Fetch;
     end;
@@ -265,8 +265,8 @@ end;
 
 procedure TAtlasEditorMetricsSource.Fetch;
 begin
-  FPoll.AskAsync(FSession(), FRun, TAtlasFeature.CodeLens, MetricsCommand, FPoll.UriArguments, RetryMs, TimeoutMs,
-    Answer());
+  FPoll.AskAsync(FSession(), FRun, TAtlasFeature.CodeLens,
+    TAtlasLensRequest.Create(cMetricsCommand, FPoll.UriArguments, cTimeoutMs), cRetryMs, Answer());
 end;
 
 function TAtlasEditorMetricsSource.Answer: TProc<TJSONValue>;
@@ -281,7 +281,7 @@ end;
 procedure TAtlasEditorMetricsSource.Take(AAnswer: TJSONValue);
 begin
   // Den Wert gibt der Manager frei.
-  if not FPoll.Answered(AAnswer, RetryMs) then
+  if not FPoll.Answered(AAnswer, cRetryMs) then
   begin
     Exit;
   end;

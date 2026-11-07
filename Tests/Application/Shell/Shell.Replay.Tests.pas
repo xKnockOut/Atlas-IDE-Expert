@@ -82,7 +82,7 @@ begin
     Result := TJSONObject.Create;
     Result.AddPair('result', TJSONNull.Create);
   end;
-  Result.AddPair('jsonrpc', TJsonRpcMessages.Version);
+  Result.AddPair('jsonrpc', TJsonRpcMessages.cVersion);
   Result.AddPair('id', TJSONValue(AMessage.GetValue('id').Clone));
 end;
 
@@ -138,7 +138,7 @@ var
   mResponse: TJSONObject;
   mDetail: string;
 begin
-  mResponse := ErrorResponse(TJsonRpcErrorCode.InternalError, 'ECrashTest: künstlich');
+  mResponse := ErrorResponse(TJsonRpcErrorCode.cInternalError, 'ECrashTest: künstlich');
   try
     Assert.IsTrue(TShellReplay.Reproduces(SampleCase, mResponse, mDetail));
     Assert.IsTrue(mDetail.Contains('künstlich'));
@@ -152,7 +152,7 @@ var
   mResponse: TJSONObject;
   mDetail: string;
 begin
-  mResponse := ErrorResponse(TJsonRpcErrorCode.InternalError, 'EAccessViolation: weg');
+  mResponse := ErrorResponse(TJsonRpcErrorCode.cInternalError, 'EAccessViolation: weg');
   try
     Assert.IsFalse(TShellReplay.Reproduces(SampleCase, mResponse, mDetail));
   finally
@@ -176,7 +176,7 @@ var
 begin
   mCase := SampleCase;
   mCase.Kind := TCrashCaseKind.Timeout;
-  mResponse := ErrorResponse(TJsonRpcErrorCode.RequestCancelled, 'Zeitlimit');
+  mResponse := ErrorResponse(TJsonRpcErrorCode.cRequestCancelled, 'Zeitlimit');
   try
     Assert.IsTrue(TShellReplay.Reproduces(mCase, mResponse, mDetail));
   finally
@@ -190,12 +190,12 @@ var
 begin
   mResult := Default(TReplayResult);
   mResult.Outcome := TReplayOutcome.Reproduced;
-  Assert.AreEqual(TShellReplay.ExitReproduced, TShellReplay.ExitCodeOf(mResult));
+  Assert.AreEqual(TShellReplay.cExitReproduced, TShellReplay.ExitCodeOf(mResult));
   mResult.Outcome := TReplayOutcome.NotReproduced;
-  Assert.AreEqual(TShellReplay.ExitNotReproduced, TShellReplay.ExitCodeOf(mResult));
+  Assert.AreEqual(TShellReplay.cExitNotReproduced, TShellReplay.ExitCodeOf(mResult));
   Assert.IsTrue(mResult.Text.StartsWith('nicht reproduziert'));
   mResult.Outcome := TReplayOutcome.Unreadable;
-  Assert.AreEqual(TShellReplay.ExitUnreadable, TShellReplay.ExitCodeOf(mResult));
+  Assert.AreEqual(TShellReplay.cExitUnreadable, TShellReplay.ExitCodeOf(mResult));
 end;
 
 procedure TShellReplayTests.IsolatedRunSendsSnapshotAndRequest;
@@ -204,7 +204,7 @@ var
   mResult: TReplayResult;
 begin
   mResult := TShellReplay.Run(SampleCase, TReplayPlace.Isolated, nil,
-    FakeServer(TJsonRpcErrorCode.InternalError, 'ECrashTest: künstlich', mMethods));
+    FakeServer(TJsonRpcErrorCode.cInternalError, 'ECrashTest: künstlich', mMethods));
   Assert.IsTrue(mResult.Outcome = TReplayOutcome.Reproduced, mResult.Text);
   Assert.IsFalse(mResult.Original);
   Assert.AreEqual('initialize;initialized;textDocument/didOpen;textDocument/hover;shutdown;exit;', mMethods());
@@ -219,7 +219,7 @@ var
 begin
   mResult := TShellReplay.Run(TPath.Combine(TPath.GetTempPath, 'gibts-nicht-' + TGUID.NewGuid.ToString + '.json'),
     nil, FakeServer(0, '', mMethods));
-  Assert.AreEqual(TShellReplay.ExitUnreadable, TShellReplay.ExitCodeOf(mResult));
+  Assert.AreEqual(TShellReplay.cExitUnreadable, TShellReplay.ExitCodeOf(mResult));
 end;
 
 initialization

@@ -60,7 +60,7 @@ var
   mServices: TShellProtocolServices;
 begin
   mServices.Logger := AParts.Channel.Logger;
-  mServices.TimeoutMs := TShellParts.RequestTimeoutMs;
+  mServices.TimeoutMs := TShellParts.cRequestTimeoutMs;
   mServices.Capabilities :=
     function: TJSONObject
     begin
@@ -104,8 +104,8 @@ begin
         mWorkspace := mCore.Workspaces.WorkspaceOf(TDocumentUris.ToPath(AUri));
         if mWorkspace <> nil then
         begin
-          Result := Result + [ExistingOrLegacyFile(mWorkspace.Root, ConfigurationFileName,
-            LegacyConfigurationFileName)];
+          Result := Result + [ExistingOrLegacyFile(mWorkspace.Root, cConfigurationFileName,
+            cLegacyConfigurationFileName)];
         end;
       finally
         System.TMonitor.Exit(mCore.Workspaces.Lock);

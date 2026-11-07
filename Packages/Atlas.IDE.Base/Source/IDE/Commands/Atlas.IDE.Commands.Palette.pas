@@ -48,7 +48,7 @@ type
     FAtlasCommands: TList<TPair<TAtlasCommand, TProc>>;
     // Befehle mit Sichtbarkeit nach einer Einstellung (#520); ohne Eintrag immer sichtbar.
     FVisible: TDictionary<string, TFunc<Boolean>>;
-    FShortCutOf: TFunc<string, string>;
+    FShortCutsOf: TFunc<TFunc<string, string>>;
     FSourceOf: TFunc<IAtlasPaletteSource>;
     FBinding: TBinding;
     // Hält das Binding am Leben: Abmelden gibt die Referenz der IDE frei, Rebind meldet es neu an.
@@ -62,11 +62,14 @@ type
     function IsVisible(const AId: string): Boolean;
     /// <summary>Sichtbare Befehle der angemeldeten Module (#1455, IAtlasCommandSource), bei jedem Aufruf neu
     /// gefragt: Sie kommen und gehen mit ihrem Modul.</summary>
-    function ModuleCommands: TArray<TAtlasCommand>;
+    function ModuleCommands(const AShortCuts: TFunc<string, string>): TArray<TAtlasCommand>;
     /// <summary>Befehl AId eines Moduls ausführen; False, wenn ihn keins anbietet.</summary>
     function RunModuleCommand(const AId: string): Boolean;
-    /// <summary>Atlas-Befehl mit seiner Taste aus ShortCutOf.</summary>
-    function WithShortCut(const ACommand: TAtlasCommand): TAtlasCommand;
+    /// <summary>Tasten aller Atlas-Befehle, einmal je Aufruf ausgewertet (ShortCutsOf); nil ohne.</summary>
+    function ShortCuts: TFunc<string, string>;
+    /// <summary>Atlas-Befehl mit seiner Taste aus AShortCuts (nil: ohne Taste).</summary>
+    class function WithShortCut(const ACommand: TAtlasCommand; const AShortCuts: TFunc<string, string>): TAtlasCommand;
+      static;
     /// <summary>Zusatzquelle an das Fenster hängen (#1270); eigene Routine, damit die anonymen Methoden nur
     /// Fenster und Quelle halten.</summary>
     class procedure Attach(AWindow: TAtlasPaletteWindow; const ASource: IAtlasPaletteSource); static;
@@ -87,8 +90,9 @@ type
     procedure Show;
     /// <summary>Tastenkürzel nach den Einstellungen (neu) belegen; bei Konflikt ohne Vorrang keins (#494).</summary>
     procedure Rebind;
-    /// <summary>Taste eines Atlas-Befehls als Text ('' ohne), gesetzt von der Komposition (#520).</summary>
-    property ShortCutOf: TFunc<string, string> read FShortCutOf write FShortCutOf;
+    /// <summary>Liefert das Nachschlagen „Taste eines Atlas-Befehls als Text ('' ohne)“, gesetzt von der
+    /// Komposition (#520); einmal je Liste gefragt.</summary>
+    property ShortCutsOf: TFunc<TFunc<string, string>> read FShortCutsOf write FShortCutsOf;
     /// <summary>Zusatzquelle beim Öffnen (Issues, #1270); nil bzw. Ergebnis nil = nur Befehle.</summary>
     property SourceOf: TFunc<IAtlasPaletteSource> read FSourceOf write FSourceOf;
   end;
@@ -155,7 +159,7 @@ end;
 
 constructor TAtlasIdePalette.Create;
 var
-  Keyboard: IOTAKeyboardServices;
+  mKeyboard: IOTAKeyboardServices;
 begin
   inherited Create;
   FHistory := TAtlasCommandHistory.Create;
@@ -165,7 +169,7 @@ begin
   FAtlasCommands := TList<TPair<TAtlasCommand, TProc>>.Create;
   FVisible := TDictionary<string, TFunc<Boolean>>.Create;
   FBindingIndex := -1;
-  if Supports(BorlandIDEServices, IOTAKeyboardServices, Keyboard) then
+  if Supports(BorlandIDEServices, IOTAKeyboardServices, mKeyboard) then
   begin
     FBinding := TBinding.Create;
     FBindingRef := FBinding;
@@ -176,23 +180,23 @@ end;
 
 procedure TAtlasIdePalette.Rebind;
 var
-  Key: Word;
+  mKey: Word;
 begin
   if FBinding = nil then
   begin
     Exit;
   end;
-  Key := Word(TAtlasIdeSettings.Current.PaletteKey);
-  if not TAtlasIdeKeys.Decide(Key, TAtlasIdeSettings.Current.PaletteKeyPriority,
+  mKey := Word(TAtlasIdeSettings.Current.PaletteKey);
+  if not TAtlasIdeKeys.Decide(mKey, TAtlasIdeSettings.Current.PaletteKeyPriority,
     TAtlasStrings.Text(TAtlasTextId.SettingsPaletteKey)) then
   begin
-    Key := 0;
+    mKey := 0;
   end;
-  if (Key = FKey) and ((FBindingIndex >= 0) = (Key <> 0)) then
+  if (mKey = FKey) and ((FBindingIndex >= 0) = (mKey <> 0)) then
   begin
     Exit;
   end;
-  FKey := Key;
+  FKey := mKey;
   if FKey = 0 then
   begin
     TAtlasIdeKeys.Unbind(FBindingIndex);
@@ -205,16 +209,16 @@ end;
 
 destructor TAtlasIdePalette.Destroy;
 var
-  Keyboard: IOTAKeyboardServices;
+  mKeyboard: IOTAKeyboardServices;
 begin
   // Erst abmelden, dann freigeben (#493).
   if FBinding <> nil then
   begin
     FBinding.FOwner := nil;
   end;
-  if (FBindingIndex >= 0) and Supports(BorlandIDEServices, IOTAKeyboardServices, Keyboard) then
+  if (FBindingIndex >= 0) and Supports(BorlandIDEServices, IOTAKeyboardServices, mKeyboard) then
   begin
-    Keyboard.RemoveKeyboardBinding(FBindingIndex);
+    mKeyboard.RemoveKeyboardBinding(FBindingIndex);
   end;
   FAtlasCommands.Free;
   FVisible.Free;
@@ -229,14 +233,14 @@ end;
 
 procedure TAtlasIdePalette.RegisterCommand(const AId, ACaption, ADescription: string; const AProc: TProc);
 var
-  Command: TAtlasCommand;
+  mCommand: TAtlasCommand;
 begin
-  Command := Default(TAtlasCommand);
-  Command.Id := AId;
-  Command.Caption := 'Atlas: ' + ACaption;
-  Command.Description := ADescription;
-  Command.IsAtlas := True;
-  FAtlasCommands.Add(TPair<TAtlasCommand, TProc>.Create(Command, AProc));
+  mCommand := Default(TAtlasCommand);
+  mCommand.Id := AId;
+  mCommand.Caption := 'Atlas: ' + ACaption;
+  mCommand.Description := ADescription;
+  mCommand.IsAtlas := True;
+  FAtlasCommands.Add(TPair<TAtlasCommand, TProc>.Create(mCommand, AProc));
 end;
 
 procedure TAtlasIdePalette.RegisterCommand(const AId, ACaption, ADescription: string; const AProc: TProc;
@@ -251,12 +255,12 @@ end;
 
 function TAtlasIdePalette.IsVisible(const AId: string): Boolean;
 var
-  Visible: TFunc<Boolean>;
+  mVisible: TFunc<Boolean>;
 begin
-  Result := not FVisible.TryGetValue(AId, Visible) or Visible();
+  Result := not FVisible.TryGetValue(AId, mVisible) or mVisible();
 end;
 
-function TAtlasIdePalette.ModuleCommands: TArray<TAtlasCommand>;
+function TAtlasIdePalette.ModuleCommands(const AShortCuts: TFunc<string, string>): TArray<TAtlasCommand>;
 var
   mModuleCommand: TAtlasModuleCommand;
   mCommand: TAtlasCommand;
@@ -271,7 +275,7 @@ begin
       mCommand.Caption := 'Atlas: ' + mModuleCommand.Caption;
       mCommand.Description := mModuleCommand.Description;
       mCommand.IsAtlas := True;
-      Result := Result + [WithShortCut(mCommand)];
+      Result := Result + [WithShortCut(mCommand, AShortCuts)];
     end;
   end;
 end;
@@ -287,42 +291,52 @@ begin
   end;
 end;
 
-function TAtlasIdePalette.WithShortCut(const ACommand: TAtlasCommand): TAtlasCommand;
+function TAtlasIdePalette.ShortCuts: TFunc<string, string>;
+begin
+  Result := nil;
+  if Assigned(FShortCutsOf) then
+  begin
+    Result := FShortCutsOf();
+  end;
+end;
+
+class function TAtlasIdePalette.WithShortCut(const ACommand: TAtlasCommand;
+  const AShortCuts: TFunc<string, string>): TAtlasCommand;
 begin
   Result := ACommand;
-  if (Result.ShortCut = '') and Assigned(FShortCutOf) then
+  if (Result.ShortCut = '') and Assigned(AShortCuts) then
   begin
-    Result.ShortCut := FShortCutOf(Result.Id);
+    Result.ShortCut := AShortCuts(Result.Id);
   end;
 end;
 
 class function TAtlasIdePalette.MenuPaths: TDictionary<TBasicAction, string>;
 var
-  Services: INTAServices;
+  mServices: INTAServices;
 
   procedure Walk(AItem: TMenuItem; const APath: string);
   var
-    Index: Integer;
-    Child: TMenuItem;
-    Caption: string;
+    mIndex: Integer;
+    mChild: TMenuItem;
+    mCaption: string;
   begin
-    for Index := 0 to AItem.Count - 1 do
+    for mIndex := 0 to AItem.Count - 1 do
     begin
-      Child := AItem.Items[Index];
-      Caption := TAtlasCommandPalette.CleanCaption(Child.Caption);
-      if (Child.Action <> nil) and not Result.ContainsKey(Child.Action) then
+      mChild := AItem.Items[mIndex];
+      mCaption := TAtlasCommandPalette.CleanCaption(mChild.Caption);
+      if (mChild.Action <> nil) and not Result.ContainsKey(mChild.Action) then
       begin
-        Result.Add(Child.Action, APath);
+        Result.Add(mChild.Action, APath);
       end;
-      if Child.Count > 0 then
+      if mChild.Count > 0 then
       begin
         if APath = '' then
         begin
-          Walk(Child, Caption);
+          Walk(mChild, mCaption);
         end
         else
         begin
-          Walk(Child, APath + ' › ' + Caption);
+          Walk(mChild, APath + ' › ' + mCaption);
         end;
       end;
     end;
@@ -330,100 +344,93 @@ var
 
 begin
   Result := TDictionary<TBasicAction, string>.Create;
-  if Supports(BorlandIDEServices, INTAServices, Services) and (Services.MainMenu <> nil) then
+  if Supports(BorlandIDEServices, INTAServices, mServices) and (mServices.MainMenu <> nil) then
   begin
-    Walk(Services.MainMenu.Items, '');
+    Walk(mServices.MainMenu.Items, '');
   end;
 end;
 
 function TAtlasIdePalette.Collect: TArray<TAtlasCommand>;
 var
-  Services: INTAServices;
-  Paths: TDictionary<TBasicAction, string>;
-  Index: Integer;
-  Action: TCustomAction;
-  Command: TAtlasCommand;
-  Seen: TDictionary<string, Boolean>;
-  Pair: TPair<TAtlasCommand, TProc>;
+  mServices: INTAServices;
+  mPaths: TDictionary<TBasicAction, string>;
+  mIndex: Integer;
+  mAction: TCustomAction;
+  mCommand: TAtlasCommand;
+  mSeen: TDictionary<string, Boolean>;
 begin
-  Result := nil;
-  for Pair in FAtlasCommands do
-  begin
-    if IsVisible(Pair.Key.Id) then
-    begin
-      Result := Result + [WithShortCut(Pair.Key)];
-    end;
-  end;
-  Result := Result + ModuleCommands;
-  if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
+  Result := AtlasCommands;
+  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
   begin
     Exit;
   end;
-  Paths := MenuPaths;
-  Seen := TDictionary<string, Boolean>.Create;
+  mPaths := MenuPaths;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    for Index := 0 to Services.ActionList.ActionCount - 1 do
+    for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
     begin
-      if not (Services.ActionList.Actions[Index] is TCustomAction) then
+      if not (mServices.ActionList.Actions[mIndex] is TCustomAction) then
       begin
         Continue;
       end;
-      Action := TCustomAction(Services.ActionList.Actions[Index]);
-      if (Action.Name = '') or not Action.Visible or not Action.Enabled or (Action.Caption = '') or
-        Seen.ContainsKey(Action.Name) then
+      mAction := TCustomAction(mServices.ActionList.Actions[mIndex]);
+      if (mAction.Name = '') or not mAction.Visible or not mAction.Enabled or (mAction.Caption = '') or
+        mSeen.ContainsKey(mAction.Name) then
       begin
         Continue;
       end;
-      Seen.Add(Action.Name, True);
-      Command := Default(TAtlasCommand);
-      Command.Id := Action.Name;
-      Command.Caption := TAtlasCommandPalette.CleanCaption(Action.Caption);
-      if not Paths.TryGetValue(Action, Command.Path) then
+      mSeen.Add(mAction.Name, True);
+      mCommand := Default(TAtlasCommand);
+      mCommand.Id := mAction.Name;
+      mCommand.Caption := TAtlasCommandPalette.CleanCaption(mAction.Caption);
+      if not mPaths.TryGetValue(mAction, mCommand.Path) then
       begin
-        Command.Path := Action.Category;
+        mCommand.Path := mAction.Category;
       end;
-      if Action.ShortCut <> 0 then
+      if mAction.ShortCut <> 0 then
       begin
-        Command.ShortCut := ShortCutToText(Action.ShortCut);
+        mCommand.ShortCut := ShortCutToText(mAction.ShortCut);
       end;
-      Command.Description := Action.Hint;
-      Result := Result + [Command];
+      mCommand.Description := mAction.Hint;
+      Result := Result + [mCommand];
     end;
   finally
-    Seen.Free;
-    Paths.Free;
+    mSeen.Free;
+    mPaths.Free;
   end;
 end;
 
 function TAtlasIdePalette.AtlasCommands: TArray<TAtlasCommand>;
 var
-  Pair: TPair<TAtlasCommand, TProc>;
+  mPair: TPair<TAtlasCommand, TProc>;
+  mShortCuts: TFunc<string, string>;
 begin
+  mShortCuts := ShortCuts();
   Result := nil;
-  for Pair in FAtlasCommands do
+  for mPair in FAtlasCommands do
   begin
-    if IsVisible(Pair.Key.Id) then
+    if IsVisible(mPair.Key.Id) then
     begin
-      Result := Result + [WithShortCut(Pair.Key)];
+      Result := Result + [WithShortCut(mPair.Key, mShortCuts)];
     end;
   end;
-  Result := Result + ModuleCommands;
+  Result := Result + ModuleCommands(mShortCuts);
 end;
 
 procedure TAtlasIdePalette.Execute(const AId: string);
 var
-  Pair: TPair<TAtlasCommand, TProc>;
+  mPair: TPair<TAtlasCommand, TProc>;
   mCommand: TAtlasCommand;
 begin
-  for Pair in FAtlasCommands do
+  for mPair in FAtlasCommands do
   begin
-    if Pair.Key.Id = AId then
+    if mPair.Key.Id = AId then
     begin
-      Run(Pair.Key);
+      Run(mPair.Key);
       Exit;
     end;
   end;
-  for mCommand in ModuleCommands do
+  for mCommand in ModuleCommands(nil) do
   begin
     if mCommand.Id = AId then
     begin
@@ -436,24 +443,24 @@ end;
 /// <summary>Führt die Aktion der IDE mit dem Namen AId aus, wenn es sie noch gibt und sie aktiv ist.</summary>
 procedure RunIdeAction(const AId: string);
 var
-  Services: INTAServices;
-  Index: Integer;
-  Action: TContainedAction;
+  mServices: INTAServices;
+  mIndex: Integer;
+  mAction: TContainedAction;
 begin
   // Die Aktion neu suchen: Sie kann inzwischen freigegeben sein.
-  if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
+  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
   begin
     Exit;
   end;
-  for Index := 0 to Services.ActionList.ActionCount - 1 do
+  for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
   begin
-    Action := Services.ActionList.Actions[Index];
-    if SameText(Action.Name, AId) then
+    mAction := mServices.ActionList.Actions[mIndex];
+    if SameText(mAction.Name, AId) then
     begin
-      Action.Update;
-      if not (Action is TCustomAction) or TCustomAction(Action).Enabled then
+      mAction.Update;
+      if not (mAction is TCustomAction) or TCustomAction(mAction).Enabled then
       begin
-        Action.Execute;
+        mAction.Execute;
       end;
       Exit;
     end;
@@ -462,7 +469,7 @@ end;
 
 procedure TAtlasIdePalette.Run(const ACommand: TAtlasCommand);
 var
-  Pair: TPair<TAtlasCommand, TProc>;
+  mPair: TPair<TAtlasCommand, TProc>;
   mFound: Boolean;
 begin
   FHistory.Executed(ACommand.Id);
@@ -478,11 +485,11 @@ begin
   if ACommand.IsAtlas then
   begin
     mFound := False;
-    for Pair in FAtlasCommands do
+    for mPair in FAtlasCommands do
     begin
-      if Pair.Key.Id = ACommand.Id then
+      if mPair.Key.Id = ACommand.Id then
       begin
-        Pair.Value();
+        mPair.Value();
         mFound := True;
       end;
     end;
@@ -529,12 +536,12 @@ end;
 
 procedure TAtlasIdePalette.Show;
 var
-  Window: TAtlasPaletteWindow;
-  Area: TRect;
+  mWindow: TAtlasPaletteWindow;
+  mArea: TRect;
   mSource: IAtlasPaletteSource;
 begin
-  Window := TAtlasPaletteWindow.CreatePalette(Application, Collect, FHistory, TAtlasIdeStyle.Colors);
-  Window.OnExecute :=
+  mWindow := TAtlasPaletteWindow.CreatePalette(Application, Collect, FHistory, TAtlasIdeStyle.Colors);
+  mWindow.OnExecute :=
     procedure(ACommand: TAtlasCommand)
     begin
       Run(ACommand);
@@ -546,21 +553,21 @@ begin
   end;
   if mSource <> nil then
   begin
-    Attach(Window, mSource);
+    Attach(mWindow, mSource);
   end;
   if Screen.ActiveForm <> nil then
   begin
-    Area := Screen.ActiveForm.BoundsRect;
+    mArea := Screen.ActiveForm.BoundsRect;
   end
   else if Application.MainForm <> nil then
   begin
-    Area := Application.MainForm.BoundsRect;
+    mArea := Application.MainForm.BoundsRect;
   end
   else
   begin
-    Area := Screen.WorkAreaRect;
+    mArea := Screen.WorkAreaRect;
   end;
-  Window.ShowOver(Area);
+  mWindow.ShowOver(mArea);
 end;
 
 end.

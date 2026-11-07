@@ -45,14 +45,14 @@ uses
 
 function SampleList: TAtlasReplaceList;
 var
-  Query: TAtlasSearchQuery;
+  mQuery: TAtlasSearchQuery;
 begin
-  Query := Default(TAtlasSearchQuery);
-  Query.Text := 'foo';
-  Query.Options := TAtlasSearchOptions.Create(False, False, False);
-  Result := TAtlasReplaceList.Create(Query, 'bar');
-  Result.Add(TAtlasFileSearch.SearchText('C:\P\A.pas', 'foo' + #13#10 + 'x foo', Query));
-  Result.Add(TAtlasFileSearch.SearchText('C:\P\B.pas', 'foo', Query));
+  mQuery := Default(TAtlasSearchQuery);
+  mQuery.Text := 'foo';
+  mQuery.Options := TAtlasSearchOptions.Create(False, False, False);
+  Result := TAtlasReplaceList.Create(mQuery, 'bar');
+  Result.Add(TAtlasFileSearch.SearchText('C:\P\A.pas', 'foo' + #13#10 + 'x foo', mQuery));
+  Result.Add(TAtlasFileSearch.SearchText('C:\P\B.pas', 'foo', mQuery));
 end;
 
 procedure TAtlasSearchReplaceFrameTests.Setup;
@@ -68,108 +68,108 @@ end;
 
 procedure TAtlasSearchReplaceFrameTests.RowsFollowTheModelAndToggleTogether;
 var
-  Host: TForm;
-  Frame: TAtlasSearchReplaceFrame;
-  List: TAtlasReplaceList;
+  mHost: TForm;
+  mFrame: TAtlasSearchReplaceFrame;
+  mList: TAtlasReplaceList;
 begin
-  Host := TForm.CreateNew(nil);
-  List := SampleList;
+  mHost := TForm.CreateNew(nil);
+  mList := SampleList;
   try
-    Frame := TAtlasSearchReplaceFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.SetModel(nil);
-    Assert.IsFalse(Frame.ReplaceButton.Enabled);
-    Frame.SetModel(List);
+    mFrame := TAtlasSearchReplaceFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.SetModel(nil);
+    Assert.IsFalse(mFrame.ReplaceButton.Enabled);
+    mFrame.SetModel(mList);
     // A mit zwei Treffern, B mit einem: je Datei eine Kopfzeile.
-    Assert.AreEqual(5, Integer(Length(Frame.Rows)));
-    Assert.AreEqual(5, Frame.List.Items.Count);
-    Assert.AreEqual('„foo“ → „bar“: 3 von 3 Treffern in 2 Dateien ausgewählt', Frame.Title.Caption);
-    Assert.IsTrue(Frame.ReplaceButton.Enabled);
+    Assert.AreEqual(5, Integer(Length(mFrame.Rows)));
+    Assert.AreEqual(5, mFrame.List.Items.Count);
+    Assert.AreEqual('„foo“ → „bar“: 3 von 3 Treffern in 2 Dateien ausgewählt', mFrame.Title.Caption);
+    Assert.IsTrue(mFrame.ReplaceButton.Enabled);
     // Datei A abhaken: beide Treffer folgen.
-    Frame.ToggleRow(0);
-    Assert.IsFalse(List.HitChecked(0, 0));
-    Assert.IsFalse(List.HitChecked(0, 1));
-    Assert.IsFalse(Frame.Rows[1].Checked);
-    Assert.AreEqual(1, List.CheckedCount);
+    mFrame.ToggleRow(0);
+    Assert.IsFalse(mList.HitChecked(0, 0));
+    Assert.IsFalse(mList.HitChecked(0, 1));
+    Assert.IsFalse(mFrame.Rows[1].Checked);
+    Assert.AreEqual(1, mList.CheckedCount);
     // Einen Treffer wieder anhaken: Die Datei ist nicht ganz angehakt.
-    Frame.ToggleRow(2);
-    Assert.IsTrue(List.HitChecked(0, 1));
-    Assert.IsFalse(Frame.Rows[0].Checked);
+    mFrame.ToggleRow(2);
+    Assert.IsTrue(mList.HitChecked(0, 1));
+    Assert.IsFalse(mFrame.Rows[0].Checked);
     // Alles ab: nichts zu ersetzen.
-    Frame.ToggleRow(2);
-    Frame.ToggleRow(3);
-    Assert.AreEqual(0, List.CheckedCount);
-    Assert.IsFalse(Frame.ReplaceButton.Enabled);
-    Frame.SetNotice('2 Ersetzungen in 1 Datei');
-    Assert.AreEqual('2 Ersetzungen in 1 Datei', Frame.Notice.Caption);
+    mFrame.ToggleRow(2);
+    mFrame.ToggleRow(3);
+    Assert.AreEqual(0, mList.CheckedCount);
+    Assert.IsFalse(mFrame.ReplaceButton.Enabled);
+    mFrame.SetNotice('2 Ersetzungen in 1 Datei');
+    Assert.AreEqual('2 Ersetzungen in 1 Datei', mFrame.Notice.Caption);
   finally
-    Host.Free;
-    List.Free;
+    mHost.Free;
+    mList.Free;
   end;
 end;
 
 procedure TAtlasSearchReplaceFrameTests.ReplaceAndOpenAreReported;
 var
-  Host: TForm;
-  Frame: TAtlasSearchReplaceFrame;
-  List: TAtlasReplaceList;
-  Log: string;
-  Key: Word;
+  mHost: TForm;
+  mFrame: TAtlasSearchReplaceFrame;
+  mList: TAtlasReplaceList;
+  mLog: string;
+  mKey: Word;
 begin
-  Host := TForm.CreateNew(nil);
-  List := SampleList;
+  mHost := TForm.CreateNew(nil);
+  mList := SampleList;
   try
-    Frame := TAtlasSearchReplaceFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.SetModel(List);
-    Log := '';
-    Frame.OnReplace :=
+    mFrame := TAtlasSearchReplaceFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.SetModel(mList);
+    mLog := '';
+    mFrame.OnReplace :=
       procedure
       begin
-        Log := Log + 'ersetzen;';
+        mLog := mLog + 'ersetzen;';
       end;
-    Frame.OnOpen :=
+    mFrame.OnOpen :=
       procedure(const AFileName: string; ALine, ACharacter: Integer)
       begin
-        Log := Log + Format('%s:%d:%d;', [ExtractFileName(AFileName), ALine, ACharacter]);
+        mLog := mLog + Format('%s:%d:%d;', [ExtractFileName(AFileName), ALine, ACharacter]);
       end;
-    Frame.ReplaceButton.Click;
-    Frame.List.HandleNeeded;
-    Frame.List.Items[2].Selected := True;
-    Key := VK_RETURN;
-    Frame.List.OnKeyDown(Frame.List, Key, []);
-    Assert.AreEqual('ersetzen;A.pas:1:2;', Log);
+    mFrame.ReplaceButton.Click;
+    mFrame.List.HandleNeeded;
+    mFrame.List.Items[2].Selected := True;
+    mKey := VK_RETURN;
+    mFrame.List.OnKeyDown(mFrame.List, mKey, []);
+    Assert.AreEqual('ersetzen;A.pas:1:2;', mLog);
   finally
-    Host.Free;
-    List.Free;
-    Log := '';
+    mHost.Free;
+    mList.Free;
+    mLog := '';
   end;
 end;
 
 procedure TAtlasSearchReplaceFrameTests.ReplaceButtonHasItsOwnRow;
 var
-  Host: TForm;
-  Frame: TAtlasSearchReplaceFrame;
-  Row: TWinControl;
-  Index: Integer;
+  mHost: TForm;
+  mFrame: TAtlasSearchReplaceFrame;
+  mRow: TWinControl;
+  mIndex: Integer;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasSearchReplaceFrame.Create(Host);
-    Frame.Parent := Host;
-    Row := Frame.ReplaceButton.Parent;
+    mFrame := TAtlasSearchReplaceFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mRow := mFrame.ReplaceButton.Parent;
     // Die VCL richtet alTop vor alRight aus: Neben einem alTop-Geschwister
     // bliebe dem Knopf nur der Rest der Zeilenhöhe (Knopf unsichtbar).
-    for Index := 0 to Row.ControlCount - 1 do
+    for mIndex := 0 to mRow.ControlCount - 1 do
     begin
-      Assert.IsFalse(Row.Controls[Index].Align = alTop, Row.Controls[Index].ClassName + ' mit alTop neben dem Knopf');
+      Assert.IsFalse(mRow.Controls[mIndex].Align = alTop, mRow.Controls[mIndex].ClassName + ' mit alTop neben dem Knopf');
     end;
-    Assert.IsTrue(Row.Height >= Frame.ReplaceButton.Height + Frame.ReplaceButton.Margins.Top +
-      Frame.ReplaceButton.Margins.Bottom, 'Zeile so hoch wie der Knopf');
-    Assert.IsTrue(Frame.Notice.Parent = Row, 'Hinweis neben dem Knopf');
-    Assert.IsFalse(Frame.Title.Parent = Row, 'Kopfzeile darüber');
+    Assert.IsTrue(mRow.Height >= mFrame.ReplaceButton.Height + mFrame.ReplaceButton.Margins.Top +
+      mFrame.ReplaceButton.Margins.Bottom, 'Zeile so hoch wie der Knopf');
+    Assert.IsTrue(mFrame.Notice.Parent = mRow, 'Hinweis neben dem Knopf');
+    Assert.IsFalse(mFrame.Title.Parent = mRow, 'Kopfzeile darüber');
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 

@@ -262,7 +262,7 @@ foreach ($Key in $Catalogs.Keys) {
         # Regeln eines Teils mit Komma getrennt; die Kommas zwischen den Teilen setzt Catalog.Data.
         $Lines = @(($Grouped[$Part] -join ",`n") -replace "`r", '' -split "`n")
         $Name = "$PartPrefix$Key.$Part"
-        $Const = "CatalogLines$Key$Part"
+        $Const = "cCatalogLines$Key$Part"
         $PartUnits[$Name] = New-PartUnit $Name $Const $Source $Lines
         $PartUnitOfConst[$Const] = $Name
         $Size = @($PartUnits[$Name] -split "`n").Count
@@ -298,7 +298,7 @@ foreach ($Key in $Catalogs.Keys) {
 $Unit = New-Object System.Text.StringBuilder
 [void]$Unit.Append("unit Atlas.Common.Rules.Catalog.Data;`r`n`r`n")
 [void]$Unit.Append("// Erzeugt von Tools/Update-RuleCatalog.ps1 aus Katalog\regelkatalog*.json.`r`n")
-[void]$Unit.Append("// Nicht von Hand ändern. Je Sprache eine Unit $PartPrefix<Sprache>, die Regeln je Gruppe in deren Teil-Units.`r`n`r`ninterface`r`n`r`n")
+[void]$Unit.Append("// Nicht von Hand ändern. Je Sprache eine Unit $PartPrefix<Sprache>,`r`n// die Regeln je Gruppe in deren Teil-Units.`r`n`r`ninterface`r`n`r`n")
 [void]$Unit.Append("/// <summary>Englischer Grundkatalog als JSON.</summary>`r`nfunction RuleCatalogBaseJson: string;`r`n")
 [void]$Unit.Append("/// <summary>Übersetzung als JSON, '' für unbekannte Sprachen.</summary>`r`nfunction RuleCatalogOverlayJson(const ALanguage: string): string;`r`n`r`n")
 [void]$Unit.Append("implementation`r`n`r`nuses`r`n  System.SysUtils")

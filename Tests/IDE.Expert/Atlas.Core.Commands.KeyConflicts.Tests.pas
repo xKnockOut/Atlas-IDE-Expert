@@ -34,9 +34,9 @@ uses
 
 procedure TAtlasKeyConflictsTests.PaletteDefaultCollidesWithMacroPlayback;
 begin
-  Assert.Contains(TAtlasKeyConflicts.OwnerOf(TAtlasKeyConflicts.PaletteDefault, TAtlasKeyConflicts.KnownIdeKeys),
+  Assert.Contains(TAtlasKeyConflicts.OwnerOf(TAtlasKeyConflicts.cPaletteDefault, TAtlasKeyConflicts.KnownIdeKeys),
     'Makro');
-  Assert.AreEqual('', TAtlasKeyConflicts.OwnerOf(TAtlasKeyConflicts.CheckDefault, TAtlasKeyConflicts.KnownIdeKeys));
+  Assert.AreEqual('', TAtlasKeyConflicts.OwnerOf(TAtlasKeyConflicts.cCheckDefault, TAtlasKeyConflicts.KnownIdeKeys));
   Assert.AreEqual('', TAtlasKeyConflicts.OwnerOf(0, TAtlasKeyConflicts.KnownIdeKeys));
   // Zeilen verschieben (#634): Alt+↑ und Umschalt+Alt+↑/↓ gehören in der IDE schon anderen Funktionen.
   Assert.Contains(TAtlasKeyConflicts.OwnerOf($8026, TAtlasKeyConflicts.KnownIdeKeys), 'Code-Browsing');
@@ -45,10 +45,10 @@ end;
 
 procedure TAtlasKeyConflictsTests.BindsOnlyWhenFreeOrPreferred;
 begin
-  Assert.IsTrue(TAtlasKeyConflicts.ShouldBind(TAtlasKeyConflicts.CheckDefault, '', False));
-  Assert.IsFalse(TAtlasKeyConflicts.ShouldBind(TAtlasKeyConflicts.PaletteDefault, 'IDE: Makro', False),
+  Assert.IsTrue(TAtlasKeyConflicts.ShouldBind(TAtlasKeyConflicts.cCheckDefault, '', False));
+  Assert.IsFalse(TAtlasKeyConflicts.ShouldBind(TAtlasKeyConflicts.cPaletteDefault, 'IDE: Makro', False),
     'fremde Belegung bleibt aktiv');
-  Assert.IsTrue(TAtlasKeyConflicts.ShouldBind(TAtlasKeyConflicts.PaletteDefault, 'IDE: Makro', True));
+  Assert.IsTrue(TAtlasKeyConflicts.ShouldBind(TAtlasKeyConflicts.cPaletteDefault, 'IDE: Makro', True));
   Assert.IsFalse(TAtlasKeyConflicts.ShouldBind(0, '', True), 'keine Taste');
 end;
 
@@ -74,17 +74,17 @@ begin
   Entries := TAtlasKeyEntry.FromSettings(Settings);
   Assert.AreEqual(9, Integer(Length(Entries)), 'sechs, dazu drei der schnellen Lesezeichen (#1104)');
   Assert.IsTrue(Entries[0].Func = TAtlasKeyFunction.Palette);
-  Assert.AreEqual(Integer(TAtlasKeyConflicts.PaletteDefault), Integer(Entries[0].Key));
+  Assert.AreEqual(Integer(TAtlasKeyConflicts.cPaletteDefault), Integer(Entries[0].Key));
   Assert.IsTrue(Entries[1].Choice = TAtlasKeyChoice.UseAtlas);
   Assert.IsTrue(Entries[3].Func = TAtlasKeyFunction.Signature);
   // Schnellschalter (#604) mit eigener Vorgabe.
   Assert.IsTrue(Entries[4].Func = TAtlasKeyFunction.QuickToggle);
-  Assert.AreEqual(Integer(TAtlasKeyConflicts.QuickToggleDefault), Integer(Entries[4].Key));
+  Assert.AreEqual(Integer(TAtlasKeyConflicts.cQuickToggleDefault), Integer(Entries[4].Key));
   Entries[4].Key := $6051;
   // Diagnosemodus (#479): eigene Vorgabe, nicht die Taste der Schnellschalter.
   Assert.IsTrue(Entries[5].Func = TAtlasKeyFunction.DiagnosticMode);
-  Assert.AreEqual(Integer(TAtlasKeyConflicts.DiagnosticModeDefault), Integer(Entries[5].Key));
-  Assert.AreNotEqual(Integer(TAtlasKeyConflicts.QuickToggleDefault), Integer(Entries[5].Key));
+  Assert.AreEqual(Integer(TAtlasKeyConflicts.cDiagnosticModeDefault), Integer(Entries[5].Key));
+  Assert.AreNotEqual(Integer(TAtlasKeyConflicts.cQuickToggleDefault), Integer(Entries[5].Key));
   Entries[5].Key := $6044;
   Entries[5].Choose(TAtlasKeyChoice.UseAtlas);
   // Andere Taste für Atlas, dann Atlas verwenden.
@@ -109,15 +109,15 @@ begin
   // Strg+Umschalt+Leer bleibt bei der IDE bzw. einer fremden Belegung, solange Atlas keine eigene hat.
   Entry := TAtlasKeyEntry.Create(TAtlasKeyFunction.Signature, 0, False);
   Assert.IsTrue(Entry.Status('Fremde Erweiterung') = TAtlasKeyStatus.IdeKey);
-  Assert.AreEqual(Integer(TAtlasKeyConflicts.IdeSignatureKey), Integer(Entry.IdeKey));
+  Assert.AreEqual(Integer(TAtlasKeyConflicts.cIdeSignatureKey), Integer(Entry.IdeKey));
   // Entscheidet der Benutzer „Atlas verwenden“, belegt Atlas die Taste der IDE selbst.
   Entry.Choose(TAtlasKeyChoice.UseAtlas);
-  Assert.AreEqual(Integer(TAtlasKeyConflicts.IdeSignatureKey), Integer(Entry.Key));
+  Assert.AreEqual(Integer(TAtlasKeyConflicts.cIdeSignatureKey), Integer(Entry.Key));
   Assert.IsTrue(Entry.Status('Fremde Erweiterung') = TAtlasKeyStatus.AtlasWins);
   Entry := TAtlasKeyEntry.Create(TAtlasKeyFunction.Palette, 0, True);
   Assert.IsTrue(Entry.Status('') = TAtlasKeyStatus.NoKey);
   Assert.AreEqual(0, Integer(Entry.IdeKey));
-  Entry := TAtlasKeyEntry.Create(TAtlasKeyFunction.Signature, TAtlasKeyConflicts.IdeSignatureKey, False);
+  Entry := TAtlasKeyEntry.Create(TAtlasKeyFunction.Signature, TAtlasKeyConflicts.cIdeSignatureKey, False);
   Assert.IsTrue(Entry.Status('') = TAtlasKeyStatus.Free);
   Assert.IsTrue(Entry.Status('CnPack') = TAtlasKeyStatus.Left, 'fremde Belegung bleibt aktiv');
   Assert.IsTrue(Entry.Choice = TAtlasKeyChoice.LeaveOther);

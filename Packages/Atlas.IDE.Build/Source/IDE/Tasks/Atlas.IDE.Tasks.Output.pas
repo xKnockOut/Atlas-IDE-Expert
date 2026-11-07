@@ -30,21 +30,21 @@ uses
 type
   TAtlasIdeTaskOutput = class
   public const
-    MaxRuns = 20;
-    MaxLines = 5000;
+    cMaxRuns = 20;
+    cMaxLines = 5000;
   private type
     TEntry = class
-      Id: Integer;
-      Name: string;
-      CommandLine: string;
-      TimeoutSec: Integer;
-      Running: Boolean;
-      Run: TAtlasTaskRun;
-      Lines: TArray<string>;
+      FId: Integer;
+      FName: string;
+      FCommandLine: string;
+      FTimeoutSec: Integer;
+      FRunning: Boolean;
+      FRun: TAtlasTaskRun;
+      FLines: TArray<string>;
       /// <summary>Je Zeile der Index in Findings, -1 ohne.</summary>
-      LineFinding: TArray<Integer>;
-      Findings: TAtlasTaskFindings;
-      Dropped: Integer;
+      FLineFinding: TArray<Integer>;
+      FFindings: TAtlasTaskFindings;
+      FDropped: Integer;
     end;
   private
     FEntries: TObjectList<TEntry>;
@@ -145,15 +145,15 @@ end;
 
 procedure THeaderMessage.Draw(Canvas: TCanvas; const Rect: TRect; Wrap: Boolean);
 var
-  Area: TRect;
+  mArea: TRect;
 begin
-  Area := Rect;
+  mArea := Rect;
   Canvas.Font.Style := [fsBold];
   if FColor <> clNone then
   begin
     Canvas.Font.Color := FColor;
   end;
-  Canvas.TextRect(Area, Area.Left + 2, Area.Top, FText);
+  Canvas.TextRect(mArea, mArea.Left + 2, mArea.Top, FText);
 end;
 
 function THeaderMessage.CalcRect(Canvas: TCanvas; MaxWidth: Integer; Wrap: Boolean): TRect;
@@ -166,13 +166,13 @@ end;
 
 function TAtlasIdeTaskOutput.Group(const AMessages: IOTAMessageServices; ACreate: Boolean): IOTAMessageGroup;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksGroup);
-  Result := AMessages.GetGroup(Name);
+  mName := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksGroup);
+  Result := AMessages.GetGroup(mName);
   if (Result = nil) and ACreate then
   begin
-    Result := AMessages.AddMessageGroup(Name);
+    Result := AMessages.AddMessageGroup(mName);
   end;
   if Result <> nil then
   begin
@@ -194,13 +194,13 @@ end;
 
 function TAtlasIdeTaskOutput.Find(AId: Integer): TEntry;
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
-  for Entry in FEntries do
+  for mEntry in FEntries do
   begin
-    if Entry.Id = AId then
+    if mEntry.FId = AId then
     begin
-      Exit(Entry);
+      Exit(mEntry);
     end;
   end;
   Result := nil;
@@ -218,71 +218,71 @@ end;
 
 procedure TAtlasIdeTaskOutput.AddHeader(AEntry: TEntry);
 var
-  Messages: IOTAMessageServices;
-  Target: IOTAMessageGroup;
-  Colors: TAtlasColors;
-  Color: TColor;
-  Text: string;
+  mMessages: IOTAMessageServices;
+  mTarget: IOTAMessageGroup;
+  mColors: TAtlasColors;
+  mColor: TColor;
+  mText: string;
 begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     Exit;
   end;
-  Target := Group(Messages, True);
-  if Target = nil then
+  mTarget := Group(mMessages, True);
+  if mTarget = nil then
   begin
     Exit;
   end;
-  if AEntry.Running then
+  if AEntry.FRunning then
   begin
-    Text := TAtlasTaskTexts.Running(AEntry.Name, AEntry.CommandLine);
-    Color := clNone;
+    mText := TAtlasTaskTexts.Running(AEntry.FName, AEntry.FCommandLine);
+    mColor := clNone;
   end
   else
   begin
-    Text := TAtlasTaskTexts.Header(AEntry.Run, AEntry.TimeoutSec);
-    Colors := TAtlasIdeStyle.Colors;
-    if AEntry.Run.ExitedCleanly then
+    mText := TAtlasTaskTexts.Header(AEntry.FRun, AEntry.FTimeoutSec);
+    mColors := TAtlasIdeStyle.Colors;
+    if AEntry.FRun.ExitedCleanly then
     begin
-      Color := TColor(Colors.Add);
+      mColor := TColor(mColors.Add);
     end
     else
     begin
-      Color := TColor(Colors.Error);
+      mColor := TColor(mColors.Error);
     end;
   end;
-  Messages.AddCustomMessage(THeaderMessage.Create(Text, Color) as IOTACustomMessage, Target);
+  mMessages.AddCustomMessage(THeaderMessage.Create(mText, mColor) as IOTACustomMessage, mTarget);
 end;
 
 procedure TAtlasIdeTaskOutput.AddLine(AEntry: TEntry; AIndex: Integer);
 var
-  Messages: IOTAMessageServices;
-  Target: IOTAMessageGroup;
-  Finding: TAtlasTaskFinding;
-  LineRef: Pointer;
-  Line: Integer;
+  mMessages: IOTAMessageServices;
+  mTarget: IOTAMessageGroup;
+  mFinding: TAtlasTaskFinding;
+  mLineRef: Pointer;
+  mLine: Integer;
 begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     Exit;
   end;
-  Target := Group(Messages, True);
-  if Target = nil then
+  mTarget := Group(mMessages, True);
+  if mTarget = nil then
   begin
     Exit;
   end;
-  if (AIndex <= High(AEntry.LineFinding)) and (AEntry.LineFinding[AIndex] >= 0) then
+  if (AIndex <= High(AEntry.FLineFinding)) and (AEntry.FLineFinding[AIndex] >= 0) then
   begin
-    Finding := AEntry.Findings[AEntry.LineFinding[AIndex]];
-    if Finding.FileName <> '' then
+    mFinding := AEntry.FFindings[AEntry.FLineFinding[AIndex]];
+    if mFinding.FileName <> '' then
     begin
-      Line := Finding.Line;
-      if Line < 1 then
+      mLine := mFinding.Line;
+      if mLine < 1 then
       begin
-        Line := 1;
+        mLine := 1;
       end;
-      Messages.AddToolMessage(Finding.FileName, AEntry.Lines[AIndex], AEntry.Name, Line, Finding.Column, nil,
-        LineRef, Target);
+      mMessages.AddToolMessage(mFinding.FileName, AEntry.FLines[AIndex], AEntry.FName, mLine, mFinding.Column, nil,
+        mLineRef, mTarget);
       Exit;
     end;
   end
@@ -290,121 +290,121 @@ begin
   begin
     Exit;
   end;
-  Messages.AddTitleMessage('  ' + AEntry.Lines[AIndex], Target);
+  mMessages.AddTitleMessage('  ' + AEntry.FLines[AIndex], mTarget);
 end;
 
 procedure TAtlasIdeTaskOutput.Started(AId: Integer; const AName, ACommandLine: string; ATimeoutSec: Integer;
   AShow: Boolean);
 var
-  Entry: TEntry;
-  Messages: IOTAMessageServices;
+  mEntry: TEntry;
+  mMessages: IOTAMessageServices;
 begin
-  Entry := TEntry.Create;
-  Entry.Id := AId;
-  Entry.Name := AName;
-  Entry.CommandLine := ACommandLine;
-  Entry.TimeoutSec := ATimeoutSec;
-  Entry.Running := True;
-  FEntries.Add(Entry);
-  while FEntries.Count > MaxRuns do
+  mEntry := TEntry.Create;
+  mEntry.FId := AId;
+  mEntry.FName := AName;
+  mEntry.FCommandLine := ACommandLine;
+  mEntry.FTimeoutSec := ATimeoutSec;
+  mEntry.FRunning := True;
+  FEntries.Add(mEntry);
+  while FEntries.Count > cMaxRuns do
   begin
     FEntries.Delete(0);
   end;
-  AddHeader(Entry);
-  if AShow and Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  AddHeader(mEntry);
+  if AShow and Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
-    Messages.ShowMessageView(Group(Messages, True));
+    mMessages.ShowMessageView(Group(mMessages, True));
   end;
 end;
 
 procedure TAtlasIdeTaskOutput.Lines(AId: Integer; const ALines: TArray<string>; const AFindings: TAtlasTaskFindings);
 var
-  Entry: TEntry;
-  Finding: TAtlasTaskFinding;
-  Line: string;
-  First, Index: Integer;
+  mEntry: TEntry;
+  mFinding: TAtlasTaskFinding;
+  mLine: string;
+  mFirst, mIndex: Integer;
 begin
-  Entry := Find(AId);
-  if Entry = nil then
+  mEntry := Find(AId);
+  if mEntry = nil then
   begin
     Exit;
   end;
-  First := Length(Entry.Lines);
-  for Line in ALines do
+  mFirst := Length(mEntry.FLines);
+  for mLine in ALines do
   begin
-    if Length(Entry.Lines) < MaxLines then
+    if Length(mEntry.FLines) < cMaxLines then
     begin
-      Entry.Lines := Entry.Lines + [Line];
-      Entry.LineFinding := Entry.LineFinding + [-1];
+      mEntry.FLines := mEntry.FLines + [mLine];
+      mEntry.FLineFinding := mEntry.FLineFinding + [-1];
     end
     else
     begin
-      Inc(Entry.Dropped);
+      Inc(mEntry.FDropped);
     end;
   end;
-  for Finding in AFindings do
+  for mFinding in AFindings do
   begin
-    Entry.Findings := Entry.Findings + [Finding];
-    if (Finding.OutputLine >= 0) and (Finding.OutputLine <= High(Entry.LineFinding)) then
+    mEntry.FFindings := mEntry.FFindings + [mFinding];
+    if (mFinding.OutputLine >= 0) and (mFinding.OutputLine <= High(mEntry.FLineFinding)) then
     begin
-      Entry.LineFinding[Finding.OutputLine] := High(Entry.Findings);
+      mEntry.FLineFinding[mFinding.OutputLine] := High(mEntry.FFindings);
     end;
   end;
-  for Index := First to High(Entry.Lines) do
+  for mIndex := mFirst to High(mEntry.FLines) do
   begin
-    AddLine(Entry, Index);
+    AddLine(mEntry, mIndex);
   end;
 end;
 
 procedure TAtlasIdeTaskOutput.Finished(AId: Integer; const ARun: TAtlasTaskRun);
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
-  Entry := Find(AId);
-  if Entry = nil then
+  mEntry := Find(AId);
+  if mEntry = nil then
   begin
     Exit;
   end;
-  Entry.Running := False;
-  Entry.Run := ARun;
+  mEntry.FRunning := False;
+  mEntry.FRun := ARun;
   Render;
 end;
 
 procedure TAtlasIdeTaskOutput.Render;
 var
-  Messages: IOTAMessageServices;
-  Target: IOTAMessageGroup;
-  Entry: TEntry;
-  Index: Integer;
+  mMessages: IOTAMessageServices;
+  mTarget: IOTAMessageGroup;
+  mEntry: TEntry;
+  mIndex: Integer;
 begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     Exit;
   end;
-  Target := Group(Messages, FEntries.Count > 0);
-  if Target = nil then
+  mTarget := Group(mMessages, FEntries.Count > 0);
+  if mTarget = nil then
   begin
     Exit;
   end;
-  Messages.ClearMessageGroup(Target);
-  for Entry in FEntries do
+  mMessages.ClearMessageGroup(mTarget);
+  for mEntry in FEntries do
   begin
-    AddHeader(Entry);
-    for Index := 0 to High(Entry.Lines) do
+    AddHeader(mEntry);
+    for mIndex := 0 to High(mEntry.FLines) do
     begin
-      AddLine(Entry, Index);
+      AddLine(mEntry, mIndex);
     end;
-    if (Entry.Dropped > 0) and not FOnlyFindings then
+    if (mEntry.FDropped > 0) and not FOnlyFindings then
     begin
-      Messages.AddTitleMessage(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksMoreLines, [Entry.Dropped]), Target);
+      mMessages.AddTitleMessage(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksMoreLines, [mEntry.FDropped]), mTarget);
     end;
   end;
 end;
 
 procedure TAtlasIdeTaskOutput.Clear;
 var
-  Messages: IOTAMessageServices;
-  Target: IOTAMessageGroup;
+  mMessages: IOTAMessageServices;
+  mTarget: IOTAMessageGroup;
 begin
   FEntries.Clear;
   // Ohne eigene Gruppe und beim Beenden der IDE das Meldungsfenster nicht anfassen.
@@ -412,14 +412,14 @@ begin
   begin
     Exit;
   end;
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     Exit;
   end;
-  Target := Group(Messages, False);
-  if Target <> nil then
+  mTarget := Group(mMessages, False);
+  if mTarget <> nil then
   begin
-    Messages.RemoveMessageGroup(Target);
+    mMessages.RemoveMessageGroup(mTarget);
   end;
 end;
 

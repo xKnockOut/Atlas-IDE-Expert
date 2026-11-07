@@ -37,8 +37,8 @@ type
   TAtlasIdeMethodPlacement = class
   private const
     /// <summary>Kurze Antwort beim Einfügen; das Ordnen der Unit darf länger dauern.</summary>
-    PlaceTimeoutMs = 3000;
-    ArrangeTimeoutMs = 15000;
+    cPlaceTimeoutMs = 3000;
+    cArrangeTimeoutMs = 15000;
   private class var
     FInstance: TAtlasIdeMethodPlacement;
   private
@@ -104,10 +104,10 @@ uses
 
 function IsPascal(const AFileName: string): Boolean;
 var
-  Ext: string;
+  mExt: string;
 begin
-  Ext := LowerCase(ExtractFileExt(AFileName));
-  Result := (Ext = '.pas') or (Ext = '.dpr') or (Ext = '.dpk') or (Ext = '.inc');
+  mExt := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExt = '.pas') or (mExt = '.dpr') or (mExt = '.dpk') or (mExt = '.inc');
 end;
 
 /// <summary>Aktive Ansicht einer Pascal-Datei; nil ohne.</summary>
@@ -131,7 +131,7 @@ begin
   FPolicy := APolicy;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := TAtlasMethodPlacement.DelayMs;
+  FTimer.Interval := TAtlasMethodPlacement.cDelayMs;
   FTimer.OnTimer := TimerTick;
   Snapshot;
 end;
@@ -160,10 +160,10 @@ end;
 
 class function TAtlasIdeMethodPlacement.Enabled: Boolean;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := Settings.Enabled and not SameText(Settings.MethodPlacement, 'off');
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and not SameText(mSettings.MethodPlacement, 'off');
 end;
 
 class function TAtlasIdeMethodPlacement.Mode: string;
@@ -237,37 +237,37 @@ end;
 
 procedure TAtlasIdeMethodPlacement.Snapshot;
 var
-  View: IOTAEditView;
+  mView: IOTAEditView;
 begin
   FFileName := '';
   FText := '';
-  View := PascalView;
-  if View = nil then
+  mView := PascalView;
+  if mView = nil then
   begin
     Exit;
   end;
-  FFileName := View.Buffer.FileName;
-  FText := TAtlasEditorBuffer.Text(View.Buffer);
+  FFileName := mView.Buffer.FileName;
+  FText := TAtlasEditorBuffer.Text(mView.Buffer);
 end;
 
 class procedure TAtlasIdeMethodPlacement.WriteBuffer(const ABuffer: IOTAEditBuffer; const AText, ANewText: string);
 var
-  Range: TLspTextRange;
-  Writer: IOTAEditWriter;
+  mRange: TLspTextRange;
+  mWriter: IOTAEditWriter;
 begin
-  if not TAtlasMethodPlacement.Difference(AText, ANewText, Range) then
+  if not TAtlasMethodPlacement.Difference(AText, ANewText, mRange) then
   begin
     Exit;
   end;
   // Ein Schreiber = ein Rückgängig-Schritt.
-  Writer := ABuffer.CreateUndoableWriter;
-  Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, Range.StartOffset)));
-  Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, Range.EndOffset)));
-  if Range.NewText <> '' then
+  mWriter := ABuffer.CreateUndoableWriter;
+  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, mRange.StartOffset)));
+  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, mRange.EndOffset)));
+  if mRange.NewText <> '' then
   begin
-    Writer.Insert(PAnsiChar(UTF8Encode(Range.NewText)));
+    mWriter.Insert(PAnsiChar(UTF8Encode(mRange.NewText)));
   end;
-  Writer := nil;
+  mWriter := nil;
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
@@ -307,7 +307,7 @@ var
   mAnswer: TJSONValue;
 begin
   ASession.Sync(AFileName, AText);
-  mAnswer := ASession.RunCommand(TAtlasMethodPlacement.Command, AArguments, ATimeoutMs);
+  mAnswer := ASession.RunCommand(TAtlasMethodPlacement.cCommand, AArguments, ATimeoutMs);
   try
     TAtlasMethodPlacement.Read(mAnswer, Result);
   finally
@@ -345,7 +345,7 @@ begin
   mFileName := AView.Buffer.FileName;
   try
     mReply := RequestPlacement(mSession, mFileName, AAfter, TAtlasMethodPlacement.Arguments(
-      TLspSession.PathToUri(mFileName), Mode, False, ABefore), PlaceTimeoutMs);
+      TLspSession.PathToUri(mFileName), Mode, False, ABefore), cPlaceTimeoutMs);
   except
     // Ohne Antwort bleibt der Rumpf, wo die IDE ihn hingesetzt hat.
     on ELspClientError do
@@ -422,7 +422,7 @@ begin
   mFileName := mView.Buffer.FileName;
   try
     mReply := RequestPlacement(mSession, mFileName, TAtlasEditorBuffer.Text(mView.Buffer),
-      TAtlasMethodPlacement.Arguments(TLspSession.PathToUri(mFileName), Mode, True, ''), ArrangeTimeoutMs);
+      TAtlasMethodPlacement.Arguments(TLspSession.PathToUri(mFileName), Mode, True, ''), cArrangeTimeoutMs);
   except
     on E: ELspClientError do
     begin

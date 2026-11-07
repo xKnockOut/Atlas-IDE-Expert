@@ -113,16 +113,16 @@ procedure TExpressionTextTests.CombineSetsParenthesesByPrecedence;
 var
   Rel, Atom, Sum: TExpressionPart;
 begin
-  Rel := TExpressionPart.Create('X = 1', PrecedenceRelational);
-  Atom := TExpressionPart.Create('Ready', PrecedenceOperand);
-  Sum := TExpressionPart.Create('A + B', PrecedenceAdditive);
+  Rel := TExpressionPart.Create('X = 1', cPrecedenceRelational);
+  Atom := TExpressionPart.Create('Ready', cPrecedenceOperand);
+  Sum := TExpressionPart.Create('A + B', cPrecedenceAdditive);
   Assert.AreEqual('(X = 1) and Ready', TExpressionText.Combine('and', Rel, Atom).Text);
   Assert.AreEqual('Ready or (X = 1)', TExpressionText.Combine('or', Atom, Rel).Text);
   Assert.AreEqual('A + B = Ready', TExpressionText.Combine('=', Sum, Atom).Text);
   Assert.AreEqual('A + B - (A + B)', TExpressionText.Combine('-', Sum, Sum).Text);
-  Assert.AreEqual(PrecedenceMultiplicative, TExpressionText.Combine('and', Rel, Atom).Precedence);
-  Assert.AreEqual('(X = 1)', Rel.AtLeast(PrecedenceAdditive));
-  Assert.AreEqual('X = 1', Rel.AtLeast(PrecedenceRelational));
+  Assert.AreEqual(cPrecedenceMultiplicative, TExpressionText.Combine('and', Rel, Atom).Precedence);
+  Assert.AreEqual('(X = 1)', Rel.AtLeast(cPrecedenceAdditive));
+  Assert.AreEqual('X = 1', Rel.AtLeast(cPrecedenceRelational));
 end;
 
 procedure TExpressionTextTests.SameIgnoresLayoutAndCase;
@@ -178,14 +178,14 @@ begin
   try
     // ((A = B) and not C) or F(X)
     Condition := ConditionOf(Tree);
-    Assert.AreEqual(PrecedenceIfExpr, TExpressionText.ContextPrecedence(Condition));
-    Assert.AreEqual(PrecedenceAdditive, TExpressionText.ContextPrecedence(Condition[0]));
-    Assert.AreEqual(PrecedenceMultiplicative, TExpressionText.ContextPrecedence(Condition[0][0]));
-    Assert.AreEqual(PrecedenceMultiplicative + 1, TExpressionText.ContextPrecedence(Condition[0][1]));
-    Assert.AreEqual(PrecedenceUnary, TExpressionText.ContextPrecedence(Condition[0][1][0]));
+    Assert.AreEqual(cPrecedenceIfExpr, TExpressionText.ContextPrecedence(Condition));
+    Assert.AreEqual(cPrecedenceAdditive, TExpressionText.ContextPrecedence(Condition[0]));
+    Assert.AreEqual(cPrecedenceMultiplicative, TExpressionText.ContextPrecedence(Condition[0][0]));
+    Assert.AreEqual(cPrecedenceMultiplicative + 1, TExpressionText.ContextPrecedence(Condition[0][1]));
+    Assert.AreEqual(cPrecedenceUnary, TExpressionText.ContextPrecedence(Condition[0][1][0]));
     // Empfänger eines Aufrufs braucht einen Operanden, ein Argument nichts.
-    Assert.AreEqual(PrecedenceOperand, TExpressionText.ContextPrecedence(Condition[1][0]));
-    Assert.AreEqual(PrecedenceIfExpr, TExpressionText.ContextPrecedence(Condition[1][1]));
+    Assert.AreEqual(cPrecedenceOperand, TExpressionText.ContextPrecedence(Condition[1][0]));
+    Assert.AreEqual(cPrecedenceIfExpr, TExpressionText.ContextPrecedence(Condition[1][1]));
   finally
     Tree.Free;
   end;
@@ -198,9 +198,9 @@ begin
     begin
       Condition := Condition[0];
     end;
-    Assert.AreEqual(PrecedenceIfExpr + 1, TExpressionText.ContextPrecedence(Condition[0]));
-    Assert.AreEqual(PrecedenceIfExpr + 1, TExpressionText.ContextPrecedence(Condition[1]));
-    Assert.AreEqual(PrecedenceIfExpr, TExpressionText.ContextPrecedence(Condition[2]));
+    Assert.AreEqual(cPrecedenceIfExpr + 1, TExpressionText.ContextPrecedence(Condition[0]));
+    Assert.AreEqual(cPrecedenceIfExpr + 1, TExpressionText.ContextPrecedence(Condition[1]));
+    Assert.AreEqual(cPrecedenceIfExpr, TExpressionText.ContextPrecedence(Condition[2]));
   finally
     Tree.Free;
   end;

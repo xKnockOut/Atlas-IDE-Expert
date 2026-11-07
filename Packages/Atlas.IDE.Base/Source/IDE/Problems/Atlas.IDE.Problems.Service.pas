@@ -144,10 +144,10 @@ begin
 end;
 
 const
-  TickMs = 250;
+  cTickMs = 250;
   /// <summary>Kennung der Code-Aktion (RuleFixTag in Atlas.Common.Editing.CodeActions; das Plugin hängt nicht von
   /// Atlas.Common ab).</summary>
-  FixTag = 'rule.fix';
+  cFixTag = 'rule.fix';
 
 type
   TState = class
@@ -188,18 +188,18 @@ end;
 
 function TopFile(out ALine: Integer): string;
 var
-  Editors: IOTAEditorServices;
-  View: IOTAEditView;
+  mEditors: IOTAEditorServices;
+  mView: IOTAEditView;
 begin
   Result := '';
   ALine := -1;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
-    View := Editors.TopView;
-    if (View <> nil) and (View.Buffer <> nil) then
+    mView := mEditors.TopView;
+    if (mView <> nil) and (mView.Buffer <> nil) then
     begin
-      Result := View.Buffer.FileName;
-      ALine := View.CursorPos.Line - 1;
+      Result := mView.Buffer.FileName;
+      ALine := mView.CursorPos.Line - 1;
     end;
   end;
 end;
@@ -207,21 +207,21 @@ end;
 /// <summary>Alle in der IDE geöffneten Module (#1108), auch Projektdateien und Includes.</summary>
 function OpenFiles: TArray<string>;
 var
-  Modules: IOTAModuleServices;
-  Index: Integer;
-  Module: IOTAModule;
+  mModules: IOTAModuleServices;
+  mIndex: Integer;
+  mModule: IOTAModule;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
-  for Index := 0 to Modules.ModuleCount - 1 do
+  for mIndex := 0 to mModules.ModuleCount - 1 do
   begin
-    Module := Modules.Modules[Index];
-    if (Module <> nil) and (Module.FileName <> '') then
+    mModule := mModules.Modules[mIndex];
+    if (mModule <> nil) and (mModule.FileName <> '') then
     begin
-      Result := Result + [Module.FileName];
+      Result := Result + [mModule.FileName];
     end;
   end;
 end;
@@ -244,31 +244,31 @@ end;
 /// <summary>Bereich, Gruppierung und Spalten des Frames in die Einstellungen.</summary>
 procedure SaveLayout(AFrame: TAtlasProblemsFrame);
 var
-  Next: TAtlasPluginSettings;
+  mNext: TAtlasPluginSettings;
 begin
   if AFrame = nil then
   begin
     Exit;
   end;
-  Next := TAtlasIdeSettings.Stored;
-  Next.ProblemsWindowScope := TAtlasFindings.ScopeNames[AFrame.Scope];
+  mNext := TAtlasIdeSettings.Stored;
+  mNext.ProblemsWindowScope := TAtlasFindings.cScopeNames[AFrame.Scope];
   // Das Einzelprojekt (#1843) bleibt gemerkt, solange ein anderer Bereich gilt.
   if AFrame.Scope = TAtlasFindingScope.Project then
   begin
-    Next.ProblemsWindowScopeProject := AFrame.ScopeProject;
+    mNext.ProblemsWindowScopeProject := AFrame.ScopeProject;
   end;
-  Next.ProblemsWindowGroupBy := TAtlasFindings.GroupingNames[AFrame.Grouping];
-  Next.ProblemsWindowColumns := AFrame.ColumnsText;
-  Next.ProblemsWindowOpenFirst := AFrame.OpenFirst;
-  if (Next.ProblemsWindowScope = TAtlasIdeSettings.Stored.ProblemsWindowScope) and
-    (Next.ProblemsWindowScopeProject = TAtlasIdeSettings.Stored.ProblemsWindowScopeProject) and
-    (Next.ProblemsWindowGroupBy = TAtlasIdeSettings.Stored.ProblemsWindowGroupBy) and
-    (Next.ProblemsWindowColumns = TAtlasIdeSettings.Stored.ProblemsWindowColumns) and
-    (Next.ProblemsWindowOpenFirst = TAtlasIdeSettings.Stored.ProblemsWindowOpenFirst) then
+  mNext.ProblemsWindowGroupBy := TAtlasFindings.cGroupingNames[AFrame.Grouping];
+  mNext.ProblemsWindowColumns := AFrame.ColumnsText;
+  mNext.ProblemsWindowOpenFirst := AFrame.OpenFirst;
+  if (mNext.ProblemsWindowScope = TAtlasIdeSettings.Stored.ProblemsWindowScope) and
+    (mNext.ProblemsWindowScopeProject = TAtlasIdeSettings.Stored.ProblemsWindowScopeProject) and
+    (mNext.ProblemsWindowGroupBy = TAtlasIdeSettings.Stored.ProblemsWindowGroupBy) and
+    (mNext.ProblemsWindowColumns = TAtlasIdeSettings.Stored.ProblemsWindowColumns) and
+    (mNext.ProblemsWindowOpenFirst = TAtlasIdeSettings.Stored.ProblemsWindowOpenFirst) then
   begin
     Exit;
   end;
-  TAtlasIdeSettings.Update(Next);
+  TAtlasIdeSettings.Update(mNext);
 end;
 
 type
@@ -466,24 +466,24 @@ end;
 
 procedure Explain(const AFinding: TAtlasFinding);
 var
-  Rule, Language: string;
+  mRule, mLanguage: string;
 begin
-  Rule := AFinding.Rule;
+  mRule := AFinding.Rule;
   if (State.Catalog <> nil) and (State.CatalogLanguage = TAtlasStrings.Language) then
   begin
-    ShowExplanation(State.Catalog, Rule);
+    ShowExplanation(State.Catalog, mRule);
     Exit;
   end;
   if not Assigned(State.Hooks.Command) then
   begin
     Exit;
   end;
-  Language := 'de';
+  mLanguage := 'de';
   if TAtlasStrings.Language = TAtlasLanguage.English then
   begin
-    Language := 'en';
+    mLanguage := 'en';
   end;
-  State.Hooks.Command(TAtlasProjectSettings.CatalogCommand, '["' + Language + '"]',
+  State.Hooks.Command(TAtlasProjectSettings.cCatalogCommand, '["' + mLanguage + '"]',
     procedure(AValue: TJSONValue)
     begin
       if State = nil then
@@ -499,7 +499,7 @@ begin
       FreeAndNil(State.Catalog);
       State.Catalog := AValue.Clone as TJSONValue;
       State.CatalogLanguage := TAtlasStrings.Language;
-      ShowExplanation(State.Catalog, Rule);
+      ShowExplanation(State.Catalog, mRule);
     end);
 end;
 
@@ -522,15 +522,15 @@ end;
 /// <summary>Einstellungen des Fensters aus den Plugin-Einstellungen.</summary>
 procedure WireSettings(AFrame: TAtlasProblemsFrame);
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  AFrame.ShowCompilerCode := Settings.ProblemsShowCompilerCode;
-  AFrame.ApplySettings(ScopeOf(Settings.ProblemsWindowScope), GroupingOf(Settings.ProblemsWindowGroupBy),
-    Settings.ProblemsWindowColumns, Settings.ProblemsWindowCompiler);
-  AFrame.ApplyScopeSettings(Settings.ProblemsWindowScopeProjects, Settings.ProblemsWindowScopeProject);
-  AFrame.ApplyTierSettings(Settings.ProblemsWindowOpenFirst, ClosedUnitsOf(Settings.ProblemsWindowClosedUnits),
-    Settings.ProblemsWindowShowCleanActive);
+  mSettings := TAtlasIdeSettings.Current;
+  AFrame.ShowCompilerCode := mSettings.ProblemsShowCompilerCode;
+  AFrame.ApplySettings(ScopeOf(mSettings.ProblemsWindowScope), GroupingOf(mSettings.ProblemsWindowGroupBy),
+    mSettings.ProblemsWindowColumns, mSettings.ProblemsWindowCompiler);
+  AFrame.ApplyScopeSettings(mSettings.ProblemsWindowScopeProjects, mSettings.ProblemsWindowScopeProject);
+  AFrame.ApplyTierSettings(mSettings.ProblemsWindowOpenFirst, ClosedUnitsOf(mSettings.ProblemsWindowClosedUnits),
+    mSettings.ProblemsWindowShowCleanActive);
 end;
 
 /// <summary>Öffnen, Beheben und Unterdrücken aus der Liste.</summary>
@@ -551,7 +551,7 @@ begin
       TAtlasGuard.Run(TAtlasFeature.Problems,
         procedure
         begin
-          ApplyTag(AFinding, FixTag);
+          ApplyTag(AFinding, cFixTag);
         end);
     end;
   AFrame.OnFixAll :=
@@ -672,7 +672,7 @@ begin
   Findings := TAtlasFindingsCache.Create;
   Version := -1;
   Timer := TTimer.Create(nil);
-  Timer.Interval := TickMs;
+  Timer.Interval := cTickMs;
   Timer.OnTimer := Tick;
   Timer.Enabled := True;
 end;
@@ -726,18 +726,18 @@ var
 
 class function TAtlasIdeProblems.ProjectProgress(out AChecked, ATotal: Integer): Boolean;
 const
-  RefreshMs = 2000;
+  cRefreshMs = 2000;
 var
-  Store: TAtlasProblemStore;
+  mStore: TAtlasProblemStore;
 begin
   AChecked := 0;
   ATotal := 0;
-  Store := TAtlasProblemsController.Current;
-  if Store = nil then
+  mStore := TAtlasProblemsController.Current;
+  if mStore = nil then
   begin
     Exit(False);
   end;
-  if (ProgressAt = 0) or (TThread.GetTickCount64 - ProgressAt >= RefreshMs) then
+  if (ProgressAt = 0) or (TThread.GetTickCount64 - ProgressAt >= cRefreshMs) then
   begin
     ProgressFiles := TAtlasIdeProblemFiles.ActiveFiles;
     ProgressAt := TThread.GetTickCount64;
@@ -747,7 +747,7 @@ begin
   begin
     Exit(False);
   end;
-  AChecked := TAtlasFindings.CheckedCount(Store, ProgressFiles);
+  AChecked := TAtlasFindings.CheckedCount(mStore, ProgressFiles);
   Result := True;
 end;
 
@@ -791,7 +791,7 @@ end;
 
 class procedure TAtlasIdeProblems.ApplySettings;
 var
-  Frame: TAtlasProblemsFrame;
+  mFrame: TAtlasProblemsFrame;
 begin
   if not Enabled then
   begin
@@ -799,14 +799,14 @@ begin
     Exit;
   end;
   TAtlasIdeProblemsWindow.Prepare;
-  Frame := TAtlasIdeProblemsWindow.ExistingFrame;
-  if Frame <> nil then
+  mFrame := TAtlasIdeProblemsWindow.ExistingFrame;
+  if mFrame <> nil then
   begin
-    Frame.ShowCompilerCode := Settings.ProblemsShowCompilerCode;
-    Frame.ApplySettings(ScopeOf(Settings.ProblemsWindowScope), GroupingOf(Settings.ProblemsWindowGroupBy),
+    mFrame.ShowCompilerCode := Settings.ProblemsShowCompilerCode;
+    mFrame.ApplySettings(ScopeOf(Settings.ProblemsWindowScope), GroupingOf(Settings.ProblemsWindowGroupBy),
       Settings.ProblemsWindowColumns, Settings.ProblemsWindowCompiler);
-    Frame.ApplyScopeSettings(Settings.ProblemsWindowScopeProjects, Settings.ProblemsWindowScopeProject);
-    Frame.ApplyTierSettings(Settings.ProblemsWindowOpenFirst, ClosedUnitsOf(Settings.ProblemsWindowClosedUnits),
+    mFrame.ApplyScopeSettings(Settings.ProblemsWindowScopeProjects, Settings.ProblemsWindowScopeProject);
+    mFrame.ApplyTierSettings(Settings.ProblemsWindowOpenFirst, ClosedUnitsOf(Settings.ProblemsWindowClosedUnits),
       Settings.ProblemsWindowShowCleanActive);
     Refresh(True);
   end;
@@ -831,46 +831,46 @@ end;
 
 class procedure TAtlasIdeProblems.ShowCurrentFile;
 var
-  Frame: TAtlasProblemsFrame;
+  mFrame: TAtlasProblemsFrame;
 begin
   if not Enabled then
   begin
     Exit;
   end;
-  Frame := TAtlasIdeProblemsWindow.Show;
-  if Frame = nil then
+  mFrame := TAtlasIdeProblemsWindow.Show;
+  if mFrame = nil then
   begin
     Exit;
   end;
-  if Frame.Scope <> TAtlasFindingScope.CurrentFile then
+  if mFrame.Scope <> TAtlasFindingScope.CurrentFile then
   begin
-    Frame.ApplySettings(TAtlasFindingScope.CurrentFile, Frame.Grouping, Frame.ColumnsText,
+    mFrame.ApplySettings(TAtlasFindingScope.CurrentFile, mFrame.Grouping, mFrame.ColumnsText,
       Settings.ProblemsWindowCompiler);
-    SaveLayout(Frame);
+    SaveLayout(mFrame);
   end;
   Refresh(True);
 end;
 
 class function TAtlasIdeProblems.StepWindow(AForward: Boolean): Boolean;
 var
-  Frame: TAtlasProblemsFrame;
-  Finding: TAtlasFinding;
+  mFrame: TAtlasProblemsFrame;
+  mFinding: TAtlasFinding;
 begin
   Result := False;
   if not Enabled or not TAtlasIdeProblemsWindow.Visible then
   begin
     Exit;
   end;
-  Frame := TAtlasIdeProblemsWindow.ExistingFrame;
-  if (Frame = nil) or not Frame.Step(AForward, Finding) then
+  mFrame := TAtlasIdeProblemsWindow.ExistingFrame;
+  if (mFrame = nil) or not mFrame.Step(AForward, mFinding) then
   begin
     Exit;
   end;
-  Open(Finding);
+  Open(mFinding);
   // Der Sprung soll die Auswahl nicht gleich wieder dem Cursor nachführen.
   if State <> nil then
   begin
-    State.Cursor := Finding.FileName + ':' + Finding.Problem.StartLine.ToString;
+    State.Cursor := mFinding.FileName + ':' + mFinding.Problem.StartLine.ToString;
   end;
   Result := True;
 end;

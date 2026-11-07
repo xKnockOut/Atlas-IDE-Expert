@@ -2,7 +2,9 @@
 
 // Regel member-hides-ancestor aus Atlas.Common.Rules.Builtin.Inheritance (#1003): Property heißt wie ein Feld des
 // Vorfahren (W1009), Feld wie ein Feld oder eine Property, nicht virtuelle Methode wie eine gleich aufgebaute nicht
-// virtuelle des Vorfahren; strict private des Vorfahren nur mit ignoreStrictPrivate = false.
+// virtuelle des Vorfahren; strict private des Vorfahren nur mit ignoreStrictPrivate = false. Methoden, die eine
+// Methode eines Interfaces aus der eigenen Vorfahrenliste umsetzen (QueryInterface über TInterfacedObject), gelten
+// nicht: Über das Interface ruft Delphi die neue Methode, das Verdecken ist dort der übliche Weg.
 
 interface
 
@@ -17,7 +19,7 @@ type
   end;
 
 const
-  MemberHidesAncestorRuleId = 'member-hides-ancestor';
+  cMemberHidesAncestorRuleId = 'member-hides-ancestor';
 
 implementation
 
@@ -70,6 +72,7 @@ type
     function IsRenameToken(AIndex: Integer; const AClass, AOwn: TIndexSymbol;
       const ABodies: TArray<TSyntaxNode>): Boolean;
     function RenameFix(const AClass, AOwn: TIndexSymbol): TArray<TRuleFix>;
+    function ImplementsInterface(const AClass, AOwn: TIndexSymbol): Boolean;
     function HiddenAt(const AOwn: TIndexSymbol; const ALocation: TSymbolLocation;
       out AHidden: TIndexSymbol): TLevelResult;
     procedure ReportHidden(const AClass, AOwn: TIndexSymbol; const ALocation: TSymbolLocation;
@@ -141,29 +144,29 @@ end;
 /// </summary>
 function RenamedName(const AClass, AOwn: TIndexSymbol): string;
 var
-  Prefix: string;
+  mPrefix: string;
 begin
   if AOwn.Kind <> TIndexSymbolKind.Field then
   begin
     Exit(ShortName(AClass.Name) + AOwn.Name);
   end;
-  Prefix := '';
+  mPrefix := '';
   if (Length(AOwn.Name) > 1) and CharInSet(AOwn.Name[1], ['F', 'f']) and CharInSet(AOwn.Name[2], ['A'..'Z']) then
   begin
-    Prefix := Copy(AOwn.Name, 1, 1);
+    mPrefix := Copy(AOwn.Name, 1, 1);
   end;
-  Result := Prefix + ShortName(AClass.Name) + Copy(AOwn.Name, Length(Prefix) + 1, MaxInt);
+  Result := mPrefix + ShortName(AClass.Name) + Copy(AOwn.Name, Length(mPrefix) + 1, MaxInt);
 end;
 
 /// <summary>Liegt AOffset in einem der Knoten ABodies?</summary>
 function InBodies(AOffset: Integer; const ABodies: TArray<TSyntaxNode>): Boolean;
 var
-  Body: TSyntaxNode;
+  mBody: TSyntaxNode;
 begin
   Result := False;
-  for Body in ABodies do
+  for mBody in ABodies do
   begin
-    Result := Result or ((AOffset >= Body.StartOffset) and (AOffset < Body.EndOffset));
+    Result := Result or ((AOffset >= mBody.StartOffset) and (AOffset < mBody.EndOffset));
   end;
 end;
 
@@ -178,23 +181,23 @@ end;
 
 function TMemberHidesAncestorRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(MemberHidesAncestorRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cMemberHidesAncestorRuleId, TRuleSeverity.Warning,
     cTexts[TInheritanceMemberHidesText.Title].Text);
 end;
 
 procedure TMemberHidesAncestorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Check: TMemberHidesCheck;
+  mCheck: TMemberHidesCheck;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Check := TMemberHidesCheck.Create(AContext, AReport);
+  mCheck := TMemberHidesCheck.Create(AContext, AReport);
   try
-    Check.Run;
+    mCheck.Run;
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 
@@ -233,32 +236,33 @@ end;
 /// <summary>Gibt es den Bezeichner AName in der Datei schon?</summary>
 function TMemberHidesCheck.NameInUse(const AName: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
-  for Index := 0 to High(FTokens) do
+  for mIndex := 0 to High(FTokens) do
   begin
-    Result := Result or ((FTokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(FTokens[Index].Text, AName));
+    Result := Result or ((FTokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+      SameText(FTokens[mIndex].Text, AName));
   end;
 end;
 
 /// <summary>Rümpfe der Methoden der Klasse (TKunde.X) aus dem implementation-Teil.</summary>
 function TMemberHidesCheck.ClassBodies(const AClass: TIndexSymbol): TArray<TSyntaxNode>;
 var
-  Section: TSyntaxNode;
-  Index: Integer;
+  mSection: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := nil;
-  Section := FContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
-  if Section = nil then
+  mSection := FContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  if mSection = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Section.ChildCount - 1 do
+  for mIndex := 0 to mSection.ChildCount - 1 do
   begin
-    if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and StartsText(AClass.Name + '.', Section[Index].Name) then
+    if (mSection[mIndex].Kind = TSyntaxKind.RoutineDecl) and StartsText(AClass.Name + '.', mSection[mIndex].Name) then
     begin
-      Result := Result + [Section[Index]];
+      Result := Result + [mSection[mIndex]];
     end;
   end;
 end;
@@ -281,30 +285,64 @@ end;
 /// anderen Ausdruck (Obj.FName) und andere Units bleiben unverändert.</summary>
 function TMemberHidesCheck.RenameFix(const AClass, AOwn: TIndexSymbol): TArray<TRuleFix>;
 var
-  NewName: string;
-  Index: Integer;
-  Edits: TArray<TRuleEdit>;
-  Bodies: TArray<TSyntaxNode>;
+  mNewName: string;
+  mIndex: Integer;
+  mEdits: TArray<TRuleEdit>;
+  mBodies: TArray<TSyntaxNode>;
 begin
   Result := nil;
-  NewName := RenamedName(AClass, AOwn);
-  if NameInUse(NewName) then
+  mNewName := RenamedName(AClass, AOwn);
+  if NameInUse(mNewName) then
   begin
     Exit;
   end;
-  Bodies := ClassBodies(AClass);
-  Edits := nil;
-  for Index := 0 to High(FTokens) do
+  mBodies := ClassBodies(AClass);
+  mEdits := nil;
+  for mIndex := 0 to High(FTokens) do
   begin
-    if IsRenameToken(Index, AClass, AOwn, Bodies) then
+    if IsRenameToken(mIndex, AClass, AOwn, mBodies) then
     begin
-      Edits := Edits + [TRuleEdit.Create(TTextRange.Create(FTokens[Index].StartPos, FTokens[Index].EndPos),
-        NewName)];
+      mEdits := mEdits + [TRuleEdit.Create(TTextRange.Create(FTokens[mIndex].StartPos, FTokens[mIndex].EndPos),
+        mNewName)];
     end;
   end;
-  if Edits <> nil then
+  if mEdits <> nil then
   begin
-    Result := [TRuleFix.Create(cTexts[TInheritanceMemberHidesText.RenameInUnit].Fmt([NewName]), Edits)];
+    Result := [TRuleFix.Create(cTexts[TInheritanceMemberHidesText.RenameInUnit].Fmt([mNewName]), mEdits)];
+  end;
+end;
+
+/// <summary>Setzt die Methode AOwn eine Methode eines Interfaces aus der Vorfahrenliste von AClass um? Die
+/// Methoden von IInterface (QueryInterface, _AddRef, _Release) gehören zu jedem Interface, auch wenn der Index
+/// System nicht kennt.</summary>
+function TMemberHidesCheck.ImplementsInterface(const AClass, AOwn: TIndexSymbol): Boolean;
+var
+  mIndex: Integer;
+  mType: TSymbolLocation;
+  mMember: TIndexSymbol;
+begin
+  Result := False;
+  if (AOwn.Kind <> TIndexSymbolKind.Method) or (Length(AClass.Ancestors) < 2) then
+  begin
+    Exit;
+  end;
+  if IndexText(AOwn.Name, ['QueryInterface', '_AddRef', '_Release']) >= 0 then
+  begin
+    Exit(True);
+  end;
+  for mIndex := 1 to High(AClass.Ancestors) do
+  begin
+    if not FAncestry.FindAnyType(AClass.Ancestors[mIndex], mType) then
+    begin
+      Continue;
+    end;
+    for mMember in FAncestry.Members(mType) do
+    begin
+      if SameText(mMember.Name, AOwn.Name) then
+      begin
+        Exit(True);
+      end;
+    end;
   end;
 end;
 
@@ -312,29 +350,29 @@ end;
 function TMemberHidesCheck.HiddenAt(const AOwn: TIndexSymbol; const ALocation: TSymbolLocation;
   out AHidden: TIndexSymbol): TLevelResult;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   AHidden := Default(TIndexSymbol);
   Result := TLevelResult.Missing;
-  for Symbol in FAncestry.Members(ALocation) do
+  for mSymbol in FAncestry.Members(ALocation) do
   begin
-    if not SameText(Symbol.Name, AOwn.Name) then
+    if not SameText(mSymbol.Name, AOwn.Name) then
     begin
       Continue;
     end;
     // Nur in einem inaktiven Zweig: keine Aussage.
-    if Symbol.Unavailable then
+    if mSymbol.Unavailable then
     begin
       Exit(TLevelResult.Stop);
     end;
-    if not Visible(ALocation, Symbol) then
+    if not Visible(ALocation, mSymbol) then
     begin
       Continue;
     end;
     Result := TLevelResult.Stop;
-    if HidesKind(AOwn, Symbol) then
+    if HidesKind(AOwn, mSymbol) then
     begin
-      AHidden := Symbol;
+      AHidden := mSymbol;
       Exit(TLevelResult.Found);
     end;
   end;
@@ -345,38 +383,38 @@ end;
 procedure TMemberHidesCheck.ReportHidden(const AClass, AOwn: TIndexSymbol; const ALocation: TSymbolLocation;
   const AHidden: TIndexSymbol);
 var
-  Message: string;
+  mMessage: string;
 begin
-  Message := cTexts[TInheritanceMemberHidesText.Hides].Fmt([AOwn.Name, ALocation.Symbol.Name, AHidden.Name]);
+  mMessage := cTexts[TInheritanceMemberHidesText.Hides].Fmt([AOwn.Name, ALocation.Symbol.Name, AHidden.Name]);
   if AOwn.Kind = TIndexSymbolKind.Property_ then
   begin
-    Message := Message + cTexts[TInheritanceMemberHidesText.LikeW1009].Text;
+    mMessage := mMessage + cTexts[TInheritanceMemberHidesText.LikeW1009].Text;
   end;
   if AOwn.Kind = TIndexSymbolKind.Method then
   begin
-    FReport.Add(AOwn.SelectionRange, Message + '.', TRuleConfidence.Medium);
+    FReport.Add(AOwn.SelectionRange, mMessage + '.', TRuleConfidence.Medium);
   end
   else
   begin
-    FReport.Add(AOwn.SelectionRange, Message + '.', TRuleConfidence.High, RenameFix(AClass, AOwn));
+    FReport.Add(AOwn.SelectionRange, mMessage + '.', TRuleConfidence.High, RenameFix(AClass, AOwn));
   end;
 end;
 
 /// <summary>Die nächste Stufe mit gleichnamigem Member entscheidet.</summary>
 procedure TMemberHidesCheck.CheckMember(const AClass, AOwn: TIndexSymbol; const AChain: TArray<TSymbolLocation>);
 var
-  Location: TSymbolLocation;
-  Hidden: TIndexSymbol;
-  State: TLevelResult;
+  mLocation: TSymbolLocation;
+  mHidden: TIndexSymbol;
+  mState: TLevelResult;
 begin
-  for Location in AChain do
+  for mLocation in AChain do
   begin
-    State := HiddenAt(AOwn, Location, Hidden);
-    if State = TLevelResult.Found then
+    mState := HiddenAt(AOwn, mLocation, mHidden);
+    if mState = TLevelResult.Found then
     begin
-      ReportHidden(AClass, AOwn, Location, Hidden);
+      ReportHidden(AClass, AOwn, mLocation, mHidden);
     end;
-    if State <> TLevelResult.Missing then
+    if mState <> TLevelResult.Missing then
     begin
       Exit;
     end;
@@ -385,36 +423,36 @@ end;
 
 procedure TMemberHidesCheck.CheckClass(const AClass: TIndexSymbol);
 var
-  Member: TIndexSymbol;
-  Location: TSymbolLocation;
-  Chain: TArray<TSymbolLocation>;
-  Complete, ObjectMissing: Boolean;
+  mMember: TIndexSymbol;
+  mLocation: TSymbolLocation;
+  mChain: TArray<TSymbolLocation>;
+  mComplete, mObjectMissing: Boolean;
 begin
-  Chain := FAncestry.Ancestors(AClass.Name, Complete, ObjectMissing);
-  if Chain = nil then
+  mChain := FAncestry.Ancestors(AClass.Name, mComplete, mObjectMissing);
+  if mChain = nil then
   begin
     Exit;
   end;
-  Location := Default(TSymbolLocation);
-  Location.Symbol := AClass;
-  for Member in FAncestry.Members(Location) do
+  mLocation := Default(TSymbolLocation);
+  mLocation.Symbol := AClass;
+  for mMember in FAncestry.Members(mLocation) do
   begin
-    if IsHidingCandidate(Member) then
+    if IsHidingCandidate(mMember) and not ImplementsInterface(AClass, mMember) then
     begin
-      CheckMember(AClass, Member, Chain);
+      CheckMember(AClass, mMember, mChain);
     end;
   end;
 end;
 
 procedure TMemberHidesCheck.Run;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
-  for Symbol in FAncestry.Local.Symbols do
+  for mSymbol in FAncestry.Local.Symbols do
   begin
-    if IsCheckedClass(Symbol) then
+    if IsCheckedClass(mSymbol) then
     begin
-      CheckClass(Symbol);
+      CheckClass(mSymbol);
     end;
   end;
 end;

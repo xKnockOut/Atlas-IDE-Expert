@@ -254,13 +254,13 @@ end;
 
 function TAtlasStyledText.Width(ACanvas: TCanvas; AFrom, ATill: Integer): Integer;
 var
-  Piece: TPiece;
+  mPiece: TPiece;
 begin
   Result := 0;
-  for Piece in Pieces(AFrom, ATill) do
+  for mPiece in Pieces(AFrom, ATill) do
   begin
-    ApplyFont(ACanvas, Piece);
-    Inc(Result, ACanvas.TextWidth(Copy(Text, Piece.Start + 1, Piece.Stop - Piece.Start)));
+    ApplyFont(ACanvas, mPiece);
+    Inc(Result, ACanvas.TextWidth(Copy(Text, mPiece.Start + 1, mPiece.Stop - mPiece.Start)));
   end;
   ACanvas.Font.Style := [];
 end;
@@ -344,43 +344,43 @@ end;
 
 function TAtlasStyledText.PrefixWidths(ACanvas: TCanvas): TArray<Integer>;
 var
-  Piece: TPiece;
-  Partial: TArray<Integer>;
-  PieceText: string;
-  Index, Base, Fit, Done: Integer;
-  Size: TSize;
+  mPiece: TPiece;
+  mPartial: TArray<Integer>;
+  mPieceText: string;
+  mIndex, mBase, mFit, mDone: Integer;
+  mSize: TSize;
 begin
   Result := nil;
   SetLength(Result, Length(Text) + 1);
   Result[0] := 0;
-  Done := 0;
-  for Piece in Pieces(0, Length(Text)) do
+  mDone := 0;
+  for mPiece in Pieces(0, Length(Text)) do
   begin
     // Lücke ohne Token (kommt bei TAtlasSyntax nicht vor): Breite 0 wie bisher in Width.
-    for Index := Done + 1 to Piece.Start do
+    for mIndex := mDone + 1 to mPiece.Start do
     begin
-      Result[Index] := Result[Done];
+      Result[mIndex] := Result[mDone];
     end;
-    Done := Piece.Stop;
-    ApplyFont(ACanvas, Piece);
-    PieceText := Copy(Text, Piece.Start + 1, Piece.Stop - Piece.Start);
+    mDone := mPiece.Stop;
+    ApplyFont(ACanvas, mPiece);
+    mPieceText := Copy(Text, mPiece.Start + 1, mPiece.Stop - mPiece.Start);
     // TextWidth wählt die Schrift mit dem Stil des Stücks in den DC; dann Teilbreiten je Zeichen.
-    Base := Result[Piece.Start];
-    Result[Piece.Stop] := Base + ACanvas.TextWidth(PieceText);
-    Partial := nil;
-    SetLength(Partial, Length(PieceText));
-    if (Length(PieceText) > 0) and GetTextExtentExPointW(ACanvas.Handle, PChar(PieceText), Length(PieceText),
-      MaxInt, @Fit, @Partial[0], Size) then
+    mBase := Result[mPiece.Start];
+    Result[mPiece.Stop] := mBase + ACanvas.TextWidth(mPieceText);
+    mPartial := nil;
+    SetLength(mPartial, Length(mPieceText));
+    if (Length(mPieceText) > 0) and GetTextExtentExPointW(ACanvas.Handle, PChar(mPieceText), Length(mPieceText),
+      MaxInt, @mFit, @mPartial[0], mSize) then
     begin
-      for Index := 0 to High(Partial) - 1 do
+      for mIndex := 0 to High(mPartial) - 1 do
       begin
-        Result[Piece.Start + Index + 1] := Base + Partial[Index];
+        Result[mPiece.Start + mIndex + 1] := mBase + mPartial[mIndex];
       end;
     end;
   end;
-  for Index := Done + 1 to Length(Text) do
+  for mIndex := mDone + 1 to Length(Text) do
   begin
-    Result[Index] := Result[Done];
+    Result[mIndex] := Result[mDone];
   end;
   ACanvas.Font.Style := [];
 end;

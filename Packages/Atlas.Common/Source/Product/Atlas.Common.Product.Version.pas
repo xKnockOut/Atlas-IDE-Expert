@@ -13,8 +13,8 @@ type
   /// <summary>Name und Version von Atlas.</summary>
   TProductVersion = record
   public const
-    Name = 'Atlas';
-    Version = TAtlasVersion.Version;
+    cName = 'Atlas';
+    cVersion = TAtlasVersion.cVersion;
   end;
 
 implementation

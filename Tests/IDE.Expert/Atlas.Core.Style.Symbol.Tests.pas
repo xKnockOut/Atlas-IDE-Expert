@@ -43,8 +43,8 @@ var
   Index: Integer;
 begin
   Assert.AreEqual(16, TAtlasSymbol.Size(0));
-  Assert.AreEqual(256, TAtlasSymbol.Size(TAtlasSymbol.SizeCount - 1));
-  for Index := 1 to TAtlasSymbol.SizeCount - 1 do
+  Assert.AreEqual(256, TAtlasSymbol.Size(TAtlasSymbol.cSizeCount - 1));
+  for Index := 1 to TAtlasSymbol.cSizeCount - 1 do
   begin
     Assert.IsTrue(TAtlasSymbol.Size(Index) > TAtlasSymbol.Size(Index - 1));
   end;
@@ -53,23 +53,23 @@ end;
 procedure TAtlasSymbolTests.MenuSizeFollowsScaling;
 begin
   // 100, 125, 150, 175, 200 % für 16 px: jede Stufe hat ihre eigene Datei.
-  Assert.AreEqual(16, TAtlasSymbol.SizeFor(TAtlasSymbol.MenuSize, 96));
-  Assert.AreEqual(20, TAtlasSymbol.SizeFor(TAtlasSymbol.MenuSize, 120));
-  Assert.AreEqual(24, TAtlasSymbol.SizeFor(TAtlasSymbol.MenuSize, 144));
-  Assert.AreEqual(32, TAtlasSymbol.SizeFor(TAtlasSymbol.MenuSize, 168));
-  Assert.AreEqual(32, TAtlasSymbol.SizeFor(TAtlasSymbol.MenuSize, 192));
-  Assert.AreEqual(28, TAtlasSymbol.PixelSize(TAtlasSymbol.MenuSize, 168));
+  Assert.AreEqual(16, TAtlasSymbol.SizeFor(TAtlasSymbol.cMenuSize, 96));
+  Assert.AreEqual(20, TAtlasSymbol.SizeFor(TAtlasSymbol.cMenuSize, 120));
+  Assert.AreEqual(24, TAtlasSymbol.SizeFor(TAtlasSymbol.cMenuSize, 144));
+  Assert.AreEqual(32, TAtlasSymbol.SizeFor(TAtlasSymbol.cMenuSize, 168));
+  Assert.AreEqual(32, TAtlasSymbol.SizeFor(TAtlasSymbol.cMenuSize, 192));
+  Assert.AreEqual(28, TAtlasSymbol.PixelSize(TAtlasSymbol.cMenuSize, 168));
 end;
 
 procedure TAtlasSymbolTests.HeaderAndAboutSizesFollowScaling;
 begin
-  Assert.AreEqual(32, TAtlasSymbol.SizeFor(TAtlasSymbol.HeaderSize, 96));
-  Assert.AreEqual(48, TAtlasSymbol.SizeFor(TAtlasSymbol.HeaderSize, 144));
-  Assert.AreEqual(64, TAtlasSymbol.SizeFor(TAtlasSymbol.HeaderSize, 192));
-  Assert.AreEqual(48, TAtlasSymbol.SizeFor(TAtlasSymbol.AboutSize, 96));
-  Assert.AreEqual(128, TAtlasSymbol.SizeFor(TAtlasSymbol.AboutSize, 144));
-  Assert.AreEqual(24, TAtlasSymbol.SizeFor(TAtlasSymbol.SplashSize, 96));
-  Assert.AreEqual(48, TAtlasSymbol.SizeFor(TAtlasSymbol.SplashSize, 192));
+  Assert.AreEqual(32, TAtlasSymbol.SizeFor(TAtlasSymbol.cHeaderSize, 96));
+  Assert.AreEqual(48, TAtlasSymbol.SizeFor(TAtlasSymbol.cHeaderSize, 144));
+  Assert.AreEqual(64, TAtlasSymbol.SizeFor(TAtlasSymbol.cHeaderSize, 192));
+  Assert.AreEqual(48, TAtlasSymbol.SizeFor(TAtlasSymbol.cAboutSize, 96));
+  Assert.AreEqual(128, TAtlasSymbol.SizeFor(TAtlasSymbol.cAboutSize, 144));
+  Assert.AreEqual(24, TAtlasSymbol.SizeFor(TAtlasSymbol.cSplashSize, 96));
+  Assert.AreEqual(48, TAtlasSymbol.SizeFor(TAtlasSymbol.cSplashSize, 192));
 end;
 
 procedure TAtlasSymbolTests.OddScalingTakesNextLargerSize;

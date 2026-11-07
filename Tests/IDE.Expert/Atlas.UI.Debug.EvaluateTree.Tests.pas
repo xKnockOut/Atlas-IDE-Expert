@@ -107,7 +107,7 @@ begin
     mList.BeginStop;
     mList.SetResult(mNode, True, '''a''#13#10''b''' + StringOfChar('x', 300));
     Assert.IsFalse(TAtlasEvalTreeSync.NodeText(mNode).Contains(#13), 'einzeilig');
-    Assert.AreEqual(Integer(Length('Summe = ') + TAtlasEvalTreeSync.MaxTreeValue + 1),
+    Assert.AreEqual(Integer(Length('Summe = ') + TAtlasEvalTreeSync.cMaxTreeValue + 1),
       Integer(Length(TAtlasEvalTreeSync.NodeText(mNode))), 'gekürzt mit …');
   finally
     mList.Free;
@@ -131,13 +131,13 @@ begin
       mBreaks := mBreaks + #13#10;
     end;
     mList.SetResult(mNode, True, mBreaks);
-    Assert.AreEqual('L = ' + StringOfChar(' ', TAtlasEvalTreeSync.MaxTreeValue) + #$2026,
+    Assert.AreEqual('L = ' + StringOfChar(' ', TAtlasEvalTreeSync.cMaxTreeValue) + #$2026,
       TAtlasEvalTreeSync.NodeText(mNode), 'CRLF');
     mList.SetResult(mNode, True, StringOfChar(#10, 500));
-    Assert.AreEqual('L = ' + StringOfChar(' ', TAtlasEvalTreeSync.MaxTreeValue) + #$2026,
+    Assert.AreEqual('L = ' + StringOfChar(' ', TAtlasEvalTreeSync.cMaxTreeValue) + #$2026,
       TAtlasEvalTreeSync.NodeText(mNode), 'LF');
-    mList.SetResult(mNode, True, StringOfChar(' ', TAtlasEvalTreeSync.MaxTreeValue));
-    Assert.AreEqual('L = ' + StringOfChar(' ', TAtlasEvalTreeSync.MaxTreeValue), TAtlasEvalTreeSync.NodeText(mNode),
+    mList.SetResult(mNode, True, StringOfChar(' ', TAtlasEvalTreeSync.cMaxTreeValue));
+    Assert.AreEqual('L = ' + StringOfChar(' ', TAtlasEvalTreeSync.cMaxTreeValue), TAtlasEvalTreeSync.NodeText(mNode),
       'genau die Grenze: ohne …');
   finally
     mList.Free;

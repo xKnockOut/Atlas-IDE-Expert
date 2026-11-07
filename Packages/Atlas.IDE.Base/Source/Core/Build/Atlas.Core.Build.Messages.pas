@@ -57,34 +57,34 @@ uses
 class function TAtlasCompilerMessages.FromIde(const AKind, AMessage, AFileName: string; ALine,
   AColumn: Integer): TAtlasCompilerMessage;
 var
-  Match: TMatch;
-  Kind: string;
+  mMatch: TMatch;
+  mKind: string;
 begin
   Result := Default(TAtlasCompilerMessage);
   Result.FileName := AFileName;
   Result.Line := ALine;
   Result.Column := AColumn;
   Result.Text := Trim(AMessage);
-  Match := TRegEx.Match(Result.Text, '^([EWHFC]\d{4})\s*:?\s*(.*)$', [roSingleLine]);
-  if Match.Success then
+  mMatch := TRegEx.Match(Result.Text, '^([EWHFC]\d{4})\s*:?\s*(.*)$', [roSingleLine]);
+  if mMatch.Success then
   begin
-    Result.Code := Match.Groups[1].Value;
-    Result.Text := Match.Groups[2].Value;
+    Result.Code := mMatch.Groups[1].Value;
+    Result.Text := mMatch.Groups[2].Value;
   end;
-  Kind := LowerCase(AKind);
-  if Kind.Contains('fatal') then
+  mKind := LowerCase(AKind);
+  if mKind.Contains('fatal') then
   begin
     Result.Severity := TAtlasCompilerSeverity.Fatal;
   end
-  else if Kind.Contains('error') then
+  else if mKind.Contains('error') then
   begin
     Result.Severity := TAtlasCompilerSeverity.Error;
   end
-  else if Kind.Contains('warn') then
+  else if mKind.Contains('warn') then
   begin
     Result.Severity := TAtlasCompilerSeverity.Warning;
   end
-  else if Kind.Contains('hint') then
+  else if mKind.Contains('hint') then
   begin
     Result.Severity := TAtlasCompilerSeverity.Hint;
   end
@@ -107,45 +107,45 @@ end;
 class function TAtlasCompilerMessages.Resolve(const AMessages: TArray<TAtlasCompilerMessage>;
   const AProjectFile: string; const AKnownFiles: TArray<string>): TArray<TAtlasCompilerMessage>;
 var
-  Index: Integer;
-  Name, Known, Candidate: string;
-  Found: Boolean;
+  mIndex: Integer;
+  mName, mKnown, mCandidate: string;
+  mFound: Boolean;
 begin
   Result := Copy(AMessages);
-  for Index := 0 to High(Result) do
+  for mIndex := 0 to High(Result) do
   begin
-    Name := StringReplace(Result[Index].FileName, '/', PathDelim, [rfReplaceAll]);
-    if (Name = '') or (ExtractFileDrive(Name) <> '') or Name.StartsWith(PathDelim) then
+    mName := StringReplace(Result[mIndex].FileName, '/', PathDelim, [rfReplaceAll]);
+    if (mName = '') or (ExtractFileDrive(mName) <> '') or mName.StartsWith(PathDelim) then
     begin
       Continue;
     end;
-    Found := False;
-    for Known in AKnownFiles do
+    mFound := False;
+    for mKnown in AKnownFiles do
     begin
-      if SameText(Known, Name) or EndsText(PathDelim + Name, Known) then
+      if SameText(mKnown, mName) or EndsText(PathDelim + mName, mKnown) then
       begin
-        Result[Index].FileName := Known;
-        Found := True;
+        Result[mIndex].FileName := mKnown;
+        mFound := True;
         Break;
       end;
     end;
-    if Found or (AProjectFile = '') then
+    if mFound or (AProjectFile = '') then
     begin
       Continue;
     end;
-    Candidate := ExpandFileName(IncludeTrailingPathDelimiter(ExtractFilePath(AProjectFile)) + Name);
-    if FileExists(Candidate) then
+    mCandidate := ExpandFileName(IncludeTrailingPathDelimiter(ExtractFilePath(AProjectFile)) + mName);
+    if FileExists(mCandidate) then
     begin
-      Result[Index].FileName := Candidate;
+      Result[mIndex].FileName := mCandidate;
     end;
   end;
 end;
 
 class function TAtlasCompilerMessages.SeverityText(ASeverity: TAtlasCompilerSeverity): string;
 const
-  Texts: array[TAtlasCompilerSeverity] of string = ('info', 'hint', 'warning', 'error', 'fatal');
+  cTexts: array[TAtlasCompilerSeverity] of string = ('info', 'hint', 'warning', 'error', 'fatal');
 begin
-  Result := Texts[ASeverity];
+  Result := cTexts[ASeverity];
 end;
 
 class function TAtlasCompilerMessages.ToJson(const AMessages: TArray<TAtlasCompilerMessage>; const AProject,
@@ -157,9 +157,9 @@ end;
 class function TAtlasCompilerMessages.ToJson(const AMessages: TArray<TAtlasCompilerMessage>; const AProject,
   APlatform: string; ASucceeded, ABackground: Boolean): TJSONObject;
 var
-  Items: TJSONArray;
-  Message: TAtlasCompilerMessage;
-  Item: TJSONObject;
+  mItems: TJSONArray;
+  mMessage: TAtlasCompilerMessage;
+  mItem: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('project', AProject);
@@ -169,22 +169,22 @@ begin
   begin
     Result.AddPair('background', TJSONBool.Create(True));
   end;
-  Items := TJSONArray.Create;
-  Result.AddPair('messages', Items);
-  for Message in AMessages do
+  mItems := TJSONArray.Create;
+  Result.AddPair('messages', mItems);
+  for mMessage in AMessages do
   begin
-    if Message.Severity = TAtlasCompilerSeverity.Info then
+    if mMessage.Severity = TAtlasCompilerSeverity.Info then
     begin
       Continue;
     end;
-    Item := TJSONObject.Create;
-    Item.AddPair('file', Message.FileName);
-    Item.AddPair('line', TJSONNumber.Create(Message.Line));
-    Item.AddPair('column', TJSONNumber.Create(Message.Column));
-    Item.AddPair('severity', SeverityText(Message.Severity));
-    Item.AddPair('code', Message.Code);
-    Item.AddPair('text', Message.Text);
-    Items.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('file', mMessage.FileName);
+    mItem.AddPair('line', TJSONNumber.Create(mMessage.Line));
+    mItem.AddPair('column', TJSONNumber.Create(mMessage.Column));
+    mItem.AddPair('severity', SeverityText(mMessage.Severity));
+    mItem.AddPair('code', mMessage.Code);
+    mItem.AddPair('text', mMessage.Text);
+    mItems.AddElement(mItem);
   end;
 end;
 

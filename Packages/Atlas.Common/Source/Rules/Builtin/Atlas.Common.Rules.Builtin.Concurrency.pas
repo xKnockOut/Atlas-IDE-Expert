@@ -172,8 +172,8 @@ begin
       begin
         Exit(TSyntaxSearchStep.Skip);
       end;
-      if (AVisited.Kind = TSyntaxKind.Identifier) and (InList(VclGlobals, AVisited.Name) or
-        InList(VclDialogs, AVisited.Name)) then
+      if (AVisited.Kind = TSyntaxKind.Identifier) and (InList(cVclGlobals, AVisited.Name) or
+        InList(cVclDialogs, AVisited.Name)) then
       begin
         Exit(TSyntaxSearchStep.Found);
       end;
@@ -320,45 +320,45 @@ end;
 
 class function TLockWithoutFinallyRule.LockPairs(const AOptions: string): TArray<TLockPair>;
 var
-  Index: Integer;
-  Pair: TLockPair;
-  Value, Pairs: TJSONValue;
-  Item: TJSONValue;
+  mIndex: Integer;
+  mPair: TLockPair;
+  mValue, mPairs: TJSONValue;
+  mItem: TJSONValue;
 begin
   Result := nil;
-  for Index := Low(BuiltinLockPairs) to High(BuiltinLockPairs) do
+  for mIndex := Low(cBuiltinLockPairs) to High(cBuiltinLockPairs) do
   begin
-    Pair.Lock := BuiltinLockPairs[Index, 0];
-    Pair.Release := BuiltinLockPairs[Index, 1];
-    Result := Result + [Pair];
+    mPair.Lock := cBuiltinLockPairs[mIndex, 0];
+    mPair.Release := cBuiltinLockPairs[mIndex, 1];
+    Result := Result + [mPair];
   end;
   if AOptions = '' then
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(AOptions);
+  mValue := TJSONObject.ParseJSONValue(AOptions);
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    Pairs := TJSONObject(Value).GetValue('lockPairs');
-    if not (Pairs is TJSONArray) then
+    mPairs := TJSONObject(mValue).GetValue('lockPairs');
+    if not (mPairs is TJSONArray) then
     begin
       Exit;
     end;
-    for Item in TJSONArray(Pairs) do
+    for mItem in TJSONArray(mPairs) do
     begin
-      if (Item is TJSONArray) and (TJSONArray(Item).Count = 2) and (TJSONArray(Item).Items[0] is TJSONString) and
-        (TJSONArray(Item).Items[1] is TJSONString) then
+      if (mItem is TJSONArray) and (TJSONArray(mItem).Count = 2) and (TJSONArray(mItem).Items[0] is TJSONString) and
+        (TJSONArray(mItem).Items[1] is TJSONString) then
       begin
-        Pair.Lock := TJSONArray(Item).Items[0].Value;
-        Pair.Release := TJSONArray(Item).Items[1].Value;
-        Result := Result + [Pair];
+        mPair.Lock := TJSONArray(mItem).Items[0].Value;
+        mPair.Release := TJSONArray(mItem).Items[1].Value;
+        Result := Result + [mPair];
       end;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -367,7 +367,8 @@ begin
   Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
 end;
 
-/// <summary>Schlüssel einer Sperre: Empfänger; bei TMonitor.Enter(X) und EnterCriticalSection(X) auch das Argument.</summary>
+/// <summary>Schlüssel einer Sperre: Empfänger; bei TMonitor.Enter(X) und EnterCriticalSection(X) auch das
+/// Argument.</summary>
 function LockKey(const AText: string; const ACall: TMethodCall): string;
 begin
   if ACall.Receiver <> nil then
@@ -413,30 +414,31 @@ end;
 
 function IsRelease(const AText: string; ANode: TSyntaxNode; const ARelease, AKey: string): Boolean;
 var
-  Call: TMethodCall;
+  mCall: TMethodCall;
 begin
-  Result := (TryMethodCall(ANode, Call) or TryExpressionCall(ANode, Call)) and SameText(Call.Method, ARelease) and (LockKey(AText, Call) = AKey);
+  Result := (TryMethodCall(ANode, mCall) or TryExpressionCall(ANode, mCall)) and SameText(mCall.Method, ARelease) and
+    (LockKey(AText, mCall) = AKey);
 end;
 
 /// <summary>True, wenn ein Finally-Block von ATry die Freigabe mit demselben Schlüssel enthält.</summary>
 function ReleasesIn(const AText: string; ATry: TSyntaxNode; const ARelease, AKey: string): Boolean;
 var
-  Final: TSyntaxNode;
-  Text, Release, Key: string;
+  mFinal: TSyntaxNode;
+  mText, mRelease, mKey: string;
 begin
-  Final := ATry.FindChild(TSyntaxKind.FinallyBlock);
-  if Final = nil then
+  mFinal := ATry.FindChild(TSyntaxKind.FinallyBlock);
+  if mFinal = nil then
   begin
     Exit(False);
   end;
-  Text := AText;
-  Release := ARelease;
-  Key := AKey;
+  mText := AText;
+  mRelease := ARelease;
+  mKey := AKey;
   // Iterativ (Bericht M1).
-  Result := Final.Search(
+  Result := mFinal.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
-      if IsRelease(Text, ANode, Release, Key) then
+      if IsRelease(mText, ANode, mRelease, mKey) then
       begin
         Exit(TSyntaxSearchStep.Found);
       end;
@@ -479,46 +481,46 @@ end;
 
 procedure TLockWithoutFinallyRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Pairs: TArray<TLockPair>;
+  mPairs: TArray<TLockPair>;
 
   // Korrektur: Anweisungen zwischen Sperre und Freigabe in try/finally einschließen.
   function WrapFix(AList: TSyntaxNode; ALockIndex, AReleaseIndex: Integer): TArray<TRuleFix>;
   var
-    Indent, Middle, NewText: string;
-    First, Release: TSyntaxNode;
+    mIndent, mMiddle, mNewText: string;
+    mFirst, mRelease: TSyntaxNode;
   begin
     Result := nil;
     if AReleaseIndex <= ALockIndex + 1 then
     begin
       Exit;
     end;
-    First := AList[ALockIndex + 1];
-    Release := AList[AReleaseIndex];
-    Indent := StringOfChar(' ', AList[ALockIndex].StartPos.Character);
-    Middle := TrimRight(Copy(AContext.Text, First.StartOffset + 1, Release.StartOffset - First.StartOffset));
-    Middle := StringReplace(Middle, #10, #10'  ', [rfReplaceAll]);
-    NewText := 'try' + sLineBreak + Indent + '  ' + Middle + sLineBreak + Indent + 'finally' + sLineBreak +
-      Indent + '  ' + SourceText(AContext.Text, Release) + ';' + sLineBreak + Indent + 'end';
+    mFirst := AList[ALockIndex + 1];
+    mRelease := AList[AReleaseIndex];
+    mIndent := StringOfChar(' ', AList[ALockIndex].StartPos.Character);
+    mMiddle := TrimRight(Copy(AContext.Text, mFirst.StartOffset + 1, mRelease.StartOffset - mFirst.StartOffset));
+    mMiddle := StringReplace(mMiddle, #10, #10'  ', [rfReplaceAll]);
+    mNewText := 'try' + sLineBreak + mIndent + '  ' + mMiddle + sLineBreak + mIndent + 'finally' + sLineBreak +
+      mIndent + '  ' + SourceText(AContext.Text, mRelease) + ';' + sLineBreak + mIndent + 'end';
     Result := [TRuleFix.Create(cTexts[TConcurrencyText.WrapTryFinally].Text, [TRuleEdit.Create(
-      TTextRange.Create(First.StartPos, Release.EndPos), NewText)])];
+      TTextRange.Create(mFirst.StartPos, mRelease.EndPos), mNewText)])];
   end;
 
   // Namen der Routinen dieser Unit (Methoden, lokale Routinen) ohne Klassenpräfix.
   function UnitRoutines: TArray<string>;
   var
-    Names: TArray<string>;
+    mNames: TArray<string>;
   begin
-    Names := nil;
+    mNames := nil;
     AContext.Tree.Root.Search(
       function(ANode: TSyntaxNode): TSyntaxSearchStep
       begin
         if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.Name <> '') then
         begin
-          Names := Names + [ShortName(ANode.Name)];
+          mNames := mNames + [ShortName(ANode.Name)];
         end;
         Result := TSyntaxSearchStep.Descend;
       end);
-    Result := Names;
+    Result := mNames;
   end;
 
   // Name der Routine, in der ANode steht; '' außerhalb (initialization).
@@ -536,14 +538,14 @@ var
   end;
 
 var
-  Routines: TArray<string>;
+  mRoutines: TArray<string>;
 
   // Enter(…) ohne Empfänger ruft eine Routine dieser Unit (lokale Routine, eigene Methode), keine Sperre; eine
   // gleichnamige Hülle (procedure TX.Enter; begin TMonitor.Enter(FLock); end) gibt die Sperre an den Aufrufer
   // weiter, der dort geprüft wird (#1109).
   function IsOwnRoutine(AList: TSyntaxNode; const ACall: TMethodCall): Boolean;
   begin
-    Result := ((ACall.Receiver = nil) and MatchText(ACall.Method, Routines)) or
+    Result := ((ACall.Receiver = nil) and MatchText(ACall.Method, mRoutines)) or
       SameText(EnclosingRoutine(AList), ACall.Method);
   end;
 
@@ -560,7 +562,7 @@ var
     ARelease := '';
     AReleaseIndex := -1;
     mKey := LockKey(AContext.Text, ACall);
-    for mPair in Pairs do
+    for mPair in mPairs do
     begin
       if not SameText(mPair.Lock, ACall.Method) then
       begin
@@ -582,38 +584,38 @@ var
 
   procedure CheckList(AList: TSyntaxNode);
   var
-    Index, ReleaseIndex: Integer;
-    Call: TMethodCall;
-    Release: string;
+    mIndex, mReleaseIndex: Integer;
+    mCall: TMethodCall;
+    mRelease: string;
   begin
-    for Index := 0 to AList.ChildCount - 1 do
+    for mIndex := 0 to AList.ChildCount - 1 do
     begin
-      if not TryMethodCall(AList[Index], Call) then
+      if not TryMethodCall(AList[mIndex], mCall) then
       begin
         Continue;
       end;
-      if IsOwnRoutine(AList, Call) or PairOf(AList, Index, Call, Release, ReleaseIndex) or (Release = '') then
+      if IsOwnRoutine(AList, mCall) or PairOf(AList, mIndex, mCall, mRelease, mReleaseIndex) or (mRelease = '') then
       begin
         Continue;
       end;
-      AReport.Add(NameRange(Call.Member),
-        cTexts[TConcurrencyText.LockNoFinally].Fmt([Call.Method, Release]),
-        TRuleConfidence.High, WrapFix(AList, Index, ReleaseIndex));
+      AReport.Add(NameRange(mCall.Member),
+        cTexts[TConcurrencyText.LockNoFinally].Fmt([mCall.Method, mRelease]),
+        TRuleConfidence.High, WrapFix(AList, mIndex, mReleaseIndex));
     end;
   end;
 
 var
-  List: TSyntaxNode;
+  mList: TSyntaxNode;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Pairs := LockPairs(AContext.Options);
-  Routines := UnitRoutines;
-  for List in StatementLists(AContext.Tree.Root) do
+  mPairs := LockPairs(AContext.Options);
+  mRoutines := UnitRoutines;
+  for mList in StatementLists(AContext.Tree.Root) do
   begin
-    CheckList(List);
+    CheckList(mList);
   end;
 end;
 
@@ -621,7 +623,7 @@ end;
 
 const
   // Open, Close, OpenArg, CloseArg; die Folge steht in BuiltinStateConsequences.
-  BuiltinStatePairs: array[0..8, 0..3] of string = (
+  cBuiltinStatePairs: array[0..8, 0..3] of string = (
     ('DisableControls', 'EnableControls', '-1', '-1'),
     ('BeginUpdate', 'EndUpdate', '-1', '-1'),
     ('FindFirst', 'FindClose', '2', '0'),
@@ -631,11 +633,11 @@ const
     ('GetMem', 'FreeMem', '0', '0'),
     ('AllocMem', 'FreeMem', '-2', '0'),
     ('Screen.Cursor :=', 'Screen.Cursor :=', '-1', '-1'));
-  BuiltinStateConsequences: array[0..8] of TConcurrencyText = (TConcurrencyText.GridFrozen,
+  cBuiltinStateConsequences: array[0..8] of TConcurrencyText = (TConcurrencyText.GridFrozen,
     TConcurrencyText.DisplayLocked, TConcurrencyText.SearchHandleOpen, TConcurrencyText.FileOpen,
     TConcurrencyText.FileOpen, TConcurrencyText.FileOpen, TConcurrencyText.MemoryAllocated,
     TConcurrencyText.MemoryAllocated, TConcurrencyText.CursorStuck);
-  AssignSuffix = ':=';
+  cAssignSuffix = ':=';
 
 function TPairWithoutFinallyRule.Descriptor: TRuleDescriptor;
 begin
@@ -645,60 +647,60 @@ end;
 
 class function TPairWithoutFinallyRule.Pairs(const AOptions: string): TArray<TStatePair>;
 var
-  Index: Integer;
-  Pair: TStatePair;
-  Value, List, Item: TJSONValue;
-  Number: Integer;
+  mIndex: Integer;
+  mPair: TStatePair;
+  mValue, mList, mItem: TJSONValue;
+  mNumber: Integer;
 begin
   Result := nil;
-  for Index := Low(BuiltinStatePairs) to High(BuiltinStatePairs) do
+  for mIndex := Low(cBuiltinStatePairs) to High(cBuiltinStatePairs) do
   begin
-    Pair.Open := BuiltinStatePairs[Index, 0];
-    Pair.Close := BuiltinStatePairs[Index, 1];
-    Pair.OpenArg := StrToInt(BuiltinStatePairs[Index, 2]);
-    Pair.CloseArg := StrToInt(BuiltinStatePairs[Index, 3]);
-    Pair.Consequence := cTexts[BuiltinStateConsequences[Index]].Text;
-    Result := Result + [Pair];
+    mPair.Open := cBuiltinStatePairs[mIndex, 0];
+    mPair.Close := cBuiltinStatePairs[mIndex, 1];
+    mPair.OpenArg := StrToInt(cBuiltinStatePairs[mIndex, 2]);
+    mPair.CloseArg := StrToInt(cBuiltinStatePairs[mIndex, 3]);
+    mPair.Consequence := cTexts[cBuiltinStateConsequences[mIndex]].Text;
+    Result := Result + [mPair];
   end;
   if Trim(AOptions) = '' then
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(AOptions);
+  mValue := TJSONObject.ParseJSONValue(AOptions);
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    List := TJSONObject(Value).GetValue('pairs');
-    if not (List is TJSONArray) then
+    mList := TJSONObject(mValue).GetValue('pairs');
+    if not (mList is TJSONArray) then
     begin
       Exit;
     end;
-    for Item in TJSONArray(List) do
+    for mItem in TJSONArray(mList) do
     begin
-      if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<string>('open', Pair.Open) and
-        TJSONObject(Item).TryGetValue<string>('close', Pair.Close) and (Trim(Pair.Open) <> '') and
-        (Trim(Pair.Close) <> '') then
+      if (mItem is TJSONObject) and TJSONObject(mItem).TryGetValue<string>('open', mPair.Open) and
+        TJSONObject(mItem).TryGetValue<string>('close', mPair.Close) and (Trim(mPair.Open) <> '') and
+        (Trim(mPair.Close) <> '') then
       begin
-        Pair.Open := Trim(Pair.Open);
-        Pair.Close := Trim(Pair.Close);
-        Pair.OpenArg := -1;
-        Pair.CloseArg := -1;
-        if TJSONObject(Item).TryGetValue<Integer>('openArg', Number) then
+        mPair.Open := Trim(mPair.Open);
+        mPair.Close := Trim(mPair.Close);
+        mPair.OpenArg := -1;
+        mPair.CloseArg := -1;
+        if TJSONObject(mItem).TryGetValue<Integer>('openArg', mNumber) then
         begin
-          Pair.OpenArg := Number;
+          mPair.OpenArg := mNumber;
         end;
-        if TJSONObject(Item).TryGetValue<Integer>('closeArg', Number) then
+        if TJSONObject(mItem).TryGetValue<Integer>('closeArg', mNumber) then
         begin
-          Pair.CloseArg := Number;
+          mPair.CloseArg := mNumber;
         end;
-        Pair.Consequence := cTexts[TConcurrencyText.StateStuck].Text;
-        Result := Result + [Pair];
+        mPair.Consequence := cTexts[TConcurrencyText.StateStuck].Text;
+        Result := Result + [mPair];
       end;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -810,16 +812,16 @@ end;
 
 procedure TPairWithoutFinallyRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  StatePairs: TArray<TStatePair>;
+  mStatePairs: TArray<TStatePair>;
 
   function IsAssignPair(const AName: string): Boolean;
   begin
-    Result := EndsStr(AssignSuffix, AName);
+    Result := EndsStr(cAssignSuffix, AName);
   end;
 
   function AssignTarget(const AName: string): string;
   begin
-    Result := LowerCase(Trim(Copy(AName, 1, Length(AName) - Length(AssignSuffix))));
+    Result := LowerCase(Trim(Copy(AName, 1, Length(AName) - Length(cAssignSuffix))));
   end;
 
   // Schlüssel eines Aufrufs: Empfänger bzw. das gewählte Argument (Call[1] ist das erste Argument).
@@ -847,45 +849,45 @@ var
   // Ist AStatement das Öffnen bzw. Schließen von APair (AOpen) mit Schlüssel AKey?
   function Matches(AStatement: TSyntaxNode; const APair: TStatePair; AOpen: Boolean; out AKey: string): Boolean;
   var
-    Name: string;
-    Arg: Integer;
-    Call: TMethodCall;
-    Found, Receiver: TSyntaxNode;
+    mName: string;
+    mArg: Integer;
+    mCall: TMethodCall;
+    mFound, mReceiver: TSyntaxNode;
   begin
     AKey := '';
     if AOpen then
     begin
-      Name := APair.Open;
-      Arg := APair.OpenArg;
+      mName := APair.Open;
+      mArg := APair.OpenArg;
     end
     else
     begin
-      Name := APair.Close;
-      Arg := APair.CloseArg;
+      mName := APair.Close;
+      mArg := APair.CloseArg;
     end;
-    if IsAssignPair(Name) then
+    if IsAssignPair(mName) then
     begin
       Result := (AStatement.Kind = TSyntaxKind.AssignStatement) and (AStatement.ChildCount = 2) and
-        (NodeText(AContext.Text, AStatement[0]) = AssignTarget(Name));
+        (NodeText(AContext.Text, AStatement[0]) = AssignTarget(mName));
       if Result then
       begin
-        AKey := AssignTarget(Name);
+        AKey := AssignTarget(mName);
       end;
       Exit;
     end;
-    if (Arg <> -2) and TryMethodCall(AStatement, Call) and SameText(Call.Method, Name) then
+    if (mArg <> -2) and TryMethodCall(AStatement, mCall) and SameText(mCall.Method, mName) then
     begin
-      AKey := CallKey(Call.Call, Call.Receiver, Arg);
+      AKey := CallKey(mCall.Call, mCall.Receiver, mArg);
       Exit(True);
     end;
     // P := AllocMem(N) bzw. R := FindFirst(...): Aufruf auf der rechten Seite.
     Result := False;
     if AOpen and (AStatement.Kind = TSyntaxKind.AssignStatement) and (AStatement.ChildCount = 2) then
     begin
-      Found := FindCall(AStatement[1], Name, Receiver);
-      if Found <> nil then
+      mFound := FindCall(AStatement[1], mName, mReceiver);
+      if mFound <> nil then
       begin
-        AKey := CallKey(Found, Receiver, Arg);
+        AKey := CallKey(mFound, mReceiver, mArg);
         if AKey = '*' then
         begin
           AKey := NodeText(AContext.Text, AStatement[0]);
@@ -900,43 +902,43 @@ var
 
     function Search(ANode: TSyntaxNode): Boolean;
     var
-      Pending: TStack<TSyntaxNode>;
-      Node: TSyntaxNode;
-      Index: Integer;
-      Key: string;
+      mPending: TStack<TSyntaxNode>;
+      mNode: TSyntaxNode;
+      mIndex: Integer;
+      mKey: string;
     begin
       // Iterativ (Bericht M1).
       Result := False;
-      Pending := TStack<TSyntaxNode>.Create;
+      mPending := TStack<TSyntaxNode>.Create;
       try
-        Pending.Push(ANode);
-        while Pending.Count > 0 do
+        mPending.Push(ANode);
+        while mPending.Count > 0 do
         begin
-          Node := Pending.Pop;
-          if Matches(Node, StatePairs[APair], False, Key) and (Key = AKey) then
+          mNode := mPending.Pop;
+          if Matches(mNode, mStatePairs[APair], False, mKey) and (mKey = AKey) then
           begin
             Exit(True);
           end;
-          for Index := Node.ChildCount - 1 downto 0 do
+          for mIndex := mNode.ChildCount - 1 downto 0 do
           begin
-            Pending.Push(Node[Index]);
+            mPending.Push(mNode[mIndex]);
           end;
         end;
       finally
-        Pending.Free;
+        mPending.Free;
       end;
     end;
 
   var
-    Index: Integer;
-    Final: TSyntaxNode;
+    mIndex: Integer;
+    mFinal: TSyntaxNode;
   begin
-    for Index := AFrom to AList.ChildCount - 1 do
+    for mIndex := AFrom to AList.ChildCount - 1 do
     begin
-      if AList[Index].Kind = TSyntaxKind.TryStatement then
+      if AList[mIndex].Kind = TSyntaxKind.TryStatement then
       begin
-        Final := AList[Index].FindChild(TSyntaxKind.FinallyBlock);
-        if (Final <> nil) and Search(Final) then
+        mFinal := AList[mIndex].FindChild(TSyntaxKind.FinallyBlock);
+        if (mFinal <> nil) and Search(mFinal) then
         begin
           Exit(True);
         end;
@@ -947,14 +949,14 @@ var
 
   function CloseIndex(AList: TSyntaxNode; AFrom, APair: Integer; const AKey: string): Integer;
   var
-    Index: Integer;
-    Key: string;
+    mIndex: Integer;
+    mKey: string;
   begin
-    for Index := AFrom to AList.ChildCount - 1 do
+    for mIndex := AFrom to AList.ChildCount - 1 do
     begin
-      if Matches(AList[Index], StatePairs[APair], False, Key) and (Key = AKey) then
+      if Matches(AList[mIndex], mStatePairs[APair], False, mKey) and (mKey = AKey) then
       begin
-        Exit(Index);
+        Exit(mIndex);
       end;
     end;
     Result := -1;
@@ -962,39 +964,39 @@ var
 
   function CloseName(APair: Integer): string;
   begin
-    Result := StatePairs[APair].Close;
+    Result := mStatePairs[APair].Close;
     if IsAssignPair(Result) then
     begin
-      Result := Trim(Copy(Result, 1, Length(Result) - Length(AssignSuffix)));
+      Result := Trim(Copy(Result, 1, Length(Result) - Length(cAssignSuffix)));
     end;
   end;
 
   // try/finally um die Anweisungen ab AFirst bis vor die Schließen-Anweisungen AFirstClose..ALastClose.
   function WrapFix(AList: TSyntaxNode; AFirst, AFirstClose, ALastClose: Integer): TArray<TRuleFix>;
   var
-    Indent, Middle, Closes, LineBreak: string;
-    Index: Integer;
-    First: TSyntaxNode;
+    mIndent, mMiddle, mCloses, mLineBreak: string;
+    mIndex: Integer;
+    mFirst: TSyntaxNode;
   begin
     Result := nil;
     if AFirst >= AFirstClose then
     begin
       Exit;
     end;
-    LineBreak := TTextLines.LineBreakOf(AContext.Text);
-    First := AList[AFirst];
-    Indent := StringOfChar(' ', First.StartPos.Character);
-    Middle := TrimRight(Copy(AContext.Text, First.StartOffset + 1, AList[AFirstClose].StartOffset -
-      First.StartOffset));
-    Middle := StringReplace(Middle, #10, #10'  ', [rfReplaceAll]);
-    Closes := '';
-    for Index := AFirstClose to ALastClose do
+    mLineBreak := TTextLines.LineBreakOf(AContext.Text);
+    mFirst := AList[AFirst];
+    mIndent := StringOfChar(' ', mFirst.StartPos.Character);
+    mMiddle := TrimRight(Copy(AContext.Text, mFirst.StartOffset + 1, AList[AFirstClose].StartOffset -
+      mFirst.StartOffset));
+    mMiddle := StringReplace(mMiddle, #10, #10'  ', [rfReplaceAll]);
+    mCloses := '';
+    for mIndex := AFirstClose to ALastClose do
     begin
-      Closes := Closes + LineBreak + Indent + '  ' + Trim(SourceText(AContext.Text, AList[Index])) + ';';
+      mCloses := mCloses + mLineBreak + mIndent + '  ' + Trim(SourceText(AContext.Text, AList[mIndex])) + ';';
     end;
     Result := [TRuleFix.Create(cTexts[TConcurrencyText.WrapTryFinally].Text, [TRuleEdit.Create(
-      TTextRange.Create(First.StartPos, AList[ALastClose].EndPos), 'try' + LineBreak + Indent + '  ' + Middle +
-      LineBreak + Indent + 'finally' + Closes + LineBreak + Indent + 'end')])];
+      TTextRange.Create(mFirst.StartPos, AList[ALastClose].EndPos), 'try' + mLineBreak + mIndent + '  ' + mMiddle +
+      mLineBreak + mIndent + 'finally' + mCloses + mLineBreak + mIndent + 'end')])];
   end;
 
   // Meldung für Paare, deren Bereiche sich überlappen; am ersten Schließen, die übrigen Paare nennt sie mit.
@@ -1019,27 +1021,27 @@ var
 
   procedure ReportGroup(AList: TSyntaxNode; const AGroup: TArray<TOpening>; const ACloses: TArray<Integer>);
   var
-    FirstClose, LastClose, LastOpen, Inner: Integer;
-    Message, Others: string;
+    mFirstClose, mLastClose, mLastOpen, mInner: Integer;
+    mMessage, mOthers: string;
   begin
-    GroupBounds(AGroup, ACloses, FirstClose, LastClose, LastOpen, Inner);
-    Others := OtherCloses(AGroup, Inner);
-    Message := cTexts[TConcurrencyText.NotInFinally].Fmt(
-      [CloseName(AGroup[Inner].Pair), StatePairs[AGroup[Inner].Pair].Consequence]);
-    if Others <> '' then
+    GroupBounds(AGroup, ACloses, mFirstClose, mLastClose, mLastOpen, mInner);
+    mOthers := OtherCloses(AGroup, mInner);
+    mMessage := cTexts[TConcurrencyText.NotInFinally].Fmt(
+      [CloseName(AGroup[mInner].Pair), mStatePairs[AGroup[mInner].Pair].Consequence]);
+    if mOthers <> '' then
     begin
-      Message := Message + cTexts[TConcurrencyText.SameFor].Fmt([Others]);
+      mMessage := mMessage + cTexts[TConcurrencyText.SameFor].Fmt([mOthers]);
     end;
     // Korrektur nur, wenn alle Öffnungen vor dem ersten Schließen stehen und die Schließen-Anweisungen
     // verschieden sind und direkt aufeinander folgen.
-    if (LastOpen < FirstClose) and (LastClose - FirstClose + 1 = Length(AGroup)) and DistinctCloses(ACloses) then
+    if (mLastOpen < mFirstClose) and (mLastClose - mFirstClose + 1 = Length(AGroup)) and DistinctCloses(ACloses) then
     begin
-      AReport.Add(TTextRange.Create(AList[FirstClose].StartPos, AList[FirstClose].EndPos), Message,
-        TRuleConfidence.High, WrapFix(AList, LastOpen + 1, FirstClose, LastClose));
+      AReport.Add(TTextRange.Create(AList[mFirstClose].StartPos, AList[mFirstClose].EndPos), mMessage,
+        TRuleConfidence.High, WrapFix(AList, mLastOpen + 1, mFirstClose, mLastClose));
     end
     else
     begin
-      AReport.Add(TTextRange.Create(AList[FirstClose].StartPos, AList[FirstClose].EndPos), Message,
+      AReport.Add(TTextRange.Create(AList[mFirstClose].StartPos, AList[mFirstClose].EndPos), mMessage,
         TRuleConfidence.High);
     end;
   end;
@@ -1056,15 +1058,15 @@ var
     for mIndex := 0 to AList.ChildCount - 1 do
     begin
       mPair := 0;
-      while mPair <= High(StatePairs) do
+      while mPair <= High(mStatePairs) do
       begin
-        if Matches(AList[mIndex], StatePairs[mPair], True, mKey) and (mKey <> '') then
+        if Matches(AList[mIndex], mStatePairs[mPair], True, mKey) and (mKey <> '') then
         begin
           mOpening.Pair := mPair;
           mOpening.Index := mIndex;
           mOpening.Key := mKey;
           Result := Result + [mOpening];
-          mPair := High(StatePairs);
+          mPair := High(mStatePairs);
         end;
         Inc(mPair);
       end;
@@ -1073,64 +1075,64 @@ var
 
   procedure CheckList(AList: TSyntaxNode; const AOutside: TArray<TOpening>);
   var
-    Openings, Group: TArray<TOpening>;
-    Opening: TOpening;
-    Close, Reach: Integer;
-    Closes: TArray<Integer>;
+    mOpenings, mGroup: TArray<TOpening>;
+    mOpening: TOpening;
+    mClose, mReach: Integer;
+    mCloses: TArray<Integer>;
   begin
-    Openings := OpeningsOf(AList, AOutside);
+    mOpenings := OpeningsOf(AList, AOutside);
     // Offene Paare mit ungeschütztem Schließen in derselben Liste; überlappende Paare zusammen.
-    Group := nil;
-    Closes := nil;
-    Reach := -1;
-    for Opening in Openings do
+    mGroup := nil;
+    mCloses := nil;
+    mReach := -1;
+    for mOpening in mOpenings do
     begin
-      Close := CloseIndex(AList, Opening.Index + 1, Opening.Pair, Opening.Key);
-      if (Close < 0) or (Close <= Opening.Index + 1) or
-        ClosedInFinally(AList, Opening.Index + 1, Opening.Pair, Opening.Key) then
+      mClose := CloseIndex(AList, mOpening.Index + 1, mOpening.Pair, mOpening.Key);
+      if (mClose < 0) or (mClose <= mOpening.Index + 1) or
+        ClosedInFinally(AList, mOpening.Index + 1, mOpening.Pair, mOpening.Key) then
       begin
         Continue;
       end;
-      if (Group <> nil) and (Opening.Index > Reach) then
+      if (mGroup <> nil) and (mOpening.Index > mReach) then
       begin
-        ReportGroup(AList, Group, Closes);
-        Group := nil;
-        Closes := nil;
+        ReportGroup(AList, mGroup, mCloses);
+        mGroup := nil;
+        mCloses := nil;
       end;
-      Group := Group + [Opening];
-      Closes := Closes + [Close];
-      if Close > Reach then
+      mGroup := mGroup + [mOpening];
+      mCloses := mCloses + [mClose];
+      if mClose > mReach then
       begin
-        Reach := Close;
+        mReach := mClose;
       end;
     end;
-    if Group <> nil then
+    if mGroup <> nil then
     begin
-      ReportGroup(AList, Group, Closes);
+      ReportGroup(AList, mGroup, mCloses);
     end;
   end;
 
   // if FindFirst(...) = 0 then begin … FindClose(SR) end: das Öffnen steht in der Bedingung.
   function ConditionOpening(AIf: TSyntaxNode; out AOpening: TOpening): Boolean;
   var
-    PairIndex: Integer;
-    Found, Receiver: TSyntaxNode;
+    mPairIndex: Integer;
+    mFound, mReceiver: TSyntaxNode;
   begin
     Result := False;
     if (AIf.ChildCount < 2) or (AIf[1].Kind <> TSyntaxKind.Block) then
     begin
       Exit;
     end;
-    for PairIndex := 0 to High(StatePairs) do
+    for mPairIndex := 0 to High(mStatePairs) do
     begin
-      if not IsAssignPair(StatePairs[PairIndex].Open) then
+      if not IsAssignPair(mStatePairs[mPairIndex].Open) then
       begin
-        Found := FindCall(AIf[0], StatePairs[PairIndex].Open, Receiver);
-        if Found <> nil then
+        mFound := FindCall(AIf[0], mStatePairs[mPairIndex].Open, mReceiver);
+        if mFound <> nil then
         begin
-          AOpening.Pair := PairIndex;
+          AOpening.Pair := mPairIndex;
           AOpening.Index := -1;
-          AOpening.Key := CallKey(Found, Receiver, StatePairs[PairIndex].OpenArg);
+          AOpening.Key := CallKey(mFound, mReceiver, mStatePairs[mPairIndex].OpenArg);
           Exit(AOpening.Key <> '');
         end;
       end;
@@ -1149,33 +1151,33 @@ var
 
   procedure Visit(ANode: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
-    Opening: TOpening;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
+    mOpening: TOpening;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if (Node.Kind = TSyntaxKind.IfStatement) and ConditionOpening(Node, Opening) then
+        mNode := mPending.Pop;
+        if (mNode.Kind = TSyntaxKind.IfStatement) and ConditionOpening(mNode, mOpening) then
         begin
-          CheckList(Node[1], [Opening]);
+          CheckList(mNode[1], [mOpening]);
         end
-        else if IsStatementList(Node) and not IsConditionBlock(Node) then
+        else if IsStatementList(mNode) and not IsConditionBlock(mNode) then
         begin
-          CheckList(Node, nil);
+          CheckList(mNode, nil);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -1184,7 +1186,7 @@ begin
   begin
     Exit;
   end;
-  StatePairs := Pairs(AContext.Options);
+  mStatePairs := Pairs(AContext.Options);
   Visit(AContext.Tree.Root);
 end;
 

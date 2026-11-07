@@ -167,9 +167,9 @@ begin
 end;
 procedure TAtlasWelcomeProjectsFrameTests.PillTextsFollowKind;
 var
-  Saved: TAtlasLanguage;
+  mSaved: TAtlasLanguage;
 begin
-  Saved := TAtlasStrings.Language;
+  mSaved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
     Assert.AreEqual('Build 0/0/0', TAtlasProjectsTexts.PillText(
@@ -189,237 +189,237 @@ begin
     Assert.AreNotEqual(Integer(TAtlasProjectsTexts.PillColor(TAtlasProjectPillLevel.Good)),
       Integer(TAtlasProjectsTexts.PillColor(TAtlasProjectPillLevel.Error)));
   finally
-    TAtlasStrings.Language := Saved;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 procedure TAtlasWelcomeProjectsFrameTests.RowsSetHeightAndAskForRefresh;
 var
-  Host: TForm;
-  Fake: TFakeProjects;
-  Source: IAtlasProjectsSource;
-  Frame: TAtlasWelcomeProjectsFrame;
-  Empty, Two: Integer;
+  mHost: TForm;
+  mFake: TFakeProjects;
+  mSource: IAtlasProjectsSource;
+  mFrame: TAtlasWelcomeProjectsFrame;
+  mEmpty, mTwo: Integer;
 begin
-  Fake := TFakeProjects.Create;
-  Source := Fake;
-  Host := TForm.CreateNew(nil);
+  mFake := TFakeProjects.Create;
+  mSource := mFake;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := ProjectsFrame(Host, Source);
-    Assert.AreEqual(1, Integer(Length(Fake.Calls)), 'beim Anzeigen frisch abfragen');
-    Assert.AreEqual('shown', Fake.Calls[0]);
-    Assert.AreEqual(0, Integer(Length(Frame.Entries)));
-    Empty := Frame.PreferredHeight;
-    Fake.FEntries := [ProjectEntry('C:\P\Eins.dproj', 0), ProjectEntry('C:\P\Zwei.dproj', 2)];
-    Frame.UpdateContent;
-    Assert.AreEqual(2, Integer(Length(Frame.Entries)));
-    Two := Frame.PreferredHeight;
-    Assert.IsTrue(Two > Empty, Format('leer %d, zwei Zeilen %d', [Empty, Two]));
-    Assert.AreEqual(1, Integer(Length(Fake.Calls)), 'Neu lesen fragt nicht erneut ab');
+    mFrame := ProjectsFrame(mHost, mSource);
+    Assert.AreEqual(1, Integer(Length(mFake.Calls)), 'beim Anzeigen frisch abfragen');
+    Assert.AreEqual('shown', mFake.Calls[0]);
+    Assert.AreEqual(0, Integer(Length(mFrame.Entries)));
+    mEmpty := mFrame.PreferredHeight;
+    mFake.FEntries := [ProjectEntry('C:\P\Eins.dproj', 0), ProjectEntry('C:\P\Zwei.dproj', 2)];
+    mFrame.UpdateContent;
+    Assert.AreEqual(2, Integer(Length(mFrame.Entries)));
+    mTwo := mFrame.PreferredHeight;
+    Assert.IsTrue(mTwo > mEmpty, Format('leer %d, zwei Zeilen %d', [mEmpty, mTwo]));
+    Assert.AreEqual(1, Integer(Length(mFake.Calls)), 'Neu lesen fragt nicht erneut ab');
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 procedure TAtlasWelcomeProjectsFrameTests.DetailAndHintNameState;
 var
-  Saved: TAtlasLanguage;
-  Item: TAtlasProjectEntry;
-  Hint, Detail: string;
+  mSaved: TAtlasLanguage;
+  mItem: TAtlasProjectEntry;
+  mHint, mDetail: string;
 begin
-  Saved := TAtlasStrings.Language;
+  mSaved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
-    Item := ProjectEntry('C:\P\Zwei.dproj', 2);
-    Detail := TAtlasProjectsTexts.DetailText(Item);
-    Assert.Contains(Detail, 'C:\P\Zwei.dproj');
-    Assert.Contains(Detail, 'Stand vom', 'gespeicherter Stand');
-    Item.VcsFresh := True;
-    Assert.IsFalse(TAtlasProjectsTexts.DetailText(Item).Contains('Stand vom'), 'frisch abgefragt');
-    Hint := TAtlasProjectsTexts.HintFor(Item);
-    Assert.Contains(Hint, 'main');
-    Assert.Contains(Hint, '2 Fehler');
-    Assert.Contains(Hint, 'Main.pas (12)');
-    Assert.Contains(Hint, 'E2003');
-    Item.Summary.Build := TAtlasProjectBuild.Empty;
-    Assert.Contains(TAtlasProjectsTexts.HintFor(Item),
+    mItem := ProjectEntry('C:\P\Zwei.dproj', 2);
+    mDetail := TAtlasProjectsTexts.DetailText(mItem);
+    Assert.Contains(mDetail, 'C:\P\Zwei.dproj');
+    Assert.Contains(mDetail, 'Stand vom', 'gespeicherter Stand');
+    mItem.VcsFresh := True;
+    Assert.IsFalse(TAtlasProjectsTexts.DetailText(mItem).Contains('Stand vom'), 'frisch abgefragt');
+    mHint := TAtlasProjectsTexts.HintFor(mItem);
+    Assert.Contains(mHint, 'main');
+    Assert.Contains(mHint, '2 Fehler');
+    Assert.Contains(mHint, 'Main.pas (12)');
+    Assert.Contains(mHint, 'E2003');
+    mItem.Summary.Build := TAtlasProjectBuild.Empty;
+    Assert.Contains(TAtlasProjectsTexts.HintFor(mItem),
       TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintNoBuild));
     Assert.AreEqual('', TAtlasProjectsTexts.LocalText(0));
   finally
-    TAtlasStrings.Language := Saved;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 procedure TAtlasWelcomeProjectsFrameTests.ClicksReachSource;
 var
-  Host: TForm;
-  Fake: TFakeProjects;
-  Source: IAtlasProjectsSource;
-  Frame: TAtlasWelcomeProjectsFrame;
-  Hit: TAtlasProjectsHit;
+  mHost: TForm;
+  mFake: TFakeProjects;
+  mSource: IAtlasProjectsSource;
+  mFrame: TAtlasWelcomeProjectsFrame;
+  mHit: TAtlasProjectsHit;
 begin
-  Fake := TFakeProjects.Create;
-  Source := Fake;
-  Fake.FEntries := [ProjectEntry('C:\P\Eins.dproj', 0), ProjectEntry('C:\P\Zwei.dproj', 2)];
-  Host := TForm.CreateNew(nil);
+  mFake := TFakeProjects.Create;
+  mSource := mFake;
+  mFake.FEntries := [ProjectEntry('C:\P\Eins.dproj', 0), ProjectEntry('C:\P\Zwei.dproj', 2)];
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := ProjectsFrame(Host, Source);
-    Fake.Calls := nil;
-    Hit.Row := 0;
-    Hit.Pill := -1;
-    Frame.ClickAt(Hit);
+    mFrame := ProjectsFrame(mHost, mSource);
+    mFake.Calls := nil;
+    mHit.Row := 0;
+    mHit.Pill := -1;
+    mFrame.ClickAt(mHit);
     // Rote Marke: Projekt öffnen und zur ersten Meldung springen.
-    Hit.Row := 1;
-    Hit.Pill := 0;
-    Frame.ClickAt(Hit);
+    mHit.Row := 1;
+    mHit.Pill := 0;
+    mFrame.ClickAt(mHit);
     // Grüne Marke ist kein Sprungziel: öffnet nur das Projekt.
-    Hit.Row := 0;
-    Hit.Pill := 0;
-    Frame.ClickAt(Hit);
-    Frame.Menu.Row := 1;
-    Frame.Menu.OpenFolderItem.Click;
-    Frame.Menu.CreateBranchItem.Click;
-    Frame.Menu.RemoveItem.Click;
-    Frame.Menu.WorkingCopiesItem.Click;
-    Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'alles über die Nachrichtenschleife');
+    mHit.Row := 0;
+    mHit.Pill := 0;
+    mFrame.ClickAt(mHit);
+    mFrame.Menu.Row := 1;
+    mFrame.Menu.OpenFolderItem.Click;
+    mFrame.Menu.CreateBranchItem.Click;
+    mFrame.Menu.RemoveItem.Click;
+    mFrame.Menu.WorkingCopiesItem.Click;
+    Assert.AreEqual(0, Integer(Length(mFake.Calls)), 'alles über die Nachrichtenschleife');
     CheckSynchronize;
-    Assert.AreEqual(7, Integer(Length(Fake.Calls)));
-    Assert.AreEqual('open C:\P\Eins.dproj', Fake.Calls[0]);
-    Assert.AreEqual('openAt C:\P\Zwei.dproj C:\P\Main.pas 12', Fake.Calls[1]);
-    Assert.AreEqual('open C:\P\Eins.dproj', Fake.Calls[2]);
-    Assert.AreEqual('folder C:\P\Zwei.dproj', Fake.Calls[3]);
+    Assert.AreEqual(7, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('open C:\P\Eins.dproj', mFake.Calls[0]);
+    Assert.AreEqual('openAt C:\P\Zwei.dproj C:\P\Main.pas 12', mFake.Calls[1]);
+    Assert.AreEqual('open C:\P\Eins.dproj', mFake.Calls[2]);
+    Assert.AreEqual('folder C:\P\Zwei.dproj', mFake.Calls[3]);
     // „Branch anlegen …“ (#1288) geht an die Quelle; dort öffnet der Dialog.
-    Assert.AreEqual('branch C:\P\Zwei.dproj', Fake.Calls[4]);
-    Assert.AreEqual('remove C:\P\Zwei.dproj', Fake.Calls[5]);
+    Assert.AreEqual('branch C:\P\Zwei.dproj', mFake.Calls[4]);
+    Assert.AreEqual('remove C:\P\Zwei.dproj', mFake.Calls[5]);
     // „Arbeitskopien …“ (#1292) ebenso; sichtbar nur mit vcs.externals.show.
-    Assert.AreEqual('copies C:\P\Zwei.dproj', Fake.Calls[6]);
-    Frame.Menu.OnPopup(Frame.Menu);
-    Assert.IsFalse(Frame.Menu.WorkingCopiesItem.Visible);
-    Fake.FWorkingCopies := True;
-    Frame.Menu.OnPopup(Frame.Menu);
-    Assert.IsTrue(Frame.Menu.WorkingCopiesItem.Visible);
+    Assert.AreEqual('copies C:\P\Zwei.dproj', mFake.Calls[6]);
+    mFrame.Menu.OnPopup(mFrame.Menu);
+    Assert.IsFalse(mFrame.Menu.WorkingCopiesItem.Visible);
+    mFake.FWorkingCopies := True;
+    mFrame.Menu.OnPopup(mFrame.Menu);
+    Assert.IsTrue(mFrame.Menu.WorkingCopiesItem.Visible);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 procedure TAtlasWelcomeProjectsFrameTests.HitTestFindsRows;
 var
-  Host: TForm;
-  Fake: TFakeProjects;
-  Source: IAtlasProjectsSource;
-  Frame: TAtlasWelcomeProjectsFrame;
-  Row: Integer;
+  mHost: TForm;
+  mFake: TFakeProjects;
+  mSource: IAtlasProjectsSource;
+  mFrame: TAtlasWelcomeProjectsFrame;
+  mRow: Integer;
 begin
-  Fake := TFakeProjects.Create;
-  Source := Fake;
-  Fake.FEntries := [ProjectEntry('C:\P\Eins.dproj', 0), ProjectEntry('C:\P\Zwei.dproj', 0)];
-  Host := TForm.CreateNew(nil);
+  mFake := TFakeProjects.Create;
+  mSource := mFake;
+  mFake.FEntries := [ProjectEntry('C:\P\Eins.dproj', 0), ProjectEntry('C:\P\Zwei.dproj', 0)];
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := ProjectsFrame(Host, Source);
-    Row := Frame.ScaleValue(TAtlasWelcomeProjectsFrame.RowHeight);
-    Assert.AreEqual(0, Frame.HitTest(20, Row div 2).Row);
-    Assert.AreEqual(1, Frame.HitTest(20, Row + Row div 2).Row);
-    Assert.AreEqual(-1, Frame.HitTest(20, 5 * Row).Row, 'unter der letzten Zeile');
+    mFrame := ProjectsFrame(mHost, mSource);
+    mRow := mFrame.ScaleValue(TAtlasWelcomeProjectsFrame.cRowHeight);
+    Assert.AreEqual(0, mFrame.HitTest(20, mRow div 2).Row);
+    Assert.AreEqual(1, mFrame.HitTest(20, mRow + mRow div 2).Row);
+    Assert.AreEqual(-1, mFrame.HitTest(20, 5 * mRow).Row, 'unter der letzten Zeile');
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 procedure TAtlasWelcomeProjectsFrameTests.QuickActionsInRows;
 var
-  Host: TForm;
-  Fake: TFakeProjects;
-  Source: IAtlasProjectsSource;
-  Quick: TAtlasFakeQuickActions;
-  QuickSource: IAtlasQuickActionsSource;
-  Frame: TAtlasWelcomeProjectsFrame;
+  mHost: TForm;
+  mFake: TFakeProjects;
+  mSource: IAtlasProjectsSource;
+  mQuick: TAtlasFakeQuickActions;
+  mQuickSource: IAtlasQuickActionsSource;
+  mFrame: TAtlasWelcomeProjectsFrame;
 begin
-  Fake := TFakeProjects.Create;
-  Source := Fake;
-  Quick := TAtlasFakeQuickActions.Create;
-  QuickSource := Quick;
-  Fake.FEntries := [ProjectEntry('C:\P\Eins.dproj', 0), ProjectEntry('C:\P\Zwei.dproj', 0)];
-  Host := TForm.CreateNew(nil);
+  mFake := TFakeProjects.Create;
+  mSource := mFake;
+  mQuick := TAtlasFakeQuickActions.Create;
+  mQuickSource := mQuick;
+  mFake.FEntries := [ProjectEntry('C:\P\Eins.dproj', 0), ProjectEntry('C:\P\Zwei.dproj', 0)];
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := ProjectsFrame(Host, Source);
-    Frame.QuickActions := QuickSource;
-    Assert.AreEqual(7, Integer(Length(Frame.Quick.ButtonsOf(0))), 'Vorgabe mit Aufgaben (#900)');
+    mFrame := ProjectsFrame(mHost, mSource);
+    mFrame.QuickActions := mQuickSource;
+    Assert.AreEqual(7, Integer(Length(mFrame.Quick.ButtonsOf(0))), 'Vorgabe mit Aufgaben (#900)');
     // items ohne console: nur dieser Knopf fehlt.
-    Quick.Items := TAtlasWelcomeQuickActions.ParseItems('build,tests,run,pull,folder');
-    Frame.UpdateContent;
-    Assert.AreEqual(5, Integer(Length(Frame.Quick.ButtonsOf(0))));
-    Assert.AreEqual(-1, TAtlasWelcomeQuickActions.IndexOf(Frame.Quick.ButtonsOf(0), TAtlasQuickAction.Console));
-    Fake.Calls := nil;
+    mQuick.Items := TAtlasWelcomeQuickActions.ParseItems('build,tests,run,pull,folder');
+    mFrame.UpdateContent;
+    Assert.AreEqual(5, Integer(Length(mFrame.Quick.ButtonsOf(0))));
+    Assert.AreEqual(-1, TAtlasWelcomeQuickActions.IndexOf(mFrame.Quick.ButtonsOf(0), TAtlasQuickAction.Console));
+    mFake.Calls := nil;
     // Ohne Maus: Pfeil ab, Strg+B, Strg+T, Pos1 und Enter öffnet.
-    Quick.FTests := ['C:\P\Tests\Zwei.Tests.dproj'];
-    Assert.IsTrue(Frame.Quick.HandleKey(VK_DOWN, []));
-    Assert.IsTrue(Frame.Quick.HandleKey(Ord('B'), [ssCtrl]));
-    Assert.IsTrue(Frame.Quick.HandleKey(Ord('T'), [ssCtrl]));
-    Assert.IsTrue(Frame.Quick.HandleKey(VK_HOME, []));
-    Assert.IsTrue(Frame.Quick.HandleKey(VK_RETURN, []));
-    Assert.AreEqual(0, Integer(Length(Quick.Calls)), 'alles über die Nachrichtenschleife');
+    mQuick.FTests := ['C:\P\Tests\Zwei.Tests.dproj'];
+    Assert.IsTrue(mFrame.Quick.HandleKey(VK_DOWN, []));
+    Assert.IsTrue(mFrame.Quick.HandleKey(Ord('B'), [ssCtrl]));
+    Assert.IsTrue(mFrame.Quick.HandleKey(Ord('T'), [ssCtrl]));
+    Assert.IsTrue(mFrame.Quick.HandleKey(VK_HOME, []));
+    Assert.IsTrue(mFrame.Quick.HandleKey(VK_RETURN, []));
+    Assert.AreEqual(0, Integer(Length(mQuick.Calls)), 'alles über die Nachrichtenschleife');
     CheckSynchronize;
-    Assert.AreEqual(2, Integer(Length(Quick.Calls)));
-    Assert.AreEqual('build C:\P\Zwei.dproj', Quick.Calls[0]);
-    Assert.AreEqual('tests C:\P\Zwei.dproj', Quick.Calls[1]);
-    Assert.AreEqual(1, Integer(Length(Fake.Calls)));
-    Assert.AreEqual('open C:\P\Zwei.dproj', Fake.Calls[0]);
+    Assert.AreEqual(2, Integer(Length(mQuick.Calls)));
+    Assert.AreEqual('build C:\P\Zwei.dproj', mQuick.Calls[0]);
+    Assert.AreEqual('tests C:\P\Zwei.dproj', mQuick.Calls[1]);
+    Assert.AreEqual(1, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('open C:\P\Zwei.dproj', mFake.Calls[0]);
     // Ausgeschaltet bzw. ohne Quelle: keine Knöpfe, Tasten bleiben bei der IDE.
-    Quick.IsOn := False;
-    Frame.UpdateContent;
-    Assert.AreEqual(0, Integer(Length(Frame.Quick.ButtonsOf(0))));
-    Assert.IsFalse(Frame.Quick.HandleKey(Ord('B'), [ssCtrl]));
-    Frame.QuickActions := nil;
-    Assert.IsFalse(Frame.Quick.Active);
+    mQuick.IsOn := False;
+    mFrame.UpdateContent;
+    Assert.AreEqual(0, Integer(Length(mFrame.Quick.ButtonsOf(0))));
+    Assert.IsFalse(mFrame.Quick.HandleKey(Ord('B'), [ssCtrl]));
+    mFrame.QuickActions := nil;
+    Assert.IsFalse(mFrame.Quick.Active);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 procedure TAtlasWelcomeProjectsFrameTests.ClickSelectsForHistory;
 var
-  Host: TForm;
-  Fake: TFakeProjects;
-  Source: IAtlasProjectsSource;
-  Frame: TAtlasWelcomeProjectsFrame;
-  Hit: TAtlasProjectsHit;
+  mHost: TForm;
+  mFake: TFakeProjects;
+  mSource: IAtlasProjectsSource;
+  mFrame: TAtlasWelcomeProjectsFrame;
+  mHit: TAtlasProjectsHit;
 begin
-  Fake := TFakeProjects.Create;
-  Source := Fake;
-  Fake.FEntries := [ProjectEntry('C:\P\Eins.dproj', 0), ProjectEntry('C:\P\Zwei.dproj', 2)];
-  Host := TForm.CreateNew(nil);
+  mFake := TFakeProjects.Create;
+  mSource := mFake;
+  mFake.FEntries := [ProjectEntry('C:\P\Eins.dproj', 0), ProjectEntry('C:\P\Zwei.dproj', 2)];
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := ProjectsFrame(Host, Source);
-    Assert.AreEqual(-1, Frame.SelectedRow, 'ohne Projektverlauf keine Auswahl');
-    Hit.Row := 0;
-    Hit.Pill := -1;
-    Fake.Calls := nil;
-    Frame.DoubleClickAt(Hit);
+    mFrame := ProjectsFrame(mHost, mSource);
+    Assert.AreEqual(-1, mFrame.SelectedRow, 'ohne Projektverlauf keine Auswahl');
+    mHit.Row := 0;
+    mHit.Pill := -1;
+    mFake.Calls := nil;
+    mFrame.DoubleClickAt(mHit);
     CheckSynchronize;
-    Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'ohne Auswahl öffnet schon der Klick');
-    Fake.FSelectable := True;
-    Assert.AreEqual(0, Frame.SelectedRow, 'ohne Auswahl das oberste');
-    Hit.Row := 1;
-    Frame.ClickAt(Hit);
+    Assert.AreEqual(0, Integer(Length(mFake.Calls)), 'ohne Auswahl öffnet schon der Klick');
+    mFake.FSelectable := True;
+    Assert.AreEqual(0, mFrame.SelectedRow, 'ohne Auswahl das oberste');
+    mHit.Row := 1;
+    mFrame.ClickAt(mHit);
     // Rote Marke springt weiter.
-    Hit.Pill := 0;
-    Frame.ClickAt(Hit);
-    Hit.Row := 0;
-    Hit.Pill := -1;
-    Frame.DoubleClickAt(Hit);
-    Frame.Menu.Row := 1;
-    Frame.Menu.OpenItem.Click;
-    Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'alles über die Nachrichtenschleife');
+    mHit.Pill := 0;
+    mFrame.ClickAt(mHit);
+    mHit.Row := 0;
+    mHit.Pill := -1;
+    mFrame.DoubleClickAt(mHit);
+    mFrame.Menu.Row := 1;
+    mFrame.Menu.OpenItem.Click;
+    Assert.AreEqual(0, Integer(Length(mFake.Calls)), 'alles über die Nachrichtenschleife');
     CheckSynchronize;
-    Assert.AreEqual(4, Integer(Length(Fake.Calls)));
-    Assert.AreEqual('select C:\P\Zwei.dproj', Fake.Calls[0]);
-    Assert.AreEqual('openAt C:\P\Zwei.dproj C:\P\Main.pas 12', Fake.Calls[1]);
-    Assert.AreEqual('open C:\P\Eins.dproj', Fake.Calls[2]);
-    Assert.AreEqual('open C:\P\Zwei.dproj', Fake.Calls[3]);
-    Assert.AreEqual(1, Frame.SelectedRow);
-    Fake.FSelected := 'c:/p/eins.DPROJ';
-    Assert.AreEqual(0, Frame.SelectedRow, 'Schreibweise egal');
-    Assert.Contains(TAtlasProjectsTexts.HintFor(Fake.FEntries[0], True),
+    Assert.AreEqual(4, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('select C:\P\Zwei.dproj', mFake.Calls[0]);
+    Assert.AreEqual('openAt C:\P\Zwei.dproj C:\P\Main.pas 12', mFake.Calls[1]);
+    Assert.AreEqual('open C:\P\Eins.dproj', mFake.Calls[2]);
+    Assert.AreEqual('open C:\P\Zwei.dproj', mFake.Calls[3]);
+    Assert.AreEqual(1, mFrame.SelectedRow);
+    mFake.FSelected := 'c:/p/eins.DPROJ';
+    Assert.AreEqual(0, mFrame.SelectedRow, 'Schreibweise egal');
+    Assert.Contains(TAtlasProjectsTexts.HintFor(mFake.FEntries[0], True),
       TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintSelect));
-    Assert.Contains(TAtlasProjectsTexts.HintFor(Fake.FEntries[0], False),
+    Assert.Contains(TAtlasProjectsTexts.HintFor(mFake.FEntries[0], False),
       TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintClick));
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 

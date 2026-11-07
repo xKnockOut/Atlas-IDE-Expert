@@ -63,11 +63,11 @@ type
 
   TLspSafeDelete = class
   public const
-    ClientCommand = 'atlas.safeDelete';
-    PrepareCommand = 'atlas.server.safeDelete.prepare';
-    ApplyCommand = 'atlas.server.safeDelete';
-    Kind = 'refactor';
-    AnnotationId = 'safeDelete';
+    cClientCommand = 'atlas.safeDelete';
+    cPrepareCommand = 'atlas.server.safeDelete.prepare';
+    cApplyCommand = 'atlas.server.safeDelete';
+    cKind = 'refactor';
+    cAnnotationId = 'safeDelete';
   public
     /// <summary>Code-Aktion an APosition; nil, wenn abgeschaltet oder dort nichts zu löschen ist. Der Aufrufer
     /// übernimmt die Objekte.</summary>
@@ -218,16 +218,16 @@ type
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
 end;
 
 function InSpans(const ASpans: TArray<TLineSpan>; ALine: Integer): Boolean;
 var
-  Span: TLineSpan;
+  mSpan: TLineSpan;
 begin
-  for Span in ASpans do
+  for mSpan in ASpans do
   begin
-    if Span.Contains(ALine) then
+    if mSpan.Contains(ALine) then
     begin
       Exit(True);
     end;
@@ -288,18 +288,18 @@ end;
 
 function TSafeDeletePlan.LineText(const AFileName: string; ALine: Integer): string;
 var
-  Text: string;
-  Lines: TArray<string>;
+  mText: string;
+  mLines: TArray<string>;
 begin
   Result := '';
-  if not ReadFile(AFileName, Text) then
+  if not ReadFile(AFileName, mText) then
   begin
     Exit;
   end;
-  Lines := TTextLines.SplitLines(Text);
-  if (ALine >= 0) and (ALine <= High(Lines)) then
+  mLines := TTextLines.SplitLines(mText);
+  if (ALine >= 0) and (ALine <= High(mLines)) then
   begin
-    Result := Trim(Lines[ALine]);
+    Result := Trim(mLines[ALine]);
   end;
 end;
 
@@ -317,38 +317,39 @@ end;
 procedure TSafeDeletePlan.AddUsage(const AFileName: string; const APosition: TTextPosition; const AText,
   AKind: string);
 var
-  Usage: TSafeDeleteUsage;
-  Index: Integer;
+  mUsage: TSafeDeleteUsage;
+  mIndex: Integer;
 begin
   // Die Referenzsuche findet Formulare mit; die Formularprüfung beschreibt dieselbe Stelle genauer.
-  for Index := 0 to High(Usages) do
+  for mIndex := 0 to High(Usages) do
   begin
-    if SameText(Usages[Index].FileName, AFileName) and (Usages[Index].Position.Line = APosition.Line) then
+    if SameText(Usages[mIndex].FileName, AFileName) and (Usages[mIndex].Position.Line = APosition.Line) then
     begin
       if AKind = 'form' then
       begin
-        Usages[Index].Text := AText;
-        Usages[Index].Kind := AKind;
+        Usages[mIndex].Text := AText;
+        Usages[mIndex].Kind := AKind;
       end;
       Exit;
     end;
   end;
-  Usage.FileName := AFileName;
-  Usage.Position := APosition;
-  Usage.Text := AText;
-  Usage.Kind := AKind;
-  Usages := Usages + [Usage];
+  mUsage.FileName := AFileName;
+  mUsage.Position := APosition;
+  mUsage.Text := AText;
+  mUsage.Kind := AKind;
+  Usages := Usages + [mUsage];
 end;
 
 procedure TSafeDeletePlan.FindReferences;
 var
-  Location: TReferenceLocation;
+  mLocation: TReferenceLocation;
 begin
-  for Location in References(Target.NameRange.StartPos) do
+  for mLocation in References(Target.NameRange.StartPos) do
   begin
-    if not IsOwn(Location.FileName, Location.Range.StartPos) then
+    if not IsOwn(mLocation.FileName, mLocation.Range.StartPos) then
     begin
-      AddUsage(Location.FileName, Location.Range.StartPos, LineText(Location.FileName, Location.Range.StartPos.Line),
+      AddUsage(mLocation.FileName, mLocation.Range.StartPos,
+        LineText(mLocation.FileName, mLocation.Range.StartPos.Line),
         'code');
     end;
   end;
@@ -356,9 +357,9 @@ end;
 
 procedure TSafeDeletePlan.FindInterfaces(ALayout: TClassLayout);
 var
-  Interfaces: TInterfaceDeclares;
-  Answer: TInterfaceAnswer;
-  Index: Integer;
+  mInterfaces: TInterfaceDeclares;
+  mAnswer: TInterfaceAnswer;
+  mIndex: Integer;
 begin
   if Target.Kind <> TSafeDeleteKind.Method then
   begin
@@ -369,88 +370,88 @@ begin
     AddUsage(FFileName, Target.NameRange.StartPos, cTexts[TLspSafeDeleteText.IsMappedToAnInterface].Fmt([Target.Name]),
       'interface');
   end;
-  Interfaces := TInlineAccessor.IndexInterfaces(FContext.Index);
-  for Index := 0 to High(ALayout.Ancestors) do
+  mInterfaces := TInlineAccessor.IndexInterfaces(FContext.Index);
+  for mIndex := 0 to High(ALayout.Ancestors) do
   begin
-    Answer := TInlineAccessor.LocalInterfaceDeclares(FTree, ALayout.Ancestors[Index], Target.Name);
-    if (Answer = TInterfaceAnswer.Unknown) and Assigned(Interfaces) then
+    mAnswer := TInlineAccessor.LocalInterfaceDeclares(FTree, ALayout.Ancestors[mIndex], Target.Name);
+    if (mAnswer = TInterfaceAnswer.Unknown) and Assigned(mInterfaces) then
     begin
-      Answer := Interfaces(ALayout.Ancestors[Index], Target.Name);
+      mAnswer := mInterfaces(ALayout.Ancestors[mIndex], Target.Name);
     end;
-    if Answer = TInterfaceAnswer.Yes then
+    if mAnswer = TInterfaceAnswer.Yes then
     begin
       AddUsage(FFileName, Target.NameRange.StartPos, cTexts[TLspSafeDeleteText.Implements].Fmt([ALayout.Name,
-        Target.Name, ALayout.Ancestors[Index], Target.Name]), 'interface');
+        Target.Name, ALayout.Ancestors[mIndex], Target.Name]), 'interface');
     end
-    else if (Answer = TInterfaceAnswer.Unknown) and (Index > 0) then
+    else if (mAnswer = TInterfaceAnswer.Unknown) and (mIndex > 0) then
     begin
       Warnings := Warnings + [cTexts[TLspSafeDeleteText.WhetherImplementsAMethodOf].Fmt([Target.Name,
-        ALayout.Ancestors[Index]])];
+        ALayout.Ancestors[mIndex]])];
     end;
   end;
 end;
 
 procedure TSafeDeletePlan.FindForms(ALayout: TClassLayout);
 var
-  Form, Text, Name: string;
-  Document: TDfmDocument;
+  mForm, mText, mName: string;
+  mDocument: TDfmDocument;
 
   procedure Walk(AObject: TDfmObject; ARoot: Boolean);
   var
-    Child: TDfmObject;
-    Item: TDfmProperty;
+    mChild: TDfmObject;
+    mItem: TDfmProperty;
   begin
-    if (Target.Kind = TSafeDeleteKind.Field) and not ARoot and SameText(AObject.Name, Name) then
+    if (Target.Kind = TSafeDeleteKind.Field) and not ARoot and SameText(AObject.Name, mName) then
     begin
-      AddUsage(Form, AObject.NameRange.StartPos, Format('object %s: %s', [AObject.Name, AObject.TypeName]), 'form');
+      AddUsage(mForm, AObject.NameRange.StartPos, Format('object %s: %s', [AObject.Name, AObject.TypeName]), 'form');
     end;
-    for Item in AObject.Properties do
+    for mItem in AObject.Properties do
     begin
-      if (Target.Kind = TSafeDeleteKind.Method) and Item.IsEvent and SameText(Item.Value, Name) then
+      if (Target.Kind = TSafeDeleteKind.Method) and mItem.IsEvent and SameText(mItem.Value, mName) then
       begin
-        AddUsage(Form, Item.NameRange.StartPos, Format('%s.%s = %s', [AObject.Name, Item.Name, Item.Value]), 'form');
+        AddUsage(mForm, mItem.NameRange.StartPos, Format('%s.%s = %s', [AObject.Name, mItem.Name, mItem.Value]), 'form');
       end
-      else if (Target.Kind = TSafeDeleteKind.Property_) and ARoot and SameText(Item.Name, Name) then
+      else if (Target.Kind = TSafeDeleteKind.Property_) and ARoot and SameText(mItem.Name, mName) then
       begin
-        AddUsage(Form, Item.NameRange.StartPos, Format('%s = %s', [Item.Name, Item.Value]), 'form');
+        AddUsage(mForm, mItem.NameRange.StartPos, Format('%s = %s', [mItem.Name, mItem.Value]), 'form');
       end;
     end;
-    for Child in AObject.Children do
+    for mChild in AObject.Children do
     begin
-      Walk(Child, False);
+      Walk(mChild, False);
     end;
   end;
 
 begin
-  Name := Target.Name;
-  for Form in TFormFiles.FormFiles(FFileName, FText) do
+  mName := Target.Name;
+  for mForm in TFormFiles.FormFiles(FFileName, FText) do
   begin
-    if not ReadFile(Form, Text) or not ContainsText(Text, Name) then
+    if not ReadFile(mForm, mText) or not ContainsText(mText, mName) then
     begin
       Continue;
     end;
-    if TFileEncoding.IsBinaryFormFile(Form) then
+    if TFileEncoding.IsBinaryFormFile(mForm) then
     begin
-      Warnings := Warnings + [cTexts[TLspSafeDeleteText.IsStoredAsBinaryAnd].Fmt([ExtractFileName(Form)])];
+      Warnings := Warnings + [cTexts[TLspSafeDeleteText.IsStoredAsBinaryAnd].Fmt([ExtractFileName(mForm)])];
       Continue;
     end;
-    Document := TDfmParser.Parse(Text);
+    mDocument := TDfmParser.Parse(mText);
     try
-      if (Document.Root = nil) or not SameText(Document.Root.TypeName, ALayout.Name) then
+      if (mDocument.Root = nil) or not SameText(mDocument.Root.TypeName, ALayout.Name) then
       begin
         Continue;
       end;
       if Target.Kind = TSafeDeleteKind.Type_ then
       begin
-        AddUsage(Form, Document.Root.TypeRange.StartPos, cTexts[TLspSafeDeleteText.FormBelongsToTheClass].Fmt([
-          ExtractFileName(Form)]), 'form');
+        AddUsage(mForm, mDocument.Root.TypeRange.StartPos, cTexts[TLspSafeDeleteText.FormBelongsToTheClass].Fmt([
+          ExtractFileName(mForm)]), 'form');
       end
       else
       begin
-        Walk(Document.Root, True);
+        Walk(mDocument.Root, True);
       end;
     finally
-      Document.Free;
+      mDocument.Free;
     end;
   end;
 end;
@@ -658,17 +659,17 @@ end;
 
 procedure TSafeDeletePlan.Analyze(const APosition: TTextPosition);
 var
-  Reason: string;
-  Decl: TSyntaxNode;
-  Layout: TClassLayout;
+  mReason: string;
+  mDecl: TSyntaxNode;
+  mLayout: TClassLayout;
 begin
-  if not TSafeDelete.Find(FTree, FText, APosition, Target, Reason) then
+  if not TSafeDelete.Find(FTree, FText, APosition, Target, mReason) then
   begin
-    if Reason = '' then
+    if mReason = '' then
     begin
-      Reason := cTexts[TLspSafeDeleteText.ThereIsNothingHereThat].Text;
+      mReason := cTexts[TLspSafeDeleteText.ThereIsNothingHereThat].Text;
     end;
-    raise Fail(Reason);
+    raise Fail(mReason);
   end;
   if Target.Kind = TSafeDeleteKind.Unit_ then
   begin
@@ -687,30 +688,30 @@ begin
   end;
   if Target.Kind = TSafeDeleteKind.Type_ then
   begin
-    Decl := Target.Node;
+    mDecl := Target.Node;
   end
   else
   begin
-    Decl := TClassLayout.DeclNamed(FTree, Target.ClassName);
+    mDecl := TClassLayout.DeclNamed(FTree, Target.ClassName);
   end;
   if (Target.ClassName <> '') or ((Target.Kind = TSafeDeleteKind.Type_) and (TClassLayout.DeclAt(FTree,
     Target.Node.StartPos.Line, True) = Target.Node)) then
   begin
-    if Decl = nil then
+    if mDecl = nil then
     begin
       Exit;
     end;
-    Layout := TClassLayout.Read(FTree, FText, Decl);
+    mLayout := TClassLayout.Read(FTree, FText, mDecl);
     try
-      FindForms(Layout);
+      FindForms(mLayout);
       if Target.Member >= 0 then
       begin
-        FindInterfaces(Layout);
-        FindOverrides(Layout);
-        FindCascade(Layout);
+        FindInterfaces(mLayout);
+        FindOverrides(mLayout);
+        FindCascade(mLayout);
       end;
     finally
-      Layout.Free;
+      mLayout.Free;
     end;
   end;
   FreedUnits := NewlyUnused(NewText(True, True));
@@ -718,39 +719,39 @@ end;
 
 function TSafeDeletePlan.CascadeTargets: TArray<TSafeDeleteTarget>;
 var
-  Decl: TSyntaxNode;
-  Layout: TClassLayout;
-  Index: Integer;
+  mDecl: TSyntaxNode;
+  mLayout: TClassLayout;
+  mIndex: Integer;
 begin
   Result := nil;
   if Freed = nil then
   begin
     Exit;
   end;
-  Decl := TClassLayout.DeclNamed(FTree, Target.ClassName);
-  if Decl = nil then
+  mDecl := TClassLayout.DeclNamed(FTree, Target.ClassName);
+  if mDecl = nil then
   begin
     Exit;
   end;
-  Layout := TClassLayout.Read(FTree, FText, Decl);
+  mLayout := TClassLayout.Read(FTree, FText, mDecl);
   try
-    for Index in Freed do
+    for mIndex in Freed do
     begin
-      Result := Result + [TSafeDelete.ForMember(Layout, Index)];
+      Result := Result + [TSafeDelete.ForMember(mLayout, mIndex)];
     end;
   finally
-    Layout.Free;
+    mLayout.Free;
   end;
 end;
 
 function TSafeDeletePlan.CascadeNames: TArray<string>;
 var
-  Item: TSafeDeleteTarget;
+  mItem: TSafeDeleteTarget;
 begin
   Result := nil;
-  for Item in CascadeTargets do
+  for mItem in CascadeTargets do
   begin
-    Result := Result + [Item.Name];
+    Result := Result + [mItem.Name];
   end;
 end;
 
@@ -801,33 +802,33 @@ end;
 
 function TSafeDeletePlan.NewlyUnused(const ANewText: string): TArray<string>;
 var
-  Uses_: TUsesContext;
-  Before, After: TArray<string>;
-  Check: TSyntaxTree;
-  Name: string;
+  mUses_: TUsesContext;
+  mBefore, mAfter: TArray<string>;
+  mCheck: TSyntaxTree;
+  mName: string;
 begin
   Result := nil;
   if not Assigned(FContext.UsesFor) then
   begin
     Exit;
   end;
-  Uses_ := FContext.UsesFor(FFileName);
-  if not Assigned(Uses_.Info) then
+  mUses_ := FContext.UsesFor(FFileName);
+  if not Assigned(mUses_.Info) then
   begin
     Exit;
   end;
-  Before := TUsesActions.UnusedUnits(FTree.Tokens, Uses_.Info, Uses_.Keep);
-  Check := TSyntaxTreeCache.Parse(ANewText);
+  mBefore := TUsesActions.UnusedUnits(FTree.Tokens, mUses_.Info, mUses_.Keep);
+  mCheck := TSyntaxTreeCache.Parse(ANewText);
   try
-    After := TUsesActions.UnusedUnits(Check.Tokens, Uses_.Info, Uses_.Keep);
+    mAfter := TUsesActions.UnusedUnits(mCheck.Tokens, mUses_.Info, mUses_.Keep);
   finally
-    Check.Free;
+    mCheck.Free;
   end;
-  for Name in After do
+  for mName in mAfter do
   begin
-    if IndexText(Name, Before) < 0 then
+    if IndexText(mName, mBefore) < 0 then
     begin
-      Result := Result + [Name];
+      Result := Result + [mName];
     end;
   end;
 end;
@@ -835,14 +836,14 @@ end;
 function TSafeDeletePlan.UnitEdits(const AText: string; AFileTree: TSyntaxTree; const AUnits: TArray<string>;
   out AEdits: TArray<TTextEdit>): Boolean;
 var
-  LineBreak: string;
+  mLineBreak: string;
 begin
-  LineBreak := #10;
+  mLineBreak := #10;
   if Pos(#13#10, AText) > 0 then
   begin
-    LineBreak := #13#10;
+    mLineBreak := #13#10;
   end;
-  Result := TUsesActions.RemoveUnits(AFileTree.Tokens, AText, AUnits, LineBreak, AEdits);
+  Result := TUsesActions.RemoveUnits(AFileTree.Tokens, AText, AUnits, mLineBreak, AEdits);
 end;
 
 /// <summary>EJsonRpcError, wenn ANew mehr Parserfehler hat als AOld.</summary>
@@ -953,29 +954,29 @@ end;
 class function TLspSafeDelete.Actions(AEnabled: Boolean; ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition): TArray<TJSONObject>;
 var
-  Target: TSafeDeleteTarget;
-  Reason, Title: string;
-  Arguments: TJSONArray;
-  Command, Action: TJSONObject;
+  mTarget: TSafeDeleteTarget;
+  mReason, mTitle: string;
+  mArguments: TJSONArray;
+  mCommand, mAction: TJSONObject;
 begin
   Result := nil;
-  if not AEnabled or (ATree = nil) or not TSafeDelete.Find(ATree, AText, APosition, Target, Reason) then
+  if not AEnabled or (ATree = nil) or not TSafeDelete.Find(ATree, AText, APosition, mTarget, mReason) then
   begin
     Exit;
   end;
-  Title := TSafeDelete.Title(Target);
-  Arguments := TJSONArray.Create;
-  Arguments.Add(AUri);
-  Arguments.AddElement(TLspPositions.PositionToJson(APosition));
-  Command := TJSONObject.Create;
-  Command.AddPair('title', Title);
-  Command.AddPair('command', ClientCommand);
-  Command.AddPair('arguments', Arguments);
-  Action := TJSONObject.Create;
-  Action.AddPair('title', Title);
-  Action.AddPair('kind', Kind);
-  Action.AddPair('command', Command);
-  Result := [Action];
+  mTitle := TSafeDelete.Title(mTarget);
+  mArguments := TJSONArray.Create;
+  mArguments.Add(AUri);
+  mArguments.AddElement(TLspPositions.PositionToJson(APosition));
+  mCommand := TJSONObject.Create;
+  mCommand.AddPair('title', mTitle);
+  mCommand.AddPair('command', cClientCommand);
+  mCommand.AddPair('arguments', mArguments);
+  mAction := TJSONObject.Create;
+  mAction.AddPair('title', mTitle);
+  mAction.AddPair('kind', cKind);
+  mAction.AddPair('command', mCommand);
+  Result := [mAction];
 end;
 
 function UsageJson(const AFileName: string; const APosition: TTextPosition; const AText, AKind: string): TJSONObject;
@@ -990,54 +991,54 @@ end;
 
 function StringsJson(const AItems: TArray<string>): TJSONArray;
 var
-  Item: string;
+  mItem: string;
 begin
   Result := TJSONArray.Create;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    Result.Add(Item);
+    Result.Add(mItem);
   end;
 end;
 
 class function TLspSafeDelete.Prepare(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
   AText: string; const APosition: TTextPosition; const AContext: TSafeDeleteContext): TJSONObject;
 var
-  Plan: TSafeDeletePlan;
-  Usages, Overrides: TJSONArray;
-  Usage: TSafeDeleteUsage;
-  Hit: TSafeDeleteOverride;
-  Cascade: TArray<string>;
-  Name: string;
+  mPlan: TSafeDeletePlan;
+  mUsages, mOverrides: TJSONArray;
+  mUsage: TSafeDeleteUsage;
+  mHit: TSafeDeleteOverride;
+  mCascade: TArray<string>;
+  mName: string;
 begin
-  Plan := TSafeDeletePlan.Create(AResolver, ATree, AFileName, AText, AContext);
+  mPlan := TSafeDeletePlan.Create(AResolver, ATree, AFileName, AText, AContext);
   try
-    Plan.Analyze(APosition);
-    Usages := TJSONArray.Create;
-    for Usage in Plan.Usages do
+    mPlan.Analyze(APosition);
+    mUsages := TJSONArray.Create;
+    for mUsage in mPlan.Usages do
     begin
-      Usages.AddElement(UsageJson(Usage.FileName, Usage.Position, Usage.Text, Usage.Kind));
+      mUsages.AddElement(UsageJson(mUsage.FileName, mUsage.Position, mUsage.Text, mUsage.Kind));
     end;
-    Overrides := TJSONArray.Create;
-    for Hit in Plan.Overrides do
+    mOverrides := TJSONArray.Create;
+    for mHit in mPlan.Overrides do
     begin
-      Overrides.AddElement(UsageJson(Hit.FileName, Hit.Position, Hit.ClassName + '.' + Plan.Target.Name, 'override'));
+      mOverrides.AddElement(UsageJson(mHit.FileName, mHit.Position, mHit.ClassName + '.' + mPlan.Target.Name, 'override'));
     end;
-    Cascade := Plan.CascadeNames;
-    for Name in Plan.FreedUnits do
+    mCascade := mPlan.CascadeNames;
+    for mName in mPlan.FreedUnits do
     begin
-      Cascade := Cascade + ['uses ' + Name];
+      mCascade := mCascade + ['uses ' + mName];
     end;
     Result := TJSONObject.Create;
-    Result.AddPair('kind', TSafeDeleteTarget.KindName(Plan.Target.Kind));
-    Result.AddPair('name', Plan.Target.Name);
-    Result.AddPair('title', TSafeDelete.Title(Plan.Target));
-    Result.AddPair('usages', Usages);
-    Result.AddPair('overrides', Overrides);
-    Result.AddPair('cascade', StringsJson(Cascade));
-    Result.AddPair('usesFiles', TJSONNumber.Create(Length(Plan.UsesFiles)));
-    Result.AddPair('warnings', StringsJson(Plan.Warnings));
+    Result.AddPair('kind', TSafeDeleteTarget.KindName(mPlan.Target.Kind));
+    Result.AddPair('name', mPlan.Target.Name);
+    Result.AddPair('title', TSafeDelete.Title(mPlan.Target));
+    Result.AddPair('usages', mUsages);
+    Result.AddPair('overrides', mOverrides);
+    Result.AddPair('cascade', StringsJson(mCascade));
+    Result.AddPair('usesFiles', TJSONNumber.Create(Length(mPlan.UsesFiles)));
+    Result.AddPair('warnings', StringsJson(mPlan.Warnings));
   finally
-    Plan.Free;
+    mPlan.Free;
   end;
 end;
 
@@ -1083,7 +1084,7 @@ end;
 function ExecuteJson(AChanges: TWorkspaceChanges; ADeleted: Integer): TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('edit', AChanges.ToJson(TLspSafeDelete.AnnotationId, cTexts[TLspSafeDeleteText.SafeDelete].Text,
+  Result.AddPair('edit', AChanges.ToJson(TLspSafeDelete.cAnnotationId, cTexts[TLspSafeDeleteText.SafeDelete].Text,
     cTexts[TLspSafeDeleteText.SymbolsFiles].Fmt([ADeleted, AChanges.FileCount])));
   Result.AddPair('warnings', AChanges.WarningsJson);
   Result.AddPair('deleted', TJSONNumber.Create(ADeleted));

@@ -98,12 +98,12 @@ const
 
 function ReadSourceLines(const AFileName: string; out ALines: TArray<string>): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
-  Result := ReadSourceText(AFileName, Text);
+  Result := ReadSourceText(AFileName, mText);
   if Result then
   begin
-    ALines := TTextLines.SplitLines(Text);
+    ALines := TTextLines.SplitLines(mText);
   end
   else
   begin
@@ -116,44 +116,44 @@ end;
 function RunTestProcess(const ATarget: TMcpTestTarget; const AArguments: TArray<string>; ATimeoutSeconds: Integer;
   out AOutput: TArray<string>; out ATimedOut: Boolean): Integer;
 const
-  KeptLines = 40;
+  cKeptLines = 40;
 var
-  Process: ICompilerProcess;
-  Request: TCompilerRequest;
-  Finished: TEvent;
-  Watcher: TThread;
-  Output: TArray<string>;
-  TimedOut: Boolean;
+  mProcess: ICompilerProcess;
+  mRequest: TCompilerRequest;
+  mFinished: TEvent;
+  mWatcher: TThread;
+  mOutput: TArray<string>;
+  mTimedOut: Boolean;
 begin
-  Process := TProcessRunner.Create;
-  Request := Default(TCompilerRequest);
-  Request.Executable := ATarget.Executable;
-  Request.Arguments := AArguments;
-  Request.WorkingDir := ATarget.WorkingDir;
-  Output := nil;
-  TimedOut := False;
-  Finished := TEvent.Create(nil, True, False, '');
+  mProcess := TProcessRunner.Create;
+  mRequest := Default(TCompilerRequest);
+  mRequest.Executable := ATarget.Executable;
+  mRequest.Arguments := AArguments;
+  mRequest.WorkingDir := ATarget.WorkingDir;
+  mOutput := nil;
+  mTimedOut := False;
+  mFinished := TEvent.Create(nil, True, False, '');
   try
-    Watcher := TThread.CreateAnonymousThread(
+    mWatcher := TThread.CreateAnonymousThread(
       procedure
       begin
-        if Finished.WaitFor(Cardinal(ATimeoutSeconds) * 1000) = wrTimeout then
+        if mFinished.WaitFor(Cardinal(ATimeoutSeconds) * 1000) = wrTimeout then
         begin
-          TimedOut := True;
-          Process.Cancel;
+          mTimedOut := True;
+          mProcess.Cancel;
         end;
       end);
-    Watcher.FreeOnTerminate := False;
-    Watcher.Start;
+    mWatcher.FreeOnTerminate := False;
+    mWatcher.Start;
     try
       try
-        Result := Process.Run(Request,
+        Result := mProcess.Run(mRequest,
           procedure(const ALine: string)
           begin
-            Output := Output + [ALine];
-            if Length(Output) > KeptLines then
+            mOutput := mOutput + [ALine];
+            if Length(mOutput) > cKeptLines then
             begin
-              Delete(Output, 0, Length(Output) - KeptLines);
+              Delete(mOutput, 0, Length(mOutput) - cKeptLines);
             end;
           end);
       except
@@ -161,29 +161,29 @@ begin
           Result := -1;
       end;
     finally
-      Finished.SetEvent;
-      Watcher.WaitFor;
-      Watcher.Free;
+      mFinished.SetEvent;
+      mWatcher.WaitFor;
+      mWatcher.Free;
     end;
   finally
-    Finished.Free;
+    mFinished.Free;
   end;
-  AOutput := Output;
-  ATimedOut := TimedOut;
+  AOutput := mOutput;
+  ATimedOut := mTimedOut;
 end;
 
 function ToolGetLastBuild(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
-  FileName: string;
-  Build: TIdeBuild;
+  mFileName: string;
+  mBuild: TIdeBuild;
 begin
-  FileName := TIndexCacheDirectory.BuildFileFor(TIndexCacheDirectory.DefaultRoot, AContext.Root);
-  if not FileExists(FileName) or
-    not TMcpBuildTools.FromFileText(TFile.ReadAllText(FileName, TEncoding.UTF8), Build) then
+  mFileName := TIndexCacheDirectory.BuildFileFor(TIndexCacheDirectory.DefaultRoot, AContext.Root);
+  if not FileExists(mFileName) or
+    not TMcpBuildTools.FromFileText(TFile.ReadAllText(mFileName, TEncoding.UTF8), mBuild) then
   begin
     Exit(TMcpBuildTools.NoBuild(AContext.Root));
   end;
-  Result := TMcpBuildTools.Report(Build, AContext.Root, TMcpServer.OptionalString(AArguments, 'project'));
+  Result := TMcpBuildTools.Report(mBuild, AContext.Root, TMcpServer.OptionalString(AArguments, 'project'));
 end;
 
 procedure AddGetLastBuild(const AContext: TMcpToolContext);
@@ -273,16 +273,16 @@ begin
   Result.WorkingDir := ExtractFileDir(Result.Executable);
 end;
 
-/// <summary>Zeitlimit aus timeoutSeconds, begrenzt auf TMcpTestTools.MaxTimeoutSeconds.</summary>
+/// <summary>Zeitlimit aus timeoutSeconds, begrenzt auf TMcpTestTools.cMaxTimeoutSeconds.</summary>
 function TestTimeoutOf(const AArguments: TJSONObject): Integer;
 begin
   if (AArguments = nil) or not AArguments.TryGetValue<Integer>('timeoutSeconds', Result) or (Result <= 0) then
   begin
-    Result := TMcpTestTools.DefaultTimeoutSeconds;
+    Result := TMcpTestTools.cDefaultTimeoutSeconds;
   end;
-  if Result > TMcpTestTools.MaxTimeoutSeconds then
+  if Result > TMcpTestTools.cMaxTimeoutSeconds then
   begin
-    Result := TMcpTestTools.MaxTimeoutSeconds;
+    Result := TMcpTestTools.cMaxTimeoutSeconds;
   end;
 end;
 

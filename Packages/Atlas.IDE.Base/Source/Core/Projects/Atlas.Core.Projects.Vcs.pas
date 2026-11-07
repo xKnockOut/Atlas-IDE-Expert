@@ -71,7 +71,7 @@ type
   TAtlasVcsProjects = class
   public const
     /// <summary>Pfad in settings.json.</summary>
-    Path = 'vcs.projects';
+    cPath = 'vcs.projects';
   public
     /// <summary>"auto", "git", "svn" oder "off" aus AText (klein, ohne Leerraum); sonst "auto".</summary>
     class function ProviderText(const AText: string): string; static;

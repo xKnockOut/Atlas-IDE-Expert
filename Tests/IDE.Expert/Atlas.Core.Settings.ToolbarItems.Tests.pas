@@ -95,13 +95,13 @@ end;
 procedure TAtlasToolbarItemsTests.PinnedCountOnlyLeadingSections;
 begin
   Assert.AreEqual(2, TAtlasToolbarItems.PinnedCount(TAtlasToolbarItems.Default));
-  Assert.AreEqual(4, TAtlasToolbarItems.PinnedCount([TAtlasToolbarItems.GotoUses, TAtlasToolbarItems.GotoInterface,
-    TAtlasToolbarItems.GotoImplementation, TAtlasToolbarItems.GotoInitialization, 'Atlas.NavBack',
-    TAtlasToolbarItems.GotoUses]));
-  Assert.AreEqual(0, TAtlasToolbarItems.PinnedCount(['Atlas.NavBack', TAtlasToolbarItems.GotoInterface]));
+  Assert.AreEqual(4, TAtlasToolbarItems.PinnedCount([TAtlasToolbarItems.cGotoUses, TAtlasToolbarItems.cGotoInterface,
+    TAtlasToolbarItems.cGotoImplementation, TAtlasToolbarItems.cGotoInitialization, 'Atlas.NavBack',
+    TAtlasToolbarItems.cGotoUses]));
+  Assert.AreEqual(0, TAtlasToolbarItems.PinnedCount(['Atlas.NavBack', TAtlasToolbarItems.cGotoInterface]));
   Assert.AreEqual(0, TAtlasToolbarItems.PinnedCount(nil));
   Assert.IsTrue(TAtlasToolbarItems.IsSection('atlas.gotointerface'));
-  Assert.IsFalse(TAtlasToolbarItems.IsSection(TAtlasToolbarItems.ReturnFromSection));
+  Assert.IsFalse(TAtlasToolbarItems.IsSection(TAtlasToolbarItems.cReturnFromSection));
 end;
 
 initialization

@@ -55,7 +55,8 @@ type
     CloseLine: Integer;
     CloseCharacter: Integer;
     Depth: Integer;
-    /// <summary>Erstes Besitzer-Schlüsselwort vor dem Öffner (if, else, for, procedure …), sonst der Öffner (#653).</summary>
+    /// <summary>Erstes Besitzer-Schlüsselwort vor dem Öffner (if, else, for, procedure …), sonst der Öffner
+    /// (#653).</summary>
     OwnerLine: Integer;
     OwnerCharacter: Integer;
     /// <summary>Verschachtelung der Routine, in der der Block steht; 0 = oberste Ebene (#1788).</summary>
@@ -903,55 +904,55 @@ end;
 class function TAtlasPairs.Spans(const AText, ALine: string; const ALineTokens: TArray<TAtlasPairToken>;
   AOwners: Boolean): TArray<TAtlasPairSpan>;
 var
-  Offset: Integer;
-  Token: TAtlasPairToken;
-  Span: TAtlasPairSpan;
+  mOffset: Integer;
+  mToken: TAtlasPairToken;
+  mSpan: TAtlasPairSpan;
 begin
   Result := nil;
   // AText beginnt ohne Einrückung: Zeichenindex in der Zeile minus Einrückung.
-  Offset := System.Length(ALine) - System.Length(TrimLeft(ALine));
-  for Token in ALineTokens do
+  mOffset := System.Length(ALine) - System.Length(TrimLeft(ALine));
+  for mToken in ALineTokens do
   begin
-    if Token.Owner and not AOwners then
+    if mToken.Owner and not AOwners then
     begin
       Continue;
     end;
-    Span.Start := Token.Character - Offset + 1;
-    Span.Length := Token.Length;
-    Span.Depth := Token.Depth;
-    Span.Unpaired := Token.Unpaired;
-    Span.Routine := Token.Routine;
+    mSpan.Start := mToken.Character - mOffset + 1;
+    mSpan.Length := mToken.Length;
+    mSpan.Depth := mToken.Depth;
+    mSpan.Unpaired := mToken.Unpaired;
+    mSpan.Routine := mToken.Routine;
     // Hinter einem gekürzten „(…)“ steht anderer Text: nur, was dort wirklich steht.
-    if (Span.Start < 1) or (Span.Start + Span.Length - 1 > System.Length(AText)) or
-      (Copy(AText, Span.Start, Span.Length) <> Copy(ALine, Token.Character + 1, Token.Length)) then
+    if (mSpan.Start < 1) or (mSpan.Start + mSpan.Length - 1 > System.Length(AText)) or
+      (Copy(AText, mSpan.Start, mSpan.Length) <> Copy(ALine, mToken.Character + 1, mToken.Length)) then
     begin
       Continue;
     end;
-    Result := Result + [Span];
+    Result := Result + [mSpan];
   end;
 end;
 
 class function TAtlasPairs.DisplayLine(const ALine: string; ATabWidth: Integer): string;
 var
-  Builder: TStringBuilder;
-  Ch: Char;
+  mBuilder: TStringBuilder;
+  mCh: Char;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    for Ch in ALine do
+    for mCh in ALine do
     begin
-      if (Ch = #9) and (ATabWidth > 0) then
+      if (mCh = #9) and (ATabWidth > 0) then
       begin
-        Builder.Append(' ', ATabWidth - Builder.Length mod ATabWidth);
+        mBuilder.Append(' ', ATabWidth - mBuilder.Length mod ATabWidth);
       end
-      else if Ch <> #13 then
+      else if mCh <> #13 then
       begin
-        Builder.Append(Ch);
+        mBuilder.Append(mCh);
       end;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -962,12 +963,12 @@ end;
 
 class function TAtlasPairs.ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 1;
-  for Index := 1 to ACharacter do
+  for mIndex := 1 to ACharacter do
   begin
-    if (Index <= Length(ALine)) and (ALine[Index] = #9) and (ATabWidth > 0) then
+    if (mIndex <= Length(ALine)) and (ALine[mIndex] = #9) and (ATabWidth > 0) then
     begin
       Result := ((Result - 1) div ATabWidth + 1) * ATabWidth + 1;
     end
@@ -980,9 +981,9 @@ end;
 
 class function TAtlasPairs.Analyze(const AText: string): TArray<TAtlasPairToken>;
 var
-  Blocks: TArray<TAtlasPairBlock>;
+  mBlocks: TArray<TAtlasPairBlock>;
 begin
-  Result := Analyze(AText, Blocks);
+  Result := Analyze(AText, mBlocks);
 end;
 
 class function TAtlasPairs.Analyze(const AText: string; out ABlocks: TArray<TAtlasPairBlock>): TArray<TAtlasPairToken>;

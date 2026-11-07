@@ -273,7 +273,7 @@ begin
   mTransport := TJsonRpcLineTransport.Create(TStdStreams.CreateInput, TStdStreams.ReserveOutputForProtocol, True);
   mServices := TMcpServices.Create(RootOf(AOptions), mLogger);
   mGlobalSettings := GlobalSettingsOf(mServices.Root, mLogger);
-  mServer := TMcpServer.Create(TProductVersion.Name, TProductVersion.Version);
+  mServer := TMcpServer.Create(TProductVersion.cName, TProductVersion.cVersion);
   mPrompts := nil;
   mDispatcher := TJsonRpcDispatcher.Create;
   mConnection := TJsonRpcConnection.Create(mTransport, mDispatcher);
@@ -286,7 +286,7 @@ begin
     mPrompts := NewPrompts(mServer, mServices);
     mServer.Attach(mDispatcher);
     mConnection.OnError := ConnectionErrorOf(mLogger);
-    mLogger.Info(Format('%s %s im MCP-Modus für %s', [TProductVersion.Name, TProductVersion.Version,
+    mLogger.Info(Format('%s %s im MCP-Modus für %s', [TProductVersion.cName, TProductVersion.cVersion,
       TLogMarks.Path(mServices.Root)]));
     // Mit index.projectGroup auch die übrigen Projekte der Gruppe.
     mServices.Group.Load(mGlobalSettings);

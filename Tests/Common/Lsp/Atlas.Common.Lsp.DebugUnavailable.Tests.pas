@@ -193,7 +193,7 @@ begin
   Dispatcher := TJsonRpcDispatcher.Create;
   try
     Handler.Attach(Dispatcher);
-    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspDebugUnavailable.Method +
+    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspDebugUnavailable.cMethod +
       '","params":{"textDocument":{"uri":"' + TDocumentUris.FromPath(FileName).Replace('\', '\\') +
       '"},"position":{"line":30,"character":0},"name":"Summe"}}') as TJSONObject;
     try

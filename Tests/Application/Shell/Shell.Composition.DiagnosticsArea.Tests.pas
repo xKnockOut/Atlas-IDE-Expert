@@ -104,12 +104,12 @@ begin
   mFound := False;
   for mMethod in FDispatcher.Methods do
   begin
-    if mMethod = TLspPullDiagnostics.DocumentMethod then
+    if mMethod = TLspPullDiagnostics.cDocumentMethod then
     begin
       mFound := True;
     end;
   end;
-  Assert.IsTrue(mFound, TLspPullDiagnostics.DocumentMethod);
+  Assert.IsTrue(mFound, TLspPullDiagnostics.cDocumentMethod);
 end;
 
 procedure TShellDiagnosticsAreaTests.ProviderOnlyForPullClients;

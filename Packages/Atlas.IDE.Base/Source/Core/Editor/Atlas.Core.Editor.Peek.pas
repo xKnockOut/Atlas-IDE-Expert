@@ -72,11 +72,11 @@ type
   TAtlasPeek = class
   public const
     /// <summary>Höchstens so viele Zeilen je Abschnitt (Deklaration bzw. Implementierung).</summary>
-    MaxBlockLines = 400;
+    cMaxBlockLines = 400;
     /// <summary>Zeilen vor und nach einer Referenz.</summary>
-    ReferenceBefore = 3;
-    ReferenceAfter = 40;
-    MaxExcerpt = 80;
+    cReferenceBefore = 3;
+    cReferenceAfter = 40;
+    cMaxExcerpt = 80;
   public
     /// <summary>Erste Zeile des Ausschnitts: ALine samt direkt darüber stehender ///-Kommentare und
     /// Attribute ([...]).</summary>
@@ -333,16 +333,16 @@ end;
 
 function TPeekScanner.Peek(out AToken: string): Boolean;
 var
-  Probe: TPeekScanner;
-  Line: Integer;
+  mProbe: TPeekScanner;
+  mLine: Integer;
 begin
-  Probe := Self;
-  Result := Probe.Next(AToken, Line);
+  mProbe := Self;
+  Result := mProbe.Next(AToken, mLine);
 end;
 
 const
   // Direktiven, die nach dem ";" einer Routinen-Deklaration folgen können.
-  Directives: array[0..23] of string = ('overload', 'virtual', 'override', 'abstract', 'inline', 'stdcall',
+  cDirectives: array[0..23] of string = ('overload', 'virtual', 'override', 'abstract', 'inline', 'stdcall',
     'cdecl', 'pascal', 'register', 'safecall', 'reintroduce', 'static', 'dynamic', 'deprecated', 'platform',
     'final', 'message', 'external', 'forward', 'assembler', 'experimental', 'dispid', 'library', 'varargs');
 
@@ -359,7 +359,7 @@ end;
 
 function IsDirective(const AToken: string): Boolean;
 begin
-  Result := IsOneOf(AToken, Directives);
+  Result := IsOneOf(AToken, cDirectives);
 end;
 
 function BracketDelta(const AToken: string): Integer;
@@ -586,13 +586,13 @@ end;
 
 class function TAtlasPeek.DeclarationStart(const ALines: TArray<string>; ALine: Integer): Integer;
 var
-  Text: string;
+  mText: string;
 begin
   Result := Max(0, Min(ALine, High(ALines)));
   while Result > 0 do
   begin
-    Text := Trim(ALines[Result - 1]);
-    if (Copy(Text, 1, 3) = '///') or ((Text <> '') and (Text[1] = '[') and (Text[Length(Text)] = ']')) then
+    mText := Trim(ALines[Result - 1]);
+    if (Copy(mText, 1, 3) = '///') or ((mText <> '') and (mText[1] = '[') and (mText[Length(mText)] = ']')) then
     begin
       Dec(Result);
     end
@@ -613,7 +613,7 @@ begin
   begin
     Exit(ALine);
   end;
-  mScanner.Init(ALines, ALine, ALine + MaxBlockLines - 1);
+  mScanner.Init(ALines, ALine, ALine + cMaxBlockLines - 1);
   Result := ALine;
   mPrevious := '';
   mParens := 0;
@@ -646,7 +646,7 @@ begin
   begin
     Exit(ALine);
   end;
-  mScanner.Init(ALines, ALine, ALine + MaxBlockLines - 1);
+  mScanner.Init(ALines, ALine, ALine + cMaxBlockLines - 1);
   Result := HeaderEnd(mScanner, ALine, mHasBody);
   mDepth := 0;
   // Lokale Routinen vor dem Rumpf: Ihr end bringt die Tiefe auf 0, beendet aber nicht den Rumpf.
@@ -679,15 +679,15 @@ end;
 
 const
   // SymbolKind des LSP: Method, Constructor, Function, Operator.
-  RoutineKinds: array[0..3] of Integer = (6, 9, 12, 25);
+  cRoutineKinds: array[0..3] of Integer = (6, 9, 12, 25);
 
 function IsRoutine(AKind: Integer): Boolean;
 var
-  Kind: Integer;
+  mKind: Integer;
 begin
-  for Kind in RoutineKinds do
+  for mKind in cRoutineKinds do
   begin
-    if Kind = AKind then
+    if mKind = AKind then
     begin
       Exit(True);
     end;
@@ -698,13 +698,13 @@ end;
 /// <summary>Name ohne Besitzer und Besitzer (klein); interface/implementation zählen als kein Besitzer.</summary>
 procedure SplitName(const ASymbol: TAtlasSymbol; out AName, AOwner: string);
 var
-  Dot: Integer;
+  mDot: Integer;
 begin
-  Dot := LastDelimiter('.', ASymbol.Name);
-  if Dot > 0 then
+  mDot := LastDelimiter('.', ASymbol.Name);
+  if mDot > 0 then
   begin
-    AName := Copy(ASymbol.Name, Dot + 1, MaxInt);
-    AOwner := Copy(ASymbol.Name, 1, Dot - 1);
+    AName := Copy(ASymbol.Name, mDot + 1, MaxInt);
+    AOwner := Copy(ASymbol.Name, 1, mDot - 1);
   end
   else
   begin
@@ -843,52 +843,52 @@ end;
 
 class function TAtlasPeek.ExpandTabs(const AText: string; ATabWidth: Integer): string;
 var
-  Builder: TStringBuilder;
-  Ch: Char;
-  Width: Integer;
+  mBuilder: TStringBuilder;
+  mCh: Char;
+  mWidth: Integer;
 begin
   if Pos(#9, AText) = 0 then
   begin
     Exit(AText);
   end;
-  Width := Max(1, ATabWidth);
-  Builder := TStringBuilder.Create;
+  mWidth := Max(1, ATabWidth);
+  mBuilder := TStringBuilder.Create;
   try
-    for Ch in AText do
+    for mCh in AText do
     begin
-      if Ch = #9 then
+      if mCh = #9 then
       begin
-        Builder.Append(' ', Width - Builder.Length mod Width);
+        mBuilder.Append(' ', mWidth - mBuilder.Length mod mWidth);
       end
       else
       begin
-        Builder.Append(Ch);
+        mBuilder.Append(mCh);
       end;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 class function TAtlasPeek.Excerpt(const ALine: string): string;
 begin
   Result := Trim(StringReplace(ALine, #9, ' ', [rfReplaceAll]));
-  if Length(Result) > MaxExcerpt then
+  if Length(Result) > cMaxExcerpt then
   begin
-    Result := Copy(Result, 1, MaxExcerpt - 1) + '…';
+    Result := Copy(Result, 1, cMaxExcerpt - 1) + '…';
   end;
 end;
 
 function CodeRow(const AFileName: string; const ALines: TArray<string>; ALine, ATabWidth: Integer;
   const ATarget: TAtlasPeekPlace; AMarkTarget: Boolean): TAtlasPeekRow;
 var
-  Original: string;
-  First, Last: Integer;
+  mOriginal: string;
+  mFirst, mLast: Integer;
 begin
-  Original := ALines[ALine];
+  mOriginal := ALines[ALine];
   Result.Kind := TAtlasPeekRowKind.Code;
-  Result.Text := TAtlasPeek.ExpandTabs(Original, ATabWidth);
+  Result.Text := TAtlasPeek.ExpandTabs(mOriginal, ATabWidth);
   Result.FileName := AFileName;
   Result.Line := ALine;
   Result.Target := AMarkTarget and (ALine = ATarget.Line);
@@ -898,80 +898,80 @@ begin
   begin
     Exit;
   end;
-  First := Max(0, Min(ATarget.Character, Length(Original)));
-  Last := First;
-  while (First > 0) and TTextChars.IsIdentChar(Original[First]) do
+  mFirst := Max(0, Min(ATarget.Character, Length(mOriginal)));
+  mLast := mFirst;
+  while (mFirst > 0) and TTextChars.IsIdentChar(mOriginal[mFirst]) do
   begin
-    Dec(First);
+    Dec(mFirst);
   end;
-  while (Last < Length(Original)) and TTextChars.IsIdentChar(Original[Last + 1]) do
+  while (mLast < Length(mOriginal)) and TTextChars.IsIdentChar(mOriginal[mLast + 1]) do
   begin
-    Inc(Last);
+    Inc(mLast);
   end;
-  if Last > First then
+  if mLast > mFirst then
   begin
-    Result.NameStart := Length(TAtlasPeek.ExpandTabs(Copy(Original, 1, First), ATabWidth));
-    Result.NameStop := Length(TAtlasPeek.ExpandTabs(Copy(Original, 1, Last), ATabWidth));
+    Result.NameStart := Length(TAtlasPeek.ExpandTabs(Copy(mOriginal, 1, mFirst), ATabWidth));
+    Result.NameStop := Length(TAtlasPeek.ExpandTabs(Copy(mOriginal, 1, mLast), ATabWidth));
   end;
 end;
 
 class function TAtlasPeek.DefinitionRows(const ATarget: TAtlasPeekTarget; const ADeclLines,
   ABodyLines: TArray<string>; AShowBody: Boolean; ATabWidth: Integer): TArray<TAtlasPeekRow>;
 var
-  Line, First, Last, Count: Integer;
-  Separator: TAtlasPeekRow;
+  mLine, mFirst, mLast, mCount: Integer;
+  mSeparator: TAtlasPeekRow;
 begin
   Result := nil;
-  Count := 0;
+  mCount := 0;
   if (ATarget.Place.Line >= 0) and (ATarget.Place.Line <= High(ADeclLines)) then
   begin
-    First := DeclarationStart(ADeclLines, ATarget.Place.Line);
-    Last := Min(DeclarationEnd(ADeclLines, ATarget.Place.Line), First + MaxBlockLines - 1);
-    SetLength(Result, Last - First + 1);
-    for Line := First to Last do
+    mFirst := DeclarationStart(ADeclLines, ATarget.Place.Line);
+    mLast := Min(DeclarationEnd(ADeclLines, ATarget.Place.Line), mFirst + cMaxBlockLines - 1);
+    SetLength(Result, mLast - mFirst + 1);
+    for mLine := mFirst to mLast do
     begin
-      Result[Count] := CodeRow(ATarget.Place.FileName, ADeclLines, Line, ATabWidth, ATarget.Place, True);
-      Inc(Count);
+      Result[mCount] := CodeRow(ATarget.Place.FileName, ADeclLines, mLine, ATabWidth, ATarget.Place, True);
+      Inc(mCount);
     end;
   end;
   if AShowBody and ATarget.HasBody and (ATarget.Body.Line >= 0) and (ATarget.Body.Line <= High(ABodyLines)) then
   begin
-    First := DeclarationStart(ABodyLines, ATarget.Body.Line);
-    Last := Min(BodyEnd(ABodyLines, ATarget.Body.Line), First + MaxBlockLines - 1);
-    Separator := Default(TAtlasPeekRow);
-    Separator.Kind := TAtlasPeekRowKind.Separator;
-    Separator.FileName := ATarget.Body.FileName;
-    Separator.Line := ATarget.Body.Line;
-    Separator.NameStart := -1;
-    Separator.NameStop := -1;
-    SetLength(Result, Count + 1 + Last - First + 1);
-    Result[Count] := Separator;
-    Inc(Count);
-    for Line := First to Last do
+    mFirst := DeclarationStart(ABodyLines, ATarget.Body.Line);
+    mLast := Min(BodyEnd(ABodyLines, ATarget.Body.Line), mFirst + cMaxBlockLines - 1);
+    mSeparator := Default(TAtlasPeekRow);
+    mSeparator.Kind := TAtlasPeekRowKind.Separator;
+    mSeparator.FileName := ATarget.Body.FileName;
+    mSeparator.Line := ATarget.Body.Line;
+    mSeparator.NameStart := -1;
+    mSeparator.NameStop := -1;
+    SetLength(Result, mCount + 1 + mLast - mFirst + 1);
+    Result[mCount] := mSeparator;
+    Inc(mCount);
+    for mLine := mFirst to mLast do
     begin
-      Result[Count] := CodeRow(ATarget.Body.FileName, ABodyLines, Line, ATabWidth, ATarget.Body, False);
-      Inc(Count);
+      Result[mCount] := CodeRow(ATarget.Body.FileName, ABodyLines, mLine, ATabWidth, ATarget.Body, False);
+      Inc(mCount);
     end;
   end;
-  SetLength(Result, Count);
+  SetLength(Result, mCount);
 end;
 
 class function TAtlasPeek.ReferenceRows(const APlace: TAtlasPeekPlace; const ALines: TArray<string>;
   ATabWidth: Integer): TArray<TAtlasPeekRow>;
 var
-  Line, First, Last: Integer;
+  mLine, mFirst, mLast: Integer;
 begin
   Result := nil;
   if (APlace.Line < 0) or (APlace.Line > High(ALines)) then
   begin
     Exit;
   end;
-  First := Max(0, APlace.Line - ReferenceBefore);
-  Last := Min(High(ALines), APlace.Line + ReferenceAfter);
-  SetLength(Result, Last - First + 1);
-  for Line := First to Last do
+  mFirst := Max(0, APlace.Line - cReferenceBefore);
+  mLast := Min(High(ALines), APlace.Line + cReferenceAfter);
+  SetLength(Result, mLast - mFirst + 1);
+  for mLine := mFirst to mLast do
   begin
-    Result[Line - First] := CodeRow(APlace.FileName, ALines, Line, ATabWidth, APlace, True);
+    Result[mLine - mFirst] := CodeRow(APlace.FileName, ALines, mLine, ATabWidth, APlace, True);
   end;
 end;
 
@@ -1067,8 +1067,8 @@ end;
 
 function TAtlasPeekView.OpenPlace: TAtlasPeekPlace;
 var
-  Rows: TArray<TAtlasPeekRow>;
-  Index: Integer;
+  mRows: TArray<TAtlasPeekRow>;
+  mIndex: Integer;
 begin
   Result := Default(TAtlasPeekPlace);
   if Count = 0 then
@@ -1076,20 +1076,20 @@ begin
     Exit;
   end;
   Result := Current.Target.Place;
-  Rows := Current.Rows;
+  mRows := Current.Rows;
   // Zeigt der Ausschnitt die Zielzeile nicht mehr, öffnet Enter die oberste sichtbare Zeile.
-  for Index := FTop to Min(High(Rows), FTop + FPageRows - 1) do
+  for mIndex := FTop to Min(High(mRows), FTop + FPageRows - 1) do
   begin
-    if Rows[Index].Target then
+    if mRows[mIndex].Target then
     begin
       Exit;
     end;
   end;
-  for Index := FTop to High(Rows) do
+  for mIndex := FTop to High(mRows) do
   begin
-    if Rows[Index].Kind = TAtlasPeekRowKind.Code then
+    if mRows[mIndex].Kind = TAtlasPeekRowKind.Code then
     begin
-      Result := TAtlasPeekPlace.Create(Rows[Index].FileName, Rows[Index].Line, 0);
+      Result := TAtlasPeekPlace.Create(mRows[mIndex].FileName, mRows[mIndex].Line, 0);
       Exit;
     end;
   end;

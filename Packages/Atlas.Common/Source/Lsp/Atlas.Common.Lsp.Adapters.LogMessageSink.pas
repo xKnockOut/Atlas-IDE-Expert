@@ -12,7 +12,7 @@ uses
 type
   TLspLogMessageSink = class(TInterfacedObject, ILogSink)
   public const
-    Method = 'window/logMessage';
+    cMethod = 'window/logMessage';
   private
     FTransport: IJsonRpcTransport;
   public
@@ -54,17 +54,17 @@ end;
 
 procedure TLspLogMessageSink.Write(const AEntry: TLogEntry);
 var
-  Params: TJSONObject;
-  Notification: TJSONObject;
+  mParams: TJSONObject;
+  mNotification: TJSONObject;
 begin
-  Params := TJSONObject.Create;
-  Params.AddPair('type', TJSONNumber.Create(MessageTypeOf(AEntry.Level)));
-  Params.AddPair('message', TLogEntryText.Plain(AEntry));
-  Notification := TJsonRpcMessages.Notification(Method, Params);
+  mParams := TJSONObject.Create;
+  mParams.AddPair('type', TJSONNumber.Create(MessageTypeOf(AEntry.Level)));
+  mParams.AddPair('message', TLogEntryText.Plain(AEntry));
+  mNotification := TJsonRpcMessages.Notification(cMethod, mParams);
   try
-    FTransport.WriteMessage(Notification);
+    FTransport.WriteMessage(mNotification);
   finally
-    Notification.Free;
+    mNotification.Free;
   end;
 end;
 

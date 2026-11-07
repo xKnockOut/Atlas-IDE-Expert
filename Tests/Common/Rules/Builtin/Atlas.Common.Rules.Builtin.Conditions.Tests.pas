@@ -141,7 +141,7 @@ begin
   Source := Body('  if (Anzahl > 0) or True then'#10'    Verarbeiten;'#10);
   Found := Findings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(ConstantConditionRuleId, Found[0].RuleId);
+  Assert.AreEqual(cConstantConditionRuleId, Found[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));
   Assert.AreEqual('Die Bedingung ist immer wahr (… or True).', Found[0].Message);
   Assert.AreEqual(9, Found[0].Range.StartPos.Line);
@@ -273,7 +273,7 @@ begin
   Found := LoopFindings(Lesen('  while True do'#10'  begin'#10'    Zeile := Leser.ReadLine;'#10 +
     '    Verarbeiten(Zeile);'#10'  end;'#10));
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(InfiniteLoopRuleId, Found[0].RuleId);
+  Assert.AreEqual(cInfiniteLoopRuleId, Found[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
   Assert.AreEqual('Die Schleife hat keinen Ausgang (kein Break, Exit oder raise).', Found[0].Message);
   Assert.AreEqual(12, Found[0].Range.StartPos.Line);
@@ -367,7 +367,7 @@ begin
   Found := UnchangedFindings(Schleife('  I := 0;'#10'  while I < Liste.Count do'#10'  begin'#10 +
     '    Pruefe(Liste[I]);'#10'  end;'#10));
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(LoopConditionUnchangedRuleId, Found[0].RuleId);
+  Assert.AreEqual(cLoopConditionUnchangedRuleId, Found[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Found[0].Confidence));
   Assert.AreEqual('I und Liste werden im Rumpf nie verändert; die Schleife endet nicht.', Found[0].Message);
@@ -581,7 +581,7 @@ begin
   mFound := OnceFindings(Suche('  for mKunde in FKunden do'#10'  begin'#10'    if mKunde.Id = AId then'#10 +
     '      Result := mKunde;'#10'    Exit;'#10'  end;'#10));
   Assert.AreEqual(1, Integer(Length(mFound)));
-  Assert.AreEqual(LoopRunsAtMostOnceRuleId, mFound[0].RuleId);
+  Assert.AreEqual(cLoopRunsAtMostOnceRuleId, mFound[0].RuleId);
   Assert.AreEqual('Jeder Durchlauf endet mit Exit: Die Schleife prüft nur das erste Element von FKunden. ' +
     'Gehört Exit in den if-Zweig?', mFound[0].Message);
   Assert.AreEqual(21, mFound[0].Range.StartPos.Line);

@@ -80,8 +80,8 @@ end;
 class function TAtlasSettingsValidation.FromAnswer(AAnswer: TJSONValue; out AIssues: TArray<TAtlasSettingIssue>;
   out AValid: Boolean): Boolean;
 var
-  Valid, Items, Item, Error: TJSONValue;
-  Issue: TAtlasSettingIssue;
+  mValid, mItems, mItem, mError: TJSONValue;
+  mIssue: TAtlasSettingIssue;
 begin
   AIssues := nil;
   AValid := False;
@@ -90,27 +90,27 @@ begin
   begin
     Exit;
   end;
-  Valid := TJSONObject(AAnswer).GetValue('valid');
-  if not (Valid is TJSONBool) then
+  mValid := TJSONObject(AAnswer).GetValue('valid');
+  if not (mValid is TJSONBool) then
   begin
     Exit;
   end;
   Result := True;
-  AValid := TJSONBool(Valid).AsBoolean;
-  Items := TJSONObject(AAnswer).GetValue('issues');
-  if Items is TJSONArray then
+  AValid := TJSONBool(mValid).AsBoolean;
+  mItems := TJSONObject(AAnswer).GetValue('issues');
+  if mItems is TJSONArray then
   begin
-    for Item in TJSONArray(Items) do
+    for mItem in TJSONArray(mItems) do
     begin
-      if Item is TJSONObject then
+      if mItem is TJSONObject then
       begin
-        Issue := Default(TAtlasSettingIssue);
-        Issue.Line := TJSONObject(Item).GetValue<Integer>('line', -1);
-        Issue.Character := TJSONObject(Item).GetValue<Integer>('character', -1);
-        Issue.Message := TJSONObject(Item).GetValue<string>('message', '');
-        Error := TJSONObject(Item).GetValue('error');
-        Issue.Error := (Error is TJSONBool) and TJSONBool(Error).AsBoolean;
-        AIssues := AIssues + [Issue];
+        mIssue := Default(TAtlasSettingIssue);
+        mIssue.Line := TJSONObject(mItem).GetValue<Integer>('line', -1);
+        mIssue.Character := TJSONObject(mItem).GetValue<Integer>('character', -1);
+        mIssue.Message := TJSONObject(mItem).GetValue<string>('message', '');
+        mError := TJSONObject(mItem).GetValue('error');
+        mIssue.Error := (mError is TJSONBool) and TJSONBool(mError).AsBoolean;
+        AIssues := AIssues + [mIssue];
       end;
     end;
   end;
@@ -118,45 +118,45 @@ end;
 
 class function TAtlasSettingsValidation.Syntax(const AText: string; out AIssues: TArray<TAtlasSettingIssue>): Boolean;
 var
-  Root: TJSONObject;
-  Issue: TAtlasSettingIssue;
+  mRoot: TJSONObject;
+  mIssue: TAtlasSettingIssue;
 begin
   AIssues := nil;
   if Trim(AText) = '' then
   begin
     Exit(True);
   end;
-  Root := TAtlasJsonText.Parse(AText);
-  Result := Root <> nil;
-  Root.Free;
+  mRoot := TAtlasJsonText.Parse(AText);
+  Result := mRoot <> nil;
+  mRoot.Free;
   if not Result then
   begin
-    Issue := Default(TAtlasSettingIssue);
-    Issue.Line := -1;
-    Issue.Character := -1;
-    Issue.Message := UiText(TValidationText.NotAValidJSONObject);
-    Issue.Error := True;
-    AIssues := [Issue];
+    mIssue := Default(TAtlasSettingIssue);
+    mIssue.Line := -1;
+    mIssue.Character := -1;
+    mIssue.Message := UiText(TValidationText.NotAValidJSONObject);
+    mIssue.Error := True;
+    AIssues := [mIssue];
   end;
 end;
 
 class function TAtlasSettingsValidation.Lines(const AIssues: TArray<TAtlasSettingIssue>): TArray<string>;
 var
-  Issue: TAtlasSettingIssue;
+  mIssue: TAtlasSettingIssue;
 begin
   Result := nil;
-  for Issue in AIssues do
+  for mIssue in AIssues do
   begin
-    if Issue.Error then
+    if mIssue.Error then
     begin
-      Result := Result + [Issue.Text];
+      Result := Result + [mIssue.Text];
     end;
   end;
-  for Issue in AIssues do
+  for mIssue in AIssues do
   begin
-    if not Issue.Error then
+    if not mIssue.Error then
     begin
-      Result := Result + [Issue.Text];
+      Result := Result + [mIssue.Text];
     end;
   end;
 end;

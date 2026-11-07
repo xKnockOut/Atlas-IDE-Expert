@@ -85,7 +85,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TForVariableMisuseRule.Create, Zeilen(Statements));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(ForVariableMisuseRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cForVariableMisuseRuleId, Findings[0].RuleId);
   Assert.AreEqual('Schleifenvariable I darf im Rumpf nicht verändert werden (wie E2081).', Findings[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
@@ -215,7 +215,7 @@ begin
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = ForVariableMisuseRuleId then
+    if Rule.Descriptor.Id = cForVariableMisuseRuleId then
     begin
       Found := True;
     end;
@@ -236,7 +236,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TForVariableAfterLoopRule.Create, Zeilen(Statements));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(ForVariableAfterLoopRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cForVariableAfterLoopRuleId, Findings[0].RuleId);
   Assert.AreEqual('I ist nach der Schleife undefiniert, wenn kein Break erreicht wurde (wie W1037).',
     Findings[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
@@ -309,7 +309,7 @@ begin
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = ForVariableAfterLoopRuleId then
+    if Rule.Descriptor.Id = cForVariableAfterLoopRuleId then
     begin
       Found := True;
     end;

@@ -35,12 +35,12 @@ uses
 
 function IsUnitName(const AName: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AName <> '';
-  for Index := 1 to Length(AName) do
+  for mIndex := 1 to Length(AName) do
   begin
-    if not CharInSet(AName[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) then
+    if not CharInSet(AName[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) then
     begin
       Exit(False);
     end;
@@ -50,26 +50,26 @@ end;
 
 class function TUsesCommand.Parse(const ALine: string; out AUnits: TArray<string>): Boolean;
 var
-  Rest, Name: string;
+  mRest, mName: string;
 begin
   AUnits := nil;
-  Rest := Trim(ALine);
-  if not Rest.StartsWith('/uses ', True) then
+  mRest := Trim(ALine);
+  if not mRest.StartsWith('/uses ', True) then
   begin
     Exit(False);
   end;
-  Rest := Trim(Copy(Rest, 7, MaxInt));
-  if Rest.EndsWith(';') then
+  mRest := Trim(Copy(mRest, 7, MaxInt));
+  if mRest.EndsWith(';') then
   begin
-    Rest := Trim(Copy(Rest, 1, Length(Rest) - 1));
+    mRest := Trim(Copy(mRest, 1, Length(mRest) - 1));
   end;
-  for Name in Rest.Split([',']) do
+  for mName in mRest.Split([',']) do
   begin
-    if not IsUnitName(Trim(Name)) then
+    if not IsUnitName(Trim(mName)) then
     begin
       Exit(False);
     end;
-    AUnits := AUnits + [Trim(Name)];
+    AUnits := AUnits + [Trim(mName)];
   end;
   Result := Length(AUnits) > 0;
 end;
@@ -77,43 +77,44 @@ end;
 class function TUsesCommand.AfterEnter(const AText: string; const APosition: TTextPosition;
   const ANamespaces: TArray<string>; out AEdits: TArray<TTextEdit>): Boolean;
 var
-  Lines, Units, Used, Missing: TArray<string>;
-  Line, Offset, Index: Integer;
-  LineBreak, Blanked, Name: string;
-  Tokens: TArray<TPascalToken>;
-  Edit: TTextEdit;
+  mLines, mUnits, mUsed, mMissing: TArray<string>;
+  mLine, mOffset, mIndex: Integer;
+  mLineBreak, mBlanked, mName: string;
+  mTokens: TArray<TPascalToken>;
+  mEdit: TTextEdit;
 begin
   AEdits := nil;
-  Line := APosition.Line - 1;
-  LineBreak := TTextLines.LineBreakOf(AText);
-  Lines := AText.Split([LineBreak]);
-  if (Line < 0) or (Line >= High(Lines) + 1) or not Parse(Lines[Line], Units) then
+  mLine := APosition.Line - 1;
+  mLineBreak := TTextLines.LineBreakOf(AText);
+  mLines := AText.Split([mLineBreak]);
+  if (mLine < 0) or (mLine >= High(mLines) + 1) or not Parse(mLines[mLine], mUnits) then
   begin
     Exit(False);
   end;
-  Offset := 0;
-  for Index := 0 to Line - 1 do
+  mOffset := 0;
+  for mIndex := 0 to mLine - 1 do
   begin
-    Inc(Offset, Length(Lines[Index]) + Length(LineBreak));
+    Inc(mOffset, Length(mLines[mIndex]) + Length(mLineBreak));
   end;
-  Blanked := Copy(AText, 1, Offset) + StringOfChar(' ', Length(Lines[Line])) +
-    Copy(AText, Offset + Length(Lines[Line]) + 1, MaxInt);
-  Tokens := TPascalLexer.Tokenize(Blanked);
-  Used := TUsesClauses.UsedUnits(Tokens);
-  Missing := nil;
-  for Name in Units do
+  mBlanked := Copy(AText, 1, mOffset) + StringOfChar(' ', Length(mLines[mLine])) +
+    Copy(AText, mOffset + Length(mLines[mLine]) + 1, MaxInt);
+  mTokens := TPascalLexer.Tokenize(mBlanked);
+  mUsed := TUsesClauses.UsedUnits(mTokens);
+  mMissing := nil;
+  for mName in mUnits do
   begin
-    if not TUsesClauses.IsUsed(Used + Missing, Name, ANamespaces) then
+    if not TUsesClauses.IsUsed(mUsed + mMissing, mName, ANamespaces) then
     begin
-      Missing := Missing + [Name];
+      mMissing := mMissing + [mName];
     end;
   end;
   // Die Befehlszeile samt Zeilenende verschwindet in jedem Fall.
-  AEdits := [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(Line, 0), TTextPosition.Create(Line + 1, 0)), '')];
-  if (Length(Missing) > 0) and
-    TUsesClauses.AddUnit(Tokens, Offset, string.Join(', ', Missing), LineBreak, Edit) then
+  AEdits := [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(mLine, 0), TTextPosition.Create(mLine + 1, 0)),
+    '')];
+  if (Length(mMissing) > 0) and
+    TUsesClauses.AddUnit(mTokens, mOffset, string.Join(', ', mMissing), mLineBreak, mEdit) then
   begin
-    AEdits := [Edit] + AEdits;
+    AEdits := [mEdit] + AEdits;
   end;
   Result := True;
 end;

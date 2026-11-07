@@ -176,7 +176,7 @@ begin
     end;
   end;
   TLinterOutput.Write(AOptions, mOutput);
-  Result := TFindingsOutput.ExitClean;
+  Result := TFindingsOutput.cExitClean;
   if AFound.All then
   begin
     Result := TLinterAffectedTests.cExitAllTests;
@@ -196,7 +196,7 @@ begin
   if not mSettings.Tests.Affected then
   begin
     TLinterOutput.Error(cTexts[TLinterAffectedText.TurnOn].Fmt([TShellAffectedTests.OffMessage]));
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   TFileEncodingDefaults.SetFolder(ATarget.ConfigRoot, mSettings.DefaultEncoding);
   // Zeiten nur für --timings beim Prüfen; hier unbenutzt.
@@ -219,11 +219,11 @@ begin
   if not TAffectedTests.TryParseFormat(AOptions.FormatText, mFormat) then
   begin
     TLinterOutput.Error(cTexts[TLinterAffectedText.FormatInvalid].Fmt([AOptions.FormatText]));
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   if not TLinterTarget.ResolveOrCurrent(AOptions.CheckTarget, mTarget) then
   begin
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   try
     Result := Report(AOptions, mTarget, mFormat);
@@ -231,7 +231,7 @@ begin
     on E: Exception do
     begin
       TLinterOutput.Error(E.Message);
-      Result := TFindingsOutput.ExitFailure;
+      Result := TFindingsOutput.cExitFailure;
     end;
   end;
 end;

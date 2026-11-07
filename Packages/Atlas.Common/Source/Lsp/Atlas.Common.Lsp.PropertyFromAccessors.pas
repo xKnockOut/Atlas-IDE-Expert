@@ -44,10 +44,10 @@ type
 
   TLspPropertyFromAccessors = class
   public const
-    ClientCommand = 'atlas.propertyFromAccessors';
-    ApplyCommand = 'atlas.server.propertyFromAccessors';
-    Kind = 'refactor.rewrite';
-    AnnotationId = 'propertyFromAccessors';
+    cClientCommand = 'atlas.propertyFromAccessors';
+    cApplyCommand = 'atlas.server.propertyFromAccessors';
+    cKind = 'refactor.rewrite';
+    cAnnotationId = 'propertyFromAccessors';
   public
     /// <summary>Code-Aktionen an APosition; nil, wenn dort keine Property fehlt. Der Aufrufer
     /// übernimmt die Objekte.</summary>
@@ -105,12 +105,12 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  ProceduralPattern = '=\s*(reference\s+to\s+)?(procedure|function)\b';
+  cProceduralPattern = '=\s*(reference\s+to\s+)?(procedure|function)\b';
   /// <summary>Bekannte Methodenzeiger der RTL, falls die RTL nicht im Index steht.</summary>
-  KnownProcedural: array[0..5] of string = ('TProc', 'TFunc', 'TPredicate', 'TNotifyEvent', 'TThreadMethod',
+  cKnownProcedural: array[0..5] of string = ('TProc', 'TFunc', 'TPredicate', 'TNotifyEvent', 'TThreadMethod',
     'TThreadProcedure');
   /// <summary>Eingebaute Routinen, deren Argumente Werte sind.</summary>
-  ValueIntrinsics: array[0..13] of string = ('Exit', 'Write', 'Writeln', 'Length', 'Ord', 'Chr', 'Inc', 'Dec', 'Abs',
+  cValueIntrinsics: array[0..13] of string = ('Exit', 'Write', 'Writeln', 'Length', 'Ord', 'Chr', 'Inc', 'Dec', 'Abs',
     'Round', 'Trunc', 'Succ', 'Pred', 'High');
 
 type
@@ -139,7 +139,7 @@ end;
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
 end;
 
 function Where(const AFileName: string; const APosition: TTextPosition): string;
@@ -150,68 +150,68 @@ end;
 /// <summary>Routine mit Rumpf, in der APosition liegt; nil außerhalb.</summary>
 function RoutineAt(ATree: TSyntaxTree; const APosition: TTextPosition): TSyntaxNode;
 var
-  Found: TSyntaxNode;
+  mFound: TSyntaxNode;
 begin
-  Found := nil;
+  mFound := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       Result := (ANode.StartPos.Line <= APosition.Line) and (ANode.EndPos.Line >= APosition.Line);
       if Result and (ANode.Kind = TSyntaxKind.RoutineDecl) then
       begin
-        Found := ANode;
+        mFound := ANode;
       end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 /// <summary>Liegt APosition in der Klassendeklaration von AProperty?</summary>
 function InClassDecl(ATree: TSyntaxTree; const AProperty: TAccessorProperty; const APosition: TTextPosition): Boolean;
 var
-  Found: Boolean;
+  mFound: Boolean;
 begin
-  Found := False;
+  mFound := False;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.StartPos.Line = AProperty.ClassLine) and
         (APosition.Line >= ANode.StartPos.Line) and (APosition.Line <= ANode.EndPos.Line) then
       begin
-        Found := True;
+        mFound := True;
       end;
-      Result := not Found;
+      Result := not mFound;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 class function TLspPropertyFromAccessors.IsProcedural(const ATypeName: string; const AIndex: ISymbolIndex): Boolean;
 var
-  Name: string;
-  Location: TSymbolLocation;
+  mName: string;
+  mLocation: TSymbolLocation;
 begin
   if TRegEx.IsMatch(ATypeName, '^\s*(reference\s+to\s+)?(procedure|function)\b', [roIgnoreCase]) then
   begin
     Exit(True);
   end;
-  Name := Trim(ATypeName);
-  if Pos('<', Name) > 0 then
+  mName := Trim(ATypeName);
+  if Pos('<', mName) > 0 then
   begin
-    Name := Copy(Name, 1, Pos('<', Name) - 1);
+    mName := Copy(mName, 1, Pos('<', mName) - 1);
   end;
-  if Pos('.', Name) > 0 then
+  if Pos('.', mName) > 0 then
   begin
-    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+    mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
   end;
-  if IndexText(Name, KnownProcedural) >= 0 then
+  if IndexText(mName, cKnownProcedural) >= 0 then
   begin
     Exit(True);
   end;
   if AIndex <> nil then
   begin
-    for Location in AIndex.FindSymbols(Name) do
+    for mLocation in AIndex.FindSymbols(mName) do
     begin
-      if (Location.Symbol.Container = '') and (Location.Symbol.Kind = TIndexSymbolKind.TypeAlias) and
-        TRegEx.IsMatch(Location.Symbol.Signature, ProceduralPattern, [roIgnoreCase]) then
+      if (mLocation.Symbol.Container = '') and (mLocation.Symbol.Kind = TIndexSymbolKind.TypeAlias) and
+        TRegEx.IsMatch(mLocation.Symbol.Signature, cProceduralPattern, [roIgnoreCase]) then
       begin
         Exit(True);
       end;
@@ -274,7 +274,7 @@ begin
   begin
     Exit(TUnclearResult.Unknown);
   end;
-  if mResolved.Builtin or (not TRegEx.IsMatch(mResolved.Signature, ProceduralPattern, [roIgnoreCase]) and
+  if mResolved.Builtin or (not TRegEx.IsMatch(mResolved.Signature, cProceduralPattern, [roIgnoreCase]) and
     not TLspPropertyFromAccessors.IsProcedural(mResolved.Name, AIndex)) then
   begin
     Result := TUnclearResult.Value;
@@ -296,7 +296,7 @@ begin
   begin
     Exit(TUnclearResult.Pointer_);
   end;
-  if IndexText(ATarget.Text, ValueIntrinsics) >= 0 then
+  if IndexText(ATarget.Text, cValueIntrinsics) >= 0 then
   begin
     Exit(TUnclearResult.Value);
   end;
@@ -344,25 +344,25 @@ end;
 
 function EditsJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
 var
-  Document, Item: TJSONObject;
-  Items: TJSONArray;
-  Edit: TTextEdit;
+  mDocument, mItem: TJSONObject;
+  mItems: TJSONArray;
+  mEdit: TTextEdit;
 begin
-  Document := TJSONObject.Create;
-  Document.AddPair('uri', AUri);
-  Document.AddPair('version', TJSONNull.Create);
-  Items := TJSONArray.Create;
-  for Edit in AEdits do
+  mDocument := TJSONObject.Create;
+  mDocument.AddPair('uri', AUri);
+  mDocument.AddPair('version', TJSONNull.Create);
+  mItems := TJSONArray.Create;
+  for mEdit in AEdits do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-    Item.AddPair('newText', Edit.NewText);
-    Item.AddPair('annotationId', TLspPropertyFromAccessors.AnnotationId);
-    Items.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mItem.AddPair('newText', mEdit.NewText);
+    mItem.AddPair('annotationId', TLspPropertyFromAccessors.cAnnotationId);
+    mItems.AddElement(mItem);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('textDocument', Document);
-  Result.AddPair('edits', Items);
+  Result.AddPair('textDocument', mDocument);
+  Result.AddPair('edits', mItems);
 end;
 
 /// <summary>Getter und Setter von AItem, soweit vorhanden.</summary>
@@ -407,7 +407,7 @@ begin
   mAnnotation.AddPair('description', cTexts[TPropertyFromAccessorsText.PropertiesCallsUpdatedFiles].Fmt([
     APropertyCount, ACalls, AFileCount]));
   Result := TJSONObject.Create;
-  Result.AddPair(TLspPropertyFromAccessors.AnnotationId, mAnnotation);
+  Result.AddPair(TLspPropertyFromAccessors.cAnnotationId, mAnnotation);
 end;
 
 type
@@ -729,53 +729,53 @@ class function TLspPropertyFromAccessors.Actions(ATree: TSyntaxTree; const AText
 
   function Action(const ATitle: string; AWithCalls: Boolean): TJSONObject;
   var
-    Arguments: TJSONArray;
-    Command: TJSONObject;
+    mArguments: TJSONArray;
+    mCommand: TJSONObject;
   begin
-    Arguments := TJSONArray.Create;
-    Arguments.Add(AUri);
-    Arguments.AddElement(TLspPositions.PositionToJson(APosition));
-    Arguments.AddElement(TJSONBool.Create(AWithCalls));
-    Command := TJSONObject.Create;
-    Command.AddPair('title', ATitle);
-    Command.AddPair('command', ClientCommand);
-    Command.AddPair('arguments', Arguments);
+    mArguments := TJSONArray.Create;
+    mArguments.Add(AUri);
+    mArguments.AddElement(TLspPositions.PositionToJson(APosition));
+    mArguments.AddElement(TJSONBool.Create(AWithCalls));
+    mCommand := TJSONObject.Create;
+    mCommand.AddPair('title', ATitle);
+    mCommand.AddPair('command', cClientCommand);
+    mCommand.AddPair('arguments', mArguments);
     Result := TJSONObject.Create;
     Result.AddPair('title', ATitle);
-    Result.AddPair('kind', Kind);
-    Result.AddPair('command', Command);
+    Result.AddPair('kind', cKind);
+    Result.AddPair('command', mCommand);
   end;
 
 var
-  Found: TArray<TAccessorProperty>;
-  Whole: Boolean;
-  Title: string;
+  mFound: TArray<TAccessorProperty>;
+  mWhole: Boolean;
+  mTitle: string;
 begin
   Result := nil;
   if ATree = nil then
   begin
     Exit;
   end;
-  Found := TPropertyFromAccessors.At(ATree, AText, APosition.Line, AOptions, Whole);
-  if Found = nil then
+  mFound := TPropertyFromAccessors.At(ATree, AText, APosition.Line, AOptions, mWhole);
+  if mFound = nil then
   begin
     Exit;
   end;
-  if Whole then
+  if mWhole then
   begin
-    Title := cTexts[TPropertyFromAccessorsText.CreateMissingProperties].Fmt([Length(Found)]);
+    mTitle := cTexts[TPropertyFromAccessorsText.CreateMissingProperties].Fmt([Length(mFound)]);
   end
   else
   begin
-    Title := cTexts[TPropertyFromAccessorsText.CreateProperty].Fmt([Found[0].Name]);
+    mTitle := cTexts[TPropertyFromAccessorsText.CreateProperty].Fmt([mFound[0].Name]);
   end;
   if AReplaceCalls <> TReplaceCalls.Always then
   begin
-    Result := Result + [Action(Title, False)];
+    Result := Result + [Action(mTitle, False)];
   end;
   if AReplaceCalls <> TReplaceCalls.Never then
   begin
-    Result := Result + [Action(Title + cTexts[TPropertyFromAccessorsText.AndUpdateCalls].Text, True)];
+    Result := Result + [Action(mTitle + cTexts[TPropertyFromAccessorsText.AndUpdateCalls].Text, True)];
   end;
 end;
 

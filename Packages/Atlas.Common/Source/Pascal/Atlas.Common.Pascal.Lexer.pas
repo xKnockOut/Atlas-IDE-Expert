@@ -43,7 +43,7 @@ uses
 const
   // Reservierte Wörter von Delphi. Direktiven wie override, virtual oder out
   // sind kontextabhängig und bleiben Bezeichner.
-  ReservedWords: array[0..63] of string = (
+  cReservedWords: array[0..63] of string = (
     'and', 'array', 'as', 'asm', 'begin', 'case', 'class', 'const', 'constructor',
     'destructor', 'dispinterface', 'div', 'do', 'downto', 'else', 'end', 'except',
     'exports', 'file', 'finalization', 'finally', 'for', 'function', 'goto', 'if',
@@ -53,8 +53,8 @@ const
     'resourcestring', 'set', 'shl', 'shr', 'string', 'then', 'threadvar', 'to',
     'try', 'type', 'unit', 'until', 'uses', 'var', 'while', 'with', 'xor');
 
-  TwoCharSymbols: array[0..6] of string = (':=', '..', '<=', '>=', '<>', '(.', '.)');
-  OneCharSymbols = '+-*/=<>[].,():;^@';
+  cTwoCharSymbols: array[0..6] of string = (':=', '..', '<=', '>=', '<>', '(.', '.)');
+  cOneCharSymbols = '+-*/=<>[].,():;^@';
 
 var
   ReservedWordSet: TDictionary<string, Boolean>;
@@ -98,14 +98,14 @@ type
     function Next(out AToken: TPascalToken; out AEndOffset: Integer): Boolean;
   end;
 
-function IsIdentifierStart(C: Char): Boolean; inline;
+function IsIdentifierStart(AC: Char): Boolean; inline;
 begin
-  Result := CharInSet(C, ['A'..'Z', 'a'..'z', '_']) or (Ord(C) >= 128);
+  Result := CharInSet(AC, ['A'..'Z', 'a'..'z', '_']) or (Ord(AC) >= 128);
 end;
 
-function IsIdentifierPart(C: Char): Boolean; inline;
+function IsIdentifierPart(AC: Char): Boolean; inline;
 begin
-  Result := CharInSet(C, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(C) >= 128);
+  Result := CharInSet(AC, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AC) >= 128);
 end;
 
 { TScanner }
@@ -150,14 +150,14 @@ end;
 
 function TScanner.ScanUntil(const ACloser: string): Boolean;
 var
-  Found: Integer;
+  mFound: Integer;
 begin
   // Pos arbeitet ab 1; FPos + 1 ist das aktuelle Zeichen.
-  Found := Pos(ACloser, FText, FPos + 1);
-  Result := Found > 0;
+  mFound := Pos(ACloser, FText, FPos + 1);
+  Result := mFound > 0;
   if Result then
   begin
-    FPos := Found - 1 + Length(ACloser);
+    FPos := mFound - 1 + Length(ACloser);
   end
   else
   begin
@@ -215,27 +215,27 @@ end;
 
 function TScanner.TryScanMultilineString(out ATerminated: Boolean): Boolean;
 var
-  QuoteCount: Integer;
-  Scan: Integer;
-  LineScan: Integer;
+  mQuoteCount: Integer;
+  mScan: Integer;
+  mLineScan: Integer;
 begin
   // Mehrzeiliger String (Delphi 12): eine ungerade Zahl (>= 3) Hochkommas,
   // danach nur Leerraum bis zum Zeilenende. Er endet an der ersten Zeile, die
   // nach Leerraum mit genauso vielen Hochkommas beginnt.
   ATerminated := False;
-  QuoteCount := QuoteRun(0);
-  if (QuoteCount < 3) or not Odd(QuoteCount) then
+  mQuoteCount := QuoteRun(0);
+  if (mQuoteCount < 3) or not Odd(mQuoteCount) then
   begin
     Exit(False);
   end;
-  Scan := QuoteCount + BlankRun(QuoteCount);
-  if not CharInSet(Peek(Scan), [#13, #10]) then
+  mScan := mQuoteCount + BlankRun(mQuoteCount);
+  if not CharInSet(Peek(mScan), [#13, #10]) then
   begin
     Exit(False);
   end;
 
   Result := True;
-  Inc(FPos, Scan);
+  Inc(FPos, mScan);
   while not ATerminated and (FPos < FLength) do
   begin
     // Zeilenumbruch überspringen, dann Leerraum am Zeilenanfang.
@@ -247,11 +247,11 @@ begin
     begin
       Inc(FPos);
     end;
-    LineScan := BlankRun(0);
-    ATerminated := QuoteRun(LineScan) = QuoteCount;
+    mLineScan := BlankRun(0);
+    ATerminated := QuoteRun(mLineScan) = mQuoteCount;
     if ATerminated then
     begin
-      Inc(FPos, LineScan + QuoteCount);
+      Inc(FPos, mLineScan + mQuoteCount);
     end
     else
     begin
@@ -303,19 +303,19 @@ end;
 
 function TScanner.ScanSymbol: Boolean;
 var
-  Pair: string;
-  Symbol: string;
+  mPair: string;
+  mSymbol: string;
 begin
-  Pair := Peek + Peek(1);
-  for Symbol in TwoCharSymbols do
+  mPair := Peek + Peek(1);
+  for mSymbol in cTwoCharSymbols do
   begin
-    if Pair = Symbol then
+    if mPair = mSymbol then
     begin
       Inc(FPos, 2);
       Exit(True);
     end;
   end;
-  Result := Pos(Peek, OneCharSymbols) > 0;
+  Result := Pos(Peek, cOneCharSymbols) > 0;
   if Result then
   begin
     Inc(FPos);
@@ -473,9 +473,9 @@ end;
 
 function TScanner.Next(out AToken: TPascalToken; out AEndOffset: Integer): Boolean;
 var
-  Start: Integer;
-  Terminated: Boolean;
-  Kind: TPascalTokenKind;
+  mStart: Integer;
+  mTerminated: Boolean;
+  mKind: TPascalTokenKind;
 begin
   while (FPos < FLength) and (Peek <= ' ') do
   begin
@@ -486,18 +486,18 @@ begin
     Exit(False);
   end;
 
-  Start := FPos;
-  Terminated := True;
-  if not (ScanComment(Kind, Terminated) or ScanLiteral(Kind, Terminated) or ScanAmpersand(Kind)) then
+  mStart := FPos;
+  mTerminated := True;
+  if not (ScanComment(mKind, mTerminated) or ScanLiteral(mKind, mTerminated) or ScanAmpersand(mKind)) then
   begin
-    Kind := ScanOther(Start);
+    mKind := ScanOther(mStart);
   end;
 
   AToken := Default(TPascalToken);
-  AToken.Kind := Kind;
-  AToken.Text := Copy(FText, Start + 1, FPos - Start);
-  AToken.Offset := Start;
-  AToken.Terminated := Terminated;
+  AToken.Kind := mKind;
+  AToken.Text := Copy(FText, mStart + 1, FPos - mStart);
+  AToken.Offset := mStart;
+  AToken.Terminated := mTerminated;
   AEndOffset := FPos;
   Result := True;
 end;
@@ -558,45 +558,45 @@ end;
 
 class function TPascalLexer.DirectiveName(const AText: string): string;
 var
-  Start, Stop: Integer;
+  mStart, mStop: Integer;
 begin
   if Copy(AText, 1, 2) = '{$' then
   begin
-    Start := 3;
+    mStart := 3;
   end
   else if Copy(AText, 1, 3) = '(*$' then
   begin
-    Start := 4;
+    mStart := 4;
   end
   else
   begin
     Exit('');
   end;
-  Stop := Start;
-  while (Stop <= Length(AText)) and CharInSet(AText[Stop], ['A'..'Z', 'a'..'z']) do
+  mStop := mStart;
+  while (mStop <= Length(AText)) and CharInSet(AText[mStop], ['A'..'Z', 'a'..'z']) do
   begin
-    Inc(Stop);
+    Inc(mStop);
   end;
-  Result := UpperCase(Copy(AText, Start, Stop - Start));
+  Result := UpperCase(Copy(AText, mStart, mStop - mStart));
 end;
 
 class function TPascalLexer.PlainName(const AName: string): string;
 var
-  Index: Integer;
-  AtStart: Boolean;
+  mIndex: Integer;
+  mAtStart: Boolean;
 begin
   Result := '';
-  AtStart := True;
-  for Index := 1 to Length(AName) do
+  mAtStart := True;
+  for mIndex := 1 to Length(AName) do
   begin
     // Nur das erste & eines Teils ist Escape; ein zweites gehört zum Namen.
-    if AtStart and (AName[Index] = '&') then
+    if mAtStart and (AName[mIndex] = '&') then
     begin
-      AtStart := False;
+      mAtStart := False;
       Continue;
     end;
-    AtStart := AName[Index] = '.';
-    Result := Result + AName[Index];
+    mAtStart := AName[mIndex] = '.';
+    Result := Result + AName[mIndex];
   end;
 end;
 
@@ -614,47 +614,47 @@ end;
 
 class function TPascalLexer.ReservedWordList: TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  SetLength(Result, Length(ReservedWords));
-  for Index := 0 to High(ReservedWords) do
+  SetLength(Result, Length(cReservedWords));
+  for mIndex := 0 to High(cReservedWords) do
   begin
-    Result[Index] := ReservedWords[Index];
+    Result[mIndex] := cReservedWords[mIndex];
   end;
 end;
 
 class function TPascalLexer.Tokenize(const AText: string): TArray<TPascalToken>;
 var
-  Scanner: TScanner;
-  Tracker: TPositionTracker;
-  Tokens: TList<TPascalToken>;
-  Token: TPascalToken;
-  EndOffset: Integer;
+  mScanner: TScanner;
+  mTracker: TPositionTracker;
+  mTokens: TList<TPascalToken>;
+  mToken: TPascalToken;
+  mEndOffset: Integer;
 begin
-  Scanner.Init(AText);
-  Tracker.Init(AText);
-  Tokens := TList<TPascalToken>.Create;
+  mScanner.Init(AText);
+  mTracker.Init(AText);
+  mTokens := TList<TPascalToken>.Create;
   try
-    while Scanner.Next(Token, EndOffset) do
+    while mScanner.Next(mToken, mEndOffset) do
     begin
-      Token.StartPos := Tracker.PositionAt(Token.Offset);
-      Token.EndPos := Tracker.PositionAt(EndOffset);
-      Tokens.Add(Token);
+      mToken.StartPos := mTracker.PositionAt(mToken.Offset);
+      mToken.EndPos := mTracker.PositionAt(mEndOffset);
+      mTokens.Add(mToken);
     end;
-    Result := Tokens.ToArray;
+    Result := mTokens.ToArray;
   finally
-    Tokens.Free;
+    mTokens.Free;
   end;
 end;
 
 procedure InitReservedWords;
 var
-  Word: string;
+  mWord: string;
 begin
   ReservedWordSet := TDictionary<string, Boolean>.Create;
-  for Word in ReservedWords do
+  for mWord in cReservedWords do
   begin
-    ReservedWordSet.Add(Word, True);
+    ReservedWordSet.Add(mWord, True);
   end;
 end;
 

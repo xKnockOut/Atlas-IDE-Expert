@@ -80,9 +80,9 @@ end;
 
 class function TLspInactiveRegions.Ranges(const AText: string; const ADefines: TArray<string>): TArray<TTextRange>;
 var
-  Issues: TArray<TPreprocessorIssue>;
+  mIssues: TArray<TPreprocessorIssue>;
 begin
-  Result := Ranges(AText, ADefines, '', nil, Issues);
+  Result := Ranges(AText, ADefines, '', nil, mIssues);
 end;
 
 class function TLspInactiveRegions.Ranges(const AText: string; const ADefines: TArray<string>; const AFileName: string;
@@ -94,30 +94,30 @@ end;
 class function TLspInactiveRegions.Regions(const AText: string;
   const ADefines: TArray<string>): TArray<TLspInactiveRegion>;
 var
-  Issues: TArray<TPreprocessorIssue>;
+  mIssues: TArray<TPreprocessorIssue>;
 begin
-  Result := Regions(AText, ADefines, '', nil, Issues);
+  Result := Regions(AText, ADefines, '', nil, mIssues);
 end;
 
 class function TLspInactiveRegions.RangesOf(const ARegions: TArray<TLspInactiveRegion>): TArray<TTextRange>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   SetLength(Result, Length(ARegions));
-  for Index := 0 to High(ARegions) do
+  for mIndex := 0 to High(ARegions) do
   begin
-    Result[Index] := ARegions[Index].Range;
+    Result[mIndex] := ARegions[mIndex].Range;
   end;
 end;
 
 class function TLspInactiveRegions.FromRanges(const ARanges: TArray<TTextRange>): TArray<TLspInactiveRegion>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   SetLength(Result, Length(ARanges));
-  for Index := 0 to High(ARanges) do
+  for mIndex := 0 to High(ARanges) do
   begin
-    Result[Index] := TLspInactiveRegion.Create(ARanges[Index], '');
+    Result[mIndex] := TLspInactiveRegion.Create(ARanges[mIndex], '');
   end;
 end;
 
@@ -125,13 +125,13 @@ class function TLspInactiveRegions.Regions(const AText: string; const ADefines: 
   const AFileName: string; const AResolver: TIncludeResolver;
   out AIssues: TArray<TPreprocessorIssue>): TArray<TLspInactiveRegion>;
 var
-  Options: TPreprocessorOptions;
+  mOptions: TPreprocessorOptions;
 begin
-  Options := TPreprocessorOptions.Default;
-  Options.Defines := ADefines;
-  Options.FileName := AFileName;
-  Options.ResolveInclude := AResolver;
-  Result := Regions(TPascalPreprocessor.Process(AText, Options), Assigned(AResolver), AIssues);
+  mOptions := TPreprocessorOptions.Default;
+  mOptions.Defines := ADefines;
+  mOptions.FileName := AFileName;
+  mOptions.ResolveInclude := AResolver;
+  Result := Regions(TPascalPreprocessor.Process(AText, mOptions), Assigned(AResolver), AIssues);
 end;
 
 /// <summary>Bedingung des abgeschalteten Zweigs, der bei AStart beginnt; leer, wenn keiner passt.</summary>

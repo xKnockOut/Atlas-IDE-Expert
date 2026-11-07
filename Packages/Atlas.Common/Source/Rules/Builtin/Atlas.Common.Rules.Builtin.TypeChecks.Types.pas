@@ -67,12 +67,12 @@ uses
 
 const
   // Dynamische Arrays der RTL, auch wenn ihre Unit nicht im Index steht.
-  RtlDynamicArrays: array[0..9] of string = ('TBytes', 'TStringDynArray', 'TIntegerDynArray', 'TStringArray',
+  cRtlDynamicArrays: array[0..9] of string = ('TBytes', 'TStringDynArray', 'TIntegerDynArray', 'TStringArray',
     'TObjectDynArray', 'TWordDynArray', 'TCardinalDynArray', 'TInt64DynArray', 'TDoubleDynArray',
     'TBooleanDynArray');
-  MaxAliasDepth = 16;
+  cMaxAliasDepth = 16;
   // Prozedurale Typen der RTL ohne of object, auch wenn ihre Unit nicht im Index steht.
-  RtlPlainProcedureTypes: array[0..3] of string = ('TListSortCompare', 'TStringListSortCompare',
+  cRtlPlainProcedureTypes: array[0..3] of string = ('TListSortCompare', 'TStringListSortCompare',
     'TThreadFunc', 'TFarProc');
 
 type
@@ -106,19 +106,19 @@ end;
 /// <summary>Typ der Deklaration ANode (Variable, Parameter, Feld, Typ) als Quelltext; '' ohne.</summary>
 function NodeTypeText(const AText: string; ANode: TSyntaxNode): string;
 var
-  Index: Integer;
-  Child: TSyntaxNode;
+  mIndex: Integer;
+  mChild: TSyntaxNode;
 begin
   Result := '';
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    Child := ANode[Index];
-    if Child.Kind in [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.PointerType,
+    mChild := ANode[mIndex];
+    if mChild.Kind in [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.PointerType,
       TSyntaxKind.RecordType, TSyntaxKind.ClassType, TSyntaxKind.InterfaceType, TSyntaxKind.ClassOfType,
       TSyntaxKind.SetType, TSyntaxKind.EnumType, TSyntaxKind.ProcedureType, TSyntaxKind.SubrangeType,
       TSyntaxKind.FileType] then
     begin
-      Exit(Trim(Copy(AText, Child.StartOffset + 1, Child.EndOffset - Child.StartOffset)));
+      Exit(Trim(Copy(AText, mChild.StartOffset + 1, mChild.EndOffset - mChild.StartOffset)));
     end;
   end;
 end;
@@ -127,33 +127,33 @@ end;
 /// eigenen Stapel: Ausdrucksketten können sehr tief sein (Bericht M1).</summary>
 function PreOrder(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
 var
-  Pending: TStack<TSyntaxNode>;
-  Nodes: TList<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNodes: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := nil;
   if ARoot = nil then
   begin
     Exit;
   end;
-  Pending := TStack<TSyntaxNode>.Create;
-  Nodes := TList<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
+  mNodes := TList<TSyntaxNode>.Create;
   try
-    Pending.Push(ARoot);
-    while Pending.Count > 0 do
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      Nodes.Add(Node);
-      for Index := Node.ChildCount - 1 downto 0 do
+      mNode := mPending.Pop;
+      mNodes.Add(mNode);
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
-    Result := Nodes.ToArray;
+    Result := mNodes.ToArray;
   finally
-    Nodes.Free;
-    Pending.Free;
+    mNodes.Free;
+    mPending.Free;
   end;
 end;
 
@@ -218,23 +218,23 @@ end;
 /// bzw. "TWerte = array of Double"), bis vor ';'; '' ohne.</summary>
 function TypeAfterSeparator(const ASignature: string): string;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   Result := '';
-  Depth := 0;
-  for Index := 1 to Length(ASignature) do
+  mDepth := 0;
+  for mIndex := 1 to Length(ASignature) do
   begin
-    if CharInSet(ASignature[Index], ['(', '[', '<']) then
+    if CharInSet(ASignature[mIndex], ['(', '[', '<']) then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if CharInSet(ASignature[Index], [')', ']', '>']) then
+    else if CharInSet(ASignature[mIndex], [')', ']', '>']) then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if CharInSet(ASignature[Index], [':', '=']) and (Depth = 0) then
+    else if CharInSet(ASignature[mIndex], [':', '=']) and (mDepth = 0) then
     begin
-      Result := Copy(ASignature, Index + 1, MaxInt);
+      Result := Copy(ASignature, mIndex + 1, MaxInt);
       Break;
     end;
   end;
@@ -251,17 +251,17 @@ end;
 /// <summary>Typ der lokalen Deklaration von ASymbol aus dem Baum; '' ohne.</summary>
 function LocalDeclaredType(const AContext: TRuleContext; const ASymbol: TResolvedSymbol): string;
 var
-  Decl: TSyntaxNode;
+  mDecl: TSyntaxNode;
 begin
   Result := '';
   if (ASymbol.Kind <> TResolvedKind.Local) or (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  Decl := DeclarationAt(AContext.Tree.Root, ASymbol.SelectionRange.StartPos);
-  if Decl <> nil then
+  mDecl := DeclarationAt(AContext.Tree.Root, ASymbol.SelectionRange.StartPos);
+  if mDecl <> nil then
   begin
-    Result := NormalizedType(NodeTypeText(AContext.Text, Decl));
+    Result := NormalizedType(NodeTypeText(AContext.Text, mDecl));
   end;
 end;
 
@@ -290,11 +290,11 @@ end;
 /// ist ein offenes Array.</summary>
 function IsDynamicArrayText(const AText: string): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := NormalizedType(AText);
-  Result := (StartsText('array of ', Text) and not SameText(Text, 'array of const')) or
-    StartsText('TArray<', Text) or StartsText('System.TArray<', Text);
+  mText := NormalizedType(AText);
+  Result := (StartsText('array of ', mText) and not SameText(mText, 'array of const')) or
+    StartsText('TArray<', mText) or StartsText('System.TArray<', mText);
 end;
 
 /// <summary>Ist der Typtext ATypeName, so wie er in AFromUnit steht, ein dynamisches Array? Aliase werden
@@ -302,35 +302,35 @@ end;
 function IsDynamicArrayType(AResolver: TNameResolver; const AContext: TRuleContext; const AFromUnit: TUnitIndex;
   const ATypeName: string): Boolean;
 var
-  Name: string;
-  Current: TResolvedSymbol;
-  FromUnit: TUnitIndex;
-  Depth: Integer;
+  mName: string;
+  mCurrent: TResolvedSymbol;
+  mFromUnit: TUnitIndex;
+  mDepth: Integer;
 begin
-  Name := NormalizedType(ATypeName);
-  FromUnit := AFromUnit;
-  for Depth := 0 to MaxAliasDepth do
+  mName := NormalizedType(ATypeName);
+  mFromUnit := AFromUnit;
+  for mDepth := 0 to cMaxAliasDepth do
   begin
-    if IsDynamicArrayText(Name) then
+    if IsDynamicArrayText(mName) then
     begin
       Exit(True);
     end;
-    if (Name = '') or (Pos(' ', Name) > 0) or (Pos('<', Name) > 0) or (Pos('^', Name) > 0) then
+    if (mName = '') or (Pos(' ', mName) > 0) or (Pos('<', mName) > 0) or (Pos('^', mName) > 0) then
     begin
       Exit(False);
     end;
-    if not AResolver.ResolveTypeFrom(FromUnit, Name, Current) then
+    if not AResolver.ResolveTypeFrom(mFromUnit, mName, mCurrent) then
     begin
       // Ohne Deklaration im Index: nur die bekannten Arrays der RTL.
-      Exit(MatchText(Name, RtlDynamicArrays) or MatchText(Copy(Name, LastDelimiter('.', Name) + 1, MaxInt),
-        RtlDynamicArrays));
+      Exit(MatchText(mName, cRtlDynamicArrays) or MatchText(Copy(mName, LastDelimiter('.', mName) + 1, MaxInt),
+        cRtlDynamicArrays));
     end;
-    if Current.Builtin or (Current.SymbolKind <> TIndexSymbolKind.TypeAlias) or
-      not AResolver.DeclaringUnit(Current, FromUnit) then
+    if mCurrent.Builtin or (mCurrent.SymbolKind <> TIndexSymbolKind.TypeAlias) or
+      not AResolver.DeclaringUnit(mCurrent, mFromUnit) then
     begin
       Exit(False);
     end;
-    Name := DeclaredTypeText(AContext, Current);
+    mName := DeclaredTypeText(AContext, mCurrent);
   end;
   Result := False;
 end;
@@ -341,33 +341,33 @@ end;
 function IsPlainProcedureType(AResolver: TNameResolver; const AContext: TRuleContext; const AFromUnit: TUnitIndex;
   const ATypeName: string): Boolean;
 var
-  Name: string;
-  Current: TResolvedSymbol;
-  FromUnit: TUnitIndex;
-  Depth: Integer;
+  mName: string;
+  mCurrent: TResolvedSymbol;
+  mFromUnit: TUnitIndex;
+  mDepth: Integer;
 begin
-  Name := NormalizedType(ATypeName);
-  FromUnit := AFromUnit;
-  for Depth := 0 to MaxAliasDepth do
+  mName := NormalizedType(ATypeName);
+  mFromUnit := AFromUnit;
+  for mDepth := 0 to cMaxAliasDepth do
   begin
-    if StartsText('procedure', Name) or StartsText('function', Name) then
+    if StartsText('procedure', mName) or StartsText('function', mName) then
     begin
-      Exit(not ContainsText(Name, ' of object'));
+      Exit(not ContainsText(mName, ' of object'));
     end;
-    if (Name = '') or (Pos(' ', Name) > 0) or (Pos('<', Name) > 0) or (Pos('^', Name) > 0) then
-    begin
-      Exit(False);
-    end;
-    if not AResolver.ResolveTypeFrom(FromUnit, Name, Current) then
-    begin
-      Exit(MatchText(Copy(Name, LastDelimiter('.', Name) + 1, MaxInt), RtlPlainProcedureTypes));
-    end;
-    if Current.Builtin or (Current.SymbolKind <> TIndexSymbolKind.TypeAlias) or
-      not AResolver.DeclaringUnit(Current, FromUnit) then
+    if (mName = '') or (Pos(' ', mName) > 0) or (Pos('<', mName) > 0) or (Pos('^', mName) > 0) then
     begin
       Exit(False);
     end;
-    Name := DeclaredTypeText(AContext, Current);
+    if not AResolver.ResolveTypeFrom(mFromUnit, mName, mCurrent) then
+    begin
+      Exit(MatchText(Copy(mName, LastDelimiter('.', mName) + 1, MaxInt), cRtlPlainProcedureTypes));
+    end;
+    if mCurrent.Builtin or (mCurrent.SymbolKind <> TIndexSymbolKind.TypeAlias) or
+      not AResolver.DeclaringUnit(mCurrent, mFromUnit) then
+    begin
+      Exit(False);
+    end;
+    mName := DeclaredTypeText(AContext, mCurrent);
   end;
   Result := False;
 end;
@@ -375,22 +375,22 @@ end;
 /// <summary>Index der Klammer, die die Klammer an AOpen schließt; 0 ohne.</summary>
 function ClosingParen(const AText: string; AOpen: Integer): Integer;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   Result := 0;
-  Depth := 0;
-  for Index := AOpen to Length(AText) do
+  mDepth := 0;
+  for mIndex := AOpen to Length(AText) do
   begin
-    if AText[Index] = '(' then
+    if AText[mIndex] = '(' then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if AText[Index] = ')' then
+    else if AText[mIndex] = ')' then
     begin
-      Dec(Depth);
-      if Depth = 0 then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
-        Exit(Index);
+        Exit(mIndex);
       end;
     end;
   end;
@@ -400,22 +400,22 @@ end;
 /// Kopf steht.</summary>
 function SignatureParams(const ASignature: string; out AParams: TArray<TSignatureParameter>): Boolean;
 var
-  Open, Close: Integer;
+  mOpen, mClose: Integer;
 begin
   AParams := nil;
-  Open := Pos('(', ASignature);
-  if Open = 0 then
+  mOpen := Pos('(', ASignature);
+  if mOpen = 0 then
   begin
     Exit(True);
   end;
-  Close := ClosingParen(ASignature, Open);
+  mClose := ClosingParen(ASignature, mOpen);
   // Überladungen aus anderen Units kennt die Namensauflösung nicht immer (Overloads leer); die Direktive
   // im Kopf zeigt sie sicher an.
-  Result := (Close > 0) and not MatchText('overload', SplitString(LowerCase(Copy(ASignature, Close + 1, MaxInt)),
+  Result := (mClose > 0) and not MatchText('overload', SplitString(LowerCase(Copy(ASignature, mClose + 1, MaxInt)),
     ' ;'));
   if Result then
   begin
-    AParams := TChangeSignature.ParseParameters(Copy(ASignature, Open + 1, Close - Open - 1));
+    AParams := TChangeSignature.ParseParameters(Copy(ASignature, mOpen + 1, mClose - mOpen - 1));
   end;
 end;
 
@@ -444,32 +444,32 @@ end;
 /// <summary>Parameter aus dem Kopf AHeader im Baum, je Name ein Eintrag.</summary>
 function HeaderParams(const AText: string; AHeader: TSyntaxNode): TArray<TSignatureParameter>;
 var
-  Parameters, Node: TSyntaxNode;
-  Index: Integer;
-  Name: string;
-  Parameter: TSignatureParameter;
+  mParameters, mNode: TSyntaxNode;
+  mIndex: Integer;
+  mName: string;
+  mParameter: TSignatureParameter;
 begin
   Result := nil;
-  Parameters := AHeader.FindChild(TSyntaxKind.Parameters);
-  if Parameters = nil then
+  mParameters := AHeader.FindChild(TSyntaxKind.Parameters);
+  if mParameters = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Parameters.ChildCount - 1 do
+  for mIndex := 0 to mParameters.ChildCount - 1 do
   begin
-    Node := Parameters[Index];
-    if Node.Kind <> TSyntaxKind.Parameter then
+    mNode := mParameters[mIndex];
+    if mNode.Kind <> TSyntaxKind.Parameter then
     begin
       Continue;
     end;
-    for Name in Node.Name.Split([',']) do
+    for mName in mNode.Name.Split([',']) do
     begin
-      Parameter := Default(TSignatureParameter);
-      Parameter.Name := Trim(Name);
-      Parameter.Group := Index;
-      Parameter.TypeName := NodeTypeText(AText, Node);
-      Parameter.Modifier := ModifierText(Node.Modifier);
-      Result := Result + [Parameter];
+      mParameter := Default(TSignatureParameter);
+      mParameter.Name := Trim(mName);
+      mParameter.Group := mIndex;
+      mParameter.TypeName := NodeTypeText(AText, mNode);
+      mParameter.Modifier := ModifierText(mNode.Modifier);
+      Result := Result + [mParameter];
     end;
   end;
 end;
@@ -477,7 +477,7 @@ end;
 function RoutineParams(const AContext: TRuleContext; const ASymbol: TResolvedSymbol;
   out AParams: TArray<TSignatureParameter>): Boolean;
 var
-  Header: TSyntaxNode;
+  mHeader: TSyntaxNode;
 begin
   AParams := nil;
   Result := False;
@@ -493,11 +493,11 @@ begin
   begin
     Exit;
   end;
-  Header := HeaderAt(AContext.Tree.Root, ASymbol.SelectionRange.StartPos);
-  Result := Header <> nil;
+  mHeader := HeaderAt(AContext.Tree.Root, ASymbol.SelectionRange.StartPos);
+  Result := mHeader <> nil;
   if Result then
   begin
-    AParams := HeaderParams(AContext.Text, Header);
+    AParams := HeaderParams(AContext.Text, mHeader);
   end;
 end;
 
@@ -518,19 +518,19 @@ end;
 function IsIntrinsicCall(AResolver: TNameResolver; const AContext: TRuleContext; const AFileName: string;
   ACallee: TSyntaxNode; const AName: string): Boolean;
 var
-  Symbol, TypeInfo: TResolvedSymbol;
-  TypeFound: Boolean;
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
 begin
   Result := False;
   if (ACallee = nil) or (ACallee.Kind <> TSyntaxKind.Identifier) or not SameText(ACallee.Name, AName) then
   begin
     Exit;
   end;
-  if not AResolver.NodeType(AContext.Tree, AFileName, ACallee, Symbol, TypeInfo, TypeFound) then
+  if not AResolver.NodeType(AContext.Tree, AFileName, ACallee, mSymbol, mTypeInfo, mTypeFound) then
   begin
     Exit(True);
   end;
-  Result := Symbol.Builtin or SameText(Symbol.UnitName, 'System');
+  Result := mSymbol.Builtin or SameText(mSymbol.UnitName, 'System');
 end;
 
 end.

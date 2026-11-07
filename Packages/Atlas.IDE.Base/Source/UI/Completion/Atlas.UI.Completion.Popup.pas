@@ -34,7 +34,7 @@
 // Stern, beim Überfahren einer Zeile erscheint ein leerer. Klick auf den Stern meldet OnFavorite, ohne die
 // Auswahl zu ändern. ShowNotice zeigt einen Hinweis links in der Fußzeile („Schon 5 Favoriten bei TDataSet …“)
 // bis zum nächsten getippten Zeichen bzw. Schließen.
-// Rest der Liste (#497): Einträge unter der Überschrift „Weitere Einträge“ (TAtlasRanking.RestHeader) sind
+// Rest der Liste (#497): Einträge unter der Überschrift „Weitere Einträge“ (TAtlasRanking.cRestHeader) sind
 // gedämpft; die Fußzeile nennt „n Treffer · m weitere“ bzw. „Keine Treffer“, wenn nur der Rest steht.
 // Barrierefreiheit (#447): Die Einträge sind für UI Automation Listeneinträge (IAtlasAccessibleItems) mit
 // Zustand aus den Tags; die gewählte Zeile trägt mit SelectionMarker zusätzlich Rahmen und Marke ▸, damit sie
@@ -332,7 +332,8 @@ begin
   begin
     // Die Leiste soll ganz lesbar sein: Breite wächst wie beim leeren Zustand.
     Canvas.Font := UIFont;
-    FSessionWidth := Max(FSessionWidth, Canvas.TextWidth(TAtlasCompletionTexts.SyntaxLead(FSyntax.Trust) + TAtlasCompletionTexts.SyntaxLineText(FSyntax.Line)) + Scale(40));
+    FSessionWidth := Max(FSessionWidth, Canvas.TextWidth(TAtlasCompletionTexts.SyntaxLead(FSyntax.Trust) +
+      TAtlasCompletionTexts.SyntaxLineText(FSyntax.Line)) + Scale(40));
     Canvas.Font := Font;
   end;
   if IsShown then
@@ -344,31 +345,31 @@ end;
 
 procedure TAtlasCompletionPopup.ShowChips(const ACounts: TAtlasChipCounts; AActive: TAtlasChip; AVisible: Boolean);
 var
-  Shown: Integer;
-  Chip: TAtlasChip;
+  mShown: Integer;
+  mChip: TAtlasChip;
 begin
   FChips.Counts := ACounts;
   FChips.Active := AActive;
   // Nur sinnvoll, wenn es mehr als eine Art gibt.
-  Shown := 0;
-  for Chip := Succ(TAtlasChip.All) to High(TAtlasChip) do
+  mShown := 0;
+  for mChip := Succ(TAtlasChip.All) to High(TAtlasChip) do
   begin
-    if ACounts[Chip] > 0 then
+    if ACounts[mChip] > 0 then
     begin
-      Inc(Shown);
+      Inc(mShown);
     end;
   end;
-  FChips.Visible := AVisible and (Shown >= 2);
+  FChips.Visible := AVisible and (mShown >= 2);
 end;
 
 procedure TAtlasCompletionPopup.ShowList(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>;
   ASelected: Integer; const APattern: string);
 var
-  SameList: Boolean;
-  Index: Integer;
+  mSameList: Boolean;
+  mIndex: Integer;
 begin
   // Nur die Auswahl bewegt (Pfeiltasten): dieselben Arrays, Breite nicht neu messen (#616).
-  SameList := not FEmpty.Showing and (Pointer(AItems) = Pointer(FItems)) and (Pointer(AOrder) = Pointer(FOrder)) and
+  mSameList := not FEmpty.Showing and (Pointer(AItems) = Pointer(FItems)) and (Pointer(AOrder) = Pointer(FOrder)) and
     (APattern = FPattern) and IsShown;
   // Weitertippen verwirft den Hinweis der Fußzeile (#458).
   if APattern <> FPattern then
@@ -381,16 +382,16 @@ begin
   FSelected := ASelected;
   FPattern := APattern;
   FRestFrom := -1;
-  for Index := 0 to High(FOrder) do
+  for mIndex := 0 to High(FOrder) do
   begin
-    if FOrder[Index] = TAtlasRanking.RestHeader then
+    if FOrder[mIndex] = TAtlasRanking.cRestHeader then
     begin
-      FRestFrom := Index;
+      FRestFrom := mIndex;
       Break;
     end;
   end;
   EnsureSelectedVisible;
-  if SameList then
+  if mSameList then
   begin
     Relayout;
   end
@@ -402,7 +403,7 @@ begin
   // UI Automation (#447): neue Einträge melden, dann den gewählten.
   if AccessibleList <> nil then
   begin
-    if not SameList then
+    if not mSameList then
     begin
       AccessibleList.ItemsChanged;
     end;
@@ -412,23 +413,23 @@ end;
 
 procedure TAtlasCompletionPopup.AnnounceSelected;
 var
-  Kind: string;
+  mKind: string;
 begin
   if (FSelected < 0) or (FSelected > High(FOrder)) or TAtlasRanking.IsHeader(FOrder[FSelected]) then
   begin
     Exit;
   end;
-  Kind := TAtlasCompletionTexts.KindText(FItems[FOrder[FSelected]].Kind);
+  mKind := TAtlasCompletionTexts.KindText(FItems[FOrder[FSelected]].Kind);
   // Angeheftet (#458) mit ansagen.
   if FItems[FOrder[FSelected]].Favorite then
   begin
-    if Kind <> '' then
+    if mKind <> '' then
     begin
-      Kind := Kind + ', ';
+      mKind := mKind + ', ';
     end;
-    Kind := Kind + TAtlasStrings.Text(TAtlasTextId.AccessFavorite);
+    mKind := mKind + TAtlasStrings.Text(TAtlasTextId.AccessFavorite);
   end;
-  Announce(TAtlasItemPresentation.Announcement(FItems[FOrder[FSelected]], Kind,
+  Announce(TAtlasItemPresentation.Announcement(FItems[FOrder[FSelected]], mKind,
     TAtlasStrings.Text(TAtlasTextId.AccessPosition), FSelected + 1, Length(FOrder)));
 end;
 
@@ -479,7 +480,7 @@ begin
     AccessibleList.ItemsChanged;
   end;
   Canvas.Font := UIFont;
-  FSessionWidth := Max(FSessionWidth, Max(Scale(MinWidth),
+  FSessionWidth := Max(FSessionWidth, Max(Scale(cMinWidth),
     Canvas.TextWidth(TAtlasStrings.Fmt(TAtlasTextId.NoMatchesFor, [APrefix])) + Scale(32)));
   Canvas.Font := Font;
   Relayout;
@@ -533,7 +534,7 @@ end;
 
 function TAtlasCompletionPopup.AccessibleStatus(APosition: Integer): string;
 var
-  Status: string;
+  mStatus: string;
   mTag: TAtlasTag;
 begin
   Result := '';
@@ -555,14 +556,14 @@ begin
   end;
   if FItems[FOrder[APosition]].Favorite then
   begin
-    Status := TAtlasStrings.Text(TAtlasTextId.AccessFavorite);
+    mStatus := TAtlasStrings.Text(TAtlasTextId.AccessFavorite);
     if Result <> '' then
     begin
-      Result := Status + ', ' + Result;
+      Result := mStatus + ', ' + Result;
     end
     else
     begin
-      Result := Status;
+      Result := mStatus;
     end;
   end;
 end;
@@ -620,15 +621,15 @@ end;
 
 procedure TAtlasCompletionPopup.DblClick;
 var
-  Point_: TPoint;
+  mPoint_: TPoint;
 begin
   inherited;
   // Doppelklick auf den Griff: automatische Breiten (#416).
-  Point_ := ScreenToClient(Mouse.CursorPos);
-  if HitArea(Point_.X, Point_.Y) = TAtlasHitArea.Grip then
+  mPoint_ := ScreenToClient(Mouse.CursorPos);
+  if HitArea(mPoint_.X, mPoint_.Y) = TAtlasHitArea.Grip then
   begin
     FManualListWidth := 0;
-    FPanel.Width := DefaultPanelWidth;
+    FPanel.Width := cDefaultPanelWidth;
     FDrag.Kind := TAtlasDragKind.None;
     Relayout;
     Invalidate;
@@ -648,11 +649,11 @@ begin
   mWidth := Logical(FDrag.StartWidth + FDrag.Sign * (Mouse.CursorPos.X - FDrag.StartX));
   if FDrag.Kind = TAtlasDragKind.ListWidth then
   begin
-    FManualListWidth := TAtlasPopupWidth.Fit(mWidth, MinWidth, MaxWidth);
+    FManualListWidth := TAtlasPopupWidth.Fit(mWidth, cMinWidth, cMaxWidth);
   end
   else
   begin
-    FPanel.Width := TAtlasPopupWidth.Fit(mWidth, TAtlasPopupWidth.MinPanelWidth, TAtlasPopupWidth.MaxPanelWidth);
+    FPanel.Width := TAtlasPopupWidth.Fit(mWidth, TAtlasPopupWidth.cMinPanelWidth, TAtlasPopupWidth.cMaxPanelWidth);
   end;
   Relayout;
   Invalidate;

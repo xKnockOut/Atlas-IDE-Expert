@@ -49,14 +49,14 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  MaxLogFileLength = 1023;
+  cMaxLogFileLength = 1023;
 
 var
   Baseline: Int64;
   Enabled: Boolean;
   Report: TShutdownLeakReport;
   // Feste Größe statt string: Eine Zeichenkette auf dem Heap zählte selbst als Rest.
-  LogFileBuffer: array[0..MaxLogFileLength] of Char;
+  LogFileBuffer: array[0..cMaxLogFileLength] of Char;
 
 { TShutdownLeaks }
 
@@ -68,17 +68,17 @@ begin
 end;
 {$ELSE}
 var
-  State: TMemoryManagerState;
-  Index: Integer;
+  mState: TMemoryManagerState;
+  mIndex: Integer;
 begin
   {$WARN SYMBOL_PLATFORM OFF}
-  GetMemoryManagerState(State);
+  GetMemoryManagerState(mState);
   {$WARN SYMBOL_PLATFORM DEFAULT}
-  Result := Int64(State.TotalAllocatedMediumBlockSize) + Int64(State.TotalAllocatedLargeBlockSize);
-  for Index := Low(State.SmallBlockTypeStates) to High(State.SmallBlockTypeStates) do
+  Result := Int64(mState.TotalAllocatedMediumBlockSize) + Int64(mState.TotalAllocatedLargeBlockSize);
+  for mIndex := Low(mState.SmallBlockTypeStates) to High(mState.SmallBlockTypeStates) do
   begin
-    Inc(Result, Int64(State.SmallBlockTypeStates[Index].AllocatedBlockCount) *
-      State.SmallBlockTypeStates[Index].UseableBlockSize);
+    Inc(Result, Int64(mState.SmallBlockTypeStates[mIndex].AllocatedBlockCount) *
+      mState.SmallBlockTypeStates[mIndex].UseableBlockSize);
   end;
 end;
 {$ENDIF}
@@ -90,17 +90,17 @@ end;
 
 class procedure TShutdownLeaks.SetLogFile(const AFileName: string);
 var
-  Count: Integer;
+  mCount: Integer;
 begin
   FillChar(LogFileBuffer, SizeOf(LogFileBuffer), 0);
-  Count := Length(AFileName);
-  if Count > MaxLogFileLength then
+  mCount := Length(AFileName);
+  if mCount > cMaxLogFileLength then
   begin
-    Count := 0;
+    mCount := 0;
   end;
-  if Count > 0 then
+  if mCount > 0 then
   begin
-    Move(AFileName[1], LogFileBuffer[0], Count * SizeOf(Char));
+    Move(AFileName[1], LogFileBuffer[0], mCount * SizeOf(Char));
   end;
 end;
 
@@ -125,17 +125,17 @@ end;
 
 procedure AppendToLog(const AText: string);
 var
-  FileName: string;
-  Log: TextFile;
+  mFileName: string;
+  mLog: TextFile;
 begin
-  FileName := PChar(@LogFileBuffer[0]);
-  if (FileName = '') or not FileExists(FileName) then
+  mFileName := PChar(@LogFileBuffer[0]);
+  if (mFileName = '') or not FileExists(mFileName) then
   begin
     Exit;
   end;
-  AssignFile(Log, FileName);
+  AssignFile(mLog, mFileName);
   {$I-}
-  Append(Log);
+  Append(mLog);
   {$I+}
   if IOResult <> 0 then
   begin
@@ -143,30 +143,30 @@ begin
   end;
   try
     // Reines ASCII: passt zu jeder Kodierung der Logdatei.
-    Writeln(Log, FormatDateTime('yyyy-mm-dd hh":"nn":"ss.zzz', Now) + ' [WARN] ' + AText); // console-ok: Logdatei
+    Writeln(mLog, FormatDateTime('yyyy-mm-dd hh":"nn":"ss.zzz', Now) + ' [WARN] ' + AText); // console-ok: Logdatei
   finally
-    CloseFile(Log);
+    CloseFile(mLog);
   end;
 end;
 
 procedure Finish;
 var
-  Rest: Int64;
+  mRest: Int64;
 begin
   if not Enabled then
   begin
     Exit;
   end;
-  Rest := TShutdownLeaks.AllocatedBytes - Baseline;
-  if Rest <= 0 then
+  mRest := TShutdownLeaks.AllocatedBytes - Baseline;
+  if mRest <= 0 then
   begin
     Exit;
   end;
   try
-    AppendToLog(TShutdownLeaks.Describe(Rest));
+    AppendToLog(TShutdownLeaks.Describe(mRest));
     if Assigned(Report) then
     begin
-      Report(Rest);
+      Report(mRest);
     end;
   except
     // Beim Beenden darf nichts mehr scheitern.

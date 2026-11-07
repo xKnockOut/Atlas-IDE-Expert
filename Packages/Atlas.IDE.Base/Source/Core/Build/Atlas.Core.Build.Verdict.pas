@@ -81,11 +81,11 @@ type
 
   TAtlasBuildVerdicts = class
   public const
-    ClassifyCommand = 'atlas.classifyCompilerMessages';
-    AddCommand = 'atlas.baselineCompilerMessages';
+    cClassifyCommand = 'atlas.classifyCompilerMessages';
+    cAddCommand = 'atlas.baselineCompilerMessages';
     /// <summary>Zeitlimit der Frage nach der Basislinie; danach zählt alles.</summary>
-    ClassifyTimeoutMs = 5000;
-    AddTimeoutMs = 30000;
+    cClassifyTimeoutMs = 5000;
+    cAddTimeoutMs = 30000;
   private type
     /// <summary>Erste Meldungen mit Datei je Art; -1 ohne.</summary>
     TFirsts = record
@@ -168,14 +168,14 @@ end;
 
 function IsWarningOrHintCode(const ACode: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := (Length(ACode) = 5) and CharInSet(ACode[1], ['W', 'H']);
   if Result then
   begin
-    for Index := 2 to 5 do
+    for mIndex := 2 to 5 do
     begin
-      if not CharInSet(ACode[Index], ['0'..'9']) then
+      if not CharInSet(ACode[mIndex], ['0'..'9']) then
       begin
         Exit(False);
       end;
@@ -185,15 +185,15 @@ end;
 
 class function TAtlasBuildVerdicts.ParseCodes(const AText: string): TArray<string>;
 var
-  Part, Code: string;
+  mPart, mCode: string;
 begin
   Result := nil;
-  for Part in UpperCase(AText).Split([',', ';', ' ', #9, #13, #10], TStringSplitOptions.ExcludeEmpty) do
+  for mPart in UpperCase(AText).Split([',', ';', ' ', #9, #13, #10], TStringSplitOptions.ExcludeEmpty) do
   begin
-    Code := Trim(Part);
-    if IsWarningOrHintCode(Code) and (IndexText(Code, Result) < 0) then
+    mCode := Trim(mPart);
+    if IsWarningOrHintCode(mCode) and (IndexText(mCode, Result) < 0) then
     begin
-      Result := Result + [Code];
+      Result := Result + [mCode];
     end;
   end;
 end;
@@ -212,12 +212,12 @@ end;
 
 class function TAtlasBuildVerdicts.AnyBaselinable(const AMessages: TArray<TAtlasCompilerMessage>): Boolean;
 var
-  Message: TAtlasCompilerMessage;
+  mMessage: TAtlasCompilerMessage;
 begin
   Result := False;
-  for Message in AMessages do
+  for mMessage in AMessages do
   begin
-    if Baselinable(Message) then
+    if Baselinable(mMessage) then
     begin
       Exit(True);
     end;
@@ -331,82 +331,82 @@ class procedure TAtlasBuildVerdicts.Run(const AMessages: TArray<TAtlasCompilerMe
   const ASettings: TAtlasBuildVerdictSettings; const AClassify: TAtlasBuildClassify;
   const ADone: TAtlasBuildVerdictDone);
 var
-  Messages: TArray<TAtlasCompilerMessage>;
-  Succeeded: Boolean;
-  Settings: TAtlasBuildVerdictSettings;
-  Done: TAtlasBuildVerdictDone;
+  mMessages: TArray<TAtlasCompilerMessage>;
+  mSucceeded: Boolean;
+  mSettings: TAtlasBuildVerdictSettings;
+  mDone: TAtlasBuildVerdictDone;
 begin
-  Messages := AMessages;
-  Succeeded := ASucceeded;
-  Settings := ASettings;
-  Done := ADone;
+  mMessages := AMessages;
+  mSucceeded := ASucceeded;
+  mSettings := ASettings;
+  mDone := ADone;
   // Nur fragen, wenn es etwas zu fragen gibt; ohne Server zählt alles.
-  if Assigned(AClassify) and AnyBaselinable(Messages) and AClassify(Messages,
+  if Assigned(AClassify) and AnyBaselinable(mMessages) and AClassify(mMessages,
     procedure(const ABaselined: TArray<Boolean>)
     begin
-      Done(Evaluate(Messages, ABaselined, Succeeded, Settings));
+      mDone(Evaluate(mMessages, ABaselined, mSucceeded, mSettings));
     end) then
   begin
     Exit;
   end;
-  Done(Evaluate(Messages, nil, Succeeded, Settings));
+  mDone(Evaluate(mMessages, nil, mSucceeded, mSettings));
 end;
 
 class function TAtlasBuildVerdicts.Arguments(const AProjectUri: string;
   const AMessages: TArray<TAtlasCompilerMessage>): string;
 var
-  Arguments, Items: TJSONArray;
-  Item: TJSONObject;
-  Message: TAtlasCompilerMessage;
+  mArguments, mItems: TJSONArray;
+  mItem: TJSONObject;
+  mMessage: TAtlasCompilerMessage;
 begin
-  Arguments := TJSONArray.Create;
+  mArguments := TJSONArray.Create;
   try
-    Arguments.Add(AProjectUri);
-    Items := TJSONArray.Create;
-    Arguments.AddElement(Items);
+    mArguments.Add(AProjectUri);
+    mItems := TJSONArray.Create;
+    mArguments.AddElement(mItems);
     // Alle Meldungen: Die Positionen der Antwort gelten für AMessages; der Server übergeht die übrigen.
-    for Message in AMessages do
+    for mMessage in AMessages do
     begin
-      Item := TJSONObject.Create;
-      Item.AddPair('file', Message.FileName);
-      Item.AddPair('line', TJSONNumber.Create(Message.Line));
-      Item.AddPair('code', UpperCase(Message.Code));
-      Items.AddElement(Item);
+      mItem := TJSONObject.Create;
+      mItem.AddPair('file', mMessage.FileName);
+      mItem.AddPair('line', TJSONNumber.Create(mMessage.Line));
+      mItem.AddPair('code', UpperCase(mMessage.Code));
+      mItems.AddElement(mItem);
     end;
-    Result := Arguments.ToJSON;
+    Result := mArguments.ToJSON;
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
 end;
 
 class function TAtlasBuildVerdicts.BaselinedOf(const AAnswer: TJSONValue; ACount: Integer): TArray<Boolean>;
 var
-  Value, Item: TJSONValue;
-  Index: Integer;
+  mValue, mItem: TJSONValue;
+  mIndex: Integer;
 begin
   Result := nil;
   if not (AAnswer is TJSONObject) then
   begin
     Exit;
   end;
-  Value := TJSONObject(AAnswer).GetValue('baselined');
-  if not (Value is TJSONArray) then
+  mValue := TJSONObject(AAnswer).GetValue('baselined');
+  if not (mValue is TJSONArray) then
   begin
     Exit;
   end;
   SetLength(Result, ACount);
-  for Index := 0 to ACount - 1 do
+  for mIndex := 0 to ACount - 1 do
   begin
-    Result[Index] := False;
+    Result[mIndex] := False;
   end;
-  for Item in TJSONArray(Value) do
+  for mItem in TJSONArray(mValue) do
   begin
-    if Item is TJSONNumber then
+    if mItem is TJSONNumber then
     begin
-      Index := TJSONNumber(Item).AsInt;
-      if (Index >= 0) and (Index < ACount) then
+      mIndex := TJSONNumber(mItem).AsInt;
+      if (mIndex >= 0) and (mIndex < ACount) then
       begin
-        Result[Index] := True;
+        Result[mIndex] := True;
       end;
     end;
   end;
@@ -417,7 +417,7 @@ end;
 class function TAtlasCompilerBaselineAdd.FromServer(const AAnswer: TJSONValue;
   out AResult: TAtlasCompilerBaselineAdd): Boolean;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
   AResult := Default(TAtlasCompilerBaselineAdd);
   Result := (AAnswer is TJSONObject) and (TJSONObject(AAnswer).GetValue('file') is TJSONString);
@@ -425,14 +425,14 @@ begin
   begin
     Exit;
   end;
-  Answer := TJSONObject(AAnswer);
-  AResult.FileName := Answer.GetValue('file').Value;
-  AResult.Total := Answer.GetValue<Integer>('total', 0);
-  AResult.Files := Answer.GetValue<Integer>('files', 0);
-  AResult.Added := Answer.GetValue<Integer>('added', 0);
-  AResult.Removed := Answer.GetValue<Integer>('removed', 0);
-  AResult.Unchanged := Answer.GetValue<Integer>('unchanged', 0);
-  AResult.Skipped := Answer.GetValue<Integer>('skipped', 0);
+  mAnswer := TJSONObject(AAnswer);
+  AResult.FileName := mAnswer.GetValue('file').Value;
+  AResult.Total := mAnswer.GetValue<Integer>('total', 0);
+  AResult.Files := mAnswer.GetValue<Integer>('files', 0);
+  AResult.Added := mAnswer.GetValue<Integer>('added', 0);
+  AResult.Removed := mAnswer.GetValue<Integer>('removed', 0);
+  AResult.Unchanged := mAnswer.GetValue<Integer>('unchanged', 0);
+  AResult.Skipped := mAnswer.GetValue<Integer>('skipped', 0);
 end;
 
 end.

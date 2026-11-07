@@ -32,7 +32,7 @@ type
   TAtlasFileTemplates = class
   public const
     /// <summary>Basisklasse eines Formulars ohne T, wenn die IDE keine nennt.</summary>
-    DefaultAncestor = 'Form';
+    cDefaultAncestor = 'Form';
   public
     /// <summary>"unit", "form" bzw. "test" wie im Kopf "file:".</summary>
     class function KindWord(AKind: TAtlasNewFileKind): string; static;
@@ -89,7 +89,7 @@ begin
   Result := cTexts[TAtlasTextLanguage.Current, AId];
 end;
 const
-  EmptyUnitBody =
+  cEmptyUnitBody =
     'unit %Unit%;' + #10 +
     #10 +
     'interface' + #10 +
@@ -97,7 +97,7 @@ const
     'implementation' + #10 +
     #10 +
     'end.';
-  ClassUnitBody =
+  cClassUnitBody =
     'unit %Unit%;' + #10 +
     #10 +
     'interface' + #10 +
@@ -125,7 +125,7 @@ const
     'end;' + #10 +
     #10 +
     'end.';
-  FormBody =
+  cFormBody =
     'unit %Unit%;' + #10 +
     #10 +
     'interface' + #10 +
@@ -148,7 +148,7 @@ const
     '{$R *.dfm}' + #10 +
     #10 +
     'end.';
-  TestBody =
+  cTestBody =
     'unit %Unit%;' + #10 +
     #10 +
     'interface' + #10 +
@@ -217,83 +217,85 @@ class function TAtlasFileTemplates.BuiltIn: TAtlasSnippetList;
 begin
   // Namen und Beschreibungen in der Sprache der Oberfläche wie die übrigen mitgelieferten Code-Vorlagen (#51).
   Result := [
-    Template('newunit', UiText(TFileTemplatesText.EmptyUnit), UiText(TFileTemplatesText.InterfaceAndImplementationNothingElse), 'unit', EmptyUnitBody),
-    Template('newclass', UiText(TFileTemplatesText.UnitWithClass), UiText(TFileTemplatesText.ClassWithConstructorAndDestructor), 'unit', ClassUnitBody),
-    Template('newform', UiText(TFileTemplatesText.VCLForm), UiText(TFileTemplatesText.FormWithDfm), 'form', FormBody),
+    Template('newunit', UiText(TFileTemplatesText.EmptyUnit),
+      UiText(TFileTemplatesText.InterfaceAndImplementationNothingElse), 'unit', cEmptyUnitBody),
+    Template('newclass', UiText(TFileTemplatesText.UnitWithClass),
+      UiText(TFileTemplatesText.ClassWithConstructorAndDestructor), 'unit', cClassUnitBody),
+    Template('newform', UiText(TFileTemplatesText.VCLForm), UiText(TFileTemplatesText.FormWithDfm), 'form', cFormBody),
     Template('newtest', UiText(TFileTemplatesText.DUnitXTestClass), UiText(TFileTemplatesText.TestClassWithSetupTearDown), 'test',
-      TestBody)];
+      cTestBody)];
 end;
 
 class function TAtlasFileTemplates.OfKind(const AUser: TAtlasSnippetList;
   AKind: TAtlasNewFileKind): TAtlasSnippetList;
 var
-  Item: TAtlasSnippet;
-  Word: string;
+  mItem: TAtlasSnippet;
+  mWord: string;
 begin
   Result := nil;
-  Word := KindWord(AKind);
-  for Item in TAtlasSnippets.Merge(BuiltIn, TAtlasSnippets.FileTemplates(AUser)) do
+  mWord := KindWord(AKind);
+  for mItem in TAtlasSnippets.Merge(BuiltIn, TAtlasSnippets.FileTemplates(AUser)) do
   begin
-    if SameText(Item.FileKind, Word) then
+    if SameText(mItem.FileKind, mWord) then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
 end;
 
 class function TAtlasFileTemplates.Entries(const ATemplates: TAtlasSnippetList): TArray<TAtlasGenerateEntry>;
 var
-  Index: Integer;
-  Entry: TAtlasGenerateEntry;
+  mIndex: Integer;
+  mEntry: TAtlasGenerateEntry;
 begin
   Result := nil;
-  for Index := 0 to High(ATemplates) do
+  for mIndex := 0 to High(ATemplates) do
   begin
-    Entry := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Snippet, TAtlasGenerateGroup.Templates,
-      ATemplates[Index].Prefix, ATemplates[Index].Name);
-    if Entry.Caption = '' then
+    mEntry := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Snippet, TAtlasGenerateGroup.Templates,
+      ATemplates[mIndex].Prefix, ATemplates[mIndex].Name);
+    if mEntry.Caption = '' then
     begin
-      Entry.Caption := ATemplates[Index].Prefix;
+      mEntry.Caption := ATemplates[mIndex].Prefix;
     end;
-    Entry.Detail := ATemplates[Index].Description;
-    Entry.Source := Index;
-    Result := Result + [Entry];
+    mEntry.Detail := ATemplates[mIndex].Description;
+    mEntry.Source := mIndex;
+    Result := Result + [mEntry];
   end;
 end;
 
 class function TAtlasFileTemplates.ShortName(const AUnit: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Trim(AUnit);
-  for Index := Length(Result) downto 1 do
+  for mIndex := Length(Result) downto 1 do
   begin
-    if Result[Index] = '.' then
+    if Result[mIndex] = '.' then
     begin
-      Exit(Copy(Result, Index + 1, MaxInt));
+      Exit(Copy(Result, mIndex + 1, MaxInt));
     end;
   end;
 end;
 
 class function TAtlasFileTemplates.Render(const ABody, AUnit, AForm, AAncestor, ALineBreak: string): string;
 var
-  Form, Ancestor: string;
+  mForm, mAncestor: string;
 begin
-  Form := Trim(AForm);
-  if Form = '' then
+  mForm := Trim(AForm);
+  if mForm = '' then
   begin
-    Form := ShortName(AUnit);
+    mForm := ShortName(AUnit);
   end;
-  Ancestor := Trim(AAncestor);
-  if Ancestor = '' then
+  mAncestor := Trim(AAncestor);
+  if mAncestor = '' then
   begin
-    Ancestor := DefaultAncestor;
+    mAncestor := cDefaultAncestor;
   end;
   Result := ABody;
   Result := StringReplace(Result, '%Unit%', Trim(AUnit), [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '%Name%', ShortName(AUnit), [rfReplaceAll, rfIgnoreCase]);
-  Result := StringReplace(Result, '%Form%', Form, [rfReplaceAll, rfIgnoreCase]);
-  Result := StringReplace(Result, '%Ancestor%', Ancestor, [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '%Form%', mForm, [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '%Ancestor%', mAncestor, [rfReplaceAll, rfIgnoreCase]);
   Result := TAtlasSnippets.PlainText(Result);
   while (Result <> '') and CharInSet(Result[Length(Result)], [#10, ' ']) do
   begin

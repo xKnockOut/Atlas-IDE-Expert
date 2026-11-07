@@ -84,8 +84,8 @@ type
 
   TPostfixTemplates = class
   public const
-    ItemName = 'Item';
-    ExprToken = '$expr';
+    cItemName = 'Item';
+    cExprToken = '$expr';
   public
     /// <summary>Mitgelieferte Vorlagen in der Reihenfolge der Liste.</summary>
     class function Templates: TArray<TPostfixTemplate>; static;
@@ -130,7 +130,7 @@ uses
   System.StrUtils;
 
 const
-  Conditions: array[0..7] of string = ('any', 'reference', 'class', 'string', 'boolean', 'enumerable',
+  cConditions: array[0..7] of string = ('any', 'reference', 'class', 'string', 'boolean', 'enumerable',
     'constructor', 'function');
 
 { TPostfixTemplate }
@@ -213,48 +213,48 @@ end;
 
 class function TPostfixTemplates.IsTypeCondition(const ACondition: string): Boolean;
 begin
-  Result := (Trim(ACondition) <> '') and not MatchText(Trim(ACondition), Conditions);
+  Result := (Trim(ACondition) <> '') and not MatchText(Trim(ACondition), cConditions);
 end;
 
 class function TPostfixTemplates.Applies(const ATemplate: TPostfixTemplate; const ATraits: TPostfixTraits;
   AInlineVar: Boolean; const ADescends: TFunc<string, Boolean>): Boolean;
 var
-  Condition: string;
+  mCondition: string;
 begin
   if not ATemplate.IsCustom then
   begin
     Exit(Applies(ATemplate.Key, ATraits, AInlineVar));
   end;
-  Condition := LowerCase(Trim(ATemplate.Condition));
-  if (Condition = '') or (Condition = 'any') then
+  mCondition := LowerCase(Trim(ATemplate.Condition));
+  if (mCondition = '') or (mCondition = 'any') then
   begin
     Result := True;
   end
-  else if Condition = 'reference' then
+  else if mCondition = 'reference' then
   begin
     Result := ATraits.IsReference;
   end
-  else if Condition = 'class' then
+  else if mCondition = 'class' then
   begin
     Result := ATraits.IsClass;
   end
-  else if Condition = 'string' then
+  else if mCondition = 'string' then
   begin
     Result := ATraits.IsString;
   end
-  else if Condition = 'boolean' then
+  else if mCondition = 'boolean' then
   begin
     Result := ATraits.IsBoolean;
   end
-  else if Condition = 'enumerable' then
+  else if mCondition = 'enumerable' then
   begin
     Result := ATraits.Enumerable;
   end
-  else if Condition = 'constructor' then
+  else if mCondition = 'constructor' then
   begin
     Result := ATraits.IsConstructorCall;
   end
-  else if Condition = 'function' then
+  else if mCondition = 'function' then
   begin
     Result := ATraits.InFunction;
   end
@@ -380,12 +380,12 @@ begin
   Result := Default(TPostfixExpansion);
   if Layout.InlineVar then
   begin
-    Result.Text := 'for var ' + Field(1, TPostfixTemplates.ItemName) + ' in ' + Expr + ' do' + Next;
+    Result.Text := 'for var ' + Field(1, TPostfixTemplates.cItemName) + ' in ' + Expr + ' do' + Next;
   end
   else
   begin
     // Der Name steht auch in der Deklaration; kein Platzhalter, der nur eine Stelle ändern würde.
-    Result.Text := 'for ' + TPostfixTemplates.ItemName + ' in ' + Expr + ' do' + Next;
+    Result.Text := 'for ' + TPostfixTemplates.cItemName + ' in ' + Expr + ' do' + Next;
     Result.Declaration := TPostfixTemplates.ClassicDeclaration(Traits);
   end;
 end;
@@ -515,14 +515,14 @@ function DollarPart(const ABody, AExpr: string; var AIndex: Integer; ASnippet: B
   Boolean;
 begin
   Result := True;
-  if StartsText(TPostfixTemplates.ExprToken, Copy(ABody, AIndex, Length(TPostfixTemplates.ExprToken))) then
+  if StartsText(TPostfixTemplates.cExprToken, Copy(ABody, AIndex, Length(TPostfixTemplates.cExprToken))) then
   begin
     APart := AExpr;
     if ASnippet then
     begin
       APart := TPostfixTemplates.Escape(AExpr);
     end;
-    Inc(AIndex, Length(TPostfixTemplates.ExprToken));
+    Inc(AIndex, Length(TPostfixTemplates.cExprToken));
   end
   else if (AIndex < Length(ABody)) and (ABody[AIndex + 1] = '$') then
   begin
@@ -586,57 +586,57 @@ end;
 
 class function TPostfixTemplates.ClassicDeclaration(const ATraits: TPostfixTraits): string;
 begin
-  Result := Format('%s: %s;', [ItemName, ATraits.ElementType]);
+  Result := Format('%s: %s;', [cItemName, ATraits.ElementType]);
 end;
 
 class function TPostfixTemplates.SuggestName(const ATypeName: string): string;
 var
-  Text: string;
-  Angle: Integer;
+  mText: string;
+  mAngle: Integer;
 begin
-  Text := Trim(ATypeName);
-  Angle := Pos('<', Text);
-  if StartsText('TArray<', Text) or StartsText('array ', Text) or StartsText('array[', Text) then
+  mText := Trim(ATypeName);
+  mAngle := Pos('<', mText);
+  if StartsText('TArray<', mText) or StartsText('array ', mText) or StartsText('array[', mText) then
   begin
     Exit('Values');
   end;
-  if Angle > 0 then
+  if mAngle > 0 then
   begin
-    Text := Copy(Text, 1, Angle - 1);
+    mText := Copy(mText, 1, mAngle - 1);
   end;
-  if LastDelimiter('.', Text) > 0 then
+  if LastDelimiter('.', mText) > 0 then
   begin
-    Text := Copy(Text, LastDelimiter('.', Text) + 1, MaxInt);
+    mText := Copy(mText, LastDelimiter('.', mText) + 1, MaxInt);
   end;
   // TStringList → StringList. Ohne T- oder I-Vorsatz (Integer, Tabelle) hieße die Variable wie ihr Typ.
-  if (Length(Text) > 1) and CharInSet(Text[1], ['T', 'I']) and CharInSet(Text[2], ['A'..'Z']) then
+  if (Length(mText) > 1) and CharInSet(mText[1], ['T', 'I']) and CharInSet(mText[2], ['A'..'Z']) then
   begin
-    Text := Copy(Text, 2, MaxInt);
+    mText := Copy(mText, 2, MaxInt);
   end
   else
   begin
-    Text := 'Value';
+    mText := 'Value';
   end;
-  Result := Text;
+  Result := mText;
 end;
 
 class function TPostfixTemplates.ElementOf(const ATypeText: string): string;
 var
-  Text: string;
-  OfPos: Integer;
+  mText: string;
+  mOfPos: Integer;
 begin
   Result := '';
-  Text := Trim(ATypeText);
-  if StartsText('TArray<', Text) and EndsStr('>', Text) then
+  mText := Trim(ATypeText);
+  if StartsText('TArray<', mText) and EndsStr('>', mText) then
   begin
-    Exit(Trim(Copy(Text, Length('TArray<') + 1, Length(Text) - Length('TArray<') - 1)));
+    Exit(Trim(Copy(mText, Length('TArray<') + 1, Length(mText) - Length('TArray<') - 1)));
   end;
-  if StartsText('array', Text) or StartsText('set ', Text) then
+  if StartsText('array', mText) or StartsText('set ', mText) then
   begin
-    OfPos := Pos(' OF ', UpperCase(Text));
-    if OfPos > 0 then
+    mOfPos := Pos(' OF ', UpperCase(mText));
+    if mOfPos > 0 then
     begin
-      Result := Trim(Copy(Text, OfPos + Length(' of '), MaxInt));
+      Result := Trim(Copy(mText, mOfPos + Length(' of '), MaxInt));
     end;
     // array of const hat keinen Elementtyp, über den sich schreiben ließe.
     if SameText(Result, 'const') then
@@ -659,10 +659,10 @@ end;
 
 class function TPostfixTemplates.IsPointerType(const ATypeText: string): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Trim(ATypeText);
-  Result := MatchText(Text, ['Pointer', 'PChar', 'PAnsiChar', 'PWideChar', 'PByte']) or StartsStr('^', Text);
+  mText := Trim(ATypeText);
+  Result := MatchText(mText, ['Pointer', 'PChar', 'PAnsiChar', 'PWideChar', 'PByte']) or StartsStr('^', mText);
 end;
 
 end.

@@ -55,10 +55,10 @@ type
   public const
     /// <summary>Auftraggeber in den Compile-Ereignissen (#527): kein Build des Benutzers, also keine Tests nach
     /// dem Build (#69).</summary>
-    RequestedBy = 'open';
-    MaxAttempts = 10;
+    cRequestedBy = 'open';
+    cMaxAttempts = 10;
     /// <summary>Ein Lauf im Hintergrund der IDE gilt nach dieser Zeit ohne Ende als beendet.</summary>
-    MaxRunMs = 30 * 60 * 1000;
+    cMaxRunMs = 30 * 60 * 1000;
   private
     FPending: TList<string>;
     /// <summary>Versuche je vorgemerkter Datei (Schlüssel KeyOf), auch über Take hinweg.</summary>
@@ -106,7 +106,6 @@ type
     class function IsGroupFile(const AFileName: string): Boolean; static;
     class function IsProjectFile(const AFileName: string): Boolean; static;
     property Running: Boolean read FRunning;
-    property BuildRunning: Boolean read FBuildRunning;
     property LastOpened: Int64 read FLastOpened;
   end;
 
@@ -153,22 +152,22 @@ end;
 
 class function TAtlasOpenBuild.IsProjectFile(const AFileName: string): Boolean;
 var
-  Ext: string;
+  mExt: string;
 begin
-  Ext := LowerCase(ExtractFileExt(AFileName));
-  Result := (Ext = '.dproj') or (Ext = '.dpr') or (Ext = '.dpk') or (Ext = '.groupproj');
+  mExt := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExt = '.dproj') or (mExt = '.dpr') or (mExt = '.dpk') or (mExt = '.groupproj');
 end;
 
 function TAtlasOpenBuild.PendingIndex(const AFileName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
-  for Index := 0 to FPending.Count - 1 do
+  for mIndex := 0 to FPending.Count - 1 do
   begin
-    if SameText(FPending[Index], AFileName) then
+    if SameText(FPending[mIndex], AFileName) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
@@ -194,14 +193,14 @@ end;
 
 procedure TAtlasOpenBuild.Closed(const AFileName: string);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   FDone.Remove(KeyOf(AFileName));
   FAttempts.Remove(KeyOf(AFileName));
-  Index := PendingIndex(AFileName);
-  if Index >= 0 then
+  mIndex := PendingIndex(AFileName);
+  if mIndex >= 0 then
   begin
-    FPending.Delete(Index);
+    FPending.Delete(mIndex);
   end;
 end;
 
@@ -219,54 +218,54 @@ end;
 
 function TAtlasOpenBuild.Retry(const AFileName: string; ANowMs: Int64): Boolean;
 var
-  Key: string;
-  Attempts: Integer;
+  mKey: string;
+  mAttempts: Integer;
 begin
-  Key := KeyOf(AFileName);
-  if not FAttempts.TryGetValue(Key, Attempts) then
+  mKey := KeyOf(AFileName);
+  if not FAttempts.TryGetValue(mKey, mAttempts) then
   begin
-    Attempts := 0;
+    mAttempts := 0;
   end;
-  Inc(Attempts);
-  Result := Attempts < MaxAttempts;
+  Inc(mAttempts);
+  Result := mAttempts < cMaxAttempts;
   if Result then
   begin
-    FAttempts.AddOrSetValue(Key, Attempts);
+    FAttempts.AddOrSetValue(mKey, mAttempts);
     AddPending(AFileName, ANowMs);
   end
   else
   begin
-    FAttempts.Remove(Key);
+    FAttempts.Remove(mKey);
   end;
 end;
 
 function TAtlasOpenBuild.Select(const AProjects, AExclude: TArray<string>): TArray<string>;
 var
-  Project, Key, Excluded: string;
-  Skip: Boolean;
+  mProject, mKey, mExcluded: string;
+  mSkip: Boolean;
 begin
   // Was Take geliefert hat, ist damit erledigt; Retry merkt Unaufgelöstes vorher neu vor.
   Result := nil;
-  for Project in AProjects do
+  for mProject in AProjects do
   begin
-    Key := KeyOf(Project);
-    if (Key = '') or FDone.ContainsKey(Key) then
+    mKey := KeyOf(mProject);
+    if (mKey = '') or FDone.ContainsKey(mKey) then
     begin
       Continue;
     end;
-    Skip := False;
-    for Excluded in AExclude do
+    mSkip := False;
+    for mExcluded in AExclude do
     begin
-      if SameText(TAtlasOpenBuildSettings.NameOf(Project), Excluded) then
+      if SameText(TAtlasOpenBuildSettings.NameOf(mProject), mExcluded) then
       begin
-        Skip := True;
+        mSkip := True;
       end;
     end;
     // Auch ausgeschlossene gelten als erledigt: bis zum Schließen nicht noch einmal prüfen.
-    FDone.Add(Key, True);
-    if not Skip then
+    FDone.Add(mKey, True);
+    if not mSkip then
     begin
-      Result := Result + [Project];
+      Result := Result + [mProject];
     end;
   end;
 end;
@@ -283,14 +282,14 @@ end;
 
 procedure TAtlasOpenBuild.RunStarted(const AProjects: TArray<string>; ANowMs: Int64);
 var
-  Project: string;
+  mProject: string;
 begin
   FRunProjects.Clear;
   FRunResults.Clear;
   FCancelReason := '';
-  for Project in AProjects do
+  for mProject in AProjects do
   begin
-    FRunProjects.Add(Project);
+    FRunProjects.Add(mProject);
   end;
   FRunStartedAt := ANowMs;
   FRunning := True;
@@ -298,16 +297,16 @@ end;
 
 function TAtlasOpenBuild.InRun(const AFileName: string): Boolean;
 var
-  Project: string;
+  mProject: string;
 begin
   Result := False;
   if not FRunning then
   begin
     Exit;
   end;
-  for Project in FRunProjects do
+  for mProject in FRunProjects do
   begin
-    if KeyOf(Project) = KeyOf(AFileName) then
+    if KeyOf(mProject) = KeyOf(AFileName) then
     begin
       Exit(True);
     end;
@@ -338,12 +337,12 @@ end;
 
 function TAtlasOpenBuild.RunComplete: Boolean;
 var
-  Project: string;
+  mProject: string;
 begin
   Result := FRunning;
-  for Project in FRunProjects do
+  for mProject in FRunProjects do
   begin
-    if not FRunResults.ContainsKey(KeyOf(Project)) then
+    if not FRunResults.ContainsKey(KeyOf(mProject)) then
     begin
       Exit(False);
     end;
@@ -352,32 +351,32 @@ end;
 
 function TAtlasOpenBuild.RunOverdue(ANowMs: Int64): Boolean;
 begin
-  Result := FRunning and (ANowMs - FRunStartedAt > MaxRunMs);
+  Result := FRunning and (ANowMs - FRunStartedAt > cMaxRunMs);
 end;
 
 function TAtlasOpenBuild.RunFinished: TAtlasOpenBuildResult;
 var
-  Project: string;
-  Succeeded: Boolean;
+  mProject: string;
+  mSucceeded: Boolean;
 begin
   Result := Default(TAtlasOpenBuildResult);
   Result.CancelReason := FCancelReason;
-  for Project in FRunProjects do
+  for mProject in FRunProjects do
   begin
     Inc(Result.Total);
-    if not FRunResults.TryGetValue(KeyOf(Project), Succeeded) then
+    if not FRunResults.TryGetValue(KeyOf(mProject), mSucceeded) then
     begin
       Inc(Result.NotBuilt);
-      Result.NotBuiltNames := Result.NotBuiltNames + [TAtlasOpenBuildSettings.NameOf(Project)];
+      Result.NotBuiltNames := Result.NotBuiltNames + [TAtlasOpenBuildSettings.NameOf(mProject)];
     end
-    else if Succeeded then
+    else if mSucceeded then
     begin
       Inc(Result.Succeeded);
     end
     else
     begin
       Inc(Result.Failed);
-      Result.FailedNames := Result.FailedNames + [TAtlasOpenBuildSettings.NameOf(Project)];
+      Result.FailedNames := Result.FailedNames + [TAtlasOpenBuildSettings.NameOf(mProject)];
     end;
   end;
   FRunning := False;

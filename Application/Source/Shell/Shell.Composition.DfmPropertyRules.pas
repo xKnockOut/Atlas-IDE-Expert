@@ -61,7 +61,7 @@ var
   mServices: TShellDfmPropertyRulesServices;
 begin
   mServices := AServices;
-  ACommands.Register(TLspDfmPropertyRules.Command,
+  ACommands.Register(TLspDfmPropertyRules.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := Apply(mServices, AArguments);
@@ -77,9 +77,9 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count = 0) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, TShellTexts.Missing(['uri']));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TShellTexts.Missing(['uri']));
   end;
-  mScope := TLspDfmPropertyRules.ScopeForm;
+  mScope := TLspDfmPropertyRules.cScopeForm;
   if AArguments.Count > 1 then
   begin
     mScope := AArguments.Items[1].Value;
@@ -101,7 +101,7 @@ class function TShellDfmPropertyRules.UnitsFor(const AServices: TShellDfmPropert
 var
   mWorkspace, mPicked: TShellWorkspace;
 begin
-  if SameText(AScope, TLspDfmPropertyRules.ScopeForm) then
+  if SameText(AScope, TLspDfmPropertyRules.cScopeForm) then
   begin
     Result := TArray<string>.Create(AFileName);
     Exit;
@@ -112,7 +112,7 @@ begin
     mPicked := AServices.Workspaces.Pick(AFileName);
     for mWorkspace in AServices.Workspaces.Items do
     begin
-      if SameText(AScope, TLspDfmPropertyRules.ScopeGroup) or (mWorkspace = mPicked) then
+      if SameText(AScope, TLspDfmPropertyRules.cScopeGroup) or (mWorkspace = mPicked) then
       begin
         Result := Result + mWorkspace.State.ProjectFiles;
       end;
@@ -152,7 +152,7 @@ begin
     Exit;
   end;
   // Nur dfm-property; RuleFindings zieht die Baseline nicht ab, der Befehl korrigiert alle Verstöße.
-  mContext.Rules := RulesWithId(mContext.Rules, TLspDfmPropertyRules.RuleId);
+  mContext.Rules := RulesWithId(mContext.Rules, TLspDfmPropertyRules.cRuleId);
   mTree := TSyntaxTreeCache.Parse(mText);
   try
     AFindings := TLspSyntaxDiagnostics.RuleFindings(mText, mTree, mContext);

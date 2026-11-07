@@ -62,7 +62,8 @@ type
     property CompilerBaseline: TLspCompilerBaseline read FCompilerBaseline;
   end;
 
-/// <summary>Dateizugriffe der Baselines: lesen mit erkannter Kodierung, atomar schreiben, defekte beiseitelegen.</summary>
+/// <summary>Dateizugriffe der Baselines: lesen mit erkannter Kodierung, atomar schreiben, defekte
+/// beiseitelegen.</summary>
 function BaselineFiles: TLspBaselineFiles;
 
 implementation
@@ -241,14 +242,14 @@ end;
 
 procedure TShellBaselines.RegisterCommands(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspBaseline.Command, RunBaseline);
-  ACommands.Register(TLspBulkFix.Command, RunBulkFix);
-  ACommands.Register(TLspCompilerBaseline.AddCommand, RunCompilerBaselineAdd);
+  ACommands.Register(TLspBaseline.cCommand, RunBaseline);
+  ACommands.Register(TLspBulkFix.cCommand, RunBulkFix);
+  ACommands.Register(TLspCompilerBaseline.cAddCommand, RunCompilerBaselineAdd);
 end;
 
 procedure TShellBaselines.RegisterClassifyCommand(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspCompilerBaseline.ClassifyCommand, RunCompilerBaselineClassify);
+  ACommands.Register(TLspCompilerBaseline.cClassifyCommand, RunCompilerBaselineClassify);
 end;
 
 function TShellBaselines.RunBaseline(const AArguments: TJSONArray): TJSONValue;

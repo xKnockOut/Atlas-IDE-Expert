@@ -79,7 +79,7 @@ uses
   Atlas.Core.Tracker.TestResults;
 
 const
-  TestProject = 'C:\Projekte\Atlas\Atlas.Tests.dproj';
+  cTestProject = 'C:\Projekte\Atlas\Atlas.Tests.dproj';
 
 function Now0: TDateTime;
 begin
@@ -106,7 +106,7 @@ begin
   Result := TAtlasProjectTests.Empty;
   Result.Known := True;
   Result.At := Now0;
-  Result.Project := TestProject;
+  Result.Project := cTestProject;
   Result.Passed := 412;
   Result.Failed := 2;
   Result.Skipped := 3;
@@ -122,7 +122,7 @@ function GreenRun: TAtlasProjectTests;
 begin
   Result := TAtlasProjectTests.Empty;
   Result.Known := True;
-  Result.Project := TestProject;
+  Result.Project := cTestProject;
   Result.Passed := 57;
 end;
 
@@ -133,7 +133,7 @@ end;
 
 function Build(ANumber: Integer; AOutcome: TAtlasCiOutcome; AFailed: Integer): TAtlasCiBuild;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := TAtlasCiBuild.Empty;
   Result.Number := ANumber;
@@ -141,10 +141,10 @@ begin
   Result.TestsKnown := True;
   Result.Passed := 400;
   Result.Failed := AFailed;
-  for Index := 1 to AFailed do
+  for mIndex := 1 to AFailed do
   begin
-    Result.Failures := Result.Failures + [CiFailure('Atlas.Server.Tests.TServerTests.Case' + IntToStr(Index),
-      'Server ' + IntToStr(Index))];
+    Result.Failures := Result.Failures + [CiFailure('Atlas.Server.Tests.TServerTests.Case' + IntToStr(mIndex),
+      'Server ' + IntToStr(mIndex))];
   end;
 end;
 
@@ -197,12 +197,12 @@ end;
 
 function TTestsStore.ReadInteger(const AName: string; ADefault: Integer): Integer;
 var
-  Text: string;
+  mText: string;
 begin
   Result := ADefault;
-  if FValues.TryGetValue(AName, Text) then
+  if FValues.TryGetValue(AName, mText) then
   begin
-    Result := StrToIntDef(Text, ADefault);
+    Result := StrToIntDef(mText, ADefault);
   end;
 end;
 
@@ -228,33 +228,33 @@ end;
 
 procedure TAtlasTestResultsTests.LocalLevel;
 var
-  Tests: TAtlasProjectTests;
+  mTests: TAtlasProjectTests;
 begin
-  Tests := TAtlasProjectTests.Empty;
-  Assert.IsTrue(TAtlasTestResults.LocalLevel(Tests) = TAtlasTestLevel.Unknown);
+  mTests := TAtlasProjectTests.Empty;
+  Assert.IsTrue(TAtlasTestResults.LocalLevel(mTests) = TAtlasTestLevel.Unknown);
   Assert.IsTrue(TAtlasTestResults.LocalLevel(LocalRun) = TAtlasTestLevel.Failed);
   Assert.IsTrue(TAtlasTestResults.LocalLevel(GreenRun) = TAtlasTestLevel.Passed);
-  Tests := GreenRun;
-  Tests.Errors := 1;
-  Assert.IsTrue(TAtlasTestResults.LocalLevel(Tests) = TAtlasTestLevel.Failed, 'Fehler zählen als rot');
-  Tests := GreenRun;
-  Tests.Passed := 0;
-  Tests.Skipped := 4;
-  Assert.IsTrue(TAtlasTestResults.LocalLevel(Tests) = TAtlasTestLevel.Warning, 'nur übersprungen');
+  mTests := GreenRun;
+  mTests.Errors := 1;
+  Assert.IsTrue(TAtlasTestResults.LocalLevel(mTests) = TAtlasTestLevel.Failed, 'Fehler zählen als rot');
+  mTests := GreenRun;
+  mTests.Passed := 0;
+  mTests.Skipped := 4;
+  Assert.IsTrue(TAtlasTestResults.LocalLevel(mTests) = TAtlasTestLevel.Warning, 'nur übersprungen');
 end;
 
 procedure TAtlasTestResultsTests.CiLevel;
 var
-  Value: TAtlasCiBuild;
+  mValue: TAtlasCiBuild;
 begin
   Assert.IsTrue(TAtlasTestResults.CiLevel(TAtlasCiBuild.Empty) = TAtlasTestLevel.Unknown);
   Assert.IsTrue(TAtlasTestResults.CiLevel(Build(5, TAtlasCiOutcome.Success, 0)) = TAtlasTestLevel.Passed);
   Assert.IsTrue(TAtlasTestResults.CiLevel(Build(5, TAtlasCiOutcome.Unstable, 2)) = TAtlasTestLevel.Failed);
   Assert.IsTrue(TAtlasTestResults.CiLevel(Build(5, TAtlasCiOutcome.Unstable, 0)) = TAtlasTestLevel.Warning);
   Assert.IsTrue(TAtlasTestResults.CiLevel(Build(5, TAtlasCiOutcome.Aborted, 0)) = TAtlasTestLevel.Warning);
-  Value := Build(5, TAtlasCiOutcome.Failure, 0);
-  Value.TestsKnown := False;
-  Assert.IsTrue(TAtlasTestResults.CiLevel(Value) = TAtlasTestLevel.Failed, 'Build rot ohne Testbericht');
+  mValue := Build(5, TAtlasCiOutcome.Failure, 0);
+  mValue.TestsKnown := False;
+  Assert.IsTrue(TAtlasTestResults.CiLevel(mValue) = TAtlasTestLevel.Failed, 'Build rot ohne Testbericht');
 end;
 
 procedure TAtlasTestResultsTests.CompareLocalAndServer;
@@ -281,85 +281,85 @@ end;
 
 procedure TAtlasTestResultsTests.ViewShowsLocalFailures;
 var
-  View: TAtlasTestResultsView;
-  Row: TAtlasTestRow;
+  mView: TAtlasTestResultsView;
+  mRow: TAtlasTestRow;
 begin
-  View := TAtlasTestResults.View([Project(TestProject, LocalRun, NoJob, TAtlasProjectCi.Empty)], '', 5,
+  mView := TAtlasTestResults.View([Project(cTestProject, LocalRun, NoJob, TAtlasProjectCi.Empty)], '', 5,
     True);
-  Assert.AreEqual(1, Integer(Length(View.Rows)));
-  Assert.IsTrue(View.SelectedRow(Row));
-  Assert.AreEqual('Atlas.Tests', Row.Name);
-  Assert.IsTrue(Row.LocalLevel = TAtlasTestLevel.Failed);
-  Assert.AreEqual(2, Row.Local.Failed);
-  Assert.IsFalse(Row.HasCi);
-  Assert.AreEqual(2, Integer(Length(View.Failures)));
-  Assert.AreEqual('Atlas.Core.Index.Tests.TIndexTests.FindsDeclarations', View.Failures[0].Test);
-  Assert.AreEqual('Erwartet 3 Deklarationen, gefunden 0', View.Failures[0].Message);
-  Assert.AreEqual(214, View.Failures[0].Line);
-  Assert.AreEqual('C:\Projekte\Atlas\Atlas.Core.Index.Tests.pas', View.Failures[0].FileName);
-  Assert.IsTrue(View.Failures[0].Local);
-  Assert.IsFalse(View.Failures[0].Server);
-  Assert.AreEqual(88, View.Failures[1].Line);
-  Assert.AreEqual(0, View.More);
+  Assert.AreEqual(1, Integer(Length(mView.Rows)));
+  Assert.IsTrue(mView.SelectedRow(mRow));
+  Assert.AreEqual('Atlas.Tests', mRow.Name);
+  Assert.IsTrue(mRow.LocalLevel = TAtlasTestLevel.Failed);
+  Assert.AreEqual(2, mRow.Local.Failed);
+  Assert.IsFalse(mRow.HasCi);
+  Assert.AreEqual(2, Integer(Length(mView.Failures)));
+  Assert.AreEqual('Atlas.Core.Index.Tests.TIndexTests.FindsDeclarations', mView.Failures[0].Test);
+  Assert.AreEqual('Erwartet 3 Deklarationen, gefunden 0', mView.Failures[0].Message);
+  Assert.AreEqual(214, mView.Failures[0].Line);
+  Assert.AreEqual('C:\Projekte\Atlas\Atlas.Core.Index.Tests.pas', mView.Failures[0].FileName);
+  Assert.IsTrue(mView.Failures[0].Local);
+  Assert.IsFalse(mView.Failures[0].Server);
+  Assert.AreEqual(88, mView.Failures[1].Line);
+  Assert.AreEqual(0, mView.More);
 end;
 
 procedure TAtlasTestResultsTests.RerunExactlyTheFailed;
 var
-  View: TAtlasTestResultsView;
-  Tests: TAtlasProjectTests;
+  mView: TAtlasTestResultsView;
+  mTests: TAtlasProjectTests;
 begin
-  View := TAtlasTestResults.View([Project(TestProject, LocalRun, NoJob, TAtlasProjectCi.Empty)], '', 5,
+  mView := TAtlasTestResults.View([Project(cTestProject, LocalRun, NoJob, TAtlasProjectCi.Empty)], '', 5,
     True);
-  Assert.AreEqual(2, Integer(Length(View.Rerun)));
-  Assert.AreEqual('Atlas.Core.Index.Tests.TIndexTests.FindsDeclarations', View.Rerun[0]);
-  Assert.AreEqual('Atlas.Core.Hover.Tests.THoverTests.ShowsDocumentation', View.Rerun[1]);
+  Assert.AreEqual(2, Integer(Length(mView.Rerun)));
+  Assert.AreEqual('Atlas.Core.Index.Tests.TIndexTests.FindsDeclarations', mView.Rerun[0]);
+  Assert.AreEqual('Atlas.Core.Hover.Tests.THoverTests.ShowsDocumentation', mView.Rerun[1]);
   // Grenze der Liste gilt nicht für „erneut ausführen“.
-  View := TAtlasTestResults.View([Project(TestProject, LocalRun, NoJob, TAtlasProjectCi.Empty)], '', 1,
+  mView := TAtlasTestResults.View([Project(cTestProject, LocalRun, NoJob, TAtlasProjectCi.Empty)], '', 1,
     True);
-  Assert.AreEqual(1, Integer(Length(View.Failures)));
-  Assert.AreEqual(1, View.More);
-  Assert.AreEqual(2, Integer(Length(View.Rerun)));
+  Assert.AreEqual(1, Integer(Length(mView.Failures)));
+  Assert.AreEqual(1, mView.More);
+  Assert.AreEqual(2, Integer(Length(mView.Rerun)));
   // Server-Fehlschläge kommen dazu, gleiche Tests einmal.
-  Tests := LocalRun;
-  Assert.AreEqual(3, Integer(Length(TAtlasTestResults.RerunNames(Tests,
+  mTests := LocalRun;
+  Assert.AreEqual(3, Integer(Length(TAtlasTestResults.RerunNames(mTests,
     Build(9, TAtlasCiOutcome.Unstable, 1), True))));
-  Assert.AreEqual(2, Integer(Length(TAtlasTestResults.RerunNames(Tests,
+  Assert.AreEqual(2, Integer(Length(TAtlasTestResults.RerunNames(mTests,
     Build(9, TAtlasCiOutcome.Unstable, 1), False))));
   Assert.AreEqual(0, Integer(Length(TAtlasTestResults.RerunNames(GreenRun, TAtlasCiBuild.Empty, True))));
 end;
 
 procedure TAtlasTestResultsTests.MergeMarksServerAndRespectsLimit;
 var
-  Server: TAtlasCiBuild;
-  Items: TArray<TAtlasTestFailureItem>;
-  More: Integer;
+  mServer: TAtlasCiBuild;
+  mItems: TArray<TAtlasTestFailureItem>;
+  mMore: Integer;
 begin
-  Server := Build(482, TAtlasCiOutcome.Unstable, 3);
+  mServer := Build(482, TAtlasCiOutcome.Unstable, 3);
   // Gleicher Test lokal und auf dem Server (Bericht ohne Unit-Namen).
-  Server.Failures[0] := CiFailure('TIndexTests.FindsDeclarations', 'auf dem Server');
-  Items := TAtlasTestResults.MergeFailures(LocalRun, Server, True, 5, More);
-  Assert.AreEqual(4, Integer(Length(Items)));
-  Assert.IsTrue(Items[0].Local and Items[0].Server, 'beide Marken');
-  Assert.AreEqual(214, Items[0].Line, 'lokale Fundstelle bleibt');
-  Assert.IsTrue(Items[1].Local and not Items[1].Server);
-  Assert.IsTrue(not Items[2].Local and Items[2].Server, 'nur auf dem Server');
-  Assert.AreEqual('Server 2', Items[2].Message);
-  Assert.AreEqual(0, Items[2].Line);
-  Assert.AreEqual(0, More);
+  mServer.Failures[0] := CiFailure('TIndexTests.FindsDeclarations', 'auf dem Server');
+  mItems := TAtlasTestResults.MergeFailures(LocalRun, mServer, True, 5, mMore);
+  Assert.AreEqual(4, Integer(Length(mItems)));
+  Assert.IsTrue(mItems[0].Local and mItems[0].Server, 'beide Marken');
+  Assert.AreEqual(214, mItems[0].Line, 'lokale Fundstelle bleibt');
+  Assert.IsTrue(mItems[1].Local and not mItems[1].Server);
+  Assert.IsTrue(not mItems[2].Local and mItems[2].Server, 'nur auf dem Server');
+  Assert.AreEqual('Server 2', mItems[2].Message);
+  Assert.AreEqual(0, mItems[2].Line);
+  Assert.AreEqual(0, mMore);
   // Grenze 2: je ein Platz für lokal und Server.
-  Items := TAtlasTestResults.MergeFailures(LocalRun, Server, True, 2, More);
-  Assert.AreEqual(2, Integer(Length(Items)));
-  Assert.IsTrue(Items[0].Local);
-  Assert.IsTrue(not Items[1].Local and Items[1].Server);
-  Assert.AreEqual(2, More);
+  mItems := TAtlasTestResults.MergeFailures(LocalRun, mServer, True, 2, mMore);
+  Assert.AreEqual(2, Integer(Length(mItems)));
+  Assert.IsTrue(mItems[0].Local);
+  Assert.IsTrue(not mItems[1].Local and mItems[1].Server);
+  Assert.AreEqual(2, mMore);
   // Ohne Server-Stand keine Server-Einträge; gezählte, nicht gespeicherte Fehlschläge zählen mit.
-  Server.Failed := 10;
-  Items := TAtlasTestResults.MergeFailures(LocalRun, Server, False, 5, More);
-  Assert.AreEqual(2, Integer(Length(Items)));
-  Assert.AreEqual(0, More);
-  Items := TAtlasTestResults.MergeFailures(LocalRun, Server, True, 50, More);
-  Assert.AreEqual(4, Integer(Length(Items)));
-  Assert.AreEqual(7, More, '10 gezählt, 3 gespeichert');
+  mServer.Failed := 10;
+  mItems := TAtlasTestResults.MergeFailures(LocalRun, mServer, False, 5, mMore);
+  Assert.AreEqual(2, Integer(Length(mItems)));
+  Assert.AreEqual(0, mMore);
+  mItems := TAtlasTestResults.MergeFailures(LocalRun, mServer, True, 50, mMore);
+  Assert.AreEqual(4, Integer(Length(mItems)));
+  Assert.AreEqual(7, mMore, '10 gezählt, 3 gespeichert');
 end;
 
 procedure TAtlasTestResultsTests.DueAfterInterval;
@@ -374,132 +374,132 @@ end;
 
 procedure TAtlasTestResultsTests.RecordedKeepsLastBuildOnError;
 var
-  Old, Next: TAtlasProjectCi;
+  mOld, mNext: TAtlasProjectCi;
 begin
-  Old := Ci(Job, Build(482, TAtlasCiOutcome.Unstable, 2));
-  Assert.IsTrue(Old.Matches(Job));
-  Assert.IsTrue(Old.Error = TAtlasCiFetchError.None);
-  Next := TAtlasTestResults.Recorded(Old, Job, False, TAtlasCiBuild.Empty, TAtlasCiFetchError.Timeout, Now0);
-  Assert.AreEqual(482, Next.Build.Number, 'letzter Stand bleibt');
-  Assert.IsTrue(Next.Error = TAtlasCiFetchError.Timeout);
-  Assert.IsTrue(SameDateTime(Now0, Next.Attempt));
-  Assert.IsTrue(SameDateTime(Old.At, Next.At), 'Stand vom … bleibt der letzte gelungene Abruf');
-  Next := TAtlasTestResults.Recorded(Next, Job, True, Build(483, TAtlasCiOutcome.Success, 0),
+  mOld := Ci(Job, Build(482, TAtlasCiOutcome.Unstable, 2));
+  Assert.IsTrue(mOld.Matches(Job));
+  Assert.IsTrue(mOld.Error = TAtlasCiFetchError.None);
+  mNext := TAtlasTestResults.Recorded(mOld, Job, False, TAtlasCiBuild.Empty, TAtlasCiFetchError.Timeout, Now0);
+  Assert.AreEqual(482, mNext.Build.Number, 'letzter Stand bleibt');
+  Assert.IsTrue(mNext.Error = TAtlasCiFetchError.Timeout);
+  Assert.IsTrue(SameDateTime(Now0, mNext.Attempt));
+  Assert.IsTrue(SameDateTime(mOld.At, mNext.At), 'Stand vom … bleibt der letzte gelungene Abruf');
+  mNext := TAtlasTestResults.Recorded(mNext, Job, True, Build(483, TAtlasCiOutcome.Success, 0),
     TAtlasCiFetchError.None, Now0 + OneHour);
-  Assert.AreEqual(483, Next.Build.Number);
-  Assert.IsTrue(Next.Error = TAtlasCiFetchError.None);
-  Assert.IsTrue(SameDateTime(Now0 + OneHour, Next.At));
+  Assert.AreEqual(483, mNext.Build.Number);
+  Assert.IsTrue(mNext.Error = TAtlasCiFetchError.None);
+  Assert.IsTrue(SameDateTime(Now0 + OneHour, mNext.At));
 end;
 
 procedure TAtlasTestResultsTests.RecordedForOtherJobStartsFresh;
 var
-  Old, Next: TAtlasProjectCi;
-  Other: TAtlasCiJob;
+  mOld, mNext: TAtlasProjectCi;
+  mOther: TAtlasCiJob;
 begin
-  Old := Ci(Job, Build(482, TAtlasCiOutcome.Unstable, 2));
-  Other := TAtlasCiJob.Create('jenkins', 'https://ci.firma.de', 'atlas', True, 'develop');
-  Next := TAtlasTestResults.Recorded(Old, Other, False, TAtlasCiBuild.Empty, TAtlasCiFetchError.None, Now0);
-  Assert.IsTrue(Next.Matches(Other));
-  Assert.AreEqual('develop', Next.Branch);
-  Assert.IsFalse(Next.HasBuild, 'Build des anderen Branches gilt nicht');
-  Assert.IsTrue(Next.Error = TAtlasCiFetchError.Network, 'Fehler ohne Angabe');
-  Assert.IsTrue(Next.At = 0);
+  mOld := Ci(Job, Build(482, TAtlasCiOutcome.Unstable, 2));
+  mOther := TAtlasCiJob.Create('jenkins', 'https://ci.firma.de', 'atlas', True, 'develop');
+  mNext := TAtlasTestResults.Recorded(mOld, mOther, False, TAtlasCiBuild.Empty, TAtlasCiFetchError.None, Now0);
+  Assert.IsTrue(mNext.Matches(mOther));
+  Assert.AreEqual('develop', mNext.Branch);
+  Assert.IsFalse(mNext.HasBuild, 'Build des anderen Branches gilt nicht');
+  Assert.IsTrue(mNext.Error = TAtlasCiFetchError.Network, 'Fehler ohne Angabe');
+  Assert.IsTrue(mNext.At = 0);
 end;
 
 procedure TAtlasTestResultsTests.TurnedRedOnlyOnTransition;
 var
-  Green, Red: TAtlasProjectCi;
+  mGreen, mRed: TAtlasProjectCi;
 begin
-  Green := Ci(Job, Build(481, TAtlasCiOutcome.Success, 0));
-  Red := Ci(Job, Build(482, TAtlasCiOutcome.Unstable, 2));
-  Assert.IsTrue(TAtlasTestResults.TurnedRed(Green, Job, Build(482, TAtlasCiOutcome.Unstable, 2)));
-  Assert.IsFalse(TAtlasTestResults.TurnedRed(Red, Job, Build(483, TAtlasCiOutcome.Failure, 1)),
+  mGreen := Ci(Job, Build(481, TAtlasCiOutcome.Success, 0));
+  mRed := Ci(Job, Build(482, TAtlasCiOutcome.Unstable, 2));
+  Assert.IsTrue(TAtlasTestResults.TurnedRed(mGreen, Job, Build(482, TAtlasCiOutcome.Unstable, 2)));
+  Assert.IsFalse(TAtlasTestResults.TurnedRed(mRed, Job, Build(483, TAtlasCiOutcome.Failure, 1)),
     'war schon rot');
-  Assert.IsFalse(TAtlasTestResults.TurnedRed(Green, Job, Build(481, TAtlasCiOutcome.Failure, 1)),
+  Assert.IsFalse(TAtlasTestResults.TurnedRed(mGreen, Job, Build(481, TAtlasCiOutcome.Failure, 1)),
     'derselbe Build');
-  Assert.IsFalse(TAtlasTestResults.TurnedRed(Green, Job, Build(482, TAtlasCiOutcome.Success, 0)));
+  Assert.IsFalse(TAtlasTestResults.TurnedRed(mGreen, Job, Build(482, TAtlasCiOutcome.Success, 0)));
   Assert.IsFalse(TAtlasTestResults.TurnedRed(TAtlasProjectCi.Empty, Job,
     Build(482, TAtlasCiOutcome.Failure, 1)), 'erster Abruf meldet nichts');
-  Assert.IsFalse(TAtlasTestResults.TurnedRed(Green, TAtlasCiJob.Create('jenkins', 'https://ci.firma.de',
+  Assert.IsFalse(TAtlasTestResults.TurnedRed(mGreen, TAtlasCiJob.Create('jenkins', 'https://ci.firma.de',
     'atlas', True, 'develop'), Build(482, TAtlasCiOutcome.Failure, 1)), 'anderer Branch');
 end;
 
 procedure TAtlasTestResultsTests.ViewWithServerRow;
 var
-  View: TAtlasTestResultsView;
-  Row: TAtlasTestRow;
-  State: TAtlasProjectCi;
+  mView: TAtlasTestResultsView;
+  mRow: TAtlasTestRow;
+  mState: TAtlasProjectCi;
 begin
-  State := Ci(Job, Build(482, TAtlasCiOutcome.Unstable, 2));
-  View := TAtlasTestResults.View([Project(TestProject, GreenRun, Job, State)], '', 5, True);
-  Assert.IsTrue(View.SelectedRow(Row));
-  Assert.IsTrue(Row.HasCi);
-  Assert.AreEqual(482, Row.Ci.Build.Number);
-  Assert.IsTrue(Row.LocalLevel = TAtlasTestLevel.Passed);
-  Assert.IsTrue(Row.CiLevel = TAtlasTestLevel.Failed);
-  Assert.IsTrue(Row.Mismatch = TAtlasTestMismatch.LocalGreenServerRed, 'lokal grün, Server rot');
-  Assert.IsTrue(Row.Level = TAtlasTestLevel.Failed);
-  Assert.IsFalse(Row.CiStale);
-  Assert.AreEqual(2, Integer(Length(View.Failures)), 'Server-Fehlschläge in derselben Liste');
-  Assert.IsTrue(View.Failures[0].Server);
+  mState := Ci(Job, Build(482, TAtlasCiOutcome.Unstable, 2));
+  mView := TAtlasTestResults.View([Project(cTestProject, GreenRun, Job, mState)], '', 5, True);
+  Assert.IsTrue(mView.SelectedRow(mRow));
+  Assert.IsTrue(mRow.HasCi);
+  Assert.AreEqual(482, mRow.Ci.Build.Number);
+  Assert.IsTrue(mRow.LocalLevel = TAtlasTestLevel.Passed);
+  Assert.IsTrue(mRow.CiLevel = TAtlasTestLevel.Failed);
+  Assert.IsTrue(mRow.Mismatch = TAtlasTestMismatch.LocalGreenServerRed, 'lokal grün, Server rot');
+  Assert.IsTrue(mRow.Level = TAtlasTestLevel.Failed);
+  Assert.IsFalse(mRow.CiStale);
+  Assert.AreEqual(2, Integer(Length(mView.Failures)), 'Server-Fehlschläge in derselben Liste');
+  Assert.IsTrue(mView.Failures[0].Server);
   // Nach einem Fehler: Stand vom letzten Abruf.
-  State := TAtlasTestResults.Recorded(State, Job, False, TAtlasCiBuild.Empty, TAtlasCiFetchError.Network,
+  mState := TAtlasTestResults.Recorded(mState, Job, False, TAtlasCiBuild.Empty, TAtlasCiFetchError.Network,
     Now0);
-  View := TAtlasTestResults.View([Project(TestProject, GreenRun, Job, State)], '', 5, True);
-  Assert.IsTrue(View.SelectedRow(Row));
-  Assert.IsTrue(Row.CiStale);
-  Assert.AreEqual(482, Row.Ci.Build.Number);
+  mView := TAtlasTestResults.View([Project(cTestProject, GreenRun, Job, mState)], '', 5, True);
+  Assert.IsTrue(mView.SelectedRow(mRow));
+  Assert.IsTrue(mRow.CiStale);
+  Assert.AreEqual(482, mRow.Ci.Build.Number);
   // Nur Server, ohne lokalen Lauf: Zeile mit dem Projektnamen.
-  View := TAtlasTestResults.View([Project('C:\P\Kasse.dproj', TAtlasProjectTests.Empty, Job, State)], '', 5,
+  mView := TAtlasTestResults.View([Project('C:\P\Kasse.dproj', TAtlasProjectTests.Empty, Job, mState)], '', 5,
     True);
-  Assert.AreEqual(1, Integer(Length(View.Rows)));
-  Assert.AreEqual('Kasse', View.Rows[0].Name);
-  Assert.IsTrue(View.Rows[0].Mismatch = TAtlasTestMismatch.None);
+  Assert.AreEqual(1, Integer(Length(mView.Rows)));
+  Assert.AreEqual('Kasse', mView.Rows[0].Name);
+  Assert.IsTrue(mView.Rows[0].Mismatch = TAtlasTestMismatch.None);
   // Stand eines anderen Branches zählt nicht.
-  View := TAtlasTestResults.View([Project(TestProject, GreenRun, TAtlasCiJob.Create('jenkins',
-    'https://ci.firma.de', 'atlas', True, 'develop'), State)], '', 5, True);
-  Assert.IsTrue(View.Rows[0].HasCi);
-  Assert.IsFalse(View.Rows[0].Ci.HasBuild);
-  Assert.IsTrue(View.Rows[0].CiLevel = TAtlasTestLevel.Unknown);
+  mView := TAtlasTestResults.View([Project(cTestProject, GreenRun, TAtlasCiJob.Create('jenkins',
+    'https://ci.firma.de', 'atlas', True, 'develop'), mState)], '', 5, True);
+  Assert.IsTrue(mView.Rows[0].HasCi);
+  Assert.IsFalse(mView.Rows[0].Ci.HasBuild);
+  Assert.IsTrue(mView.Rows[0].CiLevel = TAtlasTestLevel.Unknown);
 end;
 
 procedure TAtlasTestResultsTests.ViewWithoutCiIgnoresServer;
 var
-  View: TAtlasTestResultsView;
-  State: TAtlasProjectCi;
+  mView: TAtlasTestResultsView;
+  mState: TAtlasProjectCi;
 begin
-  State := Ci(Job, Build(482, TAtlasCiOutcome.Unstable, 2));
-  View := TAtlasTestResults.View([Project(TestProject, GreenRun, Job, State)], '', 5, False);
-  Assert.AreEqual(1, Integer(Length(View.Rows)));
-  Assert.IsFalse(View.Rows[0].HasCi);
-  Assert.AreEqual(0, Integer(Length(View.Failures)));
-  View := TAtlasTestResults.View([Project('C:\P\Kasse.dproj', TAtlasProjectTests.Empty, Job, State)], '', 5,
+  mState := Ci(Job, Build(482, TAtlasCiOutcome.Unstable, 2));
+  mView := TAtlasTestResults.View([Project(cTestProject, GreenRun, Job, mState)], '', 5, False);
+  Assert.AreEqual(1, Integer(Length(mView.Rows)));
+  Assert.IsFalse(mView.Rows[0].HasCi);
+  Assert.AreEqual(0, Integer(Length(mView.Failures)));
+  mView := TAtlasTestResults.View([Project('C:\P\Kasse.dproj', TAtlasProjectTests.Empty, Job, mState)], '', 5,
     False);
-  Assert.IsTrue(View.Empty, 'ohne lokalen Lauf und ohne Server nichts zu zeigen');
-  Assert.AreEqual(-1, View.Selected);
+  Assert.IsTrue(mView.Empty, 'ohne lokalen Lauf und ohne Server nichts zu zeigen');
+  Assert.AreEqual(-1, mView.Selected);
 end;
 
 procedure TAtlasTestResultsTests.ViewSkipsDuplicatesAndKeepsSelection;
 var
-  View: TAtlasTestResultsView;
+  mView: TAtlasTestResultsView;
 begin
   // Projektgruppe und Testprojekt tragen denselben Lauf.
-  View := TAtlasTestResults.View([
+  mView := TAtlasTestResults.View([
     Project('C:\Projekte\Atlas\Atlas.groupproj', LocalRun, NoJob, TAtlasProjectCi.Empty),
-    Project(TestProject, LocalRun, NoJob, TAtlasProjectCi.Empty),
+    Project(cTestProject, LocalRun, NoJob, TAtlasProjectCi.Empty),
     Project('C:\P\Kasse.Tests.dproj', GreenRun, NoJob, TAtlasProjectCi.Empty)], '', 5, True);
-  Assert.AreEqual(1, Integer(Length(View.Rows)), 'gleiches Testprojekt einmal');
-  View := TAtlasTestResults.View([
+  Assert.AreEqual(1, Integer(Length(mView.Rows)), 'gleiches Testprojekt einmal');
+  mView := TAtlasTestResults.View([
     Project('C:\Projekte\Atlas\Atlas.groupproj', LocalRun, NoJob, TAtlasProjectCi.Empty),
     Project('C:\P\Kasse.dproj', TAtlasProjectTests.Empty, Job, Ci(Job, Build(7, TAtlasCiOutcome.Success, 0)))],
     'c:\p\kasse.dproj', 5, True);
-  Assert.AreEqual(2, Integer(Length(View.Rows)));
-  Assert.AreEqual(1, View.Selected, 'Auswahl ohne Rücksicht auf Groß- und Kleinschreibung');
-  Assert.AreEqual(0, Integer(Length(View.Failures)));
-  View := TAtlasTestResults.View([
+  Assert.AreEqual(2, Integer(Length(mView.Rows)));
+  Assert.AreEqual(1, mView.Selected, 'Auswahl ohne Rücksicht auf Groß- und Kleinschreibung');
+  Assert.AreEqual(0, Integer(Length(mView.Failures)));
+  mView := TAtlasTestResults.View([
     Project('C:\Projekte\Atlas\Atlas.groupproj', LocalRun, NoJob, TAtlasProjectCi.Empty)], 'C:\gibt\es\nicht', 5,
     True);
-  Assert.AreEqual(0, View.Selected, 'unbekannte Auswahl: erste Zeile');
+  Assert.AreEqual(0, mView.Selected, 'unbekannte Auswahl: erste Zeile');
 end;
 
 procedure TAtlasTestResultsTests.NormalizeSettings;
@@ -518,76 +518,76 @@ end;
 
 procedure TAtlasTestResultsSettingsTests.Defaults;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(Settings.WelcomePageTests);
-  Assert.AreEqual(5, Settings.WelcomePageTestsMaxFailures);
-  Assert.AreEqual(TAtlasTestResults.cDefaultMaxFailures, Settings.WelcomePageTestsMaxFailures);
-  Assert.IsFalse(Settings.WelcomePageTestsCi, 'ohne Zustimmung kein Netzzugriff');
-  Assert.AreEqual('jenkins', Settings.WelcomePageTestsCiProvider);
-  Assert.AreEqual(TAtlasTestResults.cDefaultProvider, TAtlasPluginSettings.DefaultCiProvider);
-  Assert.AreEqual(10, Settings.WelcomePageTestsCiIntervalMinutes);
-  Assert.AreEqual(TAtlasTestResults.cDefaultIntervalMinutes, Settings.WelcomePageTestsCiIntervalMinutes);
-  Assert.IsTrue(Settings.WelcomePageTestsCiNotify);
-  Assert.IsTrue(Settings.CiLogin);
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.WelcomePageTests);
+  Assert.AreEqual(5, mSettings.WelcomePageTestsMaxFailures);
+  Assert.AreEqual(TAtlasTestResults.cDefaultMaxFailures, mSettings.WelcomePageTestsMaxFailures);
+  Assert.IsFalse(mSettings.WelcomePageTestsCi, 'ohne Zustimmung kein Netzzugriff');
+  Assert.AreEqual('jenkins', mSettings.WelcomePageTestsCiProvider);
+  Assert.AreEqual(TAtlasTestResults.cDefaultProvider, TAtlasPluginSettings.cDefaultCiProvider);
+  Assert.AreEqual(10, mSettings.WelcomePageTestsCiIntervalMinutes);
+  Assert.AreEqual(TAtlasTestResults.cDefaultIntervalMinutes, mSettings.WelcomePageTestsCiIntervalMinutes);
+  Assert.IsTrue(mSettings.WelcomePageTestsCiNotify);
+  Assert.IsTrue(mSettings.CiLogin);
 end;
 
 procedure TAtlasTestResultsSettingsTests.NormalizeClampsAndKnowsProviders;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Settings.WelcomePageTestsMaxFailures := 0;
-  Settings.WelcomePageTestsCiIntervalMinutes := 0;
-  Settings.WelcomePageTestsCiProvider := ' JENKINS ';
-  Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinTestFailures, Settings.WelcomePageTestsMaxFailures);
-  Assert.AreEqual(TAtlasPluginSettings.MinCiIntervalMinutes, Settings.WelcomePageTestsCiIntervalMinutes);
-  Assert.AreEqual('jenkins', Settings.WelcomePageTestsCiProvider);
-  Settings.WelcomePageTestsMaxFailures := 1000;
-  Settings.WelcomePageTestsCiIntervalMinutes := 100000;
-  Settings.WelcomePageTestsCiProvider := 'travis';
-  Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MaxTestFailures, Settings.WelcomePageTestsMaxFailures);
-  Assert.AreEqual(TAtlasPluginSettings.MaxCiIntervalMinutes, Settings.WelcomePageTestsCiIntervalMinutes);
-  Assert.AreEqual('jenkins', Settings.WelcomePageTestsCiProvider, 'unbekannter Anbieter: Vorgabe');
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.WelcomePageTestsMaxFailures := 0;
+  mSettings.WelcomePageTestsCiIntervalMinutes := 0;
+  mSettings.WelcomePageTestsCiProvider := ' JENKINS ';
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestFailures, mSettings.WelcomePageTestsMaxFailures);
+  Assert.AreEqual(TAtlasPluginSettings.cMinCiIntervalMinutes, mSettings.WelcomePageTestsCiIntervalMinutes);
+  Assert.AreEqual('jenkins', mSettings.WelcomePageTestsCiProvider);
+  mSettings.WelcomePageTestsMaxFailures := 1000;
+  mSettings.WelcomePageTestsCiIntervalMinutes := 100000;
+  mSettings.WelcomePageTestsCiProvider := 'travis';
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestFailures, mSettings.WelcomePageTestsMaxFailures);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxCiIntervalMinutes, mSettings.WelcomePageTestsCiIntervalMinutes);
+  Assert.AreEqual('jenkins', mSettings.WelcomePageTestsCiProvider, 'unbekannter Anbieter: Vorgabe');
   // Grenzen wie im Bereich.
-  Assert.AreEqual(TAtlasTestResults.cMinMaxFailures, TAtlasPluginSettings.MinTestFailures);
-  Assert.AreEqual(TAtlasTestResults.cMaxMaxFailures, TAtlasPluginSettings.MaxTestFailures);
-  Assert.AreEqual(TAtlasTestResults.cMinIntervalMinutes, TAtlasPluginSettings.MinCiIntervalMinutes);
-  Assert.AreEqual(TAtlasTestResults.cMaxIntervalMinutes, TAtlasPluginSettings.MaxCiIntervalMinutes);
+  Assert.AreEqual(TAtlasTestResults.cMinMaxFailures, TAtlasPluginSettings.cMinTestFailures);
+  Assert.AreEqual(TAtlasTestResults.cMaxMaxFailures, TAtlasPluginSettings.cMaxTestFailures);
+  Assert.AreEqual(TAtlasTestResults.cMinIntervalMinutes, TAtlasPluginSettings.cMinCiIntervalMinutes);
+  Assert.AreEqual(TAtlasTestResults.cMaxIntervalMinutes, TAtlasPluginSettings.cMaxCiIntervalMinutes);
 end;
 
 procedure TAtlasTestResultsSettingsTests.SaveAndLoadRoundTrip;
 var
-  Store: IAtlasSettingsStore;
-  Saved, Loaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+  mSaved, mLoaded: TAtlasPluginSettings;
 begin
-  Store := TTestsStore.Create;
-  Saved := TAtlasPluginSettings.Defaults;
-  Saved.WelcomePageTests := False;
-  Saved.WelcomePageTestsMaxFailures := 12;
-  Saved.WelcomePageTestsCi := True;
-  Saved.WelcomePageTestsCiIntervalMinutes := 30;
-  Saved.WelcomePageTestsCiNotify := False;
-  Saved.CiLogin := False;
-  Saved.Save(Store);
-  Assert.AreEqual(0, Store.ReadInteger('WelcomePageTests', 1), 'Registry-Name');
-  Assert.AreEqual(12, Store.ReadInteger('WelcomePageTestsMaxFailures', 0));
-  Assert.AreEqual(1, Store.ReadInteger('WelcomePageTestsCi', 0));
-  Assert.AreEqual('jenkins', Store.ReadString('WelcomePageTestsCiProvider', ''));
-  Assert.AreEqual(30, Store.ReadInteger('WelcomePageTestsCiIntervalMinutes', 0));
-  Assert.AreEqual(0, Store.ReadInteger('WelcomePageTestsCiNotify', 1));
-  Assert.AreEqual(0, Store.ReadInteger('CiLogin', 1));
-  Loaded := TAtlasPluginSettings.Defaults;
-  Loaded.Load(Store);
-  Assert.IsFalse(Loaded.WelcomePageTests);
-  Assert.AreEqual(12, Loaded.WelcomePageTestsMaxFailures);
-  Assert.IsTrue(Loaded.WelcomePageTestsCi);
-  Assert.AreEqual(30, Loaded.WelcomePageTestsCiIntervalMinutes);
-  Assert.IsFalse(Loaded.WelcomePageTestsCiNotify);
-  Assert.IsFalse(Loaded.CiLogin);
+  mStore := TTestsStore.Create;
+  mSaved := TAtlasPluginSettings.Defaults;
+  mSaved.WelcomePageTests := False;
+  mSaved.WelcomePageTestsMaxFailures := 12;
+  mSaved.WelcomePageTestsCi := True;
+  mSaved.WelcomePageTestsCiIntervalMinutes := 30;
+  mSaved.WelcomePageTestsCiNotify := False;
+  mSaved.CiLogin := False;
+  mSaved.Save(mStore);
+  Assert.AreEqual(0, mStore.ReadInteger('WelcomePageTests', 1), 'Registry-Name');
+  Assert.AreEqual(12, mStore.ReadInteger('WelcomePageTestsMaxFailures', 0));
+  Assert.AreEqual(1, mStore.ReadInteger('WelcomePageTestsCi', 0));
+  Assert.AreEqual('jenkins', mStore.ReadString('WelcomePageTestsCiProvider', ''));
+  Assert.AreEqual(30, mStore.ReadInteger('WelcomePageTestsCiIntervalMinutes', 0));
+  Assert.AreEqual(0, mStore.ReadInteger('WelcomePageTestsCiNotify', 1));
+  Assert.AreEqual(0, mStore.ReadInteger('CiLogin', 1));
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.WelcomePageTests);
+  Assert.AreEqual(12, mLoaded.WelcomePageTestsMaxFailures);
+  Assert.IsTrue(mLoaded.WelcomePageTestsCi);
+  Assert.AreEqual(30, mLoaded.WelcomePageTestsCiIntervalMinutes);
+  Assert.IsFalse(mLoaded.WelcomePageTestsCiNotify);
+  Assert.IsFalse(mLoaded.CiLogin);
 end;
 
 initialization

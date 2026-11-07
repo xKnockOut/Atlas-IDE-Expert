@@ -361,7 +361,8 @@ begin
   try
     mLines.Add(UiText(TPluginReportText.PluginTimings));
     mLines.Add('');
-    mLines.Add(Format(UiText(TPluginReportText.MeasuringSinceSlowFromMs), [FormatDateTime('hh":"nn":"ss', ASnapshot.Since), ASnapshot.ThresholdMs,
+    mLines.Add(Format(UiText(TPluginReportText.MeasuringSinceSlowFromMs),
+      [FormatDateTime('hh":"nn":"ss', ASnapshot.Since), ASnapshot.ThresholdMs,
       TAtlasPluginRows.Percent(ASnapshot.BusyPercent), Length(ASnapshot.Busy)]));
     mLines.Add('');
     AddFeatures(mLines, ASnapshot);

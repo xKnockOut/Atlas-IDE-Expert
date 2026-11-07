@@ -160,12 +160,12 @@ begin
   mFound := False;
   for mMethod in FDispatcher.Methods do
   begin
-    if mMethod = TLspCommands.Method then
+    if mMethod = TLspCommands.cMethod then
     begin
       mFound := True;
     end;
   end;
-  Assert.IsTrue(mFound, TLspCommands.Method);
+  Assert.IsTrue(mFound, TLspCommands.cMethod);
 end;
 
 procedure TShellCommandAreaTests.CommandsOfPartsListed;
@@ -173,8 +173,8 @@ var
   mText: string;
 begin
   mText := CommandList;
-  Assert.IsTrue(Pos('"' + TShellServerCommands.CompileCommand + '"', mText) > 0, TShellServerCommands.CompileCommand);
-  Assert.IsTrue(Pos('"' + TLspMetrics.Command + '"', mText) > 0, TLspMetrics.Command);
+  Assert.IsTrue(Pos('"' + TShellServerCommands.cCompileCommand + '"', mText) > 0, TShellServerCommands.cCompileCommand);
+  Assert.IsTrue(Pos('"' + TLspMetrics.cCommand + '"', mText) > 0, TLspMetrics.cCommand);
 end;
 
 initialization

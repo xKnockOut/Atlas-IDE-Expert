@@ -28,7 +28,7 @@ type
   TAtlasModuleHosting = class
   public const
     /// <summary>Vorsilbe der Teile in der Feature-Tabelle.</summary>
-    PartPrefix = 'module:';
+    cPartPrefix = 'module:';
   private type
     TPartEntry = record
       Part: IAtlasFeaturePart;
@@ -154,7 +154,7 @@ end;
 
 class function TAtlasModuleHosting.PartName(const AModuleId: string): string;
 begin
-  Result := PartPrefix + AModuleId;
+  Result := cPartPrefix + AModuleId;
 end;
 
 class function TAtlasModuleHosting.IsActiveOf(const AModule: IAtlasModule): TFunc<Boolean>;

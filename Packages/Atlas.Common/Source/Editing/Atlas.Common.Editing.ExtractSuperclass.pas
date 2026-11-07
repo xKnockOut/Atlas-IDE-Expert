@@ -80,7 +80,7 @@ type
 
   TExtractSuperclass = class
   public const
-    Kind = 'refactor.extract';
+    cKind = 'refactor.extract';
   public
     /// <summary>Vorgeschlagener Name: ohne T, ohne erstes Wort bei mehreren, mit ASuffix (TPdfExport →
     /// TExportBase); ASuffix Custom wird Präfix (TCustomExport).</summary>
@@ -168,11 +168,11 @@ end;
 
 function ContainsText(const AList: TArray<string>; const AValue: string): Boolean;
 var
-  Item: string;
+  mItem: string;
 begin
-  for Item in AList do
+  for mItem in AList do
   begin
-    if SameText(Item, AValue) then
+    if SameText(mItem, AValue) then
     begin
       Exit(True);
     end;
@@ -192,30 +192,30 @@ end;
 /// <summary>Wortteile eines Namens in CamelCase (PdfExport → Pdf, Export; HTMLView → HTML, View).</summary>
 function Words(const AName: string): TArray<string>;
 var
-  Index, Start: Integer;
+  mIndex, mStart: Integer;
 begin
   Result := nil;
-  Start := 1;
-  for Index := 2 to Length(AName) do
+  mStart := 1;
+  for mIndex := 2 to Length(AName) do
   begin
-    if CharInSet(AName[Index], ['A'..'Z']) and (CharInSet(AName[Index - 1], ['a'..'z', '0'..'9']) or
-      ((Index < Length(AName)) and CharInSet(AName[Index + 1], ['a'..'z']) and
-      CharInSet(AName[Index - 1], ['A'..'Z']))) then
+    if CharInSet(AName[mIndex], ['A'..'Z']) and (CharInSet(AName[mIndex - 1], ['a'..'z', '0'..'9']) or
+      ((mIndex < Length(AName)) and CharInSet(AName[mIndex + 1], ['a'..'z']) and
+      CharInSet(AName[mIndex - 1], ['A'..'Z']))) then
     begin
-      Result := Result + [Copy(AName, Start, Index - Start)];
-      Start := Index;
+      Result := Result + [Copy(AName, mStart, mIndex - mStart)];
+      mStart := mIndex;
     end;
   end;
-  if Start <= Length(AName) then
+  if mStart <= Length(AName) then
   begin
-    Result := Result + [Copy(AName, Start, MaxInt)];
+    Result := Result + [Copy(AName, mStart, MaxInt)];
   end;
 end;
 
 /// <summary>Namen, die ANode benutzt: Bezeichner und Self.X.</summary>
 procedure CollectNames(ANode: TSyntaxNode; var ANames: TArray<string>);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if ANode = nil then
   begin
@@ -230,9 +230,9 @@ begin
   begin
     ANames := ANames + [ANode.Name];
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    CollectNames(ANode[Index], ANames);
+    CollectNames(ANode[mIndex], ANames);
   end;
 end;
 
@@ -244,7 +244,7 @@ end;
 
 function HasInherited(ANode: TSyntaxNode): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if ANode.Kind = TSyntaxKind.InheritedExpr then
   begin
@@ -253,9 +253,9 @@ begin
   // Nur der Aufruf selbst, nicht Argumente.
   if ANode.Kind in [TSyntaxKind.CallStatement, TSyntaxKind.Call] then
   begin
-    for Index := 0 to ANode.ChildCount - 1 do
+    for mIndex := 0 to ANode.ChildCount - 1 do
     begin
-      if HasInherited(ANode[Index]) then
+      if HasInherited(ANode[mIndex]) then
       begin
         Exit(True);
       end;
@@ -299,12 +299,12 @@ end;
 /// <summary>Steht die Anweisung allein auf ihren Zeilen (davor nur Leerraum, dahinter höchstens ";")?</summary>
 function WholeLines(ALayout: TClassLayout; ANode: TSyntaxNode): Boolean;
 var
-  First, Last: string;
+  mFirst, mLast: string;
 begin
-  First := ALayout.Lines[ANode.StartPos.Line];
-  Last := ALayout.Lines[ANode.EndPos.Line];
-  Result := (Trim(Copy(First, 1, ANode.StartPos.Character)) = '') and
-    MatchText(Trim(Copy(Last, ANode.EndPos.Character + 1, MaxInt)), ['', ';']);
+  mFirst := ALayout.Lines[ANode.StartPos.Line];
+  mLast := ALayout.Lines[ANode.EndPos.Line];
+  Result := (Trim(Copy(mFirst, 1, ANode.StartPos.Character)) = '') and
+    MatchText(Trim(Copy(mLast, ANode.EndPos.Character + 1, MaxInt)), ['', ';']);
 end;
 
 function BlockOf(ABody: TSyntaxNode): TSyntaxNode;
@@ -472,67 +472,67 @@ end;
 /// <summary>Deklaration eines aufgeteilten Konstruktors bzw. Destruktors für oben (wie unten).</summary>
 function SplitDeclaration(ALayout: TClassLayout; AIndex: Integer): string;
 var
-  Directive: string;
+  mDirective: string;
 begin
   Result := ALayout.Head(AIndex);
-  for Directive in TMemberTransfer.DirectiveTexts(ALayout, ALayout.Members[AIndex].Node) do
+  for mDirective in TMemberTransfer.DirectiveTexts(ALayout, ALayout.Members[AIndex].Node) do
   begin
-    Result := Result + ' ' + Directive + ';';
+    Result := Result + ' ' + mDirective + ';';
   end;
 end;
 
 /// <summary>Typparameter ohne Einschränkungen ("&lt;T: class; U&gt;" → "&lt;T, U&gt;"); '' ohne.</summary>
 function GenericArgs(const AParams: string): string;
 var
-  Inner, Part, Name: string;
-  Names: TArray<string>;
+  mInner, mPart, mName: string;
+  mNames: TArray<string>;
 begin
   if AParams = '' then
   begin
     Exit('');
   end;
-  Inner := Copy(AParams, 2, Length(AParams) - 2);
-  Names := nil;
-  for Part in Inner.Split([',', ';']) do
+  mInner := Copy(AParams, 2, Length(AParams) - 2);
+  mNames := nil;
+  for mPart in mInner.Split([',', ';']) do
   begin
-    Name := Trim(Part);
-    if Pos(':', Name) > 0 then
+    mName := Trim(mPart);
+    if Pos(':', mName) > 0 then
     begin
-      Name := Trim(Copy(Name, 1, Pos(':', Name) - 1));
+      mName := Trim(Copy(mName, 1, Pos(':', mName) - 1));
     end;
-    if IsIdentifier(Name) then
+    if IsIdentifier(mName) then
     begin
-      Names := Names + [Name];
+      mNames := mNames + [mName];
     end;
   end;
-  Result := '<' + string.Join(', ', Names) + '>';
+  Result := '<' + string.Join(', ', mNames) + '>';
 end;
 
 /// <summary>Kopf eines Rumpfs mit ABaseName statt des Klassennamens.</summary>
 function BodyHeader(ALayout: TClassLayout; AIndex: Integer; const ABaseName: string): string;
 var
-  Body, Header: TSyntaxNode;
-  Text: string;
-  Position: Integer;
+  mBody, mHeader: TSyntaxNode;
+  mText: string;
+  mPosition: Integer;
 begin
-  Body := ALayout.Members[AIndex].Body;
-  Header := Body.FindChild(TSyntaxKind.RoutineHeader);
-  Text := Copy(ALayout.Text, Body.StartOffset + 1, Header.EndOffset - Body.StartOffset);
-  if not Text.EndsWith(';') then
+  mBody := ALayout.Members[AIndex].Body;
+  mHeader := mBody.FindChild(TSyntaxKind.RoutineHeader);
+  mText := Copy(ALayout.Text, mBody.StartOffset + 1, mHeader.EndOffset - mBody.StartOffset);
+  if not mText.EndsWith(';') then
   begin
-    Text := Text + ';';
+    mText := mText + ';';
   end;
   // Der erste Klassenname vor dem Punkt.
-  Position := Pos(LowerCase(ALayout.Name) + '.', LowerCase(Text));
-  if Position = 0 then
+  mPosition := Pos(LowerCase(ALayout.Name) + '.', LowerCase(mText));
+  if mPosition = 0 then
   begin
-    Position := Pos(LowerCase(ALayout.Name) + '<', LowerCase(Text));
+    mPosition := Pos(LowerCase(ALayout.Name) + '<', LowerCase(mText));
   end;
-  if Position > 0 then
+  if mPosition > 0 then
   begin
-    Text := Copy(Text, 1, Position - 1) + ABaseName + Copy(Text, Position + Length(ALayout.Name), MaxInt);
+    mText := Copy(mText, 1, mPosition - 1) + ABaseName + Copy(mText, mPosition + Length(ALayout.Name), MaxInt);
   end;
-  Result := Text;
+  Result := mText;
 end;
 
 /// <summary>Ein aufgeteilter Konstruktor bzw. Destruktor benutzt AName nur noch, wenn die bleibenden Anweisungen
@@ -559,22 +559,22 @@ end;
 
 class function TExtractSuperclass.SuggestName(const AClassName, ASuffix: string): string;
 var
-  Parts: TArray<string>;
-  Rest: string;
+  mParts: TArray<string>;
+  mRest: string;
 begin
-  Rest := StripT(AClassName);
-  Parts := Words(Rest);
-  if Length(Parts) > 1 then
+  mRest := StripT(AClassName);
+  mParts := Words(mRest);
+  if Length(mParts) > 1 then
   begin
-    Rest := string.Join('', Copy(Parts, 1, MaxInt));
+    mRest := string.Join('', Copy(mParts, 1, MaxInt));
   end;
   if SameText(ASuffix, 'Custom') then
   begin
-    Result := 'TCustom' + Rest;
+    Result := 'TCustom' + mRest;
   end
   else
   begin
-    Result := 'T' + Rest + ASuffix;
+    Result := 'T' + mRest + ASuffix;
   end;
 end;
 

@@ -64,31 +64,31 @@ end;
 /// Build, TODOs ab dem zweiten.</summary>
 function TrendSummary(const AProject: string; const AHints: array of Integer): TAtlasProjectSummary;
 var
-  Index: Integer;
-  Stamp: TDateTime;
+  mIndex: Integer;
+  mStamp: TDateTime;
 begin
   Result := TAtlasProjectSummary.Create(AProject);
-  for Index := 0 to High(AHints) do
+  for mIndex := 0 to High(AHints) do
   begin
-    Stamp := EncodeDateTime(2026, 10, 10 + Index, 9, 30, 0, 0);
+    mStamp := EncodeDateTime(2026, 10, 10 + mIndex, 9, 30, 0, 0);
     Result.Build := TAtlasProjectBuild.Empty;
     Result.Build.Known := True;
-    Result.Build.At := Stamp;
-    Result.Build.Hints := AHints[Index];
+    Result.Build.At := mStamp;
+    Result.Build.Hints := AHints[mIndex];
     Result.Build.DurationMs := 12480;
     Result.Vcs := TAtlasProjectVcs.Empty;
     Result.Vcs.Known := True;
     Result.Vcs.Kind := 'git';
     Result.Vcs.Branch := 'main';
-    Result.Vcs.Revision := Format('1a2b3c%dd5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b', [Index]);
-    if Index > 0 then
+    Result.Vcs.Revision := Format('1a2b3c%dd5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b', [mIndex]);
+    if mIndex > 0 then
     begin
       Result.Todos := TAtlasProjectTodos.Empty;
       Result.Todos.Known := True;
-      Result.Todos.At := Stamp;
+      Result.Todos.At := mStamp;
       Result.Todos.Open := 7;
     end;
-    TAtlasProjectTrendLog.Append(Result, Stamp, 30);
+    TAtlasProjectTrendLog.Append(Result, mStamp, 30);
   end;
 end;
 function TrendsFrame(AHost: TForm; const ASource: IAtlasTrendsSource): TAtlasWelcomeTrendsFrame;
@@ -102,35 +102,35 @@ end;
 
 procedure TAtlasWelcomeTrendsFrameTests.TextsShowValueAndPrevious;
 var
-  Saved: TAtlasLanguage;
-  View: TAtlasTrendView;
-  Tile: TAtlasTrendTile;
+  mSaved: TAtlasLanguage;
+  mView: TAtlasTrendView;
+  mTile: TAtlasTrendTile;
 begin
-  Saved := TAtlasStrings.Language;
+  mSaved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
-    View := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [12, 9, 6, 3, 0]),
-      TAtlasWelcomeTrends.ParseSeries(TAtlasWelcomeTrends.DefaultSeries), 30);
-    Assert.AreEqual(5, Integer(Length(View.Tiles)));
-    Tile := View.Tiles[0];
-    Assert.AreEqual('0', TAtlasWelcomeTrendsFrame.ValueLine(Tile));
-    Assert.AreEqual('vorher 3', TAtlasWelcomeTrendsFrame.PreviousLine(Tile));
+    mView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [12, 9, 6, 3, 0]),
+      TAtlasWelcomeTrends.ParseSeries(TAtlasWelcomeTrends.cDefaultSeries), 30);
+    Assert.AreEqual(5, Integer(Length(mView.Tiles)));
+    mTile := mView.Tiles[0];
+    Assert.AreEqual('0', TAtlasWelcomeTrendsFrame.ValueLine(mTile));
+    Assert.AreEqual('vorher 3', TAtlasWelcomeTrendsFrame.PreviousLine(mTile));
     // Regeltreffer ohne Baseline: kein Wert statt 0, kein Vorwert.
-    Tile := View.Tiles[1];
+    mTile := mView.Tiles[1];
     Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoValue),
-      TAtlasWelcomeTrendsFrame.ValueLine(Tile));
-    Assert.AreEqual('', TAtlasWelcomeTrendsFrame.PreviousLine(Tile));
-    Assert.AreEqual('7', TAtlasWelcomeTrendsFrame.ValueLine(View.Tiles[2]));
-    Assert.AreEqual('12,5 s', TAtlasWelcomeTrendsFrame.ValueLine(View.Tiles[3]));
-    Assert.AreEqual('vorher 12,5 s', TAtlasWelcomeTrendsFrame.PreviousLine(View.Tiles[3]));
+      TAtlasWelcomeTrendsFrame.ValueLine(mTile));
+    Assert.AreEqual('', TAtlasWelcomeTrendsFrame.PreviousLine(mTile));
+    Assert.AreEqual('7', TAtlasWelcomeTrendsFrame.ValueLine(mView.Tiles[2]));
+    Assert.AreEqual('12,5 s', TAtlasWelcomeTrendsFrame.ValueLine(mView.Tiles[3]));
+    Assert.AreEqual('vorher 12,5 s', TAtlasWelcomeTrendsFrame.PreviousLine(mView.Tiles[3]));
     Assert.AreEqual('11,8 Zeilen', TAtlasWelcomeTrendsFrame.ValueWithUnit(TAtlasTrendSeries.MethodLength, 118));
     Assert.AreEqual('Projektverlauf', TAtlasWelcomeTrendsFrame.TitleText);
     Assert.AreEqual('Warnungen + Hinweise', TAtlasWelcomeTrendsFrame.SeriesTitle(TAtlasTrendSeries.Warnings));
     TAtlasStrings.Language := TAtlasLanguage.English;
     Assert.AreEqual('11.8 lines', TAtlasWelcomeTrendsFrame.ValueWithUnit(TAtlasTrendSeries.MethodLength, 118));
-    Assert.AreEqual('before 3', TAtlasWelcomeTrendsFrame.PreviousLine(View.Tiles[0]));
+    Assert.AreEqual('before 3', TAtlasWelcomeTrendsFrame.PreviousLine(mView.Tiles[0]));
   finally
-    TAtlasStrings.Language := Saved;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 /// <summary>Klick auf Punkt APoint der Kachel ATile (-1: daneben).</summary>
@@ -144,183 +144,183 @@ begin
 end;
 procedure TAtlasWelcomeTrendsFrameTests.ClickShowsBuild;
 var
-  Saved: TAtlasLanguage;
-  Host: TForm;
-  Fake: TFakeTrends;
-  Source: IAtlasTrendsSource;
-  Frame: TAtlasWelcomeTrendsFrame;
-  Info: string;
+  mSaved: TAtlasLanguage;
+  mHost: TForm;
+  mFake: TFakeTrends;
+  mSource: IAtlasTrendsSource;
+  mFrame: TAtlasWelcomeTrendsFrame;
+  mInfo: string;
 begin
-  Saved := TAtlasStrings.Language;
-  Fake := TFakeTrends.Create;
-  Source := Fake;
-  Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [12, 9, 6, 3, 0]),
-    TAtlasWelcomeTrends.ParseSeries(TAtlasWelcomeTrends.DefaultSeries), 30);
-  Host := TForm.CreateNew(nil);
+  mSaved := TAtlasStrings.Language;
+  mFake := TFakeTrends.Create;
+  mSource := mFake;
+  mFake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [12, 9, 6, 3, 0]),
+    TAtlasWelcomeTrends.ParseSeries(TAtlasWelcomeTrends.cDefaultSeries), 30);
+  mHost := TForm.CreateNew(nil);
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
-    Frame := TrendsFrame(Host, Source);
-    Assert.AreEqual('Kasse · letzte 30 Builds', Frame.HeadingText);
-    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsClickHint), Frame.InfoText,
+    mFrame := TrendsFrame(mHost, mSource);
+    Assert.AreEqual('Kasse · letzte 30 Builds', mFrame.HeadingText);
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsClickHint), mFrame.InfoText,
       'vor dem Klick');
-    ClickTrendPoint(Frame, 0, 2);
-    Assert.AreEqual(2, Frame.ChosenPoint);
-    Assert.AreEqual(0, Frame.ChosenTile);
-    Info := Frame.InfoText;
-    Assert.Contains(Info, 'Build 3 von 5', 'Position wie im Mockup');
-    Assert.IsFalse(Info.Contains('Nr.'), 'laufende Nummer gleich der Position: nicht doppelt');
-    Assert.Contains(Info, TAtlasWelcomeTrendsFrame.LocalText(Fake.FView.Points[2].At), 'Datum');
-    Assert.Contains(Info, 'main', 'Branch');
-    Assert.Contains(Info, '1a2b3c2', 'Commit gekürzt');
-    Assert.Contains(Info, 'Warnungen + Hinweise: 6', 'Wert');
+    ClickTrendPoint(mFrame, 0, 2);
+    Assert.AreEqual(2, mFrame.ChosenPoint);
+    Assert.AreEqual(0, mFrame.ChosenTile);
+    mInfo := mFrame.InfoText;
+    Assert.Contains(mInfo, 'Build 3 von 5', 'Position wie im Mockup');
+    Assert.IsFalse(mInfo.Contains('Nr.'), 'laufende Nummer gleich der Position: nicht doppelt');
+    Assert.Contains(mInfo, TAtlasWelcomeTrendsFrame.LocalText(mFake.FView.Points[2].At), 'Datum');
+    Assert.Contains(mInfo, 'main', 'Branch');
+    Assert.Contains(mInfo, '1a2b3c2', 'Commit gekürzt');
+    Assert.Contains(mInfo, 'Warnungen + Hinweise: 6', 'Wert');
     // Lücke: kein Wert.
-    ClickTrendPoint(Frame, 2, 0);
-    Assert.Contains(Frame.InfoText,
+    ClickTrendPoint(mFrame, 2, 0);
+    Assert.Contains(mFrame.InfoText,
       'Offene TODOs: ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoValue));
     // Daneben: nichts ändert sich.
-    ClickTrendPoint(Frame, -1, -1);
-    Assert.Contains(Frame.InfoText, 'Offene TODOs');
+    ClickTrendPoint(mFrame, -1, -1);
+    Assert.Contains(mFrame.InfoText, 'Offene TODOs');
     // Neu laden (gleiches Projekt, neuer Build): Auswahl bleibt am Build.
-    Frame.UpdateContent;
-    Assert.AreEqual(0, Frame.ChosenPoint);
+    mFrame.UpdateContent;
+    Assert.AreEqual(0, mFrame.ChosenPoint);
     // Nur die letzten 3 Builds gezeigt: Position in der Reihe, dazu die laufende Nummer.
-    Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [12, 9, 6, 3, 0]),
+    mFake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [12, 9, 6, 3, 0]),
       [TAtlasTrendSeries.Warnings], 3);
-    Frame.UpdateContent;
-    ClickTrendPoint(Frame, 0, 0);
-    Assert.Contains(Frame.InfoText, 'Build 1 von 3 · Nr. 3 · ');
-    Info := TAtlasWelcomeTrendsFrame.PointInfo(Frame.View, 0, 0, False);
-    Assert.Contains(Info, 'Build 1 von 3 · ');
-    Assert.IsFalse(Info.Contains('Nr.'), 'ohne Platz ohne laufende Nummer');
-    Assert.Contains(Info, 'Warnungen + Hinweise: 6');
+    mFrame.UpdateContent;
+    ClickTrendPoint(mFrame, 0, 0);
+    Assert.Contains(mFrame.InfoText, 'Build 1 von 3 · Nr. 3 · ');
+    mInfo := TAtlasWelcomeTrendsFrame.PointInfo(mFrame.View, 0, 0, False);
+    Assert.Contains(mInfo, 'Build 1 von 3 · ');
+    Assert.IsFalse(mInfo.Contains('Nr.'), 'ohne Platz ohne laufende Nummer');
+    Assert.Contains(mInfo, 'Warnungen + Hinweise: 6');
   finally
-    Host.Free;
-    TAtlasStrings.Language := Saved;
+    mHost.Free;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 procedure TAtlasWelcomeTrendsFrameTests.OtherProjectResetsChoice;
 var
-  Host: TForm;
-  Fake: TFakeTrends;
-  Source: IAtlasTrendsSource;
-  Frame: TAtlasWelcomeTrendsFrame;
-  Hit: TAtlasTrendsHit;
+  mHost: TForm;
+  mFake: TFakeTrends;
+  mSource: IAtlasTrendsSource;
+  mFrame: TAtlasWelcomeTrendsFrame;
+  mHit: TAtlasTrendsHit;
 begin
-  Fake := TFakeTrends.Create;
-  Source := Fake;
-  Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Eins.dproj', [1, 2, 3]),
+  mFake := TFakeTrends.Create;
+  mSource := mFake;
+  mFake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Eins.dproj', [1, 2, 3]),
     [TAtlasTrendSeries.Warnings], 30);
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TrendsFrame(Host, Source);
-    Hit.Tile := 0;
-    Hit.Point := 1;
-    Frame.ClickAt(Hit);
-    Assert.AreEqual(1, Frame.ChosenPoint);
-    Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Zwei.dproj', [8, 4]), [TAtlasTrendSeries.Warnings], 30);
-    Frame.UpdateContent;
-    Assert.AreEqual('C:\P\Zwei.dproj', Frame.View.Project);
-    Assert.AreEqual(2, Integer(Length(Frame.View.Points)));
-    Assert.AreEqual(-1, Frame.ChosenPoint, 'Punkt gehörte zum anderen Projekt');
-    Assert.AreEqual(40, Frame.View.Tiles[0].Last);
+    mFrame := TrendsFrame(mHost, mSource);
+    mHit.Tile := 0;
+    mHit.Point := 1;
+    mFrame.ClickAt(mHit);
+    Assert.AreEqual(1, mFrame.ChosenPoint);
+    mFake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Zwei.dproj', [8, 4]), [TAtlasTrendSeries.Warnings], 30);
+    mFrame.UpdateContent;
+    Assert.AreEqual('C:\P\Zwei.dproj', mFrame.View.Project);
+    Assert.AreEqual(2, Integer(Length(mFrame.View.Points)));
+    Assert.AreEqual(-1, mFrame.ChosenPoint, 'Punkt gehörte zum anderen Projekt');
+    Assert.AreEqual(40, mFrame.View.Tiles[0].Last);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 procedure TAtlasWelcomeTrendsFrameTests.HitTestFindsPoints;
 var
-  Host: TForm;
-  Fake: TFakeTrends;
-  Source: IAtlasTrendsSource;
-  Frame: TAtlasWelcomeTrendsFrame;
-  Tile, Spark: TRect;
-  Hit: TAtlasTrendsHit;
+  mHost: TForm;
+  mFake: TFakeTrends;
+  mSource: IAtlasTrendsSource;
+  mFrame: TAtlasWelcomeTrendsFrame;
+  mTile, mSpark: TRect;
+  mHit: TAtlasTrendsHit;
 begin
-  Fake := TFakeTrends.Create;
-  Source := Fake;
-  Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [12, 9, 6, 3, 0]),
+  mFake := TFakeTrends.Create;
+  mSource := mFake;
+  mFake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [12, 9, 6, 3, 0]),
     [TAtlasTrendSeries.Warnings, TAtlasTrendSeries.Todos], 30);
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TrendsFrame(Host, Source);
-    Tile := Frame.TileRect(1, Frame.ClientWidth);
-    Spark := Frame.SparkRect(Tile);
-    Hit := Frame.HitTest(Spark.Left, Spark.Top + Spark.Height div 2);
-    Assert.AreEqual(1, Hit.Tile);
-    Assert.AreEqual(0, Hit.Point);
-    Hit := Frame.HitTest(Spark.Right, Spark.Bottom);
-    Assert.AreEqual(4, Hit.Point, 'letzter Punkt rechts');
-    Hit := Frame.HitTest(Tile.Left + 4, Tile.Top + 4);
-    Assert.AreEqual(1, Hit.Tile, 'Bezeichnung: Kachel, aber kein Punkt');
-    Assert.AreEqual(-1, Hit.Point);
-    Hit := Frame.HitTest(2, 2);
-    Assert.AreEqual(-1, Hit.Tile, 'Kopfzeile');
+    mFrame := TrendsFrame(mHost, mSource);
+    mTile := mFrame.TileRect(1, mFrame.ClientWidth);
+    mSpark := mFrame.SparkRect(mTile);
+    mHit := mFrame.HitTest(mSpark.Left, mSpark.Top + mSpark.Height div 2);
+    Assert.AreEqual(1, mHit.Tile);
+    Assert.AreEqual(0, mHit.Point);
+    mHit := mFrame.HitTest(mSpark.Right, mSpark.Bottom);
+    Assert.AreEqual(4, mHit.Point, 'letzter Punkt rechts');
+    mHit := mFrame.HitTest(mTile.Left + 4, mTile.Top + 4);
+    Assert.AreEqual(1, mHit.Tile, 'Bezeichnung: Kachel, aber kein Punkt');
+    Assert.AreEqual(-1, mHit.Point);
+    mHit := mFrame.HitTest(2, 2);
+    Assert.AreEqual(-1, mHit.Tile, 'Kopfzeile');
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 procedure TAtlasWelcomeTrendsFrameTests.EmptyStates;
 var
-  Saved: TAtlasLanguage;
-  Host: TForm;
-  Fake: TFakeTrends;
-  Source: IAtlasTrendsSource;
-  Frame: TAtlasWelcomeTrendsFrame;
+  mSaved: TAtlasLanguage;
+  mHost: TForm;
+  mFake: TFakeTrends;
+  mSource: IAtlasTrendsSource;
+  mFrame: TAtlasWelcomeTrendsFrame;
 begin
-  Saved := TAtlasStrings.Language;
-  Fake := TFakeTrends.Create;
-  Source := Fake;
-  Host := TForm.CreateNew(nil);
+  mSaved := TAtlasStrings.Language;
+  mFake := TFakeTrends.Create;
+  mSource := mFake;
+  mHost := TForm.CreateNew(nil);
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
-    Frame := TrendsFrame(Host, Source);
-    Assert.AreEqual('', Frame.HeadingText);
-    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoProject), Frame.InfoText);
-    Assert.IsTrue(Frame.PreferredHeight > 0);
-    Fake.FView := TAtlasWelcomeTrends.View(TAtlasProjectSummary.Create('C:\P\Neu.dproj'),
+    mFrame := TrendsFrame(mHost, mSource);
+    Assert.AreEqual('', mFrame.HeadingText);
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoProject), mFrame.InfoText);
+    Assert.IsTrue(mFrame.PreferredHeight > 0);
+    mFake.FView := TAtlasWelcomeTrends.View(TAtlasProjectSummary.Create('C:\P\Neu.dproj'),
       [TAtlasTrendSeries.Warnings], 30);
-    Frame.UpdateContent;
-    Assert.Contains(Frame.InfoText, 'Neu:');
-    Assert.AreEqual(-1, Frame.HitTest(20, 60).Tile, 'ohne Punkte keine Kacheln');
-    Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [1, 2]), nil, 30);
-    Frame.UpdateContent;
-    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoSeries), Frame.InfoText);
+    mFrame.UpdateContent;
+    Assert.Contains(mFrame.InfoText, 'Neu:');
+    Assert.AreEqual(-1, mFrame.HitTest(20, 60).Tile, 'ohne Punkte keine Kacheln');
+    mFake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [1, 2]), nil, 30);
+    mFrame.UpdateContent;
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoSeries), mFrame.InfoText);
   finally
-    Host.Free;
-    TAtlasStrings.Language := Saved;
+    mHost.Free;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 procedure TAtlasWelcomeTrendsFrameTests.TilesWrapByWidth;
 var
-  Host: TForm;
-  Fake: TFakeTrends;
-  Source: IAtlasTrendsSource;
-  Frame: TAtlasWelcomeTrendsFrame;
-  Wide, Narrow, One: Integer;
+  mHost: TForm;
+  mFake: TFakeTrends;
+  mSource: IAtlasTrendsSource;
+  mFrame: TAtlasWelcomeTrendsFrame;
+  mWide, mNarrow, mOne: Integer;
 begin
-  Fake := TFakeTrends.Create;
-  Source := Fake;
-  Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [3, 2, 1]),
-    TAtlasWelcomeTrends.ParseSeries(TAtlasWelcomeTrends.DefaultSeries), 30);
-  Host := TForm.CreateNew(nil);
+  mFake := TFakeTrends.Create;
+  mSource := mFake;
+  mFake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [3, 2, 1]),
+    TAtlasWelcomeTrends.ParseSeries(TAtlasWelcomeTrends.cDefaultSeries), 30);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TrendsFrame(Host, Source);
-    Frame.Width := Frame.ScaleValue(900);
-    Wide := Frame.PreferredHeight;
-    Frame.Width := Frame.ScaleValue(340);
-    Narrow := Frame.PreferredHeight;
-    Assert.IsTrue(Narrow > Wide, Format('breit %d, schmal %d', [Wide, Narrow]));
-    Assert.AreEqual(Frame.TileRect(0, Frame.ScaleValue(900)).Top, Frame.TileRect(4, Frame.ScaleValue(900)).Top,
+    mFrame := TrendsFrame(mHost, mSource);
+    mFrame.Width := mFrame.ScaleValue(900);
+    mWide := mFrame.PreferredHeight;
+    mFrame.Width := mFrame.ScaleValue(340);
+    mNarrow := mFrame.PreferredHeight;
+    Assert.IsTrue(mNarrow > mWide, Format('breit %d, schmal %d', [mWide, mNarrow]));
+    Assert.AreEqual(mFrame.TileRect(0, mFrame.ScaleValue(900)).Top, mFrame.TileRect(4, mFrame.ScaleValue(900)).Top,
       'breit: eine Reihe');
-    Assert.IsTrue(Frame.TileRect(2, Frame.ScaleValue(340)).Top > Frame.TileRect(0, Frame.ScaleValue(340)).Top,
+    Assert.IsTrue(mFrame.TileRect(2, mFrame.ScaleValue(340)).Top > mFrame.TileRect(0, mFrame.ScaleValue(340)).Top,
       'schmal: umgebrochen');
-    Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [3, 2, 1]),
+    mFake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [3, 2, 1]),
       [TAtlasTrendSeries.Todos], 30);
-    Frame.UpdateContent;
-    One := Frame.PreferredHeight;
-    Assert.IsTrue(One < Narrow, 'eine Reihe weniger Kacheln');
+    mFrame.UpdateContent;
+    mOne := mFrame.PreferredHeight;
+    Assert.IsTrue(mOne < mNarrow, 'eine Reihe weniger Kacheln');
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 

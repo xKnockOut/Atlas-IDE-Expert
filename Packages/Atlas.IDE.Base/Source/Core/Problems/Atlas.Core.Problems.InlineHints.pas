@@ -41,9 +41,9 @@ type
 
   TAtlasInlineDiagnostics = class
   public const
-    MaxChars = 120;
-    PauseMs = 1000;
-    ModeNames: array[TAtlasInlineDiagnosticsMode] of string = ('off', 'errors', 'errorsAndWarnings', 'all');
+    cMaxChars = 120;
+    cPauseMs = 1000;
+    cModeNames: array[TAtlasInlineDiagnosticsMode] of string = ('off', 'errors', 'errorsAndWarnings', 'all');
   public
     /// <summary>Modus aus dem Namen der Einstellung (ohne Groß-/Kleinschreibung); Unbekanntes = Errors.</summary>
     class function ModeOf(const AName: string): TAtlasInlineDiagnosticsMode; static;
@@ -79,9 +79,9 @@ begin
 end;
 
 /// <summary>Liegt A vor B (Zeile, dann Zeichen)?</summary>
-function Before(ALine, ACharacter, BLine, BCharacter: Integer): Boolean;
+function Before(ALine, ACharacter, ABLine, ABCharacter: Integer): Boolean;
 begin
-  Result := (ALine < BLine) or ((ALine = BLine) and (ACharacter < BCharacter));
+  Result := (ALine < ABLine) or ((ALine = ABLine) and (ACharacter < ABCharacter));
 end;
 
 { TAtlasProblemCounts }
@@ -95,13 +95,13 @@ end;
 
 class function TAtlasInlineDiagnostics.ModeOf(const AName: string): TAtlasInlineDiagnosticsMode;
 var
-  Mode: TAtlasInlineDiagnosticsMode;
+  mMode: TAtlasInlineDiagnosticsMode;
 begin
-  for Mode := Low(TAtlasInlineDiagnosticsMode) to High(TAtlasInlineDiagnosticsMode) do
+  for mMode := Low(TAtlasInlineDiagnosticsMode) to High(TAtlasInlineDiagnosticsMode) do
   begin
-    if SameText(Trim(AName), ModeNames[Mode]) then
+    if SameText(Trim(AName), cModeNames[mMode]) then
     begin
-      Exit(Mode);
+      Exit(mMode);
     end;
   end;
   Result := TAtlasInlineDiagnosticsMode.Errors;
@@ -109,7 +109,7 @@ end;
 
 class function TAtlasInlineDiagnostics.ModeName(AMode: TAtlasInlineDiagnosticsMode): string;
 begin
-  Result := ModeNames[AMode];
+  Result := cModeNames[AMode];
 end;
 
 class function TAtlasInlineDiagnostics.Shows(AMode: TAtlasInlineDiagnosticsMode;
@@ -130,47 +130,47 @@ end;
 class function TAtlasInlineDiagnostics.Pick(const AProblems: TArray<TAtlasProblem>; ALine: Integer;
   AMode: TAtlasInlineDiagnosticsMode; out AResult: TAtlasInlineDiagnostic): Boolean;
 var
-  Problem: TAtlasProblem;
-  Count: Integer;
+  mProblem: TAtlasProblem;
+  mCount: Integer;
 begin
   AResult := Default(TAtlasInlineDiagnostic);
-  Count := 0;
-  for Problem in AProblems do
+  mCount := 0;
+  for mProblem in AProblems do
   begin
-    if (Problem.StartLine <> ALine) or not IsFinding(Problem) or not Shows(AMode, Problem.Severity) then
+    if (mProblem.StartLine <> ALine) or not IsFinding(mProblem) or not Shows(AMode, mProblem.Severity) then
     begin
       Continue;
     end;
     // Bei gleichem Schweregrad gewinnt die erste (weiter links).
-    if (Count = 0) or (Rank(Problem.Severity) < Rank(AResult.Problem.Severity)) or
-      ((Rank(Problem.Severity) = Rank(AResult.Problem.Severity)) and
-      (Problem.StartCharacter < AResult.Problem.StartCharacter)) then
+    if (mCount = 0) or (Rank(mProblem.Severity) < Rank(AResult.Problem.Severity)) or
+      ((Rank(mProblem.Severity) = Rank(AResult.Problem.Severity)) and
+      (mProblem.StartCharacter < AResult.Problem.StartCharacter)) then
     begin
-      AResult.Problem := Problem;
+      AResult.Problem := mProblem;
     end;
-    Inc(Count);
+    Inc(mCount);
   end;
-  Result := Count > 0;
+  Result := mCount > 0;
   if Result then
   begin
-    AResult.More := Count - 1;
+    AResult.More := mCount - 1;
   end;
 end;
 
 class function TAtlasInlineDiagnostics.Caption(const ADiagnostic: TAtlasInlineDiagnostic): string;
 var
-  Cut: Integer;
+  mCut: Integer;
 begin
   Result := ADiagnostic.Problem.Message;
-  Cut := Pos(#10, Result);
-  if Cut > 0 then
+  mCut := Pos(#10, Result);
+  if mCut > 0 then
   begin
-    Result := Copy(Result, 1, Cut - 1);
+    Result := Copy(Result, 1, mCut - 1);
   end;
   Result := Trim(StringReplace(Result, #13, '', [rfReplaceAll]));
-  if Length(Result) > MaxChars then
+  if Length(Result) > cMaxChars then
   begin
-    Result := TrimRight(Copy(Result, 1, MaxChars - 1)) + '…';
+    Result := TrimRight(Copy(Result, 1, cMaxChars - 1)) + '…';
   end;
   if ADiagnostic.More > 0 then
   begin
@@ -180,16 +180,16 @@ end;
 
 class function TAtlasInlineDiagnostics.Counts(const AProblems: TArray<TAtlasProblem>): TAtlasProblemCounts;
 var
-  Problem: TAtlasProblem;
+  mProblem: TAtlasProblem;
 begin
   Result := Default(TAtlasProblemCounts);
-  for Problem in AProblems do
+  for mProblem in AProblems do
   begin
-    if Problem.IsCompiler or not IsFinding(Problem) then
+    if mProblem.IsCompiler or not IsFinding(mProblem) then
     begin
       Continue;
     end;
-    case Problem.Severity of
+    case mProblem.Severity of
       TAtlasProblemSeverity.Error:
         Inc(Result.Errors);
       TAtlasProblemSeverity.Warning:
@@ -254,7 +254,7 @@ end;
 class function TAtlasInlineDiagnostics.PauseOver(ATypedAt, ANow: Cardinal): Boolean;
 begin
   // Cardinal-Arithmetik übersteht den Überlauf von GetTickCount.
-  Result := (ATypedAt = 0) or (Cardinal(ANow - ATypedAt) >= PauseMs);
+  Result := (ATypedAt = 0) or (Cardinal(ANow - ATypedAt) >= cPauseMs);
 end;
 
 end.

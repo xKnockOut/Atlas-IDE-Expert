@@ -13,13 +13,13 @@ uses
 type
   TLineLengthRule = class(TInterfacedObject, IRule)
   public const
-    DefaultMax = 120;
+    cDefaultMax = 120;
     /// <summary>Grenze aus dem Text von F2069. Delphi 13 übersetzt in der IDE auch Zeilen mit 1222 Zeichen
     /// (#1383, Cm.F2069b/d); welche Version und welcher Aufruf hier abbricht, ist offen: darüber eine Warnung.
     /// </summary>
-    CompilerLimit = 1023;
+    cCompilerLimit = 1023;
     /// <summary>Längere Zeilen lehnt auch Delphi 13 ab (F2069, Cm.F2069c).</summary>
-    HardLimit = 4095;
+    cHardLimit = 4095;
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -110,10 +110,10 @@ constructor TLineScanner.Create(const AContext: TRuleContext; const AReport: IRu
 begin
   inherited Create;
   FReport := AReport;
-  FMaxLength := TRuleOptions.Int(AContext.Options, 'max', TLineLengthRule.DefaultMax);
+  FMaxLength := TRuleOptions.Int(AContext.Options, 'max', TLineLengthRule.cDefaultMax);
   if FMaxLength <= 0 then
   begin
-    FMaxLength := TLineLengthRule.DefaultMax;
+    FMaxLength := TLineLengthRule.cDefaultMax;
   end;
   FIgnoreStrings := TRuleOptions.Bool(AContext.Options, 'ignoreStrings', True);
   FIgnoreComments := TRuleOptions.Bool(AContext.Options, 'ignoreComments', False);
@@ -133,18 +133,18 @@ end;
 
 procedure TLineScanner.IndexTokens;
 var
-  Index, Line: Integer;
+  mIndex, mLine: Integer;
 begin
   SetLength(FByLine, Length(FLines));
   SetLength(FSpanned, Length(FLines));
-  for Index := 0 to High(FTokens) do
+  for mIndex := 0 to High(FTokens) do
   begin
-    for Line := Max(FTokens[Index].StartPos.Line, 0) to Min(FTokens[Index].EndPos.Line, High(FLines)) do
+    for mLine := Max(FTokens[mIndex].StartPos.Line, 0) to Min(FTokens[mIndex].EndPos.Line, High(FLines)) do
     begin
-      FByLine[Line] := FByLine[Line] + [Index];
-      if Line > FTokens[Index].StartPos.Line then
+      FByLine[mLine] := FByLine[mLine] + [mIndex];
+      if mLine > FTokens[mIndex].StartPos.Line then
       begin
-        FSpanned[Line] := True;
+        FSpanned[mLine] := True;
       end;
     end;
   end;
@@ -152,25 +152,25 @@ end;
 
 function TLineScanner.Columns(const ALine: string): TArray<Integer>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // Sichtbare Spalte vor jedem Zeichen: Result[I] = Breite von ALine[1..I]; Tabs springen zur nächsten
   // Tabstelle, das zweite Zeichen eines Surrogatpaars zählt nicht.
   SetLength(Result, Length(ALine) + 1);
   Result[0] := 0;
-  for Index := 1 to Length(ALine) do
+  for mIndex := 1 to Length(ALine) do
   begin
-    if ALine[Index] = #9 then
+    if ALine[mIndex] = #9 then
     begin
-      Result[Index] := (Result[Index - 1] div FTabWidth + 1) * FTabWidth;
+      Result[mIndex] := (Result[mIndex - 1] div FTabWidth + 1) * FTabWidth;
     end
-    else if (ALine[Index] >= #$DC00) and (ALine[Index] <= #$DFFF) then
+    else if (ALine[mIndex] >= #$DC00) and (ALine[mIndex] <= #$DFFF) then
     begin
-      Result[Index] := Result[Index - 1];
+      Result[mIndex] := Result[mIndex - 1];
     end
     else
     begin
-      Result[Index] := Result[Index - 1] + 1;
+      Result[mIndex] := Result[mIndex - 1] + 1;
     end;
   end;
 end;
@@ -183,88 +183,88 @@ end;
 
 function TLineScanner.CountedWidth(ALine: Integer; const AColumns: TArray<Integer>): Integer;
 var
-  TokenIndex, First, Last: Integer;
-  Token: TPascalToken;
+  mTokenIndex, mFirst, mLast: Integer;
+  mToken: TPascalToken;
 begin
   // Breite ohne Strings bzw. Kommentare nach den Optionen; Anführungszeichen und Kommentarzeichen bleiben.
   Result := AColumns[High(AColumns)];
-  for TokenIndex in FByLine[ALine] do
+  for mTokenIndex in FByLine[ALine] do
   begin
-    Token := FTokens[TokenIndex];
-    if not Ignored(Token) then
+    mToken := FTokens[mTokenIndex];
+    if not Ignored(mToken) then
     begin
       Continue;
     end;
-    First := 0;
-    if Token.StartPos.Line = ALine then
+    mFirst := 0;
+    if mToken.StartPos.Line = ALine then
     begin
-      First := Token.StartPos.Character;
+      mFirst := mToken.StartPos.Character;
     end;
-    Last := High(AColumns);
-    if Token.EndPos.Line = ALine then
+    mLast := High(AColumns);
+    if mToken.EndPos.Line = ALine then
     begin
-      Last := Token.EndPos.Character;
+      mLast := mToken.EndPos.Character;
     end;
-    First := EnsureRange(First, 0, High(AColumns));
-    Last := EnsureRange(Last, 0, High(AColumns));
-    Result := Result - Max(AColumns[Last] - AColumns[First] - 2, 0);
+    mFirst := EnsureRange(mFirst, 0, High(AColumns));
+    mLast := EnsureRange(mLast, 0, High(AColumns));
+    Result := Result - Max(AColumns[mLast] - AColumns[mFirst] - 2, 0);
   end;
 end;
 
 function TLineScanner.IsBreak(APrevious, AToken: Integer): Boolean;
 var
-  Previous, Token: TPascalToken;
+  mPrevious, mToken: TPascalToken;
 begin
-  Previous := FTokens[APrevious];
-  Token := FTokens[AToken];
-  if Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+  mPrevious := FTokens[APrevious];
+  mToken := FTokens[AToken];
+  if mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
   begin
     Exit(False);
   end;
   // Hinter einem Komma oder vor einem zweistelligen Operator, wie der Formatierer (#43).
-  Result := Previous.IsSymbol(',') or (MatchText(Token.Text, cOperators) and
-    ((Previous.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number, TPascalTokenKind.StringLiteral,
-    TPascalTokenKind.CharLiteral]) or Previous.IsSymbol(')') or Previous.IsSymbol(']')));
+  Result := mPrevious.IsSymbol(',') or (MatchText(mToken.Text, cOperators) and
+    ((mPrevious.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number, TPascalTokenKind.StringLiteral,
+    TPascalTokenKind.CharLiteral]) or mPrevious.IsSymbol(')') or mPrevious.IsSymbol(']')));
 end;
 
 function TLineScanner.BreakCandidates(ALine: Integer): TArray<Integer>;
 var
-  Items: TArray<Integer>;
-  Position: Integer;
+  mItems: TArray<Integer>;
+  mPosition: Integer;
 begin
   // Zeichenindizes, an denen ein Token beginnt, vor dem umgebrochen werden darf.
   Result := nil;
-  Items := nil;
-  for Position in FByLine[ALine] do
+  mItems := nil;
+  for mPosition in FByLine[ALine] do
   begin
-    if FTokens[Position].StartPos.Line = ALine then
+    if FTokens[mPosition].StartPos.Line = ALine then
     begin
-      Items := Items + [Position];
+      mItems := mItems + [mPosition];
     end;
   end;
   if FSpanned[ALine] then
   begin
     Exit;
   end;
-  for Position := 1 to High(Items) do
+  for mPosition := 1 to High(mItems) do
   begin
-    if (FTokens[Items[Position]].EndPos.Line = ALine) and
-      not (FTokens[Items[Position - 1]].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) and
-      IsBreak(Items[Position - 1], Items[Position]) then
+    if (FTokens[mItems[mPosition]].EndPos.Line = ALine) and
+      not (FTokens[mItems[mPosition - 1]].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) and
+      IsBreak(mItems[mPosition - 1], mItems[mPosition]) then
     begin
-      Result := Result + [FTokens[Items[Position]].StartPos.Character];
+      Result := Result + [FTokens[mItems[mPosition]].StartPos.Character];
     end;
   end;
 end;
 
 function TLineScanner.ContinuationWidth: Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
-  for Index := 1 to Length(FContinuation) do
+  for mIndex := 1 to Length(FContinuation) do
   begin
-    if FContinuation[Index] = #9 then
+    if FContinuation[mIndex] = #9 then
     begin
       Result := (Result div FTabWidth + 1) * FTabWidth;
     end
@@ -294,30 +294,30 @@ end;
 
 function TLineScanner.WrapEdits(ALine: Integer; const AColumns: TArray<Integer>): TArray<TTextEdit>;
 var
-  State: TWrapState;
-  Text: string;
-  Best, Cut: Integer;
+  mState: TWrapState;
+  mText: string;
+  mBest, mCut: Integer;
 begin
   // Umbruchstellen von links nach rechts, so spät wie möglich; nil, wenn ein Stück nicht unter die Grenze passt.
   Result := nil;
-  Text := FLines[ALine];
-  State := Default(TWrapState);
-  State.Candidates := BreakCandidates(ALine);
-  State.SegmentStart := TTextLines.IndentLength(Text);
-  State.Prefix := AColumns[State.SegmentStart];
-  while State.Prefix + AColumns[Length(Text)] - AColumns[State.SegmentStart] > FMaxLength do
+  mText := FLines[ALine];
+  mState := Default(TWrapState);
+  mState.Candidates := BreakCandidates(ALine);
+  mState.SegmentStart := TTextLines.IndentLength(mText);
+  mState.Prefix := AColumns[mState.SegmentStart];
+  while mState.Prefix + AColumns[Length(mText)] - AColumns[mState.SegmentStart] > FMaxLength do
   begin
-    Best := LatestCut(Text, AColumns, State);
-    if Best < 0 then
+    mBest := LatestCut(mText, AColumns, mState);
+    if mBest < 0 then
     begin
       Result := nil;
       Exit;
     end;
-    Cut := Length(TrimRight(Copy(Text, 1, Best)));
-    Result := Result + [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(ALine, Cut),
-      TTextPosition.Create(ALine, Best)), FLineBreak + FContinuation)];
-    State.SegmentStart := Best;
-    State.Prefix := ContinuationWidth;
+    mCut := Length(TrimRight(Copy(mText, 1, mBest)));
+    Result := Result + [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(ALine, mCut),
+      TTextPosition.Create(ALine, mBest)), FLineBreak + FContinuation)];
+    mState.SegmentStart := mBest;
+    mState.Prefix := ContinuationWidth;
   end;
 end;
 
@@ -333,21 +333,21 @@ end;
 
 function TLineScanner.OverCompilerLimit(ALine: Integer): Boolean;
 var
-  Text: string;
-  Range: TTextRange;
+  mText: string;
+  mRange: TTextRange;
 begin
-  Text := FLines[ALine];
-  Range := TTextRange.Create(TTextPosition.Create(ALine, 0), TTextPosition.Create(ALine, Length(Text)));
+  mText := FLines[ALine];
+  mRange := TTextRange.Create(TTextPosition.Create(ALine, 0), TTextPosition.Create(ALine, Length(mText)));
   Result := True;
-  if Length(Text) > TLineLengthRule.HardLimit then
+  if Length(mText) > TLineLengthRule.cHardLimit then
   begin
-    FReport.AddWithSeverity(Range, cTexts[TStyleLineLengthText.CompilerLimit].Fmt(
-      [Length(Text), TLineLengthRule.HardLimit]), TRuleSeverity.Error, nil);
+    FReport.AddWithSeverity(mRange, cTexts[TStyleLineLengthText.CompilerLimit].Fmt(
+      [Length(mText), TLineLengthRule.cHardLimit]), TRuleSeverity.Error, nil);
   end
-  else if Length(Text) > TLineLengthRule.CompilerLimit then
+  else if Length(mText) > TLineLengthRule.cCompilerLimit then
   begin
-    FReport.AddWithSeverity(Range, cTexts[TStyleLineLengthText.VersionLimit].Fmt([Length(Text),
-      TLineLengthRule.CompilerLimit]), TRuleSeverity.Warning, nil);
+    FReport.AddWithSeverity(mRange, cTexts[TStyleLineLengthText.VersionLimit].Fmt([Length(mText),
+      TLineLengthRule.cCompilerLimit]), TRuleSeverity.Warning, nil);
   end
   else
   begin
@@ -357,51 +357,51 @@ end;
 
 procedure TLineScanner.CheckLine(ALine: Integer);
 var
-  ColumnsOfLine: TArray<Integer>;
-  Width: Integer;
-  Edits: TArray<TTextEdit>;
-  Fixes: TArray<TRuleFix>;
+  mColumnsOfLine: TArray<Integer>;
+  mWidth: Integer;
+  mEdits: TArray<TTextEdit>;
+  mFixes: TArray<TRuleFix>;
 begin
   if OverCompilerLimit(ALine) then
   begin
     Exit;
   end;
-  ColumnsOfLine := Columns(FLines[ALine]);
-  Width := ColumnsOfLine[High(ColumnsOfLine)];
-  if (Width <= FMaxLength) or (CountedWidth(ALine, ColumnsOfLine) <= FMaxLength) then
+  mColumnsOfLine := Columns(FLines[ALine]);
+  mWidth := mColumnsOfLine[High(mColumnsOfLine)];
+  if (mWidth <= FMaxLength) or (CountedWidth(ALine, mColumnsOfLine) <= FMaxLength) then
   begin
     Exit;
   end;
-  Fixes := nil;
-  Edits := WrapEdits(ALine, ColumnsOfLine);
-  if Edits <> nil then
+  mFixes := nil;
+  mEdits := WrapEdits(ALine, mColumnsOfLine);
+  if mEdits <> nil then
   begin
-    Fixes := [TRuleFix.Create(cTexts[TStyleLineLengthText.WrapLine].Text, Edits)];
+    mFixes := [TRuleFix.Create(cTexts[TStyleLineLengthText.WrapLine].Text, mEdits)];
   end;
-  FReport.Add(TTextRange.Create(TTextPosition.Create(ALine, OverflowStart(ColumnsOfLine)),
+  FReport.Add(TTextRange.Create(TTextPosition.Create(ALine, OverflowStart(mColumnsOfLine)),
     TTextPosition.Create(ALine, Length(FLines[ALine]))), cTexts[TStyleLineLengthText.TooLong].Fmt(
-    [Width, FMaxLength]), Fixes);
+    [mWidth, FMaxLength]), mFixes);
 end;
 
 function TLineScanner.NeedsCheck(ALine: Integer): Boolean;
 begin
   // Ohne Tabs ist die Breite höchstens die Länge.
-  Result := (Length(FLines[ALine]) > Min(FMaxLength, TLineLengthRule.CompilerLimit)) or
+  Result := (Length(FLines[ALine]) > Min(FMaxLength, TLineLengthRule.cCompilerLimit)) or
     ((Pos(#9, FLines[ALine]) > 0) and (Length(FLines[ALine]) * FTabWidth > FMaxLength));
 end;
 
 procedure TLineScanner.Run;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
   IndexTokens;
   FContinuation := '';
-  for Line := 0 to High(FLines) do
+  for mLine := 0 to High(FLines) do
   begin
-    if NeedsCheck(Line) then
+    if NeedsCheck(mLine) then
     begin
-      FContinuation := TTextLines.IndentOf(FLines[Line]) + TFormatLayout.IndentUnit(FStyle);
-      CheckLine(Line);
+      FContinuation := TTextLines.IndentOf(FLines[mLine]) + TFormatLayout.IndentUnit(FStyle);
+      CheckLine(mLine);
     end;
   end;
 end;
@@ -415,17 +415,17 @@ end;
 
 procedure TLineLengthRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Scanner: TLineScanner;
+  mScanner: TLineScanner;
 begin
   if AContext.Text = '' then
   begin
     Exit;
   end;
-  Scanner := TLineScanner.Create(AContext, AReport);
+  mScanner := TLineScanner.Create(AContext, AReport);
   try
-    Scanner.Run;
+    mScanner.Run;
   finally
-    Scanner.Free;
+    mScanner.Free;
   end;
 end;
 

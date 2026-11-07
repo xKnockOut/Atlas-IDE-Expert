@@ -148,149 +148,149 @@ begin
 end;
 procedure TAtlasWelcomeWhatsNewFrameTests.UnreadShowsRowsWithSwitchKeyAndTry;
 var
-  Host: TForm;
-  Fake: TFakeWhatsNew;
-  Source: IAtlasWhatsNewSource;
-  Frame: TAtlasWelcomeWhatsNewFrame;
+  mHost: TForm;
+  mFake: TFakeWhatsNew;
+  mSource: IAtlasWhatsNewSource;
+  mFrame: TAtlasWelcomeWhatsNewFrame;
 begin
-  Fake := TFakeWhatsNew.Create;
-  Source := Fake;
-  Fake.FView := TAtlasWhatsNewView.Unread;
-  Fake.FVersions := [NewsVersion('1.1.0', [NewsItem('Suchfeld', 'An', 'Taste', 'Atlas.WelcomeStart'),
+  mFake := TFakeWhatsNew.Create;
+  mSource := mFake;
+  mFake.FView := TAtlasWhatsNewView.Unread;
+  mFake.FVersions := [NewsVersion('1.1.0', [NewsItem('Suchfeld', 'An', 'Taste', 'Atlas.WelcomeStart'),
     NewsItem('Ohne alles', '', '', ''), NewsItem('Aus', 'Aus', '', '')])];
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := NewsFrame(Host, Source);
-    Assert.AreEqual(3, Integer(Length(Frame.Rows)));
-    Assert.AreEqual(0, Integer(Length(Frame.Headings)), 'eine Version: keine Überschrift');
-    Assert.AreEqual('Suchfeld', Frame.Rows[0].Title.Caption);
-    Assert.AreEqual('Ctrl+E', Frame.Rows[0].Key.Caption, 'tatsächliche Belegung');
-    Assert.IsTrue(Frame.Rows[0].Switch.Checked);
-    Assert.IsNotNull(Frame.Rows[0].TryButton);
-    Assert.IsNull(Frame.Rows[1].Key);
-    Assert.IsNull(Frame.Rows[1].Switch, 'ohne Einstellung kein Schalter');
-    Assert.IsNull(Frame.Rows[1].TryButton, 'ohne Befehl und Beispiel kein „Ausprobieren“');
-    Assert.IsFalse(Frame.Rows[2].Switch.Checked);
-    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsRead), Frame.DismissButton.Caption);
-    Assert.IsTrue(Frame.Rows[1].Title.Top > Frame.Rows[0].Text.Top, 'Zeilen untereinander');
-    Assert.IsTrue(Frame.Rows[0].Switch.Left > Frame.Rows[0].Title.Left + Frame.Rows[0].Title.Width,
+    mFrame := NewsFrame(mHost, mSource);
+    Assert.AreEqual(3, Integer(Length(mFrame.Rows)));
+    Assert.AreEqual(0, Integer(Length(mFrame.Headings)), 'eine Version: keine Überschrift');
+    Assert.AreEqual('Suchfeld', mFrame.Rows[0].Title.Caption);
+    Assert.AreEqual('Ctrl+E', mFrame.Rows[0].Key.Caption, 'tatsächliche Belegung');
+    Assert.IsTrue(mFrame.Rows[0].Switch.Checked);
+    Assert.IsNotNull(mFrame.Rows[0].TryButton);
+    Assert.IsNull(mFrame.Rows[1].Key);
+    Assert.IsNull(mFrame.Rows[1].Switch, 'ohne Einstellung kein Schalter');
+    Assert.IsNull(mFrame.Rows[1].TryButton, 'ohne Befehl und Beispiel kein „Ausprobieren“');
+    Assert.IsFalse(mFrame.Rows[2].Switch.Checked);
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsRead), mFrame.DismissButton.Caption);
+    Assert.IsTrue(mFrame.Rows[1].Title.Top > mFrame.Rows[0].Text.Top, 'Zeilen untereinander');
+    Assert.IsTrue(mFrame.Rows[0].Switch.Left > mFrame.Rows[0].Title.Left + mFrame.Rows[0].Title.Width,
       'Schalter rechts vom Titel');
-    Assert.IsTrue(Frame.PreferredHeight > Frame.DismissButton.Top, 'Höhe nach dem Inhalt');
-    Assert.AreSame(Source, Frame.Menu.Source);
+    Assert.IsTrue(mFrame.PreferredHeight > mFrame.DismissButton.Top, 'Höhe nach dem Inhalt');
+    Assert.AreSame(mSource, mFrame.Menu.Source);
     // Danach ohne Ungelesenes: „Schließen“ statt „Gelesen“.
-    Fake.FView := TAtlasWhatsNewView.Current;
-    Frame.UpdateContent;
-    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsClose), Frame.DismissButton.Caption);
-    Fake.FView := TAtlasWhatsNewView.Hidden;
-    Fake.FVersions := nil;
-    Frame.UpdateContent;
-    Assert.IsNull(Frame.DismissButton);
-    Assert.AreEqual(0, Integer(Length(Frame.Rows)));
+    mFake.FView := TAtlasWhatsNewView.Current;
+    mFrame.UpdateContent;
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsClose), mFrame.DismissButton.Caption);
+    mFake.FView := TAtlasWhatsNewView.Hidden;
+    mFake.FVersions := nil;
+    mFrame.UpdateContent;
+    Assert.IsNull(mFrame.DismissButton);
+    Assert.AreEqual(0, Integer(Length(mFrame.Rows)));
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 procedure TAtlasWelcomeWhatsNewFrameTests.JumpGroupsByVersion;
 var
-  Host: TForm;
-  Fake: TFakeWhatsNew;
-  Source: IAtlasWhatsNewSource;
-  Frame: TAtlasWelcomeWhatsNewFrame;
+  mHost: TForm;
+  mFake: TFakeWhatsNew;
+  mSource: IAtlasWhatsNewSource;
+  mFrame: TAtlasWelcomeWhatsNewFrame;
 begin
-  Fake := TFakeWhatsNew.Create;
-  Source := Fake;
-  Fake.FView := TAtlasWhatsNewView.Unread;
-  Fake.FVersions := [NewsVersion('1.2.0', [NewsItem('Neu 2', '', '', '')]),
+  mFake := TFakeWhatsNew.Create;
+  mSource := mFake;
+  mFake.FView := TAtlasWhatsNewView.Unread;
+  mFake.FVersions := [NewsVersion('1.2.0', [NewsItem('Neu 2', '', '', '')]),
     NewsVersion('1.1.0', [NewsItem('Neu 1a', '', '', ''), NewsItem('Neu 1b', '', '', '')])];
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := NewsFrame(Host, Source);
-    Assert.AreEqual(2, Integer(Length(Frame.Headings)));
-    Assert.AreEqual(3, Integer(Length(Frame.Rows)), 'Neuerungen aller übersprungenen Versionen');
-    Assert.AreEqual(TAtlasWelcomeWhatsNewFrame.HeadingText('1.2.0', False, True), Frame.Headings[0].Caption);
-    Assert.AreEqual('1.1.0', Frame.Rows[1].Version);
-    Assert.IsTrue(Frame.Headings[1].Top > Frame.Rows[0].Title.Top, 'Gruppe 1.1.0 unter 1.2.0');
-    Assert.IsTrue(Frame.Rows[1].Title.Top > Frame.Headings[1].Top);
+    mFrame := NewsFrame(mHost, mSource);
+    Assert.AreEqual(2, Integer(Length(mFrame.Headings)));
+    Assert.AreEqual(3, Integer(Length(mFrame.Rows)), 'Neuerungen aller übersprungenen Versionen');
+    Assert.AreEqual(TAtlasWelcomeWhatsNewFrame.HeadingText('1.2.0', False, True), mFrame.Headings[0].Caption);
+    Assert.AreEqual('1.1.0', mFrame.Rows[1].Version);
+    Assert.IsTrue(mFrame.Headings[1].Top > mFrame.Rows[0].Title.Top, 'Gruppe 1.1.0 unter 1.2.0');
+    Assert.IsTrue(mFrame.Rows[1].Title.Top > mFrame.Headings[1].Top);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 procedure TAtlasWelcomeWhatsNewFrameTests.AllVersionsCollapseExceptNewest;
 var
-  Host: TForm;
-  Fake: TFakeWhatsNew;
-  Source: IAtlasWhatsNewSource;
-  Frame: TAtlasWelcomeWhatsNewFrame;
+  mHost: TForm;
+  mFake: TFakeWhatsNew;
+  mSource: IAtlasWhatsNewSource;
+  mFrame: TAtlasWelcomeWhatsNewFrame;
 begin
-  Fake := TFakeWhatsNew.Create;
-  Source := Fake;
-  Fake.FView := TAtlasWhatsNewView.All;
-  Fake.FVersions := [NewsVersion('1.2.0', [NewsItem('Neu 2', '', '', '')]),
+  mFake := TFakeWhatsNew.Create;
+  mSource := mFake;
+  mFake.FView := TAtlasWhatsNewView.All;
+  mFake.FVersions := [NewsVersion('1.2.0', [NewsItem('Neu 2', '', '', '')]),
     NewsVersion('1.1.0', [NewsItem('Neu 1', '', '', '')]), NewsVersion('1.0.0', [NewsItem('Erste', '', '', '')])];
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := NewsFrame(Host, Source);
-    Assert.AreEqual(3, Integer(Length(Frame.Headings)));
-    Assert.AreEqual(1, Integer(Length(Frame.Rows)), 'nur die neueste aufgeklappt');
-    Assert.IsTrue(Frame.IsExpanded('1.2.0'));
-    Assert.IsFalse(Frame.IsExpanded('1.0.0'));
-    Assert.AreEqual(TAtlasWelcomeWhatsNewFrame.HeadingText('1.0.0', True, False), Frame.Headings[2].Caption);
+    mFrame := NewsFrame(mHost, mSource);
+    Assert.AreEqual(3, Integer(Length(mFrame.Headings)));
+    Assert.AreEqual(1, Integer(Length(mFrame.Rows)), 'nur die neueste aufgeklappt');
+    Assert.IsTrue(mFrame.IsExpanded('1.2.0'));
+    Assert.IsFalse(mFrame.IsExpanded('1.0.0'));
+    Assert.AreEqual(TAtlasWelcomeWhatsNewFrame.HeadingText('1.0.0', True, False), mFrame.Headings[2].Caption);
     Assert.AreNotEqual(TAtlasWelcomeWhatsNewFrame.HeadingText('1.0.0', True, False),
       TAtlasWelcomeWhatsNewFrame.HeadingText('1.0.0', True, True), 'Pfeil zeigt den Zustand');
-    Frame.Toggle('1.0.0');
-    Assert.AreEqual(2, Integer(Length(Frame.Rows)));
-    Assert.AreEqual('Erste', Frame.Rows[1].Title.Caption);
-    Frame.Toggle('1.2.0');
-    Assert.AreEqual(1, Integer(Length(Frame.Rows)));
+    mFrame.Toggle('1.0.0');
+    Assert.AreEqual(2, Integer(Length(mFrame.Rows)));
+    Assert.AreEqual('Erste', mFrame.Rows[1].Title.Caption);
+    mFrame.Toggle('1.2.0');
+    Assert.AreEqual(1, Integer(Length(mFrame.Rows)));
     // Neu lesen behält den Zustand, solange „Alle Versionen“ bleibt.
-    Frame.UpdateContent;
-    Assert.AreEqual('Erste', Frame.Rows[0].Title.Caption);
-    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsClose), Frame.DismissButton.Caption);
+    mFrame.UpdateContent;
+    Assert.AreEqual('Erste', mFrame.Rows[0].Title.Caption);
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsClose), mFrame.DismissButton.Caption);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 procedure TAtlasWelcomeWhatsNewFrameTests.ClicksReachSource;
 var
-  Host: TForm;
-  Fake: TFakeWhatsNew;
-  Source: IAtlasWhatsNewSource;
-  Frame: TAtlasWelcomeWhatsNewFrame;
+  mHost: TForm;
+  mFake: TFakeWhatsNew;
+  mSource: IAtlasWhatsNewSource;
+  mFrame: TAtlasWelcomeWhatsNewFrame;
 begin
-  Fake := TFakeWhatsNew.Create;
-  Source := Fake;
-  Fake.FView := TAtlasWhatsNewView.Unread;
-  Fake.FVersions := [NewsVersion('1.1.0', [NewsItem('Suchfeld', 'An', 'Taste', 'Atlas.WelcomeStart')])];
-  Host := TForm.CreateNew(nil);
+  mFake := TFakeWhatsNew.Create;
+  mSource := mFake;
+  mFake.FView := TAtlasWhatsNewView.Unread;
+  mFake.FVersions := [NewsVersion('1.1.0', [NewsItem('Suchfeld', 'An', 'Taste', 'Atlas.WelcomeStart')])];
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := NewsFrame(Host, Source);
-    Frame.Rows[0].Switch.Checked := False;
-    Frame.Rows[0].TryButton.Click;
-    Frame.DismissButton.Click;
-    Frame.Menu.AllItem.Click;
-    Frame.Menu.CurrentItem.Click;
+    mFrame := NewsFrame(mHost, mSource);
+    mFrame.Rows[0].Switch.Checked := False;
+    mFrame.Rows[0].TryButton.Click;
+    mFrame.DismissButton.Click;
+    mFrame.Menu.AllItem.Click;
+    mFrame.Menu.CurrentItem.Click;
     // Alles läuft über die Nachrichtenschleife.
-    Assert.AreEqual(0, Integer(Length(Fake.Calls)));
+    Assert.AreEqual(0, Integer(Length(mFake.Calls)));
     CheckSynchronize;
-    Assert.AreEqual(5, Integer(Length(Fake.Calls)));
-    Assert.AreEqual('switch An False', Fake.Calls[0]);
-    Assert.AreEqual('try Suchfeld', Fake.Calls[1]);
-    Assert.AreEqual('dismiss', Fake.Calls[2]);
-    Assert.AreEqual(Format('show %d', [Ord(TAtlasWhatsNewView.All)]), Fake.Calls[3]);
-    Assert.AreEqual(Format('show %d', [Ord(TAtlasWhatsNewView.Current)]), Fake.Calls[4]);
+    Assert.AreEqual(5, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('switch An False', mFake.Calls[0]);
+    Assert.AreEqual('try Suchfeld', mFake.Calls[1]);
+    Assert.AreEqual('dismiss', mFake.Calls[2]);
+    Assert.AreEqual(Format('show %d', [Ord(TAtlasWhatsNewView.All)]), mFake.Calls[3]);
+    Assert.AreEqual(Format('show %d', [Ord(TAtlasWhatsNewView.Current)]), mFake.Calls[4]);
     // Neu lesen setzt den Schalter, ohne die Quelle zu rufen.
-    Frame.UpdateContent;
+    mFrame.UpdateContent;
     CheckSynchronize;
-    Assert.AreEqual(5, Integer(Length(Fake.Calls)));
+    Assert.AreEqual(5, Integer(Length(mFake.Calls)));
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 procedure TAtlasWelcomeWhatsNewFrameTests.TitleNamesSingleVersion;
 var
-  Saved: TAtlasLanguage;
+  mSaved: TAtlasLanguage;
 begin
-  Saved := TAtlasStrings.Language;
+  mSaved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
     Assert.AreEqual('Neu in Atlas 1.1.0', TAtlasWelcomeWhatsNewFrame.TitleFor(TAtlasWhatsNewView.Unread,
@@ -303,55 +303,55 @@ begin
     Assert.AreEqual('New in Atlas 1.1.0', TAtlasWelcomeWhatsNewFrame.TitleFor(TAtlasWhatsNewView.Current,
       [NewsVersion('1.1.0', [NewsItem('A', '', '', '')])]));
   finally
-    TAtlasStrings.Language := Saved;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 procedure TAtlasWelcomeWhatsNewFrameTests.BoardSizesCardToItsText;
 var
-  Host: TForm;
-  Board: TAtlasWelcomeBoardFrame;
-  Fake: TFakeWhatsNew;
-  Source: IAtlasWhatsNewSource;
-  Card: TAtlasWelcomeSectionFrame;
-  Narrow, Wide: Integer;
+  mHost: TForm;
+  mBoard: TAtlasWelcomeBoardFrame;
+  mFake: TFakeWhatsNew;
+  mSource: IAtlasWhatsNewSource;
+  mCard: TAtlasWelcomeSectionFrame;
+  mNarrow, mWide: Integer;
 begin
-  Fake := TFakeWhatsNew.Create;
-  Source := Fake;
-  Fake.FView := TAtlasWhatsNewView.Unread;
-  Fake.FVersions := [NewsVersion('1.1.0', [NewsItem('Suchfeld', 'An', 'Taste', 'Atlas.WelcomeStart'),
+  mFake := TFakeWhatsNew.Create;
+  mSource := mFake;
+  mFake.FView := TAtlasWhatsNewView.Unread;
+  mFake.FVersions := [NewsVersion('1.1.0', [NewsItem('Suchfeld', 'An', 'Taste', 'Atlas.WelcomeStart'),
     NewsItem('Zweite', 'Aus', '', '')])];
-  TAtlasWelcomeViews.Register(TAtlasWelcomeIds.News,
+  TAtlasWelcomeViews.Register(TAtlasWelcomeIds.cNews,
     function(AOwner: TComponent): TAtlasWelcomeSectionFrame
     var
       Frame: TAtlasWelcomeWhatsNewFrame;
     begin
       Frame := TAtlasWelcomeWhatsNewFrame.Create(AOwner);
-      Frame.Source := Source;
+      Frame.Source := mSource;
       Result := Frame;
     end);
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Host.ClientWidth := 1200;
-    Host.ClientHeight := 600;
-    Board := TAtlasWelcomeBoardFrame.Create(Host);
-    Board.Parent := Host;
-    Board.Align := alClient;
+    mHost.ClientWidth := 1200;
+    mHost.ClientHeight := 600;
+    mBoard := TAtlasWelcomeBoardFrame.Create(mHost);
+    mBoard.Parent := mHost;
+    mBoard.Align := alClient;
     // Nach einem Update oben links (#756).
-    Board.Rebuild([Section(TAtlasWelcomeIds.News, 50, TAtlasWelcomeColumn.Right)],
-      TAtlasWelcomeLayout.Atlas.MovedToTop(TAtlasWelcomeIds.News), 2);
-    Card := Board.View(TAtlasWelcomeIds.News);
-    Assert.IsNotNull(Card);
-    Assert.AreEqual(TAtlasWelcomeIds.News, Board.Columns[0][0]);
-    Assert.AreEqual(Card.PreferredHeight, Card.Height, 'Höhe nach der gesetzten Breite');
-    Assert.IsTrue(Assigned(Card.OnHeightChanged), 'Aufklappen ordnet die Spalten neu');
+    mBoard.Rebuild([Section(TAtlasWelcomeIds.cNews, 50, TAtlasWelcomeColumn.Right)],
+      TAtlasWelcomeLayout.Atlas.MovedToTop(TAtlasWelcomeIds.cNews), 2);
+    mCard := mBoard.View(TAtlasWelcomeIds.cNews);
+    Assert.IsNotNull(mCard);
+    Assert.AreEqual(TAtlasWelcomeIds.cNews, mBoard.Columns[0][0]);
+    Assert.AreEqual(mCard.PreferredHeight, mCard.Height, 'Höhe nach der gesetzten Breite');
+    Assert.IsTrue(Assigned(mCard.OnHeightChanged), 'Aufklappen ordnet die Spalten neu');
     // Schmal: Der Text bricht um, die Karte wird höher.
-    Card.Width := 900;
-    Wide := Card.PreferredHeight;
-    Card.Width := 260;
-    Narrow := Card.PreferredHeight;
-    Assert.IsTrue(Narrow > Wide, Format('schmal %d, breit %d', [Narrow, Wide]));
+    mCard.Width := 900;
+    mWide := mCard.PreferredHeight;
+    mCard.Width := 260;
+    mNarrow := mCard.PreferredHeight;
+    Assert.IsTrue(mNarrow > mWide, Format('schmal %d, breit %d', [mNarrow, mWide]));
   finally
-    Host.Free;
+    mHost.Free;
     TAtlasWelcomeViews.Release;
   end;
 end;

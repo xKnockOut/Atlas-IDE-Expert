@@ -114,7 +114,7 @@ begin
   mValues := nil;
   for mEvaluation := Low(TAtlasVisualizerEvaluation) to High(TAtlasVisualizerEvaluation) do
   begin
-    mValues := mValues + [TAtlasVisualizerSettings.EvaluationNames[mEvaluation]];
+    mValues := mValues + [TAtlasVisualizerSettings.cEvaluationNames[mEvaluation]];
   end;
   Choice('debug.visualizers.evaluation', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugVisualizerEvaluation),
     [TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugVisualizerEvaluationFields),
@@ -238,7 +238,8 @@ begin
   // Die Seite hat die Textfelder gespeichert; hier nur die einheitliche Form.
   AValues.WriteString(cVisualizerNameFieldsKey,
     TAtlasVisualizerSettings.NormalizeNameFields(AValues.ReadString(cVisualizerNameFieldsKey)));
-  AValues.WriteString(cStepFilterPatternsKey, TStepFilterNames.NormalizePatterns(AValues.ReadString(cStepFilterPatternsKey)));
+  AValues.WriteString(cStepFilterPatternsKey,
+    TStepFilterNames.NormalizePatterns(AValues.ReadString(cStepFilterPatternsKey)));
   AValues.WriteString(cBreakExcludedKey,
     TAtlasEventBreakSettings.NormalizeExcluded(AValues.ReadString(cBreakExcludedKey)));
   AValues.WriteString(cOwnCodeFoldersKey, TAtlasFolderList.Text(AValues.ReadString(cOwnCodeFoldersKey)));

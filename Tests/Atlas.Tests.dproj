@@ -149,6 +149,7 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.DirectiveNames.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.WarningCodes.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.PureRoutines.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.EventAssignments.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Parts.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Attributes.Tests.pas"/>
@@ -525,6 +526,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.PaletteIcons.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.DynamicArrays.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.StringResets.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.ChangedFiles.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.LibrarySources.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.RefactoringCommands.Tests.pas"/>
@@ -1738,6 +1740,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.ServerCommands.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CodeActions.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Status.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Status.Contract.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Slash.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Contract.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.UnitSearch.pas"/>

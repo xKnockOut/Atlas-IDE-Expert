@@ -227,7 +227,7 @@ begin
   Json := TLspCodeLens.ToJson(Entry, HauptFile);
   try
     Assert.AreEqual('1 Referenz', Json.GetValue<string>('command.title'));
-    Assert.AreEqual(TLspCodeLens.ShowLocationsCommand, Json.GetValue<string>('command.command'));
+    Assert.AreEqual(TLspCodeLens.cShowLocationsCommand, Json.GetValue<string>('command.command'));
     Assert.AreEqual(3, TJSONArray(Json.GetValue<TJSONValue>('command.arguments')).Count);
   finally
     Json.Free;

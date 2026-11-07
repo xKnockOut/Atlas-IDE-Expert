@@ -84,33 +84,33 @@ type
 /// </summary>
 function SplitSignature(const ASignature: string; out AKeyword, AHead: string): Boolean;
 var
-  Text: string;
-  Index, Depth: Integer;
+  mText: string;
+  mIndex, mDepth: Integer;
 begin
-  Text := Trim(ASignature);
-  AKeyword := LowerCase(Copy(Text, 1, Pos(' ', Text + ' ') - 1));
+  mText := Trim(ASignature);
+  AKeyword := LowerCase(Copy(mText, 1, Pos(' ', mText + ' ') - 1));
   AHead := '';
   Result := MatchText(AKeyword, ['procedure', 'function', 'constructor', 'destructor']);
   if not Result then
   begin
     Exit;
   end;
-  Text := Trim(Copy(Text, Length(AKeyword) + 1, MaxInt));
-  Depth := 0;
-  for Index := 1 to Length(Text) do
-    case Text[Index] of
+  mText := Trim(Copy(mText, Length(AKeyword) + 1, MaxInt));
+  mDepth := 0;
+  for mIndex := 1 to Length(mText) do
+    case mText[mIndex] of
       '(', '[':
-        Inc(Depth);
+        Inc(mDepth);
       ')', ']':
-        Dec(Depth);
+        Dec(mDepth);
       ';':
-        if Depth = 0 then
+        if mDepth = 0 then
         begin
-          AHead := Trim(Copy(Text, 1, Index - 1));
+          AHead := Trim(Copy(mText, 1, mIndex - 1));
           Exit;
         end;
     end;
-  AHead := Text;
+  AHead := mText;
 end;
 
 /// <summary>Verfolgt Klammertiefe und Standardwert-Abschnitte für WithoutDefaults: ab "=" auf Tiefe 1 wird bis
@@ -135,27 +135,27 @@ end;
 /// <summary>Kopf ohne Standardwerte der Parameter, für den Rumpf.</summary>
 function WithoutDefaults(const AHead: string): string;
 var
-  Index, Depth: Integer;
-  Skipping: Boolean;
-  Quoted: Boolean;
+  mIndex, mDepth: Integer;
+  mSkipping: Boolean;
+  mQuoted: Boolean;
 begin
   Result := '';
-  Depth := 0;
-  Skipping := False;
-  Quoted := False;
-  for Index := 1 to Length(AHead) do
+  mDepth := 0;
+  mSkipping := False;
+  mQuoted := False;
+  for mIndex := 1 to Length(AHead) do
   begin
-    if AHead[Index] = '''' then
+    if AHead[mIndex] = '''' then
     begin
-      Quoted := not Quoted;
+      mQuoted := not mQuoted;
     end;
-    if not Quoted then
+    if not mQuoted then
     begin
-      TrackDefault(AHead[Index], Depth, Skipping);
+      TrackDefault(AHead[mIndex], mDepth, mSkipping);
     end;
-    if not Skipping then
+    if not mSkipping then
     begin
-      Result := Result + AHead[Index];
+      Result := Result + AHead[mIndex];
     end;
   end;
   Result := StringReplace(Result, ' ;', ';', [rfReplaceAll]);
@@ -165,13 +165,13 @@ end;
 /// <summary>Hängt die nicht leeren Typparameter aus ATypeParams ("T, U") an AList.</summary>
 procedure AppendTypeParams(var AList: TArray<string>; const ATypeParams: string);
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in SplitString(ATypeParams, ',') do
+  for mName in SplitString(ATypeParams, ',') do
   begin
-    if Trim(Name) <> '' then
+    if Trim(mName) <> '' then
     begin
-      AList := AList + [Trim(Name)];
+      AList := AList + [Trim(mName)];
     end;
   end;
 end;
@@ -224,17 +224,17 @@ end;
 /// <summary>Die Signatur eines Vorfahren nennt "class sealed" oder "class abstract sealed".</summary>
 function IsSealedSignature(const ASignature: string): Boolean;
 var
-  Words: TArray<string>;
-  Index: Integer;
+  mWords: TArray<string>;
+  mIndex: Integer;
 begin
-  Words := LowerCase(ASignature).Split([' ', '(', ')', '<', '>', '=', ';'], TStringSplitOptions.ExcludeEmpty);
+  mWords := LowerCase(ASignature).Split([' ', '(', ')', '<', '>', '=', ';'], TStringSplitOptions.ExcludeEmpty);
   Result := False;
-  Index := 0;
-  while not Result and (Index < High(Words)) do
+  mIndex := 0;
+  while not Result and (mIndex < High(mWords)) do
   begin
-    Result := (Words[Index] = 'class') and ((Words[Index + 1] = 'sealed') or ((Words[Index + 1] = 'abstract') and
-      (Index + 2 <= High(Words)) and (Words[Index + 2] = 'sealed')));
-    Inc(Index);
+    Result := (mWords[mIndex] = 'class') and ((mWords[mIndex + 1] = 'sealed') or ((mWords[mIndex + 1] = 'abstract') and
+      (mIndex + 2 <= High(mWords)) and (mWords[mIndex + 2] = 'sealed')));
+    Inc(mIndex);
   end;
 end;
 
@@ -297,17 +297,17 @@ end;
 
 procedure TOverrideTargetMissingRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Check: TOverrideTargetCheck;
+  mCheck: TOverrideTargetCheck;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Check := TOverrideTargetCheck.Create(AContext, AReport);
+  mCheck := TOverrideTargetCheck.Create(AContext, AReport);
   try
-    Check.Run;
+    mCheck.Run;
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 
@@ -332,19 +332,19 @@ end;
 /// <summary>Typparameter der Vorfahrenkette und der eigenen Klasse; sie passen auf jeden Typ.</summary>
 function TOverrideTargetCheck.Wildcards: TArray<string>;
 var
-  Location: TSymbolLocation;
-  Symbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
+  mSymbol: TIndexSymbol;
 begin
   Result := nil;
-  for Location in FChain do
+  for mLocation in FChain do
   begin
-    AppendTypeParams(Result, Location.Symbol.TypeParams);
+    AppendTypeParams(Result, mLocation.Symbol.TypeParams);
   end;
-  for Symbol in FAncestry.Local.Symbols do
+  for mSymbol in FAncestry.Local.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.ClassType) and SameText(Symbol.Name, FMethod.ClassName) then
+    if (mSymbol.Kind = TIndexSymbolKind.ClassType) and SameText(mSymbol.Name, FMethod.ClassName) then
     begin
-      AppendTypeParams(Result, Symbol.TypeParams);
+      AppendTypeParams(Result, mSymbol.TypeParams);
     end;
   end;
 end;
@@ -364,8 +364,8 @@ end;
 function TOverrideTargetCheck.CompareTypes(const ACandidate: TOverrideCandidate;
   out ACertain: Boolean): TOverrideMatch;
 var
-  Index: Integer;
-  Own, Other: TArray<string>;
+  mIndex: Integer;
+  mOwn, mOther: TArray<string>;
 begin
   ACertain := True;
   if not SameShape(FMethod, ACandidate) then
@@ -373,42 +373,42 @@ begin
     Exit(TOverrideMatch.Different);
   end;
   Result := TOverrideMatch.Same;
-  Own := FMethod.Symbol.ParamTypes;
-  Other := ACandidate.Symbol.ParamTypes;
-  for Index := 0 to High(Own) do
+  mOwn := FMethod.Symbol.ParamTypes;
+  mOther := ACandidate.Symbol.ParamTypes;
+  for mIndex := 0 to High(mOwn) do
   begin
-    if (Own[Index] = '') <> (Other[Index] = '') then
+    if (mOwn[mIndex] = '') <> (mOther[mIndex] = '') then
     begin
       Exit(TOverrideMatch.Different);
     end;
-    CompareType(Own[Index], Other[Index], Result, ACertain);
+    CompareType(mOwn[mIndex], mOther[mIndex], Result, ACertain);
   end;
   CompareType(FMethod.Symbol.TypeName, ACandidate.Symbol.TypeName, Result, ACertain);
 end;
 
 function TOverrideTargetCheck.Compare(const ACandidate: TOverrideCandidate): TOverrideMatch;
 var
-  Certain: Boolean;
+  mCertain: Boolean;
 begin
-  Result := CompareTypes(ACandidate, Certain);
+  Result := CompareTypes(ACandidate, mCertain);
 end;
 
 /// <summary>Gleichnamige (AName leer: alle), im Nachfahren sichtbare Methoden der Vorfahren, der nächste zuerst.
 /// </summary>
 function TOverrideTargetCheck.Candidates(const AName: string): TArray<TOverrideCandidate>;
 var
-  Location: TSymbolLocation;
-  Symbol: TIndexSymbol;
-  Item: TOverrideCandidate;
+  mLocation: TSymbolLocation;
+  mSymbol: TIndexSymbol;
+  mItem: TOverrideCandidate;
 begin
   Result := nil;
-  for Location in FChain do
+  for mLocation in FChain do
   begin
-    for Symbol in FAncestry.Methods(Location) do
+    for mSymbol in FAncestry.Methods(mLocation) do
     begin
-      if CandidateOf(Location, Symbol, AName, Item) then
+      if CandidateOf(mLocation, mSymbol, AName, mItem) then
       begin
-        Result := Result + [Item];
+        Result := Result + [mItem];
       end;
     end;
   end;
@@ -433,19 +433,19 @@ end;
 /// <summary>Erstes ";" auf Klammertiefe 0 ab dem Token AFrom; -1 ohne.</summary>
 function TOverrideTargetCheck.HeadEnd(AFrom: Integer): Integer;
 var
-  Depth: Integer;
+  mDepth: Integer;
 begin
-  Depth := 0;
+  mDepth := 0;
   Result := AFrom;
-  while (Result <= High(FTokens)) and ((Depth <> 0) or not IsSymbolAt(Result, [';'])) do
+  while (Result <= High(FTokens)) and ((mDepth <> 0) or not IsSymbolAt(Result, [';'])) do
   begin
     if IsSymbolAt(Result, ['(', '[']) then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
     else if IsSymbolAt(Result, [')', ']']) then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end;
     Inc(Result);
   end;
@@ -469,18 +469,18 @@ end;
 /// </summary>
 function TOverrideTargetCheck.BodyStart: Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
-  for Index := 1 to High(FTokens) - 2 do
+  for mIndex := 1 to High(FTokens) - 2 do
   begin
-    if IsBodyHead(Index) then
+    if IsBodyHead(mIndex) then
     begin
       if Result >= 0 then
       begin
         Exit(-1);
       end;
-      Result := Index - 1;
+      Result := mIndex - 1;
     end;
   end;
 end;
@@ -488,49 +488,49 @@ end;
 /// <summary>Übernimmt Schlüsselwort und Kopf von ACandidate in Deklaration und, wenn eindeutig, Rumpf.</summary>
 function TOverrideTargetCheck.AdoptFix(const ACandidate: TOverrideCandidate; out AFix: TRuleFix): Boolean;
 var
-  First, Last, Body, BodyLast: Integer;
-  Edits: TArray<TRuleEdit>;
+  mFirst, mLast, mBody, mBodyLast: Integer;
+  mEdits: TArray<TRuleEdit>;
 begin
   AFix := Default(TRuleFix);
-  First := TokenIndex(FMethod.Header.StartOffset);
-  Last := -1;
-  if First >= 0 then
+  mFirst := TokenIndex(FMethod.Header.StartOffset);
+  mLast := -1;
+  if mFirst >= 0 then
   begin
-    Last := HeadEnd(First);
+    mLast := HeadEnd(mFirst);
   end;
-  Result := Last > First;
+  Result := mLast > mFirst;
   if not Result then
   begin
     Exit;
   end;
-  Edits := [TRuleEdit.Create(TTextRange.Create(FTokens[First].StartPos, FTokens[Last].StartPos),
+  mEdits := [TRuleEdit.Create(TTextRange.Create(FTokens[mFirst].StartPos, FTokens[mLast].StartPos),
     ACandidate.Keyword + ' ' + ACandidate.Head)];
-  Body := BodyStart;
-  BodyLast := -1;
-  if Body > Last then
+  mBody := BodyStart;
+  mBodyLast := -1;
+  if mBody > mLast then
   begin
-    BodyLast := HeadEnd(Body);
+    mBodyLast := HeadEnd(mBody);
   end;
-  if BodyLast > Body then
+  if mBodyLast > mBody then
   begin
-    Edits := Edits + [TRuleEdit.Create(TTextRange.Create(FTokens[Body].StartPos, FTokens[BodyLast].StartPos),
+    mEdits := mEdits + [TRuleEdit.Create(TTextRange.Create(FTokens[mBody].StartPos, FTokens[mBodyLast].StartPos),
       ACandidate.Keyword + ' ' + FMethod.ClassName + '.' + WithoutDefaults(ACandidate.Head))];
   end;
   AFix := TRuleFix.Create(cTexts[TInheritanceOverrideTargetsText.TakeSignature].Fmt([ACandidate.TypeName,
     ACandidate.Symbol.Name]),
-    Edits);
+    mEdits);
 end;
 
 /// <summary>Vorfahrenkette ab der Klasse, in deren Rumpf die Methode steht (#1326): THorseChannel&lt;T&gt; neben
 /// THorseChannel; dazu Typparameter und gleichnamige Kandidaten.</summary>
 procedure TOverrideTargetCheck.Prepare(const AMethod: TMethodDecl);
 var
-  Own: TSymbolLocation;
+  mOwn: TSymbolLocation;
 begin
   FMethod := AMethod;
-  if FAncestry.OwnerOf(AMethod.Symbol, Own) then
+  if FAncestry.OwnerOf(AMethod.Symbol, mOwn) then
   begin
-    FChain := FAncestry.Ancestors(Own, FComplete, FObjectMissing);
+    FChain := FAncestry.Ancestors(mOwn, FComplete, FObjectMissing);
   end
   else
   begin
@@ -543,17 +543,17 @@ end;
 /// <summary>Die nächste virtuelle Methode mit gleichem Kopf ist das Ziel; final meldet E2352.</summary>
 function TOverrideTargetCheck.ReportTarget: Boolean;
 var
-  Candidate: TOverrideCandidate;
+  mCandidate: TOverrideCandidate;
 begin
   Result := False;
-  for Candidate in FFound do
+  for mCandidate in FFound do
   begin
-    if Candidate.Symbol.IsVirtual and (Compare(Candidate) = TOverrideMatch.Same) then
+    if mCandidate.Symbol.IsVirtual and (Compare(mCandidate) = TOverrideMatch.Same) then
     begin
-      if Candidate.Symbol.HasDirective('final') then
+      if mCandidate.Symbol.HasDirective('final') then
       begin
         FReport.Add(FMethod.Symbol.SelectionRange,
-          cTexts[TInheritanceOverrideTargetsText.Final].Fmt([Candidate.TypeName, Candidate.Symbol.Name]),
+          cTexts[TInheritanceOverrideTargetsText.Final].Fmt([mCandidate.TypeName, mCandidate.Symbol.Name]),
           TRuleConfidence.High);
       end;
       Exit(True);
@@ -564,15 +564,15 @@ end;
 /// <summary>Gleicher Kopf, aber nicht virtuell (E2170).</summary>
 function TOverrideTargetCheck.ReportStatic: Boolean;
 var
-  Candidate: TOverrideCandidate;
+  mCandidate: TOverrideCandidate;
 begin
   Result := False;
-  for Candidate in FFound do
+  for mCandidate in FFound do
   begin
-    if Compare(Candidate) = TOverrideMatch.Same then
+    if Compare(mCandidate) = TOverrideMatch.Same then
     begin
       FReport.Add(FMethod.Symbol.SelectionRange,
-        cTexts[TInheritanceOverrideTargetsText.NotVirtual].Fmt([Candidate.TypeName, Candidate.Symbol.Name]),
+        cTexts[TInheritanceOverrideTargetsText.NotVirtual].Fmt([mCandidate.TypeName, mCandidate.Symbol.Name]),
         TRuleConfidence.High);
       Exit(True);
     end;
@@ -582,24 +582,24 @@ end;
 /// <summary>Virtuelle Methode gleichen Namens mit anderem Kopf: die ähnlichste der nächsten Stufe.</summary>
 function TOverrideTargetCheck.FindBest(out ABest: TBestCandidate): Boolean;
 var
-  Candidate: TOverrideCandidate;
-  Match: TOverrideMatch;
-  Certain: Boolean;
+  mCandidate: TOverrideCandidate;
+  mMatch: TOverrideMatch;
+  mCertain: Boolean;
 begin
   Result := False;
   ABest := Default(TBestCandidate);
-  for Candidate in FFound do
+  for mCandidate in FFound do
   begin
-    if not Candidate.Symbol.IsVirtual then
+    if not mCandidate.Symbol.IsVirtual then
     begin
       Continue;
     end;
-    Match := CompareTypes(Candidate, Certain);
-    if not Result or (Match < ABest.Match) then
+    mMatch := CompareTypes(mCandidate, mCertain);
+    if not Result or (mMatch < ABest.Match) then
     begin
-      ABest.Candidate := Candidate;
-      ABest.Match := Match;
-      ABest.Certain := Certain;
+      ABest.Candidate := mCandidate;
+      ABest.Match := mMatch;
+      ABest.Certain := mCertain;
       Result := True;
     end;
   end;
@@ -608,53 +608,53 @@ end;
 /// <summary>Meldet E2137 mit dem Kopf der ähnlichsten virtuellen Methode gleichen Namens.</summary>
 function TOverrideTargetCheck.ReportOtherHead: Boolean;
 var
-  Best: TBestCandidate;
-  Confidence: TRuleConfidence;
-  Fixes: TArray<TRuleFix>;
-  Fix: TRuleFix;
+  mBest: TBestCandidate;
+  mConfidence: TRuleConfidence;
+  mFixes: TArray<TRuleFix>;
+  mFix: TRuleFix;
 begin
-  Result := FindBest(Best);
+  Result := FindBest(mBest);
   if not Result then
   begin
     Exit;
   end;
-  Confidence := TRuleConfidence.High;
+  mConfidence := TRuleConfidence.High;
   // Nur andere Typen: sicher nur, wenn keiner ein unbekannter Alias sein kann.
-  if (Best.Match = TOverrideMatch.OtherTypes) and not Best.Certain then
+  if (mBest.Match = TOverrideMatch.OtherTypes) and not mBest.Certain then
   begin
-    Confidence := TRuleConfidence.Medium;
+    mConfidence := TRuleConfidence.Medium;
   end;
-  Fixes := nil;
-  if (FWildcards = nil) and AdoptFix(Best.Candidate, Fix) then
+  mFixes := nil;
+  if (FWildcards = nil) and AdoptFix(mBest.Candidate, mFix) then
   begin
-    Fixes := [Fix];
+    mFixes := [mFix];
   end;
   FReport.Add(FMethod.Symbol.SelectionRange, cTexts[TInheritanceOverrideTargetsText.OtherName].Fmt(
-    [Best.Candidate.TypeName, OwnHead(FMethod), Best.Candidate.Head]), Confidence, Fixes);
+    [mBest.Candidate.TypeName, OwnHead(FMethod), mBest.Candidate.Head]), mConfidence, mFixes);
 end;
 
 /// <summary>Namen aller virtuellen Methoden gleicher Art der Vorfahren (dazu die von TObject, wenn System nicht im
 /// Index steht); AVirtuals die zugehörigen Kandidaten.</summary>
 function TOverrideTargetCheck.TypoNames(out AVirtuals: TArray<TOverrideCandidate>): TArray<string>;
 var
-  Candidate: TOverrideCandidate;
-  Name: string;
+  mCandidate: TOverrideCandidate;
+  mName: string;
 begin
   AVirtuals := nil;
   Result := nil;
-  for Candidate in Candidates('') do
+  for mCandidate in Candidates('') do
   begin
-    if Candidate.Symbol.IsVirtual and (Candidate.Keyword = FMethod.Keyword) then
+    if mCandidate.Symbol.IsVirtual and (mCandidate.Keyword = FMethod.Keyword) then
     begin
-      AVirtuals := AVirtuals + [Candidate];
-      Result := Result + [Candidate.Symbol.Name];
+      AVirtuals := AVirtuals + [mCandidate];
+      Result := Result + [mCandidate.Symbol.Name];
     end;
   end;
   if FObjectMissing then
   begin
-    for Name in ObjectVirtualNames do
+    for mName in cObjectVirtualNames do
     begin
-      Result := Result + [Name];
+      Result := Result + [mName];
     end;
   end;
 end;
@@ -664,52 +664,52 @@ end;
 function TOverrideTargetCheck.TypoFixes(const AVirtuals: TArray<TOverrideCandidate>;
   const ATypo: string): TArray<TRuleFix>;
 var
-  Candidate: TOverrideCandidate;
-  Fix: TRuleFix;
+  mCandidate: TOverrideCandidate;
+  mFix: TRuleFix;
 begin
   Result := nil;
-  for Candidate in AVirtuals do
+  for mCandidate in AVirtuals do
   begin
-    if (FWildcards = nil) and (Result = nil) and SameText(Candidate.Symbol.Name, ATypo) and
-      AdoptFix(Candidate, Fix) then
+    if (FWildcards = nil) and (Result = nil) and SameText(mCandidate.Symbol.Name, ATypo) and
+      AdoptFix(mCandidate, mFix) then
     begin
-      Result := [Fix];
+      Result := [mFix];
     end;
   end;
   if (Result = nil) and SameText(ATypo, 'Destroy') and (FMethod.Keyword = 'destructor') and
-    AdoptFix(ObjectDestroy, Fix) then
+    AdoptFix(ObjectDestroy, mFix) then
   begin
-    Result := [Fix];
+    Result := [mFix];
   end;
 end;
 
 /// <summary>Kein gleichnamiger Kandidat: Tippfehler im Namen (Destory)?</summary>
 procedure TOverrideTargetCheck.ReportTypo;
 var
-  Virtuals: TArray<TOverrideCandidate>;
-  Typo: string;
+  mVirtuals: TArray<TOverrideCandidate>;
+  mTypo: string;
 begin
-  Typo := TTextFuzzy.Closest(FMethod.Symbol.Name, TypoNames(Virtuals));
-  if Typo = '' then
+  mTypo := TTextFuzzy.Closest(FMethod.Symbol.Name, TypoNames(mVirtuals));
+  if mTypo = '' then
   begin
     FReport.Add(FMethod.Symbol.SelectionRange, cTexts[TInheritanceOverrideTargetsText.NoAncestor].Fmt(
       [FMethod.ClassName, FMethod.Symbol.Name]), TRuleConfidence.High);
     Exit;
   end;
   FReport.Add(FMethod.Symbol.SelectionRange,
-    cTexts[TInheritanceOverrideTargetsText.NoAncestorMeant].Fmt([FMethod.ClassName, FMethod.Symbol.Name, Typo]),
+    cTexts[TInheritanceOverrideTargetsText.NoAncestorMeant].Fmt([FMethod.ClassName, FMethod.Symbol.Name, mTypo]),
     TRuleConfidence.High,
-    TypoFixes(Virtuals, Typo));
+    TypoFixes(mVirtuals, mTypo));
 end;
 
 procedure TOverrideTargetCheck.CheckMethod(const AMethod: TMethodDecl);
 var
-  Done: Boolean;
+  mDone: Boolean;
 begin
   Prepare(AMethod);
-  Done := ReportTarget or (FObjectMissing and MatchText(AMethod.Symbol.Name, ObjectVirtualNames));
-  Done := Done or not FComplete or ReportStatic or ReportOtherHead;
-  if not Done then
+  mDone := ReportTarget or (FObjectMissing and MatchText(AMethod.Symbol.Name, cObjectVirtualNames));
+  mDone := mDone or not FComplete or ReportStatic or ReportOtherHead;
+  if not mDone then
   begin
     ReportTypo;
   end;
@@ -718,34 +718,34 @@ end;
 /// <summary>E2353: Vorfahr mit sealed in der Signatur ("TBasis = class sealed").</summary>
 procedure TOverrideTargetCheck.CheckSealed;
 var
-  Symbol: TIndexSymbol;
-  Chain: TArray<TSymbolLocation>;
-  Complete, ObjectMissing: Boolean;
+  mSymbol: TIndexSymbol;
+  mChain: TArray<TSymbolLocation>;
+  mComplete, mObjectMissing: Boolean;
 begin
-  for Symbol in FAncestry.Local.Symbols do
+  for mSymbol in FAncestry.Local.Symbols do
   begin
-    if (Symbol.Kind <> TIndexSymbolKind.ClassType) or (Symbol.Container <> '') or (Symbol.Ancestors = nil) then
+    if (mSymbol.Kind <> TIndexSymbolKind.ClassType) or (mSymbol.Container <> '') or (mSymbol.Ancestors = nil) then
     begin
       Continue;
     end;
-    Chain := FAncestry.Ancestors(Symbol.Name, Complete, ObjectMissing);
-    if (Chain <> nil) and IsSealedSignature(Chain[0].Symbol.Signature) then
+    mChain := FAncestry.Ancestors(mSymbol.Name, mComplete, mObjectMissing);
+    if (mChain <> nil) and IsSealedSignature(mChain[0].Symbol.Signature) then
     begin
-      FReport.Add(Symbol.SelectionRange, cTexts[TInheritanceOverrideTargetsText.Sealed].Fmt(
-        [Chain[0].Symbol.Name]), TRuleConfidence.High);
+      FReport.Add(mSymbol.SelectionRange, cTexts[TInheritanceOverrideTargetsText.Sealed].Fmt(
+        [mChain[0].Symbol.Name]), TRuleConfidence.High);
     end;
   end;
 end;
 
 procedure TOverrideTargetCheck.Run;
 var
-  Method: TMethodDecl;
+  mMethod: TMethodDecl;
 begin
-  for Method in ClassMethods(FContext, FAncestry) do
+  for mMethod in ClassMethods(FContext, FAncestry) do
   begin
-    if Method.Has('override') then
+    if mMethod.Has('override') then
     begin
-      CheckMethod(Method);
+      CheckMethod(mMethod);
     end;
   end;
   CheckSealed;

@@ -98,9 +98,9 @@ type
   end;
 
 const
-  DiagnosticEndReasonCodes: array[TDiagnosticEndReason] of string = ('clean', 'inputClosed', 'parentExited',
+  cDiagnosticEndReasonCodes: array[TDiagnosticEndReason] of string = ('clean', 'inputClosed', 'parentExited',
     'exception');
-  DiagnosticOutcomeCodes: array[TDiagnosticOutcome] of string = ('ok', 'empty', 'timeout', 'cancelled', 'error');
+  cDiagnosticOutcomeCodes: array[TDiagnosticOutcome] of string = ('ok', 'empty', 'timeout', 'cancelled', 'error');
 
 implementation
 

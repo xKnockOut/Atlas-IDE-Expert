@@ -139,13 +139,13 @@ begin
   Assert.AreEqual('2026-10-29_211530_4711', ExtractFileName(mFolder));
   Assert.IsTrue(TFile.Exists(TPath.Combine(mFolder, 'UI.Auftrag.pas')));
   Assert.IsTrue(TFile.Exists(TPath.Combine(mFolder, 'atlas.json')));
-  Assert.IsTrue(TFile.Exists(TPath.Combine(mFolder, TCrashCases.StackName)));
-  Assert.IsTrue(TFile.Exists(TPath.Combine(mFolder, TCrashCases.ReplayName)));
-  mRequest := TFile.ReadAllText(TPath.Combine(mFolder, TCrashCases.RequestName), TEncoding.UTF8);
+  Assert.IsTrue(TFile.Exists(TPath.Combine(mFolder, TCrashCases.cStackName)));
+  Assert.IsTrue(TFile.Exists(TPath.Combine(mFolder, TCrashCases.cReplayName)));
+  mRequest := TFile.ReadAllText(TPath.Combine(mFolder, TCrashCases.cRequestName), TEncoding.UTF8);
   Assert.IsTrue(mRequest.Contains('"textDocument/hover"'));
   Assert.IsTrue(mRequest.Contains('"EStackOverflow"'));
   Assert.IsTrue(mRequest.Contains('abgeschnitten'));
-  Assert.IsTrue(TFile.ReadAllText(TPath.Combine(mFolder, TCrashCases.StackName), TEncoding.UTF8)
+  Assert.IsTrue(TFile.ReadAllText(TPath.Combine(mFolder, TCrashCases.cStackName), TEncoding.UTF8)
     .Contains('UI.Parser.pas Zeile 40'));
 end;
 
@@ -194,13 +194,13 @@ var
   mFolders: TArray<string>;
 begin
   mCase := SampleCase;
-  for mIndex := 0 to TCrashCases.MaxCases + 2 do
+  for mIndex := 0 to TCrashCases.cMaxCases + 2 do
   begin
     mCase.Time := SampleCase.Time + mIndex / SecsPerDay;
     TCrashCases.Write(FRoot, mCase);
   end;
   mFolders := TCrashCases.Folders(FRoot);
-  Assert.AreEqual(TCrashCases.MaxCases, Integer(Length(mFolders)));
+  Assert.AreEqual(TCrashCases.cMaxCases, Integer(Length(mFolders)));
   // Die ältesten drei sind weg.
   Assert.AreEqual(TCrashCases.FolderName(SampleCase.Time + 3 / SecsPerDay, 4711), ExtractFileName(mFolders[0]));
 end;
@@ -213,7 +213,7 @@ begin
   mCase := SampleCase;
   mCase.Settings := TArray<TCrashCaseSetting>.Create(TCrashCaseSetting.Create('atlas.json', '{"a":1}'));
   mFolder := TCrashCases.Write(FRoot, mCase);
-  Assert.IsTrue(TCrashCases.Load(TPath.Combine(mFolder, TCrashCases.RequestName), mLoaded, mError), mError);
+  Assert.IsTrue(TCrashCases.Load(TPath.Combine(mFolder, TCrashCases.cRequestName), mLoaded, mError), mError);
   Assert.AreEqual('textDocument/hover', mLoaded.Method);
   Assert.AreEqual('12', mLoaded.Id);
   Assert.AreEqual(811, mLoaded.Line);

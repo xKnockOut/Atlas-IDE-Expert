@@ -32,7 +32,7 @@ type
     FOnOpen: TProc<Integer>;
     function Scale: Double;
     procedure Relayout;
-    procedure SelectAt(X, Y: Integer);
+    procedure SelectAt(AX, AY: Integer);
     /// <summary>Achsen mit Teilstrichen und Beschriftung.</summary>
     procedure PaintAxes(const AColors: TAtlasColors);
     /// <summary>Blasen: größte zuerst, damit kleine sichtbar bleiben; gewählte und überfahrene mit Rahmen.</summary>
@@ -164,10 +164,10 @@ var
   mCaption: string;
   mSize: TSize;
 begin
-  mLeft := Round(TAtlasHotspotChart.MarginLeft * Scale);
-  mBottom := ClientHeight - Round(TAtlasHotspotChart.MarginBottom * Scale);
-  mTop := Round(TAtlasHotspotChart.MarginTop * Scale);
-  mRight := ClientWidth - Round(TAtlasHotspotChart.MarginRight * Scale);
+  mLeft := Round(TAtlasHotspotChart.cMarginLeft * Scale);
+  mBottom := ClientHeight - Round(TAtlasHotspotChart.cMarginBottom * Scale);
+  mTop := Round(TAtlasHotspotChart.cMarginTop * Scale);
+  mRight := ClientWidth - Round(TAtlasHotspotChart.cMarginRight * Scale);
   TAtlasHotspotChart.Extent(FEntries, FShown, mMaxChanges, mMaxComplexity);
   Canvas.Pen.Style := psSolid;
   Canvas.Pen.Width := 1;
@@ -257,11 +257,11 @@ begin
   PaintSelectedCaption(mColors);
 end;
 
-procedure TAtlasHotspotChartView.SelectAt(X, Y: Integer);
+procedure TAtlasHotspotChartView.SelectAt(AX, AY: Integer);
 var
   mHit: Integer;
 begin
-  mHit := TAtlasHotspotChart.HitTest(FBubbles, X, Y);
+  mHit := TAtlasHotspotChart.HitTest(FBubbles, AX, AY);
   SelectEntry(mHit);
   if Assigned(FOnSelect) then
   begin

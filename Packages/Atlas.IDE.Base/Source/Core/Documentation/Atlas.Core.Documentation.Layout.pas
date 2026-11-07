@@ -177,7 +177,7 @@ type
   /// (#765) an und beim Entladen wieder ab. Nur im Hauptthread.</summary>
   TAtlasDocIssueLinks = class
   public const
-    Prefix = 'issue:';
+    cPrefix = 'issue:';
   private class var
     FResolver: TAtlasDocIssueUrl;
   public
@@ -190,13 +190,13 @@ type
   TAtlasDocLayout = record
   public const
     /// <summary>Begründungen, die zugeklappt sichtbar sind.</summary>
-    MaxRationale = 3;
+    cMaxRationale = 3;
     /// <summary>Tabellen: Spalte der Begriffe höchstens so viel Prozent der Breite.</summary>
-    TermColumnPercent = 45;
+    cTermColumnPercent = 45;
     /// <summary>Parameter: Namens- und Typspalte höchstens so viel Prozent der Breite.</summary>
-    NameColumnPercent = 30;
-    TypeColumnPercent = 35;
-    Separator = ' · ';
+    cNameColumnPercent = 30;
+    cTypeColumnPercent = 35;
+    cSeparator = ' · ';
   public
     Lines: TArray<TAtlasDocLine>;
     Links: TArray<TAtlasDocLink>;
@@ -413,11 +413,11 @@ end;
 
 class procedure TAtlasDocExpandState.Reset;
 var
-  Surface: TAtlasDocSurface;
+  mSurface: TAtlasDocSurface;
 begin
-  for Surface := Low(TAtlasDocSurface) to High(TAtlasDocSurface) do
+  for mSurface := Low(TAtlasDocSurface) to High(TAtlasDocSurface) do
   begin
-    FLast[Surface] := False;
+    FLast[mSurface] := False;
   end;
 end;
 
@@ -436,11 +436,11 @@ end;
 class function TAtlasDocIssueLinks.Url(const ATarget: string): string;
 begin
   Result := '';
-  if not ATarget.StartsWith(Prefix, True) or not Assigned(FResolver) then
+  if not ATarget.StartsWith(cPrefix, True) or not Assigned(FResolver) then
   begin
     Exit;
   end;
-  Result := FResolver(Copy(ATarget, Length(Prefix) + 1, MaxInt));
+  Result := FResolver(Copy(ATarget, Length(cPrefix) + 1, MaxInt));
   // Nur Web-Adressen, wie beim Öffnen aus „Meine Issues“.
   if not (Result.StartsWith('https://', True) or Result.StartsWith('http://', True)) then
   begin
@@ -457,13 +457,13 @@ end;
 
 function TAtlasDocLayout.LineAt(AY: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Lines) do
+  for mIndex := 0 to High(Lines) do
   begin
-    if (AY >= Lines[Index].Top - Lines[Index].GapBefore) and (AY < Lines[Index].Bottom) then
+    if (AY >= Lines[mIndex].Top - Lines[mIndex].GapBefore) and (AY < Lines[mIndex].Bottom) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -471,20 +471,20 @@ end;
 
 function TAtlasDocLayout.LinkAt(AX, AY: Integer): Integer;
 var
-  Line: Integer;
-  Span: TAtlasDocSpan;
+  mLine: Integer;
+  mSpan: TAtlasDocSpan;
 begin
   Result := -1;
-  Line := LineAt(AY);
-  if (Line < 0) or (AY < Lines[Line].Top) then
+  mLine := LineAt(AY);
+  if (mLine < 0) or (AY < Lines[mLine].Top) then
   begin
     Exit;
   end;
-  for Span in Lines[Line].Spans do
+  for mSpan in Lines[mLine].Spans do
   begin
-    if (Span.Link >= 0) and (AX >= Span.Left) and (AX < Span.Right) then
+    if (mSpan.Link >= 0) and (AX >= mSpan.Left) and (AX < mSpan.Right) then
     begin
-      Exit(Span.Link);
+      Exit(mSpan.Link);
     end;
   end;
 end;
@@ -586,26 +586,26 @@ end;
 function TAtlasDocLayout.SpanRange(const ASpan: TAtlasDocSpan; AFrom, ATo: Integer;
   const AMeasure: TAtlasDocMeasure; out ALeft, ARight: Integer): Boolean;
 var
-  From, Till: Integer;
+  mFrom, mTill: Integer;
 begin
-  From := Max(AFrom, ASpan.TextStart) - ASpan.TextStart;
-  Till := Min(ATo, ASpan.TextStart + Length(ASpan.Text)) - ASpan.TextStart;
-  Result := Till > From;
+  mFrom := Max(AFrom, ASpan.TextStart) - ASpan.TextStart;
+  mTill := Min(ATo, ASpan.TextStart + Length(ASpan.Text)) - ASpan.TextStart;
+  Result := mTill > mFrom;
   if not Result then
   begin
     Exit;
   end;
-  ALeft := ASpan.Left + ASpan.Pad + AMeasure(Copy(ASpan.Text, 1, From), ASpan.Face);
-  ARight := ASpan.Left + ASpan.Pad + AMeasure(Copy(ASpan.Text, 1, Till), ASpan.Face);
+  ALeft := ASpan.Left + ASpan.Pad + AMeasure(Copy(ASpan.Text, 1, mFrom), ASpan.Face);
+  ARight := ASpan.Left + ASpan.Pad + AMeasure(Copy(ASpan.Text, 1, mTill), ASpan.Face);
 end;
 
 function TAtlasDocLayout.Selected(AFrom, ATo: Integer): string;
 var
-  From, Till: Integer;
+  mFrom, mTill: Integer;
 begin
-  From := EnsureRange(Min(AFrom, ATo), 0, Length(Text));
-  Till := EnsureRange(Max(AFrom, ATo), 0, Length(Text));
-  Result := Copy(Text, From + 1, Till - From);
+  mFrom := EnsureRange(Min(AFrom, ATo), 0, Length(Text));
+  mTill := EnsureRange(Max(AFrom, ATo), 0, Length(Text));
+  Result := Copy(Text, mFrom + 1, mTill - mFrom);
 end;
 
 function TAtlasDocLayout.HeightOfLines(ALines: Integer): Integer;

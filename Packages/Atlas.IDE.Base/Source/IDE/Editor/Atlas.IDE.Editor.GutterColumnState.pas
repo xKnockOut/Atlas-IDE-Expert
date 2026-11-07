@@ -36,13 +36,13 @@ type
 
   TAtlasIdeGutterColumnState = class
   public const
-    OverridesCommand = 'atlas.server.overrideMarks';
+    cOverridesCommand = 'atlas.server.overrideMarks';
   private const
-    QuietMs = 600;
-    OverridesTimeoutMs = 5000;
-    ActionsTimeoutMs = 5000;
-    FixesTimeoutMs = 3000;
-    RetryMs = 5000;
+    cQuietMs = 600;
+    cOverridesTimeoutMs = 5000;
+    cActionsTimeoutMs = 5000;
+    cFixesTimeoutMs = 3000;
+    cRetryMs = 5000;
   private
     FSession: TAtlasGutterColumnSessionFunc;
     FRequest: TAtlasBackgroundRequest;
@@ -70,7 +70,8 @@ type
     function Settled: Boolean;
     /// <summary>True, wenn die Glühbirne der Cursorzeile neu zu erfragen ist.</summary>
     function ActionDue: Boolean;
-    /// <summary>Was fehlt, beim Server erfragen: Überschreibungen, sonst die Glühbirne; eine Anfrage zugleich.</summary>
+    /// <summary>Was fehlt, beim Server erfragen: Überschreibungen, sonst die Glühbirne; eine Anfrage
+    /// zugleich.</summary>
     procedure FetchDue(ASession: TLspSession);
     procedure FetchOverrides(ASession: TLspSession);
     /// <summary>Antwort auf FetchOverrides im Hauptthread; AOk = False: später neu versuchen.</summary>
@@ -217,7 +218,7 @@ var
   mMoment: UInt64;
 begin
   mMoment := TThread.GetTickCount64;
-  Result := (mMoment - FChangedAt >= QuietMs) and (mMoment >= FRetryAt);
+  Result := (mMoment - FChangedAt >= cQuietMs) and (mMoment >= FRetryAt);
 end;
 
 function TAtlasIdeGutterColumnState.ActionDue: Boolean;
@@ -290,7 +291,7 @@ begin
     var
       mAnswer: TJSONValue;
     begin
-      mAnswer := ASession.RunCommand(OverridesCommand, mArguments, OverridesTimeoutMs);
+      mAnswer := ASession.RunCommand(cOverridesCommand, mArguments, cOverridesTimeoutMs);
       try
         mOverrides := TAtlasFileOverrides.FromJson(mAnswer,
           function(AUri: string): string
@@ -312,7 +313,7 @@ procedure TAtlasIdeGutterColumnState.OverridesFetched(AOk: Boolean; const AFileN
 begin
   if not AOk then
   begin
-    FRetryAt := TThread.GetTickCount64 + RetryMs;
+    FRetryAt := TThread.GetTickCount64 + cRetryMs;
     Exit;
   end;
   // Gilt für den gefragten Stand; ist der Text inzwischen anders, fragt Track neu.
@@ -342,7 +343,7 @@ begin
     procedure
     begin
       mFound := ASession.CodeActions(mFileName, TLspRange.Create(mLine, 0, mLine, Length(mLineText)),
-        ActionsTimeoutMs);
+        cActionsTimeoutMs);
     end,
     procedure(AOk: Boolean; const AError: string)
     begin
@@ -358,7 +359,7 @@ var
 begin
   if not AOk then
   begin
-    FRetryAt := TThread.GetTickCount64 + RetryMs;
+    FRetryAt := TThread.GetTickCount64 + cRetryMs;
     // Ohne Antwort noch einmal fragen, sonst bliebe die Glühbirne aus, bis die Einfügemarke wandert.
     FAction.Asked := False;
   end;
@@ -453,7 +454,7 @@ begin
   try
     mSession.Sync(FFileName, FText);
     Result := mSession.CodeActions(AFileName, TLspRange.Create(AProblem.StartLine, AProblem.StartCharacter,
-      AProblem.EndLine, AProblem.EndCharacter), FixesTimeoutMs);
+      AProblem.EndLine, AProblem.EndCharacter), cFixesTimeoutMs);
   except
     on E: ELspClientError do
     begin

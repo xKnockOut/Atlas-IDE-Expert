@@ -72,84 +72,84 @@ end;
 
 procedure TAtlasStepIntoWindowTests.CaptionsKindsAndReasons;
 var
-  Rows: TArray<TAtlasStepRow>;
-  Item: TAtlasStepRow;
+  mRows: TArray<TAtlasStepRow>;
+  mItem: TAtlasStepRow;
 begin
   TAtlasStrings.Language := TAtlasLanguage.German;
-  Rows := Sample;
-  Assert.AreEqual('1  TKunde.GetName  (Getter)', TAtlasStepIntoWindow.RowCaption(Rows, 0));
-  Assert.AreEqual('2  Format', TAtlasStepIntoWindow.RowCaption(Rows, 1));
-  Assert.AreEqual('ohne Quelltext', TAtlasStepIntoWindow.ReasonText(Rows[1]));
-  Assert.AreEqual('', TAtlasStepIntoWindow.ReasonText(Rows[0]));
-  Item := Row('TStammkunde.Speichere', TAtlasStepKind.Call, True);
-  Item.Candidate := True;
-  Assert.AreEqual('Überschreibung', TAtlasStepIntoWindow.KindText(Item));
-  Item.Kind := TAtlasStepKind.Constructor_;
-  Assert.AreEqual('Konstruktor, Überschreibung', TAtlasStepIntoWindow.KindText(Item));
-  Item.Unavailable := TAtlasStepUnavailable.Library_;
-  Assert.AreEqual('ohne Debug-DCUs', TAtlasStepIntoWindow.ReasonText(Item));
-  Assert.AreEqual('', TAtlasStepIntoWindow.RowCaption(Rows, 9));
+  mRows := Sample;
+  Assert.AreEqual('1  TKunde.GetName  (Getter)', TAtlasStepIntoWindow.RowCaption(mRows, 0));
+  Assert.AreEqual('2  Format', TAtlasStepIntoWindow.RowCaption(mRows, 1));
+  Assert.AreEqual('ohne Quelltext', TAtlasStepIntoWindow.ReasonText(mRows[1]));
+  Assert.AreEqual('', TAtlasStepIntoWindow.ReasonText(mRows[0]));
+  mItem := Row('TStammkunde.Speichere', TAtlasStepKind.Call, True);
+  mItem.Candidate := True;
+  Assert.AreEqual('Überschreibung', TAtlasStepIntoWindow.KindText(mItem));
+  mItem.Kind := TAtlasStepKind.Constructor_;
+  Assert.AreEqual('Konstruktor, Überschreibung', TAtlasStepIntoWindow.KindText(mItem));
+  mItem.Unavailable := TAtlasStepUnavailable.Library_;
+  Assert.AreEqual('ohne Debug-DCUs', TAtlasStepIntoWindow.ReasonText(mItem));
+  Assert.AreEqual('', TAtlasStepIntoWindow.RowCaption(mRows, 9));
 end;
 
 procedure TAtlasStepIntoWindowTests.KeysSkipUnavailable;
 var
-  Window: TAtlasStepIntoWindow;
+  mWindow: TAtlasStepIntoWindow;
 begin
-  Window := NewWindow;
+  mWindow := NewWindow;
   try
-    Window.ShowFor(Sample, Point(100, 100));
+    mWindow.ShowFor(Sample, Point(100, 100));
     try
-      Assert.AreEqual(0, Window.Row);
-      Assert.IsTrue(Window.MoveRow(1));
-      Assert.AreEqual(2, Window.Row, 'Format ohne Quelltext wird übersprungen');
-      Assert.IsTrue(Window.MoveRow(-1));
-      Assert.AreEqual(0, Window.Row);
-      Assert.IsFalse(Window.MoveRow(-1));
-      Window.Select(1);
-      Assert.AreEqual(0, Window.Row, 'nicht wählbar');
-      Assert.IsTrue(Window.RowRect(3).Top > Window.RowRect(0).Top, 'untereinander');
+      Assert.AreEqual(0, mWindow.Row);
+      Assert.IsTrue(mWindow.MoveRow(1));
+      Assert.AreEqual(2, mWindow.Row, 'Format ohne Quelltext wird übersprungen');
+      Assert.IsTrue(mWindow.MoveRow(-1));
+      Assert.AreEqual(0, mWindow.Row);
+      Assert.IsFalse(mWindow.MoveRow(-1));
+      mWindow.Select(1);
+      Assert.AreEqual(0, mWindow.Row, 'nicht wählbar');
+      Assert.IsTrue(mWindow.RowRect(3).Top > mWindow.RowRect(0).Top, 'untereinander');
     finally
-      Window.Dismiss;
+      mWindow.Dismiss;
     end;
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasStepIntoWindowTests.DigitsAcceptAndCancel;
 var
-  Window: TAtlasStepIntoWindow;
-  Accepted, Cancelled: Integer;
+  mWindow: TAtlasStepIntoWindow;
+  mAccepted, mCancelled: Integer;
 begin
-  Accepted := -1;
-  Cancelled := 0;
-  Window := NewWindow;
+  mAccepted := -1;
+  mCancelled := 0;
+  mWindow := NewWindow;
   try
-    Window.OnAccept :=
+    mWindow.OnAccept :=
       procedure(AIndex: Integer)
       begin
-        Accepted := AIndex;
+        mAccepted := AIndex;
       end;
-    Window.OnCancel :=
+    mWindow.OnCancel :=
       procedure
       begin
-        Inc(Cancelled);
+        Inc(mCancelled);
       end;
-    Window.ShowFor(Sample, Point(100, 100));
-    Assert.IsFalse(Window.AcceptDigit(2), 'Format ist nicht wählbar');
-    Assert.IsTrue(Window.IsShown);
-    Assert.IsTrue(Window.AcceptDigit(4));
-    Assert.AreEqual(3, Accepted);
-    Assert.IsFalse(Window.IsShown);
-    Window.ShowFor(Sample, Point(100, 100));
-    Window.Accept;
-    Assert.AreEqual(0, Accepted);
-    Window.ShowFor(Sample, Point(100, 100));
-    Window.Cancel;
-    Assert.AreEqual(1, Cancelled);
-    Assert.IsFalse(Window.IsShown);
+    mWindow.ShowFor(Sample, Point(100, 100));
+    Assert.IsFalse(mWindow.AcceptDigit(2), 'Format ist nicht wählbar');
+    Assert.IsTrue(mWindow.IsShown);
+    Assert.IsTrue(mWindow.AcceptDigit(4));
+    Assert.AreEqual(3, mAccepted);
+    Assert.IsFalse(mWindow.IsShown);
+    mWindow.ShowFor(Sample, Point(100, 100));
+    mWindow.Accept;
+    Assert.AreEqual(0, mAccepted);
+    mWindow.ShowFor(Sample, Point(100, 100));
+    mWindow.Cancel;
+    Assert.AreEqual(1, mCancelled);
+    Assert.IsFalse(mWindow.IsShown);
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 

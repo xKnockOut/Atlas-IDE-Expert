@@ -946,7 +946,7 @@ FWorker.Start;
 
 **Function result possibly not set** · Bug · Warning · Group Find bugs
 
-A path through the function ends without assigning Result. The caller then reads an undefined value.
+A path through the function ends without assigning Result. The caller then reads an undefined value. A for loop runs at least once when both bounds are number literals or true constants of the unit (cAttempts = 3) and the range is not empty, as Delphi evaluates it.
 
 Flagged:
 
@@ -1611,7 +1611,7 @@ ShellExecute(0, 'open', 'tool.exe', PChar(QuotedArgument), nil, SW_SHOW);  // va
 
 **Path traversal** · Vulnerability · Warning · Group Security
 
-A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Experimental until data flow analysis is available.
+A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Only the path (first argument) counts, not the written content (WriteAllText(Path, List.Text)). Experimental until data flow analysis is available.
 
 Flagged:
 
@@ -1992,7 +1992,7 @@ unit Tools;
 
 **Text in code instead of resourcestring** · Code smell · Hint · Group Style and metrics
 
-A string literal with words for people stands in a statement. Move it to a resourcestring so it can be translated. Off by default, low confidence.
+A string literal with words for people stands in a statement. Move it to a resourcestring so it can be translated. Silent for texts nobody translates: arguments of logging and check calls (…Log, Log…, Diagnose, Trace, Debug, Assert, OutputDebugString), comparison and registry calls (StartsText, Pos, ReadString …), masks of FormatDateTime and FormatFloat, markup (HTML from <, JSON from { or "key":, Markdown headings # and ##) and Font.Name; option ignoreCalls names further routines. Off by default, low confidence.
 
 Flagged:
 
@@ -2148,7 +2148,7 @@ if Assigned(X) then S := X.Name else S := '';
 
 **Random without Randomize** · Code smell · Hint · Group Robustness and patterns
 
-Random is used, but the unit never calls Randomize, so every start yields the same sequence. Randomize often sits in the .dpr, so the rule is off by default and has low confidence.
+Random is used, but the unit never calls Randomize, so every start yields the same sequence. A Random of your own (enumeration value, routine) is not System.Random. Randomize often sits in the .dpr, so the rule is off by default and has low confidence.
 
 Flagged:
 
@@ -2434,7 +2434,7 @@ on E: Exception do
 
 **String concatenation in a loop** · Code smell · Hint · Group Performance
 
-A string variable is extended step by step inside a loop. Delphi usually grows strings in place, so this is reported only with low confidence and is off by default; for many iterations TStringBuilder is faster.
+A string variable is extended step by step inside a loop. Delphi usually grows strings in place, so this is reported only with low confidence and is off by default; for many iterations TStringBuilder is faster. Silent when the variable is assigned anew earlier in every iteration, directly in the loop body and not behind then, else or a case label (it does not grow across the loop).
 
 Flagged:
 
@@ -2461,7 +2461,7 @@ end;
 
 **Expensive call in a loop condition** · Code smell · Hint · Group Performance
 
-The condition of while and until is evaluated on every iteration. Calls like Trim, Format or FileExists and properties like Lines.Text there are recomputed each time; compute them once before the loop. Bounds of for loops are evaluated only once and are not reported. Off by default.
+The condition of while and until is evaluated on every iteration. Calls like Trim or Format and properties like Lines.Text there are recomputed each time; compute them once before the loop. Bounds of for loops are evaluated only once and are not reported, nor is .Text when it is a field (record field of a type in the same file, or a field or a property reading a field according to the name resolution), nor a property whose receiver the loop changes (Items[I].Text), nor FileExists and DirectoryExists (waiting for a file), nor calls whose argument the loop changes (assignment, Inc, Dec, Delete, SetLength, Include, Exclude). Off by default.
 
 Flagged:
 
@@ -2483,7 +2483,7 @@ while I < Length(Text) do
 
 **Adding items in a loop without BeginUpdate** · Code smell · Hint · Group Performance
 
-Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Silent for menus (TMenuItem has no BeginUpdate) and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.
+Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Silent for menus (TMenuItem has no BeginUpdate, also through fields such as FParts.Menu.Items, including records nested in the class), for lists without a control (TObjectList<T>, TList, TDictionary), for types in the index without BeginUpdate and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.
 
 Flagged:
 
@@ -4052,7 +4052,7 @@ if SameText(Land, Standard) then
 
 **Number without a name in code** · Code smell · Hint · Group Style and metrics
 
-Number literals (decimal, $hex, floating point, with sign) in statements, outside const sections, types, array bounds and subranges. Allowed values are configurable; DFM coordinates and tests can be excluded through exclude. Off by default and low confidence: it shows up once the rule is switched on and minConfidence is low. Quick fix: Introduce constant (#50) in the const section of the routine.
+Number literals (decimal, $hex, floating point, with sign) in statements, outside const sections, types, array bounds and subranges. Numbers that speak for themselves stay silent: the DPI base 96 in MulDiv, full bit masks ($FF, $FFFF, $FFFFFFFF), time units 24, 60, 1000 and 3600 in *, /, div and mod, and arguments of calls in an array literal whose arguments are all numbers (point lists such as [P(3.5, 1.5), P(9.5, 1.5)]); SetBounds(12, 9, 360, 23) is still reported. Allowed values are configurable; DFM coordinates and tests can be excluded through exclude. Off by default and low confidence: it shows up once the rule is switched on and minConfidence is low. Quick fix: Introduce constant (#50) in the const section of the routine.
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
@@ -4209,7 +4209,7 @@ TStufe2 = class(TBasis)
 
 **Public field** · Code smell · Hint · Group Style and metrics
 
-Fields in the public or published section of a class. The section without a visibility keyword only counts for classes without an ancestor or with TObject, because the form designer puts its fields there. Records are excluded unless includeRecords is set; class var is not reported. Off by default. Quick fix: Encapsulate field moves the field as FName into a private section at the end of the class and adds property Name read FName write FName in the old section; accesses from outside stay valid.
+Fields in the public or published section of a class. The section without a visibility keyword only counts for classes without an ancestor or with TObject, because the form designer puts its fields there. Records are excluded unless includeRecords is set; class var and helper classes declared under a private or protected type section are not reported. Off by default. Quick fix: Encapsulate field moves the field as FName into a private section at the end of the class and adds property Name read FName write FName in the old section; accesses from outside stay valid.
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
@@ -7110,7 +7110,7 @@ end.
 
 **Member hides a member of the ancestor** · Bug · Warning · Group Compiler ahead
 
-A property has the name of a field of an ancestor (like W1009), a field has the name of a field or property of an ancestor, or a non-virtual method has the name and parameters of a non-virtual method of an ancestor (the last two without a code: Delphi 13 compiles them silently). Code that accesses the object through the ancestor type still sees the old member. Virtual methods are reported by hides-virtual, local names by shadowed-name. Republished properties (property Caption;), properties with a new type over an ancestor property, overload, reintroduce, constructors and class methods are not reported. Members the descendant cannot see (private in another unit, strict private with ignoreStrictPrivate) are skipped; ancestors come from the file and the symbol index. Quick fix for fields and properties: rename the member in the class declaration and the bodies of its methods in this unit (FName becomes FKundeName).
+A property has the name of a field of an ancestor (like W1009), a field has the name of a field or property of an ancestor, or a non-virtual method has the name and parameters of a non-virtual method of an ancestor (the last two without a code: Delphi 13 compiles them silently). Code that accesses the object through the ancestor type still sees the old member. Virtual methods are reported by hides-virtual, local names by shadowed-name. Republished properties (property Caption;), properties with a new type over an ancestor property, overload, reintroduce, constructors, class methods and methods implementing a method of an interface in the class's own ancestor list (QueryInterface over TInterfacedObject) are not reported. Members the descendant cannot see (private in another unit, strict private with ignoreStrictPrivate) are skipped; ancestors come from the file and the symbol index. Quick fix for fields and properties: rename the member in the class declaration and the bodies of its methods in this unit (FName becomes FKundeName).
 
 Matches the compiler message `W1009`.
 
@@ -8740,7 +8740,7 @@ Nimm(Round(1.5));
 
 **Method does not need Self** · Code smell · Hint · Group Style and metrics
 
-A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, not an event of the form file, does not implement an interface and is not used as a method pointer. Experimental: only active when switched on in atlas.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (class … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine and a record helper for the type of the first parameter, each with a preview of all changed calls.
+A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, has no attribute and is not published (DUnitX tests and RTTI call it on the instance), is not an event of the form file, does not implement an interface and is not used as a method pointer. Experimental: only active when switched on in atlas.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (class … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine and a record helper for the type of the first parameter, each with a preview of all changed calls.
 
 Flagged:
 

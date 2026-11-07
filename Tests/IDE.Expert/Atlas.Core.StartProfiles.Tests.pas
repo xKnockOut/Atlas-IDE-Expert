@@ -241,7 +241,7 @@ begin
   Assert.IsTrue(Back.HasOriginal);
   Assert.AreEqual('-alt', Back.Original.Parameters);
   Assert.AreEqual('A=1;$(Debugger_EnvVars)', Back.Original.Environment);
-  Assert.AreEqual(TAtlasStartProfiles.Format, TAtlasStartProfiles.FormatOf(TAtlasStartProfiles.ToJson(State)));
+  Assert.AreEqual(TAtlasStartProfiles.cFormat, TAtlasStartProfiles.FormatOf(TAtlasStartProfiles.ToJson(State)));
   // Ohne gemerkte Startoptionen fehlt der Abschnitt.
   State.HasOriginal := False;
   Assert.IsFalse(TAtlasStartProfiles.Parse(TAtlasStartProfiles.ToJson(State), Project).HasOriginal);
@@ -476,7 +476,7 @@ begin
     TFile.WriteAllText(FileName, '{"profiles": [');
     State := TAtlasStartProfiles.Load(Folder, Project);
     Assert.AreEqual(0, Integer(Length(State.Profiles)));
-    Assert.IsTrue(FileExists(FileName + TAtlasDataFile.DefectExtension), 'beiseitegelegt');
+    Assert.IsTrue(FileExists(FileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
     State.Profiles := [Profile('Lokal', '-lokal')];
     Assert.IsTrue(TAtlasStartProfiles.Save(Folder, State));
     Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);

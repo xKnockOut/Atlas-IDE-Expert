@@ -151,7 +151,8 @@ begin
     TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitAsk)]);
   FVcsBranchGitUncommitted.Width := 320;
   BindCheck('VcsBranchGitWorktree', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitWorktree)));
-  BindText('VcsBranchGitWorktreeFolder', AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitWorktreeFolder)));
+  BindText('VcsBranchGitWorktreeFolder',
+    AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitWorktreeFolder)));
   AddWrappedLabel(52, TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitHint)).Font.Color := clGrayText;
 end;
 
@@ -192,7 +193,8 @@ begin
   FVcsExternalsOnBranch.Choice := Max(0, IndexText(ASettings.VcsExternalsOnBranch, ['pin', 'keep', 'ask']));
   FVcsExternalsSuggest.Choice := Max(0, IndexText(ASettings.VcsExternalsSuggestBranch,
     ['modified', 'never', 'always']));
-  FVcsExternalsRules.Text := TAtlasVcsExternalRules.RulesText(TAtlasVcsExternalRules.RulesOf(ASettings.VcsExternalsRules));
+  FVcsExternalsRules.Text :=
+    TAtlasVcsExternalRules.RulesText(TAtlasVcsExternalRules.RulesOf(ASettings.VcsExternalsRules));
   FVcsExternalsUpdate.Choice := Ord(AtlasVcsExternalsUpdateOf(ASettings.VcsExternalsUpdate));
   FVcsBranchGitBase.Choice := Max(0, IndexText(ASettings.VcsBranchGitBase, cVcsGitBases));
   FVcsBranchGitPush.Choice := Max(0, IndexText(ASettings.VcsBranchGitPush, cVcsGitPushes));

@@ -128,13 +128,13 @@ type
 
   TAtlasWelcomeProjectsFrame = class(TAtlasWelcomeSectionFrame)
   public const
-    RowHeight = 44;
-    Indent = 8;
-    PillHeight = 18;
-    PillPadding = 6;
-    PillGap = 6;
-    DotSize = 10;
-    PathLength = 60;
+    cRowHeight = 44;
+    cIndent = 8;
+    cPillHeight = 18;
+    cPillPadding = 6;
+    cPillGap = 6;
+    cDotSize = 10;
+    cPathLength = 60;
   private
     FSource: IAtlasProjectsSource;
     FBox: TAtlasWelcomeCanvas;
@@ -170,7 +170,7 @@ type
     constructor Create(AOwner: TComponent); override;
     procedure UpdateContent; override;
     /// <summary>Zeile und Marke an X, Y (Koordinaten der Zeichenfläche).</summary>
-    function HitTest(X, Y: Integer): TAtlasProjectsHit;
+    function HitTest(AX, AY: Integer): TAtlasProjectsHit;
     /// <summary>Klick wie mit der Maus (auch für Tests).</summary>
     procedure ClickAt(const AHit: TAtlasProjectsHit);
     /// <summary>Doppelklick wie mit der Maus: öffnet die Zeile (auch für Tests).</summary>
@@ -183,7 +183,6 @@ type
     /// <summary>Knopfleiste, Stand und Tastatur der Schnellaktionen (auch für Tests).</summary>
     property Quick: TAtlasQuickActionsBar read FQuick;
     property Entries: TAtlasProjectEntries read FEntries;
-    property PaintBox: TAtlasWelcomeCanvas read FBox;
     property Menu: TAtlasProjectsMenu read FMenu;
   end;
 
@@ -374,8 +373,8 @@ begin
   TextColor := StyleServices(AFrame).GetSystemColor(clWindowText);
   MutedColor := StyleServices(AFrame).GetSystemColor(clGrayText);
   Canvas.Font.Color := TextColor;
-  FDot := Scaled(TAtlasWelcomeProjectsFrame.DotSize);
-  FRadius := Scaled(TAtlasWelcomeProjectsFrame.PillHeight);
+  FDot := Scaled(TAtlasWelcomeProjectsFrame.cDotSize);
+  FRadius := Scaled(TAtlasWelcomeProjectsFrame.cPillHeight);
   FSelected := AFrame.SelectedRow;
   FActive := AFrame.FQuick.ActiveRow;
 end;
@@ -390,14 +389,14 @@ var
   mWidth: Integer;
 begin
   mWidth := FFrame.FBox.Width;
-  Result := mWidth - Scaled(TAtlasWelcomeProjectsFrame.Indent);
+  Result := mWidth - Scaled(TAtlasWelcomeProjectsFrame.cIndent);
   if ARow = FActive then
   begin
     Canvas.Font.Assign(FFrame.Font);
     Canvas.Font.Size := FFrame.Font.Size - 1;
-    Result := FFrame.FQuick.LayoutRow(Canvas, ARow, Rect(Scaled(TAtlasWelcomeProjectsFrame.Indent) + FDot +
-      Scaled(80), ATop, mWidth - Scaled(TAtlasWelcomeProjectsFrame.Indent),
-      ATop + Scaled(TAtlasWelcomeProjectsFrame.RowHeight) - Scaled(2))) - Scaled(TAtlasWelcomeProjectsFrame.Indent);
+    Result := FFrame.FQuick.LayoutRow(Canvas, ARow, Rect(Scaled(TAtlasWelcomeProjectsFrame.cIndent) + FDot +
+      Scaled(80), ATop, mWidth - Scaled(TAtlasWelcomeProjectsFrame.cIndent),
+      ATop + Scaled(TAtlasWelcomeProjectsFrame.cRowHeight) - Scaled(2))) - Scaled(TAtlasWelcomeProjectsFrame.cIndent);
   end;
 end;
 
@@ -408,7 +407,7 @@ begin
   mTop := FFrame.RowTop(ARow);
   // Schnellaktionen (#764): aktive Zeile hinterlegt, Fokusrahmen der Tastatur.
   FFrame.FQuick.PaintBackground(Canvas, ARow, Rect(0, mTop, FFrame.FBox.Width,
-    mTop + Scaled(TAtlasWelcomeProjectsFrame.RowHeight) - Scaled(2)));
+    mTop + Scaled(TAtlasWelcomeProjectsFrame.cRowHeight) - Scaled(2)));
   // Rechte Grenze für Name, Branch und zweite Zeile: die Knopfleiste der aktiven Zeile bzw. die Marken.
   mLimit := TextLimit(ARow, mTop);
   PaintMarker(ARow, mTop);
@@ -434,11 +433,11 @@ begin
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := StyleServices(FFrame).GetSystemColor(clHighlight);
     Canvas.Pen.Color := Canvas.Brush.Color;
-    Canvas.FillRect(Rect(0, ATop, Scaled(3), ATop + Scaled(TAtlasWelcomeProjectsFrame.RowHeight) - Scaled(2)));
+    Canvas.FillRect(Rect(0, ATop, Scaled(3), ATop + Scaled(TAtlasWelcomeProjectsFrame.cRowHeight) - Scaled(2)));
     Canvas.Brush.Style := bsClear;
   end;
   // Punkt mit der schlimmsten Stufe; ohne Angaben grau.
-  mLeft := Scaled(TAtlasWelcomeProjectsFrame.Indent);
+  mLeft := Scaled(TAtlasWelcomeProjectsFrame.cIndent);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := TAtlasProjectsTexts.PillColor(TAtlasWelcomeProjects.Level(FFrame.FPills[ARow]));
   Canvas.Pen.Color := Canvas.Brush.Color;
@@ -452,7 +451,7 @@ var
   mLeft, mTextLeft: Integer;
 begin
   mEntry := FFrame.FEntries[ARow];
-  mTextLeft := Scaled(TAtlasWelcomeProjectsFrame.Indent) + FDot + Scaled(6);
+  mTextLeft := Scaled(TAtlasWelcomeProjectsFrame.cIndent) + FDot + Scaled(6);
   mLeft := mTextLeft;
   Canvas.Font.Assign(FFrame.Font);
   Canvas.Font.Color := TextColor;
@@ -487,13 +486,13 @@ begin
   begin
     Exit;
   end;
-  mRight := FFrame.FBox.Width - Scaled(TAtlasWelcomeProjectsFrame.Indent);
+  mRight := FFrame.FBox.Width - Scaled(TAtlasWelcomeProjectsFrame.cIndent);
   if Length(FFrame.FPillRects[ARow]) > 0 then
   begin
-    mRight := FFrame.FPillRects[ARow][0].Left - Scaled(TAtlasWelcomeProjectsFrame.PillGap);
+    mRight := FFrame.FPillRects[ARow][0].Left - Scaled(TAtlasWelcomeProjectsFrame.cPillGap);
   end;
-  mRect := Rect(mRight - Canvas.TextWidth(mText) - 2 * Scaled(TAtlasWelcomeProjectsFrame.PillPadding),
-    ATop + Scaled(3), mRight, ATop + Scaled(3) + Scaled(TAtlasWelcomeProjectsFrame.PillHeight));
+  mRect := Rect(mRight - Canvas.TextWidth(mText) - 2 * Scaled(TAtlasWelcomeProjectsFrame.cPillPadding),
+    ATop + Scaled(3), mRight, ATop + Scaled(3) + Scaled(TAtlasWelcomeProjectsFrame.cPillHeight));
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := TAtlasQuickActionTexts.StateColor(mState);
   Canvas.Pen.Color := Canvas.Brush.Color;
@@ -501,7 +500,7 @@ begin
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Color := clWhite;
   Canvas.Font.Style := [];
-  Canvas.TextOut(mRect.Left + Scaled(TAtlasWelcomeProjectsFrame.PillPadding),
+  Canvas.TextOut(mRect.Left + Scaled(TAtlasWelcomeProjectsFrame.cPillPadding),
     mRect.Top + (mRect.Height - Canvas.TextHeight(mText)) div 2, mText);
 end;
 
@@ -531,7 +530,7 @@ begin
       Canvas.Font.Style := [];
     end;
     mText := TAtlasProjectsTexts.PillText(mPill);
-    Canvas.TextOut(mRect.Left + Scaled(TAtlasWelcomeProjectsFrame.PillPadding),
+    Canvas.TextOut(mRect.Left + Scaled(TAtlasWelcomeProjectsFrame.cPillPadding),
       mRect.Top + (mRect.Height - Canvas.TextHeight(mText)) div 2, mText);
   end;
 end;
@@ -582,7 +581,7 @@ end;
 procedure TAtlasWelcomeProjectsFrame.QuickOpenRow(ARow: Integer);
 var
   mSource: IAtlasProjectsSource;
-  Project: string;
+  mProject: string;
 begin
   // Enter ohne Knopf öffnet (wie Doppelklick bzw. Klick ohne Projektverlauf).
   if (FSource = nil) or (ARow < 0) or (ARow > High(FEntries)) then
@@ -590,18 +589,18 @@ begin
     Exit;
   end;
   mSource := FSource;
-  Project := FEntries[ARow].Project;
+  mProject := FEntries[ARow].Project;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      mSource.Open(Project);
+      mSource.Open(mProject);
     end);
 end;
 
 procedure TAtlasWelcomeProjectsFrame.QuickSelectRow(ARow: Integer);
 var
   mSource: IAtlasProjectsSource;
-  Project: string;
+  mProject: string;
 begin
   // Mit Projektverlauf (#758) wählen die Pfeiltasten auch das Projekt des Verlaufs.
   if (FSource = nil) or (ARow < 0) or (ARow > High(FEntries)) or not FSource.Selectable then
@@ -609,25 +608,25 @@ begin
     Exit;
   end;
   mSource := FSource;
-  Project := FEntries[ARow].Project;
+  mProject := FEntries[ARow].Project;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      mSource.Select(Project);
+      mSource.Select(mProject);
     end);
 end;
 
 procedure TAtlasWelcomeProjectsFrame.QuickRowMenu(ARow: Integer);
 var
-  Position: TPoint;
+  mPosition: TPoint;
 begin
   if (ARow < 0) or (ARow > High(FEntries)) then
   begin
     Exit;
   end;
-  Position := FBox.ClientToScreen(Point(ScaleValue(Indent), RowTop(ARow) + ScaleValue(RowHeight) div 2));
+  mPosition := FBox.ClientToScreen(Point(ScaleValue(cIndent), RowTop(ARow) + ScaleValue(cRowHeight) div 2));
   FMenu.PopupComponent := FBox;
-  FMenu.Popup(Position.X, Position.Y);
+  FMenu.Popup(mPosition.X, mPosition.Y);
 end;
 
 procedure TAtlasWelcomeProjectsFrame.SetSource(const AValue: IAtlasProjectsSource);
@@ -642,18 +641,18 @@ end;
 
 procedure TAtlasWelcomeProjectsFrame.UpdateContent;
 var
-  Count, Index: Integer;
+  mCount, mIndex: Integer;
 begin
-  Count := Length(FEntries);
+  mCount := Length(FEntries);
   FEntries := nil;
   if FSource <> nil then
   begin
     FEntries := FSource.Entries;
   end;
   SetLength(FPills, Length(FEntries));
-  for Index := 0 to High(FEntries) do
+  for mIndex := 0 to High(FEntries) do
   begin
-    FPills[Index] := TAtlasWelcomeProjects.Pills(FEntries[Index]);
+    FPills[mIndex] := TAtlasWelcomeProjects.Pills(FEntries[mIndex]);
   end;
   // Die Rechtecke der Marken entstehen beim Zeichnen: Erst dann gibt es eine Zeichenfläche.
   FPillRects := nil;
@@ -662,7 +661,7 @@ begin
   FBox.Invalidate;
   inherited;
   // Andere Anzahl Zeilen: Der Frame „Atlas“ ordnet die Spalten neu.
-  if Count <> Length(FEntries) then
+  if mCount <> Length(FEntries) then
   begin
     HeightChanged;
   end;
@@ -670,19 +669,19 @@ end;
 
 function TAtlasWelcomeProjectsFrame.BodyHeight: Integer;
 var
-  Rows: Integer;
+  mRows: Integer;
 begin
-  Rows := Length(FEntries);
-  if Rows < 1 then
+  mRows := Length(FEntries);
+  if mRows < 1 then
   begin
-    Rows := 1;
+    mRows := 1;
   end;
-  Result := Rows * ScaleValue(RowHeight) + ScaleValue(Indent);
+  Result := mRows * ScaleValue(cRowHeight) + ScaleValue(cIndent);
 end;
 
 function TAtlasWelcomeProjectsFrame.RowTop(ARow: Integer): Integer;
 begin
-  Result := ScaleValue(Indent) div 2 + ARow * ScaleValue(RowHeight);
+  Result := ScaleValue(cIndent) div 2 + ARow * ScaleValue(cRowHeight);
 end;
 
 class function TAtlasProjectsTexts.PillText(const APill: TAtlasProjectPill): string;
@@ -730,7 +729,7 @@ end;
 
 class function TAtlasProjectsTexts.DetailText(const AEntry: TAtlasProjectEntry): string;
 begin
-  Result := TAtlasWelcomeProjects.ShortPath(AEntry.Project, TAtlasWelcomeProjectsFrame.PathLength);
+  Result := TAtlasWelcomeProjects.ShortPath(AEntry.Project, TAtlasWelcomeProjectsFrame.cPathLength);
   if AEntry.Summary.LastOpened > 0 then
   begin
     Result := Result + ' · ' + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsOpened,
@@ -777,24 +776,24 @@ end;
 
 procedure TAtlasWelcomeProjectsFrame.LayoutPills;
 var
-  Row, Index, Right, mWidth, mTop: Integer;
-  Canvas: TCanvas;
+  mRow, mIndex, mRight, mWidth, mTop: Integer;
+  mCanvas: TCanvas;
 begin
   // Marken rechtsbündig in der ersten Zeile; die Rechtecke dienen auch dem Treffertest. Nur beim Zeichnen.
   SetLength(FPillRects, Length(FEntries));
-  Canvas := FBox.Canvas;
-  Canvas.Font.Assign(Font);
-  Canvas.Font.Size := Font.Size - 1;
-  for Row := 0 to High(FEntries) do
+  mCanvas := FBox.Canvas;
+  mCanvas.Font.Assign(Font);
+  mCanvas.Font.Size := Font.Size - 1;
+  for mRow := 0 to High(FEntries) do
   begin
-    SetLength(FPillRects[Row], Length(FPills[Row]));
-    Right := FBox.Width - ScaleValue(Indent);
-    mTop := RowTop(Row) + ScaleValue(3);
-    for Index := High(FPills[Row]) downto 0 do
+    SetLength(FPillRects[mRow], Length(FPills[mRow]));
+    mRight := FBox.Width - ScaleValue(cIndent);
+    mTop := RowTop(mRow) + ScaleValue(3);
+    for mIndex := High(FPills[mRow]) downto 0 do
     begin
-      mWidth := Canvas.TextWidth(TAtlasProjectsTexts.PillText(FPills[Row][Index])) + 2 * ScaleValue(PillPadding);
-      FPillRects[Row][Index] := Rect(Right - mWidth, mTop, Right, mTop + ScaleValue(PillHeight));
-      Dec(Right, mWidth + ScaleValue(PillGap));
+      mWidth := mCanvas.TextWidth(TAtlasProjectsTexts.PillText(FPills[mRow][mIndex])) + 2 * ScaleValue(cPillPadding);
+      FPillRects[mRow][mIndex] := Rect(mRight - mWidth, mTop, mRight, mTop + ScaleValue(cPillHeight));
+      Dec(mRight, mWidth + ScaleValue(cPillGap));
     end;
   end;
 end;
@@ -808,7 +807,7 @@ begin
   if Length(FEntries) = 0 then
   begin
     mPainter.Canvas.Font.Color := mPainter.MutedColor;
-    mPainter.Canvas.TextOut(ScaleValue(Indent), RowTop(0) + ScaleValue(4),
+    mPainter.Canvas.TextOut(ScaleValue(cIndent), RowTop(0) + ScaleValue(4),
       TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsEmpty));
     Exit;
   end;
@@ -819,17 +818,17 @@ begin
   end;
 end;
 
-function TAtlasWelcomeProjectsFrame.HitTest(X, Y: Integer): TAtlasProjectsHit;
+function TAtlasWelcomeProjectsFrame.HitTest(AX, AY: Integer): TAtlasProjectsHit;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result.Row := -1;
   Result.Pill := -1;
-  if (Y < RowTop(0)) or (Length(FEntries) = 0) then
+  if (AY < RowTop(0)) or (Length(FEntries) = 0) then
   begin
     Exit;
   end;
-  Result.Row := (Y - RowTop(0)) div ScaleValue(RowHeight);
+  Result.Row := (AY - RowTop(0)) div ScaleValue(cRowHeight);
   if Result.Row > High(FEntries) then
   begin
     Result.Row := -1;
@@ -839,11 +838,11 @@ begin
   begin
     Exit;
   end;
-  for Index := 0 to High(FPillRects[Result.Row]) do
+  for mIndex := 0 to High(FPillRects[Result.Row]) do
   begin
-    if FPillRects[Result.Row][Index].Contains(Point(X, Y)) then
+    if FPillRects[Result.Row][mIndex].Contains(Point(AX, AY)) then
     begin
-      Result.Pill := Index;
+      Result.Pill := mIndex;
     end;
   end;
 end;
@@ -851,39 +850,39 @@ end;
 procedure TAtlasWelcomeProjectsFrame.ClickAt(const AHit: TAtlasProjectsHit);
 var
   mSource: IAtlasProjectsSource;
-  Project: string;
-  Target: TAtlasProjectLocation;
-  Jump, Choose: Boolean;
+  mProject: string;
+  mTarget: TAtlasProjectLocation;
+  mJump, mChoose: Boolean;
 begin
   if (FSource = nil) or (AHit.Row < 0) or (AHit.Row > High(FEntries)) then
   begin
     Exit;
   end;
   mSource := FSource;
-  Project := FEntries[AHit.Row].Project;
-  Jump := (AHit.Pill >= 0) and (AHit.Pill <= High(FPills[AHit.Row])) and FPills[AHit.Row][AHit.Pill].Clickable;
-  Target := Default(TAtlasProjectLocation);
-  if Jump then
+  mProject := FEntries[AHit.Row].Project;
+  mJump := (AHit.Pill >= 0) and (AHit.Pill <= High(FPills[AHit.Row])) and FPills[AHit.Row][AHit.Pill].Clickable;
+  mTarget := Default(TAtlasProjectLocation);
+  if mJump then
   begin
-    Target := FPills[AHit.Row][AHit.Pill].Target;
+    mTarget := FPills[AHit.Row][AHit.Pill].Target;
   end;
   // Mit Projektverlauf wählt der Klick (#758); rote Marken springen weiter zur Meldung.
-  Choose := not Jump and mSource.Selectable;
+  mChoose := not mJump and mSource.Selectable;
   // Die Quelle füllt den Bereich danach neu: nicht im eigenen Mausereignis.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      if Jump then
+      if mJump then
       begin
-        mSource.OpenAt(Project, Target);
+        mSource.OpenAt(mProject, mTarget);
       end
-      else if Choose then
+      else if mChoose then
       begin
-        mSource.Select(Project);
+        mSource.Select(mProject);
       end
       else
       begin
-        mSource.Open(Project);
+        mSource.Open(mProject);
       end;
     end);
 end;
@@ -891,7 +890,7 @@ end;
 procedure TAtlasWelcomeProjectsFrame.DoubleClickAt(const AHit: TAtlasProjectsHit);
 var
   mSource: IAtlasProjectsSource;
-  Project: string;
+  mProject: string;
 begin
   // Ohne Auswahl öffnet schon der einfache Klick; ein zweites Öffnen wäre doppelt.
   if (FSource = nil) or (AHit.Row < 0) or (AHit.Row > High(FEntries)) or not FSource.Selectable then
@@ -899,30 +898,30 @@ begin
     Exit;
   end;
   mSource := FSource;
-  Project := FEntries[AHit.Row].Project;
+  mProject := FEntries[AHit.Row].Project;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      mSource.Open(Project);
+      mSource.Open(mProject);
     end);
 end;
 
 function TAtlasWelcomeProjectsFrame.SelectedRow: Integer;
 var
-  Wanted: string;
-  Row: Integer;
+  mWanted: string;
+  mRow: Integer;
 begin
   Result := -1;
   if (FSource = nil) or not FSource.Selectable or (Length(FEntries) = 0) then
   begin
     Exit;
   end;
-  Wanted := TAtlasProjectSummaries.NormalizedPath(FSource.Selected);
-  for Row := 0 to High(FEntries) do
+  mWanted := TAtlasProjectSummaries.NormalizedPath(FSource.Selected);
+  for mRow := 0 to High(FEntries) do
   begin
-    if TAtlasProjectSummaries.NormalizedPath(FEntries[Row].Project) = Wanted then
+    if TAtlasProjectSummaries.NormalizedPath(FEntries[mRow].Project) = mWanted then
     begin
-      Exit(Row);
+      Exit(mRow);
     end;
   end;
   // Ohne (gültige) Auswahl zeigt der Verlauf das oberste Projekt.
@@ -996,11 +995,11 @@ end;
 
 procedure TAtlasWelcomeProjectsFrame.BoxDblClick(Sender: TObject);
 var
-  QuickRow, QuickButton: Integer;
-  OnMenu: Boolean;
+  mQuickRow, mQuickButton: Integer;
+  mOnMenu: Boolean;
 begin
   // Doppelklick auf einen Knopf öffnet nicht zusätzlich das Projekt.
-  if FQuick.HitTest(FLastMouse.X, FLastMouse.Y, QuickRow, QuickButton, OnMenu) then
+  if FQuick.HitTest(FLastMouse.X, FLastMouse.Y, mQuickRow, mQuickButton, mOnMenu) then
   begin
     Exit;
   end;

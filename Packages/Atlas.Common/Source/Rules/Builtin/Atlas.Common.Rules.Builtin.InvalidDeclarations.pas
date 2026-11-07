@@ -25,7 +25,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  DeclarationInvalidRuleId = 'declaration-invalid';
+  cDeclarationInvalidRuleId = 'declaration-invalid';
 
 type
   TDeclarationInvalidRule = class(TInterfacedObject, IRule)
@@ -114,7 +114,7 @@ end;
 
 function TDeclarationInvalidRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(DeclarationInvalidRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cDeclarationInvalidRuleId, TRuleSeverity.Error,
     cTexts[TInvalidDeclarationsText.Title].Text);
 end;
 
@@ -144,12 +144,12 @@ end;
 
 procedure TDeclarationInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
+  mTokens: TArray<TPascalToken>;
   mCppKnown, mCpp: Boolean;
 
   function TokenRange(AIndex: Integer): TTextRange;
   begin
-    Result := TTextRange.Create(Tokens[AIndex].StartPos, Tokens[AIndex].EndPos);
+    Result := TTextRange.Create(mTokens[AIndex].StartPos, mTokens[AIndex].EndPos);
   end;
 
   function NodeRange(ANode: TSyntaxNode): TTextRange;
@@ -161,7 +161,7 @@ var
   function FirstCode(ANode: TSyntaxNode): Integer;
   begin
     Result := AContext.Tree.FirstTokenFrom(ANode.StartOffset);
-    while (Result < Length(Tokens)) and IsTrivia(Tokens[Result]) do
+    while (Result < Length(mTokens)) and IsTrivia(mTokens[Result]) do
     begin
       Inc(Result);
     end;
@@ -171,7 +171,7 @@ var
   function PreviousCode(AIndex: Integer): Integer;
   begin
     Result := AIndex - 1;
-    while (Result >= 0) and IsTrivia(Tokens[Result]) do
+    while (Result >= 0) and IsTrivia(mTokens[Result]) do
     begin
       Dec(Result);
     end;
@@ -199,7 +199,7 @@ var
     mFirst: Integer;
   begin
     mFirst := FirstCode(AHeader);
-    Result := (mFirst < Length(Tokens)) and IsWord(Tokens[mFirst], 'constructor');
+    Result := (mFirst < Length(mTokens)) and IsWord(mTokens[mFirst], 'constructor');
   end;
 
   /// <summary>E2006: packed vor einem Typnamen (packed Integer).</summary>
@@ -212,7 +212,7 @@ var
       Exit;
     end;
     mBefore := PreviousCode(FirstCode(AReference));
-    if (mBefore >= 0) and IsWord(Tokens[mBefore], 'packed') then
+    if (mBefore >= 0) and IsWord(mTokens[mBefore], 'packed') then
     begin
       AReport.Add(TokenRange(mBefore), cTexts[TInvalidDeclarationsText.PackedType].Fmt([AReference.Name]),
         TRuleConfidence.High);
@@ -257,9 +257,9 @@ var
     mIndex: Integer;
   begin
     mIndex := FirstCode(AProperty);
-    while (mIndex < Length(Tokens)) and (Tokens[mIndex].Offset < AProperty.EndOffset) do
+    while (mIndex < Length(mTokens)) and (mTokens[mIndex].Offset < AProperty.EndOffset) do
     begin
-      if IsWord(Tokens[mIndex], 'read') or IsWord(Tokens[mIndex], 'write') or IsWord(Tokens[mIndex], 'index') then
+      if IsWord(mTokens[mIndex], 'read') or IsWord(mTokens[mIndex], 'write') or IsWord(mTokens[mIndex], 'index') then
       begin
         Exit(True);
       end;
@@ -272,12 +272,12 @@ var
   function NameToken(ANode: TSyntaxNode): Integer;
   begin
     Result := FirstCode(ANode);
-    while (Result < Length(Tokens)) and (Tokens[Result].Offset < ANode.EndOffset) and
-      not ((Tokens[Result].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Result].Text, ANode.Name)) do
+    while (Result < Length(mTokens)) and (mTokens[Result].Offset < ANode.EndOffset) and
+      not ((mTokens[Result].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[Result].Text, ANode.Name)) do
     begin
       Inc(Result);
     end;
-    if (Result >= Length(Tokens)) or (Tokens[Result].Offset >= ANode.EndOffset) then
+    if (Result >= Length(mTokens)) or (mTokens[Result].Offset >= ANode.EndOffset) then
     begin
       Result := FirstCode(ANode);
     end;
@@ -294,7 +294,7 @@ var
     if AInterface then
     begin
       mFirst := FirstCode(AType);
-      if (mFirst < Length(Tokens)) and IsWord(Tokens[mFirst], 'dispinterface') then
+      if (mFirst < Length(mTokens)) and IsWord(mTokens[mFirst], 'dispinterface') then
       begin
         Exit;
       end;
@@ -331,11 +331,11 @@ var
   begin
     Result := '';
     mIndex := FirstCode(ANode);
-    while (mIndex < Length(Tokens)) and (Tokens[mIndex].Offset < ANode.EndOffset) do
+    while (mIndex < Length(mTokens)) and (mTokens[mIndex].Offset < ANode.EndOffset) do
     begin
-      if not IsTrivia(Tokens[mIndex]) then
+      if not IsTrivia(mTokens[mIndex]) then
       begin
-        Result := Result + LowerCase(Tokens[mIndex].Text);
+        Result := Result + LowerCase(mTokens[mIndex].Text);
       end;
       Inc(mIndex);
     end;
@@ -370,13 +370,13 @@ var
       // Der Modifizierer steht vor dem Namen; je nach Knoten gehört er schon zum Parameter.
       mModifier := '';
       mBefore := FirstCode(mParam);
-      if (mBefore < Length(Tokens)) and not IsModifier(Tokens[mBefore]) then
+      if (mBefore < Length(mTokens)) and not IsModifier(mTokens[mBefore]) then
       begin
         mBefore := PreviousCode(mBefore);
       end;
-      if (mBefore >= 0) and (mBefore < Length(Tokens)) and IsModifier(Tokens[mBefore]) then
+      if (mBefore >= 0) and (mBefore < Length(mTokens)) and IsModifier(mTokens[mBefore]) then
       begin
-        mModifier := LowerCase(Tokens[mBefore].Text);
+        mModifier := LowerCase(mTokens[mBefore].Text);
       end;
       mType := '';
       if mParam.ChildCount > 0 then
@@ -495,7 +495,7 @@ begin
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
+  mTokens := AContext.Tree.Tokens;
   mCppKnown := False;
   mCpp := False;
   Visit(AContext.Tree.Root);

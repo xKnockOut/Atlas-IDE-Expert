@@ -83,8 +83,8 @@ uses
   Atlas.IDE.Settings.Options;
 
 const
-  AnswerSession = 100;
-  AnswerProject = 101;
+  cAnswerSession = 100;
+  cAnswerProject = 101;
 
 { TAtlasIdeQuickToggles }
 
@@ -126,42 +126,42 @@ end;
 
 procedure TAtlasIdeQuickToggles.Rebind;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  FKey.Rebind(Word(Settings.QuickToggleKey), Settings.QuickToggleKeyPriority,
+  mSettings := TAtlasIdeSettings.Current;
+  FKey.Rebind(Word(mSettings.QuickToggleKey), mSettings.QuickToggleKeyPriority,
     TAtlasStrings.Text(TAtlasTextId.SettingsQuickToggleKey));
 end;
 
 class function TAtlasIdeQuickToggles.Items: TArray<TAtlasQuickToggleItem>;
 var
-  Project: TJSONObject;
+  mProject: TJSONObject;
 begin
-  Project := nil;
+  mProject := nil;
   try
     try
-      Project := TAtlasProjectSettings.ReadProject;
+      mProject := TAtlasProjectSettings.ReadProject;
     except
       // Unlesbare Datei: Schalter ohne Projektwerte.
       on Exception do
-        Project := nil;
+        mProject := nil;
     end;
     Result := TAtlasQuickToggles.Items(TAtlasIdeSettings.QuickToggles, TAtlasIdeSettings.Stored,
-      TAtlasIdeSettings.Session, Project);
+      TAtlasIdeSettings.Session, mProject);
   finally
-    Project.Free;
+    mProject.Free;
   end;
 end;
 
 class function TAtlasIdeQuickToggles.Checked(const AKey: string): Boolean;
 var
-  Item: TAtlasQuickToggleItem;
+  mItem: TAtlasQuickToggleItem;
 begin
-  for Item in Items do
+  for mItem in Items do
   begin
-    if SameText(Item.Toggle.Key, AKey) then
+    if SameText(mItem.Toggle.Key, AKey) then
     begin
-      Exit(Item.Checked);
+      Exit(mItem.Checked);
     end;
   end;
   Result := False;
@@ -170,64 +170,64 @@ end;
 class function TAtlasIdeQuickToggles.AskTarget(const AItem: TAtlasQuickToggleItem;
   out ATarget: TAtlasToggleTarget): Boolean;
 var
-  Dialog: TTaskDialog;
-  Button: TTaskDialogBaseButtonItem;
+  mDialog: TTaskDialog;
+  mButton: TTaskDialogBaseButtonItem;
 begin
   ATarget := TAtlasToggleTarget.Session;
-  Dialog := TTaskDialog.Create(nil);
+  mDialog := TTaskDialog.Create(nil);
   try
-    Dialog.Caption := 'Atlas';
-    Dialog.Title := AItem.Toggle.Caption;
-    Dialog.Text := TAtlasStrings.Fmt(TAtlasTextId.QuickToggleAskText, [AItem.Toggle.Caption]);
-    Dialog.CommonButtons := [tcbCancel];
-    Button := Dialog.Buttons.Add;
-    Button.Caption := TAtlasStrings.Text(TAtlasTextId.QuickToggleAskSession);
-    Button.ModalResult := AnswerSession;
-    Button.Default := True;
-    Button := Dialog.Buttons.Add;
-    Button.Caption := TAtlasStrings.Text(TAtlasTextId.QuickToggleAskProject);
-    Button.ModalResult := AnswerProject;
-    Result := Dialog.Execute;
+    mDialog.Caption := 'Atlas';
+    mDialog.Title := AItem.Toggle.Caption;
+    mDialog.Text := TAtlasStrings.Fmt(TAtlasTextId.QuickToggleAskText, [AItem.Toggle.Caption]);
+    mDialog.CommonButtons := [tcbCancel];
+    mButton := mDialog.Buttons.Add;
+    mButton.Caption := TAtlasStrings.Text(TAtlasTextId.QuickToggleAskSession);
+    mButton.ModalResult := cAnswerSession;
+    mButton.Default := True;
+    mButton := mDialog.Buttons.Add;
+    mButton.Caption := TAtlasStrings.Text(TAtlasTextId.QuickToggleAskProject);
+    mButton.ModalResult := cAnswerProject;
+    Result := mDialog.Execute;
     if not Result then
     begin
       Exit;
     end;
-    case Dialog.ModalResult of
-      AnswerSession:
+    case mDialog.ModalResult of
+      cAnswerSession:
         ATarget := TAtlasToggleTarget.Session;
-      AnswerProject:
+      cAnswerProject:
         ATarget := TAtlasToggleTarget.Project;
     else
       Result := False;
     end;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
 class procedure TAtlasIdeQuickToggles.SwitchItem(const AItem: TAtlasQuickToggleItem);
 var
-  Target: TAtlasToggleTarget;
-  Stored: TAtlasPluginSettings;
-  Session: TAtlasToggleSession;
-  Json: string;
+  mTarget: TAtlasToggleTarget;
+  mStored: TAtlasPluginSettings;
+  mSession: TAtlasToggleSession;
+  mJson: string;
 begin
-  Target := TAtlasToggleTarget.Global;
+  mTarget := TAtlasToggleTarget.Global;
   // Sitzungswert über einem Projektwert: ein weiterer Klick gilt wieder nur für die Sitzung.
   if AItem.Session then
   begin
-    Target := TAtlasToggleTarget.Session;
+    mTarget := TAtlasToggleTarget.Session;
   end
-  else if AItem.Project and not AskTarget(AItem, Target) then
+  else if AItem.Project and not AskTarget(AItem, mTarget) then
   begin
     Exit;
   end;
-  Stored := TAtlasIdeSettings.Stored;
-  Session := TAtlasIdeSettings.Session;
-  Json := TAtlasQuickToggles.Toggle(AItem, Target, Stored, Session);
-  if Target = TAtlasToggleTarget.Project then
+  mStored := TAtlasIdeSettings.Stored;
+  mSession := TAtlasIdeSettings.Session;
+  mJson := TAtlasQuickToggles.Toggle(AItem, mTarget, mStored, mSession);
+  if mTarget = TAtlasToggleTarget.Project then
     try
-      TAtlasProjectSettings.WriteValue(AItem.Toggle.ProjectPath, Json);
+      TAtlasProjectSettings.WriteValue(AItem.Toggle.ProjectPath, mJson);
     except
       on E: Exception do
       begin
@@ -237,23 +237,23 @@ begin
         Exit;
       end;
     end;
-  if Target = TAtlasToggleTarget.Global then
+  if mTarget = TAtlasToggleTarget.Global then
   begin
-    TAtlasIdeSettings.Update(Stored);
+    TAtlasIdeSettings.Update(mStored);
   end;
-  TAtlasIdeSettings.SetSession(Session);
+  TAtlasIdeSettings.SetSession(mSession);
   Applied;
 end;
 
 class procedure TAtlasIdeQuickToggles.Switch(const AKey: string);
 var
-  Item: TAtlasQuickToggleItem;
+  mItem: TAtlasQuickToggleItem;
 begin
-  for Item in Items do
+  for mItem in Items do
   begin
-    if SameText(Item.Toggle.Key, AKey) then
+    if SameText(mItem.Toggle.Key, AKey) then
     begin
-      SwitchItem(Item);
+      SwitchItem(mItem);
       Exit;
     end;
   end;
@@ -261,23 +261,23 @@ end;
 
 class procedure TAtlasIdeQuickToggles.ToggleAllOff;
 var
-  Session: TAtlasToggleSession;
+  mSession: TAtlasToggleSession;
 begin
-  Session := TAtlasIdeSettings.Session;
-  Session.AllOff := not Session.AllOff;
-  TAtlasIdeSettings.SetSession(Session);
+  mSession := TAtlasIdeSettings.Session;
+  mSession.AllOff := not mSession.AllOff;
+  TAtlasIdeSettings.SetSession(mSession);
   Applied;
 end;
 
 class procedure TAtlasIdeQuickToggles.Applied;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   // Wie beim Schließen der Optionsseite: Strukturhervorhebung der IDE abgleichen, dann neu zeichnen.
   TAtlasIdeStructureSwitch.Sync;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(Services);
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
   if FInstance <> nil then
   begin
@@ -337,32 +337,32 @@ end;
 
 procedure TAtlasIdeQuickToggles.Show;
 var
-  Anchor: TPoint;
-  Area: TRect;
+  mAnchor: TPoint;
+  mArea: TRect;
 begin
-  Anchor := Point(MaxInt, MaxInt);
+  mAnchor := Point(MaxInt, MaxInt);
   if Assigned(FOnAnchor) then
   begin
-    Anchor := FOnAnchor();
+    mAnchor := FOnAnchor();
   end;
-  if Anchor.X = MaxInt then
+  if mAnchor.X = MaxInt then
   begin
     // Ohne Statusfeld: unten links im aktiven Fenster.
     if Screen.ActiveForm <> nil then
     begin
-      Area := Screen.ActiveForm.BoundsRect;
+      mArea := Screen.ActiveForm.BoundsRect;
     end
     else if Application.MainForm <> nil then
     begin
-      Area := Application.MainForm.BoundsRect;
+      mArea := Application.MainForm.BoundsRect;
     end
     else
     begin
-      Area := Screen.WorkAreaRect;
+      mArea := Screen.WorkAreaRect;
     end;
-    Anchor := Point(Area.Left + 40, Area.Bottom - 40);
+    mAnchor := Point(mArea.Left + 40, mArea.Bottom - 40);
   end;
-  Show(Anchor);
+  Show(mAnchor);
 end;
 
 /// <summary>Befehl für einen Schalter; eigene Funktion, damit jeder Befehl seinen Schlüssel festhält.</summary>
@@ -381,7 +381,7 @@ end;
 
 procedure TAtlasIdeQuickToggles.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
 var
-  Toggle: TAtlasQuickToggle;
+  mToggle: TAtlasQuickToggle;
 begin
   ARegistry.RegisterCommand('Atlas.QuickToggles', TAtlasStrings.Text(TAtlasTextId.QuickTogglePaletteOpen), '',
     procedure
@@ -398,11 +398,11 @@ begin
           ToggleAllOff;
         end);
     end);
-  for Toggle in TAtlasIdeSettings.QuickToggles do
+  for mToggle in TAtlasIdeSettings.QuickToggles do
   begin
-    ARegistry.RegisterCommand('Atlas.QuickToggles.' + Toggle.Key,
-      TAtlasStrings.Fmt(TAtlasTextId.QuickTogglePalette, [Toggle.Caption]),
-      TAtlasStrings.Text(TAtlasTextId.QuickTogglePaletteHint), SwitchCommand(Toggle.Key));
+    ARegistry.RegisterCommand('Atlas.QuickToggles.' + mToggle.Key,
+      TAtlasStrings.Fmt(TAtlasTextId.QuickTogglePalette, [mToggle.Caption]),
+      TAtlasStrings.Text(TAtlasTextId.QuickTogglePaletteHint), SwitchCommand(mToggle.Key));
   end;
 end;
 

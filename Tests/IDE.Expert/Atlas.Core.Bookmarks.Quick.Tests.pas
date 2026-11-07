@@ -76,19 +76,19 @@ uses
   Atlas.Core.Bookmarks.Quick;
 
 const
-  KundeFile = 'C:\Projekte\Source\Kunde.pas';
-  LagerFile = 'C:\Projekte\Source\Lager.pas';
-  Project = 'C:\Projekte\Demo.dproj';
+  cKundeFile = 'C:\Projekte\Source\Kunde.pas';
+  cLagerFile = 'C:\Projekte\Source\Lager.pas';
+  cProject = 'C:\Projekte\Demo.dproj';
 
 /// <summary>Unit mit 60 Zeilen: Zeile i (0-basiert) heißt „  Schritt{i};“, dazwischen eine Methode.</summary>
 function Lines(ACount: Integer): TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := ['unit Kunde;', '', 'implementation', '', 'procedure Laden;', 'begin'];
-  for Index := Length(Result) to ACount - 3 do
+  for mIndex := Length(Result) to ACount - 3 do
   begin
-    Result := Result + ['  Schritt' + IntToStr(Index) + ';'];
+    Result := Result + ['  Schritt' + IntToStr(mIndex) + ';'];
   end;
   Result := Result + ['end;', 'end.'];
 end;
@@ -102,7 +102,7 @@ end;
 
 procedure TAtlasQuickBookmarkTests.Setup;
 begin
-  FList := TAtlasBookmarkList.Create(Project);
+  FList := TAtlasBookmarkList.Create(cProject);
 end;
 
 procedure TAtlasQuickBookmarkTests.TearDown;
@@ -112,119 +112,119 @@ end;
 
 procedure TAtlasQuickBookmarkTests.NumberSetMovesAndRemoves;
 var
-  Marks: TArray<TAtlasBookmark>;
+  mMarks: TArray<TAtlasBookmark>;
 begin
-  Assert.AreEqual(Ord(TAtlasQuickChange.Added), Ord(TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 32, 3, 0)));
-  Marks := TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 32);
-  Assert.AreEqual(1, Integer(Length(Marks)));
-  Assert.AreEqual(3, Marks[0].Number);
-  Assert.AreEqual(Ord(TAtlasBookmarkKind.Quick), Ord(Marks[0].Kind));
-  Assert.AreEqual('', Marks[0].Name, 'schnelle Lesezeichen ohne Namen');
+  Assert.AreEqual(Ord(TAtlasQuickChange.Added), Ord(TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 32, 3, 0)));
+  mMarks := TAtlasQuickBookmarks.ColumnMarks(FList, cKundeFile, 32);
+  Assert.AreEqual(1, Integer(Length(mMarks)));
+  Assert.AreEqual(3, mMarks[0].Number);
+  Assert.AreEqual(Ord(TAtlasBookmarkKind.Quick), Ord(mMarks[0].Kind));
+  Assert.AreEqual('', mMarks[0].Name, 'schnelle Lesezeichen ohne Namen');
   // Strg+Umschalt+3 in Zeile 40: die 3 zieht um.
-  Assert.AreEqual(Ord(TAtlasQuickChange.Moved), Ord(TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 39, 3, 0)));
-  Assert.AreEqual(0, Integer(Length(TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 32))));
-  Assert.AreEqual(3, TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 39)[0].Number);
+  Assert.AreEqual(Ord(TAtlasQuickChange.Moved), Ord(TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 39, 3, 0)));
+  Assert.AreEqual(0, Integer(Length(TAtlasQuickBookmarks.ColumnMarks(FList, cKundeFile, 32))));
+  Assert.AreEqual(3, TAtlasQuickBookmarks.ColumnMarks(FList, cKundeFile, 39)[0].Number);
   Assert.AreEqual(1, Integer(FList.Count), 'jede Nummer höchstens einmal');
   // Nochmals in Zeile 40: entfernt.
   Assert.AreEqual(Ord(TAtlasQuickChange.Removed),
-    Ord(TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 39, 3, 0)));
+    Ord(TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 39, 3, 0)));
   Assert.AreEqual(0, Integer(FList.Count));
-  Assert.AreEqual(Ord(TAtlasQuickChange.None), Ord(TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 39, 0, 0)));
-  Assert.AreEqual(Ord(TAtlasQuickChange.None), Ord(TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 39, 10, 0)));
+  Assert.AreEqual(Ord(TAtlasQuickChange.None), Ord(TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 39, 0, 0)));
+  Assert.AreEqual(Ord(TAtlasQuickChange.None), Ord(TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 39, 10, 0)));
 end;
 
 procedure TAtlasQuickBookmarkTests.NumberMovesAcrossFiles;
 begin
-  TAtlasQuickBookmarks.SetNumber(FList, LagerFile, Text, 10, 5, 0);
-  Assert.AreEqual(Ord(TAtlasQuickChange.Moved), Ord(TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 20, 5, 0)));
+  TAtlasQuickBookmarks.SetNumber(FList, cLagerFile, Text, 10, 5, 0);
+  Assert.AreEqual(Ord(TAtlasQuickChange.Moved), Ord(TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 20, 5, 0)));
   Assert.AreEqual(1, Integer(FList.Count));
-  Assert.IsTrue(TAtlasBookmarks.SameFile(KundeFile, FList.Bookmarks[0].FileName));
+  Assert.IsTrue(TAtlasBookmarks.SameFile(cKundeFile, FList.Bookmarks[0].FileName));
   Assert.AreEqual(20, FList.Bookmarks[0].Line);
 end;
 
 procedure TAtlasQuickBookmarkTests.SeveralMarksSmallestNumberFirst;
 var
-  Marks: TArray<TAtlasBookmark>;
+  mMarks: TArray<TAtlasBookmark>;
 begin
-  TAtlasQuickBookmarks.Toggle(FList, KundeFile, Text, 12, 0);
-  TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 12, 7, 0);
-  TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 12, 2, 0);
+  TAtlasQuickBookmarks.Toggle(FList, cKundeFile, Text, 12, 0);
+  TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 12, 7, 0);
+  TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 12, 2, 0);
   // Ein benanntes ohne Nummer steht nicht in der Spalte.
-  FList.Add(KundeFile, Text, 12, 'Benannt', 0);
-  Marks := TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 12);
-  Assert.AreEqual(3, Integer(Length(Marks)));
-  Assert.AreEqual(2, Marks[0].Number);
-  Assert.AreEqual(7, Marks[1].Number);
-  Assert.AreEqual(0, Marks[2].Number, 'unnummerierte hinten');
-  Assert.IsTrue(TAtlasQuickBookmarks.HasColumnMarks(FList, KundeFile));
-  Assert.IsFalse(TAtlasQuickBookmarks.HasColumnMarks(FList, LagerFile));
+  FList.Add(cKundeFile, Text, 12, 'Benannt', 0);
+  mMarks := TAtlasQuickBookmarks.ColumnMarks(FList, cKundeFile, 12);
+  Assert.AreEqual(3, Integer(Length(mMarks)));
+  Assert.AreEqual(2, mMarks[0].Number);
+  Assert.AreEqual(7, mMarks[1].Number);
+  Assert.AreEqual(0, mMarks[2].Number, 'unnummerierte hinten');
+  Assert.IsTrue(TAtlasQuickBookmarks.HasColumnMarks(FList, cKundeFile));
+  Assert.IsFalse(TAtlasQuickBookmarks.HasColumnMarks(FList, cLagerFile));
 end;
 
 procedure TAtlasQuickBookmarkTests.ClickSetsAndRemoves;
 begin
-  Assert.AreEqual(Ord(TAtlasQuickChange.Added), Ord(TAtlasQuickBookmarks.Click(FList, KundeFile, Text, 23, 0)));
-  Assert.AreEqual(1, Integer(Length(TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 23))));
-  Assert.AreEqual(1, TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 23)[0].Number, 'kleinste freie Nummer');
-  TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 23, 4, 0);
+  Assert.AreEqual(Ord(TAtlasQuickChange.Added), Ord(TAtlasQuickBookmarks.Click(FList, cKundeFile, Text, 23, 0)));
+  Assert.AreEqual(1, Integer(Length(TAtlasQuickBookmarks.ColumnMarks(FList, cKundeFile, 23))));
+  Assert.AreEqual(1, TAtlasQuickBookmarks.ColumnMarks(FList, cKundeFile, 23)[0].Number, 'kleinste freie Nummer');
+  TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 23, 4, 0);
   // Klick auf den Marker: alle Marker der Zeile weg.
-  Assert.AreEqual(Ord(TAtlasQuickChange.Removed), Ord(TAtlasQuickBookmarks.Click(FList, KundeFile, Text, 23, 0)));
+  Assert.AreEqual(Ord(TAtlasQuickChange.Removed), Ord(TAtlasQuickBookmarks.Click(FList, cKundeFile, Text, 23, 0)));
   Assert.AreEqual(0, Integer(FList.Count));
-  Assert.AreEqual(Ord(TAtlasQuickChange.None), Ord(TAtlasQuickBookmarks.Click(FList, KundeFile, Text, -1, 0)));
+  Assert.AreEqual(Ord(TAtlasQuickChange.None), Ord(TAtlasQuickBookmarks.Click(FList, cKundeFile, Text, -1, 0)));
 end;
 
 procedure TAtlasQuickBookmarkTests.ClickTakesFreeNumberOrNone;
 var
-  Number: Integer;
+  mNumber: Integer;
 begin
-  TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 3, 1, 0);
-  TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 4, 3, 0);
+  TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 3, 1, 0);
+  TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 4, 3, 0);
   Assert.AreEqual(2, TAtlasQuickBookmarks.FreeNumber(FList), 'Lücke zuerst');
-  TAtlasQuickBookmarks.Click(FList, KundeFile, Text, 10, 0);
-  Assert.AreEqual(2, TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 10)[0].Number);
-  for Number := 1 to 9 do
+  TAtlasQuickBookmarks.Click(FList, cKundeFile, Text, 10, 0);
+  Assert.AreEqual(2, TAtlasQuickBookmarks.ColumnMarks(FList, cKundeFile, 10)[0].Number);
+  for mNumber := 1 to 9 do
   begin
-    TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 20 + Number, Number, 0);
+    TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 20 + mNumber, mNumber, 0);
   end;
   Assert.AreEqual(0, TAtlasQuickBookmarks.FreeNumber(FList), 'alle belegt');
-  TAtlasQuickBookmarks.Click(FList, KundeFile, Text, 40, 0);
-  Assert.AreEqual(0, TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 40)[0].Number, 'dann ohne Nummer');
+  TAtlasQuickBookmarks.Click(FList, cKundeFile, Text, 40, 0);
+  Assert.AreEqual(0, TAtlasQuickBookmarks.ColumnMarks(FList, cKundeFile, 40)[0].Number, 'dann ohne Nummer');
 end;
 
 procedure TAtlasQuickBookmarkTests.ClickOnNamedNumberKeepsNamedBookmark;
 var
-  Id: string;
+  mId: string;
 begin
-  Id := FList.Add(KundeFile, Text, 30, 'Prüfung', 0);
-  Assert.AreEqual(Ord(TAtlasQuickChange.Added), Ord(TAtlasQuickBookmarks.AssignNumber(FList, Id, 1)));
-  Assert.AreEqual(1, Integer(Length(TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 30))), 'nummeriert = Spalte');
-  Assert.AreEqual(Ord(TAtlasQuickChange.Removed), Ord(TAtlasQuickBookmarks.Click(FList, KundeFile, Text, 30, 0)));
+  mId := FList.Add(cKundeFile, Text, 30, 'Prüfung', 0);
+  Assert.AreEqual(Ord(TAtlasQuickChange.Added), Ord(TAtlasQuickBookmarks.AssignNumber(FList, mId, 1)));
+  Assert.AreEqual(1, Integer(Length(TAtlasQuickBookmarks.ColumnMarks(FList, cKundeFile, 30))), 'nummeriert = Spalte');
+  Assert.AreEqual(Ord(TAtlasQuickChange.Removed), Ord(TAtlasQuickBookmarks.Click(FList, cKundeFile, Text, 30, 0)));
   Assert.AreEqual(1, Integer(FList.Count), 'das benannte Lesezeichen bleibt');
   Assert.AreEqual(0, FList.Bookmarks[0].Number);
   // Nummer erneut setzen und per Strg+Umschalt+1 an anderer Stelle umziehen: das benannte bleibt ohne Nummer.
-  TAtlasQuickBookmarks.AssignNumber(FList, Id, 1);
-  TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 40, 1, 0);
+  TAtlasQuickBookmarks.AssignNumber(FList, mId, 1);
+  TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 40, 1, 0);
   Assert.AreEqual(2, Integer(FList.Count));
-  Assert.AreEqual(0, FList.Bookmarks[FList.IndexOf(Id)].Number);
+  Assert.AreEqual(0, FList.Bookmarks[FList.IndexOf(mId)].Number);
 end;
 
 procedure TAtlasQuickBookmarkTests.ToggleUnnumbered;
 begin
-  Assert.AreEqual(Ord(TAtlasQuickChange.Added), Ord(TAtlasQuickBookmarks.Toggle(FList, KundeFile, Text, 8, 0)));
-  TAtlasQuickBookmarks.Toggle(FList, KundeFile, Text, 9, 0);
-  TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 8, 6, 0);
+  Assert.AreEqual(Ord(TAtlasQuickChange.Added), Ord(TAtlasQuickBookmarks.Toggle(FList, cKundeFile, Text, 8, 0)));
+  TAtlasQuickBookmarks.Toggle(FList, cKundeFile, Text, 9, 0);
+  TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 8, 6, 0);
   Assert.AreEqual(3, Integer(FList.Count), 'beliebig viele je Datei');
   // Entfernt nur das unnummerierte der Zeile; die 6 bleibt.
-  Assert.AreEqual(Ord(TAtlasQuickChange.Removed), Ord(TAtlasQuickBookmarks.Toggle(FList, KundeFile, Text, 8, 0)));
+  Assert.AreEqual(Ord(TAtlasQuickChange.Removed), Ord(TAtlasQuickBookmarks.Toggle(FList, cKundeFile, Text, 8, 0)));
   Assert.AreEqual(2, Integer(FList.Count));
-  Assert.AreEqual(6, TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 8)[0].Number);
+  Assert.AreEqual(6, TAtlasQuickBookmarks.ColumnMarks(FList, cKundeFile, 8)[0].Number);
 end;
 
 procedure TAtlasQuickBookmarkTests.AssignNumberFromWindow;
 var
   A, B: string;
 begin
-  A := TAtlasQuickBookmarks.AddQuick(FList, KundeFile, Text, 10, 0, 0);
-  B := TAtlasQuickBookmarks.AddQuick(FList, KundeFile, Text, 11, 2, 0);
+  A := TAtlasQuickBookmarks.AddQuick(FList, cKundeFile, Text, 10, 0, 0);
+  B := TAtlasQuickBookmarks.AddQuick(FList, cKundeFile, Text, 11, 2, 0);
   Assert.AreEqual(Ord(TAtlasQuickChange.Moved), Ord(TAtlasQuickBookmarks.AssignNumber(FList, A, 2)));
   Assert.AreEqual(2, FList.Bookmarks[FList.IndexOf(A)].Number);
   Assert.AreEqual(0, FList.Bookmarks[FList.IndexOf(B)].Number, 'der bisherige Träger bleibt unnummeriert');
@@ -235,69 +235,69 @@ end;
 
 procedure TAtlasQuickBookmarkTests.RemoveFileKeepsNamed;
 begin
-  TAtlasQuickBookmarks.Toggle(FList, KundeFile, Text, 8, 0);
-  TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 9, 1, 0);
-  TAtlasQuickBookmarks.Toggle(FList, LagerFile, Text, 8, 0);
-  FList.Add(KundeFile, Text, 12, 'Benannt', 0);
-  Assert.AreEqual(2, TAtlasQuickBookmarks.RemoveFile(FList, KundeFile));
+  TAtlasQuickBookmarks.Toggle(FList, cKundeFile, Text, 8, 0);
+  TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 9, 1, 0);
+  TAtlasQuickBookmarks.Toggle(FList, cLagerFile, Text, 8, 0);
+  FList.Add(cKundeFile, Text, 12, 'Benannt', 0);
+  Assert.AreEqual(2, TAtlasQuickBookmarks.RemoveFile(FList, cKundeFile));
   Assert.AreEqual(2, Integer(FList.Count));
-  Assert.AreEqual(1, TAtlasQuickBookmarks.RemoveAt(FList, LagerFile, 8));
+  Assert.AreEqual(1, TAtlasQuickBookmarks.RemoveAt(FList, cLagerFile, 8));
   Assert.AreEqual('Benannt', FList.Bookmarks[0].Name);
 end;
 
 procedure TAtlasQuickBookmarkTests.JumpProjectAndFileScope;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  TAtlasQuickBookmarks.SetNumber(FList, LagerFile, Text, 10, 3, 0);
+  TAtlasQuickBookmarks.SetNumber(FList, cLagerFile, Text, 10, 3, 0);
   Assert.AreEqual(Ord(TAtlasQuickJump.Found),
-    Ord(TAtlasQuickBookmarks.Jump(FList, 3, KundeFile, TAtlasQuickScope.Project, Index)));
-  Assert.AreEqual(10, FList.Bookmarks[Index].Line);
+    Ord(TAtlasQuickBookmarks.Jump(FList, 3, cKundeFile, TAtlasQuickScope.Project, mIndex)));
+  Assert.AreEqual(10, FList.Bookmarks[mIndex].Line);
   Assert.AreEqual(Ord(TAtlasQuickJump.OtherFile),
-    Ord(TAtlasQuickBookmarks.Jump(FList, 3, KundeFile, TAtlasQuickScope.CurrentFile, Index)));
+    Ord(TAtlasQuickBookmarks.Jump(FList, 3, cKundeFile, TAtlasQuickScope.CurrentFile, mIndex)));
   Assert.AreEqual(Ord(TAtlasQuickJump.Found),
-    Ord(TAtlasQuickBookmarks.Jump(FList, 3, LagerFile, TAtlasQuickScope.CurrentFile, Index)));
+    Ord(TAtlasQuickBookmarks.Jump(FList, 3, cLagerFile, TAtlasQuickScope.CurrentFile, mIndex)));
   Assert.AreEqual(Ord(TAtlasQuickJump.NotAssigned),
-    Ord(TAtlasQuickBookmarks.Jump(FList, 4, LagerFile, TAtlasQuickScope.Project, Index)));
-  Assert.AreEqual(-1, Index);
+    Ord(TAtlasQuickBookmarks.Jump(FList, 4, cLagerFile, TAtlasQuickScope.Project, mIndex)));
+  Assert.AreEqual(-1, mIndex);
 end;
 
 procedure TAtlasQuickBookmarkTests.StepCyclesThroughFile;
 var
-  Target: Integer;
+  mTarget: Integer;
 begin
-  Assert.IsFalse(TAtlasQuickBookmarks.Step(FList, KundeFile, 5, True, Target));
-  TAtlasQuickBookmarks.Toggle(FList, KundeFile, Text, 30, 0);
-  TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 10, 1, 0);
-  FList.Add(KundeFile, Text, 20, 'Benannt', 0);
-  TAtlasQuickBookmarks.Toggle(FList, LagerFile, Text, 15, 0);
-  Assert.IsTrue(TAtlasQuickBookmarks.Step(FList, KundeFile, 5, True, Target));
-  Assert.AreEqual(10, Target);
-  TAtlasQuickBookmarks.Step(FList, KundeFile, 10, True, Target);
-  Assert.AreEqual(20, Target, 'auch benannte');
-  TAtlasQuickBookmarks.Step(FList, KundeFile, 30, True, Target);
-  Assert.AreEqual(10, Target, 'reihum');
-  TAtlasQuickBookmarks.Step(FList, KundeFile, 10, False, Target);
-  Assert.AreEqual(30, Target, 'rückwärts reihum');
-  TAtlasQuickBookmarks.Step(FList, KundeFile, 25, False, Target);
-  Assert.AreEqual(20, Target);
+  Assert.IsFalse(TAtlasQuickBookmarks.Step(FList, cKundeFile, 5, True, mTarget));
+  TAtlasQuickBookmarks.Toggle(FList, cKundeFile, Text, 30, 0);
+  TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 10, 1, 0);
+  FList.Add(cKundeFile, Text, 20, 'Benannt', 0);
+  TAtlasQuickBookmarks.Toggle(FList, cLagerFile, Text, 15, 0);
+  Assert.IsTrue(TAtlasQuickBookmarks.Step(FList, cKundeFile, 5, True, mTarget));
+  Assert.AreEqual(10, mTarget);
+  TAtlasQuickBookmarks.Step(FList, cKundeFile, 10, True, mTarget);
+  Assert.AreEqual(20, mTarget, 'auch benannte');
+  TAtlasQuickBookmarks.Step(FList, cKundeFile, 30, True, mTarget);
+  Assert.AreEqual(10, mTarget, 'reihum');
+  TAtlasQuickBookmarks.Step(FList, cKundeFile, 10, False, mTarget);
+  Assert.AreEqual(30, mTarget, 'rückwärts reihum');
+  TAtlasQuickBookmarks.Step(FList, cKundeFile, 25, False, mTarget);
+  Assert.AreEqual(20, mTarget);
 end;
 
 procedure TAtlasQuickBookmarkTests.QuickBookmarksFollowInsertedLines;
 var
-  Code, Moved: TArray<string>;
-  Index: Integer;
+  mCode, mMoved: TArray<string>;
+  mIndex: Integer;
 begin
-  Code := Lines(60);
-  TAtlasQuickBookmarks.SetNumber(FList, KundeFile, string.Join(#13#10, Code), 33, 3, 0);
+  mCode := Lines(60);
+  TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, string.Join(#13#10, mCode), 33, 3, 0);
   // 50 Zeilen über der Methode eingefügt: Der Marker wandert mit (Anker wie #622).
-  Moved := Copy(Code, 0, 3);
-  for Index := 1 to 50 do
+  mMoved := Copy(mCode, 0, 3);
+  for mIndex := 1 to 50 do
   begin
-    Moved := Moved + ['// Zeile ' + IntToStr(Index)];
+    mMoved := mMoved + ['// Zeile ' + IntToStr(mIndex)];
   end;
-  Moved := Moved + Copy(Code, 3, Length(Code) - 3);
-  Assert.IsTrue(FList.Relocate(KundeFile, string.Join(#13#10, Moved)));
+  mMoved := mMoved + Copy(mCode, 3, Length(mCode) - 3);
+  Assert.IsTrue(FList.Relocate(cKundeFile, string.Join(#13#10, mMoved)));
   Assert.AreEqual(83, FList.Bookmarks[0].Line);
   Assert.AreEqual(3, FList.Bookmarks[0].Number);
   Assert.IsFalse(FList.Bookmarks[0].Lost);
@@ -305,17 +305,17 @@ end;
 
 procedure TAtlasQuickBookmarkTests.DisplayNameWithoutName;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  TAtlasQuickBookmarks.Toggle(FList, KundeFile, Text, 10, 0);
-  TAtlasQuickBookmarks.Toggle(FList, KundeFile, Text, 0, 0);
+  TAtlasQuickBookmarks.Toggle(FList, cKundeFile, Text, 10, 0);
+  TAtlasQuickBookmarks.Toggle(FList, cKundeFile, Text, 0, 0);
   Assert.IsTrue(FList.Bookmarks[0].Unnamed);
   Assert.AreEqual('Laden', FList.Bookmarks[0].DisplayName, 'Methode statt Name');
   Assert.AreEqual('Kunde.pas:1', FList.Bookmarks[1].DisplayName, 'außerhalb einer Methode Datei und Zeile');
   Assert.AreEqual(1, Integer(Length(FList.Filter('laden'))), 'Filter findet den abgeleiteten Namen');
   // „Namen geben …“: wird ein benanntes Lesezeichen und behält die Nummer.
-  Index := FList.IndexOf(FList.Bookmarks[0].Id);
-  FList.Bookmarks[Index].Number := 4;
+  mIndex := FList.IndexOf(FList.Bookmarks[0].Id);
+  FList.Bookmarks[mIndex].Number := 4;
   Assert.IsTrue(FList.Rename(FList.Bookmarks[0].Id, 'Ladeschleife'));
   Assert.AreEqual(Ord(TAtlasBookmarkKind.Named), Ord(FList.Bookmarks[0].Kind));
   Assert.AreEqual(4, FList.Bookmarks[0].Number);
@@ -324,75 +324,75 @@ end;
 
 procedure TAtlasQuickBookmarkTests.FormatOneLoadsAndSavesAsTwo;
 const
-  Json = '{"format": 1, "project": "Demo.dproj", "bookmarks": [' +
+  cJson = '{"format": 1, "project": "Demo.dproj", "bookmarks": [' +
     '{"id": "a", "name": "Rundung", "file": "Source/Kunde.pas", "line": 3, "lineText": "x"},' +
     '{"id": "b", "file": "Source/Kunde.pas", "line": 4}]}';
 var
-  List: TAtlasBookmarkList;
-  Root: TJSONObject;
+  mList: TAtlasBookmarkList;
+  mRoot: TJSONObject;
 begin
-  Assert.IsTrue(TAtlasBookmarks.Parse(Json, 'C:\Projekte\', List));
-  Assert.AreEqual(2, Integer(List.Count), 'ohne Verlust');
-  Assert.AreEqual(Ord(TAtlasBookmarkKind.Named), Ord(List.Bookmarks[0].Kind));
-  Assert.AreEqual(0, List.Bookmarks[0].Number);
-  Assert.AreEqual('Kunde.pas:4', List.Bookmarks[1].Name, 'benannte ohne Namen wie bisher');
-  Root := TJSONObject.ParseJSONValue(TAtlasBookmarks.ToJson(List, 'C:\Projekte\')) as TJSONObject;
+  Assert.IsTrue(TAtlasBookmarks.Parse(cJson, 'C:\Projekte\', mList));
+  Assert.AreEqual(2, Integer(mList.Count), 'ohne Verlust');
+  Assert.AreEqual(Ord(TAtlasBookmarkKind.Named), Ord(mList.Bookmarks[0].Kind));
+  Assert.AreEqual(0, mList.Bookmarks[0].Number);
+  Assert.AreEqual('Kunde.pas:4', mList.Bookmarks[1].Name, 'benannte ohne Namen wie bisher');
+  mRoot := TJSONObject.ParseJSONValue(TAtlasBookmarks.ToJson(mList, 'C:\Projekte\')) as TJSONObject;
   try
-    Assert.AreEqual(2, TJSONNumber(Root.GetValue('format')).AsInt);
+    Assert.AreEqual(2, TJSONNumber(mRoot.GetValue('format')).AsInt);
     Assert.AreEqual('named',
-      TJSONObject(TJSONArray(Root.GetValue('bookmarks')).Items[0]).GetValue('kind').Value);
+      TJSONObject(TJSONArray(mRoot.GetValue('bookmarks')).Items[0]).GetValue('kind').Value);
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 procedure TAtlasQuickBookmarkTests.KindAndNumberRoundTrip;
 var
-  Back: TAtlasBookmarkList;
-  Root, Mark: TJSONObject;
-  Json: string;
+  mBack: TAtlasBookmarkList;
+  mRoot, mMark: TJSONObject;
+  mJson: string;
 begin
-  TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 33, 3, 0);
-  TAtlasQuickBookmarks.Toggle(FList, KundeFile, Text, 40, 0);
-  Json := TAtlasBookmarks.ToJson(FList, 'C:\Projekte\');
-  Root := TJSONObject.ParseJSONValue(Json) as TJSONObject;
+  TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 33, 3, 0);
+  TAtlasQuickBookmarks.Toggle(FList, cKundeFile, Text, 40, 0);
+  mJson := TAtlasBookmarks.ToJson(FList, 'C:\Projekte\');
+  mRoot := TJSONObject.ParseJSONValue(mJson) as TJSONObject;
   try
-    Mark := TJSONObject(TJSONArray(Root.GetValue('bookmarks')).Items[0]);
-    Assert.AreEqual('quick', Mark.GetValue('kind').Value);
-    Assert.AreEqual(3, TJSONNumber(Mark.GetValue('number')).AsInt);
-    Assert.IsNull(Mark.GetValue('name'), 'ohne Namen kein Feld');
-    Mark := TJSONObject(TJSONArray(Root.GetValue('bookmarks')).Items[1]);
-    Assert.IsNull(Mark.GetValue('number'), 'unnummeriert ohne Feld');
+    mMark := TJSONObject(TJSONArray(mRoot.GetValue('bookmarks')).Items[0]);
+    Assert.AreEqual('quick', mMark.GetValue('kind').Value);
+    Assert.AreEqual(3, TJSONNumber(mMark.GetValue('number')).AsInt);
+    Assert.IsNull(mMark.GetValue('name'), 'ohne Namen kein Feld');
+    mMark := TJSONObject(TJSONArray(mRoot.GetValue('bookmarks')).Items[1]);
+    Assert.IsNull(mMark.GetValue('number'), 'unnummeriert ohne Feld');
   finally
-    Root.Free;
+    mRoot.Free;
   end;
-  Assert.IsTrue(TAtlasBookmarks.Parse(Json, 'C:\Projekte\', Back));
-  Assert.AreEqual(Ord(TAtlasBookmarkKind.Quick), Ord(Back.Bookmarks[0].Kind));
-  Assert.AreEqual(3, Back.Bookmarks[0].Number);
-  Assert.AreEqual('', Back.Bookmarks[0].Name);
-  Assert.AreEqual(0, Back.Bookmarks[1].Number);
+  Assert.IsTrue(TAtlasBookmarks.Parse(mJson, 'C:\Projekte\', mBack));
+  Assert.AreEqual(Ord(TAtlasBookmarkKind.Quick), Ord(mBack.Bookmarks[0].Kind));
+  Assert.AreEqual(3, mBack.Bookmarks[0].Number);
+  Assert.AreEqual('', mBack.Bookmarks[0].Name);
+  Assert.AreEqual(0, mBack.Bookmarks[1].Number);
   // Unsinnige Nummern fallen weg.
   Assert.IsTrue(TAtlasBookmarks.Parse('{"format": 2, "bookmarks": [{"id": "x", "kind": "quick", "number": 12, ' +
-    '"file": "Source/Kunde.pas", "line": 1}]}', 'C:\Projekte\', Back));
-  Assert.AreEqual(0, Back.Bookmarks[0].Number);
+    '"file": "Source/Kunde.pas", "line": 1}]}', 'C:\Projekte\', mBack));
+  Assert.AreEqual(0, mBack.Bookmarks[0].Number);
 end;
 
 procedure TAtlasQuickBookmarkTests.ImportTakesIdeBookmarks;
 var
-  Imported: TArray<Integer>;
+  mImported: TArray<Integer>;
 begin
-  TAtlasQuickBookmarks.SetNumber(FList, LagerFile, Text, 5, 2, 0);
-  Imported := TAtlasQuickBookmarks.Import(FList, KundeFile, Text,
+  TAtlasQuickBookmarks.SetNumber(FList, cLagerFile, Text, 5, 2, 0);
+  mImported := TAtlasQuickBookmarks.Import(FList, cKundeFile, Text,
     [TAtlasIdeBookmarkPos.Create(0, 3), TAtlasIdeBookmarkPos.Create(1, 12), TAtlasIdeBookmarkPos.Create(2, 14),
     TAtlasIdeBookmarkPos.Create(9, -1)], 0);
-  Assert.AreEqual(2, Integer(Length(Imported)), '0 bleibt bei der IDE, ohne Zeile nichts');
-  Assert.AreEqual(1, Imported[0]);
-  Assert.AreEqual(2, Imported[1]);
-  Assert.AreEqual(1, TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 12)[0].Number);
-  Assert.AreEqual(0, TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 14)[0].Number,
+  Assert.AreEqual(2, Integer(Length(mImported)), '0 bleibt bei der IDE, ohne Zeile nichts');
+  Assert.AreEqual(1, mImported[0]);
+  Assert.AreEqual(2, mImported[1]);
+  Assert.AreEqual(1, TAtlasQuickBookmarks.ColumnMarks(FList, cKundeFile, 12)[0].Number);
+  Assert.AreEqual(0, TAtlasQuickBookmarks.ColumnMarks(FList, cKundeFile, 14)[0].Number,
     'Nummer bei Atlas schon vergeben: unnummeriert');
-  Assert.IsTrue(TAtlasBookmarks.SameFile(LagerFile, FList.Bookmarks[FList.IndexOfNumber(2)].FileName));
-  Assert.AreEqual(0, Integer(Length(TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 3))));
+  Assert.IsTrue(TAtlasBookmarks.SameFile(cLagerFile, FList.Bookmarks[FList.IndexOfNumber(2)].FileName));
+  Assert.AreEqual(0, Integer(Length(TAtlasQuickBookmarks.ColumnMarks(FList, cKundeFile, 3))));
 end;
 
 procedure TAtlasQuickBookmarkTests.ChordDecision;
@@ -415,23 +415,23 @@ end;
 
 procedure TAtlasQuickBookmarkTests.KeysForNumbers;
 const
-  CtrlShift1 = $6000 or Ord('1');
-  Ctrl1 = $4000 or Ord('1');
+  cCtrlShift1 = $6000 or Ord('1');
+  cCtrl1 = $4000 or Ord('1');
 begin
-  Assert.AreEqual(Integer($6000 or Ord('7')), Integer(TAtlasQuickBookmarks.KeyFor(CtrlShift1, 7)));
-  Assert.AreEqual(Integer($4000 or Ord('9')), Integer(TAtlasQuickBookmarks.KeyFor(Ctrl1, 9)));
+  Assert.AreEqual(Integer($6000 or Ord('7')), Integer(TAtlasQuickBookmarks.KeyFor(cCtrlShift1, 7)));
+  Assert.AreEqual(Integer($4000 or Ord('9')), Integer(TAtlasQuickBookmarks.KeyFor(cCtrl1, 9)));
   Assert.AreEqual(0, Integer(TAtlasQuickBookmarks.KeyFor(0, 3)), 'ohne Grundtaste keine Tasten');
-  Assert.AreEqual(0, Integer(TAtlasQuickBookmarks.KeyFor(Ctrl1, 0)));
-  Assert.AreEqual(4, TAtlasQuickBookmarks.NumberOfKey($6000 or Ord('4'), CtrlShift1));
-  Assert.AreEqual(0, TAtlasQuickBookmarks.NumberOfKey($4000 or Ord('4'), CtrlShift1), 'andere Umschalttasten');
-  Assert.AreEqual(0, TAtlasQuickBookmarks.NumberOfKey($6000 or Ord('0'), CtrlShift1), '0 bleibt bei der IDE');
+  Assert.AreEqual(0, Integer(TAtlasQuickBookmarks.KeyFor(cCtrl1, 0)));
+  Assert.AreEqual(4, TAtlasQuickBookmarks.NumberOfKey($6000 or Ord('4'), cCtrlShift1));
+  Assert.AreEqual(0, TAtlasQuickBookmarks.NumberOfKey($4000 or Ord('4'), cCtrlShift1), 'andere Umschalttasten');
+  Assert.AreEqual(0, TAtlasQuickBookmarks.NumberOfKey($6000 or Ord('0'), cCtrlShift1), '0 bleibt bei der IDE');
 end;
 
 procedure TAtlasQuickBookmarkTests.ColumnWidthFollowsLineHeight;
 begin
   Assert.AreEqual(16, TAtlasQuickBookmarks.ColumnWidth(20));
-  Assert.AreEqual(TAtlasQuickBookmarks.MinColumnWidth, TAtlasQuickBookmarks.ColumnWidth(0), 'Mindestbreite');
-  Assert.AreEqual(TAtlasQuickBookmarks.MinColumnWidth, TAtlasQuickBookmarks.ColumnWidth(8));
+  Assert.AreEqual(TAtlasQuickBookmarks.cMinColumnWidth, TAtlasQuickBookmarks.ColumnWidth(0), 'Mindestbreite');
+  Assert.AreEqual(TAtlasQuickBookmarks.cMinColumnWidth, TAtlasQuickBookmarks.ColumnWidth(8));
 end;
 
 procedure TAtlasQuickBookmarkTests.RowGuessAboveAndBelow;

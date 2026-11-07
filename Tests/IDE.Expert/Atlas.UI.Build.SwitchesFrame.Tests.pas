@@ -87,17 +87,17 @@ end;
 
 function SampleView: TAtlasCompilerSwitchView;
 var
-  Range: TAtlasSwitchRow;
+  mRange: TAtlasSwitchRow;
 begin
   Result := Default(TAtlasCompilerSwitchView);
   Result.HasProject := True;
   Result.Configuration := 'Debug';
   Result.Platform := 'Win64';
   Result.Summary := 'R'#$2212;
-  Range := Row(TAtlasSwitchSection.Switches, 'R', '-', '+', Origin(TAtlasSwitchOriginKind.Directive, '{$R-}',
+  mRange := Row(TAtlasSwitchSection.Switches, 'R', '-', '+', Origin(TAtlasSwitchOriginKind.Directive, '{$R-}',
     'C:\P\A.pas', 9));
-  Range.LongName := 'RANGECHECKS';
-  Result.Rows := [Range,
+  mRange.LongName := 'RANGECHECKS';
+  Result.Rows := [mRange,
     Row(TAtlasSwitchSection.Switches, 'Q', '+', '+', Origin(TAtlasSwitchOriginKind.Project,
       'DCC_IntegerOverflowCheck', '', -1)),
     Row(TAtlasSwitchSection.Messages, 'HINTS', 'ON', 'ON', Origin(TAtlasSwitchOriginKind.Default, '', '', -1)),
@@ -148,134 +148,134 @@ end;
 
 procedure TAtlasBuildSwitchesFrameTests.CellsWithMinusAndLongName;
 var
-  Texts: TArray<string>;
+  mTexts: TArray<string>;
 begin
-  Texts := TAtlasBuildSwitchesFrame.Cells(SampleView.Rows[0]);
-  Assert.AreEqual(4, Integer(Length(Texts)));
-  Assert.AreEqual('R (RANGECHECKS)', Texts[0]);
-  Assert.AreEqual(string(#$2212), Texts[1]);
-  Assert.AreEqual('+', Texts[2]);
-  Assert.AreEqual('gesetzt in Zeile 10', Texts[3]);
-  Texts := TAtlasBuildSwitchesFrame.Cells(SampleView.Rows[3]);
-  Assert.AreEqual('', Texts[1], 'Symbole ohne Wert');
-  Assert.AreEqual('Konfiguration Debug (.dproj)', Texts[3]);
+  mTexts := TAtlasBuildSwitchesFrame.Cells(SampleView.Rows[0]);
+  Assert.AreEqual(4, Integer(Length(mTexts)));
+  Assert.AreEqual('R (RANGECHECKS)', mTexts[0]);
+  Assert.AreEqual(string(#$2212), mTexts[1]);
+  Assert.AreEqual('+', mTexts[2]);
+  Assert.AreEqual('gesetzt in Zeile 10', mTexts[3]);
+  mTexts := TAtlasBuildSwitchesFrame.Cells(SampleView.Rows[3]);
+  Assert.AreEqual('', mTexts[1], 'Symbole ohne Wert');
+  Assert.AreEqual('Konfiguration Debug (.dproj)', mTexts[3]);
 end;
 
 procedure TAtlasBuildSwitchesFrameTests.LinesHaveSectionHeaders;
 var
-  Lines: TAtlasSwitchLines;
+  mLines: TAtlasSwitchLines;
 begin
-  Lines := TAtlasBuildSwitchesFrame.Lines(SampleView);
+  mLines := TAtlasBuildSwitchesFrame.Lines(SampleView);
   // Schalter-Kopf, R, Q, Meldungen-Kopf, HINTS, Symbole-Kopf, DEBUG; kein Ziel ohne Zeilen.
-  Assert.AreEqual(7, Integer(Length(Lines)));
-  Assert.IsTrue(Lines[0].Header);
-  Assert.AreEqual(0, Lines[1].Row);
-  Assert.IsTrue(Lines[3].Header);
-  Assert.IsTrue(Lines[3].Section = TAtlasSwitchSection.Messages);
-  Assert.AreEqual(3, Lines[6].Row);
+  Assert.AreEqual(7, Integer(Length(mLines)));
+  Assert.IsTrue(mLines[0].Header);
+  Assert.AreEqual(0, mLines[1].Row);
+  Assert.IsTrue(mLines[3].Header);
+  Assert.IsTrue(mLines[3].Section = TAtlasSwitchSection.Messages);
+  Assert.AreEqual(3, mLines[6].Row);
 end;
 
 procedure TAtlasBuildSwitchesFrameTests.ShowsViewWithSummary;
 var
-  Host: TForm;
-  Frame: TAtlasBuildSwitchesFrame;
+  mHost: TForm;
+  mFrame: TAtlasBuildSwitchesFrame;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasBuildSwitchesFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.HandleNeeded;
-    Frame.SetView(SampleView, 'C:\P\A.pas', 19);
-    Assert.AreEqual(4, Integer(Frame.List.Columns.Count));
-    Assert.AreEqual('Herkunft', Frame.List.Columns[3].Caption);
-    Assert.AreEqual(7, Integer(Frame.List.Items.Count));
-    Assert.AreEqual('Schalter', Frame.List.Items[0].Caption);
-    Assert.AreEqual('  R (RANGECHECKS)', Frame.List.Items[1].Caption);
-    Assert.AreEqual('gesetzt in Zeile 10', Frame.List.Items[1].SubItems[2]);
-    Assert.AreEqual('A.pas, Zeile 20', Frame.WhereLabel.Caption);
-    Assert.AreEqual('Abweichend von der .dproj: R'#$2212, Frame.SummaryLabel.Caption);
-    Assert.IsFalse(Frame.EmptyLabel.Visible);
-    Assert.IsTrue(Frame.List.Visible);
+    mFrame := TAtlasBuildSwitchesFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.HandleNeeded;
+    mFrame.SetView(SampleView, 'C:\P\A.pas', 19);
+    Assert.AreEqual(4, Integer(mFrame.List.Columns.Count));
+    Assert.AreEqual('Herkunft', mFrame.List.Columns[3].Caption);
+    Assert.AreEqual(7, Integer(mFrame.List.Items.Count));
+    Assert.AreEqual('Schalter', mFrame.List.Items[0].Caption);
+    Assert.AreEqual('  R (RANGECHECKS)', mFrame.List.Items[1].Caption);
+    Assert.AreEqual('gesetzt in Zeile 10', mFrame.List.Items[1].SubItems[2]);
+    Assert.AreEqual('A.pas, Zeile 20', mFrame.WhereLabel.Caption);
+    Assert.AreEqual('Abweichend von der .dproj: R'#$2212, mFrame.SummaryLabel.Caption);
+    Assert.IsFalse(mFrame.EmptyLabel.Visible);
+    Assert.IsTrue(mFrame.List.Visible);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasBuildSwitchesFrameTests.MessageHidesList;
 var
-  Host: TForm;
-  Frame: TAtlasBuildSwitchesFrame;
+  mHost: TForm;
+  mFrame: TAtlasBuildSwitchesFrame;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasBuildSwitchesFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.HandleNeeded;
-    Assert.IsTrue(Frame.EmptyLabel.Visible, 'ohne Stand der Hinweis');
-    Frame.SetView(SampleView, 'C:\P\A.pas', 19);
-    Frame.SetMessage(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoServer));
-    Assert.IsTrue(Frame.EmptyLabel.Visible);
-    Assert.IsFalse(Frame.List.Visible);
-    Assert.AreEqual('Der Atlas-Server läuft nicht.', Frame.EmptyLabel.Caption);
+    mFrame := TAtlasBuildSwitchesFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.HandleNeeded;
+    Assert.IsTrue(mFrame.EmptyLabel.Visible, 'ohne Stand der Hinweis');
+    mFrame.SetView(SampleView, 'C:\P\A.pas', 19);
+    mFrame.SetMessage(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoServer));
+    Assert.IsTrue(mFrame.EmptyLabel.Visible);
+    Assert.IsFalse(mFrame.List.Visible);
+    Assert.AreEqual('Der Atlas-Server läuft nicht.', mFrame.EmptyLabel.Caption);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasBuildSwitchesFrameTests.EnterJumpsOrOpensOptions;
 var
-  Host: TForm;
-  Frame: TAtlasBuildSwitchesFrame;
-  Jumped: string;
-  Options: Integer;
-  Key: Word;
+  mHost: TForm;
+  mFrame: TAtlasBuildSwitchesFrame;
+  mJumped: string;
+  mOptions: Integer;
+  mKey: Word;
 begin
-  Jumped := '';
-  Options := 0;
-  Host := TForm.CreateNew(nil);
+  mJumped := '';
+  mOptions := 0;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasBuildSwitchesFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.HandleNeeded;
-    Frame.OnJump :=
+    mFrame := TAtlasBuildSwitchesFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.HandleNeeded;
+    mFrame.OnJump :=
       procedure(ARow: TAtlasSwitchRow)
       begin
-        Jumped := ARow.FileName + ':' + IntToStr(ARow.Line);
+        mJumped := ARow.FileName + ':' + IntToStr(ARow.Line);
       end;
-    Frame.OnOptions :=
+    mFrame.OnOptions :=
       procedure
       begin
-        Inc(Options);
+        Inc(mOptions);
       end;
-    Frame.SetView(SampleView, 'C:\P\A.pas', 19);
-    Frame.List.Items[0].Selected := True;
-    Key := VK_RETURN;
-    Frame.List.OnKeyDown(Frame.List, Key, []);
-    Assert.AreEqual('', Jumped, 'Kopf tut nichts');
-    Frame.List.Items[1].Selected := True;
-    Key := VK_RETURN;
-    Frame.List.OnKeyDown(Frame.List, Key, []);
-    Assert.AreEqual('C:\P\A.pas:9', Jumped);
-    Frame.List.Items[2].Selected := True;
-    Frame.ExecuteSelected;
-    Assert.AreEqual(1, Options, 'Projektoption öffnet die Projektoptionen');
-    Frame.List.Items[4].Selected := True;
-    Frame.ExecuteSelected;
-    Assert.AreEqual(1, Options, 'Compiler-Vorgabe tut nichts');
+    mFrame.SetView(SampleView, 'C:\P\A.pas', 19);
+    mFrame.List.Items[0].Selected := True;
+    mKey := VK_RETURN;
+    mFrame.List.OnKeyDown(mFrame.List, mKey, []);
+    Assert.AreEqual('', mJumped, 'Kopf tut nichts');
+    mFrame.List.Items[1].Selected := True;
+    mKey := VK_RETURN;
+    mFrame.List.OnKeyDown(mFrame.List, mKey, []);
+    Assert.AreEqual('C:\P\A.pas:9', mJumped);
+    mFrame.List.Items[2].Selected := True;
+    mFrame.ExecuteSelected;
+    Assert.AreEqual(1, mOptions, 'Projektoption öffnet die Projektoptionen');
+    mFrame.List.Items[4].Selected := True;
+    mFrame.ExecuteSelected;
+    Assert.AreEqual(1, mOptions, 'Compiler-Vorgabe tut nichts');
   finally
-    Host.Free;
+    mHost.Free;
   end;
-  Jumped := '';
+  mJumped := '';
 end;
 
 procedure TAtlasBuildSwitchesFrameTests.CopiesAsText;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := TAtlasBuildSwitchesFrame.AsText(SampleView);
-  Assert.IsTrue(Text.StartsWith('Schalter' + sLineBreak + '  R (RANGECHECKS)'#9#$2212#9'+'#9'gesetzt in Zeile 10'),
-    Text);
-  Assert.IsTrue(Text.Contains('Bedingte Symbole'));
+  mText := TAtlasBuildSwitchesFrame.AsText(SampleView);
+  Assert.IsTrue(mText.StartsWith('Schalter' + sLineBreak + '  R (RANGECHECKS)'#9#$2212#9'+'#9'gesetzt in Zeile 10'),
+    mText);
+  Assert.IsTrue(mText.Contains('Bedingte Symbole'));
 end;
 
 end.

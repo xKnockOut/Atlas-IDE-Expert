@@ -337,7 +337,7 @@ begin
     OnlyMessage('unit F01;'#10'interface'#10'uses Classes;'#10'type'#10'  TEv1 = procedure(Sender: TObject;'#10 +
     '    X: Integer);'#10'  TC = class(TComponent)'#10'  private'#10'    F1: TEv1;'#10'  published'#10 +
     '    property E1: TEv1 read F1 write F1;'#10'  end;'#10'implementation'#10'end.'));
-  // Aus dem Index, mit einer Parameterliste über TIndexSymbol.MaxSignature hinaus: Das Merkmal "of object" gilt.
+  // Aus dem Index, mit einer Parameterliste über TIndexSymbol.cMaxSignature hinaus: Das Merkmal "of object" gilt.
   mParameters := '';
   for mNumber := 1 to 40 do
   begin

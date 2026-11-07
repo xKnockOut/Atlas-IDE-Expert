@@ -235,59 +235,59 @@ uses
   Atlas.Text.Lines;
 
 const
-  VirtualDirectives: array[0..3] of string = ('virtual', 'dynamic', 'override', 'abstract');
+  cVirtualDirectives: array[0..3] of string = ('virtual', 'dynamic', 'override', 'abstract');
 
 function CollapseSpace(const AText: string): string;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
-  Space: Boolean;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
+  mSpace: Boolean;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Space := False;
-    for Index := 1 to Length(AText) do
+    mSpace := False;
+    for mIndex := 1 to Length(AText) do
     begin
-      if CharInSet(AText[Index], [' ', #9, #10, #13]) then
+      if CharInSet(AText[mIndex], [' ', #9, #10, #13]) then
       begin
-        Space := True;
+        mSpace := True;
       end
       else
       begin
-        if Space and (Builder.Length > 0) then
+        if mSpace and (mBuilder.Length > 0) then
         begin
-          Builder.Append(' ');
+          mBuilder.Append(' ');
         end;
-        Space := False;
-        Builder.Append(AText[Index]);
+        mSpace := False;
+        mBuilder.Append(AText[mIndex]);
       end;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 function IsIdentifier(const AName: string): Boolean;
 var
-  Name: string;
-  Index: Integer;
+  mName: string;
+  mIndex: Integer;
 begin
-  Name := AName;
-  if Name.StartsWith('&') then
+  mName := AName;
+  if mName.StartsWith('&') then
   begin
-    Name := Name.Substring(1);
+    mName := mName.Substring(1);
   end;
-  Result := (Name <> '') and (CharInSet(Name[1], ['A'..'Z', 'a'..'z', '_']) or (Ord(Name[1]) > 127) and
-    Name[1].IsLetter);
+  Result := (mName <> '') and (CharInSet(mName[1], ['A'..'Z', 'a'..'z', '_']) or (Ord(mName[1]) > 127) and
+    mName[1].IsLetter);
   if not Result then
   begin
     Exit;
   end;
-  for Index := 2 to Length(Name) do
+  for mIndex := 2 to Length(mName) do
   begin
-    if not (CharInSet(Name[Index], ['A'..'Z', 'a'..'z', '_', '0'..'9']) or (Ord(Name[Index]) > 127) and
-      Name[Index].IsLetterOrDigit) then
+    if not (CharInSet(mName[mIndex], ['A'..'Z', 'a'..'z', '_', '0'..'9']) or (Ord(mName[mIndex]) > 127) and
+      mName[mIndex].IsLetterOrDigit) then
     begin
       Exit(False);
     end;
@@ -301,23 +301,23 @@ end;
 
 function TokenIndexAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 var
-  Low_, High_, Middle: Integer;
+  mLow_, mHigh_, mMiddle: Integer;
 begin
-  Low_ := 0;
-  High_ := Length(ATokens);
-  while Low_ < High_ do
+  mLow_ := 0;
+  mHigh_ := Length(ATokens);
+  while mLow_ < mHigh_ do
   begin
-    Middle := (Low_ + High_) div 2;
-    if ATokens[Middle].Offset < AOffset then
+    mMiddle := (mLow_ + mHigh_) div 2;
+    if ATokens[mMiddle].Offset < AOffset then
     begin
-      Low_ := Middle + 1;
+      mLow_ := mMiddle + 1;
     end
     else
     begin
-      High_ := Middle;
+      mHigh_ := mMiddle;
     end;
   end;
-  Result := Low_;
+  Result := mLow_;
 end;
 
 type
@@ -396,11 +396,11 @@ end;
 
 function TClassMember.IsVirtual: Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in VirtualDirectives do
+  for mName in cVirtualDirectives do
   begin
-    if HasDirective(Name) then
+    if HasDirective(mName) then
     begin
       Exit(True);
     end;
@@ -437,22 +437,22 @@ end;
 
 function IsClassDecl(ANode: TSyntaxNode): Boolean;
 var
-  Body: TSyntaxNode;
+  mBody: TSyntaxNode;
 begin
   Result := False;
   if ANode.Kind <> TSyntaxKind.TypeDecl then
   begin
     Exit;
   end;
-  Body := ANode.FindChild(TSyntaxKind.ClassType);
-  Result := Body <> nil;
+  mBody := ANode.FindChild(TSyntaxKind.ClassType);
+  Result := mBody <> nil;
 end;
 
 class function TClassLayout.AllDecls(ATree: TSyntaxTree): TArray<TSyntaxNode>;
 var
-  Found: TArray<TSyntaxNode>;
+  mFound: TArray<TSyntaxNode>;
 begin
-  Found := nil;
+  mFound := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
@@ -460,36 +460,36 @@ begin
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
       if Result and IsClassDecl(ANode) then
       begin
-        Found := Found + [ANode];
+        mFound := mFound + [ANode];
       end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 class function TClassLayout.DeclAt(ATree: TSyntaxTree; ALine: Integer; AInside: Boolean): TSyntaxNode;
 var
-  Decl: TSyntaxNode;
+  mDecl: TSyntaxNode;
 begin
   // Die innerste Klasse gewinnt (verschachtelte Typen stehen hinter ihrer äußeren in AllDecls).
   Result := nil;
-  for Decl in AllDecls(ATree) do
+  for mDecl in AllDecls(ATree) do
   begin
-    if (Decl.StartPos.Line = ALine) or AInside and (ALine >= Decl.StartPos.Line) and (ALine <= Decl.EndPos.Line) then
+    if (mDecl.StartPos.Line = ALine) or AInside and (ALine >= mDecl.StartPos.Line) and (ALine <= mDecl.EndPos.Line) then
     begin
-      Result := Decl;
+      Result := mDecl;
     end;
   end;
 end;
 
 class function TClassLayout.DeclNamed(ATree: TSyntaxTree; const AName: string): TSyntaxNode;
 var
-  Decl: TSyntaxNode;
+  mDecl: TSyntaxNode;
 begin
-  for Decl in AllDecls(ATree) do
+  for mDecl in AllDecls(ATree) do
   begin
-    if SameText(Decl.Name, AName) then
+    if SameText(mDecl.Name, AName) then
     begin
-      Exit(Decl);
+      Exit(mDecl);
     end;
   end;
   Result := nil;
@@ -726,14 +726,14 @@ begin
 end;
 
 const
-  PropertySpecifiers: array[0..7] of string = ('read', 'write', 'index', 'stored', 'default', 'nodefault',
+  cPropertySpecifiers: array[0..7] of string = ('read', 'write', 'index', 'stored', 'default', 'nodefault',
     'implements', 'dispid');
 
 /// <summary>Token AIndex ist ein Spezifizierer einer Property (read, write, …).</summary>
 function IsSpecifier(const AToken: TPascalToken): Boolean;
 begin
   Result := (AToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
-    MatchText(AToken.Text, PropertySpecifiers);
+    MatchText(AToken.Text, cPropertySpecifiers);
 end;
 
 /// <summary>Text der Token ab AIndex bis vor den nächsten Spezifizierer bzw. das Semikolon, ohne Kommentare.
@@ -1230,28 +1230,28 @@ end;
 
 function TClassLayout.Find(const AName: string): TArray<Integer>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to High(Members) do
+  for mIndex := 0 to High(Members) do
   begin
-    if SameText(Members[Index].Name, AName) then
+    if SameText(Members[mIndex].Name, AName) then
     begin
-      Result := Result + [Index];
+      Result := Result + [mIndex];
     end;
   end;
 end;
 
 function TClassLayout.MemberAtLine(ALine: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Members) do
+  for mIndex := 0 to High(Members) do
   begin
-    if (ALine >= Members[Index].FirstLine) and (ALine <= Members[Index].LastLine) and
-      (Members[Index].Kind <> TClassMemberKind.Other) then
+    if (ALine >= Members[mIndex].FirstLine) and (ALine <= Members[mIndex].LastLine) and
+      (Members[mIndex].Kind <> TClassMemberKind.Other) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -1349,20 +1349,20 @@ end;
 
 function TClassLayout.UsersOf(AIndex: Integer): TArray<Integer>;
 var
-  Index, Used: Integer;
+  mIndex, mUsed: Integer;
 begin
   Result := nil;
-  for Index := 0 to High(Members) do
+  for mIndex := 0 to High(Members) do
   begin
-    if (Index = AIndex) or (Members[Index].Kind = TClassMemberKind.Other) then
+    if (mIndex = AIndex) or (Members[mIndex].Kind = TClassMemberKind.Other) then
     begin
       Continue;
     end;
-    for Used in UsedBy(Index) do
+    for mUsed in UsedBy(mIndex) do
     begin
-      if SameText(Members[Used].Name, Members[AIndex].Name) then
+      if SameText(Members[mUsed].Name, Members[AIndex].Name) then
       begin
-        Result := Result + [Index];
+        Result := Result + [mIndex];
         Break;
       end;
     end;
@@ -1371,21 +1371,21 @@ end;
 
 function TClassLayout.Declaration(AIndex: Integer): string;
 var
-  Member: TClassMember;
+  mMember: TClassMember;
 begin
-  Member := Members[AIndex];
-  if Member.IsFieldGroup or (Member.Kind = TClassMemberKind.ClassVar) or (Member.Node.Kind = TSyntaxKind.VarDecl)
+  mMember := Members[AIndex];
+  if mMember.IsFieldGroup or (mMember.Kind = TClassMemberKind.ClassVar) or (mMember.Node.Kind = TSyntaxKind.VarDecl)
   then
   begin
-    Result := Member.Name + ': ' + Member.TypeName + ';';
-    if Member.Kind = TClassMemberKind.ClassVar then
+    Result := mMember.Name + ': ' + mMember.TypeName + ';';
+    if mMember.Kind = TClassMemberKind.ClassVar then
     begin
       Result := 'class var ' + Result;
     end;
     Exit;
   end;
-  Result := CollapseSpace(TextOf(Member.Node));
-  if Member.IsClassMember and (Member.Kind = TClassMemberKind.Property_) then
+  Result := CollapseSpace(TextOf(mMember.Node));
+  if mMember.IsClassMember and (mMember.Kind = TClassMemberKind.Property_) then
   begin
     Result := 'class ' + Result;
   end;
@@ -1397,46 +1397,46 @@ end;
 
 function TClassLayout.DocLines(AIndex: Integer): TArray<string>;
 var
-  Line, Stop: Integer;
+  mLine, mStop: Integer;
 begin
   Result := nil;
   if Members[AIndex].DocLine < 0 then
   begin
     Exit;
   end;
-  Stop := Members[AIndex].Node.StartPos.Line - 1;
-  for Line := Members[AIndex].DocLine to Stop do
+  mStop := Members[AIndex].Node.StartPos.Line - 1;
+  for mLine := Members[AIndex].DocLine to mStop do
   begin
-    if StartsText('///', Trim(FLines[Line])) then
+    if StartsText('///', Trim(FLines[mLine])) then
     begin
-      Result := Result + [Trim(FLines[Line])];
+      Result := Result + [Trim(FLines[mLine])];
     end;
   end;
 end;
 
 function TClassLayout.Head(AIndex: Integer): string;
 var
-  Member: TClassMember;
-  Node, Child: TSyntaxNode;
-  Stop, Index: Integer;
+  mMember: TClassMember;
+  mNode, mChild: TSyntaxNode;
+  mStop, mIndex: Integer;
 begin
-  Member := Members[AIndex];
-  Node := Member.Node;
-  if Node.Kind <> TSyntaxKind.RoutineHeader then
+  mMember := Members[AIndex];
+  mNode := mMember.Node;
+  if mNode.Kind <> TSyntaxKind.RoutineHeader then
   begin
     Exit(Declaration(AIndex));
   end;
-  Stop := Node.EndOffset;
-  for Index := 0 to Node.ChildCount - 1 do
+  mStop := mNode.EndOffset;
+  for mIndex := 0 to mNode.ChildCount - 1 do
   begin
-    Child := Node[Index];
-    if Child.Kind = TSyntaxKind.Directive then
+    mChild := mNode[mIndex];
+    if mChild.Kind = TSyntaxKind.Directive then
     begin
-      Stop := Child.StartOffset;
+      mStop := mChild.StartOffset;
       Break;
     end;
   end;
-  Result := CollapseSpace(Copy(FText, Node.StartOffset + 1, Stop - Node.StartOffset));
+  Result := CollapseSpace(Copy(FText, mNode.StartOffset + 1, mStop - mNode.StartOffset));
   if not Result.EndsWith(';') then
   begin
     Result := Result + ';';
@@ -1445,12 +1445,12 @@ end;
 
 function TClassLayout.LinesText(AFirst, ALast: Integer): string;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
   Result := '';
-  for Line := AFirst to ALast do
+  for mLine := AFirst to ALast do
   begin
-    Result := Result + FLines[Line] + LineBreak;
+    Result := Result + FLines[mLine] + LineBreak;
   end;
 end;
 
@@ -1476,26 +1476,26 @@ end;
 
 class function TClassEdits.VisibilityOf(const AName: string): TClassVisibility;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := LowerCase(CollapseSpace(AName));
-  if Name = 'strict private' then
+  mName := LowerCase(CollapseSpace(AName));
+  if mName = 'strict private' then
   begin
     Result := TClassVisibility.StrictPrivate;
   end
-  else if Name = 'private' then
+  else if mName = 'private' then
   begin
     Result := TClassVisibility.Private_;
   end
-  else if Name = 'strict protected' then
+  else if mName = 'strict protected' then
   begin
     Result := TClassVisibility.StrictProtected;
   end
-  else if Name = 'protected' then
+  else if mName = 'protected' then
   begin
     Result := TClassVisibility.Protected_;
   end
-  else if Name = 'published' then
+  else if mName = 'published' then
   begin
     Result := TClassVisibility.Published_;
   end
@@ -1507,12 +1507,12 @@ end;
 
 class function TClassEdits.DeleteLines(ALayout: TClassLayout; AFirst, ALast: Integer): TTextEdit;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := ALayout.Lines;
+  mLines := ALayout.Lines;
   // Eine Leerzeile dahinter mitnehmen, wenn davor auch eine steht (Rümpfe sind durch Leerzeilen getrennt).
-  if (ALast + 1 <= High(Lines)) and (Trim(Lines[ALast + 1]) = '') and (AFirst > 0) and
-    (Trim(Lines[AFirst - 1]) = '') then
+  if (ALast + 1 <= High(mLines)) and (Trim(mLines[ALast + 1]) = '') and (AFirst > 0) and
+    (Trim(mLines[AFirst - 1]) = '') then
   begin
     Inc(ALast);
   end;
@@ -1750,97 +1750,97 @@ end;
 
 class function TClassEdits.SetAncestors(ALayout: TClassLayout; const AAncestors: TArray<string>): TTextEdit;
 var
-  Table: TLineTable;
-  List: string;
+  mTable: TLineTable;
+  mList: string;
 begin
-  Table := TLineTable.Build(ALayout.Text);
-  List := '';
+  mTable := TLineTable.Build(ALayout.Text);
+  mList := '';
   if AAncestors <> nil then
   begin
-    List := '(' + string.Join(', ', AAncestors) + ')';
+    mList := '(' + string.Join(', ', AAncestors) + ')';
   end;
   if ALayout.HeritageOpen >= 0 then
   begin
-    Result := TTextEdit.Create(TTextRange.Create(Table.PositionAt(ALayout.HeritageOpen),
-      Table.PositionAt(ALayout.HeritageClose + 1)), List);
+    Result := TTextEdit.Create(TTextRange.Create(mTable.PositionAt(ALayout.HeritageOpen),
+      mTable.PositionAt(ALayout.HeritageClose + 1)), mList);
   end
   else
   begin
-    Result := TTextEdit.Create(TTextRange.Create(Table.PositionAt(ALayout.HeritageInsert),
-      Table.PositionAt(ALayout.HeritageInsert)), List);
+    Result := TTextEdit.Create(TTextRange.Create(mTable.PositionAt(ALayout.HeritageInsert),
+      mTable.PositionAt(ALayout.HeritageInsert)), mList);
   end;
 end;
 
 class function TClassEdits.BodyText(ALayout: TClassLayout; AIndex: Integer; const AClassName: string): string;
 var
-  Member: TClassMember;
-  Text: string;
-  Offset, Start, Index: Integer;
-  Table: TLineTable;
-  Tokens: TArray<TPascalToken>;
+  mMember: TClassMember;
+  mText: string;
+  mOffset, mStart, mIndex: Integer;
+  mTable: TLineTable;
+  mTokens: TArray<TPascalToken>;
 begin
-  Member := ALayout.Members[AIndex];
-  if Member.Body = nil then
+  mMember := ALayout.Members[AIndex];
+  if mMember.Body = nil then
   begin
     Exit('');
   end;
-  Table := TLineTable.Build(ALayout.Text);
-  Start := Table.LineStart(Member.BodyFirstLine);
-  Text := Copy(ALayout.Text, Start + 1, Member.Body.EndOffset - Start);
+  mTable := TLineTable.Build(ALayout.Text);
+  mStart := mTable.LineStart(mMember.BodyFirstLine);
+  mText := Copy(ALayout.Text, mStart + 1, mMember.Body.EndOffset - mStart);
   // Klassenname im Kopf ersetzen: erster Bezeichner mit dem Namen der Klasse (Typparameter bleiben).
-  Tokens := ALayout.Tree.Tokens;
-  for Index := TokenIndexAt(Tokens, Member.Body.StartOffset) to High(Tokens) do
+  mTokens := ALayout.Tree.Tokens;
+  for mIndex := TokenIndexAt(mTokens, mMember.Body.StartOffset) to High(mTokens) do
   begin
-    if Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol(';') then
+    if mTokens[mIndex].IsSymbol('(') or mTokens[mIndex].IsSymbol(';') then
     begin
       Break;
     end;
-    if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, ALayout.Name) then
+    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, ALayout.Name) then
     begin
-      Offset := Tokens[Index].Offset - Start;
-      Text := Copy(Text, 1, Offset) + AClassName + Copy(Text, Offset + Length(Tokens[Index].Text) + 1, MaxInt);
+      mOffset := mTokens[mIndex].Offset - mStart;
+      mText := Copy(mText, 1, mOffset) + AClassName + Copy(mText, mOffset + Length(mTokens[mIndex].Text) + 1, MaxInt);
       Break;
     end;
   end;
-  Result := Text;
+  Result := mText;
 end;
 
 class function TClassEdits.BodiesEnd(ATree: TSyntaxTree; const AClassName: string): Integer;
 var
-  Last: Integer;
-  Implementation_: TSyntaxNode;
-  Index: Integer;
+  mLast: Integer;
+  mImplementation_: TSyntaxNode;
+  mIndex: Integer;
 begin
-  Last := -1;
-  Implementation_ := nil;
+  mLast := -1;
+  mImplementation_ := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind = TSyntaxKind.ImplementationSection then
       begin
-        Implementation_ := ANode;
+        mImplementation_ := ANode;
       end;
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
-      if not Result and StartsText(AClassName + '.', ANode.Name) and (ANode.EndPos.Line > Last) then
+      if not Result and StartsText(AClassName + '.', ANode.Name) and (ANode.EndPos.Line > mLast) then
       begin
-        Last := ANode.EndPos.Line;
+        mLast := ANode.EndPos.Line;
       end;
     end);
-  if Last >= 0 then
+  if mLast >= 0 then
   begin
-    Exit(Last);
+    Exit(mLast);
   end;
-  if Implementation_ = nil then
+  if mImplementation_ = nil then
   begin
     Exit(-1);
   end;
   // Hinter die letzte Deklaration der implementation, sonst hinter "implementation" bzw. dessen uses.
-  Result := Implementation_.StartPos.Line;
-  for Index := 0 to Implementation_.ChildCount - 1 do
+  Result := mImplementation_.StartPos.Line;
+  for mIndex := 0 to mImplementation_.ChildCount - 1 do
   begin
-    if Implementation_[Index].EndPos.Line > Result then
+    if mImplementation_[mIndex].EndPos.Line > Result then
     begin
-      Result := Implementation_[Index].EndPos.Line;
+      Result := mImplementation_[mIndex].EndPos.Line;
     end;
   end;
 end;
@@ -1848,51 +1848,51 @@ end;
 class function TClassEdits.InsertBodies(const AText: string; ALine: Integer;
   const ABodies: TArray<string>): TTextEdit;
 var
-  LineBreak, Body, NewText: string;
+  mLineBreak, mBody, mNewText: string;
 begin
-  LineBreak := TTextLines.LineBreakOf(AText);
-  NewText := '';
-  for Body in ABodies do
+  mLineBreak := TTextLines.LineBreakOf(AText);
+  mNewText := '';
+  for mBody in ABodies do
   begin
-    NewText := NewText + LineBreak + Body + LineBreak;
+    mNewText := mNewText + mLineBreak + mBody + mLineBreak;
   end;
-  Result := InsertBeforeLine(ALine + 1, NewText);
+  Result := InsertBeforeLine(ALine + 1, mNewText);
 end;
 
 class function TClassEdits.ReplaceAccessor(ALayout: TClassLayout; AIndex: Integer; const AKeyword,
   ANewName: string; out AEdit: TTextEdit): Boolean;
 var
-  Node, TypeRef: TSyntaxNode;
-  Tokens: TArray<TPascalToken>;
-  Index, Start, Next: Integer;
+  mNode, mTypeRef: TSyntaxNode;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mStart, mNext: Integer;
 begin
-  Node := ALayout.Members[AIndex].Node;
-  Start := Node.StartOffset;
-  TypeRef := Node.FindChild(TSyntaxKind.TypeReference);
-  if TypeRef <> nil then
+  mNode := ALayout.Members[AIndex].Node;
+  mStart := mNode.StartOffset;
+  mTypeRef := mNode.FindChild(TSyntaxKind.TypeReference);
+  if mTypeRef <> nil then
   begin
-    Start := TypeRef.EndOffset;
+    mStart := mTypeRef.EndOffset;
   end;
-  Tokens := ALayout.Tree.Tokens;
-  Index := TokenIndexAt(Tokens, Start);
-  while (Index <= High(Tokens)) and (Tokens[Index].Offset < Node.EndOffset) and not Tokens[Index].IsSymbol(';') do
+  mTokens := ALayout.Tree.Tokens;
+  mIndex := TokenIndexAt(mTokens, mStart);
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < mNode.EndOffset) and not mTokens[mIndex].IsSymbol(';') do
   begin
-    if (Tokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
-      SameText(Tokens[Index].Text, AKeyword) then
+    if (mTokens[mIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
+      SameText(mTokens[mIndex].Text, AKeyword) then
     begin
-      Next := Index + 1;
-      while (Next <= High(Tokens)) and IsTrivia(Tokens[Next]) do
+      mNext := mIndex + 1;
+      while (mNext <= High(mTokens)) and IsTrivia(mTokens[mNext]) do
       begin
-        Inc(Next);
+        Inc(mNext);
       end;
-      if (Next > High(Tokens)) or (Tokens[Next].Kind <> TPascalTokenKind.Identifier) then
+      if (mNext > High(mTokens)) or (mTokens[mNext].Kind <> TPascalTokenKind.Identifier) then
       begin
         Exit(False);
       end;
-      AEdit := TTextEdit.Create(TTextRange.Create(Tokens[Next].StartPos, Tokens[Next].EndPos), ANewName);
+      AEdit := TTextEdit.Create(TTextRange.Create(mTokens[mNext].StartPos, mTokens[mNext].EndPos), ANewName);
       Exit(True);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
   Result := False;
 end;

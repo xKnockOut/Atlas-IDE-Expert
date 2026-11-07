@@ -41,7 +41,7 @@ uses
   Atlas.UI.Strings;
 
 const
-  Texts: array[TAtlasLanguage, TAtlasUpdatesTextId] of string = (
+  cTexts: array[TAtlasLanguage, TAtlasUpdatesTextId] of string = (
     ( 'Updates installieren:',
      'anbieten',
      'ohne Frage vorbereiten',
@@ -180,12 +180,12 @@ const
 
 class function TAtlasUpdatesStrings.Text(AId: TAtlasUpdatesTextId): string;
 begin
-  Result := Texts[TAtlasStrings.Language, AId];
+  Result := cTexts[TAtlasStrings.Language, AId];
 end;
 
 class function TAtlasUpdatesStrings.Fmt(AId: TAtlasUpdatesTextId; const AArgs: array of const): string;
 begin
-  Result := Format(Texts[TAtlasStrings.Language, AId], AArgs);
+  Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
 end;
 
 end.

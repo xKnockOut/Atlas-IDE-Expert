@@ -31,7 +31,8 @@ type
     /// <summary>Warum es kein Gegenstück gibt; sonst ''.</summary>
     Reason: string;
     /// <summary>Aus der Antwort; AUriToPath macht aus URIs Dateinamen.</summary>
-    class function FromJson(const AValue: TJSONValue; const AUriToPath: TFunc<string, string>): TAtlasTestUnitInfo; static;
+    class function FromJson(const AValue: TJSONValue; const AUriToPath: TFunc<string, string>): TAtlasTestUnitInfo;
+      static;
     /// <summary>Was die Code Lens zeigt.</summary>
     function Lens: TAtlasTestUnitLens;
   end;
@@ -49,29 +50,29 @@ implementation
 class function TAtlasTestUnitInfo.FromJson(const AValue: TJSONValue;
   const AUriToPath: TFunc<string, string>): TAtlasTestUnitInfo;
 var
-  Answer: TJSONObject;
-  Uri: string;
+  mAnswer: TJSONObject;
+  mUri: string;
 begin
   Result := Default(TAtlasTestUnitInfo);
   if not (AValue is TJSONObject) then
   begin
     Exit;
   end;
-  Answer := TJSONObject(AValue);
-  Answer.TryGetValue<string>('unit', Result.UnitName);
-  Answer.TryGetValue<Boolean>('isTest', Result.IsTest);
-  Answer.TryGetValue<string>('counterpart', Result.Counterpart);
+  mAnswer := TJSONObject(AValue);
+  mAnswer.TryGetValue<string>('unit', Result.UnitName);
+  mAnswer.TryGetValue<Boolean>('isTest', Result.IsTest);
+  mAnswer.TryGetValue<string>('counterpart', Result.Counterpart);
   // "uri" ist null, wenn das Gegenstück fehlt.
-  if (Answer.GetValue('uri') is TJSONString) and Answer.TryGetValue<string>('uri', Uri) and (Uri <> '') then
+  if (mAnswer.GetValue('uri') is TJSONString) and mAnswer.TryGetValue<string>('uri', mUri) and (mUri <> '') then
   begin
-    Result.CounterpartFile := AUriToPath(Uri);
+    Result.CounterpartFile := AUriToPath(mUri);
   end;
-  Answer.TryGetValue<Boolean>('canCreate', Result.CanCreate);
-  if Answer.TryGetValue<string>('newUri', Uri) and (Uri <> '') then
+  mAnswer.TryGetValue<Boolean>('canCreate', Result.CanCreate);
+  if mAnswer.TryGetValue<string>('newUri', mUri) and (mUri <> '') then
   begin
-    Result.NewFile := AUriToPath(Uri);
+    Result.NewFile := AUriToPath(mUri);
   end;
-  Answer.TryGetValue<string>('reason', Result.Reason);
+  mAnswer.TryGetValue<string>('reason', Result.Reason);
 end;
 
 function TAtlasTestUnitInfo.Lens: TAtlasTestUnitLens;

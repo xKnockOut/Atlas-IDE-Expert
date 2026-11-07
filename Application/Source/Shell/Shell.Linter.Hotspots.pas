@@ -107,16 +107,16 @@ begin
   if not mSettings.HotspotsEnabled then
   begin
     TLinterOutput.Error(cTexts[TLinterHotspotsText.Off].Text);
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   if not TShellHotspotVcs.Detect(ATarget.ConfigRoot, mSettings, mVcs, mError) then
   begin
     TLinterOutput.Error(cTexts[TLinterHotspotsText.NoVcs].Fmt([mError]));
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   TFileEncodingDefaults.SetFolder(ATarget.ConfigRoot, mSettings.DefaultEncoding);
   WriteReport(AOptions, TLinterHotspots.Analyze(ATarget, mSettings, mVcs));
-  Result := TFindingsOutput.ExitClean;
+  Result := TFindingsOutput.cExitClean;
 end;
 
 class function TLinterHotspots.Run(const AOptions: TCommandLineOptions): Integer;
@@ -127,11 +127,11 @@ begin
   if not TLinterFiles.IsReportFile(AOptions.HotspotsFile) then
   begin
     TLinterOutput.Error(cTexts[TLinterHotspotsText.FileKind].Text);
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   if not TLinterTarget.ResolveOrCurrent(AOptions.CheckTarget, mTarget) then
   begin
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   try
     Result := Report(AOptions, mTarget);
@@ -139,7 +139,7 @@ begin
     on E: Exception do
     begin
       TLinterOutput.Error(E.Message);
-      Result := TFindingsOutput.ExitFailure;
+      Result := TFindingsOutput.cExitFailure;
     end;
   end;
 end;
