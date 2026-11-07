@@ -34,9 +34,9 @@ uses
   BaseUnix;
 
 const
-  StdInputFd = 0;
-  StdOutputFd = 1;
-  StdErrorFd = 2;
+  cStdInputFd = 0;
+  cStdOutputFd = 1;
+  cStdErrorFd = 2;
 
 function CreateFdStream(AFd: THandle; const AName: string): TStream;
 begin
@@ -51,22 +51,22 @@ end;
 
 class function TStdStreams.CreateInput: TStream;
 begin
-  Result := CreateFdStream(StdInputFd, 'stdin');
+  Result := CreateFdStream(cStdInputFd, 'stdin');
 end;
 
 class function TStdStreams.CreateOutput: TStream;
 begin
-  Result := CreateFdStream(StdOutputFd, 'stdout');
+  Result := CreateFdStream(cStdOutputFd, 'stdout');
 end;
 
 class function TStdStreams.CreateError: TStream;
 begin
-  Result := CreateFdStream(StdErrorFd, 'stderr');
+  Result := CreateFdStream(cStdErrorFd, 'stderr');
 end;
 
 class procedure TStdStreams.RedirectTextOutputToStdErr;
 begin
-  if FpFcntl(StdErrorFd, F_GETFD) < 0 then
+  if FpFcntl(cStdErrorFd, F_GETFD) < 0 then
   begin
     Exit;
   end;
@@ -74,23 +74,23 @@ begin
   begin
     Flush(Output);
   end;
-  TTextRec(Output).Handle := StdErrorFd;
+  TTextRec(Output).Handle := cStdErrorFd;
 end;
 
 class function TStdStreams.ReserveOutputForProtocol: TStream;
 var
-  Protocol: cint;
+  mProtocol: cint;
 begin
   // Eigener Deskriptor für das Protokoll; FD_CLOEXEC, damit Kindprozesse (git, dcc) ihn nicht erben.
-  Protocol := FpFcntl(StdOutputFd, F_DUPFD_CLOEXEC, 3);
-  if Protocol < 0 then
+  mProtocol := FpFcntl(cStdOutputFd, F_DUPFD_CLOEXEC, 3);
+  if mProtocol < 0 then
   begin
     raise EStreamError.Create('stdout lässt sich nicht für das Protokoll reservieren');
   end;
-  Result := THandleStream.Create(Protocol);
-  if FpFcntl(StdErrorFd, F_GETFD) >= 0 then
+  Result := THandleStream.Create(mProtocol);
+  if FpFcntl(cStdErrorFd, F_GETFD) >= 0 then
   begin
-    FpDup2(StdErrorFd, StdOutputFd);
+    FpDup2(cStdErrorFd, cStdOutputFd);
   end;
   RedirectTextOutputToStdErr;
 end;
