@@ -1042,10 +1042,27 @@ begin
     True);
 end;
 
+/// <summary>Meint Random bei AIndex etwas Eigenes (Aufzählungswert, lokale Routine) statt System.Random?</summary>
+function IsOwnRandom(const AContext: TRuleContext; const ATokens: TTokens; AIndex: Integer;
+  var ACache: IRuleDerivedCache): Boolean;
+var
+  mSymbol: TResolvedSymbol;
+begin
+  if ACache = nil then
+  begin
+    ACache := TRuleDerived.Open(AContext);
+  end;
+  mSymbol := TRuleDerived.Resolver(ACache, AContext).ResolveChain(AContext.Tree, AContext.RelativePath, ['Random'],
+    ATokens[AIndex].Offset, False);
+  Result := (mSymbol.Kind = TResolvedKind.Local) or
+    ((mSymbol.Kind = TResolvedKind.Symbol) and not SameText(mSymbol.UnitName, 'System'));
+end;
+
 procedure TRandomWithoutRandomizeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mTokens: TTokens;
   mIndex, mFirst: Integer;
+  mCache: IRuleDerivedCache;
 begin
   if AContext.Tree = nil then
   begin
@@ -1053,6 +1070,7 @@ begin
   end;
   mTokens := AContext.Tree.Tokens;
   mFirst := -1;
+  mCache := nil;
   for mIndex := 0 to High(mTokens) do
   begin
     if mTokens[mIndex].Kind = TPascalTokenKind.Identifier then
@@ -1062,7 +1080,8 @@ begin
         Exit;
       end
       else if (mFirst < 0) and SameText(mTokens[mIndex].Text, 'Random') and
-        ((mIndex = 0) or not mTokens[PreviousCode(mTokens, mIndex)].IsSymbol('.')) then
+        ((mIndex = 0) or not mTokens[PreviousCode(mTokens, mIndex)].IsSymbol('.')) and
+        not IsOwnRandom(AContext, mTokens, mIndex, mCache) then
       begin
         mFirst := mIndex;
       end;

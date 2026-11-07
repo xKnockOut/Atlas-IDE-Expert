@@ -1,8 +1,8 @@
 ﻿unit Atlas.Common.Todos.Contract;
 
 // Contract des Platform-Features Todos (#68): TODO-Einträge aus Kommentaren.
-// Erkannt wird ein Kommentar, dessen erstes Wort eine Marke ist (Vorgabe
-// TODO und FIXME, Groß-/Kleinschreibung egal) oder DONE, in jeder
+// Erkannt wird ein Kommentar, dessen erstes Wort eine Marke ist (als
+// Vorgabe TODO und FIXME, Groß-/Kleinschreibung egal) oder DONE, in jeder
 // Kommentarform (//, { }, (* *)):
 //   // TODO Text
 //   // FIXME: Text

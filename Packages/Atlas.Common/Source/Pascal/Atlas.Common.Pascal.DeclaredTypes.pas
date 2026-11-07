@@ -174,10 +174,11 @@ begin
       AddNames(mScope, AType[mInner]);
     end;
   end;
-  // Sichtbarkeitsabschnitte rückwärts auf den Stapel: Sie kommen in Quelltextreihenfolge dran.
+  // Sichtbarkeitsabschnitte und verschachtelte type-Abschnitte (TParts = record in der Klasse) rückwärts auf den
+  // Stapel: Sie kommen in Quelltextreihenfolge dran.
   for mInner := AType.ChildCount - 1 downto 0 do
   begin
-    if AType[mInner].Kind = TSyntaxKind.Visibility then
+    if AType[mInner].Kind in [TSyntaxKind.Visibility, TSyntaxKind.TypeSection] then
     begin
       Enter(AFrames, AType[mInner], AOwnerClass);
     end;

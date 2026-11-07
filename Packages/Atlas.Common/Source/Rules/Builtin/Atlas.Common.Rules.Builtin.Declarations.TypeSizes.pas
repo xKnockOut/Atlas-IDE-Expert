@@ -585,7 +585,7 @@ begin
     Result.Exact := mIndex < cFirstInexactSize;
     Exit;
   end;
-  if (FDepth > 32) then
+  if FDepth > 32 then
   begin
     Exit;
   end;

@@ -128,7 +128,6 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,

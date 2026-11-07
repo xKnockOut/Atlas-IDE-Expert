@@ -57,7 +57,6 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
@@ -949,7 +948,7 @@ begin
   if (mClose > 0) and TOrdinalConstants.Evaluate(Copy(AText, mOpen + 1, mClose - mOpen - 1), nil, mValue) and
     (mValue >= 1) and (mValue <= 255) then
   begin
-    Result := mValue;
+    Result := Integer(mValue);
   end;
 end;
 
@@ -1148,7 +1147,7 @@ var
     end;
     if (mValues.Check(ATypeNode[0], mValue) = TOrdinalStatus.Value) and (mValue >= 1) and (mValue <= 255) then
     begin
-      Result := mValue;
+      Result := Integer(mValue);
     end;
   end;
 

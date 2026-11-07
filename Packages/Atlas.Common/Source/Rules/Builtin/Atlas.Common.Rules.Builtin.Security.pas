@@ -506,6 +506,7 @@ procedure TSecurityPathTraversalRule.Check(const AContext: TRuleContext; const A
 var
   mTokens: TArray<TPascalToken>;
   mIndex, mClose: Integer;
+  mArguments: TArray<TArray<Integer>>;
 begin
   mTokens := CodeTokens(AContext);
   for mIndex := 0 to High(mTokens) - 1 do
@@ -515,7 +516,14 @@ begin
       Continue;
     end;
     mClose := MatchingParen(mTokens, mIndex + 1);
-    if (mClose >= 0) and UncheckedInput(mTokens, mIndex + 2, mClose - 1) then
+    if mClose < 0 then
+    begin
+      Continue;
+    end;
+    // Nur der Pfad (erstes Argument) zählt: WriteAllText(Pfad, Liste.Text) schreibt Eingabedaten, aber nicht dorthin,
+    // wohin sie zeigen.
+    mArguments := Arguments(mTokens, mIndex + 1, mClose);
+    if (Length(mArguments) > 0) and UncheckedInput(mTokens, mArguments[0][0], mArguments[0][1]) then
     begin
       AReport.Add(TokenRange(mTokens[mIndex]), cTexts[TSecurityText.Path].Fmt([mTokens[mIndex].Text]),
         TRuleConfidence.Medium);

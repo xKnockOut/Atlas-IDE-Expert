@@ -86,7 +86,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Semantics.ConstantValues,
