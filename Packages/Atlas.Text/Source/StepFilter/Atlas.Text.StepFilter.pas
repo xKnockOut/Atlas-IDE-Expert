@@ -26,13 +26,13 @@ type
 
   TStepFilterNames = class
   public const
-    KindNames: array[TStepFilterKind] of string = ('getters', 'setters', 'trivial', 'operators',
+    cKindNames: array[TStepFilterKind] of string = ('getters', 'setters', 'trivial', 'operators',
       'emptyConstructors');
-    AllKinds = [Low(TStepFilterKind)..High(TStepFilterKind)];
-    DefaultKinds = [TStepFilterKind.Getters, TStepFilterKind.Trivial];
-    PatternSeparator = ';';
+    cAllKinds = [Low(TStepFilterKind)..High(TStepFilterKind)];
+    cDefaultKinds = [TStepFilterKind.Getters, TStepFilterKind.Trivial];
+    cPatternSeparator = ';';
     /// <summary>Höchstens so viele Muster; weitere fallen weg.</summary>
-    MaxPatterns = 200;
+    cMaxPatterns = 200;
   private
     class function WildMatch(const APattern, AText: string): Boolean; static;
   public
@@ -72,7 +72,7 @@ var
 begin
   for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
   begin
-    if SameText(Trim(AName), KindNames[mKind]) then
+    if SameText(Trim(AName), cKindNames[mKind]) then
     begin
       AKind := mKind;
       Exit(True);
@@ -109,7 +109,7 @@ begin
       begin
         Result := Result + ',';
       end;
-      Result := Result + KindNames[mKind];
+      Result := Result + cKindNames[mKind];
     end;
   end;
 end;
@@ -132,7 +132,7 @@ begin
   mOnlyWild := True;
   for mChar in APattern do
   begin
-    if (mChar <= ' ') or (mChar = PatternSeparator) or (mChar = '''') or (mChar = '"') then
+    if (mChar <= ' ') or (mChar = cPatternSeparator) or (mChar = '''') or (mChar = '"') then
     begin
       Exit;
     end;
@@ -149,10 +149,10 @@ var
   mPart, mPattern: string;
 begin
   Result := nil;
-  for mPart in AText.Replace(#13, PatternSeparator).Replace(#10, PatternSeparator).Split([PatternSeparator]) do
+  for mPart in AText.Replace(#13, cPatternSeparator).Replace(#10, cPatternSeparator).Split([cPatternSeparator]) do
   begin
     mPattern := Trim(mPart);
-    if Length(Result) >= MaxPatterns then
+    if Length(Result) >= cMaxPatterns then
     begin
       Break;
     end;
@@ -165,12 +165,12 @@ end;
 
 class function TStepFilterNames.PatternsText(const APatterns: TArray<string>): string;
 begin
-  Result := string.Join(PatternSeparator, ParsePatterns(string.Join(PatternSeparator, APatterns)));
+  Result := string.Join(cPatternSeparator, ParsePatterns(string.Join(cPatternSeparator, APatterns)));
 end;
 
 class function TStepFilterNames.NormalizePatterns(const AText: string): string;
 begin
-  Result := string.Join(PatternSeparator, ParsePatterns(AText));
+  Result := string.Join(cPatternSeparator, ParsePatterns(AText));
 end;
 
 class function TStepFilterNames.WildMatch(const APattern, AText: string): Boolean;
@@ -273,7 +273,7 @@ class function TStepFilterNames.WithPattern(const APatterns: TArray<string>;
 begin
   Result := Copy(APatterns);
   if IsValidPattern(Trim(APattern)) and (IndexOfPattern(Result, APattern) < 0) and
-    (Length(Result) < MaxPatterns) then
+    (Length(Result) < cMaxPatterns) then
   begin
     Result := Result + [Trim(APattern)];
   end;

@@ -257,7 +257,7 @@ begin
   begin
     for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
     begin
-      ACounts.Kinds[mKind] := mKinds.GetValue<Integer>(TStepFilterNames.KindNames[mKind], 0);
+      ACounts.Kinds[mKind] := mKinds.GetValue<Integer>(TStepFilterNames.cKindNames[mKind], 0);
     end;
   end;
   if mRoot.TryGetValue<TJSONArray>('patterns', mPatterns) then

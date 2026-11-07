@@ -310,12 +310,12 @@ end;
 
 function TTestRunResult.Count(AOutcome: TTestOutcome): Integer;
 var
-  Item: TTestCaseResult;
+  mItem: TTestCaseResult;
 begin
   Result := 0;
-  for Item in Cases do
+  for mItem in Cases do
   begin
-    if Item.Outcome = AOutcome then
+    if mItem.Outcome = AOutcome then
     begin
       Inc(Result);
     end;
@@ -329,14 +329,14 @@ end;
 
 function TTestRunResult.Failures: TArray<TTestCaseResult>;
 var
-  Item: TTestCaseResult;
+  mItem: TTestCaseResult;
 begin
   Result := nil;
-  for Item in Cases do
+  for mItem in Cases do
   begin
-    if Item.IsFailure then
+    if mItem.IsFailure then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
 end;
@@ -350,21 +350,21 @@ end;
 
 class function TTestResults.SecondsToMs(const AText: string): Int64;
 var
-  Value: Double;
-  Settings: TFormatSettings;
+  mValue: Double;
+  mSettings: TFormatSettings;
 begin
-  Settings := TFormatSettings.Invariant;
-  if not TryStrToFloat(StringReplace(Trim(AText), ',', '.', []), Value, Settings) or (Value < 0) then
+  mSettings := TFormatSettings.Invariant;
+  if not TryStrToFloat(StringReplace(Trim(AText), ',', '.', []), mValue, mSettings) or (mValue < 0) then
   begin
     Exit(0);
   end;
-  Result := Round(Value * 1000);
+  Result := Round(mValue * 1000);
 end;
 
 class function TTestResults.SplitValues(const AMessage: string; out AExpected, AActual: string): Boolean;
 var
-  Text: string;
-  ExpectedAt, ActualAt, LineEnd: Integer;
+  mText: string;
+  mExpectedAt, mActualAt, mLineEnd: Integer;
 
   function Unquote(const AValue: string): string;
   begin
@@ -383,40 +383,40 @@ var
 begin
   AExpected := '';
   AActual := '';
-  Text := StringReplace(AMessage, #13, '', [rfReplaceAll]);
+  mText := StringReplace(AMessage, #13, '', [rfReplaceAll]);
   // NUnit: "Expected: 3" und in der nächsten Zeile "But was: 4".
-  ExpectedAt := Pos('expected:', LowerCase(Text));
-  ActualAt := Pos('but was:', LowerCase(Text));
-  if (ExpectedAt > 0) and (ActualAt > ExpectedAt) then
+  mExpectedAt := Pos('expected:', LowerCase(mText));
+  mActualAt := Pos('but was:', LowerCase(mText));
+  if (mExpectedAt > 0) and (mActualAt > mExpectedAt) then
   begin
-    AExpected := Unquote(Copy(Text, ExpectedAt + 9, ActualAt - ExpectedAt - 9));
-    AActual := Copy(Text, ActualAt + 8, MaxInt);
-    LineEnd := Pos(#10, AActual);
-    if LineEnd > 0 then
+    AExpected := Unquote(Copy(mText, mExpectedAt + 9, mActualAt - mExpectedAt - 9));
+    AActual := Copy(mText, mActualAt + 8, MaxInt);
+    mLineEnd := Pos(#10, AActual);
+    if mLineEnd > 0 then
     begin
-      AActual := Copy(AActual, 1, LineEnd - 1);
+      AActual := Copy(AActual, 1, mLineEnd - 1);
     end;
     AActual := Unquote(AActual);
     Exit(True);
   end;
   // DUnitX: "Expected 3 but got 4" (dahinter ggf. die eigene Meldung des Tests).
-  ExpectedAt := Pos('expected ', LowerCase(Text));
-  if ExpectedAt > 0 then
+  mExpectedAt := Pos('expected ', LowerCase(mText));
+  if mExpectedAt > 0 then
   begin
-    ActualAt := PosEx(' but got ', LowerCase(Text), ExpectedAt + 9);
+    mActualAt := PosEx(' but got ', LowerCase(mText), mExpectedAt + 9);
   end
   else
   begin
-    ActualAt := 0;
+    mActualAt := 0;
   end;
-  if (ExpectedAt > 0) and (ActualAt > 0) then
+  if (mExpectedAt > 0) and (mActualAt > 0) then
   begin
-    AExpected := Unquote(Copy(Text, ExpectedAt + 9, ActualAt - ExpectedAt - 9));
-    AActual := Copy(Text, ActualAt + 9, MaxInt);
-    LineEnd := Pos(#10, AActual);
-    if LineEnd > 0 then
+    AExpected := Unquote(Copy(mText, mExpectedAt + 9, mActualAt - mExpectedAt - 9));
+    AActual := Copy(mText, mActualAt + 9, MaxInt);
+    mLineEnd := Pos(#10, AActual);
+    if mLineEnd > 0 then
     begin
-      AActual := Copy(AActual, 1, LineEnd - 1);
+      AActual := Copy(AActual, 1, mLineEnd - 1);
     end;
     AActual := Unquote(AActual);
     Exit(True);
@@ -427,9 +427,9 @@ end;
 class procedure TTestResults.SplitName(const AFullName, AFixture: string; out AUnitName, AFixtureName, AMethod,
   ACaseName: string);
 var
-  Parts: TArray<string>;
-  At, Index: Integer;
-  Rest: string;
+  mParts: TArray<string>;
+  mAt, mIndex: Integer;
+  mRest: string;
 begin
   AUnitName := '';
   AFixtureName := AFixture;
@@ -438,37 +438,37 @@ begin
   if AFixture <> '' then
   begin
     // Die Fixture steht als eigener Teil im Namen: Unit.Fixture.Methode[.Fall].
-    At := Pos(LowerCase('.' + AFixture + '.'), LowerCase('.' + AFullName));
-    if At > 0 then
+    mAt := Pos(LowerCase('.' + AFixture + '.'), LowerCase('.' + AFullName));
+    if mAt > 0 then
     begin
-      AUnitName := Copy(AFullName, 1, At - 2);
-      Rest := Copy(AFullName, At + Length(AFixture) + 1, MaxInt);
-      AFixtureName := Copy(AFullName, At, Length(AFixture));
-      Index := Pos('.', Rest);
-      if Index > 0 then
+      AUnitName := Copy(AFullName, 1, mAt - 2);
+      mRest := Copy(AFullName, mAt + Length(AFixture) + 1, MaxInt);
+      AFixtureName := Copy(AFullName, mAt, Length(AFixture));
+      mIndex := Pos('.', mRest);
+      if mIndex > 0 then
       begin
-        AMethod := Copy(Rest, 1, Index - 1);
-        ACaseName := Copy(Rest, Index + 1, MaxInt);
+        AMethod := Copy(mRest, 1, mIndex - 1);
+        ACaseName := Copy(mRest, mIndex + 1, MaxInt);
       end
       else
       begin
-        AMethod := Rest;
+        AMethod := mRest;
       end;
       Exit;
     end;
   end;
-  Parts := AFullName.Split(['.']);
-  if Length(Parts) >= 2 then
+  mParts := AFullName.Split(['.']);
+  if Length(mParts) >= 2 then
   begin
-    AFixtureName := Parts[High(Parts) - 1];
-    AMethod := Parts[High(Parts)];
-    for Index := 0 to High(Parts) - 2 do
+    AFixtureName := mParts[High(mParts) - 1];
+    AMethod := mParts[High(mParts)];
+    for mIndex := 0 to High(mParts) - 2 do
     begin
       if AUnitName <> '' then
       begin
         AUnitName := AUnitName + '.';
       end;
-      AUnitName := AUnitName + Parts[Index];
+      AUnitName := AUnitName + mParts[mIndex];
     end;
   end
   else

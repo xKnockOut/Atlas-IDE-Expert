@@ -37,7 +37,7 @@ uses
   Atlas.Text.TestResults;
 
 const
-  NUnit2 =
+  cNUnit2 =
     '<?xml version="1.0" encoding="UTF-8"?>'#13#10 +
     '<test-results name="Rechner.Tests.exe" total="4" errors="1" failures="1" ignored="1" date="2026-10-16" ' +
       'time="10:00:00">'#13#10 +
@@ -76,80 +76,80 @@ const
 
 procedure TTestResultsTests.ReadsNUnit2Report;
 var
-  Run: TTestRunResult;
-  Failures: TArray<TTestCaseResult>;
+  mRun: TTestRunResult;
+  mFailures: TArray<TTestCaseResult>;
 begin
-  Run := TTestResults.Parse(NUnit2);
-  Assert.IsTrue(Run.Valid);
-  Assert.AreEqual('nunit2', Run.Format);
-  Assert.AreEqual(4, Run.Total);
-  Assert.AreEqual(1, Run.Count(TTestOutcome.Passed));
-  Assert.AreEqual(1, Run.Count(TTestOutcome.Failed));
-  Assert.AreEqual(1, Run.Count(TTestOutcome.Error));
-  Assert.AreEqual(1, Run.Count(TTestOutcome.Skipped));
-  Assert.AreEqual(Int64(1250), Run.DurationMs, 'Dauer der äußersten Suite');
-  Assert.IsFalse(Run.AllPassed);
-  Failures := Run.Failures;
-  Assert.AreEqual(2, Integer(Length(Failures)));
-  Assert.AreEqual('Summe', Failures[0].Method);
-  Assert.AreEqual('Gross', Failures[0].CaseName);
-  Assert.AreEqual('Rechner.Tests.pas:35', Failures[0].StackTrace);
-  Assert.AreEqual(Int64(20), Failures[0].DurationMs);
-  Assert.AreEqual('EZeroDivide: Division durch <0>', Failures[1].Message);
-  Assert.IsFalse(Failures[1].HasValues);
-  Assert.AreEqual('später', Run.Cases[3].Message, 'Grund des Ignorierens');
+  mRun := TTestResults.Parse(cNUnit2);
+  Assert.IsTrue(mRun.Valid);
+  Assert.AreEqual('nunit2', mRun.Format);
+  Assert.AreEqual(4, mRun.Total);
+  Assert.AreEqual(1, mRun.Count(TTestOutcome.Passed));
+  Assert.AreEqual(1, mRun.Count(TTestOutcome.Failed));
+  Assert.AreEqual(1, mRun.Count(TTestOutcome.Error));
+  Assert.AreEqual(1, mRun.Count(TTestOutcome.Skipped));
+  Assert.AreEqual(Int64(1250), mRun.DurationMs, 'Dauer der äußersten Suite');
+  Assert.IsFalse(mRun.AllPassed);
+  mFailures := mRun.Failures;
+  Assert.AreEqual(2, Integer(Length(mFailures)));
+  Assert.AreEqual('Summe', mFailures[0].Method);
+  Assert.AreEqual('Gross', mFailures[0].CaseName);
+  Assert.AreEqual('Rechner.Tests.pas:35', mFailures[0].StackTrace);
+  Assert.AreEqual(Int64(20), mFailures[0].DurationMs);
+  Assert.AreEqual('EZeroDivide: Division durch <0>', mFailures[1].Message);
+  Assert.IsFalse(mFailures[1].HasValues);
+  Assert.AreEqual('später', mRun.Cases[3].Message, 'Grund des Ignorierens');
 end;
 
 procedure TTestResultsTests.SplitsNamesWithDottedUnit;
 var
-  Run: TTestRunResult;
-  UnitName, Fixture, Method, CaseName: string;
+  mRun: TTestRunResult;
+  mUnitName, mFixture, mMethod, mCaseName: string;
 begin
-  Run := TTestResults.Parse(NUnit2);
-  Assert.AreEqual('Rechner.Tests', Run.Cases[0].UnitName, 'Unit mit Punkt über die Fixture der Suite');
-  Assert.AreEqual('TRechnerTests', Run.Cases[0].Fixture);
-  Assert.AreEqual('Addiert', Run.Cases[0].Method);
-  Assert.AreEqual('', Run.Cases[0].CaseName);
-  TTestResults.SplitName('A.B.TFix.M.Fall', 'tfix', UnitName, Fixture, Method, CaseName);
-  Assert.AreEqual('A.B', UnitName);
-  Assert.AreEqual('TFix', Fixture, 'Schreibweise aus dem Namen');
-  Assert.AreEqual('M', Method);
-  Assert.AreEqual('Fall', CaseName);
-  TTestResults.SplitName('A.B.TFix.M', '', UnitName, Fixture, Method, CaseName);
-  Assert.AreEqual('A.B', UnitName, 'ohne Fixture: die letzten beiden Teile');
-  Assert.AreEqual('TFix', Fixture);
-  Assert.AreEqual('M', Method);
-  TTestResults.SplitName('Einzeln', '', UnitName, Fixture, Method, CaseName);
-  Assert.AreEqual('Einzeln', Method);
+  mRun := TTestResults.Parse(cNUnit2);
+  Assert.AreEqual('Rechner.Tests', mRun.Cases[0].UnitName, 'Unit mit Punkt über die Fixture der Suite');
+  Assert.AreEqual('TRechnerTests', mRun.Cases[0].Fixture);
+  Assert.AreEqual('Addiert', mRun.Cases[0].Method);
+  Assert.AreEqual('', mRun.Cases[0].CaseName);
+  TTestResults.SplitName('A.B.TFix.M.Fall', 'tfix', mUnitName, mFixture, mMethod, mCaseName);
+  Assert.AreEqual('A.B', mUnitName);
+  Assert.AreEqual('TFix', mFixture, 'Schreibweise aus dem Namen');
+  Assert.AreEqual('M', mMethod);
+  Assert.AreEqual('Fall', mCaseName);
+  TTestResults.SplitName('A.B.TFix.M', '', mUnitName, mFixture, mMethod, mCaseName);
+  Assert.AreEqual('A.B', mUnitName, 'ohne Fixture: die letzten beiden Teile');
+  Assert.AreEqual('TFix', mFixture);
+  Assert.AreEqual('M', mMethod);
+  TTestResults.SplitName('Einzeln', '', mUnitName, mFixture, mMethod, mCaseName);
+  Assert.AreEqual('Einzeln', mMethod);
 end;
 
 procedure TTestResultsTests.ReadsExpectedAndActual;
 var
-  Run: TTestRunResult;
-  Expected, Actual: string;
+  mRun: TTestRunResult;
+  mExpected, mActual: string;
 begin
-  Run := TTestResults.Parse(NUnit2);
-  Assert.IsTrue(Run.Cases[1].HasValues);
-  Assert.AreEqual('30', Run.Cases[1].Expected);
-  Assert.AreEqual('31', Run.Cases[1].Actual);
-  Assert.IsTrue(TTestResults.SplitValues('Expected "abc" but got "abd"', Expected, Actual));
-  Assert.AreEqual('abc', Expected);
-  Assert.AreEqual('abd', Actual);
-  Assert.IsTrue(TTestResults.SplitValues('  Expected: 3'#13#10'  But was:  4'#13#10'at x', Expected, Actual));
-  Assert.AreEqual('3', Expected);
-  Assert.AreEqual('4', Actual);
-  Assert.IsTrue(TTestResults.SplitValues('Expected <1> but got <2>', Expected, Actual));
-  Assert.AreEqual('1', Expected);
-  Assert.AreEqual('2', Actual);
-  Assert.IsFalse(TTestResults.SplitValues('Condition is not True', Expected, Actual));
-  Assert.AreEqual('', Expected);
+  mRun := TTestResults.Parse(cNUnit2);
+  Assert.IsTrue(mRun.Cases[1].HasValues);
+  Assert.AreEqual('30', mRun.Cases[1].Expected);
+  Assert.AreEqual('31', mRun.Cases[1].Actual);
+  Assert.IsTrue(TTestResults.SplitValues('Expected "abc" but got "abd"', mExpected, mActual));
+  Assert.AreEqual('abc', mExpected);
+  Assert.AreEqual('abd', mActual);
+  Assert.IsTrue(TTestResults.SplitValues('  Expected: 3'#13#10'  But was:  4'#13#10'at x', mExpected, mActual));
+  Assert.AreEqual('3', mExpected);
+  Assert.AreEqual('4', mActual);
+  Assert.IsTrue(TTestResults.SplitValues('Expected <1> but got <2>', mExpected, mActual));
+  Assert.AreEqual('1', mExpected);
+  Assert.AreEqual('2', mActual);
+  Assert.IsFalse(TTestResults.SplitValues('Condition is not True', mExpected, mActual));
+  Assert.AreEqual('', mExpected);
 end;
 
 procedure TTestResultsTests.ReadsNUnit3Report;
 var
-  Run: TTestRunResult;
+  mRun: TTestRunResult;
 begin
-  Run := TTestResults.Parse(
+  mRun := TTestResults.Parse(
     '<test-run total="3" duration="0.5">' +
     '<test-suite type="TestFixture" name="TT" fullname="U.TT">' +
     '<test-case fullname="U.TT.A" name="A" result="Passed" duration="0.1"/>' +
@@ -157,21 +157,21 @@ begin
       '<failure><message>Zugriffsverletzung</message></failure></test-case>' +
     '<test-case fullname="U.TT.C" name="C" result="Skipped"/>' +
     '</test-suite></test-run>');
-  Assert.IsTrue(Run.Valid);
-  Assert.AreEqual('nunit3', Run.Format);
-  Assert.AreEqual(Int64(500), Run.DurationMs);
-  Assert.IsTrue(Run.Cases[0].Outcome = TTestOutcome.Passed);
-  Assert.IsTrue(Run.Cases[1].Outcome = TTestOutcome.Error);
-  Assert.AreEqual('Zugriffsverletzung', Run.Cases[1].Message);
-  Assert.AreEqual('U', Run.Cases[1].UnitName);
-  Assert.IsTrue(Run.Cases[2].Outcome = TTestOutcome.Skipped);
+  Assert.IsTrue(mRun.Valid);
+  Assert.AreEqual('nunit3', mRun.Format);
+  Assert.AreEqual(Int64(500), mRun.DurationMs);
+  Assert.IsTrue(mRun.Cases[0].Outcome = TTestOutcome.Passed);
+  Assert.IsTrue(mRun.Cases[1].Outcome = TTestOutcome.Error);
+  Assert.AreEqual('Zugriffsverletzung', mRun.Cases[1].Message);
+  Assert.AreEqual('U', mRun.Cases[1].UnitName);
+  Assert.IsTrue(mRun.Cases[2].Outcome = TTestOutcome.Skipped);
 end;
 
 procedure TTestResultsTests.ReadsJUnitReport;
 var
-  Run: TTestRunResult;
+  mRun: TTestRunResult;
 begin
-  Run := TTestResults.Parse(
+  mRun := TTestResults.Parse(
     '<?xml version="1.0"?>' +
     '<testsuites time="0,75">' +
     '<testsuite name="Rechner.Tests.TRechnerTests" tests="4">' +
@@ -182,22 +182,22 @@ begin
       'bei Zeile 7</error></testcase>' +
     '<testcase classname="Rechner.Tests.TRechnerTests" name="Spaeter"><skipped message="später"/></testcase>' +
     '</testsuite></testsuites>');
-  Assert.IsTrue(Run.Valid);
-  Assert.AreEqual('junit', Run.Format);
-  Assert.AreEqual(4, Run.Total);
-  Assert.AreEqual(Int64(750), Run.DurationMs);
-  Assert.AreEqual('Rechner.Tests', Run.Cases[1].UnitName);
-  Assert.AreEqual('TRechnerTests', Run.Cases[1].Fixture);
-  Assert.AreEqual('Summe', Run.Cases[1].Method);
-  Assert.AreEqual('Klein', Run.Cases[1].CaseName);
-  Assert.IsTrue(Run.Cases[1].Outcome = TTestOutcome.Failed);
-  Assert.AreEqual('3', Run.Cases[1].Expected);
-  Assert.AreEqual('4', Run.Cases[1].Actual);
-  Assert.AreEqual('Aufrufliste', Run.Cases[1].StackTrace);
-  Assert.IsTrue(Run.Cases[2].Outcome = TTestOutcome.Error);
-  Assert.AreEqual('EZeroDivide', Run.Cases[2].Message, 'erste Zeile ohne Attribut');
-  Assert.IsTrue(Run.Cases[3].Outcome = TTestOutcome.Skipped);
-  Assert.AreEqual('später', Run.Cases[3].Message);
+  Assert.IsTrue(mRun.Valid);
+  Assert.AreEqual('junit', mRun.Format);
+  Assert.AreEqual(4, mRun.Total);
+  Assert.AreEqual(Int64(750), mRun.DurationMs);
+  Assert.AreEqual('Rechner.Tests', mRun.Cases[1].UnitName);
+  Assert.AreEqual('TRechnerTests', mRun.Cases[1].Fixture);
+  Assert.AreEqual('Summe', mRun.Cases[1].Method);
+  Assert.AreEqual('Klein', mRun.Cases[1].CaseName);
+  Assert.IsTrue(mRun.Cases[1].Outcome = TTestOutcome.Failed);
+  Assert.AreEqual('3', mRun.Cases[1].Expected);
+  Assert.AreEqual('4', mRun.Cases[1].Actual);
+  Assert.AreEqual('Aufrufliste', mRun.Cases[1].StackTrace);
+  Assert.IsTrue(mRun.Cases[2].Outcome = TTestOutcome.Error);
+  Assert.AreEqual('EZeroDivide', mRun.Cases[2].Message, 'erste Zeile ohne Attribut');
+  Assert.IsTrue(mRun.Cases[3].Outcome = TTestOutcome.Skipped);
+  Assert.AreEqual('später', mRun.Cases[3].Message);
 end;
 
 procedure TTestResultsTests.CommaSecondsAndInvalid;
@@ -210,17 +210,17 @@ end;
 
 procedure TTestResultsTests.NotAReport;
 var
-  Run: TTestRunResult;
+  mRun: TTestRunResult;
 begin
-  Run := TTestResults.Parse('<html><body>kein Bericht</body></html>');
-  Assert.IsFalse(Run.Valid);
-  Assert.AreNotEqual('', Run.Error);
-  Run := TTestResults.Parse('');
-  Assert.IsFalse(Run.Valid);
-  Run := TTestResults.Parse('<test-results total="0"></test-results>');
-  Assert.IsTrue(Run.Valid, 'leerer Lauf ist ein Bericht');
-  Assert.AreEqual(0, Run.Total);
-  Assert.IsFalse(Run.AllPassed, 'ohne Tests nicht grün');
+  mRun := TTestResults.Parse('<html><body>kein Bericht</body></html>');
+  Assert.IsFalse(mRun.Valid);
+  Assert.AreNotEqual('', mRun.Error);
+  mRun := TTestResults.Parse('');
+  Assert.IsFalse(mRun.Valid);
+  mRun := TTestResults.Parse('<test-results total="0"></test-results>');
+  Assert.IsTrue(mRun.Valid, 'leerer Lauf ist ein Bericht');
+  Assert.AreEqual(0, mRun.Total);
+  Assert.IsFalse(mRun.AllPassed, 'ohne Tests nicht grün');
 end;
 
 initialization
