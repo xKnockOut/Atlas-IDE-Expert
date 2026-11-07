@@ -44,7 +44,7 @@ uses
 
 const
   /// <summary>Der Server prüft alle Dateien der Regel; das dauert länger als ein Befehl sonst.</summary>
-  FixTimeoutMs = 300000;
+  cFixTimeoutMs = 300000;
 
 /// <summary>Vorschau zur Antwort von atlas.server.fixFindings und die gewählten Dateien anwenden.</summary>
 procedure ShowPreview(const ARule: string; AAnswer: TJSONValue);
@@ -150,8 +150,8 @@ begin
     TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.ProblemsFixAllNoFiles, [ARule]));
     Exit;
   end;
-  if not TAtlasIdeHost.RunServerCommandAsync(FScope, TAtlasFeature.Problems, TAtlasBulkFixPreview.Command,
-    TAtlasBulkFixPreview.ArgumentsJson(ARule, mFiles), FixTimeoutMs, FixAnswer(ARule)) then
+  if not TAtlasIdeHost.RunServerCommandAsync(FScope, TAtlasFeature.Problems, TAtlasBulkFixPreview.cCommand,
+    TAtlasBulkFixPreview.ArgumentsJson(ARule, mFiles), cFixTimeoutMs, FixAnswer(ARule)) then
   begin
     TAtlasIdeHost.Message(TAtlasStrings.Text(TAtlasTextId.ProblemsNoServer));
   end;

@@ -93,7 +93,7 @@ type
   end;
 
 const
-  GitPrefix = '-c core.quotepath=on ';
+  cGitPrefix = '-c core.quotepath=on ';
 
 constructor TFakeProcess.Create;
 begin
@@ -127,27 +127,27 @@ end;
 
 function TFakeProcess.Run(const ARequest: TCompilerRequest; const AOnLine: TCompilerLineEvent): Integer;
 var
-  Arguments: string;
-  Output: TArray<string>;
-  Line: string;
+  mArguments: string;
+  mOutput: TArray<string>;
+  mLine: string;
 begin
-  Arguments := string.Join(' ', ARequest.Arguments);
-  FCalls.Add(ChangeFileExt(ExtractFileName(ARequest.Executable), '') + ' ' + Arguments);
+  mArguments := string.Join(' ', ARequest.Arguments);
+  FCalls.Add(ChangeFileExt(ExtractFileName(ARequest.Executable), '') + ' ' + mArguments);
   FWorkingDirs.Add(ARequest.WorkingDir);
   FExecutables.Add(ARequest.Executable);
   Result := 0;
-  if FExitCodes.ContainsKey(Arguments) then
+  if FExitCodes.ContainsKey(mArguments) then
   begin
-    Result := FExitCodes[Arguments];
+    Result := FExitCodes[mArguments];
   end;
-  Output := nil;
-  if FOutputs.ContainsKey(Arguments) then
+  mOutput := nil;
+  if FOutputs.ContainsKey(mArguments) then
   begin
-    Output := FOutputs[Arguments];
+    mOutput := FOutputs[mArguments];
   end;
-  for Line in Output do
+  for mLine in mOutput do
   begin
-    AOnLine(Line);
+    AOnLine(mLine);
   end;
 end;
 
@@ -164,12 +164,12 @@ end;
 /// <summary>Meldung von EVcsChanges aus Detect; '' ohne Ausnahme.</summary>
 function DetectError(const AFolder, AProvider: string): string;
 var
-  Changes: TVcsChanges;
+  mChanges: TVcsChanges;
 begin
   Result := '';
   try
-    Changes := TVcsChanges.Detect(NoProcess, AFolder, AProvider);
-    Changes.Free;
+    mChanges := TVcsChanges.Detect(NoProcess, AFolder, AProvider);
+    mChanges.Free;
   except
     on E: EVcsChanges do
       Result := E.Message;
@@ -179,15 +179,15 @@ end;
 /// <summary>Name der erkannten Versionsverwaltung ("Git", "SVN") und ihre Klasse; '' bei Ausnahme.</summary>
 function DetectedName(const AFolder, AProvider: string): string;
 var
-  Changes: TVcsChanges;
+  mChanges: TVcsChanges;
 begin
   Result := '';
   try
-    Changes := TVcsChanges.Detect(NoProcess, AFolder, AProvider);
+    mChanges := TVcsChanges.Detect(NoProcess, AFolder, AProvider);
     try
-      Result := Changes.Name + ':' + Changes.ClassName;
+      Result := mChanges.Name + ':' + mChanges.ClassName;
     finally
-      Changes.Free;
+      mChanges.Free;
     end;
   except
     on E: EVcsChanges do
@@ -239,17 +239,17 @@ end;
 
 procedure TShellVcsChangesTests.DetectFindsGitInParentFolder;
 var
-  Changes: TVcsChanges;
+  mChanges: TVcsChanges;
 begin
   ForceDirectories(TPath.Combine(FFolder, '.git'));
   Assert.AreEqual('Git:TGitChanges', DetectedName(TPath.Combine(FFolder, 'Sub'), 'auto'));
   Assert.AreEqual('Git:TGitChanges', DetectedName(TPath.Combine(FFolder, 'Sub'), 'git'));
   // Ohne vcs.provider wie auto.
-  Changes := TVcsChanges.Detect(NoProcess, TPath.Combine(FFolder, 'Sub'));
+  mChanges := TVcsChanges.Detect(NoProcess, TPath.Combine(FFolder, 'Sub'));
   try
-    Assert.IsTrue(Changes is TGitChanges);
+    Assert.IsTrue(mChanges is TGitChanges);
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
@@ -309,223 +309,223 @@ end;
 
 procedure TShellVcsChangesTests.GitComparesWithHead;
 var
-  Process: TFakeProcess;
-  Keep: ICompilerProcess;
-  Changes: TGitChanges;
+  mProcess: TFakeProcess;
+  mKeep: ICompilerProcess;
+  mChanges: TGitChanges;
 begin
-  Process := TFakeProcess.Create;
-  Keep := Process;
-  Process.Answer(GitPrefix + 'rev-parse --show-toplevel', [StringReplace(FFolder, '\', '/', [rfReplaceAll]) + '/']);
-  Process.Answer(GitPrefix + 'diff --name-status -M --no-color main HEAD',
+  mProcess := TFakeProcess.Create;
+  mKeep := mProcess;
+  mProcess.Answer(cGitPrefix + 'rev-parse --show-toplevel', [StringReplace(FFolder, '\', '/', [rfReplaceAll]) + '/']);
+  mProcess.Answer(cGitPrefix + 'diff --name-status -M --no-color main HEAD',
     ['M'#9'Src/A.pas', 'D'#9'Src/Alt.pas', 'R087'#9'Src/B.pas'#9'Src/C.pas', 'A'#9'Neu.pas', 'T'#9'Typ.pas']);
-  Changes := TGitChanges.Create(Keep, TPath.Combine(FFolder, 'Sub'), '');
+  mChanges := TGitChanges.Create(mKeep, TPath.Combine(FFolder, 'Sub'), '');
   try
-    Changes.Load('main', False, False, False, False);
-    Assert.AreEqual('Git', Changes.Name);
-    Assert.AreEqual(FFolder, Changes.RepoRoot);
-    Assert.AreEqual(4, Integer(Length(Changes.Files)));
-    Assert.AreEqual(InFolder(FFolder, 'Src/A.pas'), Changes.Files[0]);
+    mChanges.Load('main', False, False, False, False);
+    Assert.AreEqual('Git', mChanges.Name);
+    Assert.AreEqual(FFolder, mChanges.RepoRoot);
+    Assert.AreEqual(4, Integer(Length(mChanges.Files)));
+    Assert.AreEqual(InFolder(FFolder, 'Src/A.pas'), mChanges.Files[0]);
     // Umbenannt: der neue Name; gelöscht: nicht dabei.
-    Assert.AreEqual(InFolder(FFolder, 'Src/C.pas'), Changes.Files[1]);
-    Assert.AreEqual(InFolder(FFolder, 'Neu.pas'), Changes.Files[2]);
-    Assert.AreEqual(InFolder(FFolder, 'Typ.pas'), Changes.Files[3]);
-    Assert.AreEqual(0, Integer(Length(Changes.Lines)));
-    Assert.AreEqual(2, Integer(Process.Calls.Count));
-    Assert.AreEqual('git ' + GitPrefix + 'rev-parse --show-toplevel', Process.Calls[0]);
-    Assert.AreEqual('git ' + GitPrefix + 'diff --name-status -M --no-color main HEAD', Process.Calls[1]);
+    Assert.AreEqual(InFolder(FFolder, 'Src/C.pas'), mChanges.Files[1]);
+    Assert.AreEqual(InFolder(FFolder, 'Neu.pas'), mChanges.Files[2]);
+    Assert.AreEqual(InFolder(FFolder, 'Typ.pas'), mChanges.Files[3]);
+    Assert.AreEqual(0, Integer(Length(mChanges.Lines)));
+    Assert.AreEqual(2, Integer(mProcess.Calls.Count));
+    Assert.AreEqual('git ' + cGitPrefix + 'rev-parse --show-toplevel', mProcess.Calls[0]);
+    Assert.AreEqual('git ' + cGitPrefix + 'diff --name-status -M --no-color main HEAD', mProcess.Calls[1]);
     // git läuft im übergebenen Ordner, nicht in der Wurzel.
-    Assert.AreEqual(TPath.Combine(FFolder, 'Sub'), Process.WorkingDirs[1]);
+    Assert.AreEqual(TPath.Combine(FFolder, 'Sub'), mProcess.WorkingDirs[1]);
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TShellVcsChangesTests.GitUsesMergeBase;
 var
-  Process: TFakeProcess;
-  Keep: ICompilerProcess;
-  Changes: TGitChanges;
+  mProcess: TFakeProcess;
+  mKeep: ICompilerProcess;
+  mChanges: TGitChanges;
 begin
-  Process := TFakeProcess.Create;
-  Keep := Process;
-  Process.Answer(GitPrefix + 'rev-parse --show-toplevel', [FFolder]);
-  Process.Answer(GitPrefix + 'merge-base main HEAD', ['  abc123  ']);
-  Process.Answer(GitPrefix + 'diff --name-status -M --no-color abc123 HEAD', ['M'#9'A.pas']);
-  Changes := TGitChanges.Create(Keep, FFolder, '');
+  mProcess := TFakeProcess.Create;
+  mKeep := mProcess;
+  mProcess.Answer(cGitPrefix + 'rev-parse --show-toplevel', [FFolder]);
+  mProcess.Answer(cGitPrefix + 'merge-base main HEAD', ['  abc123  ']);
+  mProcess.Answer(cGitPrefix + 'diff --name-status -M --no-color abc123 HEAD', ['M'#9'A.pas']);
+  mChanges := TGitChanges.Create(mKeep, FFolder, '');
   try
-    Changes.Load('main', True, True, False, False);
-    Assert.AreEqual(3, Integer(Process.Calls.Count));
-    Assert.AreEqual('git ' + GitPrefix + 'merge-base main HEAD', Process.Calls[1]);
-    Assert.AreEqual('git ' + GitPrefix + 'diff --name-status -M --no-color abc123 HEAD', Process.Calls[2]);
-    Assert.AreEqual(1, Integer(Length(Changes.Files)));
-    Assert.AreEqual(InFolder(FFolder, 'A.pas'), Changes.Files[0]);
+    mChanges.Load('main', True, True, False, False);
+    Assert.AreEqual(3, Integer(mProcess.Calls.Count));
+    Assert.AreEqual('git ' + cGitPrefix + 'merge-base main HEAD', mProcess.Calls[1]);
+    Assert.AreEqual('git ' + cGitPrefix + 'diff --name-status -M --no-color abc123 HEAD', mProcess.Calls[2]);
+    Assert.AreEqual(1, Integer(Length(mChanges.Files)));
+    Assert.AreEqual(InFolder(FFolder, 'A.pas'), mChanges.Files[0]);
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TShellVcsChangesTests.GitWithUncommittedAndLines;
 var
-  Process: TFakeProcess;
-  Keep: ICompilerProcess;
-  Changes: TGitChanges;
-  Lines: TChangedLines;
+  mProcess: TFakeProcess;
+  mKeep: ICompilerProcess;
+  mChanges: TGitChanges;
+  mLines: TChangedLines;
 begin
-  Process := TFakeProcess.Create;
-  Keep := Process;
-  Process.Answer(GitPrefix + 'rev-parse --show-toplevel', [FFolder]);
-  Process.Answer(GitPrefix + 'diff --name-status -M --no-color HEAD', ['M'#9'Src/A.pas', 'D'#9'Weg.pas']);
-  Process.Answer(GitPrefix + 'diff -U0 -M --no-color --no-ext-diff HEAD',
+  mProcess := TFakeProcess.Create;
+  mKeep := mProcess;
+  mProcess.Answer(cGitPrefix + 'rev-parse --show-toplevel', [FFolder]);
+  mProcess.Answer(cGitPrefix + 'diff --name-status -M --no-color HEAD', ['M'#9'Src/A.pas', 'D'#9'Weg.pas']);
+  mProcess.Answer(cGitPrefix + 'diff -U0 -M --no-color --no-ext-diff HEAD',
     ['diff --git a/Src/A.pas b/Src/A.pas', '--- a/Src/A.pas', '+++ b/Src/A.pas', '@@ -3,0 +4,2 @@', '+x', '+y',
     '@@ -10 +12 @@', '-alt', '+neu', '@@ -20,2 +21,0 @@', '-weg', '-weg',
     '--- a/Weg.pas', '+++ /dev/null', '@@ -1 +0,0 @@', '-weg']);
-  Process.Answer(GitPrefix + 'ls-files --others --exclude-standard --full-name :/', ['Neu/X.pas', '', '  ']);
-  Changes := TGitChanges.Create(Keep, FFolder, '');
+  mProcess.Answer(cGitPrefix + 'ls-files --others --exclude-standard --full-name :/', ['Neu/X.pas', '', '  ']);
+  mChanges := TGitChanges.Create(mKeep, FFolder, '');
   try
-    Changes.Load('HEAD', False, False, True, True);
-    Assert.AreEqual(4, Integer(Process.Calls.Count));
+    mChanges.Load('HEAD', False, False, True, True);
+    Assert.AreEqual(4, Integer(mProcess.Calls.Count));
     // Ohne HEAD am Ende: Index und Arbeitsverzeichnis gehören dazu.
-    Assert.AreEqual('git ' + GitPrefix + 'diff --name-status -M --no-color HEAD', Process.Calls[1]);
-    Assert.AreEqual(2, Integer(Length(Changes.Files)));
-    Assert.AreEqual(InFolder(FFolder, 'Src/A.pas'), Changes.Files[0]);
-    Assert.AreEqual(InFolder(FFolder, 'Neu/X.pas'), Changes.Files[1]);
-    Assert.AreEqual(2, Integer(Length(Changes.Lines)));
-    Lines := Changes.Lines[0];
-    Assert.AreEqual('Src/A.pas', Lines.Path);
+    Assert.AreEqual('git ' + cGitPrefix + 'diff --name-status -M --no-color HEAD', mProcess.Calls[1]);
+    Assert.AreEqual(2, Integer(Length(mChanges.Files)));
+    Assert.AreEqual(InFolder(FFolder, 'Src/A.pas'), mChanges.Files[0]);
+    Assert.AreEqual(InFolder(FFolder, 'Neu/X.pas'), mChanges.Files[1]);
+    Assert.AreEqual(2, Integer(Length(mChanges.Lines)));
+    mLines := mChanges.Lines[0];
+    Assert.AreEqual('Src/A.pas', mLines.Path);
     // Nullbasiert; reine Löschungen ergeben keinen Bereich.
-    Assert.AreEqual(2, Integer(Length(Lines.Spans)));
-    Assert.AreEqual(3, Lines.Spans[0].First);
-    Assert.AreEqual(4, Lines.Spans[0].Last);
-    Assert.AreEqual(11, Lines.Spans[1].First);
-    Assert.AreEqual(11, Lines.Spans[1].Last);
+    Assert.AreEqual(2, Integer(Length(mLines.Spans)));
+    Assert.AreEqual(3, mLines.Spans[0].First);
+    Assert.AreEqual(4, mLines.Spans[0].Last);
+    Assert.AreEqual(11, mLines.Spans[1].First);
+    Assert.AreEqual(11, mLines.Spans[1].Last);
     // Neue Dateien gelten als vollständig geändert.
-    Lines := Changes.Lines[1];
-    Assert.AreEqual('Neu/X.pas', Lines.Path);
-    Assert.AreEqual(1, Integer(Length(Lines.Spans)));
-    Assert.AreEqual(0, Lines.Spans[0].First);
-    Assert.AreEqual(MaxInt, Lines.Spans[0].Last);
+    mLines := mChanges.Lines[1];
+    Assert.AreEqual('Neu/X.pas', mLines.Path);
+    Assert.AreEqual(1, Integer(Length(mLines.Spans)));
+    Assert.AreEqual(0, mLines.Spans[0].First);
+    Assert.AreEqual(MaxInt, mLines.Spans[0].Last);
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
-  Lines := Default(TChangedLines);
+  mLines := Default(TChangedLines);
 end;
 
 procedure TShellVcsChangesTests.GitWithoutRepositoryRaises;
 var
-  Changes: TGitChanges;
+  mChanges: TGitChanges;
 begin
-  Changes := TGitChanges.Create(NoProcess, FFolder, '');
+  mChanges := TGitChanges.Create(NoProcess, FFolder, '');
   try
-    Assert.AreEqual('Kein Git-Repository', LoadError(Changes, 'main', False));
+    Assert.AreEqual('Kein Git-Repository', LoadError(mChanges, 'main', False));
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TShellVcsChangesTests.GitFailingCommandRaises;
 var
-  Process: TFakeProcess;
-  Keep: ICompilerProcess;
-  Changes: TGitChanges;
-  Message: string;
+  mProcess: TFakeProcess;
+  mKeep: ICompilerProcess;
+  mChanges: TGitChanges;
+  mMessage: string;
 begin
-  Process := TFakeProcess.Create;
-  Keep := Process;
-  Process.Answer(GitPrefix + 'rev-parse --show-toplevel', ['fatal: not a git repository']);
-  Process.Fail(GitPrefix + 'rev-parse --show-toplevel', 128);
-  Changes := TGitChanges.Create(Keep, FFolder, '');
+  mProcess := TFakeProcess.Create;
+  mKeep := mProcess;
+  mProcess.Answer(cGitPrefix + 'rev-parse --show-toplevel', ['fatal: not a git repository']);
+  mProcess.Fail(cGitPrefix + 'rev-parse --show-toplevel', 128);
+  mChanges := TGitChanges.Create(mKeep, FFolder, '');
   try
-    Message := LoadError(Changes, 'main', False);
-    Assert.Contains(Message, 'Exit-Code 128');
-    Assert.Contains(Message, 'fatal: not a git repository');
-    Assert.AreEqual(1, Integer(Process.Calls.Count));
+    mMessage := LoadError(mChanges, 'main', False);
+    Assert.Contains(mMessage, 'Exit-Code 128');
+    Assert.Contains(mMessage, 'fatal: not a git repository');
+    Assert.AreEqual(1, Integer(mProcess.Calls.Count));
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TShellVcsChangesTests.GitWithoutMergeBaseRaises;
 var
-  Process: TFakeProcess;
-  Keep: ICompilerProcess;
-  Changes: TGitChanges;
+  mProcess: TFakeProcess;
+  mKeep: ICompilerProcess;
+  mChanges: TGitChanges;
 begin
-  Process := TFakeProcess.Create;
-  Keep := Process;
-  Process.Answer(GitPrefix + 'rev-parse --show-toplevel', [FFolder]);
-  Changes := TGitChanges.Create(Keep, FFolder, '');
+  mProcess := TFakeProcess.Create;
+  mKeep := mProcess;
+  mProcess.Answer(cGitPrefix + 'rev-parse --show-toplevel', [FFolder]);
+  mChanges := TGitChanges.Create(mKeep, FFolder, '');
   try
-    Assert.AreEqual('Keine Merge-Base mit fremd', LoadError(Changes, 'fremd', True));
+    Assert.AreEqual('Keine Merge-Base mit fremd', LoadError(mChanges, 'fremd', True));
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TShellVcsChangesTests.SvnComparesWithRevision;
 var
-  Process: TFakeProcess;
-  Keep: ICompilerProcess;
-  Changes: TSvnChanges;
-  WorkingCopy: TAtlasVcsWorkingCopy;
+  mProcess: TFakeProcess;
+  mKeep: ICompilerProcess;
+  mChanges: TSvnChanges;
+  mWorkingCopy: TAtlasVcsWorkingCopy;
 begin
-  Process := TFakeProcess.Create;
-  Keep := Process;
-  Process.Answer('--non-interactive diff --summarize -r 123',
+  mProcess := TFakeProcess.Create;
+  mKeep := mProcess;
+  mProcess.Answer('--non-interactive diff --summarize -r 123',
     ['M       Src/A.pas', 'D       Src/Alt.pas', 'A       Neu.pas', ' M      Eigenschaft.pas']);
-  Process.Answer('--non-interactive diff --internal-diff -r 123',
+  mProcess.Answer('--non-interactive diff --internal-diff -r 123',
     ['Index: Src/A.pas', '===================================================================',
     '--- Src/A.pas'#9'(revision 123)', '+++ Src/A.pas'#9'(working copy)', '@@ -1,3 +1,4 @@', ' a', '+b', '+c', ' d']);
-  WorkingCopy.Kind := TAtlasVcsKind.Svn;
-  WorkingCopy.Root := FFolder;
-  Changes := TSvnChanges.Create(Keep, TPath.Combine(FFolder, 'Sub'), WorkingCopy, 'svn', 60000);
+  mWorkingCopy.Kind := TAtlasVcsKind.Svn;
+  mWorkingCopy.Root := FFolder;
+  mChanges := TSvnChanges.Create(mKeep, TPath.Combine(FFolder, 'Sub'), mWorkingCopy, 'svn', 60000);
   try
-    Changes.Load('123', False, False, False, True);
-    Assert.AreEqual('SVN', Changes.Name);
-    Assert.AreEqual(FFolder, Changes.RepoRoot);
-    Assert.AreEqual(2, Integer(Process.Calls.Count));
-    Assert.AreEqual('svn --non-interactive diff --summarize -r 123', Process.Calls[0]);
-    Assert.AreEqual('svn --non-interactive diff --internal-diff -r 123', Process.Calls[1]);
+    mChanges.Load('123', False, False, False, True);
+    Assert.AreEqual('SVN', mChanges.Name);
+    Assert.AreEqual(FFolder, mChanges.RepoRoot);
+    Assert.AreEqual(2, Integer(mProcess.Calls.Count));
+    Assert.AreEqual('svn --non-interactive diff --summarize -r 123', mProcess.Calls[0]);
+    Assert.AreEqual('svn --non-interactive diff --internal-diff -r 123', mProcess.Calls[1]);
     // svn läuft in der Wurzel der Arbeitskopie: Pfade sind relativ dazu.
-    Assert.AreEqual(FFolder, Process.WorkingDirs[0]);
-    Assert.AreEqual(2, Integer(Length(Changes.Files)));
-    Assert.AreEqual(InFolder(FFolder, 'Src/A.pas'), Changes.Files[0]);
-    Assert.AreEqual(InFolder(FFolder, 'Neu.pas'), Changes.Files[1]);
-    Assert.AreEqual(1, Integer(Length(Changes.Lines)));
-    Assert.AreEqual('Src/A.pas', Changes.Lines[0].Path);
-    Assert.AreEqual(1, Integer(Length(Changes.Lines[0].Spans)));
-    Assert.AreEqual(1, Changes.Lines[0].Spans[0].First);
-    Assert.AreEqual(2, Changes.Lines[0].Spans[0].Last);
+    Assert.AreEqual(FFolder, mProcess.WorkingDirs[0]);
+    Assert.AreEqual(2, Integer(Length(mChanges.Files)));
+    Assert.AreEqual(InFolder(FFolder, 'Src/A.pas'), mChanges.Files[0]);
+    Assert.AreEqual(InFolder(FFolder, 'Neu.pas'), mChanges.Files[1]);
+    Assert.AreEqual(1, Integer(Length(mChanges.Lines)));
+    Assert.AreEqual('Src/A.pas', mChanges.Lines[0].Path);
+    Assert.AreEqual(1, Integer(Length(mChanges.Lines[0].Spans)));
+    Assert.AreEqual(1, mChanges.Lines[0].Spans[0].First);
+    Assert.AreEqual(2, mChanges.Lines[0].Spans[0].Last);
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
-  WorkingCopy := Default(TAtlasVcsWorkingCopy);
+  mWorkingCopy := Default(TAtlasVcsWorkingCopy);
 end;
 
 procedure TShellVcsChangesTests.SvnUsesDetectedPath;
 var
-  Process: TFakeProcess;
-  Keep: ICompilerProcess;
-  Changes: TSvnChanges;
-  WorkingCopy: TAtlasVcsWorkingCopy;
-  Svn: string;
+  mProcess: TFakeProcess;
+  mKeep: ICompilerProcess;
+  mChanges: TSvnChanges;
+  mWorkingCopy: TAtlasVcsWorkingCopy;
+  mSvn: string;
 begin
   // svn liegt nicht in PATH, Detect hat es z. B. bei TortoiseSVN gefunden.
-  Svn := TPath.Combine(FFolder, 'atlas-svn-4711.exe');
-  Process := TFakeProcess.Create;
-  Keep := Process;
-  Process.Answer('--non-interactive diff --summarize -r 7', ['M       A.pas']);
-  WorkingCopy.Kind := TAtlasVcsKind.Svn;
-  WorkingCopy.Root := FFolder;
-  Changes := TSvnChanges.Create(Keep, FFolder, WorkingCopy, Svn, 60000);
+  mSvn := TPath.Combine(FFolder, 'atlas-svn-4711.exe');
+  mProcess := TFakeProcess.Create;
+  mKeep := mProcess;
+  mProcess.Answer('--non-interactive diff --summarize -r 7', ['M       A.pas']);
+  mWorkingCopy.Kind := TAtlasVcsKind.Svn;
+  mWorkingCopy.Root := FFolder;
+  mChanges := TSvnChanges.Create(mKeep, FFolder, mWorkingCopy, mSvn, 60000);
   try
-    Changes.Load('7', False, False, False, False);
-    Assert.AreEqual(1, Integer(Process.Calls.Count));
-    Assert.AreEqual(Svn, Process.Executables[0]);
-    Assert.AreEqual('atlas-svn-4711 --non-interactive diff --summarize -r 7', Process.Calls[0]);
+    mChanges.Load('7', False, False, False, False);
+    Assert.AreEqual(1, Integer(mProcess.Calls.Count));
+    Assert.AreEqual(mSvn, mProcess.Executables[0]);
+    Assert.AreEqual('atlas-svn-4711 --non-interactive diff --summarize -r 7', mProcess.Calls[0]);
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
-  WorkingCopy := Default(TAtlasVcsWorkingCopy);
+  mWorkingCopy := Default(TAtlasVcsWorkingCopy);
 end;
 
 procedure TShellVcsChangesTests.FindProgramKeepsUnknownName;

@@ -51,8 +51,8 @@ type
 
   TShellAffectedTests = class
   public const
-    DefaultGitBase = 'main';
-    SvnBase = 'BASE';
+    cDefaultGitBase = 'main';
+    cSvnBase = 'BASE';
   public
     /// <summary>Meldung, wenn tests.affected aus ist.</summary>
     class function OffMessage: string; static;
@@ -186,13 +186,13 @@ begin
     mRef := AQuery.Base;
     if mRef = '' then
     begin
-      mRef := DefaultGitBase;
+      mRef := cDefaultGitBase;
     end;
     // Wie --changed: ohne eigene Basis vergleicht SVN mit BASE (svn status), Git mit der Merge-Base.
     mChanges.Load(mRef, True, AQuery.Base = '', AQuery.IncludeUncommitted, True);
     if (AQuery.Base = '') and (mChanges is TSvnChanges) then
     begin
-      mRequest.Base := SvnBase;
+      mRequest.Base := cSvnBase;
     end
     else
     begin

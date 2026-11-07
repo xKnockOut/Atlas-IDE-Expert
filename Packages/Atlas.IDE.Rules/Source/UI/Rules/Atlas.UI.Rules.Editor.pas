@@ -227,15 +227,17 @@ uses
   Atlas.UI.Rules.Strings;
 
 const
-  Gap = 6;
-  ListHeight = 230;
+  cGap = 6;
+  cListHeight = 230;
   /// <summary>Höhe der Beispiel-Memos bei kurzen Beispielen.</summary>
-  MinMemoHeight = 72;
+  cMinMemoHeight = 72;
   /// <summary>Auswahl des Schweregrads; Eintrag 0 ist die Vorgabe.</summary>
-  SeverityValues: array[0..5] of string = ('', 'error', 'warning', 'info', 'hint', 'off');
-  GroupTexts: array[0..13] of TAtlasRulesTextId = (TAtlasRulesTextId.RulesGroupFindBugs, TAtlasRulesTextId.RulesGroupExceptions,
+  cSeverityValues: array[0..5] of string = ('', 'error', 'warning', 'info', 'hint', 'off');
+  cGroupTexts: array[0..13] of TAtlasRulesTextId =
+    (TAtlasRulesTextId.RulesGroupFindBugs, TAtlasRulesTextId.RulesGroupExceptions,
     TAtlasRulesTextId.RulesGroupThreads, TAtlasRulesTextId.RulesGroupDatabase, TAtlasRulesTextId.RulesGroupCompiler,
-    TAtlasRulesTextId.RulesGroupRobustness, TAtlasRulesTextId.RulesGroupPerformance, TAtlasRulesTextId.RulesGroupSecurity,
+    TAtlasRulesTextId.RulesGroupRobustness, TAtlasRulesTextId.RulesGroupPerformance,
+      TAtlasRulesTextId.RulesGroupSecurity,
     TAtlasRulesTextId.RulesGroupComponents, TAtlasRulesTextId.RulesGroupForms, TAtlasRulesTextId.RulesGroupArchitecture,
     TAtlasRulesTextId.RulesGroupStyle, TAtlasRulesTextId.RulesGroupPackages, TAtlasRulesTextId.RulesGroupInternal);
 
@@ -250,13 +252,13 @@ end;
 
 function AtlasRuleGroupCaption(const AGroup: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(TAtlasRuleTable.GroupIds) do
+  for mIndex := 0 to High(TAtlasRuleTable.cGroupIds) do
   begin
-    if SameText(TAtlasRuleTable.GroupIds[Index], AGroup) then
+    if SameText(TAtlasRuleTable.cGroupIds[mIndex], AGroup) then
     begin
-      Exit(TAtlasRulesStrings.Text(GroupTexts[Index]));
+      Exit(TAtlasRulesStrings.Text(cGroupTexts[mIndex]));
     end;
   end;
   Result := AGroup;
@@ -305,7 +307,8 @@ begin
   end;
   if ARow.GlobalSeverity <> '' then
   begin
-    Result := Result + ' ' + TAtlasRulesStrings.Fmt(TAtlasRulesTextId.RulesGlobal, [SeverityCaption(ARow.GlobalSeverity)]);
+    Result := Result + ' ' + TAtlasRulesStrings.Fmt(TAtlasRulesTextId.RulesGlobal,
+      [SeverityCaption(ARow.GlobalSeverity)]);
   end;
 end;
 
@@ -334,10 +337,10 @@ var
   mValue: Integer;
 begin
   Result := 0;
-  for mValue := 1 to High(SeverityValues) do
+  for mValue := 1 to High(cSeverityValues) do
   begin
-    if SameText(SeverityValues[mValue], ARow.Severity) or
-      (SameText(ARow.Severity, 'information') and (SeverityValues[mValue] = 'info')) then
+    if SameText(cSeverityValues[mValue], ARow.Severity) or
+      (SameText(ARow.Severity, 'information') and (cSeverityValues[mValue] = 'info')) then
     begin
       Result := mValue;
     end;
@@ -479,32 +482,32 @@ begin
   Result.ScrollBars := ssHorizontal;
   Result.WordWrap := False;
   Result.Font.Name := 'Consolas';
-  Result.Height := MinMemoHeight;
+  Result.Height := cMinMemoHeight;
   Stack(AParent, Result);
 end;
 
 procedure TAtlasRulesLayout.FitMemo(AMemo: TMemo);
 const
-  MaxLines = 20;
+  cMaxLines = 20;
 var
-  Lines, LineHeight: Integer;
-  Bars: System.UITypes.TScrollStyle;
+  mLines, mLineHeight: Integer;
+  mBars: System.UITypes.TScrollStyle;
 begin
   // Das ganze Beispiel zeigen statt vier Zeilen mit Rollbalken; sehr lange Beispiele bleiben rollbar.
-  Lines := EnsureRange(AMemo.Lines.Count, 1, MaxLines);
-  LineHeight := MulDiv(Abs(AMemo.Font.Height), 5, 4);
-  Bars := ssHorizontal;
-  if AMemo.Lines.Count > MaxLines then
+  mLines := EnsureRange(AMemo.Lines.Count, 1, cMaxLines);
+  mLineHeight := MulDiv(Abs(AMemo.Font.Height), 5, 4);
+  mBars := ssHorizontal;
+  if AMemo.Lines.Count > cMaxLines then
   begin
-    Bars := ssBoth;
+    mBars := ssBoth;
   end;
   // Nur bei Änderung: ScrollBars legt das Fenster des Memos neu an.
-  if AMemo.ScrollBars <> Bars then
+  if AMemo.ScrollBars <> mBars then
   begin
-    AMemo.ScrollBars := Bars;
+    AMemo.ScrollBars := mBars;
   end;
   // Nie kleiner als bisher: Kurze Beispiele behalten ihre gewohnte Höhe.
-  AMemo.Height := Max(MinMemoHeight, Lines * LineHeight + GetSystemMetrics(SM_CYHSCROLL) + 8);
+  AMemo.Height := Max(cMinMemoHeight, mLines * mLineHeight + GetSystemMetrics(SM_CYHSCROLL) + 8);
 end;
 
 procedure TAtlasRulesLayout.Stack(AParent: TWinControl; AControl: TControl);
@@ -520,22 +523,22 @@ end;
 
 procedure TAtlasRulesLayout.Restack;
 var
-  Control: TControl;
-  Next: Integer;
+  mControl: TControl;
+  mNext: Integer;
 begin
   // alTop ordnet nach Top. Ausgeblendete Steuerelemente behalten ihr Top aus dem Aufbau, das größer ist als das
   // der inzwischen ausgerichteten Geschwister; eingeblendet rutschten sie ans Ende (#1296). Darum alle in
   // Aufbaureihenfolge neu durchnummerieren, jedes hinter alle bisherigen. In Einerschritten: Mit 1000er-Schritten
   // kamen die Memos über 32767, dort kappt Windows ihre Koordinaten (die Beschriftungen ohne Fenster nicht), und
   // „Falsch“/„Richtig“ standen unter statt über ihrem Memo.
-  Next := FNextTop;
+  mNext := FNextTop;
   DisableAlign;
   FDetails.DisableAlign;
   try
-    for Control in FStacked do
+    for mControl in FStacked do
     begin
-      Inc(Next);
-      Control.Top := Next;
+      Inc(mNext);
+      mControl.Top := mNext;
     end;
   finally
     FDetails.EnableAlign;
@@ -549,11 +552,11 @@ end;
 
 function TAtlasRulesLayout.CanAutoSize(var NewWidth, NewHeight: Integer): Boolean;
 var
-  Requested: Integer;
+  mRequested: Integer;
 begin
-  Requested := NewWidth;
+  mRequested := NewWidth;
   Result := inherited CanAutoSize(NewWidth, NewHeight);
-  NewWidth := Requested;
+  NewWidth := mRequested;
 end;
 
 { TAtlasRulesTable }
@@ -579,7 +582,7 @@ begin
   FGroupChoice.Parent := FTopBar;
   FGroupChoice.Align := alRight;
   FGroupChoice.AlignWithMargins := True;
-  FGroupChoice.Margins.SetBounds(Gap, 0, 0, 0);
+  FGroupChoice.Margins.SetBounds(cGap, 0, 0, 0);
   FGroupChoice.Width := 200;
   FGroupChoice.Style := csDropDownList;
   FMaster := TCheckBox.Create(Self);
@@ -602,7 +605,7 @@ begin
   FList.RowSelect := True;
   FList.HideSelection := False;
   FList.Checkboxes := True;
-  FList.Height := ListHeight;
+  FList.Height := cListHeight;
   for mIndex := 0 to High(cColumns) do
   begin
     mColumn := FList.Columns.Add;
@@ -616,9 +619,9 @@ function TAtlasRulesTable.Group: string;
 begin
   Result := FFixedGroup;
   if (Result = '') and (FGroupChoice.ItemIndex > 0) and
-    (FGroupChoice.ItemIndex <= Length(TAtlasRuleTable.GroupIds)) then
+    (FGroupChoice.ItemIndex <= Length(TAtlasRuleTable.cGroupIds)) then
   begin
-    Result := TAtlasRuleTable.GroupIds[FGroupChoice.ItemIndex - 1];
+    Result := TAtlasRuleTable.cGroupIds[FGroupChoice.ItemIndex - 1];
   end;
 end;
 
@@ -640,7 +643,7 @@ end;
 procedure TAtlasRulesTable.ShowMaster(const ARulesJson: string);
 begin
   FMaster.Visible := Group <> '';
-  FTypeLevel.Visible := SameText(Group, TAtlasRuleTable.CompilerGroup);
+  FTypeLevel.Visible := SameText(Group, TAtlasRuleTable.cCompilerGroup);
   if Group = '' then
   begin
     Exit;
@@ -672,9 +675,9 @@ begin
   FGroupChoice.Items.BeginUpdate;
   try
     FGroupChoice.Items.Add(TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesAllGroups));
-    for mIndex := 0 to High(TAtlasRuleTable.GroupIds) do
+    for mIndex := 0 to High(TAtlasRuleTable.cGroupIds) do
     begin
-      FGroupChoice.Items.Add(AtlasRuleGroupCaption(TAtlasRuleTable.GroupIds[mIndex]));
+      FGroupChoice.Items.Add(AtlasRuleGroupCaption(TAtlasRuleTable.cGroupIds[mIndex]));
     end;
   finally
     FGroupChoice.Items.EndUpdate;
@@ -741,7 +744,7 @@ begin
   begin
     Exit;
   end;
-  for mValue in SeverityValues do
+  for mValue in cSeverityValues do
   begin
     if mValue = '' then
     begin
@@ -959,13 +962,13 @@ end;
 
 function TAtlasRulesEditor.RowOf(const AId: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FRows) do
+  for mIndex := 0 to High(FRows) do
   begin
-    if SameText(FRows[Index].Id, AId) then
+    if SameText(FRows[mIndex].Id, AId) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -987,11 +990,11 @@ end;
 
 function TAtlasRulesEditor.RowShown(ARow: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index in TAtlasRuleTable.Filter(FRows, Group, Search.Text) do
+  for mIndex in TAtlasRuleTable.Filter(FRows, Group, Search.Text) do
   begin
-    if Index = ARow then
+    if mIndex = ARow then
     begin
       Exit(True);
     end;
@@ -1095,19 +1098,19 @@ end;
 
 function TAtlasRulesEditor.SelectRule(const AId: string): Boolean;
 var
-  Index, Row: Integer;
+  mIndex, mRow: Integer;
 begin
-  Row := RowOf(AId);
-  Result := Row >= 0;
+  mRow := RowOf(AId);
+  Result := mRow >= 0;
   if not Result then
   begin
     Exit;
   end;
-  FSelectedId := FRows[Row].Id;
+  FSelectedId := FRows[mRow].Id;
   if HandleAllocated then
   begin
     // Suche und Gruppenauswahl, die die Regel verbergen, zurücksetzen.
-    if (FFixedGroup = '') and not RowShown(Row) then
+    if (FFixedGroup = '') and not RowShown(mRow) then
     begin
       FFilling := True;
       try
@@ -1118,13 +1121,13 @@ begin
       end;
     end;
     Refill;
-    for Index := 0 to High(FVisible) do
+    for mIndex := 0 to High(FVisible) do
     begin
-      if FVisible[Index] = Row then
+      if FVisible[mIndex] = mRow then
       begin
-        List.Items[Index].Selected := True;
-        List.Items[Index].Focused := True;
-        List.Items[Index].MakeVisible(False);
+        List.Items[mIndex].Selected := True;
+        List.Items[mIndex].Focused := True;
+        List.Items[mIndex].MakeVisible(False);
       end;
     end;
   end
@@ -1136,29 +1139,29 @@ end;
 
 procedure TAtlasRulesEditor.SetSeverity(const ASeverity: string);
 var
-  Row: Integer;
+  mRow: Integer;
 begin
-  Row := SelectedRow;
-  if Row < 0 then
+  mRow := SelectedRow;
+  if mRow < 0 then
   begin
     Exit;
   end;
-  Apply(TAtlasRuleTable.WithSeverity(FRulesJson, FRows[Row].Id, ASeverity));
+  Apply(TAtlasRuleTable.WithSeverity(FRulesJson, FRows[mRow].Id, ASeverity));
   ShowDetails;
 end;
 
 function TAtlasRulesEditor.SetRuleSeverity(const AId, ASeverity: string): Boolean;
 var
-  Row: Integer;
+  mRow: Integer;
 begin
-  Row := RowOf(AId);
-  Result := Row >= 0;
+  mRow := RowOf(AId);
+  Result := mRow >= 0;
   if not Result then
   begin
     Exit;
   end;
-  Apply(TAtlasRuleTable.WithSeverity(FRulesJson, FRows[Row].Id, ASeverity));
-  if Row = SelectedRow then
+  Apply(TAtlasRuleTable.WithSeverity(FRulesJson, FRows[mRow].Id, ASeverity));
+  if mRow = SelectedRow then
   begin
     ShowDetails;
   end;
@@ -1232,11 +1235,11 @@ end;
 
 procedure TAtlasRulesEditor.SeverityChange(Sender: TObject);
 begin
-  if FFilling or (SeverityChoice.ItemIndex < 0) or (SeverityChoice.ItemIndex > High(SeverityValues)) then
+  if FFilling or (SeverityChoice.ItemIndex < 0) or (SeverityChoice.ItemIndex > High(cSeverityValues)) then
   begin
     Exit;
   end;
-  SetSeverity(SeverityValues[SeverityChoice.ItemIndex]);
+  SetSeverity(cSeverityValues[SeverityChoice.ItemIndex]);
 end;
 
 procedure TAtlasRulesEditor.ExcludeChange(Sender: TObject);
@@ -1253,21 +1256,21 @@ end;
 
 procedure TAtlasRulesEditor.OptionChange(Sender: TObject);
 var
-  Row, Index: Integer;
-  Option: TAtlasRuleOption;
-  mText, Json: string;
+  mRow, mIndex: Integer;
+  mOption: TAtlasRuleOption;
+  mText, mJson: string;
 begin
-  Row := SelectedRow;
-  if FFilling or (Row < 0) or not (Sender is TControl) then
+  mRow := SelectedRow;
+  if FFilling or (mRow < 0) or not (Sender is TControl) then
   begin
     Exit;
   end;
-  Index := TControl(Sender).Tag;
-  if (Index < 0) or (Index > High(FRows[Row].Options)) then
+  mIndex := TControl(Sender).Tag;
+  if (mIndex < 0) or (mIndex > High(FRows[mRow].Options)) then
   begin
     Exit;
   end;
-  Option := FRows[Row].Options[Index];
+  mOption := FRows[mRow].Options[mIndex];
   if Sender is TCheckBox then
   begin
     mText := 'false';
@@ -1281,9 +1284,9 @@ begin
     mText := TEdit(Sender).Text;
   end;
   // Ungültige Eingabe bleibt im Feld stehen, wird aber nicht übernommen.
-  if not TAtlasRuleTable.OptionJson(Option.Kind, mText, Json) then
+  if not TAtlasRuleTable.OptionJson(mOption.Kind, mText, mJson) then
   begin
-    InvalidLabel.Caption := TAtlasRulesStrings.Fmt(TAtlasRulesTextId.RulesOptionInvalid, [Option.Name]);
+    InvalidLabel.Caption := TAtlasRulesStrings.Fmt(TAtlasRulesTextId.RulesOptionInvalid, [mOption.Name]);
     if not InvalidLabel.Visible then
     begin
       InvalidLabel.Visible := True;
@@ -1297,11 +1300,11 @@ begin
     Restack;
   end;
   // Gleich der Vorgabe: Option entfernen.
-  if Json = Option.DefaultJson then
+  if mJson = mOption.DefaultJson then
   begin
-    Json := '';
+    mJson := '';
   end;
-  Apply(TAtlasRuleTable.WithOption(FRulesJson, FRows[Row].Id, Option.Name, Json));
+  Apply(TAtlasRuleTable.WithOption(FRulesJson, FRows[mRow].Id, mOption.Name, mJson));
 end;
 
 procedure TAtlasRulesEditor.OptionTableEdit(Sender: TObject; ACol, ARow: Integer; const AValue: string);
