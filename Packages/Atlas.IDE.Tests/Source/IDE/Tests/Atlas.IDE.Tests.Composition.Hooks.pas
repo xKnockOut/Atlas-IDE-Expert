@@ -25,7 +25,7 @@ function BuildForTests(const AProject: string; const ADone: TAtlasTestsBuildDone
 procedure ShowProblems(const AProblems: TArray<TPair<string, TAtlasProblem>>);
 /// <summary>Ende eines Laufs in die Projekt-Zusammenfassung und an jeden IAtlasTestsListener.</summary>
 procedure AnnounceTests(const AProject: string; const ATests: TAtlasProjectTests);
-function LastFailed(const AProject: string): TArray<string>;
+function LastFailed(AProject: string): TArray<string>;
 
 implementation
 
@@ -120,7 +120,7 @@ begin
   end;
 end;
 
-function LastFailed(const AProject: string): TArray<string>;
+function LastFailed(AProject: string): TArray<string>;
 begin
   Result := TAtlasProjectSummaries.FailedTestsOf(TAtlasProjectSummaries.DefaultFolder, AProject);
 end;

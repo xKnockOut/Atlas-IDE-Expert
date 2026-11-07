@@ -1740,6 +1740,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.ServerCommands.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CodeActions.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Status.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Status.Contract.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Slash.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Contract.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.UnitSearch.pas"/>

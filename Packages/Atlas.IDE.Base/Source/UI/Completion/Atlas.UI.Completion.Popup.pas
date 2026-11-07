@@ -480,7 +480,7 @@ begin
     AccessibleList.ItemsChanged;
   end;
   Canvas.Font := UIFont;
-  FSessionWidth := Max(FSessionWidth, Max(Scale(MinWidth),
+  FSessionWidth := Max(FSessionWidth, Max(Scale(cMinWidth),
     Canvas.TextWidth(TAtlasStrings.Fmt(TAtlasTextId.NoMatchesFor, [APrefix])) + Scale(32)));
   Canvas.Font := Font;
   Relayout;
@@ -629,7 +629,7 @@ begin
   if HitArea(mPoint_.X, mPoint_.Y) = TAtlasHitArea.Grip then
   begin
     FManualListWidth := 0;
-    FPanel.Width := DefaultPanelWidth;
+    FPanel.Width := cDefaultPanelWidth;
     FDrag.Kind := TAtlasDragKind.None;
     Relayout;
     Invalidate;
@@ -649,7 +649,7 @@ begin
   mWidth := Logical(FDrag.StartWidth + FDrag.Sign * (Mouse.CursorPos.X - FDrag.StartX));
   if FDrag.Kind = TAtlasDragKind.ListWidth then
   begin
-    FManualListWidth := TAtlasPopupWidth.Fit(mWidth, MinWidth, cMaxWidth);
+    FManualListWidth := TAtlasPopupWidth.Fit(mWidth, cMinWidth, cMaxWidth);
   end
   else
   begin

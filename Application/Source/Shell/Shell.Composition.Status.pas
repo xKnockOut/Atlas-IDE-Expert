@@ -46,6 +46,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.IOUtils,
   System.Math,
   Atlas.Common.Product.Version,
