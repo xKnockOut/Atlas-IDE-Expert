@@ -1,4 +1,6 @@
-﻿{$mode delphi}{$H+}{$modeswitch unicodestrings}{$modeswitch advancedrecords}{$modeswitch functionreferences}{$modeswitch anonymousfunctions}
+﻿{$mode delphi}{$H+}
+{$modeswitch unicodestrings}{$modeswitch advancedrecords}{$modeswitch functionreferences}
+{$modeswitch anonymousfunctions}
 unit DelphiCompat;
 
 // Typen der Delphi-RTL, die Free Pascal (trunk) nicht oder anders mitbringt
@@ -13,16 +15,16 @@ uses
 
 type
   TProc = reference to procedure;
-  TProc<T> = reference to procedure(Arg1: T);
-  TProc<T1, T2> = reference to procedure(Arg1: T1; Arg2: T2);
-  TProc<T1, T2, T3> = reference to procedure(Arg1: T1; Arg2: T2; Arg3: T3);
-  TProc<T1, T2, T3, T4> = reference to procedure(Arg1: T1; Arg2: T2; Arg3: T3; Arg4: T4);
+  TProc<T> = reference to procedure(AArg1: T);
+  TProc<T1, T2> = reference to procedure(AArg1: T1; AArg2: T2);
+  TProc<T1, T2, T3> = reference to procedure(AArg1: T1; AArg2: T2; AArg3: T3);
+  TProc<T1, T2, T3, T4> = reference to procedure(AArg1: T1; AArg2: T2; AArg3: T3; AArg4: T4);
   TFunc<TResult> = reference to function: TResult;
-  TFunc<T, TResult> = reference to function(Arg1: T): TResult;
-  TFunc<T1, T2, TResult> = reference to function(Arg1: T1; Arg2: T2): TResult;
-  TFunc<T1, T2, T3, TResult> = reference to function(Arg1: T1; Arg2: T2; Arg3: T3): TResult;
-  TFunc<T1, T2, T3, T4, TResult> = reference to function(Arg1: T1; Arg2: T2; Arg3: T3; Arg4: T4): TResult;
-  TPredicate<T> = reference to function(Arg1: T): Boolean;
+  TFunc<T, TResult> = reference to function(AArg1: T): TResult;
+  TFunc<T1, T2, TResult> = reference to function(AArg1: T1; AArg2: T2): TResult;
+  TFunc<T1, T2, T3, TResult> = reference to function(AArg1: T1; AArg2: T2; AArg3: T3): TResult;
+  TFunc<T1, T2, T3, T4, TResult> = reference to function(AArg1: T1; AArg2: T2; AArg3: T3; AArg4: T4): TResult;
+  TPredicate<T> = reference to function(AArg1: T): Boolean;
 
   /// <summary>In Delphi Basis von EFCreateError und EFOpenError; in FPC leiten beide direkt von EStreamError ab.
   /// Der Alias fängt deshalb etwas mehr (auch EReadError, EWriteError).</summary>

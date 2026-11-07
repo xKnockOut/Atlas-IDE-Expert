@@ -71,6 +71,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.PureRoutines,
   Atlas.Common.Localization.Texts;
@@ -1042,6 +1043,28 @@ begin
     True);
 end;
 
+/// <summary>Steht AOffset in der Deklaration eines Aufzählungstyps? Ein Wert Random dort ist kein Aufruf
+/// (TTexte = (…, Random) unter SCOPEDENUMS löst der Index nicht als eigenen Namen auf).</summary>
+function InEnumDeclaration(ATree: TSyntaxTree; AOffset: Integer): Boolean;
+var
+  mOffset: Integer;
+begin
+  mOffset := AOffset;
+  Result := ATree.Root.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if (ANode.StartOffset > mOffset) or (ANode.EndOffset < mOffset) then
+      begin
+        Result := TSyntaxSearchStep.Skip;
+      end
+      else if ANode.Kind = TSyntaxKind.EnumType then
+      begin
+        Result := TSyntaxSearchStep.Found;
+      end;
+    end) <> nil;
+end;
+
 /// <summary>Meint Random bei AIndex etwas Eigenes (Aufzählungswert, lokale Routine) statt System.Random?</summary>
 function IsOwnRandom(const AContext: TRuleContext; const ATokens: TTokens; AIndex: Integer;
   var ACache: IRuleDerivedCache): Boolean;
@@ -1081,6 +1104,7 @@ begin
       end
       else if (mFirst < 0) and SameText(mTokens[mIndex].Text, 'Random') and
         ((mIndex = 0) or not mTokens[PreviousCode(mTokens, mIndex)].IsSymbol('.')) and
+        not InEnumDeclaration(AContext.Tree, mTokens[mIndex].Offset) and
         not IsOwnRandom(AContext, mTokens, mIndex, mCache) then
       begin
         mFirst := mIndex;

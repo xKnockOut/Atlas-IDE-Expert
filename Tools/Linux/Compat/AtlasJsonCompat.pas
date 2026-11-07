@@ -1,4 +1,6 @@
-﻿{$mode delphi}{$H+}{$modeswitch unicodestrings}{$modeswitch advancedrecords}{$modeswitch functionreferences}{$modeswitch anonymousfunctions}
+﻿{$mode delphi}{$H+}
+{$modeswitch unicodestrings}{$modeswitch advancedrecords}{$modeswitch functionreferences}
+{$modeswitch anonymousfunctions}
 unit AtlasJsonCompat;
 
 // TJSONObject.ParseJSONValue wie in Delphi für den Linux-Bau (#1356).
