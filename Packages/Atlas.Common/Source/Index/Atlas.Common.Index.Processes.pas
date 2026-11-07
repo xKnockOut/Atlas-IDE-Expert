@@ -94,6 +94,7 @@ begin
     try
       Result := ISO8601ToDate(mText, False);
     except
+      // lsp-ignore: catch-all-without-raise -- Prozessdatei unlesbar heißt kein Eintrag
       on Exception do
         Result := 0;
     end;
@@ -132,6 +133,7 @@ begin
   try
     mRoot := TJSONObject.ParseJSONValue(AText);
   except
+    // lsp-ignore: catch-all-without-raise -- Prozessdatei unlesbar heißt kein Eintrag
     on Exception do
       mRoot := nil;
   end;

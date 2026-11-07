@@ -179,6 +179,7 @@ begin
     end;
   except
     // Gemeldet, nicht verschluckt: Der Aufrufer schreibt den Grund ins Log.
+    // lsp-ignore: catch-all-without-raise -- Fehler geht als AError an den Aufrufer
     on E: Exception do
       AError := ErrorReason(E);
   end;

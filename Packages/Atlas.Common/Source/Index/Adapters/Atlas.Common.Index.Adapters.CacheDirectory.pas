@@ -416,6 +416,7 @@ begin
       TDirectory.Delete(mFolder);
     end;
   except
+    // lsp-ignore: catch-all-without-raise -- Cache nach Kräften; Fehler heißt kein Eintrag
     on Exception do
       ;
   end;
@@ -473,6 +474,7 @@ begin
     end;
   except
     // Nicht lesbar (gesperrt, beschädigt): Herkunft unbekannt, der Cache bleibt.
+    // lsp-ignore: catch-all-without-raise -- Cache nach Kräften; Fehler heißt kein Eintrag
     on Exception do
       Result := nil;
   end;
@@ -522,6 +524,7 @@ begin
       mRoot.Free;
     end;
   except
+    // lsp-ignore: catch-all-without-raise -- Cache nach Kräften; Fehler heißt kein Eintrag
     on Exception do
       Result := '';
   end;
@@ -550,6 +553,7 @@ begin
     end;
   except
     // Ohne Marke zählt die Zeit des Caches; schlimmstenfalls wird er früher neu aufgebaut.
+    // lsp-ignore: catch-all-without-raise -- Cache nach Kräften; Fehler heißt kein Eintrag
     on Exception do
       ;
   end;
@@ -576,6 +580,7 @@ begin
       end;
     end;
   except
+    // lsp-ignore: catch-all-without-raise -- Cache nach Kräften; Fehler heißt kein Eintrag
     on Exception do
       ;
   end;
@@ -612,6 +617,7 @@ begin
       Result := Trim(TFile.ReadAllText(mFileName, TEncoding.UTF8));
     end;
   except
+    // lsp-ignore: catch-all-without-raise -- Cache nach Kräften; Fehler heißt kein Eintrag
     on Exception do
       Result := '';
   end;
@@ -628,6 +634,7 @@ begin
     TFile.WriteAllText(TPath.Combine(ExtractFileDir(ACacheFile), cOriginFileName), AOrigin, TEncoding.UTF8);
   except
     // Ohne Herkunft bleibt der Cache nur beim Aufräumen nach Größe.
+    // lsp-ignore: catch-all-without-raise -- Cache nach Kräften; Fehler heißt kein Eintrag
     on Exception do
       ;
   end;

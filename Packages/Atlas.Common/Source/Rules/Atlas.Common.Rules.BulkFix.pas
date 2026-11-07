@@ -877,6 +877,7 @@ begin
           AWrite(ANames[mIndex], AOldTexts[mIndex]);
         except
           // Zurücksetzen nach Kräften; gemeldet wird der erste Fehler, der die übrigen Dateien verhindert hat.
+          // lsp-ignore: catch-all-without-raise -- Zurücksetzen nach Kräften; der erste Fehler wird ausgelöst
           on Exception do
             Continue;
         end;

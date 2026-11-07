@@ -185,6 +185,7 @@ begin
         FTrace.WriteBuffer(mData, Length(mData));
       except
         // Ein defekter Mitschnitt darf das Protokoll nicht stören; ab jetzt wird nicht mehr geschrieben.
+        // lsp-ignore: catch-all-without-raise -- Mitschnitt darf das Protokoll nie stören; Fehler wird gemeldet
         on E: Exception do
         begin
           FFailed := True;

@@ -309,6 +309,7 @@ begin
       TFile.Delete(AFileName);
     end;
   except
+    // lsp-ignore: catch-all-without-raise -- Austauschdatei mit der IDE nach Kräften
     on Exception do
       ;
   end;
@@ -368,6 +369,7 @@ begin
   try
     mText := TFile.ReadAllText(mAnswer, TEncoding.UTF8);
   except
+    // lsp-ignore: catch-all-without-raise -- Austauschdatei mit der IDE nach Kräften
     on Exception do
       mText := '';
   end;

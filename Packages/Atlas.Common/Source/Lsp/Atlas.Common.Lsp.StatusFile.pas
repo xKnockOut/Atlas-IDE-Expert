@@ -93,6 +93,7 @@ begin
   try
     Result := TFile.ReadAllText(AFileName, TEncoding.UTF8);
   except
+    // lsp-ignore: catch-all-without-raise -- Statusdatei nach Kräften; nur Anzeige
     on Exception do
       Result := '';
   end;
@@ -221,6 +222,7 @@ begin
       TFile.Move(mTemp, mTarget);
       DeleteOrphans(FolderOf(ARoot), mTarget, ANow);
     except
+      // lsp-ignore: catch-all-without-raise -- Statusdatei nach Kräften; nur Anzeige
       on Exception do
         // Nur Anzeige für MCP; der Status selbst ist schon beantwortet.
         Exit;
@@ -238,6 +240,7 @@ begin
       TFile.Delete(FileFor(ARoot, APid));
     end;
   except
+    // lsp-ignore: catch-all-without-raise -- Statusdatei nach Kräften; nur Anzeige
     on Exception do
       Exit;
   end;
