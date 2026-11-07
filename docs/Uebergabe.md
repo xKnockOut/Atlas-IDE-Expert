@@ -20,6 +20,12 @@
 - `Tools/Update-RuleCatalog.ps1` erzeugt jetzt `cCatalogLines*`.
 - Geprüft (Cloud): AtlasServer übersetzt; FPC-Tests aller Common-Testunits wie auf Pilot (gleiche Fehlschläge, keine neuen); Check-Skripte grün. IDE-Packages nicht übersetzbar in der Cloud: Delphi-Build nötig.
 - Offen: Atlas.IDE.Base (dieser Thread), danach je Modul ein Thread über den Koordinator.
+## Präfixe und Zeilenlänge in Atlas.IDE.Rules (07.11.2026, Branch `claude/project-thread-9v3vm5` auf `main-merging`)
+- Wie bei Atlas.Common (Anleitung `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`): lokale Namen über `--fix naming-prefix` (Server mit safeFix, im Worktree), 8 lange Zeilen mit `wrap.py`, Testunits des Moduls (`[Category('Atlas.IDE.Rules')]`) mit.
+- Öffentliche Konstanten umbenannt, mit allen Verwendungen: `TAtlasBulkFixPreview.cCommand`, `TAtlasRulesModule.cModuleId`/`cSwitch`, `TAtlasRuleTable.cSeverities`/`cGroupIds`/`cCompilerGroup`. Außerhalb des Moduls verwendet sie nichts.
+- Falle: `fixer-safefix.patch` passt seit den Common-Präfixen nicht mehr auf `Builtin.Naming.pas` (`mFixes`/`mNewName`); die Zeile von Hand um `, True` ergänzen.
+- Geprüft (Cloud): AtlasServer `--check` mit Metriken über `Atlas.IDE.Rules.dproj` und die 6 Testunits: 0 Befunde. FPC-Tests `Atlas.Core.Rules.Table.Tests`/`Atlas.Core.Problems.BulkFix.Tests` wie auf main-merging (ein FPC-Kodierungsfehlschlag in ArgumentsNameRuleAndFiles auf beiden). VCL- und ToolsAPI-Units nicht übersetzbar: Delphi-Build offen.
+
 ## IDE-Start 60 s mit Willkommensseite (06.11.2026, Branch `claude/project-thread-a48wa8` auf `Pilot-2.0.0-beta.1`)
 
 - **Befund:** Nach der Installation von 2.0.0-beta.1 aus dem Release-Paket dauerte Marcos IDE-Start 60 s (vorher 0,7–6,5 s), `atlas.log`: „davon Atlas 9563 ms: Welcome 9091 ms“. Ohne „Neu in Atlas“ und „Atlas entdecken“ wieder 4,8 s.
