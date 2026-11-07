@@ -1,4 +1,9 @@
-﻿## Präfixe und Zeilenlänge in Atlas.Common (06./07.11.2026, Branch `claude/project-thread-i9dwl9` auf `Pilot-2.0.0-beta.1`)
+﻿## Präfixe und Zeilenlänge in Atlas.Linux (07.11.2026, Branch `claude/project-thread-64k5j8` auf `main-merging`)
+- 35 naming-prefix und 1 line-length in 9 von 10 Units behoben: lokale Namen `m`, Konstanten `c` (auch die öffentlichen `TFileWatcher.cPollMs`/`cSettleMs`/`cSliceMs` und `TParentWatcher.cPollMs`; Verwendungen gab es nur im Package selbst). Bei der kleinen Zahl von Hand bzw. mit einem auf die Routine begrenzten Umbenenner statt `--fix`.
+- Die gleichnamigen Konstanten der Windows-Gegenstücke (`Atlas.Windows.Documents.FileWatcher`, `…ProcessRunner`) bleiben dem Thread für Atlas.Windows.
+- Geprüft (Cloud): Atlas mit naming-prefix/line-length 0 Befunde, mit der normalen atlas.json (Metriken an) 0 Befunde; AtlasServer übersetzt mit allen zehn Linux-Units; GermanText unverändert. Eigene Testunits hat Atlas.Linux nicht (die Tests liegen bei Atlas.Windows).
+
+## Präfixe und Zeilenlänge in Atlas.Common (06./07.11.2026, Branch `claude/project-thread-i9dwl9` auf `Pilot-2.0.0-beta.1`)
 - Wunsch Marco: naming-prefix und line-length im Code beheben, je Package ein PR; öffentliche Konstanten bekommen auch `c` (Marco 06.11. 18:48), mit allen Verwendungen in allen Packages.
 - Lokale Namen über die Umbenennen-Korrektur der Regel (`--fix naming-prefix` mit einem Server, dessen Korrektur als safeFix markiert ist, nur lokal gebaut), der Rest über MCP `rename_symbol` als Vorschau und gesammelt angewendet; lange Zeilen mit eigenem Umbrecher. Werkzeuge und Fallen: `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`.
 - Falle: rename_symbol lässt Stellen aus, die es nicht sicher zuordnen kann (Array-Grenzen, `Unit.Name`, unbekannte Ausdruckstypen, Unit-Konstanten in anderen Units); nachgezogen per Übersetzen und Grep. Parallele schreibende rename_symbol-Aufrufe überschreiben sich.
