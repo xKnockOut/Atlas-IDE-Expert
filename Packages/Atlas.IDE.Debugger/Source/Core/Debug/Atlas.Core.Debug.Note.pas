@@ -64,11 +64,11 @@ type
 
   TAtlasDebugNote = record
   public const
-    ContextLines = 5;
-    MaxFrames = 30;
+    cContextLines = 5;
+    cMaxFrames = 30;
     /// <summary>Längere Codezeilen bzw. Meldungen werden gekürzt.</summary>
-    MaxLineLength = 300;
-    Mask = '***';
+    cMaxLineLength = 300;
+    cMask = '***';
   public
     /// <summary>Notiz als Markdown.</summary>
     class function Markdown(const AData: TAtlasDebugNoteData; const ATexts: TAtlasDebugNoteTexts): string; static;
@@ -101,7 +101,7 @@ uses
   Atlas.Text.Anonymize;
 
 const
-  SecretWords: array[0..7] of string = ('password', 'passwort', 'passwd', 'pwd', 'secret', 'token', 'apikey',
+  cSecretWords: array[0..7] of string = ('password', 'passwort', 'passwd', 'pwd', 'secret', 'token', 'apikey',
     'credential');
 
 { TAtlasDebugNoteTexts }
@@ -137,7 +137,7 @@ var
   mName, mWord: string;
 begin
   mName := LowerCase(StringReplace(StringReplace(AName, '_', '', [rfReplaceAll]), '-', '', [rfReplaceAll]));
-  for mWord in SecretWords do
+  for mWord in cSecretWords do
   begin
     if Pos(mWord, mName) > 0 then
     begin
@@ -147,9 +147,9 @@ begin
   Result := False;
 end;
 
-function IsNameChar(C: Char): Boolean;
+function IsNameChar(AC: Char): Boolean;
 begin
-  Result := CharInSet(C, ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '-']);
+  Result := CharInSet(AC, ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '-']);
 end;
 
 /// <summary>Erste Stelle ab AFrom, die kein Leerzeichen ist.</summary>
@@ -252,8 +252,8 @@ begin
     begin
       Continue;
     end;
-    Result := Copy(Result, 1, mValueStart - 1) + TAtlasDebugNote.Mask + Copy(Result, mValueEnd, MaxInt);
-    mIndex := mValueStart + Length(TAtlasDebugNote.Mask);
+    Result := Copy(Result, 1, mValueStart - 1) + TAtlasDebugNote.cMask + Copy(Result, mValueEnd, MaxInt);
+    mIndex := mValueStart + Length(TAtlasDebugNote.cMask);
   end;
 end;
 
@@ -319,9 +319,9 @@ end;
 function Shortened(const AText: string): string;
 begin
   Result := AText;
-  if Length(Result) > TAtlasDebugNote.MaxLineLength then
+  if Length(Result) > TAtlasDebugNote.cMaxLineLength then
   begin
-    Result := Copy(Result, 1, TAtlasDebugNote.MaxLineLength - 1) + '…';
+    Result := Copy(Result, 1, TAtlasDebugNote.cMaxLineLength - 1) + '…';
   end;
 end;
 
@@ -355,7 +355,7 @@ var
   mText: string;
 begin
   mExcerpt := TAtlasDebugNote.Excerpt(AData.Source, AData.SourceFirstLine, AData.Line,
-    TAtlasDebugNote.ContextLines, mStart);
+    TAtlasDebugNote.cContextLines, mStart);
   if Length(mExcerpt) = 0 then
   begin
     Exit;
@@ -421,11 +421,11 @@ begin
     Exit;
   end;
   ALines.Append(#13#10).Append('## ').Append(ATexts.CallStack).Append(#13#10#13#10);
-  for mIndex := 0 to Min(Length(AData.Frames), TAtlasDebugNote.MaxFrames) - 1 do
+  for mIndex := 0 to Min(Length(AData.Frames), TAtlasDebugNote.cMaxFrames) - 1 do
   begin
     ALines.Append('- ').Append(FrameText(AData.Frames[mIndex])).Append(#13#10);
   end;
-  if Length(AData.Frames) > TAtlasDebugNote.MaxFrames then
+  if Length(AData.Frames) > TAtlasDebugNote.cMaxFrames then
   begin
     ALines.Append('- …').Append(#13#10);
   end;

@@ -28,8 +28,8 @@ type
 
   TAtlasArchitectureCommands = class
   public const
-    Command = 'atlas.architecture';
-    SaveCommand = 'atlas.architecture.saveReport';
+    cCommand = 'atlas.architecture';
+    cSaveCommand = 'atlas.architecture.saveReport';
   public
     /// <summary>[uri, {"scope", "includeLibraryUnits", "format": "json"}] für atlas.architecture.</summary>
     class function Arguments(const AProjectUri, AScope: string; AIncludeLibrary: Boolean): string; overload; static;
@@ -122,18 +122,18 @@ end;
 class function TAtlasArchitectureCommands.Arguments(const AProjectUri: string;
   const AOptions: TAtlasArchitectureOptions): string;
 var
-  Items: TJSONArray;
-  Option: TJSONObject;
+  mItems: TJSONArray;
+  mOption: TJSONObject;
 begin
-  Items := TJSONArray.Create;
+  mItems := TJSONArray.Create;
   try
-    Items.Add(AProjectUri);
-    Option := Options(AOptions);
-    Option.AddPair('format', 'json');
-    Items.AddElement(Option);
-    Result := Items.ToJSON;
+    mItems.Add(AProjectUri);
+    mOption := Options(AOptions);
+    mOption.AddPair('format', 'json');
+    mItems.AddElement(mOption);
+    Result := mItems.ToJSON;
   finally
-    Items.Free;
+    mItems.Free;
   end;
 end;
 
@@ -152,32 +152,32 @@ end;
 class function TAtlasArchitectureCommands.SaveArguments(const AProjectUri, AFileName: string;
   const AOptions: TAtlasArchitectureOptions): string;
 var
-  Items: TJSONArray;
+  mItems: TJSONArray;
 begin
-  Items := TJSONArray.Create;
+  mItems := TJSONArray.Create;
   try
-    Items.Add(AProjectUri);
-    Items.Add(AFileName);
-    Items.AddElement(Options(AOptions));
-    Result := Items.ToJSON;
+    mItems.Add(AProjectUri);
+    mItems.Add(AFileName);
+    mItems.AddElement(Options(AOptions));
+    Result := mItems.ToJSON;
   finally
-    Items.Free;
+    mItems.Free;
   end;
 end;
 
 class function TAtlasArchitectureCommands.SavedFile(const AAnswer: string): string;
 var
-  Root: TJSONValue;
+  mRoot: TJSONValue;
 begin
   Result := '';
-  Root := TJSONObject.ParseJSONValue(AAnswer);
+  mRoot := TJSONObject.ParseJSONValue(AAnswer);
   try
-    if (Root is TJSONObject) and (TJSONObject(Root).GetValue('file') is TJSONString) then
+    if (mRoot is TJSONObject) and (TJSONObject(mRoot).GetValue('file') is TJSONString) then
     begin
-      Result := TJSONObject(Root).GetValue('file').Value;
+      Result := TJSONObject(mRoot).GetValue('file').Value;
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 

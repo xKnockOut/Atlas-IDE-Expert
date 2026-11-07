@@ -18,7 +18,7 @@ type
   TLinuxVcsRunner = class(TInterfacedObject, IAtlasVcsRunner)
   public const
     /// <summary>Mehr Ausgabe gilt als Fehler (Failed), wie im Windows-Läufer.</summary>
-    MaxOutputBytes = 64 * 1024 * 1024;
+    cMaxOutputBytes = 64 * 1024 * 1024;
   private
     FAllowMainThread: Boolean;
     FCancelled: TFunc<Boolean>;
@@ -42,45 +42,45 @@ uses
   Atlas.Core.Vcs.ServerAccess;
 
 const
-  SliceMs = 10;
-  MaxErrorBytes = 4096;
+  cSliceMs = 10;
+  cMaxErrorBytes = 4096;
 
 /// <summary>Liest, was im Stream bereitliegt, ohne zu blockieren; über ALimit wird verworfen.</summary>
 procedure Drain(AStream: TInputPipeStream; var ABuffer: TBytes; var ACount: Integer; ALimit: Integer);
 var
-  Chunk: array[0..16383] of Byte;
-  Available, BytesRead: Integer;
+  mChunk: array[0..16383] of Byte;
+  mAvailable, mBytesRead: Integer;
 begin
   while True do
   begin
-    Available := AStream.NumBytesAvailable;
-    if Available <= 0 then
+    mAvailable := AStream.NumBytesAvailable;
+    if mAvailable <= 0 then
     begin
       Exit;
     end;
-    if Available > SizeOf(Chunk) then
+    if mAvailable > SizeOf(mChunk) then
     begin
-      Available := SizeOf(Chunk);
+      mAvailable := SizeOf(mChunk);
     end;
-    BytesRead := AStream.Read(Chunk, Available);
-    if BytesRead <= 0 then
+    mBytesRead := AStream.Read(mChunk, mAvailable);
+    if mBytesRead <= 0 then
     begin
       Exit;
     end;
     if ACount < ALimit then
     begin
-      if ACount + BytesRead > Length(ABuffer) then
+      if ACount + mBytesRead > Length(ABuffer) then
       begin
-        SetLength(ABuffer, (ACount + BytesRead) * 2);
+        SetLength(ABuffer, (ACount + mBytesRead) * 2);
       end;
-      Move(Chunk[0], ABuffer[ACount], BytesRead);
-      Inc(ACount, BytesRead);
+      Move(mChunk[0], ABuffer[ACount], mBytesRead);
+      Inc(ACount, mBytesRead);
     end;
   end;
 end;
 
 type
-  /// <summary>Gelesene Ausgabe eines Laufs: stdout bis MaxOutputBytes + 1, stderr bis MaxErrorBytes.</summary>
+  /// <summary>Gelesene Ausgabe eines Laufs: stdout bis cMaxOutputBytes + 1, stderr bis MaxErrorBytes.</summary>
   TCapturedOutput = record
     Output: TBytes;
     Errors: TBytes;
@@ -91,8 +91,8 @@ type
 
 procedure TCapturedOutput.DrainFrom(AChild: TProcess);
 begin
-  Drain(AChild.Output, Output, OutputCount, TLinuxVcsRunner.MaxOutputBytes + 1);
-  Drain(AChild.Stderr, Errors, ErrorCount, MaxErrorBytes);
+  Drain(AChild.Output, Output, OutputCount, TLinuxVcsRunner.cMaxOutputBytes + 1);
+  Drain(AChild.Stderr, Errors, ErrorCount, cMaxErrorBytes);
 end;
 
 /// <summary>Programm, Argumente, Ordner und eine eigene Umgebung ohne Rückfrage nach Zugangsdaten.</summary>
@@ -126,7 +126,7 @@ end;
 
 function ResultOf(AChild: TProcess; AOutcome: TAtlasVcsOutcome; const ACaptured: TCapturedOutput): TAtlasVcsRunResult;
 begin
-  if (AOutcome = TAtlasVcsOutcome.Ok) and (ACaptured.OutputCount > TLinuxVcsRunner.MaxOutputBytes) then
+  if (AOutcome = TAtlasVcsOutcome.Ok) and (ACaptured.OutputCount > TLinuxVcsRunner.cMaxOutputBytes) then
   begin
     AOutcome := TAtlasVcsOutcome.Failed;
   end;
@@ -200,7 +200,7 @@ begin
       AChild.Terminate(1);
       Break;
     end;
-    Sleep(SliceMs);
+    Sleep(cSliceMs);
   end;
   // Rest nach dem Ende.
   ACaptured.DrainFrom(AChild);

@@ -122,12 +122,12 @@ uses
   Shell.Workspace.Listings;
 
 const
-  CleanUnit = 'unit Gut;'#13#10'interface'#13#10'implementation'#13#10'end.'#13#10;
-  BrokenUnit = 'unit Kaputt;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10 +
+  cCleanUnit = 'unit Gut;'#13#10'interface'#13#10'implementation'#13#10'end.'#13#10;
+  cBrokenUnit = 'unit Kaputt;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10 +
     '  if then;'#13#10'end;'#13#10'end.'#13#10;
   cIndentedUnit = 'unit Schief;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10 +
     '   P;'#13#10'end;'#13#10'end.'#13#10;
-  TodoUnit = 'unit Offen;'#13#10'interface'#13#10'implementation'#13#10'// TODO: Aufräumen'#13#10'end.'#13#10;
+  cTodoUnit = 'unit Offen;'#13#10'interface'#13#10'implementation'#13#10'// TODO: Aufräumen'#13#10'end.'#13#10;
 
 { TShellLinterTests }
 
@@ -161,8 +161,8 @@ begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'Atlas-ShellLinter-' + TGUID.NewGuid.ToString.Substring(1, 8));
   ForceDirectories(TPath.Combine(FFolder, 'Src'));
   FOutput := TPath.Combine(FFolder, 'ergebnis.txt');
-  TFile.WriteAllText(Path('Src/Gut.pas'), CleanUnit);
-  TFile.WriteAllText(Path('Src/Kaputt.pas'), BrokenUnit);
+  TFile.WriteAllText(Path('Src/Gut.pas'), cCleanUnit);
+  TFile.WriteAllText(Path('Src/Kaputt.pas'), cBrokenUnit);
 end;
 
 procedure TShellLinterTests.TearDown;
@@ -250,15 +250,15 @@ end;
 
 procedure TShellLinterTests.FolderAsSarif;
 var
-  Text: string;
+  mText: string;
 begin
   Assert.AreEqual(1, Run(['--check', FFolder, '--format', 'sarif', '--source-root', FFolder]));
-  Text := OutputText;
-  Assert.Contains(Text, '"version"');
-  Assert.Contains(Text, '2.1.0');
+  mText := OutputText;
+  Assert.Contains(mText, '"version"');
+  Assert.Contains(mText, '2.1.0');
   // Pfade relativ zur Quellwurzel.
-  Assert.Contains(Text, 'Src/Kaputt.pas');
-  Assert.Contains(Text, 'partialFingerprints');
+  Assert.Contains(mText, 'Src/Kaputt.pas');
+  Assert.Contains(mText, 'partialFingerprints');
 end;
 
 procedure TShellLinterTests.TextFormatNamesFile;
@@ -270,7 +270,7 @@ end;
 
 procedure TShellLinterTests.TodosAsJson;
 begin
-  TFile.WriteAllText(Path('Src/Offen.pas'), TodoUnit, TEncoding.UTF8);
+  TFile.WriteAllText(Path('Src/Offen.pas'), cTodoUnit, TEncoding.UTF8);
   Assert.AreEqual(0, Run(['--check', TPath.Combine(FFolder, 'Src'), '--todos', '--format', 'json']));
   Assert.Contains(OutputText, 'Aufräumen');
   Assert.Contains(OutputText, 'Offen.pas');
@@ -286,28 +286,28 @@ end;
 
 procedure TShellLinterTests.ArchitectureAsMarkdownAndHtml;
 var
-  Report: string;
+  mReport: string;
 begin
   // Architekturbericht (#1118): Gut verwendet Kaputt nicht; ein eigener Zyklus A ↔ B über implementation.
   TFile.WriteAllText(Path('Src/A.pas'), 'unit A;'#13#10'interface'#13#10'uses B;'#13#10'implementation'#13#10'end.');
   TFile.WriteAllText(Path('Src/B.pas'), 'unit B;'#13#10'interface'#13#10'implementation'#13#10'uses A;'#13#10'end.');
-  Report := Path('Bericht/architektur.md');
+  mReport := Path('Bericht/architektur.md');
   Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
-    '--architecture', Report])));
-  Assert.Contains(TFile.ReadAllText(Report, TEncoding.UTF8), '# Architektur: Src');
-  Assert.Contains(TFile.ReadAllText(Report, TEncoding.UTF8), 'A → B → A');
-  Report := Path('architektur.html');
+    '--architecture', mReport])));
+  Assert.Contains(TFile.ReadAllText(mReport, TEncoding.UTF8), '# Architektur: Src');
+  Assert.Contains(TFile.ReadAllText(mReport, TEncoding.UTF8), 'A → B → A');
+  mReport := Path('architektur.html');
   Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
-    '--architecture', Report])));
-  Assert.Contains(TFile.ReadAllText(Report, TEncoding.UTF8), '"name":"Gut"');
+    '--architecture', mReport])));
+  Assert.Contains(TFile.ReadAllText(mReport, TEncoding.UTF8), '"name":"Gut"');
   Assert.AreEqual(3, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
     '--architecture', Path('architektur.pdf')])));
   Assert.AreEqual(3, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Path('Fehlt'),
-    '--architecture', Report])));
+    '--architecture', mReport])));
   // architecture gilt nur global (settings.json): in atlas.json am falschen Ort, gemeldet und ohne Wirkung.
   TFile.WriteAllText(Path('Src/atlas.json'), '{"architecture": {"enabled": false}}');
   Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
-    '--architecture', Report])), 'atlas.json schaltet nicht ab');
+    '--architecture', mReport])), 'atlas.json schaltet nicht ab');
 end;
 
 procedure TShellLinterTests.HotspotsNeedVersionControl;
@@ -346,42 +346,42 @@ end;
 
 procedure TShellLinterTests.ArchitectureCompareFailsOnNewCycle;
 var
-  Source, Older, Newer, Second: string;
+  mSource, mOlder, mNewer, mSecond: string;
 begin
   // Architekturvergleich (#1121): Stand ohne Zyklus speichern, dann kommt A ↔ B dazu.
-  Source := TPath.Combine(FFolder, 'Src');
+  mSource := TPath.Combine(FFolder, 'Src');
   TFile.WriteAllText(Path('Src/A.pas'), 'unit A;'#13#10'interface'#13#10'uses B;'#13#10'implementation'#13#10'end.');
   TFile.WriteAllText(Path('Src/B.pas'), 'unit B;'#13#10'interface'#13#10'implementation'#13#10'end.');
-  Older := Path('Stand/alt.json');
-  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
-    Older])));
-  Assert.Contains(TFile.ReadAllText(Older, TEncoding.UTF8), '"format": 2');
+  mOlder := Path('Stand/alt.json');
+  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', mSource, '--architecture',
+    mOlder])));
+  Assert.Contains(TFile.ReadAllText(mOlder, TEncoding.UTF8), '"format": 2');
   // Gleicher Stand: byteweise gleiche Datei, kein Fehler.
-  Second := Path('Stand/zweiter.json');
-  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
-    Second, '--compare', Older, '--output', FOutput])));
-  Assert.AreEqual(TFile.ReadAllText(Older, TEncoding.UTF8), TFile.ReadAllText(Second, TEncoding.UTF8));
+  mSecond := Path('Stand/zweiter.json');
+  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', mSource, '--architecture',
+    mSecond, '--compare', mOlder, '--output', FOutput])));
+  Assert.AreEqual(TFile.ReadAllText(mOlder, TEncoding.UTF8), TFile.ReadAllText(mSecond, TEncoding.UTF8));
   Assert.Contains(OutputText, 'Neue Zyklen: 0');
   TFile.WriteAllText(Path('Src/B.pas'), 'unit B;'#13#10'interface'#13#10'implementation'#13#10'uses A;'#13#10'end.');
-  Newer := Path('Stand/neu.json');
-  Assert.AreEqual(1, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
-    Newer, '--compare', Older, '--output', FOutput])), 'newCycle ist die Vorgabe');
+  mNewer := Path('Stand/neu.json');
+  Assert.AreEqual(1, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', mSource, '--architecture',
+    mNewer, '--compare', mOlder, '--output', FOutput])), 'newCycle ist die Vorgabe');
   Assert.Contains(OutputText, 'Neue Zyklen: 1');
   Assert.Contains(OutputText, 'Ergebnis: Abweichung newCycle');
-  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
-    Newer, '--compare', Older, '--fail-on', 'centralGrowth,subsystemChange', '--output', FOutput])));
-  Assert.AreEqual(3, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
-    Newer, '--compare', Older, '--fail-on', 'error'])), 'unbekannte Abweichung');
-  Assert.AreEqual(3, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
-    Newer, '--compare', Path('fehlt.json')])), 'Stand fehlt');
+  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', mSource, '--architecture',
+    mNewer, '--compare', mOlder, '--fail-on', 'centralGrowth,subsystemChange', '--output', FOutput])));
+  Assert.AreEqual(3, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', mSource, '--architecture',
+    mNewer, '--compare', mOlder, '--fail-on', 'error'])), 'unbekannte Abweichung');
+  Assert.AreEqual(3, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', mSource, '--architecture',
+    mNewer, '--compare', Path('fehlt.json')])), 'Stand fehlt');
   // architecture.failOn aus atlas.json ersetzt die Vorgabe newCycle. A und B liegen in eigenen Teilsystemen, der
   // Zyklus ist also zugleich eine neue Querverbindung: darum centralGrowth. Bericht mit architecture.baseline
   // bekommt den Abschnitt „Vergleich“.
   TFile.WriteAllText(Path('Src/atlas.json'), '{"architecture": {"failOn": ["centralGrowth"], "baseline": "' +
-    StringReplace(Older, '\', '/', [rfReplaceAll]) + '"}}');
-  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
-    Newer, '--compare', Older, '--output', FOutput])));
-  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
+    StringReplace(mOlder, '\', '/', [rfReplaceAll]) + '"}}');
+  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', mSource, '--architecture',
+    mNewer, '--compare', mOlder, '--output', FOutput])));
+  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', mSource, '--architecture',
     Path('bericht.md')])));
   Assert.Contains(TFile.ReadAllText(Path('bericht.md'), TEncoding.UTF8), '### Neue Zyklen (1)');
 end;
@@ -431,18 +431,18 @@ end;
 
 procedure TShellLinterTests.UpdatedBaselineHidesFindings;
 var
-  Baseline: string;
+  mBaseline: string;
 begin
-  Baseline := Path('baseline.json');
-  Assert.AreEqual(0, Run(['--check', Path('Src/Kaputt.pas'), '--update-baseline', '--baseline=' + Baseline]));
-  Assert.IsTrue(TFile.Exists(Baseline));
+  mBaseline := Path('baseline.json');
+  Assert.AreEqual(0, Run(['--check', Path('Src/Kaputt.pas'), '--update-baseline', '--baseline=' + mBaseline]));
+  Assert.IsTrue(TFile.Exists(mBaseline));
   // Nur Zähler auf stderr, keine Ausgabedatei.
   Assert.IsFalse(TFile.Exists(FOutput));
-  Assert.AreEqual(0, Run(['--check', Path('Src/Kaputt.pas'), '--format', 'json', '--baseline', Baseline]));
+  Assert.AreEqual(0, Run(['--check', Path('Src/Kaputt.pas'), '--format', 'json', '--baseline', mBaseline]));
   // Neue Treffer zählen weiter.
-  TFile.WriteAllText(Path('Src/Kaputt.pas'), StringReplace(BrokenUnit, 'end.',
+  TFile.WriteAllText(Path('Src/Kaputt.pas'), StringReplace(cBrokenUnit, 'end.',
     'procedure Q;'#13#10'begin'#13#10'  while do;'#13#10'end;'#13#10'end.', []));
-  Assert.AreEqual(1, Run(['--check', Path('Src/Kaputt.pas'), '--format', 'json', '--baseline', Baseline]));
+  Assert.AreEqual(1, Run(['--check', Path('Src/Kaputt.pas'), '--format', 'json', '--baseline', mBaseline]));
 end;
 
 procedure TShellLinterTests.DefaultBaselineBesideConfiguration;
@@ -454,7 +454,7 @@ end;
 
 procedure TShellLinterTests.IndexKnowsTypesOfOtherUnits;
 const
-  Dproj = '<?xml version="1.0" encoding="utf-8"?>'#13#10 +
+  cDproj = '<?xml version="1.0" encoding="utf-8"?>'#13#10 +
     '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10 +
     '  <PropertyGroup>'#13#10'    <MainSource>Lauf.dpr</MainSource>'#13#10 +
     '    <Config Condition="''$(Config)''==''''">Debug</Config>'#13#10 +
@@ -464,24 +464,24 @@ const
     '    <DCCReference Include="Contnrs.pas"/>'#13#10'    <DCCReference Include="Suche.pas"/>'#13#10 +
     '  </ItemGroup>'#13#10'</Project>'#13#10;
   // RTL-Stub ohne Namespace wie in den Quellen von Free Pascal.
-  Stub = 'unit Contnrs;'#13#10'interface'#13#10'type'#13#10'  TOrderedList = class(TObject)'#13#10 +
+  cStub = 'unit Contnrs;'#13#10'interface'#13#10'type'#13#10'  TOrderedList = class(TObject)'#13#10 +
     '  public'#13#10'    function Push(AItem: Pointer): Pointer;'#13#10'    function Pop: Pointer;'#13#10 +
     '  end;'#13#10'  TStack = class(TOrderedList)'#13#10'  end;'#13#10'  TObjectStack = class(TStack)'#13#10 +
     '  public'#13#10'    function Pop: TObject;'#13#10'  end;'#13#10'implementation'#13#10 +
     'function TOrderedList.Push(AItem: Pointer): Pointer;'#13#10'begin'#13#10'  Result := AItem;'#13#10'end;'#13#10 +
     'function TOrderedList.Pop: Pointer;'#13#10'begin'#13#10'  Result := nil;'#13#10'end;'#13#10 +
     'function TObjectStack.Pop: TObject;'#13#10'begin'#13#10'  Result := nil;'#13#10'end;'#13#10'end.'#13#10;
-  Suche = 'unit Suche;'#13#10'interface'#13#10'uses'#13#10'  Contnrs;'#13#10'type'#13#10'  TKnoten = class'#13#10 +
+  cSuche = 'unit Suche;'#13#10'interface'#13#10'uses'#13#10'  Contnrs;'#13#10'type'#13#10'  TKnoten = class'#13#10 +
     '  end;'#13#10'  TSuche = class'#13#10'  private'#13#10'    FOffen: TObjectStack;'#13#10'  public'#13#10 +
     '    procedure Lauf;'#13#10'  end;'#13#10'implementation'#13#10'procedure TSuche.Lauf;'#13#10'var'#13#10 +
     '  Knoten: TKnoten;'#13#10'begin'#13#10'  Knoten := TKnoten(FOffen.Pop);'#13#10'end;'#13#10'end.'#13#10;
-  Programm = 'program Lauf;'#13#10'uses'#13#10'  Suche in ''Suche.pas'';'#13#10'begin'#13#10'end.'#13#10;
+  cProgramm = 'program Lauf;'#13#10'uses'#13#10'  Suche in ''Suche.pas'';'#13#10'begin'#13#10'end.'#13#10;
 begin
   ForceDirectories(Path('Idx'));
-  TFile.WriteAllText(Path('Idx/Lauf.dproj'), Dproj);
-  TFile.WriteAllText(Path('Idx/Lauf.dpr'), Programm);
-  TFile.WriteAllText(Path('Idx/Contnrs.pas'), Stub);
-  TFile.WriteAllText(Path('Idx/Suche.pas'), Suche);
+  TFile.WriteAllText(Path('Idx/Lauf.dproj'), cDproj);
+  TFile.WriteAllText(Path('Idx/Lauf.dpr'), cProgramm);
+  TFile.WriteAllText(Path('Idx/Contnrs.pas'), cStub);
+  TFile.WriteAllText(Path('Idx/Suche.pas'), cSuche);
   TFile.WriteAllText(Path('Idx/atlas.json'), '{"rules": {"legacy-stack-queue": "info"}}');
   Assert.AreEqual(0, Run(['--check', Path('Idx/Lauf.dproj'), '--format', 'json', '--fail-on', 'never',
     '--units', 'Suche']));
@@ -493,12 +493,12 @@ end;
 
 procedure TShellLinterTests.ConfigurationFoundInParentFolder;
 const
-  UnitText = 'unit Tief;'#13#10'interface'#13#10'implementation'#13#10'procedure Lauf;'#13#10'begin'#13#10 +
+  cUnitText = 'unit Tief;'#13#10'interface'#13#10'implementation'#13#10'procedure Lauf;'#13#10'begin'#13#10 +
     '  with TObject.Create do'#13#10'    Free;'#13#10'end;'#13#10'end.'#13#10;
 begin
   ForceDirectories(Path('Repo/.git'));
   ForceDirectories(Path('Repo/Src/Tief'));
-  TFile.WriteAllText(Path('Repo/Src/Tief/Tief.pas'), UnitText);
+  TFile.WriteAllText(Path('Repo/Src/Tief/Tief.pas'), cUnitText);
   Assert.AreEqual(0, Run(['--check', Path('Repo/Src/Tief/Tief.pas'), '--format', 'json', '--fail-on', 'never',
     '--no-index']));
   Assert.IsTrue(Pos('"with-statement"', OutputText) > 0, OutputText);
@@ -510,19 +510,19 @@ end;
 
 procedure TShellLinterTests.InlineCompilerVersionWithoutInstallation;
 const
-  Dproj = '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10 +
+  cDproj = '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10 +
     '  <PropertyGroup><ProjectVersion>20.3</ProjectVersion>' +
     '<Config Condition="''$(Config)''==''''">Release</Config>' +
     '<Platform Condition="''$(Platform)''==''''">Win32</Platform></PropertyGroup>'#13#10 +
     '  <ItemGroup><DCCReference Include="T1.pas"/></ItemGroup>'#13#10'</Project>'#13#10;
-  UnitText = 'unit T1;'#13#10'interface'#13#10'type'#13#10'  TA = class'#13#10 +
+  cUnitText = 'unit T1;'#13#10'interface'#13#10'type'#13#10'  TA = class'#13#10 +
     '    F: {$IF CompilerVersion >= 36}Int64{$ELSE}Integer{$ENDIF};'#13#10'  end;'#13#10'implementation'#13#10 +
     '{$IF CompilerVersion >= 36}'#13#10'const A = 1;'#13#10'{$ELSE}'#13#10'const A = 2;'#13#10'{$IFEND}'#13#10 +
     'end.'#13#10;
 begin
   ForceDirectories(Path('Cv'));
-  TFile.WriteAllText(Path('Cv/T.dproj'), Dproj);
-  TFile.WriteAllText(Path('Cv/T1.pas'), UnitText);
+  TFile.WriteAllText(Path('Cv/T.dproj'), cDproj);
+  TFile.WriteAllText(Path('Cv/T1.pas'), cUnitText);
   Assert.AreEqual(0, Run(['--check', Path('Cv/T.dproj'), '--format', 'json', '--fail-on', 'never', '--no-index']));
   Assert.Contains(OutputText, 'T1.pas');
   Assert.IsFalse(Pos('"syntax"', OutputText) > 0, OutputText);
@@ -594,10 +594,10 @@ end;
 
 procedure TShellLinterTests.FormatWriteSkipsSyntaxErrors;
 begin
-  TFile.WriteAllText(Path('Src/Kaputt.pas'), StringReplace(BrokenUnit, '  if then;', '     if then;', []));
+  TFile.WriteAllText(Path('Src/Kaputt.pas'), StringReplace(cBrokenUnit, '  if then;', '     if then;', []));
   Assert.AreEqual(1, Run(['--check', Path('Src/Kaputt.pas'), '--format-write']));
   Assert.Contains(OutputText, 'Syntaxfehler, nicht formatiert');
-  Assert.AreEqual(StringReplace(BrokenUnit, '  if then;', '     if then;', []),
+  Assert.AreEqual(StringReplace(cBrokenUnit, '  if then;', '     if then;', []),
     TFile.ReadAllText(Path('Src/Kaputt.pas'), TEncoding.UTF8));
   Assert.AreEqual(1, Run(['--check', Path('Src/Kaputt.pas'), '--format-check']));
 end;

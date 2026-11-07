@@ -63,12 +63,12 @@ uses
 
 class function TShellBootstrap.ReadSourceText(const AFileName: string; out AText: string): Boolean;
 var
-  FileFormat: TFileFormat;
+  mFileFormat: TFileFormat;
 begin
   Result := (AFileName <> '') and FileExists(AFileName);
   if Result then
   begin
-    AText := TFileEncoding.LoadFromFile(AFileName, FileFormat);
+    AText := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
   end
   else
   begin
@@ -113,19 +113,19 @@ end;
 
 class function TShellBootstrap.GroupProjects(const ARoot: string; const ALogger: ILogger): TArray<string>;
 var
-  Groups: TArray<string>;
+  mGroups: TArray<string>;
 begin
   Result := nil;
   try
-    Groups := TDirectory.GetFiles(ARoot, '*.groupproj');
+    mGroups := TDirectory.GetFiles(ARoot, '*.groupproj');
   except
     // Nicht lesbare Ordner haben keine Gruppe.
     on Exception do
-      Groups := nil;
+      mGroups := nil;
   end;
-  if Length(Groups) = 1 then
+  if Length(mGroups) = 1 then
   begin
-    Result := LoadGroup(Groups[0], ALogger);
+    Result := LoadGroup(mGroups[0], ALogger);
   end;
 end;
 
@@ -146,7 +146,7 @@ end;
 
 class function TShellBootstrap.LoadGlobalSettings(const AFileName: string; const ALogger: ILogger): string;
 var
-  FileFormat: TFileFormat;
+  mFileFormat: TFileFormat;
 begin
   Result := '';
   if (AFileName = '') or not FileExists(AFileName) then
@@ -154,7 +154,7 @@ begin
     Exit;
   end;
   try
-    Result := TFileEncoding.LoadFromFile(AFileName, FileFormat);
+    Result := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
   except
     // Gerade geschrieben oder gesperrt: Der Server liest sie beim nächsten Ereignis erneut.
     on E: Exception do
@@ -170,14 +170,14 @@ end;
 
 class function TShellBootstrap.ProjectSettings(const ARoot: string): TServerSettings;
 var
-  Text: string;
-  Issues: TArray<TConfigurationIssue>;
+  mText: string;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  if not ReadSourceText(ExistingOrLegacyFile(ARoot, cConfigurationFileName, cLegacyConfigurationFileName), Text) then
+  if not ReadSourceText(ExistingOrLegacyFile(ARoot, cConfigurationFileName, cLegacyConfigurationFileName), mText) then
   begin
     Exit(TServerSettings.Default);
   end;
-  Result := TConfigurationParser.Parse(TConfigurationScopes.Filter(Text, TConfigurationScope.Project), Issues);
+  Result := TConfigurationParser.Parse(TConfigurationScopes.Filter(mText, TConfigurationScope.Project), mIssues);
 end;
 
 class function TShellBootstrap.TextLanguage(const ALocale, AGlobalText: string): TTextLanguage;

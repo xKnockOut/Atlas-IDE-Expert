@@ -26,55 +26,55 @@ uses
 
 class function TProcessInfo.ThreadCount: Integer;
 var
-  Snapshot: THandle;
-  Entry: TThreadEntry32;
-  ProcessId: DWORD;
+  mSnapshot: THandle;
+  mEntry: TThreadEntry32;
+  mProcessId: DWORD;
 begin
-  Snapshot := CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
-  if Snapshot = INVALID_HANDLE_VALUE then
+  mSnapshot := CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+  if mSnapshot = INVALID_HANDLE_VALUE then
   begin
     Exit(-1);
   end;
   try
-    ProcessId := GetCurrentProcessId;
+    mProcessId := GetCurrentProcessId;
     Result := 0;
-    Entry.dwSize := SizeOf(Entry);
-    if Thread32First(Snapshot, Entry) then
+    mEntry.dwSize := SizeOf(mEntry);
+    if Thread32First(mSnapshot, mEntry) then
       repeat
-        if Entry.th32OwnerProcessID = ProcessId then
+        if mEntry.th32OwnerProcessID = mProcessId then
         begin
           Inc(Result);
         end;
-      until not Thread32Next(Snapshot, Entry);
+      until not Thread32Next(mSnapshot, mEntry);
   finally
-    CloseHandle(Snapshot);
+    CloseHandle(mSnapshot);
   end;
 end;
 
 class function TProcessInfo.ThreadCpuMs: Int64;
 var
-  Creation, Exited, Kernel, User: TFileTime;
+  mCreation, mExited, mKernel, mUser: TFileTime;
 begin
-  if not GetThreadTimes(GetCurrentThread, Creation, Exited, Kernel, User) then
+  if not GetThreadTimes(GetCurrentThread, mCreation, mExited, mKernel, mUser) then
   begin
     Exit(-1);
   end;
   // FILETIME zählt in 100 ns.
-  Result := (Int64(Kernel.dwHighDateTime) shl 32 + Kernel.dwLowDateTime +
-    Int64(User.dwHighDateTime) shl 32 + User.dwLowDateTime) div 10000;
+  Result := (Int64(mKernel.dwHighDateTime) shl 32 + mKernel.dwLowDateTime +
+    Int64(mUser.dwHighDateTime) shl 32 + mUser.dwLowDateTime) div 10000;
 end;
 
 class function TProcessInfo.IdentityNames: TArray<string>;
 var
-  Name: string;
+  mName: string;
 begin
   Result := nil;
-  for Name in TArray<string>.Create(GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
+  for mName in TArray<string>.Create(GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
     GetEnvironmentVariable('USERDOMAIN')) do
   begin
-    if Name <> '' then
+    if mName <> '' then
     begin
-      Result := Result + [Name];
+      Result := Result + [mName];
     end;
   end;
 end;

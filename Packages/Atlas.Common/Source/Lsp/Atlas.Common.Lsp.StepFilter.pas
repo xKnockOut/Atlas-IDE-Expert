@@ -749,7 +749,7 @@ begin
   begin
     if mKind in ARoutine.Kinds then
     begin
-      mKinds.Add(TStepFilterNames.KindNames[mKind]);
+      mKinds.Add(TStepFilterNames.cKindNames[mKind]);
     end;
   end;
 end;
@@ -770,7 +770,7 @@ begin
   Result.AddPair('kinds', mKinds);
   for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
   begin
-    mKinds.AddPair(TStepFilterNames.KindNames[mKind], TJSONNumber.Create(ACounts.Kinds[mKind]));
+    mKinds.AddPair(TStepFilterNames.cKindNames[mKind], TJSONNumber.Create(ACounts.Kinds[mKind]));
   end;
   mPatterns := TJSONArray.Create;
   Result.AddPair('patterns', mPatterns);

@@ -127,9 +127,9 @@ type
   TAtlasTrackerIssue = record
   public const
     /// <summary>Höchstens so viele Labels werden gelesen und gespeichert.</summary>
-    MaxLabels = 6;
+    cMaxLabels = 6;
     /// <summary>Höchstens so viele Zeichen eines Titels werden gespeichert.</summary>
-    MaxTitle = 200;
+    cMaxTitle = 200;
   public
     /// <summary>Kennung wie im Tracker: "#753" (GitHub), "ATL-123" (YouTrack).</summary>
     Key: string;
@@ -227,15 +227,15 @@ type
   TAtlasTrackerDetails = record
   public const
     /// <summary>Höchstens so viele Kommentare werden gelesen.</summary>
-    MaxComments = 100;
+    cMaxComments = 100;
     /// <summary>Höchstens so viele Anhänge bzw. Verknüpfungen.</summary>
-    MaxAttachments = 50;
-    MaxLinks = 50;
+    cMaxAttachments = 50;
+    cMaxLinks = 50;
     /// <summary>Höchstens so viele Zeichen je Beschreibung bzw. Kommentar.</summary>
-    MaxText = 100000;
+    cMaxText = 100000;
     /// <summary>Längste Beschreibung, die Atlas zurückschreibt (#1273); länger: Invalid, nichts wird geschrieben.
     /// </summary>
-    MaxDescription = 1000000;
+    cMaxDescription = 1000000;
   public
     Key: string;
     Number: Integer;
@@ -302,8 +302,8 @@ type
   TAtlasTrackerDevelopment = record
   public const
     /// <summary>Höchstens so viele Pull Requests bzw. Änderungen.</summary>
-    MaxPulls = 20;
-    MaxChanges = 100;
+    cMaxPulls = 20;
+    cMaxChanges = 100;
   public
     /// <summary>Neueste zuerst.</summary>
     Pulls: TArray<TAtlasTrackerPull>;
@@ -361,10 +361,10 @@ type
   /// <summary>Was abgefragt wird; ohne Zugangsdaten.</summary>
   TAtlasTrackerTarget = record
   public const
-    GitHub = 'github';
-    YouTrack = 'youtrack';
+    cGitHub = 'github';
+    cYouTrack = 'youtrack';
     /// <summary>Adresse von GitHub, wenn .atlas keine nennt.</summary>
-    GitHubUrl = 'https://github.com';
+    cGitHubUrl = 'https://github.com';
   public
     /// <summary>"github" oder "youtrack".</summary>
     Provider: string;
@@ -571,7 +571,7 @@ type
   IAtlasTrackerDescriptions = interface
     ['{8A3E6D52-1F4B-4C97-B2E0-5D7A9C1F3E84}']
     /// <summary>Aktuelle Beschreibung von AKey (Markdown, ungekürzt, '' ohne). False mit AError, wenn sie nicht
-    /// gelesen werden konnte oder länger als TAtlasTrackerDetails.MaxDescription ist.</summary>
+    /// gelesen werden konnte oder länger als TAtlasTrackerDetails.cMaxDescription ist.</summary>
     function Description(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       ATimeoutMs: Integer; out AText: string; out AError: TAtlasCiFetchError): Boolean;
     /// <summary>Beschreibung von AKey durch AText ersetzen (YouTrack POST /api/issues/&lt;Kennung&gt;, GitHub PATCH
@@ -601,26 +601,26 @@ begin
 end;
 
 const
-  ChecksKeys: array[TAtlasTrackerChecks] of string = ('unknown', 'pending', 'success', 'failure');
-  LinkKindKeys: array[TAtlasTrackerLinkKind] of string = ('', 'dependsOn', 'blocks', 'subtask', 'parent',
+  cChecksKeys: array[TAtlasTrackerChecks] of string = ('unknown', 'pending', 'success', 'failure');
+  cLinkKindKeys: array[TAtlasTrackerLinkKind] of string = ('', 'dependsOn', 'blocks', 'subtask', 'parent',
     'duplicates', 'duplicatedBy', 'relates', 'mentioned', 'pullRequest');
 
 { TAtlasTrackerPullRequest }
 
 class function TAtlasTrackerPullRequest.ChecksKey(AChecks: TAtlasTrackerChecks): string;
 begin
-  Result := ChecksKeys[AChecks];
+  Result := cChecksKeys[AChecks];
 end;
 
 class function TAtlasTrackerPullRequest.ChecksOf(const AKey: string): TAtlasTrackerChecks;
 var
-  Checks: TAtlasTrackerChecks;
+  mChecks: TAtlasTrackerChecks;
 begin
-  for Checks := Low(TAtlasTrackerChecks) to High(TAtlasTrackerChecks) do
+  for mChecks := Low(TAtlasTrackerChecks) to High(TAtlasTrackerChecks) do
   begin
-    if SameText(ChecksKeys[Checks], AKey) then
+    if SameText(cChecksKeys[mChecks], AKey) then
     begin
-      Exit(Checks);
+      Exit(mChecks);
     end;
   end;
   Result := TAtlasTrackerChecks.Unknown;
@@ -630,7 +630,7 @@ end;
 
 class function TAtlasTrackerLink.KindKey(AKind: TAtlasTrackerLinkKind): string;
 begin
-  Result := LinkKindKeys[AKind];
+  Result := cLinkKindKeys[AKind];
 end;
 
 class function TAtlasTrackerLink.KindOf(const AKey: string): TAtlasTrackerLinkKind;
@@ -644,7 +644,7 @@ begin
   end;
   for mKind := Low(TAtlasTrackerLinkKind) to High(TAtlasTrackerLinkKind) do
   begin
-    if SameText(LinkKindKeys[mKind], AKey) then
+    if SameText(cLinkKindKeys[mKind], AKey) then
     begin
       Exit(mKind);
     end;
@@ -809,11 +809,11 @@ begin
   Result := TAtlasTrackerIssue.Empty;
   Result.Key := Key;
   Result.Number := Number;
-  Result.Title := Copy(Title, 1, TAtlasTrackerIssue.MaxTitle);
+  Result.Title := Copy(Title, 1, TAtlasTrackerIssue.cMaxTitle);
   mCount := Length(Labels);
-  if mCount > TAtlasTrackerIssue.MaxLabels then
+  if mCount > TAtlasTrackerIssue.cMaxLabels then
   begin
-    mCount := TAtlasTrackerIssue.MaxLabels;
+    mCount := TAtlasTrackerIssue.cMaxLabels;
   end;
   Result.Labels := Copy(Labels, 0, mCount);
   Result.State := State;
@@ -914,8 +914,8 @@ end;
 
 class function TAtlasTrackerTarget.Create(const AProvider, AUrl, AProject, AQuery: string): TAtlasTrackerTarget;
 var
-  Origin, Path: string;
-  Parts: TArray<string>;
+  mOrigin, mPath: string;
+  mParts: TArray<string>;
 begin
   Result.Provider := LowerCase(Trim(AProvider));
   Result.Url := Trim(AUrl);
@@ -926,40 +926,40 @@ begin
   Result.Project := TrimSlashes(AProject);
   Result.Query := Trim(AQuery);
   Result.Language := '';
-  if Result.Provider <> GitHub then
+  if Result.Provider <> cGitHub then
   begin
     Exit;
   end;
   if Result.Url = '' then
   begin
-    Result.Url := GitHubUrl;
+    Result.Url := cGitHubUrl;
   end;
   // "https://github.com/owner/repo" ohne Projekt: Projekt aus der Adresse.
-  Origin := Result.Server;
-  if Origin = '' then
+  mOrigin := Result.Server;
+  if mOrigin = '' then
   begin
     Exit;
   end;
-  Path := TrimSlashes(Copy(Result.Url, Length(Origin) + 1, MaxInt));
-  if Path = '' then
+  mPath := TrimSlashes(Copy(Result.Url, Length(mOrigin) + 1, MaxInt));
+  if mPath = '' then
   begin
     Exit;
   end;
-  Parts := Path.Split(['/']);
-  if Length(Parts) = 2 then
+  mParts := mPath.Split(['/']);
+  if Length(mParts) = 2 then
   begin
     if Result.Project = '' then
     begin
-      Result.Project := Path;
+      Result.Project := mPath;
     end;
-    Result.Url := Copy(Result.Url, 1, Length(Origin));
+    Result.Url := Copy(Result.Url, 1, Length(mOrigin));
   end;
 end;
 
 function TAtlasTrackerTarget.Configured: Boolean;
 begin
   Result := (Provider <> '') and (Server <> '');
-  if Result and (Provider = GitHub) then
+  if Result and (Provider = cGitHub) then
   begin
     Result := (Pos('/', Project) > 1) and (Pos('/', Project) < Length(Project));
   end;

@@ -110,7 +110,7 @@ type
   public const
     /// <summary>Höchstlänge der Namen in einem --run-Argument; darüber alle Tests (Windows erlaubt 32767 Zeichen
     /// je Befehlszeile).</summary>
-    MaxRunLength = 24000;
+    cMaxRunLength = 24000;
   public
     /// <summary>Voller Name für --run: Unit.Fixture bzw. Unit.Fixture.Methode (AMethod = '').</summary>
     class function TestName(const AUnitName, AFixture, AMethod: string): string; static;
@@ -393,26 +393,26 @@ end;
 
 function TDUnitXUnit.TestCount: Integer;
 var
-  Fixture: TDUnitXFixture;
+  mFixture: TDUnitXFixture;
 begin
   Result := 0;
-  for Fixture in Fixtures do
+  for mFixture in Fixtures do
   begin
-    Inc(Result, Length(Fixture.Tests));
+    Inc(Result, Length(mFixture.Tests));
   end;
 end;
 
 function TDUnitXUnit.Find(const AFixture, AMethod: string; out AFixtureIndex, ATestIndex: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   AFixtureIndex := -1;
   ATestIndex := -1;
-  for Index := 0 to High(Fixtures) do
+  for mIndex := 0 to High(Fixtures) do
   begin
-    if SameText(Fixtures[Index].Name, AFixture) then
+    if SameText(Fixtures[mIndex].Name, AFixture) then
     begin
-      AFixtureIndex := Index;
+      AFixtureIndex := mIndex;
       Break;
     end;
   end;
@@ -421,11 +421,11 @@ begin
   begin
     Exit;
   end;
-  for Index := 0 to High(Fixtures[AFixtureIndex].Tests) do
+  for mIndex := 0 to High(Fixtures[AFixtureIndex].Tests) do
   begin
-    if SameText(Fixtures[AFixtureIndex].Tests[Index].Method, AMethod) then
+    if SameText(Fixtures[AFixtureIndex].Tests[mIndex].Method, AMethod) then
     begin
-      ATestIndex := Index;
+      ATestIndex := mIndex;
       Exit;
     end;
   end;
@@ -433,24 +433,24 @@ end;
 
 function TDUnitXUnit.AtLine(ALine: Integer; out AFixtureIndex, ATestIndex: Integer): Boolean;
 var
-  FixtureIndex, TestIndex: Integer;
+  mFixtureIndex, mTestIndex: Integer;
 begin
   AFixtureIndex := -1;
   ATestIndex := -1;
-  for FixtureIndex := 0 to High(Fixtures) do
+  for mFixtureIndex := 0 to High(Fixtures) do
   begin
-    if (Fixtures[FixtureIndex].AttributeLine = ALine) or (Fixtures[FixtureIndex].Line = ALine) then
+    if (Fixtures[mFixtureIndex].AttributeLine = ALine) or (Fixtures[mFixtureIndex].Line = ALine) then
     begin
-      AFixtureIndex := FixtureIndex;
+      AFixtureIndex := mFixtureIndex;
       Exit(True);
     end;
-    for TestIndex := 0 to High(Fixtures[FixtureIndex].Tests) do
+    for mTestIndex := 0 to High(Fixtures[mFixtureIndex].Tests) do
     begin
-      if (Fixtures[FixtureIndex].Tests[TestIndex].AttributeLine = ALine) or
-        (Fixtures[FixtureIndex].Tests[TestIndex].Line = ALine) then
+      if (Fixtures[mFixtureIndex].Tests[mTestIndex].AttributeLine = ALine) or
+        (Fixtures[mFixtureIndex].Tests[mTestIndex].Line = ALine) then
       begin
-        AFixtureIndex := FixtureIndex;
-        ATestIndex := TestIndex;
+        AFixtureIndex := mFixtureIndex;
+        ATestIndex := mTestIndex;
         Exit(True);
       end;
     end;
@@ -460,27 +460,27 @@ end;
 
 function TDUnitXUnit.LineOf(const AFixture, AMethod: string): Integer;
 var
-  FixtureIndex, TestIndex: Integer;
+  mFixtureIndex, mTestIndex: Integer;
 begin
-  if not Find(AFixture, AMethod, FixtureIndex, TestIndex) then
+  if not Find(AFixture, AMethod, mFixtureIndex, mTestIndex) then
   begin
     Exit(-1);
   end;
-  if TestIndex < 0 then
+  if mTestIndex < 0 then
   begin
-    Exit(Fixtures[FixtureIndex].Line);
+    Exit(Fixtures[mFixtureIndex].Line);
   end;
-  Result := Fixtures[FixtureIndex].Tests[TestIndex].BodyLine;
+  Result := Fixtures[mFixtureIndex].Tests[mTestIndex].BodyLine;
   if Result < 0 then
   begin
-    Result := Fixtures[FixtureIndex].Tests[TestIndex].Line;
+    Result := Fixtures[mFixtureIndex].Tests[mTestIndex].Line;
   end;
 end;
 
 function TDUnitXUnit.CaseHasOwnLine(AFixtureIndex, ATestIndex, ACaseIndex: Integer): Boolean;
 var
-  Index: Integer;
-  Lines: TArray<Integer>;
+  mIndex: Integer;
+  mLines: TArray<Integer>;
 begin
   Result := False;
   if (AFixtureIndex < 0) or (AFixtureIndex > High(Fixtures)) or (ATestIndex < 0) or
@@ -488,15 +488,15 @@ begin
   begin
     Exit;
   end;
-  Lines := Fixtures[AFixtureIndex].Tests[ATestIndex].CaseLines;
-  if (ACaseIndex < 0) or (ACaseIndex > High(Lines)) or
-    (Lines[ACaseIndex] = Fixtures[AFixtureIndex].Tests[ATestIndex].Line) then
+  mLines := Fixtures[AFixtureIndex].Tests[ATestIndex].CaseLines;
+  if (ACaseIndex < 0) or (ACaseIndex > High(mLines)) or
+    (mLines[ACaseIndex] = Fixtures[AFixtureIndex].Tests[ATestIndex].Line) then
   begin
     Exit;
   end;
-  for Index := 0 to High(Lines) do
+  for mIndex := 0 to High(mLines) do
   begin
-    if (Index <> ACaseIndex) and (Lines[Index] = Lines[ACaseIndex]) then
+    if (mIndex <> ACaseIndex) and (mLines[mIndex] = mLines[ACaseIndex]) then
     begin
       Exit;
     end;
@@ -506,8 +506,8 @@ end;
 
 function TDUnitXUnit.MarkLine(AFixtureIndex, ATestIndex: Integer): Integer;
 var
-  Test: TDUnitXTest;
-  Index: Integer;
+  mTest: TDUnitXTest;
+  mIndex: Integer;
 begin
   Result := -1;
   if (AFixtureIndex < 0) or (AFixtureIndex > High(Fixtures)) then
@@ -522,14 +522,14 @@ begin
   begin
     Exit;
   end;
-  Test := Fixtures[AFixtureIndex].Tests[ATestIndex];
-  Result := Test.AttributeLine;
+  mTest := Fixtures[AFixtureIndex].Tests[ATestIndex];
+  Result := mTest.AttributeLine;
   // Steht dort ein Fall mit eigener Marke, rückt die Marke des Tests an die Deklaration.
-  for Index := 0 to High(Test.CaseLines) do
+  for mIndex := 0 to High(mTest.CaseLines) do
   begin
-    if (Test.CaseLines[Index] = Result) and CaseHasOwnLine(AFixtureIndex, ATestIndex, Index) then
+    if (mTest.CaseLines[mIndex] = Result) and CaseHasOwnLine(AFixtureIndex, ATestIndex, mIndex) then
     begin
-      Exit(Test.Line);
+      Exit(mTest.Line);
     end;
   end;
 end;
@@ -625,27 +625,27 @@ end;
 
 class function TDUnitXSource.AttributeOf(const AName: string): TDUnitXAttribute;
 const
-  Names: array[TDUnitXAttribute] of string = ('', 'TestFixture', 'Test', 'TestCase', 'Ignore', 'Category', 'Setup',
+  cNames: array[TDUnitXAttribute] of string = ('', 'TestFixture', 'Test', 'TestCase', 'Ignore', 'Category', 'Setup',
     'TearDown', 'SetupFixture', 'TearDownFixture');
 var
-  Name: string;
-  Kind: TDUnitXAttribute;
+  mName: string;
+  mKind: TDUnitXAttribute;
 begin
-  Name := Trim(AName);
+  mName := Trim(AName);
   // Qualifiziert (DUnitX.Attributes.TestFixture): nur der letzte Teil zählt.
-  if LastDelimiter('.', Name) > 0 then
+  if LastDelimiter('.', mName) > 0 then
   begin
-    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+    mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
   end;
-  if (Length(Name) > Length('Attribute')) and SameText(Copy(Name, Length(Name) - 8, 9), 'Attribute') then
+  if (Length(mName) > Length('Attribute')) and SameText(Copy(mName, Length(mName) - 8, 9), 'Attribute') then
   begin
-    SetLength(Name, Length(Name) - 9);
+    SetLength(mName, Length(mName) - 9);
   end;
-  for Kind := Succ(TDUnitXAttribute.None) to High(TDUnitXAttribute) do
+  for mKind := Succ(TDUnitXAttribute.None) to High(TDUnitXAttribute) do
   begin
-    if SameText(Name, Names[Kind]) then
+    if SameText(mName, cNames[mKind]) then
     begin
-      Exit(Kind);
+      Exit(mKind);
     end;
   end;
   Result := TDUnitXAttribute.None;
@@ -1414,113 +1414,113 @@ end;
 class function TDUnitXCommandLine.RunNames(const AUnit: TDUnitXUnit; AFixtureIndex, ATestIndex,
   ACaseIndex: Integer): TArray<string>;
 var
-  Fixture: TDUnitXFixture;
-  Test: TDUnitXTest;
-  Index: Integer;
-  Name: string;
-  Shadowed: Boolean;
-  Names: TArray<string>;
+  mFixture: TDUnitXFixture;
+  mTest: TDUnitXTest;
+  mIndex: Integer;
+  mName: string;
+  mShadowed: Boolean;
+  mNames: TArray<string>;
 
   procedure Add(const AName: string);
   var
-    Known: string;
+    mKnown: string;
   begin
-    for Known in Names do
+    for mKnown in mNames do
     begin
-      if SameText(Known, AName) then
+      if SameText(mKnown, AName) then
       begin
         Exit;
       end;
     end;
-    Names := Names + [AName];
+    mNames := mNames + [AName];
   end;
 
   procedure AddTest(const ATest: TDUnitXTest; ACase: Integer);
   var
-    CaseIndex: Integer;
+    mCaseIndex: Integer;
   begin
     // Ohne Fälle oder mit [Ignore] (DUnitX führt sie dann als einen Test): der Name der Methode.
     if (Length(ATest.Cases) = 0) or ATest.Ignored then
     begin
-      Add(TestName(AUnit.UnitName, Fixture.Name, ATest.Method));
+      Add(TestName(AUnit.UnitName, mFixture.Name, ATest.Method));
     end
     else if (ACase >= 0) and (ACase <= High(ATest.Cases)) then
     begin
-      Add(CaseName(AUnit.UnitName, Fixture.Name, ATest.Method, ATest.Cases[ACase]));
+      Add(CaseName(AUnit.UnitName, mFixture.Name, ATest.Method, ATest.Cases[ACase]));
     end
     else
     begin
-      for CaseIndex := 0 to High(ATest.Cases) do
+      for mCaseIndex := 0 to High(ATest.Cases) do
       begin
-        Add(CaseName(AUnit.UnitName, Fixture.Name, ATest.Method, ATest.Cases[CaseIndex]));
+        Add(CaseName(AUnit.UnitName, mFixture.Name, ATest.Method, ATest.Cases[mCaseIndex]));
       end;
     end;
   end;
 
 begin
   Result := nil;
-  Names := nil;
+  mNames := nil;
   if (AFixtureIndex < 0) or (AFixtureIndex > High(AUnit.Fixtures)) then
   begin
     Exit;
   end;
-  Fixture := AUnit.Fixtures[AFixtureIndex];
+  mFixture := AUnit.Fixtures[AFixtureIndex];
   if ATestIndex >= 0 then
   begin
-    if ATestIndex > High(Fixture.Tests) then
+    if ATestIndex > High(mFixture.Tests) then
     begin
       Exit;
     end;
-    Test := Fixture.Tests[ATestIndex];
-    AddTest(Test, ACaseIndex);
-    Exit(Names);
+    mTest := mFixture.Tests[ATestIndex];
+    AddTest(mTest, ACaseIndex);
+    Exit(mNames);
   end;
   // Die ganze Fixture: Unit.Fixture, außer eine andere Fixture der Unit beginnt mit demselben Namen.
-  Shadowed := False;
-  for Index := 0 to High(AUnit.Fixtures) do
+  mShadowed := False;
+  for mIndex := 0 to High(AUnit.Fixtures) do
   begin
-    Name := AUnit.Fixtures[Index].Name;
-    if (Index <> AFixtureIndex) and (Length(Name) > Length(Fixture.Name)) and
-      SameText(Copy(Name, 1, Length(Fixture.Name)), Fixture.Name) then
+    mName := AUnit.Fixtures[mIndex].Name;
+    if (mIndex <> AFixtureIndex) and (Length(mName) > Length(mFixture.Name)) and
+      SameText(Copy(mName, 1, Length(mFixture.Name)), mFixture.Name) then
     begin
-      Shadowed := True;
+      mShadowed := True;
     end;
   end;
-  if not Shadowed then
+  if not mShadowed then
   begin
-    Result := [TestName(AUnit.UnitName, Fixture.Name, '')];
+    Result := [TestName(AUnit.UnitName, mFixture.Name, '')];
     Exit;
   end;
-  for Test in Fixture.Tests do
+  for mTest in mFixture.Tests do
   begin
-    AddTest(Test, -1);
+    AddTest(mTest, -1);
   end;
-  Result := Names;
+  Result := mNames;
 end;
 
 class function TDUnitXCommandLine.Arguments(const AResultFile: string; const ATests: TArray<string>): TArray<string>;
 var
-  Run: string;
-  Test: string;
+  mRun: string;
+  mTest: string;
 begin
   // Nur Optionen, die alle DUnitX-Fassungen seit RAD Studio 10 kennen; eine unbekannte Option lässt das
   // Testprogramm ohne Lauf enden (TDUnitX.CheckCommandLine).
   Result := ['--exitbehavior:Continue', '--xmlfile:' + AResultFile];
-  Run := '';
-  for Test in ATests do
+  mRun := '';
+  for mTest in ATests do
   begin
-    if Test <> '' then
+    if mTest <> '' then
     begin
-      if Run <> '' then
+      if mRun <> '' then
       begin
-        Run := Run + ',';
+        mRun := mRun + ',';
       end;
-      Run := Run + Test;
+      mRun := mRun + mTest;
     end;
   end;
-  if (Run <> '') and (Length(Run) <= MaxRunLength) then
+  if (mRun <> '') and (Length(mRun) <= cMaxRunLength) then
   begin
-    Result := Result + ['--run:' + Run];
+    Result := Result + ['--run:' + mRun];
   end;
 end;
 

@@ -16,7 +16,7 @@ type
   TAtlasNotesList = class
   public const
     /// <summary>Besitzer der Liste im Ergebnisfenster.</summary>
-    Owner = 'notes';
+    cOwner = 'notes';
   public
     /// <summary>Gruppe: "Kunde.pas (2)" bzw. "Verwaist (1)".</summary>
     class function GroupText(const AGroup: TAtlasNoteGroup): string; static;
@@ -68,7 +68,7 @@ var
   mItem: TAtlasResultsItem;
 begin
   Result := Default(TAtlasResultsItemList);
-  Result.Owner := Owner;
+  Result.Owner := cOwner;
   Result.Title := ATitle;
   Result.SelectId := ASelectId;
   Result.EditCaption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesEdit);

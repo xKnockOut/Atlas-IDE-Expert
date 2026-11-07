@@ -90,206 +90,206 @@ end;
 
 procedure TAtlasDebugExceptionsFrameTests.CellsShowCountAndIgnored;
 var
-  Entry: TAtlasDebugException;
-  Texts: TArray<string>;
+  mEntry: TAtlasDebugException;
+  mTexts: TArray<string>;
 begin
-  Entry := Sample(EncodeTime(14, 3, 7, 0), 'EConvertError', 'kein Integer', 'C:\P\Kunde.pas', 10);
-  Entry.Count := 4;
-  Texts := TAtlasDebugExceptionsFrame.Cells(Entry, False);
-  Assert.AreEqual(6, Integer(Length(Texts)));
-  Assert.AreEqual('14:03:07', Texts[0]);
-  Assert.AreEqual('EConvertError', Texts[1]);
-  Assert.AreEqual('kein Integer', Texts[2]);
-  Assert.AreEqual('4', Texts[3]);
-  Assert.AreEqual('Kunde.pas:10', Texts[4]);
-  Assert.AreEqual('Hauptthread 77', Texts[5]);
-  Texts := TAtlasDebugExceptionsFrame.Cells(Entry, True);
-  Assert.AreEqual('4 · ignoriert', Texts[3]);
+  mEntry := Sample(EncodeTime(14, 3, 7, 0), 'EConvertError', 'kein Integer', 'C:\P\Kunde.pas', 10);
+  mEntry.Count := 4;
+  mTexts := TAtlasDebugExceptionsFrame.Cells(mEntry, False);
+  Assert.AreEqual(6, Integer(Length(mTexts)));
+  Assert.AreEqual('14:03:07', mTexts[0]);
+  Assert.AreEqual('EConvertError', mTexts[1]);
+  Assert.AreEqual('kein Integer', mTexts[2]);
+  Assert.AreEqual('4', mTexts[3]);
+  Assert.AreEqual('Kunde.pas:10', mTexts[4]);
+  Assert.AreEqual('Hauptthread 77', mTexts[5]);
+  mTexts := TAtlasDebugExceptionsFrame.Cells(mEntry, True);
+  Assert.AreEqual('4 · ignoriert', mTexts[3]);
 end;
 
 procedure TAtlasDebugExceptionsFrameTests.ShowsRowsNewestFirst;
 var
-  Host: TForm;
-  Frame: TAtlasDebugExceptionsFrame;
-  History: TAtlasDebugExceptionHistory;
-  Ignore: TAtlasDebugIgnoreList;
+  mHost: TForm;
+  mFrame: TAtlasDebugExceptionsFrame;
+  mHistory: TAtlasDebugExceptionHistory;
+  mIgnore: TAtlasDebugIgnoreList;
 begin
-  History := SampleHistory;
-  Host := TForm.CreateNew(nil);
+  mHistory := SampleHistory;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasDebugExceptionsFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.HandleNeeded;
-    Ignore := TAtlasDebugIgnoreList.Empty;
-    Ignore.AddClass('EAbort');
-    Frame.SetHistory(History, Ignore);
-    Assert.AreEqual(6, Integer(Frame.List.Columns.Count));
-    Assert.AreEqual('Klasse', Frame.List.Columns[1].Caption);
-    Assert.AreEqual(2, Integer(Frame.List.Items.Count));
-    Assert.AreEqual('10:09:00', Frame.List.Items[0].Caption, 'zuletzt gesehen zuerst');
-    Assert.AreEqual('2', Frame.List.Items[0].SubItems[2]);
-    Assert.AreEqual('1 · ignoriert', Frame.List.Items[1].SubItems[2]);
-    Assert.AreEqual('Unit1.Laden', Frame.List.Items[1].SubItems[3], 'ohne Datei die Routine');
-    Assert.AreEqual('2 Einträge, 3 Exceptions in dieser Sitzung', Frame.SummaryLabel.Caption);
-    Assert.AreEqual(3, Integer(Frame.ClassBox.Items.Count), 'Alle Klassen und zwei Klassen');
-    Assert.AreEqual('Alle Klassen', Frame.ClassBox.Items[0]);
-    Assert.IsFalse(Frame.EmptyLabel.Visible);
+    mFrame := TAtlasDebugExceptionsFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.HandleNeeded;
+    mIgnore := TAtlasDebugIgnoreList.Empty;
+    mIgnore.AddClass('EAbort');
+    mFrame.SetHistory(mHistory, mIgnore);
+    Assert.AreEqual(6, Integer(mFrame.List.Columns.Count));
+    Assert.AreEqual('Klasse', mFrame.List.Columns[1].Caption);
+    Assert.AreEqual(2, Integer(mFrame.List.Items.Count));
+    Assert.AreEqual('10:09:00', mFrame.List.Items[0].Caption, 'zuletzt gesehen zuerst');
+    Assert.AreEqual('2', mFrame.List.Items[0].SubItems[2]);
+    Assert.AreEqual('1 · ignoriert', mFrame.List.Items[1].SubItems[2]);
+    Assert.AreEqual('Unit1.Laden', mFrame.List.Items[1].SubItems[3], 'ohne Datei die Routine');
+    Assert.AreEqual('2 Einträge, 3 Exceptions in dieser Sitzung', mFrame.SummaryLabel.Caption);
+    Assert.AreEqual(3, Integer(mFrame.ClassBox.Items.Count), 'Alle Klassen und zwei Klassen');
+    Assert.AreEqual('Alle Klassen', mFrame.ClassBox.Items[0]);
+    Assert.IsFalse(mFrame.EmptyLabel.Visible);
   finally
-    Host.Free;
-    History.Free;
+    mHost.Free;
+    mHistory.Free;
   end;
 end;
 
 procedure TAtlasDebugExceptionsFrameTests.FiltersByTextAndClass;
 var
-  Host: TForm;
-  Frame: TAtlasDebugExceptionsFrame;
-  History: TAtlasDebugExceptionHistory;
+  mHost: TForm;
+  mFrame: TAtlasDebugExceptionsFrame;
+  mHistory: TAtlasDebugExceptionHistory;
 begin
-  History := SampleHistory;
-  Host := TForm.CreateNew(nil);
+  mHistory := SampleHistory;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasDebugExceptionsFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.HandleNeeded;
-    Frame.SetHistory(History, TAtlasDebugIgnoreList.Empty);
-    Frame.Filter.Text := 'kunde integer';
-    Assert.AreEqual(1, Integer(Frame.List.Items.Count));
-    Assert.AreEqual('EConvertError', Frame.Shown[0].ExceptionClass);
-    Frame.Filter.Text := '';
-    Frame.ClassBox.ItemIndex := 1;
-    Frame.ClassBox.OnChange(Frame.ClassBox);
-    Assert.AreEqual(1, Integer(Frame.List.Items.Count));
-    Assert.AreEqual('EAbort', Frame.Shown[0].ExceptionClass, 'Klassen sortiert: EAbort zuerst');
+    mFrame := TAtlasDebugExceptionsFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.HandleNeeded;
+    mFrame.SetHistory(mHistory, TAtlasDebugIgnoreList.Empty);
+    mFrame.Filter.Text := 'kunde integer';
+    Assert.AreEqual(1, Integer(mFrame.List.Items.Count));
+    Assert.AreEqual('EConvertError', mFrame.Shown[0].ExceptionClass);
+    mFrame.Filter.Text := '';
+    mFrame.ClassBox.ItemIndex := 1;
+    mFrame.ClassBox.OnChange(mFrame.ClassBox);
+    Assert.AreEqual(1, Integer(mFrame.List.Items.Count));
+    Assert.AreEqual('EAbort', mFrame.Shown[0].ExceptionClass, 'Klassen sortiert: EAbort zuerst');
     // Neuer Verlauf: die gewählte Klasse bleibt.
-    Frame.SetHistory(History, TAtlasDebugIgnoreList.Empty);
-    Assert.AreEqual(1, Frame.ClassBox.ItemIndex);
+    mFrame.SetHistory(mHistory, TAtlasDebugIgnoreList.Empty);
+    Assert.AreEqual(1, mFrame.ClassBox.ItemIndex);
   finally
-    Host.Free;
-    History.Free;
+    mHost.Free;
+    mHistory.Free;
   end;
 end;
 
 procedure TAtlasDebugExceptionsFrameTests.EmptyHistoryShowsHint;
 var
-  Host: TForm;
-  Frame: TAtlasDebugExceptionsFrame;
+  mHost: TForm;
+  mFrame: TAtlasDebugExceptionsFrame;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasDebugExceptionsFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.HandleNeeded;
-    Frame.SetHistory(nil, TAtlasDebugIgnoreList.Empty);
-    Assert.IsTrue(Frame.EmptyLabel.Visible);
-    Assert.IsFalse(Frame.List.Visible);
+    mFrame := TAtlasDebugExceptionsFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.HandleNeeded;
+    mFrame.SetHistory(nil, TAtlasDebugIgnoreList.Empty);
+    Assert.IsTrue(mFrame.EmptyLabel.Visible);
+    Assert.IsFalse(mFrame.List.Visible);
     // Erst der Zustand, dann was das Fenster sammelt und wie man es bedient.
-    Assert.IsTrue(string(Frame.EmptyLabel.Caption).StartsWith('Noch keine Exception in dieser Debug-Sitzung.'),
-      Frame.EmptyLabel.Caption);
-    Assert.IsTrue(Pos('Doppelklick', Frame.EmptyLabel.Caption) > 0, Frame.EmptyLabel.Caption);
-    Assert.IsTrue(Pos('Kontextmenü', Frame.EmptyLabel.Caption) > 0, Frame.EmptyLabel.Caption);
+    Assert.IsTrue(string(mFrame.EmptyLabel.Caption).StartsWith('Noch keine Exception in dieser Debug-Sitzung.'),
+      mFrame.EmptyLabel.Caption);
+    Assert.IsTrue(Pos('Doppelklick', mFrame.EmptyLabel.Caption) > 0, mFrame.EmptyLabel.Caption);
+    Assert.IsTrue(Pos('Kontextmenü', mFrame.EmptyLabel.Caption) > 0, mFrame.EmptyLabel.Caption);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasDebugExceptionsFrameTests.EnterOpensOnlyWithSource;
 var
-  Host: TForm;
-  Frame: TAtlasDebugExceptionsFrame;
-  History: TAtlasDebugExceptionHistory;
-  Opened, Copied: string;
-  Key: Word;
+  mHost: TForm;
+  mFrame: TAtlasDebugExceptionsFrame;
+  mHistory: TAtlasDebugExceptionHistory;
+  mOpened, mCopied: string;
+  mKey: Word;
 begin
-  History := SampleHistory;
-  Host := TForm.CreateNew(nil);
+  mHistory := SampleHistory;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasDebugExceptionsFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.HandleNeeded;
-    Frame.SetHistory(History, TAtlasDebugIgnoreList.Empty);
-    Opened := '';
-    Copied := '';
-    Frame.OnOpen :=
+    mFrame := TAtlasDebugExceptionsFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.HandleNeeded;
+    mFrame.SetHistory(mHistory, TAtlasDebugIgnoreList.Empty);
+    mOpened := '';
+    mCopied := '';
+    mFrame.OnOpen :=
       procedure(AException: TAtlasDebugException)
       begin
-        Opened := AException.FileName;
+        mOpened := AException.FileName;
       end;
-    Frame.OnCopy :=
+    mFrame.OnCopy :=
       procedure(AException: TAtlasDebugException)
       begin
-        Copied := AException.ExceptionClass;
+        mCopied := AException.ExceptionClass;
       end;
-    Frame.List.Items[1].Selected := True;
-    Key := VK_RETURN;
-    Frame.List.OnKeyDown(Frame.List, Key, []);
-    Assert.AreEqual('', Opened, 'ohne Quelltext kein Sprung');
-    Key := Ord('C');
-    Frame.List.OnKeyDown(Frame.List, Key, [ssCtrl]);
-    Assert.AreEqual('EAbort', Copied);
-    Frame.List.Items[0].Selected := True;
-    Key := VK_RETURN;
-    Frame.List.OnKeyDown(Frame.List, Key, []);
-    Assert.AreEqual('C:\P\Kunde.pas', Opened);
-    Assert.AreEqual(0, Integer(Key));
+    mFrame.List.Items[1].Selected := True;
+    mKey := VK_RETURN;
+    mFrame.List.OnKeyDown(mFrame.List, mKey, []);
+    Assert.AreEqual('', mOpened, 'ohne Quelltext kein Sprung');
+    mKey := Ord('C');
+    mFrame.List.OnKeyDown(mFrame.List, mKey, [ssCtrl]);
+    Assert.AreEqual('EAbort', mCopied);
+    mFrame.List.Items[0].Selected := True;
+    mKey := VK_RETURN;
+    mFrame.List.OnKeyDown(mFrame.List, mKey, []);
+    Assert.AreEqual('C:\P\Kunde.pas', mOpened);
+    Assert.AreEqual(0, Integer(mKey));
   finally
-    Host.Free;
-    History.Free;
+    mHost.Free;
+    mHistory.Free;
   end;
 end;
 
 procedure TAtlasDebugExceptionsFrameTests.StackGroupsLibraryFrames;
 var
-  Host: TForm;
-  Frame: TAtlasDebugExceptionsFrame;
-  History: TAtlasDebugExceptionHistory;
-  Entry: TAtlasDebugException;
-  Own: TAtlasDebugFrame;
-  Opened: string;
+  mHost: TForm;
+  mFrame: TAtlasDebugExceptionsFrame;
+  mHistory: TAtlasDebugExceptionHistory;
+  mEntry: TAtlasDebugException;
+  mOwn: TAtlasDebugFrame;
+  mOpened: string;
 begin
-  History := TAtlasDebugExceptionHistory.Create;
-  Host := TForm.CreateNew(nil);
+  mHistory := TAtlasDebugExceptionHistory.Create;
+  mHost := TForm.CreateNew(nil);
   try
-    Entry := Sample(EncodeTime(10, 0, 0, 0), 'EConvertError', 'kein Integer', 'C:\P\Kunde.pas', 10);
-    Own := TAtlasDebugFrame.Create('Kunde.TKunde.Laden', 'C:\P\Kunde.pas', 10);
-    Own.Own := True;
-    Entry.Frames := TArray<TAtlasDebugFrame>.Create(
+    mEntry := Sample(EncodeTime(10, 0, 0, 0), 'EConvertError', 'kein Integer', 'C:\P\Kunde.pas', 10);
+    mOwn := TAtlasDebugFrame.Create('Kunde.TKunde.Laden', 'C:\P\Kunde.pas', 10);
+    mOwn.Own := True;
+    mEntry.Frames := TArray<TAtlasDebugFrame>.Create(
       TAtlasDebugFrame.Create(':7714C3E2 KERNELBASE.RaiseException', '', 0),
-      TAtlasDebugFrame.Create('System.SysUtils.StrToInt', '', 0), Own);
-    History.Add(Entry);
-    Frame := TAtlasDebugExceptionsFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.HandleNeeded;
-    Frame.Stack.JustMyCode := True;
-    Frame.SetHistory(History, TAtlasDebugIgnoreList.Empty);
-    Opened := '';
-    Frame.Stack.OnOpenFrame :=
+      TAtlasDebugFrame.Create('System.SysUtils.StrToInt', '', 0), mOwn);
+    mHistory.Add(mEntry);
+    mFrame := TAtlasDebugExceptionsFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.HandleNeeded;
+    mFrame.Stack.JustMyCode := True;
+    mFrame.SetHistory(mHistory, TAtlasDebugIgnoreList.Empty);
+    mOpened := '';
+    mFrame.Stack.OnOpenFrame :=
       procedure(AFrame: TAtlasDebugFrame)
       begin
-        Opened := AFrame.FileName + ':' + IntToStr(AFrame.Line);
+        mOpened := AFrame.FileName + ':' + IntToStr(AFrame.Line);
       end;
-    Assert.AreEqual(0, Integer(Frame.Stack.List.Items.Count), 'ohne Auswahl kein Stapel');
-    Frame.List.Items[0].Selected := True;
-    Assert.AreEqual(2, Integer(Frame.Stack.List.Items.Count));
-    Assert.AreEqual('… 2 Bibliotheksrahmen', Frame.Stack.List.Items[0].Caption);
-    Assert.AreEqual('Kunde.pas:10', Frame.Stack.List.Items[1].SubItems[0]);
-    Frame.Stack.OpenRow(1);
-    Assert.AreEqual('C:\P\Kunde.pas:10', Opened);
+    Assert.AreEqual(0, Integer(mFrame.Stack.List.Items.Count), 'ohne Auswahl kein Stapel');
+    mFrame.List.Items[0].Selected := True;
+    Assert.AreEqual(2, Integer(mFrame.Stack.List.Items.Count));
+    Assert.AreEqual('… 2 Bibliotheksrahmen', mFrame.Stack.List.Items[0].Caption);
+    Assert.AreEqual('Kunde.pas:10', mFrame.Stack.List.Items[1].SubItems[0]);
+    mFrame.Stack.OpenRow(1);
+    Assert.AreEqual('C:\P\Kunde.pas:10', mOpened);
     // Gruppe aufklappen: drei Zeilen, die ersten beiden abgeschwächt.
-    Frame.Stack.OpenRow(0);
-    Assert.AreEqual(3, Integer(Frame.Stack.List.Items.Count));
-    Assert.IsTrue(Frame.Stack.Rows[0].Faded);
-    Assert.IsFalse(Frame.Stack.Rows[2].Faded);
-    Opened := '';
-    Frame.Stack.OpenRow(0);
-    Assert.AreEqual('', Opened, 'Rahmen ohne Quelltext springt nicht');
+    mFrame.Stack.OpenRow(0);
+    Assert.AreEqual(3, Integer(mFrame.Stack.List.Items.Count));
+    Assert.IsTrue(mFrame.Stack.Rows[0].Faded);
+    Assert.IsFalse(mFrame.Stack.Rows[2].Faded);
+    mOpened := '';
+    mFrame.Stack.OpenRow(0);
+    Assert.AreEqual('', mOpened, 'Rahmen ohne Quelltext springt nicht');
     // Ohne „Nur eigener Code“ jeder Rahmen einzeln.
-    Frame.Stack.JustMyCode := False;
-    Assert.AreEqual(3, Integer(Frame.Stack.List.Items.Count));
-    Assert.IsFalse(Frame.Stack.Rows[0].Faded);
+    mFrame.Stack.JustMyCode := False;
+    Assert.AreEqual(3, Integer(mFrame.Stack.List.Items.Count));
+    Assert.IsFalse(mFrame.Stack.Rows[0].Faded);
   finally
-    Host.Free;
-    History.Free;
+    mHost.Free;
+    mHistory.Free;
   end;
 end;
 

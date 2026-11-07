@@ -238,7 +238,8 @@ begin
   // Die Seite hat die Textfelder gespeichert; hier nur die einheitliche Form.
   AValues.WriteString(cVisualizerNameFieldsKey,
     TAtlasVisualizerSettings.NormalizeNameFields(AValues.ReadString(cVisualizerNameFieldsKey)));
-  AValues.WriteString(cStepFilterPatternsKey, TStepFilterNames.NormalizePatterns(AValues.ReadString(cStepFilterPatternsKey)));
+  AValues.WriteString(cStepFilterPatternsKey,
+    TStepFilterNames.NormalizePatterns(AValues.ReadString(cStepFilterPatternsKey)));
   AValues.WriteString(cBreakExcludedKey,
     TAtlasEventBreakSettings.NormalizeExcluded(AValues.ReadString(cBreakExcludedKey)));
   AValues.WriteString(cOwnCodeFoldersKey, TAtlasFolderList.Text(AValues.ReadString(cOwnCodeFoldersKey)));

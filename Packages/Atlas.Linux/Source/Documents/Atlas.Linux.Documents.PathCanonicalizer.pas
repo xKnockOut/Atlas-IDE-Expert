@@ -20,26 +20,26 @@ type
 implementation
 
 const
-  PathMax = 4096;
+  cPathMax = 4096;
 
 function realpath(APath, AResolved: PAnsiChar): PAnsiChar; cdecl; external 'c' name 'realpath';
 
 class function TLinuxPathCanonicalizer.Canonicalize(const APath: string): string;
 var
-  Source: UTF8String;
-  Buffer: array[0..PathMax] of AnsiChar;
+  mSource: UTF8String;
+  mBuffer: array[0..cPathMax] of AnsiChar;
 begin
   Result := APath;
   if APath = '' then
   begin
     Exit;
   end;
-  Source := UTF8String(APath);
-  if realpath(PAnsiChar(Source), @Buffer[0]) = nil then
+  mSource := UTF8String(APath);
+  if realpath(PAnsiChar(mSource), @mBuffer[0]) = nil then
   begin
     Exit;
   end;
-  Result := string(UTF8String(PAnsiChar(@Buffer[0])));
+  Result := string(UTF8String(PAnsiChar(@mBuffer[0])));
 end;
 
 end.

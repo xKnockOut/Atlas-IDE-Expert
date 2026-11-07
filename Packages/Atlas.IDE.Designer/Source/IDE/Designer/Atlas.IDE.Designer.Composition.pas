@@ -86,7 +86,7 @@ begin
   Result := Default(TAtlasModuleInfo);
   Result.Id := ModuleId;
   Result.Name := 'Designer';
-  Result.Version := TAtlasVersion.Version;
+  Result.Version := TAtlasVersion.cVersion;
   Result.Handle := HInstance;
   // Die Leiste lief mit den Editorbefehlen schon im abgesicherten Start.
   Result.MinLevel := TAtlasSafeLevel.Safe;

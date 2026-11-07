@@ -27,7 +27,7 @@ type
   TAtlasIdeIssueChecklists = class
   public const
     /// <summary>So lange gilt der Fortschritt einer Checkliste im Zwischenspeicher fürs Statusfeld (#1273).</summary>
-    PrefetchMinutes = 10;
+    cPrefetchMinutes = 10;
   private
     FContext: TAtlasIdeIssueContext;
     /// <summary>Das Issue neu laden (Beschreibung wurde inzwischen geändert).</summary>
@@ -123,7 +123,7 @@ var
 begin
   Result := Default(TChecklistResult);
   Result.Error := TAtlasCiFetchError.Network;
-  if not AJob.Editor.Description(AJob.Entry.Target, AJob.Transport, AJob.Entry.Key, TAtlasIssuePreview.TimeoutMs,
+  if not AJob.Editor.Description(AJob.Entry.Target, AJob.Transport, AJob.Entry.Key, TAtlasIssuePreview.cTimeoutMs,
     mCurrent, Result.Error) then
   begin
     Exit;
@@ -144,7 +144,7 @@ begin
   else
   begin
     Result.Applied := AJob.Editor.UpdateDescription(AJob.Entry.Target, AJob.Transport, AJob.Entry.Key, Result.Text,
-      TAtlasIssuePreview.TimeoutMs, Result.Error);
+      TAtlasIssuePreview.cTimeoutMs, Result.Error);
     // Nur eine Ablehnung beim Schreiben heißt „keine Schreibrechte“; Lesefehler nicht.
     Result.Denied := not Result.Applied and (Result.Error = TAtlasCiFetchError.Unauthorized);
   end;
@@ -324,11 +324,11 @@ var
 begin
   mNow := TAtlasIdeIssueContext.NowUtc;
   Result := AOwner.FContext.Cache.Get(AEntry.Target, AEntry.Key, mNow, mDetails) and
-    (mNow - mDetails.Fetched < TAtlasIdeIssueChecklists.PrefetchMinutes / MinsPerDay);
+    (mNow - mDetails.Fetched < TAtlasIdeIssueChecklists.cPrefetchMinutes / MinsPerDay);
   if not Result then
   begin
     Result := SameText(AOwner.FPrefetchKey, ReadOnlyKey(AEntry)) and
-      (mNow - AOwner.FPrefetchAt < TAtlasIdeIssueChecklists.PrefetchMinutes / MinsPerDay);
+      (mNow - AOwner.FPrefetchAt < TAtlasIdeIssueChecklists.cPrefetchMinutes / MinsPerDay);
   end;
 end;
 
@@ -373,7 +373,7 @@ begin
       mResult := TAtlasTrackerDetails.Empty;
       mOk := False;
       try
-        mOk := mProvider.Details(TAtlasTrackerCall.Create(mEntry.Target, mTransport, TAtlasIssuePreview.TimeoutMs),
+        mOk := mProvider.Details(TAtlasTrackerCall.Create(mEntry.Target, mTransport, TAtlasIssuePreview.cTimeoutMs),
           mEntry.Key, mComments, mResult, mError);
       except
         on Exception do

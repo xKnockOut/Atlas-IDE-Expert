@@ -190,7 +190,7 @@ begin
   FFake.Files.Damage(cTarget + '\Win32\Atlas.IDE.Search370.bpl');
   mOutcome := Apply(nil);
   Assert.IsTrue(mOutcome.Kind = TUpdateOutcomeKind.RolledBack);
-  Assert.AreEqual(TUpdateErrors.CopyFailed, mOutcome.Reason);
+  Assert.AreEqual(TUpdateErrors.cCopyFailed, mOutcome.Reason);
   Assert.AreEqual('server 2.0.0', FFake.Files.ReadText(cTarget + '\AtlasServer.exe'));
   Assert.AreEqual('base 2.0.0', FFake.Files.ReadText(cTarget + '\Win32\Atlas.IDE.Base370.bpl'));
   Assert.AreEqual(mBefore, FFake.Registry.Dump(cKnown));

@@ -522,7 +522,8 @@ var
   mError: string;
 begin
   FServices.Progress.Start(cTexts[TCompileHostText.CompilingIde].Text);
-  if not FServices.IdeCompiler.Build(AJob.Settings.IdeCommand, AJob.Project, AJob.Platform, mMessages, mSucceeded, mError) then
+  if not FServices.IdeCompiler.Build(AJob.Settings.IdeCommand, AJob.Project, AJob.Platform, mMessages, mSucceeded,
+    mError) then
   begin
     Unavailable(TCompilerBackendChoice.Unavailable(mError, cTexts[TCompileHostText.CheckSetup].Text), True);
     FServices.Progress.Finish(cTexts[TCompileHostText.Failed].Text);
