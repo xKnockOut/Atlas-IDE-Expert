@@ -292,14 +292,14 @@ begin
   inherited Create(AOwner);
   // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
   Name := '';
-  FValue.Kinds := TStepFilterNames.DefaultKinds;
+  FValue.Kinds := TStepFilterNames.cDefaultKinds;
   // Von oben: Kopf der Arten, die Arten, Kopf der Muster, Eingabezeile; die Liste füllt den Rest.
   mTop := CreateTopBar(Self);
   CreateKinds(Self, mTop);
   CreatePatternBar(Self, mTop);
   CreateBottomLabels(Self);
   CreatePatternList(Self);
-  SetOptions(False, TStepFilterNames.DefaultKinds, nil);
+  SetOptions(False, TStepFilterNames.cDefaultKinds, nil);
   SetSession(False, 0, '', '');
   UpdateCounts;
 end;
@@ -425,7 +425,7 @@ begin
   mText := Trim(FControls.PatternEdit.Text);
   FControls.Add.Enabled := TStepFilterNames.IsValidPattern(mText) and
     (TStepFilterNames.IndexOfPattern(FValue.Patterns, mText) < 0) and
-    (Length(FValue.Patterns) < TStepFilterNames.MaxPatterns);
+    (Length(FValue.Patterns) < TStepFilterNames.cMaxPatterns);
   FControls.Remove.Enabled := FControls.Patterns.HandleAllocated and (FControls.Patterns.Selected <> nil);
 end;
 
@@ -482,7 +482,7 @@ var
 begin
   mText := Trim(FControls.PatternEdit.Text);
   Result := TStepFilterNames.IsValidPattern(mText) and (TStepFilterNames.IndexOfPattern(FValue.Patterns, mText) < 0)
-    and (Length(FValue.Patterns) < TStepFilterNames.MaxPatterns);
+    and (Length(FValue.Patterns) < TStepFilterNames.cMaxPatterns);
   if not Result then
   begin
     Exit;

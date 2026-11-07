@@ -132,7 +132,7 @@ begin
   begin
     if AAll and IsText(mItem) and (mItem.Value <> '') then
     begin
-      Result.Add(TTextAnonymizer.ValueLabel);
+      Result.Add(TTextAnonymizer.cValueLabel);
     end
     else
     begin
@@ -160,7 +160,7 @@ begin
   mKey := APair.JsonString.Value;
   if AAll and not SameText(mKey, 'jsonrpc') and not SameText(mKey, 'method') and (APair.JsonValue.Value <> '') then
   begin
-    ReplaceValue(APair, TTextAnonymizer.ValueLabel);
+    ReplaceValue(APair, TTextAnonymizer.cValueLabel);
   end;
 end;
 

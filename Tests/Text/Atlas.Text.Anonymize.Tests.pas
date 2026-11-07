@@ -46,34 +46,35 @@ uses
   Atlas.Text.LogMarks;
 
 const
-  Root = 'C:\Projekte\Geheim';
+  cRoot = 'C:\Projekte\Geheim';
 
 procedure TTextAnonymizerTests.ReplacesWorkspaceAndOtherPaths;
 begin
   Assert.AreEqual('Datei <pfad> und <pfad> fehlt',
-    TTextAnonymizer.AnonymizePaths('Datei E:\Andere\a.pas und \\server\share\b.inc fehlt', [Root], []));
-  Assert.AreEqual('<ws>/<datei>.pas', TTextAnonymizer.AnonymizePaths(Root + '\src\a.pas', [Root + '\'], []));
+    TTextAnonymizer.AnonymizePaths('Datei E:\Andere\a.pas und \\server\share\b.inc fehlt', [cRoot], []));
+  Assert.AreEqual('<ws>/<datei>.pas', TTextAnonymizer.AnonymizePaths(cRoot + '\src\a.pas', [cRoot + '\'], []));
   Assert.AreEqual('<pfad> und <ws>/<datei>.pas',
-    TTextAnonymizer.AnonymizePaths('D:\x\y.dpr und C:/Projekte/Geheim/a.pas', [Root], []));
+    TTextAnonymizer.AnonymizePaths('D:\x\y.dpr und C:/Projekte/Geheim/a.pas', [cRoot], []));
 end;
 
 procedure TTextAnonymizerTests.ReplacesFileUrisAndJsonEscapes;
 begin
-  Assert.AreEqual('<ws>/<datei>.pas', TTextAnonymizer.AnonymizePaths('file:///C%3A/Projekte/Geheim/Main.pas', [Root],
+  Assert.AreEqual('<ws>/<datei>.pas', TTextAnonymizer.AnonymizePaths('file:///C%3A/Projekte/Geheim/Main.pas', [cRoot],
     []));
-  Assert.AreEqual('"<ws>/<datei>"', TTextAnonymizer.AnonymizePaths('"C:\\Projekte\\Geheim\\src"', [Root], []));
-  Assert.AreEqual('<pfad>', TTextAnonymizer.AnonymizePaths('file:///d%3A/x/y.pas', [Root], []));
+  Assert.AreEqual('"<ws>/<datei>"', TTextAnonymizer.AnonymizePaths('"C:\\Projekte\\Geheim\\src"', [cRoot], []));
+  Assert.AreEqual('<pfad>', TTextAnonymizer.AnonymizePaths('file:///d%3A/x/y.pas', [cRoot], []));
 end;
 
 procedure TTextAnonymizerTests.LongestRootFirst;
 begin
-  Assert.AreEqual('<ws>/<datei>.pas', TTextAnonymizer.AnonymizePaths(Root + '\Sub\a.pas', [Root, Root + '\Sub'], []));
+  Assert.AreEqual('<ws>/<datei>.pas',
+    TTextAnonymizer.AnonymizePaths(cRoot + '\Sub\a.pas', [cRoot, cRoot + '\Sub'], []));
 end;
 
 procedure TTextAnonymizerTests.KeepsTimesAndWebUrls;
 begin
-  Assert.AreEqual('Zeit 10:00:01, http://x.de',
-    TTextAnonymizer.AnonymizePaths('Zeit 10:00:01, http://x.de', [Root], []));
+  Assert.AreEqual('Zeit 10:00:01, http://x.de', // lsp-ignore: security-insecure-http
+    TTextAnonymizer.AnonymizePaths('Zeit 10:00:01, http://x.de', [cRoot], [])); // lsp-ignore: security-insecure-http
 end;
 
 procedure TTextAnonymizerTests.ReplacesIdentity;
@@ -105,25 +106,25 @@ end;
 
 procedure TTextAnonymizerTests.WorkspaceRootAloneStays;
 begin
-  Assert.AreEqual('Ordner <ws> geladen', TTextAnonymizer.AnonymizePaths('Ordner ' + Root + ' geladen', [Root], []));
+  Assert.AreEqual('Ordner <ws> geladen', TTextAnonymizer.AnonymizePaths('Ordner ' + cRoot + ' geladen', [cRoot], []));
   // Unterordner und Dateiname verraten das Projekt (#1478): nur die Endung bleibt.
-  Assert.AreEqual('<ws>/<datei>.dproj, <ws>/<datei>', TTextAnonymizer.AnonymizePaths(Root +
-    '\Kunden\Kunden.dproj, ' + Root + '\Kunden\Daten', [Root], []));
+  Assert.AreEqual('<ws>/<datei>.dproj, <ws>/<datei>', TTextAnonymizer.AnonymizePaths(cRoot +
+    '\Kunden\Kunden.dproj, ' + cRoot + '\Kunden\Daten', [cRoot], []));
 end;
 
 procedure TTextAnonymizerTests.RedactsMarkedValues;
 begin
   Assert.AreEqual('Typ <name> fehlt: <text>', TTextAnonymizer.AnonymizeLogLine('Typ ' + TLogMarks.Name('TKunde') +
-    ' fehlt: ' + TLogMarks.Text('Kunde.Speichern ist nil'), [Root], []));
+    ' fehlt: ' + TLogMarks.Text('Kunde.Speichern ist nil'), [cRoot], []));
   Assert.AreEqual('Typ <name>', TTextAnonymizer.RedactMarks('Typ ' + TLogMarks.Name('TKunde'), []));
 end;
 
 procedure TTextAnonymizerTests.MarkedPathUnderRootAndBareName;
 begin
-  Assert.AreEqual('<ws>/<datei>.pas', TTextAnonymizer.RedactMarks(TLogMarks.Path(Root + '\Kunde.pas'), [Root]));
-  Assert.AreEqual('<pfad>', TTextAnonymizer.RedactMarks(TLogMarks.Path('D:\Andere\Kunde.pas'), [Root]));
-  Assert.AreEqual('<datei>.pas', TTextAnonymizer.RedactMarks(TLogMarks.Path('Kunde.pas'), [Root]));
-  Assert.AreEqual('<datei>', TTextAnonymizer.RedactMarks(TLogMarks.Path('Kunden'), [Root]));
+  Assert.AreEqual('<ws>/<datei>.pas', TTextAnonymizer.RedactMarks(TLogMarks.Path(cRoot + '\Kunde.pas'), [cRoot]));
+  Assert.AreEqual('<pfad>', TTextAnonymizer.RedactMarks(TLogMarks.Path('D:\Andere\Kunde.pas'), [cRoot]));
+  Assert.AreEqual('<datei>.pas', TTextAnonymizer.RedactMarks(TLogMarks.Path('Kunde.pas'), [cRoot]));
+  Assert.AreEqual('<datei>', TTextAnonymizer.RedactMarks(TLogMarks.Path('Kunden'), [cRoot]));
 end;
 
 procedure TTextAnonymizerTests.JsonValuesKeepKeywordsOnly;
