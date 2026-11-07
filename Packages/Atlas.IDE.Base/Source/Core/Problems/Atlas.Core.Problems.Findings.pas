@@ -305,7 +305,6 @@ type
     /// <summary>Zurück zur Vorgabe: Art, Datei, Zeile.</summary>
     procedure ResetSort;
     property Grouping: TAtlasFindingGrouping read FGrouping write SetGrouping;
-    property SortColumn: TAtlasFindingColumn read FSortColumn;
     property SortDescending: Boolean read FSortDescending;
     property SortCustom: Boolean read FSortCustom;
   end;

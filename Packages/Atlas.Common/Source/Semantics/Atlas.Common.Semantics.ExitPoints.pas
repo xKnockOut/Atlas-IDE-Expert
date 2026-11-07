@@ -121,9 +121,6 @@ type
     /// <summary>Wie oben mit Doku und Klassen nur aus dem Baum (ALines sind seine Zeilen).</summary>
     class function Find(ATree: TSyntaxTree; const ALines: TArray<string>; const APosition: TTextPosition;
       const AOptions: TExitPointOptions): TExitPointSet; overload; static;
-    /// <summary>Austritte der Routine bzw. anonymen Methode ARoutine (ohne die Abfrage).</summary>
-    class function RoutineExits(ATree: TSyntaxTree; ARoutine: TSyntaxNode;
-      const AOptions: TExitPointOptions): TExitPointSet; static;
     /// <summary>XMLDoc der Routinen in ATree: &lt;exception cref&gt; über Deklaration oder Rumpf.</summary>
     class function TreeExceptions(ATree: TSyntaxTree; const ALines: TArray<string>): TExitPointExceptionLookup;
       static;
@@ -1134,22 +1131,6 @@ begin
 end;
 
 { TExitPoints }
-
-class function TExitPoints.RoutineExits(ATree: TSyntaxTree; ARoutine: TSyntaxNode;
-  const AOptions: TExitPointOptions): TExitPointSet;
-var
-  mRaising: TRaisingRoutines;
-begin
-  mRaising := TRaisingRoutines.Create(ATree);
-  try
-    if ExitPointsOf(ATree, ARoutine, AOptions, mRaising, Result) then
-    begin
-      Result.Query := TExitPointQuery.Routine;
-    end;
-  finally
-    mRaising.Free;
-  end;
-end;
 
 class function TExitPoints.Find(ATree: TSyntaxTree; const ALines: TArray<string>; const APosition: TTextPosition;
   const AOptions: TExitPointOptions): TExitPointSet;

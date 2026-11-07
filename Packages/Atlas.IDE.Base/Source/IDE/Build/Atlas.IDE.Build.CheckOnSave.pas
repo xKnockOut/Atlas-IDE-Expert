@@ -325,7 +325,7 @@ begin
     end;
     for mChild := 0 to mForm.ComponentCount - 1 do
     begin
-      if (mForm.Components[mChild] is TButton) then
+      if mForm.Components[mChild] is TButton then
       begin
         mButton := TButton(mForm.Components[mChild]);
         if mButton.Visible and mButton.Enabled and (mButton.ModalResult = mrOk) then

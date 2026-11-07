@@ -161,7 +161,6 @@ type
   public const
     /// <summary>Abschnitt in der Projekt-Zusammenfassung.</summary>
     cSectionName = 'continue';
-    cDefaultCount = 5;
     cMinCount = 1;
     cMaxCount = 20;
     /// <summary>Höchstens so viele Reiter je Arbeitsstand.</summary>
@@ -967,12 +966,12 @@ begin
   end;
   if mMinutes < 60 then
   begin
-    AValue := mMinutes;
+    AValue := Integer(mMinutes);
     Exit(TAtlasContinueAge.Minutes);
   end;
   if Trunc(AAtLocal) = Trunc(ANowLocal) then
   begin
-    AValue := mMinutes div 60;
+    AValue := Integer(mMinutes div 60);
     Exit(TAtlasContinueAge.Hours);
   end;
   if Trunc(AAtLocal) = Trunc(ANowLocal) - 1 then

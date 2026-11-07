@@ -380,6 +380,10 @@ begin
     '    Wert: string;'#10'  begin'#10'  end;'#10'begin'#10'  Wert := 1;'#10'end;'#10));
   Assert.AreEqual(2, Integer(Length(Found)));
   Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  // Der neue Name wäre ein reserviertes Wort (S → AS, Atlas.Common.Semantics.ControlFlow).
+  Found := Findings(UnitOf('', 'procedure P(S: Integer);'#10'begin'#10'  S := 1;'#10'end;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)), Messages(Found));
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
 end;
 
 procedure TNamingRulesTests.ConfigurationAndProjectFile;

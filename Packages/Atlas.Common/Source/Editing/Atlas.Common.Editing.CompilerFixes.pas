@@ -258,7 +258,7 @@ end;
 
 /// <summary>Korrektur "uses AUnit ergänzen" an AFixes anhängen; die erste in AFixes ist die bevorzugte.
 /// </summary>
-procedure AddUnitFix(const AText: string; ATokens: TArray<TPascalToken>; const AMessage: TFixMessage;
+procedure AddUnitFix(const AText: string; const ATokens: TArray<TPascalToken>; const AMessage: TFixMessage;
   const AUnit, ATitle: string; var AFixes: TArray<TCompilerFix>);
 var
   mEdit: TTextEdit;
@@ -271,12 +271,12 @@ begin
   end;
 end;
 
-function IsUsed(ATokens: TArray<TPascalToken>; const AUnit: string; const ANamespaces: TArray<string>): Boolean;
+function IsUsed(const ATokens: TArray<TPascalToken>; const AUnit: string; const ANamespaces: TArray<string>): Boolean;
 begin
   Result := TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ATokens), AUnit, ANamespaces);
 end;
 
-function H2443Fixes(const AText: string; ATokens: TArray<TPascalToken>; const AMessage: TFixMessage;
+function H2443Fixes(const AText: string; const ATokens: TArray<TPascalToken>; const AMessage: TFixMessage;
   const AContext: TCompilerFixContext): TArray<TCompilerFix>;
 var
   mNames: TArray<string>;
@@ -304,7 +304,7 @@ begin
     SameText(AToken.Text, AName);
 end;
 
-function E2003Fixes(const AText: string; ATokens: TArray<TPascalToken>; ATree: TSyntaxTree;
+function E2003Fixes(const AText: string; const ATokens: TArray<TPascalToken>; ATree: TSyntaxTree;
   const AMessage: TFixMessage; const AContext: TCompilerFixContext): TArray<TCompilerFix>;
 var
   mNames, mUnits: TArray<string>;
@@ -410,7 +410,7 @@ begin
   Result := False;
 end;
 
-function StatementRemoval(const AText: string; ATokens: TArray<TPascalToken>; AStatement: TSyntaxNode): TTextEdit;
+function StatementRemoval(const AText: string; const ATokens: TArray<TPascalToken>; AStatement: TSyntaxNode): TTextEdit;
 var
   mIndex, mLast: Integer;
   mLines: TArray<string>;
@@ -441,7 +441,7 @@ begin
   Result := TTextEdit.Create(TTextRange.Create(AStatement.StartPos, mEndPos), '');
 end;
 
-function H2077Fixes(const AText: string; ATokens: TArray<TPascalToken>; ATree: TSyntaxTree;
+function H2077Fixes(const AText: string; const ATokens: TArray<TPascalToken>; ATree: TSyntaxTree;
   const AMessage: TFixMessage): TArray<TCompilerFix>;
 var
   mNames: TArray<string>;

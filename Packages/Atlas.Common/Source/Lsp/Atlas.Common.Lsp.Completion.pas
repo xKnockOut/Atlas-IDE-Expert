@@ -60,25 +60,15 @@ type
   // Typen der Vervollständigung stehen in Atlas.Common.Lsp.CompletionRequest (Code-Review S-01) und den
   // Completion-Units; hier weiter unter ihrem Namen, damit Aufrufer ohne Änderung übersetzen.
   TCompletionContextKind = Atlas.Common.Lsp.CompletionRequest.TCompletionContextKind;
-  TCompletionFilter = Atlas.Common.Lsp.CompletionRequest.TCompletionFilter;
-  TCompletionPlace = Atlas.Common.Lsp.CompletionRequest.TCompletionPlace;
   TCompletionContext = Atlas.Common.Lsp.CompletionRequest.TCompletionContext;
   TCompletionItem = Atlas.Common.Lsp.CompletionRequest.TCompletionItem;
   TCompletionItems = Atlas.Common.Lsp.CompletionRequest.TCompletionItems;
   TCompletionReadText = Atlas.Common.Lsp.CompletionRequest.TCompletionReadText;
-  TCompletionPartialProc = Atlas.Common.Lsp.CompletionRequest.TCompletionPartialProc;
   TCompletionRequest = Atlas.Common.Lsp.CompletionRequest.TCompletionRequest;
   TPostfixOptions = Atlas.Common.Lsp.Completion.Postfix.TPostfixOptions;
-  TCompletionFormFunc = Atlas.Common.Lsp.Completion.Forms.TCompletionFormFunc;
   TCompletionNamingFunc = Atlas.Common.Lsp.Completion.Names.TCompletionNamingFunc;
-  TPostfixOptionsFunc = Atlas.Common.Lsp.Completion.Hooks.TPostfixOptionsFunc;
-  TCompletionMatchingFunc = Atlas.Common.Lsp.Completion.Hooks.TCompletionMatchingFunc;
-  TCompletionSettingsFunc = Atlas.Common.Lsp.Completion.Hooks.TCompletionSettingsFunc;
   TCompletionNotifyProc = Atlas.Common.Lsp.Completion.Hooks.TCompletionNotifyProc;
   TCompletionLogProc = Atlas.Common.Lsp.Completion.Hooks.TCompletionLogProc;
-  TCompletionEnabledFunc = Atlas.Common.Lsp.Completion.Hooks.TCompletionEnabledFunc;
-  TCompletionWithFunc = Atlas.Common.Lsp.Completion.Hooks.TCompletionWithFunc;
-  TCompletionCreateFunc = Atlas.Common.Lsp.Completion.Hooks.TCompletionCreateFunc;
   TCompletionHooks = Atlas.Common.Lsp.Completion.Hooks.TCompletionHooks;
 
   TLspCompletion = class
@@ -90,8 +80,6 @@ type
     cMaxItems = cCompletionMaxItems;
     /// <summary>Höchstzahl der Vorschläge aus nicht eingebundenen Units.</summary>
     cMaxImportItems = cCompletionMaxImportItems;
-    /// <summary>So viele Zeichen muss der Name haben, bevor nicht eingebundene Units mitsuchen.</summary>
-    cMinImportPrefix = cCompletionMinImportPrefix;
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;

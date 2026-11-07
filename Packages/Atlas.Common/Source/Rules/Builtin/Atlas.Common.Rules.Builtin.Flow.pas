@@ -146,7 +146,6 @@ type
   end;
 
 const
-  cOutParamReadRuleId = Atlas.Common.Rules.Builtin.Flow.OutParamRead.cOutParamReadRuleId;
   cUseAfterFreeRuleId = Atlas.Common.Rules.Builtin.Flow.UseAfterFree.cUseAfterFreeRuleId;
   cDerefBeforeNilCheckRuleId = Atlas.Common.Rules.Builtin.Flow.DerefBeforeNilCheck.cDerefBeforeNilCheckRuleId;
   cFieldFreeWithoutNilRuleId = Atlas.Common.Rules.Builtin.Flow.FieldFreeWithoutNil.cFieldFreeWithoutNilRuleId;

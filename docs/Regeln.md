@@ -1611,7 +1611,7 @@ ShellExecute(0, 'open', 'tool.exe', PChar(QuotedArgument), nil, SW_SHOW);  // va
 
 **Pfad-Traversal** · Schwachstelle · Warnung · Gruppe Sicherheit
 
-Ein Dateizugriff (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) verwendet einen Pfad aus Eingabedaten (Text, ParamStr, Request) ohne Prüfung über TPath.GetFullPath. Experimentell, bis die Datenflussanalyse verfügbar ist.
+Ein Dateizugriff (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) verwendet einen Pfad aus Eingabedaten (Text, ParamStr, Request) ohne Prüfung über TPath.GetFullPath. Nur der Pfad (erstes Argument) zählt, nicht der geschriebene Inhalt (WriteAllText(Pfad, Liste.Text)). Experimentell, bis die Datenflussanalyse verfügbar ist.
 
 Mit Treffer:
 
@@ -2148,7 +2148,7 @@ if Assigned(X) then S := X.Name else S := '';
 
 **Random ohne Randomize** · Code Smell · Hinweis · Gruppe Robustheit und Muster
 
-Random wird verwendet, aber die Unit ruft nie Randomize auf; jeder Start liefert dieselbe Folge. Randomize steht oft in der .dpr, deshalb ist die Regel standardmäßig aus und hat niedrige Konfidenz.
+Random wird verwendet, aber die Unit ruft nie Randomize auf; jeder Start liefert dieselbe Folge. Ein eigenes Random (Aufzählungswert, Routine) ist nicht System.Random. Randomize steht oft in der .dpr, deshalb ist die Regel standardmäßig aus und hat niedrige Konfidenz.
 
 Mit Treffer:
 
@@ -2461,7 +2461,7 @@ end;
 
 **Teurer Aufruf in der Schleifenbedingung** · Code Smell · Hinweis · Gruppe Performance
 
-Die Bedingung von while und until wird bei jedem Durchlauf ausgewertet. Aufrufe wie Trim, Format oder FileExists und Eigenschaften wie Lines.Text werden dort jedes Mal neu berechnet; besser einmal vor der Schleife. Die Grenzen von for werden nur einmal ausgewertet und nicht gemeldet, ebenso .Text als Feld eines Typs derselben Datei (Record-Feld) und Aufrufe, deren Argument die Schleife ändert (Zuweisung, Inc, Dec, Delete, SetLength, Include, Exclude). Standardmäßig aus.
+Die Bedingung von while und until wird bei jedem Durchlauf ausgewertet. Aufrufe wie Trim oder Format und Eigenschaften wie Lines.Text werden dort jedes Mal neu berechnet; besser einmal vor der Schleife. Die Grenzen von for werden nur einmal ausgewertet und nicht gemeldet, ebenso .Text als Feld (Record-Feld eines Typs derselben Datei oder laut Namensauflösung ein Feld bzw. eine Property, die ein Feld liest), eine Property, deren Empfänger die Schleife ändert (Items[I].Text), FileExists und DirectoryExists (Warten auf eine Datei) und Aufrufe, deren Argument die Schleife ändert (Zuweisung, Inc, Dec, Delete, SetLength, Include, Exclude). Standardmäßig aus.
 
 Mit Treffer:
 
@@ -2483,7 +2483,7 @@ while I < Length(Text) do
 
 **Hinzufügen in einer Schleife ohne BeginUpdate** · Code Smell · Hinweis · Gruppe Performance
 
-Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen. Still bei Menüs (TMenuItem hat kein BeginUpdate, auch über Felder wie FParts.Menu.Items) und bei for-Schleifen mit höchstens 10 Durchläufen (feste Grenzen oder ein statisches Array derselben Datei). Standardmäßig aus.
+Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen. Still bei Menüs (TMenuItem hat kein BeginUpdate, auch über Felder wie FParts.Menu.Items, auch in Records, die in der Klasse verschachtelt sind), bei Listen ohne Steuerelement (TObjectList<T>, TList, TDictionary), bei Typen im Index ohne BeginUpdate und bei for-Schleifen mit höchstens 10 Durchläufen (feste Grenzen oder ein statisches Array derselben Datei). Standardmäßig aus.
 
 Mit Treffer:
 
@@ -8740,7 +8740,7 @@ Nimm(Round(1.5));
 
 **Methode braucht Self nicht** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Eine Methode einer Klasse oder eines Records nutzt weder Self noch Instanzmitglieder (Felder, Properties, Instanzmethoden, inherited). Sie ist nicht virtuell, kein Ereignis der Formulardatei, implementiert kein Interface und wird nicht als Methodenzeiger verwendet. Experimentell: nur aktiv, wenn in atlas.json eingeschaltet; schweigt mit refactoring.methodKind aus. Schnellkorrektur: in eine class-Methode umwandeln (class … static mit refactoring.methodKindStatic); die Code-Aktionen bieten außerdem Aufrufe über die Klasse, eine freie Routine und einen Record-Helper für den Typ des ersten Parameters, jeweils mit Vorschau aller geänderten Aufrufe.
+Eine Methode einer Klasse oder eines Records nutzt weder Self noch Instanzmitglieder (Felder, Properties, Instanzmethoden, inherited). Sie ist nicht virtuell, hat kein Attribut und ist nicht published (DUnitX-Tests und RTTI rufen sie an der Instanz auf), ist kein Ereignis der Formulardatei, implementiert kein Interface und wird nicht als Methodenzeiger verwendet. Experimentell: nur aktiv, wenn in atlas.json eingeschaltet; schweigt mit refactoring.methodKind aus. Schnellkorrektur: in eine class-Methode umwandeln (class … static mit refactoring.methodKindStatic); die Code-Aktionen bieten außerdem Aufrufe über die Klasse, eine freie Routine und einen Record-Helper für den Typ des ersten Parameters, jeweils mit Vorschau aller geänderten Aufrufe.
 
 Mit Treffer:
 

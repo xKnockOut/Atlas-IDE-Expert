@@ -195,13 +195,70 @@ begin
   end;
 end;
 
+/// <summary>Text der Routine ARoutine ohne die Zeile des Befehls.</summary>
+function RoutineTextWithoutCommand(ASource: TCommandSource; ARoutine: TSyntaxNode): string;
+var
+  mIndex: Integer;
+  mBuilder: TStringBuilder;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    for mIndex := ARoutine.StartPos.Line to ARoutine.EndPos.Line do
+    begin
+      if mIndex <> ASource.Line then
+      begin
+        mBuilder.Append(ASource.Lines[mIndex]).Append(#10);
+      end;
+    end;
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
+end;
+
+/// <summary>Parameter der Abfrage AName, die die Routine unter dem Cursor noch nicht setzt; sonst der Grund, warum
+/// /params hier nichts einfügt.</summary>
+function MissingParams(const AContext: TSlashContext; ASource: TCommandSource; const AName: string;
+  out AMissing: TArray<string>): string;
+var
+  mRoutine: TSyntaxNode;
+  mSql: string;
+  mParams, mAssigned, mExtra: TArray<string>;
+begin
+  AMissing := nil;
+  mRoutine := ASource.RoutineAt;
+  if mRoutine = nil then
+  begin
+    Exit(cTexts[TDatabaseCommandsText.ParamsOnlyAppliesInThe].Text);
+  end;
+  mSql := SqlOf(AContext, ASource, AName);
+  if mSql = '' then
+  begin
+    Exit(cTexts[TDatabaseCommandsText.ThereIsNoSQLText].Fmt([AName]));
+  end;
+  mParams := TSqlText.Params(mSql);
+  mAssigned := TSqlText.AssignedParams(RoutineTextWithoutCommand(ASource, mRoutine), AName);
+  AMissing := TSqlText.Missing(mParams, mAssigned);
+  mExtra := TSqlText.Missing(mAssigned, mParams);
+  if mExtra <> nil then
+  begin
+    Result := cTexts[TDatabaseCommandsText.NotInTheSQLOf].Fmt([AName, string.Join(', ', mExtra)]);
+  end
+  else if AMissing = nil then
+  begin
+    Result := cTexts[TDatabaseCommandsText.AllParametersOfAreSet].Fmt([AName]);
+  end
+  else
+  begin
+    Result := '';
+  end;
+end;
+
 function ExecuteParams(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   mSource: TCommandSource;
-  mRoutine: TSyntaxNode;
-  mName, mRest, mSql, mRoutineText, mIndent, mTypeName, mParam: string;
-  mParams, mAssigned, mMissing, mExtra, mLines: TArray<string>;
-  mIndex: Integer;
+  mName, mRest, mIndent, mTypeName, mParam: string;
+  mMissing, mLines: TArray<string>;
 begin
   AEdits := nil;
   if not SplitName(AContext.Arguments, mName, mRest) or (mRest <> '') then
@@ -210,35 +267,10 @@ begin
   end;
   mSource := TCommandSource.Create(AContext);
   try
-    mRoutine := mSource.RoutineAt;
-    if mRoutine = nil then
+    AReason := MissingParams(AContext, mSource, mName, mMissing);
+    if AReason <> '' then
     begin
-      Exit(Fail(cTexts[TDatabaseCommandsText.ParamsOnlyAppliesInThe].Text, AReason));
-    end;
-    mSql := SqlOf(AContext, mSource, mName);
-    if mSql = '' then
-    begin
-      Exit(Fail(cTexts[TDatabaseCommandsText.ThereIsNoSQLText].Fmt([mName]), AReason));
-    end;
-    mParams := TSqlText.Params(mSql);
-    mRoutineText := '';
-    for mIndex := mRoutine.StartPos.Line to mRoutine.EndPos.Line do
-    begin
-      if mIndex <> mSource.Line then
-      begin
-        mRoutineText := mRoutineText + mSource.Lines[mIndex] + #10;
-      end;
-    end;
-    mAssigned := TSqlText.AssignedParams(mRoutineText, mName);
-    mMissing := TSqlText.Missing(mParams, mAssigned);
-    mExtra := TSqlText.Missing(mAssigned, mParams);
-    if mExtra <> nil then
-    begin
-      Exit(Fail(cTexts[TDatabaseCommandsText.NotInTheSQLOf].Fmt([mName, string.Join(', ', mExtra)]), AReason));
-    end;
-    if mMissing = nil then
-    begin
-      Exit(Fail(cTexts[TDatabaseCommandsText.AllParametersOfAreSet].Fmt([mName]), AReason));
+      Exit(False);
     end;
     mIndent := mSource.Indent(mSource.Line);
     mTypeName := TypeOfName(mSource, mName);

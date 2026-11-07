@@ -90,7 +90,6 @@ type
   public const
     /// <summary>Zweiter Compile mit denselben Treffern in dieser Zeit läuft trotz block.</summary>
     cOverrideMs = TAtlasReleaseGuard.cOverrideMs;
-    cDefaultTimeoutMs = TAtlasBuildPipelineSettings.cGateDefaultTimeoutMs;
     cMinTimeoutMs = TAtlasBuildPipelineSettings.cGateMinTimeoutMs;
     cMaxTimeoutMs = TAtlasBuildPipelineSettings.cGateMaxTimeoutMs;
   public
@@ -154,8 +153,6 @@ type
     procedure CompileCancelled(const AProject: TAtlasCompileProject; const AReason: string); override;
     procedure ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean; ADurationMs: Int64);
       override;
-    /// <summary>Stand einer Unit nach dem letzten erfolgreichen Compile; '' ohne (für Tests).</summary>
-    function RememberedStamp(const AProject, AFileName: string): string;
   end;
 
 implementation
@@ -282,18 +279,6 @@ begin
   if not FRemembered.TryGetValue(UpperCase(AProject), Result) then
   begin
     Result := nil;
-  end;
-end;
-
-function TAtlasBuildGateParticipant.RememberedStamp(const AProject, AFileName: string): string;
-var
-  mStamps: TDictionary<string, string>;
-begin
-  Result := '';
-  mStamps := RememberedOf(AProject);
-  if mStamps <> nil then
-  begin
-    mStamps.TryGetValue(UpperCase(AFileName), Result);
   end;
 end;
 

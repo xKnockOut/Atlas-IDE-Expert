@@ -40,8 +40,7 @@ type
 implementation
 
 uses
-  System.SysUtils,
-  System.StrUtils;
+  System.SysUtils;
 
 const
   // Wörter, die der Index nicht als Verwendung erfasst (Atlas.Common.Index.Extractor, CollectUsages):
@@ -58,16 +57,15 @@ const
 class function TIndexUsages.Has(const AUsages: TArray<TIndexUsage>; const AName: string): Boolean;
 var
   mLow, mHigh_, mMiddle, mOrder: Integer;
-  mKey: string;
 begin
-  // Sortiert nach UpperCase(Name), ordinal (TIndexExtractor.CollectUsages).
-  mKey := UpperCase(AName);
+  // Sortiert nach UpperCase(Name), ordinal (TIndexExtractor.CollectUsages). CompareText vergleicht genauso
+  // (a-z als A-Z, sonst ordinal), ohne für jeden Vergleich einen großgeschriebenen String anzulegen.
   mLow := 0;
   mHigh_ := High(AUsages);
   while mLow <= mHigh_ do
   begin
     mMiddle := (mLow + mHigh_) div 2;
-    mOrder := CompareStr(UpperCase(AUsages[mMiddle].Name), mKey);
+    mOrder := CompareText(AUsages[mMiddle].Name, AName);
     if mOrder = 0 then
     begin
       Exit(True);
@@ -85,8 +83,19 @@ begin
 end;
 
 class function TIndexUsages.Counted(const AName: string): Boolean;
+var
+  mWord: string;
 begin
-  Result := IndexText(AName, cUncountedWords) < 0;
+  // SameText statt IndexText: Die Wörter sind ASCII, und IndexText vergleicht je nach Plattform über die
+  // Locale (unter Linux je Zeichen towupper), bei jeder Anfrage der projektweiten Regeln.
+  for mWord in cUncountedWords do
+  begin
+    if SameText(mWord, AName) then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
 end;
 
 class function TIndexUsages.Lookup(const AUnit: TUnitIndex; const AName: string): TIndexUsageAnswer;

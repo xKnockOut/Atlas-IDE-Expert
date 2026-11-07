@@ -134,8 +134,6 @@ type
     class procedure ShowWindow; static;
     class procedure ApplySettings; static;
     class procedure ThemeChanged; static;
-    /// <summary>Übersprungen in dieser Debug-Sitzung (Fenster, Studie).</summary>
-    class function SkippedCount: Integer; static;
   end;
 
 implementation
@@ -357,11 +355,6 @@ end;
 class function TAtlasIdeDebugStepFilter.Started: Boolean;
 begin
   Result := FListener <> nil;
-end;
-
-class function TAtlasIdeDebugStepFilter.SkippedCount: Integer;
-begin
-  Result := FSkips.Count;
 end;
 
 class function TAtlasIdeDebugStepFilter.Options: TAtlasStepFilterOptions;

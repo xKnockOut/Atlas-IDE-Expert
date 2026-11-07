@@ -381,7 +381,7 @@ var
   mPaths: TArray<string>;
   mCalls: TList<TSyntaxNode>;
   mNames: TDeclarationNames;
-  Call: TSyntaxNode;
+  mCallNode: TSyntaxNode;
 
   function PathOf(ANode: TSyntaxNode): string;
   begin
@@ -696,12 +696,12 @@ begin
       Exit;
     end;
     mNames := TDeclarationNames.Create(AContext.Tree.Root);
-    for Call in mCalls do
+    for mCallNode in mCalls do
     begin
       // Eine eigene Routine TypeInfo bzw. Default (Datei oder Index) verdeckt die des Compilers.
-      if not mNames.Declared(Call[0].Name) and not DeclaredInIndex(Call[0].Name) then
+      if not mNames.Declared(mCallNode[0].Name) and not DeclaredInIndex(mCallNode[0].Name) then
       begin
-        CheckCall(Call);
+        CheckCall(mCallNode);
       end;
     end;
   finally

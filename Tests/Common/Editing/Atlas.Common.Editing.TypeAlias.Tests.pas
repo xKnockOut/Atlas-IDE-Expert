@@ -17,6 +17,8 @@ type
   TTypeAliasTests = class
   public
     [Test]
+    procedure TitlesFromTextUnit;
+    [Test]
     procedure TargetsAndSuggestions;
     [Test]
     procedure NoTargetForOpenArraysAndDeclarations;
@@ -54,7 +56,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.TypeAlias;
+  Atlas.Common.Editing.TypeAlias,
+  Atlas.Common.Editing.TypeAlias.Texts;
 
 const
   UnitKunden =
@@ -158,6 +161,12 @@ begin
     Inc(Result);
     Index := PosEx(APart, AText, Index + 1);
   end;
+end;
+
+procedure TTypeAliasTests.TitlesFromTextUnit;
+begin
+  // Die Texte stehen in einer eigenen Unit (metric-unit-length); die Titel kommen weiter aus ihr.
+  Assert.AreEqual(cTexts[TEditingTypeAliasText.IntroduceTypeAlias].Text, TTypeAlias.IntroduceTitle);
 end;
 
 procedure TTypeAliasTests.TargetsAndSuggestions;

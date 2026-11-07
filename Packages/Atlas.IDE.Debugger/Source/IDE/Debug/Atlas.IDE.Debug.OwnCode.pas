@@ -86,8 +86,6 @@ type
     class function Started: Boolean; static;
     /// <summary>Befehl Atlas.DebugJustMyCode: debug.justMyCode umschalten und speichern.</summary>
     class procedure ToggleSetting(const AMessage: TProc<string>); static;
-    /// <summary>Für Tests und Studie: Hängt Atlas an der Aktion „Einzelne Anweisung“?</summary>
-    class function Hooked: Boolean; static;
     /// <summary>Gemeldeter Schritt (TAtlasIdeDebugTrace): nur „Einzelne Anweisung“ zählt.</summary>
     class procedure Traced(AKind: TAtlasTraceKind); static;
   end;
@@ -212,11 +210,6 @@ end;
 class function TAtlasIdeDebugOwnCode.Started: Boolean;
 begin
   Result := FListener <> nil;
-end;
-
-class function TAtlasIdeDebugOwnCode.Hooked: Boolean;
-begin
-  Result := TAtlasIdeDebugTrace.Hooked(TAtlasTraceKind.TraceInto);
 end;
 
 class procedure TAtlasIdeDebugOwnCode.Traced(AKind: TAtlasTraceKind);

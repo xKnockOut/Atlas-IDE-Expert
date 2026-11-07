@@ -209,7 +209,8 @@ begin
     TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesNotifyScopeAssigned),
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesNotifyScopeCreated),
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesNotifyScopeWatched)),
-    TArray<string>.Create(TAtlasPluginSettings.cIssuesNotifyAssigned, TAtlasPluginSettings.cIssuesNotifyAssignedOrCreated,
+    TArray<string>.Create(TAtlasPluginSettings.cIssuesNotifyAssigned,
+    TAtlasPluginSettings.cIssuesNotifyAssignedOrCreated,
     TAtlasPluginSettings.cIssuesNotifyWatched));
 end;
 

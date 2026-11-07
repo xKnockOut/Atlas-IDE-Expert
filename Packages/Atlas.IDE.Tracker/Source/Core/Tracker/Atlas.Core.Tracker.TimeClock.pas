@@ -25,7 +25,6 @@ type
 
   TAtlasTimeClock = class
   public const
-    cDefaultIdleMinutes = 10;
     cMinIdleMinutes = 1;
     cMaxIdleMinutes = 120;
   private

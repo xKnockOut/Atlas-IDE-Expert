@@ -58,7 +58,6 @@ type
     cCommand = 'atlas.server.pasteUses';
     /// <summary>Reindent ohne Spalte vom Server: die Heuristik bestimmt sie.</summary>
     cNoColumn = -1;
-    cModeOff = 'off';
     cModeUses = 'uses';
     cModeIndent = 'indent';
     cModeBoth = 'both';

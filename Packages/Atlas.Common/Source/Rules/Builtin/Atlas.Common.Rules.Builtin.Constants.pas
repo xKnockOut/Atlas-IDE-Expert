@@ -128,7 +128,6 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
@@ -462,7 +461,7 @@ var
   mScope: TTypedScope;
   mFileName: string;
   mResolver: TNameResolver;
-  Values: TConstantValues;
+  mValues: TConstantValues;
 
   function NodeRange(ANode: TSyntaxNode): TTextRange;
   begin
@@ -472,7 +471,7 @@ var
   /// <summary>Wert des Knotens; False, wenn nicht sicher bekannt.</summary>
   function ValueOf(ANode: TSyntaxNode; out AValue: Int64): Boolean;
   begin
-    Result := Values.Check(ANode, AValue) = TOrdinalStatus.Value;
+    Result := mValues.Check(ANode, AValue) = TOrdinalStatus.Value;
   end;
 
   /// <summary>Wurzel eines Ausdrucks: kein Operand eines umgebenden Operators oder einer Klammer.</summary>
@@ -540,7 +539,7 @@ var
     mValue: Int64;
   begin
     if IsExpressionRoot(ANode) and MayOverflow(ANode) and
-      (Values.Check(ANode, mValue) = TOrdinalStatus.Overflow) then
+      (mValues.Check(ANode, mValue) = TOrdinalStatus.Overflow) then
     begin
       AReport.Add(NodeRange(ANode),
         cTexts[TConstantsText.Overflow].Text,
@@ -1188,7 +1187,7 @@ begin
   try
     mFileName := mScope.FileName;
     mResolver := mScope.Resolver;
-    Values := mScope.Values;
+    mValues := mScope.Values;
     Visit(AContext.Tree.Root);
   finally
     mScope.Free;

@@ -37,10 +37,6 @@ type
     /// Geänderte Dateien, die gerade abgeglichen sind, entfallen: Für sie gilt der Editortext.</summary>
     procedure FilesChanged(const AChanges: TArray<TAtlasFileChange>);
     function Hover(const AFileName, AText: string; ALine, ACharacter: Integer): string;
-    /// <summary>Hover in Teilen (#442).</summary>
-    function HoverParts(const AFileName, AText: string; ALine, ACharacter: Integer): TLspHoverParts;
-    /// <summary>Hover mit allen Teilen für den Tooltip (#588): Art, Fundort, Links, Vererbungskette.</summary>
-    function HoverData(const AFileName, AText: string; ALine, ACharacter: Integer): TAtlasHoverData;
     /// <summary>Hover an einem Fundort ohne Abgleich: Der Server liest nicht geöffnete Dateien selbst (#588).</summary>
     function HoverDataAt(const AFileName: string; ALine, ACharacter: Integer): TAtlasHoverData;
     /// <summary>Verwendungen des Symbols am Fundort ohne die Deklaration (textDocument/references).</summary>
@@ -272,25 +268,6 @@ begin
   finally
     mResponse.Free;
   end;
-end;
-
-function TLspSessionRequests.HoverParts(const AFileName, AText: string; ALine, ACharacter: Integer): TLspHoverParts;
-var
-  mResponse: TJSONValue;
-begin
-  Sync(AFileName, AText);
-  mResponse := FClient.Request('textDocument/hover', PositionParams(AFileName, ALine, ACharacter), FTimeoutMs);
-  try
-    Result := TLspHoverParts.FromHover(mResponse);
-  finally
-    mResponse.Free;
-  end;
-end;
-
-function TLspSessionRequests.HoverData(const AFileName, AText: string; ALine, ACharacter: Integer): TAtlasHoverData;
-begin
-  Sync(AFileName, AText);
-  Result := HoverDataAt(AFileName, ALine, ACharacter);
 end;
 
 function TLspSessionRequests.HoverDataAt(const AFileName: string; ALine, ACharacter: Integer): TAtlasHoverData;

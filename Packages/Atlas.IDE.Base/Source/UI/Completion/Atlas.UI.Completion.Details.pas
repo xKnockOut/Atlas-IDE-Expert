@@ -36,8 +36,6 @@ uses
 
 type
   TAtlasDetailView = class
-  public const
-    cDefaultWidth = 320;
   private
     FDetails: TAtlasItemDetails;
     FOverloadIndex: Integer;

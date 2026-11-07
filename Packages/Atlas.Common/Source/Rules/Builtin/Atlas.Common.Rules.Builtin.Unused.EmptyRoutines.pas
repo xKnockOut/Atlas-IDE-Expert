@@ -222,8 +222,8 @@ begin
       Exit(True);
     end;
   end;
-  Result := ((FContext.FormText <> '') and TRegEx.IsMatch(FContext.FormText, '\b' + AName + '\b',
-    [roIgnoreCase]));
+  Result := (FContext.FormText <> '') and TRegEx.IsMatch(FContext.FormText, '\b' + AName + '\b',
+    [roIgnoreCase]);
 end;
 
 /// <summary>Anfang von ANode samt ///-Kommentaren direkt darüber.</summary>

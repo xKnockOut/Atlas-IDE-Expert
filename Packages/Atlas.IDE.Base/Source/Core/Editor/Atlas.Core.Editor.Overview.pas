@@ -79,8 +79,6 @@ type
     /// <summary>Höchstlänge des Suchtexts.</summary>
     cMaxTermLength = 200;
   public
-    /// <summary>Name in editor.overviewRulerKinds.</summary>
-    class function KindName(AKind: TAtlasOverviewKind): string; static;
     class function Kinds(const AText: string): TAtlasOverviewKinds; static;
     class function KindsText(AKinds: TAtlasOverviewKinds): string; static;
     /// <summary>Bekannte Namen in fester Reihenfolge, ohne Doppelte.</summary>
@@ -130,11 +128,6 @@ begin
 end;
 
 { TAtlasOverview }
-
-class function TAtlasOverview.KindName(AKind: TAtlasOverviewKind): string;
-begin
-  Result := TAtlasOverviewKindNames.Name(AKind);
-end;
 
 class function TAtlasOverview.Kinds(const AText: string): TAtlasOverviewKinds;
 begin

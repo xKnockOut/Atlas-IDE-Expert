@@ -487,7 +487,7 @@ var
 
 var
   mInterfacePart: TSyntaxNode;
-  Index: Integer;
+  mIndex: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
@@ -502,11 +502,11 @@ begin
   mIncludeForms := TRuleOptions.Bool(AContext.Options, 'includeFormVariables', False);
   mFormClasses := nil;
   CollectForms(mInterfacePart);
-  for Index := 0 to mInterfacePart.ChildCount - 1 do
+  for mIndex := 0 to mInterfacePart.ChildCount - 1 do
   begin
-    if mInterfacePart[Index].Kind = TSyntaxKind.VarSection then
+    if mInterfacePart[mIndex].Kind = TSyntaxKind.VarSection then
     begin
-      CheckSection(mInterfacePart[Index]);
+      CheckSection(mInterfacePart[mIndex]);
     end;
   end;
 end;

@@ -298,6 +298,9 @@ begin
     InRoutine('  N := Random(6);'#10'  M := Random(6);'), Config))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRandomWithoutRandomizeRule.Create,
     InRoutine('  Randomize;'#10'  N := Random(6);'), Config))));
+  // Eigener Aufzählungswert Random (TTexts = (Title, Random)) ist kein Aufruf von System.Random.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRandomWithoutRandomizeRule.Create,
+    'unit U;'#10'interface'#10'type'#10'  TTexts = (Title, Random);'#10'implementation'#10'end.', Config))));
 end;
 
 initialization

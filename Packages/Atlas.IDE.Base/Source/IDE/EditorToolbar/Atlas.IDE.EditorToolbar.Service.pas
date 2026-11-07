@@ -102,7 +102,6 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Outline.Model,
   Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.Core.EditorToolbar.ReturnPoint,

@@ -111,7 +111,6 @@ type
     /// <summary>Halt nach „Bis zur Rückkehr“.</summary>
     function AfterReturn(ADepth: Integer): TAtlasStepFilterAction;
     property Phase: TAtlasStepFilterPhase read FPhase;
-    property StartDepth: Integer read FStartDepth;
     property Skips: Integer read FSkips;
   end;
 

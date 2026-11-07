@@ -30,20 +30,14 @@ uses
 
 class function TAtlasWelcomeGreeting.DayTimeOf(AHour: Integer): TAtlasDayTime;
 begin
-  if (AHour >= 5) and (AHour <= 10) then
-  begin
-    Result := TAtlasDayTime.Morning;
-  end
-  else if (AHour >= 11) and (AHour <= 17) then
-  begin
-    Result := TAtlasDayTime.Day;
-  end
-  else if (AHour >= 18) and (AHour <= 23) then
-  begin
-    Result := TAtlasDayTime.Evening;
-  end
+  case AHour of
+    5..10:
+      Result := TAtlasDayTime.Morning;
+    11..17:
+      Result := TAtlasDayTime.Day;
+    18..23:
+      Result := TAtlasDayTime.Evening;
   else
-  begin
     Result := TAtlasDayTime.Night;
   end;
 end;

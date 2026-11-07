@@ -92,7 +92,6 @@ type
     function ValuesConnection(out AConnection: TAtlasTrackerConnection): Boolean;
     property Items: TArray<TAtlasTrackerConnection> read FItems;
     property Selected: Integer read FSelected;
-    property ProviderNames: TArray<string> read FProviderNames;
     property ProviderCaptions: TArray<string> read FProviderCaptions;
   end;
 

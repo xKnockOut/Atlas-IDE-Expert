@@ -219,7 +219,6 @@ uses
   Atlas.Common.Index.Usages,
   Atlas.Common.Editing.TestUnits,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Pascal.Lexer,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
   Atlas.Common.Localization.Texts;
@@ -437,7 +436,7 @@ begin
   Result.Pattern := APattern;
   if AProgramText <> '' then
   begin
-    Result.Units := TUsesClauses.UsedUnits(TPascalLexer.Tokenize(AProgramText));
+    Result.Units := TUsesClauses.UsedUnitsOf(AProgramText);
   end;
 end;
 

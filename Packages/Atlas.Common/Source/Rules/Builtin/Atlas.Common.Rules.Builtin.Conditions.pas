@@ -436,7 +436,8 @@ end;
 
 function TInfiniteLoopRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(cInfiniteLoopRuleId, TRuleSeverity.Error, cTexts[TConditionsText.InfiniteTitle].Text);
+  Result := TRuleDescriptor.Create(cInfiniteLoopRuleId, TRuleSeverity.Error,
+    cTexts[TConditionsText.InfiniteTitle].Text);
 end;
 
 procedure TInfiniteLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

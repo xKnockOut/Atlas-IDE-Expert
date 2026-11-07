@@ -144,8 +144,6 @@ type
     /// <summary>Felder: Vorschau (#1264), Beenden-Dialog (#1266), Beschreibung (#1268), Rückfrage (#1272).</summary>
     cFieldPreview = 'preview';
     cFieldEnd = 'end';
-    cFieldDescription = 'description';
-    cFieldAsk = 'ask';
     cFileName = 'drafts.json';
   private type
     TEntry = record

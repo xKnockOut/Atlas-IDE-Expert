@@ -17,16 +17,17 @@ const
     '{',
     '      "id": "loop-invariant-call",',
     '      "name": "Teurer Aufruf in der Schleifenbedingung",',
-    '      "description": "Die Bedingung von while und until wird bei jedem Durchlauf ausgewertet. Aufrufe wie Trim, Format oder FileExists und Eigenschaften wie Lines.Text werden dort jedes Mal neu berech' +
-    'net; besser einmal vor der Schleife. Die Grenzen von for werden nur einmal ausgewertet und nicht gemeldet, ebenso .Text als Feld eines Typs derselben Datei (Record-Feld) und Aufrufe, deren Argument di' +
-    'e Schleife ändert (Zuweisung, Inc, Dec, Delete, SetLength, Include, Exclude). Standardmäßig aus."',
+    '      "description": "Die Bedingung von while und until wird bei jedem Durchlauf ausgewertet. Aufrufe wie Trim oder Format und Eigenschaften wie Lines.Text werden dort jedes Mal neu berechnet; besser ' +
+    'einmal vor der Schleife. Die Grenzen von for werden nur einmal ausgewertet und nicht gemeldet, ebenso .Text als Feld (Record-Feld eines Typs derselben Datei oder laut Namensauflösung ein Feld bzw. ein' +
+    'e Property, die ein Feld liest), eine Property, deren Empfänger die Schleife ändert (Items[I].Text), FileExists und DirectoryExists (Warten auf eine Datei) und Aufrufe, deren Argument die Schleife änd' +
+    'ert (Zuweisung, Inc, Dec, Delete, SetLength, Include, Exclude). Standardmäßig aus."',
     '    },',
     '{',
     '      "id": "missing-begin-update",',
     '      "name": "Hinzufügen in einer Schleife ohne BeginUpdate",',
     '      "description": "Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen.' +
-    ' Still bei Menüs (TMenuItem hat kein BeginUpdate, auch über Felder wie FParts.Menu.Items) und bei for-Schleifen mit höchstens 10 Durchläufen (feste Grenzen oder ein statisches Array derselben Datei). ' +
-    'Standardmäßig aus."',
+    ' Still bei Menüs (TMenuItem hat kein BeginUpdate, auch über Felder wie FParts.Menu.Items, auch in Records, die in der Klasse verschachtelt sind), bei Listen ohne Steuerelement (TObjectList<T>, TList, ' +
+    'TDictionary), bei Typen im Index ohne BeginUpdate und bei for-Schleifen mit höchstens 10 Durchläufen (feste Grenzen oder ein statisches Array derselben Datei). Standardmäßig aus."',
     '    },',
     '{',
     '      "id": "setlength-in-loop",',

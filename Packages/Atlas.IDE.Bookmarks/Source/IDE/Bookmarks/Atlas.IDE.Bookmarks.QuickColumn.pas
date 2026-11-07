@@ -204,7 +204,6 @@ uses
   Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Bookmarks.Quick,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.GutterColumns,
   Atlas.IDE.Foundation.Settings,

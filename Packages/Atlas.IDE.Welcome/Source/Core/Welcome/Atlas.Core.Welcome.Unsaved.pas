@@ -205,9 +205,6 @@ type
   public const
     /// <summary>Abschnitt in der Projekt-Zusammenfassung.</summary>
     cSectionName = 'unsaved';
-    cDefaultMinAgeHours = 0;
-    cDefaultWarnHours = 24;
-    cDefaultAlertHours = 72;
     /// <summary>Obergrenze der Stunden-Einstellungen (ein Jahr).</summary>
     cMaxHours = 8760;
     /// <summary>Zeitlimit je Projekt; danach startet die Abfrage keinen weiteren Aufruf.</summary>
@@ -921,7 +918,7 @@ begin
   if mMinutes < 60 then
   begin
     AUnit := TAtlasUnsavedAgeUnit.Minutes;
-    AValue := mMinutes;
+    AValue := Integer(mMinutes);
     if AValue < 1 then
     begin
       AValue := 1;
@@ -930,12 +927,12 @@ begin
   else if mMinutes < 24 * 60 then
   begin
     AUnit := TAtlasUnsavedAgeUnit.Hours;
-    AValue := mMinutes div 60;
+    AValue := Integer(mMinutes div 60);
   end
   else
   begin
     AUnit := TAtlasUnsavedAgeUnit.Days;
-    AValue := mMinutes div (24 * 60);
+    AValue := Integer(mMinutes div (24 * 60));
   end;
 end;
 

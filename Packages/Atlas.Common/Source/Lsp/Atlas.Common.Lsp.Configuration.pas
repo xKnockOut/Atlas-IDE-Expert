@@ -120,9 +120,6 @@ type
     class function RootPathFromInitialize(const AParams: TJSONObject): string; static;
     /// <summary>Abschnitt atlas aus den Parametern von didChangeConfiguration als JSON; sonst ''.</summary>
     class function EditorSettingsFromParams(const AParams: TJSONValue): string; static;
-    /// <summary>Diagnostics zu den Fehlern; der Aufrufer übernimmt das Objekt.</summary>
-    class function BuildParams(const AUri: string; AVersion: Integer;
-      const AIssues: TArray<TConfigurationIssue>): TJSONObject; static;
     /// <summary>Aktuelle Einstellungen (Kopie, threadsicher).</summary>
     property Settings: TServerSettings read GetSettings;
     property RootPath: string read FRootPath;
@@ -361,8 +358,8 @@ begin
   Result := (FFiles.Read <> '') and SameText(TDocumentUris.ToPath(AUri), FFiles.Read);
 end;
 
-class function TLspConfiguration.BuildParams(const AUri: string; AVersion: Integer;
-  const AIssues: TArray<TConfigurationIssue>): TJSONObject;
+/// <summary>Diagnostics zu den Fehlern; der Aufrufer übernimmt das Objekt.</summary>
+function BuildParams(const AUri: string; AVersion: Integer; const AIssues: TArray<TConfigurationIssue>): TJSONObject;
 var
   mItems: TJSONArray;
   mItem: TJSONObject;
