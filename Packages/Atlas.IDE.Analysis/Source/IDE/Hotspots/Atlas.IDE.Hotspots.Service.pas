@@ -373,7 +373,7 @@ begin
   FMonths := TAtlasIdeSettings.Current.HotspotsMonths;
   FMinCommits := TAtlasIdeSettings.Current.HotspotsCouplingMinCommits;
   mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLoading), True);
-  if not FRun(TAtlasHotspotCommands.Command, TAtlasHotspotCommands.Arguments(mUri, cRequestLevel, ARefresh),
+  if not FRun(TAtlasHotspotCommands.cCommand, TAtlasHotspotCommands.Arguments(mUri, cRequestLevel, ARefresh),
     cTimeoutMs, AnswerHandler(mRequest)) then
   begin
     FPending := False;
@@ -396,7 +396,7 @@ begin
     mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoProject), True);
     Exit;
   end;
-  if not FRun(TAtlasHotspotCommands.SaveCommand,
+  if not FRun(TAtlasHotspotCommands.cSaveCommand,
     TAtlasHotspotCommands.SaveArguments(mUri, AFileName, mFrame.LevelValue), cTimeoutMs,
     procedure(AAnswer: string)
     var
