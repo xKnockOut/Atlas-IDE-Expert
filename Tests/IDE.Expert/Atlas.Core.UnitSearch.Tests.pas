@@ -73,8 +73,8 @@ uses
   Atlas.Core.Files.DataFile;
 
 const
-  Root = 'C:\Arbeit\Atlas-IDE-Expert-claude-project-thread-j9xhhv';
-  Answer =
+  cRoot = 'C:\Arbeit\Atlas-IDE-Expert-claude-project-thread-j9xhhv';
+  cAnswer =
     '{"units":[' +
     '{"name":"Atlas.Common.Dfm.BinaryForm","uri":"C:\\Arbeit\\Atlas-IDE-Expert-claude-project-thread-j9xhhv\\Packages\\Atlas.Common\\Source\\Dfm\\Atlas.Common.Dfm.BinaryForm.pas","origin":"project","kind":"unit","projects":["Atlas.Common"]},' +
     '{"name":"Atlas.Common.Dfm.BinaryForm.Tests","uri":"C:\\Arbeit\\Atlas-IDE-Expert-claude-project-thread-j9xhhv\\Tests\\Common\\Dfm\\Atlas.Common.Dfm.BinaryForm.Tests.pas","origin":"project","kind":"test","projects":["Atlas.Tests"]},' +
@@ -94,48 +94,48 @@ end;
 
 function TAtlasUnitSearchTests.Entries: TAtlasUnitEntries;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := TJSONObject.ParseJSONValue(Answer);
+  mValue := TJSONObject.ParseJSONValue(cAnswer);
   try
-    Result := TAtlasUnitSearch.FromJson(Value, 'Atlas.IDE.Expert', Path);
+    Result := TAtlasUnitSearch.FromJson(mValue, 'Atlas.IDE.Expert', Path);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 function TAtlasUnitSearchTests.Names(const AEntries: TAtlasUnitEntries; const AOrder: TArray<Integer>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index in AOrder do
+  for mIndex in AOrder do
   begin
     if Result <> '' then
     begin
       Result := Result + ',';
     end;
-    Result := Result + AEntries[Index].Name;
+    Result := Result + AEntries[mIndex].Name;
   end;
 end;
 
 procedure TAtlasUnitSearchTests.ParsesFilterSyntax;
 var
-  Query: TAtlasUnitQuery;
+  mQuery: TAtlasUnitQuery;
 begin
-  Query := TAtlasUnitQuery.Parse('-t:test sett', True);
-  Assert.AreEqual(1, Integer(Length(Query.Words)));
-  Assert.AreEqual('sett', Query.Words[0]);
-  Assert.IsTrue(TAtlasUnitKind.Test in Query.NotKinds);
-  Assert.IsTrue(Query.Kinds = []);
-  Query := TAtlasUnitQuery.Parse('p:ide  t:form|frame  -p:tests', True);
-  Assert.IsFalse(Query.HasWords);
-  Assert.AreEqual('ide', Query.Projects[0]);
-  Assert.AreEqual('tests', Query.NotProjects[0]);
-  Assert.IsTrue(Query.Kinds = [TAtlasUnitKind.Form, TAtlasUnitKind.Frame]);
+  mQuery := TAtlasUnitQuery.Parse('-t:test sett', True);
+  Assert.AreEqual(1, Integer(Length(mQuery.Words)));
+  Assert.AreEqual('sett', mQuery.Words[0]);
+  Assert.IsTrue(TAtlasUnitKind.Test in mQuery.NotKinds);
+  Assert.IsTrue(mQuery.Kinds = []);
+  mQuery := TAtlasUnitQuery.Parse('p:ide  t:form|frame  -p:tests', True);
+  Assert.IsFalse(mQuery.HasWords);
+  Assert.AreEqual('ide', mQuery.Projects[0]);
+  Assert.AreEqual('tests', mQuery.NotProjects[0]);
+  Assert.IsTrue(mQuery.Kinds = [TAtlasUnitKind.Form, TAtlasUnitKind.Frame]);
   // Unvollständige oder unbekannte Filter bleiben Suchtext.
-  Query := TAtlasUnitQuery.Parse('t: t:xyz p:', True);
-  Assert.AreEqual(3, Integer(Length(Query.Words)));
+  mQuery := TAtlasUnitQuery.Parse('t: t:xyz p:', True);
+  Assert.AreEqual(3, Integer(Length(mQuery.Words)));
   Assert.IsTrue(TAtlasUnitQuery.IsFilter('-t:dm'));
   Assert.IsTrue(TAtlasUnitQuery.IsFilter('T:INC'));
   Assert.IsFalse(TAtlasUnitQuery.IsFilter('x:inc'));
@@ -143,98 +143,98 @@ end;
 
 procedure TAtlasUnitSearchTests.WithoutSyntaxEverythingIsText;
 var
-  Query: TAtlasUnitQuery;
+  mQuery: TAtlasUnitQuery;
 begin
-  Query := TAtlasUnitQuery.Parse('p:ide form', False);
-  Assert.AreEqual(2, Integer(Length(Query.Words)));
-  Assert.IsTrue(Query.Kinds = []);
-  Assert.AreEqual(0, Integer(Length(Query.Projects)));
+  mQuery := TAtlasUnitQuery.Parse('p:ide form', False);
+  Assert.AreEqual(2, Integer(Length(mQuery.Words)));
+  Assert.IsTrue(mQuery.Kinds = []);
+  Assert.AreEqual(0, Integer(Length(mQuery.Projects)));
 end;
 
 procedure TAtlasUnitSearchTests.ReadsServerAnswer;
 var
-  List: TAtlasUnitEntries;
-  Value: TJSONValue;
+  mList: TAtlasUnitEntries;
+  mValue: TJSONValue;
 begin
-  List := Entries;
-  Assert.AreEqual(9, Integer(Length(List)));
-  Assert.IsTrue(List[0].Origin = TAtlasUnitOrigin.Group, 'anderes Projekt der Gruppe');
-  Assert.IsTrue(List[2].Origin = TAtlasUnitOrigin.Active);
-  Assert.IsTrue(List[6].Origin = TAtlasUnitOrigin.SearchPath);
-  Assert.IsTrue(List[7].Origin = TAtlasUnitOrigin.Library_);
+  mList := Entries;
+  Assert.AreEqual(9, Integer(Length(mList)));
+  Assert.IsTrue(mList[0].Origin = TAtlasUnitOrigin.Group, 'anderes Projekt der Gruppe');
+  Assert.IsTrue(mList[2].Origin = TAtlasUnitOrigin.Active);
+  Assert.IsTrue(mList[6].Origin = TAtlasUnitOrigin.SearchPath);
+  Assert.IsTrue(mList[7].Origin = TAtlasUnitOrigin.Library_);
   // Gehört die Unit auch zum aktiven Projekt, ist das ihr Projekt.
-  Assert.AreEqual('Atlas.IDE.Expert', List[5].Project);
-  Assert.IsTrue(List[5].Origin = TAtlasUnitOrigin.Active);
-  Assert.AreEqual('Atlas.Tests', List[4].Project);
-  Value := TJSONObject.ParseJSONValue(Answer);
+  Assert.AreEqual('Atlas.IDE.Expert', mList[5].Project);
+  Assert.IsTrue(mList[5].Origin = TAtlasUnitOrigin.Active);
+  Assert.AreEqual('Atlas.Tests', mList[4].Project);
+  mValue := TJSONObject.ParseJSONValue(cAnswer);
   try
-    Assert.AreEqual(3, Integer(Length(TAtlasUnitSearch.ProjectsFromJson(Value))));
+    Assert.AreEqual(3, Integer(Length(TAtlasUnitSearch.ProjectsFromJson(mValue))));
     // Ohne aktives Projekt zählen alle Projekte als aktiv.
-    Assert.IsTrue(TAtlasUnitSearch.FromJson(Value, '', Path)[0].Origin = TAtlasUnitOrigin.Active);
+    Assert.IsTrue(TAtlasUnitSearch.FromJson(mValue, '', Path)[0].Origin = TAtlasUnitOrigin.Active);
   finally
-    Value.Free;
+    mValue.Free;
   end;
   Assert.AreEqual(0, Integer(Length(TAtlasUnitSearch.FromJson(nil, '', Path))));
 end;
 
 procedure TAtlasUnitSearchTests.KindFromText;
 var
-  Kind: TAtlasUnitKind;
+  mKind: TAtlasUnitKind;
 begin
-  Assert.IsTrue(TAtlasUnitSearch.KindFromText('dm', Kind));
-  Assert.IsTrue(Kind = TAtlasUnitKind.DataModule);
-  Assert.IsTrue(TAtlasUnitSearch.KindFromText('DataModule', Kind));
-  Assert.IsTrue(Kind = TAtlasUnitKind.DataModule);
-  Assert.IsTrue(TAtlasUnitSearch.KindFromText('INC', Kind));
-  Assert.IsTrue(Kind = TAtlasUnitKind.Include);
-  Assert.IsFalse(TAtlasUnitSearch.KindFromText('formular', Kind));
+  Assert.IsTrue(TAtlasUnitSearch.KindFromText('dm', mKind));
+  Assert.IsTrue(mKind = TAtlasUnitKind.DataModule);
+  Assert.IsTrue(TAtlasUnitSearch.KindFromText('DataModule', mKind));
+  Assert.IsTrue(mKind = TAtlasUnitKind.DataModule);
+  Assert.IsTrue(TAtlasUnitSearch.KindFromText('INC', mKind));
+  Assert.IsTrue(mKind = TAtlasUnitKind.Include);
+  Assert.IsFalse(TAtlasUnitSearch.KindFromText('formular', mKind));
   Assert.AreEqual('frame', TAtlasUnitSearch.KindText(TAtlasUnitKind.Frame));
 end;
 
 procedure TAtlasUnitSearchTests.FiltersByKindProjectAndOrigin;
 var
-  List: TAtlasUnitEntries;
-  All: TAtlasUnitOrigins;
+  mList: TAtlasUnitEntries;
+  mAll: TAtlasUnitOrigins;
 begin
-  List := Entries;
-  TAtlasUnitSearch.SortByName(List);
-  All := TAtlasUnitSearch.OriginsForScope('library');
+  mList := Entries;
+  TAtlasUnitSearch.SortByName(mList);
+  mAll := TAtlasUnitSearch.OriginsForScope('library');
   // Abnahme #777: "-t:test sett" blendet Tests aus.
   Assert.AreEqual('Atlas.Core.Settings.Plugin,Atlas.UI.Settings.Page',
-    Names(List, TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('-t:test sett', True), All, [])));
+    Names(mList, TAtlasUnitSearch.Order(mList, TAtlasUnitQuery.Parse('-t:test sett', True), mAll, [])));
   // "p:ide t:form" zeigt nur Formulare aus Atlas.IDE.Expert.
   Assert.AreEqual('Atlas.UI.Results.Frame',
-    Names(List, TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('p:ide t:form', True), All, [])));
+    Names(mList, TAtlasUnitSearch.Order(mList, TAtlasUnitQuery.Parse('p:ide t:form', True), mAll, [])));
   // Chips: nur Tests, nur Projekt-Units.
   Assert.AreEqual('Atlas.Common.Dfm.BinaryForm.Tests,Atlas.Core.Settings.Tests',
-    Names(List, TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('', True), All, [TAtlasUnitKind.Test])));
-  Assert.AreEqual(3, Integer(Length(TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('', True),
+    Names(mList, TAtlasUnitSearch.Order(mList, TAtlasUnitQuery.Parse('', True), mAll, [TAtlasUnitKind.Test])));
+  Assert.AreEqual(3, Integer(Length(TAtlasUnitSearch.Order(mList, TAtlasUnitQuery.Parse('', True),
     [TAtlasUnitOrigin.Active], []))));
-  Assert.AreEqual('Hilfe', Names(List, TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('hil', True),
+  Assert.AreEqual('Hilfe', Names(mList, TAtlasUnitSearch.Order(mList, TAtlasUnitQuery.Parse('hil', True),
     TAtlasUnitSearch.OriginsForScope('searchPath'), [])));
-  Assert.AreEqual('', Names(List, TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('sysutils', True),
+  Assert.AreEqual('', Names(mList, TAtlasUnitSearch.Order(mList, TAtlasUnitQuery.Parse('sysutils', True),
     TAtlasUnitSearch.OriginsForScope('searchPath'), [])));
 end;
 
 procedure TAtlasUnitSearchTests.RanksOpenThenActiveProject;
 var
-  List: TAtlasUnitEntries;
-  Order: TArray<Integer>;
-  Index: Integer;
+  mList: TAtlasUnitEntries;
+  mOrder: TArray<Integer>;
+  mIndex: Integer;
 begin
-  List := Entries;
-  TAtlasUnitSearch.SortByName(List);
+  mList := Entries;
+  TAtlasUnitSearch.SortByName(mList);
   // "Settings" trifft Page (aktives Projekt), Tests (andere) und Plugin (aktiv) gleich gut.
-  Order := TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('Settings', True),
+  mOrder := TAtlasUnitSearch.Order(mList, TAtlasUnitQuery.Parse('Settings', True),
     TAtlasUnitSearch.OriginsForScope('group'), []);
-  Assert.AreEqual('Atlas.Core.Settings.Plugin,Atlas.UI.Settings.Page,Atlas.Core.Settings.Tests', Names(List, Order));
-  for Index := 0 to High(List) do
+  Assert.AreEqual('Atlas.Core.Settings.Plugin,Atlas.UI.Settings.Page,Atlas.Core.Settings.Tests', Names(mList, mOrder));
+  for mIndex := 0 to High(mList) do
   begin
-    List[Index].IsOpen := List[Index].Name = 'Atlas.Core.Settings.Tests';
+    mList[mIndex].IsOpen := mList[mIndex].Name = 'Atlas.Core.Settings.Tests';
   end;
-  Order := TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('Settings', True),
+  mOrder := TAtlasUnitSearch.Order(mList, TAtlasUnitQuery.Parse('Settings', True),
     TAtlasUnitSearch.OriginsForScope('group'), []);
-  Assert.AreEqual('Atlas.Core.Settings.Tests', List[Order[0]].Name, 'offene Unit zuerst');
+  Assert.AreEqual('Atlas.Core.Settings.Tests', mList[mOrder[0]].Name, 'offene Unit zuerst');
 end;
 
 procedure TAtlasUnitSearchTests.MatchesCamelCaseAndLastSegment;
@@ -242,13 +242,13 @@ begin
   Assert.IsTrue(TAtlasUnitSearch.Score('ACDB', 'Atlas.Common.Dfm.BinaryForm') > 0, 'Wortanfänge');
   Assert.IsTrue(TAtlasUnitSearch.Score('BinaryForm', 'Atlas.Common.Dfm.BinaryForm') >
     TAtlasUnitSearch.Score('BinaryForm', 'Atlas.Common.Dfm.BinaryForm.Tests'), 'letzter Teil genau');
-  Assert.AreEqual(TAtlasUnitSearch.ScoreSubsequence, TAtlasUnitSearch.Score('acmbf', 'Atlas.Common.Dfm.BinaryForm'));
+  Assert.AreEqual(TAtlasUnitSearch.cScoreSubsequence, TAtlasUnitSearch.Score('acmbf', 'Atlas.Common.Dfm.BinaryForm'));
   Assert.IsTrue(TAtlasUnitSearch.Score('xyz', 'Atlas.Common.Dfm.BinaryForm') < 0);
 end;
 
 procedure TAtlasUnitSearchTests.FindsFormsByCaption;
 const
-  CaptionAnswer =
+  cCaptionAnswer =
     '{"units":[' +
     '{"name":"uKundeEdit","uri":"C:\\P\\uKundeEdit.pas","origin":"project","kind":"form","projects":["App"],' +
     '"caption":"Kunden bearbeiten"},' +
@@ -256,29 +256,29 @@ const
     '{"name":"uHaupt","uri":"C:\\P\\uHaupt.pas","origin":"project","kind":"form","projects":["App"]}' +
     '],"projects":[{"name":"App"}],"count":3}';
 var
-  Value: TJSONValue;
-  List: TAtlasUnitEntries;
-  All: TAtlasUnitOrigins;
+  mValue: TJSONValue;
+  mList: TAtlasUnitEntries;
+  mAll: TAtlasUnitOrigins;
 begin
-  Value := TJSONObject.ParseJSONValue(CaptionAnswer);
+  mValue := TJSONObject.ParseJSONValue(cCaptionAnswer);
   try
-    List := TAtlasUnitSearch.FromJson(Value, 'App', Path);
+    mList := TAtlasUnitSearch.FromJson(mValue, 'App', Path);
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  TAtlasUnitSearch.SortByName(List);
-  All := TAtlasUnitSearch.OriginsForScope('library');
-  Assert.AreEqual('Kunden bearbeiten', List[2].Caption);
+  TAtlasUnitSearch.SortByName(mList);
+  mAll := TAtlasUnitSearch.OriginsForScope('library');
+  Assert.AreEqual('Kunden bearbeiten', mList[2].Caption);
   // Nur über die Caption, ohne Rücksicht auf Groß- und Kleinschreibung.
-  Assert.AreEqual('uKundeEdit', Names(List, TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('BEARBEITEN', True),
-    All, [])));
+  Assert.AreEqual('uKundeEdit', Names(mList, TAtlasUnitSearch.Order(mList, TAtlasUnitQuery.Parse('BEARBEITEN', True),
+    mAll, [])));
   // Jedes Wort muss passen, gleich ob über Name oder Caption.
-  Assert.AreEqual('uKundeEdit', Names(List, TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('edit bearb', True),
-    All, [])));
+  Assert.AreEqual('uKundeEdit', Names(mList, TAtlasUnitSearch.Order(mList, TAtlasUnitQuery.Parse('edit bearb', True),
+    mAll, [])));
   // Treffer im Namen vor Treffern nur über die Caption.
-  Assert.AreEqual('Kunden.Liste,uKundeEdit', Names(List, TAtlasUnitSearch.Order(List,
-    TAtlasUnitQuery.Parse('kunden', True), All, [])));
-  Assert.AreEqual('', Names(List, TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('rechnung', True), All, [])));
+  Assert.AreEqual('Kunden.Liste,uKundeEdit', Names(mList, TAtlasUnitSearch.Order(mList,
+    TAtlasUnitQuery.Parse('kunden', True), mAll, [])));
+  Assert.AreEqual('', Names(mList, TAtlasUnitSearch.Order(mList, TAtlasUnitQuery.Parse('rechnung', True), mAll, [])));
   // Ohne Captions in der Antwort (Einstellung aus) fragt die Suche sie gar nicht ab.
   Assert.AreEqual('[]', TAtlasUnitSearch.UnitsArguments(False));
   Assert.AreEqual('[{"captions":true}]', TAtlasUnitSearch.UnitsArguments(True));
@@ -286,66 +286,66 @@ end;
 
 procedure TAtlasUnitSearchTests.GroupsByProjectWithCounts;
 var
-  List: TAtlasUnitEntries;
-  Order: TArray<Integer>;
-  Rows: TAtlasUnitRows;
+  mList: TAtlasUnitEntries;
+  mOrder: TArray<Integer>;
+  mRows: TAtlasUnitRows;
 begin
-  List := Entries;
-  Order := TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('', True), TAtlasUnitSearch.OriginsForScope('group'), []);
-  Rows := TAtlasUnitSearch.Rows(List, Order,
-    TAtlasUnitLayout.Create(TAtlasUnitGrouping.Project, Root, 'Atlas.IDE.Expert', nil, False));
+  mList := Entries;
+  mOrder := TAtlasUnitSearch.Order(mList, TAtlasUnitQuery.Parse('', True), TAtlasUnitSearch.OriginsForScope('group'), []);
+  mRows := TAtlasUnitSearch.Rows(mList, mOrder,
+    TAtlasUnitLayout.Create(TAtlasUnitGrouping.Project, cRoot, 'Atlas.IDE.Expert', nil, False));
   // Aktives Projekt oben, dann alphabetisch.
-  Assert.IsTrue(Rows[0].IsGroup);
-  Assert.AreEqual('Atlas.IDE.Expert', Rows[0].Group);
-  Assert.AreEqual(3, Integer(Rows[0].Count));
-  Assert.AreEqual(3 + 1 + 2 + 1 + 2 + 1, Integer(Length(Rows)));
-  Assert.AreEqual('Atlas.Common', Rows[4].Group);
-  Assert.AreEqual(2, Integer(Rows[4].Count), 'BinaryForm und Optionen.inc');
+  Assert.IsTrue(mRows[0].IsGroup);
+  Assert.AreEqual('Atlas.IDE.Expert', mRows[0].Group);
+  Assert.AreEqual(3, Integer(mRows[0].Count));
+  Assert.AreEqual(3 + 1 + 2 + 1 + 2 + 1, Integer(Length(mRows)));
+  Assert.AreEqual('Atlas.Common', mRows[4].Group);
+  Assert.AreEqual(2, Integer(mRows[4].Count), 'BinaryForm und Optionen.inc');
   // Eingeklappt: nur der Kopf.
-  Rows := TAtlasUnitSearch.Rows(List, Order,
-    TAtlasUnitLayout.Create(TAtlasUnitGrouping.Project, Root, 'Atlas.IDE.Expert', ['atlas.common'], False));
-  Assert.AreEqual(3 + 1 + 1 + 2 + 1, Integer(Length(Rows)));
-  Assert.IsTrue(Rows[4].Collapsed);
-  Assert.AreEqual(2, Integer(Rows[4].Count));
+  mRows := TAtlasUnitSearch.Rows(mList, mOrder,
+    TAtlasUnitLayout.Create(TAtlasUnitGrouping.Project, cRoot, 'Atlas.IDE.Expert', ['atlas.common'], False));
+  Assert.AreEqual(3 + 1 + 1 + 2 + 1, Integer(Length(mRows)));
+  Assert.IsTrue(mRows[4].Collapsed);
+  Assert.AreEqual(2, Integer(mRows[4].Count));
   // Ohne Gruppierung keine Köpfe.
-  Rows := TAtlasUnitSearch.Rows(List, Order,
-    TAtlasUnitLayout.Create(TAtlasUnitGrouping.None, Root, '', nil, False));
-  Assert.AreEqual(Integer(Length(Order)), Integer(Length(Rows)));
-  Assert.IsFalse(Rows[0].IsGroup);
+  mRows := TAtlasUnitSearch.Rows(mList, mOrder,
+    TAtlasUnitLayout.Create(TAtlasUnitGrouping.None, cRoot, '', nil, False));
+  Assert.AreEqual(Integer(Length(mOrder)), Integer(Length(mRows)));
+  Assert.IsFalse(mRows[0].IsGroup);
 end;
 
 procedure TAtlasUnitSearchTests.GroupsByFolderBestFirstWhenSearching;
 var
-  List: TAtlasUnitEntries;
-  Order: TArray<Integer>;
-  Rows: TAtlasUnitRows;
+  mList: TAtlasUnitEntries;
+  mOrder: TArray<Integer>;
+  mRows: TAtlasUnitRows;
 begin
-  List := Entries;
-  Order := TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('settingstests', True),
+  mList := Entries;
+  mOrder := TAtlasUnitSearch.Order(mList, TAtlasUnitQuery.Parse('settingstests', True),
     TAtlasUnitSearch.OriginsForScope('group'), []);
-  Rows := TAtlasUnitSearch.Rows(List, Order,
-    TAtlasUnitLayout.Create(TAtlasUnitGrouping.Folder, Root, 'Atlas.IDE.Expert', nil, True));
-  Assert.AreEqual('Tests\IDE.Expert', Rows[0].Group);
+  mRows := TAtlasUnitSearch.Rows(mList, mOrder,
+    TAtlasUnitLayout.Create(TAtlasUnitGrouping.Folder, cRoot, 'Atlas.IDE.Expert', nil, True));
+  Assert.AreEqual('Tests\IDE.Expert', mRows[0].Group);
   Assert.AreEqual('Packages\Atlas.IDE.Expert\Source\Core\Settings',
-    TAtlasUnitSearch.GroupOf(List[5], TAtlasUnitGrouping.Folder, Root));
-  Assert.AreEqual('', TAtlasUnitSearch.GroupOf(List[8], TAtlasUnitGrouping.Folder, Root), 'Datei in der Wurzel');
+    TAtlasUnitSearch.GroupOf(mList[5], TAtlasUnitGrouping.Folder, cRoot));
+  Assert.AreEqual('', TAtlasUnitSearch.GroupOf(mList[8], TAtlasUnitGrouping.Folder, cRoot), 'Datei in der Wurzel');
 end;
 
 procedure TAtlasUnitSearchTests.ShortensPathInTheMiddle;
 var
-  FileName: string;
+  mFileName: string;
 begin
   Assert.AreEqual('abcdef', TAtlasUnitSearch.MiddleEllipsis('abcdef', 6));
   Assert.AreEqual('ab…fg', TAtlasUnitSearch.MiddleEllipsis('abcdefg', 5));
   Assert.AreEqual('a…g', TAtlasUnitSearch.MiddleEllipsis('abcdefg', 3));
   Assert.AreEqual(10, Integer(Length(TAtlasUnitSearch.MiddleEllipsis('Packages\Atlas.Common\Source\Dfm\X.pas', 10))));
-  FileName := Root + '\Packages\Atlas.Common\Source\Dfm\Atlas.Common.Dfm.BinaryForm.pas';
+  mFileName := cRoot + '\Packages\Atlas.Common\Source\Dfm\Atlas.Common.Dfm.BinaryForm.pas';
   Assert.AreEqual('Packages\Atlas.Common\Source\Dfm\Atlas.Common.Dfm.BinaryForm.pas',
-    TAtlasUnitSearch.DisplayPath(FileName, Root, TAtlasUnitPathStyle.Relative, 20));
-  Assert.IsTrue(TAtlasUnitSearch.DisplayPath(FileName, Root, TAtlasUnitPathStyle.Compact, 30).EndsWith('BinaryForm.pas'));
-  Assert.AreEqual(30, Integer(Length(TAtlasUnitSearch.DisplayPath(FileName, Root, TAtlasUnitPathStyle.Compact, 30))));
-  Assert.AreEqual(FileName, TAtlasUnitSearch.DisplayPath(FileName, Root, TAtlasUnitPathStyle.Absolute, 30));
-  Assert.AreEqual('C:\Lib\Hilfe.pas', TAtlasUnitSearch.DisplayPath('C:\Lib\Hilfe.pas', Root,
+    TAtlasUnitSearch.DisplayPath(mFileName, cRoot, TAtlasUnitPathStyle.Relative, 20));
+  Assert.IsTrue(TAtlasUnitSearch.DisplayPath(mFileName, cRoot, TAtlasUnitPathStyle.Compact, 30).EndsWith('BinaryForm.pas'));
+  Assert.AreEqual(30, Integer(Length(TAtlasUnitSearch.DisplayPath(mFileName, cRoot, TAtlasUnitPathStyle.Compact, 30))));
+  Assert.AreEqual(mFileName, TAtlasUnitSearch.DisplayPath(mFileName, cRoot, TAtlasUnitPathStyle.Absolute, 30));
+  Assert.AreEqual('C:\Lib\Hilfe.pas', TAtlasUnitSearch.DisplayPath('C:\Lib\Hilfe.pas', cRoot,
     TAtlasUnitPathStyle.Relative, 0), 'außerhalb absolut');
   Assert.AreEqual('C:\P', TAtlasUnitSearch.CommonRoot(['C:\P\A\x.pas', 'C:\P\B\y.pas', 'C:\P\z.pas']));
   Assert.AreEqual('', TAtlasUnitSearch.CommonRoot(['C:\P\x.pas', 'D:\Q\y.pas']));
@@ -353,20 +353,20 @@ end;
 
 procedure TAtlasUnitSearchTests.DistinguishesFormAndTests;
 var
-  List: TAtlasUnitEntries;
-  Order: TArray<Integer>;
-  First, Second: string;
+  mList: TAtlasUnitEntries;
+  mOrder: TArray<Integer>;
+  mFirst, mSecond: string;
 begin
   // Abnahme #777: lange Ordnernamen schneiden den unterscheidenden Teil nicht ab.
-  List := Entries;
-  Order := TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('BinaryForm', True),
+  mList := Entries;
+  mOrder := TAtlasUnitSearch.Order(mList, TAtlasUnitQuery.Parse('BinaryForm', True),
     TAtlasUnitSearch.OriginsForScope('group'), []);
-  Assert.AreEqual(2, Integer(Length(Order)));
-  First := TAtlasUnitSearch.DisplayPath(List[Order[0]].FileName, Root, TAtlasUnitPathStyle.Compact, 40);
-  Second := TAtlasUnitSearch.DisplayPath(List[Order[1]].FileName, Root, TAtlasUnitPathStyle.Compact, 40);
-  Assert.AreNotEqual(First, Second);
-  Assert.IsFalse(First.Contains('j9xhhv'), 'relativ ab der Projektgruppe');
-  Assert.IsTrue(List[Order[0]].Kind <> List[Order[1]].Kind);
+  Assert.AreEqual(2, Integer(Length(mOrder)));
+  mFirst := TAtlasUnitSearch.DisplayPath(mList[mOrder[0]].FileName, cRoot, TAtlasUnitPathStyle.Compact, 40);
+  mSecond := TAtlasUnitSearch.DisplayPath(mList[mOrder[1]].FileName, cRoot, TAtlasUnitPathStyle.Compact, 40);
+  Assert.AreNotEqual(mFirst, mSecond);
+  Assert.IsFalse(mFirst.Contains('j9xhhv'), 'relativ ab der Projektgruppe');
+  Assert.IsTrue(mList[mOrder[0]].Kind <> mList[mOrder[1]].Kind);
 end;
 
 procedure TAtlasUnitSearchTests.ScopesToOrigins;
@@ -383,105 +383,105 @@ end;
 
 procedure TAtlasUnitSearchTests.ReadsPreview;
 var
-  Value: TJSONValue;
-  Preview: TAtlasUnitPreview;
+  mValue: TJSONValue;
+  mPreview: TAtlasUnitPreview;
 begin
-  Value := TJSONObject.ParseJSONValue('{"uri":"C:\\P\\Haupt.pas","header":"Kopf","lines":120,' +
+  mValue := TJSONObject.ParseJSONValue('{"uri":"C:\\P\\Haupt.pas","header":"Kopf","lines":120,' +
     '"modified":"2026-10-15T08:30:00.000Z","git":"modified","types":[{"name":"THaupt","kind":"class"}],' +
     '"typeCount":24,"uses":["Kunden","Basis"],"usedBy":3,"usedByUnits":["A","B","C"],"form":{"class":"THaupt","caption":"Kunden","width":400,"height":300,' +
     '"items":[["Kopf","TPanel","",0,0,400,40,1]]}}');
   try
-    Preview := TAtlasUnitPreview.FromJson(Value, Path);
+    mPreview := TAtlasUnitPreview.FromJson(mValue, Path);
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Assert.AreEqual('C:\P\Haupt.pas', Preview.FileName);
-  Assert.AreEqual('Kopf', Preview.Header);
-  Assert.AreEqual(120, Preview.Lines);
-  Assert.IsTrue(Preview.Modified > 0);
-  Assert.AreEqual('modified', Preview.Git);
-  Assert.AreEqual('THaupt', Preview.Types[0].Name);
-  Assert.AreEqual(24, Preview.TypeCount);
-  Assert.AreEqual('Kunden,Basis', string.Join(',', Preview.Uses_));
-  Assert.AreEqual(3, Preview.UsedBy);
-  Assert.AreEqual(3, Integer(Length(Preview.UsedByUnits)));
-  Assert.IsTrue(Preview.HasForm);
-  Assert.AreEqual(400, Preview.FormWidth);
-  Assert.AreEqual('TPanel', Preview.FormItems[0].TypeName);
-  Assert.AreEqual(40, Preview.FormItems[0].Height);
-  Preview := TAtlasUnitPreview.FromJson(nil, Path);
-  Assert.AreEqual(-1, Preview.UsedBy);
-  Assert.IsFalse(Preview.HasForm);
+  Assert.AreEqual('C:\P\Haupt.pas', mPreview.FileName);
+  Assert.AreEqual('Kopf', mPreview.Header);
+  Assert.AreEqual(120, mPreview.Lines);
+  Assert.IsTrue(mPreview.Modified > 0);
+  Assert.AreEqual('modified', mPreview.Git);
+  Assert.AreEqual('THaupt', mPreview.Types[0].Name);
+  Assert.AreEqual(24, mPreview.TypeCount);
+  Assert.AreEqual('Kunden,Basis', string.Join(',', mPreview.Uses_));
+  Assert.AreEqual(3, mPreview.UsedBy);
+  Assert.AreEqual(3, Integer(Length(mPreview.UsedByUnits)));
+  Assert.IsTrue(mPreview.HasForm);
+  Assert.AreEqual(400, mPreview.FormWidth);
+  Assert.AreEqual('TPanel', mPreview.FormItems[0].TypeName);
+  Assert.AreEqual(40, mPreview.FormItems[0].Height);
+  mPreview := TAtlasUnitPreview.FromJson(nil, Path);
+  Assert.AreEqual(-1, mPreview.UsedBy);
+  Assert.IsFalse(mPreview.HasForm);
 end;
 
 procedure TAtlasUnitSearchTests.StateRoundTrip;
 var
-  State, Loaded: TAtlasUnitSearchState;
-  Origins: TAtlasUnitOrigins;
-  Kinds: TAtlasUnitKinds;
+  mState, mLoaded: TAtlasUnitSearchState;
+  mOrigins: TAtlasUnitOrigins;
+  mKinds: TAtlasUnitKinds;
 begin
-  State := TAtlasUnitSearchState.Create;
-  Loaded := TAtlasUnitSearchState.Create;
+  mState := TAtlasUnitSearchState.Create;
+  mLoaded := TAtlasUnitSearchState.Create;
   try
-    Assert.IsFalse(State.Filters('C:\P\Gruppe.groupproj', Origins, Kinds));
-    State.SetCollapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Project, ['Atlas.Common', 'atlas.tests']);
-    State.SetCollapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Folder, ['Tests']);
-    State.SetFilters('C:\P\Gruppe.groupproj', [TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Library_],
+    Assert.IsFalse(mState.Filters('C:\P\Gruppe.groupproj', mOrigins, mKinds));
+    mState.SetCollapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Project, ['Atlas.Common', 'atlas.tests']);
+    mState.SetCollapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Folder, ['Tests']);
+    mState.SetFilters('C:\P\Gruppe.groupproj', [TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Library_],
       [TAtlasUnitKind.Form]);
-    State.Left := 10;
-    State.Width := 900;
-    State.PreviewWidth := 320;
-    State.PreviewVisible := False;
-    State.Sections[TAtlasPreviewSection.Types] := TAtlasSectionChoice.HandClosed;
-    Assert.IsTrue(Loaded.LoadJson(State.ToJson));
-    Assert.IsTrue(Loaded.Sections[TAtlasPreviewSection.Types] = TAtlasSectionChoice.Auto,
+    mState.Left := 10;
+    mState.Width := 900;
+    mState.PreviewWidth := 320;
+    mState.PreviewVisible := False;
+    mState.Sections[TAtlasPreviewSection.Types] := TAtlasSectionChoice.HandClosed;
+    Assert.IsTrue(mLoaded.LoadJson(mState.ToJson));
+    Assert.IsTrue(mLoaded.Sections[TAtlasPreviewSection.Types] = TAtlasSectionChoice.Auto,
       'Abschnitte gelten nur für die Sitzung (#876)');
-    Assert.AreEqual(2, Integer(Length(Loaded.Collapsed('c:\p\gruppe.groupproj', TAtlasUnitGrouping.Project))));
-    Assert.AreEqual('atlas.common', Loaded.Collapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Project)[0]);
-    Assert.AreEqual('tests', Loaded.Collapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Folder)[0]);
-    Assert.IsTrue(Loaded.Filters('C:\P\Gruppe.groupproj', Origins, Kinds));
-    Assert.IsTrue(Origins = [TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Library_]);
-    Assert.IsTrue(Kinds = [TAtlasUnitKind.Form]);
-    Assert.AreEqual(10, Loaded.Left);
-    Assert.AreEqual(900, Loaded.Width);
-    Assert.AreEqual(320, Loaded.PreviewWidth);
-    Assert.IsFalse(Loaded.PreviewVisible);
+    Assert.AreEqual(2, Integer(Length(mLoaded.Collapsed('c:\p\gruppe.groupproj', TAtlasUnitGrouping.Project))));
+    Assert.AreEqual('atlas.common', mLoaded.Collapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Project)[0]);
+    Assert.AreEqual('tests', mLoaded.Collapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Folder)[0]);
+    Assert.IsTrue(mLoaded.Filters('C:\P\Gruppe.groupproj', mOrigins, mKinds));
+    Assert.IsTrue(mOrigins = [TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Library_]);
+    Assert.IsTrue(mKinds = [TAtlasUnitKind.Form]);
+    Assert.AreEqual(10, mLoaded.Left);
+    Assert.AreEqual(900, mLoaded.Width);
+    Assert.AreEqual(320, mLoaded.PreviewWidth);
+    Assert.IsFalse(mLoaded.PreviewVisible);
     // Neu setzen ersetzt nur die eigene Gruppierung.
-    Loaded.SetCollapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Project, nil);
-    Assert.AreEqual(0, Integer(Length(Loaded.Collapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Project))));
-    Assert.AreEqual(1, Integer(Length(Loaded.Collapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Folder))));
-    Assert.IsFalse(Loaded.LoadJson('kein json'));
-    Assert.AreEqual(0, Loaded.Width);
-    Assert.IsTrue(Loaded.PreviewVisible);
+    mLoaded.SetCollapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Project, nil);
+    Assert.AreEqual(0, Integer(Length(mLoaded.Collapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Project))));
+    Assert.AreEqual(1, Integer(Length(mLoaded.Collapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Folder))));
+    Assert.IsFalse(mLoaded.LoadJson('kein json'));
+    Assert.AreEqual(0, mLoaded.Width);
+    Assert.IsTrue(mLoaded.PreviewVisible);
   finally
-    Loaded.Free;
-    State.Free;
+    mLoaded.Free;
+    mState.Free;
   end;
 end;
 
 /// <summary>Namen wie in einer großen Projektgruppe: Bereich, Feature, Rolle (10 × 25 × 20 = 5000).</summary>
 class function TAtlasUnitSearchTests.ManyUnits: TAtlasUnitEntries;
 const
-  Count = 5000;
-  Areas: array[0..9] of string = ('Common', 'Windows', 'Core', 'UI', 'IDE', 'Server', 'Setup', 'Tests', 'Tools',
+  cCount = 5000;
+  cAreas: array[0..9] of string = ('Common', 'Windows', 'Core', 'UI', 'IDE', 'Server', 'Setup', 'Tests', 'Tools',
     'Shell');
-  Features: array[0..24] of string = ('Settings', 'Completion', 'Hover', 'Index', 'Lsp', 'Dfm', 'Editing', 'Rules',
+  cFeatures: array[0..24] of string = ('Settings', 'Completion', 'Hover', 'Index', 'Lsp', 'Dfm', 'Editing', 'Rules',
     'Results', 'Problems', 'Forms', 'Build', 'Debug', 'Status', 'Style', 'Undo', 'Updates', 'Files', 'Projects',
     'Commands', 'Signature', 'Documentation', 'Diagnostics', 'UnitSearch', 'Palette');
-  Roles: array[0..19] of string = ('Page', 'Contract', 'Model', 'Window', 'Controller', 'Store', 'Parser', 'Writer',
+  cRoles: array[0..19] of string = ('Page', 'Contract', 'Model', 'Window', 'Controller', 'Store', 'Parser', 'Writer',
     'Reader', 'Provider', 'Editor', 'Painter', 'Commands', 'State', 'Tests', 'Frame', 'Dialog', 'Adapter', 'Cache',
     'Composition');
 var
   mIndex: Integer;
 begin
   Result := nil;
-  SetLength(Result, Count);
-  for mIndex := 0 to Count - 1 do
+  SetLength(Result, cCount);
+  for mIndex := 0 to cCount - 1 do
   begin
-    Result[mIndex].Name := Format('Atlas.%s.%s.%s', [Areas[mIndex mod 10], Features[(mIndex div 10) mod 25],
-      Roles[mIndex div 250]]);
+    Result[mIndex].Name := Format('Atlas.%s.%s.%s', [cAreas[mIndex mod 10], cFeatures[(mIndex div 10) mod 25],
+      cRoles[mIndex div 250]]);
     Result[mIndex].FileName := Format('%s\Packages\P%d\Source\Feature%d\%s.pas',
-      [Root, mIndex mod 7, mIndex mod 97, Result[mIndex].Name]);
+      [cRoot, mIndex mod 7, mIndex mod 97, Result[mIndex].Name]);
     Result[mIndex].Project := Format('Atlas.IDE.P%d', [mIndex mod 7]);
     Result[mIndex].Projects := [Result[mIndex].Project];
     Result[mIndex].Origin := TAtlasUnitOrigin.Group;
@@ -492,74 +492,74 @@ end;
 procedure TAtlasUnitSearchTests.FiveThousandUnitsPerKeystroke;
 const
   // Tastendruck für Tastendruck wie im Fenster; „-t:test “ wird beim Leerzeichen zum Filter.
-  Typed: array[0..11] of string = ('s', 'se', 'set', 'sett', 'settp', 'settpa', 'settpag', 'settpage',
+  cTyped: array[0..11] of string = ('s', 'se', 'set', 'sett', 'settp', 'settpa', 'settpag', 'settpage',
     '-t:test ', '-t:test s', '-t:test se', '-t:test settpage');
 var
-  Units: TAtlasUnitEntries;
-  Pattern: string;
-  Watch: TStopwatch;
-  Order: TArray<Integer>;
-  Worst: Int64;
-  Query, Previous: TAtlasUnitQuery;
-  HasPrevious: Boolean;
-  All: TAtlasUnitOrigins;
+  mUnits: TAtlasUnitEntries;
+  mPattern: string;
+  mWatch: TStopwatch;
+  mOrder: TArray<Integer>;
+  mWorst: Int64;
+  mQuery, mPrevious: TAtlasUnitQuery;
+  mHasPrevious: Boolean;
+  mAll: TAtlasUnitOrigins;
 begin
   // Abnahme #777: unter 50 ms je Tastendruck bei 5000 Units (Filtern, Ordnen, Gruppen bilden).
-  Units := ManyUnits;
-  TAtlasUnitSearch.SortByName(Units);
-  All := [Low(TAtlasUnitOrigin)..High(TAtlasUnitOrigin)];
-  Worst := 0;
-  HasPrevious := False;
-  for Pattern in Typed do
+  mUnits := ManyUnits;
+  TAtlasUnitSearch.SortByName(mUnits);
+  mAll := [Low(TAtlasUnitOrigin)..High(TAtlasUnitOrigin)];
+  mWorst := 0;
+  mHasPrevious := False;
+  for mPattern in cTyped do
   begin
-    Watch := TStopwatch.StartNew;
-    Query := TAtlasUnitQuery.Parse(Pattern, True);
-    if HasPrevious and Query.Narrows(Previous) then
+    mWatch := TStopwatch.StartNew;
+    mQuery := TAtlasUnitQuery.Parse(mPattern, True);
+    if mHasPrevious and mQuery.Narrows(mPrevious) then
     begin
-      Order := TAtlasUnitSearch.Order(Units, Query, All, [], Order);
+      mOrder := TAtlasUnitSearch.Order(mUnits, mQuery, mAll, [], mOrder);
     end
     else
     begin
-      Order := TAtlasUnitSearch.Order(Units, Query, All, []);
+      mOrder := TAtlasUnitSearch.Order(mUnits, mQuery, mAll, []);
     end;
-    Previous := Query;
-    HasPrevious := True;
-    TAtlasUnitSearch.Rows(Units, Order,
-      TAtlasUnitLayout.Create(TAtlasUnitGrouping.Folder, Root, 'Atlas.IDE.P1', nil, True));
-    Worst := Max(Worst, Watch.ElapsedMilliseconds);
-    Assert.IsTrue(Length(Order) > 0, Pattern);
+    mPrevious := mQuery;
+    mHasPrevious := True;
+    TAtlasUnitSearch.Rows(mUnits, mOrder,
+      TAtlasUnitLayout.Create(TAtlasUnitGrouping.Folder, cRoot, 'Atlas.IDE.P1', nil, True));
+    mWorst := Max(mWorst, mWatch.ElapsedMilliseconds);
+    Assert.IsTrue(Length(mOrder) > 0, mPattern);
   end;
-  Assert.IsTrue(Worst < 50, Format('langsamster Tastendruck %d ms', [Worst]));
+  Assert.IsTrue(mWorst < 50, Format('langsamster Tastendruck %d ms', [mWorst]));
 end;
 
 procedure TAtlasUnitSearchTests.BrokenFileSetAsideLockedFileKept;
 var
-  State: TAtlasUnitSearchState;
-  FileName: string;
-  Lock: TFileStream;
+  mState: TAtlasUnitSearchState;
+  mFileName: string;
+  mLock: TFileStream;
 begin
-  FileName := TPath.Combine(TPath.GetTempPath, 'atlas-unitsearch-' + IntToStr(Random(MaxInt)) + '.json');
-  State := TAtlasUnitSearchState.Create;
+  mFileName := TPath.Combine(TPath.GetTempPath, 'atlas-unitsearch-' + IntToStr(Random(MaxInt)) + '.json');
+  mState := TAtlasUnitSearchState.Create;
   try
-    TFile.WriteAllText(FileName, '[1, 2]');
-    Assert.IsTrue(State.LoadFromFile(FileName) = TAtlasDataLoad.Renewed);
-    Assert.IsTrue(TFile.Exists(FileName + TAtlasDataFile.DefectExtension), 'beiseitegelegt');
-    State.Width := 937;
-    Assert.IsTrue(State.SaveToFile(FileName));
-    Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
+    TFile.WriteAllText(mFileName, '[1, 2]');
+    Assert.IsTrue(mState.LoadFromFile(mFileName) = TAtlasDataLoad.Renewed);
+    Assert.IsTrue(TFile.Exists(mFileName + TAtlasDataFile.DefectExtension), 'beiseitegelegt');
+    mState.Width := 937;
+    Assert.IsTrue(mState.SaveToFile(mFileName));
+    mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
     try
-      Assert.IsTrue(State.LoadFromFile(FileName) = TAtlasDataLoad.Kept);
+      Assert.IsTrue(mState.LoadFromFile(mFileName) = TAtlasDataLoad.Kept);
     finally
-      Lock.Free;
+      mLock.Free;
     end;
-    Assert.AreEqual(0, State.Width);
-    State.Width := 400;
-    Assert.IsFalse(State.SaveToFile(FileName), 'beim Lesen gesperrt: nicht überschreiben');
-    Assert.Contains(TFile.ReadAllText(FileName, TEncoding.UTF8), '937');
+    Assert.AreEqual(0, mState.Width);
+    mState.Width := 400;
+    Assert.IsFalse(mState.SaveToFile(mFileName), 'beim Lesen gesperrt: nicht überschreiben');
+    Assert.Contains(TFile.ReadAllText(mFileName, TEncoding.UTF8), '937');
   finally
-    State.Free;
-    System.SysUtils.DeleteFile(FileName);
-    System.SysUtils.DeleteFile(FileName + TAtlasDataFile.DefectExtension);
+    mState.Free;
+    System.SysUtils.DeleteFile(mFileName);
+    System.SysUtils.DeleteFile(mFileName + TAtlasDataFile.DefectExtension);
   end;
   // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
   TAtlasDataFile.ForgetReports;
