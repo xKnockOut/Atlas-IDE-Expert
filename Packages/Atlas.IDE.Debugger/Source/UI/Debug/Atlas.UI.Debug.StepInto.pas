@@ -30,7 +30,7 @@ type
   TAtlasStepIntoWindow = class(TAtlasPopupWindow)
   public const
     /// <summary>Abstand unter der Zeile, logische Pixel.</summary>
-    Gap = 4;
+    cGap = 4;
   private
     FRows: TArray<TAtlasStepRow>;
     FRow: Integer;
@@ -83,10 +83,10 @@ uses
   Atlas.UI.Popup.Accessibility;
 
 const
-  Pad = 10;
-  RowGap = 4;
-  ColumnGap = 16;
-  Marker = '› ';
+  cPad = 10;
+  cRowGap = 4;
+  cColumnGap = 16;
+  cMarker = '› ';
 
 { TAtlasStepIntoWindow }
 
@@ -136,7 +136,7 @@ end;
 
 class function TAtlasStepIntoWindow.RowCaption(const ARows: TArray<TAtlasStepRow>; AIndex: Integer): string;
 var
-  Kind: string;
+  mKind: string;
 begin
   Result := '';
   if (AIndex < 0) or (AIndex > High(ARows)) then
@@ -144,7 +144,7 @@ begin
     Exit;
   end;
   Result := ARows[AIndex].Caption;
-  if AIndex < TAtlasStepInto.MaxDigit then
+  if AIndex < TAtlasStepInto.cMaxDigit then
   begin
     Result := IntToStr(AIndex + 1) + '  ' + Result;
   end
@@ -152,10 +152,10 @@ begin
   begin
     Result := '   ' + Result;
   end;
-  Kind := KindText(ARows[AIndex]);
-  if Kind <> '' then
+  mKind := KindText(ARows[AIndex]);
+  if mKind <> '' then
   begin
-    Result := Result + '  (' + Kind + ')';
+    Result := Result + '  (' + mKind + ')';
   end;
 end;
 
@@ -194,15 +194,15 @@ var
   mX: Integer;
   mText, mRight: string;
 begin
-  mX := Scale(Pad);
+  mX := Scale(cPad);
   mText := RowCaption(FRows, AIndex);
   if AIndex = FRow then
   begin
-    mText := Marker + mText;
+    mText := cMarker + mText;
   end
   else
   begin
-    mX := mX + Canvas.TextWidth(Marker);
+    mX := mX + Canvas.TextWidth(cMarker);
   end;
   mRight := PlaceText(FRows[AIndex]);
   if ADraw then
@@ -213,7 +213,7 @@ begin
     Canvas.TextOut(ARightX, AY, mRight);
   end;
   Result := ARightX + Canvas.TextWidth(mRight);
-  FRowRects[AIndex] := Rect(Scale(Pad), AY, Result, AY + ATextHeight);
+  FRowRects[AIndex] := Rect(Scale(cPad), AY, Result, AY + ATextHeight);
 end;
 
 function TAtlasStepIntoWindow.Layout(ADraw: Boolean): TSize;
@@ -227,61 +227,61 @@ begin
   begin
     Canvas.Brush.Style := bsClear;
   end;
-  mY := Scale(Pad);
+  mY := Scale(cPad);
   mText := TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand);
   Canvas.Font.Style := [fsBold];
   if ADraw then
   begin
     Canvas.Font.Color := ToColor(Colors.Text);
-    Canvas.TextOut(Scale(Pad), mY, mText);
+    Canvas.TextOut(Scale(cPad), mY, mText);
   end;
-  mWidth := Scale(Pad) + Canvas.TextWidth(mText);
+  mWidth := Scale(cPad) + Canvas.TextWidth(mText);
   Canvas.Font.Style := [];
   // Spalte für den Ort: hinter dem breitesten Namen.
   mNameWidth := 0;
   for mIndex := 0 to High(FRows) do
   begin
-    mNameWidth := Max(mNameWidth, Canvas.TextWidth(Marker + RowCaption(FRows, mIndex)));
+    mNameWidth := Max(mNameWidth, Canvas.TextWidth(cMarker + RowCaption(FRows, mIndex)));
   end;
-  mRightX := Scale(Pad) + mNameWidth + Scale(ColumnGap);
+  mRightX := Scale(cPad) + mNameWidth + Scale(cColumnGap);
   SetLength(FRowRects, Length(FRows));
   for mIndex := 0 to High(FRows) do
   begin
-    mY := mY + mTextHeight + Scale(RowGap);
+    mY := mY + mTextHeight + Scale(cRowGap);
     mWidth := Max(mWidth, LayoutRow(mIndex, mY, mRightX, mTextHeight, ADraw));
   end;
   // Fußzeile mit den Tasten.
-  mY := mY + mTextHeight + Scale(RowGap) * 2;
+  mY := mY + mTextHeight + Scale(cRowGap) * 2;
   mText := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetFooter);
   if ADraw then
   begin
     Canvas.Font.Color := ToColor(Colors.Muted);
-    Canvas.TextOut(Scale(Pad), mY, mText);
+    Canvas.TextOut(Scale(cPad), mY, mText);
     Canvas.Brush.Style := bsSolid;
   end;
-  Result.cx := Max(mWidth, Scale(Pad) + Canvas.TextWidth(mText)) + Scale(Pad);
-  Result.cy := mY + mTextHeight + Scale(Pad);
+  Result.cx := Max(mWidth, Scale(cPad) + Canvas.TextWidth(mText)) + Scale(cPad);
+  Result.cy := mY + mTextHeight + Scale(cPad);
 end;
 
 procedure TAtlasStepIntoWindow.ShowFor(const ARows: TArray<TAtlasStepRow>; const APoint: TPoint);
 var
-  Size: TSize;
-  Area: TRect;
-  Left, Top: Integer;
+  mSize: TSize;
+  mArea: TRect;
+  mLeft, mTop: Integer;
 begin
   FRows := ARows;
   FRow := TAtlasStepInto.NextAvailable(FRows, 0, 1);
   HandleNeeded;
-  Size := Layout(False);
-  Area := WorkAreaAt(APoint);
-  Left := Min(APoint.X, Area.Right - Size.cx);
-  Top := APoint.Y + Scale(Gap);
-  if Top + Size.cy > Area.Bottom then
+  mSize := Layout(False);
+  mArea := WorkAreaAt(APoint);
+  mLeft := Min(APoint.X, mArea.Right - mSize.cx);
+  mTop := APoint.Y + Scale(cGap);
+  if mTop + mSize.cy > mArea.Bottom then
   begin
-    Top := APoint.Y - Scale(Gap) - Size.cy;
+    mTop := APoint.Y - Scale(cGap) - mSize.cy;
   end;
-  ShowAt(Rect(Max(Left, Area.Left), Max(Top, Area.Top), Max(Left, Area.Left) + Size.cx,
-    Max(Top, Area.Top) + Size.cy));
+  ShowAt(Rect(Max(mLeft, mArea.Left), Max(mTop, mArea.Top), Max(mLeft, mArea.Left) + mSize.cx,
+    Max(mTop, mArea.Top) + mSize.cy));
   Announce(TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand));
   if FRow >= 0 then
   begin
@@ -307,27 +307,27 @@ end;
 
 function TAtlasStepIntoWindow.MoveRow(ADelta: Integer): Boolean;
 var
-  Next: Integer;
+  mNext: Integer;
 begin
-  Next := TAtlasStepInto.NextAvailable(FRows, FRow + ADelta, ADelta);
-  Result := Next >= 0;
+  mNext := TAtlasStepInto.NextAvailable(FRows, FRow + ADelta, ADelta);
+  Result := mNext >= 0;
   if Result then
   begin
-    Select(Next);
+    Select(mNext);
   end;
 end;
 
 function TAtlasStepIntoWindow.AcceptDigit(ADigit: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := TAtlasStepInto.DigitRow(FRows, ADigit);
-  Result := Index >= 0;
+  mIndex := TAtlasStepInto.DigitRow(FRows, ADigit);
+  Result := mIndex >= 0;
   if not Result then
   begin
     Exit;
   end;
-  Select(Index);
+  Select(mIndex);
   Accept;
 end;
 
@@ -342,17 +342,17 @@ end;
 
 procedure TAtlasStepIntoWindow.Accept;
 var
-  Chosen: Integer;
+  mChosen: Integer;
 begin
-  Chosen := FRow;
-  if (Chosen < 0) or (Chosen > High(FRows)) or not FRows[Chosen].Available then
+  mChosen := FRow;
+  if (mChosen < 0) or (mChosen > High(FRows)) or not FRows[mChosen].Available then
   begin
     Exit;
   end;
   Dismiss;
   if Assigned(FOnAccept) then
   begin
-    FOnAccept(Chosen);
+    FOnAccept(mChosen);
   end;
 end;
 
@@ -376,20 +376,20 @@ end;
 
 procedure TAtlasStepIntoWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  Index: Integer;
-  Point: TPoint;
+  mIndex: Integer;
+  mPoint: TPoint;
 begin
   inherited;
   if Button <> mbLeft then
   begin
     Exit;
   end;
-  Point := TPoint.Create(X, Y);
-  for Index := 0 to High(FRowRects) do
+  mPoint := TPoint.Create(X, Y);
+  for mIndex := 0 to High(FRowRects) do
   begin
-    if PtInRect(FRowRects[Index], Point) and FRows[Index].Available then
+    if PtInRect(FRowRects[mIndex], mPoint) and FRows[mIndex].Available then
     begin
-      Select(Index);
+      Select(mIndex);
       Accept;
       Exit;
     end;
@@ -398,22 +398,22 @@ end;
 
 procedure TAtlasStepIntoWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  Index: Integer;
-  Hot: Boolean;
-  Point: TPoint;
+  mIndex: Integer;
+  mHot: Boolean;
+  mPoint: TPoint;
 begin
   inherited;
-  Point := TPoint.Create(X, Y);
-  Hot := False;
-  for Index := 0 to High(FRowRects) do
+  mPoint := TPoint.Create(X, Y);
+  mHot := False;
+  for mIndex := 0 to High(FRowRects) do
   begin
-    if PtInRect(FRowRects[Index], Point) and FRows[Index].Available then
+    if PtInRect(FRowRects[mIndex], mPoint) and FRows[mIndex].Available then
     begin
-      Hot := True;
-      Select(Index);
+      mHot := True;
+      Select(mIndex);
     end;
   end;
-  if Hot then
+  if mHot then
   begin
     Cursor := crHandPoint;
   end

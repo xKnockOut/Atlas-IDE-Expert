@@ -85,7 +85,7 @@ type
     /// <summary>Zeilen der Leiste: drei, mit Erklärung mehr.</summary>
     function Rows: Integer;
     /// <summary>Knopf bzw. Ortszeile unter dem Punkt (Client); None = nichts.</summary>
-    function ActionAt(X, Y: Integer): TAtlasDebugBarAction;
+    function ActionAt(AX, AY: Integer): TAtlasDebugBarAction;
     /// <summary>Fläche eines Knopfs (Client); leer, wenn er fehlt.</summary>
     function ActionRect(AAction: TAtlasDebugBarAction): TRect;
     /// <summary>Wie ein Klick (Tasten, Tests): meldet OnAction, wenn es den Knopf gibt.</summary>
@@ -106,17 +106,17 @@ uses
 
 const
   /// <summary>Knöpfe der dritten Zeile in Reihenfolge.</summary>
-  BarButtons: array[0..4] of TAtlasDebugBarAction = (TAtlasDebugBarAction.BreakHere,
+  cBarButtons: array[0..4] of TAtlasDebugBarAction = (TAtlasDebugBarAction.BreakHere,
     TAtlasDebugBarAction.Continue, TAtlasDebugBarAction.IgnoreClass, TAtlasDebugBarAction.IgnoreLocation,
     TAtlasDebugBarAction.Copy);
   /// <summary>Knöpfe der Erklärung in Reihenfolge.</summary>
-  ExplanationButtons: array[0..2] of TAtlasDebugBarAction = (TAtlasDebugBarAction.WhereAssigned,
+  cExplanationButtons: array[0..2] of TAtlasDebugBarAction = (TAtlasDebugBarAction.WhereAssigned,
     TAtlasDebugBarAction.Evaluate, TAtlasDebugBarAction.CopyExplanation);
   /// <summary>Höchstens so viele geprüfte Glieder; der Rest als „… n weitere“.</summary>
-  MaxExplanationLines = 6;
-  BaseRow = 24;
-  BarPadding = 6;
-  Gap = 6;
+  cMaxExplanationLines = 6;
+  cBaseRow = 24;
+  cBarPadding = 6;
+  cGap = 6;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -200,12 +200,12 @@ end;
 
 class function TAtlasDebugExceptionBar.BarHeight(APPI, ARows: Integer): Integer;
 begin
-  Result := MulDiv(ARows * BaseRow + BarPadding, Max(APPI, 96), 96);
+  Result := MulDiv(ARows * cBaseRow + cBarPadding, Max(APPI, 96), 96);
 end;
 
 function TAtlasDebugExceptionBar.ShownLines: Integer;
 begin
-  Result := Min(Length(FExplanation.Lines), MaxExplanationLines);
+  Result := Min(Length(FExplanation.Lines), cMaxExplanationLines);
 end;
 
 function TAtlasDebugExceptionBar.ExplanationRows: Integer;
@@ -222,7 +222,7 @@ begin
     Exit;
   end;
   Inc(Result, ShownLines);
-  if Length(FExplanation.Lines) > MaxExplanationLines then
+  if Length(FExplanation.Lines) > cMaxExplanationLines then
   begin
     Inc(Result);
   end;
@@ -239,7 +239,7 @@ end;
 
 function TAtlasDebugExceptionBar.RowTop(ARow: Integer): Integer;
 begin
-  Result := Scale(BarPadding div 2) + ARow * RowHeight;
+  Result := Scale(cBarPadding div 2) + ARow * RowHeight;
 end;
 
 procedure TAtlasDebugExceptionBar.ApplyHeight;
@@ -267,7 +267,7 @@ end;
 
 function TAtlasDebugExceptionBar.RowHeight: Integer;
 begin
-  Result := Scale(BaseRow);
+  Result := Scale(cBaseRow);
 end;
 
 procedure TAtlasDebugExceptionBar.SetInfo(const AInfo: TAtlasDebugBannerInfo);
@@ -294,87 +294,87 @@ end;
 
 function TAtlasDebugExceptionBar.DetailText: string;
 var
-  Parts: TArray<string>;
-  Place: string;
+  mParts: TArray<string>;
+  mPlace: string;
 begin
-  Parts := nil;
+  mParts := nil;
   if FInfo.ThreadText <> '' then
   begin
-    Parts := Parts + [TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugBannerThread, [FInfo.ThreadText])];
+    mParts := mParts + [TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugBannerThread, [FInfo.ThreadText])];
   end;
   if FInfo.Hidden > 0 then
   begin
-    Parts := Parts + [TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugBannerHidden, [FInfo.Hidden])];
+    mParts := mParts + [TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugBannerHidden, [FInfo.Hidden])];
   end;
-  Place := FInfo.Routine;
+  mPlace := FInfo.Routine;
   if FInfo.LocationText <> '' then
   begin
-    if Place <> '' then
+    if mPlace <> '' then
     begin
-      Place := Place + ' (' + FInfo.LocationText + ')';
+      mPlace := mPlace + ' (' + FInfo.LocationText + ')';
     end
     else
     begin
-      Place := FInfo.LocationText;
+      mPlace := FInfo.LocationText;
     end;
   end;
-  if Place <> '' then
+  if mPlace <> '' then
   begin
-    Parts := Parts + [Place];
+    mParts := mParts + [mPlace];
   end;
-  Result := string.Join(' · ', Parts);
+  Result := string.Join(' · ', mParts);
 end;
 
 procedure TAtlasDebugExceptionBar.Layout;
 var
-  Action: TAtlasDebugBarAction;
-  Left, Top, Width_: Integer;
-  Place: string;
+  mAction: TAtlasDebugBarAction;
+  mLeft, mTop, mWidth_: Integer;
+  mPlace: string;
 begin
   if FLaidOut or not HandleAllocated then
   begin
     Exit;
   end;
-  for Action := Low(TAtlasDebugBarAction) to High(TAtlasDebugBarAction) do
+  for mAction := Low(TAtlasDebugBarAction) to High(TAtlasDebugBarAction) do
   begin
-    FRects[Action] := TRect.Empty;
+    FRects[mAction] := TRect.Empty;
   end;
   Canvas.Font := Font;
   // Ortszeile: nur der Teil mit Routine und Datei ist anklickbar, und nur mit Datei.
   if FInfo.HasLocation then
   begin
-    Place := DetailText;
-    Width_ := Min(Canvas.TextWidth(Place), ClientWidth - 2 * Scale(BarPadding + Gap));
-    FRects[TAtlasDebugBarAction.Open] := Rect(Scale(BarPadding + Gap), Scale(BarPadding div 2) + RowHeight,
-      Scale(BarPadding + Gap) + Width_, Scale(BarPadding div 2) + 2 * RowHeight);
+    mPlace := DetailText;
+    mWidth_ := Min(Canvas.TextWidth(mPlace), ClientWidth - 2 * Scale(cBarPadding + cGap));
+    FRects[TAtlasDebugBarAction.Open] := Rect(Scale(cBarPadding + cGap), Scale(cBarPadding div 2) + RowHeight,
+      Scale(cBarPadding + cGap) + mWidth_, Scale(cBarPadding div 2) + 2 * RowHeight);
   end;
   // Knöpfe der Erklärung in ihrer letzten Zeile (über den Knöpfen der Leiste).
   if FExplanation.Active and not FExplanation.Busy then
   begin
-    Top := RowTop(Rows - 2) + Scale(2);
-    Left := Scale(BarPadding + Gap);
-    for Action in ExplanationButtons do
+    mTop := RowTop(Rows - 2) + Scale(2);
+    mLeft := Scale(cBarPadding + cGap);
+    for mAction in cExplanationButtons do
     begin
-      if not ExplanationHas(FExplanation, Action) then
+      if not ExplanationHas(FExplanation, mAction) then
       begin
         Continue;
       end;
-      Width_ := Canvas.TextWidth(ActionCaption(Action, FExplanation.WhereName)) + Scale(16);
-      FRects[Action] := Rect(Left, Top, Left + Width_, Top + RowHeight - Scale(4));
-      Inc(Left, Width_ + Scale(Gap));
+      mWidth_ := Canvas.TextWidth(ActionCaption(mAction, FExplanation.WhereName)) + Scale(16);
+      FRects[mAction] := Rect(mLeft, mTop, mLeft + mWidth_, mTop + RowHeight - Scale(4));
+      Inc(mLeft, mWidth_ + Scale(cGap));
     end;
   end;
-  Top := RowTop(Rows - 1) + Scale(2);
-  Left := Scale(BarPadding + Gap);
-  for Action in BarButtons do
+  mTop := RowTop(Rows - 1) + Scale(2);
+  mLeft := Scale(cBarPadding + cGap);
+  for mAction in cBarButtons do
   begin
-    if (Action = TAtlasDebugBarAction.IgnoreLocation) and not FInfo.CanIgnoreLocation then
+    if (mAction = TAtlasDebugBarAction.IgnoreLocation) and not FInfo.CanIgnoreLocation then
     begin
       Continue;
     end;
-    Width_ := Canvas.TextWidth(ActionCaption(Action, FExplanation.WhereName)) + Scale(16);
-    FRects[Action] := Rect(Left, Top, Left + Width_, Top + RowHeight - Scale(4));
-    Inc(Left, Width_ + Scale(Gap));
+    mWidth_ := Canvas.TextWidth(ActionCaption(mAction, FExplanation.WhereName)) + Scale(16);
+    FRects[mAction] := Rect(mLeft, mTop, mLeft + mWidth_, mTop + RowHeight - Scale(4));
+    Inc(mLeft, mWidth_ + Scale(cGap));
   end;
   FLaidOut := True;
 end;
@@ -398,16 +398,16 @@ begin
   Result := FRects[AAction];
 end;
 
-function TAtlasDebugExceptionBar.ActionAt(X, Y: Integer): TAtlasDebugBarAction;
+function TAtlasDebugExceptionBar.ActionAt(AX, AY: Integer): TAtlasDebugBarAction;
 var
-  Action: TAtlasDebugBarAction;
+  mAction: TAtlasDebugBarAction;
 begin
   Layout;
-  for Action := Succ(TAtlasDebugBarAction.None) to High(TAtlasDebugBarAction) do
+  for mAction := Succ(TAtlasDebugBarAction.None) to High(TAtlasDebugBarAction) do
   begin
-    if not FRects[Action].IsEmpty and FRects[Action].Contains(Point(X, Y)) then
+    if not FRects[mAction].IsEmpty and FRects[mAction].Contains(Point(AX, AY)) then
     begin
-      Exit(Action);
+      Exit(mAction);
     end;
   end;
   Result := TAtlasDebugBarAction.None;
@@ -441,19 +441,19 @@ end;
 
 procedure TAtlasDebugExceptionBar.DrawButton(AAction: TAtlasDebugBarAction);
 var
-  Area: TRect;
-  Text: string;
-  Primary: Boolean;
+  mArea: TRect;
+  mText: string;
+  mPrimary: Boolean;
 begin
-  Area := FRects[AAction];
-  if Area.IsEmpty then
+  mArea := FRects[AAction];
+  if mArea.IsEmpty then
   begin
     Exit;
   end;
   // Fortsetzen ist der Hauptknopf (Akzent), die übrigen wie die Knöpfe der Editorleiste.
-  Primary := AAction = TAtlasDebugBarAction.Continue;
+  mPrimary := AAction = TAtlasDebugBarAction.Continue;
   Canvas.Brush.Style := bsSolid;
-  if Primary then
+  if mPrimary then
   begin
     Canvas.Brush.Color := ToColor(FColors.AccentSoft);
     Canvas.Pen.Color := ToColor(FColors.Accent);
@@ -468,10 +468,10 @@ begin
     Canvas.Brush.Color := ToColor(FColors.Gutter);
     Canvas.Pen.Color := ToColor(FColors.Line);
   end;
-  Canvas.RoundRect(Area.Left, Area.Top, Area.Right, Area.Bottom, Scale(6), Scale(6));
+  Canvas.RoundRect(mArea.Left, mArea.Top, mArea.Right, mArea.Bottom, Scale(6), Scale(6));
   Canvas.Brush.Style := bsClear;
   Canvas.Font := Font;
-  if Primary then
+  if mPrimary then
   begin
     Canvas.Font.Color := ToColor(FColors.Accent);
   end
@@ -479,8 +479,8 @@ begin
   begin
     Canvas.Font.Color := ToColor(FColors.Text);
   end;
-  Text := ActionCaption(AAction, FExplanation.WhereName);
-  DrawText(Canvas.Handle, PChar(Text), -1, Area, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+  mText := ActionCaption(AAction, FExplanation.WhereName);
+  DrawText(Canvas.Handle, PChar(mText), -1, mArea, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
 end;
 
 /// <summary>Zeile 1 der Leiste ABar in AFrame: Klasse und Meldung, rechts der Zähler.</summary>
@@ -491,15 +491,15 @@ var
   mRight: Integer;
 begin
   ABar.Canvas.Font := ABar.Font;
-  mRight := AFrame.Right - ABar.Scale(Gap);
+  mRight := AFrame.Right - ABar.Scale(cGap);
   if ABar.FInfo.Count > 1 then
   begin
     mText := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugBannerCount, [ABar.FInfo.Count]);
     ABar.Canvas.Font.Color := ToColor(ABar.FColors.Warn);
     TextIn(ABar.Canvas, mText, Rect(AFrame.Left, AFrame.Top, mRight, AFrame.Top + ABar.RowHeight), DT_RIGHT);
-    Dec(mRight, ABar.Canvas.TextWidth(mText) + ABar.Scale(Gap));
+    Dec(mRight, ABar.Canvas.TextWidth(mText) + ABar.Scale(cGap));
   end;
-  mLine := Rect(AFrame.Left + ABar.Scale(Gap), AFrame.Top, mRight, AFrame.Top + ABar.RowHeight);
+  mLine := Rect(AFrame.Left + ABar.Scale(cGap), AFrame.Top, mRight, AFrame.Top + ABar.RowHeight);
   ABar.Canvas.Font.Style := [fsBold];
   ABar.Canvas.Font.Color := ToColor(ABar.FColors.Error);
   mText := ABar.FInfo.ExceptionClass;
@@ -525,8 +525,8 @@ begin
   begin
     ABar.Canvas.Font.Color := ToColor(ABar.FColors.Muted);
   end;
-  TextIn(ABar.Canvas, ABar.DetailText, Rect(AFrame.Left + ABar.Scale(Gap), AFrame.Top + ABar.RowHeight,
-    AFrame.Right - ABar.Scale(Gap), AFrame.Top + 2 * ABar.RowHeight), DT_LEFT or DT_END_ELLIPSIS);
+  TextIn(ABar.Canvas, ABar.DetailText, Rect(AFrame.Left + ABar.Scale(cGap), AFrame.Top + ABar.RowHeight,
+    AFrame.Right - ABar.Scale(cGap), AFrame.Top + 2 * ABar.RowHeight), DT_LEFT or DT_END_ELLIPSIS);
   ABar.Canvas.Font.Style := [];
 end;
 
@@ -540,8 +540,8 @@ begin
   ABar.Canvas.Font.Color := ToColor(ABar.FColors.Muted);
   ABar.Canvas.Brush.Style := bsClear;
   mText := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerKeys);
-  mLine := Rect(ABar.FRects[TAtlasDebugBarAction.Copy].Right + ABar.Scale(Gap), ABar.RowTop(ABar.Rows - 1),
-    AFrame.Right - ABar.Scale(Gap), AFrame.Bottom);
+  mLine := Rect(ABar.FRects[TAtlasDebugBarAction.Copy].Right + ABar.Scale(cGap), ABar.RowTop(ABar.Rows - 1),
+    AFrame.Right - ABar.Scale(cGap), AFrame.Bottom);
   if mLine.Width > ABar.Canvas.TextWidth(mText) then
   begin
     TextIn(ABar.Canvas, mText, mLine, DT_RIGHT);
@@ -558,7 +558,7 @@ begin
   // Fläche des Editors außen, die Leiste als Karte mit Akzentrahmen darin.
   Canvas.Brush.Color := ToColor(FColors.Gutter);
   Canvas.FillRect(ClientRect);
-  mFrame := Rect(Scale(BarPadding div 2), Scale(1), ClientWidth - Scale(BarPadding div 2), ClientHeight - Scale(1));
+  mFrame := Rect(Scale(cBarPadding div 2), Scale(1), ClientWidth - Scale(cBarPadding div 2), ClientHeight - Scale(1));
   Canvas.Brush.Color := ToColor(FColors.Surface);
   Canvas.Pen.Color := ToColor(FColors.Accent);
   Canvas.RoundRect(mFrame.Left, mFrame.Top, mFrame.Right, mFrame.Bottom, Scale(8), Scale(8));
@@ -567,7 +567,7 @@ begin
   PaintDetail(Self, mFrame);
   PaintExplanation(mFrame);
   // Letzte Zeile: Knöpfe, rechts die Tastenhinweise.
-  for mAction in BarButtons do
+  for mAction in cBarButtons do
   begin
     DrawButton(mAction);
   end;
@@ -593,7 +593,7 @@ var
   mExplanation: TAtlasDebugBannerExplanation;
 begin
   mExplanation := ABar.FExplanation;
-  mLine := Rect(AFrame.Left + ABar.Scale(Gap), ABar.RowTop(2), AFrame.Right - ABar.Scale(Gap), ABar.RowTop(3));
+  mLine := Rect(AFrame.Left + ABar.Scale(cGap), ABar.RowTop(2), AFrame.Right - ABar.Scale(cGap), ABar.RowTop(3));
   if mExplanation.Busy then
   begin
     ABar.Canvas.Font.Color := ToColor(ABar.FColors.Muted);
@@ -626,11 +626,11 @@ var
   mLines: TArray<TAtlasDebugBannerLine>;
 begin
   mLines := ABar.FExplanation.Lines;
-  mIndent := ABar.Canvas.TextWidth(TAtlasDebugBannerLine.MarkText(TAtlasDebugBannerMark.Bad)) + ABar.Scale(Gap);
+  mIndent := ABar.Canvas.TextWidth(TAtlasDebugBannerLine.MarkText(TAtlasDebugBannerMark.Bad)) + ABar.Scale(cGap);
   mRow := 3;
   for mIndex := 0 to ABar.ShownLines - 1 do
   begin
-    mLine := Rect(AFrame.Left + ABar.Scale(2 * Gap), ABar.RowTop(mRow), AFrame.Right - ABar.Scale(Gap),
+    mLine := Rect(AFrame.Left + ABar.Scale(2 * cGap), ABar.RowTop(mRow), AFrame.Right - ABar.Scale(cGap),
       ABar.RowTop(mRow + 1));
     ABar.Canvas.Font.Color := MarkColor(ABar.FColors, mLines[mIndex].Mark);
     TextIn(ABar.Canvas, TAtlasDebugBannerLine.MarkText(mLines[mIndex].Mark), mLine, DT_LEFT);
@@ -639,11 +639,11 @@ begin
     TextIn(ABar.Canvas, mLines[mIndex].Text, mLine, DT_LEFT or DT_END_ELLIPSIS);
     Inc(mRow);
   end;
-  if Length(mLines) > MaxExplanationLines then
+  if Length(mLines) > cMaxExplanationLines then
   begin
     ABar.Canvas.Font.Color := ToColor(ABar.FColors.Muted);
-    TextIn(ABar.Canvas, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvMore, [Length(mLines) - MaxExplanationLines]),
-      Rect(AFrame.Left + ABar.Scale(2 * Gap) + mIndent, ABar.RowTop(mRow), AFrame.Right - ABar.Scale(Gap),
+    TextIn(ABar.Canvas, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvMore, [Length(mLines) - cMaxExplanationLines]),
+      Rect(AFrame.Left + ABar.Scale(2 * cGap) + mIndent, ABar.RowTop(mRow), AFrame.Right - ABar.Scale(cGap),
       ABar.RowTop(mRow + 1)), DT_LEFT);
   end;
 end;
@@ -658,8 +658,8 @@ begin
   end;
   // Trennlinie über der Erklärung.
   Canvas.Pen.Color := ToColor(FColors.Line);
-  Canvas.MoveTo(AFrame.Left + Scale(Gap), RowTop(2) + Scale(1));
-  Canvas.LineTo(AFrame.Right - Scale(Gap), RowTop(2) + Scale(1));
+  Canvas.MoveTo(AFrame.Left + Scale(cGap), RowTop(2) + Scale(1));
+  Canvas.LineTo(AFrame.Right - Scale(cGap), RowTop(2) + Scale(1));
   Canvas.Brush.Style := bsClear;
   Canvas.Font := Font;
   PaintVerdict(Self, AFrame);
@@ -668,7 +668,7 @@ begin
     Exit;
   end;
   PaintChecks(Self, AFrame);
-  for mAction in ExplanationButtons do
+  for mAction in cExplanationButtons do
   begin
     DrawButton(mAction);
   end;
@@ -676,16 +676,16 @@ end;
 
 procedure TAtlasDebugExceptionBar.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  Hot: TAtlasDebugBarAction;
+  mHot: TAtlasDebugBarAction;
 begin
   inherited MouseMove(Shift, X, Y);
-  Hot := ActionAt(X, Y);
-  if Hot = FHot then
+  mHot := ActionAt(X, Y);
+  if mHot = FHot then
   begin
     Exit;
   end;
-  FHot := Hot;
-  if Hot <> TAtlasDebugBarAction.None then
+  FHot := mHot;
+  if mHot <> TAtlasDebugBarAction.None then
   begin
     Cursor := crHandPoint;
   end
@@ -694,7 +694,7 @@ begin
     Cursor := crDefault;
   end;
   Application.CancelHint;
-  if Hot = TAtlasDebugBarAction.Open then
+  if mHot = TAtlasDebugBarAction.Open then
   begin
     Hint := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerOpenHint);
   end
@@ -728,17 +728,17 @@ end;
 
 procedure TAtlasDebugExceptionBar.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  Action: TAtlasDebugBarAction;
+  mAction: TAtlasDebugBarAction;
 begin
   inherited MouseUp(Button, Shift, X, Y);
   if Button <> mbLeft then
   begin
     Exit;
   end;
-  Action := ActionAt(X, Y);
-  if Action = FDown then
+  mAction := ActionAt(X, Y);
+  if mAction = FDown then
   begin
-    Trigger(Action);
+    Trigger(mAction);
   end;
   FDown := TAtlasDebugBarAction.None;
 end;

@@ -102,92 +102,92 @@ end;
 
 procedure TAtlasDebugDialogCompletionTests.ApplyReplacesWord;
 var
-  Text: string;
-  Caret: Integer;
+  mText: string;
+  mCaret: Integer;
 begin
-  TAtlasExpressionEdit.Apply('Kunde.Na', 8, 2, 'Name', Text, Caret);
-  Assert.AreEqual('Kunde.Name', Text);
-  Assert.AreEqual(10, Caret);
-  TAtlasExpressionEdit.Apply('Ku + 1', 2, 2, 'Kunde', Text, Caret);
-  Assert.AreEqual('Kunde + 1', Text);
-  Assert.AreEqual(5, Caret);
-  TAtlasExpressionEdit.Apply('Kunde.Nxx', 7, 1, 'Name', Text, Caret);
-  Assert.AreEqual('Kunde.Name', Text, 'Rest des Worts mit ersetzt');
+  TAtlasExpressionEdit.Apply('Kunde.Na', 8, 2, 'Name', mText, mCaret);
+  Assert.AreEqual('Kunde.Name', mText);
+  Assert.AreEqual(10, mCaret);
+  TAtlasExpressionEdit.Apply('Ku + 1', 2, 2, 'Kunde', mText, mCaret);
+  Assert.AreEqual('Kunde + 1', mText);
+  Assert.AreEqual(5, mCaret);
+  TAtlasExpressionEdit.Apply('Kunde.Nxx', 7, 1, 'Name', mText, mCaret);
+  Assert.AreEqual('Kunde.Name', mText, 'Rest des Worts mit ersetzt');
 end;
 
 procedure TAtlasDebugDialogCompletionTests.HistoryKeepsTwentyNewestFirst;
 var
-  History: TAtlasExpressionHistory;
-  Index: Integer;
-  Items: TArray<string>;
+  mHistory: TAtlasExpressionHistory;
+  mIndex: Integer;
+  mItems: TArray<string>;
 begin
-  History := TAtlasExpressionHistory.Create;
+  mHistory := TAtlasExpressionHistory.Create;
   try
-    for Index := 1 to 25 do
+    for mIndex := 1 to 25 do
     begin
-      History.Add('C:\P\Haupt.dproj', 'Wert' + IntToStr(Index));
+      mHistory.Add('C:\P\Haupt.dproj', 'Wert' + IntToStr(mIndex));
     end;
-    Items := History.Items('c:\p\haupt.dproj');
-    Assert.AreEqual(TAtlasExpressionHistory.MaxPerProject, Integer(Length(Items)));
-    Assert.AreEqual('Wert25', Items[0]);
-    Assert.AreEqual('Wert6', Items[19]);
-    Assert.IsTrue(History.Add('C:\P\Haupt.dproj', ' Wert10 '), 'rückt nach vorn');
-    Items := History.Items('C:\P\Haupt.dproj');
-    Assert.AreEqual('Wert10', Items[0]);
-    Assert.AreEqual(TAtlasExpressionHistory.MaxPerProject, Integer(Length(Items)));
-    Assert.IsFalse(History.Add('C:\P\Haupt.dproj', 'Wert10'), 'schon vorn');
-    Assert.IsFalse(History.Add('C:\P\Haupt.dproj', '  '), 'leer');
-    Assert.AreEqual(0, Integer(Length(History.Items('C:\P\Anderes.dproj'))), 'je Projekt');
+    mItems := mHistory.Items('c:\p\haupt.dproj');
+    Assert.AreEqual(TAtlasExpressionHistory.cMaxPerProject, Integer(Length(mItems)));
+    Assert.AreEqual('Wert25', mItems[0]);
+    Assert.AreEqual('Wert6', mItems[19]);
+    Assert.IsTrue(mHistory.Add('C:\P\Haupt.dproj', ' Wert10 '), 'rückt nach vorn');
+    mItems := mHistory.Items('C:\P\Haupt.dproj');
+    Assert.AreEqual('Wert10', mItems[0]);
+    Assert.AreEqual(TAtlasExpressionHistory.cMaxPerProject, Integer(Length(mItems)));
+    Assert.IsFalse(mHistory.Add('C:\P\Haupt.dproj', 'Wert10'), 'schon vorn');
+    Assert.IsFalse(mHistory.Add('C:\P\Haupt.dproj', '  '), 'leer');
+    Assert.AreEqual(0, Integer(Length(mHistory.Items('C:\P\Anderes.dproj'))), 'je Projekt');
   finally
-    History.Free;
+    mHistory.Free;
   end;
 end;
 
 procedure TAtlasDebugDialogCompletionTests.HistoryRoundTrip;
 var
-  History, Loaded: TAtlasExpressionHistory;
-  Items: TArray<string>;
+  mHistory, mLoaded: TAtlasExpressionHistory;
+  mItems: TArray<string>;
 begin
-  History := TAtlasExpressionHistory.Create;
-  Loaded := TAtlasExpressionHistory.Create;
+  mHistory := TAtlasExpressionHistory.Create;
+  mLoaded := TAtlasExpressionHistory.Create;
   try
-    History.Add('A.dproj', 'Kunde.Name');
-    History.Add('A.dproj', 'Summe');
-    History.Add('', 'Self');
-    Assert.IsTrue(Loaded.LoadFromText(History.ToText));
-    Items := Loaded.Items('a.dproj');
-    Assert.AreEqual(2, Integer(Length(Items)));
-    Assert.AreEqual('Summe', Items[0]);
-    Assert.AreEqual('Self', Loaded.Items('')[0]);
-    Assert.IsFalse(Loaded.LoadFromText('[1]'));
-    Assert.AreEqual(0, Integer(Length(Loaded.Items('a.dproj'))));
-    Assert.IsTrue(Loaded.LoadFromText('{"projects":{"b":["x", 3, "", "y"]}}'), 'einzelne Fehler übersprungen');
-    Assert.AreEqual(2, Integer(Length(Loaded.Items('b'))));
+    mHistory.Add('A.dproj', 'Kunde.Name');
+    mHistory.Add('A.dproj', 'Summe');
+    mHistory.Add('', 'Self');
+    Assert.IsTrue(mLoaded.LoadFromText(mHistory.ToText));
+    mItems := mLoaded.Items('a.dproj');
+    Assert.AreEqual(2, Integer(Length(mItems)));
+    Assert.AreEqual('Summe', mItems[0]);
+    Assert.AreEqual('Self', mLoaded.Items('')[0]);
+    Assert.IsFalse(mLoaded.LoadFromText('[1]'));
+    Assert.AreEqual(0, Integer(Length(mLoaded.Items('a.dproj'))));
+    Assert.IsTrue(mLoaded.LoadFromText('{"projects":{"b":["x", 3, "", "y"]}}'), 'einzelne Fehler übersprungen');
+    Assert.AreEqual(2, Integer(Length(mLoaded.Items('b'))));
   finally
-    Loaded.Free;
-    History.Free;
+    mLoaded.Free;
+    mHistory.Free;
   end;
 end;
 
 procedure TAtlasDebugDialogCompletionTests.HistoryLimitAndRemove;
 var
-  History: TAtlasExpressionHistory;
-  Index: Integer;
+  mHistory: TAtlasExpressionHistory;
+  mIndex: Integer;
 begin
-  History := TAtlasExpressionHistory.Create(50);
+  mHistory := TAtlasExpressionHistory.Create(50);
   try
-    Assert.AreEqual(50, History.Limit);
-    for Index := 1 to 60 do
+    Assert.AreEqual(50, mHistory.Limit);
+    for mIndex := 1 to 60 do
     begin
-      History.Add('P', 'W' + IntToStr(Index));
+      mHistory.Add('P', 'W' + IntToStr(mIndex));
     end;
-    Assert.AreEqual(50, Integer(Length(History.Items('P'))));
-    Assert.IsTrue(History.Remove('P', ' W60 '));
-    Assert.AreEqual('W59', History.Items('P')[0]);
-    Assert.IsFalse(History.Remove('P', 'W60'), 'schon weg');
-    Assert.IsFalse(History.Remove('Q', 'W1'), 'anderes Projekt');
+    Assert.AreEqual(50, Integer(Length(mHistory.Items('P'))));
+    Assert.IsTrue(mHistory.Remove('P', ' W60 '));
+    Assert.AreEqual('W59', mHistory.Items('P')[0]);
+    Assert.IsFalse(mHistory.Remove('P', 'W60'), 'schon weg');
+    Assert.IsFalse(mHistory.Remove('Q', 'W1'), 'anderes Projekt');
   finally
-    History.Free;
+    mHistory.Free;
   end;
 end;
 

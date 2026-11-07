@@ -9,7 +9,7 @@
 //     „Anhalten“; der Prozess bleibt stehen, und statt des Dialogs steht die
 //     Leiste oben im Editor. Einen Code-Hook in die IDE (wie GExperts) setzt
 //     Atlas nicht: Der Dialog erscheint kurz (bis zu
-//     TAtlasIdeExceptionDialog.IntervalMs), dann schließt Atlas ihn.
+//     TAtlasIdeExceptionDialog.cIntervalMs), dann schließt Atlas ihn.
 //   - Rückfall: unbekannte IDE-Version, Dialog nicht erkannt oder ohne beide
 //     Knöpfe, Befehl Atlas.DebugExceptionIdeDialog für die laufende Sitzung:
 //     Der Dialog bleibt unverändert; schließt der Benutzer ihn mit
@@ -53,12 +53,12 @@ uses
 type
   TAtlasIdeDebugExceptionBar = class
   public const
-    StatusId = 'atlas.debug.exceptionBanner';
-    StatusOrder = 85;
+    cStatusId = 'atlas.debug.exceptionBanner';
+    cStatusOrder = 85;
     /// <summary>So lange wartet Atlas höchstens, bis der Dialog zu ist.</summary>
-    ShowWaitMs = 120000;
-    IntervalMs = 100;
-    KeyPriority = 30;
+    cShowWaitMs = 120000;
+    cIntervalMs = 100;
+    cKeyPriority = 30;
   private type
     TListener = class(TAtlasIdeDebugListener)
     public
@@ -232,12 +232,12 @@ begin
   begin
     FTimer := TTimer.Create(nil);
     FTimer.Enabled := False;
-    FTimer.Interval := IntervalMs;
+    FTimer.Interval := cIntervalMs;
     FTimer.OnTimer := FWatcher.Tick;
   end;
   if FKeys = nil then
   begin
-    FKeys := TKeys.Create(KeyPriority);
+    FKeys := TKeys.Create(cKeyPriority);
   end;
   if FHandler = 0 then
   begin
@@ -282,7 +282,7 @@ begin
   TAtlasIdeDebugExceptions.SetDialogMayHide(nil);
   if (FRegistry <> nil) and (FStatusRef <> nil) then
   begin
-    FRegistry.Remove(StatusId);
+    FRegistry.Remove(cStatusId);
   end;
   FStatusRef := nil;
   FRegistry := nil;
@@ -355,7 +355,7 @@ end;
 
 class procedure TAtlasIdeDebugExceptionBar.UpdateStatus;
 var
-  Line: TAtlasStatusLine;
+  mLine: TAtlasStatusLine;
 begin
   if FRegistry = nil then
   begin
@@ -365,7 +365,7 @@ begin
   begin
     if FStatusRef <> nil then
     begin
-      FRegistry.Remove(StatusId);
+      FRegistry.Remove(cStatusId);
     end;
     FStatusRef := nil;
     Exit;
@@ -374,10 +374,10 @@ begin
   begin
     Exit;
   end;
-  Line := TAtlasStatusLine.Create(FRegistry, StatusId, StatusOrder);
-  FStatusRef := Line;
+  mLine := TAtlasStatusLine.Create(FRegistry, cStatusId, cStatusOrder);
+  FStatusRef := mLine;
   // Gelb: Die Einstellung ist an, wirkt aber nur als Rückfall.
-  Line.Update(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerUnknownVersion), TAtlasStatusState.Yellow,
+  mLine.Update(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerUnknownVersion), TAtlasStatusState.Yellow,
     TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerUnknownVersionSummary));
   FRegistry.Add(FStatusRef);
 end;
@@ -400,7 +400,7 @@ end;
 
 class procedure TAtlasIdeDebugExceptionBar.ExceptionTaken(const AStop: TAtlasDebugExceptionStop);
 var
-  Mode: TAtlasDebugBannerMode;
+  mMode: TAtlasDebugBannerMode;
 begin
   Hide;
   FHasPending := False;
@@ -408,13 +408,13 @@ begin
   begin
     Exit;
   end;
-  Mode := TAtlasDebugBannerRules.Mode(True, KnownVersion, FIdeDialog, AStop.Dialog);
-  if Mode = TAtlasDebugBannerMode.Off then
+  mMode := TAtlasDebugBannerRules.Mode(True, KnownVersion, FIdeDialog, AStop.Dialog);
+  if mMode = TAtlasDebugBannerMode.Off then
   begin
     Exit;
   end;
   // Ersetzen: Dialog mit „Anhalten“ schließen; geht das nicht mehr (schon zu), wie im Rückfall.
-  if (Mode = TAtlasDebugBannerMode.Replace) and not TAtlasIdeDebugExceptions.BreakDialog then
+  if (mMode = TAtlasDebugBannerMode.Replace) and not TAtlasIdeDebugExceptions.BreakDialog then
   begin
     TAtlasGuard.Log('Exception-Leiste: Dialog der IDE ließ sich nicht schließen; Leiste danach');
   end;
@@ -429,7 +429,7 @@ class procedure TAtlasIdeDebugExceptionBar.CheckShow;
 begin
   // Weitergelaufen, neuer Halt, Sitzung zu oder zu lange gewartet: keine Leiste.
   if not FHasPending or (TAtlasIdeDebugSession.StopCount <> FPending.Stop) or
-    (TAtlasIdeDebugSession.StoppedThread = nil) or (TThread.GetTickCount64 - FPendingSince > ShowWaitMs) then
+    (TAtlasIdeDebugSession.StoppedThread = nil) or (TThread.GetTickCount64 - FPendingSince > cShowWaitMs) then
   begin
     FTimer.Enabled := False;
     FHasPending := False;
@@ -453,13 +453,13 @@ end;
 
 class function TAtlasIdeDebugExceptionBar.HostOfTopEditor: TWinControl;
 var
-  Editor: TWinControl;
+  mEditor: TWinControl;
 begin
   Result := nil;
-  Editor := TAtlasEditorBarHost.TopEditor;
-  if (Editor <> nil) and (Editor.Parent <> nil) then
+  mEditor := TAtlasEditorBarHost.TopEditor;
+  if (mEditor <> nil) and (mEditor.Parent <> nil) then
   begin
-    Result := Editor.Parent;
+    Result := mEditor.Parent;
   end;
 end;
 
@@ -493,15 +493,15 @@ end;
 
 class procedure TAtlasIdeDebugExceptionBar.ShowBar;
 var
-  Found: TAtlasDebugException;
-  Host: TWinControl;
+  mFound: TAtlasDebugException;
+  mHost: TWinControl;
 begin
   FShown := FPending.Exception;
   // Zähler aus dem Verlauf (gleiche Klasse an gleicher Stelle in dieser Sitzung).
   if (TAtlasIdeDebugExceptions.History <> nil) and
-    TAtlasIdeDebugExceptions.History.TryFind(FShown.Key, Found) then
+    TAtlasIdeDebugExceptions.History.TryFind(FShown.Key, mFound) then
   begin
-    FShown.Count := Found.Count;
+    FShown.Count := mFound.Count;
   end;
   FShownInfo := TAtlasDebugBannerRules.Info(FShown, TAtlasIdeSettings.Current.DebugJustMyCode,
     TAtlasIdeDebugSession.LaunchProject, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsThread),
@@ -511,13 +511,13 @@ begin
   begin
     TAtlasIdeNavigation.MarkLine(FShownInfo.FileName, FShownInfo.Line - 1);
   end;
-  Host := HostOfTopEditor;
-  if Host = nil then
+  mHost := HostOfTopEditor;
+  if mHost = nil then
   begin
     TAtlasGuard.Log('Exception-Leiste: kein Editorfenster; nur der Verlauf zeigt die Exception');
     Exit;
   end;
-  EnsureBar(Host);
+  EnsureBar(mHost);
   FBar.SetColors(TAtlasIdeStyle.Colors);
   FBar.SetInfo(FShownInfo);
   FShownStop := FPending.Stop;

@@ -92,10 +92,10 @@ uses
   Atlas.UI.Debug.Strings;
 
 const
-  ViewerWidth = 560;
-  ViewerHeight = 420;
-  Gap = 8;
-  ColorSize = 96;
+  cViewerWidth = 560;
+  cViewerHeight = 420;
+  cGap = 8;
+  cColorSize = 96;
 
 /// <summary>AControl oben in AForm, mit Rand Gap seitlich und ATopGap oben.</summary>
 procedure PlaceTop(AControl: TControl; AForm: TForm; ATopGap: Integer);
@@ -103,7 +103,7 @@ begin
   AControl.Parent := AForm;
   AControl.Align := alTop;
   AControl.AlignWithMargins := True;
-  AControl.Margins.SetBounds(AForm.ScaleValue(Gap), AForm.ScaleValue(ATopGap), AForm.ScaleValue(Gap), 0);
+  AControl.Margins.SetBounds(AForm.ScaleValue(cGap), AForm.ScaleValue(ATopGap), AForm.ScaleValue(cGap), 0);
 end;
 
 /// <summary>AControl füllt AForm, mit Rand Gap ringsum.</summary>
@@ -112,8 +112,8 @@ begin
   AControl.Parent := AForm;
   AControl.Align := alClient;
   AControl.AlignWithMargins := True;
-  AControl.Margins.SetBounds(AForm.ScaleValue(Gap), AForm.ScaleValue(Gap), AForm.ScaleValue(Gap),
-    AForm.ScaleValue(Gap));
+  AControl.Margins.SetBounds(AForm.ScaleValue(cGap), AForm.ScaleValue(cGap), AForm.ScaleValue(cGap),
+    AForm.ScaleValue(cGap));
 end;
 
 /// <summary>Umbrechende Beschriftung oben in AForm.</summary>
@@ -172,8 +172,8 @@ begin
   AViewer.FImage.OnPaint := AViewer.ImagePaint;
 
   AViewer.FColor := TPanel.Create(AViewer);
-  PlaceTop(AViewer.FColor, AViewer, Gap);
-  AViewer.FColor.Height := AViewer.ScaleValue(ColorSize);
+  PlaceTop(AViewer.FColor, AViewer, cGap);
+  AViewer.FColor.Height := AViewer.ScaleValue(cColorSize);
   AViewer.FColor.BevelOuter := bvNone;
   AViewer.FColor.ParentBackground := False;
 
@@ -214,20 +214,20 @@ begin
   Position := poDesigned;
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  Width := ScaleValue(ViewerWidth);
-  Height := ScaleValue(ViewerHeight);
+  Width := ScaleValue(cViewerWidth);
+  Height := ScaleValue(cViewerHeight);
   OnClose := ViewerClose;
   FMenu := CopyMenu(Self, CopyClick);
 
-  FHeader := TopLabel(Self, Gap);
+  FHeader := TopLabel(Self, cGap);
   FHeader.Font.Style := [fsBold];
 
-  FNote := TopLabel(Self, Gap div 2);
+  FNote := TopLabel(Self, cGap div 2);
   FNote.Visible := False;
   FNote.Top := FHeader.Top + FHeader.Height + 1;
 
   FAllFields := TCheckBox.Create(Self);
-  PlaceTop(FAllFields, Self, Gap div 2);
+  PlaceTop(FAllFields, Self, cGap div 2);
   FAllFields.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerAllFields);
   FAllFields.Visible := False;
   FAllFields.Top := FNote.Top + FNote.Height + 1;
@@ -312,27 +312,27 @@ end;
 
 procedure TAtlasDebugViewer.ShowTable;
 var
-  Column: TAtlasVisualizerColumn;
-  ListColumn: TListColumn;
-  Index: Integer;
+  mColumn: TAtlasVisualizerColumn;
+  mListColumn: TListColumn;
+  mIndex: Integer;
 begin
   FList.Items.BeginUpdate;
   try
     FList.Items.Count := 0;
     FList.Columns.Clear;
     FList.Font.Name := Font.Name;
-    for Index := 0 to High(FView.Columns) do
+    for mIndex := 0 to High(FView.Columns) do
     begin
-      Column := FView.Columns[Index];
-      ListColumn := FList.Columns.Add;
-      ListColumn.Caption := ColumnCaption(Column);
-      if Column = TAtlasVisualizerColumn.Index then
+      mColumn := FView.Columns[mIndex];
+      mListColumn := FList.Columns.Add;
+      mListColumn.Caption := ColumnCaption(mColumn);
+      if mColumn = TAtlasVisualizerColumn.Index then
       begin
-        ListColumn.Width := ScaleValue(56);
+        mListColumn.Width := ScaleValue(56);
       end
       else
       begin
-        ListColumn.Width := ScaleValue(160);
+        mListColumn.Width := ScaleValue(160);
       end;
     end;
     // Die letzte Spalte füllt den Rest.
@@ -350,15 +350,15 @@ end;
 
 procedure TAtlasDebugViewer.ShowHex;
 var
-  ListColumn: TListColumn;
+  mListColumn: TListColumn;
 begin
   FList.Items.BeginUpdate;
   try
     FList.Items.Count := 0;
     FList.Columns.Clear;
     FList.Font.Name := 'Consolas';
-    ListColumn := FList.Columns.Add;
-    ListColumn.AutoSize := True;
+    mListColumn := FList.Columns.Add;
+    mListColumn.AutoSize := True;
     FList.ShowColumnHeaders := False;
     FList.Items.Count := TAtlasVisualizerFormat.HexLineCount(Length(FView.Bytes));
   finally
@@ -369,21 +369,21 @@ end;
 
 procedure TAtlasDebugViewer.ShowTree;
 var
-  Parents: array of TTreeNode;
-  Node: TTreeNode;
-  Index, Level: Integer;
+  mParents: array of TTreeNode;
+  mNode: TTreeNode;
+  mIndex, mLevel: Integer;
 begin
   FTree.Items.BeginUpdate;
   try
     FTree.Items.Clear;
-    SetLength(Parents, 1);
-    Parents[0] := nil;
-    for Index := 0 to High(FView.Nodes) do
+    SetLength(mParents, 1);
+    mParents[0] := nil;
+    for mIndex := 0 to High(FView.Nodes) do
     begin
-      Level := EnsureRange(FView.Nodes[Index].Level, 0, High(Parents));
-      Node := FTree.Items.AddChild(Parents[Level], FView.Nodes[Index].Text);
-      SetLength(Parents, Level + 2);
-      Parents[Level + 1] := Node;
+      mLevel := EnsureRange(FView.Nodes[mIndex].Level, 0, High(mParents));
+      mNode := FTree.Items.AddChild(mParents[mLevel], FView.Nodes[mIndex].Text);
+      SetLength(mParents, mLevel + 2);
+      mParents[mLevel + 1] := mNode;
     end;
     if FTree.Items.Count > 0 then
     begin
@@ -398,7 +398,7 @@ end;
 
 procedure TAtlasDebugViewer.ShowImage;
 var
-  Row: Integer;
+  mRow: Integer;
 begin
   FreeAndNil(FBitmap);
   if (FView.Width > 0) and (FView.Height > 0) and (Length(FView.Pixels) = FView.Width * FView.Height) then
@@ -407,9 +407,9 @@ begin
     FBitmap.PixelFormat := pf32bit;
     FBitmap.SetSize(FView.Width, FView.Height);
     // $AARRGGBB liegt im Speicher als B, G, R, A: genau die Zeile eines 32-Bit-DIB.
-    for Row := 0 to FView.Height - 1 do
+    for mRow := 0 to FView.Height - 1 do
     begin
-      Move(FView.Pixels[Row * FView.Width], FBitmap.ScanLine[Row]^, FView.Width * SizeOf(Cardinal));
+      Move(FView.Pixels[mRow * FView.Width], FBitmap.ScanLine[mRow]^, FView.Width * SizeOf(Cardinal));
     end;
     FImage.SetBounds(0, 0, FView.Width, FView.Height);
   end
@@ -423,7 +423,7 @@ end;
 
 procedure TAtlasDebugViewer.ImagePaint(Sender: TObject);
 const
-  Cell = 8;
+  cCell = 8;
 var
   X, Y: Integer;
 begin
@@ -432,9 +432,9 @@ begin
     Exit;
   end;
   // Schachbrett hinter dem Bild, damit Transparenz und Weiß erkennbar sind.
-  for Y := 0 to (FImage.Height - 1) div Cell do
+  for Y := 0 to (FImage.Height - 1) div cCell do
   begin
-    for X := 0 to (FImage.Width - 1) div Cell do
+    for X := 0 to (FImage.Width - 1) div cCell do
     begin
       if Odd(X + Y) then
       begin
@@ -444,7 +444,7 @@ begin
       begin
         FImage.Canvas.Brush.Color := clWhite;
       end;
-      FImage.Canvas.FillRect(Rect(X * Cell, Y * Cell, (X + 1) * Cell, (Y + 1) * Cell));
+      FImage.Canvas.FillRect(Rect(X * cCell, Y * cCell, (X + 1) * cCell, (Y + 1) * cCell));
     end;
   end;
   FImage.Canvas.Draw(0, 0, FBitmap);
@@ -505,36 +505,36 @@ end;
 
 procedure TAtlasDebugViewer.ListData(Sender: TObject; AItem: TListItem);
 var
-  Rows: TArray<TArray<string>>;
-  Cells: TArray<string>;
-  Index: Integer;
+  mRows: TArray<TArray<string>>;
+  mCells: TArray<string>;
+  mIndex: Integer;
 begin
   if FView.Mode = TAtlasVisualizerViewMode.Hex then
   begin
     AItem.Caption := TAtlasVisualizerFormat.HexLine(FView.Bytes, AItem.Index * 16);
     Exit;
   end;
-  Rows := CurrentRows;
-  if (AItem.Index < 0) or (AItem.Index >= Length(Rows)) then
+  mRows := CurrentRows;
+  if (AItem.Index < 0) or (AItem.Index >= Length(mRows)) then
   begin
     Exit;
   end;
-  Cells := Rows[AItem.Index];
-  if Length(Cells) = 0 then
+  mCells := mRows[AItem.Index];
+  if Length(mCells) = 0 then
   begin
     Exit;
   end;
-  AItem.Caption := Cells[0];
-  for Index := 1 to High(Cells) do
+  AItem.Caption := mCells[0];
+  for mIndex := 1 to High(mCells) do
   begin
-    AItem.SubItems.Add(Cells[Index]);
+    AItem.SubItems.Add(mCells[mIndex]);
   end;
 end;
 
 function TAtlasDebugViewer.SelectedText: string;
 var
-  Lines: TStringList;
-  Item: TListItem;
+  mLines: TStringList;
+  mItem: TListItem;
 begin
   Result := '';
   if FTree.Visible then
@@ -558,28 +558,28 @@ begin
   begin
     Exit;
   end;
-  Lines := TStringList.Create;
+  mLines := TStringList.Create;
   try
-    Item := FList.Selected;
-    while Item <> nil do
+    mItem := FList.Selected;
+    while mItem <> nil do
     begin
-      Lines.Add(RowText(Item.Index));
-      Item := FList.GetNextItem(Item, sdAll, [isSelected]);
+      mLines.Add(RowText(mItem.Index));
+      mItem := FList.GetNextItem(mItem, sdAll, [isSelected]);
     end;
-    Result := TrimRight(Lines.Text);
+    Result := TrimRight(mLines.Text);
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 
 procedure TAtlasDebugViewer.CopyClick(Sender: TObject);
 var
-  Text: string;
+  mText: string;
 begin
-  Text := SelectedText;
-  if Text <> '' then
+  mText := SelectedText;
+  if mText <> '' then
   begin
-    Clipboard.AsText := Text;
+    Clipboard.AsText := mText;
   end;
 end;
 
