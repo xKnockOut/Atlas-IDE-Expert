@@ -10,7 +10,7 @@
 // - Datei %LOCALAPPDATA%\Atlas\test-projects.json, Format 1 (UTF-8):
 //     {"format": 1, "choices": [{"candidates": "c:\\a.dproj|c:\\b.dproj",
 //       "project": "C:\\b.dproj"}]}
-//   Neueste Wahl zuerst, höchstens MaxEntries; ein höheres Format bleibt
+//   Neueste Wahl zuerst, höchstens cMaxEntries; ein höheres Format bleibt
 //   unangetastet. Lesen und Schreiben über TAtlasDataFile (Bericht N3):
 //   atomar ersetzt (früher Löschen und Umbenennen), eine unbrauchbare Datei
 //   liegt danach als .defekt daneben, eine gesperrte wird nicht überschrieben.
@@ -31,9 +31,9 @@ type
 
   TAtlasTestProjectChoices = class
   public const
-    Format = 1;
-    FileName = 'test-projects.json';
-    MaxEntries = 100;
+    cFormat = 1;
+    cFileName = 'test-projects.json';
+    cMaxEntries = 100;
   public
     /// <summary>Schlüssel einer Auswahl: Dateien klein, sortiert, ohne doppelte, mit „|“ verbunden.</summary>
     class function KeyOf(const ACandidates: TArray<string>): string; static;
@@ -69,25 +69,25 @@ uses
 
 function Quote(const AText: string): string;
 var
-  Value: TJSONString;
+  mValue: TJSONString;
 begin
-  Value := TJSONString.Create(AText);
+  mValue := TJSONString.Create(AText);
   try
-    Result := Value.ToJSON;
+    Result := mValue.ToJSON;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 function StringOf(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end;
 end;
 
@@ -95,157 +95,157 @@ end;
 
 class function TAtlasTestProjectChoices.KeyOf(const ACandidates: TArray<string>): string;
 var
-  Items: TList<string>;
-  Candidate, Item: string;
+  mItems: TList<string>;
+  mCandidate, mItem: string;
 begin
-  Items := TList<string>.Create;
+  mItems := TList<string>.Create;
   try
-    for Candidate in ACandidates do
+    for mCandidate in ACandidates do
     begin
-      Item := AnsiLowerCase(Trim(Candidate));
-      if (Item <> '') and not Items.Contains(Item) then
+      mItem := AnsiLowerCase(Trim(mCandidate));
+      if (mItem <> '') and not mItems.Contains(mItem) then
       begin
-        Items.Add(Item);
+        mItems.Add(mItem);
       end;
     end;
-    Items.Sort;
+    mItems.Sort;
     Result := '';
-    for Item in Items do
+    for mItem in mItems do
     begin
       if Result <> '' then
       begin
         Result := Result + '|';
       end;
-      Result := Result + Item;
+      Result := Result + mItem;
     end;
   finally
-    Items.Free;
+    mItems.Free;
   end;
 end;
 
 class function TAtlasTestProjectChoices.FormatOf(const AText: string): Integer;
 var
-  Root, Value: TJSONValue;
+  mRoot, mValue: TJSONValue;
 begin
   Result := 0;
   if Trim(AText) = '' then
   begin
     Exit;
   end;
-  Root := TJSONObject.ParseJSONValue(AText);
+  mRoot := TJSONObject.ParseJSONValue(AText);
   try
-    if not (Root is TJSONObject) then
+    if not (mRoot is TJSONObject) then
     begin
       Exit;
     end;
-    Value := TJSONObject(Root).GetValue('format');
-    if Value is TJSONNumber then
+    mValue := TJSONObject(mRoot).GetValue('format');
+    if mValue is TJSONNumber then
     begin
-      Result := TJSONNumber(Value).AsInt;
+      Result := TJSONNumber(mValue).AsInt;
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasTestProjectChoices.Parse(const AText: string): TArray<TAtlasTestProjectChoice>;
 var
-  Root, Value: TJSONValue;
-  Index: Integer;
-  Choice: TAtlasTestProjectChoice;
+  mRoot, mValue: TJSONValue;
+  mIndex: Integer;
+  mChoice: TAtlasTestProjectChoice;
 begin
   Result := nil;
   if Trim(AText) = '' then
   begin
     Exit;
   end;
-  Root := TJSONObject.ParseJSONValue(AText);
+  mRoot := TJSONObject.ParseJSONValue(AText);
   try
-    if not (Root is TJSONObject) then
+    if not (mRoot is TJSONObject) then
     begin
       Exit;
     end;
-    Value := TJSONObject(Root).GetValue('format');
-    if (Value is TJSONNumber) and (TJSONNumber(Value).AsInt > Format) then
+    mValue := TJSONObject(mRoot).GetValue('format');
+    if (mValue is TJSONNumber) and (TJSONNumber(mValue).AsInt > cFormat) then
     begin
       Exit;
     end;
-    Value := TJSONObject(Root).GetValue('choices');
-    if not (Value is TJSONArray) then
+    mValue := TJSONObject(mRoot).GetValue('choices');
+    if not (mValue is TJSONArray) then
     begin
       Exit;
     end;
-    for Index := 0 to TJSONArray(Value).Count - 1 do
+    for mIndex := 0 to TJSONArray(mValue).Count - 1 do
     begin
-      if TJSONArray(Value).Items[Index] is TJSONObject then
+      if TJSONArray(mValue).Items[mIndex] is TJSONObject then
       begin
-        Choice.Key := StringOf(TJSONObject(TJSONArray(Value).Items[Index]), 'candidates');
-        Choice.Project := StringOf(TJSONObject(TJSONArray(Value).Items[Index]), 'project');
-        if (Choice.Key <> '') and (Choice.Project <> '') and (Length(Result) < MaxEntries) then
+        mChoice.Key := StringOf(TJSONObject(TJSONArray(mValue).Items[mIndex]), 'candidates');
+        mChoice.Project := StringOf(TJSONObject(TJSONArray(mValue).Items[mIndex]), 'project');
+        if (mChoice.Key <> '') and (mChoice.Project <> '') and (Length(Result) < cMaxEntries) then
         begin
-          Result := Result + [Choice];
+          Result := Result + [mChoice];
         end;
       end;
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasTestProjectChoices.ToJson(const AChoices: TArray<TAtlasTestProjectChoice>): string;
 const
-  NewLine = #13#10;
+  cNewLine = #13#10;
 var
-  Lines: TStringBuilder;
-  Index: Integer;
+  mLines: TStringBuilder;
+  mIndex: Integer;
 begin
-  Lines := TStringBuilder.Create;
+  mLines := TStringBuilder.Create;
   try
-    Lines.Append('{' + NewLine);
-    Lines.Append('  "format": ' + IntToStr(Format) + ',' + NewLine);
-    Lines.Append('  "choices": [');
-    for Index := 0 to High(AChoices) do
+    mLines.Append('{' + cNewLine);
+    mLines.Append('  "format": ' + IntToStr(cFormat) + ',' + cNewLine);
+    mLines.Append('  "choices": [');
+    for mIndex := 0 to High(AChoices) do
     begin
-      if Index > 0 then
+      if mIndex > 0 then
       begin
-        Lines.Append(',');
+        mLines.Append(',');
       end;
-      Lines.Append(NewLine + '    {"candidates": ' + Quote(AChoices[Index].Key) + ', "project": ' +
-        Quote(AChoices[Index].Project) + '}');
+      mLines.Append(cNewLine + '    {"candidates": ' + Quote(AChoices[mIndex].Key) + ', "project": ' +
+        Quote(AChoices[mIndex].Project) + '}');
     end;
     if Length(AChoices) > 0 then
     begin
-      Lines.Append(NewLine + '  ');
+      mLines.Append(cNewLine + '  ');
     end;
-    Lines.Append(']' + NewLine + '}' + NewLine);
-    Result := Lines.ToString;
+    mLines.Append(']' + cNewLine + '}' + cNewLine);
+    Result := mLines.ToString;
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 
 class function TAtlasTestProjectChoices.Load(const AFile: string;
   out AChoices: TArray<TAtlasTestProjectChoice>): TAtlasDataLoad;
 var
-  Choices: TArray<TAtlasTestProjectChoice>;
+  mChoices: TArray<TAtlasTestProjectChoice>;
 begin
   AChoices := nil;
   if AFile = '' then
   begin
     Exit(TAtlasDataLoad.Missing);
   end;
-  Choices := nil;
+  mChoices := nil;
   Result := TAtlasDataFile.Load(AFile, 'Wahl des Testprojekts',
     function(const AText: string): Boolean
     begin
-      Choices := Parse(AText);
+      mChoices := Parse(AText);
       // ToJson schreibt immer "format"; ohne ist die Datei unbrauchbar. Ein höheres Format bleibt (Save
       // überschreibt es nicht).
       Result := FormatOf(AText) >= 1;
     end);
   if Result = TAtlasDataLoad.Loaded then
   begin
-    AChoices := Choices;
+    AChoices := mChoices;
   end;
 end;
 
@@ -257,7 +257,7 @@ end;
 class function TAtlasTestProjectChoices.Save(const AFile: string;
   const AChoices: TArray<TAtlasTestProjectChoice>): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
   Result := False;
   if AFile = '' then
@@ -266,7 +266,7 @@ begin
   end;
   try
     // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
-    if FileExists(AFile) and (not TAtlasDataFile.TryRead(AFile, Text) or (FormatOf(Text) > Format)) then
+    if FileExists(AFile) and (not TAtlasDataFile.TryRead(AFile, mText) or (FormatOf(mText) > cFormat)) then
     begin
       Exit;
     end;
@@ -281,9 +281,9 @@ end;
 class function TAtlasTestProjectChoices.Pick(const AChoices: TArray<TAtlasTestProjectChoice>;
   const ACandidates: TArray<string>): Integer;
 var
-  Key: string;
-  Choice: TAtlasTestProjectChoice;
-  Index: Integer;
+  mKey: string;
+  mChoice: TAtlasTestProjectChoice;
+  mIndex: Integer;
 begin
   if Length(ACandidates) = 1 then
   begin
@@ -294,16 +294,16 @@ begin
   begin
     Exit;
   end;
-  Key := KeyOf(ACandidates);
-  for Choice in AChoices do
+  mKey := KeyOf(ACandidates);
+  for mChoice in AChoices do
   begin
-    if Choice.Key = Key then
+    if mChoice.Key = mKey then
     begin
-      for Index := 0 to High(ACandidates) do
+      for mIndex := 0 to High(ACandidates) do
       begin
-        if SameText(Trim(ACandidates[Index]), Trim(Choice.Project)) then
+        if SameText(Trim(ACandidates[mIndex]), Trim(mChoice.Project)) then
         begin
-          Exit(Index);
+          Exit(mIndex);
         end;
       end;
       Exit;
@@ -314,24 +314,24 @@ end;
 class procedure TAtlasTestProjectChoices.Remember(var AChoices: TArray<TAtlasTestProjectChoice>;
   const ACandidates: TArray<string>; const AProject: string);
 var
-  Choice, Fresh: TAtlasTestProjectChoice;
-  Kept: TArray<TAtlasTestProjectChoice>;
+  mChoice, mFresh: TAtlasTestProjectChoice;
+  mKept: TArray<TAtlasTestProjectChoice>;
 begin
-  Fresh.Key := KeyOf(ACandidates);
-  Fresh.Project := Trim(AProject);
-  if (Fresh.Key = '') or (Fresh.Project = '') then
+  mFresh.Key := KeyOf(ACandidates);
+  mFresh.Project := Trim(AProject);
+  if (mFresh.Key = '') or (mFresh.Project = '') then
   begin
     Exit;
   end;
-  Kept := [Fresh];
-  for Choice in AChoices do
+  mKept := [mFresh];
+  for mChoice in AChoices do
   begin
-    if (Choice.Key <> Fresh.Key) and (Length(Kept) < MaxEntries) then
+    if (mChoice.Key <> mFresh.Key) and (Length(mKept) < cMaxEntries) then
     begin
-      Kept := Kept + [Choice];
+      mKept := mKept + [mChoice];
     end;
   end;
-  AChoices := Kept;
+  AChoices := mKept;
 end;
 
 end.
