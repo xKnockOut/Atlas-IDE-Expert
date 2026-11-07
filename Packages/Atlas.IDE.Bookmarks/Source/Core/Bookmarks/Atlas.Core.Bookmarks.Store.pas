@@ -157,13 +157,13 @@ type
   TAtlasBookmarks = class
   public const
     /// <summary>Format, das diese Fassung liest und schreibt (2: Art und Nummer, #1104).</summary>
-    Format = 2;
+    cFormat = 2;
     /// <summary>Lokale Datei neben der .dproj (nicht eingecheckt).</summary>
-    LocalFileName = '.atlas-bookmarks.json';
+    cLocalFileName = '.atlas-bookmarks.json';
     /// <summary>Datei des Teams neben der .dproj (bookmarks.shared).</summary>
-    SharedFileName = 'atlas-bookmarks.json';
+    cSharedFileName = 'atlas-bookmarks.json';
     /// <summary>Länge des Zeilenbeginns im Namensvorschlag.</summary>
-    SuggestLength = 40;
+    cSuggestLength = 40;
   public
     /// <summary>Datei der Lesezeichen zu AProject: lokal bzw. für das Team.</summary>
     class function FileFor(const AProject: string; AShared: Boolean): string; static;
@@ -221,12 +221,12 @@ uses
 
 const
   // Bekannte Felder; alles andere bleibt beim Schreiben erhalten.
-  TopKeys: array[0..2] of string = ('format', 'project', 'bookmarks');
-  MarkKeys: array[0..13] of string = ('id', 'name', 'kind', 'number', 'file', 'method', 'signature', 'offset',
+  cTopKeys: array[0..2] of string = ('format', 'project', 'bookmarks');
+  cMarkKeys: array[0..13] of string = ('id', 'name', 'kind', 'number', 'file', 'method', 'signature', 'offset',
     'line', 'lineText', 'before', 'after', 'created', 'lost');
-  KindNames: array[TAtlasBookmarkKind] of string = ('named', 'quick');
+  cKindNames: array[TAtlasBookmarkKind] of string = ('named', 'quick');
   // Kommentar in .git/info/exclude für Git, keine Oberfläche.
-  ExcludeComment = '# Atlas: persönliche Lesezeichen (#622)'; // german-ok
+  cExcludeComment = '# Atlas: persönliche Lesezeichen (#622)'; // german-ok
 
 { TAtlasBookmark }
 
@@ -250,17 +250,17 @@ function ShortName(const AFileName: string): string; forward;
 
 function TAtlasBookmark.DisplayName: string;
 var
-  Dot: Integer;
+  mDot: Integer;
 begin
   if not Unnamed then
   begin
     Exit(Name);
   end;
   Result := Method;
-  Dot := LastDelimiter('.', Result);
-  if Dot > 0 then
+  mDot := LastDelimiter('.', Result);
+  if mDot > 0 then
   begin
-    Result := Copy(Result, Dot + 1, MaxInt);
+    Result := Copy(Result, mDot + 1, MaxInt);
   end;
   if Result = '' then
   begin
@@ -283,97 +283,97 @@ end;
 
 function TAtlasBookmarkList.IndexOf(const AId: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
-  for Index := 0 to High(Bookmarks) do
+  for mIndex := 0 to High(Bookmarks) do
   begin
-    if SameText(Bookmarks[Index].Id, AId) then
+    if SameText(Bookmarks[mIndex].Id, AId) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
 
 function TAtlasBookmarkList.IndexOfNumber(ANumber: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
   if ANumber <= 0 then
   begin
     Exit;
   end;
-  for Index := 0 to High(Bookmarks) do
+  for mIndex := 0 to High(Bookmarks) do
   begin
-    if Bookmarks[Index].Number = ANumber then
+    if Bookmarks[mIndex].Number = ANumber then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
 
 function TAtlasBookmarkList.AtLine(const AFileName: string; ALine: Integer): TArray<TAtlasBookmark>;
 var
-  Mark: TAtlasBookmark;
+  mMark: TAtlasBookmark;
 begin
   Result := nil;
-  for Mark in Bookmarks do
+  for mMark in Bookmarks do
   begin
-    if not Mark.Lost and (Mark.Line = ALine) and TAtlasBookmarks.SameFile(Mark.FileName, AFileName) then
+    if not mMark.Lost and (mMark.Line = ALine) and TAtlasBookmarks.SameFile(mMark.FileName, AFileName) then
     begin
-      Result := Result + [Mark];
+      Result := Result + [mMark];
     end;
   end;
 end;
 
 function TAtlasBookmarkList.ForFile(const AFileName: string): TArray<TAtlasBookmark>;
 var
-  Mark: TAtlasBookmark;
+  mMark: TAtlasBookmark;
 begin
   Result := nil;
-  for Mark in Bookmarks do
+  for mMark in Bookmarks do
   begin
-    if TAtlasBookmarks.SameFile(Mark.FileName, AFileName) then
+    if TAtlasBookmarks.SameFile(mMark.FileName, AFileName) then
     begin
-      Result := Result + [Mark];
+      Result := Result + [mMark];
     end;
   end;
 end;
 
 function TAtlasBookmarkList.Files: TArray<string>;
 var
-  Mark: TAtlasBookmark;
-  Name: string;
-  Known: Boolean;
+  mMark: TAtlasBookmark;
+  mName: string;
+  mKnown: Boolean;
 begin
   Result := nil;
-  for Mark in Bookmarks do
+  for mMark in Bookmarks do
   begin
-    Known := False;
-    for Name in Result do
+    mKnown := False;
+    for mName in Result do
     begin
-      if TAtlasBookmarks.SameFile(Name, Mark.FileName) then
+      if TAtlasBookmarks.SameFile(mName, mMark.FileName) then
       begin
-        Known := True;
+        mKnown := True;
         Break;
       end;
     end;
-    if not Known then
+    if not mKnown then
     begin
-      Result := Result + [Mark.FileName];
+      Result := Result + [mMark.FileName];
     end;
   end;
 end;
 
 function TAtlasBookmarkList.LostCount: Integer;
 var
-  Mark: TAtlasBookmark;
+  mMark: TAtlasBookmark;
 begin
   Result := 0;
-  for Mark in Bookmarks do
+  for mMark in Bookmarks do
   begin
-    if Mark.Lost then
+    if mMark.Lost then
     begin
       Inc(Result);
     end;
@@ -383,76 +383,76 @@ end;
 function TAtlasBookmarkList.Add(const AFileName, AText: string; ALine: Integer; const AName: string;
   ANowUtc: TDateTime): string;
 var
-  Mark: TAtlasBookmark;
+  mMark: TAtlasBookmark;
 begin
-  Mark := Default(TAtlasBookmark);
-  Mark.Id := TAtlasBookmarks.NewId;
-  Mark.Name := Trim(AName);
-  Mark.FileName := AFileName;
-  TAtlasBookmarks.Capture(AText, ALine, Mark);
-  Mark.Created := ANowUtc;
-  Bookmarks := Bookmarks + [Mark];
-  Result := Mark.Id;
+  mMark := Default(TAtlasBookmark);
+  mMark.Id := TAtlasBookmarks.NewId;
+  mMark.Name := Trim(AName);
+  mMark.FileName := AFileName;
+  TAtlasBookmarks.Capture(AText, ALine, mMark);
+  mMark.Created := ANowUtc;
+  Bookmarks := Bookmarks + [mMark];
+  Result := mMark.Id;
 end;
 
 function TAtlasBookmarkList.Rename(const AId, AName: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := IndexOf(AId);
-  Result := (Index >= 0) and (Trim(AName) <> '');
+  mIndex := IndexOf(AId);
+  Result := (mIndex >= 0) and (Trim(AName) <> '');
   if not Result then
   begin
     Exit;
   end;
-  Bookmarks[Index].Name := Trim(AName);
-  Bookmarks[Index].Kind := TAtlasBookmarkKind.Named;
+  Bookmarks[mIndex].Name := Trim(AName);
+  Bookmarks[mIndex].Kind := TAtlasBookmarkKind.Named;
 end;
 
 function TAtlasBookmarkList.Remove(const AId: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := IndexOf(AId);
-  Result := Index >= 0;
+  mIndex := IndexOf(AId);
+  Result := mIndex >= 0;
   if Result then
   begin
-    Delete(Bookmarks, Index, 1);
+    Delete(Bookmarks, mIndex, 1);
   end;
 end;
 
 function TAtlasBookmarkList.MoveBefore(const AId, ABeforeId: string): Boolean;
 var
-  From, Target: Integer;
-  Mark: TAtlasBookmark;
+  mFrom, mTarget: Integer;
+  mMark: TAtlasBookmark;
 begin
   Result := False;
-  From := IndexOf(AId);
-  if (From < 0) or SameText(AId, ABeforeId) then
+  mFrom := IndexOf(AId);
+  if (mFrom < 0) or SameText(AId, ABeforeId) then
   begin
     Exit;
   end;
-  Target := Length(Bookmarks);
+  mTarget := Length(Bookmarks);
   if ABeforeId <> '' then
   begin
-    Target := IndexOf(ABeforeId);
-    if Target < 0 then
+    mTarget := IndexOf(ABeforeId);
+    if mTarget < 0 then
     begin
       Exit;
     end;
   end;
   // Steht schon direkt davor (bzw. schon am Ende): nichts zu tun.
-  if (Target = From + 1) or ((ABeforeId = '') and (From = High(Bookmarks))) then
+  if (mTarget = mFrom + 1) or ((ABeforeId = '') and (mFrom = High(Bookmarks))) then
   begin
     Exit;
   end;
-  Mark := Bookmarks[From];
-  Delete(Bookmarks, From, 1);
-  if Target > From then
+  mMark := Bookmarks[mFrom];
+  Delete(Bookmarks, mFrom, 1);
+  if mTarget > mFrom then
   begin
-    Dec(Target);
+    Dec(mTarget);
   end;
-  Insert(Mark, Bookmarks, Target);
+  Insert(mMark, Bookmarks, mTarget);
   Result := True;
 end;
 
@@ -472,17 +472,17 @@ end;
 
 procedure CaptureIn(const AText: TParsedText; ALine: Integer; var ABookmark: TAtlasBookmark);
 var
-  Place: TAtlasMethodPlace;
+  mPlace: TAtlasMethodPlace;
 begin
   ABookmark.Anchor := TAtlasLineAnchors.Capture(AText.Lines, ALine);
   ABookmark.Method := '';
   ABookmark.Signature := '';
   ABookmark.Offset := 0;
-  if TAtlasMethodToggle.BodyAt(AText.Places, ALine, Place) then
+  if TAtlasMethodToggle.BodyAt(AText.Places, ALine, mPlace) then
   begin
-    ABookmark.Method := Place.Name;
-    ABookmark.Signature := Place.Signature;
-    ABookmark.Offset := ALine - Place.FirstLine;
+    ABookmark.Method := mPlace.Name;
+    ABookmark.Signature := mPlace.Signature;
+    ABookmark.Offset := ALine - mPlace.FirstLine;
   end;
 end;
 
@@ -569,42 +569,42 @@ end;
 
 function TAtlasBookmarkList.Relocate(const AFileName, AText: string): Boolean;
 var
-  Parsed: TParsedText;
-  Index, Line: Integer;
-  Found: TAtlasBookmark;
-  Ready: Boolean;
+  mParsed: TParsedText;
+  mIndex, mLine: Integer;
+  mFound: TAtlasBookmark;
+  mReady: Boolean;
 begin
   Result := False;
-  Ready := False;
-  Parsed := Default(TParsedText);
-  for Index := 0 to High(Bookmarks) do
+  mReady := False;
+  mParsed := Default(TParsedText);
+  for mIndex := 0 to High(Bookmarks) do
   begin
-    if not TAtlasBookmarks.SameFile(Bookmarks[Index].FileName, AFileName) then
+    if not TAtlasBookmarks.SameFile(Bookmarks[mIndex].FileName, AFileName) then
     begin
       Continue;
     end;
     // Erst parsen, wenn die Datei Lesezeichen hat.
-    if not Ready then
+    if not mReady then
     begin
-      Parsed := TParsedText.Create(AText);
-      Ready := True;
+      mParsed := TParsedText.Create(AText);
+      mReady := True;
     end;
-    if FindIn(Parsed, Bookmarks[Index], Line) = TAtlasLineMatch.Orphaned then
+    if FindIn(mParsed, Bookmarks[mIndex], mLine) = TAtlasLineMatch.Orphaned then
     begin
-      if not Bookmarks[Index].Lost then
+      if not Bookmarks[mIndex].Lost then
       begin
-        Bookmarks[Index].Lost := True;
+        Bookmarks[mIndex].Lost := True;
         Result := True;
       end;
       Continue;
     end;
     // Gefunden: neuen Stand merken, damit das Lesezeichen auch weiteren Änderungen folgt.
-    Found := Bookmarks[Index];
-    CaptureIn(Parsed, Line, Found);
-    if Bookmarks[Index].Lost or not SameMark(Bookmarks[Index], Found) then
+    mFound := Bookmarks[mIndex];
+    CaptureIn(mParsed, mLine, mFound);
+    if Bookmarks[mIndex].Lost or not SameMark(Bookmarks[mIndex], mFound) then
     begin
-      Found.Lost := False;
-      Bookmarks[Index] := Found;
+      mFound.Lost := False;
+      Bookmarks[mIndex] := mFound;
       Result := True;
     end;
   end;
@@ -612,14 +612,14 @@ end;
 
 function TAtlasBookmarkList.LoseFile(const AFileName: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
-  for Index := 0 to High(Bookmarks) do
+  for mIndex := 0 to High(Bookmarks) do
   begin
-    if TAtlasBookmarks.SameFile(Bookmarks[Index].FileName, AFileName) and not Bookmarks[Index].Lost then
+    if TAtlasBookmarks.SameFile(Bookmarks[mIndex].FileName, AFileName) and not Bookmarks[mIndex].Lost then
     begin
-      Bookmarks[Index].Lost := True;
+      Bookmarks[mIndex].Lost := True;
       Result := True;
     end;
   end;
@@ -627,43 +627,43 @@ end;
 
 function ShortName(const AFileName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AFileName;
-  for Index := Length(Result) downto 1 do
+  for mIndex := Length(Result) downto 1 do
   begin
-    if CharInSet(Result[Index], ['\', '/']) then
+    if CharInSet(Result[mIndex], ['\', '/']) then
     begin
-      Exit(Copy(Result, Index + 1, MaxInt));
+      Exit(Copy(Result, mIndex + 1, MaxInt));
     end;
   end;
 end;
 
 function TAtlasBookmarkList.Filter(const APattern: string): TArray<Integer>;
 var
-  Words: TArray<string>;
-  Part, Haystack: string;
-  Index: Integer;
-  Matches: Boolean;
+  mWords: TArray<string>;
+  mPart, mHaystack: string;
+  mIndex: Integer;
+  mMatches: Boolean;
 begin
   Result := nil;
-  Words := LowerCase(Trim(APattern)).Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
-  for Index := 0 to High(Bookmarks) do
+  mWords := LowerCase(Trim(APattern)).Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
+  for mIndex := 0 to High(Bookmarks) do
   begin
-    Haystack := LowerCase(Bookmarks[Index].DisplayName + #10 + ShortName(Bookmarks[Index].FileName) + #10 +
-      Bookmarks[Index].Method + #10 + Bookmarks[Index].Preview);
-    Matches := True;
-    for Part in Words do
+    mHaystack := LowerCase(Bookmarks[mIndex].DisplayName + #10 + ShortName(Bookmarks[mIndex].FileName) + #10 +
+      Bookmarks[mIndex].Method + #10 + Bookmarks[mIndex].Preview);
+    mMatches := True;
+    for mPart in mWords do
     begin
-      if Pos(Part, Haystack) = 0 then
+      if Pos(mPart, mHaystack) = 0 then
       begin
-        Matches := False;
+        mMatches := False;
         Break;
       end;
     end;
-    if Matches then
+    if mMatches then
     begin
-      Result := Result + [Index];
+      Result := Result + [mIndex];
     end;
   end;
 end;
@@ -672,12 +672,12 @@ end;
 
 function Known(const AKeys: array of string; const AName: string): Boolean;
 var
-  Key: string;
+  mKey: string;
 begin
   Result := False;
-  for Key in AKeys do
+  for mKey in AKeys do
   begin
-    if Key = AName then
+    if mKey = AName then
     begin
       Exit(True);
     end;
@@ -686,109 +686,109 @@ end;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end;
 end;
 
 function NumberOf(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := ADefault;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONNumber then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONNumber then
   begin
-    Result := TJSONNumber(Value).AsInt;
+    Result := TJSONNumber(mValue).AsInt;
   end
-  else if Value is TJSONString then
+  else if mValue is TJSONString then
   begin
-    Result := StrToIntDef(TJSONString(Value).Value, ADefault);
+    Result := StrToIntDef(TJSONString(mValue).Value, ADefault);
   end;
 end;
 
 function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := False;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONBool then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONBool then
   begin
-    Result := SameText(Value.Value, 'true');
+    Result := SameText(mValue.Value, 'true');
   end;
 end;
 
 function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
 var
-  Value: TJSONValue;
-  List: TJSONArray;
-  Index: Integer;
+  mValue: TJSONValue;
+  mList: TJSONArray;
+  mIndex: Integer;
 begin
   Result := nil;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if not (Value is TJSONArray) then
+  mValue := AObject.GetValue(AName);
+  if not (mValue is TJSONArray) then
   begin
     Exit;
   end;
-  List := TJSONArray(Value);
-  for Index := 0 to List.Count - 1 do
+  mList := TJSONArray(mValue);
+  for mIndex := 0 to mList.Count - 1 do
   begin
-    if (List.Items[Index] is TJSONString) and (Length(Result) < TAtlasLineAnchors.ContextLines) then
+    if (mList.Items[mIndex] is TJSONString) and (Length(Result) < TAtlasLineAnchors.ContextLines) then
     begin
-      Result := Result + [TJSONString(List.Items[Index]).Value];
+      Result := Result + [TJSONString(mList.Items[mIndex]).Value];
     end;
   end;
 end;
 
 function TextsJson(const ATexts: TArray<string>): TJSONArray;
 var
-  Text: string;
+  mText: string;
 begin
   Result := TJSONArray.Create;
-  for Text in ATexts do
+  for mText in ATexts do
   begin
-    Result.Add(Text);
+    Result.Add(mText);
   end;
 end;
 
 /// <summary>Unbekannte Felder aus AOriginal (darf nil sein) an ATarget anhängen.</summary>
 procedure KeepUnknown(ATarget, AOriginal: TJSONObject; const AKeys: array of string);
 var
-  Index: Integer;
-  Pair: TJSONPair;
+  mIndex: Integer;
+  mPair: TJSONPair;
 begin
   if AOriginal = nil then
   begin
     Exit;
   end;
-  for Index := 0 to AOriginal.Count - 1 do
+  for mIndex := 0 to AOriginal.Count - 1 do
   begin
-    Pair := AOriginal.Pairs[Index];
-    if not Known(AKeys, Pair.JsonString.Value) then
+    mPair := AOriginal.Pairs[mIndex];
+    if not Known(AKeys, mPair.JsonString.Value) then
     begin
-      ATarget.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
+      ATarget.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
     end;
   end;
 end;
@@ -796,24 +796,24 @@ end;
 /// <summary>Nur die unbekannten Felder eines Lesezeichens als JSON-Objekt; '' ohne.</summary>
 function ExtraOf(AObject: TJSONObject): string;
 var
-  Extra: TJSONObject;
+  mExtra: TJSONObject;
 begin
   Result := '';
-  Extra := TJSONObject.Create;
+  mExtra := TJSONObject.Create;
   try
-    KeepUnknown(Extra, AObject, MarkKeys);
-    if Extra.Count > 0 then
+    KeepUnknown(mExtra, AObject, cMarkKeys);
+    if mExtra.Count > 0 then
     begin
-      Result := Extra.ToJSON;
+      Result := mExtra.ToJSON;
     end;
   finally
-    Extra.Free;
+    mExtra.Free;
   end;
 end;
 
 function ParseObject(const AJson: string): TJSONObject;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := nil;
   if AJson = '' then
@@ -821,34 +821,34 @@ begin
     Exit;
   end;
   try
-    Value := TJSONObject.ParseJSONValue(AJson);
+    mValue := TJSONObject.ParseJSONValue(AJson);
   except
     on Exception do
-      Value := nil;
+      mValue := nil;
   end;
-  if Value is TJSONObject then
+  if mValue is TJSONObject then
   begin
-    Result := TJSONObject(Value);
+    Result := TJSONObject(mValue);
   end
   else
   begin
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 function ReadText(const AFileName: string): string;
 var
-  Bytes: TBytes;
+  mBytes: TBytes;
 begin
-  Bytes := TFile.ReadAllBytes(AFileName);
+  mBytes := TFile.ReadAllBytes(AFileName);
   // Mit oder ohne BOM.
-  if (Length(Bytes) >= 3) and (Bytes[0] = $EF) and (Bytes[1] = $BB) and (Bytes[2] = $BF) then
+  if (Length(mBytes) >= 3) and (mBytes[0] = $EF) and (mBytes[1] = $BB) and (mBytes[2] = $BF) then
   begin
-    Result := TEncoding.UTF8.GetString(Bytes, 3, Length(Bytes) - 3);
+    Result := TEncoding.UTF8.GetString(mBytes, 3, Length(mBytes) - 3);
   end
   else
   begin
-    Result := TEncoding.UTF8.GetString(Bytes);
+    Result := TEncoding.UTF8.GetString(mBytes);
   end;
 end;
 
@@ -861,16 +861,16 @@ end;
 /// <summary>Pfad aus der Datei: "/" als Trenner, relativ zu AFolder.</summary>
 function FromStored(const AStored, AFolder: string): string;
 var
-  Path: string;
+  mPath: string;
 begin
-  Path := AStored.Replace('\', PathDelim).Replace('/', PathDelim);
+  mPath := AStored.Replace('\', PathDelim).Replace('/', PathDelim);
   if IsAbsolute(AStored) or (AFolder = '') then
   begin
-    Result := Path;
+    Result := mPath;
   end
   else
   begin
-    Result := ExpandFileName(IncludeTrailingPathDelimiter(AFolder) + Path);
+    Result := ExpandFileName(IncludeTrailingPathDelimiter(AFolder) + mPath);
   end;
 end;
 
@@ -899,7 +899,7 @@ begin
   AMark.FileName := FromStored(AMark.FileName, AFolder);
   AMark.Name := TextOf(AObject, 'name');
   // Format 1 kennt nur benannte Lesezeichen; unbekannte Arten gelten ebenfalls als benannt.
-  if SameText(TextOf(AObject, 'kind'), KindNames[TAtlasBookmarkKind.Quick]) then
+  if SameText(TextOf(AObject, 'kind'), cKindNames[TAtlasBookmarkKind.Quick]) then
   begin
     AMark.Kind := TAtlasBookmarkKind.Quick;
   end;
@@ -927,7 +927,7 @@ end;
 
 function MarkJson(const AMark: TAtlasBookmark; const AFolder: string): TJSONObject;
 var
-  Extra: TJSONObject;
+  mExtra: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('id', AMark.Id);
@@ -935,7 +935,7 @@ begin
   begin
     Result.AddPair('name', AMark.Name);
   end;
-  Result.AddPair('kind', KindNames[AMark.Kind]);
+  Result.AddPair('kind', cKindNames[AMark.Kind]);
   if AMark.Number > 0 then
   begin
     Result.AddPair('number', TJSONNumber.Create(AMark.Number));
@@ -959,11 +959,11 @@ begin
   begin
     Result.AddPair('lost', TJSONBool.Create(True));
   end;
-  Extra := ParseObject(AMark.Extra);
+  mExtra := ParseObject(AMark.Extra);
   try
-    KeepUnknown(Result, Extra, MarkKeys);
+    KeepUnknown(Result, mExtra, cMarkKeys);
   finally
-    Extra.Free;
+    mExtra.Free;
   end;
 end;
 
@@ -971,25 +971,25 @@ end;
 
 class function TAtlasBookmarks.FileFor(const AProject: string; AShared: Boolean): string;
 var
-  Folder: string;
+  mFolder: string;
 begin
   Result := '';
   if Trim(AProject) = '' then
   begin
     Exit;
   end;
-  Folder := ExtractFilePath(Trim(AProject));
-  if Folder <> '' then
+  mFolder := ExtractFilePath(Trim(AProject));
+  if mFolder <> '' then
   begin
-    Folder := IncludeTrailingPathDelimiter(Folder);
+    mFolder := IncludeTrailingPathDelimiter(mFolder);
   end;
   if AShared then
   begin
-    Result := Folder + SharedFileName;
+    Result := mFolder + cSharedFileName;
   end
   else
   begin
-    Result := Folder + LocalFileName;
+    Result := mFolder + cLocalFileName;
   end;
 end;
 
@@ -1000,14 +1000,14 @@ end;
 
 class function TAtlasBookmarks.NewId: string;
 var
-  Guid: TGUID;
+  mGuid: TGUID;
 begin
-  if CreateGUID(Guid) <> 0 then
+  if CreateGUID(mGuid) <> 0 then
   begin
     // Ohne GUID: Zeitpunkt und Zufall genügen für eine Liste.
     Exit(LowerCase(IntToHex(Trunc(Now * 86400000), 12) + IntToHex(Random(MaxInt), 8)));
   end;
-  Result := LowerCase(GUIDToString(Guid));
+  Result := LowerCase(GUIDToString(mGuid));
   Result := Copy(Result, 2, Length(Result) - 2);
 end;
 
@@ -1024,34 +1024,34 @@ end;
 
 class function TAtlasBookmarks.SuggestName(const AFileName, AText: string; ALine: Integer): string;
 var
-  Mark: TAtlasBookmark;
-  Method, Start: string;
-  Dot: Integer;
+  mMark: TAtlasBookmark;
+  mMethod, mStart: string;
+  mDot: Integer;
 begin
-  Mark := Default(TAtlasBookmark);
-  Capture(AText, ALine, Mark);
-  Method := Mark.Method;
-  Dot := LastDelimiter('.', Method);
-  if Dot > 0 then
+  mMark := Default(TAtlasBookmark);
+  Capture(AText, ALine, mMark);
+  mMethod := mMark.Method;
+  mDot := LastDelimiter('.', mMethod);
+  if mDot > 0 then
   begin
-    Method := Copy(Method, Dot + 1, MaxInt);
+    mMethod := Copy(mMethod, mDot + 1, MaxInt);
   end;
-  Start := Mark.Anchor.Text;
-  if Length(Start) > SuggestLength then
+  mStart := mMark.Anchor.Text;
+  if Length(mStart) > cSuggestLength then
   begin
-    Start := TrimRight(Copy(Start, 1, SuggestLength)) + '…';
+    mStart := TrimRight(Copy(mStart, 1, cSuggestLength)) + '…';
   end;
-  if (Method <> '') and (Start <> '') then
+  if (mMethod <> '') and (mStart <> '') then
   begin
-    Result := Method + ': ' + Start;
+    Result := mMethod + ': ' + mStart;
   end
-  else if Method <> '' then
+  else if mMethod <> '' then
   begin
-    Result := Method;
+    Result := mMethod;
   end
-  else if Start <> '' then
+  else if mStart <> '' then
   begin
-    Result := Start;
+    Result := mStart;
   end
   else
   begin
@@ -1070,91 +1070,91 @@ end;
 
 class function TAtlasBookmarks.FormatOf(const AJson: string): Integer;
 var
-  Root: TJSONObject;
+  mRoot: TJSONObject;
 begin
-  Root := ParseObject(AJson);
+  mRoot := ParseObject(AJson);
   try
-    Result := NumberOf(Root, 'format', 0);
+    Result := NumberOf(mRoot, 'format', 0);
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasBookmarks.Parse(const AJson, AFolder: string; out AList: TAtlasBookmarkList): Boolean;
 var
-  Root: TJSONObject;
-  Value: TJSONValue;
-  List: TJSONArray;
-  Index: Integer;
-  Mark: TAtlasBookmark;
+  mRoot: TJSONObject;
+  mValue: TJSONValue;
+  mList: TJSONArray;
+  mIndex: Integer;
+  mMark: TAtlasBookmark;
 begin
   AList := TAtlasBookmarkList.Create('');
   Result := False;
-  Root := ParseObject(AJson);
+  mRoot := ParseObject(AJson);
   try
-    if Root = nil then
+    if mRoot = nil then
     begin
       Exit;
     end;
     // Ohne "format" gilt 1; ein höheres Format kennt diese Fassung nicht.
-    if NumberOf(Root, 'format', 1) > Format then
+    if NumberOf(mRoot, 'format', 1) > cFormat then
     begin
       Exit;
     end;
     AList.Raw := AJson;
-    AList.Project := TextOf(Root, 'project');
+    AList.Project := TextOf(mRoot, 'project');
     if AList.Project <> '' then
     begin
       AList.Project := FromStored(AList.Project, AFolder);
     end;
-    Value := Root.GetValue('bookmarks');
-    if Value is TJSONArray then
+    mValue := mRoot.GetValue('bookmarks');
+    if mValue is TJSONArray then
     begin
-      List := TJSONArray(Value);
-      for Index := 0 to List.Count - 1 do
+      mList := TJSONArray(mValue);
+      for mIndex := 0 to mList.Count - 1 do
       begin
-        if (List.Items[Index] is TJSONObject) and MarkOf(TJSONObject(List.Items[Index]), AFolder, Mark) then
+        if (mList.Items[mIndex] is TJSONObject) and MarkOf(TJSONObject(mList.Items[mIndex]), AFolder, mMark) then
         begin
-          AList.Bookmarks := AList.Bookmarks + [Mark];
+          AList.Bookmarks := AList.Bookmarks + [mMark];
         end;
       end;
     end;
     Result := True;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasBookmarks.ToJson(const AList: TAtlasBookmarkList; const AFolder: string): string;
 var
-  Original, Root: TJSONObject;
-  List: TJSONArray;
-  Mark: TAtlasBookmark;
+  mOriginal, mRoot: TJSONObject;
+  mList: TJSONArray;
+  mMark: TAtlasBookmark;
 begin
-  Original := ParseObject(AList.Raw);
-  Root := TJSONObject.Create;
+  mOriginal := ParseObject(AList.Raw);
+  mRoot := TJSONObject.Create;
   try
-    Root.AddPair('format', TJSONNumber.Create(Format));
-    Root.AddPair('project', ToStored(AList.Project, AFolder));
-    List := TJSONArray.Create;
-    Root.AddPair('bookmarks', List);
-    for Mark in AList.Bookmarks do
+    mRoot.AddPair('format', TJSONNumber.Create(cFormat));
+    mRoot.AddPair('project', ToStored(AList.Project, AFolder));
+    mList := TJSONArray.Create;
+    mRoot.AddPair('bookmarks', mList);
+    for mMark in AList.Bookmarks do
     begin
-      List.AddElement(MarkJson(Mark, AFolder));
+      mList.AddElement(MarkJson(mMark, AFolder));
     end;
-    KeepUnknown(Root, Original, TopKeys);
-    Result := Root.ToJSON;
+    KeepUnknown(mRoot, mOriginal, cTopKeys);
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
-    Original.Free;
+    mRoot.Free;
+    mOriginal.Free;
   end;
 end;
 
 class function TAtlasBookmarks.LoadFile(const AFileName, AProject: string; out AList: TAtlasBookmarkList): Boolean;
 var
-  List: TAtlasBookmarkList;
-  Parsed: Boolean;
-  Load: TAtlasDataLoad;
+  mList: TAtlasBookmarkList;
+  mParsed: Boolean;
+  mLoad: TAtlasDataLoad;
 begin
   AList := TAtlasBookmarkList.Create(AProject);
   Result := False;
@@ -1162,22 +1162,22 @@ begin
   begin
     Exit;
   end;
-  Parsed := False;
-  Load := TAtlasDataFile.Load(AFileName, 'Lesezeichen',
+  mParsed := False;
+  mLoad := TAtlasDataFile.Load(AFileName, 'Lesezeichen',
     function(const AText: string): Boolean
     begin
-      Parsed := Parse(AText, ExtractFilePath(AFileName), List);
+      mParsed := Parse(AText, ExtractFilePath(AFileName), mList);
       // Ein höheres Format ist nicht unbrauchbar: nicht beiseitelegen; Save überschreibt es nicht.
-      Result := Parsed or (FormatOf(AText) > Format);
+      Result := mParsed or (FormatOf(AText) > cFormat);
     end);
-  Result := Parsed and (Load = TAtlasDataLoad.Loaded);
+  Result := mParsed and (mLoad = TAtlasDataLoad.Loaded);
   if Result then
   begin
-    AList := List;
+    AList := mList;
     // Mehrere Projekte im Ordner teilen sich die Datei; es gilt das angefragte.
     AList.Project := AProject;
   end
-  else if not TAtlasDataFile.Writable(Load) then
+  else if not TAtlasDataFile.Writable(mLoad) then
   begin
     AList.KeptFile := AFileName;
   end;
@@ -1185,42 +1185,42 @@ end;
 
 class function TAtlasBookmarks.Load(const AProject: string; AShared: Boolean; out AList: TAtlasBookmarkList): Boolean;
 var
-  FileName: string;
+  mFileName: string;
 begin
-  FileName := FileFor(AProject, AShared);
+  mFileName := FileFor(AProject, AShared);
   // Datei des Teams gibt es noch nicht: mit den lokalen Lesezeichen anfangen.
-  if AShared and not FileExists(FileName) then
+  if AShared and not FileExists(mFileName) then
   begin
-    FileName := FileFor(AProject, False);
+    mFileName := FileFor(AProject, False);
   end;
-  Result := LoadFile(FileName, AProject, AList);
+  Result := LoadFile(mFileName, AProject, AList);
 end;
 
 class function TAtlasBookmarks.Save(const AList: TAtlasBookmarkList; AShared: Boolean): Boolean;
 var
-  FileName, Text: string;
+  mFileName, mText: string;
 begin
   Result := False;
-  FileName := FileFor(AList.Project, AShared);
+  mFileName := FileFor(AList.Project, AShared);
   // Beim Laden gesperrt: Die Liste kennt den Inhalt der Datei nicht.
-  if (FileName = '') or SameFileName(FileName, AList.KeptFile) then
+  if (mFileName = '') or SameFileName(mFileName, AList.KeptFile) then
   begin
     Exit;
   end;
   try
     // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
-    if FileExists(FileName) and (not TAtlasDataFile.TryRead(FileName, Text) or (FormatOf(Text) > Format)) then
+    if FileExists(mFileName) and (not TAtlasDataFile.TryRead(mFileName, mText) or (FormatOf(mText) > cFormat)) then
     begin
       Exit;
     end;
     if AList.Count = 0 then
     begin
       // Keine Lesezeichen mehr: keine leere Datei liegen lassen.
-      Result := not FileExists(FileName) or System.SysUtils.DeleteFile(FileName);
+      Result := not FileExists(mFileName) or System.SysUtils.DeleteFile(mFileName);
       Exit;
     end;
     // Atomar ersetzt, UTF-8 ohne BOM wie JSON üblich.
-    TAtlasDataFile.Write(FileName, ToJson(AList, ExtractFilePath(FileName)));
+    TAtlasDataFile.Write(mFileName, ToJson(AList, ExtractFilePath(mFileName)));
     Result := True;
   except
     on E: Exception do
@@ -1229,7 +1229,7 @@ begin
   // Die lokale Datei gehört nicht ins Repository; ohne Git bleibt es beim Speichern.
   if Result and not AShared then
   begin
-    ExcludeFromGit(FileName);
+    ExcludeFromGit(mFileName);
   end;
 end;
 
@@ -1237,93 +1237,93 @@ end;
 /// Worktree der gemeinsame Ordner aus "commondir". '' ohne.</summary>
 function GitFolderOf(const ADir: string): string;
 var
-  Git, Line, Common: string;
+  mGit, mLine, mCommon: string;
 begin
   Result := '';
-  Git := IncludeTrailingPathDelimiter(ADir) + '.git';
-  if DirectoryExists(Git) then
+  mGit := IncludeTrailingPathDelimiter(ADir) + '.git';
+  if DirectoryExists(mGit) then
   begin
-    Exit(Git);
+    Exit(mGit);
   end;
-  if not FileExists(Git) then
-  begin
-    Exit;
-  end;
-  Line := Trim(ReadText(Git));
-  if not Line.StartsWith('gitdir:') then
+  if not FileExists(mGit) then
   begin
     Exit;
   end;
-  Result := Trim(Copy(Line, Length('gitdir:') + 1, MaxInt)).Replace('/', PathDelim).Replace('\', PathDelim);
+  mLine := Trim(ReadText(mGit));
+  if not mLine.StartsWith('gitdir:') then
+  begin
+    Exit;
+  end;
+  Result := Trim(Copy(mLine, Length('gitdir:') + 1, MaxInt)).Replace('/', PathDelim).Replace('\', PathDelim);
   if not IsAbsolute(Result) then
   begin
     Result := ExpandFileName(IncludeTrailingPathDelimiter(ADir) + Result);
   end;
-  Common := IncludeTrailingPathDelimiter(Result) + 'commondir';
-  if FileExists(Common) then
+  mCommon := IncludeTrailingPathDelimiter(Result) + 'commondir';
+  if FileExists(mCommon) then
   begin
-    Line := Trim(ReadText(Common)).Replace('/', PathDelim).Replace('\', PathDelim);
-    if IsAbsolute(Line) then
+    mLine := Trim(ReadText(mCommon)).Replace('/', PathDelim).Replace('\', PathDelim);
+    if IsAbsolute(mLine) then
     begin
-      Result := Line;
+      Result := mLine;
     end
     else
     begin
-      Result := ExpandFileName(IncludeTrailingPathDelimiter(Result) + Line);
+      Result := ExpandFileName(IncludeTrailingPathDelimiter(Result) + mLine);
     end;
   end;
 end;
 
 class function TAtlasBookmarks.ExcludeFromGit(const AFileName: string): Boolean;
 var
-  Dir, Parent, Git, Exclude, Pattern, Text: string;
-  Line: string;
+  mDir, mParent, mGit, mExclude, mPattern, mText: string;
+  mLine: string;
 begin
   Result := False;
   try
-    Dir := ExcludeTrailingPathDelimiter(ExtractFilePath(ExpandFileName(AFileName)));
-    Git := '';
-    while Dir <> '' do
+    mDir := ExcludeTrailingPathDelimiter(ExtractFilePath(ExpandFileName(AFileName)));
+    mGit := '';
+    while mDir <> '' do
     begin
-      Git := GitFolderOf(Dir);
-      if Git <> '' then
+      mGit := GitFolderOf(mDir);
+      if mGit <> '' then
       begin
         Break;
       end;
-      Parent := ExcludeTrailingPathDelimiter(ExtractFilePath(Dir));
-      if (Parent = '') or SameText(Parent, Dir) then
+      mParent := ExcludeTrailingPathDelimiter(ExtractFilePath(mDir));
+      if (mParent = '') or SameText(mParent, mDir) then
       begin
         Exit;
       end;
-      Dir := Parent;
+      mDir := mParent;
     end;
-    if Git = '' then
+    if mGit = '' then
     begin
       Exit;
     end;
     // Muster ab der Wurzel des Arbeitsverzeichnisses, nur diese eine Datei.
-    Pattern := '/' + ExtractRelativePath(IncludeTrailingPathDelimiter(Dir),
+    mPattern := '/' + ExtractRelativePath(IncludeTrailingPathDelimiter(mDir),
       ExpandFileName(AFileName)).Replace('\', '/');
-    Exclude := IncludeTrailingPathDelimiter(Git) + 'info' + PathDelim + 'exclude';
-    Text := '';
-    if FileExists(Exclude) then
+    mExclude := IncludeTrailingPathDelimiter(mGit) + 'info' + PathDelim + 'exclude';
+    mText := '';
+    if FileExists(mExclude) then
     begin
-      Text := ReadText(Exclude);
+      mText := ReadText(mExclude);
     end;
-    for Line in Text.Replace(#13, '').Split([#10]) do
+    for mLine in mText.Replace(#13, '').Split([#10]) do
     begin
-      if Trim(Line) = Pattern then
+      if Trim(mLine) = mPattern then
       begin
         Exit(True);
       end;
     end;
-    if (Text <> '') and not Text.EndsWith(#10) then
+    if (mText <> '') and not mText.EndsWith(#10) then
     begin
-      Text := Text + #10;
+      mText := mText + #10;
     end;
-    Text := Text + ExcludeComment + #10 + Pattern + #10;
+    mText := mText + cExcludeComment + #10 + mPattern + #10;
     // Atomar: Ein Abbruch kürzt die Datei von Git nicht (Bericht N3).
-    TAtlasDataFile.Write(Exclude, Text);
+    TAtlasDataFile.Write(mExclude, mText);
     Result := True;
   except
     // Kein Schreibrecht o. Ä.: Die Lesezeichen sind trotzdem gespeichert.

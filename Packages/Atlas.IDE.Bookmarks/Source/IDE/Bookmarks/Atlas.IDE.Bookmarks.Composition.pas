@@ -30,8 +30,8 @@ type
   TAtlasBookmarksModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
     IAtlasKeySource, IAtlasAppliesSettings, IAtlasFollowsTheme, IAtlasOverviewBookmarks)
   public const
-    ModuleId = 'atlas.bookmarks';
-    Switch = 'bookmarks';
+    cModuleId = 'atlas.bookmarks';
+    cSwitch = 'bookmarks';
   private
     FActive: Boolean;
     class function Parts: TArray<IAtlasFeaturePart>; static;
@@ -82,7 +82,7 @@ uses
 
 const
   /// <summary>Feld der schnellen Lesezeichen im Atlas-Statusfeld (#1104).</summary>
-  QuickBookmarksExtra = 'quickBookmarks';
+  cQuickBookmarksExtra = 'quickBookmarks';
 
 var
   GScope: IAtlasModuleScope;
@@ -99,7 +99,7 @@ end;
 
 procedure QuickStatus(AText: string);
 begin
-  TAtlasIdeHost.SetStatusExtra(QuickBookmarksExtra, AText);
+  TAtlasIdeHost.SetStatusExtra(cQuickBookmarksExtra, AText);
 end;
 
 { Sichtbarkeit und Bedingungen }
@@ -317,7 +317,7 @@ var
   mId, mWhat: string;
 begin
   Result := nil;
-  for mNumber := 1 to TAtlasQuickBookmarks.MaxNumber do
+  for mNumber := 1 to TAtlasQuickBookmarks.cMaxNumber do
   begin
     mKey := TAtlasQuickBookmarks.KeyFor(Word(ABase), mNumber);
     if mKey = 0 then
@@ -348,13 +348,13 @@ end;
 function TAtlasBookmarksModule.Info: TAtlasModuleInfo;
 begin
   Result := Default(TAtlasModuleInfo);
-  Result.Id := ModuleId;
+  Result.Id := cModuleId;
   Result.Name := 'Lesezeichen';
   Result.Version := TAtlasVersion.cVersion;
   Result.Handle := HInstance;
   // Notizen und benannte Lesezeichen gab es schon im abgesicherten Start (nur lokale Dateien).
   Result.MinLevel := TAtlasSafeLevel.Safe;
-  Result.Switch := Switch;
+  Result.Switch := cSwitch;
 end;
 
 procedure TAtlasBookmarksModule.Start;
@@ -475,7 +475,8 @@ begin
   if mSettings.BookmarksNamed then
   begin
     Result := Result + [ModuleKey('Atlas.BookmarkAdd', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd),
-      mSettings.BookmarkKey, TAtlasKeyPriority.Shared, Guarded(TAtlasFeature.Bookmarks, TAtlasIdeBookmarks.AddBookmark))];
+      mSettings.BookmarkKey, TAtlasKeyPriority.Shared,
+      Guarded(TAtlasFeature.Bookmarks, TAtlasIdeBookmarks.AddBookmark))];
   end;
   // Schnelle Lesezeichen (#1104): aus = alle Tasten gehören wieder der IDE.
   if not mSettings.QuickBookmarks then
@@ -585,7 +586,7 @@ begin
   if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
     ccMatch then
   begin
-    TAtlasGuard.Log('Modul ' + ModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
+    TAtlasGuard.Log('Modul ' + cModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
     Exit;
   end;
   mModule := TAtlasBookmarksModule.Create;
@@ -624,9 +625,9 @@ begin
   mRegistry := AtlasModuleRegistry;
   if mRegistry <> nil then
   begin
-    for mFailure in mRegistry.UnregisterModule(ModuleId) do
+    for mFailure in mRegistry.UnregisterModule(cModuleId) do
     begin
-      TAtlasGuard.Log('Modul ' + ModuleId + ' nicht sauber abgemeldet: ' + mFailure);
+      TAtlasGuard.Log('Modul ' + cModuleId + ' nicht sauber abgemeldet: ' + mFailure);
     end;
   end;
 end;
