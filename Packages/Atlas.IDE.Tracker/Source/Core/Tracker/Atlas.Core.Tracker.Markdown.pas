@@ -86,10 +86,10 @@ type
   TAtlasTrackerMarkdown = class
   public const
     /// <summary>Tiefer eingerückte Listen bleiben auf dieser Ebene.</summary>
-    MaxListLevel = 4;
+    cMaxListLevel = 4;
     /// <summary>Ziel an der Marke eines anklickbaren Aufgabenpunkts (#1273), gefolgt von seiner Nummer ab 0.
     /// </summary>
-    TaskPrefix = 'atlas-task:';
+    cTaskPrefix = 'atlas-task:';
   public
     class function Blocks(const AText: string): TArray<TAtlasMarkdownBlock>; static;
     /// <summary>Läufe eines Absatzes (Markdown im Fließtext); ABold: alles fett (Überschrift, Kopfzeile),
@@ -697,7 +697,7 @@ begin
   begin
     Indents := Indents + [AIndent];
   end;
-  Result := Min(Length(Indents), TAtlasTrackerMarkdown.MaxListLevel);
+  Result := Min(Length(Indents), TAtlasTrackerMarkdown.cMaxListLevel);
 end;
 
 /// <summary>Codeblock mit Zaun; ohne schließenden Zaun bis zum Ende.</summary>
@@ -1639,13 +1639,13 @@ end;
 
 class function TAtlasTrackerMarkdown.TaskTarget(AIndex: Integer): string;
 begin
-  Result := TaskPrefix + IntToStr(AIndex);
+  Result := cTaskPrefix + IntToStr(AIndex);
 end;
 
 class function TAtlasTrackerMarkdown.TaskIndexOf(const ATarget: string; out AIndex: Integer): Boolean;
 begin
   AIndex := -1;
-  Result := StartsStr(TaskPrefix, ATarget) and TryStrToInt(Copy(ATarget, Length(TaskPrefix) + 1, MaxInt), AIndex)
+  Result := StartsStr(cTaskPrefix, ATarget) and TryStrToInt(Copy(ATarget, Length(cTaskPrefix) + 1, MaxInt), AIndex)
     and (AIndex >= 0);
   if not Result then
   begin

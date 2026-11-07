@@ -89,7 +89,7 @@ type
   /// <summary>Karte je Issue.</summary>
   TAtlasBoardCard = record
   public const
-    MaxTitle = 300;
+    cMaxTitle = 300;
   public
     /// <summary>"ATL-123" bzw. "#753"; aus einem anderen Repository "owner/repo#12".</summary>
     Key: string;
@@ -128,12 +128,12 @@ type
   TAtlasBoardSnapshot = record
   public const
     /// <summary>Höchstens so viele Karten werden gelesen.</summary>
-    MaxCards = 300;
+    cMaxCards = 300;
     /// <summary>Höchstens so viele Boards bzw. Sprints für die Klapplisten.</summary>
-    MaxBoards = 50;
-    MaxSprints = 50;
+    cMaxBoards = 50;
+    cMaxSprints = 50;
     /// <summary>Version des Zwischenspeichers.</summary>
-    Version = 1;
+    cVersion = 1;
   public
     Kind: TAtlasBoardKind;
     /// <summary>Boards bzw. Projekte zur Auswahl.</summary>
@@ -212,11 +212,11 @@ type
   TAtlasTrackerBoard = class
   public const
     /// <summary>Zeitgrenze einer Abfrage des Boards.</summary>
-    TimeoutMs = 10000;
+    cTimeoutMs = 10000;
     /// <summary>Zeitgrenze beim Verschieben.</summary>
-    MoveTimeoutMs = 15000;
+    cMoveTimeoutMs = 15000;
     /// <summary>Schmaler als so viele Pixel (bei 96 dpi): Spalten untereinander als einklappbare Gruppen.</summary>
-    NarrowWidth = 360;
+    cNarrowWidth = 360;
   public
     /// <summary>Kürzel aus einem Namen: Anfangsbuchstaben der ersten beiden Wörter ("Marco Bähring" → "MB"),
     /// bei einem Wort die ersten zwei Buchstaben ("anna" → "AN"); '' ohne Namen.</summary>
@@ -354,7 +354,7 @@ begin
   Result := TAtlasTrackerIssue.Empty;
   Result.Key := Key;
   Result.Number := Number;
-  Result.Title := Copy(Title, 1, TAtlasTrackerIssue.MaxTitle);
+  Result.Title := Copy(Title, 1, TAtlasTrackerIssue.cMaxTitle);
   Result.State := State;
   Result.Priority := Priority;
 end;
@@ -866,7 +866,7 @@ var
 begin
   mRoot := TJSONObject.Create;
   try
-    mRoot.AddPair('version', TJSONNumber.Create(TAtlasBoardSnapshot.Version));
+    mRoot.AddPair('version', TJSONNumber.Create(TAtlasBoardSnapshot.cVersion));
     mRoot.AddPair('kind', KindKey(ASnapshot.Kind));
     mRoot.AddPair('fetched', TimeText(ASnapshot.Fetched));
     mRoot.AddPair('me', ASnapshot.Me);
@@ -1046,7 +1046,7 @@ begin
     if mItem is TJSONObject then
     begin
       mCard := CardOf(TJSONObject(mItem));
-      if (mCard.Key <> '') and (Length(Result) < TAtlasBoardSnapshot.MaxCards) then
+      if (mCard.Key <> '') and (Length(Result) < TAtlasBoardSnapshot.cMaxCards) then
       begin
         Result := Result + [mCard];
       end;
@@ -1068,7 +1068,7 @@ begin
       Exit;
     end;
     mRoot := TJSONObject(mValue);
-    if IntOf(mRoot, 'version') <> TAtlasBoardSnapshot.Version then
+    if IntOf(mRoot, 'version') <> TAtlasBoardSnapshot.cVersion then
     begin
       Exit;
     end;

@@ -281,7 +281,7 @@ begin
   mRef := TFakeAssist.Create;
   try
     mEditor := NewEditor(mHost);
-    mEditor.Suggest.RequestDelay := TAtlasCommentEditor.DelayMs;
+    mEditor.Suggest.RequestDelay := TAtlasCommentEditor.cDelayMs;
     mEditor.Bind(mRef);
     TypeText(mEditor, 'siehe ATL-');
     Assert.IsTrue(mEditor.Suggest.Trigger.Query.Kind = TAtlasIssueSearchKind.Recent);

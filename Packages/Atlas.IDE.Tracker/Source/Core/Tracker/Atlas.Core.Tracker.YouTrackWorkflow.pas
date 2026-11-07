@@ -8,7 +8,7 @@
 // deshalb den passenden Übergang aus, statt den Wert zu setzen. Atlas macht
 // es genauso:
 // - Lesen: die Felder einer Karte bringen $type, id und possibleEvents(id,
-//   presentation) mit (CardFieldParts in TAtlasYouTrackBoards.CardFields).
+//   presentation) mit (CardFieldParts in TAtlasYouTrackBoards.cCardFields).
 // - Auslösen: POST <url>/api/issues/<Kennung>/fields/<Feld-ID> mit
 //   {"event": {"id": …, "presentation": …, "$type": "Event"}, "id": …,
 //   "$type": "StateMachineIssueCustomField"}; ein Kommentar geht vorher als
@@ -34,9 +34,9 @@ type
   TAtlasYouTrackWorkflow = class
   public const
     /// <summary>$type eines Feldes unter einer Zustandsmaschine.</summary>
-    StateMachineType = 'StateMachineIssueCustomField';
+    cStateMachineType = 'StateMachineIssueCustomField';
     /// <summary>Felder, die eine Karte zusätzlich zu name und value je Feld braucht.</summary>
-    CardFieldParts = 'id,possibleEvents(id,presentation)';
+    cCardFieldParts = 'id,possibleEvents(id,presentation)';
   public
     /// <summary>Regeln des Feldes AField aus customFields von AIssue (ohne Groß-/Kleinschreibung). Leer ohne
     /// Zustandsmaschine oder wenn die Antwort keine possibleEvents enthält (dann entscheidet YouTrack beim
@@ -114,7 +114,7 @@ var
 begin
   Result := Default(TAtlasBoardWorkflow);
   mEvents := AField.Values['possibleEvents'];
-  if not SameText(TextOf(AField, '$type'), StateMachineType) or not (mEvents is TJSONArray) then
+  if not SameText(TextOf(AField, '$type'), cStateMachineType) or not (mEvents is TJSONArray) then
   begin
     Exit;
   end;
@@ -176,7 +176,7 @@ begin
     mEvent.AddPair('$type', 'Event');
     mObject.AddPair('event', mEvent);
     mObject.AddPair('id', AFieldId);
-    mObject.AddPair('$type', StateMachineType);
+    mObject.AddPair('$type', cStateMachineType);
     Result := mObject.ToJSON;
   finally
     mObject.Free;

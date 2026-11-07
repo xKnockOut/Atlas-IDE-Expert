@@ -239,15 +239,16 @@ begin
   try
     mFrame := TAtlasIssueFrame.Create(mHost);
     mFrame.Parent := mHost;
-    mFrame.ShowDetails(Sample(TAtlasIssuePreview.ShownComments + 2), cNow, '', False);
+    mFrame.ShowDetails(Sample(TAtlasIssuePreview.cShownComments + 2), cNow, '', False);
     Assert.IsNotNull(mFrame.Content.Older);
     Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewOlderComments, [2]),
       mFrame.Content.Older.Caption);
     Assert.IsFalse(mFrame.State.CommentsExpanded);
     // Beschreibung (zwei Stücke) und die neuesten Kommentare.
-    Assert.AreEqual(2 + TAtlasIssuePreview.ShownComments, Integer(mFrame.Content.Docs.Count));
-    mFrame.ShowDetails(Sample(TAtlasIssuePreview.ShownComments + 1), cNow, '', False);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewOlderComment), mFrame.Content.Older.Caption);
+    Assert.AreEqual(2 + TAtlasIssuePreview.cShownComments, Integer(mFrame.Content.Docs.Count));
+    mFrame.ShowDetails(Sample(TAtlasIssuePreview.cShownComments + 1), cNow, '', False);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewOlderComment),
+      mFrame.Content.Older.Caption);
   finally
     mHost.Free;
   end;
@@ -263,7 +264,7 @@ begin
   try
     mFrame := TAtlasIssueFrame.Create(mHost);
     mFrame.Parent := mHost;
-    mDetails := Sample(TAtlasIssuePreview.ShownComments + 2);
+    mDetails := Sample(TAtlasIssuePreview.cShownComments + 2);
     mFrame.ShowDetails(mDetails, cNow, '', False);
     Assert.AreEqual(Integer(-1), mFrame.Content.AnchorComment, 'ohne Anker');
     // Der zweite Kommentar ist eingeklappt: Der Anker klappt auf und hebt ihn hervor.
@@ -411,7 +412,8 @@ begin
     mFrame.ShowDetails(mDetails, cNow, '', False);
     Assert.AreEqual('1/2', mFrame.Content.ProgressText, 'Fortschritt auch ohne Schreibrecht');
     Assert.IsTrue(mFrame.Content.TaskBox.TasksLocked);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistReadOnly), mFrame.Content.TaskBox.TaskHint);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistReadOnly),
+      mFrame.Content.TaskBox.TaskHint);
     Assert.IsNull(mFrame.Content.AddTask, 'ohne Schreibrecht nichts hinzufügen');
     // issues.preview.checklists aus: Listen wie geschrieben, kein Fortschritt.
     mFrame.SetFlag(TAtlasIssueFlag.ChecklistReadOnly, False);
