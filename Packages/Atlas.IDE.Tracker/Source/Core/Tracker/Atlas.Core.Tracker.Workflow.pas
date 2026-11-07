@@ -85,17 +85,17 @@ type
 
   TAtlasTrackerWorkflow = class
   public const
-    DefaultStateField = 'State';
-    DefaultAssigneeField = 'Assignee';
+    cDefaultStateField = 'State';
+    cDefaultAssigneeField = 'Assignee';
     /// <summary>Vorgabe von issues.endComment (wie im Schema) und ihre englische Fassung (#1458).</summary>
-    DefaultEndComment = 'Erledigt in {branch}.\n{commits}';
-    DefaultEndCommentEn = 'Done in {branch}.\n{commits}';
+    cDefaultEndComment = 'Erledigt in {branch}.\n{commits}';
+    cDefaultEndCommentEn = 'Done in {branch}.\n{commits}';
     /// <summary>Zeitgrenze eines Schreibzugriffs und der Klapplisten.</summary>
-    WriteTimeoutMs = 10000;
+    cWriteTimeoutMs = 10000;
     /// <summary>Höchstens so viele Commits in {commits}.</summary>
-    MaxCommits = 20;
+    cMaxCommits = 20;
     /// <summary>Höchstens so viele Commits werden je Branch gelesen.</summary>
-    MaxLog = 200;
+    cMaxLog = 200;
   public
     /// <summary>Liste aus Text (Komma, Semikolon oder Zeilenumbruch); leere und doppelte Einträge entfallen.
     /// </summary>
@@ -111,7 +111,8 @@ type
     /// <summary>AOptions mit den Werten der Verbindung zum Server von ATarget (persönliche zuerst); leere Werte der
     /// Verbindung lassen die globalen.</summary>
     class function ForConnection(const AOptions: TAtlasTrackerSyncOptions;
-      const AConnections: TArray<TAtlasTrackerConnection>; const ATarget: TAtlasTrackerTarget): TAtlasTrackerSyncOptions;
+      const AConnections: TArray<TAtlasTrackerConnection>;
+        const ATarget: TAtlasTrackerTarget): TAtlasTrackerSyncOptions;
       static;
     /// <summary>Platzhalter in ATemplate ersetzen, "\n" wird #10; Leerzeilen am Ende entfallen.</summary>
     class function Fill(const ATemplate: string; const AValues: TAtlasTrackerPlaceholders): string; static;
@@ -160,12 +161,12 @@ begin
   Result.StateField := Trim(AStateField);
   if Result.StateField = '' then
   begin
-    Result.StateField := TAtlasTrackerWorkflow.DefaultStateField;
+    Result.StateField := TAtlasTrackerWorkflow.cDefaultStateField;
   end;
   Result.AssigneeField := Trim(AAssigneeField);
   if Result.AssigneeField = '' then
   begin
-    Result.AssigneeField := TAtlasTrackerWorkflow.DefaultAssigneeField;
+    Result.AssigneeField := TAtlasTrackerWorkflow.cDefaultAssigneeField;
   end;
 end;
 
@@ -238,19 +239,19 @@ end;
 
 class function TAtlasTrackerWorkflow.UsesFields(const AProvider: string): Boolean;
 begin
-  Result := not SameText(Trim(AProvider), TAtlasTrackerTarget.GitHub);
+  Result := not SameText(Trim(AProvider), TAtlasTrackerTarget.cGitHub);
 end;
 
 class function TAtlasTrackerWorkflow.EndCommentFor(const AStored: string; AEnglish: Boolean): string;
 begin
   Result := AStored;
-  if (AStored = DefaultEndComment) and AEnglish then
+  if (AStored = cDefaultEndComment) and AEnglish then
   begin
-    Result := DefaultEndCommentEn;
+    Result := cDefaultEndCommentEn;
   end
-  else if (AStored = DefaultEndCommentEn) and not AEnglish then
+  else if (AStored = cDefaultEndCommentEn) and not AEnglish then
   begin
-    Result := DefaultEndComment;
+    Result := cDefaultEndComment;
   end;
 end;
 
@@ -359,7 +360,7 @@ begin
     end;
     mLines := mLines + [ACommits[mIndex].ShortHash + ' ' + Trim(ACommits[mIndex].Summary)];
     Inc(mCount);
-    if mCount >= MaxCommits then
+    if mCount >= cMaxCommits then
     begin
       Break;
     end;
@@ -418,7 +419,7 @@ begin
     begin
       Exit;
     end
-    else if AWork.Outgoing(ABranch, mBase, MaxLog, mCommits) = TAtlasVcsOutcome.Ok then
+    else if AWork.Outgoing(ABranch, mBase, cMaxLog, mCommits) = TAtlasVcsOutcome.Ok then
     begin
       Exit(CommitLines(mCommits, AKey));
     end;
@@ -498,18 +499,18 @@ begin
   mField := Trim(AStateField);
   if mField = '' then
   begin
-    mField := DefaultStateField;
+    mField := cDefaultStateField;
   end;
-  Result.Outcome := AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.States, mField, WriteTimeoutMs,
+  Result.Outcome := AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.States, mField, cWriteTimeoutMs,
     Result.States);
   if Result.Outcome.Succeeded then
   begin
-    Result.Outcome := AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.StateFields, '', WriteTimeoutMs,
+    Result.Outcome := AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.StateFields, '', cWriteTimeoutMs,
       Result.StateFields);
   end;
   if Result.Outcome.Succeeded then
   begin
-    Result.Outcome := AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.UserFields, '', WriteTimeoutMs,
+    Result.Outcome := AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.UserFields, '', cWriteTimeoutMs,
       Result.UserFields);
   end;
 end;

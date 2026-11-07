@@ -7,7 +7,7 @@
 // - TAtlasCodeLinkHover zeigt nach TAtlasCloseRules.TooltipShowDelayMs die
 //   Kurzvorschau: Stand aus dem Zwischenspeicher der Vorschau (Peek), sonst
 //   „Wird geladen …“ und eine Kurzabfrage im Hintergrund (Lookup); ein Stand
-//   älter als TAtlasIdeIssueLookups.FreshMs wird dabei aufgefrischt.
+//   älter als TAtlasIdeIssueLookups.cFreshMs wird dabei aufgefrischt.
 // Gesichert über TAtlasFeature.IssueLinks (#493). Nur im Hauptthread.
 
 interface
@@ -40,7 +40,7 @@ type
   TAtlasCodeLinkPainter = class
   public const
     /// <summary>Anteil der Akzentfarbe an der Unterstreichung (Rest: Hintergrund).</summary>
-    LineStrength = 0.75;
+    cLineStrength = 0.75;
   public
     /// <summary>AText: Zeile des Stands; ATabWidth: Tabulatorweite des Puffers. Ergebnis: die gezeichneten
     /// Kennungen.</summary>
@@ -131,7 +131,7 @@ begin
   Result := nil;
   mBack := TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Right - 2, ARect.Top + 1);
   mColor := COLORREF(ColorToRGB(TColor(TAtlasColorMath.Mix(TAtlasColors.ForBackground(mBack).Accent, mBack,
-    LineStrength))));
+    cLineStrength))));
   mDC := AContext.Canvas.Handle;
   mCode := AContext.LineState.CodeRect;
   mSaved := SaveDC(mDC);
@@ -324,7 +324,8 @@ begin
   begin
     ShowState(AKey, TAtlasIssueTipState.NotFound, ADetails, AError);
   end
-  else if not ((Preview <> nil) and Preview.Lookups.Peek(FHit.Match.IssueTarget(FTarget), FHit.Match.IssueKey, mCached)) then
+  else if not ((Preview <> nil) and Preview.Lookups.Peek(FHit.Match.IssueTarget(FTarget), FHit.Match.IssueKey,
+    mCached)) then
   begin
     // Ohne Netz bleibt ein vorhandener Stand stehen; sonst der Grund.
     ShowState(AKey, TAtlasIssueTipState.Failed, ADetails, AError);

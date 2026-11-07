@@ -103,7 +103,7 @@ end;
 function CiProvider(const AName: string): IAtlasCiProvider;
 begin
   Result := nil;
-  if SameText(AName, TAtlasJenkinsProvider.ProviderName) then
+  if SameText(AName, TAtlasJenkinsProvider.cProviderName) then
   begin
     Result := TAtlasJenkinsProvider.Create;
   end;

@@ -36,37 +36,37 @@ end;
 
 class function TAtlasCiAddresses.HostOf(const AOrigin: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AOrigin;
-  Index := Pos('://', Result);
-  if Index > 0 then
+  mIndex := Pos('://', Result);
+  if mIndex > 0 then
   begin
-    Result := Copy(Result, Index + 3, MaxInt);
+    Result := Copy(Result, mIndex + 3, MaxInt);
   end;
-  Index := Pos(':', Result);
-  if Index > 0 then
+  mIndex := Pos(':', Result);
+  if mIndex > 0 then
   begin
-    Result := Copy(Result, 1, Index - 1);
+    Result := Copy(Result, 1, mIndex - 1);
   end;
 end;
 
 class function TAtlasCiAddresses.RedirectAllowed(const AFrom, ATo: string): Boolean;
 var
-  FromOrigin, ToOrigin: string;
+  mFromOrigin, mToOrigin: string;
 begin
-  FromOrigin := OriginOf(AFrom);
-  ToOrigin := OriginOf(ATo);
-  if (FromOrigin = '') or (ToOrigin = '') then
+  mFromOrigin := OriginOf(AFrom);
+  mToOrigin := OriginOf(ATo);
+  if (mFromOrigin = '') or (mToOrigin = '') then
   begin
     Exit(False);
   end;
-  if FromOrigin = ToOrigin then
+  if mFromOrigin = mToOrigin then
   begin
     Exit(True);
   end;
-  Result := FromOrigin.StartsWith('http://') and ToOrigin.StartsWith('https://') and
-    SameText(HostOf(FromOrigin), HostOf(ToOrigin));
+  Result := mFromOrigin.StartsWith('http://') and mToOrigin.StartsWith('https://') and
+    SameText(HostOf(mFromOrigin), HostOf(mToOrigin));
 end;
 
 class function TAtlasCiAddresses.Resolve(const AFrom, ALocation: string): string;
@@ -80,10 +80,10 @@ end;
 
 class function TAtlasCiAddresses.MayAuthenticate(const AUrl, AServer: string): Boolean;
 var
-  Origin: string;
+  mOrigin: string;
 begin
-  Origin := OriginOf(AUrl);
-  Result := (Origin <> '') and Origin.StartsWith('https://') and SameText(Origin, AServer);
+  mOrigin := OriginOf(AUrl);
+  Result := (mOrigin <> '') and mOrigin.StartsWith('https://') and SameText(mOrigin, AServer);
 end;
 
 end.

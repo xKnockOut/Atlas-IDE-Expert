@@ -34,7 +34,7 @@ type
 
   TAtlasTrackerQueryTestResult = record
     Outcome: TAtlasTrackerQueryOutcome;
-    /// <summary>Gelesene Issues (höchstens TAtlasTrackerQueryTest.MaxIssues).</summary>
+    /// <summary>Gelesene Issues (höchstens TAtlasTrackerQueryTest.cMaxIssues).</summary>
     Count: Integer;
     /// <summary>Es gibt mehr als Count.</summary>
     More: Boolean;
@@ -58,10 +58,10 @@ type
 
   TAtlasTrackerQueryTest = class
   public const
-    TimeoutMs = 5000;
-    MaxIssues = 50;
-    MaxKeys = 3;
-    MaxMessage = 300;
+    cTimeoutMs = 5000;
+    cMaxIssues = 50;
+    cMaxKeys = 3;
+    cMaxMessage = 300;
   public
     /// <summary>Meldung aus einer Fehlerantwort; ohne JSON der Anfang des Texts, bei HTML ''.</summary>
     class function TrackerMessage(const AText: string): string; static;
@@ -108,9 +108,9 @@ begin
   begin
     Result := Result.Replace('  ', ' ');
   end;
-  if Length(Result) > TAtlasTrackerQueryTest.MaxMessage then
+  if Length(Result) > TAtlasTrackerQueryTest.cMaxMessage then
   begin
-    Result := Copy(Result, 1, TAtlasTrackerQueryTest.MaxMessage - 1) + '…';
+    Result := Copy(Result, 1, TAtlasTrackerQueryTest.cMaxMessage - 1) + '…';
   end;
 end;
 
@@ -221,18 +221,18 @@ var
   mIndex: Integer;
 begin
   // Eine Anmeldeseite (falsche Adresse, Proxy) antwortet auch mit 200.
-  if LooksLikeHtml(AText) or not AProvider.ParseList(AText, TAtlasTrackerQueryTest.MaxIssues + 1, mIssues) then
+  if LooksLikeHtml(AText) or not AProvider.ParseList(AText, TAtlasTrackerQueryTest.cMaxIssues + 1, mIssues) then
   begin
     AResult.Outcome := TAtlasTrackerQueryOutcome.Unreadable;
     Exit;
   end;
-  AResult.More := Length(mIssues) > TAtlasTrackerQueryTest.MaxIssues;
+  AResult.More := Length(mIssues) > TAtlasTrackerQueryTest.cMaxIssues;
   if AResult.More then
   begin
-    SetLength(mIssues, TAtlasTrackerQueryTest.MaxIssues);
+    SetLength(mIssues, TAtlasTrackerQueryTest.cMaxIssues);
   end;
   AResult.Count := Length(mIssues);
-  for mIndex := 0 to Min(High(mIssues), TAtlasTrackerQueryTest.MaxKeys - 1) do
+  for mIndex := 0 to Min(High(mIssues), TAtlasTrackerQueryTest.cMaxKeys - 1) do
   begin
     AResult.Keys := AResult.Keys + [mIssues[mIndex].Key];
   end;
@@ -346,23 +346,23 @@ begin
   end;
   // Ohne Recht auf die globalen Einstellungen: Die Vorlage in der Sprache der Oberfläche findet etwas, die andere
   // nichts (bzw. wird abgelehnt).
-  mGerman := Probe(AProvider, ATarget, ATransport, TAtlasTrackerTemplates.German, Remaining(mWatch, ATimeoutMs));
-  mEnglish := Probe(AProvider, ATarget, ATransport, TAtlasTrackerTemplates.English, Remaining(mWatch, ATimeoutMs));
+  mGerman := Probe(AProvider, ATarget, ATransport, TAtlasTrackerTemplates.cGerman, Remaining(mWatch, ATimeoutMs));
+  mEnglish := Probe(AProvider, ATarget, ATransport, TAtlasTrackerTemplates.cEnglish, Remaining(mWatch, ATimeoutMs));
   if (mGerman > 0) and (mEnglish <= 0) then
   begin
-    Result := TAtlasTrackerTemplates.German;
+    Result := TAtlasTrackerTemplates.cGerman;
   end
   else if (mEnglish > 0) and (mGerman <= 0) then
   begin
-    Result := TAtlasTrackerTemplates.English;
+    Result := TAtlasTrackerTemplates.cEnglish;
   end
   else if (mGerman = 0) and (mEnglish < 0) then
   begin
-    Result := TAtlasTrackerTemplates.German;
+    Result := TAtlasTrackerTemplates.cGerman;
   end
   else if (mEnglish = 0) and (mGerman < 0) then
   begin
-    Result := TAtlasTrackerTemplates.English;
+    Result := TAtlasTrackerTemplates.cEnglish;
   end;
 end;
 
@@ -386,7 +386,7 @@ begin
   mUrl := '';
   if ATarget.Configured then
   begin
-    mUrl := AProvider.ListUrl(ATarget, MaxIssues + 1);
+    mUrl := AProvider.ListUrl(ATarget, cMaxIssues + 1);
   end;
   // GitHub ohne owner/repo: keine Adresse.
   if mUrl = '' then
@@ -395,7 +395,7 @@ begin
       AProvider.SentQuery(ATarget)));
   end;
   mWatch := TStopwatch.StartNew;
-  mAnswered := ATransport.Get(mUrl, TimeoutMs, mStatus, mText, mError);
+  mAnswered := ATransport.Get(mUrl, cTimeoutMs, mStatus, mText, mError);
   Result := Evaluate(AProvider, ATarget, mAnswered, mStatus, mText);
   Result.ElapsedMs := mWatch.ElapsedMilliseconds;
   if Result.Outcome <> TAtlasTrackerQueryOutcome.Empty then
@@ -406,7 +406,7 @@ begin
   Result.Language := ATarget.Language;
   if Result.Language = '' then
   begin
-    Result.Language := DetectLanguage(AProvider, ATarget, ATransport, Remaining(mWatch, TimeoutMs));
+    Result.Language := DetectLanguage(AProvider, ATarget, ATransport, Remaining(mWatch, cTimeoutMs));
   end;
   // Gesendet wurde ATarget.Query bzw. ohne sie die Vorgabe zur bisher bekannten Sprache.
   mSent := ATarget.Query;
@@ -415,7 +415,7 @@ begin
     mSent := TAtlasTrackerTemplates.DefaultQuery(AProvider.Name, ATarget.Language);
   end;
   mSuggested := TAtlasTrackerTemplates.DefaultQuery(AProvider.Name, Result.Language);
-  if (Result.Language = TAtlasTrackerTemplates.German) and not SameText(mSuggested, mSent) then
+  if (Result.Language = TAtlasTrackerTemplates.cGerman) and not SameText(mSuggested, mSent) then
   begin
     Result.SuggestedQuery := mSuggested;
   end;
