@@ -422,8 +422,8 @@ var
   end;
 
 var
-  Index: Integer;
-  Token: TPascalToken;
+  mIndex: Integer;
+  mToken: TPascalToken;
 begin
   if AContext.Tree = nil then
   begin
@@ -436,23 +436,23 @@ begin
     mMinLines := cDefaultMinLines;
   end;
   mRun := nil;
-  for Index := FirstCodeToken to High(mTokens) do
+  for mIndex := FirstCodeToken to High(mTokens) do
   begin
-    Token := mTokens[Index];
-    if (Token.Kind <> TPascalTokenKind.Comment) or not FirstInLine(Index) then
+    mToken := mTokens[mIndex];
+    if (mToken.Kind <> TPascalTokenKind.Comment) or not FirstInLine(mIndex) then
     begin
       Flush;
     end
-    else if StartsStr('//', Token.Text) then
+    else if StartsStr('//', mToken.Text) then
     begin
-      AddLineComment(Token);
+      AddLineComment(mToken);
     end
     else
     begin
       Flush;
-      if Token.EndPos.Line > Token.StartPos.Line then
+      if mToken.EndPos.Line > mToken.StartPos.Line then
       begin
-        JudgeBlock(Index);
+        JudgeBlock(mIndex);
       end;
     end;
   end;

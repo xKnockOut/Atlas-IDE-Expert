@@ -168,7 +168,8 @@ begin
   end;
   if not (mValue is TJSONNumber) or not TArchitectureGrouping.ValidResolution(TJSONNumber(mValue).AsDouble) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TArchitectureText.ResolutionIsANumberFrom].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TArchitectureText.ResolutionIsANumberFrom].Text);
   end;
   AFound := True;
   Result := TJSONNumber(mValue).AsDouble;
@@ -341,7 +342,8 @@ begin
   Result := TJSONObject.ParseJSONValue(AText);
   if Result = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInternalError, AWhat + cTexts[TArchitectureText.AreNotValidJSON].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInternalError,
+      AWhat + cTexts[TArchitectureText.AreNotValidJSON].Text);
   end;
 end;
 
@@ -530,7 +532,8 @@ begin
   end;
   if Result = '' then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TArchitectureText.TargetFileMissingMdHtml].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TArchitectureText.TargetFileMissingMdHtml].Text);
   end;
 end;
 

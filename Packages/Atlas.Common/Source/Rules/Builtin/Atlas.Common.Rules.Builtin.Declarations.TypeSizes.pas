@@ -829,7 +829,7 @@ var
 
 var
   mStack: TArray<TSyntaxNode>;
-  mCount, Index: Integer;
+  mCount, mIndex: Integer;
   mNode: TSyntaxNode;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
@@ -860,9 +860,9 @@ begin
       begin
         SetLength(mStack, 2 * (mCount + mNode.ChildCount));
       end;
-      for Index := mNode.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        mStack[mCount] := mNode[Index];
+        mStack[mCount] := mNode[mIndex];
         Inc(mCount);
       end;
     end;

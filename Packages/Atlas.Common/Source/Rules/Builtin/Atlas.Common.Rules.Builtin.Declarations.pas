@@ -1006,11 +1006,11 @@ end;
 procedure TSignatureMismatchRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mLines: TArray<Boolean>;
-  Pair: TSignaturePair;
+  mPair: TSignaturePair;
   mChanges: TArray<string>;
   mActions: TArray<TCodeAction>;
   mFixes: TArray<TRuleFix>;
-  Index: Integer;
+  mIndex: Integer;
   mLevel: TRuleConfidence;
   mTypes: TSignatureTypes;
   mCache: IRuleDerivedCache;
@@ -1142,30 +1142,30 @@ begin
   mCache := TRuleDerived.Open(AContext);
   mTypes := TSignatureTypes.Create(AContext);
   try
-    for Pair in TClassCompletion.Pairs(AContext.Tree, AContext.Text) + RoutinePairs do
+    for mPair in TClassCompletion.Pairs(AContext.Tree, AContext.Text) + RoutinePairs do
     begin
       // Bedingte Übersetzung im Kopf ({$IFDEF} in der Parameterliste): Welche Parameter gelten, ist offen (#1324).
-      if IsConditional(mLines, Pair.Declaration) or IsConditional(mLines, Pair.Body) or
-        Pair.DeclarationShape.Conditional or Pair.BodyShape.Conditional then
+      if IsConditional(mLines, mPair.Declaration) or IsConditional(mLines, mPair.Body) or
+        mPair.DeclarationShape.Conditional or mPair.BodyShape.Conditional then
       begin
         Continue;
       end;
-      mChanges := Differences(Pair.DeclarationShape, Pair.BodyShape, mTypes.Matcher(Pair));
+      mChanges := Differences(mPair.DeclarationShape, mPair.BodyShape, mTypes.Matcher(mPair));
       if mChanges = nil then
       begin
         Continue;
       end;
       mFixes := nil;
       // refactoring.syncSignatures aus (#100): die Meldung bleibt, die Angleich-Aktionen entfallen.
-      if not AContext.NoSignatureSync and TClassCompletion.PairFixes(AContext.Tree, AContext.Text, Pair, mActions) then
+      if not AContext.NoSignatureSync and TClassCompletion.PairFixes(AContext.Tree, AContext.Text, mPair, mActions) then
       begin
-        for Index := 0 to High(mActions) do
+        for mIndex := 0 to High(mActions) do
         begin
-          mFixes := mFixes + [Alternative(TRuleFix.Create(mActions[Index].Title, mActions[Index].Edits), Index > 0)];
+          mFixes := mFixes + [Alternative(TRuleFix.Create(mActions[mIndex].Title, mActions[mIndex].Edits), mIndex > 0)];
         end;
       end;
-      AReport.Add(Pair.Body.Symbol.SelectionRange, cTexts[TDeclarationsText.DiffersFrom].Fmt(
-        [Pair.Body.Symbol.Name, string.Join(', ', mChanges)]), mLevel, mFixes);
+      AReport.Add(mPair.Body.Symbol.SelectionRange, cTexts[TDeclarationsText.DiffersFrom].Fmt(
+        [mPair.Body.Symbol.Name, string.Join(', ', mChanges)]), mLevel, mFixes);
     end;
   finally
     mTypes.Free;

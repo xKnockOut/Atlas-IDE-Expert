@@ -712,7 +712,8 @@ const
 
 function TFilenameCompareCaseRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(cFilenameCompareCaseRuleId, TRuleSeverity.Hint, cTexts[TFilesText.CompareTitle].Text);
+  Result := TRuleDescriptor.Create(cFilenameCompareCaseRuleId, TRuleSeverity.Hint,
+    cTexts[TFilesText.CompareTitle].Text);
 end;
 
 class function TFilenameCompareCaseRule.IsFileNameExpression(ANode: TSyntaxNode): Boolean;

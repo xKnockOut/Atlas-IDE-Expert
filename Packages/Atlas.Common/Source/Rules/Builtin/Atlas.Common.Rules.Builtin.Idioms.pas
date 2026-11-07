@@ -796,7 +796,7 @@ var
   end;
 
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
   mDefaults: TArray<string>;
   mPattern: string;
   mRoundCheck: Boolean;
@@ -822,23 +822,23 @@ begin
   mDeclared := TDictionary<string, Boolean>.Create;
   try
     // Routinen mit Deklaration im interface-Teil bzw. forward: Parameter dort prüfen.
-    for Node in mNodes do
+    for mNode in mNodes do
     begin
-      if (Node.Kind = TSyntaxKind.RoutineDecl) and not HasBody(Node) and
-        (AncestorOf(Node, TSyntaxKind.TypeDecl) = nil) then
+      if (mNode.Kind = TSyntaxKind.RoutineDecl) and not HasBody(mNode) and
+        (AncestorOf(mNode, TSyntaxKind.TypeDecl) = nil) then
       begin
-        mDeclared.AddOrSetValue(LowerCase(Node.Name), True);
+        mDeclared.AddOrSetValue(LowerCase(mNode.Name), True);
       end;
     end;
-    for Node in mNodes do
-      case Node.Kind of
+    for mNode in mNodes do
+      case mNode.Kind of
         TSyntaxKind.Field, TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.PropertyDecl,
         TSyntaxKind.InlineVar:
-          CheckDeclaration(Node);
+          CheckDeclaration(mNode);
         TSyntaxKind.Call:
-          if mRoundCheck and (Node.ChildCount > 1) then
+          if mRoundCheck and (mNode.ChildCount > 1) then
           begin
-            CheckRound(Node);
+            CheckRound(mNode);
           end;
       else
         // Übrige Werte bewusst ohne Wirkung.
@@ -865,7 +865,8 @@ type
 
 function TStringIfChainRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(cStringIfChainRuleId, TRuleSeverity.Hint, cTexts[TIdiomsText.StringIfChainTitle].Text,
+  Result := TRuleDescriptor.Create(cStringIfChainRuleId, TRuleSeverity.Hint,
+    cTexts[TIdiomsText.StringIfChainTitle].Text,
     True);
 end;
 
@@ -1269,7 +1270,7 @@ var
   end;
 
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
   mMin: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
@@ -1285,13 +1286,13 @@ begin
   mPaths := TConditionalBranches.Paths(mTokens);
   mLineBreak := TTextLines.LineBreakOf(AContext.Text);
   mLines := TTextLines.SplitLines(AContext.Text);
-  for Node in NodesOf(AContext.Tree.Root) do
+  for mNode in NodesOf(AContext.Tree.Root) do
   begin
-    if (Node.Kind = TSyntaxKind.IfStatement) and (Node.ChildCount >= 2) then
+    if (mNode.Kind = TSyntaxKind.IfStatement) and (mNode.ChildCount >= 2) then
     begin
-      if not ContinuesChain(Node) and (SubjectOf(Node) <> '') then
+      if not ContinuesChain(mNode) and (SubjectOf(mNode) <> '') then
       begin
-        CheckChain(Node, mMin);
+        CheckChain(mNode, mMin);
       end;
     end;
   end;

@@ -767,7 +767,7 @@ var
 
   var
     mOuter: TNameSet;
-    Child: TSyntaxNode;
+    mChild: TSyntaxNode;
     mPair: TPair<string, Boolean>;
   begin
     mLocals := TNameSet.Create;
@@ -803,10 +803,10 @@ var
       end;
       for mIndex := 0 to ARoutine.ChildCount - 1 do
       begin
-        Child := ARoutine[mIndex];
-        if (Child.Kind = TSyntaxKind.RoutineDecl) and (Child.FindChild(TSyntaxKind.Block) <> nil) then
+        mChild := ARoutine[mIndex];
+        if (mChild.Kind = TSyntaxKind.RoutineDecl) and (mChild.FindChild(TSyntaxKind.Block) <> nil) then
         begin
-          CheckRoutine(Child, Child.FindChild(TSyntaxKind.Block), mOuter, AClass);
+          CheckRoutine(mChild, mChild.FindChild(TSyntaxKind.Block), mOuter, AClass);
         end;
       end;
     finally

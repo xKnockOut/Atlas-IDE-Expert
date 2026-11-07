@@ -160,7 +160,7 @@ var
   mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
   // Vorfilter vor der Namensauflösung: Namen mit vorzeichenlosem Typ.
-  Unsigned: TTypedNames;
+  mUnsignedNames: TTypedNames;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -198,7 +198,7 @@ var
     mUnsignedNode: TSyntaxNode;
   begin
     if (ANode.ChildCount <> 2) or not IsMixOperator(ANode.Name, mComparison) or
-      (not Unsigned.Suspect(OperandName(ANode[0])) and not Unsigned.Suspect(OperandName(ANode[1]))) or
+      (not mUnsignedNames.Suspect(OperandName(ANode[0])) and not mUnsignedNames.Suspect(OperandName(ANode[1]))) or
       not OperandKinds(ANode, mKinds, mTypes) then
     begin
       Exit;
@@ -269,7 +269,7 @@ begin
     mFileName := AContext.UnitName + '.pas';
   end;
   mResolver := nil;
-  Unsigned := TTypedNames.Create(AContext, ['Cardinal', 'UInt64']);
+  mUnsignedNames := TTypedNames.Create(AContext, ['Cardinal', 'UInt64']);
   try
     Visit(AContext.Tree.Root);
   finally
@@ -277,7 +277,7 @@ begin
     begin
       mResolver.UnpinTree;
     end;
-    Unsigned.Free;
+    mUnsignedNames.Free;
   end;
 end;
 

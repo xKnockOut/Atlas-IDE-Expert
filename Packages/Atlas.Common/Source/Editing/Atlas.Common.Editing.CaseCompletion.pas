@@ -633,13 +633,13 @@ var
   mPresent: TArray<Boolean>;
   mBounds: TArray<string>;
   mElement: string;
-  mLow_, mHigh_, Index: Integer;
+  mLow_, mHigh_, mIndex: Integer;
 begin
   AMissing := nil;
   SetLength(mPresent, Length(AValues));
-  for Index := 0 to High(mPresent) do
+  for mIndex := 0 to High(mPresent) do
   begin
-    mPresent[Index] := False;
+    mPresent[mIndex] := False;
   end;
   for mElement in ALabels do
   begin
@@ -658,16 +658,16 @@ begin
     begin
       Exit(False);
     end;
-    for Index := mLow_ to mHigh_ do
+    for mIndex := mLow_ to mHigh_ do
     begin
-      mPresent[Index] := True;
+      mPresent[mIndex] := True;
     end;
   end;
-  for Index := 0 to High(AValues) do
+  for mIndex := 0 to High(AValues) do
   begin
-    if not mPresent[Index] then
+    if not mPresent[mIndex] then
     begin
-      AMissing := AMissing + [AValues[Index]];
+      AMissing := AMissing + [AValues[mIndex]];
     end;
   end;
   Result := True;

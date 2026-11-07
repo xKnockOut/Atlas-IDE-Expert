@@ -323,7 +323,6 @@ end;
 
 procedure TGenericConstraintViolatedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Cache: IRuleDerivedCache;
   mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
   mFileName: string;
@@ -645,7 +644,7 @@ var
       Exit;
     end;
     mOffset := AStart + AParam.GroupEnd;
-    AFix := TRuleFix.Create(cTexts[TGenericsText.AddConstraint].Text, [TRuleEdit.Create(TRuleDerived.OffsetRange(Cache,
+    AFix := TRuleFix.Create(cTexts[TGenericsText.AddConstraint].Text, [TRuleEdit.Create(TRuleDerived.OffsetRange(mCache,
       AContext,
       mOffset, mOffset), AText)]);
   end;
@@ -783,13 +782,13 @@ var
     end;
 
   var
-    Child: Integer;
+    mChild: Integer;
   begin
-    for Child := 0 to ARoutine.ChildCount - 1 do
+    for mChild := 0 to ARoutine.ChildCount - 1 do
     begin
-      if ARoutine[Child].Kind = TSyntaxKind.Block then
+      if ARoutine[mChild].Kind = TSyntaxKind.Block then
       begin
-        Visit(ARoutine[Child]);
+        Visit(ARoutine[mChild]);
       end;
     end;
   end;
@@ -984,7 +983,6 @@ begin
     begin
       Exit;
     end;
-    Cache := TRuleDerived.Open(AContext);
     mFileName := ResolverFileName(AContext);
     // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
     mCache := TRuleDerived.Open(AContext);

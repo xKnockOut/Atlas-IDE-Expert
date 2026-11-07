@@ -930,14 +930,14 @@ var
     end;
 
   var
-    Index: Integer;
+    mIndex: Integer;
     mFinal: TSyntaxNode;
   begin
-    for Index := AFrom to AList.ChildCount - 1 do
+    for mIndex := AFrom to AList.ChildCount - 1 do
     begin
-      if AList[Index].Kind = TSyntaxKind.TryStatement then
+      if AList[mIndex].Kind = TSyntaxKind.TryStatement then
       begin
-        mFinal := AList[Index].FindChild(TSyntaxKind.FinallyBlock);
+        mFinal := AList[mIndex].FindChild(TSyntaxKind.FinallyBlock);
         if (mFinal <> nil) and Search(mFinal) then
         begin
           Exit(True);

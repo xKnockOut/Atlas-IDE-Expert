@@ -411,7 +411,7 @@ function EnumMembers(ASource: TCommandSource; const AIndex: ISymbolIndex; const 
   end;
 
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
   mLocation: TSymbolLocation;
   mOwner: TUnitIndex;
   mName: string;
@@ -423,11 +423,11 @@ begin
   begin
     mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
   end;
-  for Symbol in ASource.UnitIndex.Symbols do
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if SameText(Symbol.Name, mName) and (Symbol.Container = '') then
+    if SameText(mSymbol.Name, mName) and (mSymbol.Container = '') then
     begin
-      Exit((Symbol.Kind = TIndexSymbolKind.EnumType) and Collect(ASource.UnitIndex, Symbol.Name));
+      Exit((mSymbol.Kind = TIndexSymbolKind.EnumType) and Collect(ASource.UnitIndex, mSymbol.Name));
     end;
   end;
   if AIndex <> nil then
