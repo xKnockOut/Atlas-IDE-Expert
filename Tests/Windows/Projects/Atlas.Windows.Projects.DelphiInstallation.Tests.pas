@@ -40,41 +40,41 @@ end;
 
 procedure TDelphiInstallationTests.VersionsAreSortedAscending;
 var
-  Versions: TArray<string>;
-  Index: Integer;
+  mVersions: TArray<string>;
+  mIndex: Integer;
 begin
-  Versions := TDelphiInstallation.Versions;
-  for Index := 1 to High(Versions) do
+  mVersions := TDelphiInstallation.Versions;
+  for mIndex := 1 to High(mVersions) do
   begin
-    Assert.IsTrue(StrToFloat(Versions[Index - 1], TFormatSettings.Invariant) <
-      StrToFloat(Versions[Index], TFormatSettings.Invariant));
+    Assert.IsTrue(StrToFloat(mVersions[mIndex - 1], TFormatSettings.Invariant) <
+      StrToFloat(mVersions[mIndex], TFormatSettings.Invariant));
   end;
 end;
 
 procedure TDelphiInstallationTests.LatestProvidesExpandedLibraryPaths;
 var
-  Installation: ILibraryPathProvider;
-  Path: string;
-  Variable: TPair<string, string>;
-  HasBds: Boolean;
+  mInstallation: ILibraryPathProvider;
+  mPath: string;
+  mVariable: TPair<string, string>;
+  mHasBds: Boolean;
 begin
-  Installation := TDelphiInstallation.Latest;
-  if Installation = nil then
+  mInstallation := TDelphiInstallation.Latest;
+  if mInstallation = nil then
   begin
     Exit;
   end;
-  HasBds := False;
-  for Variable in Installation.Variables do
+  mHasBds := False;
+  for mVariable in mInstallation.Variables do
   begin
-    if SameText(Variable.Key, 'BDS') then
+    if SameText(mVariable.Key, 'BDS') then
     begin
-      HasBds := DirectoryExists(Variable.Value);
+      mHasBds := DirectoryExists(mVariable.Value);
     end;
   end;
-  Assert.IsTrue(HasBds, '$(BDS) zeigt auf einen vorhandenen Ordner');
-  for Path in Installation.LibraryPaths('Win64') do
+  Assert.IsTrue(mHasBds, '$(BDS) zeigt auf einen vorhandenen Ordner');
+  for mPath in mInstallation.LibraryPaths('Win64') do
   begin
-    Assert.IsFalse(Path.Contains('$(BDSLIB)') or Path.Contains('$(Platform)'), Path);
+    Assert.IsFalse(mPath.Contains('$(BDSLIB)') or mPath.Contains('$(Platform)'), mPath);
   end;
 end;
 

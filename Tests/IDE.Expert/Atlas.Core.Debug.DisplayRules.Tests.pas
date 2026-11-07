@@ -53,7 +53,7 @@ uses
   Atlas.Core.Debug.DisplayRules;
 
 const
-  ServerJson = '{"format":1,"rules":[' +
+  cServerJson = '{"format":1,"rules":[' +
     '{"type":"Kunden.TKunde","name":"TKunde","template":"{Name}, {Ort} (Nr {Nr})",' +
     '"children":["Name","Ort"],"origin":"comment","file":"C:\\P\\Kunden.pas","line":4},' +
     '{"type":"Kunden.TPunkt","name":"TPunkt","template":"({X}, {Y})","origin":"attribute","file":"","line":9}],' +
@@ -114,129 +114,129 @@ end;
 
 procedure TAtlasDisplayRulesTests.LoadServerJson;
 var
-  Rules: TAtlasDisplayRules;
-  Found: TAtlasDisplayRule;
+  mRules: TAtlasDisplayRules;
+  mFound: TAtlasDisplayRule;
 begin
-  Rules := TAtlasDisplayRules.Create;
+  mRules := TAtlasDisplayRules.Create;
   try
-    Assert.IsTrue(Rules.LoadJson(ServerJson));
-    Assert.AreEqual(2, Rules.Count);
-    Assert.IsTrue(Rules.Find('Kunden.TKunde', Found));
-    Assert.AreEqual('{Name}, {Ort} (Nr {Nr})', Found.Template);
-    Assert.AreEqual('Name|Ort', string.Join('|', Found.Children));
-    Assert.AreEqual(Ord(TDebugDisplayOrigin.Comment), Ord(Found.Origin));
-    Assert.AreEqual('C:\P\Kunden.pas', Found.FileName);
-    Assert.AreEqual(4, Found.Line);
-    Assert.IsTrue(Rules.Find('TPunkt', Found));
-    Assert.AreEqual(Ord(TDebugDisplayOrigin.Attribute), Ord(Found.Origin));
+    Assert.IsTrue(mRules.LoadJson(cServerJson));
+    Assert.AreEqual(2, mRules.Count);
+    Assert.IsTrue(mRules.Find('Kunden.TKunde', mFound));
+    Assert.AreEqual('{Name}, {Ort} (Nr {Nr})', mFound.Template);
+    Assert.AreEqual('Name|Ort', string.Join('|', mFound.Children));
+    Assert.AreEqual(Ord(TDebugDisplayOrigin.Comment), Ord(mFound.Origin));
+    Assert.AreEqual('C:\P\Kunden.pas', mFound.FileName);
+    Assert.AreEqual(4, mFound.Line);
+    Assert.IsTrue(mRules.Find('TPunkt', mFound));
+    Assert.AreEqual(Ord(TDebugDisplayOrigin.Attribute), Ord(mFound.Origin));
   finally
-    Rules.Free;
+    mRules.Free;
   end;
 end;
 
 procedure TAtlasDisplayRulesTests.RejectsWrongFormat;
 var
-  Rules: TAtlasDisplayRules;
+  mRules: TAtlasDisplayRules;
 begin
-  Rules := TAtlasDisplayRules.Create;
+  mRules := TAtlasDisplayRules.Create;
   try
-    Assert.IsFalse(Rules.LoadJson('{"format":2,"rules":[]}'));
-    Assert.IsFalse(Rules.LoadJson('kein JSON'));
-    Assert.IsFalse(Rules.LoadJson('[]'));
-    Assert.AreEqual(0, Rules.Count);
+    Assert.IsFalse(mRules.LoadJson('{"format":2,"rules":[]}'));
+    Assert.IsFalse(mRules.LoadJson('kein JSON'));
+    Assert.IsFalse(mRules.LoadJson('[]'));
+    Assert.AreEqual(0, mRules.Count);
   finally
-    Rules.Free;
+    mRules.Free;
   end;
 end;
 
 procedure TAtlasDisplayRulesTests.FindByNameAndInheritance;
 var
-  Rules: TAtlasDisplayRules;
-  Found: TAtlasDisplayRule;
-  Project: TAtlasDisplayRule;
+  mRules: TAtlasDisplayRules;
+  mFound: TAtlasDisplayRule;
+  mProject: TAtlasDisplayRule;
 begin
-  Rules := TAtlasDisplayRules.Create;
+  mRules := TAtlasDisplayRules.Create;
   try
-    Rules.LoadJson(ServerJson);
-    Assert.IsTrue(Rules.Find('tkunde', Found));
-    Assert.IsTrue(Rules.Find('Andere.Unit.TKunde', Found), 'kurzer Name als Rückfall');
-    Assert.IsTrue(Rules.Find('TGeschaeftskunde', Found));
-    Assert.AreEqual('Kunden.TKunde', Found.TypeName);
-    Assert.IsTrue(Rules.Find('Kunden.TGeschaeftskunde', Found));
+    mRules.LoadJson(cServerJson);
+    Assert.IsTrue(mRules.Find('tkunde', mFound));
+    Assert.IsTrue(mRules.Find('Andere.Unit.TKunde', mFound), 'kurzer Name als Rückfall');
+    Assert.IsTrue(mRules.Find('TGeschaeftskunde', mFound));
+    Assert.AreEqual('Kunden.TKunde', mFound.TypeName);
+    Assert.IsTrue(mRules.Find('Kunden.TGeschaeftskunde', mFound));
     // Erbe einer Regel aus der Projektdatei: erst mit der Regel auffindbar.
-    Assert.IsFalse(Rules.Find('TVerbindung', Found));
-    Project := Default(TAtlasDisplayRule);
-    Project.TypeName := 'FireDAC.Comp.Client.TFDConnection';
-    Project.Template := '{ConnectionName}';
-    Project.Origin := TDebugDisplayOrigin.Project;
-    Rules.Add(Project);
-    Assert.IsTrue(Rules.Find('TVerbindung', Found));
-    Assert.AreEqual('{ConnectionName}', Found.Template);
-    Assert.IsFalse(Rules.Find('TUnbekannt', Found));
+    Assert.IsFalse(mRules.Find('TVerbindung', mFound));
+    mProject := Default(TAtlasDisplayRule);
+    mProject.TypeName := 'FireDAC.Comp.Client.TFDConnection';
+    mProject.Template := '{ConnectionName}';
+    mProject.Origin := TDebugDisplayOrigin.Project;
+    mRules.Add(mProject);
+    Assert.IsTrue(mRules.Find('TVerbindung', mFound));
+    Assert.AreEqual('{ConnectionName}', mFound.Template);
+    Assert.IsFalse(mRules.Find('TUnbekannt', mFound));
   finally
-    Rules.Free;
+    mRules.Free;
   end;
 end;
 
 procedure TAtlasDisplayRulesTests.FindChain;
 var
-  Rules: TAtlasDisplayRules;
-  Found: TAtlasDisplayRule;
+  mRules: TAtlasDisplayRules;
+  mFound: TAtlasDisplayRule;
 begin
-  Rules := TAtlasDisplayRules.Create;
+  mRules := TAtlasDisplayRules.Create;
   try
-    Rules.LoadJson(ServerJson);
-    Assert.IsTrue(Rules.FindChain(['TSonderkunde', '', 'TKunde', 'TObject'], Found));
-    Assert.AreEqual('Kunden.TKunde', Found.TypeName);
-    Assert.IsFalse(Rules.FindChain(['TSonderkunde', 'TObject'], Found));
+    mRules.LoadJson(cServerJson);
+    Assert.IsTrue(mRules.FindChain(['TSonderkunde', '', 'TKunde', 'TObject'], mFound));
+    Assert.AreEqual('Kunden.TKunde', mFound.TypeName);
+    Assert.IsFalse(mRules.FindChain(['TSonderkunde', 'TObject'], mFound));
   finally
-    Rules.Free;
+    mRules.Free;
   end;
 end;
 
 procedure TAtlasDisplayRulesTests.SourceRuleBeatsProjectRule;
 var
-  Rules: TAtlasDisplayRules;
-  Found, Project: TAtlasDisplayRule;
+  mRules: TAtlasDisplayRules;
+  mFound, mProject: TAtlasDisplayRule;
 begin
-  Rules := TAtlasDisplayRules.Create;
+  mRules := TAtlasDisplayRules.Create;
   try
-    Project := Default(TAtlasDisplayRule);
-    Project.TypeName := 'TKunde';
-    Project.Template := 'aus .atlas';
-    Project.Origin := TDebugDisplayOrigin.Project;
-    Rules.Add(Project);
-    Assert.IsTrue(Rules.Find('TKunde', Found));
-    Assert.AreEqual('aus .atlas', Found.Template);
-    Rules.LoadJson(ServerJson);
-    Assert.IsTrue(Rules.Find('TKunde', Found));
-    Assert.AreEqual('{Name}, {Ort} (Nr {Nr})', Found.Template);
-    Assert.AreEqual('TKunde', string.Join('|', Rules.ProjectNames));
+    mProject := Default(TAtlasDisplayRule);
+    mProject.TypeName := 'TKunde';
+    mProject.Template := 'aus .atlas';
+    mProject.Origin := TDebugDisplayOrigin.Project;
+    mRules.Add(mProject);
+    Assert.IsTrue(mRules.Find('TKunde', mFound));
+    Assert.AreEqual('aus .atlas', mFound.Template);
+    mRules.LoadJson(cServerJson);
+    Assert.IsTrue(mRules.Find('TKunde', mFound));
+    Assert.AreEqual('{Name}, {Ort} (Nr {Nr})', mFound.Template);
+    Assert.AreEqual('TKunde', string.Join('|', mRules.ProjectNames));
     // Leere Regel (weder Vorlage noch Unterelemente) zählt nicht.
-    Rules.Add(Rule(''));
-    Assert.AreEqual(3, Rules.Count);
+    mRules.Add(Rule(''));
+    Assert.AreEqual(3, mRules.Count);
   finally
-    Rules.Free;
+    mRules.Free;
   end;
 end;
 
 procedure TAtlasDisplayRulesTests.TypeNamesForRegistration;
 var
-  Rules: TAtlasDisplayRules;
-  Names: string;
+  mRules: TAtlasDisplayRules;
+  mNames: string;
 begin
-  Rules := TAtlasDisplayRules.Create;
+  mRules := TAtlasDisplayRules.Create;
   try
-    Rules.LoadJson(ServerJson);
-    Names := '|' + string.Join('|', Rules.TypeNames) + '|';
-    Assert.IsTrue(Names.Contains('|Kunden.TKunde|'));
-    Assert.IsTrue(Names.Contains('|TKunde|'));
-    Assert.IsTrue(Names.Contains('|TPunkt|'));
-    Assert.IsTrue(Names.Contains('|TGeschaeftskunde|'));
+    mRules.LoadJson(cServerJson);
+    mNames := '|' + string.Join('|', mRules.TypeNames) + '|';
+    Assert.IsTrue(mNames.Contains('|Kunden.TKunde|'));
+    Assert.IsTrue(mNames.Contains('|TKunde|'));
+    Assert.IsTrue(mNames.Contains('|TPunkt|'));
+    Assert.IsTrue(mNames.Contains('|TGeschaeftskunde|'));
     // Erbe ohne vorhandene Regel wird nicht angemeldet.
-    Assert.IsFalse(Names.ToLower.Contains('|tverbindung|'));
+    Assert.IsFalse(mNames.ToLower.Contains('|tverbindung|'));
   finally
-    Rules.Free;
+    mRules.Free;
   end;
 end;
 
@@ -252,14 +252,14 @@ end;
 
 procedure TAtlasDisplayRulesTests.RenderMissingAndCalls;
 var
-  Short: TAtlasDisplayRuleOptions;
+  mShort: TAtlasDisplayRuleOptions;
 begin
   Assert.AreEqual('Meier {?Stadt} {?GetName()}', TAtlasDisplayRender.Render(Rule('{Name} {Stadt} {GetName()}'),
     'Kunde', Options(False), Eval()));
   Assert.AreEqual('{?Name}', TAtlasDisplayRender.Render(Rule('{Name}'), 'Kunde', Options(False), nil));
-  Short := Options(False);
-  Short.MaxLength := 20;
-  Assert.AreEqual(20, Length(TAtlasDisplayRender.Render(Rule('{Name}, {Ort}, {Name}, {Ort}'), 'Kunde', Short,
+  mShort := Options(False);
+  mShort.MaxLength := 20;
+  Assert.AreEqual(20, Length(TAtlasDisplayRender.Render(Rule('{Name}, {Ort}, {Name}, {Ort}'), 'Kunde', mShort,
     Eval())));
 end;
 
@@ -284,34 +284,34 @@ end;
 
 procedure TAtlasDisplayRulesTests.ViewWithChildren;
 var
-  Children: TAtlasDisplayRule;
-  View: TAtlasVisualizerView;
+  mChildren: TAtlasDisplayRule;
+  mView: TAtlasVisualizerView;
 begin
-  Children := Rule('{Name}');
-  Children.Children := TArray<string>.Create('Name', 'Fehlt');
-  View := TAtlasDisplayRender.View(Children, 'Kunde', '($0A3F1C20)', Options(False), Eval());
-  Assert.AreEqual(Ord(TAtlasVisualizerViewMode.Table), Ord(View.Mode));
-  Assert.AreEqual('Meier', View.Summary);
-  Assert.AreEqual(2, Integer(Length(View.Rows)));
-  Assert.AreEqual('Name', View.Rows[0][0]);
-  Assert.AreEqual('''Meier''', View.Rows[0][1]);
-  Assert.AreEqual('{?Fehlt}', View.Rows[1][1]);
-  Assert.AreEqual(4, Integer(Length(View.AllRows)));
-  Assert.AreEqual('FName', View.AllRows[0][0]);
-  Assert.AreEqual('4711', View.AllRows[2][1]);
+  mChildren := Rule('{Name}');
+  mChildren.Children := TArray<string>.Create('Name', 'Fehlt');
+  mView := TAtlasDisplayRender.View(mChildren, 'Kunde', '($0A3F1C20)', Options(False), Eval());
+  Assert.AreEqual(Ord(TAtlasVisualizerViewMode.Table), Ord(mView.Mode));
+  Assert.AreEqual('Meier', mView.Summary);
+  Assert.AreEqual(2, Integer(Length(mView.Rows)));
+  Assert.AreEqual('Name', mView.Rows[0][0]);
+  Assert.AreEqual('''Meier''', mView.Rows[0][1]);
+  Assert.AreEqual('{?Fehlt}', mView.Rows[1][1]);
+  Assert.AreEqual(4, Integer(Length(mView.AllRows)));
+  Assert.AreEqual('FName', mView.AllRows[0][0]);
+  Assert.AreEqual('4711', mView.AllRows[2][1]);
 end;
 
 procedure TAtlasDisplayRulesTests.ViewWithoutChildren;
 var
-  View: TAtlasVisualizerView;
+  mView: TAtlasVisualizerView;
 begin
-  View := TAtlasDisplayRender.View(Rule('{Name}'), 'Kunde', '', Options(False), Eval());
-  Assert.AreEqual(4, Integer(Length(View.Rows)));
-  Assert.AreEqual(0, Integer(Length(View.AllRows)));
+  mView := TAtlasDisplayRender.View(Rule('{Name}'), 'Kunde', '', Options(False), Eval());
+  Assert.AreEqual(4, Integer(Length(mView.Rows)));
+  Assert.AreEqual(0, Integer(Length(mView.AllRows)));
   // Ohne Feldliste vom Debugger: der Text der IDE.
-  View := TAtlasDisplayRender.View(Rule('{Name}'), 'Anders', '(A:1; B:2)', Options(False), Eval());
-  Assert.AreEqual('{?Name}', View.Summary);
-  Assert.AreEqual(2, Integer(Length(View.Rows)));
+  mView := TAtlasDisplayRender.View(Rule('{Name}'), 'Anders', '(A:1; B:2)', Options(False), Eval());
+  Assert.AreEqual('{?Name}', mView.Summary);
+  Assert.AreEqual(2, Integer(Length(mView.Rows)));
 end;
 
 initialization

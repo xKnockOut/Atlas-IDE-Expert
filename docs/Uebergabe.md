@@ -4,6 +4,10 @@
 - Falle: `fixer-safefix.patch` passt seit den Common-Präfixen nicht mehr auf `Builtin.Naming.pas` (`mFixes`/`mNewName`); die Zeile von Hand um `, True` ergänzen.
 - Geprüft (Cloud): AtlasServer `--check` mit Metriken über `Atlas.IDE.Rules.dproj` und die 6 Testunits: 0 Befunde. FPC-Tests `Atlas.Core.Rules.Table.Tests`/`Atlas.Core.Problems.BulkFix.Tests` wie auf main-merging (ein FPC-Kodierungsfehlschlag in ArgumentsNameRuleAndFiles auf beiden). VCL- und ToolsAPI-Units nicht übersetzbar: Delphi-Build offen.
 
+## Präfixe und Zeilenlänge in Atlas.Windows (07.11.2026, Branch `claude/project-thread-1v6ywd` auf `main-merging`)
+- 76 naming-prefix und 3 line-length in Atlas.Windows, 42 naming-prefix und 1 line-length in `Tests/Windows`; lokale Namen und Parameter über `--fix naming-prefix` (Server mit safeFix, nur lokal), Rest von Hand.
+- Öffentliche Konstanten: nur `TFileWatcher.PollMs`/`SettleMs` (jetzt `cPollMs`/`cSettleMs`), außerhalb der Unit nirgends benutzt. Das Linux-Gegenstück heißt seit #1856 ebenso.
+- Geprüft (Cloud): Atlas mit Metriken 0 Befunde (Package und `Tests/Windows`), Check-Skripte und Generatoren mit `-Check` grün. Windows-Units lassen sich unter Linux nicht übersetzen und nicht testen: Delphi-Build nötig.
 ## Präfixe und Zeilenlänge in Atlas.Linux (07.11.2026, Branch `claude/project-thread-64k5j8` auf `main-merging`)
 - 35 naming-prefix und 1 line-length in 9 von 10 Units behoben: lokale Namen `m`, Konstanten `c` (auch die öffentlichen `TFileWatcher.cPollMs`/`cSettleMs`/`cSliceMs` und `TParentWatcher.cPollMs`; Verwendungen gab es nur im Package selbst). Bei der kleinen Zahl von Hand bzw. mit einem auf die Routine begrenzten Umbenenner statt `--fix`.
 - Die gleichnamigen Konstanten der Windows-Gegenstücke (`Atlas.Windows.Documents.FileWatcher`, `…ProcessRunner`) bleiben dem Thread für Atlas.Windows.
