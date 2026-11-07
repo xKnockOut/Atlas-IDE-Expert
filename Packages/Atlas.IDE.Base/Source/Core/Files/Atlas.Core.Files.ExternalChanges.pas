@@ -55,7 +55,8 @@ type
     procedure Observe(const AFiles: TArray<TAtlasObservedFile>; ANowMs: Int64);
     /// <summary>Ein Vorgang ist fertig: Änderungen liegen vor und seit QuietMs kam keine dazu.</summary>
     function Due(ANowMs: Int64): Boolean;
-    /// <summary>Entscheidungen für den fertigen Vorgang, nach Dateiname sortiert; der neue Stand gilt danach als bekannt.</summary>
+    /// <summary>Entscheidungen für den fertigen Vorgang, nach Dateiname sortiert; der neue Stand gilt danach als
+    /// bekannt.</summary>
     function TakeBatch: TArray<TAtlasReloadDecision>;
     class function ActionText(AAction: TAtlasReloadAction): string; static;
   end;

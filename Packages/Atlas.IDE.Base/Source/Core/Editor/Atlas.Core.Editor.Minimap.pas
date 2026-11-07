@@ -1017,7 +1017,8 @@ begin
   end;
   for mIndex := 0 to High(A) do
   begin
-    if (A[mIndex].Start <> B[mIndex].Start) or (A[mIndex].Stop <> B[mIndex].Stop) or (A[mIndex].Kind <> B[mIndex].Kind) then
+    if (A[mIndex].Start <> B[mIndex].Start) or (A[mIndex].Stop <> B[mIndex].Stop) or
+      (A[mIndex].Kind <> B[mIndex].Kind) then
     begin
       Exit(False);
     end;

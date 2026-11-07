@@ -367,7 +367,8 @@ var
 begin
   for mPair in AChanges do
   begin
-    if (mPair.JsonValue is TJSONArray) and ReadEdits(mPair.JsonString.Value, TJSONArray(mPair.JsonValue), mFileEdits) then
+    if (mPair.JsonValue is TJSONArray) and ReadEdits(mPair.JsonString.Value, TJSONArray(mPair.JsonValue),
+      mFileEdits) then
     begin
       AResult.Files := AResult.Files + [mFileEdits];
     end;

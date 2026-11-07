@@ -410,7 +410,8 @@ begin
   Canvas.Font.Color := ToColor(mTextColor);
   Canvas.Brush.Style := bsClear;
   mText := mBox;
-  DrawText(Canvas.Handle, PChar(TAtlasCompletionTexts.TagText(ATag)), -1, mText, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+  DrawText(Canvas.Handle, PChar(TAtlasCompletionTexts.TagText(ATag)), -1, mText, DT_CENTER or DT_VCENTER or
+    DT_SINGLELINE or DT_NOPREFIX);
   Canvas.Brush.Style := bsSolid;
   Canvas.Font := Font;
 end;

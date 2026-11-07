@@ -128,7 +128,8 @@ begin
   BindKey('CompleteStatementKey', AddKey(TAtlasStrings.Text(TAtlasTextId.CompleteStatementCommand)));
   FCompleteStatementBeginEnd := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatementBeginEnd),
     [TAtlasStrings.Text(TAtlasTextId.SettingsBeginEndAlways),
-    TAtlasStrings.Text(TAtlasTextId.SettingsBeginEndMultiLine), TAtlasStrings.Text(TAtlasTextId.SettingsBeginEndNever)]);
+    TAtlasStrings.Text(TAtlasTextId.SettingsBeginEndMultiLine),
+      TAtlasStrings.Text(TAtlasTextId.SettingsBeginEndNever)]);
 end;
 
 procedure TAtlasSettingsEditorCodePart.Build2;

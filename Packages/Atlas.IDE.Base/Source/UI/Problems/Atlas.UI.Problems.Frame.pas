@@ -1549,7 +1549,8 @@ begin
   InfoTip := mFinding.MessageText(FShowCompilerCode);
   if mFinding.Problem.Confirmed then
   begin
-    InfoTip := InfoTip + sLineBreak + TAtlasStrings.CompilerConfirmed(mFinding.Problem.ConfirmedCode, FShowCompilerCode);
+    InfoTip := InfoTip + sLineBreak + TAtlasStrings.CompilerConfirmed(mFinding.Problem.ConfirmedCode,
+      FShowCompilerCode);
   end;
   if mFinding.LineText <> '' then
   begin

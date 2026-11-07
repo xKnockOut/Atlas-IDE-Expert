@@ -355,7 +355,8 @@ begin
   Result[APrimary].Length := ANewLength;
   for mIndex := 0 to High(Result) do
   begin
-    if (mIndex <> APrimary) and (Result[mIndex].Line = mPrimary.Line) and (Result[mIndex].Character > mPrimary.Character)
+    if (mIndex <> APrimary) and (Result[mIndex].Line = mPrimary.Line) and
+      (Result[mIndex].Character > mPrimary.Character)
     then
     begin
       Inc(Result[mIndex].Character, mDelta);

@@ -113,7 +113,8 @@ type
     WelcomePageRefreshVcs: Boolean;
     /// <summary>Bereich „Nicht gesichert“ (#762, welcomePage.unsaved).</summary>
     WelcomePageUnsaved: Boolean;
-    /// <summary>Nicht Gesichertes erst ab diesem Alter zeigen (#762, welcomePage.unsaved.minAgeHours, 0–8760).</summary>
+    /// <summary>Nicht Gesichertes erst ab diesem Alter zeigen (#762, welcomePage.unsaved.minAgeHours,
+    /// 0–8760).</summary>
     WelcomePageUnsavedMinAgeHours: Integer;
     /// <summary>Ab diesem Alter gelb (#762, welcomePage.unsaved.warnHours, 0–8760).</summary>
     WelcomePageUnsavedWarnHours: Integer;

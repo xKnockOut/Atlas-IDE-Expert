@@ -39,7 +39,8 @@ type
   public
     /// <summary>Linien aller gepaarten Blöcke über mehrere Zeilen.</summary>
     class function Compute(const AText: string; ATabWidth: Integer): TArray<TAtlasGuide>; static;
-    /// <summary>Wie Compute aus schon analysierten Blöcken; ALines sind die Zeilen des Texts (an #10 getrennt).</summary>
+    /// <summary>Wie Compute aus schon analysierten Blöcken; ALines sind die Zeilen des Texts (an #10
+    /// getrennt).</summary>
     class function FromBlocks(const ALines: TArray<string>; const ABlocks: TArray<TAtlasPairBlock>;
       ATabWidth: Integer; AOwners: Boolean): TArray<TAtlasGuide>; overload; static;
     /// <summary>Wie oben mit AOwners = False.</summary>

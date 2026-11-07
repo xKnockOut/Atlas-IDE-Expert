@@ -76,7 +76,8 @@ begin
 end;
 
 function TAtlasFixedCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc;
+    out AState: TAtlasFetchState): TAtlasCompletionItems;
 var
   mStart: UInt64;
 begin

@@ -38,7 +38,8 @@ type
     /// <summary>ASessionOf: laufende Sitzung oder nil; AMessage: Zeile für die Meldungsansicht.</summary>
     class procedure Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>); static;
     class procedure Uninstall; static;
-    /// <summary>Laufende Sitzung oder nil; startet keinen Server (auch für das Suchfeld der Willkommensseite, #760).</summary>
+    /// <summary>Laufende Sitzung oder nil; startet keinen Server (auch für das Suchfeld der Willkommensseite,
+    /// #760).</summary>
     class function Session: TLspSession; static;
     /// <summary>Zeile für die Meldungsansicht (auch für Definition einblenden, #505).</summary>
     class procedure Say(const AText: string); static;
@@ -62,7 +63,8 @@ type
       ACharacter: Integer; const AName: string); overload; static;
     class procedure SearchSymbol; static;
     /// <summary>Referenzen auf ein Symbol an einem Fundort (z. B. aus dem Tooltip); Anzahl der Fundstellen.</summary>
-    class function ShowReferences(const AFileName: string; ALine, ACharacter: Integer; const AName: string): Integer; static;
+    class function ShowReferences(const AFileName: string; ALine, ACharacter: Integer; const AName: string): Integer;
+      static;
     /// <summary>Ergebnisfenster zeigen.</summary>
     class procedure ShowWindow; static;
     class procedure Open(const AFileName: string; ALine, ACharacter: Integer); static;

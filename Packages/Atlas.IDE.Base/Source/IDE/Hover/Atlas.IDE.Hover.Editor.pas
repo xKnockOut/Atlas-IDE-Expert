@@ -2,7 +2,8 @@
 
 // Hover-Tooltip im Editor (#442) über die Code-Editor-API (ToolsAPI.Editor):
 //   - Mausbewegung im Editor → Bezeichner unter der Maus (Zeile, Wortgrenzen).
-//   - Nach 500 ms Verweilen auf demselben Bezeichner: textDocument/hover (im Hintergrund; die IDE wartet nie auf den Server)
+//   - Nach 500 ms Verweilen auf demselben Bezeichner: textDocument/hover (im Hintergrund; die IDE wartet nie auf den
+//   Server)
 //     (TLspSession.HoverData) und Tooltip unter dem Wort (Kurzform).
 //   - Schließen 300 ms nachdem die Maus Bezeichner und Tooltip verlassen hat;
 //     sofort bei Taste (außer Umschalt, Strg, Alt allein), Mausklick, Scrollen,

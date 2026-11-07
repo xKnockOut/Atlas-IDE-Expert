@@ -689,7 +689,8 @@ begin
   for mDigit := 0 to 9 do
   begin
     Result := Result + [TAtlasKeyOwner.Create(scCtrl or scShift or (Ord('0') + mDigit),
-      Format(UiText(TKeyConflictsText.IDEToggleBookmark), [mDigit])), TAtlasKeyOwner.Create(scCtrl or (Ord('0') + mDigit),
+      Format(UiText(TKeyConflictsText.IDEToggleBookmark), [mDigit])),
+        TAtlasKeyOwner.Create(scCtrl or (Ord('0') + mDigit),
       Format(UiText(TKeyConflictsText.IDEGoToBookmark), [mDigit]))];
   end;
 end;

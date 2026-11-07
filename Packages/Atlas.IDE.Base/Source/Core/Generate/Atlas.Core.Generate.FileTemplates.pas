@@ -217,8 +217,10 @@ class function TAtlasFileTemplates.BuiltIn: TAtlasSnippetList;
 begin
   // Namen und Beschreibungen in der Sprache der Oberfläche wie die übrigen mitgelieferten Code-Vorlagen (#51).
   Result := [
-    Template('newunit', UiText(TFileTemplatesText.EmptyUnit), UiText(TFileTemplatesText.InterfaceAndImplementationNothingElse), 'unit', cEmptyUnitBody),
-    Template('newclass', UiText(TFileTemplatesText.UnitWithClass), UiText(TFileTemplatesText.ClassWithConstructorAndDestructor), 'unit', cClassUnitBody),
+    Template('newunit', UiText(TFileTemplatesText.EmptyUnit),
+      UiText(TFileTemplatesText.InterfaceAndImplementationNothingElse), 'unit', cEmptyUnitBody),
+    Template('newclass', UiText(TFileTemplatesText.UnitWithClass),
+      UiText(TFileTemplatesText.ClassWithConstructorAndDestructor), 'unit', cClassUnitBody),
     Template('newform', UiText(TFileTemplatesText.VCLForm), UiText(TFileTemplatesText.FormWithDfm), 'form', cFormBody),
     Template('newtest', UiText(TFileTemplatesText.DUnitXTestClass), UiText(TFileTemplatesText.TestClassWithSetupTearDown), 'test',
       cTestBody)];

@@ -491,7 +491,8 @@ begin
   begin
     mCaption := AId;
   end;
-  mSituation := TAtlasTipSituation.Create(mSettings.ShortcutTips, TAtlasShortcutTips.ScopeOf(mSettings.ShortcutTipsScope),
+  mSituation := TAtlasTipSituation.Create(mSettings.ShortcutTips,
+    TAtlasShortcutTips.ScopeOf(mSettings.ShortcutTipsScope),
     AIsAtlas, mKeyText, Now);
   mSituation.LastTipAt := FLastTipAt;
   // Nur, wo es darauf ankommt: Die Abfrage des Debuggers ist billig, aber nicht umsonst.

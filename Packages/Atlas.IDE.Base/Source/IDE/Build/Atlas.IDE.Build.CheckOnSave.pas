@@ -34,7 +34,8 @@ type
       procedure GroupStarted(AKind: TAtlasCompileKind); override;
       procedure GroupFinished(ASucceeded: Boolean; ADurationMs: Int64); override;
       procedure ProjectStarted(const AProject: TAtlasCompileProject); override;
-      procedure ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean; ADurationMs: Int64); override;
+      procedure ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean; ADurationMs: Int64);
+        override;
     end;
 
     TBinding = class(TNotifierObject, IOTAKeyboardBinding)

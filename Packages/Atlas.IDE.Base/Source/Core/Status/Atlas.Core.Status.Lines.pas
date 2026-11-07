@@ -40,7 +40,8 @@ type
     /// <summary>Grund bei Failed (ohne Pfade); bei einem abgestürzten Server die Ursache, etwa
     /// „Stapelüberlauf (0xC00000FD)“ (Bericht H5).</summary>
     Error: string;
-    /// <summary>Beginn der Phase in Ortszeit: Start bei Running, Ende bei Stopped und Failed; 0 = unbekannt (#754).</summary>
+    /// <summary>Beginn der Phase in Ortszeit: Start bei Running, Ende bei Stopped und Failed; 0 = unbekannt
+    /// (#754).</summary>
     Since: TDateTime;
     /// <summary>Stopped: von Atlas beendet (Neustart, Abschalten), nicht abgestürzt (#754).</summary>
     Ended: Boolean;
@@ -57,7 +58,8 @@ type
     Percent: Integer;
     /// <summary>Ende der letzten vollständigen Indizierung in Ortszeit; 0 = unbekannt (#754).</summary>
     FullAt: TDateTime;
-    /// <summary>Der Server läuft nicht: Units und FullAt sind gespeicherte Werte vom Zeitpunkt StoredAt (#754).</summary>
+    /// <summary>Der Server läuft nicht: Units und FullAt sind gespeicherte Werte vom Zeitpunkt StoredAt
+    /// (#754).</summary>
     Offline: Boolean;
     /// <summary>Stand der gespeicherten Werte in Ortszeit; 0 = keine gespeicherten Werte.</summary>
     StoredAt: TDateTime;

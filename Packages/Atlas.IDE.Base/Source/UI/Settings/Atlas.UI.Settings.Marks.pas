@@ -35,7 +35,8 @@ type
 
   TAtlasSettingsBinding = record
     Control: TControl;
-    /// <summary>Beschriftung, die den Punkt trägt; beim Kontrollkästchen nil (der Punkt steht in seinem Text).</summary>
+    /// <summary>Beschriftung, die den Punkt trägt; beim Kontrollkästchen nil (der Punkt steht in seinem
+    /// Text).</summary>
     Caption: TLabel;
     Names: TArray<string>;
     /// <summary>Punkt zeigen (Listen wie die Prüfungen des Release-Wächters: nur Kontextmenü).</summary>
@@ -106,7 +107,8 @@ type
     FOnResetPage: TNotifyEvent;
     FFilter: TAtlasSettingsFilter;
     FHidden: TList<TControl>;
-    /// <summary>Ursprüngliche Lage der Elemente der gefilterten Reiter; der Filter rückt die sichtbaren zusammen.</summary>
+    /// <summary>Ursprüngliche Lage der Elemente der gefilterten Reiter; der Filter rückt die sichtbaren
+    /// zusammen.</summary>
     FTops: TDictionary<TControl, Integer>;
     /// <summary>Elemente, die der Filter nie ausblendet (#890).</summary>
     FPinned: TList<TControl>;

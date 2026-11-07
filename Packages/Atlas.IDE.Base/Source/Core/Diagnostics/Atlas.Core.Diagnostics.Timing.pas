@@ -802,10 +802,12 @@ begin
   end;
   for mStep in [TAtlasTimingStep.FilterSort, TAtlasTimingStep.Draw, TAtlasTimingStep.FirstVisible] do
   begin
-    Result := Result + ' | ' + cStepNames[TAtlasTextLanguage.Current, mStep] + ' ' + TAtlasTimingRows.Ms(AQuery.Value(mStep)) +
+    Result := Result + ' | ' + cStepNames[TAtlasTextLanguage.Current, mStep] + ' ' +
+      TAtlasTimingRows.Ms(AQuery.Value(mStep)) +
       Mark(TAtlasTimingBudget.Exceeded(mStep, AQuery.Value(mStep)));
   end;
-  Result := Result + UiText(TTimingText.Entries) + IntToStr(AQuery.Count) + UiText(TTimingText.Visible) + IntToStr(AQuery.Shown);
+  Result := Result + UiText(TTimingText.Entries) + IntToStr(AQuery.Count) + UiText(TTimingText.Visible) +
+    IntToStr(AQuery.Shown);
 end;
 
 function RowCaption(const ARow: TAtlasTimingRow): string;
@@ -861,7 +863,8 @@ begin
     mLines.Add('');
     mLines.Add(UiText(TTimingText.Created) + FormatDateTime('yyyy-mm-dd hh":"nn', AInput.Created));
     mLines.Add('Atlas: ' + AInput.AtlasVersion + ', IDE: ' + AInput.IdeVersion + UiText(TTimingText.Platform) + AInput.Platform);
-    mLines.Add(Format(UiText(TTimingText.Budget409ContextMsSource), [TAtlasTimingBudget.ContextMs, TAtlasTimingBudget.ProviderMs,
+    mLines.Add(Format(UiText(TTimingText.Budget409ContextMsSource),
+      [TAtlasTimingBudget.ContextMs, TAtlasTimingBudget.ProviderMs,
       TAtlasTimingBudget.FilterSortMs, TAtlasTimingBudget.DrawMs, TAtlasTimingBudget.FirstVisibleMs]));
     mLines.Add(UiText(TTimingText.ContainsNoSourceCodeFile) + BoolToStr(AInput.FileNames, True) + '.');
     mLines.Add('');

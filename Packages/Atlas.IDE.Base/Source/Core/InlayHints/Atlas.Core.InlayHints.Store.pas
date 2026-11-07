@@ -254,7 +254,8 @@ begin
   mEntry.Methods := nil;
 end;
 
-function TAtlasInlayHintStore.Missing(const AFileName: string; AFirst, ALast: Integer; out AFrom, ATo: Integer): Boolean;
+function TAtlasInlayHintStore.Missing(const AFileName: string; AFirst, ALast: Integer; out AFrom,
+  ATo: Integer): Boolean;
 var
   mEntry: TEntry;
   mLine, mFirst, mLast: Integer;

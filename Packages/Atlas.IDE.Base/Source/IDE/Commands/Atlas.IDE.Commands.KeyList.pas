@@ -42,7 +42,8 @@ type
     /// Überladung: anonyme Methoden als Argument vertragen keine Überladungen.</summary>
     procedure AddPriorityKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string; const AProc: TProc;
       APriority: Boolean);
-    /// <summary>ACheck False: ohne Konfliktprüfung, weil die Taste ohne Treffer ohnehin an die IDE weitergeht.</summary>
+    /// <summary>ACheck False: ohne Konfliktprüfung, weil die Taste ohne Treffer ohnehin an die IDE
+    /// weitergeht.</summary>
     procedure AddAttemptKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string;
       const AAttempt: TFunc<Boolean>; ACheck: Boolean); overload;
     /// <summary>Wie oben mit Konfliktprüfung (ACheck = True).</summary>

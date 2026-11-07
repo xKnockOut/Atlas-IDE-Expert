@@ -411,7 +411,8 @@ begin
 end;
 
 /// <summary>Betreff "WIP on &lt;branch&gt;: &lt;hash&gt; &lt;Betreff des Commits&gt;" (ohne Namen) oder
-/// "On &lt;branch&gt;: &lt;Name&gt;" in Branch und Nachricht zerlegen; sonst bleibt der Betreff die Nachricht.</summary>
+/// "On &lt;branch&gt;: &lt;Name&gt;" in Branch und Nachricht zerlegen; sonst bleibt der Betreff die
+/// Nachricht.</summary>
 procedure ReadStashSubject(const ASubject: string; var AStash: TAtlasVcsStash);
 var
   mRest: string;

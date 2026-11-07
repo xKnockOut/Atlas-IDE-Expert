@@ -159,7 +159,8 @@ type
     function CloseInfo: TLspCloseInfo;
     /// <summary>Antwortzeit einer Anfrage merken; Request ruft das selbst (öffentlich für Tests).</summary>
     procedure AddResponseTime(AMilliseconds: Int64);
-    /// <summary>Mittlere Antwortzeit der letzten TLspResponseTimes.Samples Anfragen in ms; ASamples = deren Anzahl.</summary>
+    /// <summary>Mittlere Antwortzeit der letzten TLspResponseTimes.Samples Anfragen in ms; ASamples = deren
+    /// Anzahl.</summary>
     function AverageMs(out ASamples: Integer): Double;
     /// <summary>Geht die Antwortzeit von AMethod in AverageMs ein? Nicht bei Long-Polling.</summary>
     class function CountsResponseTime(const AMethod: string): Boolean; static;

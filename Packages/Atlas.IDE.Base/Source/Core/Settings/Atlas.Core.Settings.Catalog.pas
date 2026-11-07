@@ -48,7 +48,8 @@ type
     DefaultJson: string;
     /// <summary>Interner Zustand (Breiten, „gesehen“): nicht exportiert, nicht zurückgesetzt, nicht markiert.</summary>
     State: Boolean;
-    /// <summary>Gilt nur für diesen Rechner (Serverpfad, Delphi-Version): nicht exportiert, nicht zurückgesetzt.</summary>
+    /// <summary>Gilt nur für diesen Rechner (Serverpfad, Delphi-Version): nicht exportiert, nicht
+    /// zurückgesetzt.</summary>
     Machine: Boolean;
     /// <summary>Pfad: Benutzerordner werden beim Export zu Pfadmakros.</summary>
     IsPath: Boolean;
@@ -118,7 +119,8 @@ type
     function IndexOfKey(const AKey: string): Integer;
     /// <summary>Plugin-Eintrag mit Registry-Name AName; -1 ohne.</summary>
     function IndexOfName(const AName: string): Integer;
-    /// <summary>Wie IndexOfKey, dazu Registry-Namen, x-formerKeys und x-renamedFrom (AMigrated True); -1 ohne.</summary>
+    /// <summary>Wie IndexOfKey, dazu Registry-Namen, x-formerKeys und x-renamedFrom (AMigrated True); -1
+    /// ohne.</summary>
     function Resolve(const AKey: string; out AMigrated: Boolean): Integer;
     /// <summary>Gibt es den Bereich?</summary>
     function HasArea(const AArea: string): Boolean;

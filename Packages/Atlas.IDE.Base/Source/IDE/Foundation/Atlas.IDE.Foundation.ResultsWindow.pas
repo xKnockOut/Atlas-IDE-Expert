@@ -101,7 +101,8 @@ type
     class procedure UpdateIcon; static;
     /// <summary>Nach einem Themenwechsel: Inhalt im Thema der IDE, Symbol dazu.</summary>
     class procedure ApplyTheme; static;
-    /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt (#879).</summary>
+    /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt
+    /// (#879).</summary>
     class procedure Prepare; static;
     /// <summary>Beim Entladen: Fenster schließen und freigeben.</summary>
     class procedure Release; static;

@@ -125,7 +125,8 @@ type
     /// <summary>Woher kommt bzw. wohin geht der Wert des Symbols an der Stelle (atlas/dataFlow, #690).</summary>
     function DataFlow(const ARequest: TAtlasDataFlowRequest): TAtlasDataFlowResult;
     /// <summary>Diagnosen einer Datei (textDocument/diagnostic) ohne Abgleich; threadsicher wie Completion.</summary>
-    function DocumentDiagnostics(const AFileName, APreviousResultId: string; ATimeoutMs: Cardinal): TLspDiagnosticReport;
+    function DocumentDiagnostics(const AFileName, APreviousResultId: string;
+      ATimeoutMs: Cardinal): TLspDiagnosticReport;
     /// <summary>Diagnosen aller Projektdateien außer den geöffneten (workspace/diagnostic, Long-Polling);
     /// APrevious mit FileName und ResultId der bekannten Stände. Threadsicher wie Completion.</summary>
     function WorkspaceDiagnostics(const APrevious: TArray<TLspDiagnosticReport>;

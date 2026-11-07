@@ -1040,7 +1040,8 @@ begin
   while mIndex <= High(AColors) do
   begin
     mStop := mIndex;
-    while (mStop < High(AColors)) and (AColors[mStop + 1] = AColors[mIndex]) and (AStyles[mStop + 1] = AStyles[mIndex]) do
+    while (mStop < High(AColors)) and (AColors[mStop + 1] = AColors[mIndex]) and
+      (AStyles[mStop + 1] = AStyles[mIndex]) do
     begin
       Inc(mStop);
     end;

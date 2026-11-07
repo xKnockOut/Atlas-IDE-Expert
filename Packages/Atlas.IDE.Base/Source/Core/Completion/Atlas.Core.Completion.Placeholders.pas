@@ -67,7 +67,8 @@ type
     function Next: Boolean;
     /// <summary>Umschalt+Tab: zum vorigen; am ersten bleibt es dort.</summary>
     procedure Previous;
-    /// <summary>Text geändert. False, wenn die Änderung nicht in einem Platzhalter der aktuellen Nummer liegt.</summary>
+    /// <summary>Text geändert. False, wenn die Änderung nicht in einem Platzhalter der aktuellen Nummer
+    /// liegt.</summary>
     function Update(const ADocument: string): Boolean;
     /// <summary>Änderungen, die die verknüpften Platzhalter an den aktuellen angleichen; aufsteigend.</summary>
     function MirrorEdits: TAtlasPlaceholderEdits;

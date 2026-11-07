@@ -252,7 +252,8 @@ begin
   Result := -1;
   for mIndex := 0 to High(AItems) do
   begin
-    if (AItems[mIndex].Origin = TAtlasKeyOrigin.Atlas) and (AItems[mIndex].Id = cKeyIdPrefix + IntToStr(Ord(AFunc))) then
+    if (AItems[mIndex].Origin = TAtlasKeyOrigin.Atlas) and
+      (AItems[mIndex].Id = cKeyIdPrefix + IntToStr(Ord(AFunc))) then
     begin
       Exit(mIndex);
     end;
@@ -391,7 +392,8 @@ begin
   begin
     mCaption := AAction.Name;
   end;
-  mItem := TAtlasKeyItem.Create(Word(AShortCut), ShortCutToText(AShortCut), mCaption, TAtlasKeyProvenance.Create(mOrigin,
+  mItem := TAtlasKeyItem.Create(Word(AShortCut), ShortCutToText(AShortCut), mCaption,
+    TAtlasKeyProvenance.Create(mOrigin,
     mName, TAtlasKeyMap.ContextOfCategory(AAction.Category), TAtlasKeySource.Action, AAction.Name, AOrder));
   mItem.Category := AAction.Category;
   AItems.Add(mItem);

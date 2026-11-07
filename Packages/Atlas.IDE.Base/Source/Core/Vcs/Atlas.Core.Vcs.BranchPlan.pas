@@ -624,7 +624,8 @@ begin
   Result := nil;
   mRemote := ARequest.Base.RemoteName;
   // Basis ist ein Branch-Name aus Inspect; losgelöster HEAD hat keinen.
-  if ((ARequest.Base.Name <> '') and not TAtlasVcsBranchPlan.SafeName(ARequest.Base.Name)) or not TAtlasVcsBranchPlan.SafeName(mRemote) then
+  if ((ARequest.Base.Name <> '') and not TAtlasVcsBranchPlan.SafeName(ARequest.Base.Name)) or
+    not TAtlasVcsBranchPlan.SafeName(mRemote) then
   begin
     Exit;
   end;
@@ -643,7 +644,8 @@ begin
   begin
     // Eigener Ordner: die Arbeitskopie bleibt, wie sie ist; offene Änderungen bleiben dort.
     Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('worktree', 'add', '--quiet', '--no-track',
-      '-b', ARequest.Name, ARequest.WorktreeFolder, TAtlasVcsBranchPlan.BaseRef(TAtlasVcsKind.Git, ARequest.Base)), False, False)];
+      '-b', ARequest.Name, ARequest.WorktreeFolder, TAtlasVcsBranchPlan.BaseRef(TAtlasVcsKind.Git, ARequest.Base)),
+        False, False)];
   end
   else
   begin

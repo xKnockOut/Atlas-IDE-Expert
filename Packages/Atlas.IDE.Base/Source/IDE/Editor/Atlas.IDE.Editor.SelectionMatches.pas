@@ -392,7 +392,8 @@ begin
         AContext.EditorLineNum);
       mLast := AContext.EditorState.GetCharacterPosPx(
         TLspSession.IndexToColumn(AText, mMatch.Character + mMatch.Length, FTabWidth), AContext.EditorLineNum);
-      TAtlasIdeStyle.Blend(mDC, TRect.Create(mFirst.Left, ARect.Top, Max(mLast.Left, mFirst.Left + 1), ARect.Bottom), mColor,
+      TAtlasIdeStyle.Blend(mDC, TRect.Create(mFirst.Left, ARect.Top, Max(mLast.Left, mFirst.Left + 1), ARect.Bottom),
+        mColor,
         cMatchAlpha);
     end;
   finally

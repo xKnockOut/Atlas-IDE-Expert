@@ -189,7 +189,8 @@ type
   /// <summary>Was die Knöpfe in der IDE tun; Tests setzen eine eigene Umgebung ein.</summary>
   IAtlasSetupEnvironment = interface
     ['{5E2A9C61-7B3D-4F08-A1C4-93D6E28B7F15}']
-    /// <summary>Zustand für die Prüfungen sammeln (Hauptthread, schnell; die Serverabfrage läuft im Hintergrund).</summary>
+    /// <summary>Zustand für die Prüfungen sammeln (Hauptthread, schnell; die Serverabfrage läuft im
+    /// Hintergrund).</summary>
     function Snapshot: TAtlasSetupInput;
     /// <summary>Dateiauswahl für AtlasServer.exe; False bei Abbruch.</summary>
     function ChooseServerPath(out APath: string): Boolean;
@@ -402,7 +403,8 @@ begin
   end;
   case AInput.Server.Phase of
     TAtlasServerPhase.Starting:
-      Result := Make(cC, TAtlasSetupFinding.ServerStarting, TAtlasStatusState.Yellow, TAtlasSetupFix.Explain, True, nil);
+      Result := Make(cC, TAtlasSetupFinding.ServerStarting, TAtlasStatusState.Yellow, TAtlasSetupFix.Explain, True,
+        nil);
     TAtlasServerPhase.Stopped:
       Result := Make(cC, TAtlasSetupFinding.ServerStopped, TAtlasStatusState.Red, TAtlasSetupFix.RestartServer, False,
         nil);

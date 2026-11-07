@@ -161,7 +161,8 @@ end;
 
 procedure EnsureHost;
 begin
-  // Nicht im Desktop: Der Diagnosemodus öffnet das Fenster selbst, und zwar erst nach dem Build (TAtlasIdeBuildIdleGate).
+  // Nicht im Desktop: Der Diagnosemodus öffnet das Fenster selbst, und zwar erst nach dem Build
+  // (TAtlasIdeBuildIdleGate).
   if Host = nil then
   begin
     Host := TAtlasIdeDockWindow.Create(TTimingDock.Create, False);

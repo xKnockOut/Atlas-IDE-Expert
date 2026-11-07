@@ -32,7 +32,8 @@ type
     class procedure Hide; static;
     class procedure UpdateIcon; static;
     class procedure ApplyTheme; static;
-    /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt (#879).</summary>
+    /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt
+    /// (#879).</summary>
     class procedure Prepare; static;
     class procedure Release; static;
   end;

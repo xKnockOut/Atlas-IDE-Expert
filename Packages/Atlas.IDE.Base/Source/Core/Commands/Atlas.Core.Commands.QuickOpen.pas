@@ -193,7 +193,8 @@ begin
   if mColon > 1 then
   begin
     mTail := Copy(Result.Text, mColon + 1, MaxInt);
-    if (mTail <> '') and TryStrToInt(mTail, mLine) and (mLine > 0) and (Pos('-', mTail) = 0) and (Pos('+', mTail) = 0) then
+    if (mTail <> '') and TryStrToInt(mTail, mLine) and (mLine > 0) and (Pos('-', mTail) = 0) and
+      (Pos('+', mTail) = 0) then
     begin
       Result.Line := mLine;
       Result.Text := TrimRight(Copy(Result.Text, 1, mColon - 1));

@@ -131,7 +131,8 @@ type
     Compiler: Boolean;
     /// <summary>Bereich „aktuelle Datei“.</summary>
     CurrentFile: string;
-    /// <summary>Bereich „Projekt“ bzw. „Projektgruppe“: Dateien des Bereichs; nil = alle Dateien des Speichers.</summary>
+    /// <summary>Bereich „Projekt“ bzw. „Projektgruppe“: Dateien des Bereichs; nil = alle Dateien des
+    /// Speichers.</summary>
     Files: TArray<string>;
     /// <summary>Alle Arten und Kategorien, Bereich Projektgruppe, ohne Compiler.</summary>
     class function Create: TAtlasFindingFilter; static;

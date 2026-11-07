@@ -263,7 +263,8 @@ begin
   // Mit (): Variable liefert eine Funktion; ohne Klammern wäre es die Methode selbst.
   mVariable := mMacros.Variable();
   mSkipped := nil;
-  ASources.Folders := ASources.Folders + TAtlasPathCheck.ExpandPaths(mContext.SearchPaths, mFolder, mVariable, mSkipped);
+  ASources.Folders := ASources.Folders + TAtlasPathCheck.ExpandPaths(mContext.SearchPaths, mFolder, mVariable,
+    mSkipped);
   if ALibrary and (mMacros.Value('BDS') <> '') and (Length(ASources.LibraryFolders) = 0) then
   begin
     ASources.LibraryFolders := [TPath.Combine(mMacros.Value('BDS'), 'source')];

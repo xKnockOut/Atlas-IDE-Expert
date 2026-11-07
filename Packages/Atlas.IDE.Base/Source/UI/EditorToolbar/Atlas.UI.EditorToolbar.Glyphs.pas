@@ -72,7 +72,8 @@ begin
   end;
 end;
 
-/// <summary>Eine Form auf ADC; der Stift ist gewählt, gefüllte Formen wählen AFill für die Dauer des Zeichnens.</summary>
+/// <summary>Eine Form auf ADC; der Stift ist gewählt, gefüllte Formen wählen AFill für die Dauer des
+/// Zeichnens.</summary>
 procedure DrawShape(ADC: HDC; const AShape: TAtlasGlyphShape; AScale: Single; AFill: HBRUSH);
 var
   mPoints: TArray<TPoint>;

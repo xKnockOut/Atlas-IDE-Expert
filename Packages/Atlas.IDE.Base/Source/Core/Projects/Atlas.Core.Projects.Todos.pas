@@ -119,7 +119,8 @@ begin
   end;
 end;
 
-/// <summary>AValue an AList anhängen, wenn es nicht leer und noch nicht drin ist (Groß-/Kleinschreibung egal).</summary>
+/// <summary>AValue an AList anhängen, wenn es nicht leer und noch nicht drin ist (Groß-/Kleinschreibung
+/// egal).</summary>
 procedure AddDistinct(var AList: TArray<string>; const AValue: string);
 var
   mItem: string;

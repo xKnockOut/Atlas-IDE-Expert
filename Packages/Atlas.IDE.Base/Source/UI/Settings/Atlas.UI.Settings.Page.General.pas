@@ -173,7 +173,8 @@ begin
   // Tastenkürzel-Tipps (#600); Reihenfolge wie TAtlasTipScope: atlas, all.
   BindCheck('ShortcutTips', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTips)));
   FShortcutTipsScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsScope),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAtlas), TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAll)]);
+    [TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAtlas),
+      TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAll)]);
 end;
 
 procedure TAtlasSettingsGeneralPart.BindMarks;

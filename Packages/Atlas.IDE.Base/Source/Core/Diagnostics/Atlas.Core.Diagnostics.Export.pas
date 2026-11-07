@@ -24,7 +24,8 @@ type
     class function DefaultFolder: string; static;
     /// <summary>Diagnoselogs in AFolder, die in den letzten ADays Tagen geschrieben wurden, sortiert.</summary>
     class function Files(const AFolder: string; ADays: Integer; ANow: TDateTime): TArray<string>; static;
-    /// <summary>Inhalt wie in der ZIP: je Datei eine Kopfzeile, danach die Zeilen (höchstens AMaxLines insgesamt).</summary>
+    /// <summary>Inhalt wie in der ZIP: je Datei eine Kopfzeile, danach die Zeilen (höchstens AMaxLines
+    /// insgesamt).</summary>
     class function Preview(const AFiles: TArray<string>; AMaxLines: Integer): string; overload;
       static;
     /// <summary>Wie oben mit AMaxLines = PreviewLines.</summary>

@@ -186,7 +186,8 @@ begin
   AFileName := '';
   Result := False;
   try
-    mExport_ := TAtlasSettingsTransfer.ExportSettings(Catalog, State(ACurrent), TAtlasExportOptions.ForBackup, Macros());
+    mExport_ := TAtlasSettingsTransfer.ExportSettings(Catalog, State(ACurrent), TAtlasExportOptions.ForBackup,
+      Macros());
     AFileName := TPath.Combine(BackupFolder, TAtlasSettingsTransfer.BackupFileName(Now));
     WriteText(AFileName, mExport_.Text);
     Result := True;
@@ -257,7 +258,8 @@ begin
       begin
         mKeys := mKeys + ', ' + mOmission.Key;
       end;
-      mMessage := mMessage + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsExportOmitted, [Copy(mKeys, 3, MaxInt)]);
+      mMessage := mMessage + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsExportOmitted, [Copy(mKeys, 3,
+        MaxInt)]);
     end;
     if Length(mExport_.Placeholders) > 0 then
     begin

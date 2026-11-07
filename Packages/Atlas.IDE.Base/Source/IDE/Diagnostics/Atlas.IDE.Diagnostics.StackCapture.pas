@@ -372,7 +372,8 @@ begin
   end;
   for mIndex := 0 to Integer(mNeeded div SizeOf(HMODULE)) - 1 do
   begin
-    if (mIndex <= High(mHandles)) and GetModuleInformation(GetCurrentProcess, mHandles[mIndex], @mInfo, SizeOf(mInfo)) and
+    if (mIndex <= High(mHandles)) and GetModuleInformation(GetCurrentProcess, mHandles[mIndex], @mInfo,
+      SizeOf(mInfo)) and
       (GetModuleFileName(mHandles[mIndex], mName, Length(mName)) > 0) then
     begin
       mRange.Name := ExtractFileName(mName);

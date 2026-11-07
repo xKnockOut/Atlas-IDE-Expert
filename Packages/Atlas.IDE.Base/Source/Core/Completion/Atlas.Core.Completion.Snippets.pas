@@ -757,7 +757,8 @@ begin
       'while ${1:Condition} do'#10'begin'#10'  $0'#10'end;', 'statement'),
     Snippet('repeat', UiText(TSnippetsText.RepeatUntilLoop), UiText(TSnippetsText.AtLeastOnceUntilThe),
       'repeat'#10'  $0'#10'until ${1:Condition};', 'statement'),
-    Snippet('class', UiText(TSnippetsText.ClassWithConstructorAndDestructor), UiText(TSnippetsText.ClassDeclarationInTheType),
+    Snippet('class', UiText(TSnippetsText.ClassWithConstructorAndDestructor),
+      UiText(TSnippetsText.ClassDeclarationInTheType),
       '${1:TMyClass} = class(${2:TObject})'#10'private'#10'  $0'#10'public'#10'  constructor Create;'#10 +
       '  destructor Destroy; override;'#10'end;', 'declaration'),
     Snippet('record', 'Record', UiText(TSnippetsText.RecordDeclarationInTheType),

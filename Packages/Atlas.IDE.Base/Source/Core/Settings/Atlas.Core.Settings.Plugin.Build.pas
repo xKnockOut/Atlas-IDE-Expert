@@ -129,10 +129,12 @@ type
     /// <summary>Prüfungen des Release-Wächters mit an/aus und Sollwert (build.releaseChecks), Textform wie
     /// TAtlasReleaseChecks.ToText, z. B. "debugDefine,debugInfo=off,-assertions=off,…".</summary>
     ReleaseChecks: string;
-    /// <summary>Modul-Schalter tests.enabled (#1454): DUnitX-Tests; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// <summary>Modul-Schalter tests.enabled (#1454): DUnitX-Tests; aus = die wirksamen Werte aller Einstellungen des
+    /// Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     TestsEnabled: Boolean;
-    /// <summary>Modul-Schalter buildTools.enabled (#1454): Build-Werkzeuge; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// <summary>Modul-Schalter buildTools.enabled (#1454): Build-Werkzeuge; aus = die wirksamen Werte aller
+    /// Einstellungen des Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     BuildToolsEnabled: Boolean;
     /// <summary>Modul-Schalter buildPipeline.enabled (#1455): Build-Pipeline; aus = die wirksamen Werte aller

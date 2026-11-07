@@ -785,7 +785,8 @@ begin
     Canvas.Font.Color := ToColor(Colors.Muted);
     Canvas.Brush.Style := bsClear;
     mPart := Rect(mLeft, mTop + mRowIndex * mHeight, mRight, mTop + (mRowIndex + 1) * mHeight);
-    DrawText(Canvas.Handle, PChar(TAtlasStrings.Fmt(TAtlasTextId.MoreOverloads, [Length(FHelp.Signatures) - MaxSignatures])), -1, mPart,
+    DrawText(Canvas.Handle, PChar(TAtlasStrings.Fmt(TAtlasTextId.MoreOverloads, [Length(FHelp.Signatures) -
+      MaxSignatures])), -1, mPart,
       cTextFlags);
     Inc(mRowIndex);
   end;

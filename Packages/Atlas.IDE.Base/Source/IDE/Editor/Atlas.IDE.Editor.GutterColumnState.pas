@@ -70,7 +70,8 @@ type
     function Settled: Boolean;
     /// <summary>True, wenn die Glühbirne der Cursorzeile neu zu erfragen ist.</summary>
     function ActionDue: Boolean;
-    /// <summary>Was fehlt, beim Server erfragen: Überschreibungen, sonst die Glühbirne; eine Anfrage zugleich.</summary>
+    /// <summary>Was fehlt, beim Server erfragen: Überschreibungen, sonst die Glühbirne; eine Anfrage
+    /// zugleich.</summary>
     procedure FetchDue(ASession: TLspSession);
     procedure FetchOverrides(ASession: TLspSession);
     /// <summary>Antwort auf FetchOverrides im Hauptthread; AOk = False: später neu versuchen.</summary>

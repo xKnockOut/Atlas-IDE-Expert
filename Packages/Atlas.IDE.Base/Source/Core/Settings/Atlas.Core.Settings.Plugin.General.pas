@@ -109,7 +109,8 @@ type
     /// <summary>Protokoll atlas.log mit Klarnamen (#1478, diagnostics.log.names); Vorgabe aus: Namen, Pfade und
     /// Meldungen stehen als name#N, datei#N, text#N.</summary>
     LogNames: Boolean;
-    /// <summary>Modul-Schalter analysis.enabled (#1454): Analysefenster (Architektur, Unit-Beziehungen, Symbolpfad, Hotspots); aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// <summary>Modul-Schalter analysis.enabled (#1454): Analysefenster (Architektur, Unit-Beziehungen, Symbolpfad,
+    /// Hotspots); aus = die wirksamen Werte aller Einstellungen des Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     AnalysisEnabled: Boolean;
     /// <summary>Vorgaben.</summary>

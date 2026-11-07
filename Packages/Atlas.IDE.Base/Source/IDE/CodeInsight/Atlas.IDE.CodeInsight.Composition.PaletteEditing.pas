@@ -3,7 +3,8 @@
 // Befehle der Palette (#502) zum Bearbeiten im Editor: Sprung zum Gegenstück (#635), Änderungen (#507), Zeilen
 // verschieben (#634), Anweisung vervollständigen (#697), Formatieren (#43), Blockkommentar (#703), neue Zeile
 // (#700), Umschließung entfernen (#657), Ausdruckstyp (#689), Methodenreihenfolge (#660), sicher löschen (#716) und
-// mehrere Einfügemarken (#589) und Regionen zu-/aufklappen (#1814). Jeder nur sichtbar, solange seine Einstellung an ist.
+// mehrere Einfügemarken (#589) und Regionen zu-/aufklappen (#1814). Jeder nur sichtbar, solange seine Einstellung an
+// ist.
 
 interface
 
