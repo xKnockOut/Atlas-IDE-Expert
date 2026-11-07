@@ -98,27 +98,27 @@ implementation
 
 const
   /// <summary>Datei mit Endung: optional Laufwerk, keine Zeichen, die in Pfaden verboten sind.</summary>
-  FilePattern = '((?:[A-Za-z]:)?[^:*?"<>|()\s][^:*?"<>|()]*?\.[A-Za-z0-9]{1,10})';
+  cFilePattern = '((?:[A-Za-z]:)?[^:*?"<>|()\s][^:*?"<>|()]*?\.[A-Za-z0-9]{1,10})';
 
 { TAtlasTaskLineMatcher }
 
 class function TAtlasTaskLineMatcher.SeverityWord(const AWord: string; out ASeverity: TAtlasTaskSeverity): Boolean;
 var
-  Word: string;
+  mWord: string;
 begin
-  Word := AnsiLowerCase(Trim(AWord));
+  mWord := AnsiLowerCase(Trim(AWord));
   Result := True;
   // Wörter des deutschen Compilers, keine Oberfläche.
-  if (Word = 'error') or (Word = 'fehler') or (Word = 'fatal') or (Word = 'schwerer fehler') then // german-ok
+  if (mWord = 'error') or (mWord = 'fehler') or (mWord = 'fatal') or (mWord = 'schwerer fehler') then // german-ok
   begin
     ASeverity := TAtlasTaskSeverity.Error;
   end
-  else if (Word = 'warning') or (Word = 'warnung') then
+  else if (mWord = 'warning') or (mWord = 'warnung') then
   begin
     ASeverity := TAtlasTaskSeverity.Warning;
   end
-  else if (Word = 'hint') or (Word = 'hinweis') or (Word = 'info') or (Word = 'information') or
-    (Word = 'message') then
+  else if (mWord = 'hint') or (mWord = 'hinweis') or (mWord = 'info') or (mWord = 'information') or
+    (mWord = 'message') then
   begin
     ASeverity := TAtlasTaskSeverity.Info;
   end
@@ -219,7 +219,7 @@ begin
       end;
     TAtlasTaskMatcherKind.Pwsh:
       AddRule(TForm.PwshLine, '^\s*(?:Write-Error:\s*)?(?:(FEHLER|WARNUNG|HINWEIS|ERROR|WARNING|HINT|INFO)\s*:?\s+)?' +
-        FilePattern + '(?::(\d+)(?::(\d+))?|\((\d+)(?:,(\d+))?\))?\s*:\s*(.*)$', []);
+        cFilePattern + '(?::(\d+)(?::(\d+))?|\((\d+)(?:,(\d+))?\))?\s*:\s*(.*)$', []);
     TAtlasTaskMatcherKind.MsBuild:
       begin
         AddRule(TForm.MsBuildLine, '^\s*(.+?)\((\d+)(?:,(\d+))?(?:,\d+,\d+)?\)\s*:\s*(?:\w+\s+)?' +
@@ -230,7 +230,7 @@ begin
     TAtlasTaskMatcherKind.Generic:
       begin
         AddRule(TForm.GenericParen, '^\s*(.+?)\((\d+)(?:,(\d+))?\)\s*:?\s*(.+)$', []);
-        AddRule(TForm.GenericColon, '^\s*' + FilePattern + ':(\d+)(?::(\d+))?:\s*(.+)$', []);
+        AddRule(TForm.GenericColon, '^\s*' + cFilePattern + ':(\d+)(?::(\d+))?:\s*(.+)$', []);
       end;
     TAtlasTaskMatcherKind.Custom:
       begin
@@ -258,27 +258,27 @@ end;
 
 procedure TAtlasTaskLineMatcher.AddRule(AForm: TForm; const APattern: string; AOptions: TRegExOptions);
 var
-  Rule: TRule;
+  mRule: TRule;
 begin
-  Rule.Form := AForm;
-  Rule.Regex := TRegEx.Create(APattern, AOptions);
-  FRules := FRules + [Rule];
+  mRule.Form := AForm;
+  mRule.Regex := TRegEx.Create(APattern, AOptions);
+  FRules := FRules + [mRule];
 end;
 
 function TAtlasTaskLineMatcher.CustomSeverity(const AText: string): TAtlasTaskSeverity;
 var
-  Index: Integer;
-  Word: string;
+  mIndex: Integer;
+  mWord: string;
 begin
-  Word := AnsiLowerCase(Trim(AText));
-  for Index := 0 to High(FMatcher.SeverityWords) do
+  mWord := AnsiLowerCase(Trim(AText));
+  for mIndex := 0 to High(FMatcher.SeverityWords) do
   begin
-    if FMatcher.SeverityWords[Index] = Word then
+    if FMatcher.SeverityWords[mIndex] = mWord then
     begin
-      Exit(FMatcher.SeverityValues[Index]);
+      Exit(FMatcher.SeverityValues[mIndex]);
     end;
   end;
-  if (Word = '') or not SeverityWord(Word, Result) then
+  if (mWord = '') or not SeverityWord(mWord, Result) then
   begin
     Result := FMatcher.DefaultSeverity;
   end;
@@ -301,27 +301,27 @@ end;
 /// <summary>Wort am Anfang von AMessage, das die Schwere nennt („error: …“, „Warnung …“); entfernt es.</summary>
 function LeadingSeverity(var AMessage: string; out ASeverity: TAtlasTaskSeverity): Boolean;
 var
-  Match: TMatch;
+  mMatch: TMatch;
 begin
-  Match := TRegEx.Match(AMessage, '^(error|fehler|fatal|warning|warnung|hint|hinweis|info)\b\s*:?\s*',
+  mMatch := TRegEx.Match(AMessage, '^(error|fehler|fatal|warning|warnung|hint|hinweis|info)\b\s*:?\s*',
     [roIgnoreCase]);
-  Result := Match.Success and TAtlasTaskLineMatcher.SeverityWord(Match.Groups[1].Value, ASeverity);
+  Result := mMatch.Success and TAtlasTaskLineMatcher.SeverityWord(mMatch.Groups[1].Value, ASeverity);
   if Result then
   begin
-    AMessage := Copy(AMessage, Match.Length + 1, MaxInt);
+    AMessage := Copy(AMessage, mMatch.Length + 1, MaxInt);
   end;
 end;
 
 /// <summary>Großgeschriebenes Wort FEHLER, WARNUNG, HINWEIS (ERROR, WARNING, HINT, INFO) am Anfang.</summary>
 function UpperSeverity(var AMessage: string; out ASeverity: TAtlasTaskSeverity): Boolean;
 var
-  Match: TMatch;
+  mMatch: TMatch;
 begin
-  Match := TRegEx.Match(AMessage, '^(FEHLER|WARNUNG|HINWEIS|ERROR|WARNING|HINT|INFO)\b\s*:?\s*', []);
-  Result := Match.Success and TAtlasTaskLineMatcher.SeverityWord(Match.Groups[1].Value, ASeverity);
+  mMatch := TRegEx.Match(AMessage, '^(FEHLER|WARNUNG|HINWEIS|ERROR|WARNING|HINT|INFO)\b\s*:?\s*', []);
+  Result := mMatch.Success and TAtlasTaskLineMatcher.SeverityWord(mMatch.Groups[1].Value, ASeverity);
   if Result then
   begin
-    AMessage := Copy(AMessage, Match.Length + 1, MaxInt);
+    AMessage := Copy(AMessage, mMatch.Length + 1, MaxInt);
   end;
 end;
 
@@ -470,12 +470,12 @@ end;
 
 function TAtlasTaskLineMatcher.Match(const ALine: string; out AFinding: TAtlasTaskFinding): Boolean;
 var
-  Rule: TRule;
+  mRule: TRule;
 begin
   AFinding := Default(TAtlasTaskFinding);
-  for Rule in FRules do
+  for mRule in FRules do
   begin
-    if Apply(Rule, ALine, AFinding) then
+    if Apply(mRule, ALine, AFinding) then
     begin
       Exit(True);
     end;
@@ -487,45 +487,45 @@ end;
 
 class function TAtlasTaskPaths.Normalize(const APath: string): string;
 var
-  Parts, Kept: TArray<string>;
-  Part, Prefix: string;
+  mParts, mKept: TArray<string>;
+  mPart, mPrefix: string;
 begin
   Result := StringReplace(Trim(APath), '/', '\', [rfReplaceAll]);
   if Result = '' then
   begin
     Exit;
   end;
-  Prefix := '';
+  mPrefix := '';
   if Copy(Result, 1, 2) = '\\' then
   begin
-    Prefix := '\\';
+    mPrefix := '\\';
     Result := Copy(Result, 3, MaxInt);
   end
   else if (Result <> '') and (Result[1] = '\') then
   begin
-    Prefix := '\';
+    mPrefix := '\';
     Result := Copy(Result, 2, MaxInt);
   end;
-  Parts := Result.Split(['\']);
-  Kept := nil;
-  for Part in Parts do
+  mParts := Result.Split(['\']);
+  mKept := nil;
+  for mPart in mParts do
   begin
-    if (Part = '') or (Part = '.') then
+    if (mPart = '') or (mPart = '.') then
     begin
       Continue;
     end;
-    if (Part = '..') and (Length(Kept) > 0) and (Kept[High(Kept)] <> '..') then
+    if (mPart = '..') and (Length(mKept) > 0) and (mKept[High(mKept)] <> '..') then
     begin
       // Nicht über das Laufwerk hinaus.
-      if not ((Length(Kept) = 1) and (Length(Kept[0]) = 2) and (Kept[0][2] = ':')) then
+      if not ((Length(mKept) = 1) and (Length(mKept[0]) = 2) and (mKept[0][2] = ':')) then
       begin
-        SetLength(Kept, Length(Kept) - 1);
+        SetLength(mKept, Length(mKept) - 1);
       end;
       Continue;
     end;
-    Kept := Kept + [Part];
+    mKept := mKept + [mPart];
   end;
-  Result := Prefix + string.Join('\', Kept);
+  Result := mPrefix + string.Join('\', mKept);
 end;
 
 function IsAbsolute(const APath: string): Boolean;

@@ -549,7 +549,7 @@ begin
     begin
       try
         mOk := mJob.Boards.LoadBoard(TAtlasBoardRequest.Create(mJob.Target, mJob.Transport, mJob.BoardId,
-          mJob.SprintId, TAtlasTrackerBoard.TimeoutMs), mSnapshot, mError);
+          mJob.SprintId, TAtlasTrackerBoard.cTimeoutMs), mSnapshot, mError);
       except
         // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
         on E: Exception do
@@ -683,7 +683,7 @@ begin
     begin
       try
         mResult := mJob.Boards.MoveCard(TAtlasBoardMove.Create(mJob.Target, mJob.Transport, mJob.Card, mJob.Column,
-          mJob.Comment, TAtlasTrackerBoard.MoveTimeoutMs), mJob.Snapshot);
+          mJob.Comment, TAtlasTrackerBoard.cMoveTimeoutMs), mJob.Snapshot);
       except
         on E: Exception do
         begin

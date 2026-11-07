@@ -127,7 +127,7 @@ end;
 
 class function TAtlasUpdateInstall.UpdaterOf(const APluginDir: string): string;
 begin
-  Result := TUpdateLayout.Join(TargetOf(APluginDir), TUpdateLayout.UpdaterExe);
+  Result := TUpdateLayout.Join(TargetOf(APluginDir), TUpdateLayout.cUpdaterExe);
 end;
 
 class function TAtlasUpdateInstall.Blocked(const AEnvironment: TAtlasUpdateEnvironment): TAtlasUpdateBlock;

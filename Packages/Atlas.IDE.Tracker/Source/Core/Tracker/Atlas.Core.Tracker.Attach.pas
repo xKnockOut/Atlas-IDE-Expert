@@ -69,7 +69,7 @@ type
   TAtlasAttachMultipart = record
   public const
     /// <summary>Name des Formularfelds jeder Datei (YouTrack nimmt jeden Namen an).</summary>
-    FieldName = 'upload';
+    cFieldName = 'upload';
   public
     /// <summary>Zufällige Grenze, die in keinem Inhalt vorkommt.</summary>
     class function NewBoundary: string; static;
@@ -81,9 +81,9 @@ type
   TAtlasAttachLog = record
   public const
     /// <summary>Höchstens so viele Bytes liest Atlas vom Ende einer Protokolldatei.</summary>
-    MaxBytes = 4 * 1024 * 1024;
+    cMaxBytes = 4 * 1024 * 1024;
     /// <summary>Vorgabe für „nur die letzten N Zeilen“.</summary>
-    DefaultLines = 200;
+    cDefaultLines = 200;
   public
     /// <summary>Die letzten ACount Zeilen (CRLF, ohne leere Schlusszeile); ACount &lt;= 0 = alle.</summary>
     class function LastLines(const AText: string; ACount: Integer): string; static;
@@ -104,8 +104,8 @@ type
 
   TAtlasAttachImage = record
   public const
-    MinWidth = 320;
-    MaxWidth = 7680;
+    cMinWidth = 320;
+    cMaxWidth = 7680;
   public
     /// <summary>Breite höchstens AMaxWidth (auf MinWidth..MaxWidth begrenzt), Seitenverhältnis bleibt. True, wenn
     /// verkleinert werden muss.</summary>
@@ -116,9 +116,9 @@ type
   TAtlasAttachComment = record
   public const
     /// <summary>GitHub nimmt höchstens 65536 Zeichen je Kommentar; etwas Luft für Überschriften.</summary>
-    MaxTextsLength = 65000;
+    cMaxTextsLength = 65000;
     /// <summary>So viele Zeichen bleiben je Text mindestens, wenn gekürzt werden muss.</summary>
-    MinTextLength = 1000;
+    cMinTextLength = 1000;
   public
     /// <summary>Kommentar mit Verweisen auf hochgeladene Anhänge (YouTrack): AComment, darunter je Bild ![](Name),
     /// je Datei [Name](Name).</summary>
@@ -185,7 +185,7 @@ type
   TAtlasAttachTemp = class
   public const
     /// <summary>Ordner älter als so viele Stunden gelten als Rest eines abgestürzten Laufs.</summary>
-    StaleHours = 24;
+    cStaleHours = 24;
   private
     FRoot: string;
     FFolder: string;
@@ -375,7 +375,7 @@ begin
     for mFile in AFiles do
     begin
       Put('--' + ABoundary + #13#10);
-      Put('Content-Disposition: form-data; name="' + FieldName + '"; filename="' + TAtlasAttachFile.SafeName(
+      Put('Content-Disposition: form-data; name="' + cFieldName + '"; filename="' + TAtlasAttachFile.SafeName(
         mFile.Name) + '"' + #13#10);
       Put('Content-Type: ' + mFile.MimeType + #13#10#13#10);
       if Length(mFile.Data) > 0 then
@@ -631,13 +631,13 @@ begin
   ANewWidth := AWidth;
   ANewHeight := AHeight;
   mMax := AMaxWidth;
-  if mMax < MinWidth then
+  if mMax < cMinWidth then
   begin
-    mMax := MinWidth;
+    mMax := cMinWidth;
   end;
-  if mMax > MaxWidth then
+  if mMax > cMaxWidth then
   begin
-    mMax := MaxWidth;
+    mMax := cMaxWidth;
   end;
   Result := (AWidth > mMax) and (AHeight > 0);
   if not Result then
@@ -758,9 +758,9 @@ begin
   if (AMaxLength > 0) and (mTotal > AMaxLength) and (Length(mTexts) > 0) then
   begin
     mBudget := (AMaxLength - Length(AComment)) div Length(mTexts) - Length(mTexts) * 64;
-    if mBudget < MinTextLength then
+    if mBudget < cMinTextLength then
     begin
-      mBudget := MinTextLength;
+      mBudget := cMinTextLength;
     end;
     for mIndex := 0 to High(mTexts) do
     begin

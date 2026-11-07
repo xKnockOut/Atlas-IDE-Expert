@@ -57,16 +57,16 @@ uses
   Atlas.UI.Bookmarks.Strings;
 
 const
-  Gap = 8;
-  DialogWidth = 420;
-  LabelWidth = 120;
+  cGap = 8;
+  cDialogWidth = 420;
+  cLabelWidth = 120;
 
 { TAtlasTodoFilterDialog }
 
 constructor TAtlasTodoFilterDialog.CreateDialog(AOwner: TComponent; const AChoices: TAtlasTodoChoices;
   const AFilter: TAtlasTodoFilter);
 var
-  Bottom: TPanel;
+  mBottom: TPanel;
 begin
   inherited CreateNew(AOwner);
   Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterTitle);
@@ -75,8 +75,8 @@ begin
   Position := poMainFormCenter;
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  ClientWidth := ScaleValue(DialogWidth);
-  FNextTop := ScaleValue(Gap);
+  ClientWidth := ScaleValue(cDialogWidth);
+  FNextTop := ScaleValue(cGap);
 
   FCategory := AddCombo(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterCategory), AChoices.Categories,
     AFilter.Category);
@@ -91,9 +91,9 @@ begin
   FIncludeDone.Parent := Self;
   FIncludeDone.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterDone);
   FIncludeDone.Checked := AFilter.IncludeDone;
-  FIncludeDone.SetBounds(ScaleValue(Gap + LabelWidth), FNextTop, ClientWidth - ScaleValue(2 * Gap + LabelWidth),
+  FIncludeDone.SetBounds(ScaleValue(cGap + cLabelWidth), FNextTop, ClientWidth - ScaleValue(2 * cGap + cLabelWidth),
     ScaleValue(20));
-  FNextTop := FIncludeDone.Top + FIncludeDone.Height + ScaleValue(Gap);
+  FNextTop := FIncludeDone.Top + FIncludeDone.Height + ScaleValue(cGap);
 
   FHint := TLabel.Create(Self);
   FHint.Parent := Self;
@@ -101,55 +101,55 @@ begin
   FHint.WordWrap := True;
   FHint.AutoSize := False;
   FHint.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterHint);
-  FHint.SetBounds(ScaleValue(Gap), FNextTop, ClientWidth - ScaleValue(2 * Gap), ScaleValue(32));
+  FHint.SetBounds(ScaleValue(cGap), FNextTop, ClientWidth - ScaleValue(2 * cGap), ScaleValue(32));
   FNextTop := FHint.Top + FHint.Height;
 
-  Bottom := TPanel.Create(Self);
-  Bottom.Parent := Self;
-  Bottom.Align := alBottom;
-  Bottom.Height := ScaleValue(44);
-  Bottom.BevelOuter := bvNone;
+  mBottom := TPanel.Create(Self);
+  mBottom.Parent := Self;
+  mBottom.Align := alBottom;
+  mBottom.Height := ScaleValue(44);
+  mBottom.BevelOuter := bvNone;
   // Rechts „Abbrechen“, links davon „Anzeigen“; ganz links „Zurücksetzen“.
-  FCancel := AddButton(Bottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterCancel), CancelClick);
+  FCancel := AddButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterCancel), CancelClick);
   FCancel.Cancel := True;
-  FCancel.Left := Bottom.ClientWidth - FCancel.Width - ScaleValue(Gap);
-  FOk := AddButton(Bottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterOk), OkClick);
+  FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
+  FOk := AddButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterOk), OkClick);
   FOk.Default := True;
-  FOk.Left := FCancel.Left - FOk.Width - ScaleValue(Gap);
-  FReset := AddButton(Bottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterReset), ResetClick);
+  FOk.Left := FCancel.Left - FOk.Width - ScaleValue(cGap);
+  FReset := AddButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterReset), ResetClick);
   FReset.Anchors := [akTop, akLeft];
-  FReset.Left := ScaleValue(Gap);
+  FReset.Left := ScaleValue(cGap);
 
-  ClientHeight := FNextTop + ScaleValue(Gap) + Bottom.Height;
+  ClientHeight := FNextTop + ScaleValue(cGap) + mBottom.Height;
   ActiveControl := FCategory;
 end;
 
 function TAtlasTodoFilterDialog.AddCombo(const ACaption: string; const AItems: TArray<string>;
   const AText: string): TComboBox;
 var
-  Prompt: TLabel;
-  Item: string;
+  mPrompt: TLabel;
+  mItem: string;
 begin
-  Prompt := TLabel.Create(Self);
-  Prompt.Parent := Self;
-  Prompt.ShowAccelChar := False;
-  Prompt.Caption := ACaption;
-  Prompt.SetBounds(ScaleValue(Gap), FNextTop + ScaleValue(3), ScaleValue(LabelWidth - Gap), ScaleValue(18));
+  mPrompt := TLabel.Create(Self);
+  mPrompt.Parent := Self;
+  mPrompt.ShowAccelChar := False;
+  mPrompt.Caption := ACaption;
+  mPrompt.SetBounds(ScaleValue(cGap), FNextTop + ScaleValue(3), ScaleValue(cLabelWidth - cGap), ScaleValue(18));
 
   Result := TComboBox.Create(Self);
   Result.Parent := Self;
   // Auswahl aus der letzten Liste oder freier Text (etwa eine Unit, die gerade keine Einträge hat).
   Result.Style := csDropDown;
   Result.AutoComplete := True;
-  Result.SetBounds(ScaleValue(Gap + LabelWidth), FNextTop, ClientWidth - ScaleValue(2 * Gap + LabelWidth),
+  Result.SetBounds(ScaleValue(cGap + cLabelWidth), FNextTop, ClientWidth - ScaleValue(2 * cGap + cLabelWidth),
     ScaleValue(23));
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    Result.Items.Add(Item);
+    Result.Items.Add(mItem);
   end;
   Result.Text := AText;
-  Prompt.FocusControl := Result;
-  FNextTop := Result.Top + Result.Height + ScaleValue(Gap);
+  mPrompt.FocusControl := Result;
+  FNextTop := Result.Top + Result.Height + ScaleValue(cGap);
 end;
 
 function TAtlasTodoFilterDialog.AddButton(AParent: TWinControl; const ACaption: string;
@@ -165,7 +165,7 @@ begin
   begin
     Result.Width := ScaleValue(90);
   end;
-  Result.Top := ScaleValue(Gap);
+  Result.Top := ScaleValue(cGap);
   Result.Height := ScaleValue(28);
   Result.Anchors := [akTop, akRight];
 end;
@@ -204,17 +204,17 @@ end;
 class function TAtlasTodoFilterDialog.Execute(const AChoices: TAtlasTodoChoices;
   var AFilter: TAtlasTodoFilter): Boolean;
 var
-  Dialog: TAtlasTodoFilterDialog;
+  mDialog: TAtlasTodoFilterDialog;
 begin
-  Dialog := TAtlasTodoFilterDialog.CreateDialog(nil, AChoices, AFilter);
+  mDialog := TAtlasTodoFilterDialog.CreateDialog(nil, AChoices, AFilter);
   try
-    Result := Dialog.ShowModal = mrOk;
+    Result := mDialog.ShowModal = mrOk;
     if Result then
     begin
-      AFilter := Dialog.Filter;
+      AFilter := mDialog.Filter;
     end;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 

@@ -45,7 +45,7 @@ type
   TAtlasEvalTreeSync = class
   public const
     /// <summary>Höchstens so viele Zeichen eines Werts im Baum; der ganze steht unten.</summary>
-    MaxTreeValue = 200;
+    cMaxTreeValue = 200;
   private
     FTree: TTreeView;
     FInfos: TArray<TAtlasEvalItemInfo>;
@@ -424,11 +424,11 @@ begin
   end;
   // Erst kürzen, dann einzeilig machen: Bei langen Werten (Strings, Listen) sonst bei jedem Abgleich der ganze
   // Wert. Aus 2 * MaxTreeValue + 1 Zeichen bleiben nach dem Ersetzen mindestens MaxTreeValue + 1.
-  mValue := Copy(mValue, 1, 2 * MaxTreeValue + 1);
+  mValue := Copy(mValue, 1, 2 * cMaxTreeValue + 1);
   mValue := StringReplace(StringReplace(mValue, #13#10, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
-  if Length(mValue) > MaxTreeValue then
+  if Length(mValue) > cMaxTreeValue then
   begin
-    mValue := Copy(mValue, 1, MaxTreeValue) + #$2026;
+    mValue := Copy(mValue, 1, cMaxTreeValue) + #$2026;
   end;
   Result := ANode.Name + ' = ' + mValue;
 end;

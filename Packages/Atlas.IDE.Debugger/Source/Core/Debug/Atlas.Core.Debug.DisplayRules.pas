@@ -53,7 +53,7 @@ type
 
   TAtlasDisplayRules = class
   public const
-    ServerFormat = 1;
+    cServerFormat = 1;
   private
     FRules: TList<TAtlasDisplayRule>;
     /// <summary>Name klein (voll und kurz) → Index in FRules.</summary>
@@ -146,32 +146,32 @@ end;
 
 class function TAtlasDisplayRules.ShortName(const ATypeName: string): string;
 var
-  Angle, Dot: Integer;
+  mAngle, mDot: Integer;
 begin
   Result := Trim(ATypeName);
-  Angle := Pos('<', Result);
-  if Angle > 0 then
+  mAngle := Pos('<', Result);
+  if mAngle > 0 then
   begin
-    Result := Copy(Result, 1, Angle - 1);
+    Result := Copy(Result, 1, mAngle - 1);
   end;
-  Dot := LastDelimiter('.', Result);
-  if Dot > 0 then
+  mDot := LastDelimiter('.', Result);
+  if mDot > 0 then
   begin
-    Result := Copy(Result, Dot + 1, MaxInt);
+    Result := Copy(Result, mDot + 1, MaxInt);
   end;
 end;
 
 procedure TAtlasDisplayRules.MapName(const AKey: string; AIndex: Integer);
 var
-  Existing: Integer;
+  mExisting: Integer;
 begin
   if AKey = '' then
   begin
     Exit;
   end;
   // Quelltext schlägt Projektdatei; sonst gilt die erste Regel des Namens.
-  if FByName.TryGetValue(AKey, Existing) and
-    ((FRules[Existing].Origin <> TDebugDisplayOrigin.Project) or
+  if FByName.TryGetValue(AKey, mExisting) and
+    ((FRules[mExisting].Origin <> TDebugDisplayOrigin.Project) or
     (FRules[AIndex].Origin = TDebugDisplayOrigin.Project)) then
   begin
     Exit;
@@ -181,39 +181,39 @@ end;
 
 procedure TAtlasDisplayRules.Add(const ARule: TAtlasDisplayRule);
 var
-  Rule: TAtlasDisplayRule;
-  Index: Integer;
+  mRule: TAtlasDisplayRule;
+  mIndex: Integer;
 begin
-  Rule := ARule;
-  Rule.TypeName := Trim(Rule.TypeName);
-  if Rule.Name = '' then
+  mRule := ARule;
+  mRule.TypeName := Trim(mRule.TypeName);
+  if mRule.Name = '' then
   begin
-    Rule.Name := ShortName(Rule.TypeName);
+    mRule.Name := ShortName(mRule.TypeName);
   end;
-  if (Rule.TypeName = '') or (not Rule.HasTemplate and (Rule.Children = nil)) then
+  if (mRule.TypeName = '') or (not mRule.HasTemplate and (mRule.Children = nil)) then
   begin
     Exit;
   end;
-  Index := FRules.Add(Rule);
-  MapName(LowerCase(Rule.TypeName), Index);
-  MapName(LowerCase(Rule.Name), Index);
-  MapName(LowerCase(ShortName(Rule.TypeName)), Index);
+  mIndex := FRules.Add(mRule);
+  MapName(LowerCase(mRule.TypeName), mIndex);
+  MapName(LowerCase(mRule.Name), mIndex);
+  MapName(LowerCase(ShortName(mRule.TypeName)), mIndex);
 end;
 
 procedure TAtlasDisplayRules.AddInherit(const ATypeName, AFrom: string);
 var
-  Name: string;
+  mName: string;
 begin
   if (Trim(ATypeName) = '') or (Trim(AFrom) = '') then
   begin
     Exit;
   end;
-  for Name in TArray<string>.Create(Trim(ATypeName), ShortName(ATypeName)) do
+  for mName in TArray<string>.Create(Trim(ATypeName), ShortName(ATypeName)) do
   begin
-    if not FInherits.ContainsKey(LowerCase(Name)) or (Name = Trim(ATypeName)) then
+    if not FInherits.ContainsKey(LowerCase(mName)) or (mName = Trim(ATypeName)) then
     begin
-      FInherits.AddOrSetValue(LowerCase(Name), Trim(AFrom));
-      FInheritNames.AddOrSetValue(LowerCase(Name), Name);
+      FInherits.AddOrSetValue(LowerCase(mName), Trim(AFrom));
+      FInheritNames.AddOrSetValue(LowerCase(mName), mName);
     end;
   end;
 end;
@@ -312,20 +312,20 @@ end;
 
 function TAtlasDisplayRules.LoadJson(const AJson: string): Boolean;
 var
-  Root: TJSONValue;
-  Version: Integer;
+  mRoot: TJSONValue;
+  mVersion: Integer;
 begin
-  Root := TJSONObject.ParseJSONValue(AJson);
+  mRoot := TJSONObject.ParseJSONValue(AJson);
   try
-    Result := (Root is TJSONObject) and TJSONObject(Root).TryGetValue<Integer>('format', Version) and
-      (Version = ServerFormat);
+    Result := (mRoot is TJSONObject) and TJSONObject(mRoot).TryGetValue<Integer>('format', mVersion) and
+      (mVersion = cServerFormat);
     if Result then
     begin
-      AddRules(TJSONObject(Root).GetValue('rules'));
-      AddInherits(TJSONObject(Root).GetValue('inherits'));
+      AddRules(TJSONObject(mRoot).GetValue('rules'));
+      AddInherits(TJSONObject(mRoot).GetValue('inherits'));
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
@@ -337,29 +337,29 @@ end;
 
 function TAtlasDisplayRules.Find(const ATypeName: string; out ARule: TAtlasDisplayRule): Boolean;
 var
-  Index: Integer;
-  From: string;
+  mIndex: Integer;
+  mFrom: string;
 begin
   ARule := Default(TAtlasDisplayRule);
-  Result := Lookup(ATypeName, Index);
-  if not Result and (FInherits.TryGetValue(LowerCase(Trim(ATypeName)), From) or
-    FInherits.TryGetValue(LowerCase(ShortName(ATypeName)), From)) then
+  Result := Lookup(ATypeName, mIndex);
+  if not Result and (FInherits.TryGetValue(LowerCase(Trim(ATypeName)), mFrom) or
+    FInherits.TryGetValue(LowerCase(ShortName(ATypeName)), mFrom)) then
   begin
-    Result := Lookup(From, Index);
+    Result := Lookup(mFrom, mIndex);
   end;
   if Result then
   begin
-    ARule := FRules[Index];
+    ARule := FRules[mIndex];
   end;
 end;
 
 function TAtlasDisplayRules.FindChain(const AChain: array of string; out ARule: TAtlasDisplayRule): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in AChain do
+  for mName in AChain do
   begin
-    if (Trim(Name) <> '') and Find(Name, ARule) then
+    if (Trim(mName) <> '') and Find(mName, ARule) then
     begin
       Exit(True);
     end;
@@ -370,38 +370,38 @@ end;
 
 function TAtlasDisplayRules.TypeNames: TArray<string>;
 var
-  Seen: TDictionary<string, Boolean>;
-  Rule: TAtlasDisplayRule;
-  Name: string;
-  Index: Integer;
+  mSeen: TDictionary<string, Boolean>;
+  mRule: TAtlasDisplayRule;
+  mName: string;
+  mIndex: Integer;
 
   procedure AddName(const AName: string);
   begin
-    if (AName <> '') and not Seen.ContainsKey(LowerCase(AName)) then
+    if (AName <> '') and not mSeen.ContainsKey(LowerCase(AName)) then
     begin
-      Seen.Add(LowerCase(AName), True);
+      mSeen.Add(LowerCase(AName), True);
       Result := Result + [AName];
     end;
   end;
 
 begin
   Result := nil;
-  Seen := TDictionary<string, Boolean>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    for Rule in FRules do
+    for mRule in FRules do
     begin
-      AddName(Rule.TypeName);
-      AddName(ShortName(Rule.TypeName));
+      AddName(mRule.TypeName);
+      AddName(ShortName(mRule.TypeName));
     end;
-    for Name in FInherits.Keys do
+    for mName in FInherits.Keys do
     begin
-      if Lookup(FInherits[Name], Index) then
+      if Lookup(FInherits[mName], mIndex) then
       begin
-        AddName(FInheritNames[Name]);
+        AddName(FInheritNames[mName]);
       end;
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
 end;
 
@@ -417,14 +417,14 @@ end;
 
 function TAtlasDisplayRules.ProjectNames: TArray<string>;
 var
-  Rule: TAtlasDisplayRule;
+  mRule: TAtlasDisplayRule;
 begin
   Result := nil;
-  for Rule in FRules do
+  for mRule in FRules do
   begin
-    if Rule.Origin = TDebugDisplayOrigin.Project then
+    if mRule.Origin = TDebugDisplayOrigin.Project then
     begin
-      Result := Result + [Rule.TypeName];
+      Result := Result + [mRule.TypeName];
     end;
   end;
 end;
@@ -450,27 +450,27 @@ end;
 
 class function TAtlasDisplayRender.FormatValue(const AText, AFormat: string): string;
 var
-  Value: Double;
-  Invariant: TFormatSettings;
+  mValue: Double;
+  mInvariant: TFormatSettings;
 begin
   Result := AText;
   if AFormat = '' then
   begin
     Exit;
   end;
-  Invariant := TFormatSettings.Invariant;
-  if TryStrToFloat(Trim(AText), Value, Invariant) then
+  mInvariant := TFormatSettings.Invariant;
+  if TryStrToFloat(Trim(AText), mValue, mInvariant) then
   begin
     // Anzeige in der IDE: bewusst im Gebietsschema des Benutzers.
-    Result := FormatFloat(AFormat, Value, FormatSettings);
+    Result := FormatFloat(AFormat, mValue, FormatSettings);
   end;
 end;
 
 class function TAtlasDisplayRender.PlaceholderText(const ASegment: TDebugDisplaySegment;
   const AExpression: string; const AOptions: TAtlasDisplayRuleOptions; const AEval: TAtlasVisualizerEval): string;
 var
-  Evaluation: TAtlasVisualizerEvaluation;
-  Value: string;
+  mEvaluation: TAtlasVisualizerEvaluation;
+  mValue: string;
 begin
   Result := Missing(ASegment.Text);
   if not Assigned(AEval) or (ASegment.NeedsCall and not AOptions.AllowCalls) then
@@ -478,43 +478,43 @@ begin
     Exit;
   end;
   // Ohne allowCalls keine Nebenwirkungen: Ein Getter scheitert und zeigt {?…}.
-  Evaluation := TAtlasVisualizerEvaluation.Fields;
+  mEvaluation := TAtlasVisualizerEvaluation.Fields;
   if AOptions.AllowCalls then
   begin
-    Evaluation := TAtlasVisualizerEvaluation.Calls;
+    mEvaluation := TAtlasVisualizerEvaluation.Calls;
   end;
-  if not AEval(ExpressionOf(AExpression, ASegment.Text), Evaluation, Value) then
+  if not AEval(ExpressionOf(AExpression, ASegment.Text), mEvaluation, mValue) then
   begin
     Exit;
   end;
-  Result := FormatValue(TAtlasVisualizerFormat.Unquote(Value), ASegment.Format);
+  Result := FormatValue(TAtlasVisualizerFormat.Unquote(mValue), ASegment.Format);
 end;
 
 class function TAtlasDisplayRender.Render(const ARule: TAtlasDisplayRule; const AExpression: string;
   const AOptions: TAtlasDisplayRuleOptions; const AEval: TAtlasVisualizerEval): string;
 var
-  Template: TDebugDisplayTemplate;
-  Segment: TDebugDisplaySegment;
+  mTemplate: TDebugDisplayTemplate;
+  mSegment: TDebugDisplaySegment;
 begin
   Result := '';
   if not ARule.HasTemplate then
   begin
     Exit;
   end;
-  Template := TDebugDisplayTemplate.Parse(ARule.Template);
-  if not Template.Valid then
+  mTemplate := TDebugDisplayTemplate.Parse(ARule.Template);
+  if not mTemplate.Valid then
   begin
     Exit;
   end;
-  for Segment in Template.Segments do
+  for mSegment in mTemplate.Segments do
   begin
-    if Segment.Kind = TDebugDisplaySegmentKind.Text then
+    if mSegment.Kind = TDebugDisplaySegmentKind.Text then
     begin
-      Result := Result + Segment.Text;
+      Result := Result + mSegment.Text;
     end
     else
     begin
-      Result := Result + PlaceholderText(Segment, AExpression, AOptions, AEval);
+      Result := Result + PlaceholderText(mSegment, AExpression, AOptions, AEval);
     end;
   end;
   Result := TAtlasVisualizerFormat.Shorten(Result, AOptions.MaxLength);
@@ -523,48 +523,48 @@ end;
 class function TAtlasDisplayRender.View(const ARule: TAtlasDisplayRule; const AExpression, AEvalResult: string;
   const AOptions: TAtlasDisplayRuleOptions; const AEval: TAtlasVisualizerEval): TAtlasVisualizerView;
 var
-  Fields: TArray<TAtlasDebugField>;
-  Field: TAtlasDebugField;
-  Name, Value, Raw: string;
-  Evaluation: TAtlasVisualizerEvaluation;
-  Unlimited: TAtlasDisplayRuleOptions;
+  mFields: TArray<TAtlasDebugField>;
+  mField: TAtlasDebugField;
+  mName, mValue, mRaw: string;
+  mEvaluation: TAtlasVisualizerEvaluation;
+  mUnlimited: TAtlasDisplayRuleOptions;
 begin
   Result := Default(TAtlasVisualizerView);
   Result.Mode := TAtlasVisualizerViewMode.Table;
   Result.Columns := TArray<TAtlasVisualizerColumn>.Create(TAtlasVisualizerColumn.Field,
     TAtlasVisualizerColumn.Value);
-  Unlimited := AOptions;
-  Unlimited.MaxLength := 0;
-  Result.Summary := Render(ARule, AExpression, Unlimited, AEval);
+  mUnlimited := AOptions;
+  mUnlimited.MaxLength := 0;
+  Result.Summary := Render(ARule, AExpression, mUnlimited, AEval);
   if Result.Summary = '' then
   begin
     Result.Summary := AEvalResult;
   end;
-  Evaluation := TAtlasVisualizerEvaluation.Fields;
+  mEvaluation := TAtlasVisualizerEvaluation.Fields;
   if AOptions.AllowCalls then
   begin
-    Evaluation := TAtlasVisualizerEvaluation.Calls;
+    mEvaluation := TAtlasVisualizerEvaluation.Calls;
   end;
-  for Name in ARule.Children do
+  for mName in ARule.Children do
   begin
-    Value := TAtlasDisplayRender.Missing(Name);
-    if Assigned(AEval) and AEval(ExpressionOf(AExpression, Name), Evaluation, Raw) then
+    mValue := TAtlasDisplayRender.Missing(mName);
+    if Assigned(AEval) and AEval(ExpressionOf(AExpression, mName), mEvaluation, mRaw) then
     begin
-      Value := Raw;
+      mValue := mRaw;
     end;
-    Result.Rows := Result.Rows + [TArray<string>.Create(Name, Value)];
+    Result.Rows := Result.Rows + [TArray<string>.Create(mName, mValue)];
   end;
   // Alle Felder: Feldliste des Debuggers (,r zeigt Objekte mit Feldnamen), sonst der Text der IDE.
-  Raw := AEvalResult;
-  if Assigned(AEval) and AEval(AExpression + ',r', TAtlasVisualizerEvaluation.Fields, Value) then
+  mRaw := AEvalResult;
+  if Assigned(AEval) and AEval(AExpression + ',r', TAtlasVisualizerEvaluation.Fields, mValue) then
   begin
-    Raw := Value;
+    mRaw := mValue;
   end;
-  if TAtlasVisualizerFormat.ParseFields(Raw, Fields) then
+  if TAtlasVisualizerFormat.ParseFields(mRaw, mFields) then
   begin
-    for Field in Fields do
+    for mField in mFields do
     begin
-      Result.AllRows := Result.AllRows + [TArray<string>.Create(Field.Name, Field.Value)];
+      Result.AllRows := Result.AllRows + [TArray<string>.Create(mField.Name, mField.Value)];
     end;
   end;
   if ARule.Children = nil then

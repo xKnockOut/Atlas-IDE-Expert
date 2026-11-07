@@ -81,39 +81,39 @@ end;
 
 class function TAtlasIdeQuickBookmarks.ColumnMarksAt(const AFileName: string; ALine: Integer): TArray<TAtlasBookmark>;
 var
-  Current: TAtlasBookmarkList;
+  mCurrent: TAtlasBookmarkList;
 begin
   Result := nil;
-  if TAtlasIdeBookmarks.LoadedList(AFileName, Current) then
+  if TAtlasIdeBookmarks.LoadedList(AFileName, mCurrent) then
   begin
-    Result := TAtlasQuickBookmarks.ColumnMarks(Current, AFileName, ALine);
+    Result := TAtlasQuickBookmarks.ColumnMarks(mCurrent, AFileName, ALine);
   end;
 end;
 
 class function TAtlasIdeQuickBookmarks.NextNumber(const AFileName: string): Integer;
 var
-  Current: TAtlasBookmarkList;
+  mCurrent: TAtlasBookmarkList;
 begin
   Result := 1;
-  if TAtlasIdeBookmarks.LoadedList(AFileName, Current) then
+  if TAtlasIdeBookmarks.LoadedList(AFileName, mCurrent) then
   begin
-    Result := TAtlasQuickBookmarks.FreeNumber(Current);
+    Result := TAtlasQuickBookmarks.FreeNumber(mCurrent);
   end;
 end;
 
 class function TAtlasIdeQuickBookmarks.HasColumnMarks(const AFileName: string): Boolean;
 var
-  Current: TAtlasBookmarkList;
+  mCurrent: TAtlasBookmarkList;
 begin
-  Result := TAtlasIdeBookmarks.LoadedList(AFileName, Current) and
-    TAtlasQuickBookmarks.HasColumnMarks(Current, AFileName);
+  Result := TAtlasIdeBookmarks.LoadedList(AFileName, mCurrent) and
+    TAtlasQuickBookmarks.HasColumnMarks(mCurrent, AFileName);
 end;
 
 class function TAtlasIdeQuickBookmarks.OverviewMarks(const AFileName: string;
   out AMarks: TArray<TAtlasBookmark>): Boolean;
 var
-  Current: TAtlasBookmarkList;
-  Mark: TAtlasBookmark;
+  mCurrent: TAtlasBookmarkList;
+  mMark: TAtlasBookmark;
 begin
   AMarks := nil;
   Result := TAtlasIdeBookmarks.QuickOn(False);
@@ -121,13 +121,13 @@ begin
   begin
     Exit;
   end;
-  if TAtlasIdeBookmarks.LoadedList(AFileName, Current) then
+  if TAtlasIdeBookmarks.LoadedList(AFileName, mCurrent) then
   begin
-    for Mark in Current.ForFile(AFileName) do
+    for mMark in mCurrent.ForFile(AFileName) do
     begin
-      if not Mark.Lost then
+      if not mMark.Lost then
       begin
-        AMarks := AMarks + [Mark];
+        AMarks := AMarks + [mMark];
       end;
     end;
   end;
@@ -136,8 +136,8 @@ end;
 class function TAtlasIdeQuickBookmarks.QuickTarget(out AFileName, AText: string; out ALine: Integer;
   out AList: TAtlasBookmarkList): Boolean;
 var
-  View: IOTAEditView;
-  Project: string;
+  mView: IOTAEditView;
+  mProject: string;
 begin
   AFileName := '';
   AText := '';
@@ -149,87 +149,87 @@ begin
     Exit;
   end;
   // Auch aus Palette und Menü, wenn der Fokus nicht im Editor liegt.
-  View := TAtlasEditorBuffer.ActiveView;
-  if (View = nil) or (View.Buffer = nil) or (View.Buffer.FileName = '') then
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView = nil) or (mView.Buffer = nil) or (mView.Buffer.FileName = '') then
   begin
     TAtlasIdeBookmarks.Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksNoEditor));
     Exit;
   end;
-  AFileName := View.Buffer.FileName;
-  ALine := View.CursorPos.Line - 1;
-  Result := (ALine >= 0) and TAtlasIdeBookmarks.PrepareFile(AFileName, Project, AText, AList);
+  AFileName := mView.Buffer.FileName;
+  ALine := mView.CursorPos.Line - 1;
+  Result := (ALine >= 0) and TAtlasIdeBookmarks.PrepareFile(AFileName, mProject, AText, AList);
 end;
 
 class function TAtlasIdeQuickBookmarks.NumberTargets(const AFileName: string): TArray<string>;
 var
-  Project: string;
-  Current: TAtlasBookmarkList;
-  Number, Index: Integer;
-  Mark: TAtlasBookmark;
+  mProject: string;
+  mCurrent: TAtlasBookmarkList;
+  mNumber, mIndex: Integer;
+  mMark: TAtlasBookmark;
 begin
-  SetLength(Result, TAtlasQuickBookmarks.MaxNumber + 1);
+  SetLength(Result, TAtlasQuickBookmarks.cMaxNumber + 1);
   if not TAtlasIdeBookmarks.Running then
   begin
     Exit;
   end;
-  Project := TAtlasIdeBookmarks.ResolveProject(AFileName);
-  if Project = '' then
+  mProject := TAtlasIdeBookmarks.ResolveProject(AFileName);
+  if mProject = '' then
   begin
     Exit;
   end;
-  Current := TAtlasIdeBookmarks.List(Project);
-  for Number := 1 to TAtlasQuickBookmarks.MaxNumber do
+  mCurrent := TAtlasIdeBookmarks.List(mProject);
+  for mNumber := 1 to TAtlasQuickBookmarks.cMaxNumber do
   begin
-    Index := Current.IndexOfNumber(Number);
-    if Index < 0 then
+    mIndex := mCurrent.IndexOfNumber(mNumber);
+    if mIndex < 0 then
     begin
       Continue;
     end;
-    Mark := Current.Bookmarks[Index];
-    Result[Number] := ExtractFileName(Mark.FileName) + ':' + IntToStr(Mark.Line + 1) + ' ' + Mark.DisplayName;
+    mMark := mCurrent.Bookmarks[mIndex];
+    Result[mNumber] := ExtractFileName(mMark.FileName) + ':' + IntToStr(mMark.Line + 1) + ' ' + mMark.DisplayName;
   end;
 end;
 
 class procedure TAtlasIdeQuickBookmarks.QuickToggle;
 var
-  FileName, Text: string;
-  Line: Integer;
-  Current: TAtlasBookmarkList;
+  mFileName, mText: string;
+  mLine: Integer;
+  mCurrent: TAtlasBookmarkList;
 begin
-  if not QuickTarget(FileName, Text, Line, Current) then
+  if not QuickTarget(mFileName, mText, mLine, mCurrent) then
   begin
     Exit;
   end;
-  TAtlasIdeBookmarks.Commit(Current, TAtlasQuickBookmarks.Toggle(Current, FileName, Text, Line, NowUtc) <>
+  TAtlasIdeBookmarks.Commit(mCurrent, TAtlasQuickBookmarks.Toggle(mCurrent, mFileName, mText, mLine, NowUtc) <>
     TAtlasQuickChange.None, '');
 end;
 
 class procedure TAtlasIdeQuickBookmarks.QuickSetNumber(ANumber: Integer);
 var
-  FileName, Text: string;
-  Line: Integer;
-  Current: TAtlasBookmarkList;
+  mFileName, mText: string;
+  mLine: Integer;
+  mCurrent: TAtlasBookmarkList;
 begin
-  if not QuickTarget(FileName, Text, Line, Current) then
+  if not QuickTarget(mFileName, mText, mLine, mCurrent) then
   begin
     Exit;
   end;
-  TAtlasIdeBookmarks.Commit(Current, TAtlasQuickBookmarks.SetNumber(Current, FileName, Text, Line, ANumber, NowUtc) <>
-    TAtlasQuickChange.None, '');
+  TAtlasIdeBookmarks.Commit(mCurrent,
+    TAtlasQuickBookmarks.SetNumber(mCurrent, mFileName, mText, mLine, ANumber, NowUtc) <> TAtlasQuickChange.None, '');
 end;
 
 class procedure TAtlasIdeQuickBookmarks.JumpTo(var AList: TAtlasBookmarkList; const AId: string; ANumber: Integer);
 var
-  Index: Integer;
-  Mark: TAtlasBookmark;
+  mIndex: Integer;
+  mMark: TAtlasBookmark;
 begin
-  Index := AList.IndexOf(AId);
-  if Index < 0 then
+  mIndex := AList.IndexOf(AId);
+  if mIndex < 0 then
   begin
     Exit;
   end;
   // Unmittelbar vor dem Sprung wiederfinden: Die Datei kann sich außerhalb geändert haben.
-  if TAtlasIdeBookmarks.RelocateFile(AList, AList.Bookmarks[Index].FileName) then
+  if TAtlasIdeBookmarks.RelocateFile(AList, AList.Bookmarks[mIndex].FileName) then
   begin
     TAtlasIdeBookmarks.Store(AList);
     TAtlasIdeBookmarks.RefreshWindow(AId);
@@ -238,75 +238,75 @@ begin
   begin
     TAtlasIdeBookmarks.Put(AList);
   end;
-  Mark := AList.Bookmarks[Index];
-  if Mark.Lost and (ANumber > 0) then
+  mMark := AList.Bookmarks[mIndex];
+  if mMark.Lost and (ANumber > 0) then
   begin
     TAtlasIdeBookmarks.Status(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkNotFound, [ANumber]));
   end;
   // Der Navigationsverlauf (#504) nimmt den Sprung wie jeden anderen auf (andere Datei oder weiter als einige
   // Zeilen).
-  TAtlasIdeResults.Open(Mark.FileName, Mark.Line, 0);
+  TAtlasIdeResults.Open(mMark.FileName, mMark.Line, 0);
   TAtlasIdeBookmarks.Invalidate;
 end;
 
 class procedure TAtlasIdeQuickBookmarks.QuickJump(ANumber: Integer);
 var
-  Project, FileName: string;
-  View: IOTAEditView;
-  Current: TAtlasBookmarkList;
-  Scope: TAtlasQuickScope;
-  Index: Integer;
+  mProject, mFileName: string;
+  mView: IOTAEditView;
+  mCurrent: TAtlasBookmarkList;
+  mScope: TAtlasQuickScope;
+  mIndex: Integer;
 begin
   if not TAtlasIdeBookmarks.QuickOn(True) then
   begin
     Exit;
   end;
-  Project := TAtlasIdeBookmarks.CurrentProject;
-  if Project = '' then
+  mProject := TAtlasIdeBookmarks.CurrentProject;
+  if mProject = '' then
   begin
     TAtlasIdeBookmarks.Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksNoProject));
     Exit;
   end;
-  FileName := '';
-  View := TAtlasEditorBuffer.ActiveView;
-  if (View <> nil) and (View.Buffer <> nil) then
+  mFileName := '';
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView <> nil) and (mView.Buffer <> nil) then
   begin
-    FileName := View.Buffer.FileName;
+    mFileName := mView.Buffer.FileName;
   end;
-  Scope := TAtlasQuickScope.Project;
+  mScope := TAtlasQuickScope.Project;
   if SameText(TAtlasIdeSettings.Current.QuickBookmarksScope, 'file') then
   begin
-    Scope := TAtlasQuickScope.CurrentFile;
+    mScope := TAtlasQuickScope.CurrentFile;
   end;
-  Current := TAtlasIdeBookmarks.List(Project);
-  case TAtlasQuickBookmarks.Jump(Current, ANumber, FileName, Scope, Index) of
+  mCurrent := TAtlasIdeBookmarks.List(mProject);
+  case TAtlasQuickBookmarks.Jump(mCurrent, ANumber, mFileName, mScope, mIndex) of
     TAtlasQuickJump.NotAssigned:
       TAtlasIdeBookmarks.Status(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkNotAssigned,
         [ANumber]));
     TAtlasQuickJump.OtherFile:
       TAtlasIdeBookmarks.Status(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkOtherFile, [ANumber]));
   else
-    JumpTo(Current, Current.Bookmarks[Index].Id, ANumber);
+    JumpTo(mCurrent, mCurrent.Bookmarks[mIndex].Id, ANumber);
   end;
 end;
 
 class procedure TAtlasIdeQuickBookmarks.Step(AForward: Boolean);
 var
-  FileName, Text: string;
-  Line, Target: Integer;
-  Current: TAtlasBookmarkList;
+  mFileName, mText: string;
+  mLine, mTarget: Integer;
+  mCurrent: TAtlasBookmarkList;
 begin
-  if not QuickTarget(FileName, Text, Line, Current) then
+  if not QuickTarget(mFileName, mText, mLine, mCurrent) then
   begin
     Exit;
   end;
-  TAtlasIdeBookmarks.Put(Current);
-  if not TAtlasQuickBookmarks.Step(Current, FileName, Line, AForward, Target) then
+  TAtlasIdeBookmarks.Put(mCurrent);
+  if not TAtlasQuickBookmarks.Step(mCurrent, mFileName, mLine, AForward, mTarget) then
   begin
     TAtlasIdeBookmarks.Status(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkNoneInFile));
     Exit;
   end;
-  TAtlasIdeResults.Open(FileName, Target, 0);
+  TAtlasIdeResults.Open(mFileName, mTarget, 0);
 end;
 
 class procedure TAtlasIdeQuickBookmarks.NextBookmark;
@@ -321,105 +321,105 @@ end;
 
 class procedure TAtlasIdeQuickBookmarks.ColumnClick(const AFileName: string; ALine: Integer);
 var
-  Project, Text: string;
-  Current: TAtlasBookmarkList;
+  mProject, mText: string;
+  mCurrent: TAtlasBookmarkList;
 begin
   if not TAtlasIdeBookmarks.QuickOn(True) or not TAtlasIdeSettings.Current.QuickBookmarksGutterClick or
-    not TAtlasIdeBookmarks.PrepareFile(AFileName, Project, Text, Current) then
+    not TAtlasIdeBookmarks.PrepareFile(AFileName, mProject, mText, mCurrent) then
   begin
     Exit;
   end;
-  TAtlasIdeBookmarks.Commit(Current, TAtlasQuickBookmarks.Click(Current, AFileName, Text, ALine, NowUtc) <>
+  TAtlasIdeBookmarks.Commit(mCurrent, TAtlasQuickBookmarks.Click(mCurrent, AFileName, mText, ALine, NowUtc) <>
     TAtlasQuickChange.None, '');
 end;
 
 class procedure TAtlasIdeQuickBookmarks.ColumnAssign(const AFileName: string; ALine, ANumber: Integer);
 var
-  Project, Text: string;
-  Current: TAtlasBookmarkList;
-  Marks: TArray<TAtlasBookmark>;
-  Change: TAtlasQuickChange;
+  mProject, mText: string;
+  mCurrent: TAtlasBookmarkList;
+  mMarks: TArray<TAtlasBookmark>;
+  mChange: TAtlasQuickChange;
 begin
   if not TAtlasIdeBookmarks.QuickOn(True) or
-    not TAtlasIdeBookmarks.PrepareFile(AFileName, Project, Text, Current) then
+    not TAtlasIdeBookmarks.PrepareFile(AFileName, mProject, mText, mCurrent) then
   begin
     Exit;
   end;
-  Marks := TAtlasQuickBookmarks.ColumnMarks(Current, AFileName, ALine);
-  if Length(Marks) > 0 then
+  mMarks := TAtlasQuickBookmarks.ColumnMarks(mCurrent, AFileName, ALine);
+  if Length(mMarks) > 0 then
   begin
-    Change := TAtlasQuickBookmarks.AssignNumber(Current, Marks[0].Id, ANumber);
+    mChange := TAtlasQuickBookmarks.AssignNumber(mCurrent, mMarks[0].Id, ANumber);
   end
   else
   begin
-    Change := TAtlasQuickBookmarks.SetNumber(Current, AFileName, Text, ALine, ANumber, NowUtc);
+    mChange := TAtlasQuickBookmarks.SetNumber(mCurrent, AFileName, mText, ALine, ANumber, NowUtc);
   end;
-  TAtlasIdeBookmarks.Commit(Current, Change <> TAtlasQuickChange.None, '');
+  TAtlasIdeBookmarks.Commit(mCurrent, mChange <> TAtlasQuickChange.None, '');
 end;
 
 class procedure TAtlasIdeQuickBookmarks.ColumnName(const AFileName: string; ALine: Integer);
 var
-  Project, Text, Name, Id: string;
-  Current: TAtlasBookmarkList;
-  Marks: TArray<TAtlasBookmark>;
+  mProject, mText, mName, mId: string;
+  mCurrent: TAtlasBookmarkList;
+  mMarks: TArray<TAtlasBookmark>;
 begin
   if not TAtlasIdeBookmarks.QuickOn(True) or
-    not TAtlasIdeBookmarks.PrepareFile(AFileName, Project, Text, Current) then
+    not TAtlasIdeBookmarks.PrepareFile(AFileName, mProject, mText, mCurrent) then
   begin
     Exit;
   end;
-  Marks := TAtlasQuickBookmarks.ColumnMarks(Current, AFileName, ALine);
-  if Length(Marks) > 0 then
+  mMarks := TAtlasQuickBookmarks.ColumnMarks(mCurrent, AFileName, ALine);
+  if Length(mMarks) > 0 then
   begin
-    Name := Marks[0].DisplayName;
+    mName := mMarks[0].DisplayName;
   end
   else
   begin
-    Name := TAtlasBookmarks.SuggestName(AFileName, Text, ALine);
+    mName := TAtlasBookmarks.SuggestName(AFileName, mText, ALine);
   end;
   if not TAtlasBookmarkDialog.Execute(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.BookmarksDialogTitle,
-    [ExtractFileName(AFileName), ALine + 1]), Name) then
+    [ExtractFileName(AFileName), ALine + 1]), mName) then
   begin
-    TAtlasIdeBookmarks.Put(Current);
+    TAtlasIdeBookmarks.Put(mCurrent);
     Exit;
   end;
   // Umbenennen macht aus dem schnellen ein benanntes Lesezeichen; die Nummer bleibt.
-  if Length(Marks) > 0 then
+  if Length(mMarks) > 0 then
   begin
-    Id := Marks[0].Id;
-    Current.Rename(Id, Name);
+    mId := mMarks[0].Id;
+    mCurrent.Rename(mId, mName);
   end
   else
   begin
-    Id := Current.Add(AFileName, Text, ALine, Name, NowUtc);
+    mId := mCurrent.Add(AFileName, mText, ALine, mName, NowUtc);
   end;
-  TAtlasIdeBookmarks.Commit(Current, True, Id);
+  TAtlasIdeBookmarks.Commit(mCurrent, True, mId);
 end;
 
 class procedure TAtlasIdeQuickBookmarks.ColumnRemove(const AFileName: string; ALine: Integer);
 var
-  Project, Text: string;
-  Current: TAtlasBookmarkList;
+  mProject, mText: string;
+  mCurrent: TAtlasBookmarkList;
 begin
   if not TAtlasIdeBookmarks.QuickOn(True) or
-    not TAtlasIdeBookmarks.PrepareFile(AFileName, Project, Text, Current) then
+    not TAtlasIdeBookmarks.PrepareFile(AFileName, mProject, mText, mCurrent) then
   begin
     Exit;
   end;
-  TAtlasIdeBookmarks.Commit(Current, TAtlasQuickBookmarks.RemoveAt(Current, AFileName, ALine) > 0, '');
+  TAtlasIdeBookmarks.Commit(mCurrent, TAtlasQuickBookmarks.RemoveAt(mCurrent, AFileName, ALine) > 0, '');
 end;
 
 class procedure TAtlasIdeQuickBookmarks.ColumnRemoveFile(const AFileName: string);
 var
-  Project, Text: string;
-  Current: TAtlasBookmarkList;
+  mProject, mText: string;
+  mCurrent: TAtlasBookmarkList;
 begin
   if not TAtlasIdeBookmarks.QuickOn(True) or
-    not TAtlasIdeBookmarks.PrepareFile(AFileName, Project, Text, Current) then
+    not TAtlasIdeBookmarks.PrepareFile(AFileName, mProject, mText, mCurrent) then
   begin
     Exit;
   end;
-  TAtlasIdeBookmarks.Commit(Current, TAtlasQuickBookmarks.RemoveFile(Current, AFileName) > 0, '');
+  TAtlasIdeBookmarks.Commit(mCurrent, TAtlasQuickBookmarks.RemoveFile(mCurrent, AFileName) > 0, '');
 end;
 
 /// <summary>Gesetzte IDE-Lesezeichen 1–9 der Ansicht (Zeile 0-basiert).</summary>
@@ -429,7 +429,7 @@ var
   mPosition: TOTACharPos;
 begin
   Result := nil;
-  for mNumber := 1 to TAtlasQuickBookmarks.MaxNumber do
+  for mNumber := 1 to TAtlasQuickBookmarks.cMaxNumber do
   begin
     mPosition := AView.BookmarkPos[mNumber];
     if mPosition.Line > 0 then

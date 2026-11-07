@@ -54,10 +54,10 @@ type
   /// </summary>
   TAtlasIdeCommentService = class(TInterfacedObject)
   public const
-    TimeoutMs = 5000;
+    cTimeoutMs = 5000;
     /// <summary>So lange gilt eine Benutzerliste für denselben Text.</summary>
-    CacheMs = 5 * 60 * 1000;
-    VcsTimeoutMs = 5000;
+    cCacheMs = 5 * 60 * 1000;
+    cVcsTimeoutMs = 5000;
   private type
     TCachedUsers = record
       Users: TArray<TAtlasTrackerUser>;
@@ -248,7 +248,7 @@ begin
   Result := '';
   if FFolder <> '' then
   begin
-    Result := TPath.Combine(FFolder, TAtlasCommentDrafts.FileName);
+    Result := TPath.Combine(FFolder, TAtlasCommentDrafts.cFileName);
   end;
 end;
 
@@ -294,7 +294,7 @@ var
   mEntry: TCachedUsers;
 begin
   AUsers := nil;
-  Result := FUsers.TryGetValue(AKey, mEntry) and (NowMs - mEntry.Tick < CacheMs);
+  Result := FUsers.TryGetValue(AKey, mEntry) and (NowMs - mEntry.Tick < cCacheMs);
   if Result then
   begin
     AUsers := mEntry.Users;
@@ -457,7 +457,7 @@ begin
       mError := TAtlasCiFetchError.Network;
       try
         mOk := mJob.People.Users(TAtlasTrackerCall.Create(mJob.Target, mJob.Transport,
-          TAtlasIdeCommentService.TimeoutMs), mJob.Text, TAtlasCommentEditing.MaxSuggestions, mFound, mError);
+          TAtlasIdeCommentService.cTimeoutMs), mJob.Text, TAtlasCommentEditing.cMaxSuggestions, mFound, mError);
       except
         // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
         on E: Exception do
@@ -568,10 +568,10 @@ begin
   AIssues := nil;
   if AJob.Query.Kind <> TAtlasIssueSearchKind.Key then
   begin
-    Exit(AJob.Provider.Search(TAtlasTrackerCall.Create(AJob.Target, AJob.Transport, TAtlasIdeCommentService.TimeoutMs),
-      AJob.Query.Text, TAtlasCommentEditing.MaxSuggestions, AIssues, AError));
+    Exit(AJob.Provider.Search(TAtlasTrackerCall.Create(AJob.Target, AJob.Transport, TAtlasIdeCommentService.cTimeoutMs),
+      AJob.Query.Text, TAtlasCommentEditing.cMaxSuggestions, AIssues, AError));
   end;
-  Result := AJob.Provider.Lookup(AJob.Target, AJob.Transport, AJob.Query.Key, TAtlasIdeCommentService.TimeoutMs,
+  Result := AJob.Provider.Lookup(AJob.Target, AJob.Transport, AJob.Query.Key, TAtlasIdeCommentService.cTimeoutMs,
     mIssue, AError);
   if Result then
   begin
@@ -646,7 +646,7 @@ begin
     TAtlasIssueSearchKind.Recent:
       begin
         // Ohne Netz: die zuletzt in der Vorschau geöffneten.
-        ADone(Copy(FService.RecentOf(FTarget), 0, TAtlasCommentEditing.MaxSuggestions));
+        ADone(Copy(FService.RecentOf(FTarget), 0, TAtlasCommentEditing.cMaxSuggestions));
         Exit;
       end;
     TAtlasIssueSearchKind.Key, TAtlasIssueSearchKind.Text: ;
@@ -736,7 +736,7 @@ begin
       mVcs: IAtlasVersionControl;
       mHead: TAtlasVcsHead;
     begin
-      mVcs := TAtlasIdeVcs.ForFolder(mFolder, TAtlasIdeCommentService.VcsTimeoutMs);
+      mVcs := TAtlasIdeVcs.ForFolder(mFolder, TAtlasIdeCommentService.cVcsTimeoutMs);
       if (mVcs <> nil) and (mVcs.Head(mHead) = TAtlasVcsOutcome.Ok) then
       begin
         mValues := TAtlasCommentValues.Create(mValues.Issue, mHead.Branch, mHead.ShortRevision(mVcs.Kind),

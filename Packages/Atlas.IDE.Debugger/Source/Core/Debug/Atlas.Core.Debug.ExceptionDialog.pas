@@ -75,22 +75,22 @@ end;
 
 class function TAtlasDebugExceptionDialog.ButtonKind(const ACaption: string): TAtlasDebugDialogButton;
 const
-  BreakWords: array[0..2] of string = ('Break', 'Anhalten', 'Unterbrechen');
-  ContinueWords: array[0..1] of string = ('Continue', 'Fortsetzen');
+  cBreakWords: array[0..2] of string = ('Break', 'Anhalten', 'Unterbrechen');
+  cContinueWords: array[0..1] of string = ('Continue', 'Fortsetzen');
 var
-  Caption, Word: string;
+  mCaption, mWord: string;
 begin
-  Caption := Plain(ACaption);
-  for Word in BreakWords do
+  mCaption := Plain(ACaption);
+  for mWord in cBreakWords do
   begin
-    if SameText(Caption, Word) then
+    if SameText(mCaption, mWord) then
     begin
       Exit(TAtlasDebugDialogButton.BreakButton);
     end;
   end;
-  for Word in ContinueWords do
+  for mWord in cContinueWords do
   begin
-    if SameText(Caption, Word) then
+    if SameText(mCaption, mWord) then
     begin
       Exit(TAtlasDebugDialogButton.ContinueButton);
     end;
@@ -100,36 +100,36 @@ end;
 
 class function TAtlasDebugExceptionDialog.Recognize(const ATexts, AButtons: TArray<string>): TAtlasDebugDialogScan;
 var
-  Text, ExceptionClass, Message: string;
-  Index: Integer;
+  mText, mExceptionClass, mMessage: string;
+  mIndex: Integer;
 begin
   Result := Default(TAtlasDebugDialogScan);
   Result.BreakIndex := -1;
   Result.ContinueIndex := -1;
-  for Text in ATexts do
+  for mText in ATexts do
   begin
     // Nur Texte, die wie die Meldung der IDE aussehen: mit Klasse und mit Projekt bzw. Prozess davor.
-    if TAtlasDebugExceptionText.Parse(Text, ExceptionClass, Message) and
-      ((Pos('raised', LowerCase(Text)) > 0) or (Pos('aufgetreten', LowerCase(Text)) > 0) or
-       (Pos('ausgelöst', LowerCase(Text)) > 0)) then
+    if TAtlasDebugExceptionText.Parse(mText, mExceptionClass, mMessage) and
+      ((Pos('raised', LowerCase(mText)) > 0) or (Pos('aufgetreten', LowerCase(mText)) > 0) or
+       (Pos('ausgelöst', LowerCase(mText)) > 0)) then
     begin
-      Result.Text := Text;
-      Result.ExceptionClass := ExceptionClass;
-      Result.Message := Message;
+      Result.Text := mText;
+      Result.ExceptionClass := mExceptionClass;
+      Result.Message := mMessage;
       Break;
     end;
   end;
-  for Index := 0 to High(AButtons) do
-    case ButtonKind(AButtons[Index]) of
+  for mIndex := 0 to High(AButtons) do
+    case ButtonKind(AButtons[mIndex]) of
       TAtlasDebugDialogButton.BreakButton:
         if Result.BreakIndex < 0 then
         begin
-          Result.BreakIndex := Index;
+          Result.BreakIndex := mIndex;
         end;
       TAtlasDebugDialogButton.ContinueButton:
         if Result.ContinueIndex < 0 then
         begin
-          Result.ContinueIndex := Index;
+          Result.ContinueIndex := mIndex;
         end;
     end;
 end;

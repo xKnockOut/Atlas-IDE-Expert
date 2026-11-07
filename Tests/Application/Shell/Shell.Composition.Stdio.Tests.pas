@@ -60,7 +60,7 @@ var
   mLogger: ILogger;
 begin
   mOptions := Default(TCommandLineOptions);
-  mOptions.LogLevel := TCommandLineOptions.DefaultLogLevel;
+  mOptions.LogLevel := TCommandLineOptions.cDefaultLogLevel;
   mLogger := TShellStdio.NewLogger(mOptions, mRecent, mAnonymizer);
   Assert.IsNotNull(mRecent);
   Assert.IsNotNull(mAnonymizer);

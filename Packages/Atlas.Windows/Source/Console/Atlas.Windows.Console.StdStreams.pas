@@ -41,14 +41,14 @@ uses
 
 function CreateHandleStream(AStdHandle: DWORD; const AName: string): TStream;
 var
-  Handle: THandle;
+  mHandle: THandle;
 begin
-  Handle := GetStdHandle(AStdHandle);
-  if (Handle = 0) or (Handle = INVALID_HANDLE_VALUE) then
+  mHandle := GetStdHandle(AStdHandle);
+  if (mHandle = 0) or (mHandle = INVALID_HANDLE_VALUE) then
   begin
     raise EStreamError.CreateFmt('Kein gültiges Handle für %s', [AName]);
   end;
-  Result := THandleStream.Create(Handle);
+  Result := THandleStream.Create(mHandle);
 end;
 
 { TStdStreams }
@@ -70,10 +70,10 @@ end;
 
 class procedure TStdStreams.RedirectTextOutputToStdErr;
 var
-  ErrorHandle: THandle;
+  mErrorHandle: THandle;
 begin
-  ErrorHandle := GetStdHandle(STD_ERROR_HANDLE);
-  if (ErrorHandle = 0) or (ErrorHandle = INVALID_HANDLE_VALUE) then
+  mErrorHandle := GetStdHandle(STD_ERROR_HANDLE);
+  if (mErrorHandle = 0) or (mErrorHandle = INVALID_HANDLE_VALUE) then
   begin
     Exit;
   end;
@@ -81,18 +81,18 @@ begin
   begin
     Flush(Output);
   end;
-  TTextRec(Output).Handle := ErrorHandle;
+  TTextRec(Output).Handle := mErrorHandle;
 end;
 
 class function TStdStreams.ReserveOutputForProtocol: TStream;
 var
-  ErrorHandle: THandle;
+  mErrorHandle: THandle;
 begin
   Result := CreateOutput;
-  ErrorHandle := GetStdHandle(STD_ERROR_HANDLE);
-  if (ErrorHandle <> 0) and (ErrorHandle <> INVALID_HANDLE_VALUE) then
+  mErrorHandle := GetStdHandle(STD_ERROR_HANDLE);
+  if (mErrorHandle <> 0) and (mErrorHandle <> INVALID_HANDLE_VALUE) then
   begin
-    SetStdHandle(STD_OUTPUT_HANDLE, ErrorHandle);
+    SetStdHandle(STD_OUTPUT_HANDLE, mErrorHandle);
   end;
   RedirectTextOutputToStdErr;
   // "Runtime error ..." nicht auf die Konsole schreiben. NoErrMsg ist als

@@ -82,8 +82,8 @@ uses
   Atlas.UI.Results.Frame;
 
 const
-  Unit1 = 'C:\Projekt\Kunde.pas';
-  Unit2 = 'C:\Projekt\Auftrag.pas';
+  cUnit1 = 'C:\Projekt\Kunde.pas';
+  cUnit2 = 'C:\Projekt\Auftrag.pas';
 
 function SampleLines: TArray<string>;
 begin
@@ -93,15 +93,15 @@ end;
 
 function SampleBook: TAtlasNoteBook;
 var
-  Stamp: TDateTime;
+  mStamp: TDateTime;
 begin
-  Stamp := EncodeDate(2026, 10, 15);
+  mStamp := EncodeDate(2026, 10, 15);
   Result := TAtlasNoteBook.Create('C:\Projekt\Projekt.dproj');
-  Result.Add(Unit1, SampleLines, 6, 'Laden prüfen' + #10 + 'zweite Zeile', Stamp);
-  Result.Add(Unit1, SampleLines, 5, 'Klasse aufteilen', Stamp);
-  Result.Add(Unit2, SampleLines, 2, 'Weg damit', Stamp);
+  Result.Add(cUnit1, SampleLines, 6, 'Laden prüfen' + #10 + 'zweite Zeile', mStamp);
+  Result.Add(cUnit1, SampleLines, 5, 'Klasse aufteilen', mStamp);
+  Result.Add(cUnit2, SampleLines, 2, 'Weg damit', mStamp);
   // Datei fehlt: verwaist.
-  Result.OrphanFile(Unit2);
+  Result.OrphanFile(cUnit2);
 end;
 
 { TAtlasNoteDialogTests }
@@ -129,90 +129,90 @@ end;
 
 procedure TAtlasNoteDialogTests.SavesTrimmedTextWithLineFeeds;
 var
-  Dialog: TAtlasNoteDialog;
+  mDialog: TAtlasNoteDialog;
 begin
-  Dialog := TAtlasNoteDialog.CreateDialog(nil, 'Notiz – Kunde.pas, Zeile 7', 'Erste' + #10 + 'Zweite', False);
+  mDialog := TAtlasNoteDialog.CreateDialog(nil, 'Notiz – Kunde.pas, Zeile 7', 'Erste' + #10 + 'Zweite', False);
   try
-    Assert.AreEqual('Notiz – Kunde.pas, Zeile 7', Dialog.Caption);
-    Assert.AreEqual(2, Integer(Dialog.Memo.Lines.Count), 'mehrzeilig');
-    Assert.IsTrue(Dialog.Memo.WantReturns, 'Enter beginnt eine neue Zeile');
-    Assert.IsTrue(Dialog.CancelButton.Cancel, 'Esc bricht ab');
-    Dialog.Memo.Lines.Text := '  Eins' + #13#10 + 'Zwei  ' + #13#10#13#10;
-    Dialog.Accept;
-    Assert.IsTrue(Dialog.Choice = TAtlasNoteChoice.Save);
-    Assert.AreEqual('Eins' + #10 + 'Zwei', Dialog.NoteText);
+    Assert.AreEqual('Notiz – Kunde.pas, Zeile 7', mDialog.Caption);
+    Assert.AreEqual(2, Integer(mDialog.Memo.Lines.Count), 'mehrzeilig');
+    Assert.IsTrue(mDialog.Memo.WantReturns, 'Enter beginnt eine neue Zeile');
+    Assert.IsTrue(mDialog.CancelButton.Cancel, 'Esc bricht ab');
+    mDialog.Memo.Lines.Text := '  Eins' + #13#10 + 'Zwei  ' + #13#10#13#10;
+    mDialog.Accept;
+    Assert.IsTrue(mDialog.Choice = TAtlasNoteChoice.Save);
+    Assert.AreEqual('Eins' + #10 + 'Zwei', mDialog.NoteText);
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
   Assert.AreEqual('a' + #10 + 'b' + #10 + 'c', TAtlasNoteDialog.CleanText(' a' + #13#10 + 'b' + #13 + 'c ' + #10));
 end;
 
 procedure TAtlasNoteDialogTests.DeleteOnlyForExistingNote;
 var
-  Dialog: TAtlasNoteDialog;
+  mDialog: TAtlasNoteDialog;
 begin
-  Dialog := TAtlasNoteDialog.CreateDialog(nil, 'Neu', '', False);
+  mDialog := TAtlasNoteDialog.CreateDialog(nil, 'Neu', '', False);
   try
-    Assert.IsFalse(Dialog.DeleteButton.Visible, 'neue Notiz ohne „Löschen“');
+    Assert.IsFalse(mDialog.DeleteButton.Visible, 'neue Notiz ohne „Löschen“');
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
-  Dialog := TAtlasNoteDialog.CreateDialog(nil, 'Alt', 'Text', True);
+  mDialog := TAtlasNoteDialog.CreateDialog(nil, 'Alt', 'Text', True);
   try
-    Assert.IsTrue(Dialog.DeleteButton.Visible);
-    Assert.AreEqual('Löschen', Dialog.DeleteButton.Caption);
-    Assert.AreEqual('Speichern', Dialog.SaveButton.Caption);
-    Dialog.DeleteButton.Click;
-    Assert.IsTrue(Dialog.Choice = TAtlasNoteChoice.Delete);
+    Assert.IsTrue(mDialog.DeleteButton.Visible);
+    Assert.AreEqual('Löschen', mDialog.DeleteButton.Caption);
+    Assert.AreEqual('Speichern', mDialog.SaveButton.Caption);
+    mDialog.DeleteButton.Click;
+    Assert.IsTrue(mDialog.Choice = TAtlasNoteChoice.Delete);
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
 procedure TAtlasNoteDialogTests.EmptyTextDeletesOrCancels;
 var
-  Dialog: TAtlasNoteDialog;
+  mDialog: TAtlasNoteDialog;
 begin
-  Dialog := TAtlasNoteDialog.CreateDialog(nil, 'Alt', 'Text', True);
+  mDialog := TAtlasNoteDialog.CreateDialog(nil, 'Alt', 'Text', True);
   try
-    Dialog.Memo.Lines.Text := '   ';
-    Dialog.SaveButton.Click;
-    Assert.IsTrue(Dialog.Choice = TAtlasNoteChoice.Delete, 'leerer Text löscht die vorhandene Notiz');
+    mDialog.Memo.Lines.Text := '   ';
+    mDialog.SaveButton.Click;
+    Assert.IsTrue(mDialog.Choice = TAtlasNoteChoice.Delete, 'leerer Text löscht die vorhandene Notiz');
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
-  Dialog := TAtlasNoteDialog.CreateDialog(nil, 'Neu', '', False);
+  mDialog := TAtlasNoteDialog.CreateDialog(nil, 'Neu', '', False);
   try
-    Dialog.SaveButton.Click;
-    Assert.IsTrue(Dialog.Choice = TAtlasNoteChoice.Cancel, 'ohne Text keine neue Notiz');
-    Dialog.CancelButton.Click;
-    Assert.IsTrue(Dialog.Choice = TAtlasNoteChoice.Cancel);
+    mDialog.SaveButton.Click;
+    Assert.IsTrue(mDialog.Choice = TAtlasNoteChoice.Cancel, 'ohne Text keine neue Notiz');
+    mDialog.CancelButton.Click;
+    Assert.IsTrue(mDialog.Choice = TAtlasNoteChoice.Cancel);
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
 procedure TAtlasNoteDialogTests.CtrlEnterSaves;
 var
-  Dialog: TAtlasNoteDialog;
-  Key: Word;
-  Ch: Char;
+  mDialog: TAtlasNoteDialog;
+  mKey: Word;
+  mCh: Char;
 begin
-  Dialog := TAtlasNoteDialog.CreateDialog(nil, 'Neu', '', False);
+  mDialog := TAtlasNoteDialog.CreateDialog(nil, 'Neu', '', False);
   try
-    Dialog.Memo.Lines.Text := 'Merken';
-    Key := VK_RETURN;
-    Dialog.Memo.OnKeyDown(Dialog.Memo, Key, []);
-    Assert.IsTrue(Dialog.Choice = TAtlasNoteChoice.Cancel, 'Enter allein speichert nicht');
-    Assert.AreEqual(Integer(VK_RETURN), Integer(Key), 'Enter bleibt beim Textfeld');
-    Dialog.Memo.OnKeyDown(Dialog.Memo, Key, [ssCtrl]);
-    Assert.IsTrue(Dialog.Choice = TAtlasNoteChoice.Save);
-    Assert.AreEqual(0, Integer(Key));
-    Ch := #10;
-    Dialog.Memo.OnKeyPress(Dialog.Memo, Ch);
-    Assert.IsTrue(Ch = #0, 'kein Zeilenumbruch durch Strg+Enter');
+    mDialog.Memo.Lines.Text := 'Merken';
+    mKey := VK_RETURN;
+    mDialog.Memo.OnKeyDown(mDialog.Memo, mKey, []);
+    Assert.IsTrue(mDialog.Choice = TAtlasNoteChoice.Cancel, 'Enter allein speichert nicht');
+    Assert.AreEqual(Integer(VK_RETURN), Integer(mKey), 'Enter bleibt beim Textfeld');
+    mDialog.Memo.OnKeyDown(mDialog.Memo, mKey, [ssCtrl]);
+    Assert.IsTrue(mDialog.Choice = TAtlasNoteChoice.Save);
+    Assert.AreEqual(0, Integer(mKey));
+    mCh := #10;
+    mDialog.Memo.OnKeyPress(mDialog.Memo, mCh);
+    Assert.IsTrue(mCh = #0, 'kein Zeilenumbruch durch Strg+Enter');
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
@@ -241,162 +241,162 @@ end;
 
 procedure TAtlasNotesListTests.ShowsGroupsAndOrphans;
 var
-  Host: TForm;
-  Frame: TAtlasResultsFrame;
-  Book: TAtlasNoteBook;
+  mHost: TForm;
+  mFrame: TAtlasResultsFrame;
+  mBook: TAtlasNoteBook;
 begin
-  Book := SampleBook;
-  Host := TForm.CreateNew(nil);
+  mBook := SampleBook;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasResultsFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.Items.Show(TAtlasNotesList.Build('Notizen', Book.Groups, '', nil, nil));
-    Assert.IsTrue(Frame.Items.ShowsItemsOf(TAtlasNotesList.Owner));
-    Assert.IsFalse(Frame.Items.ShowsItemsOf('andere'));
+    mFrame := TAtlasResultsFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Items.Show(TAtlasNotesList.Build('Notizen', mBook.Groups, '', nil, nil));
+    Assert.IsTrue(mFrame.Items.ShowsItemsOf(TAtlasNotesList.cOwner));
+    Assert.IsFalse(mFrame.Items.ShowsItemsOf('andere'));
     // Gruppe Kunde.pas mit zwei Notizen nach Zeile, dann „Verwaist (1)“.
-    Assert.AreEqual(5, Integer(Frame.Tree.Items.Count));
-    Assert.AreEqual('Kunde.pas (2)', Frame.Tree.Items[0].Text);
-    Assert.AreEqual('6: Klasse aufteilen', Frame.Tree.Items[1].Text);
-    Assert.AreEqual('7: Laden prüfen …', Frame.Tree.Items[2].Text, 'erste Zeile mit „…“');
-    Assert.AreEqual('Verwaist (1)', Frame.Tree.Items[3].Text);
-    Assert.AreEqual('Auftrag.pas, Zeile 3: Weg damit', Frame.Tree.Items[4].Text);
-    Assert.IsTrue(Frame.Tree.Items[0].Expanded);
+    Assert.AreEqual(5, Integer(mFrame.Tree.Items.Count));
+    Assert.AreEqual('Kunde.pas (2)', mFrame.Tree.Items[0].Text);
+    Assert.AreEqual('6: Klasse aufteilen', mFrame.Tree.Items[1].Text);
+    Assert.AreEqual('7: Laden prüfen …', mFrame.Tree.Items[2].Text, 'erste Zeile mit „…“');
+    Assert.AreEqual('Verwaist (1)', mFrame.Tree.Items[3].Text);
+    Assert.AreEqual('Auftrag.pas, Zeile 3: Weg damit', mFrame.Tree.Items[4].Text);
+    Assert.IsTrue(mFrame.Tree.Items[0].Expanded);
     // Auswahl nach Kennung.
-    Frame.Items.Show(TAtlasNotesList.Build('Notizen', Book.Groups, Book.Notes[0].Id, nil, nil));
-    Assert.AreEqual(Book.Notes[0].Id, Frame.Items.SelectedId);
-    Assert.IsTrue(Frame.Tree.Selected = Frame.Tree.Items[2]);
+    mFrame.Items.Show(TAtlasNotesList.Build('Notizen', mBook.Groups, mBook.Notes[0].Id, nil, nil));
+    Assert.AreEqual(mBook.Notes[0].Id, mFrame.Items.SelectedId);
+    Assert.IsTrue(mFrame.Tree.Selected = mFrame.Tree.Items[2]);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasNotesListTests.MenuEditsDeletesAndOpens;
 var
-  Host: TForm;
-  Frame: TAtlasResultsFrame;
-  Book: TAtlasNoteBook;
-  Edited, Deleted, Opened: string;
-  OpenedLine: Integer;
-  Key: Word;
+  mHost: TForm;
+  mFrame: TAtlasResultsFrame;
+  mBook: TAtlasNoteBook;
+  mEdited, mDeleted, mOpened: string;
+  mOpenedLine: Integer;
+  mKey: Word;
 begin
-  Book := SampleBook;
-  Host := TForm.CreateNew(nil);
+  mBook := SampleBook;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasResultsFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.OnOpen :=
+    mFrame := TAtlasResultsFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.OnOpen :=
       procedure(const AFileName: string; ALine, ACharacter: Integer)
       begin
-        Opened := AFileName;
-        OpenedLine := ALine;
+        mOpened := AFileName;
+        mOpenedLine := ALine;
       end;
-    Frame.Items.Show(TAtlasNotesList.Build('Notizen', Book.Groups, '',
+    mFrame.Items.Show(TAtlasNotesList.Build('Notizen', mBook.Groups, '',
       procedure(const AId: string)
       begin
-        Edited := AId;
+        mEdited := AId;
       end,
       procedure(const AId: string)
       begin
-        Deleted := AId;
+        mDeleted := AId;
       end));
     // Gruppe gewählt: Einträge sichtbar, aber gesperrt; Änderungsbefehle (#721) unsichtbar.
-    Frame.Menu.OnPopup(Frame.Menu);
-    Assert.IsFalse(Frame.Menu.Items[0].Visible);
-    Assert.IsTrue(Frame.Menu.Items[3].Visible);
-    Assert.IsFalse(Frame.Menu.Items[3].Enabled);
-    Assert.AreEqual('Notiz bearbeiten…', Frame.Menu.Items[3].Caption);
-    Frame.Tree.Selected := Frame.Tree.Items[1];
-    Frame.Menu.OnPopup(Frame.Menu);
-    Assert.IsTrue(Frame.Menu.Items[3].Enabled);
-    Assert.IsTrue(Frame.Menu.Items[4].Enabled);
-    Frame.Menu.Items[3].Click;
-    Assert.AreEqual(Book.Notes[1].Id, Edited);
-    Frame.Menu.Items[4].Click;
-    Assert.AreEqual(Book.Notes[1].Id, Deleted);
+    mFrame.Menu.OnPopup(mFrame.Menu);
+    Assert.IsFalse(mFrame.Menu.Items[0].Visible);
+    Assert.IsTrue(mFrame.Menu.Items[3].Visible);
+    Assert.IsFalse(mFrame.Menu.Items[3].Enabled);
+    Assert.AreEqual('Notiz bearbeiten…', mFrame.Menu.Items[3].Caption);
+    mFrame.Tree.Selected := mFrame.Tree.Items[1];
+    mFrame.Menu.OnPopup(mFrame.Menu);
+    Assert.IsTrue(mFrame.Menu.Items[3].Enabled);
+    Assert.IsTrue(mFrame.Menu.Items[4].Enabled);
+    mFrame.Menu.Items[3].Click;
+    Assert.AreEqual(mBook.Notes[1].Id, mEdited);
+    mFrame.Menu.Items[4].Click;
+    Assert.AreEqual(mBook.Notes[1].Id, mDeleted);
     // Entf löscht, Enter springt (0-basierte Zeile).
-    Deleted := '';
-    Frame.Tree.Selected := Frame.Tree.Items[2];
-    Key := VK_DELETE;
-    Frame.Tree.OnKeyDown(Frame.Tree, Key, []);
-    Assert.AreEqual(Book.Notes[0].Id, Deleted);
-    Key := VK_RETURN;
-    Frame.Tree.OnKeyDown(Frame.Tree, Key, []);
-    Assert.AreEqual(Unit1, Opened);
-    Assert.AreEqual(6, OpenedLine);
+    mDeleted := '';
+    mFrame.Tree.Selected := mFrame.Tree.Items[2];
+    mKey := VK_DELETE;
+    mFrame.Tree.OnKeyDown(mFrame.Tree, mKey, []);
+    Assert.AreEqual(mBook.Notes[0].Id, mDeleted);
+    mKey := VK_RETURN;
+    mFrame.Tree.OnKeyDown(mFrame.Tree, mKey, []);
+    Assert.AreEqual(cUnit1, mOpened);
+    Assert.AreEqual(6, mOpenedLine);
     // Verwaiste Notiz springt zur zuletzt bekannten Zeile.
-    Frame.Tree.Selected := Frame.Tree.Items[4];
-    Frame.Tree.OnDblClick(Frame.Tree);
-    Assert.AreEqual(Unit2, Opened);
-    Assert.AreEqual(2, OpenedLine);
+    mFrame.Tree.Selected := mFrame.Tree.Items[4];
+    mFrame.Tree.OnDblClick(mFrame.Tree);
+    Assert.AreEqual(cUnit2, mOpened);
+    Assert.AreEqual(2, mOpenedLine);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasNotesListTests.OtherListsHideNoteMenu;
 var
-  Host: TForm;
-  Frame: TAtlasResultsFrame;
-  Book: TAtlasNoteBook;
-  Deleted: string;
-  Key: Word;
+  mHost: TForm;
+  mFrame: TAtlasResultsFrame;
+  mBook: TAtlasNoteBook;
+  mDeleted: string;
+  mKey: Word;
 begin
-  Book := SampleBook;
-  Host := TForm.CreateNew(nil);
+  mBook := SampleBook;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasResultsFrame.Create(Host);
-    Frame.Parent := Host;
-    Deleted := '';
-    Frame.Items.Show(TAtlasNotesList.Build('Notizen', Book.Groups, '', nil,
+    mFrame := TAtlasResultsFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mDeleted := '';
+    mFrame.Items.Show(TAtlasNotesList.Build('Notizen', mBook.Groups, '', nil,
       procedure(const AId: string)
       begin
-        Deleted := AId;
+        mDeleted := AId;
       end));
-    Frame.Entries.Show('Referenzen', nil);
-    Assert.IsFalse(Frame.Items.ShowsItemsOf(TAtlasNotesList.Owner));
-    Frame.Menu.OnPopup(Frame.Menu);
-    Assert.IsFalse(Frame.Menu.Items[3].Visible);
-    Assert.IsFalse(Frame.Menu.Items[4].Visible);
-    Key := VK_DELETE;
-    Frame.Tree.OnKeyDown(Frame.Tree, Key, []);
-    Assert.AreEqual('', Deleted, 'Entf nur in der Notizliste');
+    mFrame.Entries.Show('Referenzen', nil);
+    Assert.IsFalse(mFrame.Items.ShowsItemsOf(TAtlasNotesList.cOwner));
+    mFrame.Menu.OnPopup(mFrame.Menu);
+    Assert.IsFalse(mFrame.Menu.Items[3].Visible);
+    Assert.IsFalse(mFrame.Menu.Items[4].Visible);
+    mKey := VK_DELETE;
+    mFrame.Tree.OnKeyDown(mFrame.Tree, mKey, []);
+    Assert.AreEqual('', mDeleted, 'Entf nur in der Notizliste');
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasNotesListTests.ReleasedListHasNoActions;
 var
-  Host: TForm;
-  Frame: TAtlasResultsFrame;
-  Book: TAtlasNoteBook;
-  Deleted: string;
-  Key: Word;
+  mHost: TForm;
+  mFrame: TAtlasResultsFrame;
+  mBook: TAtlasNoteBook;
+  mDeleted: string;
+  mKey: Word;
 begin
-  Book := SampleBook;
-  Host := TForm.CreateNew(nil);
+  mBook := SampleBook;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasResultsFrame.Create(Host);
-    Frame.Parent := Host;
-    Deleted := '';
-    Frame.Items.Show(TAtlasNotesList.Build('Notizen', Book.Groups, '', nil,
+    mFrame := TAtlasResultsFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mDeleted := '';
+    mFrame.Items.Show(TAtlasNotesList.Build('Notizen', mBook.Groups, '', nil,
       procedure(const AId: string)
       begin
-        Deleted := AId;
+        mDeleted := AId;
       end));
-    Frame.Items.Release('andere');
-    Frame.Tree.Selected := Frame.Tree.Items[1];
-    Frame.Menu.OnPopup(Frame.Menu);
-    Assert.IsTrue(Frame.Menu.Items[4].Visible, 'fremder Besitzer gibt nichts frei');
-    Frame.Items.Release(TAtlasNotesList.Owner);
-    Assert.IsTrue(Frame.Items.ShowsItemsOf(TAtlasNotesList.Owner), 'Liste bleibt sichtbar');
-    Frame.Menu.OnPopup(Frame.Menu);
-    Assert.IsFalse(Frame.Menu.Items[4].Visible, 'Löschen weg');
-    Key := VK_DELETE;
-    Frame.Tree.OnKeyDown(Frame.Tree, Key, []);
-    Assert.AreEqual('', Deleted);
+    mFrame.Items.Release('andere');
+    mFrame.Tree.Selected := mFrame.Tree.Items[1];
+    mFrame.Menu.OnPopup(mFrame.Menu);
+    Assert.IsTrue(mFrame.Menu.Items[4].Visible, 'fremder Besitzer gibt nichts frei');
+    mFrame.Items.Release(TAtlasNotesList.cOwner);
+    Assert.IsTrue(mFrame.Items.ShowsItemsOf(TAtlasNotesList.cOwner), 'Liste bleibt sichtbar');
+    mFrame.Menu.OnPopup(mFrame.Menu);
+    Assert.IsFalse(mFrame.Menu.Items[4].Visible, 'Löschen weg');
+    mKey := VK_DELETE;
+    mFrame.Tree.OnKeyDown(mFrame.Tree, mKey, []);
+    Assert.AreEqual('', mDeleted);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
@@ -404,15 +404,15 @@ end;
 
 procedure TAtlasNoteLineTests.SeveralNotesOnOneLine;
 var
-  Book: TAtlasNoteBook;
-  Notes: TArray<TAtlasNote>;
+  mBook: TAtlasNoteBook;
+  mNotes: TArray<TAtlasNote>;
 begin
   // Der Tooltip zeigt alle nicht verwaisten Notizen der Zeile (AtLine); verwaiste haben kein Symbol.
-  Book := SampleBook;
-  Book.Add(Unit1, SampleLines, 6, 'Noch eine', EncodeDate(2026, 10, 15));
-  Notes := Book.AtLine(Unit1, 6);
-  Assert.AreEqual(2, Integer(Length(Notes)));
-  Assert.AreEqual(0, Integer(Length(Book.AtLine(Unit2, 2))), 'verwaiste Notizen ohne Symbol');
+  mBook := SampleBook;
+  mBook.Add(cUnit1, SampleLines, 6, 'Noch eine', EncodeDate(2026, 10, 15));
+  mNotes := mBook.AtLine(cUnit1, 6);
+  Assert.AreEqual(2, Integer(Length(mNotes)));
+  Assert.AreEqual(0, Integer(Length(mBook.AtLine(cUnit2, 2))), 'verwaiste Notizen ohne Symbol');
 end;
 
 initialization

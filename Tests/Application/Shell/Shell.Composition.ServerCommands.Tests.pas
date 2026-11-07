@@ -198,10 +198,10 @@ begin
       mCapability.Free;
     end;
     for mName in TArray<string>.Create(cStatusCommand, cProcessesCommand, TLspSettingsCommands.cCheckCommand,
-      TLspSettingsCommands.cCatalogCommand, TShellServerCommands.CompileCommand,
-      TShellServerCommands.RebuildIndexCommand, cClearIndexCommand, TShellCrashCases.RetryCommand,
-      TLspPullDiagnostics.cRecheckCommand, TShellServerCommands.SelectBuildCommand,
-      TShellServerCommands.SelectProjectCommand, TLspFormFiles.cConvertCommand) do
+      TLspSettingsCommands.cCatalogCommand, TShellServerCommands.cCompileCommand,
+      TShellServerCommands.cRebuildIndexCommand, cClearIndexCommand, TShellCrashCases.cRetryCommand,
+      TLspPullDiagnostics.cRecheckCommand, TShellServerCommands.cSelectBuildCommand,
+      TShellServerCommands.cSelectProjectCommand, TLspFormFiles.cConvertCommand) do
     begin
       Assert.IsTrue(Pos('"' + mName + '"', mText) > 0, mName);
     end;
@@ -218,14 +218,14 @@ begin
   Assert.WillRaise(
     procedure
     begin
-      Execute(TShellServerCommands.CompileCommand, TJSONArray.Create).Free;
+      Execute(TShellServerCommands.cCompileCommand, TJSONArray.Create).Free;
     end, EJsonRpcError);
   mArguments := TJSONArray.Create;
   mArguments.Add('file:///tmp/Projekt.dpr');
   Assert.WillRaise(
     procedure
     begin
-      Execute(TShellServerCommands.CompileCommand, mArguments).Free;
+      Execute(TShellServerCommands.cCompileCommand, mArguments).Free;
     end, EJsonRpcError);
   Assert.AreEqual(2, Integer(Length(FCompiled)));
   Assert.AreEqual('', FCompiled[0]);
@@ -236,13 +236,13 @@ procedure TShellServerCommandsTests.WithoutWorkspacesNothingHappens;
 var
   mAnswer: TJSONValue;
 begin
-  mAnswer := Execute(TShellServerCommands.SelectProjectCommand, TJSONArray.Create);
+  mAnswer := Execute(TShellServerCommands.cSelectProjectCommand, TJSONArray.Create);
   try
     Assert.IsTrue(mAnswer is TJSONObject);
   finally
     mAnswer.Free;
   end;
-  Execute(TShellServerCommands.RebuildIndexCommand, TJSONArray.Create).Free;
+  Execute(TShellServerCommands.cRebuildIndexCommand, TJSONArray.Create).Free;
   Assert.AreEqual(1, Integer(Length(FLog)));
   Assert.AreEqual('Index wird für 0 Ordner neu aufgebaut', FLog[0]);
   mAnswer := Execute(cProcessesCommand, TJSONArray.Create);
@@ -261,7 +261,7 @@ var
 begin
   mArguments := TJSONArray.Create;
   mArguments.Add('file:///tmp/A.pas');
-  mAnswer := Execute(TShellCrashCases.RetryCommand, mArguments);
+  mAnswer := Execute(TShellCrashCases.cRetryCommand, mArguments);
   try
     Assert.AreEqual('1', mAnswer.Value);
   finally

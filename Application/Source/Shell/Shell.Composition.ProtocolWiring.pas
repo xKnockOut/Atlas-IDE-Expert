@@ -60,7 +60,7 @@ var
   mServices: TShellProtocolServices;
 begin
   mServices.Logger := AParts.Channel.Logger;
-  mServices.TimeoutMs := TShellParts.RequestTimeoutMs;
+  mServices.TimeoutMs := TShellParts.cRequestTimeoutMs;
   mServices.Capabilities :=
     function: TJSONObject
     begin

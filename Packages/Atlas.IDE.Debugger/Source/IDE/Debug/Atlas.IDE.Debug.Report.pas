@@ -77,7 +77,7 @@ procedure AddFrames(var AData: TAtlasDebugNoteData; const AThread: IOTAThread);
 var
   mFrames: TAtlasDebugFrames;
 begin
-  if TAtlasIdeDebugSession.ReadStack(AThread, TAtlasDebugNote.MaxFrames, mFrames) <> TAtlasDebugStackRead.Ready then
+  if TAtlasIdeDebugSession.ReadStack(AThread, TAtlasDebugNote.cMaxFrames, mFrames) <> TAtlasDebugStackRead.Ready then
   begin
     Exit;
   end;

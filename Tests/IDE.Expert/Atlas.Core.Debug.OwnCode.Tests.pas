@@ -60,107 +60,107 @@ end;
 
 procedure TAtlasDebugOwnCodeTests.ParseFoldersCleansList;
 var
-  Folders: TArray<string>;
+  mFolders: TArray<string>;
 begin
-  Folders := TAtlasDebugOwnCode.ParseFolders('C:\Komponenten\; ;c:\komponenten' + #13#10 + 'D:/Lib/ ;');
-  Assert.AreEqual(2, Integer(Length(Folders)));
-  Assert.AreEqual('C:\Komponenten', Folders[0]);
-  Assert.AreEqual('D:\Lib', Folders[1], 'Schrägstrich vereinheitlicht');
-  Assert.AreEqual('C:\Komponenten;D:\Lib', TAtlasDebugOwnCode.FoldersText(Folders));
+  mFolders := TAtlasDebugOwnCode.ParseFolders('C:\Komponenten\; ;c:\komponenten' + #13#10 + 'D:/Lib/ ;');
+  Assert.AreEqual(2, Integer(Length(mFolders)));
+  Assert.AreEqual('C:\Komponenten', mFolders[0]);
+  Assert.AreEqual('D:\Lib', mFolders[1], 'Schrägstrich vereinheitlicht');
+  Assert.AreEqual('C:\Komponenten;D:\Lib', TAtlasDebugOwnCode.FoldersText(mFolders));
   Assert.AreEqual(0, Integer(Length(TAtlasDebugOwnCode.ParseFolders(''))));
 end;
 
 procedure TAtlasDebugOwnCodeTests.OwnFileOnlyBelowWholeFolder;
 var
-  Own: TAtlasDebugOwnCode;
+  mOwn: TAtlasDebugOwnCode;
 begin
-  Own := TAtlasDebugOwnCode.Create(TArray<string>.Create('C:\Projekte\Demo\'));
-  Own.AddFolder('c:\projekte\demo');
-  Own.AddFolder('D:\Komponenten');
-  Assert.AreEqual(2, Integer(Length(Own.Folders)), 'doppelte entfallen');
-  Assert.IsTrue(Own.IsOwnFile('C:\Projekte\Demo\Unit1.pas'));
-  Assert.IsTrue(Own.IsOwnFile('c:\projekte\demo\Sub\Unit2.pas'), 'Unterordner und Groß/klein');
-  Assert.IsTrue(Own.IsOwnFile('D:/Komponenten/Grid.pas'));
-  Assert.IsFalse(Own.IsOwnFile('C:\Projekte\Demo2\Unit1.pas'), 'nur ganze Ordner');
-  Assert.IsFalse(Own.IsOwnFile('C:\BDS\source\rtl\sys\System.SysUtils.pas'));
-  Assert.IsFalse(Own.IsOwnFile(''));
+  mOwn := TAtlasDebugOwnCode.Create(TArray<string>.Create('C:\Projekte\Demo\'));
+  mOwn.AddFolder('c:\projekte\demo');
+  mOwn.AddFolder('D:\Komponenten');
+  Assert.AreEqual(2, Integer(Length(mOwn.Folders)), 'doppelte entfallen');
+  Assert.IsTrue(mOwn.IsOwnFile('C:\Projekte\Demo\Unit1.pas'));
+  Assert.IsTrue(mOwn.IsOwnFile('c:\projekte\demo\Sub\Unit2.pas'), 'Unterordner und Groß/klein');
+  Assert.IsTrue(mOwn.IsOwnFile('D:/Komponenten/Grid.pas'));
+  Assert.IsFalse(mOwn.IsOwnFile('C:\Projekte\Demo2\Unit1.pas'), 'nur ganze Ordner');
+  Assert.IsFalse(mOwn.IsOwnFile('C:\BDS\source\rtl\sys\System.SysUtils.pas'));
+  Assert.IsFalse(mOwn.IsOwnFile(''));
 end;
 
 procedure TAtlasDebugOwnCodeTests.LocationIsFirstOwnFrame;
 var
-  Frames: TAtlasDebugFrames;
+  mFrames: TAtlasDebugFrames;
 begin
-  Frames := SampleFrames;
-  Assert.AreEqual(3, TAtlasDebugOwnCode.LocationIndex(Frames, True), 'erste eigene Zeile');
-  Assert.AreEqual(2, TAtlasDebugOwnCode.LocationIndex(Frames, False), 'aus: erster Rahmen mit Quelltext');
-  Assert.AreEqual(3, TAtlasDebugOwnCode.FirstOwn(Frames));
-  Frames := TArray<TAtlasDebugFrame>.Create(Frame('System.SysUtils.StrToInt', 'System.SysUtils.pas', 10, False));
-  Assert.AreEqual(0, TAtlasDebugOwnCode.LocationIndex(Frames, True), 'ohne eigenen Rahmen der mit Quelltext');
+  mFrames := SampleFrames;
+  Assert.AreEqual(3, TAtlasDebugOwnCode.LocationIndex(mFrames, True), 'erste eigene Zeile');
+  Assert.AreEqual(2, TAtlasDebugOwnCode.LocationIndex(mFrames, False), 'aus: erster Rahmen mit Quelltext');
+  Assert.AreEqual(3, TAtlasDebugOwnCode.FirstOwn(mFrames));
+  mFrames := TArray<TAtlasDebugFrame>.Create(Frame('System.SysUtils.StrToInt', 'System.SysUtils.pas', 10, False));
+  Assert.AreEqual(0, TAtlasDebugOwnCode.LocationIndex(mFrames, True), 'ohne eigenen Rahmen der mit Quelltext');
   Assert.AreEqual(-1, TAtlasDebugOwnCode.LocationIndex(nil, True));
 end;
 
 procedure TAtlasDebugOwnCodeTests.JumpOnlyWhenTopIsLibrary;
 var
-  Frames: TAtlasDebugFrames;
+  mFrames: TAtlasDebugFrames;
 begin
-  Frames := SampleFrames;
-  Assert.AreEqual(3, TAtlasDebugOwnCode.JumpIndex(Frames, True));
-  Assert.AreEqual(-1, TAtlasDebugOwnCode.JumpIndex(Frames, False), 'aus: kein Sprung');
-  Delete(Frames, 0, 3);
-  Assert.AreEqual(-1, TAtlasDebugOwnCode.JumpIndex(Frames, True), 'IDE steht schon im eigenen Code');
-  Frames := TArray<TAtlasDebugFrame>.Create(Frame(':0040A1B2 System._RaiseExcept', '', 0, False));
-  Assert.AreEqual(-1, TAtlasDebugOwnCode.JumpIndex(Frames, True), 'ohne eigenen Rahmen kein Sprung');
+  mFrames := SampleFrames;
+  Assert.AreEqual(3, TAtlasDebugOwnCode.JumpIndex(mFrames, True));
+  Assert.AreEqual(-1, TAtlasDebugOwnCode.JumpIndex(mFrames, False), 'aus: kein Sprung');
+  Delete(mFrames, 0, 3);
+  Assert.AreEqual(-1, TAtlasDebugOwnCode.JumpIndex(mFrames, True), 'IDE steht schon im eigenen Code');
+  mFrames := TArray<TAtlasDebugFrame>.Create(Frame(':0040A1B2 System._RaiseExcept', '', 0, False));
+  Assert.AreEqual(-1, TAtlasDebugOwnCode.JumpIndex(mFrames, True), 'ohne eigenen Rahmen kein Sprung');
 end;
 
 procedure TAtlasDebugOwnCodeTests.ReturnOnlyAfterStepWithoutSource;
 var
-  Frames, Own: TAtlasDebugFrames;
+  mFrames, mOwn: TAtlasDebugFrames;
 begin
-  Frames := SampleFrames;
-  Own := Copy(Frames, 3, 3);
-  Assert.IsTrue(TAtlasDebugOwnCode.ShouldReturn(True, True, Frames, 0), 'F7 in Code ohne Quelltext');
-  Assert.IsFalse(TAtlasDebugOwnCode.ShouldReturn(True, False, Frames, 0), 'Halt ohne Schritt (Pause)');
-  Assert.IsFalse(TAtlasDebugOwnCode.ShouldReturn(False, True, Frames, 0), 'aus');
-  Assert.IsFalse(TAtlasDebugOwnCode.ShouldReturn(True, True, Own, 0), 'wieder im Quelltext');
-  Assert.IsFalse(TAtlasDebugOwnCode.ShouldReturn(True, True, Frames, TAtlasDebugOwnCode.MaxReturns),
+  mFrames := SampleFrames;
+  mOwn := Copy(mFrames, 3, 3);
+  Assert.IsTrue(TAtlasDebugOwnCode.ShouldReturn(True, True, mFrames, 0), 'F7 in Code ohne Quelltext');
+  Assert.IsFalse(TAtlasDebugOwnCode.ShouldReturn(True, False, mFrames, 0), 'Halt ohne Schritt (Pause)');
+  Assert.IsFalse(TAtlasDebugOwnCode.ShouldReturn(False, True, mFrames, 0), 'aus');
+  Assert.IsFalse(TAtlasDebugOwnCode.ShouldReturn(True, True, mOwn, 0), 'wieder im Quelltext');
+  Assert.IsFalse(TAtlasDebugOwnCode.ShouldReturn(True, True, mFrames, TAtlasDebugOwnCode.cMaxReturns),
     'höchstens MaxReturns-mal');
   Assert.IsFalse(TAtlasDebugOwnCode.ShouldReturn(True, True, nil, 0), 'Stapel unbekannt');
 end;
 
 procedure TAtlasDebugOwnCodeTests.RowsGroupLibraryFrames;
 var
-  Rows: TAtlasDebugStackRows;
+  mRows: TAtlasDebugStackRows;
 begin
-  Rows := TAtlasDebugOwnCode.Rows(SampleFrames, True, nil);
-  Assert.AreEqual(4, Integer(Length(Rows)));
-  Assert.AreEqual(Ord(TAtlasDebugStackRowKind.LibraryGroup), Ord(Rows[0].Kind));
-  Assert.AreEqual(0, Rows[0].First);
-  Assert.AreEqual(3, Rows[0].Count);
-  Assert.IsTrue(Rows[0].Faded);
-  Assert.AreEqual(Ord(TAtlasDebugStackRowKind.Frame), Ord(Rows[1].Kind));
-  Assert.AreEqual(3, Rows[1].First);
-  Assert.IsFalse(Rows[1].Faded);
-  Assert.AreEqual(Ord(TAtlasDebugStackRowKind.Frame), Ord(Rows[2].Kind), 'einzelner Bibliotheksrahmen bleibt');
-  Assert.IsTrue(Rows[2].Faded);
-  Assert.AreEqual(5, Rows[3].First);
+  mRows := TAtlasDebugOwnCode.Rows(SampleFrames, True, nil);
+  Assert.AreEqual(4, Integer(Length(mRows)));
+  Assert.AreEqual(Ord(TAtlasDebugStackRowKind.LibraryGroup), Ord(mRows[0].Kind));
+  Assert.AreEqual(0, mRows[0].First);
+  Assert.AreEqual(3, mRows[0].Count);
+  Assert.IsTrue(mRows[0].Faded);
+  Assert.AreEqual(Ord(TAtlasDebugStackRowKind.Frame), Ord(mRows[1].Kind));
+  Assert.AreEqual(3, mRows[1].First);
+  Assert.IsFalse(mRows[1].Faded);
+  Assert.AreEqual(Ord(TAtlasDebugStackRowKind.Frame), Ord(mRows[2].Kind), 'einzelner Bibliotheksrahmen bleibt');
+  Assert.IsTrue(mRows[2].Faded);
+  Assert.AreEqual(5, mRows[3].First);
   // Aufgeklappt: drei einzelne, abgeschwächte Rahmen.
-  Rows := TAtlasDebugOwnCode.Rows(SampleFrames, True, TArray<Integer>.Create(0));
-  Assert.AreEqual(6, Integer(Length(Rows)));
-  Assert.AreEqual(Ord(TAtlasDebugStackRowKind.Frame), Ord(Rows[0].Kind));
-  Assert.IsTrue(Rows[2].Faded);
+  mRows := TAtlasDebugOwnCode.Rows(SampleFrames, True, TArray<Integer>.Create(0));
+  Assert.AreEqual(6, Integer(Length(mRows)));
+  Assert.AreEqual(Ord(TAtlasDebugStackRowKind.Frame), Ord(mRows[0].Kind));
+  Assert.IsTrue(mRows[2].Faded);
 end;
 
 procedure TAtlasDebugOwnCodeTests.RowsWithoutJustMyCode;
 var
-  Rows: TAtlasDebugStackRows;
-  Row: TAtlasDebugStackRow;
+  mRows: TAtlasDebugStackRows;
+  mRow: TAtlasDebugStackRow;
 begin
-  Rows := TAtlasDebugOwnCode.Rows(SampleFrames, False, nil);
-  Assert.AreEqual(6, Integer(Length(Rows)));
-  for Row in Rows do
+  mRows := TAtlasDebugOwnCode.Rows(SampleFrames, False, nil);
+  Assert.AreEqual(6, Integer(Length(mRows)));
+  for mRow in mRows do
   begin
-    Assert.AreEqual(Ord(TAtlasDebugStackRowKind.Frame), Ord(Row.Kind));
-    Assert.IsFalse(Row.Faded);
+    Assert.AreEqual(Ord(TAtlasDebugStackRowKind.Frame), Ord(mRow.Kind));
+    Assert.IsFalse(mRow.Faded);
   end;
   Assert.AreEqual(0, Integer(Length(TAtlasDebugOwnCode.Rows(nil, True, nil))));
 end;

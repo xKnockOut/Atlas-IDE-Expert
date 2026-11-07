@@ -387,16 +387,16 @@ begin
     Assert.IsTrue(mLine.StartsWith('Hallo ') and mLine.EndsWith(' Welt'), mLine);
     mTable.Load('[]');
     Assert.AreEqual(-1, mTable.Selected);
-    for mIndex := 1 to TAtlasCommentSnippets.MaxSnippets do
+    for mIndex := 1 to TAtlasCommentSnippets.cMaxSnippets do
     begin
       mTable.Add('B' + IntToStr(mIndex));
     end;
     Assert.IsFalse(mTable.CanAdd);
     mTable.Add('Zu viel');
-    Assert.AreEqual(TAtlasCommentSnippets.MaxSnippets, Integer(Length(mTable.Items)));
+    Assert.AreEqual(TAtlasCommentSnippets.cMaxSnippets, Integer(Length(mTable.Items)));
     mTable.Remove;
     Assert.IsTrue(mTable.CanAdd);
-    Assert.AreEqual(TAtlasCommentSnippets.MaxSnippets - 2, mTable.Selected);
+    Assert.AreEqual(TAtlasCommentSnippets.cMaxSnippets - 2, mTable.Selected);
   finally
     mTable.Free;
   end;
