@@ -59,20 +59,20 @@ const
 
 class function TAtlasTaskTexts.Duration(AMs: Int64): string;
 var
-  Seconds: Int64;
+  mSeconds: Int64;
 begin
   if AMs < 0 then
   begin
     AMs := 0;
   end;
-  Seconds := AMs div 1000;
-  if Seconds < 60 then
+  mSeconds := AMs div 1000;
+  if mSeconds < 60 then
   begin
-    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksSeconds, [Seconds, (AMs mod 1000) div 100]);
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksSeconds, [mSeconds, (AMs mod 1000) div 100]);
   end
   else
   begin
-    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksMinutes, [Seconds div 60, Seconds mod 60]);
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksMinutes, [mSeconds div 60, mSeconds mod 60]);
   end;
 end;
 
@@ -148,28 +148,28 @@ end;
 
 class function TAtlasTaskTexts.LastResult(const ALast: TAtlasTaskLastRun; AHas: Boolean): string;
 var
-  Time: string;
+  mTime: string;
 begin
   if not AHas then
   begin
     Exit(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksNever));
   end;
-  Time := FormatDateTime('hh:nn', ALast.FinishedAt, FormatSettings);
+  mTime := FormatDateTime('hh:nn', ALast.FinishedAt, FormatSettings);
   if ALast.Outcome <> TAtlasTaskOutcome.Finished then
   begin
-    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksNotRun, [Time]);
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksNotRun, [mTime]);
   end
   else if ALast.Counts.Errors > 0 then
   begin
-    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksErrors, [ALast.Counts.Errors, Time]);
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksErrors, [ALast.Counts.Errors, mTime]);
   end
   else if ALast.ExitCode <> 0 then
   begin
-    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksExitCode, [ALast.ExitCode, Time]);
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksExitCode, [ALast.ExitCode, mTime]);
   end
   else
   begin
-    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksPassed, [Time]);
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksPassed, [mTime]);
   end;
 end;
 

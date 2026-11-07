@@ -34,8 +34,8 @@ uses
 
 constructor TParentWatcher.Create(AProcessId: Cardinal; const AOnExited: TProc);
 var
-  Process, Stop: THandle;
-  OnExited: TProc;
+  mProcess, mStop: THandle;
+  mOnExited: TProc;
 begin
   inherited Create;
   FProcess := OpenProcess(SYNCHRONIZE, False, AProcessId);
@@ -49,19 +49,19 @@ begin
     Exit;
   end;
   FStop := CreateEvent(nil, True, False, nil);
-  Process := FProcess;
-  Stop := FStop;
-  OnExited := AOnExited;
+  mProcess := FProcess;
+  mStop := FStop;
+  mOnExited := AOnExited;
   FThread := TThread.CreateAnonymousThread(
     procedure
     var
       Handles: array[0..1] of THandle;
     begin
-      Handles[0] := Process;
-      Handles[1] := Stop;
+      Handles[0] := mProcess;
+      Handles[1] := mStop;
       if WaitForMultipleObjects(2, @Handles[0], False, INFINITE) = WAIT_OBJECT_0 then
       begin
-        OnExited();
+        mOnExited();
       end;
     end);
   FThread.FreeOnTerminate := False;

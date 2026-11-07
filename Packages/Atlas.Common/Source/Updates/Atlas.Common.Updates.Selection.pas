@@ -132,7 +132,7 @@ begin
   begin
     if not TUpdateSelection.Contains(mNames, mName) then
     begin
-      raise EUpdateError.CreateCode(TUpdateErrors.Selection, mName);
+      raise EUpdateError.CreateCode(TUpdateErrors.cSelection, mName);
     end;
   end;
 end;

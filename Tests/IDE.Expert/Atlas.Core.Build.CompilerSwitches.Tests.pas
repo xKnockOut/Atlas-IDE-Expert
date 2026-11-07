@@ -44,7 +44,7 @@ uses
   Atlas.Core.Build.CompilerSwitches;
 
 const
-  Answer =
+  cAnswer =
     '{"configuration":"Debug","platform":"Win64","hasProject":true,"summary":"HINTS OFF",' +
     '"switches":[{"name":"R","longName":"RANGECHECKS","value":"-","projectValue":"+","deviates":true,' +
     '"origin":{"kind":"directive","text":"{$R-}","file":"C:\\P\\A.pas","line":9}},' +
@@ -59,13 +59,13 @@ const
 
 function Parse(const AText: string; out AView: TAtlasCompilerSwitchView): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := TJSONObject.ParseJSONValue(AText);
+  mValue := TJSONObject.ParseJSONValue(AText);
   try
-    Result := TAtlasCompilerSwitchView.FromJson(Value, AView);
+    Result := TAtlasCompilerSwitchView.FromJson(mValue, AView);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -73,78 +73,78 @@ end;
 
 procedure TAtlasCompilerSwitchViewTests.ReadsSectionsInOrder;
 var
-  View: TAtlasCompilerSwitchView;
-  Names: string;
-  Row: TAtlasSwitchRow;
+  mView: TAtlasCompilerSwitchView;
+  mNames: string;
+  mRow: TAtlasSwitchRow;
 begin
-  Assert.IsTrue(Parse(Answer, View));
-  Assert.AreEqual('Debug', View.Configuration);
-  Assert.AreEqual('Win64', View.Platform);
-  Assert.AreEqual('HINTS OFF', View.Summary);
-  Names := '';
-  for Row in View.Rows do
+  Assert.IsTrue(Parse(cAnswer, mView));
+  Assert.AreEqual('Debug', mView.Configuration);
+  Assert.AreEqual('Win64', mView.Platform);
+  Assert.AreEqual('HINTS OFF', mView.Summary);
+  mNames := '';
+  for mRow in mView.Rows do
   begin
-    Names := Names + IntToStr(Ord(Row.Section)) + ':' + Row.Name + ' ';
+    mNames := mNames + IntToStr(Ord(mRow.Section)) + ':' + mRow.Name + ' ';
   end;
-  Assert.AreEqual('0:R 0:Q 1:HINTS 1:WARNINGS 1:SYMBOL_PLATFORM 2:DEBUG 3:platform 3:configuration ', Names);
-  Assert.AreEqual('RANGECHECKS', View.Rows[0].LongName);
-  Assert.AreEqual('Konfiguration Debug (.dproj)', View.Rows[5].OriginText);
+  Assert.AreEqual('0:R 0:Q 1:HINTS 1:WARNINGS 1:SYMBOL_PLATFORM 2:DEBUG 3:platform 3:configuration ', mNames);
+  Assert.AreEqual('RANGECHECKS', mView.Rows[0].LongName);
+  Assert.AreEqual('Konfiguration Debug (.dproj)', mView.Rows[5].OriginText);
 end;
 
 procedure TAtlasCompilerSwitchViewTests.DirectiveOriginCanJump;
 var
-  View: TAtlasCompilerSwitchView;
+  mView: TAtlasCompilerSwitchView;
 begin
-  Assert.IsTrue(Parse(Answer, View));
-  Assert.IsTrue(View.Rows[0].CanJump);
-  Assert.AreEqual('C:\P\A.pas', View.Rows[0].FileName);
-  Assert.AreEqual(9, View.Rows[0].Line);
-  Assert.IsTrue(View.Rows[4].Kind = TAtlasSwitchOriginKind.Include);
-  Assert.IsTrue(View.Rows[4].CanJump);
-  Assert.AreEqual('C:\P\Opt.inc', View.Rows[4].FileName);
-  Assert.IsFalse(View.Rows[1].CanJump);
-  Assert.IsFalse(View.Rows[2].CanJump);
+  Assert.IsTrue(Parse(cAnswer, mView));
+  Assert.IsTrue(mView.Rows[0].CanJump);
+  Assert.AreEqual('C:\P\A.pas', mView.Rows[0].FileName);
+  Assert.AreEqual(9, mView.Rows[0].Line);
+  Assert.IsTrue(mView.Rows[4].Kind = TAtlasSwitchOriginKind.Include);
+  Assert.IsTrue(mView.Rows[4].CanJump);
+  Assert.AreEqual('C:\P\Opt.inc', mView.Rows[4].FileName);
+  Assert.IsFalse(mView.Rows[1].CanJump);
+  Assert.IsFalse(mView.Rows[2].CanJump);
 end;
 
 procedure TAtlasCompilerSwitchViewTests.ProjectOriginOpensOptions;
 var
-  View: TAtlasCompilerSwitchView;
+  mView: TAtlasCompilerSwitchView;
 begin
-  Assert.IsTrue(Parse(Answer, View));
-  Assert.IsTrue(View.Rows[1].FromProject);
-  Assert.AreEqual('DCC_IntegerOverflowCheck', View.Rows[1].OriginText);
-  Assert.IsFalse(View.Rows[0].FromProject);
-  Assert.IsFalse(View.Rows[2].FromProject);
-  Assert.IsTrue(View.Rows[6].FromProject);
+  Assert.IsTrue(Parse(cAnswer, mView));
+  Assert.IsTrue(mView.Rows[1].FromProject);
+  Assert.AreEqual('DCC_IntegerOverflowCheck', mView.Rows[1].OriginText);
+  Assert.IsFalse(mView.Rows[0].FromProject);
+  Assert.IsFalse(mView.Rows[2].FromProject);
+  Assert.IsTrue(mView.Rows[6].FromProject);
 end;
 
 procedure TAtlasCompilerSwitchViewTests.TargetOnlyWithProject;
 var
-  View: TAtlasCompilerSwitchView;
+  mView: TAtlasCompilerSwitchView;
 begin
-  Assert.IsTrue(Parse('{"configuration":"","platform":"","hasProject":false,"summary":"","switches":[]}', View));
-  Assert.AreEqual(0, Integer(Length(View.Rows)));
+  Assert.IsTrue(Parse('{"configuration":"","platform":"","hasProject":false,"summary":"","switches":[]}', mView));
+  Assert.AreEqual(0, Integer(Length(mView.Rows)));
 end;
 
 procedure TAtlasCompilerSwitchViewTests.NullIsNoView;
 var
-  View: TAtlasCompilerSwitchView;
+  mView: TAtlasCompilerSwitchView;
 begin
-  Assert.IsFalse(Parse('null', View));
-  Assert.IsFalse(TAtlasCompilerSwitchView.FromJson(nil, View));
-  Assert.AreEqual(0, Integer(Length(View.Rows)));
+  Assert.IsFalse(Parse('null', mView));
+  Assert.IsFalse(TAtlasCompilerSwitchView.FromJson(nil, mView));
+  Assert.AreEqual(0, Integer(Length(mView.Rows)));
 end;
 
 procedure TAtlasCompilerSwitchViewTests.DeviationsOnly;
 var
-  View: TAtlasCompilerSwitchView;
-  Rows: TAtlasSwitchRows;
+  mView: TAtlasCompilerSwitchView;
+  mRows: TAtlasSwitchRows;
 begin
-  Assert.IsTrue(Parse(Answer, View));
-  Rows := View.Deviations;
-  Assert.AreEqual(2, Integer(Length(Rows)));
-  Assert.AreEqual('R', Rows[0].Name);
-  Assert.AreEqual('SYMBOL_PLATFORM', Rows[1].Name);
+  Assert.IsTrue(Parse(cAnswer, mView));
+  mRows := mView.Deviations;
+  Assert.AreEqual(2, Integer(Length(mRows)));
+  Assert.AreEqual('R', mRows[0].Name);
+  Assert.AreEqual('SYMBOL_PLATFORM', mRows[1].Name);
 end;
 
 procedure TAtlasCompilerSwitchViewTests.MinusIsTypographic;
@@ -156,37 +156,37 @@ end;
 
 procedure TAtlasCompilerSwitchViewTests.FollowWaitsForQuietCursor;
 var
-  Follow: TAtlasSwitchFollow;
+  mFollow: TAtlasSwitchFollow;
 begin
-  Follow := TAtlasSwitchFollow.Create;
+  mFollow := TAtlasSwitchFollow.Create;
   try
-    Assert.IsFalse(Follow.Due(1000), 'ohne Cursor nichts fällig');
-    Assert.IsTrue(Follow.Moved('C:\P\A.pas', 3, 0, 1000));
-    Assert.IsFalse(Follow.Due(1100));
-    Assert.IsTrue(Follow.Moved('C:\P\A.pas', 4, 0, 1100), 'neue Zeile');
-    Assert.IsFalse(Follow.Due(1200), '150 ms ab der letzten Bewegung');
-    Assert.IsFalse(Follow.Moved('c:\p\a.pas', 4, 0, 1240), 'gleiche Stelle');
-    Assert.IsTrue(Follow.Due(1250));
-    Assert.IsFalse(Follow.Due(1400), 'nur einmal');
-    Assert.AreEqual(4, Follow.Line);
+    Assert.IsFalse(mFollow.Due(1000), 'ohne Cursor nichts fällig');
+    Assert.IsTrue(mFollow.Moved('C:\P\A.pas', 3, 0, 1000));
+    Assert.IsFalse(mFollow.Due(1100));
+    Assert.IsTrue(mFollow.Moved('C:\P\A.pas', 4, 0, 1100), 'neue Zeile');
+    Assert.IsFalse(mFollow.Due(1200), '150 ms ab der letzten Bewegung');
+    Assert.IsFalse(mFollow.Moved('c:\p\a.pas', 4, 0, 1240), 'gleiche Stelle');
+    Assert.IsTrue(mFollow.Due(1250));
+    Assert.IsFalse(mFollow.Due(1400), 'nur einmal');
+    Assert.AreEqual(4, mFollow.Line);
   finally
-    Follow.Free;
+    mFollow.Free;
   end;
 end;
 
 procedure TAtlasCompilerSwitchViewTests.FollowInvalidateAsksAtOnce;
 var
-  Follow: TAtlasSwitchFollow;
+  mFollow: TAtlasSwitchFollow;
 begin
-  Follow := TAtlasSwitchFollow.Create;
+  mFollow := TAtlasSwitchFollow.Create;
   try
-    Follow.Moved('C:\P\A.pas', 3, 0, 1000);
-    Assert.IsTrue(Follow.Due(1200));
-    Follow.Invalidate;
-    Assert.IsTrue(Follow.Due(1201));
-    Assert.IsFalse(Follow.Due(1500));
+    mFollow.Moved('C:\P\A.pas', 3, 0, 1000);
+    Assert.IsTrue(mFollow.Due(1200));
+    mFollow.Invalidate;
+    Assert.IsTrue(mFollow.Due(1201));
+    Assert.IsFalse(mFollow.Due(1500));
   finally
-    Follow.Free;
+    mFollow.Free;
   end;
 end;
 

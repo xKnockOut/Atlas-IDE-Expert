@@ -26,7 +26,7 @@ type
     class function TimeOf(AObject: TJSONObject; const AName: string): TDateTime; static;
     /// <summary>"login" eines Benutzerobjekts, gekürzt; '' ohne.</summary>
     class function LoginOf(AValue: TJSONValue): string; static;
-    /// <summary>AText, höchstens TAtlasTrackerDetails.MaxText Zeichen.</summary>
+    /// <summary>AText, höchstens TAtlasTrackerDetails.cMaxText Zeichen.</summary>
     class function Limited(const AText: string): string; static;
   end;
 
@@ -39,36 +39,36 @@ uses
 
 class function TAtlasGitHubJson.TextOf(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
-  Value := AObject.Values[AName];
-  if Value is TJSONString then
+  mValue := AObject.Values[AName];
+  if mValue is TJSONString then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end;
 end;
 
 class function TAtlasGitHubJson.IntOf(AObject: TJSONObject; const AName: string): Integer;
 var
-  Value: TJSONValue;
-  Number: Int64;
+  mValue: TJSONValue;
+  mNumber: Int64;
 begin
   Result := 0;
-  Value := AObject.Values[AName];
-  if (Value is TJSONNumber) and TryStrToInt64(TJSONNumber(Value).Value, Number) and (Number > 0) and
-    (Number <= MaxInt) then
+  mValue := AObject.Values[AName];
+  if (mValue is TJSONNumber) and TryStrToInt64(TJSONNumber(mValue).Value, mNumber) and (mNumber > 0) and
+    (mNumber <= MaxInt) then
   begin
-    Result := Integer(Number);
+    Result := Integer(mNumber);
   end;
 end;
 
 class function TAtlasGitHubJson.FlagOf(AObject: TJSONObject; const AName: string): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := AObject.Values[AName];
-  Result := (Value is TJSONBool) and TJSONBool(Value).AsBoolean;
+  mValue := AObject.Values[AName];
+  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
 end;
 
 class function TAtlasGitHubJson.Shorten(const AText: string; AMax: Integer): string;
@@ -139,7 +139,7 @@ end;
 
 class function TAtlasGitHubJson.Limited(const AText: string): string;
 begin
-  Result := Copy(AText, 1, TAtlasTrackerDetails.MaxText);
+  Result := Copy(AText, 1, TAtlasTrackerDetails.cMaxText);
 end;
 
 end.

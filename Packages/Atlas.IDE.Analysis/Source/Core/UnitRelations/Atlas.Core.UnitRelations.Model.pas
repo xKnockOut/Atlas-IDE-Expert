@@ -91,9 +91,9 @@ type
 
   TAtlasUnitRelationsCommands = class
   public const
-    Command = 'atlas.unitRelations';
-    MoveCommand = 'atlas.server.moveUses';
-    RemoveCommand = 'atlas.server.removeUses';
+    cCommand = 'atlas.unitRelations';
+    cMoveCommand = 'atlas.server.moveUses';
+    cRemoveCommand = 'atlas.server.removeUses';
   public
     /// <summary>[uri, {"depth": 1 | 0}] für atlas.unitRelations.</summary>
     class function Arguments(const AUri: string; AAllLevels: Boolean): string; static;
@@ -106,7 +106,7 @@ type
   /// <summary>Letzte Antworten je Datei und Tiefe, die jüngste zuletzt; höchstens Capacity Einträge.</summary>
   TAtlasUnitRelationsCache = class
   public const
-    Capacity = 32;
+    cCapacity = 32;
   private
     FKeys: TList<string>;
     FAnswers: TDictionary<string, string>;
@@ -124,20 +124,20 @@ implementation
 
 function BoolOf(AObject: TJSONObject; const AName: string): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := AObject.GetValue(AName);
-  Result := (Value is TJSONBool) and TJSONBool(Value).AsBoolean;
+  mValue := AObject.GetValue(AName);
+  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
 end;
 
 function IntOf(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := AObject.GetValue(AName);
-  if Value is TJSONNumber then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONNumber then
   begin
-    Result := TJSONNumber(Value).AsInt;
+    Result := TJSONNumber(mValue).AsInt;
   end
   else
   begin
@@ -147,12 +147,12 @@ end;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    Result := Value.Value;
+    Result := mValue.Value;
   end
   else
   begin
@@ -164,7 +164,7 @@ function RelationsOf(AValue: TJSONValue): TAtlasUnitRelationList; forward;
 
 function RelationOf(AObject: TJSONObject): TAtlasUnitRelation;
 var
-  Location: TJSONValue;
+  mLocation: TJSONValue;
 begin
   Result := Default(TAtlasUnitRelation);
   Result.Name := TextOf(AObject, 'name');
@@ -178,30 +178,30 @@ begin
   Result.Repeated := BoolOf(AObject, 'repeated');
   Result.Line := -1;
   Result.Character := -1;
-  Location := AObject.GetValue('location');
-  if Location is TJSONObject then
+  mLocation := AObject.GetValue('location');
+  if mLocation is TJSONObject then
   begin
-    Result.LocationFile := TextOf(TJSONObject(Location), 'file');
-    Result.Line := IntOf(TJSONObject(Location), 'line', -1);
-    Result.Character := IntOf(TJSONObject(Location), 'character', -1);
+    Result.LocationFile := TextOf(TJSONObject(mLocation), 'file');
+    Result.Line := IntOf(TJSONObject(mLocation), 'line', -1);
+    Result.Character := IntOf(TJSONObject(mLocation), 'character', -1);
   end;
   Result.Children := RelationsOf(AObject.GetValue('children'));
 end;
 
 function RelationsOf(AValue: TJSONValue): TAtlasUnitRelationList;
 var
-  Item: TJSONValue;
+  mItem: TJSONValue;
 begin
   Result := nil;
   if not (AValue is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(AValue) do
+  for mItem in TJSONArray(AValue) do
   begin
-    if Item is TJSONObject then
+    if mItem is TJSONObject then
     begin
-      Result := Result + [RelationOf(TJSONObject(Item))];
+      Result := Result + [RelationOf(TJSONObject(mItem))];
     end;
   end;
 end;
@@ -210,8 +210,8 @@ end;
 
 class function TAtlasUnitRelationsModel.Parse(const AJson: string; out ARelations: TAtlasUnitRelations): Boolean;
 var
-  Value, Generation: TJSONValue;
-  Root: TJSONObject;
+  mValue, mGeneration: TJSONValue;
+  mRoot: TJSONObject;
 begin
   ARelations := Default(TAtlasUnitRelations);
   ARelations.Depth := 1;
@@ -220,59 +220,59 @@ begin
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    Root := TJSONObject(Value);
-    if not (Root.GetValue('uses') is TJSONArray) then
+    mRoot := TJSONObject(mValue);
+    if not (mRoot.GetValue('uses') is TJSONArray) then
     begin
       Exit;
     end;
-    ARelations.Found := BoolOf(Root, 'found');
-    ARelations.UnitName := TextOf(Root, 'unit');
-    ARelations.FileName := TextOf(Root, 'file');
-    ARelations.RecompileCount := IntOf(Root, 'recompileCount', 0);
-    ARelations.DependencyCount := IntOf(Root, 'dependencies', 0);
-    ARelations.DependentCount := IntOf(Root, 'dependents', 0);
-    ARelations.InCycle := BoolOf(Root, 'inCycle');
-    ARelations.CyclePath := TextOf(Root, 'cyclePath');
-    ARelations.Uses_ := RelationsOf(Root.GetValue('uses'));
-    ARelations.UsedBy := RelationsOf(Root.GetValue('usedBy'));
-    ARelations.Depth := IntOf(Root, 'depth', 1);
-    Generation := Root.GetValue('generation');
-    if Generation is TJSONNumber then
+    ARelations.Found := BoolOf(mRoot, 'found');
+    ARelations.UnitName := TextOf(mRoot, 'unit');
+    ARelations.FileName := TextOf(mRoot, 'file');
+    ARelations.RecompileCount := IntOf(mRoot, 'recompileCount', 0);
+    ARelations.DependencyCount := IntOf(mRoot, 'dependencies', 0);
+    ARelations.DependentCount := IntOf(mRoot, 'dependents', 0);
+    ARelations.InCycle := BoolOf(mRoot, 'inCycle');
+    ARelations.CyclePath := TextOf(mRoot, 'cyclePath');
+    ARelations.Uses_ := RelationsOf(mRoot.GetValue('uses'));
+    ARelations.UsedBy := RelationsOf(mRoot.GetValue('usedBy'));
+    ARelations.Depth := IntOf(mRoot, 'depth', 1);
+    mGeneration := mRoot.GetValue('generation');
+    if mGeneration is TJSONNumber then
     begin
-      ARelations.Generation := TJSONNumber(Generation).AsInt64;
+      ARelations.Generation := TJSONNumber(mGeneration).AsInt64;
     end;
     Result := True;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TAtlasUnitRelationsModel.Filter(const AItems: TAtlasUnitRelationList;
   const AText: string): TAtlasUnitRelationList;
 var
-  Index: Integer;
-  Item: TAtlasUnitRelation;
-  Needle: string;
+  mIndex: Integer;
+  mItem: TAtlasUnitRelation;
+  mNeedle: string;
 begin
-  Needle := LowerCase(Trim(AText));
-  if Needle = '' then
+  mNeedle := LowerCase(Trim(AText));
+  if mNeedle = '' then
   begin
     Exit(AItems);
   end;
   Result := nil;
-  for Index := 0 to High(AItems) do
+  for mIndex := 0 to High(AItems) do
   begin
-    Item := AItems[Index];
-    Item.Children := Filter(Item.Children, Needle);
-    if (Pos(Needle, LowerCase(Item.Name)) > 0) or (Item.Children <> nil) then
+    mItem := AItems[mIndex];
+    mItem.Children := Filter(mItem.Children, mNeedle);
+    if (Pos(mNeedle, LowerCase(mItem.Name)) > 0) or (mItem.Children <> nil) then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
 end;
@@ -280,19 +280,19 @@ end;
 class procedure TAtlasUnitRelationsModel.SplitLibrary(const AItems: TAtlasUnitRelationList; out AProject,
   ALibrary: TAtlasUnitRelationList);
 var
-  Item: TAtlasUnitRelation;
+  mItem: TAtlasUnitRelation;
 begin
   AProject := nil;
   ALibrary := nil;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if Item.Library_ then
+    if mItem.Library_ then
     begin
-      ALibrary := ALibrary + [Item];
+      ALibrary := ALibrary + [mItem];
     end
     else
     begin
-      AProject := AProject + [Item];
+      AProject := AProject + [mItem];
     end;
   end;
 end;
@@ -300,31 +300,31 @@ end;
 class procedure TAtlasUnitRelationsModel.SplitUsedBy(const AItems: TAtlasUnitRelationList; out AInterface,
   AImplementation: TAtlasUnitRelationList);
 var
-  Item: TAtlasUnitRelation;
+  mItem: TAtlasUnitRelation;
 begin
   AInterface := nil;
   AImplementation := nil;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if Item.InInterface then
+    if mItem.InInterface then
     begin
-      AInterface := AInterface + [Item];
+      AInterface := AInterface + [mItem];
     end
     else
     begin
-      AImplementation := AImplementation + [Item];
+      AImplementation := AImplementation + [mItem];
     end;
   end;
 end;
 
 class function TAtlasUnitRelationsModel.Movable(const AItems: TAtlasUnitRelationList): Integer;
 var
-  Item: TAtlasUnitRelation;
+  mItem: TAtlasUnitRelation;
 begin
   Result := 0;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if Item.OnlyImplementation and Item.InInterface then
+    if mItem.OnlyImplementation and mItem.InInterface then
     begin
       Inc(Result);
     end;
@@ -335,61 +335,61 @@ end;
 
 class function TAtlasUnitRelationsCommands.Arguments(const AUri: string; AAllLevels: Boolean): string;
 var
-  Items: TJSONArray;
-  Option: TJSONObject;
+  mItems: TJSONArray;
+  mOption: TJSONObject;
 begin
-  Items := TJSONArray.Create;
+  mItems := TJSONArray.Create;
   try
-    Items.Add(AUri);
-    Option := TJSONObject.Create;
+    mItems.Add(AUri);
+    mOption := TJSONObject.Create;
     if AAllLevels then
     begin
-      Option.AddPair('depth', TJSONNumber.Create(0));
+      mOption.AddPair('depth', TJSONNumber.Create(0));
     end
     else
     begin
-      Option.AddPair('depth', TJSONNumber.Create(1));
+      mOption.AddPair('depth', TJSONNumber.Create(1));
     end;
-    Items.AddElement(Option);
-    Result := Items.ToJSON;
+    mItems.AddElement(mOption);
+    Result := mItems.ToJSON;
   finally
-    Items.Free;
+    mItems.Free;
   end;
 end;
 
 class function TAtlasUnitRelationsCommands.MoveArguments(const AUri, AUnit: string; AToInterface: Boolean): string;
 var
-  Items: TJSONArray;
+  mItems: TJSONArray;
 begin
-  Items := TJSONArray.Create;
+  mItems := TJSONArray.Create;
   try
-    Items.Add(AUri);
-    Items.Add(AUnit);
+    mItems.Add(AUri);
+    mItems.Add(AUnit);
     if AToInterface then
     begin
-      Items.Add('interface');
+      mItems.Add('interface');
     end
     else
     begin
-      Items.Add('implementation');
+      mItems.Add('implementation');
     end;
-    Result := Items.ToJSON;
+    Result := mItems.ToJSON;
   finally
-    Items.Free;
+    mItems.Free;
   end;
 end;
 
 class function TAtlasUnitRelationsCommands.RemoveArguments(const AUri, AUnit: string): string;
 var
-  Items: TJSONArray;
+  mItems: TJSONArray;
 begin
-  Items := TJSONArray.Create;
+  mItems := TJSONArray.Create;
   try
-    Items.Add(AUri);
-    Items.Add(AUnit);
-    Result := Items.ToJSON;
+    mItems.Add(AUri);
+    mItems.Add(AUnit);
+    Result := mItems.ToJSON;
   finally
-    Items.Free;
+    mItems.Free;
   end;
 end;
 
@@ -416,17 +416,17 @@ end;
 
 procedure TAtlasUnitRelationsCache.Put(const AFileName: string; AAllLevels: Boolean; const AJson: string);
 var
-  Key: string;
+  mKey: string;
 begin
   if (AFileName = '') or (AJson = '') then
   begin
     Exit;
   end;
-  Key := KeyOf(AFileName, AAllLevels);
-  FKeys.Remove(Key);
-  FKeys.Add(Key);
-  FAnswers.AddOrSetValue(Key, AJson);
-  while FKeys.Count > Capacity do
+  mKey := KeyOf(AFileName, AAllLevels);
+  FKeys.Remove(mKey);
+  FKeys.Add(mKey);
+  FAnswers.AddOrSetValue(mKey, AJson);
+  while FKeys.Count > cCapacity do
   begin
     FAnswers.Remove(FKeys[0]);
     FKeys.Delete(0);

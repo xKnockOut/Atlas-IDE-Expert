@@ -303,7 +303,7 @@ begin
     begin
       AParts.Connection.Stop;
     end;
-  AParts.Session := TShellSession.Create(mServices, TShellParts.RequestTimeoutMs);
+  AParts.Session := TShellSession.Create(mServices, TShellParts.cRequestTimeoutMs);
 end;
 
 end.

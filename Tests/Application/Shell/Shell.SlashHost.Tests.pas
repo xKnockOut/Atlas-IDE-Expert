@@ -45,13 +45,13 @@ uses
 /// <summary>Host ohne Ordner; ACalls zählt die Aufrufe von WorkspaceOf.</summary>
 function CreateHost(const ACalls: PInteger): TShellSlashHost;
 var
-  Calls: PInteger;
+  mCalls: PInteger;
 begin
-  Calls := ACalls;
+  mCalls := ACalls;
   Result := TShellSlashHost.Create(TShellSlashSources.New(
     function(const AUri: string): TShellWorkspace
     begin
-      Inc(Calls^);
+      Inc(mCalls^);
       Result := nil;
     end,
     function(const AFileName: string; out AText: string): Boolean
@@ -75,109 +75,109 @@ end;
 
 procedure TShellSlashHostTests.SelectBuildRunsThroughLoopRunner;
 var
-  Host: TShellSlashHost;
-  Ref: ISlashHost;
-  Calls: Integer;
-  Queued: TList<TProc>;
+  mHost: TShellSlashHost;
+  mRef: ISlashHost;
+  mCalls: Integer;
+  mQueued: TList<TProc>;
 begin
-  Calls := 0;
-  Queued := TList<TProc>.Create;
+  mCalls := 0;
+  mQueued := TList<TProc>.Create;
   try
-    Host := CreateHost(@Calls);
-    Ref := Host;
-    Host.RunInLoop :=
+    mHost := CreateHost(@mCalls);
+    mRef := mHost;
+    mHost.RunInLoop :=
       procedure(const AWork: TProc)
       begin
-        Queued.Add(AWork);
+        mQueued.Add(AWork);
       end;
-    Host.SelectBuild('file:///C:/P/A.pas', 'Release', 'Win64');
+    mHost.SelectBuild('file:///C:/P/A.pas', 'Release', 'Win64');
     // Noch nichts im Worker: Erst die Schleife sucht den Ordner und lädt neu.
-    Assert.AreEqual(0, Calls);
-    Assert.AreEqual(1, Integer(Queued.Count));
-    Queued[0]();
-    Assert.AreEqual(1, Calls);
+    Assert.AreEqual(0, mCalls);
+    Assert.AreEqual(1, Integer(mQueued.Count));
+    mQueued[0]();
+    Assert.AreEqual(1, mCalls);
   finally
-    Ref := nil;
-    Queued.Free;
+    mRef := nil;
+    mQueued.Free;
   end;
 end;
 
 procedure TShellSlashHostTests.WithoutLoopRunnerRunsImmediately;
 var
-  Host: TShellSlashHost;
-  Ref: ISlashHost;
-  Calls: Integer;
+  mHost: TShellSlashHost;
+  mRef: ISlashHost;
+  mCalls: Integer;
 begin
-  Calls := 0;
-  Host := CreateHost(@Calls);
-  Ref := Host;
-  Host.SelectBuild('file:///C:/P/A.pas', 'Release', 'Win64');
-  Assert.AreEqual(1, Calls);
+  mCalls := 0;
+  mHost := CreateHost(@mCalls);
+  mRef := mHost;
+  mHost.SelectBuild('file:///C:/P/A.pas', 'Release', 'Win64');
+  Assert.AreEqual(1, mCalls);
 end;
 
 procedure TShellSlashHostTests.WriteFilesOnDisk;
 var
-  Host: TShellSlashHost;
-  Ref: ISlashHost;
-  Calls: Integer;
-  Folder, NewFile, OldFile, Text: string;
-  FileFormat: TFileFormat;
+  mHost: TShellSlashHost;
+  mRef: ISlashHost;
+  mCalls: Integer;
+  mFolder, mNewFile, mOldFile, mText: string;
+  mFileFormat: TFileFormat;
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'AtlasSlashHost' + IntToStr(Random(1000000)));
-  NewFile := TPath.Combine(TPath.Combine(Folder, 'Sub'), 'Neu.pas');
-  OldFile := TPath.Combine(Folder, 'App.dpr');
-  ForceDirectories(Folder);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasSlashHost' + IntToStr(Random(1000000)));
+  mNewFile := TPath.Combine(TPath.Combine(mFolder, 'Sub'), 'Neu.pas');
+  mOldFile := TPath.Combine(mFolder, 'App.dpr');
+  ForceDirectories(mFolder);
   try
-    TFileEncoding.SaveToFile(OldFile, 'program App;'#10'end.'#10, TFileFormat.Create(TFileEncodingKind.Utf8,
+    TFileEncoding.SaveToFile(mOldFile, 'program App;'#10'end.'#10, TFileFormat.Create(TFileEncodingKind.Utf8,
       TLineBreakStyle.LF));
-    Calls := 0;
-    Host := CreateHost(@Calls);
-    Ref := Host;
-    Host.WriteFiles('file:///x', [TSlashFile.Create(NewFile, 'unit Neu;'#13#10'end.'#13#10, True),
-      TSlashFile.Create(OldFile, 'program App;'#10'uses Neu;'#10'end.'#10, False)], '');
+    mCalls := 0;
+    mHost := CreateHost(@mCalls);
+    mRef := mHost;
+    mHost.WriteFiles('file:///x', [TSlashFile.Create(mNewFile, 'unit Neu;'#13#10'end.'#13#10, True),
+      TSlashFile.Create(mOldFile, 'program App;'#10'uses Neu;'#10'end.'#10, False)], '');
     // Neue Datei: Ordner angelegt, UTF-8 mit BOM und CRLF; vorhandene behält ihr Format.
-    Text := TFileEncoding.LoadFromFile(NewFile, FileFormat);
-    Assert.AreEqual('unit Neu;'#13#10'end.'#13#10, Text);
-    Assert.IsTrue(FileFormat.Encoding = TFileEncodingKind.Utf8Bom);
-    Text := TFileEncoding.LoadFromFile(OldFile, FileFormat);
-    Assert.AreEqual('program App;'#10'uses Neu;'#10'end.'#10, Text);
-    Assert.IsTrue(FileFormat.Encoding = TFileEncodingKind.Utf8);
+    mText := TFileEncoding.LoadFromFile(mNewFile, mFileFormat);
+    Assert.AreEqual('unit Neu;'#13#10'end.'#13#10, mText);
+    Assert.IsTrue(mFileFormat.Encoding = TFileEncodingKind.Utf8Bom);
+    mText := TFileEncoding.LoadFromFile(mOldFile, mFileFormat);
+    Assert.AreEqual('program App;'#10'uses Neu;'#10'end.'#10, mText);
+    Assert.IsTrue(mFileFormat.Encoding = TFileEncodingKind.Utf8);
     // Danach neu geladen (ohne Schleife sofort).
-    Assert.AreEqual(1, Calls);
+    Assert.AreEqual(1, mCalls);
   finally
-    Ref := nil;
-    TDirectory.Delete(Folder, True);
+    mRef := nil;
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 
 procedure TShellSlashHostTests.NewFileFollowsCommandFile;
 var
-  Host: TShellSlashHost;
-  Ref: ISlashHost;
-  Calls: Integer;
-  Folder, NewFile, MainFile, Text: string;
-  FileFormat: TFileFormat;
+  mHost: TShellSlashHost;
+  mRef: ISlashHost;
+  mCalls: Integer;
+  mFolder, mNewFile, mMainFile, mText: string;
+  mFileFormat: TFileFormat;
 begin
   // #299 (#121): Die neue Unit übernimmt die Kodierung der Datei, in der der Befehl stand.
-  Folder := TPath.Combine(TPath.GetTempPath, 'AtlasSlashHost' + IntToStr(Random(1000000)));
-  NewFile := TPath.Combine(Folder, 'Zaehler.pas');
-  MainFile := TPath.Combine(Folder, 'Main.pas');
-  ForceDirectories(Folder);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasSlashHost' + IntToStr(Random(1000000)));
+  mNewFile := TPath.Combine(mFolder, 'Zaehler.pas');
+  mMainFile := TPath.Combine(mFolder, 'Main.pas');
+  ForceDirectories(mFolder);
   try
-    TFileEncoding.SaveToFile(MainFile, 'unit Main;'#10'end.'#10, TFileFormat.Create(TFileEncodingKind.Utf8,
+    TFileEncoding.SaveToFile(mMainFile, 'unit Main;'#10'end.'#10, TFileFormat.Create(TFileEncodingKind.Utf8,
       TLineBreakStyle.LF));
-    Calls := 0;
-    Host := CreateHost(@Calls);
-    Ref := Host;
-    Host.WriteFiles(TDocumentUris.FromPath(MainFile), [TSlashFile.Create(NewFile, 'unit Zaehler;'#10'end.'#10,
+    mCalls := 0;
+    mHost := CreateHost(@mCalls);
+    mRef := mHost;
+    mHost.WriteFiles(TDocumentUris.FromPath(mMainFile), [TSlashFile.Create(mNewFile, 'unit Zaehler;'#10'end.'#10,
       True)], '');
-    Text := TFileEncoding.LoadFromFile(NewFile, FileFormat);
-    Assert.AreEqual('unit Zaehler;'#10'end.'#10, Text);
-    Assert.IsTrue(FileFormat.Encoding = TFileEncodingKind.Utf8);
-    Assert.IsTrue(FileFormat.LineBreak = TLineBreakStyle.LF);
+    mText := TFileEncoding.LoadFromFile(mNewFile, mFileFormat);
+    Assert.AreEqual('unit Zaehler;'#10'end.'#10, mText);
+    Assert.IsTrue(mFileFormat.Encoding = TFileEncodingKind.Utf8);
+    Assert.IsTrue(mFileFormat.LineBreak = TLineBreakStyle.LF);
   finally
-    Ref := nil;
-    TDirectory.Delete(Folder, True);
+    mRef := nil;
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 

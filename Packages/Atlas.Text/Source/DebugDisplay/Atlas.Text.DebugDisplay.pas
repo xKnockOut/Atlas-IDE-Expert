@@ -67,12 +67,12 @@ type
 
   TDebugDisplayText = class
   public const
-    CommentKey = 'atlas-debug:';
-    ChildrenKey = 'atlas-debug-children:';
-    AttributeName = 'AtlasDebugDisplay';
-    ChildrenAttributeName = 'AtlasDebugChildren';
+    cCommentKey = 'atlas-debug:';
+    cChildrenKey = 'atlas-debug-children:';
+    cAttributeName = 'AtlasDebugDisplay';
+    cChildrenAttributeName = 'AtlasDebugChildren';
     /// <summary>Name der mitgelieferten Unit mit den Attributen.</summary>
-    AttributeUnit = 'Atlas.Debug.Attributes';
+    cAttributeUnit = 'Atlas.Debug.Attributes';
   public
     /// <summary>Pascal-Zeichenkette ab AStart (1-basiert, auf dem Anführungszeichen); AEnd hinter dem
     /// schließenden. False ohne gültige Zeichenkette.</summary>
@@ -115,14 +115,14 @@ end;
 
 function TDebugDisplaySegment.Root: string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := 1;
-  while (Index <= Length(Text)) and IsNameChar(Text[Index]) do
+  mIndex := 1;
+  while (mIndex <= Length(Text)) and IsNameChar(Text[mIndex]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Copy(Text, 1, Index - 1);
+  Result := Copy(Text, 1, mIndex - 1);
   if (Result <> '') and Result[1].IsDigit then
   begin
     Result := '';
@@ -131,17 +131,17 @@ end;
 
 function TDebugDisplaySegment.NeedsCall: Boolean;
 var
-  Index: Integer;
-  InString: Boolean;
+  mIndex: Integer;
+  mInString: Boolean;
 begin
-  InString := False;
-  for Index := 1 to Length(Text) do
+  mInString := False;
+  for mIndex := 1 to Length(Text) do
   begin
-    if Text[Index] = '''' then
+    if Text[mIndex] = '''' then
     begin
-      InString := not InString;
+      mInString := not mInString;
     end
-    else if not InString and (Text[Index] = '(') and (Index > 1) and IsNameChar(Text[Index - 1]) then
+    else if not mInString and (Text[mIndex] = '(') and (mIndex > 1) and IsNameChar(Text[mIndex - 1]) then
     begin
       Exit(True);
     end;
@@ -158,14 +158,14 @@ end;
 
 function TDebugDisplayTemplate.Placeholders: TArray<TDebugDisplaySegment>;
 var
-  Segment: TDebugDisplaySegment;
+  mSegment: TDebugDisplaySegment;
 begin
   Result := nil;
-  for Segment in Segments do
+  for mSegment in Segments do
   begin
-    if Segment.Kind = TDebugDisplaySegmentKind.Placeholder then
+    if mSegment.Kind = TDebugDisplaySegmentKind.Placeholder then
     begin
-      Result := Result + [Segment];
+      Result := Result + [mSegment];
     end;
   end;
 end;
@@ -342,7 +342,7 @@ end;
 class function TDebugDisplayText.PascalString(const AText: string; AStart: Integer; out AValue: string;
   out AEnd: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   AValue := '';
   AEnd := AStart;
@@ -350,22 +350,22 @@ begin
   begin
     Exit(False);
   end;
-  Index := AStart + 1;
-  while Index <= Length(AText) do
+  mIndex := AStart + 1;
+  while mIndex <= Length(AText) do
   begin
-    if AText[Index] = '''' then
+    if AText[mIndex] = '''' then
     begin
-      if (Index < Length(AText)) and (AText[Index + 1] = '''') then
+      if (mIndex < Length(AText)) and (AText[mIndex + 1] = '''') then
       begin
         AValue := AValue + '''';
-        Inc(Index, 2);
+        Inc(mIndex, 2);
         Continue;
       end;
-      AEnd := Index + 1;
+      AEnd := mIndex + 1;
       Exit(True);
     end;
-    AValue := AValue + AText[Index];
-    Inc(Index);
+    AValue := AValue + AText[mIndex];
+    Inc(mIndex);
   end;
   Result := False;
 end;
@@ -374,67 +374,67 @@ end;
 /// </summary>
 function AfterCommentKey(const ALine, AKey: string; out AStart: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
   AStart := 0;
-  Index := Pos('//', ALine);
-  if (Index = 0) or (Trim(Copy(ALine, 1, Index - 1)) <> '') then
+  mIndex := Pos('//', ALine);
+  if (mIndex = 0) or (Trim(Copy(ALine, 1, mIndex - 1)) <> '') then
   begin
     Exit;
   end;
-  Inc(Index, 2);
-  while (Index <= Length(ALine)) and (ALine[Index] = ' ') do
+  Inc(mIndex, 2);
+  while (mIndex <= Length(ALine)) and (ALine[mIndex] = ' ') do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  if not SameText(Copy(ALine, Index, Length(AKey)), AKey) then
+  if not SameText(Copy(ALine, mIndex, Length(AKey)), AKey) then
   begin
     Exit;
   end;
-  Inc(Index, Length(AKey));
-  while (Index <= Length(ALine)) and (ALine[Index] = ' ') do
+  Inc(mIndex, Length(AKey));
+  while (mIndex <= Length(ALine)) and (ALine[mIndex] = ' ') do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  AStart := Index;
+  AStart := mIndex;
   Result := True;
 end;
 
 class function TDebugDisplayText.CommentTemplate(const ALine: string; out ATemplate: string;
   out AColumn: Integer): Boolean;
 var
-  Start, Stop: Integer;
+  mStart, mStop: Integer;
 begin
   ATemplate := '';
   AColumn := -1;
-  if not AfterCommentKey(ALine, CommentKey, Start) then
+  if not AfterCommentKey(ALine, cCommentKey, mStart) then
   begin
     Exit(False);
   end;
-  if (Start <= Length(ALine)) and (ALine[Start] = '''') then
+  if (mStart <= Length(ALine)) and (ALine[mStart] = '''') then
   begin
-    Result := PascalString(ALine, Start, ATemplate, Stop);
-    AColumn := Start;
+    Result := PascalString(ALine, mStart, ATemplate, mStop);
+    AColumn := mStart;
   end
   else
   begin
-    ATemplate := TrimRight(Copy(ALine, Start, MaxInt));
-    AColumn := Start - 1;
+    ATemplate := TrimRight(Copy(ALine, mStart, MaxInt));
+    AColumn := mStart - 1;
     Result := ATemplate <> '';
   end;
 end;
 
 class function TDebugDisplayText.CommentChildren(const ALine: string; out ANames: TArray<string>): Boolean;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
   ANames := nil;
-  if not AfterCommentKey(ALine, ChildrenKey, Start) then
+  if not AfterCommentKey(ALine, cChildrenKey, mStart) then
   begin
     Exit(False);
   end;
-  ANames := SplitNames(Copy(ALine, Start, MaxInt));
+  ANames := SplitNames(Copy(ALine, mStart, MaxInt));
   Result := Length(ANames) > 0;
 end;
 
@@ -507,47 +507,47 @@ end;
 class function TDebugDisplayText.AttributeTemplate(const ALine: string; out ATemplate: string;
   out AColumn: Integer): Boolean;
 begin
-  Result := AttributeString(ALine, AttributeName, ATemplate, AColumn);
+  Result := AttributeString(ALine, cAttributeName, ATemplate, AColumn);
 end;
 
 class function TDebugDisplayText.AttributeChildren(const ALine: string; out ANames: TArray<string>): Boolean;
 var
-  Text: string;
-  Column: Integer;
+  mText: string;
+  mColumn: Integer;
 begin
   ANames := nil;
-  Result := AttributeString(ALine, ChildrenAttributeName, Text, Column);
+  Result := AttributeString(ALine, cChildrenAttributeName, mText, mColumn);
   if Result then
   begin
-    ANames := SplitNames(Text);
+    ANames := SplitNames(mText);
     Result := Length(ANames) > 0;
   end;
 end;
 
 class function TDebugDisplayText.SplitNames(const AText: string): TArray<string>;
 var
-  Part, Name, Known: string;
-  Seen: Boolean;
+  mPart, mName, mKnown: string;
+  mSeen: Boolean;
 begin
   Result := nil;
-  for Part in AText.Split([',']) do
+  for mPart in AText.Split([',']) do
   begin
-    Name := Trim(Part);
-    if Name = '' then
+    mName := Trim(mPart);
+    if mName = '' then
     begin
       Continue;
     end;
-    Seen := False;
-    for Known in Result do
+    mSeen := False;
+    for mKnown in Result do
     begin
-      if SameText(Known, Name) then
+      if SameText(mKnown, mName) then
       begin
-        Seen := True;
+        mSeen := True;
       end;
     end;
-    if not Seen then
+    if not mSeen then
     begin
-      Result := Result + [Name];
+      Result := Result + [mName];
     end;
   end;
 end;
@@ -559,47 +559,47 @@ end;
 
 function IsAttributeLine(const ALine: string): Boolean;
 var
-  Trimmed: string;
+  mTrimmed: string;
 begin
-  Trimmed := Trim(ALine);
-  Result := StartsStr('[', Trimmed) and EndsStr(']', Trimmed);
+  mTrimmed := Trim(ALine);
+  Result := StartsStr('[', mTrimmed) and EndsStr(']', mTrimmed);
 end;
 
 class function TDebugDisplayText.RuleAbove(const ALines: TArray<string>; ADeclLine: Integer;
   out ARule: TDebugDisplaySource): Boolean;
 var
-  Line: Integer;
+  mLine: Integer;
 
   procedure Inspect(ALineIndex: Integer; const AText: string; AAttributesOnly: Boolean);
   var
-    Template: string;
-    Column: Integer;
-    Names: TArray<string>;
+    mTemplate: string;
+    mColumn: Integer;
+    mNames: TArray<string>;
   begin
     // Die nächste Zeile über der Deklaration gewinnt; Attribut vor Kommentar in derselben Zeile.
     if not ARule.HasTemplate then
     begin
-      if TDebugDisplayText.AttributeTemplate(AText, Template, Column) then
+      if TDebugDisplayText.AttributeTemplate(AText, mTemplate, mColumn) then
       begin
         ARule.Origin := TDebugDisplayOrigin.Attribute;
-        ARule.Template := Template;
+        ARule.Template := mTemplate;
         ARule.TemplateLine := ALineIndex;
-        ARule.TemplateColumn := Column;
+        ARule.TemplateColumn := mColumn;
       end
-      else if not AAttributesOnly and TDebugDisplayText.CommentTemplate(AText, Template, Column) then
+      else if not AAttributesOnly and TDebugDisplayText.CommentTemplate(AText, mTemplate, mColumn) then
       begin
         ARule.Origin := TDebugDisplayOrigin.Comment;
-        ARule.Template := Template;
+        ARule.Template := mTemplate;
         ARule.TemplateLine := ALineIndex;
-        ARule.TemplateColumn := Column;
+        ARule.TemplateColumn := mColumn;
       end;
     end;
     if ARule.Children = nil then
     begin
-      if TDebugDisplayText.AttributeChildren(AText, Names) or
-        (not AAttributesOnly and TDebugDisplayText.CommentChildren(AText, Names)) then
+      if TDebugDisplayText.AttributeChildren(AText, mNames) or
+        (not AAttributesOnly and TDebugDisplayText.CommentChildren(AText, mNames)) then
       begin
-        ARule.Children := Names;
+        ARule.Children := mNames;
         ARule.ChildrenLine := ALineIndex;
       end;
     end;
@@ -619,11 +619,11 @@ begin
   begin
     Inspect(ADeclLine, ALines[ADeclLine], True);
   end;
-  Line := ADeclLine - 1;
-  while (Line >= 0) and (IsCommentLine(ALines[Line]) or IsAttributeLine(ALines[Line])) do
+  mLine := ADeclLine - 1;
+  while (mLine >= 0) and (IsCommentLine(ALines[mLine]) or IsAttributeLine(ALines[mLine])) do
   begin
-    Inspect(Line, ALines[Line], False);
-    Dec(Line);
+    Inspect(mLine, ALines[mLine], False);
+    Dec(mLine);
   end;
   Result := ARule.HasTemplate or (ARule.Children <> nil);
 end;
@@ -631,23 +631,23 @@ end;
 class function TDebugDisplayText.SourceColumn(const ALine: string; ATemplateColumn: Integer;
   const ASegment: TDebugDisplaySegment): Integer;
 var
-  Index, Offset: Integer;
-  Quoted: Boolean;
+  mIndex, mOffset: Integer;
+  mQuoted: Boolean;
 begin
   // Vorlage zeichenweise gegen die Zeile abgleichen; in einer Pascal-Zeichenkette steht ' doppelt.
-  Quoted := (ATemplateColumn > 0) and (ATemplateColumn <= Length(ALine)) and (ALine[ATemplateColumn] = '''');
-  Index := ATemplateColumn + 1;
-  Offset := 0;
-  while (Offset < ASegment.Offset) and (Index <= Length(ALine)) do
+  mQuoted := (ATemplateColumn > 0) and (ATemplateColumn <= Length(ALine)) and (ALine[ATemplateColumn] = '''');
+  mIndex := ATemplateColumn + 1;
+  mOffset := 0;
+  while (mOffset < ASegment.Offset) and (mIndex <= Length(ALine)) do
   begin
-    if Quoted and (ALine[Index] = '''') then
+    if mQuoted and (ALine[mIndex] = '''') then
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
-    Inc(Index);
-    Inc(Offset);
+    Inc(mIndex);
+    Inc(mOffset);
   end;
-  Result := Index - 1;
+  Result := mIndex - 1;
 end;
 
 end.

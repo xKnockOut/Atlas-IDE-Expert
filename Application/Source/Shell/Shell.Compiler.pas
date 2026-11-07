@@ -203,47 +203,47 @@ end;
 
 procedure TShellCompilerEditions.Store(const ABdsRoot, AVersion, AStamp: string; AEdition: TCompilerEdition);
 var
-  Entry: TCompilerEditionEntry;
+  mEntry: TCompilerEditionEntry;
 begin
-  Entry := Default(TCompilerEditionEntry);
-  Entry.Root := ABdsRoot;
-  Entry.Version := AVersion;
-  Entry.Edition := AEdition;
-  Entry.Stamp := AStamp;
-  Entry.Checked := DateToISO8601(Now, False);
-  FCache.Store(Entry);
+  mEntry := Default(TCompilerEditionEntry);
+  mEntry.Root := ABdsRoot;
+  mEntry.Version := AVersion;
+  mEntry.Edition := AEdition;
+  mEntry.Stamp := AStamp;
+  mEntry.Checked := DateToISO8601(Now, False);
+  FCache.Store(mEntry);
   Save;
 end;
 
 function TShellCompilerEditions.Resolve(const ABdsRoot, AVersion, AExecutable: string): TCompilerEdition;
 var
-  Stamp: string;
-  Output: TArray<string>;
-  Request: TCompilerRequest;
-  Exists: Boolean;
+  mStamp: string;
+  mOutput: TArray<string>;
+  mRequest: TCompilerRequest;
+  mExists: Boolean;
 begin
-  Stamp := StampOf(AExecutable);
+  mStamp := StampOf(AExecutable);
   TMonitor.Enter(FLock);
   try
     EnsureLoaded;
-    Result := FCache.Find(ABdsRoot, AVersion, Stamp);
+    Result := FCache.Find(ABdsRoot, AVersion, mStamp);
     if Result <> TCompilerEdition.Unknown then
     begin
       Exit;
     end;
-    Exists := Stamp <> '';
-    Output := nil;
-    if Exists then
+    mExists := mStamp <> '';
+    mOutput := nil;
+    if mExists then
     begin
       // Ohne Argumente nennt sich dcc mit Kopfzeile und Aufrufhilfe; Starter und Community melden den Lizenztext.
-      Request := Default(TCompilerRequest);
-      Request.Executable := AExecutable;
-      Request.WorkingDir := ExtractFileDir(AExecutable);
+      mRequest := Default(TCompilerRequest);
+      mRequest.Executable := AExecutable;
+      mRequest.WorkingDir := ExtractFileDir(AExecutable);
       try
-        FProcess.Run(Request,
+        FProcess.Run(mRequest,
           procedure(const ALine: string)
           begin
-            Output := Output + [ALine];
+            mOutput := mOutput + [ALine];
           end);
       except
         on E: ECompilerCancelled do
@@ -252,12 +252,12 @@ begin
           FLogger.Warning('Probelauf des Compilers fehlgeschlagen: ' + E.ClassName);
       end;
     end;
-    Result := TCompilerEditions.Detect(Exists, Output);
+    Result := TCompilerEditions.Detect(mExists, mOutput);
     FLogger.Info(Format('Delphi %s: %s', [AVersion, TCompilerEditions.Describe(Result)]));
     // Unklar (keine Ausgabe) wird nicht gemerkt; der nächste Lauf prüft erneut.
     if Result <> TCompilerEdition.Unknown then
     begin
-      Store(ABdsRoot, AVersion, Stamp, Result);
+      Store(ABdsRoot, AVersion, mStamp, Result);
     end;
   finally
     TMonitor.Exit(FLock);
@@ -293,23 +293,23 @@ end;
 function TShellIdeCompiler.Run(const AProcess: ICompilerProcess; const AScript: string;
   const AArguments: TArray<string>; const AWorkingDir: string; out AOutput: TArray<string>): Integer;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := nil;
+  mLines := nil;
   Result := AProcess.Run(TCompilerIdeCommand.Request(FPowerShell, AScript, AArguments, AWorkingDir),
     procedure(const ALine: string)
     begin
-      Lines := Lines + [ALine];
+      mLines := mLines + [ALine];
     end);
-  AOutput := Lines;
+  AOutput := mLines;
 end;
 
 function TShellIdeCompiler.EnsureInstance(const AScript, AProject: string; out AError: string): Boolean;
 var
-  Output: TArray<string>;
-  Running: TArray<Cardinal>;
-  mPid, Other: Cardinal;
-  Code: Integer;
+  mOutput: TArray<string>;
+  mRunning: TArray<Cardinal>;
+  mPid, mOther: Cardinal;
+  mCode: Integer;
 begin
   AError := '';
   // Eigene Instanz wiederverwenden, solange sie läuft und zum selben cc.ps1 gehört.
@@ -322,17 +322,17 @@ begin
     Quit(FProcess);
   end;
   FPid := 0;
-  Running := FIdes();
-  Code := Run(FProcess, AScript, TCompilerIdeCommand.StartArguments(AProject),
-    TProjectPaths.DirectoryOf(AProject), Output);
-  if not TCompilerIdeCommand.ParsePid(Output, mPid) then
+  mRunning := FIdes();
+  mCode := Run(FProcess, AScript, TCompilerIdeCommand.StartArguments(AProject),
+    TProjectPaths.DirectoryOf(AProject), mOutput);
+  if not TCompilerIdeCommand.ParsePid(mOutput, mPid) then
   begin
-    AError := cTexts[TIdeCompilerText.NoIde].Fmt([Code]);
+    AError := cTexts[TIdeCompilerText.NoIde].Fmt([mCode]);
     Exit(False);
   end;
-  for Other in Running do
+  for mOther in mRunning do
   begin
-    if Other = mPid then
+    if mOther = mPid then
     begin
       // Nie in eine fremde IDE bauen, etwa die des Benutzers (ADR 0007).
       AError := cTexts[TIdeCompilerText.ForeignIde].Fmt([mPid]);
@@ -348,10 +348,10 @@ end;
 function TShellIdeCompiler.Build(const AScript, AProject, APlatform: string; out AMessages: TArray<TCompilerMessage>;
   out ASucceeded: Boolean; out AError: string): Boolean;
 var
-  Output, Lines: TArray<string>;
-  Report: TIdeBuildReport;
-  Code: Integer;
-  Detail: string;
+  mOutput, mLines: TArray<string>;
+  mReport: TIdeBuildReport;
+  mCode: Integer;
+  mDetail: string;
 begin
   AMessages := nil;
   ASucceeded := False;
@@ -359,41 +359,41 @@ begin
   begin
     Exit(False);
   end;
-  Code := Run(FProcess, AScript, TCompilerIdeCommand.BuildArguments(FPid, AProject, APlatform),
-    TProjectPaths.DirectoryOf(AProject), Output);
-  if not TCompilerIdeCommand.ParseBuild(Output, Report) then
+  mCode := Run(FProcess, AScript, TCompilerIdeCommand.BuildArguments(FPid, AProject, APlatform),
+    TProjectPaths.DirectoryOf(AProject), mOutput);
+  if not TCompilerIdeCommand.ParseBuild(mOutput, mReport) then
   begin
     // Ist die eigene IDE weg, startet der nächste Lauf eine neue.
     if not FRunning(FPid) then
     begin
       FPid := 0;
     end;
-    AError := cTexts[TIdeCompilerText.NoResult].Fmt([Code]);
+    AError := cTexts[TIdeCompilerText.NoResult].Fmt([mCode]);
     Exit(False);
   end;
-  Lines := nil;
-  if Report.LogFile <> '' then
+  mLines := nil;
+  if mReport.LogFile <> '' then
   begin
-    Lines := FReadLines(Report.LogFile);
+    mLines := FReadLines(mReport.LogFile);
   end;
-  AMessages := TCompilerIdeCommand.Messages(Lines, AProject);
-  ASucceeded := Report.Ok;
-  if not Report.Ok and (Length(AMessages) = 0) then
+  AMessages := TCompilerIdeCommand.Messages(mLines, AProject);
+  ASucceeded := mReport.Ok;
+  if not mReport.Ok and (Length(AMessages) = 0) then
   begin
     // ADR 0007: cc.ps1 kann Fehlertexte der IDE nicht immer lesen; dann steht im Log nur „Misslungen“.
-    Detail := '';
-    if Report.Error <> '' then
+    mDetail := '';
+    if mReport.Error <> '' then
     begin
-      Detail := ': ' + TLogMarks.Text(Report.Error);
+      mDetail := ': ' + TLogMarks.Text(mReport.Error);
     end;
-    FLogger.Warning('Build über die IDE misslungen, ohne lesbare Meldungen' + Detail);
+    FLogger.Warning('Build über die IDE misslungen, ohne lesbare Meldungen' + mDetail);
   end;
   Result := True;
 end;
 
 procedure TShellIdeCompiler.Quit(const AProcess: ICompilerProcess);
 var
-  Output: TArray<string>;
+  mOutput: TArray<string>;
 begin
   if FPid = 0 then
   begin
@@ -402,7 +402,7 @@ begin
   try
     if FRunning(FPid) then
     begin
-      Run(AProcess, FScript, TCompilerIdeCommand.QuitArguments(FPid), '', Output);
+      Run(AProcess, FScript, TCompilerIdeCommand.QuitArguments(FPid), '', mOutput);
     end;
   except
     on E: Exception do

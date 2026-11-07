@@ -68,11 +68,11 @@ type
 
   TAtlasIdeCodeLinks = class
   private const
-    TickMs = 150;
-    MenuShow = 1;
-    MenuBrowse = 2;
-    MenuCopy = 3;
-    MenuStart = 4;
+    cTickMs = 150;
+    cMenuShow = 1;
+    cMenuBrowse = 2;
+    cMenuCopy = 3;
+    cMenuStart = 4;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -120,7 +120,7 @@ type
     function MatchesOf(ALine: Integer): TArray<TAtlasIssueKeyMatch>;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
-    function HitAt(AWnd: HWND; X, Y: Integer; out AHit: TAtlasCodeLinkHit): Boolean;
+    function HitAt(AWnd: HWND; AX, AY: Integer; out AHit: TAtlasCodeLinkHit): Boolean;
     procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
     procedure Act(const AHit: TAtlasCodeLinkHit; ACommand: Integer);
@@ -212,7 +212,7 @@ begin
   FAppEvents := TApplicationEvents.Create(nil);
   FAppEvents.OnMessage := AppMessage;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -450,7 +450,7 @@ begin
   Result := False;
 end;
 
-function TAtlasIdeCodeLinks.HitAt(AWnd: HWND; X, Y: Integer; out AHit: TAtlasCodeLinkHit): Boolean;
+function TAtlasIdeCodeLinks.HitAt(AWnd: HWND; AX, AY: Integer; out AHit: TAtlasCodeLinkHit): Boolean;
 var
   mView: IOTAEditView;
 begin
@@ -466,7 +466,7 @@ begin
     Exit;
   end;
   // Nur, wenn die Kennung noch dort steht: gleiche Datei, nicht gescrollt.
-  Result := FindHit(FHits, AWnd, Point(X, Y), AHit) and SameText(AHit.FileName, mView.Buffer.FileName) and
+  Result := FindHit(FHits, AWnd, Point(AX, AY), AHit) and SameText(AHit.FileName, mView.Buffer.FileName) and
     (AHit.TopRow = mView.TopRow);
   if not Result then
   begin
@@ -503,19 +503,19 @@ var
 begin
   mTarget := AHit.Match.IssueTarget(FState.Target);
   case ACommand of
-    MenuShow:
+    cMenuShow:
       if Assigned(FHooks.Show) then
       begin
         FHooks.Show(mTarget, AHit.Match.IssueKey);
       end;
-    MenuBrowse:
+    cMenuBrowse:
       if Assigned(FHooks.Browse) then
       begin
         FHooks.Browse(mTarget, AHit.Match.IssueKey);
       end;
-    MenuCopy:
+    cMenuCopy:
       Clipboard.AsText := AHit.Match.Key;
-    MenuStart:
+    cMenuStart:
       if CanStart(FHooks) then
       begin
         FHooks.Start(mTarget, AHit.Match.IssueKey);
@@ -610,10 +610,10 @@ begin
   else
   begin
     AOwner.FSwallowUp := WM_LBUTTONUP;
-    mCommand := TAtlasIdeCodeLinks.MenuShow;
+    mCommand := TAtlasIdeCodeLinks.cMenuShow;
     if (AMsg.wParam and MK_SHIFT) <> 0 then
     begin
-      mCommand := TAtlasIdeCodeLinks.MenuBrowse;
+      mCommand := TAtlasIdeCodeLinks.cMenuBrowse;
     end;
     QueueAct(mHit, mCommand, AOwner.FSerialOf);
   end;
@@ -649,12 +649,12 @@ procedure TAtlasIdeCodeLinks.ShowMenu(const AHit: TAtlasCodeLinkHit; const APoin
 begin
   FMenu.Items.Clear;
   FMenuHit := AHit;
-  AddMenuItem(FMenu, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkMenuShow), MenuShow,
+  AddMenuItem(FMenu, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkMenuShow), cMenuShow,
     MenuClick).Default := True;
-  AddMenuItem(FMenu, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBrowse), MenuBrowse, MenuClick);
-  AddMenuItem(FMenu, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCopyKey), MenuCopy, MenuClick);
+  AddMenuItem(FMenu, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBrowse), cMenuBrowse, MenuClick);
+  AddMenuItem(FMenu, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCopyKey), cMenuCopy, MenuClick);
   AddMenuItem(FMenu, '-', 0, nil);
-  AddMenuItem(FMenu, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewStart), MenuStart,
+  AddMenuItem(FMenu, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewStart), cMenuStart,
     MenuClick).Enabled := CanStart(FHooks);
   FMenu.Popup(APoint.X, APoint.Y);
 end;

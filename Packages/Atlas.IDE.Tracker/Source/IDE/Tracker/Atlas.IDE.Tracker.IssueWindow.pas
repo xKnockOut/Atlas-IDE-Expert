@@ -28,7 +28,8 @@ type
     class procedure Hide; static;
     class procedure UpdateIcon; static;
     class procedure ApplyTheme; static;
-    /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt (#879).</summary>
+    /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt
+    /// (#879).</summary>
     class procedure Prepare; static;
     class procedure Release; static;
   end;
@@ -96,7 +97,7 @@ end;
 
 procedure TIssueDock.FrameCreated(AFrame: TCustomFrame);
 var
-  Frame: TAtlasIssueFrame;
+  mFrame: TAtlasIssueFrame;
 begin
   if not (AFrame is TAtlasIssueFrame) then
   begin
@@ -106,12 +107,12 @@ begin
   begin
     Host.FrameCreated(AFrame);
   end;
-  Frame := TAtlasIssueFrame(AFrame);
+  mFrame := TAtlasIssueFrame(AFrame);
   TAtlasIdeIssueWindow.UpdateIcon;
-  Theme(Frame);
+  Theme(mFrame);
   if Assigned(TAtlasIdeIssueWindow.OnFrame) then
   begin
-    TAtlasIdeIssueWindow.OnFrame(Frame);
+    TAtlasIdeIssueWindow.OnFrame(mFrame);
   end;
 end;
 
@@ -173,12 +174,12 @@ end;
 
 class function TAtlasIdeIssueWindow.Show: TAtlasIssueFrame;
 var
-  Created: Boolean;
+  mCreated: Boolean;
 begin
   // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
   EnsureHost;
-  Host.Show(Created);
-  if Created then
+  Host.Show(mCreated);
+  if mCreated then
   begin
     UpdateIcon;
   end;
@@ -210,29 +211,29 @@ end;
 
 class procedure TAtlasIdeIssueWindow.UpdateIcon;
 var
-  Icon: TIcon;
+  mIcon: TIcon;
 begin
   if (Host = nil) or (Host.Form = nil) then
   begin
     Exit;
   end;
-  Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
+  mIcon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
-    TForm(Host.Form).Icon.Assign(Icon);
+    TForm(Host.Form).Icon.Assign(mIcon);
   finally
-    Icon.Free;
+    mIcon.Free;
   end;
 end;
 
 class procedure TAtlasIdeIssueWindow.ApplyTheme;
 var
-  Frame: TAtlasIssueFrame;
+  mFrame: TAtlasIssueFrame;
 begin
-  Frame := ExistingFrame;
-  if Frame <> nil then
+  mFrame := ExistingFrame;
+  if mFrame <> nil then
   begin
-    Theme(Frame);
+    Theme(mFrame);
   end;
   UpdateIcon;
 end;

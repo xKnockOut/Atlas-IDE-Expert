@@ -43,7 +43,8 @@ type
     procedure PreviousRunsWithoutEndAreCounted;
     [Test]
     procedure EveryEndReasonHasText;
-    /// <summary>Gemeinsame Logdatei für LSP und MCP (D-08): ohne Namen nichts, nicht anlegbar ein Fehler im Log.</summary>
+    /// <summary>Gemeinsame Logdatei für LSP und MCP (D-08): ohne Namen nichts, nicht anlegbar ein Fehler im
+    /// Log.</summary>
     [Test]
     procedure AddLogFile_EmptyName_DoesNothing;
     [Test]
@@ -98,10 +99,10 @@ begin
 end;
 
 const
-  Markers: array[0..6] of string = ('MarkerPfadXq7', 'MarkerProjektBn6', 'MarkerUnitZk3', 'TMarkerKlasseWv5',
+  cMarkers: array[0..6] of string = ('MarkerPfadXq7', 'MarkerProjektBn6', 'MarkerUnitZk3', 'TMarkerKlasseWv5',
     'MarkerMethodeJp2', 'MarkerVariableHt4', 'MarkerStringQm8');
 
-  MarkerUnit =
+  cMarkerUnit =
     'unit MarkerUnitZk3;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -129,7 +130,7 @@ type
   end;
 
 const
-  Queries: array[0..7] of TQuery = (
+  cQueries: array[0..7] of TQuery = (
     // Treffer: Methode in der Implementierung, Klasse in der Variablendeklaration.
     (Method: 'textDocument/hover'; Line: 8; Character: 30),
     (Method: 'textDocument/hover'; Line: 12; Character: 24),
@@ -144,17 +145,17 @@ const
 
 function Request(AId: Integer; const AMethod, AUri: string; ALine, ACharacter: Integer): TJSONObject;
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
-  Params := TJSONObject.Create;
-  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', AUri)));
-  Params.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
+  mParams := TJSONObject.Create;
+  mParams.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', AUri)));
+  mParams.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
     .AddPair('character', TJSONNumber.Create(ACharacter)));
   Result := TJSONObject.Create;
   Result.AddPair('jsonrpc', '2.0');
   Result.AddPair('id', TJSONNumber.Create(AId));
   Result.AddPair('method', AMethod);
-  Result.AddPair('params', Params);
+  Result.AddPair('params', mParams);
 end;
 
 { TShellDiagnosticsTests }
@@ -199,9 +200,9 @@ var
   mMessage: TJSONObject;
   mId: Integer;
 begin
-  for mId := 0 to High(Queries) do
+  for mId := 0 to High(cQueries) do
   begin
-    mMessage := Request(mId + 1, Queries[mId].Method, AUri, Queries[mId].Line, Queries[mId].Character);
+    mMessage := Request(mId + 1, cQueries[mId].Method, AUri, cQueries[mId].Line, cQueries[mId].Character);
     try
       ADispatcher.DispatchMessage(mMessage).Free;
     finally
@@ -212,133 +213,133 @@ end;
 
 procedure TShellDiagnosticsTests.RunSession(AEnabled: Boolean);
 var
-  Folder, FileName, Uri: string;
-  Store: IDocumentStore;
-  Index: ISymbolIndex;
-  Hover: TLspHover;
-  Completion: TLspCompletion;
-  Dispatcher: TJsonRpcDispatcher;
-  Diagnostics: TShellDiagnostics;
-  Ref: IJsonRpcRequestObserver;
-  Settings: TServerSettings;
+  mFolder, mFileName, mUri: string;
+  mStore: IDocumentStore;
+  mIndex: ISymbolIndex;
+  mHover: TLspHover;
+  mCompletion: TLspCompletion;
+  mDispatcher: TJsonRpcDispatcher;
+  mDiagnostics: TShellDiagnostics;
+  mRef: IJsonRpcRequestObserver;
+  mSettings: TServerSettings;
 begin
-  Folder := TPath.Combine(TPath.Combine(FRoot, 'MarkerPfadXq7'), 'MarkerProjektBn6');
-  ForceDirectories(Folder);
-  FileName := TPath.Combine(Folder, 'MarkerUnitZk3.pas');
-  TFile.WriteAllText(FileName, MarkerUnit, TEncoding.UTF8);
-  Uri := TDocumentUris.FromPath(FileName);
-  Store := TDocumentStore.Create;
-  Store.Open(Uri, 'delphi', 3, MarkerUnit);
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(MarkerUnit, FileName, nil));
-  Hover := TLspHover.Create(Store, Index,
+  mFolder := TPath.Combine(TPath.Combine(FRoot, 'MarkerPfadXq7'), 'MarkerProjektBn6');
+  ForceDirectories(mFolder);
+  mFileName := TPath.Combine(mFolder, 'MarkerUnitZk3.pas');
+  TFile.WriteAllText(mFileName, cMarkerUnit, TEncoding.UTF8);
+  mUri := TDocumentUris.FromPath(mFileName);
+  mStore := TDocumentStore.Create;
+  mStore.Open(mUri, 'delphi', 3, cMarkerUnit);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cMarkerUnit, mFileName, nil));
+  mHover := TLspHover.Create(mStore, mIndex,
     function(const AFileName: string; out AText: string): Boolean
     begin
-      Result := SameText(AFileName, FileName);
-      AText := MarkerUnit;
+      Result := SameText(AFileName, mFileName);
+      AText := cMarkerUnit;
     end,
     function(const AUnitName: string): Boolean
     begin
       Result := False;
     end);
-  Completion := TLspCompletion.Create(Store, Index,
+  mCompletion := TLspCompletion.Create(mStore, mIndex,
     function(const AUnitName: string): Boolean
     begin
       Result := False;
     end);
-  Dispatcher := TJsonRpcDispatcher.Create;
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Hover.Attach(Dispatcher);
-    Completion.Attach(Dispatcher);
-    Diagnostics := TShellDiagnostics.Create(FLogFolder, 'test', Store, Index);
-    Ref := Diagnostics;
-    Dispatcher.Observer := Ref;
-    Diagnostics.AllowMethods(Dispatcher.Methods);
-    Diagnostics.BeginRun('1.0.0', 1024 * 1024);
-    Settings := TServerSettings.Default;
-    Settings.DiagnosticsLog := AEnabled;
-    Diagnostics.ApplySettings(Settings);
-    SendQueries(Dispatcher, Uri);
-    Diagnostics.EndRun(TDiagnosticEndReason.ParentExited, 0, 2 * 1024 * 1024);
-    Dispatcher.Observer := nil;
-    Ref := nil;
+    mHover.Attach(mDispatcher);
+    mCompletion.Attach(mDispatcher);
+    mDiagnostics := TShellDiagnostics.Create(FLogFolder, 'test', mStore, mIndex);
+    mRef := mDiagnostics;
+    mDispatcher.Observer := mRef;
+    mDiagnostics.AllowMethods(mDispatcher.Methods);
+    mDiagnostics.BeginRun('1.0.0', 1024 * 1024);
+    mSettings := TServerSettings.Default;
+    mSettings.DiagnosticsLog := AEnabled;
+    mDiagnostics.ApplySettings(mSettings);
+    SendQueries(mDispatcher, mUri);
+    mDiagnostics.EndRun(TDiagnosticEndReason.ParentExited, 0, 2 * 1024 * 1024);
+    mDispatcher.Observer := nil;
+    mRef := nil;
   finally
-    Dispatcher.Free;
-    Completion.Free;
-    Hover.Free;
+    mDispatcher.Free;
+    mCompletion.Free;
+    mHover.Free;
   end;
 end;
 
 function TShellDiagnosticsTests.AllLogText: string;
 var
-  FileName: string;
+  mFileName: string;
 begin
   Result := '';
-  for FileName in TDirectory.GetFiles(FLogFolder, '*', TSearchOption.soAllDirectories) do
+  for mFileName in TDirectory.GetFiles(FLogFolder, '*', TSearchOption.soAllDirectories) do
   begin
-    Result := Result + ExtractFileName(FileName) + #13#10 + TFile.ReadAllText(FileName, TEncoding.UTF8);
+    Result := Result + ExtractFileName(mFileName) + #13#10 + TFile.ReadAllText(mFileName, TEncoding.UTF8);
   end;
 end;
 
 procedure TShellDiagnosticsTests.NoMarkerReachesLogOrExport;
 var
-  Text, Preview, Target, Marker, Exported: string;
-  Files: TArray<string>;
-  Zip: TZipFile;
-  Index: Integer;
-  Bytes: TBytes;
+  mText, mPreview, mTarget, mMarker, mExported: string;
+  mFiles: TArray<string>;
+  mZip: TZipFile;
+  mIndex: Integer;
+  mBytes: TBytes;
 begin
   RunSession(True);
-  Text := AllLogText;
-  Assert.Contains(Text, 'textDocument/hover');
-  Assert.Contains(Text, 'textDocument/completion');
-  Files := TAtlasDiagnosticExport.Files(FLogFolder, 7, Now);
-  Assert.AreEqual<NativeInt>(1, Length(Files));
-  Preview := TAtlasDiagnosticExport.Preview(Files);
-  Target := TPath.Combine(FRoot, 'export.zip');
-  TAtlasDiagnosticExport.WriteZip(Files, Target);
-  Exported := '';
-  Zip := TZipFile.Create;
+  mText := AllLogText;
+  Assert.Contains(mText, 'textDocument/hover');
+  Assert.Contains(mText, 'textDocument/completion');
+  mFiles := TAtlasDiagnosticExport.Files(FLogFolder, 7, Now);
+  Assert.AreEqual<NativeInt>(1, Length(mFiles));
+  mPreview := TAtlasDiagnosticExport.Preview(mFiles);
+  mTarget := TPath.Combine(FRoot, 'export.zip');
+  TAtlasDiagnosticExport.WriteZip(mFiles, mTarget);
+  mExported := '';
+  mZip := TZipFile.Create;
   try
-    Zip.Open(Target, TZipMode.zmRead);
-    for Index := 0 to Zip.FileCount - 1 do
+    mZip.Open(mTarget, TZipMode.zmRead);
+    for mIndex := 0 to mZip.FileCount - 1 do
     begin
-      Zip.Read(Index, Bytes);
-      Exported := Exported + Zip.FileNames[Index] + #13#10 + TEncoding.UTF8.GetString(Bytes);
+      mZip.Read(mIndex, mBytes);
+      mExported := mExported + mZip.FileNames[mIndex] + #13#10 + TEncoding.UTF8.GetString(mBytes);
     end;
   finally
-    Zip.Free;
+    mZip.Free;
   end;
-  Assert.Contains(Exported, 'textDocument/hover');
-  for Marker in Markers do
+  Assert.Contains(mExported, 'textDocument/hover');
+  for mMarker in cMarkers do
   begin
-    Assert.DoesNotContain(Text, Marker, False, 'Log enthält ' + Marker);
-    Assert.DoesNotContain(Preview, Marker, False, 'Vorschau enthält ' + Marker);
-    Assert.DoesNotContain(Exported, Marker, False, 'Export enthält ' + Marker);
+    Assert.DoesNotContain(mText, mMarker, False, 'Log enthält ' + mMarker);
+    Assert.DoesNotContain(mPreview, mMarker, False, 'Vorschau enthält ' + mMarker);
+    Assert.DoesNotContain(mExported, mMarker, False, 'Export enthält ' + mMarker);
   end;
-  Assert.DoesNotContain(Text, 'FehltBeiAllenYc9', False);
+  Assert.DoesNotContain(mText, 'FehltBeiAllenYc9', False);
   if Length(GetEnvironmentVariable('USERNAME')) >= 3 then
   begin
-    Assert.DoesNotContain(Text, GetEnvironmentVariable('USERNAME'), False);
+    Assert.DoesNotContain(mText, GetEnvironmentVariable('USERNAME'), False);
   end;
 end;
 
 procedure TShellDiagnosticsTests.EveryEmptyAnswerHasReason;
 var
-  Line: string;
-  Empty: Integer;
+  mLine: string;
+  mEmpty: Integer;
 begin
   RunSession(True);
-  Empty := 0;
-  for Line in AllLogText.Split([#13#10, #10]) do
+  mEmpty := 0;
+  for mLine in AllLogText.Split([#13#10, #10]) do
   begin
-    if Line.Contains(' empty') then
+    if mLine.Contains(' empty') then
     begin
-      Inc(Empty);
-      Assert.DoesNotContain(Line, 'empty:unspecified', False, Line);
+      Inc(mEmpty);
+      Assert.DoesNotContain(mLine, 'empty:unspecified', False, mLine);
     end;
   end;
-  Assert.IsTrue(Empty >= 3, Format('%d leere Antworten', [Empty]));
+  Assert.IsTrue(mEmpty >= 3, Format('%d leere Antworten', [mEmpty]));
 end;
 
 procedure TShellDiagnosticsTests.EveryRunEndHasReason;
@@ -357,63 +358,63 @@ end;
 
 procedure TShellDiagnosticsTests.FirstRunEndWins;
 var
-  Diagnostics: TShellDiagnostics;
-  Ref: IJsonRpcRequestObserver;
-  Settings: TServerSettings;
-  Text: string;
-  Store: IDocumentStore;
-  Index: ISymbolIndex;
+  mDiagnostics: TShellDiagnostics;
+  mRef: IJsonRpcRequestObserver;
+  mSettings: TServerSettings;
+  mText: string;
+  mStore: IDocumentStore;
+  mIndex: ISymbolIndex;
 begin
   // Die Endzeile kommt schon beim Ende der Eingabe; der Aufruf nach dem Warten auf laufende
   // Anfragen schreibt keine zweite (#647).
   // Erst in Variablen halten: Bei Übergabe als const würden die Objekte nie freigegeben.
-  Store := TDocumentStore.Create;
-  Index := TSymbolIndex.Create;
-  Diagnostics := TShellDiagnostics.Create(FLogFolder, 'test', Store, Index);
-  Ref := Diagnostics;
-  Diagnostics.BeginRun('1.0.0', 1024 * 1024);
-  Settings := TServerSettings.Default;
-  Settings.DiagnosticsLog := True;
-  Diagnostics.ApplySettings(Settings);
-  Diagnostics.EndRun(TDiagnosticEndReason.InputClosed, 0, 1024 * 1024);
-  Diagnostics.EndRun(TDiagnosticEndReason.ParentExited, 1, 1024 * 1024);
-  Ref := nil;
-  Text := AllLogText;
-  Assert.Contains(Text, 'run end reason inputClosed exit 0');
-  Assert.DoesNotContain(Text, 'parentExited');
+  mStore := TDocumentStore.Create;
+  mIndex := TSymbolIndex.Create;
+  mDiagnostics := TShellDiagnostics.Create(FLogFolder, 'test', mStore, mIndex);
+  mRef := mDiagnostics;
+  mDiagnostics.BeginRun('1.0.0', 1024 * 1024);
+  mSettings := TServerSettings.Default;
+  mSettings.DiagnosticsLog := True;
+  mDiagnostics.ApplySettings(mSettings);
+  mDiagnostics.EndRun(TDiagnosticEndReason.InputClosed, 0, 1024 * 1024);
+  mDiagnostics.EndRun(TDiagnosticEndReason.ParentExited, 1, 1024 * 1024);
+  mRef := nil;
+  mText := AllLogText;
+  Assert.Contains(mText, 'run end reason inputClosed exit 0');
+  Assert.DoesNotContain(mText, 'parentExited');
   Assert.AreEqual<NativeInt>(0, Length(TDirectory.GetFiles(FLogFolder, 'run-*.open')));
 end;
 
 procedure TShellDiagnosticsTests.PreviousRunsWithoutEndAreCounted;
 var
-  Diagnostics: TShellDiagnostics;
-  Ref: IJsonRpcRequestObserver;
-  Store: IDocumentStore;
-  Index: ISymbolIndex;
+  mDiagnostics: TShellDiagnostics;
+  mRef: IJsonRpcRequestObserver;
+  mStore: IDocumentStore;
+  mIndex: ISymbolIndex;
 begin
   // Zwei liegen gebliebene Marken: Die IDE hat zwei Server hart beendet (#175).
   TFile.WriteAllText(TPath.Combine(FLogFolder, 'run-alt1.open'), '');
   TFile.WriteAllText(TPath.Combine(FLogFolder, 'run-alt2.open'), '');
-  Store := TDocumentStore.Create;
-  Index := TSymbolIndex.Create;
-  Diagnostics := TShellDiagnostics.Create(FLogFolder, 'test', Store, Index);
-  Ref := Diagnostics;
-  Assert.AreEqual(2, Diagnostics.BeginRun('1.0.0', 1024 * 1024));
-  Diagnostics.EndRun(TDiagnosticEndReason.Clean, 0, 1024 * 1024);
-  Ref := nil;
+  mStore := TDocumentStore.Create;
+  mIndex := TSymbolIndex.Create;
+  mDiagnostics := TShellDiagnostics.Create(FLogFolder, 'test', mStore, mIndex);
+  mRef := mDiagnostics;
+  Assert.AreEqual(2, mDiagnostics.BeginRun('1.0.0', 1024 * 1024));
+  mDiagnostics.EndRun(TDiagnosticEndReason.Clean, 0, 1024 * 1024);
+  mRef := nil;
   Assert.AreEqual<NativeInt>(0, Length(TDirectory.GetFiles(FLogFolder, 'run-*.open')));
 end;
 
 procedure TShellDiagnosticsTests.EveryEndReasonHasText;
 var
-  Reason, Other: TDiagnosticEndReason;
+  mReason, mOther: TDiagnosticEndReason;
 begin
-  for Reason := Low(TDiagnosticEndReason) to High(TDiagnosticEndReason) do
+  for mReason := Low(TDiagnosticEndReason) to High(TDiagnosticEndReason) do
   begin
-    Assert.AreNotEqual('', TShellDiagnostics.EndReasonText(Reason));
-    for Other := Succ(Reason) to High(TDiagnosticEndReason) do
+    Assert.AreNotEqual('', TShellDiagnostics.EndReasonText(mReason));
+    for mOther := Succ(mReason) to High(TDiagnosticEndReason) do
     begin
-      Assert.AreNotEqual(TShellDiagnostics.EndReasonText(Reason), TShellDiagnostics.EndReasonText(Other));
+      Assert.AreNotEqual(TShellDiagnostics.EndReasonText(mReason), TShellDiagnostics.EndReasonText(mOther));
     end;
   end;
   Assert.Contains(TShellDiagnostics.EndReasonText(TDiagnosticEndReason.InputClosed), 'ohne exit');
@@ -422,76 +423,76 @@ end;
 
 procedure TShellDiagnosticsTests.AddLogFile_EmptyName_DoesNothing;
 var
-  Logger: TLogger;
-  Keep: ILogger;
-  Anonymizer: ILogAnonymizer;
+  mLogger: TLogger;
+  mKeep: ILogger;
+  mAnonymizer: ILogAnonymizer;
 begin
-  Logger := TLogger.Create;
-  Keep := Logger;
-  Assert.IsTrue(TShellDiagnostics.AddLogFile(Logger, '', '1', False, TLogLevel.Info, Anonymizer));
-  Assert.IsNull(Anonymizer);
+  mLogger := TLogger.Create;
+  mKeep := mLogger;
+  Assert.IsTrue(TShellDiagnostics.AddLogFile(mLogger, '', '1', False, TLogLevel.Info, mAnonymizer));
+  Assert.IsNull(mAnonymizer);
 end;
 
 procedure TShellDiagnosticsTests.AddLogFile_BadPath_LogsError;
 var
-  Logger: TLogger;
-  Keep: ILogger;
-  Sink: TCaptureSink;
-  KeepSink: ILogSink;
-  Anonymizer: ILogAnonymizer;
-  Blocker: string;
+  mLogger: TLogger;
+  mKeep: ILogger;
+  mSink: TCaptureSink;
+  mKeepSink: ILogSink;
+  mAnonymizer: ILogAnonymizer;
+  mBlocker: string;
 begin
-  Logger := TLogger.Create;
-  Keep := Logger;
-  Sink := TCaptureSink.Create;
-  KeepSink := Sink;
-  Logger.AddSink(KeepSink, TLogLevel.Debug);
+  mLogger := TLogger.Create;
+  mKeep := mLogger;
+  mSink := TCaptureSink.Create;
+  mKeepSink := mSink;
+  mLogger.AddSink(mKeepSink, TLogLevel.Debug);
   // Eine Datei an der Stelle des Ordners: Die Logdatei lässt sich nicht anlegen.
-  Blocker := TPath.Combine(FLogFolder, 'Blocker');
+  mBlocker := TPath.Combine(FLogFolder, 'Blocker');
   TDirectory.CreateDirectory(FLogFolder);
-  TFile.WriteAllText(Blocker, 'x');
-  Assert.IsFalse(TShellDiagnostics.AddLogFile(Logger, TPath.Combine(Blocker, 'server.log'), '1', True,
-    TLogLevel.Info, Anonymizer));
-  Assert.Contains(Sink.Text, 'kann nicht geöffnet werden');
+  TFile.WriteAllText(mBlocker, 'x');
+  Assert.IsFalse(TShellDiagnostics.AddLogFile(mLogger, TPath.Combine(mBlocker, 'server.log'), '1', True,
+    TLogLevel.Info, mAnonymizer));
+  Assert.Contains(mSink.Text, 'kann nicht geöffnet werden');
 end;
 
 procedure TShellDiagnosticsTests.ErrorLineNamesUnitAndRule;
 var
-  Diagnostics: TShellDiagnostics;
-  Ref: IJsonRpcRequestObserver;
-  Settings: TServerSettings;
-  Error: Exception;
-  FileName, UnitLabel, Text: string;
+  mDiagnostics: TShellDiagnostics;
+  mRef: IJsonRpcRequestObserver;
+  mSettings: TServerSettings;
+  mError: Exception;
+  mFileName, mUnitLabel, mText: string;
 begin
-  FileName := TPath.Combine(TPath.Combine(FRoot, 'MarkerPfadXq7'), 'MarkerUnitZk3.pas');
-  Diagnostics := TShellDiagnostics.Create(FLogFolder, 'test', nil, nil);
-  Ref := Diagnostics;
-  Diagnostics.AllowMethods(['workspace/diagnostic']);
-  Diagnostics.BeginRun('1.0.0', 1024 * 1024);
-  Settings := TServerSettings.Default;
-  Settings.DiagnosticsLog := True;
-  Diagnostics.ApplySettings(Settings);
-  UnitLabel := Diagnostics.FileLabel(FileName);
-  Assert.StartsWith('unit#', UnitLabel);
-  Assert.AreEqual(UnitLabel, Diagnostics.FileLabel(FileName), 'gleiche Datei, gleiches Kennzeichen');
-  Diagnostics.Started('workspace/diagnostic');
+  mFileName := TPath.Combine(TPath.Combine(FRoot, 'MarkerPfadXq7'), 'MarkerUnitZk3.pas');
+  mDiagnostics := TShellDiagnostics.Create(FLogFolder, 'test', nil, nil);
+  mRef := mDiagnostics;
+  mDiagnostics.AllowMethods(['workspace/diagnostic']);
+  mDiagnostics.BeginRun('1.0.0', 1024 * 1024);
+  mSettings := TServerSettings.Default;
+  mSettings.DiagnosticsLog := True;
+  mDiagnostics.ApplySettings(mSettings);
+  mUnitLabel := mDiagnostics.FileLabel(mFileName);
+  Assert.StartsWith('unit#', mUnitLabel);
+  Assert.AreEqual(mUnitLabel, mDiagnostics.FileLabel(mFileName), 'gleiche Datei, gleiches Kennzeichen');
+  mDiagnostics.Started('workspace/diagnostic');
   TRequestDiagnostics.Open;
-  TRequestDiagnostics.Subject(UnitLabel);
+  TRequestDiagnostics.Subject(mUnitLabel);
   TRequestDiagnostics.CurrentRule('hides-virtual');
-  Error := EStackOverflow.Create('Stapel');
+  mError := EStackOverflow.Create('Stapel');
   try
-    Diagnostics.Finished('workspace/diagnostic', nil, nil, Error, 0, 77);
+    mDiagnostics.Finished('workspace/diagnostic', nil, nil, mError, 0, 77);
   finally
-    Error.Free;
+    mError.Free;
   end;
-  Diagnostics.EndRun(TDiagnosticEndReason.ParentExited, 0, 2 * 1024 * 1024);
-  Ref := nil;
-  Text := AllLogText;
-  Assert.Contains(Text, 'error:EStackOverflow');
-  Assert.Contains(Text, 'unit=' + UnitLabel);
-  Assert.Contains(Text, 'rule=hides-virtual');
-  Assert.DoesNotContain(Text, 'MarkerUnitZk3', False);
-  Assert.DoesNotContain(Text, 'MarkerPfadXq7', False);
+  mDiagnostics.EndRun(TDiagnosticEndReason.ParentExited, 0, 2 * 1024 * 1024);
+  mRef := nil;
+  mText := AllLogText;
+  Assert.Contains(mText, 'error:EStackOverflow');
+  Assert.Contains(mText, 'unit=' + mUnitLabel);
+  Assert.Contains(mText, 'rule=hides-virtual');
+  Assert.DoesNotContain(mText, 'MarkerUnitZk3', False);
+  Assert.DoesNotContain(mText, 'MarkerPfadXq7', False);
 end;
 
 initialization

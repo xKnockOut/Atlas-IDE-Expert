@@ -32,9 +32,9 @@ type
   TAtlasIdeIssueLinkWrites = class
   public const
     /// <summary>Zeitgrenze für Anlegen und Verknüpfen (#1279).</summary>
-    WriteTimeoutMs = 15000;
+    cWriteTimeoutMs = 15000;
     /// <summary>Zeitgrenze der Prüfung vor „Beginnen“ (#1279).</summary>
-    BlockedTimeoutMs = 5000;
+    cBlockedTimeoutMs = 5000;
   private
     FContext: TAtlasIdeIssueContext;
     /// <summary>Das gezeigte Issue neu laden.</summary>
@@ -248,7 +248,7 @@ begin
       mOk := False;
       try
         mOk := mJob.Provider.Details(TAtlasTrackerCall.Create(mJob.Target, mJob.Transport,
-          TAtlasIdeIssueLinkWrites.BlockedTimeoutMs), mJob.Key, False, mDetails, mError);
+          TAtlasIdeIssueLinkWrites.cBlockedTimeoutMs), mJob.Key, False, mDetails, mError);
       except
         on E: Exception do
         begin
@@ -326,7 +326,7 @@ begin
     function(const AWriter: IAtlasTrackerLinkWriter; const ATransport: IAtlasCiTransport; out AKey: string;
       out AError: TAtlasCiFetchError): Boolean
     begin
-      Result := AWriter.CreateSubtask(TAtlasTrackerCall.Create(mTarget, ATransport, WriteTimeoutMs), mParent, mTitle,
+      Result := AWriter.CreateSubtask(TAtlasTrackerCall.Create(mTarget, ATransport, cWriteTimeoutMs), mParent, mTitle,
         mDescription, AKey, AError);
     end,
     procedure(ASucceeded: Boolean; const AKey: string; AError: TAtlasCiFetchError)
@@ -362,7 +362,7 @@ begin
       out AError: TAtlasCiFetchError): Boolean
     begin
       AKey := mOther;
-      Result := AWriter.AddLink(TAtlasTrackerCall.Create(mTarget, ATransport, WriteTimeoutMs), mKey, mKind, mOther,
+      Result := AWriter.AddLink(TAtlasTrackerCall.Create(mTarget, ATransport, cWriteTimeoutMs), mKey, mKind, mOther,
         AError);
     end,
     procedure(ASucceeded: Boolean; const AKey: string; AError: TAtlasCiFetchError)

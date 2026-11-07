@@ -104,7 +104,7 @@ begin
     on EInOutError do
     begin
       // Gesperrt (laufende EXE): umbenennen geht, dann neu schreiben.
-      FFiles.MoveFile(ATarget, ATarget + TUpdateLayout.OldSuffix);
+      FFiles.MoveFile(ATarget, ATarget + TUpdateLayout.cOldSuffix);
       FFiles.CopyFile(ASource, ATarget);
     end;
   end;
@@ -170,7 +170,7 @@ var
 begin
   for mFile in AFiles.FilesIn(ATarget) do
   begin
-    if mFile.EndsWith(TUpdateLayout.OldSuffix, True) then
+    if mFile.EndsWith(TUpdateLayout.cOldSuffix, True) then
     begin
       try
         AFiles.DeleteFile(TUpdateLayout.Join(ATarget, mFile));

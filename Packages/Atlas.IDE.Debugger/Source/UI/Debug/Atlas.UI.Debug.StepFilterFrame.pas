@@ -135,7 +135,7 @@ uses
 {$R *.dfm}
 
 const
-  KindTexts: array[TStepFilterKind] of TAtlasTextId = (TAtlasTextId.StepFilterKindGetters,
+  cKindTexts: array[TStepFilterKind] of TAtlasTextId = (TAtlasTextId.StepFilterKindGetters,
     TAtlasTextId.StepFilterKindSetters, TAtlasTextId.StepFilterKindTrivial, TAtlasTextId.StepFilterKindOperators,
     TAtlasTextId.StepFilterKindEmptyConstructors);
 
@@ -292,14 +292,14 @@ begin
   inherited Create(AOwner);
   // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
   Name := '';
-  FValue.Kinds := TStepFilterNames.DefaultKinds;
+  FValue.Kinds := TStepFilterNames.cDefaultKinds;
   // Von oben: Kopf der Arten, die Arten, Kopf der Muster, Eingabezeile; die Liste füllt den Rest.
   mTop := CreateTopBar(Self);
   CreateKinds(Self, mTop);
   CreatePatternBar(Self, mTop);
   CreateBottomLabels(Self);
   CreatePatternList(Self);
-  SetOptions(False, TStepFilterNames.DefaultKinds, nil);
+  SetOptions(False, TStepFilterNames.cDefaultKinds, nil);
   SetSession(False, 0, '', '');
   UpdateCounts;
 end;
@@ -425,7 +425,7 @@ begin
   mText := Trim(FControls.PatternEdit.Text);
   FControls.Add.Enabled := TStepFilterNames.IsValidPattern(mText) and
     (TStepFilterNames.IndexOfPattern(FValue.Patterns, mText) < 0) and
-    (Length(FValue.Patterns) < TStepFilterNames.MaxPatterns);
+    (Length(FValue.Patterns) < TStepFilterNames.cMaxPatterns);
   FControls.Remove.Enabled := FControls.Patterns.HandleAllocated and (FControls.Patterns.Selected <> nil);
 end;
 
@@ -482,7 +482,7 @@ var
 begin
   mText := Trim(FControls.PatternEdit.Text);
   Result := TStepFilterNames.IsValidPattern(mText) and (TStepFilterNames.IndexOfPattern(FValue.Patterns, mText) < 0)
-    and (Length(FValue.Patterns) < TStepFilterNames.MaxPatterns);
+    and (Length(FValue.Patterns) < TStepFilterNames.cMaxPatterns);
   if not Result then
   begin
     Exit;
@@ -623,7 +623,7 @@ class function TAtlasStepFilterTexts.VerdictText(const AVerdict: TAtlasStepVerdi
 begin
   case AVerdict.Kind of
     TAtlasStepVerdictKind.Kind:
-      Result := TAtlasStrings.Text(KindTexts[AVerdict.FilterKind]);
+      Result := TAtlasStrings.Text(cKindTexts[AVerdict.FilterKind]);
     TAtlasStepVerdictKind.Pattern:
       Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterByPattern, [AVerdict.Pattern]);
   else
@@ -634,7 +634,7 @@ end;
 class function TAtlasStepFilterTexts.KindCaption(AKind: TStepFilterKind; AState: TAtlasStepCountsState;
   const ACounts: TAtlasStepCounts): string;
 begin
-  Result := TAtlasStrings.Text(KindTexts[AKind]);
+  Result := TAtlasStrings.Text(cKindTexts[AKind]);
   if AState = TAtlasStepCountsState.Ready then
   begin
     Result := Result + ' – ' + IntToStr(ACounts.Kinds[AKind]);

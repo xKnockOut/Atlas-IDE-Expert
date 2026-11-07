@@ -49,13 +49,13 @@ end;
 
 class function TAtlasIdeBreakpoints.CurrentProcess: IOTAProcess;
 var
-  Services: IOTADebuggerServices;
+  mServices: IOTADebuggerServices;
 begin
   Result := nil;
-  Services := Debugger;
-  if (Services <> nil) and (Services.ProcessCount > 0) then
+  mServices := Debugger;
+  if (mServices <> nil) and (mServices.ProcessCount > 0) then
   begin
-    Result := Services.CurrentProcess;
+    Result := mServices.CurrentProcess;
   end;
 end;
 
@@ -89,20 +89,20 @@ end;
 
 class function TAtlasIdeBreakpoints.Exists(const AFileName: string; ALine: Integer): Boolean;
 var
-  Services: IOTADebuggerServices;
-  Index: Integer;
-  Existing: IOTASourceBreakpoint;
+  mServices: IOTADebuggerServices;
+  mIndex: Integer;
+  mExisting: IOTASourceBreakpoint;
 begin
   Result := False;
-  Services := Debugger;
-  if Services = nil then
+  mServices := Debugger;
+  if mServices = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Services.SourceBkptCount - 1 do
+  for mIndex := 0 to mServices.SourceBkptCount - 1 do
   begin
-    Existing := Services.SourceBkpts[Index];
-    if (Existing <> nil) and SameText(Existing.FileName, AFileName) and (Existing.LineNumber = ALine + 1) then
+    mExisting := mServices.SourceBkpts[mIndex];
+    if (mExisting <> nil) and SameText(mExisting.FileName, AFileName) and (mExisting.LineNumber = ALine + 1) then
     begin
       Exit(True);
     end;
@@ -111,16 +111,16 @@ end;
 
 class function TAtlasIdeBreakpoints.Add(const AFileName: string; ALine: Integer): IOTABreakpoint;
 var
-  Services: IOTADebuggerServices;
+  mServices: IOTADebuggerServices;
 begin
   Result := nil;
-  Services := Debugger;
-  if (Services = nil) or (AFileName = '') or (ALine < 0) or Exists(AFileName, ALine) then
+  mServices := Debugger;
+  if (mServices = nil) or (AFileName = '') or (ALine < 0) or Exists(AFileName, ALine) then
   begin
     Exit;
   end;
   try
-    Result := Services.NewSourceBreakpoint(AFileName, ALine + 1, nil);
+    Result := mServices.NewSourceBreakpoint(AFileName, ALine + 1, nil);
   except
     on Exception do
       Result := nil;
@@ -162,16 +162,16 @@ end;
 
 class procedure TAtlasIdeBreakpoints.RemoveAll(var ABreakpoints: TArray<IOTABreakpoint>);
 var
-  Services: IOTADebuggerServices;
-  Breakpoint: IOTABreakpoint;
+  mServices: IOTADebuggerServices;
+  mBreakpoint: IOTABreakpoint;
 begin
-  Services := Debugger;
+  mServices := Debugger;
   try
-    if Services <> nil then
+    if mServices <> nil then
     begin
-      for Breakpoint in ABreakpoints do
+      for mBreakpoint in ABreakpoints do
       begin
-        RemoveQuietly(Services, Breakpoint);
+        RemoveQuietly(mServices, mBreakpoint);
       end;
     end;
   finally

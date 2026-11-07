@@ -309,7 +309,7 @@ begin
   Result := Default(TAtlasModuleInfo);
   Result.Id := cModuleId;
   Result.Name := 'Suche';
-  Result.Version := TAtlasVersion.Version;
+  Result.Version := TAtlasVersion.cVersion;
   Result.Handle := HInstance;
   // Lief mit den Editorbefehlen schon im abgesicherten Start.
   Result.MinLevel := TAtlasSafeLevel.Safe;

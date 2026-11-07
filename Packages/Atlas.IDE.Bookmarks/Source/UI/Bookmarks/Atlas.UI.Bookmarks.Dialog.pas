@@ -45,14 +45,14 @@ uses
   Atlas.UI.Bookmarks.Strings;
 
 const
-  Gap = 8;
-  DialogWidth = 460;
+  cGap = 8;
+  cDialogWidth = 460;
 
 { TAtlasBookmarkDialog }
 
 constructor TAtlasBookmarkDialog.CreateDialog(AOwner: TComponent; const ATitle, AName: string);
 var
-  Bottom: TPanel;
+  mBottom: TPanel;
 begin
   inherited CreateNew(AOwner);
   Caption := ATitle;
@@ -61,13 +61,13 @@ begin
   Position := poMainFormCenter;
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  ClientWidth := ScaleValue(DialogWidth);
+  ClientWidth := ScaleValue(cDialogWidth);
 
   FPrompt := TLabel.Create(Self);
   FPrompt.Parent := Self;
   FPrompt.Align := alTop;
   FPrompt.AlignWithMargins := True;
-  FPrompt.Margins.SetBounds(Gap, Gap, Gap, Gap div 2);
+  FPrompt.Margins.SetBounds(cGap, cGap, cGap, cGap div 2);
   FPrompt.ShowAccelChar := False;
   FPrompt.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDialogPrompt);
 
@@ -75,26 +75,26 @@ begin
   FEdit.Parent := Self;
   FEdit.Align := alTop;
   FEdit.AlignWithMargins := True;
-  FEdit.Margins.SetBounds(Gap, 0, Gap, 0);
+  FEdit.Margins.SetBounds(cGap, 0, cGap, 0);
   FEdit.Top := FPrompt.Top + FPrompt.Height + 1;
   FEdit.Text := AName;
   FEdit.OnChange := EditChange;
   FPrompt.FocusControl := FEdit;
 
-  Bottom := TPanel.Create(Self);
-  Bottom.Parent := Self;
-  Bottom.Align := alBottom;
-  Bottom.Height := ScaleValue(44);
-  Bottom.BevelOuter := bvNone;
+  mBottom := TPanel.Create(Self);
+  mBottom.Parent := Self;
+  mBottom.Align := alBottom;
+  mBottom.Height := ScaleValue(44);
+  mBottom.BevelOuter := bvNone;
   // Rechts „Abbrechen“, links davon „Setzen“.
-  FCancel := AddButton(Bottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDialogCancel), CancelClick);
+  FCancel := AddButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDialogCancel), CancelClick);
   FCancel.Cancel := True;
-  FCancel.Left := Bottom.ClientWidth - FCancel.Width - ScaleValue(Gap);
-  FOk := AddButton(Bottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDialogOk), OkClick);
+  FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
+  FOk := AddButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDialogOk), OkClick);
   FOk.Default := True;
-  FOk.Left := FCancel.Left - FOk.Width - ScaleValue(Gap);
+  FOk.Left := FCancel.Left - FOk.Width - ScaleValue(cGap);
 
-  ClientHeight := FEdit.Top + FEdit.Height + ScaleValue(Gap) + Bottom.Height;
+  ClientHeight := FEdit.Top + FEdit.Height + ScaleValue(cGap) + mBottom.Height;
   // Vorschlag beim Öffnen ganz markiert (AutoSelect): Tippen ersetzt ihn, Enter übernimmt ihn.
   FEdit.AutoSelect := True;
   ActiveControl := FEdit;
@@ -114,7 +114,7 @@ begin
   begin
     Result.Width := ScaleValue(90);
   end;
-  Result.Top := ScaleValue(Gap);
+  Result.Top := ScaleValue(cGap);
   Result.Height := ScaleValue(28);
   Result.Anchors := [akTop, akRight];
 end;
@@ -145,17 +145,17 @@ end;
 
 class function TAtlasBookmarkDialog.Execute(const ATitle: string; var AName: string): Boolean;
 var
-  Dialog: TAtlasBookmarkDialog;
+  mDialog: TAtlasBookmarkDialog;
 begin
-  Dialog := TAtlasBookmarkDialog.CreateDialog(nil, ATitle, AName);
+  mDialog := TAtlasBookmarkDialog.CreateDialog(nil, ATitle, AName);
   try
-    Result := (Dialog.ShowModal = mrOk) and (Dialog.BookmarkName <> '');
+    Result := (mDialog.ShowModal = mrOk) and (mDialog.BookmarkName <> '');
     if Result then
     begin
-      AName := Dialog.BookmarkName;
+      AName := mDialog.BookmarkName;
     end;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 

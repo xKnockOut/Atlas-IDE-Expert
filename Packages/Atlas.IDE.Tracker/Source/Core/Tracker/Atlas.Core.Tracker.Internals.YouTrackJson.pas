@@ -38,13 +38,13 @@ uses
 
 class function TAtlasYouTrackJson.TextOf(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
-  Value := AObject.Values[AName];
-  if Value is TJSONString then
+  mValue := AObject.Values[AName];
+  if mValue is TJSONString then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end;
 end;
 
@@ -113,12 +113,12 @@ end;
 
 class function TAtlasYouTrackJson.IsOneOf(const AName: string; const ANames: array of string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
   Result := False;
-  for Name in ANames do
+  for mName in ANames do
   begin
-    if SameText(AName, Name) then
+    if SameText(AName, mName) then
     begin
       Exit(True);
     end;
@@ -163,7 +163,7 @@ end;
 
 class function TAtlasYouTrackJson.Limited(const AText: string): string;
 begin
-  Result := Copy(AText, 1, TAtlasTrackerDetails.MaxText);
+  Result := Copy(AText, 1, TAtlasTrackerDetails.cMaxText);
 end;
 
 class function TAtlasYouTrackJson.FirstText(AObject: TJSONObject; const AName, AFallback: string): string;
