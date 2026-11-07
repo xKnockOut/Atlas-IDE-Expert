@@ -36,10 +36,10 @@ type
 
   TLogMarks = record
   public const
-    StartChar = #$E000;
-    StopChar = #$E001;
+    cStartChar = #$E000;
+    cStopChar = #$E001;
     /// <summary>Art im Kennzeichen, in der Reihenfolge von TLogMarkKind.</summary>
-    KindChars: array[TLogMarkKind] of Char = ('N', 'P', 'T');
+    cKindChars: array[TLogMarkKind] of Char = ('N', 'P', 'T');
   public
     /// <summary>AValue als Name gekennzeichnet (Projekt, Unit, Typ, Routine, Benutzer …).</summary>
     class function Name(const AValue: string): string; static;
@@ -68,7 +68,7 @@ var
 begin
   for mKind := Low(TLogMarkKind) to High(TLogMarkKind) do
   begin
-    if TLogMarks.KindChars[mKind] = AChar then
+    if TLogMarks.cKindChars[mKind] = AChar then
     begin
       AKind := mKind;
       Exit(True);
@@ -84,7 +84,7 @@ begin
   Result := AValue;
   if TLogMarks.HasMarks(Result) then
   begin
-    Result := StringReplace(StringReplace(Result, TLogMarks.StartChar, '', [rfReplaceAll]), TLogMarks.StopChar, '',
+    Result := StringReplace(StringReplace(Result, TLogMarks.cStartChar, '', [rfReplaceAll]), TLogMarks.cStopChar, '',
       [rfReplaceAll]);
   end;
 end;
@@ -95,7 +95,7 @@ begin
   begin
     Exit('');
   end;
-  Result := StartChar + KindChars[AKind] + WithoutMarkChars(AValue) + StopChar;
+  Result := cStartChar + cKindChars[AKind] + WithoutMarkChars(AValue) + cStopChar;
 end;
 
 class function TLogMarks.Name(const AValue: string): string;
@@ -115,7 +115,7 @@ end;
 
 class function TLogMarks.HasMarks(const AText: string): Boolean;
 begin
-  Result := (Pos(StartChar, AText) > 0) or (Pos(StopChar, AText) > 0);
+  Result := (Pos(cStartChar, AText) > 0) or (Pos(cStopChar, AText) > 0);
 end;
 
 /// <summary>Wert des Kennzeichens ab AStart (StartChar); AStart steht danach hinter dem Kennzeichen.</summary>
@@ -129,7 +129,7 @@ begin
     Inc(mFirst);
   end;
   mStop := mFirst;
-  while (mStop <= Length(AText)) and (AText[mStop] <> TLogMarks.StopChar) do
+  while (mStop <= Length(AText)) and (AText[mStop] <> TLogMarks.cStopChar) do
   begin
     Inc(mStop);
   end;
@@ -153,7 +153,7 @@ begin
     mIndex := 1;
     while mIndex <= Length(AText) do
     begin
-      if AText[mIndex] = StartChar then
+      if AText[mIndex] = cStartChar then
       begin
         mValue := ReadMark(AText, mIndex, mKind);
         mBuilder.Append(AMap(mKind, mValue));
@@ -161,7 +161,7 @@ begin
       else
       begin
         // Ein einzelnes Endzeichen ohne Anfang fällt weg.
-        if AText[mIndex] <> StopChar then
+        if AText[mIndex] <> cStopChar then
         begin
           mBuilder.Append(AText[mIndex]);
         end;

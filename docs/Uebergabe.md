@@ -1,3 +1,9 @@
+﻿## Präfixe und Zeilenlänge in Atlas.Text (07.11.2026, Branch `claude/project-thread-y7kbtc` auf `main-merging`)
+- Wie Atlas.Common (Anleitung `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`): lokale Namen und Parameter per `--fix naming-prefix` (Package und `Tests/Text`), die 57 öffentlichen Klassenkonstanten (`TUpdateErrors`, `TUpdateLayout`, `TStepFilterNames`, `TTextAnonymizer`, `TUpdateVersions`, `TUpdateChannels`, `TDebugDisplayText`, `TLogMarks`, `TAtlasVersion.cVersion` …) mit allen Verwendungen in Application, Common, Base und den Modulen per Skript (`TKlasse.Name` → `TKlasse.cName`, im eigenen Rumpf unqualifiziert).
+- `TAtlasVersion.Version` heißt jetzt `cVersion`; die Versionsskripte (Check-/Set-Version, Build-Docs, Workflow) suchen weiter `Version\s*=\s*'` und treffen damit auch `cVersion`.
+- Testdaten mit `http://` in `Tests/Text` tragen `lsp-ignore: security-insecure-http`.
+- Geprüft (Cloud): AtlasServer übersetzt (FPC trunk); FPC-Tests aller Text-Testunits und der Common-Update-Tests wie auf main-merging (226, gleicher Fehlschlag `SplitHelperDropsTrailingEmpty`); Atlas mit naming-prefix, line-length und Metriken über Package und Tests: 0 Befunde. IDE-Units nicht übersetzt: Delphi-Build nötig.
+﻿## Präfixe und Zeilenlänge in Atlas.Linux (07.11.2026, Branch `claude/project-thread-64k5j8` auf `main-merging`)
 ﻿## Präfixe und Zeilenlänge in Atlas.Windows (07.11.2026, Branch `claude/project-thread-1v6ywd` auf `main-merging`)
 - 76 naming-prefix und 3 line-length in Atlas.Windows, 42 naming-prefix und 1 line-length in `Tests/Windows`; lokale Namen und Parameter über `--fix naming-prefix` (Server mit safeFix, nur lokal), Rest von Hand.
 - Öffentliche Konstanten: nur `TFileWatcher.PollMs`/`SettleMs` (jetzt `cPollMs`/`cSettleMs`), außerhalb der Unit nirgends benutzt. Das Linux-Gegenstück heißt seit #1856 ebenso.

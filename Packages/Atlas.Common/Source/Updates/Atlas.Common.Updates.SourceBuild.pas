@@ -48,7 +48,7 @@ begin
   Result := '';
   mParts := AFile.Replace('/', '\').Split(['\']);
   if (Length(mParts) = 3) and SameText(mParts[0], 'Packages') and
-    mParts[1].StartsWith(TUpdateVersions.PackagePrefix, True) and SameText(mParts[2], mParts[1] + '.dproj') then
+    mParts[1].StartsWith(TUpdateVersions.cPackagePrefix, True) and SameText(mParts[2], mParts[1] + '.dproj') then
   begin
     Result := mParts[1];
   end;
@@ -65,7 +65,7 @@ begin
     for mFile in AFiles do
     begin
       mName := PackageOf(mFile);
-      if SameText(mName, TUpdateVersions.ContractsPackage) or SameText(mName, TUpdateVersions.BasePackage) then
+      if SameText(mName, TUpdateVersions.cContractsPackage) or SameText(mName, TUpdateVersions.cBasePackage) then
       begin
         mFirst.Add('Packages\' + mName + '\' + mName + '.dproj');
       end
@@ -105,14 +105,14 @@ begin
         mLog(ALine);
       end) <> 0 then
     begin
-      raise EUpdateError.CreateCode(TUpdateErrors.Build, mProject);
+      raise EUpdateError.CreateCode(TUpdateErrors.cBuild, mProject);
     end;
   end;
 end;
 
 function IsPluginFile(const AFile, AExtension: string): Boolean;
 begin
-  Result := (Pos('\', AFile) = 0) and AFile.StartsWith(TUpdateVersions.PackagePrefix, True) and
+  Result := (Pos('\', AFile) = 0) and AFile.StartsWith(TUpdateVersions.cPackagePrefix, True) and
     AFile.EndsWith(AExtension, True);
 end;
 

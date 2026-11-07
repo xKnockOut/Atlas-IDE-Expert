@@ -170,7 +170,7 @@ procedure TAtlasUpdateInstallUiTests.ErrorCodesHaveTexts;
 begin
   Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesErrorHash), TAtlasUpdateTexts.ErrorText('hash', ''));
   Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesErrorLocked) + ' (AtlasServer.exe)',
-    TAtlasUpdateTexts.ErrorText(TUpdateErrors.Locked, 'AtlasServer.exe'));
+    TAtlasUpdateTexts.ErrorText(TUpdateErrors.cLocked, 'AtlasServer.exe'));
   Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesErrorUnexpected), TAtlasUpdateTexts.ErrorText('neu', ''),
     'unbekannter Code: unerwartet');
   Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesErrorStart), TAtlasUpdateTexts.ErrorText('start', ''));
@@ -196,7 +196,7 @@ begin
   Assert.AreEqual(Fmt(TAtlasUpdatesTextId.UpdatesOutcomeInstalled, ['2.1.0', '2.0.0']) + sLineBreak +
     Fmt(TAtlasUpdatesTextId.UpdatesOutcomeAdded, ['Atlas.IDE.Notes']), TAtlasUpdateTexts.OutcomeText(mOutcome));
   mOutcome.Kind := TUpdateOutcomeKind.RolledBack;
-  mOutcome.Reason := TUpdateErrors.Locked;
+  mOutcome.Reason := TUpdateErrors.cLocked;
   Assert.IsTrue(TAtlasUpdateTexts.OutcomeText(mOutcome).Contains(Txt(TAtlasUpdatesTextId.UpdatesErrorLocked)));
   mOutcome.Added := nil;
 end;
