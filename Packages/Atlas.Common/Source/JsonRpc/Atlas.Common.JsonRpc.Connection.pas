@@ -388,6 +388,7 @@ begin
           end;
         except
           // Zerstörter Nachrichtenstrom: Run löst den Fehler erneut aus.
+          // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Workers; Fehler wird gemeldet
           on Exception do
           begin
             mItem := InboxItem(ikFailed);
@@ -479,6 +480,7 @@ begin
     AWork();
   except
     // Wie bei Benachrichtigungen: melden und weiterarbeiten.
+    // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Workers; Fehler wird gemeldet
     on E: Exception do
       ReportError(E);
   end;
@@ -532,6 +534,7 @@ begin
           AResponse.Free;
         end;
       except
+        // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Workers; Fehler wird gemeldet
         on E: Exception do
           if Assigned(mOnError) then
             try
@@ -552,6 +555,7 @@ begin
     mResponse := FDispatcher.DispatchMessage(AMessage, AQueueMs);
   except
     // Fehler eines Benachrichtigungs-Handlers: melden und weiterarbeiten.
+    // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Workers; Fehler wird gemeldet
     on E: Exception do
     begin
       ReportError(E);

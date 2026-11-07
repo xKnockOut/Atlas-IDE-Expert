@@ -667,6 +667,7 @@ begin
       TDirectory.Delete(mFolders[mIndex], True);
     except
       // Gesperrt (etwa im Explorer offen) oder schon weg: beim nächsten Fall erneut.
+      // lsp-ignore: catch-all-without-raise -- Aufräumen nach Kräften, nächster Fall versucht es erneut
       on Exception do
         ;
     end;

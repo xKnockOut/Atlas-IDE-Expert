@@ -241,6 +241,7 @@ begin
   except
     on EAbort do
       raise;
+    // lsp-ignore: catch-all-without-raise -- Namensauflösung ohne Ergebnis gilt als unbekannt
     on Exception do
     begin
       // Namensauflösung ohne Ergebnis: wie unbekannt behandeln.

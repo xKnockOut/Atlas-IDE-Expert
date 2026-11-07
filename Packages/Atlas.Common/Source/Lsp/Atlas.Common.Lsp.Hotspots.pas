@@ -273,6 +273,7 @@ begin
       try
         mResult := FService.Analyze(mRequest, mVcs);
       except
+        // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Hintergrundjobs; Fehler geht ins Ergebnis
         on E: Exception do
           mError := E.Message;
       end;

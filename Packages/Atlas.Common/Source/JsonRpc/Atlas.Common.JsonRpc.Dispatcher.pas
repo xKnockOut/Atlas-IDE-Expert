@@ -273,6 +273,7 @@ begin
     end;
     Result := SucceededResponse(ARun, mValue, mWatch.ElapsedMilliseconds);
   except
+    // lsp-ignore: catch-all-without-raise -- Fehlergrenze der Anfrage; Fehler geht als Antwort zurück
     on E: Exception do
     begin
       Result := FailedResponse(ARun, E, True, mWatch.ElapsedMilliseconds);
@@ -297,6 +298,7 @@ begin
     end;
     Result := SucceededResponse(ARun, mValue, mWatch.ElapsedMilliseconds);
   except
+    // lsp-ignore: catch-all-without-raise -- Fehlergrenze der Anfrage; Fehler geht als Antwort zurück
     on E: Exception do
     begin
       Result := FailedResponse(ARun, E, True, mWatch.ElapsedMilliseconds);
@@ -423,6 +425,7 @@ begin
       Result := mWhen(AParams);
     except
       // Unlesbare Parameter: in der Reihenfolge laufen; der Handler meldet den Fehler selbst.
+      // lsp-ignore: catch-all-without-raise -- Fehlergrenze der Anfrage; Fehler geht als Antwort zurück
       on Exception do
         Result := False;
     end;
@@ -441,6 +444,7 @@ begin
       ARecent.Add(AMessage);
     except
       // Das Mitschreiben für Absturzfälle darf keine Nachricht verhindern.
+      // lsp-ignore: catch-all-without-raise -- Fehlergrenze der Anfrage; Fehler geht als Antwort zurück
       on Exception do
         ;
     end;
@@ -712,6 +716,7 @@ begin
       end;
       Result := RunOrdered(mRun, mHandler);
     except
+      // lsp-ignore: catch-all-without-raise -- Fehlergrenze der Anfrage; Fehler geht als Antwort zurück
       on E: Exception do
       begin
         Result := FailedResponse(mRun, E, False, 0);

@@ -102,6 +102,7 @@ begin
     mStamp := TFile.GetLastWriteTime(AFileName);
     mSize := TFile.GetSize(AFileName);
   except
+    // lsp-ignore: catch-all-without-raise -- Cache nach Kräften; Fehler heißt nicht gefunden
     on Exception do
       Exit(False);
   end;
@@ -121,6 +122,7 @@ begin
     AData := TFile.ReadAllBytes(AFileName);
   except
     // Gesperrte oder nicht lesbare Dateien zählen als fehlend.
+    // lsp-ignore: catch-all-without-raise -- Cache nach Kräften; Fehler heißt nicht gefunden
     on Exception do
       Exit(False);
   end;
@@ -181,6 +183,7 @@ begin
         AData := TFile.ReadAllBytes(AFileName);
       except
         // Gesperrte oder nicht lesbare Dateien zählen als fehlend.
+        // lsp-ignore: catch-all-without-raise -- Cache nach Kräften; Fehler heißt nicht gefunden
         on Exception do
           Result := False;
       end;
