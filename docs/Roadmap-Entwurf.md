@@ -26,9 +26,9 @@ Keine neuen Funktionen mehr.
 ## 2.2: Debuggen, Testen und Lecks
 
 - Debuggen: #1878, #1820 und aus Epic #614 #577, #583, #584, #843, #851, #853, #863, #864, #869, #872, #895.
-- Testen: #1873 (Test aus dem Debug-Halt), #1776, #1771, #1770, #1778, #1779, Prüfregeln #1780, #1781, #1882, #1879.
+- Testen: #1873 (Test aus dem Debug-Halt), #1776, #1771, #1770, #1778, Prüfregeln #1780, #1781, #1882, #1879.
 - Lecks: #1774, #1875, #1876, #1877, #1880.
-- Zweite Welle: #1772, #1773, #1775, #1777, #1782, #1783, #1881, #1226, #275, #1460, #154, #305.
+- Zweite Welle: #1772, #1773, #1775, #1777, #1779, #1782, #1783, #1881, #1226, #275, #1460, #154, #305.
 
 ## 2.3: KI-Debugger, Team, Versionsverwaltung, CI
 
