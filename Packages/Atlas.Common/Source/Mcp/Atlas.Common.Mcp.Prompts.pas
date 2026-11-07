@@ -1,9 +1,9 @@
 ﻿unit Atlas.Common.Mcp.Prompts;
 
 // MCP-Prompts und Ressourcen mit Vorlage (#1357). Prompts sind fertige
-// Arbeitsabläufe, die Claude Code als Schrägstrich-Befehle anzeigt
+// Arbeitsabläufe, die MCP-Clients als Befehle anbieten (Claude Code als Schrägstrich-Befehle)
 // (/mcp__delphi__unit_review UI.Auftrag). prompts/get liefert eine Nachricht
-// mit Anleitung und den Ergebnissen der nötigen Werkzeuge, damit Claude nicht
+// mit Anleitung und den Ergebnissen der nötigen Werkzeuge, damit der KI-Assistent nicht
 // erst einzeln nachfragen muss:
 //
 //   unit_review (unit)          Gliederung, Befunde, Metriken über Grenzwert, ungenutzter Code, Konventionen

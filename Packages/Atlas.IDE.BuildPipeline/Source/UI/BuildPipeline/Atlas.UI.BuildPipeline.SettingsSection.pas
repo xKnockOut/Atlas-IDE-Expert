@@ -2,7 +2,7 @@
 
 // Abschnitte des Moduls Build-Pipeline im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil „Compiler“
 // und in Atlas.UI.Settings.Page.Release von Base).
-// - „Compiler“: Modulschalter, Build für Claude Code (#261), Schranke für Hinweise und Warnungen (#530) und
+// - „Compiler“: Modulschalter, Build für KI-Assistenten (MCP) (#261), Schranke für Hinweise und Warnungen (#530) und
 //   Prüfung vor dem Compile (#529). Warnungen als Fehler bindet die Seite; der Abschnitt bringt sie beim Speichern
 //   in die einheitliche Form. Die Grenzen des Zeitlimits setzt TAtlasPluginSettings.Normalize.
 // - „Release-Build“: Release-Build-Wächter (#533) mit je Prüfung einem Haken (ohne Sollwert) bzw. einer Auswahl
@@ -86,7 +86,7 @@ var
   mGates: TArray<string>;
 begin
   ModuleSwitch('buildPipeline.enabled');
-  // Claude Code baut über diese IDE (#261, build_project), z. B. ohne Kommandozeilen-Compiler.
+  // KI-Assistenten bauen über diese IDE (#261, build_project), z. B. ohne Kommandozeilen-Compiler.
   Switch('compiler.mcpBuild', TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsMcpBuild));
   Switch('build.zeroHints', TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsBuildZeroHints));
   // Schranke für Hinweise und Warnungen (#530).

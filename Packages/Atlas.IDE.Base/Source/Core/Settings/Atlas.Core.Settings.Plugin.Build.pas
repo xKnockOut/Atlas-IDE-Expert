@@ -30,7 +30,7 @@ type
     CheckOnSaveDelayMs: Integer;
     /// <summary>Höchstdauer einer Prüfung; darüber nur noch von Hand (Strg+Alt+F9).</summary>
     CheckOnSaveMaxMs: Integer;
-    /// <summary>Claude Code darf über das MCP-Werkzeug build_project offene Projekte in dieser IDE bauen (#261),
+    /// <summary>Ein KI-Assistent darf über das MCP-Werkzeug build_project offene Projekte in dieser IDE bauen (#261),
     /// z. B. in der Starter Edition ohne Kommandozeilen-Compiler.</summary>
     McpBuild: Boolean;
     /// <summary>Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen): sobald die IDE

@@ -4,7 +4,7 @@
 // API: entscheidet je Compile, was geschieht. Die IDE-Schicht startet die
 // Läufe und baut danach neu.
 // - Nur Make, Build und Check des Benutzers (RequestedBy '', kein
-//   Hintergrund); Builds für Claude Code, Tests und Atlas-Prüfungen laufen
+//   Hintergrund); Builds für KI-Assistenten, Tests und Atlas-Prüfungen laufen
 //   ohne Aufgaben.
 // - Nur warn-Aufgaben: StartWarn, der Build läuft gleich weiter.
 // - Mit einer block-Aufgabe: StartAndCancel. Der Build wird abgebrochen,

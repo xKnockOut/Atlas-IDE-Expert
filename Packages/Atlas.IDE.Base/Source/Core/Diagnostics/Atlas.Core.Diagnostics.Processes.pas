@@ -4,7 +4,7 @@
 // von atlas.server.processes (Index-Cache, Sperre, Stand, angemeldete LSP- und
 // MCP-Prozesse, Protokoll) in Datensätze für das Fenster. Dazu die Namen der
 // ungespeicherten Dateien: Was die IDE geändert, aber nicht gespeichert hat,
-// sieht nur dieser Prozess; ein MCP-Prozess (Claude Code) arbeitet mit dem
+// sieht nur dieser Prozess; ein MCP-Prozess (KI-Assistent) arbeitet mit dem
 // gespeicherten Stand, bis die IDE speichert.
 
 interface

@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Index.Adapters.Processes;
 
 // Prozesse am selben Index-Cache (#62), für „Atlas › Diagnose › Prozesse am
-// Projekt“. Jeder Server-Prozess (LSP aus der IDE oder aus Claude Code, MCP)
+// Projekt“. Jeder Server-Prozess (LSP aus der IDE oder aus einem MCP-Client)
 // meldet sich je Cache mit einer Datei "<cache>.prozesse\<pid>-<n>.json" an,
 // die er offen hält und bei jeder Änderung neu schreibt: Art, Client, Zustand
 // ("baut Index", "liest Cache", "bereit"), ob er die Cache-Sperre hält, und
@@ -36,6 +36,9 @@ type
     procedure Update(const AState: string; AWriter: Boolean; const AEvent: string); overload;
     /// <summary>Nur ein Ereignis, Zustand bleibt. Threadsicher.</summary>
     procedure Update(const AEvent: string); overload;
+    /// <summary>Name des Clients nachtragen, sobald er bekannt ist (MCP: clientInfo aus initialize, #1883).
+    /// Threadsicher.</summary>
+    procedure SetClient(const AClient: string);
     function Info: TIndexProcessInfo;
     property FileName: string read FFileName;
     property CacheFile: string read FCacheFile;
@@ -166,6 +169,17 @@ begin
         Delete(FInfo.Events, 0, Length(FInfo.Events) - cMaxEvents);
       end;
     end;
+    Save;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TIndexProcessEntry.SetClient(const AClient: string);
+begin
+  TMonitor.Enter(FLock);
+  try
+    FInfo.Client := AClient;
     Save;
   finally
     TMonitor.Exit(FLock);

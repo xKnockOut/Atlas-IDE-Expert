@@ -8,7 +8,7 @@
 // „atlas.buildpipeline“ (Modulschalter buildPipeline) bei der Registry von
 // Base an und stellt über dessen Scope bereit:
 // - die Teile der Feature-Tabelle (BuildPipeline: Läufer, Wächter und
-//   Prüfung an den Compile-Ereignissen; McpBuild: Eingang für Claude Code),
+//   Prüfung an den Compile-Ereignissen; McpBuild: Eingang für KI-Assistenten (MCP)),
 // - den Befehl „Release-Build prüfen“ (Palette),
 // - für Base die Hörer der gelesenen Compilermeldungen und die Bewertung
 //   eines Builds des Benutzers (Atlas.Core.Build.Pipeline); die Folgen gehen
@@ -428,7 +428,7 @@ begin
       begin
         Result := TAtlasIdeHost.CompileEvents <> nil;
       end, PipelineStarted, StartPipeline, StopPipeline),
-    // Builds für Claude Code (#261): nur im normalen Start, mit dem Läufer und solange McpBuild an ist.
+    // Builds für KI-Assistenten (#261): nur im normalen Start, mit dem Läufer und solange McpBuild an ist.
     TAtlasFeaturePart.When('McpBuild',
       function(ALevel: TAtlasSafeLevel): Boolean
       begin

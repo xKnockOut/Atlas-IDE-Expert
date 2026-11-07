@@ -3239,8 +3239,8 @@
         "prompts": {
           "type": "boolean",
           "default": true,
-          "description": "Prompts (in Claude Code Schrägstrich-Befehle wie /mcp__delphi__unit_review) und Ressourcenvorlagen (delphi://unit/{name}, delphi://form/{file}, delphi://findings/{file}, delphi://build/last) anbieten. false: prompts/list und resources/templates/list sind leer, die Werkzeuge bleiben.",
-          "x-description-en": "Offer prompts (in Claude Code slash commands such as /mcp__delphi__unit_review) and resource templates (delphi://unit/{name}, delphi://form/{file}, delphi://findings/{file}, delphi://build/last). false: prompts/list and resources/templates/list are empty, the tools stay.",
+          "description": "Prompts (in MCP-Clients als Befehle angeboten, in Claude Code etwa /mcp__delphi__unit_review) und Ressourcenvorlagen (delphi://unit/{name}, delphi://form/{file}, delphi://findings/{file}, delphi://build/last) anbieten. false: prompts/list und resources/templates/list sind leer, die Werkzeuge bleiben.",
+          "x-description-en": "Offer prompts (offered as commands by MCP clients, in Claude Code e.g. /mcp__delphi__unit_review) and resource templates (delphi://unit/{name}, delphi://form/{file}, delphi://findings/{file}, delphi://build/last). false: prompts/list and resources/templates/list are empty, the tools stay.",
           "x-page": "MCP",
           "x-control": "Kontrollkästchen",
           "x-issue": "#1357"
@@ -3271,8 +3271,8 @@
               "name": {
                 "type": "string",
                 "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
-                "description": "Name des Prompts; in Claude Code /mcp__delphi__<name>. Eingebaute Namen (unit_review, explain_form, write_tests, fix_finding, prepare_commit) gehen vor.",
-                "x-description-en": "Name of the prompt; in Claude Code /mcp__delphi__<name>. Built-in names (unit_review, explain_form, write_tests, fix_finding, prepare_commit) take precedence."
+                "description": "Name des Prompts; in MCP-Clients als Befehl, in Claude Code /mcp__delphi__<name>. Eingebaute Namen (unit_review, explain_form, write_tests, fix_finding, prepare_commit) gehen vor.",
+                "x-description-en": "Name of the prompt; offered as a command by MCP clients, in Claude Code /mcp__delphi__<name>. Built-in names (unit_review, explain_form, write_tests, fix_finding, prepare_commit) take precedence."
               },
               "description": {
                 "type": "string",

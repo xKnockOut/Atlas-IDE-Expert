@@ -55,6 +55,8 @@ type
     procedure Report(const ACacheFile, AState: string; AWriter: Boolean; const AEvent: string); overload;
     /// <summary>Nur ein Ereignis am angemeldeten Cache; ohne Anmeldung nichts.</summary>
     procedure Report(const AState: string; AWriter: Boolean; const AEvent: string); overload;
+    /// <summary>Name des Clients für die Anmeldung, auch nachträglich (#1883).</summary>
+    procedure SetClient(const AClient: string);
     /// <summary>Hält dieser Arbeitsbereich die Sperre seines Caches (laut Anmeldung, #62)?</summary>
     function Writes: Boolean;
     /// <summary>Cache-Dateien des laufenden Aufbaus. Threadsicher.</summary>
@@ -137,6 +139,24 @@ begin
       FProcessEntry := TIndexProcessEntry.Create(ACacheFile, mIdentity);
     end;
     FProcessEntry.Update(AState, AWriter, AEvent);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TShellWorkspaceCache.SetClient(const AClient: string);
+var
+  mIdentity: TIndexProcessInfo;
+begin
+  TMonitor.Enter(FLock);
+  try
+    mIdentity := FSetup.ProcessIdentity;
+    mIdentity.Client := AClient;
+    FSetup.ProcessIdentity := mIdentity;
+    if FProcessEntry <> nil then
+    begin
+      FProcessEntry.SetClient(AClient);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;

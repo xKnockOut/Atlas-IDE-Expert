@@ -524,10 +524,10 @@
     {
       "id": "mcpBuild",
       "setting": "McpBuild",
-      "title": "Builds für Claude Code",
-      "titleEn": "Builds for Claude Code",
-      "text": "Claude Code baut das offene Projekt über das Werkzeug build_project in dieser IDE und bekommt Fehler und Warnungen mit Datei, Zeile und Spalte zurück. Bei laufendem Debugger oder Build lehnt Atlas ab.",
-      "textEn": "Claude Code builds the open project in this IDE through the build_project tool and gets errors and warnings back with file, line and column. While the debugger or a build is running, Atlas refuses.",
+      "title": "Builds für KI-Assistenten",
+      "titleEn": "Builds for AI assistants",
+      "text": "Ein KI-Assistent wie Claude Code baut das offene Projekt über das Werkzeug build_project in dieser IDE und bekommt Fehler und Warnungen mit Datei, Zeile und Spalte zurück. Bei laufendem Debugger oder Build lehnt Atlas ab.",
+      "textEn": "An AI assistant such as Claude Code builds the open project in this IDE through the build_project tool and gets errors and warnings back with file, line and column. While the debugger or a build is running, Atlas refuses.",
       "image": "Tipps\\claude-build.png"
     },
     {

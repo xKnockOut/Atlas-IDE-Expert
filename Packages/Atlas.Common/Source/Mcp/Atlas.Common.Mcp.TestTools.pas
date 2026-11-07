@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Mcp.TestTools;
 
-// DUnitX-Tests für Claude Code ausführen (#69, MCP-Werkzeug run_tests), ohne
+// DUnitX-Tests für KI-Assistenten (MCP) ausführen (#69, MCP-Werkzeug run_tests), ohne
 // Windows: Wahl des Testprojekts, der Plattform und der Test-EXE, Befehlszeile
 // und Bericht mit Datei und Zeile jedes fehlgeschlagenen Tests. Den Prozess
 // startet die Shell (Shell.Mcp); bauen lässt sie vorher auf Wunsch über die

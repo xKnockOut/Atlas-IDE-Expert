@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Mcp.StatusTools;
 
 // MCP-Werkzeug get_server_status (#1356): dieselben Zahlen wie das Fenster
-// „Atlas-Server“ der IDE, damit Claude bei „Atlas ist langsam“ selbst
+// „Atlas-Server“ der IDE, damit der KI-Assistent bei „Atlas ist langsam“ selbst
 // nachsehen kann. Der MCP-Prozess ist nicht der Server der IDE; er liest
 // dessen letzten Status aus der Statusdatei (TServerStatusFile, alle 5 s
 // geschrieben, solange das Plugin den Server abfragt). Gibt es für den

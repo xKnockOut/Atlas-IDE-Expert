@@ -1,7 +1,7 @@
 ﻿unit Shell.Mcp;
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48). Bietet den Symbolindex eines
-// Projektordners über das Model Context Protocol an, z. B. für Claude Code:
+// Projektordners über das Model Context Protocol an, z. B. für KI-Assistenten (MCP):
 //
 //   claude mcp add delphi -- AtlasServer.exe --mcp --root C:\Projekte\App
 //
@@ -55,6 +55,7 @@ uses
   Atlas.Common.Mcp.Paths,
   Shell.Platform,
   Shell.CrashCases,
+  Shell.WorkspaceGroup,
   Shell.Workspace,
   Shell.Mcp.Context,
   Shell.Mcp.Services,
@@ -240,6 +241,17 @@ begin
     end;
 end;
 
+/// <summary>Name aus clientInfo für „Prozesse am Projekt“ und Absturzfälle (#1883).</summary>
+function ClientInfoOf(AGroup: TShellWorkspaceGroup; ACrashCases: TShellCrashCases): TProc<string>;
+begin
+  Result :=
+    procedure(AClient: string)
+    begin
+      AGroup.SetClient(AClient);
+      ACrashCases.Client := AClient;
+    end;
+end;
+
 /// <summary>Bedient den Client, bis er die Eingabe schließt; 1, wenn die Verbindung abbricht.</summary>
 function Serve(AConnection: TJsonRpcConnection; const ALogger: ILogger): Integer;
 begin
@@ -283,6 +295,7 @@ begin
   mDispatcher.OnRequestFailed := RequestFailedOf(mCrashCases, mServices.Workspace);
   try
     ConfigureServer(mServer, mServices, AOptions.Restricted, mLogger);
+    mServer.OnClientInfo := ClientInfoOf(mServices.Group, mCrashCases);
     mPrompts := NewPrompts(mServer, mServices);
     mServer.Attach(mDispatcher);
     mConnection.OnError := ConnectionErrorOf(mLogger);

@@ -10,7 +10,7 @@
 //   tools/call                 {name, arguments} → {content:[{type:"text"}], isError}
 //   resources/list, resources/read  Ressourcen als Text (#272), auch über Vorlagen
 //   resources/templates/list   Ressourcenvorlagen wie delphi://unit/{name} (#1357)
-//   prompts/list, prompts/get  fertige Arbeitsabläufe, in Claude Code Schrägstrich-Befehle (#1357)
+//   prompts/list, prompts/get  fertige Arbeitsabläufe, in MCP-Clients Befehle, in Claude Code Schrägstrich-Befehle (#1357)
 //
 // Prompts, Vorlagen und Ressourcen, die zu ihnen gehören (AddPromptResource),
 // gibt es nur, solange OnPromptsEnabled True liefert (mcp.prompts);
@@ -125,6 +125,8 @@ type
     OnAudit: TProc<string>;
     OnPrompts: TFunc<TArray<TMcpPrompt>>;
     OnPromptsEnabled: TFunc<Boolean>;
+    /// <summary>Name des Clients aus initialize (clientInfo.name, #1883); nicht bei leerem Namen.</summary>
+    OnClientInfo: TProc<string>;
   end;
 
   TMcpServer = class
@@ -207,6 +209,7 @@ type
     property OnPrompts: TFunc<TArray<TMcpPrompt>> read FEvents.OnPrompts write FEvents.OnPrompts;
     /// <summary>mcp.prompts, bei jedem Aufruf neu gelesen; ohne Ereignis an.</summary>
     property OnPromptsEnabled: TFunc<Boolean> read FEvents.OnPromptsEnabled write FEvents.OnPromptsEnabled;
+    property OnClientInfo: TProc<string> read FEvents.OnClientInfo write FEvents.OnClientInfo;
   end;
 
 implementation
@@ -859,6 +862,7 @@ end;
 function TMcpServer.Initialize(const AParams: TJSONValue): TJSONObject;
 var
   mVersion: string;
+  mClient: string;
   mCapabilities, mInfo: TJSONObject;
 begin
   // Die vom Client gewünschte Version übernehmen; der Server nutzt nur Werkzeuge,
@@ -867,6 +871,12 @@ begin
   if (AParams is TJSONObject) and (TJSONObject(AParams).GetValue('protocolVersion') is TJSONString) then
   begin
     mVersion := TJSONObject(AParams).GetValue('protocolVersion').Value;
+  end;
+  // Wer fragt: für „Prozesse am Projekt“ und Absturzfälle statt eines festen Namens (#1883).
+  if Assigned(FEvents.OnClientInfo) and (AParams is TJSONObject) and
+    TJSONObject(AParams).TryGetValue<string>('clientInfo.name', mClient) and (Trim(mClient) <> '') then
+  begin
+    FEvents.OnClientInfo(Trim(mClient));
   end;
   Result := TJSONObject.Create;
   Result.AddPair('protocolVersion', mVersion);

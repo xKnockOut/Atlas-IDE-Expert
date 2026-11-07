@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Mcp.Freshness;
 
 // Aktueller Index im MCP-Modus (#48): Der MCP-Prozess hat keinen Editor, der
-// Änderungen meldet, und Claude Code ändert laufend Dateien. Vor jedem
+// Änderungen meldet, und KI-Assistenten ändern laufend Dateien. Vor jedem
 // Werkzeugaufruf vergleicht Atlas deshalb die Zeitstempel der Projektdateien
 // mit dem Stand im Index; geänderte, neue und gelöschte gehen als
 // Dateiänderungen an den Index (wie didChangeWatchedFiles).

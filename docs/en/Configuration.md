@@ -416,7 +416,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 |---|---|---|---|---|---|
 | `mcp.disabledTools` | global (settings.json) | array<string> | `` |  | Tools the MCP server does not offer, e.g. rename_symbol or apply_code_action. In restricted mode (--restricted) writing tools are always off. |
 | `mcp.globalSettings` | project (atlas.json) | boolean | `true` |  | Like the LSP server and the linter, the MCP server reads the global file %APPDATA%\Atlas\settings.json (e.g. mcp.disabledTools, index, hints). false: only atlas.json, for example for reproducible results in the team. |
-| `mcp.prompts` | global (settings.json) | boolean | `true` |  | Offer prompts (in Claude Code slash commands such as /mcp__delphi__unit_review) and resource templates (delphi://unit/{name}, delphi://form/{file}, delphi://findings/{file}, delphi://build/last). false: prompts/list and resources/templates/list are empty, the tools stay. |
+| `mcp.prompts` | global (settings.json) | boolean | `true` |  | Offer prompts (offered as commands by MCP clients, in Claude Code e.g. /mcp__delphi__unit_review) and resource templates (delphi://unit/{name}, delphi://form/{file}, delphi://findings/{file}, delphi://build/last). false: prompts/list and resources/templates/list are empty, the tools stay. |
 | `mcp.promptLanguage` | global (settings.json) | string | `"de"` | `"de"`, `"en"` | Language of the instructions in the prompts. |
 | `mcp.customPrompts` | project (atlas.json) | array<object> | `` |  | Own prompts of the project with placeholders {argument} in the text and embedded contents from include (e.g. diagnostics, metrics). |
 

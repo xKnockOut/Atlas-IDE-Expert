@@ -60,6 +60,8 @@ type
     procedure Prepare(AWorkspace: TShellWorkspace);
     function RuleProjects: TArray<TRuleProject>;
   public
+    /// <summary>Name des Clients für alle Arbeitsbereiche, auch nach Load (#1883).</summary>
+    procedure SetClient(const AClient: string);
     /// <summary>AReadText liest Quelltexte (Hauptquelltexte der Projekte); Fortschritt und logMessage der
     /// Arbeitsbereiche gehen ins Leere, Meldungen an ALogger.</summary>
     constructor Create(const ARoot: string; const AStore: IDocumentStore; const ALogger: ILogger;
@@ -239,6 +241,17 @@ begin
     mWorkspace.Stop;
   end;
   FMain.Stop;
+end;
+
+procedure TShellWorkspaceGroup.SetClient(const AClient: string);
+var
+  mWorkspace: TShellWorkspace;
+begin
+  FProcessIdentity.Client := AClient;
+  for mWorkspace in Workspaces do
+  begin
+    mWorkspace.Cache.SetClient(AClient);
+  end;
 end;
 
 function TShellWorkspaceGroup.Workspaces: TArray<TShellWorkspace>;

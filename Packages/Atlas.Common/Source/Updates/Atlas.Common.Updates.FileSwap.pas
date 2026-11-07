@@ -5,7 +5,7 @@
 // - Vor dem Überschreiben oder Löschen kommt die alte Datei in den
 //   Sicherungsordner; der Rückfall kopiert sie zurück und löscht neu
 //   hinzugekommene Dateien.
-// - Eine laufende EXE (z. B. AtlasServer.exe für Claude Code) lässt sich nicht
+// - Eine laufende EXE (z. B. AtlasServer.exe für KI-Assistenten (MCP)) lässt sich nicht
 //   überschreiben, aber umbenennen: Sie wird als <Name>.atlas-old
 //   beiseitegelegt; aufgeräumt wird beim nächsten Update.
 

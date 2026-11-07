@@ -319,11 +319,11 @@ begin
   Result.Store := NewStore;
   Result.Group := TShellWorkspaceGroup.Create(ARoot, Result.Store, ALogger, Result.Index, 'atlas-mcp-index',
     ReadSourceText);
-  // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62); der MCP-Modus läuft für Claude Code.
+  // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62); den Namen des MCP-Clients trägt initialize nach (#1883).
   mIdentity := Default(TIndexProcessInfo);
   mIdentity.Pid := TShellPlatform.CurrentProcessId;
   mIdentity.Kind := TIndexProcessInfo.cKindMcp;
-  mIdentity.Client := 'Claude Code';
+  mIdentity.Client := 'MCP-Client';
   Result.Group.ProcessIdentity := mIdentity;
   Result.Tools := NewIndexTools(Result.Index, Result.Group.Main, ARoot);
   Result.Code := NewCodeTools(Result.Index, Result.Group, ARoot);

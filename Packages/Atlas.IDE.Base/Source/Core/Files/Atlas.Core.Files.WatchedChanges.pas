@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Files.WatchedChanges;
 
 // Dateiänderungen außerhalb der IDE für den Server (#395, Ersatz für #22):
-// Git, Claude Code oder ein anderer Editor ändern Quelltexte, ohne dass die
+// Git, ein KI-Assistent oder ein anderer Editor ändern Quelltexte, ohne dass die
 // IDE es meldet. Der Beobachter (Adapters.FolderWatcher) liefert rohe
 // Ereignisse; diese Klasse filtert sie nach Endung, fasst mehrere Ereignisse
 // derselben Datei zusammen und gibt sie erst heraus, wenn QuietMs lang nichts

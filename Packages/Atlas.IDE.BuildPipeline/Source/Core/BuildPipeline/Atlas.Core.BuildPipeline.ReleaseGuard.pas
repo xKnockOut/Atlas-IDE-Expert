@@ -9,7 +9,7 @@
 //
 // - Release gilt: Konfiguration „Release“ oder in build.releaseConfigs
 //   gelistet (Groß-/Kleinschreibung egal). Geprüft wird vor make und build,
-//   auch für Aufträge (Claude Code #261, Schnellaktion „Öffnen und bauen“
+//   auch für Aufträge (KI-Assistenten #261, Schnellaktion „Öffnen und bauen“
 //   #764), nie bei der Hintergrundprüfung (#548), Syntaxprüfung, Clean oder
 //   Code Insight.
 // - Prüfungen (build.releaseChecks), je an/aus, die Compileroptionen mit

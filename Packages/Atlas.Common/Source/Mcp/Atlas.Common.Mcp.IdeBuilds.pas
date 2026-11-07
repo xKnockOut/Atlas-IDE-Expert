@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Mcp.IdeBuilds;
 
-// Bauen für Claude Code über die laufende IDE (#261, Werkzeug build_project).
+// Bauen für KI-Assistenten (MCP) über die laufende IDE (#261, Werkzeug build_project).
 // Ohne Kommandozeilen-Compiler (Starter Edition) baut das IDE-Plugin über
 // IOTAProjectBuilder und antwortet mit Ergebnis und Compilermeldungen (#527,
 // #528). Austausch über Dateien wie bei den schreibenden Werkzeugen (#397):

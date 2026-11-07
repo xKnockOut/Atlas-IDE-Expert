@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.BuildPipeline.Inbox;
 
-// Builds für Claude Code über die IDE (#261, MCP-Werkzeug build_project), ohne
+// Builds für KI-Assistenten über die IDE (#261, MCP-Werkzeug build_project), ohne
 // Open Tools API. Ohne Kommandozeilen-Compiler (Starter Edition) baut das
 // Plugin selbst über IOTAProjectBuilder (Atlas.IDE.BuildPipeline.Runner). Der
 // MCP-Server legt den Auftrag in den Eingang des Plugins:

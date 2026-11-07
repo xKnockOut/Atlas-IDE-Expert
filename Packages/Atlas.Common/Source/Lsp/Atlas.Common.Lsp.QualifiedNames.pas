@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.QualifiedNames;
 
 // Voll qualifizierter Name des Symbols unter dem Cursor (#128), z. B. für
-// Dokumentation, Commit-Nachrichten oder Anfragen an Claude Code. LSP hat
+// Dokumentation, Commit-Nachrichten oder Anfragen an KI-Assistenten. LSP hat
 // keinen Zugriff auf die Zwischenablage: Der Befehl atlas.server.qualifiedName
 // liefert den Namen als String, das Kopieren übernimmt der Client. Dasselbe gibt
 // es als MCP-Werkzeug qualified_name.

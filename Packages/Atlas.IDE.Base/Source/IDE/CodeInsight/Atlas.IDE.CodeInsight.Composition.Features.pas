@@ -98,7 +98,7 @@ begin
       Result := TAtlasIdeTeamFile.Started;
     end,
     TAtlasIdeTeamFile.Start, TAtlasIdeTeamFile.Stop);
-  // Builds für Claude Code (#261, McpBuild) startet das Modul Build-Pipeline.
+  // Builds für KI-Assistenten (#261, McpBuild) startet das Modul Build-Pipeline.
   // uses nachziehen nach dem Umbenennen einer Unit (#512): ob es angeboten wird, entscheidet der Server
   // (refactoring.unitRenameFollowUp).
   Features.Add('UnitRename', TAtlasSafeLevel.Normal, UnitRenameStarted, StartUnitRename, StopUnitRename);

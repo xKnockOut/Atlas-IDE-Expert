@@ -9,7 +9,7 @@
 // Entscheidungen, testbar ohne IDE.
 //
 // - Nicht geprüft: build.gate = off, Code Insight (fragt die Ereignisse gar
-//   nicht), Hintergrundprüfung (#548), Aufträge (Claude Code #261, „Öffnen und
+//   nicht), Hintergrundprüfung (#548), Aufträge (KI-Assistenten #261, „Öffnen und
 //   bauen“ #764), Syntaxprüfung, Clean und Link.
 // - Geändert ist eine Unit, deren Stand sich seit dem letzten erfolgreichen
 //   Compile geändert hat. Ohne gemerkten Stand (erster Compile der Sitzung)

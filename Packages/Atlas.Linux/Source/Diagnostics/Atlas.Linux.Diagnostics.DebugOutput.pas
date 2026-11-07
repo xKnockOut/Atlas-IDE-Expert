@@ -2,7 +2,7 @@
 
 // Platform-Feature "Diagnostics" für Linux (#1109): Gegenstück zu
 // Atlas.Windows.Diagnostics.DebugOutput. Linux hat keinen Kanal wie
-// OutputDebugString; der Text geht als eine Zeile nach stderr, wo Claude Code
+// OutputDebugString; der Text geht als eine Zeile nach stderr, wo ein MCP-Client
 // und andere Clients die Ausgabe eines Servers mitschreiben. stdout bleibt dem
 // Protokoll vorbehalten.
 

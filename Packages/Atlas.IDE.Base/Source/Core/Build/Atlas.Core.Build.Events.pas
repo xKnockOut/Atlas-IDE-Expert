@@ -40,7 +40,7 @@ type
     OutputFile: string;
     /// <summary>Eigene Hintergrundprüfung von Atlas (#548), kein Build des Benutzers.</summary>
     Background: Boolean;
-    /// <summary>Wer den Build angestoßen hat: '' = Benutzer, "mcp" = Claude Code über build_project (#261).
+    /// <summary>Wer den Build angestoßen hat: '' = Benutzer, "mcp" = ein KI-Assistent über build_project (#261).
     /// </summary>
     RequestedBy: string;
     /// <summary>Dauer des Compiles in ms (#758); setzt nur der Leser des Meldungsfensters nach dem Ende, sonst 0.

@@ -1,12 +1,12 @@
 ﻿unit Atlas.IDE.BuildPipeline.Inbox;
 
-// Eingang für Builds von Claude Code (#261, Protokoll in
+// Eingang für Builds von KI-Assistenten (#261, Protokoll in
 // Atlas.Core.BuildPipeline.Inbox): Alle 250 ms übernimmt das Plugin einen wartenden
 // Auftrag des MCP-Werkzeugs build_project, baut über den Build-Läufer
 // (Atlas.IDE.BuildPipeline.Runner) und antwortet mit Ergebnis und Compilermeldungen.
 // Immer nur ein Auftrag zugleich; die übrigen warten, bis der Läufer frei ist
 // (der MCP-Server zieht sie nach seiner Frist zurück). Abschaltbar über die
-// Einstellung „Builds für Claude Code“ (McpBuild); dann läuft der Eingang
+// Einstellung „Builds für KI-Assistenten“ (McpBuild); dann läuft der Eingang
 // nicht, und der MCP-Server meldet „nicht angenommen“.
 
 interface

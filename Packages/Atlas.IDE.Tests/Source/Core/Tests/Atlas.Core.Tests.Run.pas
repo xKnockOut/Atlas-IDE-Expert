@@ -6,7 +6,7 @@
 //   TestRun und TestsAfterBuild, nur nach einem Build, der nach der Bewertung
 //   von #530 als erfolgreich gilt (build.zeroHints, build.warningsAsErrors,
 //   Basislinie; Atlas.Core.Build.Verdict); nie nach der Hintergrundprüfung und
-//   nie nach einem Build, den Atlas oder Claude Code angestoßen hat).
+//   nie nach einem Build, den Atlas oder ein KI-Assistent angestoßen hat).
 // - Ergebnis aus dem XML-Bericht (Atlas.Text.TestResults) den Testmethoden
 //   zuordnen: Unit der Fixture über das Projekt, darin der Methodenkopf im
 //   implementation-Teil (Atlas.Text.DUnitX, gemeinsam mit dem MCP-Werkzeug

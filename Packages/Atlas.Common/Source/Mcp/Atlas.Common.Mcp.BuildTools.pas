@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Mcp.BuildTools;
 
-// Letzter Build aus der IDE für Claude Code (#556). Der LSP-Server bekommt
+// Letzter Build aus der IDE für KI-Assistenten (MCP) (#556). Der LSP-Server bekommt
 // die Build-Ergebnisse vom IDE-Plugin (TLspIdeBuild, #527/#528) und legt sie
 // als JSON-Datei im Atlas-Cache ab (TIndexCacheDirectory.BuildFileFor); der
 // MCP-Prozess liest sie für das Werkzeug get_last_build. Nur lesend; Meldungen
@@ -226,7 +226,7 @@ begin
     mRoot.AddPair('project', ABuild.Project);
     mRoot.AddPair('configuration', ABuild.Configuration);
     mRoot.AddPair('platform', ABuild.Platform);
-    // Angestoßen von Claude Code (build_project, #261) statt vom Benutzer.
+    // Angestoßen von einem KI-Assistenten (build_project, #261) statt vom Benutzer.
     if ABuild.RequestedBy <> '' then
     begin
       mRoot.AddPair('requestedBy', ABuild.RequestedBy);

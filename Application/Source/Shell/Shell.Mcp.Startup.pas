@@ -24,7 +24,7 @@ function RootOf(const AOptions: TCommandLineOptions): string;
 /// atlas.json. Load übernimmt sie, damit der Index nur einmal mit den wirksamen Einstellungen startet.</summary>
 function GlobalSettingsOf(const ARoot: string; const ALogger: ILogger): string;
 /// <summary>Absturzfälle auch im MCP-Modus (#1355): Werkzeugaufrufe haben kein Dokument, also nur der Fall, kein
-/// Überspringen. Eine Meldung an den Client gibt es nicht (Claude Code kennt atlas/crashCase nicht).</summary>
+/// Überspringen. Eine Meldung an den Client gibt es nicht (MCP-Clients kennen atlas/crashCase nicht).</summary>
 function NewCrashCases(const ALogger: ILogger; const ARecent: IJsonRpcRecentMessages; const ARoot: string):
   TShellCrashCases;
 /// <summary>OnRequestFailed des Dispatchers: Fall sichern, wenn server.crashCases an ist.</summary>
@@ -90,7 +90,7 @@ begin
 end;
 
 /// <summary>Absturzfälle auch im MCP-Modus (#1355): Werkzeugaufrufe haben kein Dokument, also nur der Fall, kein
-/// Überspringen. Eine Meldung an den Client gibt es nicht (Claude Code kennt atlas/crashCase nicht).</summary>
+/// Überspringen. Eine Meldung an den Client gibt es nicht (MCP-Clients kennen atlas/crashCase nicht).</summary>
 function NewCrashCases(const ALogger: ILogger; const ARecent: IJsonRpcRecentMessages; const ARoot: string):
   TShellCrashCases;
 var
@@ -100,7 +100,7 @@ begin
   Result := TShellCrashCases.Create('', ALogger, nil, ARecent);
   Result.AtlasVersion := TProductVersion.cVersion;
   Result.ServerPath := ParamStr(0);
-  Result.Client := 'Claude Code (MCP)';
+  Result.Client := 'MCP-Client';
   Result.SkipEnabled := False;
   Result.SettingsFiles :=
     function(const AUri: string): TArray<string>

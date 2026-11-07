@@ -11,7 +11,7 @@
 //   Index nur einmal aufgebaut · 412 Units                     3 Prozesse
 //   Ungespeicherte Stände bleiben je Prozess getrennt
 //   Datei | IDE (dieser Prozess) | MCP-Prozess
-//   Claude Code sieht den gespeicherten Stand, bis die IDE speichert.
+//   MCP-Clients sehen den gespeicherten Stand, bis die IDE speichert.
 //   Protokoll (Sperr- und Cache-Ereignisse nach Zeit)
 //   [Aktualisieren] [Kopieren]                                  [Schließen]
 // Die Daten kommen von atlas.server.processes (TAtlasProcessesView); die

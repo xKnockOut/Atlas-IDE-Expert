@@ -25,7 +25,7 @@
 //   build.onOpenPlatform): Vor dem Lauf schaltet Atlas jedes Projekt auf die
 //   Vorgabe um, egal was im Projekt eingestellt ist, und stellt am Ende des
 //   Laufs (auch im Hintergrund erst dann) die Auswahl des Benutzers wieder
-//   her, wie der Läufer für Claude Code. Kennt ein Projekt die
+//   her, wie der Läufer für KI-Assistenten (MCP). Kennt ein Projekt die
 //   Konfiguration nicht oder ist die Plattform dort nicht aktiviert, gilt
 //   für diesen Teil die Einstellung des Projekts; die Zusammenfassung nennt
 //   das.

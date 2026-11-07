@@ -1101,8 +1101,8 @@
       "x-parent": "buildPipeline.enabled",
       "x-page": "Compiler",
       "x-quickToggle": true,
-      "x-caption": "Builds für Claude Code",
-      "x-captionEn": "Builds for Claude Code",
+      "x-caption": "Builds für KI-Assistenten (MCP)",
+      "x-captionEn": "Builds for AI assistants (MCP)",
       "x-issue": "#261"
     },
     "BuildToolsEnabled": {
@@ -1123,7 +1123,7 @@
     "BuildPipelineEnabled": {
       "type": "boolean",
       "default": true,
-      "description": "Modul Build-Pipeline (#1455): Builds auf Auftrag (Claude Code, Schnellaktion Build, Tests vor dem Lauf), Prüfung vor dem Kompilieren, Release-Wächter, Bewertung nach der 0/0/0-Regel und Build-Zusammenfassung; aus = nichts davon. Compilermeldungen und Prüfen nach dem Speichern laufen weiter. Die Einzelschalter behalten ihre Werte.",
+      "description": "Modul Build-Pipeline (#1455): Builds auf Auftrag (KI-Assistenten über MCP, Schnellaktion Build, Tests vor dem Lauf), Prüfung vor dem Kompilieren, Release-Wächter, Bewertung nach der 0/0/0-Regel und Build-Zusammenfassung; aus = nichts davon. Compilermeldungen und Prüfen nach dem Speichern laufen weiter. Die Einzelschalter behalten ihre Werte.",
       "x-key": "buildPipeline.enabled",
       "x-area": "build",
       "x-page": "Compiler",

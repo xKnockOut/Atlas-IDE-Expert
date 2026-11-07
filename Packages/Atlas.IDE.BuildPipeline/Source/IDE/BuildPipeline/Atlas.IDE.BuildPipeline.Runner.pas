@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.BuildPipeline.Runner;
 
 // Baut ein offenes Projekt auf Auftrag über IOTAProjectBuilder (#261) und
-// meldet Ergebnis und Compilermeldungen. Genutzt vom Eingang für Claude Code
+// meldet Ergebnis und Compilermeldungen. Genutzt vom Eingang für KI-Assistenten (MCP)
 // (Atlas.IDE.BuildPipeline.Inbox, MCP-Werkzeug build_project); gedacht auch für
 // „Öffnen und bauen“ der Willkommensseite (#764).
 // - Abgelehnt wird mit Grund, wenn der Debugger läuft, schon ein Build oder
@@ -368,7 +368,7 @@ begin
     Exit(False);
   end;
   BeginRequest(ARequest, mProject, AOnDone);
-  mActivity := TAtlasActivity.Scope('Build für Claude Code');
+  mActivity := TAtlasActivity.Scope('Build für KI-Assistent');
   mStarted := NowMs;
   try
     mSucceeded := RunBuild(ARequest, mProject, mConfigurations, mPlatforms, ARequestedBy);
