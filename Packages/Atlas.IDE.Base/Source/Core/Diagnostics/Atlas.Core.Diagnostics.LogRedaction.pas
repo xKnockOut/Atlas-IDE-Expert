@@ -56,8 +56,8 @@ uses
 
 const
   cPrefixes: array[TLogMarkKind] of string = ('name#', 'datei#', 'text#');
-  cFallbacks: array[TLogMarkKind] of string = (TTextAnonymizer.NameLabel, TTextAnonymizer.FileLabel,
-    TTextAnonymizer.TextLabel);
+  cFallbacks: array[TLogMarkKind] of string = (TTextAnonymizer.cNameLabel, TTextAnonymizer.cFileLabel,
+    TTextAnonymizer.cTextLabel);
 
 constructor TAtlasLogRedactor.Create(const AIdentity: TArray<string>);
 var
@@ -114,7 +114,7 @@ var
   mKey: string;
   mNumber: Integer;
 begin
-  mKey := TLogMarks.KindChars[AKind] + AnsiLowerCase(Trim(AValue));
+  mKey := TLogMarks.cKindChars[AKind] + AnsiLowerCase(Trim(AValue));
   if not FLabels.TryGetValue(mKey, mNumber) then
   begin
     if FLabels.Count >= MaxLabels then

@@ -132,7 +132,7 @@ begin
   Result := Default(TAtlasModuleInfo);
   Result.Id := cModuleId;
   Result.Name := 'Issue-Tracker';
-  Result.Version := TAtlasVersion.Version;
+  Result.Version := TAtlasVersion.cVersion;
   Result.Handle := HInstance;
   // Lief mit der Willkommensseite schon im abgesicherten Start.
   Result.MinLevel := TAtlasSafeLevel.Safe;

@@ -374,7 +374,7 @@ begin
   Result := Default(TAtlasModuleInfo);
   Result.Id := ModuleId;
   Result.Name := 'Analyse';
-  Result.Version := TAtlasVersion.Version;
+  Result.Version := TAtlasVersion.cVersion;
   Result.Handle := HInstance;
   // Lief mit den Editorbefehlen schon im abgesicherten Start.
   Result.MinLevel := TAtlasSafeLevel.Safe;

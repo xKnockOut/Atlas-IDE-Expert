@@ -21,7 +21,7 @@ type
 
   TTextEncodingProbe = class
   public const
-    Utf8CodePage = 65001;
+    cUtf8CodePage = 65001;
   public
     /// <summary>BOM am Anfang von ABytes; UTF-8 vor UTF-16.</summary>
     class function BomOf(const ABytes: TBytes): TTextBom; static;
@@ -52,12 +52,12 @@ implementation
 
 const
   /// <summary>Codepages mit einem Byte je Zeichen, die als Vorgabe erlaubt sind.</summary>
-  SingleByteCodePages: array[0..33] of Integer = (437, 737, 775, 850, 852, 855, 857, 858, 860, 861, 862, 863, 864,
+  cSingleByteCodePages: array[0..33] of Integer = (437, 737, 775, 850, 852, 855, 857, 858, 860, 861, 862, 863, 864,
     865, 866, 869, 874, 1250, 1251, 1252, 1253, 1254, 1255, 1256, 1257, 1258, 20866, 21866, 28591, 28592, 28595,
     28597, 28605, 28603);
 
   // Zeichen 0x80..0x9F in Windows-1252; nicht belegte Werte bleiben gleich.
-  Cp1252High: array[$80..$9F] of Word = (
+  cCp1252High: array[$80..$9F] of Word = (
     $20AC, $0081, $201A, $0192, $201E, $2026, $2020, $2021,
     $02C6, $2030, $0160, $2039, $0152, $008D, $017D, $008F,
     $0090, $2018, $2019, $201C, $201D, $2022, $2013, $2014,
@@ -67,15 +67,15 @@ const
 
 class function TTextEncodingProbe.HasPrefix(const ABytes: TBytes; const APrefix: array of Byte): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if Length(ABytes) < Length(APrefix) then
   begin
     Exit(False);
   end;
-  for Index := 0 to High(APrefix) do
+  for mIndex := 0 to High(APrefix) do
   begin
-    if ABytes[Index] <> APrefix[Index] then
+    if ABytes[mIndex] <> APrefix[mIndex] then
     begin
       Exit(False);
     end;
@@ -202,18 +202,18 @@ end;
 
 class function TTextEncodingProbe.IsValidUtf8(const ABytes: TBytes; AStart: Integer): Boolean;
 var
-  HasNonAscii: Boolean;
+  mHasNonAscii: Boolean;
 begin
-  Result := IsValidUtf8(ABytes, AStart, HasNonAscii);
+  Result := IsValidUtf8(ABytes, AStart, mHasNonAscii);
 end;
 
 class function TTextEncodingProbe.IsAscii(const ABytes: TBytes): Boolean;
 var
-  Value: Byte;
+  mValue: Byte;
 begin
-  for Value in ABytes do
+  for mValue in ABytes do
   begin
-    if Value >= $80 then
+    if mValue >= $80 then
     begin
       Exit(False);
     end;
@@ -228,11 +228,11 @@ end;
 
 class function TTextEncodingProbe.IsSingleByteCodePage(ACodePage: Integer): Boolean;
 var
-  Known: Integer;
+  mKnown: Integer;
 begin
-  for Known in SingleByteCodePages do
+  for mKnown in cSingleByteCodePages do
   begin
-    if Known = ACodePage then
+    if mKnown = ACodePage then
     begin
       Exit(True);
     end;
@@ -242,30 +242,30 @@ end;
 
 class function TTextEncodingProbe.ParseCodePage(const AText: string; out ACodePage: Integer): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
   Result := False;
   ACodePage := 0;
-  Text := LowerCase(Trim(AText));
-  if (Text = 'utf-8') or (Text = 'utf8') then
+  mText := LowerCase(Trim(AText));
+  if (mText = 'utf-8') or (mText = 'utf8') then
   begin
-    ACodePage := Utf8CodePage;
+    ACodePage := cUtf8CodePage;
     Exit(True);
   end;
-  if Copy(Text, 1, 8) = 'windows-' then
+  if Copy(mText, 1, 8) = 'windows-' then
   begin
-    Delete(Text, 1, 8);
+    Delete(mText, 1, 8);
   end
-  else if Copy(Text, 1, 2) = 'cp' then
+  else if Copy(mText, 1, 2) = 'cp' then
   begin
-    Delete(Text, 1, 2);
+    Delete(mText, 1, 2);
   end;
-  if not TryStrToInt(Text, ACodePage) then
+  if not TryStrToInt(mText, ACodePage) then
   begin
     ACodePage := 0;
     Exit;
   end;
-  if (ACodePage = Utf8CodePage) or IsSingleByteCodePage(ACodePage) then
+  if (ACodePage = cUtf8CodePage) or IsSingleByteCodePage(ACodePage) then
   begin
     Exit(True);
   end;
@@ -274,8 +274,8 @@ end;
 
 class function TTextEncodingProbe.DecodeCp1252(const ABytes: TBytes; AStart: Integer): string;
 var
-  Index: Integer;
-  Value: Byte;
+  mIndex: Integer;
+  mValue: Byte;
 begin
   if AStart < 0 then
   begin
@@ -286,48 +286,48 @@ begin
     Exit('');
   end;
   SetLength(Result, Length(ABytes) - AStart);
-  for Index := AStart to High(ABytes) do
+  for mIndex := AStart to High(ABytes) do
   begin
-    Value := ABytes[Index];
-    if (Value >= $80) and (Value <= $9F) then
+    mValue := ABytes[mIndex];
+    if (mValue >= $80) and (mValue <= $9F) then
     begin
-      Result[Index - AStart + 1] := Char(Cp1252High[Value]);
+      Result[mIndex - AStart + 1] := Char(cCp1252High[mValue]);
     end
     else
     begin
-      Result[Index - AStart + 1] := Char(Value);
+      Result[mIndex - AStart + 1] := Char(mValue);
     end;
   end;
 end;
 
 class function TTextEncodingProbe.EncodeCp1252(const AText: string): TBytes;
 var
-  Index, High1252: Integer;
-  Code: Word;
-  Value: Byte;
+  mIndex, mHigh1252: Integer;
+  mCode: Word;
+  mValue: Byte;
 begin
   Result := nil;
   SetLength(Result, Length(AText));
-  for Index := 1 to Length(AText) do
+  for mIndex := 1 to Length(AText) do
   begin
-    Code := Ord(AText[Index]);
-    Value := Ord('?');
-    if (Code < $80) or ((Code >= $A0) and (Code <= $FF)) then
+    mCode := Ord(AText[mIndex]);
+    mValue := Ord('?');
+    if (mCode < $80) or ((mCode >= $A0) and (mCode <= $FF)) then
     begin
-      Value := Code;
+      mValue := mCode;
     end
     else
     begin
-      for High1252 := Low(Cp1252High) to High(Cp1252High) do
+      for mHigh1252 := Low(cCp1252High) to High(cCp1252High) do
       begin
-        if Cp1252High[High1252] = Code then
+        if cCp1252High[mHigh1252] = mCode then
         begin
-          Value := High1252;
+          mValue := mHigh1252;
           Break;
         end;
       end;
     end;
-    Result[Index - 1] := Value;
+    Result[mIndex - 1] := mValue;
   end;
 end;
 
