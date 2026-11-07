@@ -178,7 +178,7 @@ end;
 
 procedure TRuleCatalogTests.HelpUriPointsToAnchor;
 begin
-  Assert.AreEqual(RuleDocumentationBaseUri + 'bidi-control', TRuleCatalog.HelpUri('Bidi-Control'));
+  Assert.AreEqual(cRuleDocumentationBaseUri + 'bidi-control', TRuleCatalog.HelpUri('Bidi-Control'));
 end;
 
 procedure TRuleCatalogTests.BuiltinRulesAreInCatalogWithSameSeverity;
