@@ -199,7 +199,7 @@ type
 
   TAtlasArchitectureModel = record
   public const
-    Format = 1;
+    cFormat = 1;
   public
     Root: string;
     Title: string;
@@ -300,9 +300,9 @@ type
   /// <summary>Regler „Feinheit“ (#1366): Stellung 0..Steps, logarithmisch über 0,2–5,0, Mitte = 1,0.</summary>
   TAtlasArchResolution = class
   public const
-    MinValue = 0.2;
-    MaxValue = 5.0;
-    Steps = 100;
+    cMinValue = 0.2;
+    cMaxValue = 5.0;
+    cSteps = 100;
   public
     /// <summary>Wert zur Stellung, auf zwei Nachkommastellen gerundet.</summary>
     class function ValueAt(APosition: Integer): Double; static;
@@ -319,8 +319,8 @@ type
   /// <summary>architecture.grouping in settings.json (#1366): der Server liest denselben Wert.</summary>
   TAtlasArchitectureGroupingSettings = class
   public const
-    ResolutionPath = 'architecture.grouping.resolution';
-    SliderPath = 'architecture.grouping.showResolutionSlider';
+    cResolutionPath = 'architecture.grouping.resolution';
+    cSliderPath = 'architecture.grouping.showResolutionSlider';
   public
     /// <summary>Werte aus dem Text von settings.json; fehlende oder ungültige: 1 bzw. True.</summary>
     class procedure Read(const AGlobalText: string; out AResolution: Double; out AShowSlider: Boolean); static;
@@ -330,11 +330,11 @@ type
 
   TAtlasArchitecturePalette = class
   public const
-    Count = 10;
+    cCount = 10;
     /// <summary>Höchstens so weit wird ein Ton zu Weiß bzw. Schwarz gemischt.</summary>
-    MaxShadeMix = 0.6;
+    cMaxShadeMix = 0.6;
     /// <summary>Mischanteil je Tonstufe.</summary>
-    ShadeStep = 0.22;
+    cShadeStep = 0.22;
   public
     /// <summary>Farbe des Teilsystems ASubsystem als $00BBGGRR (wie TColor).</summary>
     class function Color(ASubsystem: Integer; ADark: Boolean): Cardinal; overload; static;
@@ -357,129 +357,129 @@ uses
 
 const
   // Wie --c0 … --c9 der HTML-Karte (#RRGGBB), hell bzw. dunkel.
-  LightColors: array[0..TAtlasArchitecturePalette.Count - 1] of Cardinal = ($2F6FB3, $7A4FB0, $2E7D4F, $B07A1D,
+  cLightColors: array[0..TAtlasArchitecturePalette.cCount - 1] of Cardinal = ($2F6FB3, $7A4FB0, $2E7D4F, $B07A1D,
     $A33C5A, $1B8A8F, $6B6F1D, $C2571A, $4A5AB8, $8A4F3A);
-  DarkColors: array[0..TAtlasArchitecturePalette.Count - 1] of Cardinal = ($6AA6E6, $B28BE0, $6CC293, $E0B257,
+  cDarkColors: array[0..TAtlasArchitecturePalette.cCount - 1] of Cardinal = ($6AA6E6, $B28BE0, $6CC293, $E0B257,
     $E07A98, $5CC6C9, $C3C75A, $F0945A, $94A0F0, $D09A83);
 
 function IntOf(const AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := ADefault;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONNumber then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONNumber then
   begin
-    Result := TJSONNumber(Value).AsInt;
+    Result := TJSONNumber(mValue).AsInt;
   end;
 end;
 
 function Int64Of(const AObject: TJSONObject; const AName: string): Int64;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := 0;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
+  mValue := AObject.GetValue(AName);
   // Über den Text: Generationen liegen über 2^32 (Kennung des Index im oberen Teil).
-  if Value is TJSONNumber then
+  if mValue is TJSONNumber then
   begin
-    Result := StrToInt64Def(Value.Value, 0);
+    Result := StrToInt64Def(mValue.Value, 0);
   end;
 end;
 
 function FloatOf(const AObject: TJSONObject; const AName: string): Double;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := 0;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONNumber then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONNumber then
   begin
-    Result := TJSONNumber(Value).AsDouble;
+    Result := TJSONNumber(mValue).AsDouble;
   end;
 end;
 
 function TextOf(const AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    Result := Value.Value;
+    Result := mValue.Value;
   end;
 end;
 
 function FlagOf(const AObject: TJSONObject; const AName: string): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := False;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONBool then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONBool then
   begin
-    Result := TJSONBool(Value).AsBoolean;
+    Result := TJSONBool(mValue).AsBoolean;
   end;
 end;
 
 function ArrayOf(const AObject: TJSONObject; const AName: string): TJSONArray;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := nil;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONArray then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONArray then
   begin
-    Result := TJSONArray(Value);
+    Result := TJSONArray(mValue);
   end;
 end;
 
 function IntsOf(const AObject: TJSONObject; const AName: string): TArray<Integer>;
 var
-  Items: TJSONArray;
-  Index: Integer;
+  mItems: TJSONArray;
+  mIndex: Integer;
 begin
   Result := nil;
-  Items := ArrayOf(AObject, AName);
-  if Items = nil then
+  mItems := ArrayOf(AObject, AName);
+  if mItems = nil then
   begin
     Exit;
   end;
-  SetLength(Result, Items.Count);
-  for Index := 0 to Items.Count - 1 do
+  SetLength(Result, mItems.Count);
+  for mIndex := 0 to mItems.Count - 1 do
   begin
-    if Items.Items[Index] is TJSONNumber then
+    if mItems.Items[mIndex] is TJSONNumber then
     begin
-      Result[Index] := TJSONNumber(Items.Items[Index]).AsInt;
+      Result[mIndex] := TJSONNumber(mItems.Items[mIndex]).AsInt;
     end
     else
     begin
-      Result[Index] := -1;
+      Result[mIndex] := -1;
     end;
   end;
 end;
@@ -681,18 +681,18 @@ end;
 
 function NamesOf(const AItems: TJSONArray): TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
   if AItems = nil then
   begin
     Exit;
   end;
-  for Index := 0 to AItems.Count - 1 do
+  for mIndex := 0 to AItems.Count - 1 do
   begin
-    if AItems.Items[Index] is TJSONString then
+    if AItems.Items[mIndex] is TJSONString then
     begin
-      Result := Result + [AItems.Items[Index].Value];
+      Result := Result + [AItems.Items[mIndex].Value];
     end;
   end;
 end;
@@ -808,33 +808,33 @@ end;
 function MapEdgesOf(const AModel: TAtlasArchitectureModel; const AData: TJSONObject;
   const AName: string): TArray<TAtlasArchEdge>;
 var
-  Items, Pair: TJSONArray;
-  Index: Integer;
-  Edge: TAtlasArchEdge;
+  mItems, mPair: TJSONArray;
+  mIndex: Integer;
+  mEdge: TAtlasArchEdge;
 begin
   Result := nil;
-  Items := ArrayOf(AData, AName);
-  if Items = nil then
+  mItems := ArrayOf(AData, AName);
+  if mItems = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Items.Count - 1 do
+  for mIndex := 0 to mItems.Count - 1 do
   begin
-    if not (Items.Items[Index] is TJSONArray) then
+    if not (mItems.Items[mIndex] is TJSONArray) then
     begin
       Continue;
     end;
-    Pair := TJSONArray(Items.Items[Index]);
-    if Pair.Count < 3 then
+    mPair := TJSONArray(mItems.Items[mIndex]);
+    if mPair.Count < 3 then
     begin
       Continue;
     end;
-    Edge.Source := AModel.IndexOf(Pair.Items[0].Value);
-    Edge.Target := AModel.IndexOf(Pair.Items[1].Value);
-    Edge.Interface_ := Pair.Items[2].Value = 'i';
-    if (Edge.Source >= 0) and (Edge.Target >= 0) then
+    mEdge.Source := AModel.IndexOf(mPair.Items[0].Value);
+    mEdge.Target := AModel.IndexOf(mPair.Items[1].Value);
+    mEdge.Interface_ := mPair.Items[2].Value = 'i';
+    if (mEdge.Source >= 0) and (mEdge.Target >= 0) then
     begin
-      Result := Result + [Edge];
+      Result := Result + [mEdge];
     end;
   end;
 end;
@@ -851,11 +851,11 @@ end;
 
 function ComparisonOf(const AModel: TAtlasArchitectureModel; const AAnswer: TJSONObject): TAtlasArchComparison;
 var
-  Data, Baseline: TJSONObject;
-  Kind: TAtlasArchChangeKind;
-  Section: TAtlasArchChangeSection;
-  Edge: TAtlasArchEdge;
-  Index: Integer;
+  mData, mBaseline: TJSONObject;
+  mKind: TAtlasArchChangeKind;
+  mSection: TAtlasArchChangeSection;
+  mEdge: TAtlasArchEdge;
+  mIndex: Integer;
 begin
   Result := Default(TAtlasArchComparison);
   Result.Error := TextOf(AAnswer, 'comparisonError');
@@ -864,40 +864,40 @@ begin
     Exit;
   end;
   Result.Baseline := TextOf(AAnswer, 'baseline');
-  Data := TJSONObject(AAnswer.GetValue('comparison'));
-  if Data.GetValue('baseline') is TJSONObject then
+  mData := TJSONObject(AAnswer.GetValue('comparison'));
+  if mData.GetValue('baseline') is TJSONObject then
   begin
-    Baseline := TJSONObject(Data.GetValue('baseline'));
-    Result.BaselineTitle := TextOf(Baseline, 'title');
-    Result.BaselineUnits := IntOf(Baseline, 'units', 0);
-    Result.BaselineEdges := IntOf(Baseline, 'edges', 0);
-    Result.BaselineResolution := ResolutionOf(Baseline);
+    mBaseline := TJSONObject(mData.GetValue('baseline'));
+    Result.BaselineTitle := TextOf(mBaseline, 'title');
+    Result.BaselineUnits := IntOf(mBaseline, 'units', 0);
+    Result.BaselineEdges := IntOf(mBaseline, 'edges', 0);
+    Result.BaselineResolution := ResolutionOf(mBaseline);
   end
   else
   begin
     Result.BaselineResolution := 1;
   end;
-  Result.Resolution := ResolutionOf(Data);
-  Result.Failed := NamesOf(ArrayOf(Data, 'failed'));
-  for Kind := Low(TAtlasArchChangeKind) to High(TAtlasArchChangeKind) do
+  Result.Resolution := ResolutionOf(mData);
+  Result.Failed := NamesOf(ArrayOf(mData, 'failed'));
+  for mKind := Low(TAtlasArchChangeKind) to High(TAtlasArchChangeKind) do
   begin
-    Section.Kind := Kind;
-    Section.Items := ChangesOf(AModel, Data, Kind);
-    Result.Sections := Result.Sections + [Section];
+    mSection.Kind := mKind;
+    mSection.Items := ChangesOf(AModel, mData, mKind);
+    Result.Sections := Result.Sections + [mSection];
   end;
   // Neue Kanten stehen im aktuellen Stand: als Nummern in Edges, damit die Karte sie wie die übrigen zeichnet.
-  for Edge in MapEdgesOf(AModel, Data, 'addedEdges') do
+  for mEdge in MapEdgesOf(AModel, mData, 'addedEdges') do
   begin
-    for Index := 0 to High(AModel.Edges) do
+    for mIndex := 0 to High(AModel.Edges) do
     begin
-      if (AModel.Edges[Index].Source = Edge.Source) and (AModel.Edges[Index].Target = Edge.Target) then
+      if (AModel.Edges[mIndex].Source = mEdge.Source) and (AModel.Edges[mIndex].Target = mEdge.Target) then
       begin
-        Result.AddedEdges := Result.AddedEdges + [Index];
+        Result.AddedEdges := Result.AddedEdges + [mIndex];
         Break;
       end;
     end;
   end;
-  Result.DroppedEdges := MapEdgesOf(AModel, Data, 'droppedEdges');
+  Result.DroppedEdges := MapEdgesOf(AModel, mData, 'droppedEdges');
 end;
 
 { TAtlasArchAssignmentRow }
@@ -916,25 +916,25 @@ end;
 
 function TAtlasArchComparison.Count: Integer;
 var
-  Item: TAtlasArchChangeSection;
+  mItem: TAtlasArchChangeSection;
 begin
   Result := 0;
-  for Item in Sections do
+  for mItem in Sections do
   begin
-    Inc(Result, Length(Item.Items));
+    Inc(Result, Length(mItem.Items));
   end;
 end;
 
 function TAtlasArchComparison.Section(AKind: TAtlasArchChangeKind): TArray<TAtlasArchChange>;
 var
-  Item: TAtlasArchChangeSection;
+  mItem: TAtlasArchChangeSection;
 begin
   Result := nil;
-  for Item in Sections do
+  for mItem in Sections do
   begin
-    if Item.Kind = AKind then
+    if mItem.Kind = AKind then
     begin
-      Exit(Item.Items);
+      Exit(mItem.Items);
     end;
   end;
 end;
@@ -1293,7 +1293,7 @@ begin
       Exit(mAnswer.GetValue('enabled') is TJSONBool);
     end;
     Result := (mAnswer.GetValue('data') is TJSONObject)
-      and (IntOf(TJSONObject(mAnswer.GetValue('data')), 'format', 0) = Format)
+      and (IntOf(TJSONObject(mAnswer.GetValue('data')), 'format', 0) = cFormat)
       and ReadData(mAnswer, TJSONObject(mAnswer.GetValue('data')), AModel);
   finally
     mRoot.Free;
@@ -1306,26 +1306,26 @@ end;
 
 function TAtlasArchitectureModel.FullPath(const AFileName: string): string;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := StringReplace(AFileName, '/', PathDelim, [rfReplaceAll]);
-  Name := StringReplace(Name, '\', PathDelim, [rfReplaceAll]);
-  if (Name = '') or (Root = '') or (Name[1] = PathDelim) or ((Length(Name) > 1) and (Name[2] = ':')) then
+  mName := StringReplace(AFileName, '/', PathDelim, [rfReplaceAll]);
+  mName := StringReplace(mName, '\', PathDelim, [rfReplaceAll]);
+  if (mName = '') or (Root = '') or (mName[1] = PathDelim) or ((Length(mName) > 1) and (mName[2] = ':')) then
   begin
-    Exit(Name);
+    Exit(mName);
   end;
-  Result := IncludeTrailingPathDelimiter(Root) + Name;
+  Result := IncludeTrailingPathDelimiter(Root) + mName;
 end;
 
 function TAtlasArchitectureModel.IndexOf(const AName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Units) do
+  for mIndex := 0 to High(Units) do
   begin
-    if SameText(Units[Index].Name, AName) then
+    if SameText(Units[mIndex].Name, AName) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -1333,13 +1333,13 @@ end;
 
 function TAtlasArchitectureModel.OutlierOf(AUnit: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Outliers) do
+  for mIndex := 0 to High(Outliers) do
   begin
-    if Outliers[Index].Unit_ = AUnit then
+    if Outliers[mIndex].Unit_ = AUnit then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -1347,16 +1347,16 @@ end;
 
 function TAtlasArchitectureModel.Matches(AUnit: Integer; const AFilter: string): Boolean;
 var
-  Word, Name: string;
+  mWord, mName: string;
 begin
   if (AUnit < 0) or (AUnit > High(Units)) then
   begin
     Exit(False);
   end;
-  Name := LowerCase(Units[AUnit].Name);
-  for Word in LowerCase(AFilter).Split([' '], TStringSplitOptions.ExcludeEmpty) do
+  mName := LowerCase(Units[AUnit].Name);
+  for mWord in LowerCase(AFilter).Split([' '], TStringSplitOptions.ExcludeEmpty) do
   begin
-    if Pos(Word, Name) = 0 then
+    if Pos(mWord, mName) = 0 then
     begin
       Exit(False);
     end;
@@ -1367,20 +1367,20 @@ end;
 function TAtlasArchitectureModel.Sorted(const AUnits: TArray<Integer>; AColumn: TAtlasArchColumn;
   ADescending: Boolean): TArray<Integer>;
 var
-  Model: TAtlasArchitectureModel;
+  mModel: TAtlasArchitectureModel;
 begin
   Result := Copy(AUnits);
-  Model := Self;
+  mModel := Self;
   TArray.Sort<Integer>(Result, TComparer<Integer>.Construct(
     function(const ALeft, ARight: Integer): Integer
     var
       Left, Right: TAtlasArchUnit;
     begin
-      Left := Model.Units[ALeft];
-      Right := Model.Units[ARight];
+      Left := mModel.Units[ALeft];
+      Right := mModel.Units[ARight];
       case AColumn of
         TAtlasArchColumn.Subsystem:
-          Result := CompareText(Model.SubsystemName(Left.Subsystem), Model.SubsystemName(Right.Subsystem));
+          Result := CompareText(mModel.SubsystemName(Left.Subsystem), mModel.SubsystemName(Right.Subsystem));
         TAtlasArchColumn.Direct:
           Result := CompareValue(Left.Direct, Right.Direct);
         TAtlasArchColumn.Total:
@@ -1426,18 +1426,18 @@ end;
 
 function TAtlasArchitectureModel.CyclePath(const ACycle: TAtlasArchCycle): string;
 var
-  Member: Integer;
+  mMember: Integer;
 begin
   Result := '';
-  for Member in ACycle.Units do
+  for mMember in ACycle.Units do
   begin
-    if (Member >= 0) and (Member < Length(Units)) then
+    if (mMember >= 0) and (mMember < Length(Units)) then
     begin
       if Result <> '' then
       begin
         Result := Result + ' → ';
       end;
-      Result := Result + Units[Member].Name;
+      Result := Result + Units[mMember].Name;
     end;
   end;
   if (Length(ACycle.Units) > 0) and (ACycle.Units[0] >= 0) and (ACycle.Units[0] < Length(Units)) then
@@ -1457,15 +1457,15 @@ end;
 
 function TAtlasArchitectureModel.IsHidden(AUnit: Integer; const AHidden: TArray<Boolean>): Boolean;
 var
-  Subsystem: Integer;
+  mSubsystem: Integer;
 begin
   Result := False;
   if (AUnit < 0) or (AUnit > High(Units)) then
   begin
     Exit;
   end;
-  Subsystem := Units[AUnit].Subsystem;
-  Result := (Subsystem >= 0) and (Subsystem < Length(AHidden)) and AHidden[Subsystem];
+  mSubsystem := Units[AUnit].Subsystem;
+  Result := (mSubsystem >= 0) and (mSubsystem < Length(AHidden)) and AHidden[mSubsystem];
 end;
 
 /// <summary>Je Unit die Nummern der Kanten, die von ihr ausgehen.</summary>
@@ -1542,7 +1542,7 @@ end;
 
 function TAtlasArchitectureModel.PathText(AFrom: Integer; const AEdges: TArray<Integer>): string;
 var
-  Edge: Integer;
+  mEdge: Integer;
 begin
   Result := '';
   if (AFrom < 0) or (AFrom > High(Units)) then
@@ -1550,11 +1550,11 @@ begin
     Exit;
   end;
   Result := Units[AFrom].Name;
-  for Edge in AEdges do
+  for mEdge in AEdges do
   begin
-    if (Edge >= 0) and (Edge <= High(Edges)) then
+    if (mEdge >= 0) and (mEdge <= High(Edges)) then
     begin
-      Result := Result + ' → ' + Units[Edges[Edge].Target].Name;
+      Result := Result + ' → ' + Units[Edges[mEdge].Target].Name;
     end;
   end;
 end;
@@ -1632,18 +1632,18 @@ end;
 
 function TAtlasArchitectureModel.RouteText(const AUnits: TArray<Integer>): string;
 var
-  Unit_: Integer;
+  mUnit_: Integer;
 begin
   Result := '';
-  for Unit_ in AUnits do
+  for mUnit_ in AUnits do
   begin
-    if (Unit_ >= 0) and (Unit_ <= High(Units)) then
+    if (mUnit_ >= 0) and (mUnit_ <= High(Units)) then
     begin
       if Result <> '' then
       begin
         Result := Result + ' → ';
       end;
-      Result := Result + Units[Unit_].Name;
+      Result := Result + Units[mUnit_].Name;
     end;
   end;
 end;
@@ -1807,20 +1807,20 @@ begin
   begin
     Exit(1);
   end;
-  Result := EnsureRange(AValue, MinValue, MaxValue);
+  Result := EnsureRange(AValue, cMinValue, cMaxValue);
 end;
 
 class function TAtlasArchResolution.ValueAt(APosition: Integer): Double;
 begin
   // 0,2 · 25^(p/Steps): Mitte 0,2 · 5 = 1,0.
-  Result := MinValue * Power(MaxValue / MinValue, EnsureRange(APosition, 0, Steps) / Steps);
+  Result := cMinValue * Power(cMaxValue / cMinValue, EnsureRange(APosition, 0, cSteps) / cSteps);
   Result := Round(Result * 100) / 100;
 end;
 
 class function TAtlasArchResolution.PositionOf(AValue: Double): Integer;
 begin
-  Result := Round(Ln(Clamp(AValue) / MinValue) / Ln(MaxValue / MinValue) * Steps);
-  Result := EnsureRange(Result, 0, Steps);
+  Result := Round(Ln(Clamp(AValue) / cMinValue) / Ln(cMaxValue / cMinValue) * cSteps);
+  Result := EnsureRange(Result, 0, cSteps);
 end;
 
 class function TAtlasArchResolution.Text(AValue: Double; const AFormat: TFormatSettings): string;
@@ -1849,7 +1849,7 @@ begin
     begin
       Exit;
     end;
-    mValue := TJSONObject.ParseJSONValue(TAtlasJsonText.ValueAt(mRoot, ResolutionPath));
+    mValue := TJSONObject.ParseJSONValue(TAtlasJsonText.ValueAt(mRoot, cResolutionPath));
     try
       if mValue is TJSONNumber then
       begin
@@ -1858,7 +1858,7 @@ begin
     finally
       mValue.Free;
     end;
-    AShowSlider := TAtlasJsonText.ValueAt(mRoot, SliderPath) <> 'false';
+    AShowSlider := TAtlasJsonText.ValueAt(mRoot, cSliderPath) <> 'false';
   finally
     mRoot.Free;
   end;
@@ -1866,7 +1866,7 @@ end;
 
 class function TAtlasArchitectureGroupingSettings.WithResolution(const AGlobalText: string; AValue: Double): string;
 begin
-  Result := TAtlasJsonText.SetValue(AGlobalText, ResolutionPath,
+  Result := TAtlasJsonText.SetValue(AGlobalText, cResolutionPath,
     TAtlasArchResolution.Text(TAtlasArchResolution.Clamp(AValue), TFormatSettings.Invariant));
 end;
 
@@ -1874,20 +1874,20 @@ end;
 
 class function TAtlasArchitecturePalette.Color(ASubsystem: Integer; ADark: Boolean): Cardinal;
 var
-  Rgb: Cardinal;
-  Slot: Integer;
+  mRgb: Cardinal;
+  mSlot: Integer;
 begin
-  Slot := Abs(ASubsystem) mod Count;
+  mSlot := Abs(ASubsystem) mod cCount;
   if ADark then
   begin
-    Rgb := DarkColors[Slot];
+    mRgb := cDarkColors[mSlot];
   end
   else
   begin
-    Rgb := LightColors[Slot];
+    mRgb := cLightColors[mSlot];
   end;
   // #RRGGBB → $00BBGGRR.
-  Result := ((Rgb and $FF) shl 16) or (Rgb and $FF00) or ((Rgb shr 16) and $FF);
+  Result := ((mRgb and $FF) shl 16) or (mRgb and $FF00) or ((mRgb shr 16) and $FF);
 end;
 
 class function TAtlasArchitecturePalette.Color(ASlot, AShade: Integer; ADark: Boolean): Cardinal;
@@ -1901,7 +1901,7 @@ begin
   begin
     Exit(mBase);
   end;
-  mMix := Min(MaxShadeMix, ShadeStep * Abs(AShade));
+  mMix := Min(cMaxShadeMix, cShadeStep * Abs(AShade));
   Result := 0;
   mShift := 0;
   while mShift <= 16 do
@@ -1935,12 +1935,12 @@ end;
 
 class function TAtlasArchitecturePalette.IsDark(ABackground: Cardinal): Boolean;
 var
-  Red, Green, Blue: Integer;
+  mRed, mGreen, mBlue: Integer;
 begin
-  Red := ABackground and $FF;
-  Green := (ABackground shr 8) and $FF;
-  Blue := (ABackground shr 16) and $FF;
-  Result := (Red * 299 + Green * 587 + Blue * 114) div 1000 < 128;
+  mRed := ABackground and $FF;
+  mGreen := (ABackground shr 8) and $FF;
+  mBlue := (ABackground shr 16) and $FF;
+  Result := (mRed * 299 + mGreen * 587 + mBlue * 114) div 1000 < 128;
 end;
 
 end.

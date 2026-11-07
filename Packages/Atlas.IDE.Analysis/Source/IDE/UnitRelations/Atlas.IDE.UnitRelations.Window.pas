@@ -31,7 +31,8 @@ type
     class procedure Hide; static;
     class procedure UpdateIcon; static;
     class procedure ApplyTheme; static;
-    /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt (#879).</summary>
+    /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt
+    /// (#879).</summary>
     class procedure Prepare; static;
     class procedure Release; static;
   end;
@@ -58,7 +59,7 @@ uses
 
 const
   /// <summary>Name der Projektverwaltung der IDE; sie steht in der Vorgabe-Anordnung rechts.</summary>
-  ProjectManagerName = 'ProjectManagerForm';
+  cProjectManagerName = 'ProjectManagerForm';
 
 type
   TUnitRelationsDock = class(TInterfacedObject, INTACustomDockableForm)
@@ -107,7 +108,7 @@ end;
 
 procedure TUnitRelationsDock.FrameCreated(AFrame: TCustomFrame);
 var
-  Frame: TAtlasUnitRelationsFrame;
+  mFrame: TAtlasUnitRelationsFrame;
 begin
   if not (AFrame is TAtlasUnitRelationsFrame) then
   begin
@@ -117,12 +118,12 @@ begin
   begin
     Host.FrameCreated(AFrame);
   end;
-  Frame := TAtlasUnitRelationsFrame(AFrame);
+  mFrame := TAtlasUnitRelationsFrame(AFrame);
   TAtlasIdeUnitRelationsWindow.UpdateIcon;
-  Theme(Frame);
+  Theme(mFrame);
   if Assigned(TAtlasIdeUnitRelationsWindow.OnFrame) then
   begin
-    TAtlasIdeUnitRelationsWindow.OnFrame(Frame);
+    TAtlasIdeUnitRelationsWindow.OnFrame(mFrame);
   end;
 end;
 
@@ -174,14 +175,14 @@ end;
 
 function ProjectManager: TCustomForm;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to Screen.CustomFormCount - 1 do
+  for mIndex := 0 to Screen.CustomFormCount - 1 do
   begin
-    if SameText(Screen.CustomForms[Index].Name, ProjectManagerName) then
+    if SameText(Screen.CustomForms[mIndex].Name, cProjectManagerName) then
     begin
-      Exit(Screen.CustomForms[Index]);
+      Exit(Screen.CustomForms[mIndex]);
     end;
   end;
 end;
@@ -189,20 +190,20 @@ end;
 /// <summary>Beim ersten Anlegen rechts neben die Projektverwaltung andocken (#593).</summary>
 procedure DockToDefault;
 var
-  Form, Target: TCustomForm;
-  Next: TAtlasPluginSettings;
+  mForm, mTarget: TCustomForm;
+  mNext: TAtlasPluginSettings;
 begin
-  Form := Host.Form;
-  Target := ProjectManager;
-  if (Form = nil) or not TAtlasDockPlan.DockToDefault(True, Form.HostDockSite = nil,
-    TAtlasIdeSettings.Stored.UnitRelationsWindowPlaced, (Target <> nil) and (Target.HostDockSite <> nil)) then
+  mForm := Host.Form;
+  mTarget := ProjectManager;
+  if (mForm = nil) or not TAtlasDockPlan.DockToDefault(True, mForm.HostDockSite = nil,
+    TAtlasIdeSettings.Stored.UnitRelationsWindowPlaced, (mTarget <> nil) and (mTarget.HostDockSite <> nil)) then
   begin
     Exit;
   end;
-  Form.ManualDock(Target.HostDockSite, nil, alClient);
-  Next := TAtlasIdeSettings.Stored;
-  Next.UnitRelationsWindowPlaced := True;
-  TAtlasIdeSettings.Update(Next);
+  mForm.ManualDock(mTarget.HostDockSite, nil, alClient);
+  mNext := TAtlasIdeSettings.Stored;
+  mNext.UnitRelationsWindowPlaced := True;
+  TAtlasIdeSettings.Update(mNext);
 end;
 
 procedure EnsureHost;
@@ -217,17 +218,17 @@ end;
 
 class function TAtlasIdeUnitRelationsWindow.Show: TAtlasUnitRelationsFrame;
 var
-  Created: Boolean;
+  mCreated: Boolean;
 begin
   // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
   EnsureHost;
-  Host.Show(Created);
-  if Created then
+  Host.Show(mCreated);
+  if mCreated then
   begin
     UpdateIcon;
     DockToDefault;
     // Nach dem Andocken die Reiterseite wählen und Gastgeber zeigen.
-    Host.Show(Created);
+    Host.Show(mCreated);
   end;
   Result := ExistingFrame;
 end;
@@ -257,29 +258,29 @@ end;
 
 class procedure TAtlasIdeUnitRelationsWindow.UpdateIcon;
 var
-  Icon: TIcon;
+  mIcon: TIcon;
 begin
   if (Host = nil) or (Host.Form = nil) then
   begin
     Exit;
   end;
-  Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
+  mIcon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
-    TForm(Host.Form).Icon.Assign(Icon);
+    TForm(Host.Form).Icon.Assign(mIcon);
   finally
-    Icon.Free;
+    mIcon.Free;
   end;
 end;
 
 class procedure TAtlasIdeUnitRelationsWindow.ApplyTheme;
 var
-  Frame: TAtlasUnitRelationsFrame;
+  mFrame: TAtlasUnitRelationsFrame;
 begin
-  Frame := ExistingFrame;
-  if Frame <> nil then
+  mFrame := ExistingFrame;
+  if mFrame <> nil then
   begin
-    Theme(Frame);
+    Theme(mFrame);
   end;
   UpdateIcon;
 end;
