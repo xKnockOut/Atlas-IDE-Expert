@@ -1,14 +1,11 @@
-<<<<<<< HEAD
 ﻿## Präfixe und Zeilenlänge in Atlas.IDE.Analysis (07.11.2026, Branch `claude/project-thread-yif8u2` auf `main-merging`)
 - naming-prefix und line-length im Package und in seinen 14 Testunits behoben (321 Namen, 8 lange Zeilen), Vorgehen nach `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`.
 - Öffentliche Klassenkonstanten mit `c` samt allen Verwendungen, u. a. `TAtlasArchitectureCommands.cCommand`/`cSaveCommand`, `TAtlasHotspotCommands.cCommand`/`cSaveCommand`, `TAtlasUnitRelationsCommands.cCommand`/`cMoveCommand`/`cRemoveCommand`, `TAtlasInterfaceCostModel.cCommand`, `TAtlasArchResolution.cSteps`/`cMinValue`/`cMaxValue`, `TAtlasHotspotChart.cMargin*`/`cMinRadius`/`cMaxRadius`/`cLimit`, `TAtlasArchitectureView.cMargin`/`cMinScale`/`cMaxScale`, `TAtlasAnalysisModule.cModuleId`/`cSwitch`. Verwendungen nur im Package selbst und in seinen Tests.
 - Geprüft (Cloud): Atlas mit Metriken und beiden Regeln 0 Befunde (Package und Testunits); FPC-Tests Hotspots.Model, UnitRelations.Model, InterfaceCost, MetricsLens wie auf main-merging grün (Architecture-Tests übersetzen unter FPC schon auf main-merging nicht); Check-Skripte und Generatoren mit -Check grün. Delphi-Build offen.
-=======
-﻿## Präfixe und Zeilenlänge in Atlas.Windows (07.11.2026, Branch `claude/project-thread-1v6ywd` auf `main-merging`)
+## Präfixe und Zeilenlänge in Atlas.Windows (07.11.2026, Branch `claude/project-thread-1v6ywd` auf `main-merging`)
 - 76 naming-prefix und 3 line-length in Atlas.Windows, 42 naming-prefix und 1 line-length in `Tests/Windows`; lokale Namen und Parameter über `--fix naming-prefix` (Server mit safeFix, nur lokal), Rest von Hand.
 - Öffentliche Konstanten: nur `TFileWatcher.PollMs`/`SettleMs` (jetzt `cPollMs`/`cSettleMs`), außerhalb der Unit nirgends benutzt. Das Linux-Gegenstück heißt seit #1856 ebenso.
 - Geprüft (Cloud): Atlas mit Metriken 0 Befunde (Package und `Tests/Windows`), Check-Skripte und Generatoren mit `-Check` grün. Windows-Units lassen sich unter Linux nicht übersetzen und nicht testen: Delphi-Build nötig.
->>>>>>> origin/main-merging
 ## Präfixe und Zeilenlänge in Atlas.Linux (07.11.2026, Branch `claude/project-thread-64k5j8` auf `main-merging`)
 - 35 naming-prefix und 1 line-length in 9 von 10 Units behoben: lokale Namen `m`, Konstanten `c` (auch die öffentlichen `TFileWatcher.cPollMs`/`cSettleMs`/`cSliceMs` und `TParentWatcher.cPollMs`; Verwendungen gab es nur im Package selbst). Bei der kleinen Zahl von Hand bzw. mit einem auf die Routine begrenzten Umbenenner statt `--fix`.
 - Die gleichnamigen Konstanten der Windows-Gegenstücke (`Atlas.Windows.Documents.FileWatcher`, `…ProcessRunner`) bleiben dem Thread für Atlas.Windows.
