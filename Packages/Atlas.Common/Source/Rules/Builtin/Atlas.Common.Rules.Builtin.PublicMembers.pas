@@ -63,6 +63,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Index.Extractor.TypeText,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
@@ -305,6 +306,27 @@ begin
   end;
 end;
 
+/// <summary>Ist ARoutine (Rumpf im implementation-Teil) die Umsetzung von ASymbol? Bei Überladungen zählen nur
+/// gleiche Parametertypen; der Rumpf einer anderen Überladung ruft ASymbol auf, das ist eine Verwendung.</summary>
+function IsOwnOverload(const ASymbol: TIndexSymbol; ARoutine: TSyntaxNode): Boolean;
+var
+  mMin, mMax: Integer;
+  mTypes: TArray<string>;
+begin
+  Result := True;
+  if not ASymbol.HasDirective('overload') then
+  begin
+    Exit;
+  end;
+  TIndexTypeText.ParamInfo(ARoutine, mMin, mMax, mTypes);
+  // Rumpf ohne Parameterliste (Delphi erlaubt sie wegzulassen): nicht zuzuordnen, wie bisher als eigener Rumpf.
+  if (mTypes = nil) and (ASymbol.ParamTypes <> nil) then
+  begin
+    Exit;
+  end;
+  Result := AnsiSameText(string.Join(',', mTypes), string.Join(',', ASymbol.ParamTypes));
+end;
+
 function CleanName(const AText: string): string;
 begin
   if StartsStr('&', AText) then
@@ -499,6 +521,12 @@ type
     FTexts: TDictionary<string, string>;
     // Klassen (Kurzname, klein) -> in RegisterComponents/RegisterClass(es) genannt; je Prüfung einmal.
     FRegistered: TDictionary<string, Boolean>;
+    // Dateien, die einen Registrieraufruf nennen (samt der eigenen); nil, solange nicht gesucht. Einmal je
+    // Prüfung statt je Klasse: Sonst fragt jede Klasse alle Dateien des Projekts erneut ab.
+    FRegisterFiles: TList<TSearchFile>;
+    // Nennt eine Datei einen Registrieraufruf, ohne dass der Index es sicher sagt? Dann gilt jede Klasse als
+    // registriert.
+    FRegisterUnknown: Boolean;
     // 0 = noch nicht geprüft, 1 = alle Formulardateien lesbar, 2 = mindestens eine nicht.
     FFormsState: Integer;
     procedure AddSource(ASeen: TDictionary<string, Integer>; const AProject: TRuleProject; const ASource: string);
@@ -506,6 +534,8 @@ type
     /// <summary>Nennt AFile einen der Registrieraufrufe? AUnknown: für einen ist es nicht sicher.</summary>
     function MentionsRegisterCall(const AFile: string; out AUnknown: Boolean): Boolean;
     function FileRegisters(const AEntry: TSearchFile; const AShort: string): Boolean;
+    /// <summary>Sucht einmal die Dateien mit Registrieraufruf (FRegisterFiles, FRegisterUnknown).</summary>
+    procedure FindRegisterFiles;
     function LiteralInFile(const AFile, AText, ALiteral: string): Boolean;
   public
     constructor Create(const AContext: TRuleContext);
@@ -657,6 +687,7 @@ destructor TSearchArea.Destroy;
 begin
   FTexts.Free;
   FRegistered.Free;
+  FRegisterFiles.Free;
   FForms.Free;
   FFiles.Free;
   inherited;
@@ -815,19 +846,38 @@ begin
   end;
 end;
 
+procedure TSearchArea.FindRegisterFiles;
+var
+  mEntry: TSearchFile;
+  mUnknown: Boolean;
+begin
+  FRegisterFiles := TList<TSearchFile>.Create;
+  FRegisterUnknown := False;
+  for mEntry in FFiles do
+  begin
+    if IsOwnFile(mEntry.FileName) then
+    begin
+      FRegisterFiles.Add(mEntry);
+    end
+    else if MentionsRegisterCall(mEntry.FileName, mUnknown) and not mUnknown then
+    begin
+      FRegisterFiles.Add(mEntry);
+    end
+    else if mUnknown then
+    begin
+      FRegisterUnknown := True;
+    end;
+  end;
+end;
+
 function TSearchArea.FileRegisters(const AEntry: TSearchFile; const AShort: string): Boolean;
 var
   mText: string;
-  mUnknown: Boolean;
   mTree: TSyntaxTree;
 begin
   if IsOwnFile(AEntry.FileName) then
   begin
     Exit(RegistersIn(FContext.Tree.Tokens, AShort));
-  end;
-  if not MentionsRegisterCall(AEntry.FileName, mUnknown) or mUnknown then
-  begin
-    Exit(mUnknown);
   end;
   if not TextOf(AEntry.FileName, mText) then
   begin
@@ -851,10 +901,14 @@ begin
   begin
     Exit;
   end;
-  Result := False;
-  for mEntry in FFiles do
+  if FRegisterFiles = nil then
   begin
-    Result := FileRegisters(mEntry, mShort);
+    FindRegisterFiles;
+  end;
+  Result := FRegisterUnknown;
+  for mEntry in FRegisterFiles do
+  begin
+    Result := Result or FileRegisters(mEntry, mShort);
     if Result then
     begin
       Break;
@@ -1004,7 +1058,8 @@ begin
   end;
   for mNode in TRuleDerived.Routines(FCache, FContext) do
   begin
-    if SameText(mNode.Name, mWanted) or (mIsType and StartsText(ASymbol.Name + '.', WithoutTypeParams(mNode.Name))) then
+    if (SameText(mNode.Name, mWanted) and (mIsType or IsOwnOverload(ASymbol, mNode))) or
+      (mIsType and StartsText(ASymbol.Name + '.', WithoutTypeParams(mNode.Name))) then
     begin
       Result := Result + [TTextRange.Create(mNode.StartPos, mNode.EndPos)];
     end;
