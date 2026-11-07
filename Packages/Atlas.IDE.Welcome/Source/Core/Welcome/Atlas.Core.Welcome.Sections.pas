@@ -45,25 +45,25 @@ type
   TAtlasWelcomeIds = class
   public const
     /// <summary>Kopf mit Symbol, Grußzeile, Version und Kurzstatus (#753).</summary>
-    Header = 'atlas.header';
+    cHeader = 'atlas.header';
     /// <summary>Alle Atlas-Bereiche im Atlas-Layout als ein Bereich der IDE (#753).</summary>
-    Board = 'atlas.board';
-    State = 'atlas.state';
-    Continue = 'atlas.continue';
-    Projects = 'atlas.projects';
-    History = 'atlas.history';
-    News = 'atlas.news';
-    Discover = 'atlas.discover';
-    Setup = 'atlas.setup';
-    Search = 'atlas.search';
-    Unsaved = 'atlas.unsaved';
-    Tests = 'atlas.tests';
-    Issues = 'atlas.issues';
+    cBoard = 'atlas.board';
+    cState = 'atlas.state';
+    cContinue = 'atlas.continue';
+    cProjects = 'atlas.projects';
+    cHistory = 'atlas.history';
+    cNews = 'atlas.news';
+    cDiscover = 'atlas.discover';
+    cSetup = 'atlas.setup';
+    cSearch = 'atlas.search';
+    cUnsaved = 'atlas.unsaved';
+    cTests = 'atlas.tests';
+    cIssues = 'atlas.issues';
     /// <summary>Sprint-Kachel mit Burndown (#1277).</summary>
-    Sprint = 'atlas.sprint';
-    Help = 'atlas.help';
+    cSprint = 'atlas.sprint';
+    cHelp = 'atlas.help';
     /// <summary>Vorsilbe der Plugin-Kennungen in der IDE.</summary>
-    PluginPrefix = 'Atlas.Welcome.';
+    cPluginPrefix = 'Atlas.Welcome.';
   public
     /// <summary>"atlas.state" → "Atlas.Welcome.state".</summary>
     class function PluginId(const ASectionId: string): string; static;
@@ -141,16 +141,17 @@ begin
   begin
     Delete(Result, 1, 6);
   end;
-  Result := PluginPrefix + Result;
+  Result := cPluginPrefix + Result;
 end;
 
 class function TAtlasWelcomeIds.SectionOf(const APluginId: string): string;
 begin
   Result := '';
-  if SameText(Copy(APluginId, 1, Length(PluginPrefix)), PluginPrefix) and (Length(APluginId) > Length(PluginPrefix)) then
+  if SameText(Copy(APluginId, 1, Length(cPluginPrefix)), cPluginPrefix) and
+    (Length(APluginId) > Length(cPluginPrefix)) then
   begin
     // Kennungen der Bereiche sind klein geschrieben.
-    Result := 'atlas.' + LowerCase(Copy(APluginId, Length(PluginPrefix) + 1, MaxInt));
+    Result := 'atlas.' + LowerCase(Copy(APluginId, Length(cPluginPrefix) + 1, MaxInt));
   end;
 end;
 
@@ -188,13 +189,13 @@ end;
 
 function TAtlasWelcomeSections.IndexOf(const AId: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to FItems.Count - 1 do
+  for mIndex := 0 to FItems.Count - 1 do
   begin
-    if SameText(FItems[Index].Id, AId) then
+    if SameText(FItems[mIndex].Id, AId) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -214,7 +215,7 @@ end;
 
 procedure TAtlasWelcomeSections.Add(const ASection: TAtlasWelcomeSection);
 var
-  Index, Existing: Integer;
+  mIndex, mExisting: Integer;
 begin
   if ASection.Id = '' then
   begin
@@ -222,17 +223,17 @@ begin
   end;
   FLock.Enter;
   try
-    Existing := IndexOf(ASection.Id);
-    if Existing >= 0 then
+    mExisting := IndexOf(ASection.Id);
+    if mExisting >= 0 then
     begin
-      FItems.Delete(Existing);
+      FItems.Delete(mExisting);
     end;
-    Index := 0;
-    while (Index < FItems.Count) and not Comes(ASection, FItems[Index]) do
+    mIndex := 0;
+    while (mIndex < FItems.Count) and not Comes(ASection, FItems[mIndex]) do
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
-    FItems.Insert(Index, ASection);
+    FItems.Insert(mIndex, ASection);
   finally
     FLock.Leave;
   end;
@@ -241,16 +242,16 @@ end;
 
 procedure TAtlasWelcomeSections.Remove(const AId: string);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   FLock.Enter;
   try
-    Index := IndexOf(AId);
-    if Index < 0 then
+    mIndex := IndexOf(AId);
+    if mIndex < 0 then
     begin
       Exit;
     end;
-    FItems.Delete(Index);
+    FItems.Delete(mIndex);
   finally
     FLock.Leave;
   end;
@@ -259,15 +260,15 @@ end;
 
 function TAtlasWelcomeSections.Find(const AId: string; out ASection: TAtlasWelcomeSection): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   FLock.Enter;
   try
-    Index := IndexOf(AId);
-    Result := Index >= 0;
+    mIndex := IndexOf(AId);
+    Result := mIndex >= 0;
     if Result then
     begin
-      ASection := FItems[Index];
+      ASection := FItems[mIndex];
     end
     else
     begin
@@ -291,27 +292,27 @@ end;
 
 function TAtlasWelcomeSections.Visible: TArray<TAtlasWelcomeSection>;
 var
-  Section: TAtlasWelcomeSection;
+  mSection: TAtlasWelcomeSection;
 begin
   Result := nil;
   // Schalter außerhalb der Sperre abfragen: Sie lesen Einstellungen.
-  for Section in All do
+  for mSection in All do
   begin
-    if Section.IsEnabled then
+    if mSection.IsEnabled then
     begin
-      Result := Result + [Section];
+      Result := Result + [mSection];
     end;
   end;
 end;
 
 function TAtlasWelcomeSections.VisibleIds: TArray<string>;
 var
-  Section: TAtlasWelcomeSection;
+  mSection: TAtlasWelcomeSection;
 begin
   Result := nil;
-  for Section in Visible do
+  for mSection in Visible do
   begin
-    Result := Result + [Section.Id];
+    Result := Result + [mSection.Id];
   end;
 end;
 
@@ -337,20 +338,20 @@ end;
 
 procedure TAtlasWelcomeSections.Notify(const AId: string);
 var
-  Listeners: TArray<TProc<string>>;
-  Listener: TProc<string>;
+  mListeners: TArray<TProc<string>>;
+  mListener: TProc<string>;
 begin
   FLock.Enter;
   try
     Inc(FVersion);
-    Listeners := FListeners.Values.ToArray;
+    mListeners := FListeners.Values.ToArray;
   finally
     FLock.Leave;
   end;
   // Außerhalb der Sperre: Beobachter dürfen die Bereiche lesen.
-  for Listener in Listeners do
+  for mListener in mListeners do
     try
-      Listener(AId);
+      mListener(AId);
     except
       // Ein Fehler im Beobachter darf den meldenden Bereich nicht stören.
       on Exception do

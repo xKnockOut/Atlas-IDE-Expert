@@ -50,16 +50,17 @@ type
     // Strings (#1140), 28: Begründungen (#1123), 29: Prozedurtypen vollständig (#1326). 19 (#1001) fehlte hier,
     // die Willkommensseite fand deshalb keinen Cache. 30: inline-Routinen ohne Verweise (#1381).
     // 31: Typargumente je Vorfahr.
-    FormatVersion = 32;
-    IndexFolder = 'Index';
-    LibraryFolder = 'Bibliothek';
+    cFormatVersion = 32;
+    cIndexFolder = 'Index';
+    cLibraryFolder = 'Bibliothek';
   private
     class function ReadEntries(const AData: TBytes; AWithLibrary: Boolean;
       out AReason: string): TArray<TAtlasIndexFile>; static;
   public
     /// <summary>Name der Cache-Datei mit der Formatversion wie beim Server (index-29.atlasidx).</summary>
     class function CacheFileName: string; static;
-    /// <summary>Units des Caches ohne die der Bibliothek; leer, wenn AData kein gültiger Cache in Format 15 ist.</summary>
+    /// <summary>Units des Caches ohne die der Bibliothek; leer, wenn AData kein gültiger Cache in Format 15
+    /// ist.</summary>
     class function Read(const AData: TBytes): TArray<TAtlasIndexFile>; overload; static;
     /// <summary>Wie oben; AReason nennt bei leerem Ergebnis den Grund ('' = gültig).</summary>
     class function Read(const AData: TBytes; out AReason: string): TArray<TAtlasIndexFile>; overload; static;
@@ -74,7 +75,8 @@ type
     class function MainFileOf(const AFiles: TArray<TAtlasIndexFile>): string; static;
     /// <summary>Alle Projekt-Caches unter ARoot\Index\*\*\CacheFileName, ohne Bibliothek.</summary>
     class function CacheFiles(const ARoot: string): TArray<string>; static;
-    /// <summary>AProjectFile (.dproj, .dpr, .dpk) und AMainFile benennen dasselbe Projekt: gleicher Pfad ohne Endung.</summary>
+    /// <summary>AProjectFile (.dproj, .dpr, .dpk) und AMainFile benennen dasselbe Projekt: gleicher Pfad ohne
+    /// Endung.</summary>
     class function SameProject(const AProjectFile, AMainFile: string): Boolean; static;
     /// <summary>Formular zu einer Unit: .dfm oder .fmx daneben ('' ohne).</summary>
     class function FormOf(const AUnitFile: string): string; static;
@@ -103,9 +105,9 @@ uses
   System.Generics.Defaults;
 
 const
-  Magic: array[0..7] of Byte = (Ord('A'), Ord('T'), Ord('L'), Ord('A'), Ord('S'), Ord('I'), Ord('D'), Ord('X'));
-  ChecksumSize = 4;
-  FlagLibrary = 1;
+  cMagic: array[0..7] of Byte = (Ord('A'), Ord('T'), Ord('L'), Ord('A'), Ord('S'), Ord('I'), Ord('D'), Ord('X'));
+  cChecksumSize = 4;
+  cFlagLibrary = 1;
 
 type
   EIndexFormat = class(Exception);
@@ -130,12 +132,12 @@ end;
 /// <summary>FNV-1a (32 Bit) wie Atlas.Common.Index.Cache.</summary>
 function ChecksumOf(const AData: TBytes; AFrom, ATo: Integer): Cardinal;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 2166136261;
-  for Index := AFrom to ATo - 1 do
+  for mIndex := AFrom to ATo - 1 do
   begin
-    Result := Cardinal(UInt64(Result xor AData[Index]) * 16777619);
+    Result := Cardinal(UInt64(Result xor AData[mIndex]) * 16777619);
   end;
 end;
 
@@ -153,33 +155,33 @@ end;
 
 function TReader.ReadVar: UInt64;
 var
-  Shift: Integer;
-  Value: Byte;
+  mShift: Integer;
+  mValue: Byte;
 begin
   Result := 0;
-  Shift := 0;
+  mShift := 0;
   repeat
-    if Shift > 63 then
+    if mShift > 63 then
     begin
       Fail;
     end;
-    Value := ReadByte;
-    Result := Result or (UInt64(Value and $7F) shl Shift);
-    Inc(Shift, 7);
-  until Value < $80;
+    mValue := ReadByte;
+    Result := Result or (UInt64(mValue and $7F) shl mShift);
+    Inc(mShift, 7);
+  until mValue < $80;
 end;
 
 function TReader.ReadCount: Integer;
 var
-  Value: UInt64;
+  mValue: UInt64;
 begin
-  Value := ReadVar;
+  mValue := ReadVar;
   // Mehr Einträge als Bytes kann es nicht geben.
-  if Value > UInt64(Limit) then
+  if mValue > UInt64(Limit) then
   begin
     Fail;
   end;
-  Result := Integer(Value);
+  Result := Integer(mValue);
 end;
 
 procedure TReader.Skip(ACount: Integer);
@@ -193,22 +195,22 @@ end;
 
 function TReader.ReadString(const AStrings: TArray<string>): string;
 var
-  Index: UInt64;
+  mIndex: UInt64;
 begin
-  Index := ReadVar;
-  if Index >= UInt64(Length(AStrings)) then
+  mIndex := ReadVar;
+  if mIndex >= UInt64(Length(AStrings)) then
   begin
     Fail;
   end;
-  Result := AStrings[Integer(Index)];
+  Result := AStrings[Integer(mIndex)];
 end;
 
 procedure TReader.SkipList;
 var
-  Count, Index: Integer;
+  mCount, mIndex: Integer;
 begin
-  Count := ReadCount;
-  for Index := 1 to Count do
+  mCount := ReadCount;
+  for mIndex := 1 to mCount do
   begin
     ReadVar;
   end;
@@ -218,14 +220,14 @@ end;
 
 class function TAtlasWelcomeIndexFiles.CacheFileName: string;
 begin
-  Result := Format('index-%d.atlasidx', [FormatVersion]);
+  Result := Format('index-%d.atlasidx', [cFormatVersion]);
 end;
 
 class function TAtlasWelcomeIndexFiles.Read(const AData: TBytes): TArray<TAtlasIndexFile>;
 var
-  Reason: string;
+  mReason: string;
 begin
-  Result := Read(AData, Reason);
+  Result := Read(AData, mReason);
 end;
 
 class function TAtlasWelcomeIndexFiles.Read(const AData: TBytes; out AReason: string): TArray<TAtlasIndexFile>;
@@ -235,20 +237,20 @@ end;
 
 class function TAtlasWelcomeIndexFiles.ReadAll(const AData: TBytes): TArray<TAtlasIndexFile>;
 var
-  Reason: string;
+  mReason: string;
 begin
-  Result := ReadEntries(AData, True, Reason);
+  Result := ReadEntries(AData, True, mReason);
 end;
 
 function HasMagic(const AData: TBytes): Boolean;
 var
   mIndex: Integer;
 begin
-  Result := Length(AData) >= Length(Magic);
-  mIndex := Low(Magic);
-  while Result and (mIndex <= High(Magic)) do
+  Result := Length(AData) >= Length(cMagic);
+  mIndex := Low(cMagic);
+  while Result and (mIndex <= High(cMagic)) do
   begin
-    Result := AData[mIndex] = Magic[mIndex];
+    Result := AData[mIndex] = cMagic[mIndex];
     Inc(mIndex);
   end;
 end;
@@ -259,16 +261,16 @@ var
   mIndex: Integer;
   mStored: Cardinal;
 begin
-  if AReader.Position + ChecksumSize > AReader.Limit then
+  if AReader.Position + cChecksumSize > AReader.Limit then
   begin
     Fail;
   end;
   mStored := 0;
-  for mIndex := ChecksumSize - 1 downto 0 do
+  for mIndex := cChecksumSize - 1 downto 0 do
   begin
     mStored := (mStored shl 8) or AReader.Data[AReader.Position + mIndex];
   end;
-  Inc(AReader.Position, ChecksumSize);
+  Inc(AReader.Position, cChecksumSize);
   Result := mStored = ChecksumOf(AReader.Data, AReader.Position, Length(AReader.Data));
 end;
 
@@ -334,7 +336,7 @@ begin
   try
     for mIndex := 1 to AReader.ReadCount do
     begin
-      if ((ReadEntry(AReader, mStrings, mEntry) and FlagLibrary) = 0) or AWithLibrary then
+      if ((ReadEntry(AReader, mStrings, mEntry) and cFlagLibrary) = 0) or AWithLibrary then
       begin
         mFound.Add(mEntry);
       end;
@@ -361,10 +363,10 @@ begin
     Exit;
   end;
   mReader.Data := AData;
-  mReader.Position := Length(Magic);
+  mReader.Position := Length(cMagic);
   mReader.Limit := Length(AData);
   try
-    if mReader.ReadVar <> FormatVersion then
+    if mReader.ReadVar <> cFormatVersion then
     begin
       AReason := 'andere Formatversion';
     end
@@ -388,16 +390,16 @@ end;
 
 class function TAtlasWelcomeIndexFiles.MainFileOf(const AFiles: TArray<TAtlasIndexFile>): string;
 var
-  Entry: TAtlasIndexFile;
-  Extension: string;
+  mEntry: TAtlasIndexFile;
+  mExtension: string;
 begin
   Result := '';
-  for Entry in AFiles do
+  for mEntry in AFiles do
   begin
-    Extension := LowerCase(ExtractFileExt(Entry.FileName));
-    if (Extension = '.dpr') or (Extension = '.dpk') then
+    mExtension := LowerCase(ExtractFileExt(mEntry.FileName));
+    if (mExtension = '.dpr') or (mExtension = '.dpk') then
     begin
-      Exit(Entry.FileName);
+      Exit(mEntry.FileName);
     end;
   end;
 end;
@@ -424,46 +426,46 @@ end;
 
 function SubFolders(const AFolder: string): TArray<string>;
 var
-  Search: TSearchRec;
+  mSearch: TSearchRec;
 begin
   Result := nil;
-  if FindFirst(IncludeTrailingPathDelimiter(AFolder) + '*', faDirectory, Search) <> 0 then
+  if FindFirst(IncludeTrailingPathDelimiter(AFolder) + '*', faDirectory, mSearch) <> 0 then
   begin
     Exit;
   end;
   try
     repeat
-      if ((Search.Attr and faDirectory) <> 0) and (Search.Name <> '.') and (Search.Name <> '..') then
+      if ((mSearch.Attr and faDirectory) <> 0) and (mSearch.Name <> '.') and (mSearch.Name <> '..') then
       begin
-        Result := Result + [IncludeTrailingPathDelimiter(AFolder) + Search.Name];
+        Result := Result + [IncludeTrailingPathDelimiter(AFolder) + mSearch.Name];
       end;
-    until FindNext(Search) <> 0;
+    until FindNext(mSearch) <> 0;
   finally
-    FindClose(Search);
+    FindClose(mSearch);
   end;
 end;
 
 class function TAtlasWelcomeIndexFiles.CacheFiles(const ARoot: string): TArray<string>;
 var
-  Version, Key, FileName: string;
+  mVersion, mKey, mFileName: string;
 begin
   Result := nil;
   if ARoot = '' then
   begin
     Exit;
   end;
-  for Version in SubFolders(IncludeTrailingPathDelimiter(ARoot) + IndexFolder) do
+  for mVersion in SubFolders(IncludeTrailingPathDelimiter(ARoot) + cIndexFolder) do
   begin
-    for Key in SubFolders(Version) do
+    for mKey in SubFolders(mVersion) do
     begin
-      if SameText(ExtractFileName(Key), LibraryFolder) then
+      if SameText(ExtractFileName(mKey), cLibraryFolder) then
       begin
         Continue;
       end;
-      FileName := IncludeTrailingPathDelimiter(Key) + CacheFileName;
-      if FileExists(FileName) then
+      mFileName := IncludeTrailingPathDelimiter(mKey) + CacheFileName;
+      if FileExists(mFileName) then
       begin
-        Result := Result + [FileName];
+        Result := Result + [mFileName];
       end;
     end;
   end;
@@ -471,24 +473,24 @@ end;
 
 function ReadBytes(const AFileName: string): TBytes;
 var
-  Stream: TFileStream;
+  mStream: TFileStream;
 begin
   // Der Server kann die Datei gerade schreiben: nur lesen, Schreiben anderer zulassen.
-  Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
+  mStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
   try
-    SetLength(Result, Stream.Size);
+    SetLength(Result, mStream.Size);
     if Length(Result) > 0 then
     begin
-      Stream.ReadBuffer(Result[0], Length(Result));
+      mStream.ReadBuffer(Result[0], Length(Result));
     end;
   finally
-    Stream.Free;
+    mStream.Free;
   end;
 end;
 
 class function TAtlasWelcomeIndexFiles.LibraryCacheFiles(const ARoot: string): TArray<string>;
 var
-  Version, Key, FileName: string;
+  mVersion, mKey, mFileName: string;
 begin
   Result := nil;
   if ARoot = '' then
@@ -496,14 +498,14 @@ begin
     Exit;
   end;
   // Der Server legt je Bibliotheks-Schlüssel (Plattform, Suchpfade) einen Ordner unter „Bibliothek“ an.
-  for Version in SubFolders(IncludeTrailingPathDelimiter(ARoot) + IndexFolder) do
+  for mVersion in SubFolders(IncludeTrailingPathDelimiter(ARoot) + cIndexFolder) do
   begin
-    for Key in SubFolders(IncludeTrailingPathDelimiter(Version) + LibraryFolder) do
+    for mKey in SubFolders(IncludeTrailingPathDelimiter(mVersion) + cLibraryFolder) do
     begin
-      FileName := IncludeTrailingPathDelimiter(Key) + CacheFileName;
-      if FileExists(FileName) then
+      mFileName := IncludeTrailingPathDelimiter(mKey) + CacheFileName;
+      if FileExists(mFileName) then
       begin
-        Result := Result + [FileName];
+        Result := Result + [mFileName];
       end;
     end;
   end;
@@ -601,27 +603,27 @@ end;
 
 function TAtlasIndexProjects.Projects: TArray<TAtlasIndexProject>;
 var
-  Newest: TDictionary<string, TAtlasIndexProject>;
-  Project, Known: TAtlasIndexProject;
-  Key: string;
-  List: TList<TAtlasIndexProject>;
+  mNewest: TDictionary<string, TAtlasIndexProject>;
+  mProject, mKnown: TAtlasIndexProject;
+  mKey: string;
+  mList: TList<TAtlasIndexProject>;
 begin
-  Newest := TDictionary<string, TAtlasIndexProject>.Create;
-  List := TList<TAtlasIndexProject>.Create;
+  mNewest := TDictionary<string, TAtlasIndexProject>.Create;
+  mList := TList<TAtlasIndexProject>.Create;
   try
-    for Project in FProjects.Values do
+    for mProject in FProjects.Values do
     begin
-      Key := AnsiUpperCase(ChangeFileExt(Project.MainFile, ''));
-      if not Newest.TryGetValue(Key, Known) or (Project.Stamp > Known.Stamp) then
+      mKey := AnsiUpperCase(ChangeFileExt(mProject.MainFile, ''));
+      if not mNewest.TryGetValue(mKey, mKnown) or (mProject.Stamp > mKnown.Stamp) then
       begin
-        Newest.AddOrSetValue(Key, Project);
+        mNewest.AddOrSetValue(mKey, mProject);
       end;
     end;
-    for Project in Newest.Values do
+    for mProject in mNewest.Values do
     begin
-      List.Add(Project);
+      mList.Add(mProject);
     end;
-    List.Sort(TComparer<TAtlasIndexProject>.Construct(
+    mList.Sort(TComparer<TAtlasIndexProject>.Construct(
       function(const A, B: TAtlasIndexProject): Integer
       begin
         if A.Stamp > B.Stamp then
@@ -637,23 +639,23 @@ begin
           Result := CompareText(A.MainFile, B.MainFile);
         end;
       end));
-    Result := List.ToArray;
+    Result := mList.ToArray;
   finally
-    List.Free;
-    Newest.Free;
+    mList.Free;
+    mNewest.Free;
   end;
 end;
 
 function TAtlasIndexProjects.FilesOf(const AProjectFile: string): TArray<TAtlasIndexFile>;
 var
-  Project: TAtlasIndexProject;
+  mProject: TAtlasIndexProject;
 begin
   Result := nil;
-  for Project in Projects do
+  for mProject in Projects do
   begin
-    if TAtlasWelcomeIndexFiles.SameProject(AProjectFile, Project.MainFile) then
+    if TAtlasWelcomeIndexFiles.SameProject(AProjectFile, mProject.MainFile) then
     begin
-      Exit(Project.Files);
+      Exit(mProject.Files);
     end;
   end;
 end;

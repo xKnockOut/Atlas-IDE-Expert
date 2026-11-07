@@ -133,7 +133,7 @@ uses
   Atlas.UI.Strings;
 
 const
-  Texts: array[TAtlasLanguage, TAtlasWelcomeTextId] of string = (
+  cTexts: array[TAtlasLanguage, TAtlasWelcomeTextId] of string = (
     ('Gute Nacht',
      'Guten Morgen',
      'Guten Tag',
@@ -1029,12 +1029,12 @@ const
 
 class function TAtlasWelcomeStrings.Text(AId: TAtlasWelcomeTextId): string;
 begin
-  Result := Texts[TAtlasStrings.Language, AId];
+  Result := cTexts[TAtlasStrings.Language, AId];
 end;
 
 class function TAtlasWelcomeStrings.Fmt(AId: TAtlasWelcomeTextId; const AArgs: array of const): string;
 begin
-  Result := Format(Texts[TAtlasStrings.Language, AId], AArgs);
+  Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
 end;
 
 end.

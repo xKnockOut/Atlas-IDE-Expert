@@ -95,65 +95,65 @@ end;
 
 function FindItem(const AItems: TArray<IAtlasStatusItem>; const AId: string): IAtlasStatusItem;
 var
-  Item: IAtlasStatusItem;
+  mItem: IAtlasStatusItem;
 begin
   Result := nil;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if (Item <> nil) and SameText(Item.Id, AId) then
+    if (mItem <> nil) and SameText(mItem.Id, AId) then
     begin
-      Exit(Item);
+      Exit(mItem);
     end;
   end;
 end;
 
 class function TAtlasWelcomeState.Rows(const AItems: TArray<IAtlasStatusItem>): TAtlasStateRows;
 var
-  Kind: TAtlasStateRowKind;
-  Item: IAtlasStatusItem;
-  Brief: IAtlasStatusBrief;
-  Row: TAtlasStateRow;
+  mKind: TAtlasStateRowKind;
+  mItem: IAtlasStatusItem;
+  mBrief: IAtlasStatusBrief;
+  mRow: TAtlasStateRow;
 begin
   // Ergebnis leeren: Ein dynamisches Array als Result kann beim Eintritt Inhalt des Ziels tragen.
   Result := nil;
-  for Kind := Low(TAtlasStateRowKind) to High(TAtlasStateRowKind) do
+  for mKind := Low(TAtlasStateRowKind) to High(TAtlasStateRowKind) do
   begin
-    Row := Default(TAtlasStateRow);
-    Row.Kind := Kind;
-    Row.Id := IdOf(Kind);
-    Row.State := TAtlasStatusState.Neutral;
-    Item := FindItem(AItems, Row.Id);
-    if Item <> nil then
+    mRow := Default(TAtlasStateRow);
+    mRow.Kind := mKind;
+    mRow.Id := IdOf(mKind);
+    mRow.State := TAtlasStatusState.Neutral;
+    mItem := FindItem(AItems, mRow.Id);
+    if mItem <> nil then
     begin
-      Row.Present := True;
+      mRow.Present := True;
       // Zustand und Aktion genau wie im Statusfeld.
-      Row.State := Item.State;
-      Row.HasAction := Item.HasAction;
-      Row.Hint := Item.Text;
-      Row.Text := Item.Text;
-      if Supports(Item, IAtlasStatusBrief, Brief) then
+      mRow.State := mItem.State;
+      mRow.HasAction := mItem.HasAction;
+      mRow.Hint := mItem.Text;
+      mRow.Text := mItem.Text;
+      if Supports(mItem, IAtlasStatusBrief, mBrief) then
       begin
-        if Brief.Brief <> '' then
+        if mBrief.Brief <> '' then
         begin
-          Row.Text := Brief.Brief;
+          mRow.Text := mBrief.Brief;
         end;
-        Row.Detail := Brief.Detail;
+        mRow.Detail := mBrief.Detail;
       end;
     end;
-    Result := Result + [Row];
+    Result := Result + [mRow];
   end;
 end;
 
 class function TAtlasWelcomeState.Overall(const ARows: TAtlasStateRows): TAtlasStatusState;
 var
-  Row: TAtlasStateRow;
+  mRow: TAtlasStateRow;
 begin
   Result := TAtlasStatusState.Neutral;
-  for Row in ARows do
+  for mRow in ARows do
   begin
-    if Ord(Row.State) > Ord(Result) then
+    if Ord(mRow.State) > Ord(Result) then
     begin
-      Result := Row.State;
+      Result := mRow.State;
     end;
   end;
 end;
@@ -170,12 +170,12 @@ end;
 
 class function TAtlasWelcomeState.UpdateReady(const ARows: TAtlasStateRows): Boolean;
 var
-  Row: TAtlasStateRow;
+  mRow: TAtlasStateRow;
 begin
   Result := False;
-  for Row in ARows do
+  for mRow in ARows do
   begin
-    if (Row.Kind = TAtlasStateRowKind.Version) and Row.Present and (Row.State = TAtlasStatusState.Yellow) then
+    if (mRow.Kind = TAtlasStateRowKind.Version) and mRow.Present and (mRow.State = TAtlasStatusState.Yellow) then
     begin
       Exit(True);
     end;
@@ -198,13 +198,13 @@ end;
 
 class function TAtlasWelcomeState.Signature(const ARows: TAtlasStateRows): string;
 var
-  Row: TAtlasStateRow;
+  mRow: TAtlasStateRow;
 begin
   Result := '';
-  for Row in ARows do
+  for mRow in ARows do
   begin
-    Result := Result + Format('%d|%d|%d|%d|%s|%s|%s'#10, [Ord(Row.Kind), Ord(Row.Present), Ord(Row.State),
-      Ord(Row.HasAction), Row.Text, Row.Detail, Row.Hint]);
+    Result := Result + Format('%d|%d|%d|%d|%s|%s|%s'#10, [Ord(mRow.Kind), Ord(mRow.Present), Ord(mRow.State),
+      Ord(mRow.HasAction), mRow.Text, mRow.Detail, mRow.Hint]);
   end;
 end;
 

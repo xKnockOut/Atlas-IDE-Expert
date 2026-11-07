@@ -94,9 +94,9 @@ begin
 end;
 procedure TAtlasWelcomeDiscoverFrameTests.AgeTextsFollowKind;
 var
-  Saved: TAtlasLanguage;
+  mSaved: TAtlasLanguage;
 begin
-  Saved := TAtlasStrings.Language;
+  mSaved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
     Assert.AreEqual('Noch nie benutzt',
@@ -117,145 +117,145 @@ begin
       TAtlasDiscoverTexts.AgeText(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Weeks, 3)));
     Assert.AreEqual('Don''t show again', TAtlasDiscoverTexts.ButtonCaption(TAtlasDiscoverButton.Block));
   finally
-    TAtlasStrings.Language := Saved;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 procedure TAtlasWelcomeDiscoverFrameTests.CardShowsTipAndButtons;
 var
-  Host: TForm;
-  Fake: TFakeDiscover;
-  Source: IAtlasDiscoverSource;
-  Frame: TAtlasWelcomeDiscoverFrame;
+  mHost: TForm;
+  mFake: TFakeDiscover;
+  mSource: IAtlasDiscoverSource;
+  mFrame: TAtlasWelcomeDiscoverFrame;
 begin
-  Fake := DiscoverFake;
-  Source := Fake;
-  Host := TForm.CreateNew(nil);
+  mFake := DiscoverFake;
+  mSource := mFake;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasWelcomeDiscoverFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.SetBounds(0, 0, 420, 200);
-    Frame.Source := Source;
-    Assert.IsTrue(Frame.HasCard);
-    Assert.AreEqual('Code-Aktionen', Frame.TipTitle.Caption);
-    Assert.AreEqual('Ctrl+.', Frame.KeyLabel.Caption, 'tatsächliche Belegung');
-    Assert.IsTrue(Frame.KeyLabel.Left > Frame.TipTitle.Left, 'Kürzel neben dem Titel');
-    Assert.AreEqual(TAtlasDiscoverTexts.AgeText(Fake.Card_.Age), Frame.AgeLabel.Caption);
-    Assert.IsTrue(Frame.TextLabel.Top > Frame.TipTitle.Top, 'Text unter dem Titel');
-    Assert.IsFalse(Frame.Image.Visible, 'ohne Bild kein Platz dafür');
-    Assert.IsTrue(Frame.Button(TAtlasDiscoverButton.TryIt).Enabled);
-    Assert.IsTrue(Frame.Button(TAtlasDiscoverButton.Next).Enabled);
-    Assert.IsTrue(Frame.Button(TAtlasDiscoverButton.Block).Visible);
-    Assert.IsTrue(Frame.Button(TAtlasDiscoverButton.TryIt).Top > Frame.AgeLabel.Top, 'Knöpfe unten');
-    Assert.IsTrue(Frame.PreferredHeight > Frame.Button(TAtlasDiscoverButton.TryIt).Top, 'Höhe nach dem Inhalt');
-    Assert.IsFalse(Frame.EmptyLabel.Visible);
+    mFrame := TAtlasWelcomeDiscoverFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.SetBounds(0, 0, 420, 200);
+    mFrame.Source := mSource;
+    Assert.IsTrue(mFrame.HasCard);
+    Assert.AreEqual('Code-Aktionen', mFrame.TipTitle.Caption);
+    Assert.AreEqual('Ctrl+.', mFrame.KeyLabel.Caption, 'tatsächliche Belegung');
+    Assert.IsTrue(mFrame.KeyLabel.Left > mFrame.TipTitle.Left, 'Kürzel neben dem Titel');
+    Assert.AreEqual(TAtlasDiscoverTexts.AgeText(mFake.Card_.Age), mFrame.AgeLabel.Caption);
+    Assert.IsTrue(mFrame.TextLabel.Top > mFrame.TipTitle.Top, 'Text unter dem Titel');
+    Assert.IsFalse(mFrame.Image.Visible, 'ohne Bild kein Platz dafür');
+    Assert.IsTrue(mFrame.Button(TAtlasDiscoverButton.TryIt).Enabled);
+    Assert.IsTrue(mFrame.Button(TAtlasDiscoverButton.Next).Enabled);
+    Assert.IsTrue(mFrame.Button(TAtlasDiscoverButton.Block).Visible);
+    Assert.IsTrue(mFrame.Button(TAtlasDiscoverButton.TryIt).Top > mFrame.AgeLabel.Top, 'Knöpfe unten');
+    Assert.IsTrue(mFrame.PreferredHeight > mFrame.Button(TAtlasDiscoverButton.TryIt).Top, 'Höhe nach dem Inhalt');
+    Assert.IsFalse(mFrame.EmptyLabel.Visible);
     // Einziger Tipp, nichts zum Ausprobieren, Zählung aus.
-    Fake.Card_.Count := 1;
-    Fake.Card_.Position := 1;
-    Fake.Card_.CanTry := False;
-    Fake.Card_.Age := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.None, 0);
-    Fake.Card_.KeyText := '';
-    Frame.UpdateContent;
-    Assert.IsFalse(Frame.Button(TAtlasDiscoverButton.Next).Enabled, 'kein nächster Tipp');
-    Assert.IsFalse(Frame.Button(TAtlasDiscoverButton.TryIt).Enabled);
-    Assert.IsFalse(Frame.AgeLabel.Visible);
-    Assert.IsFalse(Frame.PositionLabel.Visible);
-    Assert.IsFalse(Frame.KeyLabel.Visible);
+    mFake.Card_.Count := 1;
+    mFake.Card_.Position := 1;
+    mFake.Card_.CanTry := False;
+    mFake.Card_.Age := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.None, 0);
+    mFake.Card_.KeyText := '';
+    mFrame.UpdateContent;
+    Assert.IsFalse(mFrame.Button(TAtlasDiscoverButton.Next).Enabled, 'kein nächster Tipp');
+    Assert.IsFalse(mFrame.Button(TAtlasDiscoverButton.TryIt).Enabled);
+    Assert.IsFalse(mFrame.AgeLabel.Visible);
+    Assert.IsFalse(mFrame.PositionLabel.Visible);
+    Assert.IsFalse(mFrame.KeyLabel.Visible);
     // Kein Tipp (alle gesperrt): nur der Hinweis.
-    Fake.HasCard := False;
-    Frame.UpdateContent;
-    Assert.IsFalse(Frame.HasCard);
-    Assert.IsTrue(Frame.EmptyLabel.Visible);
-    Assert.IsFalse(Frame.Button(TAtlasDiscoverButton.Block).Visible);
-    Assert.IsFalse(Frame.TipTitle.Visible);
+    mFake.HasCard := False;
+    mFrame.UpdateContent;
+    Assert.IsFalse(mFrame.HasCard);
+    Assert.IsTrue(mFrame.EmptyLabel.Visible);
+    Assert.IsFalse(mFrame.Button(TAtlasDiscoverButton.Block).Visible);
+    Assert.IsFalse(mFrame.TipTitle.Visible);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 procedure TAtlasWelcomeDiscoverFrameTests.ClicksReachSource;
 var
-  Host: TForm;
-  Fake: TFakeDiscover;
-  Source: IAtlasDiscoverSource;
-  Frame: TAtlasWelcomeDiscoverFrame;
+  mHost: TForm;
+  mFake: TFakeDiscover;
+  mSource: IAtlasDiscoverSource;
+  mFrame: TAtlasWelcomeDiscoverFrame;
 begin
-  Fake := DiscoverFake;
-  Source := Fake;
-  Host := TForm.CreateNew(nil);
+  mFake := DiscoverFake;
+  mSource := mFake;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasWelcomeDiscoverFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.Source := Source;
-    Frame.Button(TAtlasDiscoverButton.TryIt).Click;
-    Frame.Button(TAtlasDiscoverButton.Next).Click;
-    Frame.Button(TAtlasDiscoverButton.Block).Click;
-    Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'über die Nachrichtenschleife');
+    mFrame := TAtlasWelcomeDiscoverFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Source := mSource;
+    mFrame.Button(TAtlasDiscoverButton.TryIt).Click;
+    mFrame.Button(TAtlasDiscoverButton.Next).Click;
+    mFrame.Button(TAtlasDiscoverButton.Block).Click;
+    Assert.AreEqual(0, Integer(Length(mFake.Calls)), 'über die Nachrichtenschleife');
     CheckSynchronize;
-    Assert.AreEqual(3, Integer(Length(Fake.Calls)));
-    Assert.AreEqual('try codeActions', Fake.Calls[0]);
-    Assert.AreEqual('next codeActions', Fake.Calls[1]);
-    Assert.AreEqual('block codeActions', Fake.Calls[2]);
+    Assert.AreEqual(3, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('try codeActions', mFake.Calls[0]);
+    Assert.AreEqual('next codeActions', mFake.Calls[1]);
+    Assert.AreEqual('block codeActions', mFake.Calls[2]);
     // Ausgegraute Knöpfe tun nichts.
-    Fake.Card_.Count := 1;
-    Fake.Card_.CanTry := False;
-    Frame.UpdateContent;
-    Frame.ClickButton(TAtlasDiscoverButton.Next);
-    Frame.ClickButton(TAtlasDiscoverButton.TryIt);
+    mFake.Card_.Count := 1;
+    mFake.Card_.CanTry := False;
+    mFrame.UpdateContent;
+    mFrame.ClickButton(TAtlasDiscoverButton.Next);
+    mFrame.ClickButton(TAtlasDiscoverButton.TryIt);
     CheckSynchronize;
-    Assert.AreEqual(3, Integer(Length(Fake.Calls)));
+    Assert.AreEqual(3, Integer(Length(mFake.Calls)));
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 procedure TAtlasWelcomeDiscoverFrameTests.ImageFitsColumn;
 var
-  Host: TForm;
-  Fake: TFakeDiscover;
-  Source: IAtlasDiscoverSource;
-  Frame: TAtlasWelcomeDiscoverFrame;
-  Folder, FileName: string;
-  Png: TPngImage;
+  mHost: TForm;
+  mFake: TFakeDiscover;
+  mSource: IAtlasDiscoverSource;
+  mFrame: TAtlasWelcomeDiscoverFrame;
+  mFolder, mFileName: string;
+  mPng: TPngImage;
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'AtlasDiscoverImage' + IntToStr(Random(1000000)));
-  ForceDirectories(Folder);
-  FileName := TPath.Combine(Folder, 'tipp.png');
-  Png := TPngImage.CreateBlank(COLOR_RGB, 8, TAtlasWelcomeDiscoverFrame.ImageWidth,
-    TAtlasWelcomeDiscoverFrame.ImageHeight);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasDiscoverImage' + IntToStr(Random(1000000)));
+  ForceDirectories(mFolder);
+  mFileName := TPath.Combine(mFolder, 'tipp.png');
+  mPng := TPngImage.CreateBlank(COLOR_RGB, 8, TAtlasWelcomeDiscoverFrame.cImageWidth,
+    TAtlasWelcomeDiscoverFrame.cImageHeight);
   try
-    Png.SaveToFile(FileName);
+    mPng.SaveToFile(mFileName);
   finally
-    Png.Free;
+    mPng.Free;
   end;
-  Fake := DiscoverFake;
-  Fake.Card_.ImageFile := FileName;
-  Source := Fake;
-  Host := TForm.CreateNew(nil);
+  mFake := DiscoverFake;
+  mFake.Card_.ImageFile := mFileName;
+  mSource := mFake;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasWelcomeDiscoverFrame.Create(Host);
-    Frame.Parent := Host;
+    mFrame := TAtlasWelcomeDiscoverFrame.Create(mHost);
+    mFrame.Parent := mHost;
     // Schmale Spalte: Bild oben, höchstens so breit wie die Spalte, Seitenverhältnis 16:9; Text darunter.
-    Frame.SetBounds(0, 0, 420, 200);
-    Frame.Source := Source;
-    Assert.IsTrue(Frame.Image.Visible, 'Bild geladen');
-    Assert.IsTrue(Frame.Image.Width <= Frame.ClientWidth);
-    Assert.IsTrue(Frame.Image.Width >= TAtlasWelcomeDiscoverFrame.ImageWidth, 'bei 100 % volle Größe, sonst mehr');
-    Assert.IsTrue(Abs(Frame.Image.Height - Frame.Image.Width * TAtlasWelcomeDiscoverFrame.ImageHeight div
-      TAtlasWelcomeDiscoverFrame.ImageWidth) <= 1, 'Seitenverhältnis bleibt');
-    Assert.IsTrue(Frame.TipTitle.Top >= Frame.Image.Top + Frame.Image.Height, 'Titel unter dem Bild');
-    Assert.AreEqual(Frame.Image.Left, Frame.TipTitle.Left, 'Text bündig mit dem Bild');
-    Assert.IsTrue(Frame.PreferredHeight > Frame.Image.Height, 'Höhe mit Bild');
+    mFrame.SetBounds(0, 0, 420, 200);
+    mFrame.Source := mSource;
+    Assert.IsTrue(mFrame.Image.Visible, 'Bild geladen');
+    Assert.IsTrue(mFrame.Image.Width <= mFrame.ClientWidth);
+    Assert.IsTrue(mFrame.Image.Width >= TAtlasWelcomeDiscoverFrame.cImageWidth, 'bei 100 % volle Größe, sonst mehr');
+    Assert.IsTrue(Abs(mFrame.Image.Height - mFrame.Image.Width * TAtlasWelcomeDiscoverFrame.cImageHeight div
+      TAtlasWelcomeDiscoverFrame.cImageWidth) <= 1, 'Seitenverhältnis bleibt');
+    Assert.IsTrue(mFrame.TipTitle.Top >= mFrame.Image.Top + mFrame.Image.Height, 'Titel unter dem Bild');
+    Assert.AreEqual(mFrame.Image.Left, mFrame.TipTitle.Left, 'Text bündig mit dem Bild');
+    Assert.IsTrue(mFrame.PreferredHeight > mFrame.Image.Height, 'Höhe mit Bild');
     // Breite Spalte: Text neben dem Bild.
-    Frame.SetBounds(0, 0, 2000, 200);
-    Frame.UpdateContent;
-    Assert.IsTrue(Frame.TipTitle.Left >= Frame.Image.Left + Frame.Image.Width, 'Titel neben dem Bild');
-    Assert.IsTrue(Frame.TipTitle.Top < Frame.Image.Top + Frame.Image.Height);
+    mFrame.SetBounds(0, 0, 2000, 200);
+    mFrame.UpdateContent;
+    Assert.IsTrue(mFrame.TipTitle.Left >= mFrame.Image.Left + mFrame.Image.Width, 'Titel neben dem Bild');
+    Assert.IsTrue(mFrame.TipTitle.Top < mFrame.Image.Top + mFrame.Image.Height);
     // Ohne Bild: kein Platz dafür.
-    Fake.Card_.ImageFile := '';
-    Frame.UpdateContent;
-    Assert.IsFalse(Frame.Image.Visible);
-    Assert.AreEqual(Frame.ScaleValue(TAtlasWelcomeDiscoverFrame.Indent), Frame.TipTitle.Left);
+    mFake.Card_.ImageFile := '';
+    mFrame.UpdateContent;
+    Assert.IsFalse(mFrame.Image.Visible);
+    Assert.AreEqual(mFrame.ScaleValue(TAtlasWelcomeDiscoverFrame.cIndent), mFrame.TipTitle.Left);
   finally
-    Host.Free;
-    TDirectory.Delete(Folder, True);
+    mHost.Free;
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 

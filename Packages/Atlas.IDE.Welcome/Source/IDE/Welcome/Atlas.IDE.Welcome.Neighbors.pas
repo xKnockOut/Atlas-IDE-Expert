@@ -169,7 +169,7 @@ begin
     mJob.Kind := TAtlasBuildJobKind.Build;
     mJob.Configuration := AConfiguration;
     mJob.Platform := APlatform;
-    mJob.RequestedBy := TAtlasWelcomeQuickActions.RequestedBy;
+    mJob.RequestedBy := TAtlasWelcomeQuickActions.cRequestedBy;
     AReason := '';
     Result := mJobs.Start(mJob, JobDone(ADone), AReason);
   end;

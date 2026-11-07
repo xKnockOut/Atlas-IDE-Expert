@@ -30,8 +30,8 @@ type
   TAtlasWelcomeModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
     IAtlasAppliesSettings, IAtlasFollowsTheme)
   public const
-    ModuleId = 'atlas.welcome';
-    Switch = 'welcome';
+    cModuleId = 'atlas.welcome';
+    cSwitch = 'welcome';
   private
     FActive: Boolean;
     class function Parts: TArray<IAtlasFeaturePart>; static;
@@ -246,13 +246,13 @@ end;
 function TAtlasWelcomeModule.Info: TAtlasModuleInfo;
 begin
   Result := Default(TAtlasModuleInfo);
-  Result.Id := ModuleId;
+  Result.Id := cModuleId;
   Result.Name := 'Willkommensseite';
   Result.Version := TAtlasVersion.cVersion;
   Result.Handle := HInstance;
   // Die Seite startet keinen Server und liest nur lokale Daten: auch im abgesicherten Start.
   Result.MinLevel := TAtlasSafeLevel.Safe;
-  Result.Switch := Switch;
+  Result.Switch := cSwitch;
 end;
 
 procedure TAtlasWelcomeModule.Start;
@@ -276,7 +276,7 @@ begin
     Command('Atlas.WelcomeStart', TAtlasWelcomeTextId.MenuWelcomeStart, ShowStart, PageVisible),
     Command('Atlas.WelcomeApply', TAtlasWelcomeTextId.MenuWelcomeApply, ApplyLayout, ApplyVisible),
     Command('Atlas.WelcomeReset', TAtlasWelcomeTextId.MenuWelcomeReset, ResetLayout, ResetVisible),
-    Command(TAtlasIdeWelcomeLayouts.CommandId, TAtlasWelcomeTextId.CommandWelcomeCustomize, Customize,
+    Command(TAtlasIdeWelcomeLayouts.cCommandId, TAtlasWelcomeTextId.CommandWelcomeCustomize, Customize,
       CustomizeVisible),
     Command('Atlas.WhatsNew', TAtlasWelcomeTextId.WelcomeNewsShowCurrent, ShowCurrentNews, PageVisible),
     Command('Atlas.WhatsNewAll', TAtlasWelcomeTextId.WelcomeNewsShowAllCommand, ShowAllNews, PageVisible),
@@ -341,7 +341,7 @@ begin
   if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
     ccMatch then
   begin
-    TAtlasGuard.Log('Modul ' + ModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
+    TAtlasGuard.Log('Modul ' + cModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
     Exit;
   end;
   mModule := TAtlasWelcomeModule.Create;
@@ -374,9 +374,9 @@ begin
   mRegistry := AtlasModuleRegistry;
   if mRegistry <> nil then
   begin
-    for mFailure in mRegistry.UnregisterModule(ModuleId) do
+    for mFailure in mRegistry.UnregisterModule(cModuleId) do
     begin
-      TAtlasGuard.Log('Modul ' + ModuleId + ' nicht sauber abgemeldet: ' + mFailure);
+      TAtlasGuard.Log('Modul ' + cModuleId + ' nicht sauber abgemeldet: ' + mFailure);
     end;
   end;
 end;

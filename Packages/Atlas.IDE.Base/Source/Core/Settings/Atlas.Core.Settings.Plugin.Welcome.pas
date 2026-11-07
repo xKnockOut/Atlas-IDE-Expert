@@ -10,7 +10,7 @@ uses
   Atlas.Core.Settings.Plugin.Store;
 
 const
-  /// <summary>Grenzen für welcomePage.maxProjects (#592); wie TAtlasWelcomeProjects.MinMax/MaxMax.</summary>
+  /// <summary>Grenzen für welcomePage.maxProjects (#592); wie TAtlasWelcomeProjects.cMinMax/cMaxMax.</summary>
   MinWelcomeProjects = 1;
   MaxWelcomeProjects = 30;
   /// <summary>Spalten der Willkommensseite (#767, welcomePage.columns).</summary>
@@ -18,10 +18,10 @@ const
   MaxWelcomeColumns = 3;
   /// <summary>Name des Layouts, das Atlas anlegt (#767, welcomePage.activeLayout).</summary>
   DefaultWelcomeLayoutName = 'Standard';
-  /// <summary>Grenzen der Stunden für welcomePage.unsaved.* (#762); wie TAtlasWelcomeUnsaved.MaxHours.</summary>
+  /// <summary>Grenzen der Stunden für welcomePage.unsaved.* (#762); wie TAtlasWelcomeUnsaved.cMaxHours.</summary>
   MinUnsavedHours = 0;
   MaxUnsavedHours = 8760;
-  /// <summary>Grenzen für welcomePage.continue.count (#755); wie TAtlasWelcomeContinue.MinCount/MaxCount.</summary>
+  /// <summary>Grenzen für welcomePage.continue.count (#755); wie TAtlasWelcomeContinue.cMinCount/cMaxCount.</summary>
   MinContinueCount = 1;
   MaxContinueCount = 20;
   /// <summary>Grenzen für welcomePage.trends.points (#758); wie TAtlasProjectTrendLog.MinPoints/MaxPoints.</summary>
@@ -45,7 +45,7 @@ const
   TrendSeriesNames: array[0..4] of string = ('warnings', 'ruleHits', 'todos', 'duration', 'methodLength');
   // Bekannte CI-Anbieter für welcomePage.tests.ci.provider (#763).
   CiProviders: array[0..0] of string = ('jenkins');
-  /// <summary>Knöpfe der Schnellaktionen (#764) wie TAtlasWelcomeQuickActions.Names (Test prüft Gleichheit; die
+  /// <summary>Knöpfe der Schnellaktionen (#764) wie TAtlasWelcomeQuickActions.cNames (Test prüft Gleichheit; die
   /// Einstellungen kennen die Willkommensseite nicht, A-09).</summary>
   QuickActionNames: array[0..6] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console', 'tasks');
   QuickActionsDefaultConsole = 'wt.exe';
