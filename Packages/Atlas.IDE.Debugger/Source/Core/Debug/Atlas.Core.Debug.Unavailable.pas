@@ -120,7 +120,7 @@ type
   public const
     /// <summary>Bekannte Fehlertexte der IDE (Win32-Debugger und LLDB, deutsch und englisch). Hier pflegen.
     /// </summary>
-    KnownTexts: array[0..18] of string = (
+    cKnownTexts: array[0..18] of string = (
       'inaccessible value',
       'inaccessible here due to optimization',
       'not accessible here due to optimization',
@@ -140,8 +140,8 @@ type
       'wegoptimiert',
       'wert nicht verfügbar',
       'undeklarierter bezeichner');
-    UserFileName = 'debug-unavailable.txt';
-    LifetimeNames: array[TAtlasValueLifetime] of string = ('unknown', 'unused', 'before', 'within', 'after');
+    cUserFileName = 'debug-unavailable.txt';
+    cLifetimeNames: array[TAtlasValueLifetime] of string = ('unknown', 'unused', 'before', 'within', 'after');
   public
     /// <summary>Passt AText zu einem Muster („*“ = beliebig viel, ohne Groß-/Kleinschreibung)?</summary>
     class function MatchesPattern(const AText, APattern: string): Boolean; static;
@@ -168,50 +168,50 @@ uses
   System.StrUtils;
 
 const
-  SwitchSources: array[TAtlasSwitchSource] of string = ('default', 'project', 'directive', 'include');
+  cSwitchSources: array[TAtlasSwitchSource] of string = ('default', 'project', 'directive', 'include');
 
 function SourceOf(const AText: string): TAtlasSwitchSource;
 var
-  Source: TAtlasSwitchSource;
+  mSource: TAtlasSwitchSource;
 begin
   Result := TAtlasSwitchSource.Default;
-  for Source := Low(TAtlasSwitchSource) to High(TAtlasSwitchSource) do
+  for mSource := Low(TAtlasSwitchSource) to High(TAtlasSwitchSource) do
   begin
-    if SwitchSources[Source] = AText then
+    if cSwitchSources[mSource] = AText then
     begin
-      Result := Source;
+      Result := mSource;
     end;
   end;
 end;
 
 function LifetimeOf(const AText: string): TAtlasValueLifetime;
 var
-  Lifetime: TAtlasValueLifetime;
+  mLifetime: TAtlasValueLifetime;
 begin
   Result := TAtlasValueLifetime.Unknown;
-  for Lifetime := Low(TAtlasValueLifetime) to High(TAtlasValueLifetime) do
+  for mLifetime := Low(TAtlasValueLifetime) to High(TAtlasValueLifetime) do
   begin
-    if TAtlasDebugUnavailable.LifetimeNames[Lifetime] = AText then
+    if TAtlasDebugUnavailable.cLifetimeNames[mLifetime] = AText then
     begin
-      Result := Lifetime;
+      Result := mLifetime;
     end;
   end;
 end;
 
 function SwitchOf(AEntry: TJSONObject): TAtlasUnavailableSwitch;
 var
-  Origin: TJSONObject;
+  mOrigin: TJSONObject;
 begin
   Result := Default(TAtlasUnavailableSwitch);
   Result.Line := -1;
   Result.Known := True;
   Result.Value := AEntry.GetValue<string>('value', '');
-  if AEntry.TryGetValue<TJSONObject>('origin', Origin) then
+  if AEntry.TryGetValue<TJSONObject>('origin', mOrigin) then
   begin
-    Result.Source := SourceOf(Origin.GetValue<string>('kind', ''));
-    Result.OriginText := Origin.GetValue<string>('text', '');
-    Result.FileName := Origin.GetValue<string>('file', '');
-    Result.Line := Origin.GetValue<Integer>('line', -1);
+    Result.Source := SourceOf(mOrigin.GetValue<string>('kind', ''));
+    Result.OriginText := mOrigin.GetValue<string>('text', '');
+    Result.FileName := mOrigin.GetValue<string>('file', '');
+    Result.Line := mOrigin.GetValue<Integer>('line', -1);
   end;
 end;
 
@@ -513,41 +513,41 @@ end;
 
 procedure TAtlasUnavailableFacts.ReadServer(const AValue: TJSONValue);
 var
-  Root, Routine, Variable: TJSONObject;
+  mRoot, mRoutine, mVariable: TJSONObject;
 begin
   if not (AValue is TJSONObject) then
   begin
     Exit;
   end;
-  Root := TJSONObject(AValue);
+  mRoot := TJSONObject(AValue);
   Server := True;
-  ReadSwitches(Self, Root);
-  if Root.TryGetValue<TJSONObject>('routine', Routine) then
+  ReadSwitches(Self, mRoot);
+  if mRoot.TryGetValue<TJSONObject>('routine', mRoutine) then
   begin
-    RoutineName := Routine.GetValue<string>('name', '');
-    RoutineInline := Routine.GetValue<Boolean>('inline', False);
+    RoutineName := mRoutine.GetValue<string>('name', '');
+    RoutineInline := mRoutine.GetValue<Boolean>('inline', False);
   end;
-  if Root.TryGetValue<TJSONObject>('variable', Variable) then
+  if mRoot.TryGetValue<TJSONObject>('variable', mVariable) then
   begin
-    Local := Variable.GetValue<Boolean>('local', False);
-    Parameter := Variable.GetValue<Boolean>('parameter', False);
-    FirstUse := Variable.GetValue<Integer>('firstUse', -1);
-    LastUse := Variable.GetValue<Integer>('lastUse', -1);
-    Lifetime := LifetimeOf(Variable.GetValue<string>('lifetime', ''));
+    Local := mVariable.GetValue<Boolean>('local', False);
+    Parameter := mVariable.GetValue<Boolean>('parameter', False);
+    FirstUse := mVariable.GetValue<Integer>('firstUse', -1);
+    LastUse := mVariable.GetValue<Integer>('lastUse', -1);
+    Lifetime := LifetimeOf(mVariable.GetValue<string>('lifetime', ''));
   end;
-  ReadFixes(Self, Root);
+  ReadFixes(Self, mRoot);
 end;
 
 { TAtlasUnavailableExplanation }
 
 function TAtlasUnavailableExplanation.HasFix(AFix: TAtlasUnavailableFix): Boolean;
 var
-  Fix: TAtlasUnavailableFix;
+  mFix: TAtlasUnavailableFix;
 begin
   Result := False;
-  for Fix in Fixes do
+  for mFix in Fixes do
   begin
-    if Fix = AFix then
+    if mFix = AFix then
     begin
       Exit(True);
     end;
@@ -558,52 +558,52 @@ end;
 
 class function TAtlasDebugUnavailable.MatchesPattern(const AText, APattern: string): Boolean;
 var
-  Text: string;
-  Part: string;
-  From, Found: Integer;
+  mText: string;
+  mPart: string;
+  mFrom, mFound: Integer;
 begin
   Result := False;
   if Trim(APattern) = '' then
   begin
     Exit;
   end;
-  Text := AnsiLowerCase(AText);
-  From := 1;
-  for Part in AnsiLowerCase(Trim(APattern)).Split(['*']) do
+  mText := AnsiLowerCase(AText);
+  mFrom := 1;
+  for mPart in AnsiLowerCase(Trim(APattern)).Split(['*']) do
   begin
-    if Part = '' then
+    if mPart = '' then
     begin
       Continue;
     end;
-    Found := PosEx(Part, Text, From);
-    if Found = 0 then
+    mFound := PosEx(mPart, mText, mFrom);
+    if mFound = 0 then
     begin
       Exit;
     end;
-    From := Found + Length(Part);
+    mFrom := mFound + Length(mPart);
   end;
   Result := True;
 end;
 
 class function TAtlasDebugUnavailable.IsUnavailable(const AText: string; const AExtra: TArray<string>): Boolean;
 var
-  Pattern: string;
+  mPattern: string;
 begin
   Result := False;
   if Trim(AText) = '' then
   begin
     Exit;
   end;
-  for Pattern in KnownTexts do
+  for mPattern in cKnownTexts do
   begin
-    if MatchesPattern(AText, Pattern) then
+    if MatchesPattern(AText, mPattern) then
     begin
       Exit(True);
     end;
   end;
-  for Pattern in AExtra do
+  for mPattern in AExtra do
   begin
-    if MatchesPattern(AText, Pattern) then
+    if MatchesPattern(AText, mPattern) then
     begin
       Exit(True);
     end;
@@ -612,81 +612,81 @@ end;
 
 class function TAtlasDebugUnavailable.ParsePatterns(const AText: string): TArray<string>;
 var
-  Line, Pattern: string;
-  Comment: Integer;
+  mLine, mPattern: string;
+  mComment: Integer;
 begin
   Result := nil;
-  for Line in AText.Split([#13#10, #10, #13]) do
+  for mLine in AText.Split([#13#10, #10, #13]) do
   begin
-    Pattern := Line;
-    Comment := Pos('#', Pattern);
-    if Comment > 0 then
+    mPattern := mLine;
+    mComment := Pos('#', mPattern);
+    if mComment > 0 then
     begin
-      Pattern := Copy(Pattern, 1, Comment - 1);
+      mPattern := Copy(mPattern, 1, mComment - 1);
     end;
-    Pattern := Trim(Pattern);
-    if Pattern <> '' then
+    mPattern := Trim(mPattern);
+    if mPattern <> '' then
     begin
-      Result := Result + [Pattern];
+      Result := Result + [mPattern];
     end;
   end;
 end;
 
 class function TAtlasDebugUnavailable.RootName(const AExpression: string): string;
 var
-  Start, Stop: Integer;
+  mStart, mStop: Integer;
 begin
-  Start := 1;
-  while (Start <= Length(AExpression)) and not IsIdentifierChar(AExpression[Start]) do
+  mStart := 1;
+  while (mStart <= Length(AExpression)) and not IsIdentifierChar(AExpression[mStart]) do
   begin
-    Inc(Start);
+    Inc(mStart);
   end;
-  Stop := Start;
-  while (Stop <= Length(AExpression)) and IsIdentifierChar(AExpression[Stop]) do
+  mStop := mStart;
+  while (mStop <= Length(AExpression)) and IsIdentifierChar(AExpression[mStop]) do
   begin
-    Inc(Stop);
+    Inc(mStop);
   end;
-  Result := Copy(AExpression, Start, Stop - Start);
+  Result := Copy(AExpression, mStart, mStop - mStart);
 end;
 
 class function TAtlasDebugUnavailable.OptionOn(const AValue: string; ADefault: Boolean): Boolean;
 var
-  Value: string;
+  mValue: string;
 begin
-  Value := Trim(AValue);
-  if Value = '' then
+  mValue := Trim(AValue);
+  if mValue = '' then
   begin
     Result := ADefault;
   end
   else
   begin
-    Result := not (SameText(Value, 'false') or (Value = '0') or (Value = '-') or SameText(Value, 'off'));
+    Result := not (SameText(mValue, 'false') or (mValue = '0') or (mValue = '-') or SameText(mValue, 'off'));
   end;
 end;
 
 class function TAtlasDebugUnavailable.Explain(const AFacts: TAtlasUnavailableFacts): TAtlasUnavailableExplanation;
 var
-  Explainer: TUnavailableExplainer;
+  mExplainer: TUnavailableExplainer;
 begin
-  Explainer := TUnavailableExplainer.Create(AFacts);
-  Explainer.Run;
-  Result := Explainer.Explanation;
+  mExplainer := TUnavailableExplainer.Create(AFacts);
+  mExplainer.Run;
+  Result := mExplainer.Explanation;
 end;
 
 class function TAtlasDebugUnavailable.PreviewLines(const AEdit: TLspWorkspaceEdit): TArray<string>;
 var
-  FileEdits: TLspFileEdits;
-  Edit: TLspTextEdit;
-  Text: string;
+  mFileEdits: TLspFileEdits;
+  mEdit: TLspTextEdit;
+  mText: string;
 begin
   Result := nil;
-  for FileEdits in AEdit.Files do
+  for mFileEdits in AEdit.Files do
   begin
-    for Edit in FileEdits.Edits do
+    for mEdit in mFileEdits.Edits do
     begin
-      Text := Trim(StringReplace(StringReplace(Edit.NewText, #13#10, ' ', [rfReplaceAll]), #10, ' ',
+      mText := Trim(StringReplace(StringReplace(mEdit.NewText, #13#10, ' ', [rfReplaceAll]), #10, ' ',
         [rfReplaceAll]));
-      Result := Result + [Format('%d: %s', [Edit.StartPos.Line + 1, Text])];
+      Result := Result + [Format('%d: %s', [mEdit.StartPos.Line + 1, mText])];
     end;
   end;
 end;

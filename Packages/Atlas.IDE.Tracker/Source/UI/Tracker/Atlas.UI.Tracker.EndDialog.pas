@@ -7,7 +7,7 @@
 // - Geschrieben wird nur mit „Senden“: OnSend schreibt im Hintergrund und
 //   meldet über SendDone im Hauptthread. Solange gesendet wird, sind Felder
 //   und „Abbrechen“ gesperrt und der Dialog schließt nicht (die Zeitgrenze
-//   des Schreibens ist TAtlasTrackerWorkflow.WriteTimeoutMs).
+//   des Schreibens ist TAtlasTrackerWorkflow.cWriteTimeoutMs).
 // - Fehler erscheinen im Dialog mit dem Text des Trackers (ErrorText, z. B.
 //   „Keine Schreibrechte für ATL-123 (403).“); nichts wird wiederholt, der
 //   Benutzer kann ändern und erneut senden oder abbrechen.
@@ -54,10 +54,10 @@ type
 
   TAtlasTrackerEndDialog = class(TForm)
   public const
-    DialogWidth = 520;
-    CommentHeight = 150;
+    cDialogWidth = 520;
+    cCommentHeight = 150;
     /// <summary>Leiste des Kommentar-Editors (Vorschau, Textbaustein, Entwurf).</summary>
-    EditorBarHeight = 30;
+    cEditorBarHeight = 30;
   private
     FKey: string;
     FOptions: TAtlasTrackerSyncOptions;
@@ -121,7 +121,7 @@ uses
   Atlas.UI.Tracker.Strings;
 
 const
-  Gap = 8;
+  cGap = 8;
 
 { TAtlasTrackerEndDialog }
 
@@ -137,7 +137,7 @@ begin
   Position := poMainFormCenter;
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  ClientWidth := ScaleValue(DialogWidth);
+  ClientWidth := ScaleValue(cDialogWidth);
   KeyPreview := True;
   OnKeyDown := DialogKeyDown;
   OnCloseQuery := DialogCloseQuery;
@@ -186,9 +186,9 @@ begin
   FParts.Editor.Parent := Self;
   FParts.Editor.Align := alTop;
   FParts.Editor.AlignWithMargins := True;
-  FParts.Editor.Margins.SetBounds(Gap, Gap div 2, Gap, 0);
+  FParts.Editor.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
   FParts.Editor.Top := mRow.Top + mRow.Height + 1;
-  FParts.Editor.Height := ScaleValue(CommentHeight + EditorBarHeight);
+  FParts.Editor.Height := ScaleValue(cCommentHeight + cEditorBarHeight);
   FParts.Editor.Events := TAtlasCommentEditorEvents.Create(SendClick, EditorCancel);
   FParts.Editor.SetText(AComment);
   FParts.Comment := FParts.Editor.Memo;
@@ -232,7 +232,7 @@ begin
   mButtons.AutoSize := True;
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(Gap, Gap, Gap, Gap);
+  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
   mButtons.Top := ATop;
   FParts.Send := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndSend));
   FParts.Send.OnClick := SendClick;
@@ -240,7 +240,7 @@ begin
   FParts.Cancel := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndCancel));
   FParts.Cancel.ModalResult := mrCancel;
   FParts.Cancel.Cancel := True;
-  ClientHeight := mButtons.Top + mButtons.Height + Gap;
+  ClientHeight := mButtons.Top + mButtons.Height + cGap;
 end;
 
 function TAtlasTrackerEndDialog.AddRow(AHeight: Integer): TPanel;
@@ -261,7 +261,7 @@ begin
   Result.Parent := Self;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(Gap, Gap div 2, Gap, 0);
+  Result.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
   Result.BevelOuter := bvNone;
   Result.Caption := '';
   Result.Top := mTop;
@@ -276,7 +276,7 @@ begin
   Canvas.Font := Font;
   Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, Gap, Gap div 2);
+  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
 end;
 
 class function TAtlasTrackerEndDialog.StateChoices(const AOptions: TAtlasTrackerSyncOptions): TArray<string>;

@@ -24,9 +24,9 @@ type
   TAtlasIdeIssueLookups = class
   public const
     /// <summary>So lange gilt ein Stand im Zwischenspeicher für den Hover als frisch (keine neue Abfrage).</summary>
-    FreshMs = 10 * 60 * 1000;
+    cFreshMs = 10 * 60 * 1000;
     /// <summary>So lange fragt der Hover eine nicht gefundene Kennung nicht erneut.</summary>
-    MissingMs = 10 * 60 * 1000;
+    cMissingMs = 10 * 60 * 1000;
   private
     FContext: TAtlasIdeIssueContext;
     // Laufende Kurzabfragen (Tracker|Kennung → Rückrufe) und nicht gefundene Kennungen (→ Zeitpunkt).
@@ -85,7 +85,7 @@ var
 begin
   if AOwner.FMissing.TryGetValue(AId, mAt) then
   begin
-    Result := TThread.GetTickCount64 - mAt < TAtlasIdeIssueLookups.MissingMs;
+    Result := TThread.GetTickCount64 - mAt < TAtlasIdeIssueLookups.cMissingMs;
     if Result then
     begin
       ADone(False, TAtlasTrackerDetails.Empty, TAtlasCiFetchError.NotFound);
@@ -131,7 +131,7 @@ begin
       mOk := False;
       mError := TAtlasCiFetchError.Network;
       try
-        mOk := mProvider.Details(TAtlasTrackerCall.Create(ATarget, mTransport, TAtlasIssuePreview.TimeoutMs), AKey,
+        mOk := mProvider.Details(TAtlasTrackerCall.Create(ATarget, mTransport, TAtlasIssuePreview.cTimeoutMs), AKey,
           False, mResult, mError);
       except
         // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
@@ -189,7 +189,7 @@ end;
 
 class function TAtlasIdeIssueLookups.Fresh(const ADetails: TAtlasTrackerDetails): Boolean;
 begin
-  Result := (ADetails.Fetched > 0) and (MilliSecondsBetween(TAtlasIdeIssueContext.NowUtc, ADetails.Fetched) < FreshMs);
+  Result := (ADetails.Fetched > 0) and (MilliSecondsBetween(TAtlasIdeIssueContext.NowUtc, ADetails.Fetched) < cFreshMs);
 end;
 
 procedure TAtlasIdeIssueLookups.Lookup(const ATarget: TAtlasTrackerTarget; const AKey: string;

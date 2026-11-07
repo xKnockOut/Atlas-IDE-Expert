@@ -105,8 +105,8 @@ type
 
   TAtlasAttachDialog = class(TForm)
   public const
-    Gap = 8;
-    DialogWidth = 680;
+    cGap = 8;
+    cDialogWidth = 680;
   private
     FInput: TAtlasAttachDialogInput;
     FTemp: TAtlasAttachTemp;
@@ -185,7 +185,7 @@ var
   mText: string;
 begin
   AFile := Default(TAtlasAttachFile);
-  Result := TAtlasAttachLog.ReadTail(ALog, ALines, TAtlasAttachLog.MaxBytes, mText);
+  Result := TAtlasAttachLog.ReadTail(ALog, ALines, TAtlasAttachLog.cMaxBytes, mText);
   if not Result then
   begin
     Exit;
@@ -216,7 +216,7 @@ begin
   Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCaption);
   BorderStyle := bsDialog;
   Position := poMainFormCenter;
-  ClientWidth := DialogWidth;
+  ClientWidth := cDialogWidth;
   BuildControls;
 end;
 
@@ -246,7 +246,7 @@ function AddCheck(ADialog: TAtlasAttachDialog; AParent: TWinControl; ATop: Integ
 begin
   Result := TCheckBox.Create(ADialog);
   Result.Parent := AParent;
-  Result.SetBounds(TAtlasAttachDialog.Gap, ATop, 300, 21);
+  Result.SetBounds(TAtlasAttachDialog.cGap, ATop, 300, 21);
   Result.Caption := ACaption;
   Result.OnClick := ADialog.Changed;
 end;
@@ -277,12 +277,12 @@ var
 begin
   mLabel := TLabel.Create(ADialog);
   mLabel.Parent := ADialog;
-  mLabel.SetBounds(TAtlasAttachDialog.Gap, ATop + 4, 60, 15);
+  mLabel.SetBounds(TAtlasAttachDialog.cGap, ATop + 4, 60, 15);
   mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachIssue);
   ADialog.FParts.Issue := TComboBox.Create(ADialog);
   ADialog.FParts.Issue.Parent := ADialog;
-  ADialog.FParts.Issue.SetBounds(TAtlasAttachDialog.Gap + 70, ATop,
-    TAtlasAttachDialog.DialogWidth - 2 * TAtlasAttachDialog.Gap - 70, 23);
+  ADialog.FParts.Issue.SetBounds(TAtlasAttachDialog.cGap + 70, ATop,
+    TAtlasAttachDialog.cDialogWidth - 2 * TAtlasAttachDialog.cGap - 70, 23);
   ADialog.FParts.Issue.Style := csDropDown;
   ADialog.FParts.Issue.OnChange := ADialog.TextChanged;
   ADialog.FParts.Issue.Text := ADialog.FInput.Key;
@@ -291,8 +291,8 @@ begin
   ADialog.FParts.Hint.Parent := ADialog;
   ADialog.FParts.Hint.AutoSize := False;
   ADialog.FParts.Hint.WordWrap := True;
-  ADialog.FParts.Hint.SetBounds(TAtlasAttachDialog.Gap, ATop,
-    TAtlasAttachDialog.DialogWidth - 2 * TAtlasAttachDialog.Gap, 32);
+  ADialog.FParts.Hint.SetBounds(TAtlasAttachDialog.cGap, ATop,
+    TAtlasAttachDialog.cDialogWidth - 2 * TAtlasAttachDialog.cGap, 32);
   if ADialog.FInput.CanUpload then
   begin
     ADialog.FParts.Hint.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachUploadHint,
@@ -371,7 +371,7 @@ begin
   ADialog.FParts.LogCount.Parent := AGroup;
   ADialog.FParts.LogCount.NumbersOnly := True;
   ADialog.FParts.LogCount.SetBounds(580, ARow - 2, 74, 23);
-  ADialog.FParts.LogCount.Text := IntToStr(TAtlasAttachLog.DefaultLines);
+  ADialog.FParts.LogCount.Text := IntToStr(TAtlasAttachLog.cDefaultLines);
   ADialog.FParts.LogCount.OnChange := ADialog.Changed;
   Inc(ARow, 24);
   ADialog.FParts.LogInfo := AddInfo(ADialog, AGroup, ARow);
@@ -418,13 +418,13 @@ begin
   mGroup := TGroupBox.Create(ADialog);
   mGroup.Parent := ADialog;
   mGroup.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachSources);
-  mGroup.SetBounds(TAtlasAttachDialog.Gap, ATop, TAtlasAttachDialog.DialogWidth - 2 * TAtlasAttachDialog.Gap, 248);
+  mGroup.SetBounds(TAtlasAttachDialog.cGap, ATop, TAtlasAttachDialog.cDialogWidth - 2 * TAtlasAttachDialog.cGap, 248);
   mRow := 22;
   AddScreenshotRows(ADialog, mGroup, mRow);
   AddFormRow(ADialog, mGroup, mRow);
   AddLogRows(ADialog, mGroup, mRow);
   AddNoteRows(ADialog, mGroup, mRow);
-  Inc(ATop, mGroup.Height + TAtlasAttachDialog.Gap);
+  Inc(ATop, mGroup.Height + TAtlasAttachDialog.cGap);
 end;
 
 /// <summary>Kommentar mit Verweis auf die Anhänge.</summary>
@@ -432,16 +432,16 @@ procedure AddCommentRows(ADialog: TAtlasAttachDialog; var ATop: Integer);
 begin
   ADialog.FParts.Comment := AddCheck(ADialog, ADialog, ATop,
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachComment));
-  ADialog.FParts.Comment.Width := TAtlasAttachDialog.DialogWidth - 2 * TAtlasAttachDialog.Gap;
+  ADialog.FParts.Comment.Width := TAtlasAttachDialog.cDialogWidth - 2 * TAtlasAttachDialog.cGap;
   Inc(ATop, 24);
   ADialog.FParts.CommentMemo := TMemo.Create(ADialog);
   ADialog.FParts.CommentMemo.Parent := ADialog;
-  ADialog.FParts.CommentMemo.SetBounds(TAtlasAttachDialog.Gap, ATop,
-    TAtlasAttachDialog.DialogWidth - 2 * TAtlasAttachDialog.Gap, 60);
+  ADialog.FParts.CommentMemo.SetBounds(TAtlasAttachDialog.cGap, ATop,
+    TAtlasAttachDialog.cDialogWidth - 2 * TAtlasAttachDialog.cGap, 60);
   ADialog.FParts.CommentMemo.ScrollBars := ssVertical;
   // Tippen schreibt keine Dateien neu, nur „Senden“ wird geprüft.
   ADialog.FParts.CommentMemo.OnChange := ADialog.TextChanged;
-  Inc(ATop, 60 + TAtlasAttachDialog.Gap);
+  Inc(ATop, 60 + TAtlasAttachDialog.cGap);
 end;
 
 /// <summary>Liste der Dateien, die gesendet werden.</summary>
@@ -452,13 +452,13 @@ var
 begin
   mLabel := TLabel.Create(ADialog);
   mLabel.Parent := ADialog;
-  mLabel.SetBounds(TAtlasAttachDialog.Gap, ATop, TAtlasAttachDialog.DialogWidth - 2 * TAtlasAttachDialog.Gap, 15);
+  mLabel.SetBounds(TAtlasAttachDialog.cGap, ATop, TAtlasAttachDialog.cDialogWidth - 2 * TAtlasAttachDialog.cGap, 15);
   mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachFiles);
   Inc(ATop, 20);
   ADialog.FParts.List := TListView.Create(ADialog);
   ADialog.FParts.List.Parent := ADialog;
-  ADialog.FParts.List.SetBounds(TAtlasAttachDialog.Gap, ATop,
-    TAtlasAttachDialog.DialogWidth - 2 * TAtlasAttachDialog.Gap, 110);
+  ADialog.FParts.List.SetBounds(TAtlasAttachDialog.cGap, ATop,
+    TAtlasAttachDialog.cDialogWidth - 2 * TAtlasAttachDialog.cGap, 110);
   ADialog.FParts.List.ViewStyle := vsReport;
   ADialog.FParts.List.ReadOnly := True;
   ADialog.FParts.List.RowSelect := True;
@@ -471,7 +471,7 @@ begin
   mColumn.Width := 120;
   mColumn.Alignment := taRightJustify;
   ADialog.FParts.List.OnDblClick := ADialog.ListDblClick;
-  Inc(ATop, 110 + TAtlasAttachDialog.Gap);
+  Inc(ATop, 110 + TAtlasAttachDialog.cGap);
 end;
 
 /// <summary>„Senden“ und „Abbrechen“ unten rechts.</summary>
@@ -483,16 +483,16 @@ begin
   mBottom := TPanel.Create(ADialog);
   mBottom.Parent := ADialog;
   mBottom.BevelOuter := bvNone;
-  mBottom.SetBounds(0, ATop, TAtlasAttachDialog.DialogWidth, 44);
+  mBottom.SetBounds(0, ATop, TAtlasAttachDialog.cDialogWidth, 44);
   ADialog.FParts.Send := TButton.Create(ADialog);
   ADialog.FParts.Send.Parent := mBottom;
-  ADialog.FParts.Send.SetBounds(TAtlasAttachDialog.DialogWidth - 2 * (110 + TAtlasAttachDialog.Gap), 8, 110, 28);
+  ADialog.FParts.Send.SetBounds(TAtlasAttachDialog.cDialogWidth - 2 * (110 + TAtlasAttachDialog.cGap), 8, 110, 28);
   ADialog.FParts.Send.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachSend);
   ADialog.FParts.Send.Default := True;
   ADialog.FParts.Send.ModalResult := mrOk;
   mButton := TButton.Create(ADialog);
   mButton.Parent := mBottom;
-  mButton.SetBounds(TAtlasAttachDialog.DialogWidth - (110 + TAtlasAttachDialog.Gap), 8, 110, 28);
+  mButton.SetBounds(TAtlasAttachDialog.cDialogWidth - (110 + TAtlasAttachDialog.cGap), 8, 110, 28);
   mButton.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel);
   mButton.Cancel := True;
   mButton.ModalResult := mrCancel;
@@ -502,7 +502,7 @@ procedure TAtlasAttachDialog.BuildControls;
 var
   mTop: Integer;
 begin
-  mTop := Gap;
+  mTop := cGap;
   AddIssueRows(Self, mTop);
   AddSources(Self, mTop);
   AddCommentRows(Self, mTop);
@@ -745,7 +745,7 @@ begin
   Result := 0;
   if AParts.LogLines.Checked then
   begin
-    Result := StrToIntDef(AParts.LogCount.Text, TAtlasAttachLog.DefaultLines);
+    Result := StrToIntDef(AParts.LogCount.Text, TAtlasAttachLog.cDefaultLines);
   end;
 end;
 

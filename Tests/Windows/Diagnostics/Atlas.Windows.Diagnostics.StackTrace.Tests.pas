@@ -39,21 +39,21 @@ end;
 
 procedure TStackTraceTests.WarmUp;
 var
-  Trace: string;
+  mTrace: string;
 begin
-  Trace := '';
+  mTrace := '';
   TStackTrace.Install;
   try
     try
       RaiseSomething;
     except
       on E: EAbort do
-        Trace := E.StackTrace;
+        mTrace := E.StackTrace;
     end;
   finally
     TStackTrace.Uninstall;
   end;
-  if Trace = '' then
+  if mTrace = '' then
   begin
     Exit;
   end;
@@ -66,32 +66,32 @@ end;
 
 procedure TStackTraceTests.ExceptionsCarryStackTraceAfterInstall;
 var
-  Trace: string;
-  ExeName: string;
+  mTrace: string;
+  mExeName: string;
 begin
   TStackTrace.Install;
   Assert.IsTrue(TStackTrace.Installed);
-  Trace := '';
+  mTrace := '';
   try
     RaiseSomething;
   except
     on E: EAbort do
-      Trace := E.StackTrace;
+      mTrace := E.StackTrace;
   end;
-  ExeName := ExtractFileName(ParamStr(0));
-  Assert.IsTrue(Trace.Contains(ExeName + '+$'), Trace);
+  mExeName := ExtractFileName(ParamStr(0));
+  Assert.IsTrue(mTrace.Contains(mExeName + '+$'), mTrace);
 end;
 
 procedure TStackTraceTests.UninstallRestoresPreviousState;
 var
-  Previous: Pointer;
+  mPrevious: Pointer;
 begin
-  Previous := @Exception.GetStackInfoStringProc;
+  mPrevious := @Exception.GetStackInfoStringProc;
   TStackTrace.Install;
-  Assert.IsTrue(@Exception.GetStackInfoStringProc <> Previous);
+  Assert.IsTrue(@Exception.GetStackInfoStringProc <> mPrevious);
   TStackTrace.Uninstall;
   Assert.IsFalse(TStackTrace.Installed);
-  Assert.IsTrue(@Exception.GetStackInfoStringProc = Previous);
+  Assert.IsTrue(@Exception.GetStackInfoStringProc = mPrevious);
 end;
 
 procedure TStackTraceTests.DescribesAddressAsModuleAndOffset;
@@ -102,20 +102,20 @@ end;
 
 procedure TStackTraceTests.MapFileNamesUnitAndRoutine;
 var
-  Trace: string;
+  mTrace: string;
 begin
   // Künstlicher Absturz (#282): Die .map neben der Test-EXE (DCC_MapFile=3) löst die Adressen auf.
   Assert.IsTrue(FileExists(ChangeFileExt(ParamStr(0), '.map')), 'Map-Datei fehlt neben der Test-EXE');
   TStackTrace.Install;
-  Trace := '';
+  mTrace := '';
   try
     RaiseSomething;
   except
     on E: EAbort do
-      Trace := E.StackTrace;
+      mTrace := E.StackTrace;
   end;
-  Assert.IsTrue(Trace.Contains('Atlas.Windows.Diagnostics.StackTrace.Tests.RaiseSomething'), Trace);
-  Assert.IsTrue(Trace.Contains('Atlas.Windows.Diagnostics.StackTrace.Tests.pas:'), Trace);
+  Assert.IsTrue(mTrace.Contains('Atlas.Windows.Diagnostics.StackTrace.Tests.RaiseSomething'), mTrace);
+  Assert.IsTrue(mTrace.Contains('Atlas.Windows.Diagnostics.StackTrace.Tests.pas:'), mTrace);
 end;
 
 initialization

@@ -506,7 +506,7 @@ var
   mIssue: TAtlasTimeIssue;
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'atlas-time-' + TGUID.NewGuid.ToString);
-  mPath := TPath.Combine(FFolder, TAtlasTimeFile.FileName);
+  mPath := TPath.Combine(FFolder, TAtlasTimeFile.cFileName);
   mIssue := YouTrackIssue('ATL-1');
   Assert.IsTrue(TAtlasTimeFile.Read(mPath, mLog), 'fehlende Datei = leer');
   Assert.AreEqual(0, Integer(Length(mLog.Entries)));
@@ -526,7 +526,7 @@ begin
     end, mLog));
   Assert.AreEqual(45 * 60, Integer(mLog.Total(mIssue)), 'Überlappung zählt einmal');
   // Die Sperre ist wieder frei.
-  TFileStream.Create(mPath + TAtlasTimeFile.LockExtension, fmCreate or fmShareExclusive).Free;
+  TFileStream.Create(mPath + TAtlasTimeFile.cLockExtension, fmCreate or fmShareExclusive).Free;
 end;
 
 procedure TAtlasTimeLogTests.UnreadableFileStays;
@@ -536,7 +536,7 @@ var
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'atlas-time-' + TGUID.NewGuid.ToString);
   ForceDirectories(FFolder);
-  mPath := TPath.Combine(FFolder, TAtlasTimeFile.FileName);
+  mPath := TPath.Combine(FFolder, TAtlasTimeFile.cFileName);
   TFile.WriteAllText(mPath, '{kaputt');
   Assert.IsFalse(TAtlasTimeFile.Read(mPath, mLog));
   Assert.IsFalse(TAtlasTimeFile.Update(mPath,
@@ -555,8 +555,8 @@ var
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'atlas-time-' + TGUID.NewGuid.ToString);
   ForceDirectories(FFolder);
-  mPath := TPath.Combine(FFolder, TAtlasTimeFile.FileName);
-  mLock := TFileStream.Create(mPath + TAtlasTimeFile.LockExtension, fmCreate or fmShareExclusive);
+  mPath := TPath.Combine(FFolder, TAtlasTimeFile.cFileName);
+  mLock := TFileStream.Create(mPath + TAtlasTimeFile.cLockExtension, fmCreate or fmShareExclusive);
   try
     Assert.IsFalse(TAtlasTimeFile.Update(mPath,
       procedure(var ALog: TAtlasTimeLog)

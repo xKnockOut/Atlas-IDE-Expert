@@ -48,10 +48,10 @@ type
   TAtlasIdeIssueAttach = class(TInterfacedObject)
   public const
     /// <summary>Zeitgrenze für Hochladen und Kommentar zusammen.</summary>
-    TimeoutMs = 60000;
-    MaxExceptions = 20;
+    cTimeoutMs = 60000;
+    cMaxExceptions = 20;
     /// <summary>Abstand der Bilder in der Zwischenablage (GitHub).</summary>
-    ImageGap = 16;
+    cImageGap = 16;
   private
     FHooks: TAtlasIssueAttachHooks;
     FStarted: Boolean;
@@ -236,7 +236,7 @@ begin
   end;
   FStarted := True;
   try
-    TAtlasAttachTemp.PruneStale(TAtlasAttachTemp.DefaultRoot, Now, TAtlasAttachTemp.StaleHours);
+    TAtlasAttachTemp.PruneStale(TAtlasAttachTemp.DefaultRoot, Now, TAtlasAttachTemp.cStaleHours);
   except
     on E: Exception do
       TAtlasGuard.Log('Anhängen: Aufräumen alter Läufe mit ' + E.ClassName + ' abgebrochen');
@@ -340,7 +340,7 @@ begin
   mReport := DebugReport;
   if mReport <> nil then
   begin
-    Result := mReport.ExceptionsText(MaxExceptions, ACount);
+    Result := mReport.ExceptionsText(cMaxExceptions, ACount);
   end;
 end;
 
@@ -485,7 +485,7 @@ begin
     begin
       mResult := Default(TAtlasAttachOutcome);
       try
-        mResult := TAtlasAttachSender.Send(AProvider, mTransport, ARequest, TAtlasIdeIssueAttach.TimeoutMs);
+        mResult := TAtlasAttachSender.Send(AProvider, mTransport, ARequest, TAtlasIdeIssueAttach.cTimeoutMs);
       except
         // Kein Dialog aus dem Hintergrund: als Netzfehler werten.
         on E: Exception do
@@ -620,7 +620,7 @@ begin
           mBitmaps := mBitmaps + [mBitmap];
         end;
       end;
-      mStacked := TAtlasAttachImages.Stacked(mBitmaps, ImageGap);
+      mStacked := TAtlasAttachImages.Stacked(mBitmaps, cImageGap);
       try
         if mStacked <> nil then
         begin

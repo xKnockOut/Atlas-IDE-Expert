@@ -59,7 +59,7 @@ uses
 
 function YouTrack: TAtlasIssueKeyPattern;
 begin
-  Result := TAtlasIssueKeyPattern.ForTarget(TAtlasTrackerTarget.Create(TAtlasTrackerTarget.YouTrack,
+  Result := TAtlasIssueKeyPattern.ForTarget(TAtlasTrackerTarget.Create(TAtlasTrackerTarget.cYouTrack,
     'https://firma.youtrack.cloud', 'ATL', ''));
 end;
 
