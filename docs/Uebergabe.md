@@ -1,4 +1,9 @@
-﻿## Präfixe und Zeilenlänge in Atlas.Common (06./07.11.2026, Branch `claude/project-thread-i9dwl9` auf `Pilot-2.0.0-beta.1`)
+﻿## Präfixe und Zeilenlänge in Atlas.IDE.Rules (07.11.2026, Branch `claude/project-thread-9v3vm5` auf `main-merging`)
+- Wie bei Atlas.Common (Anleitung `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`): lokale Namen über `--fix naming-prefix` (Server mit safeFix, im Worktree), 8 lange Zeilen mit `wrap.py`, Testunits des Moduls (`[Category('Atlas.IDE.Rules')]`) mit.
+- Öffentliche Konstanten umbenannt, mit allen Verwendungen: `TAtlasBulkFixPreview.cCommand`, `TAtlasRulesModule.cModuleId`/`cSwitch`, `TAtlasRuleTable.cSeverities`/`cGroupIds`/`cCompilerGroup`. Außerhalb des Moduls verwendet sie nichts.
+- Falle: `fixer-safefix.patch` passt seit den Common-Präfixen nicht mehr auf `Builtin.Naming.pas` (`mFixes`/`mNewName`); die Zeile von Hand um `, True` ergänzen.
+- Geprüft (Cloud): AtlasServer `--check` mit Metriken über `Atlas.IDE.Rules.dproj` und die 6 Testunits: 0 Befunde. FPC-Tests `Atlas.Core.Rules.Table.Tests`/`Atlas.Core.Problems.BulkFix.Tests` wie auf main-merging (ein FPC-Kodierungsfehlschlag in ArgumentsNameRuleAndFiles auf beiden). VCL- und ToolsAPI-Units nicht übersetzbar: Delphi-Build offen.
+## Präfixe und Zeilenlänge in Atlas.Common (06./07.11.2026, Branch `claude/project-thread-i9dwl9` auf `Pilot-2.0.0-beta.1`)
 - Wunsch Marco: naming-prefix und line-length im Code beheben, je Package ein PR; öffentliche Konstanten bekommen auch `c` (Marco 06.11. 18:48), mit allen Verwendungen in allen Packages.
 - Lokale Namen über die Umbenennen-Korrektur der Regel (`--fix naming-prefix` mit einem Server, dessen Korrektur als safeFix markiert ist, nur lokal gebaut), der Rest über MCP `rename_symbol` als Vorschau und gesammelt angewendet; lange Zeilen mit eigenem Umbrecher. Werkzeuge und Fallen: `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`.
 - Falle: rename_symbol lässt Stellen aus, die es nicht sicher zuordnen kann (Array-Grenzen, `Unit.Name`, unbekannte Ausdruckstypen, Unit-Konstanten in anderen Units); nachgezogen per Übersetzen und Grep. Parallele schreibende rename_symbol-Aufrufe überschreiben sich.

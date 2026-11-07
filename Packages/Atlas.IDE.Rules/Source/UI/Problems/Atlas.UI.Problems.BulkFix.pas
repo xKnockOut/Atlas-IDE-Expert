@@ -62,7 +62,7 @@ uses
   Atlas.UI.Rules.Strings;
 
 const
-  Gap = 8;
+  cGap = 8;
 
 { TAtlasBulkFixDialog }
 
@@ -101,7 +101,7 @@ begin
   FSummary.Parent := mTop;
   FSummary.Align := alTop;
   FSummary.AlignWithMargins := True;
-  FSummary.Margins.SetBounds(ScaleValue(Gap), ScaleValue(Gap), ScaleValue(Gap), ScaleValue(Gap div 2));
+  FSummary.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap div 2));
   FSummary.ShowAccelChar := False;
   FSummary.WordWrap := True;
   FSummary.Caption := FPreview.Summary;
@@ -123,8 +123,8 @@ begin
   FCancel.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.FixPreviewCancel);
   FCancel.Width := ScaleValue(100);
   FCancel.Height := ScaleValue(28);
-  FCancel.Top := ScaleValue(Gap);
-  FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(Gap);
+  FCancel.Top := ScaleValue(cGap);
+  FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
   FCancel.Anchors := [akTop, akRight];
   FCancel.Cancel := True;
   FCancel.OnClick := CancelClick;
@@ -133,15 +133,15 @@ begin
   FApply.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.FixPreviewApply);
   FApply.Width := ScaleValue(100);
   FApply.Height := ScaleValue(28);
-  FApply.Top := ScaleValue(Gap);
-  FApply.Left := FCancel.Left - FApply.Width - ScaleValue(Gap);
+  FApply.Top := ScaleValue(cGap);
+  FApply.Left := FCancel.Left - FApply.Width - ScaleValue(cGap);
   FApply.Anchors := [akTop, akRight];
   FApply.Default := True;
   FApply.OnClick := ApplyClick;
   FSelection := TLabel.Create(Self);
   FSelection.Parent := mBottom;
-  FSelection.Left := ScaleValue(Gap);
-  FSelection.Top := ScaleValue(Gap + 6);
+  FSelection.Left := ScaleValue(cGap);
+  FSelection.Top := ScaleValue(cGap + 6);
   FSelection.ShowAccelChar := False;
 end;
 
@@ -154,7 +154,7 @@ begin
   FFiles.Parent := Self;
   FFiles.Align := alLeft;
   FFiles.AlignWithMargins := True;
-  FFiles.Margins.SetBounds(ScaleValue(Gap), 0, 0, 0);
+  FFiles.Margins.SetBounds(ScaleValue(cGap), 0, 0, 0);
   FFiles.Width := ScaleValue(280);
   FFiles.OnClick := FilesClick;
   FFiles.OnClickCheck := FilesClickCheck;
@@ -166,7 +166,7 @@ begin
   FDiff.Parent := Self;
   FDiff.Align := alClient;
   FDiff.AlignWithMargins := True;
-  FDiff.Margins.SetBounds(0, 0, ScaleValue(Gap), 0);
+  FDiff.Margins.SetBounds(0, 0, ScaleValue(cGap), 0);
   FDiff.ReadOnly := True;
   FDiff.ScrollBars := ssBoth;
   FDiff.WordWrap := False;
