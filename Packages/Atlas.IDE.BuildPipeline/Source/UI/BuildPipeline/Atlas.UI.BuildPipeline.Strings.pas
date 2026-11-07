@@ -43,7 +43,7 @@ uses
   Atlas.UI.Strings;
 
 const
-  Texts: array[TAtlasLanguage, TAtlasBuildPipelineTextId] of string = (
+  cTexts: array[TAtlasLanguage, TAtlasBuildPipelineTextId] of string = (
     ('Claude Code baut %s in der IDE …',
      'Build für Claude Code beendet: %s, %d Fehler',
      'Build für Claude Code abgelehnt: %s (%s)',
@@ -195,12 +195,12 @@ const
 
 class function TAtlasBuildPipelineStrings.Text(AId: TAtlasBuildPipelineTextId): string;
 begin
-  Result := Texts[TAtlasStrings.Language, AId];
+  Result := cTexts[TAtlasStrings.Language, AId];
 end;
 
 class function TAtlasBuildPipelineStrings.Fmt(AId: TAtlasBuildPipelineTextId; const AArgs: array of const): string;
 begin
-  Result := Format(Texts[TAtlasStrings.Language, AId], AArgs);
+  Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
 end;
 
 end.

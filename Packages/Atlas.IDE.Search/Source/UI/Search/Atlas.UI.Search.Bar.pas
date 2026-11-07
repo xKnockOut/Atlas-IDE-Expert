@@ -231,14 +231,14 @@ uses
   Atlas.UI.Search.Strings;
 
 const
-  BarHeight = 30;
-  Gap = 6;
-  ToggleWidth = 24;
-  TextBoxWidth = 200;
-  ScopeWidth = 120;
-  LevelWidth = 240;
-  ButtonWidth = 28;
-  ErrorColor = TColor($0000C0);
+  cBarHeight = 30;
+  cGap = 6;
+  cToggleWidth = 24;
+  cTextBoxWidth = 200;
+  cScopeWidth = 120;
+  cLevelWidth = 240;
+  cButtonWidth = 28;
+  cErrorColor = TColor($0000C0);
 
 { TAtlasSearchBarFeatures }
 
@@ -395,7 +395,7 @@ begin
   mX := 0;
   if FKind = TKind.Error then
   begin
-    Canvas.Font.Color := ErrorColor;
+    Canvas.Font.Color := cErrorColor;
     Put(FMessage, []);
     Exit;
   end;
@@ -433,7 +433,7 @@ begin
   Result.Caption := '';
   Result.ShowCaption := False;
   Result.Top := ATop;
-  Result.Height := ABar.ScaleValue(BarHeight);
+  Result.Height := ABar.ScaleValue(cBarHeight);
   Result.Align := alTop;
 end;
 
@@ -444,7 +444,7 @@ begin
   AControl.Left := ARow.Tag;
   AControl.Align := alLeft;
   AControl.AlignWithMargins := True;
-  AControl.Margins.SetBounds(Gap, 3, 0, 3);
+  AControl.Margins.SetBounds(cGap, 3, 0, 3);
   if AWidth > 0 then
   begin
     AControl.Width := ABar.ScaleValue(AWidth);
@@ -519,19 +519,19 @@ begin
   AParts.CloseButton.Parent := AParts.SearchRow;
   AParts.CloseButton.Align := alRight;
   AParts.CloseButton.AlignWithMargins := True;
-  AParts.CloseButton.Margins.SetBounds(Gap, 3, Gap, 3);
-  AParts.CloseButton.Width := ABar.ScaleValue(ButtonWidth);
+  AParts.CloseButton.Margins.SetBounds(cGap, 3, cGap, 3);
+  AParts.CloseButton.Width := ABar.ScaleValue(cButtonWidth);
   AParts.CloseButton.Caption := '×';
   AParts.CloseButton.Hint := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchCloseHint);
   AParts.CloseButton.OnClick := ABar.ButtonClick;
   AParts.CloseButton.OnKeyDown := ABar.ControlKeyDown;
   AParts.CloseButton.OnEnter := ABar.ControlEnter;
   AParts.ToggleButton := AddButton(ABar, AParts.SearchRow, '▸', TAtlasSearchTextId.SearchToggleReplaceHint,
-    ToggleWidth);
+    cToggleWidth);
   mLabel := AddLabel(ABar, AParts.SearchRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchTextLabel));
-  AParts.TextFrame := AddPanel(ABar, AParts.SearchRow, TextBoxWidth + 2);
+  AParts.TextFrame := AddPanel(ABar, AParts.SearchRow, cTextBoxWidth + 2);
   AParts.TextFrame.Padding.SetBounds(1, 1, 1, 1);
-  AParts.TextFrame.Margins.SetBounds(Gap, 2, 0, 2);
+  AParts.TextFrame.Margins.SetBounds(cGap, 2, 0, 2);
   AParts.TextEdit := AddCombo(ABar, AParts.TextFrame, csDropDown);
   AParts.TextEdit.Align := alClient;
   AParts.TextEdit.OnChange := ABar.Changed;
@@ -554,15 +554,15 @@ begin
   AParts.RegexBox := AddCheck(ABar, '.*', TAtlasSearchTextId.SearchRegexHint);
   mLabel := AddLabel(ABar, AParts.SearchRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeLabel));
   AParts.ScopeBox := AddCombo(ABar, AParts.SearchRow, csDropDownList);
-  Place(ABar, AParts.SearchRow, AParts.ScopeBox, ScopeWidth);
+  Place(ABar, AParts.SearchRow, AParts.ScopeBox, cScopeWidth);
   AParts.ScopeBox.OnChange := ABar.Changed;
   mLabel.FocusControl := AParts.ScopeBox;
   AParts.LevelBox := AddCombo(ABar, AParts.SearchRow, csDropDownList);
-  Place(ABar, AParts.SearchRow, AParts.LevelBox, LevelWidth);
+  Place(ABar, AParts.SearchRow, AParts.LevelBox, cLevelWidth);
   AParts.LevelBox.OnChange := ABar.Changed;
   AParts.CounterLabel := AddLabel(ABar, AParts.SearchRow, '');
-  AParts.PreviousButton := AddButton(ABar, AParts.SearchRow, '↑', TAtlasSearchTextId.SearchPreviousHint, ButtonWidth);
-  AParts.NextButton := AddButton(ABar, AParts.SearchRow, '↓', TAtlasSearchTextId.SearchNextHint, ButtonWidth);
+  AParts.PreviousButton := AddButton(ABar, AParts.SearchRow, '↑', TAtlasSearchTextId.SearchPreviousHint, cButtonWidth);
+  AParts.NextButton := AddButton(ABar, AParts.SearchRow, '↓', TAtlasSearchTextId.SearchNextHint, cButtonWidth);
   AParts.ListButton := AddButton(ABar, AParts.SearchRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchListButton),
     TAtlasSearchTextId.SearchListHint, 100);
   AParts.CancelButton := AddButton(ABar, AParts.SearchRow,
@@ -575,10 +575,10 @@ procedure BuildReplaceRow(ABar: TAtlasSearchBar; AParts: TAtlasSearchBarParts);
 var
   mLabel: TLabel;
 begin
-  AddPanel(ABar, AParts.ReplaceRow, ToggleWidth);
+  AddPanel(ABar, AParts.ReplaceRow, cToggleWidth);
   mLabel := AddLabel(ABar, AParts.ReplaceRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceLabel));
   AParts.ReplaceEdit := AddCombo(ABar, AParts.ReplaceRow, csDropDown);
-  Place(ABar, AParts.ReplaceRow, AParts.ReplaceEdit, TextBoxWidth);
+  Place(ABar, AParts.ReplaceRow, AParts.ReplaceEdit, cTextBoxWidth);
   AParts.ReplaceEdit.OnChange := ABar.ReplaceChanged;
   AParts.ReplaceEdit.OnDropDown := ABar.HistoryDropDown;
   mLabel.FocusControl := AParts.ReplaceEdit;
@@ -592,7 +592,7 @@ begin
   AParts.InfoLine.Parent := AParts.InfoRow;
   AParts.InfoLine.Align := alClient;
   AParts.InfoLine.AlignWithMargins := True;
-  AParts.InfoLine.Margins.SetBounds(Gap + ABar.ScaleValue(ToggleWidth), 2, Gap, 2);
+  AParts.InfoLine.Margins.SetBounds(cGap + ABar.ScaleValue(cToggleWidth), 2, cGap, 2);
 end;
 
 { Zustand der Leiste }
@@ -678,7 +678,7 @@ begin
   begin
     Inc(mRows);
   end;
-  ABar.Height := mRows * ABar.ScaleValue(BarHeight);
+  ABar.Height := mRows * ABar.ScaleValue(cBarHeight);
   mParts.InfoLine.Invalidate;
 end;
 
@@ -1048,7 +1048,7 @@ begin
     FParts.InfoLine.ShowError(AText);
     FParts.TextFrame.ParentBackground := False;
     FParts.TextFrame.StyleElements := FParts.TextFrame.StyleElements - [seClient];
-    FParts.TextFrame.Color := ErrorColor;
+    FParts.TextFrame.Color := cErrorColor;
   end
   else
   begin

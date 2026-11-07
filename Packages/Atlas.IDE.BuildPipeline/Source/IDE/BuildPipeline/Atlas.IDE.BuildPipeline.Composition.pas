@@ -35,8 +35,8 @@ type
   TAtlasBuildPipelineModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasBuildJobs,
     IAtlasCompilerMessagesListener, IAtlasBuildEvaluator)
   public const
-    ModuleId = 'atlas.buildpipeline';
-    Switch = 'buildPipeline';
+    cModuleId = 'atlas.buildpipeline';
+    cSwitch = 'buildPipeline';
   private
     FActive: Boolean;
     class function Parts: TArray<IAtlasFeaturePart>; static;
@@ -316,14 +316,14 @@ end;
 function TAtlasBuildPipelineModule.Info: TAtlasModuleInfo;
 begin
   Result := Default(TAtlasModuleInfo);
-  Result.Id := ModuleId;
+  Result.Id := cModuleId;
   Result.Name := 'Build-Pipeline';
   Result.Version := TAtlasVersion.cVersion;
   Result.Handle := HInstance;
   // Wächter und Prüfung liefen mit den Compile-Ereignissen auch im abgesicherten Start (mit CheckOnSave); der
   // MCP-Eingang verlangt den normalen Start.
   Result.MinLevel := TAtlasSafeLevel.Safe;
-  Result.Switch := Switch;
+  Result.Switch := cSwitch;
 end;
 
 procedure TAtlasBuildPipelineModule.Start;
@@ -453,7 +453,7 @@ begin
   if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
     ccMatch then
   begin
-    TAtlasGuard.Log('Modul ' + ModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
+    TAtlasGuard.Log('Modul ' + cModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
     Exit;
   end;
   mModule := TAtlasBuildPipelineModule.Create;
@@ -487,9 +487,9 @@ begin
   mRegistry := AtlasModuleRegistry;
   if mRegistry <> nil then
   begin
-    for mFailure in mRegistry.UnregisterModule(ModuleId) do
+    for mFailure in mRegistry.UnregisterModule(cModuleId) do
     begin
-      TAtlasGuard.Log('Modul ' + ModuleId + ' nicht sauber abgemeldet: ' + mFailure);
+      TAtlasGuard.Log('Modul ' + cModuleId + ' nicht sauber abgemeldet: ' + mFailure);
     end;
   end;
 end;

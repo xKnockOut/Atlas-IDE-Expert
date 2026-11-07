@@ -62,15 +62,15 @@ uses
   Atlas.Core.BuildPipeline.Gate;
 
 const
-  ProjectFile = 'C:\P\Kasse.dproj';
-  MainUnit = 'C:\P\Main.pas';
-  DataUnit = 'C:\P\Daten.pas';
-  OutcomeNames: array[TAtlasGateOutcome] of string = ('passed', 'reported', 'blocked', 'overridden', 'timedOut');
+  cProjectFile = 'C:\P\Kasse.dproj';
+  cMainUnit = 'C:\P\Main.pas';
+  cDataUnit = 'C:\P\Daten.pas';
+  cOutcomeNames: array[TAtlasGateOutcome] of string = ('passed', 'reported', 'blocked', 'overridden', 'timedOut');
 
 function Project(AKind: TAtlasCompileKind): TAtlasCompileProject;
 begin
   Result := Default(TAtlasCompileProject);
-  Result.FileName := ProjectFile;
+  Result.FileName := cProjectFile;
   Result.Kind := AKind;
   Result.Configuration := 'Debug';
   Result.Platform := 'Win32';
@@ -167,7 +167,7 @@ begin
     var
       Finding: TAtlasGateFinding;
     begin
-      Reported := Reported + OutcomeNames[AOutcome] + ':';
+      Reported := Reported + cOutcomeNames[AOutcome] + ':';
       for Finding in AFindings do
       begin
         Reported := Reported + ExtractFileName(Finding.FileName) + '/' + Finding.Problem.Code + ',';
@@ -187,21 +187,21 @@ end;
 
 procedure TAtlasBuildGateTests.AppliesOnlyToUserMakeAndBuild;
 var
-  Settings: TAtlasGateSettings;
-  Info: TAtlasCompileProject;
+  mSettings: TAtlasGateSettings;
+  mInfo: TAtlasCompileProject;
 begin
-  Settings := TAtlasGateSettings.Create('warn', 300);
-  Assert.IsTrue(TAtlasBuildGateCheck.Applies(Settings, Project(TAtlasCompileKind.Make)));
-  Assert.IsTrue(TAtlasBuildGateCheck.Applies(Settings, Project(TAtlasCompileKind.Build)));
-  Assert.IsFalse(TAtlasBuildGateCheck.Applies(Settings, Project(TAtlasCompileKind.Check)), 'Syntaxprüfung');
-  Assert.IsFalse(TAtlasBuildGateCheck.Applies(Settings, Project(TAtlasCompileKind.Clean)), 'Clean');
-  Assert.IsFalse(TAtlasBuildGateCheck.Applies(Settings, Project(TAtlasCompileKind.MakeUnit)), 'eine Unit');
-  Info := Project(TAtlasCompileKind.Make);
-  Info.Background := True;
-  Assert.IsFalse(TAtlasBuildGateCheck.Applies(Settings, Info), 'Hintergrundprüfung #548');
-  Info := Project(TAtlasCompileKind.Make);
-  Info.RequestedBy := 'mcp';
-  Assert.IsFalse(TAtlasBuildGateCheck.Applies(Settings, Info), 'Auftrag von Claude Code #261');
+  mSettings := TAtlasGateSettings.Create('warn', 300);
+  Assert.IsTrue(TAtlasBuildGateCheck.Applies(mSettings, Project(TAtlasCompileKind.Make)));
+  Assert.IsTrue(TAtlasBuildGateCheck.Applies(mSettings, Project(TAtlasCompileKind.Build)));
+  Assert.IsFalse(TAtlasBuildGateCheck.Applies(mSettings, Project(TAtlasCompileKind.Check)), 'Syntaxprüfung');
+  Assert.IsFalse(TAtlasBuildGateCheck.Applies(mSettings, Project(TAtlasCompileKind.Clean)), 'Clean');
+  Assert.IsFalse(TAtlasBuildGateCheck.Applies(mSettings, Project(TAtlasCompileKind.MakeUnit)), 'eine Unit');
+  mInfo := Project(TAtlasCompileKind.Make);
+  mInfo.Background := True;
+  Assert.IsFalse(TAtlasBuildGateCheck.Applies(mSettings, mInfo), 'Hintergrundprüfung #548');
+  mInfo := Project(TAtlasCompileKind.Make);
+  mInfo.RequestedBy := 'mcp';
+  Assert.IsFalse(TAtlasBuildGateCheck.Applies(mSettings, mInfo), 'Auftrag von Claude Code #261');
   Assert.IsFalse(TAtlasBuildGateCheck.Applies(TAtlasGateSettings.Create('off', 300), Project(TAtlasCompileKind.Make)),
     'build.gate = off');
 end;
@@ -217,34 +217,34 @@ end;
 
 procedure TAtlasBuildGateTests.ChangedUnitsByStampOrOutputTime;
 var
-  Remembered: TDictionary<string, string>;
-  Units: TAtlasGateUnits;
-  Changed: TArray<string>;
+  mRemembered: TDictionary<string, string>;
+  mUnits: TAtlasGateUnits;
+  mChanged: TArray<string>;
 begin
-  Units := [UnitOf(MainUnit, 'd:100', 100), UnitOf(DataUnit, 'd:50', 50)];
+  mUnits := [UnitOf(cMainUnit, 'd:100', 100), UnitOf(cDataUnit, 'd:50', 50)];
   // Ohne Ausgabedatei: alles geändert.
-  Changed := TAtlasBuildGateCheck.Changed(Units, nil, 0);
-  Assert.AreEqual(2, Integer(Length(Changed)));
+  mChanged := TAtlasBuildGateCheck.Changed(mUnits, nil, 0);
+  Assert.AreEqual(2, Integer(Length(mChanged)));
   // Ausgabedatei von 80: nur Main ist neuer.
-  Changed := TAtlasBuildGateCheck.Changed(Units, nil, 80);
-  Assert.AreEqual(1, Integer(Length(Changed)));
-  Assert.AreEqual(MainUnit, Changed[0]);
-  Remembered := TDictionary<string, string>.Create;
+  mChanged := TAtlasBuildGateCheck.Changed(mUnits, nil, 80);
+  Assert.AreEqual(1, Integer(Length(mChanged)));
+  Assert.AreEqual(cMainUnit, mChanged[0]);
+  mRemembered := TDictionary<string, string>.Create;
   try
-    Remembered.Add(UpperCase(MainUnit), 'd:100');
-    Remembered.Add(UpperCase(DataUnit), 'd:40');
+    mRemembered.Add(UpperCase(cMainUnit), 'd:100');
+    mRemembered.Add(UpperCase(cDataUnit), 'd:40');
     // Gemerkter Stand gewinnt über die Zeit: Main gleich, Daten anders (auch wenn älter als die Ausgabe).
-    Changed := TAtlasBuildGateCheck.Changed(Units, Remembered, 80);
-    Assert.AreEqual(1, Integer(Length(Changed)));
-    Assert.AreEqual(DataUnit, Changed[0]);
+    mChanged := TAtlasBuildGateCheck.Changed(mUnits, mRemembered, 80);
+    Assert.AreEqual(1, Integer(Length(mChanged)));
+    Assert.AreEqual(cDataUnit, mChanged[0]);
   finally
-    Remembered.Free;
+    mRemembered.Free;
   end;
 end;
 
 procedure TAtlasBuildGateTests.OnlyErrorsCount;
 var
-  Item: TAtlasProblem;
+  mItem: TAtlasProblem;
 begin
   Assert.IsTrue(TAtlasBuildGateCheck.Counts(Problem(TAtlasProblemSeverity.Error, 'syntax', 'Atlas', 1)));
   Assert.IsTrue(TAtlasBuildGateCheck.Counts(Problem(TAtlasProblemSeverity.Error, 'x', TAtlasProblem.ConfirmedSource,
@@ -253,212 +253,212 @@ begin
   Assert.IsFalse(TAtlasBuildGateCheck.Counts(Problem(TAtlasProblemSeverity.Hint, 'x', 'Atlas', 1)));
   Assert.IsFalse(TAtlasBuildGateCheck.Counts(Problem(TAtlasProblemSeverity.Error, 'E2003', 'dcc', 1)),
     'Compilermeldung des vorigen Builds');
-  Item := Problem(TAtlasProblemSeverity.Error, 'x', 'Atlas', 1);
-  Item.Unnecessary := True;
-  Assert.IsFalse(TAtlasBuildGateCheck.Counts(Item), 'inaktiver Bereich');
+  mItem := Problem(TAtlasProblemSeverity.Error, 'x', 'Atlas', 1);
+  mItem.Unnecessary := True;
+  Assert.IsFalse(TAtlasBuildGateCheck.Counts(mItem), 'inaktiver Bereich');
 end;
 
 procedure TAtlasBuildGateTests.BlockStopsCompileOnSyntaxError;
 var
-  Run: TGateRun;
-  Events: TAtlasCompileEvents;
-  Reason: string;
+  mRun: TGateRun;
+  mEvents: TAtlasCompileEvents;
+  mReason: string;
 begin
-  Run := TGateRun.Create;
+  mRun := TGateRun.Create;
   try
-    Run.Units := [UnitOf(MainUnit, 'b:1', 100), UnitOf(DataUnit, 'd:50', 50)];
-    Run.OutputTime := 80;
-    Run.Problems.Add(UpperCase(MainUnit), [Problem(TAtlasProblemSeverity.Error, 'syntax', 'Atlas', 3)]);
-    Events := Run.Make;
+    mRun.Units := [UnitOf(cMainUnit, 'b:1', 100), UnitOf(cDataUnit, 'd:50', 50)];
+    mRun.OutputTime := 80;
+    mRun.Problems.Add(UpperCase(cMainUnit), [Problem(TAtlasProblemSeverity.Error, 'syntax', 'Atlas', 3)]);
+    mEvents := mRun.Make;
     try
-      Assert.IsTrue(Events.BeforeCompile(Project(TAtlasCompileKind.Make), False, Reason), 'block');
-      Assert.AreEqual('Kasse.dproj: 1 Fehler', Reason);
-      Assert.AreEqual('blocked:Main.pas/syntax, ', Run.Reported);
-      Assert.AreEqual('Main.pas ', Run.Checked, 'nur die geänderte Unit');
+      Assert.IsTrue(mEvents.BeforeCompile(Project(TAtlasCompileKind.Make), False, mReason), 'block');
+      Assert.AreEqual('Kasse.dproj: 1 Fehler', mReason);
+      Assert.AreEqual('blocked:Main.pas/syntax, ', mRun.Reported);
+      Assert.AreEqual('Main.pas ', mRun.Checked, 'nur die geänderte Unit');
     finally
-      Events.Free;
+      mEvents.Free;
     end;
   finally
-    Run.Free;
+    mRun.Free;
   end;
 end;
 
 procedure TAtlasBuildGateTests.WarnReportsAndCompiles;
 var
-  Run: TGateRun;
-  Events: TAtlasCompileEvents;
-  Reason: string;
+  mRun: TGateRun;
+  mEvents: TAtlasCompileEvents;
+  mReason: string;
 begin
-  Run := TGateRun.Create;
+  mRun := TGateRun.Create;
   try
-    Run.Gate := 'warn';
-    Run.Units := [UnitOf(MainUnit, 'b:1', 100)];
-    Run.Problems.Add(UpperCase(MainUnit), [Problem(TAtlasProblemSeverity.Error, 'empty-except', 'Atlas', 3)]);
-    Events := Run.Make;
+    mRun.Gate := 'warn';
+    mRun.Units := [UnitOf(cMainUnit, 'b:1', 100)];
+    mRun.Problems.Add(UpperCase(cMainUnit), [Problem(TAtlasProblemSeverity.Error, 'empty-except', 'Atlas', 3)]);
+    mEvents := mRun.Make;
     try
-      Assert.IsFalse(Events.BeforeCompile(Project(TAtlasCompileKind.Build), False, Reason), 'warn');
-      Assert.AreEqual('', Reason);
-      Assert.AreEqual('reported:Main.pas/empty-except, ', Run.Reported);
+      Assert.IsFalse(mEvents.BeforeCompile(Project(TAtlasCompileKind.Build), False, mReason), 'warn');
+      Assert.AreEqual('', mReason);
+      Assert.AreEqual('reported:Main.pas/empty-except, ', mRun.Reported);
     finally
-      Events.Free;
+      mEvents.Free;
     end;
   finally
-    Run.Free;
+    mRun.Free;
   end;
 end;
 
 procedure TAtlasBuildGateTests.WarningNeverBlocks;
 var
-  Run: TGateRun;
-  Events: TAtlasCompileEvents;
-  Reason: string;
+  mRun: TGateRun;
+  mEvents: TAtlasCompileEvents;
+  mReason: string;
 begin
-  Run := TGateRun.Create;
+  mRun := TGateRun.Create;
   try
-    Run.Units := [UnitOf(MainUnit, 'b:1', 100)];
-    Run.Problems.Add(UpperCase(MainUnit), [Problem(TAtlasProblemSeverity.Warning, 'empty-except', 'Atlas', 3),
+    mRun.Units := [UnitOf(cMainUnit, 'b:1', 100)];
+    mRun.Problems.Add(UpperCase(cMainUnit), [Problem(TAtlasProblemSeverity.Warning, 'empty-except', 'Atlas', 3),
       Problem(TAtlasProblemSeverity.Error, 'E2003', 'dcc', 4)]);
-    Events := Run.Make;
+    mEvents := mRun.Make;
     try
-      Assert.IsFalse(Events.BeforeCompile(Project(TAtlasCompileKind.Make), False, Reason));
-      Assert.AreEqual('', Run.Reported, 'nichts zu melden');
+      Assert.IsFalse(mEvents.BeforeCompile(Project(TAtlasCompileKind.Make), False, mReason));
+      Assert.AreEqual('', mRun.Reported, 'nichts zu melden');
     finally
-      Events.Free;
+      mEvents.Free;
     end;
   finally
-    Run.Free;
+    mRun.Free;
   end;
 end;
 
 procedure TAtlasBuildGateTests.SecondCompileWithinOverrideRuns;
 var
-  Run: TGateRun;
-  Events: TAtlasCompileEvents;
-  Reason: string;
+  mRun: TGateRun;
+  mEvents: TAtlasCompileEvents;
+  mReason: string;
 begin
-  Run := TGateRun.Create;
+  mRun := TGateRun.Create;
   try
-    Run.Units := [UnitOf(MainUnit, 'b:1', 100)];
-    Run.Problems.Add(UpperCase(MainUnit), [Problem(TAtlasProblemSeverity.Error, 'syntax', 'Atlas', 3)]);
-    Events := Run.Make;
+    mRun.Units := [UnitOf(cMainUnit, 'b:1', 100)];
+    mRun.Problems.Add(UpperCase(cMainUnit), [Problem(TAtlasProblemSeverity.Error, 'syntax', 'Atlas', 3)]);
+    mEvents := mRun.Make;
     try
-      Assert.IsTrue(Events.BeforeCompile(Project(TAtlasCompileKind.Make), False, Reason));
-      Inc(Run.Clock, 5000);
-      Assert.IsFalse(Events.BeforeCompile(Project(TAtlasCompileKind.Make), False, Reason),
+      Assert.IsTrue(mEvents.BeforeCompile(Project(TAtlasCompileKind.Make), False, mReason));
+      Inc(mRun.Clock, 5000);
+      Assert.IsFalse(mEvents.BeforeCompile(Project(TAtlasCompileKind.Make), False, mReason),
         'zweiter Compile binnen 10 s läuft');
-      Assert.AreEqual('blocked:Main.pas/syntax, overridden:Main.pas/syntax, ', Run.Reported);
+      Assert.AreEqual('blocked:Main.pas/syntax, overridden:Main.pas/syntax, ', mRun.Reported);
       // Danach wieder block; ebenso nach einer Änderung der Unit.
-      Run.Reported := '';
-      Inc(Run.Clock, 1000);
-      Assert.IsTrue(Events.BeforeCompile(Project(TAtlasCompileKind.Make), False, Reason));
-      Inc(Run.Clock, 1000);
-      Run.Units := [UnitOf(MainUnit, 'b:2', 100)];
-      Assert.IsTrue(Events.BeforeCompile(Project(TAtlasCompileKind.Make), False, Reason), 'Unit geändert');
+      mRun.Reported := '';
+      Inc(mRun.Clock, 1000);
+      Assert.IsTrue(mEvents.BeforeCompile(Project(TAtlasCompileKind.Make), False, mReason));
+      Inc(mRun.Clock, 1000);
+      mRun.Units := [UnitOf(cMainUnit, 'b:2', 100)];
+      Assert.IsTrue(mEvents.BeforeCompile(Project(TAtlasCompileKind.Make), False, mReason), 'Unit geändert');
       // Zu spät: nach mehr als 10 s wieder block.
-      Inc(Run.Clock, TAtlasBuildGateCheck.OverrideMs + 1);
-      Assert.IsTrue(Events.BeforeCompile(Project(TAtlasCompileKind.Make), False, Reason), 'nach 10 s');
-      Assert.AreEqual('blocked:Main.pas/syntax, blocked:Main.pas/syntax, blocked:Main.pas/syntax, ', Run.Reported);
+      Inc(mRun.Clock, TAtlasBuildGateCheck.cOverrideMs + 1);
+      Assert.IsTrue(mEvents.BeforeCompile(Project(TAtlasCompileKind.Make), False, mReason), 'nach 10 s');
+      Assert.AreEqual('blocked:Main.pas/syntax, blocked:Main.pas/syntax, blocked:Main.pas/syntax, ', mRun.Reported);
     finally
-      Events.Free;
+      mEvents.Free;
     end;
   finally
-    Run.Free;
+    mRun.Free;
   end;
 end;
 
 procedure TAtlasBuildGateTests.SlowCheckStopsAtTimeout;
 var
-  Run: TGateRun;
-  Events: TAtlasCompileEvents;
-  Reason: string;
-  Before: Int64;
+  mRun: TGateRun;
+  mEvents: TAtlasCompileEvents;
+  mReason: string;
+  mBefore: Int64;
 begin
-  Run := TGateRun.Create;
+  mRun := TGateRun.Create;
   try
-    Run.CheckMs := 1000;
-    Run.Units := [UnitOf(MainUnit, 'b:1', 100), UnitOf(DataUnit, 'b:2', 100)];
-    Run.Problems.Add(UpperCase(MainUnit), [Problem(TAtlasProblemSeverity.Error, 'syntax', 'Atlas', 3)]);
-    Events := Run.Make;
+    mRun.CheckMs := 1000;
+    mRun.Units := [UnitOf(cMainUnit, 'b:1', 100), UnitOf(cDataUnit, 'b:2', 100)];
+    mRun.Problems.Add(UpperCase(cMainUnit), [Problem(TAtlasProblemSeverity.Error, 'syntax', 'Atlas', 3)]);
+    mEvents := mRun.Make;
     try
-      Before := Run.Clock;
-      Assert.IsFalse(Events.BeforeCompile(Project(TAtlasCompileKind.Make), False, Reason),
+      mBefore := mRun.Clock;
+      Assert.IsFalse(mEvents.BeforeCompile(Project(TAtlasCompileKind.Make), False, mReason),
         'Zeitlimit: der Compile läuft ungehindert');
-      Assert.IsTrue(Run.Clock - Before <= 300, Format('höchstens 300 ms, waren %d', [Run.Clock - Before]));
-      Assert.AreEqual('Main.pas ', Run.Checked, 'nach dem Zeitlimit keine weitere Unit');
-      Assert.AreEqual('timedOut: ', Run.Reported);
+      Assert.IsTrue(mRun.Clock - mBefore <= 300, Format('höchstens 300 ms, waren %d', [mRun.Clock - mBefore]));
+      Assert.AreEqual('Main.pas ', mRun.Checked, 'nach dem Zeitlimit keine weitere Unit');
+      Assert.AreEqual('timedOut: ', mRun.Reported);
     finally
-      Events.Free;
+      mEvents.Free;
     end;
   finally
-    Run.Free;
+    mRun.Free;
   end;
 end;
 
 procedure TAtlasBuildGateTests.TimeoutNotifiedOncePerSession;
 var
-  Run: TGateRun;
-  Events: TAtlasCompileEvents;
-  Reason: string;
+  mRun: TGateRun;
+  mEvents: TAtlasCompileEvents;
+  mReason: string;
 begin
-  Run := TGateRun.Create;
+  mRun := TGateRun.Create;
   try
-    Run.CheckMs := 1000;
-    Run.Units := [UnitOf(MainUnit, 'b:1', 100)];
-    Events := Run.Make;
+    mRun.CheckMs := 1000;
+    mRun.Units := [UnitOf(cMainUnit, 'b:1', 100)];
+    mEvents := mRun.Make;
     try
-      Events.BeforeCompile(Project(TAtlasCompileKind.Make), False, Reason);
-      Events.BeforeCompile(Project(TAtlasCompileKind.Make), False, Reason);
-      Events.BeforeCompile(Project(TAtlasCompileKind.Make), False, Reason);
-      Assert.AreEqual(1, Run.Notified);
-      Assert.AreEqual('timedOut: ', Run.Reported, 'ohne Treffer nur das erste Mal gemeldet');
+      mEvents.BeforeCompile(Project(TAtlasCompileKind.Make), False, mReason);
+      mEvents.BeforeCompile(Project(TAtlasCompileKind.Make), False, mReason);
+      mEvents.BeforeCompile(Project(TAtlasCompileKind.Make), False, mReason);
+      Assert.AreEqual(1, mRun.Notified);
+      Assert.AreEqual('timedOut: ', mRun.Reported, 'ohne Treffer nur das erste Mal gemeldet');
     finally
-      Events.Free;
+      mEvents.Free;
     end;
   finally
-    Run.Free;
+    mRun.Free;
   end;
 end;
 
 procedure TAtlasBuildGateTests.RemembersStampsOnlyAfterSuccess;
 var
-  Run: TGateRun;
-  Events: TAtlasCompileEvents;
-  Reason: string;
+  mRun: TGateRun;
+  mEvents: TAtlasCompileEvents;
+  mReason: string;
 begin
-  Run := TGateRun.Create;
+  mRun := TGateRun.Create;
   try
-    Run.Units := [UnitOf(MainUnit, 'b:1', 100), UnitOf(DataUnit, 'd:50', 100)];
-    Events := Run.Make;
+    mRun.Units := [UnitOf(cMainUnit, 'b:1', 100), UnitOf(cDataUnit, 'd:50', 100)];
+    mEvents := mRun.Make;
     try
       // Gescheitert: nichts gemerkt.
-      Assert.IsFalse(Events.BeforeCompile(Project(TAtlasCompileKind.Make), False, Reason));
-      Events.ProjectStarted(Project(TAtlasCompileKind.Make));
-      Events.ProjectFinished(ProjectFile, False);
-      Assert.AreEqual('Main.pas Daten.pas ', Run.Checked);
+      Assert.IsFalse(mEvents.BeforeCompile(Project(TAtlasCompileKind.Make), False, mReason));
+      mEvents.ProjectStarted(Project(TAtlasCompileKind.Make));
+      mEvents.ProjectFinished(cProjectFile, False);
+      Assert.AreEqual('Main.pas Daten.pas ', mRun.Checked);
       // Erfolgreich: Stände gemerkt, der nächste Compile prüft nur die geänderte Unit.
-      Run.Checked := '';
-      Assert.IsFalse(Events.BeforeCompile(Project(TAtlasCompileKind.Make), False, Reason));
-      Events.ProjectStarted(Project(TAtlasCompileKind.Make));
-      Events.ProjectFinished(ProjectFile, True);
-      Assert.AreEqual('Main.pas Daten.pas ', Run.Checked);
-      Run.Checked := '';
-      Run.Units := [UnitOf(MainUnit, 'b:2', 100), UnitOf(DataUnit, 'd:50', 100)];
-      Assert.IsFalse(Events.BeforeCompile(Project(TAtlasCompileKind.Make), False, Reason));
-      Assert.AreEqual('Main.pas ', Run.Checked);
+      mRun.Checked := '';
+      Assert.IsFalse(mEvents.BeforeCompile(Project(TAtlasCompileKind.Make), False, mReason));
+      mEvents.ProjectStarted(Project(TAtlasCompileKind.Make));
+      mEvents.ProjectFinished(cProjectFile, True);
+      Assert.AreEqual('Main.pas Daten.pas ', mRun.Checked);
+      mRun.Checked := '';
+      mRun.Units := [UnitOf(cMainUnit, 'b:2', 100), UnitOf(cDataUnit, 'd:50', 100)];
+      Assert.IsFalse(mEvents.BeforeCompile(Project(TAtlasCompileKind.Make), False, mReason));
+      Assert.AreEqual('Main.pas ', mRun.Checked);
       // Abgebrochen (hier: block): der Stand b:3 gilt nicht als kompiliert.
-      Run.Units := [UnitOf(MainUnit, 'b:3', 100), UnitOf(DataUnit, 'd:50', 100)];
-      Run.Problems.Add(UpperCase(MainUnit), [Problem(TAtlasProblemSeverity.Error, 'syntax', 'Atlas', 3)]);
-      Assert.IsTrue(Events.BeforeCompile(Project(TAtlasCompileKind.Make), False, Reason));
-      Events.ProjectFinished(ProjectFile, True);
-      Run.Checked := '';
-      Run.Problems.Clear;
-      Assert.IsFalse(Events.BeforeCompile(Project(TAtlasCompileKind.Make), False, Reason));
-      Assert.AreEqual('Main.pas ', Run.Checked, 'b:3 weiter geändert gegenüber b:2');
+      mRun.Units := [UnitOf(cMainUnit, 'b:3', 100), UnitOf(cDataUnit, 'd:50', 100)];
+      mRun.Problems.Add(UpperCase(cMainUnit), [Problem(TAtlasProblemSeverity.Error, 'syntax', 'Atlas', 3)]);
+      Assert.IsTrue(mEvents.BeforeCompile(Project(TAtlasCompileKind.Make), False, mReason));
+      mEvents.ProjectFinished(cProjectFile, True);
+      mRun.Checked := '';
+      mRun.Problems.Clear;
+      Assert.IsFalse(mEvents.BeforeCompile(Project(TAtlasCompileKind.Make), False, mReason));
+      Assert.AreEqual('Main.pas ', mRun.Checked, 'b:3 weiter geändert gegenüber b:2');
     finally
-      Events.Free;
+      mEvents.Free;
     end;
   finally
-    Run.Free;
+    mRun.Free;
   end;
 end;
 
