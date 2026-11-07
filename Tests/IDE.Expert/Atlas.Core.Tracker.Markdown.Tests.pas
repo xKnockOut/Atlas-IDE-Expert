@@ -96,7 +96,7 @@ begin
   Assert.AreEqual(Integer(2), mBlocks[1].Level);
   Assert.AreEqual(Integer(3), mBlocks[2].Level);
   Assert.AreEqual(Integer(4), mBlocks[3].Level);
-  Assert.AreEqual(Integer(TAtlasTrackerMarkdown.MaxListLevel), mBlocks[4].Level, 'tiefer bleibt auf der letzten Ebene');
+  Assert.AreEqual(Integer(TAtlasTrackerMarkdown.cMaxListLevel), mBlocks[4].Level, 'tiefer bleibt auf der letzten Ebene');
   Assert.AreEqual('☐', mBlocks[5].Marker);
   Assert.AreEqual('offen', mBlocks[5].Text);
   Assert.AreEqual(Integer(1), mBlocks[5].Level);

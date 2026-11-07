@@ -111,7 +111,7 @@ type
   TAtlasBoardView = class(TCustomControl)
   public const
     /// <summary>So weit (Pixel bei 96 dpi) muss die Maus wandern, bis aus einem Klick ein Ziehen wird.</summary>
-    DragDistance = 5;
+    cDragDistance = 5;
   private
     FSnapshot: TAtlasBoardSnapshot;
     FVisible: TArray<Integer>;
@@ -284,7 +284,7 @@ begin
   Result.Header := ALineHeight + 10;
   // Kopfzeile der Karte, zwei Zeilen Titel, Ränder.
   Result.CardHeight := 3 * ALineHeight + 16;
-  Result.NarrowWidth := TAtlasTrackerBoard.NarrowWidth;
+  Result.NarrowWidth := TAtlasTrackerBoard.cNarrowWidth;
 end;
 
 function TAtlasBoardMetrics.Scaled(AMultiplier, ADivider: Integer): TAtlasBoardMetrics;
@@ -794,7 +794,7 @@ begin
   begin
     Exit;
   end;
-  mDistance := MulDiv(DragDistance, CurrentPPI, 96);
+  mDistance := MulDiv(cDragDistance, CurrentPPI, 96);
   if not FDragging and FCanDrag and ((Abs(X - FPressPoint.X) > mDistance) or (Abs(Y - FPressPoint.Y) > mDistance))
   then
   begin

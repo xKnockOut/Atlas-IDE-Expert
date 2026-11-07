@@ -68,8 +68,8 @@ type
 
   TAtlasTrackerTimeDialog = class(TForm)
   public const
-    DialogWidth = 480;
-    TextHeight = 90;
+    cDialogWidth = 480;
+    cTextHeight = 90;
   private
     FRequest: TAtlasTimeRequest;
     FParts: TAtlasTimeDialogParts;
@@ -130,8 +130,8 @@ uses
   Atlas.UI.Tracker.Strings;
 
 const
-  Gap = 8;
-  FieldLeft = 120;
+  cGap = 8;
+  cFieldLeft = 120;
 
 { TAtlasTimeRequest }
 
@@ -162,7 +162,7 @@ begin
   Position := poMainFormCenter;
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  ClientWidth := ScaleValue(DialogWidth);
+  ClientWidth := ScaleValue(cDialogWidth);
   OnCloseQuery := DialogCloseQuery;
   mMinutes := TAtlasTimeRounding.Minutes(ARequest.Seconds, ARequest.Rounding);
 
@@ -184,7 +184,7 @@ begin
   AddLabel(mRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookDuration));
   FParts.Duration := TEdit.Create(Self);
   FParts.Duration.Parent := mRow;
-  FParts.Duration.Left := ScaleValue(FieldLeft);
+  FParts.Duration.Left := ScaleValue(cFieldLeft);
   FParts.Duration.Top := 0;
   FParts.Duration.Width := ScaleValue(80);
   FParts.Duration.Text := TAtlasTimeRounding.ClockText(Int64(AMinutes) * 60);
@@ -203,7 +203,7 @@ begin
   begin
     AddLabel(mRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookWorkType));
     FParts.WorkType.Parent := mRow;
-    FParts.WorkType.Left := ScaleValue(FieldLeft);
+    FParts.WorkType.Left := ScaleValue(cFieldLeft);
     FParts.WorkType.Top := 0;
     FParts.WorkType.Width := ScaleValue(240);
   end
@@ -213,7 +213,7 @@ begin
     FParts.AsComment.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookAsComment);
     FParts.AsComment.Left := 0;
     FParts.AsComment.Top := ScaleValue(3);
-    FParts.AsComment.Width := ScaleValue(DialogWidth - 2 * Gap);
+    FParts.AsComment.Width := ScaleValue(cDialogWidth - 2 * cGap);
     FParts.AsComment.Checked := False;
   end;
 end;
@@ -229,9 +229,9 @@ begin
   FParts.Text.Parent := Self;
   FParts.Text.Align := alTop;
   FParts.Text.AlignWithMargins := True;
-  FParts.Text.Margins.SetBounds(Gap, Gap div 2, Gap, 0);
+  FParts.Text.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
   FParts.Text.Top := mRow.Top + mRow.Height + 1;
-  FParts.Text.Height := ScaleValue(TextHeight);
+  FParts.Text.Height := ScaleValue(cTextHeight);
   FParts.Text.ScrollBars := ssVertical;
   FParts.Text.WantReturns := True;
   FParts.Text.Text := AdjustLineBreaks(FRequest.Text, tlbsCRLF);
@@ -259,7 +259,7 @@ begin
   mButtons.AutoSize := True;
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(Gap, Gap, Gap, Gap);
+  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
   mButtons.Top := ATop;
   FParts.Book := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookBook));
   FParts.Book.OnClick := BookClick;
@@ -269,7 +269,7 @@ begin
   FParts.Later.Cancel := True;
   FParts.Discard := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookDiscard));
   FParts.Discard.OnClick := DiscardClick;
-  ClientHeight := mButtons.Top + mButtons.Height + Gap;
+  ClientHeight := mButtons.Top + mButtons.Height + cGap;
 end;
 
 function TAtlasTrackerTimeDialog.AddRow(AHeight: Integer): TPanel;
@@ -290,7 +290,7 @@ begin
   Result.Parent := Self;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(Gap, Gap div 2, Gap, 0);
+  Result.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
   Result.BevelOuter := bvNone;
   Result.Caption := '';
   Result.Top := mTop;
@@ -314,7 +314,7 @@ begin
   Canvas.Font := Font;
   Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, Gap, Gap div 2);
+  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
 end;
 
 class function TAtlasTrackerTimeDialog.QuestionText(const AKey: string; AMinutes: Integer): string;

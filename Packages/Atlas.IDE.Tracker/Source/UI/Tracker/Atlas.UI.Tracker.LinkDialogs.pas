@@ -109,8 +109,8 @@ uses
   Atlas.UI.Tracker.Strings;
 
 const
-  Gap = 8;
-  DialogWidth = 520;
+  cGap = 8;
+  cDialogWidth = 520;
 
 function Scaled(AForm: TForm; AValue: Integer): Integer;
 begin
@@ -137,7 +137,7 @@ begin
   begin
     Result.Width := Scaled(AForm, 90);
   end;
-  Result.Top := Scaled(AForm, Gap);
+  Result.Top := Scaled(AForm, cGap);
   Result.Height := Scaled(AForm, 28);
   Result.Anchors := [akTop, akRight];
 end;
@@ -150,7 +150,7 @@ begin
   AForm.Position := poMainFormCenter;
   AForm.Font.Name := 'Segoe UI';
   AForm.Font.Size := 9;
-  AForm.ClientWidth := Scaled(AForm, DialogWidth);
+  AForm.ClientWidth := Scaled(AForm, cDialogWidth);
 end;
 
 function AddBottom(AForm: TForm): TPanel;
@@ -178,9 +178,9 @@ begin
   FTitle.Parent := Self;
   FTitle.Align := alTop;
   FTitle.AlignWithMargins := True;
-  FTitle.Margins.SetBounds(Gap, 0, Gap, 0);
+  FTitle.Margins.SetBounds(cGap, 0, cGap, 0);
   FTitle.Top := 200;
-  FTitle.MaxLength := TAtlasTrackerIssue.MaxTitle;
+  FTitle.MaxLength := TAtlasTrackerIssue.cMaxTitle;
   FTitle.OnChange := TitleChange;
   FTitleLabel.FocusControl := FTitle;
 
@@ -189,7 +189,7 @@ begin
   FDescription.Parent := Self;
   FDescription.Align := alTop;
   FDescription.AlignWithMargins := True;
-  FDescription.Margins.SetBounds(Gap, 0, Gap, 0);
+  FDescription.Margins.SetBounds(cGap, 0, cGap, 0);
   FDescription.Top := 400;
   FDescription.Height := ScaleValue(140);
   FDescription.ScrollBars := ssVertical;
@@ -199,12 +199,12 @@ begin
   mBottom := AddBottom(Self);
   FCancel := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDialogCancel), CancelClick);
   FCancel.Cancel := True;
-  FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(Gap);
+  FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
   FOk := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueSubtaskOk), OkClick);
   FOk.Default := True;
-  FOk.Left := FCancel.Left - FOk.Width - ScaleValue(Gap);
+  FOk.Left := FCancel.Left - FOk.Width - ScaleValue(cGap);
 
-  ClientHeight := FDescription.Top + FDescription.Height + ScaleValue(Gap) + mBottom.Height;
+  ClientHeight := FDescription.Top + FDescription.Height + ScaleValue(cGap) + mBottom.Height;
   ActiveControl := FTitle;
   TitleChange(FTitle);
 end;
@@ -220,7 +220,7 @@ begin
   Result.Parent := Self;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(Gap, Gap, Gap, Gap div 2);
+  Result.Margins.SetBounds(cGap, cGap, cGap, cGap div 2);
   Result.Top := ATop;
   Result.ShowAccelChar := False;
   Result.Caption := ACaption;
@@ -290,7 +290,7 @@ begin
   FDependsOn.Parent := Self;
   FDependsOn.Align := alTop;
   FDependsOn.AlignWithMargins := True;
-  FDependsOn.Margins.SetBounds(Gap, Gap, Gap, 0);
+  FDependsOn.Margins.SetBounds(cGap, cGap, cGap, 0);
   FDependsOn.Top := 0;
   FDependsOn.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkDependsOn, [AKey]);
   FDependsOn.Checked := True;
@@ -299,7 +299,7 @@ begin
   FBlocks.Parent := Self;
   FBlocks.Align := alTop;
   FBlocks.AlignWithMargins := True;
-  FBlocks.Margins.SetBounds(Gap, Gap div 2, Gap, 0);
+  FBlocks.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
   FBlocks.Top := 100;
   FBlocks.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkBlocks, [AKey]);
 
@@ -307,7 +307,7 @@ begin
   FOtherLabel.Parent := Self;
   FOtherLabel.Align := alTop;
   FOtherLabel.AlignWithMargins := True;
-  FOtherLabel.Margins.SetBounds(Gap, Gap, Gap, Gap div 2);
+  FOtherLabel.Margins.SetBounds(cGap, cGap, cGap, cGap div 2);
   FOtherLabel.Top := 200;
   FOtherLabel.ShowAccelChar := False;
   FOtherLabel.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkKey,
@@ -317,7 +317,7 @@ begin
   FOther.Parent := Self;
   FOther.Align := alTop;
   FOther.AlignWithMargins := True;
-  FOther.Margins.SetBounds(Gap, 0, Gap, 0);
+  FOther.Margins.SetBounds(cGap, 0, cGap, 0);
   FOther.Top := 300;
   FOther.OnChange := OtherChange;
   FOtherLabel.FocusControl := FOther;
@@ -325,12 +325,12 @@ begin
   mBottom := AddBottom(Self);
   FCancel := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDialogCancel), CancelClick);
   FCancel.Cancel := True;
-  FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(Gap);
+  FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
   FOk := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkOk), OkClick);
   FOk.Default := True;
-  FOk.Left := FCancel.Left - FOk.Width - ScaleValue(Gap);
+  FOk.Left := FCancel.Left - FOk.Width - ScaleValue(cGap);
 
-  ClientHeight := FOther.Top + FOther.Height + ScaleValue(Gap) + mBottom.Height;
+  ClientHeight := FOther.Top + FOther.Height + ScaleValue(cGap) + mBottom.Height;
   ActiveControl := FOther;
   OtherChange(FOther);
 end;
@@ -418,8 +418,8 @@ end;
 
 class function TAtlasBlockedPrompt.Ask(const ABlockers: TArray<TAtlasTrackerLink>): TAtlasBlockedChoice;
 const
-  AnswerStart = 100;
-  AnswerShow = 101;
+  cAnswerStart = 100;
+  cAnswerShow = 101;
 var
   mDialog: TTaskDialog;
   mButton: TTaskDialogBaseButtonItem;
@@ -438,19 +438,19 @@ begin
     mDialog.CommonButtons := [tcbCancel];
     mButton := mDialog.Buttons.Add;
     mButton.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueBlockedStart);
-    mButton.ModalResult := AnswerStart;
+    mButton.ModalResult := cAnswerStart;
     mButton := mDialog.Buttons.Add;
     mButton.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueBlockedShow, [ABlockers[0].Key]);
-    mButton.ModalResult := AnswerShow;
+    mButton.ModalResult := cAnswerShow;
     mButton.Default := True;
     if not mDialog.Execute then
     begin
       Exit;
     end;
     case mDialog.ModalResult of
-      AnswerStart:
+      cAnswerStart:
         Result := TAtlasBlockedChoice.StartAnyway;
-      AnswerShow:
+      cAnswerShow:
         Result := TAtlasBlockedChoice.ShowBlocker;
     end;
   finally
