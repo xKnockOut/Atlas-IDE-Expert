@@ -49,56 +49,56 @@ end;
 
 procedure TAtlasDebugExceptionDialogTests.RecognizesEnglishDialog;
 var
-  Scan: TAtlasDebugDialogScan;
+  mScan: TAtlasDebugDialogScan;
 begin
-  Scan := TAtlasDebugExceptionDialog.Recognize(TArray<string>.Create('Debugger Exception Notification',
+  mScan := TAtlasDebugExceptionDialog.Recognize(TArray<string>.Create('Debugger Exception Notification',
     'Project Project1.exe raised exception class EConvertError with message ''''abc'' is not a valid integer ' +
     'value''.', 'Ignore this exception type'), TArray<string>.Create('&Break', '&Continue', '&Help'));
-  Assert.IsTrue(Scan.HasException);
-  Assert.AreEqual('EConvertError', Scan.ExceptionClass);
-  Assert.AreEqual('''abc'' is not a valid integer value', Scan.Message);
-  Assert.AreEqual(0, Scan.BreakIndex);
-  Assert.AreEqual(1, Scan.ContinueIndex);
-  Assert.IsTrue(Scan.CanContinue);
+  Assert.IsTrue(mScan.HasException);
+  Assert.AreEqual('EConvertError', mScan.ExceptionClass);
+  Assert.AreEqual('''abc'' is not a valid integer value', mScan.Message);
+  Assert.AreEqual(0, mScan.BreakIndex);
+  Assert.AreEqual(1, mScan.ContinueIndex);
+  Assert.IsTrue(mScan.CanContinue);
 end;
 
 procedure TAtlasDebugExceptionDialogTests.RecognizesGermanDialog;
 var
-  Scan: TAtlasDebugDialogScan;
+  mScan: TAtlasDebugDialogScan;
 begin
-  Scan := TAtlasDebugExceptionDialog.Recognize(TArray<string>.Create('Im Projekt Project1.exe ist eine Exception ' +
+  mScan := TAtlasDebugExceptionDialog.Recognize(TArray<string>.Create('Im Projekt Project1.exe ist eine Exception ' +
     'der Klasse EAccessViolation mit der Meldung ''Zugriffsverletzung'' aufgetreten.'),
     TArray<string>.Create('&Hilfe', 'Fortsetzen', '&Anhalten'));
-  Assert.AreEqual('EAccessViolation', Scan.ExceptionClass);
-  Assert.AreEqual('Zugriffsverletzung', Scan.Message);
-  Assert.AreEqual(2, Scan.BreakIndex);
-  Assert.AreEqual(1, Scan.ContinueIndex);
-  Assert.IsTrue(Scan.CanContinue);
+  Assert.AreEqual('EAccessViolation', mScan.ExceptionClass);
+  Assert.AreEqual('Zugriffsverletzung', mScan.Message);
+  Assert.AreEqual(2, mScan.BreakIndex);
+  Assert.AreEqual(1, mScan.ContinueIndex);
+  Assert.IsTrue(mScan.CanContinue);
 end;
 
 procedure TAtlasDebugExceptionDialogTests.OtherDialogIsNoException;
 var
-  Scan: TAtlasDebugDialogScan;
+  mScan: TAtlasDebugDialogScan;
 begin
   // Klasse im Text, aber kein Bericht der IDE über eine Exception.
-  Scan := TAtlasDebugExceptionDialog.Recognize(TArray<string>.Create('Neue class TForm2 anlegen?'),
+  mScan := TAtlasDebugExceptionDialog.Recognize(TArray<string>.Create('Neue class TForm2 anlegen?'),
     TArray<string>.Create('OK', 'Abbrechen'));
-  Assert.IsFalse(Scan.HasException);
-  Assert.IsFalse(Scan.CanContinue);
-  Assert.AreEqual(-1, Scan.BreakIndex);
-  Assert.AreEqual(-1, Scan.ContinueIndex);
-  Scan := TAtlasDebugExceptionDialog.Recognize(nil, nil);
-  Assert.IsFalse(Scan.HasException);
+  Assert.IsFalse(mScan.HasException);
+  Assert.IsFalse(mScan.CanContinue);
+  Assert.AreEqual(-1, mScan.BreakIndex);
+  Assert.AreEqual(-1, mScan.ContinueIndex);
+  mScan := TAtlasDebugExceptionDialog.Recognize(nil, nil);
+  Assert.IsFalse(mScan.HasException);
 end;
 
 procedure TAtlasDebugExceptionDialogTests.WithoutContinueCannotContinue;
 var
-  Scan: TAtlasDebugDialogScan;
+  mScan: TAtlasDebugDialogScan;
 begin
-  Scan := TAtlasDebugExceptionDialog.Recognize(TArray<string>.Create('Project X.exe raised exception class ' +
+  mScan := TAtlasDebugExceptionDialog.Recognize(TArray<string>.Create('Project X.exe raised exception class ' +
     'EAbort.'), TArray<string>.Create('OK'));
-  Assert.IsTrue(Scan.HasException);
-  Assert.IsFalse(Scan.CanContinue, 'ohne beide Knöpfe schließt Atlas den Dialog nie');
+  Assert.IsTrue(mScan.HasException);
+  Assert.IsFalse(mScan.CanContinue, 'ohne beide Knöpfe schließt Atlas den Dialog nie');
 end;
 
 initialization

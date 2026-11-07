@@ -29,7 +29,7 @@ type
   TAtlasLinePatch = class
   public const
     /// <summary>Größte Fläche (Zeilen alt × neu) für den genauen Vergleich der Mitte.</summary>
-    MaxCells = TTextDiff.MaxCells;
+    MaxCells = TTextDiff.cMaxCells;
   public
     /// <summary>Zeilen samt Zeilenende; die letzte ohne, wenn der Text nicht mit einem endet.</summary>
     class function SplitLines(const AText: string): TArray<string>; static;

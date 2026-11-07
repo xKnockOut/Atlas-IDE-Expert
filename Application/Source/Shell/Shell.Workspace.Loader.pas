@@ -24,7 +24,8 @@ type
     ProjectFile: string;
     /// <summary>ProjectVersion der .dproj; '' ohne.</summary>
     ProjectVersion: string;
-    /// <summary>Gewählte Delphi-Version; ohne Installation die erwartete, sie liefert nur die Symbole (#1321).</summary>
+    /// <summary>Gewählte Delphi-Version; ohne Installation die erwartete, sie liefert nur die Symbole
+    /// (#1321).</summary>
     Version: string;
     /// <summary>nil ohne Installation.</summary>
     Installation: ILibraryPathProvider;

@@ -318,7 +318,7 @@ begin
   Result := Default(TAtlasModuleInfo);
   Result.Id := cModuleId;
   Result.Name := 'Build-Pipeline';
-  Result.Version := TAtlasVersion.Version;
+  Result.Version := TAtlasVersion.cVersion;
   Result.Handle := HInstance;
   // Wächter und Prüfung liefen mit den Compile-Ereignissen auch im abgesicherten Start (mit CheckOnSave); der
   // MCP-Eingang verlangt den normalen Start.

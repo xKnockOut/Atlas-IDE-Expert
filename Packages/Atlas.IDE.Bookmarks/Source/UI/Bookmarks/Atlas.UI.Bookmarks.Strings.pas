@@ -47,7 +47,7 @@ uses
   Atlas.UI.Strings;
 
 const
-  Texts: array[TAtlasLanguage, TAtlasBookmarksTextId] of string = (
+  cTexts: array[TAtlasLanguage, TAtlasBookmarksTextId] of string = (
     ('Notizen und Lesezeichen',
      'Notiz an dieser Zeile…',
      'Notiz an dieser Zeile löschen',
@@ -261,12 +261,12 @@ const
 
 class function TAtlasBookmarksStrings.Text(AId: TAtlasBookmarksTextId): string;
 begin
-  Result := Texts[TAtlasStrings.Language, AId];
+  Result := cTexts[TAtlasStrings.Language, AId];
 end;
 
 class function TAtlasBookmarksStrings.Fmt(AId: TAtlasBookmarksTextId; const AArgs: array of const): string;
 begin
-  Result := Format(Texts[TAtlasStrings.Language, AId], AArgs);
+  Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
 end;
 
 end.

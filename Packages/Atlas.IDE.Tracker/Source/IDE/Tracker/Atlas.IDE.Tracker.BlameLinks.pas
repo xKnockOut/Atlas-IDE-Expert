@@ -49,12 +49,12 @@ uses
 type
   TAtlasIdeBlameLinks = class
   private const
-    MenuShow = 1;
-    MenuBrowse = 2;
-    MenuCopy = 3;
-    MenuScope = 4;
+    cMenuShow = 1;
+    cMenuBrowse = 2;
+    cMenuCopy = 3;
+    cMenuScope = 4;
     /// <summary>Menüeinträge tragen Kennung * MenuStride + Befehl.</summary>
-    MenuStride = 8;
+    cMenuStride = 8;
   private type
     /// <summary>Stand einer Kennung im Hover, solange der Zwischenspeicher nichts hat.</summary>
     TKeyState = record
@@ -501,7 +501,7 @@ begin
   mMatches := MessageMatches(mPattern, ACommit);
   if (AIndex >= 0) and (AIndex < Length(mMatches)) then
   begin
-    Act(ACommit, MenuShow, AIndex);
+    Act(ACommit, cMenuShow, AIndex);
   end
   else
   begin
@@ -516,7 +516,7 @@ var
   mMatches: TArray<TAtlasIssueKeyMatch>;
   mMatch: TAtlasIssueKeyMatch;
 begin
-  if ACommand = MenuScope then
+  if ACommand = cMenuScope then
   begin
     FScope.ShowAt(ACommit.FileName, ACommit.Line);
     Exit;
@@ -532,17 +532,17 @@ begin
   end;
   mMatch := mMatches[AKey];
   case ACommand of
-    MenuShow:
+    cMenuShow:
       if Assigned(FHooks.Show) then
       begin
         FHooks.Show(mMatch.IssueTarget(mTarget), mMatch.IssueKey);
       end;
-    MenuBrowse:
+    cMenuBrowse:
       if Assigned(FHooks.Browse) then
       begin
         FHooks.Browse(mMatch.IssueTarget(mTarget), mMatch.IssueKey);
       end;
-    MenuCopy:
+    cMenuCopy:
       Clipboard.AsText := mMatch.Key;
   end;
 end;
@@ -642,10 +642,10 @@ begin
   else
   begin
     AOwner.FSwallowUp := WM_LBUTTONUP;
-    mCommand := TAtlasIdeBlameLinks.MenuShow;
+    mCommand := TAtlasIdeBlameLinks.cMenuShow;
     if (AMsg.wParam and MK_SHIFT) <> 0 then
     begin
-      mCommand := TAtlasIdeBlameLinks.MenuBrowse;
+      mCommand := TAtlasIdeBlameLinks.cMenuBrowse;
     end;
     QueueAct(mCommit, mCommand, AOwner.FSerialOf);
   end;
@@ -706,12 +706,12 @@ begin
       mParent.OnClick := nil;
     end;
     AddMenuItem(mParent, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkMenuShow),
-      mIndex * MenuStride + MenuShow).Default :=
+      mIndex * cMenuStride + cMenuShow).Default :=
       True;
     AddMenuItem(mParent, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBrowse),
-      mIndex * MenuStride + MenuBrowse);
+      mIndex * cMenuStride + cMenuBrowse);
     AddMenuItem(mParent, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCopyKey),
-      mIndex * MenuStride + MenuCopy);
+      mIndex * cMenuStride + cMenuCopy);
   end;
   if Length(mMatches) > 0 then
   begin
@@ -719,7 +719,7 @@ begin
   end;
   mMethod := TAtlasIdeBlameScope.BufferLines(ACommit.FileName, mLines, mText) and
     TAtlasBlameLinks.Scope(mText, ACommit.Line, mFirst, mLast, mName);
-  AddMenuItem(FMenu.Items, TAtlasIssueTip.ScopeLink(mMethod, -1), MenuScope);
+  AddMenuItem(FMenu.Items, TAtlasIssueTip.ScopeLink(mMethod, -1), cMenuScope);
   FMenu.Popup(APoint.X, APoint.Y);
 end;
 
@@ -733,7 +733,7 @@ begin
   TAtlasGuard.Run(TAtlasFeature.BlameIssues,
     procedure
     begin
-      Act(mCommit, mTag mod MenuStride, mTag div MenuStride);
+      Act(mCommit, mTag mod cMenuStride, mTag div cMenuStride);
     end);
 end;
 

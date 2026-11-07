@@ -29,7 +29,7 @@ type
   TShellHotspotVcs = class(TInterfacedObject, IHotspotVcs)
   public const
     /// <summary>Höchstens so viele Commits je Methode (git log -L --max-count, SVN durchsuchte Revisionen).</summary>
-    MaxLineRevisions = 200;
+    cMaxLineRevisions = 200;
   private
     FKind: THotspotVcsKind;
     FRoot: string;
@@ -332,7 +332,7 @@ var
   mMessage: string;
 begin
   ACommits := nil;
-  Result := (FLines <> nil) and (FLines.LineHistory(AFileName, AFirstLine, ALastLine, MaxLineRevisions,
+  Result := (FLines <> nil) and (FLines.LineHistory(AFileName, AFirstLine, ALastLine, cMaxLineRevisions,
     mCommits) = TAtlasVcsOutcome.Ok);
   if not Result then
   begin

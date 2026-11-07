@@ -97,14 +97,14 @@ end;
 
 procedure TAtlasResolutionSliderTests.StartsAtOneInTheMiddle;
 begin
-  Assert.AreEqual(TAtlasArchResolution.Steps div 2, FSlider.Position);
+  Assert.AreEqual(TAtlasArchResolution.cSteps div 2, FSlider.Position);
   Assert.AreEqual(Double(1), FSlider.Value, 1E-9);
 end;
 
 procedure TAtlasResolutionSliderTests.ValueSetterIsSilent;
 begin
   FSlider.Value := 5;
-  Assert.AreEqual(TAtlasArchResolution.Steps, FSlider.Position);
+  Assert.AreEqual(TAtlasArchResolution.cSteps, FSlider.Position);
   FSlider.Value := 0.01;
   Assert.AreEqual(0, FSlider.Position);
   Assert.AreEqual(0, Integer(Length(FChanged)));
@@ -125,7 +125,7 @@ begin
   Assert.AreEqual(TAtlasArchResolution.ValueAt(80), FChanged[0], 1E-9);
   // Begrenzt auf die Enden.
   FSlider.MoveTo(500, True);
-  Assert.AreEqual(TAtlasArchResolution.Steps, FSlider.Position);
+  Assert.AreEqual(TAtlasArchResolution.cSteps, FSlider.Position);
   Assert.AreEqual(Double(5), FChanged[1], 1E-9);
 end;
 
@@ -145,7 +145,7 @@ begin
   Assert.AreEqual(0, FSlider.Position);
   mKey := VK_END;
   TSliderAccess(FSlider).KeyDown(mKey, []);
-  Assert.AreEqual(TAtlasArchResolution.Steps, FSlider.Position);
+  Assert.AreEqual(TAtlasArchResolution.cSteps, FSlider.Position);
   Assert.AreEqual(4, Integer(Length(FChanged)));
   // Andere Tasten bleiben unberührt.
   mKey := VK_RETURN;
@@ -157,7 +157,7 @@ procedure TAtlasResolutionSliderTests.MouseDragReportsOnMouseUp;
 begin
   // Ganz rechts drücken, nach links ziehen, loslassen: eine Meldung mit dem Wert am Ende.
   TSliderAccess(FSlider).MouseDown(mbLeft, [ssLeft], FSlider.ClientWidth, 10);
-  Assert.AreEqual(TAtlasArchResolution.Steps, FSlider.Position);
+  Assert.AreEqual(TAtlasArchResolution.cSteps, FSlider.Position);
   TSliderAccess(FSlider).MouseMove([ssLeft], 0, 10);
   Assert.AreEqual(0, FSlider.Position);
   Assert.AreEqual(0, Integer(Length(FChanged)));

@@ -117,9 +117,9 @@ end;
 
 class function TJsoncScanner.SkipSpace(const AText: string; var APos: Integer): Boolean;
 var
-  OpenComment: Integer;
+  mOpenComment: Integer;
 begin
-  Result := SkipSpace(AText, APos, OpenComment);
+  Result := SkipSpace(AText, APos, mOpenComment);
 end;
 
 class procedure TJsoncScanner.SkipString(const AText: string; var APos: Integer);
@@ -197,14 +197,14 @@ end;
 
 class function TJsoncScanner.SyntaxError(const AText: string): Integer;
 var
-  Text: string;
-  Position, Error: Integer;
+  mText: string;
+  mPosition, mError: Integer;
 
   function Fail: Boolean;
   begin
-    if Error = 0 then
+    if mError = 0 then
     begin
-      Error := Position;
+      mError := mPosition;
     end;
     Result := False;
   end;
@@ -212,49 +212,49 @@ var
   procedure Space;
   begin
     // Kommentare sind schon geblankt.
-    while (Position <= Length(Text)) and IsSpace(Text[Position]) do
+    while (mPosition <= Length(mText)) and IsSpace(mText[mPosition]) do
     begin
-      Inc(Position);
+      Inc(mPosition);
     end;
   end;
 
   function Digits: Boolean;
   begin
-    if (Position > Length(Text)) or not IsDigit(Text[Position]) then
+    if (mPosition > Length(mText)) or not IsDigit(mText[mPosition]) then
     begin
       Exit(Fail);
     end;
-    while (Position <= Length(Text)) and IsDigit(Text[Position]) do
+    while (mPosition <= Length(mText)) and IsDigit(mText[mPosition]) do
     begin
-      Inc(Position);
+      Inc(mPosition);
     end;
     Result := True;
   end;
 
   function Number: Boolean;
   begin
-    if Text[Position] = '-' then
+    if mText[mPosition] = '-' then
     begin
-      Inc(Position);
+      Inc(mPosition);
     end;
     if not Digits then
     begin
       Exit(False);
     end;
-    if (Position <= Length(Text)) and (Text[Position] = '.') then
+    if (mPosition <= Length(mText)) and (mText[mPosition] = '.') then
     begin
-      Inc(Position);
+      Inc(mPosition);
       if not Digits then
       begin
         Exit(False);
       end;
     end;
-    if (Position <= Length(Text)) and ((Text[Position] = 'e') or (Text[Position] = 'E')) then
+    if (mPosition <= Length(mText)) and ((mText[mPosition] = 'e') or (mText[mPosition] = 'E')) then
     begin
-      Inc(Position);
-      if (Position <= Length(Text)) and ((Text[Position] = '+') or (Text[Position] = '-')) then
+      Inc(mPosition);
+      if (mPosition <= Length(mText)) and ((mText[mPosition] = '+') or (mText[mPosition] = '-')) then
       begin
-        Inc(Position);
+        Inc(mPosition);
       end;
       if not Digits then
       begin
@@ -266,35 +266,35 @@ var
 
   function StringValue: Boolean;
   begin
-    Inc(Position);
-    while Position <= Length(Text) do
+    Inc(mPosition);
+    while mPosition <= Length(mText) do
     begin
-      if Text[Position] = '"' then
+      if mText[mPosition] = '"' then
       begin
-        Inc(Position);
+        Inc(mPosition);
         Exit(True);
       end;
       // Ein Zeilenumbruch im String heißt meist: schließendes Anführungszeichen vergessen.
-      if Text[Position] < ' ' then
+      if mText[mPosition] < ' ' then
       begin
         Exit(Fail);
       end;
-      if Text[Position] = '\' then
+      if mText[mPosition] = '\' then
       begin
-        Inc(Position);
+        Inc(mPosition);
       end;
-      Inc(Position);
+      Inc(mPosition);
     end;
     Result := Fail;
   end;
 
   function Literal(const AWord: string): Boolean;
   begin
-    if Copy(Text, Position, Length(AWord)) <> AWord then
+    if Copy(mText, mPosition, Length(AWord)) <> AWord then
     begin
       Exit(Fail);
     end;
-    Inc(Position, Length(AWord));
+    Inc(mPosition, Length(AWord));
     Result := True;
   end;
 
@@ -304,10 +304,10 @@ var
   function Next(AChar: Char): Boolean;
   begin
     Space;
-    Result := (Position <= Length(Text)) and (Text[Position] = AChar);
+    Result := (mPosition <= Length(mText)) and (mText[mPosition] = AChar);
     if Result then
     begin
-      Inc(Position);
+      Inc(mPosition);
     end;
   end;
 
@@ -315,7 +315,7 @@ var
   function Key: Boolean;
   begin
     Space;
-    if (Position > Length(Text)) or (Text[Position] <> '"') or not StringValue then
+    if (mPosition > Length(mText)) or (mText[mPosition] <> '"') or not StringValue then
     begin
       Exit(Fail);
     end;
@@ -324,7 +324,7 @@ var
 
   function Members(AClose: Char; AObject: Boolean): Boolean;
   begin
-    Inc(Position);
+    Inc(mPosition);
     if Next(AClose) then
     begin
       Exit(True);
@@ -345,11 +345,11 @@ var
   function Value: Boolean;
   begin
     Space;
-    if Position > Length(Text) then
+    if mPosition > Length(mText) then
     begin
       Exit(Fail);
     end;
-    case Text[Position] of
+    case mText[mPosition] of
       '{':
         Result := Members('}', True);
       '[':
@@ -370,41 +370,41 @@ var
   end;
 
 begin
-  Text := StripComments(AText);
-  Position := 1;
-  Error := 0;
+  mText := StripComments(AText);
+  mPosition := 1;
+  mError := 0;
   if Value then
   begin
     Space;
-    if Position <= Length(Text) then
+    if mPosition <= Length(mText) then
     begin
-      Error := Position;
+      mError := mPosition;
     end;
   end;
-  Result := Error;
+  Result := mError;
 end;
 
 class procedure TJsoncScanner.LineColumn(const AText: string; AOffset: Integer; out ALine, AColumn: Integer);
 var
-  Index, LineStart: Integer;
+  mIndex, mLineStart: Integer;
 begin
   ALine := 1;
-  LineStart := 1;
-  Index := 1;
-  while (Index < AOffset) and (Index <= Length(AText)) do
+  mLineStart := 1;
+  mIndex := 1;
+  while (mIndex < AOffset) and (mIndex <= Length(AText)) do
   begin
-    if (AText[Index] = #13) and (Index < Length(AText)) and (AText[Index + 1] = #10) then
+    if (AText[mIndex] = #13) and (mIndex < Length(AText)) and (AText[mIndex + 1] = #10) then
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
-    if (AText[Index] = #10) or (AText[Index] = #13) then
+    if (AText[mIndex] = #10) or (AText[mIndex] = #13) then
     begin
       Inc(ALine);
-      LineStart := Index + 1;
+      mLineStart := mIndex + 1;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  AColumn := AOffset - LineStart + 1;
+  AColumn := AOffset - mLineStart + 1;
 end;
 
 end.

@@ -77,7 +77,7 @@ class function TLinterChanges.Select(const AOptions: TCommandLineOptions; const 
   AGit: TVcsChanges): TArray<string>;
 begin
   AGit.Load(AOptions.ChangedRef, AOptions.ChangedMergeBase,
-    AOptions.ChangedMergeBase and (AOptions.ChangedRef = TCommandLineOptions.DefaultChangedBase),
+    AOptions.ChangedMergeBase and (AOptions.ChangedRef = TCommandLineOptions.cDefaultChangedBase),
     AOptions.IncludeUncommitted, AOptions.ChangedLines);
   Result := TChangedFiles.Select(AGit.Files, AFiles,
     function(const AFileName: string): TArray<string>

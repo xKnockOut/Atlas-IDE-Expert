@@ -29,53 +29,53 @@ uses
 
 class function TProcessInstances.IdsOf(const AExeName: string): TArray<Cardinal>;
 var
-  Snapshot: THandle;
-  Entry: TProcessEntry32;
+  mSnapshot: THandle;
+  mEntry: TProcessEntry32;
 begin
   Result := nil;
-  Snapshot := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-  if Snapshot = INVALID_HANDLE_VALUE then
+  mSnapshot := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if mSnapshot = INVALID_HANDLE_VALUE then
   begin
     Exit;
   end;
   try
-    Entry := Default(TProcessEntry32);
-    Entry.dwSize := SizeOf(Entry);
-    if not Process32First(Snapshot, Entry) then
+    mEntry := Default(TProcessEntry32);
+    mEntry.dwSize := SizeOf(mEntry);
+    if not Process32First(mSnapshot, mEntry) then
     begin
       Exit;
     end;
     repeat
-      if SameText(string(Entry.szExeFile), AExeName) then
+      if SameText(string(mEntry.szExeFile), AExeName) then
       begin
-        Result := Result + [Entry.th32ProcessID];
+        Result := Result + [mEntry.th32ProcessID];
       end;
-    until not Process32Next(Snapshot, Entry);
+    until not Process32Next(mSnapshot, mEntry);
   finally
-    CloseHandle(Snapshot);
+    CloseHandle(mSnapshot);
   end;
 end;
 
 class function TProcessInstances.Running(APid: Cardinal): Boolean;
 const
-  QueryLimitedInformation = $1000;
+  cQueryLimitedInformation = $1000;
 var
-  Process: THandle;
-  Code: Cardinal;
+  mProcess: THandle;
+  mCode: Cardinal;
 begin
   if APid = 0 then
   begin
     Exit(False);
   end;
-  Process := OpenProcess(QueryLimitedInformation, False, APid);
-  if Process = 0 then
+  mProcess := OpenProcess(cQueryLimitedInformation, False, APid);
+  if mProcess = 0 then
   begin
     Exit(False);
   end;
   try
-    Result := GetExitCodeProcess(Process, Code) and (Code = STILL_ACTIVE);
+    Result := GetExitCodeProcess(mProcess, mCode) and (mCode = STILL_ACTIVE);
   finally
-    CloseHandle(Process);
+    CloseHandle(mProcess);
   end;
 end;
 

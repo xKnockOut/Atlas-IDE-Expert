@@ -92,12 +92,12 @@ uses
   Atlas.IDE.UnitRelations.Window;
 
 const
-  TickMs = 250;
+  cTickMs = 250;
   /// <summary>Nachfragen, solange das Fenster offen ist; die Anfrage dauert auf dem Server Millisekunden.</summary>
-  RefreshMs = 2000;
-  TimeoutMs = 15000;
+  cRefreshMs = 2000;
+  cTimeoutMs = 15000;
   /// <summary>Kosten nachfragen, solange die Einfügemarke im interface steht (#554).</summary>
-  CostRefreshMs = 5000;
+  cCostRefreshMs = 5000;
 
 type
   /// <summary>Kosten einer interface-Änderung (#554) für das Feld der Statusleiste.</summary>
@@ -185,10 +185,10 @@ end;
 
 function IsPascalFile(const AFileName: string): Boolean;
 var
-  Extension: string;
+  mExtension: string;
 begin
-  Extension := LowerCase(ExtractFileExt(AFileName));
-  Result := (Extension = '.pas') or (Extension = '.dpr') or (Extension = '.dpk');
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk');
 end;
 
 { TInterfaceCostState }
@@ -292,8 +292,8 @@ begin
   Inc(FRequest);
   FPending := True;
   FAsked := GetTickCount;
-  if not FRun(TAtlasInterfaceCostModel.Command, TAtlasInterfaceCostModel.Arguments(TLspSession.PathToUri(FFile)),
-    TimeoutMs, AnswerHandler(FRequest)) then
+  if not FRun(TAtlasInterfaceCostModel.cCommand, TAtlasInterfaceCostModel.Arguments(TLspSession.PathToUri(FFile)),
+    cTimeoutMs, AnswerHandler(FRequest)) then
   begin
     // Kein Server: in CostRefreshMs noch einmal.
     FPending := False;
@@ -324,7 +324,7 @@ begin
     FCost := Default(TAtlasInterfaceCost);
     FKnown := False;
     FPending := False;
-    FAsked := GetTickCount - CostRefreshMs;
+    FAsked := GetTickCount - cCostRefreshMs;
   end;
 end;
 
@@ -345,7 +345,7 @@ begin
   end;
   Locate(mView);
   // Gefragt wird nur, solange die Marke im interface steht; im implementation-Teil braucht niemand den Wert.
-  if FInInterface and not FPending and (GetTickCount - FAsked >= CostRefreshMs) then
+  if FInInterface and not FPending and (GetTickCount - FAsked >= cCostRefreshMs) then
   begin
     Request;
   end;
@@ -361,7 +361,7 @@ begin
   FCache := TAtlasUnitRelationsCache.Create;
   FCost := TInterfaceCostState.Create(ARun, Self);
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
   TAtlasIdeUnitRelationsWindow.OnFrame :=
@@ -380,7 +380,7 @@ end;
 
 destructor TUnitRelationsState.Destroy;
 var
-  Frame: TAtlasUnitRelationsFrame;
+  mFrame: TAtlasUnitRelationsFrame;
 begin
   // Antworten, die noch unterwegs sind, finden FState nicht mehr und fallen weg.
   Inc(FRequest);
@@ -388,13 +388,13 @@ begin
   FTimer.Free;
   FCost.Hide;
   TAtlasIdeUnitRelationsWindow.OnFrame := nil;
-  Frame := TAtlasIdeUnitRelationsWindow.ExistingFrame;
-  if Frame <> nil then
+  mFrame := TAtlasIdeUnitRelationsWindow.ExistingFrame;
+  if mFrame <> nil then
   begin
-    Frame.OnOpen := nil;
-    Frame.OnMove := nil;
-    Frame.OnRemove := nil;
-    Frame.OnDepthChanged := nil;
+    mFrame.OnOpen := nil;
+    mFrame.OnMove := nil;
+    mFrame.OnRemove := nil;
+    mFrame.OnDepthChanged := nil;
   end;
   FCache.Free;
   FCost.Free;
@@ -426,7 +426,7 @@ begin
       TAtlasGuard.Run(TAtlasFeature.UnitRelations,
         procedure
         begin
-          Change(TAtlasUnitRelationsCommands.MoveCommand, TAtlasUnitRelationsCommands.MoveArguments(
+          Change(TAtlasUnitRelationsCommands.cMoveCommand, TAtlasUnitRelationsCommands.MoveArguments(
             TLspSession.PathToUri(FFileName), AUnit, AToInterface));
         end);
     end;
@@ -436,7 +436,7 @@ begin
       TAtlasGuard.Run(TAtlasFeature.UnitRelations,
         procedure
         begin
-          Change(TAtlasUnitRelationsCommands.RemoveCommand, TAtlasUnitRelationsCommands.RemoveArguments(
+          Change(TAtlasUnitRelationsCommands.cRemoveCommand, TAtlasUnitRelationsCommands.RemoveArguments(
             TLspSession.PathToUri(FFileName), AUnit));
         end);
     end;
@@ -454,27 +454,27 @@ end;
 
 function TUnitRelationsState.EditorFile: string;
 var
-  View: IOTAEditView;
+  mView: IOTAEditView;
 begin
   Result := '';
-  View := TAtlasEditorBuffer.ActiveView;
-  if (View <> nil) and (View.Buffer <> nil) and IsPascalFile(View.Buffer.FileName) then
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView <> nil) and (mView.Buffer <> nil) and IsPascalFile(mView.Buffer.FileName) then
   begin
-    Result := View.Buffer.FileName;
+    Result := mView.Buffer.FileName;
   end;
 end;
 
 function TUnitRelationsState.Target: string;
 var
-  Editor: string;
+  mEditor: string;
 begin
-  Editor := EditorFile;
-  if (FPinned <> '') and SameText(Editor, FPinnedEditor) then
+  mEditor := EditorFile;
+  if (FPinned <> '') and SameText(mEditor, FPinnedEditor) then
   begin
     Exit(FPinned);
   end;
   FPinned := '';
-  Result := Editor;
+  Result := mEditor;
 end;
 
 procedure TUnitRelationsState.Pin(const AFileName: string);
@@ -500,13 +500,13 @@ end;
 
 procedure TUnitRelationsState.ShowJson(AFrame: TAtlasUnitRelationsFrame; const AJson: string);
 var
-  Relations: TAtlasUnitRelations;
+  mRelations: TAtlasUnitRelations;
 begin
   if AJson = FLastJson then
   begin
     Exit;
   end;
-  if not TAtlasUnitRelationsModel.Parse(AJson, Relations) then
+  if not TAtlasUnitRelationsModel.Parse(AJson, mRelations) then
   begin
     if not AFrame.HasRelations then
     begin
@@ -517,11 +517,11 @@ begin
   FLastJson := AJson;
   FShownMessage := False;
   // Der Server liest die Datei so, wie der Editor sie meldet; der Name im Fenster bleibt der des Editors.
-  if Relations.FileName = '' then
+  if mRelations.FileName = '' then
   begin
-    Relations.FileName := FFileName;
+    mRelations.FileName := FFileName;
   end;
-  AFrame.SetRelations(Relations);
+  AFrame.SetRelations(mRelations);
 end;
 
 procedure TUnitRelationsState.ShowInfo(AFrame: TAtlasUnitRelationsFrame; AId: TAtlasAnalysisTextId);
@@ -533,30 +533,30 @@ end;
 
 procedure TUnitRelationsState.Request;
 var
-  Frame: TAtlasUnitRelationsFrame;
-  Number: Integer;
-  FileName: string;
-  AllLevels: Boolean;
+  mFrame: TAtlasUnitRelationsFrame;
+  mNumber: Integer;
+  mFileName: string;
+  mAllLevels: Boolean;
 begin
-  Frame := TAtlasIdeUnitRelationsWindow.ExistingFrame;
-  if (Frame = nil) or (FFileName = '') then
+  mFrame := TAtlasIdeUnitRelationsWindow.ExistingFrame;
+  if (mFrame = nil) or (FFileName = '') then
   begin
     Exit;
   end;
   Inc(FRequest);
-  Number := FRequest;
-  FileName := FFileName;
-  AllLevels := FAllLevels;
+  mNumber := FRequest;
+  mFileName := FFileName;
+  mAllLevels := FAllLevels;
   FPending := True;
   FAsked := GetTickCount;
-  if not FRun(TAtlasUnitRelationsCommands.Command,
-    TAtlasUnitRelationsCommands.Arguments(TLspSession.PathToUri(FileName), AllLevels), TimeoutMs,
-    AnswerHandler(Number, FileName, AllLevels)) then
+  if not FRun(TAtlasUnitRelationsCommands.cCommand,
+    TAtlasUnitRelationsCommands.Arguments(TLspSession.PathToUri(mFileName), mAllLevels), cTimeoutMs,
+    AnswerHandler(mNumber, mFileName, mAllLevels)) then
   begin
     FPending := False;
-    if not Frame.HasRelations then
+    if not mFrame.HasRelations then
     begin
-      ShowInfo(Frame, TAtlasAnalysisTextId.UnitRelationsNoServer);
+      ShowInfo(mFrame, TAtlasAnalysisTextId.UnitRelationsNoServer);
     end;
   end;
 end;
@@ -605,41 +605,41 @@ end;
 
 procedure TUnitRelationsState.Update;
 var
-  Frame: TAtlasUnitRelationsFrame;
-  FileName, Json: string;
+  mFrame: TAtlasUnitRelationsFrame;
+  mFileName, mJson: string;
 begin
-  Frame := TAtlasIdeUnitRelationsWindow.ExistingFrame;
-  if Frame = nil then
+  mFrame := TAtlasIdeUnitRelationsWindow.ExistingFrame;
+  if mFrame = nil then
   begin
     Exit;
   end;
-  FileName := Target;
-  if FileName = '' then
+  mFileName := Target;
+  if mFileName = '' then
   begin
     if (FFileName <> '') or not FShownMessage then
     begin
       FFileName := '';
-      ShowInfo(Frame, TAtlasAnalysisTextId.UnitRelationsNoFile);
+      ShowInfo(mFrame, TAtlasAnalysisTextId.UnitRelationsNoFile);
     end;
     Exit;
   end;
-  if not SameText(FileName, FFileName) then
+  if not SameText(mFileName, FFileName) then
   begin
     // Dateiwechsel: gemerkter Stand sofort, die Antwort des Servers folgt.
-    FFileName := FileName;
+    FFileName := mFileName;
     FLastJson := '';
-    if FCache.TryGet(FileName, FAllLevels, Json) then
+    if FCache.TryGet(mFileName, FAllLevels, mJson) then
     begin
-      ShowJson(Frame, Json);
+      ShowJson(mFrame, mJson);
     end
     else
     begin
-      ShowInfo(Frame, TAtlasAnalysisTextId.UnitRelationsLoading);
+      ShowInfo(mFrame, TAtlasAnalysisTextId.UnitRelationsLoading);
     end;
     Request;
     Exit;
   end;
-  if not FPending and (GetTickCount - FAsked >= RefreshMs) then
+  if not FPending and (GetTickCount - FAsked >= cRefreshMs) then
   begin
     Request;
   end;
@@ -647,37 +647,37 @@ end;
 
 procedure TUnitRelationsState.ChangeDepth(AAllLevels: Boolean);
 var
-  Frame: TAtlasUnitRelationsFrame;
-  Json: string;
+  mFrame: TAtlasUnitRelationsFrame;
+  mJson: string;
 begin
   if AAllLevels = FAllLevels then
   begin
     Exit;
   end;
   FAllLevels := AAllLevels;
-  Frame := TAtlasIdeUnitRelationsWindow.ExistingFrame;
-  if (Frame = nil) or (FFileName = '') then
+  mFrame := TAtlasIdeUnitRelationsWindow.ExistingFrame;
+  if (mFrame = nil) or (FFileName = '') then
   begin
     Exit;
   end;
   FLastJson := '';
-  if FCache.TryGet(FFileName, FAllLevels, Json) then
+  if FCache.TryGet(FFileName, FAllLevels, mJson) then
   begin
-    ShowJson(Frame, Json);
+    ShowJson(mFrame, mJson);
   end;
   Request;
 end;
 
 procedure TUnitRelationsState.Change(const ACommand, AArgumentsJson: string);
 var
-  Frame: TAtlasUnitRelationsFrame;
+  mFrame: TAtlasUnitRelationsFrame;
 begin
-  Frame := TAtlasIdeUnitRelationsWindow.ExistingFrame;
-  if (Frame = nil) or (FFileName = '') then
+  mFrame := TAtlasIdeUnitRelationsWindow.ExistingFrame;
+  if (mFrame = nil) or (FFileName = '') then
   begin
     Exit;
   end;
-  if not FRun(ACommand, AArgumentsJson, TimeoutMs,
+  if not FRun(ACommand, AArgumentsJson, cTimeoutMs,
     procedure(AAnswer: TJSONValue)
     var
       Edit: TLspWorkspaceEdit;
@@ -710,16 +710,16 @@ begin
           [Outcome.Error]);
       end;
       // Bald neu fragen: Der Server sieht den geänderten Text mit dem nächsten Abgleich des Puffers.
-      FAsked := GetTickCount - RefreshMs + 500;
+      FAsked := GetTickCount - cRefreshMs + 500;
     end) then
   begin
-    Frame.Info.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsNoServer);
+    mFrame.Info.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsNoServer);
   end;
 end;
 
 procedure TUnitRelationsState.Open(const AFileName: string; ALine, ACharacter: Integer);
 var
-  Actions: IOTAActionServices;
+  mActions: IOTAActionServices;
 begin
   if AFileName = '' then
   begin
@@ -729,10 +729,10 @@ begin
   begin
     TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
   end
-  else if Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+  else if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
   begin
     // Nur die Unit: Ist sie schon offen, bleibt der Cursor, wo er war.
-    Actions.OpenFile(AFileName);
+    mActions.OpenFile(AFileName);
   end;
 end;
 
@@ -775,22 +775,22 @@ end;
 
 class procedure TAtlasIdeUnitRelations.ShowWindow;
 var
-  Frame: TAtlasUnitRelationsFrame;
+  mFrame: TAtlasUnitRelationsFrame;
 begin
   if (FState = nil) or not Active then
   begin
     Exit;
   end;
-  Frame := TAtlasIdeUnitRelationsWindow.Show;
-  if Frame = nil then
+  mFrame := TAtlasIdeUnitRelationsWindow.Show;
+  if mFrame = nil then
   begin
     Exit;
   end;
   TUnitRelationsState(FState).Reset;
   TUnitRelationsState(FState).Update;
-  if Frame.Filter.CanFocus then
+  if mFrame.Filter.CanFocus then
   begin
-    Frame.Filter.SetFocus;
+    mFrame.Filter.SetFocus;
   end;
 end;
 
@@ -838,13 +838,13 @@ end;
 
 class procedure TAtlasIdeUnitRelations.ThemeChanged;
 var
-  Frame: TAtlasUnitRelationsFrame;
+  mFrame: TAtlasUnitRelationsFrame;
 begin
   TAtlasIdeUnitRelationsWindow.ApplyTheme;
-  Frame := TAtlasIdeUnitRelationsWindow.ExistingFrame;
-  if Frame <> nil then
+  mFrame := TAtlasIdeUnitRelationsWindow.ExistingFrame;
+  if mFrame <> nil then
   begin
-    Frame.Tree.Invalidate;
+    mFrame.Tree.Invalidate;
   end;
 end;
 

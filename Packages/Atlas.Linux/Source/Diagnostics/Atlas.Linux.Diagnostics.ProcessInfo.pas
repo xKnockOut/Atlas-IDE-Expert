@@ -14,7 +14,8 @@ type
     class function ThreadCount: Integer; static;
     /// <summary>Benutzer- und Rechnername; der Filter des Diagnoselogs verwirft Zeilen, die sie enthalten.</summary>
     class function IdentityNames: TArray<string>; static;
-    /// <summary>Rechenzeit (Kernel und Benutzer) des aufrufenden Threads in ms; -1, wenn die Abfrage scheitert.</summary>
+    /// <summary>Rechenzeit (Kernel und Benutzer) des aufrufenden Threads in ms;
+    /// -1, wenn die Abfrage scheitert.</summary>
     class function ThreadCpuMs: Int64; static;
   end;
 
@@ -29,58 +30,58 @@ uses
 
 class function TProcessInfo.ThreadCount: Integer;
 var
-  Lines: TStringList;
-  Line: string;
+  mLines: TStringList;
+  mLine: string;
 begin
   Result := -1;
-  Lines := TStringList.Create;
+  mLines := TStringList.Create;
   try
     try
-      Lines.LoadFromFile('/proc/self/status', TEncoding.UTF8);
+      mLines.LoadFromFile('/proc/self/status', TEncoding.UTF8);
     except
       on EStreamError do
         Exit;
     end;
-    for Line in Lines do
+    for mLine in mLines do
     begin
-      if Line.StartsWith('Threads:') then
+      if mLine.StartsWith('Threads:') then
       begin
-        Exit(StrToIntDef(Trim(Copy(Line, Length('Threads:') + 1, MaxInt)), -1));
+        Exit(StrToIntDef(Trim(Copy(mLine, Length('Threads:') + 1, MaxInt)), -1));
       end;
     end;
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 
 class function TProcessInfo.ThreadCpuMs: Int64;
 var
-  Time: timespec;
+  mTime: timespec;
 begin
-  if clock_gettime(CLOCK_THREAD_CPUTIME_ID, @Time) <> 0 then
+  if clock_gettime(CLOCK_THREAD_CPUTIME_ID, @mTime) <> 0 then
   begin
     Exit(-1);
   end;
-  Result := Int64(Time.tv_sec) * 1000 + Int64(Time.tv_nsec) div 1000000;
+  Result := Int64(mTime.tv_sec) * 1000 + Int64(mTime.tv_nsec) div 1000000;
 end;
 
 class function TProcessInfo.IdentityNames: TArray<string>;
 var
-  Name: string;
-  Host: UtsName;
-  HostName: string;
+  mName: string;
+  mHost: UtsName;
+  mHostName: string;
 begin
   Result := nil;
-  HostName := '';
-  if FpUname(Host) = 0 then
+  mHostName := '';
+  if FpUname(mHost) = 0 then
   begin
-    HostName := string(PAnsiChar(@Host.Nodename[0]));
+    mHostName := string(PAnsiChar(@mHost.Nodename[0]));
   end;
-  for Name in TArray<string>.Create(GetEnvironmentVariable('USER'), GetEnvironmentVariable('LOGNAME'), HostName) do
+  for mName in TArray<string>.Create(GetEnvironmentVariable('USER'), GetEnvironmentVariable('LOGNAME'), mHostName) do
   begin
-    if (Name <> '') and (IndexStr(Name, Result) < 0) then
+    if (mName <> '') and (IndexStr(mName, Result) < 0) then
     begin
-      Result := Result + [Name];
+      Result := Result + [mName];
     end;
   end;
 end;

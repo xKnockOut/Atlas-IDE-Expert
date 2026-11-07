@@ -87,7 +87,8 @@ begin
   Result := TAtlasProjectSettings.WriteValue(mPath, mJson);
   if Result then
   begin
-    TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.ProblemsRuleDisabled, [ARule, ExtractFileName(mTarget)]));
+    TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.ProblemsRuleDisabled,
+      [ARule, ExtractFileName(mTarget)]));
   end;
 end;
 
@@ -112,7 +113,8 @@ begin
   // Nur dieser Wert ändert sich; Kommentare und alle anderen Schlüssel bleiben.
   TAtlasRuleTable.SeverityChange(mRulesJson, ARule, 'off', mPath, mJson);
   TAtlasIdeSettings.SaveGlobal(mContent, TAtlasJsonText.SetValue(mContent.Text, mPath, mJson));
-  TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.ProblemsRuleDisabled, [ARule, ExtractFileName(mTarget)]));
+  TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.ProblemsRuleDisabled,
+    [ARule, ExtractFileName(mTarget)]));
 end;
 
 { TAtlasIdeRuleActions }

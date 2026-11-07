@@ -135,14 +135,14 @@ end;
 
 function CountBreaks(const AText: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
-  Index := NextBreak(AText, 1);
-  while Index <= Length(AText) do
+  mIndex := NextBreak(AText, 1);
+  while mIndex <= Length(AText) do
   begin
     Inc(Result);
-    Index := NextBreak(AText, Index + BreakLengthAt(AText, Index));
+    mIndex := NextBreak(AText, mIndex + BreakLengthAt(AText, mIndex));
   end;
 end;
 
@@ -150,27 +150,27 @@ end;
 
 class function TLineTable.Build(const AText: string): TLineTable;
 var
-  Count, Line, Index, Len: Integer;
+  mCount, mLine, mIndex, mLen: Integer;
 begin
-  Count := CountBreaks(AText) + 1;
+  mCount := CountBreaks(AText) + 1;
   Result.FStarts := nil;
   Result.FContentEnds := nil;
-  SetLength(Result.FStarts, Count);
-  SetLength(Result.FContentEnds, Count);
+  SetLength(Result.FStarts, mCount);
+  SetLength(Result.FContentEnds, mCount);
   Result.FLength := Length(AText);
   Result.FStarts[0] := 0;
-  Line := 0;
-  Index := NextBreak(AText, 1);
-  while Index <= Length(AText) do
+  mLine := 0;
+  mIndex := NextBreak(AText, 1);
+  while mIndex <= Length(AText) do
   begin
-    Len := BreakLengthAt(AText, Index);
+    mLen := BreakLengthAt(AText, mIndex);
     // Index ist 1-basiert: Das Zeichen bei Index liegt am Offset Index - 1.
-    Result.FContentEnds[Line] := Index - 1;
-    Inc(Line);
-    Result.FStarts[Line] := Index - 1 + Len;
-    Index := NextBreak(AText, Index + Len);
+    Result.FContentEnds[mLine] := mIndex - 1;
+    Inc(mLine);
+    Result.FStarts[mLine] := mIndex - 1 + mLen;
+    mIndex := NextBreak(AText, mIndex + mLen);
   end;
-  Result.FContentEnds[Line] := Length(AText);
+  Result.FContentEnds[mLine] := Length(AText);
 end;
 
 function TLineTable.LineCount: Integer;
@@ -214,7 +214,7 @@ end;
 
 function TLineTable.PositionAt(AOffset: Integer): TTextPosition;
 var
-  First, Last, Middle, Character: Integer;
+  mFirst, mLast, mMiddle, mCharacter: Integer;
 begin
   if FStarts = nil then
   begin
@@ -229,31 +229,31 @@ begin
     AOffset := FLength;
   end;
   // Letzte Zeile, deren Anfang nicht hinter AOffset liegt.
-  First := 0;
-  Last := High(FStarts);
-  while First < Last do
+  mFirst := 0;
+  mLast := High(FStarts);
+  while mFirst < mLast do
   begin
-    Middle := (First + Last + 1) div 2;
-    if FStarts[Middle] <= AOffset then
+    mMiddle := (mFirst + mLast + 1) div 2;
+    if FStarts[mMiddle] <= AOffset then
     begin
-      First := Middle;
+      mFirst := mMiddle;
     end
     else
     begin
-      Last := Middle - 1;
+      mLast := mMiddle - 1;
     end;
   end;
-  Character := AOffset;
-  if Character > FContentEnds[First] then
+  mCharacter := AOffset;
+  if mCharacter > FContentEnds[mFirst] then
   begin
-    Character := FContentEnds[First];
+    mCharacter := FContentEnds[mFirst];
   end;
-  Result := TTextPosition.Create(First, Character - FStarts[First]);
+  Result := TTextPosition.Create(mFirst, mCharacter - FStarts[mFirst]);
 end;
 
 function TLineTable.OffsetAt(const APosition: TTextPosition): Integer;
 var
-  Character: Integer;
+  mCharacter: Integer;
 begin
   if (FStarts = nil) or (APosition.Line < 0) then
   begin
@@ -263,16 +263,16 @@ begin
   begin
     Exit(FLength);
   end;
-  Character := APosition.Character;
-  if Character < 0 then
+  mCharacter := APosition.Character;
+  if mCharacter < 0 then
   begin
-    Character := 0;
+    mCharacter := 0;
   end
-  else if Character > FContentEnds[APosition.Line] - FStarts[APosition.Line] then
+  else if mCharacter > FContentEnds[APosition.Line] - FStarts[APosition.Line] then
   begin
-    Character := FContentEnds[APosition.Line] - FStarts[APosition.Line];
+    mCharacter := FContentEnds[APosition.Line] - FStarts[APosition.Line];
   end;
-  Result := FStarts[APosition.Line] + Character;
+  Result := FStarts[APosition.Line] + mCharacter;
 end;
 
 { TTextLines }
@@ -291,10 +291,10 @@ end;
 
 class function TTextLines.KindOf(const AText: string): TTextLineBreak;
 var
-  Mixed: Boolean;
+  mMixed: Boolean;
 begin
-  Result := DominantOf(AText, Mixed);
-  if Mixed then
+  Result := DominantOf(AText, mMixed);
+  if mMixed then
   begin
     Result := TTextLineBreak.Mixed;
   end;
@@ -341,49 +341,49 @@ end;
 class function TTextLines.DominantOf(const AText: string; APreferred: TTextLineBreak;
   out AMixed: Boolean): TTextLineBreak;
 var
-  Counts: TBreakCounts;
-  Kind: TTextLineBreak;
-  Kinds: Integer;
+  mCounts: TBreakCounts;
+  mKind: TTextLineBreak;
+  mKinds: Integer;
 begin
-  Counts := BreakCounts(AText);
+  mCounts := BreakCounts(AText);
   // Der bevorzugte Umbruch gewinnt Gleichstände, andere gewinnen nur mit echter Mehrheit.
   Result := TTextLineBreak.None;
-  if (APreferred in [TTextLineBreak.CRLF, TTextLineBreak.LF, TTextLineBreak.CR]) and (Counts[APreferred] > 0) then
+  if (APreferred in [TTextLineBreak.CRLF, TTextLineBreak.LF, TTextLineBreak.CR]) and (mCounts[APreferred] > 0) then
   begin
     Result := APreferred;
   end;
-  Kinds := 0;
-  for Kind := TTextLineBreak.CRLF to TTextLineBreak.CR do
+  mKinds := 0;
+  for mKind := TTextLineBreak.CRLF to TTextLineBreak.CR do
   begin
-    if Counts[Kind] > 0 then
+    if mCounts[mKind] > 0 then
     begin
-      Inc(Kinds);
-      if Counts[Kind] > Counts[Result] then
+      Inc(mKinds);
+      if mCounts[mKind] > mCounts[Result] then
       begin
-        Result := Kind;
+        Result := mKind;
       end;
     end;
   end;
-  AMixed := Kinds > 1;
+  AMixed := mKinds > 1;
 end;
 
 class function TTextLines.SplitLines(const AText: string): TArray<string>;
 var
-  Index, Start, Count: Integer;
+  mIndex, mStart, mCount: Integer;
 begin
   Result := nil;
   SetLength(Result, CountBreaks(AText) + 1);
-  Count := 0;
-  Start := 1;
-  Index := NextBreak(AText, 1);
-  while Index <= Length(AText) do
+  mCount := 0;
+  mStart := 1;
+  mIndex := NextBreak(AText, 1);
+  while mIndex <= Length(AText) do
   begin
-    Result[Count] := Copy(AText, Start, Index - Start);
-    Inc(Count);
-    Start := Index + BreakLengthAt(AText, Index);
-    Index := NextBreak(AText, Start);
+    Result[mCount] := Copy(AText, mStart, mIndex - mStart);
+    Inc(mCount);
+    mStart := mIndex + BreakLengthAt(AText, mIndex);
+    mIndex := NextBreak(AText, mStart);
   end;
-  Result[Count] := Copy(AText, Start, MaxInt);
+  Result[mCount] := Copy(AText, mStart, MaxInt);
 end;
 
 class function TTextLines.SplitLines(const AText: string; out ALineBreak: string): TArray<string>;
@@ -394,55 +394,55 @@ end;
 
 class function TTextLines.SplitKeepingBreaks(const AText: string): TArray<string>;
 var
-  Index, Start, Count, Len: Integer;
+  mIndex, mStart, mCount, mLen: Integer;
 begin
   Result := nil;
   if AText = '' then
   begin
     Exit;
   end;
-  Count := CountBreaks(AText);
+  mCount := CountBreaks(AText);
   // Ohne Umbruch am Ende kommt die letzte Zeile ohne Umbruch dazu.
   if BreakLengthAt(AText, Length(AText)) = 0 then
   begin
-    Inc(Count);
+    Inc(mCount);
   end;
-  SetLength(Result, Count);
-  Count := 0;
-  Start := 1;
-  Index := NextBreak(AText, 1);
-  while Index <= Length(AText) do
+  SetLength(Result, mCount);
+  mCount := 0;
+  mStart := 1;
+  mIndex := NextBreak(AText, 1);
+  while mIndex <= Length(AText) do
   begin
-    Len := BreakLengthAt(AText, Index);
-    Result[Count] := Copy(AText, Start, Index - Start + Len);
-    Inc(Count);
-    Start := Index + Len;
-    Index := NextBreak(AText, Start);
+    mLen := BreakLengthAt(AText, mIndex);
+    Result[mCount] := Copy(AText, mStart, mIndex - mStart + mLen);
+    Inc(mCount);
+    mStart := mIndex + mLen;
+    mIndex := NextBreak(AText, mStart);
   end;
-  if Start <= Length(AText) then
+  if mStart <= Length(AText) then
   begin
-    Result[Count] := Copy(AText, Start, MaxInt);
+    Result[mCount] := Copy(AText, mStart, MaxInt);
   end;
 end;
 
 class function TTextLines.JoinLines(const ALines: array of string; const ALineBreak: string): string;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    for Index := 0 to High(ALines) do
+    for mIndex := 0 to High(ALines) do
     begin
-      if Index > 0 then
+      if mIndex > 0 then
       begin
-        Builder.Append(ALineBreak);
+        mBuilder.Append(ALineBreak);
       end;
-      Builder.Append(ALines[Index]);
+      mBuilder.Append(ALines[mIndex]);
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -462,15 +462,15 @@ end;
 
 class function TTextLines.IndentOf(const AText: string; ALine: Integer): string;
 var
-  Table: TLineTable;
+  mTable: TLineTable;
 begin
-  Table := TLineTable.Build(AText);
-  if (ALine < 0) or (ALine >= Table.LineCount) then
+  mTable := TLineTable.Build(AText);
+  if (ALine < 0) or (ALine >= mTable.LineCount) then
   begin
     Exit('');
   end;
-  Result := IndentOf(Copy(AText, Table.LineStart(ALine) + 1,
-    Table.LineContentEnd(ALine) - Table.LineStart(ALine)));
+  Result := IndentOf(Copy(AText, mTable.LineStart(ALine) + 1,
+    mTable.LineContentEnd(ALine) - mTable.LineStart(ALine)));
 end;
 
 class function TTextLines.StripTrailingCr(const ALine: string): string;
@@ -487,29 +487,29 @@ end;
 
 class function TTextLines.NormalizeLineBreaks(const AText, ALineBreak: string): string;
 var
-  Builder: TStringBuilder;
-  Index, Len: Integer;
+  mBuilder: TStringBuilder;
+  mIndex, mLen: Integer;
 begin
-  Builder := TStringBuilder.Create(Length(AText));
+  mBuilder := TStringBuilder.Create(Length(AText));
   try
-    Index := 1;
-    while Index <= Length(AText) do
+    mIndex := 1;
+    while mIndex <= Length(AText) do
     begin
-      Len := BreakLengthAt(AText, Index);
-      if Len > 0 then
+      mLen := BreakLengthAt(AText, mIndex);
+      if mLen > 0 then
       begin
-        Builder.Append(ALineBreak);
-        Inc(Index, Len);
+        mBuilder.Append(ALineBreak);
+        Inc(mIndex, mLen);
       end
       else
       begin
-        Builder.Append(AText[Index]);
-        Inc(Index);
+        mBuilder.Append(AText[mIndex]);
+        Inc(mIndex);
       end;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 

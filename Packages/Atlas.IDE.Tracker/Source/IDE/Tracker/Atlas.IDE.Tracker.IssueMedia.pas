@@ -19,7 +19,7 @@ uses
 type
   TAtlasIdeIssueMedia = class
   public const
-    MaxImages = 10;
+    cMaxImages = 10;
   private
     FContext: TAtlasIdeIssueContext;
     FThread: TThread;
@@ -59,7 +59,7 @@ begin
   Result := nil;
   for mUrl in AUrls do
   begin
-    if TAtlasIssuePreview.MayLoad(mUrl, AServer) and (Length(Result) < TAtlasIdeIssueMedia.MaxImages) and
+    if TAtlasIssuePreview.MayLoad(mUrl, AServer) and (Length(Result) < TAtlasIdeIssueMedia.cMaxImages) and
       (IndexText(mUrl, Result) < 0) then
     begin
       Result := Result + [mUrl];
@@ -107,7 +107,7 @@ begin
   Result := True;
   ABytes := nil;
   try
-    if not ADownload.GetBytes(AUrl, TAtlasIssuePreview.TimeoutMs, TAtlasIssuePreview.MaxImageBytes, mStatus, ABytes,
+    if not ADownload.GetBytes(AUrl, TAtlasIssuePreview.cTimeoutMs, TAtlasIssuePreview.cMaxImageBytes, mStatus, ABytes,
       mError) then
     begin
       Result := mError <> TAtlasCiFetchError.Cancelled;
@@ -215,7 +215,7 @@ begin
     begin
       mOk := False;
       try
-        if mDownload.GetBytes(AUrl, TAtlasIssuePreview.TimeoutMs * 3, TAtlasIssuePreview.MaxAttachmentBytes,
+        if mDownload.GetBytes(AUrl, TAtlasIssuePreview.cTimeoutMs * 3, TAtlasIssuePreview.cMaxAttachmentBytes,
           mStatus, mBytes, mError) and (mStatus = 200) then
         begin
           ForceDirectories(ExtractFileDir(AFile));

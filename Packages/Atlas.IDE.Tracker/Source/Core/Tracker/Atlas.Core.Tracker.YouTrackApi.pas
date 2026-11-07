@@ -18,41 +18,42 @@ uses
 type
   TAtlasYouTrackApi = class
   public const
-    ProviderName = 'youtrack';
+    cProviderName = 'youtrack';
     /// <summary>Vorgabe der Abfrage „Meine Issues“.</summary>
-    DefaultQuery = 'for: me #Unresolved';
-    Fields = 'idReadable,numberInProject,summary,customFields(name,value(name,presentation,login,fullName))';
-    LocalePath = '/api/admin/globalSettings/localeSettings?fields=locale(id,language,locale)';
+    cDefaultQuery = 'for: me #Unresolved';
+    cFields = 'idReadable,numberInProject,summary,customFields(name,value(name,presentation,login,fullName))';
+    cLocalePath = '/api/admin/globalSettings/localeSettings?fields=locale(id,language,locale)';
     /// <summary>Felder der Vorschau (#1264) ohne Kommentare.</summary>
-    DetailFields = 'idReadable,numberInProject,summary,description,created,updated,' +
+    cDetailFields = 'idReadable,numberInProject,summary,description,created,updated,' +
       'customFields(name,value(name,presentation,login,fullName)),tags(name),' +
       'attachments(name,size,url,mimeType,removed),' +
       'links(direction,linkType(name,localizedName,sourceToTarget,localizedSourceToTarget,targetToSource,' +
       'localizedTargetToSource,aggregation),issues(idReadable,summary,resolved,customFields(name,value(name))))';
-    CommentFields = 'comments(text,created,deleted,author(login,fullName))';
+    cCommentFields = 'comments(text,created,deleted,author(login,fullName))';
     /// <summary>Felder der Projekte für die Klapplisten (#1266).</summary>
-    ProjectFields = 'shortName,customFields(field(name,fieldType(id)),bundle(values(name,archived)))';
+    cProjectFields = 'shortName,customFields(field(name,fieldType(id)),bundle(values(name,archived)))';
     /// <summary>Höchstens so viele Werte je Klappliste.</summary>
-    MaxValues = 200;
+    cMaxValues = 200;
     /// <summary>Felder der Zeiterfassung eines Projekts (#1267).</summary>
-    TimeSettingsFields = 'enabled,workItemTypes(name)';
+    cTimeSettingsFields = 'enabled,workItemTypes(name)';
     /// <summary>Felder der Linktypen (#1279).</summary>
-    LinkTypeFields = 'id,name,localizedName,sourceToTarget,localizedSourceToTarget,targetToSource,' +
+    cLinkTypeFields = 'id,name,localizedName,sourceToTarget,localizedSourceToTarget,targetToSource,' +
       'localizedTargetToSource,aggregation';
     /// <summary>Felder der VCS-Änderungen (#1269).</summary>
-    VcsChangeFields = 'version,text,date,user(login,fullName)';
+    cVcsChangeFields = 'version,text,date,user(login,fullName)';
     /// <summary>Felder der Änderungsabfrage (#1271).</summary>
-    ChangeIssueFields = 'idReadable,summary,updated';
-    ActivityFields = 'timestamp,author(login,fullName),category(id),field(name),' +
+    cChangeIssueFields = 'idReadable,summary,updated';
+    cActivityFields = 'timestamp,author(login,fullName),category(id),field(name),' +
       'added(id,name,login,fullName,text,presentation)';
-    ActivityCategories = 'CommentsCategory,CustomFieldCategory';
+    cActivityCategories = 'CommentsCategory,CustomFieldCategory';
     /// <summary>Höchstens so viele geänderte Issues je Abfrage bekommen ihre Einzelheiten.</summary>
-    MaxChangedIssues = 20;
+    cMaxChangedIssues = 20;
   public
     /// <summary>Abfrage, wie sie an YouTrack geht (mit "project: …").</summary>
     class function FullQuery(const ATarget: TAtlasTrackerTarget): string; static;
     class function IssuesUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string; static;
-    /// <summary>Freitextsuche der Palette (#1270): "project: &lt;Kürzel&gt; &lt;Text&gt;" ohne die Abfrage der Einstellungen;
+    /// <summary>Freitextsuche der Palette (#1270): "project: &lt;Kürzel&gt; &lt;Text&gt;" ohne die Abfrage der
+    /// Einstellungen;
     /// '' ohne Server oder Text.</summary>
     class function TextSearchUrl(const ATarget: TAtlasTrackerTarget; const AText: string; AMax: Integer): string;
       static;
@@ -82,7 +83,8 @@ type
     class function LinkTypesUrl(const ATarget: TAtlasTrackerTarget): string; static;
     class function Rest(const AWatch: TStopwatch; ATimeoutMs: Integer): Integer; static;
     /// <summary>GET mit Fehler aus dem Status; True nur mit 200.</summary>
-    class function GetText(const ATransport: IAtlasCiTransport; const AUrl: string; ATimeoutMs: Integer; out AText: string;
+    class function GetText(const ATransport: IAtlasCiTransport; const AUrl: string; ATimeoutMs: Integer;
+      out AText: string;
       out AError: TAtlasCiFetchError): Boolean; static;
     /// <summary>Adresse der VCS-Änderungen eines Issues (#1269); '' bei ungültiger Kennung oder ohne Server.
     /// </summary>
@@ -137,50 +139,50 @@ uses
 
 class function TAtlasYouTrackApi.FullQuery(const ATarget: TAtlasTrackerTarget): string;
 var
-  Project: string;
+  mProject: string;
 begin
   Result := ATarget.Query;
   if Result = '' then
   begin
-    Result := TAtlasTrackerTemplates.DefaultQuery(ProviderName, ATarget.Language);
+    Result := TAtlasTrackerTemplates.DefaultQuery(cProviderName, ATarget.Language);
   end;
   if Result = '' then
   begin
-    Result := DefaultQuery;
+    Result := cDefaultQuery;
   end;
-  Project := ATarget.Project;
-  if Project = '' then
+  mProject := ATarget.Project;
+  if mProject = '' then
   begin
     Exit;
   end;
   // Kürzel mit Leerzeichen oder Sonderzeichen in geschweiften Klammern, wie in der Oberfläche.
-  if Pos(' ', Project) > 0 then
+  if Pos(' ', mProject) > 0 then
   begin
-    Project := '{' + Project + '}';
+    mProject := '{' + mProject + '}';
   end;
-  Result := 'project: ' + Project + ' ' + Result;
+  Result := 'project: ' + mProject + ' ' + Result;
 end;
 
 class function TAtlasYouTrackApi.IssuesUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string;
 var
-  Limit: Integer;
+  mLimit: Integer;
 begin
   Result := '';
   if ATarget.Server = '' then
   begin
     Exit;
   end;
-  Limit := AMax;
-  if Limit < 1 then
+  mLimit := AMax;
+  if mLimit < 1 then
   begin
-    Limit := 1;
+    mLimit := 1;
   end;
-  if Limit > 100 then
+  if mLimit > 100 then
   begin
-    Limit := 100;
+    mLimit := 100;
   end;
   Result := ATarget.Url + '/api/issues?query=' + TTextUris.PercentEncode(FullQuery(ATarget)) + '&fields=' +
-    TTextUris.PercentEncode(Fields) + '&$top=' + IntToStr(Limit);
+    TTextUris.PercentEncode(cFields) + '&$top=' + IntToStr(mLimit);
 end;
 
 class function TAtlasYouTrackApi.TextSearchUrl(const ATarget: TAtlasTrackerTarget; const AText: string;
@@ -220,7 +222,7 @@ begin
   begin
     Exit;
   end;
-  Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '?fields=' + TTextUris.PercentEncode(Fields);
+  Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '?fields=' + TTextUris.PercentEncode(cFields);
 end;
 
 class function TAtlasYouTrackApi.DetailsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string;
@@ -233,33 +235,33 @@ begin
   begin
     Exit;
   end;
-  mFields := DetailFields;
+  mFields := cDetailFields;
   if AComments then
   begin
-    mFields := mFields + ',' + CommentFields;
+    mFields := mFields + ',' + cCommentFields;
   end;
   Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '?fields=' + TTextUris.PercentEncode(mFields);
 end;
 
 class function TAtlasYouTrackApi.IssuePage(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
 var
-  Key: string;
-  Index: Integer;
+  mKey: string;
+  mIndex: Integer;
 begin
   Result := '';
-  Key := Trim(AKey);
-  if (ATarget.Server = '') or (Key = '') then
+  mKey := Trim(AKey);
+  if (ATarget.Server = '') or (mKey = '') then
   begin
     Exit;
   end;
-  for Index := 1 to Length(Key) do
+  for mIndex := 1 to Length(mKey) do
   begin
-    if not CharInSet(Key[Index], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_']) then
+    if not CharInSet(mKey[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_']) then
     begin
       Exit;
     end;
   end;
-  Result := ATarget.Url + '/issue/' + Key;
+  Result := ATarget.Url + '/issue/' + mKey;
 end;
 
 class function TAtlasYouTrackApi.ErrorMessage(const AJson: string): string;
@@ -294,7 +296,7 @@ begin
     Exit;
   end;
   // Etwas mehr als gezeigt: Gesperrte fallen heraus.
-  mLimit := EnsureRange(AMax * 2, 1, MaxValues);
+  mLimit := EnsureRange(AMax * 2, 1, cMaxValues);
   Result := ATarget.Url + '/api/users?query=' + TTextUris.PercentEncode(Trim(AText)) + '&fields=' +
     TTextUris.PercentEncode('login,fullName,banned') + '&$top=' + IntToStr(mLimit);
 end;
@@ -311,7 +313,8 @@ begin
   begin
     Exit;
   end;
-  if (ATarget.Server = '') or not TAtlasYouTrackJson.ValidKey(Trim(AKey)) or not Supports(ATransport, IAtlasCiSend, mSend) then
+  if (ATarget.Server = '') or not TAtlasYouTrackJson.ValidKey(Trim(AKey)) or
+    not Supports(ATransport, IAtlasCiSend, mSend) then
   begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
   end;
@@ -373,7 +376,7 @@ begin
   Result := '';
   if ATarget.Server <> '' then
   begin
-    Result := ATarget.Url + '/api/issueLinkTypes?fields=' + TTextUris.PercentEncode(LinkTypeFields);
+    Result := ATarget.Url + '/api/issueLinkTypes?fields=' + TTextUris.PercentEncode(cLinkTypeFields);
   end;
 end;
 
@@ -390,7 +393,8 @@ begin
 end;
 
 /// <summary>GET mit Fehler aus dem Status; True nur mit 200.</summary>
-class function TAtlasYouTrackApi.GetText(const ATransport: IAtlasCiTransport; const AUrl: string; ATimeoutMs: Integer; out AText: string;
+class function TAtlasYouTrackApi.GetText(const ATransport: IAtlasCiTransport; const AUrl: string; ATimeoutMs: Integer;
+  out AText: string;
   out AError: TAtlasCiFetchError): Boolean;
 var
   mStatus: Integer;
@@ -422,7 +426,7 @@ begin
     Exit;
   end;
   Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '/vcsChanges?fields=' +
-    TTextUris.PercentEncode(VcsChangeFields) + '&$top=' + IntToStr(TAtlasTrackerDevelopment.MaxChanges);
+    TTextUris.PercentEncode(cVcsChangeFields) + '&$top=' + IntToStr(TAtlasTrackerDevelopment.cMaxChanges);
 end;
 
 class function TAtlasYouTrackApi.ScopeQuery(AScope: TAtlasTrackerNotifyScope): string;
@@ -450,7 +454,7 @@ begin
   // Einen Tag früher: Der Server wertet den Tag in seiner Zeitzone; genau gefiltert wird mit "updated".
   mQuery := ScopeQuery(AScope) + ' updated: ' + FormatDateTime('yyyy"-"mm"-"dd', ASince - 1) + ' .. *';
   Result := ATarget.Url + '/api/issues?query=' + TTextUris.PercentEncode(mQuery) + '&fields=' +
-    TTextUris.PercentEncode(ChangeIssueFields) + '&$top=' + IntToStr(MaxChangedIssues * 2);
+    TTextUris.PercentEncode(cChangeIssueFields) + '&$top=' + IntToStr(cMaxChangedIssues * 2);
 end;
 
 class function TAtlasYouTrackApi.ActivitiesUrl(const ATarget: TAtlasTrackerTarget; const AKey: string;
@@ -461,8 +465,8 @@ begin
   begin
     Exit;
   end;
-  Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '/activities?categories=' + ActivityCategories +
-    '&start=' + IntToStr(TAtlasYouTrackJson.MsOf(ASince) + 1) + '&fields=' + TTextUris.PercentEncode(ActivityFields) + '&$top=100';
+  Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '/activities?categories=' + cActivityCategories +
+    '&start=' + IntToStr(TAtlasYouTrackJson.MsOf(ASince) + 1) + '&fields=' + TTextUris.PercentEncode(cActivityFields) + '&$top=100';
 end;
 
 class function TAtlasYouTrackApi.AttachmentsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string;

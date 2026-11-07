@@ -125,13 +125,13 @@ begin
   mOutcome.Kind := TUpdateOutcomeKind.RolledBack;
   mOutcome.Version := '2.0.1';
   mOutcome.Previous := '2.0.0';
-  mOutcome.Reason := TUpdateErrors.Locked;
+  mOutcome.Reason := TUpdateErrors.cLocked;
   mOutcome.Detail := 'Win32\Atlas.IDE.Base370.bpl';
   mOutcome.Added := TArray<string>.Create('Atlas.IDE.Search');
   mCopy := TUpdateOutcome.FromJson(mOutcome.ToJson);
   Assert.IsTrue(mCopy.Kind = TUpdateOutcomeKind.RolledBack);
   Assert.AreEqual('2.0.0', mCopy.Previous);
-  Assert.AreEqual(TUpdateErrors.Locked, mCopy.Reason);
+  Assert.AreEqual(TUpdateErrors.cLocked, mCopy.Reason);
   Assert.AreEqual(mOutcome.Detail, mCopy.Detail);
   Assert.AreEqual('Atlas.IDE.Search', mCopy.Added[0]);
   Assert.AreEqual(0, Integer(Length(mCopy.Removed)));
