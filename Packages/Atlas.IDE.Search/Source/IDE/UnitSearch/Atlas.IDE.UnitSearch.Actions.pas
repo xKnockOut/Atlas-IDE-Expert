@@ -75,15 +75,15 @@ uses
   Atlas.IDE.Editor.WorkspaceEdit;
 
 const
-  UnitsCommand = 'atlas.server.units';
-  PreviewCommand = 'atlas.server.unitPreview';
-  AddUsesCommand = 'atlas.server.addUses';
-  TestUnitCommand = 'atlas.server.testUnit';
+  cUnitsCommand = 'atlas.server.units';
+  cPreviewCommand = 'atlas.server.unitPreview';
+  cAddUsesCommand = 'atlas.server.addUses';
+  cTestUnitCommand = 'atlas.server.testUnit';
   // Die Liste kann bei großen Bibliotheken dauern; die Vorschau soll das Tippen nicht aufhalten.
-  UnitsTimeoutMs = 30000;
-  PreviewTimeoutMs = 5000;
-  CommandTimeoutMs = 30000;
-  ProjectManagerActionName = 'ViewPrjMgrCommand';
+  cUnitsTimeoutMs = 30000;
+  cPreviewTimeoutMs = 5000;
+  cCommandTimeoutMs = 30000;
+  cProjectManagerActionName = 'ViewPrjMgrCommand';
 
 function UriToPath(AUri: string): string;
 begin
@@ -92,37 +92,37 @@ end;
 
 function OpenModules: TArray<string>;
 var
-  Services: IOTAModuleServices;
-  Index: Integer;
+  mServices: IOTAModuleServices;
+  mIndex: Integer;
 begin
   Result := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  if Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
   begin
-    for Index := 0 to Services.ModuleCount - 1 do
+    for mIndex := 0 to mServices.ModuleCount - 1 do
     begin
-      Result := Result + [Services.Modules[Index].FileName];
+      Result := Result + [mServices.Modules[mIndex].FileName];
     end;
   end;
 end;
 
 procedure MarkOpen(var AEntries: TAtlasUnitEntries);
 var
-  Files: TDictionary<string, Boolean>;
-  FileName: string;
-  Index: Integer;
+  mFiles: TDictionary<string, Boolean>;
+  mFileName: string;
+  mIndex: Integer;
 begin
-  Files := TDictionary<string, Boolean>.Create;
+  mFiles := TDictionary<string, Boolean>.Create;
   try
-    for FileName in OpenModules do
+    for mFileName in OpenModules do
     begin
-      Files.AddOrSetValue(LowerCase(FileName), True);
+      mFiles.AddOrSetValue(LowerCase(mFileName), True);
     end;
-    for Index := 0 to High(AEntries) do
+    for mIndex := 0 to High(AEntries) do
     begin
-      AEntries[Index].IsOpen := Files.ContainsKey(LowerCase(AEntries[Index].FileName));
+      AEntries[mIndex].IsOpen := mFiles.ContainsKey(LowerCase(AEntries[mIndex].FileName));
     end;
   finally
-    Files.Free;
+    mFiles.Free;
   end;
 end;
 
@@ -142,26 +142,26 @@ end;
 
 function ShowForm(const AFileName: string): Boolean;
 var
-  Modules: IOTAModuleServices;
-  Module: IOTAModule;
-  Index: Integer;
-  FormEditor: IOTAFormEditor;
+  mModules: IOTAModuleServices;
+  mModule: IOTAModule;
+  mIndex: Integer;
+  mFormEditor: IOTAFormEditor;
 begin
   Result := False;
-  if not TAtlasIdeNavigation.ShowFile(AFileName) or not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not TAtlasIdeNavigation.ShowFile(AFileName) or not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
-  Module := Modules.FindModule(AFileName);
-  if Module = nil then
+  mModule := mModules.FindModule(AFileName);
+  if mModule = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Module.ModuleFileCount - 1 do
+  for mIndex := 0 to mModule.ModuleFileCount - 1 do
   begin
-    if Supports(Module.ModuleFileEditors[Index], IOTAFormEditor, FormEditor) then
+    if Supports(mModule.ModuleFileEditors[mIndex], IOTAFormEditor, mFormEditor) then
     begin
-      FormEditor.Show;
+      mFormEditor.Show;
       Exit(True);
     end;
   end;
@@ -169,41 +169,41 @@ end;
 
 function UnitList(const AEntries: TArray<TAtlasUnitEntry>): string;
 var
-  Entry: TAtlasUnitEntry;
+  mEntry: TAtlasUnitEntry;
 begin
   Result := '';
-  for Entry in AEntries do
+  for mEntry in AEntries do
   begin
     if Result <> '' then
     begin
       Result := Result + ', ';
     end;
-    Result := Result + Entry.Name;
+    Result := Result + mEntry.Name;
   end;
 end;
 
 /// <summary>Der Server braucht den Text des Puffers, nicht den der Platte.</summary>
 procedure SyncBuffer(ALive: TLspSession; const AFileName: string);
 var
-  Modules: IOTAModuleServices;
-  Module: IOTAModule;
-  Index: Integer;
-  Editor: IOTASourceEditor;
+  mModules: IOTAModuleServices;
+  mModule: IOTAModule;
+  mIndex: Integer;
+  mEditor: IOTASourceEditor;
 begin
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
-  Module := Modules.FindModule(AFileName);
-  if Module = nil then
+  mModule := mModules.FindModule(AFileName);
+  if mModule = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Module.ModuleFileCount - 1 do
+  for mIndex := 0 to mModule.ModuleFileCount - 1 do
   begin
-    if Supports(Module.ModuleFileEditors[Index], IOTASourceEditor, Editor) and (Editor.EditViewCount > 0) then
+    if Supports(mModule.ModuleFileEditors[mIndex], IOTASourceEditor, mEditor) and (mEditor.EditViewCount > 0) then
     begin
-      ALive.Sync(AFileName, TAtlasEditorBuffer.Text(Editor.EditViews[0].Buffer));
+      ALive.Sync(AFileName, TAtlasEditorBuffer.Text(mEditor.EditViews[0].Buffer));
       Exit;
     end;
   end;
@@ -243,19 +243,19 @@ end;
 
 class function TAtlasIdeUnitSearchActions.RunNamedAction(const AName: string): Boolean;
 var
-  Services: INTAServices;
-  Index: Integer;
+  mServices: INTAServices;
+  mIndex: Integer;
 begin
   Result := False;
-  if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
+  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
   begin
     Exit;
   end;
-  for Index := 0 to Services.ActionList.ActionCount - 1 do
+  for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
   begin
-    if SameText(Services.ActionList.Actions[Index].Name, AName) then
+    if SameText(mServices.ActionList.Actions[mIndex].Name, AName) then
     begin
-      Exit(Services.ActionList.Actions[Index].Execute);
+      Exit(mServices.ActionList.Actions[mIndex].Execute);
     end;
   end;
 end;
@@ -273,8 +273,8 @@ var
 begin
   AEntries := nil;
   try
-    mAnswer := ALive.RunCommand(UnitsCommand,
-      TAtlasUnitSearch.UnitsArguments(TAtlasIdeSettings.Current.UnitSearchFormCaptions), UnitsTimeoutMs);
+    mAnswer := ALive.RunCommand(cUnitsCommand,
+      TAtlasUnitSearch.UnitsArguments(TAtlasIdeSettings.Current.UnitSearchFormCaptions), cUnitsTimeoutMs);
   except
     on E: ELspClientError do
     begin
@@ -324,7 +324,7 @@ begin
     Exit;
   end;
   try
-    mAnswer := mLive.RunCommand(PreviewCommand, PreviewArguments(AEntry.FileName), PreviewTimeoutMs);
+    mAnswer := mLive.RunCommand(cPreviewCommand, PreviewArguments(AEntry.FileName), cPreviewTimeoutMs);
   except
     on E: ELspClientError do
     begin
@@ -341,13 +341,13 @@ end;
 class function TAtlasIdeUnitSearchActions.LoadUseInfo(ALive: TLspSession; const ATarget: string;
   out AInfo: TAtlasUseUnitInfo): Boolean;
 var
-  Answer: TJSONValue;
+  mAnswer: TJSONValue;
 begin
   AInfo := Default(TAtlasUseUnitInfo);
   SyncBuffer(ALive, ATarget);
   try
-    Answer := ALive.RunCommand(TAtlasUseUnit.Command, TAtlasUseUnit.Arguments(TLspSession.PathToUri(ATarget)),
-      CommandTimeoutMs);
+    mAnswer := ALive.RunCommand(TAtlasUseUnit.cCommand, TAtlasUseUnit.Arguments(TLspSession.PathToUri(ATarget)),
+      cCommandTimeoutMs);
   except
     on E: ELspClientError do
     begin
@@ -355,9 +355,9 @@ begin
     end;
   end;
   try
-    Result := (Answer <> nil) and TAtlasUseUnit.Parse(Answer.ToJSON, AInfo);
+    Result := (mAnswer <> nil) and TAtlasUseUnit.Parse(mAnswer.ToJSON, AInfo);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
@@ -379,7 +379,7 @@ begin
     mValues.Free;
   end;
   try
-    mAnswer := ALive.RunCommand(TestUnitCommand, mArguments, CommandTimeoutMs);
+    mAnswer := ALive.RunCommand(cTestUnitCommand, mArguments, cCommandTimeoutMs);
   except
     on E: ELspClientError do
     begin
@@ -426,14 +426,14 @@ end;
 /// <summary>Namen ohne Include-Dateien.</summary>
 function UsesNames(const AEntries: TArray<TAtlasUnitEntry>): TArray<string>;
 var
-  Entry: TAtlasUnitEntry;
+  mEntry: TAtlasUnitEntry;
 begin
   Result := nil;
-  for Entry in AEntries do
+  for mEntry in AEntries do
   begin
-    if Entry.Kind <> TAtlasUnitKind.Include then
+    if mEntry.Kind <> TAtlasUnitKind.Include then
     begin
-      Result := Result + [Entry.Name];
+      Result := Result + [mEntry.Name];
     end;
   end;
 end;
@@ -442,13 +442,13 @@ end;
 procedure RunAddUses(ALive: TLspSession; const AEntries: TArray<TAtlasUnitEntry>; const ATarget,
   AArguments: string);
 var
-  Answer, EditValue, AddedValue: TJSONValue;
-  Edit: TLspWorkspaceEdit;
-  Outcome: TAtlasWorkspaceEditResult;
-  Added: Integer;
+  mAnswer, mEditValue, mAddedValue: TJSONValue;
+  mEdit: TLspWorkspaceEdit;
+  mOutcome: TAtlasWorkspaceEditResult;
+  mAdded: Integer;
 begin
   try
-    Answer := ALive.RunCommand(AddUsesCommand, AArguments, CommandTimeoutMs);
+    mAnswer := ALive.RunCommand(cAddUsesCommand, AArguments, cCommandTimeoutMs);
   except
     on E: ELspClientError do
     begin
@@ -456,39 +456,39 @@ begin
       Exit;
     end;
   end;
-  Added := 0;
+  mAdded := 0;
   try
-    Edit := Default(TLspWorkspaceEdit);
-    if Answer is TJSONObject then
+    mEdit := Default(TLspWorkspaceEdit);
+    if mAnswer is TJSONObject then
     begin
-      EditValue := TJSONObject(Answer).GetValue('edit');
-      Edit := TLspWorkspaceEdit.FromJson(EditValue);
-      AddedValue := TJSONObject(Answer).GetValue('added');
-      if AddedValue is TJSONArray then
+      mEditValue := TJSONObject(mAnswer).GetValue('edit');
+      mEdit := TLspWorkspaceEdit.FromJson(mEditValue);
+      mAddedValue := TJSONObject(mAnswer).GetValue('added');
+      if mAddedValue is TJSONArray then
       begin
-        Added := TJSONArray(AddedValue).Count;
+        mAdded := TJSONArray(mAddedValue).Count;
       end;
     end;
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  if Edit.IsEmpty then
+  if mEdit.IsEmpty then
   begin
     TAtlasIdeUnitSearchActions.Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchUsesAdded,
       [0, ExtractFileName(ATarget)]));
     Exit;
   end;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit,
+  mOutcome := TAtlasIdeWorkspaceEdit.Apply(mEdit,
     TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
     TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchAddUses) + ': ' + UnitList(AEntries));
-  if Outcome.Error <> '' then
+  if mOutcome.Error <> '' then
   begin
-    TAtlasIdeUnitSearchActions.Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
+    TAtlasIdeUnitSearchActions.Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
   end
   else
   begin
     TAtlasIdeUnitSearchActions.Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchUsesAdded,
-      [Added, ExtractFileName(ATarget)]));
+      [mAdded, ExtractFileName(ATarget)]));
   end;
 end;
 
@@ -512,45 +512,45 @@ end;
 
 procedure AddUses(const AEntries: TArray<TAtlasUnitEntry>; const ATarget: string);
 var
-  Values, Names: TJSONArray;
-  Name, Arguments: string;
-  Live: TLspSession;
+  mValues, mNames: TJSONArray;
+  mName, mArguments: string;
+  mLive: TLspSession;
 begin
-  Live := AddUsesSession(ATarget);
-  if Live = nil then
+  mLive := AddUsesSession(ATarget);
+  if mLive = nil then
   begin
     Exit;
   end;
-  Values := TJSONArray.Create;
+  mValues := TJSONArray.Create;
   try
-    Values.Add(TLspSession.PathToUri(ATarget));
-    Names := TJSONArray.Create;
-    for Name in UsesNames(AEntries) do
+    mValues.Add(TLspSession.PathToUri(ATarget));
+    mNames := TJSONArray.Create;
+    for mName in UsesNames(AEntries) do
     begin
-      Names.Add(Name);
+      mNames.Add(mName);
     end;
-    Values.AddElement(Names);
-    Arguments := Values.ToJSON;
+    mValues.AddElement(mNames);
+    mArguments := mValues.ToJSON;
   finally
-    Values.Free;
+    mValues.Free;
   end;
-  RunAddUses(Live, AEntries, ATarget, Arguments);
+  RunAddUses(mLive, AEntries, ATarget, mArguments);
 end;
 
 class procedure TAtlasIdeUnitSearchActions.UseUnits(const AEntries: TArray<TAtlasUnitEntry>; const ATarget: string;
   ASection: TAtlasUseUnitSection);
 var
-  Live: TLspSession;
+  mLive: TLspSession;
 begin
   if Length(AEntries) = 0 then
   begin
     Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UseUnitNothing));
     Exit;
   end;
-  Live := AddUsesSession(ATarget);
-  if Live <> nil then
+  mLive := AddUsesSession(ATarget);
+  if mLive <> nil then
   begin
-    RunAddUses(Live, AEntries, ATarget, TAtlasUseUnit.AddUsesArguments(TLspSession.PathToUri(ATarget),
+    RunAddUses(mLive, AEntries, ATarget, TAtlasUseUnit.AddUsesArguments(TLspSession.PathToUri(ATarget),
       UsesNames(AEntries), ASection));
   end;
 end;
@@ -574,7 +574,7 @@ var
   mProject: string;
 begin
   // Die Open Tools API wählt keinen Knoten im Projektmanager aus: öffnen und das Projekt nennen.
-  TAtlasIdeUnitSearchActions.RunNamedAction(ProjectManagerActionName);
+  TAtlasIdeUnitSearchActions.RunNamedAction(cProjectManagerActionName);
   for mEntry in AEntries do
   begin
     mProject := string.Join(', ', mEntry.Projects);

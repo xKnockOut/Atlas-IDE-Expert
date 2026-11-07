@@ -45,7 +45,7 @@ type
     procedure AddArea(AKind: TAtlasUnitSearchHit; const ARect: TRect; AValue: Integer);
     procedure Text(const AText: string; ARect: TRect; AFormat: Cardinal);
     procedure SetColors(AFill, APen, AFont: TAtlasColor);
-    procedure DrawChip(var X: Integer; Y: Integer; const ACaption: string; AOn: Boolean; AValue: Integer;
+    procedure DrawChip(var AX: Integer; AY: Integer; const ACaption: string; AOn: Boolean; AValue: Integer;
       ARight: Integer);
     /// <summary>Umschalter Projekt / Ordner / Flach rechts im Kopf; Ergebnis: linker Rand.</summary>
     function DrawGroupingSwitch: Integer;
@@ -77,7 +77,7 @@ type
     /// </summary>
     procedure Paint(ACanvas: TCanvas; const AClient: TRect; const ACaption: string);
     /// <summary>Oberste Fläche an (X, Y) aus dem letzten Zeichnen.</summary>
-    function HitAt(X, Y: Integer; out AArea: TAtlasUnitSearchHitArea): Boolean;
+    function HitAt(AX, AY: Integer; out AArea: TAtlasUnitSearchHitArea): Boolean;
     property Fonts: TAtlasUnitSearchFonts read FFonts;
     property Colors: TAtlasColors read FColors;
   end;
@@ -282,14 +282,14 @@ begin
   FAreas.Add(mArea);
 end;
 
-function TAtlasUnitSearchPainter.HitAt(X, Y: Integer; out AArea: TAtlasUnitSearchHitArea): Boolean;
+function TAtlasUnitSearchPainter.HitAt(AX, AY: Integer; out AArea: TAtlasUnitSearchHitArea): Boolean;
 var
   mIndex: Integer;
 begin
   // Rückwärts: Häkchen und Chips liegen über Zeilen und Feld.
   for mIndex := FAreas.Count - 1 downto 0 do
   begin
-    if PtInRect(FAreas[mIndex].Rect, Point(X, Y)) then
+    if PtInRect(FAreas[mIndex].Rect, Point(AX, AY)) then
     begin
       AArea := FAreas[mIndex];
       Exit(True);
@@ -332,18 +332,18 @@ begin
   FCanvas.Brush.Style := bsSolid;
 end;
 
-procedure TAtlasUnitSearchPainter.DrawChip(var X: Integer; Y: Integer; const ACaption: string; AOn: Boolean;
+procedure TAtlasUnitSearchPainter.DrawChip(var AX: Integer; AY: Integer; const ACaption: string; AOn: Boolean;
   AValue: Integer; ARight: Integer);
 var
   mChip: TRect;
   mWidth: Integer;
 begin
   mWidth := FCanvas.TextWidth(ACaption) + S(16);
-  if X + mWidth > ARight then
+  if AX + mWidth > ARight then
   begin
     Exit;
   end;
-  mChip := Rect(X, Y, X + mWidth, Y + S(22));
+  mChip := Rect(AX, AY, AX + mWidth, AY + S(22));
   if AOn then
   begin
     SetColors(FColors.AccentSoft, FColors.Accent, FColors.Text);
@@ -357,7 +357,7 @@ begin
   Text(ACaption, mChip, cCentered);
   FCanvas.Brush.Style := bsSolid;
   AddArea(TAtlasUnitSearchHit.Chip, mChip, AValue);
-  X := mChip.Right + S(6);
+  AX := mChip.Right + S(6);
 end;
 
 function TAtlasUnitSearchPainter.DrawGroupingSwitch: Integer;
@@ -771,7 +771,8 @@ begin
   try
     SelectClipRgn(FCanvas.Handle, mClip);
     mRow := FirstVisibleRow(FData.List);
-    while (mRow <= High(FData.List.Rows)) and (mList.Top + FData.List.RowTops[mRow] - FData.List.Scroll < mList.Bottom) do
+    while (mRow <= High(FData.List.Rows)) and
+      (mList.Top + FData.List.RowTops[mRow] - FData.List.Scroll < mList.Bottom) do
     begin
       mRowRect := Rect(mList.Left + S(4), mList.Top + FData.List.RowTops[mRow] - FData.List.Scroll, mList.Right - S(10),
         mList.Top + FData.List.RowTops[mRow + 1] - FData.List.Scroll);

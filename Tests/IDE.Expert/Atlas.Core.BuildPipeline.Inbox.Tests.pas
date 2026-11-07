@@ -72,36 +72,36 @@ end;
 
 procedure TAtlasBuildInboxTests.ReadsRequest;
 var
-  Request: TAtlasBuildRequest;
-  Reason: string;
+  mRequest: TAtlasBuildRequest;
+  mReason: string;
 begin
   Assert.IsTrue(TAtlasBuildInbox.ParseRequest('{"project": "C:\\P\\App.dproj", "mode": "build", ' +
-    '"configuration": "Release", "platform": "Win64"}', Texts, Request, Reason), Reason);
-  Assert.AreEqual('C:\P\App.dproj', Request.Project);
-  Assert.AreEqual(Ord(TAtlasCompileKind.Build), Ord(Request.Kind));
-  Assert.AreEqual('Release', Request.Configuration);
-  Assert.AreEqual('Win64', Request.Platform);
+    '"configuration": "Release", "platform": "Win64"}', Texts, mRequest, mReason), mReason);
+  Assert.AreEqual('C:\P\App.dproj', mRequest.Project);
+  Assert.AreEqual(Ord(TAtlasCompileKind.Build), Ord(mRequest.Kind));
+  Assert.AreEqual('Release', mRequest.Configuration);
+  Assert.AreEqual('Win64', mRequest.Platform);
   // Ohne Art: make; Konfiguration und Plattform wie in der IDE.
-  Assert.IsTrue(TAtlasBuildInbox.ParseRequest('{"project": "C:\\P\\App.dproj"}', Texts, Request, Reason), Reason);
-  Assert.AreEqual(Ord(TAtlasCompileKind.Make), Ord(Request.Kind));
-  Assert.AreEqual('', Request.Configuration);
-  Assert.IsTrue(TAtlasBuildInbox.ParseRequest('{"project": "C:\\P\\App.dproj", "mode": "CHECK"}', Texts, Request,
-    Reason));
-  Assert.AreEqual(Ord(TAtlasCompileKind.Check), Ord(Request.Kind));
+  Assert.IsTrue(TAtlasBuildInbox.ParseRequest('{"project": "C:\\P\\App.dproj"}', Texts, mRequest, mReason), mReason);
+  Assert.AreEqual(Ord(TAtlasCompileKind.Make), Ord(mRequest.Kind));
+  Assert.AreEqual('', mRequest.Configuration);
+  Assert.IsTrue(TAtlasBuildInbox.ParseRequest('{"project": "C:\\P\\App.dproj", "mode": "CHECK"}', Texts, mRequest,
+    mReason));
+  Assert.AreEqual(Ord(TAtlasCompileKind.Check), Ord(mRequest.Kind));
 end;
 
 procedure TAtlasBuildInboxTests.RejectsBrokenRequests;
 var
-  Request: TAtlasBuildRequest;
-  Reason: string;
+  mRequest: TAtlasBuildRequest;
+  mReason: string;
 begin
-  Assert.IsFalse(TAtlasBuildInbox.ParseRequest('kaputt', Texts, Request, Reason));
-  Assert.AreEqual('unlesbar', Reason);
-  Assert.IsFalse(TAtlasBuildInbox.ParseRequest('{"mode": "make"}', Texts, Request, Reason));
-  Assert.AreEqual('ohne Projekt', Reason);
-  Assert.IsFalse(TAtlasBuildInbox.ParseRequest('{"project": "C:\\P\\App.dproj", "mode": "clean"}', Texts, Request,
-    Reason));
-  Assert.AreEqual('Art clean unbekannt', Reason);
+  Assert.IsFalse(TAtlasBuildInbox.ParseRequest('kaputt', Texts, mRequest, mReason));
+  Assert.AreEqual('unlesbar', mReason);
+  Assert.IsFalse(TAtlasBuildInbox.ParseRequest('{"mode": "make"}', Texts, mRequest, mReason));
+  Assert.AreEqual('ohne Projekt', mReason);
+  Assert.IsFalse(TAtlasBuildInbox.ParseRequest('{"project": "C:\\P\\App.dproj", "mode": "clean"}', Texts, mRequest,
+    mReason));
+  Assert.AreEqual('Art clean unbekannt', mReason);
 end;
 
 function Message(ASeverity: TAtlasCompilerSeverity; const ACode: string; ALine: Integer): TAtlasCompilerMessage;
@@ -117,82 +117,82 @@ end;
 
 procedure TAtlasBuildInboxTests.WritesBuildLikeTheServer;
 var
-  Report: TAtlasBuildReport;
-  Value: TJSONValue;
-  Build, First: TJSONObject;
-  Items: TJSONArray;
+  mReport: TAtlasBuildReport;
+  mValue: TJSONValue;
+  mBuild, mFirst: TJSONObject;
+  mItems: TJSONArray;
 begin
-  Report := Default(TAtlasBuildReport);
-  Report.Project.FileName := 'C:\P\App.dproj';
-  Report.Project.Kind := TAtlasCompileKind.Make;
-  Report.Project.Configuration := 'Debug';
-  Report.Project.Platform := 'Win32';
-  Report.Succeeded := False;
-  Report.DurationMs := 1200;
-  Report.FinishedAt := EncodeDate(2026, 10, 16) + EncodeTime(10, 0, 0, 0);
-  Report.Messages := [Message(TAtlasCompilerSeverity.Error, 'E2003', 12),
+  mReport := Default(TAtlasBuildReport);
+  mReport.Project.FileName := 'C:\P\App.dproj';
+  mReport.Project.Kind := TAtlasCompileKind.Make;
+  mReport.Project.Configuration := 'Debug';
+  mReport.Project.Platform := 'Win32';
+  mReport.Succeeded := False;
+  mReport.DurationMs := 1200;
+  mReport.FinishedAt := EncodeDate(2026, 10, 16) + EncodeTime(10, 0, 0, 0);
+  mReport.Messages := [Message(TAtlasCompilerSeverity.Error, 'E2003', 12),
     Message(TAtlasCompilerSeverity.Info, '', 0), Message(TAtlasCompilerSeverity.Warning, 'W1036', 20)];
-  Value := TJSONObject.ParseJSONValue(TAtlasBuildInbox.SuccessText(Report));
+  mValue := TJSONObject.ParseJSONValue(TAtlasBuildInbox.SuccessText(mReport));
   try
-    Assert.IsTrue(Value is TJSONObject);
-    Assert.IsTrue((TJSONObject(Value).GetValue('ok') as TJSONBool).AsBoolean);
-    Build := TJSONObject(Value).GetValue('build') as TJSONObject;
-    Assert.AreEqual('C:\P\App.dproj', Build.GetValue('project').Value);
-    Assert.AreEqual('make', Build.GetValue('kind').Value);
-    Assert.AreEqual('Debug', Build.GetValue('configuration').Value);
-    Assert.AreEqual('Win32', Build.GetValue('platform').Value);
-    Assert.IsFalse((Build.GetValue('success') as TJSONBool).AsBoolean);
-    Assert.AreEqual('1200', Build.GetValue('durationMs').Value);
-    Assert.IsTrue(Build.GetValue('finishedAt').Value.StartsWith('2026-10-16T10:00:00'), Build.GetValue('finishedAt').Value);
-    Assert.AreEqual('mcp', Build.GetValue('requestedBy').Value);
+    Assert.IsTrue(mValue is TJSONObject);
+    Assert.IsTrue((TJSONObject(mValue).GetValue('ok') as TJSONBool).AsBoolean);
+    mBuild := TJSONObject(mValue).GetValue('build') as TJSONObject;
+    Assert.AreEqual('C:\P\App.dproj', mBuild.GetValue('project').Value);
+    Assert.AreEqual('make', mBuild.GetValue('kind').Value);
+    Assert.AreEqual('Debug', mBuild.GetValue('configuration').Value);
+    Assert.AreEqual('Win32', mBuild.GetValue('platform').Value);
+    Assert.IsFalse((mBuild.GetValue('success') as TJSONBool).AsBoolean);
+    Assert.AreEqual('1200', mBuild.GetValue('durationMs').Value);
+    Assert.IsTrue(mBuild.GetValue('finishedAt').Value.StartsWith('2026-10-16T10:00:00'), mBuild.GetValue('finishedAt').Value);
+    Assert.AreEqual('mcp', mBuild.GetValue('requestedBy').Value);
     // Info-Meldungen bleiben weg; Zeilen und Spalten 1-basiert wie in der IDE.
-    Items := Build.GetValue('messages') as TJSONArray;
-    Assert.AreEqual(2, Integer(Items.Count));
-    First := Items.Items[0] as TJSONObject;
-    Assert.AreEqual('C:\P\Main.pas', First.GetValue('file').Value);
-    Assert.AreEqual('12', First.GetValue('line').Value);
-    Assert.AreEqual('3', First.GetValue('column').Value);
-    Assert.AreEqual('error', First.GetValue('severity').Value);
-    Assert.AreEqual('E2003', First.GetValue('code').Value);
-    Assert.AreEqual('warning', (Items.Items[1] as TJSONObject).GetValue('severity').Value);
+    mItems := mBuild.GetValue('messages') as TJSONArray;
+    Assert.AreEqual(2, Integer(mItems.Count));
+    mFirst := mItems.Items[0] as TJSONObject;
+    Assert.AreEqual('C:\P\Main.pas', mFirst.GetValue('file').Value);
+    Assert.AreEqual('12', mFirst.GetValue('line').Value);
+    Assert.AreEqual('3', mFirst.GetValue('column').Value);
+    Assert.AreEqual('error', mFirst.GetValue('severity').Value);
+    Assert.AreEqual('E2003', mFirst.GetValue('code').Value);
+    Assert.AreEqual('warning', (mItems.Items[1] as TJSONObject).GetValue('severity').Value);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 procedure TAtlasBuildInboxTests.WritesRefusal;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := TJSONObject.ParseJSONValue(TAtlasBuildInbox.RefusalText('In der IDE läuft der Debugger'));
+  mValue := TJSONObject.ParseJSONValue(TAtlasBuildInbox.RefusalText('In der IDE läuft der Debugger'));
   try
-    Assert.IsFalse((TJSONObject(Value).GetValue('ok') as TJSONBool).AsBoolean);
-    Assert.AreEqual('In der IDE läuft der Debugger', TJSONObject(Value).GetValue('reason').Value);
+    Assert.IsFalse((TJSONObject(mValue).GetValue('ok') as TJSONBool).AsBoolean);
+    Assert.AreEqual('In der IDE läuft der Debugger', TJSONObject(mValue).GetValue('reason').Value);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 procedure TAtlasBuildInboxTests.TakesAndAnswersOnce;
 var
-  Pending: TArray<string>;
-  Request: TAtlasBuildRequest;
-  Reason: string;
+  mPending: TArray<string>;
+  mRequest: TAtlasBuildRequest;
+  mReason: string;
 begin
   TFile.WriteAllText(TPath.Combine(FFolder, 'b.json'), '{"project": "C:\\P\\B.dproj"}', TEncoding.UTF8);
   TFile.WriteAllText(TPath.Combine(FFolder, 'a.json'), '{"project": "C:\\P\\A.dproj"}', TEncoding.UTF8);
   TFile.WriteAllText(TPath.Combine(FFolder, 'c.json.tmp'), '{}', TEncoding.UTF8);
   TFile.WriteAllText(TPath.Combine(FFolder, 'd.result.json'), '{}', TEncoding.UTF8);
-  Pending := TAtlasBuildInbox.Pending(FFolder);
-  Assert.AreEqual(2, Integer(Length(Pending)));
-  Assert.AreEqual('a.json', ExtractFileName(Pending[0]));
-  Assert.IsTrue(TAtlasBuildInbox.Take(Pending[0], Texts, Request, Reason), Reason);
-  Assert.AreEqual('a', Request.Id);
-  Assert.AreEqual('C:\P\A.dproj', Request.Project);
+  mPending := TAtlasBuildInbox.Pending(FFolder);
+  Assert.AreEqual(2, Integer(Length(mPending)));
+  Assert.AreEqual('a.json', ExtractFileName(mPending[0]));
+  Assert.IsTrue(TAtlasBuildInbox.Take(mPending[0], Texts, mRequest, mReason), mReason);
+  Assert.AreEqual('a', mRequest.Id);
+  Assert.AreEqual('C:\P\A.dproj', mRequest.Project);
   Assert.IsTrue(TFile.Exists(TPath.Combine(FFolder, 'a.taken')));
   // Wer das Umbenennen verliert, hat den Auftrag nicht.
-  Assert.IsFalse(TAtlasBuildInbox.Take(Pending[0], Texts, Request, Reason));
-  Assert.AreEqual('', Reason);
+  Assert.IsFalse(TAtlasBuildInbox.Take(mPending[0], Texts, mRequest, mReason));
+  Assert.AreEqual('', mReason);
   TAtlasBuildInbox.Answer(FFolder, 'a', TAtlasBuildInbox.RefusalText('nein'));
   Assert.IsTrue(TFile.Exists(TPath.Combine(FFolder, 'a.result.json')));
   Assert.IsFalse(TFile.Exists(TPath.Combine(FFolder, 'a.taken')), 'übernommener Auftrag gelöscht');
@@ -201,18 +201,18 @@ end;
 
 procedure TAtlasBuildInboxTests.AnswersUnreadableRequest;
 var
-  Request: TAtlasBuildRequest;
-  Reason: string;
-  Answer: TJSONValue;
+  mRequest: TAtlasBuildRequest;
+  mReason: string;
+  mAnswer: TJSONValue;
 begin
   TFile.WriteAllText(TPath.Combine(FFolder, 'x.json'), 'kaputt', TEncoding.UTF8);
-  Assert.IsFalse(TAtlasBuildInbox.Take(TPath.Combine(FFolder, 'x.json'), Texts, Request, Reason));
-  Assert.IsNotEmpty(Reason);
-  Answer := TJSONObject.ParseJSONValue(TFile.ReadAllText(TPath.Combine(FFolder, 'x.result.json'), TEncoding.UTF8));
+  Assert.IsFalse(TAtlasBuildInbox.Take(TPath.Combine(FFolder, 'x.json'), Texts, mRequest, mReason));
+  Assert.IsNotEmpty(mReason);
+  mAnswer := TJSONObject.ParseJSONValue(TFile.ReadAllText(TPath.Combine(FFolder, 'x.result.json'), TEncoding.UTF8));
   try
-    Assert.IsFalse((TJSONObject(Answer).GetValue('ok') as TJSONBool).AsBoolean);
+    Assert.IsFalse((TJSONObject(mAnswer).GetValue('ok') as TJSONBool).AsBoolean);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 

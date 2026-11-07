@@ -24,7 +24,7 @@ uses
 type
   TAtlasIdeBuildSummary = class
   public const
-    MessageGroup = 'Atlas';
+    cMessageGroup = 'Atlas';
   public
     /// <summary>Kopfzeile der Zusammenfassung.</summary>
     class function Headline(const AProject: string; const AVerdict: TAtlasBuildVerdict): string; static;
@@ -42,26 +42,26 @@ uses
 
 class function TAtlasIdeBuildSummary.Headline(const AProject: string; const AVerdict: TAtlasBuildVerdict): string;
 var
-  Name, Counts: string;
+  mName, mCounts: string;
 begin
-  Name := ChangeFileExt(ExtractFileName(AProject), '');
-  Counts := TAtlasStrings.BuildCounts(AVerdict.Warnings, AVerdict.Hints);
+  mName := ChangeFileExt(ExtractFileName(AProject), '');
+  mCounts := TAtlasStrings.BuildCounts(AVerdict.Warnings, AVerdict.Hints);
   case AVerdict.Reason of
     TAtlasBuildVerdictReason.CompilerFailed:
-      Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryFailed, [Name, AVerdict.Errors]);
+      Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryFailed, [mName, AVerdict.Errors]);
     TAtlasBuildVerdictReason.WarningsAsErrors:
       Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryRejectedCodes,
-        [Name, Counts, AVerdict.PromotedCode]);
+        [mName, mCounts, AVerdict.PromotedCode]);
     TAtlasBuildVerdictReason.ZeroHints:
-      Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryRejected, [Name, Counts]);
+      Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryRejected, [mName, mCounts]);
   else
-    if Counts = '' then
+    if mCounts = '' then
     begin
-      Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryClean, [Name]);
+      Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryClean, [mName]);
     end
     else
     begin
-      Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryCounts, [Name, Counts]);
+      Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryCounts, [mName, mCounts]);
     end;
   end;
   if AVerdict.Baselined > 0 then
@@ -74,45 +74,45 @@ end;
 class procedure TAtlasIdeBuildSummary.Report(const AMessages: TArray<TAtlasCompilerMessage>;
   const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict; ASummary: Boolean);
 var
-  Messages: IOTAMessageServices;
-  Group: IOTAMessageGroup;
-  LineRef: Pointer;
-  Target: TAtlasCompilerMessage;
-  Rejected: Boolean;
-  Text: string;
+  mMessages: IOTAMessageServices;
+  mGroup: IOTAMessageGroup;
+  mLineRef: Pointer;
+  mTarget: TAtlasCompilerMessage;
+  mRejected: Boolean;
+  mText: string;
 begin
-  Rejected := (AVerdict.Reason = TAtlasBuildVerdictReason.WarningsAsErrors) or
+  mRejected := (AVerdict.Reason = TAtlasBuildVerdictReason.WarningsAsErrors) or
     (AVerdict.Reason = TAtlasBuildVerdictReason.ZeroHints);
-  if not (ASummary or Rejected) then
+  if not (ASummary or mRejected) then
   begin
     Exit;
   end;
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     Exit;
   end;
   // Gruppe nicht dauerhaft halten (Hinweis in ToolsAPI); bei Bedarf neu anlegen.
-  Group := Messages.GetGroup(MessageGroup);
-  if Group = nil then
+  mGroup := mMessages.GetGroup(cMessageGroup);
+  if mGroup = nil then
   begin
-    Group := Messages.AddMessageGroup(MessageGroup);
+    mGroup := mMessages.AddMessageGroup(cMessageGroup);
   end;
-  Messages.AddTitleMessage(Headline(AProject.FileName, AVerdict), Group);
+  mMessages.AddTitleMessage(Headline(AProject.FileName, AVerdict), mGroup);
   if (AVerdict.First >= 0) and (AVerdict.First <= High(AMessages)) then
   begin
-    Target := AMessages[AVerdict.First];
-    Text := Target.Text;
-    if Target.Code <> '' then
+    mTarget := AMessages[AVerdict.First];
+    mText := mTarget.Text;
+    if mTarget.Code <> '' then
     begin
-      Text := Target.Code + ' ' + Text;
+      mText := mTarget.Code + ' ' + mText;
     end;
-    Messages.AddToolMessage(Target.FileName, Text, TAtlasCompilerMessages.SeverityText(Target.Severity),
-      Target.Line, Target.Column, nil, LineRef, Group);
+    mMessages.AddToolMessage(mTarget.FileName, mText, TAtlasCompilerMessages.SeverityText(mTarget.Severity),
+      mTarget.Line, mTarget.Column, nil, mLineRef, mGroup);
   end;
   // Nur ein Build, den Atlas anders bewertet als der Compiler, holt die Gruppe nach vorn.
-  if Rejected then
+  if mRejected then
   begin
-    Messages.ShowMessageView(Group);
+    mMessages.ShowMessageView(mGroup);
   end;
 end;
 

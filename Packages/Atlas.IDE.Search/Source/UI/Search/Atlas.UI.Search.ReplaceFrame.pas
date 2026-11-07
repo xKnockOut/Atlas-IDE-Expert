@@ -78,14 +78,14 @@ uses
 {$R *.dfm}
 
 const
-  CheckOn = '☑';
-  CheckOff = '☐';
-  CheckWidth = 32;
-  ReplaceWidth = 170;
+  cCheckOn = '☑';
+  cCheckOff = '☐';
+  cCheckWidth = 32;
+  cReplaceWidth = 170;
 
 constructor TAtlasSearchReplaceFrame.Create(AOwner: TComponent);
 var
-  Column: TListColumn;
+  mColumn: TListColumn;
 begin
   inherited Create(AOwner);
   FTitle := TLabel.Create(Self);
@@ -107,7 +107,7 @@ begin
   FReplace.Parent := FBar;
   FReplace.Align := alRight;
   FReplace.AlignWithMargins := True;
-  FReplace.Width := ReplaceWidth;
+  FReplace.Width := cReplaceWidth;
   FReplace.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceSelectedButton);
   FReplace.OnClick := ReplaceClick;
   // Höhe aus dem Knopf: ChangeScale skaliert beide gleich.
@@ -133,18 +133,18 @@ begin
   FList.OnMouseDown := ListMouseDown;
   FList.OnDblClick := ListDblClick;
   FList.OnKeyDown := ListKeyDown;
-  Column := FList.Columns.Add;
-  Column.Caption := '';
-  Column.Width := CheckWidth;
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceColumnPlace);
-  Column.Width := 220;
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceColumnText);
-  Column.Width := 360;
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceColumnPreview);
-  Column.Width := 300;
+  mColumn := FList.Columns.Add;
+  mColumn.Caption := '';
+  mColumn.Width := cCheckWidth;
+  mColumn := FList.Columns.Add;
+  mColumn.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceColumnPlace);
+  mColumn.Width := 220;
+  mColumn := FList.Columns.Add;
+  mColumn.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceColumnText);
+  mColumn.Width := 360;
+  mColumn := FList.Columns.Add;
+  mColumn.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceColumnPreview);
+  mColumn.Width := 300;
   UpdateTitle;
 end;
 
@@ -168,7 +168,7 @@ end;
 
 procedure TAtlasSearchReplaceFrame.UpdateTitle;
 var
-  Files: Integer;
+  mFiles: Integer;
 begin
   if FModel = nil then
   begin
@@ -176,42 +176,42 @@ begin
     FReplace.Enabled := False;
     Exit;
   end;
-  Files := Length(FModel.Results);
+  mFiles := Length(FModel.Results);
   FTitle.Caption := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchReplaceListTitle,
     [FModel.Query.Text, FModel.Replace,
-    FModel.CheckedCount, FModel.HitCount, Files]);
+    FModel.CheckedCount, FModel.HitCount, mFiles]);
   FReplace.Enabled := FModel.CheckedCount > 0;
 end;
 
 procedure TAtlasSearchReplaceFrame.ListData(Sender: TObject; Item: TListItem);
 var
-  Row: TAtlasReplaceRow;
-  Check: string;
+  mRow: TAtlasReplaceRow;
+  mCheck: string;
 begin
   if (Item.Index < 0) or (Item.Index > High(FRows)) then
   begin
     Exit;
   end;
-  Row := FRows[Item.Index];
-  Check := CheckOff;
-  if Row.Checked then
+  mRow := FRows[Item.Index];
+  mCheck := cCheckOff;
+  if mRow.Checked then
   begin
-    Check := CheckOn;
+    mCheck := cCheckOn;
   end;
-  if Row.Kind = TAtlasReplaceRowKind.FileRow then
+  if mRow.Kind = TAtlasReplaceRowKind.FileRow then
   begin
-    Item.Caption := Check;
-    Item.SubItems.Add(Row.Text);
-    Item.SubItems.Add(ExtractFileDir(Row.FileName));
+    Item.Caption := mCheck;
+    Item.SubItems.Add(mRow.Text);
+    Item.SubItems.Add(ExtractFileDir(mRow.FileName));
     Item.SubItems.Add('');
   end
   else
   begin
     // Treffer eingerückt unter ihrer Datei.
-    Item.Caption := '   ' + Check;
-    Item.SubItems.Add('   ' + TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchReplaceLine, [Row.Line]));
-    Item.SubItems.Add(Row.Text);
-    Item.SubItems.Add(Row.Preview);
+    Item.Caption := '   ' + mCheck;
+    Item.SubItems.Add('   ' + TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchReplaceLine, [mRow.Line]));
+    Item.SubItems.Add(mRow.Text);
+    Item.SubItems.Add(mRow.Preview);
   end;
 end;
 
@@ -222,20 +222,20 @@ end;
 
 procedure TAtlasSearchReplaceFrame.Toggle(AIndex: Integer);
 var
-  Row: TAtlasReplaceRow;
+  mRow: TAtlasReplaceRow;
 begin
   if (FModel = nil) or (AIndex < 0) or (AIndex > High(FRows)) then
   begin
     Exit;
   end;
-  Row := FRows[AIndex];
-  if Row.Kind = TAtlasReplaceRowKind.FileRow then
+  mRow := FRows[AIndex];
+  if mRow.Kind = TAtlasReplaceRowKind.FileRow then
   begin
-    FModel.SetFileChecked(Row.FileIndex, not Row.Checked);
+    FModel.SetFileChecked(mRow.FileIndex, not mRow.Checked);
   end
   else
   begin
-    FModel.SetHitChecked(Row.FileIndex, Row.HitIndex, not Row.Checked);
+    FModel.SetHitChecked(mRow.FileIndex, mRow.HitIndex, not mRow.Checked);
   end;
   // Zeilen neu aus dem Modell: Die Kopfzeile folgt ihren Treffern und umgekehrt.
   FRows := FModel.Rows;
@@ -245,40 +245,40 @@ end;
 
 procedure TAtlasSearchReplaceFrame.Open(AIndex: Integer);
 var
-  Row: TAtlasReplaceRow;
-  Hit: Integer;
+  mRow: TAtlasReplaceRow;
+  mHit: Integer;
 begin
   if (FModel = nil) or (AIndex < 0) or (AIndex > High(FRows)) or not Assigned(FOnOpen) then
   begin
     Exit;
   end;
-  Row := FRows[AIndex];
-  Hit := Row.HitIndex;
-  if Hit < 0 then
+  mRow := FRows[AIndex];
+  mHit := mRow.HitIndex;
+  if mHit < 0 then
   begin
-    Hit := 0;
+    mHit := 0;
   end;
-  if (Row.FileIndex > High(FModel.Results)) or (Hit > High(FModel.Results[Row.FileIndex].Hits)) then
+  if (mRow.FileIndex > High(FModel.Results)) or (mHit > High(FModel.Results[mRow.FileIndex].Hits)) then
   begin
     Exit;
   end;
-  FOnOpen(Row.FileName, FModel.Results[Row.FileIndex].Hits[Hit].Line,
-    FModel.Results[Row.FileIndex].Hits[Hit].Character);
+  FOnOpen(mRow.FileName, FModel.Results[mRow.FileIndex].Hits[mHit].Line,
+    FModel.Results[mRow.FileIndex].Hits[mHit].Character);
 end;
 
 procedure TAtlasSearchReplaceFrame.ListMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
   X, Y: Integer);
 var
-  Item: TListItem;
+  mItem: TListItem;
 begin
   if (Button <> mbLeft) or (X >= FList.Columns[0].Width) or (ssDouble in Shift) then
   begin
     Exit;
   end;
-  Item := FList.GetItemAt(X, Y);
-  if Item <> nil then
+  mItem := FList.GetItemAt(X, Y);
+  if mItem <> nil then
   begin
-    Toggle(Item.Index);
+    Toggle(mItem.Index);
   end;
 end;
 

@@ -20,7 +20,7 @@
 //   (source "dcc", der ist vom vorigen Build und gleich überholt). Ein
 //   Regeltreffer mit Schweregrad Warnung blockiert nie.
 // - warn meldet und lässt den Compile laufen, block bricht ab. Ein zweiter
-//   Compile mit denselben Treffern und unveränderten Units binnen OverrideMs
+//   Compile mit denselben Treffern und unveränderten Units binnen cOverrideMs
 //   läuft trotzdem (bewusst übergehen, wie beim Release-Wächter #533).
 // - Zeitlimit build.gateTimeoutMs für die ganze Prüfung: Jede Unit bekommt nur
 //   die verbleibende Zeit; reicht sie nicht, läuft der Compile ungehindert, und
@@ -89,10 +89,10 @@ type
   TAtlasBuildGateCheck = class
   public const
     /// <summary>Zweiter Compile mit denselben Treffern in dieser Zeit läuft trotz block.</summary>
-    OverrideMs = TAtlasReleaseGuard.OverrideMs;
-    DefaultTimeoutMs = TAtlasBuildPipelineSettings.GateDefaultTimeoutMs;
-    MinTimeoutMs = TAtlasBuildPipelineSettings.GateMinTimeoutMs;
-    MaxTimeoutMs = TAtlasBuildPipelineSettings.GateMaxTimeoutMs;
+    cOverrideMs = TAtlasReleaseGuard.cOverrideMs;
+    cDefaultTimeoutMs = TAtlasBuildPipelineSettings.GateDefaultTimeoutMs;
+    cMinTimeoutMs = TAtlasBuildPipelineSettings.GateMinTimeoutMs;
+    cMaxTimeoutMs = TAtlasBuildPipelineSettings.GateMaxTimeoutMs;
   public
     /// <summary>Prüft Atlas diesen Lauf? Gate nicht off, make oder build, vom Benutzer, keine Hintergrundprüfung.
     /// </summary>
@@ -169,7 +169,7 @@ uses
 class function TAtlasGateSettings.Create(const AGate: string; ATimeoutMs: Integer): TAtlasGateSettings;
 begin
   Result.Gate := TAtlasBuildPipelineSettings.GateOf(AGate);
-  Result.TimeoutMs := EnsureRange(ATimeoutMs, TAtlasBuildGateCheck.MinTimeoutMs, TAtlasBuildGateCheck.MaxTimeoutMs);
+  Result.TimeoutMs := EnsureRange(ATimeoutMs, TAtlasBuildGateCheck.cMinTimeoutMs, TAtlasBuildGateCheck.cMaxTimeoutMs);
 end;
 
 { TAtlasBuildGateCheck }
@@ -184,26 +184,26 @@ end;
 class function TAtlasBuildGateCheck.Changed(const AUnits: TAtlasGateUnits;
   const ARemembered: TDictionary<string, string>; AOutputTime: TDateTime): TArray<string>;
 var
-  Item: TAtlasGateUnit;
-  Stamp: string;
+  mItem: TAtlasGateUnit;
+  mStamp: string;
 begin
   Result := nil;
-  for Item in AUnits do
+  for mItem in AUnits do
   begin
-    if Item.FileName = '' then
+    if mItem.FileName = '' then
     begin
       Continue;
     end;
-    if (ARemembered <> nil) and ARemembered.TryGetValue(UpperCase(Item.FileName), Stamp) then
+    if (ARemembered <> nil) and ARemembered.TryGetValue(UpperCase(mItem.FileName), mStamp) then
     begin
-      if Stamp <> Item.Stamp then
+      if mStamp <> mItem.Stamp then
       begin
-        Result := Result + [Item.FileName];
+        Result := Result + [mItem.FileName];
       end;
     end
-    else if (AOutputTime = 0) or (Item.ModifiedAt = 0) or (Item.ModifiedAt > AOutputTime) then
+    else if (AOutputTime = 0) or (mItem.ModifiedAt = 0) or (mItem.ModifiedAt > AOutputTime) then
     begin
-      Result := Result + [Item.FileName];
+      Result := Result + [mItem.FileName];
     end;
   end;
 end;
@@ -217,17 +217,17 @@ end;
 class function TAtlasBuildGateCheck.Key(const AProject: string; const AStamps: TArray<string>;
   const AFindings: TAtlasGateFindings): string;
 var
-  Parts: TArray<string>;
-  Finding: TAtlasGateFinding;
+  mParts: TArray<string>;
+  mFinding: TAtlasGateFinding;
 begin
-  Parts := nil;
-  for Finding in AFindings do
+  mParts := nil;
+  for mFinding in AFindings do
   begin
-    Parts := Parts + [Format('%s:%d:%d:%s', [UpperCase(Finding.FileName), Finding.Problem.StartLine,
-      Finding.Problem.StartCharacter, Finding.Problem.Code])];
+    mParts := mParts + [Format('%s:%d:%d:%s', [UpperCase(mFinding.FileName), mFinding.Problem.StartLine,
+      mFinding.Problem.StartCharacter, mFinding.Problem.Code])];
   end;
-  TArray.Sort<string>(Parts);
-  Result := UpperCase(AProject) + '|' + string.Join(';', AStamps) + '|' + string.Join(';', Parts);
+  TArray.Sort<string>(mParts);
+  Result := UpperCase(AProject) + '|' + string.Join(';', AStamps) + '|' + string.Join(';', mParts);
 end;
 
 { TAtlasBuildGateParticipant }
@@ -287,46 +287,46 @@ end;
 
 function TAtlasBuildGateParticipant.RememberedStamp(const AProject, AFileName: string): string;
 var
-  Stamps: TDictionary<string, string>;
+  mStamps: TDictionary<string, string>;
 begin
   Result := '';
-  Stamps := RememberedOf(AProject);
-  if Stamps <> nil then
+  mStamps := RememberedOf(AProject);
+  if mStamps <> nil then
   begin
-    Stamps.TryGetValue(UpperCase(AFileName), Result);
+    mStamps.TryGetValue(UpperCase(AFileName), Result);
   end;
 end;
 
 /// <summary>Stand vormerken: Gelingt der Compile, gilt er als letzter erfolgreicher.</summary>
 procedure TAtlasBuildGateParticipant.RememberPending(const AFileName: string; const AUnits: TAtlasGateUnits);
 var
-  Pending: TPending;
-  Index: Integer;
+  mPending: TPending;
+  mIndex: Integer;
 begin
-  Pending.Project := AFileName;
-  Pending.Units := AUnits;
-  Index := PendingIndex(AFileName);
-  if Index >= 0 then
+  mPending.Project := AFileName;
+  mPending.Units := AUnits;
+  mIndex := PendingIndex(AFileName);
+  if mIndex >= 0 then
   begin
-    FPending[Index] := Pending;
+    FPending[mIndex] := mPending;
   end
   else
   begin
-    FPending.Add(Pending);
+    FPending.Add(mPending);
   end;
 end;
 
 /// <summary>Stände der Unit AFileName in AUnits.</summary>
 function UnitStamps(const AUnits: TAtlasGateUnits; const AFileName: string): TArray<string>;
 var
-  Item: TAtlasGateUnit;
+  mItem: TAtlasGateUnit;
 begin
   Result := nil;
-  for Item in AUnits do
+  for mItem in AUnits do
   begin
-    if SameText(Item.FileName, AFileName) then
+    if SameText(mItem.FileName, AFileName) then
     begin
-      Result := Result + [Item.Stamp];
+      Result := Result + [mItem.Stamp];
     end;
   end;
 end;
@@ -334,17 +334,17 @@ end;
 /// <summary>Probleme der Unit AFileName, die für das Gate zählen.</summary>
 function CountedFindings(const AFileName: string; const AProblems: TArray<TAtlasProblem>): TAtlasGateFindings;
 var
-  Problem: TAtlasProblem;
-  Finding: TAtlasGateFinding;
+  mProblem: TAtlasProblem;
+  mFinding: TAtlasGateFinding;
 begin
   Result := nil;
-  for Problem in AProblems do
+  for mProblem in AProblems do
   begin
-    if TAtlasBuildGateCheck.Counts(Problem) then
+    if TAtlasBuildGateCheck.Counts(mProblem) then
     begin
-      Finding.FileName := AFileName;
-      Finding.Problem := Problem;
-      Result := Result + [Finding];
+      mFinding.FileName := AFileName;
+      mFinding.Problem := mProblem;
+      Result := Result + [mFinding];
     end;
   end;
 end;
@@ -352,24 +352,24 @@ end;
 function TAtlasBuildGateParticipant.RunChecks(const ASettings: TAtlasGateSettings; const AChanged: TArray<string>;
   const AUnits: TAtlasGateUnits): TGateRun;
 var
-  Started, Remaining: Int64;
-  FileName: string;
-  Problems: TArray<TAtlasProblem>;
+  mStarted, mRemaining: Int64;
+  mFileName: string;
+  mProblems: TArray<TAtlasProblem>;
 begin
   Result := Default(TGateRun);
-  Started := Now_;
-  for FileName in AChanged do
+  mStarted := Now_;
+  for mFileName in AChanged do
   begin
-    Remaining := ASettings.TimeoutMs - (Now_ - Started);
-    if (Remaining <= 0) or not FCheck(FileName, Integer(Remaining), Problems) or
-      (Now_ - Started > ASettings.TimeoutMs) then
+    mRemaining := ASettings.TimeoutMs - (Now_ - mStarted);
+    if (mRemaining <= 0) or not FCheck(mFileName, Integer(mRemaining), mProblems) or
+      (Now_ - mStarted > ASettings.TimeoutMs) then
     begin
       Result.TimedOut := True;
       Break;
     end;
     Inc(Result.Checked);
-    Result.Stamps := Result.Stamps + UnitStamps(AUnits, FileName);
-    Result.Findings := Result.Findings + CountedFindings(FileName, Problems);
+    Result.Stamps := Result.Stamps + UnitStamps(AUnits, mFileName);
+    Result.Findings := Result.Findings + CountedFindings(mFileName, mProblems);
   end;
 end;
 
@@ -377,7 +377,7 @@ end;
 function TAtlasBuildGateParticipant.Decide(const AProject: string; const ASettings: TAtlasGateSettings;
   var ARun: TGateRun): Boolean;
 var
-  CurrentKey: string;
+  mCurrentKey: string;
 begin
   Result := True;
   if ARun.TimedOut then
@@ -398,8 +398,8 @@ begin
   end
   else
   begin
-    CurrentKey := TAtlasBuildGateCheck.Key(AProject, ARun.Stamps, ARun.Findings);
-    if (CurrentKey = FBlockedKey) and (Now_ - FBlockedAt <= TAtlasBuildGateCheck.OverrideMs) then
+    mCurrentKey := TAtlasBuildGateCheck.Key(AProject, ARun.Stamps, ARun.Findings);
+    if (mCurrentKey = FBlockedKey) and (Now_ - FBlockedAt <= TAtlasBuildGateCheck.cOverrideMs) then
     begin
       ARun.Outcome := TAtlasGateOutcome.Overridden;
       FBlockedKey := '';
@@ -407,7 +407,7 @@ begin
     else
     begin
       ARun.Outcome := TAtlasGateOutcome.Blocked;
-      FBlockedKey := CurrentKey;
+      FBlockedKey := mCurrentKey;
       FBlockedAt := Now_;
     end;
   end;
@@ -416,79 +416,79 @@ end;
 function TAtlasBuildGateParticipant.CancelCompile(const AProject: TAtlasCompileProject;
   out AReason: string): Boolean;
 var
-  Settings: TAtlasGateSettings;
-  Units: TAtlasGateUnits;
-  OutputTime: TDateTime;
-  Changed: TArray<string>;
-  Run: TGateRun;
-  Reason: string;
+  mSettings: TAtlasGateSettings;
+  mUnits: TAtlasGateUnits;
+  mOutputTime: TDateTime;
+  mChanged: TArray<string>;
+  mRun: TGateRun;
+  mReason: string;
 begin
   AReason := '';
   Result := False;
-  Settings := FSettings();
-  if not TAtlasBuildGateCheck.Applies(Settings, AProject) or not FUnits(AProject, Units, OutputTime) then
+  mSettings := FSettings();
+  if not TAtlasBuildGateCheck.Applies(mSettings, AProject) or not FUnits(AProject, mUnits, mOutputTime) then
   begin
     Exit;
   end;
-  RememberPending(AProject.FileName, Units);
-  Changed := TAtlasBuildGateCheck.Changed(Units, RememberedOf(AProject.FileName), OutputTime);
-  if Length(Changed) = 0 then
+  RememberPending(AProject.FileName, mUnits);
+  mChanged := TAtlasBuildGateCheck.Changed(mUnits, RememberedOf(AProject.FileName), mOutputTime);
+  if Length(mChanged) = 0 then
   begin
     Exit;
   end;
-  Run := RunChecks(Settings, Changed, Units);
-  if not Decide(AProject.FileName, Settings, Run) then
+  mRun := RunChecks(mSettings, mChanged, mUnits);
+  if not Decide(AProject.FileName, mSettings, mRun) then
   begin
     Exit;
   end;
-  Reason := FReport(AProject, Run.Findings, Run.Checked, Run.Outcome, Run.NotifyTimeout);
-  if Run.Outcome = TAtlasGateOutcome.Blocked then
+  mReason := FReport(AProject, mRun.Findings, mRun.Checked, mRun.Outcome, mRun.NotifyTimeout);
+  if mRun.Outcome = TAtlasGateOutcome.Blocked then
   begin
-    AReason := Reason;
+    AReason := mReason;
     Result := True;
   end;
 end;
 
 procedure TAtlasBuildGateParticipant.CompileCancelled(const AProject: TAtlasCompileProject; const AReason: string);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // Abgebrochen (von uns oder einem anderen Teilnehmer): der vorgemerkte Stand gilt nicht.
-  Index := PendingIndex(AProject.FileName);
-  if Index >= 0 then
+  mIndex := PendingIndex(AProject.FileName);
+  if mIndex >= 0 then
   begin
-    FPending.Delete(Index);
+    FPending.Delete(mIndex);
   end;
 end;
 
 procedure TAtlasBuildGateParticipant.ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean;
   ADurationMs: Int64);
 var
-  Index: Integer;
-  Pending: TPending;
-  Stamps: TDictionary<string, string>;
-  Item: TAtlasGateUnit;
+  mIndex: Integer;
+  mPending: TPending;
+  mStamps: TDictionary<string, string>;
+  mItem: TAtlasGateUnit;
 begin
-  Index := PendingIndex(AProject.FileName);
-  if Index < 0 then
+  mIndex := PendingIndex(AProject.FileName);
+  if mIndex < 0 then
   begin
     Exit;
   end;
-  Pending := FPending[Index];
-  FPending.Delete(Index);
+  mPending := FPending[mIndex];
+  FPending.Delete(mIndex);
   if not ASucceeded then
   begin
     Exit;
   end;
-  Stamps := TDictionary<string, string>.Create;
-  for Item in Pending.Units do
+  mStamps := TDictionary<string, string>.Create;
+  for mItem in mPending.Units do
   begin
-    if Item.FileName <> '' then
+    if mItem.FileName <> '' then
     begin
-      Stamps.AddOrSetValue(UpperCase(Item.FileName), Item.Stamp);
+      mStamps.AddOrSetValue(UpperCase(mItem.FileName), mItem.Stamp);
     end;
   end;
-  FRemembered.AddOrSetValue(UpperCase(Pending.Project), Stamps);
+  FRemembered.AddOrSetValue(UpperCase(mPending.Project), mStamps);
 end;
 
 end.

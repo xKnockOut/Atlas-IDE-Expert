@@ -122,7 +122,8 @@ begin
     Exit;
   end;
   // Ungültige Einträge fallen weg; gespeichert wird die einheitliche Form „W1035, H2164“.
-  AValues.WriteString(cWarningsAsErrorsKey, TAtlasBuildVerdicts.NormalizeCodes(AValues.ReadString(cWarningsAsErrorsKey)));
+  AValues.WriteString(cWarningsAsErrorsKey,
+    TAtlasBuildVerdicts.NormalizeCodes(AValues.ReadString(cWarningsAsErrorsKey)));
 end;
 
 procedure TAtlasBuildPipelineCompilerSection.Close;
@@ -160,7 +161,8 @@ var
 begin
   Switch('build.releaseGuard', TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsReleaseGuard));
   // build.gate steht beim Compiler (#529) und gilt auch hier.
-  FConfigs := Line(cReleaseConfigsKey, TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsReleaseConfigs));
+  FConfigs := Line(cReleaseConfigsKey,
+    TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsReleaseConfigs));
   Title(TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsReleaseChecksTitle));
   for mCheck := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
   begin
@@ -192,7 +194,8 @@ begin
   Result := FCheckChoices[ACheck];
 end;
 
-procedure TAtlasBuildPipelineReleaseSection.LoadCheck(ACheck: TAtlasReleaseCheck; const AItem: TAtlasReleaseCheckSetting);
+procedure TAtlasBuildPipelineReleaseSection.LoadCheck(ACheck: TAtlasReleaseCheck;
+  const AItem: TAtlasReleaseCheckSetting);
 begin
   if FCheckBoxes[ACheck] <> nil then
   begin

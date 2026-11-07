@@ -110,14 +110,14 @@ end;
 
 class function TAtlasFileSearch.IsSearchable(const AFileName: string): Boolean;
 const
-  Extensions: array[0..5] of string = ('.pas', '.dpr', '.dpk', '.inc', '.dfm', '.fmx');
+  cExtensions: array[0..5] of string = ('.pas', '.dpr', '.dpk', '.inc', '.dfm', '.fmx');
 var
-  Extension, Known: string;
+  mExtension, mKnown: string;
 begin
-  Extension := LowerCase(ExtractFileExt(AFileName));
-  for Known in Extensions do
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  for mKnown in cExtensions do
   begin
-    if Extension = Known then
+    if mExtension = mKnown then
     begin
       Exit(True);
     end;
@@ -270,25 +270,25 @@ end;
 
 class function TAtlasFileSearch.HitCount(const AResults: TArray<TAtlasFileHits>): Integer;
 var
-  Item: TAtlasFileHits;
+  mItem: TAtlasFileHits;
 begin
   Result := 0;
-  for Item in AResults do
+  for mItem in AResults do
   begin
-    Inc(Result, Length(Item.Hits));
+    Inc(Result, Length(mItem.Hits));
   end;
 end;
 
 class function TAtlasFileSearch.IndexOfFile(const AResults: TArray<TAtlasFileHits>;
   const AFileName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(AResults) do
+  for mIndex := 0 to High(AResults) do
   begin
-    if SameText(AResults[Index].FileName, AFileName) then
+    if SameText(AResults[mIndex].FileName, AFileName) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
