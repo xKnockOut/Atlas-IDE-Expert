@@ -85,13 +85,13 @@ end;
 
 procedure TAtlasDebugExceptionsTests.SameLocationCounts;
 var
-  Entry: TAtlasDebugException;
+  mEntry: TAtlasDebugException;
 begin
   FHistory.Add(Sample(1, 'EConvertError', 'eins', 'C:\P\Unit1.pas', 42));
-  Entry := Sample(2, 'econverterror', 'zwei', 'c:\p\UNIT1.pas', 42);
-  Entry.ThreadId := 99;
-  Entry.Frames := TArray<TAtlasDebugFrame>.Create(TAtlasDebugFrame.Create('Unit1.Laden', 'C:\P\Unit1.pas', 42));
-  Assert.AreEqual(0, FHistory.Add(Entry));
+  mEntry := Sample(2, 'econverterror', 'zwei', 'c:\p\UNIT1.pas', 42);
+  mEntry.ThreadId := 99;
+  mEntry.Frames := TArray<TAtlasDebugFrame>.Create(TAtlasDebugFrame.Create('Unit1.Laden', 'C:\P\Unit1.pas', 42));
+  Assert.AreEqual(0, FHistory.Add(mEntry));
   Assert.AreEqual(1, FHistory.Count, 'gleiche Klasse am gleichen Ort ohne Groß/klein');
   Assert.AreEqual(2, FHistory[0].Count);
   Assert.AreEqual('zwei', FHistory[0].Message, 'Meldung des letzten Auftretens');
@@ -112,109 +112,109 @@ end;
 
 procedure TAtlasDebugExceptionsTests.WithoutFileRoutineSeparates;
 var
-  First, Second, Found: TAtlasDebugException;
+  mFirst, mSecond, mFound: TAtlasDebugException;
 begin
-  First := TAtlasDebugException.Create(1, 'EOSError', '', 1, '').At('', 0, 'System.SysUtils.RaiseLastOSError');
-  Second := TAtlasDebugException.Create(2, 'EOSError', '', 1, '').At('', 0, 'Vcl.Forms.TApplication.Run');
-  FHistory.Add(First);
-  FHistory.Add(Second);
+  mFirst := TAtlasDebugException.Create(1, 'EOSError', '', 1, '').At('', 0, 'System.SysUtils.RaiseLastOSError');
+  mSecond := TAtlasDebugException.Create(2, 'EOSError', '', 1, '').At('', 0, 'Vcl.Forms.TApplication.Run');
+  FHistory.Add(mFirst);
+  FHistory.Add(mSecond);
   Assert.AreEqual(2, FHistory.Count, 'ohne Datei unterscheidet die Routine');
-  Assert.IsTrue(FHistory.TryFind(First.Key, Found));
-  Assert.AreEqual('System.SysUtils.RaiseLastOSError', Found.Routine);
-  Assert.IsFalse(FHistory.TryFind('gibt|es|nicht', Found));
+  Assert.IsTrue(FHistory.TryFind(mFirst.Key, mFound));
+  Assert.AreEqual('System.SysUtils.RaiseLastOSError', mFound.Routine);
+  Assert.IsFalse(FHistory.TryFind('gibt|es|nicht', mFound));
 end;
 
 procedure TAtlasDebugExceptionsTests.StartSessionClears;
 var
-  Session: Integer;
+  mSession: Integer;
 begin
   FHistory.Add(Sample(1, 'EConvertError', '', 'Unit1.pas', 1));
-  Session := FHistory.Session;
+  mSession := FHistory.Session;
   FHistory.StartSession;
   Assert.AreEqual(0, FHistory.Count);
-  Assert.AreEqual(Session + 1, FHistory.Session);
+  Assert.AreEqual(mSession + 1, FHistory.Session);
   Assert.AreEqual(0, FHistory.Total);
 end;
 
 procedure TAtlasDebugExceptionsTests.FullHistoryDropsOldest;
 var
-  History: TAtlasDebugExceptionHistory;
+  mHistory: TAtlasDebugExceptionHistory;
 begin
-  History := TAtlasDebugExceptionHistory.Create(2);
+  mHistory := TAtlasDebugExceptionHistory.Create(2);
   try
-    History.Add(Sample(1, 'EA', '', 'Unit1.pas', 1));
-    History.Add(Sample(2, 'EB', '', 'Unit1.pas', 2));
+    mHistory.Add(Sample(1, 'EA', '', 'Unit1.pas', 1));
+    mHistory.Add(Sample(2, 'EB', '', 'Unit1.pas', 2));
     // EA erneut: zuletzt gesehen; verdrängt wird EB.
-    History.Add(Sample(3, 'EA', '', 'Unit1.pas', 1));
-    History.Add(Sample(4, 'EC', '', 'Unit1.pas', 3));
-    Assert.AreEqual(2, History.Count);
-    Assert.AreEqual('EA', History[0].ExceptionClass);
-    Assert.AreEqual('EC', History[1].ExceptionClass);
+    mHistory.Add(Sample(3, 'EA', '', 'Unit1.pas', 1));
+    mHistory.Add(Sample(4, 'EC', '', 'Unit1.pas', 3));
+    Assert.AreEqual(2, mHistory.Count);
+    Assert.AreEqual('EA', mHistory[0].ExceptionClass);
+    Assert.AreEqual('EC', mHistory[1].ExceptionClass);
   finally
-    History.Free;
+    mHistory.Free;
   end;
-  Assert.AreEqual(1000, TAtlasDebugExceptionHistory.MaxEntries);
+  Assert.AreEqual(1000, TAtlasDebugExceptionHistory.cMaxEntries);
 end;
 
 procedure TAtlasDebugExceptionsTests.FilterByClassAndWords;
 var
-  Hits: TArray<Integer>;
+  mHits: TArray<Integer>;
 begin
   FHistory.Add(Sample(1, 'EConvertError', '''abc'' ist kein gültiger Integerwert', 'Kunde.pas', 10));
   FHistory.Add(Sample(2, 'EAccessViolation', 'Zugriffsverletzung bei Adresse 0040', 'Lager.pas', 20));
   FHistory.Add(Sample(3, 'EConvertError', 'Datum ungültig', 'Lager.pas', 30));
-  Hits := FHistory.Filter('EConvertError', '');
-  Assert.AreEqual(2, Integer(Length(Hits)));
-  Hits := FHistory.Filter('', 'lager ungültig');
-  Assert.AreEqual(1, Integer(Length(Hits)), 'jedes Wort muss vorkommen');
-  Assert.AreEqual(2, Hits[0]);
-  Hits := FHistory.Filter('', '1234');
-  Assert.AreEqual(3, Integer(Length(Hits)), 'Thread-Kennung zählt mit');
-  Hits := FHistory.Filter('econverterror', 'Kunde.pas:10');
-  Assert.AreEqual(1, Integer(Length(Hits)), 'Ort und Klasse ohne Groß/klein');
+  mHits := FHistory.Filter('EConvertError', '');
+  Assert.AreEqual(2, Integer(Length(mHits)));
+  mHits := FHistory.Filter('', 'lager ungültig');
+  Assert.AreEqual(1, Integer(Length(mHits)), 'jedes Wort muss vorkommen');
+  Assert.AreEqual(2, mHits[0]);
+  mHits := FHistory.Filter('', '1234');
+  Assert.AreEqual(3, Integer(Length(mHits)), 'Thread-Kennung zählt mit');
+  mHits := FHistory.Filter('econverterror', 'Kunde.pas:10');
+  Assert.AreEqual(1, Integer(Length(mHits)), 'Ort und Klasse ohne Groß/klein');
   Assert.AreEqual(0, Integer(Length(FHistory.Filter('EAccessViolation', 'Kunde'))));
 end;
 
 procedure TAtlasDebugExceptionsTests.FilterNewestFirst;
 var
-  Hits: TArray<Integer>;
+  mHits: TArray<Integer>;
 begin
   FHistory.Add(Sample(5, 'EA', '', 'Unit1.pas', 1));
   FHistory.Add(Sample(3, 'EB', '', 'Unit1.pas', 2));
   FHistory.Add(Sample(5, 'EC', '', 'Unit1.pas', 3));
   FHistory.Add(Sample(9, 'EB', '', 'Unit1.pas', 2));
-  Hits := FHistory.Filter('', '');
-  Assert.AreEqual(3, Integer(Length(Hits)));
-  Assert.AreEqual(1, Hits[0], 'EB zuletzt gesehen');
-  Assert.AreEqual(2, Hits[1], 'bei gleicher Zeit der spätere Eintrag zuerst');
-  Assert.AreEqual(0, Hits[2]);
+  mHits := FHistory.Filter('', '');
+  Assert.AreEqual(3, Integer(Length(mHits)));
+  Assert.AreEqual(1, mHits[0], 'EB zuletzt gesehen');
+  Assert.AreEqual(2, mHits[1], 'bei gleicher Zeit der spätere Eintrag zuerst');
+  Assert.AreEqual(0, mHits[2]);
 end;
 
 procedure TAtlasDebugExceptionsTests.ClassesSortedWithoutDuplicates;
 var
-  Classes: TArray<string>;
+  mClasses: TArray<string>;
 begin
   FHistory.Add(Sample(1, 'EConvertError', '', 'Unit1.pas', 1));
   FHistory.Add(Sample(2, 'EAccessViolation', '', 'Unit1.pas', 2));
   FHistory.Add(Sample(3, 'EConvertError', '', 'Unit1.pas', 3));
-  Classes := FHistory.Classes;
-  Assert.AreEqual(2, Integer(Length(Classes)));
-  Assert.AreEqual('EAccessViolation', Classes[0]);
-  Assert.AreEqual('EConvertError', Classes[1]);
+  mClasses := FHistory.Classes;
+  Assert.AreEqual(2, Integer(Length(mClasses)));
+  Assert.AreEqual('EAccessViolation', mClasses[0]);
+  Assert.AreEqual('EConvertError', mClasses[1]);
 end;
 
 procedure TAtlasDebugExceptionsTests.IgnoredStaysOnlyWhileAllIgnored;
 var
-  Entry: TAtlasDebugException;
+  mEntry: TAtlasDebugException;
 begin
-  Entry := Sample(1, 'EAbort', '', 'Unit1.pas', 1);
-  Entry.Ignored := True;
-  FHistory.Add(Entry);
-  Entry.LastTime := 2;
-  FHistory.Add(Entry);
+  mEntry := Sample(1, 'EAbort', '', 'Unit1.pas', 1);
+  mEntry.Ignored := True;
+  FHistory.Add(mEntry);
+  mEntry.LastTime := 2;
+  FHistory.Add(mEntry);
   Assert.IsTrue(FHistory[0].Ignored);
-  Entry.Ignored := False;
-  FHistory.Add(Entry);
+  mEntry.Ignored := False;
+  FHistory.Add(mEntry);
   Assert.IsFalse(FHistory[0].Ignored, 'ein Halt mit Dialog zählt als nicht ignoriert');
   Assert.AreEqual(3, FHistory[0].Count);
 end;
@@ -233,88 +233,88 @@ end;
 
 procedure TAtlasDebugExceptionsTests.LocationAndThreadText;
 var
-  Entry: TAtlasDebugException;
+  mEntry: TAtlasDebugException;
 begin
-  Entry := Sample(1, 'EA', '', 'C:\Projekte\Unit1.pas', 42);
-  Assert.AreEqual('Unit1.pas:42', Entry.LocationText);
-  Assert.IsTrue(Entry.HasSource);
-  Assert.AreEqual('Hauptthread 1234', Entry.ThreadText('Hauptthread'));
-  Entry.ThreadName := 'Lader';
-  Assert.AreEqual('Lader (1234)', Entry.ThreadText('Hauptthread'));
-  Entry.FileName := '';
-  Entry.Line := 0;
-  Assert.AreEqual('Unit1.TForm1.Button1Click', Entry.LocationText);
-  Assert.IsFalse(Entry.HasSource);
-  Entry.Routine := '';
-  Assert.AreEqual('', Entry.LocationText);
+  mEntry := Sample(1, 'EA', '', 'C:\Projekte\Unit1.pas', 42);
+  Assert.AreEqual('Unit1.pas:42', mEntry.LocationText);
+  Assert.IsTrue(mEntry.HasSource);
+  Assert.AreEqual('Hauptthread 1234', mEntry.ThreadText('Hauptthread'));
+  mEntry.ThreadName := 'Lader';
+  Assert.AreEqual('Lader (1234)', mEntry.ThreadText('Hauptthread'));
+  mEntry.FileName := '';
+  mEntry.Line := 0;
+  Assert.AreEqual('Unit1.TForm1.Button1Click', mEntry.LocationText);
+  Assert.IsFalse(mEntry.HasSource);
+  mEntry.Routine := '';
+  Assert.AreEqual('', mEntry.LocationText);
 end;
 
 procedure TAtlasDebugExceptionsTests.CopyTextHasClassMessageAndLocation;
 var
-  Entry: TAtlasDebugException;
-  Text: string;
+  mEntry: TAtlasDebugException;
+  mText: string;
 begin
-  Entry := Sample(1, 'EConvertError', 'kein Integer', 'C:\P\Unit1.pas', 42);
-  Entry.Count := 3;
-  Entry.Frames := TArray<TAtlasDebugFrame>.Create(TAtlasDebugFrame.Create(':0040A1B2 System._RaiseExcept', '', 0),
+  mEntry := Sample(1, 'EConvertError', 'kein Integer', 'C:\P\Unit1.pas', 42);
+  mEntry.Count := 3;
+  mEntry.Frames := TArray<TAtlasDebugFrame>.Create(TAtlasDebugFrame.Create(':0040A1B2 System._RaiseExcept', '', 0),
     TAtlasDebugFrame.Create('Unit1.TForm1.Button1Click(Self=$02A3F2C0)', 'C:\P\Unit1.pas', 42));
-  Text := Entry.CopyText;
-  Assert.StartsWith('EConvertError: kein Integer', Text);
-  Assert.IsTrue(Pos('Unit1.TForm1.Button1Click', Text) > 0);
-  Assert.IsTrue(Pos('C:\P\Unit1.pas(42)', Text) > 0);
-  Assert.IsTrue(Pos('Thread 1234', Text) > 0);
-  Assert.IsTrue(Pos('3 x', Text) > 0);
-  Assert.IsTrue(Pos('  :0040A1B2 System._RaiseExcept', Text) > 0, 'Aufrufstapel (#578)');
-  Assert.IsTrue(Pos('  Unit1.TForm1.Button1Click(Self=$02A3F2C0) (Unit1.pas:42)', Text) > 0);
+  mText := mEntry.CopyText;
+  Assert.StartsWith('EConvertError: kein Integer', mText);
+  Assert.IsTrue(Pos('Unit1.TForm1.Button1Click', mText) > 0);
+  Assert.IsTrue(Pos('C:\P\Unit1.pas(42)', mText) > 0);
+  Assert.IsTrue(Pos('Thread 1234', mText) > 0);
+  Assert.IsTrue(Pos('3 x', mText) > 0);
+  Assert.IsTrue(Pos('  :0040A1B2 System._RaiseExcept', mText) > 0, 'Aufrufstapel (#578)');
+  Assert.IsTrue(Pos('  Unit1.TForm1.Button1Click(Self=$02A3F2C0) (Unit1.pas:42)', mText) > 0);
 end;
 
 procedure TAtlasDebugExceptionsTests.ParseEnglishDialog;
 var
-  ExceptionClass, Message: string;
+  mExceptionClass, mMessage: string;
 begin
   Assert.IsTrue(TAtlasDebugExceptionText.Parse(
     'Project Project1.exe raised exception class EConvertError with message ''''abc'' is not a valid integer value''.',
-    ExceptionClass, Message));
-  Assert.AreEqual('EConvertError', ExceptionClass);
-  Assert.AreEqual('''abc'' is not a valid integer value', Message);
+    mExceptionClass, mMessage));
+  Assert.AreEqual('EConvertError', mExceptionClass);
+  Assert.AreEqual('''abc'' is not a valid integer value', mMessage);
 end;
 
 procedure TAtlasDebugExceptionsTests.ParseGermanDialog;
 var
-  ExceptionClass, Message: string;
+  mExceptionClass, mMessage: string;
 begin
   Assert.IsTrue(TAtlasDebugExceptionText.Parse('Im Projekt Project1.exe ist eine Exception der Klasse ' +
     'System.SysUtils.EAccessViolation mit der Meldung ''Zugriffsverletzung bei Adresse 00405A1C'' aufgetreten.',
-    ExceptionClass, Message));
-  Assert.AreEqual('System.SysUtils.EAccessViolation', ExceptionClass);
-  Assert.AreEqual('Zugriffsverletzung bei Adresse 00405A1C', Message);
+    mExceptionClass, mMessage));
+  Assert.AreEqual('System.SysUtils.EAccessViolation', mExceptionClass);
+  Assert.AreEqual('Zugriffsverletzung bei Adresse 00405A1C', mMessage);
 end;
 
 procedure TAtlasDebugExceptionsTests.ParseMessageWithQuotes;
 var
-  ExceptionClass, Message: string;
+  mExceptionClass, mMessage: string;
 begin
   Assert.IsTrue(TAtlasDebugExceptionText.Parse('Project X.exe raised exception class EMyError with message' +
-    #13#10 + '''Datei ''a.txt'' fehlt''.', ExceptionClass, Message));
-  Assert.AreEqual('EMyError', ExceptionClass);
-  Assert.AreEqual('Datei ''a.txt'' fehlt', Message, 'Meldung bis zum letzten Hochkomma, auch über Zeilen');
-  Assert.IsTrue(TAtlasDebugExceptionText.Parse('Project X.exe raised exception class EAbort.', ExceptionClass,
-    Message));
-  Assert.AreEqual('EAbort', ExceptionClass, 'Punkt am Satzende gehört nicht zur Klasse');
-  Assert.AreEqual('', Message);
+    #13#10 + '''Datei ''a.txt'' fehlt''.', mExceptionClass, mMessage));
+  Assert.AreEqual('EMyError', mExceptionClass);
+  Assert.AreEqual('Datei ''a.txt'' fehlt', mMessage, 'Meldung bis zum letzten Hochkomma, auch über Zeilen');
+  Assert.IsTrue(TAtlasDebugExceptionText.Parse('Project X.exe raised exception class EAbort.', mExceptionClass,
+    mMessage));
+  Assert.AreEqual('EAbort', mExceptionClass, 'Punkt am Satzende gehört nicht zur Klasse');
+  Assert.AreEqual('', mMessage);
 end;
 
 procedure TAtlasDebugExceptionsTests.ParseCodeAndNothing;
 var
-  ExceptionClass, Message: string;
+  mExceptionClass, mMessage: string;
 begin
   Assert.IsTrue(TAtlasDebugExceptionText.Parse('Project X.exe raised exception class $C0000005 with message ' +
-    '''access violation at 0x00405a1c''.', ExceptionClass, Message));
-  Assert.AreEqual('$C0000005', ExceptionClass);
-  Assert.IsFalse(TAtlasDebugExceptionText.Parse('Process stopped. Use Step or Run to continue.', ExceptionClass,
-    Message));
-  Assert.AreEqual('', ExceptionClass);
-  Assert.IsFalse(TAtlasDebugExceptionText.Parse('', ExceptionClass, Message));
+    '''access violation at 0x00405a1c''.', mExceptionClass, mMessage));
+  Assert.AreEqual('$C0000005', mExceptionClass);
+  Assert.IsFalse(TAtlasDebugExceptionText.Parse('Process stopped. Use Step or Run to continue.', mExceptionClass,
+    mMessage));
+  Assert.AreEqual('', mExceptionClass);
+  Assert.IsFalse(TAtlasDebugExceptionText.Parse('', mExceptionClass, mMessage));
 end;
 
 procedure TAtlasDebugExceptionsTests.UnquoteAndClassName;

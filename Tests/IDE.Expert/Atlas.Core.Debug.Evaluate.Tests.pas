@@ -3,8 +3,8 @@
 // Fenster „Auswerten“ (#784) ohne IDE: Ergebnis-Strings des Debuggers in
 // Baumknoten zerlegen (Objekte, Records, Arrays, verschachtelt, Strings mit
 // ; und Klammern), Stringliterale, Ansichten Text, Zeilen, JSON und Hex,
-// Feldausdrücke, Ausdruck unter dem Cursor (Strg+F7), Felder vom Server, Baum mit Markierung geänderter Werte über Halte, Teile ohne
-// Server, offene Knoten in Anzeigereihenfolge, festgeheftete Ausdrücke,
+// Feldausdrücke, Ausdruck unter dem Cursor (Strg+F7), Felder vom Server, Baum mit Markierung geänderter
+// Werte über Halte, Teile ohne Server, offene Knoten in Anzeigereihenfolge, festgeheftete Ausdrücke,
 // Suche über den Schlüsselpfad, Eingabe der Ansicht unten (unverändert:
 // nichts neu berechnen).
 
@@ -63,35 +63,35 @@ uses
 
 procedure TAtlasDebugEvaluateTests.PartsOfObject;
 var
-  Parts: TAtlasEvalParts;
+  mParts: TAtlasEvalParts;
 begin
-  Parts := TAtlasEvalText.Parts('(FName: ''Meier; (GmbH)''; FCount: 3; FList: $01234567)');
-  Assert.AreEqual(3, Integer(Length(Parts)));
-  Assert.AreEqual('FName', Parts[0].Name);
-  Assert.AreEqual('''Meier; (GmbH)''', Parts[0].Value, '; und Klammern im String');
-  Assert.AreEqual('FCount', Parts[1].Name);
-  Assert.AreEqual('3', Parts[1].Value);
-  Assert.AreEqual('$01234567', Parts[2].Value);
-  Parts := TAtlasEvalText.Parts('(X = 1, Y = 2)');
-  Assert.AreEqual('Y', Parts[1].Name, 'mit Gleichheitszeichen');
-  Assert.AreEqual('2', Parts[1].Value);
+  mParts := TAtlasEvalText.Parts('(FName: ''Meier; (GmbH)''; FCount: 3; FList: $01234567)');
+  Assert.AreEqual(3, Integer(Length(mParts)));
+  Assert.AreEqual('FName', mParts[0].Name);
+  Assert.AreEqual('''Meier; (GmbH)''', mParts[0].Value, '; und Klammern im String');
+  Assert.AreEqual('FCount', mParts[1].Name);
+  Assert.AreEqual('3', mParts[1].Value);
+  Assert.AreEqual('$01234567', mParts[2].Value);
+  mParts := TAtlasEvalText.Parts('(X = 1, Y = 2)');
+  Assert.AreEqual('Y', mParts[1].Name, 'mit Gleichheitszeichen');
+  Assert.AreEqual('2', mParts[1].Value);
 end;
 
 procedure TAtlasDebugEvaluateTests.PartsOfArrayAndNested;
 var
-  Parts, Inner: TAtlasEvalParts;
+  mParts, mInner: TAtlasEvalParts;
 begin
-  Parts := TAtlasEvalText.Parts('(1, 2, 3)');
-  Assert.AreEqual(3, Integer(Length(Parts)));
-  Assert.AreEqual('[0]', Parts[0].Name);
-  Assert.IsTrue(Parts[2].Indexed);
-  Assert.AreEqual('3', Parts[2].Value);
-  Parts := TAtlasEvalText.Parts('(Kopf: (X: 1; Y: (A: ''a'')); Liste: (5, 6))');
-  Assert.AreEqual(2, Integer(Length(Parts)));
-  Assert.AreEqual('(X: 1; Y: (A: ''a''))', Parts[0].Value);
-  Inner := TAtlasEvalText.Parts(Parts[0].Value);
-  Assert.AreEqual('Y', Inner[1].Name);
-  Assert.AreEqual('(A: ''a'')', Inner[1].Value);
+  mParts := TAtlasEvalText.Parts('(1, 2, 3)');
+  Assert.AreEqual(3, Integer(Length(mParts)));
+  Assert.AreEqual('[0]', mParts[0].Name);
+  Assert.IsTrue(mParts[2].Indexed);
+  Assert.AreEqual('3', mParts[2].Value);
+  mParts := TAtlasEvalText.Parts('(Kopf: (X: 1; Y: (A: ''a'')); Liste: (5, 6))');
+  Assert.AreEqual(2, Integer(Length(mParts)));
+  Assert.AreEqual('(X: 1; Y: (A: ''a''))', mParts[0].Value);
+  mInner := TAtlasEvalText.Parts(mParts[0].Value);
+  Assert.AreEqual('Y', mInner[1].Name);
+  Assert.AreEqual('(A: ''a'')', mInner[1].Value);
   Assert.AreEqual(0, Integer(Length(TAtlasEvalText.Parts('()'))), 'leer');
 end;
 
@@ -106,20 +106,20 @@ end;
 
 procedure TAtlasDebugEvaluateTests.DecodesStrings;
 var
-  Text: string;
+  mText: string;
 begin
-  Assert.IsTrue(TAtlasEvalText.TryDecodeString('''Zeile 1''#13#10''Zeile 2''', Text));
-  Assert.AreEqual('Zeile 1'#13#10'Zeile 2', Text);
-  Assert.IsTrue(TAtlasEvalText.TryDecodeString('''O''''Neil''', Text));
-  Assert.AreEqual('O''Neil', Text);
-  Assert.IsTrue(TAtlasEvalText.TryDecodeString('#$41#66''''', Text));
-  Assert.AreEqual('AB', Text);
-  Assert.IsTrue(TAtlasEvalText.TryDecodeString('''''', Text));
-  Assert.AreEqual('', Text);
-  Assert.IsFalse(TAtlasEvalText.TryDecodeString('''offen', Text));
-  Assert.IsFalse(TAtlasEvalText.TryDecodeString('''ab''''', Text), 'endet mit Verdopplung');
-  Assert.IsFalse(TAtlasEvalText.TryDecodeString('42', Text));
-  Assert.IsFalse(TAtlasEvalText.TryDecodeString('''a'' + ''b''', Text));
+  Assert.IsTrue(TAtlasEvalText.TryDecodeString('''Zeile 1''#13#10''Zeile 2''', mText));
+  Assert.AreEqual('Zeile 1'#13#10'Zeile 2', mText);
+  Assert.IsTrue(TAtlasEvalText.TryDecodeString('''O''''Neil''', mText));
+  Assert.AreEqual('O''Neil', mText);
+  Assert.IsTrue(TAtlasEvalText.TryDecodeString('#$41#66''''', mText));
+  Assert.AreEqual('AB', mText);
+  Assert.IsTrue(TAtlasEvalText.TryDecodeString('''''', mText));
+  Assert.AreEqual('', mText);
+  Assert.IsFalse(TAtlasEvalText.TryDecodeString('''offen', mText));
+  Assert.IsFalse(TAtlasEvalText.TryDecodeString('''ab''''', mText), 'endet mit Verdopplung');
+  Assert.IsFalse(TAtlasEvalText.TryDecodeString('42', mText));
+  Assert.IsFalse(TAtlasEvalText.TryDecodeString('''a'' + ''b''', mText));
 end;
 
 procedure TAtlasDebugEvaluateTests.SimpleValues;
@@ -151,185 +151,185 @@ end;
 
 procedure TAtlasDebugEvaluateTests.ExpressionUnderCursor;
 const
-  Line = '  Summe := Kunde.Adresse.Ort + P^.X;';
+  cLine = '  Summe := Kunde.Adresse.Ort + P^.X;';
 begin
-  Assert.AreEqual('Kunde.Adresse', TAtlasEvalText.ExpressionAt(Line, 17), 'bis zum Wortende');
-  Assert.AreEqual('Kunde.Adresse.Ort', TAtlasEvalText.ExpressionAt(Line, 28), 'hinter dem Wort');
-  Assert.AreEqual('Summe', TAtlasEvalText.ExpressionAt(Line, 2), 'Wortanfang');
-  Assert.AreEqual('P^.X', TAtlasEvalText.ExpressionAt(Line, 35));
-  Assert.AreEqual('', TAtlasEvalText.ExpressionAt(Line, 0), 'Einrückung');
+  Assert.AreEqual('Kunde.Adresse', TAtlasEvalText.ExpressionAt(cLine, 17), 'bis zum Wortende');
+  Assert.AreEqual('Kunde.Adresse.Ort', TAtlasEvalText.ExpressionAt(cLine, 28), 'hinter dem Wort');
+  Assert.AreEqual('Summe', TAtlasEvalText.ExpressionAt(cLine, 2), 'Wortanfang');
+  Assert.AreEqual('P^.X', TAtlasEvalText.ExpressionAt(cLine, 35));
+  Assert.AreEqual('', TAtlasEvalText.ExpressionAt(cLine, 0), 'Einrückung');
   Assert.AreEqual('', TAtlasEvalText.ExpressionAt('', 0));
   Assert.AreEqual('x', TAtlasEvalText.ExpressionAt('3.x', 3), 'Zahl vorn gehört nicht dazu');
 end;
 
 procedure TAtlasDebugEvaluateTests.FieldsFromServer;
 var
-  Response: TJSONValue;
-  Fields: TArray<string>;
+  mResponse: TJSONValue;
+  mFields: TArray<string>;
 begin
-  Response := TJSONObject.ParseJSONValue('{"prefix":"","items":[{"label":"FName","kind":5},' +
+  mResponse := TJSONObject.ParseJSONValue('{"prefix":"","items":[{"label":"FName","kind":5},' +
     '{"label":"Count","kind":10},{"label":"Free","kind":2},{"label":"fname","kind":5},{"kind":5},' +
     '{"label":"FList","kind":5}]}');
   try
-    Fields := TAtlasEvalText.FieldsOf(Response, False);
-    Assert.AreEqual(2, Integer(Length(Fields)), 'ohne Eigenschaft, Methode und Doppelte');
-    Assert.AreEqual('FName', Fields[0]);
-    Assert.AreEqual('FList', Fields[1]);
-    Fields := TAtlasEvalText.FieldsOf(Response, True);
-    Assert.AreEqual(3, Integer(Length(Fields)), 'mit Nebenwirkungen auch Eigenschaften');
-    Assert.AreEqual('Count', Fields[1]);
+    mFields := TAtlasEvalText.FieldsOf(mResponse, False);
+    Assert.AreEqual(2, Integer(Length(mFields)), 'ohne Eigenschaft, Methode und Doppelte');
+    Assert.AreEqual('FName', mFields[0]);
+    Assert.AreEqual('FList', mFields[1]);
+    mFields := TAtlasEvalText.FieldsOf(mResponse, True);
+    Assert.AreEqual(3, Integer(Length(mFields)), 'mit Nebenwirkungen auch Eigenschaften');
+    Assert.AreEqual('Count', mFields[1]);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
   Assert.AreEqual(0, Integer(Length(TAtlasEvalText.FieldsOf(nil, True))));
 end;
 
 procedure TAtlasDebugEvaluateTests.ViewsTextAndLines;
 var
-  Text: string;
+  mText: string;
 begin
-  Assert.IsTrue(TAtlasEvalText.Render('''a''#9''b''#13#10''c''', TAtlasEvalView.Text, Text));
-  Assert.AreEqual('a'#$2192'b'#$240D#$240A + sLineBreak + 'c', Text);
+  Assert.IsTrue(TAtlasEvalText.Render('''a''#9''b''#13#10''c''', TAtlasEvalView.Text, mText));
+  Assert.AreEqual('a'#$2192'b'#$240D#$240A + sLineBreak + 'c', mText);
   Assert.AreEqual('x'#$2400'y', TAtlasEvalText.VisibleText('x'#0'y'));
-  Assert.IsTrue(TAtlasEvalText.Render('''eins''#13#10''zwei''#13#10', TAtlasEvalView.Lines, Text));
-  Assert.AreEqual('eins' + sLineBreak + 'zwei', Text, 'Umbruch am Ende ohne leere Zeile');
+  Assert.IsTrue(TAtlasEvalText.Render('''eins''#13#10''zwei''#13#10', TAtlasEvalView.Lines, mText));
+  Assert.AreEqual('eins' + sLineBreak + 'zwei', mText, 'Umbruch am Ende ohne leere Zeile');
   Assert.AreEqual(3, Integer(Length(TAtlasEvalText.StringsLines('a'#10'b'#13'c'))));
   Assert.AreEqual(0, Integer(Length(TAtlasEvalText.StringsLines(''))));
 end;
 
 procedure TAtlasDebugEvaluateTests.ViewsJsonAndHex;
 var
-  Text: string;
+  mText: string;
 begin
-  Assert.IsTrue(TAtlasEvalText.Render('''{"a":1,"b":[true,"x:y"]}''', TAtlasEvalView.Json, Text));
+  Assert.IsTrue(TAtlasEvalText.Render('''{"a":1,"b":[true,"x:y"]}''', TAtlasEvalView.Json, mText));
   Assert.AreEqual('{' + sLineBreak + '  "a": 1,' + sLineBreak + '  "b": [' + sLineBreak + '    true,' + sLineBreak +
-    '    "x:y"' + sLineBreak + '  ]' + sLineBreak + '}', Text);
-  Assert.IsFalse(TAtlasEvalText.Render('''kein JSON''', TAtlasEvalView.Json, Text));
-  Assert.AreEqual('kein JSON', Text, 'Rückfall Text');
-  Assert.IsTrue(TAtlasEvalText.Render('42', TAtlasEvalView.Hex, Text));
-  Assert.AreEqual('$0000002A (42)', Text);
-  Assert.IsTrue(TAtlasEvalText.TryHex('-1', Text));
-  Assert.AreEqual('$FFFFFFFF (-1)', Text);
-  Assert.IsTrue(TAtlasEvalText.TryHex('4294967296', Text));
-  Assert.AreEqual('$0000000100000000 (4294967296)', Text);
-  Assert.IsFalse(TAtlasEvalText.TryHex('''x''', Text));
+    '    "x:y"' + sLineBreak + '  ]' + sLineBreak + '}', mText);
+  Assert.IsFalse(TAtlasEvalText.Render('''kein JSON''', TAtlasEvalView.Json, mText));
+  Assert.AreEqual('kein JSON', mText, 'Rückfall Text');
+  Assert.IsTrue(TAtlasEvalText.Render('42', TAtlasEvalView.Hex, mText));
+  Assert.AreEqual('$0000002A (42)', mText);
+  Assert.IsTrue(TAtlasEvalText.TryHex('-1', mText));
+  Assert.AreEqual('$FFFFFFFF (-1)', mText);
+  Assert.IsTrue(TAtlasEvalText.TryHex('4294967296', mText));
+  Assert.AreEqual('$0000000100000000 (4294967296)', mText);
+  Assert.IsFalse(TAtlasEvalText.TryHex('''x''', mText));
 end;
 
 procedure TAtlasDebugEvaluateTests.MarksChangedAcrossStops;
 var
-  List: TAtlasEvalList;
-  Node: TAtlasEvalNode;
+  mList: TAtlasEvalList;
+  mNode: TAtlasEvalNode;
 begin
-  List := TAtlasEvalList.Create;
+  mList := TAtlasEvalList.Create;
   try
-    Node := List.Add(' Summe ');
-    Assert.AreEqual('Summe', Node.Expression);
-    Assert.IsTrue(Node.State = TAtlasEvalState.Pending);
-    List.SetResult(Node, True, '1');
-    Assert.IsFalse(Node.Changed, 'erster Halt');
-    List.BeginStop;
-    Assert.IsTrue(Node.State = TAtlasEvalState.Pending);
-    List.SetResult(Node, True, '2');
-    Assert.IsTrue(Node.Changed, 'geändert');
-    List.BeginStop;
-    List.SetResult(Node, True, '2');
-    Assert.IsFalse(Node.Changed, 'gleich geblieben');
-    List.BeginStop;
-    List.SetResult(Node, False, 'Fehler');
-    Assert.IsTrue(Node.State = TAtlasEvalState.Error);
-    Assert.IsFalse(Node.Changed);
-    List.BeginStop;
-    List.SetResult(Node, True, '3');
-    Assert.IsTrue(Node.Changed, 'verglichen mit dem letzten gültigen Wert');
-    List.Unavailable;
-    Assert.IsTrue(Node.State = TAtlasEvalState.Unavailable);
-    Assert.IsNull(List.Add('  '));
+    mNode := mList.Add(' Summe ');
+    Assert.AreEqual('Summe', mNode.Expression);
+    Assert.IsTrue(mNode.State = TAtlasEvalState.Pending);
+    mList.SetResult(mNode, True, '1');
+    Assert.IsFalse(mNode.Changed, 'erster Halt');
+    mList.BeginStop;
+    Assert.IsTrue(mNode.State = TAtlasEvalState.Pending);
+    mList.SetResult(mNode, True, '2');
+    Assert.IsTrue(mNode.Changed, 'geändert');
+    mList.BeginStop;
+    mList.SetResult(mNode, True, '2');
+    Assert.IsFalse(mNode.Changed, 'gleich geblieben');
+    mList.BeginStop;
+    mList.SetResult(mNode, False, 'Fehler');
+    Assert.IsTrue(mNode.State = TAtlasEvalState.Error);
+    Assert.IsFalse(mNode.Changed);
+    mList.BeginStop;
+    mList.SetResult(mNode, True, '3');
+    Assert.IsTrue(mNode.Changed, 'verglichen mit dem letzten gültigen Wert');
+    mList.Unavailable;
+    Assert.IsTrue(mNode.State = TAtlasEvalState.Unavailable);
+    Assert.IsNull(mList.Add('  '));
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 procedure TAtlasDebugEvaluateTests.FieldsAreEvaluatedWhenExpanded;
 var
-  List: TAtlasEvalList;
-  Node: TAtlasEvalNode;
-  Pending: TArray<TAtlasEvalNode>;
+  mList: TAtlasEvalList;
+  mNode: TAtlasEvalNode;
+  mPending: TArray<TAtlasEvalNode>;
 begin
-  List := TAtlasEvalList.Create;
+  mList := TAtlasEvalList.Create;
   try
-    Node := List.Add('Self');
-    List.SetResult(Node, True, '($00A1B2C3)');
-    Assert.IsTrue(Node.CanExpand);
-    List.SetFields(Node, TArray<string>.Create('FName', 'FCount'));
-    Assert.AreEqual(2, Node.ChildCount);
-    Assert.AreEqual('Self.FCount', Node.Children[1].Expression);
-    Assert.AreEqual(0, Integer(Length(List.Pending)), 'zugeklappt nichts offen');
-    Node.Expanded := True;
-    Pending := List.Pending;
-    Assert.AreEqual(2, Integer(Length(Pending)));
-    List.SetResult(Node.Children[1], True, '3');
-    List.BeginStop;
-    Pending := List.Pending;
-    Assert.AreEqual(3, Integer(Length(Pending)), 'Wurzel und beide Felder');
-    Assert.AreSame(Node, Pending[0]);
-    List.SetResult(Node.Children[1], True, '4');
-    Assert.IsTrue(Node.Children[1].Changed, 'Feld bis zum nächsten Halt geändert');
-    Assert.AreSame(Node.Children[1], List.Find(Node.Children[1].Key));
-    Assert.IsNull(List.Find('weg'));
+    mNode := mList.Add('Self');
+    mList.SetResult(mNode, True, '($00A1B2C3)');
+    Assert.IsTrue(mNode.CanExpand);
+    mList.SetFields(mNode, TArray<string>.Create('FName', 'FCount'));
+    Assert.AreEqual(2, mNode.ChildCount);
+    Assert.AreEqual('Self.FCount', mNode.Children[1].Expression);
+    Assert.AreEqual(0, Integer(Length(mList.Pending)), 'zugeklappt nichts offen');
+    mNode.Expanded := True;
+    mPending := mList.Pending;
+    Assert.AreEqual(2, Integer(Length(mPending)));
+    mList.SetResult(mNode.Children[1], True, '3');
+    mList.BeginStop;
+    mPending := mList.Pending;
+    Assert.AreEqual(3, Integer(Length(mPending)), 'Wurzel und beide Felder');
+    Assert.AreSame(mNode, mPending[0]);
+    mList.SetResult(mNode.Children[1], True, '4');
+    Assert.IsTrue(mNode.Children[1].Changed, 'Feld bis zum nächsten Halt geändert');
+    Assert.AreSame(mNode.Children[1], mList.Find(mNode.Children[1].Key));
+    Assert.IsNull(mList.Find('weg'));
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 procedure TAtlasDebugEvaluateTests.PartsWithoutServer;
 var
-  List: TAtlasEvalList;
-  Node: TAtlasEvalNode;
+  mList: TAtlasEvalList;
+  mNode: TAtlasEvalNode;
 begin
-  List := TAtlasEvalList.Create;
+  mList := TAtlasEvalList.Create;
   try
-    Node := List.Add('Punkt');
-    List.SetResult(Node, True, '(X: 1; Y: 2)');
-    Assert.IsTrue(List.SetParts(Node));
-    Node.Expanded := True;
-    Assert.AreEqual(2, Node.ChildCount);
-    Assert.AreEqual('', Node.Children[0].Expression, 'Wert steht fest');
-    Assert.AreEqual('2', Node.Children[1].Value);
-    Assert.AreEqual(0, Integer(Length(List.Pending)) - 0, 'Teile sind nicht offen');
-    List.BeginStop;
-    Assert.AreEqual(0, Node.ChildCount, 'Teile entstehen mit dem neuen Wert');
-    List.SetResult(Node, True, '(X: 1; Y: 5)');
-    Assert.AreEqual(2, Node.ChildCount);
-    Assert.IsTrue(Node.Children[1].Changed, 'Y geändert');
-    Assert.IsFalse(Node.Children[0].Changed);
-    List.SetResult(Node, True, '7');
-    Assert.IsFalse(List.SetParts(Node), 'einfacher Wert');
+    mNode := mList.Add('Punkt');
+    mList.SetResult(mNode, True, '(X: 1; Y: 2)');
+    Assert.IsTrue(mList.SetParts(mNode));
+    mNode.Expanded := True;
+    Assert.AreEqual(2, mNode.ChildCount);
+    Assert.AreEqual('', mNode.Children[0].Expression, 'Wert steht fest');
+    Assert.AreEqual('2', mNode.Children[1].Value);
+    Assert.AreEqual(0, Integer(Length(mList.Pending)) - 0, 'Teile sind nicht offen');
+    mList.BeginStop;
+    Assert.AreEqual(0, mNode.ChildCount, 'Teile entstehen mit dem neuen Wert');
+    mList.SetResult(mNode, True, '(X: 1; Y: 5)');
+    Assert.AreEqual(2, mNode.ChildCount);
+    Assert.IsTrue(mNode.Children[1].Changed, 'Y geändert');
+    Assert.IsFalse(mNode.Children[0].Changed);
+    mList.SetResult(mNode, True, '7');
+    Assert.IsFalse(mList.SetParts(mNode), 'einfacher Wert');
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 procedure TAtlasDebugEvaluateTests.PinnedAndDuplicates;
 var
-  List: TAtlasEvalList;
-  First, Second: TAtlasEvalNode;
-  Pinned: TArray<string>;
+  mList: TAtlasEvalList;
+  mFirst, mSecond: TAtlasEvalNode;
+  mPinned: TArray<string>;
 begin
-  List := TAtlasEvalList.Create;
+  mList := TAtlasEvalList.Create;
   try
-    First := List.Add('A');
-    Second := List.Add('A');
-    Assert.AreNotEqual(First.Key, Second.Key, 'eigene Markierung je Zeile');
-    List.Add('B').Pinned := True;
-    First.Pinned := True;
-    Pinned := List.PinnedExpressions;
-    Assert.AreEqual(2, Integer(Length(Pinned)));
-    Assert.AreEqual('A', Pinned[0]);
-    Assert.AreEqual('B', Pinned[1]);
-    List.Delete(List.IndexOf(First));
-    Assert.AreEqual(2, List.Count);
+    mFirst := mList.Add('A');
+    mSecond := mList.Add('A');
+    Assert.AreNotEqual(mFirst.Key, mSecond.Key, 'eigene Markierung je Zeile');
+    mList.Add('B').Pinned := True;
+    mFirst.Pinned := True;
+    mPinned := mList.PinnedExpressions;
+    Assert.AreEqual(2, Integer(Length(mPinned)));
+    Assert.AreEqual('A', mPinned[0]);
+    Assert.AreEqual('B', mPinned[1]);
+    mList.Delete(mList.IndexOf(mFirst));
+    Assert.AreEqual(2, mList.Count);
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
