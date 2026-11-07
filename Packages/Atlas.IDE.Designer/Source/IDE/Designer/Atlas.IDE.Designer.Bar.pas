@@ -150,18 +150,6 @@ begin
   Result := TDesignerBarState(TAtlasIdeDesignerBar.FState);
 end;
 
-function BarColors: TAtlasColors;
-begin
-  if TAtlasIdeSettings.Current.BreadcrumbsIdeColors then
-  begin
-    Result := TAtlasIdeStyle.ChromeColors;
-  end
-  else
-  begin
-    Result := TAtlasIdeStyle.Colors;
-  end;
-end;
-
 function DesignerOf(const AEditor: IOTAFormEditor): IDesigner;
 var
   mNative: INTAFormEditor;
@@ -737,7 +725,7 @@ procedure TDesignerBarState.ApplyTheme;
 var
   mColors: TAtlasColors;
 begin
-  mColors := BarColors;
+  mColors := TAtlasIdeStyle.BarColors;
   FHost.ForEach(
     procedure(ABar: TControl)
     begin
@@ -757,7 +745,7 @@ var
 begin
   mBar := TAtlasDesignerBar.Create(nil);
   mHost := FHost;
-  mBar.ApplyColors(BarColors);
+  mBar.ApplyColors(TAtlasIdeStyle.BarColors);
   mBar.SetButtons(Buttons);
   mBar.OnDisabled :=
     procedure(ASender: TObject)

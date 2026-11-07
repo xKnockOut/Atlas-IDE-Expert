@@ -55,6 +55,9 @@ type
     /// andere von der Platte.</summary>
     class function ReadOnlyByIndex(const AIndex: ISymbolIndex; const AFileName, AText,
       AExpression: string): Boolean; static;
+    /// <summary>ReadOnlyByIndex als Prüfung für Swap; ohne Index nil.</summary>
+    class function ReadOnlyCheckOf(const AIndex: ISymbolIndex; const AFileName, AText: string): TReadOnlyCheck;
+      static;
   end;
 
 implementation
@@ -506,6 +509,20 @@ begin
       Result := Result or HasWord(mDeclaration, 'read');
     end;
   end;
+end;
+
+class function TAssignmentSwap.ReadOnlyCheckOf(const AIndex: ISymbolIndex; const AFileName,
+  AText: string): TReadOnlyCheck;
+begin
+  if AIndex = nil then
+  begin
+    Exit(nil);
+  end;
+  Result :=
+    function(const AExpression: string): Boolean
+    begin
+      Result := ReadOnlyByIndex(AIndex, AFileName, AText, AExpression);
+    end;
 end;
 
 end.

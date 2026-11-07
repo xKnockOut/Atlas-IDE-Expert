@@ -347,13 +347,41 @@ begin
   Stop;
 end;
 
-procedure TAtlasEditorPlaceholders.CollapseUndo;
+/// <summary>Macht in ABuffer Schritte rückgängig, bis sein Text ATarget ist; AText ist der Text davor. Wird ATarget
+/// nicht erreicht, stellt es alle Schritte wieder her und liefert False.</summary>
+function UndoTo(const ABuffer: IOTAEditBuffer; const AText, ATarget: string): Boolean;
 const
   // Obergrenze der Undo-Schritte; eine Vorlage braucht selten mehr als ein paar Dutzend.
   cMaxSteps = 1000;
 var
-  mFinal, mText: string;
-  mSteps, mIndex, mPrefix, mSuffix: Integer;
+  mText: string;
+  mSteps, mIndex: Integer;
+begin
+  mSteps := 0;
+  mText := AText;
+  while (mText <> ATarget) and (mSteps < cMaxSteps) and ABuffer.Undo do
+  begin
+    Inc(mSteps);
+    mText := TAtlasEditorBuffer.Text(ABuffer);
+  end;
+  Result := mText = ATarget;
+  if not Result then
+  begin
+    // Stand vor dem Einsetzen nicht erreicht: alles wiederherstellen.
+    for mIndex := 1 to mSteps do
+    begin
+      if not ABuffer.Redo then
+      begin
+        Break;
+      end;
+    end;
+  end;
+end;
+
+procedure TAtlasEditorPlaceholders.CollapseUndo;
+var
+  mFinal: string;
+  mPrefix, mSuffix: Integer;
   mWriter: IOTAEditWriter;
 begin
   if (FSession = nil) or (FView = nil) or (FView.Buffer = nil) or (FBefore = '') then
@@ -367,23 +395,8 @@ begin
   end;
   FApplying := True;
   try
-    mSteps := 0;
-    mText := mFinal;
-    while (mText <> FBefore) and (mSteps < cMaxSteps) and FView.Buffer.Undo do
+    if not UndoTo(FView.Buffer, mFinal, FBefore) then
     begin
-      Inc(mSteps);
-      mText := TAtlasEditorBuffer.Text(FView.Buffer);
-    end;
-    if mText <> FBefore then
-    begin
-      // Stand vor dem Einsetzen nicht erreicht: alles wiederherstellen.
-      for mIndex := 1 to mSteps do
-      begin
-        if not FView.Buffer.Redo then
-        begin
-          Break;
-        end;
-      end;
       Exit;
     end;
     // Gemeinsamer Anfang und gemeinsames Ende; dazwischen ersetzt ein Schreiber.

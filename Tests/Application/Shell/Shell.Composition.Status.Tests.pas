@@ -12,6 +12,7 @@ uses
   Atlas.Common.Lsp.WorkspaceCheck,
   Shell.Workspace,
   Shell.Composition.Contract,
+  Shell.Composition.Status.Contract,
   Shell.Composition.Status;
 
 type

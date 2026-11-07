@@ -265,8 +265,8 @@ end;
 
 procedure TAtlasEditorMetricsSource.Fetch;
 begin
-  FPoll.AskAsync(FSession(), FRun, TAtlasFeature.CodeLens, cMetricsCommand, FPoll.UriArguments, cRetryMs, cTimeoutMs,
-    Answer());
+  FPoll.AskAsync(FSession(), FRun, TAtlasFeature.CodeLens,
+    TAtlasLensRequest.Create(cMetricsCommand, FPoll.UriArguments, cTimeoutMs), cRetryMs, Answer());
 end;
 
 function TAtlasEditorMetricsSource.Answer: TProc<TJSONValue>;

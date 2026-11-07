@@ -39,6 +39,15 @@ type
     Indent: string;
   end;
 
+  /// <summary>Maße der Einrückung beim Einfügen: Tabulatorweite, Schritt eines Blocks und Spalte vom Server nach der
+  /// Blockstruktur (#1832; TAtlasSmartPaste.cNoColumn für die Heuristik).</summary>
+  TAtlasPasteIndent = record
+    TabWidth: Integer;
+    Step: Integer;
+    Column: Integer;
+    class function Create(ATabWidth, AStep, AColumn: Integer): TAtlasPasteIndent; static;
+  end;
+
   /// <summary>Mehrdeutiger Bezeichner: Units zur Wahl, Chosen = Index oder -1 (keine).</summary>
   TAtlasPasteChoice = record
     Name: string;
@@ -81,10 +90,9 @@ type
     /// <summary>Endet die Zeile (ohne Kommentar) mit einem Wort, nach dem eingerückt wird?</summary>
     class function Opens(const ALine: string): Boolean; static;
     /// <summary>Einrückung für den eingefügten Block APasted; APrefix: Zeile vor der Einfügestelle, AAbove: die
-    /// nächste nicht leere Zeile darüber ('' ohne); AColumn: Spalte vom Server nach der Blockstruktur (#1832),
-    /// NoColumn für die Heuristik. False ohne Änderung.</summary>
-    class function Reindent(const APrefix, AAbove: string; const APasted: TArray<string>; ATabWidth, AStep,
-      AColumn: Integer; out AEdits: TArray<TAtlasIndentEdit>): Boolean; static;
+    /// nächste nicht leere Zeile darüber ('' ohne). False ohne Änderung.</summary>
+    class function Reindent(const APrefix, AAbove: string; const APasted: TArray<string>;
+      const AIndent: TAtlasPasteIndent; out AEdits: TArray<TAtlasIndentEdit>): Boolean; static;
     /// <summary>Antwort des Servers ohne gewählte Units; Valid = False ohne gültige Antwort.</summary>
     class function ReadAnalysis(AValue: TJSONValue): TAtlasPasteAnalysis; static;
     /// <summary>Eindeutige und gewählte Units ohne Doppelte.</summary>
@@ -323,6 +331,15 @@ end;
 
 { TAtlasSmartPaste }
 
+{ TAtlasPasteIndent }
+
+class function TAtlasPasteIndent.Create(ATabWidth, AStep, AColumn: Integer): TAtlasPasteIndent;
+begin
+  Result.TabWidth := ATabWidth;
+  Result.Step := AStep;
+  Result.Column := AColumn;
+end;
+
 class function TAtlasSmartPaste.ModeOf(const AValue: string): TAtlasPasteMode;
 begin
   if SameText(AValue, cModeBoth) then
@@ -426,7 +443,7 @@ begin
 end;
 
 class function TAtlasSmartPaste.Reindent(const APrefix, AAbove: string; const APasted: TArray<string>;
-  ATabWidth, AStep, AColumn: Integer; out AEdits: TArray<TAtlasIndentEdit>): Boolean;
+  const AIndent: TAtlasPasteIndent; out AEdits: TArray<TAtlasIndentEdit>): Boolean;
 var
   mFirst, mIndex, mTarget, mDelta: Integer;
   mEdit: TAtlasIndentEdit;
@@ -440,12 +457,12 @@ begin
   end;
   if mFirst >= 0 then
   begin
-    mTarget := AColumn;
+    mTarget := AIndent.Column;
     if mTarget = cNoColumn then
     begin
-      mTarget := TargetIndent(APrefix, AAbove, ATabWidth, AStep);
+      mTarget := TargetIndent(APrefix, AAbove, AIndent.TabWidth, AIndent.Step);
     end;
-    mDelta := mTarget - BaseIndent(APasted, mFirst, ATabWidth, AStep);
+    mDelta := mTarget - BaseIndent(APasted, mFirst, AIndent.TabWidth, AIndent.Step);
     for mIndex := mFirst to High(APasted) do
     begin
       if IsBlank(APasted[mIndex]) then
@@ -458,7 +475,7 @@ begin
       end
       else
       begin
-        mChanged := OtherLineEdit(APasted[mIndex], mIndex, mDelta, ATabWidth, mEdit);
+        mChanged := OtherLineEdit(APasted[mIndex], mIndex, mDelta, AIndent.TabWidth, mEdit);
       end;
       if mChanged then
       begin

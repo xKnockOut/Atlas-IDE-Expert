@@ -32,6 +32,7 @@ uses
   Shell.Composition.ServerCommands in 'Source\Shell\Shell.Composition.ServerCommands.pas',
   Shell.Composition.CodeActions in 'Source\Shell\Shell.Composition.CodeActions.pas',
   Shell.Composition.Status in 'Source\Shell\Shell.Composition.Status.pas',
+  Shell.Composition.Status.Contract in 'Source\Shell\Shell.Composition.Status.Contract.pas',
   Shell.Composition.Slash in 'Source\Shell\Shell.Composition.Slash.pas',
   Shell.Composition.Contract in 'Source\Shell\Shell.Composition.Contract.pas',
   Shell.Composition.UnitSearch in 'Source\Shell\Shell.Composition.UnitSearch.pas',

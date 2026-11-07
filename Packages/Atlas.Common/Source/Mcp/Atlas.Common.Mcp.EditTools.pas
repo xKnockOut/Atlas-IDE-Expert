@@ -122,9 +122,7 @@ type
 implementation
 
 uses
-  System.Classes,
   System.StrUtils,
-  System.Math,
   System.Generics.Defaults,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.SyntaxTree,
@@ -723,30 +721,32 @@ function DeviationReport(const AFileName: string; const AOutcome: TFormatOutcome
 const
   cShown = 20;
 var
-  mLines: TStringList;
+  mLines: TArray<string>;
+  mShown: Integer;
   mIndex: Integer;
 begin
-  mLines := TStringList.Create;
-  try
-    mLines.Add(cTexts[TEditToolsText.DeviationsFromTheFormatRules].Fmt([ExtractFileName(AFileName),
-      Length(AOutcome.Deviations)]));
-    for mIndex := 0 to Min(Length(AOutcome.Deviations), cShown) - 1 do
-    begin
-      mLines.Add(cTexts[TEditToolsText.Line].Fmt([AOutcome.Deviations[mIndex].Line + 1,
-        AOutcome.Deviations[mIndex].Message]));
-    end;
-    if Length(AOutcome.Deviations) > cShown then
-    begin
-      mLines.Add(cTexts[TEditToolsText.AndMore].Fmt([Length(AOutcome.Deviations) - cShown]));
-    end;
-    if not AOutcome.Stable then
-    begin
-      mLines.Add(cTexts[TEditToolsText.NoteTheFormattingIsNot].Text);
-    end;
-    Result := TrimRight(mLines.Text);
-  finally
-    mLines.Free;
+  mShown := Length(AOutcome.Deviations);
+  if mShown > cShown then
+  begin
+    mShown := cShown;
   end;
+  SetLength(mLines, mShown + 1);
+  mLines[0] := cTexts[TEditToolsText.DeviationsFromTheFormatRules].Fmt([ExtractFileName(AFileName),
+    Length(AOutcome.Deviations)]);
+  for mIndex := 0 to mShown - 1 do
+  begin
+    mLines[mIndex + 1] := cTexts[TEditToolsText.Line].Fmt([AOutcome.Deviations[mIndex].Line + 1,
+      AOutcome.Deviations[mIndex].Message]);
+  end;
+  if Length(AOutcome.Deviations) > cShown then
+  begin
+    mLines := mLines + [cTexts[TEditToolsText.AndMore].Fmt([Length(AOutcome.Deviations) - cShown])];
+  end;
+  if not AOutcome.Stable then
+  begin
+    mLines := mLines + [cTexts[TEditToolsText.NoteTheFormattingIsNot].Text];
+  end;
+  Result := string.Join(sLineBreak, mLines);
 end;
 
 /// <summary>Formatiert AText; EMcpToolError bei Syntaxfehlern.</summary>

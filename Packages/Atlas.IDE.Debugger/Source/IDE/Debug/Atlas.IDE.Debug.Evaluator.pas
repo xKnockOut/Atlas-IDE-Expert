@@ -41,6 +41,11 @@ type
         ResultAddress: TOTAAddress; ResultSize: LongWord; ReturnCode: Integer); overload;
       procedure Destroyed; reintroduce;
     end;
+  private
+    /// <summary>Verzögerte Auswertung (erDeferred, etwa LLDB): wartet höchstens ATimeoutMs auf das Ergebnis.
+    /// </summary>
+    class function WaitDeferred(const AThread: IOTAThread; const ADebugger: IOTADebuggerServices;
+      ATimeoutMs: Integer; out AText: string): Boolean; static;
   public const
     cChunkSize = 64 * 1024;
   public
@@ -136,6 +141,38 @@ begin
   end;
 end;
 
+class function TAtlasIdeDebugEvaluator.WaitDeferred(const AThread: IOTAThread;
+  const ADebugger: IOTADebuggerServices; ATimeoutMs: Integer; out AText: string): Boolean;
+var
+  mWaiter: TWaiter;
+  mWaiterRef: IOTAThreadNotifier;
+  mIndex: Integer;
+  mStartedAt: UInt64;
+begin
+  AText := '';
+  mWaiter := TWaiter.Create;
+  mWaiterRef := mWaiter;
+  mIndex := AThread.AddNotifier(mWaiterRef);
+  try
+    mStartedAt := GetTickCount64;
+    while not mWaiter.Done and (GetTickCount64 - mStartedAt < UInt64(ATimeoutMs)) do
+    begin
+      ADebugger.ProcessDebugEvents;
+    end;
+  finally
+    try
+      AThread.RemoveNotifier(mIndex);
+    except
+      // Thread schon abgebaut.
+    end;
+  end;
+  Result := mWaiter.Done and (mWaiter.ReturnCode = 0);
+  if Result then
+  begin
+    AText := mWaiter.Text;
+  end;
+end;
+
 class function TAtlasIdeDebugEvaluator.Evaluate(const AExpression: string; AEvaluation: TAtlasVisualizerEvaluation;
   ATimeoutMs: Integer; out AText: string): Boolean;
 var
@@ -145,10 +182,6 @@ var
   mCanModify: Boolean;
   mResultAddr, mResultSize, mResultVal: LongWord;
   mCode: TOTAEvaluateResult;
-  mWaiter: TWaiter;
-  mWaiterRef: IOTAThreadNotifier;
-  mIndex: Integer;
-  mStartedAt: UInt64;
 begin
   AText := '';
   Result := False;
@@ -172,29 +205,7 @@ begin
         Result := True;
       end;
     erDeferred:
-      begin
-        mWaiter := TWaiter.Create;
-        mWaiterRef := mWaiter;
-        mIndex := mThread.AddNotifier(mWaiterRef);
-        try
-          mStartedAt := GetTickCount64;
-          while not mWaiter.Done and (GetTickCount64 - mStartedAt < UInt64(ATimeoutMs)) do
-          begin
-            mDebugger.ProcessDebugEvents;
-          end;
-        finally
-          try
-            mThread.RemoveNotifier(mIndex);
-          except
-            // Thread schon abgebaut.
-          end;
-        end;
-        Result := mWaiter.Done and (mWaiter.ReturnCode = 0);
-        if Result then
-        begin
-          AText := mWaiter.Text;
-        end;
-      end;
+      Result := WaitDeferred(mThread, mDebugger, ATimeoutMs, AText);
     erError, erBusy:
       ; // Nichts auszuwerten: Result bleibt False.
   end;

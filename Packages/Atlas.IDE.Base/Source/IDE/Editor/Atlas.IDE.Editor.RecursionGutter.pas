@@ -210,7 +210,8 @@ begin
   finally
     mValues.Free;
   end;
-  FPoll.AskAsync(FSession(), FRun, Feature, cCommand, mArguments, cRetryMs, cTimeoutMs, Answer(ADepth));
+  FPoll.AskAsync(FSession(), FRun, Feature, TAtlasLensRequest.Create(cCommand, mArguments, cTimeoutMs), cRetryMs,
+    Answer(ADepth));
 end;
 
 function TAtlasIdeRecursionGutter.Answer(ADepth: Integer): TProc<TJSONValue>;
