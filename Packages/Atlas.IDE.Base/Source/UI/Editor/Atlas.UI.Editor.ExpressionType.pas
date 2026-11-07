@@ -29,7 +29,7 @@ type
   TAtlasExpressionTypeTip = class(TAtlasPopupWindow)
   public const
     /// <summary>Abstand unter der Schreibmarke, logische Pixel.</summary>
-    Gap = 4;
+    cGap = 4;
   private
     FRows: TArray<TAtlasExpressionTypeRow>;
     FRowRects: TArray<TRect>;
@@ -76,7 +76,7 @@ constructor TAtlasExpressionTypeTip.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.ExpressionType;
-  SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.ExpressionTypeCommand));
+  SetAccessible(cUiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.ExpressionTypeCommand));
 end;
 
 class function TAtlasExpressionTypeTip.Texts(const AKey: string): TAtlasExpressionTypeTexts;
@@ -198,10 +198,10 @@ begin
   mArea := WorkAreaAt(APoint);
   mSize.cx := Min(mSize.cx, mArea.Width);
   mLeft := Min(APoint.X, mArea.Right - mSize.cx);
-  mTop := APoint.Y + Scale(Gap);
+  mTop := APoint.Y + Scale(cGap);
   if mTop + mSize.cy > mArea.Bottom then
   begin
-    mTop := APoint.Y - Scale(Gap) - mSize.cy;
+    mTop := APoint.Y - Scale(cGap) - mSize.cy;
   end;
   ShowAt(Rect(Max(mLeft, mArea.Left), Max(mTop, mArea.Top), Max(mLeft, mArea.Left) + mSize.cx,
     Max(mTop, mArea.Top) + mSize.cy));

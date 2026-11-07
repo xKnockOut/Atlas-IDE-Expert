@@ -75,9 +75,9 @@ type
   TAtlasToolbarPlaces = record
   public const
     /// <summary>Teile ohne Index in den Knöpfen (PartNone vom Vorfahr ist -1).</summary>
-    PartReturn = -2;
-    PartMore = -3;
-    PartGear = -4;
+    cPartReturn = -2;
+    cPartMore = -3;
+    cPartGear = -4;
   public
     Ids: TArray<string>;
     Separators: TArray<Boolean>;
@@ -186,9 +186,9 @@ const
   cBaseButton = 24;
   cBaseSeparator = 9;
   cMargin = 4;
-  PartReturn = TAtlasToolbarPlaces.PartReturn;
-  PartMore = TAtlasToolbarPlaces.PartMore;
-  PartGear = TAtlasToolbarPlaces.PartGear;
+  cPartReturn = TAtlasToolbarPlaces.cPartReturn;
+  cPartMore = TAtlasToolbarPlaces.cPartMore;
+  cPartGear = TAtlasToolbarPlaces.cPartGear;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -211,7 +211,7 @@ end;
 class function TAtlasToolbarButton.Separator: TAtlasToolbarButton;
 begin
   Result := Default(TAtlasToolbarButton);
-  Result.Id := TAtlasToolbarItems.Separator;
+  Result.Id := TAtlasToolbarItems.cSeparator;
 end;
 
 function TAtlasToolbarButton.IsSeparator: Boolean;
@@ -258,7 +258,7 @@ begin
     begin
       Continue;
     end;
-    if AOrder[mIndex] = PartReturn then
+    if AOrder[mIndex] = cPartReturn then
     begin
       Return := Rect(mLeft, ABand.Top, mLeft + ASlots[mIndex].Width, ABand.Bottom);
     end
@@ -317,15 +317,15 @@ var
 begin
   if Return.Contains(APoint) then
   begin
-    Exit(PartReturn);
+    Exit(cPartReturn);
   end;
   if More.Contains(APoint) then
   begin
-    Exit(PartMore);
+    Exit(cPartMore);
   end;
   if Gear.Contains(APoint) then
   begin
-    Exit(PartGear);
+    Exit(cPartGear);
   end;
   for mIndex := 0 to High(Rects) do
   begin
@@ -334,7 +334,7 @@ begin
       Exit(mIndex);
     end;
   end;
-  Result := TAtlasEditorBar.PartNone;
+  Result := TAtlasEditorBar.cPartNone;
 end;
 
 type
@@ -412,14 +412,14 @@ begin
     // Rücksprung hinter den angehefteten Abschnittssymbolen am Anfang.
     if not mPlaced and not Bar.FButtons[mIndex].Pinned then
     begin
-      Result := Result + [PartReturn];
+      Result := Result + [cPartReturn];
       mPlaced := True;
     end;
     Result := Result + [mIndex];
   end;
   if not mPlaced then
   begin
-    Result := Result + [PartReturn];
+    Result := Result + [cPartReturn];
   end;
 end;
 
@@ -431,7 +431,7 @@ begin
   SetLength(Result, Length(AOrder));
   for mIndex := 0 to High(AOrder) do
   begin
-    if AOrder[mIndex] = PartReturn then
+    if AOrder[mIndex] = cPartReturn then
     begin
       Result[mIndex] := TAtlasToolbarSlot.Create(ReturnWidth, False, True);
     end
@@ -735,13 +735,13 @@ end;
 function TAtlasEditorToolbar.PartHint(APart: Integer): string;
 begin
   case APart of
-    PartNone:
+    cPartNone:
       Result := '';
-    PartReturn:
+    cPartReturn:
       Result := FReturn.Hint;
-    PartMore:
+    cPartMore:
       Result := FTexts.More;
-    PartGear:
+    cPartGear:
       Result := FTexts.Gear;
   else
     Result := FButtons[APart].Hint;
@@ -801,9 +801,9 @@ begin
   end;
   if not FPlaces.More.IsEmpty then
   begin
-    mPainter.Button(FPlaces.More, TAtlasToolbarButton.Create('', '', '', TAtlasToolbarIcon.More), Hot = PartMore, '');
+    mPainter.Button(FPlaces.More, TAtlasToolbarButton.Create('', '', '', TAtlasToolbarIcon.More), Hot = cPartMore, '');
   end;
-  mPainter.Button(FPlaces.Gear, TAtlasToolbarButton.Create('', '', '', TAtlasToolbarIcon.Gear), Hot = PartGear, '');
+  mPainter.Button(FPlaces.Gear, TAtlasToolbarButton.Create('', '', '', TAtlasToolbarIcon.Gear), Hot = cPartGear, '');
 end;
 
 procedure TAtlasEditorToolbar.ClickAt(AX, AY: Integer);
@@ -830,16 +830,16 @@ end;
 procedure TAtlasEditorToolbar.Fire(APart: Integer);
 begin
   case APart of
-    PartNone:
+    cPartNone:
       ;
-    PartReturn:
+    cPartReturn:
       if Assigned(FEvents.Return) then
       begin
         FEvents.Return();
       end;
-    PartMore:
+    cPartMore:
       ShowMenu(ClientToScreen(Point(FPlaces.More.Left, FPlaces.More.Bottom)), True);
-    PartGear:
+    cPartGear:
       if Assigned(FEvents.Customize) then
       begin
         FEvents.Customize();

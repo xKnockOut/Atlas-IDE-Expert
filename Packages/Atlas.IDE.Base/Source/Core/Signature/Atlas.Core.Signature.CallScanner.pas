@@ -29,7 +29,7 @@ type
 
   TAtlasCallScanner = class
   public const
-    MaxLookBack = 8000;
+    cMaxLookBack = 8000;
   public
     /// <summary>Innerster offener Aufruf vor ACaret (0-basierter Zeichenoffset in AText).</summary>
     class function Scan(const AText: string; ACaret: Integer): TAtlasCallSite; static;
@@ -278,7 +278,7 @@ begin
   mScan.Text := AText;
   mScan.Stop := Min(ACaret, Length(AText));
   // 1-basiert; Anfang einer Zeile höchstens MaxLookBack Zeichen vor dem Caret.
-  mScan.Start := Max(1, mScan.Stop - MaxLookBack);
+  mScan.Start := Max(1, mScan.Stop - cMaxLookBack);
   if mScan.Start > 1 then
   begin
     while (mScan.Start <= mScan.Stop) and (AText[mScan.Start - 1] <> #10) do

@@ -24,12 +24,12 @@ uses
 type
   TAtlasServerExits = class
   public const
-    StderrName = 'server-stderr.log';
-    StderrOldName = 'server-stderr.1.log';
+    cStderrName = 'server-stderr.log';
+    cStderrOldName = 'server-stderr.1.log';
     /// <summary>Ab dieser Größe wird die Datei beim Start beiseitegelegt.</summary>
-    StderrMaxBytes = 1024 * 1024;
+    cStderrMaxBytes = 1024 * 1024;
     /// <summary>STILL_ACTIVE: Der Prozess lief beim Ende der Verbindung noch; der Code ist unbekannt.</summary>
-    Unknown = 259;
+    cUnknown = 259;
   public
     /// <summary>Ursache zum Exit-Code, z. B. „Stapelüberlauf (0xC00000FD)“ oder „Code 3“.</summary>
     class function Describe(ACode: Cardinal): string; static;
@@ -44,7 +44,7 @@ type
 
   TAtlasServerCrashes = class
   public const
-    WindowMinutes = 10;
+    cWindowMinutes = 10;
   private
     FLock: TCriticalSection;
     FClock: TFunc<TDateTime>;
@@ -162,7 +162,7 @@ begin
       Result := UiText(TCrashesText.Code1UnhandledExceptionOr);
     217:
       Result := UiText(TCrashesText.RuntimeError217UnhandledException);
-    Unknown:
+    cUnknown:
       Result := UiText(TCrashesText.ExitCodeUnknownProcessWas);
   else
     Result := DescribeNamedExit(ACode);
@@ -203,7 +203,7 @@ begin
   end;
   if AErrorLines > 0 then
   begin
-    Result := Result + Format('; %d Zeilen auf stderr (%s)', [AErrorLines, StderrName]);
+    Result := Result + Format('; %d Zeilen auf stderr (%s)', [AErrorLines, cStderrName]);
   end
   else
   begin
@@ -213,12 +213,12 @@ end;
 
 class function TAtlasServerExits.StderrFileName(const AFolder: string): string;
 begin
-  Result := TPath.Combine(AFolder, StderrName);
+  Result := TPath.Combine(AFolder, cStderrName);
 end;
 
 class function TAtlasServerExits.StderrOldFileName(const AFolder: string): string;
 begin
-  Result := TPath.Combine(AFolder, StderrOldName);
+  Result := TPath.Combine(AFolder, cStderrOldName);
 end;
 
 { TAtlasServerCrashes }
@@ -251,7 +251,7 @@ begin
   FLock.Enter;
   try
     mTime := FClock();
-    Result := not (FHas and (FLastCode = ACode) and (MinutesBetween(mTime, FLastAt) < WindowMinutes));
+    Result := not (FHas and (FLastCode = ACode) and (MinutesBetween(mTime, FLastAt) < cWindowMinutes));
     FHas := True;
     FLastCode := ACode;
     FLastAt := mTime;

@@ -49,7 +49,7 @@ type
 
   TAtlasAvJson = class
   public const
-    Method = 'atlas/accessChains';
+    cMethod = 'atlas/accessChains';
   public
     /// <summary>Parameter der Anfrage (ALine 0-basiert). Der Aufrufer übernimmt das Objekt.</summary>
     class function Params(const AFileName: string; ALine, APointerSize: Integer): TJSONObject; static;

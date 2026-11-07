@@ -89,11 +89,11 @@ type
 
   TAtlasProjectBaselines = class
   public const
-    Command = 'atlas.updateBaseline';
+    cCommand = 'atlas.updateBaseline';
     /// <summary>Zeitlimit des Befehls: Er prüft alle Dateien des Projekts.</summary>
-    TimeoutMs = 600000;
-    FileName = TAtlasBaselineInfo.FileName;
-    LegacyFileName = TAtlasBaselineInfo.LegacyFileName;
+    cTimeoutMs = 600000;
+    cFileName = TAtlasBaselineInfo.cFileName;
+    cLegacyFileName = TAtlasBaselineInfo.cLegacyFileName;
   public
     /// <summary>AFolder\atlas-baseline.json, sonst AFolder\delphi-lsp-baseline.json, wenn nur diese existiert;
     /// '' ohne Datei.</summary>
@@ -260,13 +260,13 @@ begin
   begin
     Exit;
   end;
-  if AExists(Joined(AFolder, FileName)) then
+  if AExists(Joined(AFolder, cFileName)) then
   begin
-    Exit(Joined(AFolder, FileName));
+    Exit(Joined(AFolder, cFileName));
   end;
-  if AExists(Joined(AFolder, LegacyFileName)) then
+  if AExists(Joined(AFolder, cLegacyFileName)) then
   begin
-    Result := Joined(AFolder, LegacyFileName);
+    Result := Joined(AFolder, cLegacyFileName);
   end;
 end;
 

@@ -388,7 +388,7 @@ begin
   Result := False;
   try
     ASession.Sync(AFileName, AText);
-    mAnswer := ASession.RunCommand(TAtlasExpressionType.Command, AArguments, cTimeoutMs);
+    mAnswer := ASession.RunCommand(TAtlasExpressionType.cCommand, AArguments, cTimeoutMs);
     try
       TAtlasExpressionType.Read(mAnswer, AInfo);
     finally

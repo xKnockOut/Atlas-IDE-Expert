@@ -416,7 +416,7 @@ begin
       end;
     // Ein sechster Favorit ersetzt keinen (#458).
     TAtlasFavoriteToggle.Full:
-      FPopup.ShowNotice(TAtlasStrings.Fmt(TAtlasTextId.FavoritesFull, [TAtlasFavorites.MaxPerType,
+      FPopup.ShowNotice(TAtlasStrings.Fmt(TAtlasTextId.FavoritesFull, [TAtlasFavorites.cMaxPerType,
         TAtlasFavorites.TypeNameOf(mItem)]));
   else
     if FController.Favorites <> nil then

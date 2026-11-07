@@ -90,9 +90,9 @@ type
   public const
     /// <summary>Zweiter Compile mit denselben Treffern in dieser Zeit läuft trotz block.</summary>
     OverrideMs = TAtlasReleaseGuard.OverrideMs;
-    DefaultTimeoutMs = TAtlasBuildPipelineSettings.GateDefaultTimeoutMs;
-    MinTimeoutMs = TAtlasBuildPipelineSettings.GateMinTimeoutMs;
-    MaxTimeoutMs = TAtlasBuildPipelineSettings.GateMaxTimeoutMs;
+    DefaultTimeoutMs = TAtlasBuildPipelineSettings.cGateDefaultTimeoutMs;
+    MinTimeoutMs = TAtlasBuildPipelineSettings.cGateMinTimeoutMs;
+    MaxTimeoutMs = TAtlasBuildPipelineSettings.cGateMaxTimeoutMs;
   public
     /// <summary>Prüft Atlas diesen Lauf? Gate nicht off, make oder build, vom Benutzer, keine Hintergrundprüfung.
     /// </summary>
@@ -211,7 +211,7 @@ end;
 class function TAtlasBuildGateCheck.Counts(const AProblem: TAtlasProblem): Boolean;
 begin
   Result := (AProblem.Severity = TAtlasProblemSeverity.Error) and not AProblem.Unnecessary and
-    not SameText(AProblem.Source, TAtlasProblem.CompilerSource);
+    not SameText(AProblem.Source, TAtlasProblem.cCompilerSource);
 end;
 
 class function TAtlasBuildGateCheck.Key(const AProject: string; const AStamps: TArray<string>;

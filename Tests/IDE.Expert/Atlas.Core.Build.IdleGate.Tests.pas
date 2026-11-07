@@ -27,7 +27,7 @@ uses
   Atlas.Core.Build.IdleGate;
 
 const
-  Quiet = TAtlasBuildIdleGate.QuietMs;
+  Quiet = TAtlasBuildIdleGate.cQuietMs;
 
 { TAtlasBuildIdleGateTests }
 

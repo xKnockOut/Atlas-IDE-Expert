@@ -17,7 +17,7 @@ type
   TAtlasLineTail = class
   public const
     /// <summary>Abstand zwischen zwei Elementen in Pixeln.</summary>
-    Gap = 8;
+    cGap = 8;
   private
     class var FKey: string;
     class var FRight: Integer;
@@ -80,9 +80,9 @@ begin
   begin
     Exit;
   end;
-  if ARight + Gap > FRight then
+  if ARight + cGap > FRight then
   begin
-    FRight := ARight + Gap;
+    FRight := ARight + cGap;
   end;
   if not Has(AOwner) then
   begin

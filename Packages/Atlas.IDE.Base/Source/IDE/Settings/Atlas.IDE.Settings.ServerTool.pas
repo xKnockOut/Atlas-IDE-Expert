@@ -34,8 +34,8 @@ type
   TAtlasServerTool = class
   public const
     /// <summary>Zeitlimit für einen Lauf über das ganze Projekt.</summary>
-    CheckTimeoutMs = 600000;
-    ShortTimeoutMs = 60000;
+    cCheckTimeoutMs = 600000;
+    cShortTimeoutMs = 60000;
   public
     /// <summary>Startet ACall.Exe mit den Argumenten im Arbeitsordner und wartet höchstens bis zum Zeitlimit.
     /// False, wenn der Prozess nicht startet oder abgebrochen wurde (AResult.Error sagt, warum).</summary>

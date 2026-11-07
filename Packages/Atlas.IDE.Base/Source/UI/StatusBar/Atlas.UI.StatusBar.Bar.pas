@@ -620,19 +620,19 @@ begin
   ASubs := nil;
   for mId in Bar.FView.Items do
   begin
-    if SameText(mId, TAtlasStatusBarItems.Status) then
+    if SameText(mId, TAtlasStatusBarItems.cStatus) then
     begin
       AddStatus(Bar.FView, AParts, ASubs, TAtlasEditorStatusBar.cSubSlots);
     end
-    else if SameText(mId, TAtlasStatusBarItems.Findings) and Bar.FView.FindingsShown then
+    else if SameText(mId, TAtlasStatusBarItems.cFindings) and Bar.FView.FindingsShown then
     begin
       AddPart(AParts, ASubs, TAtlasStatusBarPart.Findings, -1);
     end
-    else if SameText(mId, TAtlasStatusBarItems.LiveCheck) then
+    else if SameText(mId, TAtlasStatusBarItems.cLiveCheck) then
     begin
       AddPart(AParts, ASubs, TAtlasStatusBarPart.LiveCheck, -1);
     end
-    else if SameText(mId, TAtlasStatusBarItems.Method) then
+    else if SameText(mId, TAtlasStatusBarItems.cMethod) then
     begin
       AddPart(AParts, ASubs, TAtlasStatusBarPart.Method, -1);
     end;
@@ -653,7 +653,7 @@ end;
 
 function TAtlasStatusBarPainter.HotElement: TAtlasStatusBarPart;
 begin
-  if Bar.Hot = TAtlasEditorBar.PartNone then
+  if Bar.Hot = TAtlasEditorBar.cPartNone then
   begin
     Exit(TAtlasStatusBarPart.None);
   end;
@@ -662,7 +662,7 @@ end;
 
 function TAtlasStatusBarPainter.HotKind: Integer;
 begin
-  if Bar.Hot = TAtlasEditorBar.PartNone then
+  if Bar.Hot = TAtlasEditorBar.cPartNone then
   begin
     Exit(-1);
   end;
@@ -1097,14 +1097,14 @@ begin
   mElement := ElementAt(X, Y);
   if mElement = TAtlasStatusBarPart.None then
   begin
-    Exit(PartNone);
+    Exit(cPartNone);
   end;
   Result := Ord(mElement) * cSubSlots + FPlaces.SubAt(Point(X, Y), ClientHeight) + 1;
 end;
 
 function TAtlasEditorStatusBar.PartHint(APart: Integer): string;
 begin
-  if APart = PartNone then
+  if APart = cPartNone then
   begin
     Exit('');
   end;
@@ -1116,7 +1116,7 @@ var
   mElement: TAtlasStatusBarPart;
   mSub: Integer;
 begin
-  if APart = PartNone then
+  if APart = cPartNone then
   begin
     Exit(False);
   end;

@@ -38,7 +38,7 @@ uses
 procedure TAtlasOverviewTests.KindsFromSetting;
 begin
   Assert.AreEqual('diagnostics,search,changes,breakpoints,bookmarks,cursor',
-    TAtlasOverview.KindsText(TAtlasOverview.AllKinds));
+    TAtlasOverview.KindsText(TAtlasOverview.cAllKinds));
   Assert.IsTrue(TAtlasOverview.Kinds('Changes, cursor') = [TAtlasOverviewKind.Changes, TAtlasOverviewKind.Cursor]);
   Assert.AreEqual('search,cursor', TAtlasOverview.Normalize('cursor;gibtsnicht,search,search'));
   Assert.AreEqual('', TAtlasOverview.Normalize(''));
@@ -120,7 +120,7 @@ begin
     TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Breakpoint, 3, 1),
     TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Bookmark, 4, 1),
     TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Cursor, 5, 1)];
-  Assert.AreEqual(5, Integer(Length(TAtlasOverview.Filter(Marks, TAtlasOverview.AllKinds))));
+  Assert.AreEqual(5, Integer(Length(TAtlasOverview.Filter(Marks, TAtlasOverview.cAllKinds))));
   Marks := TAtlasOverview.Filter(Marks, [TAtlasOverviewKind.Changes, TAtlasOverviewKind.Bookmarks]);
   Assert.AreEqual(2, Integer(Length(Marks)));
   Assert.AreEqual(Ord(TAtlasOverviewMarkKind.Deleted), Ord(Marks[0].Kind));
@@ -138,7 +138,7 @@ begin
   Assert.IsFalse(TAtlasOverview.SearchTerm('', Term));
   Assert.IsFalse(TAtlasOverview.SearchTerm('   ', Term));
   Assert.IsFalse(TAtlasOverview.SearchTerm('a'#13#10'b', Term), 'mehrzeilig');
-  Assert.IsFalse(TAtlasOverview.SearchTerm(StringOfChar('x', TAtlasOverview.MaxTermLength + 1), Term));
+  Assert.IsFalse(TAtlasOverview.SearchTerm(StringOfChar('x', TAtlasOverview.cMaxTermLength + 1), Term));
   Lines := TAtlasOverview.Occurrences(['begin', '  showmessage(''a'');', 'end;', '  ShowMessage(X);'], 'ShowMessage');
   Assert.AreEqual(2, Integer(Length(Lines)));
   Assert.AreEqual(1, Lines[0], 'ohne Groß-/Kleinschreibung');

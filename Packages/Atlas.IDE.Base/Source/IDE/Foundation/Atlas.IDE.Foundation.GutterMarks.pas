@@ -98,7 +98,7 @@ type
   TAtlasIdeGutterMarks = class
   public const
     /// <summary>So lange gilt ein Rechtsklick in die Rinne für die Befehle.</summary>
-    LineMs = 60000;
+    cLineMs = 60000;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -465,7 +465,7 @@ begin
   ALine := FClickLine;
   Result := (FClickFile <> '') and (FClickLine >= 0) and
     (TAtlasProjectSummaries.NormalizedPath(FClickFile) = TAtlasProjectSummaries.NormalizedPath(AFileName)) and
-    (TThread.GetTickCount64 - FClickAt <= LineMs);
+    (TThread.GetTickCount64 - FClickAt <= cLineMs);
   if not Result then
   begin
     ALine := -1;

@@ -168,7 +168,7 @@ end;
 procedure TAtlasDrawnElementsTests.AnchorIsNormalizedAndShort;
 begin
   Assert.AreEqual('if A then B := 1;', TAtlasDrawnElements.Anchor('    if  A then'#9'B := 1;   '));
-  Assert.AreEqual(TAtlasDrawnElements.MaxAnchorLength, Integer(Length(TAtlasDrawnElements.Anchor(
+  Assert.AreEqual(TAtlasDrawnElements.cMaxAnchorLength, Integer(Length(TAtlasDrawnElements.Anchor(
     StringOfChar('a', 300)))));
 end;
 

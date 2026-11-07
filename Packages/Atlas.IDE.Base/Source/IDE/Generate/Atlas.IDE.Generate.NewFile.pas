@@ -147,7 +147,7 @@ end;
 
 function TAtlasFileCreator.GetAncestorName: string;
 begin
-  Result := TAtlasFileTemplates.DefaultAncestor;
+  Result := TAtlasFileTemplates.cDefaultAncestor;
 end;
 
 function TAtlasFileCreator.GetImplFileName: string;

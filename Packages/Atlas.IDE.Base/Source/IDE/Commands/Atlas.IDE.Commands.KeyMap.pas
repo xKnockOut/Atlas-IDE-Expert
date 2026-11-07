@@ -49,10 +49,10 @@ uses
 type
   TAtlasIdeKeyMap = class
   public const
-    CommandId = 'Atlas.KeyOverview';
+    cCommandId = 'Atlas.KeyOverview';
     /// <summary>Wartezeit nach dem Laden, bis die übrigen Packages ihre Tasten angemeldet haben.</summary>
-    StartDelayMs = 3000;
-    ExportFileName = 'Tastenkuerzel.html';
+    cStartDelayMs = 3000;
+    cExportFileName = 'Tastenkuerzel.html';
   private class var
     FInstance: TAtlasIdeKeyMap;
   private
@@ -220,7 +220,7 @@ begin
     if AModule = 0 then
     begin
       mEntry.Origin := TAtlasKeyOrigin.Ide;
-      mEntry.Name := TAtlasKeyMap.IdeName;
+      mEntry.Name := TAtlasKeyMap.cIdeName;
     end
     else
     begin
@@ -275,9 +275,9 @@ begin
     end;
     mItem := TAtlasKeyItem.Create(mEntry.Key, ShortCutToText(TShortCut(mEntry.Key)),
       TAtlasKeyMapWindow.FunctionCaption(mEntry.Func), TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Atlas,
-      TAtlasKeyMap.AtlasName, TAtlasKeyMap.ContextOf(mEntry.Func), TAtlasKeyMap.SourceOf(mEntry.Func),
+      TAtlasKeyMap.cAtlasName, TAtlasKeyMap.ContextOf(mEntry.Func), TAtlasKeyMap.SourceOf(mEntry.Func),
       cKeyIdPrefix + IntToStr(Ord(mEntry.Func)), cBindOrder[mEntry.Func]));
-    mItem.Category := TAtlasKeyMap.AtlasName;
+    mItem.Category := TAtlasKeyMap.cAtlasName;
     mItem.Func := mEntry.Func;
     mItem.Priority := mEntry.Priority;
     if mItem.Source = TAtlasKeySource.Window then
@@ -367,12 +367,12 @@ begin
   if AHooked then
   begin
     mOrigin := TAtlasKeyOrigin.Ide;
-    mName := TAtlasKeyMap.IdeName;
+    mName := TAtlasKeyMap.cIdeName;
   end
   else if SameText(AAction.Category, 'Atlas') or AAction.Category.StartsWith('Atlas.', True) then
   begin
     mOrigin := TAtlasKeyOrigin.Atlas;
-    mName := TAtlasKeyMap.AtlasName;
+    mName := TAtlasKeyMap.cAtlasName;
   end
   // Der Handler liegt im Modul dessen, der die Aktion angelegt hat; ohne Handler zählt der Besitzer.
   else if Assigned(AAction.OnExecute) then
@@ -409,7 +409,7 @@ var
   mItem: TAtlasKeyItem;
 begin
   mItem := TAtlasKeyItem.Create(Word(AShortCut), ShortCutToText(AShortCut), TAtlasKeyMapWindow.FunctionCaption(cFunc),
-    TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Atlas, TAtlasKeyMap.AtlasName, TAtlasKeyMap.ContextOf(cFunc),
+    TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Atlas, TAtlasKeyMap.cAtlasName, TAtlasKeyMap.ContextOf(cFunc),
     TAtlasKeyMap.SourceOf(cFunc), cKeyIdPrefix + IntToStr(Ord(cFunc)), AOrder));
   mItem.Category := AAction.Category;
   mItem.Func := cFunc;
@@ -517,7 +517,7 @@ begin
       mCommand := Copy(mCommand, 6, MaxInt);
     end;
     AItems.Add(TAtlasKeyItem.Create(mKnown.ShortCut, ShortCutToText(TShortCut(mKnown.ShortCut)), mCommand,
-      TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Ide, TAtlasKeyMap.IdeName, TAtlasKeyContext.Editor,
+      TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Ide, TAtlasKeyMap.cIdeName, TAtlasKeyContext.Editor,
       TAtlasKeySource.Binding, 'Editor.' + IntToStr(mKnown.ShortCut), 0)));
   end;
 end;
@@ -526,9 +526,9 @@ end;
 /// F1–F12 mit jeder Umschaltung.</summary>
 function ProbeKeys(const AItems: TArray<TAtlasKeyItem>): TArray<Word>;
 const
-  cModifiers: array[0..5] of Word = (TAtlasKeyMap.scCtrl, TAtlasKeyMap.scCtrl or TAtlasKeyMap.scShift,
-    TAtlasKeyMap.scCtrl or TAtlasKeyMap.scAlt, TAtlasKeyMap.scCtrl or TAtlasKeyMap.scAlt or TAtlasKeyMap.scShift,
-    TAtlasKeyMap.scAlt, TAtlasKeyMap.scAlt or TAtlasKeyMap.scShift);
+  cModifiers: array[0..5] of Word = (TAtlasKeyMap.cScCtrl, TAtlasKeyMap.cScCtrl or TAtlasKeyMap.cScShift,
+    TAtlasKeyMap.cScCtrl or TAtlasKeyMap.cScAlt, TAtlasKeyMap.cScCtrl or TAtlasKeyMap.cScAlt or TAtlasKeyMap.cScShift,
+    TAtlasKeyMap.cScAlt, TAtlasKeyMap.cScAlt or TAtlasKeyMap.cScShift);
 var
   mSeen: TDictionary<Word, Boolean>;
   mItem: TAtlasKeyItem;
@@ -568,7 +568,7 @@ begin
     for mKey := $70 to $7B do
     begin
       Add(Word(mKey));
-      Add(TAtlasKeyMap.scShift or Word(mKey));
+      Add(TAtlasKeyMap.cScShift or Word(mKey));
       for mModifier in cModifiers do
       begin
         Add(mModifier or Word(mKey));
@@ -672,7 +672,7 @@ begin
   end
   else if mShared then
   begin
-    AddEditorBinding(AItems, AKey, TAtlasKeyOrigin.Ide, TAtlasKeyMap.IdeName, AOrder);
+    AddEditorBinding(AItems, AKey, TAtlasKeyOrigin.Ide, TAtlasKeyMap.cIdeName, AOrder);
   end;
 end;
 
@@ -953,7 +953,7 @@ begin
   begin
     mFolder := TPath.GetTempPath;
   end;
-  Result := TPath.Combine(TPath.Combine(mFolder, 'Atlas'), ExportFileName);
+  Result := TPath.Combine(TPath.Combine(mFolder, 'Atlas'), cExportFileName);
 end;
 
 procedure TAtlasIdeKeyMap.Refresh;
@@ -1069,7 +1069,7 @@ begin
     begin
       Result := TAtlasIdeSettings.Current.KeyOverview;
     end;
-  ARegistry.RegisterCommand(CommandId, TAtlasStrings.Text(TAtlasTextId.KeyMapMenu), '', mRun, mVisible);
+  ARegistry.RegisterCommand(cCommandId, TAtlasStrings.Text(TAtlasTextId.KeyMapMenu), '', mRun, mVisible);
 end;
 
 procedure TAtlasIdeKeyMap.CheckAtStart;
@@ -1079,7 +1079,7 @@ begin
     FTimer := TTimer.Create(nil);
     FTimer.OnTimer := TimerTick;
   end;
-  FTimer.Interval := StartDelayMs;
+  FTimer.Interval := cStartDelayMs;
   FTimer.Enabled := True;
 end;
 

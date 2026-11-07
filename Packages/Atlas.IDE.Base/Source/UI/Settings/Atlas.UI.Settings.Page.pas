@@ -153,7 +153,7 @@ begin
   mPanel.Height := 40;
   FSymbol := TAtlasSymbolImage.Create(Self);
   FSymbol.Parent := mPanel;
-  FSymbol.LogicalSize := TAtlasSymbol.HeaderSize;
+  FSymbol.LogicalSize := TAtlasSymbol.cHeaderSize;
   FSymbol.Left := 4;
   FSymbol.Top := 4;
   mTitle := TLabel.Create(Self);

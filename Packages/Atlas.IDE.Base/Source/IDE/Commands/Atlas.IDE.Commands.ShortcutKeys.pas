@@ -50,12 +50,12 @@ type
   TAtlasIdeShortcutKeys = class
   public const
     /// <summary>Tabelle Kürzel → Befehle spätestens nach dieser Zeit neu bauen.</summary>
-    KeysMaxAgeMs = 30000;
+    cKeysMaxAgeMs = 30000;
     /// <summary>Eine Aktion zählt nur, wenn der Benutzer so kurz vorher etwas eingegeben hat.</summary>
-    UserInputMs = 1500;
+    cUserInputMs = 1500;
     /// <summary>Selbst gemeldeter Aufruf: OnActionExecute derselben Aktion so lange danach nicht noch einmal.
     /// </summary>
-    ExplicitMs = 1000;
+    cExplicitMs = 1000;
   private
     /// <summary>Schlüssel der Tastenfolge (StepsKey) → Befehle.</summary>
     FKeys: TDictionary<string, TArray<string>>;
@@ -126,7 +126,7 @@ begin
   begin
     Exit(True);
   end;
-  Result := DWORD(GetTickCount - mInfo.dwTime) < DWORD(TAtlasIdeShortcutKeys.UserInputMs);
+  Result := DWORD(GetTickCount - mInfo.dwTime) < DWORD(TAtlasIdeShortcutKeys.cUserInputMs);
 end;
 
 /// <summary>Kürzel aus Menüeinträgen: Aktion → Text hinter dem Tab der Beschriftung (auch Kürzel mit zwei
@@ -203,12 +203,12 @@ begin
     Exit;
   end;
   mKey := AShortCut and $FF;
-  mModifiers := AShortCut and TAtlasKeyMap.ModifierMask;
+  mModifiers := AShortCut and TAtlasKeyMap.cModifierMask;
   if (GetKeyState(mKey) < 0) and (mModifiers = TAtlasIdeActionKeys.CurrentModifiers) then
   begin
     Exit(True);
   end;
-  Result := (APrevKey = AShortCut) and (APrevAge < TAtlasShortcutTips.ChordMs);
+  Result := (APrevKey = AShortCut) and (APrevAge < TAtlasShortcutTips.cChordMs);
 end;
 
 /// <summary>Wurde AAction gerade über eines ihrer Kürzel ausgelöst? Taste und Umschalttasten jetzt gedrückt bzw.
@@ -249,15 +249,15 @@ begin
   Result := 0;
   if GetKeyState(VK_SHIFT) < 0 then
   begin
-    Result := Result or TAtlasKeyConflicts.scShift;
+    Result := Result or TAtlasKeyConflicts.cScShift;
   end;
   if GetKeyState(VK_CONTROL) < 0 then
   begin
-    Result := Result or TAtlasKeyConflicts.scCtrl;
+    Result := Result or TAtlasKeyConflicts.cScCtrl;
   end;
   if GetKeyState(VK_MENU) < 0 then
   begin
-    Result := Result or TAtlasKeyConflicts.scAlt;
+    Result := Result or TAtlasKeyConflicts.cScAlt;
   end;
 end;
 
@@ -556,7 +556,7 @@ procedure TAtlasIdeShortcutKeys.EnsureKeys;
 var
   mServices: INTAServices;
 begin
-  if (FKeysBuiltAt <> 0) and (TAtlasIdeActionKeys.Ticks - FKeysBuiltAt < KeysMaxAgeMs) then
+  if (FKeysBuiltAt <> 0) and (TAtlasIdeActionKeys.Ticks - FKeysBuiltAt < cKeysMaxAgeMs) then
   begin
     Exit;
   end;
@@ -594,7 +594,7 @@ end;
 
 function TAtlasIdeShortcutKeys.ChordPending: Boolean;
 begin
-  Result := (FPrevKey <> 0) and (TAtlasIdeActionKeys.Ticks - FPrevAt < TAtlasShortcutTips.ChordMs);
+  Result := (FPrevKey <> 0) and (TAtlasIdeActionKeys.Ticks - FPrevAt < TAtlasShortcutTips.cChordMs);
 end;
 
 function TAtlasIdeShortcutKeys.StrokeIds(AShortCut: Word; AChordOnly: Boolean): TArray<string>;
@@ -655,7 +655,7 @@ begin
     Result := False;
   end
   // Von der Befehlspalette schon gemeldet.
-  else if SameText(AAction.Name, FExplicitId) and (TAtlasIdeActionKeys.Ticks - FExplicitAt < ExplicitMs) then
+  else if SameText(AAction.Name, FExplicitId) and (TAtlasIdeActionKeys.Ticks - FExplicitAt < cExplicitMs) then
   begin
     Result := False;
   end

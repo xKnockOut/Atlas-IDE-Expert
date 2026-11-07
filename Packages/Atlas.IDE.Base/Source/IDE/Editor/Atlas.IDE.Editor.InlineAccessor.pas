@@ -20,7 +20,7 @@ uses
 type
   TAtlasIdeInlineAccessor = class
   public const
-    ClientCommand = 'atlas.inlineAccessor';
+    cClientCommand = 'atlas.inlineAccessor';
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position, scope]); ASession: laufende Sitzung oder
     /// nil; AMessage: Zeile für die Meldungsansicht.</summary>

@@ -34,7 +34,7 @@ type
   TAtlasUnwrapWindow = class(TAtlasPopupWindow)
   public const
     /// <summary>Abstand unter der Schreibmarke, logische Pixel.</summary>
-    Gap = 4;
+    cGap = 4;
   private
     FEntries: TArray<TAtlasUnwrapEntry>;
     FRow: Integer;
@@ -106,7 +106,7 @@ begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.Unwrap;
   FRow := -1;
-  SetAccessible(UiaListControlType, TAtlasStrings.Text(TAtlasTextId.UnwrapCommand));
+  SetAccessible(cUiaListControlType, TAtlasStrings.Text(TAtlasTextId.UnwrapCommand));
 end;
 
 type
@@ -375,10 +375,10 @@ begin
   mSize := Layout(False);
   mArea := WorkAreaAt(APoint);
   mLeft := Min(APoint.X, mArea.Right - mSize.cx);
-  mTop := APoint.Y + Scale(Gap);
+  mTop := APoint.Y + Scale(cGap);
   if mTop + mSize.cy > mArea.Bottom then
   begin
-    mTop := APoint.Y - Scale(Gap) - mSize.cy;
+    mTop := APoint.Y - Scale(cGap) - mSize.cy;
   end;
   ShowAt(Rect(Max(mLeft, mArea.Left), Max(mTop, mArea.Top), Max(mLeft, mArea.Left) + mSize.cx,
     Max(mTop, mArea.Top) + mSize.cy));

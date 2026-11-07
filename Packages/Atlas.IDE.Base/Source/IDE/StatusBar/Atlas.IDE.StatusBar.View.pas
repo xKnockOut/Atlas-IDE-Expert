@@ -78,7 +78,7 @@ begin
   Result.Seconds := TAtlasStrings.Text(TAtlasTextId.StatusBarSeconds);
   Result.Minutes := TAtlasStrings.Text(TAtlasTextId.StatusBarMinutes);
   Result.Hours := TAtlasStrings.Text(TAtlasTextId.StatusBarHours);
-  Result.Separator := TAtlasStatusSummary.Separator;
+  Result.Separator := TAtlasStatusSummary.cSeparator;
   Result.ProjectProgress := TAtlasStrings.Text(TAtlasTextId.StatusBarProjectProgress);
   Result.ProjectDone := TAtlasStrings.Text(TAtlasTextId.StatusBarProjectDone);
   Result.ProjectPaused := TAtlasStrings.Text(TAtlasTextId.StatusBarProjectPaused);
@@ -213,11 +213,11 @@ begin
   AView.MethodName := AMethod.Name;
   AView.MethodDetail := TAtlasStatusBarContent.MethodDetail(AMethod,
     TAtlasStrings.Text(TAtlasTextId.StatusBarLines), TAtlasStrings.Text(TAtlasTextId.StatusBarCyclomatic),
-    TAtlasStatusSummary.Separator);
+    TAtlasStatusSummary.cSeparator);
   AView.MethodOver := AMethod.Over;
   AView.MethodHint := AMethod.Name + sLineBreak + TAtlasStatusBarContent.MethodLimits(AMethod,
     TAtlasStrings.Text(TAtlasTextId.StatusBarLines), TAtlasStrings.Text(TAtlasTextId.StatusBarCyclomatic),
-    TAtlasStrings.Text(TAtlasTextId.StatusBarLimit), TAtlasStatusSummary.Separator) + sLineBreak +
+    TAtlasStrings.Text(TAtlasTextId.StatusBarLimit), TAtlasStatusSummary.cSeparator) + sLineBreak +
     TAtlasStrings.Text(TAtlasTextId.StatusBarMethodJump);
 end;
 
@@ -280,7 +280,7 @@ var
 begin
   if AField = nil then
   begin
-    AView.StatusText := TAtlasStatusSummary.FieldCaption;
+    AView.StatusText := TAtlasStatusSummary.cFieldCaption;
     AView.StatusHint := '';
     AView.StatusState := TAtlasStatusState.Neutral;
     Exit;
@@ -288,12 +288,12 @@ begin
   mText := AField.Text;
   if mText = '' then
   begin
-    mText := TAtlasStatusSummary.FieldCaption;
+    mText := TAtlasStatusSummary.cFieldCaption;
   end;
   // Mehr Platz als in der Statuszeile: „Atlas · bereit“ statt nur „Atlas“.
-  if (AField.State = TAtlasStatusState.Green) and SameText(mText, TAtlasStatusSummary.FieldCaption) then
+  if (AField.State = TAtlasStatusState.Green) and SameText(mText, TAtlasStatusSummary.cFieldCaption) then
   begin
-    mText := mText + TAtlasStatusSummary.Separator + TAtlasStrings.Text(TAtlasTextId.StatusBarReady);
+    mText := mText + TAtlasStatusSummary.cSeparator + TAtlasStrings.Text(TAtlasTextId.StatusBarReady);
   end;
   AView.StatusText := mText;
   AView.StatusHint := AField.Tooltip + sLineBreak + TAtlasStrings.Text(TAtlasTextId.StatusBarStatusClicks);
@@ -331,15 +331,15 @@ begin
   end;
   // Ohne Caret: Zeile -1, keine Methode.
   CaretOf(AView, mLine, mCharacter);
-  if TAtlasStatusBarItems.Contains(AItems, TAtlasStatusBarItems.Findings) and ProblemsOn(mSettings) then
+  if TAtlasStatusBarItems.Contains(AItems, TAtlasStatusBarItems.cFindings) and ProblemsOn(mSettings) then
   begin
     FindingsInto(Result, mFileName, mSettings);
   end;
-  if TAtlasStatusBarItems.Contains(AItems, TAtlasStatusBarItems.LiveCheck) then
+  if TAtlasStatusBarItems.Contains(AItems, TAtlasStatusBarItems.cLiveCheck) then
   begin
     LiveInto(Result, mFileName, mSettings);
   end;
-  if TAtlasStatusBarItems.Contains(AItems, TAtlasStatusBarItems.Method) then
+  if TAtlasStatusBarItems.Contains(AItems, TAtlasStatusBarItems.cMethod) then
   begin
     mMethod := MethodAt(AView, mFileName, mLine, AMetrics);
     MethodInto(Result, mMethod);

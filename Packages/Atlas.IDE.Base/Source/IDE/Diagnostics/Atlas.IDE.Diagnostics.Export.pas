@@ -41,19 +41,20 @@ begin
   {$ELSE}
   mPlatform := 'Win32';
   {$ENDIF}
-  mInfo := TAtlasDiagnosticExport.Info(TAtlasPluginVersion.Version, TAtlasUpdates.IdeVersion, mPlatform);
-  mFiles := TAtlasDiagnosticExport.Files(TAtlasDiagnosticExport.DefaultFolder, TAtlasDiagnosticExport.DefaultDays, Now);
+  mInfo := TAtlasDiagnosticExport.Info(TAtlasPluginVersion.cVersion, TAtlasUpdates.IdeVersion, mPlatform);
+  mFiles := TAtlasDiagnosticExport.Files(TAtlasDiagnosticExport.DefaultFolder, TAtlasDiagnosticExport.cDefaultDays,
+    Now);
   if FileExists(TAtlasIdeDiagnosticMode.LastDataFile) then
   begin
     mFiles := mFiles + [TAtlasIdeDiagnosticMode.LastDataFile];
   end;
   if Length(mFiles) = 0 then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.DiagExportEmpty, [TAtlasDiagnosticExport.DefaultDays]));
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.DiagExportEmpty, [TAtlasDiagnosticExport.cDefaultDays]));
     Exit;
   end;
   if not TAtlasDiagnosticExportDialog.Execute(TAtlasStrings.Fmt(TAtlasTextId.DiagExportHint,
-    [TAtlasDiagnosticExport.DefaultDays]), TAtlasDiagnosticExport.Preview(mFiles, mInfo), mTarget,
+    [TAtlasDiagnosticExport.cDefaultDays]), TAtlasDiagnosticExport.Preview(mFiles, mInfo), mTarget,
     TAtlasIdeDockWindow.ApplyIdeTheme) then
   begin
     Exit;

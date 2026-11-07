@@ -350,7 +350,7 @@ begin
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(FColors.Text);
   mPart.Left := mPart.Left + ScaleValue(16);
-  mText := TAtlasStatusSummary.FieldCaption;
+  mText := TAtlasStatusSummary.cFieldCaption;
   DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   Canvas.Font.Style := [];
   Canvas.Pen.Color := ToColor(FColors.Line);

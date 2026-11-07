@@ -23,39 +23,39 @@ type
   TAtlasNotificationSources = class
   public const
     /// <summary>Build fertig (#535): Ergebnis eines Builds des Benutzers.</summary>
-    Build = 'build';
+    cBuild = 'build';
     /// <summary>Extern geänderte Dateien neu geladen (#536).</summary>
-    Reload = 'reload';
+    cReload = 'reload';
     /// <summary>Server neu gestartet (#393) und Meldungen des Servers.</summary>
-    Server = 'server';
+    cServer = 'server';
     /// <summary>Tastenkürzel-Tipps (#600).</summary>
-    ShortcutTips = 'shortcutTips';
+    cShortcutTips = 'shortcutTips';
     /// <summary>Compilerprüfung im Hintergrund (#548).</summary>
-    Check = 'check';
+    cCheck = 'check';
     /// <summary>Build-Server (#763): Build auf dem Server ist rot geworden.</summary>
-    BuildServer = 'buildServer';
+    cBuildServer = 'buildServer';
     /// <summary>Bauen beim Öffnen eines Projekts (build.onOpen): Ergebnis des Laufs.</summary>
-    OpenBuild = 'openBuild';
+    cOpenBuild = 'openBuild';
     /// <summary>Ausblenden direkt am Element (#628): „Ausgeblendet · Rückgängig“.</summary>
-    Hidden = 'hidden';
+    cHidden = 'hidden';
     /// <summary>uses nachziehen nach dem Umbenennen einer Unit (#512).</summary>
-    UnitRename = 'unitRename';
+    cUnitRename = 'unitRename';
     /// <summary>Minimap (#873): Hinweis, wenn auch die Minimap der IDE sichtbar ist.</summary>
-    Minimap = 'minimap';
+    cMinimap = 'minimap';
     /// <summary>„Issue anlegen …“ (#1268): Kennung des neuen Issues mit „Im Browser öffnen“. Wie Minimap nicht in
     /// Known (Meldung auf eine Aktion des Benutzers hin).</summary>
-    NewIssue = 'newIssue';
+    cNewIssue = 'newIssue';
     /// <summary>Änderungen an meinen Issues im Issue-Tracker (#1271).</summary>
-    Issues = 'issues';
+    cIssues = 'issues';
     /// <summary>Modulschalter (#1454): atlas.json legt Prüfregeln fest, das Modul Prüfregeln ist aus. Wie Minimap
     /// nicht in Known (einmal je atlas.json und Sitzung).</summary>
-    RuleChecks = 'ruleChecks';
+    cRuleChecks = 'ruleChecks';
     /// <summary>Absturzsicherung (#493): eine Funktion wurde nach wiederholten Fehlern abgeschaltet. Nicht in Known:
     /// Dieser Hinweis lässt sich nicht abstellen, sonst fiele eine abgeschaltete Funktion wieder nicht auf.</summary>
-    Fuse = 'fuse';
+    cFuse = 'fuse';
     /// <summary>Atlas-Module fehlen unter „Known Packages“ der IDE (Meldung vom 05.11.2026). Nicht in Known: Der
     /// Hinweis lässt sich nicht abstellen, sonst fiele ein nicht geladenes Modul nicht auf.</summary>
-    Packages = 'packages';
+    cPackages = 'packages';
   public
     /// <summary>Bekannte Quellen in fester Reihenfolge (Optionsseite, Filter).</summary>
     class function Known: TArray<string>; static;
@@ -83,7 +83,7 @@ implementation
 
 class function TAtlasNotificationSources.Known: TArray<string>;
 begin
-  Result := [Build, Check, Reload, Server, ShortcutTips, BuildServer, OpenBuild, Hidden, UnitRename, Issues];
+  Result := [cBuild, cCheck, cReload, cServer, cShortcutTips, cBuildServer, cOpenBuild, cHidden, cUnitRename, cIssues];
 end;
 
 class function TAtlasNotificationSources.ModeName(AMode: TAtlasNotificationMode): string;

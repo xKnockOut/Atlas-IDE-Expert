@@ -217,55 +217,55 @@ type
 
 class function TAtlasNotificationTexts.SourceCaption(const ASource: string): string;
 begin
-  if SameText(ASource, TAtlasNotificationSources.Build) then
+  if SameText(ASource, TAtlasNotificationSources.cBuild) then
   begin
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceBuild);
   end
-  else if SameText(ASource, TAtlasNotificationSources.Check) then
+  else if SameText(ASource, TAtlasNotificationSources.cCheck) then
   begin
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceCheck);
   end
-  else if SameText(ASource, TAtlasNotificationSources.Reload) then
+  else if SameText(ASource, TAtlasNotificationSources.cReload) then
   begin
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceReload);
   end
-  else if SameText(ASource, TAtlasNotificationSources.Server) then
+  else if SameText(ASource, TAtlasNotificationSources.cServer) then
   begin
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceServer);
   end
-  else if SameText(ASource, TAtlasNotificationSources.ShortcutTips) then
+  else if SameText(ASource, TAtlasNotificationSources.cShortcutTips) then
   begin
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceShortcutTips);
   end
-  else if SameText(ASource, TAtlasNotificationSources.BuildServer) then
+  else if SameText(ASource, TAtlasNotificationSources.cBuildServer) then
   begin
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceBuildServer);
   end
-  else if SameText(ASource, TAtlasNotificationSources.OpenBuild) then
+  else if SameText(ASource, TAtlasNotificationSources.cOpenBuild) then
   begin
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceOpenBuild);
   end
-  else if SameText(ASource, TAtlasNotificationSources.Hidden) then
+  else if SameText(ASource, TAtlasNotificationSources.cHidden) then
   begin
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceHidden);
   end
-  else if SameText(ASource, TAtlasNotificationSources.UnitRename) then
+  else if SameText(ASource, TAtlasNotificationSources.cUnitRename) then
   begin
     Result := TAtlasStrings.Text(TAtlasTextId.UnitRenameTitle);
   end
-  else if SameText(ASource, TAtlasNotificationSources.Minimap) then
+  else if SameText(ASource, TAtlasNotificationSources.cMinimap) then
   begin
     Result := TAtlasStrings.Text(TAtlasTextId.MinimapNoticeTitle);
   end
-  else if SameText(ASource, TAtlasNotificationSources.NewIssue) then
+  else if SameText(ASource, TAtlasNotificationSources.cNewIssue) then
   begin
     Result := TAtlasStrings.Text(TAtlasTextId.NewIssueCreatedTitle);
   end
-  else if SameText(ASource, TAtlasNotificationSources.Issues) then
+  else if SameText(ASource, TAtlasNotificationSources.cIssues) then
   begin
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceIssues);
   end
-  else if SameText(ASource, TAtlasNotificationSources.RuleChecks) then
+  else if SameText(ASource, TAtlasNotificationSources.cRuleChecks) then
   begin
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceRuleChecks);
   end
@@ -420,7 +420,7 @@ begin
   mTop := mEntry.Top + Window.ScaleValue(6) + 2 * Line + Window.ScaleValue(6);
   for mIndex := 0 to AChip do
   begin
-    mWidth := Window.Canvas.TextWidth(mActions[mIndex].Caption) + Window.ScaleValue(TAtlasDraw.ChipPad + 8);
+    mWidth := Window.Canvas.TextWidth(mActions[mIndex].Caption) + Window.ScaleValue(TAtlasDraw.cChipPad + 8);
     if mIndex = AChip then
     begin
       Exit(Rect(mLeft, mTop, mLeft + mWidth, mTop + Line + Window.ScaleValue(6)));
@@ -572,8 +572,8 @@ begin
       Canvas.Brush.Color := ToColor(Colors.AccentSoft);
     end;
     Canvas.Pen.Color := ToColor(Colors.Accent);
-    Canvas.RoundRect(mChip.Left, mChip.Top, mChip.Right, mChip.Bottom, Scale(2 * TAtlasDraw.ChipRadius),
-      Scale(2 * TAtlasDraw.ChipRadius));
+    Canvas.RoundRect(mChip.Left, mChip.Top, mChip.Right, mChip.Bottom, Scale(2 * TAtlasDraw.cChipRadius),
+      Scale(2 * TAtlasDraw.cChipRadius));
     Canvas.Brush.Style := bsClear;
     Canvas.Font.Color := ToColor(Colors.Accent);
     mText := mActions[mIndex].Caption;

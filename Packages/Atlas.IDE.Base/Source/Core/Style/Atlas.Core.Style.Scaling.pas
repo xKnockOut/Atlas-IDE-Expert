@@ -11,10 +11,10 @@ interface
 type
   TAtlasScaling = class
   public const
-    MinZoom = 0.5;
-    MaxZoom = 4.0;
+    cMinZoom = 0.5;
+    cMaxZoom = 4.0;
     /// <summary>Bis zu dieser Abweichung nach oben gilt der Zoom als 100 % (Zeilenabstand).</summary>
-    Tolerance = 0.25;
+    cTolerance = 0.25;
   public
     /// <summary>Zoomfaktor aus der Caret-Höhe und der Texthöhe der Editorschrift bei 100 % (beide in
     /// Gerätepixeln); 1 ohne brauchbare Werte.</summary>
@@ -36,16 +36,16 @@ begin
   end;
   Result := ACaretHeight / ATextHeight;
   // Der Caret ist bei 100 % etwas höher als der Text (Zeilenabstand), nie kleiner.
-  if (Result >= 1 - 0.1) and (Result <= 1 + Tolerance) then
+  if (Result >= 1 - 0.1) and (Result <= 1 + cTolerance) then
   begin
     Exit(1);
   end;
   // Oberhalb: den Zeilenabstand wieder herausrechnen, damit 150 % nicht zu 160 % wird.
   if Result > 1 then
   begin
-    Result := Result / (1 + Tolerance / 2);
+    Result := Result / (1 + cTolerance / 2);
   end;
-  Result := EnsureRange(Result, MinZoom, MaxZoom);
+  Result := EnsureRange(Result, cMinZoom, cMaxZoom);
 end;
 
 end.

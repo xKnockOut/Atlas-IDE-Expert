@@ -16,7 +16,7 @@ type
 
   TAtlasOverviewKindNames = class
   public const
-    All = [TAtlasOverviewKind.Diagnostics, TAtlasOverviewKind.Search, TAtlasOverviewKind.Changes,
+    cAll = [TAtlasOverviewKind.Diagnostics, TAtlasOverviewKind.Search, TAtlasOverviewKind.Changes,
       TAtlasOverviewKind.Breakpoints, TAtlasOverviewKind.Bookmarks, TAtlasOverviewKind.Cursor];
   public
     class function Name(AKind: TAtlasOverviewKind): string; static;

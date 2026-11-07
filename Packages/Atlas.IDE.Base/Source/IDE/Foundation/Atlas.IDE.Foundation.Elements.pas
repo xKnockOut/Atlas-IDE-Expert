@@ -56,11 +56,11 @@ type
   TAtlasIdeElements = class
   public const
     /// <summary>So lange gilt ein Rechtsklick auf ein Element für „Element ausblenden …“.</summary>
-    ClickMs = 60000;
+    cClickMs = 60000;
     /// <summary>So lange nach dem Drücken wird das Loslassen der rechten Taste geschluckt.</summary>
-    RightUpMs = 5000;
+    cRightUpMs = 5000;
     /// <summary>Mehr gemerkte Zeilen: alle vergessen (der Editor zeichnet sie ohnehin neu).</summary>
-    MaxLines = 5000;
+    cMaxLines = 5000;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -297,7 +297,7 @@ begin
   FInstance.DropOld(mKey);
   if not FInstance.FHits.TryGetValue(mKey, mHits) then
   begin
-    if FInstance.FHits.Count >= MaxLines then
+    if FInstance.FHits.Count >= cMaxLines then
     begin
       FInstance.FHits.Clear;
     end;
@@ -415,7 +415,7 @@ begin
     Exit;
   end;
   Result := (Length(FInstance.FClickTargets) > 0) and SameFile(FInstance.FClickFile, AFileName) and
-    (TThread.GetTickCount64 - FInstance.FClickAt <= ClickMs);
+    (TThread.GetTickCount64 - FInstance.FClickAt <= cClickMs);
   if Result then
   begin
     ATargets := FInstance.FClickTargets;
@@ -502,7 +502,7 @@ begin
     if Msg.message = WM_RBUTTONUP then
     begin
       FPendingWnd := 0;
-      if TThread.GetTickCount64 - FPendingAt > RightUpMs then
+      if TThread.GetTickCount64 - FPendingAt > cRightUpMs then
       begin
         Exit;
       end;

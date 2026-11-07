@@ -452,7 +452,7 @@ begin
   begin
     mText := TAtlasStrings.Fmt(TAtlasTextId.CheckOnSaveDisabled, [ExtractFileName(AProject), mDuration, FCore.MaxMs]);
     // Benachrichtigungszentrale (#601, Quelle check): Meldungsfenster nur bei „einblenden“.
-    if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Check, TAtlasNotificationSeverity.Warning,
+    if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cCheck, TAtlasNotificationSeverity.Warning,
       TAtlasStrings.Text(TAtlasTextId.NotificationsCheckDisabled), mText) = TAtlasNotificationMode.Show then
     begin
       AddMessage(mText);

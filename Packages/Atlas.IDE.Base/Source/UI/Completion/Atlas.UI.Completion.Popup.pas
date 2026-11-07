@@ -34,7 +34,7 @@
 // Stern, beim Überfahren einer Zeile erscheint ein leerer. Klick auf den Stern meldet OnFavorite, ohne die
 // Auswahl zu ändern. ShowNotice zeigt einen Hinweis links in der Fußzeile („Schon 5 Favoriten bei TDataSet …“)
 // bis zum nächsten getippten Zeichen bzw. Schließen.
-// Rest der Liste (#497): Einträge unter der Überschrift „Weitere Einträge“ (TAtlasRanking.RestHeader) sind
+// Rest der Liste (#497): Einträge unter der Überschrift „Weitere Einträge“ (TAtlasRanking.cRestHeader) sind
 // gedämpft; die Fußzeile nennt „n Treffer · m weitere“ bzw. „Keine Treffer“, wenn nur der Rest steht.
 // Barrierefreiheit (#447): Die Einträge sind für UI Automation Listeneinträge (IAtlasAccessibleItems) mit
 // Zustand aus den Tags; die gewählte Zeile trägt mit SelectionMarker zusätzlich Rahmen und Marke ▸, damit sie
@@ -384,7 +384,7 @@ begin
   FRestFrom := -1;
   for mIndex := 0 to High(FOrder) do
   begin
-    if FOrder[mIndex] = TAtlasRanking.RestHeader then
+    if FOrder[mIndex] = TAtlasRanking.cRestHeader then
     begin
       FRestFrom := mIndex;
       Break;
@@ -649,11 +649,11 @@ begin
   mWidth := Logical(FDrag.StartWidth + FDrag.Sign * (Mouse.CursorPos.X - FDrag.StartX));
   if FDrag.Kind = TAtlasDragKind.ListWidth then
   begin
-    FManualListWidth := TAtlasPopupWidth.Fit(mWidth, MinWidth, MaxWidth);
+    FManualListWidth := TAtlasPopupWidth.Fit(mWidth, MinWidth, cMaxWidth);
   end
   else
   begin
-    FPanel.Width := TAtlasPopupWidth.Fit(mWidth, TAtlasPopupWidth.MinPanelWidth, TAtlasPopupWidth.MaxPanelWidth);
+    FPanel.Width := TAtlasPopupWidth.Fit(mWidth, TAtlasPopupWidth.cMinPanelWidth, TAtlasPopupWidth.cMaxPanelWidth);
   end;
   Relayout;
   Invalidate;

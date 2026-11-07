@@ -65,9 +65,9 @@ type
 
   TAtlasUpdates = class
   public const
-    VersionUrl = TUpdateChannels.StableUrl;
-    ReleasesUrl = TUpdateChannels.ReleasesUrl;
-    TimeoutMs = 10000;
+    cVersionUrl = TUpdateChannels.StableUrl;
+    cReleasesUrl = TUpdateChannels.ReleasesUrl;
+    cTimeoutMs = 10000;
   public
     /// <summary>SemVer-Vergleich: negativ, 0 oder positiv; ungültige Versionen sind kleiner als gültige.</summary>
     class function Compare(const A, B: string): Integer; static;
@@ -165,7 +165,7 @@ begin
       if not mFound or not Result.ChangesUrl.StartsWith('https://', True) or
         (Result.ChangesUrl.IndexOfAny([' ', #9, #10, #13]) >= 0) then
       begin
-        Result.ChangesUrl := TAtlasUpdates.ReleasesUrl + '/tag/v' + mText;
+        Result.ChangesUrl := TAtlasUpdates.cReleasesUrl + '/tag/v' + mText;
       end;
     end;
   finally
@@ -216,7 +216,7 @@ begin
       not ARelease.ChangesUrl.StartsWith('https://', True) or (ARelease.ChangesUrl.IndexOfAny([' ', #9, #10, #13]) >= 0)
     then
     begin
-      ARelease.ChangesUrl := ReleasesUrl + '/tag/v' + ARelease.Version;
+      ARelease.ChangesUrl := cReleasesUrl + '/tag/v' + ARelease.Version;
     end;
   finally
     mValue.Free;
@@ -267,7 +267,7 @@ begin
   if not ARelease.ChangesUrl.StartsWith('https://', True) or (ARelease.ChangesUrl.IndexOfAny([' ', #9, #10, #13]) >= 0)
   then
   begin
-    ARelease.ChangesUrl := ReleasesUrl + '/tag/v' + AState.Available;
+    ARelease.ChangesUrl := cReleasesUrl + '/tag/v' + AState.Available;
   end;
 end;
 
@@ -289,7 +289,8 @@ begin
   end;
   // Auch ein Fehlschlag zählt: höchstens eine Abfrage am Tag.
   AState.LastCheck := ANow;
-  if not ASource.Fetch(RequestUrl(AQuery.Url, AQuery.Installed, AQuery.IdeVersion), TimeoutMs, mText, Result.Error) then
+  if not ASource.Fetch(RequestUrl(AQuery.Url, AQuery.Installed, AQuery.IdeVersion), cTimeoutMs, mText,
+    Result.Error) then
   begin
     Result.Outcome := TAtlasUpdateOutcome.Failed;
     Exit;

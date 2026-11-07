@@ -453,7 +453,7 @@ begin
   end;
   for Name in TAtlasIdeProjectContext.Configurations(AProject) do
   begin
-    if SameText(Name, TAtlasBuildPipelineSettings.ReleaseConfiguration) then
+    if SameText(Name, TAtlasBuildPipelineSettings.cReleaseConfiguration) then
     begin
       Exit(Name);
     end;

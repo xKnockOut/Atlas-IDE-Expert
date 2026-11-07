@@ -67,7 +67,7 @@ type
   TAtlasGitHistoryPart = class(TAggregatedObject, IAtlasVcsLineHistory, IAtlasVcsHistory)
   public const
     /// <summary>Höchstens so viele Commits je Aufruf von Messages (Länge der Befehlszeile).</summary>
-    MessageBatch = 100;
+    cMessageBatch = 100;
   private
     FRoot: string;
     FCommand: TAtlasVcsCommand;
@@ -93,7 +93,7 @@ type
     IAtlasVcsHistory)
   public const
     /// <summary>Höchstens so viele Commits je Aufruf von Messages (Länge der Befehlszeile).</summary>
-    MessageBatch = TAtlasGitHistoryPart.MessageBatch;
+    cMessageBatch = TAtlasGitHistoryPart.cMessageBatch;
   private
     FRoot: string;
     FCommand: TAtlasVcsCommand;
@@ -224,7 +224,7 @@ end;
 constructor TAtlasGitVersionControl.Create(const ARoot: string; const ARunner: IAtlasVcsRunner;
   const AExecutable: string);
 begin
-  Create(ARoot, ARunner, AExecutable, TAtlasVcsCommand.DefaultTimeoutMs);
+  Create(ARoot, ARunner, AExecutable, TAtlasVcsCommand.cDefaultTimeoutMs);
 end;
 
 destructor TAtlasGitVersionControl.Destroy;
@@ -416,12 +416,12 @@ begin
   mStart := 0;
   while mStart < Length(ARevisions) do
   begin
-    mArguments := ['log', '--no-walk=unsorted', '--format=' + TAtlasGitParser.MessageFormat];
-    for mIndex := mStart to Min(mStart + MessageBatch, Length(ARevisions)) - 1 do
+    mArguments := ['log', '--no-walk=unsorted', '--format=' + TAtlasGitParser.cMessageFormat];
+    for mIndex := mStart to Min(mStart + cMessageBatch, Length(ARevisions)) - 1 do
     begin
       mArguments := mArguments + [ARevisions[mIndex]];
     end;
-    Inc(mStart, MessageBatch);
+    Inc(mStart, cMessageBatch);
     Result := Git(mArguments + ['--'], mOutput);
     if Result <> TAtlasVcsOutcome.Ok then
     begin
@@ -454,7 +454,7 @@ begin
   begin
     Exit(TAtlasVcsOutcome.Failed);
   end;
-  Result := Git(['log', '--format=' + TAtlasGitParser.LineLogFormat, '--max-count=' + IntToStr(Max(1, AMaxRevisions)),
+  Result := Git(['log', '--format=' + TAtlasGitParser.cLineLogFormat, '--max-count=' + IntToStr(Max(1, AMaxRevisions)),
     '--no-ext-diff', '-L' + IntToStr(AFirstLine) + ',' + IntToStr(ALastLine) + ':' + mRelative], mOutput);
   if Result <> TAtlasVcsOutcome.Ok then
   begin
@@ -494,7 +494,7 @@ var
   mOutput: TBytes;
 begin
   ABranches := nil;
-  Result := Git(['for-each-ref', '--format=' + TAtlasGitParser.BranchFormat, 'refs/heads'], mOutput);
+  Result := Git(['for-each-ref', '--format=' + TAtlasGitParser.cBranchFormat, 'refs/heads'], mOutput);
   if Result <> TAtlasVcsOutcome.Ok then
   begin
     Exit;
@@ -515,7 +515,7 @@ var
   mOutput: TBytes;
 begin
   AStashes := nil;
-  Result := Git(['stash', 'list', '--format=' + TAtlasGitParser.StashFormat], mOutput);
+  Result := Git(['stash', 'list', '--format=' + TAtlasGitParser.cStashFormat], mOutput);
   if Result <> TAtlasVcsOutcome.Ok then
   begin
     Exit;
@@ -560,7 +560,7 @@ begin
   begin
     mLimit := 1;
   end;
-  mArguments := ['log', '--format=' + TAtlasGitParser.LogFormat, '--max-count=' + IntToStr(mLimit),
+  mArguments := ['log', '--format=' + TAtlasGitParser.cLogFormat, '--max-count=' + IntToStr(mLimit),
     'refs/heads/' + ABranch, '--not'];
   // Ohne Upstream: Commits, die auf keinem Remote liegen.
   if AUpstream = '' then
@@ -673,7 +673,7 @@ begin
   begin
     mLimit := 1;
   end;
-  mArguments := ['log', '--format=' + TAtlasGitParser.IncomingFormat, '--name-only', '-z', '--no-renames',
+  mArguments := ['log', '--format=' + TAtlasGitParser.cIncomingFormat, '--name-only', '-z', '--no-renames',
     '--max-count=' + IntToStr(mLimit), AUpstream];
   mExcluded := False;
   for mRevision in AExclude do
@@ -914,7 +914,7 @@ begin
   end;
   // --grep=<Text> in einem Argument: Der Text kann nie als Option gelesen werden.
   Result := Git(['log', '--all', '--fixed-strings', '--regexp-ignore-case', '--grep=' + AText,
-    '--format=' + TAtlasGitParser.HistoryFormat, '--name-status', '-z', '--no-renames',
+    '--format=' + TAtlasGitParser.cHistoryFormat, '--name-status', '-z', '--no-renames',
     '--max-count=' + IntToStr(mLimit)], mOutput);
   if Result <> TAtlasVcsOutcome.Ok then
   begin
@@ -936,7 +936,7 @@ var
   mOutput: TBytes;
 begin
   ABranches := nil;
-  Result := Git(['for-each-ref', '--format=' + TAtlasGitParser.RefFormat, 'refs/heads', 'refs/remotes'], mOutput);
+  Result := Git(['for-each-ref', '--format=' + TAtlasGitParser.cRefFormat, 'refs/heads', 'refs/remotes'], mOutput);
   if Result <> TAtlasVcsOutcome.Ok then
   begin
     Exit;

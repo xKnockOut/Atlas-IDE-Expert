@@ -31,9 +31,9 @@ type
 
   TAtlasDataFlowTree = class
   public const
-    DefaultMaxDepth = 6;
-    MinMaxDepth = 1;
-    MaxMaxDepth = 20;
+    cDefaultMaxDepth = 6;
+    cMinMaxDepth = 1;
+    cMaxMaxDepth = 20;
   public
     /// <summary>Kinder einer Stelle auf Ebene ALevel (1 = erste Antwort).</summary>
     class function Children(const ANode: TAtlasDataFlowNode; ALevel, AMaxDepth: Integer): TArray<TAtlasDataFlowChild>;
@@ -55,7 +55,7 @@ uses
 
 class function TAtlasDataFlowTree.ClampDepth(AValue: Integer): Integer;
 begin
-  Result := EnsureRange(AValue, MinMaxDepth, MaxMaxDepth);
+  Result := EnsureRange(AValue, cMinMaxDepth, cMaxMaxDepth);
 end;
 
 class function TAtlasDataFlowTree.ChildPath(const APath: TArray<string>; const AKey: string): TArray<string>;

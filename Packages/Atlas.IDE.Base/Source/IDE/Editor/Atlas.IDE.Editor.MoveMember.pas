@@ -25,7 +25,7 @@ uses
 type
   TAtlasIdeMoveMember = class
   public const
-    ClientCommand = 'atlas.moveMember';
+    cClientCommand = 'atlas.moveMember';
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position]); ASession: laufende Sitzung oder nil;
     /// AMessage: Zeile für die Meldungsansicht.</summary>
@@ -68,7 +68,7 @@ class procedure TAtlasIdeMoveMember.Execute(ASession: TLspSession; const AArgume
 var
   mChoice: TAtlasClassExtractionChoice;
   mReply: TAtlasServerEditReply;
-  mTargetFile, mHint: string;
+  mTargetFile, mHint, mApply: string;
   mMoved, mTargetLine: Integer;
   mOutcome: TAtlasWorkspaceEditResult;
 begin
@@ -112,10 +112,9 @@ begin
   // Vorschau wie beim Umbenennen (#400); Hinweise (gehobene Sichtbarkeit, override, uses) im Hinweis.
   mHint := TAtlasStrings.Fmt(TAtlasTextId.MoveMemberPreviewHint, [mMoved, mReply.Edit.EditCount,
     Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.ExtractIntfWarning);
-  if TAtlasIdeServerEdit.Confirm(mChoice.Title, mHint, TAtlasStrings.Text(TAtlasTextId.MoveMemberApply),
-    mReply.Edit) and
-    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.MoveMemberApply), AMessage,
-      mOutcome) then
+  mApply := TAtlasStrings.Text(TAtlasTextId.MoveMemberApply);
+  if TAtlasIdeServerEdit.Confirm(mChoice.Title, mHint, mApply, mReply.Edit) and
+    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, mApply, AMessage, mOutcome) then
   begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.MoveMemberDone, [mMoved, mOutcome.Edits, mOutcome.Files]));
     TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.ExtractIntfWarning, AMessage);

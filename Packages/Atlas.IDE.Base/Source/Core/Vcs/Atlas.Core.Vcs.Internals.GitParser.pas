@@ -51,23 +51,23 @@ type
   public const
     /// <summary>Format für git for-each-ref (#762): Name, Upstream, Remote, Ref auf dem Remote, Abstand
     /// ("ahead 1, behind 2", "gone" oder leer), Commit-Zeit (Unix) und "*" für HEAD.</summary>
-    BranchFormat = '%(refname:short)%00%(upstream:short)%00%(upstream:remotename)%00%(upstream:remoteref)%00' +
+    cBranchFormat = '%(refname:short)%00%(upstream:short)%00%(upstream:remotename)%00%(upstream:remoteref)%00' +
       '%(upstream:track,nobracket)%00%(committerdate:unix)%00%(HEAD)';
     /// <summary>Format für git stash list (#762): Hash, Zeit (Unix), Auswahl, Betreff des Reflogs.</summary>
-    StashFormat = '%H%x00%ct%x00%gd%x00%gs';
+    cStashFormat = '%H%x00%ct%x00%gd%x00%gs';
     /// <summary>Format für git log (#762): Hash, Zeit (Unix), Betreff.</summary>
-    LogFormat = '%H%x00%ct%x00%s';
+    cLogFormat = '%H%x00%ct%x00%s';
     /// <summary>Format für git log --name-only -z (#755): RS, Hash, Zeit (Unix), Autor, Betreff.</summary>
-    IncomingFormat = '%x1e%H%x00%ct%x00%an%x00%s';
+    cIncomingFormat = '%x1e%H%x00%ct%x00%an%x00%s';
     /// <summary>Format für git log -L (#1275): RS, Hash, Autor, Zeit (Unix), ganze Nachricht, je mit US
     /// abgeschlossen; danach folgt der Unterschied.</summary>
-    LineLogFormat = '%x1e%H%x1f%an%x1f%ct%x1f%B%x1f';
+    cLineLogFormat = '%x1e%H%x1f%an%x1f%ct%x1f%B%x1f';
     /// <summary>Format für die Nachrichten zu Commits (#1275): RS, Hash, US, ganze Nachricht.</summary>
-    MessageFormat = '%x1e%H%x1f%B';
+    cMessageFormat = '%x1e%H%x1f%B';
     /// <summary>Format für git log --name-status -z (#1269): RS, Hash, Zeit (Unix), Autor, ganze Nachricht.</summary>
-    HistoryFormat = '%x1e%H%x00%ct%x00%an%x00%B';
+    cHistoryFormat = '%x1e%H%x00%ct%x00%an%x00%B';
     /// <summary>Format für git for-each-ref (#1269): voller Name, Commit-Zeit (Unix), "*" für HEAD.</summary>
-    RefFormat = '%(refname)%00%(committerdate:unix)%00%(HEAD)';
+    cRefFormat = '%(refname)%00%(committerdate:unix)%00%(HEAD)';
   public
     /// <summary>Ausgabe von git log --name-status -z mit HistoryFormat; Pfade vollständig unter ARoot.</summary>
     class function ParseHistory(const AText, ARoot: string): TArray<TAtlasVcsLogEntry>; static;

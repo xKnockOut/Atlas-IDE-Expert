@@ -43,7 +43,7 @@ type
   TAtlasIdeUpdates = class(TComponent)
   public const
     /// <summary>So lange nach dem Laden warten, damit Frage und Abfrage den Start nicht stören.</summary>
-    StartDelayMs = 8000;
+    cStartDelayMs = 8000;
   private
     FStateFile: string;
     FState: TAtlasUpdateState;
@@ -132,7 +132,7 @@ begin
   inherited Create(AOwner);
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
-  FTimer.Interval := StartDelayMs;
+  FTimer.Interval := cStartDelayMs;
   FTimer.OnTimer := Tick;
   FInstaller := TAtlasIdeUpdateInstaller.Create(Self);
 end;
@@ -228,7 +228,7 @@ begin
 {$ENDIF}
   mEnvironment.Ide := TAtlasUpdates.IdeVersion;
   mEnvironment.RegistryKey := RegistryKey;
-  mEnvironment.Installed := TAtlasPluginVersion.Version;
+  mEnvironment.Installed := TAtlasPluginVersion.cVersion;
   mEnvironment.UpdaterExists := FileExists(TAtlasUpdateInstall.UpdaterOf(mEnvironment.PluginDir));
   FInstaller.Start(mEnvironment, TAtlasUpdateInstall.UpdatesRoot(GetEnvironmentVariable('LOCALAPPDATA')), FOnMessage,
     FOnLog,
@@ -334,8 +334,8 @@ begin
   mSource := FSource;
   mState := FState;
   mQuery.Url := TAtlasUpdateInstall.ChannelUrl(TAtlasIdeSettings.Current.UpdatesChannel,
-    TAtlasPluginVersion.Version);
-  mQuery.Installed := TAtlasPluginVersion.Version;
+    TAtlasPluginVersion.cVersion);
+  mQuery.Installed := TAtlasPluginVersion.cVersion;
   mQuery.IdeVersion := TAtlasUpdates.IdeVersion;
   FThread := TThread.CreateAnonymousThread(
     procedure
@@ -413,7 +413,7 @@ begin
         if Assigned(FOnMessage) then
         begin
           FOnMessage(TAtlasStrings.Fmt(TAtlasTextId.UpdatesAvailable, [AResult.Release.Version,
-            TAtlasPluginVersion.Version, AResult.Release.ChangesUrl]));
+            TAtlasPluginVersion.cVersion, AResult.Release.ChangesUrl]));
         end;
         AutoPrepare;
       end;
@@ -443,7 +443,7 @@ begin
   end;
   if FRegistry <> nil then
   begin
-    FRegistry.Remove(TAtlasStatusLines.VersionId);
+    FRegistry.Remove(TAtlasStatusLines.cVersionId);
   end;
   FLine := nil;
   FLineRef := nil;
@@ -479,7 +479,7 @@ end;
 
 function TAtlasIdeUpdates.UpdateReady(out ARelease: TAtlasRelease): Boolean;
 begin
-  Result := TAtlasUpdates.Pending(FState, TAtlasPluginVersion.Version, ARelease);
+  Result := TAtlasUpdates.Pending(FState, TAtlasPluginVersion.cVersion, ARelease);
 end;
 
 procedure TAtlasIdeUpdates.UpdateLine;
@@ -495,7 +495,7 @@ begin
   end;
   mReady := UpdateReady(mRelease);
   mInfo := Default(TAtlasVersionInfo);
-  mInfo.Installed := TAtlasPluginVersion.Version;
+  mInfo.Installed := TAtlasPluginVersion.cVersion;
   mInfo.Available := mRelease.Version;
   mInfo.CheckEnabled := TAtlasIdeSettings.Current.UpdatesCheck;
   mInfo.Checked := FState.LastCheck > 0;
@@ -512,7 +512,7 @@ begin
     end;
     if mReady then
     begin
-      FLine := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.VersionId, TAtlasStatusLines.VersionOrder,
+      FLine := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.cVersionId, TAtlasStatusLines.cVersionOrder,
         procedure
         begin
           OpenUpdate;
@@ -520,7 +520,7 @@ begin
     end
     else
     begin
-      FLine := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.VersionId, TAtlasStatusLines.VersionOrder);
+      FLine := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.cVersionId, TAtlasStatusLines.cVersionOrder);
     end;
     FLineRef := FLine;
     FLineAction := mReady;
@@ -545,7 +545,7 @@ end;
 procedure TAtlasIdeUpdates.PrepareUpdate(const ARelease: TAtlasRelease);
 begin
   FInstaller.Prepare(ARelease.Version, TAtlasUpdateInstall.ChannelUrl(TAtlasIdeSettings.Current.UpdatesChannel,
-    TAtlasPluginVersion.Version), TAtlasIdeSettings.Current.UpdatesNewModules);
+    TAtlasPluginVersion.cVersion), TAtlasIdeSettings.Current.UpdatesNewModules);
   UpdateLine;
 end;
 
@@ -557,7 +557,7 @@ begin
   // updates.install = auto (#1519): ohne Frage vorbereiten, eine neue Hauptversion nur nach Frage. Ein schon
   // vorbereitetes oder gescheitertes Update bleibt, wie es ist.
   if UpdateReady(mRelease) and not FInstaller.Preparing and not FInstaller.TryStage(mRelease.Version, mStage) and
-    TAtlasUpdateInstall.PrepareWithoutAsking(InstallMode, TAtlasPluginVersion.Version, mRelease.Version) then
+    TAtlasUpdateInstall.PrepareWithoutAsking(InstallMode, TAtlasPluginVersion.cVersion, mRelease.Version) then
   begin
     PrepareUpdate(mRelease);
   end;
@@ -584,8 +584,8 @@ begin
     UpdateLine;
     Exit;
   end;
-  case TAtlasUpdateOffer.Offer(ARelease.Version, TAtlasPluginVersion.Version,
-    TAtlasUpdateInstall.IsMajorJump(TAtlasPluginVersion.Version, ARelease.Version)) of
+  case TAtlasUpdateOffer.Offer(ARelease.Version, TAtlasPluginVersion.cVersion,
+    TAtlasUpdateInstall.IsMajorJump(TAtlasPluginVersion.cVersion, ARelease.Version)) of
     TAtlasUpdateOfferAnswer.Install:
       PrepareUpdate(ARelease);
     TAtlasUpdateOfferAnswer.Changes:

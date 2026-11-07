@@ -220,7 +220,7 @@ end;
 
 class function TVcsChanges.Detect(const AProcess: ICompilerProcess; const AWorkingDir, AProvider: string): TVcsChanges;
 begin
-  Result := Detect(AProcess, AWorkingDir, AProvider, '', '', TAtlasVcsCommand.DefaultTimeoutMs div 1000);
+  Result := Detect(AProcess, AWorkingDir, AProvider, '', '', TAtlasVcsCommand.cDefaultTimeoutMs div 1000);
 end;
 
 class function TVcsChanges.Detect(const AProcess: ICompilerProcess; const AWorkingDir, AProvider, AGitPath,
@@ -231,7 +231,7 @@ var
   SvnExe: string;
   mTimeoutMs: Cardinal;
 begin
-  mTimeoutMs := TAtlasVcsCommand.DefaultTimeoutMs;
+  mTimeoutMs := TAtlasVcsCommand.cDefaultTimeoutMs;
   if (ATimeoutSeconds >= 1) and (ATimeoutSeconds <= 300) then
   begin
     mTimeoutMs := Cardinal(ATimeoutSeconds) * 1000;

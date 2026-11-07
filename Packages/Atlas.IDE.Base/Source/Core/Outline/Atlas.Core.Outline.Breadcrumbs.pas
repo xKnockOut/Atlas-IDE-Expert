@@ -627,7 +627,7 @@ begin
   begin
     Exit(True);
   end;
-  if TAtlasCompletionMatcher.Score(APattern, AName) >= TAtlasCompletionMatcher.ScoreWordStarts then
+  if TAtlasCompletionMatcher.Score(APattern, AName) >= TAtlasCompletionMatcher.cScoreWordStarts then
   begin
     Exit(True);
   end;

@@ -167,7 +167,7 @@ begin
   mAction.Caption := TAtlasStrings.Text(TAtlasTextId.MinimapTurnOff);
   mAction.Run := FOnTurnOff;
   mActions := mActions + [mAction];
-  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Minimap, TAtlasNotificationSeverity.Info,
+  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cMinimap, TAtlasNotificationSeverity.Info,
     mTitle, mText, mActions) = TAtlasNotificationMode.Show then
   begin
     ShowWindow(mTitle, mText);

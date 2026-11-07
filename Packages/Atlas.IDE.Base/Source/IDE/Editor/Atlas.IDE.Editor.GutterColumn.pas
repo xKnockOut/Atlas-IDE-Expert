@@ -505,7 +505,7 @@ var
 begin
   if FWantedWidth <= 0 then
   begin
-    FWantedWidth := TAtlasGutterColumn.Width(MulDiv(TAtlasGutterColumn.BaseWidth, Screen.PixelsPerInch, 96));
+    FWantedWidth := TAtlasGutterColumn.Width(MulDiv(TAtlasGutterColumn.cBaseWidth, Screen.PixelsPerInch, 96));
   end;
   if (FColumn >= 0) and (FWidth = FWantedWidth) then
   begin

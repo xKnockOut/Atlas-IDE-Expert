@@ -441,7 +441,7 @@ function TLspSession.AccessChains(const AFileName: string; ALine, APointerSize: 
 var
   mResponse: TJSONValue;
 begin
-  mResponse := FClient.Request(TAtlasAvJson.Method, TAtlasAvJson.Params(AFileName, ALine, APointerSize), ATimeoutMs);
+  mResponse := FClient.Request(TAtlasAvJson.cMethod, TAtlasAvJson.Params(AFileName, ALine, APointerSize), ATimeoutMs);
   try
     Result := TAtlasAvJson.Parse(mResponse);
   finally
@@ -581,7 +581,7 @@ var
   mResponse: TJSONValue;
 begin
   // Projektweit über die Referenzsuche; dafür so viel Zeit wie für die Hierarchien.
-  mResponse := FClient.Request(TAtlasDataFlowJson.Method, TAtlasDataFlowJson.Params(ARequest), FTimeoutMs * 10);
+  mResponse := FClient.Request(TAtlasDataFlowJson.cMethod, TAtlasDataFlowJson.Params(ARequest), FTimeoutMs * 10);
   try
     Result := TAtlasDataFlowJson.Parse(mResponse);
   finally

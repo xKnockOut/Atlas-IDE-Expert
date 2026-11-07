@@ -97,8 +97,8 @@ type
   public const
     Indent = 8;
     Gap = 8;
-    ImageWidth = TAtlasTipCatalog.ImageWidth;
-    ImageHeight = TAtlasTipCatalog.ImageHeight;
+    ImageWidth = TAtlasTipCatalog.cImageWidth;
+    ImageHeight = TAtlasTipCatalog.cImageHeight;
     /// <summary>Text neben dem Bild erst ab dieser Breite; sonst steht das Bild darüber.</summary>
     MinTextWidth = 220;
     ButtonHeight = 24;

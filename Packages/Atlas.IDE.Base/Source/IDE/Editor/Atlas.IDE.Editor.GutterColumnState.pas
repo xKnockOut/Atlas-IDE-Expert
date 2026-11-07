@@ -36,7 +36,7 @@ type
 
   TAtlasIdeGutterColumnState = class
   public const
-    OverridesCommand = 'atlas.server.overrideMarks';
+    cOverridesCommand = 'atlas.server.overrideMarks';
   private const
     cQuietMs = 600;
     cOverridesTimeoutMs = 5000;
@@ -291,7 +291,7 @@ begin
     var
       mAnswer: TJSONValue;
     begin
-      mAnswer := ASession.RunCommand(OverridesCommand, mArguments, cOverridesTimeoutMs);
+      mAnswer := ASession.RunCommand(cOverridesCommand, mArguments, cOverridesTimeoutMs);
       try
         mOverrides := TAtlasFileOverrides.FromJson(mAnswer,
           function(AUri: string): string

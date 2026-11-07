@@ -127,10 +127,10 @@ type
       destructor Destroy; override;
     end;
   public const
-    DocumentTimeoutMs = 8000;
+    cDocumentTimeoutMs = 8000;
     /// <summary>Länger als Zeitbudget (3 s) und Long-Polling (5 s) des Servers.</summary>
-    WorkspaceTimeoutMs = 15000;
-    WorkspaceRetryMs = 15000;
+    cWorkspaceTimeoutMs = 15000;
+    cWorkspaceRetryMs = 15000;
   protected
     FSession: TAtlasProblemsSessionFunc;
     FLog: TAtlasProblemsLogProc;
@@ -396,7 +396,7 @@ begin
       end;
       try
         mStarted := TThread.GetTickCount;
-        mReport := FSession.DocumentDiagnostics(mJob.FileName, mJob.PreviousId, DocumentTimeoutMs);
+        mReport := FSession.DocumentDiagnostics(mJob.FileName, mJob.PreviousId, cDocumentTimeoutMs);
         // Kopie: Die Schleifenvariable ist nicht zuweisbar.
         mDone := mJob;
         mDone.DurationMs := TThread.GetTickCount - mStarted;
@@ -495,7 +495,7 @@ begin
   begin
     mStarted := GetTickCount;
     try
-      mChanged := Remember(FSession.WorkspaceDiagnostics(FKnown.Values.ToArray, WorkspaceTimeoutMs, mRun));
+      mChanged := Remember(FSession.WorkspaceDiagnostics(FKnown.Values.ToArray, cWorkspaceTimeoutMs, mRun));
       // Auch ohne neue Befunde: Fortschritt, Pause und Ende des Laufs für die Statusleiste (#1247).
       if (Length(mChanged) > 0) or mRun.Known then
       begin
@@ -514,7 +514,7 @@ begin
           LogLater('Probleme (Projekt): ' + E.Message);
         end;
         // Nach einem Fehler oder einer Zeitüberschreitung länger warten: Der Server ist ausgelastet.
-        FStop.WaitFor(WorkspaceRetryMs);
+        FStop.WaitFor(cWorkspaceRetryMs);
       end;
     end;
   end;
@@ -1139,15 +1139,15 @@ class function TAtlasProblemsController.UsesHint(const AProblem: TAtlasProblem):
 var
   mId: TAtlasTextId;
 begin
-  if AProblem.UsesState = TAtlasProblem.UsesInitialization then
+  if AProblem.UsesState = TAtlasProblem.cUsesInitialization then
   begin
     mId := TAtlasTextId.UsesInitializationHint;
   end
-  else if AProblem.UsesState = TAtlasProblem.UsesAllowlist then
+  else if AProblem.UsesState = TAtlasProblem.cUsesAllowlist then
   begin
     mId := TAtlasTextId.UsesAllowlistHint;
   end
-  else if AProblem.UsesState = TAtlasProblem.UsesImplementation then
+  else if AProblem.UsesState = TAtlasProblem.cUsesImplementation then
   begin
     mId := TAtlasTextId.UsesImplementationHint;
   end

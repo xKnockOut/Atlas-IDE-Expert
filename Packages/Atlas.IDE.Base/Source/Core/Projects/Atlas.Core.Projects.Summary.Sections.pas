@@ -34,7 +34,7 @@ type
   TAtlasProjectSetup = record
   public const
     /// <summary>Höchstens so viele Funde je Liste stehen in der Datei.</summary>
-    MaxFindings = 50;
+    cMaxFindings = 50;
   public
     Known: Boolean;
     /// <summary>„Für dieses Projekt nicht mehr fragen“.</summary>
@@ -77,7 +77,7 @@ type
   TAtlasProjectTests = record
   public const
     /// <summary>Höchstens so viele fehlgeschlagene Tests stehen in der Datei.</summary>
-    MaxFailures = 50;
+    cMaxFailures = 50;
   public
     Known: Boolean;
     /// <summary>Ende des Laufs (UTC).</summary>
@@ -111,7 +111,7 @@ type
   TAtlasProjectRelease = record
   public const
     /// <summary>Höchstens so viele Einträge in "builds" (je Konfiguration und Plattform einer).</summary>
-    MaxBuilds = 20;
+    cMaxBuilds = 20;
   public
     Known: Boolean;
     /// <summary>Letzte Prüfung (UTC); 0 = noch keine.</summary>
@@ -235,7 +235,7 @@ begin
     mFinding.Uncertain := FlagOf(TJSONObject(mItem), 'uncertain');
     mFinding.Note := TextOf(TJSONObject(mItem), 'note');
     mFinding.Project := '';
-    if (mFinding.Name <> '') and (Length(Result) < TAtlasProjectSetup.MaxFindings) then
+    if (mFinding.Name <> '') and (Length(Result) < TAtlasProjectSetup.cMaxFindings) then
     begin
       Result := Result + [mFinding];
     end;
@@ -250,7 +250,7 @@ begin
   Result := TJSONArray.Create;
   for mIndex := 0 to High(AFindings) do
   begin
-    if mIndex >= TAtlasProjectSetup.MaxFindings then
+    if mIndex >= TAtlasProjectSetup.cMaxFindings then
     begin
       Break;
     end;
@@ -467,7 +467,7 @@ begin
   end;
   for mItem in TJSONArray(mItems) do
   begin
-    if not (mItem is TJSONObject) or (Length(Result.Failures) >= TAtlasProjectTests.MaxFailures) then
+    if not (mItem is TJSONObject) or (Length(Result.Failures) >= TAtlasProjectTests.cMaxFailures) then
     begin
       Continue;
     end;
@@ -509,7 +509,7 @@ begin
   Result.AddPair('failures', mItems);
   for mIndex := 0 to High(ATests.Failures) do
   begin
-    if mIndex >= TAtlasProjectTests.MaxFailures then
+    if mIndex >= TAtlasProjectTests.cMaxFailures then
     begin
       Break;
     end;
@@ -569,7 +569,7 @@ begin
   mKept := mKept + [mEntry];
   for mBuild in Builds do
   begin
-    if (Length(mKept) < MaxBuilds) and
+    if (Length(mKept) < cMaxBuilds) and
       not (SameText(mBuild.Configuration, AConfiguration) and SameText(mBuild.Platform, APlatform)) then
     begin
       mKept := mKept + [mBuild];
@@ -614,7 +614,7 @@ begin
   end;
   for mItem in TJSONArray(mItems) do
   begin
-    if not (mItem is TJSONObject) or (Length(Result.Builds) >= TAtlasProjectRelease.MaxBuilds) then
+    if not (mItem is TJSONObject) or (Length(Result.Builds) >= TAtlasProjectRelease.cMaxBuilds) then
     begin
       Continue;
     end;
@@ -751,7 +751,7 @@ begin
   end;
   for mItem in TJSONArray(mItems) do
   begin
-    if not (mItem is TJSONObject) or (Length(Result.Build.Failures) >= TAtlasCiBuild.MaxFailures) then
+    if not (mItem is TJSONObject) or (Length(Result.Build.Failures) >= TAtlasCiBuild.cMaxFailures) then
     begin
       Continue;
     end;
@@ -789,7 +789,7 @@ begin
   end;
 end;
 
-/// <summary>Fehlgeschlagene Tests des Builds, höchstens TAtlasCiBuild.MaxFailures; unbekannte Felder aus
+/// <summary>Fehlgeschlagene Tests des Builds, höchstens TAtlasCiBuild.cMaxFailures; unbekannte Felder aus
 /// AOriginal (Abschnitt "ci", darf nil sein) bleiben erhalten.</summary>
 function CiFailuresJson(const AFailures: TArray<TAtlasCiFailure>; AOriginal: TJSONObject): TJSONArray;
 var
@@ -797,7 +797,7 @@ var
   mIndex: Integer;
 begin
   Result := TJSONArray.Create;
-  for mIndex := 0 to Min(High(AFailures), TAtlasCiBuild.MaxFailures - 1) do
+  for mIndex := 0 to Min(High(AFailures), TAtlasCiBuild.cMaxFailures - 1) do
   begin
     mItem := TJSONObject.Create;
     Result.AddElement(mItem);

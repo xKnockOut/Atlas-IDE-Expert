@@ -46,9 +46,9 @@ type
 
   TAtlasSignatureHint = class(TAtlasPopupWindow, IAtlasSignatureView)
   public const
-    MaxWidth = 520;
+    cMaxWidth = 520;
     /// <summary>Mehr Überladungen werden nicht gezeigt; eine Zeile nennt den Rest.</summary>
-    MaxSignatures = 12;
+    cMaxSignatures = 12;
   private
     FHelp: TAtlasSignatureHelp;
     FSignature: Integer;
@@ -132,7 +132,7 @@ const
 /// <summary>Gezeigte Überladungen: höchstens MaxSignatures.</summary>
 function ShownCount(const AHelp: TAtlasSignatureHelp): Integer;
 begin
-  Result := Min(Length(AHelp.Signatures), TAtlasSignatureHint.MaxSignatures);
+  Result := Min(Length(AHelp.Signatures), TAtlasSignatureHint.cMaxSignatures);
 end;
 
 /// <summary>Standardwert hinter „=“ im Parametertext, '' ohne.</summary>
@@ -401,7 +401,7 @@ begin
   begin
     Inc(Result, Length(mLines));
   end;
-  if Length(FHelp.Signatures) > MaxSignatures then
+  if Length(FHelp.Signatures) > cMaxSignatures then
   begin
     Inc(Result);
   end;
@@ -495,10 +495,10 @@ var
   mWidth, mHeight, mAvailable: Integer;
 begin
   Prepare;
-  mAvailable := Scale(MaxWidth) - 2 * Scale(cGap) - Scale(cBar) - 2;
+  mAvailable := Scale(cMaxWidth) - 2 * Scale(cGap) - Scale(cBar) - 2;
   SetLength(FLayouts, ShownCount(FHelp));
   SetLength(FFirstRows, ShownCount(FHelp));
-  mWidth := Min(ContentWidth(mAvailable) + 2 * Scale(cGap) + Scale(cBar) + 2, Scale(MaxWidth));
+  mWidth := Min(ContentWidth(mAvailable) + 2 * Scale(cGap) + Scale(cBar) + 2, Scale(cMaxWidth));
   mHeight := CrumbHeight + 2 * Scale(cPad) + TotalRows * LineHeight;
   if HasDocLine then
   begin
@@ -542,7 +542,7 @@ begin
   end;
   Place;
   // Sprachausgabe (#447): Signatur und aktueller Parameter.
-  SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessSignature));
+  SetAccessible(cUiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessSignature));
   GuardFeature := TAtlasFeature.Signature;
   mSpoken := AHelp.Signatures[ASignature].Label_;
   if (AParameter >= 0) and (AParameter <= High(AHelp.Signatures[ASignature].Parameters)) then
@@ -779,14 +779,14 @@ begin
       Inc(mRowIndex);
     end;
   end;
-  if Length(FHelp.Signatures) > MaxSignatures then
+  if Length(FHelp.Signatures) > cMaxSignatures then
   begin
     Canvas.Font := UIFont;
     Canvas.Font.Color := ToColor(Colors.Muted);
     Canvas.Brush.Style := bsClear;
     mPart := Rect(mLeft, mTop + mRowIndex * mHeight, mRight, mTop + (mRowIndex + 1) * mHeight);
     DrawText(Canvas.Handle, PChar(TAtlasStrings.Fmt(TAtlasTextId.MoreOverloads, [Length(FHelp.Signatures) -
-      MaxSignatures])), -1, mPart,
+      cMaxSignatures])), -1, mPart,
       cTextFlags);
     Inc(mRowIndex);
   end;

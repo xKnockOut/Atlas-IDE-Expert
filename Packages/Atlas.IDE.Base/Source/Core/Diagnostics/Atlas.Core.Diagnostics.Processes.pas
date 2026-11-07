@@ -55,7 +55,7 @@ type
   TAtlasProcessesView = class
   public const
     /// <summary>Befehl des Servers (Atlas.Common.Lsp.Processes).</summary>
-    Command = 'atlas.server.processes';
+    cCommand = 'atlas.server.processes';
   private
     class function ParseRows(const AList: TJSONValue): TArray<TAtlasProcessRow>; static;
     class function ParseEvents(const AList: TJSONValue): TArray<TAtlasProcessLogLine>; static;

@@ -150,8 +150,8 @@ begin
   FLine := mLine;
   FCharacter := mCharacter;
   FName := mName;
-  Start(EnsureRange(TAtlasIdeSettings.Current.ImpactDepth, TAtlasPluginSettings.MinImpactDepth,
-    TAtlasPluginSettings.MaxImpactDepth));
+  Start(EnsureRange(TAtlasIdeSettings.Current.ImpactDepth, TAtlasPluginSettings.cMinImpactDepth,
+    TAtlasPluginSettings.cMaxImpactDepth));
 end;
 
 class procedure TAtlasIdeImpact.Recalculate(ADepth: Integer);
@@ -170,7 +170,7 @@ begin
   end;
   // Seit der ersten Anfrage kann sich der Text geändert haben.
   TAtlasIdeRename.SyncOpenBuffers(mSession);
-  Start(EnsureRange(ADepth, TAtlasPluginSettings.MinImpactDepth, TAtlasPluginSettings.MaxImpactDepth));
+  Start(EnsureRange(ADepth, TAtlasPluginSettings.cMinImpactDepth, TAtlasPluginSettings.cMaxImpactDepth));
 end;
 
 class procedure TAtlasIdeImpact.Start(ADepth: Integer);

@@ -73,11 +73,11 @@ type
 
   TAtlasOverview = class
   public const
-    AllKinds = TAtlasOverviewKindNames.All;
+    cAllKinds = TAtlasOverviewKindNames.cAll;
     /// <summary>Höchstzahl der Trefferzeilen; mehr zeigt der Streifen nicht.</summary>
-    MaxSearchLines = 5000;
+    cMaxSearchLines = 5000;
     /// <summary>Höchstlänge des Suchtexts.</summary>
-    MaxTermLength = 200;
+    cMaxTermLength = 200;
   public
     /// <summary>Name in editor.overviewRulerKinds.</summary>
     class function KindName(AKind: TAtlasOverviewKind): string; static;
@@ -365,7 +365,7 @@ begin
     if Pos(mTerm, AnsiLowerCase(ALines[mIndex])) > 0 then
     begin
       Result := Result + [mIndex];
-      if Length(Result) >= MaxSearchLines then
+      if Length(Result) >= cMaxSearchLines then
       begin
         Exit;
       end;
@@ -377,7 +377,7 @@ class function TAtlasOverview.SearchTerm(const ASelection: string; out ATerm: st
 begin
   ATerm := '';
   Result := (ASelection <> '') and (Trim(ASelection) <> '') and (Pos(#10, ASelection) = 0) and
-    (Pos(#13, ASelection) = 0) and (Length(ASelection) <= MaxTermLength);
+    (Pos(#13, ASelection) = 0) and (Length(ASelection) <= cMaxTermLength);
   if Result then
   begin
     ATerm := ASelection;

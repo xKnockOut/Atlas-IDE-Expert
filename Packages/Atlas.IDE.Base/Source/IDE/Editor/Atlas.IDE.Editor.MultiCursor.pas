@@ -297,7 +297,7 @@ var
 begin
   mSettings := TAtlasIdeSettings.Current;
   mWanted := [ssAlt];
-  if mSettings.MultiCursorModifier = TAtlasPluginSettings.MultiCursorModifierCtrl then
+  if mSettings.MultiCursorModifier = TAtlasPluginSettings.cMultiCursorModifierCtrl then
   begin
     mWanted := [ssCtrl];
   end;

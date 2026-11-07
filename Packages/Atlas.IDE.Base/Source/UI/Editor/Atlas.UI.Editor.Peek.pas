@@ -90,7 +90,7 @@ constructor TAtlasPeekWindow.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FTokensOf := -1;
-  SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.PeekDefinitionCommand));
+  SetAccessible(cUiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.PeekDefinitionCommand));
 end;
 
 destructor TAtlasPeekWindow.Destroy;
@@ -445,7 +445,7 @@ begin
   mThumb := Max(Scale(12), AArea.Height * FView.PageRows div ARowCount);
   mThumbTop := AArea.Top + (AArea.Height - mThumb) * FView.Top div Max(1, FView.MaxTop);
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(TAtlasColorMath.Mix(Colors.Muted, Colors.Surface, AtlasMixThumb));
+  Canvas.Brush.Color := ToColor(TAtlasColorMath.Mix(Colors.Muted, Colors.Surface, cAtlasMixThumb));
   Canvas.FillRect(Rect(AArea.Right - Scale(4), mThumbTop, AArea.Right - Scale(1), mThumbTop + mThumb));
 end;
 

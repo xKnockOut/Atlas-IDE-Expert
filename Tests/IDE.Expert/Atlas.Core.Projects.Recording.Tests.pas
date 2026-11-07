@@ -314,8 +314,8 @@ end;
 procedure TAtlasProjectRecordingTests.QueryEndsAfterLimit;
 begin
   Assert.IsTrue(TAtlasProjectRecording.QueryRunning(1000, 1000));
-  Assert.IsTrue(TAtlasProjectRecording.QueryRunning(1000, 1000 + TAtlasProjectRecording.VcsQueryLimitMs - 1));
-  Assert.IsFalse(TAtlasProjectRecording.QueryRunning(1000, 1000 + TAtlasProjectRecording.VcsQueryLimitMs));
+  Assert.IsTrue(TAtlasProjectRecording.QueryRunning(1000, 1000 + TAtlasProjectRecording.cVcsQueryLimitMs - 1));
+  Assert.IsFalse(TAtlasProjectRecording.QueryRunning(1000, 1000 + TAtlasProjectRecording.cVcsQueryLimitMs));
   Assert.IsFalse(TAtlasProjectRecording.QueryRunning(5000, 1000), 'Uhr zurück');
 end;
 
@@ -328,7 +328,7 @@ begin
   try
     // Regeltreffer zählen; Compilermeldungen, Syntaxfehler (ohne Code) und inaktive Zweige nicht.
     Store.Update('C:\Repo\App\Main.pas', '', False, [Problem('with-statement', 'Atlas', False),
-      Problem('E2003', TAtlasProblem.CompilerSource, False), Problem('', 'Atlas', False),
+      Problem('E2003', TAtlasProblem.cCompilerSource, False), Problem('', 'Atlas', False),
       Problem('unused-variable', 'Atlas', False)], '', True);
     Store.Update('C:\Repo\App\Sub\Daten.pas', '', False, [Problem('empty-except', 'Atlas', False),
       Problem('inactive', 'Atlas', True)], '', True);

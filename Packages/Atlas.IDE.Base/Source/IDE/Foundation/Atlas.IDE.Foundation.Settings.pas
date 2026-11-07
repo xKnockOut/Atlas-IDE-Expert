@@ -144,7 +144,7 @@ type
   end;
 
 const
-  AtlasRegistryKey = 'Software\Atlas\IdePlugin';
+  cAtlasRegistryKey = 'Software\Atlas\IdePlugin';
 
 implementation
 
@@ -195,11 +195,11 @@ begin
   FRegistry.RootKey := HKEY_CURRENT_USER;
   if AWrite then
   begin
-    FWritable := FRegistry.OpenKey(AtlasRegistryKey, True);
+    FWritable := FRegistry.OpenKey(cAtlasRegistryKey, True);
   end
   else
   begin
-    FRegistry.OpenKeyReadOnly(AtlasRegistryKey);
+    FRegistry.OpenKeyReadOnly(cAtlasRegistryKey);
   end;
 end;
 
@@ -662,7 +662,7 @@ begin
   EnsureLoaded;
   Result := GState.Effective.Enabled and GState.Effective.Problems and GState.Effective.ProblemsStatusCounter and
     not (GState.Effective.EditorStatusBar and TAtlasStatusBarItems.Contains(
-    TAtlasStatusBarItems.Parse(GState.Effective.EditorStatusBarItems), TAtlasStatusBarItems.Findings));
+    TAtlasStatusBarItems.Parse(GState.Effective.EditorStatusBarItems), TAtlasStatusBarItems.cFindings));
 end;
 
 class function TAtlasIdeSettings.Stored: TAtlasPluginSettings;

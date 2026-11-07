@@ -133,7 +133,7 @@ begin
   Choice := TAtlasEventChoice.Defaults;
   Choice.Categories := [TAtlasEventCategory.Mouse];
   Selected := TAtlasEventBreak.Select(FAnswer.Handlers, Choice,
-    TAtlasEventBreakSettings.ExcludedList(TAtlasEventBreakSettings.DefaultExcluded), nil);
+    TAtlasEventBreakSettings.ExcludedList(TAtlasEventBreakSettings.cDefaultExcluded), nil);
   Assert.AreEqual(2, Integer(Length(Selected)));
   Assert.AreEqual(0, Selected[0]);
   Assert.AreEqual(1, Selected[1]);
@@ -146,7 +146,7 @@ var
   Selected: TArray<Integer>;
 begin
   Load;
-  Excluded := TAtlasEventBreakSettings.ExcludedList(TAtlasEventBreakSettings.DefaultExcluded);
+  Excluded := TAtlasEventBreakSettings.ExcludedList(TAtlasEventBreakSettings.cDefaultExcluded);
   Choice := TAtlasEventChoice.Defaults;
   Choice.Categories := TAtlasEventBreak.AllCategories;
   // Ohne häufige: OnPaint, Timer mit 50 ms und OnUpdate fehlen; der Timer im Code (ohne Interval) bleibt.

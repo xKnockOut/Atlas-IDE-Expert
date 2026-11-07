@@ -203,7 +203,7 @@ begin
     function(AResponse: TJSONValue): TAtlasCompletionItems
     begin
       Result := TAtlasServerCompletionProvider.ItemsFromLsp(AResponse);
-    end, TAtlasExpressionCompletionProvider.DefaultTimeoutMs);
+    end, TAtlasExpressionCompletionProvider.cDefaultTimeoutMs);
   mProvider.HistoryCaption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExpressionHistory);
   Result := mProvider;
 end;

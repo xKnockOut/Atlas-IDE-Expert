@@ -142,12 +142,12 @@ type
 
   TAtlasKeyMap = class
   public const
-    IdeName = 'IDE';
-    AtlasName = 'Atlas';
-    scShift = TAtlasKeyConflicts.scShift;
-    scCtrl = TAtlasKeyConflicts.scCtrl;
-    scAlt = TAtlasKeyConflicts.scAlt;
-    ModifierMask = scShift or scCtrl or scAlt;
+    cIdeName = 'IDE';
+    cAtlasName = 'Atlas';
+    cScShift = TAtlasKeyConflicts.cScShift;
+    cScCtrl = TAtlasKeyConflicts.cScCtrl;
+    cScAlt = TAtlasKeyConflicts.cScAlt;
+    cModifierMask = cScShift or cScCtrl or cScAlt;
   public
     /// <summary>Kontext einer Atlas-Taste: das Suchfeld auf der Willkommensseite, Strg+F12 für „Units suchen“
     /// global (Aktion der IDE), alle übrigen im Editor (Tastaturbelegungen wirken nur dort).</summary>
@@ -425,13 +425,13 @@ begin
   mName := ExtractFileName(AModule.Replace('/', '\'));
   if (AAtlasModule <> '') and SameText(AModule, AAtlasModule) then
   begin
-    AName := AtlasName;
+    AName := cAtlasName;
     Exit(TAtlasKeyOrigin.Atlas);
   end;
   mFolder := IncludeTrailingPathDelimiter(AIdeFolder.Replace('/', '\'));
   if (AModule = '') or ((AIdeFolder <> '') and AModule.Replace('/', '\').StartsWith(mFolder, True)) then
   begin
-    AName := IdeName;
+    AName := cIdeName;
     Exit(TAtlasKeyOrigin.Ide);
   end;
   AName := ChangeFileExt(mName, '');
@@ -843,15 +843,15 @@ function ModifierOf(const AName: string): Word;
 begin
   if (AName = 'strg') or (AName = 'ctrl') or (AName = 'control') or (AName = 'ctl') then
   begin
-    Result := TAtlasKeyMap.scCtrl;
+    Result := TAtlasKeyMap.cScCtrl;
   end
   else if (AName = 'umschalt') or (AName = 'umsch') or (AName = 'shift') or (AName = 'shft') then
   begin
-    Result := TAtlasKeyMap.scShift;
+    Result := TAtlasKeyMap.cScShift;
   end
   else if (AName = 'alt') or (AName = 'menu') then
   begin
-    Result := TAtlasKeyMap.scAlt;
+    Result := TAtlasKeyMap.cScAlt;
   end
   else
   begin

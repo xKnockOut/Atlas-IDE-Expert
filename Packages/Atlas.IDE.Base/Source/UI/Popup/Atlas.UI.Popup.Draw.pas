@@ -17,9 +17,9 @@ type
   TAtlasDraw = class
   public const
     /// <summary>Innenabstand links und rechts zusammen (logische Pixel) für Chips und Tags.</summary>
-    ChipPad = AtlasChipPad;
+    cChipPad = cAtlasChipPad;
     /// <summary>Eckenradius (logische Pixel) für Chips und Tags.</summary>
-    ChipRadius = AtlasChipRadius;
+    cChipRadius = cAtlasChipRadius;
   public
     /// <summary>Farbe des Scroll-Daumens.</summary>
     class function ThumbColor(const AColors: TAtlasColors): TAtlasColor; static;
@@ -44,7 +44,7 @@ end;
 
 class function TAtlasDraw.ThumbColor(const AColors: TAtlasColors): TAtlasColor;
 begin
-  Result := TAtlasColorMath.Mix(AColors.Muted, AColors.Surface, AtlasMixThumb);
+  Result := TAtlasColorMath.Mix(AColors.Muted, AColors.Surface, cAtlasMixThumb);
 end;
 
 class procedure TAtlasDraw.Thumb(ACanvas: TCanvas; const ARect: TRect; const AColors: TAtlasColors;

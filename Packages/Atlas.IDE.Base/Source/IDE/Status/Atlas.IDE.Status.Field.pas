@@ -111,7 +111,7 @@ type
 
   TAtlasStatusField = class(TComponent)
   public const
-    RedrawMs = 250;
+    cRedrawMs = 250;
   private type
     /// <summary>Eigenes Panel: meldet seine Freigabe über OnGone, auch wenn die IDE es löscht.</summary>
     TFieldPanel = class(TStatusPanel)
@@ -346,7 +346,7 @@ end;
 /// <summary>Platz für das Symbol samt Abstand in Gerätepixeln.</summary>
 function SymbolWidth(APPI: Integer): Integer;
 begin
-  Result := TAtlasSymbol.PixelSize(TAtlasSymbol.MenuSize + 4, APPI);
+  Result := TAtlasSymbol.PixelSize(TAtlasSymbol.cMenuSize + 4, APPI);
 end;
 
 function BadgeText(ACount: Integer): string;
@@ -393,7 +393,7 @@ begin
   mProgressId := '';
   if mSettings.IndexProgressInField then
   begin
-    mProgressId := TAtlasStatusLines.IndexId;
+    mProgressId := TAtlasStatusLines.cIndexId;
   end;
   Result.Text := TAtlasStatusSummary.FieldText(Result.Items, mSettings.StatusFieldSummary, mProgressId);
   Result.Tooltip := TAtlasStatusSummary.Tooltip(Result.Items);
@@ -551,12 +551,12 @@ var
   mTarget: TRect;
 begin
   Result := ALeft;
-  mSymbol := TAtlasSymbolImages.Cached(TAtlasIdeSymbol.Current, TAtlasSymbol.MenuSize, APPI);
+  mSymbol := TAtlasSymbolImages.Cached(TAtlasIdeSymbol.Current, TAtlasSymbol.cMenuSize, APPI);
   if mSymbol = nil then
   begin
     Exit;
   end;
-  mPixels := TAtlasSymbol.PixelSize(TAtlasSymbol.MenuSize, APPI);
+  mPixels := TAtlasSymbol.PixelSize(TAtlasSymbol.cMenuSize, APPI);
   mTarget := Bounds(ALeft + 2, ACenter - mPixels div 2, mPixels, mPixels);
   if mSymbol.Width = mPixels then
   begin
@@ -1084,7 +1084,7 @@ begin
   FWnd := AllocateHWnd(WndProc);
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := RedrawMs;
+  FTimer.Interval := cRedrawMs;
   FTimer.OnTimer := TimerTick;
   FListener := FRegistry.AddListener(
     procedure
@@ -1343,7 +1343,8 @@ var
 begin
   mSettings := TAtlasIdeSettings.Current;
   Result := mSettings.EditorStatusBar and TAtlasStatusBarItems.Contains(TAtlasStatusBarItems.Parse(
-    mSettings.EditorStatusBarItems), TAtlasStatusBarItems.Status) and not TAtlasGuard.Disabled(TAtlasFeature.StatusBar);
+    mSettings.EditorStatusBarItems), TAtlasStatusBarItems.cStatus) and
+    not TAtlasGuard.Disabled(TAtlasFeature.StatusBar);
 end;
 
 function TAtlasStatusField.Anchor(out APoint: TPoint): Boolean;

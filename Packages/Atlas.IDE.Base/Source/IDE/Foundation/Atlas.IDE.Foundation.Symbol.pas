@@ -75,7 +75,7 @@ var
 
 function Title: string;
 begin
-  Result := TAtlasStrings.Fmt(TAtlasTextId.SymbolTitle, [TAtlasPluginVersion.Version]);
+  Result := TAtlasStrings.Fmt(TAtlasTextId.SymbolTitle, [TAtlasPluginVersion.cVersion]);
 end;
 
 /// <summary>Ein Durchlauf AMs nach der Meldung; die Zeile im Protokoll zeigt, welches Thema die IDE da liefert.
@@ -162,7 +162,7 @@ begin
     Exit;
   end;
   SplashDone := True;
-  mBitmap := TAtlasSymbolImages.Bitmap(TAtlasSymbolVariant.Dark, TAtlasSymbol.SplashSize, Screen.PixelsPerInch);
+  mBitmap := TAtlasSymbolImages.Bitmap(TAtlasSymbolVariant.Dark, TAtlasSymbol.cSplashSize, Screen.PixelsPerInch);
   if mBitmap <> 0 then
   begin
     SplashScreenServices.AddPluginBitmap(Title, mBitmap);
@@ -178,7 +178,7 @@ begin
   begin
     Exit;
   end;
-  mBitmap := TAtlasSymbolImages.Bitmap(TAtlasIdeSymbol.Current, TAtlasSymbol.AboutSize, Screen.PixelsPerInch);
+  mBitmap := TAtlasSymbolImages.Bitmap(TAtlasIdeSymbol.Current, TAtlasSymbol.cAboutSize, Screen.PixelsPerInch);
   AboutIndex := mServices.AddPluginInfo(Title, TAtlasStrings.Text(TAtlasTextId.SymbolDescription), mBitmap);
 end;
 
@@ -192,7 +192,7 @@ begin
   end;
   Collection := TAtlasSymbolImages.Collection(nil);
   Images := TVirtualImageList.Create(nil);
-  Images.SetSize(TAtlasSymbol.MenuSize, TAtlasSymbol.MenuSize);
+  Images.SetSize(TAtlasSymbol.cMenuSize, TAtlasSymbol.cMenuSize);
   Images.ImageCollection := Collection;
   // Hell und Dunkel in der Reihenfolge der Sammlung.
   Images.AutoFill := True;

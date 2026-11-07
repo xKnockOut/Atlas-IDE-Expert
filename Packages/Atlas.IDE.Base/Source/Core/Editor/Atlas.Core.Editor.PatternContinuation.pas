@@ -43,8 +43,8 @@ type
 
   TAtlasPatternContinuation = class
   public const
-    MinLines = 2;
-    MaxLines = 5;
+    cMinLines = 2;
+    cMaxLines = 5;
   public
     /// <summary>Vorschlag für die leere Zeile ALine (0-basiert) aus den Zeilen darüber; False ohne Muster.
     /// AEnums und AExists dürfen nil sein.</summary>
@@ -712,7 +712,7 @@ begin
   Result := [ATemplate];
   ALineIndexes := [ALine - 1];
   mLine := ALine - 2;
-  while (mLine >= 0) and (Length(Result) < TAtlasPatternContinuation.MaxLines) and
+  while (mLine >= 0) and (Length(Result) < TAtlasPatternContinuation.cMaxLines) and
     IsPatternLine(ALines[mLine], AIndent) do
   begin
     mTokens := Tokenize(Copy(ALines[mLine], Length(AIndent) + 1, MaxInt));
@@ -729,13 +729,13 @@ end;
 function ClampMinLines(AMinLines: Integer): Integer;
 begin
   Result := AMinLines;
-  if Result < TAtlasPatternContinuation.MinLines then
+  if Result < TAtlasPatternContinuation.cMinLines then
   begin
-    Result := TAtlasPatternContinuation.MinLines;
+    Result := TAtlasPatternContinuation.cMinLines;
   end;
-  if Result > TAtlasPatternContinuation.MaxLines then
+  if Result > TAtlasPatternContinuation.cMaxLines then
   begin
-    Result := TAtlasPatternContinuation.MaxLines;
+    Result := TAtlasPatternContinuation.cMaxLines;
   end;
 end;
 

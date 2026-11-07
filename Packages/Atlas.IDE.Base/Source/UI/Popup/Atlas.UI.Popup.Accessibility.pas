@@ -22,16 +22,16 @@ uses
   System.Types;
 
 const
-  UiaListControlType = 50008;
-  UiaListItemControlType = 50007;
-  UiaTextControlType = 50020;
-  UiaToolTipControlType = 50022;
+  cUiaListControlType = 50008;
+  cUiaListItemControlType = 50007;
+  cUiaTextControlType = 50020;
+  cUiaToolTipControlType = 50022;
   /// <summary>Richtungen für Navigate (NavigateDirection).</summary>
-  UiaNavigateParent = 0;
-  UiaNavigateNextSibling = 1;
-  UiaNavigatePreviousSibling = 2;
-  UiaNavigateFirstChild = 3;
-  UiaNavigateLastChild = 4;
+  cUiaNavigateParent = 0;
+  cUiaNavigateNextSibling = 1;
+  cUiaNavigatePreviousSibling = 2;
+  cUiaNavigateFirstChild = 3;
+  cUiaNavigateLastChild = 4;
 
 type
   /// <summary>UiaRect aus UIAutomationCore.h (Bildschirmkoordinaten).</summary>
@@ -365,7 +365,7 @@ end;
 
 constructor TAtlasAccessibleList.Create(AWindow: HWND; const AName: string; const ASource: IAtlasAccessibleItems);
 begin
-  inherited Create(AWindow, UiaListControlType, AName);
+  inherited Create(AWindow, cUiaListControlType, AName);
   FSource := ASource;
 end;
 
@@ -398,7 +398,7 @@ begin
   ARetVal := nil;
   Result := S_OK;
   // Eltern und Geschwister der Liste liefert der Host (das Fenster).
-  if (FSource = nil) or ((ADirection <> UiaNavigateFirstChild) and (ADirection <> UiaNavigateLastChild)) then
+  if (FSource = nil) or ((ADirection <> cUiaNavigateFirstChild) and (ADirection <> cUiaNavigateLastChild)) then
   begin
     Exit;
   end;
@@ -617,11 +617,11 @@ begin
     cUiaControlTypeProperty:
       if mSource.AccessibleIsHeader(mCurrent) then
       begin
-        ARetVal := UiaTextControlType;
+        ARetVal := cUiaTextControlType;
       end
       else
       begin
-        ARetVal := UiaListItemControlType;
+        ARetVal := cUiaListItemControlType;
       end;
     cUiaNameProperty:
       ARetVal := mSource.AccessibleName(mCurrent);
@@ -669,7 +669,7 @@ begin
     Exit(cUiaElementNotAvailable);
   end;
   Result := S_OK;
-  if ADirection = UiaNavigateParent then
+  if ADirection = cUiaNavigateParent then
   begin
     ARetVal := FList;
     Exit;
@@ -832,22 +832,22 @@ begin
     Exit;
   end;
   case ADirection of
-    UiaNavigateFirstChild:
+    cUiaNavigateFirstChild:
       if AFrom < 0 then
       begin
         Result := 0;
       end;
-    UiaNavigateLastChild:
+    cUiaNavigateLastChild:
       if AFrom < 0 then
       begin
         Result := ACount - 1;
       end;
-    UiaNavigateNextSibling:
+    cUiaNavigateNextSibling:
       if (AFrom >= 0) and (AFrom < ACount - 1) then
       begin
         Result := AFrom + 1;
       end;
-    UiaNavigatePreviousSibling:
+    cUiaNavigatePreviousSibling:
       if (AFrom > 0) and (AFrom < ACount) then
       begin
         Result := AFrom - 1;

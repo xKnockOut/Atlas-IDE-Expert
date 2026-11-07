@@ -474,7 +474,7 @@ begin
   begin
     if mItem.Tag >= 0 then
     begin
-      mItem.Checked := TAtlasOutline.FilterVisibilities[mItem.Tag] in FFilter.Visibilities;
+      mItem.Checked := TAtlasOutline.cFilterVisibilities[mItem.Tag] in FFilter.Visibilities;
     end;
   end;
   for mItem in FKindMenu.Items do
@@ -1035,7 +1035,7 @@ begin
     SetVisibilities([]);
     Exit;
   end;
-  mVisibility := TAtlasOutline.FilterVisibilities[mItem.Tag];
+  mVisibility := TAtlasOutline.cFilterVisibilities[mItem.Tag];
   // Aus „alle“ heraus wählt ein Klick genau diese Sichtbarkeit, sonst schaltet er sie um.
   if FFilter.AllVisibilities then
   begin

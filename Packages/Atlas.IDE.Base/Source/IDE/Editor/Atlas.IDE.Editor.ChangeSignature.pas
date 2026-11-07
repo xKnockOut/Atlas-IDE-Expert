@@ -21,7 +21,7 @@ uses
 type
   TAtlasIdeChangeSignature = class
   public const
-    ClientCommand = 'atlas.changeSignature';
+    cClientCommand = 'atlas.changeSignature';
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position]); ASession: laufende Sitzung oder nil;
     /// AMessage: Zeile für die Meldungsansicht.</summary>

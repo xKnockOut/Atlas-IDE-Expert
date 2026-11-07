@@ -20,14 +20,14 @@ type
 
   TAtlasSymbol = class
   public const
-    SizeCount = 9;
+    cSizeCount = 9;
     /// <summary>Ressource des Programmsymbols (ICO) für den Server.</summary>
-    MainIcon = 'MAINICON';
+    cMainIcon = 'MAINICON';
     /// <summary>Logische Größen: Menü und Statusfeld, Startbildschirm, Seitenkopf, Info-Dialog.</summary>
-    MenuSize = 16;
-    SplashSize = 24;
-    HeaderSize = 32;
-    AboutSize = 48;
+    cMenuSize = 16;
+    cSplashSize = 24;
+    cHeaderSize = 32;
+    cAboutSize = 48;
   public
     /// <summary>Vorhandene Bildgröße Nummer AIndex (0 bis SizeCount - 1), aufsteigend.</summary>
     class function Size(AIndex: Integer): Integer; static;
@@ -50,7 +50,7 @@ uses
   System.SysUtils;
 
 const
-  cSizes: array[0..TAtlasSymbol.SizeCount - 1] of Integer = (16, 20, 24, 32, 40, 48, 64, 128, 256);
+  cSizes: array[0..TAtlasSymbol.cSizeCount - 1] of Integer = (16, 20, 24, 32, 40, 48, 64, 128, 256);
 
 function VariantText(AVariant: TAtlasSymbolVariant): string;
 begin

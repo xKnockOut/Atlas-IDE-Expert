@@ -111,7 +111,7 @@ begin
   mBrush.lbColor := AFore;
   mBrush.lbHatch := 0;
   mPen := ExtCreatePen(PS_GEOMETRIC or PS_SOLID or PS_ENDCAP_ROUND or PS_JOIN_ROUND,
-    Max(1, Round(TAtlasGlyphs.StrokeWidth * AScale)), mBrush, 0, nil);
+    Max(1, Round(TAtlasGlyphs.cStrokeWidth * AScale)), mBrush, 0, nil);
   mFill := CreateSolidBrush(AFore);
   mOldPen := SelectObject(ABitmap.Canvas.Handle, mPen);
   mOldBrush := SelectObject(ABitmap.Canvas.Handle, GetStockObject(NULL_BRUSH));
@@ -161,7 +161,7 @@ begin
     mBitmap.SetSize(mSize * cFactor, mSize * cFactor);
     mBitmap.Canvas.Brush.Color := ABack;
     mBitmap.Canvas.FillRect(Rect(0, 0, mBitmap.Width, mBitmap.Height));
-    DrawShapes(mBitmap, mShapes, mSize * cFactor / TAtlasGlyphs.Size, ColorToRGB(AFore));
+    DrawShapes(mBitmap, mShapes, mSize * cFactor / TAtlasGlyphs.cSize, ColorToRGB(AFore));
     StretchSmooth(ACanvas, mBitmap, ARect.TopLeft, mSize);
   finally
     mBitmap.Free;

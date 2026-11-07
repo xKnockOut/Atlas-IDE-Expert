@@ -460,7 +460,7 @@ begin
   Assert.AreEqual($FFFF, Settings.SearchReplaceKey);
   Settings.SearchHistory := 1000;
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MaxSearchHistory, Settings.SearchHistory);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxSearchHistory, Settings.SearchHistory);
   AssertReplaceKeys;
 end;
 

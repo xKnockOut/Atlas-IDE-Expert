@@ -49,14 +49,14 @@ type
 
   TAtlasSelectionMatches = class
   public const
-    MaxTermLength = 200;
+    cMaxTermLength = 200;
     /// <summary>Ab so vielen Zeilen nur im sichtbaren Bereich suchen.</summary>
-    LargeFileLines = 20000;
+    cLargeFileLines = 20000;
     /// <summary>Grenzen der Einstellungen.</summary>
-    MinMinLength = 1;
-    MaxMinLength = 100;
-    MinMaxMatches = 1;
-    MaxMaxMatches = 100000;
+    cMinMinLength = 1;
+    cMaxMinLength = 100;
+    cMinMaxMatches = 1;
+    cMaxMaxMatches = 100000;
   public
     /// <summary>Suchtext aus der Markierung ASelection; False, wenn sie nicht zählt (mehrzeilig, zu kurz, nur
     /// Leerraum, zu lang).</summary>
@@ -188,7 +188,7 @@ begin
   ATerm := '';
   Result := (ASelection <> '') and (Trim(ASelection) <> '') and (Pos(#10, ASelection) = 0) and
     (Pos(#13, ASelection) = 0) and (Length(ASelection) >= Max(1, AOptions.MinLength)) and
-    (Length(ASelection) <= MaxTermLength);
+    (Length(ASelection) <= cMaxTermLength);
   if Result then
   begin
     ATerm := ASelection;

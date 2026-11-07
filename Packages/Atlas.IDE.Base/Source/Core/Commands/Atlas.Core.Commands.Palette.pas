@@ -511,15 +511,15 @@ end;
 function MatchScore(const APattern: string; const ACommand: TAtlasCommand): Integer;
 begin
   Result := TAtlasCompletionMatcher.Score(APattern, ACommand.Caption);
-  if (Result = TAtlasCompletionMatcher.NoMatch) and (ACommand.Path <> '') then
+  if (Result = TAtlasCompletionMatcher.cNoMatch) and (ACommand.Path <> '') then
   begin
     Result := TAtlasCompletionMatcher.Score(APattern, ACommand.Path + ' ' + ACommand.Caption);
-    if Result <> TAtlasCompletionMatcher.NoMatch then
+    if Result <> TAtlasCompletionMatcher.cNoMatch then
     begin
       Result := Result div 2;
     end;
   end;
-  if (Result = TAtlasCompletionMatcher.NoMatch) and IsSubsequence(APattern.Replace(' ', ''), ACommand.Caption) then
+  if (Result = TAtlasCompletionMatcher.cNoMatch) and IsSubsequence(APattern.Replace(' ', ''), ACommand.Caption) then
   begin
     Result := cScoreLoose;
   end;
@@ -566,7 +566,7 @@ begin
     for mIndex := 0 to High(ACommands) do
     begin
       mScore := MatchScore(APattern, ACommands[mIndex]);
-      if mScore = TAtlasCompletionMatcher.NoMatch then
+      if mScore = TAtlasCompletionMatcher.cNoMatch then
       begin
         Continue;
       end;

@@ -5,7 +5,7 @@
 // den ganzen Text. Jetzt liest Get nur, wenn ein Ereignis (EditorViewModified,
 // Wechsel des Editors, eigene Schreibvorgänge, Neuladen) den Stand als veraltet
 // markiert hat, Zeilenzahl oder Änderungsstatus abweichen oder das
-// Sicherheitsnetz (TAtlasSnapshotPolicy.SafetyMs) abgelaufen ist. Version
+// Sicherheitsnetz (TAtlasSnapshotPolicy.cSafetyMs) abgelaufen ist. Version
 // steigt nur, wenn der neu gelesene Text abweicht; Verbraucher vergleichen
 // die Version statt des Textes.
 

@@ -6,7 +6,7 @@
 // Tastenkappen, bei Kürzeln mit zwei Schritten beide („[Strg]+[K], [Strg]+[D]“);
 // darunter die Links „Nicht mehr zeigen“ (OnNever, nur für diesen Befehl) und
 // „Alle Kürzel“ (OnAllKeys, öffnet die Übersicht aus #520; nur, wenn die
-// Übersicht eingeschaltet ist). Nach TAtlasShortcutTips.VisibleMs (4 s)
+// Übersicht eingeschaltet ist). Nach TAtlasShortcutTips.cVisibleMs (4 s)
 // verschwindet der Tipp von selbst, solange die Maus nicht darüber steht; die
 // nächste Taste schließt ihn über die IDE-Schicht (Dismiss). Reine VCL, ohne
 // Open Tools API.
@@ -33,9 +33,9 @@ type
   TAtlasShortcutTipWindow = class(TAtlasPopupWindow)
   public const
     /// <summary>Abstand zum Rand der Fläche, logische Pixel.</summary>
-    Margin = 12;
+    cMargin = 12;
     /// <summary>Höchste Breite des Befehlsnamens, logische Pixel; länger endet mit „…“.</summary>
-    MaxCommandWidth = 360;
+    cMaxCommandWidth = 360;
   private
     FView: TAtlasShortcutTipView;
     FLinks: array[TAtlasShortcutTipLink] of TRect;
@@ -110,11 +110,11 @@ constructor TAtlasShortcutTipWindow.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.ShortcutTips;
-  SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessShortcutTip));
+  SetAccessible(cUiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessShortcutTip));
   FHot := TAtlasShortcutTipLink.None;
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
-  FTimer.Interval := TAtlasShortcutTips.VisibleMs;
+  FTimer.Interval := TAtlasShortcutTips.cVisibleMs;
   FTimer.OnTimer := TimerTick;
 end;
 
@@ -205,7 +205,7 @@ var
   mArea: TRect;
 begin
   mCommand := TAtlasStrings.Fmt(TAtlasTextId.ShortcutTipCommand, [FView.Command]);
-  mWidth := Min(Canvas.TextWidth(mCommand), Scale(MaxCommandWidth));
+  mWidth := Min(Canvas.TextWidth(mCommand), Scale(cMaxCommandWidth));
   if FDraw then
   begin
     mArea := Rect(FX, FY, FX + mWidth, FY + FRowHeight);
@@ -264,10 +264,10 @@ begin
   FHot := TAtlasShortcutTipLink.None;
   HandleNeeded;
   mSize := Layout(False);
-  ShowAt(TAtlasShortcutTips.PlaceBottomRight(AArea, mSize.cx, mSize.cy, Scale(Margin)));
+  ShowAt(TAtlasShortcutTips.PlaceBottomRight(AArea, mSize.cx, mSize.cy, Scale(cMargin)));
   Announce(SpokenText);
   FTimer.Enabled := False;
-  FTimer.Interval := TAtlasShortcutTips.VisibleMs;
+  FTimer.Interval := TAtlasShortcutTips.cVisibleMs;
   FTimer.Enabled := True;
 end;
 

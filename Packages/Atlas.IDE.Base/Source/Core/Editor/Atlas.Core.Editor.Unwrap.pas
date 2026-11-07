@@ -48,9 +48,9 @@ type
 
   TAtlasUnwrap = class
   public const
-    Command = 'atlas.server.unwrap';
+    cCommand = 'atlas.server.unwrap';
     /// <summary>Strg+Umschalt+Entf.</summary>
-    DefaultKey = $602E;
+    cDefaultKey = $602E;
   public
     /// <summary>[uri, position, Einrückungsbreite]; AIndentWidth &lt;= 0 = Formatierstil des Servers.</summary>
     class function Arguments(const AUri: string; ALine, ACharacter, AIndentWidth: Integer): string; static;

@@ -44,9 +44,9 @@ type
 
   TAtlasGenerateProtocol = class
   public const
-    MenuCommand = 'atlas.server.slashMenu';
-    ChoicesCommand = 'atlas.server.slashChoices';
-    RunCommand = 'atlas.server.slashRun';
+    cMenuCommand = 'atlas.server.slashMenu';
+    cChoicesCommand = 'atlas.server.slashChoices';
+    cRunCommand = 'atlas.server.slashRun';
   public
     /// <summary>Argumente als JSON-Array-Text.</summary>
     class function MenuArguments(const ASpot: TAtlasGenerateSpot): string; static;

@@ -174,7 +174,7 @@ begin
   Result := TAtlasRegionFoldMode.Keep;
   for mMode := Low(TAtlasRegionFoldMode) to High(TAtlasRegionFoldMode) do
   begin
-    if SameText(AValue, AtlasRegionFoldModes[Ord(mMode)]) then
+    if SameText(AValue, cAtlasRegionFoldModes[Ord(mMode)]) then
     begin
       Result := mMode;
     end;

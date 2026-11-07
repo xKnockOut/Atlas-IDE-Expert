@@ -88,7 +88,7 @@ function Suggested(const AText: string): string; overload;
 var
   Suggestion: TAtlasPatternSuggestion;
 begin
-  Result := Suggested(AText, TAtlasPatternContinuation.MinLines, nil, nil, Suggestion);
+  Result := Suggested(AText, TAtlasPatternContinuation.cMinLines, nil, nil, Suggestion);
 end;
 
 function Suggested(const AText: string; AMinLines: Integer): string; overload;
@@ -102,7 +102,7 @@ function SuggestedWithText(const AText: string): string;
 var
   Suggestion: TAtlasPatternSuggestion;
 begin
-  Result := Suggested(AText, TAtlasPatternContinuation.MinLines,
+  Result := Suggested(AText, TAtlasPatternContinuation.cMinLines,
     function(const AMember: string; ALine, ACharacter: Integer): TArray<string>
     begin
       Result := TAtlasPatternContinuation.LocalEnumValues(AText, AMember);
@@ -144,7 +144,7 @@ var
   Suggestion: TAtlasPatternSuggestion;
 begin
   Assert.AreEqual('    2: Result := '''';', Suggested('    0: Result := ''Null'';'#10 +
-    '    1: Result := ''Eins'';'#10, TAtlasPatternContinuation.MinLines, nil, nil, Suggestion));
+    '    1: Result := ''Eins'';'#10, TAtlasPatternContinuation.cMinLines, nil, nil, Suggestion));
   Assert.AreEqual(1, Integer(Length(Suggestion.Fields)));
   // Zwischen den Hochkommas: "2: Result := '|';"
   Assert.AreEqual(14, Suggestion.Fields[0]);
@@ -193,7 +193,7 @@ begin
   Assert.AreEqual('  Show(Gruen);', SuggestedWithText(Text));
   // Die Stelle des letzten Werts geht an den Nachschlag.
   Lookups := 0;
-  Suggested(Text, TAtlasPatternContinuation.MinLines,
+  Suggested(Text, TAtlasPatternContinuation.cMinLines,
     function(const AMember: string; ALine, ACharacter: Integer): TArray<string>
     begin
       Inc(Lookups);
@@ -217,7 +217,7 @@ var
   Suggestion: TAtlasPatternSuggestion;
 begin
   Assert.AreEqual('  Add(3, '''', '''');', Suggested('  Add(1, ''ab'', ''x'');'#10'  Add(2, ''cd'', ''xy'');'#10,
-    TAtlasPatternContinuation.MinLines, nil, nil, Suggestion));
+    TAtlasPatternContinuation.cMinLines, nil, nil, Suggestion));
   Assert.AreEqual(2, Integer(Length(Suggestion.Fields)));
   Assert.AreEqual(8, Suggestion.Fields[0]);
   Assert.AreEqual(12, Suggestion.Fields[1]);
@@ -303,7 +303,7 @@ begin
   end;
   Lines[5000] := '';
   Watch := TStopwatch.StartNew;
-  Found := TAtlasPatternContinuation.Suggest(Lines, 5000, TAtlasPatternContinuation.MinLines, nil, nil,
+  Found := TAtlasPatternContinuation.Suggest(Lines, 5000, TAtlasPatternContinuation.cMinLines, nil, nil,
     Suggestion);
   Watch.Stop;
   Assert.IsTrue(Found);

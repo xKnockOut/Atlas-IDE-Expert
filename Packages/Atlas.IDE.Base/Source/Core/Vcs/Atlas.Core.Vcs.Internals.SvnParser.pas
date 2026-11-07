@@ -53,7 +53,7 @@ type
   TAtlasSvnParser = class
   public const
     /// <summary>Trennzeile vor jeder Revision in svn log.</summary>
-    LogSeparator = '------------------------------------------------------------------------';
+    cLogSeparator = '------------------------------------------------------------------------';
   public
     /// <summary>Ausgabe von "svn info --xml" (erster Eintrag).</summary>
     class function ParseInfo(const AText: string): TAtlasSvnInfo; static;
@@ -791,7 +791,7 @@ end;
 
 function TSvnLogDiffReader.AtSeparator: Boolean;
 begin
-  Result := FLines[FIndex] = TAtlasSvnParser.LogSeparator;
+  Result := FLines[FIndex] = TAtlasSvnParser.cLogSeparator;
 end;
 
 procedure TSvnLogDiffReader.Add(const ALine: string);

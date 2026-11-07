@@ -40,7 +40,7 @@ type
 
   TAtlasHiddenPlaces = class
   public const
-    Key = 'hidden';
+    cKey = 'hidden';
   public
     /// <summary>AFileName relativ zu AFolder mit "/"; False, wenn die Datei nicht unter AFolder liegt.</summary>
     class function Relative(const AFolder, AFileName: string; out ARelative: string): Boolean; static;
@@ -215,7 +215,7 @@ begin
     Exit;
   end;
   try
-    mValue := mRoot.GetValue(Key);
+    mValue := mRoot.GetValue(cKey);
     if not (mValue is TJSONArray) then
     begin
       Exit;
@@ -253,7 +253,7 @@ begin
     Exit;
   end;
   mPlaces := mPlaces + [APlace];
-  Result := TAtlasJsonText.SetValue(Result, Key, ToJson(mPlaces, '  ', TTextLines.LineBreakOf(Result)));
+  Result := TAtlasJsonText.SetValue(Result, cKey, ToJson(mPlaces, '  ', TTextLines.LineBreakOf(Result)));
 end;
 
 class function TAtlasHiddenPlaces.RemoveFrom(const AText: string; const APlace: TAtlasHiddenPlace): string;
@@ -269,7 +269,7 @@ begin
     Exit;
   end;
   Delete(mPlaces, mIndex, 1);
-  Result := TAtlasJsonText.SetValue(Result, Key, ToJson(mPlaces, '  ', TTextLines.LineBreakOf(Result)));
+  Result := TAtlasJsonText.SetValue(Result, cKey, ToJson(mPlaces, '  ', TTextLines.LineBreakOf(Result)));
 end;
 
 { TAtlasHiddenIndex }

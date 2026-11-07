@@ -167,10 +167,10 @@ begin
       AContext.Defines := TAtlasProjectContext.List(ConfigValue(mBuild, 'DCC_Define', 0, mResolved));
       AContext.SearchPaths := TAtlasProjectContext.List(ConfigValue(mBuild, 'DCC_UnitSearchPath', 0, mResolved));
       AContext.Namespaces := TAtlasProjectContext.List(ConfigValue(mBuild, 'DCC_Namespace', 0, mResolved));
-      AContext.Source := TAtlasProjectContext.SourceConfiguration;
+      AContext.Source := TAtlasProjectContext.cSourceConfiguration;
       if mResolved then
       begin
-        AContext.Source := TAtlasProjectContext.SourceResolved;
+        AContext.Source := TAtlasProjectContext.cSourceResolved;
       end;
       Exit;
     end;
@@ -185,7 +185,7 @@ begin
   AContext.Defines := TAtlasProjectContext.List(OptionValue(AProject, 'DCC_Define'));
   AContext.SearchPaths := TAtlasProjectContext.List(OptionValue(AProject, 'DCC_UnitSearchPath'));
   AContext.Namespaces := TAtlasProjectContext.List(OptionValue(AProject, 'DCC_Namespace'));
-  AContext.Source := TAtlasProjectContext.SourceOptions;
+  AContext.Source := TAtlasProjectContext.cSourceOptions;
 end;
 
 function LibraryPaths(const ABaseKey, APlatform: string): TArray<string>;

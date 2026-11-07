@@ -435,7 +435,7 @@ begin
       View: TAtlasStatusBarView;
     begin
       Items := TAtlasStatusBarItems.Parse(TAtlasIdeSettings.Current.EditorStatusBarItems);
-      Want(TAtlasStatusBarItems.Contains(Items, TAtlasStatusBarItems.Method));
+      Want(TAtlasStatusBarItems.Contains(Items, TAtlasStatusBarItems.cMethod));
       // Ensure gibt auch die von der IDE gesperrten Leisten frei, sobald ein Editor aktiv ist.
       FHost.Ensure;
       Top := TopBar;

@@ -150,14 +150,14 @@ type
   TAtlasSetupChecklist = class
   public const
     /// <summary>Zeile im Atlas-Statusfeld (#591), auch Quelle der Zustandskachel (#754).</summary>
-    StatusId = TAtlasStatusLines.SetupId;
-    StatusOrder = 4;
+    cStatusId = TAtlasStatusLines.cSetupId;
+    cStatusOrder = 4;
     /// <summary>Befehl der Palette und des Menüs Atlas › Einrichtung prüfen.</summary>
-    CommandId = 'Atlas.SetupChecklist';
+    cCommandId = 'Atlas.SetupChecklist';
     /// <summary>Höchstens so lange wartet der Start auf Befunde, die noch im Gange sind.</summary>
-    StartWaitMs = 120000;
-    RebuildCommand = 'atlas.server.rebuildIndex';
-    IdentityMark = '<benutzer>';
+    cStartWaitMs = 120000;
+    cRebuildCommand = 'atlas.server.rebuildIndex';
+    cIdentityMark = '<benutzer>';
   public
     class function CheckServer(const AInput: TAtlasSetupInput): TAtlasSetupResult; static;
     class function CheckDelphi(const AInput: TAtlasSetupInput): TAtlasSetupResult; static;
@@ -846,7 +846,7 @@ begin
   // Keine Namen von Benutzer, Rechner oder Domäne (#108); Pfade enthalten die Zeilen nicht.
   for mIdentity in LongestFirst(AInput.Identity) do
   begin
-    Result := StringReplace(Result, mIdentity, IdentityMark, [rfReplaceAll, rfIgnoreCase]);
+    Result := StringReplace(Result, mIdentity, cIdentityMark, [rfReplaceAll, rfIgnoreCase]);
   end;
 end;
 

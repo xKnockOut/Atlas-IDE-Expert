@@ -193,15 +193,15 @@ end;
 function HealthyRegistry: IAtlasStatusRegistry;
 begin
   Result := TAtlasStatusRegistry.Create;
-  Line(Result, TAtlasStatusLines.ServerId, 'Server: läuft seit 19:02', TAtlasStatusState.Green, 'Server läuft',
+  Line(Result, TAtlasStatusLines.cServerId, 'Server: läuft seit 19:02', TAtlasStatusState.Green, 'Server läuft',
     'seit 19:02');
-  Line(Result, TAtlasStatusLines.VersionId, 'Version: Atlas 1.0.0 (aktuell)', TAtlasStatusState.Green, 'Atlas 1.0.0',
+  Line(Result, TAtlasStatusLines.cVersionId, 'Version: Atlas 1.0.0 (aktuell)', TAtlasStatusState.Green, 'Atlas 1.0.0',
     'aktuell');
-  Line(Result, TAtlasStatusLines.IndexId, 'Index: 1284 Units', TAtlasStatusState.Green, 'Index: 1284 Units',
+  Line(Result, TAtlasStatusLines.cIndexId, 'Index: 1284 Units', TAtlasStatusState.Green, 'Index: 1284 Units',
     'indiziert 18:40');
-  Line(Result, TAtlasStatusLines.SetupId, 'Einrichtung: vollständig (6 von 6)', TAtlasStatusState.Green, '', '');
+  Line(Result, TAtlasStatusLines.cSetupId, 'Einrichtung: vollständig (6 von 6)', TAtlasStatusState.Green, '', '');
   // Die Datei-Zeile gehört nicht zur Kachel.
-  Line(Result, TAtlasStatusLines.FileId, 'Datei: keine aktiv', TAtlasStatusState.Neutral, '', '');
+  Line(Result, TAtlasStatusLines.cFileId, 'Datei: keine aktiv', TAtlasStatusState.Neutral, '', '');
 end;
 
 function Today(AHour, AMinute: Word): TDateTime;
@@ -240,9 +240,9 @@ begin
   for State := Low(TAtlasStatusState) to High(TAtlasStatusState) do
   begin
     Registry := HealthyRegistry;
-    Line(Registry, TAtlasStatusLines.ServerId, 'Server', State, '', '');
-    Line(Registry, TAtlasStatusLines.IndexId, 'Index', State, '', '');
-    Line(Registry, TAtlasStatusLines.DiagnosticModeId, 'Diagnosemodus: an', State, '', '');
+    Line(Registry, TAtlasStatusLines.cServerId, 'Server', State, '', '');
+    Line(Registry, TAtlasStatusLines.cIndexId, 'Index', State, '', '');
+    Line(Registry, TAtlasStatusLines.cDiagnosticModeId, 'Diagnosemodus: an', State, '', '');
     for Row in TAtlasWelcomeState.Rows(Registry.Items) do
     begin
       Item := Registry.Find(Row.Id);
@@ -308,15 +308,15 @@ begin
   Registry := HealthyRegistry;
   Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(TAtlasWelcomeState.Overall(TAtlasWelcomeState.Rows(
     Registry.Items))));
-  Line(Registry, TAtlasStatusLines.SetupId, 'Einrichtung: 5 von 6 erledigt', TAtlasStatusState.Yellow, '', '');
+  Line(Registry, TAtlasStatusLines.cSetupId, 'Einrichtung: 5 von 6 erledigt', TAtlasStatusState.Yellow, '', '');
   Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(TAtlasWelcomeState.Overall(TAtlasWelcomeState.Rows(
     Registry.Items))));
-  Line(Registry, TAtlasStatusLines.ServerId, 'Server: abgestürzt um 14:32', TAtlasStatusState.Red, '', '');
+  Line(Registry, TAtlasStatusLines.cServerId, 'Server: abgestürzt um 14:32', TAtlasStatusState.Red, '', '');
   Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(TAtlasWelcomeState.Overall(TAtlasWelcomeState.Rows(
     Registry.Items))));
   // Eine rote Datei-Zeile gehört nicht zur Kachel.
   Registry := HealthyRegistry;
-  Line(Registry, TAtlasStatusLines.FileId, 'Datei: gemischt', TAtlasStatusState.Red, '', '');
+  Line(Registry, TAtlasStatusLines.cFileId, 'Datei: gemischt', TAtlasStatusState.Red, '', '');
   Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(TAtlasWelcomeState.Overall(TAtlasWelcomeState.Rows(
     Registry.Items))));
   Assert.AreEqual(Ord(TAtlasStatusState.Neutral), Ord(TAtlasWelcomeState.Overall(nil)), 'ohne Zeilen');
@@ -328,9 +328,9 @@ var
 begin
   Registry := HealthyRegistry;
   Assert.IsFalse(TAtlasWelcomeState.HasProblem(TAtlasWelcomeState.Rows(Registry.Items)));
-  Line(Registry, TAtlasStatusLines.ServerId, 'Server: beendet', TAtlasStatusState.Neutral, '', '');
+  Line(Registry, TAtlasStatusLines.cServerId, 'Server: beendet', TAtlasStatusState.Neutral, '', '');
   Assert.IsFalse(TAtlasWelcomeState.HasProblem(TAtlasWelcomeState.Rows(Registry.Items)), 'neutral');
-  Line(Registry, TAtlasStatusLines.DiagnosticModeId, 'Diagnosemodus: an', TAtlasStatusState.Yellow, '', '');
+  Line(Registry, TAtlasStatusLines.cDiagnosticModeId, 'Diagnosemodus: an', TAtlasStatusState.Yellow, '', '');
   Assert.IsTrue(TAtlasWelcomeState.HasProblem(TAtlasWelcomeState.Rows(Registry.Items)), 'gelb');
 end;
 
@@ -343,10 +343,10 @@ begin
     'ohne onlyProblems immer');
   Assert.IsFalse(TAtlasWelcomeState.Visible(True, True, TAtlasWelcomeState.Rows(Registry.Items)),
     'alles grün: unsichtbar');
-  Line(Registry, TAtlasStatusLines.VersionId, 'Version: Update 1.0.1', TAtlasStatusState.Yellow, '', '');
+  Line(Registry, TAtlasStatusLines.cVersionId, 'Version: Update 1.0.1', TAtlasStatusState.Yellow, '', '');
   Assert.IsTrue(TAtlasWelcomeState.Visible(True, True, TAtlasWelcomeState.Rows(Registry.Items)), 'gelb: sichtbar');
-  Line(Registry, TAtlasStatusLines.VersionId, 'Version', TAtlasStatusState.Green, '', '');
-  Line(Registry, TAtlasStatusLines.ServerId, 'Server: abgestürzt', TAtlasStatusState.Red, '', '');
+  Line(Registry, TAtlasStatusLines.cVersionId, 'Version', TAtlasStatusState.Green, '', '');
+  Line(Registry, TAtlasStatusLines.cServerId, 'Server: abgestürzt', TAtlasStatusState.Red, '', '');
   Assert.IsTrue(TAtlasWelcomeState.Visible(True, True, TAtlasWelcomeState.Rows(Registry.Items)), 'rot: sichtbar');
 end;
 
@@ -355,7 +355,7 @@ var
   Registry: IAtlasStatusRegistry;
 begin
   Registry := HealthyRegistry;
-  Line(Registry, TAtlasStatusLines.ServerId, 'Server: abgestürzt', TAtlasStatusState.Red, '', '');
+  Line(Registry, TAtlasStatusLines.cServerId, 'Server: abgestürzt', TAtlasStatusState.Red, '', '');
   Assert.IsFalse(TAtlasWelcomeState.Visible(False, False, TAtlasWelcomeState.Rows(Registry.Items)));
   Assert.IsFalse(TAtlasWelcomeState.Visible(False, True, TAtlasWelcomeState.Rows(Registry.Items)));
 end;
@@ -372,14 +372,14 @@ begin
   Assert.AreEqual(Ord(TAtlasStateButton.Settings), Ord(Buttons[1]));
   Assert.AreEqual(Ord(TAtlasStateButton.LogFolder), Ord(Buttons[2]));
   Assert.IsFalse(TAtlasWelcomeState.UpdateReady(TAtlasWelcomeState.Rows(Registry.Items)));
-  Line(Registry, TAtlasStatusLines.VersionId, 'Version: Atlas 1.0.0, Update 1.0.1 bereit', TAtlasStatusState.Yellow,
+  Line(Registry, TAtlasStatusLines.cVersionId, 'Version: Atlas 1.0.0, Update 1.0.1 bereit', TAtlasStatusState.Yellow,
     'Update 1.0.1 bereit', 'installiert 1.0.0');
   Buttons := TAtlasWelcomeState.Buttons(TAtlasWelcomeState.Rows(Registry.Items));
   Assert.AreEqual(4, Integer(Length(Buttons)));
   Assert.AreEqual(Ord(TAtlasStateButton.Update), Ord(Buttons[3]));
   // Eine gelbe Zeile anderswo ist kein Update.
   Registry := HealthyRegistry;
-  Line(Registry, TAtlasStatusLines.SetupId, 'Einrichtung', TAtlasStatusState.Yellow, '', '');
+  Line(Registry, TAtlasStatusLines.cSetupId, 'Einrichtung', TAtlasStatusState.Yellow, '', '');
   Assert.AreEqual(3, Integer(Length(TAtlasWelcomeState.Buttons(TAtlasWelcomeState.Rows(Registry.Items)))));
 end;
 
@@ -391,13 +391,13 @@ begin
   Registry := HealthyRegistry;
   Before := TAtlasWelcomeState.Signature(TAtlasWelcomeState.Rows(Registry.Items));
   // Die Datei-Zeile ändert die Kachel nicht.
-  Line(Registry, TAtlasStatusLines.FileId, 'Datei Main.pas: UTF-8', TAtlasStatusState.Green, '', '');
+  Line(Registry, TAtlasStatusLines.cFileId, 'Datei Main.pas: UTF-8', TAtlasStatusState.Green, '', '');
   Assert.AreEqual(Before, TAtlasWelcomeState.Signature(TAtlasWelcomeState.Rows(Registry.Items)));
-  Line(Registry, TAtlasStatusLines.IndexId, 'Index: 1284 Units', TAtlasStatusState.Green, 'Index: 1284 Units',
+  Line(Registry, TAtlasStatusLines.cIndexId, 'Index: 1284 Units', TAtlasStatusState.Green, 'Index: 1284 Units',
     'indiziert 18:41');
   Assert.AreNotEqual(Before, TAtlasWelcomeState.Signature(TAtlasWelcomeState.Rows(Registry.Items)), 'Zusatz');
   Registry := HealthyRegistry;
-  Line(Registry, TAtlasStatusLines.ServerId, 'Server: läuft seit 19:02', TAtlasStatusState.Yellow, 'Server läuft',
+  Line(Registry, TAtlasStatusLines.cServerId, 'Server: läuft seit 19:02', TAtlasStatusState.Yellow, 'Server läuft',
     'seit 19:02');
   Assert.AreNotEqual(Before, TAtlasWelcomeState.Signature(TAtlasWelcomeState.Rows(Registry.Items)), 'Ampel');
 end;
@@ -424,7 +424,7 @@ begin
   Assert.AreEqual('seit 19:02', TAtlasStatusLines.ServerDetail(Info, Today(20, 0)));
   Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(TAtlasStatusLines.ServerState(Info)));
   Info.Samples := 3;
-  Info.AverageMs := TAtlasStatusLines.SlowMs;
+  Info.AverageMs := TAtlasStatusLines.cSlowMs;
   Assert.AreEqual('Server läuft langsam', TAtlasStatusLines.ServerBrief(Info));
   Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(TAtlasStatusLines.ServerState(Info)));
 end;
@@ -757,7 +757,7 @@ var
   Snapshot, Back: TAtlasIndexSnapshot;
 begin
   Folder := TPath.Combine(TPath.GetTempPath, 'atlas-index-store-' + IntToStr(Random(MaxInt)));
-  FileName := TPath.Combine(TPath.Combine(Folder, 'Atlas'), TAtlasIndexStore.FileName);
+  FileName := TPath.Combine(TPath.Combine(Folder, 'Atlas'), TAtlasIndexStore.cFileName);
   try
     Back := TAtlasIndexStore.Load(FileName);
     Assert.AreEqual(-1, Back.Units, 'fehlende Datei');
@@ -823,7 +823,7 @@ begin
   // Keine https-Adresse: Release-Seite der Version.
   State.ChangesUrl := 'file:///C:/x';
   Assert.IsTrue(TAtlasUpdates.Pending(State, '1.0.0', Release));
-  Assert.AreEqual(TAtlasUpdates.ReleasesUrl + '/tag/v1.0.1', Release.ChangesUrl);
+  Assert.AreEqual(TAtlasUpdates.cReleasesUrl + '/tag/v1.0.1', Release.ChangesUrl);
 end;
 
 procedure TAtlasStateUpdateTests.StateKeepsAvailableVersion;
@@ -843,7 +843,7 @@ begin
   Assert.AreEqual('', Back.Available);
   Back := TAtlasUpdateState.FromJson('{"available": "1.2.0", "changes": "http://x"}');
   Assert.AreEqual('1.2.0', Back.Available);
-  Assert.AreEqual(TAtlasUpdates.ReleasesUrl + '/tag/v1.2.0', Back.ChangesUrl);
+  Assert.AreEqual(TAtlasUpdates.cReleasesUrl + '/tag/v1.2.0', Back.ChangesUrl);
   // Ohne gefundene Version kein Feld in der Datei.
   State.Available := '';
   Assert.IsFalse(State.ToJson.Contains('available'));

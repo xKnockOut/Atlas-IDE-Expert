@@ -468,7 +468,7 @@ begin
   mOwner.Terminate;
   // Nicht Owner.WaitFor (arbeitet im Hauptthread die Warteschlange ab) und nicht das Handle (braucht beim
   // Prozessende die Ladersperre): auf Finished warten wie TAtlasTimeLimit.StopAll.
-  if TAtlasShutdown.WaitForThreads([TThread(mOwner)], TAtlasShutdown.StopMs) then
+  if TAtlasShutdown.WaitForThreads([TThread(mOwner)], TAtlasShutdown.cStopMs) then
   begin
     mOwner.Free;
   end

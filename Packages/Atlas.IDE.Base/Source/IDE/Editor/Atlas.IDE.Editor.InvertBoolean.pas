@@ -19,7 +19,7 @@ uses
 type
   TAtlasIdeInvertBoolean = class
   public const
-    ClientCommand = 'atlas.invertBoolean';
+    cClientCommand = 'atlas.invertBoolean';
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position, name]); ASession: laufende Sitzung oder
     /// nil; AMessage: Zeile für die Meldungsansicht.</summary>

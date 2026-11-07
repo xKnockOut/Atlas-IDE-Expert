@@ -218,7 +218,7 @@ begin
   TAtlasEditorSnapshots.Uninstall;
   // Die Threads geben sich nicht selbst frei: Erst wenn sie beendet sind, läuft nichts mehr im Code des Plugins,
   // auch nicht das Freigeben ihrer anonymen Methode (#886). Sie nutzen bis zuletzt die Ereignisse aus Destroy.
-  if not FThreads.StopAll(TAtlasShutdown.StopMs) then
+  if not FThreads.StopAll(TAtlasShutdown.cStopMs) then
   begin
     Diagnose('Manager abgebaut, während ein Hintergrund-Thread noch lief');
   end;

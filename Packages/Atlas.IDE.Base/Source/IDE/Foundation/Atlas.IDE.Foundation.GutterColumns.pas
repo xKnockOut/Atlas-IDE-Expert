@@ -26,7 +26,7 @@ type
   TAtlasIdeGutterColumns = class
   public const
     /// <summary>So lange nach dem Abbau eines Editorfensters keine Spalte anfordern.</summary>
-    PauseMs = 2000;
+    cPauseMs = 2000;
   public
     /// <summary>ADrop gibt die Spalte des Dienstes ab; Ergebnis für Unregister.</summary>
     class function Register(const ADrop: TProc): Integer; static;
@@ -72,7 +72,7 @@ begin
   begin
     Exit;
   end;
-  PausedUntil := TThread.GetTickCount64 + TAtlasIdeGutterColumns.PauseMs;
+  PausedUntil := TThread.GetTickCount64 + TAtlasIdeGutterColumns.cPauseMs;
   for mDrop in Drops.Values do
     try
       mDrop();

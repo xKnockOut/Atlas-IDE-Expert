@@ -502,7 +502,7 @@ var
 begin
   // Code-Vorlagen (#51) nur über Enter oder Tab: "while(" soll keine Schleife einsetzen.
   Result := (FPrefix <> '') and SelectedItem(mItem) and (mItem.Snippet = '') and
-    (TAtlasCompletionMatcher.Score(FPrefix, mItem.Name) >= TAtlasCompletionMatcher.ScoreWordStarts);
+    (TAtlasCompletionMatcher.Score(FPrefix, mItem.Name) >= TAtlasCompletionMatcher.cScoreWordStarts);
 end;
 
 function TAtlasCompletionState.NeedsQuery(const APrefix: string): Boolean;

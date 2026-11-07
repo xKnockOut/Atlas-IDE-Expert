@@ -21,14 +21,14 @@ uses
 type
   TAtlasServerDiagnostics = record
   public const
-    Command = 'atlas.server.diagnosticPackage';
-    ReportName = 'fehlerbericht.md';
-    ServerFolder = 'server/';
-    ZipPrefix = 'Atlas-Server-Diagnose-';
+    cCommand = 'atlas.server.diagnosticPackage';
+    cReportName = 'fehlerbericht.md';
+    cServerFolder = 'server/';
+    cZipPrefix = 'Atlas-Server-Diagnose-';
     /// <summary>Trace der letzten Minuten (#1356).</summary>
-    TraceMinutes = 5;
+    cTraceMinutes = 5;
     /// <summary>So viele Zeichen je Datei zeigt die Vorschau; die ZIP enthält alles.</summary>
-    PreviewChars = 65536;
+    cPreviewChars = 65536;
   public
     /// <summary>Argumente für Command: [{"anonymize": …, "traceMinutes": 5}].</summary>
     class function ServerArguments(AAnonymize: Boolean): string; static;
@@ -57,7 +57,7 @@ begin
   try
     mOptions := TJSONObject.Create;
     mOptions.AddPair('anonymize', TJSONBool.Create(AAnonymize));
-    mOptions.AddPair('traceMinutes', TJSONNumber.Create(TraceMinutes));
+    mOptions.AddPair('traceMinutes', TJSONNumber.Create(cTraceMinutes));
     mArguments.AddElement(mOptions);
     Result := mArguments.ToJSON;
   finally
@@ -67,7 +67,7 @@ end;
 
 class function TAtlasServerDiagnostics.IsServerName(const AName: string): Boolean;
 begin
-  Result := AName.StartsWith(ServerFolder) and (Length(AName) > Length(ServerFolder)) and
+  Result := AName.StartsWith(cServerFolder) and (Length(AName) > Length(cServerFolder)) and
     (Pos('..', AName) = 0) and (Pos('\', AName) = 0) and (Pos(':', AName) = 0) and not AName.EndsWith('/');
 end;
 
@@ -113,7 +113,7 @@ class function TAtlasServerDiagnostics.Build(const AReport: string;
   const AServerFiles: TAtlasPackageFiles): TAtlasPackageFiles;
 begin
   SetLength(Result, 1);
-  Result[0] := TAtlasPackageFile.Create(ReportName, TAtlasPackagePart.Versions, AReport);
+  Result[0] := TAtlasPackageFile.Create(cReportName, TAtlasPackagePart.Versions, AReport);
   Result := Result + AServerFiles;
 end;
 
@@ -137,9 +137,9 @@ begin
       mBuilder.Append('== ').Append(mFile.Name).Append(' (').Append(mFile.Size).Append(' Bytes) ==');
       mBuilder.Append(sLineBreak);
       mText := mFile.Text;
-      if Length(mText) > PreviewChars then
+      if Length(mText) > cPreviewChars then
       begin
-        mBuilder.Append(Copy(mText, 1, PreviewChars)).Append(sLineBreak).Append(ACutNote);
+        mBuilder.Append(Copy(mText, 1, cPreviewChars)).Append(sLineBreak).Append(ACutNote);
       end
       else
       begin
@@ -155,7 +155,7 @@ end;
 
 class function TAtlasServerDiagnostics.ZipName(ANow: TDateTime): string;
 begin
-  Result := ZipPrefix + FormatDateTime('yyyy"-"mm"-"dd"-"hhnn', ANow) + '.zip';
+  Result := cZipPrefix + FormatDateTime('yyyy"-"mm"-"dd"-"hhnn', ANow) + '.zip';
 end;
 
 end.

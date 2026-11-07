@@ -337,7 +337,7 @@ begin
     TAtlasEditorBuffer.BlockIndent(AView.Buffer));
   try
     ASession.Sync(FFileName, FText);
-    mAnswer := ASession.RunCommand(TAtlasUnwrap.Command, mArguments, cTimeoutMs);
+    mAnswer := ASession.RunCommand(TAtlasUnwrap.cCommand, mArguments, cTimeoutMs);
     try
       AEntries := TAtlasUnwrap.ReadEntries(mAnswer);
     finally

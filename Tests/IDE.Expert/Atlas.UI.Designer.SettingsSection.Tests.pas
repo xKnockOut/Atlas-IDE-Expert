@@ -70,7 +70,7 @@ begin
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);
     Assert.IsFalse(mSaved.EditorDesignerBar, 'abschaltbar');
-    Assert.AreEqual(TAtlasPluginSettings.DesignerSearchPopup, mSaved.DesignerSearchStyle);
+    Assert.AreEqual(TAtlasPluginSettings.cDesignerSearchPopup, mSaved.DesignerSearchStyle);
     Assert.AreEqual(0, mSaved.DesignerSearchKey, 'leer = keine Taste');
     Assert.IsTrue(mSaved.DesignerTabOrderClick);
     Assert.IsTrue(mSaved.DesignerAlign);

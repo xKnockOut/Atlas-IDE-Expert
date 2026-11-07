@@ -72,7 +72,7 @@ type
   /// <summary>Inhalt des Tooltips: Satz, Doku und Zeichnen (P-09).</summary>
   TAtlasHoverTipView = class(TAtlasPopupWindow)
   public const
-    MaxWidth = 460;
+    cMaxWidth = 460;
   private
     FDeclaration: TAtlasStyledText;
     FProblemActions: Boolean;
@@ -752,9 +752,9 @@ begin
   end;
   if NeedsFullWidth(FView) then
   begin
-    mWidest := Scale(MaxWidth);
+    mWidest := Scale(cMaxWidth);
   end;
-  Result := EnsureRange(mWidest + Scale(26), Scale(200), Scale(MaxWidth));
+  Result := EnsureRange(mWidest + Scale(26), Scale(200), Scale(cMaxWidth));
 end;
 
 procedure TAtlasHoverTipView.ShowContent(const AView: TAtlasHoverView; const AWord: TRect);
@@ -784,7 +784,7 @@ begin
   end;
   ShowAt(mBounds);
   // Sprachausgabe (#447): Deklaration und Anfang der Doku.
-  SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessHover));
+  SetAccessible(cUiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessHover));
   mSpoken := Trim(AView.Data.Declaration + '. ' + Copy(AView.Data.Documentation, 1, 300));
   // Wert im Debugger (#891) zuerst.
   if AView.DebugValue.PlainText <> '' then

@@ -46,12 +46,12 @@ type
 
   TAtlasBugReport = class
   public const
-    ServerCommand = 'atlas.server.bugReport';
-    IssuesUrl = 'https://github.com/xKnockOut/Atlas-IDE-Expert/issues/new/choose';
+    cServerCommand = 'atlas.server.bugReport';
+    cIssuesUrl = 'https://github.com/xKnockOut/Atlas-IDE-Expert/issues/new/choose';
     /// <summary>So viele Zeilen aus atlas.log.</summary>
-    LogLines = 100;
+    cLogLines = 100;
     /// <summary>So viele Zeilen aus server-stderr.log.</summary>
-    ErrorOutputLines = 50;
+    cErrorOutputLines = 50;
   private
     class procedure AppendPlugin(ABuilder: TStringBuilder; const AInput: TAtlasBugReportInput); static;
     class procedure AppendSettings(ABuilder: TStringBuilder; const AInput: TAtlasBugReportInput); static;
@@ -252,7 +252,7 @@ begin
       mBuilder.Append(UiText(TBugReportText.WithRealNamesExplicitlyChosen));
     end;
     mBuilder.Append(sLineBreak).Append(sLineBreak);
-    mBuilder.Append(UiText(TBugReportText.ThisReportContainsNoSource)).Append(IssuesUrl);
+    mBuilder.Append(UiText(TBugReportText.ThisReportContainsNoSource)).Append(cIssuesUrl);
     mBuilder.Append(sLineBreak).Append(sLineBreak);
     AppendPlugin(mBuilder, AInput);
     AppendSettings(mBuilder, AInput);

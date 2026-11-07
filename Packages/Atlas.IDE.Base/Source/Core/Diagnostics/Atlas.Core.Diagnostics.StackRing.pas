@@ -22,8 +22,8 @@ uses
 type
   TAtlasStackRecord = record
   public const
-    MaxFrames = 40;
-    MaxParams = 4;
+    cMaxFrames = 40;
+    cMaxParams = 4;
   public
     /// <summary>Laufende Nummer; 0 = leer oder gerade in Arbeit.</summary>
     Sequence: Int64;
@@ -31,9 +31,9 @@ type
     Code: Cardinal;
     Address: NativeUInt;
     ParamCount: Integer;
-    Params: array[0..MaxParams - 1] of NativeUInt;
+    Params: array[0..cMaxParams - 1] of NativeUInt;
     Count: Integer;
-    Frames: array[0..MaxFrames - 1] of NativeUInt;
+    Frames: array[0..cMaxFrames - 1] of NativeUInt;
     /// <summary>Passt AKey zur Fehleradresse oder zu einem der Parameter?</summary>
     function Matches(AKey: NativeUInt): Boolean;
     /// <summary>Rahmen als Liste, die Fehleradresse vorn (unter Win32 fehlt die fehlerhafte Routine sonst).</summary>
@@ -42,9 +42,9 @@ type
 
   TAtlasStackRing = class
   public const
-    SlotCount = 32;
+    cSlotCount = 32;
   private
-    FSlots: array[0..SlotCount - 1] of TAtlasStackRecord;
+    FSlots: array[0..cSlotCount - 1] of TAtlasStackRecord;
     FNext: Int64;
   public
     /// <summary>Legt nichts an und sperrt nichts; aus dem Ausnahmebehandler des Systems.</summary>
@@ -85,7 +85,7 @@ begin
   end;
   for mIndex := 0 to ParamCount - 1 do
   begin
-    if (mIndex < MaxParams) and (Params[mIndex] = AKey) then
+    if (mIndex < cMaxParams) and (Params[mIndex] = AKey) then
     begin
       Exit(True);
     end;
@@ -104,7 +104,7 @@ begin
   end;
   for mIndex := 0 to Count - 1 do
   begin
-    if (mIndex < MaxFrames) and (Frames[mIndex] <> 0) then
+    if (mIndex < cMaxFrames) and (Frames[mIndex] <> 0) then
     begin
       Result := Result + [UInt64(Frames[mIndex])];
     end;
@@ -119,7 +119,7 @@ var
   mSlot: ^TAtlasStackRecord;
 begin
   mSequence := TInterlocked.Increment(FNext);
-  mSlot := @FSlots[mSequence mod SlotCount];
+  mSlot := @FSlots[mSequence mod cSlotCount];
   // Erst als „in Arbeit“ markieren, dann füllen, zuletzt die Nummer: Find übergeht halbe Einträge.
   TInterlocked.Exchange(mSlot^.Sequence, 0);
   mSlot^.ThreadId := ARecord.ThreadId;
@@ -143,7 +143,7 @@ begin
   Result := False;
   ARecord := Default(TAtlasStackRecord);
   mBest := 0;
-  for mIndex := 0 to SlotCount - 1 do
+  for mIndex := 0 to cSlotCount - 1 do
   begin
     mItem := FSlots[mIndex];
     // Während des Kopierens neu beschrieben: auslassen.
@@ -172,7 +172,7 @@ procedure TAtlasStackRing.Clear;
 var
   mIndex: Integer;
 begin
-  for mIndex := 0 to SlotCount - 1 do
+  for mIndex := 0 to cSlotCount - 1 do
   begin
     TInterlocked.Exchange(FSlots[mIndex].Sequence, 0);
   end;

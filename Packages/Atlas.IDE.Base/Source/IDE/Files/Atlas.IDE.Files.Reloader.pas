@@ -412,7 +412,7 @@ var
   mName: string;
 begin
   mName := ExtractFileName(AFileName);
-  if ACenter.Notify(TAtlasNotificationSources.Reload, TAtlasNotificationSeverity.Warning,
+  if ACenter.Notify(TAtlasNotificationSources.cReload, TAtlasNotificationSeverity.Warning,
     TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadKept, [mName]),
     TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadKeptText, [mName]),
     [TAtlasFileReloader.CompareAction(AFileName)]) = TAtlasNotificationMode.Show then
@@ -427,7 +427,7 @@ var
   mName: string;
 begin
   mName := ExtractFileName(AFileName);
-  if ACenter.Notify(TAtlasNotificationSources.Reload, TAtlasNotificationSeverity.Warning,
+  if ACenter.Notify(TAtlasNotificationSources.cReload, TAtlasNotificationSeverity.Warning,
     TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadDeleted, [mName]), AFileName) =
     TAtlasNotificationMode.Show then
   begin
@@ -449,7 +449,7 @@ begin
     end;
     mNames := mNames + ExtractFileName(mName);
   end;
-  if ACenter.Notify(TAtlasNotificationSources.Reload, TAtlasNotificationSeverity.Info,
+  if ACenter.Notify(TAtlasNotificationSources.cReload, TAtlasNotificationSeverity.Info,
     TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloaded, [Length(AReloaded)]), mNames) =
     TAtlasNotificationMode.Show then
   begin

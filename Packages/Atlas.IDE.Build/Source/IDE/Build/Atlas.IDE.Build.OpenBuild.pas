@@ -819,7 +819,7 @@ begin
   begin
     Exit;
   end;
-  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.OpenBuild,
+  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cOpenBuild,
     FinishSeverity(mOutcome, Length(FTargetNotes) > 0),
     TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildTitle, [mOutcome.Succeeded, mOutcome.Total]),
     string.Join(sLineBreak, FinishLines(mOutcome, mKind, FTargetNotes)));

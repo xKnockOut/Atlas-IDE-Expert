@@ -40,9 +40,9 @@ type
   TAtlasWrapSelection = class
   public const
     /// <summary>Vorgabe von editor.wrapSelection.chars.</summary>
-    DefaultChars = '([{''';
+    cDefaultChars = '([{''';
     /// <summary>Alle Zeichen, die umschließen können.</summary>
-    AllChars = '([{''<';
+    cAllChars = '([{''<';
   public
     /// <summary>Nur die Zeichen aus AllChars, je einmal, in der Reihenfolge von AChars.</summary>
     class function Normalize(const AChars: string): string; static;
@@ -453,7 +453,7 @@ begin
   Result := '';
   for mCh in AChars do
   begin
-    if (Pos(mCh, AllChars) > 0) and (Pos(mCh, Result) = 0) then
+    if (Pos(mCh, cAllChars) > 0) and (Pos(mCh, Result) = 0) then
     begin
       Result := Result + mCh;
     end;
@@ -462,7 +462,7 @@ end;
 
 class function TAtlasWrapSelection.Accepts(AChar: Char; const AChars: string): Boolean;
 begin
-  Result := (Pos(AChar, AllChars) > 0) and (Pos(AChar, AChars) > 0);
+  Result := (Pos(AChar, cAllChars) > 0) and (Pos(AChar, AChars) > 0);
 end;
 
 class function TAtlasWrapSelection.CloserOf(AOpen: Char): Char;

@@ -175,14 +175,14 @@ type
   TAtlasFindings = class
   public const
     /// <summary>Zeilentext in der Spalte „Zeile“; länger mit „…“, der Tooltip zeigt die ganze Zeile.</summary>
-    LineMax = 80;
-    ColumnNames: array[TAtlasFindingColumn] of string = ('icon', 'kind', 'category', 'message', 'line',
+    cLineMax = 80;
+    cColumnNames: array[TAtlasFindingColumn] of string = ('icon', 'kind', 'category', 'message', 'line',
       'location', 'rule', 'compiler');
     /// <summary>Marke eines vom Compiler bestätigten Befunds (#1024).</summary>
-    ConfirmedMark = TAtlasProblem.ConfirmedSource;
-    ScopeNames: array[TAtlasFindingScope] of string = ('file', 'project', 'group');
-    GroupingNames: array[TAtlasFindingGrouping] of string = ('none', 'file', 'rule', 'category');
-    ClosedUnitsNames: array[TAtlasClosedUnits] of string = ('dimmed', 'normal', 'hidden');
+    cConfirmedMark = TAtlasProblem.cConfirmedSource;
+    cScopeNames: array[TAtlasFindingScope] of string = ('file', 'project', 'group');
+    cGroupingNames: array[TAtlasFindingGrouping] of string = ('none', 'file', 'rule', 'category');
+    cClosedUnitsNames: array[TAtlasClosedUnits] of string = ('dimmed', 'normal', 'hidden');
   public
     /// <summary>Vergleichsschlüssel einer Datei (#1108): Kleinbuchstaben, Formular (.dfm/.fmx) als seine .pas.
     /// </summary>
@@ -405,7 +405,7 @@ begin
   Result := Problem.CompilerCodeText;
   if Problem.Confirmed then
   begin
-    Result := Result + ' ' + #$00B7 + ' ' + TAtlasFindings.ConfirmedMark;
+    Result := Result + ' ' + #$00B7 + ' ' + TAtlasFindings.cConfirmedMark;
   end;
 end;
 
@@ -533,7 +533,7 @@ end;
 class function TAtlasFindings.IsFinding(const AProblem: TAtlasProblem): Boolean;
 begin
   Result := not AProblem.Unnecessary and not AProblem.IsUses and
-    not SameText(AProblem.Source, TAtlasProblemStore.TestSource);
+    not SameText(AProblem.Source, TAtlasProblemStore.cTestSource);
 end;
 
 class function TAtlasFindings.FromProblems(const AFileName: string; const AProblems: TArray<TAtlasProblem>;
@@ -756,7 +756,7 @@ begin
   AColumn := TAtlasFindingColumn.Icon;
   for mCandidate := Low(TAtlasFindingColumn) to High(TAtlasFindingColumn) do
   begin
-    if SameText(AName, TAtlasFindings.ColumnNames[mCandidate]) then
+    if SameText(AName, TAtlasFindings.cColumnNames[mCandidate]) then
     begin
       AColumn := mCandidate;
       Exit(True);
@@ -801,7 +801,7 @@ begin
   Result := '';
   for mState in AColumns do
   begin
-    mPart := ColumnNames[mState.Column];
+    mPart := cColumnNames[mState.Column];
     if not mState.Visible and not IsMandatory(mState.Column) then
     begin
       mPart := '-' + mPart;
@@ -824,7 +824,7 @@ var
 begin
   for mScope := Low(TAtlasFindingScope) to High(TAtlasFindingScope) do
   begin
-    if SameText(AText, ScopeNames[mScope]) then
+    if SameText(AText, cScopeNames[mScope]) then
     begin
       AScope := mScope;
       Exit(True);
@@ -840,7 +840,7 @@ var
 begin
   for mGrouping := Low(TAtlasFindingGrouping) to High(TAtlasFindingGrouping) do
   begin
-    if SameText(AText, GroupingNames[mGrouping]) then
+    if SameText(AText, cGroupingNames[mGrouping]) then
     begin
       AGrouping := mGrouping;
       Exit(True);
@@ -868,7 +868,7 @@ var
 begin
   for mValue := Low(TAtlasClosedUnits) to High(TAtlasClosedUnits) do
   begin
-    if SameText(AText, ClosedUnitsNames[mValue]) then
+    if SameText(AText, cClosedUnitsNames[mValue]) then
     begin
       AValue := mValue;
       Exit(True);

@@ -17,7 +17,7 @@ uses
 type
   TAtlasProblemsList = class
   public const
-    MaxEntries = 1000;
+    cMaxEntries = 1000;
   private
     FSignature: string;
   public
@@ -118,7 +118,7 @@ var
   mTotal: Integer;
   mLineRef: Pointer;
 begin
-  mSignature := CollectEntries(AStore, MaxEntries, mEntries, mTotal);
+  mSignature := CollectEntries(AStore, cMaxEntries, mEntries, mTotal);
   if mSignature = FSignature then
   begin
     Exit;

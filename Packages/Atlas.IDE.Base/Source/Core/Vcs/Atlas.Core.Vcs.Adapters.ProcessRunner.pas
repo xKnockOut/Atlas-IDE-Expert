@@ -26,7 +26,7 @@ type
   TAtlasVcsProcessRunner = class(TInterfacedObject, IAtlasVcsRunner)
   public const
     /// <summary>Mehr Ausgabe gilt als Fehler (Failed); schützt vor riesigen Dateien bei FileAt.</summary>
-    MaxOutputBytes = 64 * 1024 * 1024;
+    cMaxOutputBytes = 64 * 1024 * 1024;
   private
     FAllowMainThread: Boolean;
     FCancelled: TFunc<Boolean>;
@@ -389,7 +389,7 @@ end;
 
 procedure TChildProcess.DrainAll;
 begin
-  Drain(FOutRead, FOutput, TAtlasVcsProcessRunner.MaxOutputBytes + 1);
+  Drain(FOutRead, FOutput, TAtlasVcsProcessRunner.cMaxOutputBytes + 1);
   Drain(FErrRead, FErrors, cMaxErrorBytes);
 end;
 
@@ -426,7 +426,7 @@ begin
     mExitCode := $FFFFFFFF;
   end;
   mOutcome := AOutcome;
-  if (mOutcome = TAtlasVcsOutcome.Ok) and (FOutput.Count > TAtlasVcsProcessRunner.MaxOutputBytes) then
+  if (mOutcome = TAtlasVcsOutcome.Ok) and (FOutput.Count > TAtlasVcsProcessRunner.cMaxOutputBytes) then
   begin
     mOutcome := TAtlasVcsOutcome.Failed;
   end;

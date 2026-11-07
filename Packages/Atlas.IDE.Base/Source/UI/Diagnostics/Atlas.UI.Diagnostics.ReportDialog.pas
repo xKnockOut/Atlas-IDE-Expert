@@ -47,7 +47,7 @@ type
 
   TAtlasReportDialog = class(TForm)
   public const
-    Gap = 8;
+    cGap = 8;
   private type
     /// <summary>Steuerelemente des Dialogs.</summary>
     TParts = record
@@ -181,7 +181,7 @@ begin
   Result.Parent := AParent;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(TAtlasReportDialog.Gap, TAtlasReportDialog.Gap, TAtlasReportDialog.Gap, 2);
+  Result.Margins.SetBounds(TAtlasReportDialog.cGap, TAtlasReportDialog.cGap, TAtlasReportDialog.cGap, 2);
   Result.ShowAccelChar := False;
   Result.Caption := ACaption;
 end;
@@ -242,7 +242,7 @@ begin
   FParts.Description.Parent := Self;
   FParts.Description.Align := alTop;
   FParts.Description.AlignWithMargins := True;
-  FParts.Description.Margins.SetBounds(Gap, 0, Gap, Gap);
+  FParts.Description.Margins.SetBounds(cGap, 0, cGap, cGap);
   FParts.Description.Height := 72;
   FParts.Description.ScrollBars := ssVertical;
   FParts.Description.Top := 200;
@@ -260,7 +260,7 @@ begin
     mCheck.Parent := Self;
     mCheck.Align := alTop;
     mCheck.AlignWithMargins := True;
-    mCheck.Margins.SetBounds(Gap * 2, 0, Gap, 2);
+    mCheck.Margins.SetBounds(cGap * 2, 0, cGap, 2);
     mCheck.Top := 400 + Ord(mPart);
     // Vor OnClick setzen: Ein Wechsel von Checked löst OnClick aus, die Vorschau gibt es noch nicht.
     // Optional (#479): die letzten Diagnosedaten sind nicht vorausgewählt.
@@ -320,7 +320,7 @@ begin
   mList.Parent := Self;
   mList.Align := alClient;
   mList.AlignWithMargins := True;
-  mList.Margins.SetBounds(Gap, 0, Gap, 0);
+  mList.Margins.SetBounds(cGap, 0, cGap, 0);
   mList.ViewStyle := vsReport;
   mList.ReadOnly := True;
   mList.RowSelect := True;
@@ -425,14 +425,14 @@ procedure TAtlasReportDialog.FootResize(Sender: TObject);
 var
   mRight: Integer;
 begin
-  mRight := (Sender as TPanel).ClientWidth - Gap;
+  mRight := (Sender as TPanel).ClientWidth - cGap;
   FParts.ViewButton.SetBounds(mRight - 110, 4, 110, 28);
-  FParts.Summary.SetBounds(Gap, 10, Max(0, FParts.ViewButton.Left - 2 * Gap), 17);
+  FParts.Summary.SetBounds(cGap, 10, Max(0, FParts.ViewButton.Left - 2 * cGap), 17);
   FParts.FolderButton.SetBounds(mRight - 110, 38, 110, 28);
-  FParts.FolderLabel.SetBounds(Gap, 44, Max(0, FParts.FolderButton.Left - 2 * Gap), 17);
-  FParts.Status.SetBounds(Gap, 74, Max(0, mRight - Gap), 17);
-  FParts.ZipButton.SetBounds(Gap, 98, 130, 28);
-  FParts.IssueButton.SetBounds(2 * Gap + 130, 98, 160, 28);
+  FParts.FolderLabel.SetBounds(cGap, 44, Max(0, FParts.FolderButton.Left - 2 * cGap), 17);
+  FParts.Status.SetBounds(cGap, 74, Max(0, mRight - cGap), 17);
+  FParts.ZipButton.SetBounds(cGap, 98, 130, 28);
+  FParts.IssueButton.SetBounds(2 * cGap + 130, 98, 160, 28);
   FParts.CloseButton.SetBounds(mRight - 100, 98, 100, 28);
 end;
 
@@ -546,7 +546,7 @@ begin
   // Nur Webadressen an den Browser; sonst die Issue-Seite des Atlas-Repositorys.
   if not TAtlasDiagnosticPackage.IsWebUrl(mUrl) then
   begin
-    mUrl := TAtlasPluginSettings.DefaultHelpReportUrl;
+    mUrl := TAtlasPluginSettings.cDefaultHelpReportUrl;
   end;
   if Assigned(FActions.CopyText) then
   begin

@@ -69,9 +69,9 @@ type
   /// sperrt.</summary>
   TLspResponseTimes = record
   public const
-    Samples = 50;
+    cSamples = 50;
   private
-    FTimes: array[0..Samples - 1] of Int64;
+    FTimes: array[0..cSamples - 1] of Int64;
     FCount: Integer;
     FNext: Integer;
   public
@@ -85,8 +85,8 @@ type
   public const
     /// <summary>Obergrenzen der Rahmung wie im Server (Atlas.Common.JsonRpc.StreamTransport): Kopf 8 KB,
     /// Inhalt 256 MB (Code-Review D-10). Darüber gilt die Verbindung als kaputt.</summary>
-    MaxHeaderLength = 8 * 1024;
-    MaxContentLength = 256 * 1024 * 1024;
+    cMaxHeaderLength = 8 * 1024;
+    cMaxContentLength = 256 * 1024 * 1024;
   private type
     TPending = class
     public
@@ -123,7 +123,7 @@ type
       const ACancelled: TFunc<Boolean>): TJSONValue;
   public const
     /// <summary>So oft fragt Request mit Abbruch nach, ob abgebrochen wurde.</summary>
-    CancelPollMs = 100;
+    cCancelPollMs = 100;
   public
     constructor Create(const ASend: TLspSendProc);
     destructor Destroy; override;
@@ -159,7 +159,7 @@ type
     function CloseInfo: TLspCloseInfo;
     /// <summary>Antwortzeit einer Anfrage merken; Request ruft das selbst (öffentlich für Tests).</summary>
     procedure AddResponseTime(AMilliseconds: Int64);
-    /// <summary>Mittlere Antwortzeit der letzten TLspResponseTimes.Samples Anfragen in ms; ASamples = deren
+    /// <summary>Mittlere Antwortzeit der letzten TLspResponseTimes.cSamples Anfragen in ms; ASamples = deren
     /// Anzahl.</summary>
     function AverageMs(out ASamples: Integer): Double;
     /// <summary>Geht die Antwortzeit von AMethod in AverageMs ein? Nicht bei Long-Polling.</summary>
@@ -371,9 +371,9 @@ begin
   Result := -1;
   // Nur im möglichen Kopf suchen, nicht im ganzen Puffer (Code-Review D-10).
   mLast := Length(ABuffer) - Length(cHeaderEnd);
-  if mLast > TLspClient.MaxHeaderLength then
+  if mLast > TLspClient.cMaxHeaderLength then
   begin
-    mLast := TLspClient.MaxHeaderLength;
+    mLast := TLspClient.cMaxHeaderLength;
   end;
   mIndex := 0;
   while (Result < 0) and (mIndex <= mLast) do
@@ -390,7 +390,7 @@ end;
 /// Speicher zu füllen.</summary>
 procedure RejectEndlessHeader(var ABuffer: TBytes);
 begin
-  if Length(ABuffer) >= TLspClient.MaxHeaderLength + Length(cHeaderEnd) then
+  if Length(ABuffer) >= TLspClient.cMaxHeaderLength + Length(cHeaderEnd) then
   begin
     ABuffer := nil;
     raise ELspClientError.Create(UiText(TClientText.ServerMessageWithoutEndOf));
@@ -400,11 +400,11 @@ end;
 /// <summary>Nachricht über MaxContentLength: Verbindung aufgeben statt den Speicher zu füllen.</summary>
 procedure RejectOversizedBody(var ABuffer: TBytes; ABodyLength: Integer);
 begin
-  if ABodyLength > TLspClient.MaxContentLength then
+  if ABodyLength > TLspClient.cMaxContentLength then
   begin
     ABuffer := nil;
     raise ELspClientError.CreateFmt(UiText(TClientText.ServerMessageWithBytesExceeds),
-      [ABodyLength, TLspClient.MaxContentLength]);
+      [ABodyLength, TLspClient.cMaxContentLength]);
   end;
 end;
 
@@ -481,7 +481,7 @@ begin
   // In Scheiben warten, damit „Abbrechen“ nicht bis zum Zeitlimit hängt.
   mWaited := 0;
   repeat
-    mSlice := TLspClient.CancelPollMs;
+    mSlice := TLspClient.cCancelPollMs;
     if FTimeoutMs - mWaited < mSlice then
     begin
       mSlice := FTimeoutMs - mWaited;
@@ -973,8 +973,8 @@ end;
 procedure TLspResponseTimes.Add(AMilliseconds: Int64);
 begin
   FTimes[FNext] := AMilliseconds;
-  FNext := (FNext + 1) mod Samples;
-  if FCount < Samples then
+  FNext := (FNext + 1) mod cSamples;
+  if FCount < cSamples then
   begin
     Inc(FCount);
   end;

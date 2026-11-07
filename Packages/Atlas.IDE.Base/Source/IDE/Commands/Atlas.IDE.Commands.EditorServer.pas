@@ -152,7 +152,7 @@ begin
     mValues.Free;
   end;
   try
-    mAnswer := Session.RunCommand(cQualifiedNameCommand, mArguments, CommandTimeoutMs);
+    mAnswer := Session.RunCommand(cQualifiedNameCommand, mArguments, cCommandTimeoutMs);
   except
     on E: ELspClientError do
     begin
@@ -234,11 +234,11 @@ begin
   try
     if mSelection.IsEmpty then
     begin
-      mEdits := Session.Formatting(mFileName, mIndent, True, CommandTimeoutMs);
+      mEdits := Session.Formatting(mFileName, mIndent, True, cCommandTimeoutMs);
     end
     else
     begin
-      mEdits := Session.Formatting(mFileName, mSelection, mIndent, True, CommandTimeoutMs);
+      mEdits := Session.Formatting(mFileName, mSelection, mIndent, True, cCommandTimeoutMs);
     end;
   except
     on E: ELspClientError do
@@ -296,7 +296,7 @@ begin
     var
       mAnswer: TJSONValue;
     begin
-      mAnswer := mRunning.RunCommand(cTestUnitCommand, mArguments, CommandTimeoutMs);
+      mAnswer := mRunning.RunCommand(cTestUnitCommand, mArguments, cCommandTimeoutMs);
       try
         ReadTestUnit(mAnswer, mInfo, mEdit);
       finally

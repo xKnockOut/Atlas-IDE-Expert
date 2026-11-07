@@ -65,16 +65,16 @@ type
 
   TAtlasTipCatalog = class
   public const
-    FileName = 'tips.json';
+    cFileName = 'tips.json';
     /// <summary>Ordner der Bilder im Installationsordner.</summary>
-    ImageFolder = 'Tipps';
-    FormatVersion = 1;
+    cImageFolder = 'Tipps';
+    cFormatVersion = 1;
     /// <summary>Anzeigegröße der Bilder in logischen Pixeln (bei 100 %) und Pixelgröße der einfachen Datei.
     /// </summary>
-    ImageWidth = 320;
-    ImageHeight = 180;
+    cImageWidth = 320;
+    cImageHeight = 180;
     /// <summary>Zusatz der Datei mit doppelter Auflösung: code-aktionen@2x.png.</summary>
-    HighDpiSuffix = '@2x';
+    cHighDpiSuffix = '@2x';
   public
     /// <summary>Tipps aus tips.json in der Reihenfolge der Datei; leer bei ungültigem Inhalt.</summary>
     class function Parse(const AJson: string): TAtlasTips; static;
@@ -331,7 +331,7 @@ begin
     Exit;
   end;
   mExtension := ExtractFileExt(AFileName);
-  Result := Copy(AFileName, 1, Length(AFileName) - Length(mExtension)) + HighDpiSuffix + mExtension;
+  Result := Copy(AFileName, 1, Length(AFileName) - Length(mExtension)) + cHighDpiSuffix + mExtension;
 end;
 
 class function TAtlasTipCatalog.ImageFor(const AFileName: string; AShownWidth: Integer): string;
@@ -339,7 +339,7 @@ var
   mLarge: string;
 begin
   Result := AFileName;
-  if (AFileName = '') or (AShownWidth <= ImageWidth) then
+  if (AFileName = '') or (AShownWidth <= cImageWidth) then
   begin
     Exit;
   end;

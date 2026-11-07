@@ -92,11 +92,11 @@ function StateFake: TFakeState;
 begin
   Result := TFakeState.Create;
   Result.Registry := TAtlasStatusRegistry.Create;
-  AddLine(Result.Registry, TAtlasStatusLines.ServerId, TAtlasStatusState.Green, ['Server: läuft seit 19:02',
+  AddLine(Result.Registry, TAtlasStatusLines.cServerId, TAtlasStatusState.Green, ['Server: läuft seit 19:02',
     'Server läuft', 'seit 19:02'], False);
-  AddLine(Result.Registry, TAtlasStatusLines.IndexId, TAtlasStatusState.Green, ['Index: 1284 Units',
+  AddLine(Result.Registry, TAtlasStatusLines.cIndexId, TAtlasStatusState.Green, ['Index: 1284 Units',
     'Index: 1284 Units', 'indiziert 18:40'], False);
-  AddLine(Result.Registry, TAtlasStatusLines.SetupId, TAtlasStatusState.Yellow, ['Einrichtung: 5 von 6 erledigt',
+  AddLine(Result.Registry, TAtlasStatusLines.cSetupId, TAtlasStatusState.Yellow, ['Einrichtung: 5 von 6 erledigt',
     '', ''], True);
 end;
 { TAtlasWelcomeStateFrameTests }
@@ -150,7 +150,7 @@ begin
     Assert.IsTrue(Frame.Button(TAtlasStateButton.Settings).Visible);
     Assert.IsTrue(Frame.Button(TAtlasStateButton.LogFolder).Visible);
     Assert.IsFalse(Frame.Button(TAtlasStateButton.Update).Visible);
-    AddLine(Fake.Registry, TAtlasStatusLines.VersionId, TAtlasStatusState.Yellow,
+    AddLine(Fake.Registry, TAtlasStatusLines.cVersionId, TAtlasStatusState.Yellow,
       ['Version: Atlas 1.0.0, Update 1.0.1 bereit', 'Update 1.0.1 bereit', 'installiert 1.0.0'], True);
     Frame.UpdateContent;
     Assert.IsTrue(Frame.Button(TAtlasStateButton.Update).Visible);

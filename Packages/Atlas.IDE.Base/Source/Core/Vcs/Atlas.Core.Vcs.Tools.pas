@@ -89,7 +89,7 @@ type
     FTimeoutMs: Cardinal;
   public
     /// <summary>Vorgabe für das Zeitlimit eines Aufrufs.</summary>
-    const DefaultTimeoutMs = 15000;
+    const cDefaultTimeoutMs = 15000;
     constructor Create(const ARunner: IAtlasVcsRunner; const AExecutable, AWorkingDir: string;
       ATimeoutMs: Cardinal);
     /// <summary>Startet das Programm; Outcome Failed bei Exit-Code ungleich 0, ToolMissing ohne Programm.</summary>

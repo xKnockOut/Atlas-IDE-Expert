@@ -11,45 +11,45 @@ uses
 
 const
   /// <summary>Grenzen und Vorgabe von issues.attach.maxImageWidth (#1276), wie TAtlasAttachImage.</summary>
-  MinAttachImageWidth = 320;
-  MaxAttachImageWidth = 7680;
-  DefaultAttachImageWidth = 1920;
+  cMinAttachImageWidth = 320;
+  cMaxAttachImageWidth = 7680;
+  cDefaultAttachImageWidth = 1920;
   /// <summary>Werte von issues.start (#765); wie TAtlasMyIssues.StartName.</summary>
-  IssuesStartBranch = 'branch';
-  IssuesStartRemember = 'remember';
+  cIssuesStartBranch = 'branch';
+  cIssuesStartRemember = 'remember';
   /// <summary>Vorgabe für issues.commitPattern (#765); wie TAtlasTrackerNaming.CommitPattern.
   /// </summary>
-  DefaultIssuesCommitPattern = '{kennung} ';
+  cDefaultIssuesCommitPattern = '{kennung} ';
   /// <summary>Grenzen und Vorgabe von issues.blameLinks.maxRevisions (#1275).</summary>
-  MinIssuesBlameMaxRevisions = 1;
-  MaxIssuesBlameMaxRevisions = 5000;
-  DefaultIssuesBlameMaxRevisions = 200;
+  cMinIssuesBlameMaxRevisions = 1;
+  cMaxIssuesBlameMaxRevisions = 5000;
+  cDefaultIssuesBlameMaxRevisions = 200;
   /// <summary>Vorgaben für Zustand und Kommentar (#1266); wie TAtlasTrackerWorkflow.</summary>
-  DefaultIssuesStateField = 'State';
-  DefaultIssuesAssigneeField = 'Assignee';
-  DefaultIssuesEndComment = 'Erledigt in {branch}.\n{commits}';
+  cDefaultIssuesStateField = 'State';
+  cDefaultIssuesAssigneeField = 'Assignee';
+  cDefaultIssuesEndComment = 'Erledigt in {branch}.\n{commits}';
   /// <summary>Vorgabe von issues.commentSnippets (#1278), wie TAtlasCommentSnippets.Defaults.</summary>
-  DefaultIssuesCommentSnippets = '[{"name":"Bitte mit aktuellem Build prüfen","text":"Bitte mit dem aktuellen Build ' +
+  cDefaultIssuesCommentSnippets = '[{"name":"Bitte mit aktuellem Build prüfen","text":"Bitte mit dem aktuellen Build ' +
     'prüfen."},{"name":"Behoben in {commit}","text":"Behoben in {commit}."}]';
   /// <summary>Höchstlänge der Kommentarvorlagen und der Liste der Zielzustände (#1266).</summary>
-  MaxIssuesTemplate = 2000;
+  cMaxIssuesTemplate = 2000;
   /// <summary>Grenzen und Vorgaben der Zeiterfassung (#1267, issues.idleMinutes, issues.timeRounding); wie
   /// TAtlasTimeClock bzw. TAtlasTimeRounding.</summary>
-  MinIssuesIdleMinutes = 1;
-  MaxIssuesIdleMinutes = 120;
-  DefaultIssuesIdleMinutes = 10;
-  MinIssuesTimeRounding = 1;
-  MaxIssuesTimeRounding = 60;
-  DefaultIssuesTimeRounding = 5;
+  cMinIssuesIdleMinutes = 1;
+  cMaxIssuesIdleMinutes = 120;
+  cDefaultIssuesIdleMinutes = 10;
+  cMinIssuesTimeRounding = 1;
+  cMaxIssuesTimeRounding = 60;
+  cDefaultIssuesTimeRounding = 5;
   /// <summary>Grenzen und Vorgabe von issues.notify.intervalMinutes (#1271); wie TAtlasTrackerNotify.MinInterval
   /// und DefaultInterval (Test prüft Gleichheit).</summary>
-  MinIssuesNotifyMinutes = 2;
-  MaxIssuesNotifyMinutes = 1440;
-  DefaultIssuesNotifyMinutes = 10;
+  cMinIssuesNotifyMinutes = 2;
+  cMaxIssuesNotifyMinutes = 1440;
+  cDefaultIssuesNotifyMinutes = 10;
   /// <summary>Werte von issues.notify.scope (#1271); wie TAtlasTrackerNotify.ScopeName.</summary>
-  IssuesNotifyAssigned = 'assigned';
-  IssuesNotifyAssignedOrCreated = 'assignedOrCreated';
-  IssuesNotifyWatched = 'watched';
+  cIssuesNotifyAssigned = 'assigned';
+  cIssuesNotifyAssignedOrCreated = 'assignedOrCreated';
+  cIssuesNotifyWatched = 'watched';
 
 type
   /// <summary>Plugin-Einstellungen: Verbindungen, Abfragen und Arbeitsablauf des Issue-Trackers.</summary>
@@ -235,30 +235,30 @@ end;
 /// <summary>issues.notify.scope (#1271): bekannter Wert, sonst IssuesNotifyAssignedOrCreated.</summary>
 function NormalizedIssuesNotifyScope(const AText: string): string;
 begin
-  if SameText(Trim(AText), IssuesNotifyAssigned) then
+  if SameText(Trim(AText), cIssuesNotifyAssigned) then
   begin
-    Result := IssuesNotifyAssigned;
+    Result := cIssuesNotifyAssigned;
   end
-  else if SameText(Trim(AText), IssuesNotifyWatched) then
+  else if SameText(Trim(AText), cIssuesNotifyWatched) then
   begin
-    Result := IssuesNotifyWatched;
+    Result := cIssuesNotifyWatched;
   end
   else
   begin
-    Result := IssuesNotifyAssignedOrCreated;
+    Result := cIssuesNotifyAssignedOrCreated;
   end;
 end;
 
 /// <summary>issues.start (#765): bekannter Wert, sonst IssuesStartBranch.</summary>
 function NormalizedIssuesStart(const AText: string): string;
 begin
-  if SameText(Trim(AText), IssuesStartRemember) then
+  if SameText(Trim(AText), cIssuesStartRemember) then
   begin
-    Result := IssuesStartRemember;
+    Result := cIssuesStartRemember;
   end
   else
   begin
-    Result := IssuesStartBranch;
+    Result := cIssuesStartBranch;
   end;
 end;
 
@@ -277,9 +277,9 @@ begin
     end;
   end;
   Result := Trim(Result);
-  if Length(Result) > MaxIssuesTemplate then
+  if Length(Result) > cMaxIssuesTemplate then
   begin
-    Result := Copy(Result, 1, MaxIssuesTemplate);
+    Result := Copy(Result, 1, cMaxIssuesTemplate);
   end;
 end;
 
@@ -289,23 +289,23 @@ class function TAtlasPluginIssuesSettings.Defaults: TAtlasPluginIssuesSettings;
 begin
   Result.IssuesEnabled := True;
   Result.IssuesTracker := '';
-  Result.IssuesStart := IssuesStartBranch;
+  Result.IssuesStart := cIssuesStartBranch;
   Result.IssuesBranchPattern := '';
   Result.IssuesBranchBase := '';
-  Result.IssuesCommitPattern := DefaultIssuesCommitPattern;
+  Result.IssuesCommitPattern := cDefaultIssuesCommitPattern;
   Result.TrackerLogin := True;
   Result.IssuesConnections := '[]';
   Result.IssuesProjects := '[]';
   Result.IssuesQueries := '[]';
   Result.IssuesQueryPicker := True;
   Result.IssuesSyncState := True;
-  Result.IssuesStateField := DefaultIssuesStateField;
-  Result.IssuesAssigneeField := DefaultIssuesAssigneeField;
+  Result.IssuesStateField := cDefaultIssuesStateField;
+  Result.IssuesAssigneeField := cDefaultIssuesAssigneeField;
   Result.IssuesStartState := '';
   Result.IssuesAssignOnStart := False;
   Result.IssuesStartComment := '';
   Result.IssuesEndStates := '';
-  Result.IssuesEndComment := DefaultIssuesEndComment;
+  Result.IssuesEndComment := cDefaultIssuesEndComment;
 end;
 
 procedure TAtlasPluginIssuesSettings.Normalize;
@@ -334,12 +334,12 @@ begin
   IssuesStateField := NormalizedIssuesText(IssuesStateField, True);
   if IssuesStateField = '' then
   begin
-    IssuesStateField := DefaultIssuesStateField;
+    IssuesStateField := cDefaultIssuesStateField;
   end;
   IssuesAssigneeField := NormalizedIssuesText(IssuesAssigneeField, True);
   if IssuesAssigneeField = '' then
   begin
-    IssuesAssigneeField := DefaultIssuesAssigneeField;
+    IssuesAssigneeField := cDefaultIssuesAssigneeField;
   end;
   IssuesStartState := NormalizedIssuesText(IssuesStartState, True);
   IssuesStartComment := NormalizedIssuesTemplate(IssuesStartComment);
@@ -378,12 +378,12 @@ begin
   Result.IssuesPreviewComments := True;
   Result.IssuesCodeLinks := True;
   Result.IssuesBlameLinks := True;
-  Result.IssuesBlameMaxRevisions := DefaultIssuesBlameMaxRevisions;
+  Result.IssuesBlameMaxRevisions := cDefaultIssuesBlameMaxRevisions;
   Result.IssuesCreate := True;
   Result.IssuesCreateIncludeCode := True;
   Result.IssuesTimeTracking := False;
-  Result.IssuesIdleMinutes := DefaultIssuesIdleMinutes;
-  Result.IssuesTimeRounding := DefaultIssuesTimeRounding;
+  Result.IssuesIdleMinutes := cDefaultIssuesIdleMinutes;
+  Result.IssuesTimeRounding := cDefaultIssuesTimeRounding;
   Result.IssuesPreviewChecklists := True;
   Result.IssuesChecklistStatus := True;
   Result.IssuesPreviewLinks := True;
@@ -395,32 +395,32 @@ begin
   Result.IssuesSprintCompare := True;
   Result.IssuesPaletteSearch := True;
   Result.IssuesCommentEditor := True;
-  Result.IssuesCommentSnippets := DefaultIssuesCommentSnippets;
+  Result.IssuesCommentSnippets := cDefaultIssuesCommentSnippets;
   Result.IssuesPreviewDevelopment := True;
   Result.IssuesNotify := False;
-  Result.IssuesNotifyIntervalMinutes := DefaultIssuesNotifyMinutes;
-  Result.IssuesNotifyScope := IssuesNotifyAssignedOrCreated;
+  Result.IssuesNotifyIntervalMinutes := cDefaultIssuesNotifyMinutes;
+  Result.IssuesNotifyScope := cIssuesNotifyAssignedOrCreated;
   Result.IssuesAttach := True;
   Result.IssuesAttachLogFiles := '';
-  Result.IssuesAttachMaxImageWidth := DefaultAttachImageWidth;
+  Result.IssuesAttachMaxImageWidth := cDefaultAttachImageWidth;
 end;
 
 procedure TAtlasPluginIssueWorkSettings.Normalize;
 begin
   IssuesAttachLogFiles := Trim(IssuesAttachLogFiles);
-  IssuesAttachMaxImageWidth := EnsureRange(IssuesAttachMaxImageWidth, MinAttachImageWidth, MaxAttachImageWidth);
-  IssuesBlameMaxRevisions := EnsureRange(IssuesBlameMaxRevisions, MinIssuesBlameMaxRevisions,
-    MaxIssuesBlameMaxRevisions);
-  IssuesIdleMinutes := EnsureRange(IssuesIdleMinutes, MinIssuesIdleMinutes, MaxIssuesIdleMinutes);
-  IssuesTimeRounding := EnsureRange(IssuesTimeRounding, MinIssuesTimeRounding, MaxIssuesTimeRounding);
+  IssuesAttachMaxImageWidth := EnsureRange(IssuesAttachMaxImageWidth, cMinAttachImageWidth, cMaxAttachImageWidth);
+  IssuesBlameMaxRevisions := EnsureRange(IssuesBlameMaxRevisions, cMinIssuesBlameMaxRevisions,
+    cMaxIssuesBlameMaxRevisions);
+  IssuesIdleMinutes := EnsureRange(IssuesIdleMinutes, cMinIssuesIdleMinutes, cMaxIssuesIdleMinutes);
+  IssuesTimeRounding := EnsureRange(IssuesTimeRounding, cMinIssuesTimeRounding, cMaxIssuesTimeRounding);
   // Leer heißt: keine Textbausteine (die Vorgaben kommen nur, wenn der Wert fehlt).
   IssuesCommentSnippets := Trim(IssuesCommentSnippets);
   if IssuesCommentSnippets = '' then
   begin
     IssuesCommentSnippets := '[]';
   end;
-  IssuesNotifyIntervalMinutes := EnsureRange(IssuesNotifyIntervalMinutes, MinIssuesNotifyMinutes,
-    MaxIssuesNotifyMinutes);
+  IssuesNotifyIntervalMinutes := EnsureRange(IssuesNotifyIntervalMinutes, cMinIssuesNotifyMinutes,
+    cMaxIssuesNotifyMinutes);
   IssuesNotifyScope := NormalizedIssuesNotifyScope(IssuesNotifyScope);
 end;
 

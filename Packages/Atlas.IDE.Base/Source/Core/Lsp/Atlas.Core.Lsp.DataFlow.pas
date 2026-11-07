@@ -76,7 +76,7 @@ type
 
   TAtlasDataFlowJson = class
   public const
-    Method = 'atlas/dataFlow';
+    cMethod = 'atlas/dataFlow';
   public
     /// <summary>Parameter der Anfrage. Der Aufrufer übernimmt das Objekt.</summary>
     class function Params(const ARequest: TAtlasDataFlowRequest): TJSONObject; static;

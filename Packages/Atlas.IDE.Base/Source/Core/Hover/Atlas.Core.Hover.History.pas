@@ -23,9 +23,9 @@ type
 
   TAtlasHoverHistory = class
   public const
-    MaxSteps = 10;
+    cMaxSteps = 10;
     /// <summary>Mehr Einträge zeigt die Pfadzeile nicht; davor steht "…".</summary>
-    MaxPathShown = 4;
+    cMaxPathShown = 4;
   private
     FItems: TArray<TAtlasHoverData>;
     FPinned: Boolean;
@@ -122,9 +122,9 @@ begin
     mData.Location.Name := ARef.Name;
   end;
   FItems := FItems + [mData];
-  if Length(FItems) > MaxSteps then
+  if Length(FItems) > cMaxSteps then
   begin
-    Delete(FItems, 0, Length(FItems) - MaxSteps);
+    Delete(FItems, 0, Length(FItems) - cMaxSteps);
   end;
   FPinned := True;
   Result := True;
@@ -160,9 +160,9 @@ var
 begin
   Result := nil;
   mFirst := 0;
-  if Length(FItems) > MaxPathShown then
+  if Length(FItems) > cMaxPathShown then
   begin
-    mFirst := Length(FItems) - MaxPathShown + 1;
+    mFirst := Length(FItems) - cMaxPathShown + 1;
     mItem.Index := -1;
     mItem.Caption := '…';
     Result := Result + [mItem];

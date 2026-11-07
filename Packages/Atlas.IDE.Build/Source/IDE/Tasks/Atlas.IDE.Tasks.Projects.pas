@@ -137,7 +137,7 @@ begin
   mProjectFile := '';
   if AProject <> '' then
   begin
-    mProjectFile := TPath.Combine(ExtractFileDir(AProject), TAtlasSettingsFiles.ProjectName);
+    mProjectFile := TPath.Combine(ExtractFileDir(AProject), TAtlasSettingsFiles.cProjectName);
   end;
   Result := AnsiLowerCase(AProject) + '|' + Stamp(mProjectFile) + '|' + Stamp(TAtlasProjectSettings.GlobalFile);
 end;
@@ -156,7 +156,7 @@ begin
   if AProject <> '' then
   begin
     mOwn := TAtlasTasks.Parse(TAtlasProjectSettings.ReadText(TPath.Combine(ExtractFileDir(AProject),
-      TAtlasSettingsFiles.ProjectName), mHasBom), False, mIssues);
+      TAtlasSettingsFiles.cProjectName), mHasBom), False, mIssues);
   end;
   mGlobal := TAtlasTasks.Parse(TAtlasProjectSettings.ReadText(TAtlasProjectSettings.GlobalFile, mHasBom), True,
     mIssues);

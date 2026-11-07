@@ -80,8 +80,8 @@ type
     /// <summary>Zeigt gerade das Aufrufdiagramm statt des Baums.</summary>
     property ShowsDiagram: Boolean read GetShowsDiagram write SetShowsDiagram;
     /// <summary>Gehört die Datei zu einem Projekt der Gruppe („Nur Projekt-Units“)? nil: alle.</summary>
+    // lsp-ignore: write-only-property -- reicht nur an das Diagramm weiter
     property IsProjectFile: TFunc<string, Boolean> write SetIsProjectFile;
-      // lsp-ignore: write-only-property -- reicht nur an das Diagramm weiter
     property Direction: TAtlasHierarchyDirection read FDirection;
     property Controls: TAtlasResultsDiagramControls read FControls;
     property OnExpand: TAtlasHierarchyExpand read FOnExpand write FOnExpand;

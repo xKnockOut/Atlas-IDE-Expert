@@ -5,7 +5,7 @@
 // Bezugszeile (0-basiert) in Line und die Schreibmarke im Feld in Character;
 // FileName ist die Datei der Bezugszeile. Die IDE-Schicht gleicht diese Datei
 // vorher im Hauptthread ab; Fetch fragt atlas/expressionCompletion im
-// Hintergrund. Mit Trigger = TAtlasTriggers.History kommt statt der
+// Hintergrund. Mit Trigger = TAtlasTriggers.cHistory kommt statt der
 // Anfrage der Verlauf (Atlas.Core.Debug.DialogCompletion). Die LSP-Einträge
 // übersetzt AItemsOf, das die Komposition mit der Übersetzung der Quelle
 // Server belegt (Rollenmatrix: keine Providers untereinander).
@@ -27,7 +27,7 @@ type
 
   TAtlasExpressionCompletionProvider = class(TAtlasAsyncCompletionProvider)
   public const
-    DefaultTimeoutMs = 2000;
+    cDefaultTimeoutMs = 2000;
   public
     /// <summary>Name der Quelle für die Sicherung (#493) und ihre Meldungen, in der Sprache der Oberfläche.
     /// </summary>
@@ -106,7 +106,7 @@ var
   mSession: TLspSession;
 begin
   AData := nil;
-  if AContext.Trigger = TAtlasTriggers.History then
+  if AContext.Trigger = TAtlasTriggers.cHistory then
   begin
     Exit(Assigned(FHistory));
   end;
@@ -126,7 +126,7 @@ var
   mResponse: TJSONValue;
 begin
   AState := Default(TAtlasFetchState);
-  if AContext.Trigger = TAtlasTriggers.History then
+  if AContext.Trigger = TAtlasTriggers.cHistory then
   begin
     Exit(HistoryItems(FHistory(), FHistoryCaption));
   end;

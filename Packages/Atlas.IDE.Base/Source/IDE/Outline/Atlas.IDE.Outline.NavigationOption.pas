@@ -65,7 +65,7 @@ begin
   try
     mRegistry.RootKey := HKEY_CURRENT_USER;
     try
-      if mRegistry.OpenKeyReadOnly(AtlasRegistryKey) and mRegistry.ValueExists(cMarker) then
+      if mRegistry.OpenKeyReadOnly(cAtlasRegistryKey) and mRegistry.ValueExists(cMarker) then
       begin
         Result := mRegistry.ReadInteger(cMarker) <> 0;
       end;
@@ -86,7 +86,7 @@ begin
   try
     mRegistry.RootKey := HKEY_CURRENT_USER;
     try
-      if mRegistry.OpenKey(AtlasRegistryKey, True) then
+      if mRegistry.OpenKey(cAtlasRegistryKey, True) then
       begin
         mRegistry.WriteInteger(cMarker, Ord(AValue));
       end;

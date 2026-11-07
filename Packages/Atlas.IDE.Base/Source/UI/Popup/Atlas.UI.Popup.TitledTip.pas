@@ -24,8 +24,8 @@ type
   TAtlasTitledTip = class(TAtlasPopupWindow)
   public const
     /// <summary>Höchstbreite des Textes in logischen Pixeln (96 dpi).</summary>
-    MaxWidth = 420;
-    Padding = 9;
+    cMaxWidth = 420;
+    cPadding = 9;
   private
     FTitle: string;
     FText: string;
@@ -101,14 +101,14 @@ end;
 function TAtlasTitledTip.TitleArea(AClientWidth: Integer): TRect;
 begin
   Canvas.Font := UIFont;
-  Result := Rect(Scale(Padding), Scale(Padding) - Scale(2), AClientWidth - Scale(Padding),
-    Scale(Padding) - Scale(2) + Canvas.TextHeight('Wg'));
+  Result := Rect(Scale(cPadding), Scale(cPadding) - Scale(2), AClientWidth - Scale(cPadding),
+    Scale(cPadding) - Scale(2) + Canvas.TextHeight('Wg'));
 end;
 
 function TAtlasTitledTip.BodyArea(const ASize: TSize): TRect;
 begin
-  Result := Rect(Scale(Padding), TitleArea(ASize.cx).Bottom + Scale(4), ASize.cx - Scale(Padding),
-    ASize.cy - Scale(Padding));
+  Result := Rect(Scale(cPadding), TitleArea(ASize.cx).Bottom + Scale(4), ASize.cx - Scale(cPadding),
+    ASize.cy - Scale(cPadding));
 end;
 
 function TAtlasTitledTip.Measure(const ATitle, AText: string): TSize;
@@ -129,7 +129,7 @@ begin
   FText := AText.Replace(#13#10, #10).Replace(#10, #13#10);
   Canvas.Font := UIFont;
   mTitleWidth := Canvas.TextWidth(FTitle);
-  mBody := MeasureText(Scale(MaxWidth));
+  mBody := MeasureText(Scale(cMaxWidth));
   FBodyHeight := mBody.Height;
   mWidth := Max(mTitleWidth, mBody.Width);
   mLineHeight := Canvas.TextHeight('Wg');
@@ -141,9 +141,9 @@ begin
       mWidth := mLinkWidth;
     end;
   end;
-  Result.cx := Min(mWidth, Scale(MaxWidth)) + 2 * Scale(Padding);
+  Result.cx := Min(mWidth, Scale(cMaxWidth)) + 2 * Scale(cPadding);
   // Wie TitleArea und BodyArea: Überschrift ab Padding - 2, Abstand 4, Text, Padding unten.
-  Result.cy := TitleArea(Result.cx).Bottom + Scale(4) + mBody.Height + Scale(Padding);
+  Result.cy := TitleArea(Result.cx).Bottom + Scale(4) + mBody.Height + Scale(cPadding);
   if Length(FLinks) > 0 then
   begin
     Inc(Result.cy, Scale(6) + Length(FLinks) * (mLineHeight + Scale(2)));
@@ -173,7 +173,7 @@ begin
   begin
     mBounds.SetLocation(mBounds.Left, Max(mArea.Top, mArea.Bottom - mSize.cy));
   end;
-  SetAccessible(UiaToolTipControlType, ATitle);
+  SetAccessible(cUiaToolTipControlType, ATitle);
   ShowAt(mBounds);
   Invalidate;
   if Length(ALinks) > 0 then
@@ -261,7 +261,7 @@ begin
     mTop := mArea.Bottom + Scale(6);
     for mIndex := 0 to High(FLinks) do
     begin
-      mLinkArea := Rect(Scale(Padding), mTop, Min(ClientWidth - Scale(Padding), Scale(Padding) +
+      mLinkArea := Rect(Scale(cPadding), mTop, Min(ClientWidth - Scale(cPadding), Scale(cPadding) +
         Canvas.TextWidth(FLinks[mIndex])), mTop + mTitleHeight);
       DrawText(Canvas.Handle, PChar(FLinks[mIndex]), -1, mLinkArea, DT_LEFT or DT_SINGLELINE or DT_NOPREFIX or
         DT_END_ELLIPSIS);

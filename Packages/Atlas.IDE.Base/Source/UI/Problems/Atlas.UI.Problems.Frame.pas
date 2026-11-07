@@ -1240,7 +1240,7 @@ begin
     TAtlasFindingColumn.Message:
       Result := mFinding.MessageText(FShowCompilerCode);
     TAtlasFindingColumn.Line:
-      Result := mFinding.ShortLine(TAtlasFindings.LineMax);
+      Result := mFinding.ShortLine(TAtlasFindings.cLineMax);
     TAtlasFindingColumn.Location:
       Result := mFinding.Location;
     TAtlasFindingColumn.Rule:

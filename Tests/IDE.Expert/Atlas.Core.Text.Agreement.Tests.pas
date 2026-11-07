@@ -173,7 +173,7 @@ begin
   begin
     ServerMatches := TFuzzyMatch.CompletionScore(Pairs[Index, 1], Pairs[Index, 0]) <> TFuzzyMatch.cNoMatch;
     PluginMatches := TAtlasCompletionMatcher.Score(Pairs[Index, 0], Pairs[Index, 1]) <>
-      TAtlasCompletionMatcher.NoMatch;
+      TAtlasCompletionMatcher.cNoMatch;
     Assert.AreEqual(ServerMatches, PluginMatches, Pairs[Index, 0] + ' / ' + Pairs[Index, 1]);
   end;
 end;

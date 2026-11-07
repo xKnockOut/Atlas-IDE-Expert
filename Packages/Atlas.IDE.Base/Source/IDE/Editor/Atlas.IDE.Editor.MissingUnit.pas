@@ -19,9 +19,9 @@ uses
 type
   TAtlasIdeMissingUnit = class
   public const
-    SearchPathCommand = 'atlas.addSearchPath';
-    AddUnitCommand = 'atlas.addUnitToProject';
-    InfoCommand = 'atlas.showInfo';
+    cSearchPathCommand = 'atlas.addSearchPath';
+    cAddUnitCommand = 'atlas.addUnitToProject';
+    cInfoCommand = 'atlas.showInfo';
   public
     /// <summary>atlas.addSearchPath; AMessage: Zeile für die Meldungsansicht.</summary>
     class procedure AddSearchPath(const AArgumentsJson: string; const AMessage: TProc<string>); static;
@@ -75,14 +75,14 @@ begin
   Result := False;
   try
     // Mit Geerbtem: Steht der Ordner schon in der Basis, braucht ihn die Konfiguration nicht noch einmal.
-    if TAtlasSearchPaths.Contains(AConfiguration.GetValue(TAtlasSearchPaths.OptionName, True), ARequest.Folder) then
+    if TAtlasSearchPaths.Contains(AConfiguration.GetValue(TAtlasSearchPaths.cOptionName, True), ARequest.Folder) then
     begin
       AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitSearchPathPresent, [ARequest.Folder, ALabel,
         ExtractFileName(AProject.FileName)]));
       Exit;
     end;
-    mRaw := AConfiguration.GetValue(TAtlasSearchPaths.OptionName, False);
-    AConfiguration.SetValue(TAtlasSearchPaths.OptionName,
+    mRaw := AConfiguration.GetValue(TAtlasSearchPaths.cOptionName, False);
+    AConfiguration.SetValue(TAtlasSearchPaths.cOptionName,
       TAtlasSearchPaths.WithFolder(mRaw, ARequest.Folder, ARequest.Config = ''));
     AProject.MarkModified;
     Result := True;

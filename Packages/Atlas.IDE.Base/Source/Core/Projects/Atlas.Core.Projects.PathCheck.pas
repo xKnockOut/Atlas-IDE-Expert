@@ -156,9 +156,9 @@ type
   TAtlasPathCheck = class
   public const
     /// <summary>Höchstens so viele eingebundene Dateien werden für $DEFINE gelesen.</summary>
-    MaxIncludes = 200;
+    cMaxIncludes = 200;
     /// <summary>Höchstens so viele Ersetzungen von $(…) je Pfad.</summary>
-    MaxExpansions = 32;
+    cMaxExpansions = 32;
   public
     /// <summary>uses, bedingte Symbole und eingebundene Dateien von AText; ADefines gelten zu Beginn.</summary>
     class function Scan(const AText: string; const ADefines: TArray<string>): TAtlasSourceScan; static;
@@ -498,7 +498,7 @@ begin
     mName := Trim(Copy(mText, mOpen + 2, mClose - mOpen - 2));
     mValue := '';
     Inc(mCount);
-    if Assigned(AVariable) and (mCount <= MaxExpansions) then
+    if Assigned(AVariable) and (mCount <= cMaxExpansions) then
     begin
       mValue := AVariable(mName);
     end;
@@ -1313,7 +1313,7 @@ var
 begin
   // Eingebundene Dateien nur nach $DEFINE durchsuchen.
   mIndex := 0;
-  while (mIndex < FQueue.Count) and (mIndex < TAtlasPathCheck.MaxIncludes) do
+  while (mIndex < FQueue.Count) and (mIndex < TAtlasPathCheck.cMaxIncludes) do
   begin
     mPair := FQueue[mIndex];
     Inc(mIndex);

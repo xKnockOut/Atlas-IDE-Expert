@@ -103,7 +103,7 @@
 // der Befehl „Projekt für Atlas einrichten“ hebt es auf). "paths" ist das
 // Ergebnis von „Suchpfade und Defines prüfen“: gelesene und nicht lesbare
 // Dateien, Zahl der fehlenden Units und der Defines ohne Quelle und die
-// ersten Funde (höchstens TAtlasProjectSetup.MaxFindings je Liste; Datei
+// ersten Funde (höchstens TAtlasProjectSetup.cMaxFindings je Liste; Datei
 // relativ zum Projektordner, Zeile ab 1, "count" Stellen im Projekt).
 // "skippedMacros" sind unbekannte Makros übersprungener Suchpfade; Funde mit
 // "uncertain" sind deshalb nicht sicher ("uncertainUnits" und
@@ -111,7 +111,7 @@
 // einer Projektgruppe steht die Prüfung je Projekt in dessen Zusammenfassung.
 // "tests" ist der letzte DUnitX-Lauf aus der IDE (#69; Grundlage der Karte
 // Tests #763): Testprojekt, Konfiguration, Plattform, Zahlen, Dauer und die
-// fehlgeschlagenen Tests (höchstens TAtlasProjectTests.MaxFailures; "failed"
+// fehlgeschlagenen Tests (höchstens TAtlasProjectTests.cMaxFailures; "failed"
 // und "errors" zählen alle). "test" ist der volle Name aus dem Bericht von
 // DUnitX; „Fehlgeschlagene erneut ausführen“ übergibt genau diese Namen an
 // --run. "file" ist absolut, "line" ab 1 (Methodenkopf), beide fehlen ohne
@@ -129,7 +129,7 @@
 // fehlt = gelungen), "at" der letzte gelungene Abruf. "number" bis
 // "durationMs" sind der letzte abgeschlossene Build ("result" wie
 // TAtlasCiBuild.OutcomeKey), "passed" bis "failures" sein Testbericht (fehlen
-// ohne Bericht; höchstens TAtlasCiBuild.MaxFailures Fehlschläge mit vollem
+// ohne Bericht; höchstens TAtlasCiBuild.cMaxFailures Fehlschläge mit vollem
 // Namen und erster Zeile der Meldung). Schlägt ein Abruf fehl, bleibt der
 // letzte Build stehen („Stand vom …“).
 //
@@ -355,15 +355,15 @@ type
   TAtlasProjectSummaries = class
   public const
     /// <summary>Format, das diese Fassung liest und schreibt.</summary>
-    Format = 1;
+    cFormat = 1;
     /// <summary>Kennzahlen im Abschnitt "metrics" (wie atlas.server.metrics, #66).</summary>
-    MetricKeys: array[0..4] of string = ('length', 'nesting', 'cyclomatic', 'cognitive', 'parameters');
+    cMetricKeys: array[0..4] of string = ('length', 'nesting', 'cyclomatic', 'cognitive', 'parameters');
     /// <summary>Namen der Reihen im Abschnitt "trends" und in welcomePage.trends.series (#758).</summary>
-    TrendKeys: array[TAtlasTrendSeries] of string = ('warnings', 'ruleHits', 'todos', 'duration', 'methodLength');
+    cTrendKeys: array[TAtlasTrendSeries] of string = ('warnings', 'ruleHits', 'todos', 'duration', 'methodLength');
     /// <summary>Reihen mit einer Nachkommastelle in der Datei; die übrigen sind ganze Zahlen.</summary>
-    TrendDecimals: array[TAtlasTrendSeries] of Boolean = (False, False, False, True, True);
+    cTrendDecimals: array[TAtlasTrendSeries] of Boolean = (False, False, False, True, True);
     /// <summary>Unterordner von %LOCALAPPDATA%\Atlas.</summary>
-    FolderName = 'projects';
+    cFolderName = 'projects';
   public
     /// <summary>Normierter Pfad für Vergleich und Schlüssel.</summary>
     class function NormalizedPath(const AProject: string): string; static;
@@ -595,7 +595,7 @@ begin
     begin
       Continue;
     end;
-    mValue := AObject.GetValue(TAtlasProjectSummaries.MetricKeys[mIndex]);
+    mValue := AObject.GetValue(TAtlasProjectSummaries.cMetricKeys[mIndex]);
     if not (mValue is TJSONNumber) then
     begin
       Continue;
@@ -621,11 +621,11 @@ begin
   begin
     if ATenths then
     begin
-      Result.AddPair(TAtlasProjectSummaries.MetricKeys[mIndex], TJSONNumber.Create(ANumbers[mIndex] / 10));
+      Result.AddPair(TAtlasProjectSummaries.cMetricKeys[mIndex], TJSONNumber.Create(ANumbers[mIndex] / 10));
     end
     else
     begin
-      Result.AddPair(TAtlasProjectSummaries.MetricKeys[mIndex], TJSONNumber.Create(ANumbers[mIndex]));
+      Result.AddPair(TAtlasProjectSummaries.cMetricKeys[mIndex], TJSONNumber.Create(ANumbers[mIndex]));
     end;
   end;
 end;
@@ -802,7 +802,7 @@ begin
   Result.Commit := TextOf(AItem, 'commit');
   for mSeries := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
   begin
-    mValue := AItem.GetValue(TAtlasProjectSummaries.TrendKeys[mSeries]);
+    mValue := AItem.GetValue(TAtlasProjectSummaries.cTrendKeys[mSeries]);
     if mValue is TJSONNumber then
     begin
       Result.SetValue(mSeries, Round(TJSONNumber(mValue).AsDouble * 10));
@@ -914,13 +914,13 @@ begin
       begin
         Continue;
       end;
-      if TAtlasProjectSummaries.TrendDecimals[mSeries] then
+      if TAtlasProjectSummaries.cTrendDecimals[mSeries] then
       begin
-        mItem.AddPair(TAtlasProjectSummaries.TrendKeys[mSeries], TJSONNumber.Create(mPoint.Values[mSeries] / 10));
+        mItem.AddPair(TAtlasProjectSummaries.cTrendKeys[mSeries], TJSONNumber.Create(mPoint.Values[mSeries] / 10));
       end
       else
       begin
-        mItem.AddPair(TAtlasProjectSummaries.TrendKeys[mSeries], TJSONNumber.Create(mPoint.Values[mSeries] div 10));
+        mItem.AddPair(TAtlasProjectSummaries.cTrendKeys[mSeries], TJSONNumber.Create(mPoint.Values[mSeries] div 10));
       end;
     end;
     KeepUnknown(mItem, OriginalPoint(AOriginal, mPoint.Build), cTrendPointKeys);
@@ -1285,7 +1285,7 @@ begin
     end;
     mRoot := TJSONObject(mValue);
     // Ohne "format" gilt 1; ein höheres Format kennt diese Fassung nicht.
-    if NumberOf(mRoot, 'format', 1) > Format then
+    if NumberOf(mRoot, 'format', 1) > cFormat then
     begin
       Exit;
     end;
@@ -1332,7 +1332,7 @@ begin
     begin
       mOriginal := TJSONObject(mValue);
     end;
-    mRoot.AddPair('format', TJSONNumber.Create(Format));
+    mRoot.AddPair('format', TJSONNumber.Create(cFormat));
     mRoot.AddPair('project', ASummary.Project);
     AddTime(mRoot, 'lastOpened', ASummary.LastOpened);
     AddTime(mRoot, 'lastClosed', ASummary.LastClosed);
@@ -1364,7 +1364,7 @@ begin
     begin
       mParsed := TAtlasProjectSummaries.Parse(AText, mSummary);
       // Ein höheres Format ist nicht unbrauchbar: nicht beiseitelegen; Save überschreibt es nicht.
-      Result := mParsed or (TAtlasProjectSummaries.FormatOf(AText) > TAtlasProjectSummaries.Format);
+      Result := mParsed or (TAtlasProjectSummaries.FormatOf(AText) > TAtlasProjectSummaries.cFormat);
     end);
   AParsed := mParsed and (Result = TAtlasDataLoad.Loaded);
   if AParsed then
@@ -1383,7 +1383,7 @@ end;
 
 class function TAtlasProjectSummaries.DefaultFolder: string;
 begin
-  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), FolderName);
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), cFolderName);
 end;
 
 class function TAtlasProjectSummaries.FailedTestsOf(const AFolder, ATestProject: string): TArray<string>;
@@ -1423,7 +1423,7 @@ begin
   mFileName := FileFor(AFolder, ASummary.Project);
   try
     // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
-    if FileExists(mFileName) and (not TAtlasDataFile.TryRead(mFileName, mText) or (FormatOf(mText) > Format)) then
+    if FileExists(mFileName) and (not TAtlasDataFile.TryRead(mFileName, mText) or (FormatOf(mText) > cFormat)) then
     begin
       Exit;
     end;

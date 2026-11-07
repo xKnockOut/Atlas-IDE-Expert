@@ -121,7 +121,7 @@ begin
   FCommandExists := ACommandExists;
   FRun := ARun;
   FMessage := AMessage;
-  FCurrent := TAtlasPluginVersion.Version;
+  FCurrent := TAtlasPluginVersion.cVersion;
   FManualView := TAtlasWhatsNewView.Hidden;
   FOrderShown := -1;
 end;

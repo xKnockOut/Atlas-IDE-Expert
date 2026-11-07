@@ -42,7 +42,7 @@ uses
 type
   TAtlasEditorBar = class(TCustomControl)
   public const
-    PartNone = -1;
+    cPartNone = -1;
   private
     FColors: TAtlasColors;
     FHot: Integer;
@@ -112,8 +112,8 @@ begin
   TabStop := False;
   ShowHint := True;
   FColors := TAtlasColors.Light;
-  FHot := PartNone;
-  FDown := PartNone;
+  FHot := cPartNone;
+  FDown := cPartNone;
   FFixedHeight := True;
   // Bei 96 DPI anlegen; das Elternteil skaliert beim Einhängen auf seine DPI (ChangeScale).
   FixHeight(96);
@@ -190,7 +190,7 @@ end;
 
 function TAtlasEditorBar.PartAt(AX, AY: Integer): Integer;
 begin
-  Result := PartNone;
+  Result := cPartNone;
 end;
 
 function TAtlasEditorBar.PartHint(APart: Integer): string;
@@ -200,7 +200,7 @@ end;
 
 function TAtlasEditorBar.PartEnabled(APart: Integer): Boolean;
 begin
-  Result := APart <> PartNone;
+  Result := APart <> cPartNone;
 end;
 
 procedure TAtlasEditorBar.PartClicked(APart: Integer; AShift: TShiftState; AX, AY: Integer);
@@ -244,7 +244,7 @@ begin
     Exit;
   end;
   FHot := mHot;
-  if (mHot <> PartNone) and PartEnabled(mHot) then
+  if (mHot <> cPartNone) and PartEnabled(mHot) then
   begin
     Cursor := crHandPoint;
   end
@@ -261,11 +261,11 @@ procedure TAtlasEditorBar.CMMouseLeave(var Message: TMessage);
 begin
   inherited;
   // FDown bleibt: Das Verlassen kommt in der IDE zwischen Drücken und Loslassen jedes Klicks (siehe oben).
-  if FHot = PartNone then
+  if FHot = cPartNone then
   begin
     Exit;
   end;
-  FHot := PartNone;
+  FHot := cPartNone;
   HotChanged;
 end;
 
@@ -292,19 +292,19 @@ begin
   if FSkipUp then
   begin
     FSkipUp := False;
-    FDown := PartNone;
+    FDown := cPartNone;
     Exit;
   end;
   // Erst beim Loslassen: Die IDE holt beim Drücken den Fokus in den Editor. Ein Drücken muss die Leiste dafür nicht
   // gesehen haben; nur ein Drücken auf einem anderen Element bricht ab.
   mReleased := PartAt(X, Y);
-  if (mReleased <> PartNone) and ((FDown = PartNone) or (FDown = mReleased)) then
+  if (mReleased <> cPartNone) and ((FDown = cPartNone) or (FDown = mReleased)) then
   begin
-    FDown := PartNone;
+    FDown := cPartNone;
     PartClicked(mReleased, Shift, X, Y);
     Exit;
   end;
-  FDown := PartNone;
+  FDown := cPartNone;
 end;
 
 procedure TAtlasEditorBar.WMContextMenu(var Message: TWMContextMenu);

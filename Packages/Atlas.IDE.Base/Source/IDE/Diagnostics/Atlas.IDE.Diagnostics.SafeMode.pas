@@ -36,10 +36,10 @@ uses
 type
   TAtlasIdeSafeMode = class(TComponent)
   public const
-    StatusId = 'atlas.safemode';
-    StatusOrder = 2;
+    cStatusId = 'atlas.safemode';
+    cStatusOrder = 2;
     /// <summary>Höchstens so viele Zeilen des Protokolls in „Details“.</summary>
-    MaxLogLines = 200;
+    cMaxLogLines = 200;
   private
     FLock: TCriticalSection;
     FBook: TAtlasSessionBook;
@@ -213,7 +213,7 @@ begin
   begin
     mArgs := mArgs + [ParamStr(mIndex)];
   end;
-  Result := TAtlasSafeMode.IsForced(GetEnvironmentVariable(TAtlasSafeMode.EnvironmentName), mArgs);
+  Result := TAtlasSafeMode.IsForced(GetEnvironmentVariable(TAtlasSafeMode.cEnvironmentName), mArgs);
 end;
 
 function EnabledFeatures: TArray<string>;
@@ -297,7 +297,7 @@ begin
   Result := '';
   if not ABook.Tracked then
   begin
-    Result := ', ohne Sitzungsmarke (' + TAtlasSafeMode.NoMarkerEnvironmentName + ')';
+    Result := ', ohne Sitzungsmarke (' + TAtlasSafeMode.cNoMarkerEnvironmentName + ')';
   end;
 end;
 
@@ -310,7 +310,7 @@ var
   mShow: TThreadProcedure;
 begin
   FBook := TAtlasSessionBook.Create(AFolder, GetCurrentProcessId,
-    GetEnvironmentVariable(TAtlasSafeMode.NoMarkerEnvironmentName));
+    GetEnvironmentVariable(TAtlasSafeMode.cNoMarkerEnvironmentName));
   FRegistry := ARegistry;
   mStartedAt := NowUtc;
   FStartedLocal := Now;
@@ -334,12 +334,12 @@ begin
   begin
     TAtlasIdeSettings.SetSession(TAtlasSafeMode.SafeSession(TAtlasIdeSettings.QuickToggles));
   end;
-  FMarker := TAtlasSessionMarker.Create(GetCurrentProcessId, TAtlasPluginVersion.Version, mStartedAt);
+  FMarker := TAtlasSessionMarker.Create(GetCurrentProcessId, TAtlasPluginVersion.cVersion, mStartedAt);
   FMarker.Level := FLevel;
   FMarker.Features := EnabledFeatures;
   FStarted := True;
   WriteMarker;
-  TAtlasGuard.Log(Format('Atlas gestartet (%s), Stufe %s, Grund %s%s', [TAtlasPluginVersion.Version,
+  TAtlasGuard.Log(Format('Atlas gestartet (%s), Stufe %s, Grund %s%s', [TAtlasPluginVersion.cVersion,
     GetEnumName(TypeInfo(TAtlasSafeLevel), Ord(FLevel)),
     GetEnumName(TypeInfo(TAtlasSafeReason), Ord(FDecision.Reason)), NoBookNote(FBook)]));
   if FLevel = TAtlasSafeLevel.Normal then
@@ -431,7 +431,7 @@ begin
     begin
       ShowNotice;
     end;
-  FLine := TAtlasStatusLine.Create(FRegistry, StatusId, StatusOrder, mAction);
+  FLine := TAtlasStatusLine.Create(FRegistry, cStatusId, cStatusOrder, mAction);
   FLineRef := FLine;
   FLine.Update(TAtlasStrings.Text(TAtlasTextId.SafeStatusLine), TAtlasStatusState.Yellow,
     TAtlasStrings.Text(TAtlasTextId.SafeStatusSummary));
@@ -447,7 +447,7 @@ begin
   FLine.Detach;
   if FRegistry <> nil then
   begin
-    FRegistry.Remove(StatusId);
+    FRegistry.Remove(cStatusId);
   end;
   FLine := nil;
   FLineRef := nil;
@@ -587,7 +587,7 @@ begin
   mFolder := ExtractFileDir(TAtlasGuard.RotatingLog.FileName);
   mLog := ReadLog(TPath.Combine(mFolder, 'atlas.1.log')) + ReadLog(TAtlasGuard.RotatingLog.FileName);
   mLines := TAtlasSafeMode.LogLinesBetween(mLog, TTimeZone.Local.ToLocalTime(ACrashed.StartedAt), AStartedLocal,
-    TAtlasIdeSafeMode.MaxLogLines);
+    TAtlasIdeSafeMode.cMaxLogLines);
   Result := Result + ['', TAtlasStrings.Text(TAtlasTextId.SafeLogTitle)];
   // Anonym (#647): Pfade und Namen fallen weg.
   for mLine in mLines do

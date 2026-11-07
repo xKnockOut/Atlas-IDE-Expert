@@ -30,21 +30,21 @@ type
 
   TAtlasProblem = record
   public const
-    CompilerSource = 'dcc';
+    cCompilerSource = 'dcc';
     /// <summary>Herkunft eines vom Build bestätigten Atlas-Befunds (#1024).</summary>
-    ConfirmedSource = 'Atlas + dcc';
+    cConfirmedSource = 'Atlas + dcc';
     /// <summary>Regel der Syntaxfehler des Servers (#1022); lässt sich nicht per Kommentar unterdrücken.</summary>
-    SyntaxCode = 'syntax';
+    cSyntaxCode = 'syntax';
     /// <summary>Sprachmerkmal einer neueren Delphi-Version (#1126); ebenfalls ohne Unterdrückung per Kommentar.
     /// </summary>
-    LanguageFeatureCode = 'language-feature';
+    cLanguageFeatureCode = 'language-feature';
     /// <summary>Regel der Unit-Zyklen (#64, #896): Pfad mit anklickbaren Units und „Graph zeigen“ im Hover.</summary>
-    UsesCycleCode = 'uses-cycle';
+    cUsesCycleCode = 'uses-cycle';
     /// <summary>Zustände aus data.uses.state (#621).</summary>
-    UsesUnused = 'unused';
-    UsesInitialization = 'initialization';
-    UsesAllowlist = 'allowlist';
-    UsesImplementation = 'implementation';
+    cUsesUnused = 'unused';
+    cUsesInitialization = 'initialization';
+    cUsesAllowlist = 'allowlist';
+    cUsesImplementation = 'implementation';
   public
     StartLine: Integer;
     StartCharacter: Integer;
@@ -372,7 +372,7 @@ end;
 
 function TAtlasProblem.IsCompiler: Boolean;
 begin
-  Result := SameText(Source, CompilerSource);
+  Result := SameText(Source, cCompilerSource);
 end;
 
 class function TAtlasProblem.WithoutCompilerCode(const AMessage: string): string;
@@ -470,7 +470,7 @@ end;
 
 function TAtlasProblem.CanSuppress: Boolean;
 begin
-  Result := (Code <> '') and not SameText(Code, SyntaxCode) and not SameText(Code, LanguageFeatureCode);
+  Result := (Code <> '') and not SameText(Code, cSyntaxCode) and not SameText(Code, cLanguageFeatureCode);
 end;
 
 function TAtlasProblem.InactiveHint(const AConditionFormat, ATargetFormat, AFallback: string): string;

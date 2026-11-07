@@ -102,16 +102,16 @@ type
 
   TAtlasStartProfiles = class
   public const
-    Format = 1;
+    cFormat = 1;
     /// <summary>Unterordner von %LOCALAPPDATA%\Atlas.</summary>
-    FolderName = 'startprofiles';
+    cFolderName = 'startprofiles';
     /// <summary>Namen der Startoptionen in der .dproj.</summary>
-    ParametersOption = 'Debugger_RunParams';
-    WorkingDirOption = 'Debugger_CWD';
-    HostOption = 'Debugger_HostApplication';
-    EnvironmentOption = 'Debugger_EnvVars';
+    cParametersOption = 'Debugger_RunParams';
+    cWorkingDirOption = 'Debugger_CWD';
+    cHostOption = 'Debugger_HostApplication';
+    cEnvironmentOption = 'Debugger_EnvVars';
     /// <summary>Verweis auf die geerbten Umgebungsvariablen, wie ihn die IDE schreibt.</summary>
-    InheritEnvironment = '$(Debugger_EnvVars)';
+    cInheritEnvironment = '$(Debugger_EnvVars)';
   public
     /// <summary>Leerer Stand für AProject.</summary>
     class function Empty(const AProject: string): TAtlasStartProfileState; static;
@@ -376,7 +376,7 @@ begin
       Exit;
     end;
     mValue := TJSONObject(mRoot).GetValue('format');
-    if (mValue is TJSONNumber) and (TJSONNumber(mValue).AsInt > Format) then
+    if (mValue is TJSONNumber) and (TJSONNumber(mValue).AsInt > cFormat) then
     begin
       Exit;
     end;
@@ -470,7 +470,7 @@ begin
   mLines := TStringBuilder.Create;
   try
     mLines.Append('{' + cNewLine);
-    mLines.Append('  "format": ' + IntToStr(Format) + ',' + cNewLine);
+    mLines.Append('  "format": ' + IntToStr(cFormat) + ',' + cNewLine);
     mLines.Append('  "project": ' + Quote(AState.Project) + ',' + cNewLine);
     mLines.Append('  "active": ' + Quote(AState.Active) + ',' + cNewLine);
     mLines.Append('  "profiles": [');
@@ -532,7 +532,7 @@ begin
     begin
       mState := Parse(AText, AProject, mValid);
       // Ein höheres Format ist nicht unbrauchbar: nicht beiseitelegen; Save überschreibt es nicht.
-      Result := mValid or (FormatOf(AText) > Format);
+      Result := mValid or (FormatOf(AText) > cFormat);
     end);
   if mValid and (mLoad = TAtlasDataLoad.Loaded) then
   begin
@@ -561,7 +561,7 @@ begin
   end;
   try
     // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
-    if FileExists(mFileName) and (not TAtlasDataFile.TryRead(mFileName, mText) or (FormatOf(mText) > Format)) then
+    if FileExists(mFileName) and (not TAtlasDataFile.TryRead(mFileName, mText) or (FormatOf(mText) > cFormat)) then
     begin
       Exit;
     end;
@@ -696,7 +696,7 @@ begin
   Result := EncodeEnvironment(AVariables);
   if Result <> '' then
   begin
-    Result := Result + ';' + InheritEnvironment;
+    Result := Result + ';' + cInheritEnvironment;
   end;
 end;
 
@@ -709,7 +709,7 @@ begin
   Result := nil;
   for mItem in SplitEnvironment(AText) do
   begin
-    if SameText(Trim(mItem), InheritEnvironment) then
+    if SameText(Trim(mItem), cInheritEnvironment) then
     begin
       Continue;
     end;

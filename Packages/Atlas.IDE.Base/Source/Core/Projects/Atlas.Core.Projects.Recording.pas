@@ -35,12 +35,12 @@ type
   TAtlasProjectRecording = class
   public const
     /// <summary>Zeitlimit je Aufruf (Head, Changes); zusammen 2 s je Projekt.</summary>
-    VcsCallTimeoutMs = 1000;
+    cVcsCallTimeoutMs = 1000;
     /// <summary>Frühestens nach dieser Zeit fragt die Seite dasselbe Projekt erneut ab.</summary>
-    VcsRefreshMs = 60000;
+    cVcsRefreshMs = 60000;
     /// <summary>Spätestens dann gilt eine Abfrage als beendet, auch ohne Ergebnis (zwei Aufrufe mit Zeitlimit
     /// plus Reserve).</summary>
-    VcsQueryLimitMs = 5000;
+    cVcsQueryLimitMs = 5000;
   public
     /// <summary>Ergebnis eines Compiles in die Zusammenfassung: ARun.Background (Hintergrundprüfung, #548) setzt
     /// "check", sonst "build". Fehler zählen mit schweren Fehlern (Fatal).</summary>
@@ -214,14 +214,14 @@ end;
 class function TAtlasProjectRecording.QueryRunning(AStartedMs, ANowMs: UInt64): Boolean;
 begin
   // Ein Tick vor dem Start (Uhr übergelaufen o. Ä.) zählt als beendet.
-  Result := (ANowMs >= AStartedMs) and (ANowMs - AStartedMs < VcsQueryLimitMs);
+  Result := (ANowMs >= AStartedMs) and (ANowMs - AStartedMs < cVcsQueryLimitMs);
 end;
 
 class function TAtlasProjectRecording.IsRuleHit(const AProblem: TAtlasProblem): Boolean;
 begin
   // Fehlgeschlagene Tests (#69) sind keine Regeltreffer.
   Result := (AProblem.Code <> '') and not AProblem.IsCompiler and not AProblem.Unnecessary and
-    not SameText(AProblem.Source, TAtlasProblemStore.TestSource);
+    not SameText(AProblem.Source, TAtlasProblemStore.cTestSource);
 end;
 
 class function TAtlasProjectRecording.CountRuleHits(AStore: TAtlasProblemStore; const AFolder: string;

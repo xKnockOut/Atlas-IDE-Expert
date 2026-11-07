@@ -526,7 +526,7 @@ begin
   Assert.AreEqual(TAtlasTestResults.cDefaultMaxFailures, Settings.WelcomePageTestsMaxFailures);
   Assert.IsFalse(Settings.WelcomePageTestsCi, 'ohne Zustimmung kein Netzzugriff');
   Assert.AreEqual('jenkins', Settings.WelcomePageTestsCiProvider);
-  Assert.AreEqual(TAtlasTestResults.cDefaultProvider, TAtlasPluginSettings.DefaultCiProvider);
+  Assert.AreEqual(TAtlasTestResults.cDefaultProvider, TAtlasPluginSettings.cDefaultCiProvider);
   Assert.AreEqual(10, Settings.WelcomePageTestsCiIntervalMinutes);
   Assert.AreEqual(TAtlasTestResults.cDefaultIntervalMinutes, Settings.WelcomePageTestsCiIntervalMinutes);
   Assert.IsTrue(Settings.WelcomePageTestsCiNotify);
@@ -542,21 +542,21 @@ begin
   Settings.WelcomePageTestsCiIntervalMinutes := 0;
   Settings.WelcomePageTestsCiProvider := ' JENKINS ';
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinTestFailures, Settings.WelcomePageTestsMaxFailures);
-  Assert.AreEqual(TAtlasPluginSettings.MinCiIntervalMinutes, Settings.WelcomePageTestsCiIntervalMinutes);
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestFailures, Settings.WelcomePageTestsMaxFailures);
+  Assert.AreEqual(TAtlasPluginSettings.cMinCiIntervalMinutes, Settings.WelcomePageTestsCiIntervalMinutes);
   Assert.AreEqual('jenkins', Settings.WelcomePageTestsCiProvider);
   Settings.WelcomePageTestsMaxFailures := 1000;
   Settings.WelcomePageTestsCiIntervalMinutes := 100000;
   Settings.WelcomePageTestsCiProvider := 'travis';
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MaxTestFailures, Settings.WelcomePageTestsMaxFailures);
-  Assert.AreEqual(TAtlasPluginSettings.MaxCiIntervalMinutes, Settings.WelcomePageTestsCiIntervalMinutes);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestFailures, Settings.WelcomePageTestsMaxFailures);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxCiIntervalMinutes, Settings.WelcomePageTestsCiIntervalMinutes);
   Assert.AreEqual('jenkins', Settings.WelcomePageTestsCiProvider, 'unbekannter Anbieter: Vorgabe');
   // Grenzen wie im Bereich.
-  Assert.AreEqual(TAtlasTestResults.cMinMaxFailures, TAtlasPluginSettings.MinTestFailures);
-  Assert.AreEqual(TAtlasTestResults.cMaxMaxFailures, TAtlasPluginSettings.MaxTestFailures);
-  Assert.AreEqual(TAtlasTestResults.cMinIntervalMinutes, TAtlasPluginSettings.MinCiIntervalMinutes);
-  Assert.AreEqual(TAtlasTestResults.cMaxIntervalMinutes, TAtlasPluginSettings.MaxCiIntervalMinutes);
+  Assert.AreEqual(TAtlasTestResults.cMinMaxFailures, TAtlasPluginSettings.cMinTestFailures);
+  Assert.AreEqual(TAtlasTestResults.cMaxMaxFailures, TAtlasPluginSettings.cMaxTestFailures);
+  Assert.AreEqual(TAtlasTestResults.cMinIntervalMinutes, TAtlasPluginSettings.cMinCiIntervalMinutes);
+  Assert.AreEqual(TAtlasTestResults.cMaxIntervalMinutes, TAtlasPluginSettings.cMaxCiIntervalMinutes);
 end;
 
 procedure TAtlasTestResultsSettingsTests.SaveAndLoadRoundTrip;

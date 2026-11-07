@@ -16,8 +16,8 @@ uses
 type
   TAtlasIdeExperimental = class
   public const
-    StatusId = 'atlas.experimental';
-    StatusOrder = 90;
+    cStatusId = 'atlas.experimental';
+    cStatusOrder = 90;
   private class var
     FLine: TAtlasStatusLine;
     FLineRef: IAtlasStatusItem;
@@ -63,7 +63,7 @@ begin
   end;
   if FLineRef = nil then
   begin
-    FLine := TAtlasStatusLine.Create(TAtlasStatusRegistry.Default, StatusId, StatusOrder);
+    FLine := TAtlasStatusLine.Create(TAtlasStatusRegistry.Default, cStatusId, cStatusOrder);
     FLineRef := FLine;
     TAtlasStatusRegistry.Default.Add(FLineRef);
   end;
@@ -76,7 +76,7 @@ begin
   begin
     Exit;
   end;
-  TAtlasStatusRegistry.Default.Remove(StatusId);
+  TAtlasStatusRegistry.Default.Remove(cStatusId);
   FLine := nil;
   FLineRef := nil;
 end;

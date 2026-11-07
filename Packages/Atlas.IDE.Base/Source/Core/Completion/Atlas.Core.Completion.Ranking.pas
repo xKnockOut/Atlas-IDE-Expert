@@ -59,8 +59,8 @@ type
   /// <summary>Schreibweise der Listenmodi in den Einstellungen.</summary>
   TAtlasListModes = class
   public const
-    ModeNames: array[TAtlasListMode] of string = ('filter', 'all', 'rest');
-    ScopeNames: array[TAtlasListScope] of string = ('members', 'everywhere');
+    cModeNames: array[TAtlasListMode] of string = ('filter', 'all', 'rest');
+    cScopeNames: array[TAtlasListScope] of string = ('members', 'everywhere');
   public
     /// <summary>Modus zu AName (ohne Groß-/Kleinschreibung); Filter bei Unbekanntem.</summary>
     class function ModeOf(const AName: string): TAtlasListMode; static;
@@ -83,16 +83,16 @@ type
   TAtlasRanking = class
   public const
     /// <summary>Markiert in der Reihenfolge eine Gruppenüberschrift vor dem nächsten Eintrag.</summary>
-    Header = -1;
+    cHeader = -1;
     /// <summary>Überschrift „Meintest du“ vor den Tippfehler-Treffern (#485).</summary>
-    TypoHeader = -2;
+    cTypoHeader = -2;
     /// <summary>Überschrift „Name ist unbekannt“ vor den Deklarationen (#471).</summary>
-    UnknownHeader = -3;
+    cUnknownHeader = -3;
     /// <summary>Überschrift „Weitere Einträge“ vor dem gedämpften Rest (#497, TAtlasListMode.Rest).</summary>
-    RestHeader = -4;
+    cRestHeader = -4;
     /// <summary>Höchstens so viele Tippfehler-Treffer; nur bei weniger regulären als MinRegular.</summary>
-    MaxTypos = 5;
-    MinRegular = 3;
+    cMaxTypos = 5;
+    cMinRegular = 3;
   public
     /// <summary>Art des Eintrags für die Chips; nie All.</summary>
     class function ChipOf(const AItem: TAtlasCompletionItem): TAtlasChip; static;
@@ -144,7 +144,7 @@ begin
   Result := TAtlasListMode.Filter;
   for mMode := Low(TAtlasListMode) to High(TAtlasListMode) do
   begin
-    if SameText(Trim(AName), ModeNames[mMode]) then
+    if SameText(Trim(AName), cModeNames[mMode]) then
     begin
       Result := mMode;
     end;
@@ -158,7 +158,7 @@ begin
   Result := TAtlasListScope.Members;
   for mScope := Low(TAtlasListScope) to High(TAtlasListScope) do
   begin
-    if SameText(Trim(AName), ScopeNames[mScope]) then
+    if SameText(Trim(AName), cScopeNames[mScope]) then
     begin
       Result := mScope;
     end;
@@ -364,7 +364,7 @@ end;
 /// <summary>Gehört AItem ohne Treffer (AScore) in den Rest der Liste (#497)?</summary>
 function IsRestCandidate(const AItem: TAtlasCompletionItem; AChip: TAtlasChip; AScore: Integer): Boolean;
 begin
-  Result := (AScore = TAtlasCompletionMatcher.NoMatch) and TAtlasRanking.Matches(AItem, AChip) and
+  Result := (AScore = TAtlasCompletionMatcher.cNoMatch) and TAtlasRanking.Matches(AItem, AChip) and
     not AItem.IsAction and (AItem.Conversion = '') and IsPlainItem(AItem);
 end;
 
@@ -467,11 +467,11 @@ function HeaderOf(const AItem: TAtlasCompletionItem): Integer;
 begin
   if AItem.Unknown <> '' then
   begin
-    Result := TAtlasRanking.UnknownHeader;
+    Result := TAtlasRanking.cUnknownHeader;
   end
   else
   begin
-    Result := TAtlasRanking.Header;
+    Result := TAtlasRanking.cHeader;
   end;
 end;
 
@@ -557,14 +557,14 @@ var
 begin
   for mIndex := 0 to High(FItems) do
   begin
-    FScores[mIndex] := TAtlasCompletionMatcher.NoMatch;
+    FScores[mIndex] := TAtlasCompletionMatcher.cNoMatch;
     // Umwandlungen (#490) setzt WithConversions vor ihr Original.
     if not TAtlasRanking.Matches(FItems[mIndex], FOptions.Chip) or (FItems[mIndex].Conversion <> '') then
     begin
       Continue;
     end;
     FScores[mIndex] := ScoreOf(mIndex, APattern);
-    if FScores[mIndex] = TAtlasCompletionMatcher.NoMatch then
+    if FScores[mIndex] = TAtlasCompletionMatcher.cNoMatch then
     begin
       Continue;
     end;
@@ -829,7 +829,7 @@ var
 begin
   for mPosition := 0 to High(AOrder) do
   begin
-    if AOrder[mPosition] = TAtlasRanking.UnknownHeader then
+    if AOrder[mPosition] = TAtlasRanking.cUnknownHeader then
     begin
       Exit(mPosition);
     end;
@@ -852,7 +852,7 @@ begin
   if AMode = TAtlasListMode.Rest then
   begin
     ARestStart := mUnknown + 1;
-    Result := Copy(AOrder, 0, mUnknown) + [TAtlasRanking.RestHeader] + ARest + Copy(AOrder, mUnknown, MaxInt);
+    Result := Copy(AOrder, 0, mUnknown) + [TAtlasRanking.cRestHeader] + ARest + Copy(AOrder, mUnknown, MaxInt);
   end
   else
   begin
@@ -874,7 +874,7 @@ begin
     // Tippfehler (#485): wenig reguläre Treffer, dann bis zu MaxTypos ähnliche Namen unter „Meintest du“, vor
     // der Gruppe des unbekannten Namens (#471), die nicht als Treffer zählt.
     mUnknown := UnknownStart(Result);
-    if (ItemCount(Copy(Result, 0, mUnknown)) < MinRegular) and (TAtlasCompletionMatcher.TypoLimit(APattern) > 0) then
+    if (ItemCount(Copy(Result, 0, mUnknown)) < cMinRegular) and (TAtlasCompletionMatcher.TypoLimit(APattern) > 0) then
     begin
       Result := Copy(Result, 0, mUnknown) + Typos(AItems, APattern, AOptions, mRanker.Scores, mRanker.Boosts) +
         Copy(Result, mUnknown, MaxInt);
@@ -909,7 +909,7 @@ begin
     begin
       // Nur, was nicht schon regulär passt; keine Aktionen.
       if mItems[mIndex].IsAction or not Matches(mItems[mIndex], AOptions.Chip) or (mItems[mIndex].Conversion <> '') or
-        (AScores[mIndex] <> TAtlasCompletionMatcher.NoMatch) then
+        (AScores[mIndex] <> TAtlasCompletionMatcher.cNoMatch) then
       begin
         Continue;
       end;
@@ -936,8 +936,8 @@ begin
           Result := CompareText(mItems[A].Name, mItems[B].Name);
         end;
       end));
-    Result := [TypoHeader];
-    for mIndex := 0 to Min(mCandidates.Count, MaxTypos) - 1 do
+    Result := [cTypoHeader];
+    for mIndex := 0 to Min(mCandidates.Count, cMaxTypos) - 1 do
     begin
       Result := Result + [mCandidates[mIndex]];
     end;
@@ -960,7 +960,7 @@ begin
   for mItem in AItems do
   begin
     if (mItem.Conversion = '') and (TAtlasCompletionMatcher.Score(APattern, NameOf(mItem)) <>
-      TAtlasCompletionMatcher.NoMatch) then
+      TAtlasCompletionMatcher.cNoMatch) then
     begin
       Inc(Result[TAtlasChip.All]);
       if ChipOf(mItem) <> TAtlasChip.All then
@@ -992,7 +992,7 @@ end;
 
 class function TAtlasRanking.OnlyTypos(const AOrder: TArray<Integer>): Boolean;
 begin
-  Result := (Length(AOrder) > 1) and (AOrder[0] = TypoHeader);
+  Result := (Length(AOrder) > 1) and (AOrder[0] = cTypoHeader);
 end;
 
 end.

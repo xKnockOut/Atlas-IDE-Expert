@@ -616,7 +616,7 @@ begin
     end;
   // Anonym: kein Dateiname, kein Quelltext.
   TAtlasGuard.Log('Element ausgeblendet (#628)');
-  mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Hidden, TAtlasNotificationSeverity.Info,
+  mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cHidden, TAtlasNotificationSeverity.Info,
     TAtlasStrings.Text(TAtlasTextId.HideNotice), ADetail, [mAction]);
   if mMode = TAtlasNotificationMode.Show then
   begin
@@ -630,7 +630,7 @@ begin
   begin
     Exit;
   end;
-  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Hidden, TAtlasNotificationSeverity.Info,
+  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cHidden, TAtlasNotificationSeverity.Info,
     TAtlasStrings.Text(TAtlasTextId.HideElementCommand), AText) = TAtlasNotificationMode.Show then
   begin
     Notice('', AText, False);

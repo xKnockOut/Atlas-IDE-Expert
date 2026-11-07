@@ -44,16 +44,16 @@ type
 
   TAtlasBuildPipelineSettings = class
   public const
-    ReleaseConfiguration = 'Release';
-    CheckNames: array[TAtlasReleaseCheck] of string = ('debugDefine', 'debugInfo', 'stackFrames', 'assertions',
+    cReleaseConfiguration = 'Release';
+    cCheckNames: array[TAtlasReleaseCheck] of string = ('debugDefine', 'debugInfo', 'stackFrames', 'assertions',
       'rangeChecks', 'overflowChecks', 'memoryLeaks', 'versionInfo', 'outputFolder');
     /// <summary>Prüfungen mit Sollwert (Compileroptionen).</summary>
-    HasTarget: array[TAtlasReleaseCheck] of Boolean = (False, True, True, True, True, True, False, False, False);
-    GateNames: array[TAtlasBuildGate] of string = ('off', 'warn', 'block');
+    cHasTarget: array[TAtlasReleaseCheck] of Boolean = (False, True, True, True, True, True, False, False, False);
+    cGateNames: array[TAtlasBuildGate] of string = ('off', 'warn', 'block');
     /// <summary>build.gateTimeoutMs: Vorgabe und Grenzen.</summary>
-    GateDefaultTimeoutMs = 300;
-    GateMinTimeoutMs = 50;
-    GateMaxTimeoutMs = 10000;
+    cGateDefaultTimeoutMs = 300;
+    cGateMinTimeoutMs = 50;
+    cGateMaxTimeoutMs = 10000;
   public
     /// <summary>"off", "warn" oder "block" (Groß-/Kleinschreibung egal); sonst off.</summary>
     class function GateOf(const AText: string): TAtlasBuildGate; static;
@@ -85,7 +85,7 @@ var
 begin
   for mCheck := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
   begin
-    if SameText(AName, TAtlasBuildPipelineSettings.CheckNames[mCheck]) then
+    if SameText(AName, TAtlasBuildPipelineSettings.cCheckNames[mCheck]) then
     begin
       ACheck := mCheck;
       Exit(True);
@@ -124,7 +124,7 @@ begin
       Continue;
     end;
     Result.Items[mCheck].Enabled := mEnabled;
-    if TAtlasBuildPipelineSettings.HasTarget[mCheck] and (mTarget <> '') then
+    if TAtlasBuildPipelineSettings.cHasTarget[mCheck] and (mTarget <> '') then
     begin
       Result.Items[mCheck].Expected := SameText(mTarget, 'on') or SameText(mTarget, 'true') or (mTarget = '1');
     end;
@@ -141,12 +141,12 @@ begin
   Result := '';
   for mCheck := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
   begin
-    mItem := TAtlasBuildPipelineSettings.CheckNames[mCheck];
+    mItem := TAtlasBuildPipelineSettings.cCheckNames[mCheck];
     if not Items[mCheck].Enabled then
     begin
       mItem := '-' + mItem;
     end;
-    if TAtlasBuildPipelineSettings.HasTarget[mCheck] then
+    if TAtlasBuildPipelineSettings.cHasTarget[mCheck] then
     begin
       mItem := mItem + cTargets[Items[mCheck].Expected];
     end;
@@ -169,7 +169,7 @@ var
 begin
   for mGate := Low(TAtlasBuildGate) to High(TAtlasBuildGate) do
   begin
-    if SameText(Trim(AText), GateNames[mGate]) then
+    if SameText(Trim(AText), cGateNames[mGate]) then
     begin
       Exit(mGate);
     end;

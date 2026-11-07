@@ -70,7 +70,7 @@ type
       Slot: Integer;
     end;
   private const
-    Category = 'Atlas';
+    cCategory = 'Atlas';
     cSubCategory = 'Atlas.Eintrag';
   private
     FEntries: TArray<TEntry>;
@@ -155,7 +155,7 @@ begin
   if FRegistered and Supports(BorlandIDEServices, IOTAEditorServices, mServices) and
     (mServices.GetEditorLocalMenu <> nil) then
   begin
-    mServices.GetEditorLocalMenu.UnregisterActionList(Category);
+    mServices.GetEditorLocalMenu.UnregisterActionList(cCategory);
   end;
   FActions.Free;
   inherited;
@@ -454,7 +454,7 @@ begin
   // INTAEditorLocalMenu).
   mRoot := TAction.Create(FActions);
   mRoot.ActionList := FActions;
-  mRoot.Category := Category;
+  mRoot.Category := cCategory;
   mRoot.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas);
   mRoot.OnExecute := RootExecute;
   for mIndex := 0 to High(FEntries) do
@@ -474,7 +474,7 @@ begin
     mItem.Visible := not (FEntries[mIndex].Kind in [TEntryKind.ekModuleGroup, TEntryKind.ekModuleSlot]);
   end;
   UpdateVisibility;
-  mServices.GetEditorLocalMenu.RegisterActionList(FActions, Category, cEdMenuCatLast);
+  mServices.GetEditorLocalMenu.RegisterActionList(FActions, cCategory, cEdMenuCatLast);
   FRegistered := True;
 end;
 

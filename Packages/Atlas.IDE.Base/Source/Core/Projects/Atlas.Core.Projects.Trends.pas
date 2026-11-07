@@ -33,9 +33,9 @@ type
   TAtlasProjectTrendLog = class
   public const
     /// <summary>Grenzen und Vorgabe für welcomePage.trends.points.</summary>
-    DefaultPoints = 30;
-    MinPoints = 2;
-    MaxPoints = 100;
+    cDefaultPoints = 30;
+    cMinPoints = 2;
+    cMaxPoints = 100;
   public
     /// <summary>Gleicher Zeitpunkt auf die Sekunde (so steht er in der Datei).</summary>
     class function SameStamp(AUtc1, AUtc2: TDateTime): Boolean; static;
@@ -163,7 +163,7 @@ begin
   end;
   Measure(ASummary, AAtUtc, mPoint);
   ASummary.Trends.Points[mIndex] := mPoint;
-  mLimit := EnsureRange(ALimit, MinPoints, MaxPoints);
+  mLimit := EnsureRange(ALimit, cMinPoints, cMaxPoints);
   if Length(ASummary.Trends.Points) > mLimit then
   begin
     ASummary.Trends.Points := Copy(ASummary.Trends.Points, Length(ASummary.Trends.Points) - mLimit, mLimit);

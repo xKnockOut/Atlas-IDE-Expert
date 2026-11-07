@@ -257,7 +257,7 @@ begin
   mFileName := AView.Buffer.FileName;
   ASession.Sync(mFileName, TAtlasEditorBuffer.Text(AView.Buffer));
   try
-    mAnswer := ASession.RunCommand(TAtlasGenerateProtocol.RunCommand,
+    mAnswer := ASession.RunCommand(TAtlasGenerateProtocol.cRunCommand,
       TAtlasGenerateProtocol.RunArguments(ASpot, AEntry.Name, AArgument), cCommandTimeoutMs);
   except
     on E: ELspClientError do
@@ -348,7 +348,7 @@ var
 begin
   AMenu := Default(TAtlasGenerateServerMenu);
   try
-    mAnswer := ASession.RunCommand(TAtlasGenerateProtocol.MenuCommand, TAtlasGenerateProtocol.MenuArguments(ASpot),
+    mAnswer := ASession.RunCommand(TAtlasGenerateProtocol.cMenuCommand, TAtlasGenerateProtocol.MenuArguments(ASpot),
       cCommandTimeoutMs);
   except
     on E: ELspClientError do
@@ -427,7 +427,7 @@ begin
         Exit;
       end;
       try
-        mFound := mCurrent.RunCommand(TAtlasGenerateProtocol.ChoicesCommand,
+        mFound := mCurrent.RunCommand(TAtlasGenerateProtocol.cChoicesCommand,
           TAtlasGenerateProtocol.ChoicesArguments(ASpot, AEntry.Name), cCommandTimeoutMs);
       except
         on E: ELspClientError do

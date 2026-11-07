@@ -41,9 +41,9 @@ type
   TAtlasIdeUnitRename = class
   public const
     /// <summary>Wartezeit nach dem Umbenennen, bis die IDE ihre eigenen Anpassungen fertig hat.</summary>
-    RenameDelayMs = 500;
+    cRenameDelayMs = 500;
     /// <summary>Alle verwendenden Units lesen dauert; wie beim Umbenennen.</summary>
-    TimeoutMs = 60000;
+    cTimeoutMs = 60000;
   private type
     TProjectNotifier = class(TInterfacedObject, IOTANotifier, IOTAModuleNotifier, IOTAProjectNotifier)
     private
@@ -290,7 +290,7 @@ begin
   end;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := RenameDelayMs;
+  FTimer.Interval := cRenameDelayMs;
   FTimer.OnTimer := Tick;
   FInstance := Self;
   // Schon geladene Projekte (die IDE lädt das letzte Projekt oft vor dem Plugin).
@@ -592,8 +592,8 @@ begin
   AAnswer := Default(TAtlasUnitRenameAnswer);
   TAtlasIdeRename.SyncOpenBuffers(ASession);
   try
-    mReply := ASession.RunCommand(TAtlasUnitRename.Command,
-      TAtlasUnitRename.Arguments(AEvent.OldFile, AEvent.NewFile, AFiles), TimeoutMs);
+    mReply := ASession.RunCommand(TAtlasUnitRename.cCommand,
+      TAtlasUnitRename.Arguments(AEvent.OldFile, AEvent.NewFile, AFiles), cTimeoutMs);
     try
       AAnswer := TAtlasUnitRename.ReadAnswer(mReply);
     finally
@@ -648,7 +648,7 @@ begin
     mAction.Run := RunAction(AEvent, mScope);
     mActions := mActions + [mAction];
   end;
-  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.UnitRename, TAtlasNotificationSeverity.Info,
+  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cUnitRename, TAtlasNotificationSeverity.Info,
     mTitle, mText, mActions) = TAtlasNotificationMode.Show then
   begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.UnitRenameReport, [mAnswer.OldName, mAnswer.NewName, mInProject, mInGroup]));
@@ -714,8 +714,8 @@ begin
   end;
   // Neu holen: Seit dem Hinweis kann sich der Text geändert haben.
   mAnswer := Default(TAtlasUnitRenameAnswer);
-  if not TAtlasIdeServerEdit.Fetch(mSession, TAtlasServerEditCommand.Create(TAtlasUnitRename.Command,
-    TAtlasUnitRename.Arguments(AEvent.OldFile, AEvent.NewFile, ScopeFiles(AEvent.ProjectFile, AScope)), TimeoutMs,
+  if not TAtlasIdeServerEdit.Fetch(mSession, TAtlasServerEditCommand.Create(TAtlasUnitRename.cCommand,
+    TAtlasUnitRename.Arguments(AEvent.OldFile, AEvent.NewFile, ScopeFiles(AEvent.ProjectFile, AScope)), cTimeoutMs,
     TAtlasTextId.UnitRenameFailed),
     procedure(const AReply: TJSONObject)
     begin

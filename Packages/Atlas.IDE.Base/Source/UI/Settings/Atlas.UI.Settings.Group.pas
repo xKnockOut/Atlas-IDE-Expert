@@ -22,7 +22,7 @@ type
   TAtlasSettingsGroup = class(TCustomControl)
   public const
     /// <summary>Einrückung der Unteroptionen in Pixeln (bei 96 dpi).</summary>
-    Indent = 20;
+    cIndent = 20;
   private
     FMaster: TControl;
     FMasterName: string;
@@ -69,7 +69,7 @@ begin
   FReason.Parent := Self;
   FReason.Align := alTop;
   FReason.AlignWithMargins := True;
-  FReason.Margins.Left := 3 + Indent;
+  FReason.Margins.Left := 3 + cIndent;
   FReason.Top := 2;
   FReason.ShowAccelChar := False;
   FReason.WordWrap := True;
@@ -92,7 +92,7 @@ begin
   AControl.Parent := Self;
   AControl.Align := alTop;
   AControl.AlignWithMargins := True;
-  AControl.Margins.Left := AControl.Margins.Left + Indent;
+  AControl.Margins.Left := AControl.Margins.Left + cIndent;
   // alTop ordnet nach Top: jede Zeile unter die vorige.
   AControl.Top := FNextTop;
   Inc(FNextTop, 100);

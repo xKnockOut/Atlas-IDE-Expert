@@ -72,11 +72,11 @@ type
   TAtlasPeek = class
   public const
     /// <summary>Höchstens so viele Zeilen je Abschnitt (Deklaration bzw. Implementierung).</summary>
-    MaxBlockLines = 400;
+    cMaxBlockLines = 400;
     /// <summary>Zeilen vor und nach einer Referenz.</summary>
-    ReferenceBefore = 3;
-    ReferenceAfter = 40;
-    MaxExcerpt = 80;
+    cReferenceBefore = 3;
+    cReferenceAfter = 40;
+    cMaxExcerpt = 80;
   public
     /// <summary>Erste Zeile des Ausschnitts: ALine samt direkt darüber stehender ///-Kommentare und
     /// Attribute ([...]).</summary>
@@ -613,7 +613,7 @@ begin
   begin
     Exit(ALine);
   end;
-  mScanner.Init(ALines, ALine, ALine + MaxBlockLines - 1);
+  mScanner.Init(ALines, ALine, ALine + cMaxBlockLines - 1);
   Result := ALine;
   mPrevious := '';
   mParens := 0;
@@ -646,7 +646,7 @@ begin
   begin
     Exit(ALine);
   end;
-  mScanner.Init(ALines, ALine, ALine + MaxBlockLines - 1);
+  mScanner.Init(ALines, ALine, ALine + cMaxBlockLines - 1);
   Result := HeaderEnd(mScanner, ALine, mHasBody);
   mDepth := 0;
   // Lokale Routinen vor dem Rumpf: Ihr end bringt die Tiefe auf 0, beendet aber nicht den Rumpf.
@@ -874,9 +874,9 @@ end;
 class function TAtlasPeek.Excerpt(const ALine: string): string;
 begin
   Result := Trim(StringReplace(ALine, #9, ' ', [rfReplaceAll]));
-  if Length(Result) > MaxExcerpt then
+  if Length(Result) > cMaxExcerpt then
   begin
-    Result := Copy(Result, 1, MaxExcerpt - 1) + '…';
+    Result := Copy(Result, 1, cMaxExcerpt - 1) + '…';
   end;
 end;
 
@@ -926,7 +926,7 @@ begin
   if (ATarget.Place.Line >= 0) and (ATarget.Place.Line <= High(ADeclLines)) then
   begin
     mFirst := DeclarationStart(ADeclLines, ATarget.Place.Line);
-    mLast := Min(DeclarationEnd(ADeclLines, ATarget.Place.Line), mFirst + MaxBlockLines - 1);
+    mLast := Min(DeclarationEnd(ADeclLines, ATarget.Place.Line), mFirst + cMaxBlockLines - 1);
     SetLength(Result, mLast - mFirst + 1);
     for mLine := mFirst to mLast do
     begin
@@ -937,7 +937,7 @@ begin
   if AShowBody and ATarget.HasBody and (ATarget.Body.Line >= 0) and (ATarget.Body.Line <= High(ABodyLines)) then
   begin
     mFirst := DeclarationStart(ABodyLines, ATarget.Body.Line);
-    mLast := Min(BodyEnd(ABodyLines, ATarget.Body.Line), mFirst + MaxBlockLines - 1);
+    mLast := Min(BodyEnd(ABodyLines, ATarget.Body.Line), mFirst + cMaxBlockLines - 1);
     mSeparator := Default(TAtlasPeekRow);
     mSeparator.Kind := TAtlasPeekRowKind.Separator;
     mSeparator.FileName := ATarget.Body.FileName;
@@ -966,8 +966,8 @@ begin
   begin
     Exit;
   end;
-  mFirst := Max(0, APlace.Line - ReferenceBefore);
-  mLast := Min(High(ALines), APlace.Line + ReferenceAfter);
+  mFirst := Max(0, APlace.Line - cReferenceBefore);
+  mLast := Min(High(ALines), APlace.Line + cReferenceAfter);
   SetLength(Result, mLast - mFirst + 1);
   for mLine := mFirst to mLast do
   begin

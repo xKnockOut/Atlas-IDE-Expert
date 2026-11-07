@@ -317,7 +317,7 @@ begin
   end;
   for Item in TJSONArray(Cases) do
   begin
-    if (Length(ABuild.Failures) < TAtlasCiBuild.MaxFailures) and FailureOf(Item, Failure) then
+    if (Length(ABuild.Failures) < TAtlasCiBuild.cMaxFailures) and FailureOf(Item, Failure) then
     begin
       ABuild.Failures := ABuild.Failures + [Failure];
     end;

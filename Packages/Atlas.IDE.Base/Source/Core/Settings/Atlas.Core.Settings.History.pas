@@ -66,7 +66,7 @@ type
 
   TAtlasSettingsHistory = class
   public const
-    MaxKeep = 50;
+    cMaxKeep = 50;
   private
     FSnapshots: TList<TAtlasSettingsSnapshot>;
     function GetCount: Integer;
@@ -306,9 +306,9 @@ begin
   begin
     AKeep := 0;
   end;
-  if AKeep > MaxKeep then
+  if AKeep > cMaxKeep then
   begin
-    AKeep := MaxKeep;
+    AKeep := cMaxKeep;
   end;
   while FSnapshots.Count > AKeep do
   begin

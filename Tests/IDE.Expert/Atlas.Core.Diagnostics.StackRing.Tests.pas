@@ -133,14 +133,14 @@ var
 begin
   Ring := TAtlasStackRing.Create;
   try
-    for Index := 1 to TAtlasStackRing.SlotCount + 8 do
+    for Index := 1 to TAtlasStackRing.cSlotCount + 8 do
     begin
       Ring.Add(Entry(1, NativeUInt(Index), [], []));
     end;
     Assert.IsFalse(Ring.Find(1, [1], Found), 'älteste überschrieben');
     Assert.IsFalse(Ring.Find(1, [8], Found));
     Assert.IsTrue(Ring.Find(1, [9], Found));
-    Assert.IsTrue(Ring.Find(1, [NativeUInt(TAtlasStackRing.SlotCount + 8)], Found));
+    Assert.IsTrue(Ring.Find(1, [NativeUInt(TAtlasStackRing.cSlotCount + 8)], Found));
   finally
     Ring.Free;
   end;

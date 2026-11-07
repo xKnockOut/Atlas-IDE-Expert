@@ -94,8 +94,8 @@ type
 
   TAtlasStatusSummary = class
   public const
-    FieldCaption = 'Atlas';
-    Separator = ' · ';
+    cFieldCaption = 'Atlas';
+    cSeparator = ' · ';
   public
     /// <summary>AItems ohne die Kennungen in AHidden (ohne Groß-/Kleinschreibung).</summary>
     class function Visible(const AItems: TArray<IAtlasStatusItem>;
@@ -533,7 +533,7 @@ class function TAtlasStatusSummary.FieldText(const AItems: TArray<IAtlasStatusIt
 var
   mLead, mItem: IAtlasStatusItem;
 begin
-  Result := FieldCaption;
+  Result := cFieldCaption;
   mLead := nil;
   if AShowSummary then
   begin
@@ -541,7 +541,7 @@ begin
   end;
   if (mLead <> nil) and (Ord(mLead.State) >= Ord(TAtlasStatusState.Yellow)) and (mLead.Summary <> '') then
   begin
-    Result := Result + Separator + mLead.Summary;
+    Result := Result + cSeparator + mLead.Summary;
   end
   else
   begin
@@ -556,7 +556,7 @@ begin
     if SameText(mItem.Id, AAlwaysId) and (mItem <> mLead) and (Ord(mItem.State) >= Ord(TAtlasStatusState.Yellow)) and
       (mItem.Summary <> '') then
     begin
-      Result := Result + Separator + mItem.Summary;
+      Result := Result + cSeparator + mItem.Summary;
       Exit;
     end;
   end;
@@ -577,7 +577,7 @@ begin
   end;
   if Length(mLines) = 0 then
   begin
-    Result := FieldCaption + ': alles in Ordnung';
+    Result := cFieldCaption + ': alles in Ordnung';
   end
   else
   begin

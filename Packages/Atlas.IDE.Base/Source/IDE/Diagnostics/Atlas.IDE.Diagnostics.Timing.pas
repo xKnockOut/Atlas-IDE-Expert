@@ -45,12 +45,12 @@ type
   TAtlasIdeDiagnosticMode = class
   public const
     /// <summary>Dieselbe Kennung liest die Zustandskachel (#754).</summary>
-    StatusId = TAtlasStatusLines.DiagnosticModeId;
-    StatusOrder = 3;
-    RefreshMs = 500;
-    SaveEveryMs = 30000;
+    cStatusId = TAtlasStatusLines.cDiagnosticModeId;
+    cStatusOrder = 3;
+    cRefreshMs = 500;
+    cSaveEveryMs = 30000;
     /// <summary>Name des Schnellschalters bzw. der Plugin-Einstellung.</summary>
-    ToggleKey = 'DiagnosticMode';
+    cToggleKey = 'DiagnosticMode';
   private class var
     FInstance: TAtlasIdeDiagnosticMode;
   private
@@ -127,7 +127,7 @@ begin
   FPlugin := TAtlasIdePluginTimings.Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := RefreshMs;
+  FTimer.Interval := cRefreshMs;
   FTimer.OnTimer := TimerTick;
   FGate := TAtlasIdeBuildIdleGate.Create(TAtlasFeature.Settings);
   TAtlasIdeTimingWindow.OnFrame :=
@@ -185,7 +185,7 @@ begin
     procedure
     begin
       // Dieselbe Einstellung wie Optionsseite und Schnellschalter; Update meldet OnChanged → ApplySettings.
-      TAtlasIdeQuickToggles.Switch(ToggleKey);
+      TAtlasIdeQuickToggles.Switch(cToggleKey);
     end);
 end;
 
@@ -236,7 +236,7 @@ begin
   begin
     Exit;
   end;
-  FLine := TAtlasStatusLine.Create(FRegistry, StatusId, StatusOrder,
+  FLine := TAtlasStatusLine.Create(FRegistry, cStatusId, cStatusOrder,
     procedure
     begin
       if FInstance <> nil then
@@ -260,7 +260,7 @@ begin
   end;
   if FRegistry <> nil then
   begin
-    FRegistry.Remove(StatusId);
+    FRegistry.Remove(cStatusId);
   end;
   FLine := nil;
   FLineRef := nil;
@@ -350,7 +350,7 @@ begin
         Refresh(TAtlasIdeTimingWindow.ExistingFrame, False);
       end;
       if (DataVersion <> FSavedVersion) and
-        (TThread.GetTickCount64 - FSavedAt >= SaveEveryMs) then
+        (TThread.GetTickCount64 - FSavedAt >= cSaveEveryMs) then
       begin
         SaveLastData;
       end;
@@ -413,7 +413,7 @@ var
   mInput: TAtlasTimingReportInput;
 begin
   mInput := Default(TAtlasTimingReportInput);
-  mInput.AtlasVersion := TAtlasPluginVersion.Version;
+  mInput.AtlasVersion := TAtlasPluginVersion.cVersion;
   mInput.IdeVersion := TAtlasUpdates.IdeVersion;
   {$IFDEF WIN64}
   mInput.Platform := 'Win64';
@@ -431,7 +431,7 @@ end;
 
 class function TAtlasIdeDiagnosticMode.LastDataFile: string;
 begin
-  Result := TPath.Combine(TAtlasDiagnosticExport.DefaultFolder, TAtlasTimingReport.FileName);
+  Result := TPath.Combine(TAtlasDiagnosticExport.DefaultFolder, TAtlasTimingReport.cFileName);
 end;
 
 procedure TAtlasIdeDiagnosticMode.SaveLastData;

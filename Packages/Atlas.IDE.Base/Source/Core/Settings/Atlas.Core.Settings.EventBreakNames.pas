@@ -14,7 +14,7 @@ uses
 type
   TAtlasEventBreakSettings = class
   public const
-    DefaultExcluded = 'OnPaint, OnMouseMove, OnUpdate';
+    cDefaultExcluded = 'OnPaint, OnMouseMove, OnUpdate';
   public
     /// <summary>Namen aus einer durch Komma, Semikolon oder Leerraum getrennten Liste: getrimmt, ohne Leere und
     /// Doppelte (ohne Rücksicht auf Groß-/Kleinschreibung), Reihenfolge bleibt.</summary>

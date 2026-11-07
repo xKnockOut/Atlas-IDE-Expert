@@ -20,7 +20,7 @@ uses
 type
   TAtlasIdePropertyFromAccessors = class
   public const
-    ClientCommand = 'atlas.propertyFromAccessors';
+    cClientCommand = 'atlas.propertyFromAccessors';
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position, calls]); ASession: laufende Sitzung oder
     /// nil; AMessage: Zeile für die Meldungsansicht.</summary>

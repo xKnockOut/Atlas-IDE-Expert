@@ -72,9 +72,9 @@ type
   TAtlasQuickOpen = class
   public const
     /// <summary>Höchstzahl der Dateien in der Liste (Schutz vor riesigen Bibliotheksordnern).</summary>
-    MaxFiles = 50000;
+    cMaxFiles = 50000;
     /// <summary>Höchstzahl der angezeigten Treffer.</summary>
-    MaxResults = 200;
+    cMaxResults = 200;
   public
     /// <summary>Gehört AFileName nach seiner Endung in die Liste?</summary>
     class function IsListed(const AFileName: string): Boolean; static;
@@ -255,7 +255,7 @@ var
   var
     mEntry: TAtlasQuickOpenFile;
   begin
-    if (AFileName = '') or (mFound.Count >= MaxFiles) or not IsListed(AFileName) or
+    if (AFileName = '') or (mFound.Count >= cMaxFiles) or not IsListed(AFileName) or
       mSeen.ContainsKey(LowerCase(AFileName)) then
     begin
       Exit;
@@ -283,7 +283,7 @@ var
     try
       for mFolder in AFolders do
       begin
-        if (mFolder = '') or mDone.ContainsKey(LowerCase(mFolder)) or Cancelled or (mFound.Count >= MaxFiles) then
+        if (mFolder = '') or mDone.ContainsKey(LowerCase(mFolder)) or Cancelled or (mFound.Count >= cMaxFiles) then
         begin
           Continue;
         end;
@@ -299,14 +299,14 @@ var
   end;
 
 var
-  FileName: string;
+  mProjectFile: string;
 begin
   mSeen := TDictionary<string, Boolean>.Create;
   mFound := TList<TAtlasQuickOpenFile>.Create;
   try
-    for FileName in ASources.ProjectFiles do
+    for mProjectFile in ASources.ProjectFiles do
     begin
-      Add(FileName, TAtlasQuickOpenOrigin.Project);
+      Add(mProjectFile, TAtlasQuickOpenOrigin.Project);
     end;
     AddFolders(ASources.Folders, False, TAtlasQuickOpenOrigin.SearchPath);
     AddFolders(ASources.LibraryFolders, True, TAtlasQuickOpenOrigin.Library_);
@@ -357,7 +357,7 @@ begin
   mText := Trim(AText);
   if mText = '' then
   begin
-    Exit(TAtlasCompletionMatcher.ScoreSubsequence);
+    Exit(TAtlasCompletionMatcher.cScoreSubsequence);
   end;
   if (Pos('\', mText) > 0) or (Pos('/', mText) > 0) then
   begin
@@ -371,11 +371,11 @@ begin
   begin
     Result := TAtlasCompletionMatcher.Score(mText, AFile.Stem);
   end;
-  if Result = TAtlasCompletionMatcher.NoMatch then
+  if Result = TAtlasCompletionMatcher.cNoMatch then
   begin
     // Ersatzweise der Pfad: "common lsp" findet Dateien unter Common\Lsp.
     Result := TAtlasCompletionMatcher.Score(mText.Replace(' ', '\'), AFile.RelativePath);
-    if Result <> TAtlasCompletionMatcher.NoMatch then
+    if Result <> TAtlasCompletionMatcher.cNoMatch then
     begin
       Result := Result div 2;
     end;
@@ -463,7 +463,7 @@ begin
     for mIndex := 0 to High(mFiles) do
     begin
       mPoints := Score(AText, mFiles[mIndex]);
-      if mPoints = TAtlasCompletionMatcher.NoMatch then
+      if mPoints = TAtlasCompletionMatcher.cNoMatch then
       begin
         Continue;
       end;
@@ -476,9 +476,9 @@ begin
       mFound.Add(mIndex);
     end;
     mFound.Sort(FileComparer(mFiles, mScores, mTiers, mBoosts));
-    if mFound.Count > MaxResults then
+    if mFound.Count > cMaxResults then
     begin
-      mFound.Count := MaxResults;
+      mFound.Count := cMaxResults;
     end;
     Result := mFound.ToArray;
   finally
@@ -499,7 +499,7 @@ begin
     for mIndex := 0 to High(ANames) do
     begin
       mScores[mIndex] := TAtlasCompletionMatcher.Score(AText, ANames[mIndex]);
-      if mScores[mIndex] <> TAtlasCompletionMatcher.NoMatch then
+      if mScores[mIndex] <> TAtlasCompletionMatcher.cNoMatch then
       begin
         mFound.Add(mIndex);
       end;
@@ -513,9 +513,9 @@ begin
           Result := A - B;
         end;
       end));
-    if mFound.Count > MaxResults then
+    if mFound.Count > cMaxResults then
     begin
-      mFound.Count := MaxResults;
+      mFound.Count := cMaxResults;
     end;
     Result := mFound.ToArray;
   finally

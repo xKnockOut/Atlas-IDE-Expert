@@ -223,7 +223,7 @@ begin
   ATeardown.Step('Threads',
     procedure
     begin
-      mStopped := TAtlasTimeLimit.StopAll(TAtlasShutdown.StopMs);
+      mStopped := TAtlasTimeLimit.StopAll(TAtlasShutdown.cStopMs);
     end);
   ATeardown.Step('Features', FreeFeatures);
   ATeardown.Step('StackCapture', TAtlasIdeStackCapture.Uninstall);

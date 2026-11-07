@@ -27,7 +27,7 @@ type
   TAtlasSmartPasteWindow = class(TAtlasPopupWindow)
   public const
     /// <summary>Abstand unter der Einfügestelle, logische Pixel.</summary>
-    Gap = 4;
+    cGap = 4;
   private
     FAnalysis: TAtlasPasteAnalysis;
     FRow: Integer;
@@ -90,7 +90,7 @@ constructor TAtlasSmartPasteWindow.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.SmartPaste;
-  SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.SmartPasteName));
+  SetAccessible(cUiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.SmartPasteName));
 end;
 
 function TAtlasSmartPasteWindow.Title: string;
@@ -233,10 +233,10 @@ begin
   mSize := Layout(False);
   mArea := WorkAreaAt(APoint);
   mLeft := Min(APoint.X, mArea.Right - mSize.cx);
-  mTop := APoint.Y + Scale(Gap);
+  mTop := APoint.Y + Scale(cGap);
   if mTop + mSize.cy > mArea.Bottom then
   begin
-    mTop := APoint.Y - Scale(Gap) - mSize.cy;
+    mTop := APoint.Y - Scale(cGap) - mSize.cy;
   end;
   ShowAt(Rect(Max(mLeft, mArea.Left), Max(mTop, mArea.Top), Max(mLeft, mArea.Left) + mSize.cx,
     Max(mTop, mArea.Top) + mSize.cy));
@@ -260,7 +260,7 @@ begin
   if IsShown then
   begin
     // Die Überschrift ändert ihre Länge: neu ausmessen.
-    ShowFor(FAnalysis, BoundsRect.TopLeft - Point(0, Scale(Gap)));
+    ShowFor(FAnalysis, BoundsRect.TopLeft - Point(0, Scale(cGap)));
     FRow := ARow;
     Invalidate;
   end;

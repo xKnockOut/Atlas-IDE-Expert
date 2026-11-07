@@ -85,7 +85,7 @@ type
 
   TAtlasSnippets = class
   public const
-    FileExtension = '.atlas-snippet';
+    cFileExtension = '.atlas-snippet';
   public
     /// <summary>Liest eine Vorlagendatei. False mit AError, wenn Kopf oder Text fehlen oder ein Schlüssel
     /// unbekannt ist.</summary>
@@ -574,7 +574,7 @@ procedure AddSnippetFiles(const APath: string; ANames: TStringList);
 var
   mSearch: TSearchRec;
 begin
-  if FindFirst(IncludeTrailingPathDelimiter(APath) + '*' + TAtlasSnippets.FileExtension, faAnyFile, mSearch) <> 0 then
+  if FindFirst(IncludeTrailingPathDelimiter(APath) + '*' + TAtlasSnippets.cFileExtension, faAnyFile, mSearch) <> 0 then
   begin
     Exit;
   end;
@@ -728,7 +728,7 @@ begin
       Result[mIndex] := '_';
     end;
   end;
-  Result := Result + FileExtension;
+  Result := Result + cFileExtension;
 end;
 
 function Snippet(const APrefix, AName, ADescription, ABody, AContext: string): TAtlasSnippet;
@@ -1154,7 +1154,7 @@ begin
     Exit;
   end;
   Result := '+';
-  if FindFirst(IncludeTrailingPathDelimiter(APath) + '*' + FileExtension, faAnyFile, mSearch) = 0 then
+  if FindFirst(IncludeTrailingPathDelimiter(APath) + '*' + cFileExtension, faAnyFile, mSearch) = 0 then
     try
       repeat
         Result := Result + mSearch.Name + '|' + IntToStr(mSearch.Size) + '|' + FormatDateTime('yyyymmddhhnnss', mSearch.TimeStamp) + ';';

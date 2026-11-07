@@ -20,9 +20,9 @@ type
   TAtlasExperimental = class
   public const
     /// <summary>Schlüssel des Hauptschalters in settings.json und in der Exportdatei.</summary>
-    MasterKey = 'experimental.enabled';
+    cMasterKey = 'experimental.enabled';
     /// <summary>Name des Hauptschalters in TAtlasPluginSettings.Load/Save.</summary>
-    MasterName = 'ExperimentalEnabled';
+    cMasterName = 'ExperimentalEnabled';
   public
     /// <summary>Ist der Eintrag mit Schlüssel oder Plugin-Namen AKey experimentell?</summary>
     class function IsExperimental(ACatalog: TAtlasSettingsCatalog; const AKey: string): Boolean; static;

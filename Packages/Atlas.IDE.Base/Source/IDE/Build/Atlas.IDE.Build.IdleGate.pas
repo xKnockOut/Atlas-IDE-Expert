@@ -29,7 +29,7 @@ type
       procedure ProjectGroupCompileFinished(Result: TOTACompileResult);
     end;
   public const
-    TickMs = 250;
+    cTickMs = 250;
   private
     FGate: TAtlasBuildIdleGate;
     FNotifier: TNotifier;
@@ -108,7 +108,7 @@ begin
   end;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := TimerTick;
 end;
 

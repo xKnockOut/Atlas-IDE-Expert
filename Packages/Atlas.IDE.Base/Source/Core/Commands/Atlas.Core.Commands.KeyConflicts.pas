@@ -112,19 +112,19 @@ type
 
   TAtlasKeyConflicts = class
   public const
-    scShift = $2000;
-    scCtrl = $4000;
-    scAlt = $8000;
-    PaletteDefault = scCtrl or scShift or Ord('P');
-    CheckDefault = scCtrl or scAlt or $78; // VK_F9
-    IdeCompletionKey = scCtrl or $20; // Strg+Leer
-    IdeSignatureKey = scCtrl or scShift or $20; // Strg+Umschalt+Leer
-    QuickToggleDefault = scCtrl or scShift or scAlt or Ord('A');
+    cScShift = $2000;
+    cScCtrl = $4000;
+    cScAlt = $8000;
+    cPaletteDefault = cScCtrl or cScShift or Ord('P');
+    cCheckDefault = cScCtrl or cScAlt or $78; // VK_F9
+    cIdeCompletionKey = cScCtrl or $20; // Strg+Leer
+    cIdeSignatureKey = cScCtrl or cScShift or $20; // Strg+Umschalt+Leer
+    cQuickToggleDefault = cScCtrl or cScShift or cScAlt or Ord('A');
     /// <summary>Diagnosemodus (#479): Strg+Alt+Umschalt+A gehört schon den Schnellschaltern (#604).</summary>
-    DiagnosticModeDefault = scCtrl or scShift or scAlt or Ord('D');
+    cDiagnosticModeDefault = cScCtrl or cScShift or cScAlt or Ord('D');
     /// <summary>Strg+F12 der IDE-Aktion „Units“; „Units suchen“ übernimmt sie (#777, unitSearch.replaceIdeDialog).
     /// </summary>
-    IdeUnitsKey = scCtrl or $7B; // VK_F12
+    cIdeUnitsKey = cScCtrl or $7B; // VK_F12
   public
     /// <summary>Editor-Belegungen der Standard-Tastaturbelegung, die keine Aktionen sind.</summary>
     class function KnownIdeKeys: TArray<TAtlasKeyOwner>; static;
@@ -236,7 +236,7 @@ begin
     // Units suchen (#777): eigene Taste als Editorbefehl; Strg+F12 bleibt die Aktion der IDE, Atlas hängt sich nur
     // an ihre Ausführung (bewusst übernommen, daher mit Vorrang).
     Create(TAtlasKeyFunction.UnitSearch, Word(ASettings.UnitSearchKey), mShared, ASettings.UnitSearchEnabled),
-    Create(TAtlasKeyFunction.UnitSearchIde, TAtlasKeyConflicts.IdeUnitsKey, True,
+    Create(TAtlasKeyFunction.UnitSearchIde, TAtlasKeyConflicts.cIdeUnitsKey, True,
       ASettings.UnitSearchEnabled and ASettings.UnitSearchReplaceIdeDialog),
     // Benannte Lesezeichen (#622): aus = Atlas belegt Strg+Alt+K nicht.
     Create(TAtlasKeyFunction.Bookmark, Word(ASettings.BookmarkKey), mShared, ASettings.BookmarksNamed),
@@ -599,9 +599,9 @@ function TAtlasKeyEntry.IdeKey: Word;
 begin
   case Func of
     TAtlasKeyFunction.Completion:
-      Result := TAtlasKeyConflicts.IdeCompletionKey;
+      Result := TAtlasKeyConflicts.cIdeCompletionKey;
     TAtlasKeyFunction.Signature:
-      Result := TAtlasKeyConflicts.IdeSignatureKey;
+      Result := TAtlasKeyConflicts.cIdeSignatureKey;
   else
     Result := 0;
   end;
@@ -673,24 +673,24 @@ class function TAtlasKeyConflicts.KnownIdeKeys: TArray<TAtlasKeyOwner>;
 var
   mDigit: Integer;
 begin
-  Result := [TAtlasKeyOwner.Create(scCtrl or scShift or Ord('P'), UiText(TKeyConflictsText.IDEPlayKeyboardMacro)),
-    TAtlasKeyOwner.Create(scCtrl or scShift or Ord('R'), UiText(TKeyConflictsText.IDERecordKeyboardMacro)),
+  Result := [TAtlasKeyOwner.Create(cScCtrl or cScShift or Ord('P'), UiText(TKeyConflictsText.IDEPlayKeyboardMacro)),
+    TAtlasKeyOwner.Create(cScCtrl or cScShift or Ord('R'), UiText(TKeyConflictsText.IDERecordKeyboardMacro)),
     // Zeilen verschieben und duplizieren (#634) nimmt diese Tasten mit Vorrang.
-    TAtlasKeyOwner.Create(scAlt or $26, UiText(TKeyConflictsText.IDECodeBrowsingFindDeclaration)), // VK_UP
-    TAtlasKeyOwner.Create(scShift or scAlt or $26, UiText(TKeyConflictsText.IDESelectColumnBlockUp)),
-    TAtlasKeyOwner.Create(scShift or scAlt or $28, UiText(TKeyConflictsText.IDESelectColumnBlockDown)), // VK_DOWN
+    TAtlasKeyOwner.Create(cScAlt or $26, UiText(TKeyConflictsText.IDECodeBrowsingFindDeclaration)), // VK_UP
+    TAtlasKeyOwner.Create(cScShift or cScAlt or $26, UiText(TKeyConflictsText.IDESelectColumnBlockUp)),
+    TAtlasKeyOwner.Create(cScShift or cScAlt or $28, UiText(TKeyConflictsText.IDESelectColumnBlockDown)), // VK_DOWN
     // Anweisung vervollständigen (#697) nimmt Strg+Umschalt+Enter mit Vorrang.
-    TAtlasKeyOwner.Create(scCtrl or scShift or $0D, UiText(TKeyConflictsText.IDEFindReferences)), // VK_RETURN
+    TAtlasKeyOwner.Create(cScCtrl or cScShift or $0D, UiText(TKeyConflictsText.IDEFindReferences)), // VK_RETURN
     // Typ des markierten Ausdrucks (#689) nimmt Strg+Umschalt+T mit Vorrang.
-    TAtlasKeyOwner.Create(scCtrl or scShift or Ord('T'), UiText(TKeyConflictsText.IDEAddToDoItem)),
+    TAtlasKeyOwner.Create(cScCtrl or cScShift or Ord('T'), UiText(TKeyConflictsText.IDEAddToDoItem)),
     // Schnelle Lesezeichen (#1104): erster Teil der Faltungsakkorde.
-    TAtlasKeyOwner.Create(scCtrl or scShift or Ord('K'), UiText(TKeyConflictsText.IDEFoldingCtrlShiftK))];
+    TAtlasKeyOwner.Create(cScCtrl or cScShift or Ord('K'), UiText(TKeyConflictsText.IDEFoldingCtrlShiftK))];
   // Lesezeichen 0–9 der IDE; 0 bleibt immer bei ihr.
   for mDigit := 0 to 9 do
   begin
-    Result := Result + [TAtlasKeyOwner.Create(scCtrl or scShift or (Ord('0') + mDigit),
+    Result := Result + [TAtlasKeyOwner.Create(cScCtrl or cScShift or (Ord('0') + mDigit),
       Format(UiText(TKeyConflictsText.IDEToggleBookmark), [mDigit])),
-        TAtlasKeyOwner.Create(scCtrl or (Ord('0') + mDigit),
+        TAtlasKeyOwner.Create(cScCtrl or (Ord('0') + mDigit),
       Format(UiText(TKeyConflictsText.IDEGoToBookmark), [mDigit]))];
   end;
 end;
@@ -722,16 +722,16 @@ class function TAtlasKeyConflicts.CompletionExtensions(const AModules: TArray<st
 type
   TKnown = record
     Prefix: string;
-    Name: string;
+    mName: string;
   end;
 const
   // Package-Namen (ohne Version) und Anzeigename; nur Erweiterungen mit eigener Vervollständigung.
   cKnown: array[0..2] of TKnown = (
-    (Prefix: 'CnWizards'; Name: 'CnPack (Input Helper)'),
-    (Prefix: 'Castalia'; Name: 'Castalia'),
-    (Prefix: 'CodeInsightPlus'; Name: 'Code Insight Plus'));
+    (Prefix: 'CnWizards'; mName: 'CnPack (Input Helper)'),
+    (Prefix: 'Castalia'; mName: 'Castalia'),
+    (Prefix: 'CodeInsightPlus'; mName: 'Code Insight Plus'));
 var
-  mModule, Name: string;
+  mModule, mName: string;
   mIndex: Integer;
   mFound: Boolean;
 begin
@@ -741,15 +741,15 @@ begin
     mFound := False;
     for mModule in AModules do
     begin
-      Name := ExtractFileName(mModule);
-      if Name.StartsWith(cKnown[mIndex].Prefix, True) then
+      mName := ExtractFileName(mModule);
+      if mName.StartsWith(cKnown[mIndex].Prefix, True) then
       begin
         mFound := True;
       end;
     end;
     if mFound then
     begin
-      Result := Result + [cKnown[mIndex].Name];
+      Result := Result + [cKnown[mIndex].mName];
     end;
   end;
 end;

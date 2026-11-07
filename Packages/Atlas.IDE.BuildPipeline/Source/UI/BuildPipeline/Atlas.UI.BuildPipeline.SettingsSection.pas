@@ -97,7 +97,7 @@ begin
   mGates := nil;
   for mGate := Low(TAtlasBuildGate) to High(TAtlasBuildGate) do
   begin
-    mGates := mGates + [TAtlasBuildPipelineSettings.GateNames[mGate]];
+    mGates := mGates + [TAtlasBuildPipelineSettings.cGateNames[mGate]];
   end;
   Choice('build.gate', TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsBuildGate),
     [TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsBuildGateOff),
@@ -166,7 +166,7 @@ begin
   begin
     mCaption := TAtlasBuildPipelineStrings.Text(cCaptions[mCheck]);
     // Alle Prüfungen teilen build.releaseChecks: Punkt nur an der Einstellung, nicht an jeder Zeile.
-    if TAtlasBuildPipelineSettings.HasTarget[mCheck] then
+    if TAtlasBuildPipelineSettings.cHasTarget[mCheck] then
     begin
       FCheckChoices[mCheck] := OwnChoice(mCaption,
         [TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsReleaseNotChecked),

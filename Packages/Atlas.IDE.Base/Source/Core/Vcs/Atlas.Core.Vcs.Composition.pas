@@ -43,7 +43,7 @@ type
     /// <summary>Umsetzung für AFolder. ALocate liefert den Pfad von git bzw. svn ('' = fehlt).</summary>
     class function Open(const AFolder: string; AProvider: TAtlasVcsProvider; const ARunner: IAtlasVcsRunner;
       const ALocate: TAtlasVcsLocate; ATimeoutMs: Cardinal): IAtlasVersionControl; overload; static;
-    /// <summary>Wie oben; Programme über TAtlasVcsTools.Find, Zeitlimit TAtlasVcsCommand.DefaultTimeoutMs.</summary>
+    /// <summary>Wie oben; Programme über TAtlasVcsTools.Find, Zeitlimit TAtlasVcsCommand.cDefaultTimeoutMs.</summary>
     class function Open(const AFolder: string; AProvider: TAtlasVcsProvider;
       const ARunner: IAtlasVcsRunner): IAtlasVersionControl; overload; static;
     /// <summary>Umsetzung für eine schon gefundene Arbeitskopie; ohne Programm die leere (ToolMissing).</summary>
@@ -155,7 +155,7 @@ begin
     begin
       Result := TAtlasVcsTools.Find(AKind);
     end,
-    TAtlasVcsCommand.DefaultTimeoutMs);
+    TAtlasVcsCommand.cDefaultTimeoutMs);
 end;
 
 end.

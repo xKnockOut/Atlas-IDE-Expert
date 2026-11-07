@@ -26,11 +26,11 @@ type
 
   TAtlasIdeBuildTarget = class
   public const
-    SelectBuildCommand = 'atlas.server.selectBuild';
-    IntervalMs = 1000;
+    cSelectBuildCommand = 'atlas.server.selectBuild';
+    cIntervalMs = 1000;
     /// <summary>Kennt der Server das Projekt (noch) nicht, erst so viel später wieder fragen.</summary>
-    RetryMs = 10000;
-    RequestTimeoutMs = 10000;
+    cRetryMs = 10000;
+    cRequestTimeoutMs = 10000;
   private type
     TDone = reference to procedure(AResult: TJSONValue);
 
@@ -101,7 +101,7 @@ begin
   mArguments := FArguments;
   // ExecuteCommand übernimmt die Argumente.
   FArguments := nil;
-  mAnswer := FSession.ExecuteCommand(SelectBuildCommand, mArguments, RequestTimeoutMs);
+  mAnswer := FSession.ExecuteCommand(cSelectBuildCommand, mArguments, cRequestTimeoutMs);
   if Terminated then
   begin
     mAnswer.Free;
@@ -200,12 +200,12 @@ begin
     Stop(False);
     FSession := ASession;
   end;
-  if (ASession = nil) or (ANow - FCheckedAt < IntervalMs) then
+  if (ASession = nil) or (ANow - FCheckedAt < cIntervalMs) then
   begin
     Exit;
   end;
   FCheckedAt := ANow;
-  if FRetryPending and (ANow - FRetryFrom < RetryMs) then
+  if FRetryPending and (ANow - FRetryFrom < cRetryMs) then
   begin
     Exit;
   end;

@@ -93,8 +93,8 @@ type
 
   TAtlasHide = class
   public const
-    LineMarker = '// lsp-ignore: ';
-    FileMarker = '// lsp-ignore-file: ';
+    cLineMarker = '// lsp-ignore: ';
+    cFileMarker = '// lsp-ignore-file: ';
   public
     /// <summary>Plan für ATarget im Bereich AScope. AText: aktueller Text der Datei (für Kommentare);
     /// ATeamFolder: Ordner der .atlas des Projekts ('' = keiner bekannt).</summary>
@@ -310,7 +310,7 @@ begin
   Result := Default(TAtlasTextInsert);
   Result.Line := ALine;
   Result.Character := 0;
-  Result.Text := TTextLines.IndentOf(mLine) + LineMarker + ARuleId + TTextLines.LineBreakOf(AText);
+  Result.Text := TTextLines.IndentOf(mLine) + cLineMarker + ARuleId + TTextLines.LineBreakOf(AText);
 end;
 
 class function TAtlasHide.SuppressFile(const AText, ARuleId: string): TAtlasTextInsert;
@@ -327,7 +327,7 @@ begin
     end;
   end;
   Result := Default(TAtlasTextInsert);
-  Result.Text := FileMarker + ARuleId + TTextLines.LineBreakOf(AText);
+  Result.Text := cFileMarker + ARuleId + TTextLines.LineBreakOf(AText);
 end;
 
 /// <summary>Befund mit Regel: Unterdrückungskommentar (#147); False mit AlreadyHidden, wenn er schon steht.

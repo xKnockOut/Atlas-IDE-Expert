@@ -38,7 +38,7 @@ type
 
   TAtlasExternalChanges = class
   public const
-    QuietMs = 500;
+    cQuietMs = 500;
   private type
     TKnown = record
       Exists: Boolean;
@@ -160,7 +160,7 @@ end;
 
 function TAtlasExternalChanges.Due(ANowMs: Int64): Boolean;
 begin
-  Result := (FPending.Count > 0) and (ANowMs - FLastChange >= QuietMs);
+  Result := (FPending.Count > 0) and (ANowMs - FLastChange >= cQuietMs);
 end;
 
 function TAtlasExternalChanges.TakeBatch: TArray<TAtlasReloadDecision>;

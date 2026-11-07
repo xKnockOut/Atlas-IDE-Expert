@@ -26,8 +26,8 @@ type
   TAtlasSymbolImages = class
   public const
     /// <summary>Namen der Einträge in Collection, in dieser Reihenfolge.</summary>
-    LightName = 'Atlas.Hell';
-    DarkName = 'Atlas.Dunkel';
+    cLightName = 'Atlas.Hell';
+    cDarkName = 'Atlas.Dunkel';
   public
     /// <summary>Gibt es die PNG-Ressource für AVariant in ASize?</summary>
     class function Exists(AVariant: TAtlasSymbolVariant; ASize: Integer): Boolean; static;
@@ -198,7 +198,7 @@ class function TAtlasSymbolImages.Collection(AOwner: TComponent): TImageCollecti
   begin
     mItem := Result.Images.Add;
     mItem.Name := AName;
-    for mIndex := 0 to TAtlasSymbol.SizeCount - 1 do
+    for mIndex := 0 to TAtlasSymbol.cSizeCount - 1 do
     begin
       if not Exists(AVariant, TAtlasSymbol.Size(mIndex)) then
       begin
@@ -216,8 +216,8 @@ class function TAtlasSymbolImages.Collection(AOwner: TComponent): TImageCollecti
 
 begin
   Result := TImageCollection.Create(AOwner);
-  AddVariant(TAtlasSymbolVariant.Light, LightName);
-  AddVariant(TAtlasSymbolVariant.Dark, DarkName);
+  AddVariant(TAtlasSymbolVariant.Light, cLightName);
+  AddVariant(TAtlasSymbolVariant.Dark, cDarkName);
 end;
 
 class function TAtlasSymbolImages.Icon(AVariant: TAtlasSymbolVariant): TIcon;
@@ -244,7 +244,7 @@ end;
 constructor TAtlasSymbolImage.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FLogicalSize := TAtlasSymbol.HeaderSize;
+  FLogicalSize := TAtlasSymbol.cHeaderSize;
   UpdateSize;
 end;
 

@@ -126,14 +126,14 @@ begin
     Result.Enabled := SameText(ARegistry.ReadString(AValueName), 'True');
   end;
   ARegistry.CloseKey;
-  Result.DisabledByAtlas := ARegistry.OpenKey(AtlasRegistryKey, True) and MarkerSet(ARegistry, AMarker, ALegacyMarker);
+  Result.DisabledByAtlas := ARegistry.OpenKey(cAtlasRegistryKey, True) and MarkerSet(ARegistry, AMarker, ALegacyMarker);
   ARegistry.CloseKey;
 end;
 
 /// <summary>Den Merker immer unter seinem neuen Namen festhalten; der alte entfällt dann.</summary>
 procedure WriteMarker(ARegistry: TRegistry; const AMarker, ALegacyMarker: string; AChanged, ADisabled: Boolean);
 begin
-  if not ARegistry.OpenKey(AtlasRegistryKey, True) then
+  if not ARegistry.OpenKey(cAtlasRegistryKey, True) then
   begin
     Exit;
   end;
@@ -343,7 +343,7 @@ begin
           Result := True;
         end;
       end;
-      if Result and mRegistry.OpenKey(AtlasRegistryKey, True) then
+      if Result and mRegistry.OpenKey(cAtlasRegistryKey, True) then
       begin
         mRegistry.WriteInteger(cErrorInsightMarker, Ord(not AEnabled));
       end;

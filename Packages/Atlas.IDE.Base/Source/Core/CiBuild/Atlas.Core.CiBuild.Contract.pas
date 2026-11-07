@@ -36,7 +36,7 @@ type
   TAtlasCiBuild = record
   public const
     /// <summary>Höchstens so viele fehlgeschlagene Tests werden gelesen und gespeichert.</summary>
-    MaxFailures = 50;
+    cMaxFailures = 50;
   public
     /// <summary>Build-Nummer; 0 = kein Build bekannt.</summary>
     Number: Integer;

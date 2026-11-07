@@ -427,7 +427,7 @@ type
       ALong: Boolean): TAtlasVcsBranchStep; overload; static;
   public const
     /// <summary>Zeitlimit für Schritte mit Long (10 Minuten).</summary>
-    LongTimeoutMs = 600000;
+    cLongTimeoutMs = 600000;
   end;
 
   /// <summary>Startet git bzw. svn unsichtbar (ohne Konsolenfenster) und wartet höchstens ATimeoutMs.</summary>

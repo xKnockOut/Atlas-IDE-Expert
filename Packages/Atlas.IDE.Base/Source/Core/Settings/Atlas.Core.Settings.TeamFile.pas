@@ -196,9 +196,9 @@ type
 
   TAtlasTeamFile = class
   public const
-    FileName = '.atlas';
-    DisplayRulesKey = 'debugDisplayRules';
-    CurrentVersion = 1;
+    cFileName = '.atlas';
+    cDisplayRulesKey = 'debugDisplayRules';
+    cCurrentVersion = 1;
   public
     /// <summary>Projektdatei zum Ordner einer .dproj ohne Projektgruppe (siehe Kopf); '' ohne.</summary>
     class function Locate(const AProjectFolder: string; const AExists: TAtlasTeamFileExists): string; overload;
@@ -957,13 +957,13 @@ var
 begin
   if not (AValue is TJSONArray) then
   begin
-    Report(TAtlasTeamIssueKind.WrongType, TAtlasHiddenPlaces.Key);
+    Report(TAtlasTeamIssueKind.WrongType, TAtlasHiddenPlaces.cKey);
     Exit;
   end;
   for mIndex := 0 to TJSONArray(AValue).Count - 1 do
   begin
     mItem := TJSONArray(AValue).Items[mIndex];
-    mPath := Format('%s[%d]', [TAtlasHiddenPlaces.Key, mIndex]);
+    mPath := Format('%s[%d]', [TAtlasHiddenPlaces.cKey, mIndex]);
     if not (mItem is TJSONObject) then
     begin
       Report(TAtlasTeamIssueKind.WrongType, mPath);
@@ -1055,14 +1055,14 @@ var
 begin
   if not (AValue is TJSONObject) then
   begin
-    Report(TAtlasTeamIssueKind.WrongType, TAtlasTeamFile.DisplayRulesKey);
+    Report(TAtlasTeamIssueKind.WrongType, TAtlasTeamFile.cDisplayRulesKey);
     Exit;
   end;
   for mIndex := 0 to TJSONObject(AValue).Count - 1 do
   begin
     mRule := Default(TAtlasTeamDisplayRule);
     mRule.TypeName := Trim(TJSONObject(AValue).Pairs[mIndex].JsonString.Value);
-    mPath := TAtlasTeamFile.DisplayRulesKey + '.' + mRule.TypeName;
+    mPath := TAtlasTeamFile.cDisplayRulesKey + '.' + mRule.TypeName;
     if ReadDisplayRule(TJSONObject(AValue).Pairs[mIndex].JsonValue, mPath, mRule, mReported) then
     begin
       FTeam.DisplayRules := FTeam.DisplayRules + [mRule];
@@ -1292,7 +1292,7 @@ begin
     Exit;
   end;
   FTeam.Version := mVersion;
-  if mVersion > TAtlasTeamFile.CurrentVersion then
+  if mVersion > TAtlasTeamFile.cCurrentVersion then
   begin
     Report(TAtlasTeamIssueKind.Version, 'version');
   end;
@@ -1357,11 +1357,11 @@ begin
   begin
     ReadVcs(AValue);
   end
-  else if AKey = TAtlasHiddenPlaces.Key then
+  else if AKey = TAtlasHiddenPlaces.cKey then
   begin
     ReadHidden(AValue);
   end
-  else if AKey = TAtlasTeamFile.DisplayRulesKey then
+  else if AKey = TAtlasTeamFile.cDisplayRulesKey then
   begin
     ReadDisplayRules(AValue);
   end
@@ -1400,7 +1400,7 @@ end;
 class function TAtlasTeamFile.Empty: TAtlasTeamSettings;
 begin
   Result := Default(TAtlasTeamSettings);
-  Result.Version := CurrentVersion;
+  Result.Version := cCurrentVersion;
 end;
 
 class function TAtlasTeamFile.RootOf(const AFolder: string; const AExists: TAtlasTeamFileExists): string;
@@ -1441,9 +1441,9 @@ begin
   end;
   while mFolder <> '' do
   begin
-    if AExists(JoinPath(mFolder, FileName)) then
+    if AExists(JoinPath(mFolder, cFileName)) then
     begin
-      Exit(JoinPath(mFolder, FileName));
+      Exit(JoinPath(mFolder, cFileName));
     end;
     if SameText(mFolder, mLimit) then
     begin
@@ -1452,9 +1452,9 @@ begin
     mFolder := ParentOf(mFolder);
   end;
   // Die Gruppe kann außerhalb des Repositorys liegen (darüber oder daneben).
-  if (mGroup <> '') and AExists(JoinPath(mGroup, FileName)) then
+  if (mGroup <> '') and AExists(JoinPath(mGroup, cFileName)) then
   begin
-    Result := JoinPath(mGroup, FileName);
+    Result := JoinPath(mGroup, cFileName);
   end;
 end;
 
@@ -1786,8 +1786,8 @@ begin
   begin
     AddValue(Result, 'vcs', VcsText(ATeam.Vcs));
   end;
-  AddList(Result, TAtlasHiddenPlaces.Key, HiddenItems(ATeam.Hidden));
-  AddList(Result, DisplayRulesKey, RuleItems(ATeam.DisplayRules));
+  AddList(Result, TAtlasHiddenPlaces.cKey, HiddenItems(ATeam.Hidden));
+  AddList(Result, cDisplayRulesKey, RuleItems(ATeam.DisplayRules));
 end;
 
 class function TAtlasTeamFile.NamingKey(AKind: TAtlasNamingKind): string;

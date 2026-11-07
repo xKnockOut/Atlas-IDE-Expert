@@ -100,7 +100,7 @@ type
   /// ohne Scrollen (0 = bis zur Bildschirmhöhe).</summary>
   TAtlasDocDisplay = record
   public const
-    MaxMaxLines = 50;
+    cMaxMaxLines = 50;
   public
     /// <summary>Vom Server gemeldet (atlas.json bzw. Einstellungen des Plugins).</summary>
     Known: Boolean;
@@ -436,7 +436,7 @@ class function TAtlasDocDisplay.Create(AExpand: TAtlasDocExpand; AMaxLines: Inte
 begin
   Result.Known := False;
   Result.Expand := AExpand;
-  Result.MaxLines := EnsureRange(AMaxLines, 0, MaxMaxLines);
+  Result.MaxLines := EnsureRange(AMaxLines, 0, cMaxMaxLines);
 end;
 
 class function TAtlasDocDisplay.ExpandOf(const AName: string): TAtlasDocExpand;
@@ -490,7 +490,7 @@ begin
     end;
   end;
   Result.MaxLines := EnsureRange(TJSONObject(AValue).GetValue<Integer>('maxLines', AFallback.MaxLines), 0,
-    MaxMaxLines);
+    cMaxMaxLines);
 end;
 
 { TAtlasDocParam }

@@ -74,7 +74,7 @@ begin
   // Überschriften des Servers eine Ebene tiefer.
   Assert.Contains(Text, '## Atlas-Fehlerbericht (Server)');
   Assert.Contains(Text, '### Version');
-  Assert.Contains(Text, TAtlasBugReport.IssuesUrl);
+  Assert.Contains(Text, TAtlasBugReport.cIssuesUrl);
 end;
 
 procedure TAtlasBugReportTests.WithoutServerSaysWhy;

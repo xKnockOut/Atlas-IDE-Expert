@@ -181,7 +181,7 @@ begin
   Assert.IsTrue(ASection.More.Discover.Checked);
   Assert.IsTrue(ASection.More.TipsUsageTracking.Checked);
   Assert.IsTrue(ASection.More.Help.Checked);
-  Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, ASection.More.HelpReportUrl.Text);
+  Assert.AreEqual(TAtlasPluginSettings.cDefaultHelpReportUrl, ASection.More.HelpReportUrl.Text);
   Assert.AreEqual('', ASection.More.HelpReportFolder.Text);
   Assert.IsTrue(ASection.More.ProjectSetup.Checked, 'Vorgabe an (#759)');
   Assert.IsTrue(ASection.More.NewFromTemplate.Checked, 'Vorgabe an (#759)');
@@ -357,7 +357,7 @@ begin
     FSection.More.HelpReportUrl.Text := 'cmd.exe';
     mPage.SaveTo(mSaved);
     Assert.AreEqual('off', mSaved.WelcomePageWhatsNew);
-    Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, mSaved.WelcomePageHelpReportUrl);
+    Assert.AreEqual(TAtlasPluginSettings.cDefaultHelpReportUrl, mSaved.WelcomePageHelpReportUrl);
   finally
     mPage.Free;
   end;

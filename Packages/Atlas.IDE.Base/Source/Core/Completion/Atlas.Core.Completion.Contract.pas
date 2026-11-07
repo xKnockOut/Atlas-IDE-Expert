@@ -68,7 +68,7 @@ type
   TAtlasTriggers = record
   public const
     /// <summary>Verlauf der Debug-Dialoge (#538) statt einer Anfrage an den Server.</summary>
-    History = 'history';
+    cHistory = 'history';
   end;
 
   TAtlasContext = record

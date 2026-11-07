@@ -20,11 +20,11 @@ uses
 type
   TAtlasStatusBarItems = class
   public const
-    Delimiter = ',';
-    Status = 'status';
-    Findings = 'findings';
-    LiveCheck = 'liveCheck';
-    Method = 'method';
+    cDelimiter = ',';
+    cStatus = 'status';
+    cFindings = 'findings';
+    cLiveCheck = 'liveCheck';
+    cMethod = 'method';
   public
     /// <summary>Alle Elemente in der Vorgabe-Reihenfolge.</summary>
     class function All: TArray<string>; static;
@@ -45,8 +45,8 @@ type
 implementation
 
 const
-  cKnown: array[0..3] of string = (TAtlasStatusBarItems.Status, TAtlasStatusBarItems.Findings,
-    TAtlasStatusBarItems.LiveCheck, TAtlasStatusBarItems.Method);
+  cKnown: array[0..3] of string = (TAtlasStatusBarItems.cStatus, TAtlasStatusBarItems.cFindings,
+    TAtlasStatusBarItems.cLiveCheck, TAtlasStatusBarItems.cMethod);
 
 function RankOf(const AId: string): Integer;
 var
@@ -109,7 +109,7 @@ var
   mPart, mId: string;
 begin
   Result := nil;
-  for mPart in AText.Split([Delimiter]) do
+  for mPart in AText.Split([cDelimiter]) do
   begin
     mId := Canonical(mPart);
     if (mId <> '') and not Contains(Result, mId) then
@@ -121,7 +121,7 @@ end;
 
 class function TAtlasStatusBarItems.Format(const AItems: TArray<string>): string;
 begin
-  Result := string.Join(Delimiter, AItems);
+  Result := string.Join(cDelimiter, AItems);
 end;
 
 class function TAtlasStatusBarItems.Normalize(const AText: string): string;

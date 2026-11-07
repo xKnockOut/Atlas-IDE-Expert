@@ -128,7 +128,7 @@ begin
   begin
     mSeverity := TAtlasNotificationSeverity.Error;
   end;
-  if (TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, mSeverity,
+  if (TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, mSeverity,
     TAtlasStrings.Text(TAtlasTextId.NotificationsServerMessage), AMessage, ALogActions) <>
     TAtlasNotificationMode.Show) or not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
@@ -172,7 +172,7 @@ begin
   if ARestart.Crashed and (ARestart.PreviousStart > 0) and
     TAtlasCrashCases.Newest(TAtlasCrashCases.DefaultRoot, ARestart.PreviousStart, mCase) then
   begin
-    TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, TAtlasNotificationSeverity.Warning,
+    TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, TAtlasNotificationSeverity.Warning,
       TAtlasStrings.Text(TAtlasTextId.CrashRestartedTitle), TAtlasCrashCases.SummaryText(mCase) + ' ' + mText,
       CrashActions(mCase, ARestart.CrashIssue));
     Exit;
@@ -182,7 +182,7 @@ begin
   begin
     mSeverity := TAtlasNotificationSeverity.Warning;
   end;
-  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, mSeverity,
+  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, mSeverity,
     TAtlasStrings.Text(TAtlasTextId.NotificationsServerRestarted), mText, ARestart.LogActions);
 end;
 
@@ -225,8 +225,8 @@ begin
   Result := Default(TAtlasProblem);
   Result.EndCharacter := 1;
   Result.Severity := TAtlasProblemSeverity.Warning;
-  Result.Code := TAtlasCrashCases.ProblemCode;
-  Result.Source := TAtlasCrashCases.ProblemSource;
+  Result.Code := TAtlasCrashCases.cProblemCode;
+  Result.Source := TAtlasCrashCases.cProblemSource;
   Result.Message := TAtlasStrings.Fmt(TAtlasTextId.CrashSkipProblem, [ASkip.Method, ASkip.Crashes,
     ASkip.ExceptionClass, ExtractFileName(ASkip.Folder)]);
 end;
@@ -252,11 +252,11 @@ begin
   end;
   if Length(mProblems) = 0 then
   begin
-    mStore.ClearTask(TAtlasCrashCases.ProblemSource);
+    mStore.ClearTask(TAtlasCrashCases.cProblemSource);
   end
   else
   begin
-    mStore.SetTaskProblems(TAtlasCrashCases.ProblemSource, mProblems);
+    mStore.SetTaskProblems(TAtlasCrashCases.cProblemSource, mProblems);
   end;
 end;
 

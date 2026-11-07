@@ -47,7 +47,7 @@ type
 
   TAtlasIdeExitPoints = class
   public const
-    Command = 'atlas.server.exitPoints';
+    cCommand = 'atlas.server.exitPoints';
   private const
     cTickMs = 100;
     /// <summary>So viele Takte ohne Bewegung, bevor Atlas den Server fragt.</summary>
@@ -449,7 +449,7 @@ begin
     begin
       mFound := Default(TAtlasExitPointSet);
       try
-        mAnswer := ASession.RunCommand(TAtlasIdeExitPoints.Command, AArguments, TAtlasIdeExitPoints.cTimeoutMs);
+        mAnswer := ASession.RunCommand(TAtlasIdeExitPoints.cCommand, AArguments, TAtlasIdeExitPoints.cTimeoutMs);
         try
           mFound := TAtlasExitPointSet.FromJson(mAnswer);
         finally

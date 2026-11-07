@@ -27,9 +27,9 @@ type
 
   TAtlasEditInbox = class
   public const
-    RequestExtension = '.json';
-    TakenExtension = '.taken';
-    ResultSuffix = '.result.json';
+    cRequestExtension = '.json';
+    cTakenExtension = '.taken';
+    cResultSuffix = '.result.json';
   public
     /// <summary>Eingang des Prozesses APid unter ABase (%LOCALAPPDATA%\Atlas).</summary>
     class function Folder(const ABase: string; APid: Cardinal): string; static;
@@ -68,9 +68,9 @@ begin
   end;
   mFound := TList<string>.Create;
   try
-    for mName in TDirectory.GetFiles(AFolder, '*' + RequestExtension) do
+    for mName in TDirectory.GetFiles(AFolder, '*' + cRequestExtension) do
     begin
-      if mName.EndsWith(RequestExtension, True) and not mName.EndsWith(ResultSuffix, True) then
+      if mName.EndsWith(cRequestExtension, True) and not mName.EndsWith(cResultSuffix, True) then
       begin
         mFound.Add(mName);
       end;
@@ -89,7 +89,7 @@ var
 begin
   ARequest := Default(TAtlasEditRequest);
   ARequest.Id := ChangeFileExt(ExtractFileName(AFileName), '');
-  mTaken := ChangeFileExt(AFileName, TakenExtension);
+  mTaken := ChangeFileExt(AFileName, cTakenExtension);
   // Umbenennen ist der Zuschlag: Hat der MCP-Server inzwischen gelöscht, schlägt es fehl.
   if not RenameFile(AFileName, mTaken) then
   begin
@@ -136,7 +136,7 @@ begin
   finally
     mJson.Free;
   end;
-  mTarget := TPath.Combine(AFolder, ARequest.Id + ResultSuffix);
+  mTarget := TPath.Combine(AFolder, ARequest.Id + cResultSuffix);
   mTemporary := mTarget + '.tmp';
   TFile.WriteAllText(mTemporary, mText, TEncoding.UTF8);
   if FileExists(mTarget) then
@@ -144,9 +144,9 @@ begin
     TFile.Delete(mTarget);
   end;
   TFile.Move(mTemporary, mTarget);
-  if FileExists(TPath.Combine(AFolder, ARequest.Id + TakenExtension)) then
+  if FileExists(TPath.Combine(AFolder, ARequest.Id + cTakenExtension)) then
   begin
-    TFile.Delete(TPath.Combine(AFolder, ARequest.Id + TakenExtension));
+    TFile.Delete(TPath.Combine(AFolder, ARequest.Id + cTakenExtension));
   end;
 end;
 

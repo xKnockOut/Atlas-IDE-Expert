@@ -152,20 +152,20 @@ type
 
   TAtlasMinimap = class
   public const
-    DefaultWidth = 120;
-    MinWidth = TAtlasPluginSettings.MinMinimapWidth;
-    MaxWidth = TAtlasPluginSettings.MaxMinimapWidth;
-    DefaultScale = 2;
-    MinScale = TAtlasPluginSettings.MinMinimapScale;
-    MaxScale = TAtlasPluginSettings.MaxMinimapScale;
-    DefaultMaxColumn = 120;
-    MinColumn = TAtlasPluginSettings.MinMinimapColumn;
-    MaxColumnLimit = TAtlasPluginSettings.MaxMinimapColumn;
-    RenderNames: array[TAtlasMinimapRender] of string = ('blocks', 'characters');
-    SideNames: array[TAtlasMinimapSide] of string = ('right', 'left');
-    SliderNames: array[TAtlasMinimapSlider] of string = ('always', 'mouseover');
+    cDefaultWidth = 120;
+    cMinWidth = TAtlasPluginSettings.cMinMinimapWidth;
+    cMaxWidth = TAtlasPluginSettings.cMaxMinimapWidth;
+    cDefaultScale = 2;
+    cMinScale = TAtlasPluginSettings.cMinMinimapScale;
+    cMaxScale = TAtlasPluginSettings.cMaxMinimapScale;
+    cDefaultMaxColumn = 120;
+    cMinColumn = TAtlasPluginSettings.cMinMinimapColumn;
+    cMaxColumnLimit = TAtlasPluginSettings.cMaxMinimapColumn;
+    cRenderNames: array[TAtlasMinimapRender] of string = ('blocks', 'characters');
+    cSideNames: array[TAtlasMinimapSide] of string = ('right', 'left');
+    cSliderNames: array[TAtlasMinimapSlider] of string = ('always', 'mouseover');
     /// <summary>Höchstzahl der gemerkten gefalteten Bereiche.</summary>
-    MaxFolds = 2000;
+    cMaxFolds = 2000;
   public
     /// <summary>Vorgaben aus dem Katalog (#873).</summary>
     class function Defaults: TAtlasMinimapOptions; static;
@@ -727,9 +727,9 @@ class function TAtlasMinimap.Defaults: TAtlasMinimapOptions;
 begin
   // Winzige Zeichen wie VS Code; Balken je Wort sind die Alternative.
   Result.Render := TAtlasMinimapRender.Characters;
-  Result.Width := DefaultWidth;
-  Result.Scale := DefaultScale;
-  Result.MaxColumn := DefaultMaxColumn;
+  Result.Width := cDefaultWidth;
+  Result.Scale := cDefaultScale;
+  Result.MaxColumn := cDefaultMaxColumn;
   Result.Side := TAtlasMinimapSide.Right;
   Result.Slider := TAtlasMinimapSlider.Always;
   Result.SectionHeaders := True;
@@ -758,7 +758,7 @@ var
 begin
   for mRender := Low(TAtlasMinimapRender) to High(TAtlasMinimapRender) do
   begin
-    if SameText(Trim(AName), RenderNames[mRender]) then
+    if SameText(Trim(AName), cRenderNames[mRender]) then
     begin
       Exit(mRender);
     end;
@@ -772,7 +772,7 @@ var
 begin
   for mSide := Low(TAtlasMinimapSide) to High(TAtlasMinimapSide) do
   begin
-    if SameText(Trim(AName), SideNames[mSide]) then
+    if SameText(Trim(AName), cSideNames[mSide]) then
     begin
       Exit(mSide);
     end;
@@ -786,7 +786,7 @@ var
 begin
   for mSlider := Low(TAtlasMinimapSlider) to High(TAtlasMinimapSlider) do
   begin
-    if SameText(Trim(AName), SliderNames[mSlider]) then
+    if SameText(Trim(AName), cSliderNames[mSlider]) then
     begin
       Exit(mSlider);
     end;
@@ -796,17 +796,17 @@ end;
 
 class function TAtlasMinimap.ClampWidth(AValue: Integer): Integer;
 begin
-  Result := EnsureRange(AValue, MinWidth, MaxWidth);
+  Result := EnsureRange(AValue, cMinWidth, cMaxWidth);
 end;
 
 class function TAtlasMinimap.ClampScale(AValue: Integer): Integer;
 begin
-  Result := EnsureRange(AValue, MinScale, MaxScale);
+  Result := EnsureRange(AValue, cMinScale, cMaxScale);
 end;
 
 class function TAtlasMinimap.ClampColumn(AValue: Integer): Integer;
 begin
-  Result := EnsureRange(AValue, MinColumn, MaxColumnLimit);
+  Result := EnsureRange(AValue, cMinColumn, cMaxColumnLimit);
 end;
 
 class function TAtlasMinimap.NormalizeFolds(const AFolds: TAtlasMinimapFolds; ALineCount: Integer):
@@ -846,7 +846,7 @@ begin
       Continue;
     end;
     Result := Result + [mSorted[mIndex]];
-    if Length(Result) >= MaxFolds then
+    if Length(Result) >= cMaxFolds then
     begin
       Break;
     end;

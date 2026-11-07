@@ -24,9 +24,9 @@ type
 
   TAtlasReassignedNames = class
   public const
-    DefaultTargets = [TAtlasReassignedTarget.Locals, TAtlasReassignedTarget.ValueParams];
-    Styles: array[TAtlasReassignedStyle] of string = ('dotted', 'solid', 'wavy');
-    ThemeColor = 'theme';
+    cDefaultTargets = [TAtlasReassignedTarget.Locals, TAtlasReassignedTarget.ValueParams];
+    cStyles: array[TAtlasReassignedStyle] of string = ('dotted', 'solid', 'wavy');
+    cThemeColor = 'theme';
   public
     class function TargetName(ATarget: TAtlasReassignedTarget): string; static;
     class function TryTarget(const AName: string; out ATarget: TAtlasReassignedTarget): Boolean; static;
@@ -116,7 +116,7 @@ var
 begin
   for mStyle := Low(TAtlasReassignedStyle) to High(TAtlasReassignedStyle) do
   begin
-    if SameText(Trim(AText), Styles[mStyle]) then
+    if SameText(Trim(AText), cStyles[mStyle]) then
     begin
       Exit(mStyle);
     end;
@@ -148,7 +148,7 @@ begin
   end
   else
   begin
-    Result := ThemeColor;
+    Result := cThemeColor;
   end;
 end;
 

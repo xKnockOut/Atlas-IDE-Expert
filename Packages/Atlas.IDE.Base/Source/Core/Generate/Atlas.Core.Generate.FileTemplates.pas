@@ -32,7 +32,7 @@ type
   TAtlasFileTemplates = class
   public const
     /// <summary>Basisklasse eines Formulars ohne T, wenn die IDE keine nennt.</summary>
-    DefaultAncestor = 'Form';
+    cDefaultAncestor = 'Form';
   public
     /// <summary>"unit", "form" bzw. "test" wie im Kopf "file:".</summary>
     class function KindWord(AKind: TAtlasNewFileKind): string; static;
@@ -289,7 +289,7 @@ begin
   mAncestor := Trim(AAncestor);
   if mAncestor = '' then
   begin
-    mAncestor := DefaultAncestor;
+    mAncestor := cDefaultAncestor;
   end;
   Result := ABody;
   Result := StringReplace(Result, '%Unit%', Trim(AUnit), [rfReplaceAll, rfIgnoreCase]);

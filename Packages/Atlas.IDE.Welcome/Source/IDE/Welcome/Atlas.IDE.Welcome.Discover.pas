@@ -263,7 +263,7 @@ var
   Command: TAtlasCommand;
 begin
   Result := (AId <> '') and FindCommand(AId, Command) and
-    (Command.IsAtlas or SameText(AId, TAtlasShortcutTips.PaletteCommandId));
+    (Command.IsAtlas or SameText(AId, TAtlasShortcutTips.cPaletteCommandId));
 end;
 
 function TAtlasIdeDiscover.IsEnabled(const ATip: TAtlasTip): Boolean;
@@ -601,7 +601,7 @@ end;
 
 class procedure TAtlasIdeDiscover.TryCommand(AId: string);
 begin
-  if SameText(AId, TAtlasShortcutTips.PaletteCommandId) then
+  if SameText(AId, TAtlasShortcutTips.cPaletteCommandId) then
   begin
     TAtlasIdeHost.ShowPalette;
   end

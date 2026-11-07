@@ -104,7 +104,7 @@ type
   TAtlasSvnHistoryPart = class(TAtlasSvnPart, IAtlasVcsLineHistory, IAtlasVcsHistory)
   public const
     /// <summary>Höchstens so viele Revisionen je Aufruf von Messages.</summary>
-    MessageBatch = 100;
+    cMessageBatch = 100;
   private
     function Info(out ARelativeUrl: string): TAtlasVcsOutcome;
     /// <summary>svn log --xml und svn log --diff für den Zeilenverlauf.</summary>
@@ -130,7 +130,7 @@ type
     IAtlasVcsHistory)
   public const
     /// <summary>Höchstens so viele Revisionen je Aufruf von Messages.</summary>
-    MessageBatch = TAtlasSvnHistoryPart.MessageBatch;
+    cMessageBatch = TAtlasSvnHistoryPart.cMessageBatch;
   private
     FRoot: string;
     FRunner: IAtlasVcsRunner;
@@ -230,7 +230,7 @@ end;
 constructor TAtlasSvnVersionControl.Create(const ARoot: string; const ARunner: IAtlasVcsRunner;
   const AExecutable: string);
 begin
-  Create(ARoot, ARunner, AExecutable, TAtlasVcsCommand.DefaultTimeoutMs);
+  Create(ARoot, ARunner, AExecutable, TAtlasVcsCommand.cDefaultTimeoutMs);
 end;
 
 destructor TAtlasSvnVersionControl.Destroy;
@@ -589,9 +589,9 @@ begin
     end;
   mCommand := FCommand;
   // switch und checkout holen die ganze Arbeitskopie samt Externals: eigenes, langes Zeitlimit (#1290).
-  if AStep.Long and (FCommand.TimeoutMs < TAtlasVcsBranchStep.LongTimeoutMs) then
+  if AStep.Long and (FCommand.TimeoutMs < TAtlasVcsBranchStep.cLongTimeoutMs) then
   begin
-    mCommand := TAtlasVcsCommand.Create(FRunner, FCommand.Executable, FRoot, TAtlasVcsBranchStep.LongTimeoutMs);
+    mCommand := TAtlasVcsCommand.Create(FRunner, FCommand.Executable, FRoot, TAtlasVcsBranchStep.cLongTimeoutMs);
   end;
   try
     // Wie Svn: nie nachfragen (--non-interactive hängt die Umsetzung an, der Plan zeigt es nicht).
@@ -867,8 +867,8 @@ begin
   mStart := 0;
   while (Result = TAtlasVcsOutcome.Ok) and (mStart < Length(ARevisions)) do
   begin
-    Result := Svn(['log', '--xml', '-c', RevisionList(ARevisions, mStart, MessageBatch), mRelative + '@'], mOutput);
-    Inc(mStart, MessageBatch);
+    Result := Svn(['log', '--xml', '-c', RevisionList(ARevisions, mStart, cMessageBatch), mRelative + '@'], mOutput);
+    Inc(mStart, cMessageBatch);
     if Result <> TAtlasVcsOutcome.Ok then
     begin
       Break;

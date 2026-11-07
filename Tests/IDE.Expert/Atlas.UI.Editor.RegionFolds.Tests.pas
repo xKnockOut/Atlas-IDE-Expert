@@ -40,7 +40,7 @@ var
 begin
   TAtlasTextLanguage.Current := TAtlasLanguage.German;
   mChoices := TAtlasRegionFoldsTexts.Choices;
-  Assert.AreEqual(Integer(Length(AtlasRegionFoldModes)), Integer(Length(mChoices)));
+  Assert.AreEqual(Integer(Length(cAtlasRegionFoldModes)), Integer(Length(mChoices)));
   Assert.AreEqual('unverändert lassen', mChoices[0], 'keep steht vorn');
   Assert.AreEqual('aus (auch keine Befehle)', mChoices[3], 'off steht hinten');
 end;

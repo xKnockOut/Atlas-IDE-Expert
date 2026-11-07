@@ -152,7 +152,7 @@ begin
     begin
       if Assigned(ACommand) then
       begin
-        ACommand(TAtlasProcessesView.Command, ADone);
+        ACommand(TAtlasProcessesView.cCommand, ADone);
       end
       else
       begin

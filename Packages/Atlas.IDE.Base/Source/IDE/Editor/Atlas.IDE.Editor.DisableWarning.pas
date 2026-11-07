@@ -22,8 +22,8 @@ uses
 type
   TAtlasIdeDisableWarning = class
   public const
-    ClientCommand = 'atlas.disableWarning';
-    ProjectCommand = 'atlas.disableWarningProject';
+    cClientCommand = 'atlas.disableWarning';
+    cProjectCommand = 'atlas.disableWarningProject';
   public
     /// <summary>atlas.disableWarning; ASession: laufende Sitzung oder nil; AMessage: Zeile für die
     /// Meldungsansicht.</summary>
@@ -139,7 +139,7 @@ function SwitchOff(const ABase: IOTABuildConfiguration; const AProject: IOTAProj
 begin
   Result := False;
   try
-    ABase.SetValue(ARequest.OptionName, AtlasWarningOptionOff);
+    ABase.SetValue(ARequest.OptionName, cAtlasWarningOptionOff);
     AProject.MarkModified;
     Result := True;
   except

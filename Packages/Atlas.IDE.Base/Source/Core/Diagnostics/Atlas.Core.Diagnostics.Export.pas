@@ -16,9 +16,9 @@ uses
 type
   TAtlasDiagnosticExport = record
   public const
-    DefaultDays = 7;
-    PreviewLines = 400;
-    InfoFileName = 'atlas-info.txt';
+    cDefaultDays = 7;
+    cPreviewLines = 400;
+    cInfoFileName = 'atlas-info.txt';
   public
     /// <summary>Ordner des Servers: %LOCALAPPDATA%\Atlas\Logs\Diagnose.</summary>
     class function DefaultFolder: string; static;
@@ -89,7 +89,7 @@ begin
   end;
   if ADays <= 0 then
   begin
-    ADays := DefaultDays;
+    ADays := cDefaultDays;
   end;
   mLimit := IncDay(ANow, -ADays);
   mList := TList<string>.Create;
@@ -110,7 +110,7 @@ end;
 
 class function TAtlasDiagnosticExport.Preview(const AFiles: TArray<string>): string;
 begin
-  Result := Preview(AFiles, PreviewLines);
+  Result := Preview(AFiles, cPreviewLines);
 end;
 
 class function TAtlasDiagnosticExport.Preview(const AFiles: TArray<string>; AMaxLines: Integer): string;
@@ -160,7 +160,7 @@ end;
 
 class function TAtlasDiagnosticExport.Preview(const AFiles: TArray<string>; const AInfo: string): string;
 begin
-  Result := '== ' + InfoFileName + ' ==' + sLineBreak + AInfo + Preview(AFiles);
+  Result := '== ' + cInfoFileName + ' ==' + sLineBreak + AInfo + Preview(AFiles);
 end;
 
 class procedure TAtlasDiagnosticExport.WriteZip(const AFiles: TArray<string>; const ATarget: string);
@@ -185,7 +185,7 @@ begin
     begin
       mContent := TBytesStream.Create(TEncoding.UTF8.GetBytes(AInfo));
       try
-        mZip.Add(mContent, InfoFileName);
+        mZip.Add(mContent, cInfoFileName);
       finally
         mContent.Free;
       end;
