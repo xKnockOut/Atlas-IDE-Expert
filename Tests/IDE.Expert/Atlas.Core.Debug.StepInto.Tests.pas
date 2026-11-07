@@ -45,7 +45,7 @@ uses
   System.JSON;
 
 const
-  Answer =
+  cAnswer =
     '{"format":1,"line":61,"followLine":62,"calls":[' +
     '{"name":"GetName","container":"TKunde","kind":"getter","text":"Kunde.Name","receiver":"Kunde",' +
     '"receiverSimple":true,"virtual":false,"declFile":"C:\\P\\Kunden.pas","declLine":9,' +
@@ -65,22 +65,22 @@ end;
 
 procedure TCoreDebugStepIntoTests.Load(const AJson: string);
 var
-  Json: TJSONValue;
+  mJson: TJSONValue;
 begin
-  Json := TJSONObject.ParseJSONValue(AJson);
+  mJson := TJSONObject.ParseJSONValue(AJson);
   try
-    Assert.IsTrue(TAtlasStepInto.ReadAnswer(Json, FAnswer));
+    Assert.IsTrue(TAtlasStepInto.ReadAnswer(mJson, FAnswer));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TCoreDebugStepIntoTests.ReadsAnswer;
 var
-  Json: TJSONValue;
-  Other: TAtlasStepAnswer;
+  mJson: TJSONValue;
+  mOther: TAtlasStepAnswer;
 begin
-  Load(Answer);
+  Load(cAnswer);
   Assert.AreEqual(61, FAnswer.Line);
   Assert.AreEqual(62, FAnswer.FollowLine);
   Assert.AreEqual(4, Integer(Length(FAnswer.Calls)));
@@ -89,75 +89,75 @@ begin
   Assert.IsTrue(FAnswer.Calls[2].IsVirtual);
   Assert.AreEqual(2, Integer(Length(FAnswer.Calls[2].Targets)));
   Assert.AreEqual('C:\P\Stamm.pas', FAnswer.Calls[2].Targets[1].FileName);
-  Json := TJSONObject.ParseJSONValue('{"format":2}');
+  mJson := TJSONObject.ParseJSONValue('{"format":2}');
   try
-    Assert.IsFalse(TAtlasStepInto.ReadAnswer(Json, Other));
+    Assert.IsFalse(TAtlasStepInto.ReadAnswer(mJson, mOther));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TCoreDebugStepIntoTests.RowsInOrderWithLocations;
 var
-  Rows: TArray<TAtlasStepRow>;
+  mRows: TArray<TAtlasStepRow>;
 begin
-  Load(Answer);
-  Rows := TAtlasStepInto.Rows(FAnswer, nil, nil);
+  Load(cAnswer);
+  mRows := TAtlasStepInto.Rows(FAnswer, nil, nil);
   // Speichere ohne Auswertung: beide Überschreibungen.
-  Assert.AreEqual(5, Integer(Length(Rows)));
-  Assert.AreEqual('TKunde.GetName', Rows[0].Caption);
-  Assert.AreEqual('Kunden.pas:27', Rows[0].Location);
-  Assert.IsTrue(Rows[0].Available);
-  Assert.AreEqual('Format', Rows[1].Caption);
-  Assert.AreEqual('', Rows[1].Location);
-  Assert.AreEqual('TKunde.Speichere', Rows[2].Caption);
-  Assert.AreEqual('Kunden.TStammkunde.Speichere', Rows[3].Caption);
-  Assert.AreEqual('Stamm.pas:13', Rows[3].Location);
-  Assert.IsTrue(Rows[3].Candidate);
-  Assert.AreEqual('TKunde.Create', Rows[4].Caption);
+  Assert.AreEqual(5, Integer(Length(mRows)));
+  Assert.AreEqual('TKunde.GetName', mRows[0].Caption);
+  Assert.AreEqual('Kunden.pas:27', mRows[0].Location);
+  Assert.IsTrue(mRows[0].Available);
+  Assert.AreEqual('Format', mRows[1].Caption);
+  Assert.AreEqual('', mRows[1].Location);
+  Assert.AreEqual('TKunde.Speichere', mRows[2].Caption);
+  Assert.AreEqual('Kunden.TStammkunde.Speichere', mRows[3].Caption);
+  Assert.AreEqual('Stamm.pas:13', mRows[3].Location);
+  Assert.IsTrue(mRows[3].Candidate);
+  Assert.AreEqual('TKunde.Create', mRows[4].Caption);
 end;
 
 procedure TCoreDebugStepIntoTests.LibraryAndMissingSourceUnavailable;
 var
-  Rows: TArray<TAtlasStepRow>;
+  mRows: TArray<TAtlasStepRow>;
 begin
-  Load(Answer);
-  Rows := TAtlasStepInto.Rows(FAnswer, nil,
+  Load(cAnswer);
+  mRows := TAtlasStepInto.Rows(FAnswer, nil,
     function(const AFileName: string): Boolean
     begin
       Result := not TAtlasStepInto.IsLibraryFile(AFileName, 'C:\RAD');
     end);
-  Assert.AreEqual(Ord(TAtlasStepUnavailable.NoSource), Ord(Rows[1].Unavailable));
-  Assert.IsFalse(Rows[1].Available);
-  Assert.AreEqual(Ord(TAtlasStepUnavailable.Library_), Ord(Rows[4].Unavailable));
-  Assert.IsFalse(Rows[4].Available);
-  Assert.IsTrue(Rows[0].Available);
+  Assert.AreEqual(Ord(TAtlasStepUnavailable.NoSource), Ord(mRows[1].Unavailable));
+  Assert.IsFalse(mRows[1].Available);
+  Assert.AreEqual(Ord(TAtlasStepUnavailable.Library_), Ord(mRows[4].Unavailable));
+  Assert.IsFalse(mRows[4].Available);
+  Assert.IsTrue(mRows[0].Available);
 end;
 
 procedure TCoreDebugStepIntoTests.VirtualPicksRuntimeClass;
 var
-  Rows: TArray<TAtlasStepRow>;
-  Asked: string;
+  mRows: TArray<TAtlasStepRow>;
+  mAsked: string;
 begin
-  Load(Answer);
-  Rows := TAtlasStepInto.Rows(FAnswer,
+  Load(cAnswer);
+  mRows := TAtlasStepInto.Rows(FAnswer,
     function(const AExpression: string; out AValue: string): Boolean
     begin
-      Asked := Asked + AExpression + ';';
+      mAsked := mAsked + AExpression + ';';
       AValue := '''TStammkunde''';
       Result := True;
     end, nil);
-  Assert.AreEqual(4, Integer(Length(Rows)));
-  Assert.AreEqual('Kunden.TStammkunde.Speichere', Rows[2].Caption);
-  Assert.IsFalse(Rows[2].Candidate);
-  Assert.AreEqual('Kunde.ClassName;', Asked);
+  Assert.AreEqual(4, Integer(Length(mRows)));
+  Assert.AreEqual('Kunden.TStammkunde.Speichere', mRows[2].Caption);
+  Assert.IsFalse(mRows[2].Candidate);
+  Assert.AreEqual('Kunde.ClassName;', mAsked);
 end;
 
 procedure TCoreDebugStepIntoTests.VirtualWalksClassParent;
 var
-  Target: TAtlasStepTarget;
+  mTarget: TAtlasStepTarget;
 begin
-  Load(Answer);
+  Load(cAnswer);
   // Laufzeittyp TSonderkunde ohne eigene Überschreibung, Vorfahr TStammkunde.
   Assert.IsTrue(TAtlasStepInto.PickTarget(FAnswer.Calls[2],
     function(const AExpression: string; out AValue: string): Boolean
@@ -175,77 +175,77 @@ begin
       begin
         Result := False;
       end;
-    end, Target));
-  Assert.AreEqual('C:\P\Stamm.pas', Target.FileName);
+    end, mTarget));
+  Assert.AreEqual('C:\P\Stamm.pas', mTarget.FileName);
 end;
 
 procedure TCoreDebugStepIntoTests.VirtualUnknownOffersAllOverrides;
 var
-  Target: TAtlasStepTarget;
-  Call: TAtlasStepCall;
+  mTarget: TAtlasStepTarget;
+  mCall: TAtlasStepCall;
 begin
-  Load(Answer);
+  Load(cAnswer);
   Assert.IsFalse(TAtlasStepInto.PickTarget(FAnswer.Calls[2],
     function(const AExpression: string; out AValue: string): Boolean
     begin
       Result := False;
-    end, Target));
+    end, mTarget));
   // Bis TObject ohne Treffer.
   Assert.IsFalse(TAtlasStepInto.PickTarget(FAnswer.Calls[2],
     function(const AExpression: string; out AValue: string): Boolean
     begin
       AValue := 'TObject';
       Result := True;
-    end, Target));
+    end, mTarget));
   // Empfänger mit Aufrufen wird nicht ausgewertet.
-  Call := FAnswer.Calls[2];
-  Call.ReceiverSimple := False;
-  Assert.AreEqual('', TAtlasStepInto.ClassExpression(Call, 0));
+  mCall := FAnswer.Calls[2];
+  mCall.ReceiverSimple := False;
+  Assert.AreEqual('', TAtlasStepInto.ClassExpression(mCall, 0));
 end;
 
 procedure TCoreDebugStepIntoTests.InterfaceReceiverCastToObject;
 var
-  Call: TAtlasStepCall;
+  mCall: TAtlasStepCall;
 begin
-  Call := Default(TAtlasStepCall);
-  Call.Receiver := 'Drucker';
-  Call.ReceiverSimple := True;
-  Call.ReceiverInterface := True;
-  Assert.AreEqual('(Drucker as TObject).ClassName', TAtlasStepInto.ClassExpression(Call, 0));
+  mCall := Default(TAtlasStepCall);
+  mCall.Receiver := 'Drucker';
+  mCall.ReceiverSimple := True;
+  mCall.ReceiverInterface := True;
+  Assert.AreEqual('(Drucker as TObject).ClassName', TAtlasStepInto.ClassExpression(mCall, 0));
   Assert.AreEqual('(Drucker as TObject).ClassParent.ClassParent.ClassName',
-    TAtlasStepInto.ClassExpression(Call, 2));
+    TAtlasStepInto.ClassExpression(mCall, 2));
 end;
 
 procedure TCoreDebugStepIntoTests.DigitsAndNavigation;
 var
-  Rows: TArray<TAtlasStepRow>;
+  mRows: TArray<TAtlasStepRow>;
 begin
-  Load(Answer);
-  Rows := TAtlasStepInto.Rows(FAnswer, nil, nil);
-  Assert.AreEqual(0, TAtlasStepInto.DigitRow(Rows, 1));
+  Load(cAnswer);
+  mRows := TAtlasStepInto.Rows(FAnswer, nil, nil);
+  Assert.AreEqual(0, TAtlasStepInto.DigitRow(mRows, 1));
   // Format ohne Quelltext: Ziffer 2 wählt nichts.
-  Assert.AreEqual(-1, TAtlasStepInto.DigitRow(Rows, 2));
-  Assert.AreEqual(2, TAtlasStepInto.DigitRow(Rows, 3));
-  Assert.AreEqual(-1, TAtlasStepInto.DigitRow(Rows, 9));
-  Assert.AreEqual(-1, TAtlasStepInto.DigitRow(Rows, 0));
-  Assert.AreEqual(2, TAtlasStepInto.NextAvailable(Rows, 1, 1));
-  Assert.AreEqual(0, TAtlasStepInto.NextAvailable(Rows, 1, -1));
-  Assert.AreEqual(-1, TAtlasStepInto.NextAvailable(Rows, 5, 1));
+  Assert.AreEqual(-1, TAtlasStepInto.DigitRow(mRows, 2));
+  Assert.AreEqual(2, TAtlasStepInto.DigitRow(mRows, 3));
+  Assert.AreEqual(-1, TAtlasStepInto.DigitRow(mRows, 9));
+  Assert.AreEqual(-1, TAtlasStepInto.DigitRow(mRows, 0));
+  Assert.AreEqual(2, TAtlasStepInto.NextAvailable(mRows, 1, 1));
+  Assert.AreEqual(0, TAtlasStepInto.NextAvailable(mRows, 1, -1));
+  Assert.AreEqual(-1, TAtlasStepInto.NextAvailable(mRows, 5, 1));
 end;
 
 procedure TCoreDebugStepIntoTests.SingleCallActsLikeStepInto;
 var
-  Rows: TArray<TAtlasStepRow>;
+  mRows: TArray<TAtlasStepRow>;
 begin
   Load('{"format":1,"line":3,"followLine":4,"calls":[{"name":"Tu","kind":"call","targets":[]}]}');
-  Rows := TAtlasStepInto.Rows(FAnswer, nil, nil);
-  Assert.IsTrue(TAtlasStepInto.ActsLikeStepInto(Rows));
+  mRows := TAtlasStepInto.Rows(FAnswer, nil, nil);
+  Assert.IsTrue(TAtlasStepInto.ActsLikeStepInto(mRows));
   Load('{"format":1,"line":3,"followLine":4,"calls":[]}');
-  Rows := TAtlasStepInto.Rows(FAnswer, nil, nil);
-  Assert.IsTrue(TAtlasStepInto.ActsLikeStepInto(Rows));
-  Load(Answer);
-  Rows := TAtlasStepInto.Rows(FAnswer, nil, nil);
-  Assert.IsFalse(TAtlasStepInto.ActsLikeStepInto(Rows));
+  mRows := TAtlasStepInto.Rows(FAnswer, nil, nil);
+  Assert.IsTrue(TAtlasStepInto.ActsLikeStepInto(mRows));
+  Load(cAnswer);
+  mRows := TAtlasStepInto.Rows(FAnswer, nil, nil);
+  Assert.IsFalse(TAtlasStepInto.ActsLikeStepInto(mRows));
 end;
 
 procedure TCoreDebugStepIntoTests.ArgumentsAndHelpers;
