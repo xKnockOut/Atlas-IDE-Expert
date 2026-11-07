@@ -63,9 +63,9 @@ uses
   Atlas.Core.BuildPipeline.ReleaseGuard;
 
 const
-  DefaultChecks = 'debugDefine,debugInfo=off,stackFrames=off,assertions=off,rangeChecks=off,overflowChecks=off,' +
+  cDefaultChecks = 'debugDefine,debugInfo=off,stackFrames=off,assertions=off,rangeChecks=off,overflowChecks=off,' +
     'memoryLeaks,versionInfo,outputFolder';
-  CleanSource = 'program Kasse;'#13#10#13#10'uses'#13#10'  Vcl.Forms;'#13#10#13#10'begin'#13#10 +
+  cCleanSource = 'program Kasse;'#13#10#13#10'uses'#13#10'  Vcl.Forms;'#13#10#13#10'begin'#13#10 +
     '  Application.Initialize;'#13#10'  Application.Run;'#13#10'end.'#13#10;
 
 function Settings(const AGate, AChecks: string): TAtlasReleaseSettings;
@@ -91,22 +91,22 @@ begin
   Result.HasDebugConfiguration := True;
   Result.DebugOutputFolder := '.\$(Platform)\$(Config)';
   Result.SourceFile := 'C:\P\Kasse.dpr';
-  Result.Source := CleanSource;
+  Result.Source := cCleanSource;
   Result.LastVersion := '1.1.0.0';
 end;
 
 function Issues(const AFindings: TAtlasReleaseFindings): string;
 var
-  Item: TAtlasReleaseFinding;
+  mItem: TAtlasReleaseFinding;
 begin
   Result := '';
-  for Item in AFindings do
+  for mItem in AFindings do
   begin
     if Result <> '' then
     begin
       Result := Result + ',';
     end;
-    Result := Result + TAtlasReleaseGuard.OptionNames[Item.Issue];
+    Result := Result + TAtlasReleaseGuard.cOptionNames[mItem.Issue];
   end;
 end;
 
@@ -121,21 +121,21 @@ end;
 
 procedure TAtlasReleaseGuardTests.ChecksTextDefaultsAndParse;
 var
-  Checks: TAtlasReleaseChecks;
+  mChecks: TAtlasReleaseChecks;
 begin
-  Assert.AreEqual(DefaultChecks, TAtlasReleaseChecks.Defaults.ToText);
-  Assert.AreEqual(DefaultChecks, TAtlasReleaseChecks.Normalized(''));
-  Checks := TAtlasReleaseChecks.Parse(' -Assertions ; rangeChecks=on, unbekannt, -memoryLeaks, debugInfo=true');
-  Assert.IsFalse(Checks.Items[TAtlasReleaseCheck.Assertions].Enabled);
-  Assert.IsTrue(Checks.Items[TAtlasReleaseCheck.RangeChecks].Enabled);
-  Assert.IsTrue(Checks.Items[TAtlasReleaseCheck.RangeChecks].Expected);
-  Assert.IsTrue(Checks.Items[TAtlasReleaseCheck.DebugInfo].Expected);
-  Assert.IsFalse(Checks.Items[TAtlasReleaseCheck.MemoryLeaks].Enabled);
-  Assert.IsTrue(Checks.Items[TAtlasReleaseCheck.VersionInfo].Enabled, 'fehlende Namen mit Vorgabe');
+  Assert.AreEqual(cDefaultChecks, TAtlasReleaseChecks.Defaults.ToText);
+  Assert.AreEqual(cDefaultChecks, TAtlasReleaseChecks.Normalized(''));
+  mChecks := TAtlasReleaseChecks.Parse(' -Assertions ; rangeChecks=on, unbekannt, -memoryLeaks, debugInfo=true');
+  Assert.IsFalse(mChecks.Items[TAtlasReleaseCheck.Assertions].Enabled);
+  Assert.IsTrue(mChecks.Items[TAtlasReleaseCheck.RangeChecks].Enabled);
+  Assert.IsTrue(mChecks.Items[TAtlasReleaseCheck.RangeChecks].Expected);
+  Assert.IsTrue(mChecks.Items[TAtlasReleaseCheck.DebugInfo].Expected);
+  Assert.IsFalse(mChecks.Items[TAtlasReleaseCheck.MemoryLeaks].Enabled);
+  Assert.IsTrue(mChecks.Items[TAtlasReleaseCheck.VersionInfo].Enabled, 'fehlende Namen mit Vorgabe');
   Assert.AreEqual('debugDefine,debugInfo=on,stackFrames=off,-assertions=off,rangeChecks=on,overflowChecks=off,' +
-    '-memoryLeaks,versionInfo,outputFolder', Checks.ToText);
+    '-memoryLeaks,versionInfo,outputFolder', mChecks.ToText);
   // Sollwert bleibt auch bei einer abgeschalteten Prüfung erhalten.
-  Assert.AreEqual(Checks.ToText, TAtlasReleaseChecks.Normalized(Checks.ToText));
+  Assert.AreEqual(mChecks.ToText, TAtlasReleaseChecks.Normalized(mChecks.ToText));
   Assert.IsTrue(TAtlasBuildPipelineSettings.GateOf(' BLOCK ') = TAtlasBuildGate.Block);
   Assert.IsTrue(TAtlasBuildPipelineSettings.GateOf('warn') = TAtlasBuildGate.Warn);
   Assert.IsTrue(TAtlasBuildPipelineSettings.GateOf('irgendwas') = TAtlasBuildGate.Off);
@@ -143,108 +143,108 @@ end;
 
 procedure TAtlasReleaseGuardTests.ReleaseConfigurations;
 var
-  Value: TAtlasReleaseSettings;
+  mValue: TAtlasReleaseSettings;
 begin
-  Value := TAtlasReleaseSettings.Create(True, 'off', 'Ship; staging, Ship', DefaultChecks);
-  Assert.AreEqual(2, Integer(Length(Value.Configurations)));
-  Assert.IsTrue(Value.IsRelease('Release'), 'Release gilt immer');
-  Assert.IsTrue(Value.IsRelease('release'));
-  Assert.IsTrue(Value.IsRelease('SHIP'));
-  Assert.IsTrue(Value.IsRelease('Staging'));
-  Assert.IsFalse(Value.IsRelease('Debug'));
-  Assert.IsFalse(Value.IsRelease(''));
+  mValue := TAtlasReleaseSettings.Create(True, 'off', 'Ship; staging, Ship', cDefaultChecks);
+  Assert.AreEqual(2, Integer(Length(mValue.Configurations)));
+  Assert.IsTrue(mValue.IsRelease('Release'), 'Release gilt immer');
+  Assert.IsTrue(mValue.IsRelease('release'));
+  Assert.IsTrue(mValue.IsRelease('SHIP'));
+  Assert.IsTrue(mValue.IsRelease('Staging'));
+  Assert.IsFalse(mValue.IsRelease('Debug'));
+  Assert.IsFalse(mValue.IsRelease(''));
   Assert.AreEqual('Release, Ship', TAtlasBuildPipelineSettings.NormalizedConfigurations('["Release", "Ship"]'));
   Assert.AreEqual('Release', TAtlasBuildPipelineSettings.NormalizedConfigurations(' Release ,, release'));
 end;
 
 procedure TAtlasReleaseGuardTests.AppliesOnlyToReleaseBuilds;
 var
-  Value: TAtlasReleaseSettings;
-  Info: TAtlasCompileProject;
+  mValue: TAtlasReleaseSettings;
+  mInfo: TAtlasCompileProject;
 begin
-  Value := Settings('off', DefaultChecks);
-  Assert.IsTrue(TAtlasReleaseGuard.Applies(Value, Project('Release', TAtlasCompileKind.Build)));
-  Assert.IsTrue(TAtlasReleaseGuard.Applies(Value, Project('Release', TAtlasCompileKind.Make)));
-  Assert.IsFalse(TAtlasReleaseGuard.Applies(Value, Project('Debug', TAtlasCompileKind.Build)), 'Debug-Build');
-  Assert.IsFalse(TAtlasReleaseGuard.Applies(Value, Project('Release', TAtlasCompileKind.Check)), 'Syntaxprüfung');
-  Assert.IsFalse(TAtlasReleaseGuard.Applies(Value, Project('Release', TAtlasCompileKind.Clean)), 'Clean');
-  Info := Project('Release', TAtlasCompileKind.Make);
-  Info.Background := True;
-  Assert.IsFalse(TAtlasReleaseGuard.Applies(Value, Info), 'Hintergrundprüfung #548');
-  Info.Background := False;
-  Info.RequestedBy := 'mcp';
-  Assert.IsTrue(TAtlasReleaseGuard.Applies(Value, Info), 'Auftrag #261/#764');
-  Value.Enabled := False;
-  Assert.IsFalse(TAtlasReleaseGuard.Applies(Value, Project('Release', TAtlasCompileKind.Build)), 'abgeschaltet');
+  mValue := Settings('off', cDefaultChecks);
+  Assert.IsTrue(TAtlasReleaseGuard.Applies(mValue, Project('Release', TAtlasCompileKind.Build)));
+  Assert.IsTrue(TAtlasReleaseGuard.Applies(mValue, Project('Release', TAtlasCompileKind.Make)));
+  Assert.IsFalse(TAtlasReleaseGuard.Applies(mValue, Project('Debug', TAtlasCompileKind.Build)), 'Debug-Build');
+  Assert.IsFalse(TAtlasReleaseGuard.Applies(mValue, Project('Release', TAtlasCompileKind.Check)), 'Syntaxprüfung');
+  Assert.IsFalse(TAtlasReleaseGuard.Applies(mValue, Project('Release', TAtlasCompileKind.Clean)), 'Clean');
+  mInfo := Project('Release', TAtlasCompileKind.Make);
+  mInfo.Background := True;
+  Assert.IsFalse(TAtlasReleaseGuard.Applies(mValue, mInfo), 'Hintergrundprüfung #548');
+  mInfo.Background := False;
+  mInfo.RequestedBy := 'mcp';
+  Assert.IsTrue(TAtlasReleaseGuard.Applies(mValue, mInfo), 'Auftrag #261/#764');
+  mValue.Enabled := False;
+  Assert.IsFalse(TAtlasReleaseGuard.Applies(mValue, Project('Release', TAtlasCompileKind.Build)), 'abgeschaltet');
 end;
 
 procedure TAtlasReleaseGuardTests.CleanReleaseHasNoFindings;
 begin
-  Assert.AreEqual('', Issues(TAtlasReleaseGuard.Evaluate(Settings('block', DefaultChecks), GoodOptions)));
+  Assert.AreEqual('', Issues(TAtlasReleaseGuard.Evaluate(Settings('block', cDefaultChecks), GoodOptions)));
 end;
 
 procedure TAtlasReleaseGuardTests.DebugDefineReported;
 var
-  Options: TAtlasReleaseOptions;
-  Findings: TAtlasReleaseFindings;
+  mOptions: TAtlasReleaseOptions;
+  mFindings: TAtlasReleaseFindings;
 begin
-  Options := GoodOptions;
-  Options.Defines := ['RELEASE', 'debug', 'USE_LOG'];
-  Findings := TAtlasReleaseGuard.Evaluate(Settings('off', DefaultChecks), Options);
-  Assert.AreEqual('DCC_Define', Issues(Findings));
-  Assert.AreEqual('DEBUG', Findings[0].Value);
-  Assert.AreEqual('release-debug-define', TAtlasReleaseGuard.RuleIds[Findings[0].Check]);
+  mOptions := GoodOptions;
+  mOptions.Defines := ['RELEASE', 'debug', 'USE_LOG'];
+  mFindings := TAtlasReleaseGuard.Evaluate(Settings('off', cDefaultChecks), mOptions);
+  Assert.AreEqual('DCC_Define', Issues(mFindings));
+  Assert.AreEqual('DEBUG', mFindings[0].Value);
+  Assert.AreEqual('release-debug-define', TAtlasReleaseGuard.cRuleIds[mFindings[0].Check]);
 end;
 
 procedure TAtlasReleaseGuardTests.DisabledCheckReportsNothing;
 var
-  Options: TAtlasReleaseOptions;
+  mOptions: TAtlasReleaseOptions;
 begin
-  Options := GoodOptions;
-  Options.Defines := ['DEBUG'];
-  Options.Assertions := 'true';
+  mOptions := GoodOptions;
+  mOptions.Defines := ['DEBUG'];
+  mOptions.Assertions := 'true';
   Assert.AreEqual('DCC_AssertionsAtRuntime', Issues(TAtlasReleaseGuard.Evaluate(
-    Settings('block', '-debugDefine'), Options)));
-  Assert.AreEqual('', Issues(TAtlasReleaseGuard.Evaluate(Settings('block', '-debugDefine,-assertions'), Options)));
+    Settings('block', '-debugDefine'), mOptions)));
+  Assert.AreEqual('', Issues(TAtlasReleaseGuard.Evaluate(Settings('block', '-debugDefine,-assertions'), mOptions)));
 end;
 
 procedure TAtlasReleaseGuardTests.CompilerOptionsAgainstTargets;
 var
-  Options: TAtlasReleaseOptions;
+  mOptions: TAtlasReleaseOptions;
 begin
-  Options := GoodOptions;
-  Options.DebugInformation := '2';
-  Options.DebugInfoInExe := 'true';
-  Options.StackFrames := 'true';
-  Options.Assertions := 'true';
-  Options.RangeChecks := 'true';
-  Options.OverflowChecks := 'true';
+  mOptions := GoodOptions;
+  mOptions.DebugInformation := '2';
+  mOptions.DebugInfoInExe := 'true';
+  mOptions.StackFrames := 'true';
+  mOptions.Assertions := 'true';
+  mOptions.RangeChecks := 'true';
+  mOptions.OverflowChecks := 'true';
   Assert.AreEqual('DCC_DebugInformation,DCC_DebugInfoInExe,DCC_GenerateStackFrames,DCC_AssertionsAtRuntime,' +
-    'DCC_RangeChecking,DCC_IntegerOverflowCheck', Issues(TAtlasReleaseGuard.Evaluate(Settings('off', DefaultChecks),
-    Options)));
+    'DCC_RangeChecking,DCC_IntegerOverflowCheck', Issues(TAtlasReleaseGuard.Evaluate(Settings('off', cDefaultChecks),
+    mOptions)));
   // Sollwert an: Bereichs- und Überlaufprüfung erwünscht, Debug-Informationen auch (dann zählt das Linken nicht).
   Assert.AreEqual('DCC_GenerateStackFrames,DCC_AssertionsAtRuntime', Issues(TAtlasReleaseGuard.Evaluate(
-    Settings('off', 'debugInfo=on,rangeChecks=on,overflowChecks=on'), Options)));
-  Options := GoodOptions;
+    Settings('off', 'debugInfo=on,rangeChecks=on,overflowChecks=on'), mOptions)));
+  mOptions := GoodOptions;
   Assert.AreEqual('DCC_RangeChecking,DCC_IntegerOverflowCheck', Issues(TAtlasReleaseGuard.Evaluate(
-    Settings('off', 'rangeChecks=on,overflowChecks=on'), Options)), 'Soll an, Option aus');
-  Options.DebugInformation := '1';
-  Assert.AreEqual('DCC_DebugInformation', Issues(TAtlasReleaseGuard.Evaluate(Settings('off', DefaultChecks),
-    Options)), 'begrenzte Debug-Informationen zählen als an');
+    Settings('off', 'rangeChecks=on,overflowChecks=on'), mOptions)), 'Soll an, Option aus');
+  mOptions.DebugInformation := '1';
+  Assert.AreEqual('DCC_DebugInformation', Issues(TAtlasReleaseGuard.Evaluate(Settings('off', cDefaultChecks),
+    mOptions)), 'begrenzte Debug-Informationen zählen als an');
 end;
 
 procedure TAtlasReleaseGuardTests.MissingOptionsUseCompilerDefaults;
 var
-  Options: TAtlasReleaseOptions;
+  mOptions: TAtlasReleaseOptions;
 begin
-  Options := GoodOptions;
-  Options.DebugInformation := '';
-  Options.DebugInfoInExe := '';
-  Options.StackFrames := '';
-  Options.Assertions := '';
+  mOptions := GoodOptions;
+  mOptions.DebugInformation := '';
+  mOptions.DebugInfoInExe := '';
+  mOptions.StackFrames := '';
+  mOptions.Assertions := '';
   // $D+ und $C+ sind Vorgabe des Compilers, $W-, $R-, $Q- ebenso.
   Assert.AreEqual('DCC_DebugInformation,DCC_AssertionsAtRuntime',
-    Issues(TAtlasReleaseGuard.Evaluate(Settings('off', DefaultChecks), Options)));
+    Issues(TAtlasReleaseGuard.Evaluate(Settings('off', cDefaultChecks), mOptions)));
   Assert.IsTrue(TAtlasReleaseGuard.IsOn('True', False));
   Assert.IsFalse(TAtlasReleaseGuard.IsOn('0', True));
   Assert.IsTrue(TAtlasReleaseGuard.IsOn('$(Unbekannt)', True));
@@ -252,8 +252,8 @@ end;
 
 procedure TAtlasReleaseGuardTests.LeakReportOutsideDebugBlock;
 var
-  Options: TAtlasReleaseOptions;
-  Findings: TAtlasReleaseFindings;
+  mOptions: TAtlasReleaseOptions;
+  mFindings: TAtlasReleaseFindings;
 begin
   Assert.AreEqual(3, TAtlasReleaseGuard.LeakReportLine(
     'program Kasse;'#13#10'begin'#13#10'  ReportMemoryLeaksOnShutdown := True;'#13#10'end.'));
@@ -264,17 +264,17 @@ begin
     'begin'#10'{$IFDEF DEBUG}'#10'  X := 1;'#10'{$ENDIF}'#10'  ReportMemoryLeaksOnShutdown := True;'#10'end.'));
   Assert.AreEqual(4, TAtlasReleaseGuard.LeakReportLine(
     'begin'#10'{$IFDEF DEBUG}'#10'{$ELSE}'#10'  ReportMemoryLeaksOnShutdown := True;'#10'{$ENDIF}'#10'end.'));
-  Options := GoodOptions;
-  Options.Source := 'begin'#13#10'  ReportMemoryLeaksOnShutdown := True;'#13#10'end.';
-  Findings := TAtlasReleaseGuard.Evaluate(Settings('off', DefaultChecks), Options);
-  Assert.AreEqual('ReportMemoryLeaksOnShutdown', Issues(Findings));
-  Assert.AreEqual('C:\P\Kasse.dpr', Findings[0].FileName);
-  Assert.AreEqual(2, Findings[0].Line);
+  mOptions := GoodOptions;
+  mOptions.Source := 'begin'#13#10'  ReportMemoryLeaksOnShutdown := True;'#13#10'end.';
+  mFindings := TAtlasReleaseGuard.Evaluate(Settings('off', cDefaultChecks), mOptions);
+  Assert.AreEqual('ReportMemoryLeaksOnShutdown', Issues(mFindings));
+  Assert.AreEqual('C:\P\Kasse.dpr', mFindings[0].FileName);
+  Assert.AreEqual(2, mFindings[0].Line);
 end;
 
 procedure TAtlasReleaseGuardTests.LeakReportGuardedOrHarmless;
 begin
-  Assert.AreEqual(0, TAtlasReleaseGuard.LeakReportLine(CleanSource));
+  Assert.AreEqual(0, TAtlasReleaseGuard.LeakReportLine(cCleanSource));
   Assert.AreEqual(0, TAtlasReleaseGuard.LeakReportLine(
     'begin'#10'  {$IFDEF DEBUG}'#10'  ReportMemoryLeaksOnShutdown := True;'#10'  {$ENDIF}'#10'end.'));
   Assert.AreEqual(0, TAtlasReleaseGuard.LeakReportLine(
@@ -293,70 +293,70 @@ end;
 
 procedure TAtlasReleaseGuardTests.VersionMissingOrUnchanged;
 var
-  Options: TAtlasReleaseOptions;
-  Findings: TAtlasReleaseFindings;
+  mOptions: TAtlasReleaseOptions;
+  mFindings: TAtlasReleaseFindings;
 begin
-  Options := GoodOptions;
-  Assert.AreEqual('1.2.0.0', TAtlasReleaseGuard.VersionOf(Options));
-  Options.IncludeVersionInfo := 'false';
-  Assert.AreEqual('', TAtlasReleaseGuard.VersionOf(Options));
-  Assert.AreEqual('VerInfo_IncludeVerInfo', Issues(TAtlasReleaseGuard.Evaluate(Settings('off', DefaultChecks),
-    Options)), 'fehlende Versionsinformationen');
-  Options := GoodOptions;
-  Options.LastVersion := '1.2.0.0';
-  Findings := TAtlasReleaseGuard.Evaluate(Settings('off', DefaultChecks), Options);
-  Assert.AreEqual('VerInfo_Keys', Issues(Findings), 'gleiche Version wie beim letzten Release-Build');
-  Assert.AreEqual('1.2.0.0', Findings[0].Value);
-  Options.AutoIncrementVersion := 'true';
-  Assert.AreEqual('', Issues(TAtlasReleaseGuard.Evaluate(Settings('off', DefaultChecks), Options)),
+  mOptions := GoodOptions;
+  Assert.AreEqual('1.2.0.0', TAtlasReleaseGuard.VersionOf(mOptions));
+  mOptions.IncludeVersionInfo := 'false';
+  Assert.AreEqual('', TAtlasReleaseGuard.VersionOf(mOptions));
+  Assert.AreEqual('VerInfo_IncludeVerInfo', Issues(TAtlasReleaseGuard.Evaluate(Settings('off', cDefaultChecks),
+    mOptions)), 'fehlende Versionsinformationen');
+  mOptions := GoodOptions;
+  mOptions.LastVersion := '1.2.0.0';
+  mFindings := TAtlasReleaseGuard.Evaluate(Settings('off', cDefaultChecks), mOptions);
+  Assert.AreEqual('VerInfo_Keys', Issues(mFindings), 'gleiche Version wie beim letzten Release-Build');
+  Assert.AreEqual('1.2.0.0', mFindings[0].Value);
+  mOptions.AutoIncrementVersion := 'true';
+  Assert.AreEqual('', Issues(TAtlasReleaseGuard.Evaluate(Settings('off', cDefaultChecks), mOptions)),
     'Build-Nummer automatisch erhöht');
   // Ohne FileVersion bzw. mit Makro: Einzelwerte, fehlende mit Vorgabe 1.0.0.0.
-  Options := GoodOptions;
-  Options.VersionKeys := 'FileVersion=$(MajorVer).$(MinorVer)';
-  Options.MinorVersion := '4';
-  Options.BuildVersion := '17';
-  Assert.AreEqual('1.4.0.17', TAtlasReleaseGuard.VersionOf(Options));
-  Options.VersionKeys := 'FileVersion=0.0.0.0';
-  Assert.AreEqual('VerInfo_IncludeVerInfo', Issues(TAtlasReleaseGuard.Evaluate(Settings('off', DefaultChecks),
-    Options)), 'Version 0.0.0.0 gilt als fehlend');
+  mOptions := GoodOptions;
+  mOptions.VersionKeys := 'FileVersion=$(MajorVer).$(MinorVer)';
+  mOptions.MinorVersion := '4';
+  mOptions.BuildVersion := '17';
+  Assert.AreEqual('1.4.0.17', TAtlasReleaseGuard.VersionOf(mOptions));
+  mOptions.VersionKeys := 'FileVersion=0.0.0.0';
+  Assert.AreEqual('VerInfo_IncludeVerInfo', Issues(TAtlasReleaseGuard.Evaluate(Settings('off', cDefaultChecks),
+    mOptions)), 'Version 0.0.0.0 gilt als fehlend');
 end;
 
 procedure TAtlasReleaseGuardTests.OutputFolderSameAsDebug;
 var
-  Options: TAtlasReleaseOptions;
-  Findings: TAtlasReleaseFindings;
+  mOptions: TAtlasReleaseOptions;
+  mFindings: TAtlasReleaseFindings;
 begin
   Assert.AreEqual('Win64\Release', TAtlasReleaseGuard.ResolveFolder('.\$(platform)\$(CONFIG)\', 'Release', 'Win64'));
   Assert.AreEqual('.', TAtlasReleaseGuard.ResolveFolder(' .\ ', 'Release', 'Win64'));
-  Options := GoodOptions;
-  Options.OutputFolder := 'Bin\$(Platform)';
-  Options.DebugOutputFolder := '.\bin\Win64\';
-  Findings := TAtlasReleaseGuard.Evaluate(Settings('off', DefaultChecks), Options);
-  Assert.AreEqual('DCC_ExeOutput', Issues(Findings));
-  Assert.AreEqual('Bin\Win64', Findings[0].Value);
-  Options.OutputFolder := '';
-  Options.DebugOutputFolder := '';
-  Assert.AreEqual('DCC_ExeOutput', Issues(TAtlasReleaseGuard.Evaluate(Settings('off', DefaultChecks), Options)),
+  mOptions := GoodOptions;
+  mOptions.OutputFolder := 'Bin\$(Platform)';
+  mOptions.DebugOutputFolder := '.\bin\Win64\';
+  mFindings := TAtlasReleaseGuard.Evaluate(Settings('off', cDefaultChecks), mOptions);
+  Assert.AreEqual('DCC_ExeOutput', Issues(mFindings));
+  Assert.AreEqual('Bin\Win64', mFindings[0].Value);
+  mOptions.OutputFolder := '';
+  mOptions.DebugOutputFolder := '';
+  Assert.AreEqual('DCC_ExeOutput', Issues(TAtlasReleaseGuard.Evaluate(Settings('off', cDefaultChecks), mOptions)),
     'beide im Projektordner');
-  Options.HasDebugConfiguration := False;
-  Assert.AreEqual('', Issues(TAtlasReleaseGuard.Evaluate(Settings('off', DefaultChecks), Options)),
+  mOptions.HasDebugConfiguration := False;
+  Assert.AreEqual('', Issues(TAtlasReleaseGuard.Evaluate(Settings('off', cDefaultChecks), mOptions)),
     'ohne Konfiguration Debug');
 end;
 
 procedure TAtlasReleaseGuardTests.PackagesSkipSourceAndOutput;
 var
-  Options: TAtlasReleaseOptions;
+  mOptions: TAtlasReleaseOptions;
 begin
-  Options := GoodOptions;
-  Options.IsPackage := True;
-  Options.Source := 'package P;'#10'begin ReportMemoryLeaksOnShutdown := True; end.';
-  Options.OutputFolder := '';
-  Options.DebugOutputFolder := '';
-  Assert.AreEqual('', Issues(TAtlasReleaseGuard.Evaluate(Settings('off', DefaultChecks), Options)));
+  mOptions := GoodOptions;
+  mOptions.IsPackage := True;
+  mOptions.Source := 'package P;'#10'begin ReportMemoryLeaksOnShutdown := True; end.';
+  mOptions.OutputFolder := '';
+  mOptions.DebugOutputFolder := '';
+  Assert.AreEqual('', Issues(TAtlasReleaseGuard.Evaluate(Settings('off', cDefaultChecks), mOptions)));
 end;
 
 const
-  OutcomeNames: array[TAtlasReleaseOutcome] of string = ('passed', 'reported', 'blocked', 'overridden');
+  cOutcomeNames: array[TAtlasReleaseOutcome] of string = ('passed', 'reported', 'blocked', 'overridden');
 
 type
   TGuardRun = class
@@ -380,7 +380,7 @@ begin
   Result.Add(TAtlasReleaseGuardParticipant.Create(
     function: TAtlasReleaseSettings
     begin
-      Result := Settings(Gate, DefaultChecks);
+      Result := Settings(Gate, cDefaultChecks);
     end,
     function(const AProject: TAtlasCompileProject; out AOptions: TAtlasReleaseOptions): Boolean
     begin
@@ -391,7 +391,7 @@ begin
     function(const AOptions: TAtlasReleaseOptions; const AFindings: TAtlasReleaseFindings;
       AOutcome: TAtlasReleaseOutcome): string
     begin
-      Reported := Reported + OutcomeNames[AOutcome] + ':' + Issues(AFindings) + ' ';
+      Reported := Reported + cOutcomeNames[AOutcome] + ':' + Issues(AFindings) + ' ';
       Result := Format('%d Verstöße', [Length(AFindings)]);
     end,
     procedure(const AOptions: TAtlasReleaseOptions; const AVersion: string)
@@ -406,128 +406,128 @@ end;
 
 procedure TAtlasReleaseGuardTests.GateBlocksBuild;
 var
-  Run: TGuardRun;
-  Events: TAtlasCompileEvents;
-  Reason: string;
+  mRun: TGuardRun;
+  mEvents: TAtlasCompileEvents;
+  mReason: string;
 begin
-  Run := TGuardRun.Create;
+  mRun := TGuardRun.Create;
   try
-    Run.Options := GoodOptions;
-    Run.Options.Defines := ['DEBUG'];
-    Run.Gate := 'block';
-    Events := Run.Make;
+    mRun.Options := GoodOptions;
+    mRun.Options.Defines := ['DEBUG'];
+    mRun.Gate := 'block';
+    mEvents := mRun.Make;
     try
-      Assert.IsTrue(Events.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, Reason),
+      Assert.IsTrue(mEvents.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, mReason),
         'block: der Build startet nicht');
-      Assert.AreEqual('Kasse.dproj: 1 Verstöße', Reason);
-      Assert.AreEqual('blocked:DCC_Define ', Run.Reported);
-      Run.Reported := '';
-      Run.Gate := 'warn';
-      Run.Clock := 60000;
-      Assert.IsFalse(Events.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, Reason));
-      Run.Gate := 'off';
-      Assert.IsFalse(Events.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, Reason));
-      Assert.AreEqual('reported:DCC_Define reported:DCC_Define ', Run.Reported, 'warn und off melden nur');
+      Assert.AreEqual('Kasse.dproj: 1 Verstöße', mReason);
+      Assert.AreEqual('blocked:DCC_Define ', mRun.Reported);
+      mRun.Reported := '';
+      mRun.Gate := 'warn';
+      mRun.Clock := 60000;
+      Assert.IsFalse(mEvents.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, mReason));
+      mRun.Gate := 'off';
+      Assert.IsFalse(mEvents.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, mReason));
+      Assert.AreEqual('reported:DCC_Define reported:DCC_Define ', mRun.Reported, 'warn und off melden nur');
     finally
-      Events.Free;
+      mEvents.Free;
     end;
   finally
-    Run.Free;
+    mRun.Free;
   end;
 end;
 
 procedure TAtlasReleaseGuardTests.SecondBuildWithinOverrideRuns;
 var
-  Run: TGuardRun;
-  Events: TAtlasCompileEvents;
-  Reason: string;
+  mRun: TGuardRun;
+  mEvents: TAtlasCompileEvents;
+  mReason: string;
 begin
-  Run := TGuardRun.Create;
+  mRun := TGuardRun.Create;
   try
-    Run.Options := GoodOptions;
-    Run.Options.Defines := ['DEBUG'];
-    Run.Gate := 'block';
-    Run.Clock := 1000;
-    Events := Run.Make;
+    mRun.Options := GoodOptions;
+    mRun.Options.Defines := ['DEBUG'];
+    mRun.Gate := 'block';
+    mRun.Clock := 1000;
+    mEvents := mRun.Make;
     try
-      Assert.IsTrue(Events.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, Reason));
-      Run.Clock := 1000 + TAtlasReleaseGuard.OverrideMs;
-      Assert.IsFalse(Events.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, Reason),
+      Assert.IsTrue(mEvents.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, mReason));
+      mRun.Clock := 1000 + TAtlasReleaseGuard.cOverrideMs;
+      Assert.IsFalse(mEvents.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, mReason),
         'zweiter Build binnen 10 s');
       // Danach gilt wieder block, ebenso nach Ablauf der Frist oder mit anderen Verstößen.
-      Assert.IsTrue(Events.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, Reason));
-      Run.Clock := Run.Clock + TAtlasReleaseGuard.OverrideMs + 1;
-      Assert.IsTrue(Events.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, Reason), 'Frist um');
-      Run.Options.Assertions := 'true';
-      Assert.IsTrue(Events.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, Reason),
+      Assert.IsTrue(mEvents.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, mReason));
+      mRun.Clock := mRun.Clock + TAtlasReleaseGuard.cOverrideMs + 1;
+      Assert.IsTrue(mEvents.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, mReason), 'Frist um');
+      mRun.Options.Assertions := 'true';
+      Assert.IsTrue(mEvents.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, mReason),
         'andere Verstöße');
       Assert.AreEqual('blocked:DCC_Define overridden:DCC_Define blocked:DCC_Define blocked:DCC_Define ' +
-        'blocked:DCC_Define,DCC_AssertionsAtRuntime ', Run.Reported);
+        'blocked:DCC_Define,DCC_AssertionsAtRuntime ', mRun.Reported);
     finally
-      Events.Free;
+      mEvents.Free;
     end;
   finally
-    Run.Free;
+    mRun.Free;
   end;
 end;
 
 procedure TAtlasReleaseGuardTests.RemembersVersionAfterSuccess;
 var
-  Run: TGuardRun;
-  Events: TAtlasCompileEvents;
-  Reason: string;
+  mRun: TGuardRun;
+  mEvents: TAtlasCompileEvents;
+  mReason: string;
 begin
-  Run := TGuardRun.Create;
+  mRun := TGuardRun.Create;
   try
-    Run.Options := GoodOptions;
-    Run.Gate := 'block';
-    Events := Run.Make;
+    mRun.Options := GoodOptions;
+    mRun.Gate := 'block';
+    mEvents := mRun.Make;
     try
-      Assert.IsFalse(Events.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, Reason));
-      Events.ProjectStarted(Project('Release', TAtlasCompileKind.Build));
-      Events.ProjectFinished('C:\P\Kasse.dproj', False);
-      Assert.AreEqual('', Run.Remembered, 'fehlgeschlagener Build');
-      Assert.IsFalse(Events.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, Reason));
-      Events.ProjectStarted(Project('Release', TAtlasCompileKind.Build));
-      Events.ProjectFinished('C:\P\Kasse.dproj', True);
-      Assert.AreEqual('Release/Win64=1.2.0.0 ', Run.Remembered);
-      Assert.AreEqual('passed: passed: ', Run.Reported);
+      Assert.IsFalse(mEvents.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, mReason));
+      mEvents.ProjectStarted(Project('Release', TAtlasCompileKind.Build));
+      mEvents.ProjectFinished('C:\P\Kasse.dproj', False);
+      Assert.AreEqual('', mRun.Remembered, 'fehlgeschlagener Build');
+      Assert.IsFalse(mEvents.BeforeCompile(Project('Release', TAtlasCompileKind.Build), False, mReason));
+      mEvents.ProjectStarted(Project('Release', TAtlasCompileKind.Build));
+      mEvents.ProjectFinished('C:\P\Kasse.dproj', True);
+      Assert.AreEqual('Release/Win64=1.2.0.0 ', mRun.Remembered);
+      Assert.AreEqual('passed: passed: ', mRun.Reported);
     finally
-      Events.Free;
+      mEvents.Free;
     end;
   finally
-    Run.Free;
+    mRun.Free;
   end;
 end;
 
 procedure TAtlasReleaseGuardTests.DebugBuildIsNotRead;
 var
-  Run: TGuardRun;
-  Events: TAtlasCompileEvents;
-  Reason: string;
+  mRun: TGuardRun;
+  mEvents: TAtlasCompileEvents;
+  mReason: string;
 begin
-  Run := TGuardRun.Create;
+  mRun := TGuardRun.Create;
   try
-    Run.Options := GoodOptions;
-    Run.Options.Defines := ['DEBUG'];
-    Run.Gate := 'block';
-    Events := Run.Make;
+    mRun.Options := GoodOptions;
+    mRun.Options.Defines := ['DEBUG'];
+    mRun.Gate := 'block';
+    mEvents := mRun.Make;
     try
-      Assert.IsFalse(Events.BeforeCompile(Project('Debug', TAtlasCompileKind.Build), False, Reason));
-      Events.ProjectStarted(Project('Debug', TAtlasCompileKind.Build));
-      Events.ProjectFinished('C:\P\Kasse.dproj', True);
+      Assert.IsFalse(mEvents.BeforeCompile(Project('Debug', TAtlasCompileKind.Build), False, mReason));
+      mEvents.ProjectStarted(Project('Debug', TAtlasCompileKind.Build));
+      mEvents.ProjectFinished('C:\P\Kasse.dproj', True);
       // Hintergrundprüfung (#548): Events.Background gilt schon vor dem Compile.
-      Events.Background := True;
-      Assert.IsFalse(Events.BeforeCompile(Project('Release', TAtlasCompileKind.Make), False, Reason));
-      Events.Background := False;
-      Assert.AreEqual(0, Run.Reads, 'keine Optionen gelesen');
-      Assert.AreEqual('', Run.Reported);
-      Assert.AreEqual('', Run.Remembered);
+      mEvents.Background := True;
+      Assert.IsFalse(mEvents.BeforeCompile(Project('Release', TAtlasCompileKind.Make), False, mReason));
+      mEvents.Background := False;
+      Assert.AreEqual(0, mRun.Reads, 'keine Optionen gelesen');
+      Assert.AreEqual('', mRun.Reported);
+      Assert.AreEqual('', mRun.Remembered);
     finally
-      Events.Free;
+      mEvents.Free;
     end;
   finally
-    Run.Free;
+    mRun.Free;
   end;
 end;
 
