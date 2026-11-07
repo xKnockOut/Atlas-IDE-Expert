@@ -39,121 +39,121 @@ uses
 
 function Group(const AMessages: IOTAMessageServices; ACreate: Boolean): IOTAMessageGroup;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchGroup);
-  Result := AMessages.GetGroup(Name);
+  mName := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchGroup);
+  Result := AMessages.GetGroup(mName);
   if (Result = nil) and ACreate then
   begin
-    Result := AMessages.AddMessageGroup(Name);
+    Result := AMessages.AddMessageGroup(mName);
   end;
 end;
 
 class procedure TAtlasIdeSearchMessages.Show(const AFileName, ATitle: string;
   const AEntries: TArray<TAtlasSearchEntry>; ATotal: Integer);
 var
-  Messages: IOTAMessageServices;
-  Target: IOTAMessageGroup;
-  Entry: TAtlasSearchEntry;
-  Prefix: string;
-  LineRef: Pointer;
+  mMessages: IOTAMessageServices;
+  mTarget: IOTAMessageGroup;
+  mEntry: TAtlasSearchEntry;
+  mPrefix: string;
+  mLineRef: Pointer;
 begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     Exit;
   end;
-  Target := Group(Messages, True);
-  if Target = nil then
+  mTarget := Group(mMessages, True);
+  if mTarget = nil then
   begin
     Exit;
   end;
-  Messages.ClearMessageGroup(Target);
-  Messages.AddTitleMessage(ATitle, Target);
-  Prefix := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchGroup);
-  for Entry in AEntries do
+  mMessages.ClearMessageGroup(mTarget);
+  mMessages.AddTitleMessage(ATitle, mTarget);
+  mPrefix := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchGroup);
+  for mEntry in AEntries do
   begin
-    Messages.AddToolMessage(AFileName, Entry.Text, Prefix, Entry.Line, Entry.Column, nil, LineRef, Target);
+    mMessages.AddToolMessage(AFileName, mEntry.Text, mPrefix, mEntry.Line, mEntry.Column, nil, mLineRef, mTarget);
   end;
   if ATotal > Length(AEntries) then
   begin
-    Messages.AddTitleMessage(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchListMore, [ATotal - Length(AEntries)]),
-      Target);
+    mMessages.AddTitleMessage(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchListMore, [ATotal - Length(AEntries)]),
+      mTarget);
   end;
-  Messages.ShowMessageView(Target);
+  mMessages.ShowMessageView(mTarget);
 end;
 
 class procedure TAtlasIdeSearchMessages.Start(const ATitle: string);
 var
-  Messages: IOTAMessageServices;
-  Target: IOTAMessageGroup;
+  mMessages: IOTAMessageServices;
+  mTarget: IOTAMessageGroup;
 begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     Exit;
   end;
-  Target := Group(Messages, True);
-  if Target = nil then
+  mTarget := Group(mMessages, True);
+  if mTarget = nil then
   begin
     Exit;
   end;
-  Messages.ClearMessageGroup(Target);
-  Messages.AddTitleMessage(ATitle, Target);
-  Messages.ShowMessageView(Target);
+  mMessages.ClearMessageGroup(mTarget);
+  mMessages.AddTitleMessage(ATitle, mTarget);
+  mMessages.ShowMessageView(mTarget);
 end;
 
 class procedure TAtlasIdeSearchMessages.AddFile(const AFileName: string; const AEntries: TArray<TAtlasSearchEntry>);
 var
-  Messages: IOTAMessageServices;
-  Target: IOTAMessageGroup;
-  Entry: TAtlasSearchEntry;
-  Prefix: string;
-  LineRef: Pointer;
+  mMessages: IOTAMessageServices;
+  mTarget: IOTAMessageGroup;
+  mEntry: TAtlasSearchEntry;
+  mPrefix: string;
+  mLineRef: Pointer;
 begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     Exit;
   end;
-  Target := Group(Messages, True);
-  if Target = nil then
+  mTarget := Group(mMessages, True);
+  if mTarget = nil then
   begin
     Exit;
   end;
-  Prefix := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchGroup);
-  for Entry in AEntries do
+  mPrefix := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchGroup);
+  for mEntry in AEntries do
   begin
-    Messages.AddToolMessage(AFileName, Entry.Text, Prefix, Entry.Line, Entry.Column, nil, LineRef, Target);
+    mMessages.AddToolMessage(AFileName, mEntry.Text, mPrefix, mEntry.Line, mEntry.Column, nil, mLineRef, mTarget);
   end;
 end;
 
 class procedure TAtlasIdeSearchMessages.AddTitle(const AText: string);
 var
-  Messages: IOTAMessageServices;
-  Target: IOTAMessageGroup;
+  mMessages: IOTAMessageServices;
+  mTarget: IOTAMessageGroup;
 begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     Exit;
   end;
-  Target := Group(Messages, True);
-  if Target <> nil then
+  mTarget := Group(mMessages, True);
+  if mTarget <> nil then
   begin
-    Messages.AddTitleMessage(AText, Target);
+    mMessages.AddTitleMessage(AText, mTarget);
   end;
 end;
 
 class procedure TAtlasIdeSearchMessages.Clear;
 var
-  Messages: IOTAMessageServices;
-  Target: IOTAMessageGroup;
+  mMessages: IOTAMessageServices;
+  mTarget: IOTAMessageGroup;
 begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     Exit;
   end;
-  Target := Group(Messages, False);
-  if Target <> nil then
+  mTarget := Group(mMessages, False);
+  if mTarget <> nil then
   begin
-    Messages.RemoveMessageGroup(Target);
+    mMessages.RemoveMessageGroup(mTarget);
   end;
 end;
 
