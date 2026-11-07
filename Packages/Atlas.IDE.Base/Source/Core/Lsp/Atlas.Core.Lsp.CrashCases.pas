@@ -414,7 +414,8 @@ begin
     end;
     if ACase.ExceptionClass <> '' then
     begin
-      mLines.Append(UiText(TCrashCasesText.Exception)).Append(ACase.ExceptionClass).Append('`: ').Append(ACase.ExceptionMessage)
+      mLines.Append(UiText(TCrashCasesText.Exception)).Append(ACase.ExceptionClass).Append('`: ')
+        .Append(ACase.ExceptionMessage)
         .Append(sLineBreak);
     end;
     if ACase.Version <> '' then

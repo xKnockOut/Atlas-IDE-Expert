@@ -488,7 +488,8 @@ begin
     Canvas.Brush.Color := ToColor(Colors.Selection);
     Canvas.Pen.Color := ToColor(Colors.Selection);
     mRadius := Scale(4);
-    Canvas.RoundRect(mArea.Left + Scale(1), mArea.Top + Scale(2), mArea.Right - Scale(1), mArea.Bottom - Scale(2), mRadius,
+    Canvas.RoundRect(mArea.Left + Scale(1), mArea.Top + Scale(2), mArea.Right - Scale(1), mArea.Bottom - Scale(2),
+      mRadius,
       mRadius);
   end;
   DrawSeparator(mArea.Left, cSeparator);

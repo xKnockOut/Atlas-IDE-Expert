@@ -10,8 +10,10 @@ interface
 type
   TAtlasHoverDeclaration = class
   public
-    /// <summary>Typ aus der Deklaration im Hover: „var Kunden: TObjectList&lt;TKunde&gt;“ → „TObjectList&lt;TKunde&gt;“,
-    /// „property Items: TList&lt;Integer&gt; read FItems“ → „TList&lt;Integer&gt;“, „function F(A: Integer): TPoint“ → „TPoint“;
+    /// <summary>Typ aus der Deklaration im Hover: „var Kunden: TObjectList&lt;TKunde&gt;“ →
+    /// „TObjectList&lt;TKunde&gt;“,
+    /// „property Items: TList&lt;Integer&gt; read FItems“ → „TList&lt;Integer&gt;“, „function F(A: Integer): TPoint“ →
+    /// „TPoint“;
     /// '' ohne Typ.</summary>
     class function DeclaredType(const ADeclaration: string): string; static;
   end;

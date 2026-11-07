@@ -227,7 +227,8 @@ type
     ExpressionTypeConversions: Boolean;
     /// <summary>Wert konstanter Ausdrücke im Tooltip zeigen (#689).</summary>
     ExpressionTypeConstValue: Boolean;
-    /// <summary>Modul-Schalter designer.enabled (#1454): Designer-Werkzeuge; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// <summary>Modul-Schalter designer.enabled (#1454): Designer-Werkzeuge; aus = die wirksamen Werte aller
+    /// Einstellungen des Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     DesignerEnabled: Boolean;
     /// <summary>Vorgaben.</summary>
@@ -274,7 +275,8 @@ type
     NavHistory: Boolean;
     /// <summary>Definition und Referenzen einblenden (#505, peek.enabled).</summary>
     Peek: Boolean;
-    /// <summary>Höhe des Peek-Fensters in Editorzeilen (#505, peek.heightLines), MinPeekLines bis MaxPeekLines.</summary>
+    /// <summary>Höhe des Peek-Fensters in Editorzeilen (#505, peek.heightLines), MinPeekLines bis
+    /// MaxPeekLines.</summary>
     PeekHeightLines: Integer;
     /// <summary>Bei Routinen auch die Implementierung zeigen (#505, peek.showImplementation).</summary>
     PeekShowImplementation: Boolean;
@@ -289,7 +291,8 @@ type
     /// <summary>Vorgabe der Tiefe der Auswirkungsanalyse (#1120, navigation.impactDepth), MinImpactDepth bis
     /// MaxImpactDepth.</summary>
     ImpactDepth: Integer;
-    /// <summary>„Woher kommt der Wert?“ und „Wohin geht der Wert?“ im Ergebnisfenster (#690, navigation.dataFlow).</summary>
+    /// <summary>„Woher kommt der Wert?“ und „Wohin geht der Wert?“ im Ergebnisfenster (#690,
+    /// navigation.dataFlow).</summary>
     DataFlow: Boolean;
     /// <summary>Größte Tiefe beim Aufklappen (#690, navigation.dataFlow.maxDepth), MinDataFlowDepth bis
     /// MaxDataFlowDepth.</summary>
@@ -304,7 +307,8 @@ type
     OutlineFollowCursor: Boolean;
     /// <summary>Bedingung des aktiven {$IFDEF}-Zweigs hinter dem Eintrag (#845, outline.conditions).</summary>
     OutlineConditions: Boolean;
-    /// <summary>Modul-Schalter search.enabled (#1454): Suche (Atlas-Suche, Unitsuche, Abfragen); aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// <summary>Modul-Schalter search.enabled (#1454): Suche (Atlas-Suche, Unitsuche, Abfragen); aus = die wirksamen
+    /// Werte aller Einstellungen des Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     SearchEnabled: Boolean;
     /// <summary>Vorgaben.</summary>
@@ -319,13 +323,17 @@ type
   TAtlasPluginUnitSearchSettings = record
     /// <summary>Hauptschalter für das Fenster „Units suchen“ (#777, unitSearch.enabled); Vorgabe an.</summary>
     UnitSearchEnabled: Boolean;
-    /// <summary>Strg+F12 und Ansicht › Units öffnen das Atlas-Fenster statt des IDE-Dialogs (#777, unitSearch.replaceIdeDialog); Vorgabe an.</summary>
+    /// <summary>Strg+F12 und Ansicht › Units öffnen das Atlas-Fenster statt des IDE-Dialogs (#777,
+    /// unitSearch.replaceIdeDialog); Vorgabe an.</summary>
     UnitSearchReplaceIdeDialog: Boolean;
-    /// <summary>Alt+F11 und Datei › Unit verwenden öffnen das Atlas-Fenster im Modus „Unit verwenden“ (#786, unitSearch.replaceUseUnitDialog); Vorgabe an.</summary>
+    /// <summary>Alt+F11 und Datei › Unit verwenden öffnen das Atlas-Fenster im Modus „Unit verwenden“ (#786,
+    /// unitSearch.replaceUseUnitDialog); Vorgabe an.</summary>
     UnitSearchReplaceUseUnitDialog: Boolean;
-    /// <summary>Umschalt+F12 und Ansicht › Formulare öffnen das Atlas-Fenster mit Filter Formulare (#786, unitSearch.replaceFormsDialog); Vorgabe an.</summary>
+    /// <summary>Umschalt+F12 und Ansicht › Formulare öffnen das Atlas-Fenster mit Filter Formulare (#786,
+    /// unitSearch.replaceFormsDialog); Vorgabe an.</summary>
     UnitSearchReplaceFormsDialog: Boolean;
-    /// <summary>Eingeklappte Gruppen je Projektgruppe merken (#777, unitSearch.rememberCollapsed); Vorgabe an.</summary>
+    /// <summary>Eingeklappte Gruppen je Projektgruppe merken (#777, unitSearch.rememberCollapsed); Vorgabe
+    /// an.</summary>
     UnitSearchRememberCollapsed: Boolean;
     /// <summary>Chipzeile mit Herkunft und Art (#777, unitSearch.filters); Vorgabe an.</summary>
     UnitSearchFilters: Boolean;

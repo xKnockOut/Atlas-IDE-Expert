@@ -162,7 +162,8 @@ type
     /// <summary>Wie oben mit AKeepOrder = False.</summary>
     class function Order(const ACommands: TArray<TAtlasCommand>; const APattern: string;
       AHistory: TAtlasCommandHistory): TArray<Integer>; overload; static;
-    /// <summary>Beschriftung ohne Kürzelzeichen: "&amp;Datei" → "Datei", "&amp;&amp;" → "&amp;", "..." am Ende weg.</summary>
+    /// <summary>Beschriftung ohne Kürzelzeichen: "&amp;Datei" → "Datei", "&amp;&amp;" → "&amp;", "..." am Ende
+    /// weg.</summary>
     class function CleanCaption(const ACaption: string): string; static;
   end;
 

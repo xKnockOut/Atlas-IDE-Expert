@@ -42,7 +42,8 @@ type
     /// <summary>Vorhandene IDE-Lesezeichen 1–9 übernehmen und dort entfernen (#1104, bookmarks.quick.importIde).
     /// </summary>
     QuickBookmarksImportIde: Boolean;
-    /// <summary>Modul-Schalter bookmarks.enabled (#1454): Lesezeichen und Notizen; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// <summary>Modul-Schalter bookmarks.enabled (#1454): Lesezeichen und Notizen; aus = die wirksamen Werte aller
+    /// Einstellungen des Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     BookmarksEnabled: Boolean;
     /// <summary>Vorgaben.</summary>

@@ -834,7 +834,8 @@ begin
   FLastFile := AFileName;
 end;
 
-function TAtlasProblemsController.OtherPulls(ASession: TLspSession; const AFileName: string): TArray<TAtlasProblemsSync.TPull>;
+function TAtlasProblemsController.OtherPulls(ASession: TLspSession;
+  const AFileName: string): TArray<TAtlasProblemsSync.TPull>;
 var
   mOther, mOtherText: string;
   mPull: TPull;
@@ -1099,7 +1100,8 @@ begin
   end;
 end;
 
-function TAtlasProblemsController.ProblemsAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
+function TAtlasProblemsController.ProblemsAt(const AFileName: string; ALine,
+  ACharacter: Integer): TArray<TAtlasProblem>;
 var
   mProblem: TAtlasProblem;
   mUnused: Integer;

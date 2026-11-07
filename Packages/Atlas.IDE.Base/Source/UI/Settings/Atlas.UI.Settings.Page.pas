@@ -376,7 +376,8 @@ end;
 procedure TAtlasSettingsPage.RefreshMarks;
 begin
   Part<TAtlasSettingsTransferPart>.ShowModified;
-  FExperimentalBanner.Visible := FMarks.HasExperimental and not Part<TAtlasSettingsGeneralPart>.ExperimentalEnabled.Checked;
+  FExperimentalBanner.Visible := FMarks.HasExperimental and
+    not Part<TAtlasSettingsGeneralPart>.ExperimentalEnabled.Checked;
   UpdateLocks;
   // Geänderte Werte ändern sich mit jeder Eingabe; der Filter folgt, auch im Baum.
   if FMarks.Filter = sfModified then

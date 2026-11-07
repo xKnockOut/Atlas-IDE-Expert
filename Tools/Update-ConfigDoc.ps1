@@ -1015,33 +1015,41 @@ function Pascal-Lines([string] $Name, [string] $Source) {
     return $Result
 }
 # Eingebettete Texte (Schemata): mehrere Zeilen je Element, damit die Unit kurz bleibt (metric-unit-length);
-# je Element eine Zeile mit höchstens 990 Bytes in UTF-8 (Delphi bricht ab 1024 ab, F2069), Teile höchstens 200 Zeichen.
+# je Element höchstens 990 Bytes in UTF-8 (Delphi bricht ab 1024 ab, F2069), Teile höchstens 90 Zeichen,
+# jede Zeile der Unit höchstens 120 Zeichen (line-length).
 function Pascal-Chunks([string] $Name, [string] $Source) {
     $Lines = $Source.TrimStart([char]0xFEFF).Replace("`r`n", "`n").TrimEnd("`n").Split("`n")
-    $Elements = New-Object System.Collections.Generic.List[string]
-    $Current = ''
+    $Elements = New-Object System.Collections.Generic.List[object]
+    $Current = New-Object System.Collections.Generic.List[string]
     $CurrentSize = 0
     foreach ($Line in $Lines) {
         $Tokens = @()
-        for ($At = 0; $At -lt $Line.Length; $At += 200) {
-            $Tokens += "'" + $Line.Substring($At, [Math]::Min(200, $Line.Length - $At)).Replace("'", "''") + "'"
+        for ($At = 0; $At -lt $Line.Length; $At += 90) {
+            $Tokens += "'" + $Line.Substring($At, [Math]::Min(90, $Line.Length - $At)).Replace("'", "''") + "'"
         }
         $Tokens += '#10'
-        $Text = $Tokens -join ' + '
-        $Size = [Text.Encoding]::UTF8.GetByteCount($Text)
-        if ($Size -gt 990) {
-            if ($Current -ne '') { $Elements.Add($Current); $Current = ''; $CurrentSize = 0 }
-            $Elements.Add($Tokens -join " +`r`n      ")
-            continue
+        $Size = [Text.Encoding]::UTF8.GetByteCount($Tokens -join ' + ')
+        if (($Current.Count -gt 0) -and ($CurrentSize + 3 + $Size -gt 990)) {
+            $Elements.Add($Current.ToArray()); $Current.Clear(); $CurrentSize = 0
         }
-        if (($Current -ne '') -and ($CurrentSize + 3 + $Size -gt 990)) { $Elements.Add($Current); $Current = ''; $CurrentSize = 0 }
-        if ($Current -eq '') { $Current = $Text; $CurrentSize = $Size } else { $Current = $Current + ' + ' + $Text; $CurrentSize += 3 + $Size }
+        if ($Current.Count -gt 0) { $CurrentSize += 3 }
+        $Current.AddRange([string[]] $Tokens)
+        $CurrentSize += $Size
     }
-    if ($Current -ne '') { $Elements.Add($Current) }
+    if ($Current.Count -gt 0) { $Elements.Add($Current.ToArray()) }
     $Result = @("  $Name`: array[0..$($Elements.Count - 1)] of string = (")
     for ($Index = 0; $Index -lt $Elements.Count; $Index++) {
         $End = if ($Index -eq $Elements.Count - 1) { ');' } else { ',' }
-        $Result += '    ' + $Elements[$Index] + $End
+        $Tokens = $Elements[$Index]
+        $Row = '    ' + $Tokens[0]
+        for ($T = 1; $T -lt $Tokens.Count; $T++) {
+            if ($Row.Length + 3 + $Tokens[$T].Length + 2 -gt 120) {
+                $Result += $Row + ' +'
+                $Row = '      ' + $Tokens[$T]
+            }
+            else { $Row = $Row + ' + ' + $Tokens[$T] }
+        }
+        $Result += $Row + $End
     }
     return $Result
 }

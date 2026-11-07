@@ -31,7 +31,8 @@ type
     /// <summary>Warum es kein Gegenstück gibt; sonst ''.</summary>
     Reason: string;
     /// <summary>Aus der Antwort; AUriToPath macht aus URIs Dateinamen.</summary>
-    class function FromJson(const AValue: TJSONValue; const AUriToPath: TFunc<string, string>): TAtlasTestUnitInfo; static;
+    class function FromJson(const AValue: TJSONValue; const AUriToPath: TFunc<string, string>): TAtlasTestUnitInfo;
+      static;
     /// <summary>Was die Code Lens zeigt.</summary>
     function Lens: TAtlasTestUnitLens;
   end;

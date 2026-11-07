@@ -95,7 +95,8 @@ type
     /// <summary>Zeile an Pixel AY (geklemmt).</summary>
     class function LineAt(AY, ALineCount, AHeight: Integer): Integer; static;
     /// <summary>Balken in Zeichenreihenfolge (wichtigere zuletzt); jeder mindestens AMinHeight hoch.</summary>
-    class function Layout(const AMarks: TAtlasOverviewMarks; ALineCount, AHeight, AMinHeight: Integer): TAtlasOverviewBars;
+    class function Layout(const AMarks: TAtlasOverviewMarks; ALineCount, AHeight,
+      AMinHeight: Integer): TAtlasOverviewBars;
       static;
     /// <summary>Wichtigster Balken, der AY mit ATolerance Pixeln Spiel trifft; bei gleicher Art der nächste.</summary>
     class function Hit(const ABars: TAtlasOverviewBars; AY, ATolerance: Integer; out AMark: Integer): Boolean; static;
@@ -394,7 +395,8 @@ begin
   end;
   for mIndex := 0 to High(A) do
   begin
-    if (A[mIndex].Kind <> B[mIndex].Kind) or (A[mIndex].Line <> B[mIndex].Line) or (A[mIndex].Count <> B[mIndex].Count) or
+    if (A[mIndex].Kind <> B[mIndex].Kind) or (A[mIndex].Line <> B[mIndex].Line) or
+      (A[mIndex].Count <> B[mIndex].Count) or
       (A[mIndex].Text <> B[mIndex].Text) then
     begin
       Exit(False);

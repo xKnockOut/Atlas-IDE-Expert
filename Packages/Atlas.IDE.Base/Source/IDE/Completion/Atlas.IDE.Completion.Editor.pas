@@ -123,7 +123,8 @@ const
   /// <summary>Ruhe nach einem Wechsel der Auswahl, bevor die Details nachgefragt werden (#424).</summary>
   cDetailDelayMs = 80;
 
-/// <summary>Anzeige der XMLDoc im Panel (#654): hints aus settings.json meldet der Server, sonst die Optionen.</summary>
+/// <summary>Anzeige der XMLDoc im Panel (#654): hints aus settings.json meldet der Server, sonst die
+/// Optionen.</summary>
 function WithDisplay(const ADetails: TAtlasItemDetails): TAtlasItemDetails;
 begin
   Result := ADetails;

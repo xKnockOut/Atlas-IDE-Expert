@@ -237,7 +237,8 @@ const
   cBaseGap = 13;
   cBaseGear = 22;
   cMargin = 4;
-  /// <summary>Innenabstand je Feld; eigener Name, weil TControl.Padding in den Methoden die Konstante verdeckt.</summary>
+  /// <summary>Innenabstand je Feld; eigener Name, weil TControl.Padding in den Methoden die Konstante
+  /// verdeckt.</summary>
   cSlotPadding = 4;
   /// <summary>Kürzstufen: die Methode zuerst, die Zähler nie.</summary>
   cShrinkMethod = 1;
@@ -261,7 +262,8 @@ var
 begin
   Result := (string.Join(',', Items) = string.Join(',', AOther.Items)) and (StatusText = AOther.StatusText) and
     (StatusHint = AOther.StatusHint) and (StatusState = AOther.StatusState) and
-    (BadgeShown = AOther.BadgeShown) and (BadgeCount = AOther.BadgeCount) and (BadgeState = AOther.BadgeState) and (BadgeHint = AOther.BadgeHint) and
+    (BadgeShown = AOther.BadgeShown) and (BadgeCount = AOther.BadgeCount) and (BadgeState = AOther.BadgeState) and
+      (BadgeHint = AOther.BadgeHint) and
     (FindingsShown = AOther.FindingsShown) and (FindingsHint = AOther.FindingsHint) and
     (LiveText = AOther.LiveText) and (LiveHint = AOther.LiveHint) and (LiveBusy = AOther.LiveBusy) and
     (MethodFound = AOther.MethodFound) and (MethodName = AOther.MethodName) and
@@ -590,7 +592,8 @@ begin
   ASubs[High(ASubs)] := ASub;
 end;
 
-/// <summary>Status, Plakette (#1234, bei eingeschalteten Benachrichtigungen auch mit 0) und Zusatzfelder: Das Atlas-Feld der Statuszeile ist dann 0 breit und zeigt
+/// <summary>Status, Plakette (#1234, bei eingeschalteten Benachrichtigungen auch mit 0) und Zusatzfelder: Das
+/// Atlas-Feld der Statuszeile ist dann 0 breit und zeigt
 /// keine Zusatzfelder. Höchstens so viele Zusatzfelder, wie der Vorfahr Teile je Element unterscheidet.</summary>
 procedure AddStatus(const AView: TAtlasStatusBarView; var AParts: TArray<TAtlasStatusBarPart>;
   var ASubs: TArray<Integer>; ASlots: Integer);
@@ -715,7 +718,8 @@ begin
       Hot(Rect(mSpans[mIndex].Left - Bar.Scale(2), ARect.Top, mSpans[mIndex].Right - Bar.Scale(2), ARect.Bottom));
     end;
     mIcon := Rect(mSpans[mIndex].Left, mTop, mSpans[mIndex].Left + Measure.IconSize, mTop + Measure.IconSize);
-    TAtlasFindingIcon.Draw(Canvas, mIcon, cKinds[mIndex], Colors.Signals.Get(TAtlasFindingIcon.SignalOf(cKinds[mIndex])));
+    TAtlasFindingIcon.Draw(Canvas, mIcon, cKinds[mIndex],
+      Colors.Signals.Get(TAtlasFindingIcon.SignalOf(cKinds[mIndex])));
     mCount := Bar.FView.Counts[cKinds[mIndex]];
     Canvas.Font := Bar.Font;
     // Null gedämpft: Nichts zu tun.

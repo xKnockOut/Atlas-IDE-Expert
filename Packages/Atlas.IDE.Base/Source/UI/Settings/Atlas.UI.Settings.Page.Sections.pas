@@ -589,7 +589,8 @@ begin
   FWatchRegistration := AtlasModuleRegistry.Subscribe(FWatch);
 end;
 
-function TAtlasSettingsSectionsPart.CreateSection(const AProvider: IAtlasSettingsSectionProvider): IAtlasSettingsSection;
+function TAtlasSettingsSectionsPart.CreateSection(
+  const AProvider: IAtlasSettingsSectionProvider): IAtlasSettingsSection;
 begin
   Result := nil;
   try

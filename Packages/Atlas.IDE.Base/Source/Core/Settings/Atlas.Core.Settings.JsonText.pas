@@ -19,7 +19,8 @@ uses
 type
   TAtlasJsonText = class
   public
-    /// <summary>Kommentare durch Leerzeichen ersetzt, Kommas vor } und ] entfernt: für TJSONObject.ParseJSONValue.</summary>
+    /// <summary>Kommentare durch Leerzeichen ersetzt, Kommas vor } und ] entfernt: für
+    /// TJSONObject.ParseJSONValue.</summary>
     class function StripComments(const AText: string): string; static;
     /// <summary>Wurzelobjekt oder nil (leer oder ungültig); der Aufrufer gibt es frei.</summary>
     class function Parse(const AText: string): TJSONObject; static;
@@ -298,7 +299,8 @@ begin
 end;
 
 /// <summary>Verschachteltes Objekt für fehlende Glieder: "a": { "b": wert }.</summary>
-function Nested(const ASegments: TArray<string>; AFrom: Integer; const AJson, AIndent, AStep, ALineBreak: string): string;
+function Nested(const ASegments: TArray<string>; AFrom: Integer; const AJson, AIndent, AStep,
+  ALineBreak: string): string;
 begin
   if AFrom = High(ASegments) then
   begin

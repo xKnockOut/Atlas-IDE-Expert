@@ -74,11 +74,13 @@ type
   public
     constructor CreateDialog(AOwner: TComponent; const ACommands: TArray<TAtlasToolbarCommandInfo>;
       const AConfig: TAtlasToolbarConfig);
-    /// <summary>Beschriftung zur Kennung; '|' ist der Trennstrich, unbekannte Kennungen bleiben, wie sie sind.</summary>
+    /// <summary>Beschriftung zur Kennung; '|' ist der Trennstrich, unbekannte Kennungen bleiben, wie sie
+    /// sind.</summary>
     function CaptionOf(const AId: string): string;
     /// <summary>Linke Liste: Kennungen in Anzeigereihenfolge (Trennstrich zuerst, dann nach Beschriftung).</summary>
     function Available: TArray<string>;
-    /// <summary>Eintrag AAvailableIndex der linken Liste vor AIndex einfügen; liefert den neuen Index oder -1.</summary>
+    /// <summary>Eintrag AAvailableIndex der linken Liste vor AIndex einfügen; liefert den neuen Index oder
+    /// -1.</summary>
     function AddItem(AAvailableIndex, AIndex: Integer): Integer;
     function RemoveItem(AIndex: Integer): Boolean;
     function MoveItem(AIndex, ADelta: Integer): Integer;

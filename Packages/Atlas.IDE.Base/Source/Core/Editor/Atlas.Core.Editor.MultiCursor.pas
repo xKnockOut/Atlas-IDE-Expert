@@ -1197,7 +1197,8 @@ begin
   if Find(mLines, ACarets, TFindQuery.Create(mNeedle, mEL, mEC, AMatchCase, AWholeWord), mFoundLine,
     mFoundCharacter) then
   begin
-    AResult := ACarets + [TAtlasCaret.Range(mFoundLine, mFoundCharacter, mFoundLine, mFoundCharacter + Length(mNeedle))];
+    AResult := ACarets + [TAtlasCaret.Range(mFoundLine, mFoundCharacter, mFoundLine, mFoundCharacter +
+      Length(mNeedle))];
     Result := TAtlasOccurrence.Added;
   end;
 end;
@@ -1377,7 +1378,8 @@ begin
   begin
     mCaret := Result[mIndex];
     mNewIndex.Position(Moved(mOldIndex.Offset(mCaret.Line, mCaret.Character)), mLine, mCharacter);
-    mNewIndex.Position(Moved(mOldIndex.Offset(mCaret.AnchorLine, mCaret.AnchorCharacter)), mAnchorLine, mAnchorCharacter);
+    mNewIndex.Position(Moved(mOldIndex.Offset(mCaret.AnchorLine, mCaret.AnchorCharacter)), mAnchorLine,
+      mAnchorCharacter);
     mCaret.Line := mLine;
     mCaret.Character := mCharacter;
     mCaret.AnchorLine := mAnchorLine;

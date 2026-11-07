@@ -13,7 +13,8 @@ type
     class function IsIdentifierChar(AChar: Char): Boolean; static;
     /// <summary>Anfang des Bezeichners vor ACharacter (0-basiert, Zeichen vor dem Cursor).</summary>
     class function StartBefore(const ALine: string; ACharacter: Integer): Integer; static;
-    /// <summary>Ende des Bezeichners ab ACharacter (0-basiert, exklusiv); ACharacter, wenn dort keiner weitergeht.</summary>
+    /// <summary>Ende des Bezeichners ab ACharacter (0-basiert, exklusiv); ACharacter, wenn dort keiner
+    /// weitergeht.</summary>
     class function EndAfter(const ALine: string; ACharacter: Integer): Integer; static;
     /// <summary>Steht der Cursor (ACharacter Zeichen vor ihm) im ersten String-Argument von FieldByName,
     /// FindField oder ParamByName (#461)? Dort öffnet Atlas die Vervollständigung trotz String (#435).</summary>

@@ -374,7 +374,8 @@ begin
     mText := string.Join('+', mStep);
     mKey := TAtlasKeyMap.ParseShortCut(mText, mModifiers);
     // Ein zweiter Schritt darf eine einzelne Taste ohne Umschalttaste sein („Strg+K, D“).
-    if (mKey = 0) and (Length(mStep) = 1) and (Length(mStep[0]) = 1) and CharInSet(UpCase(mStep[0][1]), ['A'..'Z', '0'..'9'])
+    if (mKey = 0) and (Length(mStep) = 1) and (Length(mStep[0]) = 1) and
+      CharInSet(UpCase(mStep[0][1]), ['A'..'Z', '0'..'9'])
     then
     begin
       mKey := Ord(UpCase(mStep[0][1]));

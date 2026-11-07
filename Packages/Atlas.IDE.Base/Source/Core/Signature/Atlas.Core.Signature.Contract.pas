@@ -24,7 +24,8 @@ type
   end;
 
   TAtlasSignature = record
-    /// <summary>Ganze Signatur, z. B. "function Format(const Format: string; const Args: array of const): string".</summary>
+    /// <summary>Ganze Signatur, z. B. "function Format(const Format: string; const Args: array of const):
+    /// string".</summary>
     Label_: string;
     Documentation: string;
     Parameters: TArray<TAtlasSignatureParameter>;

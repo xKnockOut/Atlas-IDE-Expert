@@ -270,7 +270,8 @@ begin
   mOwn := Title;
   for mIndex := 0 to High(Members) do
   begin
-    if Members[mIndex].Matches(AEvents, AOnlyDefaults) and (AInherited or SameText(Members[mIndex].DeclaringClass, mOwn))
+    if Members[mIndex].Matches(AEvents, AOnlyDefaults) and
+      (AInherited or SameText(Members[mIndex].DeclaringClass, mOwn))
     then
     begin
       Result := Result + [mIndex];

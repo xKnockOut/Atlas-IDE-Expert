@@ -140,7 +140,8 @@ type
     /// <summary>Aktives Startprofil als Feld in der Statusleiste des Editors (#575, startProfiles.statusField);
     /// Klick öffnet die Auswahl.</summary>
     StartProfilesStatusField: Boolean;
-    /// <summary>Modul-Schalter debug.enabled (#1454): Debugger; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// <summary>Modul-Schalter debug.enabled (#1454): Debugger; aus = die wirksamen Werte aller Einstellungen des
+    /// Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     DebugEnabled: Boolean;
     /// <summary>Vorgaben.</summary>

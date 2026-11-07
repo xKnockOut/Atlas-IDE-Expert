@@ -33,7 +33,8 @@ type
     class function IsWordStart(const AName: string; AIndex: Integer): Boolean; static;
     /// <summary>Damerau-Levenshtein-Abstand (Vertauschung zählt 1), ohne Groß-/Kleinschreibung (#485).</summary>
     class function Distance(const A, B: string): Integer; static;
-    /// <summary>Tippfehler-Abstand von APattern zu AName: zum ganzen Namen oder zu seinem gleich langen Anfang.</summary>
+    /// <summary>Tippfehler-Abstand von APattern zu AName: zum ganzen Namen oder zu seinem gleich langen
+    /// Anfang.</summary>
     class function TypoDistance(const APattern, AName: string): Integer; static;
     /// <summary>Höchster erlaubter Abstand: 1 bis 5 Zeichen, sonst 2; 0 bei weniger als 3 Zeichen (#485).</summary>
     class function TypoLimit(const APattern: string): Integer; static;

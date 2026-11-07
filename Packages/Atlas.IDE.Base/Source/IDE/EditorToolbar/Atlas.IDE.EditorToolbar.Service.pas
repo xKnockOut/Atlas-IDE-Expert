@@ -754,7 +754,8 @@ begin
   ForgetClosedFiles;
 end;
 
-/// <summary>Ein Takt unter dem Wächter: Leisten zeigen bzw. entfernen, Rücksprungpunkte nachführen, Leiste füllen.</summary>
+/// <summary>Ein Takt unter dem Wächter: Leisten zeigen bzw. entfernen, Rücksprungpunkte nachführen, Leiste
+/// füllen.</summary>
 procedure TToolbarState.Step(AOn: Boolean);
 var
   mView: IOTAEditView;

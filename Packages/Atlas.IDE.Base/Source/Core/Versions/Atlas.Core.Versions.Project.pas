@@ -17,7 +17,8 @@ type
     class function IsOn(const AValue: string; ADefault: Boolean): Boolean; static;
     /// <summary>Version aus FileVersion in AVersionKeys (VerInfo_Keys), sonst aus AMajor.AMinor.ARelease.ABuild
     /// (Vorgabe 1.0.0.0); '' ohne Versionsinformationen (AIncludeVersionInfo = VerInfo_IncludeVerInfo).</summary>
-    class function FromOptions(const AIncludeVersionInfo, AVersionKeys, AMajor, AMinor, ARelease, ABuild: string): string;
+    class function FromOptions(const AIncludeVersionInfo, AVersionKeys, AMajor, AMinor, ARelease,
+      ABuild: string): string;
       static;
   end;
 

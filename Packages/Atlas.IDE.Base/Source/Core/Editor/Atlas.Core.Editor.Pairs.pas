@@ -55,7 +55,8 @@ type
     CloseLine: Integer;
     CloseCharacter: Integer;
     Depth: Integer;
-    /// <summary>Erstes Besitzer-Schlüsselwort vor dem Öffner (if, else, for, procedure …), sonst der Öffner (#653).</summary>
+    /// <summary>Erstes Besitzer-Schlüsselwort vor dem Öffner (if, else, for, procedure …), sonst der Öffner
+    /// (#653).</summary>
     OwnerLine: Integer;
     OwnerCharacter: Integer;
     /// <summary>Verschachtelung der Routine, in der der Block steht; 0 = oberste Ebene (#1788).</summary>

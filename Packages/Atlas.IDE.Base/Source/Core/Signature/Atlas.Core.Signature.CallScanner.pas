@@ -20,7 +20,8 @@ type
     OpenParen: Integer;
     /// <summary>0-basiert: Zahl der Kommas auf der Ebene des Aufrufs vor dem Caret.</summary>
     ActiveParameter: Integer;
-    /// <summary>Name vor der Klammer (letzter Bezeichner, z. B. Create in TStringList.Create); '' nach ")" oder "]".</summary>
+    /// <summary>Name vor der Klammer (letzter Bezeichner, z. B. Create in TStringList.Create); '' nach ")" oder
+    /// "]".</summary>
     Name: string;
     /// <summary>Namen der umschließenden Aufrufe, äußerster zuerst (#438).</summary>
     Outer: TArray<string>;

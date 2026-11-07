@@ -31,7 +31,8 @@ type
     FAllowMainThread: Boolean;
     FCancelled: TFunc<Boolean>;
     function IsCancelled: Boolean;
-    /// <summary>True, wenn gar nicht gestartet wird (Hauptthread, Programm fehlt, Abbruch); AOutcome sagt warum.</summary>
+    /// <summary>True, wenn gar nicht gestartet wird (Hauptthread, Programm fehlt, Abbruch); AOutcome sagt
+    /// warum.</summary>
     function Refused(const AExecutable: string; out AOutcome: TAtlasVcsOutcome): Boolean;
   public
     /// <summary>Lehnt den Hauptthread ab; Abbruch nur über das Ende des aufrufenden Threads.</summary>

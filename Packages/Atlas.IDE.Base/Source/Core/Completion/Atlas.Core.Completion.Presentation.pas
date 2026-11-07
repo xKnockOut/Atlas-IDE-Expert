@@ -460,7 +460,8 @@ begin
   // Exception-Klassen (#483): Ein früherer Zweig fängt die Klasse schon, dieser würde nie erreicht.
   if AItem.Unreachable <> '' then
   begin
-    AddFilledTag(ATags, UiText(TPresentationText.NeverReached) + AItem.Unreachable + UiText(TPresentationText.Before), TAtlasTagKind.Warn);
+    AddFilledTag(ATags, UiText(TPresentationText.NeverReached) + AItem.Unreachable + UiText(TPresentationText.Before),
+      TAtlasTagKind.Warn);
   end;
   if AItem.Count > 0 then
   begin
@@ -637,7 +638,8 @@ procedure AddUsageTag(const AItem: TAtlasCompletionItem; var ATags: TAtlasTags);
 begin
   case AItem.Usage of
     TAtlasUsageMark.Recent: AddIdTag(ATags, UiText(TPresentationText.Recent), TAtlasTagKind.Accent, TAtlasTagId.Recent);
-    TAtlasUsageMark.Frequent: AddIdTag(ATags, UiText(TPresentationText.Frequent), TAtlasTagKind.Neutral, TAtlasTagId.Frequent);
+    TAtlasUsageMark.Frequent: AddIdTag(ATags, UiText(TPresentationText.Frequent), TAtlasTagKind.Neutral,
+      TAtlasTagId.Frequent);
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;

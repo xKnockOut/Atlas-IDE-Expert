@@ -156,7 +156,8 @@ type
     /// <summary>Einträge ersetzen (etwa die erste Liste, wenn OnQuery das Fenster braucht).</summary>
     procedure SetCommands(const ACommands: TArray<TAtlasCommand>);
     property Pattern: string read FPattern;
-    /// <summary>Reihenfolge der Einträge beibehalten statt alphabetisch (Code-Aktionen, #399); vor ShowOver setzen.</summary>
+    /// <summary>Reihenfolge der Einträge beibehalten statt alphabetisch (Code-Aktionen, #399); vor ShowOver
+    /// setzen.</summary>
     property KeepOrder: Boolean read FKeepOrder write SetKeepOrder;
     /// <summary>Einträge in der Reihenfolge von OnQuery bzw. ACommands zeigen, ohne zu filtern (#503).</summary>
     property Presorted: Boolean read FPresorted write SetPresorted;

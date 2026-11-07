@@ -27,7 +27,8 @@ type
     /// <summary>Nächstkleinerer Bereich in ACurrent; False bei leerer Auswahl.</summary>
     class function Shrink(const AChain: TArray<TLspRange>; const ACurrent: TLspRange;
       out ANext: TLspRange): Boolean; static;
-    /// <summary>Wo die Kette geholt wird: am Anker, solange ACurrent ihn enthält, sonst am Anfang der Auswahl.</summary>
+    /// <summary>Wo die Kette geholt wird: am Anker, solange ACurrent ihn enthält, sonst am Anfang der
+    /// Auswahl.</summary>
     class function ChainPosition(const ACurrent: TLspRange; AHasAnchor: Boolean;
       const AAnchor: TLspTextPosition): TLspTextPosition; static;
   end;

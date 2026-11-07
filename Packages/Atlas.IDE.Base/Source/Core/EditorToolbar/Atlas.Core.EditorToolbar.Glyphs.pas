@@ -120,7 +120,8 @@ begin
     begin
       T := mStep / cSteps;
       U := 1 - T;
-      mPoints := mPoints + [P(U * U * U * cArcs[mArc, 0, 0] + 3 * U * U * T * cArcs[mArc, 1, 0] + 3 * U * T * T * cArcs[mArc, 2, 0] +
+      mPoints := mPoints + [P(U * U * U * cArcs[mArc, 0, 0] + 3 * U * U * T * cArcs[mArc, 1, 0] + 3 * U * T * T *
+        cArcs[mArc, 2, 0] +
         T * T * T * cArcs[mArc, 3, 0], U * U * U * cArcs[mArc, 0, 1] + 3 * U * U * T * cArcs[mArc, 1, 1] +
         3 * U * T * T * cArcs[mArc, 2, 1] + T * T * T * cArcs[mArc, 3, 1])];
     end;
@@ -265,7 +266,8 @@ begin
   end;
 end;
 
-/// <summary>Formen der Symbole für Designer-Leiste (#1442): Formen wie in den Mockups (Strichsymbole, viewBox 0 0 16 16); nil für andere.</summary>
+/// <summary>Formen der Symbole für Designer-Leiste (#1442): Formen wie in den Mockups (Strichsymbole, viewBox 0 0 16
+/// 16); nil für andere.</summary>
 function DesignerShapes(AIcon: TAtlasToolbarIcon): TArray<TAtlasGlyphShape>;
 begin
   case AIcon of

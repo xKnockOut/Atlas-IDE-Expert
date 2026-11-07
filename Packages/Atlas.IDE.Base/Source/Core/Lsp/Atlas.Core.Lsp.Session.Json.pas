@@ -140,7 +140,8 @@ type
     class function UriToPath(const AUri: string): string; static;
     /// <summary>Text aus contents einer Hover-Antwort: String, MarkupContent oder MarkedString-Liste.</summary>
     class function HoverText(const AHover: TJSONValue): string; static;
-    /// <summary>Zeichenindex (0-basiert) zur Editorspalte (1-basiert); Tabs springen zur nächsten Tabulatorposition.</summary>
+    /// <summary>Zeichenindex (0-basiert) zur Editorspalte (1-basiert); Tabs springen zur nächsten
+    /// Tabulatorposition.</summary>
     class function ColumnToIndex(const ALine: string; AColumn, ATabWidth: Integer): Integer; static;
     /// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert); Umkehrung von ColumnToIndex.</summary>
     class function IndexToColumn(const ALine: string; AIndex, ATabWidth: Integer): Integer; static;

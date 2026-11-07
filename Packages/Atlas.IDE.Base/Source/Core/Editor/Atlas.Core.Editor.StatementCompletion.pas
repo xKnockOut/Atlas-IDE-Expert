@@ -215,7 +215,8 @@ var
   mText: string;
 begin
   mText := LowerCase(TrimLeft(ALine));
-  Result := mText.StartsWith(AWord) and ((Length(mText) = Length(AWord)) or not TTextChars.IsAsciiIdentChar(mText[Length(AWord) + 1]));
+  Result := mText.StartsWith(AWord) and ((Length(mText) = Length(AWord)) or
+    not TTextChars.IsAsciiIdentChar(mText[Length(AWord) + 1]));
 end;
 
 function StartsAnyWord(const ALine: string; const AWords: array of string): Boolean;

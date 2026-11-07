@@ -186,7 +186,8 @@ type
     class function ModifiedKeys(ACatalog: TAtlasSettingsCatalog; const AState: TAtlasSettingsState): TArray<string>;
       static;
     /// <summary>Registry-Namen der geänderten Plugin-Einstellungen: für den Punkt am Feld.</summary>
-    class function ModifiedNames(ACatalog: TAtlasSettingsCatalog; const ASettings: TAtlasPluginSettings): TArray<string>;
+    class function ModifiedNames(ACatalog: TAtlasSettingsCatalog;
+      const ASettings: TAtlasPluginSettings): TArray<string>;
       static;
     /// <summary>Setzt die Plugin-Einstellungen ANames (Registry-Namen) auf den Standard; Zustände und
     /// Rechnerwerte bleiben.</summary>

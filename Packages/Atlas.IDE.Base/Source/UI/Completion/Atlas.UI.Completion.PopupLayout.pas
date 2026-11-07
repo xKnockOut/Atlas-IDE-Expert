@@ -293,7 +293,8 @@ var
   mHeight: Integer;
 begin
   mHeight := RowHeight;
-  Result := Rect(ListLeft + Pad, ListTop + ARow * mHeight, ListRight - Pad - ScrollReserve, ListTop + (ARow + 1) * mHeight);
+  Result := Rect(ListLeft + Pad, ListTop + ARow * mHeight, ListRight - Pad - ScrollReserve, ListTop + (ARow + 1) *
+    mHeight);
 end;
 
 function TAtlasCompletionPopupLayout.RowAt(AX, AY: Integer): Integer;

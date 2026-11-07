@@ -644,7 +644,8 @@ type
 function AtlasVcsKindName(AKind: TAtlasVcsKind): string;
 /// <summary>Name des Ergebnisses für Protokoll und Meldungen, z. B. "TimedOut".</summary>
 function AtlasVcsOutcomeName(AOutcome: TAtlasVcsOutcome): string;
-/// <summary>vcs.provider aus dem Text der Einstellung (auch in Anführungszeichen); unbekannt oder leer = Auto.</summary>
+/// <summary>vcs.provider aus dem Text der Einstellung (auch in Anführungszeichen); unbekannt oder leer =
+/// Auto.</summary>
 function AtlasVcsProviderOf(const AText: string): TAtlasVcsProvider;
 /// <summary>Text der Einstellung: "auto", "git", "svn" oder "off".</summary>
 function AtlasVcsProviderText(AProvider: TAtlasVcsProvider): string;

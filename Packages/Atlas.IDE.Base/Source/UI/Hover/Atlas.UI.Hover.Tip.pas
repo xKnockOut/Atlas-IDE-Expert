@@ -507,7 +507,8 @@ end;
 
 function TAtlasHoverTipView.InDoc(AX, AY: Integer): Boolean;
 begin
-  Result := not FDoc.IsEmpty and (AX >= FLayout.DocLeft - Scale(4)) and (AX < FLayout.DocLeft + FDoc.Width + Scale(8)) and
+  Result := not FDoc.IsEmpty and (AX >= FLayout.DocLeft - Scale(4)) and
+    (AX < FLayout.DocLeft + FDoc.Width + Scale(8)) and
     (AY >= FLayout.DocTop) and (AY < FLayout.DocTop + FDoc.Height);
 end;
 

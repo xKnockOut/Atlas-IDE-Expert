@@ -37,7 +37,8 @@ type
     FQueryIdle: TEvent;
     FCommandIdle: TEvent;
     FServerCommandsIdle: TEvent;
-    /// <summary>Laufende Sitzung oder Start im Hauptthread; außerhalb des Hauptthreads nur, was schon läuft (A-01).</summary>
+    /// <summary>Laufende Sitzung oder Start im Hauptthread; außerhalb des Hauptthreads nur, was schon läuft
+    /// (A-01).</summary>
     function EnsureSession: Boolean;
     /// <summary>Server starten und Sitzung aufbauen; nur aus EnsureSession, nur im Hauptthread.</summary>
     function StartSession: Boolean;

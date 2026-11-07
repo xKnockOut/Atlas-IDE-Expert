@@ -317,7 +317,8 @@ var
 begin
   mInfo := FSources.ServerInfo();
   FServer.Update(TAtlasStatusLines.ServerText(mInfo), TAtlasStatusLines.ServerState(mInfo),
-    TAtlasStatusLines.ServerSummary(mInfo), TAtlasStatusLines.ServerBrief(mInfo), TAtlasStatusLines.ServerDetail(mInfo));
+    TAtlasStatusLines.ServerSummary(mInfo), TAtlasStatusLines.ServerBrief(mInfo),
+      TAtlasStatusLines.ServerDetail(mInfo));
   // Nach einem Neustart sind die Units erst wieder nach der nächsten Abfrage bekannt.
   if mInfo.Phase <> TAtlasServerPhase.Running then
   begin

@@ -161,7 +161,8 @@ begin
   // Minimap neben der Scrollleiste (#873, experimentell).
   BindCheck('Minimap', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimap)));
   FMinimapRender := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapRender),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsMinimapBlocks), TAtlasStrings.Text(TAtlasTextId.SettingsMinimapCharacters)]);
+    [TAtlasStrings.Text(TAtlasTextId.SettingsMinimapBlocks),
+      TAtlasStrings.Text(TAtlasTextId.SettingsMinimapCharacters)]);
   BindText('MinimapWidth', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapWidth)));
   BindText('MinimapScale', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapScale)));
   BindText('MinimapMaxColumn', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapMaxColumn)));

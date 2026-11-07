@@ -332,7 +332,8 @@ begin
   begin
     // Die Leiste soll ganz lesbar sein: Breite wächst wie beim leeren Zustand.
     Canvas.Font := UIFont;
-    FSessionWidth := Max(FSessionWidth, Canvas.TextWidth(TAtlasCompletionTexts.SyntaxLead(FSyntax.Trust) + TAtlasCompletionTexts.SyntaxLineText(FSyntax.Line)) + Scale(40));
+    FSessionWidth := Max(FSessionWidth, Canvas.TextWidth(TAtlasCompletionTexts.SyntaxLead(FSyntax.Trust) +
+      TAtlasCompletionTexts.SyntaxLineText(FSyntax.Line)) + Scale(40));
     Canvas.Font := Font;
   end;
   if IsShown then

@@ -53,7 +53,8 @@ type
   public
     /// <summary>AStored: gespeicherter Stand (z. B. aus der Datei) oder Empty.</summary>
     constructor Create(const AStored: TAtlasIndexSnapshot);
-    /// <summary>Neuer Stand des Statusfelds; True, wenn Snapshot gespeichert werden soll. AUnits -1 = unbekannt.</summary>
+    /// <summary>Neuer Stand des Statusfelds; True, wenn Snapshot gespeichert werden soll. AUnits -1 =
+    /// unbekannt.</summary>
     function Observe(ARunning, AIndexing: Boolean; AUnits: Integer; ANow: TDateTime): Boolean;
     /// <summary>Daten der Zeile „Index“: bei laufendem Server die aktuellen Werte mit FullAt, sonst die
     /// gespeicherten (Offline).</summary>

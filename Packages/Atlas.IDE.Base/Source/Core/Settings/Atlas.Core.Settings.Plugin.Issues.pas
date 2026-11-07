@@ -54,7 +54,8 @@ const
 type
   /// <summary>Plugin-Einstellungen: Verbindungen, Abfragen und Arbeitsablauf des Issue-Trackers.</summary>
   TAtlasPluginIssuesSettings = record
-    /// <summary>Modul-Schalter issues.enabled (#1454): Issue-Tracker und Build-Server; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// <summary>Modul-Schalter issues.enabled (#1454): Issue-Tracker und Build-Server; aus = die wirksamen Werte aller
+    /// Einstellungen des Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     IssuesEnabled: Boolean;
     /// <summary>Tracker (#765, issues.tracker): '' = aus der .atlas, "github" oder "youtrack".</summary>
@@ -182,7 +183,8 @@ type
     /// <summary>Kommentar-Editor (#1278, issues.commentEditor): Vorschläge für @ und #, Textbausteine, Vorschau und
     /// Entwürfe; aus = einfaches Textfeld, Strg+Enter sendet.</summary>
     IssuesCommentEditor: Boolean;
-    /// <summary>Textbausteine für Kommentare (#1278, issues.commentSnippets) als JSON-Liste [{"name", "text"}].</summary>
+    /// <summary>Textbausteine für Kommentare (#1278, issues.commentSnippets) als JSON-Liste [{"name",
+    /// "text"}].</summary>
     IssuesCommentSnippets: string;
     /// <summary>Reiter „Entwicklung“ in der Vorschau (#1269, issues.preview.development): Branches, Commits, Pull
     /// Requests und geänderte Units zum Issue; aus = Reiter fehlt, kein Log wird abgefragt.</summary>

@@ -248,7 +248,8 @@ type
     /// <summary>ARegistration übernehmen und beim Abmelden lösen. Ist der Scope schon geschlossen, wird sie sofort
     /// gelöst: Nach dem Abmelden bleibt nichts vom Modul angemeldet (Regel 3).</summary>
     procedure Own(const ARegistration: IAtlasRegistration);
-    /// <summary>AObject unter AIID mit diesem Modul als Besitzer bereitstellen; AObject muss AIID unterstützen.</summary>
+    /// <summary>AObject unter AIID mit diesem Modul als Besitzer bereitstellen; AObject muss AIID
+    /// unterstützen.</summary>
     function Provide(const AIID: TGUID; const AObject: IInterface): IAtlasRegistration;
     /// <summary>Auf Änderungen der Registry hören, bis zum Abmelden des Moduls.</summary>
     function Subscribe(const AListener: IAtlasRegistryListener): IAtlasRegistration;
@@ -268,7 +269,8 @@ type
   /// Unit-Initialisierung von Base (Regel 1).</summary>
   IAtlasModuleRegistry = interface
     ['{AC5A806A-1AEF-41E1-B78F-4B039EA312C9}']
-    /// <summary>AModule anmelden; liefert seinen Scope. Leere oder schon angemeldete Id: EAtlasModuleRegistry.</summary>
+    /// <summary>AModule anmelden; liefert seinen Scope. Leere oder schon angemeldete Id:
+    /// EAtlasModuleRegistry.</summary>
     function RegisterModule(const AModule: IAtlasModule): IAtlasModuleScope;
     /// <summary>Modul AModuleId abmelden: stoppen, wenn aktiv, dann seinen Scope rückwärts lösen. Ein Fehler hält
     /// den Abbau nicht an; Ergebnis: die fehlgeschlagenen Schritte als „Schritt: Klasse: Meldung“.</summary>
@@ -284,7 +286,8 @@ type
     function ForgetModule(const AModuleId: string): Boolean;
     /// <summary>Gehört AHandle zu einem angemeldeten Modul (Regel 8)?</summary>
     function IsModuleHandle(AHandle: NativeUInt): Boolean;
-    /// <summary>AObject unter AIID mit Base als Besitzer bereitstellen; Module nehmen IAtlasModuleScope.Provide.</summary>
+    /// <summary>AObject unter AIID mit Base als Besitzer bereitstellen; Module nehmen
+    /// IAtlasModuleScope.Provide.</summary>
     function Provide(const AIID: TGUID; const AObject: IInterface): IAtlasRegistration;
     /// <summary>Alle unter AIID bereitgestellten Objekte in Reihenfolge der Bereitstellung.</summary>
     function FindAll(const AIID: TGUID): TArray<IInterface>;

@@ -788,7 +788,8 @@ begin
       mLayer.OpenLink(mFileName, mLine, AIndex);
     end;
   TAtlasIdeStyle.Apply(FTip, FHover.Screen);
-  FTip.ShowNote(mTitle, mText, mLayer.TipLinks(mFileName, mLine), Point(FHover.Screen.Right + 4, FHover.Screen.Bottom + 2));
+  FTip.ShowNote(mTitle, mText, mLayer.TipLinks(mFileName, mLine),
+    Point(FHover.Screen.Right + 4, FHover.Screen.Bottom + 2));
 end;
 
 procedure TAtlasIdeGutterMarks.HideTip;

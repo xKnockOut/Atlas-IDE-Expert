@@ -18,7 +18,8 @@ type
   protected
     procedure Notification(AComponent: TComponent; AOperation: TOperation); override;
   public
-    /// <summary>AOnExit läuft einmal, während ATarget zerstört wird. Wird die Wache vorher freigegeben, nicht mehr.</summary>
+    /// <summary>AOnExit läuft einmal, während ATarget zerstört wird. Wird die Wache vorher freigegeben, nicht
+    /// mehr.</summary>
     constructor Create(ATarget: TComponent; const AOnExit: TProc); reintroduce;
   end;
 

@@ -624,7 +624,8 @@ begin
 end;
 
 function TAtlasServerCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc;
+    out AState: TAtlasFetchState): TAtlasCompletionItems;
 var
   mResponse: TJSONValue;
   mNextRank: Integer;

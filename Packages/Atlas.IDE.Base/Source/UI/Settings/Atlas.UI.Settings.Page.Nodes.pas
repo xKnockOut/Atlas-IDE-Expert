@@ -449,7 +449,8 @@ begin
   end
   else
   begin
-    Result := AddNodePageCaption(AArea, ANode, FGroups.NodeCaption(ANode, TAtlasStrings.Language = TAtlasLanguage.English));
+    Result := AddNodePageCaption(AArea, ANode,
+      FGroups.NodeCaption(ANode, TAtlasStrings.Language = TAtlasLanguage.English));
   end;
 end;
 

@@ -267,7 +267,8 @@ uses
 
 const
   cWM_ATLAS_STATUS = WM_USER + 591;
-  // LParam = TStatusBar; erst nach der Mausnachricht ausgeführt, ein freigegebenes Feld verwirft sie mit seinem Fenster.
+  // LParam = TStatusBar; erst nach der Mausnachricht ausgeführt, ein freigegebenes Feld verwirft sie mit seinem
+  // Fenster.
   cWM_ATLAS_STATUS_CONTEXT = WM_USER + 592;
 
 type

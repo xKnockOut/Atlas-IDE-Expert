@@ -15,7 +15,8 @@ uses
 type
   TAtlasXmlDoc = class
   public
-    /// <summary>Steht der Cursor nach "/// &lt;" (ggf. mit angefangenem Tag)? ALineBefore: Zeile bis zum Cursor.</summary>
+    /// <summary>Steht der Cursor nach "/// &lt;" (ggf. mit angefangenem Tag)? ALineBefore: Zeile bis zum
+    /// Cursor.</summary>
     class function IsTagContext(const ALineBefore: string): Boolean; static;
     /// <summary>Deklaration nach der Zeile ALine (0-basiert): die nächsten Zeilen ohne ///, bis ";"
     /// außerhalb von Klammern; '' ohne.</summary>
@@ -215,7 +216,8 @@ begin
 end;
 
 function TAtlasXmlDocCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc;
+    out AState: TAtlasFetchState): TAtlasCompletionItems;
 var
   mAll: TArray<string>;
 begin

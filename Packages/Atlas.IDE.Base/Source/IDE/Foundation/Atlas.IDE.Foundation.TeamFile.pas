@@ -14,7 +14,8 @@
 //   und OnChanged gerufen. Den Ort sucht er (Ordner aufwärts bis zur Wurzel
 //   des Repositorys) nur bei anderem Projekt oder anderer Gruppe, nach
 //   Refresh, wenn die Datei verschwunden ist, und sonst alle 10 s; je Takt
-//   fragt er nur den Zeitstempel der Datei (Dateizugriffe im Hauptthread). Ist die Datei gerade gesperrt, folgt der nächste
+//   fragt er nur den Zeitstempel der Datei (Dateizugriffe im Hauptthread). Ist die Datei gerade gesperrt, folgt der
+//   nächste
 //   Versuch beim nächsten Takt.
 // - Meldungen zur Datei (fehlerhaft, Zugangsdaten, absolute Pfade …) stehen
 //   einmal je gelesenem Stand in der Meldungsansicht (Gruppe Atlas), nie als

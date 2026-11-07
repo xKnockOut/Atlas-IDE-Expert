@@ -208,7 +208,8 @@ begin
     end;
     mAny := True;
     if Before(ALine, ACharacter, mProblem.StartLine, mProblem.StartCharacter) and
-      (not mFound or Before(mProblem.StartLine, mProblem.StartCharacter, ATarget.StartLine, ATarget.StartCharacter)) then
+      (not mFound or Before(mProblem.StartLine, mProblem.StartCharacter, ATarget.StartLine,
+        ATarget.StartCharacter)) then
     begin
       ATarget := mProblem;
       mFound := True;

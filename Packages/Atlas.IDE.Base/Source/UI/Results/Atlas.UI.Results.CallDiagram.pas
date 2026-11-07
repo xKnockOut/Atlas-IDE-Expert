@@ -90,7 +90,8 @@ type
     property Selected: Integer read FSelected;
     property ProjectOnly: Boolean read GetProjectOnly write SetProjectOnly;
     /// <summary>Gehört die Datei zu einem Projekt der Gruppe? Vor ShowRoots setzen; nil: alle.</summary>
-    property IsProjectFile: TFunc<string, Boolean> write SetIsProjectFile; // lsp-ignore: write-only-property -- reicht nur an das Diagramm weiter
+    property IsProjectFile: TFunc<string, Boolean> write SetIsProjectFile;
+      // lsp-ignore: write-only-property -- reicht nur an das Diagramm weiter
     property OnLoad: TAtlasCallLoad read FHandlers.OnLoad write FHandlers.OnLoad;
     property OnOpen: TAtlasCallOpen read FHandlers.OnOpen write FHandlers.OnOpen;
   end;

@@ -57,7 +57,8 @@ type
     /// mehr (kein x-renamedFrom).
     /// </summary>
     ProblemsMessageList: Boolean;
-    /// <summary>Modul-Schalter ruleChecks.enabled (#1454): Prüfregeln; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// <summary>Modul-Schalter ruleChecks.enabled (#1454): Prüfregeln; aus = die wirksamen Werte aller Einstellungen
+    /// des Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     RuleChecksEnabled: Boolean;
     /// <summary>Vorgaben.</summary>
