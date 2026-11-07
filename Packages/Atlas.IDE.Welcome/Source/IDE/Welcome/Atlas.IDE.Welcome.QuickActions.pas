@@ -184,7 +184,7 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Vcs.Service,
+  Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Commands.ShortcutTips,
   Atlas.Core.Files.TextFile,
   Atlas.IDE.Projects.Summaries;

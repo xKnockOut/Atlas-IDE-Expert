@@ -31,8 +31,6 @@ uses
   Atlas.IDE.Settings.Transfer,
   Atlas.IDE.Completion.History,
   Atlas.IDE.Completion.Favorites,
-  Atlas.IDE.Vcs.Service,
-  Atlas.IDE.Vcs.Branching,
   Atlas.IDE.CodeInsight.Composition.Adapters,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
@@ -56,8 +54,6 @@ begin
   // Stacktraces für jede Fehlerzeile der Sicherung: ohne sie lässt sich kein Fehler bis zur Codezeile verfolgen.
   TAtlasIdeStackCapture.Install;
   InstallLanguage;
-  // Versionsverwaltung (#571): Aufrufe im Hintergrund; fehlt git bzw. svn, einmal eine Zeile.
-  TAtlasIdeVcs.Start(MessageLine, VcsBackend);
   // Atlas-Symbol (#751): Startbildschirm, Info-Dialog und Bildliste immer, auch abgesichert.
   TAtlasIdeSymbol.Register;
 end;
@@ -138,19 +134,13 @@ begin
   TAtlasMainThread.ForceQueue(TAtlasFeature.Settings, AfterStart);
 end;
 
-/// <summary>Zuerst: Hauptthread, Versionsverwaltung, experimentelle Funktionen, Haken der Sicherung,
+/// <summary>Zuerst: Hauptthread, experimentelle Funktionen, Haken der Sicherung,
 /// Einstellungen, Startanteile und abgesicherter Start (#722: Startmarke löschen, Absturzzähler zurück).</summary>
 procedure StopFoundation(var ATeardown: TAtlasTeardown);
 begin
   // Vor allem anderen: Was jetzt noch wartet oder während des Abbaus eingereiht wird, liefe nach dem Entladen
   // in nicht mehr geladenem Code (Code-Review A-02). Queue im Hauptthread läuft weiter sofort.
   ATeardown.Step('MainThread', TAtlasMainThread.Stop);
-  ATeardown.Step('Vcs',
-    procedure
-    begin
-      TAtlasIdeBranching.ServerCommand := nil;
-      TAtlasIdeVcs.Stop;
-    end);
   ATeardown.Step('Experimental', TAtlasIdeExperimental.Stop);
   TAtlasGuard.OnWarning := nil;
   TAtlasGuard.OnTripped := nil;

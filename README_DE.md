@@ -186,6 +186,7 @@ Alle sind Designtime-Packages für Win32 (klassische IDE) und Win64 (64-Bit-IDE 
 | `Atlas.IDE.Search` | Atlas-Suche, Units suchen, Code-Abfragen | `search.enabled` |
 | `Atlas.IDE.Analysis` | Architektur, Hotspots, Unit-Beziehungen, Weg zwischen Symbolen, Code Lens mit Code-Metriken | `analysis.enabled` |
 | `Atlas.IDE.Designer` | Designer-Leiste | `designer.enabled` |
+| `Atlas.IDE.Vcs` | Versionsverwaltung: Git und SVN, Branch beim Beginnen, Arbeitskopien, Projektzustand, Zeilenhistorie | `vcs.enabled` |
 | `Atlas.IDE.Tracker` | Issue-Tracker: Issue-Kennungen im Code, Zeilenhistorie, Board, „An Issue anhängen“, Kacheln „Meine Issues“ und Sprint | `issues.enabled` |
 | `Atlas.IDE.Welcome` | Willkommensseite und „Atlas-Start“ | `welcomePage.enabled` |
 

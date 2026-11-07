@@ -35,7 +35,7 @@ uses
   Atlas.Core.Vcs.Tools,
   Atlas.Core.Vcs.ToolCheck,
   Atlas.Core.Vcs.ServerCheck,
-  Atlas.IDE.Vcs.Service,
+  Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.UI.Settings.Page.VcsTools,

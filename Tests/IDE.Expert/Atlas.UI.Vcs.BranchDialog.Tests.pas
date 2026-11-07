@@ -16,6 +16,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Vcs')]
   TAtlasBranchDialogTests = class
   private
     FLanguage: TAtlasLanguage;

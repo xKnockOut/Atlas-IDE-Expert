@@ -3,7 +3,7 @@
 // „Arbeitskopien …“ in der IDE (#1292): Tabelle der Wurzel einer Gruppe und
 // ihrer svn:externals bzw. Git-Submodule (TAtlasWorkingCopiesDialog, modal,
 // Thema der IDE).
-// - Alles im Hintergrund über TAtlasIdeVcs.Run: erst Collect (ohne Server),
+// - Alles im Hintergrund über TAtlasIdeVcsCore.Run: erst Collect (ohne Server),
 //   dann je Zeile nacheinander die Revision (svnversion) bzw. bei Git die
 //   Änderungen des Submoduls; die Tabelle füllt sich zeilenweise. Ein spätes
 //   Ergebnis nach dem Schließen bzw. nach einem neuen Collect verfällt.
@@ -144,10 +144,10 @@ begin
   mFolder := FFolder;
   mList := TAtlasVcsWorkingCopyList.Empty;
   // Arbeit und Ergebnis teilen sich mList; das Ergebnis kommt erst nach der Arbeit.
-  if not TAtlasIdeVcs.Run(
+  if not TAtlasIdeVcsCore.Run(
     procedure
     begin
-      mList := TAtlasVcsWorkingCopies.Collect(TAtlasIdeVcs.ForFolder(mFolder, TAtlasIdeVcs.AtLeast(cLocalTimeoutMs)));
+      mList := TAtlasVcsWorkingCopies.Collect(TAtlasIdeVcsCore.ForFolder(mFolder, TAtlasIdeVcsCore.AtLeast(cLocalTimeoutMs)));
     end,
     procedure
     begin
@@ -159,14 +159,14 @@ begin
         Length(mList.Rows), AtlasVcsOutcomeName(mList.Outcome)]));
       if (mList.Kind <> TAtlasVcsKind.Git) and (mList.Kind <> TAtlasVcsKind.Svn) then
       begin
-        TAtlasIdeVcs.Report(TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesNoVcs));
+        TAtlasIdeVcsCore.Report(TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesNoVcs));
       end;
       FList := mList;
       FDialog.SetList(FList);
       FillNext(0);
     end) then
   begin
-    TAtlasIdeVcs.Report(TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesNoVcs));
+    TAtlasIdeVcsCore.Report(TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesNoVcs));
   end;
 end;
 
@@ -195,19 +195,19 @@ begin
   mWork.Rows := Copy(FList.Rows);
   mRoot := FList.Root;
   mFolder := FList.Rows[mIndex].Folder;
-  if not TAtlasIdeVcs.Run(
+  if not TAtlasIdeVcsCore.Run(
     procedure
     var
       mSvn: IAtlasVcsSvnWorkingCopy;
     begin
       if mWork.Kind = TAtlasVcsKind.Git then
       begin
-        TAtlasVcsWorkingCopies.FillChanges(mWork, mIndex, TAtlasIdeVcs.ForFolder(mFolder,
-          TAtlasIdeVcs.AtLeast(cLocalTimeoutMs)));
+        TAtlasVcsWorkingCopies.FillChanges(mWork, mIndex, TAtlasIdeVcsCore.ForFolder(mFolder,
+          TAtlasIdeVcsCore.AtLeast(cLocalTimeoutMs)));
       end
       else
       begin
-        if not Supports(TAtlasIdeVcs.ForFolder(mRoot, TAtlasIdeVcs.AtLeast(cLocalTimeoutMs)), IAtlasVcsSvnWorkingCopy,
+        if not Supports(TAtlasIdeVcsCore.ForFolder(mRoot, TAtlasIdeVcsCore.AtLeast(cLocalTimeoutMs)), IAtlasVcsSvnWorkingCopy,
           mSvn) then
         begin
           mSvn := nil;
@@ -264,12 +264,12 @@ begin
   mWork.Rows := Copy(FList.Rows);
   mRoot := FList.Root;
   FDialog.SetChecking(mIndex, True);
-  if not TAtlasIdeVcs.Run(
+  if not TAtlasIdeVcsCore.Run(
     procedure
     var
       mExternals: IAtlasVcsSvnExternals;
     begin
-      if not Supports(TAtlasIdeVcs.ForFolder(mRoot, TAtlasIdeVcs.AtLeast(cServerTimeoutMs)), IAtlasVcsSvnExternals,
+      if not Supports(TAtlasIdeVcsCore.ForFolder(mRoot, TAtlasIdeVcsCore.AtLeast(cServerTimeoutMs)), IAtlasVcsSvnExternals,
         mExternals) then
       begin
         mExternals := nil;
@@ -348,11 +348,11 @@ begin
   mOutcome := TAtlasPullOutcome.Failed;
   mReason := TAtlasVcsOutcome.Failed;
   FDialog.SetBusy(True);
-  if not TAtlasIdeVcs.Run(
+  if not TAtlasIdeVcsCore.Run(
     procedure
     begin
-      mOutcome := TAtlasVcsPull.Pull(TAtlasIdeVcs.ForFolder(mFolder,
-        TAtlasIdeVcs.AtLeast(cServerTimeoutMs)), mIgnore, mReason);
+      mOutcome := TAtlasVcsPull.Pull(TAtlasIdeVcsCore.ForFolder(mFolder,
+        TAtlasIdeVcsCore.AtLeast(cServerTimeoutMs)), mIgnore, mReason);
     end,
     procedure
     begin
@@ -362,7 +362,7 @@ begin
       end;
       TAtlasGuard.Log(Format('Arbeitskopien: aktualisiert (ohne Externals %s), %s',
         [BoolToStr(mIgnore, True), AtlasVcsOutcomeName(mReason)]));
-      TAtlasIdeVcs.Report(PullMessage(mOutcome, mReason, mName));
+      TAtlasIdeVcsCore.Report(PullMessage(mOutcome, mReason, mName));
       AfterChange;
     end) then
   begin
@@ -416,12 +416,12 @@ begin
   mRevision := FList.Rows[AIndex].Revision;
   mOutcome := TAtlasVcsOutcome.Failed;
   FDialog.SetBusy(True);
-  if not TAtlasIdeVcs.Run(
+  if not TAtlasIdeVcsCore.Run(
     procedure
     var
       mExternals: IAtlasVcsSvnExternals;
     begin
-      if not Supports(TAtlasIdeVcs.ForFolder(mRoot, TAtlasIdeVcs.AtLeast(cLocalTimeoutMs)), IAtlasVcsSvnExternals,
+      if not Supports(TAtlasIdeVcsCore.ForFolder(mRoot, TAtlasIdeVcsCore.AtLeast(cLocalTimeoutMs)), IAtlasVcsSvnExternals,
         mExternals) then
       begin
         mExternals := nil;
@@ -437,11 +437,11 @@ begin
       TAtlasGuard.Log('Arbeitskopien: festschreiben, ' + AtlasVcsOutcomeName(mOutcome));
       if mOutcome = TAtlasVcsOutcome.Ok then
       begin
-        TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesPinned, [mName, mRevision]));
+        TAtlasIdeVcsCore.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesPinned, [mName, mRevision]));
       end
       else
       begin
-        TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesPinFailed, [mName,
+        TAtlasIdeVcsCore.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesPinFailed, [mName,
           AtlasVcsOutcomeName(mOutcome)]));
       end;
       AfterChange;

@@ -1,0 +1,60 @@
+﻿package Atlas.IDE.Vcs;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Atlas IDE Expert – Versionsverwaltung'}
+{$DESIGNONLY}
+{$IMPLICITBUILD OFF}
+{$LIBSUFFIX AUTO}
+
+// Modul Versionsverwaltung (#1891, ADR 0017): Git und SVN über die Kommandozeile, Dienst der IDE,
+// Dialoge „Branch anlegen“ und „Arbeitskopien“. Meldet sich in der Unit-Initialisierung von
+// Atlas.IDE.Vcs.Composition über die Registry von Atlas.IDE.Base an und setzt dort den Zugang
+// TAtlasIdeVcs (Vertrag Atlas.IDE.Contracts.VersionControl). Requiret nur das Kern-Package (Regel 9).
+
+requires
+  rtl,
+  vcl,
+  vclwinx,
+  designide,
+  Atlas.IDE.Base;
+
+contains
+  Atlas.Core.Vcs.Internals.LineTrace in 'Source\Core\Vcs\Atlas.Core.Vcs.Internals.LineTrace.pas',
+  Atlas.Core.Vcs.Internals.GitParser in 'Source\Core\Vcs\Atlas.Core.Vcs.Internals.GitParser.pas',
+  Atlas.Core.Vcs.Internals.SvnParser in 'Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnParser.pas',
+  Atlas.Core.Vcs.Providers.Git in 'Source\Core\Vcs\Atlas.Core.Vcs.Providers.Git.pas',
+  Atlas.Core.Vcs.Providers.Svn in 'Source\Core\Vcs\Atlas.Core.Vcs.Providers.Svn.pas',
+  Atlas.Core.Vcs.Detection in 'Source\Core\Vcs\Atlas.Core.Vcs.Detection.pas',
+  Atlas.Core.Vcs.Composition in 'Source\Core\Vcs\Atlas.Core.Vcs.Composition.pas',
+  Atlas.IDE.Vcs.Service in 'Source\IDE\Vcs\Atlas.IDE.Vcs.Service.pas',
+  Atlas.UI.Vcs.BranchDialog in 'Source\UI\Vcs\Atlas.UI.Vcs.BranchDialog.pas',
+  Atlas.UI.Vcs.WorkingCopies in 'Source\UI\Vcs\Atlas.UI.Vcs.WorkingCopies.pas',
+  Atlas.IDE.Vcs.Branching in 'Source\IDE\Vcs\Atlas.IDE.Vcs.Branching.pas',
+  Atlas.IDE.Vcs.WorkingCopies in 'Source\IDE\Vcs\Atlas.IDE.Vcs.WorkingCopies.pas',
+  Atlas.UI.Vcs.SettingsSection in 'Source\UI\Vcs\Atlas.UI.Vcs.SettingsSection.pas',
+  Atlas.IDE.Vcs.Composition in 'Source\IDE\Vcs\Atlas.IDE.Vcs.Composition.pas';
+
+end.

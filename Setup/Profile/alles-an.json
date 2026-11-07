@@ -52,6 +52,7 @@
     "buildTools.enabled": true,
     "buildPipeline.enabled": true,
     "bookmarks.enabled": true,
+    "vcs.enabled": true,
     "designer.enabled": true,
     "ruleChecks.enabled": true,
     "search.enabled": true

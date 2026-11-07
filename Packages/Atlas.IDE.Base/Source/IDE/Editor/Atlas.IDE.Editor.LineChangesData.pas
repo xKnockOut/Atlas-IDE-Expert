@@ -138,7 +138,7 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Vcs.Service;
+  Atlas.IDE.Contracts.VersionControl;
 
 const
   /// <summary>Tipp-Pause vor dem Vergleich.</summary>

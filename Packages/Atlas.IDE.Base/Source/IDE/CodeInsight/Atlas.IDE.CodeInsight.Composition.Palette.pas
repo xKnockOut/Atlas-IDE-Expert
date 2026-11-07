@@ -44,9 +44,7 @@ uses
   Atlas.IDE.Diagnostics.Export,
   Atlas.IDE.Status.ServerWindow,
   Atlas.IDE.Projects.Summaries,
-  Atlas.IDE.Vcs.Branching,
-  Atlas.IDE.Vcs.WorkingCopies,
-  Atlas.IDE.Vcs.Service,
+  Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
@@ -191,7 +189,7 @@ begin
   mProject := VcsProject(TAtlasTextId.VcsBranchNoVcs);
   if mProject <> '' then
   begin
-    TAtlasIdeBranching.CreateFor(mProject, RefreshSummary(mProject));
+    TAtlasIdeVcs.Dialogs.CreateBranchFor(mProject, RefreshSummary(mProject));
   end;
 end;
 
@@ -203,7 +201,7 @@ begin
   mProject := VcsProject(TAtlasTextId.VcsWorkingCopiesNoVcs);
   if mProject <> '' then
   begin
-    TAtlasIdeWorkingCopies.ShowFor(mProject, RefreshSummary(mProject));
+    TAtlasIdeVcs.Dialogs.ShowWorkingCopies(mProject, RefreshSummary(mProject));
   end;
 end;
 

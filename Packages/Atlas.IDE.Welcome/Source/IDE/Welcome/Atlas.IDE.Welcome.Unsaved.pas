@@ -121,7 +121,7 @@ uses
   Atlas.UI.Welcome.Push,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.ResultsWindow,
-  Atlas.IDE.Vcs.Service,
+  Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.Projects,
   Atlas.IDE.Projects.Summaries;

@@ -98,8 +98,7 @@ uses
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
-  Atlas.IDE.Vcs.Branching,
-  Atlas.IDE.Vcs.WorkingCopies,
+  Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Welcome.Search;
 
 { TAtlasIdeProjects }
@@ -398,7 +397,7 @@ begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
-      TAtlasIdeBranching.CreateFor(mProject,
+      TAtlasIdeVcs.Dialogs.CreateBranchFor(mProject,
         procedure
         begin
           // mKeep hält den Bereich bis hierher; nach dem Beenden nichts mehr abfragen.
@@ -420,7 +419,7 @@ begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
-      TAtlasIdeWorkingCopies.ShowFor(mProject,
+      TAtlasIdeVcs.Dialogs.ShowWorkingCopies(mProject,
         procedure
         begin
           // mKeep hält den Bereich bis hierher; nach dem Beenden nichts mehr abfragen.

@@ -98,7 +98,7 @@ uses
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.StructureSwitch,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Vcs.Service;
+  Atlas.IDE.Contracts.VersionControl;
 
 type
   TAtlasAddInOptions = class(TInterfacedObject, INTAAddInOptions)

@@ -18,10 +18,12 @@ Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Doku
 | `Build`, `BuildTools`, `Tasks`, `StartProfiles` | `Atlas.IDE.Build` |
 | `BuildPipeline` | `Atlas.IDE.BuildPipeline` |
 | `Bookmarks`, `Notes`, `Todos` | `Atlas.IDE.Bookmarks` |
+| `Vcs` | `Atlas.IDE.Vcs` |
 | alle übrigen | `Atlas.IDE.Base` |
 
 Ausnahmen:
 
+- Versionsverwaltung (#1891, Entscheidung Marco 07.11.2026): Git und SVN (Anbieter, Parser, Auswahl), der Dienst der IDE und die Dialoge „Branch anlegen“ und „Arbeitskopien“ bilden das Modul `Atlas.IDE.Vcs`. Im Kern bleiben der Vertrag (`Core.Vcs.Contract`, `IDE.Contracts.VersionControl` samt Zugang `TAtlasIdeVcs` und Null-Objekt) und die reine Logik ohne Prozessaufruf unter `Core/Vcs` (Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche, Serverzugang) und der allgemeine Prozessläufer, den auch das Modul Tests braucht, dazu vorerst die Einstellungsseiten der Versionsverwaltung und die Änderungsmarken im Editor.
 - Der allgemeine Tooltip `Atlas.UI.Popup.TitledTip` (bis #1455 `Atlas.UI.Notes.Tip`) liegt im Kern.
 - Die Build-Pipeline ist ein eigenes Modul (#1455, Entscheidung Marco 01.11.2026 14:36): Läufer der Builds auf Auftrag mit MCP-Eingang, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung nach der 0/0/0-Regel mit Zusammenfassung (Ordner `BuildPipeline`, Schalter `buildPipeline`). Im Kern bleiben die Bewertung als Typen und `IAtlasBuildVerdictListener` (`Build.Verdict`, die Benachrichtigungszentrale hört darauf), was Base der Pipeline gibt (`Build.Pipeline`), die Werte ihrer Einstellungen (`Build.PipelineSettings`, `Build.OpenBuildSettings`), die Meldungen des letzten Builds (`IDE.Build.LastMessages`), `Build.IdleGate` (Diagnose-Zeitmessung) und `IDE.Build.Target` (Probleme, Projekt-Einstellungen). Andere Module bauen über `Atlas.IDE.Contracts.BuildPipeline`. Das Modul Build umfasst, was der Schalter `buildTools` abschaltet: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter.
 - Code Lens mit Code-Metriken (#66) im Modul Analyse (#1756, Entscheidung Marco 05.11.2026): Zeichnen (`IDE.Analysis.MetricsLens`) und Beschriftung (`Core.Analysis.MetricsLens`). Im Kern bleiben die Antwort von `atlas.server.metrics` (`Core.Editor.Metrics`) und ihr Abruf je Editor (`IDE.Editor.MetricsSource`), weil die Atlas-Statusleiste Zeilen und CC am Cursor daraus liest und der Metrikbericht dieselben Typen nutzt; die Lens meldet beim Abruf nur Bedarf an. `codeLens.metrics` hängt am Modulschalter `analysis.enabled`.
@@ -255,6 +257,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Contracts.BuildTools` | `Contracts/Atlas.IDE.Contracts.BuildTools.pas` | Startprofile und Projektaufgaben für andere Module, Vertrag zwischen Modulen, #1455 |
 | `Atlas.IDE.Contracts.BuildPipeline` | `Contracts/Atlas.IDE.Contracts.BuildPipeline.pas` | Builds auf Auftrag (Build-Pipeline → Tests, Build-Werkzeuge, Willkommensseite), Vertrag zwischen Modulen, #1455 |
 | `Atlas.IDE.Contracts.WelcomeTiles` | `Contracts/Atlas.IDE.Contracts.WelcomeTiles.pas` | Kacheln anderer Module auf der Willkommensseite, Board und Projekte der Seite (Tracker ↔ Willkommensseite), Vertrag zwischen Modulen, #1455 |
+| `Atlas.IDE.Contracts.VersionControl` | `Contracts/Atlas.IDE.Contracts.VersionControl.pas` | Vertrag zwischen Modulen: Dienst und Dialoge der Versionsverwaltung, Zugang TAtlasIdeVcs mit Null-Objekt ohne Modul (#1891) |
 | `Atlas.IDE.Contracts.Tests` | `Contracts/Atlas.IDE.Contracts.Tests.pas` | Testprojekte ausführen, Tests debuggen und finden, Ende eines Laufs; für andere Module, Vertrag zwischen Modulen, #1455 |
 | `Atlas.IDE.Contracts.DebugReport` | `Contracts/Atlas.IDE.Contracts.DebugReport.pas` | Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (Debugger → Tracker), Vertrag zwischen Modulen, #1455 |
 | `Atlas.IDE.Contracts.Rules` | `Contracts/Atlas.IDE.Contracts.Rules.pas` | Baseline aktualisieren (Prüfregeln → Willkommensseite) und Regel-Aktionen am Befund (Base → Prüfregeln, #1755), Vertrag zwischen Modulen, #1455 |
@@ -387,29 +390,22 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Updates.Check` | `Core/Updates/Atlas.Core.Updates.Check.pas` | Ordner `Core/Updates` |
 | `Atlas.Core.Updates.Contract` | `Core/Updates/Atlas.Core.Updates.Contract.pas` | Ordner `Core/Updates` |
 | `Atlas.Core.Updates.Install` | `Core/Updates/Atlas.Core.Updates.Install.pas` | Ordner `Core/Updates` |
-| `Atlas.Core.Vcs.Adapters.ProcessRunner` | `Core/Vcs/Atlas.Core.Vcs.Adapters.ProcessRunner.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.BranchNames` | `Core/Vcs/Atlas.Core.Vcs.BranchNames.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.BranchPlan` | `Core/Vcs/Atlas.Core.Vcs.BranchPlan.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Composition` | `Core/Vcs/Atlas.Core.Vcs.Composition.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Contract` | `Core/Vcs/Atlas.Core.Vcs.Contract.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Detection` | `Core/Vcs/Atlas.Core.Vcs.Detection.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Internals.GitParser` | `Core/Vcs/Atlas.Core.Vcs.Internals.GitParser.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Internals.LineTrace` | `Core/Vcs/Atlas.Core.Vcs.Internals.LineTrace.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Internals.SvnExternals` | `Core/Vcs/Atlas.Core.Vcs.Internals.SvnExternals.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Internals.SvnLayout` | `Core/Vcs/Atlas.Core.Vcs.Internals.SvnLayout.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Internals.SvnParser` | `Core/Vcs/Atlas.Core.Vcs.Internals.SvnParser.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Internals.Text` | `Core/Vcs/Atlas.Core.Vcs.Internals.Text.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Providers.Git` | `Core/Vcs/Atlas.Core.Vcs.Providers.Git.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Providers.Null` | `Core/Vcs/Atlas.Core.Vcs.Providers.Null.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Providers.Svn` | `Core/Vcs/Atlas.Core.Vcs.Providers.Svn.pas` | Ordner `Core/Vcs` |
+| `Atlas.Core.Vcs.Adapters.ProcessRunner` | `Core/Vcs/Atlas.Core.Vcs.Adapters.ProcessRunner.pas` | Allgemeiner Prozessläufer (git, svn, Testprogramme des Moduls Tests); einziger Prozessaufruf im Kern (#1891) |
+| `Atlas.Core.Vcs.BranchNames` | `Core/Vcs/Atlas.Core.Vcs.BranchNames.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.Vcs.BranchPlan` | `Core/Vcs/Atlas.Core.Vcs.BranchPlan.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.Vcs.Contract` | `Core/Vcs/Atlas.Core.Vcs.Contract.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.Vcs.Internals.SvnExternals` | `Core/Vcs/Atlas.Core.Vcs.Internals.SvnExternals.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.Vcs.Internals.SvnLayout` | `Core/Vcs/Atlas.Core.Vcs.Internals.SvnLayout.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.Vcs.Internals.Text` | `Core/Vcs/Atlas.Core.Vcs.Internals.Text.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.Vcs.Providers.Null` | `Core/Vcs/Atlas.Core.Vcs.Providers.Null.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
 | `Atlas.Core.Vcs.Pull` | `Core/Vcs/Atlas.Core.Vcs.Pull.pas` | Holen der Arbeitskopie, aus `Atlas.Core.Welcome.QuickActions` für die Willkommensseite und „Arbeitskopien“, #1456 |
-| `Atlas.Core.Vcs.ServerAccess` | `Core/Vcs/Atlas.Core.Vcs.ServerAccess.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.ServerCheck` | `Core/Vcs/Atlas.Core.Vcs.ServerCheck.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Switches` | `Core/Vcs/Atlas.Core.Vcs.Switches.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.ToolCheck` | `Core/Vcs/Atlas.Core.Vcs.ToolCheck.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Tools` | `Core/Vcs/Atlas.Core.Vcs.Tools.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Worker` | `Core/Vcs/Atlas.Core.Vcs.Worker.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.WorkingCopies` | `Core/Vcs/Atlas.Core.Vcs.WorkingCopies.pas` | Ordner `Core/Vcs` |
+| `Atlas.Core.Vcs.ServerAccess` | `Core/Vcs/Atlas.Core.Vcs.ServerAccess.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.Vcs.ServerCheck` | `Core/Vcs/Atlas.Core.Vcs.ServerCheck.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.Vcs.Switches` | `Core/Vcs/Atlas.Core.Vcs.Switches.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.Vcs.ToolCheck` | `Core/Vcs/Atlas.Core.Vcs.ToolCheck.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.Vcs.Tools` | `Core/Vcs/Atlas.Core.Vcs.Tools.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.Vcs.Worker` | `Core/Vcs/Atlas.Core.Vcs.Worker.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.Vcs.WorkingCopies` | `Core/Vcs/Atlas.Core.Vcs.WorkingCopies.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
 | `Atlas.Core.Versions.Project` | `Core/Versions/Atlas.Core.Versions.Project.pas` | Versionsnummer eines Projekts; Release-Wächter und Modul Tracker lesen sie, #1455 |
 | `Atlas.IDE.Build.CheckOnSave` | `IDE/Build/Atlas.IDE.Build.CheckOnSave.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
 | `Atlas.IDE.Build.IdleGate` | `IDE/Build/Atlas.IDE.Build.IdleGate.pas` | Warten, bis kein Compile läuft; Diagnose-Zeitmessung (Base), #1455 |
@@ -625,9 +621,6 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Undo.Target` | `IDE/Undo/Atlas.IDE.Undo.Target.pas` | Ordner `IDE/Undo` |
 | `Atlas.IDE.Updates.Check` | `IDE/Updates/Atlas.IDE.Updates.Check.pas` | Ordner `IDE/Updates` |
 | `Atlas.IDE.Updates.Install` | `IDE/Updates/Atlas.IDE.Updates.Install.pas` | Ordner `IDE/Updates` |
-| `Atlas.IDE.Vcs.Branching` | `IDE/Vcs/Atlas.IDE.Vcs.Branching.pas` | Ordner `IDE/Vcs` |
-| `Atlas.IDE.Vcs.Service` | `IDE/Vcs/Atlas.IDE.Vcs.Service.pas` | Ordner `IDE/Vcs` |
-| `Atlas.IDE.Vcs.WorkingCopies` | `IDE/Vcs/Atlas.IDE.Vcs.WorkingCopies.pas` | Ordner `IDE/Vcs` |
 | `Atlas.UI.Commands.KeyMap` | `UI/Commands/Atlas.UI.Commands.KeyMap.pas` | Ordner `UI/Commands` |
 | `Atlas.UI.Commands.Palette` | `UI/Commands/Atlas.UI.Commands.Palette.pas` | Ordner `UI/Commands` |
 | `Atlas.UI.Commands.ShortcutTip` | `UI/Commands/Atlas.UI.Commands.ShortcutTip.pas` | Ordner `UI/Commands` |
@@ -746,6 +739,23 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Updates.Selection` | `UI/Updates/Atlas.UI.Updates.Selection.pas` | Ordner `UI/Updates` |
 | `Atlas.UI.Updates.Strings` | `UI/Updates/Atlas.UI.Updates.Strings.pas` | Ordner `UI/Updates` |
 | `Atlas.UI.Updates.Texts` | `UI/Updates/Atlas.UI.Updates.Texts.pas` | Ordner `UI/Updates` |
+
+## Atlas.IDE.Vcs
+
+| Unit | Datei | Begründung |
+|---|---|---|
+| `Atlas.Core.Vcs.Composition` | `Core/Vcs/Atlas.Core.Vcs.Composition.pas` | Ordner `Core/Vcs` |
+| `Atlas.Core.Vcs.Detection` | `Core/Vcs/Atlas.Core.Vcs.Detection.pas` | Ordner `Core/Vcs` |
+| `Atlas.Core.Vcs.Internals.GitParser` | `Core/Vcs/Atlas.Core.Vcs.Internals.GitParser.pas` | Ordner `Core/Vcs` |
+| `Atlas.Core.Vcs.Internals.LineTrace` | `Core/Vcs/Atlas.Core.Vcs.Internals.LineTrace.pas` | Ordner `Core/Vcs` |
+| `Atlas.Core.Vcs.Internals.SvnParser` | `Core/Vcs/Atlas.Core.Vcs.Internals.SvnParser.pas` | Ordner `Core/Vcs` |
+| `Atlas.Core.Vcs.Providers.Git` | `Core/Vcs/Atlas.Core.Vcs.Providers.Git.pas` | Ordner `Core/Vcs` |
+| `Atlas.Core.Vcs.Providers.Svn` | `Core/Vcs/Atlas.Core.Vcs.Providers.Svn.pas` | Ordner `Core/Vcs` |
+| `Atlas.IDE.Vcs.Branching` | `IDE/Vcs/Atlas.IDE.Vcs.Branching.pas` | Ordner `IDE/Vcs` |
+| `Atlas.IDE.Vcs.Composition` | `IDE/Vcs/Atlas.IDE.Vcs.Composition.pas` | Ordner `IDE/Vcs` |
+| `Atlas.IDE.Vcs.Service` | `IDE/Vcs/Atlas.IDE.Vcs.Service.pas` | Ordner `IDE/Vcs` |
+| `Atlas.IDE.Vcs.WorkingCopies` | `IDE/Vcs/Atlas.IDE.Vcs.WorkingCopies.pas` | Ordner `IDE/Vcs` |
+| `Atlas.UI.Vcs.SettingsSection` | `UI/Vcs/Atlas.UI.Vcs.SettingsSection.pas` | Ordner `UI/Vcs` |
 | `Atlas.UI.Vcs.BranchDialog` | `UI/Vcs/Atlas.UI.Vcs.BranchDialog.pas` | Ordner `UI/Vcs` |
 | `Atlas.UI.Vcs.WorkingCopies` | `UI/Vcs/Atlas.UI.Vcs.WorkingCopies.pas` | Ordner `UI/Vcs` |
 

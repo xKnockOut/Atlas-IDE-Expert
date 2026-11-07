@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Vcs')]
   TAtlasWorkingCopiesDialogTests = class
   private
     FLanguage: TAtlasLanguage;

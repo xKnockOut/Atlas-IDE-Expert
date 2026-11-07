@@ -76,7 +76,6 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.Rename,
   Atlas.IDE.Undo.Changes,
-  Atlas.IDE.Vcs.Branching,
   Atlas.IDE.CodeInsight.Composition.Adapters,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status;
@@ -224,8 +223,6 @@ begin
   mHooks.StatusJson := StatusJson;
   mHooks.StartServer := StartServer;
   mHooks.ServerCommand := SendServerCommand;
-  // Derselbe Weg nach einem Branch mit geänderten Externals (#1291).
-  TAtlasIdeBranching.ServerCommand := mHooks.ServerCommand;
   mHooks.ServerPath := ServerPath;
   SetupInstance := TAtlasIdeSetupChecklist.Create(TAtlasStatusRegistry.Default, mHooks);
 end;

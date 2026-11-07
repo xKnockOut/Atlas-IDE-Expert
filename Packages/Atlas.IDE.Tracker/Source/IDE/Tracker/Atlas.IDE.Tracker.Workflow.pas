@@ -132,7 +132,7 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.UI.Tracker.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Vcs.Service;
+  Atlas.IDE.Contracts.VersionControl;
 
 type
   /// <summary>Der offene Beenden-Dialog für nachgeladene Werte; nil, sobald er geschlossen ist.</summary>

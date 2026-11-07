@@ -58,7 +58,7 @@ type
     SetToolMissing: TProc<TProc<TAtlasVcsKind>>;
   end;
 
-  TAtlasIdeVcs = class
+  TAtlasIdeVcsCore = class
   public
     /// <summary>Beim Laden: AMessage zeigt eine Zeile in der Meldungsansicht (Hauptthread).</summary>
     class procedure Start(const AMessage: TAtlasIdeVcsMessage; const ABackend: TAtlasIdeVcsBackend); static;
@@ -361,17 +361,17 @@ begin
   end;
 end;
 
-class function TAtlasIdeVcs.Provider: TAtlasVcsProvider;
+class function TAtlasIdeVcsCore.Provider: TAtlasVcsProvider;
 begin
   Result := Current.Provider;
 end;
 
-class function TAtlasIdeVcs.TimeoutMs: Cardinal;
+class function TAtlasIdeVcsCore.TimeoutMs: Cardinal;
 begin
   Result := Current.TimeoutMs;
 end;
 
-class function TAtlasIdeVcs.AtLeast(AMinimumMs: Cardinal): Cardinal;
+class function TAtlasIdeVcsCore.AtLeast(AMinimumMs: Cardinal): Cardinal;
 begin
   Result := TimeoutMs;
   if AMinimumMs > Result then
@@ -380,7 +380,7 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeVcs.Reload;
+class procedure TAtlasIdeVcsCore.Reload;
 begin
   // Hauptthread: ob die .atlas gilt, kann sich mit den Einstellungen geändert haben.
   TeamFileOn := TAtlasIdeTeamFile.Wanted;
@@ -451,12 +451,12 @@ begin
   end;
 end;
 
-class function TAtlasIdeVcs.Projects: TArray<TAtlasVcsProjectMapping>;
+class function TAtlasIdeVcsCore.Projects: TArray<TAtlasVcsProjectMapping>;
 begin
   Result := Current.Projects;
 end;
 
-class function TAtlasIdeVcs.ForFolderResolution(const AFolder: string): TAtlasVcsProjectResolution;
+class function TAtlasIdeVcsCore.ForFolderResolution(const AFolder: string): TAtlasVcsProjectResolution;
 var
   mSettings: TVcsSettings;
   mTeam: TAtlasTeamVcs;
@@ -467,7 +467,7 @@ begin
     mSettings.Provider, AFolder);
 end;
 
-class function TAtlasIdeVcs.ForProjectResolution(const AProjectFile,
+class function TAtlasIdeVcsCore.ForProjectResolution(const AProjectFile,
   AGroupFile: string): TAtlasVcsProjectResolution;
 var
   mSettings: TVcsSettings;
@@ -479,7 +479,7 @@ begin
     AProjectFile, AGroupFile);
 end;
 
-class function TAtlasIdeVcs.MainBranchOf(const AProjectFile, AGroupFile: string): string;
+class function TAtlasIdeVcsCore.MainBranchOf(const AProjectFile, AGroupFile: string): string;
 begin
   Result := '';
   if AProjectFile <> '' then
@@ -539,7 +539,7 @@ begin
     end);
 end;
 
-class procedure TAtlasIdeVcs.Start(const AMessage: TAtlasIdeVcsMessage; const ABackend: TAtlasIdeVcsBackend);
+class procedure TAtlasIdeVcsCore.Start(const AMessage: TAtlasIdeVcsMessage; const ABackend: TAtlasIdeVcsBackend);
 begin
   Message_ := AMessage;
   Backend := ABackend;
@@ -559,7 +559,7 @@ begin
   Backend.SetToolMissing(ToolMissing);
 end;
 
-class procedure TAtlasIdeVcs.Stop;
+class procedure TAtlasIdeVcsCore.Stop;
 begin
   if Assigned(Backend.SetToolMissing) then
   begin
@@ -575,7 +575,7 @@ begin
   FreeAndNil(Logins);
 end;
 
-class procedure TAtlasIdeVcs.Report(const AText: string);
+class procedure TAtlasIdeVcsCore.Report(const AText: string);
 var
   mText: string;
 begin
@@ -590,28 +590,28 @@ begin
     end);
 end;
 
-class function TAtlasIdeVcs.ForFolder(const AFolder: string): IAtlasVersionControl;
+class function TAtlasIdeVcsCore.ForFolder(const AFolder: string): IAtlasVersionControl;
 begin
   Result := ForFolder(AFolder, 0);
 end;
 
-class function TAtlasIdeVcs.ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl;
+class function TAtlasIdeVcsCore.ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl;
 begin
   // Vor dem ersten Start ist keine Umsetzung eingesetzt. Art je Ordner (#1286): „Aus“ liefert die leere Umsetzung.
   Result := OpenFolder(AFolder, ForFolderResolution(AFolder).Provider, ATimeoutMs);
 end;
 
-class function TAtlasIdeVcs.Run(const AWork, ADone: TProc): Boolean;
+class function TAtlasIdeVcsCore.Run(const AWork, ADone: TProc): Boolean;
 begin
   Result := (Worker <> nil) and Worker.Run(AWork, ADone);
 end;
 
-class function TAtlasIdeVcs.Locate(AKind: TAtlasVcsKind; const APath: string): TAtlasVcsToolLocation;
+class function TAtlasIdeVcsCore.Locate(AKind: TAtlasVcsKind; const APath: string): TAtlasVcsToolLocation;
 begin
   Result := TAtlasVcsTools.Probe(AKind, APath);
 end;
 
-class function TAtlasIdeVcs.CheckTool(AKind: TAtlasVcsKind; const APath: string;
+class function TAtlasIdeVcsCore.CheckTool(AKind: TAtlasVcsKind; const APath: string;
   const ADone: TProc<TAtlasVcsToolCheck>): Boolean;
 var
   mRunner: IAtlasVcsRunner;
@@ -637,7 +637,7 @@ begin
     end);
 end;
 
-class function TAtlasIdeVcs.CheckServer(const AFolder: string; const ADone: TProc<TAtlasVcsServerCheck>): Boolean;
+class function TAtlasIdeVcsCore.CheckServer(const AFolder: string; const ADone: TProc<TAtlasVcsServerCheck>): Boolean;
 var
   mRunner: IAtlasVcsRunner;
   mCopy: TAtlasVcsWorkingCopy;
@@ -683,7 +683,7 @@ begin
     end);
 end;
 
-class function TAtlasIdeVcs.ServerState(const AFolder: string): TAtlasVcsServerCheck;
+class function TAtlasIdeVcsCore.ServerState(const AFolder: string): TAtlasVcsServerCheck;
 begin
   if (ServerStates = nil) or not ServerStates.TryGetValue(LowerCase(AFolder), Result) then
   begin
@@ -691,7 +691,7 @@ begin
   end;
 end;
 
-class function TAtlasIdeVcs.OpenServerLogin(const ACheck: TAtlasVcsServerCheck; const AClosed: TProc): Boolean;
+class function TAtlasIdeVcsCore.OpenServerLogin(const ACheck: TAtlasVcsServerCheck; const AClosed: TProc): Boolean;
 var
   mShell, mCommandLine: string;
   mStartup: TStartupInfo;
@@ -755,7 +755,7 @@ begin
   end;
 end;
 
-class function TAtlasIdeVcs.QueryProject(const AProjectFile, AGroupFile: string;
+class function TAtlasIdeVcsCore.QueryProject(const AProjectFile, AGroupFile: string;
   const ADone: TProc<TAtlasVcsProjectState>): Boolean;
 var
   mState: TAtlasVcsProjectState;
@@ -809,7 +809,7 @@ initialization
   ServerStates := TDictionary<string, TAtlasVcsServerCheck>.Create;
 
 finalization
-  TAtlasIdeVcs.Stop;
+  TAtlasIdeVcsCore.Stop;
   FreeAndNil(ServerStates);
   FreeAndNil(TeamCache);
   FreeAndNil(Lock);

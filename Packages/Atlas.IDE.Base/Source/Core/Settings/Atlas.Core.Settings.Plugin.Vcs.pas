@@ -25,6 +25,9 @@ const
 type
   /// <summary>Plugin-Einstellungen: Versionsverwaltung.</summary>
   TAtlasPluginVcsSettings = record
+    /// <summary>Modul-Schalter vcs.enabled (#1891): Versionsverwaltung; aus = keine Arbeitskopie, kein
+    /// Branch beim Beginnen, keine Zeilenhistorie. Die Einzelschalter behalten ihre Werte.</summary>
+    VcsEnabled: Boolean;
     /// <summary>Art der Versionsverwaltung (#571, vcs.provider, seit #1285 auf der Seite Versionsverwaltung):
     /// auto, git, svn oder off; liegt in settings.json, damit Plugin und Server denselben Wert lesen.</summary>
     VcsProvider: string;
@@ -99,6 +102,7 @@ uses
 
 class function TAtlasPluginVcsSettings.Defaults: TAtlasPluginVcsSettings;
 begin
+  Result.VcsEnabled := True;
   Result.VcsProvider := 'auto';
   Result.VcsGitPath := '';
   Result.VcsSvnPath := '';
@@ -176,6 +180,7 @@ end;
 
 procedure TAtlasPluginVcsSettings.Exchange(const AIo: TAtlasSettingsExchange);
 begin
+  AIo.Flag('VcsEnabled', VcsEnabled);
   AIo.Text('VcsProvider', VcsProvider);
   AIo.Text('VcsGitPath', VcsGitPath);
   AIo.Text('VcsSvnPath', VcsSvnPath);

@@ -851,6 +851,7 @@ type
     property VcsExternalsRules: string read FVcs.VcsExternalsRules write FVcs.VcsExternalsRules;
     property VcsExternalsShow: Boolean read FVcs.VcsExternalsShow write FVcs.VcsExternalsShow;
     property VcsExternalsUpdate: string read FVcs.VcsExternalsUpdate write FVcs.VcsExternalsUpdate;
+    property VcsEnabled: Boolean read FVcs.VcsEnabled write FVcs.VcsEnabled;
     property VcsBranchConfirm: Boolean read FVcs.VcsBranchConfirm write FVcs.VcsBranchConfirm;
     property VcsBranchGitBase: string read FVcs.VcsBranchGitBase write FVcs.VcsBranchGitBase;
     property VcsBranchGitPush: string read FVcs.VcsBranchGitPush write FVcs.VcsBranchGitPush;

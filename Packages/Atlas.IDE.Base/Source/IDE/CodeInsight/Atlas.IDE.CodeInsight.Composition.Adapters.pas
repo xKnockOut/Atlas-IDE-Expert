@@ -2,7 +2,7 @@
 
 // Adapters, Providers und Compositions der Core-Features für die Kompositionswurzel (A-09): Serverprozess,
 // Ordnerbeobachter, Quellen von Vervollständigung und Parameter-Hint, Code-Aktionen für den Klick auf eine Marke,
-// Prozessläufer der Versionsverwaltung, Ziel und Sicherung des Änderungsprotokolls und die Update-Quelle. Nur diese
+// Ziel und Sicherung des Änderungsprotokolls und die Update-Quelle. Nur diese
 // Unit erzeugt sie; die Features bekommen sie über
 // Schnittstellen und Fabriken.
 
@@ -10,14 +10,11 @@ interface
 
 uses
   Atlas.Core.Updates.Contract,
-  Atlas.IDE.CodeInsight.Manager.State,
-  Atlas.IDE.Vcs.Service;
+  Atlas.IDE.CodeInsight.Manager.State;
 
 /// <summary>Serverprozess, Ordnerbeobachter und Quellen von Vervollständigung und Parameter-Hint aus dem Kern,
 /// Code-Aktionen für den Klick auf die Marke „braucht kein Self“.</summary>
 function CodeInsightAdapters: TAtlasCodeInsightAdapters;
-/// <summary>Versionsverwaltung: Prozessläufer und Auswahl des Kerns.</summary>
-function VcsBackend: TAtlasIdeVcsBackend;
 /// <summary>Ziel auf der Platte und Sicherung des Änderungsprotokolls (#721) in TAtlasIdeUndoTarget und
 /// TAtlasIdeUndo einsetzen.</summary>
 procedure InstallUndoAdapters;
@@ -43,10 +40,6 @@ uses
   Atlas.Core.Undo.Adapters.DiskTarget,
   Atlas.Core.Undo.Adapters.FileStore,
   Atlas.Core.Updates.Adapters.HttpSource,
-  Atlas.Core.Vcs.Contract,
-  Atlas.Core.Vcs.Composition,
-  Atlas.Core.Vcs.Tools,
-  Atlas.Core.Vcs.Adapters.ProcessRunner,
   Atlas.IDE.Completion.Editor,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Undo.Changes,
@@ -120,35 +113,6 @@ begin
     procedure
     begin
       TAtlasIdeEditorCommands.CodeActions;
-    end;
-end;
-
-function VcsBackend: TAtlasIdeVcsBackend;
-begin
-  Result.NewRunner :=
-    function(ACancelled: TFunc<Boolean>): IAtlasVcsRunner
-    begin
-      Result := TAtlasVcsProcessRunner.Create(False, ACancelled);
-    end;
-  Result.Open :=
-    function(const AFolder: string; AProvider: TAtlasVcsProvider; const ARunner: IAtlasVcsRunner;
-      ATimeoutMs: Cardinal): IAtlasVersionControl
-    begin
-      if ATimeoutMs = 0 then
-      begin
-        Exit(TAtlasVersionControl.Open(AFolder, AProvider, ARunner));
-      end;
-      Result := TAtlasVersionControl.Open(AFolder, AProvider, ARunner,
-        function(AKind: TAtlasVcsKind): string
-        begin
-          Result := TAtlasVcsTools.Find(AKind);
-        end,
-        ATimeoutMs);
-    end;
-  Result.SetToolMissing :=
-    procedure(AHandler: TProc<TAtlasVcsKind>)
-    begin
-      TAtlasVcsNotices.OnToolMissing := AHandler;
     end;
 end;
 

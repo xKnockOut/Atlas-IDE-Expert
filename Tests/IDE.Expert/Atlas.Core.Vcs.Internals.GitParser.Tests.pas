@@ -10,6 +10,7 @@ uses
 type
   /// <summary>Lesen aufgezeichneter git-Ausgaben.</summary>
   [TestFixture]
+  [Category('Atlas.IDE.Vcs')]
   TAtlasVcsGitParserTests = class
   public
     [Test]

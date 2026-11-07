@@ -151,7 +151,7 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Vcs.Service;
+  Atlas.IDE.Contracts.VersionControl;
 
 { TAtlasIdeProjectSummaries.TIdeNotifier }
 

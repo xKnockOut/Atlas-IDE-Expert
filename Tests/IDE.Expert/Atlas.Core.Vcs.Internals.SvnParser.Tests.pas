@@ -10,6 +10,7 @@ uses
 type
   /// <summary>Lesen aufgezeichneter svn-Ausgaben.</summary>
   [TestFixture]
+  [Category('Atlas.IDE.Vcs')]
   TAtlasVcsSvnParserTests = class
   public
     [Test]

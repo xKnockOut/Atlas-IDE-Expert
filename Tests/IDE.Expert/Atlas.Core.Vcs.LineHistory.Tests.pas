@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Vcs')]
   TAtlasVcsLineHistoryTests = class
   public
     [Test]

@@ -110,8 +110,7 @@ uses
   Atlas.UI.Tracker.LinkDialogs,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Vcs.Branching,
-  Atlas.IDE.Vcs.Service,
+  Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Tracker.Workflow,
   Atlas.IDE.Tracker.IssueLinkWrites;
 
@@ -167,7 +166,7 @@ begin
   if UseRequest then
   begin
     Outcome := TAtlasMyIssues.Execute(TAtlasIdeVcs.ForFolder(mDir, TAtlasIdeVcs.AtLeast(cVcsTimeoutMs)), Plan,
-      Request, TAtlasIdeBranching.Progress(Request.Kind));
+      Request, TAtlasIdeVcs.Dialogs.Progress(Request.Kind));
   end
   else
   begin
@@ -224,7 +223,7 @@ begin
   // Hauptbranch des Projekts (#1286) als Basis, wenn issues.branchBase leer ist.
   Result.MainBranch := TAtlasIdeVcs.MainBranchOf(AProject, TAtlasIdeFiles.GroupOfProject(AProject));
   // SVN (#1290): Ort, Quelle, Danach und Nachricht aus vcs.branch.svn.*.
-  Result.Svn := TAtlasIdeBranching.SvnOptions(AProject);
+  Result.Svn := TAtlasIdeVcs.Dialogs.SvnOptions(AProject);
 end;
 
 /// <summary>Hinweis nach gelungenem Beginnen.</summary>
@@ -455,13 +454,13 @@ begin
   begin
     Exit;
   end;
-  mOptions := TAtlasIdeBranching.GitOptions;
+  mOptions := TAtlasIdeVcs.Dialogs.GitOptions;
   AJob.UseRequest := TAtlasVcsBranchPlan.DefaultRequest(AJob.Facts, AJob.Plan.Branch, AJob.Plan.Message,
     AJob.Issue.Key, TAtlasVcsBranchOptions.Make(mOptions, AJob.Plan.Svn), AJob.Request);
   // uncommitted = ask ohne Dialog: mitnehmen, beiseitelegen oder abbrechen.
   if AJob.UseRequest and AJob.AsksUncommitted(mOptions) then
   begin
-    Result := TAtlasIdeBranching.AskUncommitted(AJob.Changes, AJob.Plan.Branch, AJob.Request.Stash);
+    Result := TAtlasIdeVcs.Dialogs.AskUncommitted(AJob.Changes, AJob.Plan.Branch, AJob.Request.Stash);
     AAsked := Result;
   end;
 end;
@@ -476,15 +475,15 @@ begin
   begin
     Exit;
   end;
-  Result := TAtlasIdeBranching.Ask(ExtractFileDir(AJob.Project), AJob.Facts, TAtlasIdeBranching.Setup(AJob.Plan.Branch,
-    AJob.Plan.Message, AJob.Issue.Key, AJob.Plan.Svn, True), AJob.Request, mNeverAsk);
+  Result := TAtlasIdeVcs.Dialogs.AskBranch(ExtractFileDir(AJob.Project), AJob.Facts, AJob.Plan.Branch,
+    AJob.Plan.Message, AJob.Issue.Key, AJob.Plan.Svn, True, AJob.Request, mNeverAsk);
   if not Result then
   begin
     Exit;
   end;
   if mNeverAsk then
   begin
-    TAtlasIdeBranching.StopAsking;
+    TAtlasIdeVcs.Dialogs.StopAsking;
   end;
   AJob.UseRequest := True;
   AJob.OfferLocal := True;
@@ -533,7 +532,7 @@ var
 begin
   // Abruf gescheitert (#1289), noch nichts geändert: nach dem Dialog vom lokalen Stand, ohne erneute Frage.
   if AJob.OfferLocal and (AJob.Outcome.Outcome = TAtlasIssueStartOutcome.Failed) and
-    TAtlasIdeBranching.AskLocal(AJob.Facts, AJob.Request, AJob.Outcome.Steps, AJob.Outcome.Run, mFallback) then
+    TAtlasIdeVcs.Dialogs.AskLocal(AJob.Facts, AJob.Request, AJob.Outcome.Steps, AJob.Outcome.Run, mFallback) then
   begin
     mJob := AJob;
     mJob.UseRequest := True;
@@ -569,7 +568,7 @@ begin
     end
     else if Length(mResult.Steps) > 0 then
     begin
-      FContext.Report(TAtlasIdeBranching.FailureText(AJob.Plan.Kind, mResult.Steps, mResult.Run));
+      FContext.Report(TAtlasIdeVcs.Dialogs.FailureText(AJob.Plan.Kind, mResult.Steps, mResult.Run));
     end
     else
     begin
@@ -630,7 +629,7 @@ begin
   if AJob.Outcome.PushFailed then
   begin
     FContext.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchPushFailed, [AJob.Outcome.Branch,
-      TAtlasIdeBranching.ServerState(AJob.Outcome.Reason)]));
+      TAtlasIdeVcs.Dialogs.ServerState(AJob.Outcome.Reason)]));
   end;
 end;
 
@@ -645,8 +644,8 @@ begin
   end
   else if FContext.Welcome <> nil then
   begin
-    mOpen := TAtlasIdeBranching.WorktreeProject(AJob.Project, AJob.Outcome.WorkingRoot, AJob.Outcome.Folder);
-    if TAtlasIdeBranching.OfferWorktree(AJob.Outcome.Branch, AJob.Outcome.Folder, mOpen) then
+    mOpen := TAtlasIdeVcs.Dialogs.WorktreeProject(AJob.Project, AJob.Outcome.WorkingRoot, AJob.Outcome.Folder);
+    if TAtlasIdeVcs.Dialogs.OfferWorktree(AJob.Outcome.Branch, AJob.Outcome.Folder, mOpen) then
     begin
       FContext.Welcome.Open(mOpen);
     end;
@@ -654,12 +653,12 @@ begin
   // SVN „frisch auschecken“ (#1290): die alte Arbeitskopie bleibt; dieselbe Gruppe im neuen Ordner anbieten.
   if AJob.Outcome.CheckoutFolder <> '' then
   begin
-    TAtlasIdeBranching.OfferOpen(AJob.Project, AJob.Outcome.WorkingRoot, AJob.Outcome.CheckoutFolder);
+    TAtlasIdeVcs.Dialogs.OfferOpen(AJob.Project, AJob.Outcome.WorkingRoot, AJob.Outcome.CheckoutFolder);
   end;
   // Externals festgeschrieben bzw. mitverzweigt und umgeschaltet (#1291): Index neu.
   if AJob.Outcome.IndexRebuild then
   begin
-    TAtlasIdeBranching.RebuildIndex;
+    TAtlasIdeVcs.Dialogs.RebuildIndex;
   end;
 end;
 

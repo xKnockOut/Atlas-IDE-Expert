@@ -37,7 +37,9 @@
         "Atlas.IDE.Debug.Composition -> Atlas.Core.*",
         "Atlas.IDE.BuildTools.Composition -> Atlas.Core.*",
         "Atlas.IDE.Tests.Composition -> Atlas.Core.*",
-        "Atlas.IDE.Tracker.Composition -> Atlas.Core.*"
+        "Atlas.IDE.Tracker.Composition -> Atlas.Core.*",
+        "Atlas.IDE.Vcs.Composition -> Atlas.Core.*",
+        "Atlas.IDE.Contracts.VersionControl -> Atlas.Core.Vcs.Providers.Null"
       ]
     },
     "architecture-contract-content": {

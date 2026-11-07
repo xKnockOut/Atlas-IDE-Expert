@@ -81,7 +81,7 @@ uses
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
-  Atlas.IDE.Vcs.Service;
+  Atlas.IDE.Contracts.VersionControl;
 
 { TAtlasIdeAffectedTests }
 

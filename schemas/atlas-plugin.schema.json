@@ -6090,6 +6090,21 @@
       "x-control": "Zahl (1–5000)",
       "x-issue": "#1275"
     },
+    "VcsEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Modul Versionsverwaltung (#1891): Git und SVN, Branch beim Beginnen eines Issues, Zeilenhistorie, Arbeitskopien und Projektzustand; aus = nichts davon, Tracker, Willkommensseite und Tests laufen ohne. Die Einzelschalter behalten ihre Werte.",
+      "x-key": "vcs.enabled",
+      "x-area": "vcs",
+      "x-page": "Versionsverwaltung",
+      "x-node": "",
+      "x-parent": "",
+      "x-module": "vcs",
+      "x-quickToggle": true,
+      "x-caption": "Versionsverwaltung",
+      "x-captionEn": "Version control",
+      "x-issue": "#1891"
+    },
     "VcsProvider": {
       "type": "string",
       "enum": [

@@ -132,7 +132,7 @@ uses
   Atlas.UI.Undo.DiffView,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Vcs.Service;
+  Atlas.IDE.Contracts.VersionControl;
 
 { TAtlasIdeIssueDevelopment }
 

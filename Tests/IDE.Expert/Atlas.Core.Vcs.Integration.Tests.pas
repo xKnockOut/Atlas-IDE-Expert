@@ -21,6 +21,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Vcs')]
   TAtlasVcsIntegrationTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>

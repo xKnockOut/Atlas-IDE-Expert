@@ -185,7 +185,7 @@ uses
   Atlas.Core.Tracker.Templates,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Vcs.Service;
+  Atlas.IDE.Contracts.VersionControl;
 
 /// <summary>Fußzeile: die gesendete Abfrage, bei der Vorgabe die des Anbieters.</summary>
 function QueryTextOf(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): string;

@@ -197,7 +197,7 @@ All settings with page and control in the settings plugin (#227). Details on val
 | Bookmarks (`bookmarks`) | `bookmarks.enabled`, `bookmarks.named`, `bookmarks.shared`, `bookmarks.quick`, `bookmarks.quick.gutter`, `bookmarks.quick.gutterClick`, `bookmarks.quick.numberedKeys`, `bookmarks.quick.key`, `bookmarks.quick.chordWait`, `bookmarks.quick.scope`, `bookmarks.quick.importIde` |
 | Welcome page (`welcome`) | `welcomePage.enabled`, `welcomePage.projectSetup`, `welcomePage.tests.ci.login`, `welcomePage.quickActions`, `welcomePage.ideWelcomePage`, `welcomePage.layout`, `welcomePage.openOnStart`, `welcomePage.openWhenNoProject`, `welcomePage.header`, `welcomePage.greeting`, `welcomePage.search`, `welcomePage.search.symbols`, `welcomePage.whatsNew`, `welcomePage.projectStatus`, `welcomePage.maxProjects`, `welcomePage.refreshVcs`, `welcomePage.unsaved`, `welcomePage.unsaved.minAgeHours`, `welcomePage.unsaved.warnHours`, `welcomePage.unsaved.alertHours`, `welcomePage.unsaved.hideWhenClean`, `welcomePage.statusTile`, `welcomePage.statusTile.onlyProblems`, `welcomePage.discover`, `tips.usageTracking`, `welcomePage.help`, `welcomePage.help.reportUrl`, `welcomePage.help.reportFolder`, `welcomePage.newFromTemplate`, `welcomePage.continue`, `welcomePage.continue.count`, `welcomePage.continue.incoming`, `welcomePage.continue.fetch`, `welcomePage.saved`, `welcomePage.trends`, `welcomePage.trends.points`, `welcomePage.trends.series`, `welcomePage.tests`, `welcomePage.tests.maxFailures`, `welcomePage.tests.ci`, `welcomePage.tests.ci.provider`, `welcomePage.tests.ci.intervalMinutes`, `welcomePage.tests.ci.notify`, `welcomePage.quickActions.items`, `welcomePage.quickActions.console`, `welcomePage.issues`, `welcomePage.sprint`, `welcomePage.customLayout`, `welcomePage.columns`, `welcomePage.layouts`, `welcomePage.activeLayout` |
 | Issue tracker (`issues`) | `issues.enabled`, `issues.tracker`, `issues.start`, `issues.branchPattern`, `issues.branchBase`, `issues.commitPattern`, `issues.login`, `issues.connections`, `issues.projects`, `issues.queries`, `issues.queryPicker`, `issues.create`, `issues.create.includeCode`, `issues.preview`, `issues.preview.comments`, `issues.codeLinks`, `issues.blameLinks`, `issues.blameLinks.maxRevisions`, `issues.syncState`, `issues.stateField`, `issues.assigneeField`, `issues.startState`, `issues.assignOnStart`, `issues.startComment`, `issues.endStates`, `issues.endComment`, `issues.timeTracking`, `issues.idleMinutes`, `issues.timeRounding`, `issues.preview.checklists`, `issues.checklistStatus`, `issues.preview.links`, `issues.warnBlocked`, `issues.board`, `issues.board.confirmMove`, `issues.board.onlyMine`, `issues.sprint.burndown`, `issues.sprint.compare`, `issues.paletteSearch`, `issues.commentEditor`, `issues.commentSnippets`, `issues.preview.development`, `issues.notify`, `issues.notify.intervalMinutes`, `issues.notify.scope`, `issues.attach`, `issues.attach.logFiles`, `issues.attach.maxImageWidth` |
-| Version control (`vcs`) | `vcs.provider`, `vcs.git.path`, `vcs.svn.path`, `vcs.timeoutSeconds`, `vcs.projects`, `vcs.branch.confirm`, `vcs.branch.svn.location`, `vcs.branch.svn.source`, `vcs.branch.svn.after`, `vcs.branch.svn.checkoutFolder`, `vcs.branch.svn.message`, `vcs.externals.onBranch`, `vcs.externals.suggestBranch`, `vcs.externals.rules`, `vcs.externals.show`, `vcs.externals.update`, `vcs.branch.git.base`, `vcs.branch.git.push`, `vcs.branch.git.uncommitted`, `vcs.branch.git.worktree`, `vcs.branch.git.worktreeFolder`, `vcs.git`, `vcs.svn` |
+| Version control (`vcs`) | `vcs.enabled`, `vcs.provider`, `vcs.git.path`, `vcs.svn.path`, `vcs.timeoutSeconds`, `vcs.projects`, `vcs.branch.confirm`, `vcs.branch.svn.location`, `vcs.branch.svn.source`, `vcs.branch.svn.after`, `vcs.branch.svn.checkoutFolder`, `vcs.branch.svn.message`, `vcs.externals.onBranch`, `vcs.externals.suggestBranch`, `vcs.externals.rules`, `vcs.externals.show`, `vcs.externals.update`, `vcs.branch.git.base`, `vcs.branch.git.push`, `vcs.branch.git.uncommitted`, `vcs.branch.git.worktree`, `vcs.branch.git.worktreeFolder`, `vcs.git`, `vcs.svn` |
 | General (`general`) | `diagnosticMode.enabled`, `diagnosticMode.pluginTimings`, `diagnosticMode.slowThresholdMs`, `diagnostics.processes`, `server.statusWindow`, `analysis.enabled`, `architecture.enabled`, `architecture.scope`, `architecture.includeLibraryUnits`, `architecture.centralUnits`, `query.enabled`, `hotspots.enabled`, `hotspots.months`, `hotspots.coupling.minCommits`, `experimental.enabled`, `teamFile.enabled`, `settings.exportImport`, `shortcutTips.enabled`, `notifications.enabled`, `statusField.showSummary`, `robustness.hangThresholdMs`, `robustness.providerTimeLimitMs`, `robustness.hangHint`, `index.projectGroup`, `index.searchPaths`, `index.libraryPaths`, `index.usages`, `memoryBudgetMb`, `statusField.enabled`, `statusField.hidden`, `statusField.openToggles`, `statusField.indexProgress`, `ui.setupChecklist`, `shortcutTips.scope`, `safeMode.askAfterCrash`, `safeMode.autoAfterRepeatedCrash`, `safeMode.startupKey`, `safeMode.startupTimeoutMs`, `safeMode.keepSettingsHistory`, `updates.check`, `updates.install`, `updates.channel`, `updates.newModules`, `diagnostics.bugReport.anonymize`, `diagnostics.log.names`, `notifications.sources`, `notifications.maxEntries`, `settings.markModified`, `settings.backupBeforeImport`, `settings.exportSecrets`, `language`, `index.removeOrphans`, `index.cacheMaxAgeDays`, `index.cacheMaxMb`, `architecture.explainAssignment`, `architecture.grouping`, `hotspots.coupling`, `requestTimeoutMs`, `server.crashCases`, `server.crashSkip`, `diagnostics.log`, `diagnostics.logDays`, `diagnostics.logMapFile`, `diagnostics.librarySources`, `logLevel`, `logFile`, `traceFile` |
 | not exported (state, this machine only) | `ui.architectureWindowPlaced`, `ui.hotspotsWindowPlaced`, `ui.unitRelationsWindowPlaced`, `completion.listWidth`, `completion.panelWidth`, `server.path`, `ui.setupChecklistSeen`, `editor.minimap.noticeShown`, `welcomePage.whatsNewSeen`, `delphiVersion` |
 
@@ -983,28 +983,29 @@ Risky or immature features come as **experimental** (#834): they have their own 
 ### Version control
 
 - **Main node**
-  - `vcs.provider`
-  - `vcs.git.path`
-  - `vcs.svn.path`
-  - `vcs.timeoutSeconds`
-  - `vcs.projects`
+  - `vcs.enabled`
+    - `vcs.provider`
+    - `vcs.git.path`
+    - `vcs.svn.path`
+    - `vcs.timeoutSeconds`
+    - `vcs.projects`
 
 - **Branches** (`vcs.branches`)
-  - `vcs.branch.confirm`
-  - `vcs.branch.svn.location`
-  - `vcs.branch.svn.source`
-  - `vcs.branch.svn.after`
-  - `vcs.branch.svn.checkoutFolder`
-  - `vcs.branch.svn.message`
-  - `vcs.branch.git.base`
-  - `vcs.branch.git.push`
-  - `vcs.branch.git.uncommitted`
-  - `vcs.branch.git.worktree`
-  - `vcs.branch.git.worktreeFolder`
+  - `vcs.branch.confirm` – depends on `vcs.enabled`
+  - `vcs.branch.svn.location` – depends on `vcs.enabled`
+  - `vcs.branch.svn.source` – depends on `vcs.enabled`
+  - `vcs.branch.svn.after` – depends on `vcs.enabled`
+  - `vcs.branch.svn.checkoutFolder` – depends on `vcs.enabled`
+  - `vcs.branch.svn.message` – depends on `vcs.enabled`
+  - `vcs.branch.git.base` – depends on `vcs.enabled`
+  - `vcs.branch.git.push` – depends on `vcs.enabled`
+  - `vcs.branch.git.uncommitted` – depends on `vcs.enabled`
+  - `vcs.branch.git.worktree` – depends on `vcs.enabled`
+  - `vcs.branch.git.worktreeFolder` – depends on `vcs.enabled`
 
 - **Externals** (`vcs.externals`)
-  - `vcs.externals.onBranch`
-  - `vcs.externals.suggestBranch`
-  - `vcs.externals.rules`
-  - `vcs.externals.show`
-  - `vcs.externals.update`
+  - `vcs.externals.onBranch` – depends on `vcs.enabled`
+  - `vcs.externals.suggestBranch` – depends on `vcs.enabled`
+  - `vcs.externals.rules` – depends on `vcs.enabled`
+  - `vcs.externals.show` – depends on `vcs.enabled`
+  - `vcs.externals.update` – depends on `vcs.enabled`

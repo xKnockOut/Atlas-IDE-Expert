@@ -24,6 +24,9 @@
         <Projects Include="Packages\Atlas.IDE.Debugger\Atlas.IDE.Debugger.dproj">
             <Dependencies>Packages\Atlas.IDE.Base\Atlas.IDE.Base.dproj</Dependencies>
         </Projects>
+        <Projects Include="Packages\Atlas.IDE.Vcs\Atlas.IDE.Vcs.dproj">
+            <Dependencies>Packages\Atlas.IDE.Base\Atlas.IDE.Base.dproj</Dependencies>
+        </Projects>
         <Projects Include="Packages\Atlas.IDE.Designer\Atlas.IDE.Designer.dproj">
             <Dependencies>Packages\Atlas.IDE.Base\Atlas.IDE.Base.dproj</Dependencies>
         </Projects>
@@ -128,6 +131,15 @@
     <Target Name="Atlas_IDE_Debugger:Make">
         <MSBuild Projects="Packages\Atlas.IDE.Debugger\Atlas.IDE.Debugger.dproj" Targets="Make"/>
     </Target>
+    <Target Name="Atlas_IDE_Vcs">
+        <MSBuild Projects="Packages\Atlas.IDE.Vcs\Atlas.IDE.Vcs.dproj"/>
+    </Target>
+    <Target Name="Atlas_IDE_Vcs:Clean">
+        <MSBuild Projects="Packages\Atlas.IDE.Vcs\Atlas.IDE.Vcs.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Atlas_IDE_Vcs:Make">
+        <MSBuild Projects="Packages\Atlas.IDE.Vcs\Atlas.IDE.Vcs.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Atlas_IDE_Designer">
         <MSBuild Projects="Packages\Atlas.IDE.Designer\Atlas.IDE.Designer.dproj"/>
     </Target>
@@ -228,13 +240,13 @@
         <MSBuild Projects="Tests\Atlas.Tests.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="Atlas_Text;Atlas_Common;Atlas_Windows;AtlasServer;AtlasUpdate;Atlas_IDE_Base;Atlas_IDE_Debugger;Atlas_IDE_Designer;Atlas_IDE_Rules;Atlas_IDE_Tests;Atlas_IDE_Bookmarks;Atlas_IDE_Analysis;Atlas_IDE_Search;Atlas_IDE_Build;Atlas_IDE_BuildPipeline;Atlas_IDE_Tracker;Atlas_IDE_Welcome;Atlas_Tests"/>
+        <CallTarget Targets="Atlas_Text;Atlas_Common;Atlas_Windows;AtlasServer;AtlasUpdate;Atlas_IDE_Base;Atlas_IDE_Debugger;Atlas_IDE_Vcs;Atlas_IDE_Designer;Atlas_IDE_Rules;Atlas_IDE_Tests;Atlas_IDE_Bookmarks;Atlas_IDE_Analysis;Atlas_IDE_Search;Atlas_IDE_Build;Atlas_IDE_BuildPipeline;Atlas_IDE_Tracker;Atlas_IDE_Welcome;Atlas_Tests"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="Atlas_Text:Clean;Atlas_Common:Clean;Atlas_Windows:Clean;AtlasServer:Clean;AtlasUpdate:Clean;Atlas_IDE_Base:Clean;Atlas_IDE_Debugger:Clean;Atlas_IDE_Designer:Clean;Atlas_IDE_Rules:Clean;Atlas_IDE_Tests:Clean;Atlas_IDE_Bookmarks:Clean;Atlas_IDE_Analysis:Clean;Atlas_IDE_Search:Clean;Atlas_IDE_Build:Clean;Atlas_IDE_BuildPipeline:Clean;Atlas_IDE_Tracker:Clean;Atlas_IDE_Welcome:Clean;Atlas_Tests:Clean"/>
+        <CallTarget Targets="Atlas_Text:Clean;Atlas_Common:Clean;Atlas_Windows:Clean;AtlasServer:Clean;AtlasUpdate:Clean;Atlas_IDE_Base:Clean;Atlas_IDE_Debugger:Clean;Atlas_IDE_Vcs:Clean;Atlas_IDE_Designer:Clean;Atlas_IDE_Rules:Clean;Atlas_IDE_Tests:Clean;Atlas_IDE_Bookmarks:Clean;Atlas_IDE_Analysis:Clean;Atlas_IDE_Search:Clean;Atlas_IDE_Build:Clean;Atlas_IDE_BuildPipeline:Clean;Atlas_IDE_Tracker:Clean;Atlas_IDE_Welcome:Clean;Atlas_Tests:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="Atlas_Text:Make;Atlas_Common:Make;Atlas_Windows:Make;AtlasServer:Make;AtlasUpdate:Make;Atlas_IDE_Base:Make;Atlas_IDE_Debugger:Make;Atlas_IDE_Designer:Make;Atlas_IDE_Rules:Make;Atlas_IDE_Tests:Make;Atlas_IDE_Bookmarks:Make;Atlas_IDE_Analysis:Make;Atlas_IDE_Search:Make;Atlas_IDE_Build:Make;Atlas_IDE_BuildPipeline:Make;Atlas_IDE_Tracker:Make;Atlas_IDE_Welcome:Make;Atlas_Tests:Make"/>
+        <CallTarget Targets="Atlas_Text:Make;Atlas_Common:Make;Atlas_Windows:Make;AtlasServer:Make;AtlasUpdate:Make;Atlas_IDE_Base:Make;Atlas_IDE_Debugger:Make;Atlas_IDE_Vcs:Make;Atlas_IDE_Designer:Make;Atlas_IDE_Rules:Make;Atlas_IDE_Tests:Make;Atlas_IDE_Bookmarks:Make;Atlas_IDE_Analysis:Make;Atlas_IDE_Search:Make;Atlas_IDE_Build:Make;Atlas_IDE_BuildPipeline:Make;Atlas_IDE_Tracker:Make;Atlas_IDE_Welcome:Make;Atlas_Tests:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

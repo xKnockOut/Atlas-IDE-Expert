@@ -122,7 +122,7 @@ uses
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.TimeList,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Vcs.Service;
+  Atlas.IDE.Contracts.VersionControl;
 
 type
   /// <summary>Der offene Buchungsdialog für nachgeladene Werte; nil, sobald er geschlossen ist.</summary>

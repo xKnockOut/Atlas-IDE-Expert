@@ -88,7 +88,7 @@ uses
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.NewIssuePlace,
-  Atlas.IDE.Vcs.Service;
+  Atlas.IDE.Contracts.VersionControl;
 
 const
   cVcsTimeoutMs = 2000;

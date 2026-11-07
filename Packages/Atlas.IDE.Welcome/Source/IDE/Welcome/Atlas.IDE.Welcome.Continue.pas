@@ -192,7 +192,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Foundation.ResultsWindow,
-  Atlas.IDE.Vcs.Service,
+  Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Welcome.Neighbors,
   Atlas.IDE.Welcome.Search,

@@ -16,7 +16,7 @@ uses
   System.SysUtils;
 
 const
-  cProfile0: array[0..68] of string = (
+  cProfile0: array[0..69] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -81,12 +81,13 @@ const
     '    "buildTools.enabled": true,',
     '    "buildPipeline.enabled": true,',
     '    "bookmarks.enabled": true,',
+    '    "vcs.enabled": true,',
     '    "designer.enabled": true,',
     '    "ruleChecks.enabled": true,',
     '    "search.enabled": true',
     '  }',
     '}');
-  cProfile1: array[0..58] of string = (
+  cProfile1: array[0..59] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -141,6 +142,7 @@ const
     '    "buildTools.enabled": true,',
     '    "buildPipeline.enabled": true,',
     '    "bookmarks.enabled": true,',
+    '    "vcs.enabled": true,',
     '    "designer.enabled": true,',
     '    "ruleChecks.enabled": true,',
     '    "search.enabled": true',
@@ -158,7 +160,7 @@ const
     '  "mode": "replace",',
     '  "settings": {}',
     '}');
-  cProfile3: array[0..58] of string = (
+  cProfile3: array[0..59] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -213,12 +215,13 @@ const
     '    "buildTools.enabled": false,',
     '    "buildPipeline.enabled": false,',
     '    "bookmarks.enabled": false,',
+    '    "vcs.enabled": false,',
     '    "designer.enabled": false,',
     '    "ruleChecks.enabled": false,',
     '    "search.enabled": false',
     '  }',
     '}');
-  cProfile4: array[0..22] of string = (
+  cProfile4: array[0..23] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -238,6 +241,7 @@ const
     '    "buildTools.enabled": false,',
     '    "buildPipeline.enabled": false,',
     '    "bookmarks.enabled": false,',
+    '    "vcs.enabled": false,',
     '    "designer.enabled": false,',
     '    "ruleChecks.enabled": false,',
     '    "search.enabled": false,',

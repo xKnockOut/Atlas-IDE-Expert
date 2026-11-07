@@ -152,7 +152,7 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Context,
-  Atlas.IDE.Vcs.Service,
+  Atlas.IDE.Contracts.VersionControl,
   Atlas.UI.Tracker.Strings;
 
 { TAtlasIdeCommentService }
