@@ -17,7 +17,7 @@
 //   Läufer dort OK (wie TAtlasIdeCheckOnSave, nie Abbrechen).
 // - Die Meldungen liest der Leser des Meldungsfensters (#528) kurz nach dem
 //   Ende; Base reicht sie über IAtlasCompilerMessagesListener (MessagesRead) weiter. Kommen
-//   sie nicht binnen MessagesWaitMs, meldet der Läufer das Ergebnis ohne sie.
+//   sie nicht binnen cMessagesWaitMs, meldet der Läufer das Ergebnis ohne sie.
 // - Bricht ein Teilnehmer der Compile-Ereignisse den eigenen Build ab (etwa
 //   der Release-Build-Wächter mit build.gate = block, #533), endet der
 //   Auftrag als „nicht gebaut“ mit dessen Grund (AError), nicht als
@@ -38,7 +38,7 @@ type
   // TAtlasBuildDoneProc steht in Atlas.Core.BuildPipeline.Inbox (ein Typ, sonst E2010 unter Delphi 12).
   TAtlasIdeBuildRunner = class
   public const
-    MessagesWaitMs = 5000;
+    cMessagesWaitMs = 5000;
   private type
     TWatcher = class(TAtlasCompileParticipant)
     private
@@ -189,19 +189,19 @@ end;
 
 class function TAtlasIdeBuildRunner.Debugging: Boolean;
 var
-  Debugger: IOTADebuggerServices;
+  mDebugger: IOTADebuggerServices;
 begin
-  Result := Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) and (Debugger.ProcessCount > 0);
+  Result := Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) and (mDebugger.ProcessCount > 0);
 end;
 
 function ConfigurationKnown(const AConfigurations: IOTAProjectOptionsConfigurations; const AName: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
-  for Index := 0 to AConfigurations.ConfigurationCount - 1 do
+  for mIndex := 0 to AConfigurations.ConfigurationCount - 1 do
   begin
-    if SameText(AConfigurations.Configurations[Index].Name, AName) then
+    if SameText(AConfigurations.Configurations[mIndex].Name, AName) then
     begin
       Exit(True);
     end;
@@ -235,13 +235,13 @@ end;
 function TargetRefusal(const ARequest: TAtlasBuildRequest; out AProject: IOTAProject;
   out AConfigurations: IOTAProjectOptionsConfigurations; out APlatforms: IOTAProjectPlatforms): string;
 var
-  Services: IOTAModuleServices;
+  mServices: IOTAModuleServices;
 begin
   Result := '';
   AConfigurations := nil;
   APlatforms := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) or
-    not Supports(Services.FindModule(ARequest.Project), IOTAProject, AProject) or (AProject.ProjectBuilder = nil) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) or
+    not Supports(mServices.FindModule(ARequest.Project), IOTAProject, AProject) or (AProject.ProjectBuilder = nil) then
   begin
     Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpRefusedProjectClosed,
       [ExtractFileName(ARequest.Project)]);
@@ -283,21 +283,21 @@ function TAtlasIdeBuildRunner.RunBuild(const ARequest: TAtlasBuildRequest; const
   const AConfigurations: IOTAProjectOptionsConfigurations; const APlatforms: IOTAProjectPlatforms;
   const ARequestedBy: string): Boolean;
 const
-  Modes: array[TAtlasCompileKind] of TOTACompileMode = (cmOTAMake, cmOTABuild, cmOTACheck, cmOTAMakeUnit,
+  cModes: array[TAtlasCompileKind] of TOTACompileMode = (cmOTAMake, cmOTABuild, cmOTACheck, cmOTAMakeUnit,
     cmOTAClean, cmOTALink);
 var
-  OldConfiguration, OldPlatform: string;
+  mOldConfiguration, mOldPlatform: string;
 begin
-  OldConfiguration := AProject.CurrentConfiguration;
-  OldPlatform := AProject.CurrentPlatform;
+  mOldConfiguration := AProject.CurrentConfiguration;
+  mOldPlatform := AProject.CurrentPlatform;
   try
     // Nur für diesen Build umschalten; der Benutzer findet danach seine Auswahl wieder. Über IOTAProject:
     // ActiveConfigurationName und CurrentPlatform der Hilfsschnittstellen sind nur lesbar.
-    if (AConfigurations <> nil) and not SameText(OldConfiguration, ARequest.Configuration) then
+    if (AConfigurations <> nil) and not SameText(mOldConfiguration, ARequest.Configuration) then
     begin
       AProject.CurrentConfiguration := ARequest.Configuration;
     end;
-    if (APlatforms <> nil) and not SameText(OldPlatform, ARequest.Platform) then
+    if (APlatforms <> nil) and not SameText(mOldPlatform, ARequest.Platform) then
     begin
       AProject.CurrentPlatform := ARequest.Platform;
     end;
@@ -305,19 +305,19 @@ begin
     FReport.Project.Platform := AProject.CurrentPlatform;
     FEvents.RequestedBy := ARequestedBy;
     try
-      Result := AProject.ProjectBuilder.BuildProject(Modes[ARequest.Kind], False, True);
+      Result := AProject.ProjectBuilder.BuildProject(cModes[ARequest.Kind], False, True);
     finally
       FEvents.RequestedBy := '';
     end;
   finally
     FBuilding := False;
-    if (AConfigurations <> nil) and not SameText(AProject.CurrentConfiguration, OldConfiguration) then
+    if (AConfigurations <> nil) and not SameText(AProject.CurrentConfiguration, mOldConfiguration) then
     begin
-      AProject.CurrentConfiguration := OldConfiguration;
+      AProject.CurrentConfiguration := mOldConfiguration;
     end;
-    if (APlatforms <> nil) and not SameText(AProject.CurrentPlatform, OldPlatform) then
+    if (APlatforms <> nil) and not SameText(AProject.CurrentPlatform, mOldPlatform) then
     begin
-      AProject.CurrentPlatform := OldPlatform;
+      AProject.CurrentPlatform := mOldPlatform;
     end;
   end;
 end;
@@ -351,27 +351,27 @@ end;
 function TAtlasIdeBuildRunner.Start(const ARequest: TAtlasBuildRequest; const ARequestedBy: string;
   const AOnDone: TAtlasBuildDoneProc; out AReason: string): Boolean;
 var
-  Project: IOTAProject;
-  Configurations: IOTAProjectOptionsConfigurations;
-  Platforms: IOTAProjectPlatforms;
-  Started: Int64;
-  Succeeded: Boolean;
-  Activity: IInterface;
+  mProject: IOTAProject;
+  mConfigurations: IOTAProjectOptionsConfigurations;
+  mPlatforms: IOTAProjectPlatforms;
+  mStarted: Int64;
+  mSucceeded: Boolean;
+  mActivity: IInterface;
 begin
   AReason := StateRefusal(ARequest);
   if AReason = '' then
   begin
-    AReason := TargetRefusal(ARequest, Project, Configurations, Platforms);
+    AReason := TargetRefusal(ARequest, mProject, mConfigurations, mPlatforms);
   end;
   if AReason <> '' then
   begin
     Exit(False);
   end;
-  BeginRequest(ARequest, Project, AOnDone);
-  Activity := TAtlasActivity.Scope('Build für Claude Code');
-  Started := NowMs;
+  BeginRequest(ARequest, mProject, AOnDone);
+  mActivity := TAtlasActivity.Scope('Build für Claude Code');
+  mStarted := NowMs;
   try
-    Succeeded := RunBuild(ARequest, Project, Configurations, Platforms, ARequestedBy);
+    mSucceeded := RunBuild(ARequest, mProject, mConfigurations, mPlatforms, ARequestedBy);
   except
     on E: Exception do
     begin
@@ -387,7 +387,7 @@ begin
   end
   else
   begin
-    CompleteRequest(Succeeded, Started);
+    CompleteRequest(mSucceeded, mStarted);
   end;
   Result := True;
 end;
@@ -417,7 +417,7 @@ begin
       TAtlasIdeCheckOnSave.PressProgressOk;
       Exit;
     end;
-    if FBusy and (NowMs - FWaitStarted >= MessagesWaitMs) then
+    if FBusy and (NowMs - FWaitStarted >= cMessagesWaitMs) then
     begin
       Finish;
     end;
@@ -430,7 +430,7 @@ end;
 
 procedure TAtlasIdeBuildRunner.Finish;
 var
-  Done: TAtlasBuildDoneProc;
+  mDone: TAtlasBuildDoneProc;
 begin
   if not FBusy then
   begin
@@ -438,11 +438,11 @@ begin
   end;
   FBusy := False;
   FTimer.Enabled := False;
-  Done := FOnDone;
+  mDone := FOnDone;
   FOnDone := nil;
-  if Assigned(Done) then
+  if Assigned(mDone) then
   begin
-    Done(FReport, '');
+    mDone(FReport, '');
   end;
 end;
 

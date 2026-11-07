@@ -83,17 +83,17 @@ end;
 
 procedure TAtlasIdeBuildInbox.Tick(Sender: TObject);
 var
-  Pending: TArray<string>;
+  mPending: TArray<string>;
 begin
   if TAtlasGuard.Disabled(TAtlasFeature.Build) or FRunner.Busy then
   begin
     Exit;
   end;
   try
-    Pending := TAtlasBuildInbox.Pending(FFolder);
-    if Length(Pending) > 0 then
+    mPending := TAtlasBuildInbox.Pending(FFolder);
+    if Length(mPending) > 0 then
     begin
-      Process(Pending[0]);
+      Process(mPending[0]);
     end;
   except
     on E: Exception do
@@ -112,12 +112,12 @@ end;
 
 function ErrorCount(const AMessages: TArray<TAtlasCompilerMessage>): Integer;
 var
-  Message: TAtlasCompilerMessage;
+  mMessage: TAtlasCompilerMessage;
 begin
   Result := 0;
-  for Message in AMessages do
+  for mMessage in AMessages do
   begin
-    if Message.Severity in [TAtlasCompilerSeverity.Error, TAtlasCompilerSeverity.Fatal] then
+    if mMessage.Severity in [TAtlasCompilerSeverity.Error, TAtlasCompilerSeverity.Fatal] then
     begin
       Inc(Result);
     end;
@@ -126,51 +126,51 @@ end;
 
 procedure TAtlasIdeBuildInbox.Process(const ARequestFile: string);
 var
-  Request: TAtlasBuildRequest;
-  Reason, mFolder: string;
-  OnMessage: TAtlasBuildInboxProc;
+  mRequest: TAtlasBuildRequest;
+  mReason, mFolder: string;
+  mOnMessage: TAtlasBuildInboxProc;
 begin
-  if not TAtlasBuildInbox.Take(ARequestFile, InboxTexts, Request, Reason) then
+  if not TAtlasBuildInbox.Take(ARequestFile, InboxTexts, mRequest, mReason) then
   begin
     Exit;
   end;
   mFolder := FFolder;
-  OnMessage := FOnMessage;
-  if Assigned(OnMessage) then
+  mOnMessage := FOnMessage;
+  if Assigned(mOnMessage) then
   begin
-    OnMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpBuildStarted,
-      [ExtractFileName(Request.Project)]));
+    mOnMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpBuildStarted,
+      [ExtractFileName(mRequest.Project)]));
   end;
   // Die Antwort kommt nach dem Build (Meldungen des Lesers, #528); der Rückruf hält nur Werte, nicht Self.
-  if not FRunner.Start(Request, TAtlasBuildInbox.RequestedBy,
+  if not FRunner.Start(mRequest, TAtlasBuildInbox.cRequestedBy,
     procedure(const AReport: TAtlasBuildReport; const AError: string)
     begin
       try
         if AError <> '' then
         begin
-          TAtlasBuildInbox.Answer(mFolder, Request.Id, TAtlasBuildInbox.RefusalText(AError));
+          TAtlasBuildInbox.Answer(mFolder, mRequest.Id, TAtlasBuildInbox.RefusalText(AError));
         end
         else
         begin
-          TAtlasBuildInbox.Answer(mFolder, Request.Id, TAtlasBuildInbox.SuccessText(AReport));
+          TAtlasBuildInbox.Answer(mFolder, mRequest.Id, TAtlasBuildInbox.SuccessText(AReport));
         end;
-        if Assigned(OnMessage) and (AError = '') then
+        if Assigned(mOnMessage) and (AError = '') then
         begin
-          OnMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpBuildFinished,
-            [ExtractFileName(Request.Project),
+          mOnMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpBuildFinished,
+            [ExtractFileName(mRequest.Project),
             ErrorCount(AReport.Messages)]));
         end;
       except
         on E: Exception do
           TAtlasGuard.Report(TAtlasFeature.Build, E);
       end;
-    end, Reason) then
+    end, mReason) then
   begin
-    TAtlasBuildInbox.Answer(FFolder, Request.Id, TAtlasBuildInbox.RefusalText(Reason));
-    if Assigned(OnMessage) then
+    TAtlasBuildInbox.Answer(FFolder, mRequest.Id, TAtlasBuildInbox.RefusalText(mReason));
+    if Assigned(mOnMessage) then
     begin
-      OnMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpBuildRefused,
-        [ExtractFileName(Request.Project), Reason]));
+      mOnMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpBuildRefused,
+        [ExtractFileName(mRequest.Project), mReason]));
     end;
   end;
 end;
