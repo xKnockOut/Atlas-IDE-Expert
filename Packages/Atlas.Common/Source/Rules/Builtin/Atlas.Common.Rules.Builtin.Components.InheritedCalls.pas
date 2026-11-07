@@ -1004,7 +1004,7 @@ var
 
 var
   mMethod: TMethodImpl;
-  Info: TClassInfo;
+  mInfo: TClassInfo;
   mSource: string;
 begin
   mCache := TRuleDerived.Open(AContext);
@@ -1015,18 +1015,18 @@ begin
   mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
   for mMethod in mModel.Methods do
   begin
-    if not FindClassInfo(mMethod.ClassName, Info) then
+    if not FindClassInfo(mMethod.ClassName, mInfo) then
     begin
       Continue;
     end;
     mSource := TrimLeft(mModel.NodeText(mMethod.Decl));
     if StartsText('destructor', mSource) then
     begin
-      CheckDestructor(mMethod, Info);
+      CheckDestructor(mMethod, mInfo);
     end
     else if StartsText('constructor', mSource) then
     begin
-      CheckConstructor(mMethod, Info);
+      CheckConstructor(mMethod, mInfo);
     end;
   end;
 end;
@@ -1158,7 +1158,7 @@ var
 
 var
   mMethod: TMethodImpl;
-  Info: TClassInfo;
+  mInfo: TClassInfo;
   mCalls: TArray<TSyntaxNode>;
   mCall: TSyntaxNode;
   mSameName: Boolean;
@@ -1175,7 +1175,7 @@ begin
     // Konstruktoren dürfen jeden geerbten Konstruktor aufrufen (inherited Create(nil)).
     mSource := TrimLeft(mModel.NodeText(mMethod.Decl));
     if StartsText('constructor', mSource) or StartsText('class ', mSource) or
-      not FindClassInfo(mMethod.ClassName, Info) or not mModel.DeclaredWith(Info, mMethod.MethodName, 'override') then
+      not FindClassInfo(mMethod.ClassName, mInfo) or not mModel.DeclaredWith(mInfo, mMethod.MethodName, 'override') then
     begin
       Continue;
     end;

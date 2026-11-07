@@ -810,7 +810,7 @@ var
 var
   mRoutines: TArray<TSyntaxNode>;
   mRoutine: TSyntaxNode;
-  Index: Integer;
+  mIndex: Integer;
 begin
   mForms := AContext.AutoCreateForms;
   if (Length(mForms) < 2) or (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
@@ -819,11 +819,11 @@ begin
   end;
   mTokens := AContext.Tree.Tokens;
   mCode := nil;
-  for Index := 0 to High(mTokens) do
+  for mIndex := 0 to High(mTokens) do
   begin
-    if not (mTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    if not (mTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
-      mCode := mCode + [Index];
+      mCode := mCode + [mIndex];
     end;
   end;
   if not FindOwnForm then

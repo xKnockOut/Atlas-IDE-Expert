@@ -1587,16 +1587,16 @@ var
 
 var
   mDefaults: TArray<Double>;
-  Value: Double;
+  mValue: Double;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
   mDefaults := nil;
-  for Value in cDefaultAllowed do
+  for mValue in cDefaultAllowed do
   begin
-    mDefaults := mDefaults + [Value];
+    mDefaults := mDefaults + [mValue];
   end;
   mAllowed := TRuleOptions.Numbers(AContext.Options, 'allowed', mDefaults);
   mSettings := TFormatSettings.Invariant;

@@ -273,7 +273,7 @@ var
   mPaths: TArray<string>;
   mAttributes: TList<TSyntaxNode>;
   mNames: TDeclarationNames;
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 
   function PathOf(ANode: TSyntaxNode): string;
   begin
@@ -615,12 +615,12 @@ begin
       Exit;
     end;
     mNames := TDeclarationNames.Create(AContext.Tree.Root);
-    for Node in mAttributes do
+    for mNode in mAttributes do
     begin
-      CheckArguments(Node);
-      if FirstOfGroup(Node) then
+      CheckArguments(mNode);
+      if FirstOfGroup(mNode) then
       begin
-        CheckTarget(Node);
+        CheckTarget(mNode);
       end;
     end;
   finally

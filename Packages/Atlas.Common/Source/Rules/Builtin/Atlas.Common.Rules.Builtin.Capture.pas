@@ -359,13 +359,13 @@ function Locals(ARoutine, ABlock: TSyntaxNode): TArray<TLocal>;
   end;
 
 var
-  Index, mInner: Integer;
-  mSection, TypeNode: TSyntaxNode;
+  mIndex, mInner: Integer;
+  mSection, mTypeNode: TSyntaxNode;
 begin
   Result := nil;
-  for Index := 0 to ARoutine.ChildCount - 1 do
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
   begin
-    mSection := ARoutine[Index];
+    mSection := ARoutine[mIndex];
     if mSection.Kind <> TSyntaxKind.VarSection then
     begin
       Continue;
@@ -374,10 +374,10 @@ begin
     begin
       if mSection[mInner].Kind = TSyntaxKind.VarDecl then
       begin
-        TypeNode := mSection[mInner].FindChild(TSyntaxKind.TypeReference);
-        if (TypeNode <> nil) and (TypeNode.ChildCount = 0) then
+        mTypeNode := mSection[mInner].FindChild(TSyntaxKind.TypeReference);
+        if (mTypeNode <> nil) and (mTypeNode.ChildCount = 0) then
         begin
-          AddNames(mSection[mInner].Name, TypeNode.Name);
+          AddNames(mSection[mInner].Name, mTypeNode.Name);
         end
         else
         begin

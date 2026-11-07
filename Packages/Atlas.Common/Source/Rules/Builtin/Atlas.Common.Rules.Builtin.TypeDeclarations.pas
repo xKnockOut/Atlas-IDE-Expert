@@ -966,7 +966,7 @@ var
   end;
 
 var
-  Method: TMessageMethod;
+  mMethod: TMessageMethod;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
@@ -990,9 +990,9 @@ begin
       Exit;
     end;
     mPaths := TConditionalBranches.Paths(mTokens);
-    for Method in mMethods do
+    for mMethod in mMethods do
     begin
-      CheckParameters(Method);
+      CheckParameters(mMethod);
     end;
     CheckNumbers;
   finally

@@ -1517,7 +1517,7 @@ var
   end;
 
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
@@ -1526,11 +1526,11 @@ begin
   mTokens := AContext.Tree.Tokens;
   mPaths := TConditionalBranches.Paths(mTokens);
   mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
-  for Node in NodesBelow(AContext.Tree.Root, False) do
+  for mNode in NodesBelow(AContext.Tree.Root, False) do
   begin
-    if (Node.Kind = TSyntaxKind.RoutineDecl) and IsConstructor(Node) then
+    if (mNode.Kind = TSyntaxKind.RoutineDecl) and IsConstructor(mNode) then
     begin
-      CheckConstructor(Node);
+      CheckConstructor(mNode);
     end;
   end;
 end;

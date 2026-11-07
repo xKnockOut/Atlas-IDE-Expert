@@ -604,7 +604,8 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TCodeLensText.FieldTextDocumentUriMissing].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TCodeLensText.FieldTextDocumentUriMissing].Text);
   end;
   if not FStore.TryGet(mUri, mDocument) then
   begin

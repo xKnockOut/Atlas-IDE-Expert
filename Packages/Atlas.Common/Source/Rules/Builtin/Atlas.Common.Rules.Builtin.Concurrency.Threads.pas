@@ -413,7 +413,7 @@ var
   end;
 
 var
-  Routine, Body: TSyntaxNode;
+  mRoutine, mBody: TSyntaxNode;
 begin
   if AContext.Tree = nil then
   begin
@@ -435,14 +435,14 @@ begin
         mRoutines := mRoutines + [ANode];
       end;
     end);
-  for Routine in mRoutines do
+  for mRoutine in mRoutines do
   begin
-    if (Pos('destructor', NodeText(AContext.Text, Routine)) = 1) and InList(mThreads, ClassPart(Routine.Name)) then
+    if (Pos('destructor', NodeText(AContext.Text, mRoutine)) = 1) and InList(mThreads, ClassPart(mRoutine.Name)) then
     begin
-      Body := Routine.FindChild(TSyntaxKind.Block);
-      if Body <> nil then
+      mBody := mRoutine.FindChild(TSyntaxKind.Block);
+      if mBody <> nil then
       begin
-        Search(Body, ClassPart(Routine.Name));
+        Search(mBody, ClassPart(mRoutine.Name));
       end;
     end;
   end;
@@ -786,9 +786,9 @@ var
 var
   mAncestry: TAncestry;
   mClasses: TArray<string>;
-  Index: Integer;
+  mIndex: Integer;
   mOwner: string;
-  Routine: TSyntaxNode;
+  mRoutine: TSyntaxNode;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Execute') then
   begin
@@ -805,17 +805,17 @@ begin
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
     end);
   SetLength(mNames, Length(mRoutines));
-  for Index := 0 to High(mRoutines) do
+  for mIndex := 0 to High(mRoutines) do
   begin
-    mNames[Index] := nil;
-    CollectNames(mRoutines[Index], mNames[Index]);
+    mNames[mIndex] := nil;
+    CollectNames(mRoutines[mIndex], mNames[mIndex]);
   end;
   mClasses := SharedThreadClasses(AContext);
   mAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
   try
-    for Routine in mRoutines do
+    for mRoutine in mRoutines do
     begin
-      mOwner := ClassPart(Routine.Name);
+      mOwner := ClassPart(mRoutine.Name);
       if (mOwner <> '') and not InList(mClasses, mOwner) and mAncestry.DescendsFrom(mOwner, 'TThread') then
       begin
         mClasses := mClasses + [mOwner];
@@ -829,9 +829,9 @@ begin
     // Mit TerminatedSet beendet die Klasse ihre Schleifen auf eigenem Weg (Ereignis, Flag).
     if not HasMethod(mOwner + '.TerminatedSet') then
     begin
-      for Routine in ThreadRoutines(mOwner) do
+      for mRoutine in ThreadRoutines(mOwner) do
       begin
-        Visit(Routine);
+        Visit(mRoutine);
       end;
     end;
   end;

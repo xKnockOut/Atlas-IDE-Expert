@@ -959,7 +959,7 @@ var
   end;
 
 var
-  Index, Position: Integer;
+  mIndex, mPosition: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
@@ -967,33 +967,33 @@ begin
   end;
   mTokens := AContext.Tree.Tokens;
   mCode := nil;
-  for Index := 0 to High(mTokens) do
+  for mIndex := 0 to High(mTokens) do
   begin
-    if not IsTrivia(mTokens[Index]) then
+    if not IsTrivia(mTokens[mIndex]) then
     begin
-      mCode := mCode + [Index];
+      mCode := mCode + [mIndex];
     end;
   end;
   mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
-    for Position := 0 to High(mCode) do
+    for mPosition := 0 to High(mCode) do
     begin
-      if Token(Position).Kind <> TPascalTokenKind.Identifier then
+      if Token(mPosition).Kind <> TPascalTokenKind.Identifier then
       begin
         Continue;
       end;
-      if MatchText(Token(Position).Text, ['Copy', 'Delete', 'Insert']) then
+      if MatchText(Token(mPosition).Text, ['Copy', 'Delete', 'Insert']) then
       begin
-        CheckStartIndex(Position);
+        CheckStartIndex(mPosition);
       end
-      else if MatchText(Token(Position).Text, ['Pos', 'PosEx', 'AnsiPos']) then
+      else if MatchText(Token(mPosition).Text, ['Pos', 'PosEx', 'AnsiPos']) then
       begin
-        CheckPos(Position);
+        CheckPos(mPosition);
       end
       // LastIndexOf(…) > 0 heißt meist bewusst "Trenner nicht am Anfang" (Name.LastIndexOf('.') > 0).
-      else if MatchText(Token(Position).Text, ['IndexOf', 'IndexOfAny']) then
+      else if MatchText(Token(mPosition).Text, ['IndexOf', 'IndexOfAny']) then
       begin
-        CheckIndexOf(Position);
+        CheckIndexOf(mPosition);
       end;
     end;
   finally
@@ -1251,7 +1251,7 @@ var
   end;
 
 var
-  mIndex, Position: Integer;
+  mIndex, mPosition: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Null') then
   begin
@@ -1268,13 +1268,13 @@ begin
   end;
   mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
-    for Position := 0 to High(mCode) do
+    for mPosition := 0 to High(mCode) do
     begin
       // Null als Wert: nicht Teil einer Kette (X.Null) und kein Aufruf.
-      if IsName(Position, 'Null') and not IsSym(Position - 1, '.') and not IsSym(Position + 1, '.') and
-        not IsSym(Position + 1, '(') then
+      if IsName(mPosition, 'Null') and not IsSym(mPosition - 1, '.') and not IsSym(mPosition + 1, '.') and
+        not IsSym(mPosition + 1, '(') then
       begin
-        CheckAt(Position);
+        CheckAt(mPosition);
       end;
     end;
   finally
@@ -1536,7 +1536,7 @@ var
   end;
 
 var
-  mIndex, Position: Integer;
+  mIndex, mPosition: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
@@ -1554,21 +1554,21 @@ begin
   end;
   mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
-    for Position := 0 to High(mCode) do
+    for mPosition := 0 to High(mCode) do
     begin
-      if Token(Position).Kind <> TPascalTokenKind.Identifier then
+      if Token(mPosition).Kind <> TPascalTokenKind.Identifier then
       begin
         Continue;
       end;
-      if MatchText(Token(Position).Text, ['Pos', 'PosEx', 'AnsiPos', 'StartsText', 'StartsStr', 'EndsText',
+      if MatchText(Token(mPosition).Text, ['Pos', 'PosEx', 'AnsiPos', 'StartsText', 'StartsStr', 'EndsText',
         'EndsStr', 'AnsiStartsText', 'AnsiStartsStr', 'AnsiEndsText', 'AnsiEndsStr']) then
       begin
-        CheckCall(Position, False);
+        CheckCall(mPosition, False);
       end
-      else if MatchText(Token(Position).Text, ['ContainsText', 'ContainsStr', 'AnsiContainsText',
+      else if MatchText(Token(mPosition).Text, ['ContainsText', 'ContainsStr', 'AnsiContainsText',
         'AnsiContainsStr']) then
       begin
-        CheckCall(Position, True);
+        CheckCall(mPosition, True);
       end;
     end;
   finally

@@ -15,9 +15,9 @@ type
   public
     /// <summary>Ist ein Knoten der Art AKind eine Anweisung (und kein Ausdruck)?</summary>
     class function IsStatement(AKind: TSyntaxKind): Boolean; static;
-    /// <summary>Ist die Bedingung der Schleife S die Konstante AValue (while True, until False; auch in
+    /// <summary>Ist die Bedingung der Schleife AStatement die Konstante AValue (while True, until False; auch in
     /// Klammern)? Dann verlässt nur Break, Exit oder raise die Schleife (#1109).</summary>
-    class function ConstantCondition(S: TSyntaxNode; const AValue: string): Boolean; static;
+    class function ConstantCondition(AStatement: TSyntaxNode; const AValue: string): Boolean; static;
     /// <summary>Grenzen der for-Schleife AFor als ganze Zahlen, wenn beide Zahlenliterale (auch $, %, &amp;) oder
     /// Namen echter Konstanten der Unit mit einem Zahlenliteral als Wert sind (siehe ConstantBound).</summary>
     class function LiteralBounds(AFor: TSyntaxNode; out AFrom, ATo: Int64): Boolean; static;
@@ -52,17 +52,17 @@ begin
   end;
 end;
 
-class function TFlowStatements.ConstantCondition(S: TSyntaxNode; const AValue: string): Boolean;
+class function TFlowStatements.ConstantCondition(AStatement: TSyntaxNode; const AValue: string): Boolean;
 var
   mIndex: Integer;
   mCondition: TSyntaxNode;
 begin
   Result := False;
-  for mIndex := 0 to S.ChildCount - 1 do
+  for mIndex := 0 to AStatement.ChildCount - 1 do
   begin
-    if not IsStatement(S.Children[mIndex].Kind) then
+    if not IsStatement(AStatement.Children[mIndex].Kind) then
     begin
-      mCondition := S.Children[mIndex];
+      mCondition := AStatement.Children[mIndex];
       while (mCondition.Kind = TSyntaxKind.ParenExpr) and (mCondition.ChildCount = 1) do
       begin
         mCondition := mCondition.Children[0];

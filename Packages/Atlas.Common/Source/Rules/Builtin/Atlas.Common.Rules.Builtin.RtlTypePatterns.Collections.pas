@@ -549,7 +549,7 @@ var
   end;
 
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
@@ -561,11 +561,11 @@ begin
   mRoutines := nil;
   CollectRoutines(AContext.Tree.Root);
   Visit(AContext.Tree.Root);
-  for Index := 0 to High(mFacts) do
+  for mIndex := 0 to High(mFacts) do
   begin
-    if (mFacts[Index].Creation <> nil) and not mFacts[Index].Sorted then
+    if (mFacts[mIndex].Creation <> nil) and not mFacts[mIndex].Sorted then
     begin
-      ReportUses(mFacts[Index]);
+      ReportUses(mFacts[mIndex]);
     end;
   end;
 end;
@@ -1326,7 +1326,7 @@ var
   end;
 
 var
-  Index, Position: Integer;
+  mIndex, mPosition: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'DelimitedText') then
   begin
@@ -1334,18 +1334,18 @@ begin
   end;
   mTokens := AContext.Tree.Tokens;
   mCode := nil;
-  for Index := 0 to High(mTokens) do
+  for mIndex := 0 to High(mTokens) do
   begin
-    if not IsTrivia(mTokens[Index]) then
+    if not IsTrivia(mTokens[mIndex]) then
     begin
-      mCode := mCode + [Index];
+      mCode := mCode + [mIndex];
     end;
   end;
-  for Position := 0 to High(mCode) - 1 do
+  for mPosition := 0 to High(mCode) - 1 do
   begin
-    if IsName(Position, 'DelimitedText') and IsSym(Position + 1, ':=') then
+    if IsName(mPosition, 'DelimitedText') and IsSym(mPosition + 1, ':=') then
     begin
-      CheckAt(Position);
+      CheckAt(mPosition);
     end;
   end;
 end;
