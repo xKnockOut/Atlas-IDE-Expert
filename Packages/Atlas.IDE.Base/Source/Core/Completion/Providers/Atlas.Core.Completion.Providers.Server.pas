@@ -166,7 +166,7 @@ const
     TAtlasItemKind.Record_, // 22
     TAtlasItemKind.Event, // 23
     TAtlasItemKind.Unknown, // 24
-    TAtlasItemKind.Type_ // 25);
+    TAtlasItemKind.Type_); // 25
 begin
   if (ALspKind < Low(cLspKinds)) or (ALspKind > High(cLspKinds)) then
   begin

@@ -182,7 +182,6 @@ begin
     mRegistry.Free;
   end;
 end;
-end;
 
 /// <summary>Datei einer Ressourcen-DLL. Die RTL lädt sie als Datendatei (LOAD_LIBRARY_AS_DATAFILE); für solche
 /// Handles liefert GetModuleFileName nichts, der Name der eingeblendeten Datei steht dann bei GetMappedFileName.
