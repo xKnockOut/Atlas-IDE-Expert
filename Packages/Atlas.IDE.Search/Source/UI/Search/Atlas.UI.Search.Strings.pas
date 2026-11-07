@@ -65,7 +65,7 @@ uses
   Atlas.UI.Strings;
 
 const
-  Texts: array[TAtlasLanguage, TAtlasSearchTextId] of string = (
+  cTexts: array[TAtlasLanguage, TAtlasSearchTextId] of string = (
     ('IDE-Dialog Units suchen',
      'Unit suchen …  p:Projekt  t:form  -t:test',
      'Unit',
@@ -473,12 +473,12 @@ const
 
 class function TAtlasSearchStrings.Text(AId: TAtlasSearchTextId): string;
 begin
-  Result := Texts[TAtlasStrings.Language, AId];
+  Result := cTexts[TAtlasStrings.Language, AId];
 end;
 
 class function TAtlasSearchStrings.Fmt(AId: TAtlasSearchTextId; const AArgs: array of const): string;
 begin
-  Result := Format(Texts[TAtlasStrings.Language, AId], AArgs);
+  Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
 end;
 
 end.

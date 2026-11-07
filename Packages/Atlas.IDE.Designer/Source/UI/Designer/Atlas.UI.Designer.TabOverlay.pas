@@ -39,7 +39,7 @@ type
 
   TAtlasTabOrderOverlay = class(TForm)
   private const
-    KeyColor = TColor($00FF00FF);
+    cKeyColor = TColor($00FF00FF);
   private
     FColors: TAtlasColors;
     FBadges: TArray<TAtlasTabBadge>;
@@ -63,7 +63,7 @@ type
     /// <summary>Fläche der Marke AIndex im Client.</summary>
     function BadgeRect(AIndex: Integer): TRect;
     /// <summary>Marke unter dem Punkt (Client); -1 = keine.</summary>
-    function BadgeAt(X, Y: Integer): Integer;
+    function BadgeAt(AX, AY: Integer): Integer;
     /// <summary>Über AScreen zeigen, ohne den Fokus zu nehmen.</summary>
     procedure ShowAt(const AScreen: TRect);
     procedure HideOverlay;
@@ -99,9 +99,9 @@ begin
   inherited CreateNew(AOwner);
   FColors := AColors;
   BorderStyle := bsNone;
-  Color := KeyColor;
+  Color := cKeyColor;
   TransparentColor := True;
-  TransparentColorValue := KeyColor;
+  TransparentColorValue := cKeyColor;
   DoubleBuffered := True;
   Font.Name := 'Segoe UI';
   Font.Size := 8;
@@ -193,14 +193,14 @@ begin
   Result := Rect(mAnchor.X + S(2), mAnchor.Y + S(2), mAnchor.X + S(2) + Max(S(16), mWidth), mAnchor.Y + S(18));
 end;
 
-function TAtlasTabOrderOverlay.BadgeAt(X, Y: Integer): Integer;
+function TAtlasTabOrderOverlay.BadgeAt(AX, AY: Integer): Integer;
 var
   mIndex: Integer;
 begin
   // Rückwärts: Später gezeichnete Marken liegen oben.
   for mIndex := High(FBadges) downto 0 do
   begin
-    if BadgeRect(mIndex).Contains(Point(X, Y)) then
+    if BadgeRect(mIndex).Contains(Point(AX, AY)) then
     begin
       Exit(mIndex);
     end;
@@ -215,7 +215,7 @@ var
   mText: string;
   mBack: TColor;
 begin
-  Canvas.Brush.Color := KeyColor;
+  Canvas.Brush.Color := cKeyColor;
   Canvas.FillRect(ClientRect);
   Canvas.Font.Assign(Font);
   for mIndex := 0 to High(FBadges) do

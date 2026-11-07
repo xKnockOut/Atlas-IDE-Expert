@@ -26,7 +26,7 @@ uses
 type
   TAtlasIdeBuildGate = class
   public const
-    MessageGroup = 'Atlas';
+    cMessageGroup = 'Atlas';
   public
     /// <summary>Teilnehmer für TAtlasCompileEvents.Add; ASession liefert die laufende Sitzung oder nil.</summary>
     class function CreateParticipant(const ASettings: TAtlasGateSettingsFunc;
@@ -53,89 +53,89 @@ begin
     Exit;
   end;
   // Gruppe nicht dauerhaft halten (Hinweis in ToolsAPI); bei Bedarf neu anlegen.
-  AGroup := AMessages.GetGroup(TAtlasIdeBuildGate.MessageGroup);
+  AGroup := AMessages.GetGroup(TAtlasIdeBuildGate.cMessageGroup);
   if AGroup = nil then
   begin
-    AGroup := AMessages.AddMessageGroup(TAtlasIdeBuildGate.MessageGroup);
+    AGroup := AMessages.AddMessageGroup(TAtlasIdeBuildGate.cMessageGroup);
   end;
 end;
 
 function ProjectOf(const AFileName: string): IOTAProject;
 var
-  Modules: IOTAModuleServices;
+  mModules: IOTAModuleServices;
 begin
   Result := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
-    Supports(Modules.FindModule(AFileName), IOTAProject, Result);
+    Supports(mModules.FindModule(AFileName), IOTAProject, Result);
   end;
 end;
 
 function IsPascalFile(const AFileName: string): Boolean;
 var
-  Ext: string;
+  mExt: string;
 begin
-  Ext := LowerCase(ExtractFileExt(AFileName));
-  Result := (Ext = '.pas') or (Ext = '.dpr') or (Ext = '.dpk');
+  mExt := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExt = '.pas') or (mExt = '.dpr') or (mExt = '.dpk');
 end;
 
 /// <summary>Stand einer Unit: ungespeicherter Puffer = Prüfsumme, sonst Zeitstempel der Datei. False ohne Datei
 /// und Puffer.</summary>
 function UnitState(const AFileName: string; out AUnit: TAtlasGateUnit): Boolean;
 var
-  Buffer: IOTAEditBuffer;
-  Text: string;
-  Age: TDateTime;
+  mBuffer: IOTAEditBuffer;
+  mText: string;
+  mAge: TDateTime;
 begin
   AUnit := Default(TAtlasGateUnit);
   AUnit.FileName := AFileName;
-  Buffer := TAtlasIdeFiles.BufferOf(AFileName);
-  if (Buffer <> nil) and Buffer.IsModified then
+  mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
+  if (mBuffer <> nil) and mBuffer.IsModified then
   begin
-    Text := TAtlasEditorBuffer.Text(Buffer);
-    AUnit.Stamp := Format('b:%d:%x', [Length(Text), THashBobJenkins.GetHashValue(Text)]);
+    mText := TAtlasEditorBuffer.Text(mBuffer);
+    AUnit.Stamp := Format('b:%d:%x', [Length(mText), THashBobJenkins.GetHashValue(mText)]);
     AUnit.ModifiedAt := Now;
     Exit(True);
   end;
-  Result := FileAge(AFileName, Age);
+  Result := FileAge(AFileName, mAge);
   if Result then
   begin
-    AUnit.Stamp := 'd:' + FloatToStr(Age, TFormatSettings.Invariant);
-    AUnit.ModifiedAt := Age;
+    AUnit.Stamp := 'd:' + FloatToStr(mAge, TFormatSettings.Invariant);
+    AUnit.ModifiedAt := mAge;
   end;
 end;
 
 function ReadUnits(const AProject: TAtlasCompileProject; out AUnits: TAtlasGateUnits;
   out AOutputTime: TDateTime): Boolean;
 var
-  Project: IOTAProject;
-  Index: Integer;
-  Name: string;
-  Item: TAtlasGateUnit;
+  mProject: IOTAProject;
+  mIndex: Integer;
+  mName: string;
+  mItem: TAtlasGateUnit;
 begin
   AUnits := nil;
   AOutputTime := 0;
-  Project := ProjectOf(AProject.FileName);
-  Result := Project <> nil;
+  mProject := ProjectOf(AProject.FileName);
+  Result := mProject <> nil;
   if not Result then
   begin
     Exit;
   end;
-  for Index := 0 to Project.GetModuleCount - 1 do
+  for mIndex := 0 to mProject.GetModuleCount - 1 do
   begin
-    Name := Project.GetModule(Index).FileName;
-    if (Name <> '') and IsPascalFile(Name) and UnitState(Name, Item) then
+    mName := mProject.GetModule(mIndex).FileName;
+    if (mName <> '') and IsPascalFile(mName) and UnitState(mName, mItem) then
     begin
-      AUnits := AUnits + [Item];
+      AUnits := AUnits + [mItem];
     end;
   end;
   // Projektquelltext (.dpr/.dpk) steht nicht unter den Modulen des Projekts.
-  for Index := 0 to Project.ModuleFileCount - 1 do
+  for mIndex := 0 to mProject.ModuleFileCount - 1 do
   begin
-    Name := Project.ModuleFileEditors[Index].FileName;
-    if TAtlasIdeFiles.IsProjectSource(Name) and UnitState(Name, Item) then
+    mName := mProject.ModuleFileEditors[mIndex].FileName;
+    if TAtlasIdeFiles.IsProjectSource(mName) and UnitState(mName, mItem) then
     begin
-      AUnits := AUnits + [Item];
+      AUnits := AUnits + [mItem];
     end;
   end;
   if (AProject.OutputFile = '') or not FileAge(AProject.OutputFile, AOutputTime) then
@@ -147,8 +147,8 @@ end;
 function CheckUnit(const ASession: TLspSession; const AFileName: string; ATimeoutMs: Integer;
   out AProblems: TArray<TAtlasProblem>): Boolean;
 var
-  Buffer: IOTAEditBuffer;
-  Answer: TLspDiagnosticReport;
+  mBuffer: IOTAEditBuffer;
+  mAnswer: TLspDiagnosticReport;
 begin
   AProblems := nil;
   Result := False;
@@ -158,13 +158,13 @@ begin
   end;
   try
     // Puffer der IDE zuerst (#395): Geprüft wird, was gleich kompiliert wird, auch ungespeichert.
-    Buffer := TAtlasIdeFiles.BufferOf(AFileName);
-    if Buffer <> nil then
+    mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
+    if mBuffer <> nil then
     begin
-      ASession.Sync(AFileName, TAtlasEditorBuffer.Text(Buffer));
+      ASession.Sync(AFileName, TAtlasEditorBuffer.Text(mBuffer));
     end;
-    Answer := ASession.DocumentDiagnostics(AFileName, '', Cardinal(ATimeoutMs));
-    AProblems := Answer.Problems;
+    mAnswer := ASession.DocumentDiagnostics(AFileName, '', Cardinal(ATimeoutMs));
+    AProblems := mAnswer.Problems;
     Result := True;
   except
     // Zeitlimit oder Server weg: Unit nicht geprüft, der Compile läuft (#493).
@@ -176,49 +176,49 @@ end;
 function Report(const AProject: TAtlasCompileProject; const AFindings: TAtlasGateFindings; ACheckedUnits: Integer;
   AOutcome: TAtlasGateOutcome; ANotifyTimeout: Boolean; ATimeoutMs: Integer): string;
 var
-  Messages: IOTAMessageServices;
-  Group: IOTAMessageGroup;
-  LineRef: Pointer;
-  Finding: TAtlasGateFinding;
-  Text: string;
+  mMessages: IOTAMessageServices;
+  mGroup: IOTAMessageGroup;
+  mLineRef: Pointer;
+  mFinding: TAtlasGateFinding;
+  mText: string;
 begin
   Result := '';
   if AOutcome = TAtlasGateOutcome.Blocked then
   begin
     Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.GateBlockReason, [Length(AFindings)]);
   end;
-  if not MessageServices(Messages, Group) then
+  if not MessageServices(mMessages, mGroup) then
   begin
     Exit;
   end;
   if Length(AFindings) > 0 then
   begin
-    Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.GateFindings, [Length(AFindings),
-      ExtractFileName(AProject.FileName), ACheckedUnits]), Group);
-    for Finding in AFindings do
+    mMessages.AddTitleMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.GateFindings, [Length(AFindings),
+      ExtractFileName(AProject.FileName), ACheckedUnits]), mGroup);
+    for mFinding in AFindings do
     begin
-      Text := Finding.Problem.Message;
-      if Finding.Problem.Code <> '' then
+      mText := mFinding.Problem.Message;
+      if mFinding.Problem.Code <> '' then
       begin
-        Text := '[' + Finding.Problem.Code + '] ' + Text;
+        mText := '[' + mFinding.Problem.Code + '] ' + mText;
       end;
-      Messages.AddToolMessage(Finding.FileName, Text, 'Atlas', Finding.Problem.StartLine + 1,
-        Finding.Problem.StartCharacter + 1, nil, LineRef, Group);
+      mMessages.AddToolMessage(mFinding.FileName, mText, 'Atlas', mFinding.Problem.StartLine + 1,
+        mFinding.Problem.StartCharacter + 1, nil, mLineRef, mGroup);
     end;
   end;
   case AOutcome of
     TAtlasGateOutcome.Blocked:
-      Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.GateBlocked), Group);
+      mMessages.AddTitleMessage(TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.GateBlocked), mGroup);
     TAtlasGateOutcome.Overridden:
-      Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.GateOverridden), Group);
+      mMessages.AddTitleMessage(TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.GateOverridden), mGroup);
     TAtlasGateOutcome.Passed, TAtlasGateOutcome.Reported, TAtlasGateOutcome.TimedOut: ;
   end;
   if ANotifyTimeout then
   begin
-    Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.GateTimedOut, [ATimeoutMs]),
-      Group);
+    mMessages.AddTitleMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.GateTimedOut, [ATimeoutMs]),
+      mGroup);
   end;
-  Messages.ShowMessageView(Group);
+  mMessages.ShowMessageView(mGroup);
 end;
 
 { TAtlasIdeBuildGate }
@@ -226,19 +226,19 @@ end;
 class function TAtlasIdeBuildGate.CreateParticipant(const ASettings: TAtlasGateSettingsFunc;
   const ASession: TAtlasSessionFunc): TAtlasBuildGateParticipant;
 var
-  Settings: TAtlasGateSettingsFunc;
-  Session: TAtlasSessionFunc;
+  mSettings: TAtlasGateSettingsFunc;
+  mSession: TAtlasSessionFunc;
 begin
-  Settings := ASettings;
-  Session := ASession;
-  Result := TAtlasBuildGateParticipant.Create(Settings,
+  mSettings := ASettings;
+  mSession := ASession;
+  Result := TAtlasBuildGateParticipant.Create(mSettings,
     function(const AProject: TAtlasCompileProject; out AUnits: TAtlasGateUnits; out AOutputTime: TDateTime): Boolean
     begin
       AUnits := nil;
       AOutputTime := 0;
       Result := False;
       // Ohne laufenden Server keine Prüfung; Atlas startet ihn dafür nicht (#874).
-      if Session() = nil then
+      if mSession() = nil then
       begin
         Exit;
       end;
@@ -252,12 +252,12 @@ begin
     end,
     function(const AFileName: string; ATimeoutMs: Integer; out AProblems: TArray<TAtlasProblem>): Boolean
     begin
-      Result := CheckUnit(Session(), AFileName, ATimeoutMs, AProblems);
+      Result := CheckUnit(mSession(), AFileName, ATimeoutMs, AProblems);
     end,
     function(const AProject: TAtlasCompileProject; const AFindings: TAtlasGateFindings; ACheckedUnits: Integer;
       AOutcome: TAtlasGateOutcome; ANotifyTimeout: Boolean): string
     begin
-      Result := Report(AProject, AFindings, ACheckedUnits, AOutcome, ANotifyTimeout, Settings().TimeoutMs);
+      Result := Report(AProject, AFindings, ACheckedUnits, AOutcome, ANotifyTimeout, mSettings().TimeoutMs);
     end, nil);
 end;
 

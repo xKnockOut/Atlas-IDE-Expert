@@ -40,136 +40,136 @@ end;
 
 procedure TAtlasSearchHistoryTests.RememberPutsNewestFirstAndMovesDuplicatesUp;
 var
-  History: TAtlasSearchHistory;
+  mHistory: TAtlasSearchHistory;
 begin
-  History := TAtlasSearchHistory.Create(20);
+  mHistory := TAtlasSearchHistory.Create(20);
   try
-    History.Remember('a');
-    History.Remember('b');
-    History.Remember('c');
-    History.Remember('a');
-    History.Remember('');
-    Assert.AreEqual('a|c|b', Joined(History));
-    History.Remember('A');
-    Assert.AreEqual('A|a|c|b', Joined(History), 'Groß-/Kleinschreibung zählt');
+    mHistory.Remember('a');
+    mHistory.Remember('b');
+    mHistory.Remember('c');
+    mHistory.Remember('a');
+    mHistory.Remember('');
+    Assert.AreEqual('a|c|b', Joined(mHistory));
+    mHistory.Remember('A');
+    Assert.AreEqual('A|a|c|b', Joined(mHistory), 'Groß-/Kleinschreibung zählt');
   finally
-    History.Free;
+    mHistory.Free;
   end;
 end;
 
 procedure TAtlasSearchHistoryTests.CapacityLimitsAndZeroTurnsHistoryOff;
 var
-  History: TAtlasSearchHistory;
+  mHistory: TAtlasSearchHistory;
 begin
-  History := TAtlasSearchHistory.Create(2);
+  mHistory := TAtlasSearchHistory.Create(2);
   try
-    History.Remember('a');
-    History.Remember('b');
-    History.Remember('c');
-    Assert.AreEqual('c|b', Joined(History));
-    History.Capacity := 1;
-    Assert.AreEqual('c', Joined(History), 'kürzt sofort');
-    History.Capacity := 0;
-    Assert.AreEqual('', Joined(History));
-    History.Remember('d');
-    Assert.AreEqual('', Joined(History), 'search.history = 0: kein Verlauf');
-    Assert.AreEqual('x', History.Step('x', True));
+    mHistory.Remember('a');
+    mHistory.Remember('b');
+    mHistory.Remember('c');
+    Assert.AreEqual('c|b', Joined(mHistory));
+    mHistory.Capacity := 1;
+    Assert.AreEqual('c', Joined(mHistory), 'kürzt sofort');
+    mHistory.Capacity := 0;
+    Assert.AreEqual('', Joined(mHistory));
+    mHistory.Remember('d');
+    Assert.AreEqual('', Joined(mHistory), 'search.history = 0: kein Verlauf');
+    Assert.AreEqual('x', mHistory.Step('x', True));
   finally
-    History.Free;
+    mHistory.Free;
   end;
 end;
 
 procedure TAtlasSearchHistoryTests.StepGoesOlderAndBackToTheTypedText;
 var
-  History: TAtlasSearchHistory;
-  Text: string;
+  mHistory: TAtlasSearchHistory;
+  mText: string;
 begin
-  History := TAtlasSearchHistory.Create(20);
+  mHistory := TAtlasSearchHistory.Create(20);
   try
-    History.Remember('alt');
-    History.Remember('mittel');
-    History.Remember('neu');
-    Text := History.Step('getippt', True);
-    Assert.AreEqual('neu', Text);
-    Text := History.Step(Text, True);
-    Assert.AreEqual('mittel', Text);
-    Text := History.Step(Text, True);
-    Assert.AreEqual('alt', Text);
-    Text := History.Step(Text, True);
-    Assert.AreEqual('alt', Text, 'am ältesten Eintrag bleibt es');
-    Text := History.Step(Text, False);
-    Assert.AreEqual('mittel', Text);
-    Text := History.Step(Text, False);
-    Text := History.Step(Text, False);
-    Assert.AreEqual('getippt', Text, 'unter den neuesten hinab kommt der getippte Text zurück');
-    Assert.AreEqual('getippt', History.Step(Text, False));
+    mHistory.Remember('alt');
+    mHistory.Remember('mittel');
+    mHistory.Remember('neu');
+    mText := mHistory.Step('getippt', True);
+    Assert.AreEqual('neu', mText);
+    mText := mHistory.Step(mText, True);
+    Assert.AreEqual('mittel', mText);
+    mText := mHistory.Step(mText, True);
+    Assert.AreEqual('alt', mText);
+    mText := mHistory.Step(mText, True);
+    Assert.AreEqual('alt', mText, 'am ältesten Eintrag bleibt es');
+    mText := mHistory.Step(mText, False);
+    Assert.AreEqual('mittel', mText);
+    mText := mHistory.Step(mText, False);
+    mText := mHistory.Step(mText, False);
+    Assert.AreEqual('getippt', mText, 'unter den neuesten hinab kommt der getippte Text zurück');
+    Assert.AreEqual('getippt', mHistory.Step(mText, False));
     // Nach Remember beginnt das Blättern von vorn.
-    History.Step('x', True);
-    History.Remember('x');
-    Assert.AreEqual('neu', History.Step('x', True));
+    mHistory.Step('x', True);
+    mHistory.Remember('x');
+    Assert.AreEqual('neu', mHistory.Step('x', True));
   finally
-    History.Free;
+    mHistory.Free;
   end;
 end;
 
 procedure TAtlasSearchHistoryTests.StepSkipsTheEntryAlreadyInTheField;
 var
-  History: TAtlasSearchHistory;
+  mHistory: TAtlasSearchHistory;
 begin
-  History := TAtlasSearchHistory.Create(20);
+  mHistory := TAtlasSearchHistory.Create(20);
   try
-    History.Remember('vorige');
-    History.Remember('letzte');
+    mHistory.Remember('vorige');
+    mHistory.Remember('letzte');
     // Akzeptanzkriterium: Pfeil hoch holt die vorige Suche, auch wenn die letzte noch im Feld steht.
-    Assert.AreEqual('vorige', History.Step('letzte', True));
+    Assert.AreEqual('vorige', mHistory.Step('letzte', True));
   finally
-    History.Free;
+    mHistory.Free;
   end;
 end;
 
 procedure TAtlasSearchHistoryTests.TextRoundTripKeepsBothHistories;
 var
-  Search, Replace, SearchBack, ReplaceBack: TAtlasSearchHistory;
-  Text: string;
+  mSearch, mReplace, mSearchBack, mReplaceBack: TAtlasSearchHistory;
+  mText: string;
 begin
-  Search := TAtlasSearchHistory.Create(20);
-  Replace := TAtlasSearchHistory.Create(20);
-  SearchBack := TAtlasSearchHistory.Create(20);
-  ReplaceBack := TAtlasSearchHistory.Create(2);
+  mSearch := TAtlasSearchHistory.Create(20);
+  mReplace := TAtlasSearchHistory.Create(20);
+  mSearchBack := TAtlasSearchHistory.Create(20);
+  mReplaceBack := TAtlasSearchHistory.Create(2);
   try
-    Search.Remember('IntToStr\((\w+)\)');
-    Search.Remember('Größe "x"');
-    Replace.Remember('$1.ToString');
-    Replace.Remember('a');
-    Replace.Remember('b');
-    Text := TAtlasSearchHistories.ToText(Search, Replace);
-    Assert.IsTrue(TAtlasSearchHistories.FromText(Text, SearchBack, ReplaceBack));
-    Assert.AreEqual(Joined(Search), Joined(SearchBack));
-    Assert.AreEqual('b|a', Joined(ReplaceBack), 'die Länge der Einstellung gilt auch beim Laden');
+    mSearch.Remember('IntToStr\((\w+)\)');
+    mSearch.Remember('Größe "x"');
+    mReplace.Remember('$1.ToString');
+    mReplace.Remember('a');
+    mReplace.Remember('b');
+    mText := TAtlasSearchHistories.ToText(mSearch, mReplace);
+    Assert.IsTrue(TAtlasSearchHistories.FromText(mText, mSearchBack, mReplaceBack));
+    Assert.AreEqual(Joined(mSearch), Joined(mSearchBack));
+    Assert.AreEqual('b|a', Joined(mReplaceBack), 'die Länge der Einstellung gilt auch beim Laden');
   finally
-    Search.Free;
-    Replace.Free;
-    SearchBack.Free;
-    ReplaceBack.Free;
+    mSearch.Free;
+    mReplace.Free;
+    mSearchBack.Free;
+    mReplaceBack.Free;
   end;
 end;
 
 procedure TAtlasSearchHistoryTests.BrokenTextIsRejected;
 var
-  Search, Replace: TAtlasSearchHistory;
+  mSearch, mReplace: TAtlasSearchHistory;
 begin
-  Search := TAtlasSearchHistory.Create(20);
-  Replace := TAtlasSearchHistory.Create(20);
+  mSearch := TAtlasSearchHistory.Create(20);
+  mReplace := TAtlasSearchHistory.Create(20);
   try
-    Search.Remember('a');
-    Assert.IsFalse(TAtlasSearchHistories.FromText('[1, 2', Search, Replace));
-    Assert.AreEqual('', Joined(Search));
-    Assert.IsTrue(TAtlasSearchHistories.FromText('{"search": ["x", 3, ""], "replace": 7}', Search, Replace));
-    Assert.AreEqual('x', Joined(Search), 'nur Texte zählen');
-    Assert.AreEqual('', Joined(Replace));
+    mSearch.Remember('a');
+    Assert.IsFalse(TAtlasSearchHistories.FromText('[1, 2', mSearch, mReplace));
+    Assert.AreEqual('', Joined(mSearch));
+    Assert.IsTrue(TAtlasSearchHistories.FromText('{"search": ["x", 3, ""], "replace": 7}', mSearch, mReplace));
+    Assert.AreEqual('x', Joined(mSearch), 'nur Texte zählen');
+    Assert.AreEqual('', Joined(mReplace));
   finally
-    Search.Free;
-    Replace.Free;
+    mSearch.Free;
+    mReplace.Free;
   end;
 end;
 

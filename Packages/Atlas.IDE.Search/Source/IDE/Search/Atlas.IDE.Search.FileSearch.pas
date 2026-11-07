@@ -81,12 +81,12 @@ end;
 
 procedure TAtlasIdeFileSearch.TWorker.Execute;
 var
-  Summary: TAtlasFileSearchSummary;
-  Run: Integer;
+  mSummary: TAtlasFileSearchSummary;
+  mRun: Integer;
 begin
-  Run := FRun;
+  mRun := FRun;
   try
-    Summary := TAtlasFileSearch.Run(FSources, FQuery, TAtlasFileSearch.DiskLoader(),
+    mSummary := TAtlasFileSearch.Run(FSources, FQuery, TAtlasFileSearch.DiskLoader(),
       function: Boolean
       begin
         Result := Terminated;
@@ -96,21 +96,21 @@ begin
         TAtlasMainThread.Queue(TAtlasFeature.Search,
           procedure
           begin
-            TAtlasIdeFileSearch.Found(Run, AHits);
+            TAtlasIdeFileSearch.Found(mRun, AHits);
           end);
       end);
   except
     on E: Exception do
     begin
       TAtlasGuard.Report(TAtlasFeature.Search, E);
-      Summary := Default(TAtlasFileSearchSummary);
-      Summary.Cancelled := True;
+      mSummary := Default(TAtlasFileSearchSummary);
+      mSummary.Cancelled := True;
     end;
   end;
   TAtlasMainThread.Queue(TAtlasFeature.Search,
     procedure
     begin
-      TAtlasIdeFileSearch.Done(Run, Summary);
+      TAtlasIdeFileSearch.Done(mRun, mSummary);
     end);
 end;
 
@@ -118,57 +118,57 @@ end;
 
 procedure AddModuleFiles(const AModule: IOTAModule; var AFiles: TArray<string>);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if AModule = nil then
   begin
     Exit;
   end;
-  for Index := 0 to AModule.ModuleFileCount - 1 do
+  for mIndex := 0 to AModule.ModuleFileCount - 1 do
   begin
-    if AModule.ModuleFileEditors[Index] <> nil then
+    if AModule.ModuleFileEditors[mIndex] <> nil then
     begin
-      AFiles := AFiles + [AModule.ModuleFileEditors[Index].FileName];
+      AFiles := AFiles + [AModule.ModuleFileEditors[mIndex].FileName];
     end;
   end;
 end;
 
 procedure AddProject(const AProject: IOTAProject; var AFiles: TArray<string>);
 var
-  Index: Integer;
-  Info: IOTAModuleInfo;
-  Main: string;
+  mIndex: Integer;
+  mInfo: IOTAModuleInfo;
+  mMain: string;
 begin
   if AProject = nil then
   begin
     Exit;
   end;
-  for Main in TArray<string>.Create(ChangeFileExt(AProject.FileName, '.dpr'),
+  for mMain in TArray<string>.Create(ChangeFileExt(AProject.FileName, '.dpr'),
     ChangeFileExt(AProject.FileName, '.dpk')) do
   begin
-    if TFile.Exists(Main) then
+    if TFile.Exists(mMain) then
     begin
-      AFiles := AFiles + [Main];
+      AFiles := AFiles + [mMain];
     end;
   end;
-  for Index := 0 to AProject.GetModuleCount - 1 do
+  for mIndex := 0 to AProject.GetModuleCount - 1 do
   begin
-    Info := AProject.GetModule(Index);
-    if (Info = nil) or (Info.FileName = '') then
+    mInfo := AProject.GetModule(mIndex);
+    if (mInfo = nil) or (mInfo.FileName = '') then
     begin
       Continue;
     end;
-    AFiles := AFiles + [Info.FileName];
+    AFiles := AFiles + [mInfo.FileName];
     // Formular der Unit (Projektmodule nennen nur die .pas).
-    if Info.FormName <> '' then
+    if mInfo.FormName <> '' then
     begin
-      if TFile.Exists(ChangeFileExt(Info.FileName, '.dfm')) then
+      if TFile.Exists(ChangeFileExt(mInfo.FileName, '.dfm')) then
       begin
-        AFiles := AFiles + [ChangeFileExt(Info.FileName, '.dfm')];
+        AFiles := AFiles + [ChangeFileExt(mInfo.FileName, '.dfm')];
       end
-      else if TFile.Exists(ChangeFileExt(Info.FileName, '.fmx')) then
+      else if TFile.Exists(ChangeFileExt(mInfo.FileName, '.fmx')) then
       begin
-        AFiles := AFiles + [ChangeFileExt(Info.FileName, '.fmx')];
+        AFiles := AFiles + [ChangeFileExt(mInfo.FileName, '.fmx')];
       end;
     end;
   end;
@@ -176,35 +176,35 @@ end;
 
 class function TAtlasIdeFileSearch.FilesOf(AScope: TAtlasSearchScope): TArray<string>;
 var
-  Services: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  Index: Integer;
+  mServices: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+  mIndex: Integer;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
   begin
     Exit;
   end;
   case AScope of
     TAtlasSearchScope.OpenFiles:
-      for Index := 0 to Services.ModuleCount - 1 do
+      for mIndex := 0 to mServices.ModuleCount - 1 do
       begin
-        AddModuleFiles(Services.Modules[Index], Result);
+        AddModuleFiles(mServices.Modules[mIndex], Result);
       end;
     TAtlasSearchScope.Project:
-      AddProject(Services.GetActiveProject, Result);
+      AddProject(mServices.GetActiveProject, Result);
     TAtlasSearchScope.ProjectGroup:
       begin
-        Group := Services.MainProjectGroup;
-        if Group = nil then
+        mGroup := mServices.MainProjectGroup;
+        if mGroup = nil then
         begin
-          AddProject(Services.GetActiveProject, Result);
+          AddProject(mServices.GetActiveProject, Result);
         end
         else
         begin
-          for Index := 0 to Group.ProjectCount - 1 do
+          for mIndex := 0 to mGroup.ProjectCount - 1 do
           begin
-            AddProject(Group.Projects[Index], Result);
+            AddProject(mGroup.Projects[mIndex], Result);
           end;
         end;
       end;
@@ -214,29 +214,29 @@ end;
 
 class function TAtlasIdeFileSearch.Buffers: TArray<TAtlasSearchSource>;
 var
-  Services: IOTAModuleServices;
-  Index, FileIndex: Integer;
-  Module: IOTAModule;
-  Buffer: IOTAEditBuffer;
+  mServices: IOTAModuleServices;
+  mIndex, mFileIndex: Integer;
+  mModule: IOTAModule;
+  mBuffer: IOTAEditBuffer;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
   begin
     Exit;
   end;
-  for Index := 0 to Services.ModuleCount - 1 do
+  for mIndex := 0 to mServices.ModuleCount - 1 do
   begin
-    Module := Services.Modules[Index];
-    if Module = nil then
+    mModule := mServices.Modules[mIndex];
+    if mModule = nil then
     begin
       Continue;
     end;
-    for FileIndex := 0 to Module.ModuleFileCount - 1 do
+    for mFileIndex := 0 to mModule.ModuleFileCount - 1 do
     begin
-      if Supports(Module.ModuleFileEditors[FileIndex], IOTAEditBuffer, Buffer) and
-        TAtlasFileSearch.IsSearchable(Buffer.FileName) then
+      if Supports(mModule.ModuleFileEditors[mFileIndex], IOTAEditBuffer, mBuffer) and
+        TAtlasFileSearch.IsSearchable(mBuffer.FileName) then
       begin
-        Result := Result + [TAtlasSearchSource.FromBuffer(Buffer.FileName, TAtlasEditorBuffer.Text(Buffer))];
+        Result := Result + [TAtlasSearchSource.FromBuffer(mBuffer.FileName, TAtlasEditorBuffer.Text(mBuffer))];
       end;
     end;
   end;
@@ -246,11 +246,11 @@ class function TAtlasIdeFileSearch.Start(const AFiles: TArray<string>; const AFi
   const AQuery: TAtlasSearchQuery; const AOnFound: TProc<TAtlasFileHits>;
   const AOnDone: TProc<TAtlasFileSearchSummary>): Boolean;
 var
-  Sources: TArray<TAtlasSearchSource>;
+  mSources: TArray<TAtlasSearchSource>;
 begin
   Stop;
-  Sources := TAtlasFileSearch.Sources(AFiles, Buffers, AFirst);
-  Result := Length(Sources) > 0;
+  mSources := TAtlasFileSearch.Sources(AFiles, Buffers, AFirst);
+  Result := Length(mSources) > 0;
   if not Result then
   begin
     Exit;
@@ -258,7 +258,7 @@ begin
   Inc(FRun);
   FOnFound := AOnFound;
   FOnDone := AOnDone;
-  FWorker := TWorker.Create(Sources, AQuery, FRun);
+  FWorker := TWorker.Create(mSources, AQuery, FRun);
 end;
 
 class procedure TAtlasIdeFileSearch.Found(ARun: Integer; const AHits: TAtlasFileHits);
@@ -271,17 +271,17 @@ end;
 
 class procedure TAtlasIdeFileSearch.Done(ARun: Integer; const ASummary: TAtlasFileSearchSummary);
 var
-  OnDone: TProc<TAtlasFileSearchSummary>;
+  mOnDone: TProc<TAtlasFileSearchSummary>;
 begin
   if ARun <> FRun then
   begin
     Exit;
   end;
-  OnDone := FOnDone;
+  mOnDone := FOnDone;
   Finish;
-  if Assigned(OnDone) then
+  if Assigned(mOnDone) then
   begin
-    OnDone(ASummary);
+    mOnDone(ASummary);
   end;
 end;
 
