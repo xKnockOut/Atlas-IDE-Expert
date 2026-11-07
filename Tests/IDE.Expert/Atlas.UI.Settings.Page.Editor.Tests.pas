@@ -176,7 +176,7 @@ begin
   CheckOf(APage, 'ExpressionType').Checked := False;
   CheckOf(APage, 'ExpressionTypeConstValue').Checked := False;
   EditOf(APage, 'ExpressionTypeKey').Text := '';
-  APage.Part<TAtlasSettingsEditorCodePart>.MethodPlacementBox.Choice := 2;
+  APage.Part<TAtlasSettingsEditorCodePart>.MethodPlacementBox.Choice := 3;
   APage.Part<TAtlasSettingsEditorCodePart>.RegionFoldsBox.Choice := 1;
   APage.Part<TAtlasSettingsEditorCodePart>.InlineDiagnostics.Choice := 2;
   CheckOf(APage, 'ProblemsStatusCounter').Checked := False;

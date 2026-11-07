@@ -129,10 +129,10 @@ begin
   finally
     Reply.Free;
   end;
-  // Ohne Vorher-Text ist alles neu, aber kein Rumpf ein Ziel.
+  // Ohne Vorher-Text ist alles neu: Die Rümpfe ordnen sich untereinander (#1834).
   Reply := Run(Kopf + RumpfB + RumpfA + Ende, '{"scope": "new", "before": ""}');
   try
-    Assert.AreEqual(0, (Reply.GetValue('edits') as TJSONArray).Count, 'leerer Vorher-Text');
+    Assert.AreEqual(1, (Reply.GetValue('edits') as TJSONArray).Count, 'leerer Vorher-Text');
   finally
     Reply.Free;
   end;

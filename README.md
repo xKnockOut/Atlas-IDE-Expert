@@ -245,6 +245,7 @@ pwsh Tools/Test-PackageDependencies.ps1    # self-test of the module boundaries 
 pwsh Tools/Check-ConsoleOutput.ps1         # no Write/Writeln to stdout
 pwsh Tools/Check-TestCoverage.ps1          # every unit with logic has tests, every test unit runs
 pwsh Tools/Check-WindowHosts.ps1           # dock windows and editor bars use their shared hosts
+pwsh Tools/Check-ProjectFiles.ps1          # project files readable by MSBuild (source build for Delphi 12)
 ```
 
 `Tests/DccFaelle` holds minimal cases for the compiler rules: each one states whether dcc reports it or compiles it. `pwsh Tools/Build-DccFaelle.ps1` builds them in a scratch IDE via `cc.ps1` (Win32 and Win64) and writes the dcc messages per case to `Output/DccFaelle-Ergebnis.txt`; the rules must not be stricter than that result (#1328).
@@ -253,8 +254,8 @@ pwsh Tools/Check-WindowHosts.ps1           # dock windows and editor bars use th
 
 ## Branches
 
-- `Pilot-2.0.0-beta.1` (unstable): all changes for v2.0 land here once Atlas and CI (FPC) are green. Not necessarily built with Delphi yet.
-- `Pilot-2.0-stable` (stable): only points at Pilot commits that built with Delphi with no errors, warnings or hints and whose tests passed. The branch is only fast-forwarded, never edited directly. Tags `delphi-ok-YYYY-MM-DD` mark each confirmed state.
+- `main`: next version. All new work lands here.
+- `release/X.Y`: bug fixes for the released version, started from its tag. Each fix is merged forward into `main`.
 
 ## CI
 
@@ -262,6 +263,7 @@ pwsh Tools/Check-WindowHosts.ps1           # dock windows and editor bars use th
   - The job needs a self-hosted Windows runner (labels `self-hosted`, `windows`, `delphi`) on the developer's workstation. It runs in the signed-in user context, not as a service, because `cc.ps1` starts an IDE, and only while that machine is switched on. Every job starts its own scratch IDE.
   - It runs only with the repository variable `DELPHI_RUNNER=true`; otherwise the job "uebersprungen" says so in the run summary. `CC_SCRIPT` overrides the path to `cc.ps1`.
   - A new push to the same branch cancels the running build (`concurrency`).
+- `release.yml`: release for the tag `v<version>`. Without the Delphi runner the release package is missing; `pwsh Tools/Publish-ReleasePackage.ps1 -Version <version>` then attaches a locally built one and enters it in the update installer's version files (#1849, [docs/Release.md](docs/Release.md), German).
 - `package-dependencies.yml`: package dependencies, the stdout rule, Delphi 12 compatibility, rule catalog, configuration docs, no Embarcadero sources in `Tests/`, and Atlas windows and editor bars only through their shared hosts.
 
 ## Command line
