@@ -94,11 +94,11 @@ uses
 
 const
   /// <summary>Ab dieser Vergrößerung stehen alle Namen da (darunter überdecken sie sich).</summary>
-  AllNamesScale = 0.9;
+  cAllNamesScale = 0.9;
   /// <summary>Bildpunkte, ab denen ein Mausdruck als Ziehen gilt.</summary>
-  DragThreshold = 3;
+  cDragThreshold = 3;
   /// <summary>Anteil der eigenen Farbe bei Units, die hinter einem Weg oder Filter zurücktreten.</summary>
-  DimAlpha = 0.3;
+  cDimAlpha = 0.3;
 
 type
   /// <summary>Was die Teile der Zeichnung brauchen.</summary>
@@ -368,7 +368,7 @@ begin
     mFill := TAtlasColor(APaint.State.Model.SubsystemColor(mItem.Subsystem, APaint.Colors.IsDark));
     if not APaint.State.Highlighted(mIndex) then
     begin
-      mFill := TAtlasColorMath.Mix(mFill, APaint.Colors.Surface, DimAlpha);
+      mFill := TAtlasColorMath.Mix(mFill, APaint.Colors.Surface, cDimAlpha);
     end;
     APaint.Canvas.Brush.Style := bsSolid;
     APaint.Canvas.Brush.Color := ToColor(mFill);
@@ -386,7 +386,7 @@ begin
   mHighlighted := APaint.State.Highlighted(AIndex);
   mMajor := APaint.State.IsCentral(AIndex) or (AIndex = APaint.State.Selected)
     or ((APaint.Pathing or AFiltered) and mHighlighted);
-  Result := mMajor or ((APaint.View.Scale >= AllNamesScale) and mHighlighted);
+  Result := mMajor or ((APaint.View.Scale >= cAllNamesScale) and mHighlighted);
 end;
 
 procedure PaintNames(const APaint: TMapPaint);
@@ -596,7 +596,7 @@ begin
     FState.SetHover(FView.UnitAt(FState.Model, X, Y, FState.Hidden));
     Exit;
   end;
-  if not FDrag.Moved and (Abs(X - FDrag.X) <= DragThreshold) and (Abs(Y - FDrag.Y) <= DragThreshold) then
+  if not FDrag.Moved and (Abs(X - FDrag.X) <= cDragThreshold) and (Abs(Y - FDrag.Y) <= cDragThreshold) then
   begin
     Exit;
   end;

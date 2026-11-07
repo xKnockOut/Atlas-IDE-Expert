@@ -34,8 +34,8 @@ type
   TAtlasAnalysisModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
     IAtlasAppliesSettings, IAtlasFollowsTheme)
   public const
-    ModuleId = 'atlas.analysis';
-    Switch = 'analysis';
+    cModuleId = 'atlas.analysis';
+    cSwitch = 'analysis';
   private
     FActive: Boolean;
     class function Parts: TArray<IAtlasFeaturePart>; static;
@@ -79,7 +79,7 @@ uses
 
 const
   /// <summary>Feld im Atlas-Statusfeld für die Kosten einer interface-Änderung (#554).</summary>
-  InterfaceCostField = 'interfaceCost';
+  cInterfaceCostField = 'interfaceCost';
 
 var
   GScope: IAtlasModuleScope;
@@ -182,11 +182,11 @@ procedure ShowInterfaceCost(const AText, AHint: string);
 begin
   if AText = '' then
   begin
-    TAtlasIdeHost.SetStatusField(InterfaceCostField, '', '', nil);
+    TAtlasIdeHost.SetStatusField(cInterfaceCostField, '', '', nil);
   end
   else
   begin
-    TAtlasIdeHost.SetStatusField(InterfaceCostField, AText, AHint, ShowCostClicked);
+    TAtlasIdeHost.SetStatusField(cInterfaceCostField, AText, AHint, ShowCostClicked);
   end;
 end;
 
@@ -201,7 +201,7 @@ procedure StopUnitRelations;
 begin
   GUnitRelationsStarted := False;
   // Base hält danach keinen Klick des Moduls mehr (Regel 3).
-  TAtlasIdeHost.SetStatusField(InterfaceCostField, '', '', nil);
+  TAtlasIdeHost.SetStatusField(cInterfaceCostField, '', '', nil);
   TAtlasIdeUnitRelations.Uninstall;
 end;
 
@@ -372,13 +372,13 @@ end;
 function TAtlasAnalysisModule.Info: TAtlasModuleInfo;
 begin
   Result := Default(TAtlasModuleInfo);
-  Result.Id := ModuleId;
+  Result.Id := cModuleId;
   Result.Name := 'Analyse';
   Result.Version := TAtlasVersion.cVersion;
   Result.Handle := HInstance;
   // Lief mit den Editorbefehlen schon im abgesicherten Start.
   Result.MinLevel := TAtlasSafeLevel.Safe;
-  Result.Switch := Switch;
+  Result.Switch := cSwitch;
 end;
 
 procedure TAtlasAnalysisModule.Start;
@@ -508,7 +508,7 @@ begin
   if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
     ccMatch then
   begin
-    TAtlasGuard.Log('Modul ' + ModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
+    TAtlasGuard.Log('Modul ' + cModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
     Exit;
   end;
   mModule := TAtlasAnalysisModule.Create;
@@ -540,9 +540,9 @@ begin
   mRegistry := AtlasModuleRegistry;
   if mRegistry <> nil then
   begin
-    for mFailure in mRegistry.UnregisterModule(ModuleId) do
+    for mFailure in mRegistry.UnregisterModule(cModuleId) do
     begin
-      TAtlasGuard.Log('Modul ' + ModuleId + ' nicht sauber abgemeldet: ' + mFailure);
+      TAtlasGuard.Log('Modul ' + cModuleId + ' nicht sauber abgemeldet: ' + mFailure);
     end;
   end;
 end;

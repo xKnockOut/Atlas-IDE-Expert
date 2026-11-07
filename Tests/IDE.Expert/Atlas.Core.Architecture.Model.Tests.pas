@@ -124,27 +124,27 @@ end;
 
 function SampleOverview(AOlder: Boolean): TArchitectureOverview;
 var
-  Index: ISymbolIndex;
-  Service: TArchitectureService;
-  Request: TArchitectureRequest;
+  mIndex: ISymbolIndex;
+  mService: TArchitectureService;
+  mRequest: TArchitectureRequest;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(UsesUnit('App.Main', ['App.Data', 'App.Ui.Form'], nil));
-  Index.AddUnit(UsesUnit('App.Data', ['App.Data.Db'], nil));
-  Index.AddUnit(UsesUnit('App.Data.Db', ['App.Data.Cache'], nil));
-  Index.AddUnit(UsesUnit('App.Ui.Form', ['App.Ui.Grid'], nil));
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(UsesUnit('App.Main', ['App.Data', 'App.Ui.Form'], nil));
+  mIndex.AddUnit(UsesUnit('App.Data', ['App.Data.Db'], nil));
+  mIndex.AddUnit(UsesUnit('App.Data.Db', ['App.Data.Cache'], nil));
+  mIndex.AddUnit(UsesUnit('App.Ui.Form', ['App.Ui.Grid'], nil));
   if AOlder then
   begin
-    Index.AddUnit(UsesUnit('App.Data.Cache', nil, nil));
-    Index.AddUnit(UsesUnit('App.Ui.Grid', nil, nil));
-    Index.AddUnit(UsesUnit('App.Old', ['App.Data'], nil));
+    mIndex.AddUnit(UsesUnit('App.Data.Cache', nil, nil));
+    mIndex.AddUnit(UsesUnit('App.Ui.Grid', nil, nil));
+    mIndex.AddUnit(UsesUnit('App.Old', ['App.Data'], nil));
   end
   else
   begin
-    Index.AddUnit(UsesUnit('App.Data.Cache', nil, ['App.Data.Db']));
-    Index.AddUnit(UsesUnit('App.Ui.Grid', ['App.Data'], nil));
+    mIndex.AddUnit(UsesUnit('App.Data.Cache', nil, ['App.Data.Db']));
+    mIndex.AddUnit(UsesUnit('App.Ui.Grid', ['App.Data'], nil));
   end;
-  Service := TArchitectureService.Create(Index,
+  mService := TArchitectureService.Create(mIndex,
     function(const AFileName: string; out AText: string): Boolean
     begin
       AText := '';
@@ -155,15 +155,15 @@ begin
       Result := nil;
     end);
   try
-    Request := Default(TArchitectureRequest);
-    Request.Title := 'App';
-    Request.Root := 'C:\Projekt';
-    Request.Scope := 'project';
-    Request.CentralUnits := 3;
-    Request.Exclude := ['Tests/**'];
-    Result := Service.Overview(Request);
+    mRequest := Default(TArchitectureRequest);
+    mRequest.Title := 'App';
+    mRequest.Root := 'C:\Projekt';
+    mRequest.Scope := 'project';
+    mRequest.CentralUnits := 3;
+    mRequest.Exclude := ['Tests/**'];
+    Result := mService.Overview(mRequest);
   finally
-    Service.Free;
+    mService.Free;
   end;
 end;
 
@@ -180,14 +180,14 @@ end;
 
 function SampleComparisonAnswer: string;
 var
-  Current: TArchitectureOverview;
-  Comparison: TArchitectureComparison;
+  mCurrent: TArchitectureOverview;
+  mComparison: TArchitectureComparison;
 begin
-  Current := SampleOverview(False);
-  Comparison := TArchitectureComparer.Compare(TArchitectureSnapshots.FromOverview(SampleOverview(True)),
-    TArchitectureSnapshots.FromOverview(Current));
-  Result := AnswerOf(Current, ',"baseline":"C:\\Projekt\\stand.json","comparison":' +
-    TArchitectureComparer.Json(Comparison, TArchitectureComparer.DefaultFailOn));
+  mCurrent := SampleOverview(False);
+  mComparison := TArchitectureComparer.Compare(TArchitectureSnapshots.FromOverview(SampleOverview(True)),
+    TArchitectureSnapshots.FromOverview(mCurrent));
+  Result := AnswerOf(mCurrent, ',"baseline":"C:\\Projekt\\stand.json","comparison":' +
+    TArchitectureComparer.Json(mComparison, TArchitectureComparer.DefaultFailOn));
 end;
 
 function SampleResolutionAnswer: string;
@@ -329,112 +329,112 @@ end;
 
 procedure TAtlasArchitectureModelTests.ParsesServerAnswer;
 var
-  Model: TAtlasArchitectureModel;
-  Enabled: Boolean;
-  Db: Integer;
-  Subsystem: TAtlasArchSubsystem;
-  Count: Integer;
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mDb: Integer;
+  mSubsystem: TAtlasArchSubsystem;
+  mCount: Integer;
 begin
-  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, Model, Enabled));
-  Assert.IsTrue(Enabled);
-  Assert.AreEqual('App', Model.Title);
-  Assert.AreEqual('C:\Projekt', Model.Root);
-  Assert.AreEqual('project', Model.Scope);
-  Assert.AreEqual(1, Integer(Length(Model.Excludes)));
-  Assert.AreEqual('Tests/**', Model.Excludes[0]);
-  Assert.AreEqual(6, Integer(Length(Model.Units)));
-  Assert.AreEqual(3, Integer(Length(Model.Central)));
-  Assert.AreEqual(Integer(Length(Model.Edges)), Model.EdgeCount);
-  Assert.AreEqual(1, Integer(Length(Model.Cycles)));
-  Db := Model.IndexOf('app.data.db');
-  Assert.IsTrue(Db >= 0);
-  Assert.IsTrue(Model.Units[Db].OnCycle);
-  Assert.IsFalse(Model.Units[Model.IndexOf('App.Main')].OnCycle);
-  Assert.AreEqual('App/Data/Db.pas', Model.Units[Db].FileName);
-  Assert.IsTrue(Length(Model.Cycles[0].Edges) >= 2);
-  Count := 0;
-  for Subsystem in Model.Subsystems do
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, mModel, mEnabled));
+  Assert.IsTrue(mEnabled);
+  Assert.AreEqual('App', mModel.Title);
+  Assert.AreEqual('C:\Projekt', mModel.Root);
+  Assert.AreEqual('project', mModel.Scope);
+  Assert.AreEqual(1, Integer(Length(mModel.Excludes)));
+  Assert.AreEqual('Tests/**', mModel.Excludes[0]);
+  Assert.AreEqual(6, Integer(Length(mModel.Units)));
+  Assert.AreEqual(3, Integer(Length(mModel.Central)));
+  Assert.AreEqual(Integer(Length(mModel.Edges)), mModel.EdgeCount);
+  Assert.AreEqual(1, Integer(Length(mModel.Cycles)));
+  mDb := mModel.IndexOf('app.data.db');
+  Assert.IsTrue(mDb >= 0);
+  Assert.IsTrue(mModel.Units[mDb].OnCycle);
+  Assert.IsFalse(mModel.Units[mModel.IndexOf('App.Main')].OnCycle);
+  Assert.AreEqual('App/Data/Db.pas', mModel.Units[mDb].FileName);
+  Assert.IsTrue(Length(mModel.Cycles[0].Edges) >= 2);
+  mCount := 0;
+  for mSubsystem in mModel.Subsystems do
   begin
-    Inc(Count, Length(Subsystem.Units));
-    Assert.IsTrue(Subsystem.R > 0, 'Kreis der Karte');
+    Inc(mCount, Length(mSubsystem.Units));
+    Assert.IsTrue(mSubsystem.R > 0, 'Kreis der Karte');
   end;
-  Assert.AreEqual(6, Count, 'jede Unit in genau einem Teilsystem');
-  Assert.AreEqual(Model.Units[Db].Outlier, Model.OutlierOf(Db) >= 0);
+  Assert.AreEqual(6, mCount, 'jede Unit in genau einem Teilsystem');
+  Assert.AreEqual(mModel.Units[mDb].Outlier, mModel.OutlierOf(mDb) >= 0);
 end;
 
 procedure TAtlasArchitectureModelTests.DisabledAndBrokenAnswers;
 var
-  Model: TAtlasArchitectureModel;
-  Enabled: Boolean;
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
 begin
-  Assert.IsTrue(TAtlasArchitectureModel.Parse('{"enabled":false}', Model, Enabled));
-  Assert.IsFalse(Enabled);
-  Assert.AreEqual(0, Integer(Length(Model.Units)));
-  Assert.IsFalse(TAtlasArchitectureModel.Parse('', Model, Enabled));
-  Assert.IsFalse(TAtlasArchitectureModel.Parse('[]', Model, Enabled));
-  Assert.IsFalse(TAtlasArchitectureModel.Parse('{"enabled":true,"data":{"format":2}}', Model, Enabled),
+  Assert.IsTrue(TAtlasArchitectureModel.Parse('{"enabled":false}', mModel, mEnabled));
+  Assert.IsFalse(mEnabled);
+  Assert.AreEqual(0, Integer(Length(mModel.Units)));
+  Assert.IsFalse(TAtlasArchitectureModel.Parse('', mModel, mEnabled));
+  Assert.IsFalse(TAtlasArchitectureModel.Parse('[]', mModel, mEnabled));
+  Assert.IsFalse(TAtlasArchitectureModel.Parse('{"enabled":true,"data":{"format":2}}', mModel, mEnabled),
     'fremdes Format');
   // Verweis auf eine Unit, die es nicht gibt: lieber nichts zeigen als abstürzen.
   Assert.IsFalse(TAtlasArchitectureModel.Parse('{"enabled":true,"data":{"format":1,"units":[],' +
-    '"edges":[[0,1,"i"]],"subsystems":[]}}', Model, Enabled));
-  Assert.AreEqual(0, Integer(Length(Model.Edges)));
+    '"edges":[[0,1,"i"]],"subsystems":[]}}', mModel, mEnabled));
+  Assert.AreEqual(0, Integer(Length(mModel.Edges)));
 end;
 
 procedure TAtlasArchitectureModelTests.SortsStableAndFilters;
 var
-  Model: TAtlasArchitectureModel;
-  Enabled: Boolean;
-  All, Sorted: TArray<Integer>;
-  Index: Integer;
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mAll, mSorted: TArray<Integer>;
+  mIndex: Integer;
 begin
-  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, Model, Enabled));
-  All := nil;
-  for Index := 0 to High(Model.Units) do
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, mModel, mEnabled));
+  mAll := nil;
+  for mIndex := 0 to High(mModel.Units) do
   begin
-    All := All + [Index];
+    mAll := mAll + [mIndex];
   end;
-  Sorted := Model.Sorted(All, TAtlasArchColumn.Name, False);
-  for Index := 1 to High(Sorted) do
+  mSorted := mModel.Sorted(mAll, TAtlasArchColumn.Name, False);
+  for mIndex := 1 to High(mSorted) do
   begin
-    Assert.IsTrue(CompareText(Model.Units[Sorted[Index - 1]].Name, Model.Units[Sorted[Index]].Name) < 0);
+    Assert.IsTrue(CompareText(mModel.Units[mSorted[mIndex - 1]].Name, mModel.Units[mSorted[mIndex]].Name) < 0);
   end;
-  Sorted := Model.Sorted(All, TAtlasArchColumn.Name, True);
-  Assert.AreEqual('App.Ui.Grid', Model.Units[Sorted[0]].Name);
-  Sorted := Model.Sorted(All, TAtlasArchColumn.Total, True);
-  for Index := 1 to High(Sorted) do
+  mSorted := mModel.Sorted(mAll, TAtlasArchColumn.Name, True);
+  Assert.AreEqual('App.Ui.Grid', mModel.Units[mSorted[0]].Name);
+  mSorted := mModel.Sorted(mAll, TAtlasArchColumn.Total, True);
+  for mIndex := 1 to High(mSorted) do
   begin
-    Assert.IsTrue(Model.Units[Sorted[Index - 1]].Total >= Model.Units[Sorted[Index]].Total);
+    Assert.IsTrue(mModel.Units[mSorted[mIndex - 1]].Total >= mModel.Units[mSorted[mIndex]].Total);
     // Gleichstand: nach Name aufsteigend, auch absteigend sortiert.
-    if Model.Units[Sorted[Index - 1]].Total = Model.Units[Sorted[Index]].Total then
+    if mModel.Units[mSorted[mIndex - 1]].Total = mModel.Units[mSorted[mIndex]].Total then
     begin
-      Assert.IsTrue(CompareText(Model.Units[Sorted[Index - 1]].Name, Model.Units[Sorted[Index]].Name) < 0);
+      Assert.IsTrue(CompareText(mModel.Units[mSorted[mIndex - 1]].Name, mModel.Units[mSorted[mIndex]].Name) < 0);
     end;
   end;
-  Assert.IsTrue(Model.Matches(Model.IndexOf('App.Data.Db'), 'data db'));
-  Assert.IsFalse(Model.Matches(Model.IndexOf('App.Data.Db'), 'data ui'));
-  Assert.IsTrue(Model.Matches(0, ''));
-  Assert.IsFalse(Model.Matches(99, ''));
+  Assert.IsTrue(mModel.Matches(mModel.IndexOf('App.Data.Db'), 'data db'));
+  Assert.IsFalse(mModel.Matches(mModel.IndexOf('App.Data.Db'), 'data ui'));
+  Assert.IsTrue(mModel.Matches(0, ''));
+  Assert.IsFalse(mModel.Matches(99, ''));
 end;
 
 procedure TAtlasArchitectureModelTests.FullPathAndCyclePath;
 var
-  Model: TAtlasArchitectureModel;
-  Enabled: Boolean;
-  Path: string;
-  Parts: TArray<string>;
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mPath: string;
+  mParts: TArray<string>;
 begin
-  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, Model, Enabled));
-  Path := Model.FullPath('App/Data/Db.pas');
-  Assert.AreEqual(IncludeTrailingPathDelimiter('C:\Projekt') + 'App' + PathDelim + 'Data' + PathDelim + 'Db.pas', Path);
-  Assert.AreEqual('D:' + PathDelim + 'X.pas', Model.FullPath('D:/X.pas'), 'absolut bleibt');
-  Model.Root := '';
-  Assert.AreEqual('X.pas', Model.FullPath('X.pas'));
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, mModel, mEnabled));
+  mPath := mModel.FullPath('App/Data/Db.pas');
+  Assert.AreEqual(IncludeTrailingPathDelimiter('C:\Projekt') + 'App' + PathDelim + 'Data' + PathDelim + 'Db.pas', mPath);
+  Assert.AreEqual('D:' + PathDelim + 'X.pas', mModel.FullPath('D:/X.pas'), 'absolut bleibt');
+  mModel.Root := '';
+  Assert.AreEqual('X.pas', mModel.FullPath('X.pas'));
   // Der Zyklus beginnt bei einer seiner Units und kehrt zu ihr zurück.
-  Parts := Model.CyclePath(Model.Cycles[0]).Split([' → ']);
-  Assert.AreEqual(3, Integer(Length(Parts)));
-  Assert.AreEqual(Parts[0], Parts[2]);
-  Assert.IsTrue((Parts[0] = 'App.Data.Db') or (Parts[0] = 'App.Data.Cache'));
-  Assert.AreNotEqual(Parts[0], Parts[1]);
+  mParts := mModel.CyclePath(mModel.Cycles[0]).Split([' → ']);
+  Assert.AreEqual(3, Integer(Length(mParts)));
+  Assert.AreEqual(mParts[0], mParts[2]);
+  Assert.IsTrue((mParts[0] = 'App.Data.Db') or (mParts[0] = 'App.Data.Cache'));
+  Assert.AreNotEqual(mParts[0], mParts[1]);
 end;
 
 procedure TAtlasArchitectureModelTests.PaletteAndDarkness;
@@ -449,69 +449,69 @@ end;
 
 procedure TAtlasArchitectureModelTests.ViewFitsZoomsAndHits;
 var
-  Model: TAtlasArchitectureModel;
-  Enabled: Boolean;
-  View: TAtlasArchitectureView;
-  Subsystem: TAtlasArchSubsystem;
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mView: TAtlasArchitectureView;
+  mSubsystem: TAtlasArchSubsystem;
   X, Y: Double;
-  Db: Integer;
-  Hidden: TArray<Boolean>;
+  mDb: Integer;
+  mHidden: TArray<Boolean>;
 begin
-  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, Model, Enabled));
-  View := Default(TAtlasArchitectureView);
-  View.Fit(Model, 800, 600);
-  Assert.IsTrue(View.Scale > 0);
-  for Subsystem in Model.Subsystems do
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, mModel, mEnabled));
+  mView := Default(TAtlasArchitectureView);
+  mView.Fit(mModel, 800, 600);
+  Assert.IsTrue(mView.Scale > 0);
+  for mSubsystem in mModel.Subsystems do
   begin
-    Assert.IsTrue(View.ScreenX(Subsystem.X - Subsystem.R) >= TAtlasArchitectureView.Margin - 0.5);
-    Assert.IsTrue(View.ScreenX(Subsystem.X + Subsystem.R) <= 800 - TAtlasArchitectureView.Margin + 0.5);
-    Assert.IsTrue(View.ScreenY(Subsystem.Y + Subsystem.R) <= 600 - TAtlasArchitectureView.Margin + 0.5);
+    Assert.IsTrue(mView.ScreenX(mSubsystem.X - mSubsystem.R) >= TAtlasArchitectureView.cMargin - 0.5);
+    Assert.IsTrue(mView.ScreenX(mSubsystem.X + mSubsystem.R) <= 800 - TAtlasArchitectureView.cMargin + 0.5);
+    Assert.IsTrue(mView.ScreenY(mSubsystem.Y + mSubsystem.R) <= 600 - TAtlasArchitectureView.cMargin + 0.5);
   end;
-  Db := Model.IndexOf('App.Data.Db');
-  X := View.ScreenX(Model.Units[Db].X);
-  Y := View.ScreenY(Model.Units[Db].Y);
-  Assert.AreEqual(Db, View.UnitAt(Model, X, Y));
+  mDb := mModel.IndexOf('App.Data.Db');
+  X := mView.ScreenX(mModel.Units[mDb].X);
+  Y := mView.ScreenY(mModel.Units[mDb].Y);
+  Assert.AreEqual(mDb, mView.UnitAt(mModel, X, Y));
   // Units ausgeblendeter Teilsysteme sind nicht treffbar.
-  SetLength(Hidden, Length(Model.Subsystems));
-  Hidden[Model.Units[Db].Subsystem] := True;
-  Assert.AreNotEqual(Db, View.UnitAt(Model, X, Y, Hidden));
+  SetLength(mHidden, Length(mModel.Subsystems));
+  mHidden[mModel.Units[mDb].Subsystem] := True;
+  Assert.AreNotEqual(mDb, mView.UnitAt(mModel, X, Y, mHidden));
   // Zoomen um den Punkt der Unit: Sie bleibt unter dem Mauszeiger.
-  View.ZoomAt(2, X, Y);
-  Assert.AreEqual(X, View.ScreenX(Model.Units[Db].X), 0.001);
-  Assert.AreEqual(Y, View.ScreenY(Model.Units[Db].Y), 0.001);
-  View.Pan(10, -5);
-  Assert.AreEqual(X + 10, View.ScreenX(Model.Units[Db].X), 0.001);
-  Assert.AreEqual(-1, View.UnitAt(Model, -1000, -1000));
-  View.ZoomAt(1000, 0, 0);
-  Assert.AreEqual(Double(TAtlasArchitectureView.MaxScale), View.Scale, 0.0001);
+  mView.ZoomAt(2, X, Y);
+  Assert.AreEqual(X, mView.ScreenX(mModel.Units[mDb].X), 0.001);
+  Assert.AreEqual(Y, mView.ScreenY(mModel.Units[mDb].Y), 0.001);
+  mView.Pan(10, -5);
+  Assert.AreEqual(X + 10, mView.ScreenX(mModel.Units[mDb].X), 0.001);
+  Assert.AreEqual(-1, mView.UnitAt(mModel, -1000, -1000));
+  mView.ZoomAt(1000, 0, 0);
+  Assert.AreEqual(Double(TAtlasArchitectureView.cMaxScale), mView.Scale, 0.0001);
 end;
 
 procedure TAtlasArchitectureModelTests.CommandArguments;
 var
-  Value: TJSONValue;
-  Items: TJSONArray;
-  Options: TJSONObject;
+  mValue: TJSONValue;
+  mItems: TJSONArray;
+  mOptions: TJSONObject;
 begin
-  Value := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', 'project', True));
+  mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', 'project', True));
   try
-    Items := Value as TJSONArray;
-    Assert.AreEqual('file:///C:/P/App.dproj', Items.Items[0].Value);
-    Options := Items.Items[1] as TJSONObject;
-    Assert.AreEqual('project', Options.GetValue<string>('scope'));
-    Assert.IsTrue(Options.GetValue<Boolean>('includeLibraryUnits'));
-    Assert.AreEqual('json', Options.GetValue<string>('format'));
+    mItems := mValue as TJSONArray;
+    Assert.AreEqual('file:///C:/P/App.dproj', mItems.Items[0].Value);
+    mOptions := mItems.Items[1] as TJSONObject;
+    Assert.AreEqual('project', mOptions.GetValue<string>('scope'));
+    Assert.IsTrue(mOptions.GetValue<Boolean>('includeLibraryUnits'));
+    Assert.AreEqual('json', mOptions.GetValue<string>('format'));
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Value := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.SaveArguments('file:///C:/P/App.dproj',
+  mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.SaveArguments('file:///C:/P/App.dproj',
     'C:\P\Architektur.html', 'projectGroup', False));
   try
-    Items := Value as TJSONArray;
-    Assert.AreEqual(3, Integer(Items.Count));
-    Assert.AreEqual('C:\P\Architektur.html', Items.Items[1].Value);
-    Assert.AreEqual('projectGroup', (Items.Items[2] as TJSONObject).GetValue<string>('scope'));
+    mItems := mValue as TJSONArray;
+    Assert.AreEqual(3, Integer(mItems.Count));
+    Assert.AreEqual('C:\P\Architektur.html', mItems.Items[1].Value);
+    Assert.AreEqual('projectGroup', (mItems.Items[2] as TJSONObject).GetValue<string>('scope'));
   finally
-    Value.Free;
+    mValue.Free;
   end;
   Assert.AreEqual('C:\P\a.md', TAtlasArchitectureCommands.SavedFile('{"file":"C:\\P\\a.md","units":3}'));
   Assert.AreEqual('', TAtlasArchitectureCommands.SavedFile('kein JSON'));
@@ -519,164 +519,165 @@ end;
 
 procedure TAtlasArchitectureModelTests.ShortestPathOverUses;
 var
-  Model: TAtlasArchitectureModel;
-  Enabled: Boolean;
-  Path: TArray<Integer>;
-  Hidden: TArray<Boolean>;
-  Main, Cache, Db: Integer;
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mPath: TArray<Integer>;
+  mHidden: TArray<Boolean>;
+  mMain, mCache, mDb: Integer;
 begin
-  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, Model, Enabled));
-  Main := Model.IndexOf('App.Main');
-  Cache := Model.IndexOf('App.Data.Cache');
-  Db := Model.IndexOf('App.Data.Db');
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, mModel, mEnabled));
+  mMain := mModel.IndexOf('App.Main');
+  mCache := mModel.IndexOf('App.Data.Cache');
+  mDb := mModel.IndexOf('App.Data.Db');
   // Kürzester Weg in Richtung der uses: Main → Data → Db → Cache, nicht über Ui.
-  Assert.IsTrue(Model.ShortestPath(Main, Cache, True, nil, Path));
-  Assert.AreEqual(3, Integer(Length(Path)));
-  Assert.AreEqual('App.Main → App.Data → App.Data.Db → App.Data.Cache', Model.PathText(Main, Path));
+  Assert.IsTrue(mModel.ShortestPath(mMain, mCache, True, nil, mPath));
+  Assert.AreEqual(3, Integer(Length(mPath)));
+  Assert.AreEqual('App.Main → App.Data → App.Data.Db → App.Data.Cache', mModel.PathText(mMain, mPath));
   // Gegen die Richtung gibt es keinen Weg, ebenso nicht zu sich selbst.
-  Assert.IsFalse(Model.ShortestPath(Cache, Main, True, nil, Path));
-  Assert.AreEqual(0, Integer(Length(Path)));
-  Assert.IsFalse(Model.ShortestPath(Main, Main, True, nil, Path));
+  Assert.IsFalse(mModel.ShortestPath(mCache, mMain, True, nil, mPath));
+  Assert.AreEqual(0, Integer(Length(mPath)));
+  Assert.IsFalse(mModel.ShortestPath(mMain, mMain, True, nil, mPath));
   // Cache → Db geht nur über implementation.
-  Assert.IsTrue(Model.ShortestPath(Cache, Db, True, nil, Path));
-  Assert.IsFalse(Model.ShortestPath(Cache, Db, False, nil, Path));
+  Assert.IsTrue(mModel.ShortestPath(mCache, mDb, True, nil, mPath));
+  Assert.IsFalse(mModel.ShortestPath(mCache, mDb, False, nil, mPath));
   // Ein ausgeblendetes Teilsystem sperrt seine Units als Ziel und Zwischenschritt.
-  SetLength(Hidden, Length(Model.Subsystems));
-  Hidden[Model.Units[Cache].Subsystem] := True;
-  Assert.IsTrue(Model.IsHidden(Cache, Hidden));
-  Assert.IsFalse(Model.ShortestPath(Main, Cache, True, Hidden, Path));
-  Assert.AreEqual(-1, Model.IndexOf('Fehlt'));
+  SetLength(mHidden, Length(mModel.Subsystems));
+  mHidden[mModel.Units[mCache].Subsystem] := True;
+  Assert.IsTrue(mModel.IsHidden(mCache, mHidden));
+  Assert.IsFalse(mModel.ShortestPath(mMain, mCache, True, mHidden, mPath));
+  Assert.AreEqual(-1, mModel.IndexOf('Fehlt'));
 end;
 
 procedure TAtlasArchitectureModelTests.ParsesComparison;
 var
-  Model: TAtlasArchitectureModel;
-  Enabled: Boolean;
-  Cycles, Removed, Added: TArray<TAtlasArchChange>;
-  Edge: Integer;
-  Names: TArray<string>;
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mCycles, mRemoved, mAdded: TArray<TAtlasArchChange>;
+  mEdge: Integer;
+  mNames: TArray<string>;
 begin
-  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleComparisonAnswer, Model, Enabled));
-  Assert.IsTrue(Model.Comparison.Present);
-  Assert.AreEqual('C:\Projekt\stand.json', Model.Comparison.Baseline);
-  Assert.AreEqual('App', Model.Comparison.BaselineTitle);
-  Assert.AreEqual(7, Model.Comparison.BaselineUnits);
-  Assert.AreEqual(Integer(Ord(High(TAtlasArchChangeKind)) + 1), Integer(Length(Model.Comparison.Sections)),
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleComparisonAnswer, mModel, mEnabled));
+  Assert.IsTrue(mModel.Comparison.Present);
+  Assert.AreEqual('C:\Projekt\stand.json', mModel.Comparison.Baseline);
+  Assert.AreEqual('App', mModel.Comparison.BaselineTitle);
+  Assert.AreEqual(7, mModel.Comparison.BaselineUnits);
+  Assert.AreEqual(Integer(Ord(High(TAtlasArchChangeKind)) + 1), Integer(Length(mModel.Comparison.Sections)),
     'alle Abschnitte, auch leere');
-  Cycles := Model.Comparison.Section(TAtlasArchChangeKind.NewCycles);
-  Assert.AreEqual(1, Integer(Length(Cycles)));
-  Assert.Contains(Cycles[0].Text, 'App.Data.Cache');
-  Assert.IsTrue(Cycles[0].Unit_ >= 0, 'Unit zum Springen');
-  Assert.AreEqual(1, Integer(Length(Model.Comparison.Failed)));
-  Assert.AreEqual('newCycle', Model.Comparison.Failed[0]);
-  Removed := Model.Comparison.Section(TAtlasArchChangeKind.RemovedUnits);
-  Assert.AreEqual(1, Integer(Length(Removed)));
-  Assert.AreEqual('App.Old', Removed[0].Text);
-  Assert.AreEqual(-1, Removed[0].Unit_, 'entfernte Unit gibt es nicht mehr');
-  Assert.AreEqual(0, Integer(Length(Model.Comparison.Section(TAtlasArchChangeKind.RemovedCycles))));
-  Assert.IsTrue(Model.Comparison.Count >= 2);
+  mCycles := mModel.Comparison.Section(TAtlasArchChangeKind.NewCycles);
+  Assert.AreEqual(1, Integer(Length(mCycles)));
+  Assert.Contains(mCycles[0].Text, 'App.Data.Cache');
+  Assert.IsTrue(mCycles[0].Unit_ >= 0, 'Unit zum Springen');
+  Assert.AreEqual(1, Integer(Length(mModel.Comparison.Failed)));
+  Assert.AreEqual('newCycle', mModel.Comparison.Failed[0]);
+  mRemoved := mModel.Comparison.Section(TAtlasArchChangeKind.RemovedUnits);
+  Assert.AreEqual(1, Integer(Length(mRemoved)));
+  Assert.AreEqual('App.Old', mRemoved[0].Text);
+  Assert.AreEqual(-1, mRemoved[0].Unit_, 'entfernte Unit gibt es nicht mehr');
+  Assert.AreEqual(0, Integer(Length(mModel.Comparison.Section(TAtlasArchChangeKind.RemovedCycles))));
+  Assert.IsTrue(mModel.Comparison.Count >= 2);
   // Karte: neue Kanten als Nummern in Edges (Grid → Data, Cache → Db), entfernte nur zwischen Units, die es gibt.
-  Names := nil;
-  for Edge in Model.Comparison.AddedEdges do
+  mNames := nil;
+  for mEdge in mModel.Comparison.AddedEdges do
   begin
-    Names := Names + [Model.Units[Model.Edges[Edge].Source].Name + '>' + Model.Units[Model.Edges[Edge].Target].Name];
+    mNames := mNames + [mModel.Units[mModel.Edges[mEdge].Source].Name + '>' +
+      mModel.Units[mModel.Edges[mEdge].Target].Name];
   end;
-  Assert.AreEqual(2, Integer(Length(Names)));
-  Assert.Contains(string.Join(' ', Names), 'App.Ui.Grid>App.Data');
-  Assert.Contains(string.Join(' ', Names), 'App.Data.Cache>App.Data.Db');
-  Assert.AreEqual(0, Integer(Length(Model.Comparison.DroppedEdges)), 'App.Old → App.Data: App.Old fehlt');
-  Added := Model.Comparison.Section(TAtlasArchChangeKind.NewUnits);
-  Assert.AreEqual(0, Integer(Length(Added)));
+  Assert.AreEqual(2, Integer(Length(mNames)));
+  Assert.Contains(string.Join(' ', mNames), 'App.Ui.Grid>App.Data');
+  Assert.Contains(string.Join(' ', mNames), 'App.Data.Cache>App.Data.Db');
+  Assert.AreEqual(0, Integer(Length(mModel.Comparison.DroppedEdges)), 'App.Old → App.Data: App.Old fehlt');
+  mAdded := mModel.Comparison.Section(TAtlasArchChangeKind.NewUnits);
+  Assert.AreEqual(0, Integer(Length(mAdded)));
 end;
 
 procedure TAtlasArchitectureModelTests.ComparisonErrorAndAbsence;
 var
-  Model: TAtlasArchitectureModel;
-  Enabled: Boolean;
-  Answer: string;
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mAnswer: string;
 begin
-  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, Model, Enabled));
-  Assert.IsFalse(Model.Comparison.Present);
-  Assert.AreEqual('', Model.Comparison.Error);
-  Assert.AreEqual(0, Model.Comparison.Count);
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, mModel, mEnabled));
+  Assert.IsFalse(mModel.Comparison.Present);
+  Assert.AreEqual('', mModel.Comparison.Error);
+  Assert.AreEqual(0, mModel.Comparison.Count);
   // Unlesbarer Stand: die Übersicht kommt trotzdem, dazu die Meldung.
-  Answer := SampleAnswer;
-  Answer := Copy(Answer, 1, Length(Answer) - 1) + ',"comparisonError":"Architekturstand ist beschädigt"}';
-  Assert.IsTrue(TAtlasArchitectureModel.Parse(Answer, Model, Enabled));
-  Assert.IsFalse(Model.Comparison.Present);
-  Assert.AreEqual('Architekturstand ist beschädigt', Model.Comparison.Error);
-  Assert.AreEqual(6, Integer(Length(Model.Units)));
+  mAnswer := SampleAnswer;
+  mAnswer := Copy(mAnswer, 1, Length(mAnswer) - 1) + ',"comparisonError":"Architekturstand ist beschädigt"}';
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(mAnswer, mModel, mEnabled));
+  Assert.IsFalse(mModel.Comparison.Present);
+  Assert.AreEqual('Architekturstand ist beschädigt', mModel.Comparison.Error);
+  Assert.AreEqual(6, Integer(Length(mModel.Units)));
 end;
 
 procedure TAtlasArchitectureModelTests.CommandArgumentsWithComparison;
 var
-  Value: TJSONValue;
-  Options: TJSONObject;
+  mValue: TJSONValue;
+  mOptions: TJSONObject;
 begin
-  Value := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', 'project', False,
+  mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', 'project', False,
     'C:\P\stand.json', True));
   try
-    Options := (Value as TJSONArray).Items[1] as TJSONObject;
-    Assert.AreEqual('C:\P\stand.json', Options.GetValue<string>('compareWith'));
-    Assert.IsNull(Options.GetValue('compare'));
+    mOptions := (mValue as TJSONArray).Items[1] as TJSONObject;
+    Assert.AreEqual('C:\P\stand.json', mOptions.GetValue<string>('compareWith'));
+    Assert.IsNull(mOptions.GetValue('compare'));
   finally
-    Value.Free;
+    mValue.Free;
   end;
   // Vergleich aufgehoben: auch nicht mit architecture.baseline.
-  Value := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', 'project', False,
+  mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', 'project', False,
     '', False));
   try
-    Options := (Value as TJSONArray).Items[1] as TJSONObject;
-    Assert.IsNull(Options.GetValue('compareWith'));
-    Assert.IsFalse(Options.GetValue<Boolean>('compare'));
+    mOptions := (mValue as TJSONArray).Items[1] as TJSONObject;
+    Assert.IsNull(mOptions.GetValue('compareWith'));
+    Assert.IsFalse(mOptions.GetValue<Boolean>('compare'));
   finally
-    Value.Free;
+    mValue.Free;
   end;
   // Vorgabe: Server vergleicht mit architecture.baseline, keine Angabe nötig.
-  Value := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', 'project', False));
+  mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', 'project', False));
   try
-    Options := (Value as TJSONArray).Items[1] as TJSONObject;
-    Assert.IsNull(Options.GetValue('compareWith'));
-    Assert.IsNull(Options.GetValue('compare'));
+    mOptions := (mValue as TJSONArray).Items[1] as TJSONObject;
+    Assert.IsNull(mOptions.GetValue('compareWith'));
+    Assert.IsNull(mOptions.GetValue('compare'));
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Value := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.SaveArguments('file:///C:/P/App.dproj',
+  mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.SaveArguments('file:///C:/P/App.dproj',
     'C:\P\stand.json', 'project', False, '', False));
   try
-    Assert.AreEqual('C:\P\stand.json', (Value as TJSONArray).Items[1].Value);
-    Assert.IsFalse(((Value as TJSONArray).Items[2] as TJSONObject).GetValue<Boolean>('compare'));
+    Assert.AreEqual('C:\P\stand.json', (mValue as TJSONArray).Items[1].Value);
+    Assert.IsFalse(((mValue as TJSONArray).Items[2] as TJSONObject).GetValue<Boolean>('compare'));
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 procedure TAtlasArchitectureModelTests.RouteOfSymbolPath;
 var
-  Model: TAtlasArchitectureModel;
-  Enabled: Boolean;
-  Units, Edges: TArray<Integer>;
-  Main, Data: Integer;
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mUnits, mEdges: TArray<Integer>;
+  mMain, mData: Integer;
 begin
   // Weg aus „Weg zwischen Symbolen“ (#1117): Wiederholungen und Units außerhalb des Umfangs fallen weg,
   // Data → Cache hat keine direkte Kante und wird über Db überbrückt.
-  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, Model, Enabled));
-  Assert.IsTrue(Model.RouteOf(TArray<string>.Create('App.Main', 'app.main', 'App.Data', 'System.SysUtils',
-    'App.Data.Cache'), Units, Edges));
-  Assert.AreEqual('App.Main → App.Data → App.Data.Db → App.Data.Cache', Model.RouteText(Units));
-  Assert.AreEqual(3, Integer(Length(Edges)));
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, mModel, mEnabled));
+  Assert.IsTrue(mModel.RouteOf(TArray<string>.Create('App.Main', 'app.main', 'App.Data', 'System.SysUtils',
+    'App.Data.Cache'), mUnits, mEdges));
+  Assert.AreEqual('App.Main → App.Data → App.Data.Db → App.Data.Cache', mModel.RouteText(mUnits));
+  Assert.AreEqual(3, Integer(Length(mEdges)));
   // Gegen die uses-Richtung (etwa über eine Umsetzung) gilt die Kante der Gegenrichtung.
-  Main := Model.IndexOf('App.Main');
-  Data := Model.IndexOf('App.Data');
-  Assert.IsTrue(Model.RouteOf(TArray<string>.Create('App.Data', 'App.Main'), Units, Edges));
-  Assert.AreEqual(1, Integer(Length(Edges)));
-  Assert.AreEqual(Main, Model.Edges[Edges[0]].Source);
-  Assert.AreEqual(Data, Model.Edges[Edges[0]].Target);
+  mMain := mModel.IndexOf('App.Main');
+  mData := mModel.IndexOf('App.Data');
+  Assert.IsTrue(mModel.RouteOf(TArray<string>.Create('App.Data', 'App.Main'), mUnits, mEdges));
+  Assert.AreEqual(1, Integer(Length(mEdges)));
+  Assert.AreEqual(mMain, mModel.Edges[mEdges[0]].Source);
+  Assert.AreEqual(mData, mModel.Edges[mEdges[0]].Target);
   // Eine einzelne Unit ist ein Weg ohne Kanten, eine fremde keiner.
-  Assert.IsTrue(Model.RouteOf(TArray<string>.Create('App.Main'), Units, Edges));
-  Assert.AreEqual(0, Integer(Length(Edges)));
-  Assert.IsFalse(Model.RouteOf(TArray<string>.Create('System.SysUtils'), Units, Edges));
-  Assert.AreEqual(0, Integer(Length(Units)));
+  Assert.IsTrue(mModel.RouteOf(TArray<string>.Create('App.Main'), mUnits, mEdges));
+  Assert.AreEqual(0, Integer(Length(mEdges)));
+  Assert.IsFalse(mModel.RouteOf(TArray<string>.Create('System.SysUtils'), mUnits, mEdges));
+  Assert.AreEqual(0, Integer(Length(mUnits)));
 end;
 
 procedure TAtlasArchitectureModelTests.ResolutionScaleIsLogarithmic;
@@ -684,8 +685,8 @@ var
   mFormat: TFormatSettings;
 begin
   Assert.AreEqual(Double(0.2), TAtlasArchResolution.ValueAt(0), 1E-9);
-  Assert.AreEqual(Double(1), TAtlasArchResolution.ValueAt(TAtlasArchResolution.Steps div 2), 1E-9);
-  Assert.AreEqual(Double(5), TAtlasArchResolution.ValueAt(TAtlasArchResolution.Steps), 1E-9);
+  Assert.AreEqual(Double(1), TAtlasArchResolution.ValueAt(TAtlasArchResolution.cSteps div 2), 1E-9);
+  Assert.AreEqual(Double(5), TAtlasArchResolution.ValueAt(TAtlasArchResolution.cSteps), 1E-9);
   // Logarithmisch: ein Viertel des Wegs ist √5 · 0,2 ≈ 0,45, drei Viertel ≈ 2,24.
   Assert.AreEqual(Double(0.45), TAtlasArchResolution.ValueAt(25), 1E-9);
   Assert.AreEqual(Double(2.24), TAtlasArchResolution.ValueAt(75), 1E-9);

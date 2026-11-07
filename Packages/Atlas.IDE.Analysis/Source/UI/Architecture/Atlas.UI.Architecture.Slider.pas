@@ -51,7 +51,7 @@ type
     procedure MoveTo(APosition: Integer; ACommit: Boolean);
     /// <summary>Wie Doppelklick: 1,0 und OnChange.</summary>
     procedure Reset;
-    /// <summary>Stellung 0..TAtlasArchResolution.Steps.</summary>
+    /// <summary>Stellung 0..TAtlasArchResolution.cSteps.</summary>
     property Position: Integer read FPosition;
     /// <summary>Wert der Stellung; Setzen meldet nichts (Wert aus den Einstellungen).</summary>
     property Value: Double read GetValue write SetValue;
@@ -119,20 +119,20 @@ end;
 
 function TAtlasResolutionSlider.PositionAt(AX: Integer): Integer;
 begin
-  Result := Round((AX - TrackLeft) / (TrackRight - TrackLeft) * TAtlasArchResolution.Steps);
-  Result := EnsureRange(Result, 0, TAtlasArchResolution.Steps);
+  Result := Round((AX - TrackLeft) / (TrackRight - TrackLeft) * TAtlasArchResolution.cSteps);
+  Result := EnsureRange(Result, 0, TAtlasArchResolution.cSteps);
 end;
 
 function TAtlasResolutionSlider.ThumbX: Integer;
 begin
-  Result := TrackLeft + MulDiv(TrackRight - TrackLeft, FPosition, TAtlasArchResolution.Steps);
+  Result := TrackLeft + MulDiv(TrackRight - TrackLeft, FPosition, TAtlasArchResolution.cSteps);
 end;
 
 procedure TAtlasResolutionSlider.MoveTo(APosition: Integer; ACommit: Boolean);
 var
   mPosition: Integer;
 begin
-  mPosition := EnsureRange(APosition, 0, TAtlasArchResolution.Steps);
+  mPosition := EnsureRange(APosition, 0, TAtlasArchResolution.cSteps);
   if mPosition <> FPosition then
   begin
     FPosition := mPosition;
@@ -220,7 +220,7 @@ begin
     VK_HOME:
       MoveTo(0, True);
     VK_END:
-      MoveTo(TAtlasArchResolution.Steps, True);
+      MoveTo(TAtlasArchResolution.cSteps, True);
   else
     begin
       inherited KeyDown(AKey, AShift);
@@ -263,7 +263,7 @@ begin
   Canvas.MoveTo(TrackLeft, mMiddle);
   Canvas.LineTo(mCenter, mMiddle);
   // Marke bei 1,0 (Verhalten wie ohne Regler).
-  mTick := TrackLeft + MulDiv(TrackRight - TrackLeft, TAtlasArchResolution.PositionOf(1), TAtlasArchResolution.Steps);
+  mTick := TrackLeft + MulDiv(TrackRight - TrackLeft, TAtlasArchResolution.PositionOf(1), TAtlasArchResolution.cSteps);
   Canvas.Pen.Width := 1;
   Canvas.Pen.Color := ToColor(mColors.Muted);
   Canvas.MoveTo(mTick, mMiddle - MulDiv(5, CurrentPPI, 96));
