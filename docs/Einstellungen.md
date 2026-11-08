@@ -935,10 +935,6 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
 - **Hauptknoten**
   - `issues.enabled`
     - `issues.tracker`
-    - `issues.start`
-    - `issues.branchPattern`
-    - `issues.branchBase`
-    - `issues.commitPattern`
     - `issues.login`
     - `issues.connections`
     - `issues.projects`
@@ -981,6 +977,12 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
     - `issues.attach`
       - `issues.attach.logFiles`
       - `issues.attach.maxImageWidth`
+
+- **Versionsverwaltung** (`issues.vcs`)
+  - `issues.start` – hängt an `issues.enabled`
+  - `issues.branchPattern` – hängt an `issues.enabled`
+  - `issues.branchBase` – hängt an `issues.enabled`
+  - `issues.commitPattern` – hängt an `issues.enabled`
 
 ### Versionsverwaltung
 

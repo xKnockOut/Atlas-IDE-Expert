@@ -20,10 +20,6 @@ type
   /// <summary>Gebundene Schalter, Zahlen, Textzeilen und Auswahlen.</summary>
   TAtlasTrackerGeneralView = record
     Tracker: TAtlasChoiceBox;
-    Start: TAtlasChoiceBox;
-    BranchPattern: TEdit;
-    BranchBase: TEdit;
-    CommitPattern: TEdit;
     Login: TCheckBox;
     Preview: TCheckBox;
     PreviewComments: TCheckBox;
@@ -54,8 +50,6 @@ type
   end;
 
   TAtlasTrackerGeneralPart = class
-  public const
-    cCommitPatternKey = 'issues.commitPattern';
   private
     FRows: TAtlasTrackerSettingsRows;
     FView: TAtlasTrackerGeneralView;
@@ -77,7 +71,6 @@ type
     procedure BuildTime;
     /// <summary>Checklisten bis Anhänge (unter den Textbausteinen).</summary>
     procedure BuildMore;
-    procedure Save(const AValues: IAtlasSettingsValues);
     property View: TAtlasTrackerGeneralView read FView;
   end;
 
@@ -123,22 +116,16 @@ end;
 
 procedure TAtlasTrackerGeneralPart.BuildTracker;
 begin
-  // Anbieter (Vorgabe aus der .atlas) und „Beginnen“ (#765).
+  // Anbieter (Vorgabe aus der .atlas). „Beginnen“ und die Muster stehen als Beitrag bei der Versionsverwaltung
+  // (#1903, Atlas.IDE.Tracker.SettingsBranches).
   FView.Tracker := FRows.AddChoice('issues.tracker',
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesTracker),
     TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesTrackerTeam), cGitHubCaption,
     cYouTrackCaption), TArray<string>.Create('', TAtlasTrackerTarget.cGitHub, TAtlasTrackerTarget.cYouTrack));
-  FView.Start := FRows.AddChoice('issues.start', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesStart),
-    TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesStartBranch),
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesStartRemember)),
-    TArray<string>.Create(TAtlasPluginSettings.cIssuesStartBranch, TAtlasPluginSettings.cIssuesStartRemember));
 end;
 
 procedure TAtlasTrackerGeneralPart.BuildPatterns;
 begin
-  FView.BranchPattern := Line('issues.branchPattern', TAtlasTrackerTextId.SettingsIssuesBranchPattern);
-  FView.BranchBase := Line('issues.branchBase', TAtlasTrackerTextId.SettingsIssuesBranchBase);
-  FView.CommitPattern := Line(cCommitPatternKey, TAtlasTrackerTextId.SettingsIssuesCommitPattern);
   FView.Login := Check('issues.login', TAtlasTrackerTextId.SettingsTrackerLogin);
 end;
 
@@ -221,12 +208,6 @@ begin
   FView.AttachLogFiles := Line('issues.attach.logFiles', TAtlasTrackerTextId.SettingsIssuesAttachLogFiles);
   FView.AttachMaxImageWidth := Number('issues.attach.maxImageWidth',
     TAtlasTrackerTextId.SettingsIssuesAttachMaxImageWidth);
-end;
-
-procedure TAtlasTrackerGeneralPart.Save(const AValues: IAtlasSettingsValues);
-begin
-  // Nicht gekürzt: Das Leerzeichen am Ende von "{kennung} " trennt Kennung und Nachricht.
-  AValues.WriteString(cCommitPatternKey, FView.CommitPattern.Text);
 end;
 
 end.

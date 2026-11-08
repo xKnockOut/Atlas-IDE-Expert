@@ -935,10 +935,6 @@ Risky or immature features come as **experimental** (#834): they have their own 
 - **Main node**
   - `issues.enabled`
     - `issues.tracker`
-    - `issues.start`
-    - `issues.branchPattern`
-    - `issues.branchBase`
-    - `issues.commitPattern`
     - `issues.login`
     - `issues.connections`
     - `issues.projects`
@@ -981,6 +977,12 @@ Risky or immature features come as **experimental** (#834): they have their own 
     - `issues.attach`
       - `issues.attach.logFiles`
       - `issues.attach.maxImageWidth`
+
+- **Version control** (`issues.vcs`)
+  - `issues.start` – depends on `issues.enabled`
+  - `issues.branchPattern` – depends on `issues.enabled`
+  - `issues.branchBase` – depends on `issues.enabled`
+  - `issues.commitPattern` – depends on `issues.enabled`
 
 ### Version control
 

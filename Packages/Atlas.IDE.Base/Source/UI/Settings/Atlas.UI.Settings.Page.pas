@@ -52,6 +52,7 @@ type
   TAtlasSettingsPage = class(TAtlasSettingsPageTree)
   private
     FSymbol: TAtlasSymbolImage;
+    FTitle: TLabel;
     FWidths: TAtlasPluginSettings;
     /// <summary>Reveal vor dem Fenster: folgt in CreateWnd.</summary>
     FPendingReveal: string;
@@ -92,6 +93,8 @@ type
     function Reveal(const AKey: string): Boolean; override;
     /// <summary>Zum Testen: Zahl der Reiter (Bereiche).</summary>
     function SheetCountForTests: Integer;
+    /// <summary>Überschrift im Kopf (#1903: Name des Knotens, z. B. „Base“ oder „Tests“).</summary>
+    procedure SetTitle(const ACaption: string);
     property ExperimentalBanner: TWinControl read FExperimentalBanner;
     property Filter: TAtlasChoiceBox read FFilter;
     property Symbol: TAtlasSymbolImage read FSymbol;
@@ -162,6 +165,7 @@ begin
   mTitle.Top := 12;
   mTitle.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsTitle);
   mTitle.Font.Style := [fsBold];
+  FTitle := mTitle;
 end;
 
 procedure TAtlasSettingsPage.AddExperimentalBanner;
@@ -235,6 +239,11 @@ begin
   begin
     FillTree;
   end;
+end;
+
+procedure TAtlasSettingsPage.SetTitle(const ACaption: string);
+begin
+  FTitle.Caption := ACaption;
 end;
 
 function TAtlasSettingsPage.Reveal(const AKey: string): Boolean;

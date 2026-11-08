@@ -83,11 +83,19 @@ uses
   Vcl.ActnList,
   Vcl.Menus,
   ToolsAPI,
+  Atlas.Core.Modules.Contract,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.History,
+  Atlas.Core.Settings.NodeScope,
   Atlas.Core.Lsp.Progress,
   Atlas.UI.Settings.Page,
+  Atlas.UI.Settings.Overview,
+  Atlas.Core.Settings.Catalog,
+  Atlas.Core.Settings.Groups,
+  Atlas.Core.Modules.Registry,
   Atlas.IDE.Settings.ServerActions,
   Atlas.IDE.Settings.SubPages,
+  Atlas.IDE.Settings.ModuleNodes,
   Atlas.IDE.Settings.VersionControlOptions,
   Atlas.IDE.Settings.PageOptions,
   Atlas.UI.Settings.Page.General,
@@ -104,6 +112,13 @@ type
   TAtlasAddInOptions = class(TInterfacedObject, INTAAddInOptions)
   private
     FPage: TAtlasSettingsPage;
+    /// <summary>Knoten je Package (#1903): Besitzer, Überschrift im Baum ('Atlas.Module.Tests') und im Kopf.
+    /// </summary>
+    FScope: TAtlasSettingsNodeScope;
+    FCaption: string;
+    FTitle: string;
+    /// <summary>Stand beim Laden; gespeichert wird nur, was der Knoten daran geändert hat.</summary>
+    FLoaded: TAtlasPluginSettings;
     /// <summary>Zählt die angelegten Seiten; eine späte Antwort für eine geschlossene Seite verfällt (#874).</summary>
     FGeneration: Integer;
     /// <summary>Sagt, ob die Seite noch offen und dieselbe ist wie beim Aufruf; hält das Objekt bis dahin.</summary>
@@ -113,6 +128,22 @@ type
     procedure Run(const ACommand: string; const AText: TFunc<TJSONValue, string>);
     /// <summary>Symbolindex (#492): vor LoadFrom, das die Kennzahlen gleich anzeigt.</summary>
     procedure ConnectIndex;
+  public
+    constructor Create(const AScope: TAtlasSettingsNodeScope; const ACaption, ATitle: string);
+    function GetArea: string;
+    function GetCaption: string;
+    function GetFrameClass: TCustomFrameClass;
+    procedure FrameCreated(AFrame: TCustomFrame);
+    procedure DialogClosed(Accepted: Boolean);
+    function ValidateContents: Boolean;
+    function GetHelpContext: Integer;
+    function IncludeInIDEInsight: Boolean;
+  end;
+
+  /// <summary>Übersicht „Atlas“ (#1903): Hauptschalter, Stand der Packages, Suche.</summary>
+  TAtlasOverviewOptions = class(TInterfacedObject, INTAAddInOptions)
+  private
+    FPage: TAtlasSettingsOverview;
   public
     function GetArea: string;
     function GetCaption: string;
@@ -126,6 +157,8 @@ type
 
 var
   Options: INTAAddInOptions;
+  /// <summary>Knoten „Base“ unter „Module“ (#1903).</summary>
+  BaseOptions: INTAAddInOptions;
   ServerOptions: INTAAddInOptions;
   SnippetOptions: INTAAddInOptions;
   KeysOptions: INTAAddInOptions;
@@ -354,9 +387,17 @@ begin
   Result := '';
 end;
 
+constructor TAtlasAddInOptions.Create(const AScope: TAtlasSettingsNodeScope; const ACaption, ATitle: string);
+begin
+  inherited Create;
+  FScope := AScope;
+  FCaption := ACaption;
+  FTitle := ATitle;
+end;
+
 function TAtlasAddInOptions.GetCaption: string;
 begin
-  Result := 'Atlas';
+  Result := FCaption;
 end;
 
 function TAtlasAddInOptions.GetFrameClass: TCustomFrameClass;
@@ -411,7 +452,11 @@ begin
   ConnectIndex;
   TAtlasPageOptions.ConnectTransfer(FPage);
   TAtlasVcsOptions.Connect(FPage, Alive());
-  FPage.LoadFrom(TAtlasIdeSettings.Stored);
+  // Knoten je Package (#1903): nur, was diesem Knoten gehört.
+  FPage.SetTitle(FTitle);
+  FPage.ApplyScope(FScope);
+  FLoaded := TAtlasIdeSettings.Stored;
+  FPage.LoadFrom(FLoaded);
   // Vorgabe für den Abschnitt eines Moduls (#1455), z. B. „zuordnen …“ aus „Meine Issues“: nach dem Laden.
   if (PendingReveal <> '') and (PendingArgument <> '') then
   begin
@@ -427,6 +472,7 @@ end;
 procedure TAtlasAddInOptions.DialogClosed(Accepted: Boolean);
 var
   mSettings: TAtlasPluginSettings;
+  mTarget: IAtlasMemorySettingsStore;
 begin
   PendingReveal := '';
   PendingArgument := '';
@@ -434,8 +480,13 @@ begin
   try
     if Accepted and (FPage <> nil) then
     begin
+      // Nur die Änderungen dieses Knotens: Ein anderer Knoten hat vielleicht schon gespeichert (#1903).
+      mTarget := TAtlasMemorySettingsStore.FromSettings(TAtlasIdeSettings.Stored);
+      TAtlasSettingsMerge.Changes(TAtlasMemorySettingsStore.FromSettings(FLoaded),
+        TAtlasMemorySettingsStore.FromSettings(FPage.CurrentSettings), mTarget);
       mSettings := TAtlasIdeSettings.Stored;
-      FPage.SaveTo(mSettings);
+      mSettings.Load(mTarget);
+      mSettings.Normalize;
       TAtlasIdeSettings.Update(mSettings);
       // vcs.* (#1285) liegen in settings.json: neuer Pfad und neues Zeitlimit gelten sofort.
       TAtlasIdeVcs.Reload;
@@ -477,6 +528,93 @@ begin
   Result := True;
 end;
 
+/// <summary>Seite eines Moduls unter „Module“ (#1903): die Optionsseite, gefiltert auf das Modul.</summary>
+function ModuleOptions(const AInfo: TAtlasModuleInfo): INTAAddInOptions;
+begin
+  Result := TAtlasAddInOptions.Create(TAtlasSettingsNodeScope.Module(AInfo.Id, AInfo.Switch),
+    TAtlasModuleNodes.CaptionOf(AInfo.Name), AInfo.Name);
+end;
+
+{ TAtlasOverviewOptions }
+
+function TAtlasOverviewOptions.GetArea: string;
+begin
+  Result := '';
+end;
+
+function TAtlasOverviewOptions.GetCaption: string;
+begin
+  Result := 'Atlas';
+end;
+
+function TAtlasOverviewOptions.GetFrameClass: TCustomFrameClass;
+begin
+  Result := TAtlasSettingsOverview;
+end;
+
+procedure TAtlasOverviewOptions.FrameCreated(AFrame: TCustomFrame);
+var
+  mKnown: TArray<TAtlasKnownModule>;
+  mModule: TAtlasKnownModule;
+  mInstalled: Integer;
+begin
+  try
+    FPage := AFrame as TAtlasSettingsOverview;
+    mKnown := AtlasModuleRegistry.Known;
+    mInstalled := 0;
+    for mModule in mKnown do
+    begin
+      if mModule.Installed then
+      begin
+        Inc(mInstalled);
+      end;
+    end;
+    FPage.OnModuleName :=
+      function(ASwitch: string): string
+      begin
+        Result := TAtlasModuleNodes.NameOfSwitch(ASwitch);
+      end;
+    FPage.Load(TAtlasIdeSettings.Stored.Enabled, mInstalled, Length(mKnown));
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Settings, E);
+  end;
+end;
+
+procedure TAtlasOverviewOptions.DialogClosed(Accepted: Boolean);
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  try
+    // Nur den Hauptschalter, und nur wenn er umgelegt wurde: Die Knoten speichern ihre Werte selbst.
+    if Accepted and (FPage <> nil) and FPage.EnabledChanged then
+    begin
+      mSettings := TAtlasIdeSettings.Stored;
+      mSettings.Enabled := FPage.EnabledValue;
+      TAtlasIdeSettings.Update(mSettings);
+    end;
+    FPage := nil;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Settings, E);
+  end;
+end;
+
+function TAtlasOverviewOptions.ValidateContents: Boolean;
+begin
+  Result := True;
+end;
+
+function TAtlasOverviewOptions.GetHelpContext: Integer;
+begin
+  Result := 0;
+end;
+
+function TAtlasOverviewOptions.IncludeInIDEInsight: Boolean;
+begin
+  Result := True;
+end;
+
 { TAtlasOptionsRegistration }
 
 class procedure TAtlasOptionsRegistration.Register(const AHooks: TAtlasOptionsHooks);
@@ -487,8 +625,12 @@ begin
   begin
     Hooks := AHooks;
     TAtlasIdeServerActions.ServerPath := AHooks.ServerPath;
-    Options := TAtlasAddInOptions.Create;
+    Options := TAtlasOverviewOptions.Create;
     mServices.RegisterAddInOptions(Options);
+    // Zuerst „Module“ mit Base und je Modul einem Knoten, dann Snippets, Tastenkonflikte, Server (#1903).
+    BaseOptions := TAtlasAddInOptions.Create(TAtlasSettingsNodeScope.Base, TAtlasModuleNodes.CaptionOf('Base'),
+      'Base');
+    TAtlasModuleNodes.Start(BaseOptions, ModuleOptions);
     SnippetOptions := TAtlasSnippetOptions.Create(AHooks.IdeTemplateFolder, AHooks.SnippetFolder);
     mServices.RegisterAddInOptions(SnippetOptions);
     KeysOptions := TAtlasKeysOptions.Create;
@@ -502,6 +644,7 @@ class procedure TAtlasOptionsRegistration.Unregister;
 var
   mServices: INTAEnvironmentOptionsServices;
 begin
+  TAtlasModuleNodes.Stop;
   if Supports(BorlandIDEServices, INTAEnvironmentOptionsServices, mServices) then
   begin
     if SnippetOptions <> nil then
@@ -521,6 +664,7 @@ begin
       mServices.UnregisterAddInOptions(Options);
     end;
   end;
+  BaseOptions := nil;
   SnippetOptions := nil;
   KeysOptions := nil;
   ServerOptions := nil;
@@ -593,7 +737,7 @@ end;
 
 /// <summary>Tools › Optionen über IOTAEnvironmentOptions140.EditOptions auf der Seite „Atlas“ öffnen; False, wenn die
 /// IDE das nicht anbietet.</summary>
-function EditAtlasOptions: Boolean;
+function EditAtlasOptions(const ACaption: string): Boolean;
 var
   mServices: IOTAServices;
   mEnvironment: IOTAEnvironmentOptions140;
@@ -602,7 +746,46 @@ begin
     Supports(mServices.GetEnvironmentOptions, IOTAEnvironmentOptions140, mEnvironment);
   if Result then
   begin
-    mEnvironment.EditOptions('', Options.GetCaption);
+    mEnvironment.EditOptions('', ACaption);
+  end;
+end;
+
+/// <summary>Knoten, in dem die Einstellung AKey steht (#1903): der des Moduls, dem sie gehört, sonst Base.
+/// Schlüssel, die nur die Seite kennt (Zeilen der Versionsverwaltung wie „VcsProjects“), nach ihrer Vorsilbe.
+/// </summary>
+function NodeOfSetting(const AKey: string): INTAAddInOptions;
+var
+  mCatalog: TAtlasSettingsCatalog;
+  mGroups: TAtlasSettingsGroups;
+  mSwitch: string;
+begin
+  mCatalog := TAtlasSettingsCatalog.CreateDefault;
+  mGroups := TAtlasSettingsGroups.Create(mCatalog);
+  try
+    mSwitch := '';
+    if (mCatalog.IndexOfName(AKey) >= 0) or (mCatalog.IndexOfKey(AKey) >= 0) then
+    begin
+      if mCatalog.IndexOfName(AKey) < 0 then
+      begin
+        mSwitch := TAtlasSettingsNodeScope.ModuleOf(mCatalog, mGroups, mCatalog[mCatalog.IndexOfKey(AKey)].Name);
+      end
+      else
+      begin
+        mSwitch := TAtlasSettingsNodeScope.ModuleOf(mCatalog, mGroups, AKey);
+      end;
+    end
+    else if AKey.StartsWith('Vcs', True) then
+    begin
+      mSwitch := 'vcs';
+    end;
+  finally
+    mGroups.Free;
+    mCatalog.Free;
+  end;
+  Result := TAtlasModuleNodes.NodeOfSwitch(mSwitch);
+  if Result = nil then
+  begin
+    Result := BaseOptions;
   end;
 end;
 
@@ -622,7 +805,7 @@ begin
   try
     // Offizieller Weg: Dialog gleich auf der Seite „Atlas“ unter „Fremdhersteller“ (leere Area). Die Seite zeigt
     // beim Anlegen PendingReveal. Der Baum von Delphi 13 ist kein TTreeView mehr; die Suche darin fand nichts.
-    if not EditAtlasOptions then
+    if not EditAtlasOptions(NodeOfSetting(AKey).GetCaption) then
     begin
       RunOptionsDialog;
     end;

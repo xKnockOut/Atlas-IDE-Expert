@@ -163,6 +163,7 @@ contains
   Atlas.IDE.Tracker.NewIssue in 'Source\IDE\Tracker\Atlas.IDE.Tracker.NewIssue.pas',
   Atlas.IDE.Tracker.NewIssuePlace in 'Source\IDE\Tracker\Atlas.IDE.Tracker.NewIssuePlace.pas',
   Atlas.IDE.Tracker.SprintTile in 'Source\IDE\Tracker\Atlas.IDE.Tracker.SprintTile.pas',
+  Atlas.UI.Tracker.SettingsBranches in 'Source\UI\Tracker\Atlas.UI.Tracker.SettingsBranches.pas',
   Atlas.IDE.Tracker.Settings in 'Source\IDE\Tracker\Atlas.IDE.Tracker.Settings.pas',
   Atlas.IDE.Tracker.Composition in 'Source\IDE\Tracker\Atlas.IDE.Tracker.Composition.pas';
 

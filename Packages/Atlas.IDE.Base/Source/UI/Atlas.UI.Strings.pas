@@ -788,7 +788,10 @@ type
     SettingsNestedRoutines, SettingsNestedRoutinesOuter, SettingsNestedRoutinesDeeper, SettingsNestedRoutinesColor,
     SettingsNestedRoutineBand, SettingsNestedRoutineColorLight, SettingsNestedRoutineColorDark,
     // Rollbereich der published-Mitglieder im Hover (#1841).
-    SettingsHoverMembersMaxLines);
+    SettingsHoverMembersMaxLines,
+    // Optionen je Package (#1903).
+    SettingsModulesNode, SettingsModulesTitle, SettingsModuleInstalled, SettingsModuleMissing, SettingsModulesHint,
+    SettingsAtlasSearch, SettingsAtlasPackages, SettingsAtlasHit, SettingsAtlasNoHits);
 
   TAtlasStrings = class
   private
@@ -2666,7 +2669,16 @@ const
      'Zeilen lokaler Routinen hinterlegen',
      'Lokale Routinen im hellen Thema',
      'Lokale Routinen im dunklen Thema',
-     'Mitglieder im Hover: höchstens Zeilen ohne Scrollen (0 = Bildschirm)'),
+     'Mitglieder im Hover: höchstens Zeilen ohne Scrollen (0 = Bildschirm)',
+     'Module',
+     'Packages von Atlas',
+     'installiert',
+     'nicht installiert',
+     'Einstellungen eines Packages stehen in seinem Knoten unter „Module“.',
+     'Einstellung suchen:',
+     'Packages: %d von %d installiert',
+     '%s  –  %s › %s › %s',
+     'Keine Einstellung gefunden.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -4460,7 +4472,16 @@ const
      'Shade the lines of local routines',
      'Local routines in the light theme',
      'Local routines in the dark theme',
-     'Members in the hover: max. lines before scrolling (0 = screen)'));
+     'Members in the hover: max. lines before scrolling (0 = screen)',
+     'Modules',
+     'Atlas packages',
+     'installed',
+     'not installed',
+     'The settings of a package are in its node under “Modules”.',
+     'Find a setting:',
+     'Packages: %d of %d installed',
+     '%s  –  %s › %s › %s',
+     'No setting found.'));
 
 { TAtlasStrings }
 

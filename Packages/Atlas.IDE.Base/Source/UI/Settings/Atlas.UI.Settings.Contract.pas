@@ -115,6 +115,16 @@ type
     procedure Close;
   end;
 
+  /// <summary>Beitrag zu einem anderen Modul (#1903, Regel X): Ein Abschnitt, der auch dieses Interface hat, erscheint
+  /// nicht im Knoten seines Besitzers (OwnerId), sondern im Knoten des Moduls, das HostContract bereitstellt (z. B.
+  /// der Dienst der Versionsverwaltung); AreaId ist ein Bereich dieses Gastgebers. Bauen, Laden und Speichern bleiben
+  /// beim Besitzer. Stellt kein Modul HostContract bereit, baut die Seite den Abschnitt nicht; die Werte bleiben
+  /// gespeichert. So kennt kein Modul den Namen eines anderen (Regel 9).</summary>
+  IAtlasSettingsContribution = interface
+    ['{1B1A5EAF-21BB-4DFC-A2A4-4629F59F096E}']
+    function HostContract: TGUID;
+  end;
+
   /// <summary>Was ein Modul für den Optionsdialog anmeldet (GScope.Provide): je Seite ein neuer Abschnitt.
   /// </summary>
   IAtlasSettingsSectionProvider = interface

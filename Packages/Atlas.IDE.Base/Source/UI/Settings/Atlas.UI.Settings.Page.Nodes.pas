@@ -39,6 +39,11 @@ type
     FMirrors: TArray<TCheckBox>;
     FMirrored: TArray<TCheckBox>;
     FSyncing: Boolean;
+    /// <summary>Zeilen der Übersichten und der Rahmen, auf den jede zeigt, gleicher Index (#1903).</summary>
+    FOverviewRows: TArray<TControl>;
+    FOverviewFrames: TArray<TAtlasSettingsGroup>;
+    /// <summary>Rahmen „Funktionen in diesem Bereich“ auf den Hauptknoten.</summary>
+    FOverviews: TArray<TAtlasSettingsGroup>;
     /// <summary>Reiter der Knoten rechts vom Baum.</summary>
     procedure AddPages;
     /// <summary>Verteilt die Zeilen aller Bereiche auf Knoten und Rahmen (aus dem Schema).</summary>
@@ -46,8 +51,6 @@ type
     function IsOverview(AFrame: TAtlasSettingsGroup): Boolean;
   private
     FFrames: TArray<TAtlasSettingsGroup>;
-    /// <summary>Rahmen „Funktionen in diesem Bereich“ auf den Hauptknoten.</summary>
-    FOverviews: TArray<TAtlasSettingsGroup>;
     FPlaceTop: Integer;
     /// <summary>Seite des Knotens ANode im Bereich AArea; legt sie bei Bedarf an.</summary>
     function AddNodePage(AArea: Integer; const ANode: string): Integer;
@@ -590,6 +593,8 @@ begin
   mRow := TAtlasSettingsRow.Create(Self);
   mRow.Height := 24;
   AOverview.AddRow(mRow);
+  FOverviewRows := FOverviewRows + [mRow];
+  FOverviewFrames := FOverviewFrames + [AFrame];
   mDetails := TLabel.Create(Self);
   mDetails.Parent := mRow;
   mDetails.Align := alRight;

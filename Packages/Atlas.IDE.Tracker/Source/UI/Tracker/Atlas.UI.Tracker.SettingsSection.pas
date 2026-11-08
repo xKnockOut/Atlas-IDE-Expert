@@ -169,7 +169,6 @@ begin
   end;
   FTables.Save(AValues);
   FWorkflow.Save(AValues);
-  FGeneral.Save(AValues);
 end;
 
 procedure TAtlasTrackerSettingsSection.WindowReady;

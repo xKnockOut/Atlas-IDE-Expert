@@ -192,10 +192,6 @@ begin
     Assert.AreEqual('', mPage.NodeOfSheet(mTracker));
     Assert.IsTrue(TreeNodeOf(mPage, mTracker) = mIssues, 'Hauptknoten Issue-Tracker');
     Assert.IsTrue(SheetOf(FSection.Queries.View.List) = mTracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.Start) = mTracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.BranchPattern) = mTracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.BranchBase) = mTracker);
-    Assert.IsTrue(SheetOf(FSection.General.View.CommitPattern) = mTracker);
     Assert.IsTrue(SheetOf(FSection.General.View.Login) = mTracker);
     Assert.IsTrue(SheetOf(FSection.General.View.Preview) = mTracker, 'Vorschau (#1264)');
     Assert.IsTrue(SheetOf(FSection.General.View.PreviewComments) = mTracker);
@@ -892,10 +888,6 @@ begin
   Assert.IsTrue(ASection.Queries.View.Picker.Checked, 'Klappliste an (#1262)');
   Assert.IsTrue(ASection.Queries.View.CreateIssue.Checked, '„Issue anlegen …“ an (#1268)');
   Assert.IsTrue(ASection.Queries.View.CreateIncludeCode.Checked, 'Codeausschnitt vorgeschlagen (#1268)');
-  Assert.AreEqual(0, ASection.General.View.Start.Choice);
-  Assert.AreEqual('', ASection.General.View.BranchPattern.Text);
-  Assert.AreEqual('', ASection.General.View.BranchBase.Text);
-  Assert.AreEqual('{kennung} ', ASection.General.View.CommitPattern.Text);
   Assert.IsTrue(ASection.General.View.Login.Checked);
   Assert.IsTrue(ASection.General.View.Preview.Checked);
   Assert.IsTrue(ASection.General.View.PreviewComments.Checked);
@@ -928,10 +920,6 @@ begin
   ASection.Queries.View.Picker.Checked := False;
   ASection.Queries.View.CreateIssue.Checked := False;
   ASection.Queries.View.CreateIncludeCode.Checked := False;
-  ASection.General.View.Start.Choice := 1;
-  ASection.General.View.BranchPattern.Text := ' {kennung}/{kurztitel} ';
-  ASection.General.View.BranchBase.Text := ' develop ';
-  ASection.General.View.CommitPattern.Text := '[{kennung}] ';
   ASection.General.View.Login.Checked := False;
   ASection.General.View.PreviewComments.Checked := False;
   ASection.General.View.CodeLinks.Checked := False;
@@ -960,10 +948,6 @@ begin
   Assert.IsFalse(ASaved.IssuesQueryPicker);
   Assert.IsFalse(ASaved.IssuesCreate, 'Befehl abschaltbar (#1268)');
   Assert.IsFalse(ASaved.IssuesCreateIncludeCode);
-  Assert.AreEqual('remember', ASaved.IssuesStart);
-  Assert.AreEqual('{kennung}/{kurztitel}', ASaved.IssuesBranchPattern);
-  Assert.AreEqual('develop', ASaved.IssuesBranchBase);
-  Assert.AreEqual('[{kennung}] ', ASaved.IssuesCommitPattern, 'Leerzeichen am Ende bleibt');
   Assert.IsFalse(ASaved.TrackerLogin);
   Assert.IsTrue(ASaved.IssuesPreview);
   Assert.IsFalse(ASaved.IssuesPreviewComments);
@@ -990,9 +974,6 @@ end;
 procedure AssertSectionReloaded(ASection: TAtlasTrackerSettingsSection);
 begin
   Assert.AreEqual(2, ASection.General.View.Tracker.Choice);
-  Assert.AreEqual(1, ASection.General.View.Start.Choice);
-  Assert.AreEqual('develop', ASection.General.View.BranchBase.Text);
-  Assert.AreEqual('[{kennung}] ', ASection.General.View.CommitPattern.Text);
   Assert.IsFalse(ASection.General.View.Login.Checked);
   Assert.IsFalse(ASection.General.View.PreviewComments.Checked);
   Assert.IsFalse(ASection.General.View.CodeLinks.Checked);

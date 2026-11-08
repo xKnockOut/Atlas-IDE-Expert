@@ -83,15 +83,24 @@ type
     FOwnOff: TList<TControl>;
     /// <summary>Durch einen Hauptschalter gesperrt.</summary>
     FLockedControls: TList<TControl>;
+    /// <summary>Zeilen der Abschnitte eines Moduls → Id des Moduls (#1903: Knoten je Package).</summary>
+    FSectionOwners: TDictionary<TControl, string>;
   private
     procedure MarksChanged(Sender: TObject);
     procedure MarksResetPage(Sender: TObject);
+  protected
+    /// <summary>Freigegebene Zeilen aus FSectionOwners nehmen (Abschnitt eines Moduls geschlossen).</summary>
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     /// <summary>Teil der Klasse T; jeder Teil steht einmal auf der Seite.</summary>
     function Part<T: TAtlasSettingsPagePart>: T;
     procedure AddPart(APart: TAtlasSettingsPagePart);
+    /// <summary>AControl hat der Abschnitt des Moduls AOwnerId angelegt (#1903).</summary>
+    procedure MarkSectionOwner(AControl: TControl; const AOwnerId: string);
+    /// <summary>Module, deren Abschnitte AControl oder eins seiner Elemente angelegt haben.</summary>
+    function SectionOwnersIn(AControl: TControl): TArray<string>;
     /// <summary>ARow (ohne eigene Einstellung) gehört zur Funktion von AAnchor: gleicher Rahmen, gleiche Sperre.
     /// </summary>
     procedure Attach(ARow, AAnchor: TControl);
@@ -269,6 +278,7 @@ begin
   FBindings := TAtlasSettingsBindings.Create;
   FOwnOff := TList<TControl>.Create;
   FLockedControls := TList<TControl>.Create;
+  FSectionOwners := TDictionary<TControl, string>.Create;
   FMarks := TAtlasSettingsMarks.Create(Self);
   FMarks.OnChanged := MarksChanged;
   FMarks.OnResetPage := MarksResetPage;
@@ -288,8 +298,44 @@ begin
   FreeAndNil(FAttached);
   FreeAndNil(FOwnOff);
   FreeAndNil(FLockedControls);
+  FreeAndNil(FSectionOwners);
   FreeAndNil(FBindings);
   inherited Destroy;
+end;
+
+procedure TAtlasSettingsPageHost.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (FSectionOwners <> nil) and (AComponent is TControl) then
+  begin
+    FSectionOwners.Remove(TControl(AComponent));
+  end;
+end;
+
+procedure TAtlasSettingsPageHost.MarkSectionOwner(AControl: TControl; const AOwnerId: string);
+begin
+  FSectionOwners.AddOrSetValue(AControl, AOwnerId);
+  AControl.FreeNotification(Self);
+end;
+
+function TAtlasSettingsPageHost.SectionOwnersIn(AControl: TControl): TArray<string>;
+var
+  mPair: TPair<TControl, string>;
+  mParent: TControl;
+begin
+  Result := nil;
+  for mPair in FSectionOwners do
+  begin
+    mParent := mPair.Key;
+    while (mParent <> nil) and (mParent <> AControl) do
+    begin
+      mParent := mParent.Parent;
+    end;
+    if mParent <> nil then
+    begin
+      Result := Result + [mPair.Value];
+    end;
+  end;
 end;
 
 function TAtlasSettingsPageHost.Part<T>: T;

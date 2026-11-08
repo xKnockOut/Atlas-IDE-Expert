@@ -24,12 +24,20 @@ type
     /// </summary>
     [Test]
     procedure ModuleSwitchUsesCatalogCaption;
+    /// <summary>Beitrag zu einem anderen Modul (#1903): nur mit Gastgeber gebaut, steht in dessen Knoten.</summary>
+    [Test]
+    procedure ContributionNeedsHostAndShowsThere;
   end;
 
 implementation
 
 uses
+  System.SysUtils,
+  Vcl.Controls,
+  Vcl.ComCtrls,
   Vcl.StdCtrls,
+  Atlas.Core.Modules.Registry,
+  Atlas.Core.Settings.NodeScope,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
@@ -55,8 +63,37 @@ type
     property NotesCheck: TCheckBox read FNotes;
   end;
 
+  /// <summary>Vertrag des Gastgebers im Test.</summary>
+  ITestHost = interface
+    ['{5D1E7A30-2B44-4C8E-9F61-3A7B0C2E9D15}']
+  end;
+
+  TTestHost = class(TInterfacedObject, ITestHost)
+  end;
+
+  TTestContribution = class(TTestSection, IAtlasSettingsContribution)
+  public
+    function HostContract: TGUID;
+  end;
+
 const
   cNotesCaption = 'Notizen im Test';
+
+/// <summary>Sichtbar samt aller Eltern bis zum Reiter (nicht gewählte Reiter sind selbst unsichtbar).</summary>
+function Shown(AControl: TControl; APage: TControl): Boolean;
+begin
+  Result := True;
+  while (AControl <> nil) and (AControl <> APage) and not (AControl is TTabSheet) do
+  begin
+    Result := Result and AControl.Visible;
+    AControl := AControl.Parent;
+  end;
+end;
+
+function TTestContribution.HostContract: TGUID;
+begin
+  Result := ITestHost;
+end;
 
 function TTestSection.OwnerId: string;
 begin
@@ -160,6 +197,56 @@ begin
       mPage.Free;
     end;
   finally
+    mRegistration.Revoke;
+  end;
+end;
+
+procedure TAtlasSettingsSectionTests.ContributionNeedsHostAndShowsThere;
+var
+  mSection: TTestContribution;
+  mSectionRef: IAtlasSettingsSection;
+  mRegistration, mHost: IAtlasRegistration;
+  mPage: TAtlasSettingsPage;
+begin
+  mSection := TTestContribution.Create;
+  mSectionRef := mSection;
+  mRegistration := ProvideSection(mSectionRef);
+  try
+    // Ohne Gastgeber: nicht gebaut.
+    mPage := TAtlasSettingsPage.Create(nil);
+    mPage.Free;
+    Assert.AreEqual(0, mSection.Builds, 'ohne Gastgeber kein Abschnitt');
+  finally
+    mRegistration.Revoke;
+  end;
+  mSection := TTestContribution.Create;
+  mSectionRef := mSection;
+  mRegistration := ProvideSection(mSectionRef);
+  // Gastgeber ist Base (Besitzer ''): Der Abschnitt steht im Knoten Base, nicht in dem seines Besitzers.
+  mHost := AtlasModuleRegistry.Provide(ITestHost, TTestHost.Create as ITestHost);
+  try
+    mPage := TAtlasSettingsPage.Create(nil);
+    try
+      Assert.AreEqual(1, mSection.Builds, 'mit Gastgeber gebaut');
+      mPage.ApplyScope(TAtlasSettingsNodeScope.Module('atlas.test', ''));
+      Assert.IsFalse(Shown(mSection.NotesCheck, mPage), 'nicht beim Besitzer');
+    finally
+      mPage.Free;
+    end;
+    mSection := TTestContribution.Create;
+    mSectionRef := mSection;
+    mRegistration.Revoke;
+    mRegistration := ProvideSection(mSectionRef);
+    mPage := TAtlasSettingsPage.Create(nil);
+    try
+      mPage.ApplyScope(TAtlasSettingsNodeScope.Base);
+      Assert.IsTrue(mPage.ScopeHasContent);
+      Assert.IsTrue(Shown(mSection.NotesCheck, mPage), 'beim Gastgeber');
+    finally
+      mPage.Free;
+    end;
+  finally
+    mHost.Revoke;
     mRegistration.Revoke;
   end;
 end;

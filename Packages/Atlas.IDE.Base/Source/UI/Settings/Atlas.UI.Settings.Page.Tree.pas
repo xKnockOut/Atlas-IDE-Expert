@@ -10,6 +10,7 @@ uses
   Vcl.Controls,
   Vcl.ComCtrls,
   Atlas.Core.Settings.Groups,
+  Atlas.Core.Settings.NodeScope,
   Atlas.UI.Settings.Group,
   Atlas.UI.Settings.Page.Nodes;
 
@@ -25,6 +26,14 @@ type
     function LockOfName(const AName: string): TAtlasSettingsLock;
   private
     FFillingTree: Boolean;
+    FScope: TAtlasSettingsNodeScope;
+    /// <summary>Seiten ohne Element des Knotens (#1903), Index wie FNodePages.</summary>
+    FScopeHidden: TArray<Boolean>;
+    /// <summary>Modulschalter (x-module) der Einstellung AName: der eigene oder der eines Vorfahren; '' = Base.
+    /// </summary>
+    function ModuleOfName(const AName: string): string;
+    function InScope(AControl: TControl): Boolean;
+    procedure ScopeOverviews;
     // Gewählte Seite und aufgeklappte Bereiche bis zum nächsten Öffnen (ohne verwaltete Typen: Leckmonitor).
     class var FLastPage: Integer;
     class var FExpandedAreas: set of Byte;
@@ -52,6 +61,12 @@ type
     procedure SheetShown(ASheet: TTabSheet);
   public
     procedure SelectPage(AIndex: Integer); override;
+    /// <summary>Knoten je Package (#1903): nur die Elemente zeigen, die AScope gehören; Seiten ohne solche fallen
+    /// aus dem Baum. Nach dem Aufbau, vor dem Laden.</summary>
+    procedure ApplyScope(const AScope: TAtlasSettingsNodeScope);
+    /// <summary>Hat der Knoten etwas zu zeigen?</summary>
+    function ScopeHasContent: Boolean;
+    property Scope: TAtlasSettingsNodeScope read FScope;
     /// <summary>Sperren, Grund, Spiegel und graue Knoten nach den aktuellen Werten (#890).</summary>
     procedure UpdateLocks;
     function SheetGray(ASheet: TTabSheet): Boolean;
@@ -171,10 +186,139 @@ begin
   end;
 end;
 
+function TAtlasSettingsPageTree.ModuleOfName(const AName: string): string;
+begin
+  Result := TAtlasSettingsNodeScope.ModuleOf(Catalog, FGroups, AName);
+end;
+
+function TAtlasSettingsPageTree.InScope(AControl: TControl): Boolean;
+var
+  mNames, mModules: TArray<string>;
+  mName: string;
+begin
+  mNames := FMarks.NamesOf(AControl);
+  if AControl is TWinControl then
+  begin
+    mNames := mNames + FMarks.NamesIn(TWinControl(AControl));
+  end;
+  mModules := nil;
+  for mName in mNames do
+  begin
+    mModules := mModules + [ModuleOfName(mName)];
+  end;
+  Result := FScope.Includes(SectionOwnersIn(AControl), mModules);
+end;
+
+procedure TAtlasSettingsPageTree.ApplyScope(const AScope: TAtlasSettingsNodeScope);
+var
+  mIndex, mChild: Integer;
+  mBox: TScrollBox;
+  mControl: TControl;
+  mAny: Boolean;
+begin
+  FScope := AScope;
+  SetLength(FScopeHidden, Length(FNodePages));
+  for mIndex := 0 to High(FNodePages) do
+  begin
+    mBox := FNodePages[mIndex].Box;
+    mAny := False;
+    for mChild := 0 to mBox.ControlCount - 1 do
+    begin
+      mControl := mBox.Controls[mChild];
+      if (mControl = FNodePages[mIndex].Banner) or ((mControl is TAtlasSettingsGroup) and
+        IsOverview(TAtlasSettingsGroup(mControl))) then
+      begin
+        Continue;
+      end;
+      if InScope(mControl) then
+      begin
+        mAny := mAny or mControl.Visible;
+      end
+      else
+      begin
+        mControl.Visible := False;
+      end;
+    end;
+    FScopeHidden[mIndex] := not mAny;
+  end;
+  ScopeOverviews;
+  if ListReady(FTree) then
+  begin
+    FillTree;
+  end;
+end;
+
+procedure TAtlasSettingsPageTree.ScopeOverviews;
+var
+  mIndex: Integer;
+  mOverview: TAtlasSettingsGroup;
+  mShown: Boolean;
+  mChild: Integer;
+begin
+  // Übersicht „Funktionen in diesem Bereich“: nur Zeilen zu Rahmen, die der Knoten zeigt.
+  for mIndex := 0 to High(FOverviewRows) do
+  begin
+    FOverviewRows[mIndex].Visible := FOverviewFrames[mIndex].Visible;
+  end;
+  for mOverview in FOverviews do
+  begin
+    mShown := False;
+    for mIndex := 0 to High(FOverviewRows) do
+    begin
+      mShown := mShown or (FOverviewRows[mIndex].Visible and (FOverviewRows[mIndex].Parent <> nil) and
+        ((FOverviewRows[mIndex].Parent = mOverview) or (FOverviewRows[mIndex].Parent.Parent = mOverview)));
+    end;
+    mOverview.Visible := mShown;
+    if mShown then
+    begin
+      mOverview.AdjustHeight;
+      // Hauptknoten mit Übersicht: zeigen, auch wenn er selbst nichts hat.
+      for mChild := 0 to High(FNodePages) do
+      begin
+        if mOverview.Parent = FNodePages[mChild].Box then
+        begin
+          FScopeHidden[mChild] := False;
+        end;
+      end;
+    end;
+  end;
+end;
+
+function TAtlasSettingsPageTree.ScopeHasContent: Boolean;
+var
+  mHidden: Boolean;
+begin
+  for mHidden in FScopeHidden do
+  begin
+    if not mHidden then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := Length(FScopeHidden) = 0;
+end;
+
 function TAtlasSettingsPageTree.PageShown(AIndex: Integer): Boolean;
 var
   mIndex: Integer;
 begin
+  // Knoten je Package (#1903): Seiten ohne Element des Knotens fallen weg; ein Bereich bleibt für seine Punkte.
+  if (AIndex <= High(FScopeHidden)) and FScopeHidden[AIndex] then
+  begin
+    if FNodePages[AIndex].Node <> '' then
+    begin
+      Exit(False);
+    end;
+    for mIndex := 0 to High(FNodePages) do
+    begin
+      if (mIndex <> AIndex) and (FNodePages[mIndex].Area = FNodePages[AIndex].Area) and
+        (mIndex <= High(FScopeHidden)) and not FScopeHidden[mIndex] then
+      begin
+        Exit(True);
+      end;
+    end;
+    Exit(False);
+  end;
   // Der Filter blendet Unterpunkte ohne Treffer aus; ein Bereich bleibt, solange einer seiner Punkte trifft.
   if (FMarks.Filter = sfAll) or FMarks.HasMatch(FNodePages[AIndex].Box) then
   begin

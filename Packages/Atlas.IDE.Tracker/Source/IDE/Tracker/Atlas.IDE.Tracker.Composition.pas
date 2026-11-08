@@ -74,6 +74,8 @@ uses
   Atlas.IDE.Tracker.Access,
   Atlas.IDE.Tracker.Parts,
   Atlas.IDE.Tracker.Settings,
+  Atlas.UI.Tracker.SettingsBranches,
+  Atlas.IDE.Contracts.VersionControl,
   Atlas.UI.Settings.Contract;
 
 const
@@ -126,6 +128,12 @@ begin
 end;
 
 { TAtlasTrackerModule }
+
+/// <summary>Stellt ein Modul den Vertrag der Versionsverwaltung bereit (#1903)?</summary>
+function VcsProvided: Boolean;
+begin
+  Result := Length(AtlasModuleRegistry.FindAll(IAtlasVcsService)) > 0;
+end;
 
 function TAtlasTrackerModule.Info: TAtlasModuleInfo;
 begin
@@ -219,6 +227,9 @@ begin
   GScope.Provide(IAtlasAppliesSettings, mRef);
   GScope.Provide(IAtlasPaletteSourceProvider, mRef);
   GScope.Provide(IAtlasSettingsSectionProvider, TAtlasIdeTrackerSettings.Create as IAtlasSettingsSectionProvider);
+  // Unterpunkt „Versionsverwaltung“ (#1903): nur, wenn ein Modul deren Vertrag bereitstellt.
+  TAtlasTrackerBranchSection.Available := VcsProvided;
+  TAtlasTrackerBranchSection.ProvideBranches(GScope);
   Result := True;
 end;
 
@@ -243,6 +254,7 @@ begin
   end;
   // Laufende Prüfungen der Optionsseite: Ihre Antwort erreicht das Modul danach nicht mehr (Regel 3).
   TAtlasIdeTrackerSettings.Release;
+  TAtlasTrackerBranchSection.Available := nil;
   // Erst jetzt: Die Teile sind gestoppt, kein Hintergrund-Thread liest den Zugang mehr.
   TAtlasTrackerParts.Uninstall;
   // Zuletzt: Danach erreicht nichts mehr Platte oder Shell im Namen des Moduls (Regel 3).

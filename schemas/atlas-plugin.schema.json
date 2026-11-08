@@ -90,6 +90,10 @@
       "caption": "Hotspots",
       "captionEn": "Hotspots"
     },
+    "issues.vcs": {
+      "caption": "Versionsverwaltung",
+      "captionEn": "Version control"
+    },
     "vcs.branches": {
       "caption": "Branches",
       "captionEn": "Branches"
@@ -5920,6 +5924,7 @@
       "default": "branch",
       "x-key": "issues.start",
       "x-area": "issues",
+      "x-node": "issues.vcs",
       "x-page": "Issue-Tracker",
       "x-formerKeys": [
         "welcomePage.issues.start"
@@ -5934,6 +5939,7 @@
       "default": "",
       "x-key": "issues.branchPattern",
       "x-area": "issues",
+      "x-node": "issues.vcs",
       "x-page": "Issue-Tracker",
       "x-formerKeys": [
         "welcomePage.issues.branchPattern"
@@ -5948,6 +5954,7 @@
       "default": "",
       "x-key": "issues.branchBase",
       "x-area": "issues",
+      "x-node": "issues.vcs",
       "x-page": "Issue-Tracker",
       "x-formerKeys": [
         "welcomePage.issues.branchBase"
@@ -5962,6 +5969,7 @@
       "default": "{kennung} ",
       "x-key": "issues.commitPattern",
       "x-area": "issues",
+      "x-node": "issues.vcs",
       "x-page": "Issue-Tracker",
       "x-formerKeys": [
         "welcomePage.issues.commitPattern"

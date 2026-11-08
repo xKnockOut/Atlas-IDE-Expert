@@ -414,6 +414,9 @@ begin
   begin
     GScope.Provide(IAtlasFeaturePart, mPart);
   end;
+  // Vertrag in der Registry (#1903): Beiträge anderer Module zum Optionsdialog (Branches zu Issues des Trackers)
+  // finden darüber ihren Gastgeber. Genutzt wird der Dienst weiter über TAtlasIdeVcs, sobald der Teil läuft.
+  GScope.Provide(IAtlasVcsService, TAtlasVcsServiceAdapter.Create as IAtlasVcsService);
   // Modulschalter im Optionsdialog ab der Anmeldung, damit sich das Modul auch ausgeschaltet einstellen lässt.
   TAtlasVcsSettingsSection.ProvideIn(GScope);
   Result := True;

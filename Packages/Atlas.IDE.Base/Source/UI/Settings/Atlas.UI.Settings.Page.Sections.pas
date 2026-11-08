@@ -648,15 +648,70 @@ begin
   end;
 end;
 
+/// <summary>Knoten, in dem ASection steht: sein Besitzer oder, bei einem Beitrag, das Modul, das dessen Vertrag
+/// bereitstellt. False, wenn der Gastgeber fehlt.</summary>
+function NodeOfSection(const ASection: IAtlasSettingsSection; out ANode: string): Boolean;
+var
+  mContribution: IAtlasSettingsContribution;
+  mProvided: TArray<TAtlasProvided>;
+begin
+  ANode := ASection.OwnerId;
+  if not Supports(ASection, IAtlasSettingsContribution, mContribution) then
+  begin
+    Exit(True);
+  end;
+  mProvided := AtlasModuleRegistry.Provisions(mContribution.HostContract);
+  Result := Length(mProvided) > 0;
+  if Result then
+  begin
+    ANode := mProvided[0].OwnerId;
+  end;
+end;
+
+/// <summary>Elemente direkt in ABox.</summary>
+function Children(ABox: TWinControl): TArray<TControl>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, ABox.ControlCount);
+  for mIndex := 0 to ABox.ControlCount - 1 do
+  begin
+    Result[mIndex] := ABox.Controls[mIndex];
+  end;
+end;
+
+function Contains(const AList: TArray<TControl>; AControl: TControl): Boolean;
+var
+  mItem: TControl;
+begin
+  for mItem in AList do
+  begin
+    if mItem = AControl then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 procedure TAtlasSettingsSectionsPart.AddBuilt(const AProvider: IAtlasSettingsSectionProvider;
   const ASection: IAtlasSettingsSection);
 var
   mSheet: Integer;
   mHost: TAtlasSettingsSectionHost;
   mHostRef: IAtlasSettingsSectionHost;
+  mBefore: TArray<TControl>;
+  mChild: TControl;
+  mNode: string;
 begin
   if ASection = nil then
   begin
+    Exit;
+  end;
+  // Beitrag zu einem anderen Modul (#1903): steht im Knoten des Gastgebers; ohne Gastgeber gar nicht.
+  if not NodeOfSection(ASection, mNode) then
+  begin
+    ASection.Close;
     Exit;
   end;
   mSheet := SheetOfArea(ASection.AreaId);
@@ -668,6 +723,7 @@ begin
     FAreas := FAreas + [TPair<string, Integer>.Create(ASection.AreaId, mSheet)];
   end;
   FPage.ContinueSheet(mSheet);
+  mBefore := Children(FPage.Boxes[mSheet]);
   mHost := TAtlasSettingsSectionHost.Create(Self);
   mHostRef := mHost;
   try
@@ -680,6 +736,14 @@ begin
       TAtlasGuard.ReportProvider('settings:' + ASection.OwnerId, E);
       ASection.Close;
       Exit;
+    end;
+  end;
+  // Knoten je Package (#1903): Die neuen Zeilen gehören dem Modul des Abschnitts.
+  for mChild in Children(FPage.Boxes[mSheet]) do
+  begin
+    if not Contains(mBefore, mChild) then
+    begin
+      FPage.MarkSectionOwner(mChild, mNode);
     end;
   end;
   FSections := FSections + [ASection];
