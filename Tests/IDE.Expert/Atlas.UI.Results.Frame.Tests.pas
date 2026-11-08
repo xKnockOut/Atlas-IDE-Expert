@@ -27,6 +27,10 @@ type
   [TestFixture]
   TAtlasResultsFrameImpactTests = class
   public
+    /// <summary>Einmal vorab zeigen: Zwischenspeicher der ersten Benutzung (Texte, Symbole) zählen sonst als Leck.
+    /// </summary>
+    [SetupFixture]
+    procedure WarmUp;
     [Test]
     procedure SectionsAndCauseTree;
     [Test]
@@ -205,6 +209,21 @@ begin
   Result.Tests := TArray<TAtlasImpactTest>.Create(Test);
   Result.DepthReached := True;
   Result.Unexpanded := 2;
+end;
+
+procedure TAtlasResultsFrameImpactTests.WarmUp;
+var
+  Host: TForm;
+  Frame: TAtlasResultsFrame;
+begin
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := TAtlasResultsFrame.Create(Host);
+    Frame.Parent := Host;
+    Frame.Impact.Show('Auswirkungen', SampleImpact);
+  finally
+    Host.Free;
+  end;
 end;
 
 procedure TAtlasResultsFrameImpactTests.SectionsAndCauseTree;

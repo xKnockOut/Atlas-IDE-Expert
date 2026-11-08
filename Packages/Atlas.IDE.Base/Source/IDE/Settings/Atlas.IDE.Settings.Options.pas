@@ -168,6 +168,11 @@ var
   PendingArgument: string;
 
 type
+  /// <summary>Zugriff auf Items, das TCustomTreeView geschützt hält (Baum des Optionsdialogs ist eine eigene Ableitung).
+  /// </summary>
+  TAtlasTreeAccess = class(TCustomTreeView);
+
+type
   /// <summary>Sucht im offenen Optionsdialog die Seite „Atlas“ und wählt sie (#628).</summary>
   TAtlasOptionsSelector = class
   private const
@@ -177,7 +182,7 @@ type
     FTimer: TTimer;
     FTries: Integer;
     procedure Tick(Sender: TObject);
-    class function FindTree(AParent: TWinControl): TTreeView; static;
+    class function FindTree(AParent: TWinControl): TCustomTreeView; static;
   public
     constructor Create;
     destructor Destroy; override;
@@ -216,16 +221,17 @@ begin
   FTimer.Enabled := False;
 end;
 
-class function TAtlasOptionsSelector.FindTree(AParent: TWinControl): TTreeView;
+class function TAtlasOptionsSelector.FindTree(AParent: TWinControl): TCustomTreeView;
 var
   mIndex: Integer;
 begin
   Result := nil;
   for mIndex := 0 to AParent.ControlCount - 1 do
   begin
-    if AParent.Controls[mIndex] is TTreeView then
+    // TCustomTreeView: Delphi 13 nimmt eine eigene Ableitung statt TTreeView (#1903).
+    if AParent.Controls[mIndex] is TCustomTreeView then
     begin
-      Exit(TTreeView(AParent.Controls[mIndex]));
+      Exit(TCustomTreeView(AParent.Controls[mIndex]));
     end;
     if AParent.Controls[mIndex] is TWinControl then
     begin
@@ -241,7 +247,7 @@ end;
 procedure TAtlasOptionsSelector.Tick(Sender: TObject);
 var
   mForm: TCustomForm;
-  mTree: TTreeView;
+  mTree: TCustomTreeView;
   mNode: TTreeNode;
 begin
   try
@@ -262,7 +268,7 @@ begin
       Exit;
     end;
     // Die Seite heißt „Atlas“ (GetCaption) und hängt unter „Drittanbieter“, nicht oben im Baum.
-    for mNode in mTree.Items do
+    for mNode in TAtlasTreeAccess(mTree).Items do
     begin
       if SameText(mNode.Text, 'Atlas') and (mNode.Parent <> nil) then
       begin
@@ -274,7 +280,7 @@ begin
     end;
     // Nicht gefunden: Delphi 13 legt die Unterseiten erst beim Aufklappen an ("Fremdhersteller" zu). Obere
     // Zweige aufklappen und beim nächsten Takt erneut suchen, statt aufzugeben.
-    for mNode in mTree.Items do
+    for mNode in TAtlasTreeAccess(mTree).Items do
     begin
       if (mNode.Parent = nil) and mNode.HasChildren and not mNode.Expanded then
       begin
@@ -521,6 +527,91 @@ begin
     TAtlasModuleNodes.CaptionOf(AInfo.Name), AInfo.Name);
 end;
 
+/// <summary>Klassen der Steuerelemente unter AParent, deren Name „Tree“ enthält (Protokoll, wenn kein Baum passt).
+/// </summary>
+function TreeLikeClasses(AParent: TWinControl): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := 0 to AParent.ControlCount - 1 do
+  begin
+    if Pos('TREE', UpperCase(AParent.Controls[mIndex].ClassName)) > 0 then
+    begin
+      Result := Result + ' ' + AParent.Controls[mIndex].ClassName;
+    end;
+    if AParent.Controls[mIndex] is TWinControl then
+    begin
+      Result := Result + TreeLikeClasses(TWinControl(AParent.Controls[mIndex]));
+    end;
+  end;
+end;
+
+/// <summary>Kind von ANode mit dem Text AText; klappt ANode dafür auf, weil Delphi 13 Unterknoten erst beim Aufklappen
+/// anlegt. nil, wenn ANode nil ist oder kein Kind passt.</summary>
+function ChildNamed(ANode: TTreeNode; const AText: string): TTreeNode;
+begin
+  Result := nil;
+  if ANode = nil then
+  begin
+    Exit;
+  end;
+  if not ANode.Expanded then
+  begin
+    ANode.Expand(False);
+  end;
+  Result := ANode.getFirstChild;
+  while (Result <> nil) and not SameText(Result.Text, AText) do
+  begin
+    Result := Result.getNextSibling;
+  end;
+end;
+
+/// <summary>Wählt im offenen Optionsdialog den Knoten Atlas › APath (#1903). False, wenn sich Baum oder Knoten nicht
+/// finden lassen; dann steht im Protokoll, welche Baumklassen der Dialog hat.</summary>
+function SelectOptionsNode(const APath: TArray<string>): Boolean;
+var
+  mForm: TCustomForm;
+  mTree: TCustomTreeView;
+  mNode, mAtlas: TTreeNode;
+  mText: string;
+begin
+  Result := False;
+  mForm := Screen.ActiveCustomForm;
+  if mForm = nil then
+  begin
+    Exit;
+  end;
+  mTree := TAtlasOptionsSelector.FindTree(mForm);
+  if mTree = nil then
+  begin
+    TAtlasGuard.Log('Optionen: kein Baum im Dialog zum Springen gefunden; Klassen:' + TreeLikeClasses(mForm)); // german-ok Protokoll
+    Exit;
+  end;
+  mAtlas := nil;
+  for mNode in TAtlasTreeAccess(mTree).Items do
+  begin
+    if SameText(mNode.Text, 'Atlas') and (mNode.Parent <> nil) then
+    begin
+      mAtlas := mNode;
+      Break;
+    end;
+  end;
+  mNode := mAtlas;
+  for mText in APath do
+  begin
+    mNode := ChildNamed(mNode, mText);
+  end;
+  if mNode = nil then
+  begin
+    TAtlasGuard.Log('Optionen: Knoten Atlas › ' + string.Join(' › ', APath) + ' nicht im Baum ' + mTree.ClassName); // german-ok Protokoll
+    Exit;
+  end;
+  mNode.MakeVisible;
+  mTree.Selected := mNode;
+  Result := True;
+end;
+
 { TAtlasOverviewOptions }
 
 function TAtlasOverviewOptions.GetArea: string;
@@ -536,6 +627,29 @@ end;
 function TAtlasOverviewOptions.GetFrameClass: TCustomFrameClass;
 begin
   Result := TAtlasSettingsOverview;
+end;
+
+/// <summary>Klick in der Übersicht: Einstellung ASetting im Knoten des Modulschalters ASwitch ('' = Base) zeigen;
+/// ASetting '' = Knoten „Module“.</summary>
+procedure OpenFromOverview(ASetting, ASwitch: string);
+var
+  mName: string;
+begin
+  if ASetting = '' then
+  begin
+    SelectOptionsNode([TAtlasStrings.Text(TAtlasTextId.SettingsModulesNode)]);
+    Exit;
+  end;
+  mName := 'Base';
+  if ASwitch <> '' then
+  begin
+    mName := TAtlasModuleNodes.NameOfSwitch(ASwitch);
+  end;
+  PendingReveal := ASetting;
+  if not SelectOptionsNode([TAtlasStrings.Text(TAtlasTextId.SettingsModulesNode), mName]) then
+  begin
+    PendingReveal := '';
+  end;
 end;
 
 procedure TAtlasOverviewOptions.FrameCreated(AFrame: TCustomFrame);
@@ -576,6 +690,9 @@ begin
       begin
         Result := TAtlasModuleNodes.NameOfSwitch(ASwitch);
       end;
+    // Klick auf einen Treffer bzw. die Zeile der Packages (#1903): im offenen Dialog zum Knoten springen; die Seite
+    // dort zeigt die Einstellung beim Anlegen (PendingReveal).
+    FPage.OnOpen := OpenFromOverview;
     FPage.Load(mInstalled, Length(mKnown), mOn);
   except
     on E: Exception do

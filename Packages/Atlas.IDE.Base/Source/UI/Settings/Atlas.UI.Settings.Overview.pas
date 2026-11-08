@@ -29,6 +29,12 @@ type
     FSearch: TEdit;
     FHits: TPanel;
     FOnModuleName: TFunc<string, string>;
+    FOnOpen: TProc<string, string>;
+    FHitNames: TArray<string>;
+    FHitModules: TArray<string>;
+    procedure HitClick(Sender: TObject);
+    procedure PackagesClick(Sender: TObject);
+    class procedure MakeLink(ALabel: TLabel); static;
     procedure AddRow(var ATop: Integer; AControl: TControl; AHeight: Integer);
     procedure SearchChange(Sender: TObject);
     function ModuleName(const ASwitch: string): string;
@@ -43,7 +49,12 @@ type
     procedure SearchFor(const AText: string);
     /// <summary>Zum Testen: Zeilen der Treffer.</summary>
     function HitTexts: TArray<string>;
+    /// <summary>Zum Testen: Klick auf den Treffer AIndex bzw. auf die Zeile der Packages.</summary>
+    procedure ClickHit(AIndex: Integer);
+    procedure ClickPackages;
     property OnModuleName: TFunc<string, string> read FOnModuleName write FOnModuleName;
+    /// <summary>Klick: Einstellung (Name) und Modulschalter ihres Knotens; Name '' = Knoten „Module“.</summary>
+    property OnOpen: TProc<string, string> read FOnOpen write FOnOpen;
   end;
 
 implementation
@@ -51,6 +62,7 @@ implementation
 {$R *.dfm}
 
 uses
+  System.UITypes,
   Vcl.Graphics,
   Atlas.Core.Settings.NodeScope,
   Atlas.UI.Strings;
@@ -70,6 +82,8 @@ begin
   AddRow(mTop, mLabel, 24);
   FPackages := TLabel.Create(Self);
   FPackages.ShowAccelChar := False;
+  MakeLink(FPackages);
+  FPackages.OnClick := PackagesClick;
   AddRow(mTop, FPackages, 30);
   mLabel := TLabel.Create(Self);
   mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsAtlasSearch);
@@ -143,6 +157,8 @@ begin
   begin
     FHits.Controls[0].Free;
   end;
+  FHitNames := nil;
+  FHitModules := nil;
   mHits := TAtlasSettingsSearch.Find(FCatalog, FGroups, FSearch.Text, TAtlasStrings.Language = TAtlasLanguage.English,
     cMaxHits);
   mTop := 0;
@@ -155,6 +171,11 @@ begin
     mLabel.ShowAccelChar := False;
     mLabel.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsAtlasHit,
       [mHit.Caption, TAtlasStrings.Text(TAtlasTextId.SettingsModulesNode), ModuleName(mHit.Module), mHit.AreaCaption]);
+    mLabel.Tag := Length(FHitNames);
+    MakeLink(mLabel);
+    mLabel.OnClick := HitClick;
+    FHitNames := FHitNames + [mHit.Name];
+    FHitModules := FHitModules + [mHit.Module];
     Inc(mTop, 20);
   end;
   if (Length(mHits) = 0) and (Trim(FSearch.Text) <> '') then
@@ -166,6 +187,50 @@ begin
     mLabel.Font.Style := [fsItalic];
     mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsAtlasNoHits);
   end;
+end;
+
+class procedure TAtlasSettingsOverview.MakeLink(ALabel: TLabel);
+begin
+  ALabel.Cursor := crHandPoint;
+  ALabel.Font.Style := ALabel.Font.Style + [fsUnderline];
+end;
+
+procedure TAtlasSettingsOverview.HitClick(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  mIndex := (Sender as TComponent).Tag;
+  if Assigned(FOnOpen) and (mIndex >= 0) and (mIndex <= High(FHitNames)) then
+  begin
+    FOnOpen(FHitNames[mIndex], FHitModules[mIndex]);
+  end;
+end;
+
+procedure TAtlasSettingsOverview.PackagesClick(Sender: TObject);
+begin
+  if Assigned(FOnOpen) then
+  begin
+    FOnOpen('', '');
+  end;
+end;
+
+procedure TAtlasSettingsOverview.ClickHit(AIndex: Integer);
+var
+  mIndex: Integer;
+begin
+  for mIndex := FHits.ControlCount - 1 downto 0 do
+  begin
+    if Assigned(TLabel(FHits.Controls[mIndex]).OnClick) and (FHits.Controls[mIndex].Tag = AIndex) then
+    begin
+      HitClick(FHits.Controls[mIndex]);
+      Exit;
+    end;
+  end;
+end;
+
+procedure TAtlasSettingsOverview.ClickPackages;
+begin
+  PackagesClick(FPackages);
 end;
 
 procedure TAtlasSettingsOverview.SearchFor(const AText: string);

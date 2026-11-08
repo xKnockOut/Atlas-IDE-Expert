@@ -1993,6 +1993,11 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.SettingsSection.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Rules.SettingsSection.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Section.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Overview.pas">
+            <Form>AtlasSettingsOverview</Form>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Overview.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

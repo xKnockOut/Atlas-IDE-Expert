@@ -1954,7 +1954,9 @@ uses
   Atlas.UI.Bookmarks.SettingsSection.Tests in 'IDE.Expert\Atlas.UI.Bookmarks.SettingsSection.Tests.pas',
   Atlas.UI.Designer.SettingsSection.Tests in 'IDE.Expert\Atlas.UI.Designer.SettingsSection.Tests.pas',
   Atlas.UI.Rules.SettingsSection.Tests in 'IDE.Expert\Atlas.UI.Rules.SettingsSection.Tests.pas',
-  Atlas.UI.Settings.Section.Tests in 'IDE.Expert\Atlas.UI.Settings.Section.Tests.pas';
+  Atlas.UI.Settings.Section.Tests in 'IDE.Expert\Atlas.UI.Settings.Section.Tests.pas',
+  Atlas.UI.Settings.Overview in '..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Overview.pas' {AtlasSettingsOverview: TFrame},
+  Atlas.UI.Settings.Overview.Tests in 'IDE.Expert\Atlas.UI.Settings.Overview.Tests.pas';
 
 // Atlas-Symbol (#751) für die UI-Tests.
 {$R '..\Packages\Atlas.IDE.Base\Resources\Symbol\Atlas.Symbol.res'}
