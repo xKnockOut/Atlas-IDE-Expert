@@ -3,7 +3,7 @@
 // Schreibende MCP-Werkzeuge bei laufender IDE (#397): Ist eine Datei in einer
 // IDE mit Atlas-Plugin offen, schreibt der MCP-Server sie nicht auf die
 // Platte, sondern schickt die Änderung an den Eingang des Plugins
-// (Protokoll: Atlas.Core.Files.EditInbox im Plugin):
+// (Protokoll: Atlas.Core.Assistants.EditInbox im Plugin):
 //   1. <id>.json.tmp schreiben und in <id>.json umbenennen,
 //   2. auf <id>.result.json warten,
 //   3. nach dem Zeitlimit <id>.json löschen: Gelingt das, hat das Plugin den

@@ -250,7 +250,6 @@ begin
   Features.Add('KeysWatched', TAtlasSafeLevel.Safe, KeysWatched, WatchKeys, UnwatchKeys);
   Features.Add('MainMenu', TAtlasSafeLevel.Safe, MainMenuStarted, StartMainMenu, StopMainMenu);
   Features.Add('DirtyExport', TAtlasSafeLevel.Normal, DirtyExportStarted, StartDirtyExport, StopDirtyExport);
-  Features.Add('EditInbox', TAtlasSafeLevel.Normal, EditInboxStarted, StartEditInbox, StopEditInbox);
   Features.Add('Reloader', TAtlasSafeLevel.Normal, ReloaderStarted, StartReloader, StopReloader);
 end;
 

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.BuildPipeline.Inbox.Tests;
+﻿unit Atlas.Core.Assistants.BuildInbox.Tests;
 
 // Tests für den Eingang der Builds von Claude Code (#261) ohne IDE: Auftrag
 // lesen und übernehmen, Antwort im Format von get_last_build schreiben.
@@ -10,7 +10,7 @@ uses
 
 type
   [TestFixture]
-  [Category('Atlas.IDE.BuildPipeline')]
+  [Category('Atlas.IDE.Assistants')]
   TAtlasBuildInboxTests = class
   private
     FFolder: string;
@@ -36,13 +36,14 @@ type
 implementation
 
 uses
+  Atlas.Core.Build.Requests,
   System.Generics.Collections,
   System.SysUtils,
   System.IOUtils,
   System.JSON,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
-  Atlas.Core.BuildPipeline.Inbox;
+  Atlas.Core.Assistants.BuildInbox;
 
 /// <summary>Gründe wie in der UI; der Test prüft, dass ParseRequest sie verwendet.</summary>
 function Texts: TAtlasBuildInboxTexts;

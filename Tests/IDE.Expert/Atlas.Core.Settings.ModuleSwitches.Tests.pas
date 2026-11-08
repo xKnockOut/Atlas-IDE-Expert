@@ -174,8 +174,8 @@ end;
 
 procedure TAtlasModuleSwitchesTests.RealCatalogKnowsAllModules;
 const
-  cModules: array[0..11] of string = ('debug', 'issues', 'analysis', 'tests', 'buildTools', 'buildPipeline',
-    'bookmarks', 'designer', 'ruleChecks', 'search', 'welcome', 'vcs');
+  cModules: array[0..12] of string = ('debug', 'issues', 'analysis', 'tests', 'buildTools', 'buildPipeline',
+    'bookmarks', 'designer', 'ruleChecks', 'search', 'welcome', 'vcs', 'assistants');
 var
   mCatalog: TAtlasSettingsCatalog;
   mSwitches: TArray<TAtlasModuleSwitch>;

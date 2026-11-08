@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Files.EditInbox;
+﻿unit Atlas.Core.Assistants.EditInbox;
 
 // Schreibende MCP-Werkzeuge bei laufender IDE (#397), ohne Open Tools API:
 // Der MCP-Server schreibt eine Datei, die in der IDE offen ist, nicht selbst,

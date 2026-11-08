@@ -44,9 +44,7 @@ requires
 
 contains
   Atlas.UI.BuildPipeline.Strings in 'Source\UI\BuildPipeline\Atlas.UI.BuildPipeline.Strings.pas',
-  Atlas.Core.BuildPipeline.Inbox in 'Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.Inbox.pas',
   Atlas.IDE.BuildPipeline.Runner in 'Source\IDE\BuildPipeline\Atlas.IDE.BuildPipeline.Runner.pas',
-  Atlas.IDE.BuildPipeline.Inbox in 'Source\IDE\BuildPipeline\Atlas.IDE.BuildPipeline.Inbox.pas',
   Atlas.Core.BuildPipeline.ReleaseGuard in 'Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.ReleaseGuard.pas',
   Atlas.IDE.BuildPipeline.ReleaseGuard in 'Source\IDE\BuildPipeline\Atlas.IDE.BuildPipeline.ReleaseGuard.pas',
   Atlas.Core.BuildPipeline.Gate in 'Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.Gate.pas',

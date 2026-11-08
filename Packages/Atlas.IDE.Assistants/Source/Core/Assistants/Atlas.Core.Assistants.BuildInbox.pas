@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.BuildPipeline.Inbox;
+﻿unit Atlas.Core.Assistants.BuildInbox;
 
 // Builds für KI-Assistenten über die IDE (#261, MCP-Werkzeug build_project), ohne
 // Open Tools API. Ohne Kommandozeilen-Compiler (Starter Edition) baut das
@@ -25,31 +25,10 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Core.Build.Events,
-  Atlas.Core.Build.Messages;
+  Atlas.Core.Build.Messages,
+  Atlas.Core.Build.Requests;
 
 type
-  TAtlasBuildRequest = record
-    Id: string;
-    /// <summary>Absoluter Pfad der .dproj.</summary>
-    Project: string;
-    /// <summary>Make, Build oder Check.</summary>
-    Kind: TAtlasCompileKind;
-    /// <summary>'' = aktive Konfiguration bzw. Plattform der IDE.</summary>
-    Configuration: string;
-    Platform: string;
-  end;
-
-  /// <summary>Ergebnis eines Builds auf Auftrag.</summary>
-  TAtlasBuildReport = record
-    /// <summary>Projekt, Art, Konfiguration und Plattform des Laufs.</summary>
-    Project: TAtlasCompileProject;
-    Succeeded: Boolean;
-    DurationMs: Int64;
-    /// <summary>Ortszeit des Endes.</summary>
-    FinishedAt: TDateTime;
-    Messages: TArray<TAtlasCompilerMessage>;
-  end;
-
   /// <summary>Gründe, aus denen ein Auftrag nicht lesbar ist, in der Sprache der Oberfläche.</summary>
   TAtlasBuildInboxTexts = record
     Unreadable: string;
@@ -57,9 +36,6 @@ type
     /// <summary>Format mit %s für den Wert von "mode".</summary>
     UnknownMode: string;
   end;
-
-  /// <summary>Ende eines Auftrags; AError &lt;&gt; '' = nicht gebaut (Grund), sonst Ergebnis in AReport.</summary>
-  TAtlasBuildDoneProc = reference to procedure(const AReport: TAtlasBuildReport; const AError: string);
 
   TAtlasBuildInbox = class
   public const

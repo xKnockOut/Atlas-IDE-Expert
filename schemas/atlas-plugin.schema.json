@@ -1092,6 +1092,34 @@
       "x-captionEn": "Syntax check after saving",
       "x-issue": "#548"
     },
+    "AssistantsEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Modul KI-Assistenten (#1888): MCP-Clients bauen über die IDE (build_project) und schreiben in offene Dateien über den Eingang des Plugins; aus = die IDE nimmt keine Aufträge an, der MCP-Server meldet das. Lesen und Prüfen über den Server laufen weiter. Die Einzelschalter behalten ihre Werte.",
+      "x-key": "assistants.enabled",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-node": "",
+      "x-parent": "",
+      "x-module": "assistants",
+      "x-quickToggle": true,
+      "x-caption": "KI-Assistenten",
+      "x-captionEn": "AI assistants",
+      "x-issue": "#1888"
+    },
+    "AssistantsEdit": {
+      "type": "boolean",
+      "default": true,
+      "description": "KI-Assistenten (MCP) schreiben in Dateien, die in der IDE offen sind, über den Eingang des Plugins (#397): die Änderung landet im Editorpuffer, rückgängig wie eine eigene. Aus = die IDE nimmt keine Änderungen an; der MCP-Server überschreibt offene Dateien dann nicht.",
+      "x-key": "assistants.edit",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Schreiben in offene Dateien",
+      "x-captionEn": "Writing to open files",
+      "x-issue": "#1888"
+    },
     "McpBuild": {
       "type": "boolean",
       "default": true,

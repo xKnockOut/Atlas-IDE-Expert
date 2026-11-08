@@ -2,7 +2,7 @@
 
 // Tests für build_project über die laufende IDE (#261). Die Rolle des Plugins
 // spielt der Warte-Rückruf: Er übernimmt den Auftrag und antwortet im Format
-// von Atlas.Core.BuildPipeline.Inbox.
+// von Atlas.Core.Assistants.BuildInbox.
 
 interface
 

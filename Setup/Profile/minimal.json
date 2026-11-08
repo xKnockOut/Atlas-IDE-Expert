@@ -53,6 +53,7 @@
     "buildPipeline.enabled": false,
     "bookmarks.enabled": false,
     "vcs.enabled": false,
+    "assistants.enabled": false,
     "designer.enabled": false,
     "ruleChecks.enabled": false,
     "search.enabled": false

@@ -1,4 +1,4 @@
-# ADR 0017: Zuordnung der Units zu Packages
+﻿# ADR 0017: Zuordnung der Units zu Packages
 
 - Stand: 2026-11-01, Branch `Pilot-2.0.0-beta.1` (6364e487), nachgezogen auf ef9b9d95 (#1455), Quellen unter `Packages/Atlas.IDE.Base/Source`
 - Bezug: ADR 0017, Abschnitt „Fortschreibung: Laden, Entladen, Versionen“; #1455, #1456
@@ -19,10 +19,12 @@ Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Doku
 | `BuildPipeline` | `Atlas.IDE.BuildPipeline` |
 | `Bookmarks`, `Notes`, `Todos` | `Atlas.IDE.Bookmarks` |
 | `Vcs` | `Atlas.IDE.Vcs` |
+| `Assistants` | `Atlas.IDE.Assistants` |
 | alle übrigen | `Atlas.IDE.Base` |
 
 Ausnahmen:
 
+- KI-Assistenten (#1888): Die Eingänge für Aufträge von MCP-Clients (Builds über `build_project`, Änderungen an offenen Dateien) bilden das Modul `Atlas.IDE.Assistants`; gebaut wird über `IDE.Contracts.BuildRequests` des Moduls Build-Pipeline. Die Liste offener und ungespeicherter Dateien (`IDE.Files.DirtyExport`) bleibt im Kern: Sie schützt Dateien auch ohne das Modul vor dem Überschreiben durch den Server.
 - Versionsverwaltung (#1891): Git und SVN (Anbieter, Parser, Auswahl), der Dienst der IDE und die Dialoge „Branch anlegen“ und „Arbeitskopien“ bilden das Modul `Atlas.IDE.Vcs`. Im Kern bleiben der Vertrag (`Core.Vcs.Contract`, `IDE.Contracts.VersionControl` samt Zugang `TAtlasIdeVcs` und Null-Objekt) und die reine Logik ohne Prozessaufruf unter `Core/Vcs` (Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche, Serverzugang) und der allgemeine Prozessläufer, den auch das Modul Tests braucht, dazu vorerst die Einstellungsseiten der Versionsverwaltung und die Änderungsmarken im Editor.
 - Der allgemeine Tooltip `Atlas.UI.Popup.TitledTip` (bis #1455 `Atlas.UI.Notes.Tip`) liegt im Kern.
 - Die Build-Pipeline ist ein eigenes Modul (#1455): Läufer der Builds auf Auftrag mit MCP-Eingang, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung nach der 0/0/0-Regel mit Zusammenfassung (Ordner `BuildPipeline`, Schalter `buildPipeline`). Im Kern bleiben die Bewertung als Typen und `IAtlasBuildVerdictListener` (`Build.Verdict`, die Benachrichtigungszentrale hört darauf), was Base der Pipeline gibt (`Build.Pipeline`), die Werte ihrer Einstellungen (`Build.PipelineSettings`, `Build.OpenBuildSettings`), die Meldungen des letzten Builds (`IDE.Build.LastMessages`), `Build.IdleGate` (Diagnose-Zeitmessung) und `IDE.Build.Target` (Probleme, Projekt-Einstellungen). Andere Module bauen über `Atlas.IDE.Contracts.BuildPipeline`. Das Modul Build umfasst, was der Schalter `buildTools` abschaltet: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter.
@@ -90,6 +92,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Build.Events` | `Core/Build/Atlas.Core.Build.Events.pas` | Compile-Ereignisse (#527), Quelle für Compilermeldungen und Prüfen nach dem Speichern |
 | `Atlas.Core.Build.IdleGate` | `Core/Build/Atlas.Core.Build.IdleGate.pas` | Warten, bis kein Compile läuft; Diagnose-Zeitmessung (Base), #1455 |
 | `Atlas.Core.Build.Messages` | `Core/Build/Atlas.Core.Build.Messages.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
+| `Atlas.Core.Build.Requests` | `Core/Build/Atlas.Core.Build.Requests.pas` | Daten der Builds auf Auftrag für Läufer, Eingang der KI-Assistenten und Vertrag (#1888) |
 | `Atlas.Core.Build.OpenBuildSettings` | `Core/Build/Atlas.Core.Build.OpenBuildSettings.pas` | Werte der Einstellungen „Bauen beim Öffnen“ für Einstellungen und Optionsdialog, #1455 |
 | `Atlas.Core.Build.Pipeline` | `Core/Build/Atlas.Core.Build.Pipeline.pas` | Was Base der Build-Pipeline gibt (Compilermeldungen, Bewertung) über die Registry, #1455 |
 | `Atlas.Core.Build.PipelineSettings` | `Core/Build/Atlas.Core.Build.PipelineSettings.pas` | Werte der Einstellungen von Prüfung vor dem Kompilieren und Release-Wächter für Einstellungen und Optionsdialog, #1455 |
@@ -213,7 +216,6 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Files.Adapters.FolderWatcher` | `Core/Files/Atlas.Core.Files.Adapters.FolderWatcher.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.Contract` | `Core/Files/Atlas.Core.Files.Contract.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.DataFile` | `Core/Files/Atlas.Core.Files.DataFile.pas` | Ordner `Core/Files` |
-| `Atlas.Core.Files.EditInbox` | `Core/Files/Atlas.Core.Files.EditInbox.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.EncodingDefault` | `Core/Files/Atlas.Core.Files.EncodingDefault.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.ExternalChanges` | `Core/Files/Atlas.Core.Files.ExternalChanges.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.Format` | `Core/Files/Atlas.Core.Files.Format.pas` | Ordner `Core/Files` |
@@ -256,6 +258,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Modules.Answer` | `Core/Modules/Atlas.Core.Modules.Answer.pas` | späte Antwort an ein Modul nur bei offenem Scope (Regel 3), #1455 |
 | `Atlas.IDE.Contracts.BuildTools` | `Contracts/Atlas.IDE.Contracts.BuildTools.pas` | Startprofile und Projektaufgaben für andere Module, Vertrag zwischen Modulen, #1455 |
 | `Atlas.IDE.Contracts.BuildPipeline` | `Contracts/Atlas.IDE.Contracts.BuildPipeline.pas` | Builds auf Auftrag (Build-Pipeline → Tests, Build-Werkzeuge, Willkommensseite), Vertrag zwischen Modulen, #1455 |
+| `Atlas.IDE.Contracts.BuildRequests` | `Contracts/Atlas.IDE.Contracts.BuildRequests.pas` | Vertrag zwischen Modulen: Builds auf Auftrag samt Compilermeldungen für den Eingang der KI-Assistenten (#1888) |
 | `Atlas.IDE.Contracts.WelcomeTiles` | `Contracts/Atlas.IDE.Contracts.WelcomeTiles.pas` | Kacheln anderer Module auf der Willkommensseite, Board und Projekte der Seite (Tracker ↔ Willkommensseite), Vertrag zwischen Modulen, #1455 |
 | `Atlas.IDE.Contracts.VersionControl` | `Contracts/Atlas.IDE.Contracts.VersionControl.pas` | Vertrag zwischen Modulen: Dienst und Dialoge der Versionsverwaltung, Zugang TAtlasIdeVcs mit Null-Objekt ohne Modul (#1891) |
 | `Atlas.IDE.Contracts.Tests` | `Contracts/Atlas.IDE.Contracts.Tests.pas` | Testprojekte ausführen, Tests debuggen und finden, Ende eines Laufs; für andere Module, Vertrag zwischen Modulen, #1455 |
@@ -549,7 +552,6 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.EditorToolbar.FindMethod` | `IDE/EditorToolbar/Atlas.IDE.EditorToolbar.FindMethod.pas` | Ordner `IDE/EditorToolbar` |
 | `Atlas.IDE.EditorToolbar.Service` | `IDE/EditorToolbar/Atlas.IDE.EditorToolbar.Service.pas` | Ordner `IDE/EditorToolbar` |
 | `Atlas.IDE.Files.DirtyExport` | `IDE/Files/Atlas.IDE.Files.DirtyExport.pas` | Ordner `IDE/Files` |
-| `Atlas.IDE.Files.EditInbox` | `IDE/Files/Atlas.IDE.Files.EditInbox.pas` | Ordner `IDE/Files` |
 | `Atlas.IDE.Files.Reloader` | `IDE/Files/Atlas.IDE.Files.Reloader.pas` | Ordner `IDE/Files` |
 | `Atlas.IDE.Forms.Designer` | `IDE/Forms/Atlas.IDE.Forms.Designer.pas` | Ordner `IDE/Forms` |
 | `Atlas.IDE.Foundation.DesignerView` | `IDE/Foundation/Atlas.IDE.Foundation.DesignerView.pas` | Ordner `IDE/Foundation` |
@@ -739,6 +741,18 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Updates.Selection` | `UI/Updates/Atlas.UI.Updates.Selection.pas` | Ordner `UI/Updates` |
 | `Atlas.UI.Updates.Strings` | `UI/Updates/Atlas.UI.Updates.Strings.pas` | Ordner `UI/Updates` |
 | `Atlas.UI.Updates.Texts` | `UI/Updates/Atlas.UI.Updates.Texts.pas` | Ordner `UI/Updates` |
+
+## Atlas.IDE.Assistants
+
+| Unit | Datei | Begründung |
+|---|---|---|
+| `Atlas.Core.Assistants.BuildInbox` | `Core/Assistants/Atlas.Core.Assistants.BuildInbox.pas` | Ordner `Core/Assistants` |
+| `Atlas.Core.Assistants.EditInbox` | `Core/Assistants/Atlas.Core.Assistants.EditInbox.pas` | Ordner `Core/Assistants` |
+| `Atlas.IDE.Assistants.BuildInbox` | `IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.Composition` | `IDE/Assistants/Atlas.IDE.Assistants.Composition.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.EditInbox` | `IDE/Assistants/Atlas.IDE.Assistants.EditInbox.pas` | Ordner `IDE/Assistants` |
+| `Atlas.UI.Assistants.SettingsSection` | `UI/Assistants/Atlas.UI.Assistants.SettingsSection.pas` | Ordner `UI/Assistants` |
+| `Atlas.UI.Assistants.Strings` | `UI/Assistants/Atlas.UI.Assistants.Strings.pas` | Ordner `UI/Assistants` |
 
 ## Atlas.IDE.Vcs
 
@@ -1183,10 +1197,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | Unit | Datei | Begründung |
 |---|---|---|
 | `Atlas.Core.BuildPipeline.Gate` | `Core/BuildPipeline/Atlas.Core.BuildPipeline.Gate.pas` | Ordner `Core/BuildPipeline` |
-| `Atlas.Core.BuildPipeline.Inbox` | `Core/BuildPipeline/Atlas.Core.BuildPipeline.Inbox.pas` | Ordner `Core/BuildPipeline` |
 | `Atlas.Core.BuildPipeline.ReleaseGuard` | `Core/BuildPipeline/Atlas.Core.BuildPipeline.ReleaseGuard.pas` | Ordner `Core/BuildPipeline` |
 | `Atlas.IDE.BuildPipeline.Gate` | `IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Gate.pas` | Ordner `IDE/BuildPipeline` |
-| `Atlas.IDE.BuildPipeline.Inbox` | `IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Inbox.pas` | Ordner `IDE/BuildPipeline` |
 | `Atlas.IDE.BuildPipeline.ReleaseGuard` | `IDE/BuildPipeline/Atlas.IDE.BuildPipeline.ReleaseGuard.pas` | Ordner `IDE/BuildPipeline` |
 | `Atlas.IDE.BuildPipeline.Runner` | `IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Runner.pas` | Ordner `IDE/BuildPipeline` |
 | `Atlas.IDE.BuildPipeline.Summary` | `IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Summary.pas` | Ordner `IDE/BuildPipeline` |

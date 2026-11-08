@@ -2,7 +2,7 @@
 
 // Baut ein offenes Projekt auf Auftrag über IOTAProjectBuilder (#261) und
 // meldet Ergebnis und Compilermeldungen. Genutzt vom Eingang für KI-Assistenten (MCP)
-// (Atlas.IDE.BuildPipeline.Inbox, MCP-Werkzeug build_project); gedacht auch für
+// (Modul KI-Assistenten, MCP-Werkzeug build_project); gedacht auch für
 // „Öffnen und bauen“ der Willkommensseite (#764).
 // - Abgelehnt wird mit Grund, wenn der Debugger läuft, schon ein Build oder
 //   die Compilerprüfung (#548) läuft, ein eigener Auftrag noch offen ist oder
@@ -32,10 +32,10 @@ uses
   PlatformAPI,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
-  Atlas.Core.BuildPipeline.Inbox;
+  Atlas.Core.Build.Requests;
 
 type
-  // TAtlasBuildDoneProc steht in Atlas.Core.BuildPipeline.Inbox (ein Typ, sonst E2010 unter Delphi 12).
+  // TAtlasBuildDoneProc steht in Atlas.Core.Build.Requests (ein Typ, sonst E2010 unter Delphi 12).
   TAtlasIdeBuildRunner = class
   public const
     cMessagesWaitMs = 5000;

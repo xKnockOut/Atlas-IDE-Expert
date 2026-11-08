@@ -94,10 +94,8 @@
         <DCCReference Include="designide.dcp"/>
         <DCCReference Include="Atlas.IDE.Base.dcp"/>
         <DCCReference Include="Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.Gate.pas"/>
-        <DCCReference Include="Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.Inbox.pas"/>
         <DCCReference Include="Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.ReleaseGuard.pas"/>
         <DCCReference Include="Source\IDE\BuildPipeline\Atlas.IDE.BuildPipeline.Gate.pas"/>
-        <DCCReference Include="Source\IDE\BuildPipeline\Atlas.IDE.BuildPipeline.Inbox.pas"/>
         <DCCReference Include="Source\IDE\BuildPipeline\Atlas.IDE.BuildPipeline.ReleaseGuard.pas"/>
         <DCCReference Include="Source\IDE\BuildPipeline\Atlas.IDE.BuildPipeline.Runner.pas"/>
         <DCCReference Include="Source\IDE\BuildPipeline\Atlas.IDE.BuildPipeline.Summary.pas"/>

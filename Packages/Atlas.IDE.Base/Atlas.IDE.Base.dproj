@@ -535,6 +535,8 @@
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.BuildTools.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.BuildPipeline.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.WelcomeTiles.pas"/>
+        <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Requests.pas"/>
+        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.BuildRequests.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Tests.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.VersionControl.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Rules.pas"/>
@@ -605,7 +607,6 @@
         <DCCReference Include="Source\IDE\Status\Atlas.IDE.Status.ServerWindow.pas"/>
         <DCCReference Include="Source\IDE\Status\Atlas.IDE.Status.Field.pas"/>
         <DCCReference Include="Source\IDE\Files\Atlas.IDE.Files.DirtyExport.pas"/>
-        <DCCReference Include="Source\IDE\Files\Atlas.IDE.Files.EditInbox.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.TextDiff.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.WatchedChanges.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.Contract.pas"/>
@@ -660,7 +661,6 @@
         <DCCReference Include="Source\Core\Forms\Atlas.Core.Forms.Text.pas"/>
         <DCCReference Include="Source\Core\Forms\Atlas.Core.Forms.Changes.pas"/>
         <DCCReference Include="Source\IDE\Forms\Atlas.IDE.Forms.Designer.pas"/>
-        <DCCReference Include="Source\Core\Files\Atlas.Core.Files.EditInbox.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.Adapters.FolderWatcher.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Painter.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.MessageList.pas"/>

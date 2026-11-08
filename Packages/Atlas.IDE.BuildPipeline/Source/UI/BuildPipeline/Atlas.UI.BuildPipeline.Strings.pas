@@ -10,24 +10,21 @@ interface
 
 type
   TAtlasBuildPipelineTextId = (
-    McpBuildStarted, McpBuildFinished, McpBuildRefused, ReleaseCheckCommand, ReleaseNoProject,
-    ReleaseNoConfiguration, ReleaseUnreadable, ReleaseClean, ReleaseFindings, ReleaseBlocked, ReleaseOverridden,
-    ReleaseBlockReason, ReleaseOn, ReleaseOff, ReleaseIssueDebugDefine, ReleaseIssueDebugInfo,
-    ReleaseIssueDebugInfoInExe, ReleaseIssueStackFrames, ReleaseIssueAssertions, ReleaseIssueRangeChecks,
-    ReleaseIssueOverflowChecks, ReleaseIssueMemoryLeaks, ReleaseIssueVersionMissing, ReleaseIssueVersionUnchanged,
-    ReleaseIssueOutputFolder, GateFindings, GateBlocked, GateOverridden, GateTimedOut, GateBlockReason,
-    BuildSummaryClean, BuildSummaryCounts, BuildSummaryRejected, BuildSummaryRejectedCodes, BuildSummaryFailed,
-    BuildSummaryBaselined,
-    SettingsMcpBuild, SettingsBuildZeroHints, SettingsReleaseGuard, SettingsBuildGate, SettingsBuildGateOff,
-    SettingsBuildGateWarn, SettingsBuildGateBlock, SettingsReleaseConfigs, SettingsReleaseChecksTitle,
-    SettingsReleaseCheckDebugDefine, SettingsReleaseCheckDebugInfo, SettingsReleaseCheckStackFrames,
-    SettingsReleaseCheckAssertions, SettingsReleaseCheckRangeChecks, SettingsReleaseCheckOverflowChecks,
-    SettingsReleaseCheckMemoryLeaks, SettingsReleaseCheckVersionInfo, SettingsReleaseCheckOutputFolder,
-    SettingsReleaseNotChecked, SettingsReleaseExpectOff, SettingsReleaseExpectOn, SettingsBuildGateTimeout,
-    SettingsBuildSummary, SettingsBuildWarningsAsErrors,
-    McpRefusedCancelled, McpRefusedShutdown, McpRefusedBusy, McpRefusedForeignBuild, McpRefusedDebugging,
-    McpRefusedKind, McpRefusedProjectClosed, McpRefusedConfiguration, McpRefusedPlatform, McpBuildException,
-    McpRequestUnreadable, McpRequestNoProject, McpRequestUnknownMode);
+    ReleaseCheckCommand, ReleaseNoProject, ReleaseNoConfiguration, ReleaseUnreadable, ReleaseClean, ReleaseFindings,
+    ReleaseBlocked, ReleaseOverridden, ReleaseBlockReason, ReleaseOn, ReleaseOff, ReleaseIssueDebugDefine,
+    ReleaseIssueDebugInfo, ReleaseIssueDebugInfoInExe, ReleaseIssueStackFrames, ReleaseIssueAssertions,
+    ReleaseIssueRangeChecks, ReleaseIssueOverflowChecks, ReleaseIssueMemoryLeaks, ReleaseIssueVersionMissing,
+    ReleaseIssueVersionUnchanged, ReleaseIssueOutputFolder, GateFindings, GateBlocked, GateOverridden, GateTimedOut,
+    GateBlockReason, BuildSummaryClean, BuildSummaryCounts, BuildSummaryRejected, BuildSummaryRejectedCodes,
+    BuildSummaryFailed, BuildSummaryBaselined, SettingsMcpBuild, SettingsBuildZeroHints, SettingsReleaseGuard,
+    SettingsBuildGate, SettingsBuildGateOff, SettingsBuildGateWarn, SettingsBuildGateBlock, SettingsReleaseConfigs,
+    SettingsReleaseChecksTitle, SettingsReleaseCheckDebugDefine, SettingsReleaseCheckDebugInfo,
+    SettingsReleaseCheckStackFrames, SettingsReleaseCheckAssertions, SettingsReleaseCheckRangeChecks,
+    SettingsReleaseCheckOverflowChecks, SettingsReleaseCheckMemoryLeaks, SettingsReleaseCheckVersionInfo,
+    SettingsReleaseCheckOutputFolder, SettingsReleaseNotChecked, SettingsReleaseExpectOff, SettingsReleaseExpectOn,
+    SettingsBuildGateTimeout, SettingsBuildSummary, SettingsBuildWarningsAsErrors, McpRefusedCancelled,
+    McpRefusedShutdown, McpRefusedBusy, McpRefusedForeignBuild, McpRefusedDebugging, McpRefusedKind,
+    McpRefusedProjectClosed, McpRefusedConfiguration, McpRefusedPlatform, McpBuildException);
 
   TAtlasBuildPipelineStrings = class
   public
@@ -44,10 +41,7 @@ uses
 
 const
   cTexts: array[TAtlasLanguage, TAtlasBuildPipelineTextId] of string = (
-    ('Ein KI-Assistent baut %s in der IDE …',
-     'Build für den KI-Assistenten beendet: %s, %d Fehler',
-     'Build für den KI-Assistenten abgelehnt: %s (%s)',
-     'Release-Build prüfen',
+    ('Release-Build prüfen',
      'Release-Build prüfen: Kein Projekt geöffnet.',
      'Release-Build prüfen: %s hat keine Release-Konfiguration („Release“ oder build.releaseConfigs).',
      'Release-Wächter: Die Optionen von %s sind in der IDE nicht lesbar.',
@@ -113,14 +107,8 @@ const
      'Das Projekt %s ist in der IDE nicht offen',
      'Das Projekt kennt die Konfiguration %s nicht',
      'Die Plattform %s ist im Projekt nicht aktiviert',
-     'Build in der IDE fehlgeschlagen: %s',
-     'Auftrag nicht lesbar',
-     'Auftrag ohne Projekt',
-     'Unbekannte Art "%s"; erlaubt sind make, build und check'),
-    ('An AI assistant is building %s in the IDE …',
-     'Build for the AI assistant finished: %s, %d errors',
-     'Build for the AI assistant refused: %s (%s)',
-     'Check release build',
+     'Build in der IDE fehlgeschlagen: %s'),
+    ('Check release build',
      'Check release build: No project is open.',
      'Check release build: %s has no release configuration (“Release” or build.releaseConfigs).',
      'Release guard: The options of %s cannot be read in the IDE.',
@@ -186,10 +174,7 @@ const
      'The project %s is not open in the IDE',
      'The project has no configuration %s',
      'The platform %s is not enabled in the project',
-     'Build in the IDE failed: %s',
-     'Request not readable',
-     'Request without project',
-     'Unknown mode "%s"; allowed are make, build and check'));
+     'Build in the IDE failed: %s'));
 
 { TAtlasBuildPipelineStrings }
 

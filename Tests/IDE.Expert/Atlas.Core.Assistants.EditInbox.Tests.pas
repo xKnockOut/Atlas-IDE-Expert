@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Files.EditInbox.Tests;
+﻿unit Atlas.Core.Assistants.EditInbox.Tests;
 
 // Tests für den Eingang schreibender MCP-Werkzeuge im Plugin (#397).
 
@@ -9,6 +9,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Assistants')]
   TAtlasEditInboxTests = class
   private
     FFolder: string;
@@ -34,7 +35,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.JSON,
-  Atlas.Core.Files.EditInbox;
+  Atlas.Core.Assistants.EditInbox;
 
 procedure TAtlasEditInboxTests.Setup;
 begin

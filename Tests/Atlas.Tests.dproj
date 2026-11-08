@@ -1168,8 +1168,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Forms\Atlas.Core.Forms.Text.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Forms\Atlas.Core.Forms.Changes.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Forms.Tests.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.EditInbox.pas"/>
-        <DCCReference Include="IDE.Expert\Atlas.Core.Files.EditInbox.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.EditInbox.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.EditInbox.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Registry.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.Format.pas"/>
@@ -1480,6 +1480,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Worker.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Adapters.ProcessRunner.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Vcs.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.Requests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Contracts\Atlas.IDE.Contracts.BuildRequests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Contracts\Atlas.IDE.Contracts.VersionControl.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.IDE.Contracts.VersionControl.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Vcs.TestSupport.pas"/>
@@ -1639,8 +1641,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.CheckOnSave.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.Target.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.Target.Tests.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.BuildPipeline\Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.Inbox.pas"/>
-        <DCCReference Include="IDE.Expert\Atlas.Core.BuildPipeline.Inbox.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.BuildInbox.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.BuildInbox.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.BuildPipeline\Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.ReleaseGuard.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.BuildPipeline.ReleaseGuard.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.BuildPipeline\Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.Gate.pas"/>

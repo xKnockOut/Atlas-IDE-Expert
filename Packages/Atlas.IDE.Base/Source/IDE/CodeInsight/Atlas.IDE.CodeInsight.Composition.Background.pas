@@ -28,9 +28,6 @@ procedure StartDirtyExport;
 procedure StopDirtyExport;
 function DirtyExportStarted: Boolean;
 /// <summary>Schreibende MCP-Werkzeuge ändern offene Dateien über das Plugin (#397).</summary>
-procedure StartEditInbox;
-procedure StopEditInbox;
-function EditInboxStarted: Boolean;
 
 implementation
 
@@ -42,7 +39,6 @@ uses
   Atlas.IDE.Diagnostics.Watchdog,
   Atlas.IDE.Files.Reloader,
   Atlas.IDE.Files.DirtyExport,
-  Atlas.IDE.Files.EditInbox,
   Atlas.IDE.Forms.Designer,
   Atlas.IDE.Editor.UnitRename,
   Atlas.IDE.Settings.RuleChecksNotice,
@@ -62,7 +58,6 @@ var
   UnitRename: TAtlasIdeUnitRename;
   RuleChecksNotice: TAtlasIdeRuleChecksNotice;
   DirtyExport: TAtlasDirtyExport;
-  EditInbox: TAtlasIdeEditInbox;
 
 /// <summary>Hänger (#501) ins Protokoll und ab cHangHintMs als Zeile ins Meldungsfenster, nie als Dialog und ohne
 /// das Meldungsfenster nach vorn zu holen.</summary>
@@ -223,21 +218,6 @@ end;
 function DirtyExportStarted: Boolean;
 begin
   Result := DirtyExport <> nil;
-end;
-
-procedure StartEditInbox;
-begin
-  EditInbox := TAtlasIdeEditInbox.Create(GuardWarning);
-end;
-
-procedure StopEditInbox;
-begin
-  FreeAndNil(EditInbox);
-end;
-
-function EditInboxStarted: Boolean;
-begin
-  Result := EditInbox <> nil;
 end;
 
 end.

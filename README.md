@@ -188,6 +188,7 @@ All are design-time packages, built for Win32 (classic IDE) and Win64 (64-bit ID
 | `Atlas.IDE.Analysis` | Architecture, hotspots, unit relations, path between symbols, code lens with code metrics | `analysis.enabled` |
 | `Atlas.IDE.Designer` | Designer bar | `designer.enabled` |
 | `Atlas.IDE.Vcs` | Version control: Git and SVN, branch when starting an issue, working copies, project state, line history | `vcs.enabled` |
+| `Atlas.IDE.Assistants` | AI assistants: builds through `build_project` and changes to open files by MCP clients | `assistants.enabled` |
 | `Atlas.IDE.Tracker` | Issue tracker: issue ids in code, line history, board, "Attach to issue", tiles "My issues" and sprint | `issues.enabled` |
 | `Atlas.IDE.Welcome` | Welcome page and "Atlas Start" | `welcomePage.enabled` |
 

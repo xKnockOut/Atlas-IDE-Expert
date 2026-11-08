@@ -293,6 +293,8 @@ type
     property CheckOnSaveDelayMs: Integer read FBuild.CheckOnSaveDelayMs write FBuild.CheckOnSaveDelayMs;
     property CheckOnSaveMaxMs: Integer read FBuild.CheckOnSaveMaxMs write FBuild.CheckOnSaveMaxMs;
     property McpBuild: Boolean read FBuild.McpBuild write FBuild.McpBuild;
+    property AssistantsEnabled: Boolean read FBuild.AssistantsEnabled write FBuild.AssistantsEnabled;
+    property AssistantsEdit: Boolean read FBuild.AssistantsEdit write FBuild.AssistantsEdit;
     property BuildOnOpen: Boolean read FBuild.BuildOnOpen write FBuild.BuildOnOpen;
     property BuildOnOpenKind: string read FBuild.BuildOnOpenKind write FBuild.BuildOnOpenKind;
     property BuildOnOpenScope: string read FBuild.BuildOnOpenScope write FBuild.BuildOnOpenScope;

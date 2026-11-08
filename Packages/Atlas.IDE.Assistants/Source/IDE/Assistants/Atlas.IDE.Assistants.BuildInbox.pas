@@ -1,9 +1,10 @@
-﻿unit Atlas.IDE.BuildPipeline.Inbox;
+﻿unit Atlas.IDE.Assistants.BuildInbox;
 
 // Eingang für Builds von KI-Assistenten (#261, Protokoll in
-// Atlas.Core.BuildPipeline.Inbox): Alle 250 ms übernimmt das Plugin einen wartenden
-// Auftrag des MCP-Werkzeugs build_project, baut über den Build-Läufer
-// (Atlas.IDE.BuildPipeline.Runner) und antwortet mit Ergebnis und Compilermeldungen.
+// Atlas.Core.Assistants.BuildInbox): Alle 250 ms übernimmt das Plugin einen wartenden
+// Auftrag des MCP-Werkzeugs build_project, baut über den Vertrag IAtlasBuildRequests
+// des Moduls Build-Pipeline (#1888) und antwortet mit Ergebnis und Compilermeldungen.
+// Fehlt das Modul, lehnt der Eingang mit Grund ab.
 // Immer nur ein Auftrag zugleich; die übrigen warten, bis der Läufer frei ist
 // (der MCP-Server zieht sie nach seiner Frist zurück). Abschaltbar über die
 // Einstellung „Builds für KI-Assistenten“ (McpBuild); dann läuft der Eingang
@@ -14,7 +15,8 @@ interface
 uses
   System.SysUtils,
   Vcl.ExtCtrls,
-  Atlas.IDE.BuildPipeline.Runner;
+  Atlas.Core.Build.Requests,
+  Atlas.IDE.Contracts.BuildRequests;
 
 type
   TAtlasBuildInboxProc = reference to procedure(const AMessage: string);
@@ -23,15 +25,15 @@ type
   private
     FFolder: string;
     FTimer: TTimer;
-    FRunner: TAtlasIdeBuildRunner;
+    FRequests: TFunc<IAtlasBuildRequests>;
     FOnMessage: TAtlasBuildInboxProc;
     procedure Tick(Sender: TObject);
     procedure Process(const ARequestFile: string);
     procedure Clean;
   public
-    /// <summary>ARunner gehört dem Aufrufer und muss länger leben. AOnMessage: Zeile für die Meldungsansicht.
-    /// </summary>
-    constructor Create(ARunner: TAtlasIdeBuildRunner; const AOnMessage: TAtlasBuildInboxProc);
+    /// <summary>ARequests liefert die Builds des Moduls Build-Pipeline (nil ohne Modul). AOnMessage: Zeile für die
+    /// Meldungsansicht.</summary>
+    constructor Create(const ARequests: TFunc<IAtlasBuildRequests>; const AOnMessage: TAtlasBuildInboxProc);
     destructor Destroy; override;
     property Folder: string read FFolder;
   end;
@@ -43,13 +45,14 @@ uses
   System.IOUtils,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Build.Messages,
-  Atlas.Core.BuildPipeline.Inbox,
-  Atlas.UI.BuildPipeline.Strings;
+  Atlas.Core.Assistants.BuildInbox,
+  Atlas.UI.Assistants.Strings;
 
-constructor TAtlasIdeBuildInbox.Create(ARunner: TAtlasIdeBuildRunner; const AOnMessage: TAtlasBuildInboxProc);
+constructor TAtlasIdeBuildInbox.Create(const ARequests: TFunc<IAtlasBuildRequests>;
+  const AOnMessage: TAtlasBuildInboxProc);
 begin
   inherited Create;
-  FRunner := ARunner;
+  FRequests := ARequests;
   FOnMessage := AOnMessage;
   FFolder := TAtlasBuildInbox.Folder(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     GetCurrentProcessId);
@@ -84,8 +87,10 @@ end;
 procedure TAtlasIdeBuildInbox.Tick(Sender: TObject);
 var
   mPending: TArray<string>;
+  mRequests: IAtlasBuildRequests;
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.Build) or FRunner.Busy then
+  mRequests := FRequests();
+  if TAtlasGuard.Disabled(TAtlasFeature.Build) or ((mRequests <> nil) and mRequests.Busy) then
   begin
     Exit;
   end;
@@ -105,9 +110,9 @@ end;
 function InboxTexts: TAtlasBuildInboxTexts;
 begin
   Result := Default(TAtlasBuildInboxTexts);
-  Result.Unreadable := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRequestUnreadable);
-  Result.NoProject := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRequestNoProject);
-  Result.UnknownMode := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRequestUnknownMode);
+  Result.Unreadable := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.RequestUnreadable);
+  Result.NoProject := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.RequestNoProject);
+  Result.UnknownMode := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.RequestUnknownMode);
 end;
 
 function ErrorCount(const AMessages: TArray<TAtlasCompilerMessage>): Integer;
@@ -129,20 +134,27 @@ var
   mRequest: TAtlasBuildRequest;
   mReason, mFolder: string;
   mOnMessage: TAtlasBuildInboxProc;
+  mRequests: IAtlasBuildRequests;
+  mStarted: Boolean;
 begin
   if not TAtlasBuildInbox.Take(ARequestFile, InboxTexts, mRequest, mReason) then
   begin
     Exit;
   end;
+  mRequests := FRequests();
   mFolder := FFolder;
   mOnMessage := FOnMessage;
   if Assigned(mOnMessage) then
   begin
-    mOnMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpBuildStarted,
+    mOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.BuildStarted,
       [ExtractFileName(mRequest.Project)]));
   end;
   // Die Antwort kommt nach dem Build (Meldungen des Lesers, #528); der Rückruf hält nur Werte, nicht Self.
-  if not FRunner.Start(mRequest, TAtlasBuildInbox.cRequestedBy,
+  mStarted := False;
+  mReason := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.NoBuildPipeline);
+  if mRequests <> nil then
+  begin
+    mStarted := mRequests.Start(mRequest, TAtlasBuildInbox.cRequestedBy,
     procedure(const AReport: TAtlasBuildReport; const AError: string)
     begin
       try
@@ -156,7 +168,7 @@ begin
         end;
         if Assigned(mOnMessage) and (AError = '') then
         begin
-          mOnMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpBuildFinished,
+          mOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.BuildFinished,
             [ExtractFileName(mRequest.Project),
             ErrorCount(AReport.Messages)]));
         end;
@@ -164,12 +176,14 @@ begin
         on E: Exception do
           TAtlasGuard.Report(TAtlasFeature.Build, E);
       end;
-    end, mReason) then
+    end, mReason);
+  end;
+  if not mStarted then
   begin
     TAtlasBuildInbox.Answer(FFolder, mRequest.Id, TAtlasBuildInbox.RefusalText(mReason));
     if Assigned(mOnMessage) then
     begin
-      mOnMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpBuildRefused,
+      mOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.BuildRefused,
         [ExtractFileName(mRequest.Project), mReason]));
     end;
   end;

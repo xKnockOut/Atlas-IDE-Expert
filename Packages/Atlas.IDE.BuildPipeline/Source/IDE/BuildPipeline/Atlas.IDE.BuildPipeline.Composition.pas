@@ -1,20 +1,20 @@
 ﻿unit Atlas.IDE.BuildPipeline.Composition;
 
 // Modul Build-Pipeline (#1455, ADR 0017):
-// einzige Unit, die den Läufer der Builds auf Auftrag (#261), den
-// MCP-Eingang build_project, die Prüfung vor dem Kompilieren (#529), den
+// einzige Unit, die den Läufer der Builds auf Auftrag (#261), die Prüfung vor dem Kompilieren (#529), den
 // Release-Build-Wächter (#533) und die Bewertung mit Zusammenfassung (#530)
 // erzeugt. Sie meldet in ihrer Initialisierung das Modul
 // „atlas.buildpipeline“ (Modulschalter buildPipeline) bei der Registry von
 // Base an und stellt über dessen Scope bereit:
 // - die Teile der Feature-Tabelle (BuildPipeline: Läufer, Wächter und
-//   Prüfung an den Compile-Ereignissen; McpBuild: Eingang für KI-Assistenten (MCP)),
+//   Prüfung an den Compile-Ereignissen),
 // - den Befehl „Release-Build prüfen“ (Palette),
 // - für Base die Hörer der gelesenen Compilermeldungen und die Bewertung
 //   eines Builds des Benutzers (Atlas.Core.Build.Pipeline); die Folgen gehen
 //   über TAtlasBuildPipeline.Announce an jeden IAtlasBuildVerdictListener,
 // - für andere Module und die Willkommensseite die Builds auf Auftrag
-//   (IAtlasBuildJobs, Atlas.IDE.Contracts.BuildPipeline).
+//   (IAtlasBuildJobs, Atlas.IDE.Contracts.BuildPipeline), für das Modul KI-Assistenten
+//   dieselben Builds samt Compilermeldungen (IAtlasBuildRequests, #1888).
 // Compile-Ereignisse und Server erreicht das Modul nur über TAtlasIdeHost;
 // seine Teilnehmer meldet es beim Stoppen ab, Antworten des Servers kommen
 // nach dem Abmelden nicht mehr an (Regel 3). Abmelden in der Finalisierung,
@@ -29,11 +29,13 @@ uses
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
   Atlas.Core.Build.Pipeline,
-  Atlas.IDE.Contracts.BuildPipeline;
+  Atlas.Core.Build.Requests,
+  Atlas.IDE.Contracts.BuildPipeline,
+  Atlas.IDE.Contracts.BuildRequests;
 
 type
   TAtlasBuildPipelineModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasBuildJobs,
-    IAtlasCompilerMessagesListener, IAtlasBuildEvaluator)
+    IAtlasBuildRequests, IAtlasCompilerMessagesListener, IAtlasBuildEvaluator)
   public const
     cModuleId = 'atlas.buildpipeline';
     cSwitch = 'buildPipeline';
@@ -49,6 +51,10 @@ type
     /// <summary>IAtlasBuildJobs.Start (Name wie IAtlasModule.Start, daher umgeleitet).</summary>
     function StartJob(const AJob: TAtlasBuildJob; const ADone: TAtlasBuildJobDone; out AReason: string): Boolean;
     function IAtlasBuildJobs.Start = StartJob;
+    /// <summary>IAtlasBuildRequests.Start: Build samt Meldungen für den Eingang der KI-Assistenten (#1888).</summary>
+    function StartRequest(const ARequest: TAtlasBuildRequest; const ARequestedBy: string;
+      const AOnDone: TAtlasBuildDoneProc; out AReason: string): Boolean;
+    function IAtlasBuildRequests.Start = StartRequest;
     function Busy: Boolean;
     procedure MessagesRead(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject);
     function Evaluate(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
@@ -72,14 +78,12 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Build.Verdict,
-  Atlas.Core.BuildPipeline.Inbox,
   Atlas.Core.BuildPipeline.Gate,
   Atlas.Core.BuildPipeline.ReleaseGuard,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.BuildPipeline.Runner,
-  Atlas.IDE.BuildPipeline.Inbox,
   Atlas.IDE.BuildPipeline.Gate,
   Atlas.IDE.BuildPipeline.ReleaseGuard,
   Atlas.IDE.BuildPipeline.Summary,
@@ -90,8 +94,6 @@ var
   GScope: IAtlasModuleScope;
   /// <summary>Läufer der Builds auf Auftrag (#261); lebt mit dem Teil BuildPipeline.</summary>
   GRunner: TAtlasIdeBuildRunner;
-  /// <summary>Eingang des MCP-Werkzeugs build_project (#261); lebt mit dem Teil McpBuild.</summary>
-  GInbox: TAtlasIdeBuildInbox;
   /// <summary>Teilnehmer an den Compile-Ereignissen (#533, #529); beim Stoppen abgemeldet.</summary>
   GReleaseGuard: TAtlasCompileParticipant;
   GGate: TAtlasCompileParticipant;
@@ -123,11 +125,6 @@ begin
 end;
 
 { Teil BuildPipeline }
-
-procedure StopMcpBuild;
-begin
-  FreeAndNil(GInbox);
-end;
 
 procedure StartPipeline;
 var
@@ -165,7 +162,6 @@ var
   mEvents: TAtlasCompileEvents;
 begin
   // Der Eingang hält den Läufer: zuerst gehen.
-  StopMcpBuild;
   FreeAndNil(GRunner);
   mEvents := TAtlasIdeHost.CompileEvents;
   if mEvents <> nil then
@@ -181,22 +177,6 @@ end;
 function PipelineStarted: Boolean;
 begin
   Result := GRunner <> nil;
-end;
-
-{ Teil McpBuild }
-
-procedure StartMcpBuild;
-begin
-  GInbox := TAtlasIdeBuildInbox.Create(GRunner,
-    procedure(const AText: string)
-    begin
-      TAtlasIdeHost.Warning(AText);
-    end);
-end;
-
-function McpBuildStarted: Boolean;
-begin
-  Result := GInbox <> nil;
 end;
 
 { Bewertung (#530) }
@@ -374,6 +354,18 @@ begin
   Result := GRunner.Start(mRequest, AJob.RequestedBy, JobDone(ADone), AReason);
 end;
 
+function TAtlasBuildPipelineModule.StartRequest(const ARequest: TAtlasBuildRequest; const ARequestedBy: string;
+  const AOnDone: TAtlasBuildDoneProc; out AReason: string): Boolean;
+begin
+  AReason := '';
+  if GRunner = nil then
+  begin
+    AReason := TAtlasStrings.Text(TAtlasTextId.TestsNoBuildRunner);
+    Exit(False);
+  end;
+  Result := GRunner.Start(ARequest, ARequestedBy, AOnDone, AReason);
+end;
+
 function TAtlasBuildPipelineModule.Busy: Boolean;
 begin
   Result := (GRunner <> nil) and GRunner.Busy;
@@ -427,13 +419,7 @@ begin
       function(ALevel: TAtlasSafeLevel): Boolean
       begin
         Result := TAtlasIdeHost.CompileEvents <> nil;
-      end, PipelineStarted, StartPipeline, StopPipeline),
-    // Builds für KI-Assistenten (#261): nur im normalen Start, mit dem Läufer und solange McpBuild an ist.
-    TAtlasFeaturePart.When('McpBuild',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.McpBuild and (GRunner <> nil);
-      end, McpBuildStarted, StartMcpBuild, StopMcpBuild)];
+      end, PipelineStarted, StartPipeline, StopPipeline)];
 end;
 
 class function TAtlasBuildPipelineModule.RegisterModule: Boolean;
@@ -469,6 +455,7 @@ begin
   GScope.Provide(IAtlasBuildEvaluator, mRef);
   // Vertrag zwischen Modulen: Builds auf Auftrag für Tests, Build-Werkzeuge und Willkommensseite.
   GScope.Provide(IAtlasBuildJobs, mRef);
+  GScope.Provide(IAtlasBuildRequests, mRef);
   ProvideSettingsSections;
   Result := True;
 end;

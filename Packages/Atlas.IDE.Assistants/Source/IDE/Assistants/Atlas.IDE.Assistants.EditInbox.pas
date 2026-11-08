@@ -1,7 +1,7 @@
-﻿unit Atlas.IDE.Files.EditInbox;
+﻿unit Atlas.IDE.Assistants.EditInbox;
 
 // Eingang für schreibende MCP-Werkzeuge (#397, Protokoll in
-// Atlas.Core.Files.EditInbox): Alle 100 ms übernimmt das Plugin wartende
+// Atlas.Core.Assistants.EditInbox): Alle 100 ms übernimmt das Plugin wartende
 // Aufträge, ändert den Puffer der offenen Datei als einen Rückgängig-Schritt
 // (nur der geänderte Bereich, TLspTextChanges) und speichert sie, wenn sie
 // vorher ungespeichert unverändert war. So erscheint die Änderung sofort im
@@ -42,7 +42,7 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
-  Atlas.Core.Files.EditInbox,
+  Atlas.Core.Assistants.EditInbox,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.IDE.Foundation.EditorBuffer,
