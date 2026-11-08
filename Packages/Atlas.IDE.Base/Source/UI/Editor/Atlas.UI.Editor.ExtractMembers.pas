@@ -82,6 +82,7 @@ type
 implementation
 
 uses
+  Vcl.Themes,
   Vcl.Graphics,
   Atlas.UI.Strings;
 
@@ -682,7 +683,12 @@ procedure TAtlasExtractMembersDialog.ListCustomDraw(Sender: TCustomListView; Ite
 begin
   if (Item <> nil) and (Item.Index < FModel.Count) and not FModel[Item.Index].Enabled then
   begin
-    Sender.Canvas.Font.Color := clGrayText;
+    // Hintergrund in der Stilfarbe, sonst zeichnet die Zeile auf weißem clWindow (dunkles Thema).
+    if not (cdsSelected in State) then
+    begin
+      Sender.Canvas.Brush.Color := StyleServices(Sender).GetSystemColor(clWindow);
+    end;
+    Sender.Canvas.Font.Color := StyleServices(Sender).GetSystemColor(clGrayText);
   end;
 end;
 

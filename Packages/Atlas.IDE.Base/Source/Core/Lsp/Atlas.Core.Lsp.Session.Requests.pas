@@ -28,6 +28,10 @@ type
   /// <summary>Anfragen der LSP-Sitzung zu Hover, Orten, Symbolen, Code-Aktionen, Formatieren, Vervollständigung
   /// und Umbenennen; der Aufrufer gleicht die Puffer vorher ab (Sync). Vorfahr von TLspSession.</summary>
   TLspSessionRequests = class(TLspSessionBase)
+  public const
+    /// <summary>Zeitlimit für Anfragen, auf die der Hauptthread wartet (Hover der IDE, Sprung im Tooltip): Ein
+    /// beschäftigter Server soll die IDE nicht sekundenlang anhalten.</summary>
+    cMainThreadTimeoutMs = 1000;
   public
     /// <summary>Benachrichtigung ohne Antwort, z. B. atlas/compileStarted (#527); übernimmt AParams.</summary>
     procedure Notify(const AMethod: string; AParams: TJSONObject);
@@ -36,9 +40,12 @@ type
     /// <summary>workspace/didChangeWatchedFiles für Änderungen außerhalb der IDE (#395).
     /// Geänderte Dateien, die gerade abgeglichen sind, entfallen: Für sie gilt der Editortext.</summary>
     procedure FilesChanged(const AChanges: TArray<TAtlasFileChange>);
-    function Hover(const AFileName, AText: string; ALine, ACharacter: Integer): string;
+    /// <summary>ATimeoutMs 0 = Zeitlimit der Sitzung. Aufrufe im Hauptthread geben ein kurzes Zeitlimit mit: Die IDE
+    /// steht, bis die Antwort kommt.</summary>
+    function Hover(const AFileName, AText: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal = 0): string;
     /// <summary>Hover an einem Fundort ohne Abgleich: Der Server liest nicht geöffnete Dateien selbst (#588).</summary>
-    function HoverDataAt(const AFileName: string; ALine, ACharacter: Integer): TAtlasHoverData;
+    function HoverDataAt(const AFileName: string; ALine, ACharacter: Integer;
+      ATimeoutMs: Cardinal = 0): TAtlasHoverData;
     /// <summary>Verwendungen des Symbols am Fundort ohne die Deklaration (textDocument/references).</summary>
     function References(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
     /// <summary>Implementierungen des Symbols (textDocument/implementation, #400).</summary>
@@ -257,12 +264,14 @@ begin
   FClient.Notify('workspace/didChangeWatchedFiles', TJSONObject.Create(TJSONPair.Create('changes', mItems)));
 end;
 
-function TLspSessionRequests.Hover(const AFileName, AText: string; ALine, ACharacter: Integer): string;
+function TLspSessionRequests.Hover(const AFileName, AText: string; ALine, ACharacter: Integer;
+  ATimeoutMs: Cardinal): string;
 var
   mResponse: TJSONValue;
 begin
   Sync(AFileName, AText);
-  mResponse := FClient.Request('textDocument/hover', PositionParams(AFileName, ALine, ACharacter), FTimeoutMs);
+  mResponse := FClient.Request('textDocument/hover', PositionParams(AFileName, ALine, ACharacter),
+    TimeoutOr(ATimeoutMs));
   try
     Result := HoverText(mResponse);
   finally
@@ -270,11 +279,13 @@ begin
   end;
 end;
 
-function TLspSessionRequests.HoverDataAt(const AFileName: string; ALine, ACharacter: Integer): TAtlasHoverData;
+function TLspSessionRequests.HoverDataAt(const AFileName: string; ALine, ACharacter: Integer;
+  ATimeoutMs: Cardinal): TAtlasHoverData;
 var
   mResponse: TJSONValue;
 begin
-  mResponse := FClient.Request('textDocument/hover', PositionParams(AFileName, ALine, ACharacter), FTimeoutMs);
+  mResponse := FClient.Request('textDocument/hover', PositionParams(AFileName, ALine, ACharacter),
+    TimeoutOr(ATimeoutMs));
   try
     Result := TAtlasHoverData.FromHover(mResponse);
   finally

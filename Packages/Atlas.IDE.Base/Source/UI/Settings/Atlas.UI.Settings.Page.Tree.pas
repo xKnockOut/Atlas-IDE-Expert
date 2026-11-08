@@ -64,6 +64,7 @@ type
 implementation
 
 uses
+  Vcl.Themes,
   System.SysUtils,
   System.Classes,
   Vcl.StdCtrls,
@@ -374,7 +375,12 @@ begin
   mIndex := PageIndexOf(Node);
   if (mIndex >= 0) and (mIndex <= High(FNodePages)) and FNodePages[mIndex].Gray and not (cdsSelected in State) then
   begin
-    Sender.Canvas.Font.Color := clGrayText;
+    // Hintergrund in der Stilfarbe, sonst zeichnet die Zeile auf weißem clWindow (dunkles Thema).
+    if not (cdsSelected in State) then
+    begin
+      Sender.Canvas.Brush.Color := StyleServices(Sender).GetSystemColor(clWindow);
+    end;
+    Sender.Canvas.Font.Color := StyleServices(Sender).GetSystemColor(clGrayText);
   end;
 end;
 

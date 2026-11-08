@@ -117,6 +117,7 @@ type
 implementation
 
 uses
+  Vcl.Themes,
   Winapi.Windows,
   Atlas.UI.Strings;
 
@@ -539,6 +540,11 @@ begin
   if (Item.Index < 0) or (Item.Index > High(FShown)) then
   begin
     Exit;
+  end;
+  // Hintergrund in der Stilfarbe, sonst zeichnet die Zeile auf weißem clWindow (dunkles Thema).
+  if not (cdsSelected in State) then
+  begin
+    Sender.Canvas.Brush.Color := StyleServices(Sender).GetSystemColor(clWindow);
   end;
   // Doppelt belegte Kürzel rot (#520).
   if FItems[FShown[Item.Index]].Conflict then

@@ -170,6 +170,7 @@ type
 implementation
 
 uses
+  System.UITypes,
   Winapi.Windows,
   Vcl.Clipbrd,
   Vcl.Themes,
@@ -588,6 +589,12 @@ var
 begin
   DefaultDraw := True;
   mData := DataOf(FFrame, Node);
+  // Wer hier Schrift ändert, bekommt den Pinsel als Hintergrund der Zeile: Ohne Stilfarbe wäre er clWindow ohne
+  // Stil, also weiß im dunklen Thema. Gewählte Zeilen behalten die Farben der Auswahl.
+  if not (cdsSelected in State) then
+  begin
+    Sender.Canvas.Brush.Color := StyleServices(FFrame).GetSystemColor(clWindow);
+  end;
   if mData.Kind = TNodeKind.Section then
   begin
     Sender.Canvas.Font.Style := [fsBold];
@@ -598,7 +605,7 @@ begin
   begin
     Exit;
   end;
-  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(FFrame).GetSystemColor(clWindow))));
+  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(Sender.Canvas.Brush.Color)));
   if (mData.Kind = TNodeKind.Entry) and mData.Relation.Cycle then
   begin
     Sender.Canvas.Font.Color := TColor(mColors.Error);

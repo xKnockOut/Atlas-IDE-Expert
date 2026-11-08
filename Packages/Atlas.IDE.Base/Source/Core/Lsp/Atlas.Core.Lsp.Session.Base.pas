@@ -72,6 +72,8 @@ type
     FProgress: ILspProgress;
     FTimeoutMs: Cardinal;
     function PositionParams(const AFileName: string; ALine, ACharacter: Integer): TJSONObject;
+    /// <summary>ATimeoutMs, wenn gesetzt; sonst das Zeitlimit der Sitzung.</summary>
+    function TimeoutOr(ATimeoutMs: Cardinal): Cardinal;
     /// <summary>Wurde AFileName abgeglichen und nicht geschlossen? Threadsicher.</summary>
     function IsSynced(const AFileName: string): Boolean;
   public
@@ -394,6 +396,15 @@ begin
   mParams.AddPair('textDocument', mDocument);
   mParams.AddPair('contentChanges', mChanges);
   FClient.Notify('textDocument/didChange', mParams);
+end;
+
+function TLspSessionBase.TimeoutOr(ATimeoutMs: Cardinal): Cardinal;
+begin
+  Result := FTimeoutMs;
+  if ATimeoutMs > 0 then
+  begin
+    Result := ATimeoutMs;
+  end;
 end;
 
 function TLspSessionBase.PositionParams(const AFileName: string; ALine, ACharacter: Integer): TJSONObject;

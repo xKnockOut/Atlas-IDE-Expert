@@ -236,7 +236,8 @@ begin
   Result := (mSession <> nil) and ARef.HasLocation;
   if Result then
   begin
-    AData := mSession.HoverDataAt(ARef.FileName, ARef.Line, ARef.Character);
+    // Sprung im Tooltip: Der Hauptthread wartet, deshalb kurzes Zeitlimit.
+    AData := mSession.HoverDataAt(ARef.FileName, ARef.Line, ARef.Character, TLspSession.cMainThreadTimeoutMs);
     Result := AData.Found;
   end;
 end;

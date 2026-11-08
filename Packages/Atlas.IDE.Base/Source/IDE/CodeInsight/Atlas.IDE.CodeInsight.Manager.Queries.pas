@@ -230,7 +230,8 @@ begin
     Exit;
   end;
   mCharacter := TLspSession.ColumnToIndex(mLines[AHintLine - 1], AHintCol, TAtlasEditorBuffer.TabWidth(AView.Buffer));
-  Result := ASession.Hover(AView.Buffer.FileName, mText, AHintLine - 1, mCharacter);
+  // Die IDE wartet im Hauptthread auf den Hinweis: kurzes Zeitlimit.
+  Result := ASession.Hover(AView.Buffer.FileName, mText, AHintLine - 1, mCharacter, TLspSession.cMainThreadTimeoutMs);
   Result := WithDebugValue(Result, mLines[AHintLine - 1], AView.Buffer.FileName, mCharacter, AHintLine);
   ADiagnose(Format('Hover (%s), Zeile %d, Spalte %d (Cursor %d/%d): %d Zeichen',
     [ExtractFileExt(AView.Buffer.FileName), AHintLine, AHintCol, AView.CursorPos.Line, AView.CursorPos.Col,
