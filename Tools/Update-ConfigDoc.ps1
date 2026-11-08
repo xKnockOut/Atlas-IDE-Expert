@@ -842,6 +842,7 @@ Check-English '' $Schema
 # Jeder Wert steht genau einmal in Exchange seines Bereichs: AIo.Flag/Number/Text/TrimmedText('Name', …).
 $SaveNames = [Collections.Generic.List[string]]::new()
 $CatalogNames = @($PluginSchema['properties'].Keys)
+$AreaUnits = @{ 'vcs' = 'VersionControl' }
 foreach ($AreaFile in Get-ChildItem -Path $PluginFolder -Filter 'Atlas.Core.Settings.Plugin.*.pas') {
     $AreaUnit = $AreaFile.BaseName.Substring('Atlas.Core.Settings.Plugin.'.Length)
     $AreaText = [IO.File]::ReadAllText($AreaFile.FullName, $Utf8)
@@ -850,7 +851,10 @@ foreach ($AreaFile in Get-ChildItem -Path $PluginFolder -Filter 'Atlas.Core.Sett
         $SaveNames.Add($Name)
         if (-not ($CatalogNames -ccontains $Name) -or -not (Has $PluginSchema['properties'][$Name] 'x-area')) { continue }
         $Area = [string]$PluginSchema['properties'][$Name]['x-area']
-        if (($Area.Substring(0, 1).ToUpperInvariant() + $Area.Substring(1)) -cne $AreaUnit) {
+        # Unit-Name je Bereich: groß geschrieben, außer wo die Unit länger heißt (vcs → VersionControl).
+        $Expected = $Area.Substring(0, 1).ToUpperInvariant() + $Area.Substring(1)
+        if ($AreaUnits.ContainsKey($Area)) { $Expected = $AreaUnits[$Area] }
+        if ($Expected -cne $AreaUnit) {
             $Problems.Add("Plugin-Katalog: ""$Name"" steht in Atlas.Core.Settings.Plugin.$AreaUnit, gehört nach x-area ""$Area""")
         }
     }
