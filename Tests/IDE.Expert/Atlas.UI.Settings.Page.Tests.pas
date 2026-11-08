@@ -159,9 +159,9 @@ begin
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabCommands), AAreas[8].Text);
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), AAreas[11].Text);
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), AAreas[12].Text);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabVcs), AAreas[13].Text, 'eigener Bereich (#1285)');
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), AAreas[14].Text);
-  Assert.IsTrue(APage.Pages.PageCount > 14, 'Unterpunkte haben eigene Seiten');
+  // Versionsverwaltung bringt das Modul als Abschnitt mit (#1905).
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), AAreas[13].Text);
+  Assert.IsTrue(APage.Pages.PageCount > 13, 'Unterpunkte haben eigene Seiten');
   for mIndex := 0 to APage.Pages.PageCount - 1 do
   begin
     Assert.IsTrue(APage.Pages.Pages[mIndex].ControlCount > 0, APage.Pages.Pages[mIndex].Caption);
@@ -184,7 +184,7 @@ begin
     Page.Parent := Host;
     Page.HandleNeeded;
     Areas := TopLevelNodes(Page);
-    Assert.AreEqual(15, Integer(Length(Areas)));
+    Assert.AreEqual(14, Integer(Length(Areas)));
     AssertTreeAreas(Page, Areas);
     Assert.IsTrue(Page.Pages.ActivePage = Page.Pages.Pages[0], 'erstes Öffnen: Allgemein');
     // Unterpunkt „Minikarte“ unter „Editor“ mit ihren Einstellungen und nichts sonst.
@@ -421,12 +421,12 @@ begin
     Minimap := Page.NodeSheet('editor.minimap');
     Page.Filter.Choice := 2;
     Page.Filter.OnChange(Page.Filter);
-    Assert.IsTrue(Length(TopLevelNodes(Page)) < 15, 'Bereiche ohne experimentelle Einstellung fehlen');
+    Assert.IsTrue(Length(TopLevelNodes(Page)) < 14, 'Bereiche ohne experimentelle Einstellung fehlen');
     Assert.IsNotNull(TreeNodeOf(Page, Minimap), 'Minikarte ist experimentell');
     Page.Filter.Choice := 0;
     Page.Filter.OnChange(Page.Filter);
-    // Bereiche von Base ohne Module (#1456), darunter „Prüfregeln“ (#909) und Versionsverwaltung (#1285).
-    Assert.AreEqual(15, Integer(Length(TopLevelNodes(Page))));
+    // Bereiche von Base ohne Module (#1456), darunter „Prüfregeln“ (#909); ohne Versionsverwaltung (#1905).
+    Assert.AreEqual(14, Integer(Length(TopLevelNodes(Page))));
     // Zurücksetzen auf dem Unterpunkt: nur die Minikarte.
     EditOf(Page, 'MinimapWidth').Text := '90';
     EditOf(Page, 'StickyScrollMaxLines').Text := '7';

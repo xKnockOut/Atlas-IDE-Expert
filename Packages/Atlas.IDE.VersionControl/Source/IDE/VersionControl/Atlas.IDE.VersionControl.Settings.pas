@@ -1,28 +1,34 @@
-﻿unit Atlas.IDE.Settings.VersionControlOptions;
+﻿unit Atlas.IDE.VersionControl.Settings;
 
-// Seite Versionsverwaltung in Tools › Optionen › Atlas (#1285, #1286, #1287):
-// Fundort ohne Prozess, „Prüfen“ und „Aktuelles Projekt“ über TAtlasIdeVcs im
-// Hintergrund, Serverzugang prüfen und anmelden. Ein Ergebnis geht nur an die
-// Seite, für die es bestellt wurde: AAlive (von der Optionsseite) sagt, ob sie
-// noch offen und dieselbe ist.
+// Seite Versionsverwaltung in Tools › Optionen › Atlas › Module › Versionsverwaltung (#1285, #1286, #1287; seit
+// #1905 im Modul): TAtlasIdeVcsSettings ist der IAtlasSettingsSectionProvider, den die Composition über den Scope
+// anmeldet. Für jede Optionsseite entsteht ein TAtlasVcsSettingsSection mit den Haken dazu: Fundort ohne Prozess,
+// „Prüfen“ und „Aktuelles Projekt“ über TAtlasIdeVcs im Hintergrund, Serverzugang prüfen und anmelden. Ein
+// Ergebnis geht nur an den Abschnitt, für den es bestellt wurde, solange er offen ist (Alive).
 
 interface
 
 uses
   System.SysUtils,
-  Atlas.UI.Settings.Page;
+  Atlas.UI.Settings.Contract,
+  Atlas.UI.VersionControl.SettingsSection;
 
 type
+  TAtlasIdeVcsSettings = class(TInterfacedObject, IAtlasSettingsSectionProvider)
+  public
+    function CreateSection: IAtlasSettingsSection;
+  end;
+
   TAtlasVcsOptions = class
   private
-    class procedure ConnectTools(APage: TAtlasSettingsPage; const AAlive: TFunc<Boolean>); static;
-    class procedure ConnectProject(APage: TAtlasSettingsPage; const AAlive: TFunc<Boolean>); static;
-    class procedure ConnectServer(APage: TAtlasSettingsPage; const AAlive: TFunc<Boolean>); static;
+    class procedure ConnectTools(ASection: TAtlasVcsSettingsSection; const AAlive: TFunc<Boolean>); static;
+    class procedure ConnectProject(ASection: TAtlasVcsSettingsSection; const AAlive: TFunc<Boolean>); static;
+    class procedure ConnectServer(ASection: TAtlasVcsSettingsSection; const AAlive: TFunc<Boolean>); static;
   public
-    /// <summary>Haken der Seite Versionsverwaltung von APage setzen.</summary>
-    class procedure Connect(APage: TAtlasSettingsPage; const AAlive: TFunc<Boolean>); static;
+    /// <summary>Haken des Abschnitts setzen.</summary>
+    class procedure Connect(ASection: TAtlasVcsSettingsSection; const AAlive: TFunc<Boolean>); static;
     /// <summary>Zeile AFolder der Tabelle „Server“ im Hintergrund prüfen (#1287).</summary>
-    class procedure CheckServer(APage: TAtlasSettingsPage; const AAlive: TFunc<Boolean>;
+    class procedure CheckServer(ASection: TAtlasVcsSettingsSection; const AAlive: TFunc<Boolean>;
       const AFolder: string); static;
   end;
 
@@ -37,10 +43,7 @@ uses
   Atlas.Core.VersionControl.ServerCheck,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.TeamFile,
-  Atlas.UI.Settings.Page.VersionControlTools,
-  Atlas.UI.Settings.Page.VersionControlProject,
-  Atlas.UI.Settings.Page.VersionControlProjects;
+  Atlas.IDE.Foundation.TeamFile;
 
 /// <summary>Aktives Projekt, geöffnete .groupproj (wenn es darin ist) und die Zeile aus dem Abschnitt vcs der .atlas
 /// für die Seite Versionsverwaltung (#1286).</summary>
@@ -63,28 +66,40 @@ begin
   end;
 end;
 
+{ TAtlasIdeVcsSettings }
+
+function TAtlasIdeVcsSettings.CreateSection: IAtlasSettingsSection;
+var
+  mSection: TAtlasVcsSettingsSection;
+begin
+  mSection := TAtlasVcsSettingsSection.Create;
+  Result := mSection;
+  TAtlasVcsOptions.Connect(mSection, mSection.Alive());
+end;
+
 { TAtlasVcsOptions }
 
-class procedure TAtlasVcsOptions.Connect(APage: TAtlasSettingsPage; const AAlive: TFunc<Boolean>);
+
+class procedure TAtlasVcsOptions.Connect(ASection: TAtlasVcsSettingsSection; const AAlive: TFunc<Boolean>);
 begin
-  APage.Part<TAtlasSettingsVcsProjectsPart>.OnVcsContext :=
+  ASection.Projects.OnVcsContext :=
     function: TAtlasVcsProjectContext
     begin
       Result := VcsProjectContext;
     end;
-  ConnectTools(APage, AAlive);
-  ConnectProject(APage, AAlive);
-  ConnectServer(APage, AAlive);
+  ConnectTools(ASection, AAlive);
+  ConnectProject(ASection, AAlive);
+  ConnectServer(ASection, AAlive);
 end;
 
-class procedure TAtlasVcsOptions.ConnectTools(APage: TAtlasSettingsPage; const AAlive: TFunc<Boolean>);
+class procedure TAtlasVcsOptions.ConnectTools(ASection: TAtlasVcsSettingsSection; const AAlive: TFunc<Boolean>);
 begin
-  APage.Part<TAtlasSettingsVcsToolsPart>.OnVcsLocate :=
+  ASection.Tools.OnVcsLocate :=
     function(AKind: TAtlasVcsKind; const APath: string): TAtlasVcsToolLocation
     begin
       Result := TAtlasIdeVcs.Locate(AKind, APath);
     end;
-  APage.Part<TAtlasSettingsVcsToolsPart>.OnVcsCheck :=
+  ASection.Tools.OnVcsCheck :=
     procedure(AKind: TAtlasVcsKind; const APath: string)
     begin
       if not TAtlasIdeVcs.CheckTool(AKind, APath,
@@ -93,20 +108,20 @@ begin
           // Nur an die Seite, für die geprüft wurde, solange der Dialog offen ist.
           if AAlive() then
           begin
-            APage.Part<TAtlasSettingsVcsToolsPart>.VcsCheckDone(ACheck);
+            ASection.Tools.VcsCheckDone(ACheck);
           end;
         end) then
       begin
         // Nichts gestartet (Versionsverwaltung noch nicht bereit): Zustand ohne Prozess.
-        APage.Part<TAtlasSettingsVcsToolsPart>.VcsCheckDone(TAtlasVcsToolChecks.Missing(AKind,
+        ASection.Tools.VcsCheckDone(TAtlasVcsToolChecks.Missing(AKind,
           TAtlasIdeVcs.Locate(AKind, APath)));
       end;
     end;
 end;
 
-class procedure TAtlasVcsOptions.ConnectProject(APage: TAtlasSettingsPage; const AAlive: TFunc<Boolean>);
+class procedure TAtlasVcsOptions.ConnectProject(ASection: TAtlasVcsSettingsSection; const AAlive: TFunc<Boolean>);
 begin
-  APage.Part<TAtlasSettingsVcsProjectPart>.OnVcsProject :=
+  ASection.Project.OnVcsProject :=
     procedure
     var
       mProject, mGroup: string;
@@ -123,26 +138,26 @@ begin
         begin
           if AAlive() then
           begin
-            APage.Part<TAtlasSettingsVcsProjectPart>.VcsProjectDone(AState);
+            ASection.Project.VcsProjectDone(AState);
           end;
         end);
     end;
 end;
 
-class procedure TAtlasVcsOptions.ConnectServer(APage: TAtlasSettingsPage; const AAlive: TFunc<Boolean>);
+class procedure TAtlasVcsOptions.ConnectServer(ASection: TAtlasVcsSettingsSection; const AAlive: TFunc<Boolean>);
 begin
   // Serverzugang (#1287): Zustand nur aus der Sitzung, Prüfen und Anmelden nur auf Klick.
-  APage.Part<TAtlasSettingsVcsServersPart>.OnVcsServerState :=
+  ASection.Servers.OnVcsServerState :=
     function(AFolder: string): TAtlasVcsServerCheck
     begin
       Result := TAtlasIdeVcs.ServerState(AFolder);
     end;
-  APage.Part<TAtlasSettingsVcsServersPart>.OnVcsServerCheck :=
+  ASection.Servers.OnVcsServerCheck :=
     procedure(const AFolder: string)
     begin
-      CheckServer(APage, AAlive, AFolder);
+      CheckServer(ASection, AAlive, AFolder);
     end;
-  APage.Part<TAtlasSettingsVcsServersPart>.OnVcsServerLogin :=
+  ASection.Servers.OnVcsServerLogin :=
     function(const AFolder: string; const ACheck: TAtlasVcsServerCheck): Boolean
     var
       mFolder: string;
@@ -154,13 +169,13 @@ begin
         begin
           if AAlive() then
           begin
-            CheckServer(APage, AAlive, mFolder);
+            CheckServer(ASection, AAlive, mFolder);
           end;
         end);
     end;
 end;
 
-class procedure TAtlasVcsOptions.CheckServer(APage: TAtlasSettingsPage; const AAlive: TFunc<Boolean>;
+class procedure TAtlasVcsOptions.CheckServer(ASection: TAtlasVcsSettingsSection; const AAlive: TFunc<Boolean>;
   const AFolder: string);
 var
   mFolder: string;
@@ -172,11 +187,11 @@ begin
       // Nur an die Seite, für die geprüft wurde, solange der Dialog offen ist.
       if AAlive() then
       begin
-        APage.Part<TAtlasSettingsVcsServersPart>.VcsServerDone(mFolder, ACheck);
+        ASection.Servers.VcsServerDone(mFolder, ACheck);
       end;
     end) then
   begin
-    APage.Part<TAtlasSettingsVcsServersPart>.VcsServerDone(mFolder, TAtlasVcsServerCheck.Empty);
+    ASection.Servers.VcsServerDone(mFolder, TAtlasVcsServerCheck.Empty);
   end;
 end;
 

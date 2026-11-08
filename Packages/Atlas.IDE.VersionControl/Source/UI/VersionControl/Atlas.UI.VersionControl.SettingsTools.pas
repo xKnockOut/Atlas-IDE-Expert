@@ -1,17 +1,18 @@
-﻿unit Atlas.UI.Settings.Page.VersionControlTools;
+﻿unit Atlas.UI.VersionControl.SettingsTools;
 
-// Versionsverwaltung: Programme git und svn mit eigenem Pfad, „…“ und „Prüfen“ (#1285).
+// Versionsverwaltung: Programme git und svn mit eigenem Pfad, „…“ und „Prüfen“ (#1285, seit #1905 im Modul). Die
+// Pfade (vcs.git.path, vcs.svn.path) sind gebundene Felder der Seite.
 
 interface
 
 uses
   Vcl.StdCtrls,
-  Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.Contract,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Tools,
   Atlas.Core.VersionControl.ToolCheck,
   Atlas.UI.Strings,
-  Atlas.UI.Settings.Page.Host;
+  Atlas.UI.VersionControl.SettingsPart;
 
 type
   /// <summary>Fundort von git bzw. svn für den eingetragenen Pfad APath (#1285), nur Dateiprüfung, kein Prozess.
@@ -23,7 +24,7 @@ type
 
 type
   /// <summary>Versionsverwaltung: Programme git und svn mit eigenem Pfad, „…“ und „Prüfen“ (#1285).</summary>
-  TAtlasSettingsVcsToolsPart = class(TAtlasSettingsPagePart)
+  TAtlasSettingsVcsToolsPart = class(TAtlasVcsSettingsPart)
   private
     FVcsPaths: array[TAtlasVcsKind] of TEdit;
     FVcsBrowse: array[TAtlasVcsKind] of TButton;
@@ -31,17 +32,16 @@ type
     FVcsStates: array[TAtlasVcsKind] of TLabel;
     FOnVcsLocate: TAtlasVcsLocateEvent;
     FOnVcsCheck: TAtlasVcsCheckEvent;
-    procedure AddVcsTool(AKind: TAtlasVcsKind; ACaption: TAtlasTextId);
+    procedure AddVcsTool(AKind: TAtlasVcsKind; const AKey: string; ACaption: TAtlasTextId);
     procedure VcsPathChange(Sender: TObject);
     procedure VcsBrowseClick(Sender: TObject);
     procedure VcsCheckClick(Sender: TObject);
     /// <summary>Zustand ohne Prozess: welche Datei für AKind gälte (OnVcsLocate).</summary>
     procedure RefreshVcsTool(AKind: TAtlasVcsKind);
   public
-    procedure Build;
-    procedure Load(const ASettings: TAtlasPluginSettings); override;
-    procedure Save(var ASettings: TAtlasPluginSettings); override;
-    procedure BindMarks; override;
+    procedure Build; override;
+    procedure Load(const AValues: IAtlasSettingsValues); override;
+    procedure Attached(APage: TAtlasVcsSettingsOwner); override;
     /// <summary>Ergebnis von „Prüfen“ zeigen.</summary>
     procedure VcsCheckDone(const ACheck: TAtlasVcsToolCheck);
     /// <summary>Fundort als Text: „PATH“, „bekannter Ordner“, „eigener Pfad“.</summary>
@@ -75,18 +75,19 @@ procedure TAtlasSettingsVcsToolsPart.Build;
 begin
   // Programme: eigener Pfad mit „…“ und „Prüfen“, darunter der Zustand.
   AddTitle(TAtlasTextId.SettingsVcsToolsTitle);
-  AddVcsTool(TAtlasVcsKind.Git, TAtlasTextId.SettingsVcsGitPath);
-  AddVcsTool(TAtlasVcsKind.Svn, TAtlasTextId.SettingsVcsSvnPath);
+  AddVcsTool(TAtlasVcsKind.Git, 'vcs.git.path', TAtlasTextId.SettingsVcsGitPath);
+  AddVcsTool(TAtlasVcsKind.Svn, 'vcs.svn.path', TAtlasTextId.SettingsVcsSvnPath);
 end;
 
-procedure TAtlasSettingsVcsToolsPart.AddVcsTool(AKind: TAtlasVcsKind; ACaption: TAtlasTextId);
+procedure TAtlasSettingsVcsToolsPart.AddVcsTool(AKind: TAtlasVcsKind; const AKey: string; ACaption: TAtlasTextId);
 var
   mPanel: TWinControl;
   mEdit: TEdit;
   mButton: TButton;
   mState: TLabel;
 begin
-  mEdit := AddTextLine(TAtlasStrings.Text(ACaption));
+  mEdit := Host.AddText(AKey, TAtlasStrings.Text(ACaption)) as TEdit;
+  mEdit.Anchors := [akLeft, akTop];
   mEdit.Width := 466 - 2 * 36 - 60;
   mEdit.Tag := Ord(AKind);
   mEdit.OnChange := VcsPathChange;
@@ -255,24 +256,28 @@ begin
   Allow(FVcsCheck[ACheck.Kind], True);
 end;
 
-procedure TAtlasSettingsVcsToolsPart.BindMarks;
+procedure TAtlasSettingsVcsToolsPart.Load(const AValues: IAtlasSettingsValues);
 begin
-  FPage.Marks.Bind(FVcsPaths[TAtlasVcsKind.Git], ['VcsGitPath']);
-  FPage.Marks.Bind(FVcsPaths[TAtlasVcsKind.Svn], ['VcsSvnPath']);
-end;
-
-procedure TAtlasSettingsVcsToolsPart.Load(const ASettings: TAtlasPluginSettings);
-begin
-  FVcsPaths[TAtlasVcsKind.Git].Text := ASettings.VcsGitPath;
-  FVcsPaths[TAtlasVcsKind.Svn].Text := ASettings.VcsSvnPath;
+  // Die Pfade hat die Seite schon geladen; hier nur der Zustand dazu.
   RefreshVcsTool(TAtlasVcsKind.Git);
   RefreshVcsTool(TAtlasVcsKind.Svn);
 end;
 
-procedure TAtlasSettingsVcsToolsPart.Save(var ASettings: TAtlasPluginSettings);
+procedure TAtlasSettingsVcsToolsPart.Attached(APage: TAtlasVcsSettingsOwner);
+var
+  mKind: TAtlasVcsKind;
 begin
-  ASettings.VcsGitPath := Trim(FVcsPaths[TAtlasVcsKind.Git].Text);
-  ASettings.VcsSvnPath := Trim(FVcsPaths[TAtlasVcsKind.Svn].Text);
+  inherited Attached(APage);
+  if APage = nil then
+  begin
+    for mKind := Low(TAtlasVcsKind) to High(TAtlasVcsKind) do
+    begin
+      FVcsPaths[mKind] := nil;
+      FVcsBrowse[mKind] := nil;
+      FVcsCheck[mKind] := nil;
+      FVcsStates[mKind] := nil;
+    end;
+  end;
 end;
 
 end.

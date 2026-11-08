@@ -20,9 +20,9 @@
 // und Prüfungen baut das Modul Tracker (#1455, Atlas.IDE.Tracker.Settings).
 // ShowSetting mit Vorgabe („zuordnen …“ aus „Meine Issues“, #1261) reicht die
 // Vorgabe nach dem Laden an den Abschnitt, dem die Einstellung gehört.
-// Seite Versionsverwaltung (#1285): verbindet TAtlasVcsOptions; das Ergebnis
-// geht nur an die Seite, für die es bestellt wurde (FGeneration, Alive). Nach
-// OK liest TAtlasIdeVcs settings.json sofort neu, damit ein neuer Pfad gilt.
+// Seite Versionsverwaltung: baut und verdrahtet das Modul Versionsverwaltung
+// als Abschnitt (#1905); nach OK liest es settings.json über ApplySettings neu.
+// ShowVcsServer reicht den Ordner als Vorgabe an dessen Abschnitt.
 
 interface
 
@@ -96,17 +96,14 @@ uses
   Atlas.IDE.Settings.ServerActions,
   Atlas.IDE.Settings.SubPages,
   Atlas.IDE.Settings.ModuleNodes,
-  Atlas.IDE.Settings.VersionControlOptions,
   Atlas.IDE.Settings.PageOptions,
   Atlas.UI.Settings.Page.General,
   Atlas.UI.Settings.Page.Completion,
   Atlas.UI.Settings.Page.Index,
   Atlas.UI.Settings.Page.Sections,
-  Atlas.UI.Settings.Page.VersionControlProjects,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.StructureSwitch,
-  Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Foundation.Settings;
 
 type
   TAtlasAddInOptions = class(TInterfacedObject, INTAAddInOptions)
@@ -168,9 +165,6 @@ var
   PendingReveal: string;
   /// <summary>Vorgabe zu PendingReveal für den Abschnitt eines Moduls (#1455); '' ohne.</summary>
   PendingArgument: string;
-  /// <summary>Ordner, dessen Serverzugang die Seite Versionsverwaltung beim nächsten Anlegen prüft (#1287).
-  /// </summary>
-  PendingVcsServer: string;
 
 type
   /// <summary>Sucht im offenen Optionsdialog die Seite „Atlas“ und wählt sie (#628).</summary>
@@ -451,7 +445,6 @@ begin
   TAtlasPageOptions.ConnectFavorites(FPage, Hooks.ToolbarCommands);
   ConnectIndex;
   TAtlasPageOptions.ConnectTransfer(FPage);
-  TAtlasVcsOptions.Connect(FPage, Alive());
   // Knoten je Package (#1903): nur, was diesem Knoten gehört.
   FPage.SetTitle(FTitle);
   FPage.ApplyScope(FScope);
@@ -462,11 +455,6 @@ begin
   begin
     FPage.Part<TAtlasSettingsSectionsPart>.ShowSettingArgument(PendingReveal, PendingArgument);
   end;
-  // „Anmeldung am Server nötig – prüfen …“ der Willkommensseite (#1287): Zeile zeigen und prüfen.
-  if PendingVcsServer <> '' then
-  begin
-    FPage.Part<TAtlasSettingsVcsServersPart>.RevealVcsServer(PendingVcsServer);
-  end;
 end;
 
 procedure TAtlasAddInOptions.DialogClosed(Accepted: Boolean);
@@ -476,7 +464,6 @@ var
 begin
   PendingReveal := '';
   PendingArgument := '';
-  PendingVcsServer := '';
   try
     if Accepted and (FPage <> nil) then
     begin
@@ -488,8 +475,6 @@ begin
       mSettings.Load(mTarget);
       mSettings.Normalize;
       TAtlasIdeSettings.Update(mSettings);
-      // vcs.* (#1285) liegen in settings.json: neuer Pfad und neues Zeitlimit gelten sofort.
-      TAtlasIdeVcs.Reload;
     end;
     // Strukturhervorhebung und Help Insight der IDE erst nach dem Dialog abgleichen: Mit OK
     // schreibt die IDE danach ihre Editoroptionen aus dem Speicher zurück, auch die Schalter,
@@ -673,7 +658,6 @@ begin
   TAtlasIdeServerActions.ServerPath := nil;
   PendingReveal := '';
   PendingArgument := '';
-  PendingVcsServer := '';
   FreeAndNil(Selector);
 end;
 
@@ -831,12 +815,8 @@ end;
 
 class procedure TAtlasOptionsRegistration.ShowVcsServer(const AFolder: string);
 begin
-  PendingVcsServer := AFolder;
-  try
-    ShowSetting('VcsProjects');
-  finally
-    PendingVcsServer := '';
-  end;
+  // Der Abschnitt der Versionsverwaltung nimmt den Ordner als Vorgabe zu vcs.projects (#1905).
+  ShowSetting('VcsProjects', AFolder);
 end;
 
 end.

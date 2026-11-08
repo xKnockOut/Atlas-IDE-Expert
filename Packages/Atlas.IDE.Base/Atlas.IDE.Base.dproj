@@ -322,11 +322,6 @@
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Commands.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Robustness.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Startup.pas"/>
-        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.VersionControl.pas"/>
-        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.VersionControlTools.pas"/>
-        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.VersionControlProject.pas"/>
-        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.VersionControlProjects.pas"/>
-        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.VersionControlBranch.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Parts.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Sections.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Nodes.pas"/>
@@ -381,7 +376,6 @@
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.SubPages.pas"/>
-        <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.VersionControlOptions.pas"/>
         <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.KeyConflicts.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Keys.pas"/>
         <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.KeyMap.pas"/>

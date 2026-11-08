@@ -38,7 +38,6 @@ uses
   Atlas.UI.Settings.Page.Completion,
   Atlas.UI.Settings.Page.Colors,
   Atlas.UI.Settings.Page.Index,
-  Atlas.UI.Settings.Page.VersionControlProjects,
   Atlas.UI.Settings.Page.Sections,
   Atlas.UI.Settings.Page.TestSupport;
 
@@ -64,9 +63,6 @@ begin
     Assert.IsNotNull(mPage.Part<TAtlasSettingsFavoritesPart>);
     Assert.IsNotNull(mPage.Part<TAtlasSettingsColorsPart>);
     Assert.IsNotNull(mPage.Part<TAtlasSettingsIndexPart>);
-    Assert.IsNotNull(mPage.Part<TAtlasSettingsVcsProjectsPart>);
-    Assert.IsNotNull(mPage.Part<TAtlasSettingsVcsProjectAddPart>);
-    Assert.IsNotNull(mPage.Part<TAtlasSettingsVcsServersPart>);
     Assert.IsNotNull(mPage.Part<TAtlasSettingsSectionsPart>);
     Assert.AreSame(mPage.Part<TAtlasSettingsGeneralPart>, mPage.Part<TAtlasSettingsGeneralPart>, 'derselbe Teil');
   finally

@@ -25,7 +25,7 @@ Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Doku
 Ausnahmen:
 
 - KI-Assistenten (#1888): Die Eingänge für Aufträge von MCP-Clients (Builds über `build_project`, Änderungen an offenen Dateien) bilden das Modul `Atlas.IDE.Assistants`; gebaut wird über `IDE.Contracts.BuildRequests` des Moduls Build-Pipeline. Die Liste offener und ungespeicherter Dateien (`IDE.Files.DirtyExport`) bleibt im Kern: Sie schützt Dateien auch ohne das Modul vor dem Überschreiben durch den Server.
-- Versionsverwaltung (#1891): Git und SVN (Anbieter, Parser, Auswahl), der Dienst der IDE und die Dialoge „Branch anlegen“ und „Arbeitskopien“ bilden das Modul `Atlas.IDE.VersionControl`. Im Kern bleiben der Vertrag (`Core.Vcs.Contract`, `IDE.Contracts.VersionControl` samt Zugang `TAtlasIdeVcs` und Null-Objekt) und die reine Logik ohne Prozessaufruf unter `Core/VersionControl` (Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche, Serverzugang) und der allgemeine Prozessläufer, den auch das Modul Tests braucht, dazu vorerst die Einstellungsseiten der Versionsverwaltung und die Änderungsmarken im Editor.
+- Versionsverwaltung (#1891): Git und SVN (Anbieter, Parser, Auswahl), der Dienst der IDE und die Dialoge „Branch anlegen“ und „Arbeitskopien“ bilden das Modul `Atlas.IDE.VersionControl`. Im Kern bleiben der Vertrag (`Core.Vcs.Contract`, `IDE.Contracts.VersionControl` samt Zugang `TAtlasIdeVcs` und Null-Objekt) und die reine Logik ohne Prozessaufruf unter `Core/VersionControl` (Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche, Serverzugang) und der allgemeine Prozessläufer, den auch das Modul Tests braucht, dazu vorerst die Änderungsmarken im Editor. Die Einstellungsseiten stehen seit #1905 im Modul.
 - Der allgemeine Tooltip `Atlas.UI.Popup.TitledTip` (bis #1455 `Atlas.UI.Notes.Tip`) liegt im Kern.
 - Die Build-Pipeline ist ein eigenes Modul (#1455): Läufer der Builds auf Auftrag mit MCP-Eingang, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung nach der 0/0/0-Regel mit Zusammenfassung (Ordner `BuildPipeline`, Schalter `buildPipeline`). Im Kern bleiben die Bewertung als Typen und `IAtlasBuildVerdictListener` (`Build.Verdict`, die Benachrichtigungszentrale hört darauf), was Base der Pipeline gibt (`Build.Pipeline`), die Werte ihrer Einstellungen (`Build.PipelineSettings`, `Build.OpenBuildSettings`), die Meldungen des letzten Builds (`IDE.Build.LastMessages`), `Build.IdleGate` (Diagnose-Zeitmessung) und `IDE.Build.Target` (Probleme, Projekt-Einstellungen). Andere Module bauen über `Atlas.IDE.Contracts.BuildPipeline`. Das Modul Build umfasst, was der Schalter `buildTools` abschaltet: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter.
 - Code Lens mit Code-Metriken (#66) im Modul Analyse (#1756): Zeichnen (`IDE.Analysis.MetricsLens`) und Beschriftung (`Core.Analysis.MetricsLens`). Im Kern bleiben die Antwort von `atlas.server.metrics` (`Core.Editor.Metrics`) und ihr Abruf je Editor (`IDE.Editor.MetricsSource`), weil die Atlas-Statusleiste Zeilen und CC am Cursor daraus liest und der Metrikbericht dieselben Typen nutzt; die Lens meldet beim Abruf nur Bedarf an. `codeLens.metrics` hängt am Modulschalter `analysis.enabled`.
@@ -612,7 +612,6 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Settings.ServerActions` | `IDE/Settings/Atlas.IDE.Settings.ServerActions.pas` | AtlasServer.exe als Werkzeug starten und Index-Cache; Baseline und Unterdrückungen seit #1755 im Modul Prüfregeln |
 | `Atlas.IDE.Settings.SubPages` | `IDE/Settings/Atlas.IDE.Settings.SubPages.pas` | Unterseiten Snippets, Tastenkonflikte und Server in Tools › Optionen |
 | `Atlas.IDE.Settings.ModuleNodes` | `IDE/Settings/Atlas.IDE.Settings.ModuleNodes.pas` | Knoten „Module“, „Base“ und je Modul in Tools › Optionen (#1903) |
-| `Atlas.IDE.Settings.VersionControlOptions` | `IDE/Settings/Atlas.IDE.Settings.VersionControlOptions.pas` | Seite Versionsverwaltung in Tools › Optionen, #1285 |
 | `Atlas.IDE.Settings.Transfer` | `IDE/Settings/Atlas.IDE.Settings.Transfer.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Setup.Checklist` | `IDE/Setup/Atlas.IDE.Setup.Checklist.pas` | Ordner `IDE/Setup` |
 | `Atlas.IDE.Signature.Editor` | `IDE/Signature/Atlas.IDE.Signature.Editor.pas` | Ordner `IDE/Signature` |
@@ -708,11 +707,6 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Settings.Page.Commands` | `UI/Settings/Atlas.UI.Settings.Page.Commands.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Page.Robustness` | `UI/Settings/Atlas.UI.Settings.Page.Robustness.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Page.Startup` | `UI/Settings/Atlas.UI.Settings.Page.Startup.pas` | Ordner `UI/Settings` |
-| `Atlas.UI.Settings.Page.VersionControl` | `UI/Settings/Atlas.UI.Settings.Page.VersionControl.pas` | Ordner `UI/Settings` |
-| `Atlas.UI.Settings.Page.VersionControlTools` | `UI/Settings/Atlas.UI.Settings.Page.VersionControlTools.pas` | Ordner `UI/Settings` |
-| `Atlas.UI.Settings.Page.VersionControlProject` | `UI/Settings/Atlas.UI.Settings.Page.VersionControlProject.pas` | Ordner `UI/Settings` |
-| `Atlas.UI.Settings.Page.VersionControlProjects` | `UI/Settings/Atlas.UI.Settings.Page.VersionControlProjects.pas` | Ordner `UI/Settings` |
-| `Atlas.UI.Settings.Page.VersionControlBranch` | `UI/Settings/Atlas.UI.Settings.Page.VersionControlBranch.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Page.Parts` | `UI/Settings/Atlas.UI.Settings.Page.Parts.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Page.Sections` | `UI/Settings/Atlas.UI.Settings.Page.Sections.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Page.Nodes` | `UI/Settings/Atlas.UI.Settings.Page.Nodes.pas` | Ordner `UI/Settings` |
@@ -775,6 +769,13 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.VersionControl.Service` | `IDE/VersionControl/Atlas.IDE.VersionControl.Service.pas` | Ordner `IDE/VersionControl` |
 | `Atlas.IDE.VersionControl.WorkingCopies` | `IDE/VersionControl/Atlas.IDE.VersionControl.WorkingCopies.pas` | Ordner `IDE/VersionControl` |
 | `Atlas.UI.VersionControl.SettingsSection` | `UI/VersionControl/Atlas.UI.VersionControl.SettingsSection.pas` | Ordner `UI/VersionControl` |
+| `Atlas.UI.VersionControl.SettingsPart` | `UI/VersionControl/Atlas.UI.VersionControl.SettingsPart.pas` | Bausteine der Seite Versionsverwaltung (#1905) |
+| `Atlas.UI.VersionControl.SettingsKind` | `UI/VersionControl/Atlas.UI.VersionControl.SettingsKind.pas` | Art und Links (#1285, #1905) |
+| `Atlas.UI.VersionControl.SettingsTools` | `UI/VersionControl/Atlas.UI.VersionControl.SettingsTools.pas` | Programme git und svn (#1285, #1905) |
+| `Atlas.UI.VersionControl.SettingsProject` | `UI/VersionControl/Atlas.UI.VersionControl.SettingsProject.pas` | Zeitlimit und aktuelles Projekt (#1285, #1905) |
+| `Atlas.UI.VersionControl.SettingsProjects` | `UI/VersionControl/Atlas.UI.VersionControl.SettingsProjects.pas` | Tabellen Projekte und Server (#1286, #1287, #1905) |
+| `Atlas.UI.VersionControl.SettingsBranch` | `UI/VersionControl/Atlas.UI.VersionControl.SettingsBranch.pas` | Branches, SVN, Externals, Git (#1288–#1292, #1905) |
+| `Atlas.IDE.VersionControl.Settings` | `IDE/VersionControl/Atlas.IDE.VersionControl.Settings.pas` | Anbieter und Haken des Abschnitts Versionsverwaltung (#1905) |
 | `Atlas.UI.VersionControl.BranchDialog` | `UI/VersionControl/Atlas.UI.VersionControl.BranchDialog.pas` | Ordner `UI/VersionControl` |
 | `Atlas.UI.VersionControl.WorkingCopies` | `UI/VersionControl/Atlas.UI.VersionControl.WorkingCopies.pas` | Ordner `UI/VersionControl` |
 

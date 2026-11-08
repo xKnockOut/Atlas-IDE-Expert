@@ -34,11 +34,6 @@ uses
   Atlas.UI.Settings.Page.Startup,
   Atlas.UI.Settings.Page.TeamFile,
   Atlas.UI.Settings.Page.Transfer,
-  Atlas.UI.Settings.Page.VersionControl,
-  Atlas.UI.Settings.Page.VersionControlBranch,
-  Atlas.UI.Settings.Page.VersionControlProject,
-  Atlas.UI.Settings.Page.VersionControlProjects,
-  Atlas.UI.Settings.Page.VersionControlTools,
   Atlas.UI.Settings.Page.Sections;
 
 class procedure TAtlasSettingsPageParts.CreateParts(APage: TAtlasSettingsPageHost);
@@ -58,13 +53,7 @@ begin
   APage.AddPart(TAtlasSettingsCommandsPart.Create(APage));
   APage.AddPart(TAtlasSettingsRobustnessPart.Create(APage));
   APage.AddPart(TAtlasSettingsStartupPart.Create(APage));
-  APage.AddPart(TAtlasSettingsVcsPart.Create(APage));
-  APage.AddPart(TAtlasSettingsVcsToolsPart.Create(APage));
-  APage.AddPart(TAtlasSettingsVcsProjectPart.Create(APage));
-  APage.AddPart(TAtlasSettingsVcsProjectsPart.Create(APage));
-  APage.AddPart(TAtlasSettingsVcsProjectAddPart.Create(APage));
-  APage.AddPart(TAtlasSettingsVcsServersPart.Create(APage));
-  APage.AddPart(TAtlasSettingsVcsBranchPart.Create(APage));
+  // Seite Versionsverwaltung: Abschnitt des Moduls Versionsverwaltung (#1905).
   // Zuletzt: Die Abschnitte der Module laden und speichern nach den Einstellungen von Base.
   APage.AddPart(TAtlasSettingsSectionsPart.Create(APage));
 end;
@@ -94,13 +83,6 @@ begin
   APage.Part<TAtlasSettingsCommandsPart>.Build2;
   APage.Part<TAtlasSettingsRobustnessPart>.Build;
   APage.Part<TAtlasSettingsStartupPart>.Build;
-  APage.Part<TAtlasSettingsVcsPart>.Build;
-  APage.Part<TAtlasSettingsVcsToolsPart>.Build;
-  APage.Part<TAtlasSettingsVcsProjectPart>.Build;
-  APage.Part<TAtlasSettingsVcsProjectsPart>.Build;
-  APage.Part<TAtlasSettingsVcsServersPart>.Build;
-  APage.Part<TAtlasSettingsVcsPart>.Build2;
-  APage.Part<TAtlasSettingsVcsBranchPart>.Build;
   APage.Part<TAtlasSettingsTeamFilePart>.Build2;
 end;
 

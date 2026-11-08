@@ -1,22 +1,25 @@
-﻿unit Atlas.UI.Settings.Page.VersionControlProject;
+﻿unit Atlas.UI.VersionControl.SettingsProject;
 
-// Versionsverwaltung: aktuelles Projekt, beim ersten Zeigen des Reiters einmal im Hintergrund abgefragt (#1285).
+// Versionsverwaltung: Zeitlimit (vcs.timeoutSeconds) und aktuelles Projekt (#1285, seit #1905 im Modul). Das Projekt
+// wird erst abgefragt, wenn sein Reiter gewählt und die Zeile sichtbar ist (einmal je Öffnen; ein Zeitgeber fragt
+// CheckShown): Jeder Knoten des Optionsdialogs baut die ganze Seite, ein Prozess soll nur für die gezeigte starten.
 
 interface
 
 uses
   System.SysUtils,
   Vcl.StdCtrls,
-  Vcl.ComCtrls,
+  Vcl.ExtCtrls,
   Atlas.Core.VersionControl.Contract,
-  Atlas.UI.Settings.Page.Host;
+  Atlas.UI.VersionControl.SettingsPart;
 
 type
   /// <summary>Versionsverwaltung: aktuelles Projekt, beim ersten Zeigen des Reiters einmal im Hintergrund abgefragt
   /// (#1285).</summary>
-  TAtlasSettingsVcsProjectPart = class(TAtlasSettingsPagePart)
+  TAtlasSettingsVcsProjectPart = class(TAtlasVcsSettingsPart)
   private
     FVcsProjectInfo: TLabel;
+    FWatch: TTimer;
     /// <summary>„Aktuelles Projekt“ wurde schon abgefragt (einmal je Öffnen der Seite).</summary>
     FVcsProjectAsked: Boolean;
     FOnVcsProject: TProc;
@@ -24,9 +27,14 @@ type
     /// hinzufügen“); None ohne.</summary>
     FVcsDetectedKind: TAtlasVcsKind;
     FVcsDetectedProject: string;
+    procedure WatchTimer(Sender: TObject);
+    /// <summary>Reiter der Zeile gewählt und die Zeile samt Eltern sichtbar?</summary>
+    function InfoShown: Boolean;
   public
-    procedure Build;
-    procedure SheetShown(ASheet: TTabSheet); override;
+    procedure Build; override;
+    procedure Attached(APage: TAtlasVcsSettingsOwner); override;
+    /// <summary>Fragt einmal ab, sobald die Zeile gezeigt wird (sonst nichts); der Zeitgeber ruft es.</summary>
+    procedure CheckShown;
     /// <summary>Ergebnis der Abfrage „Aktuelles Projekt“ zeigen.</summary>
     procedure VcsProjectDone(const AState: TAtlasVcsProjectState);
     /// <summary>„Aktuelles Projekt“ jetzt abfragen (sonst beim ersten Zeigen der Seite).</summary>
@@ -45,9 +53,9 @@ implementation
 
 uses
   Vcl.Controls,
+  Vcl.ComCtrls,
   Atlas.Core.VersionControl.Tools,
-  Atlas.UI.Strings,
-  Atlas.UI.Settings.Page.VersionControl;
+  Atlas.UI.Strings;
 
 /// <summary>Woher die Art der Versionsverwaltung kommt, mit dem Hauptbranch, wenn bekannt.</summary>
 function VcsSourceText(const AState: TAtlasVcsProjectState): string;
@@ -113,10 +121,13 @@ end;
 
 procedure TAtlasSettingsVcsProjectPart.Build;
 begin
-  BindText('VcsTimeoutSeconds', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsVcsTimeout)));
-  // Aktuelles Projekt: nur Anzeige, beim ersten Zeigen der Seite einmal im Hintergrund abgefragt.
+  Host.AddNumber('vcs.timeoutSeconds', TAtlasStrings.Text(TAtlasTextId.SettingsVcsTimeout));
+  // Aktuelles Projekt: nur Anzeige, beim ersten Zeigen einmal im Hintergrund abgefragt.
   AddTitle(TAtlasTextId.SettingsVcsProjectTitle);
   FVcsProjectInfo := AddWrappedLabel(70, TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectNone));
+  FWatch := TTimer.Create(FPage);
+  FWatch.Interval := 250;
+  FWatch.OnTimer := WatchTimer;
 end;
 
 class function TAtlasSettingsVcsProjectPart.VcsProjectText(const AState: TAtlasVcsProjectState): string;
@@ -142,7 +153,7 @@ end;
 procedure TAtlasSettingsVcsProjectPart.RefreshVcsProject;
 begin
   FVcsProjectAsked := True;
-  if not Assigned(FOnVcsProject) then
+  if not Assigned(FOnVcsProject) or (FVcsProjectInfo = nil) then
   begin
     Exit;
   end;
@@ -161,22 +172,57 @@ begin
   FVcsDetectedKind := AState.WorkingCopy.Kind;
 end;
 
-procedure TAtlasSettingsVcsProjectPart.SheetShown(ASheet: TTabSheet);
+function TAtlasSettingsVcsProjectPart.InfoShown: Boolean;
 var
-  mParent: TControl;
+  mControl: TControl;
 begin
-  if (ASheet = nil) or FVcsProjectAsked or (FPage.Part<TAtlasSettingsVcsPart>.VcsProviderChoice = nil) then
+  Result := False;
+  mControl := FVcsProjectInfo;
+  while (mControl <> nil) and not (mControl is TTabSheet) do
+  begin
+    if not mControl.Visible then
+    begin
+      Exit;
+    end;
+    mControl := mControl.Parent;
+  end;
+  Result := (mControl <> nil) and (TTabSheet(mControl).PageControl <> nil) and
+    (TTabSheet(mControl).PageControl.ActivePage = mControl);
+end;
+
+procedure TAtlasSettingsVcsProjectPart.CheckShown;
+begin
+  if FVcsProjectAsked or (FVcsProjectInfo = nil) then
   begin
     Exit;
   end;
-  mParent := FPage.Part<TAtlasSettingsVcsPart>.VcsProviderChoice;
-  while (mParent <> nil) and (mParent <> ASheet) do
-  begin
-    mParent := mParent.Parent;
-  end;
-  if mParent <> nil then
+  if InfoShown then
   begin
     RefreshVcsProject;
+  end;
+end;
+
+procedure TAtlasSettingsVcsProjectPart.WatchTimer(Sender: TObject);
+begin
+  CheckShown;
+  if FVcsProjectAsked then
+  begin
+    FWatch.Enabled := False;
+  end;
+end;
+
+procedure TAtlasSettingsVcsProjectPart.Attached(APage: TAtlasVcsSettingsOwner);
+begin
+  inherited Attached(APage);
+  if APage = nil then
+  begin
+    // Der Zeitgeber gehört dem Besitzer und geht mit ihm.
+    FWatch := nil;
+    FVcsProjectInfo := nil;
+  end
+  else
+  begin
+    FVcsProjectAsked := False;
   end;
 end;
 

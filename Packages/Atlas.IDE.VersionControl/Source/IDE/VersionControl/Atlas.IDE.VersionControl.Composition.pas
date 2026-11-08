@@ -93,6 +93,13 @@ type
       const ARun: TAtlasVcsBranchRun): string;
   end;
 
+  /// <summary>Nach dem Speichern der Optionen (#1905, vorher in Base): settings.json neu lesen, damit ein neuer
+  /// Pfad und ein neues Zeitlimit sofort gelten.</summary>
+  TAtlasVcsAppliesSettings = class(TInterfacedObject, IAtlasAppliesSettings)
+  public
+    procedure ApplySettings;
+  end;
+
 implementation
 
 uses
@@ -108,7 +115,8 @@ uses
   Atlas.IDE.VersionControl.Service,
   Atlas.IDE.VersionControl.Branching,
   Atlas.IDE.VersionControl.WorkingCopies,
-  Atlas.UI.VersionControl.SettingsSection;
+  Atlas.IDE.VersionControl.Settings,
+  Atlas.UI.Settings.Contract;
 
 const
   /// <summary>Zeitlimit des Serverbefehls nach einem Branch.</summary>
@@ -356,6 +364,13 @@ begin
   Result := TAtlasIdeBranching.FailureText(AKind, ASteps, ARun);
 end;
 
+{ TAtlasVcsAppliesSettings }
+
+procedure TAtlasVcsAppliesSettings.ApplySettings;
+begin
+  TAtlasIdeVcs.Reload;
+end;
+
 { TAtlasVcsModule }
 
 function TAtlasVcsModule.Info: TAtlasModuleInfo;
@@ -421,7 +436,8 @@ begin
   // Befehle „Branch anlegen …“ und „Arbeitskopien“ (#1905, vorher in der Palette von Base).
   GScope.Provide(IAtlasCommandSource, TAtlasVcsCommands.Create as IAtlasCommandSource);
   // Modulschalter im Optionsdialog ab der Anmeldung, damit sich das Modul auch ausgeschaltet einstellen lässt.
-  TAtlasVcsSettingsSection.ProvideIn(GScope);
+  GScope.Provide(IAtlasSettingsSectionProvider, TAtlasIdeVcsSettings.Create as IAtlasSettingsSectionProvider);
+  GScope.Provide(IAtlasAppliesSettings, TAtlasVcsAppliesSettings.Create as IAtlasAppliesSettings);
   Result := True;
 end;
 

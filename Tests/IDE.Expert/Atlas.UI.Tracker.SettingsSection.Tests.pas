@@ -183,7 +183,7 @@ begin
     mPage.Parent := mHost;
     mPage.HandleNeeded;
     mAreas := TopLevelNodes(mPage);
-    mIssues := mAreas[15];
+    mIssues := mAreas[14];
     // Reiter des Moduls hinter denen von Base (#1456), beschriftet wie der Bereich im Katalog.
     Assert.AreEqual(mPage.Catalog.AreaCaption('issues', TAtlasStrings.Language = TAtlasLanguage.English), mIssues.Text);
     // Alle Tracker-Einstellungen auf dem Hauptknoten der Seite Issue-Tracker.

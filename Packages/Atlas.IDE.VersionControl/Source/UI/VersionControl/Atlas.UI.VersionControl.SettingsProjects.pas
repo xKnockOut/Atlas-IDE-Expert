@@ -1,6 +1,7 @@
-﻿unit Atlas.UI.Settings.Page.VersionControlProjects;
+﻿unit Atlas.UI.VersionControl.SettingsProjects;
 
-// Versionsverwaltung: Tabellen „Projekte“ (#1286) und „Server“ (#1287).
+// Versionsverwaltung: Tabellen „Projekte“ (#1286, vcs.projects) und „Server“ (#1287), seit #1905 im Modul. Die
+// Zeilen liest und schreibt der Teil selbst (eigene Zeilen mit dem Schlüssel vcs.projects).
 
 interface
 
@@ -11,20 +12,17 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Vcl.Menus,
-  Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.Contract,
   Atlas.Core.Projects.VersionControl,
   Atlas.Core.VersionControl.ServerCheck,
   Atlas.UI.Strings,
   Atlas.UI.Settings.ChoiceBox,
-  Atlas.UI.Settings.Page.Host;
+  Atlas.UI.VersionControl.SettingsPart;
 
 type
   /// <summary>„Hinzufügen …“ der Tabelle Projekte der Versionsverwaltung (#1286): .dproj bzw. .groupproj (AFolder
   /// False) oder Ordner wählen; False bei Abbruch.</summary>
   TAtlasProjectBrowseEvent = reference to function(AFolder: Boolean; out APath: string): Boolean;
-
-const
-  cVcsButtonGap = 6;
 
 type
   /// <summary>Tabelle „Server“ (#1287): AFolder prüfen; das Ergebnis meldet VcsServerDone.</summary>
@@ -43,7 +41,9 @@ type
 
 type
   /// <summary>Versionsverwaltung: Tabellen „Projekte“ (#1286) und „Server“ (#1287).</summary>
-  TAtlasSettingsVcsProjectsPart = class(TAtlasSettingsPagePart)
+  TAtlasSettingsVcsProjectsPart = class(TAtlasVcsSettingsPart)
+  public const
+    cProjectsKey = 'vcs.projects';
   private
     // Art und Hauptbranch je Projekt (#1286): Tabelle wie die Zuordnung auf der Seite Issue-Tracker.
     FVcsProjectList: TListView;
@@ -75,10 +75,10 @@ type
     /// <summary>Zeile für AMatch anlegen (Art AProvider) bzw. wählen.</summary>
     procedure VcsProjectAdd(const AMatch, AProvider: string);
   public
-    procedure Build;
-    procedure Load(const ASettings: TAtlasPluginSettings); override;
-    procedure Save(var ASettings: TAtlasPluginSettings); override;
-    procedure BindMarks; override;
+    procedure Build; override;
+    procedure Load(const AValues: IAtlasSettingsValues); override;
+    procedure Save(const AValues: IAtlasSettingsValues); override;
+    procedure Attached(APage: TAtlasVcsSettingsOwner); override;
     function VcsProjectRows: TArray<TAtlasVcsProjectMapping>;
     procedure WindowReady; override;
     /// <summary>Tabelle Projekte der Versionsverwaltung neu aufbauen; ohne Fenster folgt es in CreateWnd.
@@ -101,7 +101,7 @@ type
 
   /// <summary>Knöpfe „Aktuelles Projekt“ und „Hinzufügen …“ der Tabelle Projekte der Versionsverwaltung (#1286).
   /// </summary>
-  TAtlasSettingsVcsProjectAddPart = class(TAtlasSettingsPagePart)
+  TAtlasSettingsVcsProjectAddPart = class(TAtlasVcsSettingsPart)
   private
     FOnBrowseProject: TAtlasProjectBrowseEvent;
     FAddCurrent: TButton;
@@ -121,6 +121,7 @@ type
     procedure AddButtons(APanel: TWinControl);
     /// <summary>„Aktuelles Projekt“ nur mit aktivem Projekt.</summary>
     procedure AllowCurrent(AValue: Boolean);
+    procedure Attached(APage: TAtlasVcsSettingsOwner); override;
     /// <summary>„Hinzufügen …“ der Projekttabellen (#1261, #1286); nil = Datei- bzw. Ordnerauswahl von Windows.
     /// </summary>
     property OnBrowseProject: TAtlasProjectBrowseEvent read FOnBrowseProject write FOnBrowseProject;
@@ -129,7 +130,7 @@ type
     property AddMenu: TPopupMenu read FAddMenu;
   end;
 
-  TAtlasSettingsVcsServersPart = class(TAtlasSettingsPagePart)
+  TAtlasSettingsVcsServersPart = class(TAtlasVcsSettingsPart)
   private
     // Serverzugang (#1287): Zeilen aus aktuellem Projekt und Tabelle Projekte, Zustand nur aus der Sitzung.
     FVcsServerList: TListView;
@@ -158,7 +159,8 @@ type
     procedure VcsServerCheckAllClick(Sender: TObject);
     procedure VcsServerLoginClick(Sender: TObject);
   public
-    procedure Build;
+    procedure Build; override;
+    procedure Attached(APage: TAtlasVcsSettingsOwner); override;
     /// <summary>Tabelle „Server“ (#1287): Zeile je Projekt (aktuelles Projekt, Zeilen der Tabelle Projekte), je
     /// Ordner einmal; Zustand aus OnVcsServerState. Ohne Fenster folgt es in CreateWnd.</summary>
     procedure RefreshVcsServers;
@@ -193,10 +195,9 @@ uses
   Vcl.Dialogs,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.ServerAccess,
-  Atlas.UI.Settings.Page.Sheets,
   Atlas.Core.Projects.Matching,
-  Atlas.UI.Settings.Page.VersionControl,
-  Atlas.UI.Settings.Page.VersionControlProject;
+  Atlas.UI.VersionControl.SettingsKind,
+  Atlas.UI.VersionControl.SettingsProject;
 
 const
   /// <summary>Spalten, Felder und Knöpfe der Tabellen Projekte und Server der Versionsverwaltung (#1286, #1287).
@@ -273,7 +274,7 @@ begin
   FVcsProjectSelected := -1;
   FVcsContext := TAtlasVcsProjectContext.Empty;
   AddTitle(TAtlasTextId.SettingsVcsProjects);
-  mPanel := AddPanel(110);
+  mPanel := AddPanel(110, [cProjectsKey]);
   // Die Zeilen erst mit Fenster (RefreshVcsProjects, auch aus CreateWnd).
   FVcsProjectList := TListView.Create(FPage);
   FVcsProjectList.Parent := mPanel;
@@ -284,10 +285,10 @@ begin
   FVcsProjectList.HideSelection := False;
   FVcsProjectList.OnSelectItem := VcsProjectSelectItem;
   FVcsProjectList.OnCustomDrawItem := VcsProjectDrawItem;
-  TAtlasSettingsPageSheets.AddListColumn(FVcsProjectList, TAtlasTextId.SettingsIssuesProjectMatch, cVcsMatchColumn);
-  TAtlasSettingsPageSheets.AddListColumn(FVcsProjectList, TAtlasTextId.SettingsVcsProjectsKind, cVcsKindColumn);
-  TAtlasSettingsPageSheets.AddListColumn(FVcsProjectList, TAtlasTextId.SettingsVcsProjectsMainBranch, cVcsBranchColumn);
-  TAtlasSettingsPageSheets.AddListColumn(FVcsProjectList, TAtlasTextId.SettingsIssuesProjectSource, cVcsSourceColumn);
+  AddListColumn(FVcsProjectList, TAtlasTextId.SettingsIssuesProjectMatch, cVcsMatchColumn);
+  AddListColumn(FVcsProjectList, TAtlasTextId.SettingsVcsProjectsKind, cVcsKindColumn);
+  AddListColumn(FVcsProjectList, TAtlasTextId.SettingsVcsProjectsMainBranch, cVcsBranchColumn);
+  AddListColumn(FVcsProjectList, TAtlasTextId.SettingsIssuesProjectSource, cVcsSourceColumn);
   FVcsProjectMatch := TEdit.Create(FPage);
   FVcsProjectMatch.OnChange := VcsProjectMatchChange;
   mPanel := AddFieldRow(TAtlasTextId.SettingsIssuesProjectMatch, FVcsProjectMatch, cVcsWideField);
@@ -586,19 +587,14 @@ begin
   RefreshVcsProjects;
 end;
 
-procedure TAtlasSettingsVcsProjectsPart.BindMarks;
-begin
-  FPage.Marks.Bind(FVcsProjectList, ['VcsProjects']);
-end;
-
 procedure TAtlasSettingsVcsProjectsPart.WindowReady;
 begin
   RefreshVcsProjects;
 end;
 
-procedure TAtlasSettingsVcsProjectsPart.Load(const ASettings: TAtlasPluginSettings);
+procedure TAtlasSettingsVcsProjectsPart.Load(const AValues: IAtlasSettingsValues);
 begin
-  FVcsProjects := TAtlasVcsProjects.Read(ASettings.VcsProjects);
+  FVcsProjects := TAtlasVcsProjects.Read(AValues.ReadString(cProjectsKey));
   FVcsProjectSelected := -1;
   if Length(FVcsProjects) > 0 then
   begin
@@ -607,9 +603,26 @@ begin
   RefreshVcsProjects;
 end;
 
-procedure TAtlasSettingsVcsProjectsPart.Save(var ASettings: TAtlasPluginSettings);
+procedure TAtlasSettingsVcsProjectsPart.Save(const AValues: IAtlasSettingsValues);
 begin
-  ASettings.VcsProjects := VcsProjectsJson(FVcsProjects);
+  if FVcsProjectList <> nil then
+  begin
+    AValues.WriteString(cProjectsKey, VcsProjectsJson(FVcsProjects));
+  end;
+end;
+
+procedure TAtlasSettingsVcsProjectsPart.Attached(APage: TAtlasVcsSettingsOwner);
+begin
+  inherited Attached(APage);
+  if APage = nil then
+  begin
+    FVcsProjectList := nil;
+    FVcsProjectMatch := nil;
+    FVcsProjectProvider := nil;
+    FVcsProjectMainBranch := nil;
+    FVcsProjectNote := nil;
+    FVcsProjectRemove := nil;
+  end;
 end;
 
 { TAtlasSettingsVcsProjectAddPart }
@@ -643,6 +656,17 @@ end;
 procedure TAtlasSettingsVcsProjectAddPart.AllowCurrent(AValue: Boolean);
 begin
   Allow(FAddCurrent, AValue);
+end;
+
+procedure TAtlasSettingsVcsProjectAddPart.Attached(APage: TAtlasVcsSettingsOwner);
+begin
+  inherited Attached(APage);
+  if APage = nil then
+  begin
+    FAddCurrent := nil;
+    FAdd := nil;
+    FAddMenu := nil;
+  end;
 end;
 
 procedure TAtlasSettingsVcsProjectAddPart.AddCurrentClick(Sender: TObject);
@@ -741,6 +765,19 @@ begin
   AddVcsServersSection;
 end;
 
+procedure TAtlasSettingsVcsServersPart.Attached(APage: TAtlasVcsSettingsOwner);
+begin
+  inherited Attached(APage);
+  if APage = nil then
+  begin
+    FVcsServerList := nil;
+    FVcsServerCheck := nil;
+    FVcsServerCheckAll := nil;
+    FVcsServerLogin := nil;
+    FVcsServerNote := nil;
+  end;
+end;
+
 procedure TAtlasSettingsVcsServersPart.AddVcsServersSection;
 var
   mPanel: TWinControl;
@@ -757,10 +794,10 @@ begin
   FVcsServerList.RowSelect := True;
   FVcsServerList.HideSelection := False;
   FVcsServerList.OnSelectItem := VcsServerSelectItem;
-  TAtlasSettingsPageSheets.AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerProject,
+  AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerProject,
     cVcsServerProjectColumn);
-  TAtlasSettingsPageSheets.AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerServer, cVcsServerServerColumn);
-  TAtlasSettingsPageSheets.AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerState, cVcsServerStateColumn);
+  AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerServer, cVcsServerServerColumn);
+  AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerState, cVcsServerStateColumn);
   mPanel := AddPanel(32);
   FVcsServerCheck := AddRowButton(mPanel, 0, cVcsCheckWidth, TAtlasTextId.SettingsVcsServerCheck, VcsServerCheckClick);
   FVcsServerCheckAll := AddRowButton(mPanel, cVcsCheckWidth + cVcsButtonGap, cVcsCheckAllWidth,
@@ -996,7 +1033,7 @@ begin
       begin
         FVcsServerList.Items[mIndex].Selected := True;
       end;
-      FPage.SelectPage(FPage.PageOf(FVcsServerList));
+      Host.Reveal(TAtlasSettingsVcsProjectsPart.cProjectsKey);
       VcsServerStart(mIndex);
       Break;
     end;

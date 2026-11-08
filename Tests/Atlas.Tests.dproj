@@ -899,11 +899,13 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Commands.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Robustness.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Startup.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.VersionControl.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.VersionControlTools.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.VersionControlProject.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.VersionControlProjects.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.VersionControlBranch.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\UI\VersionControl\Atlas.UI.VersionControl.SettingsPart.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\UI\VersionControl\Atlas.UI.VersionControl.SettingsKind.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\UI\VersionControl\Atlas.UI.VersionControl.SettingsTools.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\UI\VersionControl\Atlas.UI.VersionControl.SettingsProject.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\UI\VersionControl\Atlas.UI.VersionControl.SettingsProjects.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\UI\VersionControl\Atlas.UI.VersionControl.SettingsBranch.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\UI\VersionControl\Atlas.UI.VersionControl.SettingsSection.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Parts.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Sections.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Nodes.pas"/>
@@ -930,7 +932,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Page.TestSupport.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Page.Build.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Page.Editor.Tests.pas"/>
-        <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Page.VersionControl.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.VersionControl.Settings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Page.Dialog.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Rules.SettingsDialog.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Page.Sections.Tests.pas"/>
