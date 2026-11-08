@@ -264,7 +264,10 @@ type
     function SectionOf(AEvents: Boolean): TMemberSection;
     procedure SectionHead(const ASection: TMemberSection);
     function MemberColumns(const ARows: TArray<Integer>; AShown: Integer): TMemberColumns;
-    procedure MemberDefault(const AMember: TAtlasHoverMember; AX: Integer);
+    /// <summary>AText, auf AMax Pixel gekürzt (mit „…“); '' ohne Platz.</summary>
+    function Clipped(const AFace: TAtlasHoverFace; const AText: string; AMax: Integer): string;
+    /// <summary>Vorgabe ab AX bis höchstens ALimit (dahinter steht „deklariert in“).</summary>
+    procedure MemberDefault(const AMember: TAtlasHoverMember; AX, ALimit: Integer);
     procedure MemberRow(const AMember: TAtlasHoverMember; const AColumns: TMemberColumns; AEvents: Boolean);
     procedure MoreLinks(const ASection: TMemberSection; AHidden: Integer);
     procedure MemberSection(AEvents: Boolean);
@@ -735,7 +738,29 @@ begin
   Inc(Result.DefaultX, mGap);
 end;
 
-procedure TPublishedPainter.MemberDefault(const AMember: TAtlasHoverMember; AX: Integer);
+function TPublishedPainter.Clipped(const AFace: TAtlasHoverFace; const AText: string; AMax: Integer): string;
+var
+  mLength: Integer;
+begin
+  Result := AText;
+  if Width(AFace, Result) <= AMax then
+  begin
+    Exit;
+  end;
+  mLength := Length(AText);
+  while mLength > 0 do
+  begin
+    Dec(mLength);
+    Result := Copy(AText, 1, mLength) + '…';
+    if Width(AFace, Result) <= AMax then
+    begin
+      Exit;
+    end;
+  end;
+  Result := '';
+end;
+
+procedure TPublishedPainter.MemberDefault(const AMember: TAtlasHoverMember; AX, ALimit: Integer);
 var
   mMonoFace: TAtlasHoverFace;
   mTag: TRect;
@@ -744,7 +769,8 @@ begin
   FX := AX;
   if AMember.DefaultKind in [hdExplicit, hdImplicit] then
   begin
-    AddText(FX, FY, AMember.DefaultValue, mMonoFace, FColors.Text);
+    // Lange Mengen ([akLeft, akTop] …) nicht in die Spalte „deklariert in“ laufen lassen.
+    AddText(FX, FY, Clipped(mMonoFace, AMember.DefaultValue, ALimit - FX), mMonoFace, FColors.Text);
     Inc(FX, Width(mMonoFace, AMember.DefaultValue + ' '));
   end;
   if AMember.DefaultKind = hdImplicit then
@@ -758,9 +784,9 @@ begin
     AddText(FX, FY, 'nodefault', mMonoFace, FColors.Muted);
     Inc(FX, Width(mMonoFace, 'nodefault '));
   end;
-  if AMember.Stored <> '' then
+  if (AMember.Stored <> '') and (FX < ALimit) then
   begin
-    AddText(FX, FY, 'stored ' + AMember.Stored, mMonoFace, FColors.Muted);
+    AddText(FX, FY, Clipped(mMonoFace, 'stored ' + AMember.Stored, ALimit - FX), mMonoFace, FColors.Muted);
   end;
 end;
 
@@ -776,7 +802,7 @@ begin
   AddText(AColumns.TypeX, FY, AMember.TypeName, mMonoFace, FColors.Accent);
   if not AEvents then
   begin
-    MemberDefault(AMember, AColumns.DefaultX);
+    MemberDefault(AMember, AColumns.DefaultX, FRight - Width(mSmallMonoFace, AMember.DeclaringClass) - Scale(8));
   end
   // Am Methodenzeiger-Typ erkannt, nicht am Namen: fremde Typnamen kenntlich machen.
   else if not EndsText('Event', AMember.TypeName) then

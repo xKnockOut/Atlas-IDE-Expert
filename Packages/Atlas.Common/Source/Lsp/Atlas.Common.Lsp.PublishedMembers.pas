@@ -23,6 +23,12 @@
 // Für den Atlas-Tooltip liefert ToJson dieselben Mitglieder strukturiert
 // (atlas.published): je Mitglied Name, Typ, Vorgabe samt Art, stored,
 // deklarierende Klasse und Ereignis-Kennung, dazu die Standard-Property.
+//
+// Collect und DefaultProperty lesen die Deklarationen aller Vorfahren (bei
+// VCL-Klassen große Units wie Vcl.Controls) und kosten so rund eine Sekunde.
+// Beide merken sich ihr Ergebnis je Index und Klasse samt Prüfsummen der
+// gelesenen Dateien; solange deren Texte gleich sind, kommt der zweite Hover
+// ohne Parsen.
 
 interface
 
@@ -84,6 +90,14 @@ type
       const AComponentClass, AEventName: string; out ATail: string): Boolean; static;
     /// <summary>"default 5", "default False (implizit)", "nodefault", dazu "stored …"; '' ohne Angabe.</summary>
     class function DefaultText(const AMember: TPublishedMember): string; static;
+    /// <summary>Zwischenspeicher je Index und Klasse ein- bzw. ausschalten (aus = leeren). Der Server schaltet ihn
+    /// beim Start ein; Tests lassen ihn aus, damit kein Ergebnis über einen Test hinaus im Speicher bleibt.</summary>
+    class procedure UseCache(AOn: Boolean); static;
+    /// <summary>Text unter AKey aus dem Zwischenspeicher, solange die Dateien, die AProduce gelesen hat, denselben
+    /// Text haben; sonst AProduce mit einem mitschreibenden Leser und merken (Message-Handler einer VCL-Klasse
+    /// parsen sonst bei jedem Hover die ganze Unit).</summary>
+    class function CachedText(const AIndex: ISymbolIndex; const AKey: string; const AReadText: TMemberReadText;
+      const AProduce: TFunc<TMemberReadText, string>): string; static;
     /// <summary>Markdown-Abschnitt für den Hover; '' ohne Mitglieder.</summary>
     class function ToMarkdown(const AMembers: TArray<TPublishedMember>): string; overload; static;
     /// <summary>Wie oben, davor die Standard-Property (aus DefaultProperty), wenn nicht ''.</summary>
@@ -102,6 +116,7 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
+  System.SyncObjs,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
@@ -714,7 +729,7 @@ begin
   Result := FMembers.ToArray;
 end;
 
-class function TPublishedMembers.Collect(const AIndex: ISymbolIndex; const AClassName: string;
+function CollectUncached(const AIndex: ISymbolIndex; const AClassName: string;
   const AReadText: TMemberReadText): TArray<TPublishedMember>;
 var
   mCollect: TMemberCollect;
@@ -753,7 +768,7 @@ begin
   Result := Trim(Copy(Result, 1, mStop - 1));
 end;
 
-class function TPublishedMembers.DefaultProperty(const AIndex: ISymbolIndex; const AClassName: string;
+function DefaultPropertyUncached(const AIndex: ISymbolIndex; const AClassName: string;
   const AReadText: TMemberReadText): string;
 var
   mLocation: TSymbolLocation;
@@ -772,7 +787,8 @@ begin
   try
     mClassName := AClassName;
     mDepth := 0;
-    while (mClassName <> '') and (mDepth < cMaxDepth) and FindClass(AIndex, mClassName, mLocation) and
+    while (mClassName <> '') and (mDepth < TPublishedMembers.cMaxDepth) and
+      FindClass(AIndex, mClassName, mLocation) and
       Assigned(AReadText) and AReadText(mLocation.FileName, mText) do
     begin
       Inc(mDepth);
@@ -1087,7 +1103,216 @@ begin
   AddText(Result, 'defaultProperty', ADefaultProperty);
 end;
 
+{ Zwischenspeicher je Index und Klasse }
+
+type
+  /// <summary>Gemerktes Ergebnis samt der Dateien, aus denen es entstand, und der Prüfsummen ihrer Texte. Der
+  /// Index-Stand taugt nicht als Merkmal: Er zählt bei jeder Anfrage hoch, sobald der Server Units nachlädt.</summary>
+  TPublishedCacheEntry = record
+    Files: TArray<string>;
+    Hashes: TArray<Cardinal>;
+    Members: TArray<TPublishedMember>;
+    Text: string;
+  end;
+
+  /// <summary>Hält fest, welche Dateien ein Lauf gelesen hat (Name und Prüfsumme).</summary>
+  TReadLog = class
+  public
+    Files: TArray<string>;
+    Hashes: TArray<Cardinal>;
+  end;
+
+const
+  /// <summary>Höchstens so viele Einträge; danach beginnt der Speicher von vorn.</summary>
+  cMaxCached = 256;
+
+var
+  GCacheLock: TCriticalSection;
+  GCache: TDictionary<string, TPublishedCacheEntry>;
+  GCacheOn: Boolean;
+
+class procedure TPublishedMembers.UseCache(AOn: Boolean);
+begin
+  GCacheLock.Enter;
+  try
+    GCacheOn := AOn;
+    if not AOn then
+    begin
+      GCache.Clear;
+    end;
+  finally
+    GCacheLock.Leave;
+  end;
+end;
+
+/// <summary>FNV-1a über die Zeichen von AText.</summary>
+function TextHash(const AText: string): Cardinal;
+var
+  mIndex: Integer;
+begin
+  Result := 2166136261;
+  for mIndex := 1 to Length(AText) do
+  begin
+    // Über UInt64 und maskiert: kein Überlauf bei eingeschalteter Überlaufprüfung.
+    Result := Cardinal((UInt64(Result xor Ord(AText[mIndex])) * 16777619) and $FFFFFFFF);
+  end;
+end;
+
+function CacheKey(const AIndex: ISymbolIndex; const AKind, AName: string): string;
+begin
+  Result := IntToHex(NativeUInt(Pointer(AIndex)), 16) + '|' + AKind + '|' + LowerCase(AName);
+end;
+
+/// <summary>Leser, der jede gelesene Datei in ALog festhält.</summary>
+function Recording(const AReadText: TMemberReadText; ALog: TReadLog): TMemberReadText;
+begin
+  Result :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := Assigned(AReadText) and AReadText(AFileName, AText);
+      if Result then
+      begin
+        ALog.Files := ALog.Files + [AFileName];
+        ALog.Hashes := ALog.Hashes + [TextHash(AText)];
+      end;
+    end;
+end;
+
+/// <summary>Gemerkter Eintrag unter AKey, wenn alle seine Dateien noch denselben Text haben.</summary>
+function CachedEntry(const AKey: string; const AReadText: TMemberReadText; out AEntry: TPublishedCacheEntry): Boolean;
+var
+  mIndex: Integer;
+  mText: string;
+begin
+  GCacheLock.Enter;
+  try
+    Result := GCache.TryGetValue(AKey, AEntry);
+  finally
+    GCacheLock.Leave;
+  end;
+  mIndex := 0;
+  while Result and (mIndex < Length(AEntry.Files)) do
+  begin
+    Result := Assigned(AReadText) and AReadText(AEntry.Files[mIndex], mText) and
+      (TextHash(mText) = AEntry.Hashes[mIndex]);
+    Inc(mIndex);
+  end;
+end;
+
+procedure StoreEntry(const AKey: string; ALog: TReadLog; const AMembers: TArray<TPublishedMember>;
+  const AText: string);
+var
+  mEntry: TPublishedCacheEntry;
+begin
+  mEntry := Default(TPublishedCacheEntry);
+  mEntry.Files := ALog.Files;
+  mEntry.Hashes := ALog.Hashes;
+  mEntry.Members := AMembers;
+  mEntry.Text := AText;
+  GCacheLock.Enter;
+  try
+    if GCache.Count >= cMaxCached then
+    begin
+      GCache.Clear;
+    end;
+    GCache.AddOrSetValue(AKey, mEntry);
+  finally
+    GCacheLock.Leave;
+  end;
+end;
+
+function CacheActive(const AIndex: ISymbolIndex): Boolean;
+begin
+  GCacheLock.Enter;
+  try
+    Result := GCacheOn and (AIndex <> nil);
+  finally
+    GCacheLock.Leave;
+  end;
+end;
+
+class function TPublishedMembers.Collect(const AIndex: ISymbolIndex; const AClassName: string;
+  const AReadText: TMemberReadText): TArray<TPublishedMember>;
+var
+  mKey: string;
+  mEntry: TPublishedCacheEntry;
+  mLog: TReadLog;
+begin
+  if not CacheActive(AIndex) then
+  begin
+    Exit(CollectUncached(AIndex, AClassName, AReadText));
+  end;
+  mKey := CacheKey(AIndex, 'members', AClassName);
+  if CachedEntry(mKey, AReadText, mEntry) then
+  begin
+    Exit(mEntry.Members);
+  end;
+  mLog := TReadLog.Create;
+  try
+    Result := CollectUncached(AIndex, AClassName, Recording(AReadText, mLog));
+    StoreEntry(mKey, mLog, Result, '');
+  finally
+    mLog.Free;
+  end;
+end;
+
+class function TPublishedMembers.CachedText(const AIndex: ISymbolIndex; const AKey: string;
+  const AReadText: TMemberReadText; const AProduce: TFunc<TMemberReadText, string>): string;
+var
+  mKey: string;
+  mEntry: TPublishedCacheEntry;
+  mLog: TReadLog;
+begin
+  if not CacheActive(AIndex) then
+  begin
+    Exit(AProduce(AReadText));
+  end;
+  mKey := CacheKey(AIndex, 'text', AKey);
+  if CachedEntry(mKey, AReadText, mEntry) then
+  begin
+    Exit(mEntry.Text);
+  end;
+  mLog := TReadLog.Create;
+  try
+    Result := AProduce(Recording(AReadText, mLog));
+    StoreEntry(mKey, mLog, nil, Result);
+  finally
+    mLog.Free;
+  end;
+end;
+
+class function TPublishedMembers.DefaultProperty(const AIndex: ISymbolIndex; const AClassName: string;
+  const AReadText: TMemberReadText): string;
+var
+  mKey: string;
+  mEntry: TPublishedCacheEntry;
+  mLog: TReadLog;
+begin
+  if not CacheActive(AIndex) then
+  begin
+    Exit(DefaultPropertyUncached(AIndex, AClassName, AReadText));
+  end;
+  mKey := CacheKey(AIndex, 'default', AClassName);
+  if CachedEntry(mKey, AReadText, mEntry) then
+  begin
+    Exit(mEntry.Text);
+  end;
+  mLog := TReadLog.Create;
+  try
+    Result := DefaultPropertyUncached(AIndex, AClassName, Recording(AReadText, mLog));
+    StoreEntry(mKey, mLog, nil, Result);
+  finally
+    mLog.Free;
+  end;
+end;
+
 initialization
   TAtlasTextTables.Add('Atlas.Common.Lsp.PublishedMembers', cTexts);
+  GCacheLock := TCriticalSection.Create;
+  GCache := TDictionary<string, TPublishedCacheEntry>.Create;
+
+finalization
+  FreeAndNil(GCache);
+  FreeAndNil(GCacheLock);
 
 end.

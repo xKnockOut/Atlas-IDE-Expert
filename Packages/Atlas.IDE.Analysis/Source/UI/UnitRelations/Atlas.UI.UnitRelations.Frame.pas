@@ -589,11 +589,12 @@ var
 begin
   DefaultDraw := True;
   mData := DataOf(FFrame, Node);
-  // Wer hier Schrift ändert, bekommt den Pinsel als Hintergrund der Zeile: Ohne Stilfarbe wäre er clWindow ohne
-  // Stil, also weiß im dunklen Thema. Gewählte Zeilen behalten die Farben der Auswahl.
+  // Wer hier Schrift ändert, zeichnet Hintergrund und Schrift selbst: Ohne Stilfarben wären sie clWindow und
+  // clWindowText ohne Stil, also weiß bzw. schwarz im dunklen Thema. Gewählte Zeilen behalten die Farben der Auswahl.
   if not (cdsSelected in State) then
   begin
     Sender.Canvas.Brush.Color := StyleServices(FFrame).GetSystemColor(clWindow);
+    Sender.Canvas.Font.Color := StyleServices(FFrame).GetSystemColor(clWindowText);
   end;
   if mData.Kind = TNodeKind.Section then
   begin

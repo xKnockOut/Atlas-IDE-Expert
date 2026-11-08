@@ -18,6 +18,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Diagnostics.ShutdownLeaks,
+  Atlas.Common.Lsp.PublishedMembers,
   Shell.Platform,
   Shell.CommandLine,
   Shell.Bootstrap,
@@ -93,6 +94,8 @@ begin
     // Sprache der Texte (#1458) für alle Modi: --locale, sonst language aus settings.json, sonst Englisch. Der
     // LSP-Server wählt nach initialize mit der Sprache des Clients neu.
     TShellBootstrap.UseTextLanguage(mOptions.Locale);
+    // Liste der published-Mitglieder je Klasse merken (Hover auf VCL-Klassen kostet sonst jedes Mal rund 1 s).
+    TPublishedMembers.UseCache(True);
     Result := RunMode(mOptions);
   except
     // Letzte Auffangstelle, falls schon der Aufbau scheitert und kein Logger existiert.

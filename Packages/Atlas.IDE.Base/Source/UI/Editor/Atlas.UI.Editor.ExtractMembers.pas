@@ -683,10 +683,11 @@ procedure TAtlasExtractMembersDialog.ListCustomDraw(Sender: TCustomListView; Ite
 begin
   if (Item <> nil) and (Item.Index < FModel.Count) and not FModel[Item.Index].Enabled then
   begin
-    // Hintergrund in der Stilfarbe, sonst zeichnet die Zeile auf weißem clWindow (dunkles Thema).
+    // Hintergrund in der Stilfarbe, sonst zeichnet die Zeile weiß bzw. schwarz (clWindow, clWindowText ohne Stil).
     if not (cdsSelected in State) then
     begin
       Sender.Canvas.Brush.Color := StyleServices(Sender).GetSystemColor(clWindow);
+      Sender.Canvas.Font.Color := StyleServices(Sender).GetSystemColor(clWindowText);
     end;
     Sender.Canvas.Font.Color := StyleServices(Sender).GetSystemColor(clGrayText);
   end;

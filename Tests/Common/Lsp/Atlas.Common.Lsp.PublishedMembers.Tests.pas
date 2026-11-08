@@ -46,6 +46,8 @@ type
     procedure DeclaringClassIsFirstTypedDeclaration;
     [Test]
     procedure WritesJsonForTooltip;
+    [Test]
+    procedure CacheHoldsWhileTextsStayTheSame;
   end;
 
 implementation
@@ -370,6 +372,42 @@ begin
   finally
     Json.Free;
   end;
+end;
+
+
+
+
+/// <summary>Leser ohne Dateien: als hätten sich alle Texte geändert.</summary>
+function NothingReader: TMemberReadText;
+begin
+  Result :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      AText := '';
+      Result := False;
+    end;
+end;
+
+procedure TPublishedMembersTests.CacheHoldsWhileTextsStayTheSame;
+var
+  mFirst, mSecond, mThird: TArray<TPublishedMember>;
+begin
+  TPublishedMembers.UseCache(True);
+  try
+    mFirst := TPublishedMembers.Collect(FIndex, 'TKnopf', ReadSource);
+    Assert.IsTrue(Length(mFirst) > 0);
+    // Gleiche Texte: derselbe Eintrag.
+    mSecond := TPublishedMembers.Collect(FIndex, 'TKnopf', ReadSource);
+    Assert.AreEqual(Integer(Length(mFirst)), Integer(Length(mSecond)));
+    // Andere Texte (hier: keine): der Eintrag gilt nicht mehr, neu gelesen bleibt nichts.
+    mThird := TPublishedMembers.Collect(FIndex, 'TKnopf', NothingReader());
+    Assert.AreEqual(0, Integer(Length(mThird)));
+  finally
+    TPublishedMembers.UseCache(False);
+  end;
+  mFirst := nil;
+  mSecond := nil;
+  mThird := nil;
 end;
 
 initialization

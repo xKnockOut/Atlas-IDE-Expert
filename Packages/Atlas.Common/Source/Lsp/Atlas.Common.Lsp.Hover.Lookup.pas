@@ -330,6 +330,7 @@ type
     procedure ApplyTypes;
     function IsTargetClass(const ASymbol: TIndexSymbol): Boolean;
     function MessagesOf(const AClassName: string): string;
+    function MessagesInOtherUnit(const AClassName: string; const AReader: TMemberReadText): string;
     procedure ApplyClass(const ASymbol: TIndexSymbol);
   public
     constructor Create(const ASource: THoverSource; ATree: TSyntaxTree; const ATreeText, AFileName: string;
@@ -590,7 +591,6 @@ end;
 function THoverLookupRun.MessagesOf(const AClassName: string): string;
 var
   mReader: TMessageReadText;
-  mClassTree: TSyntaxTree;
 begin
   mReader := MessageReader(FFileName, FTreeText, FSource.ReadText);
   if SameText(FTarget.FileName, FFileName) then
@@ -598,10 +598,41 @@ begin
     Result := TMessageHandlers.Overview(FSource.Resolver, FTree, FFileName, AClassName, mReader).ToMarkdown;
     Exit;
   end;
-  mClassTree := TSyntaxTreeCache.Parse(FText);
+  // Klasse in einer anderen Unit (oft VCL): ohne gemeinsamen Baum parst der Server die ganze Unit. Gemerkt wird
+  // das Ergebnis, solange die gelesenen Dateien (die Unit und die Vorfahren) denselben Text haben.
+  Result := TPublishedMembers.CachedText(FSource.Index, 'messages|' + FTarget.FileName + '|' + AClassName,
+    MemberReader(FFileName, FTreeText, FSource.ReadText),
+    function(AReader: TMemberReadText): string
+    begin
+      Result := MessagesInOtherUnit(AClassName, AReader);
+    end);
+end;
+
+/// <summary>Derselbe Leser als TMessageReadText; eigene Routine, damit die Methodenreferenz keinen fremden Rahmen
+/// festhält.</summary>
+function AsMessageReader(const AReader: TMemberReadText): TMessageReadText;
+begin
+  Result :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := AReader(AFileName, AText);
+    end;
+end;
+
+function THoverLookupRun.MessagesInOtherUnit(const AClassName: string; const AReader: TMemberReadText): string;
+var
+  mText: string;
+  mClassTree: TSyntaxTree;
+begin
+  // Über den Leser, damit die Unit selbst zu den geprüften Dateien gehört.
+  if not AReader(FTarget.FileName, mText) then
+  begin
+    mText := FText;
+  end;
+  mClassTree := TSyntaxTreeCache.Parse(mText);
   try
     Result := TMessageHandlers.Overview(FSource.Resolver, mClassTree, FTarget.FileName, AClassName,
-      mReader).ToMarkdown;
+      AsMessageReader(AReader)).ToMarkdown;
   finally
     mClassTree.Free;
   end;
