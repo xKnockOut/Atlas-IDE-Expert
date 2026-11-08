@@ -86,8 +86,7 @@ var
   mGates: TArray<string>;
 begin
   ModuleSwitch('buildPipeline.enabled');
-  // KI-Assistenten bauen über diese IDE (#261, build_project), z. B. ohne Kommandozeilen-Compiler.
-  Switch('compiler.mcpBuild', TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsMcpBuild));
+  // Builds für KI-Assistenten (compiler.mcpBuild) stehen seit #1906 auf der Seite des Moduls KI-Assistenten.
   Switch('build.zeroHints', TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsBuildZeroHints));
   // Schranke für Hinweise und Warnungen (#530).
   Switch('build.summary', TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsBuildSummary));

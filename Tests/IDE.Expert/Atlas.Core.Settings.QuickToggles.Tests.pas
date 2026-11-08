@@ -139,7 +139,8 @@ begin
   Assert.AreEqual('Build', mToggle.Feature);
   Assert.IsFalse(TAtlasQuickToggles.Find(AToggles, 'TestBreakAtStart', mToggle), 'ohne x-quickToggle');
   Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'McpBuild', mToggle));
-  Assert.AreEqual('Compiler', mToggle.Page);
+  // Seit #1906 auf der Seite des Moduls KI-Assistenten.
+  Assert.AreEqual('KI-Assistenten', mToggle.Page);
   Assert.IsFalse(mToggle.Drawing);
   Assert.AreEqual('Build', mToggle.Feature);
   // Beim Öffnen einmal bauen (build.onOpen): Schalter auf der Seite Compiler, keine Zeichnung.

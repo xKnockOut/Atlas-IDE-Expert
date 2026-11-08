@@ -68,6 +68,8 @@ type
     FCancelReason: string;
     FWaitStarted: Int64;
     FOnDone: TAtlasBuildDoneProc;
+    /// <summary>Auftraggeber des laufenden Auftrags (Forget, #1906).</summary>
+    FRequestedBy: string;
     procedure Tick(Sender: TObject);
     procedure Finish;
     class function Debugging: Boolean; static;
@@ -90,6 +92,8 @@ type
       out AReason: string): Boolean;
     /// <summary>Meldungen des Lesers (#528); gehören sie zum eigenen Build, gehen sie ins Ergebnis.</summary>
     procedure MessagesRead(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject);
+    /// <summary>Rückruf des laufenden Auftrags von ARequestedBy verwerfen (Auftraggeber entladen, #1906).</summary>
+    procedure Forget(const ARequestedBy: string);
     property Busy: Boolean read FBusy;
   end;
 
@@ -327,8 +331,19 @@ procedure TAtlasIdeBuildRunner.EndRequest(const AReason: string);
 begin
   FBusy := False;
   FTimer.Enabled := False;
-  FOnDone(FReport, AReason);
+  if Assigned(FOnDone) then
+  begin
+    FOnDone(FReport, AReason);
+  end;
   FOnDone := nil;
+end;
+
+procedure TAtlasIdeBuildRunner.Forget(const ARequestedBy: string);
+begin
+  if SameText(FRequestedBy, ARequestedBy) then
+  begin
+    FOnDone := nil;
+  end;
 end;
 
 /// <summary>Build fertig: auf die Meldungen warten oder, wenn sie schon da sind, abschließen.</summary>
@@ -367,6 +382,7 @@ begin
   begin
     Exit(False);
   end;
+  FRequestedBy := ARequestedBy;
   BeginRequest(ARequest, mProject, AOnDone);
   mActivity := TAtlasActivity.Scope('Build für KI-Assistent');
   mStarted := NowMs;

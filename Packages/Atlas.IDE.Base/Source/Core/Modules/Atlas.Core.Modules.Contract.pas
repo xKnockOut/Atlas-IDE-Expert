@@ -24,7 +24,8 @@ const
   /// übersetzen (Interface, Record, Konstante): Delphi prüft die Binärschnittstelle zwischen Packages nicht.</summary>
   /// 2 (#1903): IAtlasSettingsContribution, TAtlasWelcomeTileInfo.SwitchKey/SettingsKey, neue Texte.
   /// 3 (#1905): IAtlasLineChanges und TAtlasLineChangeMarks (Atlas.IDE.Contracts.LineChanges).
-  cAtlasCoreContractVersion = 3;
+  /// 4 (#1906): IAtlasBuildRequests.Forget.
+  cAtlasCoreContractVersion = 4;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';

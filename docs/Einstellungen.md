@@ -462,13 +462,10 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
 ### Compiler
 
 - **Hauptknoten**
-  - `assistants.enabled`
-    - `assistants.edit`
   - `buildTools.enabled`
     - `build.compilerSwitches`
       - `build.showSwitchesInStatusBar`
   - `buildPipeline.enabled`
-    - `compiler.mcpBuild`
     - `build.zeroHints`
     - `build.summary`
     - `build.warningsAsErrors`
@@ -651,6 +648,13 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
   - `completion.panelCollapsed` – hängt an `completion.enabled`
   - `completion.selectionMarker` – hängt an `completion.enabled`
   - `completion.openDelayMs` – hängt an `completion.enabled`
+
+### KI-Assistenten
+
+- **Hauptknoten**
+  - `assistants.enabled`
+    - `assistants.edit`
+    - `compiler.mcpBuild`
 
 ### Debuggen
 

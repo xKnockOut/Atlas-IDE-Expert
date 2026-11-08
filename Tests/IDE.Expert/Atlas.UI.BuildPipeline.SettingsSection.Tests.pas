@@ -72,13 +72,11 @@ begin
   try
     mPage.LoadFrom(TAtlasPluginSettings.Defaults);
     Assert.IsTrue(CheckOf(mPage, 'BuildPipelineEnabled').Checked, 'Modulschalter');
-    Assert.IsTrue(CheckOf(mPage, 'McpBuild').Checked, 'Builds für Claude Code standardmäßig an');
     Assert.IsFalse(CheckOf(mPage, 'BuildZeroHints').Checked);
     Assert.IsTrue(CheckOf(mPage, 'BuildSummary').Checked);
     Assert.AreEqual(0, ChoiceOf(mPage, 'BuildGate').Choice, 'build.gate off');
     Assert.AreEqual('300', EditOf(mPage, 'BuildGateTimeoutMs').Text);
     Assert.AreEqual('', EditOf(mPage, 'BuildWarningsAsErrors').Text);
-    CheckOf(mPage, 'McpBuild').Checked := False;
     CheckOf(mPage, 'BuildZeroHints').Checked := True;
     CheckOf(mPage, 'BuildSummary').Checked := False;
     ChoiceOf(mPage, 'BuildGate').Choice := 2;
@@ -86,7 +84,6 @@ begin
     EditOf(mPage, 'BuildWarningsAsErrors').Text := 'w1035 h2164';
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);
-    Assert.IsFalse(mSaved.McpBuild, 'abschaltbar');
     Assert.IsTrue(mSaved.BuildZeroHints);
     Assert.IsFalse(mSaved.BuildSummary);
     Assert.AreEqual('block', mSaved.BuildGate);
@@ -94,7 +91,6 @@ begin
     Assert.AreEqual('W1035, H2164', mSaved.BuildWarningsAsErrors);
     mPage.LoadFrom(TAtlasPluginSettings.Defaults);
     mPage.LoadFrom(mSaved);
-    Assert.IsFalse(CheckOf(mPage, 'McpBuild').Checked);
     Assert.AreEqual(2, ChoiceOf(mPage, 'BuildGate').Choice);
     Assert.AreEqual('W1035, H2164', EditOf(mPage, 'BuildWarningsAsErrors').Text);
   finally

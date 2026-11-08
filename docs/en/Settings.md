@@ -462,13 +462,10 @@ Risky or immature features come as **experimental** (#834): they have their own 
 ### Compiler
 
 - **Main node**
-  - `assistants.enabled`
-    - `assistants.edit`
   - `buildTools.enabled`
     - `build.compilerSwitches`
       - `build.showSwitchesInStatusBar`
   - `buildPipeline.enabled`
-    - `compiler.mcpBuild`
     - `build.zeroHints`
     - `build.summary`
     - `build.warningsAsErrors`
@@ -651,6 +648,13 @@ Risky or immature features come as **experimental** (#834): they have their own 
   - `completion.panelCollapsed` – depends on `completion.enabled`
   - `completion.selectionMarker` – depends on `completion.enabled`
   - `completion.openDelayMs` – depends on `completion.enabled`
+
+### KI-Assistenten
+
+- **Main node**
+  - `assistants.enabled`
+    - `assistants.edit`
+    - `compiler.mcpBuild`
 
 ### Debugging
 

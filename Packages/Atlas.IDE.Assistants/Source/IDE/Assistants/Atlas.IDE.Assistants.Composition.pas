@@ -44,6 +44,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Assistants.BuildInbox,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
@@ -92,7 +93,15 @@ begin
 end;
 
 procedure StopBuilds;
+var
+  mRequests: IAtlasBuildRequests;
 begin
+  // Ein laufender Build ruft danach nicht mehr in dieses Modul zurück (Regel 3, #1906).
+  mRequests := BuildRequests;
+  if mRequests <> nil then
+  begin
+    mRequests.Forget(TAtlasBuildInbox.cRequestedBy);
+  end;
   FreeAndNil(GBuildInbox);
 end;
 

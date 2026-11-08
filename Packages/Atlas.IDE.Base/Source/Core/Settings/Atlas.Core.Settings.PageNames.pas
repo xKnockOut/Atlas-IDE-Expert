@@ -32,7 +32,7 @@ type
 
 const
   // De ist der Schlüssel aus x-page und bleibt deutsch.
-  cPages: array[0..27] of TPageName = (
+  cPages: array[0..28] of TPageName = (
     (De: 'Allgemein'; En: 'General'),
     (De: 'Architektur'; En: 'Architecture'),
     (De: 'Befehle'; En: 'Commands'),
@@ -47,6 +47,7 @@ const
     (De: 'Hotspots'; En: 'Hotspots'),
     (De: 'Index'; En: 'Index'),
     (De: 'Issue-Tracker'; En: 'Issue tracker'),
+    (De: 'KI-Assistenten'; En: 'AI assistants'),
     (De: 'MCP'; En: 'MCP'),
     (De: 'Projekt'; En: 'Project'),
     (De: 'Protokoll'; En: 'Logging'),

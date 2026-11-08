@@ -1,8 +1,8 @@
 ﻿unit Atlas.UI.Assistants.SettingsSection;
 
-// Abschnitt des Moduls KI-Assistenten im Optionsdialog (#1888, Muster #1456): der Modulschalter
-// assistants.enabled auf der Seite „Compiler“. „Builds für KI-Assistenten“ (compiler.mcpBuild) baut vorerst
-// noch das Modul Build-Pipeline; der Wert gilt hier für den Build-Eingang.
+// Abschnitt des Moduls KI-Assistenten im Optionsdialog (#1888, Muster #1456): eigene Seite „KI-Assistenten“
+// (#1906) mit dem Modulschalter assistants.enabled, Schreiben in offene Dateien (assistants.edit) und Builds für
+// KI-Assistenten (compiler.mcpBuild; der Schlüssel bleibt, gebaut wird über das Modul Build-Pipeline).
 
 interface
 
@@ -13,7 +13,7 @@ type
   TAtlasAssistantsSettingsSection = class(TAtlasSettingsSection)
   public const
     cOwnerId = 'atlas.assistants';
-    cAreaId = 'Compiler';
+    cAreaId = 'KI-Assistenten';
   protected
     procedure BuildRows; override;
   public
@@ -41,8 +41,9 @@ end;
 procedure TAtlasAssistantsSettingsSection.BuildRows;
 begin
   ModuleSwitch('assistants.enabled');
-  // Änderungen an offenen Dateien (#397); Builds für KI-Assistenten (compiler.mcpBuild) stehen bei der Build-Pipeline.
+  // Änderungen an offenen Dateien (#397) und Builds über diese IDE (#261, build_project).
   Switch('assistants.edit', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsEdit));
+  Switch('compiler.mcpBuild', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsMcpBuild));
 end;
 
 end.

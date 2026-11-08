@@ -55,6 +55,8 @@ type
     function StartRequest(const ARequest: TAtlasBuildRequest; const ARequestedBy: string;
       const AOnDone: TAtlasBuildDoneProc; out AReason: string): Boolean;
     function IAtlasBuildRequests.Start = StartRequest;
+    /// <summary>IAtlasBuildRequests.Forget: Rückruf eines gehenden Auftraggebers verwerfen (#1906).</summary>
+    procedure Forget(const ARequestedBy: string);
     function Busy: Boolean;
     procedure MessagesRead(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject);
     function Evaluate(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
@@ -364,6 +366,14 @@ begin
     Exit(False);
   end;
   Result := GRunner.Start(ARequest, ARequestedBy, AOnDone, AReason);
+end;
+
+procedure TAtlasBuildPipelineModule.Forget(const ARequestedBy: string);
+begin
+  if GRunner <> nil then
+  begin
+    GRunner.Forget(ARequestedBy);
+  end;
 end;
 
 function TAtlasBuildPipelineModule.Busy: Boolean;
