@@ -648,14 +648,37 @@ begin
   end;
 end;
 
-/// <summary>Knoten, in dem ASection steht: sein Besitzer oder, bei einem Beitrag, das Modul, das dessen Vertrag
-/// bereitstellt. False, wenn der Gastgeber fehlt.</summary>
-function NodeOfSection(const ASection: IAtlasSettingsSection; out ANode: string): Boolean;
+/// <summary>Modul, das AProvider in der Registry angemeldet hat; '' für Base, AFallback, wenn es fehlt.</summary>
+function OwnerOfProvider(const AProvider: IAtlasSettingsSectionProvider; const AFallback: string): string;
+var
+  mItem: TAtlasProvided;
+  mWanted: IInterface;
+begin
+  Result := AFallback;
+  if AProvider = nil then
+  begin
+    Exit;
+  end;
+  mWanted := AProvider as IInterface;
+  for mItem in AtlasModuleRegistry.Provisions(IAtlasSettingsSectionProvider) do
+  begin
+    if (mItem.Instance as IInterface) = mWanted then
+    begin
+      Exit(mItem.OwnerId);
+    end;
+  end;
+end;
+
+/// <summary>Knoten, in dem ASection steht: das Modul, das seinen Anbieter angemeldet hat (nicht OwnerId: Abschnitt
+/// und Modul dürfen anders heißen, z. B. atlas.buildTools und atlas.build), bei einem Beitrag das Modul, das dessen
+/// Vertrag bereitstellt. False, wenn der Gastgeber fehlt.</summary>
+function NodeOfSection(const AProvider: IAtlasSettingsSectionProvider; const ASection: IAtlasSettingsSection;
+  out ANode: string): Boolean;
 var
   mContribution: IAtlasSettingsContribution;
   mProvided: TArray<TAtlasProvided>;
 begin
-  ANode := ASection.OwnerId;
+  ANode := OwnerOfProvider(AProvider, ASection.OwnerId);
   if not Supports(ASection, IAtlasSettingsContribution, mContribution) then
   begin
     Exit(True);
@@ -709,7 +732,7 @@ begin
     Exit;
   end;
   // Beitrag zu einem anderen Modul (#1903): steht im Knoten des Gastgebers; ohne Gastgeber gar nicht.
-  if not NodeOfSection(ASection, mNode) then
+  if not NodeOfSection(AProvider, ASection, mNode) then
   begin
     ASection.Close;
     Exit;
