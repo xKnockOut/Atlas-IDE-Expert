@@ -1,7 +1,8 @@
 ﻿unit Atlas.UI.Settings.Overview;
 
-// Übersicht „Atlas“ unter Tools › Optionen (#1903): oben der Hauptschalter „Atlas aktiv“ und der Stand der
-// Packages, darunter eine Suche über alle Einstellungen. Ein Treffer nennt den Knoten, in dem die Einstellung
+// Übersicht „Atlas“ unter Tools › Optionen (#1903): oben der Stand der Packages (installiert, eingeschaltet),
+// darunter eine Suche über alle Einstellungen. Einen Hauptschalter für ganz Atlas gibt es nicht; die Code Insight
+// von Atlas schaltet Base › Allgemein, jedes Modul seinen Modulschalter. Ein Treffer nennt den Knoten, in dem die Einstellung
 // steht (Module › <Package> › <Bereich>). Die Einstellungen selbst stehen in den Knoten unter „Module“.
 // Reine VCL; den Namen eines Moduls zu seinem Schalter liefert die IDE-Schicht (OnModuleName).
 
@@ -24,11 +25,9 @@ type
   private
     FCatalog: TAtlasSettingsCatalog;
     FGroups: TAtlasSettingsGroups;
-    FEnabled: TCheckBox;
     FPackages: TLabel;
     FSearch: TEdit;
     FHits: TPanel;
-    FLoadedEnabled: Boolean;
     FOnModuleName: TFunc<string, string>;
     procedure AddRow(var ATop: Integer; AControl: TControl; AHeight: Integer);
     procedure SearchChange(Sender: TObject);
@@ -36,11 +35,10 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    /// <summary>Hauptschalter laden und den Stand der Packages zeigen.</summary>
-    procedure Load(AEnabled: Boolean; AInstalled, AKnown: Integer);
-    /// <summary>Hat der Benutzer den Hauptschalter umgelegt?</summary>
-    function EnabledChanged: Boolean;
-    function EnabledValue: Boolean;
+    /// <summary>Stand der Packages: installiert von bekannt, davon eingeschaltet.</summary>
+    procedure Load(AInstalled, AKnown, ASwitchedOn: Integer);
+    /// <summary>Zum Testen: Zeile mit dem Stand der Packages.</summary>
+    function PackagesText: string;
     /// <summary>Text der Suche setzen (Tests) und Treffer zeigen.</summary>
     procedure SearchFor(const AText: string);
     /// <summary>Zum Testen: Zeilen der Treffer.</summary>
@@ -70,9 +68,6 @@ begin
   mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsTitle);
   mLabel.Font.Style := [fsBold];
   AddRow(mTop, mLabel, 24);
-  FEnabled := TCheckBox.Create(Self);
-  FEnabled.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsEnabled);
-  AddRow(mTop, FEnabled, 26);
   FPackages := TLabel.Create(Self);
   FPackages.ShowAccelChar := False;
   AddRow(mTop, FPackages, 30);
@@ -110,21 +105,14 @@ begin
   Inc(ATop, AHeight);
 end;
 
-procedure TAtlasSettingsOverview.Load(AEnabled: Boolean; AInstalled, AKnown: Integer);
+procedure TAtlasSettingsOverview.Load(AInstalled, AKnown, ASwitchedOn: Integer);
 begin
-  FLoadedEnabled := AEnabled;
-  FEnabled.Checked := AEnabled;
-  FPackages.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsAtlasPackages, [AInstalled, AKnown]);
+  FPackages.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsAtlasPackages, [AInstalled, AKnown, ASwitchedOn]);
 end;
 
-function TAtlasSettingsOverview.EnabledChanged: Boolean;
+function TAtlasSettingsOverview.PackagesText: string;
 begin
-  Result := FEnabled.Checked <> FLoadedEnabled;
-end;
-
-function TAtlasSettingsOverview.EnabledValue: Boolean;
-begin
-  Result := FEnabled.Checked;
+  Result := FPackages.Caption;
 end;
 
 function TAtlasSettingsOverview.ModuleName(const ASwitch: string): string;

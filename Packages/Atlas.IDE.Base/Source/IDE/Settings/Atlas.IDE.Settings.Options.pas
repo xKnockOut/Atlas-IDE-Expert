@@ -92,6 +92,7 @@ uses
   Atlas.UI.Settings.Overview,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Groups,
+  Atlas.Core.Settings.ModuleSwitches,
   Atlas.Core.Modules.Registry,
   Atlas.IDE.Settings.ServerActions,
   Atlas.IDE.Settings.SubPages,
@@ -541,17 +542,33 @@ procedure TAtlasOverviewOptions.FrameCreated(AFrame: TCustomFrame);
 var
   mKnown: TArray<TAtlasKnownModule>;
   mModule: TAtlasKnownModule;
-  mInstalled: Integer;
+  mInstalled, mOn: Integer;
+  mCatalog: TAtlasSettingsCatalog;
+  mSwitches: TArray<TAtlasModuleSwitch>;
+  mSettings: TAtlasPluginSettings;
 begin
   try
     FPage := AFrame as TAtlasSettingsOverview;
     mKnown := AtlasModuleRegistry.Known;
+    mSettings := TAtlasIdeSettings.Stored;
+    mCatalog := TAtlasSettingsCatalog.CreateDefault;
+    try
+      mSwitches := TAtlasModuleSwitches.Read(mCatalog);
+    finally
+      mCatalog.Free;
+    end;
     mInstalled := 0;
+    mOn := 0;
     for mModule in mKnown do
     begin
       if mModule.Installed then
       begin
         Inc(mInstalled);
+        // Ohne Modulschalter immer an.
+        if (mModule.Info.Switch = '') or TAtlasModuleSwitches.IsOn(mSettings, mSwitches, mModule.Info.Switch) then
+        begin
+          Inc(mOn);
+        end;
       end;
     end;
     FPage.OnModuleName :=
@@ -559,7 +576,7 @@ begin
       begin
         Result := TAtlasModuleNodes.NameOfSwitch(ASwitch);
       end;
-    FPage.Load(TAtlasIdeSettings.Stored.Enabled, mInstalled, Length(mKnown));
+    FPage.Load(mInstalled, Length(mKnown), mOn);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Settings, E);
@@ -567,22 +584,9 @@ begin
 end;
 
 procedure TAtlasOverviewOptions.DialogClosed(Accepted: Boolean);
-var
-  mSettings: TAtlasPluginSettings;
 begin
-  try
-    // Nur den Hauptschalter, und nur wenn er umgelegt wurde: Die Knoten speichern ihre Werte selbst.
-    if Accepted and (FPage <> nil) and FPage.EnabledChanged then
-    begin
-      mSettings := TAtlasIdeSettings.Stored;
-      mSettings.Enabled := FPage.EnabledValue;
-      TAtlasIdeSettings.Update(mSettings);
-    end;
-    FPage := nil;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Settings, E);
-  end;
+  // Nur Anzeige und Suche: Die Knoten speichern ihre Werte selbst.
+  FPage := nil;
 end;
 
 function TAtlasOverviewOptions.ValidateContents: Boolean;
