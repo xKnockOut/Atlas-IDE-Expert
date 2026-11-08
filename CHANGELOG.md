@@ -6,10 +6,13 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+## [2.0.1] - 2026-11-08
+
 ### Neu
 - Optionen je Package (#1903): Unter Tools › Optionen › Atlas steht die Übersicht „Atlas“ mit dem Stand der Packages (installiert, eingeschaltet) und einer Suche über alle Einstellungen; ein Klick auf einen Treffer springt in den Knoten der Einstellung. Darunter „Module“ mit der Liste der Packages, „Base“ und je installiertem Modul ein eigener Knoten (alphabetisch, erscheint und verschwindet mit dem Modul ohne Neustart), dann Snippets, Tastenkonflikte und Server. Jeder Knoten zeigt nur die Einstellungen seines Moduls; gespeichert werden je Knoten nur die geänderten Werte. „Einstellungen dazu …“ öffnet den Knoten des Moduls, dem die Einstellung gehört. <!-- whatsnew title="Optionen je Modul" text="Jedes Modul hat in den Optionen einen eigenen Knoten unter Atlas › Module; die Übersicht sucht über alle Einstellungen." titleEn="Options per module" textEn="Each module has its own node under Atlas › Modules in the options; the overview searches all settings." -->
 - Modul Versionsverwaltung `Atlas.IDE.VersionControl` (#1891, #1905): Einstellungsseite, Änderungsmarken mit Inline-Diff, Zeilenhistorie, „Branch anlegen …“ und „Arbeitskopien“ gehören jetzt zum Modul (Schalter `vcs.enabled`). Base und Tracker nutzen die Marken über den Vertrag `IAtlasLineChanges`; ohne Modul gibt es keine Marken, nichts hängt.
 - Modul KI-Assistenten `Atlas.IDE.Assistants` (#1888): Aufträge von MCP-Clients (Builds über `build_project`, Änderungen an offenen Dateien) laufen über das Modul (Schalter `assistants.enabled`, `assistants.edit`).
+- Optionsseite „KI-Assistenten“ (#1906): Modulschalter, `assistants.edit` und `compiler.mcpBuild` (vorher Seite Compiler der Build-Pipeline) stehen im Knoten des Moduls. Wird das Modul während eines Builds entladen, läuft der Build zu Ende, ohne das Modul zurückzurufen.
 
 ### Geändert
 - Issue-Tracker: „Beginnen“, Branch-Muster, Basis des Branchs und Commit-Präfix stehen im Unterpunkt „Versionsverwaltung“ des Trackers und erscheinen nur mit installierter Versionsverwaltung (#1903). Die Schalter der Kacheln „Meine Issues“ und „Sprint“ auf der Seite Willkommensseite liefert der Tracker über den Kachel-Vertrag.

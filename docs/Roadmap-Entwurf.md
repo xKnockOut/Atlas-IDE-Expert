@@ -10,9 +10,14 @@ Keine neuen Funktionen mehr.
 
 - `main-merging` mit Delphi bauen (0/0/0, Tests grün) und nach `main` bringen; Handtests.
 - Vor dem Release, weil sie Namen, Einstellungen oder Module ändern: #1883 (KI-neutrale Benennung), #1891 (Modul
-  Versionsverwaltung), #1888 (Modul KI-Assistenten). Optional #1885 (AtlasUpdate entfernen und reparieren).
+  Versionsverwaltung), #1888 (Modul KI-Assistenten).
 - Fehler: #1477, #1480, #1751; Serverlast über PR #1847.
 - Nach Build und Handtest schließen: #1454, #1455, #1456, #1755, #1756, #1458, #1440, #1442.
+
+## 2.0.1: Optionen je Package
+
+- Optionen je Package mit Übersicht und Suche, Einstellungen beim Eigentümer (#1903).
+- Versionsverwaltung und KI-Assistenten ganz in ihren Modulen (#1905, #1906 erster Teil).
 
 ## 2.1: Editor, Navigation und Formular-Designer
 
@@ -39,7 +44,7 @@ Keine neuen Funktionen mehr.
 ## 3.0: Plattform
 
 Größere Schritte, die Schnittstellen ändern dürfen: Atlas-SDK (#1459), Komponenten-Werkbank (#1463), eigene Prüfregeln
-(#73, #279, #280).
+(#73, #279, #280). Dazu AtlasUpdate: Atlas entfernen und reparieren (#1885, erster Stand auf Branch `uninstall-1885`).
 
 ## Laufend
 
