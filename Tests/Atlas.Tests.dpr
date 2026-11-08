@@ -838,6 +838,8 @@ uses
   Atlas.Core.Files.EncodingDefault in '..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas',
   Atlas.Core.Files.TextFile.Tests in 'IDE.Expert\Atlas.Core.Files.TextFile.Tests.pas',
   Atlas.Core.Files.DataFile in '..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.DataFile.pas',
+  Atlas.Core.Files.ProcessLeftovers in '..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.ProcessLeftovers.pas',
+  Atlas.Core.Files.ProcessLeftovers.Tests in 'IDE.Expert\Atlas.Core.Files.ProcessLeftovers.Tests.pas',
   Atlas.Core.Files.DataFile.Tests in 'IDE.Expert\Atlas.Core.Files.DataFile.Tests.pas',
   Atlas.Core.Text.Agreement.Tests in 'IDE.Expert\Atlas.Core.Text.Agreement.Tests.pas',
   Atlas.Core.Files.EncodingDefault.Tests in 'IDE.Expert\Atlas.Core.Files.EncodingDefault.Tests.pas',

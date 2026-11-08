@@ -540,6 +540,7 @@ contains
   Atlas.Core.Files.WatchedChanges in 'Source\Core\Files\Atlas.Core.Files.WatchedChanges.pas',
   Atlas.Core.Files.Contract in 'Source\Core\Files\Atlas.Core.Files.Contract.pas',
   Atlas.Core.Files.TextFile in 'Source\Core\Files\Atlas.Core.Files.TextFile.pas',
+  Atlas.Core.Files.ProcessLeftovers in 'Source\Core\Files\Atlas.Core.Files.ProcessLeftovers.pas',
   Atlas.Core.Files.DataFile in 'Source\Core\Files\Atlas.Core.Files.DataFile.pas',
   Atlas.Core.Files.EncodingDefault in 'Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas',
   Atlas.Core.Projects.Contract in 'Source\Core\Projects\Atlas.Core.Projects.Contract.pas',

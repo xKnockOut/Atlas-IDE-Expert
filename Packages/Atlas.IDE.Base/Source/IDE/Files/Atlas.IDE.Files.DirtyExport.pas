@@ -11,7 +11,9 @@
 // "activeProject" das aktive: build_project wählt danach IDE und Projekt
 // (#261).
 // Beim Beenden löscht das Plugin seine Datei; Dateien beendeter Prozesse
-// übergeht der Server.
+// übergeht der Server. Beim Start räumt das Plugin die Dateien und
+// Build-Eingänge (ide-builds\<pid>) abgestürzter oder hart beendeter Prozesse
+// weg (Atlas.Core.Files.ProcessLeftovers).
 
 interface
 
@@ -46,13 +48,100 @@ uses
   System.IOUtils,
   System.JSON,
   ToolsAPI,
-  Atlas.Core.Files.DataFile;
+  Atlas.Core.Files.DataFile,
+  Atlas.Core.Files.ProcessLeftovers;
+
+const
+  cPROCESS_QUERY_LIMITED_INFORMATION = $1000;
+
+/// <summary>Läuft APid noch und lief er schon zu AStamp (sonst gehört die Nummer einem neuen Prozess)?</summary>
+function ProcessAlive(APid: Cardinal; AStamp: TDateTime): Boolean;
+var
+  mProcess: THandle;
+  mCode: DWORD;
+  mCreation, mExitTime, mKernelTime, mUserTime: TFileTime;
+  mLocal: TFileTime;
+  mStarted: TSystemTime;
+begin
+  mProcess := OpenProcess(cPROCESS_QUERY_LIMITED_INFORMATION, False, APid);
+  if mProcess = 0 then
+  begin
+    // Kein Zugriff heißt: Den Prozess gibt es (andere Anmeldung); sonst ist er beendet.
+    Exit(GetLastError = ERROR_ACCESS_DENIED);
+  end;
+  try
+    Result := GetExitCodeProcess(mProcess, mCode) and (mCode = STILL_ACTIVE);
+    if Result and GetProcessTimes(mProcess, mCreation, mExitTime, mKernelTime, mUserTime) and
+      FileTimeToLocalFileTime(mCreation, mLocal) and FileTimeToSystemTime(mLocal, mStarted) then
+    begin
+      Result := SystemTimeToDateTime(mStarted) <= AStamp;
+    end;
+  finally
+    CloseHandle(mProcess);
+  end;
+end;
+
+/// <summary>Dateien und Build-Eingänge beendeter Prozesse unter AFolder entfernen.</summary>
+procedure RemoveLeftovers(const AFolder: string);
+var
+  mEntries: TArray<TAtlasLeftover>;
+  mPath, mBuilds: string;
+  mPid: Cardinal;
+begin
+  mEntries := nil;
+  if TDirectory.Exists(AFolder) then
+  begin
+    for mPath in TDirectory.GetFiles(AFolder, TAtlasProcessLeftovers.cDirtyPrefix + '*') do
+    begin
+      if TAtlasProcessLeftovers.PidOf(ExtractFileName(mPath), TAtlasProcessLeftovers.cDirtyPrefix,
+        TAtlasProcessLeftovers.cDirtySuffix, mPid) then
+      begin
+        mEntries := mEntries + [TAtlasLeftover.Create(mPath, mPid, TFile.GetLastWriteTime(mPath))];
+      end;
+    end;
+  end;
+  mBuilds := TPath.Combine(AFolder, TAtlasProcessLeftovers.cBuildsFolder);
+  if TDirectory.Exists(mBuilds) then
+  begin
+    for mPath in TDirectory.GetDirectories(mBuilds) do
+    begin
+      if TAtlasProcessLeftovers.PidOf(ExtractFileName(mPath), '', '', mPid) then
+      begin
+        mEntries := mEntries + [TAtlasLeftover.Create(mPath, mPid, TDirectory.GetLastWriteTime(mPath))];
+      end;
+    end;
+  end;
+  for mPath in TAtlasProcessLeftovers.Stale(mEntries, GetCurrentProcessId, ProcessAlive) do
+  begin
+    try
+      if TDirectory.Exists(mPath) then
+      begin
+        TDirectory.Delete(mPath, True);
+      end
+      else
+      begin
+        TFile.Delete(mPath);
+      end;
+    except
+      // Gesperrt oder schon weg: beim nächsten Start wieder versuchen.
+      on Exception do
+        ;
+    end;
+  end;
+end;
 
 constructor TAtlasDirtyExport.Create;
 begin
   inherited Create;
   FFileName := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     Format('editor-dirty-%d.json', [GetCurrentProcessId]));
+  try
+    RemoveLeftovers(ExtractFileDir(FFileName));
+  except
+    // Aufräumen ist Nebensache; die Liste dieses Prozesses entsteht trotzdem.
+    on Exception do
+      ;
+  end;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 1000;
   FTimer.OnTimer := Tick;
