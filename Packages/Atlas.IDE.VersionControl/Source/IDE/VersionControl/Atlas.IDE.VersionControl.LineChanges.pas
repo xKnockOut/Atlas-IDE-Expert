@@ -111,6 +111,7 @@ uses
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Pairs,
   Atlas.UI.Strings,
+  Atlas.UI.VersionControl.Strings,
   Atlas.UI.Popup.TitledTip,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
@@ -316,7 +317,7 @@ begin
   end;
   if Length(AChange.OldLines) > mShown then
   begin
-    Result := Result + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.ChangeMoreLines,
+    Result := Result + sLineBreak + TAtlasVcsStrings.Fmt(TAtlasVcsTextId.ChangeMoreLines,
       [Length(AChange.OldLines) - mShown]);
   end;
 end;
@@ -833,8 +834,8 @@ begin
   FTipChange := AChange;
   FTipEntered := False;
   TAtlasIdeStyle.Apply(FTip, AScreen);
-  FTip.ShowNote(TAtlasStrings.Text(TAtlasTextId.ChangeOldTitle), OldText(FData.Changes[AChange]),
-    [TAtlasStrings.Text(TAtlasTextId.ChangeRevert)], Point(AScreen.Right + 4, AScreen.Top));
+  FTip.ShowNote(TAtlasVcsStrings.Text(TAtlasVcsTextId.ChangeOldTitle), OldText(FData.Changes[AChange]),
+    [TAtlasVcsStrings.Text(TAtlasVcsTextId.ChangeRevert)], Point(AScreen.Right + 4, AScreen.Top));
 end;
 
 procedure TLineChangesState.ShowCommit;
@@ -852,7 +853,7 @@ begin
     Exit;
   end;
   mEntry := FData.Entry(FBlame.Entry);
-  mTitle := TAtlasStrings.Fmt(TAtlasTextId.BlameCommitTitle, [mEntry.Revision]);
+  mTitle := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.BlameCommitTitle, [mEntry.Revision]);
   mText := TAtlasIdeLineChangesData.CommitText(mEntry);
   FTipChange := -1;
   FTip.OnLink := nil;

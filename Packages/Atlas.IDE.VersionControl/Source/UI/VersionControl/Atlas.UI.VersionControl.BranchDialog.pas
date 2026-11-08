@@ -283,7 +283,8 @@ implementation
 uses
   System.Math,
   Atlas.Core.VersionControl.BranchNames,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.VersionControl.Strings;
 
 const
   cGap = 8;
@@ -395,28 +396,28 @@ function BaseCaption(const ABase: TAtlasVcsBranchBase): string;
 begin
   case ABase.Kind of
     TAtlasVcsBranchBaseKind.RemoteMain:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchBaseRemote, [ABase.Name]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchBaseRemote, [ABase.Name]);
     TAtlasVcsBranchBaseKind.LocalMain:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchBaseLocal, [ABase.Name]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchBaseLocal, [ABase.Name]);
     TAtlasVcsBranchBaseKind.Head:
       if ABase.Revision = '' then
       begin
-        Result := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchBaseHead, [ABase.Name]);
+        Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchBaseHead, [ABase.Name]);
       end
       else
       begin
-        Result := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchBaseHeadRevision, [ABase.Name, ABase.Revision]);
+        Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchBaseHeadRevision, [ABase.Name, ABase.Revision]);
       end;
     TAtlasVcsBranchBaseKind.WorkingCopy:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchBaseWorkingCopy, [ABase.Name, ABase.Revision]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchBaseWorkingCopy, [ABase.Name, ABase.Revision]);
   else
     if ABase.Name = '' then
     begin
-      Result := TAtlasStrings.Text(TAtlasTextId.VcsBranchBaseDetached);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchBaseDetached);
     end
     else
     begin
-      Result := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchBaseCurrent, [ABase.Name]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchBaseCurrent, [ABase.Name]);
     end;
   end;
 end;
@@ -433,7 +434,7 @@ begin
     mLine := Format('%d. %s', [mIndex + 1, TAtlasVcsBranchPlan.StepText(AKind, ASteps[mIndex])]);
     if ASteps[mIndex].ChangesServer then
     begin
-      mLine := mLine + '   ' + TAtlasStrings.Text(TAtlasTextId.VcsBranchOnServer);
+      mLine := mLine + '   ' + TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchOnServer);
     end;
     Result := Result + [mLine];
   end;
@@ -444,11 +445,11 @@ function ExternalCaption(const AExternal: TAtlasVcsSvnExternal; AAction: TAtlasV
 begin
   case AAction of
     TAtlasVcsExternalAction.Pin:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchExternalPin, [TAtlasVcsBranchPlan.ExternalRevision(AExternal)]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchExternalPin, [TAtlasVcsBranchPlan.ExternalRevision(AExternal)]);
     TAtlasVcsExternalAction.Branch:
-      Result := TAtlasStrings.Text(TAtlasTextId.VcsBranchExternalBranch);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalBranch);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.VcsBranchExternalKeep);
+    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalKeep);
   end;
 end;
 
@@ -495,11 +496,11 @@ function LocationError(const AText, ALocation: string): string;
 begin
   if Trim(AText) = '' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.VcsBranchLocationMissing);
+    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchLocationMissing);
   end
   else if not TAtlasVcsBranchPlan.SafeName(ALocation) then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.VcsBranchLocationInvalid);
+    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchLocationInvalid);
   end
   else
   begin
@@ -513,19 +514,19 @@ begin
   Result := '';
   if AFacts.Outcome <> TAtlasVcsOutcome.Ok then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchNoWorkingCopy, [AtlasVcsOutcomeName(AFacts.Outcome)]);
+    Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchNoWorkingCopy, [AtlasVcsOutcomeName(AFacts.Outcome)]);
   end
   else if AFacts.NeedsServer then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.VcsBranchLoading);
+    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchLoading);
   end
   else if AFacts.ServerChecked and (AFacts.ServerOutcome <> TAtlasVcsOutcome.Ok) then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchHeadUnknown, [AtlasVcsOutcomeName(AFacts.ServerOutcome)]);
+    Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchHeadUnknown, [AtlasVcsOutcomeName(AFacts.ServerOutcome)]);
   end
   else if ABaseCount = 0 then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.VcsBranchNoBase);
+    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchNoBase);
   end;
 end;
 
@@ -578,11 +579,11 @@ procedure TAtlasBranchNamePart.Build(const AName: string);
 var
   mPanel: TPanel;
 begin
-  mPanel := Row(FDialog, FDialog, TAtlasStrings.Text(TAtlasTextId.VcsBranchName), 28);
+  mPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchName), 28);
   FNameEdit := RowEdit(FDialog, mPanel, FDialog.Changed);
   FNameEdit.Text := AName;
   FNameError := ErrorLabel(FDialog, FDialog, 0);
-  mPanel := Row(FDialog, FDialog, TAtlasStrings.Text(TAtlasTextId.VcsBranchBase), 28);
+  mPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchBase), 28);
   FBaseBox := RowChoice(FDialog, mPanel, FDialog.Changed);
 end;
 
@@ -652,12 +653,12 @@ begin
   mName := Trim(FNameEdit.Text);
   if mName = '' then
   begin
-    AText := TAtlasStrings.Text(TAtlasTextId.VcsBranchNameMissing);
+    AText := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchNameMissing);
   end
   else if (mName <> FNameEdit.Text) or not TAtlasVcsBranchNames.Valid(mName) or
     not TAtlasVcsBranchPlan.SafeName(mName) then
   begin
-    AText := TAtlasStrings.Text(TAtlasTextId.VcsBranchNameInvalid);
+    AText := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchNameInvalid);
   end;
   Result := AText = '';
 end;
@@ -682,7 +683,7 @@ begin
   Stack(FBox);
   FBox.AlignWithMargins := True;
   FBox.Margins.SetBounds(cGap, 4, cGap, 4);
-  FBox.Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchGit);
+  FBox.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchGit);
   FBox.Height := 120;
   FBox.Visible := FDialog.FFacts.Kind = TAtlasVcsKind.Git;
   // Einträge der Auswahllisten erst mit Fenster (FillChoices).
@@ -708,7 +709,7 @@ begin
   FFetchCheck.Anchors := [akLeft, akTop, akRight];
   FFetchCheck.Checked := FOptions.Base = TAtlasVcsGitBaseOption.Remote;
   FFetchCheck.OnClick := FDialog.Changed;
-  mPanel := Row(FDialog, FBox, TAtlasStrings.Text(TAtlasTextId.VcsBranchPush), 28);
+  mPanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPush), 28);
   FPushBox := RowChoice(FDialog, mPanel, FDialog.Changed);
 end;
 
@@ -717,7 +718,7 @@ const
   cBoxWidth = 240;
 begin
   // Offene Änderungen: nur mit geänderten Dateien; „nachfragen“ lässt die Auswahl leer.
-  FUncommittedPanel := Row(FDialog, FBox, TAtlasStrings.Text(TAtlasTextId.VcsBranchUncommitted), 28);
+  FUncommittedPanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchUncommitted), 28);
   FUncommittedBox := TComboBox.Create(FDialog);
   FUncommittedBox.Parent := FUncommittedPanel;
   FUncommittedBox.Style := csDropDownList;
@@ -726,7 +727,7 @@ begin
   FUncommittedCount := TLabel.Create(FDialog);
   FUncommittedCount.Parent := FUncommittedPanel;
   FUncommittedCount.SetBounds(cCaptionWidth + 2 * cGap + cBoxWidth, 5, 260, 17);
-  FUncommittedCount.Caption := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchUncommittedCount,
+  FUncommittedCount.Caption := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchUncommittedCount,
     [FDialog.FFacts.LocalChanges]);
 end;
 
@@ -734,9 +735,9 @@ procedure TAtlasBranchGitPart.AddPlace;
 var
   mPanel: TPanel;
 begin
-  mPanel := Row(FDialog, FBox, TAtlasStrings.Text(TAtlasTextId.VcsBranchPlace), 28);
+  mPanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPlace), 28);
   FPlaceBox := RowChoice(FDialog, mPanel, FDialog.Changed);
-  FWorktreePanel := Row(FDialog, FBox, TAtlasStrings.Text(TAtlasTextId.VcsBranchFolder), 28);
+  FWorktreePanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchFolder), 28);
   FWorktreeEdit := RowEdit(FDialog, FWorktreePanel, WorktreeChanged);
 end;
 
@@ -755,14 +756,14 @@ begin
   // Vorbelegung aus vcs.branch.git.*; „nachfragen“ lässt die Auswahl leer.
   if FPushBox.Items.Count = 0 then
   begin
-    FPushBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchPushLater));
-    FPushBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchPushNow));
+    FPushBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPushLater));
+    FPushBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPushNow));
     FPushBox.ItemIndex := OnOffIndex(FOptions.PushNow);
   end;
   if FUncommittedBox.Items.Count = 0 then
   begin
-    FUncommittedBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchCarry));
-    FUncommittedBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchStash));
+    FUncommittedBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchCarry));
+    FUncommittedBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchStash));
     case FOptions.Uncommitted of
       TAtlasVcsGitUncommitted.Carry:
         FUncommittedBox.ItemIndex := 0;
@@ -774,8 +775,8 @@ begin
   end;
   if FPlaceBox.Items.Count = 0 then
   begin
-    FPlaceBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchPlaceSwitch));
-    FPlaceBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchPlaceWorktree));
+    FPlaceBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPlaceSwitch));
+    FPlaceBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPlaceWorktree));
     FPlaceBox.ItemIndex := OnOffIndex(FOptions.Worktree);
   end;
 end;
@@ -811,7 +812,7 @@ begin
   end;
   FDialog.FNames.SelectedBase(mBase);
   FFetchCheck.Enabled := mBase.Kind = TAtlasVcsBranchBaseKind.RemoteMain;
-  FFetchCheck.Caption := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFetch, [mBase.RemoteName,
+  FFetchCheck.Caption := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchFetch, [mBase.RemoteName,
     FDialog.FFacts.MainBranch]);
   ShowRow(FUncommittedPanel, FPushBox.Parent, (FDialog.FFacts.LocalChanges > 0) and (FPlaceBox.ItemIndex <> 1));
   ShowRow(FWorktreePanel, FPlaceBox.Parent, FPlaceBox.ItemIndex = 1);
@@ -879,15 +880,15 @@ begin
     mFolder := Trim(FWorktreeEdit.Text);
     if FUncommittedPanel.Visible and (FUncommittedBox.ItemIndex < 0) then
     begin
-      AText := TAtlasStrings.Text(TAtlasTextId.VcsBranchUncommittedChoose);
+      AText := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchUncommittedChoose);
     end
     else if FWorktreePanel.Visible and not TAtlasVcsBranchPlan.SafeFolder(mFolder) then
     begin
-      AText := TAtlasStrings.Text(TAtlasTextId.VcsBranchFolderInvalid);
+      AText := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchFolderInvalid);
     end
     else if FWorktreePanel.Visible and DirectoryExists(mFolder) then
     begin
-      AText := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFolderExists, [mFolder]);
+      AText := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchFolderExists, [mFolder]);
     end;
   end;
   Result := AText = '';
@@ -931,39 +932,39 @@ end;
 
 procedure TAtlasBranchSvnPart.AddMessage(const AMessage: string);
 begin
-  FMessagePanel := Row(FDialog, FDialog, TAtlasStrings.Text(TAtlasTextId.VcsBranchMessage), 28);
+  FMessagePanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchMessage), 28);
   FMessageEdit := RowEdit(FDialog, FMessagePanel, FDialog.Changed);
   FMessageEdit.Text := AMessage;
 end;
 
 procedure TAtlasBranchSvnPart.AddLocation;
 begin
-  FLocationPanel := Row(FDialog, FDialog, TAtlasStrings.Text(TAtlasTextId.VcsBranchLocation), 28);
+  FLocationPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchLocation), 28);
   FLocationEdit := RowEdit(FDialog, FLocationPanel, LocationChanged);
   FLocationError := ErrorLabel(FDialog, FDialog, 0);
 end;
 
 procedure TAtlasBranchSvnPart.AddAfterAndFolder;
 begin
-  FAfterPanel := Row(FDialog, FDialog, TAtlasStrings.Text(TAtlasTextId.VcsBranchAfter), 28);
+  FAfterPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchAfter), 28);
   FAfterBox := RowChoice(FDialog, FAfterPanel, FDialog.Changed);
-  FFolderPanel := Row(FDialog, FDialog, TAtlasStrings.Text(TAtlasTextId.VcsBranchFolder), 28);
+  FFolderPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchFolder), 28);
   FFolderEdit := RowEdit(FDialog, FFolderPanel, FolderChanged);
 end;
 
 procedure TAtlasBranchSvnPart.AddMixed;
 begin
   FMixedLabel := ErrorLabel(FDialog, FDialog, 2);
-  FMixedLabel.Caption := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchMixed, [FDialog.FFacts.Revision]);
+  FMixedLabel.Caption := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchMixed, [FDialog.FFacts.Revision]);
 end;
 
 procedure TAtlasBranchSvnPart.FillChoices;
 begin
   if FAfterBox.Items.Count = 0 then
   begin
-    FAfterBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterSwitch));
-    FAfterBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterCheckout));
-    FAfterBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterNone));
+    FAfterBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchAfterSwitch));
+    FAfterBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchAfterCheckout));
+    FAfterBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchAfterNone));
     FAfterBox.ItemIndex := Ord(FOptions.After);
   end;
 end;
@@ -1096,14 +1097,14 @@ begin
   if (mFacts.Kind <> TAtlasVcsKind.Svn) or (Length(mFacts.SvnExternals) = 0) then
   begin
     FBox.Height := 56;
-    FBox.Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchExternals);
+    FBox.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternals);
     FHint.Align := alClient;
-    FHint.Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchExternalsKept);
+    FHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsKept);
     Exit;
   end;
-  FBox.Caption := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchExternalsCount, [Length(mFacts.SvnExternals)]);
+  FBox.Caption := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchExternalsCount, [Length(mFacts.SvnExternals)]);
   FHint.Font.Color := clRed;
-  FHint.Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchExternalsChoose);
+  FHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsChoose);
   FHint.Visible := False;
   FBox.Height := 44 + 20 + Min(Length(mFacts.SvnExternals), cExternalRowsVisible) * cExternalRow;
   // Breite vorab wie im fertigen Dialog (ohne Fenster richtet alTop nicht aus); Anker gleichen den Rest aus.
@@ -1135,13 +1136,13 @@ begin
   mHeader.Align := alTop;
   mHeader.Height := 20;
   mHeader.BevelOuter := bvNone;
-  mLabel := CellLabel(FDialog, mHeader, cGap, cFolderWidth, TAtlasStrings.Text(TAtlasTextId.VcsBranchExternalsFolder));
+  mLabel := CellLabel(FDialog, mHeader, cGap, cFolderWidth, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsFolder));
   mLabel.Font.Color := clGrayText;
   mLabel := CellLabel(FDialog, mHeader, cGap + cFolderWidth + cGap, 200,
-    TAtlasStrings.Text(TAtlasTextId.VcsBranchExternalsSource));
+    TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsSource));
   mLabel.Font.Color := clGrayText;
   mLabel := CellLabel(FDialog, mHeader, mHeader.Width - cChoiceWidth - cGap, cChoiceWidth,
-    TAtlasStrings.Text(TAtlasTextId.VcsBranchExternalsInBranch));
+    TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsInBranch));
   mLabel.Anchors := [akTop, akRight];
   mLabel.Font.Color := clGrayText;
 end;
@@ -1170,7 +1171,7 @@ begin
   if mExternal.Fixed then
   begin
     mLabel := CellLabel(FDialog, mRow, mRow.Width - cChoiceWidth - cGap, cChoiceWidth,
-      TAtlasStrings.Fmt(TAtlasTextId.VcsBranchExternalFixed, [TAtlasVcsBranchPlan.ExternalRevision(mExternal)]));
+      TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchExternalFixed, [TAtlasVcsBranchPlan.ExternalRevision(mExternal)]));
     mLabel.Anchors := [akTop, akRight];
     Exit;
   end;
@@ -1264,13 +1265,13 @@ begin
   mBox.Align := alClient;
   mBox.AlignWithMargins := True;
   mBox.Margins.SetBounds(cGap, 4, cGap, 0);
-  mBox.Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchWhatHappens);
+  mBox.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchWhatHappens);
   FServerHint := TLabel.Create(FDialog);
   FServerHint.Parent := mBox;
   FServerHint.Align := alBottom;
   FServerHint.AlignWithMargins := True;
   FServerHint.WordWrap := True;
-  FServerHint.Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchServerHint);
+  FServerHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchServerHint);
   FMemo := TMemo.Create(FDialog);
   FMemo.Parent := mBox;
   FMemo.Align := alClient;
@@ -1353,7 +1354,7 @@ end;
 
 procedure TAtlasBranchDialog.SetupForm;
 begin
-  Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchTitle);
+  Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchTitle);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
   Position := poMainFormCenter;
@@ -1376,13 +1377,13 @@ begin
   FNeverAsk := TCheckBox.Create(Self);
   FNeverAsk.Parent := mBottom;
   FNeverAsk.SetBounds(cGap, 12, 360, 20);
-  FNeverAsk.Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchNeverAsk);
+  FNeverAsk.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchNeverAsk);
   FNeverAsk.Visible := AOfferNeverAsk;
   FCreateButton := TButton.Create(Self);
   FCreateButton.Parent := mBottom;
   FCreateButton.SetBounds(mBottom.Width - 2 * (cButtonWidth + cGap), 8, cButtonWidth, 28);
   FCreateButton.Anchors := [akTop, akRight];
-  FCreateButton.Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchCreate);
+  FCreateButton.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchCreate);
   FCreateButton.Default := True;
   FCreateButton.OnClick := CreateClick;
   mCancel := TButton.Create(Self);

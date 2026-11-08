@@ -135,6 +135,7 @@ uses
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.UI.Strings,
+  Atlas.UI.VersionControl.Strings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Editor.WorkspaceEdit,
@@ -164,28 +165,28 @@ function AgeText(const AAge: TAtlasAge): string;
 begin
   case AAge.Unit_ of
     TAtlasAgeUnit.Minutes:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.BlameMinutes, [AAge.Count]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.BlameMinutes, [AAge.Count]);
     TAtlasAgeUnit.Hours:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.BlameHours, [AAge.Count]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.BlameHours, [AAge.Count]);
     TAtlasAgeUnit.Yesterday:
-      Result := TAtlasStrings.Text(TAtlasTextId.BlameYesterday);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.BlameYesterday);
     TAtlasAgeUnit.Days:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.BlameDays, [AAge.Count]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.BlameDays, [AAge.Count]);
     TAtlasAgeUnit.Months:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.BlameMonths, [AAge.Count]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.BlameMonths, [AAge.Count]);
     TAtlasAgeUnit.Years:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.BlameYears, [AAge.Count]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.BlameYears, [AAge.Count]);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.BlameJustNow);
+    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.BlameJustNow);
   end;
   // Ein Monat bzw. ein Jahr im Singular.
   if (AAge.Count = 1) and (AAge.Unit_ = TAtlasAgeUnit.Months) then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.BlameMonth);
+    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.BlameMonth);
   end
   else if (AAge.Count = 1) and (AAge.Unit_ = TAtlasAgeUnit.Years) then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.BlameYear);
+    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.BlameYear);
   end;
 end;
 
@@ -202,7 +203,7 @@ begin
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.BlameLine, [AEntry.Author, mAge, AEntry.Summary]);
+    Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.BlameLine, [AEntry.Author, mAge, AEntry.Summary]);
   end;
 end;
 
@@ -582,7 +583,7 @@ begin
   AUnsaved := mDiskLine < 0;
   if AUnsaved then
   begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.BlameUnsaved));
+    Exit(TAtlasVcsStrings.Text(TAtlasVcsTextId.BlameUnsaved));
   end;
   AEntry := EntryOf(mDiskLine);
   if AEntry < 0 then
@@ -592,7 +593,7 @@ begin
   mEntry := FBlame.Lines[AEntry];
   if mEntry.Uncommitted then
   begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.BlameUncommitted));
+    Exit(TAtlasVcsStrings.Text(TAtlasVcsTextId.BlameUncommitted));
   end;
   // Kennungen aus der Nachricht hinter der Zeit (#1275), aus dem Speicher, ohne Tracker.
   mSuffix := '';
@@ -605,7 +606,7 @@ end;
 
 class function TAtlasIdeLineChangesData.CommitText(const AEntry: TAtlasVcsBlameLine): string;
 begin
-  Result := TAtlasStrings.Fmt(TAtlasTextId.BlameCommitText,
+  Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.BlameCommitText,
     [AEntry.Author, FormatDateTime('dd.mm.yyyy hh":"nn', TTimeZone.Local.ToLocalTime(AEntry.Date)), AEntry.Summary]);
 end;
 
@@ -667,7 +668,7 @@ begin
   mEdit.Files := [mFileEdits];
   // Ein Rückgängig-Schritt im Puffer (#397); Strg+Z stellt die Änderung wieder her.
   AError := TAtlasIdeWorkspaceEdit.Apply(mEdit, TAtlasUnopenedPolicy.OpenInEditor,
-    TAtlasStrings.Text(TAtlasTextId.ChangeRevertAction)).Error;
+    TAtlasVcsStrings.Text(TAtlasVcsTextId.ChangeRevertAction)).Error;
 end;
 
 end.

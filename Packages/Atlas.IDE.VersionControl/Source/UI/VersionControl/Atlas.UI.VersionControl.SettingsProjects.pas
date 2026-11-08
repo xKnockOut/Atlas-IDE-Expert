@@ -16,6 +16,7 @@ uses
   Atlas.Core.Projects.VersionControl,
   Atlas.Core.VersionControl.ServerCheck,
   Atlas.UI.Strings,
+  Atlas.UI.VersionControl.Strings,
   Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.VersionControl.SettingsPart;
 
@@ -273,7 +274,7 @@ var
 begin
   FVcsProjectSelected := -1;
   FVcsContext := TAtlasVcsProjectContext.Empty;
-  AddTitle(TAtlasTextId.SettingsVcsProjects);
+  AddTitle(TAtlasVcsTextId.SettingsVcsProjects);
   mPanel := AddPanel(110, [cProjectsKey]);
   // Die Zeilen erst mit Fenster (RefreshVcsProjects, auch aus CreateWnd).
   FVcsProjectList := TListView.Create(FPage);
@@ -286,8 +287,8 @@ begin
   FVcsProjectList.OnSelectItem := VcsProjectSelectItem;
   FVcsProjectList.OnCustomDrawItem := VcsProjectDrawItem;
   AddListColumn(FVcsProjectList, TAtlasTextId.SettingsIssuesProjectMatch, cVcsMatchColumn);
-  AddListColumn(FVcsProjectList, TAtlasTextId.SettingsVcsProjectsKind, cVcsKindColumn);
-  AddListColumn(FVcsProjectList, TAtlasTextId.SettingsVcsProjectsMainBranch, cVcsBranchColumn);
+  AddListColumn(FVcsProjectList, TAtlasVcsTextId.SettingsVcsProjectsKind, cVcsKindColumn);
+  AddListColumn(FVcsProjectList, TAtlasVcsTextId.SettingsVcsProjectsMainBranch, cVcsBranchColumn);
   AddListColumn(FVcsProjectList, TAtlasTextId.SettingsIssuesProjectSource, cVcsSourceColumn);
   FVcsProjectMatch := TEdit.Create(FPage);
   FVcsProjectMatch.OnChange := VcsProjectMatchChange;
@@ -297,15 +298,15 @@ begin
   // Reihenfolge wie die Werte von vcs.projects[].provider (auto, git, svn, off).
   FVcsProjectProvider := TAtlasChoiceBox.Create(FPage);
   FVcsProjectProvider.OnChange := VcsProjectProviderChange;
-  Attach(AddFieldRow(TAtlasTextId.SettingsVcsProjectsKind, FVcsProjectProvider, cVcsField), FVcsProjectList);
+  Attach(AddFieldRow(TAtlasVcsTextId.SettingsVcsProjectsKind, FVcsProjectProvider, cVcsField), FVcsProjectList);
   FVcsProjectProvider.SetChoices(TArray<string>.Create(TAtlasSettingsVcsPart.VcsProviderCaption('auto'),
     TAtlasSettingsVcsPart.VcsProviderCaption('git'),
     TAtlasSettingsVcsPart.VcsProviderCaption('svn'), TAtlasSettingsVcsPart.VcsProviderCaption('off')));
   FVcsProjectMainBranch := TEdit.Create(FPage);
   FVcsProjectMainBranch.OnChange := VcsProjectMainBranchChange;
-  Attach(AddFieldRow(TAtlasTextId.SettingsVcsProjectsMainBranch, FVcsProjectMainBranch, cVcsField),
+  Attach(AddFieldRow(TAtlasVcsTextId.SettingsVcsProjectsMainBranch, FVcsProjectMainBranch, cVcsField),
     FVcsProjectList);
-  FVcsProjectMainBranch.TextHint := TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsGuess);
+  FVcsProjectMainBranch.TextHint := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsGuess);
   // Grund, warum eine Zeile nicht greift oder nicht übernommen wird (.atlas, Pfad doppelt, Leerraum).
   mPanel := AddPanel(18);
   FVcsProjectNote := TLabel.Create(FPage);
@@ -319,7 +320,7 @@ begin
   FVcsProjectRemove := AddRowButton(mPanel, cVcsAddCurrentWidth + cVcsAddWidth + cVcsButtonGap + cVcsButtonGap,
     cVcsRemoveWidth, TAtlasTextId.SettingsIssuesConnectionRemove, VcsProjectRemoveClick);
   Attach(mPanel, FVcsProjectList);
-  mHint := AddWrappedLabel(52, TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsHint));
+  mHint := AddWrappedLabel(52, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsHint));
   mHint.Font.Color := clGrayText;
   Attach(mHint.Parent, FVcsProjectList);
 end;
@@ -351,7 +352,7 @@ begin
   mBranch := mRows[AIndex].MainBranch;
   if mBranch = '' then
   begin
-    mBranch := TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsGuess);
+    mBranch := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsGuess);
   end;
   mItem.SubItems.Clear;
   mItem.SubItems.Add(FPage.Part<TAtlasSettingsVcsPart>.VcsProviderCaption(mRows[AIndex].Provider));
@@ -410,7 +411,7 @@ begin
   end
   else if VcsProjectCovered(FVcsContext, AMapping) then
   begin
-    FVcsProjectNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsCoveredHint);
+    FVcsProjectNote.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsCoveredHint);
   end
   else
   begin
@@ -542,7 +543,7 @@ begin
   begin
     if CharInSet(mBranch[mIndex], [' ', #9]) then
     begin
-      FVcsProjectNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsBranchInvalid);
+      FVcsProjectNote.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsBranchInvalid);
       Exit;
     end;
   end;
@@ -784,7 +785,7 @@ var
   mHint: TLabel;
 begin
   FVcsServerSelected := -1;
-  AddTitle(TAtlasTextId.SettingsVcsServers);
+  AddTitle(TAtlasVcsTextId.SettingsVcsServers);
   mPanel := AddPanel(96);
   FVcsServerList := TListView.Create(FPage);
   FVcsServerList.Parent := mPanel;
@@ -794,16 +795,16 @@ begin
   FVcsServerList.RowSelect := True;
   FVcsServerList.HideSelection := False;
   FVcsServerList.OnSelectItem := VcsServerSelectItem;
-  AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerProject,
+  AddListColumn(FVcsServerList, TAtlasVcsTextId.SettingsVcsServerProject,
     cVcsServerProjectColumn);
-  AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerServer, cVcsServerServerColumn);
-  AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerState, cVcsServerStateColumn);
+  AddListColumn(FVcsServerList, TAtlasVcsTextId.SettingsVcsServerServer, cVcsServerServerColumn);
+  AddListColumn(FVcsServerList, TAtlasVcsTextId.SettingsVcsServerState, cVcsServerStateColumn);
   mPanel := AddPanel(32);
-  FVcsServerCheck := AddRowButton(mPanel, 0, cVcsCheckWidth, TAtlasTextId.SettingsVcsServerCheck, VcsServerCheckClick);
+  FVcsServerCheck := AddRowButton(mPanel, 0, cVcsCheckWidth, TAtlasVcsTextId.SettingsVcsServerCheck, VcsServerCheckClick);
   FVcsServerCheckAll := AddRowButton(mPanel, cVcsCheckWidth + cVcsButtonGap, cVcsCheckAllWidth,
-    TAtlasTextId.SettingsVcsServerCheckAll, VcsServerCheckAllClick);
+    TAtlasVcsTextId.SettingsVcsServerCheckAll, VcsServerCheckAllClick);
   FVcsServerLogin := AddRowButton(mPanel, cVcsCheckWidth + cVcsCheckAllWidth + cVcsButtonGap + cVcsButtonGap,
-    cVcsCheckAllWidth, TAtlasTextId.SettingsVcsServerLogin, VcsServerLoginClick);
+    cVcsCheckAllWidth, TAtlasVcsTextId.SettingsVcsServerLogin, VcsServerLoginClick);
   Attach(mPanel, FVcsServerList);
   mPanel := AddPanel(18);
   FVcsServerNote := TLabel.Create(FPage);
@@ -811,7 +812,7 @@ begin
   FVcsServerNote.Left := 0;
   FVcsServerNote.Top := 1;
   Attach(mPanel, FVcsServerList);
-  mHint := AddWrappedLabel(52, TAtlasStrings.Text(TAtlasTextId.SettingsVcsServersHint));
+  mHint := AddWrappedLabel(52, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServersHint));
   mHint.Font.Color := clGrayText;
   Attach(mHint.Parent, FVcsServerList);
 end;
@@ -821,24 +822,24 @@ class function TAtlasSettingsVcsServersPart.VcsServerStateText(const ACheck: TAt
 begin
   if AChecking then
   begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking));
+    Exit(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerChecking));
   end;
   case ACheck.State of
     TAtlasVcsServerState.Reachable:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable,
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsServerReachable,
         [FormatDateTime('hh:nn', ACheck.CheckedAt, FormatSettings)]);
     TAtlasVcsServerState.LoginNeeded:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginNeeded);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerLoginNeeded);
     TAtlasVcsServerState.Unreachable:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnreachable);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerUnreachable);
     TAtlasVcsServerState.NoServer:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerNoServer);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerNoServer);
     TAtlasVcsServerState.ToolMissing:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerToolMissing);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerToolMissing);
     TAtlasVcsServerState.Failed:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerFailed);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerFailed);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnknown);
+    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerUnknown);
   end;
 end;
 
@@ -1103,11 +1104,11 @@ begin
     // Nach dem Schließen der Konsole prüft der Aufrufer erneut und meldet VcsServerDone.
     FVcsServerRows[FVcsServerSelected].Checking := True;
     VcsServerShowItem(FVcsServerSelected);
-    FVcsServerNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginOpen);
+    FVcsServerNote.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerLoginOpen);
   end
   else
   begin
-    FVcsServerNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginFailed);
+    FVcsServerNote.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerLoginFailed);
   end;
   VcsServerFillButtons;
 end;

@@ -140,7 +140,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.VersionControl.Strings;
 
 const
   cGap = 8;
@@ -174,7 +175,7 @@ function PathCell(AKind: TAtlasVcsKind; const ARow: TAtlasVcsWorkingCopyRow): st
 begin
   if ARow.Url <> '' then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesForeign, [ARow.Url]);
+    Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesForeign, [ARow.Url]);
   end
   else if (ARow.RepositoryPath <> '') and (AKind = TAtlasVcsKind.Svn) then
   begin
@@ -190,7 +191,7 @@ function RevisionCell(AKind: TAtlasVcsKind; const ARow: TAtlasVcsWorkingCopyRow)
 begin
   if not ARow.Loaded then
   begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesLoading));
+    Exit(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesLoading));
   end;
   Result := ARow.Revision;
   if (Result = '') and ARow.Fixed then
@@ -203,7 +204,7 @@ begin
   end;
   if ARow.Fixed then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesFixed, [Result]);
+    Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesFixed, [Result]);
   end;
 end;
 
@@ -219,7 +220,7 @@ begin
   end
   else
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesLoading);
+    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesLoading);
   end;
 end;
 
@@ -228,7 +229,7 @@ function IncomingCell(AKind: TAtlasVcsKind; const ARow: TAtlasVcsWorkingCopyRow;
 begin
   if AChecking then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesChecking);
+    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesChecking);
   end
   else if ARow.Incoming >= 0 then
   begin
@@ -240,7 +241,7 @@ begin
   end
   else if (AKind = TAtlasVcsKind.Svn) and (ARow.RepositoryPath <> '') then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesNotChecked);
+    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesNotChecked);
   end
   else
   begin
@@ -255,10 +256,10 @@ begin
   inherited Create(ADialog);
   FDialog := ADialog;
   OnPopup := MenuPopup;
-  FUpdateItem := AddItem(TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesMenuUpdate), UpdateItemClick);
-  FUpdateOnlyItem := AddItem(TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesMenuUpdateOnly), UpdateItemClick);
-  FPinItem := AddItem(TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesMenuPin), PinItemClick);
-  FOpenItem := AddItem(TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesMenuOpenFolder), OpenItemClick);
+  FUpdateItem := AddItem(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesMenuUpdate), UpdateItemClick);
+  FUpdateOnlyItem := AddItem(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesMenuUpdateOnly), UpdateItemClick);
+  FPinItem := AddItem(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesMenuPin), PinItemClick);
+  FOpenItem := AddItem(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesMenuOpenFolder), OpenItemClick);
   FOpenItem.Default := True;
 end;
 
@@ -322,13 +323,13 @@ begin
   Align := alBottom;
   Height := 44;
   BevelOuter := bvNone;
-  FCheckButton := AddButton(cGap, cCheckWidth, TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesCheckServer),
+  FCheckButton := AddButton(cGap, cCheckWidth, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesCheckServer),
     CheckClick);
   FUpdateAllButton := AddButton(cCheckWidth + 2 * cGap, cButtonWidth,
-    TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesUpdateAll), UpdateClick);
+    TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesUpdateAll), UpdateClick);
   FUpdateOnlyButton := AddButton(cCheckWidth + cButtonWidth + 3 * cGap, cButtonWidth,
-    TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesUpdateOnly, [AName]), UpdateClick);
-  mClose := AddButton(Width - (cCloseWidth + cGap), cCloseWidth, TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesClose),
+    TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesUpdateOnly, [AName]), UpdateClick);
+  mClose := AddButton(Width - (cCloseWidth + cGap), cCloseWidth, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesClose),
     nil);
   mClose.Anchors := [akTop, akRight];
   mClose.Cancel := True;
@@ -367,7 +368,7 @@ begin
   FUpdateOnlyButton.Visible := ASvn and ASeveral;
   if ASvn then
   begin
-    FUpdateAllButton.Caption := TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesUpdateAll);
+    FUpdateAllButton.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesUpdateAll);
   end
   else
   begin
@@ -389,7 +390,7 @@ begin
   inherited CreateNew(AOwner);
   FName := AName;
   FList := TAtlasVcsWorkingCopyList.Empty;
-  Caption := TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesTitle, [AName]);
+  Caption := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesTitle, [AName]);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
   Position := poMainFormCenter;
@@ -415,7 +416,7 @@ begin
   mHint.AlignWithMargins := True;
   mHint.Margins.SetBounds(cGap, 2, cGap, 2);
   mHint.WordWrap := True;
-  mHint.Caption := TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesHint);
+  mHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesHint);
 end;
 
 procedure TAtlasWorkingCopiesDialog.AddView;
@@ -423,7 +424,7 @@ var
   mColumn: TListColumn;
   mIndex: Integer;
   mWidths: TArray<Integer>;
-  mCaptions: TArray<TAtlasTextId>;
+  mCaptions: TArray<TAtlasVcsTextId>;
 begin
   FView := TListView.Create(Self);
   FView.Parent := Self;
@@ -436,14 +437,14 @@ begin
   FView.HideSelection := False;
   FView.PopupMenu := FMenu;
   FView.OnDblClick := ViewDblClick;
-  mCaptions := TArray<TAtlasTextId>.Create(TAtlasTextId.VcsWorkingCopiesColumnCopy,
-    TAtlasTextId.VcsWorkingCopiesColumnPath, TAtlasTextId.VcsWorkingCopiesColumnRevision,
-    TAtlasTextId.VcsWorkingCopiesColumnChanged, TAtlasTextId.VcsWorkingCopiesColumnIncoming);
+  mCaptions := TArray<TAtlasVcsTextId>.Create(TAtlasVcsTextId.VcsWorkingCopiesColumnCopy,
+    TAtlasVcsTextId.VcsWorkingCopiesColumnPath, TAtlasVcsTextId.VcsWorkingCopiesColumnRevision,
+    TAtlasVcsTextId.VcsWorkingCopiesColumnChanged, TAtlasVcsTextId.VcsWorkingCopiesColumnIncoming);
   mWidths := TArray<Integer>.Create(200, 260, 120, 70, 130);
   for mIndex := 0 to High(mCaptions) do
   begin
     mColumn := FView.Columns.Add;
-    mColumn.Caption := TAtlasStrings.Text(mCaptions[mIndex]);
+    mColumn.Caption := TAtlasVcsStrings.Text(mCaptions[mIndex]);
     mColumn.Width := mWidths[mIndex];
   end;
 end;
@@ -493,7 +494,7 @@ begin
     end
     else
     begin
-      FView.Items.Add.Caption := TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesLoading);
+      FView.Items.Add.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesLoading);
     end;
   finally
     FView.Items.EndUpdate;

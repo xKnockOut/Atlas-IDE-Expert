@@ -131,6 +131,7 @@ uses
   System.SyncObjs,
   System.JSON,
   Atlas.UI.Strings,
+  Atlas.UI.VersionControl.Strings,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.JsonText,
   Atlas.Core.Files.TextFile,
@@ -522,11 +523,11 @@ begin
   mConfigured := TAtlasVcsTools.Configured(AKind);
   if mConfigured <> '' then
   begin
-    mText := Format(TAtlasStrings.Text(TAtlasTextId.VcsToolConfiguredMissing), [mName, mConfigured]);
+    mText := Format(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsToolConfiguredMissing), [mName, mConfigured]);
   end
   else
   begin
-    mText := Format(TAtlasStrings.Text(TAtlasTextId.VcsToolMissing), [mName, mName]);
+    mText := Format(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsToolMissing), [mName, mName]);
   end;
   // Kann aus einem Hintergrund-Thread kommen; die Meldungsansicht nur im Hauptthread.
   TAtlasMainThread.ForceQueue(TAtlasFeature.Status,

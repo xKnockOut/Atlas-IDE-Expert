@@ -130,6 +130,7 @@ uses
   Atlas.Core.Setup.Checklist,
   Atlas.Core.VersionControl.BranchNames,
   Atlas.UI.Strings,
+  Atlas.UI.VersionControl.Strings,
   Atlas.IDE.Foundation.DockWindow,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
@@ -187,10 +188,10 @@ begin
   mTarget := TAtlasVcsBranchPlan.CheckoutTarget(ARoot, AFolder, mFile);
   if (mTarget = '') or not FileExists(mTarget) then
   begin
-    TAtlasIdeVcsCore.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchCheckedOut, [AFolder]));
+    TAtlasIdeVcsCore.Report(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchCheckedOut, [AFolder]));
     Exit;
   end;
-  if MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchOpenCheckout, [ExtractFileName(mTarget), AFolder,
+  if MessageDlg(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchOpenCheckout, [ExtractFileName(mTarget), AFolder,
     sLineBreak + sLineBreak]),
     mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
   begin
@@ -260,7 +261,7 @@ begin
     Exit;
   end;
   TAtlasGuard.Log('Branch anlegen: Externals geändert, Index wird neu aufgebaut');
-  TAtlasIdeVcsCore.Report(TAtlasStrings.Text(TAtlasTextId.VcsBranchIndexRebuild));
+  TAtlasIdeVcsCore.Report(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchIndexRebuild));
 end;
 
 class procedure TAtlasIdeBranching.StopAsking;
@@ -290,11 +291,11 @@ class function TAtlasIdeBranching.ServerState(AOutcome: TAtlasVcsOutcome): strin
 begin
   case AOutcome of
     TAtlasVcsOutcome.LoginNeeded:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginNeeded);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerLoginNeeded);
     TAtlasVcsOutcome.ToolMissing:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerToolMissing);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerToolMissing);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnreachable);
+    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerUnreachable);
   end;
 end;
 
@@ -308,7 +309,7 @@ begin
     Exit(False);
   end;
   AFallback := TAtlasVcsBranchPlan.LocalFallback(AFacts, ARequest);
-  Result := MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFetchFailedAsk, [ARequest.Base.RemoteName,
+  Result := MessageDlg(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchFetchFailedAsk, [ARequest.Base.RemoteName,
     ServerState(ARun.Outcome), sLineBreak + sLineBreak, TAtlasVcsBranchPlan.BaseName(AFallback.Kind,
     AFallback.Base)]), mtConfirmation, [mbYes, mbNo], 0) = mrYes;
   TAtlasGuard.Log(Format('Branch anlegen: Abruf gescheitert (%s), lokal weiter: %s',
@@ -322,19 +323,19 @@ var
   mAnswer: Integer;
 begin
   AStash := False;
-  mDialog := CreateMessageDialog(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchUncommittedAsk, [AChanges, AName, AName]),
+  mDialog := CreateMessageDialog(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchUncommittedAsk, [AChanges, AName, AName]),
     mtConfirmation, [mbYes, mbNo, mbCancel], mbYes);
   try
     // Eigene Beschriftungen statt Ja/Nein: mitnehmen, beiseitelegen, abbrechen.
     mButton := mDialog.FindComponent('Yes');
     if mButton is TButton then
     begin
-      TButton(mButton).Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchCarry);
+      TButton(mButton).Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchCarry);
     end;
     mButton := mDialog.FindComponent('No');
     if mButton is TButton then
     begin
-      TButton(mButton).Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchStashShort);
+      TButton(mButton).Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchStashShort);
     end;
     mButton := mDialog.FindComponent('Cancel');
     if mButton is TButton then
@@ -369,8 +370,8 @@ end;
 
 class function TAtlasIdeBranching.OfferWorktree(const AName, AFolder, ATarget: string): Boolean;
 begin
-  Result := (ATarget <> '') and FileExists(ATarget) and (MessageDlg(TAtlasStrings.Fmt(
-    TAtlasTextId.VcsBranchWorktreeOpen, [AName, AFolder, sLineBreak + sLineBreak, ExtractFileName(ATarget)]),
+  Result := (ATarget <> '') and FileExists(ATarget) and (MessageDlg(TAtlasVcsStrings.Fmt(
+    TAtlasVcsTextId.VcsBranchWorktreeOpen, [AName, AFolder, sLineBreak + sLineBreak, ExtractFileName(ATarget)]),
     mtConfirmation, [mbYes, mbNo], 0) = mrYes);
 end;
 
@@ -383,7 +384,7 @@ end;
 class function TAtlasIdeBranching.ProgressText(AKind: TAtlasVcsKind; AIndex, ACount: Integer;
   const AStep: TAtlasVcsBranchStep): string;
 begin
-  Result := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchProgress, [AIndex + 1, ACount,
+  Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchProgress, [AIndex + 1, ACount,
     TAtlasVcsBranchPlan.StepText(AKind, AStep)]);
 end;
 
@@ -406,12 +407,12 @@ var
 begin
   if (ARun.Failed >= 0) and (ARun.Failed <= High(ASteps)) then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchStepFailed, [ARun.Failed + 1,
+    Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchStepFailed, [ARun.Failed + 1,
       TAtlasVcsBranchPlan.StepText(AKind, ASteps[ARun.Failed]), AtlasVcsOutcomeName(ARun.Outcome)]);
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFailed, [AtlasVcsOutcomeName(ARun.Outcome)]);
+    Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchFailed, [AtlasVcsOutcomeName(ARun.Outcome)]);
   end;
   mDone := TAtlasVcsBranchPlan.ServerStepsDone(ASteps, ARun.Done);
   if Length(mDone) = 0 then
@@ -427,7 +428,7 @@ begin
     end;
     mList := mList + TAtlasVcsBranchPlan.StepText(AKind, mStep);
   end;
-  Result := Result + ' ' + TAtlasStrings.Fmt(TAtlasTextId.VcsBranchServerDone, [mList]);
+  Result := Result + ' ' + TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchServerDone, [mList]);
 end;
 
 class procedure TAtlasIdeBranching.CreateFor(const AProject: string; const ADone: TProc);
@@ -477,7 +478,7 @@ begin
     begin
       if (mFacts.Kind <> TAtlasVcsKind.Git) and (mFacts.Kind <> TAtlasVcsKind.Svn) then
       begin
-        TAtlasIdeVcsCore.Report(TAtlasStrings.Text(TAtlasTextId.VcsBranchNoVcs));
+        TAtlasIdeVcsCore.Report(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchNoVcs));
         Exit;
       end;
       if Ask(mFolder, mFacts, Setup('', '', '', mSvn, False), mRequest, mNever) then
@@ -486,7 +487,7 @@ begin
       end;
     end) then
   begin
-    TAtlasIdeVcsCore.Report(TAtlasStrings.Text(TAtlasTextId.VcsBranchNoVcs));
+    TAtlasIdeVcsCore.Report(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchNoVcs));
   end;
 end;
 
@@ -561,7 +562,7 @@ begin
   end
   else
   begin
-    TAtlasIdeVcsCore.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchCreated, [FRequest.Name, mBase]));
+    TAtlasIdeVcsCore.Report(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchCreated, [FRequest.Name, mBase]));
   end;
   // Nur der Push scheiterte: der lokale Branch bleibt.
   if not FRun.Succeeded then
@@ -605,7 +606,7 @@ begin
     AtlasVcsOutcomeName(FRun.Outcome)]));
   if FExists then
   begin
-    TAtlasIdeVcsCore.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchExists, [FRequest.Name]));
+    TAtlasIdeVcsCore.Report(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchExists, [FRequest.Name]));
   end
   else if FTaken then
   begin
@@ -658,7 +659,7 @@ begin
       mKeep := nil;
     end) then
   begin
-    TAtlasIdeVcsCore.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFailed,
+    TAtlasIdeVcsCore.Report(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchFailed,
       [AtlasVcsOutcomeName(TAtlasVcsOutcome.Failed)]));
   end;
 end;

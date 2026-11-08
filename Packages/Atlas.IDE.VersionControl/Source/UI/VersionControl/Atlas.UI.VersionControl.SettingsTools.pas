@@ -12,6 +12,7 @@ uses
   Atlas.Core.VersionControl.Tools,
   Atlas.Core.VersionControl.ToolCheck,
   Atlas.UI.Strings,
+  Atlas.UI.VersionControl.Strings,
   Atlas.UI.VersionControl.SettingsPart;
 
 type
@@ -32,7 +33,7 @@ type
     FVcsStates: array[TAtlasVcsKind] of TLabel;
     FOnVcsLocate: TAtlasVcsLocateEvent;
     FOnVcsCheck: TAtlasVcsCheckEvent;
-    procedure AddVcsTool(AKind: TAtlasVcsKind; const AKey: string; ACaption: TAtlasTextId);
+    procedure AddVcsTool(AKind: TAtlasVcsKind; const AKey: string; ACaption: TAtlasVcsTextId);
     procedure VcsPathChange(Sender: TObject);
     procedure VcsBrowseClick(Sender: TObject);
     procedure VcsCheckClick(Sender: TObject);
@@ -74,19 +75,19 @@ uses
 procedure TAtlasSettingsVcsToolsPart.Build;
 begin
   // Programme: eigener Pfad mit „…“ und „Prüfen“, darunter der Zustand.
-  AddTitle(TAtlasTextId.SettingsVcsToolsTitle);
-  AddVcsTool(TAtlasVcsKind.Git, 'vcs.git.path', TAtlasTextId.SettingsVcsGitPath);
-  AddVcsTool(TAtlasVcsKind.Svn, 'vcs.svn.path', TAtlasTextId.SettingsVcsSvnPath);
+  AddTitle(TAtlasVcsTextId.SettingsVcsToolsTitle);
+  AddVcsTool(TAtlasVcsKind.Git, 'vcs.git.path', TAtlasVcsTextId.SettingsVcsGitPath);
+  AddVcsTool(TAtlasVcsKind.Svn, 'vcs.svn.path', TAtlasVcsTextId.SettingsVcsSvnPath);
 end;
 
-procedure TAtlasSettingsVcsToolsPart.AddVcsTool(AKind: TAtlasVcsKind; const AKey: string; ACaption: TAtlasTextId);
+procedure TAtlasSettingsVcsToolsPart.AddVcsTool(AKind: TAtlasVcsKind; const AKey: string; ACaption: TAtlasVcsTextId);
 var
   mPanel: TWinControl;
   mEdit: TEdit;
   mButton: TButton;
   mState: TLabel;
 begin
-  mEdit := Host.AddText(AKey, TAtlasStrings.Text(ACaption)) as TEdit;
+  mEdit := Host.AddText(AKey, TAtlasVcsStrings.Text(ACaption)) as TEdit;
   mEdit.Anchors := [akLeft, akTop];
   mEdit.Width := 466 - 2 * 36 - 60;
   mEdit.Tag := Ord(AKind);
@@ -104,7 +105,7 @@ begin
   FVcsBrowse[AKind] := mButton;
   mButton := TButton.Create(FPage);
   mButton.Parent := mPanel;
-  mButton.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsCheck);
+  mButton.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsCheck);
   mButton.Left := FVcsBrowse[AKind].Left + 36;
   mButton.Top := 0;
   mButton.Width := 90;
@@ -143,11 +144,11 @@ class function TAtlasSettingsVcsToolsPart.VcsSourceText(ASource: TAtlasVcsToolSo
 begin
   case ASource of
     TAtlasVcsToolSource.Path:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsSourcePath);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsSourcePath);
     TAtlasVcsToolSource.KnownDir:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsSourceKnownDir);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsSourceKnownDir);
     TAtlasVcsToolSource.Configured:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsSourceConfigured);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsSourceConfigured);
   else
     Result := '';
   end;
@@ -157,15 +158,15 @@ class function TAtlasSettingsVcsToolsPart.VcsLocationText(const ALocation: TAtla
 begin
   if ALocation.Source = TAtlasVcsToolSource.ConfiguredMissing then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsToolConfiguredMissing, [ALocation.Configured]);
+    Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsToolConfiguredMissing, [ALocation.Configured]);
   end
   else if ALocation.Executable = '' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolMissing);
+    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsToolMissing);
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsToolWouldUse,
+    Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsToolWouldUse,
       [ALocation.Executable, VcsSourceText(ALocation.Source)]);
   end;
 end;
@@ -174,14 +175,14 @@ class function TAtlasSettingsVcsToolsPart.VcsCheckText(const ACheck: TAtlasVcsTo
 begin
   case ACheck.State of
     TAtlasVcsToolState.Found:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsToolFound,
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsToolFound,
         [ACheck.Version, ACheck.Location.Executable, VcsSourceText(ACheck.Location.Source)]);
     TAtlasVcsToolState.StartFailed:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsToolStartFailed, [ACheck.ExitCode]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsToolStartFailed, [ACheck.ExitCode]);
     TAtlasVcsToolState.NoAnswer:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolNoAnswer);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsToolNoAnswer);
     TAtlasVcsToolState.NotRecognized:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsToolNotRecognized,
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsToolNotRecognized,
         [TAtlasVcsTools.ProgramName(ACheck.Kind)]);
   else
     Result := VcsLocationText(ACheck.Location);
@@ -216,7 +217,7 @@ begin
   mKind := TAtlasVcsKind((Sender as TComponent).Tag);
   mDialog := TOpenDialog.Create(nil);
   try
-    mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsVcsFilter);
+    mDialog.Filter := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsFilter);
     mDialog.Options := mDialog.Options + [ofFileMustExist];
     mDialog.FileName := Trim(FVcsPaths[mKind].Text);
     if mDialog.FileName = '' then
@@ -241,7 +242,7 @@ begin
   begin
     Exit;
   end;
-  FVcsStates[mKind].Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolChecking);
+  FVcsStates[mKind].Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsToolChecking);
   Allow(FVcsCheck[mKind], False);
   FOnVcsCheck(mKind, Trim(FVcsPaths[mKind].Text));
 end;

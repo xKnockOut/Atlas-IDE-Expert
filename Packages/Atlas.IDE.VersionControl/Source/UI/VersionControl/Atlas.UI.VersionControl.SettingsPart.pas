@@ -17,6 +17,7 @@ uses
   Vcl.ComCtrls,
   Atlas.Core.Settings.Contract,
   Atlas.UI.Strings,
+  Atlas.UI.VersionControl.Strings,
   Atlas.UI.Settings.Contract,
   Atlas.UI.Settings.ChoiceBox;
 
@@ -44,18 +45,26 @@ type
     /// <summary>Besitzer der eigenen Steuerelemente; nil vor Build und nach Close.</summary>
     FPage: TAtlasVcsSettingsOwner;
     function Host: IAtlasSettingsSectionHost;
-    procedure AddTitle(AId: TAtlasTextId);
+    procedure AddTitle(AId: TAtlasVcsTextId);
     /// <summary>Eigene Zeile; AKeys: Schlüssel, die der Teil darin selbst liest und schreibt.</summary>
     function AddPanel(AHeight: Integer): TWinControl; overload;
     function AddPanel(AHeight: Integer; const AKeys: TArray<string>): TWinControl; overload;
     function AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
     /// <summary>Zeile mit Beschriftung links und AControl daneben.</summary>
-    function AddFieldRow(AId: TAtlasTextId; AControl: TWinControl; AWidth: Integer): TWinControl;
+    function AddFieldRow(AId: TAtlasVcsTextId; AControl: TWinControl; AWidth: Integer): TWinControl; overload;
+    function AddFieldRow(AId: TAtlasTextId; AControl: TWinControl; AWidth: Integer): TWinControl; overload;
+    function AddFieldRowCaption(const ACaption: string; AControl: TWinControl; AWidth: Integer): TWinControl;
+    function AddRowButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasVcsTextId;
+      AClick: TNotifyEvent): TButton; overload;
     function AddRowButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasTextId;
+      AClick: TNotifyEvent): TButton; overload;
+    function AddRowButtonCaption(AParent: TWinControl; ALeft, AWidth: Integer; const ACaption: string;
       AClick: TNotifyEvent): TButton;
-    class procedure AddListColumn(AList: TListView; AId: TAtlasTextId; AWidth: Integer); static;
+    class procedure AddListColumn(AList: TListView; AId: TAtlasVcsTextId; AWidth: Integer); overload; static;
+    class procedure AddListColumn(AList: TListView; AId: TAtlasTextId; AWidth: Integer); overload; static;
+    class procedure AddListColumnCaption(AList: TListView; const ACaption: string; AWidth: Integer); static;
     /// <summary>Auswahl an AKey, gespeichert als AValues in derselben Reihenfolge wie ACaptions.</summary>
-    function AddChoice(const AKey: string; ACaption: TAtlasTextId; const ACaptions: array of TAtlasTextId;
+    function AddChoice(const AKey: string; ACaption: TAtlasVcsTextId; const ACaptions: array of TAtlasVcsTextId;
       const AValues: TArray<string>): TAtlasChoiceBox;
     procedure Allow(AControl: TControl; AValue: Boolean);
     procedure Attach(ARow, AAnchor: TControl);
@@ -119,9 +128,9 @@ begin
   Result := FPage.Host;
 end;
 
-procedure TAtlasVcsSettingsPart.AddTitle(AId: TAtlasTextId);
+procedure TAtlasVcsSettingsPart.AddTitle(AId: TAtlasVcsTextId);
 begin
-  Host.AddTitle(TAtlasStrings.Text(AId));
+  Host.AddTitle(TAtlasVcsStrings.Text(AId));
 end;
 
 function TAtlasVcsSettingsPart.AddPanel(AHeight: Integer): TWinControl;
@@ -139,14 +148,25 @@ begin
   Result := Host.AddHint(ACaption, AHeight) as TLabel;
 end;
 
+function TAtlasVcsSettingsPart.AddFieldRow(AId: TAtlasVcsTextId; AControl: TWinControl; AWidth: Integer): TWinControl;
+begin
+  Result := AddFieldRowCaption(TAtlasVcsStrings.Text(AId), AControl, AWidth);
+end;
+
 function TAtlasVcsSettingsPart.AddFieldRow(AId: TAtlasTextId; AControl: TWinControl; AWidth: Integer): TWinControl;
+begin
+  Result := AddFieldRowCaption(TAtlasStrings.Text(AId), AControl, AWidth);
+end;
+
+function TAtlasVcsSettingsPart.AddFieldRowCaption(const ACaption: string; AControl: TWinControl;
+  AWidth: Integer): TWinControl;
 var
   mCaption: TLabel;
 begin
   Result := AddPanel(26);
   mCaption := TLabel.Create(FPage);
   mCaption.Parent := Result;
-  mCaption.Caption := TAtlasStrings.Text(AId) + ':';
+  mCaption.Caption := ACaption + ':';
   mCaption.Left := 0;
   mCaption.Top := 5;
   AControl.Parent := Result;
@@ -155,29 +175,52 @@ begin
   AControl.Width := AWidth;
 end;
 
+function TAtlasVcsSettingsPart.AddRowButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasVcsTextId;
+  AClick: TNotifyEvent): TButton;
+begin
+  Result := AddRowButtonCaption(AParent, ALeft, AWidth, TAtlasVcsStrings.Text(AId), AClick);
+end;
+
 function TAtlasVcsSettingsPart.AddRowButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasTextId;
   AClick: TNotifyEvent): TButton;
 begin
+  Result := AddRowButtonCaption(AParent, ALeft, AWidth, TAtlasStrings.Text(AId), AClick);
+end;
+
+function TAtlasVcsSettingsPart.AddRowButtonCaption(AParent: TWinControl; ALeft, AWidth: Integer;
+  const ACaption: string; AClick: TNotifyEvent): TButton;
+begin
   Result := TButton.Create(FPage);
   Result.Parent := AParent;
-  Result.Caption := TAtlasStrings.Text(AId);
+  Result.Caption := ACaption;
   Result.Left := ALeft;
   Result.Top := cRowButtonTop;
   Result.Width := AWidth;
   Result.OnClick := AClick;
 end;
 
+class procedure TAtlasVcsSettingsPart.AddListColumn(AList: TListView; AId: TAtlasVcsTextId; AWidth: Integer);
+begin
+  AddListColumnCaption(AList, TAtlasVcsStrings.Text(AId), AWidth);
+end;
+
 class procedure TAtlasVcsSettingsPart.AddListColumn(AList: TListView; AId: TAtlasTextId; AWidth: Integer);
+begin
+  AddListColumnCaption(AList, TAtlasStrings.Text(AId), AWidth);
+end;
+
+class procedure TAtlasVcsSettingsPart.AddListColumnCaption(AList: TListView; const ACaption: string;
+  AWidth: Integer);
 var
   mColumn: TListColumn;
 begin
   mColumn := AList.Columns.Add;
-  mColumn.Caption := TAtlasStrings.Text(AId);
+  mColumn.Caption := ACaption;
   mColumn.Width := AWidth;
 end;
 
-function TAtlasVcsSettingsPart.AddChoice(const AKey: string; ACaption: TAtlasTextId;
-  const ACaptions: array of TAtlasTextId; const AValues: TArray<string>): TAtlasChoiceBox;
+function TAtlasVcsSettingsPart.AddChoice(const AKey: string; ACaption: TAtlasVcsTextId;
+  const ACaptions: array of TAtlasVcsTextId; const AValues: TArray<string>): TAtlasChoiceBox;
 var
   mCaptions: TArray<string>;
   mIndex: Integer;
@@ -185,9 +228,9 @@ begin
   SetLength(mCaptions, Length(ACaptions));
   for mIndex := 0 to High(ACaptions) do
   begin
-    mCaptions[mIndex] := TAtlasStrings.Text(ACaptions[mIndex]);
+    mCaptions[mIndex] := TAtlasVcsStrings.Text(ACaptions[mIndex]);
   end;
-  Result := Host.AddChoice(AKey, TAtlasStrings.Text(ACaption), mCaptions, AValues) as TAtlasChoiceBox;
+  Result := Host.AddChoice(AKey, TAtlasVcsStrings.Text(ACaption), mCaptions, AValues) as TAtlasChoiceBox;
 end;
 
 procedure TAtlasVcsSettingsPart.Allow(AControl: TControl; AValue: Boolean);

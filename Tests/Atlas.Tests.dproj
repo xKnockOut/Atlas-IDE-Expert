@@ -1507,6 +1507,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.VersionControl.Internals.SvnLayout.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.VersionControl.Internals.SvnExternals.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.VersionControl.WorkingCopies.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\UI\VersionControl\Atlas.UI.VersionControl.Strings.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.VersionControl.Strings.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\UI\VersionControl\Atlas.UI.VersionControl.BranchDialog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\UI\VersionControl\Atlas.UI.VersionControl.WorkingCopies.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.VersionControl.BranchDialog.Tests.pas"/>

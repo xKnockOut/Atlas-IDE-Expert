@@ -74,6 +74,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.VersionControl.Pull,
   Atlas.UI.Strings,
+  Atlas.UI.VersionControl.Strings,
   Atlas.IDE.Foundation.DockWindow,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.VersionControl.Service;
@@ -159,14 +160,14 @@ begin
         Length(mList.Rows), AtlasVcsOutcomeName(mList.Outcome)]));
       if (mList.Kind <> TAtlasVcsKind.Git) and (mList.Kind <> TAtlasVcsKind.Svn) then
       begin
-        TAtlasIdeVcsCore.Report(TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesNoVcs));
+        TAtlasIdeVcsCore.Report(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesNoVcs));
       end;
       FList := mList;
       FDialog.SetList(FList);
       FillNext(0);
     end) then
   begin
-    TAtlasIdeVcsCore.Report(TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesNoVcs));
+    TAtlasIdeVcsCore.Report(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesNoVcs));
   end;
 end;
 
@@ -311,9 +312,9 @@ function PullMessage(AOutcome: TAtlasPullOutcome; AReason: TAtlasVcsOutcome; con
 begin
   case AOutcome of
     TAtlasPullOutcome.Updated:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesUpdated, [AName]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesUpdated, [AName]);
     TAtlasPullOutcome.UpToDate:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesUpToDate, [AName]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesUpToDate, [AName]);
     TAtlasPullOutcome.Blocked:
       Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullBlocked, [AName]);
   else
@@ -323,7 +324,7 @@ begin
     end
     else
     begin
-      Result := TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesUpdateFailed, [AName, AtlasVcsOutcomeName(AReason)]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesUpdateFailed, [AName, AtlasVcsOutcomeName(AReason)]);
     end;
   end;
 end;
@@ -389,7 +390,7 @@ begin
   begin
     mOwner := StringReplace(mOwner, '/', '\', [rfReplaceAll]);
   end;
-  AText := TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesPinConfirm, [AList.Rows[AIndex].Caption(AName),
+  AText := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesPinConfirm, [AList.Rows[AIndex].Caption(AName),
     AList.Rows[AIndex].Revision, mOwner, sLineBreak + sLineBreak]);
 end;
 
@@ -437,11 +438,11 @@ begin
       TAtlasGuard.Log('Arbeitskopien: festschreiben, ' + AtlasVcsOutcomeName(mOutcome));
       if mOutcome = TAtlasVcsOutcome.Ok then
       begin
-        TAtlasIdeVcsCore.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesPinned, [mName, mRevision]));
+        TAtlasIdeVcsCore.Report(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesPinned, [mName, mRevision]));
       end
       else
       begin
-        TAtlasIdeVcsCore.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesPinFailed, [mName,
+        TAtlasIdeVcsCore.Report(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesPinFailed, [mName,
           AtlasVcsOutcomeName(mOutcome)]));
       end;
       AfterChange;

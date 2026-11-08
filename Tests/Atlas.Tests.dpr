@@ -1382,6 +1382,8 @@ uses
   Atlas.Core.VersionControl.Internals.SvnLayout.Tests in 'IDE.Expert\Atlas.Core.VersionControl.Internals.SvnLayout.Tests.pas',
   Atlas.Core.VersionControl.Internals.SvnExternals.Tests in 'IDE.Expert\Atlas.Core.VersionControl.Internals.SvnExternals.Tests.pas',
   Atlas.Core.VersionControl.WorkingCopies.Tests in 'IDE.Expert\Atlas.Core.VersionControl.WorkingCopies.Tests.pas',
+  Atlas.UI.VersionControl.Strings in '..\Packages\Atlas.IDE.VersionControl\Source\UI\VersionControl\Atlas.UI.VersionControl.Strings.pas',
+  Atlas.UI.VersionControl.Strings.Tests in 'IDE.Expert\Atlas.UI.VersionControl.Strings.Tests.pas',
   Atlas.UI.VersionControl.BranchDialog in '..\Packages\Atlas.IDE.VersionControl\Source\UI\VersionControl\Atlas.UI.VersionControl.BranchDialog.pas',
   Atlas.UI.VersionControl.WorkingCopies in '..\Packages\Atlas.IDE.VersionControl\Source\UI\VersionControl\Atlas.UI.VersionControl.WorkingCopies.pas',
   Atlas.UI.VersionControl.BranchDialog.Tests in 'IDE.Expert\Atlas.UI.VersionControl.BranchDialog.Tests.pas',

@@ -25,18 +25,19 @@ implementation
 uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
+  Atlas.UI.VersionControl.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Contracts.VersionControl;
 
 /// <summary>Projektdatei des aktiven Projekts mit Versionsverwaltung; '' ohne, dann die Meldung ANoVcs.</summary>
-function VcsProject(ANoVcs: TAtlasTextId): string;
+function VcsProject(ANoVcs: TAtlasVcsTextId): string;
 begin
   Result := TAtlasIdeProjectSummaries.ProjectFileOf(TAtlasIdeTeamFile.ActiveProject);
   if Result = '' then
   begin
-    TAtlasIdeVcs.Report(TAtlasStrings.Text(ANoVcs));
+    TAtlasIdeVcs.Report(TAtlasVcsStrings.Text(ANoVcs));
   end;
 end;
 
@@ -60,7 +61,7 @@ procedure CreateBranch;
 var
   mProject: string;
 begin
-  mProject := VcsProject(TAtlasTextId.VcsBranchNoVcs);
+  mProject := VcsProject(TAtlasVcsTextId.VcsBranchNoVcs);
   if mProject <> '' then
   begin
     TAtlasIdeVcs.Dialogs.CreateBranchFor(mProject, RefreshSummary(mProject));
@@ -71,7 +72,7 @@ procedure ShowWorkingCopies;
 var
   mProject: string;
 begin
-  mProject := VcsProject(TAtlasTextId.VcsWorkingCopiesNoVcs);
+  mProject := VcsProject(TAtlasVcsTextId.VcsWorkingCopiesNoVcs);
   if mProject <> '' then
   begin
     TAtlasIdeVcs.Dialogs.ShowWorkingCopies(mProject, RefreshSummary(mProject));
@@ -95,12 +96,12 @@ begin
   Result := TAtlasIdeSettings.Current.VcsExternalsShow;
 end;
 
-function Command(const AId: string; ACaption: TAtlasTextId; const ARun: TProc;
+function Command(const AId: string; ACaption: TAtlasVcsTextId; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
   Result := Default(TAtlasModuleCommand);
   Result.Id := AId;
-  Result.Caption := TAtlasStrings.Text(ACaption);
+  Result.Caption := TAtlasVcsStrings.Text(ACaption);
   Result.Run := ARun;
   Result.Visible := AVisible;
 end;
@@ -110,8 +111,8 @@ end;
 function TAtlasVcsCommands.Commands: TArray<TAtlasModuleCommand>;
 begin
   SetLength(Result, 2);
-  Result[0] := Command(cCreateBranch, TAtlasTextId.VcsBranchCommand, Guarded(CreateBranch), nil);
-  Result[1] := Command(cWorkingCopies, TAtlasTextId.VcsWorkingCopiesCommand, Guarded(ShowWorkingCopies),
+  Result[0] := Command(cCreateBranch, TAtlasVcsTextId.VcsBranchCommand, Guarded(CreateBranch), nil);
+  Result[1] := Command(cWorkingCopies, TAtlasVcsTextId.VcsWorkingCopiesCommand, Guarded(ShowWorkingCopies),
     WorkingCopiesVisible);
 end;
 

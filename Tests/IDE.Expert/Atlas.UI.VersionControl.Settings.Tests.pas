@@ -53,6 +53,7 @@ uses
   Vcl.ComCtrls,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Strings,
+  Atlas.UI.VersionControl.Strings,
   Atlas.Core.Modules.Contract,
   Atlas.UI.Settings.Contract,
   Atlas.UI.Settings.Page.TestSupport,
@@ -236,7 +237,7 @@ begin
   Assert.IsTrue(APage.Pages.ActivePage = mVcs);
   GSection.Project.CheckShown;
   Assert.AreEqual(1, AProbe.FProjectCalls);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectQuerying), GSection.Project.VcsProjectInfo.Caption);
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectQuerying), GSection.Project.VcsProjectInfo.Caption);
   APage.Navigation.OnChange(APage.Navigation, AOther);
   APage.Navigation.OnChange(APage.Navigation, AVcsNode);
   GSection.Project.CheckShown;
@@ -346,7 +347,7 @@ var
   mText: string;
 begin
   mLocation := TAtlasVcsToolLocation.Empty;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolMissing),
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsToolMissing),
     TAtlasSettingsVcsToolsPart.VcsLocationText(mLocation));
   mLocation.Source := TAtlasVcsToolSource.ConfiguredMissing;
   mLocation.Configured := 'X:\git.exe';
@@ -361,7 +362,7 @@ begin
   mCheck.ExitCode := 128;
   Assert.Contains(TAtlasSettingsVcsToolsPart.VcsCheckText(mCheck), '128');
   mCheck.State := TAtlasVcsToolState.NoAnswer;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolNoAnswer), TAtlasSettingsVcsToolsPart.VcsCheckText(mCheck));
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsToolNoAnswer), TAtlasSettingsVcsToolsPart.VcsCheckText(mCheck));
   mCheck.State := TAtlasVcsToolState.Found;
   mCheck.Version := 'git version 2.47.1';
   mText := TAtlasSettingsVcsToolsPart.VcsCheckText(mCheck);
@@ -375,25 +376,25 @@ var
 begin
   // #1287: Zustände der Tabelle „Server“.
   mServer := TAtlasVcsServerCheck.Empty;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnknown),
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerUnknown),
     TAtlasSettingsVcsServersPart.VcsServerStateText(mServer, False));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking),
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerChecking),
     TAtlasSettingsVcsServersPart.VcsServerStateText(mServer, True));
   mServer.State := TAtlasVcsServerState.Reachable;
   mServer.CheckedAt := EncodeTime(14, 5, 0, 0);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable, ['14:05']),
+  Assert.AreEqual(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsServerReachable, ['14:05']),
     TAtlasSettingsVcsServersPart.VcsServerStateText(mServer, False));
   mServer.State := TAtlasVcsServerState.LoginNeeded;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginNeeded),
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerLoginNeeded),
     TAtlasSettingsVcsServersPart.VcsServerStateText(mServer, False));
   mServer.State := TAtlasVcsServerState.Unreachable;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnreachable),
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerUnreachable),
     TAtlasSettingsVcsServersPart.VcsServerStateText(mServer, False));
   mServer.State := TAtlasVcsServerState.NoServer;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerNoServer),
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerNoServer),
     TAtlasSettingsVcsServersPart.VcsServerStateText(mServer, False));
   mServer.State := TAtlasVcsServerState.ToolMissing;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerToolMissing),
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerToolMissing),
     TAtlasSettingsVcsServersPart.VcsServerStateText(mServer, False));
 end;
 procedure TAtlasSettingsPageVcsTests.VcsTexts;
@@ -403,7 +404,7 @@ var
 begin
   AssertVcsToolTexts;
   mState := TAtlasVcsProjectState.Empty;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectNone), TAtlasSettingsVcsProjectPart.VcsProjectText(mState));
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectNone), TAtlasSettingsVcsProjectPart.VcsProjectText(mState));
   mState.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
   mState.Outcome := TAtlasVcsOutcome.Ok;
   mState.WorkingCopy.Kind := TAtlasVcsKind.Git;
@@ -416,18 +417,18 @@ begin
   Assert.Contains(mText, 'C:\Projekte\Kasse');
   Assert.Contains(mText, 'feature/42-kasse');
   Assert.Contains(mText, 'origin/feature/42-kasse');
-  Assert.Contains(mText, TAtlasStrings.Text(TAtlasTextId.SettingsVcsSourceSetting), 'Herkunft der Art');
+  Assert.Contains(mText, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsSourceSetting), 'Herkunft der Art');
   mState.Source := TAtlasVcsProviderSource.Project;
   mState.SourceMatch := 'C:\Projekte\Kasse\Kasse.groupproj';
   Assert.Contains(TAtlasSettingsVcsProjectPart.VcsProjectText(mState), 'Kasse.groupproj');
   // #1286: Hauptbranch aus Zeile oder .atlas.
   Assert.DoesNotContain(TAtlasSettingsVcsProjectPart.VcsProjectText(mState),
-    TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectMainBranch, ['develop']));
+    TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsProjectMainBranch, ['develop']));
   mState.MainBranch := 'develop';
   Assert.Contains(TAtlasSettingsVcsProjectPart.VcsProjectText(mState),
-    TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectMainBranch, ['develop']));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderSvn), TAtlasSettingsVcsPart.VcsProviderCaption('SVN'));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderAuto), TAtlasSettingsVcsPart.VcsProviderCaption(''));
+    TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsProjectMainBranch, ['develop']));
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProviderSvn), TAtlasSettingsVcsPart.VcsProviderCaption('SVN'));
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProviderAuto), TAtlasSettingsVcsPart.VcsProviderCaption(''));
   AssertVcsServerTexts;
 end;
 /// <summary>Kontext: Projekt und Gruppe Kasse, eine Zeile aus der .atlas.</summary>
@@ -448,13 +449,13 @@ begin
   // Persönliche Zeile vor der aus der .atlas; die .atlas gewinnt für Kasse.
   Assert.AreEqual(2, AList.Items.Count);
   Assert.AreEqual('C:\Projekte', AList.Items[0].Caption);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderSvn), AList.Items[0].SubItems[0]);
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProviderSvn), AList.Items[0].SubItems[0]);
   Assert.AreEqual('trunk', AList.Items[0].SubItems[1]);
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectCovered), AList.Items[0].SubItems[2]);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderAuto), AList.Items[1].SubItems[0]);
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProviderAuto), AList.Items[1].SubItems[0]);
   Assert.AreEqual('develop', AList.Items[1].SubItems[1]);
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectTeam), AList.Items[1].SubItems[2]);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsCoveredHint), GSection.Projects.VcsProjectNote.Caption);
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsCoveredHint), GSection.Projects.VcsProjectNote.Caption);
   Assert.IsTrue(GSection.Projects.VcsProjectMatch.Enabled);
   // Zeile aus der .atlas: nur ansehen.
   AList.Items[1].Selected := True;
@@ -478,10 +479,10 @@ begin
   Assert.AreEqual(2, Integer(Length(GSection.Projects.VcsProjects)));
   Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', GSection.Projects.VcsProjects[1].Match);
   Assert.AreEqual('svn', GSection.Projects.VcsProjects[1].Provider);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsGuess), AList.Items[1].SubItems[1]);
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsGuess), AList.Items[1].SubItems[1]);
   // Hauptbranch: Leerraum wird abgewiesen.
   GSection.Projects.VcsProjectMainBranch.Text := 'release 1';
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsBranchInvalid), GSection.Projects.VcsProjectNote.Caption);
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsBranchInvalid), GSection.Projects.VcsProjectNote.Caption);
   Assert.AreEqual('', GSection.Projects.VcsProjects[1].MainBranch);
   GSection.Projects.VcsProjectMainBranch.Text := 'branches/develop';
   Assert.AreEqual('branches/develop', GSection.Projects.VcsProjects[1].MainBranch);
@@ -543,7 +544,7 @@ begin
     GSection.Projects.VcsProjectProvider.Choice := 1;
     GSection.Projects.VcsProjectProvider.OnChange(GSection.Projects.VcsProjectProvider);
     Assert.AreEqual('git', GSection.Projects.VcsProjects[2].Provider);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderGit), mList.Items[2].SubItems[0]);
+    Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProviderGit), mList.Items[2].SubItems[0]);
     // Entfernen, dann speichern: nur persönliche Zeilen landen in vcs.projects.
     mList.Items[0].Selected := True;
     GSection.Projects.VcsProjectRemove.Click;
@@ -562,10 +563,10 @@ begin
   Assert.AreEqual(2, AList.Items.Count);
   Assert.AreEqual('Kasse.groupproj', AList.Items[0].Caption);
   Assert.AreEqual('–', AList.Items[0].SubItems[0]);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnknown), AList.Items[0].SubItems[1]);
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerUnknown), AList.Items[0].SubItems[1]);
   Assert.AreEqual('Basis', AList.Items[1].Caption);
   Assert.AreEqual('https://svn.firma.local/basis', AList.Items[1].SubItems[0]);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable, ['09:30']), AList.Items[1].SubItems[1]);
+  Assert.AreEqual(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsServerReachable, ['09:30']), AList.Items[1].SubItems[1]);
 end;
 /// <summary>Prüfergebnis: Git-Server von Kasse verlangt eine Anmeldung.</summary>
 function KasseLoginNeeded: TAtlasVcsServerCheck;
@@ -582,13 +583,13 @@ procedure AssertVcsLoginRechecked(APage: TAtlasSettingsPage; AList: TListView; c
 var
   mCheck: TAtlasVcsServerCheck;
 begin
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginOpen), GSection.Servers.VcsServerNote.Caption);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking), AList.Items[0].SubItems[1]);
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerLoginOpen), GSection.Servers.VcsServerNote.Caption);
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerChecking), AList.Items[0].SubItems[1]);
   mCheck := ACheck;
   mCheck.State := TAtlasVcsServerState.Reachable;
   mCheck.CheckedAt := EncodeTime(10, 0, 0, 0);
   GSection.Servers.VcsServerDone('C:\Projekte\Kasse', mCheck);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable, ['10:00']), AList.Items[0].SubItems[1]);
+  Assert.AreEqual(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsServerReachable, ['10:00']), AList.Items[0].SubItems[1]);
   Assert.IsFalse(GSection.Servers.VcsServerLogin.Enabled);
 end;
 
@@ -662,12 +663,12 @@ begin
     GSection.Servers.VcsServerCheck.Click;
     Assert.AreEqual(1, Integer(Length(mProbe.FChecked)));
     Assert.AreEqual('C:\Projekte\Kasse', mProbe.FChecked[0]);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking), mList.Items[0].SubItems[1]);
+    Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerChecking), mList.Items[0].SubItems[1]);
     Assert.IsFalse(GSection.Servers.VcsServerCheck.Enabled, 'läuft schon');
     mCheck := KasseLoginNeeded;
     GSection.Servers.VcsServerDone('c:\projekte\kasse', mCheck);
     Assert.AreEqual('origin · git.firma.local', mList.Items[0].SubItems[0]);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginNeeded), mList.Items[0].SubItems[1]);
+    Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerLoginNeeded), mList.Items[0].SubItems[1]);
     Assert.IsTrue(GSection.Servers.VcsServerLogin.Enabled, 'Anmelden bei „Anmeldung nötig“');
     // „Anmelden …“: Konsole offen, die Zeile wartet auf die neue Prüfung.
     GSection.Servers.VcsServerLogin.Click;

@@ -777,6 +777,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.VersionControl.SettingsProjects` | `UI/VersionControl/Atlas.UI.VersionControl.SettingsProjects.pas` | Tabellen Projekte und Server (#1286, #1287, #1905) |
 | `Atlas.UI.VersionControl.SettingsBranch` | `UI/VersionControl/Atlas.UI.VersionControl.SettingsBranch.pas` | Branches, SVN, Externals, Git (#1288–#1292, #1905) |
 | `Atlas.IDE.VersionControl.Settings` | `IDE/VersionControl/Atlas.IDE.VersionControl.Settings.pas` | Anbieter und Haken des Abschnitts Versionsverwaltung (#1905) |
+| `Atlas.UI.VersionControl.Strings` | `UI/VersionControl/Atlas.UI.VersionControl.Strings.pas` | Texte des Moduls Versionsverwaltung (#1905) |
 | `Atlas.UI.VersionControl.BranchDialog` | `UI/VersionControl/Atlas.UI.VersionControl.BranchDialog.pas` | Ordner `UI/VersionControl` |
 | `Atlas.UI.VersionControl.WorkingCopies` | `UI/VersionControl/Atlas.UI.VersionControl.WorkingCopies.pas` | Ordner `UI/VersionControl` |
 

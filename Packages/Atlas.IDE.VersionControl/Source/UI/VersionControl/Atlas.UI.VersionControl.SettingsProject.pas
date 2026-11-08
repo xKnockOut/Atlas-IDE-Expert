@@ -55,22 +55,23 @@ uses
   Vcl.Controls,
   Vcl.ComCtrls,
   Atlas.Core.VersionControl.Tools,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.VersionControl.Strings;
 
 /// <summary>Woher die Art der Versionsverwaltung kommt, mit dem Hauptbranch, wenn bekannt.</summary>
 function VcsSourceText(const AState: TAtlasVcsProjectState): string;
 begin
   case AState.Source of
     TAtlasVcsProviderSource.Project:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsSourceProject, [AState.SourceMatch]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsSourceProject, [AState.SourceMatch]);
     TAtlasVcsProviderSource.TeamFile:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsSourceTeamFile);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsSourceTeamFile);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsSourceSetting);
+    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsSourceSetting);
   end;
   if AState.MainBranch <> '' then
   begin
-    Result := Result + TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectMainBranch, [AState.MainBranch]);
+    Result := Result + TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsProjectMainBranch, [AState.MainBranch]);
   end;
 end;
 
@@ -79,16 +80,16 @@ function VcsOutcomeText(const AState: TAtlasVcsProjectState; const AName, AKind:
 begin
   case AState.Outcome of
     TAtlasVcsOutcome.Disabled:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectDisabled, [AName]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsProjectDisabled, [AName]);
     TAtlasVcsOutcome.NoWorkingCopy:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectNoWorkingCopy, [AName]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsProjectNoWorkingCopy, [AName]);
     TAtlasVcsOutcome.ToolMissing:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectToolMissing,
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsProjectToolMissing,
         [AName, AKind, TAtlasVcsTools.ProgramName(AState.WorkingCopy.Kind)]);
     TAtlasVcsOutcome.Ok:
       Result := '';
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectFailed,
+    Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsProjectFailed,
       [AName, AKind, AtlasVcsOutcomeName(AState.Outcome)]);
   end;
 end;
@@ -98,22 +99,22 @@ function VcsHeadText(const AState: TAtlasVcsProjectState): string;
 begin
   if AState.WorkingCopy.Kind = TAtlasVcsKind.Svn then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectSvnPath,
+    Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsProjectSvnPath,
       [AState.Head.Branch, AState.Head.ShortRevision(AState.WorkingCopy.Kind)]);
   end
   else if AState.Head.Detached then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectDetached,
+    Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsProjectDetached,
       [AState.Head.ShortRevision(AState.WorkingCopy.Kind)]);
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectBranch,
+    Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsProjectBranch,
       [AState.Head.Branch, AState.Head.ShortRevision(AState.WorkingCopy.Kind)]);
   end;
   if AState.Head.Upstream <> '' then
   begin
-    Result := Result + TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectUpstream, [AState.Head.Upstream]);
+    Result := Result + TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsProjectUpstream, [AState.Head.Upstream]);
   end;
 end;
 
@@ -121,10 +122,10 @@ end;
 
 procedure TAtlasSettingsVcsProjectPart.Build;
 begin
-  Host.AddNumber('vcs.timeoutSeconds', TAtlasStrings.Text(TAtlasTextId.SettingsVcsTimeout));
+  Host.AddNumber('vcs.timeoutSeconds', TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsTimeout));
   // Aktuelles Projekt: nur Anzeige, beim ersten Zeigen einmal im Hintergrund abgefragt.
-  AddTitle(TAtlasTextId.SettingsVcsProjectTitle);
-  FVcsProjectInfo := AddWrappedLabel(70, TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectNone));
+  AddTitle(TAtlasVcsTextId.SettingsVcsProjectTitle);
+  FVcsProjectInfo := AddWrappedLabel(70, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectNone));
   FWatch := TTimer.Create(FPage);
   FWatch.Interval := 250;
   FWatch.OnTimer := WatchTimer;
@@ -136,7 +137,7 @@ var
 begin
   if AState.ProjectFile = '' then
   begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectNone));
+    Exit(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectNone));
   end;
   mName := ExtractFileName(AState.ProjectFile);
   mSource := VcsSourceText(AState);
@@ -146,7 +147,7 @@ begin
   begin
     Exit(mProblem + sLineBreak + mSource);
   end;
-  Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectLine, [mName, mKind, AState.WorkingCopy.Root]) +
+  Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsProjectLine, [mName, mKind, AState.WorkingCopy.Root]) +
     sLineBreak + VcsHeadText(AState) + sLineBreak + mSource;
 end;
 
@@ -157,7 +158,7 @@ begin
   begin
     Exit;
   end;
-  FVcsProjectInfo.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectQuerying);
+  FVcsProjectInfo.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectQuerying);
   FOnVcsProject();
 end;
 

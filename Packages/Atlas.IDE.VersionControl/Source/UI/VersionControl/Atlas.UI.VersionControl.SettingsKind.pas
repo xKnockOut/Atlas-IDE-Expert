@@ -10,6 +10,7 @@ uses
   Vcl.Controls,
   Vcl.StdCtrls,
   Atlas.UI.Strings,
+  Atlas.UI.VersionControl.Strings,
   Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.VersionControl.SettingsPart;
 
@@ -26,7 +27,7 @@ type
     FVcsLinkEditor: TButton;
     FVcsLinkWelcome: TButton;
     FVcsLinkIssues: TButton;
-    function AddVcsLink(AParent: TWinControl; ALeft: Integer; ACaption: TAtlasTextId): TButton;
+    function AddVcsLink(AParent: TWinControl; ALeft: Integer; ACaption: TAtlasVcsTextId): TButton;
     procedure VcsLinkClick(Sender: TObject);
   public
     procedure Build; override;
@@ -53,10 +54,10 @@ uses
 procedure TAtlasSettingsVcsPart.Build;
 begin
   // Art (#571): Reihenfolge wie die Werte von vcs.provider (auto, git, svn, off).
-  AddTitle(TAtlasTextId.SettingsVcsKindTitle);
-  FVcsProvider := AddChoice('vcs.provider', TAtlasTextId.SettingsVcsProvider,
-    [TAtlasTextId.SettingsVcsProviderAuto, TAtlasTextId.SettingsVcsProviderGit, TAtlasTextId.SettingsVcsProviderSvn,
-    TAtlasTextId.SettingsVcsProviderOff], TArray<string>.Create('auto', 'git', 'svn', 'off'));
+  AddTitle(TAtlasVcsTextId.SettingsVcsKindTitle);
+  FVcsProvider := AddChoice('vcs.provider', TAtlasVcsTextId.SettingsVcsProvider,
+    [TAtlasVcsTextId.SettingsVcsProviderAuto, TAtlasVcsTextId.SettingsVcsProviderGit, TAtlasVcsTextId.SettingsVcsProviderSvn,
+    TAtlasVcsTextId.SettingsVcsProviderOff], TArray<string>.Create('auto', 'git', 'svn', 'off'));
   FVcsProvider.Width := 220;
 end;
 
@@ -65,19 +66,19 @@ var
   mPanel: TWinControl;
 begin
   // Seiten, die die Anzeige steuern: Verhalten unter vcs.*, dort nur, ob etwas erscheint (wie #1280).
-  AddTitle(TAtlasTextId.SettingsVcsLinksTitle);
-  AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsVcsLinksHint)).Font.Color := clGrayText;
+  AddTitle(TAtlasVcsTextId.SettingsVcsLinksTitle);
+  AddWrappedLabel(36, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsLinksHint)).Font.Color := clGrayText;
   mPanel := AddPanel(32);
-  FVcsLinkEditor := AddVcsLink(mPanel, 0, TAtlasTextId.SettingsVcsLinkEditor);
-  FVcsLinkWelcome := AddVcsLink(mPanel, 156, TAtlasTextId.SettingsVcsLinkWelcome);
-  FVcsLinkIssues := AddVcsLink(mPanel, 312, TAtlasTextId.SettingsVcsLinkIssues);
+  FVcsLinkEditor := AddVcsLink(mPanel, 0, TAtlasVcsTextId.SettingsVcsLinkEditor);
+  FVcsLinkWelcome := AddVcsLink(mPanel, 156, TAtlasVcsTextId.SettingsVcsLinkWelcome);
+  FVcsLinkIssues := AddVcsLink(mPanel, 312, TAtlasVcsTextId.SettingsVcsLinkIssues);
 end;
 
-function TAtlasSettingsVcsPart.AddVcsLink(AParent: TWinControl; ALeft: Integer; ACaption: TAtlasTextId): TButton;
+function TAtlasSettingsVcsPart.AddVcsLink(AParent: TWinControl; ALeft: Integer; ACaption: TAtlasVcsTextId): TButton;
 begin
   Result := TButton.Create(FPage);
   Result.Parent := AParent;
-  Result.Caption := TAtlasStrings.Text(ACaption);
+  Result.Caption := TAtlasVcsStrings.Text(ACaption);
   Result.Left := ALeft;
   Result.Top := 3;
   Result.Width := 150;
@@ -108,13 +109,13 @@ class function TAtlasSettingsVcsPart.VcsProviderCaption(const AProvider: string)
 begin
   case IndexText(AProvider, ['git', 'svn', 'off']) of
     0:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderGit);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProviderGit);
     1:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderSvn);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProviderSvn);
     2:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderOff);
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProviderOff);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderAuto);
+    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProviderAuto);
   end;
 end;
 
