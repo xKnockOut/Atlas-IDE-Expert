@@ -59,7 +59,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Queries,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tracker.MyIssues,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.MyIssues;

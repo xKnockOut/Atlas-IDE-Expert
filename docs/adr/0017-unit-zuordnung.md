@@ -18,14 +18,14 @@ Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Doku
 | `Build`, `BuildTools`, `Tasks`, `StartProfiles` | `Atlas.IDE.Build` |
 | `BuildPipeline` | `Atlas.IDE.BuildPipeline` |
 | `Bookmarks`, `Notes`, `Todos` | `Atlas.IDE.Bookmarks` |
-| `Vcs` | `Atlas.IDE.Vcs` |
+| `VersionControl` | `Atlas.IDE.VersionControl` |
 | `Assistants` | `Atlas.IDE.Assistants` |
 | alle übrigen | `Atlas.IDE.Base` |
 
 Ausnahmen:
 
 - KI-Assistenten (#1888): Die Eingänge für Aufträge von MCP-Clients (Builds über `build_project`, Änderungen an offenen Dateien) bilden das Modul `Atlas.IDE.Assistants`; gebaut wird über `IDE.Contracts.BuildRequests` des Moduls Build-Pipeline. Die Liste offener und ungespeicherter Dateien (`IDE.Files.DirtyExport`) bleibt im Kern: Sie schützt Dateien auch ohne das Modul vor dem Überschreiben durch den Server.
-- Versionsverwaltung (#1891): Git und SVN (Anbieter, Parser, Auswahl), der Dienst der IDE und die Dialoge „Branch anlegen“ und „Arbeitskopien“ bilden das Modul `Atlas.IDE.Vcs`. Im Kern bleiben der Vertrag (`Core.Vcs.Contract`, `IDE.Contracts.VersionControl` samt Zugang `TAtlasIdeVcs` und Null-Objekt) und die reine Logik ohne Prozessaufruf unter `Core/Vcs` (Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche, Serverzugang) und der allgemeine Prozessläufer, den auch das Modul Tests braucht, dazu vorerst die Einstellungsseiten der Versionsverwaltung und die Änderungsmarken im Editor.
+- Versionsverwaltung (#1891): Git und SVN (Anbieter, Parser, Auswahl), der Dienst der IDE und die Dialoge „Branch anlegen“ und „Arbeitskopien“ bilden das Modul `Atlas.IDE.VersionControl`. Im Kern bleiben der Vertrag (`Core.Vcs.Contract`, `IDE.Contracts.VersionControl` samt Zugang `TAtlasIdeVcs` und Null-Objekt) und die reine Logik ohne Prozessaufruf unter `Core/VersionControl` (Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche, Serverzugang) und der allgemeine Prozessläufer, den auch das Modul Tests braucht, dazu vorerst die Einstellungsseiten der Versionsverwaltung und die Änderungsmarken im Editor.
 - Der allgemeine Tooltip `Atlas.UI.Popup.TitledTip` (bis #1455 `Atlas.UI.Notes.Tip`) liegt im Kern.
 - Die Build-Pipeline ist ein eigenes Modul (#1455): Läufer der Builds auf Auftrag mit MCP-Eingang, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung nach der 0/0/0-Regel mit Zusammenfassung (Ordner `BuildPipeline`, Schalter `buildPipeline`). Im Kern bleiben die Bewertung als Typen und `IAtlasBuildVerdictListener` (`Build.Verdict`, die Benachrichtigungszentrale hört darauf), was Base der Pipeline gibt (`Build.Pipeline`), die Werte ihrer Einstellungen (`Build.PipelineSettings`, `Build.OpenBuildSettings`), die Meldungen des letzten Builds (`IDE.Build.LastMessages`), `Build.IdleGate` (Diagnose-Zeitmessung) und `IDE.Build.Target` (Probleme, Projekt-Einstellungen). Andere Module bauen über `Atlas.IDE.Contracts.BuildPipeline`. Das Modul Build umfasst, was der Schalter `buildTools` abschaltet: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter.
 - Code Lens mit Code-Metriken (#66) im Modul Analyse (#1756): Zeichnen (`IDE.Analysis.MetricsLens`) und Beschriftung (`Core.Analysis.MetricsLens`). Im Kern bleiben die Antwort von `atlas.server.metrics` (`Core.Editor.Metrics`) und ihr Abruf je Editor (`IDE.Editor.MetricsSource`), weil die Atlas-Statusleiste Zeilen und CC am Cursor daraus liest und der Metrikbericht dieselben Typen nutzt; die Lens meldet beim Abruf nur Bedarf an. `codeLens.metrics` hängt am Modulschalter `analysis.enabled`.
@@ -304,7 +304,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Projects.Todos` | `Core/Projects/Atlas.Core.Projects.Todos.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Trends` | `Core/Projects/Atlas.Core.Projects.Trends.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.UnitRename` | `Core/Projects/Atlas.Core.Projects.UnitRename.pas` | Ordner `Core/Projects` |
-| `Atlas.Core.Projects.Vcs` | `Core/Projects/Atlas.Core.Projects.Vcs.pas` | Ordner `Core/Projects` |
+| `Atlas.Core.Projects.VersionControl` | `Core/Projects/Atlas.Core.Projects.VersionControl.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Results.CallDiagram` | `Core/Results/Atlas.Core.Results.CallDiagram.pas` | Ordner `Core/Results` |
 | `Atlas.Core.Results.CallDiagramTemplate` | `Core/Results/Atlas.Core.Results.CallDiagramTemplate.pas` | Ordner `Core/Results` |
 | `Atlas.Core.Results.DataFlow` | `Core/Results/Atlas.Core.Results.DataFlow.pas` | Ordner `Core/Results` |
@@ -340,7 +340,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Settings.Plugin.Keys` | `Core/Settings/Atlas.Core.Settings.Plugin.Keys.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Plugin.Rules` | `Core/Settings/Atlas.Core.Settings.Plugin.Rules.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Plugin.Snippets` | `Core/Settings/Atlas.Core.Settings.Plugin.Snippets.pas` | Ordner `Core/Settings` |
-| `Atlas.Core.Settings.Plugin.Vcs` | `Core/Settings/Atlas.Core.Settings.Plugin.Vcs.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Plugin.VersionControl` | `Core/Settings/Atlas.Core.Settings.Plugin.VersionControl.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Plugin.Welcome` | `Core/Settings/Atlas.Core.Settings.Plugin.Welcome.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.ProblemsUpdate` | `Core/Settings/Atlas.Core.Settings.ProblemsUpdate.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.PluginSchemaData` | `Core/Settings/Atlas.Core.Settings.PluginSchemaData.pas` | Ordner `Core/Settings` |
@@ -393,22 +393,22 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Updates.Check` | `Core/Updates/Atlas.Core.Updates.Check.pas` | Ordner `Core/Updates` |
 | `Atlas.Core.Updates.Contract` | `Core/Updates/Atlas.Core.Updates.Contract.pas` | Ordner `Core/Updates` |
 | `Atlas.Core.Updates.Install` | `Core/Updates/Atlas.Core.Updates.Install.pas` | Ordner `Core/Updates` |
-| `Atlas.Core.Vcs.Adapters.ProcessRunner` | `Core/Vcs/Atlas.Core.Vcs.Adapters.ProcessRunner.pas` | Allgemeiner Prozessläufer (git, svn, Testprogramme des Moduls Tests); einziger Prozessaufruf im Kern (#1891) |
-| `Atlas.Core.Vcs.BranchNames` | `Core/Vcs/Atlas.Core.Vcs.BranchNames.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
-| `Atlas.Core.Vcs.BranchPlan` | `Core/Vcs/Atlas.Core.Vcs.BranchPlan.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
-| `Atlas.Core.Vcs.Contract` | `Core/Vcs/Atlas.Core.Vcs.Contract.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
-| `Atlas.Core.Vcs.Internals.SvnExternals` | `Core/Vcs/Atlas.Core.Vcs.Internals.SvnExternals.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
-| `Atlas.Core.Vcs.Internals.SvnLayout` | `Core/Vcs/Atlas.Core.Vcs.Internals.SvnLayout.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
-| `Atlas.Core.Vcs.Internals.Text` | `Core/Vcs/Atlas.Core.Vcs.Internals.Text.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
-| `Atlas.Core.Vcs.Providers.Null` | `Core/Vcs/Atlas.Core.Vcs.Providers.Null.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
-| `Atlas.Core.Vcs.Pull` | `Core/Vcs/Atlas.Core.Vcs.Pull.pas` | Holen der Arbeitskopie, aus `Atlas.Core.Welcome.QuickActions` für die Willkommensseite und „Arbeitskopien“, #1456 |
-| `Atlas.Core.Vcs.ServerAccess` | `Core/Vcs/Atlas.Core.Vcs.ServerAccess.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
-| `Atlas.Core.Vcs.ServerCheck` | `Core/Vcs/Atlas.Core.Vcs.ServerCheck.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
-| `Atlas.Core.Vcs.Switches` | `Core/Vcs/Atlas.Core.Vcs.Switches.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
-| `Atlas.Core.Vcs.ToolCheck` | `Core/Vcs/Atlas.Core.Vcs.ToolCheck.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
-| `Atlas.Core.Vcs.Tools` | `Core/Vcs/Atlas.Core.Vcs.Tools.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
-| `Atlas.Core.Vcs.Worker` | `Core/Vcs/Atlas.Core.Vcs.Worker.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
-| `Atlas.Core.Vcs.WorkingCopies` | `Core/Vcs/Atlas.Core.Vcs.WorkingCopies.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.VersionControl.Adapters.ProcessRunner` | `Core/VersionControl/Atlas.Core.VersionControl.Adapters.ProcessRunner.pas` | Allgemeiner Prozessläufer (git, svn, Testprogramme des Moduls Tests); einziger Prozessaufruf im Kern (#1891) |
+| `Atlas.Core.VersionControl.BranchNames` | `Core/VersionControl/Atlas.Core.VersionControl.BranchNames.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.VersionControl.BranchPlan` | `Core/VersionControl/Atlas.Core.VersionControl.BranchPlan.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.VersionControl.Contract` | `Core/VersionControl/Atlas.Core.VersionControl.Contract.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.VersionControl.Internals.SvnExternals` | `Core/VersionControl/Atlas.Core.VersionControl.Internals.SvnExternals.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.VersionControl.Internals.SvnLayout` | `Core/VersionControl/Atlas.Core.VersionControl.Internals.SvnLayout.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.VersionControl.Internals.Text` | `Core/VersionControl/Atlas.Core.VersionControl.Internals.Text.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.VersionControl.Providers.Null` | `Core/VersionControl/Atlas.Core.VersionControl.Providers.Null.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.VersionControl.Pull` | `Core/VersionControl/Atlas.Core.VersionControl.Pull.pas` | Holen der Arbeitskopie, aus `Atlas.Core.Welcome.QuickActions` für die Willkommensseite und „Arbeitskopien“, #1456 |
+| `Atlas.Core.VersionControl.ServerAccess` | `Core/VersionControl/Atlas.Core.VersionControl.ServerAccess.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.VersionControl.ServerCheck` | `Core/VersionControl/Atlas.Core.VersionControl.ServerCheck.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.VersionControl.Switches` | `Core/VersionControl/Atlas.Core.VersionControl.Switches.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.VersionControl.ToolCheck` | `Core/VersionControl/Atlas.Core.VersionControl.ToolCheck.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.VersionControl.Tools` | `Core/VersionControl/Atlas.Core.VersionControl.Tools.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.VersionControl.Worker` | `Core/VersionControl/Atlas.Core.VersionControl.Worker.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.VersionControl.WorkingCopies` | `Core/VersionControl/Atlas.Core.VersionControl.WorkingCopies.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
 | `Atlas.Core.Versions.Project` | `Core/Versions/Atlas.Core.Versions.Project.pas` | Versionsnummer eines Projekts; Release-Wächter und Modul Tracker lesen sie, #1455 |
 | `Atlas.IDE.Build.CheckOnSave` | `IDE/Build/Atlas.IDE.Build.CheckOnSave.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
 | `Atlas.IDE.Build.IdleGate` | `IDE/Build/Atlas.IDE.Build.IdleGate.pas` | Warten, bis kein Compile läuft; Diagnose-Zeitmessung (Base), #1455 |
@@ -609,7 +609,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Settings.ServerTool` | `IDE/Settings/Atlas.IDE.Settings.ServerTool.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Settings.ServerActions` | `IDE/Settings/Atlas.IDE.Settings.ServerActions.pas` | AtlasServer.exe als Werkzeug starten und Index-Cache; Baseline und Unterdrückungen seit #1755 im Modul Prüfregeln |
 | `Atlas.IDE.Settings.SubPages` | `IDE/Settings/Atlas.IDE.Settings.SubPages.pas` | Unterseiten Snippets, Tastenkonflikte und Server in Tools › Optionen |
-| `Atlas.IDE.Settings.VcsOptions` | `IDE/Settings/Atlas.IDE.Settings.VcsOptions.pas` | Seite Versionsverwaltung in Tools › Optionen, #1285 |
+| `Atlas.IDE.Settings.VersionControlOptions` | `IDE/Settings/Atlas.IDE.Settings.VersionControlOptions.pas` | Seite Versionsverwaltung in Tools › Optionen, #1285 |
 | `Atlas.IDE.Settings.Transfer` | `IDE/Settings/Atlas.IDE.Settings.Transfer.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Setup.Checklist` | `IDE/Setup/Atlas.IDE.Setup.Checklist.pas` | Ordner `IDE/Setup` |
 | `Atlas.IDE.Signature.Editor` | `IDE/Signature/Atlas.IDE.Signature.Editor.pas` | Ordner `IDE/Signature` |
@@ -705,11 +705,11 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Settings.Page.Commands` | `UI/Settings/Atlas.UI.Settings.Page.Commands.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Page.Robustness` | `UI/Settings/Atlas.UI.Settings.Page.Robustness.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Page.Startup` | `UI/Settings/Atlas.UI.Settings.Page.Startup.pas` | Ordner `UI/Settings` |
-| `Atlas.UI.Settings.Page.Vcs` | `UI/Settings/Atlas.UI.Settings.Page.Vcs.pas` | Ordner `UI/Settings` |
-| `Atlas.UI.Settings.Page.VcsTools` | `UI/Settings/Atlas.UI.Settings.Page.VcsTools.pas` | Ordner `UI/Settings` |
-| `Atlas.UI.Settings.Page.VcsProject` | `UI/Settings/Atlas.UI.Settings.Page.VcsProject.pas` | Ordner `UI/Settings` |
-| `Atlas.UI.Settings.Page.VcsProjects` | `UI/Settings/Atlas.UI.Settings.Page.VcsProjects.pas` | Ordner `UI/Settings` |
-| `Atlas.UI.Settings.Page.VcsBranch` | `UI/Settings/Atlas.UI.Settings.Page.VcsBranch.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.VersionControl` | `UI/Settings/Atlas.UI.Settings.Page.VersionControl.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.VersionControlTools` | `UI/Settings/Atlas.UI.Settings.Page.VersionControlTools.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.VersionControlProject` | `UI/Settings/Atlas.UI.Settings.Page.VersionControlProject.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.VersionControlProjects` | `UI/Settings/Atlas.UI.Settings.Page.VersionControlProjects.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.VersionControlBranch` | `UI/Settings/Atlas.UI.Settings.Page.VersionControlBranch.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Page.Parts` | `UI/Settings/Atlas.UI.Settings.Page.Parts.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Page.Sections` | `UI/Settings/Atlas.UI.Settings.Page.Sections.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Page.Nodes` | `UI/Settings/Atlas.UI.Settings.Page.Nodes.pas` | Ordner `UI/Settings` |
@@ -754,24 +754,24 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Assistants.SettingsSection` | `UI/Assistants/Atlas.UI.Assistants.SettingsSection.pas` | Ordner `UI/Assistants` |
 | `Atlas.UI.Assistants.Strings` | `UI/Assistants/Atlas.UI.Assistants.Strings.pas` | Ordner `UI/Assistants` |
 
-## Atlas.IDE.Vcs
+## Atlas.IDE.VersionControl
 
 | Unit | Datei | Begründung |
 |---|---|---|
-| `Atlas.Core.Vcs.Composition` | `Core/Vcs/Atlas.Core.Vcs.Composition.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Detection` | `Core/Vcs/Atlas.Core.Vcs.Detection.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Internals.GitParser` | `Core/Vcs/Atlas.Core.Vcs.Internals.GitParser.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Internals.LineTrace` | `Core/Vcs/Atlas.Core.Vcs.Internals.LineTrace.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Internals.SvnParser` | `Core/Vcs/Atlas.Core.Vcs.Internals.SvnParser.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Providers.Git` | `Core/Vcs/Atlas.Core.Vcs.Providers.Git.pas` | Ordner `Core/Vcs` |
-| `Atlas.Core.Vcs.Providers.Svn` | `Core/Vcs/Atlas.Core.Vcs.Providers.Svn.pas` | Ordner `Core/Vcs` |
-| `Atlas.IDE.Vcs.Branching` | `IDE/Vcs/Atlas.IDE.Vcs.Branching.pas` | Ordner `IDE/Vcs` |
-| `Atlas.IDE.Vcs.Composition` | `IDE/Vcs/Atlas.IDE.Vcs.Composition.pas` | Ordner `IDE/Vcs` |
-| `Atlas.IDE.Vcs.Service` | `IDE/Vcs/Atlas.IDE.Vcs.Service.pas` | Ordner `IDE/Vcs` |
-| `Atlas.IDE.Vcs.WorkingCopies` | `IDE/Vcs/Atlas.IDE.Vcs.WorkingCopies.pas` | Ordner `IDE/Vcs` |
-| `Atlas.UI.Vcs.SettingsSection` | `UI/Vcs/Atlas.UI.Vcs.SettingsSection.pas` | Ordner `UI/Vcs` |
-| `Atlas.UI.Vcs.BranchDialog` | `UI/Vcs/Atlas.UI.Vcs.BranchDialog.pas` | Ordner `UI/Vcs` |
-| `Atlas.UI.Vcs.WorkingCopies` | `UI/Vcs/Atlas.UI.Vcs.WorkingCopies.pas` | Ordner `UI/Vcs` |
+| `Atlas.Core.VersionControl.Composition` | `Core/VersionControl/Atlas.Core.VersionControl.Composition.pas` | Ordner `Core/VersionControl` |
+| `Atlas.Core.VersionControl.Detection` | `Core/VersionControl/Atlas.Core.VersionControl.Detection.pas` | Ordner `Core/VersionControl` |
+| `Atlas.Core.VersionControl.Internals.GitParser` | `Core/VersionControl/Atlas.Core.VersionControl.Internals.GitParser.pas` | Ordner `Core/VersionControl` |
+| `Atlas.Core.VersionControl.Internals.LineTrace` | `Core/VersionControl/Atlas.Core.VersionControl.Internals.LineTrace.pas` | Ordner `Core/VersionControl` |
+| `Atlas.Core.VersionControl.Internals.SvnParser` | `Core/VersionControl/Atlas.Core.VersionControl.Internals.SvnParser.pas` | Ordner `Core/VersionControl` |
+| `Atlas.Core.VersionControl.Providers.Git` | `Core/VersionControl/Atlas.Core.VersionControl.Providers.Git.pas` | Ordner `Core/VersionControl` |
+| `Atlas.Core.VersionControl.Providers.Svn` | `Core/VersionControl/Atlas.Core.VersionControl.Providers.Svn.pas` | Ordner `Core/VersionControl` |
+| `Atlas.IDE.VersionControl.Branching` | `IDE/VersionControl/Atlas.IDE.VersionControl.Branching.pas` | Ordner `IDE/VersionControl` |
+| `Atlas.IDE.VersionControl.Composition` | `IDE/VersionControl/Atlas.IDE.VersionControl.Composition.pas` | Ordner `IDE/VersionControl` |
+| `Atlas.IDE.VersionControl.Service` | `IDE/VersionControl/Atlas.IDE.VersionControl.Service.pas` | Ordner `IDE/VersionControl` |
+| `Atlas.IDE.VersionControl.WorkingCopies` | `IDE/VersionControl/Atlas.IDE.VersionControl.WorkingCopies.pas` | Ordner `IDE/VersionControl` |
+| `Atlas.UI.VersionControl.SettingsSection` | `UI/VersionControl/Atlas.UI.VersionControl.SettingsSection.pas` | Ordner `UI/VersionControl` |
+| `Atlas.UI.VersionControl.BranchDialog` | `UI/VersionControl/Atlas.UI.VersionControl.BranchDialog.pas` | Ordner `UI/VersionControl` |
+| `Atlas.UI.VersionControl.WorkingCopies` | `UI/VersionControl/Atlas.UI.VersionControl.WorkingCopies.pas` | Ordner `UI/VersionControl` |
 
 ## Atlas.IDE.Debugger
 

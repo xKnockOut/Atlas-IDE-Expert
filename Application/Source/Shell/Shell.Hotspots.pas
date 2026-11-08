@@ -2,7 +2,7 @@
 
 // Host-Rolle Shell: Versionsverwaltung für die Hotspots (#1354). Setzt
 // IHotspotVcs mit git bzw. svn über IAtlasVcsRunner um (wie die
-// Zeilenhistorie im Plugin, Atlas.Core.Vcs.*); die Ausgaben zerlegt
+// Zeilenhistorie im Plugin, Atlas.Core.VersionControl.*); die Ausgaben zerlegt
 // THotspotHistory.
 //
 //   Wahl:     nächstliegende Arbeitskopie nach vcs.provider, Programme aus
@@ -23,7 +23,7 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Hotspots.Contract,
-  Atlas.Core.Vcs.Contract;
+  Atlas.Core.VersionControl.Contract;
 
 type
   TShellHotspotVcs = class(TInterfacedObject, IHotspotVcs)
@@ -68,11 +68,11 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Core.Vcs.Detection,
-  Atlas.Core.Vcs.Composition,
+  Atlas.Core.VersionControl.Detection,
+  Atlas.Core.VersionControl.Composition,
   Atlas.Common.Hotspots.History,
   Shell.Platform,
-  Shell.VcsChanges,
+  Shell.VersionControlChanges,
   Atlas.Common.Localization.Texts;
 
 type

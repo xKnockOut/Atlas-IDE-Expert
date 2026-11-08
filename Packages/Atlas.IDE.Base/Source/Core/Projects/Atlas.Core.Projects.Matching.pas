@@ -3,7 +3,7 @@
 // Zuordnung „Gilt für“ (#1261, #1286): welche Zeile einer persönlichen Liste
 // für ein Delphi-Projekt oder einen Ordner gilt. Gemeinsame Auflösung für die
 // Tracker-Zuordnung (issues.projects, Atlas.Core.Tracker.Projects) und die
-// Versionsverwaltung je Projekt (vcs.projects, Atlas.Core.Projects.Vcs); die
+// Versionsverwaltung je Projekt (vcs.projects, Atlas.Core.Projects.VersionControl); die
 // Nutzlast einer Zeile (Verbindung, Art, Hauptbranch) kennt diese Unit nicht.
 // Eingabe: die Pfade „Gilt für“ der Zeilen und je Zeile, ob sie zählen darf;
 // Ausgabe: die gewinnende Zeile samt Grund (Project, Group, Folder).

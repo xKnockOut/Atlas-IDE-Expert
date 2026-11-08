@@ -1,0 +1,60 @@
+﻿package Atlas.IDE.VersionControl;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Atlas IDE Expert – Versionsverwaltung'}
+{$DESIGNONLY}
+{$IMPLICITBUILD OFF}
+{$LIBSUFFIX AUTO}
+
+// Modul Versionsverwaltung (#1891, ADR 0017): Git und SVN über die Kommandozeile, Dienst der IDE,
+// Dialoge „Branch anlegen“ und „Arbeitskopien“. Meldet sich in der Unit-Initialisierung von
+// Atlas.IDE.VersionControl.Composition über die Registry von Atlas.IDE.Base an und setzt dort den Zugang
+// TAtlasIdeVcs (Vertrag Atlas.IDE.Contracts.VersionControl). Requiret nur das Kern-Package (Regel 9).
+
+requires
+  rtl,
+  vcl,
+  vclwinx,
+  designide,
+  Atlas.IDE.Base;
+
+contains
+  Atlas.Core.VersionControl.Internals.LineTrace in 'Source\Core\VersionControl\Atlas.Core.VersionControl.Internals.LineTrace.pas',
+  Atlas.Core.VersionControl.Internals.GitParser in 'Source\Core\VersionControl\Atlas.Core.VersionControl.Internals.GitParser.pas',
+  Atlas.Core.VersionControl.Internals.SvnParser in 'Source\Core\VersionControl\Atlas.Core.VersionControl.Internals.SvnParser.pas',
+  Atlas.Core.VersionControl.Providers.Git in 'Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Git.pas',
+  Atlas.Core.VersionControl.Providers.Svn in 'Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Svn.pas',
+  Atlas.Core.VersionControl.Detection in 'Source\Core\VersionControl\Atlas.Core.VersionControl.Detection.pas',
+  Atlas.Core.VersionControl.Composition in 'Source\Core\VersionControl\Atlas.Core.VersionControl.Composition.pas',
+  Atlas.IDE.VersionControl.Service in 'Source\IDE\VersionControl\Atlas.IDE.VersionControl.Service.pas',
+  Atlas.UI.VersionControl.BranchDialog in 'Source\UI\VersionControl\Atlas.UI.VersionControl.BranchDialog.pas',
+  Atlas.UI.VersionControl.WorkingCopies in 'Source\UI\VersionControl\Atlas.UI.VersionControl.WorkingCopies.pas',
+  Atlas.IDE.VersionControl.Branching in 'Source\IDE\VersionControl\Atlas.IDE.VersionControl.Branching.pas',
+  Atlas.IDE.VersionControl.WorkingCopies in 'Source\IDE\VersionControl\Atlas.IDE.VersionControl.WorkingCopies.pas',
+  Atlas.UI.VersionControl.SettingsSection in 'Source\UI\VersionControl\Atlas.UI.VersionControl.SettingsSection.pas',
+  Atlas.IDE.VersionControl.Composition in 'Source\IDE\VersionControl\Atlas.IDE.VersionControl.Composition.pas';
+
+end.

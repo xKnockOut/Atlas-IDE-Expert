@@ -25,7 +25,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
-  Atlas.Core.Vcs.Contract;
+  Atlas.Core.VersionControl.Contract;
 
 type
   TAtlasTrackerSyncOptions = record
@@ -149,7 +149,7 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Core.Vcs.BranchNames;
+  Atlas.Core.VersionControl.BranchNames;
 
 { TAtlasTrackerSyncOptions }
 

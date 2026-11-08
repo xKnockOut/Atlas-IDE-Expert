@@ -47,7 +47,7 @@ implementation
 
 uses
   System.DateUtils,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.UI.Welcome.Strings;
 
 const

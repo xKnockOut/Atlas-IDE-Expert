@@ -16,7 +16,7 @@ uses
   Atlas.Common.Rules.Filter,
   Atlas.Common.Rules.FormatOutput,
   Shell.CommandLine,
-  Shell.VcsChanges;
+  Shell.VersionControlChanges;
 
 type
   /// <summary>Was das Formatieren je Datei braucht.</summary>

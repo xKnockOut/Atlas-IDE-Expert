@@ -93,7 +93,7 @@ uses
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.YouTrackApi,
   Atlas.Core.Tracker.YouTrackParse;

@@ -48,7 +48,7 @@ uses
   Atlas.Core.Settings.Plugin.Keys,
   Atlas.Core.Settings.Plugin.Rules,
   Atlas.Core.Settings.Plugin.Snippets,
-  Atlas.Core.Settings.Plugin.Vcs,
+  Atlas.Core.Settings.Plugin.VersionControl,
   Atlas.Core.Settings.Plugin.Welcome,
   Atlas.Core.Settings.TestSupport;
 

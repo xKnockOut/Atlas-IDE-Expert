@@ -24,7 +24,7 @@ uses
   System.SysUtils,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues,
-  Atlas.Core.Vcs.BranchPlan,
+  Atlas.Core.VersionControl.BranchPlan,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.IssuesServices,
   Atlas.IDE.Tracker.IssuesStatus;
@@ -105,7 +105,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tracker.CommitHook,
   Atlas.Core.Tracker.Links,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.LinkDialogs,
   Atlas.IDE.Foundation.Files,

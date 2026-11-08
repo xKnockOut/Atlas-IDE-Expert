@@ -46,7 +46,7 @@ uses
   Vcl.Forms,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.UI.Tracker.DevelopmentView;
 
 function Root: string;

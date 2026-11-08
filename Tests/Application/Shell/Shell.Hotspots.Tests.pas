@@ -34,7 +34,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.DateUtils,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
@@ -43,7 +43,7 @@ uses
   Atlas.Common.Hotspots.Analysis,
   Atlas.Common.Hotspots.Service,
   Shell.Platform,
-  Shell.VcsChanges,
+  Shell.VersionControlChanges,
   Shell.Hotspots;
 
 function Exec(const ARunner: IAtlasVcsRunner; const AExecutable: string; const AArguments: TArray<string>;

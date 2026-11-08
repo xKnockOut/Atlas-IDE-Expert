@@ -34,11 +34,11 @@ uses
   Atlas.UI.Settings.Page.Startup,
   Atlas.UI.Settings.Page.TeamFile,
   Atlas.UI.Settings.Page.Transfer,
-  Atlas.UI.Settings.Page.Vcs,
-  Atlas.UI.Settings.Page.VcsBranch,
-  Atlas.UI.Settings.Page.VcsProject,
-  Atlas.UI.Settings.Page.VcsProjects,
-  Atlas.UI.Settings.Page.VcsTools,
+  Atlas.UI.Settings.Page.VersionControl,
+  Atlas.UI.Settings.Page.VersionControlBranch,
+  Atlas.UI.Settings.Page.VersionControlProject,
+  Atlas.UI.Settings.Page.VersionControlProjects,
+  Atlas.UI.Settings.Page.VersionControlTools,
   Atlas.UI.Settings.Page.Sections;
 
 class procedure TAtlasSettingsPageParts.CreateParts(APage: TAtlasSettingsPageHost);

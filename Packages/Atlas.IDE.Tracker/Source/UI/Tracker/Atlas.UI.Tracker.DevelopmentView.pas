@@ -29,7 +29,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
-  Atlas.Core.Vcs.Contract;
+  Atlas.Core.VersionControl.Contract;
 
 type
   /// <summary>Wünsche der Ansicht an die IDE-Schicht.</summary>

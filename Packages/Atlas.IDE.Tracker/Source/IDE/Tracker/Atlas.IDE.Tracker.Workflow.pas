@@ -31,7 +31,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.Workflow,
-  Atlas.Core.Vcs.Worker,
+  Atlas.Core.VersionControl.Worker,
   Atlas.UI.Tracker.EndDialog;
 
 type
@@ -129,7 +129,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Connections,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.UI.Tracker.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl;

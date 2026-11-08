@@ -20,6 +20,9 @@ type
     FForm: TForm;
     FBar: TAtlasDesignerBar;
   public
+    /// <summary>Erste Benutzung (Symbole, Schriften) vorweg, sonst meldet der erste Test sie als Leck.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -47,6 +50,16 @@ uses
 function Middle(const ARect: TRect): TPoint;
 begin
   Result := Point((ARect.Left + ARect.Right) div 2, (ARect.Top + ARect.Bottom) div 2);
+end;
+
+procedure TAtlasDesignerBarTests.WarmUpFirstUse;
+begin
+  SetUp;
+  try
+    ButtonsInOrder;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TAtlasDesignerBarTests.SetUp;

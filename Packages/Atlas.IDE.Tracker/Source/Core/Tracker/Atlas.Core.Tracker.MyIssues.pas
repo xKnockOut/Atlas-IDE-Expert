@@ -42,8 +42,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.Queries,
-  Atlas.Core.Vcs.Contract,
-  Atlas.Core.Vcs.BranchPlan;
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.VersionControl.BranchPlan;
 
 type
 {$SCOPEDENUMS ON}
@@ -349,7 +349,7 @@ implementation
 uses
   System.Generics.Collections,
   System.JSON,
-  Atlas.Core.Vcs.BranchNames,
+  Atlas.Core.VersionControl.BranchNames,
   Atlas.Core.Tracker.Naming;
 
 const

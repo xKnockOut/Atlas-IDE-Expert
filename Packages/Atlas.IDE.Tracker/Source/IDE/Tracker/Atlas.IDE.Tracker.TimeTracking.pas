@@ -117,7 +117,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tracker.Workflow,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.TimeList,

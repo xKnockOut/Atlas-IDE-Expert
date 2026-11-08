@@ -38,7 +38,7 @@ uses
   Atlas.UI.Settings.Page.Completion,
   Atlas.UI.Settings.Page.Colors,
   Atlas.UI.Settings.Page.Index,
-  Atlas.UI.Settings.Page.VcsProjects,
+  Atlas.UI.Settings.Page.VersionControlProjects,
   Atlas.UI.Settings.Page.Sections,
   Atlas.UI.Settings.Page.TestSupport;
 

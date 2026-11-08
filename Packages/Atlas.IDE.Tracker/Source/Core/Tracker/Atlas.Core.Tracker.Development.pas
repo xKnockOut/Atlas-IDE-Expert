@@ -34,7 +34,7 @@ uses
   System.Generics.Collections,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Vcs.Contract;
+  Atlas.Core.VersionControl.Contract;
 
 type
   /// <summary>Branch zum Issue; lokal und entfernt gleichen Namens zusammen.</summary>

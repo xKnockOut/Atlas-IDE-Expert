@@ -56,10 +56,10 @@ uses
   System.Diagnostics,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
-  Atlas.Core.Vcs.Contract,
-  Atlas.Core.Vcs.Tools,
-  Atlas.Core.Vcs.Composition,
-  Atlas.Core.Vcs.Adapters.ProcessRunner;
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.VersionControl.Tools,
+  Atlas.Core.VersionControl.Composition,
+  Atlas.Core.VersionControl.Adapters.ProcessRunner;
 
 type
   /// <summary>Versionsverwaltung mit festen Antworten für IAtlasVcsHistory; zählt die Aufrufe.</summary>

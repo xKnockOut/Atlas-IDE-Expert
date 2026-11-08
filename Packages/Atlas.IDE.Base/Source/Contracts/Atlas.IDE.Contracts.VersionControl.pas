@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Contracts.VersionControl;
 
 // Vertrag zwischen Modulen (#1891, ADR 0017 Regel 6): Das Modul Versionsverwaltung
-// (Atlas.IDE.Vcs) stellt über seinen Scope einen IAtlasVcsService (Arbeitskopie zu
+// (Atlas.IDE.VersionControl) stellt über seinen Scope einen IAtlasVcsService (Arbeitskopie zu
 // einem Ordner, Arbeit im Hintergrund, Fundort und Prüfung der Werkzeuge, Server)
 // und einen IAtlasVcsDialogs (Branch anlegen, Arbeitskopien, Rückfragen beim
 // Beginnen eines Issues) bereit. Base, Tracker, Welcome und Tests fragen beides
@@ -10,7 +10,7 @@
 // ein Null-Objekt: keine Arbeitskopie, kein Hintergrundlauf, keine Dialoge.
 // Threadsicher, weil ForFolder auch in Hintergrundläufen gefragt wird.
 // Die Daten (Records, Aufzählungen, IAtlasVersionControl) stehen in
-// Atlas.Core.Vcs.Contract und den reinen Units unter Source/Core/Vcs von Base;
+// Atlas.Core.VersionControl.Contract und den reinen Units unter Source/Core/Vcs von Base;
 // git und svn rufen nur die Umsetzungen im Modul auf.
 // Liegt in Base (Source/Contracts).
 
@@ -18,12 +18,12 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Vcs.Contract,
-  Atlas.Core.Vcs.BranchPlan,
-  Atlas.Core.Vcs.Tools,
-  Atlas.Core.Vcs.ToolCheck,
-  Atlas.Core.Vcs.ServerCheck,
-  Atlas.Core.Projects.Vcs;
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.VersionControl.BranchPlan,
+  Atlas.Core.VersionControl.Tools,
+  Atlas.Core.VersionControl.ToolCheck,
+  Atlas.Core.VersionControl.ServerCheck,
+  Atlas.Core.Projects.VersionControl;
 
 type
   /// <summary>Versionsverwaltung der IDE. ForFolder und Run in jedem Thread, alles andere im Hauptthread.</summary>
@@ -170,7 +170,7 @@ implementation
 
 uses
   System.SyncObjs,
-  Atlas.Core.Vcs.Providers.Null;
+  Atlas.Core.VersionControl.Providers.Null;
 
 var
   GLock: TCriticalSection;

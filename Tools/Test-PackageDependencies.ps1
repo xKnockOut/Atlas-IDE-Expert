@@ -120,7 +120,7 @@ try {
     Test-Passes 'Unveränderter Stand' {}
 
     Test-Passes 'Modul verwendet Base und einen Vertrag aus Base' {
-        Add-Assigned 'Atlas.IDE.Debugger' 'IDE/Debug' 'Atlas.IDE.Debug.Probe' @('Atlas.Core.Projects.Vcs', 'Atlas.IDE.Contracts.Rules')
+        Add-Assigned 'Atlas.IDE.Debugger' 'IDE/Debug' 'Atlas.IDE.Debug.Probe' @('Atlas.Core.Projects.VersionControl', 'Atlas.IDE.Contracts.Rules')
     }
 
     Test-Fails 'Base verwendet ein Modul' 'Base verwendet kein Modul (Atlas.IDE.Tracker)' {
@@ -152,8 +152,8 @@ try {
         Add-TableRow '## Atlas.IDE.Tracker' '| `Atlas.Core.Projects.Probe` | `Core/Projects/Atlas.Core.Projects.Probe.pas` | Ordner `Core/Projects` |'
     }
 
-    Test-Fails 'Behobener bekannter Verstoß bleibt stehen' 'Atlas.Core.Projects.Vcs -> Atlas.IDE.Tracker kommt nicht mehr vor' {
-        Add-TableRow '### Bekannte Verstöße' '| `Atlas.Core.Projects.Vcs` | `Atlas.IDE.Tracker` | Probe |'
+    Test-Fails 'Behobener bekannter Verstoß bleibt stehen' 'Atlas.Core.Projects.VersionControl -> Atlas.IDE.Tracker kommt nicht mehr vor' {
+        Add-TableRow '### Bekannte Verstöße' '| `Atlas.Core.Projects.VersionControl` | `Atlas.IDE.Tracker` | Probe |'
     }
 }
 finally {

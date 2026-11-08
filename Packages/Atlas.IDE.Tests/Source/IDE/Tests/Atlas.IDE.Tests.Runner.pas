@@ -37,7 +37,7 @@ uses
   System.Classes,
   System.Generics.Collections,
   ToolsAPI,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Build.Events,
   Atlas.Core.Projects.Summary,

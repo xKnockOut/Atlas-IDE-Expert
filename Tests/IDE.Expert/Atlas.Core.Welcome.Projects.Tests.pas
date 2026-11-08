@@ -63,7 +63,7 @@ uses
   Atlas.Core.Settings.History,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Build.Messages,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Welcome.Projects;
 

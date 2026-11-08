@@ -75,7 +75,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tests.AffectedHook,
   Atlas.UI.Strings,
   Atlas.UI.Tests.Strings,

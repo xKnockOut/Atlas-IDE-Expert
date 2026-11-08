@@ -13,7 +13,7 @@
 //   „Erst lokale Änderungen sichern“, ohne Arbeitskopie und solange auf dem
 //   Projekt schon eine Aktion läuft. Unbekannter Stand sperrt nicht: Pull
 //   prüft vor dem Holen die ganze Arbeitskopie noch einmal (TAtlasVcsPull in
-//   Atlas.Core.Vcs.Pull, Base). Bei SVN
+//   Atlas.Core.VersionControl.Pull, Base). Bei SVN
 //   heißt der Knopf „Aktualisieren“. vcs.externals.update (#1292) wählt bei
 //   SVN mit Externals bzw. ohne (--ignore-externals); „fragen“ gibt dem Knopf
 //   die Auswahl „mit Externals“/„ohne Externals“ (AskExternals).
@@ -38,8 +38,8 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Vcs.Contract,
-  Atlas.Core.Vcs.Pull;
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.VersionControl.Pull;
 
 type
 {$SCOPEDENUMS ON}

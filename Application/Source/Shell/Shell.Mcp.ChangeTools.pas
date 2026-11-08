@@ -29,7 +29,7 @@ uses
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.AffectedTests,
   Atlas.Common.Semantics.NameResolver,
-  Shell.VcsChanges,
+  Shell.VersionControlChanges,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Hotspots.Contract,
   Atlas.Common.Hotspots.Analysis,

@@ -32,7 +32,7 @@ uses
   Vcl.Forms,
   Atlas.UI.Strings,
   System.DateUtils,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Welcome.Unsaved,
   Atlas.UI.Welcome.Unsaved,
   Atlas.UI.Welcome.Push,

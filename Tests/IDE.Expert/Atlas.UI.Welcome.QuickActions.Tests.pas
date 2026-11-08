@@ -107,7 +107,7 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   Vcl.ExtCtrls,
-  Atlas.Core.Vcs.Pull;
+  Atlas.Core.VersionControl.Pull;
 
 const
   cProjectOne = 'C:\P\Eins.dproj';

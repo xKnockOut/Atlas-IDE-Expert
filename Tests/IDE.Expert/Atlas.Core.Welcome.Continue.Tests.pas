@@ -65,8 +65,8 @@ uses
   System.SysUtils,
   System.DateUtils,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Vcs.Contract,
-  Atlas.Core.Vcs.Providers.Null,
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.VersionControl.Providers.Null,
   Atlas.Core.Welcome.Projects,
   Atlas.Core.Welcome.Continue;
 

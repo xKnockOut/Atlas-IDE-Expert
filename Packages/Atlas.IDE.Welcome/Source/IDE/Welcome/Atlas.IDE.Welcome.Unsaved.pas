@@ -113,7 +113,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Results.Model,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Welcome.Search,
   Atlas.Core.Welcome.Projects,
   Atlas.UI.Welcome.Strings,

@@ -39,7 +39,7 @@ interface
 uses
   Winapi.Windows,
   System.SysUtils,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Editor.LineChanges;
 
 type

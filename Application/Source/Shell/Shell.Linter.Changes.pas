@@ -10,7 +10,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.FormatCheck,
   Shell.CommandLine,
-  Shell.VcsChanges;
+  Shell.VersionControlChanges;
 
 type
   TLinterChanges = class

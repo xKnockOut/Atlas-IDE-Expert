@@ -14,7 +14,7 @@
     -PluginFolder (nicht aus dem Ausgabeordner, der gerade gebaut wird) und endet nach dem letzten Auftrag.
 
     Einmal einrichten (oder nach einem Plugin-Update):
-      pwsh Tools/Build-Ide.ps1 -Setup C:\Projekte\Atlas-IDE-Expert\main\Output\Win32\Debug\Bpl
+      pwsh Tools/Build-Ide.ps1 -Setup <Repo>\Output\Win32\Debug\Bpl
     Bauen:
       pwsh Tools/Build-Ide.ps1 -Project Atlas.groupproj -Platform Win64 -Json
 

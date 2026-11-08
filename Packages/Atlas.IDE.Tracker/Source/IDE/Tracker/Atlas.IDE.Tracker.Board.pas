@@ -34,7 +34,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
-  Atlas.Core.Vcs.Worker,
+  Atlas.Core.VersionControl.Worker,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.BoardFrame;
 

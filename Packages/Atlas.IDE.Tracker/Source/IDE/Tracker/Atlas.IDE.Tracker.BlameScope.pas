@@ -14,7 +14,7 @@
 interface
 
 uses
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CodeLinks,
   Atlas.Core.Tracker.BlameLinks,

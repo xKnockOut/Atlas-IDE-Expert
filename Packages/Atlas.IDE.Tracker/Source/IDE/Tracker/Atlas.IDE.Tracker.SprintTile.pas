@@ -32,7 +32,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.Sprint,
-  Atlas.Core.Vcs.Worker,
+  Atlas.Core.VersionControl.Worker,
   Atlas.UI.Tracker.SprintTile,
   Atlas.IDE.Tracker.WelcomeLink;
 

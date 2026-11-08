@@ -32,12 +32,12 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Vcs.Contract,
-  Atlas.Core.Vcs.BranchPlan,
-  Atlas.Core.Vcs.Tools,
-  Atlas.Core.Vcs.ToolCheck,
-  Atlas.Core.Vcs.ServerCheck,
-  Atlas.Core.Projects.Vcs,
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.VersionControl.BranchPlan,
+  Atlas.Core.VersionControl.Tools,
+  Atlas.Core.VersionControl.ToolCheck,
+  Atlas.Core.VersionControl.ServerCheck,
+  Atlas.Core.Projects.VersionControl,
   Atlas.IDE.Contracts.VersionControl;
 
 type

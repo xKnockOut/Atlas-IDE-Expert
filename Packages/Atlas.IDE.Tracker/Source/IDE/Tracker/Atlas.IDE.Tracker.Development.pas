@@ -27,7 +27,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
   Atlas.Core.Tracker.Preview,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.UI.Tracker.DevelopmentView,
   Atlas.UI.Tracker.IssueFrame;
 

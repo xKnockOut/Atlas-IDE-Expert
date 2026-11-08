@@ -3,7 +3,7 @@
 // Tests der Schnellaktionen je Projekt ohne VCL und IDE (#764):
 // Einstellung welcomePage.quickActions.items, Knöpfe und ihre Reihenfolge,
 // Sperrlogik von „Pull“ (lokale Änderungen, keine Arbeitskopie, laufende
-// Aktion; das Holen selbst testet Atlas.Core.Vcs.Pull.Tests), Zuordnung Projekt →
+// Aktion; das Holen selbst testet Atlas.Core.VersionControl.Pull.Tests), Zuordnung Projekt →
 // Testprojekt (Namensmuster, eigenes DUnitX-Programm, Projektgruppe),
 // Konfigurationen und Plattformen einer .dproj, Projekte einer .groupproj,
 // Kommandozeile der Konsole, Tasten Strg+B/Strg+T und die Bewegung mit den

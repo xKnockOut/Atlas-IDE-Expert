@@ -15,7 +15,7 @@ uses
   System.Generics.Collections,
   ToolsAPI,
   Atlas.Text.Diff,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Editor.LineChanges;
 
 type

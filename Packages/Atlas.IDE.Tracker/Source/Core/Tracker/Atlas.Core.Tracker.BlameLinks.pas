@@ -24,7 +24,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tracker.CodeLinks;
 
 type

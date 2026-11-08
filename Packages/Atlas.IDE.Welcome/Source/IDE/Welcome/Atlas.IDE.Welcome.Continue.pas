@@ -185,7 +185,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Results.Model,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Welcome.Search,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,

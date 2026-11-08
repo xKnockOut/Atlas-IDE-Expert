@@ -2,7 +2,7 @@
 
 // Tests für die Host-Rolle der betroffenen Tests (#1353): Testprogramme unter den Projektdateien, Testunits aus
 // Muster und uses, Abschalten über tests.affected. Die Zuordnung und Verfolgung testet
-// Atlas.Common.Lsp.AffectedTests.Tests, das Holen des Unterschieds Shell.VcsChanges.Tests.
+// Atlas.Common.Lsp.AffectedTests.Tests, das Holen des Unterschieds Shell.VersionControlChanges.Tests.
 
 interface
 

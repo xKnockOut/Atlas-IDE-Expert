@@ -66,7 +66,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Shell.Bootstrap,
   Shell.Platform,
-  Shell.VcsChanges,
+  Shell.VersionControlChanges,
   Shell.Workspace,
   Atlas.Common.Localization.Texts;
 

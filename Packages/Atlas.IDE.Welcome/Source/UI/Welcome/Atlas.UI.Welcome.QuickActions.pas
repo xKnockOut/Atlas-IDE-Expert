@@ -305,7 +305,7 @@ uses
   Vcl.Themes,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Vcs.Pull;
+  Atlas.Core.VersionControl.Pull;
 
 const
   cSeparator = ' · ';

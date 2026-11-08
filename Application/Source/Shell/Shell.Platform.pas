@@ -12,7 +12,7 @@ uses
   System.SysUtils,
   Atlas.Common.Editing.Colors,
   Atlas.Common.Logging.Contract,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
 {$IFDEF MSWINDOWS}
   Atlas.Windows.Console.StdStreams,
   Atlas.Windows.Process.ParentWatcher,
@@ -96,11 +96,11 @@ uses
   Atlas.Windows.Diagnostics.StackGuard,
   Atlas.Windows.Diagnostics.Adapters.DebugOutputSink,
   Atlas.Windows.Editing.SystemColors,
-  Atlas.Core.Vcs.Adapters.ProcessRunner;
+  Atlas.Core.VersionControl.Adapters.ProcessRunner;
 {$ELSE}
   BaseUnix,
   Atlas.Linux.Documents.PathCanonicalizer,
-  Shell.Platform.VcsRunner;
+  Shell.Platform.VersionControlRunner;
 {$ENDIF}
 
 function PlatformSystemColor(AIndex: Integer; out AColor: TRgbColor): Boolean;

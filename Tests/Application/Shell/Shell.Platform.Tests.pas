@@ -2,7 +2,7 @@
 
 // Tests für die Plattformweiche des Servers (#1109): Ersetzendes Umbenennen,
 // kanonische Pfade, eigene Prozessnummer und der Prozessläufer für git und svn
-// (unter Windows TAtlasVcsProcessRunner, unter Linux Shell.Platform.VcsRunner):
+// (unter Windows TAtlasVcsProcessRunner, unter Linux Shell.Platform.VersionControlRunner):
 // Hauptthread abgelehnt, fehlendes Programm, Zeitlimit, stdout gelesen.
 
 interface
@@ -36,7 +36,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.IOUtils,
-  Atlas.Core.Vcs.Contract,
+  Atlas.Core.VersionControl.Contract,
   Shell.Platform;
 
 type

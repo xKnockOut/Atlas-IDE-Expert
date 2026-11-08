@@ -50,9 +50,9 @@ uses
   System.SysUtils,
   System.DateUtils,
   System.Diagnostics,
-  Atlas.Core.Vcs.Contract,
-  Atlas.Core.Vcs.Providers.Svn,
-  Atlas.Core.Vcs.Providers.Git,
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.VersionControl.Providers.Svn,
+  Atlas.Core.VersionControl.Providers.Git,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CodeLinks,
   Atlas.Core.Tracker.BlameLinks;

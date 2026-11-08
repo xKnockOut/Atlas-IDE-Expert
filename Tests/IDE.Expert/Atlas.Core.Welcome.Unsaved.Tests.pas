@@ -72,9 +72,9 @@ uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Vcs.Contract,
-  Atlas.Core.Vcs.Internals.Text,
-  Atlas.Core.Vcs.Providers.Null,
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.VersionControl.Internals.Text,
+  Atlas.Core.VersionControl.Providers.Null,
   Atlas.Core.Welcome.Unsaved;
 
 const

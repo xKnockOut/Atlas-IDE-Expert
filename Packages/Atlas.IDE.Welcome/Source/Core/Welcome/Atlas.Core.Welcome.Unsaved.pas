@@ -49,8 +49,8 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Vcs.Contract,
-  Atlas.Core.Vcs.WorkingCopies;
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.VersionControl.WorkingCopies;
 
 type
 {$SCOPEDENUMS ON}

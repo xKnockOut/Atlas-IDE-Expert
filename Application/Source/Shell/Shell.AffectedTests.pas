@@ -24,7 +24,7 @@ uses
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Lsp.AffectedTests,
-  Shell.VcsChanges;
+  Shell.VersionControlChanges;
 
 type
   /// <summary>tests.affected ist aus.</summary>

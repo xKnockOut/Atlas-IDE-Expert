@@ -77,9 +77,9 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Vcs.Contract,
-  Atlas.Core.Vcs.BranchPlan,
-  Atlas.Core.Vcs.Internals.SvnLayout,
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.VersionControl.BranchPlan,
+  Atlas.Core.VersionControl.Internals.SvnLayout,
   Atlas.Core.Tracker.MyIssues;
 
 var
