@@ -45,6 +45,7 @@ implementation
 uses
   System.Generics.Collections,
   Winapi.Windows,
+  Winapi.TlHelp32,
   System.IOUtils,
   System.JSON,
   ToolsAPI,
@@ -54,7 +55,42 @@ uses
 const
   cPROCESS_QUERY_LIMITED_INFORMATION = $1000;
 
-/// <summary>Läuft APid noch und lief er schon zu AStamp (sonst gehört die Nummer einem neuen Prozess)?</summary>
+/// <summary>Läuft unter APid dasselbe Programm wie im eigenen Prozess (bds.exe)? Eine wiederverwendete Nummer
+/// gehört oft einem ganz anderen Programm, auch einem, das sich nicht öffnen lässt. Die Prozessliste von Windows
+/// nennt den Namen ohne Zugriffsrechte. Ohne Liste: ja (lieber liegen lassen als fremde Reste löschen).</summary>
+function SameProgram(APid: Cardinal): Boolean;
+var
+  mSnapshot: THandle;
+  mEntry: TProcessEntry32;
+begin
+  Result := True;
+  mSnapshot := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if mSnapshot = INVALID_HANDLE_VALUE then
+  begin
+    Exit;
+  end;
+  try
+    mEntry := Default(TProcessEntry32);
+    mEntry.dwSize := SizeOf(mEntry);
+    if not Process32First(mSnapshot, mEntry) then
+    begin
+      Exit;
+    end;
+    repeat
+      if mEntry.th32ProcessID = APid then
+      begin
+        Exit(SameText(ExtractFileName(string(mEntry.szExeFile)), ExtractFileName(ParamStr(0))));
+      end;
+    until not Process32Next(mSnapshot, mEntry);
+    // Nicht in der Liste: beendet.
+    Result := False;
+  finally
+    CloseHandle(mSnapshot);
+  end;
+end;
+
+/// <summary>Läuft APid noch, ist es dasselbe Programm, und lief er schon zu AStamp (sonst gehört die Nummer einem
+/// neuen Prozess)?</summary>
 function ProcessAlive(APid: Cardinal; AStamp: TDateTime): Boolean;
 var
   mProcess: THandle;
@@ -63,6 +99,10 @@ var
   mLocal: TFileTime;
   mStarted: TSystemTime;
 begin
+  if not SameProgram(APid) then
+  begin
+    Exit(False);
+  end;
   mProcess := OpenProcess(cPROCESS_QUERY_LIMITED_INFORMATION, False, APid);
   if mProcess = 0 then
   begin
