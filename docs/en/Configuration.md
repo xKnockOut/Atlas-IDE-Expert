@@ -28,7 +28,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | `overrides` | project (atlas.json) | array<object> | – |  | Path rules: severities for files that match one of the glob patterns, e.g. downgrade tests or generated code. Rule id "*" stands for all rules; later entries take precedence. |
 | `excludeTests` | global and project | boolean | `false` |  | Do not check test units and test projects (uses DUnitX.TestFramework, TestFramework or TestInsight.*). Switchable globally for all projects; an atlas.json that names the key takes precedence. |
 | `testProfile` | project (atlas.json) | string | – | e.g. `"fast"` | Rule profile for test units and test projects; empty: like "profile". |
-| `compiler` | global (settings.json) | object | – |  | Compiler connection: command line compiler (dcc32/dcc64) or a separate IDE through cc.ps1. |
+| `compiler` | global (settings.json) | object | – |  | Compiler connection: command line compiler (dcc32/dcc64). Without it a running RAD Studio with Atlas builds (tool build_project). |
 | `vcs` | global (settings.json) | object | – |  | Version control (Git, SVN) for changed files, branch and revision. |
 | `completion` | mixed, see below | object | – |  | Code completion. |
 | `refactoring` | project (atlas.json) | object | – |  | Code that Atlas generates. |
@@ -84,9 +84,8 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 
 | Key | Place | Type | Default | Values | Meaning |
 |---|---|---|---|---|---|
-| `compiler.onSave` | global (settings.json) | boolean | `false` |  | After saving a source file compile the project in the background and show the messages. Only with the command line compiler; through the IDE (backend ide) Atlas compiles only on the command “Compile project” (atlas.server.compile) because of its start time. |
-| `compiler.backend` | global (settings.json) | string | `"auto"` | `"auto"`, `"dcc"`, `"ide"`, `"off"` | Way to the compiler. auto: Atlas first detects per Delphi installation whether dcc32/dcc64 exists and is usable (the Starter and Community Edition print a license text instead of compiling), remembers it and then takes dcc, otherwise ide (if ideCommand is set up), otherwise off. dcc: only the command line compiler. ide: a separate IDE through cc.ps1 (ideCommand), always with its own instance; the user's IDE is never touched. off: Atlas never compiles itself. If no compiler is usable, Atlas reports it once with reason and way out, shows it in the status (atlas.server.status), and the command “Compile project” answers with the reason. |
-| `compiler.ideCommand` | global (settings.json) | string | `""` | e.g. `"C:\Projekte\IDE-Plugins\Claude-Compile\cc.ps1"` | Path to cc.ps1 (Claude-Compile) for the way through the IDE; empty = not set up. Atlas starts its own scratch IDE with it (-Instance), reuses it for further runs and ends it with the server. |
+| `compiler.onSave` | global (settings.json) | boolean | `false` |  | After saving a source file compile the project in the background and show the messages. Only with the command line compiler. |
+| `compiler.backend` | global (settings.json) | string | `"auto"` | `"auto"`, `"dcc"`, `"off"` | Way to the compiler. auto: Atlas first detects per Delphi installation whether dcc32/dcc64 exists and is usable (the Starter and Community Edition print a license text instead of compiling), remembers it and then takes dcc, otherwise off. dcc: only the command line compiler. off: Atlas never compiles itself. If no compiler is usable, Atlas reports it once with reason and way out, shows it in the status (atlas.server.status), and the command “Compile project” answers with the reason. An old value "ide" counts as off, an old entry ideCommand is skipped. |
 
 ## vcs
 

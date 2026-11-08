@@ -12,7 +12,7 @@
 // msgHint, msgInfo …), Message ("E2003 …"), FileName, Line und Column.
 // Ohne Zwischenablage, ohne Fenster nach vorn zu holen, im Hauptthread.
 // Ausweichwege, falls eine IDE-Version das ändert: „Alles auswählen“ +
-// „Kopieren“ über die Zwischenablage (so Claude-Compile) oder der Reiter
+// „Kopieren“ über die Zwischenablage oder der Reiter
 // „Ausgabe“ bei ausführlicher Compilerausgabe. Ist der Baum nicht lesbar,
 // meldet Read das mit Grund; Atlas arbeitet dann ohne Compilermeldungen.
 

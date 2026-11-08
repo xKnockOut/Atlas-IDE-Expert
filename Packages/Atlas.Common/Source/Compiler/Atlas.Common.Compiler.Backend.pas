@@ -1,18 +1,15 @@
 ﻿unit Atlas.Common.Compiler.Backend;
 
-// Wahl des Wegs zum Compiler (#261) aus compiler.backend, der erkannten
-// Ausgabe der Installation (Atlas.Common.Compiler.Edition) und
-// compiler.ideCommand (cc.ps1):
-//   auto  CommandLine oder Unknown → dcc; sonst ide, wenn cc.ps1 eingerichtet
-//         ist; sonst off mit Grund und Ausweg.
+// Wahl des Wegs zum Compiler (#261) aus compiler.backend und der erkannten
+// Ausgabe der Installation (Atlas.Common.Compiler.Edition):
+//   auto  CommandLine oder Unknown → dcc; sonst off mit Grund und Ausweg.
 //   dcc   nur der Kommandozeilen-Compiler; ohne ihn off.
-//   ide   nur über cc.ps1; ohne gültigen Pfad off.
 //   off   nie.
-// Der Weg über die IDE startet eine eigene IDE und ist deshalb langsam: Er
-// läuft nur auf den Befehl „Projekt kompilieren“ (atlas.server.compile), nie
-// nach dem Speichern (RunsOnSave). Grund, Ausweg und Statuszeile („Compiler:
-// nicht verfügbar (Starter Edition)“) kommen von hier, damit Meldung, Status
-// (#28) und die Antwort des Befehls dasselbe sagen.
+// Ohne Kommandozeilen-Compiler baut eine laufende RAD Studio mit Atlas
+// (Werkzeug build_project); den Weg über eine eigene IDE gibt es seit #1904
+// nicht mehr. Grund, Ausweg und Statuszeile („Compiler: nicht verfügbar
+// (Starter Edition)“) kommen von hier, damit Meldung, Status (#28) und die
+// Antwort des Befehls dasselbe sagen.
 
 interface
 
@@ -23,14 +20,14 @@ uses
 
 type
   {$SCOPEDENUMS ON}
-  TCompilerBackend = (Dcc, Ide, Off);
+  TCompilerBackend = (Dcc, Off);
   {$SCOPEDENUMS OFF}
 
   TCompilerBackendChoice = record
     Backend: TCompilerBackend;
-    /// <summary>Warum kein Compiler nutzbar ist; '' bei Dcc und Ide.</summary>
+    /// <summary>Warum kein Compiler nutzbar ist; '' bei Dcc.</summary>
     Reason: string;
-    /// <summary>Was der Benutzer tun kann; '' bei Dcc und Ide.</summary>
+    /// <summary>Was der Benutzer tun kann; '' bei Dcc.</summary>
     Remedy: string;
     /// <summary>Kurzform des Grunds für die Statuszeile, z. B. „Starter Edition“.</summary>
     Short: string;
@@ -46,15 +43,14 @@ type
 
   TCompilerBackends = class
   public
-    /// <summary>"auto", "dcc", "ide", "off".</summary>
+    /// <summary>"auto", "dcc", "off".</summary>
     class function SettingText(ASetting: TCompilerBackendSetting): string; static;
-    /// <summary>"dcc", "ide", "off".</summary>
+    /// <summary>"dcc", "off".</summary>
     class function BackendText(ABackend: TCompilerBackend): string; static;
-    /// <summary>Wählt den Weg. AIdeCommand: compiler.ideCommand ('' = nicht eingerichtet), AIdeCommandExists:
-    /// die Datei gibt es.</summary>
-    class function Choose(ASetting: TCompilerBackendSetting; AEdition: TCompilerEdition; const AIdeCommand: string;
-      AIdeCommandExists: Boolean): TCompilerBackendChoice; static;
-    /// <summary>Kompiliert der Weg auch nach dem Speichern? Nur dcc; die IDE nur auf den Befehl.</summary>
+    /// <summary>Wählt den Weg aus der Einstellung und der erkannten Ausgabe.</summary>
+    class function Choose(ASetting: TCompilerBackendSetting;
+      AEdition: TCompilerEdition): TCompilerBackendChoice; static;
+    /// <summary>Kompiliert der Weg auch nach dem Speichern? Nur dcc.</summary>
     class function RunsOnSave(ABackend: TCompilerBackend): Boolean; static;
     /// <summary>Statuszeile, solange noch nichts geprüft ist.</summary>
     class function UncheckedStatus: string; static;
@@ -69,41 +65,28 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TBackendText = (CompilerIDEViaCcPs1, CompilerNotAvailable, AtlasCannotCompile, CompilerNotCheckedYet,
-    CompilerIdeCommandIsNotSet, InSettingsJsonSetCompiler, CompilerIdeCommandMissing, CompilerIdeCommandPointsToNo,
-    CheckThePathToCc, CcPs1NotFound, CompilerBackendIsOff, InSettingsJsonSetCompiler2, CompilerDccCommandLine, Off,
-    CompileInRADStudioWith);
+  TBackendText = (CompilerNotAvailable, AtlasCannotCompile, CompilerNotCheckedYet, CompilerBackendIsOff,
+    InSettingsJsonSetCompiler, CompilerDccCommandLine, Off, BuildNeedsIdeOrCommandLine);
 
 const
   cTexts: array[TBackendText] of TAtlasText = (
-    (De: 'Compiler: IDE über cc.ps1 (nur auf den Befehl „Projekt kompilieren“)';
-     En: 'Compiler: IDE via cc.ps1 (only on the command “Compile project”)'),
     (De: 'Compiler: nicht verfügbar (%s)'; En: 'Compiler: not available (%s)'),
     (De: 'Atlas kann nicht kompilieren: %s.'; En: 'Atlas cannot compile: %s.'),
     (De: 'Compiler: noch nicht geprüft'; En: 'Compiler: not checked yet'),
-    (De: '"compiler.ideCommand" ist nicht gesetzt'; En: '"compiler.ideCommand" is not set'),
-    (De: 'In settings.json "compiler.ideCommand" auf den Pfad zu cc.ps1 setzen.';
-     En: 'In settings.json set "compiler.ideCommand" to the path of cc.ps1.'),
-    (De: 'compiler.ideCommand fehlt'; En: 'compiler.ideCommand missing'),
-    (De: '"compiler.ideCommand" zeigt auf keine vorhandene Datei';
-     En: '"compiler.ideCommand" points to no existing file'),
-    (De: 'Den Pfad zu cc.ps1 in settings.json prüfen.'; En: 'Check the path to cc.ps1 in settings.json.'),
-    (De: 'cc.ps1 nicht gefunden'; En: 'cc.ps1 not found'),
     (De: '"compiler.backend" ist "off"'; En: '"compiler.backend" is "off"'),
-    (De: 'In settings.json "compiler.backend" auf "auto", "dcc" oder "ide" setzen.';
-     En: 'In settings.json set "compiler.backend" to "auto", "dcc" or "ide".'),
+    (De: 'In settings.json "compiler.backend" auf "auto" oder "dcc" setzen.';
+     En: 'In settings.json set "compiler.backend" to "auto" or "dcc".'),
     (De: 'Compiler: dcc (Kommandozeile)'; En: 'Compiler: dcc (command line)'),
     (De: 'abgeschaltet'; En: 'off'),
-    (De: 'In RAD Studio mit dem Atlas-Plugin kompilieren (die Meldungen kommen dann aus der IDE) oder in ' +
-      'settings.json "compiler.ideCommand" auf cc.ps1 setzen; Atlas baut dann über eine eigene IDE.';
-     En: 'Compile in RAD Studio with the Atlas plugin (the messages then come from the IDE) or set ' +
-      '"compiler.ideCommand" to cc.ps1 in settings.json; Atlas then builds through its own IDE.'));
+    (De: 'Bauen braucht eine laufende RAD Studio mit Atlas (Werkzeug build_project) oder einen ' +
+      'Kommandozeilen-Compiler.';
+     En: 'Building needs a running RAD Studio with Atlas (tool build_project) or a command line compiler.'));
 
 {$SCOPEDENUMS OFF}
 
 const
-  cSettingTexts: array[TCompilerBackendSetting] of string = ('auto', 'dcc', 'ide', 'off');
-  cBackendTexts: array[TCompilerBackend] of string = ('dcc', 'ide', 'off');
+  cSettingTexts: array[TCompilerBackendSetting] of string = ('auto', 'dcc', 'off');
+  cBackendTexts: array[TCompilerBackend] of string = ('dcc', 'off');
 
 { TCompilerBackendChoice }
 
@@ -117,8 +100,6 @@ begin
   case Backend of
     TCompilerBackend.Dcc:
       Result := cTexts[TBackendText.CompilerDccCommandLine].Text;
-    TCompilerBackend.Ide:
-      Result := cTexts[TBackendText.CompilerIDEViaCcPs1].Text;
   else
     Result := cTexts[TBackendText.CompilerNotAvailable].Fmt([Short]);
   end;
@@ -174,68 +155,26 @@ begin
   Result.Short := AShort;
 end;
 
-function Ide(const AIdeCommand: string; AExists: Boolean; out AChoice: TCompilerBackendChoice): Boolean;
-begin
-  AChoice := Default(TCompilerBackendChoice);
-  if Trim(AIdeCommand) = '' then
-  begin
-    AChoice := Off(cTexts[TBackendText.CompilerIdeCommandIsNotSet].Text,
-      cTexts[TBackendText.InSettingsJsonSetCompiler].Text, cTexts[TBackendText.CompilerIdeCommandMissing].Text);
-    Exit(False);
-  end;
-  if not AExists then
-  begin
-    AChoice := Off(cTexts[TBackendText.CompilerIdeCommandPointsToNo].Text,
-      cTexts[TBackendText.CheckThePathToCc].Text, cTexts[TBackendText.CcPs1NotFound].Text);
-    Exit(False);
-  end;
-  AChoice.Backend := TCompilerBackend.Ide;
-  Result := True;
-end;
-
-class function TCompilerBackends.Choose(ASetting: TCompilerBackendSetting; AEdition: TCompilerEdition;
-  const AIdeCommand: string; AIdeCommandExists: Boolean): TCompilerBackendChoice;
+class function TCompilerBackends.Choose(ASetting: TCompilerBackendSetting;
+  AEdition: TCompilerEdition): TCompilerBackendChoice;
 var
-  mViaIde: TCompilerBackendChoice;
   mDccUsable: Boolean;
 begin
   Result := Default(TCompilerBackendChoice);
   mDccUsable := (AEdition = TCompilerEdition.CommandLine) or (AEdition = TCompilerEdition.Unknown);
-  case ASetting of
-    TCompilerBackendSetting.Off:
-      Result := Off(cTexts[TBackendText.CompilerBackendIsOff].Text,
-        cTexts[TBackendText.InSettingsJsonSetCompiler2].Text, cTexts[TBackendText.Off].Text);
-    TCompilerBackendSetting.Dcc:
-      if mDccUsable then
-      begin
-        Result.Backend := TCompilerBackend.Dcc;
-      end
-      else
-      begin
-        Result := Off(TCompilerEditions.Describe(AEdition), cTexts[TBackendText.CompileInRADStudioWith].Text,
-          'Starter Edition');
-      end;
-    TCompilerBackendSetting.Ide:
-      Ide(AIdeCommand, AIdeCommandExists, Result);
+  if ASetting = TCompilerBackendSetting.Off then
+  begin
+    Result := Off(cTexts[TBackendText.CompilerBackendIsOff].Text,
+      cTexts[TBackendText.InSettingsJsonSetCompiler].Text, cTexts[TBackendText.Off].Text);
+  end
+  else if mDccUsable then
+  begin
+    Result.Backend := TCompilerBackend.Dcc;
+  end
   else
-    if mDccUsable then
-    begin
-      Result.Backend := TCompilerBackend.Dcc;
-    end
-    else if Ide(AIdeCommand, AIdeCommandExists, mViaIde) then
-    begin
-      Result := mViaIde;
-    end
-    else if Trim(AIdeCommand) = '' then
-    begin
-      Result := Off(TCompilerEditions.Describe(AEdition), cTexts[TBackendText.CompileInRADStudioWith].Text,
-        'Starter Edition');
-    end
-    else
-    begin
-      // cc.ps1 eingetragen, aber nicht da: beides nennen.
-      Result := Off(TCompilerEditions.Describe(AEdition) + '; ' + mViaIde.Reason, mViaIde.Remedy, 'Starter Edition');
-    end;
+  begin
+    Result := Off(TCompilerEditions.Describe(AEdition), cTexts[TBackendText.BuildNeedsIdeOrCommandLine].Text,
+      'Starter Edition');
   end;
 end;
 

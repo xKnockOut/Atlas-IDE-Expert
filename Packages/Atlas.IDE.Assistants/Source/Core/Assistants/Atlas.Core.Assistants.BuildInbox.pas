@@ -150,6 +150,7 @@ begin
     mMode := mRoot.GetValue<string>('mode', '');
     ARequest.Configuration := mRoot.GetValue<string>('configuration', '');
     ARequest.Platform := mRoot.GetValue<string>('platform', '');
+    ARequest.Group := mRoot.GetValue<string>('group', '');
   finally
     mValue.Free;
   end;

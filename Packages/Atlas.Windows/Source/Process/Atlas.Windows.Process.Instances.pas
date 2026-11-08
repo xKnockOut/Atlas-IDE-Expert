@@ -1,10 +1,8 @@
 ﻿unit Atlas.Windows.Process.Instances;
 
-// Laufende Prozesse nach Programmname (#261): Vor dem Start einer eigenen
-// Scratch-IDE über cc.ps1 merkt sich der Server alle laufenden bds.exe; die
-// gestartete IDE darf keine davon sein, damit die IDE des Benutzers nie
-// angesprochen wird. Running prüft vor dem Wiederverwenden, ob die eigene
-// Instanz noch läuft.
+// Laufende Prozesse nach Programmname (#261): IdsOf nennt alle laufenden
+// Prozesse eines Programms (etwa bds.exe), Running prüft, ob ein Prozess
+// noch läuft (z. B. die IDE hinter einem Eintrag des MCP-Servers).
 
 interface
 

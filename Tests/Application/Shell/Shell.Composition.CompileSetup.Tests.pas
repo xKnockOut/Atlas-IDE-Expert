@@ -1,6 +1,6 @@
 ﻿unit Shell.Composition.CompileSetup.Tests;
 
-// Compile-Host der Komposition: ohne Ordner kein Auftrag, PowerShell für cc.ps1 immer benannt.
+// Compile-Host der Komposition: ohne Ordner kein Auftrag, Host ohne Compiler.
 
 interface
 
@@ -22,9 +22,6 @@ type
     /// <summary>Ohne Ordner kein Auftrag; der Grund steht in AError.</summary>
     [Test]
     procedure NoFolderNoJob;
-    /// <summary>Ohne pwsh und powershell im PATH bleibt ein Programmname, nie leer (#261).</summary>
-    [Test]
-    procedure PowerShellNamed;
     /// <summary>Der Host entsteht ohne laufenden Compiler und lässt sich freigeben.</summary>
     [Test]
     procedure HostWithoutCompiler;
@@ -80,11 +77,6 @@ begin
   Assert.AreEqual('Kein Ordner mit Projekt geöffnet', mError);
   Assert.IsFalse(TShellCompileSetup.JobFor(FRegistry, '/tmp/Projekt/A.pas', mJob, mError));
   Assert.AreEqual('Kein Ordner mit Projekt geöffnet', mError);
-end;
-
-procedure TShellCompileSetupTests.PowerShellNamed;
-begin
-  Assert.AreNotEqual('', TShellCompileSetup.PowerShellProgram);
 end;
 
 procedure TShellCompileSetupTests.HostWithoutCompiler;

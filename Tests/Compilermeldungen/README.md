@@ -40,8 +40,9 @@ python3 Tools/Compare-Compilermeldungen.py
 ```
 
 Das Bauskript erzeugt für jeden Fall ein eigenes Projekt unter
-`Output/Compilermeldungen/Projekte`, übersetzt es in einer eigenen Scratch-IDE
-über `cc.ps1` und schreibt alle dcc-Meldungen nach
+`Output/Compilermeldungen/Projekte`, übersetzt es über `Tools/Build-Ide.ps1`
+(eigene Bau-IDE im Registry-Profil `AtlasBuild`, feste Plugin-Kopie über
+`-Setup`) und schreibt alle dcc-Meldungen nach
 `Output/Compilermeldungen/dcc.tsv`. Mit `-AtlasServer` prüft es danach die Fälle
 mit `--check` in den Profilen `strict` und `standard`. Einzelne Fälle baut
 `-Cases 'Cm.W1*'`, nur eine Plattform `-Platforms Win32`.

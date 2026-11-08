@@ -335,21 +335,19 @@ type
   end;
 
   /// <summary>Weg zum Compiler (#261): auto wählt nach der erkannten Ausgabe, dcc = Kommandozeilen-Compiler,
-  /// ide = über eine eigene IDE (cc.ps1), off = nie kompilieren.</summary>
+  /// off = nie kompilieren. Ein alter Wert "ide" gilt als off (#1904).</summary>
   {$SCOPEDENUMS ON}
-  TCompilerBackendSetting = (Auto, Dcc, Ide, Off);
+  TCompilerBackendSetting = (Auto, Dcc, Off);
   {$SCOPEDENUMS OFF}
 
   /// <summary>Compiler-Anbindung (#40, #261).</summary>
   TCompilerSettings = record
     /// <summary>Nach dem Speichern einer Quelldatei im Hintergrund kompilieren; Vorgabe aus, weil das
     /// IDE-Plugin selbst prüfen kann (eine Auswahl „Nach dem Speichern“ in den Delphi-Optionen).
-    /// Gilt nur für den Kommandozeilen-Compiler, nie für den Weg über die IDE (#261).</summary>
+    /// Gilt nur für den Kommandozeilen-Compiler (#261).</summary>
     OnSave: Boolean;
     /// <summary>compiler.backend (#261); Vorgabe Auto.</summary>
     Backend: TCompilerBackendSetting;
-    /// <summary>compiler.ideCommand (#261): Pfad zu cc.ps1 für den Weg über die IDE; '' = nicht eingerichtet.</summary>
-    IdeCommand: string;
     class function Default: TCompilerSettings; static;
   end;
 
@@ -1261,7 +1259,6 @@ class function TCompilerSettings.Default: TCompilerSettings;
 begin
   Result.OnSave := False;
   Result.Backend := TCompilerBackendSetting.Auto;
-  Result.IdeCommand := '';
 end;
 
 { TRefactoringSettings }

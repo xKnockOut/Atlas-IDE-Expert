@@ -1,7 +1,7 @@
 ﻿unit Shell.Composition.CompileSetup;
 
-// Baut den Compile-Host der Komposition: Editionen je Installation, eigene IDE über cc.ps1 (#261), Fortschritt und
-// den Auftrag zum Projekt einer Datei.
+// Baut den Compile-Host der Komposition: Editionen je Installation (#261), Fortschritt und den Auftrag zum
+// Projekt einer Datei.
 
 interface
 
@@ -35,20 +35,13 @@ type
     /// (Grund in AError).</summary>
     class function JobFor(AWorkspaces: TShellWorkspaceRegistry; const AFileName: string; out AJob: TShellCompileJob;
       out AError: string): Boolean; static;
-    /// <summary>PowerShell für cc.ps1 (#261): pwsh aus PATH, sonst Windows PowerShell. Der Prozessläufer
-    /// durchsucht PATH nicht selbst.</summary>
-    class function PowerShellProgram: string; static;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  System.IOUtils,
-  Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Lsp.WorkDoneProgress,
-  Shell.Platform,
-  Shell.VcsChanges,
   Shell.Workspace,
   Atlas.Common.Localization.Texts;
 
@@ -60,29 +53,6 @@ type
 const
   cTexts: array[TCompileSetupText] of TAtlasText = (
     (De: 'Kein Ordner mit Projekt geöffnet'; En: 'No folder with a project open'));
-
-function RunningIdes: TArray<Cardinal>;
-begin
-  Result := TProcessInstances.IdsOf('bds.exe');
-end;
-
-function IdeRunning(APid: Cardinal): Boolean;
-begin
-  Result := TProcessInstances.Running(APid);
-end;
-
-class function TShellCompileSetup.PowerShellProgram: string;
-begin
-  Result := TVcsChanges.FindProgram('pwsh');
-  if SameText(Result, 'pwsh') then
-  begin
-    Result := TVcsChanges.FindProgram('powershell');
-  end;
-  if SameText(Result, 'powershell') then
-  begin
-    Result := TPath.Combine(GetEnvironmentVariable('SystemRoot'), 'System32\WindowsPowerShell\v1.0\powershell.exe');
-  end;
-end;
 
 class function TShellCompileSetup.JobFor(AWorkspaces: TShellWorkspaceRegistry; const AFileName: string;
   out AJob: TShellCompileJob; out AError: string): Boolean;
@@ -122,23 +92,8 @@ begin
   mLogger := AServices.Logger;
   mWorkspaces := AServices.Workspaces;
   mServices := Default(TShellCompileServices);
-  // Starter Edition ohne dcc (#261): Ausgabe je Installation erkennen und merken; eigene IDE über cc.ps1.
+  // Starter Edition ohne dcc (#261): Ausgabe je Installation erkennen und merken.
   mServices.Editions := TShellCompilerEditions.Create(AServices.Process, mLogger, TShellCompilerEditions.DefaultFile);
-  mServices.IdeCompiler := TShellIdeCompiler.Create(AServices.Process, mLogger, PowerShellProgram, RunningIdes,
-    IdeRunning,
-    function(const AFileName: string): TArray<string>
-    begin
-      Result := nil;
-      try
-        if TFile.Exists(AFileName) then
-        begin
-          Result := TFileEncoding.LoadLines(AFileName);
-        end;
-      except
-        on E: Exception do
-          mLogger.Warning('Build-Log der IDE nicht lesbar: ' + E.ClassName);
-      end;
-    end);
   mServices.Logger := mLogger;
   mServices.Transport := AServices.Transport;
   mServices.Process := AServices.Process;

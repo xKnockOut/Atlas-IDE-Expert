@@ -3,7 +3,7 @@
 Atlas.Symbol.res (Plugin): ATLAS_ICON_HELL und ATLAS_ICON_DUNKEL als Symbol,
 ATLAS_<VARIANTE>_<px> als RCDATA mit den PNG-Dateien. Atlas.Icon.res (Server
 und Installer): MAINICON aus atlas-hell.ico. Inhalt wie Atlas.Symbol.rc und
-Atlas.Icon.rc; die .res liegen im Repository, damit cc.ps1 und dcc ohne
+Atlas.Icon.rc; die .res liegen im Repository, damit Bau-IDE und dcc ohne
 Ressourcencompiler bauen (BRCC32 kann keine PNG-komprimierten 256-px-Symbole).
 
 Aufruf im Ordner Resources/Symbol:  python3 Quellen/Erzeuge-Res.py .

@@ -55,19 +55,17 @@ jobs:
     if: vars.DELPHI_RUNNER == 'true'
     runs-on: [self-hosted, windows, delphi]
     env:
-      CC_SCRIPT: ${{ vars.CC_SCRIPT || 'C:\Projekte\IDE-Plugins\Claude-Compile\cc.ps1' }}
       HAS_SIGNING: ${{ secrets.SIGN_CERT_BASE64 != '' }}
     steps:
       - uses: actions/checkout@v4
-      # Wie server.yml: RAD Studio Starter hat kein msbuild, gebaut wird über cc.ps1.
-      - name: Eigene Scratch-IDE starten
-        id: ide
+      # Wie server.yml: gebaut wird über das Bau-Skript des Runners (ATLAS_DELPHI_BUILD).
+      - name: Delphi-Bau-Skript prüfen
         shell: pwsh
         run: |
-          $out = & $env:CC_SCRIPT start -Project "$env:GITHUB_WORKSPACE\Atlas.groupproj" | Out-String
-          Write-Host $out
-          if ($out -notmatch 'pid\D*(\d+)') { throw 'pid der Scratch-IDE nicht gefunden' }
-          "pid=$($Matches[1])" >> $env:GITHUB_OUTPUT
+          if (-not $env:ATLAS_DELPHI_BUILD -or -not (Test-Path $env:ATLAS_DELPHI_BUILD)) {
+            throw ('Der Delphi-Runner hat kein Bau-Skript: Umgebungsvariable ATLAS_DELPHI_BUILD auf ein Skript mit ' +
+              'den Parametern von Tools/Build-Ide.ps1 (-Project, -Platform, -Mode, -Json) setzen.')
+          }
       - name: Server bauen (Win64 Release)
         shell: pwsh
         run: |
@@ -82,10 +80,10 @@ jobs:
           foreach ($project in @('Packages\Atlas.Text\Atlas.Text.dproj', 'Packages\Atlas.Common\Atlas.Common.dproj',
             'Packages\Atlas.Windows\Atlas.Windows.dproj', 'Application\AtlasServer.dproj',
             'Application\AtlasUpdate.dproj') + $plugin) {
-            $r = & $env:CC_SCRIPT build -Instance ${{ steps.ide.outputs.pid }} -Project "$env:GITHUB_WORKSPACE\$project" -Platform Win64 -Config Release -Json | Out-String | ConvertFrom-Json
-            $r | ConvertTo-Json -Depth 5 | Write-Host
-            if (-not $r.ok -or -not $r.outputWritten) { throw "Build fehlgeschlagen oder keine Ausgabe geschrieben: $project" }
-            if ($r.logFile -and (Select-String -Path $r.logFile -Pattern '\[dcc.*(Hinweis|Warnung)')) { throw "Build hat Hinweise oder Warnungen: $project" }
+            $r = pwsh -File $env:ATLAS_DELPHI_BUILD -Project "$env:GITHUB_WORKSPACE\$project" -Platform Win64 -Configuration Release -Mode build -Json | Out-String | ConvertFrom-Json
+            $r | ConvertTo-Json -Depth 8 | Write-Host
+            if (-not $r.ok) { throw "Build fehlgeschlagen: $project" }
+            if ($r.summary.warnings -gt 0 -or $r.summary.hints -gt 0) { throw "Build hat Hinweise oder Warnungen: $project" }
           }
           foreach ($exe in 'Output\Win64\Release\Bin\AtlasServer.exe', 'Output\Win64\Release\Bin\AtlasUpdate.exe') {
             if (-not (Test-Path $exe) -or (Get-Item $exe).LastWriteTime -lt $start) { throw "Release-exe wurde nicht neu geschrieben: $exe" }
@@ -95,24 +93,17 @@ jobs:
         run: |
           # Die klassische IDE lädt die Win32-BPL.
           $start = Get-Date
-          $r = & $env:CC_SCRIPT group-build -Instance ${{ steps.ide.outputs.pid }} -Platform Win32 -Config Release -Json | Out-String | ConvertFrom-Json
-          $r | ConvertTo-Json -Depth 5 | Write-Host
-          if (-not $r.ok -or -not $r.outputWritten) { throw 'Build fehlgeschlagen oder keine Ausgabe geschrieben' }
-          if ($r.logFile -and (Select-String -Path $r.logFile -Pattern '\[dcc.*(Hinweis|Warnung)')) { throw 'Build hat Hinweise oder Warnungen' }
+          $r = pwsh -File $env:ATLAS_DELPHI_BUILD -Project "$env:GITHUB_WORKSPACE\Atlas.groupproj" -Platform Win32 -Configuration Release -Mode build -Json | Out-String | ConvertFrom-Json
+          $r | ConvertTo-Json -Depth 8 | Write-Host
+          # Das Testprojekt der Gruppe gibt es nur für Win64 (DUnitX); nur seine Fehler sind hier erwartet.
+          $others = @($r.steps | Where-Object { $_.project -notmatch 'Atlas\.Tests' })
+          if (@($others | Where-Object { -not $_.ok }).Count -gt 0) { throw 'Build fehlgeschlagen' }
+          if (@($others | Where-Object { $_.summary.warnings -gt 0 -or $_.summary.hints -gt 0 }).Count -gt 0) { throw 'Build hat Hinweise oder Warnungen' }
           # Kern und jedes Modul-Package (#1456): je Package eine neu geschriebene BPL.
           foreach ($package in Get-ChildItem 'Packages' -Directory -Filter 'Atlas.IDE.*' | Where-Object { Test-Path "$($_.FullName)\$($_.Name).dpk" }) {
             $bpl = Get-ChildItem "Output\Win32\Release\Bpl\$($package.Name)*.bpl" -ErrorAction SilentlyContinue |
               Where-Object { $_.BaseName -match ('^' + [regex]::Escape($package.Name) + '\d*$') } | Select-Object -First 1
             if (-not $bpl -or $bpl.LastWriteTime -lt $start) { throw "Win32-BPL von $($package.Name) wurde nicht neu geschrieben" }
-          }
-      - name: Scratch-IDE beenden
-        if: always() && steps.ide.outputs.pid != ''
-        shell: pwsh
-        run: |
-          for ($i = 0; $i -lt 10; $i++) {
-            & $env:CC_SCRIPT quit -Instance ${{ steps.ide.outputs.pid }}
-            if ($LASTEXITCODE -eq 0) { break }
-            Start-Sleep -Seconds 5
           }
       - name: Signieren (optional)
         if: env.HAS_SIGNING == 'true'

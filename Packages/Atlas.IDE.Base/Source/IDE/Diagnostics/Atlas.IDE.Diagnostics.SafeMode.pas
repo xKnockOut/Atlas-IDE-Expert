@@ -16,9 +16,9 @@
 //   meldet die Composition mit den Startanteilen.
 // - RecordFailure: Fehler je Feature (#493) in die Marke.
 // - Stop (sauberes Entladen): Marke löschen, Absturzzähler zurücksetzen.
-// - ATLAS_NO_SESSION_MARKER=1 (Bau-IDE von cc.ps1): kein Sitzungsbuch, also
+// - ATLAS_NO_SESSION_MARKER=1 (Bau-IDE von Tools/Build-Ide.ps1): kein Sitzungsbuch, also
 //   keine Marke, keine Auswertung fremder Marken, Zustand unberührt
-//   (TAtlasSessionBook); Taste und ATLAS_SAFE_MODE wirken weiter.
+//   (TAtlasSessionBook) und keine Taste beim Start; ATLAS_SAFE_MODE wirkt weiter.
 
 interface
 
@@ -308,6 +308,7 @@ var
   mSafeOptions: TAtlasSafeOptions;
   mStartedAt: TDateTime;
   mShow: TThreadProcedure;
+  mKey: TAtlasStartupKey;
 begin
   FBook := TAtlasSessionBook.Create(AFolder, GetCurrentProcessId,
     GetEnvironmentVariable(TAtlasSafeMode.cNoMarkerEnvironmentName));
@@ -317,8 +318,14 @@ begin
   mSafeOptions := Options;
   ReadSessions(FBook, mState, mCrashed);
   FChangedKeys := LastChangedKeys;
-  FDecision := TAtlasSafeMode.Decide(mState, mCrashed, mStartedAt, mSafeOptions, KeyDown(mSafeOptions.StartupKey),
-    Forced);
+  // Ohne Sitzungsbuch (Bau-IDE, ATLAS_NO_SESSION_MARKER) zählt die Taste nicht: Wer beim Start einer
+  // automatisch gestarteten IDE gerade tippt, soll sie nicht in den abgesicherten Start schicken (#1904).
+  mKey := TAtlasStartupKey.None;
+  if FBook.Tracked then
+  begin
+    mKey := KeyDown(mSafeOptions.StartupKey);
+  end;
+  FDecision := TAtlasSafeMode.Decide(mState, mCrashed, mStartedAt, mSafeOptions, mKey, Forced);
   FLevel := FDecision.Level;
   FAnswered := not FDecision.Ask;
   // Nur die Marke dieses Absturzes, nicht die eines früheren aus dem Zustand.

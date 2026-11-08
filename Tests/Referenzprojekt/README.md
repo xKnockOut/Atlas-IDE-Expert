@@ -161,8 +161,9 @@ pwsh Tools/Build-Referenzprojekt.ps1 -MitDaten  # zusätzlich RefDaten (FireDAC)
 pwsh Tools/Build-Referenzprojekt.ps1 -Platforms Win32
 ```
 
-Das Skript baut wie `Tools/Build-Test.ps1` (#260) über cc.ps1 in einer
-eigenen Scratch-IDE. Es scheitert,
+Das Skript baut über `Tools/Build-Ide.ps1` in einer eigenen Bau-IDE
+(Registry-Profil `AtlasBuild`, feste Plugin-Kopie über `-Setup`); die IDE
+des Benutzers bleibt unberührt. Es scheitert,
 
 - wenn ein Build fehlschlägt,
 - wenn ein Hinweis oder eine Warnung kommt, die nicht in
@@ -175,8 +176,8 @@ Die eingebauten Verstöße erzeugen absichtlich Meldungen (W1035 für
 Atlas, nicht für dieses Projekt.
 
 Delphi 12 (#281): sobald verfügbar, dasselbe Skript mit der IDE von
-Delphi 12 ausführen; `-CcStartArguments` reicht dafür Argumente an
-`cc.ps1 start` weiter.
+Delphi 12 ausführen; `-BuildScript` nimmt dafür ein anderes Bau-Skript mit
+denselben Parametern wie `Tools/Build-Ide.ps1`.
 
 ## FireDAC
 

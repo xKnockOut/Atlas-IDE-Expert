@@ -20,7 +20,7 @@
 //   Suggest nennt, womit man beim Wiedereinschalten anfängt (zuletzt
 //   geänderte Einstellungen, dann Funktionen mit Fehlern).
 // - Sitzungen ohne Marke: Ein Prozess mit ATLAS_NO_SESSION_MARKER=1 (z. B.
-//   die Bau-IDE von cc.ps1, die abgewürgt werden darf) schreibt keine Marke,
+//   die Bau-IDE von Tools/Build-Ide.ps1, die abgewürgt werden darf) schreibt keine Marke,
 //   wertet keine fremden aus und lässt den Zustand unberührt
 //   (TAtlasSessionBook). Sonst zählte jede abgewürgte Bau-IDE als Absturz
 //   und brachte die nächste echte Sitzung in Stufe Safe.

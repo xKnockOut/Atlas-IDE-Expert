@@ -16,7 +16,7 @@ type
     /// <summary>Teil von Documents (#1355): Absturzfälle und Sicherheitsnetz mit Dokumenten, Einstellungen
     /// und Benachrichtigung an den Client.</summary>
     class procedure CrashCases(AParts: TShellParts); static;
-    /// <summary>Teil von Documents: Compilerläufe (#40, #261) mit Weg über dcc oder die eigene IDE (cc.ps1).</summary>
+    /// <summary>Teil von Documents: Compilerläufe (#40, #261) mit dem Kommandozeilen-Compiler.</summary>
     class procedure Compile(AParts: TShellParts); static;
     /// <summary>Teil von Documents: Syntax- und Pull-Diagnosen, Compilerergebnisse.</summary>
     class procedure Diagnostics(AParts: TShellParts); static;

@@ -21,6 +21,9 @@ type
     /// <summary>'' = aktive Konfiguration bzw. Plattform der IDE.</summary>
     Configuration: string;
     Platform: string;
+    /// <summary>Projektgruppe (.groupproj), die der Eingang öffnet, wenn Project nicht offen ist (#1904); '' =
+    /// nur das Projekt öffnen.</summary>
+    Group: string;
   end;
 
   /// <summary>Ergebnis eines Builds auf Auftrag.</summary>

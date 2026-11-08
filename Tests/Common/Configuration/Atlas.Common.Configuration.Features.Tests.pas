@@ -57,6 +57,10 @@ type
     procedure ReadsDfmPropertyRules;
     [Test]
     procedure ReadsCompilerSettings;
+    /// <summary>#1904: Alte Einträge "backend": "ide" und "ideCommand" melden keinen Fehler; ide gilt als off.
+    /// </summary>
+    [Test]
+    procedure IgnoresRemovedIdeBackend;
     [Test]
     procedure ReadsVcsProvider;
     /// <summary>#1285: vcs.git.path, vcs.svn.path und vcs.timeoutSeconds (1 bis 300).</summary>
@@ -274,21 +278,17 @@ begin
   Assert.AreEqual(2, Integer(Length(Issues)));
   Settings := TConfigurationParser.ParseLayered('{"compiler": {"onSave": true}}', '{}', Issues);
   Assert.IsTrue(Settings.Compiler.OnSave);
-  // Weg zum Compiler (#261): Vorgabe auto ohne cc.ps1.
+  // Weg zum Compiler (#261): Vorgabe auto.
   Settings := Parse('{}', Issues);
   Assert.AreEqual(Ord(TCompilerBackendSetting.Auto), Ord(Settings.Compiler.Backend));
-  Assert.AreEqual('', Settings.Compiler.IdeCommand);
-  Settings := Parse('{"compiler": {"backend": "ide", "ideCommand": "C:\\Tools\\cc.ps1"}}', Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));
-  Assert.AreEqual(Ord(TCompilerBackendSetting.Ide), Ord(Settings.Compiler.Backend));
-  Assert.AreEqual('C:\Tools\cc.ps1', Settings.Compiler.IdeCommand);
   Settings := Parse('{"compiler": {"backend": "off"}}', Issues);
   Assert.AreEqual(Ord(TCompilerBackendSetting.Off), Ord(Settings.Compiler.Backend));
   Settings := Parse('{"compiler": {"backend": "dcc"}}', Issues);
   Assert.AreEqual(Ord(TCompilerBackendSetting.Dcc), Ord(Settings.Compiler.Backend));
-  Settings := Parse('{"compiler": {"backend": "msbuild", "ideCommand": 3}}', Issues);
+  Settings := Parse('{"compiler": {"backend": "msbuild"}}', Issues);
   Assert.AreEqual(Ord(TCompilerBackendSetting.Auto), Ord(Settings.Compiler.Backend), 'ungültig = Vorgabe');
-  Assert.AreEqual(2, Integer(Length(Issues)));
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Schnellbefehle (#293)
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.SlashCommands);
@@ -892,6 +892,22 @@ begin
   Settings := TConfigurationParser.ParseLayered('{"logLevel": "error"}', '{"logLevel": "warning"}', Issues);
   Assert.AreEqual('warning', Settings.LogLevel);
 end;
+
+procedure TConfigurationFeatureTests.IgnoresRemovedIdeBackend;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{"compiler": {"backend": "ide", "ideCommand": "C:\\Werkzeug\\bau.ps1"}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)), 'alter Wert ohne Meldung');
+  Assert.AreEqual(Ord(TCompilerBackendSetting.Off), Ord(Settings.Compiler.Backend));
+  // Auch ein Eintrag falschen Typs wird übergangen.
+  Settings := Parse('{"compiler": {"ideCommand": 3}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual(Ord(TCompilerBackendSetting.Auto), Ord(Settings.Compiler.Backend));
+  Issues := nil;
+end;
+
 procedure TConfigurationFeatureTests.ReadsCompilerSettings;
 begin
   ReadsCompilerOnSaveAndSlashCommands;

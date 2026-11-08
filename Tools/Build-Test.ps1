@@ -1,29 +1,29 @@
 ﻿<#
 .SYNOPSIS
-    Baut die Projektgruppe über das IDE-Plugin cc.ps1 und führt die DUnitX-Tests aus (#260).
+    Baut die Projektgruppe über ein externes Delphi-Bau-Skript und führt die DUnitX-Tests aus (#260, #1904).
 
 .DESCRIPTION
-    Ersatz-CI für RAD Studio Starter (kein dcc/MSBuild auf der Kommandozeile),
-    nach diesem Ablauf:
+    Die Gruppe enthält das Atlas-Plugin selbst; Tools/Build-Ide.ps1 kann sie
+    deshalb nicht bauen (die Bau-IDE würde das Plugin entladen). Gebaut wird
+    über das Skript in der Umgebungsvariablen ATLAS_DELPHI_BUILD (oder
+    -BuildScript). Es nimmt dieselben Parameter wie Tools/Build-Ide.ps1
+    (-Project, -Platform, -Mode, -Json) und liefert dasselbe JSON:
+    {"ok", "summary": {fatals, errors, warnings, hints},
+     "steps": [{project, ok, summary, messages[{file, line, column, severity, code, text}]}]}.
 
-    1. cc.ps1 start mit eigener Scratch-IDE; die pid wird aus der Ausgabe
-       gelesen und muss zu einem neuen Prozess gehören. Jeder weitere Aufruf
-       nutzt -Instance <pid>, eine schon laufende IDE bleibt unberührt.
-    2. cc.ps1 group-build -Platform Win64 -Json: ok und outputWritten müssen
-       gesetzt sein, die Test-exe und die Win64-Plugin-BPL für die 64-Bit-IDE
-       müssen neu geschrieben sein und das logFile darf keine Hinweise oder
-       Warnungen enthalten (0/0/0-Regel).
-    3. Mit -Win32 zusätzlich Win32; dort darf nur Atlas.Tests scheitern
-       (DUnitX gibt es nur für Win64, ADR 0008). Die Plugin-BPL für die
-       klassische IDE muss dabei neu geschrieben sein (#78). Die BPL heißt
-       wegen LIBSUFFIX AUTO je IDE-Version anders, z. B.
-       Atlas.IDE.Base370.bpl (#281).
-    4. Atlas.Tests.exe --exitbehavior:Continue mit NUnit-XML als Ergebnis;
+    1. Projektgruppe Win64 bauen: ok gesetzt, 0 Fehler, 0 Warnungen,
+       0 Hinweise; die Test-exe und die Win64-Plugin-BPL für die 64-Bit-IDE
+       müssen neu geschrieben sein.
+    2. Mit -Win32 zusätzlich Win32; dort darf nur Atlas.Tests scheitern
+       (DUnitX gibt es nur für Win64). Die Plugin-BPL für die klassische IDE
+       muss dabei neu geschrieben sein (#78). Die BPL heißt wegen LIBSUFFIX
+       AUTO je IDE-Version anders, z. B. Atlas.IDE.Base370.bpl (#281).
+    3. Atlas.Tests.exe --exitbehavior:Continue mit NUnit-XML als Ergebnis;
        die Benchmarks (Kategorie Benchmark, #415) nur mit -Benchmarks.
-    5. cc.ps1 quit, wiederholt, solange die IDE beschäftigt ist.
 
     Exit-Code 0: alles grün. 1: Build-Fehler, Hinweis oder Warnung.
-    2: Tests fehlgeschlagen. 3: Aufruf- oder Umgebungsfehler.
+    2: Tests fehlgeschlagen. 3: Aufruf- oder Umgebungsfehler (auch ohne
+    ATLAS_DELPHI_BUILD).
 
 .EXAMPLE
     pwsh Tools/Build-Test.ps1
@@ -34,15 +34,14 @@
 param(
     # Leer: Ordner über Tools. Windows PowerShell 5.1 kennt $PSScriptRoot im param-Block noch nicht.
     [string] $Root = '',
-    [string] $CcScript = $(if ($env:CC_SCRIPT) { $env:CC_SCRIPT } else { 'C:\Projekte\IDE-Plugins\Claude-Compile\cc.ps1' }),
+    # Externes Bau-Skript (Parameter wie Tools/Build-Ide.ps1); Vorgabe aus ATLAS_DELPHI_BUILD.
+    [string] $BuildScript = $env:ATLAS_DELPHI_BUILD,
     [string] $Config = 'Debug',
     [switch] $Win32,
     # Leer: Output/dunitx-ergebnisse.xml unter $Root.
     [string] $ResultFile = '',
     [switch] $SkipTests,
-    [switch] $Benchmarks,
-    [int] $QuitAttempts = 10,
-    [int] $QuitDelaySeconds = 5
+    [switch] $Benchmarks
 )
 
 Set-StrictMode -Version Latest
@@ -60,10 +59,6 @@ $TestExe = Join-Path $Root (Join-Path "Output/Win64/$Config/Bin" 'Atlas.Tests.ex
 # Atlas.IDE.Base290.bpl (Delphi 12), …370.bpl (Delphi 13).
 $PluginPackages = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -Filter 'Atlas.IDE.*' |
     Where-Object { Test-Path (Join-Path $_.FullName "$($_.Name).dpk") } | ForEach-Object Name | Sort-Object)
-# Zeilen des Build-Logs, die die 0/0/0-Regel verletzen, z. B. "[dcc64 Hinweis] X.pas(10): H2164 …".
-$HintPattern = '\[dcc\w*\s+(Hinweis|Warnung|Hint|Warning)\]'
-$ErrorPattern = '\[dcc\w*\s+(Fehler|Schwerwiegend|Error|Fatal)\]'
-
 function Write-Step([string] $Text) {
     Write-Host "== $Text"
 }
@@ -86,78 +81,48 @@ function Test-PluginBpl([string] $Platform, [datetime] $Started) {
     return $null
 }
 
-function Get-IdeProcessIds {
-    @(Get-Process -Name 'bds' -ErrorAction SilentlyContinue | ForEach-Object { $_.Id })
-}
-
-function Invoke-Cc([string[]] $Arguments) {
-    # Benannte Parameter als Hashtable: Beim Splatting eines Arrays käme "-Project" als Wert an
-    # ("kein Positionsparameter … akzeptiert das Argument -Project"), wie in Build-DccFaelle.ps1.
-    $named = @{}
-    $positional = @()
-    for ($i = 0; $i -lt $Arguments.Count; $i++) {
-        $arg = $Arguments[$i]
-        if ($arg -match '^-(\w+)$') {
-            if ($i + 1 -lt $Arguments.Count -and $Arguments[$i + 1] -notmatch '^-\w+$') {
-                $named[$Matches[1]] = $Arguments[$i + 1]
-                $i++
-            } else {
-                $named[$Matches[1]] = $true
-            }
-        } else {
-            $positional += $arg
-        }
-    }
-    # StrictMode dieses Skripts nicht an cc.ps1 vererben (liest optionale Felder aus status.json).
-    $output = & { Set-StrictMode -Off; & $CcScript @positional @named } *>&1 | Out-String
-    [pscustomobject]@{ Output = $output; ExitCode = $LASTEXITCODE }
-}
-
-# outputWritten steht oben im JSON oder (neuere cc.ps1) nur je Schritt unter steps[].
-function Test-OutputWritten($Result) {
-    $top = Get-Property $Result 'outputWritten'
-    if ($null -ne $top) { return [bool] $top }
-    $flags = @(@(Get-Property $Result 'steps') | Where-Object { $null -ne $_ } |
-        ForEach-Object { Get-Property $_ 'outputWritten' } | Where-Object { $null -ne $_ })
-    ($flags.Count -gt 0) -and -not ($flags -contains $false)
-}
-
-# Liest die JSON-Antwort von group-build; cc.ps1 kann davor Text ausgeben.
-function ConvertFrom-BuildOutput([string] $Output) {
-    $start = $Output.IndexOf('{')
-    if ($start -lt 0) { throw "group-build lieferte kein JSON:`n$Output" }
-    $Output.Substring($start) | ConvertFrom-Json
+# Baut $Project über das externe Skript und liefert dessen JSON-Antwort.
+function Invoke-DelphiBuild([string] $Project, [string] $Platform) {
+    $output = & { Set-StrictMode -Off; & $BuildScript -Project $Project -Platform $Platform -Mode build -Json } |
+        Out-String
+    $start = $output.IndexOf('{')
+    if ($start -lt 0) { throw "Das Bau-Skript lieferte kein JSON:`n$output" }
+    $output.Substring($start) | ConvertFrom-Json
 }
 
 function Get-Property($Object, [string] $Name) {
     if ($null -ne $Object -and $Object.PSObject.Properties[$Name]) { $Object.$Name } else { $null }
 }
 
-# Prüft einen Gruppen-Build; liefert die Liste der Verstöße (leer = in Ordnung).
-function Test-Build($Result, [string] $Platform, [datetime] $Started, [bool] $TestsMayFail) {
+# Prüft einen Gruppen-Build nach der 0/0/0-Regel; liefert die Liste der Verstöße (leer = in Ordnung).
+function Test-Build($Result, [string] $Platform, [bool] $TestsMayFail) {
     $problems = @()
-    $logFile = Get-Property $Result 'logFile'
-    $logLines = @()
-    if ($logFile -and (Test-Path $logFile)) { $logLines = @(Get-Content -Path $logFile) }
-    foreach ($line in $logLines) {
-        if ($line -match $HintPattern) { $problems += "$Platform`: $line" }
-    }
-    $errors = @($logLines | Where-Object { $_ -match $ErrorPattern })
-    if ($TestsMayFail) {
-        # Win32: nur Fehler im Testprojekt sind erwartet (DUnitX fehlt dort).
-        foreach ($line in $errors) {
-            if ($line -notmatch 'Atlas\.Tests|[\\/]Tests[\\/]') { $problems += "$Platform`: $line" }
+    foreach ($step in @(Get-Property $Result 'steps')) {
+        if ($null -eq $step) { continue }
+        $isTests = [string] (Get-Property $step 'project') -match 'Atlas\.Tests'
+        foreach ($message in @(Get-Property $step 'messages')) {
+            if ($null -eq $message) { continue }
+            $line = "$Platform`: [$($message.severity)] $($message.file)($($message.line)): $($message.code) $($message.text)"
+            if ($message.severity -match '^(hint|warning)') { $problems += $line }
+            elseif (-not ($TestsMayFail -and $isTests)) { $problems += $line }
         }
-    } else {
-        foreach ($line in $errors) { $problems += "$Platform`: $line" }
-        if (-not (Get-Property $Result 'ok')) { $problems += "$Platform`: group-build meldet ok = false" }
-        if (-not (Test-OutputWritten $Result)) { $problems += "$Platform`: keine Ausgabe geschrieben (outputWritten)" }
+        $reason = Get-Property $step 'reason'
+        if (-not (Get-Property $step 'ok') -and -not ($TestsMayFail -and $isTests)) {
+            $problems += "$Platform`: $(Get-Property $step 'project') nicht gebaut $reason"
+        }
     }
+    if (-not $TestsMayFail -and -not (Get-Property $Result 'ok')) { $problems += "$Platform`: Bau meldet ok = false" }
     $problems
 }
 
-if (-not (Test-Path $CcScript)) {
-    Write-Error "cc.ps1 nicht gefunden: $CcScript (Parameter -CcScript oder Umgebungsvariable CC_SCRIPT)" -ErrorAction Continue
+if (-not $BuildScript) {
+    Write-Error ('Kein Delphi-Bau-Skript: ATLAS_DELPHI_BUILD (oder -BuildScript) auf ein Skript mit den ' +
+        'Parametern von Tools/Build-Ide.ps1 setzen. Die Gruppe enthält das Plugin und lässt sich deshalb nicht ' +
+        'über Tools/Build-Ide.ps1 bauen.') -ErrorAction Continue
+    exit 3
+}
+if (-not (Test-Path $BuildScript)) {
+    Write-Error "Bau-Skript nicht gefunden: $BuildScript" -ErrorAction Continue
     exit 3
 }
 if (-not (Test-Path $GroupProject)) {
@@ -166,31 +131,12 @@ if (-not (Test-Path $GroupProject)) {
 }
 
 $exitCode = 0
-$ideId = $null
-$before = Get-IdeProcessIds
 try {
-    Write-Step 'Scratch-IDE starten'
-    $start = Invoke-Cc @('start', '-Project', $GroupProject)
-    Write-Host $start.Output
-    if ($start.Output -notmatch 'pid\D*(\d+)') {
-        Write-Error 'pid der Scratch-IDE nicht in der Ausgabe von cc.ps1 start gefunden' -ErrorAction Continue
-        exit 3
-    }
-    $ideId = [int] $Matches[1]
-    # Nie in eine schon laufende IDE bauen, etwa die des Benutzers.
-    if ($before -contains $ideId) {
-        Write-Error "pid $ideId gehört zu einer schon laufenden IDE; Abbruch, um sie nicht zu benutzen" -ErrorAction Continue
-        $ideId = $null
-        exit 3
-    }
-
     $problems = @()
     Write-Step 'Projektgruppe bauen (Win64)'
     $started = Get-Date
-    $build = Invoke-Cc @('group-build', '-Instance', "$ideId", '-Platform', 'Win64', '-Json')
-    Write-Host $build.Output
-    $result = ConvertFrom-BuildOutput $build.Output
-    $problems += Test-Build $result 'Win64' $started $false
+    $result = Invoke-DelphiBuild $GroupProject 'Win64'
+    $problems += Test-Build $result 'Win64' $false
     if (-not (Test-Path $TestExe)) {
         $problems += "Win64: Test-exe fehlt: $TestExe"
     } elseif ((Get-Item $TestExe).LastWriteTime -lt $started) {
@@ -202,9 +148,7 @@ try {
     if ($Win32) {
         Write-Step 'Projektgruppe bauen (Win32, ohne Testprojekt)'
         $started32 = Get-Date
-        $build32 = Invoke-Cc @('group-build', '-Instance', "$ideId", '-Platform', 'Win32', '-Json')
-        Write-Host $build32.Output
-        $problems += Test-Build (ConvertFrom-BuildOutput $build32.Output) 'Win32' $started32 $true
+        $problems += Test-Build (Invoke-DelphiBuild $GroupProject 'Win32') 'Win32' $true
         $pluginProblem = Test-PluginBpl 'Win32' $started32
         if ($pluginProblem) { $problems += $pluginProblem }
     }
@@ -229,15 +173,5 @@ try {
 } catch {
     Write-Error $_ -ErrorAction Continue
     $exitCode = 3
-} finally {
-    if ($null -ne $ideId) {
-        Write-Step 'Scratch-IDE beenden'
-        for ($attempt = 1; $attempt -le $QuitAttempts; $attempt++) {
-            $quit = Invoke-Cc @('quit', '-Instance', "$ideId")
-            if ($quit.ExitCode -eq 0) { break }
-            Write-Host "IDE noch beschäftigt, Versuch $attempt von $QuitAttempts"
-            Start-Sleep -Seconds $QuitDelaySeconds
-        }
-    }
 }
 exit $exitCode

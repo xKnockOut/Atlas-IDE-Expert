@@ -1,17 +1,19 @@
 name: Server und Tests
 
-# Delphi darf aus Lizenzgründen nicht auf gehosteten Runnern laufen. RAD Studio
-# Starter hat zudem kein msbuild/dcc auf der Kommandozeile; gebaut wird über das
-# IDE-Plugin cc.ps1. Der Job braucht deshalb einen
-# selbst gehosteten Windows-Runner mit den Labels [self-hosted, windows, delphi]
-# auf einem Rechner mit RAD Studio und cc.ps1, im angemeldeten Benutzerkontext
-# (nicht als Dienst), weil cc.ps1 eine IDE startet.
+# Delphi darf aus Lizenzgründen nicht auf gehosteten Runnern laufen. Der Job
+# braucht deshalb einen selbst gehosteten Windows-Runner mit den Labels
+# [self-hosted, windows, delphi] auf einem Rechner mit RAD Studio, im
+# angemeldeten Benutzerkontext (nicht als Dienst), falls das Bau-Skript eine
+# IDE startet. Gebaut wird über das Skript in der Umgebungsvariablen
+# ATLAS_DELPHI_BUILD des Runners (Parameter und JSON wie Tools/Build-Ide.ps1);
+# die Gruppe enthält das Atlas-Plugin, deshalb nicht über Tools/Build-Ide.ps1
+# selbst. Ohne die Variable scheitert der Job mit einer klaren Meldung.
 # Der Job läuft nur, wenn die Repository-Variable DELPHI_RUNNER auf 'true'
 # steht; sonst meldet der Job "uebersprungen" das sichtbar in der
-# Zusammenfassung. CC_SCRIPT überschreibt den Pfad zu cc.ps1. Siehe ADR 0007.
+# Zusammenfassung.
 #
 # Neue Pushes auf denselben Branch brechen einen laufenden Build ab: Jeder Lauf
-# startet eine Scratch-IDE, und bei vielen gestapelten Branches wartete die
+# kann eine Bau-IDE starten, und bei vielen gestapelten Branches wartete die
 # Schlange sonst stundenlang.
 
 on:
@@ -46,13 +48,18 @@ jobs:
   build-test:
     if: vars.DELPHI_RUNNER == 'true'
     runs-on: [self-hosted, windows, delphi]
-    env:
-      CC_SCRIPT: ${{ vars.CC_SCRIPT || 'C:\Projekte\IDE-Plugins\Claude-Compile\cc.ps1' }}
     steps:
       - uses: actions/checkout@v4
-      - name: Bauen und testen über cc.ps1 (Tools/Build-Test.ps1, 0/0/0-Regel)
+      - name: Delphi-Bau-Skript prüfen
         shell: pwsh
-        run: ./Tools/Build-Test.ps1 -CcScript $env:CC_SCRIPT -Win32 -ResultFile dunitx-ergebnisse.xml
+        run: |
+          if (-not $env:ATLAS_DELPHI_BUILD -or -not (Test-Path $env:ATLAS_DELPHI_BUILD)) {
+            throw ('Der Delphi-Runner hat kein Bau-Skript: Umgebungsvariable ATLAS_DELPHI_BUILD auf ein Skript mit ' +
+              'den Parametern von Tools/Build-Ide.ps1 (-Project, -Platform, -Mode, -Json) setzen.')
+          }
+      - name: Bauen und testen (Tools/Build-Test.ps1 über ATLAS_DELPHI_BUILD, 0/0/0-Regel)
+        shell: pwsh
+        run: ./Tools/Build-Test.ps1 -BuildScript $env:ATLAS_DELPHI_BUILD -Win32 -ResultFile dunitx-ergebnisse.xml
       - name: Selbstprüfung des Servers (#152)
         if: always()
         shell: pwsh

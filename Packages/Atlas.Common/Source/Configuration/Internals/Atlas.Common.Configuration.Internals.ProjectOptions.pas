@@ -27,7 +27,7 @@ uses
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
   TProjectOptionsText = (IndentSizeMustBeAWhole, MaxLineLengthMustBeAWhole, AllowedArePreserveLowerAnd,
-    AllowedAreLfAndCrlf, AllowedArePreserveNewLineAnd, AllowedAreAutoDccIde, AffectedDepthMustBeAWhole,
+    AllowedAreLfAndCrlf, AllowedArePreserveNewLineAnd, AllowedAreAutoDccOff, AffectedDepthMustBeAWhole,
     TestUnitsProjectMustBeA, AllowedAreContainsNotContainsEmpty, AllowedAreAutoPromptAnd, ExcludeMustBeAList,
     UnknownEntryInAProperty, APropertyRuleNeedsClass, ThisConditionNeedsAValue, APropertyRuleMustBe,
     DfmPropertyRulesMustBeAList, UnknownSeverityAllowedOffHint);
@@ -41,7 +41,7 @@ const
     (De: 'Erlaubt sind "preserve", "lower" und "upper"'; En: 'Allowed are "preserve", "lower" and "upper"'),
     (De: 'Erlaubt sind "lf" und "crlf"'; En: 'Allowed are "lf" and "crlf"'),
     (De: 'Erlaubt sind "preserve", "newLine" und "sameLine"'; En: 'Allowed are "preserve", "newLine" and "sameLine"'),
-    (De: 'Erlaubt sind "auto", "dcc", "ide" und "off"'; En: 'Allowed are "auto", "dcc", "ide" and "off"'),
+    (De: 'Erlaubt sind "auto", "dcc" und "off"'; En: 'Allowed are "auto", "dcc" and "off"'),
     (De: '"affectedDepth" muss eine ganze Zahl von 1 bis 5 sein';
      En: '"affectedDepth" must be a whole number from 1 to 5'),
     (De: '"testUnits.project" muss eine .dproj oder .dpr sein'; En: '"testUnits.project" must be a .dproj or .dpr'),
@@ -215,23 +215,28 @@ procedure ReadCompilerBackend(AReader: TConfigurationReader; AValue: TJsonNode; 
 var
   mIndex: Integer;
 begin
-  if AReader.ExpectChoice(AValue, AKey, ['auto', 'dcc', 'ide', 'off'],
-    cTexts[TProjectOptionsText.AllowedAreAutoDccIde].Text,
+  // "ide" (Weg über eine Bau-IDE, entfernt mit #1904) bleibt still erlaubt und gilt als "off".
+  if AReader.ExpectChoice(AValue, AKey, ['auto', 'dcc', 'off', 'ide'],
+    cTexts[TProjectOptionsText.AllowedAreAutoDccOff].Text,
     mIndex) then
   begin
+    if mIndex > Ord(High(TCompilerBackendSetting)) then
+    begin
+      mIndex := Ord(TCompilerBackendSetting.Off);
+    end;
     ASettings.Compiler.Backend := TCompilerBackendSetting(mIndex);
   end;
 end;
 
-procedure ReadIdeCommand(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
+procedure IgnoreIdeCommand(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  AReader.ExpectString(AValue, AKey, ASettings.Compiler.IdeCommand);
+  // compiler.ideCommand gibt es seit #1904 nicht mehr; ein alter Eintrag wird ohne Meldung übergangen.
 end;
 
 const
   cCompilerMembers: array[0..1] of TMemberOption = ((Key: 'backend'; Read: ReadCompilerBackend),
-    (Key: 'ideCommand'; Read: ReadIdeCommand));
+    (Key: 'ideCommand'; Read: IgnoreIdeCommand));
 
 procedure ReadCompiler(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);
 begin

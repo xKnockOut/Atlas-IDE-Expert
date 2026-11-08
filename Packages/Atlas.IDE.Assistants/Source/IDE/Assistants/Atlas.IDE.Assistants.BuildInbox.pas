@@ -4,7 +4,8 @@
 // Atlas.Core.Assistants.BuildInbox): Alle 250 ms übernimmt das Plugin einen wartenden
 // Auftrag des MCP-Werkzeugs build_project, baut über den Vertrag IAtlasBuildRequests
 // des Moduls Build-Pipeline (#1888) und antwortet mit Ergebnis und Compilermeldungen.
-// Fehlt das Modul, lehnt der Eingang mit Grund ab.
+// Fehlt das Modul, lehnt der Eingang mit Grund ab. Ist das Projekt nicht offen, öffnet der Eingang es zuvor
+// (mit „group“ die ganze Projektgruppe, sonst zur aktuellen Gruppe hinzu, #1904): So baut auch eine frisch gestartete Bau-IDE (Tools/Build-Ide.ps1).
 // Immer nur ein Auftrag zugleich; die übrigen warten, bis der Läufer frei ist
 // (der MCP-Server zieht sie nach seiner Frist zurück). Abschaltbar über die
 // Einstellung „Builds für KI-Assistenten“ (McpBuild); dann läuft der Eingang
@@ -42,11 +43,16 @@ implementation
 
 uses
   Winapi.Windows,
+  ToolsAPI,
   System.IOUtils,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Build.Messages,
   Atlas.Core.Assistants.BuildInbox,
   Atlas.UI.Assistants.Strings;
+
+var
+  /// <summary>Ordner dieses Prozesses schon einmal aufgeräumt?</summary>
+  GCleaned: Boolean;
 
 constructor TAtlasIdeBuildInbox.Create(const ARequests: TFunc<IAtlasBuildRequests>;
   const AOnMessage: TAtlasBuildInboxProc);
@@ -56,7 +62,14 @@ begin
   FOnMessage := AOnMessage;
   FFolder := TAtlasBuildInbox.Folder(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     GetCurrentProcessId);
-  Clean;
+  // Nur beim ersten Start in diesem Prozess aufräumen (Reste eines früheren Prozesses mit derselben Nummer).
+  // Startet der Eingang neu (Einstellungen neu angewendet, Projektgruppe geöffnet), bleiben wartende und
+  // laufende Aufträge liegen; sonst stellte der Auftraggeber sie neu und dasselbe Projekt würde wieder gebaut.
+  if not GCleaned then
+  begin
+    Clean;
+    GCleaned := True;
+  end;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 250;
   FTimer.OnTimer := Tick;
@@ -65,14 +78,14 @@ end;
 
 destructor TAtlasIdeBuildInbox.Destroy;
 begin
+  // Ordner nicht leeren: Ein laufender Build antwortet noch hinein, ein wartender Auftrag gilt beim nächsten Start.
   FTimer.Free;
-  Clean;
   inherited Destroy;
 end;
 
 procedure TAtlasIdeBuildInbox.Clean;
 begin
-  // Reste eines früheren Prozesses mit derselben Nummer oder dieses Laufs.
+  // Reste eines früheren Prozesses mit derselben Nummer.
   try
     if TDirectory.Exists(FFolder) then
     begin
@@ -115,6 +128,31 @@ begin
   Result.UnknownMode := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.RequestUnknownMode);
 end;
 
+/// <summary>Öffnet AProject, wenn es nicht offen ist: mit AGroup die ganze Projektgruppe (dann sind alle ihre
+/// Projekte offen), sonst das Projekt zur aktuellen Gruppe hinzu.</summary>
+procedure EnsureProjectOpen(const AProject, AGroup: string);
+var
+  mModules: IOTAModuleServices;
+  mActions: IOTAActionServices;
+begin
+  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) and (mModules.FindModule(AProject) <> nil) then
+  begin
+    Exit;
+  end;
+  if not Supports(BorlandIDEServices, IOTAActionServices, mActions) then
+  begin
+    Exit;
+  end;
+  if (AGroup <> '') and FileExists(AGroup) then
+  begin
+    mActions.OpenProject(AGroup, True);
+  end
+  else if FileExists(AProject) then
+  begin
+    mActions.OpenProject(AProject, False);
+  end;
+end;
+
 function ErrorCount(const AMessages: TArray<TAtlasCompilerMessage>): Integer;
 var
   mMessage: TAtlasCompilerMessage;
@@ -142,6 +180,7 @@ begin
     Exit;
   end;
   mRequests := FRequests();
+  EnsureProjectOpen(mRequest.Project, mRequest.Group);
   mFolder := FFolder;
   mOnMessage := FOnMessage;
   if Assigned(mOnMessage) then

@@ -1,7 +1,7 @@
 ﻿unit Shell.Composition.Compile;
 
-// Internals-Rolle Shell: Compilerläufe des Servers (#40, #261). Wählt den Weg zum Compiler (dcc oder eigene IDE
-// über cc.ps1), baut im eigenen Thread, merkt einen Auftrag während eines Laufs vor und veröffentlicht die Meldungen.
+// Internals-Rolle Shell: Compilerläufe des Servers (#40, #261). Wählt den Weg zum Compiler (dcc oder keiner),
+// baut im eigenen Thread, merkt einen Auftrag während eines Laufs vor und veröffentlicht die Meldungen.
 // Ohne nutzbaren Compiler stehen Grund und Ausweg einmal je Grund und Sitzung als Meldung im Editor und dauerhaft
 // im Status (#28). Beenden (A-05) bricht den Prozess ab, statt auf ihn zu warten.
 
@@ -34,7 +34,6 @@ type
     Process: ICompilerProcess;
     Progress: TLspWorkDoneProgress;
     Editions: TShellCompilerEditions;
-    IdeCompiler: TShellIdeCompiler;
     JobFor: TShellCompileJobFunc;
     Publish: TShellCompilePublish;
   end;
@@ -69,16 +68,15 @@ type
     procedure CompileOnce(const AJob: TShellCompileJob);
     procedure CompileWithDcc(const AJob: TShellCompileJob);
     procedure Unlicensed(const AJob: TShellCompileJob);
-    procedure CompileWithIde(const AJob: TShellCompileJob);
     procedure Publish(const AMessages: TArray<TCompilerMessage>; const AVia: string);
   public
-    /// <summary>Übernimmt Progress, Editions und IdeCompiler.</summary>
+    /// <summary>Übernimmt Progress und Editions.</summary>
     constructor Create(const AServices: TShellCompileServices);
     destructor Destroy; override;
     /// <summary>Startet einen Lauf für AFileName (leer: das gewählte Projekt). AManual: auf den Befehl; sonst nach
     /// dem Speichern. False, wenn kein nutzbarer Compiler da ist; AChoice sagt warum.</summary>
     function Start(const AFileName: string; AManual: Boolean; out AChoice: TCompilerBackendChoice): Boolean;
-    /// <summary>Beenden (A-05): keinen Lauf mehr starten, den Prozess abbrechen, die eigene IDE beenden.</summary>
+    /// <summary>Beenden (A-05): keinen Lauf mehr starten, den Prozess abbrechen.</summary>
     procedure Stop;
     /// <summary>Neues Projekt oder neue Installation: Der Compiler bekommt eine neue Chance (#40), der Status prüft
     /// den Weg neu (#261).</summary>
@@ -101,14 +99,12 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Compiler.OutputParser,
   Atlas.Common.JsonRpc.Messages,
-  Shell.Platform,
   Atlas.Text.LogMarks,
   Atlas.Common.Localization.Texts;
 
 type
 {$SCOPEDENUMS ON}
-  TCompileHostText = (Restricted, TrustHint, NotUsable, NotLicensed, NoMessages, Compiling, CompilingIde, CheckSetup,
-    Failed, Summary);
+  TCompileHostText = (Restricted, TrustHint, NotUsable, NotLicensed, NoMessages, Compiling, Failed, Summary);
 {$SCOPEDENUMS OFF}
 
 const
@@ -120,9 +116,6 @@ const
     (De: 'Kommandozeilen-Compiler nicht lizenziert'; En: 'Command-line compiler not licensed'),
     (De: '%s endet mit Exit-Code %d ohne Meldungen:%s'; En: '%s ends with exit code %d without messages:%s'),
     (De: 'Projekt kompilieren'; En: 'Compile project'),
-    (De: 'Projekt über eine eigene IDE kompilieren'; En: 'Compile project through an IDE of its own'),
-    (De: 'cc.ps1 und die Delphi-Installation prüfen; Einzelheiten stehen im Server-Log.';
-    En: 'Check cc.ps1 and the Delphi installation; details are in the server log.'),
     (De: 'Fehlgeschlagen'; En: 'Failed'),
     (De: '%d Fehler, %d Warnungen, %d Hinweise'; En: '%d errors, %d warnings, %d hints'));
 
@@ -138,7 +131,6 @@ destructor TShellCompileHost.Destroy;
 begin
   // Stop ruft der Server, solange Diagnoselog und Syntaxprüfung noch leben (A-05).
   FServices.Progress.Free;
-  FServices.IdeCompiler.Free;
   FServices.Editions.Free;
   FLock.Free;
   FResults.Free;
@@ -217,8 +209,7 @@ end;
 
 function TShellCompileHost.ChoiceFor(const AJob: TShellCompileJob; AEdition: TCompilerEdition): TCompilerBackendChoice;
 begin
-  Result := TCompilerBackends.Choose(AJob.Settings.Backend, AEdition, AJob.Settings.IdeCommand,
-    (Trim(AJob.Settings.IdeCommand) <> '') and FileExists(AJob.Settings.IdeCommand));
+  Result := TCompilerBackends.Choose(AJob.Settings.Backend, AEdition);
 end;
 
 function TShellCompileHost.Choose(const AFileName: string; out AJob: TShellCompileJob;
@@ -345,7 +336,7 @@ begin
     System.TMonitor.Exit(FLock);
   end;
   Result := (AManual or not mUnavailable) and Prepare(AFileName, mJob, AChoice);
-  // Die eigene IDE ist langsam: nur auf den Befehl, nie nach dem Speichern (#261).
+  // Nach dem Speichern nur, wenn der Weg das erlaubt (#261).
   if Result and (AManual or TCompilerBackends.RunsOnSave(AChoice.Backend)) then
   begin
     mJob.Backend := AChoice.Backend;
@@ -412,14 +403,7 @@ procedure TShellCompileHost.CompileOnce(const AJob: TShellCompileJob);
 begin
   try
     // Im try (S-06): Wirft schon der Start des Fortschritts, endet der Lauf geordnet.
-    if AJob.Backend = TCompilerBackend.Ide then
-    begin
-      CompileWithIde(AJob);
-    end
-    else
-    begin
-      CompileWithDcc(AJob);
-    end;
+    CompileWithDcc(AJob);
   except
     on ECompilerCancelled do
       ; // Beenden (A-05): nichts mehr melden, der Transport ist schon zu.
@@ -432,28 +416,12 @@ begin
 end;
 
 /// <summary>Starter bzw. Community Edition (#261): dcc ist da, darf aber nicht von der Kommandozeile bauen. Merken,
-/// damit auto künftig gleich richtig wählt; bei einem Befehl gleich über die IDE bauen.</summary>
+/// damit auto künftig gleich richtig wählt, und Grund und Ausweg melden.</summary>
 procedure TShellCompileHost.Unlicensed(const AJob: TShellCompileJob);
-var
-  mChoice: TCompilerBackendChoice;
-  mIdeJob: TShellCompileJob;
 begin
   FServices.Editions.Remember(AJob.BdsRoot, AJob.Version, AJob.Request.Executable, TCompilerEdition.NoCommandLine);
-  mChoice := ChoiceFor(AJob, TCompilerEdition.NoCommandLine);
-  if not mChoice.Usable then
-  begin
-    Unavailable(mChoice, True);
-    FServices.Progress.Finish(cTexts[TCompileHostText.NotUsable].Text);
-    Exit;
-  end;
-  Remember(mChoice);
+  Unavailable(ChoiceFor(AJob, TCompilerEdition.NoCommandLine), True);
   FServices.Progress.Finish(cTexts[TCompileHostText.NotLicensed].Text);
-  if AJob.Manual then
-  begin
-    mIdeJob := AJob;
-    mIdeJob.Backend := mChoice.Backend;
-    CompileWithIde(mIdeJob);
-  end;
 end;
 
 /// <summary>Die ersten drei nicht leeren Zeilen der Ausgabe, je mit Leerzeichen davor.</summary>
@@ -515,29 +483,6 @@ begin
   end;
 end;
 
-procedure TShellCompileHost.CompileWithIde(const AJob: TShellCompileJob);
-var
-  mMessages: TArray<TCompilerMessage>;
-  mSucceeded: Boolean;
-  mError: string;
-begin
-  FServices.Progress.Start(cTexts[TCompileHostText.CompilingIde].Text);
-  if not FServices.IdeCompiler.Build(AJob.Settings.IdeCommand, AJob.Project, AJob.Platform, mMessages, mSucceeded,
-    mError) then
-  begin
-    Unavailable(TCompilerBackendChoice.Unavailable(mError, cTexts[TCompileHostText.CheckSetup].Text), True);
-    FServices.Progress.Finish(cTexts[TCompileHostText.Failed].Text);
-  end
-  else if mSucceeded then
-  begin
-    Publish(mMessages, 'eigene IDE (erfolgreich)');
-  end
-  else
-  begin
-    Publish(mMessages, 'eigene IDE (misslungen)');
-  end;
-end;
-
 procedure TShellCompileHost.Publish(const AMessages: TArray<TCompilerMessage>; const AVia: string);
 var
   mItem: TCompilerMessage;
@@ -584,11 +529,6 @@ begin
   begin
     FThread.WaitFor;
     FreeAndNil(FThread);
-  end;
-  // Eigene IDE (#261) mit dem Server beenden; der alte Läufer ist abgebrochen, deshalb ein neuer.
-  if (FServices.IdeCompiler <> nil) and (FServices.IdeCompiler.Pid <> 0) then
-  begin
-    FServices.IdeCompiler.Quit(TProcessRunner.Create);
   end;
 end;
 
