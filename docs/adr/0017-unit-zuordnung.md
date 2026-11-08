@@ -771,6 +771,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.VersionControl.Providers.Svn` | `Core/VersionControl/Atlas.Core.VersionControl.Providers.Svn.pas` | Ordner `Core/VersionControl` |
 | `Atlas.IDE.VersionControl.Branching` | `IDE/VersionControl/Atlas.IDE.VersionControl.Branching.pas` | Ordner `IDE/VersionControl` |
 | `Atlas.IDE.VersionControl.Composition` | `IDE/VersionControl/Atlas.IDE.VersionControl.Composition.pas` | Ordner `IDE/VersionControl` |
+| `Atlas.IDE.VersionControl.Commands` | `IDE/VersionControl/Atlas.IDE.VersionControl.Commands.pas` | Befehle „Branch anlegen …“ und „Arbeitskopien“ (#1905) |
 | `Atlas.IDE.VersionControl.Service` | `IDE/VersionControl/Atlas.IDE.VersionControl.Service.pas` | Ordner `IDE/VersionControl` |
 | `Atlas.IDE.VersionControl.WorkingCopies` | `IDE/VersionControl/Atlas.IDE.VersionControl.WorkingCopies.pas` | Ordner `IDE/VersionControl` |
 | `Atlas.UI.VersionControl.SettingsSection` | `UI/VersionControl/Atlas.UI.VersionControl.SettingsSection.pas` | Ordner `UI/VersionControl` |

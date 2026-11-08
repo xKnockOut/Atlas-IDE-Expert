@@ -43,8 +43,6 @@ uses
   Atlas.IDE.Notifications.Service,
   Atlas.IDE.Diagnostics.Export,
   Atlas.IDE.Status.ServerWindow,
-  Atlas.IDE.Projects.Summaries,
-  Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
@@ -128,11 +126,6 @@ begin
   Result := TAtlasIdeServerWindow.Enabled;
 end;
 
-function WorkingCopiesVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.VcsExternalsShow;
-end;
-
 procedure ShowGenerateMenu;
 begin
   TAtlasGuard.Run(TAtlasFeature.Generate,
@@ -153,56 +146,6 @@ end;
 procedure ExportDiagnostics;
 begin
   TAtlasIdeDiagnosticExport.Execute(Warnings());
-end;
-
-/// <summary>Projektdatei des aktiven Projekts mit Versionsverwaltung; '' ohne, dann die Meldung ANoVcs.</summary>
-function VcsProject(ANoVcs: TAtlasTextId): string;
-begin
-  Result := TAtlasIdeProjectSummaries.ProjectFileOf(TAtlasIdeTeamFile.ActiveProject);
-  if Result = '' then
-  begin
-    TAtlasIdeVcs.Report(TAtlasStrings.Text(ANoVcs));
-  end;
-end;
-
-/// <summary>Zusammenfassung des Projekts nach einer Änderung der Arbeitskopie neu lesen.</summary>
-function RefreshSummary(const AProject: string): TProc;
-var
-  mProject: string;
-begin
-  mProject := AProject;
-  Result :=
-    procedure
-    begin
-      if TAtlasIdeProjectSummaries.Current <> nil then
-      begin
-        TAtlasIdeProjectSummaries.Current.Refresh(mProject);
-      end;
-    end;
-end;
-
-/// <summary>Branch anlegen (#1288): Dialog für die Arbeitskopie des aktiven Projekts, ohne Issue.</summary>
-procedure CreateBranch;
-var
-  mProject: string;
-begin
-  mProject := VcsProject(TAtlasTextId.VcsBranchNoVcs);
-  if mProject <> '' then
-  begin
-    TAtlasIdeVcs.Dialogs.CreateBranchFor(mProject, RefreshSummary(mProject));
-  end;
-end;
-
-/// <summary>Arbeitskopien (#1292): Wurzel, Externals bzw. Submodule des aktiven Projekts.</summary>
-procedure ShowWorkingCopies;
-var
-  mProject: string;
-begin
-  mProject := VcsProject(TAtlasTextId.VcsWorkingCopiesNoVcs);
-  if mProject <> '' then
-  begin
-    TAtlasIdeVcs.Dialogs.ShowWorkingCopies(mProject, RefreshSummary(mProject));
-  end;
 end;
 
 /// <summary>Künstlicher Hänger für den Einfrier-Wächter (#501): nur im Diagnosemodus (#479, Code-Review S-07),
@@ -237,7 +180,7 @@ begin
     Guarded(TAtlasFeature.Settings, TAtlasIdeSettingsTransfer.ResetCommand), SettingsTransferVisible);
 end;
 
-/// <summary>Verlauf, Projekt, Benachrichtigungen, Diagnose, Versionsverwaltung und Wächter-Test.</summary>
+/// <summary>Verlauf, Projekt, Benachrichtigungen, Diagnose und Wächter-Test.</summary>
 procedure AddProjectCommands(APalette: TAtlasIdePalette);
 begin
   AddCommand(APalette, 'Atlas.ResetHistory', TAtlasTextId.PaletteResetHistory, TAtlasIdeHistory.Reset);
@@ -257,11 +200,7 @@ begin
   AddCommand(APalette, 'Atlas.ServerStatus', TAtlasTextId.ServerWindowCommand, ShowServerWindow,
     ServerWindowVisible);
   AddCommand(APalette, 'Atlas.ProjectSettings', TAtlasTextId.ProjectSettingsTitle, TAtlasProjectSettings.Execute);
-  // Branch anlegen (#1288): immer mit Dialog.
-  AddCommand(APalette, 'Atlas.CreateBranch', TAtlasTextId.VcsBranchCommand, CreateBranch);
-  // Arbeitskopien (#1292); sichtbar mit vcs.externals.show.
-  AddCommand(APalette, 'Atlas.WorkingCopies', TAtlasTextId.VcsWorkingCopiesCommand, ShowWorkingCopies,
-    WorkingCopiesVisible);
+  // „Branch anlegen …“ und „Arbeitskopien“ stellt das Modul Versionsverwaltung bereit (#1905).
   AddCommand(APalette, 'Atlas.HangTest', TAtlasTextId.SettingsHangTest, HangTest, DiagnosticModeVisible);
 end;
 

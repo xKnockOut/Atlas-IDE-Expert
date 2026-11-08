@@ -102,6 +102,7 @@ uses
   Atlas.Core.Modules.Handshake,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.VersionControl.Composition,
+  Atlas.IDE.VersionControl.Commands,
   Atlas.Core.VersionControl.Adapters.ProcessRunner,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.VersionControl.Service,
@@ -417,6 +418,8 @@ begin
   // Vertrag in der Registry (#1903): Beiträge anderer Module zum Optionsdialog (Branches zu Issues des Trackers)
   // finden darüber ihren Gastgeber. Genutzt wird der Dienst weiter über TAtlasIdeVcs, sobald der Teil läuft.
   GScope.Provide(IAtlasVcsService, TAtlasVcsServiceAdapter.Create as IAtlasVcsService);
+  // Befehle „Branch anlegen …“ und „Arbeitskopien“ (#1905, vorher in der Palette von Base).
+  GScope.Provide(IAtlasCommandSource, TAtlasVcsCommands.Create as IAtlasCommandSource);
   // Modulschalter im Optionsdialog ab der Anmeldung, damit sich das Modul auch ausgeschaltet einstellen lässt.
   TAtlasVcsSettingsSection.ProvideIn(GScope);
   Result := True;

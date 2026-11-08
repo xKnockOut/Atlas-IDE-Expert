@@ -55,6 +55,7 @@ contains
   Atlas.IDE.VersionControl.Branching in 'Source\IDE\VersionControl\Atlas.IDE.VersionControl.Branching.pas',
   Atlas.IDE.VersionControl.WorkingCopies in 'Source\IDE\VersionControl\Atlas.IDE.VersionControl.WorkingCopies.pas',
   Atlas.UI.VersionControl.SettingsSection in 'Source\UI\VersionControl\Atlas.UI.VersionControl.SettingsSection.pas',
+  Atlas.IDE.VersionControl.Commands in 'Source\IDE\VersionControl\Atlas.IDE.VersionControl.Commands.pas',
   Atlas.IDE.VersionControl.Composition in 'Source\IDE\VersionControl\Atlas.IDE.VersionControl.Composition.pas';
 
 end.
