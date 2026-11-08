@@ -35,6 +35,12 @@ type
     /// <summary>Reihenfolge ohne Layout, kleiner zuerst.</summary>
     Order: Integer;
     Column: TAtlasWelcomeTileColumn;
+    /// <summary>Schalter der Kachel (x-key, Wahrheitswert, z. B. "welcomePage.issues"); '' = keiner. Die
+    /// Willkommensseite zeigt ihn im Optionsdialog, ohne den Schlüssel selbst zu kennen (#1903, Regel X).</summary>
+    SwitchKey: string;
+    /// <summary>Einstellung, zu der „Einstellungen …“ neben dem Schalter springt (z. B. "issues.tracker"); '' =
+    /// kein Knopf. Fehlt die Einstellung im Dialog, bleibt der Knopf unsichtbar.</summary>
+    SettingsKey: string;
   end;
 
   /// <summary>Gibt die Willkommensseite jeder Ansicht mit.</summary>

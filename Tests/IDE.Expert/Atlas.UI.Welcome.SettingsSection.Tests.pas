@@ -109,9 +109,19 @@ begin
   end;
 end;
 
+function TileSwitch(const AKey, ASetting, ASettingsKey: string): TAtlasWelcomeTileSwitch;
+begin
+  Result.Key := AKey;
+  Result.Setting := ASetting;
+  Result.SettingsKey := ASettingsKey;
+end;
+
 procedure TWelcomeSettingsSectionTests.Setup;
 begin
   FSection := TAtlasWelcomeSettingsSection.Create;
+  // Kacheln des Trackers wie aus dem Kachel-Vertrag (#1903): Meine Issues mit Weg zum Tracker, Sprint.
+  FSection.Hooks.TileSwitches := [TileSwitch('welcomePage.issues', 'WelcomePageIssues', 'issues.tracker'),
+    TileSwitch('welcomePage.sprint', 'WelcomePageSprint', '')];
   FSectionRef := FSection;
   FRegistration := AtlasModuleRegistry.Provide(IAtlasSettingsSectionProvider,
     TFixedProvider.Create(FSectionRef) as IAtlasSettingsSectionProvider);
@@ -157,8 +167,8 @@ begin
   Assert.AreEqual('10', ASection.Tiles.TestsCiInterval.Text);
   Assert.IsTrue(ASection.Tiles.TestsCiNotify.Checked);
   Assert.IsTrue(ASection.Tiles.CiLogin.Checked);
-  Assert.IsFalse(ASection.Tiles.Issues.Checked);
-  Assert.IsTrue(ASection.Tiles.Sprint.Checked);
+  Assert.IsFalse(ASection.Tiles.ModuleTiles[0].Checked);
+  Assert.IsTrue(ASection.Tiles.ModuleTiles[1].Checked);
 end;
 
 /// <summary>Vorgaben der Schnellaktionen und der übrigen Bereiche.</summary>
@@ -218,8 +228,8 @@ begin
   ASection.Tiles.TestsCiInterval.Text := '0';
   ASection.Tiles.TestsCiNotify.Checked := False;
   ASection.Tiles.CiLogin.Checked := False;
-  ASection.Tiles.Issues.Checked := True;
-  ASection.Tiles.Sprint.Checked := False;
+  ASection.Tiles.ModuleTiles[0].Checked := True;
+  ASection.Tiles.ModuleTiles[1].Checked := False;
 end;
 
 procedure ChangeMore(ASection: TAtlasWelcomeSettingsSection);
@@ -316,8 +326,8 @@ begin
   Assert.AreEqual('1', ASection.Tiles.TestsCiInterval.Text);
   Assert.IsFalse(ASection.Tiles.TestsCiNotify.Checked);
   Assert.IsFalse(ASection.Tiles.CiLogin.Checked);
-  Assert.IsTrue(ASection.Tiles.Issues.Checked);
-  Assert.IsFalse(ASection.Tiles.Sprint.Checked);
+  Assert.IsTrue(ASection.Tiles.ModuleTiles[0].Checked);
+  Assert.IsFalse(ASection.Tiles.ModuleTiles[1].Checked);
   Assert.IsFalse(ASection.More.QuickActions.Checked);
   Assert.IsFalse(ASection.More.QuickActionsItems[TAtlasQuickAction.Console].Checked);
   Assert.IsTrue(ASection.More.QuickActionsItems[TAtlasQuickAction.Pull].Checked);
@@ -535,17 +545,17 @@ begin
     Assert.IsTrue(SheetOf(FSection.Start.IdePage) = mWelcome);
     Assert.IsTrue(SheetOf(FSection.Layouts.Choice) = SheetOf(FSection.Start.Columns), 'Layouts stehen bei den Spalten');
     // Sprint-Kachel (#1277): eigener Knoten welcome.sprint (Schema).
-    Assert.IsTrue(SheetOf(FSection.Tiles.Sprint) = mPage.NodeSheet('welcome.sprint'));
+    Assert.IsTrue(SheetOf(FSection.Tiles.ModuleTiles[1]) = mPage.NodeSheet('welcome.sprint'));
     // „Meine Issues“: nur der Schalter, daneben der Weg zur Seite Issue-Tracker; ohne Modul Tracker gibt es die
     // Seite nicht und der Knopf ist verborgen (#1456).
-    Assert.IsTrue(SheetOf(FSection.Tiles.IssuesLink) = SheetOf(FSection.Tiles.Issues));
+    Assert.IsTrue(SheetOf(FSection.Tiles.ModuleTileLinks[0]) = SheetOf(FSection.Tiles.ModuleTiles[0]));
     Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeIssuesLink),
-      FSection.Tiles.IssuesLink.Caption);
+      FSection.Tiles.ModuleTileLinks[0].Caption);
     Assert.IsNull(mPage.ControlOfSetting('IssuesEnabled'), 'ohne Modul Tracker');
-    Assert.IsFalse(FSection.Tiles.IssuesLink.Visible, 'kein Weg ins Leere');
-    mPage.Pages.ActivePage := SheetOf(FSection.Tiles.Issues);
-    FSection.Tiles.IssuesLink.Click;
-    Assert.IsTrue(mPage.Pages.ActivePage = SheetOf(FSection.Tiles.Issues), 'Klick bleibt auf der Seite');
+    Assert.IsFalse(FSection.Tiles.ModuleTileLinks[0].Visible, 'kein Weg ins Leere');
+    mPage.Pages.ActivePage := SheetOf(FSection.Tiles.ModuleTiles[0]);
+    FSection.Tiles.ModuleTileLinks[0].Click;
+    Assert.IsTrue(mPage.Pages.ActivePage = SheetOf(FSection.Tiles.ModuleTiles[0]), 'Klick bleibt auf der Seite');
     // Der Kopf der Willkommensseite hat keine experimentelle Einstellung: Der Filter blendet ihn aus (#890).
     Assert.IsNotNull(mPage.NodeSheet('welcome.header'));
     mPage.Filter.Choice := 2;

@@ -22,7 +22,8 @@ uses
 const
   /// <summary>Vertragsversion von Base (Regel 7). Erhöhen, sobald sich ein Vertrag von Base ändert, den Module
   /// übersetzen (Interface, Record, Konstante): Delphi prüft die Binärschnittstelle zwischen Packages nicht.</summary>
-  cAtlasCoreContractVersion = 1;
+  /// 2 (#1903): IAtlasSettingsContribution, TAtlasWelcomeTileInfo.SwitchKey/SettingsKey, neue Texte.
+  cAtlasCoreContractVersion = 2;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';

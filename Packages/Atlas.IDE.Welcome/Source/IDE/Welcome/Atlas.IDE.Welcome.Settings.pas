@@ -9,6 +9,9 @@
 //   (TAtlasIdeCommandUsage, meldet das selbst an alle Hörer),
 // - „Gesperrte Tipps wieder zeigen“ hebt die Sperren von „Atlas entdecken“
 //   (#757) auf und speichert sie sofort.
+// - Schalter der Kacheln anderer Module (#1903): aus dem Kachel-Vertrag
+//   (SwitchKey, SettingsKey), in Reihenfolge der Kacheln; die Willkommensseite
+//   kennt die Schlüssel der Module nicht.
 
 interface
 
@@ -24,10 +27,68 @@ type
 implementation
 
 uses
+  System.SysUtils,
+  System.Generics.Collections,
+  System.Generics.Defaults,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Modules.Registry,
+  Atlas.Core.Settings.Catalog,
+  Atlas.IDE.Contracts.WelcomeTiles,
   Atlas.IDE.Commands.Usage,
   Atlas.IDE.Welcome.Discover,
   Atlas.UI.Welcome.SettingsSection;
+
+/// <summary>Schalter der Kacheln anderer Module in Reihenfolge ihrer Kacheln.</summary>
+function TileSwitches: TArray<TAtlasWelcomeTileSwitch>;
+var
+  mInfos: TArray<TAtlasWelcomeTileInfo>;
+  mItem: IInterface;
+  mTile: IAtlasWelcomeTile;
+  mInfo: TAtlasWelcomeTileInfo;
+  mSwitch: TAtlasWelcomeTileSwitch;
+  mCatalog: TAtlasSettingsCatalog;
+  mIndex: Integer;
+begin
+  Result := nil;
+  mInfos := nil;
+  for mItem in AtlasModuleRegistry.FindAll(IAtlasWelcomeTile) do
+  begin
+    if Supports(mItem, IAtlasWelcomeTile, mTile) and (mTile.Info.SwitchKey <> '') then
+    begin
+      mInfos := mInfos + [mTile.Info];
+    end;
+  end;
+  if Length(mInfos) = 0 then
+  begin
+    Exit;
+  end;
+  TArray.Sort<TAtlasWelcomeTileInfo>(mInfos, TComparer<TAtlasWelcomeTileInfo>.Construct(
+    function(const ALeft, ARight: TAtlasWelcomeTileInfo): Integer
+    begin
+      Result := ALeft.Order - ARight.Order;
+      if Result = 0 then
+      begin
+        Result := CompareText(ALeft.Id, ARight.Id);
+      end;
+    end));
+  mCatalog := TAtlasSettingsCatalog.CreateDefault;
+  try
+    for mInfo in mInfos do
+    begin
+      mSwitch := Default(TAtlasWelcomeTileSwitch);
+      mSwitch.Key := mInfo.SwitchKey;
+      mSwitch.SettingsKey := mInfo.SettingsKey;
+      mIndex := mCatalog.IndexOfKey(mInfo.SwitchKey);
+      if mIndex >= 0 then
+      begin
+        mSwitch.Setting := mCatalog[mIndex].Name;
+      end;
+      Result := Result + [mSwitch];
+    end;
+  finally
+    mCatalog.Free;
+  end;
+end;
 
 function TAtlasIdeWelcomeSettings.CreateSection: IAtlasSettingsSection;
 var
@@ -35,6 +96,7 @@ var
 begin
   mSection := TAtlasWelcomeSettingsSection.Create;
   Result := mSection;
+  mSection.Hooks.TileSwitches := TileSwitches;
   mSection.Hooks.OnResetUsage :=
     procedure
     begin

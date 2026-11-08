@@ -42,8 +42,20 @@ type
   end;
 
 function TWelcomeSettingsProvider.CreateSection: IAtlasSettingsSection;
+var
+  mSection: TAtlasWelcomeSettingsSection;
+  mIssues, mSprint: TAtlasWelcomeTileSwitch;
 begin
-  Result := TAtlasWelcomeSettingsSection.Create;
+  mSection := TAtlasWelcomeSettingsSection.Create;
+  Result := mSection;
+  // Kacheln des Trackers wie aus dem Kachel-Vertrag (#1903).
+  mIssues.Key := 'welcomePage.issues';
+  mIssues.Setting := 'WelcomePageIssues';
+  mIssues.SettingsKey := 'issues.tracker';
+  mSprint.Key := 'welcomePage.sprint';
+  mSprint.Setting := 'WelcomePageSprint';
+  mSprint.SettingsKey := '';
+  mSection.Hooks.TileSwitches := [mIssues, mSprint];
 end;
 
 function ProvideWelcomeSettings: IAtlasRegistration;

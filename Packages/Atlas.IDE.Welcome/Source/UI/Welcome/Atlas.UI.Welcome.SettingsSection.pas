@@ -32,6 +32,15 @@ uses
   Atlas.UI.Welcome.SettingsLayouts;
 
 type
+  /// <summary>Schalter einer Kachel eines anderen Moduls (#1903): aus dem Kachel-Vertrag, den die IDE-Schicht liest.
+  /// Key: x-key des Schalters; Setting: sein Name in den Plugin-Einstellungen (für „Seite anpassen“); SettingsKey:
+  /// Ziel von „Einstellungen …“, '' = kein Knopf.</summary>
+  TAtlasWelcomeTileSwitch = record
+    Key: string;
+    Setting: string;
+    SettingsKey: string;
+  end;
+
   /// <summary>Haken des Abschnitts zur IDE und die Knöpfe, die sie auslösen; nil = Knopf ohne Wirkung bzw. Dialog
   /// von Windows.</summary>
   TAtlasWelcomeSettingsHooks = class
@@ -40,13 +49,14 @@ type
     FOnUnblockTips: TProc;
     FHost: IAtlasSettingsSectionHost;
     FFolder: TEdit;
+    FTileSwitches: TArray<TAtlasWelcomeTileSwitch>;
     function BrowseFolder(const AFolder: string): string;
   public
     /// <summary>Seite und Ordnerfeld der Hilfe für die Knöpfe; Detach beim Schließen.</summary>
     procedure Attach(const AHost: IAtlasSettingsSectionHost; AFolder: TEdit);
     procedure Detach;
-    /// <summary>„Meine Issues“: Hauptknoten der Seite Issue-Tracker, ohne Modul Tracker dessen Schalter.</summary>
-    procedure IssuesLinkClick(Sender: TObject);
+    /// <summary>„Einstellungen …“ einer Kachel (Tag = Index in TileSwitches): zeigt deren SettingsKey.</summary>
+    procedure TileLinkClick(Sender: TObject);
     /// <summary>Ruft OnResetUsage bzw. OnUnblockTips; danach ist der Knopf bis zum nächsten Öffnen gesperrt.
     /// </summary>
     procedure ResetUsageClick(Sender: TObject);
@@ -56,6 +66,8 @@ type
     property OnResetUsage: TProc read FOnResetUsage write FOnResetUsage;
     /// <summary>„Gesperrte Tipps wieder zeigen“ (#757).</summary>
     property OnUnblockTips: TProc read FOnUnblockTips write FOnUnblockTips;
+    /// <summary>Schalter der Kacheln anderer Module, vor Build gesetzt (#1903).</summary>
+    property TileSwitches: TArray<TAtlasWelcomeTileSwitch> read FTileSwitches write FTileSwitches;
   end;
 
   /// <summary>Start, Layout, Kopf, Suche und „Neu in Atlas“.</summary>
@@ -96,9 +108,10 @@ type
     TestsCiInterval: TEdit;
     TestsCiNotify: TCheckBox;
     CiLogin: TCheckBox;
-    Issues: TCheckBox;
-    IssuesLink: TButton;
-    Sprint: TCheckBox;
+    /// <summary>Schalter der Kacheln anderer Module und ihr Knopf „Einstellungen …“ (nil ohne), Index wie
+    /// Hooks.TileSwitches.</summary>
+    ModuleTiles: TArray<TCheckBox>;
+    ModuleTileLinks: TArray<TButton>;
   end;
 
   /// <summary>Schnellaktionen, Nicht gesichert, Zustand, Atlas entdecken, Hilfe und Einrichten.</summary>
@@ -155,6 +168,7 @@ type
     procedure BuildMore;
     procedure BuildDiscover;
     procedure BuildHelp;
+    procedure BuildModuleTiles;
     procedure TrackLayouts;
   public
     constructor Create;
@@ -204,7 +218,6 @@ const
   cConsoleKey = 'welcomePage.quickActions.console';
   cBuildKey = 'welcomePage.quickActions.buildKey';
   cTestKey = 'welcomePage.quickActions.testKey';
-  cIssuesTrackerKey = 'issues.tracker';
 
 { TAtlasWelcomeSettingsHooks }
 
@@ -220,12 +233,19 @@ begin
   FFolder := nil;
 end;
 
-procedure TAtlasWelcomeSettingsHooks.IssuesLinkClick(Sender: TObject);
+procedure TAtlasWelcomeSettingsHooks.TileLinkClick(Sender: TObject);
+var
+  mIndex: Integer;
 begin
-  // Hauptknoten der Seite Issue-Tracker: dort steht der Anbieter. Ohne Modul Tracker ist der Knopf verborgen.
-  if FHost <> nil then
+  // Einstellungen des Moduls der Kachel; fehlen sie im Dialog, ist der Knopf verborgen.
+  if (FHost = nil) or not (Sender is TComponent) then
   begin
-    FHost.Reveal(cIssuesTrackerKey);
+    Exit;
+  end;
+  mIndex := TComponent(Sender).Tag;
+  if (mIndex >= 0) and (mIndex <= High(FTileSwitches)) then
+  begin
+    FHost.Reveal(FTileSwitches[mIndex].SettingsKey);
   end;
 end;
 
@@ -447,8 +467,6 @@ begin
 end;
 
 procedure TAtlasWelcomeSettingsSection.BuildTests;
-var
-  mRow: TWinControl;
 begin
   // Bereich „Testergebnisse“ (#763): lokal und vom Build-Server; Anbieter bisher nur Jenkins.
   FTiles.Tests := Check('welcomePage.tests', TAtlasWelcomeTextId.SettingsWelcomeTests);
@@ -463,14 +481,35 @@ begin
     TAtlasWelcomeTextId.SettingsWelcomeTestsCiInterval);
   FTiles.TestsCiNotify := Check('welcomePage.tests.ci.notify', TAtlasWelcomeTextId.SettingsWelcomeTestsCiNotify);
   FTiles.CiLogin := Check('welcomePage.tests.ci.login', TAtlasWelcomeTextId.SettingsCiLogin);
-  // Meine Issues (#765): nur der Bereich; Tracker, Abfrage und Muster stehen auf der Seite Issue-Tracker (#1280).
-  FTiles.Issues := Check('welcomePage.issues', TAtlasWelcomeTextId.SettingsWelcomeIssues);
-  mRow := FHost.AddRow(cButtonRow, nil);
-  FTiles.IssuesLink := AddButton(mRow, 0, 200, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeIssuesLink),
-    FHooks.IssuesLinkClick);
-  FHost.Attach(mRow, FTiles.Issues);
-  // Sprint-Kachel (#1277): nur der Bereich; Burndown und Vergleich auf der Seite Issue-Tracker.
-  FTiles.Sprint := Check('welcomePage.sprint', TAtlasWelcomeTextId.SettingsWelcomeSprint);
+  BuildModuleTiles;
+end;
+
+procedure TAtlasWelcomeSettingsSection.BuildModuleTiles;
+var
+  mIndex: Integer;
+  mCheck: TCheckBox;
+  mLink: TButton;
+  mRow: TWinControl;
+begin
+  // Kacheln anderer Module (#1903, z. B. Meine Issues und Sprint des Trackers): Schalter mit der Beschriftung
+  // aus dem Katalog, Unterpunkt nach x-node; die Seite kennt die Schlüssel nicht.
+  SetLength(FTiles.ModuleTiles, Length(FHooks.TileSwitches));
+  SetLength(FTiles.ModuleTileLinks, Length(FHooks.TileSwitches));
+  for mIndex := 0 to High(FHooks.TileSwitches) do
+  begin
+    mCheck := FHost.AddModuleSwitch(FHooks.TileSwitches[mIndex].Key) as TCheckBox;
+    FTiles.ModuleTiles[mIndex] := mCheck;
+    mLink := nil;
+    if FHooks.TileSwitches[mIndex].SettingsKey <> '' then
+    begin
+      mRow := FHost.AddRow(cButtonRow, nil);
+      mLink := AddButton(mRow, 0, 200, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeIssuesLink),
+        FHooks.TileLinkClick);
+      mLink.Tag := mIndex;
+      FHost.Attach(mRow, mCheck);
+    end;
+    FTiles.ModuleTileLinks[mIndex] := mLink;
+  end;
 end;
 
 procedure TAtlasWelcomeSettingsSection.BuildQuickActions;
@@ -545,6 +584,7 @@ end;
 procedure TAtlasWelcomeSettingsSection.TrackLayouts;
 var
   mSwitches: TArray<TAtlasWelcomeSwitch>;
+  mIndex: Integer;
 
   procedure Add(const ASetting: string; ACheck: TCheckBox);
   var
@@ -566,8 +606,13 @@ begin
   Add('WelcomePageUnsaved', FMore.Unsaved);
   Add('WelcomePageDiscover', FMore.Discover);
   Add('WelcomePageProjectSetup', FMore.ProjectSetup);
-  Add('WelcomePageIssues', FTiles.Issues);
-  Add('WelcomePageSprint', FTiles.Sprint);
+  for mIndex := 0 to High(FTiles.ModuleTiles) do
+  begin
+    if FHooks.TileSwitches[mIndex].Setting <> '' then
+    begin
+      Add(FHooks.TileSwitches[mIndex].Setting, FTiles.ModuleTiles[mIndex]);
+    end;
+  end;
   Add('WelcomePageHelp', FMore.Help);
   FLayouts.Track(mSwitches, FStart.WhatsNew);
 end;
@@ -645,14 +690,22 @@ begin
 end;
 
 procedure TAtlasWelcomeSettingsSection.WindowReady;
+var
+  mIndex: Integer;
 begin
-  // Keine Listen. Jetzt sind alle Abschnitte gebaut: Den Weg zur Seite Issue-Tracker gibt es nur mit dem Modul
-  // Tracker (#1456).
+  // Keine Listen. Jetzt sind alle Abschnitte gebaut: „Einstellungen …“ einer Kachel nur, wenn es die Einstellung
+  // im Dialog gibt (#1456, #1903).
   if FClosed or (FHost = nil) then
   begin
     Exit;
   end;
-  FTiles.IssuesLink.Visible := FHost.Shows(cIssuesTrackerKey);
+  for mIndex := 0 to High(FTiles.ModuleTileLinks) do
+  begin
+    if FTiles.ModuleTileLinks[mIndex] <> nil then
+    begin
+      FTiles.ModuleTileLinks[mIndex].Visible := FHost.Shows(FHooks.TileSwitches[mIndex].SettingsKey);
+    end;
+  end;
 end;
 
 function TAtlasWelcomeSettingsSection.Show(const AKey, AArgument: string): Boolean;

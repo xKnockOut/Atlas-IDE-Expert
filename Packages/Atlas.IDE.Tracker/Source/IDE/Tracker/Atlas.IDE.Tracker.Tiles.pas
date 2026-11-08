@@ -129,6 +129,9 @@ begin
   Result.Title := FIssues.TileTitle;
   Result.Order := TAtlasIdeIssues.cOrder;
   Result.Column := TAtlasWelcomeTileColumn.Right;
+  // Schalter und Weg zu den Tracker-Einstellungen im Optionsdialog der Willkommensseite (#1903).
+  Result.SwitchKey := 'welcomePage.issues';
+  Result.SettingsKey := 'issues.tracker';
 end;
 
 function TAtlasTrackerIssuesTile.Enabled: Boolean;
@@ -162,6 +165,7 @@ begin
   Result.Title := TAtlasTrackerSprintView.TitleText;
   Result.Order := TAtlasIdeSprint.cOrder;
   Result.Column := TAtlasWelcomeTileColumn.Right;
+  Result.SwitchKey := 'welcomePage.sprint';
 end;
 
 function TAtlasTrackerSprintTile.Enabled: Boolean;
