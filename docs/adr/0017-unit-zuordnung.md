@@ -25,7 +25,7 @@ Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Doku
 Ausnahmen:
 
 - KI-Assistenten (#1888): Die Eingänge für Aufträge von MCP-Clients (Builds über `build_project`, Änderungen an offenen Dateien) bilden das Modul `Atlas.IDE.Assistants`; gebaut wird über `IDE.Contracts.BuildRequests` des Moduls Build-Pipeline. Die Liste offener und ungespeicherter Dateien (`IDE.Files.DirtyExport`) bleibt im Kern: Sie schützt Dateien auch ohne das Modul vor dem Überschreiben durch den Server.
-- Versionsverwaltung (#1891): Git und SVN (Anbieter, Parser, Auswahl), der Dienst der IDE und die Dialoge „Branch anlegen“ und „Arbeitskopien“ bilden das Modul `Atlas.IDE.VersionControl`. Im Kern bleiben der Vertrag (`Core.Vcs.Contract`, `IDE.Contracts.VersionControl` samt Zugang `TAtlasIdeVcs` und Null-Objekt) und die reine Logik ohne Prozessaufruf unter `Core/VersionControl` (Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche, Serverzugang) und der allgemeine Prozessläufer, den auch das Modul Tests braucht, dazu vorerst die Änderungsmarken im Editor. Die Einstellungsseiten stehen seit #1905 im Modul.
+- Versionsverwaltung (#1891): Git und SVN (Anbieter, Parser, Auswahl), der Dienst der IDE und die Dialoge „Branch anlegen“ und „Arbeitskopien“ bilden das Modul `Atlas.IDE.VersionControl`. Im Kern bleiben der Vertrag (`Core.Vcs.Contract`, `IDE.Contracts.VersionControl` samt Zugang `TAtlasIdeVcs` und Null-Objekt) und die reine Logik ohne Prozessaufruf unter `Core/VersionControl` (Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche, Serverzugang) und der allgemeine Prozessläufer, den auch das Modul Tests braucht. Einstellungsseiten und Änderungsmarken stehen seit #1905 im Modul; Base fragt die Marken über den Vertrag `IDE.Contracts.LineChanges`.
 - Der allgemeine Tooltip `Atlas.UI.Popup.TitledTip` (bis #1455 `Atlas.UI.Notes.Tip`) liegt im Kern.
 - Die Build-Pipeline ist ein eigenes Modul (#1455): Läufer der Builds auf Auftrag mit MCP-Eingang, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung nach der 0/0/0-Regel mit Zusammenfassung (Ordner `BuildPipeline`, Schalter `buildPipeline`). Im Kern bleiben die Bewertung als Typen und `IAtlasBuildVerdictListener` (`Build.Verdict`, die Benachrichtigungszentrale hört darauf), was Base der Pipeline gibt (`Build.Pipeline`), die Werte ihrer Einstellungen (`Build.PipelineSettings`, `Build.OpenBuildSettings`), die Meldungen des letzten Builds (`IDE.Build.LastMessages`), `Build.IdleGate` (Diagnose-Zeitmessung) und `IDE.Build.Target` (Probleme, Projekt-Einstellungen). Andere Module bauen über `Atlas.IDE.Contracts.BuildPipeline`. Das Modul Build umfasst, was der Schalter `buildTools` abschaltet: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter.
 - Code Lens mit Code-Metriken (#66) im Modul Analyse (#1756): Zeichnen (`IDE.Analysis.MetricsLens`) und Beschriftung (`Core.Analysis.MetricsLens`). Im Kern bleiben die Antwort von `atlas.server.metrics` (`Core.Editor.Metrics`) und ihr Abruf je Editor (`IDE.Editor.MetricsSource`), weil die Atlas-Statusleiste Zeilen und CC am Cursor daraus liest und der Metrikbericht dieselben Typen nutzt; die Lens meldet beim Abruf nur Bedarf an. `codeLens.metrics` hängt am Modulschalter `analysis.enabled`.
@@ -262,6 +262,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Contracts.BuildRequests` | `Contracts/Atlas.IDE.Contracts.BuildRequests.pas` | Vertrag zwischen Modulen: Builds auf Auftrag samt Compilermeldungen für den Eingang der KI-Assistenten (#1888) |
 | `Atlas.IDE.Contracts.WelcomeTiles` | `Contracts/Atlas.IDE.Contracts.WelcomeTiles.pas` | Kacheln anderer Module auf der Willkommensseite, Board und Projekte der Seite (Tracker ↔ Willkommensseite), Vertrag zwischen Modulen, #1455 |
 | `Atlas.IDE.Contracts.VersionControl` | `Contracts/Atlas.IDE.Contracts.VersionControl.pas` | Vertrag zwischen Modulen: Dienst und Dialoge der Versionsverwaltung, Zugang TAtlasIdeVcs mit Null-Objekt ohne Modul (#1891) |
+| `Atlas.IDE.Contracts.LineChanges` | `Contracts/Atlas.IDE.Contracts.LineChanges.pas` | Vertrag Änderungsmarken und Zeilenhistorie (#1905) |
 | `Atlas.IDE.Contracts.Tests` | `Contracts/Atlas.IDE.Contracts.Tests.pas` | Testprojekte ausführen, Tests debuggen und finden, Ende eines Laufs; für andere Module, Vertrag zwischen Modulen, #1455 |
 | `Atlas.IDE.Contracts.DebugReport` | `Contracts/Atlas.IDE.Contracts.DebugReport.pas` | Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (Debugger → Tracker), Vertrag zwischen Modulen, #1455 |
 | `Atlas.IDE.Contracts.Rules` | `Contracts/Atlas.IDE.Contracts.Rules.pas` | Baseline aktualisieren (Prüfregeln → Willkommensseite) und Regel-Aktionen am Befund (Base → Prüfregeln, #1755), Vertrag zwischen Modulen, #1455 |
@@ -508,8 +509,6 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.HideTeamFile` | `IDE/Editor/Atlas.IDE.Editor.HideTeamFile.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.InlineAccessor` | `IDE/Editor/Atlas.IDE.Editor.InlineAccessor.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.InvertBoolean` | `IDE/Editor/Atlas.IDE.Editor.InvertBoolean.pas` | Ordner `IDE/Editor` |
-| `Atlas.IDE.Editor.LineChanges` | `IDE/Editor/Atlas.IDE.Editor.LineChanges.pas` | Ordner `IDE/Editor` |
-| `Atlas.IDE.Editor.LineChangesData` | `IDE/Editor/Atlas.IDE.Editor.LineChangesData.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.LineMove` | `IDE/Editor/Atlas.IDE.Editor.LineMove.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.LinkedEditing` | `IDE/Editor/Atlas.IDE.Editor.LinkedEditing.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.LinkedEditingQuery` | `IDE/Editor/Atlas.IDE.Editor.LinkedEditingQuery.pas` | Ordner `IDE/Editor` |
@@ -766,6 +765,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.VersionControl.Branching` | `IDE/VersionControl/Atlas.IDE.VersionControl.Branching.pas` | Ordner `IDE/VersionControl` |
 | `Atlas.IDE.VersionControl.Composition` | `IDE/VersionControl/Atlas.IDE.VersionControl.Composition.pas` | Ordner `IDE/VersionControl` |
 | `Atlas.IDE.VersionControl.Commands` | `IDE/VersionControl/Atlas.IDE.VersionControl.Commands.pas` | Befehle „Branch anlegen …“ und „Arbeitskopien“ (#1905) |
+| `Atlas.IDE.VersionControl.LineChanges` | `IDE/VersionControl/Atlas.IDE.VersionControl.LineChanges.pas` | Änderungsmarken und Zeilenhistorie (#507, #1905) |
+| `Atlas.IDE.VersionControl.LineChangesData` | `IDE/VersionControl/Atlas.IDE.VersionControl.LineChangesData.pas` | Daten der Änderungsmarken (#507, #1905) |
 | `Atlas.IDE.VersionControl.Service` | `IDE/VersionControl/Atlas.IDE.VersionControl.Service.pas` | Ordner `IDE/VersionControl` |
 | `Atlas.IDE.VersionControl.WorkingCopies` | `IDE/VersionControl/Atlas.IDE.VersionControl.WorkingCopies.pas` | Ordner `IDE/VersionControl` |
 | `Atlas.UI.VersionControl.SettingsSection` | `UI/VersionControl/Atlas.UI.VersionControl.SettingsSection.pas` | Ordner `UI/VersionControl` |

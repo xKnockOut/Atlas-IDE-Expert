@@ -18,7 +18,6 @@ implementation
 uses
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Editor.LineChanges,
   Atlas.IDE.Editor.LineMove,
   Atlas.IDE.Editor.BlockComment,
   Atlas.IDE.Editor.StatementCompletion,
@@ -87,8 +86,7 @@ end;
 /// (#696) fortsetzen, Einrückung beim Tippen (#1827), Muster (#671) fortsetzen.</summary>
 procedure InstallLineHelpers;
 begin
-  // Änderungsmarken und Zeilenhistorie (#507).
-  TAtlasIdeLineChanges.Install(Warnings());
+  // Änderungsmarken und Zeilenhistorie (#507) installiert das Modul Versionsverwaltung (#1905).
   // Zeilen verschieben und duplizieren (#634): Meldung ohne Nachbarmethode.
   TAtlasIdeLineMove.Install(Warnings());
   // Blockkommentar umschalten (#703): Meldung beim Ablehnen.
@@ -124,7 +122,6 @@ end;
 
 procedure UninstallEditing;
 begin
-  TAtlasIdeLineChanges.Uninstall;
   TAtlasIdeLineMove.Uninstall;
   TAtlasIdeBlockComment.Uninstall;
   TAtlasIdeUnwrap.Uninstall;

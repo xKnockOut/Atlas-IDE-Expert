@@ -537,6 +537,7 @@
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Requests.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.BuildRequests.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Tests.pas"/>
+        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.LineChanges.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.VersionControl.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Rules.pas"/>
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.Handshake.pas"/>
@@ -712,8 +713,6 @@
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Null.pas"/>
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.Switches.pas"/>
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.Worker.pas"/>
-        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.LineChanges.pas"/>
-        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.LineChangesData.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.LineMove.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.CommentContinuation.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.EnterWatch.pas"/>

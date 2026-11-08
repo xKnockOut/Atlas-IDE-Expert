@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Editor.LineChanges;
+﻿unit Atlas.IDE.VersionControl.LineChanges;
 
 // Änderungsmarken und Zeilenhistorie (#507) im Editor:
 // - Ein Zeitgeber (150 ms) beobachtet die Datei im oberen Editor. Liegt sie
@@ -32,6 +32,10 @@
 //   Link ergänzen den Hover. BlameAt sagt, welcher Commit unter der Maus
 //   steht (Strg+Klick und Rechtsklick fängt der Tracker ab). Beim Zeichnen
 //   fragt niemand den Tracker.
+// Seit #1905 im Modul Versionsverwaltung: Der Teil des Moduls installiert die Marken und meldet sie über
+// TAtlasLineChangesAdapter bei TAtlasLineChangeMarks (Atlas.IDE.Contracts.LineChanges) an; die Haken des Trackers
+// liegen dort und kommen über BlameHooksChanged. Gezeichnet wird weiter hier (Balken am Rand der Rinne, Dreieck,
+// Text hinter dem Zeilenende): IAtlasGutterLayer zeichnet nur Marken in der Rinne je Zeile.
 // Gesichert über TAtlasFeature.LineChanges. Nur im Hauptthread.
 
 interface
@@ -40,43 +44,10 @@ uses
   Winapi.Windows,
   System.SysUtils,
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.Editor.LineChanges;
+  Atlas.Core.Editor.LineChanges,
+  Atlas.IDE.Contracts.LineChanges;
 
 type
-  /// <summary>Commit der Zeilenhistorie (#1275), wie ihn Randanzeige und Hover zeigen.</summary>
-  TAtlasBlameCommit = record
-    FileName: string;
-    Kind: TAtlasVcsKind;
-    Revision: string;
-    Author: string;
-    /// <summary>UTC.</summary>
-    Date: TDateTime;
-    /// <summary>Ganze Nachricht, sofern geladen (Haken Messages), sonst der Betreff aus blame (SVN: leer).</summary>
-    Message: string;
-    /// <summary>Zeile im Puffer, 0-basiert.</summary>
-    Line: Integer;
-  end;
-
-  /// <summary>Ganze Nachrichten zu den Revisionen aus blame; läuft im Hintergrund.</summary>
-  TAtlasBlameMessagesHook = reference to function(const AVcs: IAtlasVersionControl; const AFileName: string;
-    const ALines: TArray<TAtlasVcsBlameLine>): TArray<TAtlasVcsRevisionMessage>;
-  /// <summary>Hover ergänzen: AText erweitern, Links setzen; False = Hover wie bisher.</summary>
-  TAtlasBlameDescribeHook = reference to function(const ACommit: TAtlasBlameCommit; var AText: string;
-    out ALinks: TArray<string>): Boolean;
-  /// <summary>Klick auf den Link AIndex des Hovers.</summary>
-  TAtlasBlameLinkHook = reference to procedure(const ACommit: TAtlasBlameCommit; AIndex: Integer);
-
-  /// <summary>Ergänzungen der Zeilenhistorie (Issues, #1275); die Komposition setzt sie.</summary>
-  TAtlasBlameHooks = record
-    /// <summary>Ganze Nachrichten laden? Vor jedem blame und einmal je Sekunde gefragt (Hauptthread).</summary>
-    Wanted: TFunc<Boolean>;
-    Messages: TAtlasBlameMessagesHook;
-    /// <summary>Anhang hinter der Zeit in der Randanzeige (" · ATL-97") zur Nachricht; '' ohne.</summary>
-    Suffix: TFunc<string, string>;
-    Describe: TAtlasBlameDescribeHook;
-    Link: TAtlasBlameLinkHook;
-  end;
-
   TAtlasIdeLineChanges = class
   private class var
     FState: TObject;
@@ -107,6 +78,18 @@ type
     class procedure HideBlameTip; static;
   end;
 
+  /// <summary>Die Marken für Base und Tracker (IAtlasLineChanges, #1905).</summary>
+  TAtlasLineChangesAdapter = class(TInterfacedObject, IAtlasLineChanges)
+  public
+    function Enabled: Boolean;
+    procedure GoToChange(AForward: Boolean);
+    function Snapshot(const AFileName: string; out AChanges: TAtlasLineChangeList; out ALineCount: Integer): Boolean;
+    function BlameAt(AWnd: HWND; AX, AY: Integer; out ACommit: TAtlasBlameCommit): Boolean;
+    procedure RefreshBlameTip;
+    procedure HideBlameTip;
+    procedure BlameHooksChanged;
+  end;
+
 implementation
 
 uses
@@ -135,7 +118,7 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Editor.LineChangesData;
+  Atlas.IDE.VersionControl.LineChangesData;
 
 const
   cTickMs = 150;
@@ -961,6 +944,8 @@ class procedure TAtlasIdeLineChanges.Uninstall;
 begin
   FreeAndNil(FState);
   FMessage := nil;
+  // Danach hält das Modul keinen Haken des Trackers mehr.
+  FHooks := Default(TAtlasBlameHooks);
 end;
 
 class procedure TAtlasIdeLineChanges.ApplySettings;
@@ -1072,6 +1057,44 @@ begin
   begin
     TLineChangesState(FState).GoToChange(AForward);
   end;
+end;
+
+{ TAtlasLineChangesAdapter }
+
+function TAtlasLineChangesAdapter.Enabled: Boolean;
+begin
+  Result := TAtlasIdeLineChanges.Enabled;
+end;
+
+procedure TAtlasLineChangesAdapter.GoToChange(AForward: Boolean);
+begin
+  TAtlasIdeLineChanges.GoToChange(AForward);
+end;
+
+function TAtlasLineChangesAdapter.Snapshot(const AFileName: string; out AChanges: TAtlasLineChangeList;
+  out ALineCount: Integer): Boolean;
+begin
+  Result := TAtlasIdeLineChanges.Snapshot(AFileName, AChanges, ALineCount);
+end;
+
+function TAtlasLineChangesAdapter.BlameAt(AWnd: HWND; AX, AY: Integer; out ACommit: TAtlasBlameCommit): Boolean;
+begin
+  Result := TAtlasIdeLineChanges.BlameAt(AWnd, AX, AY, ACommit);
+end;
+
+procedure TAtlasLineChangesAdapter.RefreshBlameTip;
+begin
+  TAtlasIdeLineChanges.RefreshBlameTip;
+end;
+
+procedure TAtlasLineChangesAdapter.HideBlameTip;
+begin
+  TAtlasIdeLineChanges.HideBlameTip;
+end;
+
+procedure TAtlasLineChangesAdapter.BlameHooksChanged;
+begin
+  TAtlasIdeLineChanges.SetBlameHooks(TAtlasLineChangeMarks.BlameHooks);
 end;
 
 end.

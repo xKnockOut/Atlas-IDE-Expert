@@ -27,7 +27,6 @@ uses
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.StatusBar.Service,
   Atlas.IDE.Commands.Editor,
-  Atlas.IDE.Editor.LineChanges,
   Atlas.IDE.Editor.OverviewRuler,
   Atlas.IDE.Editor.Minimap,
   Atlas.IDE.CodeInsight.Composition.Status,
@@ -80,7 +79,6 @@ begin
   TAtlasIdeBreadcrumbs.ThemeChanged;
   TAtlasIdeEditorToolbar.ThemeChanged;
   TAtlasIdeStatusBar.ThemeChanged;
-  TAtlasIdeLineChanges.ThemeChanged;
   TAtlasIdeOverviewRuler.ThemeChanged;
   TAtlasIdeMinimap.ThemeChanged;
   // Fenster der Module (#1455).
@@ -100,8 +98,7 @@ begin
   // editor.statusBar* (#1155); das Atlas-Feld zieht um oder zurück (RequestRefresh am Ende).
   TAtlasIdeStatusBar.ApplySettings;
   TAtlasIdeStickyScroll.ApplySettings;
-  // editor.gitGutter, editor.gitBlame (#507).
-  TAtlasIdeLineChanges.ApplySettings;
+  // editor.gitGutter, editor.gitBlame (#507): übernimmt das Modul Versionsverwaltung (#1905).
   // editor.overviewRuler, editor.overviewRulerKinds (#519).
   TAtlasIdeOverviewRuler.ApplySettings;
   // editor.minimap* (#873, experimentell).

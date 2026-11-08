@@ -1366,6 +1366,8 @@ uses
   Atlas.Core.Build.Requests in '..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.Requests.pas',
   Atlas.IDE.Contracts.BuildRequests in '..\Packages\Atlas.IDE.Base\Source\Contracts\Atlas.IDE.Contracts.BuildRequests.pas',
   Atlas.IDE.Contracts.VersionControl in '..\Packages\Atlas.IDE.Base\Source\Contracts\Atlas.IDE.Contracts.VersionControl.pas',
+  Atlas.IDE.Contracts.LineChanges in '..\Packages\Atlas.IDE.Base\Source\Contracts\Atlas.IDE.Contracts.LineChanges.pas',
+  Atlas.IDE.Contracts.LineChanges.Tests in 'IDE.Expert\Atlas.IDE.Contracts.LineChanges.Tests.pas',
   Atlas.IDE.Contracts.VersionControl.Tests in 'IDE.Expert\Atlas.IDE.Contracts.VersionControl.Tests.pas',
   Atlas.Core.VersionControl.TestSupport in 'IDE.Expert\Atlas.Core.VersionControl.TestSupport.pas',
   Atlas.Core.VersionControl.Internals.GitParser.Tests in 'IDE.Expert\Atlas.Core.VersionControl.Internals.GitParser.Tests.pas',

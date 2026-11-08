@@ -25,7 +25,7 @@ uses
   Atlas.Core.Editor.NewLine,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Commands.Editor,
-  Atlas.IDE.Editor.LineChanges,
+  Atlas.IDE.Contracts.LineChanges,
   Atlas.IDE.Editor.LineMove,
   Atlas.IDE.Editor.StatementCompletion,
   Atlas.IDE.Editor.BlockComment,
@@ -54,17 +54,17 @@ end;
 
 function ChangesVisible: Boolean;
 begin
-  Result := TAtlasIdeLineChanges.Enabled;
+  Result := TAtlasLineChangeMarks.Current.Enabled;
 end;
 
 procedure NextChange;
 begin
-  TAtlasIdeLineChanges.GoToChange(True);
+  TAtlasLineChangeMarks.Current.GoToChange(True);
 end;
 
 procedure PreviousChange;
 begin
-  TAtlasIdeLineChanges.GoToChange(False);
+  TAtlasLineChangeMarks.Current.GoToChange(False);
 end;
 
 function MoveLinesVisible: Boolean;

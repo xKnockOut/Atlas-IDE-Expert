@@ -95,9 +95,10 @@ type
 
   /// <summary>Nach dem Speichern der Optionen (#1905, vorher in Base): settings.json neu lesen, damit ein neuer
   /// Pfad und ein neues Zeitlimit sofort gelten.</summary>
-  TAtlasVcsAppliesSettings = class(TInterfacedObject, IAtlasAppliesSettings)
+  TAtlasVcsAppliesSettings = class(TInterfacedObject, IAtlasAppliesSettings, IAtlasFollowsTheme)
   public
     procedure ApplySettings;
+    procedure ThemeChanged;
   end;
 
 implementation
@@ -110,6 +111,8 @@ uses
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.VersionControl.Composition,
   Atlas.IDE.VersionControl.Commands,
+  Atlas.IDE.VersionControl.LineChanges,
+  Atlas.IDE.Contracts.LineChanges,
   Atlas.Core.VersionControl.Adapters.ProcessRunner,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.VersionControl.Service,
@@ -178,6 +181,14 @@ begin
   TAtlasIdeVcsCore.Start(MessageLine, Backend);
   TAtlasIdeBranching.ServerCommand := ServerCommand;
   TAtlasIdeVcs.Bind(TAtlasVcsServiceAdapter.Create, TAtlasVcsDialogsAdapter.Create);
+  // Änderungsmarken und Zeilenhistorie (#507, #1905): mit den Haken, die der Tracker schon abgelegt hat.
+  TAtlasIdeLineChanges.Install(
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+  TAtlasIdeLineChanges.SetBlameHooks(TAtlasLineChangeMarks.BlameHooks);
+  TAtlasLineChangeMarks.Bind(TAtlasLineChangesAdapter.Create);
   GStarted := True;
 end;
 
@@ -185,6 +196,8 @@ procedure StopVcs;
 begin
   GStarted := False;
   // Zuerst den Zugang von Base zurücknehmen: Danach erreicht kein Aufruf mehr das Modul (Regel 3).
+  TAtlasLineChangeMarks.Bind(nil);
+  TAtlasIdeLineChanges.Uninstall;
   TAtlasIdeVcs.Unbind;
   TAtlasIdeBranching.ServerCommand := nil;
   TAtlasIdeVcsCore.Stop;
@@ -369,6 +382,19 @@ end;
 procedure TAtlasVcsAppliesSettings.ApplySettings;
 begin
   TAtlasIdeVcs.Reload;
+  // Änderungsmarken (#507, seit #1905 im Modul): nur, solange der Teil läuft.
+  if GStarted then
+  begin
+    TAtlasIdeLineChanges.ApplySettings;
+  end;
+end;
+
+procedure TAtlasVcsAppliesSettings.ThemeChanged;
+begin
+  if GStarted then
+  begin
+    TAtlasIdeLineChanges.ThemeChanged;
+  end;
 end;
 
 { TAtlasVcsModule }
@@ -409,6 +435,7 @@ class function TAtlasVcsModule.RegisterModule: Boolean;
 var
   mRegistry: IAtlasModuleRegistry;
   mModule: TAtlasVcsModule;
+  mApplies: TAtlasVcsAppliesSettings;
   mPart: IAtlasFeaturePart;
 begin
   Result := False;
@@ -437,7 +464,9 @@ begin
   GScope.Provide(IAtlasCommandSource, TAtlasVcsCommands.Create as IAtlasCommandSource);
   // Modulschalter im Optionsdialog ab der Anmeldung, damit sich das Modul auch ausgeschaltet einstellen lässt.
   GScope.Provide(IAtlasSettingsSectionProvider, TAtlasIdeVcsSettings.Create as IAtlasSettingsSectionProvider);
-  GScope.Provide(IAtlasAppliesSettings, TAtlasVcsAppliesSettings.Create as IAtlasAppliesSettings);
+  mApplies := TAtlasVcsAppliesSettings.Create;
+  GScope.Provide(IAtlasAppliesSettings, mApplies as IAtlasAppliesSettings);
+  GScope.Provide(IAtlasFollowsTheme, mApplies as IAtlasFollowsTheme);
   Result := True;
 end;
 

@@ -1491,6 +1491,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.Requests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Contracts\Atlas.IDE.Contracts.BuildRequests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Contracts\Atlas.IDE.Contracts.VersionControl.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Contracts\Atlas.IDE.Contracts.LineChanges.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.IDE.Contracts.LineChanges.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.IDE.Contracts.VersionControl.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.VersionControl.TestSupport.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.VersionControl.Internals.GitParser.Tests.pas"/>

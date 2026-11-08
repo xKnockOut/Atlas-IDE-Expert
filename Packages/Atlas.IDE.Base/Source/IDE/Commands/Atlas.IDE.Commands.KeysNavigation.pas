@@ -37,7 +37,7 @@ uses
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Notifications.Service,
   Atlas.IDE.Outline.Breadcrumbs,
-  Atlas.IDE.Editor.LineChanges;
+  Atlas.IDE.Contracts.LineChanges;
 
 function Text(AId: TAtlasTextId): string;
 begin
@@ -60,7 +60,7 @@ begin
   Result :=
     procedure
     begin
-      TAtlasIdeLineChanges.GoToChange(AForward);
+      TAtlasLineChangeMarks.Current.GoToChange(AForward);
     end;
 end;
 

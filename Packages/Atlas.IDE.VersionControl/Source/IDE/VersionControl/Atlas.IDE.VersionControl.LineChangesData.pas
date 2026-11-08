@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Editor.LineChangesData;
+﻿unit Atlas.IDE.VersionControl.LineChangesData;
 
 // Stand der Änderungsmarken und der Zeilenhistorie (#507) für die Datei im
 // oberen Editor: Arbeitskopie (TAtlasIdeVcs, #571), Stand im Repository

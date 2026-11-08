@@ -9,7 +9,7 @@
 //   aus TAtlasProblemsController (#398; Fehler, Warnungen, Hinweise, ohne
 //   inaktive Zweige und uses-Einträge), Treffer des markierten Texts (nach
 //   einer Suche ist der Treffer markiert), Änderungen aus
-//   TAtlasIdeLineChanges (#507), Haltepunkte des Debuggers, die
+//   TAtlasLineChangeMarks (#507, Modul Versionsverwaltung), Haltepunkte des Debuggers, die
 //   Lesezeichen 0–9 der IDE (mit schnellen Lesezeichen, #1104, statt dessen
 //   die Lesezeichen eines Moduls über IAtlasOverviewBookmarks, #1455) und den Cursor. Die Treffer sucht er erst nach
 //   einer Tipp-Pause neu; der Streifen zeichnet nur bei geänderten Marken.
@@ -76,7 +76,7 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Problems.Controller,
-  Atlas.IDE.Editor.LineChanges;
+  Atlas.IDE.Contracts.LineChanges;
 
 const
   cTickMs = 200;
@@ -351,7 +351,7 @@ var
   mChangeLines: Integer;
 begin
   Result := nil;
-  if TAtlasIdeLineChanges.Snapshot(AFileName, mChanges, mChangeLines) and (mChangeLines = ALineCount) then
+  if TAtlasLineChangeMarks.Current.Snapshot(AFileName, mChanges, mChangeLines) and (mChangeLines = ALineCount) then
   begin
     for mChange in mChanges do
     begin

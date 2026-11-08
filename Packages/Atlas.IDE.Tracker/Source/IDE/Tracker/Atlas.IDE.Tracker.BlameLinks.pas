@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tracker.BlameLinks;
 
 // Issues in der Zeilenhistorie (#1275): Die Zeilenhistorie am Ende der
-// Cursorzeile (editor.gitBlame, Atlas.IDE.Editor.LineChanges) zeigt die
+// Cursorzeile (editor.gitBlame, Modul Versionsverwaltung) zeigt die
 // Kennungen aus der Commit-Nachricht („anna, vor 3 Mon. · ATL-97 · Betreff“),
 // ihr Hover Titel und Zustand je Kennung und den Link „Issues zu dieser
 // Methode (n)“. Strg+Klick auf die Randanzeige öffnet die Issue-Vorschau
@@ -9,7 +9,7 @@
 // „Issues zu dieser Methode“ zeigt TAtlasIdeBlameScope
 // (Atlas.IDE.Tracker.BlameScope) im Ergebnisfenster.
 // - Der Editor kennt den Tracker nicht: LineHooks liefert die Haken für
-//   TAtlasIdeLineChanges.SetBlameHooks, die Komposition setzt sie.
+//   TAtlasLineChangeMarks.SetBlameHooks (Base, #1905), die Komposition setzt sie.
 // - Muster, Vorschau und „Issue anzeigen“ wie bei den Kennungen im Code
 //   (TAtlasCodeLinksHooks aus „Meine Issues“).
 // - Die ganzen Nachrichten lädt die Zeilenhistorie nach jedem blame im
@@ -41,7 +41,7 @@ uses
   Atlas.Core.Tracker.CodeLinks,
   Atlas.Core.Tracker.BlameLinks,
   Atlas.UI.Tracker.IssueTip,
-  Atlas.IDE.Editor.LineChanges,
+  Atlas.IDE.Contracts.LineChanges,
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.CodeLinks,
   Atlas.IDE.Tracker.BlameScope;
@@ -101,7 +101,7 @@ type
     /// <summary>AHooks wie für die Kennungen im Code (Tracker, Vorschau, Anzeigen, Browser).</summary>
     constructor Create(const AHooks: TAtlasCodeLinksHooks);
     destructor Destroy; override;
-    /// <summary>Haken für TAtlasIdeLineChanges.SetBlameHooks.</summary>
+    /// <summary>Haken für TAtlasLineChangeMarks.SetBlameHooks.</summary>
     function LineHooks: TAtlasBlameHooks;
     /// <summary>Befehl „Issues zu dieser Methode“ für die Cursorzeile des Editors vorn.</summary>
     procedure ShowScope;
@@ -309,7 +309,7 @@ begin
       // Kam die Antwort sofort (aus Describe heraus), baut Describe den Text selbst.
       if not FInstance.FDescribing then
       begin
-        TAtlasIdeLineChanges.RefreshBlameTip;
+        TAtlasLineChangeMarks.Current.RefreshBlameTip;
       end;
     end);
 end;
@@ -427,7 +427,7 @@ begin
   begin
     mOwner.FCount := Length(TAtlasBlameLinks.Group(AJob.Pattern, AHistory.Commits).Issues);
   end;
-  TAtlasIdeLineChanges.RefreshBlameTip;
+  TAtlasLineChangeMarks.Current.RefreshBlameTip;
 end;
 
 /// <summary>Commits des Bereichs im Hintergrund lesen; False, wenn die Versionsverwaltung beendet ist.</summary>
@@ -621,7 +621,7 @@ var
   mPattern: TAtlasIssueKeyPattern;
   mCommand: Integer;
 begin
-  if not TAtlasIdeLineChanges.BlameAt(AMsg.hwnd, SmallInt(LoWord(AMsg.lParam)), SmallInt(HiWord(AMsg.lParam)),
+  if not TAtlasLineChangeMarks.Current.BlameAt(AMsg.hwnd, SmallInt(LoWord(AMsg.lParam)), SmallInt(HiWord(AMsg.lParam)),
     mCommit) or not AOwner.PatternOf(mTarget, mPattern) then
   begin
     Exit;
@@ -632,7 +632,7 @@ begin
     Exit;
   end;
   AHandled := True;
-  TAtlasIdeLineChanges.HideBlameTip;
+  TAtlasLineChangeMarks.Current.HideBlameTip;
   if AMsg.message = WM_RBUTTONDOWN then
   begin
     // Das eigene Menü ersetzt das Kontextmenü der IDE; es öffnet beim Loslassen.

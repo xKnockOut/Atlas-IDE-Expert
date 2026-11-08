@@ -57,7 +57,7 @@ uses
   Atlas.IDE.Contracts.WelcomeTiles,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Editor.LineChanges,
+  Atlas.IDE.Contracts.LineChanges,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Settings.Options,
   Atlas.IDE.Tracker.IssuePreview,
@@ -415,13 +415,13 @@ procedure StartBlameIssues;
 begin
   // Dieselben Haken wie die Kennungen im Code; die Zeilenhistorie bekommt ihre Ergänzungen (kein Zyklus).
   GBlameIssues := TAtlasIdeBlameLinks.Create(IssueHooks);
-  TAtlasIdeLineChanges.SetBlameHooks(GBlameIssues.LineHooks);
+  TAtlasLineChangeMarks.SetBlameHooks(GBlameIssues.LineHooks);
 end;
 
 procedure StopBlameIssues;
 begin
   // Base hält danach keinen Haken des Moduls mehr (Regel 3).
-  TAtlasIdeLineChanges.SetBlameHooks(Default(TAtlasBlameHooks));
+  TAtlasLineChangeMarks.SetBlameHooks(Default(TAtlasBlameHooks));
   FreeAndNil(GBlameIssues);
 end;
 
