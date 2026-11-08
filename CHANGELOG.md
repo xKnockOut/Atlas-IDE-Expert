@@ -6,6 +6,24 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Neu
+- Optionen je Package (#1903): Unter Tools › Optionen › Atlas steht die Übersicht „Atlas“ mit dem Stand der Packages (installiert, eingeschaltet) und einer Suche über alle Einstellungen; ein Klick auf einen Treffer springt in den Knoten der Einstellung. Darunter „Module“ mit der Liste der Packages, „Base“ und je installiertem Modul ein eigener Knoten (alphabetisch, erscheint und verschwindet mit dem Modul ohne Neustart), dann Snippets, Tastenkonflikte und Server. Jeder Knoten zeigt nur die Einstellungen seines Moduls; gespeichert werden je Knoten nur die geänderten Werte. „Einstellungen dazu …“ öffnet den Knoten des Moduls, dem die Einstellung gehört. <!-- whatsnew title="Optionen je Modul" text="Jedes Modul hat in den Optionen einen eigenen Knoten unter Atlas › Module; die Übersicht sucht über alle Einstellungen." titleEn="Options per module" textEn="Each module has its own node under Atlas › Modules in the options; the overview searches all settings." -->
+- Modul Versionsverwaltung `Atlas.IDE.VersionControl` (#1891, #1905): Einstellungsseite, Änderungsmarken mit Inline-Diff, Zeilenhistorie, „Branch anlegen …“ und „Arbeitskopien“ gehören jetzt zum Modul (Schalter `vcs.enabled`). Base und Tracker nutzen die Marken über den Vertrag `IAtlasLineChanges`; ohne Modul gibt es keine Marken, nichts hängt.
+- Modul KI-Assistenten `Atlas.IDE.Assistants` (#1888): Aufträge von MCP-Clients (Builds über `build_project`, Änderungen an offenen Dateien) laufen über das Modul (Schalter `assistants.enabled`, `assistants.edit`).
+
+### Geändert
+- Issue-Tracker: „Beginnen“, Branch-Muster, Basis des Branchs und Commit-Präfix stehen im Unterpunkt „Versionsverwaltung“ des Trackers und erscheinen nur mit installierter Versionsverwaltung (#1903). Die Schalter der Kacheln „Meine Issues“ und „Sprint“ auf der Seite Willkommensseite liefert der Tracker über den Kachel-Vertrag.
+- Der Schalter `completion.enabled` heißt „Code Insight von Atlas (aus: eingebaute Code Insight der IDE)“; er schaltet nur Vervollständigung, Parameter-Hinweise und Tooltip von Atlas.
+- KI-neutrale Namen (#1883): Texte sagen „KI-Assistent“ statt eines Produktnamens; der MCP-Server übernimmt den Namen des Clients aus `clientInfo`.
+- Bauen ohne Kommandozeilen-Compiler über die eigene IDE-Anbindung (`Tools/Build-Ide.ps1`, #1904).
+
+### Behoben
+- Hover auf VCL-Klassen deutlich schneller (wiederholt rund 170 ms statt 1,3 s); lange Vorgaben laufen nicht mehr in die Spalte „deklariert in“. Hinweise der IDE warten höchstens 1 s auf den Server.
+- Dunkles Thema: sechs Fenster mit eigener Zeilenschrift (Unit-Beziehungen, Mitglieder extrahieren, Baum der Optionen, Projekte der Versionsverwaltung und des Trackers, Tastenübersicht) zeigten weiße Zeilen bzw. schwarze Schrift.
+- Server: Hover, Vervollständigung und Diagnosen warten nicht mehr hinter langen Befehlen wie Tests oder Metriken.
+- Reste abgestürzter oder hart beendeter IDEs (`editor-dirty-<pid>.json`, `ide-builds\<pid>`) räumt Atlas beim Start weg, auch wenn die Prozessnummer inzwischen einem anderen Programm gehört.
+- Fehlalarme mehrerer Prüfregeln (`method-without-self`, `loop-invariant-call`, `unused-public-member`, `string-concat-in-loop`, uses-Analyse).
+
 ## [2.0.0] - 2026-11-06
 
 Erste stabile Fassung von 2.0; die Änderungen stehen in den Abschnitten der Vorabversionen.
