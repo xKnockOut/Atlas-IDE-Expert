@@ -1259,6 +1259,8 @@ uses
   Atlas.Core.Outline.TypeText in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.TypeText.pas',
   Atlas.Core.Outline.MemberBlocks in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.MemberBlocks.pas',
   Atlas.Core.Outline.MemberBlocks.Tests in 'IDE.Expert\Atlas.Core.Outline.MemberBlocks.Tests.pas',
+  Atlas.Core.Outline.DeclarationBlocks in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.DeclarationBlocks.pas',
+  Atlas.Core.Outline.DeclarationBlocks.Tests in 'IDE.Expert\Atlas.Core.Outline.DeclarationBlocks.Tests.pas',
   Atlas.Core.Outline.StickyScroll in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas',
   Atlas.Core.Outline.StickyScroll.Tests in 'IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas',
   Atlas.Core.Outline.LoadGuard in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas',

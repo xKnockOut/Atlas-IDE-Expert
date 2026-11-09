@@ -1384,6 +1384,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.TypeText.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.MemberBlocks.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.MemberBlocks.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.DeclarationBlocks.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Outline.DeclarationBlocks.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas"/>

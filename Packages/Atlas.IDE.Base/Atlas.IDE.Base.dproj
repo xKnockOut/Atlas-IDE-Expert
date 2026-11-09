@@ -758,6 +758,7 @@
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.VisibilitySections.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.TypeText.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.MemberBlocks.pas"/>
+        <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.DeclarationBlocks.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.NavigationOption.pas"/>

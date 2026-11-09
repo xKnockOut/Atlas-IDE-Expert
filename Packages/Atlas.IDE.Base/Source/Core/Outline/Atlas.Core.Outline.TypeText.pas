@@ -5,6 +5,8 @@
 // Text verschachtelter Typen zählt nicht (sie haben ihre eigenen Abschnitte
 // und Blöcke). Grundlage für Sichtbarkeitsabschnitte und Unterblöcke der
 // Brotkrumenleiste.
+// - UnitTokens liefert den Text der Unit-Ebene ohne Typen und Routinen
+//   (Deklarationsblöcke der Unit, #1766).
 
 interface
 
@@ -30,6 +32,9 @@ type
     /// <summary>Wörter und Zeichen der Deklaration des Typs AType ohne verschachtelte Typen.</summary>
     class function Tokens(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
       AType: Integer): TAtlasTypeTokens; static;
+    /// <summary>Wörter und Zeichen der ganzen Unit ohne Typen und Routinen (samt Rümpfen).</summary>
+    class function UnitTokens(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>): TAtlasTypeTokens;
+      static;
     /// <summary>Liegt ALine/ACharacter vor AOtherLine/AOtherCharacter?</summary>
     class function Before(ALine, ACharacter, AOtherLine, AOtherCharacter: Integer): Boolean; static;
     /// <summary>Ist AText eines der Wörter AWords?</summary>
@@ -299,6 +304,35 @@ var
   mTokenizer: TTokenizer;
 begin
   mTokenizer := TTokenizer.Create(RangeOf(ANodes[AType]), NestedTypes(ANodes, AType));
+  try
+    Result := mTokenizer.Run(ALines);
+  finally
+    mTokenizer.Free;
+  end;
+end;
+
+class function TAtlasTypeText.UnitTokens(const ANodes: TAtlasOutlineNodes;
+  const ALines: TArray<string>): TAtlasTypeTokens;
+var
+  mTokenizer: TTokenizer;
+  mWhole: TRange;
+  mSkip: TArray<TRange>;
+  mIndex: Integer;
+begin
+  mSkip := nil;
+  for mIndex := 0 to High(ANodes) do
+  begin
+    if ANodes[mIndex].Category in [TAtlasOutlineCategory.TypeDecl, TAtlasOutlineCategory.Method,
+      TAtlasOutlineCategory.Routine] then
+    begin
+      mSkip := mSkip + [RangeOf(ANodes[mIndex])];
+    end;
+  end;
+  mWhole.StartLine := 0;
+  mWhole.StartCharacter := 0;
+  mWhole.EndLine := High(ALines);
+  mWhole.EndCharacter := MaxInt;
+  mTokenizer := TTokenizer.Create(mWhole, mSkip);
   try
     Result := mTokenizer.Run(ALines);
   finally

@@ -25,6 +25,7 @@ Zurück zum [README](../../../README_DE.md)
 - im Deklarationsteil einer Klasse, eines Records oder Helfers der Sichtbarkeitsabschnitt am Cursor (`strict private`, `private`, `protected`, `public`, `published`) als eigenes Glied; sein Menü springt zu den anderen Abschnitten, vor dem ersten Schlüsselwort steht die implizite Sichtbarkeit kursiv (`editor.breadcrumbsVisibility`)
 - dahinter der Unterblock am Cursor (`const`, `type`, `class var`); sein Menü springt zu den Unterblöcken des Abschnitts, ein ausdrückliches `var` beendet ihn (`editor.breadcrumbsMemberBlocks`)
 - im Rumpf einer Methode die Sichtbarkeitsmarke der Deklaration vor dem Methodenglied (`−` private, `#` protected, `+` public, `◆` published); der Hinweis nennt die genaue Sichtbarkeit und die Zeile der Deklaration, etwa „strict private · deklariert in Zeile 42“ (`editor.breadcrumbsVisibilityMark`)
+- auf Unit-Ebene Teil und Deklarationsblock am Cursor (`type`, `const`, `var`, `resourcestring`, `threadvar`, `label`, `exports`), etwa `uKunden › interface › resourcestring › sKundeFehlt`; das Menü des Blocks listet alle Blöcke der Unit mit Teil und Zeile, lokale Blöcke in Routinen zählen nicht (`editor.breadcrumbsDeclarationBlocks`)
 
 ### Editorleiste
 

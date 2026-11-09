@@ -4527,6 +4527,16 @@
       "x-parent": "editor.breadcrumbs",
       "x-issue": "#1765"
     },
+    "BreadcrumbsDeclarationBlocks": {
+      "description": "Auf Unit-Ebene den Teil der Unit (interface, implementation) und den Deklarationsblock am Cursor (type, const, var, resourcestring, threadvar, label, exports) als Glieder vor dem Pfad zeigen. Das Menü des Blocks listet alle Blöcke der Unit nach Teil und Zeile und springt zum Schlüsselwort; lokale Blöcke in Routinen zählen nicht.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsDeclarationBlocks",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1766"
+    },
     "BreadcrumbsIdeColors": {
       "description": "Brotkrumenleiste in den Farben der IDE-Werkzeugleisten (Fläche und Schrift aus dem IDE-Thema) statt der Atlas-Palette; im dunklen Thema also wie die Navigationsleiste darüber statt fast schwarz.",
       "type": "boolean",

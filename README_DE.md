@@ -54,7 +54,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 
 ### [Navigieren](docs/features/de/Navigieren.md)
 - **Gehe zu** Definition, Implementierung und Gegenstück; Navigationsverlauf
-- **Brotkrumenleiste, Editorleiste und Atlas-Statusleiste** über und unter dem Editor; die Brotkrumen zeigen in einer Klasse auch den Sichtbarkeitsabschnitt (`private`, `public` …) und den Unterblock (`const`, `type`, `class var`), im Methodenrumpf die Sichtbarkeitsmarke (`−`, `#`, `+`, `◆`) der Methode
+- **Brotkrumenleiste, Editorleiste und Atlas-Statusleiste** über und unter dem Editor; die Brotkrumen zeigen in einer Klasse auch den Sichtbarkeitsabschnitt (`private`, `public` …) und den Unterblock (`const`, `type`, `class var`), im Methodenrumpf die Sichtbarkeitsmarke (`−`, `#`, `+`, `◆`) der Methode und auf Unit-Ebene den Deklarationsblock (`type`, `const`, `var`, `resourcestring` …)
 - **Schnell öffnen** (Strg+P), Unitsuche (Strg+F12) und Suchleiste mit Ersetzen über Dateien hinweg
 - **Ergebnisfenster** für Referenzen, Aufrufer und Implementierungen, dazu Auswirkungen und Datenfluss
 - **Lesezeichen, Notizen, Minimap und mitlaufender Kopf**

@@ -124,6 +124,9 @@ begin
   // Sichtbarkeitsmarke am Methodenglied (#1765).
   BindCheck('BreadcrumbsVisibilityMark',
     AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsVisibilityMark)));
+  // Deklarationsblock der Unit (#1766).
+  BindCheck('BreadcrumbsDeclarationBlocks',
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsDeclarationBlocks)));
   BindCheck('BreadcrumbsIdeColors', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsIdeColors)));
   BindCheck('BreadcrumbsHideIdeToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsHideIdeToolbar)));
   BindKey('BreadcrumbsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand)));
