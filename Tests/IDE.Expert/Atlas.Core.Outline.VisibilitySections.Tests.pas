@@ -2,7 +2,8 @@
 
 // Sichtbarkeitsabschnitt in der Brotkrumenleiste (#1759): Abschnitt am Caret
 // auch zwischen den Mitgliedern, verschachtelte Typen, implizite Sichtbarkeit,
-// Typen ohne Abschnitte und das Glied im Pfad.
+// Typen ohne Abschnitte und das Glied im Pfad. Sichtbarkeitsmarke am
+// Methodenglied im implementation-Teil (#1765).
 
 interface
 
@@ -31,6 +32,10 @@ type
     procedure PathShowsSectionBehindType;
     [Test]
     procedure PathWithoutSettingIsUnchanged;
+    [Test]
+    procedure MarkOnMethodBodies;
+    [Test]
+    procedure NoMarkOutsideMethodsOfTheUnit;
   end;
 
 implementation
@@ -349,6 +354,112 @@ begin
   mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines, 7, 6, '', False);
   Assert.AreEqual('TKunde › FName', Joined(mCrumbs));
   Assert.IsFalse(TAtlasBreadcrumbs.HasMenu(Default(TAtlasCrumb)));
+end;
+
+const
+  cMarks =
+    'unit uMarke;'#13#10 +                                   // 0
+    'interface'#13#10 +                                      // 1
+    'type'#13#10 +                                           // 2
+    '  TKonto = class'#13#10 +                               // 3
+    '    procedure Ohne;'#13#10 +                            // 4
+    '  strict private'#13#10 +                               // 5
+    '    procedure Geheim;'#13#10 +                          // 6
+    '  protected'#13#10 +                                    // 7
+    '    function Schutz: Integer;'#13#10 +                  // 8
+    '  public'#13#10 +                                       // 9
+    '    class procedure Erzeuge;'#13#10 +                   // 10
+    '    type'#13#10 +                                       // 11
+    '      TInnen = class'#13#10 +                           // 12
+    '      private'#13#10 +                                  // 13
+    '        procedure Tief;'#13#10 +                        // 14
+    '      end;'#13#10 +                                     // 15
+    '  published'#13#10 +                                    // 16
+    '    procedure Klick;'#13#10 +                           // 17
+    '  end;'#13#10 +                                         // 18
+    'procedure Frei;'#13#10 +                                // 19
+    'implementation'#13#10 +                                 // 20
+    'procedure TKonto.Ohne;'#13#10 +                         // 21
+    'begin'#13#10 +                                          // 22
+    'end;'#13#10 +                                           // 23
+    'procedure TKonto.Geheim;'#13#10 +                       // 24
+    '  procedure Lokal;'#13#10 +                             // 25
+    '  begin'#13#10 +                                        // 26
+    '  end;'#13#10 +                                         // 27
+    'begin'#13#10 +                                          // 28
+    'end;'#13#10 +                                           // 29
+    'function TKonto.Schutz: Integer;'#13#10 +               // 30
+    'begin'#13#10 +                                          // 31
+    'end;'#13#10 +                                           // 32
+    'class procedure TKonto.Erzeuge;'#13#10 +                // 33
+    'begin'#13#10 +                                          // 34
+    'end;'#13#10 +                                           // 35
+    'procedure TKonto.TInnen.Tief;'#13#10 +                  // 36
+    'begin'#13#10 +                                          // 37
+    'end;'#13#10 +                                           // 38
+    'procedure TKonto.Klick;'#13#10 +                        // 39
+    'begin'#13#10 +                                          // 40
+    'end;'#13#10 +                                           // 41
+    'procedure Frei;'#13#10 +                                // 42
+    'begin'#13#10 +                                          // 43
+    'end;'#13#10 +                                           // 44
+    'procedure TFremd.Tue;'#13#10 +                          // 45
+    'begin'#13#10 +                                          // 46
+    'end;'#13#10 +                                           // 47
+    'end.';                                                  // 48
+
+/// <summary>Letztes Glied des Pfads an ALine/ACharacter von cMarks als „Marke Text (Sichtbarkeit@Zeile)“.</summary>
+function LastMarked(ALine: Integer; ACharacter: Integer = 0;
+  AParts: TAtlasCrumbParts = [TAtlasCrumbPart.VisibilityMark]): string;
+var
+  mCrumbs: TAtlasCrumbs;
+  mLast: TAtlasCrumb;
+begin
+  mCrumbs := TAtlasBreadcrumbs.Path(NodesOf(cMarks), cMarks.Split([#13#10]), ALine, ACharacter, '', False,
+    AParts);
+  if Length(mCrumbs) = 0 then
+  begin
+    Exit('');
+  end;
+  mLast := mCrumbs[High(mCrumbs)];
+  Result := mLast.Text;
+  if mLast.Mark <> '' then
+  begin
+    Result := mLast.Mark + ' ' + Result + ' (' + mLast.MarkVisibility + '@' + IntToStr(mLast.MarkLine) + ')';
+  end
+  else
+  begin
+    Assert.AreEqual(-1, mLast.MarkLine, 'ohne Marke keine Zeile');
+  end;
+end;
+
+procedure TAtlasVisibilitySectionsTests.MarkOnMethodBodies;
+begin
+  // Vor dem ersten Schlüsselwort: implizite Sichtbarkeit.
+  Assert.AreEqual('+ Ohne (public@4)', LastMarked(22));
+  Assert.AreEqual('− Geheim (strict private@6)', LastMarked(28));
+  Assert.AreEqual('# Schutz (protected@8)', LastMarked(31));
+  // Klassenmethode wie normale Methode.
+  Assert.AreEqual('+ Erzeuge (public@10)', LastMarked(34));
+  // Methode eines verschachtelten Typs: dessen Abschnitt.
+  Assert.AreEqual('− Tief (private@14)', LastMarked(37));
+  Assert.AreEqual('◆ Klick (published@17)', LastMarked(40));
+  // Nur das Methodenglied trägt die Marke.
+  Assert.AreEqual('', TAtlasBreadcrumbs.Path(NodesOf(cMarks), cMarks.Split([#13#10]), 37, 0, '', False,
+    [TAtlasCrumbPart.VisibilityMark])[0].Mark);
+end;
+
+procedure TAtlasVisibilitySectionsTests.NoMarkOutsideMethodsOfTheUnit;
+begin
+  // Lokale Prozedur, Routine ohne Klasse, Klasse aus einer anderen Unit.
+  Assert.AreEqual('Lokal', LastMarked(26));
+  Assert.AreEqual('Frei', LastMarked(43));
+  Assert.AreEqual('Tue', LastMarked(46));
+  // Deklarationsteil: keine Marke.
+  Assert.AreEqual('Geheim', LastMarked(6, 15));
+  // Ausgeschaltet: Leiste wie bisher.
+  Assert.AreEqual('Geheim', LastMarked(28, 0, []));
+  Assert.AreEqual('Geheim', LastMarked(28, 0, [TAtlasCrumbPart.Visibility, TAtlasCrumbPart.MemberBlocks]));
 end;
 
 initialization

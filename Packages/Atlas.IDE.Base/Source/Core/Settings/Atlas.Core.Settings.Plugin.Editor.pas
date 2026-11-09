@@ -380,6 +380,9 @@ type
     BreadcrumbsVisibility: Boolean;
     /// <summary>Unterblock (const, type, class var) als Glied (#1767, editor.breadcrumbsMemberBlocks).</summary>
     BreadcrumbsMemberBlocks: Boolean;
+    /// <summary>Sichtbarkeitsmarke am Methodenglied im implementation-Teil (#1765,
+    /// editor.breadcrumbsVisibilityMark).</summary>
+    BreadcrumbsVisibilityMark: Boolean;
     /// <summary>Brotkrumenleiste in den Farben der IDE-Werkzeugleisten statt der Atlas-Palette
     /// (editor.breadcrumbsIdeColors).</summary>
     BreadcrumbsIdeColors: Boolean;
@@ -866,6 +869,7 @@ begin
   Result.BreadcrumbsShowUnit := False;
   Result.BreadcrumbsVisibility := True;
   Result.BreadcrumbsMemberBlocks := True;
+  Result.BreadcrumbsVisibilityMark := True;
   Result.BreadcrumbsIdeColors := True;
   Result.BreadcrumbsHideIdeToolbar := True;
   Result.StickyScroll := True;
@@ -892,6 +896,7 @@ begin
   AIo.Flag('BreadcrumbsShowUnit', BreadcrumbsShowUnit);
   AIo.Flag('BreadcrumbsVisibility', BreadcrumbsVisibility);
   AIo.Flag('BreadcrumbsMemberBlocks', BreadcrumbsMemberBlocks);
+  AIo.Flag('BreadcrumbsVisibilityMark', BreadcrumbsVisibilityMark);
   AIo.Flag('BreadcrumbsIdeColors', BreadcrumbsIdeColors);
   AIo.Flag('BreadcrumbsHideIdeToolbar', BreadcrumbsHideIdeToolbar);
   AIo.Flag('StickyScroll', StickyScroll);

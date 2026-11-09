@@ -278,6 +278,7 @@ begin
   mBar.EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsEmpty);
   mBar.CrumbHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCrumbHint);
   mBar.SeparatorHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsChildrenHint);
+  mBar.MarkHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsMarkHint);
   mBar.OnOpenMenu :=
     procedure(AIndex: Integer; const APoint: TPoint)
     var
@@ -341,7 +342,7 @@ begin
   Result := TAtlasBreadcrumbBar(FHost.ActiveBar);
 end;
 
-/// <summary>Zusätzliche Glieder nach den Einstellungen (#1759, #1767).</summary>
+/// <summary>Zusätzliche Glieder nach den Einstellungen (#1759, #1767, #1765).</summary>
 function CrumbParts: TAtlasCrumbParts;
 begin
   Result := [];
@@ -352,6 +353,10 @@ begin
   if TAtlasIdeSettings.Current.BreadcrumbsMemberBlocks then
   begin
     Include(Result, TAtlasCrumbPart.MemberBlocks);
+  end;
+  if TAtlasIdeSettings.Current.BreadcrumbsVisibilityMark then
+  begin
+    Include(Result, TAtlasCrumbPart.VisibilityMark);
   end;
 end;
 
