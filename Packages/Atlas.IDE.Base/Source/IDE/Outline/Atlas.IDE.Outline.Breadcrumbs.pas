@@ -31,6 +31,10 @@
 //   am Ende von …“ (editor.breadcrumbsSectionAppend) und „Abschnitt
 //   anlegen: …“ für fehlende Abschnitte (editor.breadcrumbsSectionCreate,
 //   #1768); geändert wird über TAtlasIdeSectionEdit.
+// - Rechtsklick, Menütaste oder Umschalt+F10 auf ein Glied öffnet das
+//   Kontextmenü TAtlasIdeCrumbMenu (editor.breadcrumbsContextMenu, #1786):
+//   kopieren, Verwendungen suchen, Umbenennen (über ARename aus Install),
+//   Komponente im Designer.
 // - Eigene Sicherung TAtlasFeature.Breadcrumbs: Fehler anderer Editorfunktionen
 //   (früher gemeinsam Editorbefehle) schalten die Leiste nicht mehr still ab.
 //   Löst die eigene Sicherung aus, sagt die Leiste das, statt stehen zu
@@ -52,13 +56,18 @@
 
 interface
 
+uses
+  System.SysUtils;
+
 type
   TAtlasIdeBreadcrumbs = class
   private class var
     FState: TObject;
+    FRename: TProc;
   public
-    /// <summary>Den Server fragt TAtlasIdeOutlineCache (vorher installieren).</summary>
-    class procedure Install; static;
+    /// <summary>Den Server fragt TAtlasIdeOutlineCache (vorher installieren). ARename benennt das Symbol am
+    /// Cursor um (Kontextmenü, #1786).</summary>
+    class procedure Install(const ARename: TProc); static;
     class procedure Uninstall; static;
     class procedure ApplySettings; static;
     class procedure ThemeChanged; static;
@@ -72,7 +81,6 @@ implementation
 
 uses
   Winapi.Windows,
-  System.SysUtils,
   System.Classes,
   System.Types,
   System.Generics.Collections,
@@ -96,6 +104,7 @@ uses
   Atlas.UI.Outline.NavigationToolbar,
   Atlas.IDE.Outline.NavigationOption,
   Atlas.IDE.Outline.SectionEdit,
+  Atlas.IDE.Outline.CrumbMenu,
   Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
@@ -146,6 +155,7 @@ type
     procedure OpenList(ABar: TAtlasBreadcrumbBar; const APrompt: string; const AItems: TArray<Integer>;
       ACurrent: Integer; const APoint: TPoint);
     procedure OpenPlaces(ABar: TAtlasBreadcrumbBar; const ACrumb: TAtlasCrumb; const APoint: TPoint);
+    procedure ContextMenu(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
     procedure Jump(ABar: TAtlasBreadcrumbBar; AIndex: Integer; ADeclaration: Boolean);
     procedure Later(ABar: TAtlasBreadcrumbBar; const AAction: TProc);
     procedure ApplyToolbar(AParent: TWinControl);
@@ -198,6 +208,7 @@ begin
   FTimer.Free;
   // Navigationsleisten der IDE wieder zeigen: Option zurück, wenn Atlas sie ausgeschaltet hatte, bzw. zurückhängen.
   TAtlasIdeNavigationOption.Apply(False);
+  TAtlasIdeCrumbMenu.Release;
   FToolbars.Free;
   FHost.Free;
   inherited Destroy;
@@ -312,6 +323,18 @@ begin
         procedure
         begin
           OpenChildren(mBar, AIndex, At);
+        end);
+    end;
+  mBar.OnContextMenu :=
+    procedure(AIndex: Integer; const APoint: TPoint)
+    var
+      At: TPoint;
+    begin
+      At := APoint;
+      Later(mBar,
+        procedure
+        begin
+          ContextMenu(mBar, AIndex, At);
         end);
     end;
   mBar.OnJump :=
@@ -839,6 +862,16 @@ begin
   TAtlasIdeNavigation.GoToLocation(FFileName, FNodes[mTarget].NameLine, FNodes[mTarget].NameCharacter);
 end;
 
+/// <summary>Kontextmenü am Glied AIndex (#1786); nur mit editor.breadcrumbsContextMenu.</summary>
+procedure TBreadcrumbsState.ContextMenu(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
+begin
+  if (ABar <> FActiveBar) or (FFileName = '') or not TAtlasIdeSettings.Current.BreadcrumbsContextMenu then
+  begin
+    Exit;
+  end;
+  TAtlasIdeCrumbMenu.Show(APoint, FFileName, FNodes, FLines, ABar.Crumbs, AIndex, TAtlasIdeBreadcrumbs.FRename);
+end;
+
 /// <summary>Menü erst nach dem Klick öffnen: Die IDE holt den Fokus in den Editor zurück; ein sofort geöffnetes
 /// Menü verlöre die Aktivierung und ginge gleich wieder zu. Läuft nur, wenn Zustand und Leiste dann noch
 /// leben.</summary>
@@ -1068,9 +1101,10 @@ begin
   Result := TAtlasIdeSettings.Current.Breadcrumbs;
 end;
 
-class procedure TAtlasIdeBreadcrumbs.Install;
+class procedure TAtlasIdeBreadcrumbs.Install(const ARename: TProc);
 begin
   FreeAndNil(FState);
+  FRename := ARename;
   // Auch bei ausgelöster Sicherung: Die Leiste zeigt dann den Hinweis (ShowDisabled).
   if Enabled then
   begin
@@ -1086,6 +1120,7 @@ end;
 class procedure TAtlasIdeBreadcrumbs.Uninstall;
 begin
   FreeAndNil(FState);
+  FRename := nil;
 end;
 
 class procedure TAtlasIdeBreadcrumbs.ApplySettings;

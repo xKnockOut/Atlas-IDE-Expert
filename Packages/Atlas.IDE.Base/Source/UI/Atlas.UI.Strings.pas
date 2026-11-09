@@ -723,7 +723,8 @@ type
     // Sprungmenü am Sichtbarkeitsglied (#1768).
     SettingsBreadcrumbsSectionCounts, SettingsBreadcrumbsSectionAppend, SettingsBreadcrumbsSectionCreate,
     BreadcrumbsSectionCount, BreadcrumbsSectionCountOne, BreadcrumbsSectionAppend, BreadcrumbsSectionCreate,
-    SectionAppendCommand);
+    SectionAppendCommand, SettingsBreadcrumbsContextMenu, CrumbCopyName, CrumbCopyWithUnit, CrumbCopySignature,
+    CrumbCopyPath, CrumbShowComponent, CrumbFindReferences, CrumbRename, CrumbCopyUnitName, CrumbCopyFilePath);
 
   TAtlasStrings = class
   private
@@ -2410,7 +2411,17 @@ const
      '1 Mitglied · Zeile %d',
      'Neue Zeile am Ende von %s',
      'Abschnitt anlegen: %s',
-     'Neue Zeile am Ende des Abschnitts'),
+     'Neue Zeile am Ende des Abschnitts',
+     'Rechtsklick-Menü an den Gliedern (Namen kopieren, Verwendungen suchen, Umbenennen …)',
+     'Namen kopieren',
+     'Mit Unit kopieren',
+     'Mit Signatur kopieren',
+     'Pfad der Leiste kopieren',
+     'Komponente im Designer zeigen',
+     'Verwendungen suchen',
+     'Umbenennen …',
+     'Unit-Namen kopieren',
+     'Dateipfad kopieren'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -4013,7 +4024,17 @@ const
      '1 member · line %d',
      'New line at the end of %s',
      'Create section: %s',
-     'New line at the end of the section'));
+     'New line at the end of the section',
+     'Context menu on the crumbs (copy name, find references, rename …)',
+     'Copy name',
+     'Copy with unit',
+     'Copy with signature',
+     'Copy bar path',
+     'Show component in designer',
+     'Find references',
+     'Rename …',
+     'Copy unit name',
+     'Copy file path'));
 
 { TAtlasStrings }
 

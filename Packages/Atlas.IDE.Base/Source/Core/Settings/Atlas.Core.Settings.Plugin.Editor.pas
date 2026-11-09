@@ -400,6 +400,8 @@ type
     /// <summary>Einträge „Abschnitt anlegen: …“ für fehlende Abschnitte (#1768,
     /// editor.breadcrumbsSectionCreate).</summary>
     BreadcrumbsSectionCreate: Boolean;
+    /// <summary>Rechtsklick-Menü an den Gliedern der Leiste (#1786, editor.breadcrumbsContextMenu).</summary>
+    BreadcrumbsContextMenu: Boolean;
     /// <summary>Brotkrumenleiste in den Farben der IDE-Werkzeugleisten statt der Atlas-Palette
     /// (editor.breadcrumbsIdeColors).</summary>
     BreadcrumbsIdeColors: Boolean;
@@ -894,6 +896,7 @@ begin
   Result.BreadcrumbsSectionCounts := True;
   Result.BreadcrumbsSectionAppend := True;
   Result.BreadcrumbsSectionCreate := True;
+  Result.BreadcrumbsContextMenu := True;
   Result.BreadcrumbsIdeColors := True;
   Result.BreadcrumbsHideIdeToolbar := True;
   Result.StickyScroll := True;
@@ -928,6 +931,7 @@ begin
   AIo.Flag('BreadcrumbsSectionCounts', BreadcrumbsSectionCounts);
   AIo.Flag('BreadcrumbsSectionAppend', BreadcrumbsSectionAppend);
   AIo.Flag('BreadcrumbsSectionCreate', BreadcrumbsSectionCreate);
+  AIo.Flag('BreadcrumbsContextMenu', BreadcrumbsContextMenu);
   AIo.Flag('BreadcrumbsIdeColors', BreadcrumbsIdeColors);
   AIo.Flag('BreadcrumbsHideIdeToolbar', BreadcrumbsHideIdeToolbar);
   AIo.Flag('StickyScroll', StickyScroll);

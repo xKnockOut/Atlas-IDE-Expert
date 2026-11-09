@@ -35,6 +35,9 @@
 // - Höhe, Farben, Hervorhebung, Klick beim Loslassen, Kontextmenü (geht nie
 //   an den Editor) und OnDisabled kommen vom Vorfahr TAtlasEditorBar (#1248).
 //   Teile: Glied i ist i, das „›“ dahinter SeparatorPart + i.
+// - Rechtsklick auf ein Glied bzw. Menütaste oder Umschalt+F10 mit Fokus
+//   meldet OnContextMenu (#1786) mit dem Glied und der Stelle fürs Menü;
+//   ohne Ereignis tut der Rechtsklick nichts Eigenes.
 
 interface
 
@@ -132,6 +135,7 @@ type
     FOnOpenMenu: TAtlasCrumbMenuEvent;
     FOnOpenChildren: TAtlasCrumbMenuEvent;
     FOnJump: TAtlasCrumbJumpEvent;
+    FOnContextMenu: TAtlasCrumbMenuEvent;
     FOnLeave: TProc;
     procedure DrawCrumb(AIndex: Integer);
     /// <summary>Auswahl zum nächsten gezeigten Glied in Richtung AStep (-1, 1).</summary>
@@ -148,6 +152,8 @@ type
     function PartHint(APart: Integer): string; override;
     function PartEnabled(APart: Integer): Boolean; override;
     procedure PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer); override;
+    procedure ContextMenu(const APoint: TPoint; APart: Integer); override;
+    function KeyboardMenuPoint: TPoint; override;
     procedure Paint; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure DoEnter; override;
@@ -170,6 +176,8 @@ type
     property OnOpenMenu: TAtlasCrumbMenuEvent read FOnOpenMenu write FOnOpenMenu;
     property OnOpenChildren: TAtlasCrumbMenuEvent read FOnOpenChildren write FOnOpenChildren;
     property OnJump: TAtlasCrumbJumpEvent read FOnJump write FOnJump;
+    /// <summary>Rechtsklick-Menü am Glied (#1786); APoint ist die Stelle am Bildschirm.</summary>
+    property OnContextMenu: TAtlasCrumbMenuEvent read FOnContextMenu write FOnContextMenu;
     property OnLeave: TProc read FOnLeave write FOnLeave;
   end;
 
@@ -877,10 +885,51 @@ begin
       begin
         FOnLeave();
       end;
+    // Menütaste und Umschalt+F10 (#1786): Menü des gewählten Glieds.
+    VK_APPS:
+      ContextMenu(KeyboardMenuPoint, FSelected);
+    VK_F10:
+      if ssShift in Shift then
+      begin
+        ContextMenu(KeyboardMenuPoint, FSelected);
+      end
+      else
+      begin
+        Exit;
+      end;
   else
     Exit;
   end;
   Key := 0;
+end;
+
+procedure TAtlasBreadcrumbBar.ContextMenu(const APoint: TPoint; APart: Integer);
+begin
+  // Auf dem „›“ gilt das Glied davor.
+  if APart >= cSeparatorPart then
+  begin
+    APart := APart - cSeparatorPart;
+  end;
+  if (APart < 0) or (APart > High(FCrumbs)) or not Assigned(FOnContextMenu) then
+  begin
+    Exit;
+  end;
+  FOnContextMenu(APart, ClientToScreen(APoint));
+end;
+
+function TAtlasBreadcrumbBar.KeyboardMenuPoint: TPoint;
+var
+  mArea: TRect;
+begin
+  Result := inherited KeyboardMenuPoint;
+  if (FSelected >= 0) and (FSelected <= High(FCrumbs)) then
+  begin
+    mArea := CrumbRect(FSelected);
+    if not mArea.IsEmpty then
+    begin
+      Result := Point(mArea.Left, ClientHeight);
+    end;
+  end;
 end;
 
 /// <summary>Klasse und, wenn es ein VCL-Steuerelement ist, dessen Name.</summary>

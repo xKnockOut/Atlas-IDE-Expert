@@ -412,6 +412,7 @@ begin
   Assert.IsTrue(Settings.BreadcrumbsSectionAppend, 'Neue Zeile am Ende von');
   Assert.IsTrue(Settings.BreadcrumbsSectionCreate, 'Abschnitt anlegen');
   Assert.AreEqual(0, Settings.SectionAppendKey, 'ohne Taste');
+  Assert.IsTrue(Settings.BreadcrumbsContextMenu, 'Rechtsklick-Menü');
   Assert.IsTrue(Settings.BreadcrumbsIdeColors, 'Farben der IDE');
   Assert.IsTrue(Settings.BreadcrumbsHideIdeToolbar, 'Navigationsleiste der IDE aus');
   Assert.AreEqual($60BE, Settings.BreadcrumbsKey, 'Strg+Umschalt+.');
@@ -428,6 +429,7 @@ begin
   Settings.BreadcrumbsSectionAppend := False;
   Settings.BreadcrumbsSectionCreate := False;
   Settings.SectionAppendKey := $C04E;
+  Settings.BreadcrumbsContextMenu := False;
   Settings.BreadcrumbsIdeColors := False;
   Settings.BreadcrumbsHideIdeToolbar := False;
   Settings.BreadcrumbsKey := 0;
@@ -448,6 +450,7 @@ begin
   Assert.IsFalse(Loaded.BreadcrumbsSectionAppend);
   Assert.IsFalse(Loaded.BreadcrumbsSectionCreate);
   Assert.AreEqual($C04E, Loaded.SectionAppendKey, 'Strg+Alt+N');
+  Assert.IsFalse(Loaded.BreadcrumbsContextMenu);
   Assert.IsFalse(Loaded.BreadcrumbsIdeColors);
   Assert.IsFalse(Loaded.BreadcrumbsHideIdeToolbar);
   Assert.AreEqual(0, Loaded.BreadcrumbsKey);

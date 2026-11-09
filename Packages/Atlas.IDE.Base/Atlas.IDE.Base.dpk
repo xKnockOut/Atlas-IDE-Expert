@@ -679,6 +679,8 @@ contains
   Atlas.Core.Outline.Regions in 'Source\Core\Outline\Atlas.Core.Outline.Regions.pas',
   Atlas.Core.Outline.Statements in 'Source\Core\Outline\Atlas.Core.Outline.Statements.pas',
   Atlas.Core.Outline.SectionEdit in 'Source\Core\Outline\Atlas.Core.Outline.SectionEdit.pas',
+  Atlas.Core.Outline.CrumbMenu in 'Source\Core\Outline\Atlas.Core.Outline.CrumbMenu.pas',
+  Atlas.IDE.Outline.CrumbMenu in 'Source\IDE\Outline\Atlas.IDE.Outline.CrumbMenu.pas',
   Atlas.Core.Outline.StickyScroll in 'Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas',
   Atlas.Core.Outline.LoadGuard in 'Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas',
   Atlas.Core.Outline.NavigationOption in 'Source\Core\Outline\Atlas.Core.Outline.NavigationOption.pas',

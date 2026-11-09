@@ -36,7 +36,8 @@ uses
   Atlas.IDE.CodeInsight.Composition.Status,
   Atlas.IDE.CodeInsight.Composition.Palette,
   Atlas.IDE.CodeInsight.Composition.Navigation,
-  Atlas.IDE.CodeInsight.Composition.Editing;
+  Atlas.IDE.CodeInsight.Composition.Editing,
+  Atlas.IDE.CodeInsight.Composition.Tools;
 
 var
   // Ergebnisfenster (#400) und Editorbefehle (#399) angemeldet.
@@ -144,7 +145,7 @@ begin
   // Gemeinsamer Stand der Gliederung, Gliederungsfenster (#537) und Brotkrumenleiste (#590).
   TAtlasIdeOutlineCache.Install(ActiveSession);
   TAtlasIdeOutline.Install;
-  TAtlasIdeBreadcrumbs.Install;
+  TAtlasIdeBreadcrumbs.Install(RenameSymbol);
   // Atlas-Editorleiste (#1101) nach den Brotkrumen (Position „in der Brotkrumenzeile“).
   StartEditorToolbar;
   StartStatusBar;
