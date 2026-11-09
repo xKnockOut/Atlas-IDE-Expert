@@ -709,7 +709,9 @@ type
     // Optionen je Package (#1903).
     SettingsModulesNode, SettingsModulesTitle, SettingsModuleInstalled, SettingsModuleMissing, SettingsModulesHint,
     SettingsAtlasSearch, SettingsAtlasPackages, SettingsAtlasHit, SettingsAtlasNoHits,
-    SettingsBreadcrumbsVisibility, SettingsBreadcrumbsMemberBlocks);
+    SettingsBreadcrumbsVisibility, SettingsBreadcrumbsMemberBlocks,
+    // Sichtbarkeitsmarke am Methodenglied (#1765).
+    SettingsBreadcrumbsVisibilityMark, BreadcrumbsMarkHint);
 
   TAtlasStrings = class
   private
@@ -2379,7 +2381,9 @@ const
      '%s  –  %s › %s › %s',
      'Keine Einstellung gefunden.',
      'Sichtbarkeitsabschnitt (private, public …) als Glied zeigen',
-     'Unterblock in Typen (const, type, class var) als Glied zeigen'),
+     'Unterblock in Typen (const, type, class var) als Glied zeigen',
+     'Sichtbarkeitsmarke (−, #, +, ◆) am Methodenglied im implementation-Teil zeigen',
+     '%s · deklariert in Zeile %d'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3965,7 +3969,9 @@ const
      '%s  –  %s › %s › %s',
      'No setting found.',
      'Show the visibility section (private, public …) as a part',
-     'Show the block inside a type (const, type, class var) as a part'));
+     'Show the block inside a type (const, type, class var) as a part',
+     'Show the visibility mark (−, #, +, ◆) on the method part in the implementation section',
+     '%s · declared in line %d'));
 
 { TAtlasStrings }
 

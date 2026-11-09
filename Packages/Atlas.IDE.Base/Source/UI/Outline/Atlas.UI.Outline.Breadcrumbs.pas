@@ -17,6 +17,8 @@
 //   gibt den Fokus über OnLeave an den Editor zurück.
 // - Farben über SetColors: Gutter ist die Fläche, Text/Muted die Schrift.
 // Ohne Glieder steht EmptyText gedämpft in der Leiste.
+// - Ein Glied mit Sichtbarkeitsmarke (#1765) zeigt sie vor dem Namen; der
+//   Hinweis nennt Sichtbarkeit und Zeile der Deklaration (MarkHint).
 // - Rechts darf ein Kind-Steuerelement mit alRight stehen (Editorleiste
 //   „in der Brotkrumenzeile“, #1101); die Glieder teilen sich dann nur die
 //   Breite links davon (ContentRight).
@@ -118,6 +120,7 @@ type
   private
     FCrumbHint: string;
     FSeparatorHint: string;
+    FMarkHint: string;
     FOnOpenMenu: TAtlasCrumbMenuEvent;
     FOnOpenChildren: TAtlasCrumbMenuEvent;
     FOnJump: TAtlasCrumbJumpEvent;
@@ -152,6 +155,8 @@ type
     /// <summary>Hinweis über einem Glied bzw. über einem „›“ mit Kindern.</summary>
     property CrumbHint: string read FCrumbHint write FCrumbHint;
     property SeparatorHint: string read FSeparatorHint write FSeparatorHint;
+    /// <summary>Hinweis zur Sichtbarkeitsmarke (#1765), Format mit Sichtbarkeit (%s) und Zeile (%d).</summary>
+    property MarkHint: string read FMarkHint write FMarkHint;
     property OnOpenMenu: TAtlasCrumbMenuEvent read FOnOpenMenu write FOnOpenMenu;
     property OnOpenChildren: TAtlasCrumbMenuEvent read FOnOpenChildren write FOnOpenChildren;
     property OnJump: TAtlasCrumbJumpEvent read FOnJump write FOnJump;
@@ -188,6 +193,16 @@ begin
   end;
 end;
 
+/// <summary>Angezeigter Text des Glieds: Sichtbarkeitsmarke (#1765) und Name.</summary>
+function CrumbCaption(const ACrumb: TAtlasCrumb): string;
+begin
+  Result := ACrumb.Text;
+  if ACrumb.Mark <> '' then
+  begin
+    Result := ACrumb.Mark + ' ' + Result;
+  end;
+end;
+
 function SameCrumbs(const A, B: TAtlasCrumbs): Boolean;
 var
   mIndex, mSibling: Integer;
@@ -200,7 +215,8 @@ begin
       (A[mIndex].Badge.Kind = B[mIndex].Badge.Kind) and (A[mIndex].Badge.Code = B[mIndex].Badge.Code) and
       (A[mIndex].Current = B[mIndex].Current) and (Length(A[mIndex].Siblings) = Length(B[mIndex].Siblings)) and
       (Length(A[mIndex].Children) = Length(B[mIndex].Children)) and (A[mIndex].Implicit = B[mIndex].Implicit) and
-      SamePlaces(A[mIndex].Places, B[mIndex].Places);
+      SamePlaces(A[mIndex].Places, B[mIndex].Places) and (A[mIndex].Mark = B[mIndex].Mark) and
+      (A[mIndex].MarkVisibility = B[mIndex].MarkVisibility) and (A[mIndex].MarkLine = B[mIndex].MarkLine);
     mSibling := 0;
     while Result and (mSibling <= High(A[mIndex].Siblings)) do
     begin
@@ -322,7 +338,7 @@ begin
   begin
     Canvas.Font.Style := [fsBold];
   end;
-  Result := Canvas.TextWidth(FCrumbs[AIndex].Text) + Scale(8);
+  Result := Canvas.TextWidth(CrumbCaption(FCrumbs[AIndex])) + Scale(8);
   if FCrumbs[AIndex].Badge.Code <> '' then
   begin
     Inc(Result, BadgeWidth + Scale(4));
@@ -577,7 +593,7 @@ begin
     Canvas.Font.Style := Canvas.Font.Style + [fsItalic];
   end;
   mPart := Rect(mLeft_, 0, mArea.Right - Scale(2), ClientHeight);
-  DrawText(Canvas.Handle, PChar(mCrumb.Text), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
+  DrawText(Canvas.Handle, PChar(CrumbCaption(mCrumb)), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
     DT_END_ELLIPSIS);
   Canvas.Font := Font;
 end;
@@ -637,19 +653,32 @@ begin
 end;
 
 function TAtlasBreadcrumbBar.PartHint(APart: Integer): string;
+var
+  mMark: string;
 begin
   // Hinweis je Teil: Glied (Menü, Strg+Klick) oder „›“ (Kinder).
   if APart >= cSeparatorPart then
   begin
-    Result := FSeparatorHint;
-  end
-  else if Clickable(APart) then
+    Exit(FSeparatorHint);
+  end;
+  Result := '';
+  if Clickable(APart) then
   begin
     Result := FCrumbHint;
+  end;
+  // Sichtbarkeitsmarke (#1765): Sichtbarkeit und Zeile der Deklaration (1-basiert) zuerst.
+  if (APart < 0) or (APart > High(FCrumbs)) or (FCrumbs[APart].Mark = '') or (FMarkHint = '') then
+  begin
+    Exit;
+  end;
+  mMark := Format(FMarkHint, [FCrumbs[APart].MarkVisibility, FCrumbs[APart].MarkLine + 1]);
+  if Result = '' then
+  begin
+    Result := mMark;
   end
   else
   begin
-    Result := '';
+    Result := mMark + sLineBreak + Result;
   end;
 end;
 

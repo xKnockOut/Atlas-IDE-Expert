@@ -4517,6 +4517,16 @@
       "x-parent": "editor.breadcrumbs",
       "x-issue": "#1767"
     },
+    "BreadcrumbsVisibilityMark": {
+      "description": "Im Rumpf einer Methode vor dem Methodenglied die Sichtbarkeitsmarke der Deklaration zeigen (− private, # protected, + public, ◆ published); der Hinweis nennt die genaue Sichtbarkeit und die Zeile der Deklaration. Lokale Routinen, Routinen ohne Klasse und Methoden ohne Deklaration in der Unit bekommen keine Marke.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsVisibilityMark",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1765"
+    },
     "BreadcrumbsIdeColors": {
       "description": "Brotkrumenleiste in den Farben der IDE-Werkzeugleisten (Fläche und Schrift aus dem IDE-Thema) statt der Atlas-Palette; im dunklen Thema also wie die Navigationsleiste darüber statt fast schwarz.",
       "type": "boolean",

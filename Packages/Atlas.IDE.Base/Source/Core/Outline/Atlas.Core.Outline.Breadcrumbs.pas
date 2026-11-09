@@ -27,6 +27,11 @@
 // - Dahinter steht der Unterblock am Caret (const, type, class var; #1767,
 //   TAtlasMemberBlockFinder) mit den Unterblöcken des Abschnitts als
 //   Sprungziele und seinen Mitgliedern als Kinder.
+// - Im Rumpf einer Methode trägt deren Glied die Sichtbarkeitsmarke der
+//   Deklaration (#1765, TAtlasOutline.VisibilityMark): genaue Sichtbarkeit
+//   aus dem Abschnitt der Deklaration, sonst aus der Gliederung. Lokale
+//   Routinen, Routinen ohne Klasse und Rümpfe ohne Deklaration in der Unit
+//   bekommen keine Marke.
 
 interface
 
@@ -47,8 +52,9 @@ type
 
 {$SCOPEDENUMS ON}
   TAtlasCodeSection = (None, InterfacePart, ImplementationPart, UsesClause, Initialization_, Finalization_);
-  /// <summary>Zusätzliche Glieder: Sichtbarkeitsabschnitt (#1759), Unterblock in Typen (#1767).</summary>
-  TAtlasCrumbPart = (Visibility, MemberBlocks);
+  /// <summary>Zusätzliche Glieder: Sichtbarkeitsabschnitt (#1759), Unterblock in Typen (#1767),
+  /// Sichtbarkeitsmarke am Methodenglied im implementation-Teil (#1765).</summary>
+  TAtlasCrumbPart = (Visibility, MemberBlocks, VisibilityMark);
 {$SCOPEDENUMS OFF}
 
   TAtlasCrumb = record
@@ -68,6 +74,12 @@ type
     Places: TArray<TAtlasCrumbPlace>;
     /// <summary>Das Glied steht für etwas, das nicht im Quelltext steht (implizite Sichtbarkeit).</summary>
     Implicit: Boolean;
+    /// <summary>Sichtbarkeitsmarke vor dem Namen (−, #, +, ◆; #1765); leer = keine.</summary>
+    Mark: string;
+    /// <summary>Genaue Sichtbarkeit zur Marke („strict private“).</summary>
+    MarkVisibility: string;
+    /// <summary>Zeile der Deklaration zur Marke, 0-basiert; -1 ohne Marke.</summary>
+    MarkLine: Integer;
   end;
 
   TAtlasCrumbs = TArray<TAtlasCrumb>;
@@ -79,7 +91,8 @@ type
     /// abschließenden Semikolon; Kommentare und Strings zählen nicht.</summary>
     class function SectionAt(const ALines: TArray<string>; ALine: Integer): TAtlasCodeSection; static;
     /// <summary>Pfad am Caret (0-basiert). AUnitName steht vorn, wenn AShowUnit; AParts nennt die
-    /// zusätzlichen Glieder hinter dem Typ (Sichtbarkeitsabschnitt, Unterblock).</summary>
+    /// zusätzlichen Glieder hinter dem Typ (Sichtbarkeitsabschnitt, Unterblock) und die Sichtbarkeitsmarke an
+    /// Methodenrümpfen.</summary>
     class function Path(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
       ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean;
       AParts: TAtlasCrumbParts = []): TAtlasCrumbs; static;
@@ -417,6 +430,7 @@ begin
   Result.Text := TAtlasBreadcrumbs.ShortName(ANodes[ANode].Name);
   Result.Badge := TAtlasBreadcrumbs.BadgeOf(ANodes, ALines, ANode);
   Result.Node := ANode;
+  Result.MarkLine := -1;
   Result.Siblings := SiblingsOf(ANodes, ANode);
   Result.Children := TAtlasBreadcrumbs.Children(ANodes, ANode);
   Result.Current := -1;
@@ -436,6 +450,7 @@ begin
   Result.Badge := ABadge;
   Result.Node := -1;
   Result.Current := -1;
+  Result.MarkLine := -1;
 end;
 
 /// <summary>Glied des Sichtbarkeitsabschnitts APlace (#1759): Abschnitte als Sprungziele, Mitglieder des
@@ -540,8 +555,76 @@ begin
   end;
 end;
 
-/// <summary>Glieder für den Knoten AItem der Kette.</summary>
-function CrumbsOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; AItem: Integer): TAtlasCrumbs;
+/// <summary>Text einer Sichtbarkeit der Gliederung („strict private“); leer bei None.</summary>
+function VisibilityText(AVisibility: TAtlasOutlineVisibility): string;
+begin
+  case AVisibility of
+    TAtlasOutlineVisibility.StrictPrivate:
+      Result := 'strict private';
+    TAtlasOutlineVisibility.Private:
+      Result := 'private';
+    TAtlasOutlineVisibility.StrictProtected:
+      Result := 'strict protected';
+    TAtlasOutlineVisibility.Protected:
+      Result := 'protected';
+    TAtlasOutlineVisibility.Public:
+      Result := 'public';
+    TAtlasOutlineVisibility.Published:
+      Result := 'published';
+  else
+    Result := '';
+  end;
+end;
+
+/// <summary>Genaue Sichtbarkeit der Methodendeklaration ADeclaration: Abschnitt im Typ (auch implizit), sonst die
+/// Angabe der Gliederung.</summary>
+function DeclaredVisibility(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+  ADeclaration: Integer): string;
+var
+  mPlace: TAtlasVisibilityPlace;
+begin
+  mPlace := TAtlasVisibilitySectionFinder.At(ANodes, ALines, ANodes[ADeclaration].NameLine,
+    ANodes[ADeclaration].NameCharacter);
+  if mPlace.TypeNode <> ANodes[ADeclaration].Parent then
+  begin
+    Result := VisibilityText(ANodes[ADeclaration].Visibility);
+  end
+  else if mPlace.Current >= 0 then
+  begin
+    Result := mPlace.Sections[mPlace.Current].Keyword;
+  end
+  else
+  begin
+    Result := mPlace.Implicit;
+  end;
+end;
+
+/// <summary>Sichtbarkeitsmarke der Methodendeklaration ADeclaration am Glied ACrumb (#1765); Routinen ohne Klasse
+/// bleiben ohne Marke.</summary>
+procedure MarkVisibility(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ADeclaration: Integer;
+  var ACrumb: TAtlasCrumb);
+var
+  mParent: Integer;
+  mVisibility: string;
+begin
+  mParent := ANodes[ADeclaration].Parent;
+  if (ANodes[ADeclaration].Category <> TAtlasOutlineCategory.Method) or (mParent < 0) or
+    (ANodes[mParent].Category <> TAtlasOutlineCategory.TypeDecl) then
+  begin
+    Exit;
+  end;
+  mVisibility := DeclaredVisibility(ANodes, ALines, ADeclaration);
+  ACrumb.Mark := TAtlasOutline.VisibilityMark(TAtlasOutline.VisibilityOf(mVisibility));
+  if ACrumb.Mark <> '' then
+  begin
+    ACrumb.MarkVisibility := mVisibility;
+    ACrumb.MarkLine := ANodes[ADeclaration].NameLine;
+  end;
+end;
+
+/// <summary>Glieder für den Knoten AItem der Kette; AMark: Sichtbarkeitsmarke an Methodenrümpfen (#1765).</summary>
+function CrumbsOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; AItem: Integer;
+  AMark: Boolean): TAtlasCrumbs;
 var
   mIndex: Integer;
   mName, mOwner: string;
@@ -553,6 +636,10 @@ begin
     for mIndex in Chain(ANodes, ANodes[AItem].Declaration) do
     begin
       Result := Result + [NewCrumb(ANodes, ALines, mIndex)];
+    end;
+    if AMark and (Length(Result) > 0) then
+    begin
+      MarkVisibility(ANodes, ALines, ANodes[AItem].Declaration, Result[High(Result)]);
     end;
     Exit;
   end;
@@ -598,7 +685,7 @@ begin
   mBlock := Default(TAtlasMemberBlockPlace);
   mBlock.Current := -1;
   mType := -1;
-  if AParts <> [] then
+  if AParts * [TAtlasCrumbPart.Visibility, TAtlasCrumbPart.MemberBlocks] <> [] then
   begin
     mPlace := TAtlasVisibilitySectionFinder.At(ANodes, ALines, ALine, ACharacter);
     mType := mPlace.TypeNode;
@@ -609,7 +696,7 @@ begin
   end;
   for mItem in Chain(ANodes, mInner) do
   begin
-    Result := Result + CrumbsOf(ANodes, ALines, mItem);
+    Result := Result + CrumbsOf(ANodes, ALines, mItem, TAtlasCrumbPart.VisibilityMark in AParts);
     if mItem = mType then
     begin
       Result := Result + TypePartCrumbs(ANodes, mPlace, mBlock, AParts);
