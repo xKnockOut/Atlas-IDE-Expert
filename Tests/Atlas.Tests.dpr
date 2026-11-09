@@ -1254,6 +1254,8 @@ uses
   Atlas.UI.SymbolPath.Tests in 'IDE.Expert\Atlas.UI.SymbolPath.Tests.pas',
   Atlas.Core.Outline.Breadcrumbs in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.Breadcrumbs.pas',
   Atlas.Core.Outline.Breadcrumbs.Tests in 'IDE.Expert\Atlas.Core.Outline.Breadcrumbs.Tests.pas',
+  Atlas.Core.Outline.VisibilitySections in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.VisibilitySections.pas',
+  Atlas.Core.Outline.VisibilitySections.Tests in 'IDE.Expert\Atlas.Core.Outline.VisibilitySections.Tests.pas',
   Atlas.Core.Outline.StickyScroll in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas',
   Atlas.Core.Outline.StickyScroll.Tests in 'IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas',
   Atlas.Core.Outline.LoadGuard in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas',

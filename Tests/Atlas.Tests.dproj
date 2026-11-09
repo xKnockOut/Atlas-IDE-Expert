@@ -1379,6 +1379,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.SymbolPath.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.Breadcrumbs.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.Breadcrumbs.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.VisibilitySections.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Outline.VisibilitySections.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas"/>

@@ -22,6 +22,7 @@ Zurück zum [README](../../../README_DE.md)
 ### Brotkrumenleiste
 
 - über dem Editor mit Sprungmenüs zu Unit, Klasse, Methode und deren Kindern
+- im Deklarationsteil einer Klasse, eines Records oder Helfers der Sichtbarkeitsabschnitt am Cursor (`strict private`, `private`, `protected`, `public`, `published`) als eigenes Glied; sein Menü springt zu den anderen Abschnitten, vor dem ersten Schlüsselwort steht die implizite Sichtbarkeit kursiv (`editor.breadcrumbsVisibility`)
 
 ### Editorleiste
 

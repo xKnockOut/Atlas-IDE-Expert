@@ -173,6 +173,21 @@ begin
   Result := TColor(AColor);
 end;
 
+/// <summary>Gleiche Sprungziele (Sichtbarkeitsabschnitte, #1759)?</summary>
+function SamePlaces(const A, B: TArray<TAtlasCrumbPlace>): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := Length(A) = Length(B);
+  mIndex := 0;
+  while Result and (mIndex <= High(A)) do
+  begin
+    Result := (A[mIndex].Text = B[mIndex].Text) and (A[mIndex].Line = B[mIndex].Line) and
+      (A[mIndex].Character = B[mIndex].Character);
+    Inc(mIndex);
+  end;
+end;
+
 function SameCrumbs(const A, B: TAtlasCrumbs): Boolean;
 var
   mIndex, mSibling: Integer;
@@ -184,7 +199,8 @@ begin
     Result := (A[mIndex].Text = B[mIndex].Text) and (A[mIndex].Node = B[mIndex].Node) and
       (A[mIndex].Badge.Kind = B[mIndex].Badge.Kind) and (A[mIndex].Badge.Code = B[mIndex].Badge.Code) and
       (A[mIndex].Current = B[mIndex].Current) and (Length(A[mIndex].Siblings) = Length(B[mIndex].Siblings)) and
-      (Length(A[mIndex].Children) = Length(B[mIndex].Children));
+      (Length(A[mIndex].Children) = Length(B[mIndex].Children)) and (A[mIndex].Implicit = B[mIndex].Implicit) and
+      SamePlaces(A[mIndex].Places, B[mIndex].Places);
     mSibling := 0;
     while Result and (mSibling <= High(A[mIndex].Siblings)) do
     begin
@@ -555,6 +571,11 @@ begin
   begin
     Canvas.Font.Color := ToColor(Colors.Muted);
   end;
+  // Implizite Sichtbarkeit (#1759) steht nicht im Quelltext: kursiv.
+  if mCrumb.Implicit then
+  begin
+    Canvas.Font.Style := Canvas.Font.Style + [fsItalic];
+  end;
   mPart := Rect(mLeft_, 0, mArea.Right - Scale(2), ClientHeight);
   DrawText(Canvas.Handle, PChar(mCrumb.Text), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
     DT_END_ELLIPSIS);
@@ -596,7 +617,7 @@ end;
 function TAtlasBreadcrumbBar.Clickable(AIndex: Integer): Boolean;
 begin
   Result := (AIndex >= 0) and (AIndex <= High(FCrumbs)) and
-    ((Length(FCrumbs[AIndex].Siblings) > 0) or (FCrumbs[AIndex].Node >= 0));
+    (TAtlasBreadcrumbs.HasMenu(FCrumbs[AIndex]) or (FCrumbs[AIndex].Node >= 0));
 end;
 
 function TAtlasBreadcrumbBar.PartAt(X, Y: Integer): Integer;
@@ -656,7 +677,7 @@ begin
   FSelected := mIndex;
   Invalidate;
   // Ohne Geschwister gibt es kein Menü; dann springt auch der einfache Klick.
-  if (ssCtrl in AShift) or (Length(FCrumbs[mIndex].Siblings) = 0) then
+  if (ssCtrl in AShift) or not TAtlasBreadcrumbs.HasMenu(FCrumbs[mIndex]) then
   begin
     Jump(mIndex, ssShift in AShift);
   end
@@ -670,7 +691,7 @@ procedure TAtlasBreadcrumbBar.OpenMenu(AIndex: Integer);
 var
   mArea: TRect;
 begin
-  if (AIndex < 0) or (AIndex > High(FCrumbs)) or (Length(FCrumbs[AIndex].Siblings) = 0) or
+  if (AIndex < 0) or (AIndex > High(FCrumbs)) or not TAtlasBreadcrumbs.HasMenu(FCrumbs[AIndex]) or
     not Assigned(FOnOpenMenu) then
   begin
     Exit;

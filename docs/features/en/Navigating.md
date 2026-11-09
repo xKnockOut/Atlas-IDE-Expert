@@ -15,6 +15,7 @@ Back to the [README](../../../README.md)
 ### Breadcrumb bar
 
 - Above the editor with jump menus for unit, class, method and their children
+- Inside the declaration of a class, record or helper, the visibility section at the cursor (`strict private`, `private`, `protected`, `public`, `published`) as a part of its own; its menu jumps to the other sections, and before the first keyword the implicit visibility appears in italics (`editor.breadcrumbsVisibility`)
 
 ### Editor toolbar
 

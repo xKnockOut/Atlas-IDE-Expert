@@ -117,6 +117,8 @@ begin
   // Brotkrumenleiste (#590).
   BindCheck('Breadcrumbs', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbs)));
   BindCheck('BreadcrumbsShowUnit', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsShowUnit)));
+  // Sichtbarkeitsabschnitt als Glied (#1759).
+  BindCheck('BreadcrumbsVisibility', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsVisibility)));
   BindCheck('BreadcrumbsIdeColors', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsIdeColors)));
   BindCheck('BreadcrumbsHideIdeToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsHideIdeToolbar)));
   BindKey('BreadcrumbsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand)));

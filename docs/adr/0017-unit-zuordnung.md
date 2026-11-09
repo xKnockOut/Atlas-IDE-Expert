@@ -283,6 +283,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Outline.Model` | `Core/Outline/Atlas.Core.Outline.Model.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.NavigationOption` | `Core/Outline/Atlas.Core.Outline.NavigationOption.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.StickyScroll` | `Core/Outline/Atlas.Core.Outline.StickyScroll.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.VisibilitySections` | `Core/Outline/Atlas.Core.Outline.VisibilitySections.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Problems.Colors` | `Core/Problems/Atlas.Core.Problems.Colors.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Contract` | `Core/Problems/Atlas.Core.Problems.Contract.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Explanation` | `Core/Problems/Atlas.Core.Problems.Explanation.pas` | Ordner `Core/Problems`: Katalogtext für „Regel erklären“ (#1755) |
