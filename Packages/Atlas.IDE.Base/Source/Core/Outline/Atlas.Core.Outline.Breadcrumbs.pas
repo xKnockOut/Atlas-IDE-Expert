@@ -38,6 +38,9 @@
 //   TAtlasDeclarationBlockFinder): Das Menü des Teils springt zu interface
 //   und implementation, das des Blocks zu allen Blöcken der Unit (Group nennt
 //   den Teil), Kinder sind die Elemente des Blocks.
+// - Am Ende stehen die Bedingungszweige um den Caret ({$IFDEF …}, {$ELSE …};
+//   #1763, TAtlasConditionalFinder), außen zuerst, mit den Teilen ihres
+//   Blocks als Sprungziele; auch auf Unit-Ebene und in uses.
 
 interface
 
@@ -61,8 +64,9 @@ type
 {$SCOPEDENUMS ON}
   TAtlasCodeSection = (None, InterfacePart, ImplementationPart, UsesClause, Initialization_, Finalization_);
   /// <summary>Zusätzliche Glieder: Sichtbarkeitsabschnitt (#1759), Unterblock in Typen (#1767),
-  /// Sichtbarkeitsmarke am Methodenglied im implementation-Teil (#1765), Deklarationsblock der Unit (#1766).</summary>
-  TAtlasCrumbPart = (Visibility, MemberBlocks, VisibilityMark, DeclarationBlocks);
+  /// Sichtbarkeitsmarke am Methodenglied im implementation-Teil (#1765), Deklarationsblock der Unit (#1766),
+  /// Bedingungszweig (#1763).</summary>
+  TAtlasCrumbPart = (Visibility, MemberBlocks, VisibilityMark, DeclarationBlocks, Conditionals);
 {$SCOPEDENUMS OFF}
 
   TAtlasCrumb = record
@@ -139,6 +143,7 @@ implementation
 uses
   System.Math,
   Atlas.Core.Completion.Matching,
+  Atlas.Core.Outline.Conditionals,
   Atlas.Core.Outline.DeclarationBlocks,
   Atlas.Core.Outline.MemberBlocks,
   Atlas.Core.Outline.VisibilitySections;
@@ -708,7 +713,33 @@ begin
   Result := Result + [NewCrumb(ANodes, ALines, AItem)];
 end;
 
-class function TAtlasBreadcrumbs.Path(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
+/// <summary>Glieder der Bedingungszweige um die Stelle (#1763), außen zuerst; Badge „if“.</summary>
+function ConditionalCrumbs(const ALines: TArray<string>; ALine, ACharacter: Integer): TAtlasCrumbs;
+var
+  mBranch: TAtlasConditionalBranch;
+  mPart: TAtlasConditionalPart;
+  mCrumb: TAtlasCrumb;
+  mPlace: TAtlasCrumbPlace;
+begin
+  Result := nil;
+  for mBranch in TAtlasConditionalFinder.At(ALines, ALine, ACharacter) do
+  begin
+    mCrumb := TextCrumb(mBranch.Text, MakeBadge(TAtlasBadgeKind.Keyword, 'if'));
+    for mPart in mBranch.Parts do
+    begin
+      mPlace := Default(TAtlasCrumbPlace);
+      mPlace.Text := mPart.Text;
+      mPlace.Line := mPart.Line;
+      mPlace.Character := mPart.Character;
+      mCrumb.Places := mCrumb.Places + [mPlace];
+    end;
+    mCrumb.Current := mBranch.Current;
+    Result := Result + [mCrumb];
+  end;
+end;
+
+/// <summary>Pfad ohne die Bedingungszweige (siehe TAtlasBreadcrumbs.Path).</summary>
+function OutlinePath(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
   ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean; AParts: TAtlasCrumbParts): TAtlasCrumbs;
 var
   mInner, mItem, mType: Integer;
@@ -720,10 +751,10 @@ begin
   if AShowUnit and (AUnitName <> '') then
   begin
     Result := [TextCrumb(AUnitName, MakeBadge(TAtlasBadgeKind.Unit_, 'un'))];
-    Result[0].Siblings := UnitMembers(ANodes);
+    Result[0].Siblings := TAtlasBreadcrumbs.UnitMembers(ANodes);
     Result[0].Children := Result[0].Siblings;
   end;
-  mName := SectionCrumbName(SectionAt(ALines, ALine));
+  mName := SectionCrumbName(TAtlasBreadcrumbs.SectionAt(ALines, ALine));
   if mName <> '' then
   begin
     Result := Result + [TextCrumb(mName, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'))];
@@ -758,6 +789,16 @@ begin
     begin
       Result := Result + TypePartCrumbs(ANodes, mPlace, mBlock, AParts);
     end;
+  end;
+end;
+
+class function TAtlasBreadcrumbs.Path(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
+  ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean; AParts: TAtlasCrumbParts): TAtlasCrumbs;
+begin
+  Result := OutlinePath(ANodes, ALines, ALine, ACharacter, AUnitName, AShowUnit, AParts);
+  if TAtlasCrumbPart.Conditionals in AParts then
+  begin
+    Result := Result + ConditionalCrumbs(ALines, ALine, ACharacter);
   end;
 end;
 

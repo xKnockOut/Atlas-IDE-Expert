@@ -19,6 +19,7 @@ Back to the [README](../../../README.md)
 - Behind it, the block at the cursor (`const`, `type`, `class var`); its menu jumps to the blocks of the section, and an explicit `var` ends the block (`editor.breadcrumbsMemberBlocks`)
 - Inside a method body, the visibility mark of its declaration in front of the method part (`−` private, `#` protected, `+` public, `◆` published); the hint names the exact visibility and the line of the declaration, such as “strict private · declared in line 42” (`editor.breadcrumbsVisibilityMark`)
 - At unit level, the section and the declaration block at the cursor (`type`, `const`, `var`, `resourcestring`, `threadvar`, `label`, `exports`), such as `uKunden › interface › resourcestring › sKundeFehlt`; the block menu lists all blocks of the unit with section and line, and local blocks inside routines do not count (`editor.breadcrumbsDeclarationBlocks`)
+- At the end, the conditional branch around the cursor (`{$IFDEF MSWINDOWS}`, in the other branch `{$ELSE MSWINDOWS}`, `{$ELSEIF …}`), one part per level for nested blocks, outermost first; the menu jumps to IF, ELSE and ENDIF of the block. The bar does not decide whether the branch is active (`editor.breadcrumbsConditionals`)
 
 ### Editor toolbar
 

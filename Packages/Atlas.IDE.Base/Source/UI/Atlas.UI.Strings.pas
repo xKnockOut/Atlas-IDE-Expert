@@ -713,7 +713,9 @@ type
     // Sichtbarkeitsmarke am Methodenglied (#1765).
     SettingsBreadcrumbsVisibilityMark, BreadcrumbsMarkHint,
     // Deklarationsblock der Unit als Glied (#1766).
-    SettingsBreadcrumbsDeclarationBlocks, BreadcrumbsPlaceLine);
+    SettingsBreadcrumbsDeclarationBlocks, BreadcrumbsPlaceLine,
+    // Bedingungszweig als Glied (#1763).
+    SettingsBreadcrumbsConditionals, BreadcrumbsPlaceLineOnly);
 
   TAtlasStrings = class
   private
@@ -2387,7 +2389,9 @@ const
      'Sichtbarkeitsmarke (−, #, +, ◆) am Methodenglied im implementation-Teil zeigen',
      '%s · deklariert in Zeile %d',
      'Deklarationsblock der Unit (type, const, var, resourcestring …) als Glied zeigen',
-     '%s · Zeile %d'),
+     '%s · Zeile %d',
+     'Bedingungszweig ({$IFDEF …}, {$ELSE …}) am Cursor als Glied zeigen',
+     'Zeile %d'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3977,7 +3981,9 @@ const
      'Show the visibility mark (−, #, +, ◆) on the method part in the implementation section',
      '%s · declared in line %d',
      'Show the declaration block of the unit (type, const, var, resourcestring …) as a part',
-     '%s · line %d'));
+     '%s · line %d',
+     'Show the conditional branch ({$IFDEF …}, {$ELSE …}) at the cursor as a part',
+     'line %d'));
 
 { TAtlasStrings }
 
