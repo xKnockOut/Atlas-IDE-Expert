@@ -4507,6 +4507,16 @@
       "x-parent": "editor.breadcrumbs",
       "x-issue": "#1759"
     },
+    "BreadcrumbsMemberBlocks": {
+      "description": "Im Deklarationsteil eines Typs den Unterblock am Cursor (const, type, class var) als eigenes Glied hinter dem Sichtbarkeitsabschnitt zeigen. Sein Menü listet die Unterblöcke des Abschnitts und springt zum Schlüsselwort; ein ausdrückliches var beendet den Unterblock.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsMemberBlocks",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1767"
+    },
     "BreadcrumbsIdeColors": {
       "description": "Brotkrumenleiste in den Farben der IDE-Werkzeugleisten (Fläche und Schrift aus dem IDE-Thema) statt der Atlas-Palette; im dunklen Thema also wie die Navigationsleiste darüber statt fast schwarz.",
       "type": "boolean",

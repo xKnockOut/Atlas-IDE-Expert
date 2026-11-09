@@ -670,6 +670,8 @@ contains
   Atlas.IDE.Outline.Cache in 'Source\IDE\Outline\Atlas.IDE.Outline.Cache.pas',
   Atlas.Core.Outline.Breadcrumbs in 'Source\Core\Outline\Atlas.Core.Outline.Breadcrumbs.pas',
   Atlas.Core.Outline.VisibilitySections in 'Source\Core\Outline\Atlas.Core.Outline.VisibilitySections.pas',
+  Atlas.Core.Outline.TypeText in 'Source\Core\Outline\Atlas.Core.Outline.TypeText.pas',
+  Atlas.Core.Outline.MemberBlocks in 'Source\Core\Outline\Atlas.Core.Outline.MemberBlocks.pas',
   Atlas.Core.Outline.StickyScroll in 'Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas',
   Atlas.Core.Outline.LoadGuard in 'Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas',
   Atlas.Core.Outline.NavigationOption in 'Source\Core\Outline\Atlas.Core.Outline.NavigationOption.pas',

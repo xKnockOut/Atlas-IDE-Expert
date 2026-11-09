@@ -709,7 +709,7 @@ type
     // Optionen je Package (#1903).
     SettingsModulesNode, SettingsModulesTitle, SettingsModuleInstalled, SettingsModuleMissing, SettingsModulesHint,
     SettingsAtlasSearch, SettingsAtlasPackages, SettingsAtlasHit, SettingsAtlasNoHits,
-    SettingsBreadcrumbsVisibility);
+    SettingsBreadcrumbsVisibility, SettingsBreadcrumbsMemberBlocks);
 
   TAtlasStrings = class
   private
@@ -2378,7 +2378,8 @@ const
      'Packages: %d von %d installiert, %d eingeschaltet',
      '%s  –  %s › %s › %s',
      'Keine Einstellung gefunden.',
-     'Sichtbarkeitsabschnitt (private, public …) als Glied zeigen'),
+     'Sichtbarkeitsabschnitt (private, public …) als Glied zeigen',
+     'Unterblock in Typen (const, type, class var) als Glied zeigen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3963,7 +3964,8 @@ const
      'Packages: %d of %d installed, %d switched on',
      '%s  –  %s › %s › %s',
      'No setting found.',
-     'Show the visibility section (private, public …) as a part'));
+     'Show the visibility section (private, public …) as a part',
+     'Show the block inside a type (const, type, class var) as a part'));
 
 { TAtlasStrings }
 

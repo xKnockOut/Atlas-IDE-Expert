@@ -235,6 +235,8 @@ begin
   Assert.AreEqual('private@15,public@17', Keywords(mPlace.Sections));
   Assert.AreEqual('private', CurrentKeyword(16, 8));
   Assert.AreEqual('public', CurrentKeyword(18, 8));
+  // Kopfzeile des verschachtelten Typs: Abschnitt des umgebenden.
+  Assert.AreEqual('public', CurrentKeyword(14, 8));
 end;
 
 procedure TAtlasVisibilitySectionsTests.ImplicitVisibility;
@@ -314,7 +316,7 @@ var
   mCrumbs: TAtlasCrumbs;
 begin
   mList := Nodes;
-  mCrumbs := TAtlasBreadcrumbs.Path(mList, Lines, 7, 6, '', False, True);
+  mCrumbs := TAtlasBreadcrumbs.Path(mList, Lines, 7, 6, '', False, [TAtlasCrumbPart.Visibility]);
   Assert.AreEqual('TKunde › strict private › FName', Joined(mCrumbs));
   Assert.AreEqual('kw', mCrumbs[1].Badge.Code);
   Assert.AreEqual(-1, mCrumbs[1].Node);
@@ -326,18 +328,18 @@ begin
   Assert.IsTrue(TAtlasBreadcrumbs.HasMenu(mCrumbs[1]));
   Assert.AreEqual('FName', NamesOf(mList, mCrumbs[1].Children));
   // Leerzeile: der Abschnitt ist das letzte Glied.
-  Assert.AreEqual('TKunde › strict private', Joined(TAtlasBreadcrumbs.Path(mList, Lines, 9, 0, '', False, True)));
+  Assert.AreEqual('TKunde › strict private', Joined(TAtlasBreadcrumbs.Path(mList, Lines, 9, 0, '', False, [TAtlasCrumbPart.Visibility])));
   // Verschachtelt: Es zählt der innerste Typ.
   Assert.AreEqual('TKunde › TInnen › private › FWert',
-    Joined(TAtlasBreadcrumbs.Path(mList, Lines, 16, 9, '', False, True)));
+    Joined(TAtlasBreadcrumbs.Path(mList, Lines, 16, 9, '', False, [TAtlasCrumbPart.Visibility])));
   // Implizit: kursiv, ohne aktuellen Abschnitt.
-  mCrumbs := TAtlasBreadcrumbs.Path(mList, Lines, 5, 6, '', False, True);
+  mCrumbs := TAtlasBreadcrumbs.Path(mList, Lines, 5, 6, '', False, [TAtlasCrumbPart.Visibility]);
   Assert.AreEqual('TKunde › published › btnOk', Joined(mCrumbs));
   Assert.IsTrue(mCrumbs[1].Implicit);
   Assert.AreEqual(-1, mCrumbs[1].Current);
   // Interface und Methodenrumpf: kein Abschnittsglied.
-  Assert.AreEqual('IDienst › Rufe', Joined(TAtlasBreadcrumbs.Path(mList, Lines, 30, 6, '', False, True)));
-  Assert.AreEqual('TKunde › Speichere', Joined(TAtlasBreadcrumbs.Path(mList, Lines, 48, 0, '', False, True)));
+  Assert.AreEqual('IDienst › Rufe', Joined(TAtlasBreadcrumbs.Path(mList, Lines, 30, 6, '', False, [TAtlasCrumbPart.Visibility])));
+  Assert.AreEqual('TKunde › Speichere', Joined(TAtlasBreadcrumbs.Path(mList, Lines, 48, 0, '', False, [TAtlasCrumbPart.Visibility])));
 end;
 
 procedure TAtlasVisibilitySectionsTests.PathWithoutSettingIsUnchanged;

@@ -54,7 +54,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 
 ### [Navigating](docs/features/en/Navigating.md)
 - **Go to** definition, implementation and counterpart; navigation history
-- **Breadcrumb bar, editor toolbar and Atlas status bar** above and below the editor; the breadcrumbs also show the visibility section (`private`, `public` …) inside a class
+- **Breadcrumb bar, editor toolbar and Atlas status bar** above and below the editor; the breadcrumbs also show the visibility section (`private`, `public` …) and the block (`const`, `type`, `class var`) inside a class
 - **Quick open** (Ctrl+P), unit search (Ctrl+F12) and a search bar with replace across files
 - **Results window** for references, callers and implementations, plus impact and data flow
 - **Bookmarks, notes, minimap and sticky scroll**

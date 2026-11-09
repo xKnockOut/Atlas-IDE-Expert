@@ -119,6 +119,8 @@ begin
   BindCheck('BreadcrumbsShowUnit', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsShowUnit)));
   // Sichtbarkeitsabschnitt als Glied (#1759).
   BindCheck('BreadcrumbsVisibility', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsVisibility)));
+  // Unterblock in Typen (#1767).
+  BindCheck('BreadcrumbsMemberBlocks', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsMemberBlocks)));
   BindCheck('BreadcrumbsIdeColors', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsIdeColors)));
   BindCheck('BreadcrumbsHideIdeToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsHideIdeToolbar)));
   BindKey('BreadcrumbsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand)));

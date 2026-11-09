@@ -23,6 +23,7 @@ Zurück zum [README](../../../README_DE.md)
 
 - über dem Editor mit Sprungmenüs zu Unit, Klasse, Methode und deren Kindern
 - im Deklarationsteil einer Klasse, eines Records oder Helfers der Sichtbarkeitsabschnitt am Cursor (`strict private`, `private`, `protected`, `public`, `published`) als eigenes Glied; sein Menü springt zu den anderen Abschnitten, vor dem ersten Schlüsselwort steht die implizite Sichtbarkeit kursiv (`editor.breadcrumbsVisibility`)
+- dahinter der Unterblock am Cursor (`const`, `type`, `class var`); sein Menü springt zu den Unterblöcken des Abschnitts, ein ausdrückliches `var` beendet ihn (`editor.breadcrumbsMemberBlocks`)
 
 ### Editorleiste
 
