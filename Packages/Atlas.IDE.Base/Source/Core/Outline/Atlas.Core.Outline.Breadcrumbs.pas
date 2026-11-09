@@ -18,6 +18,46 @@
 //   Methode, beim Unit-Glied die Elemente der Unit-Ebene.
 // - Target wählt das Sprungziel (Implementierung oder Deklaration), Filter
 //   die Wortgrenzen-Suche des Menüs.
+// - Im Deklarationsteil einer Klasse, eines Records, Objekts oder Helfers
+//   steht hinter dem Typ der Sichtbarkeitsabschnitt am Caret (#1759,
+//   TAtlasVisibilitySectionFinder): Sein Menü listet die Abschnitte des Typs
+//   als Sprungziele (Places), seine Kinder sind die Mitglieder des
+//   Abschnitts. Vor dem ersten Schlüsselwort steht die implizite
+//   Sichtbarkeit (Implicit). Die Sprungziele tragen Marke und
+//   Mitgliederzahl des Abschnitts, SectionType nennt den Typ für „Neue Zeile
+//   am Ende von …“ und „Abschnitt anlegen“ (#1768, TAtlasSectionEditor).
+// - Dahinter steht der Unterblock am Caret (const, type, class var; #1767,
+//   TAtlasMemberBlockFinder) mit den Unterblöcken des Abschnitts als
+//   Sprungziele und seinen Mitgliedern als Kinder.
+// - Im Rumpf einer Methode trägt deren Glied die Sichtbarkeitsmarke der
+//   Deklaration (#1765, TAtlasOutline.VisibilityMark): genaue Sichtbarkeit
+//   aus dem Abschnitt der Deklaration, sonst aus der Gliederung. Lokale
+//   Routinen, Routinen ohne Klasse und Rümpfe ohne Deklaration in der Unit
+//   bekommen keine Marke.
+// - Auf Unit-Ebene stehen vor dem Pfad der Teil der Unit (interface,
+//   implementation) und der Deklarationsblock am Caret (type, const, var,
+//   resourcestring, threadvar, label, exports; #1766,
+//   TAtlasDeclarationBlockFinder): Das Menü des Teils springt zu interface
+//   und implementation, das des Blocks zu allen Blöcken der Unit (Group nennt
+//   den Teil), Kinder sind die Elemente des Blocks.
+// - Am Ende stehen die Bedingungszweige um den Caret ({$IFDEF …}, {$ELSE …};
+//   #1763, TAtlasConditionalFinder), außen zuerst, mit den Teilen ihres
+//   Blocks als Sprungziele; auch auf Unit-Ebene und in uses.
+// - Hinter Unit bzw. Abschnitt (uses, interface, implementation …) steht die
+//   innerste {$REGION} um den Caret (#1764, TAtlasRegionFinder); ihr Menü
+//   listet alle Regionen der Unit mit Tiefe (Depth). Ohne Namen bleibt Text
+//   leer, die Anzeige ergänzt ihn.
+// - Im Rumpf stehen hinter der Routine try/except/finally und case mit Zweig
+//   (#1769, TAtlasStatementFinder), höchstens die innersten drei, vor den
+//   Bedingungszweigen.
+// - Hat eine Routine Überladungen im selben Typ bzw. auf derselben Ebene,
+//   tragen Overloads alle in Quelltextreihenfolge und Overload die Stelle
+//   des Glieds darin (#1784, TAtlasOverloads); die Leiste zeigt „(2/3)“.
+// - Interfaces nennt die Interface-Methoden, die ein Methodenglied erfüllt
+//   (#1785); Path lässt das Feld leer, die IDE trägt es aus der Antwort des
+//   Servers ein (TAtlasOutlineInterfaces.TargetsOf).
+// - Drop legt fest, welche Glieder die Leiste bei Platzmangel zuerst weglässt:
+//   die Rahmen im Rumpf, dann die übrigen zusätzlichen Glieder, dann von vorn.
 
 interface
 
@@ -25,11 +65,34 @@ uses
   System.SysUtils,
   Atlas.Core.Style.Palette,
   Atlas.Core.Completion.Presentation,
-  Atlas.Core.Outline.Model;
+  Atlas.Core.Outline.Model,
+  Atlas.Core.Outline.Interfaces;
 
 type
+  /// <summary>Sprungziel eines Glieds ohne Knoten der Gliederung (Sichtbarkeitsabschnitt, #1759).</summary>
+  TAtlasCrumbPlace = record
+    Text: string;
+    /// <summary>Gruppe im Menü (Teil der Unit bei Deklarationsblöcken, #1766); leer = keine.</summary>
+    Group: string;
+    /// <summary>Einrückung im Menü (verschachtelte Regionen, #1764); 0 = keine.</summary>
+    Depth: Integer;
+    /// <summary>Marke der Gliederung (−, #, +, ◆) bei Sichtbarkeitsabschnitten (#1768); leer = keine.</summary>
+    Mark: string;
+    /// <summary>Mitglieder des Sichtbarkeitsabschnitts (#1768); nur mit Mark.</summary>
+    Count: Integer;
+    /// <summary>Position, 0-basiert.</summary>
+    Line: Integer;
+    Character: Integer;
+  end;
+
 {$SCOPEDENUMS ON}
   TAtlasCodeSection = (None, InterfacePart, ImplementationPart, UsesClause, Initialization_, Finalization_);
+  /// <summary>Zusätzliche Glieder: Sichtbarkeitsabschnitt (#1759), Unterblock in Typen (#1767),
+  /// Sichtbarkeitsmarke am Methodenglied im implementation-Teil (#1765), Deklarationsblock der Unit (#1766),
+  /// Bedingungszweig (#1763), Region (#1764), try/except/finally und case-Zweig (#1769), Zähler der
+  /// Überladungen (#1784).</summary>
+  TAtlasCrumbPart = (Visibility, MemberBlocks, VisibilityMark, DeclarationBlocks, Conditionals, Regions,
+    Statements, Overloads);
 {$SCOPEDENUMS OFF}
 
   TAtlasCrumb = record
@@ -44,18 +107,45 @@ type
     Current: Integer;
     /// <summary>Kinder für das Menü hinter dem Glied in Quelltextreihenfolge; leer = kein Menü.</summary>
     Children: TArray<Integer>;
+    /// <summary>Sprungziele für das Menü, wenn das Glied keinen Knoten hat (Sichtbarkeitsabschnitte); Current
+    /// ist dann der Index darin.</summary>
+    Places: TArray<TAtlasCrumbPlace>;
+    /// <summary>Das Glied steht für etwas, das nicht im Quelltext steht (implizite Sichtbarkeit).</summary>
+    Implicit: Boolean;
+    /// <summary>Sichtbarkeitsmarke vor dem Namen (−, #, +, ◆; #1765); leer = keine.</summary>
+    Mark: string;
+    /// <summary>Genaue Sichtbarkeit zur Marke („strict private“).</summary>
+    MarkVisibility: string;
+    /// <summary>Zeile der Deklaration zur Marke, 0-basiert; -1 ohne Marke.</summary>
+    MarkLine: Integer;
+    /// <summary>Typ, dessen Sichtbarkeitsabschnitt das Glied zeigt (#1768, für „Neue Zeile am Ende von …“ und
+    /// „Abschnitt anlegen“); -1 bei anderen Gliedern.</summary>
+    SectionType: Integer;
+    /// <summary>Überladungen der Routine in Quelltextreihenfolge (#1784); leer ohne Überladung.</summary>
+    Overloads: TArray<Integer>;
+    /// <summary>Index von Node in Overloads; -1 ohne Überladung.</summary>
+    Overload: Integer;
+    /// <summary>Interface-Methoden, die die Methode erfüllt (#1785); leer ohne.</summary>
+    Interfaces: TAtlasInterfaceTargets;
+    /// <summary>Rang beim Kürzen der Leiste: höhere fallen zuerst weg (2 = Rahmen im Rumpf, 1 = übrige
+    /// zusätzliche Glieder), 0 = erst danach von vorn.</summary>
+    Drop: Integer;
   end;
 
   TAtlasCrumbs = TArray<TAtlasCrumb>;
+  TAtlasCrumbParts = set of TAtlasCrumbPart;
 
   TAtlasBreadcrumbs = class
   public
     /// <summary>Abschnitt der Zeile ALine (0-basiert): Schlüsselwörter am Zeilenanfang (Spalte 1), uses bis zum
     /// abschließenden Semikolon; Kommentare und Strings zählen nicht.</summary>
     class function SectionAt(const ALines: TArray<string>; ALine: Integer): TAtlasCodeSection; static;
-    /// <summary>Pfad am Caret (0-basiert). AUnitName steht vorn, wenn AShowUnit.</summary>
+    /// <summary>Pfad am Caret (0-basiert). AUnitName steht vorn, wenn AShowUnit; AParts nennt die
+    /// zusätzlichen Glieder hinter dem Typ (Sichtbarkeitsabschnitt, Unterblock) und die Sichtbarkeitsmarke an
+    /// Methodenrümpfen.</summary>
     class function Path(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
-      ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean): TAtlasCrumbs; static;
+      ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean;
+      AParts: TAtlasCrumbParts = []): TAtlasCrumbs; static;
     /// <summary>Badge eines Knotens; Routinen nach dem ersten Wort ihrer Kopfzeile (procedure/function).</summary>
     class function BadgeOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
       ANode: Integer): TAtlasBadge; static;
@@ -69,6 +159,8 @@ type
     class function QualifiedName(const ANodes: TAtlasOutlineNodes; ANode: Integer): string; static;
     /// <summary>Kinder von ANode: Mitglieder eines Typs bzw. lokale Routinen im Rumpf einer Routine.</summary>
     class function Children(const ANodes: TAtlasOutlineNodes; ANode: Integer): TArray<Integer>; static;
+    /// <summary>Hat das Glied ein Sprungmenü (Geschwister oder Sprungziele)?</summary>
+    class function HasMenu(const ACrumb: TAtlasCrumb): Boolean; static;
     /// <summary>Name ohne Besitzer: "TFoo.Bar" → "Bar".</summary>
     class function ShortName(const AName: string): string; static;
     /// <summary>Sprungziel: mit AImplementation der Rumpf (ohne Rumpf die Deklaration), sonst die
@@ -88,10 +180,14 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Completion.Matching;
-
-const
-  cKindNamespace = 3;
+  Atlas.Core.Completion.Matching,
+  Atlas.Core.Outline.Conditionals,
+  Atlas.Core.Outline.DeclarationBlocks,
+  Atlas.Core.Outline.MemberBlocks,
+  Atlas.Core.Outline.Overloads,
+  Atlas.Core.Outline.Regions,
+  Atlas.Core.Outline.Statements,
+  Atlas.Core.Outline.VisibilitySections;
 
 function MakeBadge(AKind: TAtlasBadgeKind; const ACode: string): TAtlasBadge;
 begin
@@ -253,6 +349,11 @@ begin
   end;
 end;
 
+class function TAtlasBreadcrumbs.HasMenu(const ACrumb: TAtlasCrumb): Boolean;
+begin
+  Result := (Length(ACrumb.Siblings) > 0) or (Length(ACrumb.Places) > 0);
+end;
+
 class function TAtlasBreadcrumbs.ShortName(const AName: string): string;
 begin
   Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
@@ -305,7 +406,7 @@ end;
 
 function IsSection(const ANode: TAtlasOutlineNode): Boolean;
 begin
-  Result := (ANode.Kind = cKindNamespace) or (ANode.Category = TAtlasOutlineCategory.Section);
+  Result := TAtlasOutline.IsSection(ANode);
 end;
 
 function Contains(const ANode: TAtlasOutlineNode; ALine, ACharacter: Integer): Boolean;
@@ -377,9 +478,13 @@ function NewCrumb(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>
 var
   mIndex: Integer;
 begin
+  Result := Default(TAtlasCrumb);
   Result.Text := TAtlasBreadcrumbs.ShortName(ANodes[ANode].Name);
   Result.Badge := TAtlasBreadcrumbs.BadgeOf(ANodes, ALines, ANode);
   Result.Node := ANode;
+  Result.MarkLine := -1;
+  Result.SectionType := -1;
+  Result.Overload := -1;
   Result.Siblings := SiblingsOf(ANodes, ANode);
   Result.Children := TAtlasBreadcrumbs.Children(ANodes, ANode);
   Result.Current := -1;
@@ -394,12 +499,142 @@ end;
 
 function TextCrumb(const AText: string; const ABadge: TAtlasBadge): TAtlasCrumb;
 begin
+  Result := Default(TAtlasCrumb);
   Result.Text := AText;
   Result.Badge := ABadge;
   Result.Node := -1;
-  Result.Siblings := nil;
   Result.Current := -1;
-  Result.Children := nil;
+  Result.MarkLine := -1;
+  Result.SectionType := -1;
+  Result.Overload := -1;
+end;
+
+/// <summary>Glied des Sichtbarkeitsabschnitts APlace (#1759): Abschnitte als Sprungziele, Mitglieder des
+/// Abschnitts als Kinder; vor dem ersten Schlüsselwort die implizite Sichtbarkeit. Jedes Sprungziel trägt
+/// Marke und Mitgliederzahl seines Abschnitts (#1768).</summary>
+function VisibilityCrumb(const ANodes: TAtlasOutlineNodes; const APlace: TAtlasVisibilityPlace): TAtlasCrumb;
+var
+  mIndex: Integer;
+  mSection: TAtlasVisibilitySection;
+  mPlace: TAtlasCrumbPlace;
+begin
+  Result := TextCrumb(APlace.Implicit, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'));
+  Result.Implicit := APlace.Current < 0;
+  if not Result.Implicit then
+  begin
+    Result.Text := APlace.Sections[APlace.Current].Keyword;
+  end;
+  for mIndex := 0 to High(APlace.Sections) do
+  begin
+    mSection := APlace.Sections[mIndex];
+    mPlace := Default(TAtlasCrumbPlace);
+    mPlace.Text := mSection.Keyword;
+    mPlace.Line := mSection.Line;
+    mPlace.Character := mSection.Character;
+    mPlace.Mark := TAtlasOutline.VisibilityMark(TAtlasOutline.VisibilityOf(mSection.Keyword));
+    mPlace.Count := Length(TAtlasVisibilitySectionFinder.MembersOf(ANodes, APlace, mIndex));
+    Result.Places := Result.Places + [mPlace];
+  end;
+  Result.Current := APlace.Current;
+  Result.SectionType := APlace.TypeNode;
+  Result.Children := TAtlasVisibilitySectionFinder.MembersOf(ANodes, APlace, APlace.Current);
+end;
+
+/// <summary>Glied des Unterblocks am Caret (#1767): Unterblöcke des Abschnitts als Sprungziele, Mitglieder des
+/// Blocks als Kinder.</summary>
+function MemberBlockCrumb(const ANodes: TAtlasOutlineNodes; const APlace: TAtlasMemberBlockPlace): TAtlasCrumb;
+var
+  mBlock: TAtlasMemberBlock;
+  mPlace: TAtlasCrumbPlace;
+begin
+  Result := TextCrumb(APlace.Blocks[APlace.Current].Keyword, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'));
+  for mBlock in APlace.Blocks do
+  begin
+    mPlace := Default(TAtlasCrumbPlace);
+    mPlace.Text := mBlock.Keyword;
+    mPlace.Line := mBlock.Line;
+    mPlace.Character := mBlock.Character;
+    Result.Places := Result.Places + [mPlace];
+  end;
+  Result.Current := APlace.Current;
+  Result.Children := TAtlasMemberBlockFinder.MembersOf(ANodes, APlace, APlace.Current);
+end;
+
+/// <summary>Alle Glieder von ACrumbs fallen beim Kürzen mit Rang ADrop weg.</summary>
+procedure Droppable(var ACrumbs: TAtlasCrumbs; ADrop: Integer);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(ACrumbs) do
+  begin
+    ACrumbs[mIndex].Drop := ADrop;
+  end;
+end;
+
+/// <summary>Glieder hinter dem Typ: Sichtbarkeitsabschnitt und Unterblock, soweit in AParts.</summary>
+function TypePartCrumbs(const ANodes: TAtlasOutlineNodes; const AVisibility: TAtlasVisibilityPlace;
+  const ABlock: TAtlasMemberBlockPlace; AParts: TAtlasCrumbParts): TAtlasCrumbs;
+begin
+  Result := nil;
+  if TAtlasCrumbPart.Visibility in AParts then
+  begin
+    Result := Result + [VisibilityCrumb(ANodes, AVisibility)];
+  end;
+  if (TAtlasCrumbPart.MemberBlocks in AParts) and (ABlock.Current >= 0) then
+  begin
+    Result := Result + [MemberBlockCrumb(ANodes, ABlock)];
+  end;
+  Droppable(Result, 1);
+end;
+
+/// <summary>Sprungziel für das Schlüsselwort ABlock, in der Gruppe seines Teils.</summary>
+function DeclarationPlace(const ABlock: TAtlasDeclarationBlock): TAtlasCrumbPlace;
+begin
+  Result := Default(TAtlasCrumbPlace);
+  Result.Text := ABlock.Keyword;
+  Result.Group := ABlock.Section;
+  Result.Line := ABlock.Line;
+  Result.Character := ABlock.Character;
+end;
+
+/// <summary>Glieder für Teil und Deklarationsblock am Caret (#1766); leer außerhalb eines Blocks. AAfterSection
+/// steht hinter dem Teil (Region, #1764).</summary>
+function DeclarationCrumbs(const ANodes: TAtlasOutlineNodes; const APlace: TAtlasDeclarationBlockPlace;
+  const AAfterSection: TAtlasCrumbs): TAtlasCrumbs;
+var
+  mBlock: TAtlasDeclarationBlock;
+  mCrumb: TAtlasCrumb;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if APlace.Current < 0 then
+  begin
+    Exit;
+  end;
+  mBlock := APlace.Blocks[APlace.Current];
+  if mBlock.Section <> '' then
+  begin
+    mCrumb := TextCrumb(mBlock.Section, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'));
+    for mIndex := 0 to High(APlace.Sections) do
+    begin
+      mCrumb.Places := mCrumb.Places + [DeclarationPlace(APlace.Sections[mIndex])];
+      if APlace.Sections[mIndex].Keyword = mBlock.Section then
+      begin
+        mCrumb.Current := mIndex;
+      end;
+    end;
+    Result := Result + [mCrumb];
+  end;
+  Result := Result + AAfterSection;
+  mCrumb := TextCrumb(mBlock.Keyword, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'));
+  for mIndex := 0 to High(APlace.Blocks) do
+  begin
+    mCrumb.Places := mCrumb.Places + [DeclarationPlace(APlace.Blocks[mIndex])];
+  end;
+  mCrumb.Current := APlace.Current;
+  mCrumb.Children := TAtlasDeclarationBlockFinder.MembersOf(ANodes, APlace, APlace.Current);
+  Result := Result + [mCrumb];
+  Droppable(Result, 1);
 end;
 
 /// <summary>Pfad von der Unit-Ebene bis ANode (einschließlich), ohne Abschnitte.</summary>
@@ -446,8 +681,76 @@ begin
   end;
 end;
 
-/// <summary>Glieder für den Knoten AItem der Kette.</summary>
-function CrumbsOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; AItem: Integer): TAtlasCrumbs;
+/// <summary>Text einer Sichtbarkeit der Gliederung („strict private“); leer bei None.</summary>
+function VisibilityText(AVisibility: TAtlasOutlineVisibility): string;
+begin
+  case AVisibility of
+    TAtlasOutlineVisibility.StrictPrivate:
+      Result := 'strict private';
+    TAtlasOutlineVisibility.Private:
+      Result := 'private';
+    TAtlasOutlineVisibility.StrictProtected:
+      Result := 'strict protected';
+    TAtlasOutlineVisibility.Protected:
+      Result := 'protected';
+    TAtlasOutlineVisibility.Public:
+      Result := 'public';
+    TAtlasOutlineVisibility.Published:
+      Result := 'published';
+  else
+    Result := '';
+  end;
+end;
+
+/// <summary>Genaue Sichtbarkeit der Methodendeklaration ADeclaration: Abschnitt im Typ (auch implizit), sonst die
+/// Angabe der Gliederung.</summary>
+function DeclaredVisibility(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+  ADeclaration: Integer): string;
+var
+  mPlace: TAtlasVisibilityPlace;
+begin
+  mPlace := TAtlasVisibilitySectionFinder.At(ANodes, ALines, ANodes[ADeclaration].NameLine,
+    ANodes[ADeclaration].NameCharacter);
+  if mPlace.TypeNode <> ANodes[ADeclaration].Parent then
+  begin
+    Result := VisibilityText(ANodes[ADeclaration].Visibility);
+  end
+  else if mPlace.Current >= 0 then
+  begin
+    Result := mPlace.Sections[mPlace.Current].Keyword;
+  end
+  else
+  begin
+    Result := mPlace.Implicit;
+  end;
+end;
+
+/// <summary>Sichtbarkeitsmarke der Methodendeklaration ADeclaration am Glied ACrumb (#1765); Routinen ohne Klasse
+/// bleiben ohne Marke.</summary>
+procedure MarkVisibility(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ADeclaration: Integer;
+  var ACrumb: TAtlasCrumb);
+var
+  mParent: Integer;
+  mVisibility: string;
+begin
+  mParent := ANodes[ADeclaration].Parent;
+  if (ANodes[ADeclaration].Category <> TAtlasOutlineCategory.Method) or (mParent < 0) or
+    (ANodes[mParent].Category <> TAtlasOutlineCategory.TypeDecl) then
+  begin
+    Exit;
+  end;
+  mVisibility := DeclaredVisibility(ANodes, ALines, ADeclaration);
+  ACrumb.Mark := TAtlasOutline.VisibilityMark(TAtlasOutline.VisibilityOf(mVisibility));
+  if ACrumb.Mark <> '' then
+  begin
+    ACrumb.MarkVisibility := mVisibility;
+    ACrumb.MarkLine := ANodes[ADeclaration].NameLine;
+  end;
+end;
+
+/// <summary>Glieder für den Knoten AItem der Kette; AMark: Sichtbarkeitsmarke an Methodenrümpfen (#1765).</summary>
+function CrumbsOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; AItem: Integer;
+  AMark: Boolean): TAtlasCrumbs;
 var
   mIndex: Integer;
   mName, mOwner: string;
@@ -459,6 +762,10 @@ begin
     for mIndex in Chain(ANodes, ANodes[AItem].Declaration) do
     begin
       Result := Result + [NewCrumb(ANodes, ALines, mIndex)];
+    end;
+    if AMark and (Length(Result) > 0) then
+    begin
+      MarkVisibility(ANodes, ALines, ANodes[AItem].Declaration, Result[High(Result)]);
     end;
     Exit;
   end;
@@ -474,33 +781,193 @@ begin
   Result := Result + [NewCrumb(ANodes, ALines, AItem)];
 end;
 
-class function TAtlasBreadcrumbs.Path(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
-  ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean): TAtlasCrumbs;
+/// <summary>Glieder der Bedingungszweige um die Stelle (#1763), außen zuerst; Badge „if“.</summary>
+function ConditionalCrumbs(const ALines: TArray<string>; ALine, ACharacter: Integer): TAtlasCrumbs;
 var
-  mInner, mItem: Integer;
-  mName: string;
+  mBranch: TAtlasConditionalBranch;
+  mPart: TAtlasConditionalPart;
+  mCrumb: TAtlasCrumb;
+  mPlace: TAtlasCrumbPlace;
 begin
   Result := nil;
+  for mBranch in TAtlasConditionalFinder.At(ALines, ALine, ACharacter) do
+  begin
+    mCrumb := TextCrumb(mBranch.Text, MakeBadge(TAtlasBadgeKind.Keyword, 'if'));
+    for mPart in mBranch.Parts do
+    begin
+      mPlace := Default(TAtlasCrumbPlace);
+      mPlace.Text := mPart.Text;
+      mPlace.Line := mPart.Line;
+      mPlace.Character := mPart.Character;
+      mCrumb.Places := mCrumb.Places + [mPlace];
+    end;
+    mCrumb.Current := mBranch.Current;
+    mCrumb.Drop := 1;
+    Result := Result + [mCrumb];
+  end;
+end;
+
+/// <summary>Glied der innersten Region um die Stelle (#1764); leer außerhalb.</summary>
+function RegionCrumbs(const ALines: TArray<string>; ALine, ACharacter: Integer): TAtlasCrumbs;
+var
+  mPlace: TAtlasRegionPlace;
+  mRegion: TAtlasRegionMark;
+  mCrumbPlace: TAtlasCrumbPlace;
+  mCrumb: TAtlasCrumb;
+begin
+  Result := nil;
+  mPlace := TAtlasRegionFinder.At(ALines, ALine, ACharacter);
+  if mPlace.Current < 0 then
+  begin
+    Exit;
+  end;
+  mCrumb := TextCrumb(mPlace.Regions[mPlace.Current].Name, MakeBadge(TAtlasBadgeKind.Keyword, 'rg'));
+  for mRegion in mPlace.Regions do
+  begin
+    mCrumbPlace := Default(TAtlasCrumbPlace);
+    mCrumbPlace.Text := mRegion.Name;
+    mCrumbPlace.Line := mRegion.Line;
+    mCrumbPlace.Character := mRegion.Character;
+    mCrumbPlace.Depth := mRegion.Depth;
+    mCrumb.Places := mCrumb.Places + [mCrumbPlace];
+  end;
+  mCrumb.Current := mPlace.Current;
+  mCrumb.Drop := 1;
+  Result := [mCrumb];
+end;
+
+/// <summary>Glieder für try/except/finally und case im Rumpf (#1769): die innersten drei, außen zuerst.</summary>
+function StatementCrumbs(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
+  ACharacter: Integer): TAtlasCrumbs;
+const
+  cMaxStatements = 3;
+var
+  mFrame: TAtlasStatementFrame;
+  mPart: TAtlasStatementPart;
+  mCrumb: TAtlasCrumb;
+  mPlace: TAtlasCrumbPlace;
+begin
+  Result := nil;
+  for mFrame in TAtlasStatementFinder.At(ANodes, ALines, ALine, ACharacter) do
+  begin
+    mCrumb := TextCrumb(mFrame.Text, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'));
+    for mPart in mFrame.Parts do
+    begin
+      mPlace := Default(TAtlasCrumbPlace);
+      mPlace.Text := mPart.Text;
+      mPlace.Line := mPart.Line;
+      mPlace.Character := mPart.Character;
+      mCrumb.Places := mCrumb.Places + [mPlace];
+    end;
+    mCrumb.Current := mFrame.Current;
+    mCrumb.Drop := 2;
+    Result := Result + [mCrumb];
+  end;
+  if Length(Result) > cMaxStatements then
+  begin
+    Result := Copy(Result, Length(Result) - cMaxStatements, cMaxStatements);
+  end;
+end;
+
+/// <summary>Pfad ohne die Bedingungszweige (siehe TAtlasBreadcrumbs.Path).</summary>
+function OutlinePath(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
+  ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean; AParts: TAtlasCrumbParts): TAtlasCrumbs;
+var
+  mInner, mItem, mType: Integer;
+  mName: string;
+  mPlace: TAtlasVisibilityPlace;
+  mBlock: TAtlasMemberBlockPlace;
+  mRegion, mDeclaration: TAtlasCrumbs;
+begin
+  Result := nil;
+  mRegion := nil;
+  if TAtlasCrumbPart.Regions in AParts then
+  begin
+    mRegion := RegionCrumbs(ALines, ALine, ACharacter);
+  end;
   if AShowUnit and (AUnitName <> '') then
   begin
     Result := [TextCrumb(AUnitName, MakeBadge(TAtlasBadgeKind.Unit_, 'un'))];
-    Result[0].Siblings := UnitMembers(ANodes);
+    Result[0].Siblings := TAtlasBreadcrumbs.UnitMembers(ANodes);
     Result[0].Children := Result[0].Siblings;
   end;
-  mName := SectionCrumbName(SectionAt(ALines, ALine));
+  mName := SectionCrumbName(TAtlasBreadcrumbs.SectionAt(ALines, ALine));
   if mName <> '' then
   begin
-    Result := Result + [TextCrumb(mName, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'))];
+    Result := Result + [TextCrumb(mName, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'))] + mRegion;
     Exit;
   end;
+  mDeclaration := nil;
+  if TAtlasCrumbPart.DeclarationBlocks in AParts then
+  begin
+    mDeclaration := DeclarationCrumbs(ANodes, TAtlasDeclarationBlockFinder.At(ANodes, ALines, ALine), mRegion);
+  end;
+  if mDeclaration = nil then
+  begin
+    mDeclaration := mRegion;
+  end;
+  Result := Result + mDeclaration;
   mInner := InnerNode(ANodes, ALine, ACharacter);
   if mInner < 0 then
   begin
     Exit;
   end;
+  mPlace := Default(TAtlasVisibilityPlace);
+  mBlock := Default(TAtlasMemberBlockPlace);
+  mBlock.Current := -1;
+  mType := -1;
+  if AParts * [TAtlasCrumbPart.Visibility, TAtlasCrumbPart.MemberBlocks] <> [] then
+  begin
+    mPlace := TAtlasVisibilitySectionFinder.At(ANodes, ALines, ALine, ACharacter);
+    mType := mPlace.TypeNode;
+  end;
+  if (TAtlasCrumbPart.MemberBlocks in AParts) and (mType >= 0) then
+  begin
+    mBlock := TAtlasMemberBlockFinder.At(ANodes, ALines, ALine, ACharacter);
+  end;
   for mItem in Chain(ANodes, mInner) do
   begin
-    Result := Result + CrumbsOf(ANodes, ALines, mItem);
+    Result := Result + CrumbsOf(ANodes, ALines, mItem, TAtlasCrumbPart.VisibilityMark in AParts);
+    if mItem = mType then
+    begin
+      Result := Result + TypePartCrumbs(ANodes, mPlace, mBlock, AParts);
+    end;
+  end;
+end;
+
+/// <summary>Überladungen und Stelle an den Gliedern mit Routine (#1784).</summary>
+procedure MarkOverloads(const ANodes: TAtlasOutlineNodes; var ACrumbs: TAtlasCrumbs);
+var
+  mIndex, mOverload: Integer;
+begin
+  for mIndex := 0 to High(ACrumbs) do
+  begin
+    ACrumbs[mIndex].Overloads := TAtlasOverloads.Find(ANodes, ACrumbs[mIndex].Node);
+    for mOverload := 0 to High(ACrumbs[mIndex].Overloads) do
+    begin
+      if ACrumbs[mIndex].Overloads[mOverload] = ACrumbs[mIndex].Node then
+      begin
+        ACrumbs[mIndex].Overload := mOverload;
+      end;
+    end;
+  end;
+end;
+
+class function TAtlasBreadcrumbs.Path(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
+  ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean; AParts: TAtlasCrumbParts): TAtlasCrumbs;
+begin
+  Result := OutlinePath(ANodes, ALines, ALine, ACharacter, AUnitName, AShowUnit, AParts);
+  if TAtlasCrumbPart.Overloads in AParts then
+  begin
+    MarkOverloads(ANodes, Result);
+  end;
+  if TAtlasCrumbPart.Statements in AParts then
+  begin
+    Result := Result + StatementCrumbs(ANodes, ALines, ALine, ACharacter);
+  end;
+  if TAtlasCrumbPart.Conditionals in AParts then
+  begin
+    Result := Result + ConditionalCrumbs(ALines, ALine, ACharacter);
   end;
 end;
 

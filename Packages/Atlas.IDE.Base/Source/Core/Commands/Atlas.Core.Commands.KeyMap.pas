@@ -389,7 +389,8 @@ const
     'Atlas.SafeDelete', // SafeDelete
     'Atlas.CreateIssue', // CreateIssue
     '', // DesignerSearch
-    'Atlas.CheckFile' // CheckFile
+    'Atlas.CheckFile', // CheckFile
+    'Atlas.SectionAppend' // SectionAppend
   );
 
 class function TAtlasKeyMap.CommandIdOf(AFunc: TAtlasKeyFunction): string;

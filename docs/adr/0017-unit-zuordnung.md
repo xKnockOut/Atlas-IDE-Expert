@@ -279,10 +279,22 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Notifications.Contract` | `Core/Notifications/Atlas.Core.Notifications.Contract.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.Sources` | `Core/Notifications/Atlas.Core.Notifications.Sources.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Outline.Breadcrumbs` | `Core/Outline/Atlas.Core.Outline.Breadcrumbs.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.Conditionals` | `Core/Outline/Atlas.Core.Outline.Conditionals.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.CrumbMenu` | `Core/Outline/Atlas.Core.Outline.CrumbMenu.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.DeclarationBlocks` | `Core/Outline/Atlas.Core.Outline.DeclarationBlocks.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.Directives` | `Core/Outline/Atlas.Core.Outline.Directives.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.LoadGuard` | `Core/Outline/Atlas.Core.Outline.LoadGuard.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.MemberBlocks` | `Core/Outline/Atlas.Core.Outline.MemberBlocks.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.Model` | `Core/Outline/Atlas.Core.Outline.Model.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.NavigationOption` | `Core/Outline/Atlas.Core.Outline.NavigationOption.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.Overloads` | `Core/Outline/Atlas.Core.Outline.Overloads.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.Interfaces` | `Core/Outline/Atlas.Core.Outline.Interfaces.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.Regions` | `Core/Outline/Atlas.Core.Outline.Regions.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.Statements` | `Core/Outline/Atlas.Core.Outline.Statements.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.SectionEdit` | `Core/Outline/Atlas.Core.Outline.SectionEdit.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.StickyScroll` | `Core/Outline/Atlas.Core.Outline.StickyScroll.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.TypeText` | `Core/Outline/Atlas.Core.Outline.TypeText.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.VisibilitySections` | `Core/Outline/Atlas.Core.Outline.VisibilitySections.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Problems.Colors` | `Core/Problems/Atlas.Core.Problems.Colors.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Contract` | `Core/Problems/Atlas.Core.Problems.Contract.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Explanation` | `Core/Problems/Atlas.Core.Problems.Explanation.pas` | Ordner `Core/Problems`: Katalogtext für „Regel erklären“ (#1755) |
@@ -585,7 +597,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Notifications.Service` | `IDE/Notifications/Atlas.IDE.Notifications.Service.pas` | Ordner `IDE/Notifications` |
 | `Atlas.IDE.Outline.Breadcrumbs` | `IDE/Outline/Atlas.IDE.Outline.Breadcrumbs.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.Cache` | `IDE/Outline/Atlas.IDE.Outline.Cache.pas` | Ordner `IDE/Outline` |
+| `Atlas.IDE.Outline.CrumbMenu` | `IDE/Outline/Atlas.IDE.Outline.CrumbMenu.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.NavigationOption` | `IDE/Outline/Atlas.IDE.Outline.NavigationOption.pas` | Ordner `IDE/Outline` |
+| `Atlas.IDE.Outline.SectionEdit` | `IDE/Outline/Atlas.IDE.Outline.SectionEdit.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.Service` | `IDE/Outline/Atlas.IDE.Outline.Service.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.StickyScroll` | `IDE/Outline/Atlas.IDE.Outline.StickyScroll.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.Window` | `IDE/Outline/Atlas.IDE.Outline.Window.pas` | Ordner `IDE/Outline` |

@@ -2,8 +2,9 @@
 
 // Internals-Rolle Shell: Befehle des Plugins am Editor. Austrittspunkte (#698), neu zugewiesene Variablen (#712),
 // Typ des markierten Ausdrucks (#689), Methodenrümpfe in Deklarationsreihenfolge (#660), Überschreibungen (#768),
-// qualifizierte Namen, Aufzählungswerte, resourcestring (#473), Zeichenkettenliterale und die Einrückung beim Tippen
-// (#1827). Die Komposition reicht Dokumente, Index, Quelltext, Namensräume und Einstellungen als Dienste herein.
+// erfüllte Interface-Methoden (#1785), qualifizierte Namen, Aufzählungswerte, resourcestring (#473),
+// Zeichenkettenliterale und die Einrückung beim Tippen (#1827). Die Komposition reicht Dokumente, Index, Quelltext,
+// Namensräume und Einstellungen als Dienste herein.
 
 interface
 
@@ -52,6 +53,7 @@ type
     function RunExpressionType(const AArguments: TJSONArray): TJSONValue;
     function RunMethodOrder(const AArguments: TJSONArray): TJSONValue;
     function RunOverrideMarks(const AArguments: TJSONArray): TJSONValue;
+    function RunInterfaceMethods(const AArguments: TJSONArray): TJSONValue;
     function RunQualifiedNames(const AArguments: TJSONArray): TJSONValue;
     function RunEnumValue(const AArguments: TJSONArray): TJSONValue;
     function RunAddResourceString(const AArguments: TJSONArray): TJSONValue;
@@ -77,6 +79,7 @@ uses
   Atlas.Common.Lsp.Reassigned,
   Atlas.Common.Lsp.ExpressionType,
   Atlas.Common.Lsp.OverrideMarks,
+  Atlas.Common.Lsp.InterfaceMethods,
   Atlas.Common.Lsp.QualifiedNames,
   Atlas.Common.Lsp.EnumValueCommands,
   Atlas.Common.Lsp.StringLiteralCommands;
@@ -105,6 +108,7 @@ begin
   ACommands.RegisterConcurrent(TLspMethodOrder.cCommand, RunMethodOrder);
   // Überschreibungen für die Atlas-Spalte der Zeilenleiste (#768).
   ACommands.RegisterConcurrent(TLspOverrideMarks.cCommand, RunOverrideMarks);
+  ACommands.RegisterConcurrent(TLspInterfaceMethods.cCommand, RunInterfaceMethods);
 end;
 
 procedure TShellEditorCommands.RegisterTextCommands(ACommands: TLspCommands);
@@ -144,6 +148,12 @@ end;
 function TShellEditorCommands.RunOverrideMarks(const AArguments: TJSONArray): TJSONValue;
 begin
   Result := TLspOverrideMarks.Execute(FServices.Documents, FServices.Index, FServices.EnsureUnit,
+    FServices.Namespaces(), AArguments);
+end;
+
+function TShellEditorCommands.RunInterfaceMethods(const AArguments: TJSONArray): TJSONValue;
+begin
+  Result := TLspInterfaceMethods.Execute(FServices.Documents, FServices.Index, FServices.EnsureUnit,
     FServices.Namespaces(), AArguments);
 end;
 

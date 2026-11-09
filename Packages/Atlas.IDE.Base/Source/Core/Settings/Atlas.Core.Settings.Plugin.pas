@@ -549,6 +549,31 @@ type
     property Breadcrumbs: Boolean read FStickyScroll.Breadcrumbs write FStickyScroll.Breadcrumbs;
     property BreadcrumbsShowUnit: Boolean read FStickyScroll.BreadcrumbsShowUnit
       write FStickyScroll.BreadcrumbsShowUnit;
+    property BreadcrumbsVisibility: Boolean read FStickyScroll.BreadcrumbsVisibility
+      write FStickyScroll.BreadcrumbsVisibility;
+    property BreadcrumbsMemberBlocks: Boolean read FStickyScroll.BreadcrumbsMemberBlocks
+      write FStickyScroll.BreadcrumbsMemberBlocks;
+    property BreadcrumbsVisibilityMark: Boolean read FStickyScroll.BreadcrumbsVisibilityMark
+      write FStickyScroll.BreadcrumbsVisibilityMark;
+    property BreadcrumbsDeclarationBlocks: Boolean read FStickyScroll.BreadcrumbsDeclarationBlocks
+      write FStickyScroll.BreadcrumbsDeclarationBlocks;
+    property BreadcrumbsConditionals: Boolean read FStickyScroll.BreadcrumbsConditionals
+      write FStickyScroll.BreadcrumbsConditionals;
+    property BreadcrumbsRegions: Boolean read FStickyScroll.BreadcrumbsRegions write FStickyScroll.BreadcrumbsRegions;
+    property BreadcrumbsStatements: Boolean read FStickyScroll.BreadcrumbsStatements
+      write FStickyScroll.BreadcrumbsStatements;
+    property BreadcrumbsSectionCounts: Boolean read FStickyScroll.BreadcrumbsSectionCounts
+      write FStickyScroll.BreadcrumbsSectionCounts;
+    property BreadcrumbsSectionAppend: Boolean read FStickyScroll.BreadcrumbsSectionAppend
+      write FStickyScroll.BreadcrumbsSectionAppend;
+    property BreadcrumbsSectionCreate: Boolean read FStickyScroll.BreadcrumbsSectionCreate
+      write FStickyScroll.BreadcrumbsSectionCreate;
+    property BreadcrumbsContextMenu: Boolean read FStickyScroll.BreadcrumbsContextMenu
+      write FStickyScroll.BreadcrumbsContextMenu;
+    property BreadcrumbsOverloads: Boolean read FStickyScroll.BreadcrumbsOverloads
+      write FStickyScroll.BreadcrumbsOverloads;
+    property BreadcrumbsInterfaces: Boolean read FStickyScroll.BreadcrumbsInterfaces
+      write FStickyScroll.BreadcrumbsInterfaces;
     property BreadcrumbsIdeColors: Boolean read FStickyScroll.BreadcrumbsIdeColors
       write FStickyScroll.BreadcrumbsIdeColors;
     property BreadcrumbsHideIdeToolbar: Boolean read FStickyScroll.BreadcrumbsHideIdeToolbar
@@ -621,6 +646,7 @@ type
     property MinimapClickJumps: Boolean read FEditorView.MinimapClickJumps write FEditorView.MinimapClickJumps;
     property MinimapNoticeShown: Boolean read FEditorView.MinimapNoticeShown write FEditorView.MinimapNoticeShown;
     property BreadcrumbsKey: Integer read FNavigationKeys.BreadcrumbsKey write FNavigationKeys.BreadcrumbsKey;
+    property SectionAppendKey: Integer read FNavigationKeys.SectionAppendKey write FNavigationKeys.SectionAppendKey;
     property GitGutter: Boolean read FEditorTyping.GitGutter write FEditorTyping.GitGutter;
     property GitBlame: Boolean read FEditorTyping.GitBlame write FEditorTyping.GitBlame;
     property GutterColumn: Boolean read FEditorView.GutterColumn write FEditorView.GutterColumn;

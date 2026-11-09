@@ -36,6 +36,7 @@ uses
   Atlas.IDE.Results.Peek,
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Outline.Breadcrumbs,
+  Atlas.IDE.Outline.SectionEdit,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Problems.Service,
@@ -71,6 +72,11 @@ end;
 function BreadcrumbsVisible: Boolean;
 begin
   Result := TAtlasIdeBreadcrumbs.Enabled;
+end;
+
+function SectionAppendVisible: Boolean;
+begin
+  Result := TAtlasIdeSectionEdit.AppendEnabled;
 end;
 
 function DataFlowVisible: Boolean;
@@ -178,6 +184,10 @@ begin
   // Brotkrumenleiste (#590): Fokus auf das letzte Glied; nur sichtbar, solange editor.breadcrumbs an ist.
   AddCommand(APalette, 'Atlas.Breadcrumbs', TAtlasTextId.BreadcrumbsCommand,
     Guarded(TAtlasFeature.Breadcrumbs, TAtlasIdeBreadcrumbs.Focus), BreadcrumbsVisible);
+  // Neue Zeile am Ende des Abschnitts am Cursor (#1768); nur sichtbar, solange editor.breadcrumbsSectionAppend an
+  // ist.
+  AddCommand(APalette, 'Atlas.SectionAppend', TAtlasTextId.SectionAppendCommand,
+    Guarded(TAtlasFeature.Breadcrumbs, TAtlasIdeSectionEdit.AppendAtCursor), SectionAppendVisible);
   AddToolbarCommands(APalette);
 end;
 
