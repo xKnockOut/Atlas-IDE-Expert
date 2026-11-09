@@ -572,6 +572,8 @@ type
       write FStickyScroll.BreadcrumbsContextMenu;
     property BreadcrumbsOverloads: Boolean read FStickyScroll.BreadcrumbsOverloads
       write FStickyScroll.BreadcrumbsOverloads;
+    property BreadcrumbsInterfaces: Boolean read FStickyScroll.BreadcrumbsInterfaces
+      write FStickyScroll.BreadcrumbsInterfaces;
     property BreadcrumbsIdeColors: Boolean read FStickyScroll.BreadcrumbsIdeColors
       write FStickyScroll.BreadcrumbsIdeColors;
     property BreadcrumbsHideIdeToolbar: Boolean read FStickyScroll.BreadcrumbsHideIdeToolbar

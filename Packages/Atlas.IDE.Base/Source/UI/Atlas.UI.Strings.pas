@@ -725,7 +725,10 @@ type
     BreadcrumbsSectionCount, BreadcrumbsSectionCountOne, BreadcrumbsSectionAppend, BreadcrumbsSectionCreate,
     SectionAppendCommand, SettingsBreadcrumbsContextMenu, CrumbCopyName, CrumbCopyWithUnit, CrumbCopySignature,
     CrumbCopyPath, CrumbShowComponent, CrumbFindReferences, CrumbRename, CrumbCopyUnitName, CrumbCopyFilePath,
-    SettingsBreadcrumbsOverloads, BreadcrumbsOverloadsHint, BreadcrumbsOverloadsPrompt);
+    SettingsBreadcrumbsOverloads, BreadcrumbsOverloadsHint, BreadcrumbsOverloadsPrompt,
+    // Interface-Marke an Methoden (#1785).
+    SettingsBreadcrumbsInterfaces, BreadcrumbsInterfacesHint, BreadcrumbsInterfacesKey, BreadcrumbsInterfacesPrompt,
+    BreadcrumbsInterfacesPath);
 
   TAtlasStrings = class
   private
@@ -2425,7 +2428,12 @@ const
      'Dateipfad kopieren',
      'Überladungen mit Zähler (2/3) und Parametern zeigen',
      'Überladungen von %s (Umschalt+↓)',
-     'Überladungen von %s'),
+     'Überladungen von %s',
+     'Interface-Marke [IKunde] an Methoden zeigen',
+     'Erfüllt %s (%s, Z. %d)',
+     'Klick oder Alt+↓ öffnet die Liste',
+     'Erfüllt',
+     '%s, Z. %d'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -4041,7 +4049,12 @@ const
      'Copy file path',
      'Show overloads with counter (2/3) and parameters',
      'Overloads of %s (Shift+↓)',
-     'Overloads of %s'));
+     'Overloads of %s',
+     'Show interface mark [IKunde] on methods',
+     'Implements %s (%s, line %d)',
+     'Click or Alt+↓ opens the list',
+     'Implements',
+     '%s, line %d'));
 
 { TAtlasStrings }
 

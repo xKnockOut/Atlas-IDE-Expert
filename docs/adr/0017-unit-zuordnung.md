@@ -288,6 +288,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Outline.Model` | `Core/Outline/Atlas.Core.Outline.Model.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.NavigationOption` | `Core/Outline/Atlas.Core.Outline.NavigationOption.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.Overloads` | `Core/Outline/Atlas.Core.Outline.Overloads.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.Interfaces` | `Core/Outline/Atlas.Core.Outline.Interfaces.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.Regions` | `Core/Outline/Atlas.Core.Outline.Regions.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.Statements` | `Core/Outline/Atlas.Core.Outline.Statements.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.SectionEdit` | `Core/Outline/Atlas.Core.Outline.SectionEdit.pas` | Ordner `Core/Outline` |
