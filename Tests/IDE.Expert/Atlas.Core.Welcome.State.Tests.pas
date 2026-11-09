@@ -5,7 +5,8 @@
 // welcomePage.statusTile und .onlyProblems, Knöpfe, Fingerabdruck; die neuen
 // Angaben der Zeilen Server (seit, abgestürzt, beendet), Index (vollständig
 // indiziert, „Stand vom …“) und Version (Update bereit); der gespeicherte
-// Index-Stand und das gemerkte Update (#495).
+// Index-Stand und das gemerkte Update (#495) samt Fehlerart einer gescheiterten
+// Abfrage.
 
 interface
 
@@ -68,6 +69,8 @@ type
     [Test]
     procedure VersionWithoutUpdate;
     [Test]
+    procedure VersionAfterFailedCheckIsNotUpToDate;
+    [Test]
     procedure LineKeepsBriefAndDetail;
   end;
 
@@ -103,6 +106,10 @@ type
     procedure PendingOnlyWhenNewerThanInstalled;
     [Test]
     procedure StateKeepsAvailableVersion;
+    [Test]
+    procedure RememberKeepsFailureUntilACheckSucceeds;
+    [Test]
+    procedure StateKeepsLastError;
   end;
 
 implementation
@@ -583,6 +590,32 @@ begin
   Assert.AreEqual('Update-Prüfung aus', TAtlasStatusLines.VersionDetail(mInfo));
 end;
 
+procedure TAtlasStateLinesTests.VersionAfterFailedCheckIsNotUpToDate;
+var
+  mInfo: TAtlasVersionInfo;
+begin
+  // Gescheiterte Abfrage (z. B. Proxy): nie „aktuell“, sondern gelb mit Fehlerart.
+  mInfo := Default(TAtlasVersionInfo);
+  mInfo.Installed := '2.0.0-beta.3';
+  mInfo.CheckEnabled := True;
+  mInfo.Checked := True;
+  mInfo.Failure := 'HTTP 407';
+  Assert.IsFalse(TAtlasStatusLines.UpdateAvailable(mInfo));
+  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(TAtlasStatusLines.VersionState(mInfo)));
+  Assert.AreEqual('Version: Atlas 2.0.0-beta.3 (Prüfung fehlgeschlagen)', TAtlasStatusLines.VersionText(mInfo));
+  Assert.AreEqual('Prüfung fehlgeschlagen: HTTP 407', TAtlasStatusLines.VersionDetail(mInfo));
+  Assert.AreEqual('Atlas 2.0.0-beta.3', TAtlasStatusLines.VersionBrief(mInfo));
+  Assert.AreEqual('', TAtlasStatusLines.VersionSummary(mInfo));
+  // Ein früher gefundenes Update bleibt vorn.
+  mInfo.Available := '2.0.1';
+  Assert.AreEqual('Version: Atlas 2.0.0-beta.3, Update 2.0.1 bereit', TAtlasStatusLines.VersionText(mInfo));
+  // Prüfung aus: Der alte Fehler spielt keine Rolle.
+  mInfo.Available := '';
+  mInfo.CheckEnabled := False;
+  Assert.AreEqual(Ord(TAtlasStatusState.Neutral), Ord(TAtlasStatusLines.VersionState(mInfo)));
+  Assert.AreEqual('Version: Atlas 2.0.0-beta.3 (Update-Prüfung aus)', TAtlasStatusLines.VersionText(mInfo));
+end;
+
 procedure TAtlasStateLinesTests.LineKeepsBriefAndDetail;
 var
   mRegistry: IAtlasStatusRegistry;
@@ -802,6 +835,56 @@ begin
   TAtlasUpdates.Remember(mState, mOutcome);
   Assert.AreEqual('', mState.Available, 'aktuell');
   Assert.AreEqual('', mState.ChangesUrl);
+end;
+
+procedure TAtlasStateUpdateTests.RememberKeepsFailureUntilACheckSucceeds;
+var
+  mState: TAtlasUpdateState;
+  mOutcome: TAtlasUpdateResult;
+begin
+  mState := Default(TAtlasUpdateState);
+  mOutcome := Default(TAtlasUpdateResult);
+  mOutcome.Outcome := TAtlasUpdateOutcome.Failed;
+  mOutcome.Error := 'HTTP 407';
+  TAtlasUpdates.Remember(mState, mOutcome);
+  Assert.AreEqual('HTTP 407', mState.LastError);
+  mOutcome.Outcome := TAtlasUpdateOutcome.NotDue;
+  mOutcome.Error := '';
+  TAtlasUpdates.Remember(mState, mOutcome);
+  Assert.AreEqual('HTTP 407', mState.LastError, 'nicht fällig ändert nichts');
+  // Ohne Fehlerart bleibt erkennbar, dass die Abfrage scheiterte.
+  mOutcome.Outcome := TAtlasUpdateOutcome.Failed;
+  TAtlasUpdates.Remember(mState, mOutcome);
+  Assert.AreEqual('?', mState.LastError);
+  mOutcome.Error := 'Zeile'#13#10'zwei';
+  TAtlasUpdates.Remember(mState, mOutcome);
+  Assert.AreEqual('Zeile  zwei', mState.LastError, 'eine Zeile');
+  mOutcome.Outcome := TAtlasUpdateOutcome.NewVersion;
+  mOutcome.Release.Version := '2.0.1';
+  TAtlasUpdates.Remember(mState, mOutcome);
+  Assert.AreEqual('', mState.LastError, 'neue Version');
+  mOutcome.Outcome := TAtlasUpdateOutcome.Failed;
+  TAtlasUpdates.Remember(mState, mOutcome);
+  mOutcome.Outcome := TAtlasUpdateOutcome.Current;
+  TAtlasUpdates.Remember(mState, mOutcome);
+  Assert.AreEqual('', mState.LastError, 'aktuell');
+end;
+
+procedure TAtlasStateUpdateTests.StateKeepsLastError;
+var
+  mState, mLoaded: TAtlasUpdateState;
+begin
+  mState := Default(TAtlasUpdateState);
+  mState.Asked := True;
+  mState.LastError := 'ENetHTTPClientException';
+  mLoaded := TAtlasUpdateState.FromJson(mState.ToJson);
+  Assert.AreEqual('ENetHTTPClientException', mLoaded.LastError);
+  mState.LastError := '';
+  Assert.IsFalse(mState.ToJson.Contains('lastError'), 'ohne Fehler kein Feld');
+  mLoaded := TAtlasUpdateState.FromJson('{"asked":true,"lastError":""}');
+  Assert.AreEqual('?', mLoaded.LastError, 'leere Fehlerart bleibt ein Fehler');
+  mLoaded := TAtlasUpdateState.FromJson('{"asked":true}');
+  Assert.AreEqual('', mLoaded.LastError, 'ältere Zustandsdatei');
 end;
 
 procedure TAtlasStateUpdateTests.PendingOnlyWhenNewerThanInstalled;

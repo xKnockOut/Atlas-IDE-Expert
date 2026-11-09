@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Behoben
+- Update-Prüfung: Eine gescheiterte Abfrage (Proxy, Zeitüberschreitung, HTTP-Fehler) zeigte in der Zeile „Version“ grün „aktuell“, obwohl Atlas gar nicht wusste, ob es eine neuere Version gibt. Jetzt steht dort gelb „Prüfung fehlgeschlagen“ mit der Fehlerart, und die Meldungsansicht nennt sie einmal.
+
 ## [2.0.1] - 2026-11-08
 
 ### Neu

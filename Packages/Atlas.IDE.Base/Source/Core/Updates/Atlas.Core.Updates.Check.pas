@@ -15,6 +15,9 @@
 //   tägliche Prüfung keine Einstellungsstände (#722) erzeugt. Die gefundene
 //   Version hält die Zeile „Version“ des Statusfelds und der Zustandskachel
 //   (#754) bis zur nächsten Prüfung bzw. bis sie installiert ist.
+// - Eine gescheiterte Abfrage merkt sich ihre Fehlerart (lastError), bis eine
+//   Abfrage gelingt. So zeigt die Zeile „Version“ „Prüfung fehlgeschlagen“
+//   statt „aktuell“: Ohne Antwort ist unbekannt, ob es eine neuere Version gibt.
 // Heruntergeladen und installiert wird hier nichts; das macht AtlasUpdate.exe
 // (#1519, Atlas.Core.Updates.Install).
 
@@ -40,6 +43,9 @@ type
     /// <summary>Zuletzt gefundene neuere Version und Adresse ihrer Änderungen (#754); '' = keine.</summary>
     Available: string;
     ChangesUrl: string;
+    /// <summary>Fehlerart der letzten Abfrage, z. B. „HTTP 407“; '' = sie ist gelungen oder es gab noch keine.
+    /// </summary>
+    LastError: string;
     function ToJson: string;
     class function FromJson(const AJson: string): TAtlasUpdateState; static;
   end;
@@ -68,6 +74,7 @@ type
     cVersionUrl = TUpdateChannels.cStableUrl;
     cReleasesUrl = TUpdateChannels.cReleasesUrl;
     cTimeoutMs = 10000;
+    cMaxErrorLength = 80;
   public
     /// <summary>SemVer-Vergleich: negativ, 0 oder positiv; ungültige Versionen sind kleiner als gültige.</summary>
     class function Compare(const A, B: string): Integer; static;
@@ -81,12 +88,16 @@ type
     /// <summary>Adresse mit genau zwei Parametern: atlas und ide.</summary>
     class function RequestUrl(const ABase, AAtlasVersion, AIdeVersion: string): string; static;
     /// <summary>Ergebnis einer Prüfung im Zustand merken (#754): neue Version setzt Available und ChangesUrl,
-    /// „aktuell“ löscht sie; ein Fehlschlag oder keine Abfrage ändert nichts.</summary>
+    /// „aktuell“ löscht sie; beide löschen LastError. Ein Fehlschlag setzt nur LastError (eine gemerkte Version
+    /// bleibt), keine Abfrage ändert nichts.</summary>
     class procedure Remember(var AState: TAtlasUpdateState; const AResult: TAtlasUpdateResult); static;
     /// <summary>Gemerkte Version, die neuer ist als AInstalled; False ohne (dann ist ARelease leer). Nach der
     /// Installation des Updates gilt sie nicht mehr.</summary>
     class function Pending(const AState: TAtlasUpdateState; const AInstalled: string;
       out ARelease: TAtlasRelease): Boolean; static;
+    /// <summary>Fehlerart für Zustand und Anzeige: eine Zeile ohne Steuerzeichen, höchstens cMaxErrorLength
+    /// Zeichen; leer wird „?“.</summary>
+    class function ErrorText(const AError: string): string; static;
     /// <summary>Eine Prüfung der Versionsdatei unter AQuery.Url (Kanal, #1519); setzt AState.LastCheck, wenn
     /// abgefragt wurde.</summary>
     class function Run(const ASource: IAtlasVersionSource; const AQuery: TAtlasUpdateQuery;
@@ -122,6 +133,10 @@ begin
     begin
       mRoot.AddPair('available', TJSONString.Create(Available));
       mRoot.AddPair('changes', TJSONString.Create(ChangesUrl));
+    end;
+    if LastError <> '' then
+    begin
+      mRoot.AddPair('lastError', TJSONString.Create(LastError));
     end;
     Result := mRoot.ToJSON;
   finally
@@ -167,6 +182,11 @@ begin
       begin
         Result.ChangesUrl := TAtlasUpdates.cReleasesUrl + '/tag/v' + mText;
       end;
+    end;
+    mFound := mRoot.TryGetValue<string>('lastError', mText);
+    if mFound then
+    begin
+      Result.LastError := TAtlasUpdates.ErrorText(mText);
     end;
   finally
     mValue.Free;
@@ -234,6 +254,25 @@ begin
     TNetEncoding.URL.Encode(AIdeVersion);
 end;
 
+class function TAtlasUpdates.ErrorText(const AError: string): string;
+var
+  mIndex: Integer;
+begin
+  // Steht in einer Zeile des Statusfelds und in der Zustandsdatei; Adressen enthält AError nicht.
+  Result := Copy(Trim(AError), 1, cMaxErrorLength);
+  for mIndex := 1 to Length(Result) do
+  begin
+    if Ord(Result[mIndex]) < 32 then
+    begin
+      Result[mIndex] := ' ';
+    end;
+  end;
+  if Result = '' then
+  begin
+    Result := '?';
+  end;
+end;
+
 class procedure TAtlasUpdates.Remember(var AState: TAtlasUpdateState; const AResult: TAtlasUpdateResult);
 begin
   case AResult.Outcome of
@@ -241,15 +280,18 @@ begin
       begin
         AState.Available := AResult.Release.Version;
         AState.ChangesUrl := AResult.Release.ChangesUrl;
+        AState.LastError := '';
       end;
     TAtlasUpdateOutcome.Current:
       begin
         AState.Available := '';
         AState.ChangesUrl := '';
+        AState.LastError := '';
       end;
+    TAtlasUpdateOutcome.Failed:
+      AState.LastError := ErrorText(AResult.Error);
     TAtlasUpdateOutcome.Disabled: ;
     TAtlasUpdateOutcome.NotDue: ;
-    TAtlasUpdateOutcome.Failed: ;
   end;
 end;
 
