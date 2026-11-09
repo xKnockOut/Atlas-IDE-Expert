@@ -60,7 +60,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Text.Lines;
 
 const
   cOrder: array[0..5] of string = ('strict private', 'private', 'strict protected', 'protected', 'public',
@@ -72,23 +73,13 @@ begin
 end;
 
 /// <summary>Leerraum am Anfang der Zeile ALine; '' außerhalb.</summary>
-function IndentOf(const ALines: TArray<string>; ALine: Integer): string;
-var
-  mIndex: Integer;
-  mText: string;
+function LineIndent(const ALines: TArray<string>; ALine: Integer): string;
 begin
   Result := '';
-  if (ALine < 0) or (ALine > High(ALines)) then
+  if (ALine >= 0) and (ALine <= High(ALines)) then
   begin
-    Exit;
+    Result := TTextLines.IndentOf(ALines[ALine]);
   end;
-  mText := ALines[ALine];
-  mIndex := 1;
-  while (mIndex <= Length(mText)) and CharInSet(mText[mIndex], [' ', #9]) do
-  begin
-    Inc(mIndex);
-  end;
-  Result := Copy(mText, 1, mIndex - 1);
 end;
 
 /// <summary>Steht vor ACharacter in der Zeile nur Leerraum?</summary>
@@ -131,7 +122,7 @@ begin
     if (ANodes[mIndex].Parent = AType) and not ANodes[mIndex].Hidden and
       StartsLine(ALines, ANodes[mIndex].StartLine, ANodes[mIndex].StartCharacter) then
     begin
-      AIndent := IndentOf(ALines, ANodes[mIndex].StartLine);
+      AIndent := LineIndent(ALines, ANodes[mIndex].StartLine);
       Exit(True);
     end;
   end;
@@ -173,7 +164,7 @@ begin
   if Length(mMembers) > 0 then
   begin
     mAnchor := LastLineOf(ANodes, mMembers);
-    mIndent := IndentOf(ALines, ANodes[mMembers[0]].StartLine);
+    mIndent := LineIndent(ALines, ANodes[mMembers[0]].StartLine);
   end
   else
   begin
@@ -185,7 +176,7 @@ begin
     begin
       mAnchor := mType.NameLine;
     end;
-    mIndent := IndentOf(ALines, mAnchor) + StringOfChar(' ', AIndentWidth);
+    mIndent := LineIndent(ALines, mAnchor) + StringOfChar(' ', AIndentWidth);
   end;
   // Einzeiliger Typ: Hinter der Zeile stünde das end schon.
   if (mAnchor < 0) or (mAnchor >= mType.EndLine) then
@@ -311,11 +302,11 @@ begin
   // Schlüsselwörter wie die vorhandenen, sonst wie das end des Typs.
   if Length(APlace.Sections) > 0 then
   begin
-    mKeywordIndent := IndentOf(ALines, APlace.Sections[0].Line);
+    mKeywordIndent := LineIndent(ALines, APlace.Sections[0].Line);
   end
   else
   begin
-    mKeywordIndent := IndentOf(ALines, mType.EndLine);
+    mKeywordIndent := LineIndent(ALines, mType.EndLine);
   end;
   if not MemberIndent(ANodes, ALines, APlace.TypeNode, mIndent) then
   begin
