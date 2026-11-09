@@ -4537,6 +4537,16 @@
       "x-parent": "editor.breadcrumbs",
       "x-issue": "#1766"
     },
+    "BreadcrumbsConditionals": {
+      "description": "Den Bedingungszweig am Cursor ({$IFDEF X}, {$IFNDEF X}, {$IF …}, im Gegenzweig {$ELSE X}, {$ELSEIF …}) als Glied hinter dem Pfad zeigen, bei verschachtelten Blöcken eines je Ebene, außen zuerst. Das Menü springt zu den Teilen des Blocks (IF, ELSE, ENDIF); ob der Zweig aktiv ist, entscheidet die Leiste nicht.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsConditionals",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1763"
+    },
     "BreadcrumbsIdeColors": {
       "description": "Brotkrumenleiste in den Farben der IDE-Werkzeugleisten (Fläche und Schrift aus dem IDE-Thema) statt der Atlas-Palette; im dunklen Thema also wie die Navigationsleiste darüber statt fast schwarz.",
       "type": "boolean",

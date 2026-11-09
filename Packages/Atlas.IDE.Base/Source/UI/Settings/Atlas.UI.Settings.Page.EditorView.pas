@@ -127,6 +127,8 @@ begin
   // Deklarationsblock der Unit (#1766).
   BindCheck('BreadcrumbsDeclarationBlocks',
     AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsDeclarationBlocks)));
+  // Bedingungszweig (#1763).
+  BindCheck('BreadcrumbsConditionals', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsConditionals)));
   BindCheck('BreadcrumbsIdeColors', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsIdeColors)));
   BindCheck('BreadcrumbsHideIdeToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsHideIdeToolbar)));
   BindKey('BreadcrumbsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand)));

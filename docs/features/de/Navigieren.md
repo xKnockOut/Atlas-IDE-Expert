@@ -26,6 +26,7 @@ Zurück zum [README](../../../README_DE.md)
 - dahinter der Unterblock am Cursor (`const`, `type`, `class var`); sein Menü springt zu den Unterblöcken des Abschnitts, ein ausdrückliches `var` beendet ihn (`editor.breadcrumbsMemberBlocks`)
 - im Rumpf einer Methode die Sichtbarkeitsmarke der Deklaration vor dem Methodenglied (`−` private, `#` protected, `+` public, `◆` published); der Hinweis nennt die genaue Sichtbarkeit und die Zeile der Deklaration, etwa „strict private · deklariert in Zeile 42“ (`editor.breadcrumbsVisibilityMark`)
 - auf Unit-Ebene Teil und Deklarationsblock am Cursor (`type`, `const`, `var`, `resourcestring`, `threadvar`, `label`, `exports`), etwa `uKunden › interface › resourcestring › sKundeFehlt`; das Menü des Blocks listet alle Blöcke der Unit mit Teil und Zeile, lokale Blöcke in Routinen zählen nicht (`editor.breadcrumbsDeclarationBlocks`)
+- am Ende der Bedingungszweig um den Cursor (`{$IFDEF MSWINDOWS}`, im Gegenzweig `{$ELSE MSWINDOWS}`, `{$ELSEIF …}`), bei verschachtelten Blöcken einer je Ebene, außen zuerst; das Menü springt zu IF, ELSE und ENDIF des Blocks. Ob der Zweig aktiv ist, entscheidet die Leiste nicht (`editor.breadcrumbsConditionals`)
 
 ### Editorleiste
 
