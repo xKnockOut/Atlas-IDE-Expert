@@ -110,6 +110,8 @@ type
     procedure RememberKeepsFailureUntilACheckSucceeds;
     [Test]
     procedure StateKeepsLastError;
+    [Test]
+    procedure FailedCheckIsDueAgainAfterAnHour;
   end;
 
 implementation
@@ -885,6 +887,23 @@ begin
   Assert.AreEqual('?', mLoaded.LastError, 'leere Fehlerart bleibt ein Fehler');
   mLoaded := TAtlasUpdateState.FromJson('{"asked":true}');
   Assert.AreEqual('', mLoaded.LastError, 'ältere Zustandsdatei');
+end;
+
+procedure TAtlasStateUpdateTests.FailedCheckIsDueAgainAfterAnHour;
+var
+  mState: TAtlasUpdateState;
+  mLast: TDateTime;
+begin
+  mLast := EncodeDateTime(2026, 11, 9, 8, 0, 0, 0);
+  mState := Default(TAtlasUpdateState);
+  mState.LastCheck := mLast;
+  Assert.IsFalse(TAtlasUpdates.IsStateDue(mState, IncHour(mLast, 1)), 'gelungen: erst nach einem Tag');
+  Assert.IsTrue(TAtlasUpdates.IsStateDue(mState, IncHour(mLast, 24)));
+  // Gescheitert (z. B. HTTP 504): nach einer Stunde wieder.
+  mState.LastError := 'HTTP 504';
+  Assert.IsFalse(TAtlasUpdates.IsStateDue(mState, IncMinute(mLast, 59)));
+  Assert.IsTrue(TAtlasUpdates.IsStateDue(mState, IncHour(mLast, 1)));
+  Assert.IsTrue(TAtlasUpdates.IsStateDue(mState, IncHour(mLast, -2)), 'Uhr zurückgestellt');
 end;
 
 procedure TAtlasStateUpdateTests.PendingOnlyWhenNewerThanInstalled;

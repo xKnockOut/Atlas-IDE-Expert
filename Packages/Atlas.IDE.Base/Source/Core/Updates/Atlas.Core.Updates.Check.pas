@@ -18,6 +18,9 @@
 // - Eine gescheiterte Abfrage merkt sich ihre Fehlerart (lastError), bis eine
 //   Abfrage gelingt. So zeigt die Zeile „Version“ „Prüfung fehlgeschlagen“
 //   statt „aktuell“: Ohne Antwort ist unbekannt, ob es eine neuere Version gibt.
+//   Nach einem Fehlschlag (etwa HTTP 504 oder eine Zeitüberschreitung, oft nur
+//   vorübergehend) ist die nächste Abfrage schon nach einer Stunde fällig statt
+//   nach einem Tag, also in der Regel beim nächsten Start der IDE.
 // Heruntergeladen und installiert wird hier nichts; das macht AtlasUpdate.exe
 // (#1519, Atlas.Core.Updates.Install).
 
@@ -75,6 +78,8 @@ type
     cReleasesUrl = TUpdateChannels.cReleasesUrl;
     cTimeoutMs = 10000;
     cMaxErrorLength = 80;
+    /// <summary>Nach einer gescheiterten Abfrage so viele Stunden bis zur nächsten.</summary>
+    cRetryHours = 1;
   public
     /// <summary>SemVer-Vergleich: negativ, 0 oder positiv; ungültige Versionen sind kleiner als gültige.</summary>
     class function Compare(const A, B: string): Integer; static;
@@ -85,6 +90,8 @@ type
     /// <summary>Fällig, wenn noch nie, seit mindestens einem Tag nicht geprüft oder die Uhr
     /// zurückgestellt wurde.</summary>
     class function IsDue(ALastCheck, ANow: TDateTime): Boolean; static;
+    /// <summary>Wie IsDue, nach einer gescheiterten Abfrage (LastError) aber schon nach cRetryHours.</summary>
+    class function IsStateDue(const AState: TAtlasUpdateState; ANow: TDateTime): Boolean; static;
     /// <summary>Adresse mit genau zwei Parametern: atlas und ide.</summary>
     class function RequestUrl(const ABase, AAtlasVersion, AIdeVersion: string): string; static;
     /// <summary>Ergebnis einer Prüfung im Zustand merken (#754): neue Version setzt Available und ChangesUrl,
@@ -248,6 +255,12 @@ begin
   Result := (ALastCheck <= 0) or (ANow - ALastCheck >= 1) or (ALastCheck > ANow);
 end;
 
+class function TAtlasUpdates.IsStateDue(const AState: TAtlasUpdateState; ANow: TDateTime): Boolean;
+begin
+  Result := IsDue(AState.LastCheck, ANow) or
+    ((AState.LastError <> '') and (ANow >= IncHour(AState.LastCheck, cRetryHours)));
+end;
+
 class function TAtlasUpdates.RequestUrl(const ABase, AAtlasVersion, AIdeVersion: string): string;
 begin
   Result := ABase + '?atlas=' + TNetEncoding.URL.Encode(AAtlasVersion) + '&ide=' +
@@ -324,7 +337,7 @@ begin
     Result.Outcome := TAtlasUpdateOutcome.Disabled;
     Exit;
   end;
-  if not IsDue(AState.LastCheck, ANow) then
+  if not IsStateDue(AState, ANow) then
   begin
     Result.Outcome := TAtlasUpdateOutcome.NotDue;
     Exit;

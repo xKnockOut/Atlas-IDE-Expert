@@ -111,7 +111,7 @@ const
      'unerwarteter Fehler',
      'AtlasUpdate.exe nicht gestartet',
      'Atlas-Update-Prüfung fehlgeschlagen (%s). Ob es eine neuere Version gibt, ist unbekannt; Atlas versucht ' +
-     'es in 24 Stunden wieder. Releases: %s'),
+     'es beim nächsten Start der IDE wieder, frühestens in einer Stunde. Releases: %s'),
     ( 'Install updates:',
      'offer',
      'prepare without asking',
@@ -177,8 +177,8 @@ const
      'module selection invalid',
      'unexpected error',
      'AtlasUpdate.exe not started',
-     'Atlas update check failed (%s). Whether a newer version exists is unknown; Atlas tries again in 24 ' +
-     'hours. Releases: %s'));
+     'Atlas update check failed (%s). Whether a newer version exists is unknown; Atlas tries again at the ' +
+     'next IDE start, after one hour at the earliest. Releases: %s'));
 
 { TAtlasUpdatesStrings }
 

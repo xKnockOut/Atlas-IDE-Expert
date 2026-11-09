@@ -329,7 +329,7 @@ var
   mQuery: TAtlasUpdateQuery;
 begin
   if (FSource = nil) or (FThread <> nil) or TAtlasShutdown.Signalled or
-    not TAtlasIdeSettings.Current.UpdatesCheck or not TAtlasUpdates.IsDue(FState.LastCheck, Now) then
+    not TAtlasIdeSettings.Current.UpdatesCheck or not TAtlasUpdates.IsStateDue(FState, Now) then
   begin
     Exit;
   end;

@@ -7,7 +7,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Behoben
-- Update-Prüfung: Eine gescheiterte Abfrage (Proxy, Zeitüberschreitung, HTTP-Fehler) zeigte in der Zeile „Version“ grün „aktuell“, obwohl Atlas gar nicht wusste, ob es eine neuere Version gibt. Jetzt steht dort gelb „Prüfung fehlgeschlagen“ mit der Fehlerart, und die Meldungsansicht nennt sie einmal.
+- Update-Prüfung: Eine gescheiterte Abfrage (Proxy, Zeitüberschreitung, HTTP-Fehler) zeigte in der Zeile „Version“ grün „aktuell“, obwohl Atlas gar nicht wusste, ob es eine neuere Version gibt. Jetzt steht dort gelb „Prüfung fehlgeschlagen“ mit der Fehlerart, und die Meldungsansicht nennt sie einmal. Nach einem Fehlschlag (etwa HTTP 504) prüft Atlas beim nächsten Start der IDE erneut, frühestens nach einer Stunde, statt einen Tag zu warten.
 
 ## [2.0.1] - 2026-11-08
 
