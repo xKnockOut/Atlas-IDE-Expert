@@ -387,6 +387,10 @@ type
     BreadcrumbsDeclarationBlocks: Boolean;
     /// <summary>Bedingungszweig ({$IFDEF …}) als Glied (#1763, editor.breadcrumbsConditionals).</summary>
     BreadcrumbsConditionals: Boolean;
+    /// <summary>Region ({$REGION}) als Glied (#1764, editor.breadcrumbsRegions).</summary>
+    BreadcrumbsRegions: Boolean;
+    /// <summary>try/except/finally und case-Zweig als Glied (#1769, editor.breadcrumbsStatements).</summary>
+    BreadcrumbsStatements: Boolean;
     /// <summary>Brotkrumenleiste in den Farben der IDE-Werkzeugleisten statt der Atlas-Palette
     /// (editor.breadcrumbsIdeColors).</summary>
     BreadcrumbsIdeColors: Boolean;
@@ -876,6 +880,8 @@ begin
   Result.BreadcrumbsVisibilityMark := True;
   Result.BreadcrumbsDeclarationBlocks := True;
   Result.BreadcrumbsConditionals := True;
+  Result.BreadcrumbsRegions := True;
+  Result.BreadcrumbsStatements := False;
   Result.BreadcrumbsIdeColors := True;
   Result.BreadcrumbsHideIdeToolbar := True;
   Result.StickyScroll := True;
@@ -905,6 +911,8 @@ begin
   AIo.Flag('BreadcrumbsVisibilityMark', BreadcrumbsVisibilityMark);
   AIo.Flag('BreadcrumbsDeclarationBlocks', BreadcrumbsDeclarationBlocks);
   AIo.Flag('BreadcrumbsConditionals', BreadcrumbsConditionals);
+  AIo.Flag('BreadcrumbsRegions', BreadcrumbsRegions);
+  AIo.Flag('BreadcrumbsStatements', BreadcrumbsStatements);
   AIo.Flag('BreadcrumbsIdeColors', BreadcrumbsIdeColors);
   AIo.Flag('BreadcrumbsHideIdeToolbar', BreadcrumbsHideIdeToolbar);
   AIo.Flag('StickyScroll', StickyScroll);

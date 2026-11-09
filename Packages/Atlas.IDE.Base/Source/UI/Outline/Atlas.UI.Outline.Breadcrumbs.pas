@@ -17,6 +17,8 @@
 //   gibt den Fokus über OnLeave an den Editor zurück.
 // - Farben über SetColors: Gutter ist die Fläche, Text/Muted die Schrift.
 // Ohne Glieder steht EmptyText gedämpft in der Leiste.
+// - Passt der Pfad nicht, fallen zuerst Glieder mit hohem Rang (Drop) weg,
+//   vorn beginnend, erst dann vorn die übrigen.
 // - Ein Glied mit Sichtbarkeitsmarke (#1765) zeigt sie vor dem Namen; der
 //   Hinweis nennt Sichtbarkeit und Zeile der Deklaration (MarkHint).
 // - Rechts darf ein Kind-Steuerelement mit alRight stehen (Editorleiste
@@ -64,6 +66,8 @@ type
     FRects: TArray<TRect>;
     /// <summary>„›“ hinter dem Glied; leer, wenn keins steht.</summary>
     FSeparators: TArray<TRect>;
+    /// <summary>Glied fällt wegen seines Rangs (Drop) weg.</summary>
+    FDropped: TArray<Boolean>;
     FFirstShown: Integer;
     FLaidOut: Boolean;
     FSelected: Integer;
@@ -78,6 +82,8 @@ type
     /// <summary>Flächen der gezeigten Glieder und ihrer „›“ ab FFirstShown, rechts bis ARight.</summary>
     procedure PlaceCrumbs(const AWidths: TArray<Integer>; ARight: Integer);
     function GetFirstShown: Integer;
+    /// <summary>Glieder nach Rang weglassen, bis AWidth passt; liefert die Breite danach.</summary>
+    function DropByRank(const AWidths: TArray<Integer>; AWidth, AAvailable: Integer): Integer;
     procedure SetEmptyText(const AValue: string);
     function TrailingSeparator: Boolean;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
@@ -110,6 +116,8 @@ type
     property Selected: Integer read FSelected;
     /// <summary>Erstes sichtbares Glied (davor „…“).</summary>
     property FirstShown: Integer read GetFirstShown;
+    /// <summary>Wird das Glied gezeigt (nicht vorn gekürzt und nicht nach Rang weggelassen)?</summary>
+    function Shown(AIndex: Integer): Boolean;
     property EmptyText: string read FEmptyText write SetEmptyText;
   end;
 
@@ -126,6 +134,8 @@ type
     FOnJump: TAtlasCrumbJumpEvent;
     FOnLeave: TProc;
     procedure DrawCrumb(AIndex: Integer);
+    /// <summary>Auswahl zum nächsten gezeigten Glied in Richtung AStep (-1, 1).</summary>
+    procedure MoveSelection(AStep: Integer);
     /// <summary>Kennzeichen des Glieds ab ALeft; liefert den linken Rand des Namens dahinter.</summary>
     function DrawBadge(const ACrumb: TAtlasCrumb; ALeft: Integer): Integer;
     procedure DrawSeparator(ALeft: Integer; const AText: string); overload;
@@ -188,7 +198,8 @@ begin
   while Result and (mIndex <= High(A)) do
   begin
     Result := (A[mIndex].Text = B[mIndex].Text) and (A[mIndex].Line = B[mIndex].Line) and
-      (A[mIndex].Character = B[mIndex].Character) and (A[mIndex].Group = B[mIndex].Group);
+      (A[mIndex].Character = B[mIndex].Character) and (A[mIndex].Group = B[mIndex].Group) and
+      (A[mIndex].Depth = B[mIndex].Depth);
     Inc(mIndex);
   end;
 end;
@@ -216,7 +227,8 @@ begin
       (A[mIndex].Current = B[mIndex].Current) and (Length(A[mIndex].Siblings) = Length(B[mIndex].Siblings)) and
       (Length(A[mIndex].Children) = Length(B[mIndex].Children)) and (A[mIndex].Implicit = B[mIndex].Implicit) and
       SamePlaces(A[mIndex].Places, B[mIndex].Places) and (A[mIndex].Mark = B[mIndex].Mark) and
-      (A[mIndex].MarkVisibility = B[mIndex].MarkVisibility) and (A[mIndex].MarkLine = B[mIndex].MarkLine);
+      (A[mIndex].MarkVisibility = B[mIndex].MarkVisibility) and (A[mIndex].MarkLine = B[mIndex].MarkLine) and
+      (A[mIndex].Drop = B[mIndex].Drop);
     mSibling := 0;
     while Result and (mSibling <= High(A[mIndex].Siblings)) do
     begin
@@ -384,7 +396,7 @@ begin
   begin
     FRects[mIndex] := TRect.Empty;
     FSeparators[mIndex] := TRect.Empty;
-    if mIndex < FFirstShown then
+    if not Shown(mIndex) then
     begin
       Continue;
     end;
@@ -410,6 +422,8 @@ begin
   FLaidOut := True;
   SetLength(FRects, Length(FCrumbs));
   SetLength(FSeparators, Length(FCrumbs));
+  FDropped := nil;
+  SetLength(FDropped, Length(FCrumbs));
   FFirstShown := 0;
   if Length(FCrumbs) = 0 then
   begin
@@ -418,10 +432,14 @@ begin
   mTotal := TotalWidth(mWidths);
   mRight_ := ContentRight;
   mAvailable := mRight_ - 2 * Scale(4);
+  mTotal := DropByRank(mWidths, mTotal, mAvailable);
   // Vorn Glieder weglassen, bis der Rest samt „…“ passt; das letzte bleibt.
   while (mTotal > mAvailable) and (FFirstShown < High(FCrumbs)) do
   begin
-    Dec(mTotal, mWidths[FFirstShown] + SeparatorWidth);
+    if not FDropped[FFirstShown] then
+    begin
+      Dec(mTotal, mWidths[FFirstShown] + SeparatorWidth);
+    end;
     if FFirstShown = 0 then
     begin
       Inc(mTotal, EllipsisWidth + SeparatorWidth);
@@ -429,10 +447,39 @@ begin
     Inc(FFirstShown);
   end;
   PlaceCrumbs(mWidths, mRight_);
-  if FSelected < FFirstShown then
+  if not Shown(FSelected) then
   begin
     FSelected := High(FCrumbs);
   end;
+end;
+
+function TAtlasBreadcrumbLayout.DropByRank(const AWidths: TArray<Integer>; AWidth, AAvailable: Integer): Integer;
+var
+  mRank, mIndex: Integer;
+begin
+  Result := AWidth;
+  for mRank := 2 downto 1 do
+  begin
+    // Das letzte Glied bleibt immer.
+    for mIndex := 0 to High(FCrumbs) - 1 do
+    begin
+      if Result <= AAvailable then
+      begin
+        Exit;
+      end;
+      if FCrumbs[mIndex].Drop = mRank then
+      begin
+        FDropped[mIndex] := True;
+        Dec(Result, AWidths[mIndex] + SeparatorWidth);
+      end;
+    end;
+  end;
+end;
+
+function TAtlasBreadcrumbLayout.Shown(AIndex: Integer): Boolean;
+begin
+  Result := (AIndex >= FFirstShown) and (AIndex <= High(FCrumbs)) and
+    ((AIndex > High(FDropped)) or not FDropped[AIndex]);
 end;
 
 function TAtlasBreadcrumbLayout.CrumbRect(AIndex: Integer): TRect;
@@ -622,6 +669,10 @@ begin
   end;
   for mIndex := FFirstShown to High(FCrumbs) do
   begin
+    if not Shown(mIndex) then
+    begin
+      Continue;
+    end;
     DrawCrumb(mIndex);
     if not FSeparators[mIndex].IsEmpty then
     begin
@@ -770,26 +821,34 @@ begin
   Invalidate;
 end;
 
+procedure TAtlasBreadcrumbBar.MoveSelection(AStep: Integer);
+var
+  mIndex: Integer;
+begin
+  mIndex := FSelected + AStep;
+  while (mIndex >= 0) and (mIndex <= High(FCrumbs)) and not Shown(mIndex) do
+  begin
+    Inc(mIndex, AStep);
+  end;
+  if (mIndex >= 0) and (mIndex <= High(FCrumbs)) then
+  begin
+    FSelected := mIndex;
+    Invalidate;
+  end;
+end;
+
 procedure TAtlasBreadcrumbBar.KeyDown(var Key: Word; Shift: TShiftState);
 begin
   inherited KeyDown(Key, Shift);
   case Key of
     VK_LEFT:
-      if FSelected > FFirstShown then
-      begin
-        Dec(FSelected);
-        Invalidate;
-      end;
+      MoveSelection(-1);
     VK_RIGHT:
-      if FSelected < High(FCrumbs) then
-      begin
-        Inc(FSelected);
-        Invalidate;
-      end;
+      MoveSelection(1);
     VK_HOME:
       begin
-        FSelected := Min(FFirstShown, High(FCrumbs));
-        Invalidate;
+        FSelected := -1;
+        MoveSelection(1);
       end;
     VK_END:
       begin

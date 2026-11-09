@@ -715,7 +715,11 @@ type
     // Deklarationsblock der Unit als Glied (#1766).
     SettingsBreadcrumbsDeclarationBlocks, BreadcrumbsPlaceLine,
     // Bedingungszweig als Glied (#1763).
-    SettingsBreadcrumbsConditionals, BreadcrumbsPlaceLineOnly);
+    SettingsBreadcrumbsConditionals, BreadcrumbsPlaceLineOnly,
+    // Region als Glied (#1764).
+    SettingsBreadcrumbsRegions, BreadcrumbsRegionUnnamed,
+    // try/except/finally und case-Zweig als Glied (#1769).
+    SettingsBreadcrumbsStatements);
 
   TAtlasStrings = class
   private
@@ -2391,7 +2395,10 @@ const
      'Deklarationsblock der Unit (type, const, var, resourcestring …) als Glied zeigen',
      '%s · Zeile %d',
      'Bedingungszweig ({$IFDEF …}, {$ELSE …}) am Cursor als Glied zeigen',
-     'Zeile %d'),
+     'Zeile %d',
+     'Region ({$REGION}) am Cursor als Glied zeigen',
+     'Region (Z. %d)',
+     'try/except/finally und case-Zweig im Methodenrumpf als Glied zeigen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3983,7 +3990,10 @@ const
      'Show the declaration block of the unit (type, const, var, resourcestring …) as a part',
      '%s · line %d',
      'Show the conditional branch ({$IFDEF …}, {$ELSE …}) at the cursor as a part',
-     'line %d'));
+     'line %d',
+     'Show the region ({$REGION}) at the cursor as a part',
+     'Region (l. %d)',
+     'Show try/except/finally and the case branch in the method body as parts'));
 
 { TAtlasStrings }
 

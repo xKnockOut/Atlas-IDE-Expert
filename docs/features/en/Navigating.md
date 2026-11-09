@@ -20,6 +20,9 @@ Back to the [README](../../../README.md)
 - Inside a method body, the visibility mark of its declaration in front of the method part (`−` private, `#` protected, `+` public, `◆` published); the hint names the exact visibility and the line of the declaration, such as “strict private · declared in line 42” (`editor.breadcrumbsVisibilityMark`)
 - At unit level, the section and the declaration block at the cursor (`type`, `const`, `var`, `resourcestring`, `threadvar`, `label`, `exports`), such as `uKunden › interface › resourcestring › sKundeFehlt`; the block menu lists all blocks of the unit with section and line, and local blocks inside routines do not count (`editor.breadcrumbsDeclarationBlocks`)
 - At the end, the conditional branch around the cursor (`{$IFDEF MSWINDOWS}`, in the other branch `{$ELSE MSWINDOWS}`, `{$ELSEIF …}`), one part per level for nested blocks, outermost first; the menu jumps to IF, ELSE and ENDIF of the block. The bar does not decide whether the branch is active (`editor.breadcrumbsConditionals`)
+- Behind the unit or section, the innermost `{$REGION}` around the cursor, such as `uKunden › Database access › TKunde › Save`; its menu lists all regions of the unit with their line, nested ones indented, and a region without a name is called “Region (l. n)” (`editor.breadcrumbsRegions`)
+- Optionally, inside a method body, `try`, `except`, `finally` and the case branch (`case Kind of › akCompany`), at most the innermost three; the menu jumps to the parts of the try block or to all branches of the case (`editor.breadcrumbsStatements`, off by default)
+- When the bar gets too narrow, these frames go first, then the other additional parts, and only then parts at the front
 
 ### Editor toolbar
 
