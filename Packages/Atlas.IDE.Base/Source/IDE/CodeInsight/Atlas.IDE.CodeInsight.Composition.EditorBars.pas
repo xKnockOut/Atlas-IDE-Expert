@@ -23,6 +23,9 @@ uses
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Outline.Breadcrumbs,
+  Atlas.IDE.Outline.CrumbMenu,
+  Atlas.IDE.Results.Commands,
+  Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Outline.StickyScroll,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.StatusBar.Service,
@@ -135,6 +138,23 @@ begin
   RequestStatusRefresh;
 end;
 
+/// <summary>Haken des Kontextmenüs der Brotkrumen (#1786): Umbenennen, Verwendungen, Formulartext.</summary>
+function CrumbMenuHooks: TAtlasCrumbMenuHooks;
+begin
+  Result := Default(TAtlasCrumbMenuHooks);
+  Result.Rename := RenameSymbol;
+  Result.References :=
+    procedure(const AFileName: string; ALine, ACharacter: Integer; const AName: string)
+    begin
+      TAtlasIdeResults.ShowReferences(AFileName, ALine, ACharacter, AName);
+    end;
+  Result.CurrentText :=
+    function(AFileName: string): string
+    begin
+      Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
+    end;
+end;
+
 /// <summary>Verlauf, Einblenden, Gliederung, Brotkrumen, Editor- und Statusleiste und mitlaufender Kopf.</summary>
 procedure InstallBars;
 begin
@@ -145,7 +165,7 @@ begin
   // Gemeinsamer Stand der Gliederung, Gliederungsfenster (#537) und Brotkrumenleiste (#590).
   TAtlasIdeOutlineCache.Install(ActiveSession);
   TAtlasIdeOutline.Install;
-  TAtlasIdeBreadcrumbs.Install(RenameSymbol);
+  TAtlasIdeBreadcrumbs.Install(CrumbMenuHooks);
   // Atlas-Editorleiste (#1101) nach den Brotkrumen (Position „in der Brotkrumenzeile“).
   StartEditorToolbar;
   StartStatusBar;

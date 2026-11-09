@@ -6,10 +6,13 @@
 // Ergebnisfenster, Umbenennen und Designer.
 // - Kopieren: Name mit Besitzer, mit Unit davor, Kopf der Routine, Pfad der
 //   ganzen Leiste; am Unit-Glied Unit-Name und Dateipfad.
+// - Ergebnisfenster, Umbenennen und Formulartext kommen als Haken aus der
+//   Komposition (TAtlasCrumbMenuHooks), damit die Gliederung nicht von Editor
+//   und Ergebnissen abhängt (keine Feature-Zyklen).
 // - „Verwendungen suchen“ fragt am Namen der Deklaration und zeigt das
 //   Ergebnis im Ergebnisfenster wie „Verwendungen suchen“ am Cursor.
 // - „Umbenennen …“ setzt den Cursor auf den Namen und ruft das Umbenennen
-//   der Komposition (ARename), damit Rückfrage und Vorschau wie gewohnt laufen.
+//   der Komposition, damit Rückfrage und Vorschau wie gewohnt laufen.
 // - „Komponente im Designer zeigen“ gibt es für Komponentenfelder und
 //   Ereignisbehandler, die im Formulartext (.dfm/.fmx neben der Unit, Stand
 //   des Designers) vorkommen; der Designer geht auf und wählt die Komponente.
@@ -26,14 +29,27 @@ uses
   Atlas.Core.Outline.Breadcrumbs;
 
 type
+  /// <summary>Verwendungen am Namen (Datei, Zeile, Spalte 0-basiert, Name) im Ergebnisfenster zeigen.</summary>
+  TAtlasCrumbReferences = reference to procedure(const AFileName: string; ALine, ACharacter: Integer;
+    const AName: string);
+
+  /// <summary>Was das Menü von außerhalb der Gliederung braucht; die Komposition setzt es.</summary>
+  TAtlasCrumbMenuHooks = record
+    /// <summary>Symbol am Cursor umbenennen (mit Rückfrage und Vorschau).</summary>
+    Rename: TProc;
+    References: TAtlasCrumbReferences;
+    /// <summary>Aktueller Text einer Datei (offener Puffer, Stand des Designers, sonst Platte); '' ohne.</summary>
+    CurrentText: TFunc<string, string>;
+  end;
+
   TAtlasIdeCrumbMenu = class
   private class var
     FState: TObject;
   public
-    /// <summary>Menü für Glied AIndex aus ACrumbs an der Bildschirmstelle APoint; ARename benennt das Symbol am
-    /// Cursor um.</summary>
+    /// <summary>Menü für Glied AIndex aus ACrumbs an der Bildschirmstelle APoint.</summary>
     class procedure Show(const APoint: TPoint; const AFileName: string; const ANodes: TAtlasOutlineNodes;
-      const ALines: TArray<string>; const ACrumbs: TAtlasCrumbs; AIndex: Integer; const ARename: TProc); static;
+      const ALines: TArray<string>; const ACrumbs: TAtlasCrumbs; AIndex: Integer;
+      const AHooks: TAtlasCrumbMenuHooks); static;
     /// <summary>Gibt das zuletzt gezeigte Menü frei.</summary>
     class procedure Release; static;
   end;
@@ -47,9 +63,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Outline.CrumbMenu,
   Atlas.UI.Strings,
-  Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Results.Commands;
+  Atlas.IDE.Foundation.Navigation;
 
 const
   cTexts: array[TAtlasCrumbAction] of TAtlasTextId = (TAtlasTextId.CrumbCopyName, TAtlasTextId.CrumbCopyWithUnit,
@@ -72,7 +86,7 @@ type
     FCrumbs: TAtlasCrumbs;
     FIndex: Integer;
     FComponent: string;
-    FRename: TProc;
+    FHooks: TAtlasCrumbMenuHooks;
     procedure Clicked(Sender: TObject);
     procedure Run(AAction: TAtlasCrumbAction);
     function Crumb: TAtlasCrumb;
@@ -82,22 +96,26 @@ type
     procedure ShowComponent;
   public
     constructor Create(const AFileName: string; const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
-      const ACrumbs: TAtlasCrumbs; AIndex: Integer; const ARename: TProc);
+      const ACrumbs: TAtlasCrumbs; AIndex: Integer; const AHooks: TAtlasCrumbMenuHooks);
     destructor Destroy; override;
     procedure Popup(const APoint: TPoint);
   end;
 
-/// <summary>Formulartext neben der Unit (.dfm, sonst .fmx); '' ohne.</summary>
-function FormTextOf(const AFileName: string): string;
+/// <summary>Formulartext neben der Unit (.dfm, sonst .fmx) über ACurrentText; '' ohne.</summary>
+function FormTextOf(const AFileName: string; const ACurrentText: TFunc<string, string>): string;
 begin
   Result := '';
+  if not Assigned(ACurrentText) then
+  begin
+    Exit;
+  end;
   if FileExists(ChangeFileExt(AFileName, '.dfm')) then
   begin
-    Result := TAtlasIdeWorkspaceEdit.CurrentText(ChangeFileExt(AFileName, '.dfm'));
+    Result := ACurrentText(ChangeFileExt(AFileName, '.dfm'));
   end
   else if FileExists(ChangeFileExt(AFileName, '.fmx')) then
   begin
-    Result := TAtlasIdeWorkspaceEdit.CurrentText(ChangeFileExt(AFileName, '.fmx'));
+    Result := ACurrentText(ChangeFileExt(AFileName, '.fmx'));
   end;
 end;
 
@@ -132,7 +150,7 @@ end;
 { TCrumbMenuState }
 
 constructor TCrumbMenuState.Create(const AFileName: string; const ANodes: TAtlasOutlineNodes;
-  const ALines: TArray<string>; const ACrumbs: TAtlasCrumbs; AIndex: Integer; const ARename: TProc);
+  const ALines: TArray<string>; const ACrumbs: TAtlasCrumbs; AIndex: Integer; const AHooks: TAtlasCrumbMenuHooks);
 begin
   inherited Create;
   FFileName := AFileName;
@@ -140,7 +158,7 @@ begin
   FLines := ALines;
   FCrumbs := ACrumbs;
   FIndex := AIndex;
-  FRename := ARename;
+  FHooks := AHooks;
   FMenu := TPopupMenu.Create(nil);
 end;
 
@@ -178,7 +196,8 @@ begin
   FComponent := '';
   if TAtlasCrumbMenu.MemberOf(FNodes, Crumb.Node) <> '' then
   begin
-    FComponent := TAtlasCrumbMenu.ComponentOf(FormTextOf(FFileName), TAtlasCrumbMenu.MemberOf(FNodes, Crumb.Node));
+    FComponent := TAtlasCrumbMenu.ComponentOf(FormTextOf(FFileName, FHooks.CurrentText),
+      TAtlasCrumbMenu.MemberOf(FNodes, Crumb.Node));
   end;
   mActions := TAtlasCrumbMenu.ActionsOf(FNodes, Crumb, FComponent <> '');
   for mAction in cOrder do
@@ -235,16 +254,16 @@ begin
     TAtlasCrumbAction.ShowComponent:
       ShowComponent;
     TAtlasCrumbAction.FindReferences:
-      if mTarget >= 0 then
+      if (mTarget >= 0) and Assigned(FHooks.References) then
       begin
-        TAtlasIdeResults.ShowReferences(FFileName, FNodes[mTarget].NameLine, FNodes[mTarget].NameCharacter,
+        FHooks.References(FFileName, FNodes[mTarget].NameLine, FNodes[mTarget].NameCharacter,
           TAtlasBreadcrumbs.ShortName(FNodes[mTarget].Name));
       end;
     TAtlasCrumbAction.Rename:
-      if (mTarget >= 0) and Assigned(FRename) then
+      if (mTarget >= 0) and Assigned(FHooks.Rename) then
       begin
         TAtlasIdeNavigation.GoToLocation(FFileName, FNodes[mTarget].NameLine, FNodes[mTarget].NameCharacter);
-        FRename();
+        FHooks.Rename();
       end;
   end;
 end;
@@ -277,14 +296,14 @@ end;
 
 class procedure TAtlasIdeCrumbMenu.Show(const APoint: TPoint; const AFileName: string;
   const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; const ACrumbs: TAtlasCrumbs; AIndex: Integer;
-  const ARename: TProc);
+  const AHooks: TAtlasCrumbMenuHooks);
 begin
   Release;
   if (AIndex < 0) or (AIndex > High(ACrumbs)) then
   begin
     Exit;
   end;
-  FState := TCrumbMenuState.Create(AFileName, ANodes, ALines, ACrumbs, AIndex, ARename);
+  FState := TCrumbMenuState.Create(AFileName, ANodes, ALines, ACrumbs, AIndex, AHooks);
   TCrumbMenuState(FState).Popup(APoint);
 end;
 

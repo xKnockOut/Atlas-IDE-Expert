@@ -33,8 +33,8 @@
 //   #1768); geändert wird über TAtlasIdeSectionEdit.
 // - Rechtsklick, Menütaste oder Umschalt+F10 auf ein Glied öffnet das
 //   Kontextmenü TAtlasIdeCrumbMenu (editor.breadcrumbsContextMenu, #1786):
-//   kopieren, Verwendungen suchen, Umbenennen (über ARename aus Install),
-//   Komponente im Designer.
+//   kopieren, Verwendungen suchen, Umbenennen, Komponente im Designer
+//   (Haken der Komposition aus Install).
 // - Eigene Sicherung TAtlasFeature.Breadcrumbs: Fehler anderer Editorfunktionen
 //   (früher gemeinsam Editorbefehle) schalten die Leiste nicht mehr still ab.
 //   Löst die eigene Sicherung aus, sagt die Leiste das, statt stehen zu
@@ -57,17 +57,17 @@
 interface
 
 uses
-  System.SysUtils;
+  Atlas.IDE.Outline.CrumbMenu;
 
 type
   TAtlasIdeBreadcrumbs = class
   private class var
     FState: TObject;
-    FRename: TProc;
+    FMenuHooks: TAtlasCrumbMenuHooks;
   public
-    /// <summary>Den Server fragt TAtlasIdeOutlineCache (vorher installieren). ARename benennt das Symbol am
-    /// Cursor um (Kontextmenü, #1786).</summary>
-    class procedure Install(const ARename: TProc); static;
+    /// <summary>Den Server fragt TAtlasIdeOutlineCache (vorher installieren). AMenuHooks bedienen das
+    /// Kontextmenü (#1786).</summary>
+    class procedure Install(const AMenuHooks: TAtlasCrumbMenuHooks); static;
     class procedure Uninstall; static;
     class procedure ApplySettings; static;
     class procedure ThemeChanged; static;
@@ -81,6 +81,7 @@ implementation
 
 uses
   Winapi.Windows,
+  System.SysUtils,
   System.Classes,
   System.Types,
   System.Generics.Collections,
@@ -104,7 +105,6 @@ uses
   Atlas.UI.Outline.NavigationToolbar,
   Atlas.IDE.Outline.NavigationOption,
   Atlas.IDE.Outline.SectionEdit,
-  Atlas.IDE.Outline.CrumbMenu,
   Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
@@ -869,7 +869,7 @@ begin
   begin
     Exit;
   end;
-  TAtlasIdeCrumbMenu.Show(APoint, FFileName, FNodes, FLines, ABar.Crumbs, AIndex, TAtlasIdeBreadcrumbs.FRename);
+  TAtlasIdeCrumbMenu.Show(APoint, FFileName, FNodes, FLines, ABar.Crumbs, AIndex, TAtlasIdeBreadcrumbs.FMenuHooks);
 end;
 
 /// <summary>Menü erst nach dem Klick öffnen: Die IDE holt den Fokus in den Editor zurück; ein sofort geöffnetes
@@ -1101,10 +1101,10 @@ begin
   Result := TAtlasIdeSettings.Current.Breadcrumbs;
 end;
 
-class procedure TAtlasIdeBreadcrumbs.Install(const ARename: TProc);
+class procedure TAtlasIdeBreadcrumbs.Install(const AMenuHooks: TAtlasCrumbMenuHooks);
 begin
   FreeAndNil(FState);
-  FRename := ARename;
+  FMenuHooks := AMenuHooks;
   // Auch bei ausgelöster Sicherung: Die Leiste zeigt dann den Hinweis (ShowDisabled).
   if Enabled then
   begin
@@ -1120,7 +1120,7 @@ end;
 class procedure TAtlasIdeBreadcrumbs.Uninstall;
 begin
   FreeAndNil(FState);
-  FRename := nil;
+  FMenuHooks := Default(TAtlasCrumbMenuHooks);
 end;
 
 class procedure TAtlasIdeBreadcrumbs.ApplySettings;
