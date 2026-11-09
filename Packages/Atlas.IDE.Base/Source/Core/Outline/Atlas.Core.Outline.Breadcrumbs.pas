@@ -53,6 +53,9 @@
 // - Hat eine Routine Überladungen im selben Typ bzw. auf derselben Ebene,
 //   tragen Overloads alle in Quelltextreihenfolge und Overload die Stelle
 //   des Glieds darin (#1784, TAtlasOverloads); die Leiste zeigt „(2/3)“.
+// - Interfaces nennt die Interface-Methoden, die ein Methodenglied erfüllt
+//   (#1785); Path lässt das Feld leer, die IDE trägt es aus der Antwort des
+//   Servers ein (TAtlasOutlineInterfaces.TargetsOf).
 // - Drop legt fest, welche Glieder die Leiste bei Platzmangel zuerst weglässt:
 //   die Rahmen im Rumpf, dann die übrigen zusätzlichen Glieder, dann von vorn.
 
@@ -62,7 +65,8 @@ uses
   System.SysUtils,
   Atlas.Core.Style.Palette,
   Atlas.Core.Completion.Presentation,
-  Atlas.Core.Outline.Model;
+  Atlas.Core.Outline.Model,
+  Atlas.Core.Outline.Interfaces;
 
 type
   /// <summary>Sprungziel eines Glieds ohne Knoten der Gliederung (Sichtbarkeitsabschnitt, #1759).</summary>
@@ -121,6 +125,8 @@ type
     Overloads: TArray<Integer>;
     /// <summary>Index von Node in Overloads; -1 ohne Überladung.</summary>
     Overload: Integer;
+    /// <summary>Interface-Methoden, die die Methode erfüllt (#1785); leer ohne.</summary>
+    Interfaces: TAtlasInterfaceTargets;
     /// <summary>Rang beim Kürzen der Leiste: höhere fallen zuerst weg (2 = Rahmen im Rumpf, 1 = übrige
     /// zusätzliche Glieder), 0 = erst danach von vorn.</summary>
     Drop: Integer;

@@ -4617,6 +4617,16 @@
       "x-parent": "editor.breadcrumbs",
       "x-issue": "#1784"
     },
+    "BreadcrumbsInterfaces": {
+      "description": "Erfüllt eine Methode Interface-Methoden, trägt ihr Glied ganz rechts die Marke „[IKunde]“, bei mehreren „[IKunde +1]“. Der Hinweis nennt je Interface-Methode Unit und Zeile; Klick auf die Marke (oder Alt+↓ mit Fokus) öffnet „Erfüllt“ mit allen Interface-Methoden, Enter springt zur Deklaration im Interface, auch in anderen Units. Zuordnungen wie procedure IKunde.Speichern = Sichern und vererbte Interfaces zählen mit. Der Server liefert die Angaben mit der Gliederung nach einer Tipppause, nicht bei jeder Caret-Bewegung.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsInterfaces",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1785"
+    },
     "BreadcrumbsIdeColors": {
       "description": "Brotkrumenleiste in den Farben der IDE-Werkzeugleisten (Fläche und Schrift aus dem IDE-Thema) statt der Atlas-Palette; im dunklen Thema also wie die Navigationsleiste darüber statt fast schwarz.",
       "type": "boolean",

@@ -41,6 +41,11 @@
 // - Ein Glied mit Überladungen (#1784) zeigt hinter dem Namen den Zähler
 //   „(2/3)“. Klick auf den Zähler (Teil CounterPart + i) bzw. Umschalt+↓ mit
 //   Fokus meldet OnOpenOverloads; der Hinweis ist OverloadHint.
+// - Ein Methodenglied, das Interface-Methoden erfüllt (#1785), zeigt ganz
+//   rechts die Marke „[IKunde]“ bzw. „[IKunde +1]“. Klick darauf (Teil
+//   InterfacePart + i) bzw. Alt+↓ mit Fokus meldet OnOpenInterfaces; der
+//   Hinweis nennt je Interface-Methode Unit und Zeile (InterfaceHint), darunter
+//   InterfaceKeyHint.
 
 interface
 
@@ -134,10 +139,15 @@ type
     /// <summary>Teil des Zählers der Überladungen (#1784) in Glied i: CounterPart + i (unter SeparatorPart).
     /// </summary>
     cCounterPart = $8000;
+    /// <summary>Teil der Interface-Marke (#1785) in Glied i: InterfacePart + i (unter CounterPart).</summary>
+    cInterfacePart = $4000;
   private
     FCrumbHint: string;
     FOverloadHint: string;
     FOnOpenOverloads: TAtlasCrumbMenuEvent;
+    FInterfaceHint: string;
+    FInterfaceKeyHint: string;
+    FOnOpenInterfaces: TAtlasCrumbMenuEvent;
     FSeparatorHint: string;
     FMarkHint: string;
     FOnOpenMenu: TAtlasCrumbMenuEvent;
@@ -150,6 +160,17 @@ type
     function CounterRect(AIndex: Integer): TRect;
     /// <summary>Glied, dessen Zähler der Teil APart ist; -1 sonst.</summary>
     function CounterOf(APart: Integer): Integer;
+    /// <summary>Fläche des Texts ATail im Glied (Client), vor dem nur noch AAfter steht; leer ohne ATail.</summary>
+    function TailRect(AIndex: Integer; const ATail, AAfter: string): TRect;
+    /// <summary>Fläche der Interface-Marke im Glied (Client, #1785); leer ohne Marke.</summary>
+    function InterfaceRect(AIndex: Integer): TRect;
+    /// <summary>Glied, dessen Interface-Marke der Teil APart ist; -1 sonst.</summary>
+    function InterfaceOf(APart: Integer): Integer;
+    /// <summary>Hinweis über der Interface-Marke des Glieds: je Interface-Methode eine Zeile, dann die Bedienung.
+    /// </summary>
+    function InterfaceHintOf(AIndex: Integer): string;
+    /// <summary>Hervorhebung des Teils unter der Maus (Zähler, Interface-Marke).</summary>
+    procedure DrawHotPart(const ARect: TRect);
     /// <summary>Auswahl zum nächsten gezeigten Glied in Richtung AStep (-1, 1).</summary>
     procedure MoveSelection(AStep: Integer);
     /// <summary>Kennzeichen des Glieds ab ALeft; liefert den linken Rand des Namens dahinter.</summary>
@@ -180,6 +201,9 @@ type
     procedure OpenChildren(AIndex: Integer);
     /// <summary>Menü der Überladungen des Glieds unter dessen Zähler öffnen, wenn es welche hat (#1784).</summary>
     procedure OpenOverloads(AIndex: Integer);
+    /// <summary>Menü der erfüllten Interface-Methoden unter der Marke öffnen, wenn das Glied eine hat (#1785).
+    /// </summary>
+    procedure OpenInterfaces(AIndex: Integer);
     /// <summary>Zum Glied springen (OnJump), wenn es einen Knoten hat oder die Unit ist.</summary>
     procedure Jump(AIndex: Integer; ADeclaration: Boolean);
     /// <summary>Hinweis über einem Glied bzw. über einem „›“ mit Kindern.</summary>
@@ -192,6 +216,12 @@ type
     /// <summary>Hinweis über dem Zähler der Überladungen (#1784), Format mit dem Namen (%s).</summary>
     property OverloadHint: string read FOverloadHint write FOverloadHint;
     property OnOpenOverloads: TAtlasCrumbMenuEvent read FOnOpenOverloads write FOnOpenOverloads;
+    /// <summary>Hinweis je erfüllter Interface-Methode (#1785), Format mit Name (%s), Datei (%s) und Zeile (%d).
+    /// </summary>
+    property InterfaceHint: string read FInterfaceHint write FInterfaceHint;
+    /// <summary>Letzte Zeile des Hinweises über der Interface-Marke (Bedienung).</summary>
+    property InterfaceKeyHint: string read FInterfaceKeyHint write FInterfaceKeyHint;
+    property OnOpenInterfaces: TAtlasCrumbMenuEvent read FOnOpenInterfaces write FOnOpenInterfaces;
     property OnJump: TAtlasCrumbJumpEvent read FOnJump write FOnJump;
     /// <summary>Rechtsklick-Menü am Glied (#1786); APoint ist die Stelle am Bildschirm.</summary>
     property OnContextMenu: TAtlasCrumbMenuEvent read FOnContextMenu write FOnContextMenu;
@@ -202,7 +232,8 @@ implementation
 
 uses
   System.Math,
-  Vcl.Forms;
+  Vcl.Forms,
+  Atlas.Core.Outline.Interfaces;
 
 const
   cSeparator = '›';
@@ -240,11 +271,21 @@ begin
   end;
 end;
 
-/// <summary>Angezeigter Text des Glieds: Sichtbarkeitsmarke (#1765), Name und Zähler der Überladungen
-/// (#1784).</summary>
+/// <summary>Interface-Marke (#1785) mit Leerzeichen davor, etwa „ [IKunde]“; leer ohne.</summary>
+function InterfaceText(const ACrumb: TAtlasCrumb): string;
+begin
+  Result := TAtlasOutlineInterfaces.MarkText(ACrumb.Interfaces);
+  if Result <> '' then
+  begin
+    Result := ' ' + Result;
+  end;
+end;
+
+/// <summary>Angezeigter Text des Glieds: Sichtbarkeitsmarke (#1765), Name, Zähler der Überladungen (#1784) und
+/// Interface-Marke (#1785).</summary>
 function CrumbCaption(const ACrumb: TAtlasCrumb): string;
 begin
-  Result := ACrumb.Text + CounterText(ACrumb);
+  Result := ACrumb.Text + CounterText(ACrumb) + InterfaceText(ACrumb);
   if ACrumb.Mark <> '' then
   begin
     Result := ACrumb.Mark + ' ' + Result;
@@ -266,7 +307,8 @@ begin
       SamePlaces(A[mIndex].Places, B[mIndex].Places) and (A[mIndex].Mark = B[mIndex].Mark) and
       (A[mIndex].MarkVisibility = B[mIndex].MarkVisibility) and (A[mIndex].MarkLine = B[mIndex].MarkLine) and
       (A[mIndex].Drop = B[mIndex].Drop) and (A[mIndex].SectionType = B[mIndex].SectionType) and
-      (A[mIndex].Overload = B[mIndex].Overload) and (Length(A[mIndex].Overloads) = Length(B[mIndex].Overloads));
+      (A[mIndex].Overload = B[mIndex].Overload) and (Length(A[mIndex].Overloads) = Length(B[mIndex].Overloads)) and
+      (InterfaceText(A[mIndex]) = InterfaceText(B[mIndex]));
     mSibling := 0;
     while Result and (mSibling <= High(A[mIndex].Siblings)) do
     begin
@@ -677,15 +719,14 @@ begin
   begin
     Canvas.Font.Style := Canvas.Font.Style + [fsItalic];
   end;
-  // Zähler der Überladungen (#1784) unter der Maus: eigene Hervorhebung.
+  // Zähler der Überladungen (#1784) bzw. Interface-Marke (#1785) unter der Maus: eigene Hervorhebung.
   if Hot = cCounterPart + AIndex then
   begin
-    mPart := CounterRect(AIndex);
-    Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := ToColor(Colors.Selection);
-    Canvas.Pen.Color := ToColor(Colors.Accent);
-    Canvas.RoundRect(mPart.Left, mPart.Top + Scale(3), mPart.Right, mPart.Bottom - Scale(3), Scale(4), Scale(4));
-    Canvas.Brush.Style := bsClear;
+    DrawHotPart(CounterRect(AIndex));
+  end
+  else if Hot = cInterfacePart + AIndex then
+  begin
+    DrawHotPart(InterfaceRect(AIndex));
   end;
   mPart := Rect(mLeft_, 0, mArea.Right - Scale(2), ClientHeight);
   DrawText(Canvas.Handle, PChar(CrumbCaption(mCrumb)), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
@@ -735,18 +776,26 @@ begin
     (TAtlasBreadcrumbs.HasMenu(FCrumbs[AIndex]) or (FCrumbs[AIndex].Node >= 0));
 end;
 
-function TAtlasBreadcrumbBar.CounterRect(AIndex: Integer): TRect;
+procedure TAtlasBreadcrumbBar.DrawHotPart(const ARect: TRect);
+begin
+  if ARect.IsEmpty then
+  begin
+    Exit;
+  end;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Selection);
+  Canvas.Pen.Color := ToColor(Colors.Accent);
+  Canvas.RoundRect(ARect.Left, ARect.Top + Scale(3), ARect.Right, ARect.Bottom - Scale(3), Scale(4), Scale(4));
+  Canvas.Brush.Style := bsClear;
+end;
+
+function TAtlasBreadcrumbBar.TailRect(AIndex: Integer; const ATail, AAfter: string): TRect;
 var
   mArea: TRect;
-  mText: string;
+  mEnd: Integer;
 begin
   mArea := CrumbRect(AIndex);
-  if mArea.IsEmpty then
-  begin
-    Exit(TRect.Empty);
-  end;
-  mText := CounterText(FCrumbs[AIndex]);
-  if mText = '' then
+  if mArea.IsEmpty or (ATail = '') then
   begin
     Exit(TRect.Empty);
   end;
@@ -755,10 +804,57 @@ begin
   begin
     Canvas.Font.Style := [fsBold];
   end;
-  // Der Zähler steht rechts im Glied (Breite ohne das führende Leerzeichen, dazu Rand).
-  Result := Rect(mArea.Right - Scale(4) - Canvas.TextWidth(Trim(mText)) - Scale(4), mArea.Top,
-    mArea.Right - Scale(2), mArea.Bottom);
+  // Rechts im Glied, vor AAfter (Breite ohne das führende Leerzeichen, dazu Rand).
+  mEnd := mArea.Right - Scale(4);
+  if AAfter <> '' then
+  begin
+    mEnd := mEnd - Canvas.TextWidth(AAfter);
+  end;
+  Result := Rect(mEnd - Canvas.TextWidth(Trim(ATail)) - Scale(4), mArea.Top, mEnd + Scale(2), mArea.Bottom);
   Canvas.Font := Font;
+end;
+
+function TAtlasBreadcrumbBar.CounterRect(AIndex: Integer): TRect;
+begin
+  Result := TailRect(AIndex, CounterText(FCrumbs[AIndex]), InterfaceText(FCrumbs[AIndex]));
+end;
+
+function TAtlasBreadcrumbBar.InterfaceRect(AIndex: Integer): TRect;
+begin
+  Result := TailRect(AIndex, InterfaceText(FCrumbs[AIndex]), '');
+end;
+
+function TAtlasBreadcrumbBar.InterfaceOf(APart: Integer): Integer;
+begin
+  Result := -1;
+  if (APart >= cInterfacePart) and (APart < cCounterPart) and (APart - cInterfacePart <= High(FCrumbs)) then
+  begin
+    Result := APart - cInterfacePart;
+  end;
+end;
+
+function TAtlasBreadcrumbBar.InterfaceHintOf(AIndex: Integer): string;
+var
+  mTarget: TAtlasInterfaceTarget;
+begin
+  // Je Interface-Methode eine Zeile, darunter die Bedienung.
+  Result := '';
+  if FInterfaceHint = '' then
+  begin
+    Exit;
+  end;
+  for mTarget in FCrumbs[AIndex].Interfaces do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + sLineBreak;
+    end;
+    Result := Result + Format(FInterfaceHint, [mTarget.Name, ExtractFileName(mTarget.FileName), mTarget.Line + 1]);
+  end;
+  if FInterfaceKeyHint <> '' then
+  begin
+    Result := Result + sLineBreak + FInterfaceKeyHint;
+  end;
 end;
 
 function TAtlasBreadcrumbBar.CounterOf(APart: Integer): Integer;
@@ -785,8 +881,13 @@ begin
   begin
     Exit(cPartNone);
   end;
+  mCounter := InterfaceRect(Result);
+  if not mCounter.IsEmpty and (X >= mCounter.Left) and Assigned(FOnOpenInterfaces) then
+  begin
+    Exit(cInterfacePart + Result);
+  end;
   mCounter := CounterRect(Result);
-  if not mCounter.IsEmpty and (X >= mCounter.Left) and Assigned(FOnOpenOverloads) then
+  if not mCounter.IsEmpty and (X >= mCounter.Left) and (X < mCounter.Right) and Assigned(FOnOpenOverloads) then
   begin
     Result := cCounterPart + Result;
   end;
@@ -809,6 +910,10 @@ begin
       Result := Format(FOverloadHint, [FCrumbs[CounterOf(APart)].Text]);
     end;
     Exit;
+  end;
+  if InterfaceOf(APart) >= 0 then
+  begin
+    Exit(InterfaceHintOf(InterfaceOf(APart)));
   end;
   Result := '';
   if Clickable(APart) then
@@ -833,7 +938,7 @@ end;
 
 function TAtlasBreadcrumbBar.PartEnabled(APart: Integer): Boolean;
 begin
-  Result := (APart >= cSeparatorPart) or (CounterOf(APart) >= 0) or Clickable(APart);
+  Result := (APart >= cSeparatorPart) or (CounterOf(APart) >= 0) or (InterfaceOf(APart) >= 0) or Clickable(APart);
 end;
 
 procedure TAtlasBreadcrumbBar.PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer);
@@ -852,6 +957,13 @@ begin
     FSelected := CounterOf(APart);
     Invalidate;
     OpenOverloads(FSelected);
+    Exit;
+  end;
+  if InterfaceOf(APart) >= 0 then
+  begin
+    FSelected := InterfaceOf(APart);
+    Invalidate;
+    OpenInterfaces(FSelected);
     Exit;
   end;
   mIndex := APart;
@@ -918,6 +1030,23 @@ begin
     mArea := CrumbRect(AIndex);
   end;
   FOnOpenOverloads(AIndex, ClientToScreen(Point(mArea.Left, ClientHeight)));
+end;
+
+procedure TAtlasBreadcrumbBar.OpenInterfaces(AIndex: Integer);
+var
+  mArea: TRect;
+begin
+  if (AIndex < 0) or (AIndex > High(FCrumbs)) or (Length(FCrumbs[AIndex].Interfaces) = 0) or
+    not Assigned(FOnOpenInterfaces) then
+  begin
+    Exit;
+  end;
+  mArea := InterfaceRect(AIndex);
+  if mArea.IsEmpty then
+  begin
+    mArea := CrumbRect(AIndex);
+  end;
+  FOnOpenInterfaces(AIndex, ClientToScreen(Point(mArea.Left, ClientHeight)));
 end;
 
 procedure TAtlasBreadcrumbBar.Jump(AIndex: Integer; ADeclaration: Boolean);
@@ -994,6 +1123,11 @@ begin
         // Menü der Überladungen (#1784).
         OpenOverloads(FSelected);
       end
+      else if (ssAlt in Shift) and (Key = VK_DOWN) then
+      begin
+        // Menü der erfüllten Interface-Methoden (#1785).
+        OpenInterfaces(FSelected);
+      end
       else
       begin
         OpenMenu(FSelected);
@@ -1023,7 +1157,7 @@ end;
 
 procedure TAtlasBreadcrumbBar.ContextMenu(const APoint: TPoint; APart: Integer);
 begin
-  // Auf dem „›“ gilt das Glied davor, auf dem Zähler der Überladungen das Glied selbst.
+  // Auf dem „›“ gilt das Glied davor, auf Zähler und Interface-Marke das Glied selbst.
   if APart >= cSeparatorPart then
   begin
     APart := APart - cSeparatorPart;
@@ -1031,6 +1165,10 @@ begin
   else if CounterOf(APart) >= 0 then
   begin
     APart := CounterOf(APart);
+  end
+  else if InterfaceOf(APart) >= 0 then
+  begin
+    APart := InterfaceOf(APart);
   end;
   if (APart < 0) or (APart > High(FCrumbs)) or not Assigned(FOnContextMenu) then
   begin

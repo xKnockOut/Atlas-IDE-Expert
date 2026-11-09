@@ -248,6 +248,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DeepTrees.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CodeLens.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.OverrideMarks.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InterfaceMethods.Tests.pas"/>
         <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.Calculator.Tests.pas"/>
         <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.Report.Tests.pas"/>
         <DCCReference Include="Common\Query\Atlas.Common.Query.Language.Tests.pas"/>
@@ -1399,6 +1400,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.CrumbMenu.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.Overloads.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.Overloads.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.Interfaces.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Outline.Interfaces.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas"/>

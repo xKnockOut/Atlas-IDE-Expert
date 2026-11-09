@@ -149,6 +149,7 @@ begin
     AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsContextMenu)));
   // Überladungen mit Zähler und Parametern (#1784).
   BindCheck('BreadcrumbsOverloads', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsOverloads)));
+  BindCheck('BreadcrumbsInterfaces', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsInterfaces)));
   // Atlas-Editorleiste (#1101).
   BindCheck('EditorToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbar)));
   FEditorToolbarPosition := AddChoice(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPosition),
