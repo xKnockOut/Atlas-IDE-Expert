@@ -188,7 +188,7 @@ begin
   Result := TColor(AColor);
 end;
 
-/// <summary>Gleiche Sprungziele (Sichtbarkeitsabschnitte, #1759)?</summary>
+/// <summary>Gleiche Sprungziele (Sichtbarkeitsabschnitte, #1759, mit Marke und Mitgliederzahl, #1768)?</summary>
 function SamePlaces(const A, B: TArray<TAtlasCrumbPlace>): Boolean;
 var
   mIndex: Integer;
@@ -199,7 +199,8 @@ begin
   begin
     Result := (A[mIndex].Text = B[mIndex].Text) and (A[mIndex].Line = B[mIndex].Line) and
       (A[mIndex].Character = B[mIndex].Character) and (A[mIndex].Group = B[mIndex].Group) and
-      (A[mIndex].Depth = B[mIndex].Depth);
+      (A[mIndex].Depth = B[mIndex].Depth) and (A[mIndex].Mark = B[mIndex].Mark) and
+      (A[mIndex].Count = B[mIndex].Count);
     Inc(mIndex);
   end;
 end;
@@ -228,7 +229,7 @@ begin
       (Length(A[mIndex].Children) = Length(B[mIndex].Children)) and (A[mIndex].Implicit = B[mIndex].Implicit) and
       SamePlaces(A[mIndex].Places, B[mIndex].Places) and (A[mIndex].Mark = B[mIndex].Mark) and
       (A[mIndex].MarkVisibility = B[mIndex].MarkVisibility) and (A[mIndex].MarkLine = B[mIndex].MarkLine) and
-      (A[mIndex].Drop = B[mIndex].Drop);
+      (A[mIndex].Drop = B[mIndex].Drop) and (A[mIndex].SectionType = B[mIndex].SectionType);
     mSibling := 0;
     while Result and (mSibling <= High(A[mIndex].Siblings)) do
     begin

@@ -23,7 +23,9 @@
 //   TAtlasVisibilitySectionFinder): Sein Menü listet die Abschnitte des Typs
 //   als Sprungziele (Places), seine Kinder sind die Mitglieder des
 //   Abschnitts. Vor dem ersten Schlüsselwort steht die implizite
-//   Sichtbarkeit (Implicit).
+//   Sichtbarkeit (Implicit). Die Sprungziele tragen Marke und
+//   Mitgliederzahl des Abschnitts, SectionType nennt den Typ für „Neue Zeile
+//   am Ende von …“ und „Abschnitt anlegen“ (#1768, TAtlasSectionEditor).
 // - Dahinter steht der Unterblock am Caret (const, type, class var; #1767,
 //   TAtlasMemberBlockFinder) mit den Unterblöcken des Abschnitts als
 //   Sprungziele und seinen Mitgliedern als Kinder.
@@ -67,6 +69,10 @@ type
     Group: string;
     /// <summary>Einrückung im Menü (verschachtelte Regionen, #1764); 0 = keine.</summary>
     Depth: Integer;
+    /// <summary>Marke der Gliederung (−, #, +, ◆) bei Sichtbarkeitsabschnitten (#1768); leer = keine.</summary>
+    Mark: string;
+    /// <summary>Mitglieder des Sichtbarkeitsabschnitts (#1768); nur mit Mark.</summary>
+    Count: Integer;
     /// <summary>Position, 0-basiert.</summary>
     Line: Integer;
     Character: Integer;
@@ -104,6 +110,9 @@ type
     MarkVisibility: string;
     /// <summary>Zeile der Deklaration zur Marke, 0-basiert; -1 ohne Marke.</summary>
     MarkLine: Integer;
+    /// <summary>Typ, dessen Sichtbarkeitsabschnitt das Glied zeigt (#1768, für „Neue Zeile am Ende von …“ und
+    /// „Abschnitt anlegen“); -1 bei anderen Gliedern.</summary>
+    SectionType: Integer;
     /// <summary>Rang beim Kürzen der Leiste: höhere fallen zuerst weg (2 = Rahmen im Rumpf, 1 = übrige
     /// zusätzliche Glieder), 0 = erst danach von vorn.</summary>
     Drop: Integer;
@@ -459,6 +468,7 @@ begin
   Result.Badge := TAtlasBreadcrumbs.BadgeOf(ANodes, ALines, ANode);
   Result.Node := ANode;
   Result.MarkLine := -1;
+  Result.SectionType := -1;
   Result.Siblings := SiblingsOf(ANodes, ANode);
   Result.Children := TAtlasBreadcrumbs.Children(ANodes, ANode);
   Result.Current := -1;
@@ -479,12 +489,15 @@ begin
   Result.Node := -1;
   Result.Current := -1;
   Result.MarkLine := -1;
+  Result.SectionType := -1;
 end;
 
 /// <summary>Glied des Sichtbarkeitsabschnitts APlace (#1759): Abschnitte als Sprungziele, Mitglieder des
-/// Abschnitts als Kinder; vor dem ersten Schlüsselwort die implizite Sichtbarkeit.</summary>
+/// Abschnitts als Kinder; vor dem ersten Schlüsselwort die implizite Sichtbarkeit. Jedes Sprungziel trägt
+/// Marke und Mitgliederzahl seines Abschnitts (#1768).</summary>
 function VisibilityCrumb(const ANodes: TAtlasOutlineNodes; const APlace: TAtlasVisibilityPlace): TAtlasCrumb;
 var
+  mIndex: Integer;
   mSection: TAtlasVisibilitySection;
   mPlace: TAtlasCrumbPlace;
 begin
@@ -494,15 +507,19 @@ begin
   begin
     Result.Text := APlace.Sections[APlace.Current].Keyword;
   end;
-  for mSection in APlace.Sections do
+  for mIndex := 0 to High(APlace.Sections) do
   begin
+    mSection := APlace.Sections[mIndex];
     mPlace := Default(TAtlasCrumbPlace);
     mPlace.Text := mSection.Keyword;
     mPlace.Line := mSection.Line;
     mPlace.Character := mSection.Character;
+    mPlace.Mark := TAtlasOutline.VisibilityMark(TAtlasOutline.VisibilityOf(mSection.Keyword));
+    mPlace.Count := Length(TAtlasVisibilitySectionFinder.MembersOf(ANodes, APlace, mIndex));
     Result.Places := Result.Places + [mPlace];
   end;
   Result.Current := APlace.Current;
+  Result.SectionType := APlace.TypeNode;
   Result.Children := TAtlasVisibilitySectionFinder.MembersOf(ANodes, APlace, APlace.Current);
 end;
 

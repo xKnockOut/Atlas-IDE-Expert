@@ -719,7 +719,11 @@ type
     // Region als Glied (#1764).
     SettingsBreadcrumbsRegions, BreadcrumbsRegionUnnamed,
     // try/except/finally und case-Zweig als Glied (#1769).
-    SettingsBreadcrumbsStatements);
+    SettingsBreadcrumbsStatements,
+    // Sprungmenü am Sichtbarkeitsglied (#1768).
+    SettingsBreadcrumbsSectionCounts, SettingsBreadcrumbsSectionAppend, SettingsBreadcrumbsSectionCreate,
+    BreadcrumbsSectionCount, BreadcrumbsSectionCountOne, BreadcrumbsSectionAppend, BreadcrumbsSectionCreate,
+    SectionAppendCommand);
 
   TAtlasStrings = class
   private
@@ -2398,7 +2402,15 @@ const
      'Zeile %d',
      'Region ({$REGION}) am Cursor als Glied zeigen',
      'Region (Z. %d)',
-     'try/except/finally und case-Zweig im Methodenrumpf als Glied zeigen'),
+     'try/except/finally und case-Zweig im Methodenrumpf als Glied zeigen',
+     'Mitgliederzahl je Abschnitt im Menü des Sichtbarkeitsglieds zeigen',
+     'Einträge „Neue Zeile am Ende von …“ im Menü des Sichtbarkeitsglieds',
+     'Einträge „Abschnitt anlegen: …“ für fehlende Abschnitte im Menü des Sichtbarkeitsglieds',
+     '%d Mitglieder · Zeile %d',
+     '1 Mitglied · Zeile %d',
+     'Neue Zeile am Ende von %s',
+     'Abschnitt anlegen: %s',
+     'Neue Zeile am Ende des Abschnitts'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3993,7 +4005,15 @@ const
      'line %d',
      'Show the region ({$REGION}) at the cursor as a part',
      'Region (l. %d)',
-     'Show try/except/finally and the case branch in the method body as parts'));
+     'Show try/except/finally and the case branch in the method body as parts',
+     'Show the member count per section in the menu of the visibility part',
+     'Entries “New line at the end of …” in the menu of the visibility part',
+     'Entries “Create section: …” for missing sections in the menu of the visibility part',
+     '%d members · line %d',
+     '1 member · line %d',
+     'New line at the end of %s',
+     'Create section: %s',
+     'New line at the end of the section'));
 
 { TAtlasStrings }
 

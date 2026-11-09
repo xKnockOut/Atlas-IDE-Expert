@@ -288,6 +288,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Outline.NavigationOption` | `Core/Outline/Atlas.Core.Outline.NavigationOption.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.Regions` | `Core/Outline/Atlas.Core.Outline.Regions.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.Statements` | `Core/Outline/Atlas.Core.Outline.Statements.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.SectionEdit` | `Core/Outline/Atlas.Core.Outline.SectionEdit.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.StickyScroll` | `Core/Outline/Atlas.Core.Outline.StickyScroll.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.TypeText` | `Core/Outline/Atlas.Core.Outline.TypeText.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.VisibilitySections` | `Core/Outline/Atlas.Core.Outline.VisibilitySections.pas` | Ordner `Core/Outline` |
@@ -594,6 +595,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Outline.Breadcrumbs` | `IDE/Outline/Atlas.IDE.Outline.Breadcrumbs.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.Cache` | `IDE/Outline/Atlas.IDE.Outline.Cache.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.NavigationOption` | `IDE/Outline/Atlas.IDE.Outline.NavigationOption.pas` | Ordner `IDE/Outline` |
+| `Atlas.IDE.Outline.SectionEdit` | `IDE/Outline/Atlas.IDE.Outline.SectionEdit.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.Service` | `IDE/Outline/Atlas.IDE.Outline.Service.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.StickyScroll` | `IDE/Outline/Atlas.IDE.Outline.StickyScroll.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.Window` | `IDE/Outline/Atlas.IDE.Outline.Window.pas` | Ordner `IDE/Outline` |

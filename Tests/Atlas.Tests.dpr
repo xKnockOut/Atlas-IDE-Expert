@@ -1268,6 +1268,8 @@ uses
   Atlas.Core.Outline.Regions.Tests in 'IDE.Expert\Atlas.Core.Outline.Regions.Tests.pas',
   Atlas.Core.Outline.Statements in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.Statements.pas',
   Atlas.Core.Outline.Statements.Tests in 'IDE.Expert\Atlas.Core.Outline.Statements.Tests.pas',
+  Atlas.Core.Outline.SectionEdit in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.SectionEdit.pas',
+  Atlas.Core.Outline.SectionEdit.Tests in 'IDE.Expert\Atlas.Core.Outline.SectionEdit.Tests.pas',
   Atlas.Core.Outline.StickyScroll in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas',
   Atlas.Core.Outline.StickyScroll.Tests in 'IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas',
   Atlas.Core.Outline.LoadGuard in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas',

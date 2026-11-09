@@ -408,6 +408,10 @@ begin
   Assert.IsTrue(Settings.BreadcrumbsConditionals, 'Bedingungszweig');
   Assert.IsTrue(Settings.BreadcrumbsRegions, 'Region');
   Assert.IsFalse(Settings.BreadcrumbsStatements, 'Rahmen im Rumpf: Vorgabe aus');
+  Assert.IsTrue(Settings.BreadcrumbsSectionCounts, 'Mitgliederzahl');
+  Assert.IsTrue(Settings.BreadcrumbsSectionAppend, 'Neue Zeile am Ende von');
+  Assert.IsTrue(Settings.BreadcrumbsSectionCreate, 'Abschnitt anlegen');
+  Assert.AreEqual(0, Settings.SectionAppendKey, 'ohne Taste');
   Assert.IsTrue(Settings.BreadcrumbsIdeColors, 'Farben der IDE');
   Assert.IsTrue(Settings.BreadcrumbsHideIdeToolbar, 'Navigationsleiste der IDE aus');
   Assert.AreEqual($60BE, Settings.BreadcrumbsKey, 'Strg+Umschalt+.');
@@ -420,6 +424,10 @@ begin
   Settings.BreadcrumbsConditionals := False;
   Settings.BreadcrumbsRegions := False;
   Settings.BreadcrumbsStatements := True;
+  Settings.BreadcrumbsSectionCounts := False;
+  Settings.BreadcrumbsSectionAppend := False;
+  Settings.BreadcrumbsSectionCreate := False;
+  Settings.SectionAppendKey := $C04E;
   Settings.BreadcrumbsIdeColors := False;
   Settings.BreadcrumbsHideIdeToolbar := False;
   Settings.BreadcrumbsKey := 0;
@@ -436,6 +444,10 @@ begin
   Assert.IsFalse(Loaded.BreadcrumbsConditionals);
   Assert.IsFalse(Loaded.BreadcrumbsRegions);
   Assert.IsTrue(Loaded.BreadcrumbsStatements);
+  Assert.IsFalse(Loaded.BreadcrumbsSectionCounts);
+  Assert.IsFalse(Loaded.BreadcrumbsSectionAppend);
+  Assert.IsFalse(Loaded.BreadcrumbsSectionCreate);
+  Assert.AreEqual($C04E, Loaded.SectionAppendKey, 'Strg+Alt+N');
   Assert.IsFalse(Loaded.BreadcrumbsIdeColors);
   Assert.IsFalse(Loaded.BreadcrumbsHideIdeToolbar);
   Assert.AreEqual(0, Loaded.BreadcrumbsKey);

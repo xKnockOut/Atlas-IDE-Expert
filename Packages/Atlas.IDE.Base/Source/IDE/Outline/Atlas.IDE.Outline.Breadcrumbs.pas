@@ -26,6 +26,11 @@
 //   Abschnitte des Typs; Enter springt zum Schlüsselwort.
 //   editor.breadcrumbsMemberBlocks setzt den Unterblock (const, type,
 //   class var) dahinter (#1767).
+// - Im Menü des Sichtbarkeitsglieds stehen je Abschnitt Marke und
+//   Mitgliederzahl (editor.breadcrumbsSectionCounts), dahinter „Neue Zeile
+//   am Ende von …“ (editor.breadcrumbsSectionAppend) und „Abschnitt
+//   anlegen: …“ für fehlende Abschnitte (editor.breadcrumbsSectionCreate,
+//   #1768); geändert wird über TAtlasIdeSectionEdit.
 // - Eigene Sicherung TAtlasFeature.Breadcrumbs: Fehler anderer Editorfunktionen
 //   (früher gemeinsam Editorbefehle) schalten die Leiste nicht mehr still ab.
 //   Löst die eigene Sicherung aus, sagt die Leiste das, statt stehen zu
@@ -83,11 +88,14 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.Breadcrumbs,
+  Atlas.Core.Outline.VisibilitySections,
+  Atlas.Core.Outline.SectionEdit,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.UI.Outline.Breadcrumbs,
   Atlas.UI.Outline.NavigationToolbar,
   Atlas.IDE.Outline.NavigationOption,
+  Atlas.IDE.Outline.SectionEdit,
   Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
@@ -98,6 +106,9 @@ uses
 const
   cTickMs = 150;
   cMenuWidth = 380;
+  /// <summary>Kennungen der Menüeinträge „Neue Zeile am Ende von …“ und „Abschnitt anlegen“ (#1768).</summary>
+  cAppendId = 'append:';
+  cCreateId = 'create:';
 
 type
   TBreadcrumbsState = class
@@ -613,8 +624,33 @@ begin
   mWindow.ShowAt(APoint, MulDiv(cMenuWidth, ABar.CurrentPPI, 96));
 end;
 
+/// <summary>Gedimmte Zeile eines Sprungziels: bei Sichtbarkeitsabschnitten mit Mitgliederzahl (#1768,
+/// ACounts), bei Deklarationsblöcken (#1766) mit dem Teil der Unit, sonst nur die Zeile.</summary>
+function PlacePath(const APlace: TAtlasCrumbPlace; ACounts: Boolean): string;
+begin
+  if ACounts and (APlace.Mark <> '') then
+  begin
+    if APlace.Count = 1 then
+    begin
+      Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsSectionCountOne), [APlace.Line + 1]);
+    end
+    else
+    begin
+      Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsSectionCount), [APlace.Count, APlace.Line + 1]);
+    end;
+  end
+  else if APlace.Group <> '' then
+  begin
+    Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsPlaceLine), [APlace.Group, APlace.Line + 1]);
+  end
+  else
+  begin
+    Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsPlaceLineOnly), [APlace.Line + 1]);
+  end;
+end;
+
 function PlaceCommands(const APlaces: TArray<TAtlasCrumbPlace>; const APattern: string;
-  ACurrent: Integer): TArray<TAtlasCommand>;
+  ACurrent: Integer; ACounts: Boolean): TArray<TAtlasCommand>;
 var
   mIndex: Integer;
   mCommand: TAtlasCommand;
@@ -632,16 +668,12 @@ begin
     mCommand.Id := IntToStr(mIndex);
     // Verschachtelte Regionen (#1764) eingerückt.
     mCommand.Caption := StringOfChar(' ', 4 * APlaces[mIndex].Depth) + mText;
-    // Zeile gedimmt, bei Deklarationsblöcken (#1766) mit dem Teil der Unit.
-    if APlaces[mIndex].Group <> '' then
+    // Marke der Gliederung vor dem Abschnitt (#1768).
+    if ACounts and (APlaces[mIndex].Mark <> '') then
     begin
-      mCommand.Path := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsPlaceLine),
-        [APlaces[mIndex].Group, APlaces[mIndex].Line + 1]);
-    end
-    else
-    begin
-      mCommand.Path := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsPlaceLineOnly), [APlaces[mIndex].Line + 1]);
+      mCommand.Caption := APlaces[mIndex].Mark + ' ' + mCommand.Caption;
     end;
+    mCommand.Path := PlacePath(APlaces[mIndex], ACounts);
     if mIndex = ACurrent then
     begin
       mCommand.ShortCut := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCurrent);
@@ -650,12 +682,66 @@ begin
   end;
 end;
 
-/// <summary>Menü der Sprungziele eines Glieds ohne Knoten (Sichtbarkeitsabschnitte des Typs, #1759).</summary>
+/// <summary>Einträge „Neue Zeile am Ende von …“ je Abschnitt und „Abschnitt anlegen: …“ je fehlendem Abschnitt
+/// (#1768), soweit an und zum Muster passend.</summary>
+function SectionCommands(const APlaces: TArray<TAtlasCrumbPlace>; const AMissing: TArray<string>;
+  const APattern: string): TArray<TAtlasCommand>;
+var
+  mIndex: Integer;
+  mCommand: TAtlasCommand;
+  mKeyword: string;
+begin
+  Result := nil;
+  if TAtlasIdeSettings.Current.BreadcrumbsSectionAppend then
+  begin
+    for mIndex := 0 to High(APlaces) do
+    begin
+      mCommand := Default(TAtlasCommand);
+      mCommand.Id := cAppendId + IntToStr(mIndex);
+      mCommand.Caption := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsSectionAppend), [APlaces[mIndex].Text]);
+      if TAtlasBreadcrumbs.MatchesAtWordStart(APattern, mCommand.Caption) then
+      begin
+        Result := Result + [mCommand];
+      end;
+    end;
+  end;
+  if TAtlasIdeSettings.Current.BreadcrumbsSectionCreate then
+  begin
+    for mKeyword in AMissing do
+    begin
+      mCommand := Default(TAtlasCommand);
+      mCommand.Id := cCreateId + mKeyword;
+      mCommand.Caption := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsSectionCreate), [mKeyword]);
+      if TAtlasBreadcrumbs.MatchesAtWordStart(APattern, mCommand.Caption) then
+      begin
+        Result := Result + [mCommand];
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Sprungziele und, beim Sichtbarkeitsglied (AEditable), die Einträge zum Ändern (#1768).</summary>
+function MenuCommands(const APlaces: TArray<TAtlasCrumbPlace>; const AMissing: TArray<string>;
+  const APattern: string; ACurrent: Integer; ACounts, AEditable: Boolean): TArray<TAtlasCommand>;
+begin
+  Result := PlaceCommands(APlaces, APattern, ACurrent, ACounts);
+  if AEditable then
+  begin
+    Result := Result + SectionCommands(APlaces, AMissing, APattern);
+  end;
+end;
+
+/// <summary>Menü der Sprungziele eines Glieds ohne Knoten (Sichtbarkeitsabschnitte des Typs, #1759); beim
+/// Sichtbarkeitsglied dahinter „Neue Zeile am Ende von …“ und „Abschnitt anlegen: …“ (#1768).</summary>
 procedure TBreadcrumbsState.OpenPlaces(ABar: TAtlasBreadcrumbBar; const ACrumb: TAtlasCrumb; const APoint: TPoint);
 var
   mPlaces: TArray<TAtlasCrumbPlace>;
-  mCurrent: Integer;
+  mMissing: TArray<string>;
+  mNodes: TAtlasOutlineNodes;
+  mLines: TArray<string>;
+  mCurrent, mLine, mCharacter: Integer;
   mFileName: string;
+  mCounts, mEditable: Boolean;
   mWindow: TAtlasPaletteWindow;
 begin
   if FFileName = '' then
@@ -666,8 +752,21 @@ begin
   mPlaces := ACrumb.Places;
   mCurrent := ACrumb.Current;
   mFileName := FFileName;
-  mWindow := TAtlasPaletteWindow.CreatePalette(Application, PlaceCommands(mPlaces, '', mCurrent), nil,
-    TAtlasIdeStyle.Colors);
+  mNodes := FNodes;
+  mLines := FLines;
+  mLine := FLine;
+  mCharacter := FCharacter;
+  mCounts := TAtlasIdeSettings.Current.BreadcrumbsSectionCounts;
+  // Nur das Sichtbarkeitsglied bekommt die Einträge zum Ändern.
+  mEditable := ACrumb.SectionType >= 0;
+  mMissing := nil;
+  if mEditable then
+  begin
+    mMissing := TAtlasSectionEditor.Missing(mNodes, TAtlasVisibilitySectionFinder.At(mNodes, mLines, mLine,
+      mCharacter));
+  end;
+  mWindow := TAtlasPaletteWindow.CreatePalette(Application, MenuCommands(mPlaces, mMissing, '', mCurrent, mCounts,
+    mEditable), nil, TAtlasIdeStyle.Colors);
   mWindow.Prompt := ACrumb.Text;
   mWindow.Presorted := True;
   mWindow.QueryDelay := 0;
@@ -678,13 +777,25 @@ begin
   mWindow.OnQuery :=
     function(APattern: string): TArray<TAtlasCommand>
     begin
-      Result := PlaceCommands(mPlaces, APattern, mCurrent);
+      Result := MenuCommands(mPlaces, mMissing, APattern, mCurrent, mCounts, mEditable);
     end;
   mWindow.OnExecuteShift :=
     procedure(ACommand: TAtlasCommand; AShifted: Boolean)
     var
       mChosen: Integer;
     begin
+      if ACommand.Id.StartsWith(cAppendId) then
+      begin
+        TAtlasIdeSectionEdit.Append(mFileName, mNodes, mLines, mLine, mCharacter,
+          StrToIntDef(ACommand.Id.Substring(Length(cAppendId)), -2));
+        Exit;
+      end;
+      if ACommand.Id.StartsWith(cCreateId) then
+      begin
+        TAtlasIdeSectionEdit.Add(mFileName, mNodes, mLines, mLine, mCharacter,
+          ACommand.Id.Substring(Length(cCreateId)));
+        Exit;
+      end;
       mChosen := StrToIntDef(ACommand.Id, -1);
       if (mChosen >= 0) and (mChosen <= High(mPlaces)) then
       begin

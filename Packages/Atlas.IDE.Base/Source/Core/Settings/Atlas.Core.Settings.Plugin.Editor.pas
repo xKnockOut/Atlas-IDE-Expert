@@ -391,6 +391,15 @@ type
     BreadcrumbsRegions: Boolean;
     /// <summary>try/except/finally und case-Zweig als Glied (#1769, editor.breadcrumbsStatements).</summary>
     BreadcrumbsStatements: Boolean;
+    /// <summary>Mitgliederzahl je Abschnitt im Menü des Sichtbarkeitsglieds (#1768,
+    /// editor.breadcrumbsSectionCounts).</summary>
+    BreadcrumbsSectionCounts: Boolean;
+    /// <summary>Einträge „Neue Zeile am Ende von …“ im Menü des Sichtbarkeitsglieds (#1768,
+    /// editor.breadcrumbsSectionAppend); auch Befehl und Taste keys.sectionAppend.</summary>
+    BreadcrumbsSectionAppend: Boolean;
+    /// <summary>Einträge „Abschnitt anlegen: …“ für fehlende Abschnitte (#1768,
+    /// editor.breadcrumbsSectionCreate).</summary>
+    BreadcrumbsSectionCreate: Boolean;
     /// <summary>Brotkrumenleiste in den Farben der IDE-Werkzeugleisten statt der Atlas-Palette
     /// (editor.breadcrumbsIdeColors).</summary>
     BreadcrumbsIdeColors: Boolean;
@@ -882,6 +891,9 @@ begin
   Result.BreadcrumbsConditionals := True;
   Result.BreadcrumbsRegions := True;
   Result.BreadcrumbsStatements := False;
+  Result.BreadcrumbsSectionCounts := True;
+  Result.BreadcrumbsSectionAppend := True;
+  Result.BreadcrumbsSectionCreate := True;
   Result.BreadcrumbsIdeColors := True;
   Result.BreadcrumbsHideIdeToolbar := True;
   Result.StickyScroll := True;
@@ -913,6 +925,9 @@ begin
   AIo.Flag('BreadcrumbsConditionals', BreadcrumbsConditionals);
   AIo.Flag('BreadcrumbsRegions', BreadcrumbsRegions);
   AIo.Flag('BreadcrumbsStatements', BreadcrumbsStatements);
+  AIo.Flag('BreadcrumbsSectionCounts', BreadcrumbsSectionCounts);
+  AIo.Flag('BreadcrumbsSectionAppend', BreadcrumbsSectionAppend);
+  AIo.Flag('BreadcrumbsSectionCreate', BreadcrumbsSectionCreate);
   AIo.Flag('BreadcrumbsIdeColors', BreadcrumbsIdeColors);
   AIo.Flag('BreadcrumbsHideIdeToolbar', BreadcrumbsHideIdeToolbar);
   AIo.Flag('StickyScroll', StickyScroll);
