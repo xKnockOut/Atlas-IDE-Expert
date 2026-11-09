@@ -68,7 +68,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Text.Chars;
 
 const
   cMaxAncestorDepth = 16;
@@ -169,16 +170,6 @@ begin
     end;
   end;
   Result := False;
-end;
-
-function IsWordStart(AChar: Char): Boolean;
-begin
-  Result := CharInSet(AChar, ['a'..'z', 'A'..'Z', '_']);
-end;
-
-function IsWordChar(AChar: Char): Boolean;
-begin
-  Result := CharInSet(AChar, ['a'..'z', 'A'..'Z', '_', '0'..'9']);
 end;
 
 function NextIs(const ALine: string; APos: Integer; AChar: Char): Boolean;
@@ -292,13 +283,13 @@ function TTokenizer.ReadWord(const AText: string; ALine: Integer; var APos: Inte
 var
   mStart: Integer;
 begin
-  Result := IsWordStart(AText[APos]);
+  Result := TTextChars.IsIdentStart(AText[APos]);
   if not Result then
   begin
     Exit;
   end;
   mStart := APos;
-  while (APos < Length(AText)) and IsWordChar(AText[APos + 1]) do
+  while (APos < Length(AText)) and TTextChars.IsIdentChar(AText[APos + 1]) do
   begin
     Inc(APos);
   end;
