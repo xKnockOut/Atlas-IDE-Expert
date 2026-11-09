@@ -35,6 +35,11 @@
 //   Kontextmenü TAtlasIdeCrumbMenu (editor.breadcrumbsContextMenu, #1786):
 //   kopieren, Verwendungen suchen, Umbenennen, Komponente im Designer
 //   (Haken der Komposition aus Install).
+// - Überladungen (editor.breadcrumbsOverloads, #1784): Das Glied trägt den
+//   Zähler „(2/3)“; Klick darauf öffnet „Überladungen von …“ mit Parametern
+//   und Zeile, Enter springt zur Implementierung, Umschalt+Enter zur
+//   Deklaration. Im Geschwistermenü stehen Überladungen mit Parametern,
+//   gekürzt; der Hinweis über der Zeile zeigt die volle Liste.
 // - Eigene Sicherung TAtlasFeature.Breadcrumbs: Fehler anderer Editorfunktionen
 //   (früher gemeinsam Editorbefehle) schalten die Leiste nicht mehr still ab.
 //   Löst die eigene Sicherung aus, sagt die Leiste das, statt stehen zu
@@ -99,6 +104,7 @@ uses
   Atlas.Core.Outline.Breadcrumbs,
   Atlas.Core.Outline.VisibilitySections,
   Atlas.Core.Outline.SectionEdit,
+  Atlas.Core.Outline.Overloads,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.UI.Outline.Breadcrumbs,
@@ -118,6 +124,8 @@ const
   /// <summary>Kennungen der Menüeinträge „Neue Zeile am Ende von …“ und „Abschnitt anlegen“ (#1768).</summary>
   cAppendId = 'append:';
   cCreateId = 'create:';
+  /// <summary>Höchstlänge von Name und Parametern im Menü (#1784); länger mit „…“.</summary>
+  cOverloadCaptionMax = 56;
 
 type
   TBreadcrumbsState = class
@@ -153,15 +161,16 @@ type
     procedure OpenMenu(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
     procedure OpenChildren(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
     procedure OpenList(ABar: TAtlasBreadcrumbBar; const APrompt: string; const AItems: TArray<Integer>;
-      ACurrent: Integer; const APoint: TPoint);
+      ACurrent: Integer; const APoint: TPoint; AOverloads: Boolean = False);
+    procedure OpenOverloads(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
     procedure OpenPlaces(ABar: TAtlasBreadcrumbBar; const ACrumb: TAtlasCrumb; const APoint: TPoint);
     procedure ContextMenu(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
     procedure Jump(ABar: TAtlasBreadcrumbBar; AIndex: Integer; ADeclaration: Boolean);
     procedure Later(ABar: TAtlasBreadcrumbBar; const AAction: TProc);
     procedure ApplyToolbar(AParent: TWinControl);
     procedure Leave(ABar: TAtlasBreadcrumbBar);
-    function CommandsOf(const ANodes: TAtlasOutlineNodes; const AIndices: TArray<Integer>;
-      ACurrent: Integer): TArray<TAtlasCommand>;
+    function CommandsOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+      const AIndices: TArray<Integer>; ACurrent: Integer; AOverloads: Boolean): TArray<TAtlasCommand>;
     function Remember(ABar: TAtlasBreadcrumbBar; const ASnapshot: TAtlasOutlineSnapshot): Boolean;
   public
     constructor Create;
@@ -301,6 +310,7 @@ begin
   mBar.CrumbHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCrumbHint);
   mBar.SeparatorHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsChildrenHint);
   mBar.MarkHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsMarkHint);
+  mBar.OverloadHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsOverloadsHint);
   mBar.OnOpenMenu :=
     procedure(AIndex: Integer; const APoint: TPoint)
     var
@@ -323,6 +333,18 @@ begin
         procedure
         begin
           OpenChildren(mBar, AIndex, At);
+        end);
+    end;
+  mBar.OnOpenOverloads :=
+    procedure(AIndex: Integer; const APoint: TPoint)
+    var
+      At: TPoint;
+    begin
+      At := APoint;
+      Later(mBar,
+        procedure
+        begin
+          OpenOverloads(mBar, AIndex, At);
         end);
     end;
   mBar.OnContextMenu :=
@@ -402,7 +424,8 @@ begin
   end;
 end;
 
-/// <summary>Zusätzliche Glieder nach den Einstellungen (#1759, #1767, #1765, #1766, #1763, #1764, #1769).</summary>
+/// <summary>Zusätzliche Glieder nach den Einstellungen (#1759, #1767, #1765, #1766, #1763, #1764, #1769, #1784).
+/// </summary>
 function CrumbParts: TAtlasCrumbParts;
 begin
   Result := [];
@@ -433,6 +456,10 @@ begin
   if TAtlasIdeSettings.Current.BreadcrumbsStatements then
   begin
     Include(Result, TAtlasCrumbPart.Statements);
+  end;
+  if TAtlasIdeSettings.Current.BreadcrumbsOverloads then
+  begin
+    Include(Result, TAtlasCrumbPart.Overloads);
   end;
 end;
 
@@ -534,8 +561,8 @@ begin
     ChangeFileExt(ExtractFileName(FFileName), ''), FShowUnit, FParts)));
 end;
 
-function TBreadcrumbsState.CommandsOf(const ANodes: TAtlasOutlineNodes; const AIndices: TArray<Integer>;
-  ACurrent: Integer): TArray<TAtlasCommand>;
+function TBreadcrumbsState.CommandsOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+  const AIndices: TArray<Integer>; ACurrent: Integer; AOverloads: Boolean): TArray<TAtlasCommand>;
 var
   mNode: Integer;
   mCommand: TAtlasCommand;
@@ -547,6 +574,18 @@ begin
     mCommand.Id := IntToStr(mNode);
     mCommand.Caption := TAtlasBreadcrumbs.ShortName(ANodes[mNode].Name);
     mCommand.Path := ANodes[mNode].Detail;
+    // Überladungen (#1784) mit Parametern, gekürzt; der Hinweis zeigt die volle Liste.
+    if AOverloads or (TAtlasIdeSettings.Current.BreadcrumbsOverloads and
+      (Length(TAtlasOverloads.Find(ANodes, mNode)) > 0)) then
+    begin
+      mCommand.Caption := TAtlasOverloads.Caption(ANodes, ALines, mNode, cOverloadCaptionMax);
+      mCommand.Description := TAtlasOverloads.Caption(ANodes, ALines, mNode, MaxInt);
+    end;
+    if AOverloads then
+    begin
+      mCommand.Path := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsPlaceLineOnly),
+        [ANodes[mNode].NameLine + 1]);
+    end;
     if mNode = ACurrent then
     begin
       mCommand.ShortCut := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCurrent);
@@ -572,6 +611,20 @@ begin
   OpenList(ABar, mCrumb.Text, mCrumb.Siblings, mCrumb.Node, APoint);
 end;
 
+/// <summary>Menü „Überladungen von …“ am Zähler des Glieds (#1784).</summary>
+procedure TBreadcrumbsState.OpenOverloads(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
+var
+  mCrumb: TAtlasCrumb;
+begin
+  if (ABar <> FActiveBar) or (AIndex < 0) or (AIndex > High(ABar.Crumbs)) then
+  begin
+    Exit;
+  end;
+  mCrumb := ABar.Crumbs[AIndex];
+  OpenList(ABar, Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsOverloadsPrompt), [mCrumb.Text]),
+    mCrumb.Overloads, mCrumb.Node, APoint, True);
+end;
+
 procedure TBreadcrumbsState.OpenChildren(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
 var
   mCrumb: TAtlasCrumb;
@@ -595,10 +648,11 @@ begin
 end;
 
 procedure TBreadcrumbsState.OpenList(ABar: TAtlasBreadcrumbBar; const APrompt: string;
-  const AItems: TArray<Integer>; ACurrent: Integer; const APoint: TPoint);
+  const AItems: TArray<Integer>; ACurrent: Integer; const APoint: TPoint; AOverloads: Boolean);
 var
   mItems: TArray<Integer>;
   mNodes: TAtlasOutlineNodes;
+  mLines: TArray<string>;
   mFileName: string;
   mWindow: TAtlasPaletteWindow;
 begin
@@ -611,10 +665,12 @@ begin
   // Kopien: Das Menü lebt länger als der aktuelle Stand.
   mItems := AItems;
   mNodes := FNodes;
+  mLines := FLines;
   mFileName := FFileName;
-  mWindow := TAtlasPaletteWindow.CreatePalette(Application, CommandsOf(mNodes, mItems, ACurrent), nil,
-    TAtlasIdeStyle.Colors);
+  mWindow := TAtlasPaletteWindow.CreatePalette(Application, CommandsOf(mNodes, mLines, mItems, ACurrent,
+    AOverloads), nil, TAtlasIdeStyle.Colors);
   mWindow.Prompt := APrompt;
+  mWindow.RowHints := True;
   mWindow.Presorted := True;
   mWindow.QueryDelay := 0;
   if ACurrent >= 0 then
@@ -624,7 +680,8 @@ begin
   mWindow.OnQuery :=
     function(APattern: string): TArray<TAtlasCommand>
     begin
-      Result := CommandsOf(mNodes, TAtlasBreadcrumbs.Filter(mNodes, mItems, APattern), ACurrent);
+      Result := CommandsOf(mNodes, mLines, TAtlasBreadcrumbs.Filter(mNodes, mItems, APattern), ACurrent,
+        AOverloads);
     end;
   mWindow.OnExecuteShift :=
     procedure(ACommand: TAtlasCommand; AShifted: Boolean)

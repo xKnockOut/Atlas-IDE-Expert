@@ -1397,6 +1397,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.SectionEdit.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.CrumbMenu.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.CrumbMenu.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.Overloads.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Outline.Overloads.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas"/>

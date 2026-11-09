@@ -767,6 +767,7 @@
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.SectionEdit.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.CrumbMenu.pas"/>
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.CrumbMenu.pas"/>
+        <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.Overloads.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.NavigationOption.pas"/>

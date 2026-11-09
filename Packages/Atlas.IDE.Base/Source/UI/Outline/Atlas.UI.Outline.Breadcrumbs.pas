@@ -38,6 +38,9 @@
 // - Rechtsklick auf ein Glied bzw. Menütaste oder Umschalt+F10 mit Fokus
 //   meldet OnContextMenu (#1786) mit dem Glied und der Stelle fürs Menü;
 //   ohne Ereignis tut der Rechtsklick nichts Eigenes.
+// - Ein Glied mit Überladungen (#1784) zeigt hinter dem Namen den Zähler
+//   „(2/3)“. Klick auf den Zähler (Teil CounterPart + i) bzw. Umschalt+↓ mit
+//   Fokus meldet OnOpenOverloads; der Hinweis ist OverloadHint.
 
 interface
 
@@ -128,8 +131,13 @@ type
   private const
     /// <summary>Teil des „›“ hinter Glied i: SeparatorPart + i.</summary>
     cSeparatorPart = $10000;
+    /// <summary>Teil des Zählers der Überladungen (#1784) in Glied i: CounterPart + i (unter SeparatorPart).
+    /// </summary>
+    cCounterPart = $8000;
   private
     FCrumbHint: string;
+    FOverloadHint: string;
+    FOnOpenOverloads: TAtlasCrumbMenuEvent;
     FSeparatorHint: string;
     FMarkHint: string;
     FOnOpenMenu: TAtlasCrumbMenuEvent;
@@ -138,6 +146,10 @@ type
     FOnContextMenu: TAtlasCrumbMenuEvent;
     FOnLeave: TProc;
     procedure DrawCrumb(AIndex: Integer);
+    /// <summary>Fläche des Zählers der Überladungen im Glied (Client); leer ohne Zähler.</summary>
+    function CounterRect(AIndex: Integer): TRect;
+    /// <summary>Glied, dessen Zähler der Teil APart ist; -1 sonst.</summary>
+    function CounterOf(APart: Integer): Integer;
     /// <summary>Auswahl zum nächsten gezeigten Glied in Richtung AStep (-1, 1).</summary>
     procedure MoveSelection(AStep: Integer);
     /// <summary>Kennzeichen des Glieds ab ALeft; liefert den linken Rand des Namens dahinter.</summary>
@@ -166,6 +178,8 @@ type
     procedure OpenMenu(AIndex: Integer);
     /// <summary>Menü der Kinder des Glieds unter dessen „›“ öffnen, wenn es Kinder hat.</summary>
     procedure OpenChildren(AIndex: Integer);
+    /// <summary>Menü der Überladungen des Glieds unter dessen Zähler öffnen, wenn es welche hat (#1784).</summary>
+    procedure OpenOverloads(AIndex: Integer);
     /// <summary>Zum Glied springen (OnJump), wenn es einen Knoten hat oder die Unit ist.</summary>
     procedure Jump(AIndex: Integer; ADeclaration: Boolean);
     /// <summary>Hinweis über einem Glied bzw. über einem „›“ mit Kindern.</summary>
@@ -175,6 +189,9 @@ type
     property MarkHint: string read FMarkHint write FMarkHint;
     property OnOpenMenu: TAtlasCrumbMenuEvent read FOnOpenMenu write FOnOpenMenu;
     property OnOpenChildren: TAtlasCrumbMenuEvent read FOnOpenChildren write FOnOpenChildren;
+    /// <summary>Hinweis über dem Zähler der Überladungen (#1784), Format mit dem Namen (%s).</summary>
+    property OverloadHint: string read FOverloadHint write FOverloadHint;
+    property OnOpenOverloads: TAtlasCrumbMenuEvent read FOnOpenOverloads write FOnOpenOverloads;
     property OnJump: TAtlasCrumbJumpEvent read FOnJump write FOnJump;
     /// <summary>Rechtsklick-Menü am Glied (#1786); APoint ist die Stelle am Bildschirm.</summary>
     property OnContextMenu: TAtlasCrumbMenuEvent read FOnContextMenu write FOnContextMenu;
@@ -213,10 +230,21 @@ begin
   end;
 end;
 
-/// <summary>Angezeigter Text des Glieds: Sichtbarkeitsmarke (#1765) und Name.</summary>
+/// <summary>Zähler der Überladungen (#1784) mit Leerzeichen davor, etwa „ (2/3)“; leer ohne.</summary>
+function CounterText(const ACrumb: TAtlasCrumb): string;
+begin
+  Result := '';
+  if (ACrumb.Overload >= 0) and (Length(ACrumb.Overloads) > 1) then
+  begin
+    Result := Format(' (%d/%d)', [ACrumb.Overload + 1, Length(ACrumb.Overloads)]);
+  end;
+end;
+
+/// <summary>Angezeigter Text des Glieds: Sichtbarkeitsmarke (#1765), Name und Zähler der Überladungen
+/// (#1784).</summary>
 function CrumbCaption(const ACrumb: TAtlasCrumb): string;
 begin
-  Result := ACrumb.Text;
+  Result := ACrumb.Text + CounterText(ACrumb);
   if ACrumb.Mark <> '' then
   begin
     Result := ACrumb.Mark + ' ' + Result;
@@ -237,7 +265,8 @@ begin
       (Length(A[mIndex].Children) = Length(B[mIndex].Children)) and (A[mIndex].Implicit = B[mIndex].Implicit) and
       SamePlaces(A[mIndex].Places, B[mIndex].Places) and (A[mIndex].Mark = B[mIndex].Mark) and
       (A[mIndex].MarkVisibility = B[mIndex].MarkVisibility) and (A[mIndex].MarkLine = B[mIndex].MarkLine) and
-      (A[mIndex].Drop = B[mIndex].Drop) and (A[mIndex].SectionType = B[mIndex].SectionType);
+      (A[mIndex].Drop = B[mIndex].Drop) and (A[mIndex].SectionType = B[mIndex].SectionType) and
+      (A[mIndex].Overload = B[mIndex].Overload) and (Length(A[mIndex].Overloads) = Length(B[mIndex].Overloads));
     mSibling := 0;
     while Result and (mSibling <= High(A[mIndex].Siblings)) do
     begin
@@ -648,6 +677,16 @@ begin
   begin
     Canvas.Font.Style := Canvas.Font.Style + [fsItalic];
   end;
+  // Zähler der Überladungen (#1784) unter der Maus: eigene Hervorhebung.
+  if Hot = cCounterPart + AIndex then
+  begin
+    mPart := CounterRect(AIndex);
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := ToColor(Colors.Selection);
+    Canvas.Pen.Color := ToColor(Colors.Accent);
+    Canvas.RoundRect(mPart.Left, mPart.Top + Scale(3), mPart.Right, mPart.Bottom - Scale(3), Scale(4), Scale(4));
+    Canvas.Brush.Style := bsClear;
+  end;
   mPart := Rect(mLeft_, 0, mArea.Right - Scale(2), ClientHeight);
   DrawText(Canvas.Handle, PChar(CrumbCaption(mCrumb)), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
     DT_END_ELLIPSIS);
@@ -696,9 +735,45 @@ begin
     (TAtlasBreadcrumbs.HasMenu(FCrumbs[AIndex]) or (FCrumbs[AIndex].Node >= 0));
 end;
 
+function TAtlasBreadcrumbBar.CounterRect(AIndex: Integer): TRect;
+var
+  mArea: TRect;
+  mText: string;
+begin
+  mArea := CrumbRect(AIndex);
+  if mArea.IsEmpty then
+  begin
+    Exit(TRect.Empty);
+  end;
+  mText := CounterText(FCrumbs[AIndex]);
+  if mText = '' then
+  begin
+    Exit(TRect.Empty);
+  end;
+  Canvas.Font := Font;
+  if AIndex = High(FCrumbs) then
+  begin
+    Canvas.Font.Style := [fsBold];
+  end;
+  // Der Zähler steht rechts im Glied (Breite ohne das führende Leerzeichen, dazu Rand).
+  Result := Rect(mArea.Right - Scale(4) - Canvas.TextWidth(Trim(mText)) - Scale(4), mArea.Top,
+    mArea.Right - Scale(2), mArea.Bottom);
+  Canvas.Font := Font;
+end;
+
+function TAtlasBreadcrumbBar.CounterOf(APart: Integer): Integer;
+begin
+  Result := -1;
+  if (APart >= cCounterPart) and (APart < cSeparatorPart) and (APart - cCounterPart <= High(FCrumbs)) then
+  begin
+    Result := APart - cCounterPart;
+  end;
+end;
+
 function TAtlasBreadcrumbBar.PartAt(X, Y: Integer): Integer;
 var
   mIndex: Integer;
+  mCounter: TRect;
 begin
   mIndex := SeparatorAt(X, Y);
   if mIndex >= 0 then
@@ -708,7 +783,12 @@ begin
   Result := CrumbAt(X, Y);
   if Result < 0 then
   begin
-    Result := cPartNone;
+    Exit(cPartNone);
+  end;
+  mCounter := CounterRect(Result);
+  if not mCounter.IsEmpty and (X >= mCounter.Left) and Assigned(FOnOpenOverloads) then
+  begin
+    Result := cCounterPart + Result;
   end;
 end;
 
@@ -716,10 +796,19 @@ function TAtlasBreadcrumbBar.PartHint(APart: Integer): string;
 var
   mMark: string;
 begin
-  // Hinweis je Teil: Glied (Menü, Strg+Klick) oder „›“ (Kinder).
+  // Hinweis je Teil: Glied (Menü, Strg+Klick), Zähler der Überladungen oder „›“ (Kinder).
   if APart >= cSeparatorPart then
   begin
     Exit(FSeparatorHint);
+  end;
+  if CounterOf(APart) >= 0 then
+  begin
+    Result := '';
+    if FOverloadHint <> '' then
+    begin
+      Result := Format(FOverloadHint, [FCrumbs[CounterOf(APart)].Text]);
+    end;
+    Exit;
   end;
   Result := '';
   if Clickable(APart) then
@@ -744,7 +833,7 @@ end;
 
 function TAtlasBreadcrumbBar.PartEnabled(APart: Integer): Boolean;
 begin
-  Result := (APart >= cSeparatorPart) or Clickable(APart);
+  Result := (APart >= cSeparatorPart) or (CounterOf(APart) >= 0) or Clickable(APart);
 end;
 
 procedure TAtlasBreadcrumbBar.PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer);
@@ -756,6 +845,13 @@ begin
   if APart >= cSeparatorPart then
   begin
     OpenChildren(APart - cSeparatorPart);
+    Exit;
+  end;
+  if CounterOf(APart) >= 0 then
+  begin
+    FSelected := CounterOf(APart);
+    Invalidate;
+    OpenOverloads(FSelected);
     Exit;
   end;
   mIndex := APart;
@@ -805,6 +901,23 @@ begin
     mArea := CrumbRect(AIndex);
   end;
   FOnOpenChildren(AIndex, ClientToScreen(Point(mArea.Left, ClientHeight)));
+end;
+
+procedure TAtlasBreadcrumbBar.OpenOverloads(AIndex: Integer);
+var
+  mArea: TRect;
+begin
+  if (AIndex < 0) or (AIndex > High(FCrumbs)) or (CounterText(FCrumbs[AIndex]) = '') or
+    not Assigned(FOnOpenOverloads) then
+  begin
+    Exit;
+  end;
+  mArea := CounterRect(AIndex);
+  if mArea.IsEmpty then
+  begin
+    mArea := CrumbRect(AIndex);
+  end;
+  FOnOpenOverloads(AIndex, ClientToScreen(Point(mArea.Left, ClientHeight)));
 end;
 
 procedure TAtlasBreadcrumbBar.Jump(AIndex: Integer; ADeclaration: Boolean);
@@ -876,6 +989,11 @@ begin
           Jump(FSelected, ssShift in Shift);
         end;
       end
+      else if (ssShift in Shift) and (Key = VK_DOWN) then
+      begin
+        // Menü der Überladungen (#1784).
+        OpenOverloads(FSelected);
+      end
       else
       begin
         OpenMenu(FSelected);
@@ -905,10 +1023,14 @@ end;
 
 procedure TAtlasBreadcrumbBar.ContextMenu(const APoint: TPoint; APart: Integer);
 begin
-  // Auf dem „›“ gilt das Glied davor.
+  // Auf dem „›“ gilt das Glied davor, auf dem Zähler der Überladungen das Glied selbst.
   if APart >= cSeparatorPart then
   begin
     APart := APart - cSeparatorPart;
+  end
+  else if CounterOf(APart) >= 0 then
+  begin
+    APart := CounterOf(APart);
   end;
   if (APart < 0) or (APart > High(FCrumbs)) or not Assigned(FOnContextMenu) then
   begin

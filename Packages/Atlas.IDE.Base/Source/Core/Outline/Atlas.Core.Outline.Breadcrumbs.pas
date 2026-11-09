@@ -50,6 +50,9 @@
 // - Im Rumpf stehen hinter der Routine try/except/finally und case mit Zweig
 //   (#1769, TAtlasStatementFinder), höchstens die innersten drei, vor den
 //   Bedingungszweigen.
+// - Hat eine Routine Überladungen im selben Typ bzw. auf derselben Ebene,
+//   tragen Overloads alle in Quelltextreihenfolge und Overload die Stelle
+//   des Glieds darin (#1784, TAtlasOverloads); die Leiste zeigt „(2/3)“.
 // - Drop legt fest, welche Glieder die Leiste bei Platzmangel zuerst weglässt:
 //   die Rahmen im Rumpf, dann die übrigen zusätzlichen Glieder, dann von vorn.
 
@@ -82,9 +85,10 @@ type
   TAtlasCodeSection = (None, InterfacePart, ImplementationPart, UsesClause, Initialization_, Finalization_);
   /// <summary>Zusätzliche Glieder: Sichtbarkeitsabschnitt (#1759), Unterblock in Typen (#1767),
   /// Sichtbarkeitsmarke am Methodenglied im implementation-Teil (#1765), Deklarationsblock der Unit (#1766),
-  /// Bedingungszweig (#1763), Region (#1764), try/except/finally und case-Zweig (#1769).</summary>
+  /// Bedingungszweig (#1763), Region (#1764), try/except/finally und case-Zweig (#1769), Zähler der
+  /// Überladungen (#1784).</summary>
   TAtlasCrumbPart = (Visibility, MemberBlocks, VisibilityMark, DeclarationBlocks, Conditionals, Regions,
-    Statements);
+    Statements, Overloads);
 {$SCOPEDENUMS OFF}
 
   TAtlasCrumb = record
@@ -113,6 +117,10 @@ type
     /// <summary>Typ, dessen Sichtbarkeitsabschnitt das Glied zeigt (#1768, für „Neue Zeile am Ende von …“ und
     /// „Abschnitt anlegen“); -1 bei anderen Gliedern.</summary>
     SectionType: Integer;
+    /// <summary>Überladungen der Routine in Quelltextreihenfolge (#1784); leer ohne Überladung.</summary>
+    Overloads: TArray<Integer>;
+    /// <summary>Index von Node in Overloads; -1 ohne Überladung.</summary>
+    Overload: Integer;
     /// <summary>Rang beim Kürzen der Leiste: höhere fallen zuerst weg (2 = Rahmen im Rumpf, 1 = übrige
     /// zusätzliche Glieder), 0 = erst danach von vorn.</summary>
     Drop: Integer;
@@ -170,6 +178,7 @@ uses
   Atlas.Core.Outline.Conditionals,
   Atlas.Core.Outline.DeclarationBlocks,
   Atlas.Core.Outline.MemberBlocks,
+  Atlas.Core.Outline.Overloads,
   Atlas.Core.Outline.Regions,
   Atlas.Core.Outline.Statements,
   Atlas.Core.Outline.VisibilitySections;
@@ -469,6 +478,7 @@ begin
   Result.Node := ANode;
   Result.MarkLine := -1;
   Result.SectionType := -1;
+  Result.Overload := -1;
   Result.Siblings := SiblingsOf(ANodes, ANode);
   Result.Children := TAtlasBreadcrumbs.Children(ANodes, ANode);
   Result.Current := -1;
@@ -490,6 +500,7 @@ begin
   Result.Current := -1;
   Result.MarkLine := -1;
   Result.SectionType := -1;
+  Result.Overload := -1;
 end;
 
 /// <summary>Glied des Sichtbarkeitsabschnitts APlace (#1759): Abschnitte als Sprungziele, Mitglieder des
@@ -918,10 +929,32 @@ begin
   end;
 end;
 
+/// <summary>Überladungen und Stelle an den Gliedern mit Routine (#1784).</summary>
+procedure MarkOverloads(const ANodes: TAtlasOutlineNodes; var ACrumbs: TAtlasCrumbs);
+var
+  mIndex, mOverload: Integer;
+begin
+  for mIndex := 0 to High(ACrumbs) do
+  begin
+    ACrumbs[mIndex].Overloads := TAtlasOverloads.Find(ANodes, ACrumbs[mIndex].Node);
+    for mOverload := 0 to High(ACrumbs[mIndex].Overloads) do
+    begin
+      if ACrumbs[mIndex].Overloads[mOverload] = ACrumbs[mIndex].Node then
+      begin
+        ACrumbs[mIndex].Overload := mOverload;
+      end;
+    end;
+  end;
+end;
+
 class function TAtlasBreadcrumbs.Path(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
   ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean; AParts: TAtlasCrumbParts): TAtlasCrumbs;
 begin
   Result := OutlinePath(ANodes, ALines, ALine, ACharacter, AUnitName, AShowUnit, AParts);
+  if TAtlasCrumbPart.Overloads in AParts then
+  begin
+    MarkOverloads(ANodes, Result);
+  end;
   if TAtlasCrumbPart.Statements in AParts then
   begin
     Result := Result + StatementCrumbs(ANodes, ALines, ALine, ACharacter);
