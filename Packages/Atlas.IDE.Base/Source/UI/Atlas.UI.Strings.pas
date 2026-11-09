@@ -724,7 +724,8 @@ type
     SettingsBreadcrumbsSectionCounts, SettingsBreadcrumbsSectionAppend, SettingsBreadcrumbsSectionCreate,
     BreadcrumbsSectionCount, BreadcrumbsSectionCountOne, BreadcrumbsSectionAppend, BreadcrumbsSectionCreate,
     SectionAppendCommand, SettingsBreadcrumbsContextMenu, CrumbCopyName, CrumbCopyWithUnit, CrumbCopySignature,
-    CrumbCopyPath, CrumbShowComponent, CrumbFindReferences, CrumbRename, CrumbCopyUnitName, CrumbCopyFilePath);
+    CrumbCopyPath, CrumbShowComponent, CrumbFindReferences, CrumbRename, CrumbCopyUnitName, CrumbCopyFilePath,
+    SettingsBreadcrumbsOverloads, BreadcrumbsOverloadsHint, BreadcrumbsOverloadsPrompt);
 
   TAtlasStrings = class
   private
@@ -2421,7 +2422,10 @@ const
      'Verwendungen suchen',
      'Umbenennen …',
      'Unit-Namen kopieren',
-     'Dateipfad kopieren'),
+     'Dateipfad kopieren',
+     'Überladungen mit Zähler (2/3) und Parametern zeigen',
+     'Überladungen von %s (Umschalt+↓)',
+     'Überladungen von %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -4034,7 +4038,10 @@ const
      'Find references',
      'Rename …',
      'Copy unit name',
-     'Copy file path'));
+     'Copy file path',
+     'Show overloads with counter (2/3) and parameters',
+     'Overloads of %s (Shift+↓)',
+     'Overloads of %s'));
 
 { TAtlasStrings }
 

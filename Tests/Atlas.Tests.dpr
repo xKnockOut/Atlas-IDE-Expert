@@ -1272,6 +1272,8 @@ uses
   Atlas.Core.Outline.SectionEdit.Tests in 'IDE.Expert\Atlas.Core.Outline.SectionEdit.Tests.pas',
   Atlas.Core.Outline.CrumbMenu in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.CrumbMenu.pas',
   Atlas.Core.Outline.CrumbMenu.Tests in 'IDE.Expert\Atlas.Core.Outline.CrumbMenu.Tests.pas',
+  Atlas.Core.Outline.Overloads in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.Overloads.pas',
+  Atlas.Core.Outline.Overloads.Tests in 'IDE.Expert\Atlas.Core.Outline.Overloads.Tests.pas',
   Atlas.Core.Outline.StickyScroll in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas',
   Atlas.Core.Outline.StickyScroll.Tests in 'IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas',
   Atlas.Core.Outline.LoadGuard in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas',

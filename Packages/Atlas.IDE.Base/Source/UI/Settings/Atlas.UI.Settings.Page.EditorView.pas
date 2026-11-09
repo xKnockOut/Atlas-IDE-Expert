@@ -147,6 +147,8 @@ begin
   // Rechtsklick-Menü an den Gliedern (#1786).
   BindCheck('BreadcrumbsContextMenu',
     AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsContextMenu)));
+  // Überladungen mit Zähler und Parametern (#1784).
+  BindCheck('BreadcrumbsOverloads', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsOverloads)));
   // Atlas-Editorleiste (#1101).
   BindCheck('EditorToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbar)));
   FEditorToolbarPosition := AddChoice(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPosition),

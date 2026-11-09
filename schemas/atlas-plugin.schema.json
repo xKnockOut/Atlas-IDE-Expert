@@ -4607,6 +4607,16 @@
       "x-parent": "editor.breadcrumbs",
       "x-issue": "#1786"
     },
+    "BreadcrumbsOverloads": {
+      "description": "Hat eine Routine Überladungen im selben Typ bzw. in derselben Unit, trägt ihr Glied einen Zähler in Quelltextreihenfolge, etwa „Laden (2/3)“. Klick auf den Zähler (oder Umschalt+↓ mit Fokus) öffnet „Überladungen von Laden“ mit allen Überladungen samt Parametern und Zeile; Enter springt zur Implementierung, Umschalt+Enter zur Deklaration. Im Geschwistermenü stehen Überladungen ebenfalls mit Parametern; lange Listen sind mit „…“ gekürzt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsOverloads",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1784"
+    },
     "BreadcrumbsIdeColors": {
       "description": "Brotkrumenleiste in den Farben der IDE-Werkzeugleisten (Fläche und Schrift aus dem IDE-Thema) statt der Atlas-Palette; im dunklen Thema also wie die Navigationsleiste darüber statt fast schwarz.",
       "type": "boolean",
