@@ -144,6 +144,9 @@ begin
   BindCheck('BreadcrumbsHideIdeToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsHideIdeToolbar)));
   BindKey('BreadcrumbsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand)));
   BindKey('SectionAppendKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SectionAppendCommand)));
+  // Rechtsklick-Menü an den Gliedern (#1786).
+  BindCheck('BreadcrumbsContextMenu',
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsContextMenu)));
   // Atlas-Editorleiste (#1101).
   BindCheck('EditorToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbar)));
   FEditorToolbarPosition := AddChoice(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPosition),

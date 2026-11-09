@@ -280,6 +280,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Notifications.Sources` | `Core/Notifications/Atlas.Core.Notifications.Sources.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Outline.Breadcrumbs` | `Core/Outline/Atlas.Core.Outline.Breadcrumbs.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.Conditionals` | `Core/Outline/Atlas.Core.Outline.Conditionals.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.CrumbMenu` | `Core/Outline/Atlas.Core.Outline.CrumbMenu.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.DeclarationBlocks` | `Core/Outline/Atlas.Core.Outline.DeclarationBlocks.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.Directives` | `Core/Outline/Atlas.Core.Outline.Directives.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.LoadGuard` | `Core/Outline/Atlas.Core.Outline.LoadGuard.pas` | Ordner `Core/Outline` |
@@ -594,6 +595,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Notifications.Service` | `IDE/Notifications/Atlas.IDE.Notifications.Service.pas` | Ordner `IDE/Notifications` |
 | `Atlas.IDE.Outline.Breadcrumbs` | `IDE/Outline/Atlas.IDE.Outline.Breadcrumbs.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.Cache` | `IDE/Outline/Atlas.IDE.Outline.Cache.pas` | Ordner `IDE/Outline` |
+| `Atlas.IDE.Outline.CrumbMenu` | `IDE/Outline/Atlas.IDE.Outline.CrumbMenu.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.NavigationOption` | `IDE/Outline/Atlas.IDE.Outline.NavigationOption.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.SectionEdit` | `IDE/Outline/Atlas.IDE.Outline.SectionEdit.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.Service` | `IDE/Outline/Atlas.IDE.Outline.Service.pas` | Ordner `IDE/Outline` |

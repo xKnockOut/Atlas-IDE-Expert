@@ -4597,6 +4597,16 @@
       "x-parent": "editor.breadcrumbs",
       "x-issue": "#1768"
     },
+    "BreadcrumbsContextMenu": {
+      "description": "Rechtsklick (oder Menütaste, Umschalt+F10) auf ein Glied der Brotkrumenleiste öffnet ein Menü: Namen kopieren, mit Unit kopieren, mit Signatur kopieren (Routinen), Pfad der Leiste kopieren, Komponente im Designer zeigen (Komponentenfelder und Ereignisbehandler), Verwendungen suchen und Umbenennen; am Unit-Glied Unit-Namen und Dateipfad kopieren.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsContextMenu",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1786"
+    },
     "BreadcrumbsIdeColors": {
       "description": "Brotkrumenleiste in den Farben der IDE-Werkzeugleisten (Fläche und Schrift aus dem IDE-Thema) statt der Atlas-Palette; im dunklen Thema also wie die Navigationsleiste darüber statt fast schwarz.",
       "type": "boolean",
