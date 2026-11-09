@@ -28,6 +28,8 @@ Zurück zum [README](../../../README_DE.md)
 - auf Unit-Ebene Teil und Deklarationsblock am Cursor (`type`, `const`, `var`, `resourcestring`, `threadvar`, `label`, `exports`), etwa `uKunden › interface › resourcestring › sKundeFehlt`; das Menü des Blocks listet alle Blöcke der Unit mit Teil und Zeile, lokale Blöcke in Routinen zählen nicht (`editor.breadcrumbsDeclarationBlocks`)
 - am Ende der Bedingungszweig um den Cursor (`{$IFDEF MSWINDOWS}`, im Gegenzweig `{$ELSE MSWINDOWS}`, `{$ELSEIF …}`), bei verschachtelten Blöcken einer je Ebene, außen zuerst; das Menü springt zu IF, ELSE und ENDIF des Blocks. Ob der Zweig aktiv ist, entscheidet die Leiste nicht (`editor.breadcrumbsConditionals`)
 - hinter Unit bzw. Abschnitt die innerste `{$REGION}` um den Cursor, etwa `uKunden › Datenbankzugriff › TKunde › Speichern`; ihr Menü listet alle Regionen der Unit mit Zeile, verschachtelte eingerückt, eine Region ohne Namen heißt „Region (Z. n)“ (`editor.breadcrumbsRegions`)
+- auf Wunsch im Methodenrumpf `try`, `except`, `finally` und der case-Zweig (`case Art of › akFirma`), höchstens die innersten drei; das Menü springt zu den Teilen des try-Blocks bzw. zu allen Zweigen des case (`editor.breadcrumbsStatements`, Vorgabe aus)
+- wird die Leiste zu schmal, fallen zuerst diese Rahmen weg, dann die übrigen zusätzlichen Glieder, erst danach Glieder vorn
 
 ### Editorleiste
 

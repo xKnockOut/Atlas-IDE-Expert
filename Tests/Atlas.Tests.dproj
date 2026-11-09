@@ -1391,6 +1391,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.Conditionals.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.Regions.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.Regions.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.Statements.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Outline.Statements.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas"/>

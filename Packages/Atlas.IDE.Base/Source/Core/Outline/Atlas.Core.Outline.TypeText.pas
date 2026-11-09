@@ -6,7 +6,8 @@
 // und Blöcke). Grundlage für Sichtbarkeitsabschnitte und Unterblöcke der
 // Brotkrumenleiste.
 // - UnitTokens liefert den Text der Unit-Ebene ohne Typen und Routinen
-//   (Deklarationsblöcke der Unit, #1766).
+//   (Deklarationsblöcke der Unit, #1766), RoutineTokens den Text einer Routine
+//   ohne ihre lokalen Routinen und Typen (Anweisungen im Rumpf, #1769).
 
 interface
 
@@ -35,6 +36,9 @@ type
     /// <summary>Wörter und Zeichen der ganzen Unit ohne Typen und Routinen (samt Rümpfen).</summary>
     class function UnitTokens(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>): TAtlasTypeTokens;
       static;
+    /// <summary>Wörter und Zeichen der Routine ARoutine ohne ihre lokalen Routinen und Typen.</summary>
+    class function RoutineTokens(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+      ARoutine: Integer): TAtlasTypeTokens; static;
     /// <summary>Liegt ALine/ACharacter vor AOtherLine/AOtherCharacter?</summary>
     class function Before(ALine, ACharacter, AOtherLine, AOtherCharacter: Integer): Boolean; static;
     /// <summary>Ist AText eines der Wörter AWords?</summary>
@@ -91,15 +95,16 @@ begin
   Result := False;
 end;
 
-/// <summary>Bereiche der in AType verschachtelten Typen.</summary>
-function NestedTypes(const ANodes: TAtlasOutlineNodes; AType: Integer): TArray<TRange>;
+/// <summary>Bereiche der in AOwner verschachtelten Knoten der Arten ACategories.</summary>
+function NestedRanges(const ANodes: TAtlasOutlineNodes; AOwner: Integer;
+  ACategories: TAtlasOutlineCategories): TArray<TRange>;
 var
   mIndex: Integer;
 begin
   Result := nil;
   for mIndex := 0 to High(ANodes) do
   begin
-    if (ANodes[mIndex].Category = TAtlasOutlineCategory.TypeDecl) and IsDescendant(ANodes, mIndex, AType) then
+    if (ANodes[mIndex].Category in ACategories) and IsDescendant(ANodes, mIndex, AOwner) then
     begin
       Result := Result + [RangeOf(ANodes[mIndex])];
     end;
@@ -303,7 +308,22 @@ class function TAtlasTypeText.Tokens(const ANodes: TAtlasOutlineNodes; const ALi
 var
   mTokenizer: TTokenizer;
 begin
-  mTokenizer := TTokenizer.Create(RangeOf(ANodes[AType]), NestedTypes(ANodes, AType));
+  mTokenizer := TTokenizer.Create(RangeOf(ANodes[AType]), NestedRanges(ANodes, AType,
+    [TAtlasOutlineCategory.TypeDecl]));
+  try
+    Result := mTokenizer.Run(ALines);
+  finally
+    mTokenizer.Free;
+  end;
+end;
+
+class function TAtlasTypeText.RoutineTokens(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+  ARoutine: Integer): TAtlasTypeTokens;
+var
+  mTokenizer: TTokenizer;
+begin
+  mTokenizer := TTokenizer.Create(RangeOf(ANodes[ARoutine]), NestedRanges(ANodes, ARoutine,
+    [TAtlasOutlineCategory.TypeDecl, TAtlasOutlineCategory.Method, TAtlasOutlineCategory.Routine]));
   try
     Result := mTokenizer.Run(ALines);
   finally

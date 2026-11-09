@@ -131,6 +131,8 @@ begin
   BindCheck('BreadcrumbsConditionals', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsConditionals)));
   // Region (#1764).
   BindCheck('BreadcrumbsRegions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsRegions)));
+  // try/except/finally und case-Zweig (#1769).
+  BindCheck('BreadcrumbsStatements', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsStatements)));
   BindCheck('BreadcrumbsIdeColors', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsIdeColors)));
   BindCheck('BreadcrumbsHideIdeToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsHideIdeToolbar)));
   BindKey('BreadcrumbsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand)));

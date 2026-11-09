@@ -717,7 +717,9 @@ type
     // Bedingungszweig als Glied (#1763).
     SettingsBreadcrumbsConditionals, BreadcrumbsPlaceLineOnly,
     // Region als Glied (#1764).
-    SettingsBreadcrumbsRegions, BreadcrumbsRegionUnnamed);
+    SettingsBreadcrumbsRegions, BreadcrumbsRegionUnnamed,
+    // try/except/finally und case-Zweig als Glied (#1769).
+    SettingsBreadcrumbsStatements);
 
   TAtlasStrings = class
   private
@@ -2395,7 +2397,8 @@ const
      'Bedingungszweig ({$IFDEF …}, {$ELSE …}) am Cursor als Glied zeigen',
      'Zeile %d',
      'Region ({$REGION}) am Cursor als Glied zeigen',
-     'Region (Z. %d)'),
+     'Region (Z. %d)',
+     'try/except/finally und case-Zweig im Methodenrumpf als Glied zeigen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3989,7 +3992,8 @@ const
      'Show the conditional branch ({$IFDEF …}, {$ELSE …}) at the cursor as a part',
      'line %d',
      'Show the region ({$REGION}) at the cursor as a part',
-     'Region (l. %d)'));
+     'Region (l. %d)',
+     'Show try/except/finally and the case branch in the method body as parts'));
 
 { TAtlasStrings }
 

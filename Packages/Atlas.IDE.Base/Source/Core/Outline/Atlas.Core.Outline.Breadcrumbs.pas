@@ -45,6 +45,11 @@
 //   innerste {$REGION} um den Caret (#1764, TAtlasRegionFinder); ihr Menü
 //   listet alle Regionen der Unit mit Tiefe (Depth). Ohne Namen bleibt Text
 //   leer, die Anzeige ergänzt ihn.
+// - Im Rumpf stehen hinter der Routine try/except/finally und case mit Zweig
+//   (#1769, TAtlasStatementFinder), höchstens die innersten drei, vor den
+//   Bedingungszweigen.
+// - Drop legt fest, welche Glieder die Leiste bei Platzmangel zuerst weglässt:
+//   die Rahmen im Rumpf, dann die übrigen zusätzlichen Glieder, dann von vorn.
 
 interface
 
@@ -71,8 +76,9 @@ type
   TAtlasCodeSection = (None, InterfacePart, ImplementationPart, UsesClause, Initialization_, Finalization_);
   /// <summary>Zusätzliche Glieder: Sichtbarkeitsabschnitt (#1759), Unterblock in Typen (#1767),
   /// Sichtbarkeitsmarke am Methodenglied im implementation-Teil (#1765), Deklarationsblock der Unit (#1766),
-  /// Bedingungszweig (#1763), Region (#1764).</summary>
-  TAtlasCrumbPart = (Visibility, MemberBlocks, VisibilityMark, DeclarationBlocks, Conditionals, Regions);
+  /// Bedingungszweig (#1763), Region (#1764), try/except/finally und case-Zweig (#1769).</summary>
+  TAtlasCrumbPart = (Visibility, MemberBlocks, VisibilityMark, DeclarationBlocks, Conditionals, Regions,
+    Statements);
 {$SCOPEDENUMS OFF}
 
   TAtlasCrumb = record
@@ -98,6 +104,9 @@ type
     MarkVisibility: string;
     /// <summary>Zeile der Deklaration zur Marke, 0-basiert; -1 ohne Marke.</summary>
     MarkLine: Integer;
+    /// <summary>Rang beim Kürzen der Leiste: höhere fallen zuerst weg (2 = Rahmen im Rumpf, 1 = übrige
+    /// zusätzliche Glieder), 0 = erst danach von vorn.</summary>
+    Drop: Integer;
   end;
 
   TAtlasCrumbs = TArray<TAtlasCrumb>;
@@ -153,6 +162,7 @@ uses
   Atlas.Core.Outline.DeclarationBlocks,
   Atlas.Core.Outline.MemberBlocks,
   Atlas.Core.Outline.Regions,
+  Atlas.Core.Outline.Statements,
   Atlas.Core.Outline.VisibilitySections;
 
 function MakeBadge(AKind: TAtlasBadgeKind; const ACode: string): TAtlasBadge;
@@ -516,6 +526,17 @@ begin
   Result.Children := TAtlasMemberBlockFinder.MembersOf(ANodes, APlace, APlace.Current);
 end;
 
+/// <summary>Alle Glieder von ACrumbs fallen beim Kürzen mit Rang ADrop weg.</summary>
+procedure Droppable(var ACrumbs: TAtlasCrumbs; ADrop: Integer);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(ACrumbs) do
+  begin
+    ACrumbs[mIndex].Drop := ADrop;
+  end;
+end;
+
 /// <summary>Glieder hinter dem Typ: Sichtbarkeitsabschnitt und Unterblock, soweit in AParts.</summary>
 function TypePartCrumbs(const ANodes: TAtlasOutlineNodes; const AVisibility: TAtlasVisibilityPlace;
   const ABlock: TAtlasMemberBlockPlace; AParts: TAtlasCrumbParts): TAtlasCrumbs;
@@ -529,6 +550,7 @@ begin
   begin
     Result := Result + [MemberBlockCrumb(ANodes, ABlock)];
   end;
+  Droppable(Result, 1);
 end;
 
 /// <summary>Sprungziel für das Schlüsselwort ABlock, in der Gruppe seines Teils.</summary>
@@ -578,6 +600,7 @@ begin
   mCrumb.Current := APlace.Current;
   mCrumb.Children := TAtlasDeclarationBlockFinder.MembersOf(ANodes, APlace, APlace.Current);
   Result := Result + [mCrumb];
+  Droppable(Result, 1);
 end;
 
 /// <summary>Pfad von der Unit-Ebene bis ANode (einschließlich), ohne Abschnitte.</summary>
@@ -745,6 +768,7 @@ begin
       mCrumb.Places := mCrumb.Places + [mPlace];
     end;
     mCrumb.Current := mBranch.Current;
+    mCrumb.Drop := 1;
     Result := Result + [mCrumb];
   end;
 end;
@@ -774,7 +798,41 @@ begin
     mCrumb.Places := mCrumb.Places + [mCrumbPlace];
   end;
   mCrumb.Current := mPlace.Current;
+  mCrumb.Drop := 1;
   Result := [mCrumb];
+end;
+
+/// <summary>Glieder für try/except/finally und case im Rumpf (#1769): die innersten drei, außen zuerst.</summary>
+function StatementCrumbs(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
+  ACharacter: Integer): TAtlasCrumbs;
+const
+  cMaxStatements = 3;
+var
+  mFrame: TAtlasStatementFrame;
+  mPart: TAtlasStatementPart;
+  mCrumb: TAtlasCrumb;
+  mPlace: TAtlasCrumbPlace;
+begin
+  Result := nil;
+  for mFrame in TAtlasStatementFinder.At(ANodes, ALines, ALine, ACharacter) do
+  begin
+    mCrumb := TextCrumb(mFrame.Text, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'));
+    for mPart in mFrame.Parts do
+    begin
+      mPlace := Default(TAtlasCrumbPlace);
+      mPlace.Text := mPart.Text;
+      mPlace.Line := mPart.Line;
+      mPlace.Character := mPart.Character;
+      mCrumb.Places := mCrumb.Places + [mPlace];
+    end;
+    mCrumb.Current := mFrame.Current;
+    mCrumb.Drop := 2;
+    Result := Result + [mCrumb];
+  end;
+  if Length(Result) > cMaxStatements then
+  begin
+    Result := Copy(Result, Length(Result) - cMaxStatements, cMaxStatements);
+  end;
 end;
 
 /// <summary>Pfad ohne die Bedingungszweige (siehe TAtlasBreadcrumbs.Path).</summary>
@@ -847,6 +905,10 @@ class function TAtlasBreadcrumbs.Path(const ANodes: TAtlasOutlineNodes; const AL
   ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean; AParts: TAtlasCrumbParts): TAtlasCrumbs;
 begin
   Result := OutlinePath(ANodes, ALines, ALine, ACharacter, AUnitName, AShowUnit, AParts);
+  if TAtlasCrumbPart.Statements in AParts then
+  begin
+    Result := Result + StatementCrumbs(ANodes, ALines, ALine, ACharacter);
+  end;
   if TAtlasCrumbPart.Conditionals in AParts then
   begin
     Result := Result + ConditionalCrumbs(ALines, ALine, ACharacter);

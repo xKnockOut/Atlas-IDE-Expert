@@ -368,7 +368,7 @@ begin
   end;
 end;
 
-/// <summary>Zusätzliche Glieder nach den Einstellungen (#1759, #1767, #1765, #1766, #1763, #1764).</summary>
+/// <summary>Zusätzliche Glieder nach den Einstellungen (#1759, #1767, #1765, #1766, #1763, #1764, #1769).</summary>
 function CrumbParts: TAtlasCrumbParts;
 begin
   Result := [];
@@ -395,6 +395,10 @@ begin
   if TAtlasIdeSettings.Current.BreadcrumbsRegions then
   begin
     Include(Result, TAtlasCrumbPart.Regions);
+  end;
+  if TAtlasIdeSettings.Current.BreadcrumbsStatements then
+  begin
+    Include(Result, TAtlasCrumbPart.Statements);
   end;
 end;
 
