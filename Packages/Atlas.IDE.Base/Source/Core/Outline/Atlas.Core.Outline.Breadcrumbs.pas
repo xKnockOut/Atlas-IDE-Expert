@@ -32,6 +32,12 @@
 //   aus dem Abschnitt der Deklaration, sonst aus der Gliederung. Lokale
 //   Routinen, Routinen ohne Klasse und Rümpfe ohne Deklaration in der Unit
 //   bekommen keine Marke.
+// - Auf Unit-Ebene stehen vor dem Pfad der Teil der Unit (interface,
+//   implementation) und der Deklarationsblock am Caret (type, const, var,
+//   resourcestring, threadvar, label, exports; #1766,
+//   TAtlasDeclarationBlockFinder): Das Menü des Teils springt zu interface
+//   und implementation, das des Blocks zu allen Blöcken der Unit (Group nennt
+//   den Teil), Kinder sind die Elemente des Blocks.
 
 interface
 
@@ -45,6 +51,8 @@ type
   /// <summary>Sprungziel eines Glieds ohne Knoten der Gliederung (Sichtbarkeitsabschnitt, #1759).</summary>
   TAtlasCrumbPlace = record
     Text: string;
+    /// <summary>Gruppe im Menü (Teil der Unit bei Deklarationsblöcken, #1766); leer = keine.</summary>
+    Group: string;
     /// <summary>Position, 0-basiert.</summary>
     Line: Integer;
     Character: Integer;
@@ -53,8 +61,8 @@ type
 {$SCOPEDENUMS ON}
   TAtlasCodeSection = (None, InterfacePart, ImplementationPart, UsesClause, Initialization_, Finalization_);
   /// <summary>Zusätzliche Glieder: Sichtbarkeitsabschnitt (#1759), Unterblock in Typen (#1767),
-  /// Sichtbarkeitsmarke am Methodenglied im implementation-Teil (#1765).</summary>
-  TAtlasCrumbPart = (Visibility, MemberBlocks, VisibilityMark);
+  /// Sichtbarkeitsmarke am Methodenglied im implementation-Teil (#1765), Deklarationsblock der Unit (#1766).</summary>
+  TAtlasCrumbPart = (Visibility, MemberBlocks, VisibilityMark, DeclarationBlocks);
 {$SCOPEDENUMS OFF}
 
   TAtlasCrumb = record
@@ -131,11 +139,9 @@ implementation
 uses
   System.Math,
   Atlas.Core.Completion.Matching,
+  Atlas.Core.Outline.DeclarationBlocks,
   Atlas.Core.Outline.MemberBlocks,
   Atlas.Core.Outline.VisibilitySections;
-
-const
-  cKindNamespace = 3;
 
 function MakeBadge(AKind: TAtlasBadgeKind; const ACode: string): TAtlasBadge;
 begin
@@ -354,7 +360,7 @@ end;
 
 function IsSection(const ANode: TAtlasOutlineNode): Boolean;
 begin
-  Result := (ANode.Kind = cKindNamespace) or (ANode.Category = TAtlasOutlineCategory.Section);
+  Result := TAtlasOutline.IsSection(ANode);
 end;
 
 function Contains(const ANode: TAtlasOutlineNode; ALine, ACharacter: Integer): Boolean;
@@ -468,6 +474,7 @@ begin
   end;
   for mSection in APlace.Sections do
   begin
+    mPlace := Default(TAtlasCrumbPlace);
     mPlace.Text := mSection.Keyword;
     mPlace.Line := mSection.Line;
     mPlace.Character := mSection.Character;
@@ -487,6 +494,7 @@ begin
   Result := TextCrumb(APlace.Blocks[APlace.Current].Keyword, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'));
   for mBlock in APlace.Blocks do
   begin
+    mPlace := Default(TAtlasCrumbPlace);
     mPlace.Text := mBlock.Keyword;
     mPlace.Line := mBlock.Line;
     mPlace.Character := mBlock.Character;
@@ -509,6 +517,51 @@ begin
   begin
     Result := Result + [MemberBlockCrumb(ANodes, ABlock)];
   end;
+end;
+
+/// <summary>Sprungziel für das Schlüsselwort ABlock, in der Gruppe seines Teils.</summary>
+function DeclarationPlace(const ABlock: TAtlasDeclarationBlock): TAtlasCrumbPlace;
+begin
+  Result.Text := ABlock.Keyword;
+  Result.Group := ABlock.Section;
+  Result.Line := ABlock.Line;
+  Result.Character := ABlock.Character;
+end;
+
+/// <summary>Glieder für Teil und Deklarationsblock am Caret (#1766); leer außerhalb eines Blocks.</summary>
+function DeclarationCrumbs(const ANodes: TAtlasOutlineNodes; const APlace: TAtlasDeclarationBlockPlace): TAtlasCrumbs;
+var
+  mBlock: TAtlasDeclarationBlock;
+  mCrumb: TAtlasCrumb;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if APlace.Current < 0 then
+  begin
+    Exit;
+  end;
+  mBlock := APlace.Blocks[APlace.Current];
+  if mBlock.Section <> '' then
+  begin
+    mCrumb := TextCrumb(mBlock.Section, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'));
+    for mIndex := 0 to High(APlace.Sections) do
+    begin
+      mCrumb.Places := mCrumb.Places + [DeclarationPlace(APlace.Sections[mIndex])];
+      if APlace.Sections[mIndex].Keyword = mBlock.Section then
+      begin
+        mCrumb.Current := mIndex;
+      end;
+    end;
+    Result := Result + [mCrumb];
+  end;
+  mCrumb := TextCrumb(mBlock.Keyword, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'));
+  for mIndex := 0 to High(APlace.Blocks) do
+  begin
+    mCrumb.Places := mCrumb.Places + [DeclarationPlace(APlace.Blocks[mIndex])];
+  end;
+  mCrumb.Current := APlace.Current;
+  mCrumb.Children := TAtlasDeclarationBlockFinder.MembersOf(ANodes, APlace, APlace.Current);
+  Result := Result + [mCrumb];
 end;
 
 /// <summary>Pfad von der Unit-Ebene bis ANode (einschließlich), ohne Abschnitte.</summary>
@@ -675,6 +728,10 @@ begin
   begin
     Result := Result + [TextCrumb(mName, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'))];
     Exit;
+  end;
+  if TAtlasCrumbPart.DeclarationBlocks in AParts then
+  begin
+    Result := Result + DeclarationCrumbs(ANodes, TAtlasDeclarationBlockFinder.At(ANodes, ALines, ALine));
   end;
   mInner := InnerNode(ANodes, ALine, ACharacter);
   if mInner < 0 then

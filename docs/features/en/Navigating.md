@@ -18,6 +18,7 @@ Back to the [README](../../../README.md)
 - Inside the declaration of a class, record or helper, the visibility section at the cursor (`strict private`, `private`, `protected`, `public`, `published`) as a part of its own; its menu jumps to the other sections, and before the first keyword the implicit visibility appears in italics (`editor.breadcrumbsVisibility`)
 - Behind it, the block at the cursor (`const`, `type`, `class var`); its menu jumps to the blocks of the section, and an explicit `var` ends the block (`editor.breadcrumbsMemberBlocks`)
 - Inside a method body, the visibility mark of its declaration in front of the method part (`−` private, `#` protected, `+` public, `◆` published); the hint names the exact visibility and the line of the declaration, such as “strict private · declared in line 42” (`editor.breadcrumbsVisibilityMark`)
+- At unit level, the section and the declaration block at the cursor (`type`, `const`, `var`, `resourcestring`, `threadvar`, `label`, `exports`), such as `uKunden › interface › resourcestring › sKundeFehlt`; the block menu lists all blocks of the unit with section and line, and local blocks inside routines do not count (`editor.breadcrumbsDeclarationBlocks`)
 
 ### Editor toolbar
 

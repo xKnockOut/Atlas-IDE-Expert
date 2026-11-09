@@ -279,6 +279,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Notifications.Contract` | `Core/Notifications/Atlas.Core.Notifications.Contract.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.Sources` | `Core/Notifications/Atlas.Core.Notifications.Sources.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Outline.Breadcrumbs` | `Core/Outline/Atlas.Core.Outline.Breadcrumbs.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.DeclarationBlocks` | `Core/Outline/Atlas.Core.Outline.DeclarationBlocks.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.LoadGuard` | `Core/Outline/Atlas.Core.Outline.LoadGuard.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.MemberBlocks` | `Core/Outline/Atlas.Core.Outline.MemberBlocks.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.Model` | `Core/Outline/Atlas.Core.Outline.Model.pas` | Ordner `Core/Outline` |

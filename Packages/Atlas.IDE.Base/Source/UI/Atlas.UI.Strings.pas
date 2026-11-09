@@ -711,7 +711,9 @@ type
     SettingsAtlasSearch, SettingsAtlasPackages, SettingsAtlasHit, SettingsAtlasNoHits,
     SettingsBreadcrumbsVisibility, SettingsBreadcrumbsMemberBlocks,
     // Sichtbarkeitsmarke am Methodenglied (#1765).
-    SettingsBreadcrumbsVisibilityMark, BreadcrumbsMarkHint);
+    SettingsBreadcrumbsVisibilityMark, BreadcrumbsMarkHint,
+    // Deklarationsblock der Unit als Glied (#1766).
+    SettingsBreadcrumbsDeclarationBlocks, BreadcrumbsPlaceLine);
 
   TAtlasStrings = class
   private
@@ -2383,7 +2385,9 @@ const
      'Sichtbarkeitsabschnitt (private, public …) als Glied zeigen',
      'Unterblock in Typen (const, type, class var) als Glied zeigen',
      'Sichtbarkeitsmarke (−, #, +, ◆) am Methodenglied im implementation-Teil zeigen',
-     '%s · deklariert in Zeile %d'),
+     '%s · deklariert in Zeile %d',
+     'Deklarationsblock der Unit (type, const, var, resourcestring …) als Glied zeigen',
+     '%s · Zeile %d'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3971,7 +3975,9 @@ const
      'Show the visibility section (private, public …) as a part',
      'Show the block inside a type (const, type, class var) as a part',
      'Show the visibility mark (−, #, +, ◆) on the method part in the implementation section',
-     '%s · declared in line %d'));
+     '%s · declared in line %d',
+     'Show the declaration block of the unit (type, const, var, resourcestring …) as a part',
+     '%s · line %d'));
 
 { TAtlasStrings }
 

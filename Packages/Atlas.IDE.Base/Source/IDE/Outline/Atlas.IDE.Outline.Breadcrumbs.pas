@@ -342,7 +342,7 @@ begin
   Result := TAtlasBreadcrumbBar(FHost.ActiveBar);
 end;
 
-/// <summary>Zusätzliche Glieder nach den Einstellungen (#1759, #1767, #1765).</summary>
+/// <summary>Zusätzliche Glieder nach den Einstellungen (#1759, #1767, #1765, #1766).</summary>
 function CrumbParts: TAtlasCrumbParts;
 begin
   Result := [];
@@ -357,6 +357,10 @@ begin
   if TAtlasIdeSettings.Current.BreadcrumbsVisibilityMark then
   begin
     Include(Result, TAtlasCrumbPart.VisibilityMark);
+  end;
+  if TAtlasIdeSettings.Current.BreadcrumbsDeclarationBlocks then
+  begin
+    Include(Result, TAtlasCrumbPart.DeclarationBlocks);
   end;
 end;
 
@@ -587,6 +591,12 @@ begin
     mCommand := Default(TAtlasCommand);
     mCommand.Id := IntToStr(mIndex);
     mCommand.Caption := APlaces[mIndex].Text;
+    // Deklarationsblöcke (#1766): Teil der Unit und Zeile, gedimmt.
+    if APlaces[mIndex].Group <> '' then
+    begin
+      mCommand.Path := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsPlaceLine),
+        [APlaces[mIndex].Group, APlaces[mIndex].Line + 1]);
+    end;
     if mIndex = ACurrent then
     begin
       mCommand.ShortCut := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCurrent);
