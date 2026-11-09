@@ -4547,6 +4547,16 @@
       "x-parent": "editor.breadcrumbs",
       "x-issue": "#1763"
     },
+    "BreadcrumbsRegions": {
+      "description": "Die innerste Region ({$REGION 'Name'} … {$ENDREGION}) um den Cursor als Glied hinter Unit bzw. Abschnitt zeigen. Das Menü listet alle Regionen der Unit in Quelltextreihenfolge, verschachtelte eingerückt, mit Zeile; eine Region ohne Namen heißt „Region (Z. n)“.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsRegions",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1764"
+    },
     "BreadcrumbsIdeColors": {
       "description": "Brotkrumenleiste in den Farben der IDE-Werkzeugleisten (Fläche und Schrift aus dem IDE-Thema) statt der Atlas-Palette; im dunklen Thema also wie die Navigationsleiste darüber statt fast schwarz.",
       "type": "boolean",

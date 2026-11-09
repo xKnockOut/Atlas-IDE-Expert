@@ -286,6 +286,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Outline.MemberBlocks` | `Core/Outline/Atlas.Core.Outline.MemberBlocks.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.Model` | `Core/Outline/Atlas.Core.Outline.Model.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.NavigationOption` | `Core/Outline/Atlas.Core.Outline.NavigationOption.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.Regions` | `Core/Outline/Atlas.Core.Outline.Regions.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.StickyScroll` | `Core/Outline/Atlas.Core.Outline.StickyScroll.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.TypeText` | `Core/Outline/Atlas.Core.Outline.TypeText.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.VisibilitySections` | `Core/Outline/Atlas.Core.Outline.VisibilitySections.pas` | Ordner `Core/Outline` |

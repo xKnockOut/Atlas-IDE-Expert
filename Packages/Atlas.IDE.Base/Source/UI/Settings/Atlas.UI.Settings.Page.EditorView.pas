@@ -129,6 +129,8 @@ begin
     AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsDeclarationBlocks)));
   // Bedingungszweig (#1763).
   BindCheck('BreadcrumbsConditionals', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsConditionals)));
+  // Region (#1764).
+  BindCheck('BreadcrumbsRegions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsRegions)));
   BindCheck('BreadcrumbsIdeColors', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsIdeColors)));
   BindCheck('BreadcrumbsHideIdeToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsHideIdeToolbar)));
   BindKey('BreadcrumbsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand)));

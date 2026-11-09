@@ -559,6 +559,7 @@ type
       write FStickyScroll.BreadcrumbsDeclarationBlocks;
     property BreadcrumbsConditionals: Boolean read FStickyScroll.BreadcrumbsConditionals
       write FStickyScroll.BreadcrumbsConditionals;
+    property BreadcrumbsRegions: Boolean read FStickyScroll.BreadcrumbsRegions write FStickyScroll.BreadcrumbsRegions;
     property BreadcrumbsIdeColors: Boolean read FStickyScroll.BreadcrumbsIdeColors
       write FStickyScroll.BreadcrumbsIdeColors;
     property BreadcrumbsHideIdeToolbar: Boolean read FStickyScroll.BreadcrumbsHideIdeToolbar

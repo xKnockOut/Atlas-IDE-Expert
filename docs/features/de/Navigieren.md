@@ -27,6 +27,7 @@ Zurück zum [README](../../../README_DE.md)
 - im Rumpf einer Methode die Sichtbarkeitsmarke der Deklaration vor dem Methodenglied (`−` private, `#` protected, `+` public, `◆` published); der Hinweis nennt die genaue Sichtbarkeit und die Zeile der Deklaration, etwa „strict private · deklariert in Zeile 42“ (`editor.breadcrumbsVisibilityMark`)
 - auf Unit-Ebene Teil und Deklarationsblock am Cursor (`type`, `const`, `var`, `resourcestring`, `threadvar`, `label`, `exports`), etwa `uKunden › interface › resourcestring › sKundeFehlt`; das Menü des Blocks listet alle Blöcke der Unit mit Teil und Zeile, lokale Blöcke in Routinen zählen nicht (`editor.breadcrumbsDeclarationBlocks`)
 - am Ende der Bedingungszweig um den Cursor (`{$IFDEF MSWINDOWS}`, im Gegenzweig `{$ELSE MSWINDOWS}`, `{$ELSEIF …}`), bei verschachtelten Blöcken einer je Ebene, außen zuerst; das Menü springt zu IF, ELSE und ENDIF des Blocks. Ob der Zweig aktiv ist, entscheidet die Leiste nicht (`editor.breadcrumbsConditionals`)
+- hinter Unit bzw. Abschnitt die innerste `{$REGION}` um den Cursor, etwa `uKunden › Datenbankzugriff › TKunde › Speichern`; ihr Menü listet alle Regionen der Unit mit Zeile, verschachtelte eingerückt, eine Region ohne Namen heißt „Region (Z. n)“ (`editor.breadcrumbsRegions`)
 
 ### Editorleiste
 

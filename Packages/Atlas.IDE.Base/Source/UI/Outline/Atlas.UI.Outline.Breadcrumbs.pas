@@ -188,7 +188,8 @@ begin
   while Result and (mIndex <= High(A)) do
   begin
     Result := (A[mIndex].Text = B[mIndex].Text) and (A[mIndex].Line = B[mIndex].Line) and
-      (A[mIndex].Character = B[mIndex].Character) and (A[mIndex].Group = B[mIndex].Group);
+      (A[mIndex].Character = B[mIndex].Character) and (A[mIndex].Group = B[mIndex].Group) and
+      (A[mIndex].Depth = B[mIndex].Depth);
     Inc(mIndex);
   end;
 end;

@@ -342,7 +342,33 @@ begin
   Result := TAtlasBreadcrumbBar(FHost.ActiveBar);
 end;
 
-/// <summary>Zusätzliche Glieder nach den Einstellungen (#1759, #1767, #1765, #1766, #1763).</summary>
+/// <summary>Text eines Sprungziels; Regionen ohne Namen als „Region (Z. n)“ (#1764).</summary>
+function PlaceText(const APlace: TAtlasCrumbPlace): string;
+begin
+  Result := APlace.Text;
+  if Result = '' then
+  begin
+    Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsRegionUnnamed), [APlace.Line + 1]);
+  end;
+end;
+
+/// <summary>Glieder mit Namen für Regionen ohne Text (#1764).</summary>
+function NamedRegions(const ACrumbs: TAtlasCrumbs): TAtlasCrumbs;
+var
+  mIndex: Integer;
+begin
+  Result := ACrumbs;
+  for mIndex := 0 to High(Result) do
+  begin
+    if (Result[mIndex].Text = '') and (Result[mIndex].Current >= 0) and
+      (Result[mIndex].Current <= High(Result[mIndex].Places)) then
+    begin
+      Result[mIndex].Text := PlaceText(Result[mIndex].Places[Result[mIndex].Current]);
+    end;
+  end;
+end;
+
+/// <summary>Zusätzliche Glieder nach den Einstellungen (#1759, #1767, #1765, #1766, #1763, #1764).</summary>
 function CrumbParts: TAtlasCrumbParts;
 begin
   Result := [];
@@ -365,6 +391,10 @@ begin
   if TAtlasIdeSettings.Current.BreadcrumbsConditionals then
   begin
     Include(Result, TAtlasCrumbPart.Conditionals);
+  end;
+  if TAtlasIdeSettings.Current.BreadcrumbsRegions then
+  begin
+    Include(Result, TAtlasCrumbPart.Regions);
   end;
 end;
 
@@ -462,8 +492,8 @@ begin
   FLine := mLine;
   FCharacter := mCharacter;
   mBar.EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsEmpty);
-  mBar.SetCrumbs(TAtlasBreadcrumbs.Path(FNodes, FLines, FLine, FCharacter,
-    ChangeFileExt(ExtractFileName(FFileName), ''), FShowUnit, FParts));
+  mBar.SetCrumbs(NamedRegions(TAtlasBreadcrumbs.Path(FNodes, FLines, FLine, FCharacter,
+    ChangeFileExt(ExtractFileName(FFileName), ''), FShowUnit, FParts)));
 end;
 
 function TBreadcrumbsState.CommandsOf(const ANodes: TAtlasOutlineNodes; const AIndices: TArray<Integer>;
@@ -584,17 +614,20 @@ function PlaceCommands(const APlaces: TArray<TAtlasCrumbPlace>; const APattern: 
 var
   mIndex: Integer;
   mCommand: TAtlasCommand;
+  mText: string;
 begin
   Result := nil;
   for mIndex := 0 to High(APlaces) do
   begin
-    if not TAtlasBreadcrumbs.MatchesAtWordStart(APattern, APlaces[mIndex].Text) then
+    mText := PlaceText(APlaces[mIndex]);
+    if not TAtlasBreadcrumbs.MatchesAtWordStart(APattern, mText) then
     begin
       Continue;
     end;
     mCommand := Default(TAtlasCommand);
     mCommand.Id := IntToStr(mIndex);
-    mCommand.Caption := APlaces[mIndex].Text;
+    // Verschachtelte Regionen (#1764) eingerückt.
+    mCommand.Caption := StringOfChar(' ', 4 * APlaces[mIndex].Depth) + mText;
     // Zeile gedimmt, bei Deklarationsblöcken (#1766) mit dem Teil der Unit.
     if APlaces[mIndex].Group <> '' then
     begin

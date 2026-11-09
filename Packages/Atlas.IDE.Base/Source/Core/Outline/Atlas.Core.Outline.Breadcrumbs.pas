@@ -41,6 +41,10 @@
 // - Am Ende stehen die Bedingungszweige um den Caret ({$IFDEF …}, {$ELSE …};
 //   #1763, TAtlasConditionalFinder), außen zuerst, mit den Teilen ihres
 //   Blocks als Sprungziele; auch auf Unit-Ebene und in uses.
+// - Hinter Unit bzw. Abschnitt (uses, interface, implementation …) steht die
+//   innerste {$REGION} um den Caret (#1764, TAtlasRegionFinder); ihr Menü
+//   listet alle Regionen der Unit mit Tiefe (Depth). Ohne Namen bleibt Text
+//   leer, die Anzeige ergänzt ihn.
 
 interface
 
@@ -56,6 +60,8 @@ type
     Text: string;
     /// <summary>Gruppe im Menü (Teil der Unit bei Deklarationsblöcken, #1766); leer = keine.</summary>
     Group: string;
+    /// <summary>Einrückung im Menü (verschachtelte Regionen, #1764); 0 = keine.</summary>
+    Depth: Integer;
     /// <summary>Position, 0-basiert.</summary>
     Line: Integer;
     Character: Integer;
@@ -65,8 +71,8 @@ type
   TAtlasCodeSection = (None, InterfacePart, ImplementationPart, UsesClause, Initialization_, Finalization_);
   /// <summary>Zusätzliche Glieder: Sichtbarkeitsabschnitt (#1759), Unterblock in Typen (#1767),
   /// Sichtbarkeitsmarke am Methodenglied im implementation-Teil (#1765), Deklarationsblock der Unit (#1766),
-  /// Bedingungszweig (#1763).</summary>
-  TAtlasCrumbPart = (Visibility, MemberBlocks, VisibilityMark, DeclarationBlocks, Conditionals);
+  /// Bedingungszweig (#1763), Region (#1764).</summary>
+  TAtlasCrumbPart = (Visibility, MemberBlocks, VisibilityMark, DeclarationBlocks, Conditionals, Regions);
 {$SCOPEDENUMS OFF}
 
   TAtlasCrumb = record
@@ -146,6 +152,7 @@ uses
   Atlas.Core.Outline.Conditionals,
   Atlas.Core.Outline.DeclarationBlocks,
   Atlas.Core.Outline.MemberBlocks,
+  Atlas.Core.Outline.Regions,
   Atlas.Core.Outline.VisibilitySections;
 
 function MakeBadge(AKind: TAtlasBadgeKind; const ACode: string): TAtlasBadge;
@@ -527,14 +534,17 @@ end;
 /// <summary>Sprungziel für das Schlüsselwort ABlock, in der Gruppe seines Teils.</summary>
 function DeclarationPlace(const ABlock: TAtlasDeclarationBlock): TAtlasCrumbPlace;
 begin
+  Result := Default(TAtlasCrumbPlace);
   Result.Text := ABlock.Keyword;
   Result.Group := ABlock.Section;
   Result.Line := ABlock.Line;
   Result.Character := ABlock.Character;
 end;
 
-/// <summary>Glieder für Teil und Deklarationsblock am Caret (#1766); leer außerhalb eines Blocks.</summary>
-function DeclarationCrumbs(const ANodes: TAtlasOutlineNodes; const APlace: TAtlasDeclarationBlockPlace): TAtlasCrumbs;
+/// <summary>Glieder für Teil und Deklarationsblock am Caret (#1766); leer außerhalb eines Blocks. AAfterSection
+/// steht hinter dem Teil (Region, #1764).</summary>
+function DeclarationCrumbs(const ANodes: TAtlasOutlineNodes; const APlace: TAtlasDeclarationBlockPlace;
+  const AAfterSection: TAtlasCrumbs): TAtlasCrumbs;
 var
   mBlock: TAtlasDeclarationBlock;
   mCrumb: TAtlasCrumb;
@@ -559,6 +569,7 @@ begin
     end;
     Result := Result + [mCrumb];
   end;
+  Result := Result + AAfterSection;
   mCrumb := TextCrumb(mBlock.Keyword, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'));
   for mIndex := 0 to High(APlace.Blocks) do
   begin
@@ -738,6 +749,34 @@ begin
   end;
 end;
 
+/// <summary>Glied der innersten Region um die Stelle (#1764); leer außerhalb.</summary>
+function RegionCrumbs(const ALines: TArray<string>; ALine, ACharacter: Integer): TAtlasCrumbs;
+var
+  mPlace: TAtlasRegionPlace;
+  mRegion: TAtlasRegionMark;
+  mCrumbPlace: TAtlasCrumbPlace;
+  mCrumb: TAtlasCrumb;
+begin
+  Result := nil;
+  mPlace := TAtlasRegionFinder.At(ALines, ALine, ACharacter);
+  if mPlace.Current < 0 then
+  begin
+    Exit;
+  end;
+  mCrumb := TextCrumb(mPlace.Regions[mPlace.Current].Name, MakeBadge(TAtlasBadgeKind.Keyword, 'rg'));
+  for mRegion in mPlace.Regions do
+  begin
+    mCrumbPlace := Default(TAtlasCrumbPlace);
+    mCrumbPlace.Text := mRegion.Name;
+    mCrumbPlace.Line := mRegion.Line;
+    mCrumbPlace.Character := mRegion.Character;
+    mCrumbPlace.Depth := mRegion.Depth;
+    mCrumb.Places := mCrumb.Places + [mCrumbPlace];
+  end;
+  mCrumb.Current := mPlace.Current;
+  Result := [mCrumb];
+end;
+
 /// <summary>Pfad ohne die Bedingungszweige (siehe TAtlasBreadcrumbs.Path).</summary>
 function OutlinePath(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
   ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean; AParts: TAtlasCrumbParts): TAtlasCrumbs;
@@ -746,8 +785,14 @@ var
   mName: string;
   mPlace: TAtlasVisibilityPlace;
   mBlock: TAtlasMemberBlockPlace;
+  mRegion, mDeclaration: TAtlasCrumbs;
 begin
   Result := nil;
+  mRegion := nil;
+  if TAtlasCrumbPart.Regions in AParts then
+  begin
+    mRegion := RegionCrumbs(ALines, ALine, ACharacter);
+  end;
   if AShowUnit and (AUnitName <> '') then
   begin
     Result := [TextCrumb(AUnitName, MakeBadge(TAtlasBadgeKind.Unit_, 'un'))];
@@ -757,13 +802,19 @@ begin
   mName := SectionCrumbName(TAtlasBreadcrumbs.SectionAt(ALines, ALine));
   if mName <> '' then
   begin
-    Result := Result + [TextCrumb(mName, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'))];
+    Result := Result + [TextCrumb(mName, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'))] + mRegion;
     Exit;
   end;
+  mDeclaration := nil;
   if TAtlasCrumbPart.DeclarationBlocks in AParts then
   begin
-    Result := Result + DeclarationCrumbs(ANodes, TAtlasDeclarationBlockFinder.At(ANodes, ALines, ALine));
+    mDeclaration := DeclarationCrumbs(ANodes, TAtlasDeclarationBlockFinder.At(ANodes, ALines, ALine), mRegion);
   end;
+  if mDeclaration = nil then
+  begin
+    mDeclaration := mRegion;
+  end;
+  Result := Result + mDeclaration;
   mInner := InnerNode(ANodes, ALine, ACharacter);
   if mInner < 0 then
   begin
