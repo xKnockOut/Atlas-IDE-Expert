@@ -47,7 +47,7 @@ type
   /// und QuickBookmarkJump (je eine Zeile für die Tasten 1–9, Key ist die Taste für 1) stehen mit eigener Wahl auch
   /// auf der Seite „Tastenkonflikte“; NextBookmark und PreviousBookmark nur in der Übersicht. Gezielt
   /// hineinspringen (#836) nur in der Übersicht. „Datei jetzt prüfen“ (#1744). Neue Funktionen
-  /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht. Sicher löschen (#716).</summary>
+  /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht. Sicher löschen (#716). Neue Zeile am Ende des Abschnitts (#1768).</summary>
   TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
     ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
     MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde, Bookmark, GenerateMenu,
@@ -59,7 +59,7 @@ type
     SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap, ProblemsWindow,
     SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
     PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType, SafeDelete, CreateIssue,
-    DesignerSearch, CheckFile);
+    DesignerSearch, CheckFile, SectionAppend);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -342,7 +342,10 @@ begin
     // Willkommensseite).
     Create(TAtlasKeyFunction.DesignerSearch, Word(ASettings.DesignerSearchKey), True, ASettings.EditorDesignerBar),
     // Datei jetzt prüfen (#1744): in jedem Modus von problems.update; ohne Prüfregeln ist das Kürzel frei.
-    Create(TAtlasKeyFunction.CheckFile, Word(ASettings.CheckFileKey), AShared, ASettings.Problems)];
+    Create(TAtlasKeyFunction.CheckFile, Word(ASettings.CheckFileKey), AShared, ASettings.Problems),
+    // Neue Zeile am Ende des Abschnitts (#1768): frei belegbar, ohne Vorgabe.
+    Create(TAtlasKeyFunction.SectionAppend, Word(ASettings.SectionAppendKey), AShared,
+      ASettings.Breadcrumbs and ASettings.BreadcrumbsSectionAppend)];
 end;
 
 /// <summary>Teil 1 von ToSettings: Taste (und Vorrang) von AEntry in ASettings, wenn die Funktion hierher
@@ -573,6 +576,8 @@ begin
       ASettings.DesignerSearchKey := AEntry.Key;
     TAtlasKeyFunction.CheckFile:
       ASettings.CheckFileKey := AEntry.Key;
+    TAtlasKeyFunction.SectionAppend:
+      ASettings.SectionAppendKey := AEntry.Key;
   else
     // Gehört zu einem anderen Teil.
   end;

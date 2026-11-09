@@ -133,9 +133,17 @@ begin
   BindCheck('BreadcrumbsRegions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsRegions)));
   // try/except/finally und case-Zweig (#1769).
   BindCheck('BreadcrumbsStatements', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsStatements)));
+  // Sprungmenü am Sichtbarkeitsglied (#1768).
+  BindCheck('BreadcrumbsSectionCounts',
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsSectionCounts)));
+  BindCheck('BreadcrumbsSectionAppend',
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsSectionAppend)));
+  BindCheck('BreadcrumbsSectionCreate',
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsSectionCreate)));
   BindCheck('BreadcrumbsIdeColors', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsIdeColors)));
   BindCheck('BreadcrumbsHideIdeToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsHideIdeToolbar)));
   BindKey('BreadcrumbsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand)));
+  BindKey('SectionAppendKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SectionAppendCommand)));
   // Atlas-Editorleiste (#1101).
   BindCheck('EditorToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbar)));
   FEditorToolbarPosition := AddChoice(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPosition),

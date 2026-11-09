@@ -37,6 +37,7 @@ uses
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Notifications.Service,
   Atlas.IDE.Outline.Breadcrumbs,
+  Atlas.IDE.Outline.SectionEdit,
   Atlas.IDE.Contracts.LineChanges;
 
 function Text(AId: TAtlasTextId): string;
@@ -127,6 +128,12 @@ begin
   begin
     AKeys.AddKey(TAtlasFeature.Breadcrumbs, ASettings.BreadcrumbsKey, Text(TAtlasTextId.BreadcrumbsCommand),
       TAtlasIdeBreadcrumbs.Focus);
+  end;
+  // Neue Zeile am Ende des Abschnitts (#1768): ohne Vorgabe, aus = Taste frei.
+  if ASettings.Breadcrumbs and ASettings.BreadcrumbsSectionAppend then
+  begin
+    AKeys.AddKey(TAtlasFeature.Breadcrumbs, ASettings.SectionAppendKey, Text(TAtlasTextId.SectionAppendCommand),
+      TAtlasIdeSectionEdit.AppendAtCursor);
   end;
   // Nächste/vorherige Änderung (#507): aus = beide Tasten bleiben frei.
   if ASettings.GitGutter then

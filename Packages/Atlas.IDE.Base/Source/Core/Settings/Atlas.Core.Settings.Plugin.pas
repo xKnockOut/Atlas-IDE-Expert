@@ -562,6 +562,12 @@ type
     property BreadcrumbsRegions: Boolean read FStickyScroll.BreadcrumbsRegions write FStickyScroll.BreadcrumbsRegions;
     property BreadcrumbsStatements: Boolean read FStickyScroll.BreadcrumbsStatements
       write FStickyScroll.BreadcrumbsStatements;
+    property BreadcrumbsSectionCounts: Boolean read FStickyScroll.BreadcrumbsSectionCounts
+      write FStickyScroll.BreadcrumbsSectionCounts;
+    property BreadcrumbsSectionAppend: Boolean read FStickyScroll.BreadcrumbsSectionAppend
+      write FStickyScroll.BreadcrumbsSectionAppend;
+    property BreadcrumbsSectionCreate: Boolean read FStickyScroll.BreadcrumbsSectionCreate
+      write FStickyScroll.BreadcrumbsSectionCreate;
     property BreadcrumbsIdeColors: Boolean read FStickyScroll.BreadcrumbsIdeColors
       write FStickyScroll.BreadcrumbsIdeColors;
     property BreadcrumbsHideIdeToolbar: Boolean read FStickyScroll.BreadcrumbsHideIdeToolbar
@@ -634,6 +640,7 @@ type
     property MinimapClickJumps: Boolean read FEditorView.MinimapClickJumps write FEditorView.MinimapClickJumps;
     property MinimapNoticeShown: Boolean read FEditorView.MinimapNoticeShown write FEditorView.MinimapNoticeShown;
     property BreadcrumbsKey: Integer read FNavigationKeys.BreadcrumbsKey write FNavigationKeys.BreadcrumbsKey;
+    property SectionAppendKey: Integer read FNavigationKeys.SectionAppendKey write FNavigationKeys.SectionAppendKey;
     property GitGutter: Boolean read FEditorTyping.GitGutter write FEditorTyping.GitGutter;
     property GitBlame: Boolean read FEditorTyping.GitBlame write FEditorTyping.GitBlame;
     property GutterColumn: Boolean read FEditorView.GutterColumn write FEditorView.GutterColumn;

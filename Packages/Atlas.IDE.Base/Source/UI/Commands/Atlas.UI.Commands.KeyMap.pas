@@ -212,7 +212,8 @@ const
     TAtlasTextId.SafeDeleteCommand, // SafeDelete
     TAtlasTextId.CreateIssueCommand, // CreateIssue
     TAtlasTextId.DesignerBarSearchHint, // DesignerSearch
-    TAtlasTextId.ProblemsCheckFileCommand); // CheckFile
+    TAtlasTextId.ProblemsCheckFileCommand, // CheckFile
+    TAtlasTextId.SectionAppendCommand); // SectionAppend
 
 { TAtlasKeyMapForm, TAtlasKeyMapWindow }
 
