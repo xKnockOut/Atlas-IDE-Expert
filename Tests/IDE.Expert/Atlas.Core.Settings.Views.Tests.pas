@@ -402,12 +402,14 @@ begin
   Assert.IsTrue(Settings.Breadcrumbs);
   Assert.IsFalse(Settings.BreadcrumbsShowUnit);
   Assert.IsTrue(Settings.BreadcrumbsVisibility, 'Sichtbarkeitsabschnitt');
+  Assert.IsTrue(Settings.BreadcrumbsMemberBlocks, 'Unterblock');
   Assert.IsTrue(Settings.BreadcrumbsIdeColors, 'Farben der IDE');
   Assert.IsTrue(Settings.BreadcrumbsHideIdeToolbar, 'Navigationsleiste der IDE aus');
   Assert.AreEqual($60BE, Settings.BreadcrumbsKey, 'Strg+Umschalt+.');
   Settings.Breadcrumbs := False;
   Settings.BreadcrumbsShowUnit := True;
   Settings.BreadcrumbsVisibility := False;
+  Settings.BreadcrumbsMemberBlocks := False;
   Settings.BreadcrumbsIdeColors := False;
   Settings.BreadcrumbsHideIdeToolbar := False;
   Settings.BreadcrumbsKey := 0;
@@ -418,6 +420,7 @@ begin
   Assert.IsFalse(Loaded.Breadcrumbs);
   Assert.IsTrue(Loaded.BreadcrumbsShowUnit);
   Assert.IsFalse(Loaded.BreadcrumbsVisibility);
+  Assert.IsFalse(Loaded.BreadcrumbsMemberBlocks);
   Assert.IsFalse(Loaded.BreadcrumbsIdeColors);
   Assert.IsFalse(Loaded.BreadcrumbsHideIdeToolbar);
   Assert.AreEqual(0, Loaded.BreadcrumbsKey);

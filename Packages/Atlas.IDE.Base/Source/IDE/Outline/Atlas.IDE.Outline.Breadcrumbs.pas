@@ -24,6 +24,8 @@
 //   setzt den Unit-Namen als erstes Glied, editor.breadcrumbsVisibility den
 //   Sichtbarkeitsabschnitt hinter den Typ (#1759). Dessen Menü listet die
 //   Abschnitte des Typs; Enter springt zum Schlüsselwort.
+//   editor.breadcrumbsMemberBlocks setzt den Unterblock (const, type,
+//   class var) dahinter (#1767).
 // - Eigene Sicherung TAtlasFeature.Breadcrumbs: Fehler anderer Editorfunktionen
 //   (früher gemeinsam Editorbefehle) schalten die Leiste nicht mehr still ab.
 //   Löst die eigene Sicherung aus, sagt die Leiste das, statt stehen zu
@@ -110,7 +112,7 @@ type
     FLine: Integer;
     FCharacter: Integer;
     FShowUnit: Boolean;
-    FShowVisibility: Boolean;
+    FParts: TAtlasCrumbParts;
     FShown: Boolean;
     FActiveBar: TAtlasBreadcrumbBar;
     FToolbars: TAtlasNavigationToolbar;
@@ -339,17 +341,32 @@ begin
   Result := TAtlasBreadcrumbBar(FHost.ActiveBar);
 end;
 
+/// <summary>Zusätzliche Glieder nach den Einstellungen (#1759, #1767).</summary>
+function CrumbParts: TAtlasCrumbParts;
+begin
+  Result := [];
+  if TAtlasIdeSettings.Current.BreadcrumbsVisibility then
+  begin
+    Include(Result, TAtlasCrumbPart.Visibility);
+  end;
+  if TAtlasIdeSettings.Current.BreadcrumbsMemberBlocks then
+  begin
+    Include(Result, TAtlasCrumbPart.MemberBlocks);
+  end;
+end;
+
 /// <summary>Stand ASnapshot und Leiste ABar übernehmen; True, wenn sich gegenüber dem letzten Stand etwas
 /// geändert hat (dann ist der Pfad neu zu bilden).</summary>
 function TBreadcrumbsState.Remember(ABar: TAtlasBreadcrumbBar; const ASnapshot: TAtlasOutlineSnapshot): Boolean;
 var
-  mShowUnit, mShowVisibility: Boolean;
+  mShowUnit: Boolean;
+  mParts: TAtlasCrumbParts;
 begin
   mShowUnit := TAtlasIdeSettings.Current.BreadcrumbsShowUnit;
-  mShowVisibility := TAtlasIdeSettings.Current.BreadcrumbsVisibility;
+  mParts := CrumbParts;
   Result := not FShown or (ABar <> FActiveBar) or (ASnapshot.Status <> FStatus) or
     not SameText(ASnapshot.FileName, FFileName) or (ASnapshot.Stamp <> FStamp) or (mShowUnit <> FShowUnit) or
-    (mShowVisibility <> FShowVisibility);
+    (mParts <> FParts);
   if Result and (ASnapshot.Stamp <> FStamp) then
   begin
     FLines := TTextLines.SplitLines(ASnapshot.Text);
@@ -360,7 +377,7 @@ begin
   FFileName := ASnapshot.FileName;
   FStamp := ASnapshot.Stamp;
   FShowUnit := mShowUnit;
-  FShowVisibility := mShowVisibility;
+  FParts := mParts;
   FNodes := ASnapshot.Nodes;
 end;
 
@@ -433,7 +450,7 @@ begin
   FCharacter := mCharacter;
   mBar.EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsEmpty);
   mBar.SetCrumbs(TAtlasBreadcrumbs.Path(FNodes, FLines, FLine, FCharacter,
-    ChangeFileExt(ExtractFileName(FFileName), ''), FShowUnit, FShowVisibility));
+    ChangeFileExt(ExtractFileName(FFileName), ''), FShowUnit, FParts));
 end;
 
 function TBreadcrumbsState.CommandsOf(const ANodes: TAtlasOutlineNodes; const AIndices: TArray<Integer>;
