@@ -376,6 +376,8 @@ type
     Breadcrumbs: Boolean;
     /// <summary>Unit-Namen als erstes Glied (#590, editor.breadcrumbsShowUnit).</summary>
     BreadcrumbsShowUnit: Boolean;
+    /// <summary>Sichtbarkeitsabschnitt als Glied hinter dem Typ (#1759, editor.breadcrumbsVisibility).</summary>
+    BreadcrumbsVisibility: Boolean;
     /// <summary>Brotkrumenleiste in den Farben der IDE-Werkzeugleisten statt der Atlas-Palette
     /// (editor.breadcrumbsIdeColors).</summary>
     BreadcrumbsIdeColors: Boolean;
@@ -860,6 +862,7 @@ class function TAtlasPluginStickyScrollSettings.Defaults: TAtlasPluginStickyScro
 begin
   Result.Breadcrumbs := True;
   Result.BreadcrumbsShowUnit := False;
+  Result.BreadcrumbsVisibility := True;
   Result.BreadcrumbsIdeColors := True;
   Result.BreadcrumbsHideIdeToolbar := True;
   Result.StickyScroll := True;
@@ -884,6 +887,7 @@ procedure TAtlasPluginStickyScrollSettings.Exchange(const AIo: TAtlasSettingsExc
 begin
   AIo.Flag('Breadcrumbs', Breadcrumbs);
   AIo.Flag('BreadcrumbsShowUnit', BreadcrumbsShowUnit);
+  AIo.Flag('BreadcrumbsVisibility', BreadcrumbsVisibility);
   AIo.Flag('BreadcrumbsIdeColors', BreadcrumbsIdeColors);
   AIo.Flag('BreadcrumbsHideIdeToolbar', BreadcrumbsHideIdeToolbar);
   AIo.Flag('StickyScroll', StickyScroll);

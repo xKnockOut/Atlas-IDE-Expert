@@ -18,6 +18,12 @@
 //   Methode, beim Unit-Glied die Elemente der Unit-Ebene.
 // - Target wählt das Sprungziel (Implementierung oder Deklaration), Filter
 //   die Wortgrenzen-Suche des Menüs.
+// - Im Deklarationsteil einer Klasse, eines Records, Objekts oder Helfers
+//   steht hinter dem Typ der Sichtbarkeitsabschnitt am Caret (#1759,
+//   TAtlasVisibilitySectionFinder): Sein Menü listet die Abschnitte des Typs
+//   als Sprungziele (Places), seine Kinder sind die Mitglieder des
+//   Abschnitts. Vor dem ersten Schlüsselwort steht die implizite
+//   Sichtbarkeit (Implicit).
 
 interface
 
@@ -28,6 +34,14 @@ uses
   Atlas.Core.Outline.Model;
 
 type
+  /// <summary>Sprungziel eines Glieds ohne Knoten der Gliederung (Sichtbarkeitsabschnitt, #1759).</summary>
+  TAtlasCrumbPlace = record
+    Text: string;
+    /// <summary>Position, 0-basiert.</summary>
+    Line: Integer;
+    Character: Integer;
+  end;
+
 {$SCOPEDENUMS ON}
   TAtlasCodeSection = (None, InterfacePart, ImplementationPart, UsesClause, Initialization_, Finalization_);
 {$SCOPEDENUMS OFF}
@@ -44,6 +58,11 @@ type
     Current: Integer;
     /// <summary>Kinder für das Menü hinter dem Glied in Quelltextreihenfolge; leer = kein Menü.</summary>
     Children: TArray<Integer>;
+    /// <summary>Sprungziele für das Menü, wenn das Glied keinen Knoten hat (Sichtbarkeitsabschnitte); Current
+    /// ist dann der Index darin.</summary>
+    Places: TArray<TAtlasCrumbPlace>;
+    /// <summary>Das Glied steht für etwas, das nicht im Quelltext steht (implizite Sichtbarkeit).</summary>
+    Implicit: Boolean;
   end;
 
   TAtlasCrumbs = TArray<TAtlasCrumb>;
@@ -53,9 +72,11 @@ type
     /// <summary>Abschnitt der Zeile ALine (0-basiert): Schlüsselwörter am Zeilenanfang (Spalte 1), uses bis zum
     /// abschließenden Semikolon; Kommentare und Strings zählen nicht.</summary>
     class function SectionAt(const ALines: TArray<string>; ALine: Integer): TAtlasCodeSection; static;
-    /// <summary>Pfad am Caret (0-basiert). AUnitName steht vorn, wenn AShowUnit.</summary>
+    /// <summary>Pfad am Caret (0-basiert). AUnitName steht vorn, wenn AShowUnit; mit AShowVisibility der
+    /// Sichtbarkeitsabschnitt hinter dem Typ (#1759).</summary>
     class function Path(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
-      ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean): TAtlasCrumbs; static;
+      ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean;
+      AShowVisibility: Boolean = False): TAtlasCrumbs; static;
     /// <summary>Badge eines Knotens; Routinen nach dem ersten Wort ihrer Kopfzeile (procedure/function).</summary>
     class function BadgeOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
       ANode: Integer): TAtlasBadge; static;
@@ -69,6 +90,8 @@ type
     class function QualifiedName(const ANodes: TAtlasOutlineNodes; ANode: Integer): string; static;
     /// <summary>Kinder von ANode: Mitglieder eines Typs bzw. lokale Routinen im Rumpf einer Routine.</summary>
     class function Children(const ANodes: TAtlasOutlineNodes; ANode: Integer): TArray<Integer>; static;
+    /// <summary>Hat das Glied ein Sprungmenü (Geschwister oder Sprungziele)?</summary>
+    class function HasMenu(const ACrumb: TAtlasCrumb): Boolean; static;
     /// <summary>Name ohne Besitzer: "TFoo.Bar" → "Bar".</summary>
     class function ShortName(const AName: string): string; static;
     /// <summary>Sprungziel: mit AImplementation der Rumpf (ohne Rumpf die Deklaration), sonst die
@@ -88,7 +111,8 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Completion.Matching;
+  Atlas.Core.Completion.Matching,
+  Atlas.Core.Outline.VisibilitySections;
 
 const
   cKindNamespace = 3;
@@ -253,6 +277,11 @@ begin
   end;
 end;
 
+class function TAtlasBreadcrumbs.HasMenu(const ACrumb: TAtlasCrumb): Boolean;
+begin
+  Result := (Length(ACrumb.Siblings) > 0) or (Length(ACrumb.Places) > 0);
+end;
+
 class function TAtlasBreadcrumbs.ShortName(const AName: string): string;
 begin
   Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
@@ -377,6 +406,7 @@ function NewCrumb(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>
 var
   mIndex: Integer;
 begin
+  Result := Default(TAtlasCrumb);
   Result.Text := TAtlasBreadcrumbs.ShortName(ANodes[ANode].Name);
   Result.Badge := TAtlasBreadcrumbs.BadgeOf(ANodes, ALines, ANode);
   Result.Node := ANode;
@@ -394,12 +424,35 @@ end;
 
 function TextCrumb(const AText: string; const ABadge: TAtlasBadge): TAtlasCrumb;
 begin
+  Result := Default(TAtlasCrumb);
   Result.Text := AText;
   Result.Badge := ABadge;
   Result.Node := -1;
-  Result.Siblings := nil;
   Result.Current := -1;
-  Result.Children := nil;
+end;
+
+/// <summary>Glied des Sichtbarkeitsabschnitts APlace (#1759): Abschnitte als Sprungziele, Mitglieder des
+/// Abschnitts als Kinder; vor dem ersten Schlüsselwort die implizite Sichtbarkeit.</summary>
+function VisibilityCrumb(const ANodes: TAtlasOutlineNodes; const APlace: TAtlasVisibilityPlace): TAtlasCrumb;
+var
+  mSection: TAtlasVisibilitySection;
+  mPlace: TAtlasCrumbPlace;
+begin
+  Result := TextCrumb(APlace.Implicit, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'));
+  Result.Implicit := APlace.Current < 0;
+  if not Result.Implicit then
+  begin
+    Result.Text := APlace.Sections[APlace.Current].Keyword;
+  end;
+  for mSection in APlace.Sections do
+  begin
+    mPlace.Text := mSection.Keyword;
+    mPlace.Line := mSection.Line;
+    mPlace.Character := mSection.Character;
+    Result.Places := Result.Places + [mPlace];
+  end;
+  Result.Current := APlace.Current;
+  Result.Children := TAtlasVisibilitySectionFinder.MembersOf(ANodes, APlace, APlace.Current);
 end;
 
 /// <summary>Pfad von der Unit-Ebene bis ANode (einschließlich), ohne Abschnitte.</summary>
@@ -475,10 +528,11 @@ begin
 end;
 
 class function TAtlasBreadcrumbs.Path(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
-  ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean): TAtlasCrumbs;
+  ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean; AShowVisibility: Boolean): TAtlasCrumbs;
 var
   mInner, mItem: Integer;
   mName: string;
+  mPlace: TAtlasVisibilityPlace;
 begin
   Result := nil;
   if AShowUnit and (AUnitName <> '') then
@@ -498,9 +552,19 @@ begin
   begin
     Exit;
   end;
+  mPlace := Default(TAtlasVisibilityPlace);
+  mPlace.TypeNode := -1;
+  if AShowVisibility then
+  begin
+    mPlace := TAtlasVisibilitySectionFinder.At(ANodes, ALines, ALine, ACharacter);
+  end;
   for mItem in Chain(ANodes, mInner) do
   begin
     Result := Result + CrumbsOf(ANodes, ALines, mItem);
+    if mItem = mPlace.TypeNode then
+    begin
+      Result := Result + [VisibilityCrumb(ANodes, mPlace)];
+    end;
   end;
 end;
 

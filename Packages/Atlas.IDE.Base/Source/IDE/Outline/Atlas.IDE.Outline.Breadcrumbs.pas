@@ -21,7 +21,9 @@
 // - Focus (keys.breadcrumbs, Vorgabe Strg+Umschalt+.) setzt den Fokus auf
 //   das letzte Glied der aktiven Leiste; Esc gibt ihn an den Editor zurück.
 // - editor.breadcrumbs aus entfernt alle Leisten, editor.breadcrumbsShowUnit
-//   setzt den Unit-Namen als erstes Glied.
+//   setzt den Unit-Namen als erstes Glied, editor.breadcrumbsVisibility den
+//   Sichtbarkeitsabschnitt hinter den Typ (#1759). Dessen Menü listet die
+//   Abschnitte des Typs; Enter springt zum Schlüsselwort.
 // - Eigene Sicherung TAtlasFeature.Breadcrumbs: Fehler anderer Editorfunktionen
 //   (früher gemeinsam Editorbefehle) schalten die Leiste nicht mehr still ab.
 //   Löst die eigene Sicherung aus, sagt die Leiste das, statt stehen zu
@@ -108,6 +110,7 @@ type
     FLine: Integer;
     FCharacter: Integer;
     FShowUnit: Boolean;
+    FShowVisibility: Boolean;
     FShown: Boolean;
     FActiveBar: TAtlasBreadcrumbBar;
     FToolbars: TAtlasNavigationToolbar;
@@ -129,6 +132,7 @@ type
     procedure OpenChildren(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
     procedure OpenList(ABar: TAtlasBreadcrumbBar; const APrompt: string; const AItems: TArray<Integer>;
       ACurrent: Integer; const APoint: TPoint);
+    procedure OpenPlaces(ABar: TAtlasBreadcrumbBar; const ACrumb: TAtlasCrumb; const APoint: TPoint);
     procedure Jump(ABar: TAtlasBreadcrumbBar; AIndex: Integer; ADeclaration: Boolean);
     procedure Later(ABar: TAtlasBreadcrumbBar; const AAction: TProc);
     procedure ApplyToolbar(AParent: TWinControl);
@@ -339,11 +343,13 @@ end;
 /// geändert hat (dann ist der Pfad neu zu bilden).</summary>
 function TBreadcrumbsState.Remember(ABar: TAtlasBreadcrumbBar; const ASnapshot: TAtlasOutlineSnapshot): Boolean;
 var
-  mShowUnit: Boolean;
+  mShowUnit, mShowVisibility: Boolean;
 begin
   mShowUnit := TAtlasIdeSettings.Current.BreadcrumbsShowUnit;
+  mShowVisibility := TAtlasIdeSettings.Current.BreadcrumbsVisibility;
   Result := not FShown or (ABar <> FActiveBar) or (ASnapshot.Status <> FStatus) or
-    not SameText(ASnapshot.FileName, FFileName) or (ASnapshot.Stamp <> FStamp) or (mShowUnit <> FShowUnit);
+    not SameText(ASnapshot.FileName, FFileName) or (ASnapshot.Stamp <> FStamp) or (mShowUnit <> FShowUnit) or
+    (mShowVisibility <> FShowVisibility);
   if Result and (ASnapshot.Stamp <> FStamp) then
   begin
     FLines := TTextLines.SplitLines(ASnapshot.Text);
@@ -354,6 +360,7 @@ begin
   FFileName := ASnapshot.FileName;
   FStamp := ASnapshot.Stamp;
   FShowUnit := mShowUnit;
+  FShowVisibility := mShowVisibility;
   FNodes := ASnapshot.Nodes;
 end;
 
@@ -426,7 +433,7 @@ begin
   FCharacter := mCharacter;
   mBar.EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsEmpty);
   mBar.SetCrumbs(TAtlasBreadcrumbs.Path(FNodes, FLines, FLine, FCharacter,
-    ChangeFileExt(ExtractFileName(FFileName), ''), FShowUnit));
+    ChangeFileExt(ExtractFileName(FFileName), ''), FShowUnit, FShowVisibility));
 end;
 
 function TBreadcrumbsState.CommandsOf(const ANodes: TAtlasOutlineNodes; const AIndices: TArray<Integer>;
@@ -459,24 +466,32 @@ begin
     Exit;
   end;
   mCrumb := ABar.Crumbs[AIndex];
+  if Length(mCrumb.Places) > 0 then
+  begin
+    OpenPlaces(ABar, mCrumb, APoint);
+    Exit;
+  end;
   OpenList(ABar, mCrumb.Text, mCrumb.Siblings, mCrumb.Node, APoint);
 end;
 
 procedure TBreadcrumbsState.OpenChildren(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
 var
   mCrumb: TAtlasCrumb;
-  mCurrent: Integer;
+  mCurrent, mNext: Integer;
 begin
   if (ABar <> FActiveBar) or (AIndex < 0) or (AIndex > High(ABar.Crumbs)) then
   begin
     Exit;
   end;
   mCrumb := ABar.Crumbs[AIndex];
-  // Vorgewählt ist das Kind, in dem der Caret steht (das nächste Glied).
+  // Vorgewählt ist das Kind, in dem der Caret steht: das nächste Glied mit Knoten (ein Abschnittsglied
+  // dazwischen hat keinen).
   mCurrent := -1;
-  if AIndex < High(ABar.Crumbs) then
+  mNext := AIndex + 1;
+  while (mCurrent < 0) and (mNext <= High(ABar.Crumbs)) do
   begin
-    mCurrent := ABar.Crumbs[AIndex + 1].Node;
+    mCurrent := ABar.Crumbs[mNext].Node;
+    Inc(mNext);
   end;
   OpenList(ABar, mCrumb.Text + ' ›', mCrumb.Children, mCurrent, APoint);
 end;
@@ -534,6 +549,74 @@ begin
   mWindow.ShowAt(APoint, MulDiv(cMenuWidth, ABar.CurrentPPI, 96));
 end;
 
+function PlaceCommands(const APlaces: TArray<TAtlasCrumbPlace>; const APattern: string;
+  ACurrent: Integer): TArray<TAtlasCommand>;
+var
+  mIndex: Integer;
+  mCommand: TAtlasCommand;
+begin
+  Result := nil;
+  for mIndex := 0 to High(APlaces) do
+  begin
+    if not TAtlasBreadcrumbs.MatchesAtWordStart(APattern, APlaces[mIndex].Text) then
+    begin
+      Continue;
+    end;
+    mCommand := Default(TAtlasCommand);
+    mCommand.Id := IntToStr(mIndex);
+    mCommand.Caption := APlaces[mIndex].Text;
+    if mIndex = ACurrent then
+    begin
+      mCommand.ShortCut := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCurrent);
+    end;
+    Result := Result + [mCommand];
+  end;
+end;
+
+/// <summary>Menü der Sprungziele eines Glieds ohne Knoten (Sichtbarkeitsabschnitte des Typs, #1759).</summary>
+procedure TBreadcrumbsState.OpenPlaces(ABar: TAtlasBreadcrumbBar; const ACrumb: TAtlasCrumb; const APoint: TPoint);
+var
+  mPlaces: TArray<TAtlasCrumbPlace>;
+  mCurrent: Integer;
+  mFileName: string;
+  mWindow: TAtlasPaletteWindow;
+begin
+  if FFileName = '' then
+  begin
+    Exit;
+  end;
+  // Kopien: Das Menü lebt länger als der aktuelle Stand.
+  mPlaces := ACrumb.Places;
+  mCurrent := ACrumb.Current;
+  mFileName := FFileName;
+  mWindow := TAtlasPaletteWindow.CreatePalette(Application, PlaceCommands(mPlaces, '', mCurrent), nil,
+    TAtlasIdeStyle.Colors);
+  mWindow.Prompt := ACrumb.Text;
+  mWindow.Presorted := True;
+  mWindow.QueryDelay := 0;
+  if mCurrent >= 0 then
+  begin
+    mWindow.InitialId := IntToStr(mCurrent);
+  end;
+  mWindow.OnQuery :=
+    function(APattern: string): TArray<TAtlasCommand>
+    begin
+      Result := PlaceCommands(mPlaces, APattern, mCurrent);
+    end;
+  mWindow.OnExecuteShift :=
+    procedure(ACommand: TAtlasCommand; AShifted: Boolean)
+    var
+      mChosen: Integer;
+    begin
+      mChosen := StrToIntDef(ACommand.Id, -1);
+      if (mChosen >= 0) and (mChosen <= High(mPlaces)) then
+      begin
+        TAtlasIdeNavigation.GoToLocation(mFileName, mPlaces[mChosen].Line, mPlaces[mChosen].Character);
+      end;
+    end;
+  mWindow.ShowAt(APoint, MulDiv(cMenuWidth, ABar.CurrentPPI, 96));
+end;
+
 procedure TBreadcrumbsState.Jump(ABar: TAtlasBreadcrumbBar; AIndex: Integer; ADeclaration: Boolean);
 var
   mCrumb: TAtlasCrumb;
@@ -551,6 +634,12 @@ begin
     if mCrumb.Badge.Kind = TAtlasBadgeKind.Unit_ then
     begin
       TAtlasIdeNavigation.GoToLocation(FFileName, 0, 0);
+    end
+    else if (mCrumb.Current >= 0) and (mCrumb.Current <= High(mCrumb.Places)) then
+    begin
+      // Abschnittsglied: zu seinem Schlüsselwort.
+      TAtlasIdeNavigation.GoToLocation(FFileName, mCrumb.Places[mCrumb.Current].Line,
+        mCrumb.Places[mCrumb.Current].Character);
     end;
     Exit;
   end;

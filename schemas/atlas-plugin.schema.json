@@ -4497,6 +4497,16 @@
       "x-parent": "editor.breadcrumbs",
       "x-issue": "#590"
     },
+    "BreadcrumbsVisibility": {
+      "description": "Im Deklarationsteil einer Klasse, eines Records, Objekts oder Helfers den Sichtbarkeitsabschnitt am Cursor (strict private, private, strict protected, protected, public, published) als eigenes Glied hinter dem Typ zeigen. Sein Menü listet alle Abschnitte des Typs und springt zum Schlüsselwort; vor dem ersten Schlüsselwort steht die implizite Sichtbarkeit kursiv.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsVisibility",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1759"
+    },
     "BreadcrumbsIdeColors": {
       "description": "Brotkrumenleiste in den Farben der IDE-Werkzeugleisten (Fläche und Schrift aus dem IDE-Thema) statt der Atlas-Palette; im dunklen Thema also wie die Navigationsleiste darüber statt fast schwarz.",
       "type": "boolean",

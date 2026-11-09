@@ -708,7 +708,8 @@ type
     SettingsHoverMembersMaxLines,
     // Optionen je Package (#1903).
     SettingsModulesNode, SettingsModulesTitle, SettingsModuleInstalled, SettingsModuleMissing, SettingsModulesHint,
-    SettingsAtlasSearch, SettingsAtlasPackages, SettingsAtlasHit, SettingsAtlasNoHits);
+    SettingsAtlasSearch, SettingsAtlasPackages, SettingsAtlasHit, SettingsAtlasNoHits,
+    SettingsBreadcrumbsVisibility);
 
   TAtlasStrings = class
   private
@@ -2376,7 +2377,8 @@ const
      'Einstellung suchen:',
      'Packages: %d von %d installiert, %d eingeschaltet',
      '%s  –  %s › %s › %s',
-     'Keine Einstellung gefunden.'),
+     'Keine Einstellung gefunden.',
+     'Sichtbarkeitsabschnitt (private, public …) als Glied zeigen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3960,7 +3962,8 @@ const
      'Find a setting:',
      'Packages: %d of %d installed, %d switched on',
      '%s  –  %s › %s › %s',
-     'No setting found.'));
+     'No setting found.',
+     'Show the visibility section (private, public …) as a part'));
 
 { TAtlasStrings }
 
