@@ -93,6 +93,8 @@ type
     /// fragen.</summary>
     procedure Track(const AView: IOTAEditView);
     function ProblemsOf(const AFileName: string): TArray<TAtlasProblem>;
+    /// <summary>Symbol des Befunds, der jetzt in Zeile ALine steht (#1818, verfolgte Zeilen).</summary>
+    function ProblemSymbolAt(const AFileName: string; ALine: Integer): TAtlasGutterSymbol;
     /// <summary>Was die Spalte für Zeile ALine (0-basiert) zeigen kann; ALineText: Text der Zeile im Editor (nur
     /// mit AHasText).</summary>
     function LineOf(const AFileName: string; ALine: Integer; const ALineText: string; AHasText: Boolean;
@@ -124,7 +126,9 @@ uses
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.IDE.Foundation.LineTracker,
+  Atlas.Core.Editor.LineTracking;
 
 procedure InvalidateTop;
 var
@@ -399,6 +403,26 @@ begin
   Result := FProblems;
 end;
 
+function TAtlasIdeGutterColumnState.ProblemSymbolAt(const AFileName: string; ALine: Integer): TAtlasGutterSymbol;
+var
+  mStore: TAtlasProblemStore;
+  mSource: Integer;
+  mTracked: TAtlasTrackedLines;
+begin
+  // Marken folgen ihrer Zeile sofort (#1818): die Zuordnung, die der Zeichner der Befunde angemeldet hat.
+  mStore := TAtlasProblemsController.Current;
+  mTracked := nil;
+  if (mStore <> nil) and TAtlasIdeSettings.TrackLinesOn then
+  begin
+    mTracked := TAtlasIdeLineTracker.Current(AFileName, TAtlasLineTracking.cProblems, mStore.Stamp(AFileName));
+  end;
+  if not TAtlasIdeLineTracker.SourceAt(mTracked, ALine, mSource) then
+  begin
+    Exit(TAtlasGutterColumn.ProblemSymbol(nil, ALine));
+  end;
+  Result := TAtlasGutterColumn.ProblemSymbol(ProblemsOf(AFileName), mSource);
+end;
+
 function TAtlasIdeGutterColumnState.LineOf(const AFileName: string; ALine: Integer; const ALineText: string;
   AHasText: Boolean; out AOverrides: TAtlasGutterOverrides): TAtlasGutterLine;
 begin
@@ -406,7 +430,7 @@ begin
   AOverrides := Default(TAtlasGutterOverrides);
   if FOptions.Problems then
   begin
-    Result.Problem := TAtlasGutterColumn.ProblemSymbol(ProblemsOf(AFileName), ALine);
+    Result.Problem := ProblemSymbolAt(AFileName, ALine);
   end;
   if FOptions.CodeActions and FAction.Found and (ALine = FAction.Line) and SameText(AFileName, FAction.FileName) then
   begin

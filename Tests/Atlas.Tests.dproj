@@ -1094,6 +1094,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.ProjectChoice.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LineAnchor.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.LineAnchor.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LineTracking.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.LineTracking.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\Core\Notes\Atlas.Core.Notes.Store.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Notes.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.TitledTip.pas"/>

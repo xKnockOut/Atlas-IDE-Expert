@@ -99,6 +99,8 @@ type
     /// <summary>Fehlertext am Zeilenende (#509): 'off', 'errors' (Vorgabe), 'errorsAndWarnings', 'all'; nur mit
     /// Problems.</summary>
     InlineDiagnostics: string;
+    /// <summary>Marken folgen ihrer Zeile sofort bei Bearbeitungen (#1818, editor.trackLines).</summary>
+    TrackLines: Boolean;
     /// <summary>Änderungsmarken in der Rinne (#507, editor.gitGutter).</summary>
     GitGutter: Boolean;
     /// <summary>Zeilenhistorie am Ende der Cursorzeile (#507, editor.gitBlame).</summary>
@@ -607,6 +609,7 @@ begin
   Result.RecursionMarkers := True;
   Result.RecursionMarkersDepth := 4;
   Result.InlineDiagnostics := 'errors';
+  Result.TrackLines := True;
   Result.GitGutter := True;
   Result.GitBlame := False;
   Result.MethodPlacement := 'grouped';
@@ -656,6 +659,7 @@ begin
   AIo.Flag('RecursionMarkers', RecursionMarkers);
   AIo.Number('RecursionMarkersDepth', RecursionMarkersDepth);
   AIo.Text('InlineDiagnostics', InlineDiagnostics);
+  AIo.Flag('TrackLines', TrackLines);
   AIo.Flag('GitGutter', GitGutter);
   AIo.Flag('GitBlame', GitBlame);
   AIo.Text('MethodPlacement', MethodPlacement);

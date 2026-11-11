@@ -94,6 +94,7 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorSnapshot,
+  Atlas.IDE.Foundation.LineTracker,
   Atlas.IDE.CodeInsight.Manager.Queries,
   Atlas.Core.Localization.Language;
 
@@ -216,6 +217,8 @@ begin
   end;
   // Nach beiden Verbrauchern.
   TAtlasEditorSnapshots.Uninstall;
+  // Nach den Befunden, die Zeilen verfolgen (#1818).
+  TAtlasIdeLineTracker.Uninstall;
   // Die Threads geben sich nicht selbst frei: Erst wenn sie beendet sind, läuft nichts mehr im Code des Plugins,
   // auch nicht das Freigeben ihrer anonymen Methode (#886). Sie nutzen bis zuletzt die Ereignisse aus Destroy.
   if not FThreads.StopAll(TAtlasShutdown.cStopMs) then

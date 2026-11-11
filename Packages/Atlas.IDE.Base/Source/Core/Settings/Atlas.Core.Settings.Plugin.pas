@@ -289,6 +289,7 @@ type
     property HoverSignatureParams: Boolean read FEditorInsight.HoverSignatureParams
       write FEditorInsight.HoverSignatureParams;
     property InlineDiagnostics: string read FEditorTyping.InlineDiagnostics write FEditorTyping.InlineDiagnostics;
+    property TrackLines: Boolean read FEditorTyping.TrackLines write FEditorTyping.TrackLines;
     property ProblemsStatusCounter: Boolean read FEditorInsight.ProblemsStatusCounter
       write FEditorInsight.ProblemsStatusCounter;
     property NextProblemKey: Integer read FNavigationKeys.NextProblemKey write FNavigationKeys.NextProblemKey;
