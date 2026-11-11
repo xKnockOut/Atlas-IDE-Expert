@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Geändert
+- Prüfregel `virtual-instead-of-override` nennt in der Meldung den Vorfahren, dessen virtuelle Methode verdeckt wird, etwa „"Lauf" ist im Vorfahren TBasis schon virtuell; override statt virtual verwenden“; bei `Destroy` ohne Treffer im Index TObject.
+
 ## [2.0.1] - 2026-11-08
 
 ### Neu
