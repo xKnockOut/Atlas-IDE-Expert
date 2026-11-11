@@ -5284,6 +5284,16 @@
       "x-node": "editor.designerBar",
       "x-issue": "#609"
     },
+    "DesignerDataBindings": {
+      "description": "Knopf „Datenbindung“ in der Designer-Leiste: schaltet eine einzeilige Leiste am unteren Rand des Designers ein und aus, ähnlich der Brotkrumenleiste des Editors. Sie zeigt für die gewählte Komponente ihr Datenkonstrukt, etwa SQLConnection1 › qryKunden › dspKunden › cdsKunden › dsKunden › edtOrt (über Connection, SQLConnection, DataSet, ProviderName, MasterSource, DataSource und ListSource, auch in geöffneten Datenmodulen), je Glied mit Symbol der Palette und Feld. Hat eine Stufe weitere Glieder, klappt „n ▾“ die Liste nach oben auf; Klick wählt die Komponente, auch im Datenmodul. Ein Feld, das in der Datenmenge fehlt, und ein DataField ohne DataSource sind rot.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.dataBindings",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#610"
+    },
     "DesignerFitToText": {
       "description": "Befehl „Breite nach Text“ im Menü „Anordnen“ der Designer-Leiste: setzt die markierten Steuerelemente auf die Breite des längsten Texts plus Innenabstand und Anteil des Steuerelements (Kästchen, Pfeil, Glyph), mindestens die Mindestbreite. In einer Reihe bleiben die Abstände und die linke bzw. (bei akRight oder am rechten Rand) die rechte Kante; AutoSize und Align ohne freie Breite bleiben. Ändert die .dfm.",
       "type": "boolean",

@@ -126,6 +126,7 @@ begin
   Line('designer.nameSuggestPrefixes', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNamePrefixes));
   Switch('designer.structure', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsStructure));
   Switch('designer.structureHideOnForm', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsStHide));
+  Switch('designer.dataBindings', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDataBindings));
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildArrangeRows;

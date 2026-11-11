@@ -31,7 +31,8 @@ type
     SettingsNameReplace, SettingsNameRemove, SettingsNameHandlers, SettingsNamePrefixes, StHint, StCaption, StFilter,
     StGroupData, StGroupActions, StGroupDialogs, StGroupImages, StGroupOther, StControls, StNonVisual, StExpandAll,
     StCollapseAll, StByClass, StByKind, StShowImages, StEmpty, StUnused, StStatus, StCreated, StCreateFailed,
-    StHideMissing, SettingsStructure, SettingsStHide);
+    StHideMissing, SettingsStructure, SettingsStHide, DbHint, DbNoSelection, DbNone, DbSize, DbConsumers, DbManyOf,
+    DbFieldMissing, DbNoDataSource, SettingsDataBindings);
 
 {$SCOPEDENUMS OFF}
 
@@ -157,7 +158,16 @@ const
      '%s konnte nicht angelegt werden: %s',
      'Befehl der IDE zum Ausblenden nichtvisueller Komponenten nicht gefunden; die Symbole bleiben auf dem Formular.',
      'Knopf „Atlas-Struktur“ (andockbares Fenster mit Komponenten und Verknüpfungen)',
-     'Symbole nichtvisueller Komponenten auf dem Formular ausblenden, solange das Fenster offen ist'),
+     'Symbole nichtvisueller Komponenten auf dem Formular ausblenden, solange das Fenster offen ist',
+     'Datenbindung: Datenkonstrukt der Auswahl als Leiste unter dem Designer',
+     'Keine Komponente gewählt',
+     'keine Verbindungen',
+     '%d Glieder',
+     '%d Verbraucher',
+     '%d %s',
+     'Feld %s gibt es in %s nicht',
+     'DataField %s ohne DataSource',
+     'Knopf „Datenbindung“ (Datenkonstrukt der Auswahl als Leiste unter dem Designer)'),
     ('Measure distances: guide lines while dragging, with Alt to the component under the mouse',
      'as above',
      'as below',
@@ -262,7 +272,16 @@ const
      '%s could not be created: %s',
      'IDE command to hide non-visual components not found; the icons stay on the form.',
      '“Atlas Structure” button (dockable window with components and links)',
-     'Hide icons of non-visual components on the form while the window is open'));
+     'Hide icons of non-visual components on the form while the window is open',
+     'Data binding: data construct of the selection as a bar below the designer',
+     'No component selected',
+     'no connections',
+     '%d links',
+     '%d consumers',
+     '%d %s',
+     'Field %s does not exist in %s',
+     'DataField %s without DataSource',
+     '“Data binding” button (data construct of the selection as a bar below the designer)'));
 
 { TAtlasDesignerViewStrings }
 

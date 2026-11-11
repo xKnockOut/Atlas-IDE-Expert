@@ -29,7 +29,6 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
-  System.Generics.Collections,
   Vcl.ExtCtrls,
   Vcl.Menus,
   Vcl.Controls,
@@ -37,7 +36,8 @@ uses
   Atlas.Core.Designer.Structure,
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.StructureFrame,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.IDE.Foundation.DockWindow,
+  Atlas.IDE.Designer.PaletteImages;
 
 type
   TAtlasIdeStructure = class
@@ -47,9 +47,7 @@ type
     FOnMessage: TProc<string>;
     FHost: TAtlasIdeDockWindow;
     FTimer: TTimer;
-    FImages: TImageList;
-    FImageClasses: TStringList;
-    FClasses: TDictionary<string, TClass>;
+    FPalette: TAtlasPaletteImages;
     FMenu: TPopupMenu;
     FMenuComponent: string;
     FSignature: string;
@@ -66,7 +64,6 @@ type
     function Items(ARoot: TComponent): TArray<TAtlasStructureItem>;
     procedure Fill(AForce: Boolean);
     procedure SyncSelection;
-    function ImageOf(AClass: TClass): Integer;
     function NodeImage(const ANode: TAtlasStructureNode): Integer;
     procedure SelectName(const AName: string);
     class procedure OpenName(const AName: string); static;
@@ -92,7 +89,6 @@ uses
   System.IniFiles,
   System.TypInfo,
   Vcl.Forms,
-  Vcl.Graphics,
   Vcl.ActnList,
   Vcl.ImgList,
   Vcl.ComCtrls,
@@ -106,7 +102,6 @@ uses
 
 const
   cTick = 300;
-  cImageSize = 16;
   cWindowWidth = 320;
   cBasePpi = 96;
   cHideAction = 'ToggleNonVisualComponentVisibilityCommand';
@@ -358,11 +353,7 @@ begin
   FTimer.Enabled := False;
   FTimer.Interval := cTick;
   FTimer.OnTimer := Tick;
-  FImageClasses := TStringList.Create;
-  FClasses := TDictionary<string, TClass>.Create;
-  FImages := TImageList.Create(nil);
-  FImages.ColorDepth := cd32Bit;
-  FImages.SetSize(cImageSize, cImageSize);
+  FPalette := TAtlasPaletteImages.Create;
   FMenu := TPopupMenu.Create(nil);
 end;
 
@@ -373,9 +364,7 @@ begin
   FreeAndNil(FHost);
   FTimer.Free;
   FMenu.Free;
-  FImages.Free;
-  FClasses.Free;
-  FImageClasses.Free;
+  FPalette.Free;
   inherited Destroy;
 end;
 
@@ -454,7 +443,7 @@ end;
 
 procedure TAtlasIdeStructure.Wire(AFrame: TAtlasStructureFrame);
 begin
-  AFrame.Images := FImages;
+  AFrame.Images := FPalette.Images;
   AFrame.OnSelect :=
     procedure(AName: string)
     begin
@@ -524,7 +513,7 @@ var
   mItem: TAtlasStructureItem;
 begin
   Result := nil;
-  FClasses.Clear;
+  FPalette.Forget;
   for mIndex := -1 to ARoot.ComponentCount - 1 do
   begin
     if mIndex < 0 then
@@ -550,7 +539,7 @@ begin
     end;
     mItem.Position := PositionOf(mComponent);
     mItem.Refs := RefsOf(mComponent, ARoot);
-    FClasses.AddOrSetValue(mComponent.ClassName.ToLower, mComponent.ClassType);
+    FPalette.Remember(mComponent.ClassType);
     Result := Result + [mItem];
   end;
 end;
@@ -591,14 +580,8 @@ begin
 end;
 
 function TAtlasIdeStructure.NodeImage(const ANode: TAtlasStructureNode): Integer;
-var
-  mClass: TClass;
 begin
-  Result := -1;
-  if (ANode.ClassName <> '') and FClasses.TryGetValue(ANode.ClassName.ToLower, mClass) then
-  begin
-    Result := ImageOf(mClass);
-  end;
+  Result := FPalette.IndexOfName(ANode.ClassName);
 end;
 
 procedure TAtlasIdeStructure.SyncSelection;
@@ -622,52 +605,6 @@ begin
     FMarked := mName;
     Frame.MarkName(mName);
   end;
-end;
-
-/// <summary>Bitmap der Palette (meist 24 Pixel) auf die Größe der Bildliste verkleinert.</summary>
-function Shrunk(ABitmap: TBitmap; ASize: Integer): TBitmap;
-begin
-  Result := TBitmap.Create;
-  Result.SetSize(ASize, ASize);
-  Result.Canvas.StretchDraw(Rect(0, 0, ASize, ASize), ABitmap);
-end;
-
-function TAtlasIdeStructure.ImageOf(AClass: TClass): Integer;
-var
-  mIndex: Integer;
-  mClass: TClass;
-  mBitmap, mSmall: TBitmap;
-  mInstance: HMODULE;
-begin
-  mIndex := FImageClasses.IndexOf(AClass.ClassName);
-  if mIndex >= 0 then
-  begin
-    Exit(Integer(FImageClasses.Objects[mIndex]));
-  end;
-  Result := -1;
-  // Symbol der Palette: Bitmap-Ressource mit dem Klassennamen im Package der Klasse, sonst der Vorfahr.
-  mClass := AClass;
-  while (Result < 0) and (mClass <> nil) and (mClass <> TComponent) do
-  begin
-    mInstance := FindClassHInstance(mClass);
-    if (mInstance <> 0) and (FindResource(mInstance, PChar(UpperCase(mClass.ClassName)), RT_BITMAP) <> 0) then
-    begin
-      mBitmap := TBitmap.Create;
-      try
-        mBitmap.LoadFromResourceName(mInstance, UpperCase(mClass.ClassName));
-        mSmall := Shrunk(mBitmap, FImages.Width);
-        try
-          Result := FImages.AddMasked(mSmall, mBitmap.Canvas.Pixels[0, mBitmap.Height - 1]);
-        finally
-          mSmall.Free;
-        end;
-      finally
-        mBitmap.Free;
-      end;
-    end;
-    mClass := mClass.ClassParent;
-  end;
-  FImageClasses.AddObject(AClass.ClassName, TObject(Result));
 end;
 
 procedure TAtlasIdeStructure.SelectName(const AName: string);

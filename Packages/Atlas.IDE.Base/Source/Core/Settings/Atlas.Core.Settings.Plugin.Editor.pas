@@ -594,6 +594,9 @@ type
     /// <summary>Symbole nichtvisueller Komponenten auf der Formularfläche ausblenden, solange das Fenster offen ist
     /// (#609, designer.structureHideOnForm).</summary>
     DesignerStructureHideOnForm: Boolean;
+    /// <summary>Knopf „Datenbindung“ mit der Brotkrumenleiste unter dem Designer (#610, designer.dataBindings).
+    /// </summary>
+    DesignerDataBindings: Boolean;
     /// <summary>Befehl „Breite nach Text“ (#730, designer.fitToText).</summary>
     DesignerFitToText: Boolean;
     /// <summary>Mindestbreite bei 96 dpi (#730, designer.fitToText.minWidth).</summary>
@@ -1690,6 +1693,7 @@ begin
   DesignerNameSuggestPrefixes := '';
   DesignerStructure := False;
   DesignerStructureHideOnForm := True;
+  DesignerDataBindings := False;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeViews(const AIo: TAtlasSettingsExchange);
@@ -1710,6 +1714,7 @@ begin
   AIo.Text('DesignerNameSuggestPrefixes', DesignerNameSuggestPrefixes);
   AIo.Flag('DesignerStructure', DesignerStructure);
   AIo.Flag('DesignerStructureHideOnForm', DesignerStructureHideOnForm);
+  AIo.Flag('DesignerDataBindings', DesignerDataBindings);
 end;
 
 end.
