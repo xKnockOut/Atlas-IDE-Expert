@@ -141,7 +141,7 @@ begin
   mName.Font.Color := clGrayText;
   Result := NewLabel(AOwner, AParent, '');
   Result.Left := TAtlasProcessesDialog.cGap + TAtlasProcessesDialog.cLabelWidth + TAtlasProcessesDialog.cGap;
-  Result.Top := ATop + 2;
+  Result.Top := ATop + Result.ScaleValue(2);
 end;
 
 function NewButton(AOwner: TComponent; AParent: TWinControl; const ACaption: string; ALeft: Integer;
@@ -222,8 +222,8 @@ begin
   Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesTitleNone);
   BorderStyle := bsSizeable;
   Position := poMainFormCenter;
-  Width := 760;
-  Height := 680;
+  Width := ScaleValue(760);
+  Height := ScaleValue(680);
   Constraints.MinWidth := 520;
   Constraints.MinHeight := 480;
   CreateTop;

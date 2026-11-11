@@ -176,8 +176,8 @@ var
 begin
   mLabel := TLabel.Create(Self);
   mLabel.Parent := Self;
-  mLabel.Left := 12;
-  mLabel.Top := 12;
+  mLabel.Left := mLabel.ScaleValue(12);
+  mLabel.Top := mLabel.ScaleValue(12);
   mLabel.Font.Style := [fsBold];
   mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsModulesTitle);
   mTop := 40;
@@ -193,7 +193,7 @@ begin
     end;
     mLabel := TLabel.Create(Self);
     mLabel.Parent := Self;
-    mLabel.Left := 12;
+    mLabel.Left := mLabel.ScaleValue(12);
     mLabel.Top := mTop;
     mLabel.ShowAccelChar := False;
     mLabel.Caption := Format('%s  %s  (%s)', [mModule.Info.Name, mModule.Info.Version, mState]);
@@ -201,8 +201,8 @@ begin
   end;
   mLabel := TLabel.Create(Self);
   mLabel.Parent := Self;
-  mLabel.Left := 12;
-  mLabel.Top := mTop + 12;
+  mLabel.Left := mLabel.ScaleValue(12);
+  mLabel.Top := mTop + mLabel.ScaleValue(12);
   mLabel.Font.Style := [fsItalic];
   mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsModulesHint);
 end;

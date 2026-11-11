@@ -142,7 +142,7 @@ begin
   FCancel := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDialogCancel));
   FCancel.Cancel := True;
   FCancel.ModalResult := mrCancel;
-  ClientHeight := mButtons.Top + mButtons.Height + cGap;
+  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
 end;
 
 procedure TAtlasBoardMoveDialog.DialogKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);

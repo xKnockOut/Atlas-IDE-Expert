@@ -882,11 +882,14 @@ begin
   mParent := ANode.Parent;
   while Result and (mParent <> nil) and (mParent <> AAssign) do
   begin
-    case mParent.Kind of
-      TSyntaxKind.BinaryExpr:
-        Result := not IsIn(mParent.Name, ['*', '/', 'div', 'mod', 'shl', 'shr']);
-      TSyntaxKind.Call:
-        Result := IsIn(mParent.Name, ['Max', 'Min']);
+    // Klammern, Summen und Vorzeichen reichen den Pixelwert durch.
+    if mParent.Kind = TSyntaxKind.BinaryExpr then
+    begin
+      Result := not IsIn(mParent.Name, ['*', '/', 'div', 'mod', 'shl', 'shr']);
+    end
+    else if mParent.Kind = TSyntaxKind.Call then
+    begin
+      Result := IsIn(mParent.Name, ['Max', 'Min']);
     end;
     mParent := mParent.Parent;
   end;

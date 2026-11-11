@@ -459,7 +459,7 @@ begin
   mButton.ModalResult := mrOk;
   mButton.SetBounds(ClientWidth - cGap - 2 * ScaleValue(cColumnWidth div 2) - cGap,
     FOnlySelected.Top + FOnlySelected.Height + cGap, ScaleValue(cColumnWidth div 2), mButton.Height);
-  ClientHeight := mButton.Top + mButton.Height + cGap;
+  ClientHeight := mButton.Top + mButton.Height + ScaleValue(cGap);
   mButton := TButton.Create(Self);
   mButton.Parent := Self;
   mButton.Caption := UiText(TAtlasDesignerTextId.DesignerDuplicateCancel);

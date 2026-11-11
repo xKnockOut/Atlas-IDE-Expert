@@ -358,8 +358,8 @@ begin
   Result.Parent := mRow;
   Result.Caption := ACaption;
   Result.Left := 0;
-  Result.Top := cButtonTop;
-  Result.Width := cCheckWidth;
+  Result.Top := Result.ScaleValue(cButtonTop);
+  Result.Width := Result.ScaleValue(cCheckWidth);
   Result.Anchors := [akLeft, akTop, akRight];
 end;
 
@@ -374,12 +374,12 @@ begin
   mCaption.Parent := mRow;
   mCaption.Caption := StringReplace(ACaption, '…', '', []);
   mCaption.Left := 0;
-  mCaption.Top := cLabelTop;
+  mCaption.Top := mCaption.ScaleValue(cLabelTop);
   Result := TEdit.Create(FOwner);
   Result.Parent := mRow;
   Result.Left := FFieldLeft;
   Result.Top := cControlTop;
-  Result.Width := cKeyWidth;
+  Result.Width := Result.ScaleValue(cKeyWidth);
 end;
 
 function TAtlasWelcomeSettingsSection.AddButton(AParent: TWinControl; ALeft, AWidth: Integer;
@@ -389,7 +389,7 @@ begin
   Result.Parent := AParent;
   Result.Caption := ACaption;
   Result.Left := ALeft;
-  Result.Top := cButtonTop;
+  Result.Top := Result.ScaleValue(cButtonTop);
   Result.Width := AWidth;
   Result.OnClick := AClick;
 end;
@@ -572,7 +572,7 @@ begin
   FMore.HelpReportFolder := Line('welcomePage.help.reportFolder',
     TAtlasWelcomeTextId.SettingsWelcomeHelpReportFolder);
   FMore.HelpReportFolder.TextHint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeHelpDesktop);
-  FMore.HelpReportFolder.Width := FMore.HelpReportFolder.Width - cBrowseWidth - cBrowseGap;
+  FMore.HelpReportFolder.Width := FMore.HelpReportFolder.Width - FMore.HelpReportFolder.ScaleValue(cBrowseWidth) - FMore.HelpReportFolder.ScaleValue(cBrowseGap);
   FMore.HelpFolderBrowse := AddButton(FMore.HelpReportFolder.Parent,
     FMore.HelpReportFolder.Left + FMore.HelpReportFolder.Width + cBrowseGap, cBrowseWidth, '…',
     FHooks.HelpFolderBrowseClick);

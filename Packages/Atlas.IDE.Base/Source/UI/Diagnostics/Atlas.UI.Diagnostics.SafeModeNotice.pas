@@ -134,12 +134,12 @@ begin
   Position := poDesigned;
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  ClientWidth := cNoticeWidth;
+  ClientWidth := ScaleValue(cNoticeWidth);
   OnClose := FormClose;
   CreateTexts(AText, ASuggestion);
   CreateButtons(ARestore, Length(ADetails) > 0);
   CreateDetails(ADetails);
-  ClientHeight := FParts.Buttons.Top + FParts.Buttons.Height + cGap;
+  ClientHeight := FParts.Buttons.Top + FParts.Buttons.Height + ScaleValue(cGap);
 end;
 
 procedure TAtlasSafeModeNotice.CreateTexts(const AText, ASuggestion: string);
@@ -280,20 +280,20 @@ begin
   begin
     mExtra := ScaleValue(cDetailsHeight);
   end;
-  ClientHeight := FParts.Buttons.Top + FParts.Buttons.Height + cGap + mExtra;
+  ClientHeight := FParts.Buttons.Top + FParts.Buttons.Height + ScaleValue(cGap) + mExtra;
 end;
 
 procedure TAtlasSafeModeNotice.ShowIn(const AArea: TRect);
 begin
   FitHeight;
-  Left := AArea.Right - Width - cGap;
-  Top := AArea.Bottom - Height - cGap;
+  Left := AArea.Right - Width - ScaleValue(cGap);
+  Top := AArea.Bottom - Height - ScaleValue(cGap);
   // Nicht modal: Die IDE startet weiter, während der Hinweis offen ist.
   Show;
   // Beim Zeigen kann das Fenster auf die Skalierung des Bildschirms umgerechnet werden: neu messen,
   // unten bleibt unten.
   FitHeight;
-  Top := AArea.Bottom - Height - cGap;
+  Top := AArea.Bottom - Height - ScaleValue(cGap);
 end;
 
 procedure TAtlasSafeModeNotice.Run(const AProc: TProc);

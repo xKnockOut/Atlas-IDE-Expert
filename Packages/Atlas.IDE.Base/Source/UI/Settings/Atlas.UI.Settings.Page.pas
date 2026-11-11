@@ -138,12 +138,12 @@ constructor TAtlasSettingsPage.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
-  Width := 480;
+  Width := ScaleValue(480);
   // Die Reiter tragen den Inhalt; scrollt die Seite selbst, springt sie beim Reiterwechsel zum Fokus.
   AutoScroll := False;
   // Mit Reitern reicht die Höhe des längsten Reiters; höher, und die IDE scrollt ihren Bereich beim
   // Reiterwechsel zum Fokus (die Seite „springt“).
-  Height := 440;
+  Height := ScaleValue(440);
   // Kopf mit Symbol (#751) und Titel.
   AddHeader;
   AddExperimentalBanner;
@@ -185,16 +185,16 @@ begin
   mPanel := TAtlasSettingsRow.Create(Self);
   mPanel.Parent := Self;
   mPanel.Align := alTop;
-  mPanel.Height := 40;
+  mPanel.Height := mPanel.ScaleValue(40);
   FSymbol := TAtlasSymbolImage.Create(Self);
   FSymbol.Parent := mPanel;
   FSymbol.LogicalSize := TAtlasSymbol.cHeaderSize;
-  FSymbol.Left := 4;
-  FSymbol.Top := 4;
+  FSymbol.Left := FSymbol.ScaleValue(4);
+  FSymbol.Top := FSymbol.ScaleValue(4);
   mTitle := TLabel.Create(Self);
   mTitle.Parent := mPanel;
-  mTitle.Left := 44;
-  mTitle.Top := 12;
+  mTitle.Left := mTitle.ScaleValue(44);
+  mTitle.Top := mTitle.ScaleValue(12);
   mTitle.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsTitle);
   mTitle.Font.Style := [fsBold];
   FTitle := mTitle;
@@ -209,13 +209,13 @@ begin
   FExperimentalBanner.Parent := Self;
   FExperimentalBanner.Align := alTop;
   FExperimentalBanner.AlignWithMargins := True;
-  FExperimentalBanner.Top := 50;
-  FExperimentalBanner.Height := 28;
+  FExperimentalBanner.Top := FExperimentalBanner.ScaleValue(50);
+  FExperimentalBanner.Height := FExperimentalBanner.ScaleValue(28);
   FExperimentalBanner.Visible := False;
   mButton := TButton.Create(Self);
   mButton.Parent := FExperimentalBanner;
   mButton.Align := alRight;
-  mButton.Width := 90;
+  mButton.Width := mButton.ScaleValue(90);
   mButton.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalAllow);
   mButton.OnClick := ExperimentalAllowClick;
   mText := TLabel.Create(Self);
@@ -234,18 +234,18 @@ begin
   FFilterRow.Parent := Self;
   FFilterRow.Align := alBottom;
   FFilterRow.AlignWithMargins := True;
-  FFilterRow.Height := 26;
+  FFilterRow.Height := FFilterRow.ScaleValue(26);
   mCaption := TLabel.Create(Self);
   mCaption.Parent := FFilterRow;
   mCaption.Left := 0;
-  mCaption.Top := 5;
+  mCaption.Top := mCaption.ScaleValue(5);
   mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFilter);
   // Reihenfolge wie TAtlasSettingsFilter.
   FFilter := TAtlasChoiceBox.Create(Self);
   FFilter.Parent := FFilterRow;
-  FFilter.Left := 60;
+  FFilter.Left := FFilter.ScaleValue(60);
   FFilter.Top := 1;
-  FFilter.Width := 180;
+  FFilter.Width := FFilter.ScaleValue(180);
   FFilter.SetChoices([TAtlasStrings.Text(TAtlasTextId.SettingsFilterAll),
     TAtlasStrings.Text(TAtlasTextId.SettingsFilterModified),
     TAtlasStrings.Text(TAtlasTextId.SettingsFilterExperimental)]);

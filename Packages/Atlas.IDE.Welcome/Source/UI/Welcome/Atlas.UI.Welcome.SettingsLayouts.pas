@@ -119,7 +119,7 @@ begin
   Result.Caption := ACaption;
   Result.Left := ALeft;
   Result.Top := 0;
-  Result.Width := cButtonWidth;
+  Result.Width := Result.ScaleValue(cButtonWidth);
   Result.OnClick := AClick;
 end;
 
@@ -137,13 +137,13 @@ begin
   mCaption.Parent := mRow;
   mCaption.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeActiveLayout);
   mCaption.Left := 0;
-  mCaption.Top := 5;
+  mCaption.Top := mCaption.ScaleValue(5);
   // Ohne Fenster füllbar (TAtlasChoiceBox): Die IDE lädt die Seite, bevor sie ein übergeordnetes Fenster hat.
   FChoice := TAtlasChoiceBox.Create(AOwner);
   FChoice.Parent := mRow;
   FChoice.Left := ALeft;
   FChoice.Top := 1;
-  FChoice.Width := cChoiceWidth;
+  FChoice.Width := FChoice.ScaleValue(cChoiceWidth);
   FChoice.OnChange := ChoiceChange;
   mLeft := ALeft + cChoiceWidth + cButtonGap;
   FNew := AddButton(mRow, AOwner, mLeft, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeLayoutNew),

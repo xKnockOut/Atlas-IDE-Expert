@@ -504,14 +504,14 @@ begin
   inherited Create(AOwner);
   BevelOuter := bvNone;
   ParentBackground := True;
-  Height := 36;
+  Height := ScaleValue(36);
   FRefresh := NewButton(TAtlasStrings.Text(TAtlasTextId.ServerWindowRefresh), 4, 110);
   FRebuild := NewButton(TAtlasStrings.Text(TAtlasTextId.ServerWindowRebuild), 120, 140);
   FPackage := NewButton(TAtlasStrings.Text(TAtlasTextId.ServerWindowPackage), 266, 170);
   FNote := TLabel.Create(Self);
   FNote.Parent := Self;
-  FNote.Left := 444;
-  FNote.Top := 11;
+  FNote.Left := FNote.ScaleValue(444);
+  FNote.Top := FNote.ScaleValue(11);
   FNote.ShowAccelChar := False;
   FNote.Font.Color := clGrayText;
   FNote.Caption := TAtlasStrings.Text(TAtlasTextId.ServerWindowHint);
@@ -522,7 +522,7 @@ begin
   Result := TButton.Create(Self);
   Result.Parent := Self;
   Result.Left := ALeft;
-  Result.Top := 6;
+  Result.Top := Result.ScaleValue(6);
   Result.Width := AWidth;
   Result.Caption := ACaption;
   Result.OnClick := ButtonClick;

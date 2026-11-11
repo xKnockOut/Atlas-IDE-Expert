@@ -68,8 +68,8 @@ begin
   FHangTest.Parent := mPanel;
   FHangTest.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsHangTest);
   FHangTest.Left := 0;
-  FHangTest.Top := 3;
-  FHangTest.Width := 150;
+  FHangTest.Top := FHangTest.ScaleValue(3);
+  FHangTest.Width := FHangTest.ScaleValue(150);
   FHangTest.OnClick := HangTestClick;
   AddFuseSection;
 end;
@@ -95,15 +95,15 @@ begin
   FFuseEnableSelected.Parent := mPanel;
   FFuseEnableSelected.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFuseEnableSelected);
   FFuseEnableSelected.Left := 0;
-  FFuseEnableSelected.Top := 3;
-  FFuseEnableSelected.Width := 150;
+  FFuseEnableSelected.Top := FFuseEnableSelected.ScaleValue(3);
+  FFuseEnableSelected.Width := FFuseEnableSelected.ScaleValue(150);
   FFuseEnableSelected.OnClick := FuseEnableSelectedClick;
   FFuseEnableAll := TButton.Create(FPage);
   FFuseEnableAll.Parent := mPanel;
   FFuseEnableAll.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFuseEnableAll);
-  FFuseEnableAll.Left := 160;
-  FFuseEnableAll.Top := 3;
-  FFuseEnableAll.Width := 150;
+  FFuseEnableAll.Left := FFuseEnableAll.ScaleValue(160);
+  FFuseEnableAll.Top := FFuseEnableAll.ScaleValue(3);
+  FFuseEnableAll.Width := FFuseEnableAll.ScaleValue(150);
   FFuseEnableAll.OnClick := FuseEnableAllClick;
 end;
 

@@ -155,8 +155,8 @@ begin
   FTeamFileOpen.Parent := mPanel;
   FTeamFileOpen.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileOpen);
   FTeamFileOpen.Left := 0;
-  FTeamFileOpen.Top := 3;
-  FTeamFileOpen.Width := 180;
+  FTeamFileOpen.Top := FTeamFileOpen.ScaleValue(3);
+  FTeamFileOpen.Width := FTeamFileOpen.ScaleValue(180);
   FTeamFileOpen.OnClick := TeamFileOpenClick;
   Attach(mPanel, FTeamFile);
   FTeamFileInfo := AddWrappedLabel(180, '');

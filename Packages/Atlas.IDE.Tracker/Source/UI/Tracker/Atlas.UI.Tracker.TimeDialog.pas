@@ -269,7 +269,7 @@ begin
   FParts.Later.Cancel := True;
   FParts.Discard := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookDiscard));
   FParts.Discard.OnClick := DiscardClick;
-  ClientHeight := mButtons.Top + mButtons.Height + cGap;
+  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
 end;
 
 function TAtlasTrackerTimeDialog.AddRow(AHeight: Integer): TPanel;

@@ -80,10 +80,10 @@ const
     '      "category": "code-smell",',
     '      "severity": "warning",',
     '      "group": "components",',
-    '      "description": "Code in a VCL unit sets Width, Height, Left, Top, ClientWidth or ClientHeight to a fixed pixel value. Controls created in code are not scaled by the VCL, so dialogs and columns s' +
-    'tay too small above 96 dpi. Values passed through ScaleValue, MulDiv or a method of the class that scales itself, 0, 1 and -1, factors of multiplications and divisions, values from 10000 on (order for' +
-    ' Align), Pen.Width, Font.Height and assignments in Paint or Resize of a component (component-fixed-pixels) are not reported. The fix scales with ScaleValue of the control itself (for Margins, Padding ' +
-    'and Constraints of the control they belong to): it is right whether the control is already parented or is scaled along when it is.",',
+    '      "description": "Code in a VCL unit sets Width, Height, Left, Top, ClientWidth or ClientHeight to a fixed pixel value (a number or a constant of the unit such as cRowHeight = 24). Controls create' +
+    'd in code are not scaled by the VCL, so dialogs and columns stay too small above 96 dpi. Values passed through ScaleValue, MulDiv or a method of the class that scales itself, 0, 1 and -1, factors of m' +
+    'ultiplications and divisions, values from 10000 on (order for Align), Pen.Width, Font.Height and assignments in Paint or Resize of a component (component-fixed-pixels) are not reported. The fix scales' +
+    ' with ScaleValue of the control itself (for Margins, Padding and Constraints of the control they belong to): it is right whether the control is already parented or is scaled along when it is.",',
     '      "bad": "mEdit.Width := 240;",',
     '      "good": "mEdit.Width := ScaleValue(240);"',
     '    },',

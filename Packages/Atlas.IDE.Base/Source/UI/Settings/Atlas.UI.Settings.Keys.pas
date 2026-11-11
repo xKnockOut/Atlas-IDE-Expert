@@ -99,8 +99,8 @@ var
 begin
   inherited Create(AOwner);
   Name := 'AtlasKeysPage';
-  Width := 480;
-  Height := 480;
+  Width := ScaleValue(480);
+  Height := ScaleValue(480);
   FNextTop := 0;
   mTitle := TLabel.Create(Self);
   mTitle.Parent := Self;
@@ -201,9 +201,9 @@ begin
   AddLabel(mPanel, FunctionCaption(FEntries[AIndex].Func), 0, 5);
   FRows[AIndex].Key := TEdit.Create(Self);
   FRows[AIndex].Key.Parent := mPanel;
-  FRows[AIndex].Key.Left := cKeyLeft;
+  FRows[AIndex].Key.Left := FRows[AIndex].Key.ScaleValue(cKeyLeft);
   FRows[AIndex].Key.Top := 1;
-  FRows[AIndex].Key.Width := 130;
+  FRows[AIndex].Key.Width := FRows[AIndex].Key.ScaleValue(130);
   FRows[AIndex].Key.Tag := AIndex;
   // Leer bei Vervollständigung und Parameter-Hint: die Taste der IDE.
   if FEntries[AIndex].IdeKey <> 0 then
@@ -213,9 +213,9 @@ begin
   FRows[AIndex].Key.OnChange := KeyChange;
   FRows[AIndex].Choice := TAtlasChoiceBox.Create(Self);
   FRows[AIndex].Choice.Parent := mPanel;
-  FRows[AIndex].Choice.Left := cChoiceLeft;
+  FRows[AIndex].Choice.Left := FRows[AIndex].Choice.ScaleValue(cChoiceLeft);
   FRows[AIndex].Choice.Top := 1;
-  FRows[AIndex].Choice.Width := 180;
+  FRows[AIndex].Choice.Width := FRows[AIndex].Choice.ScaleValue(180);
   FRows[AIndex].Choice.Anchors := [akLeft, akTop, akRight];
   FRows[AIndex].Choice.Tag := AIndex;
   // Reihenfolge wie TAtlasKeyChoice.

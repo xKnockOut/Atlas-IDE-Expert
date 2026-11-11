@@ -112,7 +112,7 @@ constructor TAtlasIssueImageBox.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FColors := TAtlasColors.Light;
-  Height := 24;
+  Height := ScaleValue(24);
   Cursor := crHandPoint;
 end;
 
@@ -198,7 +198,7 @@ begin
   FColors := TAtlasColors.Light;
   FHintIndex := -1;
   ShowHint := True;
-  Height := 4;
+  Height := ScaleValue(4);
 end;
 
 procedure TAtlasIssueBadgeBar.SetBadges(const ATexts, AHints: TArray<string>; const AColors: TAtlasColors);
@@ -217,7 +217,7 @@ begin
   FRects := nil;
   if not HandleAllocated then
   begin
-    Height := 4;
+    Height := ScaleValue(4);
     Exit;
   end;
   Canvas.Font := Font;
@@ -239,7 +239,7 @@ begin
   end;
   if Length(FTexts) = 0 then
   begin
-    Height := 4;
+    Height := ScaleValue(4);
   end
   else if Height <> mY + mHeight + mGap then
   begin
@@ -332,8 +332,8 @@ begin
   mForm := TAtlasIssueImageWindow.CreateNew(nil);
   mForm.Caption := mSource.Alt;
   mForm.Position := poScreenCenter;
-  mForm.Width := Min(mSource.Graphic.Width + 40, Screen.WorkAreaWidth - 80);
-  mForm.Height := Min(mSource.Graphic.Height + 60, Screen.WorkAreaHeight - 80);
+  mForm.Width := Min(mSource.Graphic.Width + mForm.ScaleValue(40), Screen.WorkAreaWidth - mForm.ScaleValue(80));
+  mForm.Height := Min(mSource.Graphic.Height + mForm.ScaleValue(60), Screen.WorkAreaHeight - mForm.ScaleValue(80));
   mBox := TScrollBox.Create(mForm);
   mBox.Parent := mForm;
   mBox.Align := alClient;

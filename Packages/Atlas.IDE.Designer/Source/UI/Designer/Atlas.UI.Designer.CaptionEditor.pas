@@ -152,7 +152,7 @@ begin
     end;
     ClientWidth := TAtlasInlineCaption.EditorWidth(FMinWidth, mWidest, MulDiv(cPadding, CurrentPPI, 96) +
       2 * cBorder);
-    ClientHeight := Max(FMinHeight, Max(1, mLines) * mBitmap.Canvas.TextHeight('Ag') + 2 * cBorder + 2);
+    ClientHeight := Max(FMinHeight, Max(1, mLines) * mBitmap.Canvas.TextHeight('Ag') + 2 * cBorder + ScaleValue(2));
   finally
     mBitmap.Free;
   end;

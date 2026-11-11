@@ -374,7 +374,7 @@ begin
   Result.Left := AFrame.FParts.Tools.ControlCount * 200;
   Result.Caption := ACaption;
   Result.ShowHint := True;
-  Result.Width := Max(80, Length(ACaption) * 8);
+  Result.Width := Result.ScaleValue(Max(80, Length(ACaption) * 8));
   Result.Tag := cToolTag + Ord(ATool);
   Result.OnClick := AFrame.ControlClick;
 end;
@@ -399,14 +399,14 @@ begin
   AFrame.FParts.Tools.Parent := AFrame;
   AFrame.FParts.Tools.Align := alTop;
   AFrame.FParts.Tools.BevelOuter := bvNone;
-  AFrame.FParts.Tools.Height := 32;
+  AFrame.FParts.Tools.Height := AFrame.FParts.Tools.ScaleValue(32);
   AFrame.FParts.Tools.ShowCaption := False;
   AFrame.FParts.Back := AddTool(AFrame, '◀', TIssueTool.Back);
   AFrame.FParts.Back.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBack);
-  AFrame.FParts.Back.Width := 32;
+  AFrame.FParts.Back.Width := AFrame.FParts.Back.ScaleValue(32);
   AFrame.FParts.Forward := AddTool(AFrame, '▶', TIssueTool.Forward);
   AFrame.FParts.Forward.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewForward);
-  AFrame.FParts.Forward.Width := 32;
+  AFrame.FParts.Forward.Width := AFrame.FParts.Forward.ScaleValue(32);
   AFrame.FParts.Start := AddTool(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewStart),
     TIssueTool.Start);
   AFrame.FParts.Finish := AddTool(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewEnd),
@@ -433,22 +433,22 @@ begin
   AFrame.FParts.Progress.Parent := AFrame;
   AFrame.FParts.Progress.Align := alTop;
   AFrame.FParts.Progress.Top := AFrame.FParts.Tools.Height;
-  AFrame.FParts.Progress.Height := 3;
+  AFrame.FParts.Progress.Height := AFrame.FParts.Progress.ScaleValue(3);
   AFrame.FParts.Progress.Style := pbstMarquee;
   AFrame.FParts.Progress.Visible := False;
   AFrame.FParts.Status := TPanel.Create(AFrame);
   AFrame.FParts.Status.Parent := AFrame;
   AFrame.FParts.Status.Align := alTop;
-  AFrame.FParts.Status.Top := AFrame.FParts.Tools.Height + 10;
+  AFrame.FParts.Status.Top := AFrame.FParts.Tools.Height + AFrame.FParts.Status.ScaleValue(10);
   AFrame.FParts.Status.BevelOuter := bvNone;
-  AFrame.FParts.Status.Height := 30;
+  AFrame.FParts.Status.Height := AFrame.FParts.Status.ScaleValue(30);
   AFrame.FParts.Status.ShowCaption := False;
   AFrame.FParts.Status.Visible := False;
   AFrame.FParts.Fix := TButton.Create(AFrame);
   AFrame.FParts.Fix.Parent := AFrame.FParts.Status;
   AFrame.FParts.Fix.Align := alRight;
   AFrame.FParts.Fix.AlignWithMargins := True;
-  AFrame.FParts.Fix.Width := 150;
+  AFrame.FParts.Fix.Width := AFrame.FParts.Fix.ScaleValue(150);
   AFrame.FParts.Fix.Tag := cToolTag + Ord(TIssueTool.Fix);
   AFrame.FParts.Fix.OnClick := AFrame.ControlClick;
   AFrame.FParts.StatusLabel := TLabel.Create(AFrame);
@@ -477,7 +477,7 @@ begin
   AFrame.FParts.CommentPanel.Parent := AFrame;
   AFrame.FParts.CommentPanel.Align := alBottom;
   AFrame.FParts.CommentPanel.BevelOuter := bvNone;
-  AFrame.FParts.CommentPanel.Height := 150;
+  AFrame.FParts.CommentPanel.Height := AFrame.FParts.CommentPanel.ScaleValue(150);
   AFrame.FParts.CommentPanel.ShowCaption := False;
   AFrame.FParts.CommentPanel.Visible := False;
   AFrame.FParts.CommentHint := AddCommentLabel(AFrame, alTop,
@@ -487,7 +487,7 @@ begin
   AFrame.FParts.CommentSend.Parent := AFrame.FParts.CommentPanel;
   AFrame.FParts.CommentSend.Align := alRight;
   AFrame.FParts.CommentSend.AlignWithMargins := True;
-  AFrame.FParts.CommentSend.Width := 90;
+  AFrame.FParts.CommentSend.Width := AFrame.FParts.CommentSend.ScaleValue(90);
   AFrame.FParts.CommentSend.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCommentSend);
   AFrame.FParts.CommentSend.Tag := cToolTag + Ord(TIssueTool.CommentSend);
   AFrame.FParts.CommentSend.OnClick := AFrame.ControlClick;

@@ -441,7 +441,7 @@ begin
   FPages.Parent := Self;
   FPages.Align := alClient;
   FPages.AlignWithMargins := True;
-  FPages.Top := 100;
+  FPages.Top := FPages.ScaleValue(100);
 end;
 
 function TAtlasSettingsPageNodes.AddNodePage(AArea: Integer; const ANode: string): Integer;
@@ -591,7 +591,7 @@ var
   mMirror: TCheckBox;
 begin
   mRow := TAtlasSettingsRow.Create(Self);
-  mRow.Height := 24;
+  mRow.Height := mRow.ScaleValue(24);
   AOverview.AddRow(mRow);
   FOverviewRows := FOverviewRows + [mRow];
   FOverviewFrames := FOverviewFrames + [AFrame];

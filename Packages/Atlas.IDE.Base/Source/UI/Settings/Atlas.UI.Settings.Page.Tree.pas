@@ -134,7 +134,7 @@ begin
   mPanel := TPanel.Create(Self);
   mPanel.Parent := Self;
   mPanel.Align := alLeft;
-  mPanel.Width := 176;
+  mPanel.Width := mPanel.ScaleValue(176);
   mPanel.BevelOuter := bvNone;
   mPanel.ParentBackground := True;
   FSearch := TAtlasSettingsSearchBox.Create(Self, mPanel, Catalog,

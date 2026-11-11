@@ -684,7 +684,7 @@ begin
   FBox.AlignWithMargins := True;
   FBox.Margins.SetBounds(cGap, 4, cGap, 4);
   FBox.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchGit);
-  FBox.Height := 120;
+  FBox.Height := FBox.ScaleValue(120);
   FBox.Visible := FDialog.FFacts.Kind = TAtlasVcsKind.Git;
   // Einträge der Auswahllisten erst mit Fenster (FillChoices).
   AddFetchAndPush;
@@ -693,7 +693,7 @@ begin
   FError := ErrorLabel(FDialog, FBox, 0);
   if FBox.Visible then
   begin
-    FDialog.Height := FDialog.Height + 176;
+    FDialog.Height := FDialog.Height + FDialog.ScaleValue(176);
     FDialog.Constraints.MinHeight := FDialog.Constraints.MinHeight + 176;
   end;
 end;
@@ -1096,7 +1096,7 @@ begin
   // Nicht gelesen (propget gescheitert): Hinweis wie vor #1291, die Externals gehen unverändert mit.
   if (mFacts.Kind <> TAtlasVcsKind.Svn) or (Length(mFacts.SvnExternals) = 0) then
   begin
-    FBox.Height := 56;
+    FBox.Height := FBox.ScaleValue(56);
     FBox.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternals);
     FHint.Align := alClient;
     FHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsKept);
@@ -1106,7 +1106,7 @@ begin
   FHint.Font.Color := clRed;
   FHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsChoose);
   FHint.Visible := False;
-  FBox.Height := 44 + 20 + Min(Length(mFacts.SvnExternals), cExternalRowsVisible) * cExternalRow;
+  FBox.Height := FBox.ScaleValue(44) + FBox.ScaleValue(20) + Min(Length(mFacts.SvnExternals), cExternalRowsVisible) * cExternalRow;
   // Breite vorab wie im fertigen Dialog (ohne Fenster richtet alTop nicht aus); Anker gleichen den Rest aus.
   mWidth := FDialog.Width - 4 * cGap - 20;
   AddHeader(mWidth);
@@ -1134,7 +1134,7 @@ begin
   mHeader.Parent := FBox;
   mHeader.Width := AWidth;
   mHeader.Align := alTop;
-  mHeader.Height := 20;
+  mHeader.Height := mHeader.ScaleValue(20);
   mHeader.BevelOuter := bvNone;
   mLabel := CellLabel(FDialog, mHeader, cGap, cFolderWidth, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsFolder));
   mLabel.Font.Color := clGrayText;
@@ -1157,7 +1157,7 @@ begin
   mRow := TPanel.Create(FDialog);
   mRow.Parent := AParent;
   mRow.Width := AWidth;
-  mRow.Height := cExternalRow;
+  mRow.Height := mRow.ScaleValue(cExternalRow);
   mRow.BevelOuter := bvNone;
   mRow.Top := AIndex * cExternalRow;
   mRow.Align := alTop;
@@ -1358,8 +1358,8 @@ begin
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
   Position := poMainFormCenter;
-  Width := 720;
-  Height := 520;
+  Width := ScaleValue(720);
+  Height := ScaleValue(520);
   Constraints.MinWidth := 520;
   Constraints.MinHeight := 420;
 end;
@@ -1372,7 +1372,7 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := 44;
+  mBottom.Height := mBottom.ScaleValue(44);
   mBottom.BevelOuter := bvNone;
   FNeverAsk := TCheckBox.Create(Self);
   FNeverAsk.Parent := mBottom;

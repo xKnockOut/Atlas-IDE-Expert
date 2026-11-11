@@ -142,16 +142,16 @@ begin
     mViewer.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportViewerTitle, [AName]);
     mViewer.BorderStyle := bsSizeable;
     mViewer.Position := poMainFormCenter;
-    mViewer.Width := 900;
-    mViewer.Height := 600;
+    mViewer.Width := mViewer.ScaleValue(900);
+    mViewer.Height := mViewer.ScaleValue(600);
     mBottom := TPanel.Create(mViewer);
     mBottom.Parent := mViewer;
     mBottom.Align := alBottom;
-    mBottom.Height := 44;
+    mBottom.Height := mBottom.ScaleValue(44);
     mBottom.BevelOuter := bvNone;
     mButton := TButton.Create(mViewer);
     mButton.Parent := mBottom;
-    mButton.Width := 100;
+    mButton.Width := mButton.ScaleValue(100);
     mButton.Align := alRight;
     mButton.AlignWithMargins := True;
     mButton.Margins.SetBounds(8, 8, 8, 8);
@@ -218,11 +218,11 @@ begin
   Caption := TAtlasStrings.Text(TAtlasTextId.ReportTitle);
   BorderStyle := bsSizeable;
   Position := poMainFormCenter;
-  Width := 760;
-  Height := 660;
+  Width := ScaleValue(760);
+  Height := ScaleValue(660);
   CreateHead;
   CreateChecks;
-  NewLabel(Self, Self, TAtlasStrings.Text(TAtlasTextId.ReportPreview)).Top := 500;
+  NewLabel(Self, Self, TAtlasStrings.Text(TAtlasTextId.ReportPreview)).Top := ScaleValue(500);
   CreateFoot;
   CreateList;
   ShowFolder;
@@ -237,16 +237,16 @@ begin
   mHeading := NewLabel(Self, Self, TAtlasStrings.Text(TAtlasTextId.ReportHint));
   mHeading.WordWrap := True;
   mHeading.Top := 0;
-  NewLabel(Self, Self, TAtlasStrings.Text(TAtlasTextId.ReportDescription)).Top := 100;
+  NewLabel(Self, Self, TAtlasStrings.Text(TAtlasTextId.ReportDescription)).Top := ScaleValue(100);
   FParts.Description := TMemo.Create(Self);
   FParts.Description.Parent := Self;
   FParts.Description.Align := alTop;
   FParts.Description.AlignWithMargins := True;
   FParts.Description.Margins.SetBounds(cGap, 0, cGap, cGap);
-  FParts.Description.Height := 72;
+  FParts.Description.Height := FParts.Description.ScaleValue(72);
   FParts.Description.ScrollBars := ssVertical;
-  FParts.Description.Top := 200;
-  NewLabel(Self, Self, TAtlasStrings.Text(TAtlasTextId.ReportParts)).Top := 300;
+  FParts.Description.Top := FParts.Description.ScaleValue(200);
+  NewLabel(Self, Self, TAtlasStrings.Text(TAtlasTextId.ReportParts)).Top := ScaleValue(300);
 end;
 
 procedure TAtlasReportDialog.CreateChecks;
@@ -261,7 +261,7 @@ begin
     mCheck.Align := alTop;
     mCheck.AlignWithMargins := True;
     mCheck.Margins.SetBounds(cGap * 2, 0, cGap, 2);
-    mCheck.Top := 400 + Ord(mPart);
+    mCheck.Top := mCheck.ScaleValue(400) + Ord(mPart);
     // Vor OnClick setzen: Ein Wechsel von Checked löst OnClick aus, die Vorschau gibt es noch nicht.
     // Optional (#479): die letzten Diagnosedaten sind nicht vorausgewählt.
     mCheck.Checked := mPart <> TAtlasPackagePart.LastData;
@@ -292,7 +292,7 @@ begin
   mFoot := TPanel.Create(Self);
   mFoot.Parent := Self;
   mFoot.Align := alBottom;
-  mFoot.Height := 136;
+  mFoot.Height := mFoot.ScaleValue(136);
   mFoot.BevelOuter := bvNone;
   mFoot.ShowCaption := False;
   FParts.Summary := NewFootLabel(Self, mFoot);
@@ -327,10 +327,10 @@ begin
   mList.HideSelection := False;
   mColumn := mList.Columns.Add;
   mColumn.Caption := TAtlasStrings.Text(TAtlasTextId.ReportColumnFile);
-  mColumn.Width := 480;
+  mColumn.Width := mList.ScaleValue(480);
   mColumn := mList.Columns.Add;
   mColumn.Caption := TAtlasStrings.Text(TAtlasTextId.ReportColumnSize);
-  mColumn.Width := 120;
+  mColumn.Width := mList.ScaleValue(120);
   mColumn.Alignment := taRightJustify;
   // Doppelklick wie „Ansehen“.
   mList.OnDblClick := ViewClick;

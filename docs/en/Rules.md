@@ -1518,7 +1518,7 @@ Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));
 
 **Fixed control bounds** · Code smell · Warning · Group Components
 
-Code in a VCL unit sets Width, Height, Left, Top, ClientWidth or ClientHeight to a fixed pixel value. Controls created in code are not scaled by the VCL, so dialogs and columns stay too small above 96 dpi. Values passed through ScaleValue, MulDiv or a method of the class that scales itself, 0, 1 and -1, factors of multiplications and divisions, values from 10000 on (order for Align), Pen.Width, Font.Height and assignments in Paint or Resize of a component (component-fixed-pixels) are not reported. The fix scales with ScaleValue of the control itself (for Margins, Padding and Constraints of the control they belong to): it is right whether the control is already parented or is scaled along when it is.
+Code in a VCL unit sets Width, Height, Left, Top, ClientWidth or ClientHeight to a fixed pixel value (a number or a constant of the unit such as cRowHeight = 24). Controls created in code are not scaled by the VCL, so dialogs and columns stay too small above 96 dpi. Values passed through ScaleValue, MulDiv or a method of the class that scales itself, 0, 1 and -1, factors of multiplications and divisions, values from 10000 on (order for Align), Pen.Width, Font.Height and assignments in Paint or Resize of a component (component-fixed-pixels) are not reported. The fix scales with ScaleValue of the control itself (for Margins, Padding and Constraints of the control they belong to): it is right whether the control is already parented or is scaled along when it is.
 
 Flagged:
 
