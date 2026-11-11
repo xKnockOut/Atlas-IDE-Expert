@@ -145,11 +145,19 @@ begin
   end;
   if (AGroup <> '') and FileExists(AGroup) then
   begin
-    mActions.OpenProject(AGroup, True);
+    TAtlasGuard.RunIde(
+      procedure
+      begin
+        mActions.OpenProject(AGroup, True);
+      end);
   end
   else if FileExists(AProject) then
   begin
-    mActions.OpenProject(AProject, False);
+    TAtlasGuard.RunIde(
+      procedure
+      begin
+        mActions.OpenProject(AProject, False);
+      end);
   end;
 end;
 

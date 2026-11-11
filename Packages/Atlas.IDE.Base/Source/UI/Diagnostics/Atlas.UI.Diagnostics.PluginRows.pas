@@ -128,8 +128,8 @@ class function TAtlasPluginGridRows.RequestColumns: TArray<TAtlasGridColumn>;
 begin
   Result := TArray<TAtlasGridColumn>.Create(Column(TAtlasTextId.DiagColRequest, 0, False),
     Column(TAtlasTextId.DiagColCount, 64, True), Column(TAtlasTextId.DiagColMean, 72, True),
-    Column(TAtlasTextId.DiagColMax, 72, True), Column(TAtlasTextId.DiagColWaited, 150, True),
-    Column(TAtlasTextId.DiagColTimedOut, 120, True), Column(TAtlasTextId.DiagColCancelled, 90, True),
+    Column(TAtlasTextId.DiagColMax, 72, True), Column(TAtlasTextId.DiagColWaitedCount, 110, True),
+    Column(TAtlasTextId.DiagColWaited, 130, True), Column(TAtlasTextId.DiagColTimedOut, 120, True), Column(TAtlasTextId.DiagColCancelled, 90, True),
     Column(TAtlasTextId.DiagColFailed, 60, True));
 end;
 
@@ -197,12 +197,13 @@ begin
     mRequest := ARequests[mIndex];
     Result[mIndex].Cells := Cells([mRequest.Method, IntToStr(mRequest.Stat.Calls),
       TAtlasPluginRows.Ms(mRequest.Stat.MeanMs), TAtlasPluginRows.Ms(mRequest.Stat.MaxMs),
-      TAtlasPluginRows.Ms(mRequest.WaitedMs), IntToStr(mRequest.TimedOut), IntToStr(mRequest.Cancelled),
-      IntToStr(mRequest.Failed)]);
-    Result[mIndex].Marks := Plain(8);
-    Result[mIndex].Marks[4] := Mark(mRequest.WaitedMs, AThresholdMs);
-    Result[mIndex].Marks[5] := WarnIf(mRequest.TimedOut > 0, TAtlasGridMark.Warn);
-    Result[mIndex].Marks[7] := WarnIf(mRequest.Failed > 0, TAtlasGridMark.Bad);
+      IntToStr(mRequest.WaitedCalls), TAtlasPluginRows.Ms(mRequest.WaitedMeanMs), IntToStr(mRequest.TimedOut),
+      IntToStr(mRequest.Cancelled), IntToStr(mRequest.Failed)]);
+    Result[mIndex].Marks := Plain(9);
+    // Mittel je wartender Anfrage gegen die Schwelle; die Summe stand früher hier und war fast immer rot.
+    Result[mIndex].Marks[5] := Mark(mRequest.WaitedMeanMs, AThresholdMs);
+    Result[mIndex].Marks[6] := WarnIf(mRequest.TimedOut > 0, TAtlasGridMark.Warn);
+    Result[mIndex].Marks[8] := WarnIf(mRequest.Failed > 0, TAtlasGridMark.Bad);
     Result[mIndex].Bar := -1;
   end;
 end;

@@ -916,7 +916,11 @@ begin
       Project := TargetOrReport(Self, Open);
       if (Project <> '') and not Open and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
       begin
-        Actions.OpenProject(Project, True);
+        TAtlasGuard.RunIde(
+          procedure
+          begin
+            Actions.OpenProject(Project, True);
+          end);
       end;
     end);
 end;

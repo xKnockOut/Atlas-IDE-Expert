@@ -17,8 +17,7 @@
 // beim Entladen). Den Rahmen gibt die IDE mit ihrer
 // Seite frei; ein Wächter (FreeNotification) vergisst ihn dann, damit
 // DestroyView ihn nicht ein zweites Mal freigibt.
-// #1114 hatte die Plugins entfernt; seit #761 (Nachtrag) sind sie wieder da,
-// abschaltbar mit welcomePage.ideWelcomePage. RemoveAll gibt vor dem Abmelden
+// Die Plugins sind abschaltbar mit welcomePage.ideWelcomePage (#761). RemoveAll gibt vor dem Abmelden
 // die Atlas-Inhalte in den Rahmen der IDE frei: Kein Objekt einer Atlas-Klasse
 // soll in einem Fenster der IDE stehen bleiben, das die IDE erst nach dem
 // Entladen von Atlas abbaut (vgl. #1233, Spalten der Zeilenleiste).

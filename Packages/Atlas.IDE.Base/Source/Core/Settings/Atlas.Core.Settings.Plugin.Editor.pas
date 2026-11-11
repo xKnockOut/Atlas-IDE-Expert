@@ -51,6 +51,8 @@ const
   /// <summary>search.history (#893): Vorgabe und Höchstwert.</summary>
   cDefaultSearchHistory = 20;
   cMaxSearchHistory = 100;
+  /// <summary>Vorgabe für designer.showInDesigner.key (#511): Umschalt+F12 (scShift + VK_F12).</summary>
+  cDefaultShowInDesignerKey = $2000 + $7B;
   /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
   cBeginEndAlways = 'always';
   cBeginEndMultiLine = 'multiLine';
@@ -70,6 +72,11 @@ const
   /// <summary>Werte von designer.selectionSets.storage (#739).</summary>
   cDesignerSetsLocal = 'local';
   cDesignerSetsShared = 'shared';
+  /// <summary>Werte von designer.groups.memberClick (#744).</summary>
+  cDesignerGroupsAltClick = 'altClick';
+  cDesignerGroupsDoubleClick = 'doubleClick';
+  /// <summary>Vorgabe von designer.inlineCaption.key: F2 (#748).</summary>
+  cInlineCaptionKey = 113;
   /// <summary>Quellen von designer.fitToText.sources (#730).</summary>
   cFitSourceCaption = 'caption';
   cFitSourceText = 'text';
@@ -92,6 +99,13 @@ const
   cButtonBarBottomLeft = 'bottomLeft';
   cButtonBarRightTop = 'rightTop';
   cButtonBarRightBottom = 'rightBottom';
+  /// <summary>Werte von designer.labelPairs.newLabelPosition (#729).</summary>
+  cLabelLeft = 'left';
+  cLabelAbove = 'above';
+  /// <summary>Werte von designer.arrangeForm.labelAlign (#731).</summary>
+  cGridLabelLeft = 'left';
+  cGridLabelRight = 'right';
+  cGridLabelAbove = 'above';
   cMaxButtonBarSpace = 100;
   cMaxNearTolerance = 10;
 
@@ -534,6 +548,12 @@ type
     DesignerSelectionSetsStorage: string;
     /// <summary>Taste „Auswahl speichern …“ als TShortCut, 0 = keine (#739, designer.selectionSets.saveKey).</summary>
     DesignerSelectionSetsSaveKey: Integer;
+    /// <summary>Befehl „Im Designer zeigen“ im Code-Editor (#511, designer.showInDesigner).</summary>
+    DesignerShowInDesigner: Boolean;
+    /// <summary>Taste für „Im Designer zeigen“ als TShortCut, 0 = keine (#511, designer.showInDesigner.key).</summary>
+    DesignerShowInDesignerKey: Integer;
+    /// <summary>Eigenschaften in Formularen suchen (#524, designer.propertySearch).</summary>
+    DesignerPropertySearch: Boolean;
     /// <summary>Räumliche Navigation mit Alt+Pfeil (#745, designer.spatialNavigation).</summary>
     DesignerSpatialNavigation: Boolean;
     /// <summary>Am Rand in benachbarte Container weiter (#745, designer.spatialNavigation.crossContainers).
@@ -603,6 +623,100 @@ type
     DesignerNearAlignmentBaseline: Boolean;
     /// <summary>Klassen, die nicht verglichen werden (#746, designer.nearAlignment.ignoreClasses).</summary>
     DesignerNearAlignmentIgnoreClasses: string;
+    /// <summary>Standardgrößen je Klasse (#747, designer.defaultSizes).</summary>
+    DesignerDefaultSizes: Boolean;
+    /// <summary>Tabelle „Klasse=Breite,Höhe; …“ (#747, designer.defaultSizes.table).</summary>
+    DesignerDefaultSizesTable: string;
+    /// <summary>Beim Ablegen neuer Komponenten anwenden (#747, designer.defaultSizes.applyOnInsert).</summary>
+    DesignerDefaultSizesApplyOnInsert: Boolean;
+    /// <summary>Befehl „Abweichungen anzeigen“ (#747, designer.defaultSizes.markDeviations).</summary>
+    DesignerDefaultSizesMarkDeviations: Boolean;
+    /// <summary>Ebenen schrittweise ordnen (#749, designer.zOrder).</summary>
+    DesignerZOrder: Boolean;
+    /// <summary>Strg+Bild auf/ab im Designer (#749, designer.zOrder.shortcuts).</summary>
+    DesignerZOrderShortcuts: Boolean;
+    /// <summary>Container-Vorfahren im Stapel (#749, designer.zOrder.includeParents).</summary>
+    DesignerZOrderIncludeParents: Boolean;
+    /// <summary>Format-Pinsel (#726, designer.propertyPainter).</summary>
+    DesignerPropertyPainter: Boolean;
+    /// <summary>Vorausgewählte Gruppen (#726, designer.propertyPainter.defaultGroups).</summary>
+    DesignerPropertyPainterDefaultGroups: string;
+    /// <summary>Häkchen je Quellklasse merken (#726, designer.propertyPainter.rememberPerClass).</summary>
+    DesignerPropertyPainterRememberPerClass: Boolean;
+    /// <summary>Anchors vorschlagen (#727, designer.suggestAnchors).</summary>
+    DesignerSuggestAnchors: Boolean;
+    /// <summary>Abstand, bis zu dem eine Komponente am Rand liegt (#727, designer.suggestAnchors.edgeDistance).</summary>
+    DesignerSuggestAnchorsEdgeDistance: Integer;
+    /// <summary>Gesetzte Anchors nicht überschreiben (#727, designer.suggestAnchors.keepExisting).</summary>
+    DesignerSuggestAnchorsKeepExisting: Boolean;
+    /// <summary>Füllende Klassen mit allen vier Anchors (#727, designer.suggestAnchors.fillClasses).</summary>
+    DesignerSuggestAnchorsFillClasses: string;
+    /// <summary>Texte des Formulars als Tabelle (#728, designer.textTable).</summary>
+    DesignerTextTable: Boolean;
+    /// <summary>Aktive Hinweise der Texttabelle (#728, designer.textTable.checks).</summary>
+    DesignerTextTableChecks: string;
+    /// <summary>Eigene Synonymgruppen (#728, designer.textTable.synonyms).</summary>
+    DesignerTextTableSynonyms: string;
+    /// <summary>Nicht erfasste Eigenschaften (#728, designer.textTable.excludeProperties).</summary>
+    DesignerTextTableExcludeProperties: string;
+    /// <summary>Label und Eingabefeld als Paar (#729, designer.labelPairs).</summary>
+    DesignerLabelPairs: Boolean;
+    /// <summary>Label auf die Textgrundlinie des Felds rücken (#729, designer.labelPairs.baseline).</summary>
+    DesignerLabelPairsBaseline: Boolean;
+    /// <summary>Leeres FocusControl auf das Feld setzen (#729, designer.labelPairs.focusControl).</summary>
+    DesignerLabelPairsFocusControl: Boolean;
+    /// <summary>Label mit dem Feld verschieben (#729, designer.labelPairs.moveTogether).</summary>
+    DesignerLabelPairsMoveTogether: Boolean;
+    /// <summary>Größter Abstand für ein Paar (#729, designer.labelPairs.pairDistance).</summary>
+    DesignerLabelPairsPairDistance: Integer;
+    /// <summary>Lage neuer Labels: cLabelLeft oder cLabelAbove (#729, designer.labelPairs.newLabelPosition).</summary>
+    DesignerLabelPairsNewLabelPosition: string;
+    /// <summary>Abkürzungen in eigener Schreibweise (#729, designer.labelPairs.abbreviations).</summary>
+    DesignerLabelPairsAbbreviations: string;
+    /// <summary>Als Formularraster anordnen (#731, designer.arrangeForm).</summary>
+    DesignerArrangeForm: Boolean;
+    /// <summary>Abstand zwischen den Zeilen (#731, designer.arrangeForm.rowGap).</summary>
+    DesignerArrangeFormRowGap: Integer;
+    /// <summary>Abstand zwischen Label und Feld (#731, designer.arrangeForm.labelGap).</summary>
+    DesignerArrangeFormLabelGap: Integer;
+    /// <summary>Lage der Labels: cGridLabelLeft … (#731, designer.arrangeForm.labelAlign).</summary>
+    DesignerArrangeFormLabelAlign: string;
+    /// <summary>Einzelne Felder gleich breit (#731, designer.arrangeForm.equalFieldWidth).</summary>
+    DesignerArrangeFormEqualFieldWidth: Boolean;
+    /// <summary>Zwei Paare je Zeile (#731, designer.arrangeForm.twoPerRow).</summary>
+    DesignerArrangeFormTwoPerRow: Boolean;
+    /// <summary>TabOrder nach dem Anordnen setzen (#731, designer.arrangeForm.setTabOrder).</summary>
+    DesignerArrangeFormSetTabOrder: Boolean;
+    /// <summary>Einpacken in Container und Container auflösen (#733, designer.wrapInContainer).</summary>
+    DesignerWrapInContainer: Boolean;
+    /// <summary>Innenrand des neuen Containers (#733, designer.wrapInContainer.padding).</summary>
+    DesignerWrapInContainerPadding: Integer;
+    /// <summary>Vorgabeklasse im Menü (#733, designer.wrapInContainer.defaultClass).</summary>
+    DesignerWrapInContainerDefaultClass: string;
+    /// <summary>Eigene Containerklassen, Komma-Liste (#733, designer.wrapInContainer.classes).</summary>
+    DesignerWrapInContainerClasses: string;
+    /// <summary>Schriften und Farben vereinheitlichen (#741, designer.fontsColors).</summary>
+    DesignerFontsColors: Boolean;
+    /// <summary>Beim Ersetzen wieder ParentFont/ParentColor setzen (#741, designer.fontsColors.restoreParent).</summary>
+    DesignerFontsColorsRestoreParent: Boolean;
+    /// <summary>Nicht aufgeführte Farben, Komma-Liste (#741, designer.fontsColors.ignoreColors).</summary>
+    DesignerFontsColorsIgnoreColors: string;
+    /// <summary>Gruppen ohne Container (#744, designer.groups).</summary>
+    DesignerGroups: Boolean;
+    /// <summary>Einzelnes Mitglied: cDesignerGroupsAltClick oder ...DoubleClick (#744, designer.groups.memberClick).</summary>
+    DesignerGroupsMemberClick: string;
+    /// <summary>Ablage: cDesignerSetsLocal oder cDesignerSetsShared (#744, designer.groups.storage).</summary>
+    DesignerGroupsStorage: string;
+    /// <summary>Beschriftung direkt im Designer bearbeiten (#748, designer.inlineCaption).</summary>
+    DesignerInlineCaption: Boolean;
+    /// <summary>Langsamer Doppelklick öffnet die Bearbeitung (#748, designer.inlineCaption.slowDoubleClick).</summary>
+    DesignerInlineCaptionSlowDoubleClick: Boolean;
+    /// <summary>Breite nach dem Übernehmen anpassen (#748, designer.inlineCaption.autoWidth).</summary>
+    DesignerInlineCaptionAutoWidth: Boolean;
+    /// <summary>Taste als TShortCut, 0 = keine (#748, designer.inlineCaption.key).</summary>
+    DesignerInlineCaptionKey: Integer;
+    /// <summary>Eigene Zuordnung Klasse=Eigenschaft (#748, designer.inlineCaption.properties).</summary>
+    DesignerInlineCaptionProperties: string;
     /// <summary>Abstandsgriffe bei Mehrfachauswahl (#734, designer.gapHandles).</summary>
     DesignerGapHandles: Boolean;
     /// <summary>Rastwerte beim Ziehen, durch Komma getrennt (#734, designer.gapHandles.snapValues).</summary>
@@ -681,8 +795,12 @@ type
     procedure ExchangeViews(const AIo: TAtlasSettingsExchange);
     /// <summary>Vorgaben der Befehle im Menü „Anordnen“ der Designer-Leiste (#730 ff.).</summary>
     procedure SetArrangeDefaults;
+    /// <summary>Raster (#731), Einpacken (#733), Schriften (#741), Gruppen (#744), Beschriftung (#748).</summary>
+    procedure SetFormToolDefaults;
     /// <summary>Einstellungen der Befehle im Menü „Anordnen“ lesen bzw. schreiben.</summary>
     procedure ExchangeArrange(const AIo: TAtlasSettingsExchange);
+    /// <summary>Einstellungen von Formularraster und Einpacken lesen bzw. schreiben.</summary>
+    procedure ExchangeFormTools(const AIo: TAtlasSettingsExchange);
     /// <summary>Vorgaben der Werkzeuge mit eigenem Knopf in der Designer-Leiste (#734 ff.).</summary>
     procedure SetToolDefaults;
     /// <summary>Einstellungen der Werkzeuge mit eigenem Knopf lesen bzw. schreiben.</summary>
@@ -1162,10 +1280,15 @@ begin
   Result.DesignerSelectionSetsStorage := cDesignerSetsLocal;
   // Strg+Umschalt+S.
   Result.DesignerSelectionSetsSaveKey := 24659;
+  Result.DesignerShowInDesigner := True;
+  // Umschalt+F12 (in der IDE „Formulare anzeigen“).
+  Result.DesignerShowInDesignerKey := cDefaultShowInDesignerKey;
+  Result.DesignerPropertySearch := True;
   Result.DesignerSpatialNavigation := True;
   Result.DesignerSpatialCrossContainers := True;
   Result.SetViewDefaults;
   Result.SetArrangeDefaults;
+  Result.SetFormToolDefaults;
   Result.SetToolDefaults;
   Result.Minimap := False;
   Result.MinimapRender := 'characters';
@@ -1213,6 +1336,57 @@ begin
   DesignerNearAlignmentTolerance := 3;
   DesignerNearAlignmentBaseline := True;
   DesignerNearAlignmentIgnoreClasses := 'TBevel,TShape';
+  DesignerDefaultSizes := True;
+  DesignerDefaultSizesTable := '';
+  DesignerDefaultSizesApplyOnInsert := True;
+  DesignerDefaultSizesMarkDeviations := False;
+  DesignerZOrder := True;
+  DesignerZOrderShortcuts := True;
+  DesignerZOrderIncludeParents := False;
+  DesignerPropertyPainter := True;
+  DesignerPropertyPainterDefaultGroups := 'font, colors, size, layout';
+  DesignerPropertyPainterRememberPerClass := True;
+  DesignerSuggestAnchors := True;
+  DesignerSuggestAnchorsEdgeDistance := 16;
+  DesignerSuggestAnchorsKeepExisting := True;
+  DesignerSuggestAnchorsFillClasses := 'TMemo, TDBGrid, TStringGrid, TListView, TTreeView, TPageControl, TRichEdit';
+  DesignerTextTable := True;
+  DesignerTextTableChecks := 'accelerators, variants, truncated, whitespace';
+  DesignerTextTableSynonyms := '';
+  DesignerTextTableExcludeProperties := 'SQL, CommandText';
+  DesignerLabelPairs := True;
+  DesignerLabelPairsBaseline := True;
+  DesignerLabelPairsFocusControl := True;
+  DesignerLabelPairsMoveTogether := True;
+  DesignerLabelPairsPairDistance := 16;
+  DesignerLabelPairsNewLabelPosition := cLabelLeft;
+  DesignerLabelPairsAbbreviations := 'PLZ, IBAN, BIC, USt, ID';
+end;
+
+procedure TAtlasPluginEditorViewSettings.SetFormToolDefaults;
+begin
+  DesignerArrangeForm := True;
+  DesignerArrangeFormRowGap := 8;
+  DesignerArrangeFormLabelGap := 8;
+  DesignerArrangeFormLabelAlign := cGridLabelLeft;
+  DesignerArrangeFormEqualFieldWidth := False;
+  DesignerArrangeFormTwoPerRow := False;
+  DesignerArrangeFormSetTabOrder := True;
+  DesignerWrapInContainer := True;
+  DesignerWrapInContainerPadding := 8;
+  DesignerWrapInContainerDefaultClass := 'TPanel';
+  DesignerWrapInContainerClasses := '';
+  DesignerFontsColors := True;
+  DesignerFontsColorsRestoreParent := True;
+  DesignerFontsColorsIgnoreColors := 'clWindow, clBtnFace, clWindowText, clDefault';
+  DesignerGroups := True;
+  DesignerGroupsMemberClick := cDesignerGroupsAltClick;
+  DesignerGroupsStorage := cDesignerSetsLocal;
+  DesignerInlineCaption := True;
+  DesignerInlineCaptionSlowDoubleClick := True;
+  DesignerInlineCaptionAutoWidth := False;
+  DesignerInlineCaptionKey := cInlineCaptionKey;
+  DesignerInlineCaptionProperties := '';
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeArrange(const AIo: TAtlasSettingsExchange);
@@ -1240,6 +1414,57 @@ begin
   AIo.Number('DesignerNearAlignmentTolerance', DesignerNearAlignmentTolerance);
   AIo.Flag('DesignerNearAlignmentBaseline', DesignerNearAlignmentBaseline);
   AIo.Text('DesignerNearAlignmentIgnoreClasses', DesignerNearAlignmentIgnoreClasses);
+  AIo.Flag('DesignerDefaultSizes', DesignerDefaultSizes);
+  AIo.Text('DesignerDefaultSizesTable', DesignerDefaultSizesTable);
+  AIo.Flag('DesignerDefaultSizesApplyOnInsert', DesignerDefaultSizesApplyOnInsert);
+  AIo.Flag('DesignerDefaultSizesMarkDeviations', DesignerDefaultSizesMarkDeviations);
+  AIo.Flag('DesignerZOrder', DesignerZOrder);
+  AIo.Flag('DesignerZOrderShortcuts', DesignerZOrderShortcuts);
+  AIo.Flag('DesignerZOrderIncludeParents', DesignerZOrderIncludeParents);
+  AIo.Flag('DesignerPropertyPainter', DesignerPropertyPainter);
+  AIo.Text('DesignerPropertyPainterDefaultGroups', DesignerPropertyPainterDefaultGroups);
+  AIo.Flag('DesignerPropertyPainterRememberPerClass', DesignerPropertyPainterRememberPerClass);
+  AIo.Flag('DesignerSuggestAnchors', DesignerSuggestAnchors);
+  AIo.Number('DesignerSuggestAnchorsEdgeDistance', DesignerSuggestAnchorsEdgeDistance);
+  AIo.Flag('DesignerSuggestAnchorsKeepExisting', DesignerSuggestAnchorsKeepExisting);
+  AIo.Text('DesignerSuggestAnchorsFillClasses', DesignerSuggestAnchorsFillClasses);
+  AIo.Flag('DesignerTextTable', DesignerTextTable);
+  AIo.Text('DesignerTextTableChecks', DesignerTextTableChecks);
+  AIo.Text('DesignerTextTableSynonyms', DesignerTextTableSynonyms);
+  AIo.Text('DesignerTextTableExcludeProperties', DesignerTextTableExcludeProperties);
+  AIo.Flag('DesignerLabelPairs', DesignerLabelPairs);
+  AIo.Flag('DesignerLabelPairsBaseline', DesignerLabelPairsBaseline);
+  AIo.Flag('DesignerLabelPairsFocusControl', DesignerLabelPairsFocusControl);
+  AIo.Flag('DesignerLabelPairsMoveTogether', DesignerLabelPairsMoveTogether);
+  AIo.Number('DesignerLabelPairsPairDistance', DesignerLabelPairsPairDistance);
+  AIo.Text('DesignerLabelPairsNewLabelPosition', DesignerLabelPairsNewLabelPosition);
+  AIo.Text('DesignerLabelPairsAbbreviations', DesignerLabelPairsAbbreviations);
+end;
+
+procedure TAtlasPluginEditorViewSettings.ExchangeFormTools(const AIo: TAtlasSettingsExchange);
+begin
+  AIo.Flag('DesignerArrangeForm', DesignerArrangeForm);
+  AIo.Number('DesignerArrangeFormRowGap', DesignerArrangeFormRowGap);
+  AIo.Number('DesignerArrangeFormLabelGap', DesignerArrangeFormLabelGap);
+  AIo.Text('DesignerArrangeFormLabelAlign', DesignerArrangeFormLabelAlign);
+  AIo.Flag('DesignerArrangeFormEqualFieldWidth', DesignerArrangeFormEqualFieldWidth);
+  AIo.Flag('DesignerArrangeFormTwoPerRow', DesignerArrangeFormTwoPerRow);
+  AIo.Flag('DesignerArrangeFormSetTabOrder', DesignerArrangeFormSetTabOrder);
+  AIo.Flag('DesignerWrapInContainer', DesignerWrapInContainer);
+  AIo.Number('DesignerWrapInContainerPadding', DesignerWrapInContainerPadding);
+  AIo.Text('DesignerWrapInContainerDefaultClass', DesignerWrapInContainerDefaultClass);
+  AIo.Text('DesignerWrapInContainerClasses', DesignerWrapInContainerClasses);
+  AIo.Flag('DesignerFontsColors', DesignerFontsColors);
+  AIo.Flag('DesignerFontsColorsRestoreParent', DesignerFontsColorsRestoreParent);
+  AIo.Text('DesignerFontsColorsIgnoreColors', DesignerFontsColorsIgnoreColors);
+  AIo.Flag('DesignerGroups', DesignerGroups);
+  AIo.Text('DesignerGroupsMemberClick', DesignerGroupsMemberClick);
+  AIo.Text('DesignerGroupsStorage', DesignerGroupsStorage);
+  AIo.Flag('DesignerInlineCaption', DesignerInlineCaption);
+  AIo.Flag('DesignerInlineCaptionSlowDoubleClick', DesignerInlineCaptionSlowDoubleClick);
+  AIo.Flag('DesignerInlineCaptionAutoWidth', DesignerInlineCaptionAutoWidth);
+  AIo.Number('DesignerInlineCaptionKey', DesignerInlineCaptionKey);
+  AIo.Text('DesignerInlineCaptionProperties', DesignerInlineCaptionProperties);
 end;
 
 procedure TAtlasPluginEditorViewSettings.SetToolDefaults;
@@ -1302,7 +1527,11 @@ begin
   DesignerSearchStyle := Choice(DesignerSearchStyle, [cDesignerSearchWindow, cDesignerSearchPopup]);
   DesignerSelectScope := Choice(DesignerSelectScope, [cDesignerScopeForm, cDesignerScopeParent]);
   DesignerSelectionSetsStorage := Choice(DesignerSelectionSetsStorage, [cDesignerSetsLocal, cDesignerSetsShared]);
+  DesignerGroupsStorage := Choice(DesignerGroupsStorage, [cDesignerSetsLocal, cDesignerSetsShared]);
+  DesignerGroupsMemberClick := Choice(DesignerGroupsMemberClick, [cDesignerGroupsAltClick, cDesignerGroupsDoubleClick]);
+  DesignerInlineCaptionKey := EnsureRange(DesignerInlineCaptionKey, 0, $FFFF);
   DesignerSelectionSetsSaveKey := EnsureRange(DesignerSelectionSetsSaveKey, 0, $FFFF);
+  DesignerShowInDesignerKey := EnsureRange(DesignerShowInDesignerKey, 0, $FFFF);
   DesignerFitToTextMinWidth := EnsureRange(DesignerFitToTextMinWidth, 0, cMaxFitMinWidth);
   DesignerFitToTextPadding := EnsureRange(DesignerFitToTextPadding, 0, cMaxFitPadding);
   DesignerButtonBarPosition := Choice(DesignerButtonBarPosition, [cButtonBarBottomRight, cButtonBarBottomLeft,
@@ -1311,6 +1540,18 @@ begin
   DesignerButtonBarMargin := EnsureRange(DesignerButtonBarMargin, 0, cMaxButtonBarSpace);
   DesignerDuplicateRowDefaultGap := EnsureRange(DesignerDuplicateRowDefaultGap, 0, cMaxButtonBarSpace);
   DesignerFitContainerPadding := EnsureRange(DesignerFitContainerPadding, 0, cMaxButtonBarSpace);
+  DesignerSuggestAnchorsEdgeDistance := EnsureRange(DesignerSuggestAnchorsEdgeDistance, 0, cMaxButtonBarSpace);
+  DesignerLabelPairsPairDistance := EnsureRange(DesignerLabelPairsPairDistance, 0, cMaxButtonBarSpace);
+  DesignerLabelPairsNewLabelPosition := Choice(DesignerLabelPairsNewLabelPosition, [cLabelLeft, cLabelAbove]);
+  DesignerArrangeFormRowGap := EnsureRange(DesignerArrangeFormRowGap, 0, cMaxButtonBarSpace);
+  DesignerArrangeFormLabelGap := EnsureRange(DesignerArrangeFormLabelGap, 0, cMaxButtonBarSpace);
+  DesignerArrangeFormLabelAlign := Choice(DesignerArrangeFormLabelAlign, [cGridLabelLeft, cGridLabelRight,
+    cGridLabelAbove]);
+  DesignerWrapInContainerPadding := EnsureRange(DesignerWrapInContainerPadding, 0, cMaxButtonBarSpace);
+  if Trim(DesignerWrapInContainerDefaultClass) = '' then
+  begin
+    DesignerWrapInContainerDefaultClass := 'TPanel';
+  end;
   DesignerNearAlignmentTolerance := EnsureRange(DesignerNearAlignmentTolerance, 1, cMaxNearTolerance);
   DesignerGapHandlesAnchor := Choice(DesignerGapHandlesAnchor, [cGapAnchorCenter, cGapAnchorFirst, cGapAnchorLast]);
   DesignerMultiResizeMode := Choice(DesignerMultiResizeMode, [cResizeModeDelta, cResizeModeAlign]);
@@ -1356,10 +1597,14 @@ begin
   AIo.Flag('DesignerSelectionSetsShortcuts', DesignerSelectionSetsShortcuts);
   AIo.Text('DesignerSelectionSetsStorage', DesignerSelectionSetsStorage);
   AIo.Number('DesignerSelectionSetsSaveKey', DesignerSelectionSetsSaveKey);
+  AIo.Flag('DesignerShowInDesigner', DesignerShowInDesigner);
+  AIo.Number('DesignerShowInDesignerKey', DesignerShowInDesignerKey);
+  AIo.Flag('DesignerPropertySearch', DesignerPropertySearch);
   AIo.Flag('DesignerSpatialNavigation', DesignerSpatialNavigation);
   AIo.Flag('DesignerSpatialCrossContainers', DesignerSpatialCrossContainers);
   ExchangeViews(AIo);
   ExchangeArrange(AIo);
+  ExchangeFormTools(AIo);
   ExchangeTools(AIo);
   AIo.Flag('Minimap', Minimap);
   AIo.Text('MinimapRender', MinimapRender);

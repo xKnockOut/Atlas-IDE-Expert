@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.VersionControl.SettingsProject;
 
-// Versionsverwaltung: Zeitlimit (vcs.timeoutSeconds) und aktuelles Projekt (#1285, seit #1905 im Modul). Das Projekt
+// Versionsverwaltung: Zeitlimit (vcs.timeoutSeconds) und aktuelles Projekt (#1285). Das Projekt
 // wird erst abgefragt, wenn sein Reiter gewählt und die Zeile sichtbar ist (einmal je Öffnen; ein Zeitgeber fragt
 // CheckShown): Jeder Knoten des Optionsdialogs baut die ganze Seite, ein Prozess soll nur für die gezeigte starten.
 

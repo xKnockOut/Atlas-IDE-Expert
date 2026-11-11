@@ -89,6 +89,7 @@ uses
   Winapi.Messages,
   Winapi.Dwmapi,
   Vcl.Imaging.pngimage,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tracker.Attach;
 
 const
@@ -267,25 +268,35 @@ var
 
 function PickMouse(ACode: Integer; AParam: WPARAM; AData: LPARAM): LRESULT; stdcall;
 begin
-  if (ACode = HC_ACTION) and not PickDone then
-    case AParam of
-      WM_LBUTTONDOWN, WM_RBUTTONDOWN:
-        // Den Klick schlucken: Im Programm soll nichts ausgelöst werden.
-        Exit(1);
-      WM_LBUTTONUP:
-        begin
-          PickWindow := TAtlasWindowCapture.RootAt(PMSLLHookStruct(AData).pt);
-          PickDone := True;
+  try
+    if (ACode = HC_ACTION) and not PickDone then
+      case AParam of
+        WM_LBUTTONDOWN, WM_RBUTTONDOWN:
+          // Den Klick schlucken: Im Programm soll nichts ausgelöst werden.
           Exit(1);
-        end;
-      WM_RBUTTONUP:
-        begin
-          // Rechtsklick bricht ab.
-          PickWindow := 0;
-          PickDone := True;
-          Exit(1);
-        end;
+        WM_LBUTTONUP:
+          begin
+            PickWindow := TAtlasWindowCapture.RootAt(PMSLLHookStruct(AData).pt);
+            PickDone := True;
+            Exit(1);
+          end;
+        WM_RBUTTONUP:
+          begin
+            // Rechtsklick bricht ab.
+            PickWindow := 0;
+            PickDone := True;
+            Exit(1);
+          end;
+      end;
+  except
+    // Keine Exception durch den Systemcode des Hooks (#493): Wählen abbrechen, der Takt entfernt den Hook.
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Fensterauswahl, Maus-Hook: ' + TAtlasGuard.ErrorText(E));
+      PickWindow := 0;
+      PickDone := True;
     end;
+  end;
   Result := CallNextHookEx(PickHook, ACode, AParam, AData);
 end;
 

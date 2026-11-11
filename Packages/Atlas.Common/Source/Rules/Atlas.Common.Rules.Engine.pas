@@ -40,9 +40,9 @@
 // TRuleProfiles aus; maßgeblich ist das Profil in ASettings.Profile, für
 // Test-Units und Testprojekte ASettings.TestProfile, falls gesetzt.
 //
-// Laufzeit (Diagnoselog 15.10.2026): Vor jeder Regel fragt die Engine
-// AContext.Cancelled und bricht mit ERuleCheckCancelled ab. Früher lief eine
-// abgebrochene oder überholte Prüfung bis zum Ende weiter (bis 240 s). Die
+// Laufzeit: Vor jeder Regel fragt die Engine AContext.Cancelled und bricht
+// mit ERuleCheckCancelled ab, damit eine abgebrochene oder überholte Prüfung
+// nicht bis zum Ende weiterläuft. Die
 // langsamste Regel ab SlowRuleMs geht als slowRule/slowRuleMs ins Diagnoselog.
 // Dieselbe Messung geht an den Profiler des Threads (TCheckProfiler, #1356),
 // wenn die Projektprüfung oder --check einen angehängt hat: Summe je Regel
@@ -53,8 +53,8 @@
 // Ketten wie 1 - 1 - … - 1 sprengen den Stapel nicht. MaxTreeDepth bleibt als
 // Netz für unbekannte rekursive Wege: Ist der Baum tiefer, laufen die Regeln
 // für diese Datei nicht; die Datei bekommt den Hinweis unit-too-deep an der
-// tiefsten Stelle und steht als deepUnit im Diagnoselog. Früher lag die Grenze
-// bei 1000 Ebenen, und solche Units verloren still alle Befunde.
+// tiefsten Stelle und steht als deepUnit im Diagnoselog, statt still alle
+// Befunde zu verlieren.
 // Wirft eine Regel eine Ausnahme, laufen die übrigen weiter; die
 // Regel steht mit Unit und Ausnahmeklasse als failRule im Diagnoselog. Nur der
 // Abbruch (ERuleCheckCancelled) beendet den Lauf.
