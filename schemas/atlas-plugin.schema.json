@@ -5304,6 +5304,16 @@
       "x-node": "editor.designerBar",
       "x-issue": "#611"
     },
+    "DesignerEventMap": {
+      "description": "Knopf „Ereignis-Karte“ der Designer-Leiste: andockbares Fenster mit allen zugewiesenen Ereignissen des Formulars (Komponente, Klasse, Ereignis, Handler, Zeilen, Befund), gruppiert nach Komponente, Ereignis oder Handler, mit Filter und „Nur Befunde“. Befunde: leerer Handler, veröffentlichter Handler ohne Zuweisung, Zuweisung auf eine fehlende Methode. Doppelklick springt zum Handler, ein zweiter wählt die Komponente; Kontextmenü „Handler umbenennen“ und „Leeren Handler entfernen“.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.eventMap",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#612"
+    },
     "DesignerFitToText": {
       "description": "Befehl „Breite nach Text“ im Menü „Anordnen“ der Designer-Leiste: setzt die markierten Steuerelemente auf die Breite des längsten Texts plus Innenabstand und Anteil des Steuerelements (Kästchen, Pfeil, Glyph), mindestens die Mindestbreite. In einer Reihe bleiben die Abstände und die linke bzw. (bei akRight oder am rechten Rand) die rechte Kante; AutoSize und Align ohne freie Breite bleiben. Ändert die .dfm.",
       "type": "boolean",

@@ -599,6 +599,8 @@ type
     DesignerDataBindings: Boolean;
     /// <summary>Knopf „In Frame auslagern“ (#611, designer.extractFrame).</summary>
     DesignerExtractFrame: Boolean;
+    /// <summary>Knopf „Ereignis-Karte“ (#612, designer.eventMap).</summary>
+    DesignerEventMap: Boolean;
     /// <summary>Befehl „Breite nach Text“ (#730, designer.fitToText).</summary>
     DesignerFitToText: Boolean;
     /// <summary>Mindestbreite bei 96 dpi (#730, designer.fitToText.minWidth).</summary>
@@ -1697,6 +1699,7 @@ begin
   DesignerStructureHideOnForm := True;
   DesignerDataBindings := False;
   DesignerExtractFrame := True;
+  DesignerEventMap := True;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeViews(const AIo: TAtlasSettingsExchange);
@@ -1719,6 +1722,7 @@ begin
   AIo.Flag('DesignerStructureHideOnForm', DesignerStructureHideOnForm);
   AIo.Flag('DesignerDataBindings', DesignerDataBindings);
   AIo.Flag('DesignerExtractFrame', DesignerExtractFrame);
+  AIo.Flag('DesignerEventMap', DesignerEventMap);
 end;
 
 end.
