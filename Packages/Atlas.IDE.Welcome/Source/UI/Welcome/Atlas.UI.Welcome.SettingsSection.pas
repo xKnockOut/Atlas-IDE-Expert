@@ -572,7 +572,8 @@ begin
   FMore.HelpReportFolder := Line('welcomePage.help.reportFolder',
     TAtlasWelcomeTextId.SettingsWelcomeHelpReportFolder);
   FMore.HelpReportFolder.TextHint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeHelpDesktop);
-  FMore.HelpReportFolder.Width := FMore.HelpReportFolder.Width - FMore.HelpReportFolder.ScaleValue(cBrowseWidth) - FMore.HelpReportFolder.ScaleValue(cBrowseGap);
+  FMore.HelpReportFolder.Width := FMore.HelpReportFolder.Width -
+    FMore.HelpReportFolder.ScaleValue(cBrowseWidth + cBrowseGap);
   FMore.HelpFolderBrowse := AddButton(FMore.HelpReportFolder.Parent,
     FMore.HelpReportFolder.Left + FMore.HelpReportFolder.Width + cBrowseGap, cBrowseWidth, '…',
     FHooks.HelpFolderBrowseClick);

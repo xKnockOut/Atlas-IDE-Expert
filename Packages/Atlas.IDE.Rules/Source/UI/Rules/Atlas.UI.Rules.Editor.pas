@@ -507,7 +507,8 @@ begin
     AMemo.ScrollBars := mBars;
   end;
   // Nie kleiner als bisher: Kurze Beispiele behalten ihre gewohnte Höhe.
-  AMemo.Height := Max(AMemo.ScaleValue(cMinMemoHeight), mLines * mLineHeight + GetSystemMetrics(SM_CYHSCROLL) + AMemo.ScaleValue(8));
+  AMemo.Height := Max(AMemo.ScaleValue(cMinMemoHeight),
+    mLines * mLineHeight + GetSystemMetrics(SM_CYHSCROLL) + AMemo.ScaleValue(8));
 end;
 
 procedure TAtlasRulesLayout.Stack(AParent: TWinControl; AControl: TControl);

@@ -1106,7 +1106,7 @@ begin
   FHint.Font.Color := clRed;
   FHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsChoose);
   FHint.Visible := False;
-  FBox.Height := FBox.ScaleValue(44) + FBox.ScaleValue(20) + Min(Length(mFacts.SvnExternals), cExternalRowsVisible) * cExternalRow;
+  FBox.Height := FBox.ScaleValue(44 + 20 + Min(Length(mFacts.SvnExternals), cExternalRowsVisible) * cExternalRow);
   // Breite vorab wie im fertigen Dialog (ohne Fenster richtet alTop nicht aus); Anker gleichen den Rest aus.
   mWidth := FDialog.Width - 4 * cGap - 20;
   AddHeader(mWidth);
@@ -1115,7 +1115,7 @@ begin
   mScroll.Width := mWidth;
   mScroll.Align := alClient;
   mScroll.BorderStyle := bsNone;
-  mScroll.VertScrollBar.Increment := cExternalRow;
+  mScroll.VertScrollBar.Increment := mScroll.ScaleValue(cExternalRow);
   FDefaults := TAtlasVcsBranchPlan.DefaultActions(mFacts, FDialog.FSvn.Options);
   SetLength(FBoxes, Length(mFacts.SvnExternals));
   SetLength(FChoices, Length(mFacts.SvnExternals));
@@ -1159,7 +1159,7 @@ begin
   mRow.Width := AWidth;
   mRow.Height := mRow.ScaleValue(cExternalRow);
   mRow.BevelOuter := bvNone;
-  mRow.Top := AIndex * cExternalRow;
+  mRow.Top := mRow.ScaleValue(AIndex * cExternalRow);
   mRow.Align := alTop;
   CellLabel(FDialog, mRow, cGap, cFolderWidth, mExternal.Path);
   mLabel := CellLabel(FDialog, mRow, cGap + cFolderWidth + cGap, mRow.Width - cFolderWidth - cChoiceWidth - 4 * cGap,
