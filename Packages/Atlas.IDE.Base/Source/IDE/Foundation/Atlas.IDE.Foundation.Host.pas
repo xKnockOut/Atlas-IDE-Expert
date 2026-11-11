@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Foundation.Host;
 
-// Dienste von Base für die Module (#1455, ADR 0017): Serversitzung (laufend
+// Dienste von Base für die Module (#1455): Serversitzung (laufend
 // bzw. bei Bedarf gestartet), Befehle im Hintergrund an den Server,
 // Meldungsansicht „Atlas“, Warnungen, Bericht und Diagnoselog, Felder im
 // Atlas-Statusfeld und Compile-Ereignisse; für Bereiche wie die
@@ -118,6 +118,9 @@ type
     class function ActiveSession: TLspSession; static;
     /// <summary>Zeile in der Meldungsansicht der IDE, Gruppe „Atlas“.</summary>
     class procedure Message(const AText: string); static;
+    /// <summary>Fläche, über der ein Popup oder eine Palette erscheint: aktives Formular, sonst Hauptfenster,
+    /// sonst Arbeitsfläche.</summary>
+    class function PopupArea: TRect; static;
     /// <summary>Warnung wie die der Sicherung: Meldungsansicht und Bericht; vor Install nur die
     /// Meldungsansicht.</summary>
     class procedure Warning(const AText: string); static;
@@ -173,6 +176,7 @@ type
 implementation
 
 uses
+  Vcl.Forms,
   ToolsAPI,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Modules.Answer;
@@ -231,6 +235,22 @@ begin
     mGroup := mMessages.AddMessageGroup('Atlas');
   end;
   mMessages.AddTitleMessage(AText, mGroup);
+end;
+
+class function TAtlasIdeHost.PopupArea: TRect;
+begin
+  if Screen.ActiveForm <> nil then
+  begin
+    Result := Screen.ActiveForm.BoundsRect;
+  end
+  else if Application.MainForm <> nil then
+  begin
+    Result := Application.MainForm.BoundsRect;
+  end
+  else
+  begin
+    Result := Screen.WorkAreaRect;
+  end;
 end;
 
 class procedure TAtlasIdeHost.Warning(const AText: string);

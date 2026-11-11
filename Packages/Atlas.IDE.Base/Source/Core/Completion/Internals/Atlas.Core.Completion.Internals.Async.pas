@@ -52,7 +52,7 @@ type
     /// <summary>Zählt E als Fehler der Quelle? Standard: ja.</summary>
     function IsFailure(AE: Exception): Boolean; virtual;
     /// <summary>Im aufrufenden Thread vor dem Start, meist im Zeitlimit-Arbeiter (#493): weder VCL noch Open Tools
-    /// API, kein Serverstart (Code-Review K-03). False = nichts zu tun (Complete sofort).
+    /// API, kein Serverstart. False = nichts zu tun (Complete sofort).
     /// AData geht unverändert an Fetch (nicht übernommen, muss bis zum Ende von Fetch leben).</summary>
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; virtual;
     /// <summary>Im Hintergrund. Ausnahmen gelten als leeres Ergebnis. AState.Incomplete: Die Liste ist
@@ -287,7 +287,7 @@ begin
   mWorker := nil;
   FLock.Enter;
   try
-    // Prepare läuft im Zeitlimit-Arbeiter und kann das Zeitlimit überdauern (Code-Review A-13): Ist die Anfrage
+    // Prepare läuft im Zeitlimit-Arbeiter und kann das Zeitlimit überdauern: Ist die Anfrage
     // inzwischen überholt, abgebrochen oder hat Shutdown die Arbeiter eingesammelt, keine Vollanfrage mehr stellen.
     // Unter FLock und mit Start in der Sperre, damit Shutdown keinen danach gestarteten Arbeiter übersieht.
     if IsCurrent(mGeneration) then

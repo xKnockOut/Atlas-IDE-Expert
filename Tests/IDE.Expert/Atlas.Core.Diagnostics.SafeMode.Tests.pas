@@ -2,7 +2,7 @@
 
 // Abgesicherter Start (#722): Startmarke anlegen und lesen, Erkennung eines
 // Absturzes, Zählung wiederholter Abstürze, langsamer Start ist kein Absturz
-// (Bericht N4), Taste und Kommandozeile, Auswahl der Funktionen im
+//, Taste und Kommandozeile, Auswahl der Funktionen im
 // abgesicherten Modus, Vorschlag und Einstellungsstände zurücksetzen.
 // Sitzungen mit ATLAS_NO_SESSION_MARKER schreiben keine Marke und zählen keine
 // fremden Abstürze.
@@ -181,7 +181,7 @@ var
   State: TAtlasSafeState;
   Decision: TAtlasSafeDecision;
 begin
-  // Bericht N4: Ein langsamer Start schaltete früher beim nächsten Start alles ab. Ein Zustand älterer Fassungen
+  // Ein langsamer Start schaltete früher beim nächsten Start alles ab. Ein Zustand älterer Fassungen
   // mit "slowStart" startet jetzt normal; die Startanteile nennen stattdessen die Ursache.
   State := TAtlasSafeState.FromJson('{"crashCount": 0, "slowStart": true}');
   Decision := TAtlasSafeMode.Decide(State, nil, Now, Options, TAtlasStartupKey.None, False);
@@ -421,7 +421,7 @@ begin
     TAtlasSessionFiles.WriteState(Folder, State);
     State := TAtlasSessionFiles.ReadState(Folder);
     Assert.AreEqual(2, State.CrashCount);
-    // Ersetzen in einem Schritt (Bericht N3): neuer Stand, keine Reste daneben.
+    // Ersetzen in einem Schritt: neuer Stand, keine Reste daneben.
     State.CrashCount := 3;
     TAtlasSessionFiles.WriteState(Folder, State);
     Assert.AreEqual(3, TAtlasSessionFiles.ReadState(Folder).CrashCount);

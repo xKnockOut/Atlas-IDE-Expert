@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Analysis.Strings;
 
-// Oberflächentexte des Moduls Analyse auf Deutsch und Englisch (ADR 0017, #1455). Die Sprache
+// Oberflächentexte des Moduls Analyse auf Deutsch und Englisch (#1455). Die Sprache
 // bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest sie neu, ein Sprachwechsel braucht
 // daher keine eigene Meldung. Kerntexte bleiben in `Atlas.UI.Strings`.
 
@@ -74,7 +74,8 @@ type
     RoleUnitCommand, RoleUnitHint, RoleUnitPrefix, RoleUnitFeature, RoleUnitRole, RoleUnitThing, RoleUnitRoot,
     RoleUnitRootShort, RoleUnitPreview, RoleUnitOwn, RoleUnitForeign, RoleUnitCreate, RoleUnitCancel,
     RoleUnitNoPrefix, RoleUnitBadPrefix, RoleUnitNoFeature, RoleUnitBadFeature, RoleUnitReservedFeature,
-    RoleUnitBadThing, RoleUnitReservedThing, RoleUnitFailed);
+    RoleUnitBadThing, RoleUnitReservedThing, RoleUnitFailed,
+    ArchitectureScopeProject, ArchitectureScopeGroup);
 
   TAtlasAnalysisStrings = class
   public
@@ -363,7 +364,9 @@ const
      'Feature: Rollenbezeichner (Contract, Core …) sind reserviert.',
      'Sache: nur Bezeichner, durch Punkte getrennt.',
      'Sache: Rollenbezeichner (Contract, Core …) sind reserviert.',
-     'Unit nach Architekturrolle: %s'),
+     'Unit nach Architekturrolle: %s',
+     'Projekt',
+     'Projektgruppe'),
     ('Atlas Architecture',
      'Architecture overview',
      'Architecture',
@@ -635,7 +638,9 @@ const
      'Feature: role names (Contract, Core …) are reserved.',
      'Thing: identifiers separated by dots only.',
      'Thing: role names (Contract, Core …) are reserved.',
-     'Unit by architecture role: %s'));
+     'Unit by architecture role: %s',
+     'Project',
+     'Project group'));
 
 { TAtlasAnalysisStrings }
 

@@ -57,7 +57,7 @@ type
   /// <summary>Liefert den Text einer Datei (offener Puffer oder Platte); '' wenn sie fehlt.</summary>
   TAtlasReadText = reference to function(const AFileName: string): string;
 
-  /// <summary>Seit A-09 im Lsp-Feature (Atlas.Core.Lsp.Contract); Aliase für bestehende Nutzer.</summary>
+  /// <summary>Liegen im Lsp-Feature (Atlas.Core.Lsp.Contract); Aliase für bestehende Nutzer.</summary>
   TAtlasSymbol = Atlas.Core.Lsp.Contract.TAtlasSymbol;
   TAtlasHierarchyDirection = Atlas.Core.Lsp.Contract.TAtlasHierarchyDirection;
   TAtlasHierarchyItem = Atlas.Core.Lsp.Contract.TAtlasHierarchyItem;

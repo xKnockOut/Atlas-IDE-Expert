@@ -40,7 +40,7 @@ type
     FApplyAction: TProc<TLspCodeAction>;
     FRecent: TAtlasGenerateRecent;
     FRecentLoaded: Boolean;
-    /// <summary>Verlauf war beim Lesen gesperrt: Remember überschreibt ihn nicht (Bericht N3).</summary>
+    /// <summary>Verlauf war beim Lesen gesperrt: Remember überschreibt ihn nicht.</summary>
     FRecentKept: Boolean;
   private
     class function Session: TLspSession; static;
@@ -51,7 +51,7 @@ type
     /// <summary>ASessionOf: laufende Sitzung oder nil; AMessage: Zeile für die Meldungsansicht; ASnippets: alle
     /// Code-Vorlagen der Vervollständigung (leer, wenn sie aus sind); AInsertSnippet setzt eine Vorlage mit
     /// Platzhaltern am Cursor ein; AApplyAction wendet eine Code-Aktion an (Editorbefehle; als Haken, damit das
-    /// Erzeugen-Menü sie nicht importiert, A-09).</summary>
+    /// Erzeugen-Menü sie nicht importiert).</summary>
     class procedure Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>;
       const ASnippets: TFunc<TAtlasSnippetList>; const AInsertSnippet: TProc<IOTAEditView, TAtlasSnippet>;
       const AApplyAction: TProc<TLspCodeAction>); static;

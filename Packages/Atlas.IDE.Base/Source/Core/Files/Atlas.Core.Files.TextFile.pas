@@ -7,7 +7,7 @@
 // Zeilenenden bleiben, wie sie sind. Geschrieben wird erst in eine
 // Nachbardatei, die dann die alte ersetzt.
 //
-// Atomar ersetzen (Bericht M5): Die Nachbardatei tritt mit POSIX-Semantik an
+// Atomar ersetzen: Die Nachbardatei tritt mit POSIX-Semantik an
 // die Stelle der alten. Das gelingt auch, solange andere die alte Datei offen
 // haben, wenn sie Löschen teilen; Atlas liest darum selbst mit ReadAllBytes
 // (Plugin) bzw. TWindowsSharedRead (Server). Ein halber Stand ist nie
@@ -20,7 +20,7 @@
 // "utf-8" liest ANSI die Codepage des Systems, wie die IDE.
 // Binäre Formulare (TPF0) werden weder dekodiert noch überschrieben.
 // Die Prüfungen (BOM, UTF-8, Codepage, TPF0) kommen aus Atlas.Text.Encoding
-// und gelten gleich beim Server (ADR 0012).
+// und gelten gleich beim Server.
 
 interface
 
@@ -31,7 +31,7 @@ uses
   Atlas.Core.Files.Contract;
 
 type
-  // Aliase für Bestandsnutzer; die Deklarationen stehen in Atlas.Core.Files.Contract (Code-Review A-10).
+  // Aliase für Bestandsnutzer; die Deklarationen stehen in Atlas.Core.Files.Contract.
   TAtlasTextEncoding = Atlas.Core.Files.Contract.TAtlasTextEncoding;
   TAtlasTextFileContent = Atlas.Core.Files.Contract.TAtlasTextFileContent;
   EAtlasTextFileError = Atlas.Core.Files.Contract.EAtlasTextFileError;
@@ -60,7 +60,7 @@ type
     /// <summary>
     /// Liest die ganze Datei und teilt Lesen, Schreiben und Löschen, anders als TFile.ReadAllBytes (nur Lesen):
     /// Wer die Datei währenddessen speichert oder atomar ersetzt (Save, der Server, eine zweite IDE), scheitert
-    /// nicht an diesem Leser (Bericht M5). Dieselbe Lesart hat der Server in TWindowsSharedRead. EFOpenError,
+    /// nicht an diesem Leser. Dieselbe Lesart hat der Server in TWindowsSharedRead. EFOpenError,
     /// wenn die Datei fehlt oder gesperrt ist; EReadError bei einem Lesefehler.
     /// </summary>
     class function ReadAllBytes(const AFileName: string): TBytes; static;
@@ -78,7 +78,7 @@ type
     /// EAtlasTextFileError, wenn ein anderes Programm sie ohne FILE_SHARE_DELETE offen hält.</summary>
     class procedure Save(const AFileName: string; const AContent: TAtlasTextFileContent); static;
     /// <summary>Ersetzt AFileName atomar durch ABytes wie Save, ohne die Prüfung auf binäre Formulare: für
-    /// Datendateien des Plugins (TAtlasDataFile, Bericht N3). Der Ordner muss vorhanden sein.</summary>
+    /// Datendateien des Plugins (TAtlasDataFile). Der Ordner muss vorhanden sein.</summary>
     class procedure Replace(const AFileName: string; const ABytes: TBytes); static;
   end;
 
@@ -118,7 +118,7 @@ const
   /// <summary>
   /// Netz, nicht die Behebung: Versuche, solange ein fremdes Programm die Zieldatei ohne FILE_SHARE_DELETE
   /// offen hält (Virenscanner, Sicherung, Synchronisation). Atlas selbst blockiert das Ersetzen nicht mehr
-  /// (Bericht M5). Danach scheitert Save, statt die Datei an Ort und Stelle zu überschreiben: Das hinterließ
+  ///. Danach scheitert Save, statt die Datei an Ort und Stelle zu überschreiben: Das hinterließ
   /// bei einem Abbruch eine halbe Datei und konnte Lesern einen halben Stand zeigen.
   /// </summary>
   cReplaceAttempts = 10;

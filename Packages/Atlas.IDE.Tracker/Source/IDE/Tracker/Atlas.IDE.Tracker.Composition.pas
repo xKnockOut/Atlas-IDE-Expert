@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Tracker.Composition;
 
-// Modul Tracker (#1455, ADR 0017): meldet in ihrer Initialisierung das Modul
+// Modul Tracker (#1455): meldet in ihrer Initialisierung das Modul
 // „atlas.tracker“ (Modulschalter issues, #1454) bei der Registry von Base an
 // und stellt über dessen Scope bereit:
 // - die Teile MyIssues, IssueLinks, BlameIssues und TestResults der

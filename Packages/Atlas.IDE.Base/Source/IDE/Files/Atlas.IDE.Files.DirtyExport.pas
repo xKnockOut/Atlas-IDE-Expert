@@ -321,7 +321,7 @@ begin
     begin
       Exit;
     end;
-    // Atomar (Bericht N3): Der Server liest die Liste jederzeit und sah sonst womöglich eine halbe.
+    // Atomar: Der Server liest die Liste jederzeit und sah sonst womöglich eine halbe.
     TAtlasDataFile.Write(FFileName, mText);
     FLast := mText;
   except

@@ -237,7 +237,7 @@ begin
   end
   else
   begin
-    // Von Hand: auch nach zwei gleichen Abstürzen (Bericht H5). Die aktive Sitzung startet den Server,
+    // Von Hand: auch nach zwei gleichen Abstürzen. Die aktive Sitzung startet den Server,
     // wenn er noch nicht läuft.
     Manager.AllowStart;
     Result := Manager.ActiveSession <> nil;
@@ -388,7 +388,7 @@ end;
 
 procedure StartUndo;
 begin
-  // Adapter des Kerns setzt nur die Kompositionswurzel ein (A-09).
+  // Adapter des Kerns setzt nur die Kompositionswurzel ein.
   InstallUndoAdapters;
   TAtlasIdeUndo.Start(Warnings(), GuardLogs());
 end;

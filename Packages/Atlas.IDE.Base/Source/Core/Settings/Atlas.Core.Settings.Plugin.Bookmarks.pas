@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Settings.Plugin.Bookmarks;
 
-// Einstellungen des IDE-Plugins, Bereich Lesezeichen (bookmarks.*) (#227, ADR 0017):
+// Einstellungen des IDE-Plugins, Bereich Lesezeichen (bookmarks.*) (#227):
 // Felder, Vorgaben, Grenzen, Lesen und Schreiben. TAtlasPluginSettings (Atlas.Core.Settings.Plugin)
 // fasst die Bereiche zusammen und reicht die Felder als Eigenschaften durch.
 

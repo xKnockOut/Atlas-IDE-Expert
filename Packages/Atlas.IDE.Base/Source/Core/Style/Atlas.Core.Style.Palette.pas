@@ -28,7 +28,7 @@ type
   /// <summary>Farben der Platzhalter von Format und ihrer Argumente (#451), zyklisch.</summary>
   TAtlasPlaceholderColors = array[0..5] of TAtlasColor;
 
-  /// <summary>Farben einer Inlay-Hint-Marke (P-10): aus dem Editorhintergrund gemischt.</summary>
+  /// <summary>Farben einer Inlay-Hint-Marke: aus dem Editorhintergrund gemischt.</summary>
   TAtlasHintColors = record
     Text: TAtlasColor;
     Pen: TAtlasColor;
@@ -87,25 +87,25 @@ type
     /// <summary>Farben für Leisten im Rahmen der IDE (Brotkrumenleiste): Fläche AFace und Text AText aus dem
     /// IDE-Thema, Gedämpftes, Linien und Auswahl daraus gemischt; Badges und Akzent wie ForBackground(AFace).</summary>
     class function ForChrome(AFace, AText: TAtlasColor): TAtlasColors; static;
-    /// <summary>Farben der Inlay-Hint-Marken auf dem Editorhintergrund ABack (P-10): Text deutlich
+    /// <summary>Farben der Inlay-Hint-Marken auf dem Editorhintergrund ABack: Text deutlich
     /// lesbar, Fläche leicht im Akzent abgesetzt.</summary>
     class function InlayHint(ABack: TAtlasColor): TAtlasHintColors; static;
   end;
 
 const
   /// <summary>Blasse Probleme (Text seither geändert): Anteil der Schweregradfarbe über der Fläche,
-  /// gleich in Editor und Hover (D-07).</summary>
+  /// gleich in Editor und Hover.</summary>
   cAtlasMixFaded = 0.55;
-  /// <summary>Daumen der Scrollleisten: Anteil von Muted über der Fläche (D-07).</summary>
+  /// <summary>Daumen der Scrollleisten: Anteil von Muted über der Fläche.</summary>
   cAtlasMixThumb = 0.5;
-  /// <summary>Inlay-Hint-Marken: Anteile von Text bzw. Akzent über dem Editorhintergrund (P-10).</summary>
+  /// <summary>Inlay-Hint-Marken: Anteile von Text bzw. Akzent über dem Editorhintergrund.</summary>
   cAtlasMixInlayText = 0.8;
   cAtlasMixInlayPen = 0.45;
   cAtlasMixInlayFill = 0.2;
   /// <summary>Leisten im Rahmen der IDE: Anteile des Textes über der Fläche für gedämpften Text und Linien.</summary>
   cAtlasMixChromeMuted = 0.7;
   cAtlasMixChromeLine = 0.18;
-  /// <summary>Chips und Tags (D-07): Innenabstand links und rechts zusammen und Eckenradius, logische Pixel.</summary>
+  /// <summary>Chips und Tags: Innenabstand links und rechts zusammen und Eckenradius, logische Pixel.</summary>
   cAtlasChipPad = 12;
   cAtlasChipRadius = 4;
 

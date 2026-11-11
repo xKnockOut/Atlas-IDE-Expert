@@ -3,7 +3,7 @@
 // Arten und Grenzen der Visualisierer (#835) für debug.visualizers.*: Namen
 // der Arten (types), Auswertungsstufe (evaluation), Namensfelder (nameFields)
 // und die Grenzen von maxLength, timeoutMs und maxImagePixels. Liegt bei den
-// Einstellungen, damit der Parser ohne den Debug-Kern auskommt (A-09: sonst
+// Einstellungen, damit der Parser ohne den Debug-Kern auskommt (sonst
 // Feature-Zyklus Settings -> Debug -> Files/Hover/Lsp -> Settings); die
 // Ersatztexte und Ansichten rechnet Atlas.Core.Debug.Visualizers.
 

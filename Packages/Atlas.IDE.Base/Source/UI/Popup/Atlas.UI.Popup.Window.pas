@@ -143,7 +143,7 @@ const
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
-  // Eine Umwandlung für alle Popups (D-07).
+  // Eine Umwandlung für alle Popups.
   Result := Atlas.UI.Popup.Draw.ToColor(AColor);
 end;
 

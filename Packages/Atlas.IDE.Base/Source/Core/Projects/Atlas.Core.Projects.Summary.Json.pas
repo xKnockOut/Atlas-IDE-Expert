@@ -1,9 +1,9 @@
 ﻿unit Atlas.Core.Projects.Summary.Json;
 
-// Lesen und Schreiben einzelner Felder der Projekt-Zusammenfassung (#592),
-// ohne VCL und Open Tools API: Texte, Zahlen, Schalter, Unterobjekte, Zeiten
-// in UTC ("2026-10-15T09:30:00Z") und unbekannte Felder, die beim Schreiben
-// erhalten bleiben. Genutzt von Atlas.Core.Projects.Summary und ihren
+// Schreiben einzelner Felder der Projekt-Zusammenfassung (#592), ohne VCL und
+// Open Tools API: Zeiten in UTC ("2026-10-15T09:30:00Z") und unbekannte
+// Felder, die beim Schreiben erhalten bleiben. Gelesen wird mit TJsonRead
+// (Atlas.Text.Json). Genutzt von Atlas.Core.Projects.Summary und ihren
 // Abschnitten (Atlas.Core.Projects.Summary.Sections).
 
 interface
@@ -11,14 +11,6 @@ interface
 uses
   System.JSON;
 
-/// <summary>Text des Felds AName; '' ohne Objekt, ohne Feld oder bei anderem Typ.</summary>
-function TextOf(AObject: TJSONObject; const AName: string): string;
-/// <summary>Zahl des Felds AName (auch als Text); ADefault ohne Objekt, ohne Feld oder bei anderem Typ.</summary>
-function NumberOf(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
-/// <summary>Schalter des Felds AName; False ohne Objekt, ohne Feld oder bei anderem Typ.</summary>
-function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
-/// <summary>Unterobjekt AName; nil ohne Objekt, ohne Feld oder bei anderem Typ.</summary>
-function ObjectOf(AObject: TJSONObject; const AName: string): TJSONObject;
 /// <summary>Unbekannte Felder aus AOriginal (darf nil sein) an ATarget anhängen.</summary>
 procedure KeepUnknown(ATarget, AOriginal: TJSONObject; const AKeys: array of string);
 /// <summary>Zeit AUtc als Feld AName; nichts bei 0.</summary>
@@ -46,74 +38,6 @@ begin
     begin
       Exit(True);
     end;
-  end;
-end;
-
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
-function NumberOf(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := ADefault;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end
-  else if mValue is TJSONString then
-  begin
-    Result := StrToIntDef(TJSONString(mValue).Value, ADefault);
-  end;
-end;
-
-function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  Result := False;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONBool then
-  begin
-    Result := SameText(mValue.Value, 'true');
-  end;
-end;
-
-function ObjectOf(AObject: TJSONObject; const AName: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
   end;
 end;
 

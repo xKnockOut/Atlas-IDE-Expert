@@ -206,7 +206,7 @@ begin
     Exit(False);
   end;
   mPosition := APosition;
-  // Iterativ (Bericht M1). Die Wurzel selbst zählt wie früher nicht.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht). Die Wurzel selbst zählt wie früher nicht.
   Result := mRoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin

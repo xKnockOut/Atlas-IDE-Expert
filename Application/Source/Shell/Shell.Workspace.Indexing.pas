@@ -295,7 +295,7 @@ procedure TShellWorkspaceIndexing.CacheNotWritten(const AFileName, AReason: stri
 var
   mKind: string;
 begin
-  // Bericht N1: früher still. Der nächste Aufbau liest die fehlenden Units neu; ohne Pfad ins Log.
+  // Früher still. Der nächste Aufbau liest die fehlenden Units neu; ohne Pfad ins Log.
   mKind := CacheKindOf(AFileName, 'Projekt', 'Bibliothek', 'Suchpfade');
   FParts.Logger.Warning(Format('Index-Cache (%s) nicht geschrieben: %s', [mKind, AReason]));
   IndexEvent('index cache not written ' + mKind);
@@ -303,7 +303,7 @@ end;
 
 procedure TShellWorkspaceIndexing.Failed(const AError: Exception);
 begin
-  // Sonst bliebe workspace/diagnostic bis zum nächsten Reload bei indexLoading (Code-Review A-04).
+  // Sonst bliebe workspace/diagnostic bis zum nächsten Reload bei indexLoading.
   // Start hält den alten Lauf an, bevor es ProjectPending setzt: Das hier trifft nur den eigenen.
   FParts.State.ProjectPending := False;
   FParts.Logger.Error(Format('Fehler beim Aufbau des Symbolindex für %s: %s: %s', [TLogMarks.Name(FParts.Name),

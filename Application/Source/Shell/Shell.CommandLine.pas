@@ -303,7 +303,7 @@ type
   /// <summary>Zeiger auf ein string-Feld; eigener Typ, weil PString nicht überall auf string zeigt.</summary>
   PStringField = ^string;
 
-  /// <summary>Parameter mit Textwert, der unverändert in ein Feld geht (S-02: Tabelle statt if-Kette).</summary>
+  /// <summary>Parameter mit Textwert, der unverändert in ein Feld geht (Tabelle statt if-Kette).</summary>
   TStringOption = record
     Name: string;
     Target: PStringField;

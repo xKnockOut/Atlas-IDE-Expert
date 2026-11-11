@@ -1,9 +1,9 @@
 ﻿﻿# ADR 0017: Zuordnung der Units zu Packages
 
 - Stand: 2026-11-01, Branch `Pilot-2.0.0-beta.1` (6364e487), nachgezogen auf ef9b9d95 (#1455), Quellen unter `Packages/Atlas.IDE.Base/Source`
-- Bezug: ADR 0017, Abschnitt „Fortschreibung: Laden, Entladen, Versionen“; #1455, #1456
+- Bezug: #1455, #1456; Regeln für Laden, Entladen und Versionen in [docs/Architektur.md](../Architektur.md) („Module und Verträge des Plugins“)
 
-Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Dokument). Die Analyse enthielt nur Summen je Package, keine Liste je Unit. Die Liste hier ist aus dem Quellbaum erzeugt, nach diesen Regeln:
+Die Liste ist aus dem Quellbaum erzeugt, nach diesen Regeln:
 
 | Ordner (unter `Core/`, `IDE/`, `UI/`) | Package |
 |---|---|
@@ -32,15 +32,15 @@ Ausnahmen:
 - Code Lens mit Code-Metriken (#66) im Modul Analyse (#1756): Zeichnen (`IDE.Analysis.MetricsLens`) und Beschriftung (`Core.Analysis.MetricsLens`). Im Kern bleiben die Antwort von `atlas.server.metrics` (`Core.Editor.Metrics`) und ihr Abruf je Editor (`IDE.Editor.MetricsSource`), weil die Atlas-Statusleiste Zeilen und CC am Cursor daraus liest und der Metrikbericht dieselben Typen nutzt; die Lens meldet beim Abruf nur Bedarf an. `codeLens.metrics` hängt am Modulschalter `analysis.enabled`.
 - Aus `SymbolPath/` liegen das Modell eines Wegs (`Core.SymbolPath.Model`) und seine Kette (`UI.SymbolPath.Chain`) im Kern (#1455): Das Ergebnisfenster von Base zeigt den Weg; Suche, Dialog und Befehle gehören zum Modul Analyse.
 - Aus `StartProfiles/` liegt die lokale Datei (`Core.StartProfiles.Store`) im Kern, dazu `IDE.Foundation.StartOptions` (#1455): Startoptionen schreiben und „Start“ auslösen brauchen die Startprofile (Modul Build) und „Test debuggen“ (Modul Tests); kein Modul kennt das andere.
-- Aus `Build/` bleiben im Kern: Compilermeldungen (`Build.Messages`, `Build.MessageView`), Prüfen nach dem Speichern (`Build.CheckOnSave`), Compile-Ereignisse (`Build.Events`, `Build.Notifier`) und die Build-Auswahl für den Server (`Build.Target`). ADR 0017 hält Compilermeldungen und Prüfen nach dem Speichern ausdrücklich im Kern.
+- Aus `Build/` bleiben im Kern: Compilermeldungen (`Build.Messages`, `Build.MessageView`), Prüfen nach dem Speichern (`Build.CheckOnSave`), Compile-Ereignisse (`Build.Events`, `Build.Notifier`) und die Build-Auswahl für den Server (`Build.Target`). Compilermeldungen und Prüfen nach dem Speichern bleiben ausdrücklich im Kern, weil sie auch ohne das Modul gebraucht werden.
 - `Atlas.IDE.Rules` (#1455, festgeschrieben; seit #1755 alles Regelspezifische): Ordner `Core/IDE/UI/Rules`, dazu Sammelkorrektur (`Core/UI.Problems.BulkFix`) und Eigenschaftsregeln (`IDE.Editor.DfmPropertyRules`). Das Modul hat Regeltabelle und Regel-Editor, den Abschnitt „Prüfregeln“ mit Baseline und Unterdrückungen, den Dialog der Einstellungsdateien mit Regel-Editor (`IAtlasSettingsDialogProvider`) und die Regel-Aktionen am Befund (`IAtlasRuleActions`: einstellen, unterdrücken, abschalten). Im Kern bleibt die Anzeige der Befunde: Fenster „Atlas-Prüfung“ mit Erklären (`Core.Problems.Explanation`), Inline-Hinweise, Übersichtsleiste, Prüfen beim Speichern, der Hinweis bei abgeschaltetem Modul (`RuleChecksNotice`), Stand und Format der Baseline-Datei und die Verträge. Ohne Modul fehlen die Regel-Einträge im Menü, und der Dialog zeigt „rules“ als JSON-Text.
-- `Atlas.UI.Strings` und die erzeugte Schema-Unit bleiben vorerst im Kern; ihr Schnitt hängt an den offenen Entscheidungen zu Texten und Einstellungen (ADR 0017, Fortschreibung).
+- `Atlas.UI.Strings` und die erzeugte Schema-Unit bleiben vorerst im Kern; ihr Schnitt hängt an den offenen Entscheidungen zu Texten und Einstellungen.
 
 Das Prüfskript `Tools/Check-PackageDependencies.ps1` liest diese Datei als Daten (#1455): die Ordnertabelle oben, die Tabellen je Package unten (Einzelzeilen) und die Tabellen unter „Grenzen zwischen Base, Modulen und Verträgen“. Maßgeblich ist die Einzelzeile. Weicht sie von der Ordnertabelle ab, ist sie eine der Ausnahmen oben und braucht eine eigene Begründung (nicht nur „Ordner …“). Eine neue Unit unter `Packages/Atlas.IDE.Base/Source` braucht eine Zeile hier, sonst schlägt das Skript fehl; ebenso eine Zeile, deren Datei es nicht mehr gibt.
 
 ## Grenzen zwischen Base, Modulen und Verträgen
 
-Regeln (ADR 0017, Abschnitt Verträge; Regel 9 „Base kennt kein Modul“), geprüft über alle `uses` der Units unter `Packages/Atlas.IDE.Base/Source`:
+Regeln (Abschnitt Verträge; Regel 9 „Base kennt kein Modul“), geprüft über alle `uses` der Units unter `Packages/Atlas.IDE.Base/Source`:
 
 - Base verwendet kein Modul.
 - Ein Modul verwendet kein anderes Modul; Querbezüge laufen über die Verträge zwischen Modulen, die in Base unter `Source/Contracts` liegen (`Atlas.IDE.Contracts.*`; kein eigenes Package).
@@ -89,10 +89,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 
 | Unit | Datei | Begründung |
 |---|---|---|
-| `Atlas.Core.Build.CheckOnSave` | `Core/Build/Atlas.Core.Build.CheckOnSave.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
+| `Atlas.Core.Build.CheckOnSave` | `Core/Build/Atlas.Core.Build.CheckOnSave.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern |
 | `Atlas.Core.Build.Events` | `Core/Build/Atlas.Core.Build.Events.pas` | Compile-Ereignisse (#527), Quelle für Compilermeldungen und Prüfen nach dem Speichern |
 | `Atlas.Core.Build.IdleGate` | `Core/Build/Atlas.Core.Build.IdleGate.pas` | Warten, bis kein Compile läuft; Diagnose-Zeitmessung (Base), #1455 |
-| `Atlas.Core.Build.Messages` | `Core/Build/Atlas.Core.Build.Messages.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
+| `Atlas.Core.Build.Messages` | `Core/Build/Atlas.Core.Build.Messages.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern |
 | `Atlas.Core.Build.Requests` | `Core/Build/Atlas.Core.Build.Requests.pas` | Daten der Builds auf Auftrag für Läufer, Eingang der KI-Assistenten und Vertrag (#1888) |
 | `Atlas.Core.Build.OpenBuildSettings` | `Core/Build/Atlas.Core.Build.OpenBuildSettings.pas` | Werte der Einstellungen „Bauen beim Öffnen“ für Einstellungen und Optionsdialog, #1455 |
 | `Atlas.Core.Build.Pipeline` | `Core/Build/Atlas.Core.Build.Pipeline.pas` | Was Base der Build-Pipeline gibt (Compilermeldungen, Bewertung) über die Registry, #1455 |
@@ -159,6 +159,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Diagnostics.TimeLimit` | `Core/Diagnostics/Atlas.Core.Diagnostics.TimeLimit.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Deadline` | `Core/Diagnostics/Atlas.Core.Diagnostics.Deadline.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.UserIdle` | `Core/Diagnostics/Atlas.Core.Diagnostics.UserIdle.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.UnloadSafety` | `Core/Diagnostics/Atlas.Core.Diagnostics.UnloadSafety.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.WorkerSlot` | `Core/Diagnostics/Atlas.Core.Diagnostics.WorkerSlot.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Timing` | `Core/Diagnostics/Atlas.Core.Diagnostics.Timing.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Dock.Plan` | `Core/Dock/Atlas.Core.Dock.Plan.pas` | Ordner `Core/Dock` |
 | `Atlas.Core.Documentation.Contract` | `Core/Documentation/Atlas.Core.Documentation.Contract.pas` | Ordner `Core/Documentation` |
@@ -439,10 +441,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.VersionControl.Worker` | `Core/VersionControl/Atlas.Core.VersionControl.Worker.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
 | `Atlas.Core.VersionControl.WorkingCopies` | `Core/VersionControl/Atlas.Core.VersionControl.WorkingCopies.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
 | `Atlas.Core.Versions.Project` | `Core/Versions/Atlas.Core.Versions.Project.pas` | Versionsnummer eines Projekts; Release-Wächter und Modul Tracker lesen sie, #1455 |
-| `Atlas.IDE.Build.CheckOnSave` | `IDE/Build/Atlas.IDE.Build.CheckOnSave.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
+| `Atlas.IDE.Build.CheckOnSave` | `IDE/Build/Atlas.IDE.Build.CheckOnSave.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern |
 | `Atlas.IDE.Build.IdleGate` | `IDE/Build/Atlas.IDE.Build.IdleGate.pas` | Warten, bis kein Compile läuft; Diagnose-Zeitmessung (Base), #1455 |
 | `Atlas.IDE.Build.LastMessages` | `IDE/Build/Atlas.IDE.Build.LastMessages.pas` | Compilermeldungen des letzten Builds; Modul Prüfregeln liest sie, auch ohne Build-Pipeline, #1455 |
-| `Atlas.IDE.Build.MessageView` | `IDE/Build/Atlas.IDE.Build.MessageView.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
+| `Atlas.IDE.Build.MessageView` | `IDE/Build/Atlas.IDE.Build.MessageView.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern |
 | `Atlas.IDE.Build.Notifier` | `IDE/Build/Atlas.IDE.Build.Notifier.pas` | Compile-Ereignisse (#527), Quelle für Compilermeldungen und Prüfen nach dem Speichern |
 | `Atlas.IDE.Build.Target` | `IDE/Build/Atlas.IDE.Build.Target.pas` | Build-Auswahl für den Server; Probleme und Projekt-Einstellungen (Base), #1455 |
 | `Atlas.IDE.CodeInsight.Composition` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.pas` | Ordner `IDE/CodeInsight` |

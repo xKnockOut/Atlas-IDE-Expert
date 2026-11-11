@@ -285,7 +285,8 @@ implementation
 uses
   System.Generics.Collections,
   System.JSON,
-  Atlas.Core.Projects.Recording;
+  Atlas.Core.Projects.Recording,
+  Atlas.Text.Json;
 
 const
   cKindNames: array[TAtlasUnsavedKind] of string = ('changes', 'conflicts', 'commits', 'noUpstream', 'stashes');
@@ -1112,54 +1113,6 @@ end;
 
 { JSON }
 
-function TextIn(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
-function NumberIn(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := ADefault;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end;
-end;
-
-function ObjectIn(AObject: TJSONObject; const AName: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end;
-end;
-
 function ParseObject(const AJson: string): TJSONValue;
 begin
   Result := nil;
@@ -1308,8 +1261,8 @@ begin
     mPlace := TJSONArray(AValue).Items[mIndex];
     if mPlace is TJSONObject then
     begin
-      Result := Result + [TAtlasUnsavedPlace.Create(TextIn(TJSONObject(mPlace), 'path'),
-        NumberIn(TJSONObject(mPlace), 'count', 0))];
+      Result := Result + [TAtlasUnsavedPlace.Create(TJsonRead.Text(TJSONObject(mPlace), 'path'),
+        TJsonRead.IntOr(TJSONObject(mPlace), 'count', 0))];
     end;
   end;
 end;
@@ -1321,20 +1274,20 @@ var
   mKind: TAtlasUnsavedKind;
 begin
   AItem := TAtlasUnsavedItem.Create(TAtlasUnsavedKind.Changes, 0);
-  Result := (AElement is TJSONObject) and TAtlasWelcomeUnsaved.KindOf(TextIn(TJSONObject(AElement), 'kind'), mKind);
+  Result := (AElement is TJSONObject) and TAtlasWelcomeUnsaved.KindOf(TJsonRead.Text(TJSONObject(AElement), 'kind'), mKind);
   if not Result then
   begin
     Exit;
   end;
   mEntry := TJSONObject(AElement);
-  AItem := TAtlasUnsavedItem.Create(mKind, NumberIn(mEntry, 'count', 0));
-  AItem.Modified := NumberIn(mEntry, 'modified', 0);
-  AItem.Added := NumberIn(mEntry, 'added', 0);
-  AItem.Deleted := NumberIn(mEntry, 'deleted', 0);
-  AItem.Commits := NumberIn(mEntry, 'commits', -1);
-  AItem.Since := TAtlasProjectSummaries.TimeOf(TextIn(mEntry, 'since'));
-  AItem.Name := TextIn(mEntry, 'name');
-  AItem.Ref := TextIn(mEntry, 'ref');
+  AItem := TAtlasUnsavedItem.Create(mKind, TJsonRead.IntOr(mEntry, 'count', 0));
+  AItem.Modified := TJsonRead.IntOr(mEntry, 'modified', 0);
+  AItem.Added := TJsonRead.IntOr(mEntry, 'added', 0);
+  AItem.Deleted := TJsonRead.IntOr(mEntry, 'deleted', 0);
+  AItem.Commits := TJsonRead.IntOr(mEntry, 'commits', -1);
+  AItem.Since := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(mEntry, 'since'));
+  AItem.Name := TJsonRead.Text(mEntry, 'name');
+  AItem.Ref := TJsonRead.Text(mEntry, 'ref');
   AItem.Branches := BranchesOf(mEntry.GetValue('branches'));
   AItem.Places := PlacesFrom(mEntry.GetValue('places'));
 end;
@@ -1392,12 +1345,12 @@ begin
     Exit;
   end;
   AState.Known := True;
-  AState.At := TAtlasProjectSummaries.TimeOf(TextIn(ASection, 'at'));
-  AState.Kind := LowerCase(TextIn(ASection, 'kind'));
-  AState.Root := TextIn(ASection, 'root');
-  AState.Branch := TextIn(ASection, 'branch');
+  AState.At := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(ASection, 'at'));
+  AState.Kind := LowerCase(TJsonRead.Text(ASection, 'kind'));
+  AState.Root := TJsonRead.Text(ASection, 'root');
+  AState.Branch := TJsonRead.Text(ASection, 'branch');
   AState.Items := ItemsOf(ASection.GetValue('items'));
-  AState.Ignored := IgnoredOf(ObjectIn(ASection, 'ignore'));
+  AState.Ignored := IgnoredOf(TJsonRead.Obj(ASection, 'ignore'));
 end;
 
 class function TAtlasWelcomeUnsaved.ToJson(const AState: TAtlasUnsavedState): string;
@@ -1433,7 +1386,7 @@ begin
   AState := TAtlasUnsavedState.Empty;
   mValue := ParseObject(ASummary.Raw);
   try
-    Result := (mValue is TJSONObject) and StateOf(ObjectIn(TJSONObject(mValue), cSectionName), AState);
+    Result := (mValue is TJSONObject) and StateOf(TJsonRead.Obj(TJSONObject(mValue), cSectionName), AState);
   finally
     mValue.Free;
   end;

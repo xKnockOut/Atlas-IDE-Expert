@@ -29,7 +29,7 @@
 {$IMPLICITBUILD OFF}
 {$LIBSUFFIX AUTO}
 
-// Modul Suche (#1456, ADR 0017): Suchen und Ersetzen in Dateien, Unit-Suche und Abfragefenster.
+// Modul Suche (#1456): Suchen und Ersetzen in Dateien, Unit-Suche und Abfragefenster.
 // Meldet sich in der Unit-Initialisierung von Atlas.IDE.Search.Composition über die Registry
 // des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen
 // (Regeln 1 bis 4). Requiret nur das Kern-Package

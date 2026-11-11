@@ -40,7 +40,7 @@ type
   TAtlasHitArea = (None, Splitter, Edge, Grip, PanelBar);
 {$SCOPEDENUMS OFF}
 
-  /// <summary>Zeilen-, Chip- und Fußzeilenhöhe (P-15): einmal gemessen, neu nach Schrift- oder Dichtewechsel.
+  /// <summary>Zeilen-, Chip- und Fußzeilenhöhe: einmal gemessen, neu nach Schrift- oder Dichtewechsel.
   /// </summary>
   TAtlasPopupMetrics = record
     RowHeight: Integer;

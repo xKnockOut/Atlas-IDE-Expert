@@ -3,7 +3,7 @@
 // Angeheftete Favoriten (#458) für die IDE: eine Instanz für das ganze Plugin, gelesen aus
 // %APPDATA%\Atlas\favorites.json beim ersten Zugriff (neben usage.json der lernenden Gewichtung, #418) und
 // nach jeder Änderung sofort gespeichert, damit ein Absturz der IDE keinen Favoriten kostet. Eine unbrauchbare
-// Datei legt TAtlasDataFile als favorites.json.defekt beiseite, eine gesperrte bleibt unverändert (Bericht N3). Die
+// Datei legt TAtlasDataFile als favorites.json.defekt beiseite, eine gesperrte bleibt unverändert. Die
 // Einstellungsseite listet und entfernt sie über Items und Remove. Andere Teile des Plugins (etwa der Reiter
 // „Gemerkt“ der Willkommensseite, #755) lesen die Datei über FileName und TAtlasFavorites.LoadFromFile, ohne
 // Server.

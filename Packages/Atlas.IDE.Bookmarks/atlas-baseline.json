@@ -3,7 +3,7 @@
   "findings": [
     {"path": "Source/Core/Bookmarks/Atlas.Core.Bookmarks.Quick.pas", "rule": "magic-number", "fingerprint": "a435fa17", "count": 1, "routine": "TAtlasQuickBookmarks.Chord", "context": "bf8f8ccf"},
     {"path": "Source/Core/Bookmarks/Atlas.Core.Bookmarks.Quick.pas", "rule": "magic-number", "fingerprint": "3c5a0377", "count": 2, "routine": "TAtlasQuickBookmarks.ColumnWidth", "context": "d1bfd14d"},
-    {"path": "Source/Core/Bookmarks/Atlas.Core.Bookmarks.Store.pas", "rule": "magic-number", "fingerprint": "41a1f6f6", "count": 1, "routine": "MarkOf", "context": "58b3a847"},
+    {"path": "Source/Core/Bookmarks/Atlas.Core.Bookmarks.Store.pas", "rule": "magic-number", "fingerprint": "41a1f6f6", "count": 1, "routine": "MarkOf", "context": "727b4ef1"},
     {"path": "Source/Core/Bookmarks/Atlas.Core.Bookmarks.Store.pas", "rule": "magic-number", "fingerprint": "0877092a", "count": 4, "routine": "ReadText", "context": "c1e56961"},
     {"path": "Source/Core/Bookmarks/Atlas.Core.Bookmarks.Store.pas", "rule": "magic-number", "fingerprint": "3ecf4656", "count": 2, "routine": "ReadText", "context": "d832fe04"},
     {"path": "Source/Core/Bookmarks/Atlas.Core.Bookmarks.Store.pas", "rule": "magic-number", "fingerprint": "5b9bc8b1", "count": 3, "routine": "TAtlasBookmarks.NewId", "context": "e224825b"},

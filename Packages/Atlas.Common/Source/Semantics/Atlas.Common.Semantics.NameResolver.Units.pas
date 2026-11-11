@@ -15,7 +15,7 @@ uses
 type
   TResolverUnits = class
   private type
-    /// <summary>Positionen der Helfer-Typen eines Symbol-Arrays (Code-Review P-17). Symbols hält das
+    /// <summary>Positionen der Helfer-Typen eines Symbol-Arrays. Symbols hält das
     /// Array fest, damit der Zeigervergleich nie auf ein neu angelegtes Array an derselben Adresse trifft.</summary>
     TUnitHelpers = record
       Symbols: TArray<TIndexSymbol>;
@@ -48,7 +48,7 @@ type
     FUnitHolders: TObjectList<TUnitHolder>;
     // Zeit im Nachladen (EnsureUnit) für das Diagnoselog (#647).
     FEnsureMs: Int64;
-    // Letztes Ergebnis von ScopeUnits; gilt, solange die uses-Arrays dieselben sind (Code-Review P-17).
+    // Letztes Ergebnis von ScopeUnits; gilt, solange die uses-Arrays dieselben sind.
     FScopeInterfaceUses: TArray<string>;
     FScopeImplementationUses: TArray<string>;
     FScopeUnitName: string;
@@ -388,7 +388,7 @@ function TResolverUnits.ScopeUnits(const AUnit: TUnitIndex; AWithImplementation:
 var
   mIndex, mCount: Integer;
 begin
-  // Viele Aufrufe je Anfrage mit derselben Unit (Code-Review P-17): Das Ergebnis hängt nur an den
+  // Viele Aufrufe je Anfrage mit derselben Unit: Das Ergebnis hängt nur an den
   // uses-Arrays, dem Abschnitt und dem Unit-Namen. Die Felder halten die Arrays fest, daher trifft der
   // Zeigervergleich nie ein neu angelegtes Array an derselben Adresse.
   if FScopeValid and (Pointer(AUnit.InterfaceUses) = Pointer(FScopeInterfaceUses)) and

@@ -43,8 +43,8 @@ uses
   Atlas.UI.Bookmarks.Strings,
   Atlas.IDE.Foundation.KeyHook,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Keys,
-  Atlas.IDE.Bookmarks.QuickService;
+  Atlas.IDE.Bookmarks.QuickService,
+  Atlas.IDE.Foundation.Host;
 
 const
   /// <summary>Nach dem Wartezeitende des Tastatur-Hooks: vor den Fenstern von Atlas gefragt.</summary>
@@ -248,7 +248,7 @@ begin
   if SendInput(Length(mInputs), mInputs[0], SizeOf(TInput)) <> Cardinal(Length(mInputs)) then
   begin
     FPassAt := 0;
-    TAtlasIdeKeys.AddMessage(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkChordFailed, [Char(AKey)]));
+    TAtlasIdeHost.Message(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkChordFailed, [Char(AKey)]));
   end;
 end;
 

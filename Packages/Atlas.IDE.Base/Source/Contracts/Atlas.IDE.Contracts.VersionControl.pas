@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Contracts.VersionControl;
 
-// Vertrag zwischen Modulen (#1891, ADR 0017 Regel 6): Das Modul Versionsverwaltung
+// Vertrag zwischen Modulen (#1891, Modulregel 6): Das Modul Versionsverwaltung
 // (Atlas.IDE.VersionControl) stellt über seinen Scope einen IAtlasVcsService (Arbeitskopie zu
 // einem Ordner, Arbeit im Hintergrund, Fundort und Prüfung der Werkzeuge, Server)
 // und einen IAtlasVcsDialogs (Branch anlegen, Arbeitskopien, Rückfragen beim

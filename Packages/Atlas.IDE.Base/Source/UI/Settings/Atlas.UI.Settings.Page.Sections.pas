@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Settings.Page.Sections;
 
-// Abschnitte der Module auf der Optionsseite „Atlas“ (#1455, ADR 0017 Entscheidung 3): Jeder
+// Abschnitte der Module auf der Optionsseite „Atlas“ (#1455): Jeder
 // IAtlasSettingsSectionProvider der Registry liefert einen eigenen Abschnitt, den der Teil in den Reiter seiner
 // Seite (x-page) bzw. seines Bereichs (x-area) baut (Bausteine über IAtlasSettingsSectionHost). Reiter, die erst für
 // Abschnitte entstehen, folgen der Reihenfolge des Katalogs. Geht ein Modul, schließt er seinen Abschnitt; seine

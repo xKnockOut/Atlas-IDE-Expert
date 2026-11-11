@@ -64,7 +64,7 @@ type
     class function Current: TAtlasPluginSettings; static;
     /// <summary>Gespeicherte Werte (Registry) ohne Sitzungswerte; Grundlage für Optionsseite und Update.</summary>
     class function Stored: TAtlasPluginSettings; static;
-    /// <summary>Plugin eingeschaltet und Inlay-Hints an; ohne Kopie des Einstellungsrecords (P-10).</summary>
+    /// <summary>Plugin eingeschaltet und Inlay-Hints an; ohne Kopie des Einstellungsrecords.</summary>
     class function InlayHintsOn: Boolean; static;
     /// <summary>Plugin eingeschaltet und Typmarken an (#453); ohne Kopie des Einstellungsrecords.</summary>
     class function InlayTypeHintsOn: Boolean; static;
@@ -98,7 +98,7 @@ type
     /// <summary>Plugin eingeschaltet und neu zugewiesene Variablen unterstreichen an (#712); Arten, Linie und Farbe
     /// aus highlight.reassigned.*, ohne Kopie des Einstellungsrecords.</summary>
     class function ReassignedOn(out ATargets, AStyle, AColor: string): Boolean; static;
-    /// <summary>Plugin eingeschaltet und Problem-Markierungen an; ohne Kopie des Einstellungsrecords (P-10).</summary>
+    /// <summary>Plugin eingeschaltet und Problem-Markierungen an; ohne Kopie des Einstellungsrecords.</summary>
     class function ProblemMarksOn: Boolean; static;
     /// <summary>Plugin eingeschaltet und Marken folgen ihrer Zeile sofort (#1818, editor.trackLines); ohne Kopie des
     /// Einstellungsrecords.</summary>
@@ -309,7 +309,7 @@ type
     TogglesEnglish: Boolean;
     TogglesBuilt: Boolean;
     History: TAtlasSettingsHistory;
-    /// <summary>settings-history.json war beim Lesen gesperrt: SaveHistory überschreibt sie nicht (Bericht N3).
+    /// <summary>settings-history.json war beim Lesen gesperrt: SaveHistory überschreibt sie nicht.
     /// </summary>
     HistoryKept: Boolean;
     Loaded: Boolean;
@@ -440,7 +440,7 @@ begin
     ForceDirectories(ExtractFileDir(GlobalFile));
     TAtlasTextFile.Save(GlobalFile, mContent);
   except
-    // Ohne Schreibrecht oder bei fremder Sperre (Bericht M5) bleiben die Werte für diese Sitzung bestehen. Ins
+    // Ohne Schreibrecht oder bei fremder Sperre bleiben die Werte für diese Sitzung bestehen. Ins
     // Protokoll ohne Pfad: Die Meldung von EAtlasTextFileError nennt keinen, andere nur mit Klasse.
     on E: EAtlasTextFileError do
       TAtlasGuard.Log('Einstellungen nicht gespeichert: ' + TAtlasGuard.MessageText(E.Message));

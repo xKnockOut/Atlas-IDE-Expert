@@ -30,7 +30,7 @@
 
 // Platform-Package ohne Abhängigkeit zu Windows und VCL.
 // Erlaubt sind die plattformunabhängige RTL (System.*) und Atlas.Text
-// (gemeinsamer Textcode mit dem Plugin, ADR 0012).
+// (gemeinsamer Textcode mit dem Plugin).
 // Geprüft durch Tools\Check-PackageDependencies.ps1.
 
 requires

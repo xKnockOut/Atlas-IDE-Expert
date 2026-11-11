@@ -397,7 +397,7 @@ begin
     begin
       mAnswer := mFacts;
       Fetch(ASession, AFileName, ALine, mName, mAnswer);
-      // Atlas gehört der Eintrag: beim Entladen verworfen (Code-Review A-02).
+      // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.Debugger,
         procedure
         begin

@@ -1,7 +1,7 @@
 ﻿unit Atlas.Text.Checkin;
 
 // Was in eine eingecheckte Einstellungsdatei darf, gemeinsam für Server und
-// Plugin (ADR 0012, #486): atlas.json und die Projektdatei .atlas liegen im
+// Plugin (#486): atlas.json und die Projektdatei .atlas liegen im
 // Repository und gelten für alle im Team. Zugangsdaten (Passwort, Token,
 // Benutzer …) und absolute Pfade gehören nicht hinein; Server und Plugin
 // ignorieren solche Einträge beim Lesen und melden sie. Für .atlas gilt

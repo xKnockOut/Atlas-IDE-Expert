@@ -36,7 +36,7 @@ type
   /// oder bei Fehler. Den Wert gibt der Aufrufer von ADone frei.</summary>
   TAtlasServerCommand = reference to procedure(ACommand: string; ADone: TProc<TJSONValue>);
 
-  /// <summary>Was die Optionsseiten von anderen Features brauchen; setzt die Composition (A-09: die Seiten
+  /// <summary>Was die Optionsseiten von anderen Features brauchen; setzt die Composition (die Seiten
   /// importieren Befehlszählung, Tipps, Code Insight-Manager und Vervollständigung nicht). Nicht gesetzte Haken
   /// bleiben ohne Wirkung bzw. liefern ''.</summary>
   TAtlasOptionsHooks = record

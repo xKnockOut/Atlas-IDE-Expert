@@ -162,103 +162,8 @@ uses
   System.Math,
   System.JSON,
   System.Generics.Collections,
-  System.Generics.Defaults;
-
-function TextOf(const AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := mValue.Value;
-  end;
-end;
-
-function IntOf(const AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := ADefault;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end;
-end;
-
-function FloatOf(const AObject: TJSONObject; const AName: string): Double;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsDouble;
-  end;
-end;
-
-function FlagOf(const AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  Result := False;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONBool then
-  begin
-    Result := TJSONBool(mValue).AsBoolean;
-  end;
-end;
-
-function ArrayOf(const AObject: TJSONObject; const AName: string): TJSONArray;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONArray then
-  begin
-    Result := TJSONArray(mValue);
-  end;
-end;
-
-function ObjectOf(const AObject: TJSONObject; const AName: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end;
-end;
+  System.Generics.Defaults,
+  Atlas.Text.Json;
 
 /// <summary>Vollständiger Pfad aus Wurzel und relativem Pfad mit "/".</summary>
 function FullPath(const ARoot, APath: string): string;
@@ -298,12 +203,12 @@ begin
     Exit;
   end;
   mCommit := TJSONObject(AValue);
-  Result.Revision := TextOf(mCommit, 'revision');
-  Result.Author := TextOf(mCommit, 'author');
-  Result.Date := TextOf(mCommit, 'date');
-  Result.Summary := TextOf(mCommit, 'summary');
-  Result.Added := IntOf(mCommit, 'added', -1);
-  Result.Deleted := IntOf(mCommit, 'deleted', -1);
+  Result.Revision := TJsonRead.Text(mCommit, 'revision');
+  Result.Author := TJsonRead.Text(mCommit, 'author');
+  Result.Date := TJsonRead.Text(mCommit, 'date');
+  Result.Summary := TJsonRead.Text(mCommit, 'summary');
+  Result.Added := TJsonRead.IntOr(mCommit, 'added', -1);
+  Result.Deleted := TJsonRead.IntOr(mCommit, 'deleted', -1);
 end;
 
 function ReadHistory(const AArray: TJSONArray): TArray<TAtlasHotspotCommit>;
@@ -332,24 +237,24 @@ begin
     Exit;
   end;
   mItem := TJSONObject(AValue);
-  Result.UnitName := TextOf(mItem, 'unit');
-  Result.Path := TextOf(mItem, 'path');
+  Result.UnitName := TJsonRead.Text(mItem, 'unit');
+  Result.Path := TJsonRead.Text(mItem, 'path');
   Result.FileName := FullPath(ARoot, Result.Path);
-  Result.Method := TextOf(mItem, 'method');
-  Result.Line := IntOf(mItem, 'line', 1);
-  Result.EndLine := IntOf(mItem, 'endLine', Result.Line);
-  Result.Changes := IntOf(mItem, 'changes', 0);
-  Result.Authors := IntOf(mItem, 'authors', 0);
-  Result.AuthorNames := ReadNames(ArrayOf(mItem, 'authorNames'));
-  Result.Added := IntOf(mItem, 'added', -1);
-  Result.Deleted := IntOf(mItem, 'deleted', -1);
-  Result.LastChange := TextOf(mItem, 'lastChange');
-  Result.Complexity := IntOf(mItem, 'complexity', 0);
-  Result.Lines := IntOf(mItem, 'lines', 0);
-  Result.PastComplexity := IntOf(mItem, 'pastComplexity', -1);
-  Result.Trend := TextOf(mItem, 'trend');
-  Result.Score := FloatOf(mItem, 'score');
-  Result.History := ReadHistory(ArrayOf(mItem, 'history'));
+  Result.Method := TJsonRead.Text(mItem, 'method');
+  Result.Line := TJsonRead.IntOr(mItem, 'line', 1);
+  Result.EndLine := TJsonRead.IntOr(mItem, 'endLine', Result.Line);
+  Result.Changes := TJsonRead.IntOr(mItem, 'changes', 0);
+  Result.Authors := TJsonRead.IntOr(mItem, 'authors', 0);
+  Result.AuthorNames := ReadNames(TJsonRead.Items(mItem, 'authorNames'));
+  Result.Added := TJsonRead.IntOr(mItem, 'added', -1);
+  Result.Deleted := TJsonRead.IntOr(mItem, 'deleted', -1);
+  Result.LastChange := TJsonRead.Text(mItem, 'lastChange');
+  Result.Complexity := TJsonRead.IntOr(mItem, 'complexity', 0);
+  Result.Lines := TJsonRead.IntOr(mItem, 'lines', 0);
+  Result.PastComplexity := TJsonRead.IntOr(mItem, 'pastComplexity', -1);
+  Result.Trend := TJsonRead.Text(mItem, 'trend');
+  Result.Score := TJsonRead.Float(mItem, 'score');
+  Result.History := ReadHistory(TJsonRead.Items(mItem, 'history'));
 end;
 
 function ReadEntries(const AArray: TJSONArray; const ARoot: string): TArray<TAtlasHotspotEntry>;
@@ -408,18 +313,18 @@ begin
     Exit;
   end;
   mItem := TJSONObject(AValue);
-  mFirst := ObjectOf(mItem, 'first');
-  mSecond := ObjectOf(mItem, 'second');
-  Result.FirstUnit := TextOf(mFirst, 'unit');
-  Result.FirstPath := TextOf(mFirst, 'path');
+  mFirst := TJsonRead.Obj(mItem, 'first');
+  mSecond := TJsonRead.Obj(mItem, 'second');
+  Result.FirstUnit := TJsonRead.Text(mFirst, 'unit');
+  Result.FirstPath := TJsonRead.Text(mFirst, 'path');
   Result.FirstFile := FullPath(ARoot, Result.FirstPath);
-  Result.SecondUnit := TextOf(mSecond, 'unit');
-  Result.SecondPath := TextOf(mSecond, 'path');
+  Result.SecondUnit := TJsonRead.Text(mSecond, 'unit');
+  Result.SecondPath := TJsonRead.Text(mSecond, 'path');
   Result.SecondFile := FullPath(ARoot, Result.SecondPath);
-  Result.Shared := IntOf(mItem, 'shared', 0);
-  Result.FirstChanges := IntOf(mItem, 'firstChanges', 0);
-  Result.SecondChanges := IntOf(mItem, 'secondChanges', 0);
-  Result.Ratio := FloatOf(mItem, 'ratio');
+  Result.Shared := TJsonRead.IntOr(mItem, 'shared', 0);
+  Result.FirstChanges := TJsonRead.IntOr(mItem, 'firstChanges', 0);
+  Result.SecondChanges := TJsonRead.IntOr(mItem, 'secondChanges', 0);
+  Result.Ratio := TJsonRead.Float(mItem, 'ratio');
 end;
 
 function ReadCoupling(const AArray: TJSONArray; const ARoot: string): TArray<TAtlasHotspotPair>;
@@ -441,21 +346,21 @@ end;
 /// <summary>Daten der Auswertung; False ohne Daten oder bei einem anderen Format.</summary>
 function ReadData(const AData: TJSONObject; var AModel: TAtlasHotspotModel): Boolean;
 begin
-  Result := (AData <> nil) and (IntOf(AData, 'format', 0) = TAtlasHotspotModel.cFormat);
+  Result := (AData <> nil) and (TJsonRead.IntOr(AData, 'format', 0) = TAtlasHotspotModel.cFormat);
   if not Result then
   begin
     Exit;
   end;
-  AModel.Title := TextOf(AData, 'title');
-  AModel.Vcs := TextOf(AData, 'vcs');
-  AModel.Head := TextOf(AData, 'head');
-  AModel.Months := IntOf(AData, 'months', 0);
-  AModel.Since := TextOf(AData, 'since');
-  AModel.Commits := IntOf(AData, 'commits', 0);
-  AModel.Level := TextOf(AData, 'level');
-  AModel.Units := ReadEntries(ArrayOf(AData, 'units'), AModel.Root);
-  AModel.Methods := ReadEntries(ArrayOf(AData, 'methods'), AModel.Root);
-  AModel.Coupling := ReadCoupling(ArrayOf(AData, 'coupling'), AModel.Root);
+  AModel.Title := TJsonRead.Text(AData, 'title');
+  AModel.Vcs := TJsonRead.Text(AData, 'vcs');
+  AModel.Head := TJsonRead.Text(AData, 'head');
+  AModel.Months := TJsonRead.IntOr(AData, 'months', 0);
+  AModel.Since := TJsonRead.Text(AData, 'since');
+  AModel.Commits := TJsonRead.IntOr(AData, 'commits', 0);
+  AModel.Level := TJsonRead.Text(AData, 'level');
+  AModel.Units := ReadEntries(TJsonRead.Items(AData, 'units'), AModel.Root);
+  AModel.Methods := ReadEntries(TJsonRead.Items(AData, 'methods'), AModel.Root);
+  AModel.Coupling := ReadCoupling(TJsonRead.Items(AData, 'coupling'), AModel.Root);
 end;
 
 function ReadAnswer(const AAnswer: TJSONObject; var AModel: TAtlasHotspotModel; var AEnabled, AHasVcs: Boolean;
@@ -465,20 +370,20 @@ begin
   begin
     Exit(False);
   end;
-  AEnabled := FlagOf(AAnswer, 'enabled');
+  AEnabled := TJsonRead.Flag(AAnswer, 'enabled');
   if not AEnabled then
   begin
     Exit(True);
   end;
-  AHasVcs := FlagOf(AAnswer, 'vcs');
+  AHasVcs := TJsonRead.Flag(AAnswer, 'vcs');
   if not AHasVcs then
   begin
-    AMessage := TextOf(AAnswer, 'message');
+    AMessage := TJsonRead.Text(AAnswer, 'message');
     Exit(AAnswer.GetValue('vcs') is TJSONBool);
   end;
-  AModel.Root := TextOf(AAnswer, 'root');
-  AModel.Pending := FlagOf(AAnswer, 'pending');
-  Result := AModel.Pending or ReadData(ObjectOf(AAnswer, 'data'), AModel);
+  AModel.Root := TJsonRead.Text(AAnswer, 'root');
+  AModel.Pending := TJsonRead.Flag(AAnswer, 'pending');
+  Result := AModel.Pending or ReadData(TJsonRead.Obj(AAnswer, 'data'), AModel);
 end;
 
 class function TAtlasHotspotModel.Parse(const AAnswer: string; out AModel: TAtlasHotspotModel;
@@ -707,7 +612,7 @@ begin
   try
     if mRoot is TJSONObject then
     begin
-      Result := TextOf(TJSONObject(mRoot), 'file');
+      Result := TJsonRead.Text(TJSONObject(mRoot), 'file');
     end;
   finally
     mRoot.Free;
@@ -720,7 +625,7 @@ var
 begin
   mRoot := TJSONObject.ParseJSONValue(AAnswer);
   try
-    Result := (mRoot is TJSONObject) and FlagOf(TJSONObject(mRoot), 'pending');
+    Result := (mRoot is TJSONObject) and TJsonRead.Flag(TJSONObject(mRoot), 'pending');
   finally
     mRoot.Free;
   end;

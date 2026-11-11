@@ -183,7 +183,7 @@ begin
   begin
     Exit;
   end;
-  // Abbruchsignal an den Parser (Code-Review A-06).
+  // Abbruchsignal an den Parser.
   mCancellation := TRequestCancellation.Create(ACancellation);
   mShared := TSyntaxTreeCache.Get(ADocument, mCancellation);
   // Über einer Methodenimplementierung zwei Bearbeitungen: Gerüst an der Deklaration, "///" weg.
@@ -208,7 +208,7 @@ begin
     mVersion := FDelphiVersionFor(AUri);
   end;
   // Abgebrochen (Watchdog, $/cancelRequest): keine Schnellbefehle mehr ausführen, die Projekt und Platte ändern
-  // (A-06).
+  //.
   ACancellation.ThrowIfCancellationRequested;
   if Assigned(FSlashCommandsFor) and not FSlashCommandsFor(AUri, mDisabled) then
   begin
@@ -398,7 +398,7 @@ begin
   begin
     RangeLines(TJSONObject(AParams), mFirstLine, mLastLine);
   end;
-  // Die Einstellungen können Dateien lesen (.editorconfig); danach nicht mehr formatieren (A-06).
+  // Die Einstellungen können Dateien lesen (.editorconfig); danach nicht mehr formatieren.
   ACancellation.ThrowIfCancellationRequested;
   Result := TJSONArray.Create;
   AddEdits(TJSONArray(Result), TFormatter.Edits(mDocument.Text, TPascalLexer.Tokenize(mDocument.Text), mSettings,

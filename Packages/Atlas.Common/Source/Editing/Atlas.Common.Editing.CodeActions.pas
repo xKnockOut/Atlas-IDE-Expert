@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Editing.CodeActions;
 
 // Code-Aktionen ohne Protokollbezug (#42, #147):
-//   - Korrekturen der Regeltreffer: Atlas.Common.Rules.CodeActions (A-11)
+//   - Korrekturen der Regeltreffer: Atlas.Common.Rules.CodeActions
 //   - "Regel für diese Zeile unterdrücken": eigene Kommentarzeile darüber,
 //     bestehende "// lsp-ignore:"-Zeile darüber wird ergänzt
 //   - "Regel für diese Datei unterdrücken": "// lsp-ignore-file:" in Zeile 1

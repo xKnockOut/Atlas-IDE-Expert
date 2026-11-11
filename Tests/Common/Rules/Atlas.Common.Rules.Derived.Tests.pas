@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Derived.Tests;
 
-// Tests für den Ableitungscache der Prüfregeln (Review P-03, P-08, D-04).
+// Tests für den Ableitungscache der Prüfregeln.
 
 interface
 

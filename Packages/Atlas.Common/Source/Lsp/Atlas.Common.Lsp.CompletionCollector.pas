@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Lsp.CompletionCollector;
 
-// Sammler der allgemeinen Vervollständigung (Code-Review S-01, Konzept 4.2 Schritt 5): vorher 13
+// Sammler der allgemeinen Vervollständigung: vorher 13
 // verschachtelte Routinen in TCompletionLists.Collect mit 18 geteilten Variablen. Jeder Eintrag entsteht aus
 // Name, Detail, Art, Strafpunkten und dem aufgelösten Symbol; Quelle und Merkmale kommen aus dem Symbol,
 // nicht aus geteiltem Zustand. Bewertet wird nach Treffer (unscharf oder Anfang), Strafpunkten für die
@@ -44,7 +44,7 @@ const
   cKindStruct = 22;
   cKindKeyword = 14;
   cKindSnippet = 15;
-  /// <summary>Abzüge vom Trefferwert, die die Gruppenreihenfolge festlegen (Code-Review S-07): eingebunden vor
+  /// <summary>Abzüge vom Trefferwert, die die Gruppenreihenfolge festlegen: eingebunden vor
   /// Schlüsselwörtern vor Projekt-Import vor Bibliotheks-Import vor nicht verfügbaren Einträgen.</summary>
   cPenaltyKeyword = 50;
   cPenaltyProjectImport = 100;
@@ -826,7 +826,7 @@ function TCompletionCollector.Add(const AName, ADetail: string; AKind, APenalty:
 var
   mScored, mConverted: TScoredItem;
 begin
-  // Jeder Eintrag frisch (Code-Review S-01): Nichts bleibt vom vorigen stehen, z. B. HasTextEdit und TextEdit
+  // Jeder Eintrag frisch: Nichts bleibt vom vorigen stehen, z. B. HasTextEdit und TextEdit
   // (im Plugin löschte das alles bis zum Wort).
   mScored := Default(TScoredItem);
   mScored.Score := MatchScore(AName, FContext.Prefix, FRequest.Matching);

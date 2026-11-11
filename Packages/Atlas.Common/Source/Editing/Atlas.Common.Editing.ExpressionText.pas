@@ -391,7 +391,7 @@ end;
 
 class function TExpressionText.IsSideEffectFree(ANode: TSyntaxNode): Boolean;
 begin
-  // Search statt Rekursion (Bericht M1).
+  // Search statt Rekursion.
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     var

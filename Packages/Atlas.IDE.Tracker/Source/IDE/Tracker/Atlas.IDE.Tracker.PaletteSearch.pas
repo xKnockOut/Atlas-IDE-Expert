@@ -25,14 +25,14 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  System.Generics.Collections,
   Vcl.ExtCtrls,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.PaletteSearch,
-  Atlas.IDE.Tracker.IssueContext;
+  Atlas.IDE.Tracker.IssueContext,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 type
   /// <summary>Tracker des aktiven Projekts; nil ohne Anbieter bzw. Server.</summary>
@@ -74,7 +74,7 @@ type
     FIssues: TArray<TAtlasTrackerIssue>;
     FCancel: IAtlasCiCancel;
     FGeneration: Integer;
-    FWorkers: TList<TThread>;
+    FWorkers: TAtlasWorkerSlot;
     procedure TimerTick(Sender: TObject);
     procedure Schedule;
     procedure Request(const AQuery: TAtlasIssueSearchQuery);
@@ -85,7 +85,6 @@ type
     procedure ShowStatus(const AStatus: string);
     procedure ShowGroup(const AGroup: TAtlasPaletteGroup);
     procedure CancelRequest;
-    procedure ReleaseThreads(AWait: Boolean);
     function IssueOf(const AItem: TAtlasCommand; out AIssue: TAtlasTrackerIssue): Boolean;
     function ErrorText(AError: TAtlasCiFetchError; const AQuery: TAtlasIssueSearchQuery): string;
     procedure Browse(const AKey: string);
@@ -115,7 +114,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.IDE.Foundation.Settings;
 
 { TAtlasIdeIssueSearch }
@@ -129,7 +128,7 @@ begin
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
   FTimer.OnTimer := TimerTick;
-  FWorkers := TList<TThread>.Create;
+  FWorkers := TAtlasWorkerSlot.Create(HInstance);
   FQuery := TAtlasIssueSearchQuery.None;
   FLastQuery := TAtlasIssueSearchQuery.None;
 end;
@@ -137,7 +136,6 @@ end;
 destructor TAtlasIdeIssueSearch.Destroy;
 begin
   Stop;
-  ReleaseThreads(True);
   FWorkers.Free;
   FTimer.Free;
   FDebounce.Free;
@@ -166,45 +164,10 @@ begin
   FreeAndNil(FTimer);
   FDebounce.Clear;
   CancelRequest;
-  ReleaseThreads(True);
+  FWorkers.Release(True);
   FShow := nil;
   FProvider := nil;
   FHooks := Default(TAtlasIssueSearchHooks);
-end;
-
-procedure TAtlasIdeIssueSearch.ReleaseThreads(AWait: Boolean);
-var
-  mIndex: Integer;
-  mThread: TThread;
-  mWait: TArray<TThread>;
-begin
-  if AWait then
-  begin
-    mWait := nil;
-    for mIndex := 0 to FWorkers.Count - 1 do
-    begin
-      mWait := mWait + [FWorkers[mIndex]];
-    end;
-    if Length(mWait) > 0 then
-    begin
-      TAtlasShutdown.WaitForThreads(mWait);
-    end;
-  end;
-  for mIndex := FWorkers.Count - 1 downto 0 do
-  begin
-    mThread := FWorkers[mIndex];
-    if mThread.Finished then
-    begin
-      mThread.Free;
-      FWorkers.Delete(mIndex);
-    end
-    else if AWait then
-    begin
-      // Läuft noch (Zeitgrenze): räumt sich selbst auf.
-      mThread.FreeOnTerminate := True;
-      FWorkers.Delete(mIndex);
-    end;
-  end;
 end;
 
 procedure TAtlasIdeIssueSearch.CancelRequest;
@@ -244,7 +207,7 @@ begin
   end;
   FDebounce.Clear;
   CancelRequest;
-  ReleaseThreads(False);
+  FWorkers.Release(False);
   FIssues := nil;
 end;
 
@@ -496,9 +459,8 @@ end;
 procedure TAtlasIdeIssueSearch.Request(const AQuery: TAtlasIssueSearchQuery);
 var
   mJob: TSearchJob;
-  mThread: TThread;
 begin
-  ReleaseThreads(False);
+  FWorkers.Release(False);
   CancelRequest;
   mJob := Default(TSearchJob);
   mJob.Generation := FGeneration;
@@ -521,10 +483,7 @@ begin
   begin
     FCancel := nil;
   end;
-  mThread := TThread.CreateAnonymousThread(SearchWorker(Self, Self, mJob));
-  mThread.FreeOnTerminate := False;
-  FWorkers.Add(mThread);
-  mThread.Start;
+  FWorkers.Start(TThread.CreateAnonymousThread(SearchWorker(Self, Self, mJob)));
 end;
 
 procedure TAtlasIdeIssueSearch.Answered(AGeneration: Integer; const AQuery: TAtlasIssueSearchQuery;
@@ -532,7 +491,7 @@ procedure TAtlasIdeIssueSearch.Answered(AGeneration: Integer; const AQuery: TAtl
 var
   mName, mState: string;
 begin
-  ReleaseThreads(False);
+  FWorkers.Release(False);
   // Neuere Eingabe, abgebrochen oder Palette zu: diese Antwort zählt nicht.
   if not FStarted or (AGeneration <> FGeneration) or not Assigned(FShow) then
   begin
@@ -574,7 +533,7 @@ begin
     TAtlasCiFetchError.NotConfigured:
       Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorConfig);
     TAtlasCiFetchError.Unauthorized:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorToken);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorToken);
     TAtlasCiFetchError.NotFound:
       if AQuery.Kind = TAtlasIssueSearchKind.Key then
       begin
@@ -587,9 +546,9 @@ begin
     TAtlasCiFetchError.Timeout:
       Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.PaletteIssuesTimeout);
     TAtlasCiFetchError.Network:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorNetwork);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorNetwork);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorInvalid);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorInvalid);
   end;
 end;
 
@@ -666,6 +625,10 @@ begin
           Browse(mIssue.Key);
         TAtlasPaletteAction.Copy:
           Clipboard.AsText := mIssue.Key;
+        TAtlasPaletteAction.Toggle:
+          begin
+            // Schalten gibt es nur für Einstellungen (#1884); Alt+Enter auf einem Issue tut nichts.
+          end;
       end;
     end);
 end;

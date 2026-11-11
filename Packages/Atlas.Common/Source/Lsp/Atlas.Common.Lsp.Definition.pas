@@ -68,7 +68,7 @@ type
     function HandleTypeDefinition(const AParams: TJSONValue;
       const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
+    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -222,7 +222,7 @@ var
   mSymbol: TIndexSymbol;
 begin
   Result := Default(TResolvedSymbol);
-  // Über den Resolver: bei gepinntem Baum ohne neue Auswertung (Code-Review P-01).
+  // Über den Resolver: bei gepinntem Baum ohne neue Auswertung.
   mOwnerUnit := AResolver.ExtractedUnit(AQuery.Tree, AQuery.FileName);
   for mSymbol in mOwnerUnit.Symbols do
   begin
