@@ -84,6 +84,8 @@ type
     PathsInfo: TLabel;
     Findings: array[0..TAtlasWelcomeSetup.cMaxLines - 1] of TLabel;
     More: TLabel;
+    /// <summary>Hinweis zur Edition der IDE (#1822) über „Nicht mehr fragen“.</summary>
+    Edition: TLabel;
     Dismiss: TLabel;
     NewRow: TLabel;
   end;
@@ -273,6 +275,7 @@ var
   mIndex: Integer;
 begin
   FFrame.FLabels.BaselineInfo.Font.Color := Themed(clGrayText);
+  FFrame.FLabels.Edition.Font.Color := Themed(clGrayText);
   FFrame.FLabels.PathsInfo.Font.Color := Themed(clGrayText);
   FFrame.FLabels.More.Font.Color := Themed(clGrayText);
   FFrame.FLabels.NewRow.Font.Color := Themed(clWindowText);
@@ -362,6 +365,9 @@ begin
   mInfo.Visible := FShow and (mInfo.Caption <> '');
   mInfo := FFrame.FLabels.PathsInfo;
   mInfo.Caption := TAtlasSetupTexts.PathsCaption(mCard);
+  mInfo.Visible := FShow and (mInfo.Caption <> '');
+  mInfo := FFrame.FLabels.Edition;
+  mInfo.Caption := mCard.Edition;
   mInfo.Visible := FShow and (mInfo.Caption <> '');
 end;
 
@@ -550,6 +556,7 @@ begin
   begin
     PlaceStep(mStep);
   end;
+  PlaceLine(FFrame.FLabels.Edition);
   mDismiss := FFrame.FLabels.Dismiss;
   FX := FLeft;
   Place(mDismiss, FMeasure.Canvas.TextWidth(mDismiss.Caption), mDismiss.Height);
@@ -627,6 +634,7 @@ begin
     FLabels.Findings[mIndex].OnClick := FindingClick;
   end;
   FLabels.More := NewLabel;
+  FLabels.Edition := NewLabel;
   FLabels.Dismiss := NewLabel;
   FLabels.Dismiss.Font.Style := [fsUnderline];
   FLabels.Dismiss.Cursor := crHandPoint;

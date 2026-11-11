@@ -214,6 +214,8 @@ begin
   // Modul Hilfe (#1886).
   Assert.IsTrue(ASettings.HelpEnabled, 'F1-Hilfe an');
   Assert.AreEqual(TAtlasPluginSettings.cHelpSourceOnline, ASettings.HelpSource);
+  Assert.IsTrue(ASettings.DiagnosticsEditionCheck);
+  Assert.IsFalse(ASettings.EditionNoticeShown);
   Assert.IsTrue(ASettings.BugReportAnonymize, 'Fehlerbericht anonymisiert');
   Assert.IsFalse(ASettings.LogNames, 'atlas.log anonym (#1478)');
   Assert.IsTrue(ASettings.PairOwners, 'Anweisungen mitfärben standardmäßig an (#653)');
@@ -347,6 +349,8 @@ begin
   ASettings.UpdatesNewModules := 'skip';
   ASettings.HelpEnabled := False;
   ASettings.HelpSource := TAtlasPluginSettings.cHelpSourceLocal;
+  ASettings.DiagnosticsEditionCheck := False;
+  ASettings.EditionNoticeShown := True;
   ASettings.BugReportAnonymize := False;
   ASettings.LogNames := True;
   ASettings.ProblemsMessageList := True;
@@ -475,6 +479,8 @@ begin
   Assert.AreEqual('skip', ALoaded.UpdatesNewModules);
   Assert.IsFalse(ALoaded.HelpEnabled);
   Assert.AreEqual(TAtlasPluginSettings.cHelpSourceLocal, ALoaded.HelpSource);
+  Assert.IsFalse(ALoaded.DiagnosticsEditionCheck);
+  Assert.IsTrue(ALoaded.EditionNoticeShown);
   Assert.IsFalse(ALoaded.BugReportAnonymize);
   Assert.IsTrue(ALoaded.LogNames);
 end;
