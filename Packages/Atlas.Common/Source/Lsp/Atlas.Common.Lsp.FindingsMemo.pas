@@ -13,6 +13,9 @@
 //   Cursorbewegung weitere volle Läufe parallel (Speicher, CPU, Zeitlimit).
 //   Wartende schlafen auf der Sperre (TMonitor.Wait); das Ende eines Laufs weckt
 //   sie sofort (PulseAll), den Abbruch prüfen sie im Takt WaitSliceMs.
+// - Await: nur abgelegte Treffer oder die eines laufenden Laufs am selben Text, nie ein eigener Lauf. Die
+//   Glühbirne fragt so (Diagnoselog 11.11.2026: ein eigener Lauf aller Regeln dauerte in einer Unit mit 27.000
+//   Zeilen rund 9 s); den Lauf übernimmt die Diagnose, die bei jeder Änderung ohnehin prüft.
 // - Höchstens MaxEntries Dateien; der am längsten nicht benutzte Eintrag fällt heraus.
 // - Threadsicher; Treffer gehen als Kopie hinein und heraus.
 
@@ -39,6 +42,11 @@ type
     /// mit ERuleCheckCancelled.</summary>
     function Obtain(const AFileName, AText: string; const ARun: TRuleFindingsRun;
       const ACancelled: TRuleCancelled): TArray<TRuleFinding>;
+    /// <summary>Wie Obtain, aber ohne eigenen Lauf: abgelegte Treffer oder die eines laufenden Laufs am selben Text
+    /// (wartet darauf). False, wenn weder abgelegt ist noch ein Lauf rechnet oder der Lauf scheitert; ACancelled
+    /// beendet das Warten mit ERuleCheckCancelled.</summary>
+    function Await(const AFileName, AText: string; const ACancelled: TRuleCancelled;
+      out AFindings: TArray<TRuleFinding>): Boolean;
   end;
 
   TRuleFindingsMemo = class(TInterfacedObject, IRuleFindingsMemo)
@@ -75,6 +83,8 @@ type
     function TryGet(const AFileName, AText: string; out AFindings: TArray<TRuleFinding>): Boolean;
     function Obtain(const AFileName, AText: string; const ARun: TRuleFindingsRun;
       const ACancelled: TRuleCancelled): TArray<TRuleFinding>;
+    function Await(const AFileName, AText: string; const ACancelled: TRuleCancelled;
+      out AFindings: TArray<TRuleFinding>): Boolean;
   end;
 
 implementation
@@ -234,6 +244,33 @@ begin
   finally
     Release(mKey, AText);
   end;
+end;
+
+function TRuleFindingsMemo.Await(const AFileName, AText: string; const ACancelled: TRuleCancelled;
+  out AFindings: TArray<TRuleFinding>): Boolean;
+var
+  mKey, mText: string;
+  mRunning: Boolean;
+begin
+  mKey := AnsiUpperCase(AFileName);
+  repeat
+    System.TMonitor.Enter(FLock);
+    try
+      Result := Lookup(mKey, AText, AFindings);
+      mRunning := not Result and FRunning.TryGetValue(mKey, mText) and (mText = AText);
+      if mRunning then
+      begin
+        // Release weckt; Lookup und Wait unter derselben Sperre.
+        System.TMonitor.Wait(FLock, cWaitSliceMs);
+      end;
+    finally
+      System.TMonitor.Exit(FLock);
+    end;
+    if mRunning and Assigned(ACancelled) and ACancelled() then
+    begin
+      raise ERuleCheckCancelled.Create(AFileName);
+    end;
+  until not mRunning;
 end;
 
 end.
