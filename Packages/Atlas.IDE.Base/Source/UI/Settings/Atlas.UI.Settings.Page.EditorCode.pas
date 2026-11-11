@@ -172,6 +172,8 @@ begin
     TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsErrors),
     TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsWarnings),
     TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsAll)]);
+  // Marken folgen ihrer Zeile sofort (#1818).
+  BindCheck('TrackLines', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTrackLines)));
 end;
 
 procedure TAtlasSettingsEditorCodePart.Build3;
