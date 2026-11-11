@@ -1094,6 +1094,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Debug.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.ProjectChoice.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.UnitMatch.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.UnitMatch.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LineAnchor.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.LineAnchor.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LineTracking.pas"/>
@@ -1233,6 +1235,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.KeyStroke.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.MenuSlots.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.MenuSlots.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.ProjectSelection.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Commands.ProjectSelection.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Discover.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Discover.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Continue.pas"/>

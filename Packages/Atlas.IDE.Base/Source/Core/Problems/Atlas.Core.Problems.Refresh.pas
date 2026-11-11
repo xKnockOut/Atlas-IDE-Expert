@@ -11,6 +11,8 @@
 //   bleibt.
 // Eine Anforderung (TAtlasProblemsCheckRequest) gilt in jeder Art sofort. Die Bitte des Servers um neues
 // Holen (workspace/diagnostic/refresh) entscheidet der Controller selbst.
+// Angeforderte Dateien (RequestFiles, „Mit Atlas prüfen“ in der Projektverwaltung, #1817) holt der Controller im
+// nächsten Takt, auch ungeöffnete.
 // Die Werte der Einstellungen stehen in Atlas.Core.Settings.ProblemsUpdate.
 
 interface
@@ -50,6 +52,7 @@ type
   TAtlasProblemsCheckRequest = record
   private class var
     FPending: Boolean;
+    FFiles: TArray<string>;
   public
     /// <summary>Prüfung anfordern.</summary>
     class procedure Request; static;
@@ -57,8 +60,13 @@ type
     class function Take: Boolean; static;
     /// <summary>Steht eine Anforderung aus (ohne zurückzusetzen)?</summary>
     class function Pending: Boolean; static;
-    /// <summary>Anforderung verwerfen (Ende der Sitzung, Tests).</summary>
+    /// <summary>Anforderung verwerfen (Ende der Sitzung, Tests); angeforderte Dateien bleiben.</summary>
     class procedure Clear; static;
+    /// <summary>Prüfung der Dateien AFiles anfordern, auch ungeöffneter („Mit Atlas prüfen“ in der
+    /// Projektverwaltung, #1817); kommt zu noch nicht abgeholten hinzu, ohne Doppelte.</summary>
+    class procedure RequestFiles(const AFiles: TArray<string>); static;
+    /// <summary>Angeforderte Dateien; setzt sie zurück.</summary>
+    class function TakeFiles: TArray<string>; static;
   end;
 
 implementation
@@ -119,6 +127,31 @@ end;
 class procedure TAtlasProblemsCheckRequest.Clear;
 begin
   FPending := False;
+end;
+
+class procedure TAtlasProblemsCheckRequest.RequestFiles(const AFiles: TArray<string>);
+var
+  mFile, mHeld: string;
+  mKnown: Boolean;
+begin
+  for mFile in AFiles do
+  begin
+    mKnown := mFile = '';
+    for mHeld in FFiles do
+    begin
+      mKnown := mKnown or SameText(mHeld, mFile);
+    end;
+    if not mKnown then
+    begin
+      FFiles := FFiles + [mFile];
+    end;
+  end;
+end;
+
+class function TAtlasProblemsCheckRequest.TakeFiles: TArray<string>;
+begin
+  Result := FFiles;
+  FFiles := nil;
 end;
 
 end.
