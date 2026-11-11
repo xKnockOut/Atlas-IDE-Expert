@@ -56,6 +56,9 @@ type
     /// <summary>Atlas-Module fehlen unter „Known Packages“ der IDE (Meldung vom 05.11.2026). Nicht in Known: Der
     /// Hinweis lässt sich nicht abstellen, sonst fiele ein nicht geladenes Modul nicht auf.</summary>
     cPackages = 'packages';
+    /// <summary>Kein Kommandozeilen-Compiler (#1822): einmal überhaupt, gemerkt in ui.editionNoticeShown. Nicht in
+    /// Known.</summary>
+    cEdition = 'edition';
   public
     /// <summary>Bekannte Quellen in fester Reihenfolge (Optionsseite, Filter).</summary>
     class function Known: TArray<string>; static;

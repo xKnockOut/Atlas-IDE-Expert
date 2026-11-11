@@ -18,6 +18,8 @@
 // gehören nie dazu; ihre Pfade kennt der Katalog nur, um sie beim Import zu
 // erkennen und zu melden. Neue Einstellungen kommen damit ohne feste Liste in
 // Export, Import und Zurücksetzen (Voraussetzung für #767).
+// Beschreibung, Synonyme (x-keywords) und Schnellschalter trägt der Katalog für die Suche über die Einstellungen
+// (#1884, Atlas.Core.Settings.Search).
 
 interface
 
@@ -83,6 +85,13 @@ type
     Module: string;
     /// <summary>x-offValue als JSON-Text: Wert für „aus“ einer nicht booleschen Einstellung; '' ohne.</summary>
     OffJson: string;
+    /// <summary>Beschreibung aus "description" (Plugin) in voller Länge; '' ohne. Für die Suche (#1884).</summary>
+    Description: string;
+    /// <summary>Synonyme aus x-keywords (#1884), z. B. „Tooltip“ an der Hover-Einstellung; gelten abgeschwächt
+    /// auch für die Unteroptionen.</summary>
+    Keywords: TArray<string>;
+    /// <summary>Schnellschalter (x-quickToggle, #604): in der Befehlspalette direkt umschaltbar (#1884).</summary>
+    QuickToggle: Boolean;
     /// <summary>Wird exportiert, importiert und zurückgesetzt (weder Zustand noch Rechnerwert).</summary>
     function Transferable: Boolean;
   end;
@@ -339,6 +348,9 @@ begin
   Result.Node := OptionalText(ASchema, 'x-node', Result.HasNode);
   Result.Module := TextOf(ASchema, 'x-module');
   Result.OffJson := JsonOf(ASchema, 'x-offValue');
+  Result.Description := TextOf(ASchema, 'description');
+  Result.Keywords := StringsOf(ASchema, 'x-keywords');
+  Result.QuickToggle := Flag(ASchema, 'x-quickToggle');
 end;
 
 /// <summary>Text von AName aus ASchema, sonst aus AParent (darf nil sein).</summary>

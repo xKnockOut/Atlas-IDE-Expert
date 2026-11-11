@@ -2,6 +2,7 @@
 
 Zurück zum [README](../../../README_DE.md)
 
+<a id="window-atlasstart"></a>
 ## Atlas-Willkommensseite
 
 - auf der Willkommensseite der IDE (einzeln oder als ein Bereich „Atlas“ oben, abschaltbar mit `welcomePage.ideWelcomePage`)
@@ -31,6 +32,7 @@ Zurück zum [README](../../../README_DE.md)
   - nennt die Ursache (kein Token, abgelehnt, Projekt unbekannt, Abfrage abgelehnt mit der Meldung des Trackers, Antwort nicht lesbar) samt gesendeter Abfrage
 - „Prüfen“ erkennt eine deutsche YouTrack-Oberfläche, die Vorgabe-Abfrage folgt ihr
 
+<a id="window-atlasissue"></a>
 ### Issue-Vorschau
 
 - im andockbaren Fenster *Atlas-Issue* (`issues.preview`: Klick auf ein Issue in „Meine Issues“ oder *Issue anzeigen …*)
@@ -87,6 +89,7 @@ Einstellungen: `issues.create`, `issues.create.includeCode`
   - Leerlauf hält an, Pause, Korrigieren, *Offene Zeitbuchungen …*
 - bietet beim Beenden an, sie in YouTrack als Work Item zu buchen (gerundet, Arbeitstyp, Text aus den Commits; GitHub als Kommentar)
 
+<a id="window-atlasboard"></a>
 ### Board und Sprint
 
 - Board im andockbaren Fenster *Atlas-Board* (`issues.board`):
@@ -224,6 +227,7 @@ Einstellungen: `vcs.externals.show`, `vcs.externals.update` (mit, ohne, fragen)
 - **Änderungsmarken** in der Rinne gegenüber Git HEAD bzw. SVN BASE
 - **Stilles Neuladen** extern geänderter Dateien
 
+<a id="window-atlasserverstatus"></a>
 ## Fenster „Atlas-Server“ (#1356, `server.statusWindow`)
 
 Aufruf: *Atlas › Hilfe und Diagnose*, Befehl `Atlas.ServerStatus`, Klick auf die Zeile *Server* im Statusfenster, Doppelklick auf den Status in der Atlas-Statusleiste.
@@ -236,6 +240,7 @@ Aufruf: *Atlas › Hilfe und Diagnose*, Befehl `Atlas.ServerStatus`, Klick auf d
 - *Aktualisieren* fragt sofort, *Index neu aufbauen*.
 - *Diagnosepaket erstellen …* schreibt nach einer Vorschau eine ZIP-Datei mit Fehlerbericht (#108), Status, Protokoll der Sitzung und mit `--trace` dem Trace der letzten Minuten, anonymisiert wie der Fehlerbericht und nie mit Zugangsdaten.
 
+<a id="window-atlasdiagnostics"></a>
 ## Zeiten des Plugins im Diagnosefenster (`diagnosticMode.pluginTimings`, `diagnosticMode.slowThresholdMs`)
 
 Im Diagnosemodus zeigt „Atlas-Diagnose“, was in Atlas gerade langsam ist:

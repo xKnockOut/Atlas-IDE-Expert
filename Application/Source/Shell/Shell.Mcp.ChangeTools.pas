@@ -8,8 +8,6 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Mcp.Paths,
-  Atlas.Common.Mcp.Prompts,
-  Atlas.Common.Index.Contract,
   Shell.WorkspaceGroup,
   Shell.Mcp.Context;
 

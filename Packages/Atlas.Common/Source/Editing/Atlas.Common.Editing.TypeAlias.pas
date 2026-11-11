@@ -155,8 +155,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.TypeAlias.Texts,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Editing.TypeAlias.Texts;
 
 class function TTypeAlias.IntroduceTitle: string;
 begin

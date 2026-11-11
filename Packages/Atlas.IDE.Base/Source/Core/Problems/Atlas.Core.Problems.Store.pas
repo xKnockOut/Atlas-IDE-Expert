@@ -37,6 +37,10 @@
 // ForFile und allem, was darauf aufbaut (Wellenlinie, Hover, Fenster); mit
 // both bleiben beide. Ist die Meldung nach dem nächsten Build weg, bleibt nur
 // der Atlas-Befund.
+// Gelöschte Zeilen (#1818, editor.trackLines): Mit DropDeletedLines fallen
+// bei einer reinen Löschung (die geänderte Stelle ist im neuen Text leer)
+// die Meldungen weg, die ganz in den gelöschten Zeilen lagen, statt blass
+// auf die Folgezeile zu rutschen; bis zur nächsten Antwort des Servers.
 
 interface
 
@@ -97,8 +101,10 @@ type
     function Find(const AFileName: string): TEntry;
     function Ensure(const AFileName: string): TEntry;
     /// <summary>Neuer Stand für AEntry (Stamp).</summary>
-    procedure Touch(AEntry: TEntry);
-    class procedure Shift(AEntry: TEntry; const ANewText: string); static;
+    class procedure Touch(AEntry: TEntry); static;
+    /// <summary>Positionen auf ANewText bringen; ADropDeleted: Meldungen in rein gelöschten Zeilen entfernen.
+    /// </summary>
+    class procedure Shift(AEntry: TEntry; const ANewText: string; ADropDeleted: Boolean); static;
   public
     constructor Create;
     destructor Destroy; override;
@@ -112,6 +118,7 @@ type
     cTestSource = 'DUnitX';
   private
     FCompilerMerge: Boolean;
+    FDropDeletedLines: Boolean;
     FHiddenTasks: TArray<string>;
     procedure SetCompilerMerge(AValue: Boolean);
     /// <summary>Spalten der Bereiche AProblems in der Zeile (wie InactiveSpans).</summary>
@@ -185,6 +192,8 @@ type
     /// <summary>Bestätigte Compilermeldungen mit dem Atlas-Befund zusammenführen (problems.compilerMerge, #1024).
     /// </summary>
     property CompilerMerge: Boolean read FCompilerMerge write SetCompilerMerge;
+    /// <summary>Meldungen in gelöschten Zeilen bei Edit entfernen statt blass weiterzuführen (#1818).</summary>
+    property DropDeletedLines: Boolean read FDropDeletedLines write FDropDeletedLines;
   end;
 
 implementation
@@ -318,7 +327,7 @@ begin
   end;
 end;
 
-procedure TAtlasProblemEntries.Touch(AEntry: TEntry);
+class procedure TAtlasProblemEntries.Touch(AEntry: TEntry);
 begin
   Inc(FLastStamp);
   AEntry.FStamp := FLastStamp;
@@ -354,7 +363,7 @@ begin
   // Behaltene Compilermeldungen auf den neuen Text bringen.
   if not mIsNew and mEntry.FTextKnown and ATextKnown and (mEntry.FText <> AText) then
   begin
-    Shift(mEntry, AText);
+    Shift(mEntry, AText, FDropDeletedLines);
   end;
   mEntry.FAtlas := nil;
   mCompiler := nil;
@@ -385,7 +394,22 @@ begin
   Inc(FVersion);
 end;
 
-class procedure TAtlasProblemEntries.Shift(AEntry: TEntry; const ANewText: string);
+/// <summary>Meldungen ohne die, die ganz in den Zeilen [AFrom, ATill) liegen.</summary>
+function WithoutLines(const AProblems: TArray<TAtlasProblem>; AFrom, ATill: Integer): TArray<TAtlasProblem>;
+var
+  mProblem: TAtlasProblem;
+begin
+  Result := nil;
+  for mProblem in AProblems do
+  begin
+    if (mProblem.StartLine < AFrom) or (mProblem.EndLine >= ATill) then
+    begin
+      Result := Result + [mProblem];
+    end;
+  end;
+end;
+
+class procedure TAtlasProblemEntries.Shift(AEntry: TEntry; const ANewText: string; ADropDeleted: Boolean);
 var
   mOldCount, mNewCount, mPrefix, mSuffix, mChangedEnd, mDelta, mIndex: Integer;
   mKept: TArray<TAtlasProblem>;
@@ -418,6 +442,13 @@ begin
   TTextDiff.CommonPrefixSuffix(AEntry.FText, ANewText, mPrefix, mSuffix, mOldCount, mNewCount);
   mChangedEnd := mOldCount - mSuffix;
   mDelta := mNewCount - mOldCount;
+  // Reine Löschung: Was ganz in den gelöschten Zeilen stand, gibt es nicht mehr (#1818).
+  if ADropDeleted and (mDelta < 0) and (mNewCount - mSuffix <= mPrefix) then
+  begin
+    AEntry.FAtlas := WithoutLines(AEntry.FAtlas, mPrefix, mChangedEnd);
+    AEntry.FCompiler := WithoutLines(AEntry.FCompiler, mPrefix, mChangedEnd);
+    AEntry.FTests := WithoutLines(AEntry.FTests, mPrefix, mChangedEnd);
+  end;
   for mIndex := 0 to High(AEntry.FAtlas) do
   begin
     Map(AEntry.FAtlas[mIndex], False);
@@ -650,7 +681,7 @@ begin
     Touch(mEntry);
     Exit;
   end;
-  Shift(mEntry, ANewText);
+  Shift(mEntry, ANewText, FDropDeletedLines);
   Touch(mEntry);
   Inc(FVersion);
 end;

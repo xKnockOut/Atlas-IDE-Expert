@@ -173,8 +173,6 @@ uses
   System.StrUtils,
   Atlas.Text.Uris,
   Atlas.Core.Tracker.Links,
-  Atlas.Core.Tracker.Markdown,
-  Atlas.Core.Tracker.Checklist,
   Atlas.Core.Tracker.Internals.GitHubJson,
   Atlas.Core.Tracker.GitHubBoards;
 

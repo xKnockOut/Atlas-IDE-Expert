@@ -42,7 +42,6 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols,
   Atlas.Common.Localization.Texts;

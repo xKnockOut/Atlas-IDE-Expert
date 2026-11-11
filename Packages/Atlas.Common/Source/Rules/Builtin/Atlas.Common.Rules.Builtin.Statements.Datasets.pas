@@ -61,12 +61,9 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.AccessorCreation,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Statements.Tokens,
   Atlas.Common.Localization.Texts;

@@ -141,7 +141,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.History,
   Atlas.UI.Settings.Group;
 
 { TAtlasSettingsPagePart }

@@ -24,7 +24,11 @@ type
     SettingsCodeLensTests, SettingsTestRun, SettingsTestsBuildFirst, SettingsTestsAfterBuild, SettingsTestDebug,
     SettingsTestBreakAtStart, SettingsTestsAffected, SettingsTestsAffectedDepth, SettingsTestsAffectedBeforeCommit,
     TestsHookPurpose, TestsHookRemoval, TestsHookExitCodes, TestsHookNoTerminal, TestsHookAskRun,
-    TestsHookAskCommit, TestsEditorMenuGroup);
+    TestsHookAskCommit, TestsEditorMenuGroup,
+    // Kontextmenü der Projektverwaltung (#1817).
+    TestsProjectRunUnit, TestsProjectNoTestUnit,
+    // Assistent der Objektgalerie (#1821).
+    TestsGalleryTestUnit, TestsGalleryTestUnitHint, TestsGalleryChooseUnit, TestsGalleryNoUnits);
 
   TAtlasTestsStrings = class
   public
@@ -106,7 +110,14 @@ const
      'Ohne Terminal (Commit aus der IDE) bleibt es bei der Liste.',
      'Atlas: Betroffene Tests jetzt ausführen (Test-EXE ohne neuen Build)? [j/N] ',
      'Atlas: Tests fehlgeschlagen. Trotzdem committen? [j/N] ',
-     'Tests'),
+     'Tests',
+     'Tests dieser Unit ausführen',
+     'Tests: Keine Testunit mit DUnitX-Tests zu %s gefunden.',
+     'DUnitX-Testunit zu Unit …',
+     'Legt zu einer Unit der Projektgruppe eine Testunit mit Fixture und je öffentlicher Methode einem Test an ' +
+     'und trägt sie ins Testprojekt ein; gibt es sie schon, öffnet Atlas sie.',
+     'Unit, zu der die Testunit entsteht:',
+     'Tests: Keine Unit in der Projektgruppe.'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -172,7 +183,14 @@ const
      'Without a terminal (commit from the IDE) only the list is shown.',
      'Atlas: Run the affected tests now (test EXE without a new build)? [y/N] ',
      'Atlas: Tests failed. Commit anyway? [y/N] ',
-     'Tests'));
+     'Tests',
+     'Run tests for this unit',
+     'Tests: No test unit with DUnitX tests found for %s.',
+     'DUnitX test unit for unit…',
+     'Creates a test unit with a fixture and one test per public method for a unit of the project group and ' +
+     'adds it to the test project; if it already exists, Atlas opens it.',
+     'Unit to create the test unit for:',
+     'Tests: No unit in the project group.'));
 
 { TAtlasTestsStrings }
 

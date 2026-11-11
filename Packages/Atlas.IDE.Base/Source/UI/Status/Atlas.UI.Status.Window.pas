@@ -21,7 +21,6 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Status.Contract;
 

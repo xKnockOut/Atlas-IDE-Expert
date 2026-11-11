@@ -32,7 +32,6 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.Menus,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Signal,
   Atlas.Core.Notifications.Contract;

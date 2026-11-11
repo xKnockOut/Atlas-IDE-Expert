@@ -15,6 +15,9 @@
 //   an atlas.server.moveUses bzw. atlas.server.removeUses; das WorkspaceEdit
 //   des Servers übernimmt TAtlasIdeWorkspaceEdit (ein Rückgängig-Schritt).
 // - Doppelklick öffnet die Unit, Strg+Doppelklick springt zum uses-Eintrag.
+// - ShowDependents (#1817, „Abhängige Units“ in der Projektverwaltung) zeigt
+//   die Verwender einer Unit im Ergebnisfenster; CachedDependents liefert ihre
+//   Zahl aus dem gemerkten Stand, ohne den Server zu fragen.
 // - ShowCurrent (Befehl „Abhängigkeiten dieser Unit“, #554, und Klick auf das
 //   Feld in der Statusleiste) zeigt die Unit im Editor, auch wenn vorher eine
 //   aus der Architekturkarte gewählt war.
@@ -60,6 +63,12 @@ type
     class procedure ShowFor(const AFileName: string); static;
     /// <summary>Fenster für die Unit im Editor zeigen (#554, „Abhängigkeiten dieser Unit“).</summary>
     class procedure ShowCurrent; static;
+    /// <summary>Zahl der Units, die AFileName direkt verwenden, aus der letzten Antwort des Servers (#1817,
+    /// „Abhängige Units (n)“ in der Projektverwaltung); False, solange keine vorliegt.</summary>
+    class function CachedDependents(const AFileName: string; out ACount: Integer): Boolean; static;
+    /// <summary>Units, die AFileName direkt verwenden, im Ergebnisfenster (#1817); fragt den Server im Hintergrund.
+    /// </summary>
+    class procedure ShowDependents(const AFileName: string); static;
     /// <summary>Wohin die Kosten einer interface-Änderung gehen (#554); nil = nirgends.</summary>
     class procedure SetCostHandler(const AShow: TAtlasInterfaceCostShow); static;
     class procedure ApplySettings; static;
@@ -71,6 +80,7 @@ implementation
 
 uses
   System.Classes,
+  System.Math,
   Winapi.Windows,
   Vcl.ExtCtrls,
   ToolsAPI,
@@ -81,6 +91,7 @@ uses
   Atlas.Core.UnitRelations.Model,
   Atlas.Core.UnitRelations.InterfaceCost,
   Atlas.Core.EditorToolbar.Sections,
+  Atlas.Core.Results.Model,
   Atlas.UI.Strings,
   Atlas.UI.Analysis.Strings,
   Atlas.UI.UnitRelations.Frame,
@@ -89,6 +100,7 @@ uses
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.UnitRelations.Window;
 
 const
@@ -812,6 +824,89 @@ begin
   end;
   TUnitRelationsState(FState).Unpin;
   ShowWindow;
+end;
+
+class function TAtlasIdeUnitRelations.CachedDependents(const AFileName: string; out ACount: Integer): Boolean;
+var
+  mJson: string;
+  mRelations: TAtlasUnitRelations;
+begin
+  ACount := 0;
+  Result := (FState <> nil) and Active and TUnitRelationsState(FState).FCache.TryGet(AFileName, False, mJson) and
+    TAtlasUnitRelationsModel.Parse(mJson, mRelations) and mRelations.Found;
+  if Result then
+  begin
+    ACount := Length(mRelations.UsedBy);
+  end;
+end;
+
+/// <summary>Verwender als Einträge des Ergebnisfensters: Fundstelle des uses-Eintrags, sonst Anfang der Unit.
+/// </summary>
+function DependentEntries(const AUsedBy: TAtlasUnitRelationList): TArray<TAtlasResultEntry>;
+var
+  mRelation: TAtlasUnitRelation;
+  mEntry: TAtlasResultEntry;
+begin
+  Result := nil;
+  for mRelation in AUsedBy do
+  begin
+    if mRelation.LocationFile <> '' then
+    begin
+      mEntry := TAtlasResultEntry.Create(mRelation.LocationFile, Max(mRelation.Line, 0), Max(mRelation.Character, 0));
+    end
+    else if mRelation.FileName <> '' then
+    begin
+      mEntry := TAtlasResultEntry.Create(mRelation.FileName, 0, 0);
+    end
+    else
+    begin
+      Continue;
+    end;
+    mEntry.Text := mRelation.Name;
+    Result := Result + [mEntry];
+  end;
+end;
+
+/// <summary>Antwort für ShowDependents; gilt nur, solange AState der Zustand ist (Regel 3).</summary>
+function DependentsHandler(AState: TObject; const AFileName: string): TProc<TJSONValue>;
+begin
+  Result :=
+    procedure(AAnswer: TJSONValue)
+    var
+      mJson: string;
+      mRelations: TAtlasUnitRelations;
+    begin
+      if (TAtlasIdeUnitRelations.FState <> AState) or (AAnswer = nil) then
+      begin
+        Exit;
+      end;
+      mJson := AAnswer.ToJSON;
+      if not TAtlasUnitRelationsModel.Parse(mJson, mRelations) then
+      begin
+        Exit;
+      end;
+      TUnitRelationsState(AState).FCache.Put(AFileName, False, mJson);
+      TAtlasIdeResultsWindow.ShowEntries(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.DependentsTitle,
+        [ChangeFileExt(ExtractFileName(AFileName), ''), Length(mRelations.UsedBy)]),
+        DependentEntries(mRelations.UsedBy));
+    end;
+end;
+
+class procedure TAtlasIdeUnitRelations.ShowDependents(const AFileName: string);
+var
+  mState: TUnitRelationsState;
+begin
+  if (FState = nil) or not Active or (AFileName = '') then
+  begin
+    Exit;
+  end;
+  mState := TUnitRelationsState(FState);
+  if not mState.FRun(TAtlasUnitRelationsCommands.cCommand,
+    TAtlasUnitRelationsCommands.Arguments(TLspSession.PathToUri(AFileName), False), cTimeoutMs,
+    DependentsHandler(mState, AFileName)) then
+  begin
+    TAtlasIdeResultsWindow.ShowEntries(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.DependentsNoServer), nil);
+  end;
 end;
 
 class procedure TAtlasIdeUnitRelations.SetCostHandler(const AShow: TAtlasInterfaceCostShow);

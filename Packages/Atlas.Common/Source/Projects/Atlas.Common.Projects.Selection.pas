@@ -56,7 +56,6 @@ implementation
 
 uses
   System.IOUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.FileEncoding;
 
 { TProjectSelection }

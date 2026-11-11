@@ -114,8 +114,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Tracker.Workflow,
-  Atlas.IDE.Tracker.WorkingCopies,
-  Atlas.IDE.Tracker.IssueLinkWrites;
+  Atlas.IDE.Tracker.WorkingCopies;
 
 const
   /// <summary>Zeitlimit je Aufruf der Versionsverwaltung bei „Beginnen“.</summary>

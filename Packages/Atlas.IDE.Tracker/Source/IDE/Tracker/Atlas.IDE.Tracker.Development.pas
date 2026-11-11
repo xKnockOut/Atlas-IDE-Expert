@@ -127,7 +127,6 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Files.TextFile,
-  Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
   Atlas.UI.Undo.DiffView,
   Atlas.IDE.Foundation.Navigation,

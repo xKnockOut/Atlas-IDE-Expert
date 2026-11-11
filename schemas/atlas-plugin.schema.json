@@ -1,7 +1,7 @@
-{
+﻿{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Atlas-Plugin-Einstellungen",
-  "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDATA%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-formerKeys: frühere Schlüssel, die der Import umrechnet; x-renamedFrom (#1280): frühere Registry-Namen derselben Einstellung mit unverändertem Wert, beim ersten Start übernommen und entfernt; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604); x-experimental: experimentelle Funktion (#834), Vorgabe aus, wirkt nur mit experimental.enabled. x-parent (#890): x-key des Hauptschalters (boolesch), der die Einstellung auf der Optionsseite sperrt, \"\" = keiner; ohne x-parent gilt die Präfixregel (längstes Präfix P mit boolescher Einstellung P oder P.enabled); x-node (#890): Unterpunkt im Baum der Optionsseite (Kennung aus x-nodes), \"\" = Hauptknoten des Reiters; ohne x-node erbt die Einstellung den Unterpunkt ihres Hauptschalters. x-module (#1454): Kennung des Moduls an dessen Modul-Schalter; alles darunter (x-parent bzw. Präfixregel) gehört zum Modul. Ist der Schalter aus, liefern die wirksamen Werte für jede boolesche Einstellung des Moduls „aus“ und für eine mit x-offValue diesen Wert; gespeichert bleibt der eigene Wert. Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area, x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",
+  "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDATA%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-formerKeys: frühere Schlüssel, die der Import umrechnet; x-renamedFrom (#1280): frühere Registry-Namen derselben Einstellung mit unverändertem Wert, beim ersten Start übernommen und entfernt; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604); x-keywords (#1884): Synonyme für die Suche über die Einstellungen (Liste von Wörtern, deutsch oder englisch), gelten abgeschwächt auch für die Unteroptionen; x-experimental: experimentelle Funktion (#834), Vorgabe aus, wirkt nur mit experimental.enabled. x-parent (#890): x-key des Hauptschalters (boolesch), der die Einstellung auf der Optionsseite sperrt, \"\" = keiner; ohne x-parent gilt die Präfixregel (längstes Präfix P mit boolescher Einstellung P oder P.enabled); x-node (#890): Unterpunkt im Baum der Optionsseite (Kennung aus x-nodes), \"\" = Hauptknoten des Reiters; ohne x-node erbt die Einstellung den Unterpunkt ihres Hauptschalters. x-module (#1454): Kennung des Moduls an dessen Modul-Schalter; alles darunter (x-parent bzw. Präfixregel) gehört zum Modul. Ist der Schalter aus, liefern die wirksamen Werte für jede boolesche Einstellung des Moduls „aus“ und für eine mit x-offValue diesen Wert; gespeichert bleibt der eigene Wert. Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area, x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",
   "x-version": 1,
   "x-areas": {
     "editor": {
@@ -567,7 +567,12 @@
       "x-quickToggle": true,
       "x-caption": "Experimentelle Funktionen erlauben",
       "x-captionEn": "Allow experimental features",
-      "x-issue": "#834"
+      "x-issue": "#834",
+      "x-keywords": [
+        "Beta",
+        "Vorschau",
+        "Preview"
+      ]
     },
     "PairColors": {
       "type": "boolean",
@@ -582,7 +587,12 @@
       "x-drawing": true,
       "x-caption": "Klammerfarben",
       "x-captionEn": "Bracket colors",
-      "x-issue": "#514"
+      "x-issue": "#514",
+      "x-keywords": [
+        "Klammern",
+        "Brackets",
+        "Rainbow"
+      ]
     },
     "PairGuides": {
       "type": "boolean",
@@ -701,7 +711,14 @@
       "x-drawing": true,
       "x-caption": "Probleme unterstreichen",
       "x-captionEn": "Underline problems",
-      "x-issue": "#398"
+      "x-issue": "#398",
+      "x-keywords": [
+        "Fehler",
+        "Warnungen",
+        "Diagnostics",
+        "Squiggles",
+        "Kringel"
+      ]
     },
     "InlayHints": {
       "type": "boolean",
@@ -981,7 +998,14 @@
       "x-quickToggle": true,
       "x-caption": "Hover-Tooltip",
       "x-captionEn": "Hover tooltip",
-      "x-issue": "#442"
+      "x-issue": "#442",
+      "x-keywords": [
+        "Tooltip",
+        "Hint",
+        "Kurzinfo",
+        "Hover",
+        "Help Insight"
+      ]
     },
     "FilterChips": {
       "type": "boolean",
@@ -1109,7 +1133,14 @@
       "x-quickToggle": true,
       "x-caption": "KI-Assistenten",
       "x-captionEn": "AI assistants",
-      "x-issue": "#1888"
+      "x-issue": "#1888",
+      "x-keywords": [
+        "KI",
+        "AI",
+        "Copilot",
+        "MCP",
+        "LLM"
+      ]
     },
     "AssistantsEdit": {
       "type": "boolean",
@@ -1320,7 +1351,12 @@
       "x-quickToggle": true,
       "x-caption": "Debugger-Funktionen von Atlas",
       "x-captionEn": "Atlas debugger features",
-      "x-issue": "#1454"
+      "x-issue": "#1454",
+      "x-keywords": [
+        "Debugger",
+        "Haltepunkt",
+        "Breakpoint"
+      ]
     },
     "DebugHoverValues": {
       "type": "boolean",
@@ -1874,7 +1910,11 @@
       "x-quickToggle": true,
       "x-caption": "Atlas-Willkommensseite",
       "x-captionEn": "Atlas welcome page",
-      "x-issue": "#753"
+      "x-issue": "#753",
+      "x-keywords": [
+        "Startseite",
+        "Start page"
+      ]
     },
     "WelcomePageProjectSetup": {
       "type": "boolean",
@@ -2046,7 +2086,11 @@
       "x-key": "keys.palette",
       "x-area": "keys",
       "x-format": "shortcut",
-      "x-page": "Tastenkonflikte"
+      "x-page": "Tastenkonflikte",
+      "x-keywords": [
+        "Befehlspalette",
+        "Command palette"
+      ]
     },
     "CheckKey": {
       "type": "integer",
@@ -2779,7 +2823,14 @@
       "x-quickToggle": true,
       "x-caption": "Prüfregeln",
       "x-captionEn": "Rule checks",
-      "x-issue": "#1454"
+      "x-issue": "#1454",
+      "x-keywords": [
+        "Lint",
+        "Linter",
+        "Analyse",
+        "Code-Prüfung",
+        "static analysis"
+      ]
     },
     "ProblemsUpdate": {
       "type": "string",
@@ -2882,6 +2933,18 @@
       "x-area": "editor",
       "x-page": "Editor",
       "x-issue": "#509"
+    },
+    "TrackLines": {
+      "type": "boolean",
+      "default": true,
+      "description": "Befunde (Wellenlinie, Randmarke, Fehlertext am Zeilenende) folgen ihrer Zeile sofort bei jeder Bearbeitung, die die IDE kennt (Tippen, Einfügen, Rückgängig, Blockoperationen), auch bevor der Server antwortet. Wird die Zeile gelöscht, verschwindet die Marke bis zur nächsten Antwort. Aus: Marken wandern erst nach der Tipp-Pause mit, Meldungen gelöschter Zeilen werden blass.",
+      "x-key": "editor.trackLines",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Befunde folgen ihrer Zeile sofort beim Bearbeiten",
+      "x-captionEn": "Findings follow their line immediately while editing",
+      "x-issue": "#1818"
     },
     "CheckOnSaveDelayMs": {
       "type": "integer",
@@ -3660,6 +3723,21 @@
       "x-page": "Befehle",
       "x-parent": "completion.enabled"
     },
+    "PaletteSettingsPrefix": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "palette.settingsPrefix",
+      "x-area": "general",
+      "x-page": "Befehle",
+      "description": "Präfix @ in der Befehlspalette: @minimap listet passende Einstellungen mit Zustand; Enter öffnet die Optionen an der Stelle, Alt+Enter schaltet einen Schnellschalter direkt um.",
+      "x-control": "Kontrollkästchen",
+      "x-keywords": [
+        "Befehlspalette",
+        "Command palette",
+        "@"
+      ],
+      "x-issue": "#1884"
+    },
     "GenerateMenuKey": {
       "type": "integer",
       "default": 32813,
@@ -3695,6 +3773,30 @@
       "x-key": "keys.generateMenu.showCommandNames",
       "x-area": "codeActions",
       "x-page": "Befehle"
+    },
+    "ProjectContextMenu": {
+      "type": "boolean",
+      "default": true,
+      "description": "Untermenü Atlas im Kontextmenü der Projektverwaltung: Mit Atlas prüfen (Unit, Ordner, Projekt, auch Mehrfachauswahl, ohne die Units zu öffnen), Unit-Beziehungen und Abhängige Units (Modul Analyse), Tests dieser Unit ausführen (Modul Tests). Einträge, die zur Auswahl nicht passen, fehlen.",
+      "x-key": "commands.projectContextMenu",
+      "x-area": "codeActions",
+      "x-page": "Befehle",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Untermenü Atlas im Kontextmenü der Projektverwaltung",
+      "x-captionEn": "Atlas submenu in the Project Manager context menu",
+      "x-issue": "#1817"
+    },
+    "GalleryWizards": {
+      "type": "boolean",
+      "default": true,
+      "description": "Kategorie Atlas in Datei › Neu › Weitere (Objektgalerie) mit den Assistenten der geladenen Module: DUnitX-Testunit zu einer Unit (Modul Tests), Unit nach Architekturrolle (Modul Analyse), eigene Prüfregel (Modul Prüfregeln). Aus = keine Atlas-Kategorie.",
+      "x-key": "generate.galleryWizards",
+      "x-area": "codeActions",
+      "x-page": "Befehle",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Atlas-Assistenten unter Datei › Neu › Weitere",
+      "x-captionEn": "Atlas wizards in File › New › Other",
+      "x-issue": "#1821"
     },
     "Snippets": {
       "type": "boolean",
@@ -3815,7 +3917,11 @@
       "x-key": "keys.quickToggles",
       "x-area": "keys",
       "x-format": "shortcut",
-      "x-page": "Tastenkonflikte"
+      "x-page": "Tastenkonflikte",
+      "x-keywords": [
+        "Schnellschalter",
+        "Quick toggles"
+      ]
     },
     "QuickToggleKeyPriority": {
       "type": "boolean",
@@ -4495,7 +4601,12 @@
       "x-quickToggle": true,
       "x-caption": "Brotkrumenleiste",
       "x-captionEn": "Breadcrumbs",
-      "x-issue": "#590"
+      "x-issue": "#590",
+      "x-keywords": [
+        "Navigationsleiste",
+        "Navigation bar",
+        "Pfadleiste"
+      ]
     },
     "BreadcrumbsShowUnit": {
       "description": "Unit-Namen als erstes Glied der Brotkrumenleiste zeigen.",
@@ -4907,6 +5018,297 @@
       "x-node": "editor.designerBar",
       "x-issue": "#739"
     },
+    "DesignerSpatialNavigation": {
+      "description": "Räumliche Navigation im Formular-Designer, solange er den Fokus hat: Alt+Pfeil wählt das nächste Steuerelement in dieser Richtung im selben Elternelement, Alt+Umschalt+Pfeil fügt es zur Auswahl hinzu, Alt+Pos1 wählt das Elternelement, Alt+Ende das Kind oben links eines Containers, Alt+Bild auf/ab wechselt in den vorherigen bzw. nächsten Container derselben Ebene. Ein kurzer Rahmen zeigt das Ziel. Nichtvisuelle Komponenten nur untereinander. Aus = die Tasten gehen an die IDE.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.spatialNavigation",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#745"
+    },
+    "DesignerSpatialCrossContainers": {
+      "description": "Gibt es im Elternelement in der Richtung kein Steuerelement mehr, sucht Alt+Pfeil an seinem Rand in den benachbarten Containern weiter (vom letzten Feld eines Panels zum nächsten im Panel daneben). Aus = Alt+Pfeil bleibt im Elternelement.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.spatialNavigation.crossContainers",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.spatialNavigation",
+      "x-node": "editor.designerBar",
+      "x-issue": "#745"
+    },
+    "DesignerFitToText": {
+      "description": "Befehl „Breite nach Text“ im Menü „Anordnen“ der Designer-Leiste: setzt die markierten Steuerelemente auf die Breite des längsten Texts plus Innenabstand und Anteil des Steuerelements (Kästchen, Pfeil, Glyph), mindestens die Mindestbreite. In einer Reihe bleiben die Abstände und die linke bzw. (bei akRight oder am rechten Rand) die rechte Kante; AutoSize und Align ohne freie Breite bleiben. Ändert die .dfm.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.fitToText",
+      "x-parent": "editor.designerBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#730"
+    },
+    "DesignerFitToTextMinWidth": {
+      "description": "Mindestbreite in Pixeln (bei 96 dpi; Formulare mit anderem PixelsPerInch entsprechend skaliert) für „Breite nach Text“.",
+      "type": "integer",
+      "default": 75,
+      "minimum": 0,
+      "maximum": 2000,
+      "x-key": "designer.fitToText.minWidth",
+      "x-parent": "designer.fitToText",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#730"
+    },
+    "DesignerFitToTextPadding": {
+      "description": "Innenabstand links und rechts zusammen in Pixeln (bei 96 dpi) für „Breite nach Text“.",
+      "type": "integer",
+      "default": 16,
+      "minimum": 0,
+      "maximum": 200,
+      "x-key": "designer.fitToText.padding",
+      "x-parent": "designer.fitToText",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#730"
+    },
+    "DesignerFitToTextSources": {
+      "description": "Herkunft der Texte für „Breite nach Text“, durch Komma getrennt: caption (Caption), text (Text bei Edits und ComboBoxen), items (längster Eintrag aus Items).",
+      "type": "string",
+      "default": "caption",
+      "x-key": "designer.fitToText.sources",
+      "x-parent": "designer.fitToText",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#730"
+    },
+    "DesignerButtonBar": {
+      "description": "Befehl „Knopfleiste anordnen“ im Menü „Anordnen“ der Designer-Leiste: ordnet die markierten Knöpfe nach ihrer Rolle (ok, cancel, apply, help aus Caption, Name oder ModalResult) als Knopfleiste nach Windows-Richtlinie an, gleich breit (Breite nach Text) und gleich hoch, verankert am Rand, mit fortlaufender TabOrder. Ändert die .dfm.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.buttonBar",
+      "x-parent": "editor.designerBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarOrder": {
+      "description": "Reihenfolge der Rollen in der Knopfleiste, durch Komma getrennt (ok, cancel, apply, help); Knöpfe ohne Rolle stehen vor help.",
+      "type": "string",
+      "default": "ok,cancel,apply,help",
+      "x-key": "designer.buttonBar.order",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarPosition": {
+      "description": "Lage der Knopfleiste: unten rechts (bottomRight), unten links (bottomLeft), rechts oben senkrecht (rightTop) oder rechts unten senkrecht (rightBottom).",
+      "type": "string",
+      "enum": [
+        "bottomRight",
+        "bottomLeft",
+        "rightTop",
+        "rightBottom"
+      ],
+      "default": "bottomRight",
+      "x-key": "designer.buttonBar.position",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarGap": {
+      "description": "Abstand zwischen den Knöpfen in Pixeln (bei 96 dpi).",
+      "type": "integer",
+      "default": 8,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "designer.buttonBar.gap",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarMargin": {
+      "description": "Abstand der Knopfleiste zum Rand des Elternelements in Pixeln (bei 96 dpi), innerhalb seines Padding.",
+      "type": "integer",
+      "default": 8,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "designer.buttonBar.margin",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarSetModalResult": {
+      "description": "Beim Anordnen Default (ok-Knopf), Cancel (cancel-Knopf) und ModalResult (mrOk, mrCancel) setzen. Hat schon ein anderer Knopf Default bzw. Cancel oder setzt der OnClick-Handler ModalResult selbst bzw. ruft Close auf, bleibt es und ein Hinweis erscheint.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.buttonBar.setModalResult",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarRoles": {
+      "description": "Eigene Begriffe für die Rollen, vor den eingebauten: „ok=Weiter|Los; cancel=Zurück“ (Beschriftung ohne & oder Komponentenname, Groß- und Kleinschreibung egal).",
+      "type": "string",
+      "default": "",
+      "x-key": "designer.buttonBar.roles",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerDuplicateRow": {
+      "description": "Befehl „In Reihe duplizieren …“ im Menü „Anordnen“ der Designer-Leiste: kopiert die markierten Steuerelemente mehrmals nach unten oder rechts, mit Namen und Beschriftungen aus einer Liste.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.duplicateRow",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#736"
+    },
+    "DesignerDuplicateRowShareEvents": {
+      "description": "Vorgabe im Dialog: Die Kopien bekommen dieselben Ereignis-Handler wie das Original; aus = Kopien ohne Handler.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.duplicateRow.shareEvents",
+      "x-parent": "designer.duplicateRow",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#736"
+    },
+    "DesignerDuplicateRowDefaultGap": {
+      "description": "Abstand zwischen den Kopien in Pixeln (bei 96 dpi), wenn die Auswahl keinen Nachbarn hat, an dem sich ein Abstand ablesen lässt.",
+      "type": "integer",
+      "default": 8,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "designer.duplicateRow.defaultGap",
+      "x-parent": "designer.duplicateRow",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#736"
+    },
+    "DesignerInsertSpace": {
+      "description": "Befehle „Platz einfügen …“ und „Platz entfernen …“ im Menü „Anordnen“ der Designer-Leiste: verschieben alle Steuerelemente ab der Ober- bzw. linken Kante der Auswahl um einen Betrag; wer die Linie schneidet, wird mit beiden Ankern länger.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.insertSpace",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#740"
+    },
+    "DesignerInsertSpaceGrowParent": {
+      "description": "Parent und Formular wachsen mit, wenn der Inhalt sonst nicht mehr hineinpasst, und schrumpfen beim Entfernen entsprechend; das setzt sich bis zum Formular fort.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.insertSpace.growParent",
+      "x-parent": "designer.insertSpace",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#740"
+    },
+    "DesignerFitContainer": {
+      "description": "Befehl „An Inhalt anpassen“ im Menü „Anordnen“ der Designer-Leiste: passt markierte Container (ohne Auswahl das Formular) an ihre Kinder an, wahlweise nur Breite, nur Höhe oder alle auf dieselbe Breite.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.fitContainer",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#742"
+    },
+    "DesignerFitContainerPadding": {
+      "description": "Innenrand rechts und unten in Pixeln (bei 96 dpi); Kinder nur mit akRight bzw. akBottom stehen danach so weit vom Rand.",
+      "type": "integer",
+      "default": 8,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "designer.fitContainer.padding",
+      "x-parent": "designer.fitContainer",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#742"
+    },
+    "DesignerFitContainerAlignTopLeft": {
+      "description": "Kinder vorher nach links oben rücken, sodass auch dort der Innenrand gilt; aus = der vorhandene Abstand links und oben bleibt.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.fitContainer.alignTopLeft",
+      "x-parent": "designer.fitContainer",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#742"
+    },
+    "DesignerNearAlignment": {
+      "description": "Befehle unter „Fast bündige Kanten“ im Menü „Anordnen“ der Designer-Leiste: zeigt Kanten und Textgrundlinien, die wenige Pixel neben der Flucht ihrer Nachbarn liegen, gleicht sie an und merkt Ausnahmen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.nearAlignment",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#746"
+    },
+    "DesignerNearAlignmentTolerance": {
+      "description": "Höchster Versatz in Pixeln, der als fast bündig gilt; 0 Pixel ist bündig, mehr als die Toleranz gilt als gewollt.",
+      "type": "integer",
+      "default": 3,
+      "minimum": 1,
+      "maximum": 10,
+      "x-key": "designer.nearAlignment.tolerance",
+      "x-parent": "designer.nearAlignment",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#746"
+    },
+    "DesignerNearAlignmentBaseline": {
+      "description": "Auch die Textgrundlinien von Beschriftungen, Eingabefeldern und Knöpfen vergleichen (aus der Schrift genähert).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.nearAlignment.baseline",
+      "x-parent": "designer.nearAlignment",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#746"
+    },
+    "DesignerNearAlignmentIgnoreClasses": {
+      "description": "Klassen, die nie verglichen werden, durch Komma getrennt (zum Beispiel TBevel,TShape); Steuerelemente mit Align werden immer übergangen.",
+      "type": "string",
+      "default": "TBevel,TShape",
+      "x-key": "designer.nearAlignment.ignoreClasses",
+      "x-parent": "designer.nearAlignment",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#746"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",
@@ -5055,7 +5457,12 @@
       "x-caption": "Minimap",
       "x-captionEn": "Minimap",
       "x-control": "Kontrollkästchen",
-      "x-issue": "#873"
+      "x-issue": "#873",
+      "x-keywords": [
+        "Übersichtskarte",
+        "Code map",
+        "Scrollbar"
+      ]
     },
     "MinimapRender": {
       "description": "Darstellung der Minimap: blocks (je Wort ein Farbbalken) oder characters (winzige Zeichen); Farben aus der Syntaxfärbung und dem Thema.",
@@ -6101,6 +6508,88 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#723"
     },
+    "SettingsSearch": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "settings.search",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "description": "Suchfeld über dem Baum der Optionsseite und Suche auf der Übersicht „Atlas“: findet Einstellungen über Beschriftung (deutsch und englisch), Schlüssel, Synonyme und Beschreibung; Enter oder Klick springt hin. Strg+F oder Strg+E setzt den Fokus ins Feld.",
+      "x-control": "Kontrollkästchen",
+      "x-keywords": [
+        "Suche",
+        "Search",
+        "Filter",
+        "Finden"
+      ],
+      "x-issue": "#1884"
+    },
+    "HelpEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Modul Hilfe (#1886): F1 auf einem Atlas-Befund (Editor, Fenster „Atlas-Prüfung“), auf einer Einstellung der Optionsseite und in einem Atlas-Fenster öffnet die passende Stelle der Atlas-Doku; überall sonst bleibt die Hilfe der IDE. Aus = F1 wie ohne Atlas.",
+      "x-key": "help.enabled",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-node": "",
+      "x-parent": "",
+      "x-module": "help",
+      "x-quickToggle": true,
+      "x-caption": "F1-Hilfe zu Atlas",
+      "x-captionEn": "F1 help for Atlas",
+      "x-keywords": [
+        "F1",
+        "Hilfe",
+        "Help",
+        "Doku",
+        "Documentation"
+      ],
+      "x-issue": "#1886"
+    },
+    "HelpSource": {
+      "type": "string",
+      "enum": [
+        "online",
+        "local"
+      ],
+      "default": "online",
+      "description": "Quelle der F1-Hilfe: die Doku auf GitHub zum installierten Versionstag (online) oder die mit Atlas installierten HTML-Seiten im Ordner Doku (local, ohne Netz; fehlen sie, gilt online). Sprache wie die IDE.",
+      "x-key": "help.source",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-parent": "help.enabled",
+      "x-caption": "Quelle der Hilfe",
+      "x-captionEn": "Help source",
+      "x-issue": "#1886"
+    },
+    "DiagnosticsEditionCheck": {
+      "type": "boolean",
+      "default": true,
+      "description": "Beim Start nachsehen, ob die IDE einen Kommandozeilen-Compiler hat (dcc32/dcc64 im Ordner bin der Installation; fehlt bei RAD Studio Starter und Community). Ohne ihn: Zeile im Protokoll, einmaliger Hinweis, Projektaufgaben mit dcc oder MSBuild melden den Grund statt zu scheitern; Builds für KI-Assistenten laufen ohnehin über die IDE. Aus = Verhalten wie vorher.",
+      "x-key": "diagnostics.editionCheck",
+      "x-area": "general",
+      "x-page": "Start und Updates",
+      "x-caption": "Kommandozeilen-Compiler prüfen",
+      "x-captionEn": "Check for a command-line compiler",
+      "x-keywords": [
+        "Edition",
+        "Starter",
+        "Community",
+        "dcc32",
+        "dcc64",
+        "MSBuild"
+      ],
+      "x-issue": "#1822"
+    },
+    "EditionNoticeShown": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "ui.editionNoticeShown",
+      "x-area": "general",
+      "x-page": "Start und Updates",
+      "x-state": true,
+      "x-issue": "#1822"
+    },
     "SettingsBackupBeforeImport": {
       "type": "boolean",
       "default": true,
@@ -6140,7 +6629,14 @@
       "x-quickToggle": true,
       "x-caption": "Issue-Tracker und Build-Server",
       "x-captionEn": "Issue tracker and build server",
-      "x-issue": "#1454"
+      "x-issue": "#1454",
+      "x-keywords": [
+        "GitHub",
+        "GitLab",
+        "YouTrack",
+        "Jira",
+        "Ticket"
+      ]
     },
     "IssuesTracker": {
       "type": "string",
@@ -6439,7 +6935,13 @@
       "x-quickToggle": true,
       "x-caption": "Versionsverwaltung",
       "x-captionEn": "Version control",
-      "x-issue": "#1891"
+      "x-issue": "#1891",
+      "x-keywords": [
+        "Git",
+        "SVN",
+        "Subversion",
+        "VCS"
+      ]
     },
     "VcsProvider": {
       "type": "string",

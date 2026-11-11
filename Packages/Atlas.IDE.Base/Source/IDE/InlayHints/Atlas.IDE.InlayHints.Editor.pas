@@ -195,7 +195,6 @@ uses
   System.Math,
   Vcl.Forms,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Settings.Plugin,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,

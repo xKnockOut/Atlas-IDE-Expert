@@ -338,7 +338,6 @@ implementation
 uses
   System.UITypes,
   System.Math,
-  Atlas.Core.Tracker.Queries,
   System.DateUtils,
   Vcl.Themes,
   Atlas.Core.Diagnostics.MainThread,

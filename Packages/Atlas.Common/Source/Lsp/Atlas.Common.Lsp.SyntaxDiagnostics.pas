@@ -37,7 +37,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Baseline,

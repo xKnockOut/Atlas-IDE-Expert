@@ -69,7 +69,6 @@ type
 implementation
 
 uses
-  Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Preview,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Tracker.CommentEditor;

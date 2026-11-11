@@ -34,18 +34,23 @@
 // Abschnitte der Module (#1455, ADR 0017 Entscheidung 3): Jeder IAtlasSettingsSectionProvider der Registry liefert
 // der Seite einen eigenen Abschnitt, den sie in den Reiter seines Bereichs baut (Bausteine über
 // IAtlasSettingsSectionHost). Geht ein Modul, schließt die Seite seinen Abschnitt; seine Werte bleiben erhalten.
+// Suchfeld über dem Baum (#1884, settings.search): Treffer dieses Knotens zeigt die Seite selbst (Reveal), Treffer
+// anderer Knoten öffnet OnOpenSetting (die IDE-Schicht springt im offenen Dialog zum Knoten).
 
 interface
 
 uses
   System.Classes,
+  System.SysUtils,
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.StdCtrls,
   Vcl.Forms,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.Search,
   Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.Settings.Page.Tree,
+  Atlas.UI.Settings.Page.Search,
   Atlas.UI.Style.Symbol;
 
 type
@@ -59,11 +64,13 @@ type
     FExperimentalBanner: TWinControl;
     FFilterRow: TWinControl;
     FFilter: TAtlasChoiceBox;
+    FOnOpenSetting: TProc<string, string>;
     procedure ApplyReveal(const AKey: string);
     /// <summary>AControl oder, wenn ein Hauptschalter es sperrt, dieser Schalter.</summary>
     function RevealTarget(AControl: TControl): TControl;
     procedure ExperimentalAllowClick(Sender: TObject);
     procedure FilterChange(Sender: TObject);
+    procedure SearchOpen(AHit: TAtlasSettingHit);
     /// <summary>Kopf mit Symbol (#751) und Titel.</summary>
     procedure AddHeader;
     /// <summary>Kopfzeile mit Hinweis und Knopf „Erlauben“, solange experimental.enabled aus ist (#834).</summary>
@@ -97,6 +104,11 @@ type
     procedure SetTitle(const ACaption: string);
     property ExperimentalBanner: TWinControl read FExperimentalBanner;
     property Filter: TAtlasChoiceBox read FFilter;
+    /// <summary>Treffer der Suche in einem anderen Knoten: Einstellung (Name) und Modulschalter ('' = Base).
+    /// </summary>
+    property OnOpenSetting: TProc<string, string> read FOnOpenSetting write FOnOpenSetting;
+    /// <summary>Suchfeld über dem Baum (#1884).</summary>
+    property Search: TAtlasSettingsSearchBox read FSearch;
     property Symbol: TAtlasSymbolImage read FSymbol;
   end;
 
@@ -143,6 +155,26 @@ begin
   AddFilterRow;
   BuildNodes;
   UpdateLocks;
+  // Suche über die Einstellungen (#1884): Beschriftungen der Elemente und aktuelle Werte von der Seite.
+  FSearch.OnLabel :=
+    function(const AName: string): string
+    begin
+      Result := FMarks.TextOfName(AName);
+    end;
+  FSearch.OnSettings := CurrentSettings;
+  FSearch.OnOpen := SearchOpen;
+end;
+
+procedure TAtlasSettingsPage.SearchOpen(AHit: TAtlasSettingHit);
+begin
+  if SameText(AHit.Module, Scope.Switch) and Reveal(AHit.Name) then
+  begin
+    Exit;
+  end;
+  if Assigned(FOnOpenSetting) then
+  begin
+    FOnOpenSetting(AHit.Name, AHit.Module);
+  end;
 end;
 
 procedure TAtlasSettingsPage.AddHeader;
@@ -488,6 +520,7 @@ var
   mPart: TAtlasSettingsPagePart;
 begin
   FWidths := ASettings;
+  FSearch.SetAvailable(ASettings.SettingsSearch);
   FBindings.Load(TAtlasMemorySettingsStore.FromSettings(ASettings));
   for mPart in FParts do
   begin
