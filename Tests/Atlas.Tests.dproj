@@ -1995,6 +1995,12 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.StepFilterFrame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Components.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Components.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FormModel.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.FormModel.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Similar.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.SelectionSets.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.SelectionSets.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Similar.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Bar.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.Bar.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Search.pas"/>
