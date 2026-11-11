@@ -146,6 +146,9 @@ type
     cDesignerScopeParent = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeParent;
     cDesignerSetsLocal = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsLocal;
     cDesignerSetsShared = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsShared;
+    cFitSourceCaption = Atlas.Core.Settings.Plugin.Editor.cFitSourceCaption;
+    cFitSourceText = Atlas.Core.Settings.Plugin.Editor.cFitSourceText;
+    cFitSourceItems = Atlas.Core.Settings.Plugin.Editor.cFitSourceItems;
     cMinNotificationEntries = Atlas.Core.Settings.Plugin.General.cMinNotificationEntries;
     cMaxNotificationEntries = Atlas.Core.Settings.Plugin.General.cMaxNotificationEntries;
     cDefaultTrendSeries = Atlas.Core.Settings.Plugin.Welcome.cDefaultTrendSeries;
@@ -618,6 +621,13 @@ type
       write FEditorView.DesignerSpatialNavigation;
     property DesignerSpatialCrossContainers: Boolean read FEditorView.DesignerSpatialCrossContainers
       write FEditorView.DesignerSpatialCrossContainers;
+    property DesignerFitToText: Boolean read FEditorView.DesignerFitToText write FEditorView.DesignerFitToText;
+    property DesignerFitToTextMinWidth: Integer read FEditorView.DesignerFitToTextMinWidth
+      write FEditorView.DesignerFitToTextMinWidth;
+    property DesignerFitToTextPadding: Integer read FEditorView.DesignerFitToTextPadding
+      write FEditorView.DesignerFitToTextPadding;
+    property DesignerFitToTextSources: string read FEditorView.DesignerFitToTextSources
+      write FEditorView.DesignerFitToTextSources;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick

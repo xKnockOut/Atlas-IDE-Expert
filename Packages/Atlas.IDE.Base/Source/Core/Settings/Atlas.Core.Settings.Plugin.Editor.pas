@@ -70,6 +70,12 @@ const
   /// <summary>Werte von designer.selectionSets.storage (#739).</summary>
   cDesignerSetsLocal = 'local';
   cDesignerSetsShared = 'shared';
+  /// <summary>Quellen von designer.fitToText.sources (#730).</summary>
+  cFitSourceCaption = 'caption';
+  cFitSourceText = 'text';
+  cFitSourceItems = 'items';
+  cMaxFitMinWidth = 2000;
+  cMaxFitPadding = 200;
 
 type
   /// <summary>Plugin-Einstellungen: Verhalten beim Tippen und Bearbeiten im Editor.</summary>
@@ -506,6 +512,14 @@ type
     /// <summary>Am Rand in benachbarte Container weiter (#745, designer.spatialNavigation.crossContainers).
     /// </summary>
     DesignerSpatialCrossContainers: Boolean;
+    /// <summary>Befehl „Breite nach Text“ (#730, designer.fitToText).</summary>
+    DesignerFitToText: Boolean;
+    /// <summary>Mindestbreite bei 96 dpi (#730, designer.fitToText.minWidth).</summary>
+    DesignerFitToTextMinWidth: Integer;
+    /// <summary>Innenabstand links und rechts zusammen (#730, designer.fitToText.padding).</summary>
+    DesignerFitToTextPadding: Integer;
+    /// <summary>Textquellen caption, text, items durch Komma (#730, designer.fitToText.sources).</summary>
+    DesignerFitToTextSources: string;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -1016,6 +1030,10 @@ begin
   Result.DesignerSelectionSetsSaveKey := 24659;
   Result.DesignerSpatialNavigation := True;
   Result.DesignerSpatialCrossContainers := True;
+  Result.DesignerFitToText := True;
+  Result.DesignerFitToTextMinWidth := 75;
+  Result.DesignerFitToTextPadding := 16;
+  Result.DesignerFitToTextSources := cFitSourceCaption;
   Result.Minimap := False;
   Result.MinimapRender := 'characters';
   Result.MinimapWidth := 120;
@@ -1054,6 +1072,8 @@ begin
   DesignerSelectScope := Choice(DesignerSelectScope, [cDesignerScopeForm, cDesignerScopeParent]);
   DesignerSelectionSetsStorage := Choice(DesignerSelectionSetsStorage, [cDesignerSetsLocal, cDesignerSetsShared]);
   DesignerSelectionSetsSaveKey := EnsureRange(DesignerSelectionSetsSaveKey, 0, $FFFF);
+  DesignerFitToTextMinWidth := EnsureRange(DesignerFitToTextMinWidth, 0, cMaxFitMinWidth);
+  DesignerFitToTextPadding := EnsureRange(DesignerFitToTextPadding, 0, cMaxFitPadding);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -1079,6 +1099,10 @@ begin
   AIo.Number('DesignerSelectionSetsSaveKey', DesignerSelectionSetsSaveKey);
   AIo.Flag('DesignerSpatialNavigation', DesignerSpatialNavigation);
   AIo.Flag('DesignerSpatialCrossContainers', DesignerSpatialCrossContainers);
+  AIo.Flag('DesignerFitToText', DesignerFitToText);
+  AIo.Number('DesignerFitToTextMinWidth', DesignerFitToTextMinWidth);
+  AIo.Number('DesignerFitToTextPadding', DesignerFitToTextPadding);
+  AIo.Text('DesignerFitToTextSources', DesignerFitToTextSources);
   AIo.Flag('Minimap', Minimap);
   AIo.Text('MinimapRender', MinimapRender);
   AIo.Number('MinimapWidth', MinimapWidth);

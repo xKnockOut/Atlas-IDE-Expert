@@ -30,6 +30,8 @@ type
     procedure SelectionSetsRoundTrip;
     [Test]
     procedure SpatialNavigationRoundTrip;
+    [Test]
+    procedure FitToTextRoundTrip;
   end;
 
 implementation
@@ -166,6 +168,30 @@ begin
     Assert.IsFalse(mSaved.DesignerSpatialCrossContainers);
     mPage.LoadFrom(mSaved);
     Assert.IsFalse(CheckOf(mPage, 'DesignerSpatialNavigation').Checked);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.FitToTextRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerFitToText').Checked, 'Vorgabe an');
+    Assert.AreEqual('75', EditOf(mPage, 'DesignerFitToTextMinWidth').Text);
+    Assert.AreEqual('caption', EditOf(mPage, 'DesignerFitToTextSources').Text);
+    CheckOf(mPage, 'DesignerFitToText').Checked := False;
+    EditOf(mPage, 'DesignerFitToTextPadding').Text := '20';
+    EditOf(mPage, 'DesignerFitToTextSources').Text := 'caption,items';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerFitToText, 'abschaltbar');
+    Assert.AreEqual(20, mSaved.DesignerFitToTextPadding);
+    Assert.AreEqual('caption,items', mSaved.DesignerFitToTextSources);
   finally
     mPage.Free;
   end;

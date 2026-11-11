@@ -33,7 +33,9 @@ type
     DesignerSetsDefaultName, DesignerSetsSaveTitle, DesignerSetsSavePrompt, DesignerSetsSaved,
     SettingsDesignerSelectionSets, SettingsDesignerSelectionSetsShortcuts, SettingsDesignerSelectionSetsStorage,
     SettingsDesignerSetsLocal, SettingsDesignerSetsShared, SettingsDesignerSelectionSetsSaveKey, DesignerSetsKind,
-    SettingsDesignerSpatialNavigation, SettingsDesignerSpatialCross);
+    SettingsDesignerSpatialNavigation, SettingsDesignerSpatialCross, DesignerArrangeHint, DesignerFitToText,
+    DesignerFitNoText, DesignerFitDone, DesignerFitSkipped, SettingsDesignerFitToText, SettingsDesignerFitMinWidth,
+    SettingsDesignerFitPadding, SettingsDesignerFitSources);
 
   TAtlasDesignerStrings = class
   public
@@ -147,7 +149,16 @@ const
      'Taste „Auswahl speichern …“',
      'Auswahlsätze',
      'Räumliche Navigation mit Alt+Pfeil',
-     'Am Rand in benachbarte Container weiter'),
+     'Am Rand in benachbarte Container weiter',
+     'Anordnen (Menü)',
+     'Breite nach Text',
+     'Keine markierte Komponente mit Text.',
+     'Breite nach Text: %d px für %d Komponenten.',
+     'Breite unverändert (AutoSize oder Align): %s',
+     'Befehl „Breite nach Text“',
+     'Mindestbreite (px)',
+     'Innenabstand links und rechts (px)',
+     'Textquellen (caption, text, items)'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -245,7 +256,16 @@ const
      'Key for “Save selection …”',
      'Selection sets',
      'Spatial navigation with Alt+Arrow',
-     'Continue into neighbouring containers at the edge'));
+     'Continue into neighbouring containers at the edge',
+     'Arrange (menu)',
+     'Width from text',
+     'No selected component with text.',
+     'Width from text: %d px for %d components.',
+     'Width unchanged (AutoSize or Align): %s',
+     '“Width from text” command',
+     'Minimum width (px)',
+     'Padding left and right (px)',
+     'Text sources (caption, text, items)'));
 
 { TAtlasDesignerStrings }
 

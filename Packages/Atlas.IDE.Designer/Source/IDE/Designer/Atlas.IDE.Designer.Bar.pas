@@ -26,7 +26,8 @@
 // - Gleiche auswählen (#738, designer.selectSimilar): Menü mit Trefferzahlen
 //   (TAtlasIdeDesignerSelect); Pfeil und Symbol öffnen es. Darin die
 //   Auswahlsätze (#739, designer.selectionSets) samt ihren Tasten; dazu die
-//   räumliche Navigation mit Alt+Pfeil (#745, designer.spatialNavigation).
+//   räumliche Navigation mit Alt+Pfeil (#745, designer.spatialNavigation)
+//   und das Menü „Anordnen“ (#730 ff.), alles über TAtlasIdeDesignerCommands.
 // - Eigene Sicherung TAtlasFeature.DesignerBar. Nur im Hauptthread.
 
 interface
@@ -77,7 +78,7 @@ uses
   Atlas.UI.Designer.Search,
   Atlas.UI.Designer.TabOverlay,
   Atlas.IDE.Designer.Access,
-  Atlas.IDE.Designer.Select,
+  Atlas.IDE.Designer.Commands,
   Atlas.IDE.Designer.SearchItems,
   Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorStyle,
@@ -92,7 +93,6 @@ const
   cIdParent = 'parent';
   cIdTabOrder = 'tabOrder';
   cIdAlign = 'align';
-  cIdSelect = 'selectSimilar';
   /// <summary>Aktion der IDE hinter Strg+H im Designer.</summary>
   cNonVisualAction = 'ToggleNonVisualComponentVisibilityCommand';
 
@@ -117,7 +117,7 @@ type
     FTabFile: string;
     FTabClicks: TAtlasTabClicks;
     FAlignMenu: TPopupMenu;
-    FSelect: TAtlasIdeDesignerSelect;
+    FCommands: TAtlasIdeDesignerCommands;
     FLastAlign: TAtlasAlignKind;
     FActionIndex: Integer;
     FActionLogged: Boolean;
@@ -477,7 +477,7 @@ begin
     end);
   FHost.ShowIn := TAtlasEditorBarView.Designer;
   FAlignMenu := TPopupMenu.Create(nil);
-  FSelect := TAtlasIdeDesignerSelect.Create(
+  FCommands := TAtlasIdeDesignerCommands.Create(
     procedure(AText: string)
     begin
       Say(AText);
@@ -497,7 +497,7 @@ begin
   CloseSearch;
   FOverlay.Free;
   FAlignMenu.Free;
-  FSelect.Free;
+  FCommands.Free;
   FHost.Free;
   FTabClicks.Free;
   inherited Destroy;
@@ -529,7 +529,7 @@ begin
   begin
     FOverlay.ApplyColors(TAtlasIdeStyle.Colors);
   end;
-  FSelect.ApplyTheme;
+  FCommands.ApplyTheme;
 end;
 
 /// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
@@ -555,7 +555,7 @@ begin
     begin
       mId := AId;
       // Knöpfe nur mit Menü: Auch ein Klick auf das Symbol öffnet es, unter dem Knopf.
-      if SameText(mId, cIdSelect) then
+      if FCommands.Handles(mId) then
       begin
         mPoint := mBar.ClientToScreen(Point(mBar.ButtonRect(mId).Left, mBar.ButtonRect(mId).Bottom));
         Later(
@@ -681,19 +681,12 @@ begin
   end;
 end;
 
-/// <summary>Knöpfe mit Menü für die Auswahl: Gleiche auswählen, Ausrichten.</summary>
+/// <summary>Knöpfe mit Menü für die Auswahl: Gleiche auswählen, Anordnen, Ausrichten.</summary>
 function TDesignerBarState.ToolButtons(const ASettings: TAtlasPluginSettings): TArray<TAtlasDesignerButton>;
 var
   mButton: TAtlasDesignerButton;
 begin
-  Result := nil;
-  if ASettings.DesignerSelectSimilar or ASettings.DesignerSelectionSets then
-  begin
-    mButton := TAtlasDesignerButton.Create(cIdSelect, TAtlasToolbarIcon.SelectSimilar,
-      TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSelectHint));
-    mButton.Menu := True;
-    Result := Result + [mButton];
-  end;
+  Result := FCommands.Buttons(ASettings);
   if ASettings.DesignerAlign then
   begin
     mButton := TAtlasDesignerButton.Create(cIdAlign, TAtlasToolbarIcon.AlignControls,
@@ -738,7 +731,7 @@ begin
   begin
     TAtlasKeyHook.Remove(FKeyClient);
   end;
-  FSelect.UpdateKeys(FHost.Guard and TAtlasIdeSettings.Current.EditorDesignerBar and TAtlasDesignerAccess.Shown);
+  FCommands.UpdateKeys(FHost.Guard and TAtlasIdeSettings.Current.EditorDesignerBar and TAtlasDesignerAccess.Shown);
 end;
 
 procedure TDesignerBarState.Tick(Sender: TObject);
@@ -803,9 +796,9 @@ var
   mItem: TMenuItem;
   mCount: Integer;
 begin
-  if SameText(AId, cIdSelect) then
+  if FCommands.Handles(AId) then
   begin
-    FSelect.Popup(APoint);
+    FCommands.Popup(AId, APoint);
     Exit;
   end;
   if not SameText(AId, cIdAlign) or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
