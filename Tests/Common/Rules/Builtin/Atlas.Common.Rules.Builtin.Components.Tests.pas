@@ -485,6 +485,12 @@ begin
   Assert.AreEqual(BoundsUnit('Vcl.Forms, Vcl.StdCtrls',
     '  mEdit.Width := 240;'#10'  Left := mEdit.Left + 8;'#10'  mEdit.Margins.Top := mEdit.ScaleValue(7);'),
     ApplyFix(Source, Findings[2].Fixes[0]));
+  // Ein Aufruf als Ziel liefe doppelt: Self skaliert. Min und Max reichen den Pixelwert durch.
+  Source := BoundsUnit('Vcl.Forms, Vcl.StdCtrls', '  NewEdit(Self).Top := Max(80, Width);');
+  Findings := TRuleAssert.Findings(TControlFixedBoundsRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(BoundsUnit('Vcl.Forms, Vcl.StdCtrls', '  NewEdit(Self).Top := Max(ScaleValue(80), Width);'),
+    ApplyFix(Source, Findings[0].Fixes[0]));
 end;
 
 procedure TComponentRulesTests.FixedBoundsSilentCases;
@@ -493,8 +499,9 @@ begin
     '  mEdit.Width := ScaleValue(240);'#10'  mEdit.Top := 0;'#10'  mEdit.Left := 1;'#10 +
     '  Canvas.Pen.Width := 2;'#10'  mEdit.Height := MulDiv(20, CurrentPPI, 96);'#10'  mEdit.Width := Width div 2;' +
     #10'  mEdit.Font.Size := 12;'#10'  mEdit.Font.Height := 14;'#10 +
-    // Reihenfolge für Align, kein Pixelwert.
-    '  mEdit.Top := 30000;'));
+    // Reihenfolge für Align, kein Pixelwert; Zeilenzahl mal Höhe; Argument eines eigenen Helfers.
+    '  mEdit.Top := 30000;'#10'  mEdit.Height := (Length(Caption) + 2) * ScaleValue(20);'#10 +
+    '  mEdit.Top := AddRow(30);'));
   // Ohne VCL keine Steuerelemente.
   TRuleAssert.Silent(TControlFixedBoundsRule.Create, BoundsUnit('System.Types', '  mEdit.Width := 240;'));
 end;

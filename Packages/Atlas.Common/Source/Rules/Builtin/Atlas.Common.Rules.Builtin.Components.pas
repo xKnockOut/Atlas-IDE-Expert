@@ -870,12 +870,26 @@ begin
   end;
 end;
 
-/// <summary>Zahl unter cAlignOrder?</summary>
-function IsBoundsLiteral(ANode: TSyntaxNode): Boolean;
+/// <summary>Pixelwert der Zuweisung AAssign? Nicht bei Zahlen ab cAlignOrder, nicht in einem Produkt oder
+/// Quotienten (Zeilenzahl mal Zeilenhöhe) und nicht als Argument eines Aufrufs außer Min und Max (AddPanel(30)
+/// legt selbst fest, was die Zahl ist).</summary>
+function IsBoundsLiteral(ANode, AAssign: TSyntaxNode): Boolean;
 var
   mValue: Integer;
+  mParent: TSyntaxNode;
 begin
   Result := TryStrToInt(ANode.Name, mValue) and (mValue < cAlignOrder);
+  mParent := ANode.Parent;
+  while Result and (mParent <> nil) and (mParent <> AAssign) do
+  begin
+    case mParent.Kind of
+      TSyntaxKind.BinaryExpr:
+        Result := not IsIn(mParent.Name, ['*', '/', 'div', 'mod', 'shl', 'shr']);
+      TSyntaxKind.Call:
+        Result := IsIn(mParent.Name, ['Max', 'Min']);
+    end;
+    mParent := mParent.Parent;
+  end;
 end;
 
 /// <summary>Aufruf, der AValue für das Ziel der Zuweisung AAssign skaliert: ScaleValue des Steuerelements, dem
@@ -894,6 +908,11 @@ begin
   if (mOwner.Kind = TSyntaxKind.MemberAccess) and (mOwner.ChildCount > 0) and IsIn(mOwner.Name, cControlParts) then
   begin
     mOwner := mOwner.Children[0];
+  end;
+  // Ein Aufruf als Ziel (NewLabel(…).Top) würde doppelt ausgeführt: dann über Self.
+  if mOwner.Kind = TSyntaxKind.Call then
+  begin
+    Exit('ScaleValue(' + AValue + ')');
   end;
   Result := Copy(AContext.Text, mOwner.StartOffset + 1, mOwner.EndOffset - mOwner.StartOffset) + '.ScaleValue(' +
     AValue + ')';
@@ -961,7 +980,7 @@ begin
       CollectPixels(mAssign.Children[1], mLiterals, mHelpers);
       for mIndex := mLiterals.Count - 1 downto 0 do
       begin
-        if not IsBoundsLiteral(mLiterals[mIndex]) then
+        if not IsBoundsLiteral(mLiterals[mIndex], mAssign) then
         begin
           mLiterals.Delete(mIndex);
         end;
