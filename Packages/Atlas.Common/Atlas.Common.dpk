@@ -287,6 +287,7 @@ contains
   Atlas.Common.Editing.TypeComments in 'Source\Editing\Atlas.Common.Editing.TypeComments.pas',
   Atlas.Common.Editing.ClassBodies in 'Source\Editing\Atlas.Common.Editing.ClassBodies.pas',
   Atlas.Common.Lsp.OverrideMarks in 'Source\Lsp\Atlas.Common.Lsp.OverrideMarks.pas',
+  Atlas.Common.Lsp.InterfaceMethods in 'Source\Lsp\Atlas.Common.Lsp.InterfaceMethods.pas',
   Atlas.Common.Lsp.Baseline in 'Source\Lsp\Atlas.Common.Lsp.Baseline.pas',
   Atlas.Common.Lsp.BulkFix in 'Source\Lsp\Atlas.Common.Lsp.BulkFix.pas',
   Atlas.Common.Lsp.CompilerBaseline in 'Source\Lsp\Atlas.Common.Lsp.CompilerBaseline.pas',

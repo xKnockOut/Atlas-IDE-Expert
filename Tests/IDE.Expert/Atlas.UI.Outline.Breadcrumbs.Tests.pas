@@ -36,6 +36,8 @@ type
     [Test]
     procedure DropsLeadingCrumbsWhenNarrow;
     [Test]
+    procedure DropsRankedCrumbsFirst;
+    [Test]
     procedure SameCrumbsKeepSelection;
     [Test]
     procedure SeparatorOpensChildren;
@@ -249,6 +251,36 @@ begin
   FForm.Width := 1200;
   FBar.SetCrumbs(Path);
   Assert.AreEqual(0, FBar.FirstShown);
+end;
+
+procedure TAtlasBreadcrumbBarTests.DropsRankedCrumbsFirst;
+var
+  Ranked: TAtlasCrumbs;
+  Key: Word;
+begin
+  // Ein langes Glied mit Rang (Rahmen im Rumpf, #1769) fällt vor Unit und Typ weg.
+  Ranked := Path;
+  Insert(Crumb('case EinSehrLangerAusdruckMitVielenZeichenUndNochMehrZeichen of', 'kw', -1, nil), Ranked, 3);
+  Ranked[3].Drop := 2;
+  FForm.Width := 520;
+  FBar.SetCrumbs(Ranked);
+  Assert.AreEqual(0, FBar.FirstShown, 'vorn nichts gekürzt');
+  Assert.IsFalse(FBar.Shown(3));
+  Assert.IsTrue(FBar.CrumbRect(3).IsEmpty);
+  Assert.IsFalse(FBar.CrumbRect(0).IsEmpty);
+  Assert.IsFalse(FBar.CrumbRect(4).IsEmpty, 'letztes Glied bleibt');
+  FBar.Repaint;
+  // Die Tastatur überspringt das weggelassene Glied.
+  Key := VK_LEFT;
+  TBarAccess(FBar).KeyDown(Key, []);
+  Assert.AreEqual(2, FBar.Selected);
+  Key := VK_RIGHT;
+  TBarAccess(FBar).KeyDown(Key, []);
+  Assert.AreEqual(4, FBar.Selected);
+  FForm.Width := 1600;
+  FBar.SetCrumbs(Path);
+  FBar.SetCrumbs(Ranked);
+  Assert.IsTrue(FBar.Shown(3), 'breit genug');
 end;
 
 procedure TAtlasBreadcrumbBarTests.SameCrumbsKeepSelection;

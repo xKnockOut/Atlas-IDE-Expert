@@ -617,6 +617,7 @@ begin
   FTip.ProblemActions := TAtlasIdeSettings.Current.HoverProblemActions;
   FTip.HideCompilerCode := not TAtlasIdeSettings.Current.ProblemsShowCompilerCode;
   FTip.MembersMaxLines := TAtlasIdeSettings.Current.HoverMembersMaxLines;
+  FTip.SignatureParams := TAtlasIdeSettings.Current.HoverSignatureParams;
   FTip.ShowContent(CurrentView, FWordRect);
   TAtlasKeyHook.Add(FKeys);
   FShownKey := FKey;

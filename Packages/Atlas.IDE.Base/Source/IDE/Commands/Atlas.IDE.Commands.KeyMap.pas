@@ -161,6 +161,8 @@ const
     // Komponenten suchen (#1442): keine Bindung, TAtlasKeyHook nur im Designer.
     0,
     // Datei jetzt prüfen (#1744): Editorbefehl.
+    3,
+    // Neue Zeile am Ende des Abschnitts (#1768): Editorbefehl.
     3);
 
 type

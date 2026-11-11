@@ -2859,6 +2859,16 @@
       "x-parent": "editor.hoverTooltip",
       "x-issue": "#1841"
     },
+    "HoverSignatureParams": {
+      "type": "boolean",
+      "default": true,
+      "description": "PARAMETER (Name, Typ, Text aus der XMLDoc) und RÜCKGABE einer Routine stehen im Hover immer untereinander unter der Deklaration, auch ohne XMLDoc und im zugeklappten Zustand, wie bei Help Insight. Aus: nur mit XMLDoc und nach „Mehr anzeigen“.",
+      "x-key": "hover.signatureParams",
+      "x-area": "editor",
+      "x-page": "Hints",
+      "x-parent": "editor.hoverTooltip",
+      "x-issue": "#1919"
+    },
     "InlineDiagnostics": {
       "type": "string",
       "enum": [
@@ -4497,6 +4507,146 @@
       "x-parent": "editor.breadcrumbs",
       "x-issue": "#590"
     },
+    "BreadcrumbsVisibility": {
+      "description": "Im Deklarationsteil einer Klasse, eines Records, Objekts oder Helfers den Sichtbarkeitsabschnitt am Cursor (strict private, private, strict protected, protected, public, published) als eigenes Glied hinter dem Typ zeigen. Sein Menü listet alle Abschnitte des Typs und springt zum Schlüsselwort; vor dem ersten Schlüsselwort steht die implizite Sichtbarkeit kursiv.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsVisibility",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1759"
+    },
+    "BreadcrumbsMemberBlocks": {
+      "description": "Im Deklarationsteil eines Typs den Unterblock am Cursor (const, type, class var) als eigenes Glied hinter dem Sichtbarkeitsabschnitt zeigen. Sein Menü listet die Unterblöcke des Abschnitts und springt zum Schlüsselwort; ein ausdrückliches var beendet den Unterblock.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsMemberBlocks",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1767"
+    },
+    "BreadcrumbsVisibilityMark": {
+      "description": "Im Rumpf einer Methode vor dem Methodenglied die Sichtbarkeitsmarke der Deklaration zeigen (− private, # protected, + public, ◆ published); der Hinweis nennt die genaue Sichtbarkeit und die Zeile der Deklaration. Lokale Routinen, Routinen ohne Klasse und Methoden ohne Deklaration in der Unit bekommen keine Marke.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsVisibilityMark",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1765"
+    },
+    "BreadcrumbsDeclarationBlocks": {
+      "description": "Auf Unit-Ebene den Teil der Unit (interface, implementation) und den Deklarationsblock am Cursor (type, const, var, resourcestring, threadvar, label, exports) als Glieder vor dem Pfad zeigen. Das Menü des Blocks listet alle Blöcke der Unit nach Teil und Zeile und springt zum Schlüsselwort; lokale Blöcke in Routinen zählen nicht.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsDeclarationBlocks",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1766"
+    },
+    "BreadcrumbsConditionals": {
+      "description": "Den Bedingungszweig am Cursor ({$IFDEF X}, {$IFNDEF X}, {$IF …}, im Gegenzweig {$ELSE X}, {$ELSEIF …}) als Glied hinter dem Pfad zeigen, bei verschachtelten Blöcken eines je Ebene, außen zuerst. Das Menü springt zu den Teilen des Blocks (IF, ELSE, ENDIF); ob der Zweig aktiv ist, entscheidet die Leiste nicht.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsConditionals",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1763"
+    },
+    "BreadcrumbsRegions": {
+      "description": "Die innerste Region ({$REGION 'Name'} … {$ENDREGION}) um den Cursor als Glied hinter Unit bzw. Abschnitt zeigen. Das Menü listet alle Regionen der Unit in Quelltextreihenfolge, verschachtelte eingerückt, mit Zeile; eine Region ohne Namen heißt „Region (Z. n)“.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsRegions",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1764"
+    },
+    "BreadcrumbsStatements": {
+      "description": "Im Methodenrumpf try, except, finally und den case-Zweig um den Cursor als Glieder hinter der Methode zeigen (etwa case Art of › akFirma), höchstens die innersten drei; if, for, while und with nicht. Das Menü springt zu den Teilen des try-Blocks bzw. zu allen Zweigen des case einschließlich else.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "editor.breadcrumbsStatements",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1769"
+    },
+    "BreadcrumbsSectionCounts": {
+      "description": "Im Menü des Sichtbarkeitsglieds je Abschnitt die Marke der Gliederung (−, #, +, ◆) und die Zahl der Mitglieder zeigen, etwa „− private · 7 Mitglieder · Zeile 27“.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsSectionCounts",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1768"
+    },
+    "BreadcrumbsSectionAppend": {
+      "description": "Im Menü des Sichtbarkeitsglieds je Abschnitt „Neue Zeile am Ende von …“: fügt hinter dem letzten Mitglied des Abschnitts eine leere, wie die Mitglieder eingerückte Zeile ein und setzt den Cursor hinein; Kommentare und Leerzeilen am Abschnittsende bleiben darunter, Strg+Z nimmt den Schritt ganz zurück. Auch als Befehl „Neue Zeile am Ende des Abschnitts“ in der Befehlspalette und über keys.sectionAppend (Abschnitt am Cursor).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsSectionAppend",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1768"
+    },
+    "BreadcrumbsSectionCreate": {
+      "description": "Im Menü des Sichtbarkeitsglieds je fehlendem Abschnitt „Abschnitt anlegen: …“: setzt das Schlüsselwort an die Stelle der üblichen Reihenfolge (strict private, private, strict protected, protected, public, published) mit einer neuen, eingerückten Zeile darunter. Records bieten nur strict private, private und public an.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsSectionCreate",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1768"
+    },
+    "BreadcrumbsContextMenu": {
+      "description": "Rechtsklick (oder Menütaste, Umschalt+F10) auf ein Glied der Brotkrumenleiste öffnet ein Menü: Namen kopieren, mit Unit kopieren, mit Signatur kopieren (Routinen), Pfad der Leiste kopieren, Komponente im Designer zeigen (Komponentenfelder und Ereignisbehandler), Verwendungen suchen und Umbenennen; am Unit-Glied Unit-Namen und Dateipfad kopieren.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsContextMenu",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1786"
+    },
+    "BreadcrumbsOverloads": {
+      "description": "Hat eine Routine Überladungen im selben Typ bzw. in derselben Unit, trägt ihr Glied einen Zähler in Quelltextreihenfolge, etwa „Laden (2/3)“. Klick auf den Zähler (oder Umschalt+↓ mit Fokus) öffnet „Überladungen von Laden“ mit allen Überladungen samt Parametern und Zeile; Enter springt zur Implementierung, Umschalt+Enter zur Deklaration. Im Geschwistermenü stehen Überladungen ebenfalls mit Parametern; lange Listen sind mit „…“ gekürzt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsOverloads",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1784"
+    },
+    "BreadcrumbsInterfaces": {
+      "description": "Erfüllt eine Methode Interface-Methoden, trägt ihr Glied ganz rechts die Marke „[IKunde]“, bei mehreren „[IKunde +1]“. Der Hinweis nennt je Interface-Methode Unit und Zeile; Klick auf die Marke (oder Alt+↓ mit Fokus) öffnet „Erfüllt“ mit allen Interface-Methoden, Enter springt zur Deklaration im Interface, auch in anderen Units. Zuordnungen wie procedure IKunde.Speichern = Sichern und vererbte Interfaces zählen mit. Der Server liefert die Angaben mit der Gliederung nach einer Tipppause, nicht bei jeder Caret-Bewegung.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsInterfaces",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1785"
+    },
+    "BreadcrumbsMetrics": {
+      "description": "Überfährt die Maus ein Methoden- oder Typglied, zeigt nach der Tooltip-Verzögerung eine Karte mit Kopfzeile und Kennzahlen: bei Methoden Zeilen, zyklomatische Komplexität, Verschachtelungstiefe und Parameter, bei Typen Zeilen, Mitglieder und Vererbungstiefe. Werte über der Grenze aus atlas.json stehen gelb mit der Grenze, etwa „86 (Grenze 60)“. Strg+I mit Fokus auf der Leiste zeigt dieselbe Karte. Quelle sind dieselben Metriken wie die Metrik-Linse; fehlen sie, steht nur die Kopfzeile und „Kennzahlen noch nicht verfügbar“. Aus: nur der bisherige Hinweis.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsMetrics",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1787"
+    },
     "BreadcrumbsIdeColors": {
       "description": "Brotkrumenleiste in den Farben der IDE-Werkzeugleisten (Fläche und Schrift aus dem IDE-Thema) statt der Atlas-Palette; im dunklen Thema also wie die Navigationsleiste darüber statt fast schwarz.",
       "type": "boolean",
@@ -4958,6 +5108,17 @@
       "x-page": "Editor",
       "x-parent": "editor.breadcrumbs",
       "x-issue": "#590"
+    },
+    "SectionAppendKey": {
+      "description": "Tastenkürzel „Neue Zeile am Ende des Abschnitts“: leere Zeile hinter dem letzten Mitglied des Sichtbarkeitsabschnitts am Cursor (0 = keins, Vorgabe).",
+      "type": "integer",
+      "default": 0,
+      "x-key": "keys.sectionAppend",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1768"
     },
     "GitGutter": {
       "description": "Änderungsmarken in der Rinne: grün hinzugefügt, blau geändert, rotes Dreieck gelöscht gegenüber dem Stand im Repository (Git HEAD, SVN BASE); Klick zeigt den alten Stand mit „Zurücksetzen“. Ohne Arbeitskopie oder ohne git bzw. svn still aus.",

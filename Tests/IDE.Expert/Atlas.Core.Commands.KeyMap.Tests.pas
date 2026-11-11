@@ -64,6 +64,10 @@ type
     /// Einstellungen.</summary>
     [Test]
     procedure CheckFileKeyFollowsProblems;
+    /// <summary>„Neue Zeile am Ende des Abschnitts“ (#1768): ohne Vorgabe, Befehl, abgeschaltet mit
+    /// editor.breadcrumbsSectionAppend, zurück in die Einstellungen.</summary>
+    [Test]
+    procedure SectionAppendKeyFollowsSetting;
   end;
 
 implementation
@@ -609,7 +613,8 @@ begin
       TAtlasKeyFunction.MultiCursorBelow, TAtlasKeyFunction.FormatCode, TAtlasKeyFunction.ToggleBlockComment,
       TAtlasKeyFunction.NewLineBelow, TAtlasKeyFunction.NewLineAbove, TAtlasKeyFunction.Unwrap,
       TAtlasKeyFunction.ProblemsWindow, TAtlasKeyFunction.StepIntoTarget,
-      TAtlasKeyFunction.ExpressionType, TAtlasKeyFunction.SafeDelete, TAtlasKeyFunction.CheckFile] then
+      TAtlasKeyFunction.ExpressionType, TAtlasKeyFunction.SafeDelete, TAtlasKeyFunction.CheckFile,
+      TAtlasKeyFunction.SectionAppend] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),
@@ -957,6 +962,26 @@ begin
   mSaved := TAtlasPluginSettings.Defaults;
   TAtlasKeyEntry.ToSettings(TAtlasKeyEntry.AllFromSettings(mSettings), mSaved);
   Assert.AreEqual($C04D, mSaved.CheckFileKey, 'Strg+Alt+M');
+end;
+
+procedure TAtlasKeyMapTests.SectionAppendKeyFollowsSetting;
+var
+  mSettings, mSaved: TAtlasPluginSettings;
+  mEntry: TAtlasKeyEntry;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  mEntry := EntryOf(TAtlasKeyEntry.AllFromSettings(mSettings), TAtlasKeyFunction.SectionAppend);
+  Assert.AreEqual(0, Integer(mEntry.Key), 'ohne Vorgabe');
+  Assert.IsFalse(mEntry.Disabled);
+  Assert.AreEqual('Atlas.SectionAppend', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SectionAppend));
+  mSettings.BreadcrumbsSectionAppend := False;
+  mEntry := EntryOf(TAtlasKeyEntry.AllFromSettings(mSettings), TAtlasKeyFunction.SectionAppend);
+  Assert.IsTrue(mEntry.Disabled, 'aus = kein Konflikt');
+  mSettings.BreadcrumbsSectionAppend := True;
+  mSettings.SectionAppendKey := $C04E;
+  mSaved := TAtlasPluginSettings.Defaults;
+  TAtlasKeyEntry.ToSettings(TAtlasKeyEntry.AllFromSettings(mSettings), mSaved);
+  Assert.AreEqual($C04E, mSaved.SectionAppendKey, 'Strg+Alt+N');
 end;
 
 initialization
