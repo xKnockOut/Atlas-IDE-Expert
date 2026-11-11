@@ -143,6 +143,16 @@ Die Matrix wird zweimal umgesetzt und gegen dieselbe Fallliste `Tests/Data/Archi
 
 Eingeordnet wird nach `Ausgabeartefakt.Feature.Rolle.Sache`: längstes passendes Präfix, dann Feature, dann ein Rollenbezeichner oder Root. Units ohne Präfix mit einer Host-Rolle als erstem Segment gehören zum Host; alles andere (RTL, VCL, `Setup.*`, Tests) wird nicht geprüft. Contract-Units dürfen im interface keine Klassen deklarieren, außer Ausnahmen.
 
+### Selbstprüfung je Plugin-Package (#2011)
+
+Jedes Plugin-Package (`Packages/Atlas.IDE.*`) hat eine eigene `atlas.json` und `atlas-baseline.json`. Atlas nimmt bei `AtlasServer --check Packages/<Package>/<Package>.dproj` und im Editor die nächstgelegene `atlas.json` über dem Projekt und die Baseline daneben; ohne eigene Datei gälte für ein Modul die Wurzel-Konfiguration mit abgeschalteten Metriken.
+
+- Quelle der Konfiguration ist `Packages/atlas.plugin.json` (Profil `strict`, Ausnahmen des Plugins). `Tools/Update-PackageConfigs.ps1` schreibt daraus die gleiche `atlas.json` in jedes Plugin-Package und übernimmt die Architektur- und Verbotsregeln aus der `atlas.json` im Stamm; `-Check` läuft in CI. Die `atlas.json` der Packages nicht von Hand ändern.
+- Ein neues Modul-Package bekommt seine `atlas.json` durch `pwsh Tools/Update-PackageConfigs.ps1`.
+- `Tools/Linux/Check-PluginPackages.sh` prüft jedes Package mit seiner Konfiguration und Baseline; jeder Treffer außerhalb der Baseline, auch ein Hinweis, lässt den Lauf (und den Job in `linux-server.yml`) scheitern. Neue Treffer werden behoben, nicht in die Baseline aufgenommen.
+- `Tools/Check-Baselines.ps1` (CI) meldet Baseline-Einträge auf fehlende Dateien und jede Regel, deren Einträge gegenüber dem Zielbranch zunehmen. Nur wenn sich die `atlas.json` eines Packages ändert, wird seine Baseline neu erzeugt (`AtlasServer --check Packages/<Package>/<Package>.dproj --update-baseline`).
+- Beim Verschieben einer Unit in ein anderes Package wandern ihre Einträge nicht mit: Baseline beider Packages neu erzeugen und prüfen, dass keine Regel wächst.
+
 ### Keine Unit-Zyklen (#1450)
 
 Auch über implementation-uses bilden die Units unter `Packages/` und `Application/` keinen Zyklus: `AtlasServer --check . --units 'Packages/**,Application/**' --rules uses-cycle` meldet nichts. Eine Unit eines Zyklus ließe sich weder allein testen noch austauschen. Die Muster dafür:
