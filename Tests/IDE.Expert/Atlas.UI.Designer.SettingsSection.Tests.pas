@@ -35,6 +35,8 @@ type
     [Test]
     procedure StructureRoundTrip;
     [Test]
+    procedure DataBindingsRoundTrip;
+    [Test]
     procedure SelectSimilarRoundTrip;
     [Test]
     procedure SelectionSetsRoundTrip;
@@ -269,6 +271,24 @@ begin
     mPage.SaveTo(mSaved);
     Assert.IsTrue(mSaved.DesignerStructure);
     Assert.IsFalse(mSaved.DesignerStructureHideOnForm);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.DataBindingsRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerDataBindings').Checked, 'Vorgabe aus');
+    CheckOf(mPage, 'DesignerDataBindings').Checked := True;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsTrue(mSaved.DesignerDataBindings);
   finally
     mPage.Free;
   end;

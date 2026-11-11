@@ -2139,6 +2139,8 @@ uses
   Atlas.Core.Designer.NameSuggest.Tests in 'IDE.Expert\Atlas.Core.Designer.NameSuggest.Tests.pas',
   Atlas.Core.Designer.Structure in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Structure.pas',
   Atlas.Core.Designer.Structure.Tests in 'IDE.Expert\Atlas.Core.Designer.Structure.Tests.pas',
+  Atlas.Core.Designer.DataBindings in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.DataBindings.pas',
+  Atlas.Core.Designer.DataBindings.Tests in 'IDE.Expert\Atlas.Core.Designer.DataBindings.Tests.pas',
   Atlas.UI.Help.SettingsSection in '..\Packages\Atlas.IDE.Help\Source\UI\Help\Atlas.UI.Help.SettingsSection.pas',
   Atlas.UI.Help.SettingsSection.Tests in 'IDE.Expert\Atlas.UI.Help.SettingsSection.Tests.pas',
   Atlas.UI.Rules.SettingsSection.Tests in 'IDE.Expert\Atlas.UI.Rules.SettingsSection.Tests.pas',
