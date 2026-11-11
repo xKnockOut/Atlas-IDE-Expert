@@ -988,6 +988,12 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.IssueWindow` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWindow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.MyIssues` | `IDE/Tracker/Atlas.IDE.Tracker.MyIssues.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.IDE.Tracker.IssuesContext` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesContext.pas` | Ordner `IDE/Tracker`, gemeinsamer Stand von „Meine Issues“, #1455 |
+| `Atlas.IDE.Tracker.WorkingCopies` | `IDE/Tracker/Atlas.IDE.Tracker.WorkingCopies.pas` | Ordner `IDE/Tracker`, Arbeitskopien je Tracker-Projekt, #1926 |
+| `Atlas.UI.Tracker.SettingsPaths` | `UI/Tracker/Atlas.UI.Tracker.SettingsPaths.pas` | Ordner `UI/Tracker`, Feld Arbeitskopien der Seite Issue-Tracker, #1926 |
+| `Atlas.Core.Tracker.PathSuggestions` | `Core/Tracker/Atlas.Core.Tracker.PathSuggestions.pas` | Ordner `Core/Tracker`, Arbeitskopien vorschlagen, #1929 |
+| `Atlas.IDE.Tracker.PathSuggestions` | `IDE/Tracker/Atlas.IDE.Tracker.PathSuggestions.pas` | Ordner `IDE/Tracker`, Arbeitskopien prüfen und vorschlagen, #1926, #1929 |
+| `Atlas.UI.Tracker.SuggestDialog` | `UI/Tracker/Atlas.UI.Tracker.SuggestDialog.pas` | Ordner `UI/Tracker`, Dialog Arbeitskopien vorschlagen, #1929 |
+| `Atlas.UI.Tracker.ProjectPicker` | `UI/Tracker/Atlas.UI.Tracker.ProjectPicker.pas` | Ordner `UI/Tracker`, Klappliste Tracker-Projekt in Meine Issues, #1927 |
 | `Atlas.IDE.Tracker.IssuesServices` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesServices.pas` | Ordner `IDE/Tracker`, Dienste von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.IssueCommands` | `IDE/Tracker/Atlas.IDE.Tracker.IssueCommands.pas` | Ordner `IDE/Tracker`, Befehle von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.IssuesStatus` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesStatus.pas` | Ordner `IDE/Tracker`, Statusfeld und Titel von „Meine Issues“, #1455 |

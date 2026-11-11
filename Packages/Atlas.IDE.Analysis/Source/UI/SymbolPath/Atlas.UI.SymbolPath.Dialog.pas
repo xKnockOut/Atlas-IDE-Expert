@@ -121,8 +121,8 @@ begin
 end;
 
 // Nicht "AddLabel": Im Konstruktor verdeckt die geerbte Methode AddLabel des Dialogs den Namen (E2010/E2034).
-function AddFieldLabel(ADialog: TAtlasSymbolPathDialog; const ALayout: TDialogLayout; const AText: string; ATop: Integer;
-  AFocus: TWinControl): TLabel;
+function AddFieldLabel(ADialog: TAtlasSymbolPathDialog; const ALayout: TDialogLayout; const AText: string;
+  ATop: Integer; AFocus: TWinControl): TLabel;
 begin
   Result := TLabel.Create(ADialog);
   Result.Parent := ADialog;

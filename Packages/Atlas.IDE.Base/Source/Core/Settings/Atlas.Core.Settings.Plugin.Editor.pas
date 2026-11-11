@@ -99,6 +99,10 @@ const
   /// <summary>Werte von designer.selectionBar.mode (#735).</summary>
   cSelectionBarAuto = 'auto';
   cSelectionBarShortcut = 'shortcut';
+  /// <summary>Vorgabe von designer.selectionBar.items (#735).</summary>
+  cSelectionBarDefaultItems = 'fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, ' +
+    'parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, ' +
+    'alignCenter, alignRight, transfer';
   cMaxSelectionBarDelay = 5000;
   /// <summary>Werte von designer.buttonBar.position (#732).</summary>
   cButtonBarBottomRight = 'bottomRight';
@@ -1544,9 +1548,7 @@ begin
   DesignerSelectionBar := True;
   DesignerSelectionBarMode := cSelectionBarAuto;
   DesignerSelectionBarDelayMs := 400;
-  DesignerSelectionBarItems := 'fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, ' +
-    'parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, ' +
-    'alignCenter, alignRight, transfer';
+  DesignerSelectionBarItems := cSelectionBarDefaultItems;
   // Strg+Umschalt+Leer.
   DesignerSelectionBarKey := 24608;
   DesignerMagnifier := True;

@@ -1192,6 +1192,12 @@ begin
   Assert.AreEqual(7, Integer(Length(Issues)));
   Parse('{"issues": {"projects": {"match": "C:\\A"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
+  // Arbeitskopien (#1926): Liste von Ordnern; anderes meldet der Server einmal.
+  Parse('{"issues": {"projects": [{"match": "C:\\A", "connection": "Firma", ' +
+    '"paths": ["D:\\SVN\\A\\trunk", "D:\\SVN\\B"]}]}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)), 'paths als Liste ohne Meldung');
+  Parse('{"issues": {"projects": [{"match": "C:\\A", "connection": "Firma", "paths": "D:\\SVN"}]}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'paths keine Liste');
   Settings := TConfigurationParser.ParseLayered('{}', '{"issues": {"projects": [{"match": "C:\\B", ' +
     '"connection": "Firma"}]}}', Issues);
   Assert.IsTrue(Settings.IssueProjects.Contains('Firma'), 'Datei vor Editor');
