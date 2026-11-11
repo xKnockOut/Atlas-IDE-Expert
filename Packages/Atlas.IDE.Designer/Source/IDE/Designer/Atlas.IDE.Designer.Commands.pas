@@ -8,6 +8,8 @@
 // - Tasten im Designer: Auswahlsätze und räumliche Navigation (#745,
 //   TAtlasIdeDesignerNavigate), angemeldet nur, solange ein Designer gezeigt
 //   wird.
+// - Eigene Knöpfe der größeren Designer-Funktionen (#605 ff.,
+//   TAtlasIdeDesignerTools); Klicks ohne Menü über Run.
 // Nur im Hauptthread.
 
 interface
@@ -19,7 +21,8 @@ uses
   Atlas.UI.Designer.Bar,
   Atlas.IDE.Designer.Select,
   Atlas.IDE.Designer.Arrange,
-  Atlas.IDE.Designer.Navigate;
+  Atlas.IDE.Designer.Navigate,
+  Atlas.IDE.Designer.Tools;
 
 type
   TAtlasIdeDesignerCommands = class
@@ -30,6 +33,7 @@ type
     FSelect: TAtlasIdeDesignerSelect;
     FArrange: TAtlasIdeDesignerArrange;
     FNavigate: TAtlasIdeDesignerNavigate;
+    FTools: TAtlasIdeDesignerTools;
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -40,6 +44,8 @@ type
     function Handles(const AId: string): Boolean;
     /// <summary>Menü des Knopfs AId an APoint (Bildschirm).</summary>
     procedure Popup(const AId: string; const APoint: TPoint);
+    /// <summary>Klick auf einen Knopf ohne Menü; False, wenn er nicht hierher gehört.</summary>
+    function Run(const AId: string): Boolean;
     /// <summary>Tasten an- oder abmelden (Designer gezeigt).</summary>
     procedure UpdateKeys(AWanted: Boolean);
     procedure ApplyTheme;
@@ -59,10 +65,12 @@ begin
   FSelect := TAtlasIdeDesignerSelect.Create(AOnMessage);
   FArrange := TAtlasIdeDesignerArrange.Create(AOnMessage);
   FNavigate := TAtlasIdeDesignerNavigate.Create;
+  FTools := TAtlasIdeDesignerTools.Create;
 end;
 
 destructor TAtlasIdeDesignerCommands.Destroy;
 begin
+  FTools.Free;
   FNavigate.Free;
   FArrange.Free;
   FSelect.Free;
@@ -88,6 +96,7 @@ begin
     mButton.Menu := True;
     Result := Result + [mButton];
   end;
+  Result := Result + FTools.Buttons(ASettings);
 end;
 
 function TAtlasIdeDesignerCommands.Handles(const AId: string): Boolean;
@@ -107,6 +116,11 @@ begin
   end;
 end;
 
+function TAtlasIdeDesignerCommands.Run(const AId: string): Boolean;
+begin
+  Result := FTools.Run(AId);
+end;
+
 procedure TAtlasIdeDesignerCommands.UpdateKeys(AWanted: Boolean);
 begin
   FSelect.UpdateKeys(AWanted);
@@ -117,6 +131,7 @@ procedure TAtlasIdeDesignerCommands.ApplyTheme;
 begin
   FNavigate.ApplyTheme;
   FArrange.ApplyTheme;
+  FTools.ApplyTheme;
 end;
 
 end.

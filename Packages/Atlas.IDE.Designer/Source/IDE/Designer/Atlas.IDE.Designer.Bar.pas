@@ -27,7 +27,8 @@
 //   (TAtlasIdeDesignerSelect); Pfeil und Symbol öffnen es. Darin die
 //   Auswahlsätze (#739, designer.selectionSets) samt ihren Tasten; dazu die
 //   räumliche Navigation mit Alt+Pfeil (#745, designer.spatialNavigation)
-//   und das Menü „Anordnen“ (#730 ff.), alles über TAtlasIdeDesignerCommands.
+//   und das Menü „Anordnen“ (#730 ff.), alles über TAtlasIdeDesignerCommands,
+//   ebenso die eigenen Knöpfe der größeren Designer-Funktionen (#605 ff.).
 // - Eigene Sicherung TAtlasFeature.DesignerBar. Nur im Hauptthread.
 
 interface
@@ -784,6 +785,10 @@ begin
   else if SameText(AId, cIdAlign) then
   begin
     AlignSelection(FLastAlign);
+  end
+  else
+  begin
+    FCommands.Run(AId);
   end;
   UpdateBars;
 end;

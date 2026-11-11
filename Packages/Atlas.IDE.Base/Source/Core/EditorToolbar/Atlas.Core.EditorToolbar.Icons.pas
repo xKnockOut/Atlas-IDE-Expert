@@ -17,7 +17,10 @@ type
     // Designer-Leiste (#1442).
     ComponentSearch, NonVisual, NonVisualHidden, SelectParent, TabOrder, AlignControls,
     // Gleiche auswählen (#738), Anordnen (#730 ff.).
-    SelectSimilar, Arrange);
+    SelectSimilar, Arrange,
+    // Eigene Knöpfe der Designer-Leiste (#605 bis #612).
+    MeasureDistances, ResizePreview, ScalePreview, NameSuggest, NonVisualTray, DataBindings, ExtractFrame,
+    EventMap);
 {$SCOPEDENUMS OFF}
 
   TAtlasToolbarIcons = class

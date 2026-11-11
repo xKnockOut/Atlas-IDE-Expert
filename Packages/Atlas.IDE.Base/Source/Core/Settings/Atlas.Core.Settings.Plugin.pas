@@ -629,7 +629,11 @@ type
       write FEditorView.DesignerSpatialNavigation;
     property DesignerSpatialCrossContainers: Boolean read FEditorView.DesignerSpatialCrossContainers
       write FEditorView.DesignerSpatialCrossContainers;
-    property DesignerFitToText: Boolean read FEditorView.DesignerFitToText write FEditorView.DesignerFitToText;
+    property DesignerMeasureDistances: Boolean read FEditorView.DesignerMeasureDistances
+      write FEditorView.DesignerMeasureDistances;
+    property DesignerMeasureAltKey: Boolean read FEditorView.DesignerMeasureAltKey
+      write FEditorView.DesignerMeasureAltKey;
+    property DesignerFitToText:Boolean read FEditorView.DesignerFitToText write FEditorView.DesignerFitToText;
     property DesignerFitToTextMinWidth: Integer read FEditorView.DesignerFitToTextMinWidth
       write FEditorView.DesignerFitToTextMinWidth;
     property DesignerFitToTextPadding: Integer read FEditorView.DesignerFitToTextPadding

@@ -82,6 +82,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Checks between form and code** and property rules for form files
 - **Convert binary forms** to text forms
 - **Designer tools** in the designer bar: select similar components (class, parent, property value, handler), named selection sets per form with Ctrl+Shift+1…9, Alt+Arrow to the neighbouring control, Arrange menu (width from text, button bar, duplicate in row, insert and remove space, fit to content, near-aligned edges)
+- **Designer views** with their own buttons in the designer bar: measure distances while dragging and with Alt
 
 ### [Build, test, debug](docs/features/en/Build-test-debug.md)
 - **Build gate** for hints and warnings, quick fixes for compiler messages, release build guard

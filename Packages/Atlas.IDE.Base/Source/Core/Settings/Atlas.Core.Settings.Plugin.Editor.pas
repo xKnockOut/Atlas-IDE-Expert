@@ -521,6 +521,10 @@ type
     /// <summary>Am Rand in benachbarte Container weiter (#745, designer.spatialNavigation.crossContainers).
     /// </summary>
     DesignerSpatialCrossContainers: Boolean;
+    /// <summary>Maßlinien beim Verschieben und bei Größenänderung (#605, designer.measureDistances).</summary>
+    DesignerMeasureDistances: Boolean;
+    /// <summary>Maße mit Alt zur Komponente unter der Maus (#605, designer.measureAltKey).</summary>
+    DesignerMeasureAltKey: Boolean;
     /// <summary>Befehl „Breite nach Text“ (#730, designer.fitToText).</summary>
     DesignerFitToText: Boolean;
     /// <summary>Mindestbreite bei 96 dpi (#730, designer.fitToText.minWidth).</summary>
@@ -606,6 +610,10 @@ type
     OverviewRulerKinds: string;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginEditorViewSettings; static;
+    /// <summary>Vorgaben der eigenen Knöpfe der Designer-Leiste (#605 ff.).</summary>
+    procedure SetToolDefaults;
+    /// <summary>Einstellungen der eigenen Knöpfe der Designer-Leiste lesen bzw. schreiben.</summary>
+    procedure ExchangeTools(const AIo: TAtlasSettingsExchange);
     /// <summary>Vorgaben der Befehle im Menü „Anordnen“ der Designer-Leiste (#730 ff.).</summary>
     procedure SetArrangeDefaults;
     /// <summary>Einstellungen der Befehle im Menü „Anordnen“ lesen bzw. schreiben.</summary>
@@ -1083,6 +1091,7 @@ begin
   Result.DesignerSelectionSetsSaveKey := 24659;
   Result.DesignerSpatialNavigation := True;
   Result.DesignerSpatialCrossContainers := True;
+  Result.SetToolDefaults;
   Result.SetArrangeDefaults;
   Result.Minimap := False;
   Result.MinimapRender := 'characters';
@@ -1210,6 +1219,7 @@ begin
   AIo.Number('DesignerSelectionSetsSaveKey', DesignerSelectionSetsSaveKey);
   AIo.Flag('DesignerSpatialNavigation', DesignerSpatialNavigation);
   AIo.Flag('DesignerSpatialCrossContainers', DesignerSpatialCrossContainers);
+  ExchangeTools(AIo);
   ExchangeArrange(AIo);
   AIo.Flag('Minimap', Minimap);
   AIo.Text('MinimapRender', MinimapRender);
@@ -1229,6 +1239,18 @@ begin
   AIo.Flag('GutterColumnOverrides', GutterColumnOverrides);
   AIo.Flag('OverviewRuler', OverviewRuler);
   AIo.Text('OverviewRulerKinds', OverviewRulerKinds);
+end;
+
+procedure TAtlasPluginEditorViewSettings.SetToolDefaults;
+begin
+  DesignerMeasureDistances := True;
+  DesignerMeasureAltKey := True;
+end;
+
+procedure TAtlasPluginEditorViewSettings.ExchangeTools(const AIo: TAtlasSettingsExchange);
+begin
+  AIo.Flag('DesignerMeasureDistances', DesignerMeasureDistances);
+  AIo.Flag('DesignerMeasureAltKey', DesignerMeasureAltKey);
 end;
 
 end.

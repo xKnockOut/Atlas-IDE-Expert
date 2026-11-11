@@ -42,6 +42,8 @@ type
     procedure FitContainerRoundTrip;
     [Test]
     procedure NearAlignmentRoundTrip;
+    [Test]
+    procedure MeasureRoundTrip;
   end;
 
 implementation
@@ -324,6 +326,27 @@ begin
     Assert.AreEqual(5, mSaved.DesignerNearAlignmentTolerance);
     Assert.IsFalse(mSaved.DesignerNearAlignmentBaseline);
     Assert.AreEqual('TImage', mSaved.DesignerNearAlignmentIgnoreClasses);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.MeasureRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerMeasureDistances').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerMeasureAltKey').Checked, 'Vorgabe an');
+    CheckOf(mPage, 'DesignerMeasureDistances').Checked := False;
+    CheckOf(mPage, 'DesignerMeasureAltKey').Checked := False;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerMeasureDistances, 'abschaltbar');
+    Assert.IsFalse(mSaved.DesignerMeasureAltKey, 'abschaltbar');
   finally
     mPage.Free;
   end;

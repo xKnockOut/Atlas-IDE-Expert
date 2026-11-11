@@ -2,7 +2,7 @@
 
 // Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil
 // „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Gleiche auswählen (#738),
-// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746).
+// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), eigene Knöpfe der Leiste (#605 ff.).
 
 interface
 
@@ -17,6 +17,8 @@ type
   private
     /// <summary>Zeilen der Befehle im Menü „Anordnen“ (#730 ff.).</summary>
     procedure BuildArrangeRows;
+    /// <summary>Zeilen der eigenen Knöpfe der Designer-Leiste (#605 ff.).</summary>
+    procedure BuildToolRows;
   protected
     procedure BuildRows; override;
   public
@@ -28,7 +30,8 @@ implementation
 
 uses
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Designer.Strings;
+  Atlas.UI.Designer.Strings,
+  Atlas.UI.Designer.ToolStrings;
 
 { TAtlasDesignerSettingsSection }
 
@@ -74,7 +77,15 @@ begin
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSpatialNavigation));
   Switch('designer.spatialNavigation.crossContainers',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSpatialCross));
+  BuildToolRows;
   BuildArrangeRows;
+end;
+
+procedure TAtlasDesignerSettingsSection.BuildToolRows;
+begin
+  Switch('designer.measureDistances',
+    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsMeasureDistances));
+  Switch('designer.measureAltKey', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsMeasureAltKey));
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildArrangeRows;
