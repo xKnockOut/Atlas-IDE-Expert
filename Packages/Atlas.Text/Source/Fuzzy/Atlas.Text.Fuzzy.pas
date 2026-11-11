@@ -1,10 +1,10 @@
 ﻿unit Atlas.Text.Fuzzy;
 
 // Unscharfe Namensprädikate für die Vervollständigung (gemeinsam für Server
-// und Plugin, ADR 0012). Die Punktzahlen bleiben je Seite (Server: Tausende
+// und Plugin). Die Punktzahlen bleiben je Seite (Server: Tausende
 // Symbole, Plugin: Stufen mit Quell-Rang); geteilt werden die Regeln, ob ein
 // Name überhaupt passt. Nur deren Abweichung lässt Einträge beim Weitertippen
-// verschwinden (D-05).
+// verschwinden.
 
 interface
 

@@ -379,7 +379,7 @@ begin
       Continue;
     end;
     mFileName := TargetFile(AFolder, mIndex);
-    // Atomar (Bericht N3): Ein Abbruch hinterlässt keine halbe Vorlage. UTF-8 mit BOM und CRLF wie bisher.
+    // Atomar: Ein Abbruch hinterlässt keine halbe Vorlage. UTF-8 mit BOM und CRLF wie bisher.
     TAtlasTextFile.Replace(mFileName, TEncoding.UTF8.GetPreamble + TEncoding.UTF8.GetBytes(
       StringReplace(TAtlasSnippets.ToFileText(mItem.Snippet), #10, #13#10, [rfReplaceAll])));
     mItem.LoadedFile := mFileName;

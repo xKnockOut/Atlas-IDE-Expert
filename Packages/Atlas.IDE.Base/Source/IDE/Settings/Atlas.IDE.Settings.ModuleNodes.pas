@@ -4,7 +4,7 @@
 // - „Module“ selbst zeigt alle bekannten Module mit Version und ob sie installiert sind.
 // - Darunter „Base“ und je angemeldetem Modul ein Knoten (Caption „Atlas.Module.<Name>“: Der zweite Punkt
 //   hängt ihn unter „Module“), alphabetisch. Die Seiten baut der Aufrufer (AFactory).
-// - Kommt oder geht ein Modul, meldet die Liste alle Modulknoten ab und sortiert neu an (ADR 0017 Regel 2);
+// - Kommt oder geht ein Modul, meldet die Liste alle Modulknoten ab und sortiert neu an (Modulregel 2);
 //   Delphi ordnet die Knoten in der Reihenfolge der Anmeldung. Base kennt keine Modulnamen (Regel 9): Namen
 //   und Ids kommen aus der Registry.
 

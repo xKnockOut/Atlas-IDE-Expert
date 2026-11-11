@@ -34,7 +34,7 @@ type
     procedure WithoutRulesIsSilent;
     [Test]
     procedure Conditions;
-    /// <summary>Muster für default einmal je Prüfung kompiliert (Review P-11); Verhalten unverändert.</summary>
+    /// <summary>Muster für default einmal je Prüfung kompiliert; Verhalten unverändert.</summary>
     [Test]
     procedure DeclaredDefaultReadsValue;
     [Test]

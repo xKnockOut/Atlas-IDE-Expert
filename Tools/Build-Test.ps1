@@ -54,7 +54,7 @@ if (-not [System.IO.Path]::IsPathRooted($ResultFile)) { $ResultFile = Join-Path 
 
 $GroupProject = Join-Path $Root 'Atlas.groupproj'
 $TestExe = Join-Path $Root (Join-Path "Output/Win64/$Config/Bin" 'Atlas.Tests.exe')
-# Plugin-BPLs für die klassische (Win32) und die 64-Bit-IDE (Win64), ADR 0008: das Kern-Package und jedes
+# Plugin-BPLs für die klassische (Win32) und die 64-Bit-IDE (Win64): das Kern-Package und jedes
 # Modul-Package unter Packages/Atlas.IDE.* (#1456). LIBSUFFIX AUTO hängt die Package-Version an:
 # Atlas.IDE.Base290.bpl (Delphi 12), …370.bpl (Delphi 13).
 $PluginPackages = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -Filter 'Atlas.IDE.*' |
@@ -75,7 +75,7 @@ function Test-PluginBpl([string] $Platform, [datetime] $Started) {
             return "${Platform}: Plugin-BPL fehlt: $dir\$package*.bpl"
         }
         if ($bpl.LastWriteTime -lt $Started) {
-            return "${Platform}: Plugin-BPL wurde nicht neu geschrieben (von einer IDE geladen? ADR 0006): $($bpl.FullName)"
+            return "${Platform}: Plugin-BPL wurde nicht neu geschrieben (von einer IDE geladen?): $($bpl.FullName)"
         }
     }
     return $null

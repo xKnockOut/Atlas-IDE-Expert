@@ -229,7 +229,8 @@ implementation
 uses
   System.Generics.Collections,
   System.JSON,
-  Atlas.Core.Settings.Choices;
+  Atlas.Core.Settings.Choices,
+  Atlas.Text.Json;
 
 function Make(ACheck: TAtlasSetupCheck; AFinding: TAtlasSetupFinding; AState: TAtlasStatusState;
   AFix: TAtlasSetupFix; APending: Boolean; const AArgs: TArray<string>): TAtlasSetupResult;
@@ -241,30 +242,6 @@ begin
   Result.Fix := AFix;
   Result.Pending := APending;
   Result.Args := AArgs;
-end;
-
-function JsonNumber(AObject: TJSONObject; const AName: string; ADefault: Int64): Int64;
-var
-  mValue: TJSONValue;
-begin
-  Result := ADefault;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt64;
-  end;
-end;
-
-function JsonText(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
 end;
 
 function SameName(const A, B: string): Boolean;
@@ -325,16 +302,16 @@ begin
     end;
     mRoot := TJSONObject(mValue);
     Result.Known := True;
-    Result.Units := Integer(JsonNumber(mRoot, 'units', -1));
+    Result.Units := Integer(TJsonRead.Int64Or(mRoot, 'units', -1));
     if mRoot.GetValue('workspaces') is TJSONArray then
     begin
       for mItem in TJSONArray(mRoot.GetValue('workspaces')) do
       begin
         if mItem is TJSONObject then
         begin
-          mWorkspace.Name := JsonText(TJSONObject(mItem), 'name');
-          mWorkspace.Done := JsonNumber(TJSONObject(mItem), 'lastIndexMs', -1) >= 0;
-          mWorkspace.LibraryCacheBytes := JsonNumber(TJSONObject(mItem), 'libraryCacheBytes', 0);
+          mWorkspace.Name := TJsonRead.Text(TJSONObject(mItem), 'name');
+          mWorkspace.Done := TJsonRead.Int64Or(TJSONObject(mItem), 'lastIndexMs', -1) >= 0;
+          mWorkspace.LibraryCacheBytes := TJsonRead.Int64Or(TJSONObject(mItem), 'libraryCacheBytes', 0);
           Result.Workspaces := Result.Workspaces + [mWorkspace];
         end;
       end;

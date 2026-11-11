@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Contracts.Tests;
 
-// Vertrag zwischen Modulen (#1455, ADR 0017 Regel 6): Das Modul Tests stellt
+// Vertrag zwischen Modulen (#1455, Modulregel 6): Das Modul Tests stellt
 // über seinen Scope eine IAtlasTestsSource bereit (Testprojekt ausführen,
 // einzelnen Test debuggen oder finden, #69, #585); die Willkommensseite
 // (Karte Tests #763, Schnellaktionen #764) fragt sie über die Registry und

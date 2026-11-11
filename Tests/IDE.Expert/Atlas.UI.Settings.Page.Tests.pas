@@ -61,7 +61,7 @@ type
     /// <summary>Filter im Baum und „Seite zurücksetzen“ je Knoten (#890).</summary>
     [Test]
     procedure FilterAndResetPerNode;
-    /// <summary>„Wächter testen“ nur im Diagnosemodus (Code-Review S-07).</summary>
+    /// <summary>„Wächter testen“ nur im Diagnosemodus.</summary>
     [Test]
     procedure HangTestOnlyInDiagnosticMode;
     /// <summary>#909: Bereich Prüfregeln mit Prüffenster, Knoten je Gruppe, Hauptschalter, Reveal einer Regel

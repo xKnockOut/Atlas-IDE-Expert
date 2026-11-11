@@ -39,7 +39,7 @@ type
   end;
 
   /// <summary>Eine Textersetzung einer Korrektur. Alias auf TTextEdit aus Documents.Contract,
-  /// damit Editing die Textänderung ohne Abhängigkeit von Rules nutzen kann (A-11).</summary>
+  /// damit Editing die Textänderung ohne Abhängigkeit von Rules nutzen kann.</summary>
   TRuleEdit = TTextEdit;
 
   /// <summary>Edits einer weiteren Datei einer Korrektur (#1105).</summary>
@@ -166,7 +166,7 @@ type
   /// <summary>Die Prüfung wurde über TRuleContext.Cancelled abgebrochen; es gibt kein Ergebnis.</summary>
   ERuleCheckCancelled = class(Exception);
 
-  /// <summary>Ableitungen einer Prüfung, die alle Regeln eines Laufs teilen (Review P-03).
+  /// <summary>Ableitungen einer Prüfung, die alle Regeln eines Laufs teilen.
   /// Besitzt die abgelegten Objekte. Nicht threadsicher: ein Cache gehört genau einem Lauf.
   /// Zugriff typisiert über TRuleDerived (Atlas.Common.Rules.Derived).</summary>
   IRuleDerivedCache = interface
@@ -316,7 +316,7 @@ type
     AccessorsProtected: Boolean;
     /// <summary>Abbruch zwischen den Regeln (Diagnoselog 15.10.2026); nil = nie abbrechen.</summary>
     Cancelled: TRuleCancelled;
-    /// <summary>Gemeinsame Ableitungen des Laufs (Review P-03); setzt TRuleEngine.Run. nil = jede Regel
+    /// <summary>Gemeinsame Ableitungen des Laufs; setzt TRuleEngine.Run. nil = jede Regel
     /// rechnet selbst (direkter Aufruf von Check). Zugriff nur über TRuleDerived. Die Werte zeigen in
     /// Tree: Wer einen eigenen Cache setzt, muss ihn vor dem Baum freigeben oder leeren.</summary>
     Derived: IRuleDerivedCache;

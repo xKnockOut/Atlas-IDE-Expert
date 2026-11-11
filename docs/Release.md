@@ -1,6 +1,6 @@
 # Release
 
-Server und Claude-Code-Plugin tragen dieselbe [SemVer](https://semver.org/lang/de/)-Version. Quellen sind `TAtlasVersion.cVersion` (`Packages/Atlas.Text/Source/Product/Atlas.Text.Product.Version.pas`, gemeinsam für Server und Plugin, ADR 0012; `TProductVersion` und `TAtlasPluginVersion` verweisen nur darauf) und `version` in `Editors/ClaudeCode/atlas/.claude-plugin/plugin.json` und `.claude-plugin/marketplace.json`; `pwsh Tools/Check-Version.ps1` prüft beide und den Abschnitt in `CHANGELOG.md`.
+Server und Claude-Code-Plugin tragen dieselbe [SemVer](https://semver.org/lang/de/)-Version. Quellen sind `TAtlasVersion.cVersion` (`Packages/Atlas.Text/Source/Product/Atlas.Text.Product.Version.pas`, gemeinsam für Server und Plugin; `TProductVersion` und `TAtlasPluginVersion` verweisen nur darauf) und `version` in `Editors/ClaudeCode/atlas/.claude-plugin/plugin.json` und `.claude-plugin/marketplace.json`; `pwsh Tools/Check-Version.ps1` prüft beide und den Abschnitt in `CHANGELOG.md`.
 
 ## Ablauf
 
@@ -10,7 +10,7 @@ Server und Claude-Code-Plugin tragen dieselbe [SemVer](https://semver.org/lang/d
 3. Committen, mergen, dann `git tag v0.2.0` und `git push origin v0.2.0`.
 4. `.github/workflows/release.yml` prüft die Versionen, baut den Server (Win64 Release) auf dem Delphi-Runner, packt das Claude-Code-Plugin mit EXE und legt das GitHub Release mit EXE, Map-Datei, Plugin und den Release-Notizen an. Versionen `0.x` und mit Suffix (`-beta.1`) gelten als Vorabversion.
 
-Mit Delphi-Runner baut der Workflow außerdem das Plugin (Win32 und Win64) und hängt `atlas-ide-expert-<Version>.zip` an (Aufbau in [Installation.md](Installation.md#rad-studio-release-paket); einen Installer gibt es seit 1.2.0 nicht mehr, ADR 0016). Dazu kommt immer `atlas-version.json` (`{"version": "…", "changes": "<Link zum Release>"}`): Die Update-Prüfung des Plugins liest sie über `releases/latest/download/atlas-version.json`. GitHub zählt Vorabversionen dabei nicht als „latest“; Versionen `0.x` melden sich also nicht als Update.
+Mit Delphi-Runner baut der Workflow außerdem das Plugin (Win32 und Win64) und hängt `atlas-ide-expert-<Version>.zip` an (Aufbau in [Installation.md](Installation.md#rad-studio-release-paket); einen Installer gibt es seit 1.2.0 nicht mehr). Dazu kommt immer `atlas-version.json` (`{"version": "…", "changes": "<Link zum Release>"}`): Die Update-Prüfung des Plugins liest sie über `releases/latest/download/atlas-version.json`. GitHub zählt Vorabversionen dabei nicht als „latest“; Versionen `0.x` melden sich also nicht als Update.
 
 Ohne Delphi-Runner (`DELPHI_RUNNER` nicht `true`) enthält das Release nur die Notizen, den Quelltext-ZIP und eine Versionsdatei ohne Paket. Das Plugin meldet die Version dann, der Update-Installer bricht aber mit „kein Paket für diese IDE“ ab (#1849). So kommt das Paket nachträglich dazu:
 

@@ -33,7 +33,7 @@ type
   public const
     cAnswerMs = 3000;
     cTakenMs = 30000;
-    /// <summary>Takt, in dem der Aufrufer von Send auf Antwort- und Übernahmedatei prüft (Code-Review P-16).</summary>
+    /// <summary>Takt, in dem der Aufrufer von Send auf Antwort- und Übernahmedatei prüft.</summary>
     cPollMs = 50;
   public
     /// <summary>Eingang des IDE-Prozesses APid unter ABase (%LOCALAPPDATA%\Atlas).</summary>

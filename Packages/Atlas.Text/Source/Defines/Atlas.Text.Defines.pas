@@ -1,7 +1,7 @@
 ﻿unit Atlas.Text.Defines;
 
 // Bedingte Symbole des Delphi-Compilers, gemeinsam für Server und Plugin
-// (ADR 0012): welche Symbole der Compiler für Plattform und Version selbst
+//: welche Symbole der Compiler für Plattform und Version selbst
 // setzt, die Compilerversion zur BDS-Version der Registry und ob ein Name
 // überhaupt ein Symbol des Compilers ist (auf irgendeiner Plattform, in
 // irgendeiner Version). Der Server wertet damit $IFDEF aus (Präprozessor),

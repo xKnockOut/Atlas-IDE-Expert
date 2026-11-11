@@ -83,6 +83,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens,
@@ -280,7 +281,7 @@ begin
     begin
       if IsCallOf(mTokens, mIndex, ['Move', 'FillChar', 'ZeroMemory', 'CopyMemory', 'FillMemory'], mOpen) then
       begin
-        ReportPointerSizes(mTypes, mTokens, mOpen, Closing(mTokens, mOpen), AReport);
+        ReportPointerSizes(mTypes, mTokens, mOpen, MatchingParen(mTokens, mOpen), AReport);
       end;
     end;
   finally
@@ -803,7 +804,7 @@ type
     procedure Run;
   end;
 
-  /// <summary>Wertet ein Argument iterativ als String-Ausdruck aus (Bericht M1): Verkettungen sind so tief wie lang.
+  /// <summary>Wertet ein Argument iterativ als String-Ausdruck aus: Verkettungen sind so tief wie lang.
   /// Steps zählt die schon ausgewerteten Kinder, Values hält die Ergebnisse. Wie zuvor wertet + die rechte Seite
   /// nur aus, wenn die linke passt.</summary>
   TStringExpressionWalk = class
@@ -840,7 +841,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := False;
   mPending := TStack<TSyntaxNode>.Create;
   try
@@ -917,7 +918,7 @@ var
   mIndex: Integer;
   mName: string;
 begin
-  // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht), Reihenfolge wie die frühere Rekursion.
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ANode);
@@ -1222,7 +1223,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ANode);

@@ -92,6 +92,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Options,
   Atlas.Common.Localization.Texts;
@@ -156,31 +157,6 @@ const
 function TokenRange(const AToken: TPascalToken): TTextRange;
 begin
   Result := TTextRange.Create(AToken.StartPos, AToken.EndPos);
-end;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
-
-/// <summary>Nächstes Token ab AIndex, das kein Kommentar und keine Direktive ist; Length(ATokens) ohne.</summary>
-function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
-/// <summary>Vorheriges Token vor AIndex, das kein Kommentar und keine Direktive ist; -1 ohne.</summary>
-function PreviousCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(ATokens[Result]) do
-  begin
-    Dec(Result);
-  end;
 end;
 
 /// <summary>Einrückung der Zeile ALine von AText.</summary>
@@ -533,7 +509,7 @@ var
     end;
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Walk(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;

@@ -171,7 +171,8 @@ uses
   Atlas.Core.Settings.SchemaCheck,
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.PluginSchemaData,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -214,34 +215,6 @@ begin
   else if mTypeName = 'string' then
   begin
     Result := akString;
-  end;
-end;
-
-function Flag(ASchema: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  mValue := nil;
-  if ASchema <> nil then
-  begin
-    mValue := ASchema.GetValue(AName);
-  end;
-  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
-end;
-
-function TextOf(ASchema: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := nil;
-  if ASchema <> nil then
-  begin
-    mValue := ASchema.GetValue(AName);
-  end;
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
   end;
 end;
 
@@ -294,8 +267,8 @@ begin
     mArea.Id := mPair.JsonString.Value;
     if mPair.JsonValue is TJSONObject then
     begin
-      mArea.Caption := TextOf(TJSONObject(mPair.JsonValue), 'caption');
-      mArea.CaptionEn := TextOf(TJSONObject(mPair.JsonValue), 'captionEn');
+      mArea.Caption := TJsonRead.Text(TJSONObject(mPair.JsonValue), 'caption');
+      mArea.CaptionEn := TJsonRead.Text(TJSONObject(mPair.JsonValue), 'captionEn');
     end;
     Result := Result + [mArea];
   end;
@@ -321,45 +294,45 @@ function PluginEntry(const AName: string; ASchema: TJSONObject): TAtlasCatalogEn
 begin
   Result := Default(TAtlasCatalogEntry);
   Result.Name := AName;
-  Result.Key := TextOf(ASchema, 'x-key');
+  Result.Key := TJsonRead.Text(ASchema, 'x-key');
   if Result.Key = '' then
   begin
     Result.Key := AName;
   end;
   Result.Source := asPlugin;
   Result.Kind := KindOf(ASchema);
-  Result.Area := TextOf(ASchema, 'x-area');
-  Result.Page := TextOf(ASchema, 'x-page');
-  Result.Caption := TextOf(ASchema, 'x-caption');
-  Result.CaptionEn := TextOf(ASchema, 'x-captionEn');
+  Result.Area := TJsonRead.Text(ASchema, 'x-area');
+  Result.Page := TJsonRead.Text(ASchema, 'x-page');
+  Result.Caption := TJsonRead.Text(ASchema, 'x-caption');
+  Result.CaptionEn := TJsonRead.Text(ASchema, 'x-captionEn');
   Result.DefaultJson := JsonOf(ASchema, 'default');
-  Result.State := Flag(ASchema, 'x-state');
-  Result.Machine := Flag(ASchema, 'x-machine');
-  Result.IsPath := Flag(ASchema, 'x-path');
-  Result.Secret := Flag(ASchema, 'x-secret');
-  Result.Format := TextOf(ASchema, 'x-format');
+  Result.State := TJsonRead.Flag(ASchema, 'x-state');
+  Result.Machine := TJsonRead.Flag(ASchema, 'x-machine');
+  Result.IsPath := TJsonRead.Flag(ASchema, 'x-path');
+  Result.Secret := TJsonRead.Flag(ASchema, 'x-secret');
+  Result.Format := TJsonRead.Text(ASchema, 'x-format');
   Result.FormerKeys := StringsOf(ASchema, 'x-formerKeys');
   Result.RenamedFrom := StringsOf(ASchema, 'x-renamedFrom');
-  Result.ProjectPath := TextOf(ASchema, 'x-project');
-  Result.TeamPath := TextOf(ASchema, 'x-team');
+  Result.ProjectPath := TJsonRead.Text(ASchema, 'x-project');
+  Result.TeamPath := TJsonRead.Text(ASchema, 'x-team');
   Result.SchemaJson := ASchema.ToJSON;
-  Result.Experimental := Flag(ASchema, 'x-experimental');
+  Result.Experimental := TJsonRead.Flag(ASchema, 'x-experimental');
   Result.Parent := OptionalText(ASchema, 'x-parent', Result.HasParent);
   Result.Node := OptionalText(ASchema, 'x-node', Result.HasNode);
-  Result.Module := TextOf(ASchema, 'x-module');
+  Result.Module := TJsonRead.Text(ASchema, 'x-module');
   Result.OffJson := JsonOf(ASchema, 'x-offValue');
-  Result.Description := TextOf(ASchema, 'description');
+  Result.Description := TJsonRead.Text(ASchema, 'description');
   Result.Keywords := StringsOf(ASchema, 'x-keywords');
-  Result.QuickToggle := Flag(ASchema, 'x-quickToggle');
+  Result.QuickToggle := TJsonRead.Flag(ASchema, 'x-quickToggle');
 end;
 
 /// <summary>Text von AName aus ASchema, sonst aus AParent (darf nil sein).</summary>
 function InheritedText(ASchema, AParent: TJSONObject; const AName: string): string;
 begin
-  Result := TextOf(ASchema, AName);
+  Result := TJsonRead.Text(ASchema, AName);
   if Result = '' then
   begin
-    Result := TextOf(AParent, AName);
+    Result := TJsonRead.Text(AParent, AName);
   end;
 end;
 
@@ -387,17 +360,17 @@ begin
   Result.Kind := KindOf(ASchema);
   Result.Area := InheritedText(ASchema, AParent, 'x-area');
   Result.Page := InheritedText(ASchema, AParent, 'x-page');
-  Result.Caption := FirstSentence(TextOf(ASchema, 'description'));
+  Result.Caption := FirstSentence(TJsonRead.Text(ASchema, 'description'));
   // Englisch aus x-description-en (#1458), ebenso gekürzt.
-  Result.CaptionEn := FirstSentence(TextOf(ASchema, 'x-description-en'));
+  Result.CaptionEn := FirstSentence(TJsonRead.Text(ASchema, 'x-description-en'));
   Result.DefaultJson := JsonOf(ASchema, 'default');
-  Result.Machine := Flag(ASchema, 'x-machine') or Flag(AParent, 'x-machine');
-  Result.State := Flag(ASchema, 'x-state');
-  Result.IsPath := Flag(ASchema, 'x-path');
-  Result.Secret := Flag(ASchema, 'x-secret');
+  Result.Machine := TJsonRead.Flag(ASchema, 'x-machine') or TJsonRead.Flag(AParent, 'x-machine');
+  Result.State := TJsonRead.Flag(ASchema, 'x-state');
+  Result.IsPath := TJsonRead.Flag(ASchema, 'x-path');
+  Result.Secret := TJsonRead.Flag(ASchema, 'x-secret');
   Result.FormerKeys := StringsOf(ASchema, 'x-formerKeys');
   Result.SchemaJson := ASchema.ToJSON;
-  Result.Experimental := Flag(ASchema, 'x-experimental');
+  Result.Experimental := TJsonRead.Flag(ASchema, 'x-experimental');
 end;
 
 /// <summary>AKey ist ein früherer Schlüssel eines Eintrags in AEntries.</summary>
@@ -554,15 +527,15 @@ begin
   // Pfad mit Plugin-Einstellung (umgeleitet, x-plugin): nur einmal, als Plugin-Einstellung; x-experimental
   // gilt an beiden Stellen.
   mPlugin := IndexOfKey(AKey);
-  if (mPlugin < 0) and (TextOf(ASchema, 'x-plugin') <> '') then
+  if (mPlugin < 0) and (TJsonRead.Text(ASchema, 'x-plugin') <> '') then
   begin
-    mPlugin := IndexOfName(TextOf(ASchema, 'x-plugin'));
+    mPlugin := IndexOfName(TJsonRead.Text(ASchema, 'x-plugin'));
   end;
   if mPlugin < 0 then
   begin
     FEntries.Add(ServerEntry(AKey, ASchema, AParent));
   end
-  else if Flag(ASchema, 'x-experimental') then
+  else if TJsonRead.Flag(ASchema, 'x-experimental') then
   begin
     mEntry := FEntries[mPlugin];
     mEntry.Experimental := True;
@@ -605,7 +578,7 @@ begin
   end
   else
   begin
-    mPlugin := TextOf(ASchema, 'x-plugin');
+    mPlugin := TJsonRead.Text(ASchema, 'x-plugin');
     if mPlugin <> '' then
     begin
       mIndex := IndexOfName(mPlugin);
@@ -631,7 +604,7 @@ begin
       Continue;
     end;
     mSchema := TJSONObject(mMember.JsonValue);
-    mScope := TextOf(mSchema, 'x-scope');
+    mScope := TJsonRead.Text(mSchema, 'x-scope');
     if mScope = '' then
     begin
       mScope := AScope;
@@ -665,11 +638,11 @@ begin
       mSchema := TJSONObject(mPair.JsonValue);
       if mSchema.TryGetValue<TJSONObject>('properties', mMembers) then
       begin
-        AddServerMembers(mPair.JsonString.Value, mSchema, mMembers, TextOf(mSchema, 'x-scope'));
+        AddServerMembers(mPair.JsonString.Value, mSchema, mMembers, TJsonRead.Text(mSchema, 'x-scope'));
       end
       else
       begin
-        AddServerKey(mPair.JsonString.Value, TextOf(mSchema, 'x-scope'), mSchema, nil);
+        AddServerKey(mPair.JsonString.Value, TJsonRead.Text(mSchema, 'x-scope'), mSchema, nil);
       end;
     end;
   finally

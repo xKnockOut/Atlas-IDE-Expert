@@ -204,7 +204,7 @@ var
   mPath: string;
 begin
   mPath := APath;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin

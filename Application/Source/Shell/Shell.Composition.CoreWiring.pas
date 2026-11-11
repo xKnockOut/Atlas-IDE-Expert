@@ -1,6 +1,6 @@
 ﻿unit Shell.Composition.CoreWiring;
 
-// Verdrahtung von Kern, Index und Sitzung (S-02): Arbeitsbereiche, Indexplanung und Konfiguration mit den
+// Verdrahtung von Kern, Index und Sitzung: Arbeitsbereiche, Indexplanung und Konfiguration mit den
 // Ereignissen des Dokumentspeichers; Teilwurzel Index und Teilwurzel Sitzung mit dem Diagnoselog am Verteiler.
 // Closures fragen die Teile erst beim Aufruf, weil Code, Analyse und IDE später entstehen.
 
@@ -195,7 +195,7 @@ begin
   AServices.IndexEvent :=
     procedure(AText: string)
     begin
-      // Absicherung: Beim Beenden ist das Diagnoselog schon fort (Code-Review A-05).
+      // Absicherung: Beim Beenden ist das Diagnoselog schon fort.
       if AParts.Session <> nil then
       begin
         AParts.Session.Diagnostics.Log.LogEvent(AText);

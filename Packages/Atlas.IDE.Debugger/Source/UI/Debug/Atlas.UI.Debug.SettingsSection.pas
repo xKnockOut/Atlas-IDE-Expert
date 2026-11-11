@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Debug.SettingsSection;
 
-// Abschnitt „Debuggen“ des Moduls Debugger im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher
+// Abschnitt „Debuggen“ des Moduls Debugger im Optionsdialog (#1456; vorher
 // Atlas.UI.Settings.Page.Debug in Base): Modulschalter, Werte im Hover, Visualisierer (#835), eigene
 // Wertdarstellungen (#854), gezielt hineinspringen (#836), Schrittfilter (#850), nächstes Ereignis (#856),
 // Erklärungen (#840, #865), Auswerten (#784), Exceptions (#517, #783), eigener Code (#578) und Werte im

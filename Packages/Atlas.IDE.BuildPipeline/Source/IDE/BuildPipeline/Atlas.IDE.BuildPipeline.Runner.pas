@@ -165,7 +165,7 @@ begin
   FEvents := AEvents;
   FWatcher := TWatcher.Create;
   FWatcher.FOwner := Self;
-  // Die Ereignisse halten den Wächter; Destroy meldet ihn ab und gibt ihn so frei (Regel 3, ADR 0017).
+  // Die Ereignisse halten den Wächter; Destroy meldet ihn ab und gibt ihn so frei (Regel 3).
   FEvents.Add(FWatcher);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 250;

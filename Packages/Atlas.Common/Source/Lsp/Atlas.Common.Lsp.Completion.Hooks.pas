@@ -56,7 +56,7 @@ type
     // Eigene Postfix-Vorlagen (#188); unter FLock.
     FCustomPostfix: TArray<TPostfixTemplate>;
     FLock: TObject;
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie beim Laden
+    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie beim Laden
     /// eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);

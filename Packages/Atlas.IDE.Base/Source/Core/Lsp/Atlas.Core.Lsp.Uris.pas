@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Lsp.Uris;
 
-// Dateiadressen des LSP und Windows-Pfade im Plugin (wie der Server, ADR 0012):
+// Dateiadressen des LSP und Windows-Pfade im Plugin (wie der Server):
 //   c:\x\a.pas            ↔  file:///c%3A/x/a.pas
 //   \\server\share\a.pas  ↔  file://server/share/a.pas
 // Andere Schemata ergeben ''. Eigene Unit, damit die Auswertung von

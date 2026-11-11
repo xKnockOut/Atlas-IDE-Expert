@@ -57,6 +57,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Text.Lines,
@@ -136,28 +137,6 @@ var
   mCache: IRuleDerivedCache;
   mAncestry: TAncestry;
 
-  /// <summary>Erstes Token ab AOffset (Index); Length(Tokens) ohne.</summary>
-  function TokenAt(AOffset: Integer): Integer;
-  var
-    mLow, mHigh, mMiddle: Integer;
-  begin
-    mLow := 0;
-    mHigh := Length(mTokens);
-    while mLow < mHigh do
-    begin
-      mMiddle := (mLow + mHigh) div 2;
-      if mTokens[mMiddle].Offset < AOffset then
-      begin
-        mLow := mMiddle + 1;
-      end
-      else
-      begin
-        mHigh := mMiddle;
-      end;
-    end;
-    Result := mLow;
-  end;
-
   function TokenRange(AIndex: Integer): TTextRange;
   begin
     Result := TTextRange.Create(mTokens[AIndex].StartPos, mTokens[AIndex].EndPos);
@@ -190,7 +169,7 @@ var
     begin
       if (AHeader[mIndex].Kind = TSyntaxKind.Directive) and SameText(AHeader[mIndex].Name, ADirective) then
       begin
-        Result := TokenAt(AHeader[mIndex].StartOffset);
+        Result := TokenFrom(mTokens, AHeader[mIndex].StartOffset);
         if Result < Length(mTokens) then
         begin
           Exit;
@@ -211,7 +190,7 @@ var
     mIsVirtual, mIsClassMethod: Boolean;
     mMethod: TDeclaredMethod;
   begin
-    mFirst := TokenAt(AHeader.StartOffset);
+    mFirst := TokenFrom(mTokens, AHeader.StartOffset);
     if mFirst >= Length(mTokens) then
     begin
       Exit;
@@ -267,7 +246,7 @@ var
   begin
     AAbstract := False;
     ASealed := False;
-    mIndex := TokenAt(ABody.StartOffset);
+    mIndex := TokenFrom(mTokens, ABody.StartOffset);
     if (mIndex >= Length(mTokens)) or not mTokens[mIndex].IsKeyword('class') then
     begin
       Exit;
@@ -350,7 +329,7 @@ var
     mOwners: TArray<string>;
   begin
     mName := WithoutTypeParams(ADecl.Name);
-    mNameToken := NameToken(TokenAt(ADecl.StartOffset), ABody.StartOffset, mName);
+    mNameToken := NameToken(TokenFrom(mTokens, ADecl.StartOffset), ABody.StartOffset, mName);
     if mNameToken < 0 then
     begin
       Exit;
@@ -429,7 +408,7 @@ var
     end;
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;
@@ -510,7 +489,7 @@ var
   /// <summary>Token des Methodennamens AName hinter dem Klassennamen im Kopf AHeader; -1 ohne.</summary>
   function QualifiedNameToken(AHeader: TSyntaxNode; const AName: string): Integer;
   begin
-    Result := TokenAt(AHeader.StartOffset);
+    Result := TokenFrom(mTokens, AHeader.StartOffset);
     while (Result < Length(mTokens)) and (mTokens[Result].Offset < AHeader.EndOffset) do
     begin
       if (Result > 0) and mTokens[Result - 1].IsSymbol('.') and
@@ -535,7 +514,7 @@ var
   var
     mAbstract, mConcrete: Boolean;
   begin
-    Lookup(AClassName, AName, TConditionalBranches.PathAt(mPaths, TokenAt(ARoutine.StartOffset)), mAbstract,
+    Lookup(AClassName, AName, TConditionalBranches.PathAt(mPaths, TokenFrom(mTokens, ARoutine.StartOffset)), mAbstract,
       mConcrete);
     Result := mAbstract and not mConcrete;
   end;

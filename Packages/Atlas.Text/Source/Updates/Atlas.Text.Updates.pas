@@ -49,7 +49,7 @@ type
 
   TUpdateVersions = class
   public const
-    /// <summary>Kern und Verträge (ADR 0017): immer installiert, nie abwählbar.</summary>
+    /// <summary>Kern und Verträge: immer installiert, nie abwählbar.</summary>
     cBasePackage = 'Atlas.IDE.Base';
     cContractsPackage = 'Atlas.IDE.Contracts';
     cPackagePrefix = 'Atlas.IDE.';

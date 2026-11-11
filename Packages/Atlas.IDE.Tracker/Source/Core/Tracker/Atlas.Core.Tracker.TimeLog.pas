@@ -136,7 +136,8 @@ uses
   System.JSON,
   System.Math,
   System.StrUtils,
-  Atlas.Core.Tracker.Files;
+  Atlas.Core.Tracker.Files,
+  Atlas.Text.Json;
 
 const
   cLocalAppData = 'LOCALAPPDATA';
@@ -236,18 +237,6 @@ begin
   end;
 end;
 
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.Values[AName];
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
 class function TAtlasTimeLog.Empty: TAtlasTimeLog;
 begin
   Result.Entries := nil;
@@ -266,10 +255,10 @@ begin
     Exit;
   end;
   mObject := TJSONObject(AItem);
-  AEntry.Issue := TAtlasTimeIssue.Create(TextOf(mObject, 'provider'), TextOf(mObject, 'url'),
-    TextOf(mObject, 'project'), TextOf(mObject, 'key'));
+  AEntry.Issue := TAtlasTimeIssue.Create(TJsonRead.Text(mObject, 'provider'), TJsonRead.Text(mObject, 'url'),
+    TJsonRead.Text(mObject, 'project'), TJsonRead.Text(mObject, 'key'));
   mSeconds := mObject.Values['seconds'];
-  if AEntry.Issue.IsEmpty or not (mSeconds is TJSONNumber) or not ParseDay(TextOf(mObject, 'date'), AEntry.Day) then
+  if AEntry.Issue.IsEmpty or not (mSeconds is TJSONNumber) or not ParseDay(TJsonRead.Text(mObject, 'date'), AEntry.Day) then
   begin
     Exit;
   end;
@@ -278,7 +267,7 @@ begin
   begin
     AEntry.Seconds := 0;
   end;
-  if not ParseTime(TextOf(mObject, 'last'), AEntry.Last) then
+  if not ParseTime(TJsonRead.Text(mObject, 'last'), AEntry.Last) then
   begin
     AEntry.Last := 0;
   end;

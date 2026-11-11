@@ -119,6 +119,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
   Atlas.Common.Pascal.PureRoutines,
   Atlas.Common.Pascal.Lexer,
@@ -368,7 +369,7 @@ var
     Result := Trim(Copy(AContext.Text, mNode.StartOffset + 1, mNode.EndOffset - mNode.StartOffset));
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   function Impure(ANode: TSyntaxNode): Boolean;
   var
     mPending: TStack<TSyntaxNode>;
@@ -462,7 +463,7 @@ var
       [TRuleFix.Jump(cTexts[TExpressionsText.JumpToThen].Text, AIf[1].StartPos)]);
   end;
 
-  // Operanden einer Kette aus demselben Operator: A and B and A. Iterativ (Bericht M1): rechter Operand
+  // Operanden einer Kette aus demselben Operator: A and B and A. Iterativ (tiefe Bäume sprengen den Stapel nicht): rechter Operand
   // zuerst auf den Stapel, damit die Operanden von links nach rechts in AList landen.
   procedure Operands(ANode: TSyntaxNode; const AOperator: string; var AList: TArray<TSyntaxNode>);
   var
@@ -551,7 +552,7 @@ var
   end;
 
   // TKlasse.Instanz = TKlasse.Instanz prüft bewusst die Identität eines Singletons.
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   function OnClass(ANode: TSyntaxNode): Boolean;
   var
     mPending: TStack<TSyntaxNode>;
@@ -604,7 +605,7 @@ var
       cTexts[TExpressionsText.SelfCompare].Fmt([Display(ANode[0]), mOutcome]), TRuleConfidence.High);
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;
@@ -1450,7 +1451,7 @@ var
   end;
 
   // Ist das Argument AFirst..ALast sicher ein String und kein Zeichen? Deklarierter String-Typ, .Text/.Caption,
-  // Aufruf einer String-Funktion der RTL oder Verkettung mit einem String-Teil. Iterativ (Bericht M1): die
+  // Aufruf einer String-Funktion der RTL oder Verkettung mit einem String-Teil. Iterativ (tiefe Bäume sprengen den Stapel nicht): die
   // Teile einer langen Verkettung nacheinander statt einer Rekursionsebene je +.
   function IsStringArgument(AFirst, ALast: Integer): Boolean;
   var
@@ -1697,7 +1698,7 @@ var
 
   // div in AExpression, deren Ergebnis ungekürzt in die Gleitkommazahl fließt: durch Klammern, Vorzeichen und
   // + - * / hindurch, nicht in Aufrufe, Indizes, mod oder Vergleiche.
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Search(AExpression: TSyntaxNode; const ATarget, AType: string);
   var
     mPending: TStack<TSyntaxNode>;
@@ -1789,7 +1790,7 @@ var
     end;
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Walk(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;

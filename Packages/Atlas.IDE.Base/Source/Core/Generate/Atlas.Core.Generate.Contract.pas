@@ -2,7 +2,7 @@
 
 // Gruppen und Listen des Erzeugen-Menüs (#719), wie sie in den Einstellungen stehen
 // (keys.generateMenu.groups, keys.generateMenu.hidden). Eigene Unit, damit die Einstellungen sie
-// normalisieren können, ohne das Menü (und darüber den LSP-Client) zu importieren (A-09).
+// normalisieren können, ohne das Menü (und darüber den LSP-Client) zu importieren.
 
 interface
 

@@ -26,12 +26,12 @@
 // Binäre Formulare (TPF0) schreibt SaveToFile nie zurück.
 //
 // Die Prüfungen (UTF-8, BOM, Codepage, TPF0, Windows-1252, Zeilenenden) stehen
-// in Atlas.Text und gelten gleich im Plugin (ADR 0012).
+// in Atlas.Text und gelten gleich im Plugin.
 //
 // TEncodingSurvey zählt die Kodierungen mehrerer Dateien, damit der Server
 // auf ein Projekt mit gemischten Kodierungen hinweisen kann.
 //
-// Lesen ohne Sperre (Bericht M5): LoadFromFile und ReadAllBytes lesen über
+// Lesen ohne Sperre: LoadFromFile und ReadAllBytes lesen über
 // Reader. Die Plattform setzt dort einen Leser ein, der die Datei auch zum
 // Löschen teilt (unter Windows Atlas.Windows.Documents.SharedRead). Sonst kann
 // das Plugin settings.json, atlas.json oder eine Unit nicht atomar durch die
@@ -102,7 +102,7 @@ type
     Position: TTextPosition;
   end;
 
-  /// <summary>Liest eine ganze Datei; EFOpenError, wenn sie fehlt oder gesperrt ist (Bericht M5).</summary>
+  /// <summary>Liest eine ganze Datei; EFOpenError, wenn sie fehlt oder gesperrt ist.</summary>
   TFileBytesReader = reference to function(const AFileName: string): TBytes;
 
   TFileEncoding = class

@@ -70,7 +70,7 @@ type
     FSettingsFor: TReferenceSettingsProvider;
     function HandleReferences(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
+    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -241,7 +241,7 @@ begin
   Result := nil;
   mAlternative := AlternativeName(AName);
   mHits := TList<TReferenceHit>.Create;
-  // Den Baum einmal auswerten statt je Treffer (Code-Review P-01); verschachtelt zulässig, wenn der
+  // Den Baum einmal auswerten statt je Treffer; verschachtelt zulässig, wenn der
   // Aufrufer ihn schon gepinnt hat.
   AClassifier.Resolver.PinTree(ATree, AFileName);
   try
@@ -309,7 +309,7 @@ type
     FCancellation: IJsonRpcCancellationToken;
     FClassifier: TReferenceClassifier;
     FName: string;
-    // Listen statt Result := Result + [...] (Code-Review P-08); bei vielen Treffern quadratisch.
+    // Listen statt Result := Result + [...]; bei vielen Treffern quadratisch.
     FLocations: TList<TReferenceLocation>;
     FSearched: TDictionary<string, Boolean>;
     procedure AddRanges(const AFile: string; const ARanges: TArray<TTextRange>);
@@ -526,7 +526,7 @@ begin
     Exit;
   end;
   mRun := TReferenceRun.Create(AResolver, AIndex, ASearch, ASettings, ACancellation);
-  // Den eigenen Baum einmal auswerten (Code-Review P-01): Targets und HitsInTree nutzen ihn; die Fremdbäume
+  // Den eigenen Baum einmal auswerten: Targets und HitsInTree nutzen ihn; die Fremdbäume
   // pinnt HitsInTree darüber und löst sie wieder.
   AResolver.PinTree(ATree, ASearch.FileName);
   try

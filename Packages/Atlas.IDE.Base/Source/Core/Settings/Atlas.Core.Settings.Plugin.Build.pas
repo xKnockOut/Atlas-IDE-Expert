@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Settings.Plugin.Build;
 
-// Einstellungen des IDE-Plugins, Bereich Build (build.*, tests.*, taskRunner.*) (#227, ADR 0017):
+// Einstellungen des IDE-Plugins, Bereich Build (build.*, tests.*, taskRunner.*) (#227):
 // Felder, Vorgaben, Grenzen, Lesen und Schreiben. TAtlasPluginSettings (Atlas.Core.Settings.Plugin)
 // fasst die Bereiche zusammen und reicht die Felder als Eigenschaften durch.
 

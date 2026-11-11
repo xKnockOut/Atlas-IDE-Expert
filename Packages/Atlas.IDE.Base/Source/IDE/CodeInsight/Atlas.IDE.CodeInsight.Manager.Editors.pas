@@ -24,7 +24,7 @@ uses
 type
   /// <summary>Was die Anbindungen vom Manager brauchen.</summary>
   TAtlasCodeInsightEditorHooks = record
-    /// <summary>Laufende Sitzung oder Start im Hauptthread; außerhalb des Hauptthreads nur, was schon läuft (A-01).
+    /// <summary>Laufende Sitzung oder Start im Hauptthread; außerhalb des Hauptthreads nur, was schon läuft.
     /// </summary>
     EnsureSession: TFunc<Boolean>;
     /// <summary>Laufende Sitzung oder nil, nie während StopSession; startet keinen Server.</summary>
@@ -74,7 +74,7 @@ type
     /// <summary>Vor dem Schließen der Verbindung: laufende Anfragen von Vervollständigung und Parameter-Hint
     /// beenden, Threads der Probleme anhalten.</summary>
     procedure BeginStop;
-    /// <summary>Nach dem Schließen der Verbindung: Hover-Anfragen kehren sofort zurück (Code-Review A-07), auf die
+    /// <summary>Nach dem Schließen der Verbindung: Hover-Anfragen kehren sofort zurück, auf die
     /// Probleme warten.</summary>
     procedure EndStop;
     /// <summary>Vor der Sitzung freigeben: wartet auf laufende Anfragen und meldet Tasten und Beobachter ab.</summary>
@@ -116,7 +116,7 @@ begin
   FProblems := TAtlasProblemsController.Create(
     function(AStart: Boolean): TLspSession
     begin
-      // Start nur im Hauptthread (Probleme-Takt); EnsureSession kehrt sonst sofort zurück (A-01).
+      // Start nur im Hauptthread (Probleme-Takt); EnsureSession kehrt sonst sofort zurück.
       if AStart then
       begin
         mEnsure();
@@ -206,7 +206,7 @@ begin
       FHooks.NewSignatureSource(
         function: TLspSession
         begin
-          // Im Hauptthread beim Öffnen des Hints: nur eine laufende Sitzung, nie ein Start (A-01).
+          // Im Hauptthread beim Öffnen des Hints: nur eine laufende Sitzung, nie ein Start.
           Result := mRunning();
         end),
       function: Boolean
@@ -235,7 +235,7 @@ begin
     FCompletion := TAtlasEditorCompletion.Create(
       function: TLspSession
       begin
-        // Aufgerufen im Zeitlimit-Arbeiter (#493): nur eine laufende Sitzung, nie ein Start (A-01).
+        // Aufgerufen im Zeitlimit-Arbeiter (#493): nur eine laufende Sitzung, nie ein Start.
         Result := mRunning();
       end,
       procedure(const AMessage: string)
@@ -283,7 +283,7 @@ end;
 
 procedure TAtlasCodeInsightEditors.EndStop;
 begin
-  // Hover-Anfragen halten die Sitzung als rohen Zeiger; nach Close kehren sie sofort zurück (Code-Review A-07).
+  // Hover-Anfragen halten die Sitzung als rohen Zeiger; nach Close kehren sie sofort zurück.
   if FHover <> nil then
   begin
     FHover.Shutdown;

@@ -57,7 +57,7 @@ uses
   Atlas.Common.Lsp.Completion.Cases;
 
 type
-  // Typen der Vervollständigung stehen in Atlas.Common.Lsp.CompletionRequest (Code-Review S-01) und den
+  // Typen der Vervollständigung stehen in Atlas.Common.Lsp.CompletionRequest und den
   // Completion-Units; hier weiter unter ihrem Namen, damit Aufrufer ohne Änderung übersetzen.
   TCompletionContextKind = Atlas.Common.Lsp.CompletionRequest.TCompletionContextKind;
   TCompletionContext = Atlas.Common.Lsp.CompletionRequest.TCompletionContext;
@@ -91,9 +91,9 @@ type
     FCacheFile: string;
     FCacheStamp: TDateTime;
     FCacheText: string;
-    // Auszüge der Formulardateien (Code-Review P-06); eigene Sperre.
+    // Auszüge der Formulardateien; eigene Sperre.
     FForms: TFormSnapshotCache;
-    // Fälle von textDocument/completion in fester Reihenfolge (Code-Review S-01): ohne und mit Syntaxbaum.
+    // Fälle von textDocument/completion in fester Reihenfolge: ohne und mit Syntaxbaum.
     FTextCases: TArray<TCompletionCase>;
     FTreeCases: TArray<TCompletionCase>;
     procedure HandlePostfixTemplates(const AParams: TJSONValue);
@@ -336,7 +336,7 @@ begin
   Result := TCompletionAnswer.Create;
   Result.Hooks := FHooks;
   Result.Cancellation := ACancellation;
-  // Formulare über den Zwischenspeicher der Instanz (Code-Review P-06).
+  // Formulare über den Zwischenspeicher der Instanz.
   Result.Forms := TCompletionForms.Cached(FStore, FHooks.ReadText, FForms);
   if Assigned(FHooks.Notify) and (AParams <> nil) and (AParams.GetValue('partialResultToken') is TJSONString) then
   begin
@@ -357,7 +357,7 @@ var
 begin
   mWatch := TStopwatch.StartNew;
   mCancellation := TRequestCancellation.Create(ACancellation);
-  // Eine Anfrage für alle Fälle (Code-Review S-01): Text, Datei, Position und was je Dokument gilt.
+  // Eine Anfrage für alle Fälle: Text, Datei, Position und was je Dokument gilt.
   mRequest := TCompletionRequest.Create(ADocument, TDocumentUris.ToPath(AUri), APosition);
   mAnswer := NewAnswer(AParams, ACancellation);
   try
@@ -403,7 +403,7 @@ begin
   try
     mResolver.Namespaces := FHooks.Namespaces;
     ARequest.Resolver := mResolver;
-    // Den Baum einmal auswerten für alle Teile der Anfrage (Code-Review P-02).
+    // Den Baum einmal auswerten für alle Teile der Anfrage.
     mResolver.PinTree(ARequest.Tree, ARequest.FileName);
     try
       ARequest.Settings := FHooks.SettingsOf(ARequest.Uri);

@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Settings.Section;
 
-// Grundlage für Abschnitte der Module im Optionsdialog (#1455, ADR 0017 Entscheidung 3): TAtlasSettingsSection
+// Grundlage für Abschnitte der Module im Optionsdialog (#1455): TAtlasSettingsSection
 // setzt IAtlasSettingsSection mit leeren Vorgaben um und reicht die Bausteine der Seite typisiert weiter
 // (Schalter, Zahl, Text, Tastenkürzel, Auswahl, eigene Elemente). Ein Modul leitet je Reiter eine Klasse ab,
 // überschreibt OwnerId, AreaId und BuildRows und, wenn es eigene Elemente hat, Load und Save.

@@ -2,7 +2,7 @@
 
 // Liste der häufigen Ereignisse für debug.breakOnNextEvent.excluded (#856):
 // Vorgabe, Zerlegen und Normalisieren. Liegt bei den Einstellungen, damit
-// der Parser ohne den Debug-Kern auskommt (A-09, wie
+// der Parser ohne den Debug-Kern auskommt (wie
 // Atlas.Core.Settings.VisualizerKinds); die Auswahl der Handler rechnet
 // Atlas.Core.Debug.EventBreak.
 

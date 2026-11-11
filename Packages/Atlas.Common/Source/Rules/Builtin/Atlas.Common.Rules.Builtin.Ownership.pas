@@ -311,7 +311,7 @@ var
   mIndex: Integer;
   mNext: TSyntaxNode;
 begin
-  // Iterativ (Bericht M1): je Ebene in das erste Kind, das AOffset enthält.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): je Ebene in das erste Kind, das AOffset enthält.
   Result := ANode;
   repeat
     mNext := nil;
@@ -1079,7 +1079,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ANode);
@@ -1281,7 +1281,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ANode);
@@ -1313,7 +1313,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ANode);

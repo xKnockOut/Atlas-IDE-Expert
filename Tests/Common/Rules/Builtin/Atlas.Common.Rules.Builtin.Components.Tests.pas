@@ -53,7 +53,7 @@ type
     procedure ScaledAndTrivialPixelsAreSilent;
     [Test]
     procedure HexColorReportsSystemColorSilent;
-    /// <summary>Alle sechs Regeln in einem Lauf teilen das Komponentenmodell (Review P-03).</summary>
+    /// <summary>Alle sechs Regeln in einem Lauf teilen das Komponentenmodell.</summary>
     [Test]
     procedure AllComponentRulesShareModelInOneRun;
     [Test]

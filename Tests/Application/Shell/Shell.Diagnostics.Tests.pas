@@ -43,7 +43,7 @@ type
     procedure PreviousRunsWithoutEndAreCounted;
     [Test]
     procedure EveryEndReasonHasText;
-    /// <summary>Gemeinsame Logdatei für LSP und MCP (D-08): ohne Namen nichts, nicht anlegbar ein Fehler im
+    /// <summary>Gemeinsame Logdatei für LSP und MCP: ohne Namen nichts, nicht anlegbar ein Fehler im
     /// Log.</summary>
     [Test]
     procedure AddLogFile_EmptyName_DoesNothing;

@@ -39,7 +39,7 @@ type
     UsesContext: TUsesContextProvider;
     /// <summary>Unit im Diagnoselog nur anonym (#1094).</summary>
     FileLabel: TPullFileLabel;
-    /// <summary>Long-Polling endet vor dem Zeitlimit des Watchdogs (Code-Review P-14).</summary>
+    /// <summary>Long-Polling endet vor dem Zeitlimit des Watchdogs.</summary>
     RequestTimeout: TPullTimeout;
   end;
 

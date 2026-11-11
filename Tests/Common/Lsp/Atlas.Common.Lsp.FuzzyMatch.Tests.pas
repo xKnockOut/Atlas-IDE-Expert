@@ -22,7 +22,7 @@ type
     procedure RanksExactPrefixSubstringSubsequence;
     [Test]
     procedure PrefersWordStarts;
-    /// <summary>Vervollständigung: Teilfolgen nur mit Wortgrenzen wie im Plugin (D-05).</summary>
+    /// <summary>Vervollständigung: Teilfolgen nur mit Wortgrenzen wie im Plugin.</summary>
     [Test]
     procedure CompletionNeedsWordBoundaries;
   end;

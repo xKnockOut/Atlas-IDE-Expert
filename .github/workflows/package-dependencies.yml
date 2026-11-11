@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: "Rollenmatrix: Selbsttest (Code-Review A-12)"
+      - name: "Rollenmatrix: Selbsttest"
         shell: pwsh
         run: ./Tools/Check-PackageDependencies.ps1 -SelfTest
       - name: Package-Abhängigkeiten prüfen
@@ -28,7 +28,7 @@ jobs:
       - name: Mit Delphi 12 verträglich
         shell: pwsh
         run: ./Tools/Check-Delphi12.ps1
-      - name: Einreihen in den Hauptthread nur über TAtlasMainThread (Code-Review A-02)
+      - name: Einreihen in den Hauptthread nur über TAtlasMainThread
         shell: pwsh
         run: ./Tools/Check-MainThreadQueue.ps1
       - name: Projektdateien für MSBuild lesbar, Selbsttest
@@ -43,7 +43,7 @@ jobs:
       - name: Sprungziele der F1-Hilfe vorhanden (#1886)
         shell: pwsh
         run: ./Tools/Check-HelpAnchors.ps1
-      - name: Keine doppelten XML-Doku-Kommentare (Code-Review K-04)
+      - name: Keine doppelten XML-Doku-Kommentare
         shell: pwsh
         run: ./Tools/Check-DocComments.ps1
       - name: Deutsche Literale nur in Texttabellen (#1458), Selbsttest

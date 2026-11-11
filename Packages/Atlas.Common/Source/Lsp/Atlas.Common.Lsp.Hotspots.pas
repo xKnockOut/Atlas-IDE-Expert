@@ -133,7 +133,8 @@ uses
   System.IOUtils,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -157,22 +158,6 @@ const
     (De: 'Hotspots sind ausgeschaltet (hotspots.enabled)'; En: 'Hotspots are switched off (hotspots.enabled)'));
 
 {$SCOPEDENUMS OFF}
-
-function StringOf(const AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := Trim(mValue.Value);
-  end;
-end;
 
 /// <summary>Ganze Zahl AName; ADefault ohne Angabe, False bei einem anderen Typ.</summary>
 function IntegerOf(const AObject: TJSONObject; const AName: string; ADefault: Integer; out AValue: Integer): Boolean;
@@ -349,7 +334,7 @@ var
   mMonths: Integer;
 begin
   AError := '';
-  if not THotspots.TryLevelOf(StringOf(AParams, 'level'), mLevel) then
+  if not THotspots.TryLevelOf(TJsonRead.TrimmedText(AParams, 'level'), mLevel) then
   begin
     AError := cTexts[THotspotsText.LevelIsUnitOrMethod].Text;
     Exit(False);
@@ -404,7 +389,7 @@ var
   mSettings: TServerSettings;
   mError: string;
 begin
-  if not (Assigned(FSourceFor) and FSourceFor(PathOf(StringOf(AParams, 'uri')), ARequest, mSettings, AVcs,
+  if not (Assigned(FSourceFor) and FSourceFor(PathOf(TJsonRead.TrimmedText(AParams, 'uri')), ARequest, mSettings, AVcs,
     AOutcome.VcsError)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[THotspotsText.NoProjectLoaded].Text);
@@ -479,11 +464,11 @@ end;
 /// <summary>Format, Abschnitt und Listenlänge aus AParams; Fehler der Anfrage bei ungültigen Werten.</summary>
 function ViewOf(const AParams: TJSONObject): TLspHotspotView;
 begin
-  if not TLspHotspots.TryParseFormat(StringOf(AParams, 'format'), Result.Format) then
+  if not TLspHotspots.TryParseFormat(TJsonRead.TrimmedText(AParams, 'format'), Result.Format) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[THotspotsText.FormatIsJsonMarkdownHtml].Text);
   end;
-  if not THotspotReport.ParseSection(StringOf(AParams, 'section'), Result.Section) then
+  if not THotspotReport.ParseSection(TJsonRead.TrimmedText(AParams, 'section'), Result.Section) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[THotspotsText.SectionIsHotspotsOrCoupling].Text);
@@ -669,7 +654,7 @@ begin
   mTarget := TargetOf(AArguments);
   mParams := ParamsOf(AArguments, 2);
   try
-    if not THotspots.TryLevelOf(StringOf(mParams, 'level'), mLevel) then
+    if not THotspots.TryLevelOf(TJsonRead.TrimmedText(mParams, 'level'), mLevel) then
     begin
       raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[THotspotsText.LevelIsUnitOrMethod].Text);
     end;
