@@ -75,9 +75,12 @@ end;
 
 /// <summary>Eine gültige Zeile „Standard“ (wie TAtlasTrackerQueries.Read: Name und Abfrage nicht leer).</summary>
 function IsStandard(AItem: TJSONValue): Boolean;
+var
+  mObject: TJSONObject;
 begin
-  Result := SameText(TJsonRead.TrimmedText(TJsonRead.AsObject(AItem), 'name'), TAtlasSettingsQueryMigrations.cStandardName) and
-    (TJsonRead.TrimmedText(TJsonRead.AsObject(AItem), 'query') <> '');
+  mObject := TJsonRead.AsObject(AItem);
+  Result := SameText(TJsonRead.TrimmedText(mObject, 'name'), TAtlasSettingsQueryMigrations.cStandardName) and
+    (TJsonRead.TrimmedText(mObject, 'query') <> '');
 end;
 
 class function TAtlasSettingsQueryMigrations.WithLegacy(const AJson, ALegacyQuery: string): string;

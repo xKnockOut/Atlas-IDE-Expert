@@ -92,7 +92,26 @@ implementation
 uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Diagnostics.UnloadSafety;
+  Atlas.Core.Diagnostics.UnloadSafety,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit: der Grund erscheint im Hinweis von TAtlasUnloadSafety.</summary>
+  TWorkerSlotText = (OverdueThreads);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TWorkerSlotText] of string = (
+    ('%d Arbeiter-Thread(s) über ihrer Zeitgrenze'),
+    ('%d worker thread(s) past their time limit'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TWorkerSlotText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 /// <summary>Beim Entladen jedes Packages (AddModuleUnloadProc), solange sein Code noch geladen ist.</summary>
 procedure AtlasOverdueModuleUnload(AInstance: NativeInt);
@@ -217,7 +236,7 @@ begin
   Prune(AModule);
   if not Result then
   begin
-    TAtlasUnloadSafety.MarkUnsafe(AModule, Format('%d worker thread(s) past their time limit',
+    TAtlasUnloadSafety.MarkUnsafe(AModule, Format(UiText(TWorkerSlotText.OverdueThreads),
       [Length(ThreadsOf(AModule))]));
   end;
 end;
@@ -325,5 +344,9 @@ begin
     Prune;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Diagnostics.WorkerSlot', cTexts[TAtlasLanguage.German],
+    cTexts[TAtlasLanguage.English]);
 
 end.
