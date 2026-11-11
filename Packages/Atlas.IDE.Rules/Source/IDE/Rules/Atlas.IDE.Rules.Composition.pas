@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Rules.Composition;
 
-// Modul Prüfregeln (#1455, ADR 0017): einzige Unit, die die Werkzeuge der
+// Modul Prüfregeln (#1455): einzige Unit, die die Werkzeuge der
 // Prüfregeln in der IDE einbindet: Baseline des Projekts aktualisieren (#97)
 // und Compilermeldungen in die Baseline (#530) (Atlas.IDE.Rules.Baseline),
 // Eigenschaftsregeln anwenden (#309, Atlas.IDE.Editor.DfmPropertyRules) und

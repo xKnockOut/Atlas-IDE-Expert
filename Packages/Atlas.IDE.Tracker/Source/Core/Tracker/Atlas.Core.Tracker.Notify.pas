@@ -192,7 +192,8 @@ uses
   System.Generics.Defaults,
   System.JSON,
   System.Math,
-  Atlas.Core.Tracker.Files;
+  Atlas.Core.Tracker.Files,
+  Atlas.Text.Json;
 
 { TAtlasTrackerNotice }
 
@@ -684,18 +685,6 @@ begin
   end;
 end;
 
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.Values[AName];
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
 class function TAtlasTrackerNotify.ToJson(const AFile: TAtlasTrackerNotifyFile): string;
 var
   mRoot, mObject, mEntry: TJSONObject;
@@ -750,8 +739,8 @@ begin
     begin
       Continue;
     end;
-    mUnseen.Key := Trim(TextOf(TJSONObject(mEntry), 'key'));
-    mUnseen.Project := Trim(TextOf(TJSONObject(mEntry), 'project'));
+    mUnseen.Key := Trim(TJsonRead.Text(TJSONObject(mEntry), 'key'));
+    mUnseen.Project := Trim(TJsonRead.Text(TJSONObject(mEntry), 'project'));
     mUnseen.Anchor := TimeOf(TJSONObject(mEntry), 'anchor');
     if (mUnseen.Key <> '') and (AConnection.IndexOfUnseen(mUnseen.Key, mUnseen.Project) < 0) then
     begin
@@ -771,12 +760,12 @@ begin
     Exit;
   end;
   mObject := TJSONObject(AItem);
-  AConnection := TAtlasTrackerNotifyConnection.Create(Trim(TextOf(mObject, 'id')), TimeOf(mObject, 'since'));
+  AConnection := TAtlasTrackerNotifyConnection.Create(Trim(TJsonRead.Text(mObject, 'id')), TimeOf(mObject, 'since'));
   Result := (AConnection.Id <> '') and (AConnection.Since <> 0);
   if Result then
   begin
-    AConnection.Me := TextOf(mObject, 'me');
-    AConnection.LastModified := TextOf(mObject, 'lastModified');
+    AConnection.Me := TJsonRead.Text(mObject, 'me');
+    AConnection.LastModified := TJsonRead.Text(mObject, 'lastModified');
     ReadUnseen(mObject.Values['unseen'], AConnection);
   end;
 end;

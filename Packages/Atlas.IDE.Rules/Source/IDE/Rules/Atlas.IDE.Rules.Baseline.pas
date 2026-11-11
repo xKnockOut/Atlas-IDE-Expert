@@ -116,7 +116,7 @@ begin
   begin
     TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.BaselineUpdateCompleted, [AUpdate.Completed]));
   end;
-  // Bericht N3: Die unbrauchbare bisherige Datei wurde nicht still ersetzt.
+  // Die unbrauchbare bisherige Datei wurde nicht still ersetzt.
   if AUpdate.SetAside <> '' then
   begin
     TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.BaselineUpdateSetAside, [AUpdate.SetAside]));

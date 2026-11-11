@@ -25,7 +25,7 @@
 //   „in der Brotkrumenzeile“, #1101); die Glieder teilen sich dann nur die
 //   Breite links davon (ContentRight).
 // - WindowProblem und HitProblem nennen, warum Windows die Maus nicht an die
-//   Leiste gibt (Bericht M2): Im atlas.log vom 21./22.10. bekam das Eltern-
+//   Leiste gibt: Im atlas.log vom 21./22.10. bekam das Eltern-
 //   fenster „EditorPanel“ die Klicks, obwohl die Leiste oben lag und kein
 //   Geschwister darüber. Die Trefferprüfung von WindowFromPoint übergeht ein
 //   Kindfenster nur, wenn es ausgeblendet oder gesperrt ist, der Punkt außer-

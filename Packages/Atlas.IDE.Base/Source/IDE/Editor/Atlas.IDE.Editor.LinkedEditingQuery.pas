@@ -12,10 +12,10 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  System.Generics.Collections,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Editor.LinkedEditing;
+  Atlas.Core.Editor.LinkedEditing,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 type
   TAtlasLinkedSessionFunc = reference to function: TLspSession;
@@ -40,7 +40,7 @@ type
   private
     FSession: TAtlasLinkedSessionFunc;
     FDeliver: TAtlasLinkedDeliverProc;
-    FWorkers: TList<TThread>;
+    FWorkers: TAtlasWorkerSlot;
     FRequest: Integer;
     FIdleKey: string;
     FIdleCount: Integer;
@@ -56,8 +56,6 @@ type
     destructor Destroy; override;
     /// <summary>Cursor als Zeile und Zeichenindex (0-basiert).</summary>
     class procedure ReadCaret(const AView: IOTAEditView; out ALine, ACharacter: Integer); static;
-    /// <summary>Fertige Anfragen freigeben; mit AWait alle abwarten.</summary>
-    procedure Reap(AWait: Boolean);
     /// <summary>Nach jedem Takt ohne Sitzung: ruht der Cursor, den Server fragen.</summary>
     procedure Watch(const AView: IOTAEditView);
     /// <summary>Antwort übernehmen, wenn sie zur jüngsten Anfrage gehört.</summary>
@@ -95,13 +93,17 @@ begin
   inherited Create;
   FSession := ASession;
   FDeliver := ADeliver;
-  FWorkers := TList<TThread>.Create;
+  FWorkers := TAtlasWorkerSlot.Create(HInstance);
 end;
 
 destructor TAtlasIdeLinkedEditingQuery.Destroy;
 begin
-  // Laufende Anfragen halten die Sitzung als rohen Zeiger: abwarten.
-  Reap(True);
+  // Laufende Anfragen halten die Sitzung als rohen Zeiger: bis zu ihrem Ende abwarten (sie haben eine eigene
+  // Zeitgrenze), nicht nur bis cStopMs.
+  if FWorkers <> nil then
+  begin
+    FWorkers.Stop(TAtlasWorkerSlot.cWaitForever);
+  end;
   FreeAndNil(FWorkers);
   FCandidate := Default(TAtlasLinkedCandidate);
   inherited Destroy;
@@ -117,25 +119,6 @@ begin
   mLineText := TAtlasEditorBuffer.LineText(AView, ALine + 1);
   ACharacter := Min(TLspSession.ColumnToIndex(mLineText, mCursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer)),
     Length(mLineText));
-end;
-
-procedure TAtlasIdeLinkedEditingQuery.Reap(AWait: Boolean);
-var
-  mIndex: Integer;
-begin
-  if FWorkers = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := FWorkers.Count - 1 downto 0 do
-  begin
-    if AWait or FWorkers[mIndex].Finished then
-    begin
-      FWorkers[mIndex].WaitFor;
-      FWorkers[mIndex].Free;
-      FWorkers.Delete(mIndex);
-    end;
-  end;
 end;
 
 function TAtlasIdeLinkedEditingQuery.Covers(const AFileName: string; ALine, ACharacter: Integer): Boolean;
@@ -194,7 +177,7 @@ begin
   mFileName := AView.Buffer.FileName;
   mText := TAtlasEditorBuffer.Text(AView.Buffer);
   mSession.Sync(mFileName, mText);
-  Reap(False);
+  FWorkers.Prune;
   Inc(FRequest);
   mRequest := FRequest;
   mDeliver := FDeliver;
@@ -218,7 +201,7 @@ begin
         // Server langsam oder weg: keine Sitzung, die Taste geht an die IDE.
         mRanges := nil;
       end;
-      // Atlas gehört der Eintrag: beim Entladen verworfen (Code-Review A-02).
+      // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.LinkedEditing,
         procedure
         begin
@@ -229,9 +212,7 @@ begin
             end);
         end);
     end);
-  mWorker.FreeOnTerminate := False;
-  FWorkers.Add(mWorker);
-  mWorker.Start;
+  FWorkers.Start(mWorker);
 end;
 
 procedure TAtlasIdeLinkedEditingQuery.Accept(ARequest: Integer; const AFileName, AText: string;

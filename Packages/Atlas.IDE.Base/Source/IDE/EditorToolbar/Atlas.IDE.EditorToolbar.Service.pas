@@ -25,7 +25,7 @@
 //   Symbolen und Position in die Einstellungen.
 // - Alles, was anderen Features gehört (Palette, Befunde, Verlauf,
 //   Meldungsansicht), kommt über THooks von der Composition; so entsteht kein
-//   Feature-Zyklus (A-09).
+//   Feature-Zyklus.
 // - Eigene Sicherung TAtlasFeature.EditorToolbar: Löst sie aus, verschwinden
 //   die Leisten, bis „Abgeschaltete Funktionen einschalten“.
 // - Anlegen je Editorfenster, Wächter, Freigabe nach der Sperre durch die

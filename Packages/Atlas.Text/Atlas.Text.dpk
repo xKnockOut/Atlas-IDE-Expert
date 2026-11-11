@@ -29,7 +29,7 @@
 {$IMPLICITBUILD ON}
 
 // Platform-Package mit Textcode, den Server und IDE-Plugin gleich brauchen
-// (ADR 0012): Zeilen, Zeichenklassen, Kodierungserkennung, URIs,
+//: Zeilen, Zeichenklassen, Kodierungserkennung, URIs,
 // Anonymisierung, Zeilenvergleich, unscharfe Namensregeln, JSONC, JSON-Strings, XML-Entities
 // die Versionsangabe, DUnitX-Tests im Quelltext und ihre Berichte (#69) sowie Map-Dateien des Linkers für Stacktraces.
 // Nur RTL (System.*), keine Zustände, kein inline.

@@ -108,15 +108,15 @@ type
     procedure SymbolsNamedUsesTableOfStoredUnit;
     [Test]
     procedure SymbolsNamedFallsBackForChangedSymbols;
-    /// <summary>Code-Review P-13: Ohne Änderung liefert Units denselben Schnappschuss (kein Kopieren).</summary>
+    /// <summary>Ohne Änderung liefert Units denselben Schnappschuss (kein Kopieren).</summary>
     [Test]
     procedure UnitsSnapshotReusedWithoutChange;
     [Test]
     procedure UnitsSnapshotRenewedAfterChange;
-    /// <summary>Code-Review P-13: UnavailableUnits nur mit Deklarationen aus nicht geltenden Zweigen.</summary>
+    /// <summary>UnavailableUnits nur mit Deklarationen aus nicht geltenden Zweigen.</summary>
     [Test]
     procedure UnavailableUnitsOnlyAffected;
-    /// <summary>Code-Review P-13: InternUnit außerhalb der Index-Sperre; parallele AddUnit verlieren nichts.</summary>
+    /// <summary>InternUnit außerhalb der Index-Sperre; parallele AddUnit verlieren nichts.</summary>
     [Test]
     procedure AddUnitConcurrentKeepsAllUnits;
   end;

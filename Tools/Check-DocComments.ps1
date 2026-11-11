@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Findet doppelte XML-Doku-Kommentare (Code-Review K-04).
+    Findet doppelte XML-Doku-Kommentare.
 
 .DESCRIPTION
     Sucht in Packages/, Application/ und Setup/ jeden zusammenhängenden Block aus

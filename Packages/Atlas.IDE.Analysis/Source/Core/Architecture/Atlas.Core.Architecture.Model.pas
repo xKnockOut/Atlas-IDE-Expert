@@ -353,7 +353,8 @@ uses
   System.Math,
   System.Generics.Defaults,
   System.Generics.Collections,
-  Atlas.Core.Settings.JsonText;
+  Atlas.Core.Settings.JsonText,
+  Atlas.Text.Json;
 
 const
   // Wie --c0 … --c9 der HTML-Karte (#RRGGBB), hell bzw. dunkel.
@@ -362,110 +363,13 @@ const
   cDarkColors: array[0..TAtlasArchitecturePalette.cCount - 1] of Cardinal = ($6AA6E6, $B28BE0, $6CC293, $E0B257,
     $E07A98, $5CC6C9, $C3C75A, $F0945A, $94A0F0, $D09A83);
 
-function IntOf(const AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := ADefault;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end;
-end;
-
-function Int64Of(const AObject: TJSONObject; const AName: string): Int64;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  // Über den Text: Generationen liegen über 2^32 (Kennung des Index im oberen Teil).
-  if mValue is TJSONNumber then
-  begin
-    Result := StrToInt64Def(mValue.Value, 0);
-  end;
-end;
-
-function FloatOf(const AObject: TJSONObject; const AName: string): Double;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsDouble;
-  end;
-end;
-
-function TextOf(const AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := mValue.Value;
-  end;
-end;
-
-function FlagOf(const AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  Result := False;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONBool then
-  begin
-    Result := TJSONBool(mValue).AsBoolean;
-  end;
-end;
-
-function ArrayOf(const AObject: TJSONObject; const AName: string): TJSONArray;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONArray then
-  begin
-    Result := TJSONArray(mValue);
-  end;
-end;
-
 function IntsOf(const AObject: TJSONObject; const AName: string): TArray<Integer>;
 var
   mItems: TJSONArray;
   mIndex: Integer;
 begin
   Result := nil;
-  mItems := ArrayOf(AObject, AName);
+  mItems := TJsonRead.Items(AObject, AName);
   if mItems = nil then
   begin
     Exit;
@@ -487,17 +391,17 @@ end;
 function LinkOf(const AObject: TJSONObject): TAtlasArchLink;
 begin
   Result := Default(TAtlasArchLink);
-  Result.Source := IntOf(AObject, 'source', -1);
-  Result.Target := IntOf(AObject, 'target', -1);
-  Result.Interface_ := TextOf(AObject, 'section') = 'interface';
-  Result.FileName := TextOf(AObject, 'file');
-  Result.Line := IntOf(AObject, 'line', 0);
-  Result.Character := IntOf(AObject, 'character', 0);
-  Result.FromSubsystem := IntOf(AObject, 'from', -1);
-  Result.ToSubsystem := IntOf(AObject, 'to', -1);
-  Result.Reason := TextOf(AObject, 'reason');
-  Result.Forward := IntOf(AObject, 'forward', 0);
-  Result.Backward := IntOf(AObject, 'backward', 0);
+  Result.Source := TJsonRead.IntOr(AObject, 'source', -1);
+  Result.Target := TJsonRead.IntOr(AObject, 'target', -1);
+  Result.Interface_ := TJsonRead.Text(AObject, 'section') = 'interface';
+  Result.FileName := TJsonRead.Text(AObject, 'file');
+  Result.Line := TJsonRead.IntOr(AObject, 'line', 0);
+  Result.Character := TJsonRead.IntOr(AObject, 'character', 0);
+  Result.FromSubsystem := TJsonRead.IntOr(AObject, 'from', -1);
+  Result.ToSubsystem := TJsonRead.IntOr(AObject, 'to', -1);
+  Result.Reason := TJsonRead.Text(AObject, 'reason');
+  Result.Forward := TJsonRead.IntOr(AObject, 'forward', 0);
+  Result.Backward := TJsonRead.IntOr(AObject, 'backward', 0);
 end;
 
 function ValidUnit(const AModel: TAtlasArchitectureModel; AUnit: Integer): Boolean;
@@ -643,7 +547,7 @@ begin
     AUnit.Close := True;
     AUnit.Missing := TJSONNumber(AItem.GetValue('close')).AsInt;
   end;
-  mRows := ArrayOf(AItem, 'assignment');
+  mRows := TJsonRead.Items(AItem, 'assignment');
   if mRows = nil then
   begin
     Exit;
@@ -710,7 +614,7 @@ function CycleChange(const AModel: TAtlasArchitectureModel; const AItem: TJSONOb
 var
   mMembers: TArray<string>;
 begin
-  mMembers := NamesOf(ArrayOf(AItem, 'units'));
+  mMembers := NamesOf(TJsonRead.Items(AItem, 'units'));
   Result := Length(mMembers) > 0;
   if not Result then
   begin
@@ -718,7 +622,7 @@ begin
     Exit;
   end;
   AChange := ChangeOf(AModel, string.Join(' → ', mMembers) + ' → ' + mMembers[0], mMembers[0]);
-  if FlagOf(AItem, 'interfaceOnly') then
+  if TJsonRead.Flag(AItem, 'interfaceOnly') then
   begin
     AChange.Section := 'interface';
   end;
@@ -727,26 +631,26 @@ end;
 function UnitChange(const AModel: TAtlasArchitectureModel; const AItem: TJSONObject;
   AKind: TAtlasArchChangeKind): TAtlasArchChange;
 begin
-  Result := ChangeOf(AModel, TextOf(AItem, 'unit'), TextOf(AItem, 'unit'));
+  Result := ChangeOf(AModel, TJsonRead.Text(AItem, 'unit'), TJsonRead.Text(AItem, 'unit'));
   if AKind = TAtlasArchChangeKind.Growth then
   begin
-    Result.From := IntToStr(IntOf(AItem, 'before', 0));
-    Result.To_ := IntToStr(IntOf(AItem, 'after', 0));
+    Result.From := IntToStr(TJsonRead.IntOr(AItem, 'before', 0));
+    Result.To_ := IntToStr(TJsonRead.IntOr(AItem, 'after', 0));
   end
   else
   begin
-    Result.From := TextOf(AItem, 'from');
-    Result.To_ := TextOf(AItem, 'to');
+    Result.From := TJsonRead.Text(AItem, 'from');
+    Result.To_ := TJsonRead.Text(AItem, 'to');
   end;
 end;
 
 function LinkChange(const AModel: TAtlasArchitectureModel; const AItem: TJSONObject): TAtlasArchChange;
 begin
-  Result := ChangeOf(AModel, TextOf(AItem, 'source') + ' → ' + TextOf(AItem, 'target'), TextOf(AItem, 'source'));
-  Result.From := TextOf(AItem, 'from');
-  Result.To_ := TextOf(AItem, 'to');
-  Result.Section := TextOf(AItem, 'section');
-  Result.Reason := TextOf(AItem, 'reason');
+  Result := ChangeOf(AModel, TJsonRead.Text(AItem, 'source') + ' → ' + TJsonRead.Text(AItem, 'target'), TJsonRead.Text(AItem, 'source'));
+  Result.From := TJsonRead.Text(AItem, 'from');
+  Result.To_ := TJsonRead.Text(AItem, 'to');
+  Result.Section := TJsonRead.Text(AItem, 'section');
+  Result.Reason := TJsonRead.Text(AItem, 'reason');
 end;
 
 /// <summary>Ein Eintrag des Abschnitts AKind (ohne neue und entfernte Units); False, wenn er wegfällt.</summary>
@@ -781,7 +685,7 @@ var
   mName: string;
 begin
   Result := nil;
-  mItems := ArrayOf(AData, cNames[AKind]);
+  mItems := TJsonRead.Items(AData, cNames[AKind]);
   if mItems = nil then
   begin
     Exit;
@@ -813,7 +717,7 @@ var
   mEdge: TAtlasArchEdge;
 begin
   Result := nil;
-  mItems := ArrayOf(AData, AName);
+  mItems := TJsonRead.Items(AData, AName);
   if mItems = nil then
   begin
     Exit;
@@ -845,7 +749,7 @@ begin
   Result := 1;
   if (AObject <> nil) and (AObject.GetValue('resolution') is TJSONNumber) then
   begin
-    Result := TAtlasArchResolution.Clamp(FloatOf(AObject, 'resolution'));
+    Result := TAtlasArchResolution.Clamp(TJsonRead.Float(AObject, 'resolution'));
   end;
 end;
 
@@ -858,19 +762,19 @@ var
   mIndex: Integer;
 begin
   Result := Default(TAtlasArchComparison);
-  Result.Error := TextOf(AAnswer, 'comparisonError');
+  Result.Error := TJsonRead.Text(AAnswer, 'comparisonError');
   if not (AAnswer.GetValue('comparison') is TJSONObject) then
   begin
     Exit;
   end;
-  Result.Baseline := TextOf(AAnswer, 'baseline');
+  Result.Baseline := TJsonRead.Text(AAnswer, 'baseline');
   mData := TJSONObject(AAnswer.GetValue('comparison'));
   if mData.GetValue('baseline') is TJSONObject then
   begin
     mBaseline := TJSONObject(mData.GetValue('baseline'));
-    Result.BaselineTitle := TextOf(mBaseline, 'title');
-    Result.BaselineUnits := IntOf(mBaseline, 'units', 0);
-    Result.BaselineEdges := IntOf(mBaseline, 'edges', 0);
+    Result.BaselineTitle := TJsonRead.Text(mBaseline, 'title');
+    Result.BaselineUnits := TJsonRead.IntOr(mBaseline, 'units', 0);
+    Result.BaselineEdges := TJsonRead.IntOr(mBaseline, 'edges', 0);
     Result.BaselineResolution := ResolutionOf(mBaseline);
   end
   else
@@ -878,7 +782,7 @@ begin
     Result.BaselineResolution := 1;
   end;
   Result.Resolution := ResolutionOf(mData);
-  Result.Failed := NamesOf(ArrayOf(mData, 'failed'));
+  Result.Failed := NamesOf(TJsonRead.Items(mData, 'failed'));
   for mKind := Low(TAtlasArchChangeKind) to High(TAtlasArchChangeKind) do
   begin
     mSection.Kind := mKind;
@@ -964,9 +868,9 @@ begin
   begin
     AModel.MinCohesion := TJSONNumber(mItem.GetValue('minCohesion')).AsDouble;
   end;
-  if TextOf(mItem, 'foundations') <> '' then
+  if TJsonRead.Text(mItem, 'foundations') <> '' then
   begin
-    AModel.Foundations := TextOf(mItem, 'foundations');
+    AModel.Foundations := TJsonRead.Text(mItem, 'foundations');
   end;
 end;
 
@@ -975,27 +879,27 @@ procedure ReadHeader(const AAnswer, AData: TJSONObject; var AModel: TAtlasArchit
 var
   mItem: TJSONObject;
 begin
-  AModel.Root := TextOf(AAnswer, 'root');
-  AModel.Title := TextOf(AData, 'title');
-  AModel.Scope := TextOf(AData, 'scope');
-  AModel.Created := TextOf(AData, 'created');
-  AModel.IncludeLibrary := FlagOf(AData, 'includeLibrary');
-  AModel.DurationMs := IntOf(AData, 'durationMs', 0);
-  AModel.Generation := Int64Of(AData, 'generation');
-  AModel.Explanation := TextOf(AData, 'explanation');
+  AModel.Root := TJsonRead.Text(AAnswer, 'root');
+  AModel.Title := TJsonRead.Text(AData, 'title');
+  AModel.Scope := TJsonRead.Text(AData, 'scope');
+  AModel.Created := TJsonRead.Text(AData, 'created');
+  AModel.IncludeLibrary := TJsonRead.Flag(AData, 'includeLibrary');
+  AModel.DurationMs := TJsonRead.IntOr(AData, 'durationMs', 0);
+  AModel.Generation := TJsonRead.Int64Or(AData, 'generation', 0);
+  AModel.Explanation := TJsonRead.Text(AData, 'explanation');
   ReadGrouping(AData, AModel);
   if AData.GetValue('aligned') is TJSONObject then
   begin
     mItem := TJSONObject(AData.GetValue('aligned'));
-    AModel.AlignedSource := TextOf(mItem, 'source');
-    AModel.AlignedAt := TextOf(mItem, 'at');
-    AModel.AlignedKept := IntOf(mItem, 'kept', 0);
+    AModel.AlignedSource := TJsonRead.Text(mItem, 'source');
+    AModel.AlignedAt := TJsonRead.Text(mItem, 'at');
+    AModel.AlignedKept := TJsonRead.IntOr(mItem, 'kept', 0);
   end;
   if AData.GetValue('summary') is TJSONObject then
   begin
     mItem := TJSONObject(AData.GetValue('summary'));
-    AModel.EdgeCount := IntOf(mItem, 'edges', 0);
-    AModel.InterfaceCycles := IntOf(mItem, 'interfaceCycles', 0);
+    AModel.EdgeCount := TJsonRead.IntOr(mItem, 'edges', 0);
+    AModel.InterfaceCycles := TJsonRead.IntOr(mItem, 'interfaceCycles', 0);
   end;
 end;
 
@@ -1012,16 +916,16 @@ end;
 
 function ReadUnit(const AItem: TJSONObject; var AUnit: TAtlasArchUnit): Boolean;
 begin
-  AUnit.Name := TextOf(AItem, 'name');
-  AUnit.FileName := TextOf(AItem, 'file');
-  AUnit.Subsystem := IntOf(AItem, 'subsystem', -1);
-  AUnit.Direct := IntOf(AItem, 'direct', 0);
-  AUnit.Total := IntOf(AItem, 'total', 0);
-  AUnit.Uses_ := IntOf(AItem, 'uses', 0);
-  AUnit.Role := TextOf(AItem, 'role');
-  AUnit.Library_ := FlagOf(AItem, 'library');
-  AUnit.X := FloatOf(AItem, 'x');
-  AUnit.Y := FloatOf(AItem, 'y');
+  AUnit.Name := TJsonRead.Text(AItem, 'name');
+  AUnit.FileName := TJsonRead.Text(AItem, 'file');
+  AUnit.Subsystem := TJsonRead.IntOr(AItem, 'subsystem', -1);
+  AUnit.Direct := TJsonRead.IntOr(AItem, 'direct', 0);
+  AUnit.Total := TJsonRead.IntOr(AItem, 'total', 0);
+  AUnit.Uses_ := TJsonRead.IntOr(AItem, 'uses', 0);
+  AUnit.Role := TJsonRead.Text(AItem, 'role');
+  AUnit.Library_ := TJsonRead.Flag(AItem, 'library');
+  AUnit.X := TJsonRead.Float(AItem, 'x');
+  AUnit.Y := TJsonRead.Float(AItem, 'y');
   Result := AssignmentOf(AItem, AUnit);
 end;
 
@@ -1032,7 +936,7 @@ var
   mIndex: Integer;
 begin
   Result := True;
-  mItems := ArrayOf(AData, 'units');
+  mItems := TJsonRead.Items(AData, 'units');
   if mItems = nil then
   begin
     Exit;
@@ -1075,7 +979,7 @@ var
   mIndex: Integer;
 begin
   Result := True;
-  mItems := ArrayOf(AData, 'edges');
+  mItems := TJsonRead.Items(AData, 'edges');
   if mItems = nil then
   begin
     Exit;
@@ -1095,7 +999,7 @@ var
   mItems: TJSONArray;
   mIndex: Integer;
 begin
-  mItems := ArrayOf(AData, 'excludes');
+  mItems := TJsonRead.Items(AData, 'excludes');
   if mItems = nil then
   begin
     Exit;
@@ -1110,20 +1014,20 @@ end;
 function SubsystemOf(const AItem: TJSONObject; AIndex: Integer): TAtlasArchSubsystem;
 begin
   Result := Default(TAtlasArchSubsystem);
-  Result.Name := TextOf(AItem, 'name');
+  Result.Name := TJsonRead.Text(AItem, 'name');
   Result.Units := IntsOf(AItem, 'units');
-  Result.Central := IntOf(AItem, 'central', -1);
-  Result.Inner := IntOf(AItem, 'inner', 0);
-  Result.Outer := IntOf(AItem, 'outer', 0);
-  Result.Cohesion := FloatOf(AItem, 'cohesion');
-  Result.Isolated := FlagOf(AItem, 'isolated');
-  Result.Parent := TextOf(AItem, 'parent');
-  Result.ColorSlot := IntOf(AItem, 'color', AIndex);
-  Result.Shade := IntOf(AItem, 'shade', 0);
-  Result.Foundation := FlagOf(AItem, 'foundation');
-  Result.X := FloatOf(AItem, 'x');
-  Result.Y := FloatOf(AItem, 'y');
-  Result.R := FloatOf(AItem, 'r');
+  Result.Central := TJsonRead.IntOr(AItem, 'central', -1);
+  Result.Inner := TJsonRead.IntOr(AItem, 'inner', 0);
+  Result.Outer := TJsonRead.IntOr(AItem, 'outer', 0);
+  Result.Cohesion := TJsonRead.Float(AItem, 'cohesion');
+  Result.Isolated := TJsonRead.Flag(AItem, 'isolated');
+  Result.Parent := TJsonRead.Text(AItem, 'parent');
+  Result.ColorSlot := TJsonRead.IntOr(AItem, 'color', AIndex);
+  Result.Shade := TJsonRead.IntOr(AItem, 'shade', 0);
+  Result.Foundation := TJsonRead.Flag(AItem, 'foundation');
+  Result.X := TJsonRead.Float(AItem, 'x');
+  Result.Y := TJsonRead.Float(AItem, 'y');
+  Result.R := TJsonRead.Float(AItem, 'r');
 end;
 
 function ReadSubsystems(const AData: TJSONObject; var AModel: TAtlasArchitectureModel): Boolean;
@@ -1133,7 +1037,7 @@ var
   mIndex: Integer;
 begin
   Result := True;
-  mItems := ArrayOf(AData, 'subsystems');
+  mItems := TJsonRead.Items(AData, 'subsystems');
   if mItems = nil then
   begin
     Exit;
@@ -1152,11 +1056,11 @@ end;
 function ReadOutlier(const AItem: TJSONObject): TAtlasArchOutlier;
 begin
   Result := Default(TAtlasArchOutlier);
-  Result.Unit_ := IntOf(AItem, 'unit', -1);
-  Result.Suggested := IntOf(AItem, 'suggested', -1);
-  Result.Reason := TextOf(AItem, 'reason');
-  Result.Inside := IntOf(AItem, 'inside', 0);
-  Result.Toward := IntOf(AItem, 'toward', 0);
+  Result.Unit_ := TJsonRead.IntOr(AItem, 'unit', -1);
+  Result.Suggested := TJsonRead.IntOr(AItem, 'suggested', -1);
+  Result.Reason := TJsonRead.Text(AItem, 'reason');
+  Result.Inside := TJsonRead.IntOr(AItem, 'inside', 0);
+  Result.Toward := TJsonRead.IntOr(AItem, 'toward', 0);
 end;
 
 function ReadOutliers(const AData: TJSONObject; var AModel: TAtlasArchitectureModel): Boolean;
@@ -1166,7 +1070,7 @@ var
   mIndex: Integer;
 begin
   Result := True;
-  mItems := ArrayOf(AData, 'outliers');
+  mItems := TJsonRead.Items(AData, 'outliers');
   if mItems = nil then
   begin
     Exit;
@@ -1212,7 +1116,7 @@ var
   mIndex: Integer;
 begin
   Result := True;
-  mItems := ArrayOf(AData, 'cycles');
+  mItems := TJsonRead.Items(AData, 'cycles');
   if mItems = nil then
   begin
     Exit;
@@ -1224,9 +1128,9 @@ begin
     begin
       Exit(False);
     end;
-    AModel.Cycles[mIndex].InterfaceOnly := FlagOf(mItem, 'interfaceOnly');
+    AModel.Cycles[mIndex].InterfaceOnly := TJsonRead.Flag(mItem, 'interfaceOnly');
     AModel.Cycles[mIndex].Units := IntsOf(mItem, 'units');
-    if not ReadLinks(ArrayOf(mItem, 'edges'), AModel.Cycles[mIndex].Edges) then
+    if not ReadLinks(TJsonRead.Items(mItem, 'edges'), AModel.Cycles[mIndex].Edges) then
     begin
       Exit(False);
     end;
@@ -1263,7 +1167,7 @@ begin
   AModel.Central := IntsOf(AData, 'central');
   ReadExcludes(AData, AModel);
   Result := ReadSubsystems(AData, AModel) and ReadOutliers(AData, AModel) and ReadCycles(AData, AModel)
-    and ReadLinks(ArrayOf(AData, 'crossLinks'), AModel.CrossLinks) and Consistent(AModel);
+    and ReadLinks(TJsonRead.Items(AData, 'crossLinks'), AModel.CrossLinks) and Consistent(AModel);
   if Result then
   begin
     MarkUnits(AModel);
@@ -1287,13 +1191,13 @@ begin
       Exit;
     end;
     mAnswer := TJSONObject(mRoot);
-    AEnabled := FlagOf(mAnswer, 'enabled');
+    AEnabled := TJsonRead.Flag(mAnswer, 'enabled');
     if not AEnabled then
     begin
       Exit(mAnswer.GetValue('enabled') is TJSONBool);
     end;
     Result := (mAnswer.GetValue('data') is TJSONObject)
-      and (IntOf(TJSONObject(mAnswer.GetValue('data')), 'format', 0) = cFormat)
+      and (TJsonRead.IntOr(TJSONObject(mAnswer.GetValue('data')), 'format', 0) = cFormat)
       and ReadData(mAnswer, TJSONObject(mAnswer.GetValue('data')), AModel);
   finally
     mRoot.Free;

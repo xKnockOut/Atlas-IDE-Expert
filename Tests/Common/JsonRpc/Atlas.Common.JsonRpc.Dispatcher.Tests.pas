@@ -16,7 +16,7 @@ type
     procedure Setup;
     [TearDown]
     procedure TearDown;
-    /// <summary>Code-Review A-06: TJsonRpcCurrentRequest gilt für die Dauer jedes Handlers.</summary>
+    /// <summary>TJsonRpcCurrentRequest gilt für die Dauer jedes Handlers.</summary>
     [Test]
     procedure CurrentRequestIsSetDuringHandler;
     [Test]

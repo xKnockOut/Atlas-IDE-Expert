@@ -46,7 +46,7 @@ uses
 type
   /// <summary>Protokoll für die Diagnose (Registry-Wert Diagnose).</summary>
   TAtlasLogProc = Atlas.IDE.Completion.EditorState.TAtlasLogProc;
-  /// <summary>Quellen der Vervollständigung aus dem Kern; setzt die Kompositionswurzel ein (A-09).</summary>
+  /// <summary>Quellen der Vervollständigung aus dem Kern; setzt die Kompositionswurzel ein.</summary>
   TAtlasCompletionSources = Atlas.IDE.Completion.EditorState.TAtlasCompletionSources;
   TAtlasCompletionSourcesFactory = Atlas.IDE.Completion.EditorState.TAtlasCompletionSourcesFactory;
 

@@ -6,8 +6,7 @@
 // Import: Passt die Binärschnittstelle nicht, liefe ein Aufruf über die
 // Methodentabellen ins Leere (Delphi prüft das zwischen Packages nicht). Bei
 // Abweichung meldet sich das Modul nicht an und zeigt seinen Hinweis
-// „Atlas-Kern passt nicht zu diesem Modul“ (Text im Modul, ADR 0017
-// Entscheidung 4).
+// „Atlas-Kern passt nicht zu diesem Modul“ (Text im Modul).
 
 interface
 

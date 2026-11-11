@@ -9,8 +9,12 @@ name: Server und Tests
 # die Gruppe enthält das Atlas-Plugin, deshalb nicht über Tools/Build-Ide.ps1
 # selbst. Ohne die Variable scheitert der Job mit einer klaren Meldung.
 # Der Job läuft nur, wenn die Repository-Variable DELPHI_RUNNER auf 'true'
-# steht; sonst meldet der Job "uebersprungen" das sichtbar in der
-# Zusammenfassung.
+# steht. Sonst meldet "uebersprungen" das ohne grünen Haken: In Pull Requests
+# nach main oder release/* scheitert der Job, denn dorthin darf nur, was mit
+# Delphi gebaut und getestet ist. In allen anderen Läufen legt er den
+# Check-Run "Delphi-Bau und Tests" mit dem Ergebnis neutral an, damit niemand
+# den übersprungenen Lauf für einen bestandenen hält. Die plattformunabhängigen
+# Tests laufen unabhängig davon unter FPC (linux-server.yml).
 #
 # Neue Pushes auf denselben Branch brechen einen laufenden Build ab: Jeder Lauf
 # kann eine Bau-IDE starten, und bei vielen gestapelten Branches wartete die
@@ -44,6 +48,29 @@ jobs:
             echo "Build, Plugin-BPL und DUnitX-Tests laufen nur auf dem selbst gehosteten Delphi-Runner."
             echo "Die Repository-Variable \`DELPHI_RUNNER\` steht nicht auf \`true\`; dieser Lauf hat nichts davon geprüft."
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Ziel main oder release/* braucht den Delphi-Lauf
+        if: github.event_name == 'pull_request' && (github.base_ref == 'main' || startsWith(github.base_ref, 'release/'))
+        run: |
+          echo "::error title=Delphi-Lauf fehlt::Pull Requests nach ${{ github.base_ref }} brauchen Bau und Tests auf dem Delphi-Runner."
+          exit 1
+      - name: Ergebnis neutral melden
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.payload.pull_request ? context.payload.pull_request.head.sha : context.sha;
+            await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Delphi-Bau und Tests',
+              head_sha: sha,
+              status: 'completed',
+              conclusion: 'neutral',
+              output: {
+                title: 'Nicht gelaufen: kein Delphi-Runner',
+                summary: 'Build, Plugin-BPL und DUnitX-Tests unter Delphi sind nicht gelaufen. ' +
+                  'Die plattformunabhängigen Tests prüft linux-server.yml unter FPC.'
+              }
+            });
 
   build-test:
     if: vars.DELPHI_RUNNER == 'true'

@@ -155,11 +155,11 @@ end;
 function OriginCaption(AOrigin: TAtlasUnitOrigin): string;
 begin
   case AOrigin of
-    TAtlasUnitOrigin.Active: Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginActive);
-    TAtlasUnitOrigin.Group: Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginGroup);
-    TAtlasUnitOrigin.SearchPath: Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginSearchPath);
+    TAtlasUnitOrigin.Active: Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchOriginActive);
+    TAtlasUnitOrigin.Group: Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchOriginGroup);
+    TAtlasUnitOrigin.SearchPath: Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchOriginSearchPath);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginLibrary);
+    Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchOriginLibrary);
   end;
 end;
 
@@ -367,9 +367,9 @@ var
   mGrouping: TAtlasUnitGrouping;
   mCaptions: array[TAtlasUnitGrouping] of string;
 begin
-  mCaptions[TAtlasUnitGrouping.Project] := TAtlasStrings.Text(TAtlasTextId.UnitSearchGroupProject);
-  mCaptions[TAtlasUnitGrouping.Folder] := TAtlasStrings.Text(TAtlasTextId.UnitSearchGroupFolder);
-  mCaptions[TAtlasUnitGrouping.None] := TAtlasStrings.Text(TAtlasTextId.UnitSearchGroupNone);
+  mCaptions[TAtlasUnitGrouping.Project] := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGroupProject);
+  mCaptions[TAtlasUnitGrouping.Folder] := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGroupFolder);
+  mCaptions[TAtlasUnitGrouping.None] := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGroupNone);
   mWidth := 0;
   for mGrouping := Low(TAtlasUnitGrouping) to High(TAtlasUnitGrouping) do
   begin

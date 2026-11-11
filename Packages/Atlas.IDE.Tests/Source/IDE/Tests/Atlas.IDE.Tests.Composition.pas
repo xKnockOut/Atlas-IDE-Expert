@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Tests.Composition;
 
-// Modul Tests (#1455, ADR 0017): einzige Unit, die den Testläufer für DUnitX
+// Modul Tests (#1455): einzige Unit, die den Testläufer für DUnitX
 // (#69), „Test am Cursor ausführen bzw. debuggen“ (#585), die Code Lens der
 // Tests und „Betroffene Tests ausführen“ (#1353) erzeugt. Sie meldet in ihrer
 // Initialisierung das Modul „atlas.tests“ (Modulschalter tests, #1454) bei

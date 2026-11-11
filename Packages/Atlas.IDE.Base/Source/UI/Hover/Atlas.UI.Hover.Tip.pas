@@ -33,7 +33,7 @@
 // Zugriff“ die Ursache mit Korrekturen als Verweise (#840, OnDebugFix).
 // Ohne Fokus wie alle Atlas-Fenster; Klicks kommen trotzdem an (MA_NOACTIVATE).
 // Beim Wechsel des Inhalts bleibt die Position, das Fenster wächst höchstens.
-// Satz (P-09): Positionen, Klickflächen und Bausteine rechnet
+// Satz: Positionen, Klickflächen und Bausteine rechnet
 // Atlas.Core.Hover.Layout ohne VCL einmal je Inhalt, Breite und Doku-Höhe;
 // Paint zeichnet nur die Bausteine und färbt den Hot-Zustand.
 
@@ -69,7 +69,7 @@ type
   TAtlasHoverProblemActionEvent = procedure(Sender: TObject; AProblem: Integer;
     AAction: TAtlasHoverProblemAction; AItem: Integer) of object;
 
-  /// <summary>Inhalt des Tooltips: Satz, Doku und Zeichnen (P-09).</summary>
+  /// <summary>Inhalt des Tooltips: Satz, Doku und Zeichnen.</summary>
   TAtlasHoverTipView = class(TAtlasPopupWindow)
   public const
     cMaxWidth = 460;
@@ -100,7 +100,7 @@ type
     function PreferredWidth: Integer;
   protected
     FView: TAtlasHoverView;
-    /// <summary>Satz des Inhalts (P-09); FLayoutKey: Breite, Doku, Schrift, Farben, für die er gilt.</summary>
+    /// <summary>Satz des Inhalts; FLayoutKey: Breite, Doku, Schrift, Farben, für die er gilt.</summary>
     FLayout: TAtlasHoverLayout;
     FLayoutKey: string;
     FHot: Integer;

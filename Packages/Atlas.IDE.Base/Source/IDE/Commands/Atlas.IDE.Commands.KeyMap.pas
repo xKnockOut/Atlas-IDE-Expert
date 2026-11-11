@@ -120,7 +120,8 @@ uses
   Atlas.IDE.Commands.Usage,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions;
+  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Foundation.Host;
 
 const
   cKeyIdPrefix = 'Atlas.Key.';
@@ -1046,7 +1047,7 @@ begin
     TAtlasGuard.Log(Format('Tastenkürzel-Übersicht exportiert: %d Zeilen (#520)', [Length(FWindow.Shown)]));
   except
     on E: Exception do
-      TAtlasIdeKeys.AddMessage(TAtlasStrings.Fmt(TAtlasTextId.KeyMapExportFailed, [E.ClassName]));
+      TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.KeyMapExportFailed, [E.ClassName]));
   end;
 end;
 
@@ -1150,7 +1151,7 @@ begin
     begin
       mWinner := TAtlasStrings.Text(TAtlasTextId.KeyMapNobody);
     end;
-    TAtlasIdeKeys.AddMessage(TAtlasStrings.Fmt(TAtlasTextId.KeyMapStartConflict,
+    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.KeyMapStartConflict,
       [mItems[mIndex].KeyText, mItems[mIndex].Command, mItems[mPartner].Holder, mWinner]));
     TAtlasIdeKeys.MarkReported(mItems[mIndex].ShortCut);
   end;

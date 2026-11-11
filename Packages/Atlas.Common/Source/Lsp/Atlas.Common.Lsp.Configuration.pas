@@ -114,7 +114,7 @@ type
     /// <summary>Liest atlas.json aus ARootPath; ohne Datei gelten die Vorgaben.</summary>
     procedure LoadWorkspace(const ARootPath: string); overload;
     /// <summary>Wie LoadWorkspace(ARootPath), setzt vorher die globale Datei AGlobalText ohne eigene
-    /// Neuberechnung; OnChanged kommt so nur einmal (MCP-Modus, D-08).</summary>
+    /// Neuberechnung; OnChanged kommt so nur einmal (MCP-Modus).</summary>
     procedure LoadWorkspace(const ARootPath, AGlobalText: string); overload;
     /// <summary>Wurzelordner aus den initialize-Parametern (rootUri, workspaceFolders, rootPath); sonst ''.</summary>
     class function RootPathFromInitialize(const AParams: TJSONObject): string; static;

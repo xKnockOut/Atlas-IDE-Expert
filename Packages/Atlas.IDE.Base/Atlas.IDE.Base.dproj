@@ -434,6 +434,8 @@
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.TimeLimit.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Deadline.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.UserIdle.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.UnloadSafety.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.WorkerSlot.pas"/>
         <DCCReference Include="Source\Core\Product\Atlas.Core.Product.Version.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.StartTimes.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Hangs.pas"/>

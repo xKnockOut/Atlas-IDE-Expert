@@ -657,7 +657,7 @@ type
     Exclude: TArray<string>;
     /// <summary>MCP-Werkzeuge, die der Server nicht anbietet (mcp.disabledTools, #99).</summary>
     McpDisabledTools: TArray<string>;
-    /// <summary>MCP-Modus liest die globale settings.json (mcp.globalSettings, D-08); Vorgabe True.</summary>
+    /// <summary>MCP-Modus liest die globale settings.json (mcp.globalSettings); Vorgabe True.</summary>
     McpGlobalSettings: Boolean;
     /// <summary>Prompts und Ressourcenvorlagen anbieten (mcp.prompts, #1357); Vorgabe True.</summary>
     McpPrompts: Boolean;

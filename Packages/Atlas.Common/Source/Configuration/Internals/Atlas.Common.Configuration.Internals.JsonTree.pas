@@ -185,7 +185,7 @@ procedure TReader.SkipSpace;
 var
   mOpenComment: Integer;
 begin
-  // Gleiche Regeln wie im Plugin (TJsoncScanner, ADR 0012); ein offener Blockkommentar ist hier ein Fehler.
+  // Gleiche Regeln wie im Plugin (TJsoncScanner); ein offener Blockkommentar ist hier ein Fehler.
   if not TJsoncScanner.SkipSpace(FText, FPos, mOpenComment) then
   begin
     FPos := mOpenComment;

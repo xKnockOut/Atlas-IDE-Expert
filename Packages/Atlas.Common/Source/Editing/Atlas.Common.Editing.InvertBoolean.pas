@@ -676,7 +676,7 @@ end;
 
 function TRewriter.ContainsDirect(ANode: TSyntaxNode): Boolean;
 begin
-  // Search statt Rekursion (Bericht M1); anonyme Methoden zählen nicht.
+  // Search statt Rekursion; anonyme Methoden zählen nicht.
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     var
@@ -698,7 +698,7 @@ end;
 
 function HasAnonymous(ANode: TSyntaxNode): Boolean;
 begin
-  // Search statt Rekursion (Bericht M1).
+  // Search statt Rekursion.
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -1180,7 +1180,7 @@ var
 begin
   mName := AName;
   mNewName := ANewName;
-  // Walk statt Rekursion (Bericht M1).
+  // Walk statt Rekursion.
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     var
@@ -1208,7 +1208,7 @@ var
   mOffset: Integer;
   mLocal: TInvertLocal;
 begin
-  // Walk statt Rekursion (Bericht M1): erst die Routinen sammeln, dann ihre Rümpfe durchgehen.
+  // Walk statt Rekursion: erst die Routinen sammeln, dann ihre Rümpfe durchgehen.
   mRoutines := TList<TSyntaxNode>.Create;
   try
     ANode.Walk(
@@ -1251,7 +1251,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Eigener Stapel statt Rekursion (Bericht M1), in derselben Reihenfolge. Print und Rebuild bleiben rekursiv;
+  // Eigener Stapel statt Rekursion, in derselben Reihenfolge. Print und Rebuild bleiben rekursiv;
   // sie folgen nur Teilausdrücken mit dem umgekehrten Namen.
   mPending := TStack<TSyntaxNode>.Create;
   try

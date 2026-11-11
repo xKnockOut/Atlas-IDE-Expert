@@ -14,7 +14,7 @@ type
     procedure QuotesArguments;
     [Test]
     procedure ReadsOutputLinesAndExitCode;
-    /// <summary>Code-Review A-05: Cancel beendet einen laufenden Prozess sofort.</summary>
+    /// <summary>Cancel beendet einen laufenden Prozess sofort.</summary>
     [Test]
     procedure CancelEndsRunningProcess;
     [Test]

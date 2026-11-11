@@ -1,6 +1,6 @@
 ﻿unit Shell.Composition.FeatureWiring;
 
-// Verdrahtung der Features (S-02): Teilwurzeln Bearbeiten, Code, Analyse und IDE. Closures fragen die Teile
+// Verdrahtung der Features: Teilwurzeln Bearbeiten, Code, Analyse und IDE. Closures fragen die Teile
 // erst beim Aufruf, weil Kern, Index und IDE in anderer Reihenfolge entstehen, als die Features sie brauchen.
 
 interface
@@ -75,7 +75,7 @@ begin
     begin
       Result := TLspApplyEdit.ClientSupports(AParts.Protocol.Lifecycle.InitializeParams);
     end;
-  // Neu laden nur im Thread der Nachrichtenschleife (Code-Review A-03); die Verbindung liest die Closure
+  // Neu laden nur im Thread der Nachrichtenschleife; die Verbindung liest die Closure
   // erst beim Aufruf.
   mServices.Slash.RunInLoop :=
     procedure(const AWork: TProc)

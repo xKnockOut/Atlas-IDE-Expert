@@ -235,7 +235,8 @@ uses
   System.Generics.Collections,
   System.JSON,
   System.DateUtils,
-  Atlas.Core.Editor.MethodToggle;
+  Atlas.Core.Editor.MethodToggle,
+  Atlas.Text.Json;
 
 { TAtlasWorkTab }
 
@@ -365,70 +366,6 @@ end;
 
 { JSON }
 
-function TextIn(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
-function NumberIn(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := ADefault;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end;
-end;
-
-function FlagIn(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  Result := False;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONBool then
-  begin
-    Result := SameText(mValue.Value, 'true');
-  end;
-end;
-
-function ObjectIn(AObject: TJSONObject; const AName: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end;
-end;
-
 function ParseObject(const AJson: string): TJSONValue;
 begin
   Result := nil;
@@ -514,11 +451,11 @@ begin
     Exit;
   end;
   mEntry := TJSONObject(AElement);
-  ATab := TAtlasWorkTab.Create(TextIn(mEntry, 'file'), Max(NumberIn(mEntry, 'line', 0), 0),
-    Max(NumberIn(mEntry, 'column', 0), 0));
-  ATab.Method := TextIn(mEntry, 'method');
-  ATab.Changed := FlagIn(mEntry, 'changed');
-  ATab.ChangedAt := TAtlasProjectSummaries.TimeOf(TextIn(mEntry, 'changedAt'));
+  ATab := TAtlasWorkTab.Create(TJsonRead.Text(mEntry, 'file'), Max(TJsonRead.IntOr(mEntry, 'line', 0), 0),
+    Max(TJsonRead.IntOr(mEntry, 'column', 0), 0));
+  ATab.Method := TJsonRead.Text(mEntry, 'method');
+  ATab.Changed := TJsonRead.Flag(mEntry, 'changed');
+  ATab.ChangedAt := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(mEntry, 'changedAt'));
   Result := Trim(ATab.FileName) <> '';
 end;
 
@@ -571,13 +508,13 @@ begin
     Exit;
   end;
   AState.Known := True;
-  AState.At := TAtlasProjectSummaries.TimeOf(TextIn(ASection, 'at'));
-  AState.VcsKind := LowerCase(TextIn(ASection, 'vcs'));
-  AState.Head := TextIn(ASection, 'head');
-  AState.Upstream := TextIn(ASection, 'upstream');
-  AState.UpstreamRevision := TextIn(ASection, 'upstreamRevision');
+  AState.At := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(ASection, 'at'));
+  AState.VcsKind := LowerCase(TJsonRead.Text(ASection, 'vcs'));
+  AState.Head := TJsonRead.Text(ASection, 'head');
+  AState.Upstream := TJsonRead.Text(ASection, 'upstream');
+  AState.UpstreamRevision := TJsonRead.Text(ASection, 'upstreamRevision');
   AState.Tabs := TabsOf(ASection.GetValue('tabs'));
-  AState.Active := NumberIn(ASection, 'active', -1);
+  AState.Active := TJsonRead.IntOr(ASection, 'active', -1);
   if (AState.Active < 0) or (AState.Active > High(AState.Tabs)) then
   begin
     AState.Active := -1;
@@ -741,7 +678,7 @@ begin
   AState := TAtlasWorkState.Empty;
   mValue := ParseObject(ASummary.Raw);
   try
-    Result := (mValue is TJSONObject) and StateOf(ObjectIn(TJSONObject(mValue), cSectionName), AState);
+    Result := (mValue is TJSONObject) and StateOf(TJsonRead.Obj(TJSONObject(mValue), cSectionName), AState);
   finally
     mValue.Free;
   end;

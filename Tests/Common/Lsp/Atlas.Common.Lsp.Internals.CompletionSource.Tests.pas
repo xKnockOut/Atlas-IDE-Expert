@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Lsp.Internals.CompletionSource.Tests;
 
-// Helfer der Vervollständigung über den Index der eigenen Unit (Code-Review D-09, Block H Schritt 2).
+// Helfer der Vervollständigung über den Index der eigenen Unit.
 
 interface
 

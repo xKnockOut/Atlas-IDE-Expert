@@ -1,7 +1,7 @@
 ﻿unit Atlas.Text.LogMarks;
 
 // Kennzeichnung schutzwürdiger Werte in Protokollzeilen (#1478), gemeinsam
-// für Server und Plugin (ADR 0012).
+// für Server und Plugin.
 //
 // Wer eine Protokollzeile baut, weiß, welcher Teil ein Name, ein Pfad oder
 // fremder Text ist; die Senke weiß es nicht mehr. Raten aus dem fertigen

@@ -47,7 +47,7 @@ type
     [Test]
     procedure ReportsWhenItsWindowIsDisabled;
     /// <summary>HitProblem nennt, warum Windows die Maus nicht an die Leiste gibt: ausgeblendet, gesperrt, Punkt
-    /// außerhalb, Fensterregion, Geschwister darüber, HTTRANSPARENT (Bericht M2).</summary>
+    /// außerhalb, Fensterregion, Geschwister darüber, HTTRANSPARENT.</summary>
     [Test]
     procedure NamesWhyTheMouseMissesTheBar;
   end;

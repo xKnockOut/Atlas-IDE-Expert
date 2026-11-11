@@ -4,7 +4,7 @@
 // eingebauten Speichermanagers (FastMM-basiert), wie viele Bytes Setup, Test
 // und TearDown netto belegt haben. DUnitX wertet einen Test mit Rest als
 // Speicherleck. Eine Leckmeldung ist ein Befund, kein Grund zum Wiederholen
-// (Bericht N2): Tests warten auf jeden Thread, den sie starten, und leeren
+//: Tests warten auf jeden Thread, den sie starten, und leeren
 // Felder im TearDown; Einmal-Belegungen der RTL nimmt ein [SetupFixture]
 // vorweg. [IgnoreMemoryLeaks] nur, wo ein Test sein Wachstum selbst misst oder
 // Speicher absichtlich über das Testende hinaus lebt, und dann mit Grund.
@@ -319,7 +319,7 @@ begin
   end;
 end;
 
-/// <summary>Datendatei einmal unbrauchbar beiseitelegen und gesperrt lesen und schreiben (Bericht N3): Was die
+/// <summary>Datendatei einmal unbrauchbar beiseitelegen und gesperrt lesen und schreiben: Was die
 /// Melde- und Fehlerpfade beim ersten Mal anlegen, träfe sonst den ersten Test mit einer gesperrten Datei.</summary>
 procedure PrewarmDataFiles;
 var

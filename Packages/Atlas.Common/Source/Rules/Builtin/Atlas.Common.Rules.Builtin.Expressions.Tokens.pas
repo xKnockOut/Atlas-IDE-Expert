@@ -187,7 +187,7 @@ begin
   begin
     Exit;
   end;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
     for mIndex := ATree.Root.ChildCount - 1 downto 0 do

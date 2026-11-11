@@ -156,7 +156,8 @@ uses
   Atlas.IDE.Diagnostics.Edition,
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Projects.Summaries,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.Foundation.Host,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 type
   /// <summary>Summe der Funde aller Projekte einer Pfadprüfung (nur Zahlen, fürs Protokoll).</summary>
@@ -359,7 +360,7 @@ begin
   end;
 end;
 
-/// <summary>atlas.json schreiben: UTF-8 ohne BOM, wie atlas.json im Repository; atomar (Bericht N3).</summary>
+/// <summary>atlas.json schreiben: UTF-8 ohne BOM, wie atlas.json im Repository; atomar.</summary>
 function WriteConfig(ASelf: TAtlasIdeSetup; const AConfigFile, AText: string): Boolean;
 begin
   Result := True;
@@ -559,7 +560,7 @@ begin
     end
     else
     begin
-      FThread.FreeOnTerminate := True;
+      TAtlasOverdueThreads.Adopt(FThread, HInstance);
       FThread := nil;
     end;
   end;

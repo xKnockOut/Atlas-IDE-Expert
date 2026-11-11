@@ -130,7 +130,7 @@ begin
   mName := AName;
   mFrom := AFrom;
   mTill := ATo;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   ABody.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -190,7 +190,7 @@ var
 begin
   mNames := nil;
   mRoutine := ARoutine;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   ARoutine.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     var
@@ -619,7 +619,7 @@ var
   mCall: TSyntaxNode;
 begin
   mCalls := nil;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     var

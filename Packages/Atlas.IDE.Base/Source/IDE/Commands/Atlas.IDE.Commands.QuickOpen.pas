@@ -65,7 +65,8 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Projects.Context;
+  Atlas.IDE.Projects.Context,
+  Atlas.IDE.Foundation.Host;
 
 const
   cSymbolTimeoutMs = 1500;
@@ -554,7 +555,7 @@ begin
   mOwner := TQuickOpenState.Create;
   FState := mOwner;
   // Fehlt, unbrauchbar oder gesperrt: leer weiter; TAtlasDataFile legt Unbrauchbares als quickopen.json.defekt
-  // beiseite und protokolliert, eine gesperrte Datei schreibt SaveToFile nicht (Bericht N3).
+  // beiseite und protokolliert, eine gesperrte Datei schreibt SaveToFile nicht.
   mOwner.Recent.Kind := 'Verlauf von Schnell öffnen';
   mOwner.Recent.LoadFromFile(RecentFile);
   if Supports(BorlandIDEServices, IOTAServices, mServices) then
@@ -647,18 +648,7 @@ begin
       OpenTarget(ACommand);
     end;
   mPalette.SetCommands(Query(mWindow, ''));
-  if Screen.ActiveForm <> nil then
-  begin
-    mArea := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    mArea := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    mArea := Screen.WorkAreaRect;
-  end;
+  mArea := TAtlasIdeHost.PopupArea;
   mPalette.ShowOver(mArea);
 end;
 

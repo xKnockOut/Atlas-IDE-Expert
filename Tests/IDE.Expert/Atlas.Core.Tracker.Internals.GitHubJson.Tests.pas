@@ -30,7 +30,8 @@ uses
   System.SysUtils,
   System.DateUtils,
   System.JSON,
-  Atlas.Core.Tracker.Internals.GitHubJson;
+  Atlas.Core.Tracker.Internals.GitHubJson,
+  Atlas.Text.Json;
 
 function Parsed(const AJson: string): TJSONObject;
 begin
@@ -43,15 +44,15 @@ var
 begin
   mObject := Parsed('{"title":"Kasse","number":753,"big":3000000000,"neg":-1,"draft":true,"text":"true"}');
   try
-    Assert.AreEqual('Kasse', TAtlasGitHubJson.TextOf(mObject, 'title'));
-    Assert.AreEqual('', TAtlasGitHubJson.TextOf(mObject, 'draft'), 'Schalter ist kein Text');
+    Assert.AreEqual('Kasse', TJsonRead.Text(mObject, 'title'));
+    Assert.AreEqual('', TJsonRead.Text(mObject, 'draft'), 'Schalter ist kein Text');
     Assert.AreEqual(753, TAtlasGitHubJson.IntOf(mObject, 'number'));
     Assert.AreEqual(0, TAtlasGitHubJson.IntOf(mObject, 'big'), 'außerhalb von Integer');
     Assert.AreEqual(0, TAtlasGitHubJson.IntOf(mObject, 'neg'));
     Assert.AreEqual(0, TAtlasGitHubJson.IntOf(mObject, 'title'));
-    Assert.IsTrue(TAtlasGitHubJson.FlagOf(mObject, 'draft'));
-    Assert.IsFalse(TAtlasGitHubJson.FlagOf(mObject, 'text'), 'Text "true" ist kein Schalter');
-    Assert.IsFalse(TAtlasGitHubJson.FlagOf(mObject, 'fehlt'));
+    Assert.IsTrue(TJsonRead.Flag(mObject, 'draft'));
+    Assert.IsFalse(TJsonRead.Flag(mObject, 'text'), 'Text "true" ist kein Schalter');
+    Assert.IsFalse(TJsonRead.Flag(mObject, 'fehlt'));
   finally
     mObject.Free;
   end;

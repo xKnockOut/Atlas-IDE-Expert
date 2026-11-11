@@ -79,7 +79,7 @@ type
     constructor Create(const ASession: TAtlasTestUnitLensSessionFunc; const ARun: TAtlasLensCommandProc);
     destructor Destroy; override;
     /// <summary>Klick auf die Lens: zwischen Unit und Testunit wechseln (Editorbefehle). Setzt die Composition
-    /// (A-09: die Lens importiert die Editorbefehle nicht); nil = Klick ohne Wirkung.</summary>
+    /// (die Lens importiert die Editorbefehle nicht); nil = Klick ohne Wirkung.</summary>
     class property OnSwitchTestUnit: TProc read FOnSwitchTestUnit write FOnSwitchTestUnit;
   end;
 

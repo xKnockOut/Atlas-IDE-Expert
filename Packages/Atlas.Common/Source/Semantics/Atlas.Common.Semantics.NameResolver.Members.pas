@@ -386,7 +386,7 @@ begin
     begin
       Exit(False);
     end;
-    // Über die Namenstabelle statt aller Symbole je Vorfahrstufe (Code-Review P-05).
+    // Über die Namenstabelle statt aller Symbole je Vorfahrstufe.
     for mPosition in mOwnerUnit.SymbolsNamed(AName) do
     begin
       if SameText(mOwnerUnit.Symbols[mPosition].Container, mCurrent.QualifiedName) then

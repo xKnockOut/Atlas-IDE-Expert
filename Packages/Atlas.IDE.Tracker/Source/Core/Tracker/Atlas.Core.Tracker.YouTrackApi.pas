@@ -135,7 +135,8 @@ uses
   Atlas.Core.Tracker.TimeLog,
   Atlas.Text.Uris,
   Atlas.Core.Tracker.Templates,
-  Atlas.Core.Tracker.Internals.YouTrackJson;
+  Atlas.Core.Tracker.Internals.YouTrackJson,
+  Atlas.Text.Json;
 
 class function TAtlasYouTrackApi.FullQuery(const ATarget: TAtlasTrackerTarget): string;
 var
@@ -273,10 +274,10 @@ begin
   try
     if mValue is TJSONObject then
     begin
-      Result := TAtlasYouTrackJson.TextOf(TJSONObject(mValue), 'error_description');
+      Result := TJsonRead.Text(TJSONObject(mValue), 'error_description');
       if Result = '' then
       begin
-        Result := TAtlasYouTrackJson.TextOf(TJSONObject(mValue), 'error');
+        Result := TJsonRead.Text(TJSONObject(mValue), 'error');
       end;
     end;
   finally

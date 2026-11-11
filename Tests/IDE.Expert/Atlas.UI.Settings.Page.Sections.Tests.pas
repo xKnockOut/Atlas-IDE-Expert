@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Settings.Page.Sections.Tests;
 
-// Abschnitte der Module im Optionsdialog (#1455, ADR 0017 Entscheidung 3): Die
+// Abschnitte der Module im Optionsdialog (#1455): Die
 // Optionsseite holt sich je Seite einen Abschnitt vom angemeldeten Anbieter,
 // baut ihn in den Reiter seines Bereichs (bzw. einen eigenen), lädt und
 // speichert gebundene Felder selbst, gibt eigenen Zeilen die Werte über

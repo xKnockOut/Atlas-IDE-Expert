@@ -23,7 +23,7 @@ function NormalizedType(const AText: string): string;
 /// <summary>Typ der Deklaration ANode (Variable, Parameter, Feld, Typ) als Quelltext; '' ohne.</summary>
 function NodeTypeText(const AText: string; ANode: TSyntaxNode): string;
 /// <summary>Alle Knoten unter ARoot (samt ARoot) in der Reihenfolge eines rekursiven Laufs, aber über einen
-/// eigenen Stapel: Ausdrucksketten können sehr tief sein (Bericht M1).</summary>
+/// eigenen Stapel: Ausdrucksketten können sehr tief sein.</summary>
 function PreOrder(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
 /// <summary>Liegt APosition im Bereich von ANode?</summary>
 function Covers(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
@@ -124,7 +124,7 @@ begin
 end;
 
 /// <summary>Alle Knoten unter ARoot (samt ARoot) in der Reihenfolge eines rekursiven Laufs, aber über einen
-/// eigenen Stapel: Ausdrucksketten können sehr tief sein (Bericht M1).</summary>
+/// eigenen Stapel: Ausdrucksketten können sehr tief sein.</summary>
 function PreOrder(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
 var
   mPending: TStack<TSyntaxNode>;
@@ -180,7 +180,7 @@ begin
   begin
     Exit;
   end;
-  // Eigener Stapel: Ausdrucksketten können sehr tief sein (Bericht M1).
+  // Eigener Stapel: Ausdrucksketten können sehr tief sein.
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ARoot);

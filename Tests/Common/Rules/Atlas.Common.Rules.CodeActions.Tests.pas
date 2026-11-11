@@ -1,7 +1,6 @@
 ﻿unit Atlas.Common.Rules.CodeActions.Tests;
 
-// Tests für die Brücke von Regeltreffern zu Code-Aktionen (#42, #182). Lagen bis A-11
-// in Atlas.Common.Editing.CodeActions.Tests.
+// Tests für die Brücke von Regeltreffern zu Code-Aktionen (#42, #182).
 
 interface
 

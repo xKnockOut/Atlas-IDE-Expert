@@ -143,7 +143,8 @@ uses
   System.JSON,
   System.Diagnostics,
   Atlas.Core.Tracker.Templates,
-  Atlas.Core.Tracker.QueryTest;
+  Atlas.Core.Tracker.QueryTest,
+  Atlas.Text.Json;
 
 { TAtlasTrackerConnection }
 
@@ -232,18 +233,6 @@ begin
   end;
 end;
 
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
 /// <summary>Liste von Texten (#1266, endStates); leere Einträge entfallen.</summary>
 function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
 var
@@ -317,17 +306,17 @@ begin
       begin
         Continue;
       end;
-      mConnection := TAtlasTrackerConnection.Create(TextOf(TJSONObject(mItem), 'name'),
-        TextOf(TJSONObject(mItem), 'provider'), TextOf(TJSONObject(mItem), 'url'));
+      mConnection := TAtlasTrackerConnection.Create(TJsonRead.Text(TJSONObject(mItem), 'name'),
+        TJsonRead.Text(TJSONObject(mItem), 'provider'), TJsonRead.Text(TJSONObject(mItem), 'url'));
       if (mConnection.Name = '') or (mConnection.Provider = '') or (mConnection.Url = '') or
         (IndexOfName(Result, mConnection.Name) >= 0) then
       begin
         Continue;
       end;
-      mConnection.Language := TAtlasTrackerTemplates.NormalLanguage(TextOf(TJSONObject(mItem), 'language'));
-      mConnection.StateField := Trim(TextOf(TJSONObject(mItem), 'stateField'));
-      mConnection.AssigneeField := Trim(TextOf(TJSONObject(mItem), 'assigneeField'));
-      mConnection.StartState := Trim(TextOf(TJSONObject(mItem), 'startState'));
+      mConnection.Language := TAtlasTrackerTemplates.NormalLanguage(TJsonRead.Text(TJSONObject(mItem), 'language'));
+      mConnection.StateField := Trim(TJsonRead.Text(TJSONObject(mItem), 'stateField'));
+      mConnection.AssigneeField := Trim(TJsonRead.Text(TJSONObject(mItem), 'assigneeField'));
+      mConnection.StartState := Trim(TJsonRead.Text(TJSONObject(mItem), 'startState'));
       mConnection.EndStates := TextsOf(TJSONObject(mItem), 'endStates');
       Result := Result + [mConnection];
     end;
@@ -469,7 +458,7 @@ begin
   try
     if mRoot is TJSONObject then
     begin
-      Result := TextOf(TJSONObject(mRoot), 'login') <> '';
+      Result := TJsonRead.Text(TJSONObject(mRoot), 'login') <> '';
     end;
   finally
     mRoot.Free;

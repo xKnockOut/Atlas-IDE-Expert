@@ -60,8 +60,8 @@
 // - editor.breadcrumbsHideIdeToolbar: Die Navigationsleiste der IDE („Typ
 //   suchen“/„Methode suchen“) ist ausgeblendet, solange die Leiste an ist;
 //   aus oder beim Entladen kommt sie zurück. Ausgeblendet wird über die
-//   IDE-Option „Navigationssymbolleiste anzeigen“ (TAtlasIdeNavigationOption,
-//   Bericht M3). Nur wenn die IDE keine solche Option hat, hängt
+//   IDE-Option „Navigationssymbolleiste anzeigen“ (TAtlasIdeNavigationOption).
+//   Nur wenn die IDE keine solche Option hat, hängt
 //   TAtlasNavigationToolbar die Leiste um (Netz).
 // - Anlegen je Editorfenster, Wächter, Freigabe nach der Sperre durch die
 //   IDE, Protokoll des Sperrenden und Abbau übernimmt TAtlasEditorBarHost
@@ -281,7 +281,7 @@ begin
   FLine := -1;
   FCharacter := -1;
   // Farben und Navigationsleiste der IDE nach geänderten Einstellungen. Die Leiste blendet die IDE über ihre
-  // Option aus (Bericht M3); umgehängt wird nur ohne diese Option (Netz).
+  // Option aus; umgehängt wird nur ohne diese Option (Netz).
   ApplyTheme;
   mHide := TAtlasIdeSettings.Current.BreadcrumbsHideIdeToolbar;
   FToolbarByIde := TAtlasIdeNavigationOption.Apply(mHide);
@@ -1314,7 +1314,7 @@ begin
   end;
 end;
 
-/// <summary>Diagnose, warum die Leiste keine Maus bekommt (Bericht M2). Die Ursache am Fenster der Leiste
+/// <summary>Diagnose, warum die Leiste keine Maus bekommt. Die Ursache am Fenster der Leiste
 /// (WindowProblem: anderer Thread, falsches Elternfenster, gesperrt, ausgeblendet) prüft jeder Takt, nicht erst
 /// das Überfahren; landet die Maus über der Leiste bei einem anderen Fenster desselben Formulars, nennt HitProblem
 /// die Ursache am Mauspunkt (Region, HTTRANSPARENT, Geschwister darüber). Beides einmal je Wechsel mit Eltern-

@@ -264,7 +264,7 @@ begin
   Assert.AreEqual('src/Main.pas', Relative);
   Assert.IsFalse(VcsRelativeOrRoot(Root, Root + 'X', Relative));
   Assert.IsFalse(VcsRelativeOrRoot('', '', Relative));
-  // Weiterleitung für den Host (Code-Review A-12)
+  // Weiterleitung für den Host
   Assert.IsTrue(TAtlasVcsDetection.RelativePath(Root, Under('src/Main.pas'), Relative));
   Assert.AreEqual('src/Main.pas', Relative);
   Assert.IsFalse(TAtlasVcsDetection.RelativePath(Root, Root, Relative));

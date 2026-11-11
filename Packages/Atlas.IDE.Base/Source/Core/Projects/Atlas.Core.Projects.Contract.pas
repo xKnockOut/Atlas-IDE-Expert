@@ -7,7 +7,7 @@
 // jeder Änderung als atlas/projectContext. Die Werte bleiben roh, wie sie in
 // den Projektoptionen stehen ($(Platform), $(BDS), relative Pfade): Der Server
 // löst sie mit den Variablen der Installation auf.
-// Contract des Features Projects (A-09, früher Atlas.Core.Projects.Context): Der LSP-Client
+// Contract des Features Projects (früher Atlas.Core.Projects.Context): Der LSP-Client
 // importiert nur ihn, nicht die übrigen Projects-Units.
 // Präfixe (#452): Gibt die Projektdatei .atlas (#486) unter "naming" Präfixe für
 // Felder, Parameter oder lokale Variablen vor, gehen sie unter "naming" mit; sie

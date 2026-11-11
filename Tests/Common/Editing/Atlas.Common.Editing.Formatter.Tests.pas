@@ -27,7 +27,7 @@ type
     [Test]
     procedure FormatsOnlyRange;
     /// <summary>Ein abschließender Umbruch ist eine leere letzte Zeile (TTextLines.SplitLines): kein zweiter
-    /// Umbruch, und beim Wechsel der Zeilenenden bleibt er erhalten (D-03).</summary>
+    /// Umbruch, und beim Wechsel der Zeilenenden bleibt er erhalten.</summary>
     [Test]
     procedure KeepsSingleFinalNewline;
     [Test]
