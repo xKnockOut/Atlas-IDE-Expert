@@ -1155,6 +1155,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.Scale` | `Core/Designer/Atlas.Core.Designer.Scale.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.TabOrder` | `Core/Designer/Atlas.Core.Designer.TabOrder.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.NameSuggest` | `Core/Designer/Atlas.Core.Designer.NameSuggest.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.CodeLink` | `Core/Designer/Atlas.Core.Designer.CodeLink.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.PropertySearch` | `Core/Designer/Atlas.Core.Designer.PropertySearch.pas` | Ordner `Core/Designer` |
 | `Atlas.IDE.Designer.Access` | `IDE/Designer/Atlas.IDE.Designer.Access.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Arrange` | `IDE/Designer/Atlas.IDE.Designer.Arrange.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Bar` | `IDE/Designer/Atlas.IDE.Designer.Bar.pas` | Ordner `IDE/Designer` |
@@ -1197,6 +1199,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.TabOrder` | `IDE/Designer/Atlas.IDE.Designer.TabOrder.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Tools` | `IDE/Designer/Atlas.IDE.Designer.Tools.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.NameSuggest` | `IDE/Designer/Atlas.IDE.Designer.NameSuggest.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.ShowComponent` | `IDE/Designer/Atlas.IDE.Designer.ShowComponent.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.PropertySearch` | `IDE/Designer/Atlas.IDE.Designer.PropertySearch.pas` | Ordner `IDE/Designer` |
 | `Atlas.UI.Designer.Bar` | `UI/Designer/Atlas.UI.Designer.Bar.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.DuplicateDialog` | `UI/Designer/Atlas.UI.Designer.DuplicateDialog.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Flash` | `UI/Designer/Atlas.UI.Designer.Flash.pas` | Ordner `UI/Designer` |
@@ -1205,6 +1209,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Designer.Search` | `UI/Designer/Atlas.UI.Designer.Search.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.SettingsSection` | `UI/Designer/Atlas.UI.Designer.SettingsSection.pas` | Ordner `UI/Designer`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Designer.SpaceDialog` | `UI/Designer/Atlas.UI.Designer.SpaceDialog.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.PropertyDialog` | `UI/Designer/Atlas.UI.Designer.PropertyDialog.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.PaintDialog` | `UI/Designer/Atlas.UI.Designer.PaintDialog.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.AnchorDialog` | `UI/Designer/Atlas.UI.Designer.AnchorDialog.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.TextsDialog` | `UI/Designer/Atlas.UI.Designer.TextsDialog.pas` | Ordner `UI/Designer` |
