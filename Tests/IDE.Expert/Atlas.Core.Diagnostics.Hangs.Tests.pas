@@ -19,6 +19,10 @@ type
     procedure ActivityScopesNest;
     [Test]
     procedure ActivityTimesOutermostDuringStart;
+    /// <summary>Ohne Aktion nennt der Wächter die innerste Funktion aus TAtlasGuard.Run; RunIde ist keine
+    /// Funktion von Atlas; nach einer Exception ist der Stapel wieder leer.</summary>
+    [Test]
+    procedure RunningNamesGuardFeature;
     [Test]
     procedure StackScanMapsAddressesToModules;
   end;
@@ -27,6 +31,8 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.StartTimes,
   Atlas.Core.Diagnostics.Hangs;
 
@@ -131,6 +137,63 @@ begin
   finally
     Times.Free;
   end;
+end;
+
+procedure TAtlasHangTests.RunningNamesGuardFeature;
+var
+  Seen: TArray<string>;
+  Other: TThread;
+  OtherName: string;
+begin
+  Seen := nil;
+  Assert.AreEqual('', TAtlasActivity.Running);
+  TAtlasGuard.Run(TAtlasFeature.EditorToolbar,
+    procedure
+    var
+      Scope: IInterface;
+    begin
+      Seen := Seen + [TAtlasActivity.Running];
+      TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
+        procedure
+        begin
+          Seen := Seen + [TAtlasActivity.Running];
+        end);
+      Seen := Seen + [TAtlasActivity.Running];
+      TAtlasGuard.RunIde(
+        procedure
+        begin
+          Seen := Seen + [TAtlasActivity.Running];
+        end);
+      Scope := TAtlasActivity.Scope('Tastenkarte');
+      Seen := Seen + [TAtlasActivity.Running];
+      Scope := nil;
+      raise EAbort.Create('Test');
+    end);
+  Assert.AreEqual(TAtlasGuard.FeatureName(TAtlasFeature.EditorToolbar) + '|' +
+    TAtlasGuard.FeatureName(TAtlasFeature.Breadcrumbs) + '|' + TAtlasGuard.FeatureName(TAtlasFeature.EditorToolbar) +
+    '||Tastenkarte', string.Join('|', Seen));
+  Assert.AreEqual('', TAtlasActivity.Running, 'nach der Exception leer');
+  // Aufrufe aus anderen Threads legen nichts auf.
+  OtherName := 'unberührt';
+  Other := TThread.CreateAnonymousThread(
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Outline,
+        procedure
+        begin
+          OtherName := TAtlasGuard.CurrentFeatureName;
+        end);
+    end);
+  Other.FreeOnTerminate := False;
+  try
+    Other.Start;
+    Other.WaitFor;
+  finally
+    Other.Free;
+  end;
+  Assert.AreEqual('', OtherName);
+  Seen := nil;
+  OtherName := '';
 end;
 
 procedure TAtlasHangTests.StackScanMapsAddressesToModules;

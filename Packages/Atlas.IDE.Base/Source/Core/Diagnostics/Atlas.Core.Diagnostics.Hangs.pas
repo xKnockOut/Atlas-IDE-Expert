@@ -4,7 +4,8 @@
 // - TAtlasActivity: Atlas-Arbeit im Hauptthread meldet sich mit Scope an; der
 //   Wächter liest den Namen aus seinem Thread (threadsicher, ohne zu warten).
 //   Während des Starts zählt TimeInto die Dauer jeder äußersten Aktion zu den
-//   Startanteilen (Bericht N4).
+//   Startanteilen (Bericht N4). Running ergänzt die laufende Funktion
+//   aus TAtlasGuard.Run, wenn keine Aktion angemeldet ist (#1988).
 // - TAtlasHangMonitor: Schwelle, Statistik je Sitzung und Bericht.
 // - TAtlasStackScan: ordnet Adressen eines rohen Stapelabzugs Modulen zu
 //   (Modul+Offset), ohne Symbole; der Bericht zeigt so, ob Atlas beteiligt ist.
@@ -36,6 +37,8 @@ type
     class procedure TimeInto(ATimes: TAtlasStartTimes); static;
     /// <summary>Innerste laufende Aktion; '' ohne oder wenn gerade gesperrt.</summary>
     class function Current: string; static;
+    /// <summary>Current, sonst die innerste Funktion aus TAtlasGuard.Run; für den Einfrier-Wächter.</summary>
+    class function Running: string; static;
   end;
 
   TAtlasModuleRange = record
@@ -90,6 +93,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.PluginTimings;
 
 type
@@ -196,6 +200,15 @@ begin
     end;
   finally
     FLock.Leave;
+  end;
+end;
+
+class function TAtlasActivity.Running: string;
+begin
+  Result := Current;
+  if Result = '' then
+  begin
+    Result := TAtlasGuard.CurrentFeatureName;
   end;
 end;
 

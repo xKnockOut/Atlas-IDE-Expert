@@ -105,7 +105,7 @@ begin
     begin
       Result := True;
       AHang.At := Now;
-      AHang.Activity := TAtlasActivity.Current;
+      AHang.Activity := TAtlasActivity.Running;
       AHang.Window := ForegroundWindowText;
       FOwner.Capture;
     end;
