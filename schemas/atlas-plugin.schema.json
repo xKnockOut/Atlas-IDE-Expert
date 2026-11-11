@@ -5460,6 +5460,68 @@
       "x-node": "editor.designerBar",
       "x-issue": "#737"
     },
+    "DesignerSelectionBar": {
+      "description": "Schnellleiste über einer Mehrfachauswahl: Ab zwei markierten Steuerelementen erscheint über dem umschließenden Rechteck (unten, wenn oben kein Platz ist) eine schmale Leiste ohne Fokus mit den häufigsten gemeinsamen Änderungen: Schriftgröße −/+ und Anzeige, fett, kursiv, Schriftfarbe, Enabled, Visible, ParentFont, ParentColor, Anchors L/T/R/B, gleiche Breite und Höhe wie die zuerst markierte Komponente, Alignment links/mittig/rechts. Gemischte Werte sind halb gefüllt (Zahlen: „–“), ein Klick setzt alle auf den eingeschalteten Wert. Knöpfe für Eigenschaften, die nicht alle haben, wirken nur auf die, die sie haben (Tooltip „für 3 von 4“). Beim Ziehen und außerhalb des Designers ausgeblendet. Knopf in der Designer-Leiste: Symbol blendet die Leiste ein und aus, das Menü am Pfeil nimmt Klicks der Leiste schrittweise zurück.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.selectionBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#735"
+    },
+    "DesignerSelectionBarMode": {
+      "description": "Wann die Schnellleiste erscheint: automatisch nach der Verzögerung (auto) oder nur auf Tastendruck (shortcut, Taste designer.selectionBar.key).",
+      "type": "string",
+      "enum": [
+        "auto",
+        "shortcut"
+      ],
+      "default": "auto",
+      "x-key": "designer.selectionBar.mode",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.selectionBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#735"
+    },
+    "DesignerSelectionBarDelayMs": {
+      "description": "Verzögerung in Millisekunden, bis die Schnellleiste nach einer Änderung der Auswahl erscheint (0 bis 5000).",
+      "type": "integer",
+      "default": 400,
+      "minimum": 0,
+      "maximum": 5000,
+      "x-key": "designer.selectionBar.delayMs",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.selectionBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#735"
+    },
+    "DesignerSelectionBarItems": {
+      "description": "Knöpfe der Schnellleiste und ihre Reihenfolge, durch Komma getrennt: fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, alignCenter, alignRight und optional fitText (Breite nach Text). Unbekannte Namen werden übergangen.",
+      "type": "string",
+      "default": "fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, alignCenter, alignRight",
+      "x-key": "designer.selectionBar.items",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.selectionBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#735"
+    },
+    "DesignerSelectionBarKey": {
+      "description": "Taste, die die Schnellleiste im Modus shortcut einblendet; wirkt nur, solange der Formular-Designer den Fokus hat. 0 = keine Taste. Vorgabe Strg+Umschalt+Leer.",
+      "type": "integer",
+      "default": 24608,
+      "x-key": "designer.selectionBar.key",
+      "x-area": "editor",
+      "x-format": "shortcut",
+      "x-page": "Editor",
+      "x-parent": "designer.selectionBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#735"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",
