@@ -142,6 +142,8 @@ begin
   BindCheck('GenerateMenuShowCommandNames', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuShowCommandNames)));
   // Untermenü Atlas in der Projektverwaltung (#1817).
   BindCheck('ProjectContextMenu', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProjectContextMenu)));
+  // Assistenten in Datei › Neu › Weitere (#1821).
+  BindCheck('GalleryWizards', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGalleryWizards)));
   // Liste der Benachrichtigungen (#601).
   BindKey('NotificationsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NotificationsCommand)));
 end;

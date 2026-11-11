@@ -52,6 +52,7 @@ contains
   Atlas.UI.Problems.BulkFix in 'Source\UI\Problems\Atlas.UI.Problems.BulkFix.pas',
   Atlas.UI.Rules.SettingsSection in 'Source\UI\Rules\Atlas.UI.Rules.SettingsSection.pas',
   Atlas.Core.Rules.Table in 'Source\Core\Rules\Atlas.Core.Rules.Table.pas',
+  Atlas.Core.Rules.CustomLayer in 'Source\Core\Rules\Atlas.Core.Rules.CustomLayer.pas',
   Atlas.UI.Rules.Editor in 'Source\UI\Rules\Atlas.UI.Rules.Editor.pas',
   Atlas.UI.Rules.SettingsDialog in 'Source\UI\Rules\Atlas.UI.Rules.SettingsDialog.pas',
   Atlas.IDE.Rules.FindingActions in 'Source\IDE\Rules\Atlas.IDE.Rules.FindingActions.pas',
