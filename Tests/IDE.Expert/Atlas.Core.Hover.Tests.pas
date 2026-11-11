@@ -29,6 +29,9 @@ type
     /// <summary>#1123: Nur Begründungen strukturiert; die Doku als Klartext bleibt davor.</summary>
     [Test]
     procedure KeepsPlainDocumentationBeforeRationale;
+    /// <summary>#1921: Über einem Unit-Namen bleibt der Dateipfad vor dem Inhalt der Unit stehen.</summary>
+    [Test]
+    procedure KeepsPathBeforeUnitContents;
     /// <summary>#110: atlas.published, Filter und Liste für die Zwischenablage.</summary>
     [Test]
     procedure ReadsPublishedMembers;
@@ -144,6 +147,22 @@ begin
   Assert.AreEqual(Ord(TAtlasDocSectionKind.Summary), Ord(Data.Doc.Sections[0].Kind));
   Assert.AreEqual('Zaehlt.', Data.Doc.Sections[0].Text);
   Assert.AreEqual(Ord(TAtlasDocSectionKind.Rationale), Ord(Data.Doc.Sections[1].Kind));
+end;
+
+procedure TAtlasHoverTests.KeepsPathBeforeUnitContents;
+var
+  Data: TAtlasHoverData;
+begin
+  Data := Parse('{"contents": "x", "atlas": {"declaration": "unit Werk;",' +
+    '"documentationText": "C:\\P\\Werk.pas", "documentation": {"sections": [' +
+    '{"kind": "unitContents", "heading": "TYPEN (1)", "name": "Klassen", "runs": [' +
+    '{"kind": "ref", "text": "TKunde", "target": "TKunde", "file": "C:\\P\\Werk.pas", "line": 3}]}]}}}');
+  Assert.AreEqual(2, Integer(Length(Data.Doc.Sections)));
+  Assert.AreEqual('C:\P\Werk.pas', Data.Doc.Sections[0].Text);
+  Assert.AreEqual(Ord(TAtlasDocSectionKind.UnitContents), Ord(Data.Doc.Sections[1].Kind));
+  Assert.AreEqual('TYPEN (1)', Data.Doc.Sections[1].Heading);
+  Assert.AreEqual('Klassen', Data.Doc.Sections[1].Name);
+  Assert.AreEqual(3, Data.Doc.Sections[1].Runs[0].Location.Line);
 end;
 
 procedure TAtlasHoverTests.ReadsPublishedMembers;
