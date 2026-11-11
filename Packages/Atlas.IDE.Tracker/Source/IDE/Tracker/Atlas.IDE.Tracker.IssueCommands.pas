@@ -140,7 +140,8 @@ begin
       end;
       mInput := '';
       if not InputQuery(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCaption),
-        TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewPrompt, [TAtlasIssuePreview.KeyExample(mTarget.Provider)]),
+        TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewPrompt,
+          [TAtlasIssuePreview.KeyExample(mTarget.Provider)]),
         mInput) then
       begin
         Exit;

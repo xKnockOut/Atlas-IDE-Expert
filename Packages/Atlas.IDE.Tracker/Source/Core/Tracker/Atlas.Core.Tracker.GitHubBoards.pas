@@ -208,7 +208,7 @@ begin
       end;
       if AMessage = '' then
       begin
-        AMessage := Copy(TJsonRead.Text(TJSONObject(mItem), 'message'), 1, 300);
+        AMessage := Copy(TJsonRead.Text(TJSONObject(mItem), 'message'), 1, TAtlasTrackerTextLimits.cMessage);
       end;
       mType := UpperCase(TJsonRead.Text(TJSONObject(mItem), 'type'));
       if (mType = 'INSUFFICIENT_SCOPES') or (mType = 'FORBIDDEN') then
