@@ -7,6 +7,8 @@
 //   component-setter-without-invalidate  Setter eines in Paint gelesenen Felds ohne Invalidate
 //   component-fixed-pixels               feste Pixelwerte in Paint/Resize ohne ScaleValue
 //   component-hardcoded-color            RGB-Literale und TColor-Casts in Paint
+//   control-fixed-bounds                 feste Pixelwerte an Width/Height/Left/Top/ClientWidth/
+//                                        ClientHeight in VCL-Units ohne ScaleValue (#1982)
 //   missing-inherited                    Konstruktor, Destroy, AfterConstruction
 //                                        oder BeforeDestruction ohne inherited, für
 //                                        alle Klassen (#919); Destroy von
@@ -85,6 +87,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TControlFixedBoundsRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterComponentRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -103,6 +111,7 @@ uses
   Atlas.Common.Rules.Builtin.Components.Model,
   Atlas.Common.Rules.Builtin.Components.InheritedCalls,
   Atlas.Common.Rules.Builtin.Components.Members,
+  Atlas.Common.Editing.UsesClause,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -111,7 +120,8 @@ type
   /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
   TComponentsText = (InheritedTitle, VclWork, PaintsItself, FiresOnPaint, InsertInherited, DefaultTitle,
     DefaultMismatch, ChangeDefault, FreeNotificationTitle, AddFreeNotification, InvalidateTitle, NoInvalidate,
-    InsertInvalidate, PixelTitle, FixedPixel, ScaleWith, ColorTitle, FixedColor, ForeignComponent);
+    InsertInvalidate, PixelTitle, FixedPixel, ScaleWith, ColorTitle, FixedColor, ForeignComponent,
+    BoundsTitle, FixedBounds);
 
 const
   cTexts: array[TComponentsText] of TAtlasText = (
@@ -151,7 +161,11 @@ const
       'StyleServices.GetSystemColor'),
     (De: '"%s" verweist auf eine fremde Komponente ohne FreeNotification; wird sie freigegeben, bleibt ein ' +
       'ungültiger Zeiger zurück';
-     En: '"%s" refers to a foreign component without FreeNotification; when it is freed, a dangling pointer remains'));
+     En: '"%s" refers to a foreign component without FreeNotification; when it is freed, a dangling pointer remains'),
+    (De: 'Feste Pixelwerte für Größe oder Lage eines Steuerelements';
+     En: 'Fixed pixel values for the size or position of a control'),
+    (De: '%s erhält einen festen Pixelwert: bei mehr als 96 dpi zu klein; ScaleValue verwenden';
+     En: '%s gets a fixed pixel value: too small above 96 dpi; use ScaleValue'));
 
 {$SCOPEDENUMS OFF}
 
@@ -807,6 +821,171 @@ begin
     mColors.Free;
   end;
 end;
+{ TControlFixedBoundsRule }
+
+const
+  // Eigenschaften, die Größe oder Lage in Pixeln angeben.
+  cBoundsTargets: array[0..5] of string = ('Width', 'Height', 'Left', 'Top', 'ClientWidth', 'ClientHeight');
+  // Zeichenwerkzeuge und Schrift: Pen.Width gehört zu Paint (component-fixed-pixels), Font.Height skaliert die
+  // VCL mit der Schrift.
+  cDrawingOwners: array[0..3] of string = ('Pen', 'Canvas', 'Brush', 'Font');
+  // Teile eines Steuerelements ohne eigenes ScaleValue: skaliert wird über das Steuerelement davor.
+  cControlParts: array[0..2] of string = ('Margins', 'Padding', 'Constraints');
+  // Ab hier ist Top/Left eine Reihenfolge für Align (alTop/alBottom), kein Pixelwert.
+  cAlignOrder = 10000;
+
+function TControlFixedBoundsRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('control-fixed-bounds', TRuleSeverity.Warning,
+    cTexts[TComponentsText.BoundsTitle].Text);
+end;
+
+/// <summary>Bindet die Unit eine VCL-Unit ein (Vcl.* oder ohne Namespace Controls/Forms)?</summary>
+function UsesVcl(const AContext: TRuleContext): Boolean;
+var
+  mUnit: string;
+begin
+  Result := False;
+  for mUnit in TUsesClauses.UsedUnits(AContext.Tree.Tokens) do
+  begin
+    if StartsText('Vcl.', mUnit) or SameText(mUnit, 'Controls') or SameText(mUnit, 'Forms') then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Setzt die Zuweisung AAssign Größe oder Lage (Width, Left …), nicht aber Pen.Width &amp; Co.?</summary>
+function IsBoundsAssign(AAssign: TSyntaxNode): Boolean;
+var
+  mTarget: TSyntaxNode;
+begin
+  Result := (AAssign.Kind = TSyntaxKind.AssignStatement) and IsIn(AAssign.Name, cBoundsTargets) and
+    (AAssign.ChildCount = 2);
+  if Result then
+  begin
+    mTarget := AAssign.Children[0];
+    Result := (mTarget.Kind <> TSyntaxKind.MemberAccess) or (mTarget.ChildCount = 0) or
+      not IsIn(mTarget.Children[0].Name, cDrawingOwners);
+  end;
+end;
+
+/// <summary>Zahl unter cAlignOrder?</summary>
+function IsBoundsLiteral(ANode: TSyntaxNode): Boolean;
+var
+  mValue: Integer;
+begin
+  Result := TryStrToInt(ANode.Name, mValue) and (mValue < cAlignOrder);
+end;
+
+/// <summary>Aufruf, der AValue für das Ziel der Zuweisung AAssign skaliert: ScaleValue des Steuerelements, dem
+/// Width &amp; Co. gehören (bei Margins, Padding und Constraints das davor), ohne Objekt das eigene. Das Ziel selbst
+/// skaliert richtig, ob es schon eingehängt ist oder erst beim Einhängen mitskaliert wird.</summary>
+function ScaleCallFor(const AContext: TRuleContext; AAssign: TSyntaxNode; const AValue: string): string;
+var
+  mOwner: TSyntaxNode;
+begin
+  mOwner := AAssign.Children[0];
+  if (mOwner.Kind <> TSyntaxKind.MemberAccess) or (mOwner.ChildCount = 0) then
+  begin
+    Exit('ScaleValue(' + AValue + ')');
+  end;
+  mOwner := mOwner.Children[0];
+  if (mOwner.Kind = TSyntaxKind.MemberAccess) and (mOwner.ChildCount > 0) and IsIn(mOwner.Name, cControlParts) then
+  begin
+    mOwner := mOwner.Children[0];
+  end;
+  Result := Copy(AContext.Text, mOwner.StartOffset + 1, mOwner.EndOffset - mOwner.StartOffset) + '.ScaleValue(' +
+    AValue + ')';
+end;
+
+/// <summary>Liegt ANode in Paint oder Resize einer Komponente? Dort meldet component-fixed-pixels.</summary>
+function InPaintMethod(AModel: TComponentModel; ANode: TSyntaxNode): Boolean;
+var
+  mNode: TSyntaxNode;
+  mName: string;
+begin
+  Result := False;
+  mNode := ANode.Parent;
+  while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    mNode := mNode.Parent;
+  end;
+  if (mNode <> nil) and (LastDelimiter('.', mNode.Name) > 0) then
+  begin
+    mName := Copy(mNode.Name, LastDelimiter('.', mNode.Name) + 1, MaxInt);
+    Result := IsIn(mName, cPaintMethods) and
+      AModel.IsComponent(Copy(mNode.Name, 1, LastDelimiter('.', mNode.Name) - 1));
+  end;
+end;
+
+procedure TControlFixedBoundsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mModel: TComponentModel;
+  mCache: IRuleDerivedCache;
+  mAssigns, mLiterals: TList<TSyntaxNode>;
+  mAssign, mLiteral: TSyntaxNode;
+  mHelpers: TArray<string>;
+  mEdits: TArray<TRuleEdit>;
+  mIndex: Integer;
+begin
+  if (AContext.Tree = nil) or not UsesVcl(AContext) then
+  begin
+    Exit;
+  end;
+  mCache := TRuleDerived.Open(AContext);
+  if not PrepareModel(mCache, AContext, mModel) then
+  begin
+    Exit;
+  end;
+  mHelpers := ScalingHelpers(mModel);
+  mAssigns := TList<TSyntaxNode>.Create;
+  mLiterals := TList<TSyntaxNode>.Create;
+  try
+    AContext.Tree.Root.Walk(
+      function(AVisited: TSyntaxNode): Boolean
+      begin
+        Result := True;
+        if IsBoundsAssign(AVisited) then
+        begin
+          mAssigns.Add(AVisited);
+        end;
+      end);
+    for mAssign in mAssigns do
+    begin
+      if InPaintMethod(mModel, mAssign) then
+      begin
+        Continue;
+      end;
+      mLiterals.Clear;
+      CollectPixels(mAssign.Children[1], mLiterals, mHelpers);
+      for mIndex := mLiterals.Count - 1 downto 0 do
+      begin
+        if not IsBoundsLiteral(mLiterals[mIndex]) then
+        begin
+          mLiterals.Delete(mIndex);
+        end;
+      end;
+      if mLiterals.Count = 0 then
+      begin
+        Continue;
+      end;
+      mEdits := nil;
+      for mLiteral in mLiterals do
+      begin
+        mEdits := mEdits + [TRuleEdit.Create(TTextRange.Create(mLiteral.StartPos, mLiteral.EndPos),
+          ScaleCallFor(AContext, mAssign, mLiteral.Name))];
+      end;
+      AReport.Add(TTextRange.Create(mLiterals.First.StartPos, mLiterals.Last.EndPos),
+        cTexts[TComponentsText.FixedBounds].Fmt([mAssign.Name]), TRuleConfidence.Medium,
+        [TRuleFix.Create(cTexts[TComponentsText.ScaleWith].Text, mEdits)]);
+    end;
+  finally
+    mLiterals.Free;
+    mAssigns.Free;
+  end;
+end;
+
 procedure RegisterComponentRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TMissingInheritedRule.Create);
@@ -821,6 +1000,7 @@ begin
   ARegistry.Register(TComponentSetterWithoutInvalidateRule.Create);
   ARegistry.Register(TComponentFixedPixelsRule.Create);
   ARegistry.Register(TComponentHardcodedColorRule.Create);
+  ARegistry.Register(TControlFixedBoundsRule.Create);
 end;
 
 initialization

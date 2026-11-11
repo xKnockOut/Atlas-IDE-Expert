@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeComponents: array[0..39] of string = (
+  cCatalogLinesDeComponents: array[0..44] of string = (
     '{',
     '      "id": "component-create-without-override",',
     '      "name": "Komponentenkonstruktor ohne override",',
@@ -43,6 +43,14 @@ const
     '      "name": "Feste Pixelwerte",',
     '      "description": "Paint oder Resize verwenden feste Pixelwerte, die über 96 dpi zu klein sind. Werte über ScaleValue oder MulDiv oder über eine Methode der Klasse, die selbst skaliert (ruft ScaleV' +
     'alue, MulDiv oder eine Routine Scale… auf), 0, 1 und -1 sowie Faktoren von Multiplikationen und Divisionen werden nicht gemeldet."',
+    '    },',
+    '{',
+    '      "id": "control-fixed-bounds",',
+    '      "name": "Feste Größe oder Lage von Steuerelementen",',
+    '      "description": "Code in einer VCL-Unit setzt Width, Height, Left, Top, ClientWidth oder ClientHeight auf einen festen Pixelwert. Im Code angelegte Steuerelemente skaliert die VCL nicht mit; Dial' +
+    'oge und Spalten bleiben über 96 dpi zu klein. Werte über ScaleValue, MulDiv oder eine Methode der Klasse, die selbst skaliert, 0, 1 und -1, Faktoren von Multiplikationen und Divisionen, Werte ab 10000' +
+    ' (Reihenfolge für Align), Pen.Width, Font.Height sowie Zuweisungen in Paint oder Resize einer Komponente (component-fixed-pixels) werden nicht gemeldet. Die Korrektur skaliert mit ScaleValue des Steue' +
+    'relements selbst (bei Margins, Padding und Constraints des Steuerelements, zu dem sie gehören): Das stimmt, ob es schon eingehängt ist oder beim Einhängen mitskaliert wird."',
     '    },',
     '{',
     '      "id": "component-hardcoded-color",',
