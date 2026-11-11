@@ -284,7 +284,7 @@ begin
       mPull.Updated := UpdatedOf(TJSONObject(mItem));
       mPull.Title := TJsonRead.Text(TJSONObject(mItem), 'title');
       // Nur der Anfang: „closes #N“ steht fast immer oben, und lange Beschreibungen kosten nur Speicher.
-      mPull.Body := Copy(TJsonRead.Text(TJSONObject(mItem), 'body'), 1, 4000);
+      mPull.Body := Copy(TJsonRead.Text(TJSONObject(mItem), 'body'), 1, TAtlasTrackerTextLimits.cBody);
       mHead := TJSONObject(mItem).Values['head'];
       if mHead is TJSONObject then
       begin
@@ -526,7 +526,7 @@ end;
 procedure ReadDetails(ARoot: TJSONObject; var ADetails: TAtlasTrackerDetails);
 begin
   ADetails.Key := '#' + IntToStr(ADetails.Number);
-  ADetails.Title := TAtlasGitHubJson.Shorten(TJsonRead.Text(ARoot, 'title'), 500);
+  ADetails.Title := TAtlasGitHubJson.Shorten(TJsonRead.Text(ARoot, 'title'), TAtlasTrackerTextLimits.cDetailsTitle);
   ADetails.Description := TAtlasGitHubJson.Limited(TJsonRead.Text(ARoot, 'body'));
   ADetails.State := DetailsStateOf(ARoot);
   ADetails.Created := TAtlasGitHubJson.TimeOf(ARoot, 'created_at');
@@ -615,7 +615,7 @@ begin
   begin
     ALink.Key := ARepository + ALink.Key;
   end;
-  ALink.Title := TAtlasGitHubJson.Shorten(TJsonRead.Text(AIssue, 'title'), 200);
+  ALink.Title := TAtlasGitHubJson.Shorten(TJsonRead.Text(AIssue, 'title'), TAtlasTrackerTextLimits.cTitle);
   ALink.State := TJsonRead.Text(AIssue, 'state');
   ALink.StateKnown := ALink.State <> '';
   ALink.Resolved := SameText(ALink.State, 'closed');
@@ -714,7 +714,7 @@ begin
   begin
     Exit;
   end;
-  AAttachment.Name := TAtlasGitHubJson.Shorten(ALink.Text, 200);
+  AAttachment.Name := TAtlasGitHubJson.Shorten(ALink.Text, TAtlasTrackerTextLimits.cTitle);
   if AAttachment.Name = '' then
   begin
     AAttachment.Name := Copy(ALink.Url, LastDelimiter('/', ALink.Url) + 1, 200);

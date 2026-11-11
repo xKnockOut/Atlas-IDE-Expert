@@ -64,7 +64,7 @@ begin
       mText := '';
       if mEntry is TJSONObject then
       begin
-        mText := Shorten(TJsonRead.Text(TJSONObject(mEntry), 'login'), 60);
+        mText := Shorten(TJsonRead.Text(TJSONObject(mEntry), 'login'), TAtlasTrackerTextLimits.cName);
       end;
       if mText = '' then
       begin
@@ -80,7 +80,7 @@ begin
   mItem := AObject.Values['assignee'];
   if (Result = '') and (mItem is TJSONObject) then
   begin
-    Result := Shorten(TJsonRead.Text(TJSONObject(mItem), 'login'), 60);
+    Result := Shorten(TJsonRead.Text(TJSONObject(mItem), 'login'), TAtlasTrackerTextLimits.cName);
   end;
 end;
 
@@ -102,7 +102,7 @@ begin
   Result := '';
   if AValue is TJSONObject then
   begin
-    Result := Shorten(TJsonRead.Text(TJSONObject(AValue), 'login'), 60);
+    Result := Shorten(TJsonRead.Text(TJSONObject(AValue), 'login'), TAtlasTrackerTextLimits.cName);
   end;
 end;
 

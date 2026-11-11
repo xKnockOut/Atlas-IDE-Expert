@@ -179,8 +179,9 @@ begin
     Exit;
   end;
   mToken := '';
-  if (FParts.Credentials = nil) or not TAtlasCiLoginPrompt.AskToken(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerLoginTitle,
-    [AProvider.Caption, ATarget.Server]), TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLoginToken), mToken) then
+  if (FParts.Credentials = nil) or not TAtlasCiLoginPrompt.AskToken(
+    TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerLoginTitle, [AProvider.Caption, ATarget.Server]),
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLoginToken), mToken) then
   begin
     Exit;
   end;
