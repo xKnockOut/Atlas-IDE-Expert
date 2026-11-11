@@ -1,7 +1,7 @@
 ﻿unit Atlas.Text.Uris;
 
 // Umwandlung zwischen file-URIs des LSP und Dateipfaden (gemeinsam für Server
-// und Plugin, ADR 0012).
+// und Plugin).
 //   file:///c%3A/Projekt/A.pas  ↔  c:\Projekt\A.pas
 //   file://server/share/A.pas   ↔  \\server\share\A.pas
 //   file:///home/a/A.pas        ↔  /home/a/A.pas

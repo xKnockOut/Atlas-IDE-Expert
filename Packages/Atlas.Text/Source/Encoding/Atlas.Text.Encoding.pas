@@ -1,6 +1,6 @@
 ﻿unit Atlas.Text.Encoding;
 
-// Erkennung von Textkodierungen (gemeinsam für Server und Plugin, ADR 0012):
+// Erkennung von Textkodierungen (gemeinsam für Server und Plugin):
 // BOM, strikte UTF-8-Prüfung, Codepage-Angaben aus atlas.json und binäre
 // Formulare. Server und Plugin entscheiden damit gleich, ob eine Datei ohne
 // BOM UTF-8 oder ANSI ist.

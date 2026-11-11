@@ -32,7 +32,7 @@ type
   TAtlasLogProc = reference to procedure(const AMessage: string);
 
   /// <summary>Quellen der Vervollständigung aus dem Kern (Server, XMLDoc, Code-Vorlagen); setzt die
-  /// Kompositionswurzel ein (A-09). Die Funktionen wirken auf Server- und Vorlagenquelle.</summary>
+  /// Kompositionswurzel ein. Die Funktionen wirken auf Server- und Vorlagenquelle.</summary>
   TAtlasCompletionSources = record
     /// <summary>Server; unterstützt auch IAtlasCompletionResolver.</summary>
     Server: IAtlasCompletionProvider;

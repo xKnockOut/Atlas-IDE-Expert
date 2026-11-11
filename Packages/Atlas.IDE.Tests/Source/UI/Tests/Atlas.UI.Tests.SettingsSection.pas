@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Tests.SettingsSection;
 
-// Abschnitte des Moduls Tests im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher in den Teilen
+// Abschnitte des Moduls Tests im Optionsdialog (#1456; vorher in den Teilen
 // „Compiler“, „Debuggen“ und „Editor“ von Base): je Seite eine Klasse, weil die Einstellungen des Moduls auf drei
 // Seiten stehen.
 // - „Compiler“: Modulschalter, DUnitX-Tests ausführen (#69) und betroffene Tests (#1353).

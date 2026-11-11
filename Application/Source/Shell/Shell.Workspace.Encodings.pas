@@ -86,7 +86,7 @@ begin
     Exit;
   end;
   FSeen.Add(AnsiUpperCase(AFileName), True);
-  // Über TFileEncoding: teilt Löschen, damit das Plugin die Unit währenddessen ersetzen kann (Bericht M5).
+  // Über TFileEncoding: teilt Löschen, damit das Plugin die Unit währenddessen ersetzen kann.
   FSurvey.Add(TFileEncoding.ReadAllBytes(AFileName));
 end;
 

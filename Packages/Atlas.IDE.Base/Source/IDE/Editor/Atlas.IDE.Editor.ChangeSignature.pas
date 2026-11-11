@@ -39,7 +39,8 @@ uses
   Atlas.UI.Editor.ChangeSignature,
   Atlas.IDE.Editor.Rename,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Editor.ServerEdit;
+  Atlas.IDE.Editor.ServerEdit,
+  Atlas.Text.Json;
 
 const
   cPrepareCommand = 'atlas.server.changeSignature.prepare';
@@ -59,7 +60,7 @@ begin
   try
     mAnswer := ASession.RunCommand(cPrepareCommand, AArgumentsJson, cTimeoutMs);
     try
-      AModel := TAtlasSignatureModel.Create(TAtlasIdeServerEdit.AsObject(mAnswer));
+      AModel := TAtlasSignatureModel.Create(TJsonRead.AsObject(mAnswer));
     finally
       mAnswer.Free;
     end;

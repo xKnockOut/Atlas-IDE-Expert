@@ -116,7 +116,7 @@ var
   mDisk: IIndexFileSystem;
   mError: string;
 begin
-  // Atomar wie der Index-Cache (Bericht N3): Der Arbeitsbereich liest die Datei nach dem Zeitstempel und sah
+  // Atomar wie der Index-Cache: Der Arbeitsbereich liest die Datei nach dem Zeitstempel und sah
   // mit TFile.WriteAllText womöglich einen halben Stand; ein Abbruch hinterließ eine kaputte Baseline.
   // UTF-8 ohne BOM wie bisher.
   mDisk := TDiskIndexFileSystem.Create;

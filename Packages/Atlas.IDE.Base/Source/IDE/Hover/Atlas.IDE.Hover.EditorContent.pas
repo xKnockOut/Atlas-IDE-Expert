@@ -155,7 +155,7 @@ type
     constructor Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
       const AProblemsAt: TAtlasHoverProblemsFunc; const AHandles: TAtlasHoverHandlesFunc);
     /// <summary>Aktion unter einem uses-Hinweis (#621); setzt die Kompositionswurzel (der Tooltip kennt die
-    /// Editorbefehle nicht, A-09), ohne Zuweisung keine.</summary>
+    /// Editorbefehle nicht), ohne Zuweisung keine.</summary>
     class property OnProblemAction: TAtlasHoverProblemActionProc read FOnProblemAction write FOnProblemAction;
   end;
 

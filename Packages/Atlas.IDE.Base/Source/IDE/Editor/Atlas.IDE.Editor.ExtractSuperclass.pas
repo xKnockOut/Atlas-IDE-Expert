@@ -40,7 +40,8 @@ uses
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.ServerEdit,
   Atlas.IDE.Editor.ClassExtraction,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.Text.Json;
 
 const
   cPrepareCommand = 'atlas.server.extractSuperclass.prepare';
@@ -78,13 +79,13 @@ begin
     cTimeoutMs, TAtlasTextId.ExtractSuperFailed),
     procedure(const AReply: TJSONObject)
     begin
-      mTargetFile := TAtlasIdeServerEdit.TextOf(AReply, 'file');
+      mTargetFile := TJsonRead.Text(AReply, 'file');
       if mTargetFile <> '' then
       begin
         mTargetFile := TLspSession.UriToPath(mTargetFile);
       end;
-      mMoved := TAtlasIdeServerEdit.NumberOf(AReply, 'moved');
-      mTargetLine := TAtlasIdeServerEdit.NumberOf(AReply, 'line');
+      mMoved := TJsonRead.Int(AReply, 'moved');
+      mTargetLine := TJsonRead.Int(AReply, 'line');
     end, AMessage, mReply) then
   begin
     Exit;

@@ -128,7 +128,7 @@ jobs:
       - name: Installationspaket packen (#495)
         shell: pwsh
         # Dasselbe Skript nimmt man ohne Delphi-Runner lokal (Publish-ReleasePackage.ps1): Aufbau wie der Zielordner
-        # (ADR 0016), Server und Daten oben, Kern und Modul-Packages je Plattform mit Map-Datei darunter.
+        # Server und Daten oben, Kern und Modul-Packages je Plattform mit Map-Datei darunter.
         run: ./Tools/New-ReleasePackage.ps1 -Version '${{ needs.version.outputs.version }}'
       - uses: actions/upload-artifact@v4
         with:

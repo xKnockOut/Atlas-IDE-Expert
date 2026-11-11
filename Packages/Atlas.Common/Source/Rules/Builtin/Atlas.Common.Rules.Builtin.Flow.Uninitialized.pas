@@ -482,7 +482,7 @@ begin
   inherited Create;
   FContext := AContext;
   FReport := AReport;
-  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
+  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln.
   FCache := TRuleDerived.Open(AContext);
   FRecordMethods := TDictionary<string, TArray<string>>.Create;
 end;
@@ -639,7 +639,7 @@ var
   mPending: TStack<TSyntaxNode>;
   mNode: TSyntaxNode;
 begin
-  // Iterativ mit eigenem Stapel (Bericht M1); die Kinder rückwärts darauf, damit der erste Treffer derselbe bleibt.
+  // Iterativ mit eigenem Stapel; die Kinder rückwärts darauf, damit der erste Treffer derselbe bleibt.
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ARoot);

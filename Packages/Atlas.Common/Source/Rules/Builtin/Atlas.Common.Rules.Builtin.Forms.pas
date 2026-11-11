@@ -123,7 +123,7 @@ const
 
 {$SCOPEDENUMS OFF}
 
-/// <summary>Klasse ATypeName der Unit (Interface oder Implementation), sonst nil. Iterativ (Bericht M1).
+/// <summary>Klasse ATypeName der Unit (Interface oder Implementation), sonst nil. Iterativ (tiefe Bäume sprengen den Stapel nicht).
 /// </summary>
 function FindClassDecl(ANode: TSyntaxNode; const ATypeName: string): TSyntaxNode;
 var
@@ -343,7 +343,7 @@ begin
 end;
 
 /// <summary>Deklariert die Routine AName selbst (Parameter, lokale Variable, Konstante)? Iterativ
-/// (Bericht M1).</summary>
+///.</summary>
 function DeclaresLocally(ANode: TSyntaxNode; const AName: string): Boolean;
 var
   mPending: TStack<TSyntaxNode>;

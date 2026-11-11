@@ -33,10 +33,10 @@ type
     procedure ReadsDfmEventsAndObjects;
     [Test]
     procedure NothingOutsideIdentifiers;
-    /// <summary>Code-Review P-01/P-08: Viele Vorkommen in einer Datei, Ergebnis vollständig und in Reihenfolge.</summary>
+    /// <summary>Viele Vorkommen in einer Datei, Ergebnis vollständig und in Reihenfolge.</summary>
     [Test]
     procedure FindManyOccurrencesSameResult;
-    /// <summary>Code-Review P-01: Find pinnt Fremdbäume über dem Baum des Aufrufers und löst nur diese; danach
+    /// <summary>Find pinnt Fremdbäume über dem Baum des Aufrufers und löst nur diese; danach
     /// ist der Baum des Aufrufers weiter gepinnt, ohne Aufrufer-Pin ist nichts mehr gepinnt.</summary>
     [Test]
     procedure FindResolverStaysPinnedAfterForeignTree;

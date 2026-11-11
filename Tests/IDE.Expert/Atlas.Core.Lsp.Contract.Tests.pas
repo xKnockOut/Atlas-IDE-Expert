@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Lsp.Contract.Tests;
 
-// Werttypen des Lsp-Features (A-09): direkt und über die Aliase in Problems.Contract und Results.Model.
+// Werttypen des Lsp-Features: direkt und über die Aliase in Problems.Contract und Results.Model.
 
 interface
 

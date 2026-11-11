@@ -20,7 +20,7 @@ uses
 function NewLogger(const AOptions: TCommandLineOptions): ILogger;
 /// <summary>Projektordner aus --root, sonst das aktuelle Verzeichnis; absolut, ohne Trenner am Ende.</summary>
 function RootOf(const AOptions: TCommandLineOptions): string;
-/// <summary>Globale Einstellungen wie im LSP-Server und im Linter (D-08), abschaltbar mit mcp.globalSettings in
+/// <summary>Globale Einstellungen wie im LSP-Server und im Linter, abschaltbar mit mcp.globalSettings in
 /// atlas.json. Load übernimmt sie, damit der Index nur einmal mit den wirksamen Einstellungen startet.</summary>
 function GlobalSettingsOf(const ARoot: string; const ALogger: ILogger): string;
 /// <summary>Absturzfälle auch im MCP-Modus (#1355): Werkzeugaufrufe haben kein Dokument, also nur der Fall, kein
@@ -74,7 +74,7 @@ begin
   Result := ExcludeTrailingPathDelimiter(TPath.GetFullPath(Result));
 end;
 
-/// <summary>Globale Einstellungen wie im LSP-Server und im Linter (D-08), abschaltbar mit mcp.globalSettings in
+/// <summary>Globale Einstellungen wie im LSP-Server und im Linter, abschaltbar mit mcp.globalSettings in
 /// atlas.json. Load übernimmt sie, damit der Index nur einmal mit den wirksamen Einstellungen startet.</summary>
 function GlobalSettingsOf(const ARoot: string; const ALogger: ILogger): string;
 begin

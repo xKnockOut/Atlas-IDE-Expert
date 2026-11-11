@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Settings.Plugin.General;
 
-// Einstellungen des IDE-Plugins, Bereich Allgemein (Statusfeld, Server, Index, Robustheit) (#227, ADR 0017):
+// Einstellungen des IDE-Plugins, Bereich Allgemein (Statusfeld, Server, Index, Robustheit) (#227):
 // Felder, Vorgaben, Grenzen, Lesen und Schreiben. TAtlasPluginSettings (Atlas.Core.Settings.Plugin)
 // fasst die Bereiche zusammen und reicht die Felder als Eigenschaften durch.
 
@@ -102,8 +102,8 @@ type
     /// <summary>Taste beim Laden für den abgesicherten Start: shift, ctrl, none (safeMode.startupKey).</summary>
     SafeStartupKey: string;
     /// <summary>Langsamer Start ab dieser Zeit bis zur freien Nachrichtenschleife: Atlas nennt seine Startanteile
-    /// im Meldungsfenster; kein Absturz, abgesichert startet Atlas deshalb nicht (safeMode.startupTimeoutMs,
-    /// Bericht N4).</summary>
+    /// im Meldungsfenster; kein Absturz, abgesichert startet Atlas deshalb nicht
+    /// (safeMode.startupTimeoutMs).</summary>
     SafeStartupTimeoutMs: Integer;
     /// <summary>Gemerkte Einstellungsstände zum Zurücksetzen (safeMode.keepSettingsHistory).</summary>
     SafeKeepSettingsHistory: Integer;

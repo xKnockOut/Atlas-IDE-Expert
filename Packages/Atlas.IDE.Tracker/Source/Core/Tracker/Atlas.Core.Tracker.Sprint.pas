@@ -160,7 +160,8 @@ uses
   System.Math,
   System.DateUtils,
   System.JSON,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Text.Json;
 
 { TAtlasSprintCalendar }
 
@@ -642,30 +643,6 @@ begin
   end;
 end;
 
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.Values[AName];
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
-function NumberOf(AObject: TJSONObject; const AName: string): Double;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  mValue := AObject.Values[AName];
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsDouble;
-  end;
-end;
-
 class function TAtlasTrackerSprint.SummaryFromJson(const AJson: string; out ASummary: TAtlasSprintSummary): Boolean;
 var
   mValue, mItem: TJSONValue;
@@ -680,18 +657,18 @@ begin
       Exit;
     end;
     mRoot := TJSONObject(mValue);
-    if Round(NumberOf(mRoot, 'version')) <> TAtlasSprintSummary.cVersion then
+    if Round(TJsonRead.Float(mRoot, 'version')) <> TAtlasSprintSummary.cVersion then
     begin
       Exit;
     end;
-    ASummary.Id := TextOf(mRoot, 'id');
-    ASummary.Name := TextOf(mRoot, 'name');
-    ASummary.Start := TAtlasTrackerBoard.TimeValue(TextOf(mRoot, 'start'));
-    ASummary.Finish := TAtlasTrackerBoard.TimeValue(TextOf(mRoot, 'finish'));
+    ASummary.Id := TJsonRead.Text(mRoot, 'id');
+    ASummary.Name := TJsonRead.Text(mRoot, 'name');
+    ASummary.Start := TAtlasTrackerBoard.TimeValue(TJsonRead.Text(mRoot, 'start'));
+    ASummary.Finish := TAtlasTrackerBoard.TimeValue(TJsonRead.Text(mRoot, 'finish'));
     ASummary.UsesPoints := (mRoot.Values['usesPoints'] is TJSONBool) and
       TJSONBool(mRoot.Values['usesPoints']).AsBoolean;
-    ASummary.Total := NumberOf(mRoot, 'total');
-    ASummary.Days := EnsureRange(Round(NumberOf(mRoot, 'days')), 0, TAtlasTrackerSprint.cMaxDays);
+    ASummary.Total := TJsonRead.Float(mRoot, 'total');
+    ASummary.Days := EnsureRange(Round(TJsonRead.Float(mRoot, 'days')), 0, TAtlasTrackerSprint.cMaxDays);
     if mRoot.Values['done'] is TJSONArray then
     begin
       for mItem in TJSONArray(mRoot.Values['done']) do

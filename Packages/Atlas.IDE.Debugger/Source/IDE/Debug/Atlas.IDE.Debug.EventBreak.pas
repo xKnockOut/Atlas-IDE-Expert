@@ -131,10 +131,10 @@ uses
   Atlas.UI.Popup.Window,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.Breakpoints,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Core.Diagnostics.Deadline,
+  Atlas.IDE.Foundation.Files;
 
 const
   cMenuItemName = 'AtlasBreakOnNextEventItem';
@@ -378,7 +378,7 @@ begin
     Report(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  mProject := TAtlasIdeTeamFile.ActiveProject;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
   try
     mAnswer := mSession.RunCommand(TAtlasEventBreak.cCommand,
       TAtlasEventBreak.Arguments(TLspSession.PathToUri(mProject)),

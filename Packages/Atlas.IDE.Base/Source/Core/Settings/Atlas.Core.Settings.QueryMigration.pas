@@ -53,7 +53,8 @@ implementation
 uses
   System.Generics.Collections,
   System.JSON,
-  Atlas.Core.Settings.JsonText;
+  Atlas.Core.Settings.JsonText,
+  Atlas.Text.Json;
 
 { TAtlasSettingsQueryMigration }
 
@@ -72,27 +73,11 @@ end;
 
 { TAtlasSettingsQueryMigrations }
 
-function TextOf(AItem: TJSONValue; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if not (AItem is TJSONObject) then
-  begin
-    Exit;
-  end;
-  mValue := TJSONObject(AItem).GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := Trim(TJSONString(mValue).Value);
-  end;
-end;
-
 /// <summary>Eine gültige Zeile „Standard“ (wie TAtlasTrackerQueries.Read: Name und Abfrage nicht leer).</summary>
 function IsStandard(AItem: TJSONValue): Boolean;
 begin
-  Result := SameText(TextOf(AItem, 'name'), TAtlasSettingsQueryMigrations.cStandardName) and
-    (TextOf(AItem, 'query') <> '');
+  Result := SameText(TJsonRead.TrimmedText(TJsonRead.AsObject(AItem), 'name'), TAtlasSettingsQueryMigrations.cStandardName) and
+    (TJsonRead.TrimmedText(TJsonRead.AsObject(AItem), 'query') <> '');
 end;
 
 class function TAtlasSettingsQueryMigrations.WithLegacy(const AJson, ALegacyQuery: string): string;

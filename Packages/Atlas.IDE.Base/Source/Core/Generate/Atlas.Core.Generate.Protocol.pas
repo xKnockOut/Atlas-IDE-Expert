@@ -71,7 +71,8 @@ implementation
 
 
 uses
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -157,26 +158,6 @@ begin
   Result := ArrayText(mValues);
 end;
 
-function StringOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
-function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.GetValue(AName);
-  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
-end;
-
 function PlacesOf(const AValue: TJSONValue): TArray<string>;
 var
   mValue: TJSONValue;
@@ -226,20 +207,20 @@ function TryMenuEntry(const AValue: TJSONValue; out AEntry: TAtlasGenerateEntry)
 var
   mItem: TJSONObject;
 begin
-  Result := (AValue is TJSONObject) and (StringOf(TJSONObject(AValue), 'name') <> '');
+  Result := (AValue is TJSONObject) and (TJsonRead.Text(TJSONObject(AValue), 'name') <> '');
   if not Result then
   begin
     Exit;
   end;
   mItem := TJSONObject(AValue);
-  AEntry := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Slash, ServerGroupOf(StringOf(mItem, 'group')),
-    StringOf(mItem, 'name'), StringOf(mItem, 'summary'));
-  AEntry.Detail := StringOf(mItem, 'summary');
-  AEntry.Example := StringOf(mItem, 'example');
-  AEntry.Argument := ArgumentOf(StringOf(mItem, 'argument'));
-  AEntry.HasChoices := FlagOf(mItem, 'choices');
-  AEntry.Multi := FlagOf(mItem, 'multi');
-  AEntry.Separator := StringOf(mItem, 'separator');
+  AEntry := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Slash, ServerGroupOf(TJsonRead.Text(mItem, 'group')),
+    TJsonRead.Text(mItem, 'name'), TJsonRead.Text(mItem, 'summary'));
+  AEntry.Detail := TJsonRead.Text(mItem, 'summary');
+  AEntry.Example := TJsonRead.Text(mItem, 'example');
+  AEntry.Argument := ArgumentOf(TJsonRead.Text(mItem, 'argument'));
+  AEntry.HasChoices := TJsonRead.Flag(mItem, 'choices');
+  AEntry.Multi := TJsonRead.Flag(mItem, 'multi');
+  AEntry.Separator := TJsonRead.Text(mItem, 'separator');
   if AEntry.Separator = '' then
   begin
     AEntry.Separator := ' ';
@@ -259,7 +240,7 @@ begin
     Exit;
   end;
   mRoot := TJSONObject(AValue);
-  Result.Enabled := FlagOf(mRoot, 'enabled');
+  Result.Enabled := TJsonRead.Flag(mRoot, 'enabled');
   Result.Places := PlacesOf(mRoot.GetValue('places'));
   if mRoot.GetValue('commands') is TJSONArray then
   begin
@@ -306,7 +287,7 @@ begin
     Exit;
   end;
   mRoot := TJSONObject(AValue);
-  AReason := StringOf(mRoot, 'reason');
+  AReason := TJsonRead.Text(mRoot, 'reason');
   if mRoot.GetValue('edits') is TJSONArray then
   begin
     for mValue in TJSONArray(mRoot.GetValue('edits')) do

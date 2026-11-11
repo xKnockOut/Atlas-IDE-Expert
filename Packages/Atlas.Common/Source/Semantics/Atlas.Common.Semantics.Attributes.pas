@@ -70,7 +70,7 @@ function DottedName(ANode: TSyntaxNode): string;
 var
   mSuffix: string;
 begin
-  // Iterativ (Bericht M1): von rechts nach links an der Kette entlang.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): von rechts nach links an der Kette entlang.
   mSuffix := '';
   while (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) do
   begin
@@ -93,7 +93,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ mit eigenem Stapel (Bericht M1), Reihenfolge wie die frühere Rekursion.
+  // Iterativ mit eigenem Stapel, Reihenfolge wie die frühere Rekursion.
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ANode);

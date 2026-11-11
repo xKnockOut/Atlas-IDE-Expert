@@ -39,7 +39,8 @@ uses
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.ServerEdit,
   Atlas.IDE.Editor.ClassExtraction,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.Text.Json;
 
 const
   cPrepareCommand = 'atlas.server.extractInterface.prepare';
@@ -76,12 +77,12 @@ begin
     cTimeoutMs, TAtlasTextId.ExtractIntfFailed),
     procedure(const AReply: TJSONObject)
     begin
-      mTargetFile := TAtlasIdeServerEdit.TextOf(AReply, 'file');
+      mTargetFile := TJsonRead.Text(AReply, 'file');
       if mTargetFile <> '' then
       begin
         mTargetFile := TLspSession.UriToPath(mTargetFile);
       end;
-      mMethods := TAtlasIdeServerEdit.NumberOf(AReply, 'methods');
+      mMethods := TJsonRead.Int(AReply, 'methods');
     end, AMessage, mReply) then
   begin
     Exit;

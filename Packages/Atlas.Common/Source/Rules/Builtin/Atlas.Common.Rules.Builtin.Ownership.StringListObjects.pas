@@ -349,7 +349,7 @@ var
   mIndex: Integer;
   mName: string;
 begin
-  // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht), Reihenfolge wie die frühere Rekursion.
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ANode);
@@ -385,7 +385,7 @@ var
   mNode: TSyntaxNode;
   mIndex, mHost: Integer;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ANode);
@@ -416,7 +416,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := False;
   mPending := TStack<TSyntaxNode>.Create;
   try
@@ -447,7 +447,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ANode);
@@ -491,7 +491,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ANode);
@@ -546,7 +546,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion (die erste Erzeugung zählt).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht), Reihenfolge wie die frühere Rekursion (die erste Erzeugung zählt).
   Result := True;
   AFound := '';
   mPending := TStack<TSyntaxNode>.Create;
@@ -707,7 +707,7 @@ var
   mEntry: TSyntaxPostOrderEntry;
   mIndex: Integer;
 begin
-  // Iterativ (Bericht M1): Done = die Kinder sind schon geprüft.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Done = die Kinder sind schon geprüft.
   mPending := TStack<TSyntaxPostOrderEntry>.Create;
   try
     mPending.Push(TSyntaxPostOrderEntry.Create(ANode, False));

@@ -6,7 +6,7 @@
 // Akzentfarbe auf einer abgerundeten Akzentfläche; Standardwerte von Parametern
 // (" = 1", #441) gedämpft. Messen und Zeichnen gehen
 // über dieselben Stücke, damit Umbruch und Zeichnung übereinstimmen.
-// P-09: Stücke ohne Array-Verkettung und ohne Sortieren je Token; der Umbruch
+// Schnell: Stücke ohne Array-Verkettung und ohne Sortieren je Token; der Umbruch
 // misst den Text einmal (Präfixsummen) und rechnet dann nur noch Differenzen
 // (TAtlasWrap).
 

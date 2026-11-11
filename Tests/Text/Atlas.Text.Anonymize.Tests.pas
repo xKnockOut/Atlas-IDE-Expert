@@ -6,7 +6,7 @@ uses
   DUnitX.TestFramework;
 
 type
-  /// <summary>Regeln der Fehlerbericht-Anonymisierung, gemeinsam für Server und Plugin (D-02).</summary>
+  /// <summary>Regeln der Fehlerbericht-Anonymisierung, gemeinsam für Server und Plugin.</summary>
   [TestFixture]
   TTextAnonymizerTests = class
   public

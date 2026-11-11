@@ -173,7 +173,7 @@ begin
     mWriter.Insert(PAnsiChar(UTF8Encode(mChange.Text)));
   end;
   mWriter := nil;
-  // Eigener Schreibvorgang: gemeinsamen Pufferstand verwerfen (P-04).
+  // Eigener Schreibvorgang: gemeinsamen Pufferstand verwerfen.
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 

@@ -199,7 +199,7 @@ begin
   end;
 end;
 
-/// <summary>Alle Knoten unter ARoot in Baumreihenfolge über einen eigenen Stapel (Bericht M1).</summary>
+/// <summary>Alle Knoten unter ARoot in Baumreihenfolge über einen eigenen Stapel.</summary>
 function PreOrder(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
 var
   mPending: TStack<TSyntaxNode>;

@@ -31,7 +31,7 @@
 //     dem Pfad, nur in der Meldungsansicht); Atlas arbeitet ohne
 //     Versionsangaben weiter
 // Start und Stop ruft die Komposition beim Laden bzw. Entladen; sie setzt
-// dabei auch die Umsetzung des Kerns ein (TAtlasIdeVcsBackend, A-09).
+// dabei auch die Umsetzung des Kerns ein (TAtlasIdeVcsBackend).
 
 interface
 

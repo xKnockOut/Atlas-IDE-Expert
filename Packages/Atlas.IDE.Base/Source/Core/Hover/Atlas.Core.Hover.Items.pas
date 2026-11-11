@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Hover.Items;
 
-// Bausteine und Klickflächen des Hover-Satzes ohne VCL (P-09): Atlas.Core.Hover.Layout
+// Bausteine und Klickflächen des Hover-Satzes ohne VCL: Atlas.Core.Hover.Layout
 // legt sie an, Atlas.UI.Hover.Tip zeichnet sie. Dazu der Rollbereich (#1841), in dem
 // die published-Mitglieder großer Komponenten scrollen: Fit begrenzt ihn auf
 // MaxLines Tabellenzeilen bzw. den Platz auf dem Bildschirm (mindestens MinRows

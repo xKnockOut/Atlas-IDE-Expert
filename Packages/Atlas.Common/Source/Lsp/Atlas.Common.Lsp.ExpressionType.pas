@@ -68,6 +68,7 @@ implementation
 
 uses
   System.Generics.Collections,
+  Atlas.Text.Json,
   Atlas.Text.Lines,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
@@ -171,19 +172,6 @@ begin
   end;
 end;
 
-/// <summary>Schalter AName aus ASettings, sonst ADefault.</summary>
-function FlagOf(ASettings: TJSONObject; const AName: string; ADefault: Boolean): Boolean;
-var
-  mFlag: TJSONValue;
-begin
-  Result := ADefault;
-  mFlag := ASettings.GetValue(AName);
-  if mFlag is TJSONBool then
-  begin
-    Result := TJSONBool(mFlag).AsBoolean;
-  end;
-end;
-
 /// <summary>Bereich und Schalter aus den Argumenten des Befehls.</summary>
 function QueryOf(const AArguments: TJSONArray): TExpressionTypeQuery;
 var
@@ -193,9 +181,9 @@ begin
   if (AArguments.Count > 2) and (AArguments.Items[2] is TJSONObject) then
   begin
     mSettings := TJSONObject(AArguments.Items[2]);
-    Result.Expand := FlagOf(mSettings, 'expand', Result.Expand);
-    Result.Options.Conversions := FlagOf(mSettings, 'conversions', Result.Options.Conversions);
-    Result.Options.ConstValue := FlagOf(mSettings, 'constValue', Result.Options.ConstValue);
+    Result.Expand := TJsonRead.FlagOr(mSettings, 'expand', Result.Expand);
+    Result.Options.Conversions := TJsonRead.FlagOr(mSettings, 'conversions', Result.Options.Conversions);
+    Result.Options.ConstValue := TJsonRead.FlagOr(mSettings, 'constValue', Result.Options.ConstValue);
   end;
 end;
 

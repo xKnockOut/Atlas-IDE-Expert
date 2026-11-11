@@ -371,7 +371,7 @@ var
     mIndex: Integer;
     mNode, mBody: TSyntaxNode;
   begin
-    // Iterativ mit eigenem Stapel (Bericht M1); die Kinder rückwärts darauf, damit die Reihenfolge der Treffer die
+    // Iterativ mit eigenem Stapel; die Kinder rückwärts darauf, damit die Reihenfolge der Treffer die
     // der früheren Rekursion bleibt.
     mPending := TStack<TCallDepthEntry>.Create;
     try
@@ -423,7 +423,7 @@ begin
     Exit;
   end;
   mRoutines := nil;
-  // Iterativ (Bericht M1); eingebettete Routinen zählen nicht als Methoden.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); eingebettete Routinen zählen nicht als Methoden.
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
@@ -490,7 +490,7 @@ begin
   mTypes := nil;
   mAncestry := nil;
   try
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     AContext.Tree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       var
@@ -574,7 +574,7 @@ var
     mNode: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht), Reihenfolge wie die frühere Rekursion.
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ANode);
@@ -755,7 +755,7 @@ var
     mNode: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ANode);
@@ -854,7 +854,7 @@ var
   mNode, mChild: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (Bericht M1); mPending hält die Knoten, deren Kinder noch zu prüfen sind.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); mPending hält die Knoten, deren Kinder noch zu prüfen sind.
   Result := False;
   mPending := TStack<TSyntaxNode>.Create;
   try
@@ -937,7 +937,7 @@ var
     mNode, mParent, mGrand: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1); parallele Stapel führen Eltern- und Großelternknoten mit.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht); parallele Stapel führen Eltern- und Großelternknoten mit.
     AStarted := False;
     AEscapes := False;
     mPending := TStack<TSyntaxNode>.Create;
@@ -1069,7 +1069,7 @@ var
     mNode, mRoutine: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1); RoutineStack führt ARoutine je Knoten mit.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht); RoutineStack führt ARoutine je Knoten mit.
     mPending := TStack<TSyntaxNode>.Create;
     mRoutineStack := TStack<TSyntaxNode>.Create;
     try
@@ -1146,7 +1146,7 @@ var
     mNode: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     Result := False;
     mPending := TStack<TSyntaxNode>.Create;
     try
@@ -1176,7 +1176,7 @@ var
     mIndex: Integer;
     mCall: TMethodCall;
   begin
-    // Iterativ (Bericht M1), Vorordnung wie die frühere Rekursion; ein Aufruf ohne Namen lässt seine Kinder aus.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht), Vorordnung wie die frühere Rekursion; ein Aufruf ohne Namen lässt seine Kinder aus.
     Result := '';
     mPending := TStack<TSyntaxNode>.Create;
     try
@@ -1328,7 +1328,7 @@ var
     mNode, mParent: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1); Parents führt den Elternknoten mit.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht); Parents führt den Elternknoten mit.
     mPending := TStack<TSyntaxNode>.Create;
     mParents := TStack<TSyntaxNode>.Create;
     try
@@ -1411,7 +1411,7 @@ var
     mNode, mRoutine: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1); RoutineStack führt ARoutine je Knoten mit.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht); RoutineStack führt ARoutine je Knoten mit.
     mPending := TStack<TSyntaxNode>.Create;
     mRoutineStack := TStack<TSyntaxNode>.Create;
     try

@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Debug.Composition;
 
-// Modul Debugger (#1455, ADR 0017): einzige Unit, die die Teile des
+// Modul Debugger (#1455): einzige Unit, die die Teile des
 // Debuggers erzeugt. Sie meldet in ihrer Initialisierung das Modul
 // „atlas.debugger“ (Modulschalter debug, #1454) bei der Registry von Base an
 // und stellt über dessen Scope bereit:

@@ -35,7 +35,8 @@ uses
   Atlas.UI.Strings,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.ServerEdit,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.Text.Json;
 
 const
   cApplyCommand = 'atlas.server.moveClass';
@@ -65,7 +66,7 @@ begin
     TAtlasTextId.MoveClassFailed),
     procedure(const AReply: TJSONObject)
     begin
-      mNewFile := TAtlasIdeServerEdit.TextOf(AReply, 'file');
+      mNewFile := TJsonRead.Text(AReply, 'file');
     end, AMessage, mReply) then
   begin
     Exit;

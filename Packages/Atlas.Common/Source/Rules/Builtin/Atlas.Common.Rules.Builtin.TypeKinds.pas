@@ -206,7 +206,7 @@ begin
   end;
 end;
 
-/// <summary>Alle Knoten unter ARoot in Pre-Order über einen eigenen Stapel (tiefe Ausdrucksketten, Bericht M1).
+/// <summary>Alle Knoten unter ARoot in Pre-Order über einen eigenen Stapel (tiefe Ausdrucksketten).
 /// </summary>
 function PreOrder(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
 var

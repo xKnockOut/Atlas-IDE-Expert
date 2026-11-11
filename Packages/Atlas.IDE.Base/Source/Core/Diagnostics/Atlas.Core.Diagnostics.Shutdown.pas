@@ -147,7 +147,7 @@ begin
       Exit;
     end;
     // Bewusst Finished statt Thread-Handle: Das Handle wird erst nach DLL_THREAD_DETACH signalisiert, und das braucht
-    // beim Prozessende die Ladersperre, die das Entladen unter Umständen hält (Code-Review A-13).
+    // beim Prozessende die Ladersperre, die das Entladen unter Umständen hält.
     Sleep(5);
   until mWatch.ElapsedMilliseconds >= AMs;
 end;

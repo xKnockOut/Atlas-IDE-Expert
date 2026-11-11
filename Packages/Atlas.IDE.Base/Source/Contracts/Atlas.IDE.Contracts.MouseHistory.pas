@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Contracts.MouseHistory;
 
-// Vertrag zwischen Modulen (#1889, ADR 0017 Regeln 4 und 6): Atlas-Fenster mit
+// Vertrag zwischen Modulen (#1889, Modulregeln 4 und 6): Atlas-Fenster mit
 // eigenem Verlauf (etwa die Issue-Vorschau) melden sich hier an, damit die
 // Zurück-/Vor-Taste der Maus in ihnen deren Verlauf blättert statt im Code.
 // Base fragt die Angemeldeten der Reihe nach mit dem Fenster unter der Maus;

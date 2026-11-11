@@ -2,7 +2,7 @@
 
 // Werte der Einstellungen „Bauen beim Öffnen“ (build.onOpen…, #1293): Art, Umfang, Wartezeit, Ausschlussliste,
 // Konfiguration und Plattform. Im Kern, weil Einstellungen und Optionsdialog sie ohne das Modul Build lesen und
-// schreiben (#1455, ADR 0017); der Lauf selbst (`Atlas.Core.Build.OpenBuild`) gehört zum Modul.
+// schreiben (#1455); der Lauf selbst (`Atlas.Core.Build.OpenBuild`) gehört zum Modul.
 
 interface
 

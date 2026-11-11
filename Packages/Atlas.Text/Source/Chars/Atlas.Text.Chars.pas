@@ -1,6 +1,6 @@
 ﻿unit Atlas.Text.Chars;
 
-// Zeichenklassen für Bezeichner (gemeinsam für Server und Plugin, ADR 0012).
+// Zeichenklassen für Bezeichner (gemeinsam für Server und Plugin).
 // Delphi erlaubt Unicode-Bezeichner; IsIdentStart und IsIdentChar zählen
 // darum jedes Zeichen ab #128 mit. IsAsciiIdentChar ist für Stellen, die
 // bewusst nur ASCII-Namen kennen (Schlüssel, Kürzel).

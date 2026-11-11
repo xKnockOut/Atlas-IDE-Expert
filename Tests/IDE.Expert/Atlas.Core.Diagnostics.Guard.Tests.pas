@@ -34,12 +34,12 @@ type
     procedure BreadcrumbsHaveTheirOwnFuse;
     [Test]
     procedure LogRotatesAtLimit;
-    /// <summary>Scheitert das Rotieren, wird trotzdem angehängt und der Grund einmal vermerkt (Bericht M4); früher
+    /// <summary>Scheitert das Rotieren, wird trotzdem angehängt und der Grund einmal vermerkt; früher
     /// ging dabei jede Zeile verloren.</summary>
     [Test]
     procedure LogKeepsWritingWhenRotationFails;
     /// <summary>Scheitert das Anhängen, zählt das Protokoll die Zeilen, meldet den ersten Fehler über OnError und
-    /// vermerkt die Lücke beim nächsten Gelingen (Bericht M4).</summary>
+    /// vermerkt die Lücke beim nächsten Gelingen.</summary>
     [Test]
     procedure LogCountsLostLinesAndReportsTheGap;
     /// <summary>Ein Mutex je Ordner, gleich für alle Schreibweisen des Ordners.</summary>

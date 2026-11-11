@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Settings.Plugin.Editor;
 
-// Einstellungen des IDE-Plugins, Bereich Editor (editor.*, Navigation, Suche, Hinweise) (#227, ADR 0017):
+// Einstellungen des IDE-Plugins, Bereich Editor (editor.*, Navigation, Suche, Hinweise) (#227):
 // Felder, Vorgaben, Grenzen, Lesen und Schreiben. TAtlasPluginSettings (Atlas.Core.Settings.Plugin)
 // fasst die Bereiche zusammen und reicht die Felder als Eigenschaften durch.
 

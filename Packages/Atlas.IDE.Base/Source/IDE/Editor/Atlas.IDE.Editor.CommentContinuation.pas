@@ -42,24 +42,6 @@ uses
 const
   cHandlerName = 'CommentContinuation';
 
-/// <summary>Ersetzt in ABuffer (Text AText) ab Zeichen AStart AOldLength Zeichen durch AInsert; ein eigener
-/// Rückgängig-Schritt.</summary>
-procedure WriteBuffer(const ABuffer: IOTAEditBuffer; const AText: string; AStart, AOldLength: Integer;
-  const AInsert: string);
-var
-  mWriter: IOTAEditWriter;
-begin
-  mWriter := ABuffer.CreateUndoableWriter;
-  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
-  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
-  if AInsert <> '' then
-  begin
-    mWriter.Insert(PAnsiChar(UTF8Encode(AInsert)));
-  end;
-  mWriter := nil;
-  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
-end;
-
 /// <summary>ALines mit den Zeilen von AEdit an Stelle der ersetzten.</summary>
 function ReplacedLines(const ALines: TArray<string>; const AEdit: TAtlasCommentEdit): TArray<string>;
 var
@@ -88,7 +70,7 @@ var
 begin
   if TAtlasLineMover.Difference(AText, ANewText, mStart, mOldLength, mInsert) then
   begin
-    WriteBuffer(AView.Buffer, AText, mStart, mOldLength, mInsert);
+    TAtlasEditorSnapshots.ReplaceText(AView.Buffer, AText, mStart, mOldLength, mInsert);
   end;
 end;
 

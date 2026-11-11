@@ -93,8 +93,6 @@ type
     class procedure SetIssueText(AList, AId: Integer; const AText: string); static;
     /// <summary>Frame, falls das Fenster schon existiert; legt nichts an und holt nichts nach vorn.</summary>
     class function ExistingFrame: TAtlasResultsFrame; static;
-    /// <summary>Fenstersymbol (#751) zum aktiven IDE-Thema.</summary>
-    class procedure UpdateIcon; static;
     /// <summary>Nach einem Themenwechsel: Inhalt im Thema der IDE, Symbol dazu.</summary>
     class procedure ApplyTheme; static;
     /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt
@@ -117,7 +115,6 @@ uses
   Vcl.Graphics,
   Atlas.UI.Strings,
   Atlas.UI.Style.Symbol,
-  Atlas.IDE.Foundation.Symbol,
   Atlas.IDE.Foundation.DockWindow;
 
 type
@@ -288,7 +285,7 @@ begin
     Host.FrameCreated(AFrame);
   end;
   mResultsFrame := TAtlasResultsFrame(AFrame);
-  TAtlasIdeResultsWindow.UpdateIcon;
+  TAtlasIdeDockWindow.UpdateIcon(Host);
   WireNavigation(mResultsFrame);
   WireAnalysis(mResultsFrame);
   WireIssues(mResultsFrame);
@@ -360,7 +357,7 @@ begin
   Host.Show(mCreated);
   if mCreated then
   begin
-    UpdateIcon;
+    TAtlasIdeDockWindow.UpdateIcon(Host);
   end;
   Result := ExistingFrame;
 end;
@@ -523,23 +520,6 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeResultsWindow.UpdateIcon;
-var
-  mIcon: TIcon;
-begin
-  if (Host = nil) or (Host.Form = nil) then
-  begin
-    Exit;
-  end;
-  mIcon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
-  try
-    // Icon ist erst in TForm öffentlich.
-    TForm(Host.Form).Icon.Assign(mIcon);
-  finally
-    mIcon.Free;
-  end;
-end;
-
 class procedure TAtlasIdeResultsWindow.ApplyTheme;
 var
   mFrame: TAtlasResultsFrame;
@@ -549,7 +529,7 @@ begin
   begin
     TAtlasIdeDockWindow.ApplyIdeTheme(mFrame);
   end;
-  UpdateIcon;
+  TAtlasIdeDockWindow.UpdateIcon(Host);
 end;
 
 class procedure TAtlasIdeResultsWindow.Prepare;

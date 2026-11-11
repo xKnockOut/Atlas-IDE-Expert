@@ -1,8 +1,8 @@
 ﻿unit Atlas.Core.Hover.Layout.Tests;
 
-// Tests für den Satz des Hover-Tooltips ohne VCL (P-09). Die erwarteten Zahlen
-// sind aus dem bisherigen Render (Atlas.UI.Hover.Tip vor P-09) mit denselben
-// Messwerten nachgerechnet; so bleibt das Aussehen festgehalten.
+// Tests für den Satz des Hover-Tooltips ohne VCL. Die erwarteten Zahlen
+// sind mit festen Messwerten nachgerechnet; so bleibt das Aussehen
+// festgehalten.
 // Messwerte: Breite je Zeichen UI 7, Editorschrift 8 (halbfett 9), klein 6;
 // Zeilenhöhe UI 15, Editorschrift 16, klein UI 13, klein Editorschrift 12; 96 dpi.
 

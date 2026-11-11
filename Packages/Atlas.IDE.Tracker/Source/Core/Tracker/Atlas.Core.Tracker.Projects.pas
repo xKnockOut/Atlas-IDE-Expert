@@ -115,7 +115,8 @@ implementation
 
 uses
   System.Generics.Collections,
-  System.JSON;
+  System.JSON,
+  Atlas.Text.Json;
 
 { TAtlasTrackerProjectMapping }
 
@@ -194,18 +195,6 @@ begin
   end;
 end;
 
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
 class function TAtlasTrackerProjects.Read(const AJson: string): TArray<TAtlasTrackerProjectMapping>;
 var
   mRoot: TJSONValue;
@@ -229,8 +218,8 @@ begin
       begin
         Continue;
       end;
-      mMapping := TAtlasTrackerProjectMapping.Create(TextOf(TJSONObject(mItem), 'match'),
-        TextOf(TJSONObject(mItem), 'connection'), TextOf(TJSONObject(mItem), 'project'));
+      mMapping := TAtlasTrackerProjectMapping.Create(TJsonRead.Text(TJSONObject(mItem), 'match'),
+        TJsonRead.Text(TJSONObject(mItem), 'connection'), TJsonRead.Text(TJSONObject(mItem), 'project'));
       if (mMapping.Match = '') or (mMapping.Connection = '') or (IndexOfMatch(Result, mMapping.Match) >= 0) then
       begin
         Continue;

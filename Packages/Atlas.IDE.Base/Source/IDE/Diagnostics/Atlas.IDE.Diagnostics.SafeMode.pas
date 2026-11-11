@@ -12,7 +12,7 @@
 //   dazu eine gelbe Zeile „Abgesichert gestartet“ im Atlas-Statusfeld (#591),
 //   die den Hinweis wieder öffnet.
 // - Loaded: Ladezeit in die Marke (für „Details“ nach einem Absturz). Ein
-//   langsamer Start ist kein Absturz (Bericht N4); was Atlas daran hatte,
+//   langsamer Start ist kein Absturz; was Atlas daran hatte,
 //   meldet die Composition mit den Startanteilen.
 // - RecordFailure: Fehler je Feature (#493) in die Marke.
 // - Stop (sauberes Entladen): Marke löschen, Absturzzähler zurücksetzen.

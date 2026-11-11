@@ -1,7 +1,7 @@
 ﻿unit Atlas.Windows.Documents.SharedRead;
 
 // Platform-Feature "Documents", Root: Dateien lesen, ohne das atomare Ersetzen
-// zu blockieren (Bericht M5). Die RTL teilt beim Lesen nie FILE_SHARE_DELETE:
+// zu blockieren. Die RTL teilt beim Lesen nie FILE_SHARE_DELETE:
 // TFile.ReadAllBytes teilt nur Lesen, TFileStream mit fmShareDenyNone Lesen
 // und Schreiben. Solange der Server eine Datei so offen hat, kann das Plugin
 // sie nicht durch ihre neue Fassung ersetzen (settings.json, atlas.json, Units
@@ -10,7 +10,7 @@
 // TFileEncoding teilen dann auch Löschen.
 //
 // Dieselbe Lesart hat das Plugin in TAtlasTextFile.ReadAllBytes; es bindet
-// Atlas.Windows nicht ein (ADR 0012).
+// Atlas.Windows nicht ein.
 
 interface
 

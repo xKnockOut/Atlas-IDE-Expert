@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Hover.Layout;
 
-// Satz des Hover-Tooltips ohne VCL (P-09): Build rechnet aus dem Inhalt
+// Satz des Hover-Tooltips ohne VCL: Build rechnet aus dem Inhalt
 // (TAtlasHoverView), der Breite und einem Mess-Rückruf alle Positionen,
 // Klickflächen und Zeichenbausteine aus; das Fenster (Atlas.UI.Hover.Tip)
 // zeichnet nur noch die Bausteine in Reihenfolge. Gebaut wird je Inhalt,

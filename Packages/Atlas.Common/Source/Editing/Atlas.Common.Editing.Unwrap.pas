@@ -246,7 +246,7 @@ begin
     Exit;
   end;
   mCount := 0;
-  // Walk statt Rekursion (Bericht M1). Ein raise in einer anonymen Methode gehört nicht zum except-Teil.
+  // Walk statt Rekursion. Ein raise in einer anonymen Methode gehört nicht zum except-Teil.
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     begin

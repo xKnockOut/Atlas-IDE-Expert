@@ -26,7 +26,6 @@ type
     class function ExistingFrame: TAtlasBookmarksFrame; static;
     class function Visible: Boolean; static;
     class procedure Hide; static;
-    class procedure UpdateIcon; static;
     class procedure ApplyTheme; static;
     /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt
     /// (#879).</summary>
@@ -47,7 +46,6 @@ uses
   ToolsAPI,
   Atlas.UI.Bookmarks.Strings,
   Atlas.UI.Style.Symbol,
-  Atlas.IDE.Foundation.Symbol,
   Atlas.IDE.Foundation.DockWindow;
 
 type
@@ -108,7 +106,7 @@ begin
     Host.FrameCreated(AFrame);
   end;
   mFrame := TAtlasBookmarksFrame(AFrame);
-  TAtlasIdeBookmarksWindow.UpdateIcon;
+  TAtlasIdeDockWindow.UpdateIcon(Host);
   Theme(mFrame);
   if Assigned(TAtlasIdeBookmarksWindow.OnFrame) then
   begin
@@ -181,7 +179,7 @@ begin
   Host.Show(mCreated);
   if mCreated then
   begin
-    UpdateIcon;
+    TAtlasIdeDockWindow.UpdateIcon(Host);
   end;
   Result := ExistingFrame;
 end;
@@ -209,23 +207,6 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeBookmarksWindow.UpdateIcon;
-var
-  mIcon: TIcon;
-begin
-  if (Host = nil) or (Host.Form = nil) then
-  begin
-    Exit;
-  end;
-  mIcon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
-  try
-    // Icon ist erst in TForm öffentlich.
-    TForm(Host.Form).Icon.Assign(mIcon);
-  finally
-    mIcon.Free;
-  end;
-end;
-
 class procedure TAtlasIdeBookmarksWindow.ApplyTheme;
 var
   mFrame: TAtlasBookmarksFrame;
@@ -235,7 +216,7 @@ begin
   begin
     Theme(mFrame);
   end;
-  UpdateIcon;
+  TAtlasIdeDockWindow.UpdateIcon(Host);
 end;
 
 class procedure TAtlasIdeBookmarksWindow.Prepare;

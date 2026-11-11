@@ -12,7 +12,7 @@
 //
 // Zustand, der nur im Thread von Run geändert werden darf (z. B. Neuladen eines
 // Arbeitsbereichs), stellen andere Threads über Queue in die Schleife
-// (Code-Review A-03).
+//.
 
 interface
 
@@ -72,14 +72,14 @@ type
     function Post(AMessage: TJSONObject): Boolean;
     /// <summary>Stellt AWork in die Schleife: Es läuft im Thread von Run, vor den noch nicht verarbeiteten
     /// Nachrichten des Clients und nach früheren Post/Queue. Für Zustand, der nur dort geändert werden darf
-    /// (Indexaufbau, Code-Review A-03). Ohne laufende Schleife False; AWork läuft dann nicht. Threadsicher.
+    /// (Indexaufbau). Ohne laufende Schleife False; AWork läuft dann nicht. Threadsicher.
     /// Ausnahmen von AWork gehen an OnError.</summary>
     function Queue(const AWork: TProc): Boolean;
     /// <summary>Wird aus der Schleife und aus Worker-Threads aufgerufen.</summary>
     property OnError: TJsonRpcErrorEvent read FOnError write FOnError;
     property WorkTimeout: Cardinal read FWorkTimeout write FWorkTimeout;
     /// <summary>True, wenn Run beim Ende nach WorkTimeout noch laufende nebenläufige Anfragen hatte
-    /// (Code-Review A-06). Deren Handler können noch auf Objekte des Aufrufers zugreifen; er darf sie dann
+    ///. Deren Handler können noch auf Objekte des Aufrufers zugreifen; er darf sie dann
     /// nicht freigeben.</summary>
     property UnfinishedWork: Boolean read FUnfinishedWork;
     /// <summary>Die Schleife ist regulär zu Ende (Eingabe geschlossen oder Stop), bevor auf laufende
@@ -404,7 +404,7 @@ begin
   Result.Start;
 end;
 
-// Wartet auf den Lese-Thread und gibt ihn frei (Bericht N2). Bisher gab er sich
+// Wartet auf den Lese-Thread und gibt ihn frei. Bisher gab er sich
 // selbst frei, kurz nach ReaderDone und damit nach dem Ende von Run; was er
 // bis dahin hielt, überlebte Run. Hängt er nach ATimeout noch im Lesen
 // (blockierendes stdin), gibt er sich bei seiner Rückkehr selbst frei. Liest

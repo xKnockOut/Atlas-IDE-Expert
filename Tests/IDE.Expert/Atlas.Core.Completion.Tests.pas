@@ -649,7 +649,7 @@ end;
 procedure TAtlasServerCompletionTests.WarmUpFirstUse;
 begin
   // Erster echter Start (Pipes, Threads, Sitzung, Zeitlimit-Arbeiter) ungemessen statt [IgnoreMemoryLeaks]
-  // (Bericht N2). Ohne Server neben dem Testprogramm überspringt der Test ohnehin.
+  //. Ohne Server neben dem Testprogramm überspringt der Test ohnehin.
   if FileExists(TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe')) then
     try
       CompletesMembersFromServer;

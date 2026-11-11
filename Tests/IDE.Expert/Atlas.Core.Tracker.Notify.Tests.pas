@@ -130,7 +130,7 @@ begin
   end;
   Assert.IsTrue(TAtlasTrackerNotify.ScopeOf(' WATCHED ') = TAtlasTrackerNotifyScope.Watched);
   Assert.IsTrue(TAtlasTrackerNotify.ScopeOf('alles') = TAtlasTrackerNotifyScope.AssignedOrCreated, 'Vorgabe');
-  // Die Einstellungen kennen den Kern der Meldungen nicht (A-09): dieselben Werte wie dort.
+  // Die Einstellungen kennen den Kern der Meldungen nicht: dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNotify.cScopeAssigned, TAtlasPluginSettings.cIssuesNotifyAssigned);
   Assert.AreEqual(TAtlasTrackerNotify.cScopeAssignedOrCreated, TAtlasPluginSettings.cIssuesNotifyAssignedOrCreated);
   Assert.AreEqual(TAtlasTrackerNotify.cScopeWatched, TAtlasPluginSettings.cIssuesNotifyWatched);

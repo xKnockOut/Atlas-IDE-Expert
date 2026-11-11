@@ -288,7 +288,7 @@ var
   mChild: TSyntaxNode;
 begin
   // Inline-Variablen gelten ab ihrer Deklaration; verschachtelte Routinen nicht durchsuchen. Iterativ mit eigenem
-  // Stapel (Bericht M1): Der Weg zum Cursor kann durch lange Ausdrucksketten führen.
+  // Stapel: Der Weg zum Cursor kann durch lange Ausdrucksketten führen.
   Result := False;
   mPending := TStack<TSyntaxNode>.Create;
   try
@@ -437,7 +437,7 @@ begin
   end;
   mStartPos := ASymbol.Range.StartPos;
   mName := ASymbol.Name;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mNode := FPlace.Tree.Root.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
