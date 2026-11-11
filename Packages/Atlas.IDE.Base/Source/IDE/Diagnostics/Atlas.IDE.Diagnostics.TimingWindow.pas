@@ -26,7 +26,6 @@ type
     class function ExistingFrame: TAtlasDiagnosticsFrame; static;
     class function Visible: Boolean; static;
     class procedure Hide; static;
-    class procedure UpdateIcon; static;
     class procedure ApplyTheme; static;
     class procedure Release; static;
   end;
@@ -44,7 +43,6 @@ uses
   ToolsAPI,
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Style.Symbol,
-  Atlas.IDE.Foundation.Symbol,
   Atlas.IDE.Foundation.DockWindow;
 
 type
@@ -105,7 +103,7 @@ begin
     Host.FrameCreated(AFrame);
   end;
   mFrame := TAtlasDiagnosticsFrame(AFrame);
-  TAtlasIdeTimingWindow.UpdateIcon;
+  TAtlasIdeDockWindow.UpdateIcon(Host);
   Theme(mFrame);
   if Assigned(TAtlasIdeTimingWindow.OnFrame) then
   begin
@@ -180,7 +178,7 @@ begin
   Host.Show(mCreated);
   if mCreated then
   begin
-    UpdateIcon;
+    TAtlasIdeDockWindow.UpdateIcon(Host);
   end;
   Result := ExistingFrame;
 end;
@@ -208,23 +206,6 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeTimingWindow.UpdateIcon;
-var
-  mIcon: TIcon;
-begin
-  if (Host = nil) or (Host.Form = nil) then
-  begin
-    Exit;
-  end;
-  mIcon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
-  try
-    // Icon ist erst in TForm öffentlich.
-    TForm(Host.Form).Icon.Assign(mIcon);
-  finally
-    mIcon.Free;
-  end;
-end;
-
 class procedure TAtlasIdeTimingWindow.ApplyTheme;
 var
   mFrame: TAtlasDiagnosticsFrame;
@@ -234,7 +215,7 @@ begin
   begin
     Theme(mFrame);
   end;
-  UpdateIcon;
+  TAtlasIdeDockWindow.UpdateIcon(Host);
 end;
 
 class procedure TAtlasIdeTimingWindow.Release;

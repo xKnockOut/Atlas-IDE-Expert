@@ -356,7 +356,7 @@ function IdeProject: string;
 begin
   Result := '';
   try
-    Result := TAtlasIdeTeamFile.ActiveProject;
+    Result := TAtlasIdeFiles.ActiveProjectFile;
   except
     on E: Exception do
     begin
@@ -542,7 +542,7 @@ var
   mProject: string;
 begin
   // Das aktive Projekt der IDE, sonst das des Bereichs; Tracker wie im Bereich (.atlas, sonst Zuordnung #1261).
-  mProject := TAtlasIdeTeamFile.ActiveProject;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
   if mProject = '' then
   begin
     mProject := CurrentProject;

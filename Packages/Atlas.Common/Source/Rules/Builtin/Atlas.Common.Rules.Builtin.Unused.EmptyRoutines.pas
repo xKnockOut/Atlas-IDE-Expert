@@ -21,6 +21,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.RegularExpressions,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
@@ -150,7 +151,6 @@ type
     FReferences: TArray<TSyntaxNode>;
     FLineBreak: string;
     function Range(AStart, AEnd: Integer): TTextRange;
-    function TokenAt(AOffset: Integer): Integer;
     function HasCommentOrDirective(AHeader, ARoutine: TSyntaxNode): Boolean;
     function Referenced(const AName: string): Boolean;
     function FirstDocComment(ANode: TSyntaxNode): Integer;
@@ -184,15 +184,6 @@ begin
 end;
 
 // Erstes Token ab AOffset.
-function TEmptyRoutineCheck.TokenAt(AOffset: Integer): Integer;
-begin
-  Result := 0;
-  while (Result <= High(FTokens)) and (FTokens[Result].Offset < AOffset) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 // Kommentare oder Direktiven zwischen Kopf und Ende der Routine?
 function TEmptyRoutineCheck.HasCommentOrDirective(AHeader, ARoutine: TSyntaxNode): Boolean;
 var
@@ -232,7 +223,7 @@ var
   mIndex: Integer;
 begin
   Result := ANode.StartOffset;
-  mIndex := TokenAt(ANode.StartOffset) - 1;
+  mIndex := TokenFrom(FTokens, ANode.StartOffset) - 1;
   while (mIndex >= 0) and (FTokens[mIndex].Kind = TPascalTokenKind.Comment) and
     StartsStr('///', FTokens[mIndex].Text) do
   begin
@@ -248,7 +239,7 @@ var
   mLast, mIndex, mLineStart, mLineEnd: Integer;
 begin
   mLast := ANode.EndOffset;
-  mIndex := TokenAt(ANode.EndOffset);
+  mIndex := TokenFrom(FTokens, ANode.EndOffset);
   if (mIndex <= High(FTokens)) and FTokens[mIndex].IsSymbol(';') then
   begin
     mLast := FTokens[mIndex].Offset + 1;
@@ -312,8 +303,8 @@ var
   mIndent: string;
 begin
   Result := nil;
-  mBeginToken := TokenAt(ABlock.StartOffset);
-  mEndToken := TokenAt(ABlock.EndOffset) - 1;
+  mBeginToken := TokenFrom(FTokens, ABlock.StartOffset);
+  mEndToken := TokenFrom(FTokens, ABlock.EndOffset) - 1;
   if (mBeginToken > High(FTokens)) or not FTokens[mBeginToken].IsKeyword('begin') or
     (mEndToken <= mBeginToken) or not FTokens[mEndToken].IsKeyword('end') then
   begin

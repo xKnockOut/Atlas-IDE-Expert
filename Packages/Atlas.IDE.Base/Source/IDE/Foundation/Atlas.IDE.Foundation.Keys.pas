@@ -90,7 +90,6 @@ type
     class function ForeignCompletions: TArray<string>; static;
     /// <summary>Hinweis, wenn eine andere Erweiterung eine eigene Vervollständigung mitbringt.</summary>
     class procedure ReportForeignCompletion; static;
-    class procedure AddMessage(const AText: string); static;
     /// <summary>Zu AShortCut ist in dieser Sitzung schon ein Konflikt gemeldet (#494, #520).</summary>
     class function Reported(AShortCut: Word): Boolean; static;
     class procedure MarkReported(AShortCut: Word); static;
@@ -109,7 +108,8 @@ uses
   Vcl.Menus,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.KeyStroke,
-  Atlas.UI.Foundation.Strings;
+  Atlas.UI.Foundation.Strings,
+  Atlas.IDE.Foundation.Host;
 
 { TAtlasIdeKeyBinding.TBinding }
 
@@ -396,8 +396,8 @@ begin
     end;
   end;
   FReported := FReported + [mKey];
-  AddMessage(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.KeyConflict, [ShortCutToText(AShortCut), mHolder,
-    AWhat]));
+  TAtlasIdeHost.Message(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.KeyConflict,
+    [ShortCutToText(AShortCut), mHolder, AWhat]));
   MarkReported(AShortCut);
 end;
 
@@ -445,23 +445,6 @@ begin
   AIndex := -1;
 end;
 
-class procedure TAtlasIdeKeys.AddMessage(const AText: string);
-var
-  mMessages: IOTAMessageServices;
-  mGroup: IOTAMessageGroup;
-begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
-  begin
-    Exit;
-  end;
-  mGroup := mMessages.GetGroup('Atlas');
-  if mGroup = nil then
-  begin
-    mGroup := mMessages.AddMessageGroup('Atlas');
-  end;
-  mMessages.AddTitleMessage(AText, mGroup);
-end;
-
 class function TAtlasIdeKeys.ForeignCompletions: TArray<string>;
 var
   mModules: array[0..1023] of HMODULE;
@@ -506,7 +489,7 @@ begin
       Continue;
     end;
     FForeignReported := FForeignReported + [mExtension];
-    AddMessage(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.ForeignCompletion, [mExtension]));
+    TAtlasIdeHost.Message(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.ForeignCompletion, [mExtension]));
   end;
 end;
 

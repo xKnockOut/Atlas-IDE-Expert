@@ -69,7 +69,6 @@ uses
   Atlas.UI.Status.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.UI.Status.ServerFrame,
-  Atlas.IDE.Foundation.Symbol,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.DockWindow;
@@ -121,23 +120,6 @@ begin
   if (Host <> nil) and (Host.Frame is TAtlasServerFrame) then
   begin
     Result := TAtlasServerFrame(Host.Frame);
-  end;
-end;
-
-procedure UpdateIcon;
-var
-  mIcon: TIcon;
-begin
-  if (Host = nil) or (Host.Form = nil) then
-  begin
-    Exit;
-  end;
-  mIcon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
-  try
-    // Icon ist erst in TForm öffentlich.
-    TForm(Host.Form).Icon.Assign(mIcon);
-  finally
-    mIcon.Free;
   end;
 end;
 
@@ -248,7 +230,7 @@ begin
   begin
     Host.FrameCreated(AFrame);
   end;
-  UpdateIcon;
+  TAtlasIdeDockWindow.UpdateIcon(Host);
   Theme(TAtlasServerFrame(AFrame));
   Wire(TAtlasServerFrame(AFrame));
   if State <> nil then
@@ -403,7 +385,7 @@ begin
   Host.Show(mCreated);
   if mCreated then
   begin
-    UpdateIcon;
+    TAtlasIdeDockWindow.UpdateIcon(Host);
   end;
   State.Refresh(True);
 end;
@@ -430,7 +412,7 @@ begin
   begin
     Theme(mFrame);
   end;
-  UpdateIcon;
+  TAtlasIdeDockWindow.UpdateIcon(Host);
 end;
 
 class procedure TAtlasIdeServerWindow.Release;

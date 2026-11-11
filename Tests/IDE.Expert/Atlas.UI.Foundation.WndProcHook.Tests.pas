@@ -2,7 +2,8 @@
 
 // Eingehängte Fensterprozedur mit Kettenprüfung (#1976): Aushängen setzt den
 // Vorgänger nur zurück, wenn der Haken noch oben liegt; sonst bleibt er als
-// Durchreicher in der fremden Kette und ruft den Besitzer nicht mehr.
+// Durchreicher in der fremden Kette und ruft den Besitzer nicht mehr. Dann ist
+// das Entladen ohne Neustart nicht sicher (#1978).
 
 interface
 
@@ -12,7 +13,13 @@ uses
 type
   [TestFixture]
   TAtlasWndProcHookTests = class
+  private
+    FPinned: Integer;
   public
+    [Setup]
+    procedure Setup;
+    [TearDown]
+    procedure TearDown;
     [Test]
     procedure HandlerGetsMessagesAndPassesThemOn;
     [Test]
@@ -23,14 +30,20 @@ type
     procedure ForeignProcOnTopStaysInChain;
     [Test]
     procedure UnhookOfNilIsClean;
+    /// <summary>Unhook in fremder Kette: Haken bleibt beiseite, das Package gilt als unsicher zu entladen.</summary>
+    [Test]
+    procedure OrphanMarksPackageUnsafe;
   end;
 
 implementation
 
 uses
+  Winapi.Windows,
   Winapi.Messages,
+  System.SysUtils,
   System.Classes,
   Vcl.Controls,
+  Atlas.Core.Diagnostics.UnloadSafety,
   Atlas.UI.Foundation.WndProcHook;
 
 const
@@ -79,6 +92,21 @@ begin
 end;
 
 { TAtlasWndProcHookTests }
+
+procedure TAtlasWndProcHookTests.Setup;
+begin
+  FPinned := 0;
+  TAtlasUnloadSafety.ResetForTests(
+    procedure(AModule: HMODULE)
+    begin
+      Inc(FPinned);
+    end);
+end;
+
+procedure TAtlasWndProcHookTests.TearDown;
+begin
+  TAtlasUnloadSafety.ResetForTests(nil);
+end;
 
 procedure TAtlasWndProcHookTests.HandlerGetsMessagesAndPassesThemOn;
 var
@@ -166,6 +194,41 @@ begin
   mHook := nil;
   Assert.IsTrue(TAtlasWndProcHook.Unhook(mHook));
   Assert.IsNull(mHook);
+end;
+
+procedure TAtlasWndProcHookTests.OrphanMarksPackageUnsafe;
+var
+  mControl: TControl;
+  mOwner, mForeign: TRecorder;
+  mHook: TAtlasWndProcHook;
+  mReasons: TArray<string>;
+begin
+  mControl := TControl.Create(nil);
+  mOwner := TRecorder.Create;
+  mForeign := TRecorder.Create;
+  try
+    mHook := TAtlasWndProcHook.Create(mControl, mOwner.Handle);
+    mOwner.Hook := mHook;
+    mForeign.Old := mControl.WindowProc;
+    mControl.WindowProc := mForeign.Handle;
+    Assert.IsFalse(TAtlasWndProcHook.Unhook(mHook));
+    Assert.IsNull(mHook, 'Variable geleert, Haken liegt beiseite');
+    Assert.AreEqual(1, TAtlasWndProcHook.OrphanCount);
+    Assert.IsFalse(TAtlasUnloadSafety.IsSafe(HInstance), 'Entladen nicht sicher');
+    Assert.AreEqual(1, FPinned, 'Package festgehalten');
+    mReasons := TAtlasUnloadSafety.Reasons;
+    Assert.AreEqual(1, Integer(Length(mReasons)));
+    Assert.Contains(mReasons[0], 'TControl');
+    Send(mControl);
+    Assert.AreEqual(1, mForeign.Count, 'Kette reicht weiter durch');
+    Assert.AreEqual(0, mOwner.Count);
+  finally
+    mControl.Free;
+    TAtlasWndProcHook.ForgetOrphansForTests;
+    mForeign.Free;
+    mOwner.Free;
+    mReasons := nil;
+  end;
 end;
 
 initialization

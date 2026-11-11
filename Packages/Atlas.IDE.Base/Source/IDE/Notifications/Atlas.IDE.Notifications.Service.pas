@@ -95,7 +95,8 @@ uses
   Atlas.UI.Notifications.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.IDE.Foundation.Host;
 
 { TAtlasIdeNotifications }
 
@@ -271,18 +272,7 @@ begin
   if mAnchor.X = MaxInt then
   begin
     // Ohne Statusfeld: unten links im aktiven Fenster.
-    if Screen.ActiveForm <> nil then
-    begin
-      mArea := Screen.ActiveForm.BoundsRect;
-    end
-    else if Application.MainForm <> nil then
-    begin
-      mArea := Application.MainForm.BoundsRect;
-    end
-    else
-    begin
-      mArea := Screen.WorkAreaRect;
-    end;
+    mArea := TAtlasIdeHost.PopupArea;
     mAnchor := Point(mArea.Left + 40, mArea.Bottom - 40);
   end;
   Show(mAnchor);

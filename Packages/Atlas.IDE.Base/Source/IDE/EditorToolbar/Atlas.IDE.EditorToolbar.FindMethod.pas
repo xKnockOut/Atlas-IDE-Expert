@@ -35,7 +35,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Outline.Cache;
+  Atlas.IDE.Outline.Cache,
+  Atlas.IDE.Foundation.Host;
 
 /// <summary>Ein Eintrag je Routine: Kennung ist der Knoten, Text der qualifizierte Name.</summary>
 function RoutineCommands(const ANodes: TAtlasOutlineNodes; const ARoutines: TArray<Integer>): TArray<TAtlasCommand>;
@@ -73,23 +74,6 @@ begin
         TAtlasIdeNavigation.GoToLocation(AFileName, ANodes[mTarget].NameLine, ANodes[mTarget].NameCharacter);
       end;
     end;
-end;
-
-/// <summary>Fläche, über der das Popup steht: aktives Fenster, Hauptfenster oder Arbeitsbereich.</summary>
-function PopupArea: TRect;
-begin
-  if Screen.ActiveForm <> nil then
-  begin
-    Result := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Result := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Result := Screen.WorkAreaRect;
-  end;
 end;
 
 class function TAtlasIdeFindMethod.CaretOf(const AView: IOTAEditView; out ALine, ACharacter: Integer): Boolean;
@@ -161,7 +145,7 @@ begin
     end;
   end;
   mWindow.OnExecuteShift := GoToRoutine(mSnapshot.FileName, mSnapshot.Nodes);
-  mWindow.ShowOver(PopupArea);
+  mWindow.ShowOver(TAtlasIdeHost.PopupArea);
 end;
 
 end.

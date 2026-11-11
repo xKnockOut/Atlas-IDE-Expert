@@ -60,7 +60,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Commands.ClientCommands;
+  Atlas.IDE.Commands.ClientCommands,
+  Atlas.IDE.Foundation.Host;
 
 function KindCaption(const AKind: string): string;
 begin
@@ -143,23 +144,6 @@ begin
   end;
 end;
 
-/// <summary>Fläche, über der das Fenster erscheint: aktives Formular, Hauptfenster oder Arbeitsfläche.</summary>
-function PaletteArea: TRect;
-begin
-  if Screen.ActiveForm <> nil then
-  begin
-    Result := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Result := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Result := Screen.WorkAreaRect;
-  end;
-end;
-
 class function TAtlasEditorActionCommands.FetchActions(const AFileName: string; const ARange: TLspRange;
   out AFound: TArray<TLspCodeAction>): Boolean;
 begin
@@ -204,7 +188,7 @@ begin
           end);
       end;
     end;
-  mWindow.ShowOver(PaletteArea);
+  mWindow.ShowOver(TAtlasIdeHost.PopupArea);
 end;
 
 class procedure TAtlasEditorActionCommands.CodeActions;

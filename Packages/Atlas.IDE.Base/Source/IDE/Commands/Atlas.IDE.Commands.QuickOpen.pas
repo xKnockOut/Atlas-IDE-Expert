@@ -65,7 +65,8 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Projects.Context;
+  Atlas.IDE.Projects.Context,
+  Atlas.IDE.Foundation.Host;
 
 const
   cSymbolTimeoutMs = 1500;
@@ -648,18 +649,7 @@ begin
       OpenTarget(ACommand);
     end;
   mPalette.SetCommands(Query(mWindow, ''));
-  if Screen.ActiveForm <> nil then
-  begin
-    mArea := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    mArea := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    mArea := Screen.WorkAreaRect;
-  end;
+  mArea := TAtlasIdeHost.PopupArea;
   mPalette.ShowOver(mArea);
 end;
 

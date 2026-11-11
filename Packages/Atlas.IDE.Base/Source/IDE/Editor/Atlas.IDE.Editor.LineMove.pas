@@ -59,24 +59,6 @@ type
     Character: Integer;
   end;
 
-/// <summary>Ersetzt in ABuffer (Text AText) ab Zeichen AStart AOldLength Zeichen durch AInsert; ein
-/// Rückgängig-Schritt.</summary>
-procedure WriteBuffer(const ABuffer: IOTAEditBuffer; const AText: string; AStart, AOldLength: Integer;
-  const AInsert: string);
-var
-  mWriter: IOTAEditWriter;
-begin
-  mWriter := ABuffer.CreateUndoableWriter;
-  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
-  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
-  if AInsert <> '' then
-  begin
-    mWriter.Insert(PAnsiChar(UTF8Encode(AInsert)));
-  end;
-  mWriter := nil;
-  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
-end;
-
 function EditPos(const ALines: TArray<string>; const APosition: TPosition; ATabWidth: Integer): TOTAEditPos;
 var
   mLineText: string;
@@ -261,7 +243,7 @@ begin
   end;
   if TAtlasLineMover.Difference(mBefore, string.Join(mState.LineBreak, mNewLines), mStart, mOldLength, mInsert) then
   begin
-    WriteBuffer(mView.Buffer, mBefore, mStart, mOldLength, mInsert);
+    TAtlasEditorSnapshots.ReplaceText(mView.Buffer, mBefore, mStart, mOldLength, mInsert);
   end;
   PlaceCursor(mView, mMove, mNewLines, mState);
   mView.MoveViewToCursor;

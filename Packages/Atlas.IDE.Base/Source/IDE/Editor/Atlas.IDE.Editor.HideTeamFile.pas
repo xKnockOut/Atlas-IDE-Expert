@@ -34,7 +34,8 @@ uses
   Atlas.Core.Settings.TeamFile,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.TeamFile;
+  Atlas.IDE.Foundation.TeamFile,
+  Atlas.IDE.Foundation.Files;
 
 /// <summary>Inhalt von AFileName oder eine leere Datei in UTF-8 ohne BOM.</summary>
 function LoadOrNew(const AFileName: string): TAtlasTextFileContent;
@@ -92,7 +93,7 @@ begin
     AFileName := mTeam.FileName;
     Exit(mTeam.Folder);
   end;
-  mProject := TAtlasIdeTeamFile.ActiveProject;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
   if mProject = '' then
   begin
     AFileName := '';
