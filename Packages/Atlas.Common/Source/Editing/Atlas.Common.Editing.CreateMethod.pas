@@ -122,6 +122,7 @@ implementation
 
 uses
   System.StrUtils,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.ClassCompletion;
@@ -132,24 +133,6 @@ begin
   if Result = 0 then
   begin
     Result := A.Character - B.Character;
-  end;
-end;
-
-function IsKeywordIn(const AToken: TPascalToken; const AWords: array of string): Boolean;
-var
-  mWord: string;
-begin
-  Result := False;
-  if AToken.Kind <> TPascalTokenKind.Keyword then
-  begin
-    Exit;
-  end;
-  for mWord in AWords do
-  begin
-    if AToken.IsKeyword(mWord) then
-    begin
-      Exit(True);
-    end;
   end;
 end;
 

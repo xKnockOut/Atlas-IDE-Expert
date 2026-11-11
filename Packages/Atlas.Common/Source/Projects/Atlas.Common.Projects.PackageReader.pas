@@ -50,22 +50,8 @@ implementation
 
 uses
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.Lexer;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
-
-/// <summary>Index des nächsten Tokens ab AIndex, das kein Kommentar und keine Direktive ist; Length = keins.</summary>
-function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.TokenCursor;
 
 function IsWord(const AToken: TPascalToken; const AWord: string): Boolean;
 begin

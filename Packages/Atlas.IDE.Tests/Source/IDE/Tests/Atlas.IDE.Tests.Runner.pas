@@ -155,7 +155,8 @@ uses
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.Text.Lines,
-  Atlas.Text.DUnitX;
+  Atlas.Text.DUnitX,
+  Atlas.IDE.Foundation.Files;
 
 const
   cMessageGroup = 'Atlas';
@@ -165,7 +166,7 @@ const
 /// <summary>Zeilen einer Datei: offener Puffer, sonst die Platte.</summary>
 function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
 begin
-  Result := TAtlasIdeTestProjects.ReadLines(AFileName, ALines);
+  Result := TAtlasIdeFiles.ReadLines(AFileName, ALines);
 end;
 
 function ProjectByFile(const AFileName: string): IOTAProject;

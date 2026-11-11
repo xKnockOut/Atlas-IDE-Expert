@@ -3,7 +3,7 @@
 // Regel duplicate-declaration aus Atlas.Common.Rules.Builtin.Declarations (#988, wie E2004): Bezeichner im
 // selben Bereich zweimal deklariert (Parameter und lokale Deklarationen, Mitglieder eines Typs, die Unit über
 // interface und implementation, uses (#1000, wie E2291), Zuordnung IFoo.Bar = Baz für ein nicht genanntes
-// Interface (wie E2265)).
+// Interface (wie E2265)), Werte eines Aufzählungstyps (#1345, wie E2004).
 
 interface
 
@@ -35,6 +35,7 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Rules.Builtin.Declarations.Shared,
@@ -46,7 +47,8 @@ uses
 type
   /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
   TDeclarationsDuplicatesText = (Title, RemoveSecond, AlreadyDeclared, RemoveDuplicate, UnitTwice, UnitInInterface,
-    KindType, KindVariable, KindConstant, KindRoutine, KindField, KindMethod, KindProperty, KindParameter, KindLabel);
+    KindType, KindVariable, KindConstant, KindRoutine, KindField, KindMethod, KindProperty, KindParameter, KindLabel,
+    KindEnumValue);
 
 const
   cTexts: array[TDeclarationsDuplicatesText] of TAtlasText = (
@@ -65,20 +67,22 @@ const
     (De: 'Methode'; En: 'method'),
     (De: 'Property'; En: 'property'),
     (De: 'Parameter'; En: 'parameter'),
-    (De: 'Label'; En: 'label'));
+    (De: 'Label'; En: 'label'),
+    (De: 'Wert der Aufzählung'; En: 'value of the enumeration'));
 
 {$SCOPEDENUMS OFF}
 
 /// <summary>Art AKind (deutscher Schlüssel aus AddName, z. B. "Feld") in der Sprache der Meldung.</summary>
 function KindText(const AKind: string): string;
 const
-  cKeys: array[0..8] of string = ('Typ', 'Variable', 'Konstante', 'Routine', 'Feld', 'Methode', 'Property',
-    'Parameter', 'Label');
-  cKinds: array[0..8] of TDeclarationsDuplicatesText = (TDeclarationsDuplicatesText.KindType,
+  cKeys: array[0..9] of string = ('Typ', 'Variable', 'Konstante', 'Routine', 'Feld', 'Methode', 'Property',
+    'Parameter', 'Label', 'EnumValue');
+  cKinds: array[0..9] of TDeclarationsDuplicatesText = (TDeclarationsDuplicatesText.KindType,
     TDeclarationsDuplicatesText.KindVariable, TDeclarationsDuplicatesText.KindConstant,
     TDeclarationsDuplicatesText.KindRoutine, TDeclarationsDuplicatesText.KindField,
     TDeclarationsDuplicatesText.KindMethod, TDeclarationsDuplicatesText.KindProperty,
-    TDeclarationsDuplicatesText.KindParameter, TDeclarationsDuplicatesText.KindLabel);
+    TDeclarationsDuplicatesText.KindParameter, TDeclarationsDuplicatesText.KindLabel,
+    TDeclarationsDuplicatesText.KindEnumValue);
 var
   mIndex: Integer;
 begin
@@ -135,7 +139,7 @@ var
   var
     mIndex: Integer;
   begin
-    for mIndex := TokenAtOffset(mTokens, ANode.StartOffset) to High(mTokens) do
+    for mIndex := TokenFrom(mTokens, ANode.StartOffset) to High(mTokens) do
     begin
       if mTokens[mIndex].Offset >= ANode.EndOffset then
       begin
@@ -206,7 +210,7 @@ var
     mPart: string;
   begin
     mParts := ANode.Name.Split([',']);
-    mFrom := TokenAtOffset(mTokens, ANode.StartOffset);
+    mFrom := TokenFrom(mTokens, ANode.StartOffset);
     for mIndex := 0 to High(mParts) do
     begin
       mToken := mFrom;
@@ -240,7 +244,7 @@ var
     mIndex, mCount, mPosition: Integer;
   begin
     mCount := 0;
-    for mIndex := TokenAtOffset(mTokens, ASection.StartOffset) to High(mTokens) do
+    for mIndex := TokenFrom(mTokens, ASection.StartOffset) to High(mTokens) do
     begin
       if mTokens[mIndex].Offset >= ASection.EndOffset then
       begin
@@ -252,7 +256,7 @@ var
       end;
     end;
     mPosition := 0;
-    for mIndex := TokenAtOffset(mTokens, ASection.StartOffset) to High(mTokens) do
+    for mIndex := TokenFrom(mTokens, ASection.StartOffset) to High(mTokens) do
     begin
       if mTokens[mIndex].Offset >= ASection.EndOffset then
       begin
@@ -346,7 +350,7 @@ var
     begin
       Exit;
     end;
-    for mIndex := TokenAtOffset(mTokens, ANode.StartOffset) to High(mTokens) - 1 do
+    for mIndex := TokenFrom(mTokens, ANode.StartOffset) to High(mTokens) - 1 do
     begin
       if mTokens[mIndex].Offset >= ANode.EndOffset then
       begin
@@ -514,7 +518,8 @@ var
   // Lässt sich die Deklaration AEntry entfernen (kein Parameter, keine Routine, keine Property)?
   function Removable(const AEntry: TDeclaredName): Boolean;
   begin
-    Result := (AEntry.Kind <> 'Parameter') and not AEntry.IsRoutine and (AEntry.Kind <> 'Property');
+    Result := (AEntry.Kind <> 'Parameter') and not AEntry.IsRoutine and (AEntry.Kind <> 'Property') and
+      (AEntry.Kind <> 'EnumValue');
   end;
 
   procedure CheckNames;
@@ -632,7 +637,7 @@ var
   function SameUnit(ALater, AEarlier: TSyntaxNode): Boolean;
   begin
     Result := SameText(AEarlier.Name, ALater.Name) and TConditionalBranches.Implies(TConditionalBranches.PathAt(
-      mPaths, TokenAtOffset(mTokens, ALater.StartOffset)), TConditionalBranches.PathAt(mPaths, TokenAtOffset(mTokens,
+      mPaths, TokenFrom(mTokens, ALater.StartOffset)), TConditionalBranches.PathAt(mPaths, TokenFrom(mTokens,
       AEarlier.StartOffset)));
   end;
 
@@ -737,7 +742,32 @@ var
     end;
   end;
 
-  // Prüft den Bereich ANode, wenn er einer ist (Routine, Typ, Unit, Programm, Bibliothek).
+  // (rot, gruen = rot, blau): Bezeichner direkt nach "(" oder "," sind Werte, die übrigen gehören zu Ausdrücken.
+  procedure AddEnumValues(AEnum: TSyntaxNode);
+  var
+    mIndex, mToken, mBefore: Integer;
+  begin
+    for mIndex := 0 to AEnum.ChildCount - 1 do
+    begin
+      if AEnum[mIndex].Kind <> TSyntaxKind.Identifier then
+      begin
+        Continue;
+      end;
+      mToken := TokenFrom(mTokens, AEnum[mIndex].StartOffset);
+      mBefore := mToken - 1;
+      while (mBefore >= 0) and (mTokens[mBefore].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+      begin
+        Dec(mBefore);
+      end;
+      if (mBefore >= 0) and (mToken <= High(mTokens)) and (mTokens[mToken].Kind = TPascalTokenKind.Identifier) and
+        (mTokens[mBefore].IsSymbol('(') or mTokens[mBefore].IsSymbol(',')) then
+      begin
+        AddName(AEnum, nil, mTokens[mToken].Text, 'EnumValue', mToken, False);
+      end;
+    end;
+  end;
+
+  // Prüft den Bereich ANode, wenn er einer ist (Routine, Typ, Aufzählung, Unit, Programm, Bibliothek).
   procedure CheckNode(ANode: TSyntaxNode);
   begin
     case ANode.Kind of
@@ -748,6 +778,12 @@ var
         begin
           mNames := nil;
           AddMembers(ANode);
+          CheckNames;
+        end;
+      TSyntaxKind.EnumType:
+        begin
+          mNames := nil;
+          AddEnumValues(ANode);
           CheckNames;
         end;
       TSyntaxKind.UnitFile:
