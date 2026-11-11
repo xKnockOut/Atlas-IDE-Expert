@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Projects.Recording.Tests;
 
-// Stand eines Projekts in seine Zusammenfassung (#528, #571, #97; im Kern seit #1455): Übernahme eines
+// Stand eines Projekts in seine Zusammenfassung (#528, #571, #97): Übernahme eines
 // Compiles, Abfrage der Versionsverwaltung mit Ersatz-Umsetzung (geänderte Dateien nur im Projektordner, Ende
 // einer hängenden Abfrage) und Regeltreffer aus den Problemen des Servers.
 

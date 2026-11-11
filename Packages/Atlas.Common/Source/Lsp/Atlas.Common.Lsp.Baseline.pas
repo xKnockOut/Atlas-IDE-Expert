@@ -21,7 +21,7 @@
 // zu "removed". "skipped" sind Projektdateien, die nicht lesbar waren.
 // War die bisherige Baseline unbrauchbar ("previous": "invalid"), legt der
 // Befehl sie vor dem Schreiben als <Name>.defekt beiseite und nennt den
-// vollen Pfad in "setAside" (Bericht N3); früher ersetzte er sie still.
+// vollen Pfad in "setAside", statt sie still zu ersetzen.
 //
 // Ohne Projektdateien (Projekt noch nicht geladen) schreibt der Befehl nichts
 // und antwortet mit einem Fehler, damit keine leere Baseline entsteht.

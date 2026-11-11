@@ -8,10 +8,10 @@
 //   dieses Feature ab (Run tut dann nichts mehr), mit einer Warnung über
 //   OnWarning und OnTripped (Eintrag in der Benachrichtigungszentrale).
 //   Wieder einschalten über Reset (Menü Atlas).
-// - Ein Feature je sichtbarer Funktion: Früher teilten sich rund 40 Units die
-//   Sicherung „Editorbefehle“, und ein Zeichenfehler der Minimap schaltete
-//   Gliederung, Brotkrumen, Sticky Scroll und den Rest mit ab. EditorCommands
-//   gilt nur noch für ausdrücklich aufgerufene Editorbefehle.
+// - Ein Feature je sichtbarer Funktion: Eine gemeinsame Sicherung für viele
+//   Units würde bei einem Zeichenfehler der Minimap auch Gliederung,
+//   Brotkrumen und Sticky Scroll abschalten. EditorCommands gilt nur für
+//   ausdrücklich aufgerufene Editorbefehle.
 // - Derselbe Fehler (Klasse und Stelle) eines Features innerhalb von RepeatMs
 //   nach dem zuletzt gezählten zählt nicht erneut und steht nicht einzeln im
 //   Protokoll: Ein Zeichendurchlauf meldet einen Fehler sonst für jede Zeile
@@ -21,7 +21,7 @@
 //   einzelnen Datenquelle, etwa der Vervollständigung vom Server; nach 3
 //   Fehlern in 5 Minuten fällt nur diese Quelle aus, die übrigen laufen weiter.
 // - Langsame Quelle: Eine Zeitüberschreitung ist kein Fehler und zählt nicht
-//   zur Sicherung (früher schaltete ein beschäftigter Rechner so Quellen ab).
+//   zur Sicherung (sonst schaltete ein beschäftigter Rechner Quellen ab).
 //   ReportProviderSlow schreibt je Quelle höchstens eine Zeile je
 //   SlowLogSeconds mit der Zahl der übergangenen Meldungen.
 // - Zeitmessung (Diagnose-Fenster, Reiter „Hauptthread“): Ist Timing gesetzt,
@@ -47,10 +47,9 @@
 //   nie Quelltext aus dem Editor. Den Stack-Trace liefert Exception.StackTrace
 //   (falls ein Anbieter installiert ist), sonst der Haken StackOf
 //   (Atlas.IDE.Diagnostics.StackCapture: Mitschnitt beim Auslösen).
-// - Schreibfehler des Protokolls (Bericht M4): Früher verschluckte Add jeden
-//   Fehler, und ein Fehler beim Rotieren verhinderte auch das Anhängen (das
-//   erklärt Lücken wie die ab dem 21.10. 21:29, belegt ist es nicht). Jetzt sperrt ein
-//   benannter Mutex je Ordner Rotieren und Schreiben über alle IDE-Prozesse
+// - Schreibfehler des Protokolls: Ein Fehler beim Rotieren darf das Anhängen
+//   nicht verhindern, und kein Fehler darf still verschwinden. Ein
+//   benannter Mutex je Ordner sperrt Rotieren und Schreiben über alle IDE-Prozesse
 //   (die IDE des Benutzers und eine Bau-IDE teilen den Ordner;
 //   ohne Sperre öffneten zwei Schreiber dieselbe Datei exklusiv). Scheitert
 //   das Rotieren, wird trotzdem angehängt und der Grund einmal vermerkt.

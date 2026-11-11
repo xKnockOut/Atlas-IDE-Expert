@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tracker.Access;
 
 // Zugang des Moduls Tracker zum Issue-Tracker (#765, #1260) und zum
-// Build-Server (#763), seit #1455 im Modul statt in der Kompositionswurzel.
+// Build-Server (#763).
 // - TAtlasTrackerAccess (IAtlasTrackerAccess): Anbieter, Token und Transport
 //   des Issue-Trackers für „Meine Issues“ und den Abschnitt Issue-Tracker.
 //   Token im Anmeldespeicher (Ziel "Atlas:tracker:&lt;Server&gt;", Benutzer =

@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.VersionControl.SettingsTools;
 
-// Versionsverwaltung: Programme git und svn mit eigenem Pfad, „…“ und „Prüfen“ (#1285, seit #1905 im Modul). Die
+// Versionsverwaltung: Programme git und svn mit eigenem Pfad, „…“ und „Prüfen“ (#1285). Die
 // Pfade (vcs.git.path, vcs.svn.path) sind gebundene Felder der Seite.
 
 interface

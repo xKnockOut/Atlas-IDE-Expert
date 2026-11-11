@@ -1,9 +1,7 @@
 ﻿unit Atlas.IDE.Welcome.Commands;
 
 // Steuerung der Atlas-Willkommensseite (#753):
-// - Zwei Orte, unabhängig abschaltbar (#761; #1114 hatte die Willkommensseite
-//   der IDE entfernt, die Zugriffsverletzung beim Beenden ist seit #1233
-//   behoben):
+// - Zwei Orte, unabhängig abschaltbar (#761):
 //   - Willkommensseite der IDE (welcomePage.ideWelcomePage, Vorgabe an): Sync
 //     meldet je eingeschaltetem Bereich ein Plugin an (plus Kopf), im
 //     Atlas-Layout (welcomePage.layout = atlas) ein einziges Plugin „Atlas“ mit
@@ -49,7 +47,7 @@
 //   letzten Builds des in „Projekte“ gewählten Projekts; meldet sich selbst
 //   an.
 // - „Meine Issues“, „Sprint“ und „Testergebnisse“ (#765, #1277, #763) sind
-//   seit #1455 Kacheln des Moduls Tracker (Atlas.IDE.Contracts.WelcomeTiles).
+//   Kacheln des Moduls Tracker (Atlas.IDE.Contracts.WelcomeTiles).
 // - Bereich „Nicht gesichert“ (#762, Unsaved): nicht Committetes, nicht
 //   Gepushtes und Stashes je Projekt; meldet sich selbst an.
 // - Zustandskachel „Atlas“ (#754, State): Server, Version, Index,
