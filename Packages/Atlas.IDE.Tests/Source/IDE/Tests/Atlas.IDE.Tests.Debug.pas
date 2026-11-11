@@ -77,7 +77,6 @@ type
     class function Debugger: IOTADebuggerServices; static;
     class function Debugging: Boolean; static;
     class function ProjectOf(const AFileName: string): IOTAProject; static;
-    class function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean; static;
     /// <summary>Datei und Test am Cursor der oberen Editoransicht; False mit Meldung.</summary>
     function AtCursor(out AFileName: string; out ASelection: TAtlasTestSelection): Boolean;
   public
@@ -197,34 +196,6 @@ begin
   begin
     Supports(mServices.FindModule(AFileName), IOTAProject, Result);
   end;
-end;
-
-class function TAtlasIdeTestDebugger.ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
-var
-  mBuffer: IOTAEditBuffer;
-  mText: string;
-begin
-  ALines := nil;
-  mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
-  if mBuffer <> nil then
-  begin
-    mText := TAtlasEditorBuffer.Text(mBuffer);
-  end
-  else
-  begin
-    if not FileExists(AFileName) then
-    begin
-      Exit(False);
-    end;
-    try
-      mText := TAtlasTextFile.Load(AFileName).Text;
-    except
-      on Exception do
-        Exit(False);
-    end;
-  end;
-  ALines := TTextLines.SplitLines(mText);
-  Result := True;
 end;
 
 function TAtlasIdeTestDebugger.Busy: Boolean;
@@ -373,7 +344,7 @@ begin
     end;
     mUnitName := Copy(mName, 1, mIndex - 1);
     mFileName := TAtlasIdeTests.UnitFileOf(mProject.FileName, mUnitName);
-    if (mFileName = '') or not ReadLines(mFileName, mLines) then
+    if (mFileName = '') or not TAtlasIdeFiles.ReadLines(mFileName, mLines) then
     begin
       Continue;
     end;
@@ -415,7 +386,7 @@ begin
     end;
     mUnitName := Copy(mName, 1, mIndex - 1);
     mFileName := TAtlasIdeTests.UnitFileOf(AProject, mUnitName);
-    if (mFileName = '') or not ReadLines(mFileName, mLines) then
+    if (mFileName = '') or not TAtlasIdeFiles.ReadLines(mFileName, mLines) then
     begin
       Continue;
     end;

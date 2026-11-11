@@ -38,7 +38,8 @@ uses
   Atlas.IDE.Settings.ServerActions,
   Atlas.IDE.Settings.ServerTool,
   Atlas.UI.Strings,
-  Atlas.UI.Rules.Strings;
+  Atlas.UI.Rules.Strings,
+  Atlas.IDE.Foundation.Files;
 
 /// <summary>Zeilen der Auswertung in AFileName; ohne Unterdrückung eine Zeile, die das sagt.</summary>
 function SuppressionRows(const AFileName: string): TArray<string>;
@@ -103,11 +104,11 @@ class function TAtlasIdeRulesMaintenance.UpdateBaseline: string;
 var
   mOutput: string;
 begin
-  if TAtlasProjectSettings.ActiveProject = '' then
+  if TAtlasIdeFiles.ActiveProjectFile = '' then
   begin
     Exit(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject));
   end;
-  Result := TAtlasIdeServerActions.RunTool('--check "' + TAtlasProjectSettings.ActiveProject + '" --update-baseline',
+  Result := TAtlasIdeServerActions.RunTool('--check "' + TAtlasIdeFiles.ActiveProjectFile + '" --update-baseline',
     TAtlasServerTool.cCheckTimeoutMs, mOutput);
   if Result = '' then
   begin
@@ -131,14 +132,14 @@ class function TAtlasIdeRulesMaintenance.Suppressions: TArray<string>;
 var
   mOutputFile, mOutput, mError: string;
 begin
-  if TAtlasProjectSettings.ActiveProject = '' then
+  if TAtlasIdeFiles.ActiveProjectFile = '' then
   begin
     Result := [TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject)];
     Exit;
   end;
   mOutputFile := TPath.GetTempFileName;
   try
-    mError := TAtlasIdeServerActions.RunTool('--check "' + TAtlasProjectSettings.ActiveProject +
+    mError := TAtlasIdeServerActions.RunTool('--check "' + TAtlasIdeFiles.ActiveProjectFile +
       '" --suppression-stats --format json --output "' + mOutputFile + '"', TAtlasServerTool.cCheckTimeoutMs,
       mOutput);
     if mError <> '' then

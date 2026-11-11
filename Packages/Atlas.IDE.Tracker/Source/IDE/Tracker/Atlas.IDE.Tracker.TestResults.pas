@@ -192,7 +192,8 @@ uses
   Atlas.IDE.Contracts.WelcomeTiles,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Strings,
+  Atlas.IDE.Foundation.Files;
 
 const
   cLogFetched = 'Testergebnisse: %s-Build %s, Tests %d/%d/%d';
@@ -839,7 +840,7 @@ procedure TAtlasIdeTestResults.EnterCredentialsForActive;
 var
   mProject: string;
 begin
-  mProject := TAtlasIdeTeamFile.ActiveProject;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
   if mProject = '' then
   begin
     Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CiLoginNoServer));
