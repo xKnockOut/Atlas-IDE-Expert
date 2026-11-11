@@ -21,7 +21,8 @@
 // die nur ein solcher Rumpf braucht, gilt dort als benutzt). Gemeldet wird nur, was sicher aufgelöst ist:
 // Verweise, die der Index nicht kennt, und geerbte Mitglieder aus fremden
 // Units bleiben stumm. Erfasst werden Aufrufe, Properties mit inline-Getter
-// bzw. -Setter und for-in über einen Typ mit inline-GetEnumerator, MoveNext
+// bzw. -Setter, auch die default-Property hinter Liste[0] ohne ihren Namen
+// (#1345), und for-in über einen Typ mit inline-GetEnumerator, MoveNext
 // oder Current. Mit {$INLINE OFF} in der Datei schweigt die Regel, ebenso
 // ohne Projektindex (inline-Routinen der Datei selbst meldet sie nicht).
 //
@@ -75,6 +76,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.InlineCallees,
   Atlas.Common.Semantics.UnresolvedNames,
+  Atlas.Common.Rules.Builtin.Declarations.Shared,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -154,6 +156,7 @@ type
       const ARange: TTextRange): Boolean;
     procedure CheckToken(ATokenIndex: Integer);
     procedure CheckForIn(ANode: TSyntaxNode);
+    procedure CheckDefaultIndex(ANode: TSyntaxNode);
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     destructor Destroy; override;
@@ -526,10 +529,40 @@ begin
   end;
 end;
 
+procedure TInlineCheck.CheckDefaultIndex(ANode: TSyntaxNode);
+var
+  mSymbol, mType: TResolvedSymbol;
+  mFound: Boolean;
+  mCallee: TInlineCallee;
+  mOpen, mClose: Integer;
+  mTokens: TArray<TPascalToken>;
+begin
+  // Liste[0]: Steht der Name der Property davor (Liste.Items[0]), meldet ihn schon CheckToken.
+  if (ANode.ChildCount < 2) or not FResolver.NodeType(FContext.Tree, FContext.RelativePath, ANode, mSymbol, mType,
+    mFound) or (mSymbol.SymbolKind <> TIndexSymbolKind.Property_) or not mSymbol.IsDefault or
+    (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and SameText(ANode[0].Name, mSymbol.Name) then
+  begin
+    Exit;
+  end;
+  mTokens := FContext.Tree.Tokens;
+  mOpen := TokenAtOffset(mTokens, ANode[0].EndOffset);
+  while (mOpen <= High(mTokens)) and (mTokens[mOpen].Offset < ANode.EndOffset) and not mTokens[mOpen].IsSymbol('[') do
+  begin
+    Inc(mOpen);
+  end;
+  mClose := TokenAtOffset(mTokens, ANode.EndOffset - 1);
+  if (mOpen > High(mTokens)) or not mTokens[mOpen].IsSymbol('[') or (mClose < mOpen) or
+    not FCallees.CalleeAt(mSymbol, mTokens, mClose, mCallee) then
+  begin
+    Exit;
+  end;
+  Report(mCallee, TTextRange.Create(mTokens[mOpen].StartPos, mTokens[mClose].EndPos), mTokens[mOpen].Offset);
+end;
+
 procedure TInlineCheck.Run;
 var
   mIndex: Integer;
-  mForIns: TList<TSyntaxNode>;
+  mForIns, mIndexes: TList<TSyntaxNode>;
   mNode: TSyntaxNode;
 begin
   FOwnName := TUsesClauses.OwnName(FContext.Tree.Tokens);
@@ -551,8 +584,10 @@ begin
         CheckToken(mIndex);
       end;
     end;
+    mIndexes := nil;
     mForIns := TList<TSyntaxNode>.Create;
     try
+      mIndexes := TList<TSyntaxNode>.Create;
       FContext.Tree.Root.Walk(
         function(ANode: TSyntaxNode): Boolean
         begin
@@ -560,13 +595,22 @@ begin
           if ANode.Kind = TSyntaxKind.ForInStatement then
           begin
             mForIns.Add(ANode);
+          end
+          else if ANode.Kind = TSyntaxKind.IndexAccess then
+          begin
+            mIndexes.Add(ANode);
           end;
         end);
       for mNode in mForIns do
       begin
         CheckForIn(mNode);
       end;
+      for mNode in mIndexes do
+      begin
+        CheckDefaultIndex(mNode);
+      end;
     finally
+      mIndexes.Free;
       mForIns.Free;
     end;
   finally
