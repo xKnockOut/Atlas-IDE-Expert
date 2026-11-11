@@ -174,6 +174,7 @@ Verweise zeigen nur auf Quellen, die im Repository liegen oder öffentlich sind 
 ## Tests
 
 - Unit-Tests mit DUnitX je Unit in `Tests/<Ausgabeartefakt>/<Feature>/`.
+- Testunits ohne Windows- und VCL-Bezug laufen zusätzlich unter FPC (`Tools/Linux/Test-Fpc.sh`, Liste `Tools/Linux/FpcTests.txt`) in jedem Pull Request; neue gehören in die Liste, sobald sie dort grün sind.
 - Protokolltests: `Tests/Data/Protocol/*.json` enthalten Schritte `send` und `expect`; `Atlas.Common.Lsp.ProtocolReplay` spielt sie gegen den Server ohne Threads ab und vergleicht die Antworten feldweise. Neue Aufzeichnung = neue JSON-Datei, kein Code nötig.
 - Fuzzing: zufällig beschädigter Code (fester Startwert) darf den Parser weder abstürzen noch hängen lassen.
 - Korpustest: parst RTL und VCL aus `$(BDS)\source` oder dem Ordner in `ATLAS_CORPUS`; ohne beides wird er übersprungen.

@@ -250,6 +250,14 @@ Tests\Tests.bat benchmark    :: benchmarks only (category Benchmark)
 Tests\Tests.bat alle         :: both
 ```
 
+Without Delphi, the platform-independent tests (Atlas.Text, Atlas.Common, the plugin core) run on Linux with Free Pascal; every pull request does this as well (`linux-server.yml`):
+
+```bash
+Tools/Linux/Test-Fpc.sh      # test units from Tools/Linux/FpcTests.txt
+```
+
+The list only contains test units that pass completely under FPC. A new test unit without Windows or VCL dependencies belongs in it. Without a Delphi runner, `server.yml` reports the Delphi run as neutral; pull requests into `main` or `release/*` then fail.
+
 Check scripts (also run as GitHub Actions):
 
 ```powershell
