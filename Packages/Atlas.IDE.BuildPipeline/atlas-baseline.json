@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "findings": [
+    {"path": "Source/Core/BuildPipeline/Atlas.Core.BuildPipeline.ReleaseGuard.pas", "rule": "hardcoded-string", "fingerprint": "ebb5c9bd", "count": 1, "routine": "TAtlasReleaseGuard.Evaluate.CheckLeaks", "context": "1a1659df"},
+    {"path": "Source/Core/BuildPipeline/Atlas.Core.BuildPipeline.ReleaseGuard.pas", "rule": "magic-number", "fingerprint": "0fcc1ddb", "count": 1, "routine": "TAtlasReleaseGuard.ResolveFolder", "context": "d225e6b4"},
+    {"path": "Source/Core/BuildPipeline/Atlas.Core.BuildPipeline.ReleaseGuard.pas", "rule": "string-if-chain", "fingerprint": "02ef5c8a", "count": 1, "routine": "TLeakScanner.HandleDirective", "context": "2b90ee03"},
+    {"path": "Source/Core/BuildPipeline/Atlas.Core.BuildPipeline.ReleaseGuard.pas", "rule": "string-if-chain", "fingerprint": "44c85f7b", "count": 1, "routine": "TLeakScanner.HandleDirective", "context": "de544737"},
+    {"path": "Source/IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Runner.pas", "rule": "hardcoded-string", "fingerprint": "b1c078cf", "count": 1, "routine": "TAtlasIdeBuildRunner.Start", "context": "3310f263"},
+    {"path": "Source/IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Runner.pas", "rule": "magic-number", "fingerprint": "3df2fa4e", "count": 1, "routine": "TAtlasIdeBuildRunner.Create", "context": "bbac80e7"},
+    {"path": "Source/IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Runner.pas", "rule": "owned-field-free-unclear", "fingerprint": "43b736de", "count": 1, "routine": "interface", "context": "eb7d8745"}
+  ]
+}

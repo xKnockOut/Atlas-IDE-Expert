@@ -128,8 +128,9 @@ begin
       begin
         Continue;
       end;
-      mQuery := TAtlasTrackerQuery.Create(TJsonRead.Text(TJSONObject(mItem), 'name'), TJsonRead.Text(TJSONObject(mItem), 'query'),
-        TJsonRead.Text(TJSONObject(mItem), 'connection'), TJsonRead.Text(TJSONObject(mItem), 'project'));
+      mQuery := TAtlasTrackerQuery.Create(TJsonRead.Text(TJSONObject(mItem), 'name'),
+        TJsonRead.Text(TJSONObject(mItem), 'query'), TJsonRead.Text(TJSONObject(mItem), 'connection'),
+        TJsonRead.Text(TJSONObject(mItem), 'project'));
       if (mQuery.Name = '') or (mQuery.Query = '') or (IndexOfName(Result, mQuery.Name) >= 0) then
       begin
         Continue;

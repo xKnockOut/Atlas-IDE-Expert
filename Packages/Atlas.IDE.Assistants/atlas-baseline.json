@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "findings": [
+    {"path": "Source/Core/Assistants/Atlas.Core.Assistants.BuildInbox.pas", "rule": "string-if-chain", "fingerprint": "d1844c18", "count": 1, "routine": "TAtlasBuildInbox.KindOf", "context": "eef0d684"},
+    {"path": "Source/Core/Assistants/Atlas.Core.Assistants.EditInbox.pas", "rule": "hardcoded-string", "fingerprint": "ed978707", "count": 1, "routine": "TAtlasEditInbox.Take", "context": "f86b9a6a"},
+    {"path": "Source/IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas", "rule": "magic-number", "fingerprint": "3df2fa4e", "count": 1, "routine": "TAtlasIdeBuildInbox.Create", "context": "9df66e02"},
+    {"path": "Source/IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas", "rule": "metric-cognitive-complexity", "fingerprint": "3615e938", "count": 1, "routine": "TAtlasIdeBuildInbox.Process", "context": "7dacd8a3"}
+  ]
+}

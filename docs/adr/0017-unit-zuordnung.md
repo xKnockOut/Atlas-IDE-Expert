@@ -885,6 +885,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.ExceptionBar` | `UI/Debug/Atlas.UI.Debug.ExceptionBar.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionStack` | `UI/Debug/Atlas.UI.Debug.ExceptionStack.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionsFrame` | `UI/Debug/Atlas.UI.Debug.ExceptionsFrame.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.InlineValuePainter` | `UI/Debug/Atlas.UI.Debug.InlineValuePainter.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.SettingsSection` | `UI/Debug/Atlas.UI.Debug.SettingsSection.pas` | Ordner `UI/Debug`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Debug.StepFilterFrame` | `UI/Debug/Atlas.UI.Debug.StepFilterFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.StepInto` | `UI/Debug/Atlas.UI.Debug.StepInto.pas` | Ordner `UI/Debug` |
@@ -1211,6 +1212,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.ShowComponent` | `IDE/Designer/Atlas.IDE.Designer.ShowComponent.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.PropertySearch` | `IDE/Designer/Atlas.IDE.Designer.PropertySearch.pas` | Ordner `IDE/Designer` |
 | `Atlas.UI.Designer.Bar` | `UI/Designer/Atlas.UI.Designer.Bar.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.Dialog` | `UI/Designer/Atlas.UI.Designer.Dialog.pas` | Ordner `UI/Designer`; Gerüst der Dialoge des Designers |
 | `Atlas.UI.Designer.DuplicateDialog` | `UI/Designer/Atlas.UI.Designer.DuplicateDialog.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Flash` | `UI/Designer/Atlas.UI.Designer.Flash.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Handles` | `UI/Designer/Atlas.UI.Designer.Handles.pas` | Ordner `UI/Designer` |

@@ -208,6 +208,8 @@ end;
 
 /// <summary>Ereignisse von AItem mit dem Handler AHandler („OnClick = btnOkClick“).</summary>
 function EventsWith(const AItem: TAtlasDesignerItem; const AHandler: string): TArray<string>;
+const
+  cAssign = ' = ';
 var
   mEvent: string;
   mPos: Integer;
@@ -215,8 +217,8 @@ begin
   Result := nil;
   for mEvent in AItem.Events do
   begin
-    mPos := Pos(' = ', mEvent);
-    if (mPos > 0) and SameText(Trim(Copy(mEvent, mPos + 3, MaxInt)), AHandler) then
+    mPos := Pos(cAssign, mEvent);
+    if (mPos > 0) and SameText(Trim(Copy(mEvent, mPos + Length(cAssign), MaxInt)), AHandler) then
     begin
       Result := Result + [Trim(Copy(mEvent, 1, mPos - 1))];
     end;

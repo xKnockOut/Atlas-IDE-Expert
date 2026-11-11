@@ -149,7 +149,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Files.DataFile,
-  Atlas.Core.Files.TextFile,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
@@ -387,29 +386,6 @@ begin
     StopScope(AFileName, ALine) or EditorScope(AFileName, ALine);
 end;
 
-/// <summary>Quelltext von AFileName: Editorpuffer, sonst von der Platte; False, wenn unlesbar.</summary>
-function SourceOf(const AFileName: string; out ASource: string): Boolean;
-var
-  mBuffer: IOTAEditBuffer;
-begin
-  Result := True;
-  mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
-  if mBuffer <> nil then
-  begin
-    ASource := TAtlasEditorBuffer.Text(mBuffer);
-  end
-  else
-    try
-      ASource := TAtlasTextFile.LoadText(AFileName);
-    except
-      on Exception do
-      begin
-        ASource := '';
-        Result := False;
-      end;
-    end;
-end;
-
 /// <summary>AContext für den Server ergänzen (Datei, Zeile, Auslöser) und die Datei im Hauptthread abgleichen;
 /// False ohne Gültigkeitsbereich oder Quelltext.</summary>
 function ServerContext(ASession: TLspSession; AForm: TCustomForm; ADialog: TAtlasDebugDialog;
@@ -418,7 +394,7 @@ var
   mFileName, mSource: string;
   mLine, mWordStart: Integer;
 begin
-  Result := Scope(AForm, ADialog, mFileName, mLine) and SourceOf(mFileName, mSource);
+  Result := Scope(AForm, ADialog, mFileName, mLine) and TAtlasIdeFiles.SourceText(mFileName, mSource);
   if not Result then
   begin
     Exit;

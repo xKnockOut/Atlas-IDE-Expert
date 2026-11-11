@@ -135,7 +135,8 @@ begin
   TAtlasEditInbox.Answer(FFolder, mRequest, mOutcome.Applied, mOutcome.ServerWrites, mOutcome.Reason);
   if mOutcome.Applied and Assigned(FOnMessage) then
   begin
-    FOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.McpEditApplied, [ExtractFileName(mRequest.FileName)]));
+    FOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.McpEditApplied,
+      [ExtractFileName(mRequest.FileName)]));
   end;
 end;
 

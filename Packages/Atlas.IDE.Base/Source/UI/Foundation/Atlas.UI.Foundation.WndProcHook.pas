@@ -66,6 +66,10 @@ uses
   System.SysUtils,
   Atlas.Core.Diagnostics.UnloadSafety;
 
+const
+  // Grund im Diagnoselog, nicht übersetzt.
+  cForeignChainReason = 'window procedure hook of %s stays in a foreign chain';
+
 function SameMethod(const ALeft, ARight: TMethod): Boolean;
 begin
   Result := (ALeft.Code = ARight.Code) and (ALeft.Data = ARight.Data);
@@ -146,8 +150,7 @@ begin
     FOrphans := TObjectList<TAtlasWndProcHook>.Create(True);
   end;
   FOrphans.Add(mHook);
-  TAtlasUnloadSafety.MarkUnsafe(HInstance, Format('window procedure hook of %s stays in a foreign chain',
-    [mHook.Control.ClassName]));
+  TAtlasUnloadSafety.MarkUnsafe(HInstance, Format(cForeignChainReason, [mHook.Control.ClassName]));
 end;
 
 class procedure TAtlasWndProcHook.Forget(var AHook: TAtlasWndProcHook);
