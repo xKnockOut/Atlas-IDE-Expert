@@ -15,10 +15,11 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Atlas.Core.Architecture.RoleUnit;
+  Atlas.Core.Architecture.RoleUnit,
+  Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasRoleUnitDialog = class(TForm)
+  TAtlasRoleUnitDialog = class(TAtlasDialog)
   private
     FPrefix: TComboBox;
     FFeature: TEdit;
@@ -51,7 +52,9 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Graphics,
-  Atlas.UI.Analysis.Strings;
+  Atlas.UI.Analysis.Strings,
+  Atlas.Core.Style.Signal,
+  Atlas.UI.Foundation.Theme;
 
 const
   cGap = 12;
@@ -147,10 +150,7 @@ var
   mLayout: TDialogLayout;
   mY: Integer;
 begin
-  inherited CreateNew(AOwner);
-  Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.RoleUnitCommand);
-  BorderStyle := bsDialog;
-  Position := poMainFormCenter;
+  inherited CreateDialog(AOwner, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.RoleUnitCommand), 0);
   mLayout := LayoutOf(Self);
   ClientWidth := mLayout.Gap * 2 + mLayout.LabelWidth + mLayout.EditWidth;
   mY := mLayout.Gap;
@@ -160,7 +160,9 @@ begin
   FOwn := NewInfo(Self, mLayout, mY);
   FForeign := NewInfo(Self, mLayout, mY);
   FMessage := NewInfo(Self, mLayout, mY);
-  FMessage.Font.Color := clRed;
+  FMessage.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
+  // Mit seFont übergeht der Stil Font.Color.
+  FMessage.StyleElements := FMessage.StyleElements - [seFont];
   Inc(mY, mLayout.Spacing);
   FCancel := TButton.Create(Self);
   FCancel.Parent := Self;

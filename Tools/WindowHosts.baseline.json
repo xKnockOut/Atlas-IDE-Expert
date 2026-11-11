@@ -1,12 +1,4 @@
 {
-  "Packages/Atlas.IDE.Analysis/Source/UI/Architecture/Atlas.UI.Architecture.RoleUnitDialog.pas": {
-    "create-new": 1,
-    "cl-red": 1
-  },
-  "Packages/Atlas.IDE.Analysis/Source/UI/SymbolPath/Atlas.UI.SymbolPath.Dialog.pas": {
-    "create-new": 1,
-    "cl-red": 1
-  },
   "Packages/Atlas.IDE.Base/Source/UI/Commands/Atlas.UI.Commands.KeyMap.pas": {
     "create-new": 1,
     "segoe-font": 1
