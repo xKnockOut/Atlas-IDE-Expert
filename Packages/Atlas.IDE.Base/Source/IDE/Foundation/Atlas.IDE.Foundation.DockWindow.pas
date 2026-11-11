@@ -18,9 +18,9 @@
 // ApplyIdeTheme: Thema der IDE auf den Inhalt eines Atlas-Fensters, beim
 // Anlegen und bei jedem Themenwechsel. ApplyTheme färbt nur Steuerelemente
 // ohne Style-Hook (Labels, Panels); Listen, Felder, Combos und Kästchen
-// zeichnet der VCL-Stil, den sie über StyleName vom Elternteil erben. Nach
-// einem Wechsel lieferte diese Kette noch den alten Stil (Fenster blieben
-// hell bzw. dunkel). Deshalb steht der Stil der IDE ausdrücklich an der
+// zeichnet der VCL-Stil, den sie über StyleName vom Elternteil erben. Die
+// geerbte Kette kann nach einem Themenwechsel noch den alten Stil liefern
+// (Fenster bleiben hell bzw. dunkel). Deshalb steht der Stil der IDE ausdrücklich an der
 // Wurzel des Atlas-Fensters, alle Kinder erben; ein geänderter Name legt die
 // Fenster mit dem neuen Stil neu an. Liefert die Wurzel danach trotzdem einen
 // anderen Stil, steht die Kette im Protokoll.
