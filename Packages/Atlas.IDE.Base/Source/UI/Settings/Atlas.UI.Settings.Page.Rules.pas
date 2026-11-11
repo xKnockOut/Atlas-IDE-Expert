@@ -41,6 +41,7 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.UI.Problems.ScopeBox;
 
 const
@@ -62,37 +63,44 @@ begin
   // Prüfregeln (#909): das Fenster „Atlas-Prüfung“ und die laufende Prüfung. Den Weg zu den Regeln (sie stehen in
   // den Dialogen der Einstellungsdateien), Profile, Baseline und Unterdrückungen trägt das Modul bei (#1755).
   AddSheet(TAtlasTextId.SettingsTabRules);
-  BindCheck('ProblemsWindow', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindow)));
-  FProblemsWindowScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowScope),
+  BindCheck('ProblemsWindow', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsWindow)));
+  FProblemsWindowScope := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsWindowScope),
     [TAtlasStrings.Text(TAtlasTextId.ProblemsScopeFile), TAtlasStrings.Text(TAtlasTextId.ProblemsScopeProject),
     TAtlasStrings.Text(TAtlasTextId.ProblemsScopeGroup)]);
   // Einzelne Projekte der Gruppe in der Bereichsliste (#1843).
   BindCheck('ProblemsWindowScopeProjects', AddCheck(TAtlasProblemsScopeBox.Text(TAtlasScopeBoxText.Setting)));
-  FProblemsWindowGroupBy := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowGroupBy),
+  FProblemsWindowGroupBy := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsWindowGroupBy),
     [TAtlasStrings.Text(TAtlasTextId.ProblemsGroupNone), TAtlasStrings.Text(TAtlasTextId.ProblemsGroupFile),
     TAtlasStrings.Text(TAtlasTextId.ProblemsGroupRule), TAtlasStrings.Text(TAtlasTextId.ProblemsGroupCategory)]);
-  BindCheck('ProblemsWindowCompiler', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowCompiler)));
-  BindCheck('ProblemsWindowFollowCursor', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowFollowCursor)));
+  BindCheck('ProblemsWindowCompiler',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsWindowCompiler)));
+  BindCheck('ProblemsWindowFollowCursor',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsWindowFollowCursor)));
   // Offene Units zuerst (#1108); der Hauptschalter sperrt die beiden Zeilen darunter (x-parent).
-  BindCheck('ProblemsWindowOpenFirst', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowOpenFirst)));
-  FProblemsWindowClosedUnits := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowClosedUnits),
-    [TAtlasStrings.Text(TAtlasTextId.ProblemsClosedDimmed), TAtlasStrings.Text(TAtlasTextId.ProblemsClosedNormal),
-    TAtlasStrings.Text(TAtlasTextId.ProblemsClosedHidden)]);
+  BindCheck('ProblemsWindowOpenFirst',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsWindowOpenFirst)));
+  FProblemsWindowClosedUnits := AddChoice(TAtlasSettingsStrings.Text(
+    TAtlasSettingsTextId.SettingsProblemsWindowClosedUnits),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProblemsClosedDimmed),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProblemsClosedNormal),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProblemsClosedHidden)]);
   BindCheck('ProblemsWindowShowCleanActive', AddCheck(
-    TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowShowCleanActive)));
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsWindowShowCleanActive)));
   // Wann die offene Datei geprüft wird, und die Verzögerung der Live-Prüfung.
-  FProblemsUpdate := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsUpdate),
-    [TAtlasStrings.Text(TAtlasTextId.ProblemsUpdateLive), TAtlasStrings.Text(TAtlasTextId.ProblemsUpdateSave),
-    TAtlasStrings.Text(TAtlasTextId.ProblemsUpdateManual)]);
+  FProblemsUpdate := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsUpdate),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProblemsUpdateLive),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProblemsUpdateSave),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProblemsUpdateManual)]);
   FProblemsLiveDelay := BindText('ProblemsLiveDelayMs',
-    AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsLiveDelay)));
+    AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsLiveDelay)));
   // Liste „Atlas-Probleme“ im Meldungsfenster (#398), seit #909 nur noch zusätzlich zum Fenster.
-  BindCheck('ProblemsMessageList', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList)));
+  BindCheck('ProblemsMessageList', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsList)));
   // Gruppe „Compiler vorab“ (#1024): stehen über x-node im Knoten der Gruppe unter dem Regel-Editor.
-  FProblemsCompilerMerge := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsCompilerMerge),
-    [TAtlasStrings.Text(TAtlasTextId.ProblemsCompilerMergeMerge),
-    TAtlasStrings.Text(TAtlasTextId.ProblemsCompilerMergeBoth)]);
-  BindCheck('ProblemsShowCompilerCode', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsShowCompilerCode)));
+  FProblemsCompilerMerge := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsCompilerMerge),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProblemsCompilerMergeMerge),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProblemsCompilerMergeBoth)]);
+  BindCheck('ProblemsShowCompilerCode',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsShowCompilerCode)));
 end;
 
 procedure TAtlasSettingsRulesPart.BindMarks;

@@ -134,7 +134,7 @@ uses
   Winapi.Windows,
   Vcl.Menus,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.UI.Commands.Strings,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Commands.KeyStroke,
@@ -455,7 +455,7 @@ begin
   mRoot := TAction.Create(FActions);
   mRoot.ActionList := FActions;
   mRoot.Category := cCategory;
-  mRoot.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas);
+  mRoot.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuAtlas);
   mRoot.OnExecute := RootExecute;
   for mIndex := 0 to High(FEntries) do
   begin

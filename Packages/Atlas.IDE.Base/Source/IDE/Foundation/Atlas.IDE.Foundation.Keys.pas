@@ -109,7 +109,7 @@ uses
   Vcl.Menus,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.KeyStroke,
-  Atlas.UI.Strings;
+  Atlas.UI.Foundation.Strings;
 
 { TAtlasIdeKeyBinding.TBinding }
 
@@ -396,7 +396,8 @@ begin
     end;
   end;
   FReported := FReported + [mKey];
-  AddMessage(TAtlasStrings.Fmt(TAtlasTextId.KeyConflict, [ShortCutToText(AShortCut), mHolder, AWhat]));
+  AddMessage(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.KeyConflict, [ShortCutToText(AShortCut), mHolder,
+    AWhat]));
   MarkReported(AShortCut);
 end;
 
@@ -505,7 +506,7 @@ begin
       Continue;
     end;
     FForeignReported := FForeignReported + [mExtension];
-    AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ForeignCompletion, [mExtension]));
+    AddMessage(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.ForeignCompletion, [mExtension]));
   end;
 end;
 

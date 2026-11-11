@@ -39,6 +39,7 @@ uses
   Vcl.Dialogs,
   ToolsAPI,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Results.Model,
@@ -109,7 +110,7 @@ begin
   mCursor := AView.CursorPos;
   if (mCursor.Line < 1) or (mCursor.Line > Length(mLines)) then
   begin
-    AMessage(TAtlasStrings.Text(TAtlasTextId.RenameNothing));
+    AMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.RenameNothing));
     Exit;
   end;
   ATarget.Line := mCursor.Line - 1;
@@ -119,12 +120,12 @@ begin
     Result := ASession.PrepareRename(ATarget.FileName, mText, ATarget.Line, ATarget.Character, ATarget.OldName);
     if not Result then
     begin
-      AMessage(TAtlasStrings.Text(TAtlasTextId.RenameNothing));
+      AMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.RenameNothing));
     end;
   except
     on E: ELspClientError do
     begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.RenameFailed, [E.Message]));
+      AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.RenameFailed, [E.Message]));
     end;
   end;
 end;
@@ -133,7 +134,8 @@ end;
 function AskNewName(const AOldName: string; out ANewName: string): Boolean;
 begin
   ANewName := AOldName;
-  Result := InputQuery(TAtlasStrings.Text(TAtlasTextId.RenameTitle), TAtlasStrings.Fmt(TAtlasTextId.RenamePrompt,
+  Result := InputQuery(TAtlasEditorStrings.Text(TAtlasEditorTextId.RenameTitle),
+    TAtlasEditorStrings.Fmt(TAtlasEditorTextId.RenamePrompt,
     [AOldName]), ANewName);
   ANewName := Trim(ANewName);
   Result := Result and (ANewName <> '') and (ANewName <> AOldName);
@@ -158,7 +160,7 @@ begin
   except
     on E: ELspClientError do
     begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.RenameFailed, [E.Message]));
+      AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.RenameFailed, [E.Message]));
     end;
   end;
 end;
@@ -180,8 +182,9 @@ begin
     begin
       TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
     end;
-  Result := TAtlasRenamePreview.Execute(TAtlasStrings.Fmt(TAtlasTextId.RenamePreviewTitle, [AOldName, ANewName]),
-    TAtlasStrings.Fmt(TAtlasTextId.RenamePreviewHint, [AEdit.EditCount, Length(AEdit.Files)]),
+  Result := TAtlasRenamePreview.Execute(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.RenamePreviewTitle, [AOldName,
+    ANewName]),
+    TAtlasEditorStrings.Fmt(TAtlasEditorTextId.RenamePreviewHint, [AEdit.EditCount, Length(AEdit.Files)]),
     TAtlasResults.Group(mPreview), mOpen);
 end;
 
@@ -192,14 +195,15 @@ var
   mOutcome: TAtlasWorkspaceEditResult;
 begin
   mOutcome := TAtlasIdeWorkspaceEdit.Apply(AEdit, APolicy,
-    TAtlasStrings.Fmt(TAtlasTextId.UndoActionRename, [AOldName, ANewName]));
+    TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UndoActionRename, [AOldName, ANewName]));
   if mOutcome.Error <> '' then
   begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
   end
   else
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.RenameDone, [AOldName, ANewName, mOutcome.Edits, mOutcome.Files]));
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.RenameDone, [AOldName, ANewName, mOutcome.Edits,
+      mOutcome.Files]));
   end;
   if mOutcome.Written > 0 then
   begin
@@ -227,7 +231,7 @@ begin
   mView := TopView;
   if (mView = nil) or (mView.Buffer = nil) then
   begin
-    AMessage(TAtlasStrings.Text(TAtlasTextId.RenameNothing));
+    AMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.RenameNothing));
     Exit;
   end;
   if not PrepareTarget(ASession, mView, AMessage, mTarget) or not AskNewName(mTarget.OldName, mNewName) or
@@ -237,7 +241,7 @@ begin
   end;
   if mEdit.IsEmpty then
   begin
-    AMessage(TAtlasStrings.Text(TAtlasTextId.RenameNothing));
+    AMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.RenameNothing));
   end
   else if ConfirmRename(mTarget.OldName, mNewName, mEdit) then
   begin

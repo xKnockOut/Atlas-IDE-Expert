@@ -127,7 +127,8 @@ uses
   System.Math,
   Vcl.Dialogs,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings;
 
 /// <summary>Eingebautes Fenster für den Inhalt einer Datei.</summary>
 procedure ShowTextWindow(const AName, AText: string);
@@ -139,7 +140,7 @@ var
 begin
   mViewer := TForm.CreateNew(nil);
   try
-    mViewer.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportViewerTitle, [AName]);
+    mViewer.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportViewerTitle, [AName]);
     mViewer.BorderStyle := bsSizeable;
     mViewer.Position := poMainFormCenter;
     mViewer.Width := 900;
@@ -155,7 +156,7 @@ begin
     mButton.Align := alRight;
     mButton.AlignWithMargins := True;
     mButton.Margins.SetBounds(8, 8, 8, 8);
-    mButton.Caption := TAtlasStrings.Text(TAtlasTextId.ReportClose);
+    mButton.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportClose);
     mButton.Cancel := True;
     mButton.Default := True;
     mButton.ModalResult := mrOk;
@@ -215,14 +216,14 @@ begin
   FFolder := AFolder;
   FReportUrl := AReportUrl;
   FLastDataAvailable := (AInput.LastDataFile <> '') and FileExists(AInput.LastDataFile);
-  Caption := TAtlasStrings.Text(TAtlasTextId.ReportTitle);
+  Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportTitle);
   BorderStyle := bsSizeable;
   Position := poMainFormCenter;
   Width := 760;
   Height := 660;
   CreateHead;
   CreateChecks;
-  NewLabel(Self, Self, TAtlasStrings.Text(TAtlasTextId.ReportPreview)).Top := 500;
+  NewLabel(Self, Self, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportPreview)).Top := 500;
   CreateFoot;
   CreateList;
   ShowFolder;
@@ -234,10 +235,10 @@ var
   mHeading: TLabel;
 begin
   // Von oben nach unten gestapelt: alTop ordnet nach Top, daher wachsende Werte.
-  mHeading := NewLabel(Self, Self, TAtlasStrings.Text(TAtlasTextId.ReportHint));
+  mHeading := NewLabel(Self, Self, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportHint));
   mHeading.WordWrap := True;
   mHeading.Top := 0;
-  NewLabel(Self, Self, TAtlasStrings.Text(TAtlasTextId.ReportDescription)).Top := 100;
+  NewLabel(Self, Self, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportDescription)).Top := 100;
   FParts.Description := TMemo.Create(Self);
   FParts.Description.Parent := Self;
   FParts.Description.Align := alTop;
@@ -246,7 +247,7 @@ begin
   FParts.Description.Height := 72;
   FParts.Description.ScrollBars := ssVertical;
   FParts.Description.Top := 200;
-  NewLabel(Self, Self, TAtlasStrings.Text(TAtlasTextId.ReportParts)).Top := 300;
+  NewLabel(Self, Self, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportParts)).Top := 300;
 end;
 
 procedure TAtlasReportDialog.CreateChecks;
@@ -268,18 +269,23 @@ begin
     mCheck.OnClick := PartClick;
     FParts.Checks[mPart] := mCheck;
   end;
-  FParts.Checks[TAtlasPackagePart.Logs].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartLogs);
-  FParts.Checks[TAtlasPackagePart.Versions].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartVersions);
-  FParts.Checks[TAtlasPackagePart.Settings].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartSettings);
+  FParts.Checks[TAtlasPackagePart.Logs].Caption := TAtlasDiagnosticsStrings.Text(
+    TAtlasDiagnosticsTextId.ReportPartLogs);
+  FParts.Checks[TAtlasPackagePart.Versions].Caption := TAtlasDiagnosticsStrings.Text(
+    TAtlasDiagnosticsTextId.ReportPartVersions);
+  FParts.Checks[TAtlasPackagePart.Settings].Caption := TAtlasDiagnosticsStrings.Text(
+    TAtlasDiagnosticsTextId.ReportPartSettings);
   // Optional (#479): nur mit vorhandenen Daten.
   FParts.Checks[TAtlasPackagePart.LastData].Enabled := FLastDataAvailable;
   if FLastDataAvailable then
   begin
-    FParts.Checks[TAtlasPackagePart.LastData].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartLastData);
+    FParts.Checks[TAtlasPackagePart.LastData].Caption := TAtlasDiagnosticsStrings.Text(
+      TAtlasDiagnosticsTextId.ReportPartLastData);
   end
   else
   begin
-    FParts.Checks[TAtlasPackagePart.LastData].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartLastDataMissing);
+    FParts.Checks[TAtlasPackagePart.LastData].Caption := TAtlasDiagnosticsStrings.Text(
+      TAtlasDiagnosticsTextId.ReportPartLastDataMissing);
   end;
 end;
 
@@ -296,15 +302,20 @@ begin
   mFoot.BevelOuter := bvNone;
   mFoot.ShowCaption := False;
   FParts.Summary := NewFootLabel(Self, mFoot);
-  FParts.ViewButton := NewButton(Self, mFoot, TAtlasStrings.Text(TAtlasTextId.ReportView), 110, ViewClick);
+  FParts.ViewButton := NewButton(Self, mFoot, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportView), 110,
+    ViewClick);
   FParts.FolderLabel := NewFootLabel(Self, mFoot);
   FParts.FolderLabel.EllipsisPosition := epPathEllipsis;
-  FParts.FolderButton := NewButton(Self, mFoot, TAtlasStrings.Text(TAtlasTextId.ReportFolderChange), 110,
+  FParts.FolderButton := NewButton(Self, mFoot,
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportFolderChange), 110,
     FolderClick);
   FParts.Status := NewFootLabel(Self, mFoot);
-  FParts.ZipButton := NewButton(Self, mFoot, TAtlasStrings.Text(TAtlasTextId.ReportCreateZip), 130, ZipClick);
-  FParts.IssueButton := NewButton(Self, mFoot, TAtlasStrings.Text(TAtlasTextId.ReportOpenIssue), 160, IssueClick);
-  FParts.CloseButton := NewButton(Self, mFoot, TAtlasStrings.Text(TAtlasTextId.ReportClose), 100, nil);
+  FParts.ZipButton := NewButton(Self, mFoot, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportCreateZip),
+    130, ZipClick);
+  FParts.IssueButton := NewButton(Self, mFoot, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportOpenIssue),
+    160, IssueClick);
+  FParts.CloseButton := NewButton(Self, mFoot, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportClose), 100,
+    nil);
   FParts.CloseButton.Cancel := True;
   FParts.CloseButton.ModalResult := mrCancel;
   mFoot.OnResize := FootResize;
@@ -326,10 +337,10 @@ begin
   mList.RowSelect := True;
   mList.HideSelection := False;
   mColumn := mList.Columns.Add;
-  mColumn.Caption := TAtlasStrings.Text(TAtlasTextId.ReportColumnFile);
+  mColumn.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportColumnFile);
   mColumn.Width := 480;
   mColumn := mList.Columns.Add;
-  mColumn.Caption := TAtlasStrings.Text(TAtlasTextId.ReportColumnSize);
+  mColumn.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportColumnSize);
   mColumn.Width := 120;
   mColumn.Alignment := taRightJustify;
   // Doppelklick wie „Ansehen“.
@@ -361,15 +372,17 @@ class function TAtlasReportDialog.SizeText(ABytes: Int64): string;
 begin
   if ABytes < 1024 then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ReportSizeBytes, [ABytes]);
+    Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportSizeBytes, [ABytes]);
   end
   else if ABytes < 1024 * 1024 then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ReportSizeKb, [FormatFloat('0.0', ABytes / 1024, FormatSettings)]);
+    Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportSizeKb, [FormatFloat('0.0', ABytes / 1024,
+      FormatSettings)]);
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ReportSizeMb, [FormatFloat('0.0', ABytes / (1024 * 1024), FormatSettings)]);
+    Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportSizeMb, [FormatFloat('0.0',
+      ABytes / (1024 * 1024), FormatSettings)]);
   end;
 end;
 
@@ -400,11 +413,11 @@ begin
   end;
   if Length(FFiles) = 0 then
   begin
-    FParts.Summary.Caption := TAtlasStrings.Text(TAtlasTextId.ReportEmpty);
+    FParts.Summary.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportEmpty);
   end
   else
   begin
-    FParts.Summary.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportSummary, [Length(FFiles),
+    FParts.Summary.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportSummary, [Length(FFiles),
       SizeText(TAtlasDiagnosticPackage.TotalSize(FFiles))]);
   end;
   FParts.ZipButton.Enabled := Length(FFiles) > 0;
@@ -413,7 +426,7 @@ end;
 
 procedure TAtlasReportDialog.ShowFolder;
 begin
-  FParts.FolderLabel.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportFolder, [FFolder]);
+  FParts.FolderLabel.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportFolder, [FFolder]);
 end;
 
 procedure TAtlasReportDialog.PartClick(Sender: TObject);
@@ -519,12 +532,13 @@ begin
   except
     on E: Exception do
     begin
-      FParts.Status.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportZipFailed, [E.Message]);
+      FParts.Status.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportZipFailed, [E.Message]);
       Exit;
     end;
   end;
   FZipFile := mTarget;
-  FParts.Status.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportZipDone, [ExtractFileName(mTarget)]);
+  FParts.Status.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportZipDone,
+    [ExtractFileName(mTarget)]);
   if Assigned(FActions.ShowFile) then
   begin
     FActions.ShowFile(mTarget);
@@ -556,7 +570,7 @@ begin
   begin
     FActions.OpenUrl(mUrl);
   end;
-  FParts.Status.Caption := TAtlasStrings.Text(TAtlasTextId.ReportIssueDone);
+  FParts.Status.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportIssueDone);
 end;
 
 procedure TAtlasReportDialog.ZipClick(Sender: TObject);

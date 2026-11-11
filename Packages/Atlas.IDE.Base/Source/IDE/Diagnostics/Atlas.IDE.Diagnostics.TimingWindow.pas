@@ -42,7 +42,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.Symbol,
   Atlas.IDE.Foundation.DockWindow;
@@ -79,7 +79,7 @@ end;
 
 function TTimingDock.GetCaption: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.DiagnosticCaption);
+  Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticCaption);
 end;
 
 function TTimingDock.GetIdentifier: string;

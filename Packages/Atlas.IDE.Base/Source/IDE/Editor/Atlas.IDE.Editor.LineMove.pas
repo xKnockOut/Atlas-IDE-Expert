@@ -48,7 +48,7 @@ implementation
 uses
   ToolsAPI,
   Atlas.Core.Lsp.Session,
-  Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot;
@@ -249,7 +249,7 @@ begin
   begin
     if mMove.Method and Assigned(FMessage) then
     begin
-      FMessage(TAtlasStrings.Text(TAtlasTextId.MoveLinesNoNeighbour));
+      FMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.MoveLinesNoNeighbour));
     end;
     Exit;
   end;

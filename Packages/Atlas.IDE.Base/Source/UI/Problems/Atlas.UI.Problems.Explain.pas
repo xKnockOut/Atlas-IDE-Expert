@@ -46,7 +46,8 @@ implementation
 
 uses
   Vcl.Graphics,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Problems.Strings;
 
 const
   cGap = 8;
@@ -60,7 +61,7 @@ var
   mHeading: TLabel;
 begin
   inherited CreateNew(AOwner);
-  Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsExplainTitle, [AExplanation.Id]);
+  Caption := TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsExplainTitle, [AExplanation.Id]);
   BorderStyle := bsSizeToolWin;
   BorderIcons := [biSystemMenu];
   Position := poMainFormCenter;
@@ -78,7 +79,7 @@ begin
   mBottom.ShowCaption := False;
   FClose := TButton.Create(Self);
   FClose.Parent := mBottom;
-  FClose.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsExplainClose);
+  FClose.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsExplainClose);
   FClose.Width := ScaleValue(90);
   FClose.Height := ScaleValue(28);
   FClose.Top := ScaleValue(cGap);

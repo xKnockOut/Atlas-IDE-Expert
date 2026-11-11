@@ -37,7 +37,7 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.Core.Editor.MissingUnit,
   Atlas.IDE.Foundation.Files;
 
@@ -77,7 +77,7 @@ begin
     // Mit Geerbtem: Steht der Ordner schon in der Basis, braucht ihn die Konfiguration nicht noch einmal.
     if TAtlasSearchPaths.Contains(AConfiguration.GetValue(TAtlasSearchPaths.cOptionName, True), ARequest.Folder) then
     begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitSearchPathPresent, [ARequest.Folder, ALabel,
+      AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MissingUnitSearchPathPresent, [ARequest.Folder, ALabel,
         ExtractFileName(AProject.FileName)]));
       Exit;
     end;
@@ -89,7 +89,7 @@ begin
   except
     on E: Exception do
     begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitSearchPathFailed, [E.Message]));
+      AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MissingUnitSearchPathFailed, [E.Message]));
     end;
   end;
 end;
@@ -108,24 +108,25 @@ begin
   mProject := TAtlasIdeFiles.GroupProject(mRequest.ProjectFile);
   if mProject = nil then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitNoProject, [ExtractFileName(mRequest.ProjectFile)]));
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MissingUnitNoProject, [ExtractFileName(mRequest.ProjectFile)]));
     Exit;
   end;
   mLabel_ := mRequest.Config;
   if mLabel_ = '' then
   begin
-    mLabel_ := TAtlasStrings.Text(TAtlasTextId.MissingUnitAllConfigs);
+    mLabel_ := TAtlasEditorStrings.Text(TAtlasEditorTextId.MissingUnitAllConfigs);
   end;
   mConfiguration := ConfigurationOf(mProject, mRequest.Config);
   if mConfiguration = nil then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitConfigNotFound, [mRequest.Config,
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MissingUnitConfigNotFound, [mRequest.Config,
       ExtractFileName(mProject.FileName)]));
     Exit;
   end;
   if WriteSearchPath(mProject, mConfiguration, mRequest, mLabel_, AMessage) then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitSearchPathDone, [mLabel_, ExtractFileName(mProject.FileName),
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MissingUnitSearchPathDone, [mLabel_,
+      ExtractFileName(mProject.FileName),
       mRequest.Folder]));
   end;
 end;
@@ -142,12 +143,13 @@ begin
   mProject := TAtlasIdeFiles.GroupProject(mRequest.ProjectFile);
   if mProject = nil then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitNoProject, [ExtractFileName(mRequest.ProjectFile)]));
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MissingUnitNoProject, [ExtractFileName(mRequest.ProjectFile)]));
     Exit;
   end;
   if mProject.FindModuleInfo(mRequest.FileName) <> nil then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitAlreadyInProject, [ExtractFileName(mRequest.FileName),
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MissingUnitAlreadyInProject,
+      [ExtractFileName(mRequest.FileName),
       ExtractFileName(mProject.FileName)]));
     Exit;
   end;
@@ -156,12 +158,12 @@ begin
   except
     on E: Exception do
     begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitAddFailed, [ExtractFileName(mRequest.FileName),
+      AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MissingUnitAddFailed, [ExtractFileName(mRequest.FileName),
         E.Message]));
       Exit;
     end;
   end;
-  AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitAdded, [ExtractFileName(mRequest.FileName),
+  AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MissingUnitAdded, [ExtractFileName(mRequest.FileName),
     ExtractFileName(mProject.FileName)]));
 end;
 

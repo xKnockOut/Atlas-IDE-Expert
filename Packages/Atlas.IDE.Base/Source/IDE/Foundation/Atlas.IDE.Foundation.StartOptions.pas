@@ -77,6 +77,7 @@ uses
   System.Actions,
   Vcl.ActnList,
   Atlas.UI.Strings,
+  Atlas.UI.Foundation.Strings,
   Atlas.IDE.Foundation.Host;
 
 const
@@ -392,7 +393,8 @@ begin
   Result := True;
   if EndTemporary(AProject.FileName, mChanged) and not mChanged then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.StartProfilesTemporaryRestored, [ExtractFileName(AProject.FileName)]));
+    Say(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.StartProfilesTemporaryRestored,
+      [ExtractFileName(AProject.FileName)]));
   end;
 end;
 

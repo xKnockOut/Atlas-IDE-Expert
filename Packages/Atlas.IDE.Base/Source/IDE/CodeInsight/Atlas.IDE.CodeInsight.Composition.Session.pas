@@ -16,6 +16,7 @@ uses
   Atlas.Core.Status.Lines,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
+  Atlas.UI.CodeInsight.Strings,
   Atlas.IDE.Commands.Palette,
   Atlas.IDE.CodeInsight.Manager;
 
@@ -456,7 +457,7 @@ var
 begin
   if not IssueCreation(mCreation) or not mCreation.Enabled then
   begin
-    MessageLine(TAtlasStrings.Text(TAtlasTextId.CrashCaseTitle) + ': ' + ACase.Folder);
+    MessageLine(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.CrashCaseTitle) + ': ' + ACase.Folder);
     Exit;
   end;
   mCaseFiles := TAtlasCrashCases.AttachFiles(ACase.Folder);

@@ -126,6 +126,7 @@ implementation
 
 uses
   Atlas.UI.Strings,
+  Atlas.UI.CodeInsight.Strings,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
   Atlas.IDE.CodeInsight.Manager.Paths,
@@ -226,7 +227,8 @@ begin
   FLastError := AMessage;
   // Benachrichtigungszentrale (#601): bei „nur sammeln“ oder „aus“ keine Zeile im Meldungsfenster.
   mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer,
-    TAtlasNotificationSeverity.Error, TAtlasStrings.Text(TAtlasTextId.NotificationsServerError), AMessage,
+    TAtlasNotificationSeverity.Error, TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.NotificationsServerError),
+    AMessage,
     LogActions);
   if (mMode = TAtlasNotificationMode.Show) and Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin

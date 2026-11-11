@@ -112,7 +112,8 @@ implementation
 uses
   Vcl.Graphics,
   Vcl.Menus,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings;
 
 const
   cGap = 8;
@@ -253,7 +254,7 @@ begin
   ADefault := NewButton(AOwner, Result, ACaption);
   ADefault.ModalResult := mrOk;
   ADefault.Default := True;
-  ACancel := NewButton(AOwner, Result, TAtlasStrings.Text(TAtlasTextId.SettingsDialogCancel));
+  ACancel := NewButton(AOwner, Result, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsDialogCancel));
   ACancel.ModalResult := mrCancel;
   ACancel.Cancel := True;
 end;
@@ -277,7 +278,7 @@ begin
   end;
   if APreview.Newer then
   begin
-    Result := Trim(Result + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsImportNewer,
+    Result := Trim(Result + sLineBreak + TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsImportNewer,
       [APreview.Source.AtlasVersion]));
   end;
 end;
@@ -300,15 +301,15 @@ var
   mTitle: TLabel;
 begin
   inherited CreateNew(AOwner);
-  SetupForm(Self, TAtlasStrings.Text(TAtlasTextId.SettingsExportTitle), 460);
-  NewDialogButtons(Self, TAtlasStrings.Text(TAtlasTextId.SettingsExportSave), FSave, FCancel);
-  NewInfoLabel(Self, TAtlasStrings.Text(TAtlasTextId.SettingsExportInfo));
-  mTitle := NewTopLabel(Self, TAtlasStrings.Text(TAtlasTextId.SettingsExportAreas), 1000);
+  SetupForm(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportTitle), 460);
+  NewDialogButtons(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportSave), FSave, FCancel);
+  NewInfoLabel(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportInfo));
+  mTitle := NewTopLabel(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportAreas), 1000);
   mTitle.Font.Style := [fsBold];
   FAreas := NewAreaBoxes(Self, ACatalog, nil, True, AreaClick, FAreaIds);
-  FSecrets := NewChoice(Self, TAtlasStrings.Text(TAtlasTextId.SettingsExportSecrets), 3000,
-    [TAtlasStrings.Text(TAtlasTextId.SettingsExportSecretsOmit),
-    TAtlasStrings.Text(TAtlasTextId.SettingsExportSecretsPlaceholder)]);
+  FSecrets := NewChoice(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportSecrets), 3000,
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportSecretsOmit),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportSecretsPlaceholder)]);
   FSecrets.ItemIndex := Ord(ASecrets);
   FSecrets.Columns := 2;
   // Feste Höhe: vier Zeilen Bereiche bei 11 Bereichen und drei Spalten.
@@ -383,16 +384,18 @@ begin
   FCatalog := ACatalog;
   FPreview := APreview;
   FOnPreview := AOnPreview;
-  SetupForm(Self, TAtlasStrings.Fmt(TAtlasTextId.SettingsImportTitle, [ExtractFileName(AFileName)]), 760);
-  mButtons := NewDialogButtons(Self, TAtlasStrings.Text(TAtlasTextId.SettingsImportApply), FApply, FCancel);
+  SetupForm(Self, TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsImportTitle, [ExtractFileName(AFileName)]),
+    760);
+  mButtons := NewDialogButtons(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportApply), FApply,
+    FCancel);
   FCount := TLabel.Create(Self);
   FCount.Parent := mButtons;
   FCount.AlignWithMargins := True;
   FCount.Margins.SetBounds(cGap, 4, 0, 0);
   FInfo := NewInfoLabel(Self, ImportInfo(APreview));
   FInfo.Visible := FInfo.Caption <> '';
-  FMode := NewChoice(Self, '', 1000, [TAtlasStrings.Text(TAtlasTextId.SettingsImportMerge),
-    TAtlasStrings.Text(TAtlasTextId.SettingsImportReplace)]);
+  FMode := NewChoice(Self, '', 1000, [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportMerge),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportReplace)]);
   FMode.ItemIndex := Ord(APreview.Mode);
   FMode.OnClick := Recalculate;
   FAreaBoxes := NewAreaBoxes(Self, ACatalog, APreview.Areas, False, Recalculate, FAreaIds);
@@ -407,11 +410,11 @@ begin
   FList.RowSelect := True;
   FList.OnClick := ListChanged;
   FList.OnKeyUp := ListKeyUp;
-  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SettingsImportColKey), ScaleValue(220));
-  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SettingsImportColArea), ScaleValue(100));
-  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SettingsImportColCurrent), ScaleValue(110));
-  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SettingsImportColNew), ScaleValue(110));
-  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SettingsImportColNote), ScaleValue(180));
+  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColKey), ScaleValue(220));
+  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColArea), ScaleValue(100));
+  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColCurrent), ScaleValue(110));
+  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNew), ScaleValue(110));
+  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNote), ScaleValue(180));
 
   ClientHeight := ScaleValue(520);
 end;
@@ -431,7 +434,7 @@ var
 begin
   if AJson = '' then
   begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.SettingsImportDefault));
+    Exit(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportDefault));
   end;
   Result := TAtlasJsonValues.Display(AJson);
   // Tastenkürzel wie im Menü.
@@ -449,34 +452,37 @@ function TAtlasImportDialog.NoteText(const AItem: TAtlasImportItem): string;
 begin
   case AItem.Status of
     isSame:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsImportSame);
+      Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportSame);
     isReset:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsImportReset);
+      Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportReset);
     isUnknown:
       if FPreview.Newer then
       begin
-        Result := TAtlasStrings.Text(TAtlasTextId.SettingsImportUnknownNewer);
+        Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportUnknownNewer);
       end
       else
       begin
-        Result := TAtlasStrings.Text(TAtlasTextId.SettingsImportUnknown);
+        Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportUnknown);
       end;
     isInvalid:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsImportInvalid, [string.Join('; ', AItem.Issues)]);
+      Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsImportInvalid, [string.Join('; ',
+        AItem.Issues)]);
     isSecret:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsImportSecret);
+      Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportSecret);
     isSkipped:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsImportSkipped);
+      Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportSkipped);
   else
     Result := '';
   end;
   if AItem.Migrated then
   begin
-    Result := Trim(Result + ' ' + TAtlasStrings.Fmt(TAtlasTextId.SettingsImportMigrated, [AItem.SourceKey]));
+    Result := Trim(Result + ' ' + TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsImportMigrated,
+      [AItem.SourceKey]));
   end;
   if AItem.Covered <> '' then
   begin
-    Result := Trim(Result + ' ' + TAtlasStrings.Fmt(TAtlasTextId.SettingsImportCovered, [AItem.Covered]));
+    Result := Trim(Result + ' ' + TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsImportCovered,
+      [AItem.Covered]));
   end;
 end;
 
@@ -551,7 +557,7 @@ begin
       Inc(mSelected);
     end;
   end;
-  FCount.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsImportCount, [mSelected, mSelectable]);
+  FCount.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsImportCount, [mSelected, mSelectable]);
   FApply.Enabled := mSelected > 0;
 end;
 
@@ -642,13 +648,13 @@ var
   mButtons: TFlowPanel;
 begin
   inherited CreateNew(AOwner);
-  SetupForm(Self, TAtlasStrings.Text(TAtlasTextId.SettingsProfileTitle), 420);
+  SetupForm(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProfileTitle), 420);
   FDescriptions := ADescriptions;
   mButtons := NewButtons(Self);
-  FLoad := NewButton(Self, mButtons, TAtlasStrings.Text(TAtlasTextId.SettingsImportButton));
+  FLoad := NewButton(Self, mButtons, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportButton));
   FLoad.ModalResult := mrOk;
   FLoad.Default := True;
-  FCancel := NewButton(Self, mButtons, TAtlasStrings.Text(TAtlasTextId.SettingsDialogCancel));
+  FCancel := NewButton(Self, mButtons, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsDialogCancel));
   FCancel.ModalResult := mrCancel;
   FCancel.Cancel := True;
   FDescription := TLabel.Create(Self);

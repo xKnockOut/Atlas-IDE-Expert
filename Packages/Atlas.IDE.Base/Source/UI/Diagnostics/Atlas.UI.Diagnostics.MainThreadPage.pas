@@ -68,7 +68,7 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.PluginRows;
 
 { TAtlasMainThreadPage }
@@ -84,7 +84,7 @@ begin
   FFeatures.Parent := Self;
   FFeatures.Align := alTop;
   FFeatures.Height := MulDiv(200, CurrentPPI, 96);
-  FFeatures.EmptyText := TAtlasStrings.Text(TAtlasTextId.DiagEmpty);
+  FFeatures.EmptyText := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagEmpty);
   FFeatures.SetColumns(TAtlasPluginGridRows.FeatureColumns);
   FFeatures.OnOpen := FeatureOpen;
   mSplitter := TSplitter.Create(Self);
@@ -100,7 +100,7 @@ begin
   FSlow := TAtlasDiagnosticGrid.Create(Self);
   FSlow.Parent := Self;
   FSlow.Align := alClient;
-  FSlow.EmptyText := TAtlasStrings.Text(TAtlasTextId.DiagEmpty);
+  FSlow.EmptyText := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagEmpty);
   FSlow.SetColumns(TAtlasPluginGridRows.SlowColumns);
   FMenu := TAtlasFeatureMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
@@ -168,11 +168,13 @@ begin
     FSnapshot.ThresholdMs));
   if FFilterOn then
   begin
-    FSlowCaption.Caption := TAtlasStrings.Fmt(TAtlasTextId.DiagSlowOnly, [TAtlasGuard.FeatureName(FFilter)]);
+    FSlowCaption.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagSlowOnly,
+      [TAtlasGuard.FeatureName(FFilter)]);
   end
   else
   begin
-    FSlowCaption.Caption := TAtlasStrings.Fmt(TAtlasTextId.DiagSlowAll, [TAtlasPluginRecorder.cSlowCapacity]);
+    FSlowCaption.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagSlowAll,
+      [TAtlasPluginRecorder.cSlowCapacity]);
   end;
 end;
 

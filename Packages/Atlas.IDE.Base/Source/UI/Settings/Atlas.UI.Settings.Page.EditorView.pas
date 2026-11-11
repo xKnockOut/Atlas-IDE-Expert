@@ -65,6 +65,7 @@ uses
   System.StrUtils,
   Vcl.Controls,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Editor.RoutineNesting,
   Atlas.Core.Settings.ToolbarItems,
@@ -77,159 +78,190 @@ var
   mPanel: TWinControl;
 begin
   AddSheet(TAtlasTextId.SettingsTabEditor);
-  BindCheck('HoverTooltip', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover)));
+  BindCheck('HoverTooltip', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHover)));
   // Aktionszeile unter Befunden im Hover (#909).
-  BindCheck('HoverProblemActions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHoverProblemActions)));
+  BindCheck('HoverProblemActions',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHoverProblemActions)));
   // Rollbereich der published-Mitglieder (#1841).
-  BindText('HoverMembersMaxLines', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHoverMembersMaxLines)));
+  BindText('HoverMembersMaxLines',
+    AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHoverMembersMaxLines)));
   // Parameter und Rückgabe immer offen (#1919).
-  BindCheck('HoverSignatureParams', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHoverSignatureParams)));
+  BindCheck('HoverSignatureParams',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHoverSignatureParams)));
   // XMLDoc in Tooltip und Detailpanel (#654, #770): zu- oder aufgeklappt beim Öffnen; gespeichert in
   // settings.json (hints.*, #227).
-  FXmlDocExpand := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocExpand),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocCollapsed), TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocLast),
-    TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocExpanded)]);
-  BindText('XmlDocMaxLines', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocMaxLines)));
-  BindCheck('PairColors', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairs)));
-  BindCheck('PairGuides', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuides)));
+  FXmlDocExpand := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsXmlDocExpand),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsXmlDocCollapsed),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsXmlDocLast),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsXmlDocExpanded)]);
+  BindText('XmlDocMaxLines', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsXmlDocMaxLines)));
+  BindCheck('PairColors', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairs)));
+  BindCheck('PairGuides', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairGuides)));
   // Anweisungen mitfärben, Linienbreite und Deckkraft (#653); wirken nur mit der Paarfärbung.
-  BindCheck('PairOwners', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairOwners)));
-  BindText('PairGuideWidth', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuideWidth)));
-  BindText('PairGuideOpacity', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuideOpacity)));
+  BindCheck('PairOwners', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairOwners)));
+  BindText('PairGuideWidth', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairGuideWidth)));
+  BindText('PairGuideOpacity', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairGuideOpacity)));
   // Lokale Routinen abheben (#1788): Färbung und Band getrennt.
-  FNestedRoutines := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutines),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutinesOuter),
-    TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutinesDeeper),
-    TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutinesColor)]);
-  BindCheck('NestedRoutineBand', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutineBand)));
-  BindCheck('InactiveDim', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim)));
-  BindCheck('InlayHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayHints)));
+  FNestedRoutines := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNestedRoutines),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNestedRoutinesOuter),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNestedRoutinesDeeper),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNestedRoutinesColor)]);
+  BindCheck('NestedRoutineBand', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNestedRoutineBand)));
+  BindCheck('InactiveDim', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsInactiveDim)));
+  BindCheck('InlayHints', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsInlayHints)));
   // Typmarken von Inline-Variablen (#453), unabhängig von den Parameternamen.
-  BindCheck('InlayTypeHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayTypeHints)));
+  BindCheck('InlayTypeHints', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsInlayTypeHints)));
   // Symbole aus Include-Dateien hinter {$I} (#860).
-  BindCheck('InlayDefineHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayDefineHints)));
+  BindCheck('InlayDefineHints', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsInlayDefineHints)));
   // Code hinter Steuerzeichen wie ^C (#862).
-  BindCheck('InlayCharHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayCharHints)));
+  BindCheck('InlayCharHints', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsInlayCharHints)));
   // Marke „braucht kein Self“ hinter Methoden, die Self nicht brauchen (#686).
-  BindCheck('InlayMethodHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayMethodHints)));
+  BindCheck('InlayMethodHints', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsInlayMethodHints)));
   // Beschriftung hinter dem end langer Blöcke (#620).
-  BindCheck('BlockEndLabels', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabels)));
-  BindText('BlockEndLabelsMinLines', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabelsMinLines)));
-  BindCheck('DimUnusedUses', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDimUnusedUses)));
+  BindCheck('BlockEndLabels', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBlockEndLabels)));
+  BindText('BlockEndLabelsMinLines',
+    AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBlockEndLabelsMinLines)));
+  BindCheck('DimUnusedUses', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsDimUnusedUses)));
   // Brotkrumenleiste (#590).
-  BindCheck('Breadcrumbs', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbs)));
-  BindCheck('BreadcrumbsShowUnit', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsShowUnit)));
+  BindCheck('Breadcrumbs', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbs)));
+  BindCheck('BreadcrumbsShowUnit',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsShowUnit)));
   // Sichtbarkeitsabschnitt als Glied (#1759).
-  BindCheck('BreadcrumbsVisibility', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsVisibility)));
+  BindCheck('BreadcrumbsVisibility',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsVisibility)));
   // Unterblock in Typen (#1767).
-  BindCheck('BreadcrumbsMemberBlocks', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsMemberBlocks)));
+  BindCheck('BreadcrumbsMemberBlocks',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsMemberBlocks)));
   // Sichtbarkeitsmarke am Methodenglied (#1765).
   BindCheck('BreadcrumbsVisibilityMark',
-    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsVisibilityMark)));
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsVisibilityMark)));
   // Deklarationsblock der Unit (#1766).
   BindCheck('BreadcrumbsDeclarationBlocks',
-    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsDeclarationBlocks)));
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsDeclarationBlocks)));
   // Bedingungszweig (#1763).
-  BindCheck('BreadcrumbsConditionals', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsConditionals)));
+  BindCheck('BreadcrumbsConditionals',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsConditionals)));
   // Region (#1764).
-  BindCheck('BreadcrumbsRegions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsRegions)));
+  BindCheck('BreadcrumbsRegions',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsRegions)));
   // try/except/finally und case-Zweig (#1769).
-  BindCheck('BreadcrumbsStatements', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsStatements)));
+  BindCheck('BreadcrumbsStatements',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsStatements)));
   // Sprungmenü am Sichtbarkeitsglied (#1768).
   BindCheck('BreadcrumbsSectionCounts',
-    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsSectionCounts)));
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsSectionCounts)));
   BindCheck('BreadcrumbsSectionAppend',
-    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsSectionAppend)));
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsSectionAppend)));
   BindCheck('BreadcrumbsSectionCreate',
-    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsSectionCreate)));
-  BindCheck('BreadcrumbsIdeColors', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsIdeColors)));
-  BindCheck('BreadcrumbsHideIdeToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsHideIdeToolbar)));
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsSectionCreate)));
+  BindCheck('BreadcrumbsIdeColors',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsIdeColors)));
+  BindCheck('BreadcrumbsHideIdeToolbar',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsHideIdeToolbar)));
   BindKey('BreadcrumbsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand)));
   BindKey('SectionAppendKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SectionAppendCommand)));
   // Rechtsklick-Menü an den Gliedern (#1786).
   BindCheck('BreadcrumbsContextMenu',
-    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsContextMenu)));
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsContextMenu)));
   // Überladungen mit Zähler und Parametern (#1784).
-  BindCheck('BreadcrumbsOverloads', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsOverloads)));
-  BindCheck('BreadcrumbsInterfaces', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsInterfaces)));
-  BindCheck('BreadcrumbsMetrics', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsMetrics)));
-  BindCheck('MouseNavButtons', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMouseNavButtons)));
+  BindCheck('BreadcrumbsOverloads',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsOverloads)));
+  BindCheck('BreadcrumbsInterfaces',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsInterfaces)));
+  BindCheck('BreadcrumbsMetrics',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsMetrics)));
+  BindCheck('MouseNavButtons', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMouseNavButtons)));
   // Atlas-Editorleiste (#1101).
-  BindCheck('EditorToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbar)));
+  BindCheck('EditorToolbar', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbar)));
   FEditorToolbarPosition := AddChoice(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPosition),
     [TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionBelow),
     TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionAbove),
     TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionInline)]);
-  FEditorToolbarItems := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbarItems));
+  FEditorToolbarItems := AddTextLine(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbarItems));
   mPanel := AddPanel(32);
   FEditorToolbarCustomize := TButton.Create(FPage);
   FEditorToolbarCustomize.Parent := mPanel;
-  FEditorToolbarCustomize.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbarCustomize);
+  FEditorToolbarCustomize.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbarCustomize);
   FEditorToolbarCustomize.Left := 0;
   FEditorToolbarCustomize.Top := 3;
   FEditorToolbarCustomize.Width := 180;
   FEditorToolbarCustomize.OnClick := EditorToolbarCustomizeClick;
   Attach(mPanel, FEditorToolbarItems);
-  BindCheck('EditorToolbarReturnButton', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbarReturnButton)));
+  BindCheck('EditorToolbarReturnButton',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbarReturnButton)));
   FEditorToolbarLabels := BindCheck('EditorToolbarLabels', AddCheck(TAtlasStrings.Text(TAtlasTextId.EditorToolbarLabels)));
 end;
 
 procedure TAtlasSettingsEditorViewPart.Build2;
 begin
   // Atlas-Statusleiste unten im Editorfenster (#1155).
-  BindCheck('EditorStatusBar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorStatusBar)));
-  FEditorStatusBarItems := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsEditorStatusBarItems));
+  BindCheck('EditorStatusBar', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorStatusBar)));
+  FEditorStatusBarItems := AddTextLine(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorStatusBarItems));
   // Aufrufdiagramm (#1122).
-  BindCheck('CallHierarchyDiagram', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCallHierarchyDiagram)));
+  BindCheck('CallHierarchyDiagram',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCallHierarchyDiagram)));
   // Mitlaufender Kopf (#506, experimentell).
-  BindCheck('StickyScroll', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll)));
-  BindText('StickyScrollMaxLines', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollMaxLines)));
-  BindCheck('StickyScrollTypes', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollTypes)));
-  BindCheck('StickyScrollRoutines', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollRoutines)));
-  BindCheck('StickyScrollBlocks', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollBlocks)));
-  BindCheck('StickyScrollLoops', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollLoops)));
-  BindCheck('StickyScrollTry', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollTry)));
-  BindCheck('StickyScrollCase', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollCase)));
-  BindCheck('StickyScrollWith', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollWith)));
-  FStickyScrollBlockMinLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollBlockMinLines));
+  BindCheck('StickyScroll', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsStickyScroll)));
+  BindText('StickyScrollMaxLines',
+    AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsStickyScrollMaxLines)));
+  BindCheck('StickyScrollTypes', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsStickyScrollTypes)));
+  BindCheck('StickyScrollRoutines',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsStickyScrollRoutines)));
+  BindCheck('StickyScrollBlocks',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsStickyScrollBlocks)));
+  BindCheck('StickyScrollLoops', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsStickyScrollLoops)));
+  BindCheck('StickyScrollTry', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsStickyScrollTry)));
+  BindCheck('StickyScrollCase', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsStickyScrollCase)));
+  BindCheck('StickyScrollWith', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsStickyScrollWith)));
+  FStickyScrollBlockMinLines := AddNumber(TAtlasSettingsStrings.Text(
+    TAtlasSettingsTextId.SettingsStickyScrollBlockMinLines));
   // Minimap neben der Scrollleiste (#873, experimentell).
-  BindCheck('Minimap', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimap)));
-  FMinimapRender := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapRender),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsMinimapBlocks),
-      TAtlasStrings.Text(TAtlasTextId.SettingsMinimapCharacters)]);
-  BindText('MinimapWidth', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapWidth)));
-  BindText('MinimapScale', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapScale)));
-  BindText('MinimapMaxColumn', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapMaxColumn)));
-  FMinimapSide := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapSide),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsMinimapRight), TAtlasStrings.Text(TAtlasTextId.SettingsMinimapLeft)]);
-  FMinimapShowSlider := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapSlider),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsMinimapSliderAlways),
-    TAtlasStrings.Text(TAtlasTextId.SettingsMinimapSliderHover)]);
-  BindCheck('MinimapSectionHeaders', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapHeaders)));
-  BindCheck('MinimapHighlightMethod', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapMethod)));
-  BindCheck('MinimapMarkers', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapMarkers)));
-  BindCheck('MinimapClickJumps', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapClickJumps)));
+  BindCheck('Minimap', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMinimap)));
+  FMinimapRender := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMinimapRender),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMinimapBlocks),
+      TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMinimapCharacters)]);
+  BindText('MinimapWidth', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMinimapWidth)));
+  BindText('MinimapScale', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMinimapScale)));
+  BindText('MinimapMaxColumn', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMinimapMaxColumn)));
+  FMinimapSide := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMinimapSide),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMinimapRight),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMinimapLeft)]);
+  FMinimapShowSlider := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMinimapSlider),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMinimapSliderAlways),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMinimapSliderHover)]);
+  BindCheck('MinimapSectionHeaders', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMinimapHeaders)));
+  BindCheck('MinimapHighlightMethod', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMinimapMethod)));
+  BindCheck('MinimapMarkers', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMinimapMarkers)));
+  BindCheck('MinimapClickJumps', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMinimapClickJumps)));
   // Änderungsmarken und Zeilenhistorie (#507).
-  FGitGutter := BindCheck('GitGutter', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGitGutter)));
+  FGitGutter := BindCheck('GitGutter', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsGitGutter)));
   BindKey('NextChangeKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NextChangeCommand)));
   BindKey('PreviousChangeKey', AddKey(TAtlasStrings.Text(TAtlasTextId.PreviousChangeCommand)));
-  BindCheck('GitBlame', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGitBlame)));
+  BindCheck('GitBlame', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsGitBlame)));
   // Atlas-Spalte in der Zeilenleiste (#768): Hauptschalter und je Symbolart ein Häkchen.
-  BindCheck('GutterColumn', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumn)));
-  BindCheck('GutterColumnProblems', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumnProblems)));
-  BindCheck('GutterColumnCodeActions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumnActions)));
-  BindCheck('GutterColumnOverrides', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumnOverrides)));
+  BindCheck('GutterColumn', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsGutterColumn)));
+  BindCheck('GutterColumnProblems',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsGutterColumnProblems)));
+  BindCheck('GutterColumnCodeActions',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsGutterColumnActions)));
+  BindCheck('GutterColumnOverrides',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsGutterColumnOverrides)));
   // Gleichen Text wie die Markierung hervorheben (#709).
-  BindCheck('SelectionMatches', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatches)));
-  FSelectionMatchesMinLength := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesMinLength));
+  BindCheck('SelectionMatches', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSelectionMatches)));
+  FSelectionMatchesMinLength := AddNumber(TAtlasSettingsStrings.Text(
+    TAtlasSettingsTextId.SettingsSelectionMatchesMinLength));
 end;
 
 procedure TAtlasSettingsEditorViewPart.Build3;
 begin
-  BindCheck('SelectionMatchesCaseSensitive', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesCase)));
-  BindCheck('SelectionMatchesWholeWord', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesWholeWord)));
-  BindCheck('SelectionMatchesNavigateF3', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesF3)));
-  FSelectionMatchesMaxMatches := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesMax));
+  BindCheck('SelectionMatchesCaseSensitive',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSelectionMatchesCase)));
+  BindCheck('SelectionMatchesWholeWord',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSelectionMatchesWholeWord)));
+  BindCheck('SelectionMatchesNavigateF3',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSelectionMatchesF3)));
+  FSelectionMatchesMaxMatches := AddNumber(TAtlasSettingsStrings.Text(
+    TAtlasSettingsTextId.SettingsSelectionMatchesMax));
 end;
 
 procedure TAtlasSettingsEditorViewPart.BindMarks;

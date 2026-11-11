@@ -75,7 +75,8 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings;
 
 {$R *.dfm}
 
@@ -109,14 +110,14 @@ begin
   FLegend.Left := 4;
   FLegend.Top := 2;
   FLegend.ShowAccelChar := False;
-  FLegend.Caption := TAtlasStrings.Text(TAtlasTextId.DiagnosticLegend);
+  FLegend.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticLegend);
   FLegend.Font.Color := clGrayText;
   FFileNames := TCheckBox.Create(Self);
   FFileNames.Parent := FBottom;
   FFileNames.Left := 4;
   FFileNames.Top := 26;
   FFileNames.Width := 200;
-  FFileNames.Caption := TAtlasStrings.Text(TAtlasTextId.DiagnosticFileNames);
+  FFileNames.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticFileNames);
   FFileNames.Checked := False;
   FCopy := TButton.Create(Self);
   FCopy.Parent := FBottom;
@@ -154,19 +155,19 @@ class function TAtlasTimingFrame.Caption(const ARow: TAtlasTimingRow): string;
 begin
   case ARow.Kind of
     TAtlasTimingRowKind.Provider:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.DiagnosticRowProvider, [ARow.Name]);
+      Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagnosticRowProvider, [ARow.Name]);
     TAtlasTimingRowKind.Entries:
-      Result := TAtlasStrings.Text(TAtlasTextId.DiagnosticRowEntries);
+      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticRowEntries);
   else
     case ARow.Step of
       TAtlasTimingStep.Context:
-        Result := TAtlasStrings.Text(TAtlasTextId.DiagnosticRowContext);
+        Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticRowContext);
       TAtlasTimingStep.FilterSort:
-        Result := TAtlasStrings.Text(TAtlasTextId.DiagnosticRowFilter);
+        Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticRowFilter);
       TAtlasTimingStep.Draw:
-        Result := TAtlasStrings.Text(TAtlasTextId.DiagnosticRowDraw);
+        Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticRowDraw);
     else
-      Result := TAtlasStrings.Text(TAtlasTextId.DiagnosticRowFirst);
+      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticRowFirst);
     end;
   end;
 end;
@@ -177,11 +178,11 @@ var
 begin
   if Length(FQueries) = 0 then
   begin
-    FTitle.Caption := TAtlasStrings.Text(TAtlasTextId.DiagnosticNoQuery);
+    FTitle.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticNoQuery);
     Exit;
   end;
   mLast := FQueries[High(FQueries)];
-  FTitle.Caption := TAtlasStrings.Fmt(TAtlasTextId.DiagnosticLastQuery, [mLast.Kind,
+  FTitle.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagnosticLastQuery, [mLast.Kind,
     FormatDateTime('hh":"nn":"ss', mLast.Started)]);
 end;
 
@@ -299,11 +300,11 @@ var
   mTexts: TCellTexts;
   mColumn: Integer;
 begin
-  mTexts[0] := TAtlasStrings.Text(TAtlasTextId.DiagnosticColumnStep);
-  mTexts[1] := TAtlasStrings.Text(TAtlasTextId.DiagnosticColumnLast);
-  mTexts[2] := TAtlasStrings.Fmt(TAtlasTextId.DiagnosticColumnMean, [Length(FQueries)]);
-  mTexts[3] := TAtlasStrings.Text(TAtlasTextId.DiagnosticColumnMax);
-  mTexts[4] := TAtlasStrings.Text(TAtlasTextId.DiagnosticColumnBudget);
+  mTexts[0] := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticColumnStep);
+  mTexts[1] := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticColumnLast);
+  mTexts[2] := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagnosticColumnMean, [Length(FQueries)]);
+  mTexts[3] := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticColumnMax);
+  mTexts[4] := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticColumnBudget);
   for mColumn := 0 to 4 do
   begin
     DrawCell(CellRect(ABounds, ABounds.Top, mColumn), mTexts[mColumn], False, mColumn > 0, True);

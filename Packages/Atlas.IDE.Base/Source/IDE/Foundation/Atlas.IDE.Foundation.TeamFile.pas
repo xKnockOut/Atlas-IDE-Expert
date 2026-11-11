@@ -96,7 +96,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Files.TextFile,
   Atlas.IDE.Foundation.Settings,
-  Atlas.UI.Strings;
+  Atlas.UI.Foundation.Strings;
 
 const
   cCheckMs = 2000;
@@ -250,27 +250,28 @@ begin
       TAtlasTeamIssueKind.Syntax:
         if mIssue.Line > 0 then
         begin
-          MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueSyntaxAt, [ATeam.FileName, mIssue.Line,
+          MessageLine(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.TeamFileIssueSyntaxAt, [ATeam.FileName,
+            mIssue.Line,
             mIssue.Column]));
         end
         else
         begin
-          MessageLine(TAtlasStrings.Text(TAtlasTextId.TeamFileIssueSyntax));
+          MessageLine(TAtlasFoundationStrings.Text(TAtlasFoundationTextId.TeamFileIssueSyntax));
         end;
       TAtlasTeamIssueKind.Version:
-        MessageLine(TAtlasStrings.Text(TAtlasTextId.TeamFileIssueVersion));
+        MessageLine(TAtlasFoundationStrings.Text(TAtlasFoundationTextId.TeamFileIssueVersion));
       TAtlasTeamIssueKind.UnknownKey:
-        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueUnknownKey, [mIssue.Path]));
+        MessageLine(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.TeamFileIssueUnknownKey, [mIssue.Path]));
       TAtlasTeamIssueKind.WrongType:
-        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueWrongType, [mIssue.Path]));
+        MessageLine(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.TeamFileIssueWrongType, [mIssue.Path]));
       TAtlasTeamIssueKind.InvalidValue:
-        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueInvalidValue, [mIssue.Path]));
+        MessageLine(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.TeamFileIssueInvalidValue, [mIssue.Path]));
       TAtlasTeamIssueKind.Credential:
-        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueCredential, [mIssue.Path]));
+        MessageLine(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.TeamFileIssueCredential, [mIssue.Path]));
       TAtlasTeamIssueKind.AbsolutePath:
-        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueAbsolutePath, [mIssue.Path]));
+        MessageLine(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.TeamFileIssueAbsolutePath, [mIssue.Path]));
       TAtlasTeamIssueKind.OutsidePath:
-        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueOutsidePath, [mIssue.Path]));
+        MessageLine(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.TeamFileIssueOutsidePath, [mIssue.Path]));
     end;
 end;
 
@@ -395,7 +396,7 @@ begin
   mProject := ActiveProject;
   if mProject = '' then
   begin
-    MessageLine(TAtlasStrings.Text(TAtlasTextId.TeamFileNoProject));
+    MessageLine(TAtlasFoundationStrings.Text(TAtlasFoundationTextId.TeamFileNoProject));
     Exit;
   end;
   mFileName := LocateFor(mProject);
@@ -410,11 +411,11 @@ begin
     except
       on E: Exception do
       begin
-        MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileCreateFailed, [E.Message]));
+        MessageLine(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.TeamFileCreateFailed, [E.Message]));
         Exit;
       end;
     end;
-    MessageLine(TAtlasStrings.Text(TAtlasTextId.TeamFileCreated));
+    MessageLine(TAtlasFoundationStrings.Text(TAtlasFoundationTextId.TeamFileCreated));
   end;
   if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
   begin

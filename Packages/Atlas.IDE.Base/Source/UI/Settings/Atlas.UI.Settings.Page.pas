@@ -129,7 +129,7 @@ uses
   Atlas.UI.Settings.Page.General,
   Atlas.UI.Settings.Page.Transfer,
   Atlas.UI.Settings.Marks,
-  Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.Core.Style.Symbol;
 
 { TAtlasSettingsPage }
@@ -195,7 +195,7 @@ begin
   mTitle.Parent := mPanel;
   mTitle.Left := 44;
   mTitle.Top := 12;
-  mTitle.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsTitle);
+  mTitle.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTitle);
   mTitle.Font.Style := [fsBold];
   FTitle := mTitle;
 end;
@@ -216,14 +216,14 @@ begin
   mButton.Parent := FExperimentalBanner;
   mButton.Align := alRight;
   mButton.Width := 90;
-  mButton.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalAllow);
+  mButton.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExperimentalAllow);
   mButton.OnClick := ExperimentalAllowClick;
   mText := TLabel.Create(Self);
   mText.Parent := FExperimentalBanner;
   mText.Align := alClient;
   mText.Layout := tlCenter;
   mText.WordWrap := True;
-  mText.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalOff);
+  mText.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExperimentalOff);
 end;
 
 procedure TAtlasSettingsPage.AddFilterRow;
@@ -239,16 +239,16 @@ begin
   mCaption.Parent := FFilterRow;
   mCaption.Left := 0;
   mCaption.Top := 5;
-  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFilter);
+  mCaption.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFilter);
   // Reihenfolge wie TAtlasSettingsFilter.
   FFilter := TAtlasChoiceBox.Create(Self);
   FFilter.Parent := FFilterRow;
   FFilter.Left := 60;
   FFilter.Top := 1;
   FFilter.Width := 180;
-  FFilter.SetChoices([TAtlasStrings.Text(TAtlasTextId.SettingsFilterAll),
-    TAtlasStrings.Text(TAtlasTextId.SettingsFilterModified),
-    TAtlasStrings.Text(TAtlasTextId.SettingsFilterExperimental)]);
+  FFilter.SetChoices([TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFilterAll),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFilterModified),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFilterExperimental)]);
   FFilter.Choice := 0;
   FFilter.OnChange := FilterChange;
   FMarks.MarkExperimental(TAtlasExperimental.PluginNames(Catalog));

@@ -8,7 +8,8 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Generate.Strings;
 
 type
   [TestFixture]
@@ -113,7 +114,7 @@ begin
   Entries := MockupEntries;
   Window := TAtlasGenerateWindow.CreateMenu(nil, Entries, TAtlasGenerateOptions.Default, nil, TAtlasColors.Light);
   try
-    Assert.AreEqual('Erzeugen', TAtlasStrings.Text(TAtlasTextId.GenerateTitle));
+    Assert.AreEqual('Erzeugen', TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateTitle));
     Assert.AreEqual('Erzeugen', TAtlasGenerateTexts.GroupCaption(Window.Rows[0].Group));
     Assert.IsTrue(Window.Rows[0].IsHeader);
     Captions := nil;

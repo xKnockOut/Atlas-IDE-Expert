@@ -47,7 +47,8 @@ implementation
 
 uses
   Vcl.Controls,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings;
 
 /// <summary>Fehler einer ungültigen Projektdatei; mit Zeile und Spalte, wenn bekannt: Dort steht er im JSON.
 /// </summary>
@@ -55,12 +56,12 @@ function TeamInvalidText(const ATeam: TAtlasTeamSettings): string;
 var
   mIssue: TAtlasTeamIssue;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileInvalid);
+  Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTeamFileInvalid);
   for mIssue in ATeam.Issues do
   begin
     if (mIssue.Kind = TAtlasTeamIssueKind.Syntax) and (mIssue.Line > 0) then
     begin
-      Exit(TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileInvalidAt, [mIssue.Line, mIssue.Column]));
+      Exit(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsTeamFileInvalidAt, [mIssue.Line, mIssue.Column]));
     end;
   end;
 end;
@@ -73,15 +74,16 @@ begin
   Result := nil;
   for mValue in TAtlasTeamFile.Values(ATeam) do
   begin
-    Result := Result + [TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileValue, [mValue.Key, mValue.Value])];
+    Result := Result + [TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsTeamFileValue, [mValue.Key,
+      mValue.Value])];
   end;
   if Length(Result) = 0 then
   begin
-    Result := Result + [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileNoValues)];
+    Result := Result + [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTeamFileNoValues)];
   end;
   if Length(ATeam.Issues) > 0 then
   begin
-    Result := Result + [TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileIssues, [Length(ATeam.Issues)])];
+    Result := Result + [TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsTeamFileIssues, [Length(ATeam.Issues)])];
   end;
 end;
 
@@ -90,24 +92,26 @@ function TeamFileLines(AOn: Boolean; const ATeam: TAtlasTeamSettings): TArray<st
 begin
   if not AOn then
   begin
-    Result := TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileOff));
+    Result := TArray<string>.Create(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTeamFileOff));
   end
   else if ATeam.Project = '' then
   begin
-    Result := TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileNoProject));
+    Result := TArray<string>.Create(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTeamFileNoProject));
   end
   else if not ATeam.Exists then
   begin
-    Result := TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileMissing));
+    Result := TArray<string>.Create(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTeamFileMissing));
   end
   else if not ATeam.Valid then
   begin
-    Result := TArray<string>.Create(TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileLocation, [ATeam.FileName]),
+    Result := TArray<string>.Create(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsTeamFileLocation,
+      [ATeam.FileName]),
       TeamInvalidText(ATeam));
   end
   else
   begin
-    Result := TArray<string>.Create(TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileLocation, [ATeam.FileName])) +
+    Result := TArray<string>.Create(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsTeamFileLocation,
+      [ATeam.FileName])) +
       TeamValueLines(ATeam);
   end;
 end;
@@ -118,15 +122,17 @@ procedure TAtlasSettingsTeamFilePart.Build;
 begin
   // Was beim Übernehmen eingefügt wird.
   AddSheet(TAtlasTextId.SettingsTabInsert);
-  BindCheck('AutoParentheses', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsParentheses)));
-  BindCheck('FixCase', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFixCase)));
-  BindCheck('CommitCharacters', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCommitChars)));
-  BindCheck('AutoUses', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsAutoUses)));
-  BindCheck('ParameterHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsParameterHints)));
-  BindCheck('FormatPlaceholders', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFormatPlaceholders)));
+  BindCheck('AutoParentheses', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsParentheses)));
+  BindCheck('FixCase', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFixCase)));
+  BindCheck('CommitCharacters', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCommitChars)));
+  BindCheck('AutoUses', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAutoUses)));
+  BindCheck('ParameterHints', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsParameterHints)));
+  BindCheck('FormatPlaceholders',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFormatPlaceholders)));
   // Code-Vorlagen (#51).
-  BindCheck('Snippets', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSnippets)));
-  BindCheck('ImportIdeTemplates', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsImportIdeTemplates)));
+  BindCheck('Snippets', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSnippets)));
+  BindCheck('ImportIdeTemplates',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportIdeTemplates)));
   // Vorlagen aus der Projektdatei (#486); leer ohne .atlas.
   FTeamSnippets := AddWrappedLabel(20, '');
 end;
@@ -147,13 +153,13 @@ var
   mPanel: TWinControl;
 begin
   // Projektdatei .atlas (#486): Schalter, Erklärung, „Projektdatei öffnen“ und jeder Wert mit „aus .atlas“.
-  FTeamFile := BindCheck('TeamFile', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTeamFile)));
+  FTeamFile := BindCheck('TeamFile', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTeamFile)));
   FTeamFile.OnClick := TeamFileClick;
-  Attach(AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileHint)).Parent, FTeamFile);
+  Attach(AddWrappedLabel(36, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTeamFileHint)).Parent, FTeamFile);
   mPanel := AddPanel(32);
   FTeamFileOpen := TButton.Create(FPage);
   FTeamFileOpen.Parent := mPanel;
-  FTeamFileOpen.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileOpen);
+  FTeamFileOpen.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTeamFileOpen);
   FTeamFileOpen.Left := 0;
   FTeamFileOpen.Top := 3;
   FTeamFileOpen.Width := 180;
@@ -197,7 +203,7 @@ begin
   FTeamSnippets.Caption := '';
   if mTeam.Valid and (mTeam.Snippets <> '') then
   begin
-    FTeamSnippets.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamSnippets, [mTeam.Snippets]);
+    FTeamSnippets.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsTeamSnippets, [mTeam.Snippets]);
   end;
   FTeamFileInfo.Caption := string.Join(sLineBreak, TeamFileLines(FTeamFile.Checked, mTeam));
   Allow(FTeamFileOpen, FTeamFile.Checked and (mTeam.Project <> ''));

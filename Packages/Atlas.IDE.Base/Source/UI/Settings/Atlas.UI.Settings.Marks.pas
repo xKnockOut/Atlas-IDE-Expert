@@ -152,7 +152,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings;
+  Atlas.UI.Settings.Strings;
 
 type
   TControlAccess = class(TControl);
@@ -289,12 +289,12 @@ begin
   mHint := mBinding.Hint;
   if mBinding.Experimental then
   begin
-    mText := mText + '  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']';
+    mText := mText + '  [' + TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExperimentalTag) + ']';
   end;
   if mBinding.Marked then
   begin
     mText := cDot + mText;
-    mHint := TAtlasStrings.Text(TAtlasTextId.SettingsModifiedHint);
+    mHint := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModifiedHint);
   end;
   if mBinding.Control is TCheckBox then
   begin
@@ -476,11 +476,11 @@ begin
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
   FResetItem := TMenuItem.Create(FMenu);
-  FResetItem.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsResetKey);
+  FResetItem.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsResetKey);
   FResetItem.OnClick := ResetClick;
   FMenu.Items.Add(FResetItem);
   FResetPageItem := TMenuItem.Create(FMenu);
-  FResetPageItem.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsResetPageMenu);
+  FResetPageItem.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsResetPageMenu);
   FResetPageItem.OnClick := ResetPageClick;
   FMenu.Items.Add(FResetPageItem);
   FMenuIndex := -1;

@@ -42,7 +42,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Editor.LineMove,
-  Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot;
@@ -214,7 +214,7 @@ begin
   begin
     if Assigned(FMessage) then
     begin
-      FMessage(TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentRefused));
+      FMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.ToggleBlockCommentRefused));
     end;
   end
   else if mToggled.Kind <> TAtlasBlockCommentKind.None then

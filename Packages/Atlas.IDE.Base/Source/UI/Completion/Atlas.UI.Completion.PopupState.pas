@@ -178,7 +178,7 @@ implementation
 uses
   System.Math,
   Atlas.UI.Popup.Accessibility,
-  Atlas.UI.Strings;
+  Atlas.UI.Completion.Strings;
 
 const
   /// <summary>Verweilen auf einer gekürzten Zeile, bis der volle Text erscheint (#420).</summary>
@@ -189,7 +189,7 @@ const
 constructor TAtlasCompletionPopupState.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  SetAccessible(cUiaListControlType, TAtlasStrings.Text(TAtlasTextId.AccessCompletion));
+  SetAccessible(cUiaListControlType, TAtlasCompletionStrings.Text(TAtlasCompletionTextId.AccessCompletion));
   FVisibleRows := cDefaultVisibleRows;
   FSelected := -1;
   FRestFrom := -1;

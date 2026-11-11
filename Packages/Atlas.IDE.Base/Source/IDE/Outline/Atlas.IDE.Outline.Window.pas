@@ -44,7 +44,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.UI.Outline.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.Symbol,
   Atlas.IDE.Foundation.DockWindow;
@@ -81,7 +81,7 @@ end;
 
 function TOutlineDock.GetCaption: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.OutlineCaption);
+  Result := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineCaption);
 end;
 
 function TOutlineDock.GetIdentifier: string;

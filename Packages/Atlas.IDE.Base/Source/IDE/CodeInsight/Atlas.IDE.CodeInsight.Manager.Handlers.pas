@@ -58,6 +58,7 @@ uses
   System.Generics.Collections,
   ToolsAPI,
   Atlas.UI.Strings,
+  Atlas.UI.CodeInsight.Strings,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Crashes,
   Atlas.Core.Problems.Contract,
@@ -102,7 +103,7 @@ begin
   try
     mOutcome := TAtlasIdeWorkspaceEdit.Apply(AEdit,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
-      TAtlasStrings.Text(TAtlasTextId.UndoActionServer));
+      TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.UndoActionServer));
     ADiagnose(Format('workspace/applyEdit: %d Änderungen in %d Dateien %s', [mOutcome.Edits, mOutcome.Files,
       mOutcome.Error]));
     Result := mOutcome.Error = '';
@@ -129,7 +130,7 @@ begin
     mSeverity := TAtlasNotificationSeverity.Error;
   end;
   if (TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, mSeverity,
-    TAtlasStrings.Text(TAtlasTextId.NotificationsServerMessage), AMessage, ALogActions) <>
+    TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.NotificationsServerMessage), AMessage, ALogActions) <>
     TAtlasNotificationMode.Show) or not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     Exit;
@@ -148,15 +149,17 @@ begin
   Result := '';
   if ARestart.Crashed and ARestart.CodeKnown then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ServerCrashedCause, [TAtlasServerExits.Describe(ARestart.Code)]);
+    Result := TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.ServerCrashedCause,
+      [TAtlasServerExits.Describe(ARestart.Code)]);
   end
   else if ARestart.Crashed then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsServerCrashed);
+    Result := TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.NotificationsServerCrashed);
   end;
   if ARestart.Reopened > 0 then
   begin
-    Result := Trim(Result + ' ' + TAtlasStrings.Fmt(TAtlasTextId.NotificationsServerReopened, [ARestart.Reopened]));
+    Result := Trim(Result + ' ' + TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.NotificationsServerReopened,
+      [ARestart.Reopened]));
   end;
 end;
 
@@ -173,7 +176,8 @@ begin
     TAtlasCrashCases.Newest(TAtlasCrashCases.DefaultRoot, ARestart.PreviousStart, mCase) then
   begin
     TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, TAtlasNotificationSeverity.Warning,
-      TAtlasStrings.Text(TAtlasTextId.CrashRestartedTitle), TAtlasCrashCases.SummaryText(mCase) + ' ' + mText,
+      TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.CrashRestartedTitle),
+      TAtlasCrashCases.SummaryText(mCase) + ' ' + mText,
       CrashActions(mCase, ARestart.CrashIssue));
     Exit;
   end;
@@ -183,7 +187,7 @@ begin
     mSeverity := TAtlasNotificationSeverity.Warning;
   end;
   TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, mSeverity,
-    TAtlasStrings.Text(TAtlasTextId.NotificationsServerRestarted), mText, ARestart.LogActions);
+    TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.NotificationsServerRestarted), mText, ARestart.LogActions);
 end;
 
 class function TAtlasServerHandlers.CrashActions(const ACase: TAtlasCrashCase;
@@ -196,7 +200,7 @@ begin
   mFolder := ACase.Folder;
   mCase := ACase;
   mIssue := AIssue;
-  Result := [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.CrashOpenCase),
+  Result := [TAtlasNotificationCenter.Action(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.CrashOpenCase),
     procedure
     begin
       if DirectoryExists(mFolder) then
@@ -206,14 +210,15 @@ begin
     end)];
   if Assigned(mIssue) then
   begin
-    Result := Result + [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.CrashCreateIssue),
+    Result := Result + [TAtlasNotificationCenter.Action(TAtlasCodeInsightStrings.Text(
+      TAtlasCodeInsightTextId.CrashCreateIssue),
       procedure
       begin
         mIssue(mCase);
       end)];
   end;
   // Ausblenden: nur den Eintrag schließen, der Fall bleibt im Ordner.
-  Result := Result + [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.CrashHide),
+  Result := Result + [TAtlasNotificationCenter.Action(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.CrashHide),
     procedure
     begin
     end)];
@@ -227,7 +232,7 @@ begin
   Result.Severity := TAtlasProblemSeverity.Warning;
   Result.Code := TAtlasCrashCases.cProblemCode;
   Result.Source := TAtlasCrashCases.cProblemSource;
-  Result.Message := TAtlasStrings.Fmt(TAtlasTextId.CrashSkipProblem, [ASkip.Method, ASkip.Crashes,
+  Result.Message := TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.CrashSkipProblem, [ASkip.Method, ASkip.Crashes,
     ASkip.ExceptionClass, ExtractFileName(ASkip.Folder)]);
 end;
 

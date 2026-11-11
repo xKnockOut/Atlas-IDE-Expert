@@ -153,7 +153,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Settings.PageNames,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings;
 
 var
   /// <summary>Eingeklappte Seiten, für die IDE-Sitzung.</summary>
@@ -172,11 +173,11 @@ begin
   Result := '';
   if AItem.Session then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.QuickTogglesSession);
+    Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesSession);
   end
   else if AItem.Project then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.QuickTogglesProject);
+    Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesProject);
   end;
 end;
 
@@ -243,7 +244,7 @@ begin
   // Kennzeichen als Text (#834, Barrierefreiheit #447).
   if FItems[AIndex].Toggle.Experimental then
   begin
-    mRow.Text := mRow.Text + '  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']';
+    mRow.Text := mRow.Text + '  [' + TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExperimentalTag) + ']';
   end;
   FRows := FRows + [mRow];
 end;
@@ -482,12 +483,12 @@ begin
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(Colors.Text);
-  Text('Atlas · ' + TAtlasStrings.Text(TAtlasTextId.QuickTogglesTitle), mPart, 0);
+  Text('Atlas · ' + TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesTitle), mPart, 0);
   Canvas.Font.Style := [];
   if Window.FAllOff then
   begin
     Canvas.Font.Color := ToColor(Colors.Warn);
-    Text(TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOffActive), mPart, DT_RIGHT);
+    Text(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOffActive), mPart, DT_RIGHT);
   end;
   Canvas.Pen.Color := ToColor(Colors.Line);
   Canvas.MoveTo(0, Geometry.HeaderHeight - Window.ScaleValue(3));
@@ -682,7 +683,7 @@ begin
   Color := ToColor(FColors.Surface);
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  Caption := TAtlasStrings.Text(TAtlasTextId.QuickTogglesTitle);
+  Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesTitle);
   FAllButton := TButton.Create(Self);
   FAllButton.Parent := Self;
   FAllButton.OnClick := AllClick;
@@ -760,8 +761,8 @@ var
 begin
   mGeometry := TToggleGeometry.Create(Self);
   Canvas.Font := Font;
-  mTags := Max(Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.QuickTogglesProject)),
-    Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.QuickTogglesSession)));
+  mTags := Max(Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesProject)),
+    Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesSession)));
   mWidth := ScaleValue(280);
   for mIndex := 0 to FRows.Count - 1 do
   begin
@@ -769,8 +770,8 @@ begin
     mWidth := Max(mWidth, Canvas.TextWidth(FRows.Text(mIndex)) + mTags + ScaleValue(64 + 28));
   end;
   mWidth := Min(mWidth, ScaleValue(720));
-  mButtonWidth := Max(Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOff)),
-    Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOn))) + ScaleValue(24);
+  mButtonWidth := Max(Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOff)),
+    Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOn))) + ScaleValue(24);
   ClientWidth := Max(mWidth, mButtonWidth + ScaleValue(20));
   // Höchstens 80 % der Arbeitsfläche hoch; der Rest per Mausrad bzw. Pfeiltasten.
   FScroll.Visible := Max(3, (Screen.MonitorFromPoint(FAnchor).WorkareaRect.Height * 4 div 5 -
@@ -792,11 +793,11 @@ begin
   end;
   if FAllOff then
   begin
-    FAllButton.Caption := TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOn);
+    FAllButton.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOn);
   end
   else
   begin
-    FAllButton.Caption := TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOff);
+    FAllButton.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOff);
   end;
   Layout;
   if Visible then

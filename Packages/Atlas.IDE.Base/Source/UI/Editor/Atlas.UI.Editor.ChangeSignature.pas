@@ -74,7 +74,8 @@ implementation
 
 uses
   Vcl.Graphics,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings;
 
 const
   cGap = 8;
@@ -162,7 +163,7 @@ begin
   Result := '';
   if AModel.EventFixed then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SigEventFixed, [AModel.BoundEvent]);
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SigEventFixed, [AModel.BoundEvent]);
   end;
   for mWarning in AModel.Warnings do
   begin
@@ -180,7 +181,7 @@ constructor TAtlasChangeSignatureDialog.CreateDialog(AOwner: TComponent; AModel:
 begin
   inherited CreateNew(AOwner);
   FModel := AModel;
-  Caption := TAtlasStrings.Fmt(TAtlasTextId.SigTitle, [AModel.Name]);
+  Caption := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SigTitle, [AModel.Name]);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
   Position := poMainFormCenter;
@@ -203,10 +204,10 @@ begin
   FList.RowSelect := True;
   FList.HideSelection := False;
   FList.OnSelectItem := ListSelect;
-  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SigColName), ScaleValue(130));
-  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SigColType), ScaleValue(140));
-  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SigColModifier), ScaleValue(80));
-  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SigColValue), ScaleValue(140));
+  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColName), ScaleValue(130));
+  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColType), ScaleValue(140));
+  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColModifier), ScaleValue(80));
+  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColValue), ScaleValue(140));
   ActiveControl := FList;
 end;
 
@@ -215,11 +216,11 @@ var
   mBottom: TPanel;
 begin
   mBottom := AddPanel(Self, alBottom, ScaleValue(44));
-  FCancel := AddButton(Self, mBottom, TAtlasStrings.Text(TAtlasTextId.SigCancel), nil);
+  FCancel := AddButton(Self, mBottom, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigCancel), nil);
   FCancel.Cancel := True;
   FCancel.ModalResult := mrCancel;
   FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
-  FOk := AddButton(Self, mBottom, TAtlasStrings.Text(TAtlasTextId.SigPreviewButton), OkClick);
+  FOk := AddButton(Self, mBottom, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigPreviewButton), OkClick);
   FOk.Default := True;
   FOk.Left := FCancel.Left - FOk.Width - ScaleValue(cGap);
   FNotes := AddNoteLabel(Self, 0);
@@ -238,23 +239,23 @@ begin
   FOverload := TRadioButton.Create(Self);
   FOverload.Parent := mOptions;
   FOverload.SetBounds(ScaleValue(cGap), ScaleValue(4), ScaleValue(cDialogWidth - 2 * cGap), ScaleValue(20));
-  FOverload.Caption := TAtlasStrings.Text(TAtlasTextId.SigModeOverload);
+  FOverload.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.SigModeOverload);
   FOverload.OnClick := ModeClick;
   FCallers := TRadioButton.Create(Self);
   FCallers.Parent := mOptions;
   FCallers.SetBounds(ScaleValue(cGap), ScaleValue(26), ScaleValue(cDialogWidth - 2 * cGap), ScaleValue(20));
-  FCallers.Caption := TAtlasStrings.Text(TAtlasTextId.SigModeCallers);
+  FCallers.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.SigModeCallers);
   FCallers.OnClick := ModeClick;
   FVirtual := TCheckBox.Create(Self);
   FVirtual.Parent := mOptions;
   FVirtual.SetBounds(ScaleValue(cGap + 16), ScaleValue(48), ScaleValue(cDialogWidth - 2 * cGap - 16), ScaleValue(20));
-  FVirtual.Caption := TAtlasStrings.Text(TAtlasTextId.SigVirtual);
+  FVirtual.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.SigVirtual);
   FVirtual.Checked := FModel.VirtualOverload;
   FVirtual.OnClick := ModeClick;
   if not FModel.OverloadPossible then
   begin
     FOverload.Enabled := False;
-    FOverload.Caption := FOverload.Caption + ' – ' + TAtlasStrings.Text(TAtlasTextId.SigModeForced);
+    FOverload.Caption := FOverload.Caption + ' – ' + TAtlasEditorStrings.Text(TAtlasEditorTextId.SigModeForced);
   end;
   FOverload.Checked := FModel.UseOverload;
   FCallers.Checked := not FModel.UseOverload;
@@ -271,10 +272,10 @@ begin
   FModifier := TComboBox.Create(Self);
   FValue := TEdit.Create(Self);
   mTop := ScaleValue(4);
-  mTop := AddLabeled(Self, mFields, TAtlasStrings.Text(TAtlasTextId.SigFieldName), mTop, FName);
-  mTop := AddLabeled(Self, mFields, TAtlasStrings.Text(TAtlasTextId.SigFieldType), mTop, FType);
-  mTop := AddLabeled(Self, mFields, TAtlasStrings.Text(TAtlasTextId.SigFieldModifier), mTop, FModifier);
-  AddLabeled(Self, mFields, TAtlasStrings.Text(TAtlasTextId.SigFieldValue), mTop, FValue);
+  mTop := AddLabeled(Self, mFields, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigFieldName), mTop, FName);
+  mTop := AddLabeled(Self, mFields, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigFieldType), mTop, FType);
+  mTop := AddLabeled(Self, mFields, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigFieldModifier), mTop, FModifier);
+  AddLabeled(Self, mFields, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigFieldValue), mTop, FValue);
   FModifier.Style := csDropDownList;
   FName.OnChange := FieldChange;
   FType.OnChange := FieldChange;
@@ -288,10 +289,10 @@ var
   mIndex: Integer;
 begin
   mRight := AddPanel(Self, alRight, ScaleValue(120));
-  FAdd := AddButton(Self, mRight, TAtlasStrings.Text(TAtlasTextId.SigAdd), AddClick);
-  FRemove := AddButton(Self, mRight, TAtlasStrings.Text(TAtlasTextId.SigRemove), RemoveClick);
-  FUp := AddButton(Self, mRight, TAtlasStrings.Text(TAtlasTextId.SigUp), UpClick);
-  FDown := AddButton(Self, mRight, TAtlasStrings.Text(TAtlasTextId.SigDown), DownClick);
+  FAdd := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigAdd), AddClick);
+  FRemove := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigRemove), RemoveClick);
+  FUp := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigUp), UpClick);
+  FDown := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigDown), DownClick);
   FAdd.Top := ScaleValue(cGap);
   FRemove.Top := FAdd.Top + FAdd.Height + ScaleValue(4);
   FUp.Top := FRemove.Top + FRemove.Height + ScaleValue(cGap * 2);
@@ -424,17 +425,17 @@ function ProblemText(AProblem: TAtlasSignatureProblem; const AName: string): str
 begin
   case AProblem of
     TAtlasSignatureProblem.BadName:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SigBadName, [AName]);
+      Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SigBadName, [AName]);
     TAtlasSignatureProblem.Duplicate:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SigDuplicate, [AName]);
+      Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SigDuplicate, [AName]);
     TAtlasSignatureProblem.MissingType:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SigMissingType, [AName]);
+      Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SigMissingType, [AName]);
     TAtlasSignatureProblem.MissingValue:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SigMissingValue, [AName]);
+      Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SigMissingValue, [AName]);
     TAtlasSignatureProblem.AfterDefault:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SigAfterDefault, [AName]);
+      Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SigAfterDefault, [AName]);
     TAtlasSignatureProblem.TypesFixed:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SigTypesFixed, [AName]);
+      Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SigTypesFixed, [AName]);
   else
     Result := '';
   end;
@@ -456,7 +457,8 @@ procedure TAtlasChangeSignatureDialog.AddClick(Sender: TObject);
 var
   mIndex: Integer;
 begin
-  mIndex := FModel.Add(Selected, TAtlasStrings.Text(TAtlasTextId.SigNewName) + IntToStr(FModel.Count + 1), 'Integer',
+  mIndex := FModel.Add(Selected, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigNewName) + IntToStr(FModel.Count + 1),
+    'Integer',
     '', '0');
   FillList(mIndex);
   FName.SetFocus;

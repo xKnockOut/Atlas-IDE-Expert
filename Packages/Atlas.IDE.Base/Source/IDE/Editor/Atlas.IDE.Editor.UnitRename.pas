@@ -129,6 +129,7 @@ uses
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.UI.Popup.Window,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
@@ -523,11 +524,11 @@ function ScopeCaption(AScope: TAtlasUnitRenameScope): string;
 begin
   if AScope = TAtlasUnitRenameScope.Group then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UnitRenameGroup);
+    Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.UnitRenameGroup);
   end
   else
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UnitRenameProject);
+    Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.UnitRenameProject);
   end;
 end;
 
@@ -557,11 +558,11 @@ begin
   end;
   if mShown = 1 then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.UnitRenameNoticeOne, [AAnswer.OldName]);
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenameNoticeOne, [AAnswer.OldName]);
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.UnitRenameNotice, [mShown, AAnswer.OldName]);
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenameNotice, [mShown, AAnswer.OldName]);
   end;
 end;
 
@@ -638,7 +639,7 @@ begin
   mText := '';
   if mInGroup > mInProject then
   begin
-    mText := TAtlasStrings.Fmt(TAtlasTextId.UnitRenameGroupCount, [mInGroup]);
+    mText := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenameGroupCount, [mInGroup]);
   end;
   mScopes := OfferScopes(mInProject, mInGroup);
   mActions := nil;
@@ -651,7 +652,8 @@ begin
   if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cUnitRename, TAtlasNotificationSeverity.Info,
     mTitle, mText, mActions) = TAtlasNotificationMode.Show then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.UnitRenameReport, [mAnswer.OldName, mAnswer.NewName, mInProject, mInGroup]));
+    Say(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenameReport, [mAnswer.OldName, mAnswer.NewName, mInProject,
+      mInGroup]));
     ShowNotice(AEvent, mTitle, mText, mScopes);
   end;
 end;
@@ -726,18 +728,19 @@ begin
   end;
   if mReply.Edit.IsEmpty then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.UnitRenameNothing, [mAnswer.OldName]));
+    Say(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenameNothing, [mAnswer.OldName]));
     Exit;
   end;
-  mHint := TAtlasStrings.Fmt(TAtlasTextId.UnitRenamePreviewHint, [mAnswer.OldName, mAnswer.NewName,
+  mHint := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenamePreviewHint, [mAnswer.OldName, mAnswer.NewName,
     mReply.Edit.EditCount, Length(mReply.Edit.Files)]);
   // Ablehnen ändert nichts.
   if TAtlasIdeServerEdit.Confirm(TAtlasStrings.Text(TAtlasTextId.UnitRenameTitle), mHint,
-    TAtlasStrings.Text(TAtlasTextId.UnitRenameApply), mReply.Edit) and TAtlasIdeServerEdit.Apply(mReply.Edit,
+    TAtlasEditorStrings.Text(TAtlasEditorTextId.UnitRenameApply),
+    mReply.Edit) and TAtlasIdeServerEdit.Apply(mReply.Edit,
     TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
     TAtlasStrings.Text(TAtlasTextId.UnitRenameTitle), Reporter(), mOutcome) then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.UnitRenameDone, [mAnswer.OldName, mAnswer.NewName, mOutcome.Edits,
+    Say(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenameDone, [mAnswer.OldName, mAnswer.NewName, mOutcome.Edits,
       mOutcome.Files]));
     if mOutcome.Written > 0 then
     begin

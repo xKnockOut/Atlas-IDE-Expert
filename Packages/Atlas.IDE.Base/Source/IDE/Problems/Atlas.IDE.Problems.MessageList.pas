@@ -33,19 +33,19 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.UI.Strings;
+  Atlas.UI.Problems.Strings;
 
 function SeverityText(ASeverity: TAtlasProblemSeverity): string;
 begin
   case ASeverity of
     TAtlasProblemSeverity.Error:
-      Result := TAtlasStrings.Text(TAtlasTextId.SeverityError);
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.SeverityError);
     TAtlasProblemSeverity.Warning:
-      Result := TAtlasStrings.Text(TAtlasTextId.SeverityWarning);
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.SeverityWarning);
     TAtlasProblemSeverity.Information:
-      Result := TAtlasStrings.Text(TAtlasTextId.SeverityInformation);
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.SeverityInformation);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.SeverityHint);
+    Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.SeverityHint);
   end;
 end;
 
@@ -53,7 +53,7 @@ function Group(const AMessages: IOTAMessageServices; ACreate: Boolean): IOTAMess
 var
   mName: string;
 begin
-  mName := TAtlasStrings.Text(TAtlasTextId.ProblemsGroup);
+  mName := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsGroup);
   Result := AMessages.GetGroup(mName);
   if (Result = nil) and ACreate then
   begin
@@ -141,7 +141,8 @@ begin
   end;
   if mTotal > Length(mEntries) then
   begin
-    mMessages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.ProblemsMore, [mTotal - Length(mEntries)]), mTarget);
+    mMessages.AddTitleMessage(TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsMore, [mTotal - Length(mEntries)]),
+      mTarget);
   end;
 end;
 

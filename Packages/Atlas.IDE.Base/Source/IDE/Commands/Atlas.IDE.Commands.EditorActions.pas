@@ -52,6 +52,7 @@ uses
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Results.Model,
   Atlas.UI.Strings,
+  Atlas.UI.Commands.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.UI.Results.View,
   Atlas.UI.Results.RenamePreview,
@@ -65,15 +66,15 @@ function KindCaption(const AKind: string): string;
 begin
   if AKind.StartsWith('quickfix') then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.EditorKindFix);
+    Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.EditorKindFix);
   end
   else if AKind.StartsWith('refactor') then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.EditorKindRefactor);
+    Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.EditorKindRefactor);
   end
   else if AKind.StartsWith('source') then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.EditorKindSource);
+    Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.EditorKindSource);
   end
   else
   begin
@@ -132,7 +133,7 @@ begin
     mCommand.Path := KindCaption(AUsable[mIndex].Kind);
     if AUsable[mIndex].Disabled <> '' then
     begin
-      mCommand.Path := TAtlasStrings.Text(TAtlasTextId.EditorActionNote);
+      mCommand.Path := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.EditorActionNote);
     end;
     if AUsable[mIndex].Preferred then
     begin
@@ -221,7 +222,7 @@ begin
   mUsable := OrderedActions(mFound);
   if Length(mUsable) = 0 then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.EditorNoActions));
+    Say(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.EditorNoActions));
     Exit;
   end;
   ShowActions(mUsable);
@@ -263,7 +264,7 @@ begin
       Exit;
     end;
   end;
-  Say(TAtlasStrings.Text(TAtlasTextId.UsesActionMissing));
+  Say(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.UsesActionMissing));
 end;
 
 class function TAtlasEditorActionCommands.ConfirmPreview(const AAction: TLspCodeAction): Boolean;
@@ -290,7 +291,7 @@ var
 begin
   if AAction.Disabled <> '' then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.EditorActionDisabled, [AAction.Title, AAction.Disabled]));
+    Say(TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.EditorActionDisabled, [AAction.Title, AAction.Disabled]));
     Exit;
   end;
   // LSP: erst die Änderung, dann der Befehl.
