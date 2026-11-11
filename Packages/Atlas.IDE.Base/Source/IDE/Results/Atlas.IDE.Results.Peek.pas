@@ -51,7 +51,7 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.Peek,
-  Atlas.UI.Strings,
+  Atlas.UI.Results.Strings,
   Atlas.UI.Popup.Window,
   Atlas.UI.Editor.Peek,
   Atlas.IDE.Foundation.KeyHook,
@@ -519,13 +519,13 @@ begin
     begin
       Result := DefinitionEntries(ACurrent, ToPlace(mFound[0]));
     end;
-    ATitle := TAtlasStrings.Fmt(TAtlasTextId.PeekTitleDefinition, [ASpot.Name]);
+    ATitle := TAtlasResultsStrings.Fmt(TAtlasResultsTextId.PeekTitleDefinition, [ASpot.Name]);
   end
   else
   begin
     mFound := ACurrent.References(ASpot.FileName, ASpot.Line, ASpot.Character);
     Result := ReferenceEntries(mFound);
-    ATitle := TAtlasStrings.Fmt(TAtlasTextId.PeekTitleReferences, [ASpot.Name, Length(mFound)]);
+    ATitle := TAtlasResultsStrings.Fmt(TAtlasResultsTextId.PeekTitleReferences, [ASpot.Name, Length(mFound)]);
   end;
 end;
 
@@ -533,11 +533,11 @@ procedure SayNothingFound(AMode: TAtlasPeekMode; const AName: string);
 begin
   if AMode = TAtlasPeekMode.Definition then
   begin
-    TAtlasIdeResults.Say(TAtlasStrings.Fmt(TAtlasTextId.PeekNoDefinition, [AName]));
+    TAtlasIdeResults.Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.PeekNoDefinition, [AName]));
   end
   else
   begin
-    TAtlasIdeResults.Say(TAtlasStrings.Fmt(TAtlasTextId.PeekNoReferences, [AName]));
+    TAtlasIdeResults.Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.PeekNoReferences, [AName]));
   end;
 end;
 
@@ -573,7 +573,7 @@ begin
     except
       on E: ELspClientError do
       begin
-        TAtlasIdeResults.Say(TAtlasStrings.Fmt(TAtlasTextId.ResultsFailed, [E.Message]));
+        TAtlasIdeResults.Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
         Exit;
       end;
     end;

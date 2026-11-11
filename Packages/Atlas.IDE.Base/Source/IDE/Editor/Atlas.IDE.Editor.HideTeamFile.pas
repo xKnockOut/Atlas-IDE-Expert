@@ -32,7 +32,7 @@ uses
   Atlas.Core.Files.Contract,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Settings.TeamFile,
-  Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Foundation.Files;
@@ -65,7 +65,7 @@ begin
     mUpdated := TAtlasHiddenPlaces.AddTo(mContent.Text, TAtlasTeamFile.Skeleton, APlace);
     if mUpdated = mContent.Text then
     begin
-      ADetail := TAtlasStrings.Text(TAtlasTextId.HideRefusedAlready);
+      ADetail := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideRefusedAlready);
       Exit;
     end;
     mContent.Text := mUpdated;
@@ -74,7 +74,7 @@ begin
   except
     on E: Exception do
     begin
-      ADetail := TAtlasStrings.Fmt(TAtlasTextId.HideFailed, [E.Message]);
+      ADetail := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.HideFailed, [E.Message]);
     end;
   end;
 end;
@@ -109,13 +109,13 @@ begin
   AFileName := '';
   if not (TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.TeamFile) then
   begin
-    ADetail := TAtlasStrings.Text(TAtlasTextId.HideRefusedTeamFileOff);
+    ADetail := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideRefusedTeamFileOff);
     Exit;
   end;
   Folder(AFileName);
   if AFileName = '' then
   begin
-    ADetail := TAtlasStrings.Text(TAtlasTextId.HideRefusedNoProject);
+    ADetail := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideRefusedNoProject);
     Exit;
   end;
   Result := WritePlace(AFileName, APlace, ADetail);

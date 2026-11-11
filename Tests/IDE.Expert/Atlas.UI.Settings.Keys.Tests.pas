@@ -34,7 +34,7 @@ uses
   Vcl.Menus,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
-  Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Keys;
 
 procedure TAtlasKeysPageTests.WarmUp;
@@ -93,16 +93,19 @@ begin
           Result := '';
         end;
       end;
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.KeysStatusLeft, ['IDE: Makro']), Page.StatusLabel(0).Caption);
+    Assert.AreEqual(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysStatusLeft, ['IDE: Makro']),
+      Page.StatusLabel(0).Caption);
     Assert.AreEqual(Ord(TAtlasKeyChoice.LeaveOther), Page.ChoiceBox(0).Choice);
     Assert.IsTrue(Page.ChoiceBox(0).Enabled);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.KeysStatusFree), Page.StatusLabel(1).Caption);
+    Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysStatusFree), Page.StatusLabel(1).Caption);
     Assert.IsFalse(Page.ChoiceBox(1).Enabled, 'freie Taste: nichts zu entscheiden');
     Page.ChoiceBox(0).Choice := Ord(TAtlasKeyChoice.UseAtlas);
     Page.ChoiceBox(0).OnChange(Page.ChoiceBox(0));
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.KeysStatusAtlasWins, ['IDE: Makro']), Page.StatusLabel(0).Caption);
+    Assert.AreEqual(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysStatusAtlasWins, ['IDE: Makro']),
+      Page.StatusLabel(0).Caption);
     Page.KeyEdit(1).Text := 'kein Kürzel';
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.KeysInvalid, ['kein Kürzel']), Page.StatusLabel(1).Caption);
+    Assert.AreEqual(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysInvalid, ['kein Kürzel']),
+      Page.StatusLabel(1).Caption);
   finally
     Page.Free;
   end;
@@ -116,7 +119,7 @@ begin
   Page := TAtlasKeysPage.Create(nil);
   try
     Page.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.KeysStatusIdeKey,
+    Assert.AreEqual(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysStatusIdeKey,
       [ShortCutToText(TAtlasKeyConflicts.cIdeSignatureKey)]), Page.StatusLabel(3).Caption);
     Page.ChoiceBox(3).Choice := Ord(TAtlasKeyChoice.UseAtlas);
     Page.ChoiceBox(3).OnChange(Page.ChoiceBox(3));
@@ -137,7 +140,7 @@ begin
   Page := TAtlasKeysPage.Create(nil);
   try
     Page.ShowForeignCompletions(['CnPack']);
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.KeysForeign, ['CnPack']), Page.ForeignLabel.Caption);
+    Assert.AreEqual(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysForeign, ['CnPack']), Page.ForeignLabel.Caption);
   finally
     Page.Free;
   end;

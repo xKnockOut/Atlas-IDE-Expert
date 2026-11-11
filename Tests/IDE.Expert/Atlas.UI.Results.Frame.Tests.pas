@@ -56,7 +56,7 @@ uses
   Vcl.Forms,
   Atlas.Core.Results.Model,
   Atlas.Core.Lsp.Contract,
-  Atlas.UI.Strings,
+  Atlas.UI.Results.Strings,
   Atlas.UI.Results.Texts,
   Atlas.UI.Results.Frame;
 
@@ -154,7 +154,8 @@ var
   Text: string;
 begin
   Text := TAtlasResultsTexts.EntryText(Entry('C:\P\Haupt.pas', 7, 'S.Speichern;', 'interface'));
-  Assert.AreEqual('≈ 8: S.Speichern;  [' + TAtlasStrings.Text(TAtlasTextId.ReferenceReasonInterface) + ']', Text);
+  Assert.AreEqual('≈ 8: S.Speichern;  [' + TAtlasResultsStrings.Text(TAtlasResultsTextId.ReferenceReasonInterface) +
+    ']', Text);
   Assert.AreEqual('7: K.Speichern;', TAtlasResultsTexts.EntryText(Entry('C:\P\Haupt.pas', 6, 'K.Speichern;', '')));
   // Unbekannte Gründe neuerer Server erscheinen wie geliefert.
   Assert.AreEqual('neu', TAtlasResultsTexts.ReasonText(Entry('A.pas', 0, '', 'neu').Confidence));
@@ -164,7 +165,8 @@ begin
   Item.Line := 4;
   Assert.AreEqual('Lauf  (Haupt.pas:5)', TAtlasResultsTexts.HierarchyText(Item));
   Item.Confidence := Entry('A.pas', 0, '', 'virtual').Confidence;
-  Assert.AreEqual('≈ Lauf  (Haupt.pas:5)  [' + TAtlasStrings.Text(TAtlasTextId.ReferenceReasonVirtual) + ']',
+  Assert.AreEqual('≈ Lauf  (Haupt.pas:5)  [' + TAtlasResultsStrings.Text(TAtlasResultsTextId.ReferenceReasonVirtual) +
+    ']',
     TAtlasResultsTexts.HierarchyText(Item));
 end;
 
@@ -239,17 +241,19 @@ begin
     Assert.IsTrue(Frame.Impact.Shows);
     // Direkt (1): Hilfe; Indirekt (2): Hilfe › Button1Click › Formular, PrueftHilfe; Tests (1); Grenze.
     Assert.AreEqual(10, Integer(Frame.Tree.Items.Count));
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ImpactDirect, [1]), Frame.Tree.Items[0].Text);
+    Assert.AreEqual(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ImpactDirect, [1]), Frame.Tree.Items[0].Text);
     Assert.AreEqual('Hilfe  (Werkzeug.pas:32)  ×2', Frame.Tree.Items[1].Text);
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ImpactIndirect, [2]), Frame.Tree.Items[2].Text);
+    Assert.AreEqual(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ImpactIndirect, [2]), Frame.Tree.Items[2].Text);
     Assert.AreEqual(2, Frame.Tree.Items[4].Level, 'Button1Click unter Hilfe');
     Assert.AreEqual(3, Frame.Tree.Items[5].Level, 'Formular unter dem Handler');
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ImpactForm, ['OnClick = Button1Click', 'Haupt.dfm', 3]),
+    Assert.AreEqual(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ImpactForm, ['OnClick = Button1Click', 'Haupt.dfm',
+      3]),
       Frame.Tree.Items[5].Text);
     Assert.AreEqual('PrueftHilfe  (Werkzeug.Tests.pas:12)  · Test', Frame.Tree.Items[6].Text);
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ImpactTests, [1]), Frame.Tree.Items[7].Text);
+    Assert.AreEqual(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ImpactTests, [1]), Frame.Tree.Items[7].Text);
     Assert.AreEqual('Werkzeug.Tests.TWerkzeugTests.PrueftHilfe  (Werkzeug.Tests.pas:12)', Frame.Tree.Items[8].Text);
-    Assert.AreEqual('⚠ ' + TAtlasStrings.Fmt(TAtlasTextId.ImpactLimitDepth, [2, 2]), Frame.Tree.Items[9].Text);
+    Assert.AreEqual('⚠ ' + TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ImpactLimitDepth, [2, 2]),
+      Frame.Tree.Items[9].Text);
   finally
     Host.Free;
   end;
@@ -304,13 +308,14 @@ var
 begin
   Item := Place('TKind', 'C:\P\Werkzeug.pas', 10, 1, -1);
   Item.Edge := 'override';
-  Assert.AreEqual('TKind  (Werkzeug.pas:11)  · ' + TAtlasStrings.Text(TAtlasTextId.ImpactEdgeOverride),
+  Assert.AreEqual('TKind  (Werkzeug.pas:11)  · ' + TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactEdgeOverride),
     TAtlasResultsTexts.ImpactPlaceText(Item));
   Item.Edge := 'reference';
   Item.Terminal := True;
   Item.Item.Name := 'Haupt';
-  Assert.AreEqual('Haupt · ' + TAtlasStrings.Text(TAtlasTextId.ImpactUnitLevel) + '  (Werkzeug.pas:13)  · ' +
-    TAtlasStrings.Text(TAtlasTextId.ImpactEdgeReference), TAtlasResultsTexts.ImpactPlaceText(Item));
+  Assert.AreEqual('Haupt · ' + TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactUnitLevel) +
+    '  (Werkzeug.pas:13)  · ' +
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactEdgeReference), TAtlasResultsTexts.ImpactPlaceText(Item));
   Impact := Default(TAtlasImpact);
   Impact.CountReached := True;
   Impact.MaxPlaces := 1000;
@@ -318,8 +323,8 @@ begin
   Impact.TimeoutMs := 8000;
   Limits := TAtlasResultsTexts.ImpactLimitTexts(Impact);
   Assert.AreEqual(2, Integer(Length(Limits)));
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ImpactLimitCount, [1000]), Limits[0]);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ImpactLimitTime, [8000]), Limits[1]);
+  Assert.AreEqual(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ImpactLimitCount, [1000]), Limits[0]);
+  Assert.AreEqual(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ImpactLimitTime, [8000]), Limits[1]);
   Limits := nil;
 end;
 
@@ -337,7 +342,7 @@ begin
     Impact.Tests := nil;
     Frame.Impact.Show('Auswirkungen', Impact);
     Assert.IsFalse(Frame.Impact.RunTestsButton.Enabled, 'ohne Tests nichts auszuführen');
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ImpactNoTests), Frame.Tree.Items[7].Text);
+    Assert.AreEqual(TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactNoTests), Frame.Tree.Items[7].Text);
     Frame.Entries.Show('Implementierungen', TAtlasResults.Group(Sample));
     Assert.IsFalse(Frame.Impact.Shows);
     Assert.IsFalse(Frame.Impact.DepthBox.Visible);

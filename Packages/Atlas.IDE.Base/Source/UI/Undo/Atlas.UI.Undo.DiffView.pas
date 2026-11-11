@@ -31,7 +31,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings;
+  Atlas.UI.Undo.Strings;
 
 { TAtlasUndoDiffView }
 
@@ -56,7 +56,7 @@ begin
   mBottom.Height := ScaleValue(40);
   FClose := TButton.Create(Self);
   FClose.Parent := mBottom;
-  FClose.Caption := TAtlasStrings.Text(TAtlasTextId.UndoClose);
+  FClose.Caption := TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoClose);
   FClose.ModalResult := mrCancel;
   FClose.Cancel := True;
   FClose.Default := True;

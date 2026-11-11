@@ -33,6 +33,7 @@ implementation
 uses
   System.JSON,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.ServerEdit,
   Atlas.Text.Json;
@@ -70,17 +71,18 @@ begin
   end;
   if mReply.Edit.IsEmpty then
   begin
-    AMessage(TAtlasStrings.Text(TAtlasTextId.PropertyAccessorsNothing));
+    AMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.PropertyAccessorsNothing));
     Exit;
   end;
-  mHint := TAtlasStrings.Fmt(TAtlasTextId.PropertyAccessorsPreviewHint, [mProperties, mCalls, mReply.Edit.EditCount,
+  mHint := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.PropertyAccessorsPreviewHint, [mProperties, mCalls,
+    mReply.Edit.EditCount,
     Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.PropertyAccessorsWarning);
-  if TAtlasIdeServerEdit.Confirm(TAtlasStrings.Text(TAtlasTextId.PropertyAccessorsTitle), mHint,
-    TAtlasStrings.Text(TAtlasTextId.PropertyAccessorsApply), mReply.Edit) and
-    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.PropertyAccessorsTitle),
+  if TAtlasIdeServerEdit.Confirm(TAtlasEditorStrings.Text(TAtlasEditorTextId.PropertyAccessorsTitle), mHint,
+    TAtlasEditorStrings.Text(TAtlasEditorTextId.PropertyAccessorsApply), mReply.Edit) and
+    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasEditorStrings.Text(TAtlasEditorTextId.PropertyAccessorsTitle),
     AMessage, mOutcome) then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.PropertyAccessorsDone, [mProperties, mCalls, mOutcome.Edits,
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.PropertyAccessorsDone, [mProperties, mCalls, mOutcome.Edits,
       mOutcome.Files]));
     TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.PropertyAccessorsWarning, AMessage);
   end;

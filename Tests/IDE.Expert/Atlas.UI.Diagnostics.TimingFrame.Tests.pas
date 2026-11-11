@@ -33,6 +33,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Diagnostics.Timing,
   Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.TimingFrame;
 
 function Queries: TArray<TAtlasQueryTiming>;
@@ -66,7 +67,7 @@ var
 begin
   Frame := TAtlasTimingFrame.Create(nil);
   try
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.DiagnosticNoQuery), Frame.Title.Caption);
+    Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticNoQuery), Frame.Title.Caption);
     Assert.AreEqual(5, Integer(Length(Frame.Rows)), 'Schritte ohne Quellen');
     Assert.IsFalse(Frame.FileNames.Checked, 'Dateinamen nur auf Wunsch');
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopy), Frame.CopyButton.Caption);
@@ -100,7 +101,7 @@ begin
       begin
         Seen := True;
         Assert.IsTrue(Row.LastWarn, 'verzögerte Quelle in Warnfarbe');
-        Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.DiagnosticRowProvider, ['Server']),
+        Assert.AreEqual(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagnosticRowProvider, ['Server']),
           TAtlasTimingFrame.Caption(Row));
       end;
     end;
@@ -136,8 +137,8 @@ begin
     Frame.FileNames.Checked := True;
     Frame.CopyButton.Click;
     Assert.IsTrue(WithNames);
-    Frame.ShowNote(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopied));
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopied), Frame.Note.Caption);
+    Frame.ShowNote(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticCopied));
+    Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticCopied), Frame.Note.Caption);
   finally
     Frame.Free;
   end;

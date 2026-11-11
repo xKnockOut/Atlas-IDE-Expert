@@ -87,7 +87,8 @@ uses
   Vcl.Forms,
   Vcl.Themes,
   Atlas.Core.Style.Color,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.SymbolPath.Strings;
 
 const
   /// <summary>Logische Bildpunkte bei 96 dpi.</summary>
@@ -229,7 +230,7 @@ begin
     begin
       Result := Result + ' · ';
     end;
-    Result := Result + TAtlasStrings.Text(TAtlasTextId.SymbolPathLibrary);
+    Result := Result + TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathLibrary);
   end;
 end;
 
@@ -243,7 +244,7 @@ begin
   ADetail := '';
   case ARow.Kind of
     TAtlasSymbolPathRowKind.Header:
-      AMain := TAtlasStrings.Fmt(TAtlasTextId.SymbolPathRouteHeader, [ARow.Route + 1]);
+      AMain := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathRouteHeader, [ARow.Route + 1]);
     TAtlasSymbolPathRowKind.Node:
       begin
         mNode := AAnswer.Routes[ARow.Route].Nodes[ARow.Index];
@@ -256,7 +257,7 @@ begin
         AMain := StepCaption(mStep);
         if mStep.Inferred then
         begin
-          AMain := AMain + ' [' + TAtlasStrings.Text(TAtlasTextId.SymbolPathInferred) + ']';
+          AMain := AMain + ' [' + TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathInferred) + ']';
         end;
         ADetail := LocationText(mStep.FileName, mStep.Line);
       end;
@@ -276,32 +277,36 @@ begin
       begin
         if Length(AAnswer.Routes) > 1 then
         begin
-          Result := TAtlasStrings.Fmt(TAtlasTextId.SymbolPathFoundMany, [AAnswer.StepCount, Length(AAnswer.Routes),
+          Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathFoundMany, [AAnswer.StepCount,
+            Length(AAnswer.Routes),
             AAnswer.Visited, AAnswer.ElapsedMs]);
         end
         else
         begin
-          Result := TAtlasStrings.Fmt(TAtlasTextId.SymbolPathFound, [AAnswer.StepCount, AAnswer.Visited,
+          Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathFound, [AAnswer.StepCount,
+            AAnswer.Visited,
             AAnswer.ElapsedMs]);
         end;
         if AAnswer.MoreRoutes then
         begin
-          Result := Result + TAtlasStrings.Text(TAtlasTextId.SymbolPathMoreRoutes);
+          Result := Result + TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathMoreRoutes);
         end;
         if AAnswer.CallsIncomplete then
         begin
-          Result := Result + TAtlasStrings.Text(TAtlasTextId.SymbolPathCallsIncomplete);
+          Result := Result + TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathCallsIncomplete);
         end;
       end;
     TAtlasSymbolPathStatus.NoPath:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SymbolPathNoPath, [AAnswer.MaxSteps, AAnswer.Visited]);
+      Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathNoPath, [AAnswer.MaxSteps,
+        AAnswer.Visited]);
     TAtlasSymbolPathStatus.Aborted:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SymbolPathAborted, [AAnswer.SearchedSteps, AAnswer.Visited,
+      Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathAborted, [AAnswer.SearchedSteps,
+        AAnswer.Visited,
         AAnswer.AbortReason]);
     TAtlasSymbolPathStatus.Ambiguous:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SymbolPathAmbiguous, [AAnswer.Subject]);
+      Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathAmbiguous, [AAnswer.Subject]);
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SymbolPathNotFound, [AAnswer.Subject]);
+    Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathNotFound, [AAnswer.Subject]);
   end;
 end;
 

@@ -43,7 +43,7 @@ implementation
 uses
   Winapi.Windows,
   Atlas.Core.Generate.Choice,
-  Atlas.UI.Strings;
+  Atlas.UI.Generate.Strings;
 
 const
   cGap = 12;
@@ -80,7 +80,7 @@ begin
   FSearch := TEdit.Create(Self);
   FSearch.Parent := Self;
   FSearch.SetBounds(mGap, mY, Scaled(Self, cWidth), FSearch.Height);
-  FSearch.TextHint := TAtlasStrings.Text(TAtlasTextId.GalleryChoiceSearch);
+  FSearch.TextHint := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GalleryChoiceSearch);
   FSearch.OnChange := SearchChange;
   FSearch.OnKeyDown := SearchKeyDown;
   FPrompt.FocusControl := FSearch;
@@ -92,14 +92,14 @@ begin
   Inc(mY, FList.Height + mGap);
   FCancel := TButton.Create(Self);
   FCancel.Parent := Self;
-  FCancel.Caption := TAtlasStrings.Text(TAtlasTextId.GalleryChoiceCancel);
+  FCancel.Caption := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GalleryChoiceCancel);
   FCancel.Cancel := True;
   FCancel.ModalResult := mrCancel;
   FCancel.Top := mY;
   FCancel.Left := ClientWidth - mGap - FCancel.Width;
   FOk := TButton.Create(Self);
   FOk.Parent := Self;
-  FOk.Caption := TAtlasStrings.Text(TAtlasTextId.GalleryChoiceOk);
+  FOk.Caption := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GalleryChoiceOk);
   FOk.Default := True;
   FOk.ModalResult := mrOk;
   FOk.Top := mY;

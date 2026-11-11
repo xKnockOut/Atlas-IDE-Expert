@@ -48,7 +48,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.PluginTimings,
-  Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.PluginParts,
   Atlas.UI.Diagnostics.PluginFrame;
 
@@ -113,7 +113,7 @@ begin
     Assert.IsTrue(mFrame.Bar.Visible);
     Assert.IsTrue(mFrame.MainThread.Visible);
     Assert.IsFalse(mFrame.OffNote.Visible);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.DiagTabHangs),
+    Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagTabHangs),
       TAtlasDiagnosticTabs.Caption(TAtlasDiagnosticPage.Hangs));
   finally
     mFrame.Free;
@@ -168,10 +168,13 @@ begin
   try
     mSnapshot := Snapshot;
     mFrame.SetSnapshot(mSnapshot, 2);
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.DiagBusy, [2, '30']), mFrame.Bar.Busy.Caption);
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.DiagThreshold, [16]), mFrame.Bar.Threshold.Caption);
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.DiagWorkers, [2]), mFrame.Background.Header.Caption);
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.DiagHangSummary, [1, 1]), mFrame.Hangs.Header.Caption);
+    Assert.AreEqual(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagBusy, [2, '30']), mFrame.Bar.Busy.Caption);
+    Assert.AreEqual(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagThreshold, [16]),
+      mFrame.Bar.Threshold.Caption);
+    Assert.AreEqual(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagWorkers, [2]),
+      mFrame.Background.Header.Caption);
+    Assert.AreEqual(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagHangSummary, [1, 1]),
+      mFrame.Hangs.Header.Caption);
     mFrame.Bar.OnPause :=
       procedure(APause: Boolean)
       begin
@@ -186,13 +189,14 @@ begin
     Assert.IsTrue(mPause, 'läuft: Knopf hält an');
     mSnapshot.Paused := True;
     mFrame.SetSnapshot(mSnapshot, 0);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.DiagResume), mFrame.Bar.PauseButton.Caption);
+    Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagResume), mFrame.Bar.PauseButton.Caption);
     mFrame.Bar.PauseButton.Click;
     Assert.IsFalse(mPause);
     mFrame.Bar.ResetButton.Click;
     Assert.AreEqual(1, mResets);
     mFrame.FeatureDisabled(TAtlasFeature.Minimap);
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.DiagDisabled, [TAtlasGuard.FeatureName(TAtlasFeature.Minimap)]),
+    Assert.AreEqual(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagDisabled,
+      [TAtlasGuard.FeatureName(TAtlasFeature.Minimap)]),
       mFrame.Bar.Note.Caption);
   finally
     mFrame.Free;
@@ -215,7 +219,8 @@ begin
     Assert.AreEqual(2, Integer(Length(mFrame.MainThread.Slow.Rows)));
     mFrame.MainThread.ShowOnly(TAtlasFeature.Outline);
     Assert.AreEqual(1, Integer(Length(mFrame.MainThread.Slow.Rows)));
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.DiagSlowOnly, [TAtlasGuard.FeatureName(TAtlasFeature.Outline)]),
+    Assert.AreEqual(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagSlowOnly,
+      [TAtlasGuard.FeatureName(TAtlasFeature.Outline)]),
       mFrame.MainThread.SlowCaption.Caption);
     mFrame.MainThread.ShowAllSlow;
     Assert.AreEqual(2, Integer(Length(mFrame.MainThread.Slow.Rows)));

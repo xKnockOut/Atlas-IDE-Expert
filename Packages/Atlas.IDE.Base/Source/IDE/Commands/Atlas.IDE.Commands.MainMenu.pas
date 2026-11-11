@@ -63,6 +63,7 @@ uses
   Vcl.Menus,
   Vcl.ExtCtrls,
   Atlas.UI.Strings,
+  Atlas.UI.Commands.Strings,
   Atlas.IDE.Commands.MenuModules;
 
 type
@@ -372,7 +373,7 @@ begin
   end;
   FRoot := TMenuItem.Create(nil);
   FRoot.Name := 'AtlasMainMenu';
-  FRoot.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas);
+  FRoot.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuAtlas);
   FRoot.OnClick := RootClick;
   // Häufige Befehle direkt, der Rest in Untermenüs (sonst scrollt das Menü).
   FParent := FRoot;
@@ -488,13 +489,13 @@ var
 begin
   FRoot.Add(NewLine);
   mItem := TMenuItem.Create(FRoot);
-  mItem.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsMenu);
+  mItem.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProjectSettingsMenu);
   mItem.OnClick := ProjectClick;
   FRoot.Add(mItem);
   FImageItems := [FRoot, mItem];
   // Globale Einstellungen stehen nur unter Tools › Optionen › Atlas, kein eigener Menüpunkt mehr.
   mItem := TMenuItem.Create(FRoot);
-  mItem.Caption := TAtlasStrings.Text(TAtlasTextId.MenuOptions);
+  mItem.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuOptions);
   mItem.OnClick := OptionsClick;
   FRoot.Add(mItem);
   FImageItems := FImageItems + [mItem];
@@ -525,9 +526,9 @@ begin
       // Gehört dem Atlas-Menü, damit es mit ihm freigegeben wird; Freigeben nimmt es aus „Ansicht“.
       // Ansicht › Atlas › Prüfung (#909) und Architektur (#1118).
       FViewAtlas := TMenuItem.Create(FRoot);
-      FViewAtlas.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsViewMenuAtlas);
+      FViewAtlas.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProblemsViewMenuAtlas);
       FViewProblems := TMenuItem.Create(FViewAtlas);
-      FViewProblems.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsViewMenuWindow);
+      FViewProblems.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProblemsViewMenuWindow);
       FViewProblems.OnClick := ProblemsClick;
       FViewAtlas.Add(FViewProblems);
       // Einträge der Module (#1455) kommen beim Öffnen dazu.
@@ -572,7 +573,7 @@ begin
     FToggles[TAtlasToggle.PairOwners].Enabled := TAtlasIdeQuickToggles.Checked('PairColors');
     mNames := DisabledNames;
     FEnableAll.Visible := mNames <> '';
-    FEnableAll.Caption := TAtlasStrings.Fmt(TAtlasTextId.MenuEnableAll, [mNames]);
+    FEnableAll.Caption := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.MenuEnableAll, [mNames]);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Menu, E);
@@ -613,11 +614,11 @@ begin
       // Nur bei Änderung: Der Titel im Hauptmenü zeichnet die ganze Leiste neu.
       if mText = '' then
       begin
-        FRoot.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas);
+        FRoot.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuAtlas);
       end
       else
       begin
-        FRoot.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas) + ' – ' + mText;
+        FRoot.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuAtlas) + ' – ' + mText;
       end;
     end);
 end;

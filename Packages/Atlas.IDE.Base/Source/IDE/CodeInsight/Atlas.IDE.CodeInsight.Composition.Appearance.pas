@@ -77,6 +77,7 @@ begin
   TAtlasIdeProblems.ThemeChanged;
   TAtlasIdeOutline.ThemeChanged;
   TAtlasIdeBreadcrumbs.ThemeChanged;
+  TAtlasIdeStickyScroll.ThemeChanged;
   TAtlasIdeEditorToolbar.ThemeChanged;
   TAtlasIdeStatusBar.ThemeChanged;
   TAtlasIdeOverviewRuler.ThemeChanged;

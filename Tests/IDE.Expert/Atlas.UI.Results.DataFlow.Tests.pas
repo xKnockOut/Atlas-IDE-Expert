@@ -36,6 +36,7 @@ uses
   Atlas.Core.Lsp.DataFlow,
   Atlas.Core.Results.DataFlow,
   Atlas.UI.Strings,
+  Atlas.UI.Results.Strings,
   Atlas.UI.Results.Texts,
   Atlas.UI.Results.Frame;
 
@@ -114,16 +115,16 @@ begin
   Node.UnsafeReason := 'pointer';
   Text := TAtlasResultsTexts.FlowNodeText(Node);
   Assert.StartsWith(TAtlasStrings.Text(TAtlasTextId.DataFlowAssignment) + ': A + B', Text);
-  Assert.Contains(Text, TAtlasStrings.Fmt(TAtlasTextId.DataFlowVia, ['Summe']));
-  Assert.Contains(Text, TAtlasStrings.Fmt(TAtlasTextId.DataFlowUnsafe,
-    [TAtlasStrings.Text(TAtlasTextId.DataFlowUnsafePointer)]));
+  Assert.Contains(Text, TAtlasResultsStrings.Fmt(TAtlasResultsTextId.DataFlowVia, ['Summe']));
+  Assert.Contains(Text, TAtlasResultsStrings.Fmt(TAtlasResultsTextId.DataFlowUnsafe,
+    [TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowUnsafePointer)]));
   Assert.EndsWith('Haupt.pas:12: X := A + B;', Text);
   // Zusammengefasst: Anzahl und Mehrzahl, der Fundort steht darunter.
   Node := Assignment('0', [Place(3, 'X := 0;'), Place(8, 'X := 0;'), Place(9, 'X := 0;')], nil);
   Node.Literal := True;
   Text := TAtlasResultsTexts.FlowNodeText(Node);
   Assert.StartsWith('3 ' + TAtlasStrings.Text(TAtlasTextId.DataFlowAssignments), Text);
-  Assert.Contains(Text, TAtlasStrings.Text(TAtlasTextId.DataFlowOriginLiteral));
+  Assert.Contains(Text, TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowOriginLiteral));
   Assert.IsFalse(Text.Contains('Haupt.pas'), 'ohne Fundort');
   Assert.AreEqual('Haupt.pas:4: X := 0;', TAtlasResultsTexts.FlowPlaceText(Node.Places[0]));
 end;
@@ -140,14 +141,17 @@ begin
   Assert.AreEqual('→ Summe  (Daten.pas:11)', TAtlasResultsTexts.FlowSourceText(Child,
     TAtlasDataFlowDirection.Targets));
   Child.DepthReached := True;
-  Assert.EndsWith(TAtlasStrings.Text(TAtlasTextId.DataFlowLeafDepth), TAtlasResultsTexts.FlowSourceText(Child,
+  Assert.EndsWith(TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowLeafDepth),
+    TAtlasResultsTexts.FlowSourceText(Child,
     TAtlasDataFlowDirection.Sources));
   Child.DepthReached := False;
   Child.Source.Leaf := TAtlasDataFlowLeaf.Cycle;
-  Assert.EndsWith(TAtlasStrings.Text(TAtlasTextId.DataFlowLeafCycle), TAtlasResultsTexts.FlowSourceText(Child,
+  Assert.EndsWith(TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowLeafCycle),
+    TAtlasResultsTexts.FlowSourceText(Child,
     TAtlasDataFlowDirection.Sources));
   Child.Source.Leaf := TAtlasDataFlowLeaf.Constant;
-  Assert.EndsWith(TAtlasStrings.Text(TAtlasTextId.DataFlowLeafConstant), TAtlasResultsTexts.FlowSourceText(Child,
+  Assert.EndsWith(TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowLeafConstant),
+    TAtlasResultsTexts.FlowSourceText(Child,
     TAtlasDataFlowDirection.Sources));
 end;
 
@@ -281,7 +285,7 @@ begin
       Answer([Assignment('Summe', [Place(11, 'X := Summe;')], [Symbol('Summe', 'S', TAtlasDataFlowLeaf.None)])]),
       1, False, True);
     Assert.AreEqual(0, Integer(Root(Frame, 0).Item[0].Count));
-    Assert.EndsWith(TAtlasStrings.Text(TAtlasTextId.DataFlowLeafDepth), Root(Frame, 0).Item[0].Text);
+    Assert.EndsWith(TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowLeafDepth), Root(Frame, 0).Item[0].Text);
     // Filter wie angefragt, Setzen meldet nichts.
     Assert.IsFalse(Frame.Flow.OnlyProjectCheck.Checked);
     Assert.IsTrue(Frame.Flow.ExcludeTestsCheck.Checked);

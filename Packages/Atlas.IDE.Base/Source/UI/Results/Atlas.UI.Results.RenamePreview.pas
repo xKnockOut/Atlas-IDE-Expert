@@ -35,7 +35,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings;
+  Atlas.UI.Results.Strings;
 
 /// <summary>Knöpfe unten rechts: „Abbrechen“ und AApply; liefert den Knopf, der übernimmt.</summary>
 function AddButtons(ADialog: TForm; const AApply: string): TButton;
@@ -50,7 +50,7 @@ begin
   mButtons.BevelOuter := bvNone;
   mCancel := TButton.Create(ADialog);
   mCancel.Parent := mButtons;
-  mCancel.Caption := TAtlasStrings.Text(TAtlasTextId.RenamePreviewCancel);
+  mCancel.Caption := TAtlasResultsStrings.Text(TAtlasResultsTextId.RenamePreviewCancel);
   mCancel.ModalResult := mrCancel;
   mCancel.Cancel := True;
   mCancel.Width := ADialog.ScaleValue(100);
@@ -81,8 +81,8 @@ begin
   end;
   if TAtlasResults.InferredCount(mEntries) > 0 then
   begin
-    AResults.Entries.ShowRated(AHint, mEntries, TAtlasStrings.Text(TAtlasTextId.RenameChangedGroup),
-      TAtlasStrings.Text(TAtlasTextId.RenameUnchangedGroup));
+    AResults.Entries.ShowRated(AHint, mEntries, TAtlasResultsStrings.Text(TAtlasResultsTextId.RenameChangedGroup),
+      TAtlasResultsStrings.Text(TAtlasResultsTextId.RenameUnchangedGroup));
   end
   else
   begin
@@ -93,7 +93,7 @@ end;
 class function TAtlasRenamePreview.Execute(const ATitle, AHint: string; const AGroups: TArray<TAtlasResultGroup>;
   const AOnOpen: TAtlasResultsOpen): Boolean;
 begin
-  Result := Execute(ATitle, AHint, TAtlasStrings.Text(TAtlasTextId.RenamePreviewApply), AGroups, AOnOpen);
+  Result := Execute(ATitle, AHint, TAtlasResultsStrings.Text(TAtlasResultsTextId.RenamePreviewApply), AGroups, AOnOpen);
 end;
 
 class function TAtlasRenamePreview.Execute(const ATitle, AHint, AApply: string;

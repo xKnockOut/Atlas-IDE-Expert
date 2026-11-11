@@ -38,7 +38,7 @@ uses
   Atlas.Core.Diagnostics.ServerPackage,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Diagnostics.ExportDialog,
-  Atlas.UI.Strings;
+  Atlas.UI.Diagnostics.Strings;
 
 class procedure TAtlasIdeServerPackage.Execute(const AServer: TAtlasServerCommandWithArguments;
   const AMessage: TProc<string>);
@@ -60,7 +60,7 @@ begin
     Exit;
   end;
   FBusy := True;
-  mMessage(TAtlasStrings.Text(TAtlasTextId.ServerPackageCollecting));
+  mMessage(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ServerPackageCollecting));
   try
     mServer(TAtlasBugReport.cServerCommand, TAtlasBugReport.ServerArguments(mInput),
       procedure(AReport: TJSONValue)
@@ -100,27 +100,29 @@ begin
   mServerFiles := TAtlasServerDiagnostics.ServerFiles(AServerAnswer);
   if Length(mServerFiles) = 0 then
   begin
-    AMessage(TAtlasStrings.Text(TAtlasTextId.ServerPackageNoServer));
+    AMessage(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ServerPackageNoServer));
   end;
   mFiles := TAtlasServerDiagnostics.Build(AReport, mServerFiles);
   if AAnonymize then
   begin
-    mNote := TAtlasStrings.Text(TAtlasTextId.BugReportAnonymized);
+    mNote := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportAnonymized);
   end
   else
   begin
-    mNote := TAtlasStrings.Text(TAtlasTextId.BugReportPlain);
+    mNote := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportPlain);
   end;
   if not TAtlasDiagnosticExportDialog.Execute(TAtlasExportDialogTexts.Create(
-    TAtlasStrings.Text(TAtlasTextId.ServerPackageTitle), TAtlasStrings.Fmt(TAtlasTextId.ServerPackageHint, [mNote]),
-    TAtlasServerDiagnostics.Preview(mFiles, TAtlasStrings.Text(TAtlasTextId.ServerPackageCut)),
-    TAtlasServerDiagnostics.ZipName(Now), TAtlasStrings.Text(TAtlasTextId.ServerPackageFilter), 'zip'),
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ServerPackageTitle),
+    TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ServerPackageHint, [mNote]),
+    TAtlasServerDiagnostics.Preview(mFiles, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ServerPackageCut)),
+    TAtlasServerDiagnostics.ZipName(Now), TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ServerPackageFilter),
+    'zip'),
     mTarget, TAtlasIdeDockWindow.ApplyIdeTheme) then
   begin
     Exit;
   end;
   TAtlasDiagnosticPackage.WriteZip(mFiles, mTarget);
-  AMessage(TAtlasStrings.Fmt(TAtlasTextId.ServerPackageDone, [mTarget]));
+  AMessage(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ServerPackageDone, [mTarget]));
 end;
 
 end.

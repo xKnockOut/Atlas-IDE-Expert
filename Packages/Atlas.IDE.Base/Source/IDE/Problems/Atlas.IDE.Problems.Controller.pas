@@ -269,6 +269,7 @@ uses
   Vcl.Forms,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
+  Atlas.UI.Problems.Strings,
   Atlas.Core.Files.TextFile,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
@@ -1215,8 +1216,10 @@ begin
     begin
       Result := Result + [mProblem];
       // Hinweis in der Sprache des Plugins statt der Meldung des Servers.
-      Result[High(Result)].Message := mProblem.InactiveHint(TAtlasStrings.Text(TAtlasTextId.InactiveCondition),
-        TAtlasStrings.Text(TAtlasTextId.InactiveTarget), TAtlasStrings.Text(TAtlasTextId.InactiveRegion));
+      Result[High(Result)].Message := mProblem.InactiveHint(TAtlasProblemsStrings.Text(
+        TAtlasProblemsTextId.InactiveCondition),
+        TAtlasProblemsStrings.Text(TAtlasProblemsTextId.InactiveTarget),
+        TAtlasProblemsStrings.Text(TAtlasProblemsTextId.InactiveRegion));
     end;
   end;
   // uses-Einträge (#621): Grund in der Sprache des Plugins, Zahl der ungenutzten für „Alle entfernen“.

@@ -663,15 +663,18 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Undo.Target` | `IDE/Undo/Atlas.IDE.Undo.Target.pas` | Ordner `IDE/Undo` |
 | `Atlas.IDE.Updates.Check` | `IDE/Updates/Atlas.IDE.Updates.Check.pas` | Ordner `IDE/Updates` |
 | `Atlas.IDE.Updates.Install` | `IDE/Updates/Atlas.IDE.Updates.Install.pas` | Ordner `IDE/Updates` |
+| `Atlas.UI.CodeInsight.Strings` | `UI/CodeInsight/Atlas.UI.CodeInsight.Strings.pas` | Ordner `UI/CodeInsight` |
 | `Atlas.UI.Commands.KeyMap` | `UI/Commands/Atlas.UI.Commands.KeyMap.pas` | Ordner `UI/Commands` |
 | `Atlas.UI.Commands.Palette` | `UI/Commands/Atlas.UI.Commands.Palette.pas` | Ordner `UI/Commands` |
 | `Atlas.UI.Commands.ShortcutTip` | `UI/Commands/Atlas.UI.Commands.ShortcutTip.pas` | Ordner `UI/Commands` |
+| `Atlas.UI.Commands.Strings` | `UI/Commands/Atlas.UI.Commands.Strings.pas` | Ordner `UI/Commands` |
 | `Atlas.UI.Completion.Details` | `UI/Completion/Atlas.UI.Completion.Details.pas` | Ordner `UI/Completion` |
 | `Atlas.UI.Completion.Popup` | `UI/Completion/Atlas.UI.Completion.Popup.pas` | Ordner `UI/Completion` |
 | `Atlas.UI.Completion.PopupState` | `UI/Completion/Atlas.UI.Completion.PopupState.pas` | Ordner `UI/Completion` |
 | `Atlas.UI.Completion.PopupLayout` | `UI/Completion/Atlas.UI.Completion.PopupLayout.pas` | Ordner `UI/Completion` |
 | `Atlas.UI.Completion.PopupPainter` | `UI/Completion/Atlas.UI.Completion.PopupPainter.pas` | Ordner `UI/Completion` |
 | `Atlas.UI.Completion.PopupTexts` | `UI/Completion/Atlas.UI.Completion.PopupTexts.pas` | Ordner `UI/Completion` |
+| `Atlas.UI.Completion.Strings` | `UI/Completion/Atlas.UI.Completion.Strings.pas` | Ordner `UI/Completion` |
 | `Atlas.UI.Diagnostics.ExportDialog` | `UI/Diagnostics/Atlas.UI.Diagnostics.ExportDialog.pas` | Ordner `UI/Diagnostics` |
 | `Atlas.UI.Diagnostics.Grid` | `UI/Diagnostics/Atlas.UI.Diagnostics.Grid.pas` | Ordner `UI/Diagnostics` |
 | `Atlas.UI.Diagnostics.MainThreadPage` | `UI/Diagnostics/Atlas.UI.Diagnostics.MainThreadPage.pas` | Ordner `UI/Diagnostics` |
@@ -695,10 +698,13 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Editor.OverviewRuler` | `UI/Editor/Atlas.UI.Editor.OverviewRuler.pas` | Ordner `UI/Editor` |
 | `Atlas.UI.Editor.Peek` | `UI/Editor/Atlas.UI.Editor.Peek.pas` | Ordner `UI/Editor` |
 | `Atlas.UI.Editor.SmartPaste` | `UI/Editor/Atlas.UI.Editor.SmartPaste.pas` | Ordner `UI/Editor` |
+| `Atlas.UI.Editor.Strings` | `UI/Editor/Atlas.UI.Editor.Strings.pas` | Ordner `UI/Editor` |
 | `Atlas.UI.Editor.Unwrap` | `UI/Editor/Atlas.UI.Editor.Unwrap.pas` | Ordner `UI/Editor` |
 | `Atlas.UI.EditorToolbar.Bar` | `UI/EditorToolbar/Atlas.UI.EditorToolbar.Bar.pas` | Ordner `UI/EditorToolbar` |
 | `Atlas.UI.EditorToolbar.Customize` | `UI/EditorToolbar/Atlas.UI.EditorToolbar.Customize.pas` | Ordner `UI/EditorToolbar` |
 | `Atlas.UI.EditorToolbar.Glyphs` | `UI/EditorToolbar/Atlas.UI.EditorToolbar.Glyphs.pas` | Ordner `UI/EditorToolbar` |
+| `Atlas.UI.EditorToolbar.Strings` | `UI/EditorToolbar/Atlas.UI.EditorToolbar.Strings.pas` | Ordner `UI/EditorToolbar` |
+| `Atlas.UI.Foundation.Strings` | `UI/Foundation/Atlas.UI.Foundation.Strings.pas` | Ordner `UI/Foundation` |
 | `Atlas.UI.Generate.Window` | `UI/Generate/Atlas.UI.Generate.Window.pas` | Ordner `UI/Generate` |
 | `Atlas.UI.Generate.Choice` | `UI/Generate/Atlas.UI.Generate.Choice.pas` | Ordner `UI/Generate`: Auswahldialog der Assistenten, #1821 |
 | `Atlas.UI.Hover.Tip` | `UI/Hover/Atlas.UI.Hover.Tip.pas` | Ordner `UI/Hover` |
@@ -708,6 +714,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Outline.Frame` | `UI/Outline/Atlas.UI.Outline.Frame.pas` | Ordner `UI/Outline` |
 | `Atlas.UI.Outline.NavigationToolbar` | `UI/Outline/Atlas.UI.Outline.NavigationToolbar.pas` | Ordner `UI/Outline` |
 | `Atlas.UI.Foundation.WndProcHook` | `UI/Foundation/Atlas.UI.Foundation.WndProcHook.pas` | Fensterprozedur mit Kettenprüfung für Dockfenster und Statusleiste (#1976) |
+| `Atlas.UI.Generate.Strings` | `UI/Generate/Atlas.UI.Generate.Strings.pas` | Ordner `UI/Generate` |
+| `Atlas.UI.Hover.Strings` | `UI/Hover/Atlas.UI.Hover.Strings.pas` | Ordner `UI/Hover` |
+| `Atlas.UI.Notifications.Strings` | `UI/Notifications/Atlas.UI.Notifications.Strings.pas` | Ordner `UI/Notifications` |
+| `Atlas.UI.Outline.Strings` | `UI/Outline/Atlas.UI.Outline.Strings.pas` | Ordner `UI/Outline` |
 | `Atlas.UI.Popup.Accessibility` | `UI/Popup/Atlas.UI.Popup.Accessibility.pas` | Ordner `UI/Popup` |
 | `Atlas.UI.Popup.Draw` | `UI/Popup/Atlas.UI.Popup.Draw.pas` | Ordner `UI/Popup` |
 | `Atlas.UI.Popup.Styled` | `UI/Popup/Atlas.UI.Popup.Styled.pas` | Ordner `UI/Popup` |
@@ -719,6 +729,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Problems.Frame` | `UI/Problems/Atlas.UI.Problems.Frame.pas` | Ordner `UI/Problems` |
 | `Atlas.UI.Problems.ScopeBox` | `UI/Problems/Atlas.UI.Problems.ScopeBox.pas` | Ordner `UI/Problems` |
 | `Atlas.UI.Problems.KindIcon` | `UI/Problems/Atlas.UI.Problems.KindIcon.pas` | Ordner `UI/Problems` |
+| `Atlas.UI.Problems.Strings` | `UI/Problems/Atlas.UI.Problems.Strings.pas` | Ordner `UI/Problems` |
 | `Atlas.UI.Results.CallDiagram` | `UI/Results/Atlas.UI.Results.CallDiagram.pas` | Ordner `UI/Results` |
 | `Atlas.UI.Results.Changes` | `UI/Results/Atlas.UI.Results.Changes.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |
 | `Atlas.UI.Results.DataFlow` | `UI/Results/Atlas.UI.Results.DataFlow.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |
@@ -729,6 +740,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Results.Issues` | `UI/Results/Atlas.UI.Results.Issues.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |
 | `Atlas.UI.Results.Items` | `UI/Results/Atlas.UI.Results.Items.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |
 | `Atlas.UI.Results.RenamePreview` | `UI/Results/Atlas.UI.Results.RenamePreview.pas` | Ordner `UI/Results` |
+| `Atlas.UI.Results.Strings` | `UI/Results/Atlas.UI.Results.Strings.pas` | Ordner `UI/Results` |
 | `Atlas.UI.Results.SymbolPath` | `UI/Results/Atlas.UI.Results.SymbolPath.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |
 | `Atlas.UI.Results.Texts` | `UI/Results/Atlas.UI.Results.Texts.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |
 | `Atlas.UI.Results.View` | `UI/Results/Atlas.UI.Results.View.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |
@@ -765,18 +777,24 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Settings.Page.Search` | `UI/Settings/Atlas.UI.Settings.Page.Search.pas` | Ordner `UI/Settings`; Suchfeld über dem Baum der Optionsseite (#1884) |
 | `Atlas.UI.Settings.ServerPage` | `UI/Settings/Atlas.UI.Settings.ServerPage.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.SnippetsPage` | `UI/Settings/Atlas.UI.Settings.SnippetsPage.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Strings` | `UI/Settings/Atlas.UI.Settings.Strings.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Transfer` | `UI/Settings/Atlas.UI.Settings.Transfer.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Setup.Strings` | `UI/Setup/Atlas.UI.Setup.Strings.pas` | Ordner `UI/Setup` |
 | `Atlas.UI.Setup.Window` | `UI/Setup/Atlas.UI.Setup.Window.pas` | Ordner `UI/Setup` |
 | `Atlas.UI.Signature.Hint` | `UI/Signature/Atlas.UI.Signature.Hint.pas` | Ordner `UI/Signature` |
 | `Atlas.UI.Status.ServerFrame` | `UI/Status/Atlas.UI.Status.ServerFrame.pas` | Ordner `UI/Status` |
+| `Atlas.UI.Status.Strings` | `UI/Status/Atlas.UI.Status.Strings.pas` | Ordner `UI/Status` |
 | `Atlas.UI.Status.Window` | `UI/Status/Atlas.UI.Status.Window.pas` | Ordner `UI/Status` |
 | `Atlas.UI.StatusBar.Bar` | `UI/StatusBar/Atlas.UI.StatusBar.Bar.pas` | Ordner `UI/StatusBar` |
+| `Atlas.UI.StatusBar.Strings` | `UI/StatusBar/Atlas.UI.StatusBar.Strings.pas` | Ordner `UI/StatusBar` |
 | `Atlas.UI.Strings` | `UI/Atlas.UI.Strings.pas` | Ordner `UI` |
 | `Atlas.UI.Style.Canvas` | `UI/Style/Atlas.UI.Style.Canvas.pas` | Zeichenfläche ohne Flackern für Bereiche und Kacheln, bis #1455 `TAtlasWelcomeCanvas` |
 | `Atlas.UI.Style.Symbol` | `UI/Style/Atlas.UI.Style.Symbol.pas` | Ordner `UI/Style` |
 | `Atlas.UI.SymbolPath.Chain` | `UI/SymbolPath/Atlas.UI.SymbolPath.Chain.pas` | Darstellung eines Wegs zwischen Symbolen im Ergebnisfenster von Base (#1117); das Modul Analyse sucht den Weg, #1455 |
+| `Atlas.UI.SymbolPath.Strings` | `UI/SymbolPath/Atlas.UI.SymbolPath.Strings.pas` | Texte der Kette eines Wegs (`UI.SymbolPath.Chain`) im Ergebnisfenster von Base; Suche und Dialog im Modul Analyse haben eigene Texte |
 | `Atlas.UI.Undo.DiffView` | `UI/Undo/Atlas.UI.Undo.DiffView.pas` | Ordner `UI/Undo` |
 | `Atlas.UI.Undo.Messages` | `UI/Undo/Atlas.UI.Undo.Messages.pas` | Ordner `UI/Undo` |
+| `Atlas.UI.Undo.Strings` | `UI/Undo/Atlas.UI.Undo.Strings.pas` | Ordner `UI/Undo` |
 | `Atlas.UI.Updates.Consent` | `UI/Updates/Atlas.UI.Updates.Consent.pas` | Ordner `UI/Updates` |
 | `Atlas.UI.Updates.Offer` | `UI/Updates/Atlas.UI.Updates.Offer.pas` | Ordner `UI/Updates` |
 | `Atlas.UI.Updates.Selection` | `UI/Updates/Atlas.UI.Updates.Selection.pas` | Ordner `UI/Updates` |

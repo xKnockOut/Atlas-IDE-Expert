@@ -157,7 +157,18 @@ implementation
 uses
   Winapi.Windows,
   System.Math,
-  Atlas.UI.Strings;
+  Atlas.UI.Status.Strings;
+
+const
+  // Breiten der Spalten Regel, ms und Aufrufe; Lage und Breite der Knöpfe der Leiste.
+  cRuleWidth = 260;
+  cNumberWidth = 80;
+  cRefreshLeft = 4;
+  cRefreshWidth = 110;
+  cRebuildLeft = 120;
+  cRebuildWidth = 140;
+  cPackageLeft = 266;
+  cPackageWidth = 170;
 
 {$R *.dfm}
 
@@ -171,19 +182,19 @@ function PartCaption(APart: TAtlasServerMemoryPart): string;
 begin
   case APart of
     TAtlasServerMemoryPart.Symbols:
-      Result := TAtlasStrings.Text(TAtlasTextId.ServerMemorySymbols);
+      Result := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerMemorySymbols);
     TAtlasServerMemoryPart.Usages:
-      Result := TAtlasStrings.Text(TAtlasTextId.ServerMemoryUsages);
+      Result := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerMemoryUsages);
     TAtlasServerMemoryPart.LibraryUnits:
-      Result := TAtlasStrings.Text(TAtlasTextId.ServerMemoryLibrary);
+      Result := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerMemoryLibrary);
     TAtlasServerMemoryPart.TreeCache:
-      Result := TAtlasStrings.Text(TAtlasTextId.ServerMemoryTrees);
+      Result := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerMemoryTrees);
     TAtlasServerMemoryPart.Documents:
-      Result := TAtlasStrings.Text(TAtlasTextId.ServerMemoryDocuments);
+      Result := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerMemoryDocuments);
     TAtlasServerMemoryPart.Packages:
-      Result := TAtlasStrings.Text(TAtlasTextId.ServerMemoryPackages);
+      Result := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerMemoryPackages);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.ServerMemoryRest);
+    Result := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerMemoryRest);
   end;
 end;
 
@@ -192,13 +203,13 @@ function StateCaption(AState: TAtlasServerState): string;
 begin
   case AState of
     TAtlasServerState.Loading:
-      Result := TAtlasStrings.Text(TAtlasTextId.ServerStateLoading);
+      Result := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerStateLoading);
     TAtlasServerState.Ready:
-      Result := TAtlasStrings.Text(TAtlasTextId.ServerStateReady);
+      Result := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerStateReady);
     TAtlasServerState.Checking:
-      Result := TAtlasStrings.Text(TAtlasTextId.ServerStateChecking);
+      Result := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerStateChecking);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.ServerStateUnknown);
+    Result := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerStateUnknown);
   end;
 end;
 
@@ -206,7 +217,7 @@ function PercentText(APercent: Integer): string;
 begin
   if APercent < 0 then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.ServerWindowUnknownValue);
+    Result := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowUnknownValue);
   end
   else
   begin
@@ -252,12 +263,12 @@ begin
   Result := TAtlasServerTexts.Megabytes(FSnapshot.MemoryTotal, FormatSettings) + ' / ';
   if FSnapshot.MemoryBudget > 0 then
   begin
-    Result := Result + TAtlasStrings.Fmt(TAtlasTextId.ServerWindowBudget,
+    Result := Result + TAtlasStatusStrings.Fmt(TAtlasStatusTextId.ServerWindowBudget,
       [TAtlasServerTexts.Megabytes(FSnapshot.MemoryBudget, FormatSettings)]);
   end
   else
   begin
-    Result := Result + TAtlasStrings.Text(TAtlasTextId.ServerWindowNoBudget);
+    Result := Result + TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowNoBudget);
   end;
 end;
 
@@ -335,7 +346,7 @@ begin
     Inc(mIndex);
   end;
   Canvas.Font.Style := [fsBold];
-  DrawRow(mIndex, TAtlasStrings.Text(TAtlasTextId.ServerMemoryTotal), TotalText, FSnapshot.TotalFraction,
+  DrawRow(mIndex, TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerMemoryTotal), TotalText, FSnapshot.TotalFraction,
     FSnapshot.OverBudget);
   Canvas.Font.Style := [];
 end;
@@ -348,19 +359,23 @@ begin
   BevelOuter := bvNone;
   ParentBackground := True;
   FSnapshot := Default(TAtlasServerSnapshot);
-  FRequests := NewList([TAtlasStrings.Text(TAtlasTextId.ServerColumnRequest),
-    TAtlasStrings.Text(TAtlasTextId.ServerColumnCount), TAtlasStrings.Text(TAtlasTextId.ServerColumnAverage),
-    TAtlasStrings.Text(TAtlasTextId.ServerColumnMax), TAtlasStrings.Text(TAtlasTextId.ServerColumnFailed)],
+  FRequests := NewList([TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnRequest),
+    TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnCount),
+    TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnAverage),
+    TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnMax),
+    TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnFailed)],
     [260, 70, 80, 90, 60]);
   FRequests.Align := alClient;
   FRequests.OnData := RequestsData;
-  FRules := NewList([TAtlasStrings.Text(TAtlasTextId.ServerColumnRule), TAtlasStrings.Text(TAtlasTextId.ServerColumnMs),
-    TAtlasStrings.Text(TAtlasTextId.ServerColumnCalls)], [260, 80, 80]);
+  FRules := NewList([TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnRule),
+    TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnMs),
+    TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnCalls)],
+    [cRuleWidth, cNumberWidth, cNumberWidth]);
   FRules.Align := alTop;
   FRules.OnData := RulesData;
   FRules.OnDblClick := RulesDblClick;
-  FUnits := NewList([TAtlasStrings.Text(TAtlasTextId.ServerColumnUnit),
-    TAtlasStrings.Text(TAtlasTextId.ServerColumnMs)],
+  FUnits := NewList([TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnUnit),
+    TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnMs)],
     [260, 80]);
   FUnits.Align := alTop;
   FUnits.Top := 0;
@@ -505,16 +520,16 @@ begin
   BevelOuter := bvNone;
   ParentBackground := True;
   Height := ScaleValue(36);
-  FRefresh := NewButton(TAtlasStrings.Text(TAtlasTextId.ServerWindowRefresh), 4, 110);
-  FRebuild := NewButton(TAtlasStrings.Text(TAtlasTextId.ServerWindowRebuild), 120, 140);
-  FPackage := NewButton(TAtlasStrings.Text(TAtlasTextId.ServerWindowPackage), 266, 170);
+  FRefresh := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowRefresh), cRefreshLeft, cRefreshWidth);
+  FRebuild := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowRebuild), cRebuildLeft, cRebuildWidth);
+  FPackage := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowPackage), cPackageLeft, cPackageWidth);
   FNote := TLabel.Create(Self);
   FNote.Parent := Self;
   FNote.Left := FNote.ScaleValue(444);
   FNote.Top := FNote.ScaleValue(11);
   FNote.ShowAccelChar := False;
   FNote.Font.Color := clGrayText;
-  FNote.Caption := TAtlasStrings.Text(TAtlasTextId.ServerWindowHint);
+  FNote.Caption := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowHint);
 end;
 
 function TAtlasServerButtons.NewButton(const ACaption: string; ALeft, AWidth: Integer): TButton;
@@ -573,7 +588,7 @@ begin
   FMemory.Top := FCheckRun.Top + FCheckRun.Height + 1;
   FOverBudget := NewLine(FMemory);
   FOverBudget.Font.Style := [fsBold];
-  FOverBudget.Caption := TAtlasStrings.Text(TAtlasTextId.ServerWindowOverBudget);
+  FOverBudget.Caption := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowOverBudget);
   FOverBudget.Visible := False;
   FButtons := TAtlasServerButtons.Create(Self);
   FButtons.Parent := Self;
@@ -606,24 +621,25 @@ end;
 
 procedure TAtlasServerFrame.UpdateServerTexts;
 begin
-  FHeader.Caption := TAtlasStrings.Fmt(TAtlasTextId.ServerWindowHeader, [FSnapshot.ProcessId, FSnapshot.Version,
+  FHeader.Caption := TAtlasStatusStrings.Fmt(TAtlasStatusTextId.ServerWindowHeader, [FSnapshot.ProcessId,
+    FSnapshot.Version,
     TAtlasServerTexts.Duration(FSnapshot.UptimeMs), StateCaption(FSnapshot.State), FRestarts]);
-  FQueue.Caption := TAtlasStrings.Fmt(TAtlasTextId.ServerWindowQueue, [FSnapshot.IndexWaiting,
+  FQueue.Caption := TAtlasStatusStrings.Fmt(TAtlasStatusTextId.ServerWindowQueue, [FSnapshot.IndexWaiting,
     FSnapshot.IndexRunning, FSnapshot.CheckWaiting, FSnapshot.CheckRunning,
     TAtlasServerTexts.Duration(FSnapshot.OldestWaitMs)]) + sLineBreak +
-    TAtlasStrings.Fmt(TAtlasTextId.ServerWindowCacheHits, [PercentText(FSnapshot.IndexHitPercent),
+    TAtlasStatusStrings.Fmt(TAtlasStatusTextId.ServerWindowCacheHits, [PercentText(FSnapshot.IndexHitPercent),
     PercentText(FSnapshot.TreeHitPercent), Max(FSnapshot.Units, 0)]);
   if FSnapshot.CheckActive then
   begin
-    FCheckRun.Caption := TAtlasStrings.Fmt(TAtlasTextId.ServerWindowCheckRunning, [FSnapshot.CheckUnits]);
+    FCheckRun.Caption := TAtlasStatusStrings.Fmt(TAtlasStatusTextId.ServerWindowCheckRunning, [FSnapshot.CheckUnits]);
   end
   else if FSnapshot.CheckSerial = 0 then
   begin
-    FCheckRun.Caption := TAtlasStrings.Text(TAtlasTextId.ServerWindowNoCheckRun);
+    FCheckRun.Caption := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowNoCheckRun);
   end
   else
   begin
-    FCheckRun.Caption := TAtlasStrings.Fmt(TAtlasTextId.ServerWindowCheckRun,
+    FCheckRun.Caption := TAtlasStatusStrings.Fmt(TAtlasStatusTextId.ServerWindowCheckRun,
       [FormatDateTime('hh":"nn', FSnapshot.CheckStarted), FSnapshot.CheckUnits,
       TAtlasServerTexts.Duration(FSnapshot.CheckDurationMs)]);
   end;
@@ -635,15 +651,15 @@ begin
   FCheckRun.Caption := '';
   if not FRunning then
   begin
-    FHeader.Caption := TAtlasStrings.Text(TAtlasTextId.ServerWindowNoServer);
+    FHeader.Caption := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowNoServer);
   end
   else if not FSnapshot.Valid then
   begin
-    FHeader.Caption := TAtlasStrings.Text(TAtlasTextId.ServerWindowWaiting);
+    FHeader.Caption := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowWaiting);
   end
   else if not FSnapshot.Known then
   begin
-    FHeader.Caption := TAtlasStrings.Text(TAtlasTextId.ServerWindowOldServer);
+    FHeader.Caption := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowOldServer);
   end
   else
   begin

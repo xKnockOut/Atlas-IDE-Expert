@@ -89,6 +89,7 @@ uses
   System.Generics.Collections,
   Vcl.Graphics,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.Sheets;
 
 type
@@ -577,7 +578,7 @@ begin
   FPlaceTop := 100000;
   Place(Result, FNodePages[AMain].Box);
   mCaption := TLabel.Create(Self);
-  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsOverviewTitle);
+  mCaption.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOverviewTitle);
   mCaption.Font.Style := [fsBold];
   Result.SetMaster(mCaption, '');
   FOverviews := FOverviews + [Result];
@@ -600,7 +601,7 @@ begin
   mDetails.Align := alRight;
   mDetails.AlignWithMargins := True;
   mDetails.Layout := tlCenter;
-  mDetails.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsOverviewDetails);
+  mDetails.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOverviewDetails);
   mDetails.Font.Style := [fsUnderline];
   mDetails.Font.Color := clHotLight;
   mDetails.Cursor := crHandPoint;

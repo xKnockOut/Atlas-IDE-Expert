@@ -54,7 +54,7 @@ uses
   Vcl.Graphics,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings;
+  Atlas.UI.Settings.Strings;
 
 type
   TAtlasModuleListOptions = class(TInterfacedObject, INTAAddInOptions)
@@ -179,17 +179,17 @@ begin
   mLabel.Left := mLabel.ScaleValue(12);
   mLabel.Top := mLabel.ScaleValue(12);
   mLabel.Font.Style := [fsBold];
-  mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsModulesTitle);
+  mLabel.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesTitle);
   mTop := 40;
   for mModule in AModules do
   begin
     if mModule.Installed then
     begin
-      mState := TAtlasStrings.Text(TAtlasTextId.SettingsModuleInstalled);
+      mState := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModuleInstalled);
     end
     else
     begin
-      mState := TAtlasStrings.Text(TAtlasTextId.SettingsModuleMissing);
+      mState := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModuleMissing);
     end;
     mLabel := TLabel.Create(Self);
     mLabel.Parent := Self;
@@ -204,7 +204,7 @@ begin
   mLabel.Left := mLabel.ScaleValue(12);
   mLabel.Top := mTop + mLabel.ScaleValue(12);
   mLabel.Font.Style := [fsItalic];
-  mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsModulesHint);
+  mLabel.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesHint);
 end;
 
 { TAtlasModuleListOptions }
@@ -216,7 +216,7 @@ end;
 
 function TAtlasModuleListOptions.GetCaption: string;
 begin
-  Result := 'Atlas.' + TAtlasStrings.Text(TAtlasTextId.SettingsModulesNode);
+  Result := 'Atlas.' + TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesNode);
 end;
 
 function TAtlasModuleListOptions.GetFrameClass: TCustomFrameClass;
@@ -269,7 +269,7 @@ end;
 class function TAtlasModuleNodes.CaptionOf(const AName: string): string;
 begin
   // Zwei Punkte: Atlas › Module › <Name>.
-  Result := 'Atlas.' + TAtlasStrings.Text(TAtlasTextId.SettingsModulesNode) + '.' + AName;
+  Result := 'Atlas.' + TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesNode) + '.' + AName;
 end;
 
 class function TAtlasModuleNodes.NodeOfSwitch(const ASwitch: string): INTAAddInOptions;

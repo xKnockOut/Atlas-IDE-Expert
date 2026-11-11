@@ -22,7 +22,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   Vcl.Dialogs,
-  Atlas.UI.Strings;
+  Atlas.UI.Settings.Strings;
 
 type
   /// <summary>Was die IDE-Schicht für die Seite liefert; nicht gesetzte Haken lassen ihren Knopf aus.</summary>
@@ -65,6 +65,10 @@ type
 
 implementation
 
+const
+  // Linker Rand des Knopfs für die Projekteinstellungen.
+  cEditProjectLeft = 230;
+
 {$R *.dfm}
 
 { TAtlasServerPage }
@@ -78,14 +82,18 @@ begin
   Width := ScaleValue(480);
   Height := ScaleValue(520);
   FNextTop := 100;
-  AddTitle(TAtlasStrings.Text(TAtlasTextId.ServerPageGlobalTitle));
+  AddTitle(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageGlobalTitle));
   mPanel := AddPanel(32);
-  FEditGlobal := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.ServerPageGlobalEdit), 0, EditGlobalClick);
-  FEditProject := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.ServerPageProjectEdit), 230, EditProjectClick);
+  FEditGlobal := AddButton(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageGlobalEdit), 0,
+    EditGlobalClick);
+  FEditProject := AddButton(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageProjectEdit),
+    cEditProjectLeft,
+    EditProjectClick);
 
-  AddTitle(TAtlasStrings.Text(TAtlasTextId.ServerPageCacheTitle));
+  AddTitle(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageCacheTitle));
   mPanel := AddPanel(32);
-  FCacheClear := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.ServerPageCacheClear), 0, CacheClearClick);
+  FCacheClear := AddButton(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageCacheClear), 0,
+    CacheClearClick);
   mPanel := AddPanel(20);
   FCacheInfo := TLabel.Create(Self);
   FCacheInfo.Parent := mPanel;
@@ -171,7 +179,8 @@ end;
 
 procedure TAtlasServerPage.CacheClearClick(Sender: TObject);
 begin
-  if Assigned(FHooks.ClearCache) and Confirmed(TAtlasStrings.Text(TAtlasTextId.ServerPageCacheConfirm)) then
+  if Assigned(FHooks.ClearCache) and Confirmed(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageCacheConfirm))
+    then
   begin
     FCacheInfo.Caption := FHooks.ClearCache();
   end;

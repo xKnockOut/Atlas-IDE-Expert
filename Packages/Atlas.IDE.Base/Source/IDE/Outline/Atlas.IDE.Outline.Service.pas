@@ -41,7 +41,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Outline.Model,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.UI.Outline.Strings,
   Atlas.UI.Outline.Frame,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Navigation,
@@ -229,9 +229,9 @@ begin
     FCursorLine := -1;
     case mSnapshot.Status of
       TAtlasOutlineStatus.NoFile:
-        mFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.OutlineEmpty));
+        mFrame.SetMessage(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineEmpty));
       TAtlasOutlineStatus.NoServer:
-        mFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.OutlineNoServer));
+        mFrame.SetMessage(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineNoServer));
       TAtlasOutlineStatus.Ready:
         mFrame.SetNodes(mSnapshot.Nodes);
     else

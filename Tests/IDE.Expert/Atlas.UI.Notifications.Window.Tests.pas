@@ -47,6 +47,7 @@ uses
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
   Atlas.UI.Strings,
+  Atlas.UI.Notifications.Strings,
   Atlas.UI.Notifications.Window;
 
 function SampleCenter: IAtlasNotificationCenter;
@@ -76,8 +77,10 @@ begin
     Assert.AreEqual('Server neu gestartet', Window.Rows[2].Title);
     // „Alle Quellen“ und die beiden Quellen in der Reihenfolge der Liste.
     Assert.AreEqual(3, Integer(Window.FilterBox.Items.Count));
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsFilterAll), Window.FilterBox.Items[0]);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsSourceServer), Window.FilterBox.Items[1]);
+    Assert.AreEqual(TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsFilterAll),
+      Window.FilterBox.Items[0]);
+    Assert.AreEqual(TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceServer),
+      Window.FilterBox.Items[1]);
     Window.SetFilter(TAtlasNotificationSources.cBuild);
     Assert.AreEqual(1, Integer(Length(Window.Rows)));
     Assert.AreEqual(2, Window.FilterBox.ItemIndex);
@@ -189,7 +192,8 @@ begin
   Center := SampleCenter;
   Window := TAtlasNotificationsWindow.CreateList(nil, TAtlasColors.Light, Center);
   try
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsAllRead), Window.AllReadButton.Caption);
+    Assert.AreEqual(TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsAllRead),
+      Window.AllReadButton.Caption);
     Window.AllReadButton.Click;
     Assert.AreEqual(0, Center.UnreadCount);
     Assert.IsFalse(Window.AllReadButton.Enabled);
@@ -207,17 +211,17 @@ procedure TAtlasNotificationsWindowTests.CaptionsAndTimes;
 var
   Day: TDateTime;
 begin
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsSourceShortcutTips),
+  Assert.AreEqual(TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceShortcutTips),
     TAtlasNotificationTexts.SourceCaption('ShortcutTips'));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsSourceBuildServer),
+  Assert.AreEqual(TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceBuildServer),
     TAtlasNotificationTexts.SourceCaption('buildServer'));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsSourceOpenBuild),
+  Assert.AreEqual(TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceOpenBuild),
     TAtlasNotificationTexts.SourceCaption('openBuild'));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsSourceHidden),
+  Assert.AreEqual(TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceHidden),
     TAtlasNotificationTexts.SourceCaption('hidden'));
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UnitRenameTitle),
     TAtlasNotificationTexts.SourceCaption('unitRename'));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsSourceRuleChecks),
+  Assert.AreEqual(TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceRuleChecks),
     TAtlasNotificationTexts.SourceCaption('ruleChecks'), 'Modulschalter (#1454)');
   Assert.AreEqual('tracker', TAtlasNotificationTexts.SourceCaption('tracker'), 'unbekannt: Kennung');
   Day := EncodeDateTime(2026, 10, 16, 14, 3, 0, 0);

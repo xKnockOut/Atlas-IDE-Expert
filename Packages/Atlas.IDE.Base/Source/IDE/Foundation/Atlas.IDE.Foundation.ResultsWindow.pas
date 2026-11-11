@@ -113,7 +113,7 @@ uses
   DesignIntf,
   ToolsAPI,
   Vcl.Graphics,
-  Atlas.UI.Strings,
+  Atlas.UI.Foundation.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.DockWindow;
 
@@ -144,7 +144,7 @@ var
 
 function TResultsDock.GetCaption: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.ResultsCaption);
+  Result := TAtlasFoundationStrings.Text(TAtlasFoundationTextId.ResultsCaption);
 end;
 
 function TResultsDock.GetIdentifier: string;
@@ -381,8 +381,8 @@ begin
   mTarget := Frame;
   if mTarget <> nil then
   begin
-    mTarget.Entries.ShowRated(ATitle, AEntries, TAtlasStrings.Text(TAtlasTextId.ResultsSureGroup),
-      TAtlasStrings.Text(TAtlasTextId.ResultsInferredGroup));
+    mTarget.Entries.ShowRated(ATitle, AEntries, TAtlasFoundationStrings.Text(TAtlasFoundationTextId.ResultsSureGroup),
+      TAtlasFoundationStrings.Text(TAtlasFoundationTextId.ResultsInferredGroup));
   end;
 end;
 

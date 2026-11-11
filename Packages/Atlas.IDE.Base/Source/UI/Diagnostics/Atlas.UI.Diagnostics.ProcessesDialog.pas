@@ -31,6 +31,7 @@ uses
   Vcl.ComCtrls,
   Vcl.Graphics,
   Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings,
   Atlas.Core.Diagnostics.Processes;
 
 type
@@ -122,6 +123,10 @@ type
 
 implementation
 
+const
+  // Breite der Knöpfe „Aktualisieren“ und „Schließen“ in der Fußleiste.
+  cFootButtonWidth = 110;
+
 function NewLabel(AOwner: TComponent; AParent: TWinControl; const ACaption: string): TLabel;
 begin
   Result := TLabel.Create(AOwner);
@@ -200,7 +205,7 @@ begin
       mClient := mRow.Caption;
       if mRow.Own then
       begin
-        mClient := mClient + TAtlasStrings.Text(TAtlasTextId.ProcessesOwn);
+        mClient := mClient + TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesOwn);
       end;
       mItem.SubItems.Add(mClient);
       mItem.SubItems.Add(mRow.State);
@@ -219,7 +224,7 @@ begin
   FAlive := TAtlasProcessesAlive.Create;
   FAlive.Alive := True;
   FAliveRef := FAlive;
-  Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesTitleNone);
+  Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesTitleNone);
   BorderStyle := bsSizeable;
   Position := poMainFormCenter;
   Width := ScaleValue(760);
@@ -241,7 +246,7 @@ var
 begin
   // Kopf: Gruppe und (ab zwei Arbeitsbereichen) die Auswahl.
   mHead := NewPanel(Self, alTop, 36);
-  FParts.Heading := NewLabel(Self, mHead, TAtlasStrings.Text(TAtlasTextId.ProcessesTitleNone));
+  FParts.Heading := NewLabel(Self, mHead, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesTitleNone));
   FParts.Heading.SetBounds(cGap, cGap + 2, 400, 20);
   FParts.Heading.Font.Style := [fsBold];
   FParts.Heading.Font.Size := FParts.Heading.Font.Size + 2;
@@ -258,7 +263,7 @@ begin
   mInfo.Top := mHead.Top + mHead.Height;
   FParts.CacheValue := NewRow(Self, mInfo, TAtlasTextId.ProcessesCache, 0);
   FParts.LockValue := NewRow(Self, mInfo, TAtlasTextId.ProcessesLock, 22);
-  FParts.WriterTag := NewLabel(Self, mInfo, TAtlasStrings.Text(TAtlasTextId.ProcessesWrites));
+  FParts.WriterTag := NewLabel(Self, mInfo, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesWrites));
   FParts.WriterTag.Font.Style := [fsBold];
   FParts.WriterTag.Visible := False;
   FParts.StateValue := NewRow(Self, mInfo, TAtlasTextId.ProcessesState, 44);
@@ -270,12 +275,15 @@ var
   mClose: TButton;
 begin
   mFoot := NewPanel(Self, alBottom, 44);
-  FParts.RefreshButton := NewButton(Self, mFoot, TAtlasStrings.Text(TAtlasTextId.ProcessesRefresh), cGap,
+  FParts.RefreshButton := NewButton(Self, mFoot,
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesRefresh), cGap,
     RefreshClick);
-  FParts.CopyButton := NewButton(Self, mFoot, TAtlasStrings.Text(TAtlasTextId.ProcessesCopy), 2 * cGap + 110,
+  FParts.CopyButton := NewButton(Self, mFoot, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesCopy),
+    2 * cGap + cFootButtonWidth,
     CopyClick);
   FParts.CopyButton.Enabled := False;
-  mClose := NewButton(Self, mFoot, TAtlasStrings.Text(TAtlasTextId.ProcessesClose), mFoot.Width - 110 - cGap, nil);
+  mClose := NewButton(Self, mFoot, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesClose),
+    mFoot.Width - cFootButtonWidth - cGap, nil);
   mClose.Anchors := [akTop, akRight];
   mClose.Cancel := True;
   mClose.ModalResult := mrCancel;
@@ -288,7 +296,7 @@ var
   mBox: TPanel;
 begin
   mBox := NewPanel(Self, alBottom, 150);
-  NewLabel(Self, mBox, TAtlasStrings.Text(TAtlasTextId.ProcessesLog)).Align := alTop;
+  NewLabel(Self, mBox, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesLog)).Align := alTop;
   FParts.Log := TMemo.Create(Self);
   FParts.Log.Parent := mBox;
   FParts.Log.Align := alClient;
@@ -306,8 +314,8 @@ var
   mBox: TPanel;
 begin
   mBox := NewPanel(Self, alBottom, 140);
-  NewLabel(Self, mBox, TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyCaption)).Align := alTop;
-  FParts.DirtyNote := NewLabel(Self, mBox, TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyNote));
+  NewLabel(Self, mBox, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesDirtyCaption)).Align := alTop;
+  FParts.DirtyNote := NewLabel(Self, mBox, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesDirtyNote));
   FParts.DirtyNote.Align := alBottom;
   FParts.Dirty := NewList(Self, mBox);
   FParts.Dirty.Margins.SetBounds(cGap, 2, cGap, 2);
@@ -350,7 +358,7 @@ var
   mAlive: TAtlasProcessesAlive;
   mKeep: IInterface;
 begin
-  FParts.Status.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesAsking);
+  FParts.Status.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesAsking);
   ShowDirty;
   if not Assigned(FActions.Fetch) then
   begin
@@ -382,7 +390,7 @@ begin
   end
   else if Length(FWorkspaces) = 0 then
   begin
-    FParts.Status.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesEmpty);
+    FParts.Status.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesEmpty);
   end
   else
   begin
@@ -390,11 +398,11 @@ begin
   end;
   if TAtlasProcessesView.GroupName(FWorkspaces) = '' then
   begin
-    FParts.Heading.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesTitleNone);
+    FParts.Heading.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesTitleNone);
   end
   else
   begin
-    FParts.Heading.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesTitle,
+    FParts.Heading.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ProcessesTitle,
       [TAtlasProcessesView.GroupName(FWorkspaces)]);
   end;
   Caption := FParts.Heading.Caption;
@@ -441,7 +449,7 @@ begin
     FParts.CacheValue.Caption := mWorkspace.Cache;
     if mWorkspace.LockHolder = '' then
     begin
-      FParts.LockValue.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesFree);
+      FParts.LockValue.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesFree);
     end
     else
     begin
@@ -451,17 +459,21 @@ begin
     FParts.WriterTag.Visible := mWorkspace.LockHolder <> '';
     FParts.WriterTag.Left := FParts.LockValue.Left + FParts.LockValue.Width + 2 * cGap;
     FParts.WriterTag.Top := FParts.LockValue.Top;
-    FParts.StateValue.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesSaved, [mWorkspace.Saved, mWorkspace.Format]);
+    FParts.StateValue.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ProcessesSaved, [mWorkspace.Saved,
+      mWorkspace.Format]);
     FillProcesses(FParts.List, mWorkspace.Processes);
     if mWorkspace.BuiltOnce then
     begin
-      FParts.BuiltOnce.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesBuiltOnce, [mWorkspace.Units]);
+      FParts.BuiltOnce.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ProcessesBuiltOnce,
+        [mWorkspace.Units]);
     end
     else
     begin
-      FParts.BuiltOnce.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesUnits, [mWorkspace.Units]);
+      FParts.BuiltOnce.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ProcessesUnits,
+        [mWorkspace.Units]);
     end;
-    FParts.Count.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesCount, [Length(mWorkspace.Processes)]);
+    FParts.Count.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ProcessesCount,
+      [Length(mWorkspace.Processes)]);
     for mLine in mWorkspace.Events do
     begin
       FParts.Log.Lines.Add(mLine.Time + '  ' + mLine.Text);
@@ -494,7 +506,7 @@ begin
   mMcp := '';
   if mHasMcp then
   begin
-    mMcp := TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyMcpText);
+    mMcp := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesDirtyMcpText);
   end;
   FParts.Dirty.Items.BeginUpdate;
   try
@@ -503,7 +515,7 @@ begin
     begin
       mItem := FParts.Dirty.Items.Add;
       mItem.Caption := mName;
-      mItem.SubItems.Add(TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyIdeText));
+      mItem.SubItems.Add(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesDirtyIdeText));
       mItem.SubItems.Add(mMcp);
     end;
   finally
@@ -511,11 +523,11 @@ begin
   end;
   if Length(mNames) = 0 then
   begin
-    FParts.DirtyNote.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyNone);
+    FParts.DirtyNote.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesDirtyNone);
   end
   else if mHasMcp then
   begin
-    FParts.DirtyNote.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyNote);
+    FParts.DirtyNote.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesDirtyNote);
   end
   else
   begin

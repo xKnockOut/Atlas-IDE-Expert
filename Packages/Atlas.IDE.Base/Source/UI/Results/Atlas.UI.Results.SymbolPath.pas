@@ -57,7 +57,7 @@ implementation
 
 uses
   Vcl.Controls,
-  Atlas.UI.Strings;
+  Atlas.UI.Results.Strings;
 
 { TAtlasResultsPathPart }
 
@@ -73,7 +73,7 @@ begin
   FParts.Panel.ParentBackground := True;
   FParts.Panel.Visible := False;
   FParts.Map := TAtlasResultsControls.Button(AView.Host, FParts.Panel, alTop, 75,
-    TAtlasStrings.Text(TAtlasTextId.SymbolPathShowMap), MapClick);
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.SymbolPathShowMap), MapClick);
   FParts.Map.Visible := False;
   FParts.Status := TLabel.Create(AView.Host);
   FParts.Status.Parent := FParts.Panel;

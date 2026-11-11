@@ -84,7 +84,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Settings.ServerActions,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings;
 
 /// <summary>Ergebnis eines Hakens; '' ohne Haken.</summary>
 function HookText(const AHook: TFunc<string>): string;
@@ -260,7 +261,7 @@ end;
 function TAtlasServerOptions.GetCaption: string;
 begin
   // Punkt: Unterseite von „Atlas“.
-  Result := 'Atlas.' + TAtlasStrings.Text(TAtlasTextId.ServerPageTitle);
+  Result := 'Atlas.' + TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageTitle);
 end;
 
 function TAtlasServerOptions.GetFrameClass: TCustomFrameClass;

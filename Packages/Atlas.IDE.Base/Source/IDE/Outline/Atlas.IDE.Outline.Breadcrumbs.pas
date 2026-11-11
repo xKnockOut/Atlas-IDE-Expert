@@ -132,7 +132,7 @@ uses
   Atlas.Core.Outline.Overloads,
   Atlas.Core.Outline.Interfaces,
   Atlas.Core.Editor.CrumbCard,
-  Atlas.UI.Strings,
+  Atlas.UI.Outline.Strings,
   Atlas.UI.Popup.CrumbCard,
   Atlas.UI.Commands.Palette,
   Atlas.UI.Outline.Breadcrumbs,
@@ -345,13 +345,13 @@ begin
   mBar := TAtlasBreadcrumbBar.Create(nil);
   mHost := FHost;
   mBar.SetColors(TAtlasIdeStyle.BarColors);
-  mBar.EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsEmpty);
-  mBar.CrumbHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCrumbHint);
-  mBar.SeparatorHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsChildrenHint);
-  mBar.MarkHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsMarkHint);
-  mBar.OverloadHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsOverloadsHint);
-  mBar.InterfaceHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsInterfacesHint);
-  mBar.InterfaceKeyHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsInterfacesKey);
+  mBar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsEmpty);
+  mBar.CrumbHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsCrumbHint);
+  mBar.SeparatorHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsChildrenHint);
+  mBar.MarkHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsMarkHint);
+  mBar.OverloadHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsOverloadsHint);
+  mBar.InterfaceHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesHint);
+  mBar.InterfaceKeyHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesKey);
   mBar.OnOpenMenu :=
     procedure(AIndex: Integer; const APoint: TPoint)
     var
@@ -479,7 +479,7 @@ begin
   Result := APlace.Text;
   if Result = '' then
   begin
-    Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsRegionUnnamed), [APlace.Line + 1]);
+    Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsRegionUnnamed), [APlace.Line + 1]);
   end;
 end;
 
@@ -575,12 +575,12 @@ begin
   case AStatus of
     TAtlasOutlineStatus.NoFile:
       begin
-        ABar.EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsEmpty);
+        ABar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsEmpty);
         ABar.SetCrumbs(nil);
       end;
     TAtlasOutlineStatus.NoServer:
       begin
-        ABar.EmptyText := TAtlasStrings.Text(TAtlasTextId.OutlineNoServer);
+        ABar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineNoServer);
         ABar.SetCrumbs(nil);
       end;
     TAtlasOutlineStatus.Waiting:
@@ -636,7 +636,7 @@ begin
   end;
   FLine := mLine;
   FCharacter := mCharacter;
-  mBar.EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsEmpty);
+  mBar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsEmpty);
   mBar.SetCrumbs(MarkInterfaces(NamedRegions(TAtlasBreadcrumbs.Path(FNodes, FLines, FLine, FCharacter,
     ChangeFileExt(ExtractFileName(FFileName), ''), FShowUnit, FParts))));
 end;
@@ -680,12 +680,12 @@ begin
     end;
     if AOverloads then
     begin
-      mCommand.Path := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsPlaceLineOnly),
+      mCommand.Path := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsPlaceLineOnly),
         [ANodes[mNode].NameLine + 1]);
     end;
     if mNode = ACurrent then
     begin
-      mCommand.ShortCut := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCurrent);
+      mCommand.ShortCut := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsCurrent);
     end;
     Result := Result + [mCommand];
   end;
@@ -718,7 +718,7 @@ begin
     Exit;
   end;
   mCrumb := ABar.Crumbs[AIndex];
-  OpenList(ABar, Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsOverloadsPrompt), [mCrumb.Text]),
+  OpenList(ABar, Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsOverloadsPrompt), [mCrumb.Text]),
     mCrumb.Overloads, mCrumb.Node, APoint, True);
 end;
 
@@ -739,7 +739,7 @@ begin
     mCommand := Default(TAtlasCommand);
     mCommand.Id := IntToStr(mIndex);
     mCommand.Caption := ATargets[mIndex].Name;
-    mCommand.Path := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsInterfacesPath),
+    mCommand.Path := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesPath),
       [ExtractFileName(ATargets[mIndex].FileName), ATargets[mIndex].Line + 1]);
     Result := Result + [mCommand];
   end;
@@ -765,7 +765,7 @@ begin
   end;
   mCommands := InterfaceCommands(mTargets, '');
   mWindow := TAtlasPaletteWindow.CreatePalette(Application, mCommands, nil, TAtlasIdeStyle.Colors);
-  mWindow.Prompt := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsInterfacesPrompt);
+  mWindow.Prompt := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesPrompt);
   mWindow.Presorted := True;
   mWindow.QueryDelay := 0;
   mWindow.OnQuery :=
@@ -875,20 +875,22 @@ begin
   begin
     if APlace.Count = 1 then
     begin
-      Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsSectionCountOne), [APlace.Line + 1]);
+      Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsSectionCountOne), [APlace.Line + 1]);
     end
     else
     begin
-      Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsSectionCount), [APlace.Count, APlace.Line + 1]);
+      Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsSectionCount), [APlace.Count,
+        APlace.Line + 1]);
     end;
   end
   else if APlace.Group <> '' then
   begin
-    Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsPlaceLine), [APlace.Group, APlace.Line + 1]);
+    Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsPlaceLine), [APlace.Group,
+      APlace.Line + 1]);
   end
   else
   begin
-    Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsPlaceLineOnly), [APlace.Line + 1]);
+    Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsPlaceLineOnly), [APlace.Line + 1]);
   end;
 end;
 
@@ -919,7 +921,7 @@ begin
     mCommand.Path := PlacePath(APlaces[mIndex], ACounts);
     if mIndex = ACurrent then
     begin
-      mCommand.ShortCut := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCurrent);
+      mCommand.ShortCut := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsCurrent);
     end;
     Result := Result + [mCommand];
   end;
@@ -941,7 +943,8 @@ begin
     begin
       mCommand := Default(TAtlasCommand);
       mCommand.Id := cAppendId + IntToStr(mIndex);
-      mCommand.Caption := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsSectionAppend), [APlaces[mIndex].Text]);
+      mCommand.Caption := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsSectionAppend),
+        [APlaces[mIndex].Text]);
       if TAtlasBreadcrumbs.MatchesAtWordStart(APattern, mCommand.Caption) then
       begin
         Result := Result + [mCommand];
@@ -954,7 +957,7 @@ begin
     begin
       mCommand := Default(TAtlasCommand);
       mCommand.Id := cCreateId + mKeyword;
-      mCommand.Caption := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsSectionCreate), [mKeyword]);
+      mCommand.Caption := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsSectionCreate), [mKeyword]);
       if TAtlasBreadcrumbs.MatchesAtWordStart(APattern, mCommand.Caption) then
       begin
         Result := Result + [mCommand];
@@ -1198,7 +1201,7 @@ begin
   FHost.ForEach(
     procedure(ABar: TControl)
     begin
-      TAtlasBreadcrumbBar(ABar).EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsDisabled);
+      TAtlasBreadcrumbBar(ABar).EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsDisabled);
       TAtlasBreadcrumbBar(ABar).SetCrumbs(nil);
     end);
 end;

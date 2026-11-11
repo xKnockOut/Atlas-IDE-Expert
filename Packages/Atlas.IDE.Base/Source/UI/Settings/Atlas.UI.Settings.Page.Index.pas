@@ -61,7 +61,8 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Dialogs,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings;
 
 { TAtlasSettingsIndexPart }
 
@@ -69,9 +70,9 @@ procedure TAtlasSettingsIndexPart.Build;
 begin
   // Umfang des Index für alle Projekte, gespeichert in settings.json (index.*, #652, #227).
   AddSheet(TAtlasTextId.SettingsTabIndex);
-  BindCheck('IndexProjectGroup', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexGroup)));
-  BindCheck('IndexSearchPaths', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexSearch)));
-  BindCheck('IndexLibraryPaths', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexLibrary)));
+  BindCheck('IndexProjectGroup', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexGroup)));
+  BindCheck('IndexSearchPaths', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexSearch)));
+  BindCheck('IndexLibraryPaths', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexLibrary)));
   AddIndexSection;
 end;
 
@@ -81,8 +82,8 @@ var
 begin
   // Symbolindex (#492): Verwendungen, Speichergrenze, Kennzahlen und Verwaltung.
   AddTitle(TAtlasTextId.SettingsIndexTitle);
-  BindCheck('IndexUsages', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexUsages)));
-  BindText('MemoryBudgetMb', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMemoryBudget)));
+  BindCheck('IndexUsages', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexUsages)));
+  BindText('MemoryBudgetMb', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMemoryBudget)));
   mPanel := AddPanel(66);
   FIndexInfo := TLabel.Create(FPage);
   FIndexInfo.Parent := mPanel;
@@ -92,21 +93,21 @@ begin
   mPanel := AddPanel(32);
   FIndexRefresh := TButton.Create(FPage);
   FIndexRefresh.Parent := mPanel;
-  FIndexRefresh.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIndexRefresh);
+  FIndexRefresh.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexRefresh);
   FIndexRefresh.Left := 0;
   FIndexRefresh.Top := FIndexRefresh.ScaleValue(3);
   FIndexRefresh.Width := FIndexRefresh.ScaleValue(150);
   FIndexRefresh.OnClick := IndexRefreshClick;
   FIndexRebuild := TButton.Create(FPage);
   FIndexRebuild.Parent := mPanel;
-  FIndexRebuild.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIndexRebuild);
+  FIndexRebuild.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexRebuild);
   FIndexRebuild.Left := FIndexRebuild.ScaleValue(160);
   FIndexRebuild.Top := FIndexRebuild.ScaleValue(3);
   FIndexRebuild.Width := FIndexRebuild.ScaleValue(150);
   FIndexRebuild.OnClick := IndexRebuildClick;
   FIndexClear := TButton.Create(FPage);
   FIndexClear.Parent := mPanel;
-  FIndexClear.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIndexClear);
+  FIndexClear.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexClear);
   FIndexClear.Left := FIndexClear.ScaleValue(320);
   FIndexClear.Top := FIndexClear.ScaleValue(3);
   FIndexClear.Width := FIndexClear.ScaleValue(150);
@@ -129,7 +130,7 @@ begin
     Exit;
   end;
   FIndexBusy := True;
-  FIndexInfo.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIndexAsking);
+  FIndexInfo.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexAsking);
   UpdateIndexButtons;
   ACommand();
 end;
@@ -183,7 +184,7 @@ begin
   end
   else
   begin
-    mConfirmed := MessageDlg(TAtlasStrings.Text(TAtlasTextId.SettingsIndexClearConfirm), mtConfirmation,
+    mConfirmed := MessageDlg(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexClearConfirm), mtConfirmation,
       [mbYes, mbNo], 0) = mrYes;
   end;
   if mConfirmed then

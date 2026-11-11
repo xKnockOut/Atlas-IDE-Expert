@@ -65,7 +65,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings;
 
 const
   cGap = 8;
@@ -83,8 +84,9 @@ end;
 
 class function TAtlasExportDialogTexts.Diagnostic(const AHint, APreview: string): TAtlasExportDialogTexts;
 begin
-  Result := Create(TAtlasStrings.Text(TAtlasTextId.DiagExportTitle), AHint, APreview,
-    'atlas-diagnose-' + FormatDateTime('yyyymmdd', Now) + '.zip', TAtlasStrings.Text(TAtlasTextId.DiagExportFilter),
+  Result := Create(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagExportTitle), AHint, APreview,
+    'atlas-diagnose-' + FormatDateTime('yyyymmdd', Now) + '.zip',
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagExportFilter),
     'zip');
 end;
 
@@ -132,7 +134,7 @@ begin
   mButton.Parent := mBottom;
   mButton.SetBounds(mBottom.Width - 2 * (100 + cGap), 8, 100, 28);
   mButton.Anchors := [akTop, akRight];
-  mButton.Caption := TAtlasStrings.Text(TAtlasTextId.DiagExportSave);
+  mButton.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagExportSave);
   mButton.Default := True;
   mButton.OnClick := SaveClick;
   mButton := TButton.Create(Self);

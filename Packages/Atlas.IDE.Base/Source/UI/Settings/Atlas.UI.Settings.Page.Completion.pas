@@ -88,6 +88,7 @@ uses
   Vcl.Controls,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.Core.Completion.Ranking;
 
 { TAtlasSettingsCompletionPart }
@@ -101,7 +102,7 @@ begin
   mPanel := AddPanel(26);
   FRowsLabel := TLabel.Create(FPage);
   FRowsLabel.Parent := mPanel;
-  FRowsLabel.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsRows);
+  FRowsLabel.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsRows);
   FRowsLabel.Left := 0;
   FRowsLabel.Top := FRowsLabel.ScaleValue(5);
   FRows := TEdit.Create(FPage);
@@ -115,28 +116,30 @@ begin
   FRowsUpDown.Associate := FRows;
   FRowsUpDown.Min := TAtlasPluginSettings.cMinVisibleRows;
   FRowsUpDown.Max := TAtlasPluginSettings.cMaxVisibleRows;
-  FAutoWidth := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsAutoWidth));
+  FAutoWidth := AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAutoWidth));
   FAutoWidth.OnClick := AutoWidthClick;
-  BindText('OpenDelayMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsOpenDelay)));
-  BindCheck('PanelCollapsed', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPanelCollapsed)));
-  BindCheck('SelectionMarker', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMarker)));
-  BindCheck('FilterChips', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsChips)));
-  BindCheck('Learning', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLearning)));
-  FFavorites := BindCheck('Favorites', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFavorites)));
-  BindCheck('GroupInherited', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGroupInherited)));
-  BindCheck('CompletionVariantBranch', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCompletionVariantBranch)));
+  BindText('OpenDelayMs', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOpenDelay)));
+  BindCheck('PanelCollapsed', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPanelCollapsed)));
+  BindCheck('SelectionMarker', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSelectionMarker)));
+  BindCheck('FilterChips', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsChips)));
+  BindCheck('Learning', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsLearning)));
+  FFavorites := BindCheck('Favorites', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFavorites)));
+  BindCheck('GroupInherited', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsGroupInherited)));
+  BindCheck('CompletionVariantBranch',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCompletionVariantBranch)));
   // In der Reihenfolge von TAtlasListMode bzw. TAtlasListScope.
-  FListMode := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsListMode),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsListModeFilter), TAtlasStrings.Text(TAtlasTextId.SettingsListModeAll),
-    TAtlasStrings.Text(TAtlasTextId.SettingsListModeRest)]);
-  FListScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsListScope),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsListScopeMembers),
-    TAtlasStrings.Text(TAtlasTextId.SettingsListScopeEverywhere)]);
-  BindCheck('Preview', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPreview)));
+  FListMode := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsListMode),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsListModeFilter),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsListModeAll),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsListModeRest)]);
+  FListScope := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsListScope),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsListScopeMembers),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsListScopeEverywhere)]);
+  BindCheck('Preview', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPreview)));
   mPanel := AddPanel(32);
   FResetHistory := TButton.Create(FPage);
   FResetHistory.Parent := mPanel;
-  FResetHistory.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsResetHistory);
+  FResetHistory.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsResetHistory);
   FResetHistory.Left := 0;
   FResetHistory.Top := FResetHistory.ScaleValue(3);
   FResetHistory.Width := FResetHistory.ScaleValue(150);
@@ -147,7 +150,7 @@ end;
 
 procedure TAtlasSettingsCompletionPart.Build2;
 begin
-  FResetWidths.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsResetWidths);
+  FResetWidths.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsResetWidths);
   FResetWidths.Left := FResetWidths.ScaleValue(160);
   FResetWidths.Top := FResetWidths.ScaleValue(3);
   FResetWidths.Width := FResetWidths.ScaleValue(150);
@@ -237,14 +240,14 @@ begin
   mPanel := AddPanel(32);
   FFavoritesRemove := TButton.Create(FPage);
   FFavoritesRemove.Parent := mPanel;
-  FFavoritesRemove.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFavoritesRemove);
+  FFavoritesRemove.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFavoritesRemove);
   FFavoritesRemove.Left := 0;
   FFavoritesRemove.Top := FFavoritesRemove.ScaleValue(3);
   FFavoritesRemove.Width := FFavoritesRemove.ScaleValue(150);
   FFavoritesRemove.OnClick := FavoritesRemoveClick;
   FFavoritesRemoveAll := TButton.Create(FPage);
   FFavoritesRemoveAll.Parent := mPanel;
-  FFavoritesRemoveAll.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFavoritesRemoveAll);
+  FFavoritesRemoveAll.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFavoritesRemoveAll);
   FFavoritesRemoveAll.Left := FFavoritesRemoveAll.ScaleValue(160);
   FFavoritesRemoveAll.Top := FFavoritesRemoveAll.ScaleValue(3);
   FFavoritesRemoveAll.Width := FFavoritesRemoveAll.ScaleValue(150);
@@ -292,7 +295,7 @@ begin
     end;
     if not mAny then
     begin
-      FFavoritesList.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsFavoritesNone));
+      FFavoritesList.Items.Add(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFavoritesNone));
     end;
   finally
     FFavoritesList.Items.EndUpdate;

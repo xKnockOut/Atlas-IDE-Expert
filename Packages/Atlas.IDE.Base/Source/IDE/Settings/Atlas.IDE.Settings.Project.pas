@@ -85,6 +85,7 @@ uses
   Atlas.Core.Build.Target,
   Atlas.IDE.Build.Target,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.ProjectDialog,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
@@ -319,7 +320,7 @@ begin
   FRuleId := ARuleId;
   if AGlobal then
   begin
-    FTitle := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsGlobalTitle);
+    FTitle := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsGlobalTitle);
     FCheckScope := ',"global"';
   end
   else
@@ -468,7 +469,7 @@ begin
   // Die IDE sendet ihre Auswahl laufend an den Server (selectBuild, #46, #615).
   if TAtlasIdeBuildTarget.Read(mTarget) then
   begin
-    ADialog.BuildHint := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsBuildOverride,
+    ADialog.BuildHint := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ProjectSettingsBuildOverride,
       [mTarget.Config, mTarget.Platform]);
   end;
 end;

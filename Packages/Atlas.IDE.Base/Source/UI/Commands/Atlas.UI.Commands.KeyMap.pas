@@ -119,7 +119,8 @@ implementation
 uses
   Vcl.Themes,
   Winapi.Windows,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Commands.Strings;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -222,7 +223,7 @@ const
 constructor TAtlasKeyMapWindow.CreateKeyMap(AOwner: TComponent; const AColors: TAtlasColors);
 begin
   inherited CreateNew(AOwner);
-  Caption := TAtlasStrings.Text(TAtlasTextId.KeyMapTitle);
+  Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapTitle);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu, biMaximize];
   Position := poMainFormCenter;
@@ -252,12 +253,12 @@ begin
   FSearch := TEdit.Create(Self);
   FSearch.Parent := FTop;
   FSearch.SetBounds(12, 9, 360, 23);
-  FSearch.TextHint := TAtlasStrings.Text(TAtlasTextId.KeyMapSearchHint);
+  FSearch.TextHint := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapSearchHint);
   FSearch.OnChange := SearchChange;
   FOnlyConflicts := TCheckBox.Create(Self);
   FOnlyConflicts.Parent := FTop;
   FOnlyConflicts.SetBounds(388, 11, 160, 19);
-  FOnlyConflicts.Caption := TAtlasStrings.Text(TAtlasTextId.KeyMapOnlyConflicts);
+  FOnlyConflicts.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapOnlyConflicts);
   FOnlyConflicts.OnClick := OnlyConflictsClick;
   FSummary := TLabel.Create(Self);
   FSummary.Parent := FTop;
@@ -279,13 +280,13 @@ begin
   FBottom.Height := FBottom.ScaleValue(44);
   FBottom.BevelOuter := bvNone;
   FBottom.ParentBackground := False;
-  FExportButton := AddButton(TAtlasStrings.Text(TAtlasTextId.KeyMapExport), ExportClick);
+  FExportButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapExport), ExportClick);
   FExportButton.SetBounds(12, 9, 150, 26);
-  FSettingsButton := AddButton(TAtlasStrings.Text(TAtlasTextId.KeyMapConflictsButton), SettingsClick);
+  FSettingsButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapConflictsButton), SettingsClick);
   FSettingsButton.SetBounds(170, 9, 140, 26);
-  FRefreshButton := AddButton(TAtlasStrings.Text(TAtlasTextId.KeyMapRefresh), RefreshClick);
+  FRefreshButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapRefresh), RefreshClick);
   FRefreshButton.SetBounds(318, 9, 120, 26);
-  FCloseButton := AddButton(TAtlasStrings.Text(TAtlasTextId.KeyMapClose), CloseClick);
+  FCloseButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapClose), CloseClick);
   FCloseButton.Align := alRight;
   FCloseButton.AlignWithMargins := True;
   FCloseButton.Margins.SetBounds(8, 9, 12, 9);
@@ -340,11 +341,11 @@ class function TAtlasKeyMapForm.OriginText(const AItem: TAtlasKeyItem): string;
 begin
   case AItem.Origin of
     TAtlasKeyOrigin.Atlas:
-      Result := TAtlasStrings.Text(TAtlasTextId.KeyMapOriginAtlas);
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapOriginAtlas);
     TAtlasKeyOrigin.Plugin:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapOriginPlugin, [AItem.OriginName]);
+      Result := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapOriginPlugin, [AItem.OriginName]);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.KeyMapOriginIde);
+    Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapOriginIde);
   end;
 end;
 
@@ -352,13 +353,13 @@ class function TAtlasKeyMapForm.ContextText(AContext: TAtlasKeyContext): string;
 begin
   case AContext of
     TAtlasKeyContext.Editor:
-      Result := TAtlasStrings.Text(TAtlasTextId.KeyMapContextEditor);
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapContextEditor);
     TAtlasKeyContext.Designer:
-      Result := TAtlasStrings.Text(TAtlasTextId.KeyMapContextDesigner);
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapContextDesigner);
     TAtlasKeyContext.WelcomePage:
-      Result := TAtlasStrings.Text(TAtlasTextId.KeyMapContextWelcome);
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapContextWelcome);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.KeyMapContextGlobal);
+    Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapContextGlobal);
   end;
 end;
 
@@ -366,19 +367,19 @@ class function TAtlasKeyMapForm.ReasonText(AReason: TAtlasKeyReason): string;
 begin
   case AReason of
     TAtlasKeyReason.AtlasPriority:
-      Result := TAtlasStrings.Text(TAtlasTextId.KeyMapReasonAtlasPriority);
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonAtlasPriority);
     TAtlasKeyReason.AtlasYields:
-      Result := TAtlasStrings.Text(TAtlasTextId.KeyMapReasonAtlasYields);
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonAtlasYields);
     TAtlasKeyReason.EditorBinding:
-      Result := TAtlasStrings.Text(TAtlasTextId.KeyMapReasonEditorBinding);
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonEditorBinding);
     TAtlasKeyReason.LastBinding:
-      Result := TAtlasStrings.Text(TAtlasTextId.KeyMapReasonLastBinding);
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonLastBinding);
     TAtlasKeyReason.FirstAction:
-      Result := TAtlasStrings.Text(TAtlasTextId.KeyMapReasonFirstAction);
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonFirstAction);
     TAtlasKeyReason.OwnWindow:
-      Result := TAtlasStrings.Text(TAtlasTextId.KeyMapReasonOwnWindow);
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonOwnWindow);
     TAtlasKeyReason.NoneActive:
-      Result := TAtlasStrings.Text(TAtlasTextId.KeyMapNoneActive);
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapNoneActive);
   else
     Result := '';
   end;
@@ -400,20 +401,23 @@ begin
   end
   else if mItem.Wins then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapWins, [ReasonText(mItem.Reason)]);
+    Result := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapWins, [ReasonText(mItem.Reason)]);
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapLoses, [AItems[mItem.Winner].Command,
+    Result := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapLoses, [AItems[mItem.Winner].Command,
       OriginText(AItems[mItem.Winner]), ReasonText(mItem.Reason)]);
   end;
 end;
 
 class function TAtlasKeyMapForm.Headers: TArray<string>;
 begin
-  Result := [TAtlasStrings.Text(TAtlasTextId.KeyMapColumnKey), TAtlasStrings.Text(TAtlasTextId.KeyMapColumnCommand),
-    TAtlasStrings.Text(TAtlasTextId.KeyMapColumnOrigin), TAtlasStrings.Text(TAtlasTextId.KeyMapColumnContext),
-    TAtlasStrings.Text(TAtlasTextId.KeyMapColumnRarely), TAtlasStrings.Text(TAtlasTextId.KeyMapColumnHint)];
+  Result := [TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapColumnKey),
+    TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapColumnCommand),
+    TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapColumnOrigin),
+    TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapColumnContext),
+    TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapColumnRarely),
+    TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapColumnHint)];
 end;
 
 class function TAtlasKeyMapForm.Cells(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer): TArray<string>;
@@ -427,7 +431,7 @@ begin
   // Aus der Zählung der Tastenkürzel-Tipps (#600); leer, solange der Befehl selten genutzt oder nicht gezählt ist.
   if AItem.RarelyByKeyboard then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapRarely, [AItem.MouseUses, AItem.KeyUses]);
+    Result := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapRarely, [AItem.MouseUses, AItem.KeyUses]);
   end
   else
   begin
@@ -439,11 +443,11 @@ class function TAtlasKeyMapForm.SummaryText(AShown, ATotal, AConflicts: Integer)
 begin
   if AShown = ATotal then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapSummary, [ATotal, AConflicts]);
+    Result := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapSummary, [ATotal, AConflicts]);
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapSummaryFiltered, [AShown, ATotal, AConflicts]);
+    Result := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapSummaryFiltered, [AShown, ATotal, AConflicts]);
   end;
 end;
 
@@ -458,21 +462,21 @@ begin
   begin
     mRows := mRows + [TAtlasKeyHtmlRow.Create(Cells(FItems, mIndex), FItems[mIndex].Conflict)];
   end;
-  mSubtitle := TAtlasStrings.Fmt(TAtlasTextId.KeyMapCreated, [ACreated,
+  mSubtitle := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapCreated, [ACreated,
     SummaryText(Length(FShown), Length(FItems), TAtlasKeyMap.ConflictCount(FItems))]);
   if Trim(FSearch.Text) <> '' then
   begin
-    mSubtitle := mSubtitle + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.KeyMapFilter, [Trim(FSearch.Text)]);
+    mSubtitle := mSubtitle + ' · ' + TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapFilter, [Trim(FSearch.Text)]);
   end;
   if TAtlasStrings.Language = TAtlasLanguage.German then
   begin
-    Result := TAtlasKeyMap.Html('de', TAtlasStrings.Text(TAtlasTextId.KeyMapTitle), mSubtitle,
-      TAtlasStrings.Text(TAtlasTextId.KeyMapPrint), Headers, mRows);
+    Result := TAtlasKeyMap.Html('de', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapTitle), mSubtitle,
+      TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapPrint), Headers, mRows);
   end
   else
   begin
-    Result := TAtlasKeyMap.Html('en', TAtlasStrings.Text(TAtlasTextId.KeyMapTitle), mSubtitle,
-      TAtlasStrings.Text(TAtlasTextId.KeyMapPrint), Headers, mRows);
+    Result := TAtlasKeyMap.Html('en', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapTitle), mSubtitle,
+      TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapPrint), Headers, mRows);
   end;
 end;
 

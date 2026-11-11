@@ -134,7 +134,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Editor.Elements,
-  Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements,
@@ -310,11 +310,11 @@ function SeverityText(ASeverity: TAtlasProblemSeverity): string;
 begin
   case ASeverity of
     TAtlasProblemSeverity.Error:
-      Result := TAtlasStrings.Text(TAtlasTextId.GutterSeverityError);
+      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.GutterSeverityError);
     TAtlasProblemSeverity.Warning:
-      Result := TAtlasStrings.Text(TAtlasTextId.GutterSeverityWarning);
+      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.GutterSeverityWarning);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.GutterSeverityHint);
+    Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.GutterSeverityHint);
   end;
 end;
 
@@ -355,7 +355,7 @@ var
 begin
   if AError <> '' then
   begin
-    APanel.AddLine(TAtlasStrings.Fmt(TAtlasTextId.GutterFixesFailed, [AError]));
+    APanel.AddLine(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.GutterFixesFailed, [AError]));
   end;
   for mFix in AFixes do
   begin
@@ -366,7 +366,7 @@ begin
   end;
   if Length(APanel.Captions) = 0 then
   begin
-    APanel.AddLine(TAtlasStrings.Text(TAtlasTextId.GutterNoFix));
+    APanel.AddLine(TAtlasEditorStrings.Text(TAtlasEditorTextId.GutterNoFix));
   end;
 end;
 
@@ -841,7 +841,7 @@ begin
     mFixes := FState.Fixes(ARow.FileName, mProblems[0], mError);
     AddFixes(APanel, mFixes, mError, FApply);
   end;
-  APanel.AddLink(TAtlasStrings.Text(TAtlasTextId.GutterAllActions), ActionsAction(ARow));
+  APanel.AddLink(TAtlasEditorStrings.Text(TAtlasEditorTextId.GutterAllActions), ActionsAction(ARow));
 end;
 
 function TAtlasIdeGutterColumn.OverridesPanel(const ARow: TRow; var APanel: TPanel): Boolean;
@@ -856,11 +856,11 @@ begin
   end;
   if ARow.Symbol = TAtlasGutterSymbol.Overrides then
   begin
-    APanel.Title := TAtlasStrings.Text(TAtlasTextId.GutterOverridesTitle);
+    APanel.Title := TAtlasEditorStrings.Text(TAtlasEditorTextId.GutterOverridesTitle);
   end
   else
   begin
-    APanel.Title := TAtlasStrings.Text(TAtlasTextId.GutterOverriddenTitle);
+    APanel.Title := TAtlasEditorStrings.Text(TAtlasEditorTextId.GutterOverriddenTitle);
   end;
   // Beide Richtungen: Pfeile vor den Zielen und im Text.
   mUp := '';
@@ -869,8 +869,8 @@ begin
   begin
     mUp := '↑ ';
     mDown := '↓ ';
-    APanel.Text := TAtlasStrings.Text(TAtlasTextId.GutterOverridesTitle) + ' ↑ · ' +
-      TAtlasStrings.Text(TAtlasTextId.GutterOverriddenTitle) + ' ↓';
+    APanel.Text := TAtlasEditorStrings.Text(TAtlasEditorTextId.GutterOverridesTitle) + ' ↑ · ' +
+      TAtlasEditorStrings.Text(TAtlasEditorTextId.GutterOverriddenTitle) + ' ↓';
   end;
   AddTargets(APanel, mEntry.Overrides, mUp);
   AddTargets(APanel, mEntry.Overridden, mDown);
@@ -887,8 +887,8 @@ begin
       mShown := ProblemPanel(ARow, AFetchFixes, mPanel);
     TAtlasGutterSymbol.Action:
       begin
-        mPanel.Title := TAtlasStrings.Text(TAtlasTextId.GutterActionTitle);
-        mPanel.Text := TAtlasStrings.Text(TAtlasTextId.GutterActionText);
+        mPanel.Title := TAtlasEditorStrings.Text(TAtlasEditorTextId.GutterActionTitle);
+        mPanel.Text := TAtlasEditorStrings.Text(TAtlasEditorTextId.GutterActionText);
         mShown := True;
       end;
     TAtlasGutterSymbol.Overrides, TAtlasGutterSymbol.Overridden:

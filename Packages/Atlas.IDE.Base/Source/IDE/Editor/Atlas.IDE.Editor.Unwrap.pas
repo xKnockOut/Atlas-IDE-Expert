@@ -112,6 +112,7 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.UI.Popup.Window,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -345,12 +346,12 @@ begin
     Result := Length(AEntries) > 0;
     if not Result then
     begin
-      Report(TAtlasStrings.Text(TAtlasTextId.UnwrapNothing));
+      Report(TAtlasEditorStrings.Text(TAtlasEditorTextId.UnwrapNothing));
     end;
   except
     on E: ELspClientError do
     begin
-      Report(TAtlasStrings.Fmt(TAtlasTextId.UnwrapFailed, [E.Message]));
+      Report(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapFailed, [E.Message]));
     end;
   end;
 end;
@@ -457,7 +458,7 @@ begin
   if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, FFileName) or
     (TAtlasEditorBuffer.Text(mView.Buffer) <> FText) then
   begin
-    Report(TAtlasStrings.Text(TAtlasTextId.UnwrapChanged));
+    Report(TAtlasEditorStrings.Text(TAtlasEditorTextId.UnwrapChanged));
     Exit;
   end;
   FWriting := True;
@@ -472,7 +473,7 @@ begin
     Report(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
     Exit;
   end;
-  Report(TAtlasStrings.Fmt(TAtlasTextId.UnwrapDone, [TAtlasUnwrapWindow.EntryCaption(mEntry)]));
+  Report(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapDone, [TAtlasUnwrapWindow.EntryCaption(mEntry)]));
 end;
 
 /// <summary>Führt AKey in der Liste aus (Eingabe, Escape, Pfeile ohne Strg/Alt); False für jede andere Taste.

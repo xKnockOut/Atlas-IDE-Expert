@@ -25,6 +25,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.ChoiceBox;
 
 type
@@ -115,13 +116,14 @@ begin
   FIntro.Align := alTop;
   FIntro.AlignWithMargins := True;
   FIntro.WordWrap := True;
-  FIntro.Caption := TAtlasStrings.Text(TAtlasTextId.KeysIntro);
+  FIntro.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysIntro);
   FIntro.Top := FNextTop;
   Inc(FNextTop, 100);
   mPanel := AddPanel(20);
-  AddLabel(mPanel, TAtlasStrings.Text(TAtlasTextId.KeysHeaderFunction), 0, 2).Font.Style := [fsBold];
-  AddLabel(mPanel, TAtlasStrings.Text(TAtlasTextId.KeysHeaderKey), cKeyLeft, 2).Font.Style := [fsBold];
-  AddLabel(mPanel, TAtlasStrings.Text(TAtlasTextId.KeysHeaderChoice), cChoiceLeft, 2).Font.Style := [fsBold];
+  AddLabel(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysHeaderFunction), 0, 2).Font.Style := [fsBold];
+  AddLabel(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysHeaderKey), cKeyLeft, 2).Font.Style := [fsBold];
+  AddLabel(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysHeaderChoice), cChoiceLeft,
+    2).Font.Style := [fsBold];
   FEntries := TAtlasKeyEntry.FromSettings(TAtlasPluginSettings.Defaults);
   SetLength(FRows, Length(FEntries));
   for mIndex := 0 to High(FEntries) do
@@ -137,8 +139,8 @@ begin
   Inc(FNextTop, 100);
   ShowForeignCompletions(nil);
   // Tastenkürzel-Übersicht (#520).
-  FOverview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsKeyOverview));
-  FStartupCheck := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsKeyStartupCheck));
+  FOverview := AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsKeyOverview));
+  FStartupCheck := AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsKeyStartupCheck));
 end;
 
 function TAtlasKeysPage.AddCheck(const ACaption: string): TCheckBox;
@@ -219,8 +221,9 @@ begin
   FRows[AIndex].Choice.Anchors := [akLeft, akTop, akRight];
   FRows[AIndex].Choice.Tag := AIndex;
   // Reihenfolge wie TAtlasKeyChoice.
-  FRows[AIndex].Choice.SetChoices([TAtlasStrings.Text(TAtlasTextId.KeysChoiceAtlas),
-    TAtlasStrings.Text(TAtlasTextId.KeysChoiceOther), TAtlasStrings.Text(TAtlasTextId.KeysChoiceNewKey)]);
+  FRows[AIndex].Choice.SetChoices([TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysChoiceAtlas),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysChoiceOther),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysChoiceNewKey)]);
   FRows[AIndex].Choice.OnChange := ChoiceChange;
   FRows[AIndex].Status := AddLabel(mPanel, '', cKeyLeft, 27);
   FRows[AIndex].Status.Font.Color := clGrayText;
@@ -251,15 +254,16 @@ class function TAtlasKeysPage.StatusText(const AEntry: TAtlasKeyEntry; const AOw
 begin
   case AEntry.Status(AOwner) of
     TAtlasKeyStatus.NoKey:
-      Result := TAtlasStrings.Text(TAtlasTextId.KeysStatusNone);
+      Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysStatusNone);
     TAtlasKeyStatus.IdeKey:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.KeysStatusIdeKey, [ShortCutToText(TShortCut(AEntry.IdeKey))]);
+      Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysStatusIdeKey,
+        [ShortCutToText(TShortCut(AEntry.IdeKey))]);
     TAtlasKeyStatus.Free:
-      Result := TAtlasStrings.Text(TAtlasTextId.KeysStatusFree);
+      Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysStatusFree);
     TAtlasKeyStatus.AtlasWins:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.KeysStatusAtlasWins, [AOwner]);
+      Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysStatusAtlasWins, [AOwner]);
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.KeysStatusLeft, [AOwner]);
+    Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysStatusLeft, [AOwner]);
   end;
 end;
 
@@ -271,7 +275,7 @@ begin
   mText := Trim(FRows[AIndex].Key.Text);
   if (mText <> '') and (TextToShortCut(mText) = 0) then
   begin
-    FRows[AIndex].Status.Caption := TAtlasStrings.Fmt(TAtlasTextId.KeysInvalid, [mText]);
+    FRows[AIndex].Status.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysInvalid, [mText]);
     Exit;
   end;
   mOwner := '';
@@ -388,11 +392,11 @@ procedure TAtlasKeysPage.ShowForeignCompletions(const ANames: TArray<string>);
 begin
   if Length(ANames) = 0 then
   begin
-    FForeign.Caption := TAtlasStrings.Text(TAtlasTextId.KeysForeignNone);
+    FForeign.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysForeignNone);
   end
   else
   begin
-    FForeign.Caption := TAtlasStrings.Fmt(TAtlasTextId.KeysForeign, [string.Join(', ', ANames)]);
+    FForeign.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysForeign, [string.Join(', ', ANames)]);
   end;
 end;
 
