@@ -136,7 +136,8 @@ begin
     end
     else
     begin
-      // Gibt der Thread nach seinem Ende frei; läuft er beim Entladen noch, bleibt Base im Speicher (T-101).
+      // Gibt der Thread nach seinem Ende frei; läuft er beim Entladen noch, bleibt Base im Speicher,
+      // damit sein Code nicht ins Leere läuft.
       TAtlasOverdueThreads.Adopt(mThread, HInstance);
     end;
   end;
