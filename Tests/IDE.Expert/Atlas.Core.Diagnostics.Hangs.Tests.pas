@@ -25,6 +25,9 @@ type
     procedure RunningNamesGuardFeature;
     [Test]
     procedure StackScanMapsAddressesToModules;
+    /// <summary>Ein Atlas-Rahmen unterhalb der 24 angezeigten zählt als beteiligt und steht im Bericht.</summary>
+    [Test]
+    procedure AtlasFrameBelowShownFramesCounts;
   end;
 
 implementation
@@ -194,6 +197,48 @@ begin
   Assert.AreEqual('', OtherName);
   Seen := nil;
   OtherName := '';
+end;
+
+procedure TAtlasHangTests.AtlasFrameBelowShownFramesCounts;
+var
+  Modules: TArray<TAtlasModuleRange>;
+  Addresses: TArray<UInt64>;
+  Index: Integer;
+  Monitor: TAtlasHangMonitor;
+  Hang: TAtlasHang;
+  Text: string;
+begin
+  SetLength(Modules, 2);
+  Modules[0].Name := 'coreide370.bpl';
+  Modules[0].Base := $400000;
+  Modules[0].Size := $100000;
+  Modules[1].Name := 'Atlas.IDE.Welcome370.bpl';
+  Modules[1].Base := $50000000;
+  Modules[1].Size := $100000;
+  // 60 Rahmen der IDE (Projekt laden), darunter der Klick der Willkommensseite.
+  Addresses := nil;
+  for Index := 1 to 60 do
+  begin
+    Addresses := Addresses + [UInt64($400000 + Index * 16)];
+  end;
+  Addresses := Addresses + [UInt64($50000200), UInt64($50000300)];
+  Hang := MakeHang(13900, '');
+  Hang.Frames := TAtlasStackScan.Frames(Addresses, Modules);
+  Hang.AtlasFrame := TAtlasStackScan.FirstIn(Addresses, Modules, 'Atlas');
+  Assert.AreEqual(24, Integer(Length(Hang.Frames)));
+  Assert.AreEqual('Atlas.IDE.Welcome370.bpl+200', Hang.AtlasFrame);
+  Assert.IsTrue(TAtlasHangMonitor.InvolvesAtlas(Hang));
+  Monitor := TAtlasHangMonitor.Create(500);
+  try
+    Text := Monitor.Finish(Hang);
+    Assert.Contains(Text, 'Atlas im Aufrufstapel');
+    Assert.Contains(Text, '… Atlas.IDE.Welcome370.bpl+200');
+  finally
+    Monitor.Free;
+  end;
+  // Ohne Atlas-Modul im Abzug: leer.
+  Assert.AreEqual('', TAtlasStackScan.FirstIn([UInt64($400010)], Modules, 'Atlas'));
+  Assert.AreEqual('', TAtlasStackScan.FirstIn(Addresses, [Modules[0]], 'Atlas'));
 end;
 
 procedure TAtlasHangTests.StackScanMapsAddressesToModules;
