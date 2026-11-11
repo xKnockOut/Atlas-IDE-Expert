@@ -220,9 +220,13 @@
         <DCCReference Include="Source\Core\Generate\Atlas.Core.Generate.Menu.pas"/>
         <DCCReference Include="Source\Core\Generate\Atlas.Core.Generate.Protocol.pas"/>
         <DCCReference Include="Source\Core\Generate\Atlas.Core.Generate.FileTemplates.pas"/>
+        <DCCReference Include="Source\Core\Generate\Atlas.Core.Generate.Gallery.pas"/>
+        <DCCReference Include="Source\Core\Generate\Atlas.Core.Generate.Choice.pas"/>
         <DCCReference Include="Source\UI\Generate\Atlas.UI.Generate.Window.pas"/>
+        <DCCReference Include="Source\UI\Generate\Atlas.UI.Generate.Choice.pas"/>
         <DCCReference Include="Source\IDE\Generate\Atlas.IDE.Generate.Commands.pas"/>
         <DCCReference Include="Source\IDE\Generate\Atlas.IDE.Generate.NewFile.pas"/>
+        <DCCReference Include="Source\IDE\Generate\Atlas.IDE.Generate.Gallery.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Rename.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ChangeSignature.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ClassExtraction.pas"/>

@@ -69,7 +69,12 @@ type
     MetricsLensParameters, MetricsLensLimit, MetricsLensMembers, MetricsLensUses, MetricsLensOperands,
     MetricsLensLocals, MetricsLensExits, MetricsLensInheritance, MetricsLensInheritanceAtLeast,
     // Kontextmenü der Projektverwaltung (#1817).
-    ProjectUnitRelations, ProjectDependents, ProjectDependentsCount, DependentsTitle, DependentsNoServer);
+    ProjectUnitRelations, ProjectDependents, ProjectDependentsCount, DependentsTitle, DependentsNoServer,
+    // Assistent „Unit nach Architekturrolle“ der Objektgalerie (#1821).
+    RoleUnitCommand, RoleUnitHint, RoleUnitPrefix, RoleUnitFeature, RoleUnitRole, RoleUnitThing, RoleUnitRoot,
+    RoleUnitRootShort, RoleUnitPreview, RoleUnitOwn, RoleUnitForeign, RoleUnitCreate, RoleUnitCancel,
+    RoleUnitNoPrefix, RoleUnitBadPrefix, RoleUnitNoFeature, RoleUnitBadFeature, RoleUnitReservedFeature,
+    RoleUnitBadThing, RoleUnitReservedThing, RoleUnitFailed);
 
   TAtlasAnalysisStrings = class
   public
@@ -336,7 +341,29 @@ const
      'Abhängige Units',
      'Abhängige Units (%d)',
      'Units, die %s verwenden (%d)',
-     'Abhängige Units: Atlas-Server läuft nicht'),
+     'Abhängige Units: Atlas-Server läuft nicht',
+     'Unit nach Architekturrolle …',
+     'Legt eine Unit Ausgabeartefakt.Feature.Rolle.Sache an, mit uses nach den Importregeln der Rolle ' +
+     '(docs/Architektur.md, Prüfregel architecture-role-import).',
+     'Ausgabeartefakt:',
+     'Feature:',
+     'Rolle:',
+     'Sache:',
+     'Wurzel des Features (ohne Rolle)',
+     'Wurzel',
+     'Unit: %s',
+     'Darf aus dem eigenen Feature importieren: %s',
+     'Darf aus fremden Features importieren: %s',
+     'Anlegen',
+     'Abbrechen',
+     'Das Ausgabeartefakt fehlt.',
+     'Ausgabeartefakt: nur Bezeichner, durch Punkte getrennt.',
+     'Das Feature fehlt.',
+     'Feature: ein Bezeichner ohne Punkt.',
+     'Feature: Rollenbezeichner (Contract, Core …) sind reserviert.',
+     'Sache: nur Bezeichner, durch Punkte getrennt.',
+     'Sache: Rollenbezeichner (Contract, Core …) sind reserviert.',
+     'Unit nach Architekturrolle: %s'),
     ('Atlas Architecture',
      'Architecture overview',
      'Architecture',
@@ -586,7 +613,29 @@ const
      'Dependent units',
      'Dependent units (%d)',
      'Units using %s (%d)',
-     'Dependent units: Atlas server is not running'));
+     'Dependent units: Atlas server is not running',
+     'Unit by architecture role…',
+     'Creates a unit OutputArtifact.Feature.Role.Thing with a uses clause following the import rules of the role ' +
+     '(docs/Architektur.md, rule architecture-role-import).',
+     'Output artifact:',
+     'Feature:',
+     'Role:',
+     'Thing:',
+     'Feature root (no role)',
+     'Root',
+     'Unit: %s',
+     'May import from its own feature: %s',
+     'May import from other features: %s',
+     'Create',
+     'Cancel',
+     'The output artifact is missing.',
+     'Output artifact: identifiers separated by dots only.',
+     'The feature is missing.',
+     'Feature: one identifier without a dot.',
+     'Feature: role names (Contract, Core …) are reserved.',
+     'Thing: identifiers separated by dots only.',
+     'Thing: role names (Contract, Core …) are reserved.',
+     'Unit by architecture role: %s'));
 
 { TAtlasAnalysisStrings }
 

@@ -7,6 +7,8 @@
 // Test.Unit (.pas, ohne Rücksicht auf Groß- und Kleinschreibung). Ob ein
 // Kandidat Tests enthält, entscheidet der Aufrufer (TDUnitXSource.Scan);
 // Names baut daraus die vollen Namen der Fixtures für --run.
+// Units und IndexOf liefern die Liste des Assistenten „DUnitX-Testunit zu
+// Unit …“ in der Objektgalerie (#1821).
 
 interface
 
@@ -20,12 +22,20 @@ type
     class function Candidates(const AUnitFile: string; const AFiles: TArray<string>): TArray<string>; static;
     /// <summary>Volle Namen aller Fixtures von AUnit (Unit.Fixture); leer ohne Fixture.</summary>
     class function Names(const AUnit: TDUnitXUnit): TArray<string>; static;
+    /// <summary>Die .pas-Dateien von AFiles nach Unitnamen sortiert, ohne Doppelte.</summary>
+    class function Units(const AFiles: TArray<string>): TArray<string>; static;
+    /// <summary>Stelle von AFileName in AFiles (ohne Rücksicht auf Groß- und Kleinschreibung); -1 ohne.</summary>
+    class function IndexOf(const AFiles: TArray<string>; const AFileName: string): Integer; static;
+    /// <summary>Unitname zu AFileName (ohne Ordner und Endung).</summary>
+    class function UnitNameOf(const AFileName: string): string; static;
   end;
 
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.Generics.Defaults,
+  System.Generics.Collections;
 
 function BaseName(const AFileName: string): string;
 begin
@@ -72,6 +82,48 @@ begin
       Result := Result + [mFile];
     end;
   end;
+end;
+
+class function TAtlasTestUnitMatch.Units(const AFiles: TArray<string>): TArray<string>;
+var
+  mFile: string;
+begin
+  Result := nil;
+  for mFile in AFiles do
+  begin
+    if SameText(ExtractFileExt(mFile), '.pas') and not Contains(Result, mFile) then
+    begin
+      Result := Result + [mFile];
+    end;
+  end;
+  TArray.Sort<string>(Result, TComparer<string>.Construct(
+    function(const ALeft, ARight: string): Integer
+    begin
+      Result := CompareText(BaseName(ALeft), BaseName(ARight));
+      if Result = 0 then
+      begin
+        Result := CompareText(ALeft, ARight);
+      end;
+    end));
+end;
+
+class function TAtlasTestUnitMatch.IndexOf(const AFiles: TArray<string>; const AFileName: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AFiles) do
+  begin
+    if SameText(AFiles[mIndex], AFileName) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+class function TAtlasTestUnitMatch.UnitNameOf(const AFileName: string): string;
+begin
+  Result := BaseName(AFileName);
 end;
 
 class function TAtlasTestUnitMatch.Names(const AUnit: TDUnitXUnit): TArray<string>;
