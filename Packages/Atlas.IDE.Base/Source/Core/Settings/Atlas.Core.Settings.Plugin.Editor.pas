@@ -519,9 +519,14 @@ type
     /// <summary>Fenster „Komponenten suchen“: DesignerSearchWindow (groß mit Vorschau) oder DesignerSearchPopup
     /// (klein wie Strg+P), editor.designerBar.searchStyle.</summary>
     DesignerSearchStyle: string;
-    /// <summary>Tab-Reihenfolge per Klick auf die Nummern neu vergeben (experimentell,
+    /// <summary>Tab-Reihenfolge neu vergeben: Reihenfolge klicken, nach Lesereihenfolge sortieren (#603,
     /// editor.designerBar.tabOrderClick).</summary>
     DesignerTabOrderClick: Boolean;
+    /// <summary>Tab-Reihenfolge beim ersten Zeigen eines Formulars einblenden (#603, designer.tabOrderOverlay).
+    /// </summary>
+    DesignerTabOrderOverlay: Boolean;
+    /// <summary>Verschachtelte Tab-Reihenfolge als Pfad „2.1“ (#603, designer.tabOrderPaths).</summary>
+    DesignerTabOrderPaths: Boolean;
     /// <summary>Knopf „Ausrichten“ mit Menü (experimentell, editor.designerBar.align).</summary>
     DesignerAlign: Boolean;
     /// <summary>Menü „Gleiche auswählen“ in der Designer-Leiste (#738, designer.selectSimilar).</summary>
@@ -697,6 +702,16 @@ type
     DesignerSelectionBarItems: string;
     /// <summary>Taste zum Einblenden im Modus shortcut (#735, designer.selectionBar.key).</summary>
     DesignerSelectionBarKey: Integer;
+    /// <summary>Lupe für den Designer (#743, designer.magnifier).</summary>
+    DesignerMagnifier: Boolean;
+    /// <summary>Vergrößerung beim Öffnen: 2, 4 oder 8 (#743, designer.magnifier.zoom).</summary>
+    DesignerMagnifierZoom: Integer;
+    /// <summary>Pixelraster ab 4× (#743, designer.magnifier.grid).</summary>
+    DesignerMagnifierGrid: Boolean;
+    /// <summary>Kanten der Auswahl und Nachbarn einzeichnen (#743, designer.magnifier.edges).</summary>
+    DesignerMagnifierEdges: Boolean;
+    /// <summary>Taste zum Öffnen und Einfrieren (#743, designer.magnifier.key).</summary>
+    DesignerMagnifierKey: Integer;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -1211,7 +1226,9 @@ begin
   // Alt+^ (VK_OEM_5 mit Alt).
   Result.DesignerSearchKey := 32988;
   Result.DesignerSearchStyle := cDesignerSearchWindow;
-  Result.DesignerTabOrderClick := False;
+  Result.DesignerTabOrderClick := True;
+  Result.DesignerTabOrderOverlay := False;
+  Result.DesignerTabOrderPaths := False;
   Result.DesignerAlign := False;
   Result.DesignerSelectSimilar := True;
   Result.DesignerSelectDescendants := True;
@@ -1409,6 +1426,12 @@ begin
     'alignCenter, alignRight';
   // Strg+Umschalt+Leer.
   DesignerSelectionBarKey := 24608;
+  DesignerMagnifier := True;
+  DesignerMagnifierZoom := 4;
+  DesignerMagnifierGrid := True;
+  DesignerMagnifierEdges := False;
+  // Strg+Alt+L.
+  DesignerMagnifierKey := 49228;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeTools(const AIo: TAtlasSettingsExchange);
@@ -1424,6 +1447,11 @@ begin
   AIo.Number('DesignerSelectionBarDelayMs', DesignerSelectionBarDelayMs);
   AIo.Text('DesignerSelectionBarItems', DesignerSelectionBarItems);
   AIo.Number('DesignerSelectionBarKey', DesignerSelectionBarKey);
+  AIo.Flag('DesignerMagnifier', DesignerMagnifier);
+  AIo.Number('DesignerMagnifierZoom', DesignerMagnifierZoom);
+  AIo.Flag('DesignerMagnifierGrid', DesignerMagnifierGrid);
+  AIo.Flag('DesignerMagnifierEdges', DesignerMagnifierEdges);
+  AIo.Number('DesignerMagnifierKey', DesignerMagnifierKey);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Normalize;
@@ -1471,6 +1499,20 @@ begin
   DesignerSelectionBarMode := Choice(DesignerSelectionBarMode, [cSelectionBarAuto, cSelectionBarShortcut]);
   DesignerSelectionBarDelayMs := EnsureRange(DesignerSelectionBarDelayMs, 0, cMaxSelectionBarDelay);
   DesignerSelectionBarKey := EnsureRange(DesignerSelectionBarKey, 0, $FFFF);
+  // Stufen 2, 4, 8 (TAtlasMagnifier.NormalizeZoom im Designer-Modul).
+  if DesignerMagnifierZoom <= 2 then
+  begin
+    DesignerMagnifierZoom := 2;
+  end
+  else if DesignerMagnifierZoom < 6 then
+  begin
+    DesignerMagnifierZoom := 4;
+  end
+  else
+  begin
+    DesignerMagnifierZoom := 8;
+  end;
+  DesignerMagnifierKey := EnsureRange(DesignerMagnifierKey, 0, $FFFF);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -1486,6 +1528,8 @@ begin
   AIo.Number('DesignerSearchKey', DesignerSearchKey);
   AIo.Text('DesignerSearchStyle', DesignerSearchStyle);
   AIo.Flag('DesignerTabOrderClick', DesignerTabOrderClick);
+  AIo.Flag('DesignerTabOrderOverlay', DesignerTabOrderOverlay);
+  AIo.Flag('DesignerTabOrderPaths', DesignerTabOrderPaths);
   AIo.Flag('DesignerAlign', DesignerAlign);
   AIo.Flag('DesignerSelectSimilar', DesignerSelectSimilar);
   AIo.Flag('DesignerSelectDescendants', DesignerSelectDescendants);

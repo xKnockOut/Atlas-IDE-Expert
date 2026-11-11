@@ -86,7 +86,8 @@ type
 implementation
 
 uses
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Lsp.IdeUnits;
 
 { TLspDocumentation.TLoader }
 
@@ -362,12 +363,18 @@ begin
   Result := False;
 end;
 
+/// <summary>Name, Unit und Fundort; Ersatz-Units der IDE (atlas-ide:…) gibt es nicht als Datei: ohne Fundort,
+/// also ohne Sprungziel.</summary>
 procedure AddLocation(AObject: TJSONObject; const ATarget: TDocTarget);
 begin
   AObject.AddPair('name', ATarget.Name);
   if ATarget.UnitName <> '' then
   begin
     AObject.AddPair('unit', ATarget.UnitName);
+  end;
+  if TIdeUnits.IsIdePath(ATarget.FileName) then
+  begin
+    Exit;
   end;
   AObject.AddPair('file', ATarget.FileName);
   AObject.AddPair('line', TJSONNumber.Create(ATarget.Line));

@@ -628,6 +628,10 @@ type
     property DesignerSearchStyle: string read FEditorView.DesignerSearchStyle write FEditorView.DesignerSearchStyle;
     property DesignerTabOrderClick: Boolean read FEditorView.DesignerTabOrderClick
       write FEditorView.DesignerTabOrderClick;
+    property DesignerTabOrderOverlay: Boolean read FEditorView.DesignerTabOrderOverlay
+      write FEditorView.DesignerTabOrderOverlay;
+    property DesignerTabOrderPaths: Boolean read FEditorView.DesignerTabOrderPaths
+      write FEditorView.DesignerTabOrderPaths;
     property DesignerAlign: Boolean read FEditorView.DesignerAlign write FEditorView.DesignerAlign;
     property DesignerSelectSimilar: Boolean read FEditorView.DesignerSelectSimilar
       write FEditorView.DesignerSelectSimilar;
@@ -786,6 +790,15 @@ type
       write FEditorView.DesignerSelectionBarItems;
     property DesignerSelectionBarKey: Integer read FEditorView.DesignerSelectionBarKey
       write FEditorView.DesignerSelectionBarKey;
+    property DesignerMagnifier: Boolean read FEditorView.DesignerMagnifier write FEditorView.DesignerMagnifier;
+    property DesignerMagnifierZoom: Integer read FEditorView.DesignerMagnifierZoom
+      write FEditorView.DesignerMagnifierZoom;
+    property DesignerMagnifierGrid: Boolean read FEditorView.DesignerMagnifierGrid
+      write FEditorView.DesignerMagnifierGrid;
+    property DesignerMagnifierEdges: Boolean read FEditorView.DesignerMagnifierEdges
+      write FEditorView.DesignerMagnifierEdges;
+    property DesignerMagnifierKey: Integer read FEditorView.DesignerMagnifierKey
+      write FEditorView.DesignerMagnifierKey;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick

@@ -79,9 +79,10 @@ Short overview; each heading links to the full description. Features marked *(ex
 
 ### [Forms](docs/features/en/Forms.md)
 - **Unsaved designer state** is seen by references, renames and checks
+- **Tab order** in the designer bar: badges with jumps, gaps and duplicates, click-to-renumber, sort by reading order
 - **Checks between form and code** and property rules for form files
 - **Convert binary forms** to text forms
-- **Designer tools** in the designer bar: select similar components (class, parent, property value, handler), named selection sets per form with Ctrl+Shift+1…9, Alt+Arrow to the neighbouring control, Arrange menu (width from text, button bar, duplicate in row, insert and remove space, fit to content, near-aligned edges, default sizes per class, layers step by step, format painter, suggest anchors, all form texts as a table, label and field as a pair, arrange as a form grid, wrap in a container and dissolve it, unify fonts and colors, groups without a container), gap handles for a row or column, shared resize handles, quick bar for a multiple selection
+- **Designer tools** in the designer bar: select similar components (class, parent, property value, handler), named selection sets per form with Ctrl+Shift+1…9, Alt+Arrow to the neighbouring control, Arrange menu (width from text, button bar, duplicate in row, insert and remove space, fit to content, near-aligned edges, default sizes per class, layers step by step, format painter, suggest anchors, all form texts as a table, label and field as a pair, arrange as a form grid, wrap in a container and dissolve it, unify fonts and colors, groups without a container), gap handles for a row or column, shared resize handles, quick bar for a multiple selection, magnifier
 
 ### [Build, test, debug](docs/features/en/Build-test-debug.md)
 - **Build gate** for hints and warnings, quick fixes for compiler messages, release build guard

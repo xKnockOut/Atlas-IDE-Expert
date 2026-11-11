@@ -2053,6 +2053,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Groups.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Components.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Components.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.TabOrder.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.TabOrder.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitText.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.FitText.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Help\Source\Core\Help\Atlas.Core.Help.Links.pas"/>
@@ -2069,8 +2071,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Gaps.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.MultiResize.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.SelectionBar.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Magnifier.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.MultiResize.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.SelectionBar.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Magnifier.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Bar.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.Bar.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Search.pas"/>

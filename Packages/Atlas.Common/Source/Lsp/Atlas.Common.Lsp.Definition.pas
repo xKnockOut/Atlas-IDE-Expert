@@ -90,7 +90,8 @@ type
     /// <summary>Deklaration des Typs des Bezeichners an APosition; leer, wenn er keinen bekannten Typ hat.</summary>
     class function TypeTargets(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
       const APosition: TTextPosition): TArray<TDefinitionTarget>; static;
-    /// <summary>LocationLink[] des LSP. Der Aufrufer übernimmt das Objekt.</summary>
+    /// <summary>LocationLink[] des LSP ohne Ziele in Ersatz-Units der IDE. Der Aufrufer übernimmt das Objekt.
+    /// </summary>
     class function ToJson(const ATargets: TArray<TDefinitionTarget>): TJSONArray; static;
     /// <summary>Unit-Namespaces des Projekts (DCC_Namespace).</summary>
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
@@ -110,6 +111,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Dfm.Parser,
+  Atlas.Common.Lsp.IdeUnits,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -384,6 +386,11 @@ begin
   Result := TJSONArray.Create;
   for mItem in ATargets do
   begin
+    // Ersatz-Units der IDE (atlas-ide:…) gibt es nicht als Datei: kein Sprungziel für Strg+Klick.
+    if TIdeUnits.IsIdePath(mItem.FileName) then
+    begin
+      Continue;
+    end;
     mLocation := TJSONObject.Create;
     mLocation.AddPair('uri', TDocumentUris.FromPath(mItem.FileName));
     mLocation.AddPair('range', TLspPositions.RangeToJson(mItem.SelectionRange));

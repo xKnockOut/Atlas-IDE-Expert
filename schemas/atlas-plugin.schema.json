@@ -4922,16 +4922,37 @@
       "x-issue": "#1442"
     },
     "DesignerTabOrderClick": {
-      "description": "Bei eingeblendeter Tab-Reihenfolge vergibt ein Klick auf die Nummern die Reihenfolge neu: der erste Klick unter einem Elternelement setzt 0, der nächste 1 und so weiter. Ändert die .dfm. Aus = die Nummern sind nur Anzeige, Klicks gehen an den Designer.",
+      "description": "Befehle im Menü am Pfeil des Knopfs „Tab-Reihenfolge“, die die Reihenfolge neu vergeben: „Reihenfolge klicken“ (Klicks auf die Marken setzen je Elternelement 0, 1, 2 …, nicht geklickte rücken dahinter; Enter oder ein Klick auf das Symbol übernimmt, Esc stellt den alten Stand her), „Nach Lesereihenfolge sortieren“ und „Tab-Reihenfolge rückgängig“ (auch Strg+Z, solange die Marken zu sehen sind). Ändert die .dfm. Aus = die Marken sind nur Anzeige.",
       "type": "boolean",
-      "default": false,
+      "default": true,
       "x-key": "editor.designerBar.tabOrderClick",
       "x-area": "editor",
       "x-page": "Editor",
       "x-parent": "editor.designerBar",
       "x-node": "editor.designerBar",
-      "x-experimental": true,
-      "x-issue": "#1442"
+      "x-issue": "#603"
+    },
+    "DesignerTabOrderOverlay": {
+      "description": "Blendet die Tab-Reihenfolge beim ersten Zeigen eines Formulars im Designer von selbst ein (Marke oben rechts an jedem Steuerelement mit TabOrder; Rücksprünge gegen die Lesereihenfolge, Lücken und Doppelte rot mit Hinweis, Steuerelemente ohne TabStop grau mit „–“). Aus = nur über den Knopf „Tab-Reihenfolge“ der Designer-Leiste.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.tabOrderOverlay",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#603"
+    },
+    "DesignerTabOrderPaths": {
+      "description": "Zeigt die Tab-Reihenfolge verschachtelter Steuerelemente als Pfad über die Container: „2.1“ ist das Steuerelement mit TabOrder 1 im Container mit TabOrder 2. Im Menü des Knopfs für die Sitzung umschaltbar. Aus = nur die eigene TabOrder.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.tabOrderPaths",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#603"
     },
     "DesignerAlign": {
       "description": "Knopf „Ausrichten“ in der Designer-Leiste: Menü mit linken, rechten, oberen und unteren Kanten, Mitten, im Elternelement zentrieren, gleicher Breite und Höhe und gleichmäßigen Abständen; Bezug ist die zuerst gewählte Komponente. Ein Klick auf das Symbol wiederholt den letzten Befehl. Ändert die .dfm.",
@@ -5937,6 +5958,67 @@
       "x-parent": "designer.selectionBar",
       "x-node": "editor.designerBar",
       "x-issue": "#735"
+    },
+    "DesignerMagnifier": {
+      "description": "Lupe für den Designer: schwebendes Fenster ohne Fokus (Vorgabe 240 × 180, Größe frei), das den Bildschirm unter der Maus vergrößert zeigt, mit Pixelraster und Fadenkreuz. Kopfzeile: Stufe und Koordinaten unter dem Fadenkreuz in DFM-Pixeln des Formulars (über die aktuelle Skalierung umgerechnet) und relativ zum Elternelement der Komponente darunter. Fußzeile: Farbe als Hex-Wert, Systemfarbe und VCL-Name, Name der Komponente. Knopf in der Designer-Leiste und Taste designer.magnifier.key öffnen sie; die Taste bei offener Lupe friert den Ausschnitt ein (Pfeiltasten verschieben ihn dann um ein Pixel) bzw. lässt ihn wieder der Maus folgen. Mausrad über der Lupe wechselt zwischen 2×, 4× und 8×, Linksklick kopiert den Farbwert, das Kontextmenü auch die Koordinaten.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.magnifier",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#743"
+    },
+    "DesignerMagnifierZoom": {
+      "description": "Vergrößerung beim Öffnen der Lupe: 2, 4 oder 8.",
+      "type": "integer",
+      "enum": [
+        2,
+        4,
+        8
+      ],
+      "default": 4,
+      "x-key": "designer.magnifier.zoom",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.magnifier",
+      "x-node": "editor.designerBar",
+      "x-issue": "#743"
+    },
+    "DesignerMagnifierGrid": {
+      "description": "Pixelraster in der Lupe ab 4×.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.magnifier.grid",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.magnifier",
+      "x-node": "editor.designerBar",
+      "x-issue": "#743"
+    },
+    "DesignerMagnifierEdges": {
+      "description": "Kanten der markierten Steuerelemente (Akzentfarbe) und ihrer Nachbarn im selben Elternelement als Linien in der Lupe einzeichnen, damit Versätze um ein Pixel sichtbar werden.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.magnifier.edges",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.magnifier",
+      "x-node": "editor.designerBar",
+      "x-issue": "#743"
+    },
+    "DesignerMagnifierKey": {
+      "description": "Taste, die die Lupe öffnet und bei offener Lupe den Ausschnitt einfriert bzw. wieder der Maus folgen lässt; wirkt, solange ein Formular-Designer gezeigt wird. 0 = keine Taste. Vorgabe Strg+Alt+L.",
+      "type": "integer",
+      "default": 49228,
+      "x-key": "designer.magnifier.key",
+      "x-area": "editor",
+      "x-format": "shortcut",
+      "x-page": "Editor",
+      "x-parent": "designer.magnifier",
+      "x-node": "editor.designerBar",
+      "x-issue": "#743"
     },
     "EditorStatusBarItems": {
       "type": "string",
