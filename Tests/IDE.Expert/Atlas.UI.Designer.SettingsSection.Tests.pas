@@ -38,6 +38,8 @@ type
     procedure DuplicateRowRoundTrip;
     [Test]
     procedure InsertSpaceRoundTrip;
+    [Test]
+    procedure FitContainerRoundTrip;
   end;
 
 implementation
@@ -269,6 +271,30 @@ begin
     mPage.SaveTo(mSaved);
     Assert.IsFalse(mSaved.DesignerInsertSpace, 'abschaltbar');
     Assert.IsFalse(mSaved.DesignerInsertSpaceGrowParent);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.FitContainerRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerFitContainer').Checked, 'Vorgabe an');
+    Assert.AreEqual('8', EditOf(mPage, 'DesignerFitContainerPadding').Text);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerFitContainerAlignTopLeft').Checked);
+    CheckOf(mPage, 'DesignerFitContainer').Checked := False;
+    EditOf(mPage, 'DesignerFitContainerPadding').Text := '12';
+    CheckOf(mPage, 'DesignerFitContainerAlignTopLeft').Checked := True;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerFitContainer, 'abschaltbar');
+    Assert.AreEqual(12, mSaved.DesignerFitContainerPadding);
+    Assert.IsTrue(mSaved.DesignerFitContainerAlignTopLeft);
   finally
     mPage.Free;
   end;

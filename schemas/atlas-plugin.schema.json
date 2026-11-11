@@ -5143,6 +5143,40 @@
       "x-node": "editor.designerBar",
       "x-issue": "#740"
     },
+    "DesignerFitContainer": {
+      "description": "Befehl „An Inhalt anpassen“ im Menü „Anordnen“ der Designer-Leiste: passt markierte Container (ohne Auswahl das Formular) an ihre Kinder an, wahlweise nur Breite, nur Höhe oder alle auf dieselbe Breite.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.fitContainer",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#742"
+    },
+    "DesignerFitContainerPadding": {
+      "description": "Innenrand rechts und unten in Pixeln (bei 96 dpi); Kinder nur mit akRight bzw. akBottom stehen danach so weit vom Rand.",
+      "type": "integer",
+      "default": 8,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "designer.fitContainer.padding",
+      "x-parent": "designer.fitContainer",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#742"
+    },
+    "DesignerFitContainerAlignTopLeft": {
+      "description": "Kinder vorher nach links oben rücken, sodass auch dort der Innenrand gilt; aus = der vorhandene Abstand links und oben bleibt.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.fitContainer.alignTopLeft",
+      "x-parent": "designer.fitContainer",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#742"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",

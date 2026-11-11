@@ -11,7 +11,8 @@
 // - Erst wachsen die Parents, dann bekommen alle Steuerelemente ohne Align
 //   ihre Lage ausdrücklich: Anker hätten sie beim Wachsen sonst mitgezogen.
 // - Rückgängig: „Platz rückgängig“ setzt Lage und Größe aller
-//   Steuerelemente und des Formulars auf den Stand vor dem Befehl.
+//   Steuerelemente und des Formulars auf den Stand vor dem Befehl
+//   (TAtlasDesignerSnapshot).
 // Der Betrag rastet am Raster des Designers ein (Umgebungsoptionen
 // GridSizeX/GridSizeY, sonst cDefaultGrid). Nur im Hauptthread.
 
@@ -21,22 +22,20 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
-  Vcl.Controls;
+  Vcl.Controls,
+  Atlas.IDE.Designer.Snapshot;
 
 type
   TAtlasIdeInsertSpace = class
   private
     FOnMessage: TProc<string>;
-    /// <summary>Stand vor dem letzten Befehl: Datei, Namen mit Lage, Client des Formulars.</summary>
-    FLastFile: string;
-    FNames: TArray<string>;
-    FBounds: TArray<TRect>;
-    FRootClient: TPoint;
+    /// <summary>Stand vor dem letzten Befehl.</summary>
+    FSnapshot: TAtlasDesignerSnapshot;
     procedure Say(const AText: string);
-    procedure Remember(const AFileName: string; ARoot: TComponent);
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
+    destructor Destroy; override;
     /// <summary>Steuerelemente unter ASelected (Geschwister des ersten).</summary>
     class function Candidates(const ASelected: TArray<TComponent>): TArray<TControl>; static;
     /// <summary>Dialog zeigen und Platz einfügen bzw. (ARemove) entfernen.</summary>
@@ -284,6 +283,13 @@ constructor TAtlasIdeInsertSpace.Create(const AOnMessage: TProc<string>);
 begin
   inherited Create;
   FOnMessage := AOnMessage;
+  FSnapshot := TAtlasDesignerSnapshot.Create;
+end;
+
+destructor TAtlasIdeInsertSpace.Destroy;
+begin
+  FSnapshot.Free;
+  inherited Destroy;
 end;
 
 procedure TAtlasIdeInsertSpace.Say(const AText: string);
@@ -315,28 +321,6 @@ begin
     begin
       Result := Result + [TControl(mComponent)];
     end;
-  end;
-end;
-
-procedure TAtlasIdeInsertSpace.Remember(const AFileName: string; ARoot: TComponent);
-var
-  mIndex: Integer;
-begin
-  FLastFile := AFileName;
-  FNames := nil;
-  FBounds := nil;
-  for mIndex := 0 to ARoot.ComponentCount - 1 do
-  begin
-    if ARoot.Components[mIndex] is TControl then
-    begin
-      FNames := FNames + [ARoot.Components[mIndex].Name];
-      FBounds := FBounds + [TControl(ARoot.Components[mIndex]).BoundsRect];
-    end;
-  end;
-  FRootClient := Point(0, 0);
-  if ARoot is TControl then
-  begin
-    FRootClient := Point(TControl(ARoot).ClientWidth, TControl(ARoot).ClientHeight);
   end;
 end;
 
@@ -377,7 +361,7 @@ begin
   mRun.Axis := mOptions.Axis;
   mRun.Grow := TAtlasIdeSettings.Current.DesignerInsertSpaceGrowParent;
   mRun.Untouched := nil;
-  Remember(mEditor.FileName, mRun.Root);
+  FSnapshot.Take(mEditor.FileName, mRun.Root);
   ApplyLevel(mRun, mControls[0].Parent, LineOf(mControls, mRun.Axis), mAmount, nil);
   TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
   Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerSpaceDone, [mAmount, mControls[0].Parent.Name]));
@@ -388,49 +372,16 @@ begin
 end;
 
 function TAtlasIdeInsertSpace.CanUndo: Boolean;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
 begin
-  Result := (Length(FNames) > 0) and TAtlasDesignerAccess.Current(mEditor, mRoot) and
-    SameText(mEditor.FileName, FLastFile);
+  Result := FSnapshot.CanRestore;
 end;
 
 procedure TAtlasIdeInsertSpace.Undo;
-var
-  mEditor: IOTAFormEditor;
-  mRoot, mComponent: TComponent;
-  mIndex, mPass: Integer;
 begin
-  if not CanUndo or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
+  if FSnapshot.Restore then
   begin
-    Exit;
+    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceUndone));
   end;
-  // Erst das Formular, dann alle Steuerelemente ausdrücklich (Anker ziehen sonst mit).
-  if (mRoot is TControl) and (FRootClient.X > 0) then
-  begin
-    TControl(mRoot).ClientWidth := FRootClient.X;
-    TControl(mRoot).ClientHeight := FRootClient.Y;
-  end;
-  // Zweimal: Ein Parent, der nach seinen Kindern zurückgesetzt wird, zieht verankerte Kinder noch einmal mit.
-  for mPass := 1 to 2 do
-  begin
-    for mIndex := 0 to High(FNames) do
-    begin
-      mComponent := mRoot.FindComponent(FNames[mIndex]);
-      if (mComponent is TControl) and (TControl(mComponent).BoundsRect <> FBounds[mIndex]) then
-      begin
-        TControl(mComponent).BoundsRect := FBounds[mIndex];
-      end;
-    end;
-  end;
-  FNames := nil;
-  FBounds := nil;
-  if TAtlasDesignerAccess.DesignerOf(mEditor) <> nil then
-  begin
-    TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
-  end;
-  Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceUndone));
 end;
 
 end.

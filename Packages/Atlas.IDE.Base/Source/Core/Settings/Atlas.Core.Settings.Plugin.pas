@@ -656,6 +656,12 @@ type
       write FEditorView.DesignerInsertSpace;
     property DesignerInsertSpaceGrowParent: Boolean read FEditorView.DesignerInsertSpaceGrowParent
       write FEditorView.DesignerInsertSpaceGrowParent;
+    property DesignerFitContainer: Boolean read FEditorView.DesignerFitContainer
+      write FEditorView.DesignerFitContainer;
+    property DesignerFitContainerPadding: Integer read FEditorView.DesignerFitContainerPadding
+      write FEditorView.DesignerFitContainerPadding;
+    property DesignerFitContainerAlignTopLeft: Boolean read FEditorView.DesignerFitContainerAlignTopLeft
+      write FEditorView.DesignerFitContainerAlignTopLeft;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick

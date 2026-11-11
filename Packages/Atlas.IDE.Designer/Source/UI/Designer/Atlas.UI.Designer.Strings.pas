@@ -52,7 +52,11 @@ type
     SettingsDesignerDuplicateGap, DesignerSpaceInsertCmd, DesignerSpaceRemoveCmd, DesignerSpaceUndoCmd,
     DesignerSpaceInsertTitle, DesignerSpaceRemoveTitle, DesignerSpaceRows, DesignerSpaceColumns, DesignerSpaceAmount,
     DesignerSpaceSnap, DesignerSpaceOk, DesignerSpaceNoSelection, DesignerSpaceDone, DesignerSpaceNothing,
-    DesignerSpaceUntouched, DesignerSpaceUndone, SettingsDesignerInsertSpace, SettingsDesignerInsertSpaceGrow);
+    DesignerSpaceUntouched, DesignerSpaceUndone, SettingsDesignerInsertSpace, SettingsDesignerInsertSpaceGrow,
+    DesignerFitContainerCmd, DesignerFitContainerBoth, DesignerFitContainerWidth, DesignerFitContainerHeight,
+    DesignerFitContainerSame, DesignerFitContainerUndoCmd, DesignerFitContainerDone, DesignerFitContainerOnlyClient,
+    DesignerFitContainerNone, DesignerFitContainerUndone, SettingsDesignerFitContainer,
+    SettingsDesignerFitContainerPadding, SettingsDesignerFitContainerTopLeft);
 
   TAtlasDesignerStrings = class
   public
@@ -235,7 +239,20 @@ const
      'Nicht verlängert (ohne beide Anker): %s',
      'Platz zurückgenommen.',
      'Befehle „Platz einfügen …“ und „Platz entfernen …“',
-     'Parent und Formular mitwachsen und mitschrumpfen lassen'),
+     'Parent und Formular mitwachsen und mitschrumpfen lassen',
+     'An Inhalt anpassen',
+     'Breite und Höhe',
+     'Nur Breite',
+     'Nur Höhe',
+     'Alle auf dieselbe Breite',
+     'Anpassen rückgängig',
+     'An Inhalt angepasst: %s',
+     '%s: nur Kinder mit alClient, die Größe bleibt.',
+     'Kein Container markiert.',
+     'Anpassen zurückgenommen.',
+     'Befehl „An Inhalt anpassen“',
+     'Innenrand rechts und unten (px)',
+     'Kinder nach links oben an den Innenrand rücken'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -399,7 +416,20 @@ const
      'Not stretched (without both anchors): %s',
      'Space change undone.',
      '“Insert space …” and “Remove space …” commands',
-     'Let parent and form grow and shrink along'));
+     'Let parent and form grow and shrink along',
+     'Fit to content',
+     'Width and height',
+     'Width only',
+     'Height only',
+     'All to the same width',
+     'Undo fit to content',
+     'Fitted to content: %s',
+     '%s: only children with alClient, the size stays.',
+     'No container selected.',
+     'Fit to content undone.',
+     '“Fit to content” command',
+     'Inner margin right and bottom (px)',
+     'Move children to the inner margin at the top left'));
 
 { TAtlasDesignerStrings }
 

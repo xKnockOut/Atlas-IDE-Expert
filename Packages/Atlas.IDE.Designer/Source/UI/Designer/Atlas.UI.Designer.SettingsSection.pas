@@ -1,7 +1,8 @@
 ﻿unit Atlas.UI.Designer.SettingsSection;
 
 // Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil
-// „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Gleiche auswählen (#738).
+// „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Gleiche auswählen (#738),
+// Befehle im Menü „Anordnen“ (#730 ff.).
 
 interface
 
@@ -13,6 +14,9 @@ type
   public const
     cOwnerId = 'atlas.designer';
     cAreaId = 'Editor';
+  private
+    /// <summary>Zeilen der Befehle im Menü „Anordnen“ (#730 ff.).</summary>
+    procedure BuildArrangeRows;
   protected
     procedure BuildRows; override;
   public
@@ -70,6 +74,11 @@ begin
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSpatialNavigation));
   Switch('designer.spatialNavigation.crossContainers',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSpatialCross));
+  BuildArrangeRows;
+end;
+
+procedure TAtlasDesignerSettingsSection.BuildArrangeRows;
+begin
   Switch('designer.fitToText', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFitToText));
   Number('designer.fitToText.minWidth', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFitMinWidth));
   Number('designer.fitToText.padding', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFitPadding));
@@ -97,6 +106,11 @@ begin
   Switch('designer.insertSpace', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerInsertSpace));
   Switch('designer.insertSpace.growParent',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerInsertSpaceGrow));
+  Switch('designer.fitContainer', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFitContainer));
+  Number('designer.fitContainer.padding',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFitContainerPadding));
+  Switch('designer.fitContainer.alignTopLeft',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFitContainerTopLeft));
 end;
 
 end.
