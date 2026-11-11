@@ -702,6 +702,7 @@ contains
   Atlas.UI.Editor.RegionFolds in 'Source\UI\Editor\Atlas.UI.Editor.RegionFolds.pas',
   Atlas.UI.Editor.ChangeSignature in 'Source\UI\Editor\Atlas.UI.Editor.ChangeSignature.pas',
   Atlas.UI.Editor.ExtractMembers in 'Source\UI\Editor\Atlas.UI.Editor.ExtractMembers.pas',
+  Atlas.UI.Editor.ActionChoices in 'Source\UI\Editor\Atlas.UI.Editor.ActionChoices.pas',
   Atlas.IDE.Foundation.Elements in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Elements.pas',
   Atlas.IDE.Editor.Hide in 'Source\IDE\Editor\Atlas.IDE.Editor.Hide.pas',
   Atlas.IDE.Editor.HideTeamFile in 'Source\IDE\Editor\Atlas.IDE.Editor.HideTeamFile.pas',

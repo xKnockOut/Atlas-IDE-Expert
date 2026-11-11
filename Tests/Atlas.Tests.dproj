@@ -564,6 +564,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SmartPaste.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Extract.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Extract.Shared.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Extract.Duplicates.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.AnonymousMethods.Shared.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Inlining.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Inlining.Types.Tests.pas"/>
@@ -1844,6 +1845,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Bootstrap.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Freshness.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.EditTools.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.ExtractTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeEdits.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeBuilds.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.TestTools.Tests.pas"/>

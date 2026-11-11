@@ -391,6 +391,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Extract.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Extract.Shared.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Extract.Method.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Extract.Duplicates.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Inlining.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Inlining.Types.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Inlining.Syntax.pas"/>
@@ -646,6 +647,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Paths.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Freshness.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.EditTools.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ExtractTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeEdits.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeBuilds.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.TestTools.pas"/>

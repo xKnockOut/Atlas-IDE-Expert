@@ -784,6 +784,7 @@
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.RegionFolds.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.ChangeSignature.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.ExtractMembers.pas"/>
+        <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.ActionChoices.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Elements.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Hide.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.HideTeamFile.pas"/>
