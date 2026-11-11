@@ -555,13 +555,22 @@ end;
 /// <summary>Abschnittsbefehl: gesperrt ohne Ziel (mit Grund im Tooltip), hervorgehoben im eigenen Abschnitt.</summary>
 procedure TToolbarState.MarkSection(var AButton: TAtlasToolbarButton; ATarget: TAtlasSectionTarget;
   ALine, ACharacter: Integer; ASection: TAtlasCodeSection);
+const
+  cParts: array[Boolean] of string = ('interface', 'implementation');
 var
   mMark: TAtlasSectionMark;
+  mToImplementation: Boolean;
 begin
   AButton.Enabled := (FSectionsFile <> '') and FSections.Target(ATarget, ALine, ACharacter, mMark);
   AButton.Pressed := AButton.Enabled and SectionPressed(ATarget, ASection);
   if AButton.Enabled then
   begin
+    // In einer uses-Klausel nennt der Tooltip das Ziel des Wechsels (#1760).
+    if (ATarget = TAtlasSectionTarget.UsesClause) and FSections.UsesToggle(ALine, ACharacter, mToImplementation) then
+    begin
+      AButton.Hint := KeyHint(AButton.Id, Format(TAtlasStrings.Text(TAtlasTextId.GotoUsesToward),
+        [cParts[mToImplementation]]));
+    end;
     Exit;
   end;
   if ATarget in [TAtlasSectionTarget.InterfacePart, TAtlasSectionTarget.ImplementationPart] then

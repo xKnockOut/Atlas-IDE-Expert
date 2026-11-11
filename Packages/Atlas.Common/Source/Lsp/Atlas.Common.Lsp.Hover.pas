@@ -28,6 +28,9 @@
 // Wird der Name neu zugewiesen (#712), nennt atlas.reassigned das Ziel
 // (locals, valueParams …), die Zahl der Zuweisungen und ihre Zeilen; das
 // Plugin zeigt das unter der Unterstreichung.
+//
+// Über einem Unit-Namen (#1921) kommt der Inhalt der Unit dazu, ausgewählt nach
+// hints.unitContents (Atlas.Common.Lsp.Hover.UnitContents).
 
 interface
 
@@ -146,6 +149,8 @@ uses
   Atlas.Common.Editing.DataFieldNames,
   Atlas.Common.Semantics.Reassigned,
   Atlas.Common.Lsp.Reassigned,
+  Atlas.Common.Lsp.Hover.UnitContents,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -402,14 +407,23 @@ end;
 procedure TLspHover.ApplySettings(const AUri: string; var AInfo: THoverInfo);
 var
   mRationale: TRationaleOptions;
+  mHints: THintSettings;
 begin
+  mHints := THintSettings.Default;
+  if Assigned(FHintsFor) then
+  begin
+    mHints := FHintsFor(AUri);
+  end;
   // published-Mitglieder abschaltbar (hints.publishedMembers, #110).
-  if Assigned(FHintsFor) and not FHintsFor(AUri).PublishedMembers then
+  if not mHints.PublishedMembers then
   begin
     AInfo.Members := '';
     AInfo.PublishedItems := nil;
     AInfo.DefaultProperty := '';
   end;
+  // Inhalt der Unit nach hints.unitContents (#1921).
+  AInfo.UnitContents := TLspHoverUnitContents.Select(AInfo.UnitContents.Entries,
+    TLspHoverUnitContents.ModeOf(mHints.UnitContents));
   // Begründungen nach hints.rationale, hints.rationaleMarkers und hints.adrFolder (#1123).
   mRationale := TRationaleOptions.Default;
   if Assigned(FRationaleFor) then

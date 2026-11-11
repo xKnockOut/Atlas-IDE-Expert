@@ -142,6 +142,17 @@ type
     cMultiCursorModifierCtrl = Atlas.Core.Settings.Plugin.Editor.cMultiCursorModifierCtrl;
     cDesignerSearchWindow = Atlas.Core.Settings.Plugin.Editor.cDesignerSearchWindow;
     cDesignerSearchPopup = Atlas.Core.Settings.Plugin.Editor.cDesignerSearchPopup;
+    cDesignerScopeForm = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeForm;
+    cDesignerScopeParent = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeParent;
+    cDesignerSetsLocal = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsLocal;
+    cDesignerSetsShared = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsShared;
+    cFitSourceCaption = Atlas.Core.Settings.Plugin.Editor.cFitSourceCaption;
+    cFitSourceText = Atlas.Core.Settings.Plugin.Editor.cFitSourceText;
+    cFitSourceItems = Atlas.Core.Settings.Plugin.Editor.cFitSourceItems;
+    cButtonBarBottomRight = Atlas.Core.Settings.Plugin.Editor.cButtonBarBottomRight;
+    cButtonBarBottomLeft = Atlas.Core.Settings.Plugin.Editor.cButtonBarBottomLeft;
+    cButtonBarRightTop = Atlas.Core.Settings.Plugin.Editor.cButtonBarRightTop;
+    cButtonBarRightBottom = Atlas.Core.Settings.Plugin.Editor.cButtonBarRightBottom;
     cMinNotificationEntries = Atlas.Core.Settings.Plugin.General.cMinNotificationEntries;
     cMaxNotificationEntries = Atlas.Core.Settings.Plugin.General.cMaxNotificationEntries;
     cDefaultTrendSeries = Atlas.Core.Settings.Plugin.Welcome.cDefaultTrendSeries;
@@ -285,6 +296,7 @@ type
     property HoverSignatureParams: Boolean read FEditorInsight.HoverSignatureParams
       write FEditorInsight.HoverSignatureParams;
     property InlineDiagnostics: string read FEditorTyping.InlineDiagnostics write FEditorTyping.InlineDiagnostics;
+    property TrackLines: Boolean read FEditorTyping.TrackLines write FEditorTyping.TrackLines;
     property ProblemsStatusCounter: Boolean read FEditorInsight.ProblemsStatusCounter
       write FEditorInsight.ProblemsStatusCounter;
     property NextProblemKey: Integer read FNavigationKeys.NextProblemKey write FNavigationKeys.NextProblemKey;
@@ -399,6 +411,7 @@ type
     property EditorKeysPriority: Boolean read FKeyPriorities.EditorKeysPriority write FKeyPriorities.EditorKeysPriority;
     property SlashCommands: Boolean read FCodeActions.SlashCommands write FCodeActions.SlashCommands;
     property GenerateMenu: Boolean read FCodeActions.GenerateMenu write FCodeActions.GenerateMenu;
+    property ProjectContextMenu: Boolean read FCodeActions.ProjectContextMenu write FCodeActions.ProjectContextMenu;
     property GenerateMenuKey: Integer read FEditingKeys.GenerateMenuKey write FEditingKeys.GenerateMenuKey;
     property GenerateMenuGroups: string read FCodeActions.GenerateMenuGroups write FCodeActions.GenerateMenuGroups;
     property GenerateMenuHidden: string read FCodeActions.GenerateMenuHidden write FCodeActions.GenerateMenuHidden;
@@ -597,6 +610,42 @@ type
     property DesignerTabOrderClick: Boolean read FEditorView.DesignerTabOrderClick
       write FEditorView.DesignerTabOrderClick;
     property DesignerAlign: Boolean read FEditorView.DesignerAlign write FEditorView.DesignerAlign;
+    property DesignerSelectSimilar: Boolean read FEditorView.DesignerSelectSimilar
+      write FEditorView.DesignerSelectSimilar;
+    property DesignerSelectDescendants: Boolean read FEditorView.DesignerSelectDescendants
+      write FEditorView.DesignerSelectDescendants;
+    property DesignerSelectScope: string read FEditorView.DesignerSelectScope write FEditorView.DesignerSelectScope;
+    property DesignerSelectionSets: Boolean read FEditorView.DesignerSelectionSets
+      write FEditorView.DesignerSelectionSets;
+    property DesignerSelectionSetsShortcuts: Boolean read FEditorView.DesignerSelectionSetsShortcuts
+      write FEditorView.DesignerSelectionSetsShortcuts;
+    property DesignerSelectionSetsStorage: string read FEditorView.DesignerSelectionSetsStorage
+      write FEditorView.DesignerSelectionSetsStorage;
+    property DesignerSelectionSetsSaveKey: Integer read FEditorView.DesignerSelectionSetsSaveKey
+      write FEditorView.DesignerSelectionSetsSaveKey;
+    property DesignerSpatialNavigation: Boolean read FEditorView.DesignerSpatialNavigation
+      write FEditorView.DesignerSpatialNavigation;
+    property DesignerSpatialCrossContainers: Boolean read FEditorView.DesignerSpatialCrossContainers
+      write FEditorView.DesignerSpatialCrossContainers;
+    property DesignerFitToText: Boolean read FEditorView.DesignerFitToText write FEditorView.DesignerFitToText;
+    property DesignerFitToTextMinWidth: Integer read FEditorView.DesignerFitToTextMinWidth
+      write FEditorView.DesignerFitToTextMinWidth;
+    property DesignerFitToTextPadding: Integer read FEditorView.DesignerFitToTextPadding
+      write FEditorView.DesignerFitToTextPadding;
+    property DesignerFitToTextSources: string read FEditorView.DesignerFitToTextSources
+      write FEditorView.DesignerFitToTextSources;
+    property DesignerButtonBar: Boolean read FEditorView.DesignerButtonBar write FEditorView.DesignerButtonBar;
+    property DesignerButtonBarOrder: string read FEditorView.DesignerButtonBarOrder
+      write FEditorView.DesignerButtonBarOrder;
+    property DesignerButtonBarPosition: string read FEditorView.DesignerButtonBarPosition
+      write FEditorView.DesignerButtonBarPosition;
+    property DesignerButtonBarGap: Integer read FEditorView.DesignerButtonBarGap write FEditorView.DesignerButtonBarGap;
+    property DesignerButtonBarMargin: Integer read FEditorView.DesignerButtonBarMargin
+      write FEditorView.DesignerButtonBarMargin;
+    property DesignerButtonBarSetModalResult: Boolean read FEditorView.DesignerButtonBarSetModalResult
+      write FEditorView.DesignerButtonBarSetModalResult;
+    property DesignerButtonBarRoles: string read FEditorView.DesignerButtonBarRoles
+      write FEditorView.DesignerButtonBarRoles;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick

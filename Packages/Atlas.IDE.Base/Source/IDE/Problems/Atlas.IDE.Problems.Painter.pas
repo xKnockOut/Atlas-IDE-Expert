@@ -17,6 +17,11 @@
 // Blockende-Beschriftungen (TAtlasLineTail). In der Cursorzeile erscheint der
 // Text erst eine Sekunde nach dem letzten Tastendruck; ein Zeitgeber zeichnet
 // danach neu.
+// Marken folgen ihrer Zeile sofort (#1818, editor.trackLines): Die Zeilen der
+// Befunde verfolgt die IDE (TAtlasIdeLineTracker, Kanal Befunde); gezeichnet
+// wird in Editorzeile X, was zur Quellzeile gehört, die jetzt dort steht. Eine
+// gelöschte Zeile trägt keine Marke mehr. Der nächste Stand des Speichers
+// (Tipp-Pause, Serverantwort) meldet die Zeilen neu an.
 
 interface
 
@@ -29,7 +34,8 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Problems.Contract,
-  Atlas.Core.Problems.Store;
+  Atlas.Core.Problems.Store,
+  Atlas.Core.Editor.LineTracking;
 
 type
   TAtlasProblemsPainter = class
@@ -56,14 +62,16 @@ type
     procedure TimerTick(Sender: TObject);
     procedure EnsureFont(const AEditorFont: TFont);
     procedure PaintInline(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
-      const AProblems: TArray<TAtlasProblem>; const AText: string; ATabWidth: Integer);
+      const AProblems: TArray<TAtlasProblem>; ALine: Integer; const AText: string; ATabWidth: Integer);
     /// <summary>Text der Zeile aus dem Speicher, wenn er dem Editor entspricht und gezeichnet werden soll; ABusy
     /// während der Tipp-Pause in der Cursorzeile.</summary>
     function LineToPaint(const AContext: INTACodeEditorPaintContext; ALine: Integer; out AText: string;
       out ATabWidth: Integer; out ABusy: Boolean): Boolean;
     /// <summary>Wellen, Punkte und Durchstreichungen der Probleme AProblems.</summary>
     procedure PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
-      const AProblems: TArray<TAtlasProblem>; const AText: string; ATabWidth: Integer);
+      const AProblems: TArray<TAtlasProblem>; ALine: Integer; const AText: string; ATabWidth: Integer);
+    /// <summary>Verfolgte Zeilen der Befunde im Puffer von AContext (#1818); nil ohne Verfolgung.</summary>
+    function Tracked(const AContext: INTACodeEditorPaintContext): TAtlasTrackedLines;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
   public
@@ -92,7 +100,8 @@ uses
   Atlas.Core.Editor.Hide,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Problems.InlineHints,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.IDE.Foundation.LineTracker;
 
 { TAtlasProblemsPainter.TEvents }
 
@@ -208,7 +217,7 @@ begin
 end;
 
 procedure TAtlasProblemsPainter.PaintInline(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
-  const AProblems: TArray<TAtlasProblem>; const AText: string; ATabWidth: Integer);
+  const AProblems: TArray<TAtlasProblem>; ALine: Integer; const AText: string; ATabWidth: Integer);
 const
   // Deckkraft der Farbe über dem Hintergrund: gedimmt, aber lesbar.
   cStrength = 0.7;
@@ -225,7 +234,7 @@ var
 begin
   mMode := TAtlasIdeSettings.InlineDiagnosticsMode;
   if (mMode = TAtlasInlineDiagnosticsMode.Off) or
-    not TAtlasInlineDiagnostics.Pick(AProblems, AContext.LogicalLineNum - 1, mMode, mFound) then
+    not TAtlasInlineDiagnostics.Pick(AProblems, ALine, mMode, mFound) then
   begin
     Exit;
   end;
@@ -292,6 +301,13 @@ begin
   end;
 end;
 
+const
+  /// <summary>Punkte der Hinweislinie: Länge und Abstand in Pixeln.</summary>
+  cDotLength = 2;
+  cDotStep = 4;
+  /// <summary>Mindestbreite einer Markierung in Pixeln.</summary>
+  cMinMarkWidth = 4;
+
 /// <summary>Gepunktete Linie (Hinweis).</summary>
 procedure DrawDots(ADC: HDC; ALeft, ARight, AY: Integer);
 var
@@ -301,8 +317,8 @@ begin
   while mX < ARight do
   begin
     MoveToEx(ADC, mX, AY, nil);
-    LineTo(ADC, mX + 2, AY);
-    Inc(mX, 4);
+    LineTo(ADC, mX + cDotLength, AY);
+    Inc(mX, cDotStep);
   end;
 end;
 
@@ -401,7 +417,7 @@ begin
 end;
 
 procedure TAtlasProblemsPainter.PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
-  const AProblems: TArray<TAtlasProblem>; const AText: string; ATabWidth: Integer);
+  const AProblems: TArray<TAtlasProblem>; ALine: Integer; const AText: string; ATabWidth: Integer);
 var
   mProblem: TAtlasProblem;
   mLine, mFrom, mTill, mLeft, mRight: Integer;
@@ -422,11 +438,11 @@ begin
     end;
     for mProblem in AProblems do
     begin
-      CharRange(mProblem, mLine, AText, mFrom, mTill);
+      CharRange(mProblem, ALine, AText, mFrom, mTill);
       mFirst := AContext.EditorState.GetCharacterPosPx(ColumnOf(AText, mFrom, ATabWidth), AContext.EditorLineNum);
       mLast := AContext.EditorState.GetCharacterPosPx(ColumnOf(AText, mTill, ATabWidth), AContext.EditorLineNum);
       mLeft := mFirst.Left;
-      mRight := Max(mLast.Left, mLeft + Max(4, mFirst.Width));
+      mRight := Max(mLast.Left, mLeft + Max(cMinMarkWidth, mFirst.Width));
       DrawMark(mDC, TColor(ProblemColor(mColors, mProblem)), mProblem, mLeft, mRight, ARect);
       TAtlasIdeElements.Painted(HideTargetOf(AContext.FileName, mProblem, mLine, AText),
         TRect.Create(mLeft, ARect.Top, mRight, ARect.Bottom), AContext.EditView.TopRow, ARect.Height);
@@ -436,11 +452,60 @@ begin
   end;
 end;
 
+/// <summary>Zeilen, die die Befunde AProblems berühren (je Befund höchstens die ersten 64).</summary>
+function LinesOf(const AProblems: TArray<TAtlasProblem>): TArray<Integer>;
+const
+  cMaxSpan = 64;
+  cFirstCapacity = 16;
+var
+  mProblem: TAtlasProblem;
+  mLine, mCount: Integer;
+begin
+  Result := nil;
+  mCount := 0;
+  for mProblem in AProblems do
+  begin
+    for mLine := mProblem.StartLine to Min(mProblem.EndLine, mProblem.StartLine + cMaxSpan - 1) do
+    begin
+      if mCount = Length(Result) then
+      begin
+        SetLength(Result, Max(cFirstCapacity, 2 * mCount));
+      end;
+      Result[mCount] := mLine;
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
+end;
+
+function TAtlasProblemsPainter.Tracked(const AContext: INTACodeEditorPaintContext): TAtlasTrackedLines;
+var
+  mStore: TAtlasProblemStore;
+  mFileName: string;
+begin
+  Result := nil;
+  if not TAtlasIdeSettings.TrackLinesOn or (AContext.EditView = nil) then
+  begin
+    Exit;
+  end;
+  mStore := FStore;
+  mFileName := AContext.FileName;
+  Result := TAtlasIdeLineTracker.Follow(AContext.EditView, TAtlasLineTracking.cProblems, mStore.Stamp(mFileName),
+    function: TArray<Integer>
+    begin
+      Result := LinesOf(mStore.ForFile(mFileName));
+    end,
+    function: string
+    begin
+      Result := mStore.TextOf(mFileName);
+    end);
+end;
+
 procedure TAtlasProblemsPainter.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
   mProblems: TArray<TAtlasProblem>;
-  mLine, mTabWidth: Integer;
+  mLine, mSource, mTabWidth: Integer;
   mText: string;
   mBusy: Boolean;
 begin
@@ -451,15 +516,20 @@ begin
   end;
   try
     mLine := Context.LogicalLineNum - 1;
-    mProblems := FStore.OnLine(Context.FileName, mLine);
+    // Was jetzt in dieser Zeile steht (#1818); weggerückte oder gelöschte Zeilen tragen keine Marke.
+    if not TAtlasIdeLineTracker.SourceAt(Tracked(Context), mLine, mSource) then
+    begin
+      Exit;
+    end;
+    mProblems := FStore.OnLine(Context.FileName, mSource);
     // Einstellung erst hier, ohne Kopie des Einstellungsrecords: die meisten Zeilen haben keine Probleme (P-10).
     if (Length(mProblems) > 0) and TAtlasIdeSettings.ProblemMarksOn and
-      LineToPaint(Context, mLine, mText, mTabWidth, mBusy) then
+      LineToPaint(Context, mSource, mText, mTabWidth, mBusy) then
     begin
-      PaintMarks(Rect, Context, mProblems, mText, mTabWidth);
+      PaintMarks(Rect, Context, mProblems, mSource, mText, mTabWidth);
       if not mBusy then
       begin
-        PaintInline(Rect, Context, mProblems, mText, mTabWidth);
+        PaintInline(Rect, Context, mProblems, mSource, mText, mTabWidth);
       end;
     end;
   except

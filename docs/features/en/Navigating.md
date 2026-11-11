@@ -33,6 +33,7 @@ Back to the [README](../../../README.md)
 
 - Icons:
   - jump to the interface or implementation section (and back with "↩ 214")
+  - “Go to uses clause” switches from one uses clause to the other (interface ↔ implementation); without the other clause it jumps to the `implementation` or `interface` keyword, and the next click returns. The tooltip names the target, and the return jump goes to the line before the first click
   - find method
   - navigation history
   - any palette command
@@ -47,6 +48,7 @@ Above the form designer instead of breadcrumbs and editor toolbar:
 - show and hide non-visual components via the IDE's Ctrl+H
 - select parent
 - tab order as badges on the controls
+- select similar: same class (also with descendants), same parent, children, same property value or handler, invert selection; with hit counts, Shift adds to the selection
 - experimental: renumber the tab order by clicking and align controls
 
 ### Atlas status bar

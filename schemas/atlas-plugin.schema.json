@@ -2883,6 +2883,18 @@
       "x-page": "Editor",
       "x-issue": "#509"
     },
+    "TrackLines": {
+      "type": "boolean",
+      "default": true,
+      "description": "Befunde (Wellenlinie, Randmarke, Fehlertext am Zeilenende) folgen ihrer Zeile sofort bei jeder Bearbeitung, die die IDE kennt (Tippen, Einfügen, Rückgängig, Blockoperationen), auch bevor der Server antwortet. Wird die Zeile gelöscht, verschwindet die Marke bis zur nächsten Antwort. Aus: Marken wandern erst nach der Tipp-Pause mit, Meldungen gelöschter Zeilen werden blass.",
+      "x-key": "editor.trackLines",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Befunde folgen ihrer Zeile sofort beim Bearbeiten",
+      "x-captionEn": "Findings follow their line immediately while editing",
+      "x-issue": "#1818"
+    },
     "CheckOnSaveDelayMs": {
       "type": "integer",
       "default": 2000,
@@ -3695,6 +3707,18 @@
       "x-key": "keys.generateMenu.showCommandNames",
       "x-area": "codeActions",
       "x-page": "Befehle"
+    },
+    "ProjectContextMenu": {
+      "type": "boolean",
+      "default": true,
+      "description": "Untermenü Atlas im Kontextmenü der Projektverwaltung: Mit Atlas prüfen (Unit, Ordner, Projekt, auch Mehrfachauswahl, ohne die Units zu öffnen), Unit-Beziehungen und Abhängige Units (Modul Analyse), Tests dieser Unit ausführen (Modul Tests). Einträge, die zur Auswahl nicht passen, fehlen.",
+      "x-key": "commands.projectContextMenu",
+      "x-area": "codeActions",
+      "x-page": "Befehle",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Untermenü Atlas im Kontextmenü der Projektverwaltung",
+      "x-captionEn": "Atlas submenu in the Project Manager context menu",
+      "x-issue": "#1817"
     },
     "Snippets": {
       "type": "boolean",
@@ -4820,6 +4844,249 @@
       "x-node": "editor.designerBar",
       "x-experimental": true,
       "x-issue": "#1442"
+    },
+    "DesignerSelectSimilar": {
+      "description": "Knopf „Gleiche auswählen“ in der Designer-Leiste: Menü, das alle Komponenten auswählt, die der zuerst gewählten in einer Hinsicht gleichen: gleiche Klasse, Klasse samt Nachfahren, gleiches Elternelement, Kinder bzw. alle Nachkommen eines Containers, gleicher gespeicherter Eigenschaftswert, gleicher Ereignis-Handler, Auswahl umkehren. Jeder Eintrag nennt die Trefferzahl; mit Umschalt ergänzt das Ergebnis die Auswahl. Ändert nur die Auswahl, nicht die .dfm.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.selectSimilar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#738"
+    },
+    "DesignerSelectDescendants": {
+      "description": "Im Menü „Gleiche auswählen“ den Eintrag „Gleiche Klasse und Nachfahren“ zeigen: bei einer Komponente ihre Klasse samt abgeleiteter Klassen, bei mehreren ab der nächsten gemeinsamen Basisklasse.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.selectSimilar.includeDescendants",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.selectSimilar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#738"
+    },
+    "DesignerSelectScope": {
+      "description": "Bereich für „Gleiche auswählen“: das ganze Formular bzw. der Frame (form) oder nur das Elternelement der zuerst gewählten Komponente (parent). Kinder eines Containers liegen immer in ihm.",
+      "type": "string",
+      "enum": [
+        "form",
+        "parent"
+      ],
+      "default": "form",
+      "x-key": "designer.selectSimilar.scope",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.selectSimilar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#738"
+    },
+    "DesignerSelectionSets": {
+      "description": "Auswahlsätze im Designer: die aktuelle Auswahl unter einem Namen je Formular speichern und per Klick oder Taste wiederherstellen. Die Sätze stehen im Menü „Gleiche auswählen“ der Designer-Leiste (Klick stellt her, Umschalt+Klick fügt hinzu, Strg+Klick entfernt) und überstehen Umbenennen und Löschen von Komponenten. Die .dfm bleibt unverändert. Aus = kein Menü, keine Tasten.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.selectionSets",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#739"
+    },
+    "DesignerSelectionSetsShortcuts": {
+      "description": "Die ersten neun Auswahlsätze mit Strg+Umschalt+1…9 wiederherstellen, solange der Formular-Designer den Fokus hat; die Reihenfolge der Liste bestimmt die Ziffer. Aus = nur über das Menü.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.selectionSets.shortcuts",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.selectionSets",
+      "x-node": "editor.designerBar",
+      "x-issue": "#739"
+    },
+    "DesignerSelectionSetsStorage": {
+      "description": "Ablage der Auswahlsätze: lokal für diesen Rechner in %LOCALAPPDATA%\\Atlas\\designer-selection-sets.json (local) oder gemeinsam im Team in .atlas-selection-sets.json im Ordner des Formulars, für die Versionsverwaltung (shared).",
+      "type": "string",
+      "enum": [
+        "local",
+        "shared"
+      ],
+      "default": "local",
+      "x-key": "designer.selectionSets.storage",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.selectionSets",
+      "x-node": "editor.designerBar",
+      "x-issue": "#739"
+    },
+    "DesignerSelectionSetsSaveKey": {
+      "description": "Taste für „Auswahl speichern …“; wirkt nur, solange der Formular-Designer den Fokus hat, und ersetzt dort „Alles speichern“ der IDE. 0 = keine Taste (nur das Menü). Vorgabe Strg+Umschalt+S.",
+      "type": "integer",
+      "default": 24659,
+      "x-key": "designer.selectionSets.saveKey",
+      "x-area": "editor",
+      "x-format": "shortcut",
+      "x-page": "Editor",
+      "x-parent": "designer.selectionSets",
+      "x-node": "editor.designerBar",
+      "x-issue": "#739"
+    },
+    "DesignerSpatialNavigation": {
+      "description": "Räumliche Navigation im Formular-Designer, solange er den Fokus hat: Alt+Pfeil wählt das nächste Steuerelement in dieser Richtung im selben Elternelement, Alt+Umschalt+Pfeil fügt es zur Auswahl hinzu, Alt+Pos1 wählt das Elternelement, Alt+Ende das Kind oben links eines Containers, Alt+Bild auf/ab wechselt in den vorherigen bzw. nächsten Container derselben Ebene. Ein kurzer Rahmen zeigt das Ziel. Nichtvisuelle Komponenten nur untereinander. Aus = die Tasten gehen an die IDE.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.spatialNavigation",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#745"
+    },
+    "DesignerSpatialCrossContainers": {
+      "description": "Gibt es im Elternelement in der Richtung kein Steuerelement mehr, sucht Alt+Pfeil an seinem Rand in den benachbarten Containern weiter (vom letzten Feld eines Panels zum nächsten im Panel daneben). Aus = Alt+Pfeil bleibt im Elternelement.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.spatialNavigation.crossContainers",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.spatialNavigation",
+      "x-node": "editor.designerBar",
+      "x-issue": "#745"
+    },
+    "DesignerFitToText": {
+      "description": "Befehl „Breite nach Text“ im Menü „Anordnen“ der Designer-Leiste: setzt die markierten Steuerelemente auf die Breite des längsten Texts plus Innenabstand und Anteil des Steuerelements (Kästchen, Pfeil, Glyph), mindestens die Mindestbreite. In einer Reihe bleiben die Abstände und die linke bzw. (bei akRight oder am rechten Rand) die rechte Kante; AutoSize und Align ohne freie Breite bleiben. Ändert die .dfm.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.fitToText",
+      "x-parent": "editor.designerBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#730"
+    },
+    "DesignerFitToTextMinWidth": {
+      "description": "Mindestbreite in Pixeln (bei 96 dpi; Formulare mit anderem PixelsPerInch entsprechend skaliert) für „Breite nach Text“.",
+      "type": "integer",
+      "default": 75,
+      "minimum": 0,
+      "maximum": 2000,
+      "x-key": "designer.fitToText.minWidth",
+      "x-parent": "designer.fitToText",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#730"
+    },
+    "DesignerFitToTextPadding": {
+      "description": "Innenabstand links und rechts zusammen in Pixeln (bei 96 dpi) für „Breite nach Text“.",
+      "type": "integer",
+      "default": 16,
+      "minimum": 0,
+      "maximum": 200,
+      "x-key": "designer.fitToText.padding",
+      "x-parent": "designer.fitToText",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#730"
+    },
+    "DesignerFitToTextSources": {
+      "description": "Herkunft der Texte für „Breite nach Text“, durch Komma getrennt: caption (Caption), text (Text bei Edits und ComboBoxen), items (längster Eintrag aus Items).",
+      "type": "string",
+      "default": "caption",
+      "x-key": "designer.fitToText.sources",
+      "x-parent": "designer.fitToText",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#730"
+    },
+    "DesignerButtonBar": {
+      "description": "Befehl „Knopfleiste anordnen“ im Menü „Anordnen“ der Designer-Leiste: ordnet die markierten Knöpfe nach ihrer Rolle (ok, cancel, apply, help aus Caption, Name oder ModalResult) als Knopfleiste nach Windows-Richtlinie an, gleich breit (Breite nach Text) und gleich hoch, verankert am Rand, mit fortlaufender TabOrder. Ändert die .dfm.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.buttonBar",
+      "x-parent": "editor.designerBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarOrder": {
+      "description": "Reihenfolge der Rollen in der Knopfleiste, durch Komma getrennt (ok, cancel, apply, help); Knöpfe ohne Rolle stehen vor help.",
+      "type": "string",
+      "default": "ok,cancel,apply,help",
+      "x-key": "designer.buttonBar.order",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarPosition": {
+      "description": "Lage der Knopfleiste: unten rechts (bottomRight), unten links (bottomLeft), rechts oben senkrecht (rightTop) oder rechts unten senkrecht (rightBottom).",
+      "type": "string",
+      "enum": [
+        "bottomRight",
+        "bottomLeft",
+        "rightTop",
+        "rightBottom"
+      ],
+      "default": "bottomRight",
+      "x-key": "designer.buttonBar.position",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarGap": {
+      "description": "Abstand zwischen den Knöpfen in Pixeln (bei 96 dpi).",
+      "type": "integer",
+      "default": 8,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "designer.buttonBar.gap",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarMargin": {
+      "description": "Abstand der Knopfleiste zum Rand des Elternelements in Pixeln (bei 96 dpi), innerhalb seines Padding.",
+      "type": "integer",
+      "default": 8,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "designer.buttonBar.margin",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarSetModalResult": {
+      "description": "Beim Anordnen Default (ok-Knopf), Cancel (cancel-Knopf) und ModalResult (mrOk, mrCancel) setzen. Hat schon ein anderer Knopf Default bzw. Cancel oder setzt der OnClick-Handler ModalResult selbst bzw. ruft Close auf, bleibt es und ein Hinweis erscheint.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.buttonBar.setModalResult",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarRoles": {
+      "description": "Eigene Begriffe für die Rollen, vor den eingebauten: „ok=Weiter|Los; cancel=Zurück“ (Beschriftung ohne & oder Komponentenname, Groß- und Kleinschreibung egal).",
+      "type": "string",
+      "default": "",
+      "x-key": "designer.buttonBar.roles",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
     },
     "EditorStatusBarItems": {
       "type": "string",

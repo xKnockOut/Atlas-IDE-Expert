@@ -93,6 +93,9 @@ type
     /// <summary>„Datei jetzt prüfen“: Der Controller prüft die Datei des oberen Editors im nächsten Takt, auch
     /// ungespeichert und ohne Live-Prüfung.</summary>
     class procedure CheckFileNow; static;
+    /// <summary>„Mit Atlas prüfen“ (#1817): AFiles im nächsten Takt prüfen lassen, auch ungeöffnete, und das
+    /// Fenster zeigen.</summary>
+    class procedure CheckFiles(const AFiles: TArray<string>); static;
     /// <summary>Fortschritt der Projektprüfung (#1232): geprüfte und alle Units des aktiven Projekts wie in der
     /// Statuszeile des Fensters. False ohne Projekt oder Speicher. Die Projektliste höchstens alle 2 s neu.</summary>
     class function ProjectProgress(out AChecked, ATotal: Integer): Boolean; static;
@@ -710,6 +713,16 @@ end;
 class procedure TAtlasIdeProblems.CheckFileNow;
 begin
   TAtlasProblemsCheckRequest.Request;
+end;
+
+class procedure TAtlasIdeProblems.CheckFiles(const AFiles: TArray<string>);
+begin
+  if not Enabled or (Length(AFiles) = 0) then
+  begin
+    Exit;
+  end;
+  TAtlasProblemsCheckRequest.RequestFiles(AFiles);
+  ShowWindow;
 end;
 
 class function TAtlasIdeProblems.Enabled: Boolean;

@@ -15,7 +15,9 @@ type
     Forward, Toggle, TestUnit, UnitSearch, FindMethod, QuickOpen, CodeActions, Format, Problems, Outline,
     Palette, More, Gear,
     // Designer-Leiste (#1442).
-    ComponentSearch, NonVisual, NonVisualHidden, SelectParent, TabOrder, AlignControls);
+    ComponentSearch, NonVisual, NonVisualHidden, SelectParent, TabOrder, AlignControls,
+    // Gleiche auswählen (#738), Anordnen (#730 ff.).
+    SelectSimilar, Arrange);
 {$SCOPEDENUMS OFF}
 
   TAtlasToolbarIcons = class

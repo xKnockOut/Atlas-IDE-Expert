@@ -45,7 +45,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Einrückung beim Tippen:** Nach Enter steht die Schreibmarke an der richtigen Stelle der Blockstruktur, `end`, `until`, `finally` und `else` rücken auf ihr Gegenstück, ein String wird beim Umbruch mit `' +` getrennt
 
 ### [Verstehen](docs/features/de/Verstehen.md)
-- **Hover** mit Deklaration, XMLDoc, Vererbung, Werten von Konstanten und Werten beim Debuggen; die aufgeklappten published-Mitglieder großer Komponenten scrollen mit dem Mausrad (`hover.membersMaxLines`, Vorgabe 15 Zeilen); Parameter und Rückgabe einer Routine stehen wie bei Help Insight immer untereinander unter der Deklaration, auch ohne XMLDoc (`hover.signatureParams`)
+- **Hover** mit Deklaration, XMLDoc, Vererbung, Werten von Konstanten und Werten beim Debuggen; die aufgeklappten published-Mitglieder großer Komponenten scrollen mit dem Mausrad (`hover.membersMaxLines`, Vorgabe 15 Zeilen); Parameter und Rückgabe einer Routine stehen wie bei Help Insight immer untereinander unter der Deklaration, auch ohne XMLDoc (`hover.signatureParams`); über einem uses-Eintrag listet er die Typen der Unit nach Art gruppiert und anklickbar, die in der Datei benutzten zuerst (`hints.unitContents`)
 - **Typhinweise, Code-Metriken und Rekursionsmarken** im Editor; inaktive `{$IFDEF}`-Zweige abgeblendet
 - **Paarfarben und Blocklinien** nach Tiefe; lokale Routinen heben sich ab (eine Stufe tiefer oder eigene Farbe, auf Wunsch hinterlegt)
 - **Architekturübersicht:** Teilsysteme, zentrale Units, Zyklen, Vergleich mit einem gespeicherten Stand
@@ -54,14 +54,14 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 
 ### [Navigieren](docs/features/de/Navigieren.md)
 - **Gehe zu** Definition, Implementierung und Gegenstück; Navigationsverlauf
-- **Brotkrumenleiste, Editorleiste und Atlas-Statusleiste** über und unter dem Editor; die Brotkrumen zeigen in einer Klasse auch den Sichtbarkeitsabschnitt (`private`, `public` …) und den Unterblock (`const`, `type`, `class var`), im Menü des Abschnitts Mitgliederzahl, „Neue Zeile am Ende von …“ und „Abschnitt anlegen“, an jedem Glied ein Rechtsklick-Menü (Namen, mit Unit oder Signatur kopieren, Verwendungen suchen, Umbenennen, Komponente im Designer zeigen), bei Überladungen einen Zähler (`Laden (2/3)`) mit Menü aller Überladungen samt Parametern, an Methoden, die Interface-Methoden erfüllen, die Interface-Marke (`Speichern [IKunde]`) mit Sprung zur Deklaration im Interface, eine Kennzahlen-Karte beim Überfahren von Methoden und Typen (Zeilen, Komplexität, Tiefe, Parameter; über der Grenze gelb, Strg+I), im Methodenrumpf die Sichtbarkeitsmarke (`−`, `#`, `+`, `◆`) der Methode auf Unit-Ebene den Deklarationsblock (`type`, `const`, `var`, `resourcestring` …) den Bedingungszweig (`{$IFDEF …}`) die Region (`{$REGION}`) und auf Wunsch `try`/`except`/`finally` und den `case`-Zweig im Rumpf
+- **Brotkrumenleiste, Editorleiste und Atlas-Statusleiste** über und unter dem Editor; die Brotkrumen zeigen in einer Klasse auch den Sichtbarkeitsabschnitt (`private`, `public` …) und den Unterblock (`const`, `type`, `class var`), im Menü des Abschnitts Mitgliederzahl, „Neue Zeile am Ende von …“ und „Abschnitt anlegen“, an jedem Glied ein Rechtsklick-Menü (Namen, mit Unit oder Signatur kopieren, Verwendungen suchen, Umbenennen, Komponente im Designer zeigen), bei Überladungen einen Zähler (`Laden (2/3)`) mit Menü aller Überladungen samt Parametern, an Methoden, die Interface-Methoden erfüllen, die Interface-Marke (`Speichern [IKunde]`) mit Sprung zur Deklaration im Interface, eine Kennzahlen-Karte beim Überfahren von Methoden und Typen (Zeilen, Komplexität, Tiefe, Parameter; über der Grenze gelb, Strg+I), im Methodenrumpf die Sichtbarkeitsmarke (`−`, `#`, `+`, `◆`) der Methode auf Unit-Ebene den Deklarationsblock (`type`, `const`, `var`, `resourcestring` …) den Bedingungszweig (`{$IFDEF …}`) die Region (`{$REGION}`) und auf Wunsch `try`/`except`/`finally` und den `case`-Zweig im Rumpf; „Zur uses-Klausel“ der Editorleiste wechselt zwischen interface- und implementation-uses
 - **Schnell öffnen** (Strg+P), Unitsuche (Strg+F12) und Suchleiste mit Ersetzen über Dateien hinweg
 - **Ergebnisfenster** für Referenzen, Aufrufer und Implementierungen, dazu Auswirkungen und Datenfluss
 - **Lesezeichen, Notizen, Minimap und mitlaufender Kopf**
 - **Regionen:** alle `{$REGION}`-Blöcke beim Öffnen einer Datei oder auf Befehl zu- bzw. aufklappen
 
 ### [Code-Analyse](docs/features/de/Code-Analyse.md)
-- **313 Prüfregeln** schon beim Tippen: 204 Fehler, 99 Code-Smells, 10 Sicherheitsregeln
+- **313 Prüfregeln** schon beim Tippen: 204 Fehler, 99 Code-Smells, 10 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
 - **„Compiler vorab“:** Fehler und Warnungen von dcc vor dem Build, mit Schnellkorrekturen; Units sucht Atlas wie dcc, samt Namespaces und Unit-Aliasen (`WinTypes`, `WinProcs`)
 - **Fenster „Atlas-Prüfung“** für Datei, Projekt oder Gruppe, mit Sammelkorrekturen; bei offener Gruppe bietet die Bereichsliste auch jedes Projekt der Gruppe einzeln an
 - **Profile, Konfidenz, Baseline und Unterdrückungen** für gewachsene Projekte
@@ -81,6 +81,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Ungespeicherter Stand des Designers** zählt für Referenzen, Umbenennen und Prüfungen
 - **Prüfungen zwischen Formular und Code** und Property-Regeln für Formulardateien
 - **Binäre Formulare** in Textformulare umwandeln
+- **Designer-Werkzeuge** in der Designer-Leiste: gleiche Komponenten auswählen (Klasse, Elternelement, Eigenschaftswert, Handler), benannte Auswahlsätze je Formular mit Strg+Umschalt+1…9, Alt+Pfeil zum benachbarten Steuerelement, Menü „Anordnen“ (Breite nach Text, Knopfleiste)
 
 ### [Bauen, Testen, Debuggen](docs/features/de/Bauen-Testen-Debuggen.md)
 - **Schranke für Hinweise und Warnungen**, Schnellkorrekturen für Compilermeldungen, Wächter für den Release-Build
@@ -93,6 +94,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Issue-Tracker** (GitHub, YouTrack) und **Versionsverwaltung** (Git, SVN) in der IDE
 - **Befehlspalette** (Strg+Umschalt+P), Benachrichtigungen, Serverfenster
 - **Kontextmenü *Atlas*** im Editor mit Untermenüs (Navigation, Bearbeiten, Suchen und analysieren, Befunde, Module) und rechtsbündigen Tastenkürzeln
+- **Untermenü *Atlas* in der Projektverwaltung**: *Mit Atlas prüfen* für Units, Ordner und Projekte (auch Mehrfachauswahl, ohne die Units zu öffnen), *Unit-Beziehungen*, *Abhängige Units (n)* und *Tests dieser Unit ausführen* (`commands.projectContextMenu`)
 - **Robustheit:** Fehler erreichen nie die IDE, sicherer Start, nachspielbare Absturzfälle
 
 ### [Einstellungen](docs/features/de/Einstellungen.md)

@@ -64,6 +64,24 @@ const
   /// <summary>Werte von editor.designerBar.searchStyle (#1442).</summary>
   cDesignerSearchWindow = 'window';
   cDesignerSearchPopup = 'popup';
+  /// <summary>Werte von designer.selectSimilar.scope (#738).</summary>
+  cDesignerScopeForm = 'form';
+  cDesignerScopeParent = 'parent';
+  /// <summary>Werte von designer.selectionSets.storage (#739).</summary>
+  cDesignerSetsLocal = 'local';
+  cDesignerSetsShared = 'shared';
+  /// <summary>Quellen von designer.fitToText.sources (#730).</summary>
+  cFitSourceCaption = 'caption';
+  cFitSourceText = 'text';
+  cFitSourceItems = 'items';
+  cMaxFitMinWidth = 2000;
+  cMaxFitPadding = 200;
+  /// <summary>Werte von designer.buttonBar.position (#732).</summary>
+  cButtonBarBottomRight = 'bottomRight';
+  cButtonBarBottomLeft = 'bottomLeft';
+  cButtonBarRightTop = 'rightTop';
+  cButtonBarRightBottom = 'rightBottom';
+  cMaxButtonBarSpace = 100;
 
 type
   /// <summary>Plugin-Einstellungen: Verhalten beim Tippen und Bearbeiten im Editor.</summary>
@@ -93,6 +111,8 @@ type
     /// <summary>Fehlertext am Zeilenende (#509): 'off', 'errors' (Vorgabe), 'errorsAndWarnings', 'all'; nur mit
     /// Problems.</summary>
     InlineDiagnostics: string;
+    /// <summary>Marken folgen ihrer Zeile sofort bei Bearbeitungen (#1818, editor.trackLines).</summary>
+    TrackLines: Boolean;
     /// <summary>Änderungsmarken in der Rinne (#507, editor.gitGutter).</summary>
     GitGutter: Boolean;
     /// <summary>Zeilenhistorie am Ende der Cursorzeile (#507, editor.gitBlame).</summary>
@@ -480,6 +500,48 @@ type
     DesignerTabOrderClick: Boolean;
     /// <summary>Knopf „Ausrichten“ mit Menü (experimentell, editor.designerBar.align).</summary>
     DesignerAlign: Boolean;
+    /// <summary>Menü „Gleiche auswählen“ in der Designer-Leiste (#738, designer.selectSimilar).</summary>
+    DesignerSelectSimilar: Boolean;
+    /// <summary>Eintrag „Gleiche Klasse und Nachfahren“ (#738, designer.selectSimilar.includeDescendants).</summary>
+    DesignerSelectDescendants: Boolean;
+    /// <summary>Bereich: cDesignerScopeForm oder cDesignerScopeParent (#738, designer.selectSimilar.scope).
+    /// </summary>
+    DesignerSelectScope: string;
+    /// <summary>Auswahlsätze im Designer (#739, designer.selectionSets).</summary>
+    DesignerSelectionSets: Boolean;
+    /// <summary>Strg+Umschalt+1…9 für die ersten neun Sätze (#739, designer.selectionSets.shortcuts).</summary>
+    DesignerSelectionSetsShortcuts: Boolean;
+    /// <summary>Ablage: cDesignerSetsLocal oder cDesignerSetsShared (#739, designer.selectionSets.storage).</summary>
+    DesignerSelectionSetsStorage: string;
+    /// <summary>Taste „Auswahl speichern …“ als TShortCut, 0 = keine (#739, designer.selectionSets.saveKey).</summary>
+    DesignerSelectionSetsSaveKey: Integer;
+    /// <summary>Räumliche Navigation mit Alt+Pfeil (#745, designer.spatialNavigation).</summary>
+    DesignerSpatialNavigation: Boolean;
+    /// <summary>Am Rand in benachbarte Container weiter (#745, designer.spatialNavigation.crossContainers).
+    /// </summary>
+    DesignerSpatialCrossContainers: Boolean;
+    /// <summary>Befehl „Breite nach Text“ (#730, designer.fitToText).</summary>
+    DesignerFitToText: Boolean;
+    /// <summary>Mindestbreite bei 96 dpi (#730, designer.fitToText.minWidth).</summary>
+    DesignerFitToTextMinWidth: Integer;
+    /// <summary>Innenabstand links und rechts zusammen (#730, designer.fitToText.padding).</summary>
+    DesignerFitToTextPadding: Integer;
+    /// <summary>Textquellen caption, text, items durch Komma (#730, designer.fitToText.sources).</summary>
+    DesignerFitToTextSources: string;
+    /// <summary>Befehl „Knopfleiste anordnen“ (#732, designer.buttonBar).</summary>
+    DesignerButtonBar: Boolean;
+    /// <summary>Reihenfolge der Rollen (#732, designer.buttonBar.order).</summary>
+    DesignerButtonBarOrder: string;
+    /// <summary>Lage: cButtonBarBottomRight … (#732, designer.buttonBar.position).</summary>
+    DesignerButtonBarPosition: string;
+    /// <summary>Abstand zwischen den Knöpfen (#732, designer.buttonBar.gap).</summary>
+    DesignerButtonBarGap: Integer;
+    /// <summary>Abstand zum Rand (#732, designer.buttonBar.margin).</summary>
+    DesignerButtonBarMargin: Integer;
+    /// <summary>Default, Cancel und ModalResult setzen (#732, designer.buttonBar.setModalResult).</summary>
+    DesignerButtonBarSetModalResult: Boolean;
+    /// <summary>Eigene Begriffe „ok=Weiter|Los; cancel=Zurück“ (#732, designer.buttonBar.roles).</summary>
+    DesignerButtonBarRoles: string;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -586,6 +648,7 @@ begin
   Result.RecursionMarkers := True;
   Result.RecursionMarkersDepth := 4;
   Result.InlineDiagnostics := 'errors';
+  Result.TrackLines := True;
   Result.GitGutter := True;
   Result.GitBlame := False;
   Result.MethodPlacement := 'grouped';
@@ -635,6 +698,7 @@ begin
   AIo.Flag('RecursionMarkers', RecursionMarkers);
   AIo.Number('RecursionMarkersDepth', RecursionMarkersDepth);
   AIo.Text('InlineDiagnostics', InlineDiagnostics);
+  AIo.Flag('TrackLines', TrackLines);
   AIo.Flag('GitGutter', GitGutter);
   AIo.Flag('GitBlame', GitBlame);
   AIo.Text('MethodPlacement', MethodPlacement);
@@ -980,6 +1044,27 @@ begin
   Result.DesignerSearchStyle := cDesignerSearchWindow;
   Result.DesignerTabOrderClick := False;
   Result.DesignerAlign := False;
+  Result.DesignerSelectSimilar := True;
+  Result.DesignerSelectDescendants := True;
+  Result.DesignerSelectScope := cDesignerScopeForm;
+  Result.DesignerSelectionSets := True;
+  Result.DesignerSelectionSetsShortcuts := True;
+  Result.DesignerSelectionSetsStorage := cDesignerSetsLocal;
+  // Strg+Umschalt+S.
+  Result.DesignerSelectionSetsSaveKey := 24659;
+  Result.DesignerSpatialNavigation := True;
+  Result.DesignerSpatialCrossContainers := True;
+  Result.DesignerFitToText := True;
+  Result.DesignerFitToTextMinWidth := 75;
+  Result.DesignerFitToTextPadding := 16;
+  Result.DesignerFitToTextSources := cFitSourceCaption;
+  Result.DesignerButtonBar := True;
+  Result.DesignerButtonBarOrder := 'ok,cancel,apply,help';
+  Result.DesignerButtonBarPosition := cButtonBarBottomRight;
+  Result.DesignerButtonBarGap := 8;
+  Result.DesignerButtonBarMargin := 8;
+  Result.DesignerButtonBarSetModalResult := True;
+  Result.DesignerButtonBarRoles := '';
   Result.Minimap := False;
   Result.MinimapRender := 'characters';
   Result.MinimapWidth := 120;
@@ -1015,6 +1100,15 @@ begin
   OverviewRulerKinds := TAtlasOverviewKindNames.Normalize(OverviewRulerKinds);
   DesignerSearchKey := EnsureRange(DesignerSearchKey, 0, $FFFF);
   DesignerSearchStyle := Choice(DesignerSearchStyle, [cDesignerSearchWindow, cDesignerSearchPopup]);
+  DesignerSelectScope := Choice(DesignerSelectScope, [cDesignerScopeForm, cDesignerScopeParent]);
+  DesignerSelectionSetsStorage := Choice(DesignerSelectionSetsStorage, [cDesignerSetsLocal, cDesignerSetsShared]);
+  DesignerSelectionSetsSaveKey := EnsureRange(DesignerSelectionSetsSaveKey, 0, $FFFF);
+  DesignerFitToTextMinWidth := EnsureRange(DesignerFitToTextMinWidth, 0, cMaxFitMinWidth);
+  DesignerFitToTextPadding := EnsureRange(DesignerFitToTextPadding, 0, cMaxFitPadding);
+  DesignerButtonBarPosition := Choice(DesignerButtonBarPosition, [cButtonBarBottomRight, cButtonBarBottomLeft,
+    cButtonBarRightTop, cButtonBarRightBottom]);
+  DesignerButtonBarGap := EnsureRange(DesignerButtonBarGap, 0, cMaxButtonBarSpace);
+  DesignerButtonBarMargin := EnsureRange(DesignerButtonBarMargin, 0, cMaxButtonBarSpace);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -1031,6 +1125,26 @@ begin
   AIo.Text('DesignerSearchStyle', DesignerSearchStyle);
   AIo.Flag('DesignerTabOrderClick', DesignerTabOrderClick);
   AIo.Flag('DesignerAlign', DesignerAlign);
+  AIo.Flag('DesignerSelectSimilar', DesignerSelectSimilar);
+  AIo.Flag('DesignerSelectDescendants', DesignerSelectDescendants);
+  AIo.Text('DesignerSelectScope', DesignerSelectScope);
+  AIo.Flag('DesignerSelectionSets', DesignerSelectionSets);
+  AIo.Flag('DesignerSelectionSetsShortcuts', DesignerSelectionSetsShortcuts);
+  AIo.Text('DesignerSelectionSetsStorage', DesignerSelectionSetsStorage);
+  AIo.Number('DesignerSelectionSetsSaveKey', DesignerSelectionSetsSaveKey);
+  AIo.Flag('DesignerSpatialNavigation', DesignerSpatialNavigation);
+  AIo.Flag('DesignerSpatialCrossContainers', DesignerSpatialCrossContainers);
+  AIo.Flag('DesignerFitToText', DesignerFitToText);
+  AIo.Number('DesignerFitToTextMinWidth', DesignerFitToTextMinWidth);
+  AIo.Number('DesignerFitToTextPadding', DesignerFitToTextPadding);
+  AIo.Text('DesignerFitToTextSources', DesignerFitToTextSources);
+  AIo.Flag('DesignerButtonBar', DesignerButtonBar);
+  AIo.Text('DesignerButtonBarOrder', DesignerButtonBarOrder);
+  AIo.Text('DesignerButtonBarPosition', DesignerButtonBarPosition);
+  AIo.Number('DesignerButtonBarGap', DesignerButtonBarGap);
+  AIo.Number('DesignerButtonBarMargin', DesignerButtonBarMargin);
+  AIo.Flag('DesignerButtonBarSetModalResult', DesignerButtonBarSetModalResult);
+  AIo.Text('DesignerButtonBarRoles', DesignerButtonBarRoles);
   AIo.Flag('Minimap', Minimap);
   AIo.Text('MinimapRender', MinimapRender);
   AIo.Number('MinimapWidth', MinimapWidth);
