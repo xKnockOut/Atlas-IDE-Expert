@@ -901,11 +901,9 @@ begin
   end;
   mOwner := Field;
   Field := nil;
-  // Fremde WindowProc darüber: Der Haken der WindowProc bleibt in deren Kette und reicht ab jetzt nur noch durch.
-  if not TAtlasWndProcHook.Unhook(WndHook) then
-  begin
-    TAtlasGuard.Log('Statusleiste: fremde Fensterprozedur über Atlas, Haken bleibt als Durchreicher'); // german-ok Protokoll
-  end;
+  // Fremde WindowProc darüber: Der Haken der WindowProc bleibt in deren Kette und reicht ab jetzt nur noch durch;
+  // Unhook kennzeichnet das Entladen dann als unsicher (Protokoll, Diagnose, Neustart).
+  TAtlasWndProcHook.Unhook(WndHook);
   if mOwner <> nil then
   begin
     Bar.RemoveFreeNotification(mOwner);

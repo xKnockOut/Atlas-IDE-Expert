@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens;
 
-// Gemeinsame Tokenhilfen der Regeln für RTL-Muster (RtlTypePatterns und ihre Teilunits): Code-Token
-// suchen, Klammern und Argumente zählen, einfache Bezeichner und Routinenrümpfe erkennen.
+// Gemeinsame Tokenhilfen der Regeln für RTL-Muster (RtlTypePatterns und ihre Teilunits): Argumente
+// zählen, einfache Bezeichner und Routinenrümpfe erkennen.
 
 interface
 
@@ -14,17 +14,9 @@ uses
 type
   TTokens = TArray<TPascalToken>;
 
-/// <summary>Kommentar oder Compileranweisung?</summary>
-function IsTrivia(const AToken: TPascalToken): Boolean;
 
-/// <summary>Erstes Code-Token ab AIndex (hinter dem Ende: Length(ATokens)).</summary>
-function NextCode(const ATokens: TTokens; AIndex: Integer): Integer;
 
-/// <summary>Letztes Code-Token vor AIndex (davor: -1).</summary>
-function PreviousCode(const ATokens: TTokens; AIndex: Integer): Integer;
 
-/// <summary>Schließende Klammer zu der Klammer bei AOpen; -1 ohne Gegenstück.</summary>
-function Closing(const ATokens: TTokens; AOpen: Integer): Integer;
 
 /// <summary>Zahl der Argumente auf oberster Ebene zwischen AOpen und AClose.</summary>
 function ArgumentCount(const ATokens: TTokens; AOpen, AClose: Integer): Integer;
@@ -54,53 +46,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
-
-function NextCode(const ATokens: TTokens; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
-function PreviousCode(const ATokens: TTokens; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(ATokens[Result]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
-function Closing(const ATokens: TTokens; AOpen: Integer): Integer;
-var
-  mDepth: Integer;
-begin
-  mDepth := 0;
-  for Result := AOpen to High(ATokens) do
-  begin
-    if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
-    begin
-      Inc(mDepth);
-    end
-    else if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit;
-      end;
-    end;
-  end;
-  Result := -1;
-end;
+  System.StrUtils,
+  Atlas.Common.Pascal.TokenCursor;
 
 /// <summary>Zahl der Argumente auf oberster Ebene zwischen AOpen und AClose.</summary>
 function ArgumentCount(const ATokens: TTokens; AOpen, AClose: Integer): Integer;

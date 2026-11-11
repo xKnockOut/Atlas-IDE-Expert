@@ -179,6 +179,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   Atlas.Core.Lsp.Uris;
 
 class function TLspSessionJson.PathToUri(const APath: string): string;
@@ -760,20 +761,6 @@ begin
   end;
 end;
 
-function ContainsText_(const AValues: TArray<string>; const AValue: string): Boolean;
-var
-  mValue: string;
-begin
-  for mValue in AValues do
-  begin
-    if SameText(mValue, AValue) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 class procedure TLspSessionJson.ProjectChanges(const AOld, ANew: TArray<string>; out AAdded, ARemoved: TArray<string>);
 var
   mProject: string;
@@ -782,14 +769,14 @@ begin
   ARemoved := nil;
   for mProject in ANew do
   begin
-    if not ContainsText_(AOld, mProject) and not ContainsText_(AAdded, mProject) then
+    if not MatchText(mProject, AOld) and not MatchText(mProject, AAdded) then
     begin
       AAdded := AAdded + [mProject];
     end;
   end;
   for mProject in AOld do
   begin
-    if not ContainsText_(ANew, mProject) and not ContainsText_(ARemoved, mProject) then
+    if not MatchText(mProject, ANew) and not MatchText(mProject, ARemoved) then
     begin
       ARemoved := ARemoved + [mProject];
     end;

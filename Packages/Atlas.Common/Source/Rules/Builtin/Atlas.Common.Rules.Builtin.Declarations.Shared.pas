@@ -1,16 +1,13 @@
 ﻿unit Atlas.Common.Rules.Builtin.Declarations.Shared;
 
 // Gemeinsame Hilfen der Deklarationsregeln (Atlas.Common.Rules.Builtin.Declarations und ihre Teilunits):
-// Token zu einem Offset, Leerraum vor und hinter einer Stelle, Aufzählung "A, B und C", Name ohne Vorsatz.
+// Leerraum vor und hinter einer Stelle, Aufzählung "A, B und C", Name ohne Vorsatz.
 
 interface
 
 uses
-  Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Documents.Contract;
 
-/// <summary>Erstes Token ab AOffset (Index), High + 1 ohne.</summary>
-function TokenAtOffset(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 /// <summary>Steht vor APosition in ihrer Zeile nur Leerraum?</summary>
 function BlankBefore(const ALines: TArray<string>; const APosition: TTextPosition): Boolean;
 /// <summary>Steht hinter APosition in ihrer Zeile nur Leerraum oder ein //-Kommentar?</summary>
@@ -37,28 +34,6 @@ const
     (De: ' und '; En: ' and '));
 
 {$SCOPEDENUMS OFF}
-
-/// <summary>Erstes Token ab AOffset (Index), High + 1 ohne.</summary>
-function TokenAtOffset(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  mLow := 0;
-  mHigh := Length(ATokens);
-  while mLow < mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if ATokens[mMiddle].Offset < AOffset then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
-  Result := mLow;
-end;
 
 /// <summary>Steht vor APosition in ihrer Zeile nur Leerraum?</summary>
 function BlankBefore(const ALines: TArray<string>; const APosition: TTextPosition): Boolean;
