@@ -27,6 +27,7 @@ implementation
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Builtin.Style.Tokens;
 
 { TStyleTokensTests }

@@ -31,6 +31,10 @@ type
     /// <summary>CompilerVersion steht in System.pas nur im Kommentar: auch mit indizierter System bekannt.</summary>
     [Test]
     procedure KnowsCompilerVersion;
+    /// <summary>Selbstprüfung von Atlas (DeltaE2000): Record-Parameter A und B mit gleichnamigen Feldern,
+    /// Intrinsics für Gleitkomma und Routinen aus einer Unit in uses (wie System.Math).</summary>
+    [Test]
+    procedure KnowsFloatMathOnRecordParameters;
     /// <summary>#1239: Variable aus for var … in mit begin … end.</summary>
     [Test]
     procedure KnowsForInVariableInBlock;
@@ -339,6 +343,37 @@ begin
     'function Version: Double;'#10 +
     'begin'#10 +
     '  Result := CompilerVersion;'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsFloatMathOnRecordParameters;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(
+    'unit Mathe;'#10 +
+    'interface'#10 +
+    'function Power(const ABase, AExponent: Double): Double; overload;'#10 +
+    'function DegToRad(const ADegrees: Double): Double; inline;'#10 +
+    'implementation'#10 +
+    'end.', 'C:\Lib\Mathe.pas', nil));
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TLab = record'#10 +
+    '    L, A, B: Double;'#10 +
+    '  end;'#10 +
+    '  TFarbe = class'#10 +
+    '    class function Abstand(const A, B: TLab): Double; static;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'uses Mathe;'#10 +
+    'class function TFarbe.Abstand(const A, B: TLab): Double;'#10 +
+    'var'#10 +
+    '  mC: Double;'#10 +
+    'begin'#10 +
+    '  mC := Sqrt(Sqr(A.A) + Sqr(A.B)) + Sqrt(Power(B.A, 7));'#10 +
+    '  Result := Abs(B.L - A.L) + mC * Sin(DegToRad(A.B)) + Cos(DegToRad(B.B)) + Exp(-Sqr(A.L / 25));'#10 +
     'end;'#10 +
     'end.'));
 end;

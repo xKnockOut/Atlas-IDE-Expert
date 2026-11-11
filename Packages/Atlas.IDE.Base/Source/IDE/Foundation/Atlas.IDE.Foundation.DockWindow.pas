@@ -200,11 +200,9 @@ begin
   if FForm <> nil then
   begin
     FForm.RemoveFreeNotification(Self);
-    // Liegt eine fremde Prozedur darüber, bleibt der Haken als Durchreicher in deren Kette.
-    if not TAtlasWndProcHook.Unhook(FWndHook) then
-    begin
-      TAtlasGuard.Log('Dockfenster: fremde Fensterprozedur über Atlas, Haken bleibt als Durchreicher'); // german-ok Protokoll
-    end;
+    // Liegt eine fremde Prozedur darüber, bleibt der Haken als Durchreicher in deren Kette; Unhook kennzeichnet
+    // das Entladen dann als unsicher (Protokoll, Diagnose, Neustart).
+    TAtlasWndProcHook.Unhook(FWndHook);
     for mIndex := High(FDockForms) downto 0 do
     begin
       if FDockForms[mIndex] = FForm then

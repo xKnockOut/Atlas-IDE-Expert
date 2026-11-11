@@ -140,6 +140,7 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   System.RegularExpressions,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines;
 
 const
@@ -148,11 +149,6 @@ const
   cStatementEnds: array[0..5] of string = (';', 'end', 'else', 'until', 'except', 'finally');
 
 { Tokens }
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
 
 function NextToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin

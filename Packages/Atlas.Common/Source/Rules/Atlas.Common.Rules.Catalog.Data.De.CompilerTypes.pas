@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeCompilerTypes: array[0..96] of string = (
+  cCatalogLinesDeCompilerTypes: array[0..101] of string = (
     '{',
     '      "id": "assign-to-property-member",',
     '      "name": "Zuweisung an ein Feld eines Property-Records",',
@@ -121,9 +121,12 @@ const
     'dardwert 0, ein statisches Array := nil, eine Prozedur ohne Ergebnis als Wert, string + Integer oder [1] + [''a''] (wie E2010); ein Operator, der für einen Operanden nicht definiert ist, etwa string - C' +
     'har, Double div 2, not ''a'' oder X is Integer (wie E2015); ein var-Argument mit anderem Typ als der Parameter, etwa Byte für Integer (wie E2033); Byte(S) eines langen Strings und die Umwandlung einer G' +
     'leitkommazahl in einen Ordinaltyp (wie E2089); Inc/Dec mit einer Gleitkommazahl oder einem String als Schrittweite und Ptr(S) (wie E2008); eine Routine mit anderer Parameterliste für einen prozedurale' +
-    'n Typ bzw. eine Methode für einen Typ ohne of object und umgekehrt (wie E2009); von überladenen Routinen passt keine zum prozeduralen Typ (wie E2010). Wie bei dcc hat Result den Typ aus dem interface-' +
-    'Teil, und von zwei Deklarationen desselben lokalen Namens gilt die letzte. Gemeldet nur, wenn beide Seiten sicher bekannt sind und ihre Deklarationen immer mit der Stelle übersetzt werden; Records (cl' +
-    'ass operator Implicit), Variant, Zeiger, Teilbereiche, Generics, überladene Routinen und with-Blöcke bleiben still. Keine Korrektur: Welche Seite falsch ist, weiß nur der Entwickler."',
+    'n Typ bzw. eine Methode für einen Typ ohne of object und umgekehrt (wie E2009); von überladenen Routinen passt keine zum prozeduralen Typ (wie E2010); eine Routine für eine Methodenreferenz (reference' +
+    ' to, auch generisch wie TFunc<string, TArray<string>>), deren Parameter in Zahl, const/var/out oder Typ abweichen, als Zuweisung oder Argument (wie E2010); eine parameterlose Funktion, deren Ergebnis ' +
+    'genau den prozeduralen Typ des Ziels hat, ohne () zugewiesen oder übergeben (wie E2010: Delphi nimmt die Funktion selbst). Wie bei dcc hat Result den Typ aus dem interface-Teil, und von zwei Deklarati' +
+    'onen desselben lokalen Namens gilt die letzte. Gemeldet nur, wenn beide Seiten sicher bekannt sind und ihre Deklarationen immer mit der Stelle übersetzt werden; Records (class operator Implicit), Vari' +
+    'ant, Zeiger, Teilbereiche, Generics, überladene Routinen und with-Blöcke bleiben still. Korrektur nur für die Funktion ohne (): () ergänzen. Sonst keine Korrektur: Welche Seite falsch ist, weiß nur de' +
+    'r Entwickler."',
     '    },',
     '{',
     '      "id": "for-in-not-enumerable",',
@@ -152,6 +155,14 @@ const
     'ufruf mit Klammern und auf der rechten Seite einer Zuweisung an einen Wert bekannten, nicht prozeduralen Typs, und nur, wenn jede Überladung einen solchen Typparameter hat. E2532 meldet sie nur bei ge' +
     'nau einer Routine ohne overload; Argumente unbekannten Typs (Variant, Klassen, Ausdrücke) und Zahlen verschiedener Breite halten sie still. Wie argument-count-mismatch schweigt sie bei Deklarationen i' +
     'n bedingten Zweigen und bei Namen, die ein unbekannter Vorfahr verdecken kann."',
+    '    },',
+    '{',
+    '      "id": "dunitx-areequal-length",',
+    '      "name": "Assert.AreEqual mit Ganzzahl und NativeInt",',
+    '      "description": "Assert.AreEqual bzw. Assert.AreNotEqual mit einer Ganzzahl auf der einen und einem NativeInt auf der anderen Seite: Length, High oder Low eines dynamischen Arrays (ab Delphi 12 N' +
+    'ativeInt) oder ein Ausdruck, dessen Typ sicher NativeInt bzw. NativeUInt ist (TList<T>.Count mit der RTL im Index). Keine der Überladungen Integer, Int64, Double … passt eindeutig, Delphi fällt auf Ar' +
+    'eEqual<T> zurück und kann T nicht ableiten (wie E2532). Free Pascal übersetzt den Aufruf, deshalb fällt der Fehler erst beim Bau mit Delphi auf. Strings (Length liefert Integer), statische Arrays, Aus' +
+    'drücke unbekannten Typs, Aufrufe mit Typargument und eine bekannte Delphi-Version vor 12 bleiben still. Korrektur (sicher, auch für die ganze Datei): Integer(...) um die NativeInt-Seite."',
     '    },',
     '{',
     '      "id": "argument-count-mismatch",',

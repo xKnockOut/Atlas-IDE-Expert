@@ -6,7 +6,9 @@
 // doppelte lokale Deklaration und Result aus dem interface-Teil (E2010),
 // Argumente und Array-Property (E2010), var-Argument (E2033), Operatoren
 // (E2015, E2010), Typumwandlungen (E2089), Inc und Ptr (E2008), prozedurale
-// Typen (E2009, E2010), bedingte Deklarationen, with, Abschalten.
+// Typen (E2009, E2010), Methodenreferenzen mit anderer Parameterliste
+// (#1897) und Funktionen ohne () (#1899), bedingte Deklarationen, with,
+// Abschalten.
 
 interface
 
@@ -43,6 +45,16 @@ type
     procedure IncAndPtr;
     [Test]
     procedure ProceduralTypes;
+    /// <summary>#1897: Routine an TFunc/TProc mit const-Parameter statt Wertparameter, als Zuweisung und
+    /// Argument.</summary>
+    [Test]
+    procedure MethodReferenceParameters;
+    /// <summary>#1899: parameterlose Funktion, die eine Methodenreferenz liefert, ohne () zugewiesen und
+    /// übergeben; Korrektur ().</summary>
+    [Test]
+    procedure FunctionReturningReferenceWithoutParens;
+    [Test]
+    procedure MethodReferencesThatFitAreSilent;
     [Test]
     procedure ConditionalDeclarationsAndWithAreSilent;
     [Test]
@@ -74,6 +86,42 @@ begin
   Result := TSymbolIndex.Create;
   Result.AddUnit(TIndexExtractor.ExtractText('unit System;'#10'interface'#10'type'#10'  TObject = class'#10 +
     '  end;'#10'implementation'#10'end.', 'C:\BDS\source\System.pas', nil));
+end;
+
+/// <summary>Index mit System und den Methodenreferenzen aus System.SysUtils.</summary>
+function SysUtilsIndex: ISymbolIndex;
+begin
+  Result := SystemIndex;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit System.SysUtils;'#10'interface'#10'type'#10 +
+    '  TProc = reference to procedure;'#10'  TProc<T> = reference to procedure (Arg1: T);'#10 +
+    '  TFunc<TResult> = reference to function: TResult;'#10 +
+    '  TFunc<T,TResult> = reference to function (Arg1: T): TResult;'#10'implementation'#10'end.',
+    'C:\BDS\source\System.SysUtils.pas', nil));
+end;
+
+/// <summary>Befunde in einer Unit, die System.SysUtils einbindet und ADeclarations vor der Routine Fall mit den
+/// Anweisungen AStatements deklariert.</summary>
+function ReferenceFindings(const ADeclarations, AStatements: string): TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.IndexFindings(TTypeMismatchRule.Create, 'unit Fall;'#10'interface'#10'uses'#10 +
+    '  System.SysUtils;'#10'implementation'#10'var'#10'  GTest: TFunc<string, TArray<string>>;'#10 +
+    '  GProc: TProc<string>;'#10 + ADeclarations + 'procedure Fall;'#10'begin'#10 + AStatements + 'end;'#10'end.',
+    SysUtilsIndex, '', 'Fall.pas');
+end;
+
+function Messages(const AFound: TArray<TRuleFinding>): string;
+var
+  mFinding: TRuleFinding;
+begin
+  Result := '';
+  for mFinding in AFound do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + ' | ';
+    end;
+    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message;
+  end;
 end;
 
 function Findings(const ASource: string): TArray<TRuleFinding>; overload;
@@ -347,10 +395,71 @@ begin
   // Passende Zuweisungen, reference to und Funktionen ohne Parameter (Aufruf) bleiben still.
   AssertSilent(UnitText(cKlasse, cRuempfe + 'function Zahl: Integer;'#10'begin'#10'  Result := 1;'#10'end;'#10 +
     'procedure Fall(AKlasse: TKlasse);'#10'var'#10'  mRueckruf: TRueckruf;'#10'  mEreignis: TEreignis;'#10 +
-    '  mReferenz: reference to procedure(AWert: Integer);'#10'  mZahl: Integer;'#10 +
+    '  mReferenz: reference to procedure;'#10'  mZahl: Integer;'#10 +
     '  mFunktion: function: Integer;'#10'begin'#10'  mRueckruf := Frei;'#10'  mRueckruf := TKlasse.Statisch;'#10 +
-    '  mEreignis := AKlasse.Machen;'#10'  mReferenz := Frei;'#10'  mZahl := Zahl;'#10'  mFunktion := Zahl;'#10 +
-    'end;'#10));
+    '  mEreignis := AKlasse.Machen;'#10'  mReferenz := Frei;'#10'  mReferenz := AKlasse.Machen;'#10 +
+    '  mZahl := Zahl;'#10'  mFunktion := Zahl;'#10'end;'#10));
+  // Methodenreferenz mit Parametern, Routine ohne (wie E2010, #1897).
+  Assert.AreEqual('Inkompatible Typen: ''reference to procedure(AWert: Integer)'' und ''Procedure''; die ' +
+    'Parameter von Frei passen nicht zur Methodenreferenz (Zahl, const/var/out oder Typ, wie E2010).',
+    OnlyMessage(UnitText(cKlasse, cRuempfe + 'procedure Fall;'#10'var'#10 +
+    '  mReferenz: reference to procedure(AWert: Integer);'#10'begin'#10'  mReferenz := Frei;'#10'end;'#10)));
+end;
+
+procedure TTypeMismatchTests.MethodReferenceParameters;
+const
+  cRoutinen = 'function LastFailed(const AProject: string): TArray<string>;'#10'begin'#10'  Result := nil;'#10 +
+    'end;'#10'procedure Say(const AText: string);'#10'begin'#10'end;'#10 +
+    'procedure Merke(var AText: string);'#10'begin'#10'end;'#10 +
+    'procedure Zaehle(AZahl: Integer);'#10'begin'#10'end;'#10 +
+    'procedure Frage(const AText: string; AAntwort: TProc<string>);'#10'begin'#10'end;'#10;
+  cWie = ' passen nicht zur Methodenreferenz (Zahl, const/var/out oder Typ, wie E2010).';
+begin
+  // Fall aus Atlas.IDE.Tests.Composition: TFunc<T, R> erwartet den Parameter ohne const.
+  Assert.AreEqual('26: Inkompatible Typen: ''TFunc<string,TArray<string>>'' und ''Procedure''; die Parameter von ' +
+    'LastFailed' + cWie, Messages(ReferenceFindings(cRoutinen, '  GTest := LastFailed;'#10)));
+  // var statt Wertparameter, anderer Typ.
+  Assert.AreEqual('26: Inkompatible Typen: ''TProc<string>'' und ''Procedure''; die Parameter von Merke' + cWie +
+    ' | 27: Inkompatible Typen: ''TProc<string>'' und ''Procedure''; die Parameter von Zaehle' + cWie,
+    Messages(ReferenceFindings(cRoutinen, '  GProc := Merke;'#10'  GProc := Zaehle;'#10)));
+  // Als Argument (Debug.EventBreak: Report(const AText: string) an TProc<string>).
+  Assert.AreEqual('26: Inkompatible Typen: ''TProc<string>'' und ''Procedure''; die Parameter von Say' + cWie,
+    Messages(ReferenceFindings(cRoutinen, '  Frage(''Weiter?'', Say);'#10)));
+end;
+
+procedure TTypeMismatchTests.FunctionReturningReferenceWithoutParens;
+const
+  cRoutinen = 'function Gib: TProc<string>;'#10'begin'#10'  Result := nil;'#10'end;'#10 +
+    'procedure Frage(const AText: string; AAntwort: TProc<string>);'#10'begin'#10'end;'#10;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := ReferenceFindings(cRoutinen, '  GProc := Gib;'#10'  Frage(''Weiter?'', Gib);'#10);
+  Assert.AreEqual('17: Inkompatible Typen: ''TProc<string>'' und ''Procedure''; Gib liefert TProc<string>, ohne () ' +
+    'steht der Name aber für die Funktion selbst (wie E2010). | 18: Inkompatible Typen: ''TProc<string>'' und ' +
+    '''Procedure''; Gib liefert TProc<string>, ohne () steht der Name aber für die Funktion selbst (wie E2010).',
+    Messages(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('() ergänzen', mFound[0].Fixes[0].Title);
+  Assert.AreEqual('()', mFound[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(17, mFound[0].Fixes[0].Edits[0].Range.StartPos.Line);
+  Assert.AreEqual(14, mFound[0].Fixes[0].Edits[0].Range.StartPos.Character);
+end;
+
+procedure TTypeMismatchTests.MethodReferencesThatFitAreSilent;
+const
+  cRoutinen = 'type'#10'  TBox = class'#10'    procedure Nimm(AText: string);'#10'  end;'#10 +
+    'procedure TBox.Nimm(AText: string);'#10'begin'#10'end;'#10 +
+    'function Passt(AProject: string): TArray<string>;'#10'begin'#10'  Result := nil;'#10'end;'#10 +
+    'procedure Hoere(AText: string);'#10'begin'#10'end;'#10 +
+    'function Gib: TProc<string>;'#10'begin'#10'  Result := nil;'#10'end;'#10 +
+    'function Zahl: Integer;'#10'begin'#10'  Result := 1;'#10'end;'#10 +
+    'procedure Frage(const AText: string; AAntwort: TProc<string>);'#10'begin'#10'end;'#10;
+begin
+  Assert.AreEqual('', Messages(ReferenceFindings(cRoutinen + 'var'#10'  GBox: TBox;'#10'  GZahl: TFunc<Integer>;'#10,
+    '  GTest := Passt;'#10'  GProc := Hoere;'#10'  GProc := GBox.Nimm;'#10'  GProc := Gib();'#10 +
+    '  GZahl := Zahl;'#10'  Frage(''Weiter?'', Hoere);'#10'  Frage(''Weiter?'', Gib());'#10 +
+    '  Frage(''Weiter?'', procedure(AText: string)'#10'    begin'#10'    end);'#10)));
 end;
 
 procedure TTypeMismatchTests.ConditionalDeclarationsAndWithAreSilent;
