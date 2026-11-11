@@ -80,7 +80,8 @@ uses
   Atlas.IDE.Foundation.StructureSwitch,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Settings.Options;
+  Atlas.IDE.Settings.Options,
+  Atlas.IDE.Foundation.Host;
 
 const
   cAnswerSession = 100;
@@ -348,18 +349,7 @@ begin
   if mAnchor.X = MaxInt then
   begin
     // Ohne Statusfeld: unten links im aktiven Fenster.
-    if Screen.ActiveForm <> nil then
-    begin
-      mArea := Screen.ActiveForm.BoundsRect;
-    end
-    else if Application.MainForm <> nil then
-    begin
-      mArea := Application.MainForm.BoundsRect;
-    end
-    else
-    begin
-      mArea := Screen.WorkAreaRect;
-    end;
+    mArea := TAtlasIdeHost.PopupArea;
     mAnchor := Point(mArea.Left + 40, mArea.Bottom - 40);
   end;
   Show(mAnchor);

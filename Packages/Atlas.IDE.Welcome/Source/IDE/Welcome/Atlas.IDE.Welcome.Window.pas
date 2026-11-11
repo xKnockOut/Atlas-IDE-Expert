@@ -29,7 +29,6 @@ type
     class function ExistingBoard: TAtlasWelcomeBoardFrame; static;
     class function Visible: Boolean; static;
     class procedure Hide; static;
-    class procedure UpdateIcon; static;
     class procedure ApplyTheme; static;
     /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt
     /// (#879).</summary>
@@ -51,7 +50,6 @@ uses
   ToolsAPI,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Style.Symbol,
-  Atlas.IDE.Foundation.Symbol,
   Atlas.IDE.Foundation.DockWindow;
 
 type
@@ -112,7 +110,7 @@ begin
     Host.FrameCreated(AFrame);
   end;
   mBoard := TAtlasWelcomeBoardFrame(AFrame);
-  TAtlasIdeWelcomeWindow.UpdateIcon;
+  TAtlasIdeDockWindow.UpdateIcon(Host);
   Theme(mBoard);
   if Assigned(TAtlasIdeWelcomeWindow.OnFrame) then
   begin
@@ -196,7 +194,7 @@ begin
       Host.Form.Width := MulDiv(cDefaultWidth, Screen.PixelsPerInch, 96);
       Host.Form.Height := MulDiv(cDefaultHeight, Screen.PixelsPerInch, 96);
     end;
-    UpdateIcon;
+    TAtlasIdeDockWindow.UpdateIcon(Host);
   end;
   Result := ExistingBoard;
 end;
@@ -224,23 +222,6 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeWelcomeWindow.UpdateIcon;
-var
-  mIcon: TIcon;
-begin
-  if (Host = nil) or (Host.Form = nil) then
-  begin
-    Exit;
-  end;
-  mIcon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
-  try
-    // Icon ist erst in TForm öffentlich.
-    TForm(Host.Form).Icon.Assign(mIcon);
-  finally
-    mIcon.Free;
-  end;
-end;
-
 class procedure TAtlasIdeWelcomeWindow.ApplyTheme;
 var
   mBoard: TAtlasWelcomeBoardFrame;
@@ -251,7 +232,7 @@ begin
     Theme(mBoard);
     mBoard.UpdateContent;
   end;
-  UpdateIcon;
+  TAtlasIdeDockWindow.UpdateIcon(Host);
 end;
 
 class procedure TAtlasIdeWelcomeWindow.Prepare;

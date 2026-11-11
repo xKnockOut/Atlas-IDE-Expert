@@ -114,7 +114,8 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Keys,
-  Atlas.IDE.Commands.ShortcutTips;
+  Atlas.IDE.Commands.ShortcutTips,
+  Atlas.IDE.Foundation.Host;
 
 { TAtlasIdePalette.TBinding }
 
@@ -555,18 +556,7 @@ begin
   begin
     Attach(mWindow, mSource);
   end;
-  if Screen.ActiveForm <> nil then
-  begin
-    mArea := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    mArea := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    mArea := Screen.WorkAreaRect;
-  end;
+  mArea := TAtlasIdeHost.PopupArea;
   mWindow.ShowOver(mArea);
 end;
 

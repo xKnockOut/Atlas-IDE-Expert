@@ -80,6 +80,10 @@ type
     procedure ManagedParamOptions;
     [Test]
     procedure ManagedParamCallsFromIndex;
+    /// <summary>#1898: Routine aus dem interface-Teil, die eine andere Unit einer Methodenreferenz zuweist.
+    /// </summary>
+    [Test]
+    procedure ManagedParamUsedAsValueElsewhere;
     [Test]
     procedure ManagedParamSwitchedOff;
   end;
@@ -93,6 +97,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Rules.Builtin.Performance,
   Atlas.Common.Rules.Builtin.Performance.ManagedParams,
   Atlas.Common.Pascal.SyntaxTree,
@@ -681,6 +686,69 @@ begin
   Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
   Assert.AreEqual('S wird nicht verändert; mit const entfällt die Referenzzählung (override: die Signatur des ' +
     'Vorfahren mit ändern).', Findings[0].Message);
+end;
+
+procedure TPerformanceRulesTests.ManagedParamUsedAsValueElsewhere;
+const
+  cHooks = 'unit Hooks;'#10'interface'#10'function LastFailed(AProject: string): TArray<string>;'#10 +
+    'implementation'#10'function LastFailed(AProject: string): TArray<string>;'#10'begin'#10 +
+    '  Result := [AProject];'#10'end;'#10'end.';
+  cHooksFile = 'C:\P\Hooks.pas';
+  cUserFile = 'C:\P\Composition.pas';
+
+  function Run(const AUser: string): Integer;
+  var
+    mIndex: ISymbolIndex;
+    mProject: TRuleProject;
+    mContext: TRuleContext;
+  begin
+    mIndex := TSymbolIndex.Create;
+    mIndex.AddUnit(TIndexExtractor.ExtractText(cHooks, cHooksFile, nil, nil, True));
+    mIndex.AddUnit(TIndexExtractor.ExtractText(AUser, cUserFile, nil, nil, True));
+    mProject := Default(TRuleProject);
+    mProject.FileName := 'C:\P\App.dproj';
+    mProject.Kind := TRuleProjectKind.Application;
+    mProject.Sources := [cHooksFile, cUserFile];
+    mContext := Default(TRuleContext);
+    mContext.FileName := cHooksFile;
+    mContext.RelativePath := 'Hooks.pas';
+    mContext.UnitName := 'Hooks';
+    mContext.Text := cHooks;
+    mContext.Index := mIndex;
+    mContext.ProjectFiles := TRuleProjectFiles.Create([mProject], mIndex,
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        Result := True;
+        if SameText(AFileName, cHooksFile) then
+        begin
+          AText := cHooks;
+        end
+        else if SameText(AFileName, cUserFile) then
+        begin
+          AText := AUser;
+        end
+        else
+        begin
+          Result := False;
+        end;
+      end,
+      function(out AReason: string): Boolean
+      begin
+        Result := True;
+      end);
+    Result := Length(TRuleAssert.ContextFindings(TManagedParamWithoutConstRule.Create, mContext, ManagedOn));
+  end;
+
+begin
+  // Atlas.IDE.Tests.Composition: GTests.OnLastFailed := LastFailed; mit TFunc<string, TArray<string>>.
+  Assert.AreEqual(0, Run('unit Composition;'#10'interface'#10'implementation'#10'uses'#10'  Hooks;'#10 +
+    'procedure Start;'#10'begin'#10'  GTests.OnLastFailed := LastFailed;'#10'end;'#10'end.'));
+  // Als Argument.
+  Assert.AreEqual(0, Run('unit Composition;'#10'interface'#10'implementation'#10'uses'#10'  Hooks;'#10 +
+    'procedure Start;'#10'begin'#10'  Register(''x'', Hooks.LastFailed);'#10'end;'#10'end.'));
+  // Nur aufgerufen: gemeldet.
+  Assert.AreEqual(1, Run('unit Composition;'#10'interface'#10'implementation'#10'uses'#10'  Hooks;'#10 +
+    'procedure Start;'#10'begin'#10'  Writeln(Length(LastFailed(''p'')));'#10'end;'#10'end.'));
 end;
 
 procedure TPerformanceRulesTests.ManagedParamCallsFromIndex;

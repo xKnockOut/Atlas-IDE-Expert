@@ -7,8 +7,11 @@
 //                             verändert; Übergabe an Aufrufe mit unbekannter Signatur, with,
 //                             anonyme Methoden und inherited ohne Namen lassen die Regel
 //                             schweigen. Vorgegebene Signaturen (virtual, Interfaces,
-//                             published, Ereignisse) bleiben außen vor. Die Korrektur
-//                             ergänzt const in Rumpf und Deklaration.
+//                             published, Ereignisse) bleiben außen vor, ebenso Routinen,
+//                             die als Wert dienen (Methodenzeiger, Methodenreferenz,
+//                             @Routine), auch in Units, die diese Unit einbinden (#1898:
+//                             TFunc<string, …> erwartet den Parameter ohne const). Die
+//                             Korrektur ergänzt const in Rumpf und Deklaration.
 
 interface
 
@@ -770,6 +773,7 @@ type
     function RecordCandidate(const ATypeText: string; var ACandidate: TParamCandidate): Boolean;
     function CandidateOf(AGroup: TSyntaxNode; APosition: Integer; out ACandidate: TParamCandidate): Boolean;
     function UsedAsValue(const AName: string): Boolean;
+    function UsedAsValueElsewhere(const AName: string): Boolean;
     function GroupEdit(AGroup: TSyntaxNode; const AConst: TArray<Boolean>): TRuleEdit;
     function FixedSignature(const AInfo: TParamRoutine): Boolean;
     function FixableRoutine(ARoutine: TSyntaxNode; out AInfo: TParamRoutine): Boolean;
@@ -890,6 +894,39 @@ begin
   begin
     if SameText(mNode.Name, AName) and (mNode.Parent <> nil) and not ((mNode.Parent.Kind = TSyntaxKind.Call) and
       (mNode.Parent[0] = mNode)) and (mNode.Parent.Kind <> TSyntaxKind.CallStatement) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Steht AName in AText als Wert statt als Aufruf: nach :=, (, Komma, [ oder @, auch als X.Name, und
+/// ohne folgende Klammer? Eine Routine mit Pflichtparametern kann so nicht aufgerufen sein.</summary>
+function MentionedAsValue(const AText, AName: string): Boolean;
+begin
+  Result := TRegEx.IsMatch(AText, '(:=|[(,\[@])\s*(?:[A-Za-z_][A-Za-z0-9_]*\s*\.\s*)*' + AName +
+    '\s*(?=[;,)\]]|\bthen\b|\belse\b|\bend\b)', [roIgnoreCase]);
+end;
+
+/// <summary>Routine wird in einer Unit, die diese Unit einbindet, als Wert benutzt (#1898: GTests.OnLastFailed :=
+/// LastFailed in Atlas.IDE.Tests.Composition)? Ohne Projektdateien (Linter ohne Projekt) False.</summary>
+function TManagedParamScan.UsedAsValueElsewhere(const AName: string): Boolean;
+var
+  mFiles: IRuleProjectFiles;
+  mUsers: TArray<TRuleUsesStep>;
+  mUser: TRuleUsesStep;
+  mText: string;
+begin
+  Result := False;
+  mFiles := FContext.ProjectFiles;
+  if (mFiles = nil) or not mFiles.UsedBy(FContext.FileName, mUsers) then
+  begin
+    Exit;
+  end;
+  for mUser in mUsers do
+  begin
+    if (mFiles.NameIn(mUser.SourceFileName, AName) <> TRuleNameAnswer.Absent) and
+      (not mFiles.ReadText(mUser.SourceFileName, mText) or MentionedAsValue(mText, AName)) then
     begin
       Exit(True);
     end;
@@ -1132,7 +1169,8 @@ begin
     Exit;
   end;
   mUnchanged := UnchangedParams(ARoutine, mInfo.Header, mCandidates);
-  if mUnchanged <> nil then
+  if (mUnchanged <> nil) and not UsedAsValueElsewhere(Copy(mInfo.Header.Name,
+    LastDelimiter('.', mInfo.Header.Name) + 1, MaxInt)) then
   begin
     ReportParams(mInfo, mUnchanged);
   end;
