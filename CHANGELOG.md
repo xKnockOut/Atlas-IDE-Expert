@@ -59,6 +59,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - Bauen ohne Kommandozeilen-Compiler über die eigene IDE-Anbindung (`Tools/Build-Ide.ps1`, #1904).
 
 ### Behoben
+- Strg+Klick springt nicht mehr in Units, die Atlas nur aus der RTTI installierter Packages kennt (Ersatz-Units `atlas-ide:…`, ohne Quelltext). Gehe zu Definition, Verweise in der XMLDoc von Hover und Vervollständigung sowie alle Sprünge des Plugins öffnen solche Pfade nicht mehr; die IDE legte dafür sonst einen leeren Reiter „atlas-ide:…“ an.
 - Hover auf VCL-Klassen deutlich schneller (wiederholt rund 170 ms statt 1,3 s); lange Vorgaben laufen nicht mehr in die Spalte „deklariert in“. Hinweise der IDE warten höchstens 1 s auf den Server.
 - Dunkles Thema: sechs Fenster mit eigener Zeilenschrift (Unit-Beziehungen, Mitglieder extrahieren, Baum der Optionen, Projekte der Versionsverwaltung und des Trackers, Tastenübersicht) zeigten weiße Zeilen bzw. schwarze Schrift.
 - Server: Hover, Vervollständigung und Diagnosen warten nicht mehr hinter langen Befehlen wie Tests oder Metriken.
