@@ -41,7 +41,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Text.Chars;
 
 { TAtlasDesignerTarget }
 
@@ -62,11 +63,6 @@ end;
 
 { TAtlasDesignerLink }
 
-function IsIdentChar(AChar: Char): Boolean;
-begin
-  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AChar) > 127);
-end;
-
 /// <summary>Leerraum vor bzw. nach APos (1-basiert) überspringen.</summary>
 function SkipBlanks(const ALine: string; APos, AStep: Integer): Integer;
 begin
@@ -82,12 +78,12 @@ end;
 function IdentAt(const ALine: string; ACharacter: Integer): Integer;
 begin
   Result := ACharacter + 1;
-  if ((Result > Length(ALine)) or not IsIdentChar(ALine[Result])) and (Result > 1) and
-    IsIdentChar(ALine[Result - 1]) then
+  if ((Result > Length(ALine)) or not TTextChars.IsIdentChar(ALine[Result])) and (Result > 1) and
+    TTextChars.IsIdentChar(ALine[Result - 1]) then
   begin
     Dec(Result);
   end;
-  if (Result < 1) or (Result > Length(ALine)) or not IsIdentChar(ALine[Result]) then
+  if (Result < 1) or (Result > Length(ALine)) or not TTextChars.IsIdentChar(ALine[Result]) then
   begin
     Result := 0;
   end;
@@ -104,14 +100,14 @@ begin
     Exit;
   end;
   mStop := mPos;
-  while (mStop < Length(ALine)) and IsIdentChar(ALine[mStop + 1]) do
+  while (mStop < Length(ALine)) and TTextChars.IsIdentChar(ALine[mStop + 1]) do
   begin
     Inc(mStop);
   end;
   // Rückwärts über „Teil.“ bis zum Anfang der Kette.
   mStart := mPos;
   repeat
-    while (mStart > 1) and IsIdentChar(ALine[mStart - 1]) do
+    while (mStart > 1) and TTextChars.IsIdentChar(ALine[mStart - 1]) do
     begin
       Dec(mStart);
     end;
@@ -122,7 +118,7 @@ begin
       Break;
     end;
     mStop := SkipBlanks(ALine, mPos - 1, -1);
-    if (mStop < 1) or not IsIdentChar(ALine[mStop]) then
+    if (mStop < 1) or not TTextChars.IsIdentChar(ALine[mStop]) then
     begin
       Break;
     end;
@@ -163,7 +159,7 @@ begin
   Result := True;
   mText := Trim(Copy(mText, mPos + 1, MaxInt));
   mPos := 1;
-  while (mPos <= Length(mText)) and (IsIdentChar(mText[mPos]) or (mText[mPos] = '.')) do
+  while (mPos <= Length(mText)) and (TTextChars.IsIdentChar(mText[mPos]) or (mText[mPos] = '.')) do
   begin
     Inc(mPos);
   end;
