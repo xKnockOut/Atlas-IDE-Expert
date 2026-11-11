@@ -61,7 +61,7 @@ type
     [Test]
     procedure ReachableCodeIsSilent;
     /// <summary>Fluss-, Erfassungs- und Unbenutzt-Regeln in einem Lauf teilen Routinen und
-    /// Kontrollflussgraphen (Review P-03).</summary>
+    /// Kontrollflussgraphen.</summary>
     [Test]
     procedure FlowRulesFindSameWithSharedGraphs;
     [Test]

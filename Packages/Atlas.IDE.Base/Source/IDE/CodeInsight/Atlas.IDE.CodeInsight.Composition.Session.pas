@@ -108,7 +108,8 @@ uses
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Diagnostics.BugReport,
-  Atlas.IDE.CodeInsight.Composition.Adapters;
+  Atlas.IDE.CodeInsight.Composition.Adapters,
+  Atlas.IDE.Foundation.Host;
 
 const
   cMessageGroup = 'Atlas';
@@ -135,7 +136,7 @@ begin
     ManagerRef := ManagerInstance;
     // „Protokoll öffnen“ an den Einträgen des Servers in der Benachrichtigungszentrale (#601).
     ManagerInstance.OnOpenLog := OpenLog;
-    // Nach zwei gleichen Abstürzen des Servers bietet die Meldung den Fehlerbericht an (Bericht H5).
+    // Nach zwei gleichen Abstürzen des Servers bietet die Meldung den Fehlerbericht an.
     ManagerInstance.OnBugReport := CreateBugReport;
     // Absturzfälle des Servers (#1355): „Issue anlegen“ in der Meldung.
     ManagerInstance.OnCrashIssue := CreateCrashIssue;
@@ -231,22 +232,6 @@ begin
   end;
 end;
 
-/// <summary>Gruppe Atlas der Meldungsansicht, bei Bedarf angelegt; False ohne Meldungsansicht.</summary>
-function MessageGroup(out AMessages: IOTAMessageServices; out AGroup: IOTAMessageGroup): Boolean;
-begin
-  AGroup := nil;
-  Result := Supports(BorlandIDEServices, IOTAMessageServices, AMessages);
-  if not Result then
-  begin
-    Exit;
-  end;
-  AGroup := AMessages.GetGroup(cMessageGroup);
-  if AGroup = nil then
-  begin
-    AGroup := AMessages.AddMessageGroup(cMessageGroup);
-  end;
-end;
-
 procedure GuardWarning(const AText: string);
 begin
   ReportLine(AText);
@@ -254,14 +239,8 @@ begin
 end;
 
 procedure MessageLine(const AText: string);
-var
-  mMessages: IOTAMessageServices;
-  mGroup: IOTAMessageGroup;
 begin
-  if MessageGroup(mMessages, mGroup) then
-  begin
-    mMessages.AddTitleMessage(AText, mGroup);
-  end;
+  TAtlasIdeHost.Message(AText);
 end;
 
 procedure ShowAtlasMessages;

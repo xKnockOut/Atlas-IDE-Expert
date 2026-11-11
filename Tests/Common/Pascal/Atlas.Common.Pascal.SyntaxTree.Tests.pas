@@ -1,8 +1,8 @@
 ﻿unit Atlas.Common.Pascal.SyntaxTree.Tests;
 
-// Tests für den Besucher TSyntaxNode.Walk (Review P-03), die Suche
-// TSyntaxNode.Search, die Baumtiefe TSyntaxTree.Depth/Deepest (#1094,
-// Bericht M1) und die Token-Suche FirstTokenFrom/IdentifierAt (#1323).
+// Tests für den Besucher TSyntaxNode.Walk, die Suche
+// TSyntaxNode.Search, die Baumtiefe TSyntaxTree.Depth/Deepest (#1094)
+// und die Token-Suche FirstTokenFrom/IdentifierAt (#1323).
 
 interface
 
@@ -26,7 +26,7 @@ type
     procedure SearchFindsFirstMatchInTreeOrder;
     [Test]
     procedure SearchSkipLeavesOutChildren;
-    /// <summary>Bericht M1: Walk und Search arbeiten ohne Rekursion.</summary>
+    /// <summary>Walk und Search arbeiten ohne Rekursion.</summary>
     [Test]
     procedure WalkAndSearchOfDeepTreeNeedLittleStack;
     [Test]

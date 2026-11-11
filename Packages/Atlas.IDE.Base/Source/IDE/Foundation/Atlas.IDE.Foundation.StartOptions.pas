@@ -6,7 +6,7 @@
 // Parameter, #396) und das Auslösen von „Start“ bzw. „Ohne Debugger
 // starten“. Zwei Module nutzen das: die Startprofile (Modul Build, #575) und
 // „Test debuggen“ (Modul Tests, #585). Deshalb liegt es in Base und nicht in
-// einem der beiden; ein Modul kennt das andere nicht (ADR 0017 Regel 9).
+// einem der beiden; ein Modul kennt das andere nicht (Modulregel 9).
 // - Vorübergehende Startparameter (Test debuggen, #585): RunTemporary merkt
 //   die Startoptionen in der lokalen Datei der Startprofile ("temporary"),
 //   schreibt die neuen Parameter, macht das Projekt aktiv und löst „Start“

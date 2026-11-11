@@ -16,7 +16,7 @@ uses
 
 type
   /// <summary>Position im Text: Zeile und Spalte, beide ab 0, Spalte in UTF-16-Codeeinheiten.
-  /// Derselbe Typ wie in Atlas.Text.Lines (ADR 0012), damit TLineTable ohne Umrechnung passt.</summary>
+  /// Derselbe Typ wie in Atlas.Text.Lines, damit TLineTable ohne Umrechnung passt.</summary>
   TTextPosition = Atlas.Text.Lines.TTextPosition;
 
   /// <summary>Bereich von StartPos (einschließlich) bis EndPos (ausschließlich).</summary>

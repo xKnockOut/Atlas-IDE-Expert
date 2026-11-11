@@ -284,7 +284,7 @@ var
   mNode: TSyntaxNode;
   mPending: TStack<TSyntaxNode>;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ANode);
@@ -316,7 +316,7 @@ var
   mNode: TSyntaxNode;
   mPending: TStack<TSyntaxNode>;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ANode);
@@ -382,7 +382,7 @@ function OperandName(ANode: TSyntaxNode): string;
 var
   mNode: TSyntaxNode;
 begin
-  // Iterativ (Bericht M1): an Aufrufen, Indizes und Klammern entlang nach links.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): an Aufrufen, Indizes und Klammern entlang nach links.
   mNode := ANode;
   while ((mNode.Kind in [TSyntaxKind.Call, TSyntaxKind.IndexAccess]) and (mNode.ChildCount > 0)) or
     ((mNode.Kind = TSyntaxKind.ParenExpr) and (mNode.ChildCount = 1)) do
@@ -406,7 +406,7 @@ begin
   Result := False;
   AKind := Default(TIntegerKind);
   ATypeName := '';
-  // Iterativ (Bericht M1): Klammern ablösen statt sich selbst aufzurufen.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Klammern ablösen statt sich selbst aufzurufen.
   mNode := ANode;
   while (mNode.Kind = TSyntaxKind.ParenExpr) and (mNode.ChildCount = 1) do
   begin

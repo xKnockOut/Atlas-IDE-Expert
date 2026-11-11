@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Diagnostics.FeatureTable.Tests;
 
-// Startreihenfolge, Abbau und Stufen der Feature-Tabelle (Code-Review S-03);
-// Startanteile je Teil (Bericht N4); Modul-Schalter (#1454).
+// Startreihenfolge, Abbau und Stufen der Feature-Tabelle;
+// Startanteile je Teil; Modul-Schalter (#1454).
 
 interface
 
@@ -270,7 +270,7 @@ var
   Tick: Int64;
   Parts: TArray<TAtlasStartPart>;
 begin
-  // Bericht N4: Beim Start misst die Tabelle jedes gestartete Teil, damit ein langsamer Start seine Ursache nennt.
+  // Beim Start misst die Tabelle jedes gestartete Teil, damit ein langsamer Start seine Ursache nennt.
   Tick := 0;
   Clock :=
     function: Int64

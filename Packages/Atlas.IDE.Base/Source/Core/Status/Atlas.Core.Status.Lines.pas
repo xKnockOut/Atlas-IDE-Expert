@@ -5,7 +5,7 @@
 // Daten, die die IDE-Schicht sammelt.
 // - Server: nicht gestartet (neutral), wird gestartet (gelb), läuft seit
 //   Uhrzeit (grün; gelb ab SlowMs mittlerer Antwortzeit), von Atlas beendet
-//   (neutral), abgestürzt mit Zeitpunkt und Ursache (Exit-Code, Bericht H5)
+//   (neutral), abgestürzt mit Zeitpunkt und Ursache (Exit-Code)
 //   oder Start fehlgeschlagen (rot).
 //   Antwortzeit über die letzten 50 Anfragen (#28).
 // - Index: wird aufgebaut (gelb, mit Prozent) oder Anzahl Units (grün) mit
@@ -38,7 +38,7 @@ type
     AverageMs: Double;
     Samples: Integer;
     /// <summary>Grund bei Failed (ohne Pfade); bei einem abgestürzten Server die Ursache, etwa
-    /// „Stapelüberlauf (0xC00000FD)“ (Bericht H5).</summary>
+    /// „Stapelüberlauf (0xC00000FD)“.</summary>
     Error: string;
     /// <summary>Beginn der Phase in Ortszeit: Start bei Running, Ende bei Stopped und Failed; 0 = unbekannt
     /// (#754).</summary>

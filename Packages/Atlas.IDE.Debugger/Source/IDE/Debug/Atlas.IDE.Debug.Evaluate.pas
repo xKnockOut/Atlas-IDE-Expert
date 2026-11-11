@@ -119,7 +119,7 @@ type
     TEvaluation = class(TRun)
     private
       FList: TAtlasEvalList;
-      FWaitAt: Cardinal;
+      FWaitAt: UInt64;
       procedure Done(const AValue: TAtlasDebugValue);
       function EvaluateOne(ANode: TAtlasEvalNode; const APlace: TPlace; ASideEffects: Boolean): TSliceStep;
     public
@@ -226,7 +226,8 @@ uses
   Atlas.IDE.Debug.Unavailable,
   Atlas.IDE.Debug.DialogCompletion,
   Atlas.IDE.Debug.EvaluateWindow,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Strings,
+  Atlas.Core.Diagnostics.Deadline;
 
 /// <summary>Das Fenster, falls es schon besteht; sonst nil.</summary>
 function Frame: TAtlasDebugEvaluateFrame;
@@ -610,7 +611,7 @@ end;
 
 function TAtlasIdeDebugEvaluate.TEvaluation.Overdue: Boolean;
 begin
-  Result := Waiting and (TThread.GetTickCount - FWaitAt >= cDeferredTimeoutMs);
+  Result := Waiting and (TAtlasTicks.Since(FWaitAt) >= cDeferredTimeoutMs);
 end;
 
 procedure TAtlasIdeDebugEvaluate.TEvaluation.Expire;
@@ -660,7 +661,7 @@ begin
     TAtlasDebugValueState.Pending:
       begin
         FKey := ANode.Key;
-        FWaitAt := TThread.GetTickCount;
+        FWaitAt := TAtlasTicks.Now;
         Result := TSliceStep.Wait;
       end;
     TAtlasDebugValueState.None:
@@ -674,15 +675,15 @@ end;
 function TAtlasIdeDebugEvaluate.TEvaluation.Slice(const APlace: TPlace; ASideEffects: Boolean;
   out AChanged: Boolean): TSliceStep;
 var
-  mStartedAt: Cardinal;
+  mStartedAt: UInt64;
   mNode: TAtlasEvalNode;
 begin
   AChanged := False;
   Result := TSliceStep.Next;
-  mStartedAt := TThread.GetTickCount;
+  mStartedAt := TAtlasTicks.Now;
   for mNode in FList.Pending do
   begin
-    if TThread.GetTickCount - mStartedAt >= cSliceMs then
+    if TAtlasTicks.Since(mStartedAt) >= cSliceMs then
     begin
       Exit;
     end;

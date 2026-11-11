@@ -24,7 +24,7 @@ type
     class function Find(const AFolder: string; AProvider: TAtlasVcsProvider): TAtlasVcsWorkingCopy; overload;
       static;
     /// <summary>AFileName relativ zur Wurzel ARoot der Arbeitskopie; False, wenn die Datei nicht darunter liegt.
-    /// Für den Host, der Internals nicht importieren darf (Rollenmatrix, Code-Review A-12).</summary>
+    /// Für den Host, der Internals nicht importieren darf (Rollenmatrix).</summary>
     class function RelativePath(const ARoot, AFileName: string; out ARelative: string): Boolean; static;
   end;
 

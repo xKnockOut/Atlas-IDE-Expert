@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Designer.SettingsSection;
 
-// Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil
+// Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456; vorher im Teil
 // „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Tab-Reihenfolge (#603),
 // Gleiche auswählen (#738), Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen
 // (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728), Label und
@@ -114,6 +114,14 @@ begin
   Line('designer.scalePreviewLevels', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsScaleLevels));
   Line('designer.scalePreviewScreens', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsScaleScreens));
   Number('designer.longTextFactor', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsLongTextFactor));
+  Switch('designer.nameSuggest', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameSuggest));
+  Line('designer.nameSuggestSources', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameSources));
+  Choice('designer.nameSuggestUmlauts', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameUmlauts),
+    [TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameReplace),
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameRemove)], ['replace', 'remove']);
+  Switch('designer.nameSuggestRenameHandlers',
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameHandlers));
+  Line('designer.nameSuggestPrefixes', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNamePrefixes));
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildArrangeRows;

@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Contracts.BuildRequests;
 
-// Vertrag zwischen Modulen (#1888, ADR 0017 Regel 6): Das Modul Build-Pipeline
+// Vertrag zwischen Modulen (#1888, Modulregel 6): Das Modul Build-Pipeline
 // stellt über seinen Scope einen IAtlasBuildRequests bereit (ein Projekt in
 // der laufenden IDE über IOTAProjectBuilder bauen, #261); das Modul
 // KI-Assistenten nimmt Build-Aufträge von MCP-Clients an und fragt ihn über die

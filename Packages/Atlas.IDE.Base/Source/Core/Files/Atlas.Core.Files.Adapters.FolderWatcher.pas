@@ -48,6 +48,9 @@ type
 
 implementation
 
+uses
+  Atlas.Core.Diagnostics.Deadline;
+
 type
   // FILE_NOTIFY_INFORMATION; Winapi.Windows deklariert den Satz nicht.
   PFileNotifyInformation = ^TFileNotifyInformation;
@@ -94,9 +97,9 @@ procedure TAtlasFolderWatcher.TWatchThread.Report(ABuffer: PByte);
 var
   mEntry: PFileNotifyInformation;
   mName: string;
-  mStamp: Cardinal;
+  mStamp: UInt64;
 begin
-  mStamp := GetTickCount;
+  mStamp := TAtlasTicks.Now;
   mEntry := PFileNotifyInformation(ABuffer);
   while True do
   begin

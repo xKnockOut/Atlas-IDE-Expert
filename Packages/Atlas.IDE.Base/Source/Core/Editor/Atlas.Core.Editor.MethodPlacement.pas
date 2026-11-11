@@ -85,29 +85,12 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
+  Atlas.Text.Json,
   Atlas.Text.Lines;
 
 const
   cRoutineWords: array[0..6] of string = ('procedure ', 'function ', 'constructor ', 'destructor ', 'operator ',
     'class procedure ', 'class function ');
-
-function IntegerOf(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
-begin
-  Result := ADefault;
-  if AObject.GetValue(AName) is TJSONNumber then
-  begin
-    Result := TJSONNumber(AObject.GetValue(AName)).AsInt;
-  end;
-end;
-
-function StringOf(AObject: TJSONObject; const AName: string): string;
-begin
-  Result := '';
-  if AObject.GetValue(AName) is TJSONString then
-  begin
-    Result := TJSONString(AObject.GetValue(AName)).Value;
-  end;
-end;
 
 /// <summary>Kopf einer Methode mit Typ: "procedure TFoo.Bar", auch class procedure und constructor.</summary>
 function IsMethodHeader(const ALine: string): Boolean;
@@ -214,14 +197,14 @@ begin
       end;
       mItem := TJSONObject(mElement);
       mMove := Default(TAtlasMethodMove);
-      mMove.TypeName := StringOf(mItem, 'type');
-      mMove.Name := StringOf(mItem, 'name');
-      mMove.Line := IntegerOf(mItem, 'line', 0);
-      mMove.NewLine := IntegerOf(mItem, 'newLine', -1);
-      mMove.Size := IntegerOf(mItem, 'size', 1);
-      mMove.Delta := IntegerOf(mItem, 'delta', 0);
+      mMove.TypeName := TJsonRead.Text(mItem, 'type');
+      mMove.Name := TJsonRead.Text(mItem, 'name');
+      mMove.Line := TJsonRead.IntOr(mItem, 'line', 0);
+      mMove.NewLine := TJsonRead.IntOr(mItem, 'newLine', -1);
+      mMove.Size := TJsonRead.IntOr(mItem, 'size', 1);
+      mMove.Delta := TJsonRead.IntOr(mItem, 'delta', 0);
       mMove.Fixed := (mItem.GetValue('fixed') is TJSONBool) and TJSONBool(mItem.GetValue('fixed')).AsBoolean;
-      mMove.Reason := StringOf(mItem, 'reason');
+      mMove.Reason := TJsonRead.Text(mItem, 'reason');
       AReply.Moves := AReply.Moves + [mMove];
     end;
   end;

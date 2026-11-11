@@ -2,7 +2,7 @@
 
 // Datenquelle der Vervollständigung (#408): Die Oberfläche (Popup, #410) kennt
 // nur IAtlasCompletionProvider und weiß nicht, woher die Einträge kommen.
-// Standardquelle ist der Atlas-Server (ADR 0001, ADR 0006); weitere Quellen
+// Standardquelle ist der Atlas-Server; weitere Quellen
 // (Snippets #51, DelphiLSP #63, Testdaten) werden über TAtlasCompletionProviders
 // zusammengeführt.
 //

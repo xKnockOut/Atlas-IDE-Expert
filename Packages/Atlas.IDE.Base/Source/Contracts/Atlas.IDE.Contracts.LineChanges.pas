@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Contracts.LineChanges;
 
-// Vertrag zwischen Modulen (#1905, ADR 0017 Regeln 4 und 6): Änderungsmarken und Zeilenhistorie im Editor (#507).
+// Vertrag zwischen Modulen (#1905, Modulregeln 4 und 6): Änderungsmarken und Zeilenhistorie im Editor (#507).
 // Das Modul Versionsverwaltung zeichnet sie und meldet für die Zeit, in der sein Teil läuft, ein IAtlasLineChanges bei
 // TAtlasLineChangeMarks an (Bind, Bind(nil) beim Stoppen). Base fragt darüber die Übersichtsleiste (Snapshot), die
 // Tasten und die Palette (Enabled, GoToChange); ohne Modul antwortet ein Null-Objekt: keine Marken, Tasten ohne

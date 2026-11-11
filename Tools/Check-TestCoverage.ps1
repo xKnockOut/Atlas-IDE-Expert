@@ -16,7 +16,7 @@
        einbindet, muss samt allen Plugin-Units, die sie ihrerseits einbindet, in
        Tests/Atlas.Tests.dpr stehen. Das Testprojekt hat keinen Suchpfad auf die
        Plugin-Quellen; Delphi fände sie sonst nicht.
-    5. Testkategorie je Modul (#1455, ADR 0017): Jede Testklasse einer Testunit,
+    5. Testkategorie je Modul (#1455): Jede Testklasse einer Testunit,
        deren Unit zu einem Modul gehört, trägt [Category('<Package>')], z. B.
        [Category('Atlas.IDE.Debugger')]; damit laufen die Tests eines Moduls
        allein (--include:Atlas.IDE.Debugger). Das Package der Unit "<Unit>"
@@ -161,7 +161,7 @@ foreach ($key in $needed.Keys) {
     }
 }
 
-# Testkategorie je Modul (#1455, ADR 0017).
+# Testkategorie je Modul (#1455).
 $assignmentPath = Join-Path $Root 'docs/adr/0017-unit-zuordnung.md'
 if (Test-Path $assignmentPath) {
     $unitPackage = @{}

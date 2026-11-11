@@ -75,37 +75,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  System.JSON;
-
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end
-  else
-  begin
-    Result := '';
-  end;
-end;
-
-function NumberOf(AObject: TJSONObject; const AName: string): Integer;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end
-  else
-  begin
-    Result := 0;
-  end;
-end;
+  System.JSON,
+  Atlas.Text.Json;
 
 function JsonText(const AValue: string): string;
 var
@@ -163,16 +134,6 @@ begin
   end;
 end;
 
-/// <summary>Feld AName von AValue, wenn AValue ein Objekt und das Feld ein Array ist; sonst nil.</summary>
-function ArrayOf(AValue: TJSONValue; const AName: string): TJSONArray;
-begin
-  Result := nil;
-  if (AValue is TJSONObject) and (TJSONObject(AValue).GetValue(AName) is TJSONArray) then
-  begin
-    Result := TJSONArray(TJSONObject(AValue).GetValue(AName));
-  end;
-end;
-
 /// <summary>Objekte von AArray in Reihenfolge; andere Werte fallen weg; leer ohne Array.</summary>
 function ObjectsOf(AArray: TJSONArray): TArray<TJSONObject>;
 var
@@ -195,7 +156,7 @@ end;
 /// <summary>Eintrag eines Todos der Datei AFileName; Position 0-basiert, nie negativ.</summary>
 function TodoEntryOf(const AFileName: string; ATodo: TJSONObject): TAtlasResultEntry;
 begin
-  Result := TAtlasResultEntry.Create(AFileName, NumberOf(ATodo, 'line') - 1, NumberOf(ATodo, 'character') - 1);
+  Result := TAtlasResultEntry.Create(AFileName, TJsonRead.Int(ATodo, 'line') - 1, TJsonRead.Int(ATodo, 'character') - 1);
   if Result.Line < 0 then
   begin
     Result.Line := 0;
@@ -204,19 +165,19 @@ begin
   begin
     Result.Character := 0;
   end;
-  Result.Text := TAtlasTodoList.Caption(TextOf(ATodo, 'keyword'), NumberOf(ATodo, 'priority'),
-    TextOf(ATodo, 'category'), TextOf(ATodo, 'owner'), TextOf(ATodo, 'text'));
+  Result.Text := TAtlasTodoList.Caption(TJsonRead.Text(ATodo, 'keyword'), TJsonRead.Int(ATodo, 'priority'),
+    TJsonRead.Text(ATodo, 'category'), TJsonRead.Text(ATodo, 'owner'), TJsonRead.Text(ATodo, 'text'));
 end;
 
 /// <summary>Kategorie, Person und Marke eines Todos in AChoices aufnehmen.</summary>
 procedure AddTodoChoices(var AChoices: TAtlasTodoChoices; ATodo: TJSONObject);
 begin
-  AddDistinct(AChoices.Categories, TextOf(ATodo, 'category'));
-  AddDistinct(AChoices.Owners, TextOf(ATodo, 'owner'));
+  AddDistinct(AChoices.Categories, TJsonRead.Text(ATodo, 'category'));
+  AddDistinct(AChoices.Owners, TJsonRead.Text(ATodo, 'owner'));
   // Erledigt ist kein Filter nach Marke, sondern „Erledigte zeigen“.
-  if not SameText(TextOf(ATodo, 'keyword'), 'DONE') then
+  if not SameText(TJsonRead.Text(ATodo, 'keyword'), 'DONE') then
   begin
-    AddDistinct(AChoices.Keywords, UpperCase(TextOf(ATodo, 'keyword')));
+    AddDistinct(AChoices.Keywords, UpperCase(TJsonRead.Text(ATodo, 'keyword')));
   end;
 end;
 
@@ -353,17 +314,17 @@ begin
   AEntries := nil;
   mValue := ParseJson(AJson);
   try
-    mFiles := ArrayOf(mValue, 'files');
+    mFiles := TJsonRead.Items(TJsonRead.AsObject(mValue), 'files');
     Result := mFiles <> nil;
     if not Result then
     begin
       Exit;
     end;
-    mRootPath := TextOf(TJSONObject(mValue), 'root');
+    mRootPath := TJsonRead.Text(TJSONObject(mValue), 'root');
     for mFileItem in ObjectsOf(mFiles) do
     begin
-      mFileName := FullPath(mRootPath, TextOf(mFileItem, 'file'));
-      for mTodo in ObjectsOf(ArrayOf(mFileItem, 'todos')) do
+      mFileName := FullPath(mRootPath, TJsonRead.Text(mFileItem, 'file'));
+      for mTodo in ObjectsOf(TJsonRead.Items(TJsonRead.AsObject(mFileItem), 'todos')) do
       begin
         AEntries := AEntries + [TodoEntryOf(mFileName, mTodo)];
       end;
@@ -382,7 +343,7 @@ begin
   AChoices := Default(TAtlasTodoChoices);
   mValue := ParseJson(AJson);
   try
-    mFiles := ArrayOf(mValue, 'files');
+    mFiles := TJsonRead.Items(TJsonRead.AsObject(mValue), 'files');
     Result := mFiles <> nil;
     if not Result then
     begin
@@ -390,8 +351,8 @@ begin
     end;
     for mFileItem in ObjectsOf(mFiles) do
     begin
-      AddDistinct(AChoices.Units, TextOf(mFileItem, 'unit'));
-      for mTodo in ObjectsOf(ArrayOf(mFileItem, 'todos')) do
+      AddDistinct(AChoices.Units, TJsonRead.Text(mFileItem, 'unit'));
+      for mTodo in ObjectsOf(TJsonRead.Items(TJsonRead.AsObject(mFileItem), 'todos')) do
       begin
         AddTodoChoices(AChoices, mTodo);
       end;

@@ -1,7 +1,6 @@
 ﻿unit Atlas.UI.Welcome.SettingsSection;
 
-// Abschnitt „Willkommensseite“ des Moduls im Optionsdialog (#1456, ADR 0017
-// Entscheidung 3; vorher Teil von Atlas.UI.Settings.Page). Die Seite von Base
+// Abschnitt „Willkommensseite“ des Moduls im Optionsdialog (#1456). Die Seite von Base
 // baut ihn über IAtlasSettingsSectionHost in den Bereich „welcome“, unter den
 // Modulschalter, der bei Base bleibt. Schalter, Zahlen, Texte und Auswahlen
 // hängen an ihrem Schlüssel und lädt und speichert die Seite selbst. Eigene

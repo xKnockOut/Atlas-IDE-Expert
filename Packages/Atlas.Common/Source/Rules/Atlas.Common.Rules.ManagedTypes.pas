@@ -118,7 +118,7 @@ begin
   end;
 end;
 
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 function TManagedTypes.FieldsManaged(ARecord: TSyntaxNode; ADepth: Integer): string;
 var
   mPending: TStack<TSyntaxNode>;
@@ -364,7 +364,7 @@ begin
   end;
 end;
 
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 function TManagedTypes.FieldsCustomManaged(ARecord: TSyntaxNode; ADepth: Integer): Boolean;
 var
   mPending: TStack<TSyntaxNode>;

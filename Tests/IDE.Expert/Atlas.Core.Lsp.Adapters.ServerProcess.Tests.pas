@@ -21,11 +21,11 @@ type
     procedure PullsDiagnosticsAgainstServer;
     [Test]
     procedure CompilerMessagesReachPulledDiagnostics;
-    /// <summary>Scheitert der Start, bleiben keine Handles offen (Code-Review S-07).</summary>
+    /// <summary>Scheitert der Start, bleiben keine Handles offen.</summary>
     [Test]
     procedure StartFailureLeavesNoHandles;
     /// <summary>Endet der Prozess, kennt der Client Exit-Code und Zeilen auf stderr; stderr steht in
-    /// server-stderr.log (Bericht H5).</summary>
+    /// server-stderr.log.</summary>
     [Test]
     procedure EndReportsExitCodeAndStderr;
   end;
@@ -54,7 +54,7 @@ procedure TLspServerProcessTests.WarmUpFirstUse;
 begin
   StartFailureLeavesNoHandles;
   // Erster echter Start (Pipes, Lese- und Schreib-Thread, Sitzung) ungemessen statt [IgnoreMemoryLeaks]
-  // (Bericht N2). Ohne Server neben dem Testprogramm überspringen die Tests ohnehin.
+  //. Ohne Server neben dem Testprogramm überspringen die Tests ohnehin.
   if FileExists(TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe')) then
     try
       HoverAndDefinitionAgainstServer;

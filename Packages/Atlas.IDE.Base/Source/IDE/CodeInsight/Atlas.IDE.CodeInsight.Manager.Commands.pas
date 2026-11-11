@@ -277,7 +277,7 @@ var
 begin
   mCommand := ACommand;
   mTimeout := ATimeoutMs;
-  // Start gehört dem Hauptthread (A-01); ohne Server gleich die Antwort „keine“.
+  // Start gehört dem Hauptthread; ohne Server gleich die Antwort „keine“.
   RunInBackground(SessionOrNil,
     function(ASession: TLspSession): TJSONValue
     begin

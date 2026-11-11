@@ -7,7 +7,7 @@
 // Erkennung: BOM zuerst (UTF-8, UTF-16 LE/BE); ohne BOM gültiges UTF-8 als
 // UTF-8 ohne BOM (reines ASCII ebenso), sonst ANSI. Zeilenenden: nur CRLF,
 // nur LF, nur CR, gemischt oder keine. Die Prüfungen kommen aus Atlas.Text
-// (ADR 0012).
+//.
 
 interface
 

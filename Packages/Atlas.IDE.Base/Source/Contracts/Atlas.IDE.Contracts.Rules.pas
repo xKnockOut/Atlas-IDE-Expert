@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Contracts.Rules;
 
-// Vertrag zwischen Modulen (#1455, ADR 0017 Regel 6): Das Modul Prüfregeln
+// Vertrag zwischen Modulen (#1455, Modulregel 6): Das Modul Prüfregeln
 // stellt über seinen Scope eine IAtlasBaselineSource bereit (Baseline des
 // Projekts über den Server aktualisieren, #97); die Einrichtung der
 // Willkommensseite (#759) fragt sie über die Registry und kommt ohne das

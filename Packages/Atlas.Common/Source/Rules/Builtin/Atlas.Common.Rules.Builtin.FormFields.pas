@@ -213,7 +213,7 @@ begin
   inherited;
 end;
 
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 function TFormMatch.FindClass(ANode: TSyntaxNode; const AName: string): TSyntaxNode;
 var
   mPending: TStack<TSyntaxNode>;
@@ -690,7 +690,7 @@ var
     Result := False;
   end;
 
-  // Deklariert die Routine AName selbst (Parameter, lokale Variable)? Iterativ (Bericht M1).
+  // Deklariert die Routine AName selbst (Parameter, lokale Variable)? Iterativ (tiefe Bäume sprengen den Stapel nicht).
   function DeclaresLocally(ANode: TSyntaxNode; const AName: string): Boolean;
   var
     mPending: TStack<TSyntaxNode>;

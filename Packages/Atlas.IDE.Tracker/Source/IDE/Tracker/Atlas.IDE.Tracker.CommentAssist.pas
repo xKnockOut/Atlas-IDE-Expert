@@ -32,7 +32,8 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CommentEditor,
-  Atlas.Core.Tracker.PaletteSearch;
+  Atlas.Core.Tracker.PaletteSearch,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 type
   TAtlasCommentProviderHook = reference to function(const AName: string): IAtlasTrackerProvider;
@@ -70,7 +71,7 @@ type
     FDrafts: TAtlasCommentDrafts;
     FDraftsLoaded: Boolean;
     FUsers: TDictionary<string, TCachedUsers>;
-    FWorkers: TList<TThread>;
+    FWorkers: TAtlasWorkerSlot;
     function DraftFile: string;
     procedure LoadDrafts;
     procedure SaveDrafts;
@@ -165,13 +166,12 @@ begin
   FStarted := True;
   FDrafts := TAtlasCommentDrafts.Create;
   FUsers := TDictionary<string, TCachedUsers>.Create;
-  FWorkers := TList<TThread>.Create;
+  FWorkers := TAtlasWorkerSlot.Create(HInstance);
 end;
 
 destructor TAtlasIdeCommentService.Destroy;
 begin
   Stop;
-  ReleaseThreads(True);
   FWorkers.Free;
   FUsers.Free;
   FDrafts.Free;
@@ -201,46 +201,13 @@ begin
 end;
 
 procedure TAtlasIdeCommentService.ReleaseThreads(AWait: Boolean);
-var
-  mIndex: Integer;
-  mThread: TThread;
-  mWait: TArray<TThread>;
 begin
-  if AWait then
-  begin
-    mWait := nil;
-    for mIndex := 0 to FWorkers.Count - 1 do
-    begin
-      mWait := mWait + [FWorkers[mIndex]];
-    end;
-    if Length(mWait) > 0 then
-    begin
-      TAtlasShutdown.WaitForThreads(mWait);
-    end;
-  end;
-  for mIndex := FWorkers.Count - 1 downto 0 do
-  begin
-    mThread := FWorkers[mIndex];
-    if mThread.Finished then
-    begin
-      mThread.Free;
-      FWorkers.Delete(mIndex);
-    end
-    else if AWait then
-    begin
-      // Läuft noch (Zeitgrenze): räumt sich selbst auf.
-      mThread.FreeOnTerminate := True;
-      FWorkers.Delete(mIndex);
-    end;
-  end;
+  FWorkers.Release(AWait);
 end;
 
 procedure TAtlasIdeCommentService.AddWorker(AThread: TThread);
 begin
-  ReleaseThreads(False);
-  AThread.FreeOnTerminate := False;
-  FWorkers.Add(AThread);
-  AThread.Start;
+  FWorkers.Start(AThread);
 end;
 
 function TAtlasIdeCommentService.DraftFile: string;

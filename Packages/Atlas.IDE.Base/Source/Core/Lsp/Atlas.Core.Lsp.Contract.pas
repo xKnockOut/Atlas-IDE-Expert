@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Lsp.Contract;
 
-// Werttypen, die der LSP-Client (TLspSession) liefert und die Features darüber verwenden (A-09): Probleme
+// Werttypen, die der LSP-Client (TLspSession) liefert und die Features darüber verwenden: Probleme
 // (Diagnosen, #398), Symbole der projektweiten Suche und Einträge der Typ- und Aufrufhierarchie (#400),
 // Treffersicherheit einer Fundstelle (#1119), Ergebnis der Auswirkungsanalyse (#1120) und Bezeichner für
 // Werte beim Debuggen (#508).

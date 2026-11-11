@@ -99,7 +99,7 @@ var
 begin
   mRoot := ANode;
   mTypeName := ATypeName;
-  // Search statt Rekursion (Bericht M1).
+  // Search statt Rekursion.
   mFound := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -202,7 +202,7 @@ begin
   mFileName := AFileName;
   mTypeName := ATypeName;
   mList := AList;
-  // Walk statt Rekursion (Bericht M1); die Reihenfolge der Behandler bleibt die des Quelltexts.
+  // Walk statt Rekursion; die Reihenfolge der Behandler bleibt die des Quelltexts.
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     begin

@@ -260,7 +260,6 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.UI.Architecture.Assignment,
-  Atlas.UI.Strings,
   Atlas.UI.Analysis.Strings;
 
 {$R *.dfm}
@@ -671,8 +670,8 @@ begin
     mScope.Items.BeginUpdate;
     try
       mScope.Items.Clear;
-      mScope.Items.Add(TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeGroup));
-      mScope.Items.Add(TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeProject));
+      mScope.Items.Add(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureScopeGroup));
+      mScope.Items.Add(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureScopeProject));
     finally
       mScope.Items.EndUpdate;
     end;

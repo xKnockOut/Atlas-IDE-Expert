@@ -122,10 +122,10 @@ var
   mLines: TArray<string>;
 begin
   mLines := TAtlasFitText.Lines('&Erste' + #13#10 + 'zweite Zeile' + #10 + 'drei');
-  Assert.AreEqual(3, Length(mLines));
+  Assert.AreEqual(3, Integer(Length(mLines)));
   Assert.AreEqual('Erste', mLines[0]);
   Assert.AreEqual('zweite Zeile', mLines[1]);
-  Assert.AreEqual(1, Length(TAtlasFitText.Lines('')));
+  Assert.AreEqual(1, Integer(Length(TAtlasFitText.Lines(''))));
 end;
 
 end.

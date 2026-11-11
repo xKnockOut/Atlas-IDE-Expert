@@ -33,7 +33,7 @@
 // zum Ordner der Datei (mit "/"), damit sie in jedem Klon gelten.
 // Lesbar ohne Server und ohne geöffnetes Projekt (Load), etwa für
 // „Weiterarbeiten“ auf der Willkommensseite (#755).
-// Lesen und Schreiben über TAtlasDataFile (Bericht N3): atomar ersetzt
+// Lesen und Schreiben über TAtlasDataFile: atomar ersetzt
 // (früher Löschen und Umbenennen), eine unbrauchbare Datei liegt danach als
 // .defekt daneben; eine beim Lesen gesperrte merkt sich die Liste
 // (KeptFile), und Save überschreibt sie nicht.
@@ -119,7 +119,7 @@ type
     /// <summary>Gelesener Text der Datei; ToJson behält daraus unbekannte Felder.</summary>
     Raw: string;
     /// <summary>Vorhandene Datei, die beim Lesen gesperrt war: Save überschreibt sie nicht, sonst gingen ihre
-    /// Lesezeichen verloren (Bericht N3). '' sonst.</summary>
+    /// Lesezeichen verloren. '' sonst.</summary>
     KeptFile: string;
     class function Create(const AProject: string): TAtlasBookmarkList; static;
     function Count: Integer;
@@ -217,7 +217,8 @@ uses
   System.JSON,
   System.Math,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Files.DataFile;
+  Atlas.Core.Files.DataFile,
+  Atlas.Text.Json;
 
 const
   // Bekannte Felder; alles andere bleibt beim Schreiben erhalten.
@@ -684,58 +685,6 @@ begin
   end;
 end;
 
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
-function NumberOf(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := ADefault;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end
-  else if mValue is TJSONString then
-  begin
-    Result := StrToIntDef(TJSONString(mValue).Value, ADefault);
-  end;
-end;
-
-function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  Result := False;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONBool then
-  begin
-    Result := SameText(mValue.Value, 'true');
-  end;
-end;
-
 function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
 var
   mValue: TJSONValue;
@@ -888,8 +837,8 @@ end;
 function MarkOf(AObject: TJSONObject; const AFolder: string; out AMark: TAtlasBookmark): Boolean;
 begin
   AMark := Default(TAtlasBookmark);
-  AMark.Id := TextOf(AObject, 'id');
-  AMark.FileName := TextOf(AObject, 'file');
+  AMark.Id := TJsonRead.Text(AObject, 'id');
+  AMark.FileName := TJsonRead.Text(AObject, 'file');
   // Ohne Kennung oder Datei lässt sich das Lesezeichen weder zeigen noch ändern.
   Result := (AMark.Id <> '') and (AMark.FileName <> '');
   if not Result then
@@ -897,26 +846,26 @@ begin
     Exit;
   end;
   AMark.FileName := FromStored(AMark.FileName, AFolder);
-  AMark.Name := TextOf(AObject, 'name');
+  AMark.Name := TJsonRead.Text(AObject, 'name');
   // Format 1 kennt nur benannte Lesezeichen; unbekannte Arten gelten ebenfalls als benannt.
-  if SameText(TextOf(AObject, 'kind'), cKindNames[TAtlasBookmarkKind.Quick]) then
+  if SameText(TJsonRead.Text(AObject, 'kind'), cKindNames[TAtlasBookmarkKind.Quick]) then
   begin
     AMark.Kind := TAtlasBookmarkKind.Quick;
   end;
-  AMark.Number := NumberOf(AObject, 'number', 0);
+  AMark.Number := TJsonRead.IntOr(AObject, 'number', 0);
   if (AMark.Number < 1) or (AMark.Number > 9) then
   begin
     AMark.Number := 0;
   end;
-  AMark.Method := TextOf(AObject, 'method');
-  AMark.Signature := TextOf(AObject, 'signature');
-  AMark.Offset := Max(0, NumberOf(AObject, 'offset', 0));
-  AMark.Anchor.Line := Max(0, NumberOf(AObject, 'line', 1) - 1);
-  AMark.Anchor.Text := TextOf(AObject, 'lineText');
+  AMark.Method := TJsonRead.Text(AObject, 'method');
+  AMark.Signature := TJsonRead.Text(AObject, 'signature');
+  AMark.Offset := Max(0, TJsonRead.IntOr(AObject, 'offset', 0));
+  AMark.Anchor.Line := Max(0, TJsonRead.IntOr(AObject, 'line', 1) - 1);
+  AMark.Anchor.Text := TJsonRead.Text(AObject, 'lineText');
   AMark.Anchor.Before := TextsOf(AObject, 'before');
   AMark.Anchor.After := TextsOf(AObject, 'after');
-  AMark.Created := TAtlasProjectSummaries.TimeOf(TextOf(AObject, 'created'));
-  AMark.Lost := FlagOf(AObject, 'lost');
+  AMark.Created := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(AObject, 'created'));
+  AMark.Lost := TJsonRead.Flag(AObject, 'lost');
   AMark.Extra := ExtraOf(AObject);
   // Benannte ohne Namen: Datei und Zeile; schnelle bleiben ohne Namen (DisplayName).
   if (AMark.Kind = TAtlasBookmarkKind.Named) and (Trim(AMark.Name) = '') then
@@ -1076,7 +1025,7 @@ var
 begin
   mRoot := ParseObject(AJson);
   try
-    Result := NumberOf(mRoot, 'format', 0);
+    Result := TJsonRead.IntOr(mRoot, 'format', 0);
   finally
     mRoot.Free;
   end;
@@ -1099,12 +1048,12 @@ begin
       Exit;
     end;
     // Ohne "format" gilt 1; ein höheres Format kennt diese Fassung nicht.
-    if NumberOf(mRoot, 'format', 1) > cFormat then
+    if TJsonRead.IntOr(mRoot, 'format', 1) > cFormat then
     begin
       Exit;
     end;
     AList.Raw := AJson;
-    AList.Project := TextOf(mRoot, 'project');
+    AList.Project := TJsonRead.Text(mRoot, 'project');
     if AList.Project <> '' then
     begin
       AList.Project := FromStored(AList.Project, AFolder);
@@ -1324,7 +1273,7 @@ begin
       mText := mText + #10;
     end;
     mText := mText + cExcludeComment + #10 + mPattern + #10;
-    // Atomar: Ein Abbruch kürzt die Datei von Git nicht (Bericht N3).
+    // Atomar: Ein Abbruch kürzt die Datei von Git nicht.
     TAtlasDataFile.Write(mExclude, mText);
     Result := True;
   except

@@ -126,7 +126,7 @@ end;
 
 procedure TShellProtocol.RequestTimedOut(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean);
 begin
-  // Code-Review A-06: Nebenläufige Anfragen beantwortet der Watchdog selbst, die übrigen brechen nur ab.
+  // Nebenläufige Anfragen beantwortet der Watchdog selbst, die übrigen brechen nur ab.
   if AAnswered then
   begin
     FServices.Logger.Warning(Format('Anfrage %s nach %d ms mit RequestCancelled beantwortet (Zeitlimit)',

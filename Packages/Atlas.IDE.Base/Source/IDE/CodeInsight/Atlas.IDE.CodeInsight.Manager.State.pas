@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.CodeInsight.Manager.State;
 
-// Zustand des Code Insight-Managers (ADR 0006), unterste Stufe der Klassenkette State → Session → Commands →
-// Crashes → Manager: Server, Sitzung, Phase für das Statusfeld (#591, #754), Abstürze (Bericht H5, #1355), Haken der
+// Zustand des Code Insight-Managers, unterste Stufe der Klassenkette State → Session → Commands →
+// Crashes → Manager: Server, Sitzung, Phase für das Statusfeld (#591, #754), Abstürze (#1355), Haken der
 // Kompositionswurzel und das Diagnoseprotokoll.
 
 interface
@@ -56,7 +56,7 @@ type
     FPhase: TAtlasServerPhaseState;
     /// <summary>StopSession läuft: Ein Ende des Prozesses jetzt ist kein Absturz.</summary>
     FStopping: Boolean;
-    /// <summary>EnsureSession startet gerade (gegen Wiedereintritt über CheckSynchronize, Code-Review A-01).</summary>
+    /// <summary>EnsureSession startet gerade (gegen Wiedereintritt über CheckSynchronize).</summary>
     FStarting: Boolean;
     /// <summary>Shutdown ist gelaufen: Sitzung, Threads und Editor-Anbindungen sind weg (#886).</summary>
     FShutDown: Boolean;
@@ -67,7 +67,7 @@ type
     /// <summary>Erfolgreiche Starts des Servers; ab dem zweiten meldet jeder „Server neu gestartet“ (#601).
     /// </summary>
     FStarts: Integer;
-    /// <summary>Abstürze des Servers; nach zwei gleichen startet Atlas ihn nicht mehr still neu (Bericht H5).</summary>
+    /// <summary>Abstürze des Servers; nach zwei gleichen startet Atlas ihn nicht mehr still neu.</summary>
     FCrashes: TAtlasServerCrashes;
     /// <summary>Anfragen, die der Server gerade nach Absturz überspringt (#1355); nur im Hauptthread.</summary>
     FCrashSkips: TAtlasCrashSkips;
@@ -109,7 +109,7 @@ type
     /// <summary>„Protokoll öffnen“ für die Einträge der Quelle Server in der Benachrichtigungszentrale (#601).
     /// </summary>
     property OnOpenLog: TProc read FOnOpenLog write FOnOpenLog;
-    /// <summary>„Fehlerbericht erstellen…“ in der Meldung nach zwei gleichen Abstürzen des Servers (Bericht H5).
+    /// <summary>„Fehlerbericht erstellen…“ in der Meldung nach zwei gleichen Abstürzen des Servers.
     /// </summary>
     property OnBugReport: TProc read FOnBugReport write FOnBugReport;
     /// <summary>„Issue anlegen“ in der Meldung zu einem Absturzfall (#1355, Dialog aus #1268).</summary>
@@ -265,7 +265,7 @@ end;
 function TAtlasCodeInsightState.RunningSession: TLspSession;
 begin
   Result := nil;
-  // Während StopSession nie: Die Sitzung wird gleich freigegeben (A-01). Aus jedem Thread aufrufbar.
+  // Während StopSession nie: Die Sitzung wird gleich freigegeben. Aus jedem Thread aufrufbar.
   if not FStopping then
   begin
     Result := ReadySession;

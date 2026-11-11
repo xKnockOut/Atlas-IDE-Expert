@@ -29,7 +29,7 @@
 {$IMPLICITBUILD OFF}
 {$LIBSUFFIX AUTO}
 
-// Modul Issue-Tracker und Build-Server (#1456, ADR 0017): Verbindungen, Meine Issues, Sprint, Board,
+// Modul Issue-Tracker und Build-Server (#1456): Verbindungen, Meine Issues, Sprint, Board,
 // Vorschau, Zeiterfassung, Testergebnisse vom Build-Server und Fehlerberichte als Issue.
 // Meldet sich in der Unit-Initialisierung von Atlas.IDE.Tracker.Composition über die Registry
 // des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen

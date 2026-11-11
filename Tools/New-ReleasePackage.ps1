@@ -9,7 +9,7 @@
     - Output\Win32\Release\Bpl und Output\Win64\Release\Bpl: Kern und jedes
       Modul-Package (Packages\Atlas.IDE.*), je mit Map-Datei.
 
-    Aufbau wie der Zielordner (ADR 0016): Server, Updater und Daten oben, die
+    Aufbau wie der Zielordner: Server, Updater und Daten oben, die
     BPLs je Plattform darunter. Der Release-Workflow ruft das Skript auf dem
     Delphi-Runner auf; ohne Runner baut man lokal und hängt das Paket mit
     Publish-ReleasePackage.ps1 an das Release.

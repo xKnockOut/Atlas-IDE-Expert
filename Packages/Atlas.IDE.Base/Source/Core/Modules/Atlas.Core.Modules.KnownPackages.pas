@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Modules.KnownPackages;
 
-// Module unter „Known Packages“ der IDE (ADR 0017, Meldung vom 05.11.2026:
+// Module unter „Known Packages“ der IDE (Meldung vom 05.11.2026:
 // nach einem Morgen standen dort nur noch Base, die 11 Module fehlten), ohne
 // VCL und Open Tools API:
 // - Modul-BPL: Atlas.IDE.<Name><Endung>.bpl im Ordner von Base mit derselben

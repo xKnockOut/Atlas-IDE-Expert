@@ -767,8 +767,8 @@ begin
   begin
     Exit;
   end;
-  // Je Vorfahren-Unit einmal lesen und zerlegen statt je Kandidat (Code-Review P-07); das Muster für
-  // Standardwerte einmal übersetzen (P-11). Lokal, weil die Vervollständigung nebenläufig läuft.
+  // Je Vorfahren-Unit einmal lesen und zerlegen statt je Kandidat; das Muster für
+  // Standardwerte einmal übersetzen. Lokal, weil die Vervollständigung nebenläufig läuft.
   mDefaultValue := TRegEx.Create('\s*=\s*[^;)]+');
   mFiles := TDictionary<string, TArray<string>>.Create;
   try
@@ -919,7 +919,7 @@ var
   mStub: TInterfaceStub;
   mEdits: TArray<TRuleEdit>;
 begin
-  // Je Datei einmal lesen, auch wenn die Interfaces abwechselnd aus mehreren Units stammen (Code-Review P-07).
+  // Je Datei einmal lesen, auch wenn die Interfaces abwechselnd aus mehreren Units stammen.
   mFiles := TDictionary<string, TArray<string>>.Create;
   try
     for mMissing in AMissing do

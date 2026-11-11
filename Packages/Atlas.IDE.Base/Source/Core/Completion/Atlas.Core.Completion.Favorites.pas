@@ -14,7 +14,7 @@
 //         "unit": "Data.DB", "signature": "procedure Open", "added": "2026-10-15T09:30:00"}]}
 //     Reihenfolge der Einträge = Reihenfolge des Anheftens; "type" ist leer bei Einträgen ohne Typ und Unit
 //     (etwa Code-Vorlagen); "added" ist Ortszeit ohne Zeitzone.
-//   - Lesen und Schreiben über TAtlasDataFile (Bericht N3): atomar ersetzt; eine unbrauchbare Datei liegt danach
+//   - Lesen und Schreiben über TAtlasDataFile: atomar ersetzt; eine unbrauchbare Datei liegt danach
 //     als favorites.json.defekt daneben, eine gesperrte bleibt unverändert und wird nicht überschrieben.
 
 interface

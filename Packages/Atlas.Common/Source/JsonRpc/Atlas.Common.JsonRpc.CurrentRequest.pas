@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.JsonRpc.CurrentRequest;
 
-// Abbruchsignal der Anfrage, die im aktuellen Thread läuft (Code-Review A-06).
+// Abbruchsignal der Anfrage, die im aktuellen Thread läuft.
 // Für tiefe Aufrufe ohne Token-Parameter, z. B. EnsureUnit über TEnsureUnitFunc
 // (rund 50 Verwendungen, die Signatur bleibt). Der Dispatcher setzt es für die
 // Dauer jedes Handlers.

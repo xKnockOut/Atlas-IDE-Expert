@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Modules.Contract;
 
 // Allgemeine Verträge zwischen Base und den Modulen des Plugins (#1455,
-// ADR 0017, Regeln 1–9 in docs/Architektur.md „Module und Verträge des
+// Modulregeln 1–9 in docs/Architektur.md „Module und Verträge des
 // Plugins“). Nur Interfaces mit GUID, Records und Konstanten; Base versteht
 // nicht, was ein Modul anbietet, und kennt keine Modulnamen (Regel 9).
 // - IAtlasModule: Deskriptor, den ein Modul in seinem Register anmeldet;

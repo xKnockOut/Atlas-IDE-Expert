@@ -29,7 +29,7 @@
 {$IMPLICITBUILD OFF}
 {$LIBSUFFIX AUTO}
 
-// Modul Lesezeichen (#1456, ADR 0017): benannte Lesezeichen, Notizen und Vertrag „Gemerkt“.
+// Modul Lesezeichen (#1456): benannte Lesezeichen, Notizen und Vertrag „Gemerkt“.
 // Meldet sich in der Unit-Initialisierung von Atlas.IDE.Bookmarks.Composition über die Registry
 // des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen
 // (Regeln 1 bis 4). Requiret nur das Kern-Package

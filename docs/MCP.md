@@ -36,7 +36,7 @@ ergibt einen Werkzeugfehler mit Begründung. Geschrieben wird nur im Arbeitsordn
 - Mit `--restricted` (#186) sind nur lesende Werkzeuge verfügbar.
 - Wie der LSP-Server liest der MCP-Server auch die globale Datei `%APPDATA%\Atlas\settings.json`
   (dort steht `mcp.disabledTools` normalerweise, ebenso Index- und Hint-Einstellungen). Mit
-  `"mcp": { "globalSettings": false }` in `atlas.json` gilt nur die Projektdatei (D-08).
+  `"mcp": { "globalSettings": false }` in `atlas.json` gilt nur die Projektdatei.
 - Schreibende Werkzeuge haben `dryRun` mit Vorgabe `true`: Sie liefern dann nur den Diff.
   Mit `dryRun: false` schreiben sie atomar: Hat sich eine Datei seit dem Lesen geändert
   oder ist sie in der IDE ungespeichert geändert (das IDE-Plugin meldet das in

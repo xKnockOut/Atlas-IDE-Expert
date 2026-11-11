@@ -29,7 +29,7 @@
 {$IMPLICITBUILD OFF}
 {$LIBSUFFIX AUTO}
 
-// Modul Willkommensseite (#1456, ADR 0017): Fenster „Atlas-Start“ und Bereiche auf der Willkommensseite
+// Modul Willkommensseite (#1456): Fenster „Atlas-Start“ und Bereiche auf der Willkommensseite
 // der IDE, Weiterarbeiten, Projekte, Projektverlauf, Schnellaktionen, Atlas entdecken, Hilfe, Einrichten
 // und ihr Abschnitt im Optionsdialog. Meldet sich in der Unit-Initialisierung von
 // Atlas.IDE.Welcome.Composition über die Registry des Kern-Packages Atlas.IDE.Base an und lässt sich

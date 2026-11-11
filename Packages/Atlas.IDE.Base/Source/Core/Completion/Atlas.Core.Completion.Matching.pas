@@ -6,7 +6,7 @@
 // Wortanfänge (CamelCase, "TSL" → TStringList), Teilstring, Teilfolge. Bei
 // gleicher Stufe gilt die Reihenfolge der Quelle (Rank), dann der Name.
 // Ob ein Name passt (Wortanfänge, Teilfolge), entscheidet TTextFuzzy aus
-// Atlas.Text, dieselbe Regel wie beim Server (ADR 0012, D-05).
+// Atlas.Text, dieselbe Regel wie beim Server.
 
 interface
 

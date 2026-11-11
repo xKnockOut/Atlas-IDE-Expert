@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tracker.WelcomeLink;
 
-// Verbindung der Kacheln des Trackers zur Willkommensseite (#1455, ADR 0017
-// Regel 2 und 6) über Atlas.IDE.Contracts.WelcomeTiles: Projekte und gewähltes
+// Verbindung der Kacheln des Trackers zur Willkommensseite (#1455,
+// Modulregeln 2 und 6) über Atlas.IDE.Contracts.WelcomeTiles: Projekte und gewähltes
 // Projekt (IAtlasWelcomeProjects), geänderte Kacheln (IAtlasWelcomeBoard).
 // Beide fragt die Verbindung bei jedem Gebrauch neu über die Haken der
 // Komposition; fehlt die Willkommensseite, ist die Liste leer, „Öffnen“ geht

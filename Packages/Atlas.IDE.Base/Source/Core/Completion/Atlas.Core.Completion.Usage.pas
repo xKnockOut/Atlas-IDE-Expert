@@ -6,7 +6,7 @@
 // diesem Typ) und „häufig“ (ab 5 Übernahmen). Gespeichert als JSON
 // (%APPDATA%\Atlas\usage.json, Pfad von der IDE-Schicht), höchstens 5.000
 // Paare; die am längsten nicht genutzten werden verdrängt. Lesen und
-// Schreiben über TAtlasDataFile (Bericht N3): atomar ersetzt, eine
+// Schreiben über TAtlasDataFile: atomar ersetzt, eine
 // unbrauchbare Datei liegt danach als usage.json.defekt daneben, eine
 // gesperrte bleibt unverändert und wird nicht überschrieben.
 

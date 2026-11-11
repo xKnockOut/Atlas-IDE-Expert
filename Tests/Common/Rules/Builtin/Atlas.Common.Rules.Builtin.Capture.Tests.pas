@@ -33,7 +33,7 @@ type
     procedure CustomDeferredApiFromOptions;
     [Test]
     procedure FixCopiesValuePerIteration;
-    /// <summary>Einfügeposition und Bereich über die Zeilentabelle des Ableitungscaches (Review D-04).</summary>
+    /// <summary>Einfügeposition und Bereich über die Zeilentabelle des Ableitungscaches.</summary>
     [Test]
     procedure CopyPerIterationFixPositionsInCrLfFile;
   end;

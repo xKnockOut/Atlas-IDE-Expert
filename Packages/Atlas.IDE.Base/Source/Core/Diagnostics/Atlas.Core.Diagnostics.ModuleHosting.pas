@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Diagnostics.ModuleHosting;
 
 // Base startet die angemeldeten Module über seine Feature-Tabelle (#1455,
-// ADR 0017, Regeln 1, 2 und 5):
+// Modulregeln 1, 2 und 5):
 // - Jedes Modul der Registry wird ein Teil der Tabelle („module:<Id>“) mit
 //   seiner Mindeststufe des abgesicherten Starts und, falls angegeben, seinem
 //   Modulschalter (#1454). Module stehen hinter den Teilen von Base: Sie

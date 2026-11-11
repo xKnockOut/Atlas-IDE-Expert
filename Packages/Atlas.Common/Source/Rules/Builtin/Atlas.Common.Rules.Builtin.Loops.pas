@@ -221,7 +221,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := False;
   mPending := TStack<TSyntaxNode>.Create;
   try
@@ -451,7 +451,7 @@ var
     mPending: TStack<TSyntaxNode>;
     mClasses: TStack<string>;
   begin
-    // Iterativ (Bericht M1): zu jedem Kind auf dem Stapel der Name der umgebenden Klasse.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Kind auf dem Stapel der Name der umgebenden Klasse.
     mPending := TStack<TSyntaxNode>.Create;
     mClasses := TStack<string>.Create;
     try
@@ -564,7 +564,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ABody);
@@ -602,7 +602,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     Result := False;
     mPending := TStack<TSyntaxNode>.Create;
     try
@@ -641,7 +641,7 @@ var
       mNode: TSyntaxNode;
       mPending: TStack<TSyntaxNode>;
     begin
-      // Iterativ (Bericht M1).
+      // Iterativ (tiefe Bäume sprengen den Stapel nicht).
       mPending := TStack<TSyntaxNode>.Create;
       try
         mPending.Push(ARoot);
@@ -735,7 +735,7 @@ var
       mPending: TStack<TSyntaxNode>;
       mPendingInWith: TStack<Boolean>;
     begin
-      // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel, ob er in einer with-Anweisung liegt.
+      // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Knoten auf dem Stapel, ob er in einer with-Anweisung liegt.
       mPending := TStack<TSyntaxNode>.Create;
       mPendingInWith := TStack<Boolean>.Create;
       try
@@ -791,7 +791,7 @@ var
       begin
         VisitLoops(ABody);
       end;
-      // Lokale Routinen: deren umgebende Variablen sind diese plus die äußeren. Die Rekursion bleibt (Bericht M1):
+      // Lokale Routinen: deren umgebende Variablen sind diese plus die äußeren. Die Rekursion bleibt:
       // sie geht nur über verschachtelte Routinendeklarationen, nicht über Ausdrücke oder Anweisungsketten.
       for mPair in AOuterLocals do
       begin
@@ -912,7 +912,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     Result := nil;
     mPending := TStack<TSyntaxNode>.Create;
     try
@@ -1093,7 +1093,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);

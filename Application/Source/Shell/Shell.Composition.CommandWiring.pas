@@ -1,6 +1,6 @@
 ﻿unit Shell.Composition.CommandWiring;
 
-// Verdrahtung von workspace/executeCommand (S-02): Teilwurzel Befehle mit Status- und Server-Diensten, die nur
+// Verdrahtung von workspace/executeCommand: Teilwurzel Befehle mit Status- und Server-Diensten, die nur
 // die Teile der Komposition kennen. Closures fragen die Teile erst beim Aufruf, weil IDE, Mitschnitt und
 // Anonymisierer später entstehen.
 

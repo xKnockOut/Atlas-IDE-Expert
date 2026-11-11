@@ -101,7 +101,8 @@ uses
   System.JSON,
   System.StrUtils,
   Atlas.Text.Uris,
-  Atlas.Core.Tracker.Internals.GitHubJson;
+  Atlas.Core.Tracker.Internals.GitHubJson,
+  Atlas.Text.Json;
 
 class function TAtlasGitHubApi.Base(const ATarget: TAtlasTrackerTarget): string;
 var
@@ -505,7 +506,7 @@ begin
   try
     if mValue is TJSONObject then
     begin
-      Result := TAtlasGitHubJson.TextOf(TJSONObject(mValue), 'message');
+      Result := TJsonRead.Text(TJSONObject(mValue), 'message');
     end;
   finally
     mValue.Free;

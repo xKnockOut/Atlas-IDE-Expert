@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Lsp.Client;
 
-// Schlanker LSP-Client für das IDE-Plugin (ADR 0006): JSON-RPC mit
+// Schlanker LSP-Client für das IDE-Plugin: JSON-RPC mit
 // Content-Length-Rahmung, Zuordnung der Antworten zu Anfragen und Warten mit
 // Zeitlimit. Der Transport ist ausgelagert: Gesendet wird über ASend (fertig
 // gerahmte Bytes), empfangene Bytes kommen über Receive herein, auch in
@@ -20,7 +20,7 @@
 // zählt nicht mit: Der Server hält es absichtlich bis zu 10 s offen
 // (Long-Polling), das Statusfeld meldete sonst dauerhaft "langsam"
 // (Rückmeldung 15.10.2026).
-// Ende der Verbindung (Bericht H5): CloseInfo nennt die zuletzt gesendete
+// Ende der Verbindung: CloseInfo nennt die zuletzt gesendete
 // Anfrage, die beim Ende noch offenen und, wenn der Transport sie über
 // CloseWith mitgibt, Exit-Code, Laufzeit und Zeilen auf stderr des Servers.
 
@@ -50,7 +50,7 @@ type
   /// <summary>Der Aufrufer hat die Anfrage abgebrochen.</summary>
   ELspCancelledError = class(ELspClientError);
 
-  /// <summary>Wie die Verbindung endete (Bericht H5); Exit-Angaben setzt der Transport über CloseWith.</summary>
+  /// <summary>Wie die Verbindung endete; Exit-Angaben setzt der Transport über CloseWith.</summary>
   TLspCloseInfo = record
     /// <summary>Exit-Code des Serverprozesses bekannt?</summary>
     ExitKnown: Boolean;
@@ -84,7 +84,7 @@ type
   TLspClient = class
   public const
     /// <summary>Obergrenzen der Rahmung wie im Server (Atlas.Common.JsonRpc.StreamTransport): Kopf 8 KB,
-    /// Inhalt 256 MB (Code-Review D-10). Darüber gilt die Verbindung als kaputt.</summary>
+    /// Inhalt 256 MB. Darüber gilt die Verbindung als kaputt.</summary>
     cMaxHeaderLength = 8 * 1024;
     cMaxContentLength = 256 * 1024 * 1024;
   private type
@@ -175,7 +175,7 @@ type
   end;
 
   /// <summary>Laufender Sprachserver mit seinem Client; die Freigabe beendet den Prozess. Den Prozess
-  /// startet die Kompositionswurzel (TLspServerProcess, A-09).</summary>
+  /// startet die Kompositionswurzel (TLspServerProcess).</summary>
   IAtlasLspServer = interface
     ['{EAC5AE10-77D6-42EA-8AD8-CF869F7B79EC}']
     function Running: Boolean;
@@ -369,7 +369,7 @@ var
   mIndex, mLast: Integer;
 begin
   Result := -1;
-  // Nur im möglichen Kopf suchen, nicht im ganzen Puffer (Code-Review D-10).
+  // Nur im möglichen Kopf suchen, nicht im ganzen Puffer.
   mLast := Length(ABuffer) - Length(cHeaderEnd);
   if mLast > TLspClient.cMaxHeaderLength then
   begin

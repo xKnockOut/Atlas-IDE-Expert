@@ -50,7 +50,7 @@ type
     function IdentifierHighlights(ATree: TSyntaxTree; const AUri: string; const APosition: TTextPosition;
       const ACancellation: IJsonRpcCancellationToken): TArray<TDocumentHighlight>;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
+    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -253,7 +253,7 @@ begin
     Exit;
   end;
   mFound := TList<TDocumentHighlight>.Create;
-  // Den Baum einmal auswerten statt je Vorkommen (Code-Review P-01).
+  // Den Baum einmal auswerten statt je Vorkommen.
   AResolver.PinTree(ATree, AFileName);
   try
     mWanted := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
@@ -280,7 +280,7 @@ begin
       end;
       mHighlight.Range := TTextRange.Create(mTokens[mIndex].StartPos, mTokens[mIndex].EndPos);
       mHighlight.Kind := KindAt(mTokens, mIndex, mWanted[0], AFileName);
-      // Liste statt Result := Result + [...] (Code-Review P-08).
+      // Liste statt Result := Result + [...].
       mFound.Add(mHighlight);
     end;
     Result := mFound.ToArray;
