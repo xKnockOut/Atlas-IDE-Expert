@@ -2181,6 +2181,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Structure.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.DataBindings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.DataBindings.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.ExtractFrame.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.ExtractFrame.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FormUnit.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.FormUnit.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Help\Source\UI\Help\Atlas.UI.Help.SettingsSection.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Help.SettingsSection.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Rules.SettingsSection.Tests.pas"/>

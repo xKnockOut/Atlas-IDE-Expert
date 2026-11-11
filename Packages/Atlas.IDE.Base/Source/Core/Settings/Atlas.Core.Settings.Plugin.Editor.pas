@@ -597,6 +597,8 @@ type
     /// <summary>Knopf „Datenbindung“ mit der Brotkrumenleiste unter dem Designer (#610, designer.dataBindings).
     /// </summary>
     DesignerDataBindings: Boolean;
+    /// <summary>Knopf „In Frame auslagern“ (#611, designer.extractFrame).</summary>
+    DesignerExtractFrame: Boolean;
     /// <summary>Befehl „Breite nach Text“ (#730, designer.fitToText).</summary>
     DesignerFitToText: Boolean;
     /// <summary>Mindestbreite bei 96 dpi (#730, designer.fitToText.minWidth).</summary>
@@ -1694,6 +1696,7 @@ begin
   DesignerStructure := False;
   DesignerStructureHideOnForm := True;
   DesignerDataBindings := False;
+  DesignerExtractFrame := True;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeViews(const AIo: TAtlasSettingsExchange);
@@ -1715,6 +1718,7 @@ begin
   AIo.Flag('DesignerStructure', DesignerStructure);
   AIo.Flag('DesignerStructureHideOnForm', DesignerStructureHideOnForm);
   AIo.Flag('DesignerDataBindings', DesignerDataBindings);
+  AIo.Flag('DesignerExtractFrame', DesignerExtractFrame);
 end;
 
 end.

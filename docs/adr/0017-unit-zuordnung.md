@@ -1187,6 +1187,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.PropertySearch` | `Core/Designer/Atlas.Core.Designer.PropertySearch.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Structure` | `Core/Designer/Atlas.Core.Designer.Structure.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.DataBindings` | `Core/Designer/Atlas.Core.Designer.DataBindings.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.ExtractFrame` | `Core/Designer/Atlas.Core.Designer.ExtractFrame.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.FormUnit` | `Core/Designer/Atlas.Core.Designer.FormUnit.pas` | Ordner `Core/Designer` |
 | `Atlas.IDE.Designer.Access` | `IDE/Designer/Atlas.IDE.Designer.Access.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Arrange` | `IDE/Designer/Atlas.IDE.Designer.Arrange.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Bar` | `IDE/Designer/Atlas.IDE.Designer.Bar.pas` | Ordner `IDE/Designer` |
@@ -1234,6 +1236,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.Structure` | `IDE/Designer/Atlas.IDE.Designer.Structure.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.PaletteImages` | `IDE/Designer/Atlas.IDE.Designer.PaletteImages.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.DataBindings` | `IDE/Designer/Atlas.IDE.Designer.DataBindings.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.ExtractFrame` | `IDE/Designer/Atlas.IDE.Designer.ExtractFrame.pas` | Ordner `IDE/Designer` |
 | `Atlas.UI.Designer.Bar` | `UI/Designer/Atlas.UI.Designer.Bar.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Dialog` | `UI/Designer/Atlas.UI.Designer.Dialog.pas` | Ordner `UI/Designer`; Gerüst der Dialoge des Designers |
 | `Atlas.UI.Designer.DuplicateDialog` | `UI/Designer/Atlas.UI.Designer.DuplicateDialog.pas` | Ordner `UI/Designer` |
@@ -1261,6 +1264,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Designer.NameDialog` | `UI/Designer/Atlas.UI.Designer.NameDialog.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.StructureFrame` | `UI/Designer/Atlas.UI.Designer.StructureFrame.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.BindingBar` | `UI/Designer/Atlas.UI.Designer.BindingBar.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.ExtractDialog` | `UI/Designer/Atlas.UI.Designer.ExtractDialog.pas` | Ordner `UI/Designer` |
 
 ## Atlas.IDE.Help
 

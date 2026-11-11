@@ -16,6 +16,8 @@
 //   andockbares Fenster mit Baum, Gruppen und Verknüpfungen.
 // - Datenbindung (#610, designer.dataBindings, TAtlasIdeDataBindings):
 //   Brotkrumenleiste mit dem Datenkonstrukt der Auswahl unter dem Designer.
+// - In Frame auslagern (#611, designer.extractFrame, TAtlasIdeExtractFrame):
+//   Dialog mit Vorschau je Datei.
 // Nur im Hauptthread.
 
 interface
@@ -28,6 +30,7 @@ uses
   Atlas.IDE.Designer.NameSuggest,
   Atlas.IDE.Designer.Structure,
   Atlas.IDE.Designer.DataBindings,
+  Atlas.IDE.Designer.ExtractFrame,
   Atlas.IDE.Designer.ResizePreview,
   Atlas.IDE.Designer.ScalePreview;
 
@@ -40,6 +43,7 @@ type
     FNames: TAtlasIdeNameSuggest;
     FStructure: TAtlasIdeStructure;
     FBindings: TAtlasIdeDataBindings;
+    FExtract: TAtlasIdeExtractFrame;
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -64,10 +68,12 @@ begin
   FNames := TAtlasIdeNameSuggest.Create(AOnMessage);
   FStructure := TAtlasIdeStructure.Create(AOnMessage);
   FBindings := TAtlasIdeDataBindings.Create;
+  FExtract := TAtlasIdeExtractFrame.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerViews.Destroy;
 begin
+  FExtract.Free;
   FBindings.Free;
   FStructure.Free;
   FNames.Free;
@@ -84,7 +90,8 @@ var
 begin
   Result := nil;
   mAll := [FMeasure.Button(ASettings), FResize.Button(ASettings), FScale.Button(ASettings),
-    FNames.Button(ASettings), FStructure.Button(ASettings), FBindings.Button(ASettings)];
+    FNames.Button(ASettings), FStructure.Button(ASettings), FBindings.Button(ASettings),
+    FExtract.Button(ASettings)];
   for mButton in mAll do
   begin
     if mButton.Id <> '' then
@@ -120,6 +127,10 @@ begin
   else if SameText(AId, TAtlasIdeDataBindings.cId) then
   begin
     FBindings.Toggle;
+  end
+  else if SameText(AId, TAtlasIdeExtractFrame.cId) then
+  begin
+    FExtract.Run;
   end
   else
   begin

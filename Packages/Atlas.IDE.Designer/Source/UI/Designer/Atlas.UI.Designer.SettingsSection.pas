@@ -127,6 +127,7 @@ begin
   Switch('designer.structure', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsStructure));
   Switch('designer.structureHideOnForm', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsStHide));
   Switch('designer.dataBindings', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDataBindings));
+  Switch('designer.extractFrame', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsExtractFrame));
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildArrangeRows;

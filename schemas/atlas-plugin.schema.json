@@ -5294,6 +5294,16 @@
       "x-node": "editor.designerBar",
       "x-issue": "#610"
     },
+    "DesignerExtractFrame": {
+      "description": "Knopf „In Frame auslagern“ der Designer-Leiste: legt aus den markierten Komponenten (alle im selben Parent) oder aus den Kindern eines Panels einen Frame mit Unit und DFM an, setzt ihn an dieselbe Stelle, verschiebt Felder und Handler, die nur diese Komponenten nutzen, passt Zugriffe im Formular-Code an (edtName wird frmAdresse.edtName) und trägt die Unit ins Projekt ein. Vorschau je Datei; „Letzte Auslagerung rückgängig“ stellt die Dateien wieder her.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.extractFrame",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#611"
+    },
     "DesignerFitToText": {
       "description": "Befehl „Breite nach Text“ im Menü „Anordnen“ der Designer-Leiste: setzt die markierten Steuerelemente auf die Breite des längsten Texts plus Innenabstand und Anteil des Steuerelements (Kästchen, Pfeil, Glyph), mindestens die Mindestbreite. In einer Reihe bleiben die Abstände und die linke bzw. (bei akRight oder am rechten Rand) die rechte Kante; AutoSize und Align ohne freie Breite bleiben. Ändert die .dfm.",
       "type": "boolean",
