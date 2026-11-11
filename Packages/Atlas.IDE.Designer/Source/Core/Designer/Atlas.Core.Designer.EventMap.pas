@@ -193,13 +193,65 @@ begin
   Result := -1;
 end;
 
+/// <summary>Zeile einer Zuweisung; AUsed markiert den gefundenen Handler.</summary>
+function AssignedRow(const AObject: TAtlasFormObject; const AEvent: TAtlasFormValue;
+  const AHandlers: TArray<TAtlasEventHandler>; var AUsed: TArray<Boolean>): TAtlasEventRow;
+var
+  mHandler: Integer;
+begin
+  Result := Default(TAtlasEventRow);
+  Result.Component := AObject.Name;
+  Result.ClassName := AObject.TypeName;
+  Result.Event := AEvent.Path;
+  Result.Handler := AEvent.Value;
+  Result.Line := -1;
+  mHandler := HandlerIndex(AHandlers, AEvent.Value);
+  if mHandler < 0 then
+  begin
+    Result.Finding := TAtlasEventFinding.Missing;
+    Exit;
+  end;
+  AUsed[mHandler] := True;
+  Result.Line := AHandlers[mHandler].Line;
+  Result.Lines := AHandlers[mHandler].Lines;
+  if AHandlers[mHandler].Empty then
+  begin
+    Result.Finding := TAtlasEventFinding.Empty;
+  end;
+end;
+
+function UnassignedRow(const AHandler: TAtlasEventHandler): TAtlasEventRow;
+begin
+  Result := Default(TAtlasEventRow);
+  Result.Handler := AHandler.Name;
+  Result.Line := AHandler.Line;
+  Result.Lines := AHandler.Lines;
+  Result.Finding := TAtlasEventFinding.Unassigned;
+end;
+
+/// <summary>Je Zeile: wie viele Zuweisungen denselben Handler nutzen.</summary>
+procedure CountUses(var ARows: TArray<TAtlasEventRow>);
+var
+  mIndex, mOther: Integer;
+begin
+  for mIndex := 0 to High(ARows) do
+  begin
+    for mOther := 0 to High(ARows) do
+    begin
+      if (ARows[mOther].Component <> '') and SameText(ARows[mOther].Handler, ARows[mIndex].Handler) then
+      begin
+        Inc(ARows[mIndex].UseCount);
+      end;
+    end;
+  end;
+end;
+
 class function TAtlasEventMap.Rows(const AObjects: TArray<TAtlasFormObject>;
   const AHandlers: TArray<TAtlasEventHandler>): TArray<TAtlasEventRow>;
 var
   mObject: TAtlasFormObject;
   mEvent: TAtlasFormValue;
-  mRow: TAtlasEventRow;
-  mHandler, mIndex, mOther: Integer;
+  mHandler: Integer;
   mUsed: TArray<Boolean>;
 begin
   Result := nil;
@@ -208,52 +260,25 @@ begin
   begin
     for mEvent in mObject.Events do
     begin
-      mRow := Default(TAtlasEventRow);
-      mRow.Component := mObject.Name;
-      mRow.ClassName := mObject.TypeName;
-      mRow.Event := mEvent.Path;
-      mRow.Handler := mEvent.Value;
-      mRow.Line := -1;
-      mHandler := HandlerIndex(AHandlers, mEvent.Value);
-      if mHandler < 0 then
-      begin
-        mRow.Finding := TAtlasEventFinding.Missing;
-      end
-      else
-      begin
-        mUsed[mHandler] := True;
-        mRow.Line := AHandlers[mHandler].Line;
-        mRow.Lines := AHandlers[mHandler].Lines;
-        if AHandlers[mHandler].Empty then
-        begin
-          mRow.Finding := TAtlasEventFinding.Empty;
-        end;
-      end;
-      Result := Result + [mRow];
+      Result := Result + [AssignedRow(mObject, mEvent, AHandlers, mUsed)];
     end;
   end;
   for mHandler := 0 to High(AHandlers) do
   begin
     if not mUsed[mHandler] and AHandlers[mHandler].IsEvent then
     begin
-      mRow := Default(TAtlasEventRow);
-      mRow.Handler := AHandlers[mHandler].Name;
-      mRow.Line := AHandlers[mHandler].Line;
-      mRow.Lines := AHandlers[mHandler].Lines;
-      mRow.Finding := TAtlasEventFinding.Unassigned;
-      Result := Result + [mRow];
+      Result := Result + [UnassignedRow(AHandlers[mHandler])];
     end;
   end;
-  for mIndex := 0 to High(Result) do
-  begin
-    for mOther := 0 to High(Result) do
-    begin
-      if (Result[mOther].Component <> '') and SameText(Result[mOther].Handler, Result[mIndex].Handler) then
-      begin
-        Inc(Result[mIndex].UseCount);
-      end;
-    end;
-  end;
+  CountUses(Result);
+end;
+
+/// <summary>Text in Komponente oder Handler, Ereignis gleich, nur Befunde.</summary>
+function Matches(const ARow: TAtlasEventRow; const AText, AEvent: string; AOnlyFindings: Boolean): Boolean;
+begin
+  Result := (AText = '') or ContainsText(ARow.Component, AText) or ContainsText(ARow.Handler, AText);
+  Result := Result and ((AEvent = '') or SameText(ARow.Event, AEvent));
+  Result := Result and (not AOnlyFindings or (ARow.Finding <> TAtlasEventFinding.None));
 end;
 
 class function TAtlasEventMap.Filter(const ARows: TArray<TAtlasEventRow>; const AText, AEvent: string;
@@ -264,9 +289,7 @@ begin
   Result := nil;
   for mRow in ARows do
   begin
-    if ((AText = '') or ContainsText(mRow.Component, AText) or ContainsText(mRow.Handler, AText)) and
-      ((AEvent = '') or SameText(mRow.Event, AEvent)) and
-      (not AOnlyFindings or (mRow.Finding <> TAtlasEventFinding.None)) then
+    if Matches(mRow, AText, AEvent, AOnlyFindings) then
     begin
       Result := Result + [mRow];
     end;

@@ -43,7 +43,7 @@ type
     procedure Tick(Sender: TObject);
     procedure Reload(AForce: Boolean);
     procedure FillList;
-    function Frame: TAtlasEventFrame;
+    function ClearAssignments(ARoot: TComponent; const AHandler: string): Integer;
     procedure Wire(AFrame: TAtlasEventFrame);
     procedure Jump(const ARow: TAtlasEventRow);
     procedure ShowComponent(const ARow: TAtlasEventRow);
@@ -263,7 +263,8 @@ begin
   Result.Pressed := FShown;
 end;
 
-function TAtlasIdeEventMap.Frame: TAtlasEventFrame;
+/// <summary>Inhalt des Fensters; nil, solange es nicht angelegt ist.</summary>
+function HostFrame: TAtlasEventFrame;
 begin
   Result := nil;
   if (Host <> nil) and (Host.Frame is TAtlasEventFrame) then
@@ -287,10 +288,10 @@ begin
   begin
     Host := TAtlasIdeDockWindow.Create(TEventDock.Create, False);
   end;
-  FShown := Host.Show(mCreated) and (Frame <> nil);
+  FShown := Host.Show(mCreated) and (HostFrame <> nil);
   if FShown then
   begin
-    Wire(Frame);
+    Wire(HostFrame);
     ApplyTheme;
     Reload(True);
   end;
@@ -368,7 +369,7 @@ procedure TAtlasIdeEventMap.FillList;
 var
   mFrame: TAtlasEventFrame;
 begin
-  mFrame := Frame;
+  mFrame := HostFrame;
   if (mFrame = nil) or not FShown then
   begin
     Exit;
@@ -451,12 +452,29 @@ begin
   Reload(True);
 end;
 
+/// <summary>Zuweisungen des Handlers AHandler im Formular ARoot leeren; Anzahl.</summary>
+function TAtlasIdeEventMap.ClearAssignments(ARoot: TComponent; const AHandler: string): Integer;
+var
+  mRow: TAtlasEventRow;
+  mComponent: TComponent;
+begin
+  Result := 0;
+  for mRow in FRows do
+  begin
+    mComponent := ComponentOf(ARoot, mRow.Component);
+    if (mComponent <> nil) and SameText(mRow.Handler, AHandler) and (GetPropInfo(mComponent, mRow.Event) <> nil) then
+    begin
+      SetMethodProp(mComponent, mRow.Event, Default(TMethod));
+      Inc(Result);
+    end;
+  end;
+end;
+
 procedure TAtlasIdeEventMap.Remove(const ARow: TAtlasEventRow);
 var
   mEditor: IOTAFormEditor;
-  mRoot, mComponent: TComponent;
+  mRoot: TComponent;
   mDesigner: IDesigner;
-  mRow: TAtlasEventRow;
   mCleared, mDecl, mFirst, mLast: Integer;
   mFile: TLspFileEdits;
   mWorkspace: TLspWorkspaceEdit;
@@ -477,17 +495,7 @@ begin
     Exit;
   end;
   // Erst die Zuweisungen, sonst fragt die IDE beim Speichern nach der fehlenden Methode.
-  mCleared := 0;
-  for mRow in FRows do
-  begin
-    mComponent := ComponentOf(mRoot, mRow.Component);
-    if (mComponent <> nil) and SameText(mRow.Handler, ARow.Handler) and
-      (GetPropInfo(mComponent, mRow.Event) <> nil) then
-    begin
-      SetMethodProp(mComponent, mRow.Event, Default(TMethod));
-      Inc(mCleared);
-    end;
-  end;
+  mCleared := ClearAssignments(mRoot, ARow.Handler);
   if mCleared > 0 then
   begin
     mDesigner.Modified;
@@ -512,7 +520,7 @@ procedure TAtlasIdeEventMap.ApplyTheme;
 var
   mFrame: TAtlasEventFrame;
 begin
-  mFrame := Frame;
+  mFrame := HostFrame;
   if mFrame <> nil then
   begin
     TAtlasIdeDockWindow.ApplyIdeTheme(mFrame);

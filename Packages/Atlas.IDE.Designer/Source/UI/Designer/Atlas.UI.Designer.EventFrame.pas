@@ -58,7 +58,6 @@ type
     procedure RemoveClick(Sender: TObject);
     procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
       var DefaultDraw: Boolean);
-    function GroupId(const AHeader: string): Integer;
     procedure FillEvents(const AEvents: TArray<string>);
   public
     constructor Create(AOwner: TComponent); override;
@@ -93,6 +92,7 @@ const
   cComboWidth = 140;
   cCheckBoxBox = 24;
   cNoGroup = '–';
+  cLinesColumn = 4;
 
 { TAtlasEventFrame }
 
@@ -146,7 +146,7 @@ begin
     mColumn.Caption := TAtlasDesignerViewStrings.Text(cColumnTexts[mIndex]);
     mColumn.Width := MulDiv(cColumnWidths[mIndex], CurrentPPI, cBasePpi);
   end;
-  FList.Columns[4].Alignment := taRightJustify;
+  FList.Columns[cLinesColumn].Alignment := taRightJustify;
   FList.OnDblClick := ListDblClick;
   FList.OnCustomDrawItem := ListCustomDrawItem;
 end;
@@ -161,9 +161,14 @@ begin
   Result.AlignWithMargins := True;
   Result.Style := csDropDownList;
   Result.Width := MulDiv(cComboWidth, CurrentPPI, cBasePpi);
-  for mItem in AItems do
-  begin
-    Result.Items.Add(mItem);
+  Result.Items.BeginUpdate;
+  try
+    for mItem in AItems do
+    begin
+      Result.Items.Add(mItem);
+    end;
+  finally
+    Result.Items.EndUpdate;
   end;
   Result.ItemIndex := 0;
   Result.OnChange := OptionsChanged;
@@ -216,19 +221,20 @@ begin
   end;
 end;
 
-function TAtlasEventFrame.GroupId(const AHeader: string): Integer;
+/// <summary>Gruppe der Liste zur Überschrift, bei Bedarf neu angelegt.</summary>
+function GroupId(AList: TListView; const AHeader: string): Integer;
 var
   mIndex: Integer;
   mGroup: TListGroup;
 begin
-  for mIndex := 0 to FList.Groups.Count - 1 do
+  for mIndex := 0 to AList.Groups.Count - 1 do
   begin
-    if FList.Groups[mIndex].Header = AHeader then
+    if AList.Groups[mIndex].Header = AHeader then
     begin
-      Exit(FList.Groups[mIndex].GroupID);
+      Exit(AList.Groups[mIndex].GroupID);
     end;
   end;
-  mGroup := FList.Groups.Add;
+  mGroup := AList.Groups.Add;
   mGroup.Header := AHeader;
   mGroup.State := [lgsCollapsible];
   Result := mGroup.GroupID;
@@ -301,7 +307,7 @@ begin
       begin
         mHeader := mHeader + ' (' + IntToStr(mRow.UseCount) + ')';
       end;
-      mItem.GroupID := GroupId(mHeader);
+      mItem.GroupID := GroupId(FList, mHeader);
     end;
   finally
     FList.Items.EndUpdate;
