@@ -395,7 +395,8 @@ const
     'Atlas.ShowInDesigner', // DesignerShowComponent
     '', // DesignerInlineCaption
     '', // DesignerSelectionBar
-    '' // DesignerMagnifier
+    '', // DesignerMagnifier
+    '' // DesignerUsages
   );
 
 class function TAtlasKeyMap.CommandIdOf(AFunc: TAtlasKeyFunction): string;

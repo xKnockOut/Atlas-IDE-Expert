@@ -192,8 +192,11 @@ var
   mStarted, mGo: TEvent;
   mThread: TThread;
   mCache: TPullReportCache;
+  mToken: IJsonRpcCancellationToken;
 begin
   mCache := FCache;
+  // Nicht TCancelledToken.Create direkt an den const-Interface-Parameter: Das Objekt würde nie freigegeben.
+  mToken := TCancelledToken.Create;
   mStarted := TEvent.Create(nil, True, False, '');
   mGo := TEvent.Create(nil, True, False, '');
   try
@@ -203,7 +206,7 @@ begin
       Assert.WillRaise(
         procedure
         begin
-          mCache.Get('file:///a.pas', '1', Compute(), TCancelledToken.Create).Free;
+          mCache.Get('file:///a.pas', '1', Compute(), mToken).Free;
         end, EJsonRpcRequestCancelled);
       Assert.AreEqual(0, FComputed);
       mGo.SetEvent;

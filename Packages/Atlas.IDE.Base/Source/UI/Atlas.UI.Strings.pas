@@ -219,7 +219,7 @@ type
     // Text im Designer bearbeiten (#748): Taste in der Übersicht.
     DesignerInlineCaptionCommand,
     // Auswahlleiste und Lupe im Designer: Tasten in der Übersicht.
-    DesignerSelectionBarCommand, DesignerMagnifierCommand,
+    DesignerSelectionBarCommand, DesignerMagnifierCommand, DesignerUsagesCommand,
     // Texte von Smart Paste und Editorleiste, deren Units schon an der Grenze der uses-Liste stehen.
     SmartPasteDone, SmartPasteFailed, SmartPasteImplementation, SmartPasteUsesTitle, CommandPaletteCommand,
     EditorToolbarFindings, EditorToolbarMore, EditorToolbarNoParts, EditorToolbarNoReturn, EditorToolbarNoSection,
@@ -742,6 +742,7 @@ const
      'Designer: Text bearbeiten',
      'Designer: Auswahlleiste',
      'Designer: Lupe',
+     'Designer: Verwendungen im Code',
      'Ergänzt: %s',
      'uses ergänzen fehlgeschlagen: %s',
      'Wegen Zirkelbezug im implementation-Teil: %s',
@@ -1213,6 +1214,7 @@ const
      'Designer: Edit text',
      'Designer: Selection bar',
      'Designer: Magnifier',
+     'Designer: Usages in code',
      'Added: %s',
      'Adding uses failed: %s',
      'Because of a circular reference in the implementation section: %s',

@@ -20,6 +20,8 @@ type
   public
     [Setup]
     procedure Setup;
+    [TearDown]
+    procedure TearDown;
     [Test]
     procedure Assignments;
     [Test]
@@ -116,6 +118,12 @@ begin
   FRows := TAtlasEventMap.Rows(TAtlasFormModel.Parse(cDfm), TAtlasEventMap.Handlers(cUnit, 'TfrmKunden'));
 end;
 
+procedure TAtlasEventMapTests.TearDown;
+begin
+  // Array-Feld leeren, sonst zählt der Leckmonitor es dem Test zu.
+  FRows := nil;
+end;
+
 function TAtlasEventMapTests.Row(const AComponent, AEvent: string): TAtlasEventRow;
 var
   mRow: TAtlasEventRow;
@@ -134,7 +142,7 @@ end;
 procedure TAtlasEventMapTests.Assignments;
 begin
   // Fünf Zuweisungen und ein Handler ohne Zuweisung; Pruefen ist privat und fehlt.
-  Assert.AreEqual(6, Length(FRows));
+  Assert.AreEqual(6, Integer(Length(FRows)));
   Assert.AreEqual('TButton', Row('btnOk', 'OnClick').ClassName);
   Assert.AreEqual('btnOkClick', Row('btnOk', 'OnClick').Handler);
   Assert.AreEqual(25, Row('btnOk', 'OnClick').Line);
@@ -178,12 +186,12 @@ procedure TAtlasEventMapTests.FilterRows;
 var
   mEvents: TArray<string>;
 begin
-  Assert.AreEqual(1, Length(TAtlasEventMap.Filter(FRows, '', 'OnClick', False)));
-  Assert.AreEqual(2, Length(TAtlasEventMap.Filter(FRows, 'edtName', '', False)));
-  Assert.AreEqual(3, Length(TAtlasEventMap.Filter(FRows, '', '', True)));
-  Assert.AreEqual(1, Length(TAtlasEventMap.Filter(FRows, 'edt', 'OnExit', True)));
+  Assert.AreEqual(1, Integer(Length(TAtlasEventMap.Filter(FRows, '', 'OnClick', False))));
+  Assert.AreEqual(2, Integer(Length(TAtlasEventMap.Filter(FRows, 'edtName', '', False))));
+  Assert.AreEqual(3, Integer(Length(TAtlasEventMap.Filter(FRows, '', '', True))));
+  Assert.AreEqual(1, Integer(Length(TAtlasEventMap.Filter(FRows, 'edt', 'OnExit', True))));
   mEvents := TAtlasEventMap.Events(FRows);
-  Assert.AreEqual(5, Length(mEvents));
+  Assert.AreEqual(5, Integer(Length(mEvents)));
   Assert.AreEqual('OnChange', mEvents[0]);
   Assert.AreEqual('OnExit', mEvents[4]);
 end;

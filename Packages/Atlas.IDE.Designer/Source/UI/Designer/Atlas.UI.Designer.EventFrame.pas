@@ -16,6 +16,7 @@
 interface
 
 uses
+  Winapi.Windows, // vor Vcl.Graphics, sonst verdeckt es TBitmap
   System.SysUtils,
   System.Classes,
   Vcl.Controls,
@@ -81,7 +82,23 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Signal,
+  Atlas.UI.Foundation.Theme,
   Atlas.UI.Designer.ViewStrings;
+
+/// <summary>Breite von AText in AFont (ein TFrame hat kein eigenes Canvas).</summary>
+function TextWidthIn(AFont: TFont; const AText: string): Integer;
+var
+  mBitmap: TBitmap;
+begin
+  mBitmap := TBitmap.Create;
+  try
+    mBitmap.Canvas.Font := AFont;
+    Result := mBitmap.Canvas.TextWidth(AText);
+  finally
+    mBitmap.Free;
+  end;
+end;
 
 const
   cBasePpi = 96;
@@ -102,7 +119,7 @@ var
   mColumn: TListColumn;
 begin
   inherited Create(AOwner);
-  FErrorColor := clRed;
+  FErrorColor := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
   FLastJump := -1;
   FTop := TPanel.Create(Self);
   FTop.Parent := Self;
@@ -117,14 +134,14 @@ begin
   FOnlyFindings.Align := alRight;
   FOnlyFindings.AlignWithMargins := True;
   FOnlyFindings.Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmOnlyFindings);
-  FOnlyFindings.Width := Canvas.TextWidth(FOnlyFindings.Caption) + MulDiv(cCheckBoxBox, CurrentPPI, cBasePpi);
+  FOnlyFindings.Width := TextWidthIn(Font, FOnlyFindings.Caption) + MulDiv(cCheckBoxBox, CurrentPPI, cBasePpi);
   FOnlyFindings.OnClick := OptionsChanged;
   FEvent := AddCombo([TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmAllEvents)]);
   FFilter := TEdit.Create(Self);
   FFilter.Parent := FTop;
   FFilter.Align := alClient;
   FFilter.AlignWithMargins := True;
-  FFilter.TextHint := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NvFilter);
+  FFilter.TextHint := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.StFilter);
   FFilter.OnChange := OptionsChanged;
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;

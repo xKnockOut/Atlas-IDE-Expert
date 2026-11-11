@@ -60,7 +60,7 @@ type
     SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
     PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType, SafeDelete, CreateIssue,
     DesignerSearch, CheckFile, SectionAppend, DesignerSelectionSetsSave, DesignerShowComponent,
-    DesignerInlineCaption, DesignerSelectionBar, DesignerMagnifier);
+    DesignerInlineCaption, DesignerSelectionBar, DesignerMagnifier, DesignerUsages);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -360,7 +360,10 @@ begin
     Create(TAtlasKeyFunction.DesignerSelectionBar, Word(ASettings.DesignerSelectionBarKey), True,
       ASettings.EditorDesignerBar and ASettings.DesignerSelectionBar),
     Create(TAtlasKeyFunction.DesignerMagnifier, Word(ASettings.DesignerMagnifierKey), True,
-      ASettings.EditorDesignerBar and ASettings.DesignerMagnifier)];
+      ASettings.EditorDesignerBar and ASettings.DesignerMagnifier),
+    // Verwendungen im Code (#750): nur solange der Formular-Designer den Fokus hat, dort mit Vorrang.
+    Create(TAtlasKeyFunction.DesignerUsages, Word(ASettings.DesignerUsagesKey), True,
+      ASettings.EditorDesignerBar and ASettings.DesignerUsages)];
 end;
 
 /// <summary>Teil 1 von ToSettings: Taste (und Vorrang) von AEntry in ASettings, wenn die Funktion hierher
@@ -603,6 +606,8 @@ begin
       ASettings.DesignerSelectionBarKey := AEntry.Key;
     TAtlasKeyFunction.DesignerMagnifier:
       ASettings.DesignerMagnifierKey := AEntry.Key;
+    TAtlasKeyFunction.DesignerUsages:
+      ASettings.DesignerUsagesKey := AEntry.Key;
   else
     // Gehört zu einem anderen Teil.
   end;
