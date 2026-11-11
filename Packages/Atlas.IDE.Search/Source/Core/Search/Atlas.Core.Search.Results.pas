@@ -4,6 +4,8 @@
 // (#878), ohne VCL und Open Tools API:
 // - IndexAt: welcher Treffer gerade markiert ist bzw. den Cursor enthält (für
 //   den Zähler „n von m“ der Leiste).
+// - TypingTarget: Treffer, den die Suche beim Tippen markiert; ohne Treffer
+//   keiner, auch wenn ein kürzerer Suchtext vorher etwas gefunden hatte.
 // - Entries: je Treffer eine Zeile für den Reiter „Atlas-Suche“ im Fenster
 //   Meldungen: 1-basierte Zeile, 1-basierte Editorspalte (Tabs aufgelöst) und
 //   Zeilentext ohne Einzug; höchstens cMaxEntries.
@@ -38,6 +40,12 @@ type
     /// <summary>Index des Treffers, der an APos beginnt; sonst des ersten, der APos enthält (Start &lt; APos
     /// &lt;= Ende); -1 ohne.</summary>
     class function IndexAt(const AHits: TArray<TAtlasSearchHit>; const APos: TAtlasSearchPos): Integer; static;
+    /// <summary>Treffer, den die Suche beim Tippen markiert: der erste (AFromFirstHit, search.fromFirstHit) oder
+    /// der nächste ab AOrigin, der Stelle beim Öffnen der Leiste. -1 ohne Treffer: Dann bleibt nichts markiert und
+    /// der Cursor geht zurück an AOrigin. Die Markierung eines kürzeren Suchtexts („acMem“ beim Tippen von
+    /// „acmemmo“) ist kein Treffer des neuen.</summary>
+    class function TypingTarget(const AHits: TArray<TAtlasSearchHit>; const AOrigin: TAtlasSearchPos;
+      AFromFirstHit: Boolean): Integer; static;
     /// <summary>Zeilen für das Meldungsfenster, höchstens cMaxEntries.</summary>
     class function Entries(const ALines: TArray<string>; const AHits: TArray<TAtlasSearchHit>;
       ATabWidth: Integer): TArray<TAtlasSearchEntry>; static;
@@ -83,6 +91,23 @@ begin
     end;
   end;
   Result := -1;
+end;
+
+class function TAtlasSearchResults.TypingTarget(const AHits: TArray<TAtlasSearchHit>; const AOrigin: TAtlasSearchPos;
+  AFromFirstHit: Boolean): Integer;
+var
+  mWrapped: Boolean;
+begin
+  Result := -1;
+  if Length(AHits) = 0 then
+  begin
+    Exit;
+  end;
+  Result := 0;
+  if not AFromFirstHit then
+  begin
+    Result := TAtlasTextSearch.Next(AHits, AOrigin, False, mWrapped);
+  end;
 end;
 
 class function TAtlasSearchResults.Entries(const ALines: TArray<string>; const AHits: TArray<TAtlasSearchHit>;

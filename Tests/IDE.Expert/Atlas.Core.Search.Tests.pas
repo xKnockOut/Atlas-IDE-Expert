@@ -35,6 +35,9 @@ type
     procedure WordAtAndHitCaption;
     [Test]
     procedure IndexAtFindsMarkedOrContainingHit;
+    /// <summary>Beim Tippen markiert die Suche nur Treffer des ganzen Suchtexts; ohne Treffer keinen.</summary>
+    [Test]
+    procedure TypingTargetIsNoneWithoutHit;
     [Test]
     procedure EntriesCarryLineColumnAndText;
     [Test]
@@ -280,6 +283,32 @@ begin
   Assert.AreEqual(-1, TAtlasSearchResults.IndexAt(mHits, TAtlasSearchPos.Create(0, 7)), 'zwischen zwei Treffern');
   Assert.AreEqual(2, TAtlasSearchResults.IndexAt(mHits, TAtlasSearchPos.Create(3, 0)));
   Assert.AreEqual(-1, TAtlasSearchResults.IndexAt(nil, TAtlasSearchPos.Create(0, 0)));
+end;
+
+procedure TAtlasSearchTests.TypingTargetIsNoneWithoutHit;
+var
+  mLines: TArray<string>;
+  mHits: TArray<TAtlasSearchHit>;
+  mOptions: TAtlasSearchOptions;
+  mArea: TAtlasSearchArea;
+  mOrigin: TAtlasSearchPos;
+begin
+  mLines := ['  acMem.Clear;', '  acMem.Free;', '  x := acMemo;'];
+  mOptions := TAtlasSearchOptions.Create(False, False, False);
+  mArea := TAtlasSearchArea.Whole(mLines);
+  mOrigin := TAtlasSearchPos.Create(1, 0);
+  // „acmem“ trifft alle drei; „acmemmo“ keinen, auch wenn „acMem“ eben noch markiert war.
+  mHits := TAtlasTextSearch.FindAll(mLines, 'acmem', mOptions, mArea);
+  Assert.AreEqual(3, Integer(Length(mHits)));
+  Assert.AreEqual(1, TAtlasSearchResults.TypingTarget(mHits, mOrigin, False), 'nächster ab dem Ursprung');
+  Assert.AreEqual(0, TAtlasSearchResults.TypingTarget(mHits, mOrigin, True), 'erster Treffer');
+  mHits := TAtlasTextSearch.FindAll(mLines, 'acmemmo', mOptions, mArea);
+  Assert.AreEqual(0, Integer(Length(mHits)));
+  Assert.AreEqual(-1, TAtlasSearchResults.TypingTarget(mHits, mOrigin, False));
+  Assert.AreEqual(-1, TAtlasSearchResults.TypingTarget(mHits, mOrigin, True));
+  mHits := TAtlasTextSearch.FindAll(mLines, 'acmemo', mOptions, mArea);
+  Assert.AreEqual(1, Integer(Length(mHits)));
+  Assert.AreEqual(0, TAtlasSearchResults.TypingTarget(mHits, mOrigin, False), 'einziger Treffer');
 end;
 
 procedure TAtlasSearchTests.EntriesCarryLineColumnAndText;

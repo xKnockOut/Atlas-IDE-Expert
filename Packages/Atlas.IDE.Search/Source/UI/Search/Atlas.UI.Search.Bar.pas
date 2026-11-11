@@ -506,6 +506,11 @@ begin
   Result := TAtlasSearchCombo.Create(ABar);
   Result.Parent := AParent;
   Result.Style := AStyle;
+  // Ohne Vervollständigung aus dem Verlauf: Sie setzt den Text per Programm (der ergänzte Rest markiert) und
+  // verschluckt die Taste, ohne OnChange auszulösen. Im Feld stand dann etwa „acmemmo“ aus dem Verlauf, gesucht
+  // und gesprungen wurde aber noch mit dem Text vor der Taste („acme“ trifft „acMem“). Den Verlauf gibt es weiter
+  // über Pfeil hoch/runter und die Liste.
+  Result.AutoComplete := False;
   Result.OnKeyDown := ABar.ControlKeyDown;
   Result.OnEnter := ABar.ControlEnter;
 end;
