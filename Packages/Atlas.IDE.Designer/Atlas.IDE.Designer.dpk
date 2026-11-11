@@ -66,6 +66,7 @@ contains
   Atlas.Core.Designer.Measure in 'Source\Core\Designer\Atlas.Core.Designer.Measure.pas',
   Atlas.Core.Designer.Layout in 'Source\Core\Designer\Atlas.Core.Designer.Layout.pas',
   Atlas.Core.Designer.Scale in 'Source\Core\Designer\Atlas.Core.Designer.Scale.pas',
+  Atlas.Core.Designer.TabOrder in 'Source\Core\Designer\Atlas.Core.Designer.TabOrder.pas',
   Atlas.UI.Designer.Flash in 'Source\UI\Designer\Atlas.UI.Designer.Flash.pas',
   Atlas.UI.Designer.Outlines in 'Source\UI\Designer\Atlas.UI.Designer.Outlines.pas',
   Atlas.UI.Designer.DuplicateDialog in 'Source\UI\Designer\Atlas.UI.Designer.DuplicateDialog.pas',
@@ -103,6 +104,7 @@ contains
   Atlas.IDE.Designer.Tools in 'Source\IDE\Designer\Atlas.IDE.Designer.Tools.pas',
   Atlas.IDE.Designer.Commands in 'Source\IDE\Designer\Atlas.IDE.Designer.Commands.pas',
   Atlas.IDE.Designer.SearchItems in 'Source\IDE\Designer\Atlas.IDE.Designer.SearchItems.pas',
+  Atlas.IDE.Designer.TabOrder in 'Source\IDE\Designer\Atlas.IDE.Designer.TabOrder.pas',
   Atlas.IDE.Designer.Bar in 'Source\IDE\Designer\Atlas.IDE.Designer.Bar.pas',
   Atlas.IDE.Designer.Composition in 'Source\IDE\Designer\Atlas.IDE.Designer.Composition.pas',
   Atlas.UI.Designer.SettingsSection in 'Source\UI\Designer\Atlas.UI.Designer.SettingsSection.pas';

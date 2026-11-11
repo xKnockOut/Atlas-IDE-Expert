@@ -95,6 +95,7 @@
         <DCCReference Include="Atlas.IDE.Base.dcp"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.ButtonBar.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Components.pas"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.TabOrder.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.DuplicateRow.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FitContainer.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.NearAlign.pas"/>
@@ -131,6 +132,7 @@
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Tools.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Commands.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.SearchItems.pas"/>
+        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.TabOrder.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Bar.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Composition.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Measure.pas"/>
