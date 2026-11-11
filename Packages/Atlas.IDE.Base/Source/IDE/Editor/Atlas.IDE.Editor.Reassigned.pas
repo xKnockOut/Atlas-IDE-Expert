@@ -5,10 +5,12 @@
 // Atlas.Common.Semantics.Reassigned); Antwort lesen und Linien rechnen
 // Atlas.Core.Editor.Reassigned. Hier bleiben Zeitgeber, Anfrage und Zeichnen.
 // - Ein Zeitgeber (250 ms) liest die Ansicht vorn. Ruht der Text 700 ms, fragt
-//   Atlas den laufenden Server im Hintergrund nach allen Stellen der Datei
-//   (Arten aus highlight.reassigned.targets); nur die jüngste Antwort zählt
-//   und je Datei, Textstand und Arten nur einmal. Scheitert die Anfrage,
-//   wartet Atlas 5 s.
+//   Atlas den laufenden Server im Hintergrund nach den Stellen im sichtbaren
+//   Teil mit einer Bildschirmhöhe Rand (Arten aus
+//   highlight.reassigned.targets); nur die jüngste Antwort zählt und je Datei,
+//   Textstand, Arten und Bereich nur einmal. Verlässt die Ansicht den Bereich,
+//   fragt Atlas neu. Scheitert die Anfrage, wartet Atlas 5 s; der Server bricht
+//   die Rechnung beim Zeitlimit ab.
 // - PaintLine (plsEndPaint) zieht unter jede Stelle eines neu zugewiesenen
 //   Namens eine dünne Linie (highlight.reassigned.style: gepunktet,
 //   durchgezogen, Welle) in der Akzentfarbe des Themas oder der eigenen Farbe
@@ -36,7 +38,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Reassigned,
   Atlas.Core.Editor.Reassigned,
-  Atlas.IDE.Foundation.EditorSnapshot;
+  Atlas.IDE.Foundation.EditorSnapshot,
+  Atlas.Core.Diagnostics.Deadline;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -52,6 +55,8 @@ type
     cRetryMs = 5000;
     /// <summary>Anteil der Akzentfarbe am Hintergrund bei der Themenfarbe.</summary>
     cThemeStrength = 0.7;
+    /// <summary>Zeilenhöhe in Pixeln je Einheit der Linie; die Linie wächst mit der Bildschirmskalierung.</summary>
+    cRowPixelsPerUnit = 16;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -71,9 +76,10 @@ type
     // Stand des Editors: Datei, Pufferstand und Zeitpunkt der letzten Änderung.
     FFileName: string;
     FVersion: Cardinal;
-    FChangedAt: Cardinal;
-    FRetryAt: Cardinal;
+    FChangedAt: UInt64;
+    FRetryAt: TAtlasDeadline;
     FAskedKey: string;
+    FAskedRange: TAtlasReassignedRange;
     // Stand der Antwort: Datei, Pufferstand, Zeilen und Stellen.
     FShownFile: string;
     FLines: TArray<string>;
@@ -87,7 +93,7 @@ type
     procedure ApplyStyle(const AStyleText, AColorText: string);
     function Settled(const ASnapshot: TAtlasEditorSnapshot): Boolean;
     procedure Clear;
-    procedure Ask(const AText: string; ATargets: TAtlasReassignedTargets);
+    procedure Ask(const AText: string; ATargets: TAtlasReassignedTargets; const ARange: TAtlasReassignedRange);
     procedure Accept(ARequest: Integer; const AFileName, AText: string;
       const ASet: TAtlasReassignedSet; AFailed: Boolean);
     procedure ReapWorkers(AWait: Boolean);
@@ -225,6 +231,7 @@ begin
   FShownFile := '';
   FLines := nil;
   FAskedKey := '';
+  FAskedRange := TAtlasReassignedRange.Whole;
 end;
 
 procedure TAtlasIdeReassigned.ReapWorkers(AWait: Boolean);
@@ -290,9 +297,9 @@ end;
 /// <summary>Steht der Text aus ASnapshot seit der Tipp-Pause still und ist keine Wartezeit offen?</summary>
 function TAtlasIdeReassigned.Settled(const ASnapshot: TAtlasEditorSnapshot): Boolean;
 var
-  mMoment: Cardinal;
+  mMoment: UInt64;
 begin
-  mMoment := GetTickCount;
+  mMoment := TAtlasTicks.Now;
   Result := (ASnapshot.Version = FVersion) and SameText(ASnapshot.FileName, FFileName);
   if not Result then
   begin
@@ -302,7 +309,7 @@ begin
     FChangedAt := mMoment;
     Exit;
   end;
-  Result := (mMoment - FChangedAt >= cQuietMs) and (mMoment >= FRetryAt);
+  Result := (mMoment - FChangedAt >= cQuietMs) and FRetryAt.Reached;
 end;
 
 procedure TAtlasIdeReassigned.Update;
@@ -311,6 +318,7 @@ var
   mSnapshot: TAtlasEditorSnapshot;
   mTargetsText, mStyleText, mColorText, mKey: string;
   mTargets: TAtlasReassignedTargets;
+  mFirst, mLast: Integer;
 begin
   mView := nil;
   if TAtlasIdeSettings.ReassignedOn(mTargetsText, mStyleText, mColorText) and
@@ -337,11 +345,15 @@ begin
   end;
   mTargets := TAtlasReassignedNames.ParseTargets(mTargetsText);
   mKey := Format('%s|%d|%s', [FFileName, FVersion, TAtlasReassignedNames.TargetsText(mTargets)]);
-  if mKey <> FAskedKey then
+  mFirst := mView.TopRow - 1;
+  mLast := Max(mFirst, mView.BottomRow - 1);
+  // Nur der sichtbare Teil mit Rand: Die ganze Datei lief in großen Units ins Zeitlimit.
+  if (mKey <> FAskedKey) or not FAskedRange.Contains(mFirst, mLast) then
   begin
     FAskedKey := mKey;
+    FAskedRange := TAtlasReassignedRange.Around(mFirst, mLast);
     FTabWidth := TAtlasEditorBuffer.TabWidth(mView.Buffer);
-    Ask(mSnapshot.Text, mTargets);
+    Ask(mSnapshot.Text, mTargets, FAskedRange);
   end;
 end;
 
@@ -388,7 +400,8 @@ begin
     end);
 end;
 
-procedure TAtlasIdeReassigned.Ask(const AText: string; ATargets: TAtlasReassignedTargets);
+procedure TAtlasIdeReassigned.Ask(const AText: string; ATargets: TAtlasReassignedTargets;
+  const ARange: TAtlasReassignedRange);
 var
   mSession: TLspSession;
   mWorker: TThread;
@@ -402,15 +415,15 @@ begin
   begin
     // Server läuft (noch) nicht: beim nächsten Takt nach der Wartezeit noch einmal.
     FAskedKey := '';
-    FRetryAt := GetTickCount + cRetryMs;
+    FRetryAt := TAtlasDeadline.After(cRetryMs);
     Exit;
   end;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
   mSession.Sync(FFileName, AText);
   ReapWorkers(False);
   Inc(FRequest);
-  mWorker := Asker(mSession, TAtlasReassigned.Arguments(TLspSession.PathToUri(FFileName), ATargets), FRequest,
-    FFileName, AText);
+  mWorker := Asker(mSession, TAtlasReassigned.Arguments(TLspSession.PathToUri(FFileName), ATargets, ARange),
+    FRequest, FFileName, AText);
   mWorker.FreeOnTerminate := False;
   FWorkers.Add(mWorker);
   mWorker.Start;
@@ -428,7 +441,7 @@ begin
   if AFailed then
   begin
     FAskedKey := '';
-    FRetryAt := GetTickCount + cRetryMs;
+    FRetryAt := TAtlasDeadline.After(cRetryMs);
     Exit;
   end;
   if not ASet.Valid then
@@ -467,7 +480,7 @@ begin
   mDC := mCanvas.Handle;
   mCode := AContext.LineState.CodeRect;
   // Eine Einheit je 16 Pixel Zeilenhöhe: wächst mit der Bildschirmskalierung.
-  mStep := Max(1, ARect.Height div 16);
+  mStep := Max(1, ARect.Height div cRowPixelsPerUnit);
   // Über der Wellenlinie der Probleme (Rect.Bottom - 2), damit beide lesbar bleiben.
   mBaseline := ARect.Bottom - 2 - 2 * mStep;
   mSaved := SaveDC(mDC);

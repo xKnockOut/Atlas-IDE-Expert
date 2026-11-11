@@ -452,7 +452,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas/main/schemas/atlas.schema.json",
+  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas-IDE-Expert/main/schemas/atlas.schema.json",
   "project": "App.dproj",
   "config": "Debug",
   "platform": "Win64",

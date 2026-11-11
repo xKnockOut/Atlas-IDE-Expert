@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Tracker.TestResults;
 
-// Kachel „Testergebnisse“ des Moduls Tracker (#763, Mockup #ws11; seit #1455
-// Kachel über Atlas.IDE.Contracts.WelcomeTiles), ohne Open Tools API. Selbst
+// Kachel „Testergebnisse“ des Moduls Tracker (#763, Mockup #ws11; Kachel
+// über Atlas.IDE.Contracts.WelcomeTiles), ohne Open Tools API. Selbst
 // gezeichnet:
 //   ● Atlas.Tests  [2 fehlgeschlagen]  412 ok · 3 übersprungen · 18,4 s · 19:41
 //     ● Jenkins #482 · 2 fehlgeschlagen · vor 40 Min. · main   lokal grün, Server rot

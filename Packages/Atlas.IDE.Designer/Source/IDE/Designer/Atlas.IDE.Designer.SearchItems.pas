@@ -3,6 +3,7 @@
 // Komponenten des Formulars für das Fenster „Komponenten suchen“ (#1442):
 // Name, Klasse, Art, Elternelement, Lage, Caption/Text, gesetzte Eigenschaften
 // für die Vorschau und belegte Ereignisse mit den Handlernamen des Designers.
+// RootItem liefert das Formular selbst für „Im Designer zeigen“ (#511).
 // Nur im Hauptthread.
 
 interface
@@ -16,6 +17,8 @@ type
   TAtlasDesignerSearchItems = class
   public
     class function ItemsOf(ARoot: TComponent; const ADesigner: IDesigner): TArray<TAtlasDesignerItem>; static;
+    /// <summary>Das Formular selbst als Eintrag, samt seiner belegten Ereignisse (#511).</summary>
+    class function RootItem(ARoot: TComponent; const ADesigner: IDesigner): TAtlasDesignerItem; static;
   end;
 
 implementation
@@ -125,6 +128,15 @@ begin
     begin
       Result := Result + [ItemOf(ARoot.Components[mIndex], ARoot, ADesigner)];
     end;
+  end;
+end;
+
+class function TAtlasDesignerSearchItems.RootItem(ARoot: TComponent; const ADesigner: IDesigner): TAtlasDesignerItem;
+begin
+  Result := TAtlasDesignerItem.Create(ARoot.Name, ARoot.ClassName, False);
+  if ADesigner <> nil then
+  begin
+    Result.Events := EventsOf(ARoot, ADesigner);
   end;
 end;
 

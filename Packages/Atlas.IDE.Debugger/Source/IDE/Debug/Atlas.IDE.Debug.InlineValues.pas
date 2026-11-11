@@ -87,7 +87,7 @@ type
     /// <summary>Verzögerter Wert (LLDB) und seit wann Atlas auf ihn wartet.</summary>
     TDeferred = record
       Name: string;
-      Since: Cardinal;
+      Since: UInt64;
     end;
     /// <summary>Schrift und Farben der Werte; je Hintergrund bzw. Editorschrift einmal bestimmt.</summary>
     TPaintStyle = class
@@ -175,7 +175,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.Unavailable,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.Core.Diagnostics.Deadline;
 
 { TAtlasIdeDebugInlineValues.TListener }
 
@@ -568,7 +569,7 @@ end;
 
 procedure TAtlasIdeDebugInlineValues.EvaluateSlice;
 var
-  mStartedAt: Cardinal;
+  mStartedAt: UInt64;
   mName: string;
   mStep: TSliceStep;
   mChanged: Boolean;
@@ -584,8 +585,8 @@ begin
   end;
   mChanged := False;
   mStep := TSliceStep.Next;
-  mStartedAt := GetTickCount;
-  while (mStep = TSliceStep.Next) and (GetTickCount - mStartedAt < cSliceMs) and FValues.NextPending(mName) do
+  mStartedAt := TAtlasTicks.Now;
+  while (mStep = TSliceStep.Next) and (TAtlasTicks.Since(mStartedAt) < cSliceMs) and FValues.NextPending(mName) do
   begin
     mStep := EvaluateOne(mName, mChanged);
   end;
@@ -612,7 +613,7 @@ begin
   begin
     Exit;
   end;
-  Result := GetTickCount - FDeferred.Since < cDeferredTimeoutMs;
+  Result := TAtlasTicks.Since(FDeferred.Since) < cDeferredTimeoutMs;
   if not Result then
   begin
     FEvaluator.Cancel;
@@ -643,7 +644,7 @@ begin
     TAtlasDebugValueState.Pending:
       begin
         FDeferred.Name := AName;
-        FDeferred.Since := GetTickCount;
+        FDeferred.Since := TAtlasTicks.Now;
         Result := TSliceStep.Wait;
       end;
     TAtlasDebugValueState.Value:

@@ -2,16 +2,16 @@
 
 // Inhalt des Status-Befehls "atlas.server.status" (#28): Index, Speicher,
 // letzter Indexlauf je Ordner und Antwortzeiten je Methode. Als JSON für
-// Werkzeuge und als Markdown zum Anzeigen. Seit #492 auch die Größe der
+// Werkzeuge und als Markdown zum Anzeigen. Dazu die Größe der
 // Caches auf der Platte, die letzte Aktualisierung je Ordner und die Zahl der
-// Units mit ausgelagerten Verwendungen (Einstellungsseite des Plugins); seit
-// #261 der Weg zum Compiler und, wenn keiner nutzbar ist, Grund und Ausweg.
-// Seit #1356 (Fenster „Atlas-Server“, --timings, MCP get_server_status)
-// zusätzlich, rückwärtsverträglich unter neuen Schlüsseln: Prozess (pid,
+// Units mit ausgelagerten Verwendungen (Einstellungsseite des Plugins, #492),
+// der Weg zum Compiler und, wenn keiner nutzbar ist, Grund und Ausweg (#261).
+// Für das Fenster „Atlas-Server“, --timings und MCP get_server_status (#1356)
+// rückwärtsverträglich unter eigenen Schlüsseln: Prozess (pid,
 // Version, Start, Zustand), Speicher je Bereich gegen das Budget, Zeitprofil
 // des letzten Prüflaufs, Warteschlange von Index und Prüfung und die
 // Trefferquoten von Index-Cache und Syntaxbaum-Cache.
-// Seit #1478 liefert Mapped eine Kopie, in der jeder Name (Ordner, eigene
+// Mapped (#1478) liefert eine Kopie, in der jeder Name (Ordner, eigene
 // Konfiguration, langsame Units) und jeder Pfad (Projekt, Caches) über eine
 // Funktion läuft: für die Protokollzeile gekennzeichnet (TLogMarks), für den
 // anonymen Status über den Anonymisierer des Servers.

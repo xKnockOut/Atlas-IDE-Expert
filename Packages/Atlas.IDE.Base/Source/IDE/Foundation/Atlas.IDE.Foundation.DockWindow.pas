@@ -18,9 +18,9 @@
 // ApplyIdeTheme: Thema der IDE auf den Inhalt eines Atlas-Fensters, beim
 // Anlegen und bei jedem Themenwechsel. ApplyTheme färbt nur Steuerelemente
 // ohne Style-Hook (Labels, Panels); Listen, Felder, Combos und Kästchen
-// zeichnet der VCL-Stil, den sie über StyleName vom Elternteil erben. Nach
-// einem Wechsel lieferte diese Kette noch den alten Stil (Fenster blieben
-// hell bzw. dunkel). Deshalb steht der Stil der IDE ausdrücklich an der
+// zeichnet der VCL-Stil, den sie über StyleName vom Elternteil erben. Die
+// geerbte Kette kann nach einem Themenwechsel noch den alten Stil liefern
+// (Fenster bleiben hell bzw. dunkel). Deshalb steht der Stil der IDE ausdrücklich an der
 // Wurzel des Atlas-Fensters, alle Kinder erben; ein geänderter Name legt die
 // Fenster mit dem neuen Stil neu an. Liefert die Wurzel danach trotzdem einen
 // anderen Stil, steht die Kette im Protokoll.
@@ -35,7 +35,8 @@ uses
   System.SysUtils,
   Vcl.Controls,
   Vcl.Forms,
-  ToolsAPI;
+  ToolsAPI,
+  Atlas.UI.Foundation.WndProcHook;
 
 type
   TAtlasIdeDockWindow = class(TComponent)
@@ -44,8 +45,8 @@ type
     FRegistered: Boolean;
     FForm: TCustomForm;
     FFrame: TCustomFrame;
-    /// <summary>Ursprüngliche Fensterprozedur der Form (Haken für WM_CREATE beim Ab- und Andocken).</summary>
-    FOldWndProc: TWndMethod;
+    /// <summary>Eingehängte Fensterprozedur der Form (WM_CREATE beim Ab- und Andocken); nil ohne Form.</summary>
+    FWndHook: TAtlasWndProcHook;
     /// <summary>Formen aller Atlas-Dockfenster: Nur sie bekommen das Thema auch an der Form (schwebend).
     /// </summary>
     class var FDockForms: TArray<TCustomForm>;
@@ -177,11 +178,11 @@ begin
   if FForm <> nil then
   begin
     FForm.RemoveFreeNotification(Self);
-    if Assigned(FOldWndProc) then
+    // Liegt eine fremde Prozedur darüber, bleibt der Haken als Durchreicher in deren Kette.
+    if not TAtlasWndProcHook.Unhook(FWndHook) then
     begin
-      FForm.WindowProc := FOldWndProc;
+      TAtlasGuard.Log('Dockfenster: fremde Fensterprozedur über Atlas, Haken bleibt als Durchreicher'); // german-ok Protokoll
     end;
-    FOldWndProc := nil;
     for mIndex := High(FDockForms) downto 0 do
     begin
       if FDockForms[mIndex] = FForm then
@@ -199,8 +200,7 @@ begin
       FDockForms := FDockForms + [FForm];
     end;
     // Beim Ab- und Andocken legt die IDE das Fenster neu an; die Titelleiste muss dann neu dunkel werden.
-    FOldWndProc := FForm.WindowProc;
-    FForm.WindowProc := FormWndProc;
+    FWndHook := TAtlasWndProcHook.Create(FForm, FormWndProc);
     ThemeForm(FForm);
   end;
 end;
@@ -471,9 +471,9 @@ end;
 
 procedure TAtlasIdeDockWindow.FormWndProc(var AMessage: TMessage);
 begin
-  if Assigned(FOldWndProc) then
+  if FWndHook <> nil then
   begin
-    FOldWndProc(AMessage);
+    FWndHook.CallOld(AMessage);
   end;
   // Neu angelegtes Fenster (Ab- oder Andocken): Titelleiste wieder dunkel.
   if (AMessage.Msg = WM_CREATE) and (FForm <> nil) then

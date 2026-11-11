@@ -5,7 +5,7 @@
 // - Gekennzeichnete Werte (Atlas.Text.LogMarks, #1478): Name zu <name>, Text
 //   zu <text>, Pfad wie unten bzw. ohne erkennbaren Ort zu <datei> mit Endung.
 // - Pfade unter einem Arbeitsbereich werden zu <ws>/<datei> mit der Endung
-//   (bis #1478 blieben Unterordner und Dateiname stehen), alle anderen
+//   (ohne Unterordner und Dateiname), alle anderen
 //   absoluten Pfade und Datei-URIs zu <pfad>.
 // - Benutzer- und Rechnername zu <benutzer>; in Protokollzeilen zusätzlich
 //   Text in Anführungszeichen zu <wert>.

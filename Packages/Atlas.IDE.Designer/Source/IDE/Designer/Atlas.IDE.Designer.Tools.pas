@@ -9,6 +9,9 @@
 // - Gemeinsame Größengriffe (#737, designer.multiResize, TAtlasIdeMultiResize).
 // - Schnellleiste über einer Mehrfachauswahl (#735, designer.selectionBar,
 //   TAtlasIdeSelectionBar).
+// - Lupe (#743, designer.magnifier, TAtlasIdeMagnifier).
+// - Eigenschaften suchen (#524, designer.propertySearch,
+//   TAtlasIdePropertySearch): Knopf ohne Menü, öffnet den Dialog.
 // Nur im Hauptthread.
 
 interface
@@ -21,7 +24,9 @@ uses
   Atlas.IDE.Designer.HandleTool,
   Atlas.IDE.Designer.GapHandles,
   Atlas.IDE.Designer.MultiResize,
-  Atlas.IDE.Designer.SelectionBar;
+  Atlas.IDE.Designer.SelectionBar,
+  Atlas.IDE.Designer.Magnifier,
+  Atlas.IDE.Designer.PropertySearch;
 
 type
   TAtlasIdeDesignerTools = class
@@ -29,6 +34,7 @@ type
     FGaps: TAtlasIdeGapHandles;
     FResize: TAtlasIdeMultiResize;
     FBar: TAtlasIdeSelectionBar;
+    FMagnifier: TAtlasIdeMagnifier;
     /// <summary>Werkzeug mit Griffen zum Knopf AId; nil ohne.</summary>
     function HandleToolOf(const AId: string): TAtlasIdeHandleTool;
   public
@@ -60,10 +66,12 @@ begin
   FGaps := TAtlasIdeGapHandles.Create(AOnMessage);
   FResize := TAtlasIdeMultiResize.Create(AOnMessage);
   FBar := TAtlasIdeSelectionBar.Create(AOnMessage);
+  FMagnifier := TAtlasIdeMagnifier.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerTools.Destroy;
 begin
+  FMagnifier.Free;
   FBar.Free;
   FResize.Free;
   FGaps.Free;
@@ -84,6 +92,14 @@ begin
   if TAtlasIdeSelectionBar.Available(ASettings) then
   begin
     Result := Result + [FBar.Button];
+  end;
+  if TAtlasIdeMagnifier.Available(ASettings) then
+  begin
+    Result := Result + [FMagnifier.Button];
+  end;
+  if TAtlasIdePropertySearch.Available(ASettings) then
+  begin
+    Result := Result + [TAtlasIdePropertySearch.Button];
   end;
 end;
 
@@ -109,17 +125,28 @@ begin
     FBar.Toggle;
     Exit(True);
   end;
+  if SameText(AId, TAtlasIdeMagnifier.cId) then
+  begin
+    FMagnifier.Toggle;
+    Exit(True);
+  end;
   mTool := HandleToolOf(AId);
   Result := mTool <> nil;
   if Result then
   begin
     mTool.Toggle;
+  end
+  else if SameText(AId, TAtlasIdePropertySearch.cId) then
+  begin
+    TAtlasIdePropertySearch.Run(True);
+    Result := True;
   end;
 end;
 
 function TAtlasIdeDesignerTools.HasMenu(const AId: string): Boolean;
 begin
-  Result := (HandleToolOf(AId) <> nil) or SameText(AId, TAtlasIdeSelectionBar.cId);
+  Result := (HandleToolOf(AId) <> nil) or SameText(AId, TAtlasIdeSelectionBar.cId) or
+    SameText(AId, TAtlasIdeMagnifier.cId);
 end;
 
 procedure TAtlasIdeDesignerTools.Popup(const AId: string; const APoint: TPoint);
@@ -134,6 +161,10 @@ begin
   else if SameText(AId, TAtlasIdeSelectionBar.cId) then
   begin
     FBar.Popup(APoint);
+  end
+  else if SameText(AId, TAtlasIdeMagnifier.cId) then
+  begin
+    FMagnifier.Popup(APoint);
   end;
 end;
 
@@ -142,6 +173,7 @@ begin
   FGaps.Tick;
   FResize.Tick;
   FBar.Tick;
+  FMagnifier.Tick;
 end;
 
 procedure TAtlasIdeDesignerTools.Hide;
@@ -149,6 +181,7 @@ begin
   FGaps.Hide;
   FResize.Hide;
   FBar.Hide;
+  FMagnifier.Hide;
 end;
 
 procedure TAtlasIdeDesignerTools.ApplyTheme;
@@ -156,6 +189,7 @@ begin
   FGaps.ApplyTheme;
   FResize.ApplyTheme;
   FBar.ApplyTheme;
+  FMagnifier.ApplyTheme;
 end;
 
 end.

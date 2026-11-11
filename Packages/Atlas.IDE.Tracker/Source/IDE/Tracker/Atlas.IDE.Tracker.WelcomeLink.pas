@@ -54,6 +54,7 @@ implementation
 
 uses
   ToolsAPI,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Projects.Summaries;
 
 { TAtlasTrackerWelcomeLink }
@@ -142,7 +143,11 @@ begin
   end
   else if FileExists(AProject) and Supports(BorlandIDEServices, IOTAActionServices, mActions) then
   begin
-    mActions.OpenProject(AProject, True);
+    TAtlasGuard.RunIde(
+      procedure
+      begin
+        mActions.OpenProject(AProject, True);
+      end);
   end;
 end;
 

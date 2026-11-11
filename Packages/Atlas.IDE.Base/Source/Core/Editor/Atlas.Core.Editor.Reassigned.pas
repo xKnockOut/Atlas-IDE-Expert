@@ -7,6 +7,9 @@
 // Zeichnen stehen in Atlas.IDE.Editor.Reassigned.
 // Antwort: {"symbols": [{"name", "kind", "writes", "routine", "writeLines",
 //           "uses": [{"line", "character", "endCharacter", "write"}]}]}
+// Gefragt wird nur der sichtbare Teil mit einer Bildschirmhöhe Rand oben und
+// unten (TAtlasReassignedRange); der Server rechnet dann nur die Routinen, die
+// hineinreichen. Verlässt die Ansicht den Bereich, fragt das Plugin neu.
 
 interface
 
@@ -51,10 +54,27 @@ type
     X1, Y1, X2, Y2: Integer;
   end;
 
+  /// <summary>Gefragte Zeilen (ab 0, beide eingeschlossen); First &lt; 0: die ganze Datei.</summary>
+  TAtlasReassignedRange = record
+    First: Integer;
+    Last: Integer;
+    /// <summary>Die ganze Datei.</summary>
+    class function Whole: TAtlasReassignedRange; static;
+    /// <summary>Die sichtbaren Zeilen AFirstVisible bis ALastVisible mit einer Bildschirmhöhe Rand oben und unten.
+    /// </summary>
+    class function Around(AFirstVisible, ALastVisible: Integer): TAtlasReassignedRange; static;
+    /// <summary>Liegen die Zeilen AFirstVisible bis ALastVisible ganz im Bereich?</summary>
+    function Contains(AFirstVisible, ALastVisible: Integer): Boolean;
+  end;
+
   TAtlasReassigned = class
   public
-    /// <summary>Argumente [uri, {targets: [...]}] als JSON-Text.</summary>
-    class function Arguments(const AUri: string; ATargets: TAtlasReassignedTargets): string; static;
+    /// <summary>Argumente [uri, {targets: [...]}] für die ganze Datei als JSON-Text.</summary>
+    class function Arguments(const AUri: string; ATargets: TAtlasReassignedTargets): string; overload; static;
+    /// <summary>Argumente [uri, {targets: [...], range: {start, end}}] als JSON-Text; ohne range bei der ganzen
+    /// Datei.</summary>
+    class function Arguments(const AUri: string; ATargets: TAtlasReassignedTargets;
+      const ARange: TAtlasReassignedRange): string; overload; static;
     /// <summary>Strecken der Linie von ALeft bis ARight auf der Grundlinie ABaseline; AUnit ist ein Pixel in der
     /// Bildschirmskalierung (Punkte und Wellen wachsen mit).</summary>
     class function Segments(AStyle: TAtlasReassignedStyle; ALeft, ARight, ABaseline,
@@ -179,12 +199,40 @@ begin
   end;
 end;
 
+{ TAtlasReassignedRange }
+
+class function TAtlasReassignedRange.Whole: TAtlasReassignedRange;
+begin
+  Result.First := -1;
+  Result.Last := -1;
+end;
+
+class function TAtlasReassignedRange.Around(AFirstVisible, ALastVisible: Integer): TAtlasReassignedRange;
+var
+  mHeight: Integer;
+begin
+  mHeight := Max(1, ALastVisible - AFirstVisible + 1);
+  Result.First := Max(0, AFirstVisible - mHeight);
+  Result.Last := Max(Result.First, ALastVisible + mHeight);
+end;
+
+function TAtlasReassignedRange.Contains(AFirstVisible, ALastVisible: Integer): Boolean;
+begin
+  Result := (First < 0) or ((AFirstVisible >= First) and (ALastVisible <= Last));
+end;
+
 { TAtlasReassigned }
 
 class function TAtlasReassigned.Arguments(const AUri: string; ATargets: TAtlasReassignedTargets): string;
+begin
+  Result := Arguments(AUri, ATargets, TAtlasReassignedRange.Whole);
+end;
+
+class function TAtlasReassigned.Arguments(const AUri: string; ATargets: TAtlasReassignedTargets;
+  const ARange: TAtlasReassignedRange): string;
 var
   mValues, mTargets: TJSONArray;
-  mOptions: TJSONObject;
+  mOptions, mRange: TJSONObject;
   mTarget: TAtlasReassignedTarget;
 begin
   mValues := TJSONArray.Create;
@@ -200,6 +248,13 @@ begin
       end;
     end;
     mOptions.AddPair('targets', mTargets);
+    if ARange.First >= 0 then
+    begin
+      mRange := TJSONObject.Create;
+      mRange.AddPair('start', TJSONNumber.Create(ARange.First));
+      mRange.AddPair('end', TJSONNumber.Create(ARange.Last));
+      mOptions.AddPair('range', mRange);
+    end;
     mValues.AddElement(mOptions);
     Result := mValues.ToJSON;
   finally

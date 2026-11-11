@@ -58,7 +58,7 @@ type
     FPreviousProject: string;
     FXmlFile: string;
     FBreakpoint: IOTABreakpoint;
-    FStartedAt: Cardinal;
+    FStartedAt: UInt64;
     procedure Tick(Sender: TObject);
     procedure TickStarting(const AServices: IOTADebuggerServices);
     procedure TickRunning(const AServices: IOTADebuggerServices);
@@ -119,7 +119,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.StartOptions,
   Atlas.Text.Lines,
-  Atlas.Text.DUnitX;
+  Atlas.Text.DUnitX,
+  Atlas.Core.Diagnostics.Deadline;
 
 function ProjectName(const AFileName: string): string;
 begin
@@ -544,7 +545,7 @@ begin
   Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsDebugStarted, [ProjectName(FTarget.Project), FSelection.Caption,
     FTarget.Configuration, FTarget.Platform]));
   FPhase := TPhase.Starting;
-  FStartedAt := GetTickCount;
+  FStartedAt := TAtlasTicks.Now;
   if not TAtlasIdeStartOptions.RunTemporary(FTarget.Project,
     function(AExisting: string): string
     begin
@@ -659,7 +660,7 @@ begin
   begin
     Finish(True);
   end
-  else if GetTickCount - FStartedAt > TAtlasTestDebug.cStartTimeoutMs then
+  else if TAtlasTicks.Since(FStartedAt) > TAtlasTestDebug.cStartTimeoutMs then
   begin
     Finish(False);
   end;

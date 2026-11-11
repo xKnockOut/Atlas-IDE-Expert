@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.VersionControl.SettingsKind;
 
-// Bereich „Versionsverwaltung“ (#1285, seit #1905 im Modul): Art (vcs.provider) und Links auf die Seiten, die die
+// Bereich „Versionsverwaltung“ (#1285): Art (vcs.provider) und Links auf die Seiten, die die
 // Anzeige steuern (Editor, Willkommensseite, Issue-Tracker); ein Link erscheint nur, wenn es die Einstellung im
 // Dialog gibt (Host.Shows).
 

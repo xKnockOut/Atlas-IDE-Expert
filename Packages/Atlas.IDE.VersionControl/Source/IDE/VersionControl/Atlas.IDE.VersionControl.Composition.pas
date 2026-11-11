@@ -382,7 +382,7 @@ end;
 procedure TAtlasVcsAppliesSettings.ApplySettings;
 begin
   TAtlasIdeVcs.Reload;
-  // Änderungsmarken (#507, seit #1905 im Modul): nur, solange der Teil läuft.
+  // Änderungsmarken (#507): nur, solange der Teil läuft.
   if GStarted then
   begin
     TAtlasIdeLineChanges.ApplySettings;

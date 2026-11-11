@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.VersionControl.BranchNames.Tests;
 
-// Tests für Branch-Namen und Basen (#1286, #1288; bis #1455 in Atlas.Core.Tracker.Naming).
+// Tests für Branch-Namen und Basen (#1286, #1288).
 
 interface
 

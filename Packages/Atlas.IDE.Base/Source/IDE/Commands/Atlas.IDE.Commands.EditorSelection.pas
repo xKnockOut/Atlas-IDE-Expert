@@ -101,14 +101,30 @@ begin
   end;
 end;
 
-/// <summary>Suchtext der IDE: Strg+F und „Erneut suchen“ ohne Markierung machen damit weiter.</summary>
+/// <summary>Suchtext der IDE: Strg+F und „Erneut suchen“ ohne Markierung machen damit weiter. Ohne Position oder
+/// Suchoptionen (Ansicht im Abbau) bleibt der Suchtext, wie er ist.</summary>
 procedure TakeSearchText(const AView: IOTAEditView; const ANeedle: string);
+var
+  mPosition: IOTAEditPosition;
+  mOptions: IOTASearchOptions;
 begin
+  mPosition := AView.Position;
+  if mPosition = nil then
+  begin
+    Exit;
+  end;
+  mOptions := mPosition.SearchOptions;
+  if mOptions = nil then
+  begin
+    Exit;
+  end;
   try
-    AView.Position.SearchOptions.SearchText := ANeedle;
+    mOptions.SearchText := ANeedle;
   except
-    on Exception do
-      ;
+    // Der Suchtext ist Zugabe: Die Markierung des Treffers geht trotzdem weiter. Ins Protokoll, damit ein
+    // Fehler der IDE an dieser Stelle sichtbar wird statt still zu verschwinden.
+    on E: Exception do
+      TAtlasGuard.Log('Suchtext der IDE setzen: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
   end;
 end;
 

@@ -590,6 +590,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.WarningCodes.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.PureRoutines.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.EventAssignments.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TokenCursor.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.SystemIntrinsics.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeIdentity.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeKinds.pas"/>

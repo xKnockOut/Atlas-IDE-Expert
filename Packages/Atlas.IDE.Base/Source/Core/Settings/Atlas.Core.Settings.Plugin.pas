@@ -148,6 +148,8 @@ type
     cDesignerScopeParent = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeParent;
     cDesignerSetsLocal = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsLocal;
     cDesignerSetsShared = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsShared;
+    cDesignerGroupsAltClick = Atlas.Core.Settings.Plugin.Editor.cDesignerGroupsAltClick;
+    cDesignerGroupsDoubleClick = Atlas.Core.Settings.Plugin.Editor.cDesignerGroupsDoubleClick;
     cFitSourceCaption = Atlas.Core.Settings.Plugin.Editor.cFitSourceCaption;
     cGapAnchorCenter = Atlas.Core.Settings.Plugin.Editor.cGapAnchorCenter;
     cGapAnchorFirst = Atlas.Core.Settings.Plugin.Editor.cGapAnchorFirst;
@@ -162,6 +164,11 @@ type
     cButtonBarBottomLeft = Atlas.Core.Settings.Plugin.Editor.cButtonBarBottomLeft;
     cButtonBarRightTop = Atlas.Core.Settings.Plugin.Editor.cButtonBarRightTop;
     cButtonBarRightBottom = Atlas.Core.Settings.Plugin.Editor.cButtonBarRightBottom;
+    cLabelLeft = Atlas.Core.Settings.Plugin.Editor.cLabelLeft;
+    cLabelAbove = Atlas.Core.Settings.Plugin.Editor.cLabelAbove;
+    cGridLabelLeft = Atlas.Core.Settings.Plugin.Editor.cGridLabelLeft;
+    cGridLabelRight = Atlas.Core.Settings.Plugin.Editor.cGridLabelRight;
+    cGridLabelAbove = Atlas.Core.Settings.Plugin.Editor.cGridLabelAbove;
     cMinNotificationEntries = Atlas.Core.Settings.Plugin.General.cMinNotificationEntries;
     cMaxNotificationEntries = Atlas.Core.Settings.Plugin.General.cMaxNotificationEntries;
     cDefaultTrendSeries = Atlas.Core.Settings.Plugin.Welcome.cDefaultTrendSeries;
@@ -621,6 +628,10 @@ type
     property DesignerSearchStyle: string read FEditorView.DesignerSearchStyle write FEditorView.DesignerSearchStyle;
     property DesignerTabOrderClick: Boolean read FEditorView.DesignerTabOrderClick
       write FEditorView.DesignerTabOrderClick;
+    property DesignerTabOrderOverlay: Boolean read FEditorView.DesignerTabOrderOverlay
+      write FEditorView.DesignerTabOrderOverlay;
+    property DesignerTabOrderPaths: Boolean read FEditorView.DesignerTabOrderPaths
+      write FEditorView.DesignerTabOrderPaths;
     property DesignerAlign: Boolean read FEditorView.DesignerAlign write FEditorView.DesignerAlign;
     property DesignerSelectSimilar: Boolean read FEditorView.DesignerSelectSimilar
       write FEditorView.DesignerSelectSimilar;
@@ -635,11 +646,44 @@ type
       write FEditorView.DesignerSelectionSetsStorage;
     property DesignerSelectionSetsSaveKey: Integer read FEditorView.DesignerSelectionSetsSaveKey
       write FEditorView.DesignerSelectionSetsSaveKey;
+    property DesignerShowInDesigner: Boolean read FEditorView.DesignerShowInDesigner
+      write FEditorView.DesignerShowInDesigner;
+    property DesignerShowInDesignerKey: Integer read FEditorView.DesignerShowInDesignerKey
+      write FEditorView.DesignerShowInDesignerKey;
+    property DesignerPropertySearch: Boolean read FEditorView.DesignerPropertySearch
+      write FEditorView.DesignerPropertySearch;
     property DesignerSpatialNavigation: Boolean read FEditorView.DesignerSpatialNavigation
       write FEditorView.DesignerSpatialNavigation;
     property DesignerSpatialCrossContainers: Boolean read FEditorView.DesignerSpatialCrossContainers
       write FEditorView.DesignerSpatialCrossContainers;
-    property DesignerFitToText: Boolean read FEditorView.DesignerFitToText write FEditorView.DesignerFitToText;
+    property DesignerMeasureDistances: Boolean read FEditorView.DesignerMeasureDistances
+      write FEditorView.DesignerMeasureDistances;
+    property DesignerMeasureAltKey: Boolean read FEditorView.DesignerMeasureAltKey
+      write FEditorView.DesignerMeasureAltKey;
+    property DesignerResizePreview: Boolean read FEditorView.DesignerResizePreview
+      write FEditorView.DesignerResizePreview;
+    property DesignerResizePreviewSizes: string read FEditorView.DesignerResizePreviewSizes
+      write FEditorView.DesignerResizePreviewSizes;
+    property DesignerResizePreviewShowAnchors: Boolean read FEditorView.DesignerResizePreviewShowAnchors
+      write FEditorView.DesignerResizePreviewShowAnchors;
+    property DesignerScalePreview: Boolean read FEditorView.DesignerScalePreview
+      write FEditorView.DesignerScalePreview;
+    property DesignerScalePreviewLevels: string read FEditorView.DesignerScalePreviewLevels
+      write FEditorView.DesignerScalePreviewLevels;
+    property DesignerScalePreviewScreens: string read FEditorView.DesignerScalePreviewScreens
+      write FEditorView.DesignerScalePreviewScreens;
+    property DesignerLongTextFactor: Integer read FEditorView.DesignerLongTextFactor
+      write FEditorView.DesignerLongTextFactor;
+    property DesignerNameSuggest: Boolean read FEditorView.DesignerNameSuggest write FEditorView.DesignerNameSuggest;
+    property DesignerNameSuggestSources: string read FEditorView.DesignerNameSuggestSources
+      write FEditorView.DesignerNameSuggestSources;
+    property DesignerNameSuggestUmlauts: string read FEditorView.DesignerNameSuggestUmlauts
+      write FEditorView.DesignerNameSuggestUmlauts;
+    property DesignerNameSuggestRenameHandlers: Boolean read FEditorView.DesignerNameSuggestRenameHandlers
+      write FEditorView.DesignerNameSuggestRenameHandlers;
+    property DesignerNameSuggestPrefixes: string read FEditorView.DesignerNameSuggestPrefixes
+      write FEditorView.DesignerNameSuggestPrefixes;
+    property DesignerFitToText:Boolean read FEditorView.DesignerFitToText write FEditorView.DesignerFitToText;
     property DesignerFitToTextMinWidth: Integer read FEditorView.DesignerFitToTextMinWidth
       write FEditorView.DesignerFitToTextMinWidth;
     property DesignerFitToTextPadding: Integer read FEditorView.DesignerFitToTextPadding
@@ -682,6 +726,94 @@ type
       write FEditorView.DesignerNearAlignmentBaseline;
     property DesignerNearAlignmentIgnoreClasses: string read FEditorView.DesignerNearAlignmentIgnoreClasses
       write FEditorView.DesignerNearAlignmentIgnoreClasses;
+    property DesignerDefaultSizes: Boolean read FEditorView.DesignerDefaultSizes
+      write FEditorView.DesignerDefaultSizes;
+    property DesignerDefaultSizesTable: string read FEditorView.DesignerDefaultSizesTable
+      write FEditorView.DesignerDefaultSizesTable;
+    property DesignerDefaultSizesApplyOnInsert: Boolean read FEditorView.DesignerDefaultSizesApplyOnInsert
+      write FEditorView.DesignerDefaultSizesApplyOnInsert;
+    property DesignerDefaultSizesMarkDeviations: Boolean read FEditorView.DesignerDefaultSizesMarkDeviations
+      write FEditorView.DesignerDefaultSizesMarkDeviations;
+    property DesignerZOrder: Boolean read FEditorView.DesignerZOrder write FEditorView.DesignerZOrder;
+    property DesignerZOrderShortcuts: Boolean read FEditorView.DesignerZOrderShortcuts
+      write FEditorView.DesignerZOrderShortcuts;
+    property DesignerZOrderIncludeParents: Boolean read FEditorView.DesignerZOrderIncludeParents
+      write FEditorView.DesignerZOrderIncludeParents;
+    property DesignerPropertyPainter: Boolean read FEditorView.DesignerPropertyPainter
+      write FEditorView.DesignerPropertyPainter;
+    property DesignerPropertyPainterDefaultGroups: string read FEditorView.DesignerPropertyPainterDefaultGroups
+      write FEditorView.DesignerPropertyPainterDefaultGroups;
+    property DesignerPropertyPainterRememberPerClass: Boolean read FEditorView.DesignerPropertyPainterRememberPerClass
+      write FEditorView.DesignerPropertyPainterRememberPerClass;
+    property DesignerSuggestAnchors: Boolean read FEditorView.DesignerSuggestAnchors
+      write FEditorView.DesignerSuggestAnchors;
+    property DesignerSuggestAnchorsEdgeDistance: Integer read FEditorView.DesignerSuggestAnchorsEdgeDistance
+      write FEditorView.DesignerSuggestAnchorsEdgeDistance;
+    property DesignerSuggestAnchorsKeepExisting: Boolean read FEditorView.DesignerSuggestAnchorsKeepExisting
+      write FEditorView.DesignerSuggestAnchorsKeepExisting;
+    property DesignerSuggestAnchorsFillClasses: string read FEditorView.DesignerSuggestAnchorsFillClasses
+      write FEditorView.DesignerSuggestAnchorsFillClasses;
+    property DesignerTextTable: Boolean read FEditorView.DesignerTextTable write FEditorView.DesignerTextTable;
+    property DesignerTextTableChecks: string read FEditorView.DesignerTextTableChecks
+      write FEditorView.DesignerTextTableChecks;
+    property DesignerTextTableSynonyms: string read FEditorView.DesignerTextTableSynonyms
+      write FEditorView.DesignerTextTableSynonyms;
+    property DesignerTextTableExcludeProperties: string read FEditorView.DesignerTextTableExcludeProperties
+      write FEditorView.DesignerTextTableExcludeProperties;
+    property DesignerLabelPairs: Boolean read FEditorView.DesignerLabelPairs write FEditorView.DesignerLabelPairs;
+    property DesignerLabelPairsBaseline: Boolean read FEditorView.DesignerLabelPairsBaseline
+      write FEditorView.DesignerLabelPairsBaseline;
+    property DesignerLabelPairsFocusControl: Boolean read FEditorView.DesignerLabelPairsFocusControl
+      write FEditorView.DesignerLabelPairsFocusControl;
+    property DesignerLabelPairsMoveTogether: Boolean read FEditorView.DesignerLabelPairsMoveTogether
+      write FEditorView.DesignerLabelPairsMoveTogether;
+    property DesignerLabelPairsPairDistance: Integer read FEditorView.DesignerLabelPairsPairDistance
+      write FEditorView.DesignerLabelPairsPairDistance;
+    property DesignerLabelPairsNewLabelPosition: string read FEditorView.DesignerLabelPairsNewLabelPosition
+      write FEditorView.DesignerLabelPairsNewLabelPosition;
+    property DesignerLabelPairsAbbreviations: string read FEditorView.DesignerLabelPairsAbbreviations
+      write FEditorView.DesignerLabelPairsAbbreviations;
+    property DesignerArrangeForm: Boolean read FEditorView.DesignerArrangeForm write FEditorView.DesignerArrangeForm;
+    property DesignerArrangeFormRowGap: Integer read FEditorView.DesignerArrangeFormRowGap
+      write FEditorView.DesignerArrangeFormRowGap;
+    property DesignerArrangeFormLabelGap: Integer read FEditorView.DesignerArrangeFormLabelGap
+      write FEditorView.DesignerArrangeFormLabelGap;
+    property DesignerArrangeFormLabelAlign: string read FEditorView.DesignerArrangeFormLabelAlign
+      write FEditorView.DesignerArrangeFormLabelAlign;
+    property DesignerArrangeFormEqualFieldWidth: Boolean read FEditorView.DesignerArrangeFormEqualFieldWidth
+      write FEditorView.DesignerArrangeFormEqualFieldWidth;
+    property DesignerArrangeFormTwoPerRow: Boolean read FEditorView.DesignerArrangeFormTwoPerRow
+      write FEditorView.DesignerArrangeFormTwoPerRow;
+    property DesignerArrangeFormSetTabOrder: Boolean read FEditorView.DesignerArrangeFormSetTabOrder
+      write FEditorView.DesignerArrangeFormSetTabOrder;
+    property DesignerWrapInContainer: Boolean read FEditorView.DesignerWrapInContainer
+      write FEditorView.DesignerWrapInContainer;
+    property DesignerWrapInContainerPadding: Integer read FEditorView.DesignerWrapInContainerPadding
+      write FEditorView.DesignerWrapInContainerPadding;
+    property DesignerWrapInContainerDefaultClass: string read FEditorView.DesignerWrapInContainerDefaultClass
+      write FEditorView.DesignerWrapInContainerDefaultClass;
+    property DesignerWrapInContainerClasses: string read FEditorView.DesignerWrapInContainerClasses
+      write FEditorView.DesignerWrapInContainerClasses;
+    property DesignerFontsColors: Boolean read FEditorView.DesignerFontsColors write FEditorView.DesignerFontsColors;
+    property DesignerFontsColorsRestoreParent: Boolean read FEditorView.DesignerFontsColorsRestoreParent
+      write FEditorView.DesignerFontsColorsRestoreParent;
+    property DesignerFontsColorsIgnoreColors: string read FEditorView.DesignerFontsColorsIgnoreColors
+      write FEditorView.DesignerFontsColorsIgnoreColors;
+    property DesignerGroups: Boolean read FEditorView.DesignerGroups write FEditorView.DesignerGroups;
+    property DesignerGroupsMemberClick: string read FEditorView.DesignerGroupsMemberClick
+      write FEditorView.DesignerGroupsMemberClick;
+    property DesignerGroupsStorage: string read FEditorView.DesignerGroupsStorage
+      write FEditorView.DesignerGroupsStorage;
+    property DesignerInlineCaption: Boolean read FEditorView.DesignerInlineCaption
+      write FEditorView.DesignerInlineCaption;
+    property DesignerInlineCaptionSlowDoubleClick: Boolean read FEditorView.DesignerInlineCaptionSlowDoubleClick
+      write FEditorView.DesignerInlineCaptionSlowDoubleClick;
+    property DesignerInlineCaptionAutoWidth: Boolean read FEditorView.DesignerInlineCaptionAutoWidth
+      write FEditorView.DesignerInlineCaptionAutoWidth;
+    property DesignerInlineCaptionKey: Integer read FEditorView.DesignerInlineCaptionKey
+      write FEditorView.DesignerInlineCaptionKey;
+    property DesignerInlineCaptionProperties: string read FEditorView.DesignerInlineCaptionProperties
+      write FEditorView.DesignerInlineCaptionProperties;
     property DesignerGapHandles: Boolean read FEditorView.DesignerGapHandles write FEditorView.DesignerGapHandles;
     property DesignerGapHandlesSnapValues: string read FEditorView.DesignerGapHandlesSnapValues
       write FEditorView.DesignerGapHandlesSnapValues;
@@ -701,6 +833,15 @@ type
       write FEditorView.DesignerSelectionBarItems;
     property DesignerSelectionBarKey: Integer read FEditorView.DesignerSelectionBarKey
       write FEditorView.DesignerSelectionBarKey;
+    property DesignerMagnifier: Boolean read FEditorView.DesignerMagnifier write FEditorView.DesignerMagnifier;
+    property DesignerMagnifierZoom: Integer read FEditorView.DesignerMagnifierZoom
+      write FEditorView.DesignerMagnifierZoom;
+    property DesignerMagnifierGrid: Boolean read FEditorView.DesignerMagnifierGrid
+      write FEditorView.DesignerMagnifierGrid;
+    property DesignerMagnifierEdges: Boolean read FEditorView.DesignerMagnifierEdges
+      write FEditorView.DesignerMagnifierEdges;
+    property DesignerMagnifierKey: Integer read FEditorView.DesignerMagnifierKey
+      write FEditorView.DesignerMagnifierKey;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick
