@@ -30,6 +30,7 @@ uses
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Rules.Builtin.Declarations.Shared,
@@ -266,8 +267,8 @@ begin
   begin
     Exit(False);
   end;
-  mFirst := TokenAtOffset(FTokens, ANode.StartOffset);
-  mLast := TokenAtOffset(FTokens, ANode.EndOffset) - 1;
+  mFirst := TokenFrom(FTokens, ANode.StartOffset);
+  mLast := TokenFrom(FTokens, ANode.EndOffset) - 1;
   if mLast < mFirst then
   begin
     Exit(False);
@@ -774,7 +775,7 @@ var
     // Bei Typdeklarationen der Name, sonst der Typ selbst.
     if ANode.Parent.Kind = TSyntaxKind.TypeDecl then
     begin
-      for mIndex := TokenAtOffset(mTokens, ANode.Parent.StartOffset) to High(mTokens) do
+      for mIndex := TokenFrom(mTokens, ANode.Parent.StartOffset) to High(mTokens) do
       begin
         if SameText(mTokens[mIndex].Text, ANode.Parent.Name) then
         begin

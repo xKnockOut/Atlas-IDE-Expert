@@ -71,8 +71,6 @@ type
     /// LongInt und ihre vorzeichenlosen Gegenstücke mit dem weitesten Bereich (64 Bit), UInt64 bis High(Int64).
     /// False für andere Typen.</summary>
     class function IntegerRange(const ATypeName: string; out ALow, AHigh: Int64): Boolean; static;
-    /// <summary>Erstes Token ab AOffset (Index), Length(ATokens) ohne.</summary>
-    class function TokenFrom(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer; static;
   end;
 
 implementation
@@ -81,7 +79,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.ConditionalBranches;
+  Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Pascal.TokenCursor;
 
 /// <summary>Erstes Token AText (Symbol) in AFrom..AStop-1 auf Klammerebene 0; -1 ohne.</summary>
 function SymbolAtDepthZero(const ATokens: TArray<TPascalToken>; AFrom, AStop: Integer; const AText: string): Integer;
@@ -400,27 +399,6 @@ begin
   begin
     Result := ConstantValue(mResolved, AValue);
   end;
-end;
-
-class function TConstantValues.TokenFrom(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
-var
-  mLower, mUpper, mMiddle: Integer;
-begin
-  mLower := 0;
-  mUpper := Length(ATokens);
-  while mLower < mUpper do
-  begin
-    mMiddle := (mLower + mUpper) div 2;
-    if ATokens[mMiddle].Offset < AOffset then
-    begin
-      mLower := mMiddle + 1;
-    end
-    else
-    begin
-      mUpper := mMiddle;
-    end;
-  end;
-  Result := mLower;
 end;
 
 function TConstantValues.TokenRange(ANode: TSyntaxNode; out AFirst, ALast: Integer): Boolean;

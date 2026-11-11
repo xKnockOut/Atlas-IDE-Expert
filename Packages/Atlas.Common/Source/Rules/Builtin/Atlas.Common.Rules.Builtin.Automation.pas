@@ -52,8 +52,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -136,7 +136,6 @@ type
     function FirstToken(ANode: TSyntaxNode): Integer;
     function StopToken(ANode: TSyntaxNode): Integer;
     function NextCode(AIndex, AStop: Integer): Integer;
-    function PreviousCode(AIndex: Integer): Integer;
     function Unconditional(ANode: TSyntaxNode): Boolean;
     function TokenRange(AIndex: Integer): TTextRange;
     function NodeText(ANode: TSyntaxNode): string;
@@ -179,11 +178,6 @@ type
     destructor Destroy; override;
     procedure Run;
   end;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
 
 /// <summary>Änderung der Klammerebene durch AToken: +1 für ( und [, -1 für ) und ], sonst 0.</summary>
 function BracketStep(const AToken: TPascalToken): Integer;
@@ -275,12 +269,12 @@ end;
 
 function TAutomationCheck.FirstToken(ANode: TSyntaxNode): Integer;
 begin
-  Result := TConstantValues.TokenFrom(FTokens, ANode.StartOffset);
+  Result := TokenFrom(FTokens, ANode.StartOffset);
 end;
 
 function TAutomationCheck.StopToken(ANode: TSyntaxNode): Integer;
 begin
-  Result := TConstantValues.TokenFrom(FTokens, ANode.EndOffset);
+  Result := TokenFrom(FTokens, ANode.EndOffset);
 end;
 
 function TAutomationCheck.NextCode(AIndex, AStop: Integer): Integer;
@@ -289,15 +283,6 @@ begin
   while (Result < AStop) and IsTrivia(FTokens[Result]) do
   begin
     Inc(Result);
-  end;
-end;
-
-function TAutomationCheck.PreviousCode(AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(FTokens[Result]) do
-  begin
-    Dec(Result);
   end;
 end;
 
@@ -807,7 +792,7 @@ var
   mPrevious: Integer;
 begin
   // Open(FileName := 'a.docx'): Der Parser legt für den Namen keinen Knoten an.
-  mPrevious := PreviousCode(FirstToken(AArgument));
+  mPrevious := PreviousCode(FTokens, FirstToken(AArgument));
   Result := (mPrevious > 0) and FTokens[mPrevious].IsSymbol(':=');
 end;
 
