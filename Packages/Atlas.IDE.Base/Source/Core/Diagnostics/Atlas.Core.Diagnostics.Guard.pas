@@ -29,6 +29,10 @@
 //   Quelle. Ohne Diagnosemodus ist Timing nil, und Run prüft nur dieses Feld.
 //   Timing ist eine abstrakte Klasse, damit diese Unit den Rekorder
 //   (Atlas.Core.Diagnostics.PluginTimings) nicht kennen muss.
+// - RunIde: Arbeit der IDE innerhalb eines Atlas-Aufrufs (Projekt öffnen).
+//   Ihre Zeit zählt wie ein modaler Dialog nicht als Zeit von Atlas; vorher
+//   stand das Projektladen als 13,9 s der Willkommensseite da (#1987).
+//   Exceptions laufen unverändert zum äußeren Run.
 // - Disable schaltet ein Feature wie die Sicherung ab, auf Wunsch aus dem
 //   Diagnose-Fenster; wieder an wie nach der Sicherung (Menü Atlas).
 // - TAtlasRotatingLog: Protokoll unter %LOCALAPPDATA%\Atlas\Logs, höchstens
@@ -202,6 +206,11 @@ type
     function Enter: Integer; virtual; abstract;
     /// <summary>Ende des Aufrufs, der mit Enter begann (auch nach einem Fehler).</summary>
     procedure Leave(AFeature: TAtlasFeature; AToken: Integer); virtual; abstract;
+    /// <summary>Arbeit der IDE beginnt im laufenden Aufruf (RunIde); ohne Wirkung, wenn nicht überschrieben.
+    /// </summary>
+    procedure IdeBegin; virtual;
+    /// <summary>Die mit IdeBegin begonnene Arbeit der IDE ist zu Ende (auch nach einem Fehler).</summary>
+    procedure IdeEnd; virtual;
     /// <summary>Die Quelle AName war zu langsam (Zeitlimit oder vorige Anfrage läuft noch).</summary>
     procedure ProviderSlow(const AName: string); virtual; abstract;
   end;
@@ -227,6 +236,9 @@ type
     class destructor Destroy;
     /// <summary>Führt AProc geschützt aus; False bei Fehler oder abgeschaltetem Feature.</summary>
     class function Run(AFeature: TAtlasFeature; const AProc: TProc): Boolean; static;
+    /// <summary>AProc ist Arbeit der IDE (etwa IOTAActionServices.OpenProject): Ihre Zeit zählt im
+    /// Diagnosemodus nicht als Zeit von Atlas. Fängt keine Exception; dafür sorgt das äußere Run.</summary>
+    class procedure RunIde(const AProc: TProc); static;
     /// <summary>Fehler aus einem eigenen except-Block melden (zählt wie in Run).</summary>
     class procedure Report(AFeature: TAtlasFeature; AE: Exception); static;
     /// <summary>Feature durch die Sicherung abgeschaltet?</summary>
@@ -1092,6 +1104,36 @@ begin
   finally
     mTiming.Leave(AFeature, mToken);
   end;
+end;
+
+class procedure TAtlasGuard.RunIde(const AProc: TProc);
+var
+  mTiming: TAtlasGuardTiming;
+begin
+  mTiming := FTiming;
+  if mTiming = nil then
+  begin
+    AProc();
+    Exit;
+  end;
+  mTiming.IdeBegin;
+  try
+    AProc();
+  finally
+    mTiming.IdeEnd;
+  end;
+end;
+
+{ TAtlasGuardTiming }
+
+procedure TAtlasGuardTiming.IdeBegin;
+begin
+  // Ohne Rekorder nichts zu tun.
+end;
+
+procedure TAtlasGuardTiming.IdeEnd;
+begin
+  // Ohne Rekorder nichts zu tun.
 end;
 
 class function TAtlasGuard.Disabled(AFeature: TAtlasFeature): Boolean;

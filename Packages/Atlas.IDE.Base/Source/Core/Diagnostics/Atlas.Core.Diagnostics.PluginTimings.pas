@@ -16,6 +16,9 @@
 //   Nachrichten, sie hängt nicht. Diese Zeit zählt nicht als eigene Zeit des
 //   Aufrufs, der den Dialog öffnete, und nicht zur Belegung (Diagnose vom
 //   06.11.2026: Tracker 34 s, Willkommensseite 11,8 s ohne Hänger).
+//   Ebenso Arbeit der IDE in einem Atlas-Aufruf (TAtlasGuard.RunIde, etwa
+//   das Laden eines Projekts, #1987): Sie gehört nicht Atlas; Aufrufe von
+//   Atlas darin (Notifier) zählen für sich.
 // - Eigene Nachrichtenschleifen von Windows: Ein Kontextmenü (TrackPopupMenu,
 //   TPopupMenu.Popup) und Verschieben oder Größe ändern eines Fensters
 //   blockieren den Aufruf ebenso, ohne dass die IDE hängt; die IDE meldet sie
@@ -242,6 +245,9 @@ type
     function Enter: Integer; override;
     procedure Leave(AFeature: TAtlasFeature; AToken: Integer); override;
     procedure ProviderSlow(const AName: string); override;
+    /// <summary>TAtlasGuard.RunIde: wie ModalBegin bzw. ModalEnd.</summary>
+    procedure IdeBegin; override;
+    procedure IdeEnd; override;
     /// <summary>Eine Aktion (TAtlasActivity) begann bei AStarted (Stamp) und endet jetzt; nur im Hauptthread.
     /// </summary>
     procedure ActivityDone(const AName: string; AStarted: Int64);
@@ -676,6 +682,16 @@ begin
   begin
     FModal.Closed(FStack, FClock());
   end;
+end;
+
+procedure TAtlasPluginRecorder.IdeBegin;
+begin
+  ModalBegin;
+end;
+
+procedure TAtlasPluginRecorder.IdeEnd;
+begin
+  ModalEnd;
 end;
 
 procedure TAtlasPluginRecorder.ActivityDone(const AName: string; AStarted: Int64);
