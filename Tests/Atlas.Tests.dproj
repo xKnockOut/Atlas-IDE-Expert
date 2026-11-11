@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{7737E737-7F8E-4B01-9B7C-42DA754393D2}</ProjectGuid>
         <MainSource>Atlas.Tests.dpr</MainSource>
@@ -183,6 +183,8 @@
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.CheckProfile.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.ServerPackage.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StatusFile.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ServerActivity.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StatusHeartbeat.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.QualifiedNames.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StringLiteralCommands.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.Cancellation.Tests.pas"/>
@@ -2159,6 +2161,9 @@
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Tests.pas"/>
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Prepare.Tests.pas"/>
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Apply.Tests.pas"/>
+        <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Servers.Tests.pas"/>
+        <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Settings.Tests.pas"/>
+        <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Texts.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Section.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.SettingsSection.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas"/>

@@ -41,6 +41,7 @@ uses
   Atlas.Common.Query.Contract,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Lsp.WatchedFiles,
+  Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Projects.Selection,
   Atlas.Common.Diagnostics.Anonymizer,
@@ -206,6 +207,8 @@ begin
     begin
       AParts.Protocol.Dispatcher.Watchdog.SetTimeout(ASettings.RequestTimeoutMs);
       AParts.Session.ApplySettings(ASettings);
+      // server.statusFile (#1901) gilt serverweit.
+      TServerActivity.Shared.Enabled := ASettings.ServerStatusFile;
       // server.crashCases und server.crashSkip (#1355) gelten serverweit; beim Nachstellen bleiben beide aus.
       if not AParts.Replay then
       begin

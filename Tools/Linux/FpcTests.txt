@@ -162,7 +162,9 @@ Atlas.Common.Lsp.ResourceStringCommands.Tests
 Atlas.Common.Lsp.SettingsCommands.Tests
 Atlas.Common.Lsp.SmartIndent.Tests
 Atlas.Common.Lsp.SmartPaste.Tests
+Atlas.Common.Lsp.ServerActivity.Tests
 Atlas.Common.Lsp.StatusFile.Tests
+Atlas.Common.Lsp.StatusHeartbeat.Tests
 Atlas.Common.Lsp.StringLiteralCommands.Tests
 Atlas.Common.Lsp.TextDocumentSync.Tests
 Atlas.Common.Lsp.Todos.Tests
@@ -174,6 +176,9 @@ Atlas.Common.Mcp.Server.Tests
 Atlas.Common.Mcp.TestTools.Tests
 Atlas.Common.Metrics.Calculator.Tests
 Atlas.Common.Metrics.Report.Tests
+Atlas.Common.Monitor.Servers.Tests
+Atlas.Common.Monitor.Settings.Tests
+Atlas.Common.Monitor.Texts.Tests
 Atlas.Common.Pascal.AsmStatements.Tests
 Atlas.Common.Pascal.CompilerSwitches.Tests
 Atlas.Common.Pascal.ConditionalBranches.Tests
