@@ -5074,6 +5074,104 @@
       "x-node": "editor.designerBar",
       "x-issue": "#745"
     },
+    "DesignerMeasureDistances": {
+      "description": "Knopf „Abstände messen“ in der Designer-Leiste: Beim Verschieben und bei Größenänderung zeichnet Atlas Maßlinien zum nächsten Nachbarn im selben Parent bzw. zum Innenrand des Parents (Padding berücksichtigt), mit dem Abstand in Pixeln der DFM. Kommt derselbe Abstand bei einem anderen Paar vor, steht die Linie in der Akzentfarbe mit „wie oben“ bzw. „wie links“. Bei Größenänderung zusätzlich Breite × Höhe. Aus = Atlas zeichnet nichts, die Hilfslinien der IDE bleiben unverändert.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.measureDistances",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#605"
+    },
+    "DesignerMeasureAltKey": {
+      "description": "Bei gedrückter Alt-Taste die Abstände von der markierten Komponente (bei Mehrfachauswahl vom umschließenden Rechteck) zur Komponente unter der Maus zeigen, ohne etwas zu verändern.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.measureAltKey",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.measureDistances",
+      "x-node": "editor.designerBar",
+      "x-issue": "#605"
+    },
+    "DesignerResizePreview": {
+      "description": "Knopf „Größe ausprobieren“ in der Designer-Leiste: zeigt das Formular als Abbild bei einer Probegröße (Ziehgriff, Breite und Höhe, Minimum aus Constraints, Design, Schnellwerte), rechnet Align, Anchors, Margins, Padding und Constraints nach den Regeln der VCL und markiert Komponenten, die überlappen, herausragen oder zu klein werden. Die DFM bleibt unverändert.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.resizePreview",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#606"
+    },
+    "DesignerResizePreviewSizes": {
+      "description": "Schnellwerte in der Leiste der Probegröße als Client-Größe Breite x Höhe, durch Komma getrennt.",
+      "type": "string",
+      "default": "1366x768, 1920x1080",
+      "x-key": "designer.resizePreviewSizes",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.resizePreview",
+      "x-node": "editor.designerBar",
+      "x-issue": "#606"
+    },
+    "DesignerResizePreviewShowAnchors": {
+      "description": "In der Probegröße Anchors als kleine Nadeln an den verankerten Kanten und Align-Bereiche als getönte Flächen mit Beschriftung (alTop, alClient) zeigen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.resizePreviewShowAnchors",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.resizePreview",
+      "x-node": "editor.designerBar",
+      "x-issue": "#606"
+    },
+    "DesignerScalePreview": {
+      "description": "Knopf „Skalierung und Texte“ in der Designer-Leiste: zeigt das Formular in einem eigenen Fenster bei einer anderen Skalierung (nach den Regeln der VCL), auf einem kleineren Bildschirm samt Rahmen und Taskleiste und mit verlängerten Texten. Markiert abgeschnittene Beschriftungen, überlappende oder herausragende Steuerelemente und Formulare, die nicht auf den Bildschirm passen; ein Klick in der Liste wählt die Komponente im Designer. Die .dfm bleibt unverändert.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.scalePreview",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#607"
+    },
+    "DesignerScalePreviewLevels": {
+      "description": "Angebotene Skalierungen in Prozent, durch Komma getrennt (50 bis 400).",
+      "type": "string",
+      "default": "100, 125, 150, 175, 200",
+      "x-key": "designer.scalePreviewLevels",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.scalePreview",
+      "x-node": "editor.designerBar",
+      "x-issue": "#607"
+    },
+    "DesignerScalePreviewScreens": {
+      "description": "Angebotene Bildschirmgrößen in physischen Pixeln, Breite x Höhe, durch Komma getrennt; dazu immer „Kein Limit“.",
+      "type": "string",
+      "default": "1366x768, 1920x1080",
+      "x-key": "designer.scalePreviewScreens",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.scalePreview",
+      "x-node": "editor.designerBar",
+      "x-issue": "#607"
+    },
+    "DesignerLongTextFactor": {
+      "description": "Verlängerung aller Beschriftungen und Einträge bei „Lange Texte“ in Prozent (aufgerundet, mit den eigenen Zeichen aufgefüllt).",
+      "type": "integer",
+      "default": 30,
+      "minimum": 0,
+      "maximum": 200,
+      "x-key": "designer.longTextFactor",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.scalePreview",
+      "x-node": "editor.designerBar",
+      "x-issue": "#607"
+    },
     "DesignerFitToText": {
       "description": "Befehl „Breite nach Text“ im Menü „Anordnen“ der Designer-Leiste: setzt die markierten Steuerelemente auf die Breite des längsten Texts plus Innenabstand und Anteil des Steuerelements (Kästchen, Pfeil, Glyph), mindestens die Mindestbreite. In einer Reihe bleiben die Abstände und die linke bzw. (bei akRight oder am rechten Rand) die rechte Kante; AutoSize und Align ohne freie Breite bleiben. Ändert die .dfm.",
       "type": "boolean",
