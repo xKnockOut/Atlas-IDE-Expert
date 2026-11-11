@@ -5088,6 +5088,95 @@
       "x-node": "editor.designerBar",
       "x-issue": "#732"
     },
+    "DesignerDuplicateRow": {
+      "description": "Befehl „In Reihe duplizieren …“ im Menü „Anordnen“ der Designer-Leiste: kopiert die markierten Steuerelemente mehrmals nach unten oder rechts, mit Namen und Beschriftungen aus einer Liste.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.duplicateRow",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#736"
+    },
+    "DesignerDuplicateRowShareEvents": {
+      "description": "Vorgabe im Dialog: Die Kopien bekommen dieselben Ereignis-Handler wie das Original; aus = Kopien ohne Handler.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.duplicateRow.shareEvents",
+      "x-parent": "designer.duplicateRow",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#736"
+    },
+    "DesignerDuplicateRowDefaultGap": {
+      "description": "Abstand zwischen den Kopien in Pixeln (bei 96 dpi), wenn die Auswahl keinen Nachbarn hat, an dem sich ein Abstand ablesen lässt.",
+      "type": "integer",
+      "default": 8,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "designer.duplicateRow.defaultGap",
+      "x-parent": "designer.duplicateRow",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#736"
+    },
+    "DesignerInsertSpace": {
+      "description": "Befehle „Platz einfügen …“ und „Platz entfernen …“ im Menü „Anordnen“ der Designer-Leiste: verschieben alle Steuerelemente ab der Ober- bzw. linken Kante der Auswahl um einen Betrag; wer die Linie schneidet, wird mit beiden Ankern länger.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.insertSpace",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#740"
+    },
+    "DesignerInsertSpaceGrowParent": {
+      "description": "Parent und Formular wachsen mit, wenn der Inhalt sonst nicht mehr hineinpasst, und schrumpfen beim Entfernen entsprechend; das setzt sich bis zum Formular fort.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.insertSpace.growParent",
+      "x-parent": "designer.insertSpace",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#740"
+    },
+    "DesignerFitContainer": {
+      "description": "Befehl „An Inhalt anpassen“ im Menü „Anordnen“ der Designer-Leiste: passt markierte Container (ohne Auswahl das Formular) an ihre Kinder an, wahlweise nur Breite, nur Höhe oder alle auf dieselbe Breite.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.fitContainer",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#742"
+    },
+    "DesignerFitContainerPadding": {
+      "description": "Innenrand rechts und unten in Pixeln (bei 96 dpi); Kinder nur mit akRight bzw. akBottom stehen danach so weit vom Rand.",
+      "type": "integer",
+      "default": 8,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "designer.fitContainer.padding",
+      "x-parent": "designer.fitContainer",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#742"
+    },
+    "DesignerFitContainerAlignTopLeft": {
+      "description": "Kinder vorher nach links oben rücken, sodass auch dort der Innenrand gilt; aus = der vorhandene Abstand links und oben bleibt.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.fitContainer.alignTopLeft",
+      "x-parent": "designer.fitContainer",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#742"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",

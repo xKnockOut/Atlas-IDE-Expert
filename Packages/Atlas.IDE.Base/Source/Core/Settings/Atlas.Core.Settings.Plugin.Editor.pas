@@ -542,6 +542,22 @@ type
     DesignerButtonBarSetModalResult: Boolean;
     /// <summary>Eigene Begriffe „ok=Weiter|Los; cancel=Zurück“ (#732, designer.buttonBar.roles).</summary>
     DesignerButtonBarRoles: string;
+    /// <summary>Befehl „In Reihe duplizieren“ (#736, designer.duplicateRow).</summary>
+    DesignerDuplicateRow: Boolean;
+    /// <summary>Ereignis-Handler der Kopien teilen (#736, designer.duplicateRow.shareEvents).</summary>
+    DesignerDuplicateRowShareEvents: Boolean;
+    /// <summary>Abstand ohne erkannten Nachbarn (#736, designer.duplicateRow.defaultGap).</summary>
+    DesignerDuplicateRowDefaultGap: Integer;
+    /// <summary>Befehle „Platz einfügen/entfernen“ (#740, designer.insertSpace).</summary>
+    DesignerInsertSpace: Boolean;
+    /// <summary>Parent und Formular mitwachsen lassen (#740, designer.insertSpace.growParent).</summary>
+    DesignerInsertSpaceGrowParent: Boolean;
+    /// <summary>Befehl „An Inhalt anpassen“ (#742, designer.fitContainer).</summary>
+    DesignerFitContainer: Boolean;
+    /// <summary>Innenrand rechts und unten (#742, designer.fitContainer.padding).</summary>
+    DesignerFitContainerPadding: Integer;
+    /// <summary>Kinder nach links oben rücken (#742, designer.fitContainer.alignTopLeft).</summary>
+    DesignerFitContainerAlignTopLeft: Boolean;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -581,6 +597,10 @@ type
     OverviewRulerKinds: string;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginEditorViewSettings; static;
+    /// <summary>Vorgaben der Befehle im Menü „Anordnen“ der Designer-Leiste (#730 ff.).</summary>
+    procedure SetArrangeDefaults;
+    /// <summary>Einstellungen der Befehle im Menü „Anordnen“ lesen bzw. schreiben.</summary>
+    procedure ExchangeArrange(const AIo: TAtlasSettingsExchange);
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
     /// <summary>Werte über AIo lesen bzw. schreiben, jeden unter seinem Namen.</summary>
@@ -1054,17 +1074,7 @@ begin
   Result.DesignerSelectionSetsSaveKey := 24659;
   Result.DesignerSpatialNavigation := True;
   Result.DesignerSpatialCrossContainers := True;
-  Result.DesignerFitToText := True;
-  Result.DesignerFitToTextMinWidth := 75;
-  Result.DesignerFitToTextPadding := 16;
-  Result.DesignerFitToTextSources := cFitSourceCaption;
-  Result.DesignerButtonBar := True;
-  Result.DesignerButtonBarOrder := 'ok,cancel,apply,help';
-  Result.DesignerButtonBarPosition := cButtonBarBottomRight;
-  Result.DesignerButtonBarGap := 8;
-  Result.DesignerButtonBarMargin := 8;
-  Result.DesignerButtonBarSetModalResult := True;
-  Result.DesignerButtonBarRoles := '';
+  Result.SetArrangeDefaults;
   Result.Minimap := False;
   Result.MinimapRender := 'characters';
   Result.MinimapWidth := 120;
@@ -1084,6 +1094,52 @@ begin
   Result.GutterColumnOverrides := True;
   Result.OverviewRuler := True;
   Result.OverviewRulerKinds := TAtlasOverviewKindNames.Text(TAtlasOverviewKindNames.cAll);
+end;
+
+procedure TAtlasPluginEditorViewSettings.SetArrangeDefaults;
+begin
+  DesignerFitToText := True;
+  DesignerFitToTextMinWidth := 75;
+  DesignerFitToTextPadding := 16;
+  DesignerFitToTextSources := cFitSourceCaption;
+  DesignerButtonBar := True;
+  DesignerButtonBarOrder := 'ok,cancel,apply,help';
+  DesignerButtonBarPosition := cButtonBarBottomRight;
+  DesignerButtonBarGap := 8;
+  DesignerButtonBarMargin := 8;
+  DesignerButtonBarSetModalResult := True;
+  DesignerButtonBarRoles := '';
+  DesignerDuplicateRow := True;
+  DesignerDuplicateRowShareEvents := True;
+  DesignerDuplicateRowDefaultGap := 8;
+  DesignerInsertSpace := True;
+  DesignerInsertSpaceGrowParent := True;
+  DesignerFitContainer := True;
+  DesignerFitContainerPadding := 8;
+  DesignerFitContainerAlignTopLeft := False;
+end;
+
+procedure TAtlasPluginEditorViewSettings.ExchangeArrange(const AIo: TAtlasSettingsExchange);
+begin
+  AIo.Flag('DesignerFitToText', DesignerFitToText);
+  AIo.Number('DesignerFitToTextMinWidth', DesignerFitToTextMinWidth);
+  AIo.Number('DesignerFitToTextPadding', DesignerFitToTextPadding);
+  AIo.Text('DesignerFitToTextSources', DesignerFitToTextSources);
+  AIo.Flag('DesignerButtonBar', DesignerButtonBar);
+  AIo.Text('DesignerButtonBarOrder', DesignerButtonBarOrder);
+  AIo.Text('DesignerButtonBarPosition', DesignerButtonBarPosition);
+  AIo.Number('DesignerButtonBarGap', DesignerButtonBarGap);
+  AIo.Number('DesignerButtonBarMargin', DesignerButtonBarMargin);
+  AIo.Flag('DesignerButtonBarSetModalResult', DesignerButtonBarSetModalResult);
+  AIo.Text('DesignerButtonBarRoles', DesignerButtonBarRoles);
+  AIo.Flag('DesignerDuplicateRow', DesignerDuplicateRow);
+  AIo.Flag('DesignerDuplicateRowShareEvents', DesignerDuplicateRowShareEvents);
+  AIo.Number('DesignerDuplicateRowDefaultGap', DesignerDuplicateRowDefaultGap);
+  AIo.Flag('DesignerInsertSpace', DesignerInsertSpace);
+  AIo.Flag('DesignerInsertSpaceGrowParent', DesignerInsertSpaceGrowParent);
+  AIo.Flag('DesignerFitContainer', DesignerFitContainer);
+  AIo.Number('DesignerFitContainerPadding', DesignerFitContainerPadding);
+  AIo.Flag('DesignerFitContainerAlignTopLeft', DesignerFitContainerAlignTopLeft);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Normalize;
@@ -1109,6 +1165,8 @@ begin
     cButtonBarRightTop, cButtonBarRightBottom]);
   DesignerButtonBarGap := EnsureRange(DesignerButtonBarGap, 0, cMaxButtonBarSpace);
   DesignerButtonBarMargin := EnsureRange(DesignerButtonBarMargin, 0, cMaxButtonBarSpace);
+  DesignerDuplicateRowDefaultGap := EnsureRange(DesignerDuplicateRowDefaultGap, 0, cMaxButtonBarSpace);
+  DesignerFitContainerPadding := EnsureRange(DesignerFitContainerPadding, 0, cMaxButtonBarSpace);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -1134,17 +1192,7 @@ begin
   AIo.Number('DesignerSelectionSetsSaveKey', DesignerSelectionSetsSaveKey);
   AIo.Flag('DesignerSpatialNavigation', DesignerSpatialNavigation);
   AIo.Flag('DesignerSpatialCrossContainers', DesignerSpatialCrossContainers);
-  AIo.Flag('DesignerFitToText', DesignerFitToText);
-  AIo.Number('DesignerFitToTextMinWidth', DesignerFitToTextMinWidth);
-  AIo.Number('DesignerFitToTextPadding', DesignerFitToTextPadding);
-  AIo.Text('DesignerFitToTextSources', DesignerFitToTextSources);
-  AIo.Flag('DesignerButtonBar', DesignerButtonBar);
-  AIo.Text('DesignerButtonBarOrder', DesignerButtonBarOrder);
-  AIo.Text('DesignerButtonBarPosition', DesignerButtonBarPosition);
-  AIo.Number('DesignerButtonBarGap', DesignerButtonBarGap);
-  AIo.Number('DesignerButtonBarMargin', DesignerButtonBarMargin);
-  AIo.Flag('DesignerButtonBarSetModalResult', DesignerButtonBarSetModalResult);
-  AIo.Text('DesignerButtonBarRoles', DesignerButtonBarRoles);
+  ExchangeArrange(AIo);
   AIo.Flag('Minimap', Minimap);
   AIo.Text('MinimapRender', MinimapRender);
   AIo.Number('MinimapWidth', MinimapWidth);
