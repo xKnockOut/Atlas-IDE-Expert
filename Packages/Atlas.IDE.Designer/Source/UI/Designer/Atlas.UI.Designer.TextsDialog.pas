@@ -19,13 +19,14 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
-  Atlas.Core.Designer.FormTexts;
+  Atlas.Core.Designer.FormTexts,
+  Atlas.UI.Designer.Dialog;
 
 type
   /// <summary>Text von Eintrag AIndex auf AText setzen; liefert alle Einträge neu geprüft.</summary>
   TAtlasTextsChange = reference to function(AIndex: Integer; const AText: string): TArray<TAtlasTextEntry>;
 
-  TAtlasTextsDialog = class(TForm)
+  TAtlasTextsDialog = class(TAtlasDesignerDialog)
   public const
     cDialogWidth = 760;
     cListHeight = 380;
@@ -78,10 +79,14 @@ uses
   Atlas.UI.Designer.Strings;
 
 const
-  cGap = 10;
   cColumnWidths: array [0 .. 4] of Integer = (120, 100, 140, 180, 50);
+  cComponentColumn = 0;
+  cClassColumn = 1;
+  cPropertyColumn = 2;
+  cTextColumn = 3;
   cLengthColumn = 4;
   cFindingsColumn = 5;
+  cVerticalGaps = 4;
 
 function FindingText(const AFinding: TAtlasTextFinding): string;
 const
@@ -112,13 +117,13 @@ end;
 class function TAtlasTextsDialog.Cell(const AEntry: TAtlasTextEntry; AColumn: Integer): string;
 begin
   case AColumn of
-    0:
+    cComponentColumn:
       Result := AEntry.Component;
-    1:
+    cClassColumn:
       Result := AEntry.ClassName;
-    2:
+    cPropertyColumn:
       Result := AEntry.Path;
-    3:
+    cTextColumn:
       Result := AEntry.Text;
     cLengthColumn:
       Result := IntToStr(Length(AEntry.Text));
@@ -135,16 +140,12 @@ begin
   FOnSelect := AOnSelect;
   FOnChange := AOnChange;
   FSortColumn := -1;
-  Caption := TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerTextsTitle, [AForm]);
-  BorderStyle := bsSizeToolWin;
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
+  InitDialog(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerTextsTitle, [AForm]), cDialogWidth, bsSizeToolWin);
   AddTop;
   AddBottom;
   AddList;
-  ClientHeight := ScaleValue(cListHeight) + FFilter.Height + FText.Height + 4 * cGap;
+  // Abstände über dem Filter, über und unter der Liste und unter dem Textfeld.
+  ClientHeight := ScaleValue(cListHeight) + FFilter.Height + FText.Height + cVerticalGaps * cGap;
   Fill(-1);
   ActiveControl := FList;
 end;
@@ -162,7 +163,7 @@ begin
   FFilter := TEdit.Create(Self);
   FFilter.Parent := mPanel;
   FFilter.Align := alLeft;
-  FFilter.Width := ScaleValue(cColumnWidths[0] * 2);
+  FFilter.Width := ScaleValue(cColumnWidths[cComponentColumn] * 2);
   FFilter.TextHint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsFilter);
   FFilter.OnChange := FilterChange;
   mPanel.Height := FFilter.Height;
@@ -172,7 +173,7 @@ begin
   FOnlyFindings.AlignWithMargins := True;
   FOnlyFindings.Margins.SetBounds(cGap, 0, 0, 0);
   FOnlyFindings.Left := FFilter.Width + 1;
-  FOnlyFindings.Width := ScaleValue(cColumnWidths[3]);
+  FOnlyFindings.Width := ScaleValue(cColumnWidths[cTextColumn]);
   FOnlyFindings.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsOnlyFindings);
   FOnlyFindings.OnClick := FilterChange;
   FCount := TLabel.Create(Self);
@@ -208,10 +209,10 @@ begin
       mColumn.AutoSize := True;
     end;
   end;
-  FList.Columns[0].Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsComponent);
-  FList.Columns[1].Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsClass);
-  FList.Columns[2].Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsProperty);
-  FList.Columns[3].Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsText);
+  FList.Columns[cComponentColumn].Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsComponent);
+  FList.Columns[cClassColumn].Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsClass);
+  FList.Columns[cPropertyColumn].Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsProperty);
+  FList.Columns[cTextColumn].Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsText);
   FList.Columns[cLengthColumn].Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsLength);
   FList.Columns[cFindingsColumn].Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsFindings);
   FList.OnSelectItem := ListSelect;

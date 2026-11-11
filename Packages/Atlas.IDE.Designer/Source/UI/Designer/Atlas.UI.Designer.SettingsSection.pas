@@ -22,9 +22,11 @@ type
     procedure BuildArrangeRows;
     /// <summary>Zeilen der eigenen Knöpfe der Designer-Leiste (#605 ff.).</summary>
     procedure BuildViewRows;
-    /// <summary>Zeilen von Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728) und Label und Feld (#729).</summary>
+    /// <summary>Zeilen von Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars
+    /// (#728) und Label und Feld (#729).</summary>
     procedure BuildToolRows;
-    /// <summary>Zeilen von Label und Feld (#729), Formularraster (#731), Einpacken (#733) und Schriften und Farben (#741).</summary>
+    /// <summary>Zeilen von Label und Feld (#729), Formularraster (#731), Einpacken (#733) und Schriften und Farben
+    /// (#741).</summary>
     procedure BuildPairRows;
     /// <summary>Zeilen der Werkzeuge mit eigenem Knopf in der Designer-Leiste (#734 ff.).</summary>
     procedure BuildButtonRows;

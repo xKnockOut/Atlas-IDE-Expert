@@ -185,7 +185,8 @@ end;
 function TAtlasDesignerModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := [MenuEntry(cShowCommandId, TAtlasMenuPlace.EditorContext),
-    MenuEntry(cShowCommandId, TAtlasMenuPlace.AtlasMenu), MenuEntry(cPropertySearchCommandId, TAtlasMenuPlace.AtlasMenu)];
+    MenuEntry(cShowCommandId, TAtlasMenuPlace.AtlasMenu),
+    MenuEntry(cPropertySearchCommandId, TAtlasMenuPlace.AtlasMenu)];
 end;
 
 function TAtlasDesignerModule.Keys: TArray<TAtlasModuleKey>;

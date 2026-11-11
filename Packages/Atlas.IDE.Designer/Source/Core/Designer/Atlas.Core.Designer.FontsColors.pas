@@ -401,8 +401,12 @@ begin
 end;
 
 class function TAtlasFontsColors.HeightOf(ASize, APixelsPerInch: Integer): Integer;
+const
+  /// <summary>Schriftgrößen stehen in Punkt, 72 je Zoll.</summary>
+  cPointsPerInch = 72;
 begin
-  Result := -((ASize * APixelsPerInch + 36) div 72);
+  // Gerundet wie MulDiv in TFont.Size; negative Höhe: Zeichenhöhe ohne Zeilenabstand.
+  Result := -((ASize * APixelsPerInch + cPointsPerInch div 2) div cPointsPerInch);
 end;
 
 class function TAtlasFontsColors.FontText(const AFont: TAtlasFontKey; const AStyleNames: array of string): string;
