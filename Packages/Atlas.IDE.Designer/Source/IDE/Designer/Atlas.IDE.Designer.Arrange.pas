@@ -28,6 +28,9 @@
 //   designer.suggestAnchors, TAtlasIdeAnchors).
 // - Texte des Formulars … und Text rückgängig (#728, designer.textTable,
 //   TAtlasIdeFormTexts).
+// - Label und Feld (Untermenü: Labels an Feldern ausrichten, Label erzeugen,
+//   Paar lösen, Paar verbinden) und Label rückgängig (#729,
+//   designer.labelPairs, TAtlasIdeLabelPairs).
 // Gesperrt sind Einträge, für die die Auswahl nicht passt. Nur im Hauptthread.
 
 interface
@@ -45,7 +48,8 @@ uses
   Atlas.IDE.Designer.Layers,
   Atlas.IDE.Designer.PropertyPainter,
   Atlas.IDE.Designer.Anchors,
-  Atlas.IDE.Designer.FormTexts;
+  Atlas.IDE.Designer.FormTexts,
+  Atlas.IDE.Designer.LabelPairs;
 
 type
   TAtlasIdeDesignerArrange = class
@@ -61,6 +65,7 @@ type
     FPainter: TAtlasIdePropertyPainter;
     FAnchors: TAtlasIdeAnchors;
     FTexts: TAtlasIdeFormTexts;
+    FPairs: TAtlasIdeLabelPairs;
     /// <summary>Namen der Stapel-Einträge im zuletzt gezeigten Menü.</summary>
     FStackNames: TArray<string>;
     function AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer; AEnabled: Boolean): TMenuItem;
@@ -69,6 +74,7 @@ type
     procedure AddSizeItems(const ASettings: TAtlasPluginSettings);
     procedure AddLayerItems;
     procedure AddPaintItems;
+    procedure AddPairItems;
     /// <summary>Untermenüs ab „Fast bündige Kanten“ (#746 ff.).</summary>
     procedure AddFormItems(const ASettings: TAtlasPluginSettings; ASelection: Boolean);
     procedure ItemClick(Sender: TObject);
@@ -128,6 +134,7 @@ const
   cLayersFirst = 40;
   /// <summary>Ab hier TAtlasPaintCommand: cPaintFirst + Ord(Befehl).</summary>
   cPaintFirst = 50;
+  cPairsFirst = 60;
   /// <summary>Ab hier Einträge des Stapels: cStackFirst + Index in FStackNames.</summary>
   cStackFirst = 100;
 
@@ -147,10 +154,12 @@ begin
   FPainter := TAtlasIdePropertyPainter.Create(AOnMessage);
   FAnchors := TAtlasIdeAnchors.Create(AOnMessage);
   FTexts := TAtlasIdeFormTexts.Create(AOnMessage);
+  FPairs := TAtlasIdeLabelPairs.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerArrange.Destroy;
 begin
+  FPairs.Free;
   FTexts.Free;
   FAnchors.Free;
   FPainter.Free;
@@ -170,7 +179,7 @@ begin
     ASettings.DesignerInsertSpace or ASettings.DesignerFitContainer or ASettings.DesignerNearAlignment or
     ASettings.DesignerDefaultSizes or ASettings.DesignerZOrder or
     ASettings.DesignerPropertyPainter or ASettings.DesignerSuggestAnchors or
-    ASettings.DesignerTextTable;
+    ASettings.DesignerTextTable or ASettings.DesignerLabelPairs;
 end;
 
 function TAtlasIdeDesignerArrange.AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer;
@@ -328,6 +337,25 @@ begin
   FMenu.Popup(APoint.X, APoint.Y);
 end;
 
+procedure TAtlasIdeDesignerArrange.AddPairItems;
+var
+  mSub: TMenuItem;
+begin
+  mSub := TMenuItem.Create(FMenu);
+  mSub.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerPairsMenu);
+  FMenu.Items.Add(mSub);
+  AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerPairsAlignCmd),
+    cPairsFirst + Ord(TAtlasPairsCommand.AlignLabels), True);
+  AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerPairsCreateCmd),
+    cPairsFirst + Ord(TAtlasPairsCommand.CreateLabels), FPairs.CanCreate);
+  AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerPairsReleaseCmd),
+    cPairsFirst + Ord(TAtlasPairsCommand.Release), True);
+  AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerPairsJoinCmd),
+    cPairsFirst + Ord(TAtlasPairsCommand.Join), True);
+  AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerPairsUndoCmd),
+    cPairsFirst + Ord(TAtlasPairsCommand.Undo), FPairs.CanUndo);
+end;
+
 procedure TAtlasIdeDesignerArrange.AddFormItems(const ASettings: TAtlasPluginSettings; ASelection: Boolean);
 begin
   if ASettings.DesignerNearAlignment then
@@ -351,6 +379,10 @@ begin
     AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAnchorsCmd), cAnchors, True);
     AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAnchorsUndoCmd), cAnchorsUndo,
       FAnchors.CanUndo);
+  end;
+  if ASettings.DesignerLabelPairs then
+  begin
+    AddPairItems;
   end;
   if ASettings.DesignerTextTable then
   begin
@@ -414,6 +446,10 @@ begin
     begin
       TAtlasIdeDesignerLayers.SelectName(FStackNames[ATag - cStackFirst]);
     end;
+  end
+  else if ATag >= cPairsFirst then
+  begin
+    FPairs.Execute(TAtlasPairsCommand(ATag - cPairsFirst));
   end
   else if ATag >= cPaintFirst then
   begin

@@ -155,6 +155,8 @@ type
     cButtonBarBottomLeft = Atlas.Core.Settings.Plugin.Editor.cButtonBarBottomLeft;
     cButtonBarRightTop = Atlas.Core.Settings.Plugin.Editor.cButtonBarRightTop;
     cButtonBarRightBottom = Atlas.Core.Settings.Plugin.Editor.cButtonBarRightBottom;
+    cLabelLeft = Atlas.Core.Settings.Plugin.Editor.cLabelLeft;
+    cLabelAbove = Atlas.Core.Settings.Plugin.Editor.cLabelAbove;
     cMinNotificationEntries = Atlas.Core.Settings.Plugin.General.cMinNotificationEntries;
     cMaxNotificationEntries = Atlas.Core.Settings.Plugin.General.cMaxNotificationEntries;
     cDefaultTrendSeries = Atlas.Core.Settings.Plugin.Welcome.cDefaultTrendSeries;
@@ -707,6 +709,19 @@ type
       write FEditorView.DesignerTextTableSynonyms;
     property DesignerTextTableExcludeProperties: string read FEditorView.DesignerTextTableExcludeProperties
       write FEditorView.DesignerTextTableExcludeProperties;
+    property DesignerLabelPairs: Boolean read FEditorView.DesignerLabelPairs write FEditorView.DesignerLabelPairs;
+    property DesignerLabelPairsBaseline: Boolean read FEditorView.DesignerLabelPairsBaseline
+      write FEditorView.DesignerLabelPairsBaseline;
+    property DesignerLabelPairsFocusControl: Boolean read FEditorView.DesignerLabelPairsFocusControl
+      write FEditorView.DesignerLabelPairsFocusControl;
+    property DesignerLabelPairsMoveTogether: Boolean read FEditorView.DesignerLabelPairsMoveTogether
+      write FEditorView.DesignerLabelPairsMoveTogether;
+    property DesignerLabelPairsPairDistance: Integer read FEditorView.DesignerLabelPairsPairDistance
+      write FEditorView.DesignerLabelPairsPairDistance;
+    property DesignerLabelPairsNewLabelPosition: string read FEditorView.DesignerLabelPairsNewLabelPosition
+      write FEditorView.DesignerLabelPairsNewLabelPosition;
+    property DesignerLabelPairsAbbreviations: string read FEditorView.DesignerLabelPairsAbbreviations
+      write FEditorView.DesignerLabelPairsAbbreviations;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick

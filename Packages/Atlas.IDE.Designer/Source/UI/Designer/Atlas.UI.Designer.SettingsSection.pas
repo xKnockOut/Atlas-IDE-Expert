@@ -2,7 +2,7 @@
 
 // Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil
 // „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Gleiche auswählen (#738),
-// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728).
+// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728), Label und Feld (#729).
 
 interface
 
@@ -17,8 +17,10 @@ type
   private
     /// <summary>Zeilen der Befehle im Menü „Anordnen“ (#730 ff.).</summary>
     procedure BuildArrangeRows;
-    /// <summary>Zeilen von Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727) und Texte des Formulars (#728).</summary>
+    /// <summary>Zeilen von Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728) und Label und Feld (#729).</summary>
     procedure BuildToolRows;
+    /// <summary>Zeilen von Label und Feld (#729).</summary>
+    procedure BuildPairRows;
   protected
     procedure BuildRows; override;
   public
@@ -153,6 +155,26 @@ begin
   Line('designer.textTable.synonyms', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTextsSynonyms));
   Line('designer.textTable.excludeProperties',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTextsExclude));
+  BuildPairRows;
+end;
+
+procedure TAtlasDesignerSettingsSection.BuildPairRows;
+begin
+  Switch('designer.labelPairs', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerPairs));
+  Switch('designer.labelPairs.baseline', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerPairsBaseline));
+  Switch('designer.labelPairs.focusControl',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerPairsFocus));
+  Switch('designer.labelPairs.moveTogether',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerPairsMove));
+  Number('designer.labelPairs.pairDistance',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerPairsDistance));
+  Choice('designer.labelPairs.newLabelPosition',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerPairsPosition),
+    [TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerPairsLeft),
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerPairsAbove)],
+    [TAtlasPluginSettings.cLabelLeft, TAtlasPluginSettings.cLabelAbove]);
+  Line('designer.labelPairs.abbreviations',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerPairsAbbreviations));
 end;
 
 end.

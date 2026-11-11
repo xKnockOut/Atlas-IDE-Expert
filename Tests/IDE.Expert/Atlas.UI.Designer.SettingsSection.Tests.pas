@@ -52,6 +52,8 @@ type
     procedure SuggestAnchorsRoundTrip;
     [Test]
     procedure TextTableRoundTrip;
+    [Test]
+    procedure LabelPairsRoundTrip;
   end;
 
 implementation
@@ -463,6 +465,38 @@ begin
     Assert.AreEqual('labelColon', mSaved.DesignerTextTableChecks);
     Assert.AreEqual('Lieferant, Lieferer', mSaved.DesignerTextTableSynonyms);
     Assert.AreEqual('Hint', mSaved.DesignerTextTableExcludeProperties);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.LabelPairsRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerLabelPairs').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerLabelPairsMoveTogether').Checked);
+    Assert.AreEqual('16', EditOf(mPage, 'DesignerLabelPairsPairDistance').Text);
+    Assert.AreEqual('PLZ, IBAN, BIC, USt, ID', EditOf(mPage, 'DesignerLabelPairsAbbreviations').Text);
+    CheckOf(mPage, 'DesignerLabelPairs').Checked := False;
+    CheckOf(mPage, 'DesignerLabelPairsBaseline').Checked := False;
+    CheckOf(mPage, 'DesignerLabelPairsFocusControl').Checked := False;
+    CheckOf(mPage, 'DesignerLabelPairsMoveTogether').Checked := False;
+    EditOf(mPage, 'DesignerLabelPairsPairDistance').Text := '24';
+    EditOf(mPage, 'DesignerLabelPairsAbbreviations').Text := 'PLZ';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerLabelPairs, 'abschaltbar');
+    Assert.IsFalse(mSaved.DesignerLabelPairsBaseline);
+    Assert.IsFalse(mSaved.DesignerLabelPairsFocusControl);
+    Assert.IsFalse(mSaved.DesignerLabelPairsMoveTogether);
+    Assert.AreEqual(24, mSaved.DesignerLabelPairsPairDistance);
+    Assert.AreEqual('PLZ', mSaved.DesignerLabelPairsAbbreviations);
+    Assert.AreEqual(TAtlasPluginSettings.cLabelLeft, mSaved.DesignerLabelPairsNewLabelPosition);
   finally
     mPage.Free;
   end;

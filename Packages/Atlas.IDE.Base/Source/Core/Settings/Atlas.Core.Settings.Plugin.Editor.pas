@@ -81,6 +81,9 @@ const
   cButtonBarBottomLeft = 'bottomLeft';
   cButtonBarRightTop = 'rightTop';
   cButtonBarRightBottom = 'rightBottom';
+  /// <summary>Werte von designer.labelPairs.newLabelPosition (#729).</summary>
+  cLabelLeft = 'left';
+  cLabelAbove = 'above';
   cMaxButtonBarSpace = 100;
   cMaxNearTolerance = 10;
 
@@ -603,6 +606,20 @@ type
     DesignerTextTableSynonyms: string;
     /// <summary>Nicht erfasste Eigenschaften (#728, designer.textTable.excludeProperties).</summary>
     DesignerTextTableExcludeProperties: string;
+    /// <summary>Label und Eingabefeld als Paar (#729, designer.labelPairs).</summary>
+    DesignerLabelPairs: Boolean;
+    /// <summary>Label auf die Textgrundlinie des Felds rücken (#729, designer.labelPairs.baseline).</summary>
+    DesignerLabelPairsBaseline: Boolean;
+    /// <summary>Leeres FocusControl auf das Feld setzen (#729, designer.labelPairs.focusControl).</summary>
+    DesignerLabelPairsFocusControl: Boolean;
+    /// <summary>Label mit dem Feld verschieben (#729, designer.labelPairs.moveTogether).</summary>
+    DesignerLabelPairsMoveTogether: Boolean;
+    /// <summary>Größter Abstand für ein Paar (#729, designer.labelPairs.pairDistance).</summary>
+    DesignerLabelPairsPairDistance: Integer;
+    /// <summary>Lage neuer Labels: cLabelLeft oder cLabelAbove (#729, designer.labelPairs.newLabelPosition).</summary>
+    DesignerLabelPairsNewLabelPosition: string;
+    /// <summary>Abkürzungen in eigener Schreibweise (#729, designer.labelPairs.abbreviations).</summary>
+    DesignerLabelPairsAbbreviations: string;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -1184,6 +1201,13 @@ begin
   DesignerTextTableChecks := 'accelerators, variants, truncated, whitespace';
   DesignerTextTableSynonyms := '';
   DesignerTextTableExcludeProperties := 'SQL, CommandText';
+  DesignerLabelPairs := True;
+  DesignerLabelPairsBaseline := True;
+  DesignerLabelPairsFocusControl := True;
+  DesignerLabelPairsMoveTogether := True;
+  DesignerLabelPairsPairDistance := 16;
+  DesignerLabelPairsNewLabelPosition := cLabelLeft;
+  DesignerLabelPairsAbbreviations := 'PLZ, IBAN, BIC, USt, ID';
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeArrange(const AIo: TAtlasSettingsExchange);
@@ -1229,6 +1253,13 @@ begin
   AIo.Text('DesignerTextTableChecks', DesignerTextTableChecks);
   AIo.Text('DesignerTextTableSynonyms', DesignerTextTableSynonyms);
   AIo.Text('DesignerTextTableExcludeProperties', DesignerTextTableExcludeProperties);
+  AIo.Flag('DesignerLabelPairs', DesignerLabelPairs);
+  AIo.Flag('DesignerLabelPairsBaseline', DesignerLabelPairsBaseline);
+  AIo.Flag('DesignerLabelPairsFocusControl', DesignerLabelPairsFocusControl);
+  AIo.Flag('DesignerLabelPairsMoveTogether', DesignerLabelPairsMoveTogether);
+  AIo.Number('DesignerLabelPairsPairDistance', DesignerLabelPairsPairDistance);
+  AIo.Text('DesignerLabelPairsNewLabelPosition', DesignerLabelPairsNewLabelPosition);
+  AIo.Text('DesignerLabelPairsAbbreviations', DesignerLabelPairsAbbreviations);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Normalize;
@@ -1257,6 +1288,8 @@ begin
   DesignerDuplicateRowDefaultGap := EnsureRange(DesignerDuplicateRowDefaultGap, 0, cMaxButtonBarSpace);
   DesignerFitContainerPadding := EnsureRange(DesignerFitContainerPadding, 0, cMaxButtonBarSpace);
   DesignerSuggestAnchorsEdgeDistance := EnsureRange(DesignerSuggestAnchorsEdgeDistance, 0, cMaxButtonBarSpace);
+  DesignerLabelPairsPairDistance := EnsureRange(DesignerLabelPairsPairDistance, 0, cMaxButtonBarSpace);
+  DesignerLabelPairsNewLabelPosition := Choice(DesignerLabelPairsNewLabelPosition, [cLabelLeft, cLabelAbove]);
   DesignerNearAlignmentTolerance := EnsureRange(DesignerNearAlignmentTolerance, 1, cMaxNearTolerance);
 end;
 

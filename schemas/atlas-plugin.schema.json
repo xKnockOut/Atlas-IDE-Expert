@@ -5504,6 +5504,88 @@
       "x-node": "editor.designerBar",
       "x-issue": "#728"
     },
+    "DesignerLabelPairs": {
+      "description": "Label und Eingabefeld als Paar: Untermenü „Label und Feld“ im Menü „Anordnen“ (ausrichten, Label erzeugen, Paar lösen/verbinden) und beim Bearbeiten im Designer Einrasten, FocusControl und gemeinsames Verschieben nach den Teil-Einstellungen. Paar: Label (TLabel, TStaticText) links neben oder über einem Eingabefeld (Edit, ComboBox, ListBox, DateTimePicker und Nachfahren) im selben Parent.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.labelPairs",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#729"
+    },
+    "DesignerLabelPairsBaseline": {
+      "description": "Ein Label links neben dem Feld rastet auf die Textgrundlinie des Felds ein, ein Label darüber auf die linke Textkante im Feld.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.labelPairs.baseline",
+      "x-parent": "designer.labelPairs",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#729"
+    },
+    "DesignerLabelPairsFocusControl": {
+      "description": "Leeres FocusControl des Labels auf das Feld setzen; ein anders gesetztes bleibt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.labelPairs.focusControl",
+      "x-parent": "designer.labelPairs",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#729"
+    },
+    "DesignerLabelPairsMoveTogether": {
+      "description": "Wird das Feld verschoben, wandert das Label mit; mit gedrückter Alt-Taste nicht. Einzelne Paare lassen sich mit „Paar lösen“ dauerhaft trennen (gemerkt in .atlas-labelpairs.json neben dem Formular).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.labelPairs.moveTogether",
+      "x-parent": "designer.labelPairs",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#729"
+    },
+    "DesignerLabelPairsPairDistance": {
+      "description": "Größter Abstand zwischen Label und Feld in Pixeln, bei dem sie ein Paar bilden.",
+      "type": "integer",
+      "default": 16,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "designer.labelPairs.pairDistance",
+      "x-parent": "designer.labelPairs",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#729"
+    },
+    "DesignerLabelPairsNewLabelPosition": {
+      "description": "Lage neuer Labels bei „Label erzeugen“: links vom Feld (left) oder darüber (above).",
+      "type": "string",
+      "enum": [
+        "left",
+        "above"
+      ],
+      "default": "left",
+      "x-key": "designer.labelPairs.newLabelPosition",
+      "x-parent": "designer.labelPairs",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#729"
+    },
+    "DesignerLabelPairsAbbreviations": {
+      "description": "Abkürzungen, die in Texten neuer Labels in dieser Schreibweise erscheinen (edtPlz → „PLZ:“), durch Komma getrennt.",
+      "type": "string",
+      "default": "PLZ, IBAN, BIC, USt, ID",
+      "x-key": "designer.labelPairs.abbreviations",
+      "x-parent": "designer.labelPairs",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#729"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",
