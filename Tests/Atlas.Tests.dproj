@@ -2126,6 +2126,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.PropertySearch.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Usages.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Usages.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Undo.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Undo.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitText.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.FitText.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Help\Source\Core\Help\Atlas.Core.Help.Links.pas"/>

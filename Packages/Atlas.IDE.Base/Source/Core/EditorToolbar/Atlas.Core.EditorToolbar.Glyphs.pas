@@ -311,6 +311,11 @@ begin
     TAtlasToolbarIcon.EventMap:
       // Blitz.
       Result := [Outline([P(9.5, 1.5), P(3.5, 9), P(7.5, 9), P(6.5, 14.5), P(12.5, 6.5), P(8.5, 6.5)])];
+    TAtlasToolbarIcon.DesignerUndo:
+      // Pfeil, der von rechts unten im Bogen nach links zurückläuft, Spitze nach unten.
+      Result := [Stroke([P(13, 13.5), P(13, 9.5), P(12.8, 8), P(12, 6.6), P(10.9, 5.5), P(9.5, 4.7), P(8, 4.5),
+        P(6.5, 4.7), P(5.1, 5.5), P(4, 6.6), P(3.2, 8), P(3, 9.5)]),
+        Stroke([P(1, 7.5), P(3, 9.5), P(5, 7.5)])];
   else
     Result := nil;
   end;

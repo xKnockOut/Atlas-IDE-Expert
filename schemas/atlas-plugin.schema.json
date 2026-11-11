@@ -6376,6 +6376,40 @@
       "x-node": "editor.designerBar",
       "x-issue": "#743"
     },
+    "DesignerUndo": {
+      "description": "Rückgängig im Formular-Designer (experimentell): Nach jeder abgeschlossenen Änderung (Verschieben, Größe, Eigenschaft, Ereignis, Einfügen, Löschen, Umbenennen) merkt sich Atlas den Formularstand im Speicher. Strg+Z und Strg+Umschalt+Z gehen zurück und vor, solange der Designer den Fokus hat; der Knopf „Rückgängig im Designer“ der Designer-Leiste nimmt den letzten Schritt zurück, sein Menü listet die Schritte lesbar („Panel1.Align: alNone → alClient“), ein Klick springt auf diesen Stand. Zurückgeladen wird Eigenschaft für Eigenschaft (auch Kollektionen, Listen und Bilder); gelöschte Komponenten legt Atlas neu an, ihr Ereignis-Handler muss im Code noch stehen. Geerbte Komponenten und Komponenten eingebetteter Frames lassen sich nur ändern, nicht neu anlegen oder löschen. Der Code bleibt unangetastet. Speichern leert die Liste nicht, Schließen des Formulars schon. Aus: Strg+Z bleibt beim Designer der IDE.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.undo",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-experimental": true,
+      "x-caption": "Rückgängig im Designer",
+      "x-captionEn": "Undo in the designer",
+      "x-keywords": [
+        "undo",
+        "redo",
+        "Strg+Z",
+        "Ctrl+Z",
+        "Wiederherstellen"
+      ],
+      "x-issue": "#1887"
+    },
+    "DesignerUndoSteps": {
+      "description": "Höchstzahl der Schritte für „Rückgängig im Designer“ je Formular (5 bis 200); ältere fallen weg.",
+      "type": "integer",
+      "minimum": 5,
+      "maximum": 200,
+      "default": 50,
+      "x-key": "designer.undoSteps",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.undo",
+      "x-node": "editor.designerBar",
+      "x-issue": "#1887"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",

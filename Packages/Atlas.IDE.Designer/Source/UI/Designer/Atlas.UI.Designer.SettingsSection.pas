@@ -215,6 +215,8 @@ begin
   Line('designer.textTable.synonyms', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTextsSynonyms));
   Line('designer.textTable.excludeProperties',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTextsExclude));
+  Switch('designer.undo', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerUndo));
+  Number('designer.undoSteps', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerUndoSteps));
   BuildPairRows;
 end;
 

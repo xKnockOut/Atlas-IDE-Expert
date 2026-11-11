@@ -859,6 +859,8 @@ type
       write FEditorView.DesignerMagnifierEdges;
     property DesignerMagnifierKey: Integer read FEditorView.DesignerMagnifierKey
       write FEditorView.DesignerMagnifierKey;
+    property DesignerUndo: Boolean read FEditorView.DesignerUndo write FEditorView.DesignerUndo;
+    property DesignerUndoSteps: Integer read FEditorView.DesignerUndoSteps write FEditorView.DesignerUndoSteps;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick
