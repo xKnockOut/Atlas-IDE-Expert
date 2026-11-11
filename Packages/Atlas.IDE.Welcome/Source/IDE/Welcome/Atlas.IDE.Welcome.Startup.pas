@@ -7,7 +7,8 @@
 // Befehlsnutzung und zeigt Kacheln anderer Module (TAtlasIdeWelcomeTiles).
 // Alle Anmeldungen laufen über den Scope des Moduls und werden beim Stoppen
 // rückwärts gelöst (Regel 4). „Testergebnisse“ ist eine Kachel des
-// Moduls Tracker.
+// Moduls Tracker. Den Arbeitsstand je Issue (#2052) bietet die Seite dem
+// Tracker über IAtlasIssueWork an.
 
 interface
 
@@ -30,6 +31,7 @@ implementation
 uses
   Atlas.Core.Commands.Usage,
   Atlas.IDE.Contracts.BuildTools,
+  Atlas.IDE.Contracts.IssueWork,
   Atlas.IDE.Contracts.Tests,
   System.Types,
   Atlas.Core.Diagnostics.Guard,
@@ -53,6 +55,7 @@ uses
   Atlas.IDE.Welcome.Tiles,
   Atlas.IDE.Welcome.TileProjects,
   Atlas.IDE.Welcome.Neighbors,
+  Atlas.IDE.Welcome.IssueWork,
   Atlas.IDE.Welcome.Listener;
 
 var
@@ -266,7 +269,8 @@ var
 begin
   mListener := TAtlasWelcomeListener.Create(CurrentPage) as IAtlasTaskListener;
   GRegistrations := [AScope.Provide(IAtlasTaskListener, mListener), AScope.Provide(IAtlasTestsListener, mListener),
-    AScope.Provide(IAtlasCommandUsageListener, mListener)];
+    AScope.Provide(IAtlasCommandUsageListener, mListener),
+    AScope.Provide(IAtlasIssueWork, TAtlasWelcomeIssueWork.Create(CurrentPage) as IAtlasIssueWork)];
 end;
 
 { TAtlasIdeWelcomeStartup }

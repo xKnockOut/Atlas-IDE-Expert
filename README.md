@@ -97,7 +97,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Exceptions:** history window, exception bar, just my code, access violations explained
 
 ### [IDE comfort](docs/features/en/IDE-comfort.md)
-- **Atlas welcome page** with projects, history, issues and news
+- **Atlas welcome page** with projects, history, issues and news; "Continue" remembers the work state per issue ("Issues" tab) and resumes it with "Resume" on the branch of the issue
 - **Issue tracker** (GitHub, YouTrack) and **version control** (Git, SVN) inside the IDE
 - **Command palette** (Ctrl+Shift+P), notification centre, server window
 - **Editor context menu *Atlas*** with submenus (Navigation, Edit, Search and analyze, Findings, modules) and right-aligned shortcuts

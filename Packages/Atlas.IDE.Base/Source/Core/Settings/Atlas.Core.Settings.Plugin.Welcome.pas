@@ -24,6 +24,10 @@ const
   /// <summary>Grenzen für welcomePage.continue.count (#755); wie TAtlasWelcomeContinue.cMinCount/cMaxCount.</summary>
   cMinContinueCount = 1;
   cMaxContinueCount = 20;
+  /// <summary>Grenzen für welcomePage.continue.issues.count (#2052); wie TAtlasWelcomeContinueIssues.cMinCount/
+  /// cMaxCount.</summary>
+  cMinContinueIssuesCount = 1;
+  cMaxContinueIssuesCount = 30;
   /// <summary>Grenzen für welcomePage.trends.points (#758); wie TAtlasProjectTrendLog.cMinPoints/MaxPoints.</summary>
   cMinTrendPoints = 2;
   cMaxTrendPoints = 100;
@@ -153,6 +157,11 @@ type
     WelcomePageContinueIncoming: Boolean;
     /// <summary>Vor dem Anzeigen im Hintergrund fetch ausführen (#755, welcomePage.continue.fetch).</summary>
     WelcomePageContinueFetch: Boolean;
+    /// <summary>Reiter „Issues“ in „Weiterarbeiten“: Arbeitsstand je aktivem Issue (#2052,
+    /// welcomePage.continue.issues).</summary>
+    WelcomePageContinueIssues: Boolean;
+    /// <summary>Anzahl der Arbeitsstände je Issue (#2052, welcomePage.continue.issues.count, 1–30).</summary>
+    WelcomePageContinueIssuesCount: Integer;
     /// <summary>Reiter „Gemerkt“ mit Notizen, Lesezeichen und Favoriten (#755, welcomePage.saved).</summary>
     WelcomePageSaved: Boolean;
     /// <summary>Bereich „Projektverlauf“ (#758, welcomePage.trends): Messpunkte je Build mitschreiben und als
@@ -443,6 +452,8 @@ begin
   Result.WelcomePageSprint := True;
   Result.WelcomePageContinueIncoming := True;
   Result.WelcomePageContinueFetch := False;
+  Result.WelcomePageContinueIssues := True;
+  Result.WelcomePageContinueIssuesCount := 10;
   Result.WelcomePageSaved := True;
 end;
 
@@ -455,6 +466,8 @@ begin
   WelcomePageUnsavedAlertHours := EnsureRange(WelcomePageUnsavedAlertHours, WelcomePageUnsavedWarnHours,
     cMaxUnsavedHours);
   WelcomePageContinueCount := EnsureRange(WelcomePageContinueCount, cMinContinueCount, cMaxContinueCount);
+  WelcomePageContinueIssuesCount := EnsureRange(WelcomePageContinueIssuesCount, cMinContinueIssuesCount,
+    cMaxContinueIssuesCount);
   WelcomePageTrendsPoints := EnsureRange(WelcomePageTrendsPoints, cMinTrendPoints, cMaxTrendPoints);
   WelcomePageTrendsSeries := NormalizedTrendSeries(WelcomePageTrendsSeries);
   WelcomePageTestsMaxFailures := EnsureRange(WelcomePageTestsMaxFailures, cMinTestFailures, cMaxTestFailures);
@@ -496,6 +509,8 @@ begin
   AIo.Number('WelcomePageContinueCount', WelcomePageContinueCount);
   AIo.Flag('WelcomePageContinueIncoming', WelcomePageContinueIncoming);
   AIo.Flag('WelcomePageContinueFetch', WelcomePageContinueFetch);
+  AIo.Flag('WelcomePageContinueIssues', WelcomePageContinueIssues);
+  AIo.Number('WelcomePageContinueIssuesCount', WelcomePageContinueIssuesCount);
   AIo.Flag('WelcomePageSaved', WelcomePageSaved);
   AIo.Flag('WelcomePageTrends', WelcomePageTrends);
   AIo.Number('WelcomePageTrendsPoints', WelcomePageTrendsPoints);
