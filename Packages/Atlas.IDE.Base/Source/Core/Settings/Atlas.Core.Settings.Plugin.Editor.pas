@@ -640,6 +640,14 @@ type
     DesignerArrangeFormTwoPerRow: Boolean;
     /// <summary>TabOrder nach dem Anordnen setzen (#731, designer.arrangeForm.setTabOrder).</summary>
     DesignerArrangeFormSetTabOrder: Boolean;
+    /// <summary>Einpacken in Container und Container auflösen (#733, designer.wrapInContainer).</summary>
+    DesignerWrapInContainer: Boolean;
+    /// <summary>Innenrand des neuen Containers (#733, designer.wrapInContainer.padding).</summary>
+    DesignerWrapInContainerPadding: Integer;
+    /// <summary>Vorgabeklasse im Menü (#733, designer.wrapInContainer.defaultClass).</summary>
+    DesignerWrapInContainerDefaultClass: string;
+    /// <summary>Eigene Containerklassen, Komma-Liste (#733, designer.wrapInContainer.classes).</summary>
+    DesignerWrapInContainerClasses: string;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -681,8 +689,12 @@ type
     class function Defaults: TAtlasPluginEditorViewSettings; static;
     /// <summary>Vorgaben der Befehle im Menü „Anordnen“ der Designer-Leiste (#730 ff.).</summary>
     procedure SetArrangeDefaults;
+    /// <summary>Formularraster (#731) und Einpacken (#733).</summary>
+    procedure SetFormToolDefaults;
     /// <summary>Einstellungen der Befehle im Menü „Anordnen“ lesen bzw. schreiben.</summary>
     procedure ExchangeArrange(const AIo: TAtlasSettingsExchange);
+    /// <summary>Einstellungen von Formularraster und Einpacken lesen bzw. schreiben.</summary>
+    procedure ExchangeFormTools(const AIo: TAtlasSettingsExchange);
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
     /// <summary>Werte über AIo lesen bzw. schreiben, jeden unter seinem Namen.</summary>
@@ -1159,6 +1171,7 @@ begin
   Result.DesignerSpatialNavigation := True;
   Result.DesignerSpatialCrossContainers := True;
   Result.SetArrangeDefaults;
+  Result.SetFormToolDefaults;
   Result.Minimap := False;
   Result.MinimapRender := 'characters';
   Result.MinimapWidth := 120;
@@ -1230,6 +1243,10 @@ begin
   DesignerLabelPairsPairDistance := 16;
   DesignerLabelPairsNewLabelPosition := cLabelLeft;
   DesignerLabelPairsAbbreviations := 'PLZ, IBAN, BIC, USt, ID';
+end;
+
+procedure TAtlasPluginEditorViewSettings.SetFormToolDefaults;
+begin
   DesignerArrangeForm := True;
   DesignerArrangeFormRowGap := 8;
   DesignerArrangeFormLabelGap := 8;
@@ -1237,6 +1254,10 @@ begin
   DesignerArrangeFormEqualFieldWidth := False;
   DesignerArrangeFormTwoPerRow := False;
   DesignerArrangeFormSetTabOrder := True;
+  DesignerWrapInContainer := True;
+  DesignerWrapInContainerPadding := 8;
+  DesignerWrapInContainerDefaultClass := 'TPanel';
+  DesignerWrapInContainerClasses := '';
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeArrange(const AIo: TAtlasSettingsExchange);
@@ -1289,6 +1310,10 @@ begin
   AIo.Number('DesignerLabelPairsPairDistance', DesignerLabelPairsPairDistance);
   AIo.Text('DesignerLabelPairsNewLabelPosition', DesignerLabelPairsNewLabelPosition);
   AIo.Text('DesignerLabelPairsAbbreviations', DesignerLabelPairsAbbreviations);
+end;
+
+procedure TAtlasPluginEditorViewSettings.ExchangeFormTools(const AIo: TAtlasSettingsExchange);
+begin
   AIo.Flag('DesignerArrangeForm', DesignerArrangeForm);
   AIo.Number('DesignerArrangeFormRowGap', DesignerArrangeFormRowGap);
   AIo.Number('DesignerArrangeFormLabelGap', DesignerArrangeFormLabelGap);
@@ -1296,6 +1321,10 @@ begin
   AIo.Flag('DesignerArrangeFormEqualFieldWidth', DesignerArrangeFormEqualFieldWidth);
   AIo.Flag('DesignerArrangeFormTwoPerRow', DesignerArrangeFormTwoPerRow);
   AIo.Flag('DesignerArrangeFormSetTabOrder', DesignerArrangeFormSetTabOrder);
+  AIo.Flag('DesignerWrapInContainer', DesignerWrapInContainer);
+  AIo.Number('DesignerWrapInContainerPadding', DesignerWrapInContainerPadding);
+  AIo.Text('DesignerWrapInContainerDefaultClass', DesignerWrapInContainerDefaultClass);
+  AIo.Text('DesignerWrapInContainerClasses', DesignerWrapInContainerClasses);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Normalize;
@@ -1330,6 +1359,11 @@ begin
   DesignerArrangeFormLabelGap := EnsureRange(DesignerArrangeFormLabelGap, 0, cMaxButtonBarSpace);
   DesignerArrangeFormLabelAlign := Choice(DesignerArrangeFormLabelAlign, [cGridLabelLeft, cGridLabelRight,
     cGridLabelAbove]);
+  DesignerWrapInContainerPadding := EnsureRange(DesignerWrapInContainerPadding, 0, cMaxButtonBarSpace);
+  if Trim(DesignerWrapInContainerDefaultClass) = '' then
+  begin
+    DesignerWrapInContainerDefaultClass := 'TPanel';
+  end;
   DesignerNearAlignmentTolerance := EnsureRange(DesignerNearAlignmentTolerance, 1, cMaxNearTolerance);
 end;
 
@@ -1357,6 +1391,7 @@ begin
   AIo.Flag('DesignerSpatialNavigation', DesignerSpatialNavigation);
   AIo.Flag('DesignerSpatialCrossContainers', DesignerSpatialCrossContainers);
   ExchangeArrange(AIo);
+  ExchangeFormTools(AIo);
   AIo.Flag('Minimap', Minimap);
   AIo.Text('MinimapRender', MinimapRender);
   AIo.Number('MinimapWidth', MinimapWidth);

@@ -16,6 +16,7 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Controls,
+  Atlas.Core.Designer.Anchors,
   Atlas.UI.Designer.Outlines;
 
 type
@@ -37,6 +38,8 @@ type
     function CanUndo: Boolean;
     procedure Undo;
     procedure ApplyTheme;
+    class function ToSet(AAnchors: TAnchors): TAtlasAnchorSet; static;
+    class function ToAnchors(ASet: TAtlasAnchorSet): TAnchors; static;
   end;
 
 implementation
@@ -46,7 +49,6 @@ uses
   System.TypInfo,
   Vcl.Forms,
   ToolsAPI,
-  Atlas.Core.Designer.Anchors,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.AnchorDialog,
@@ -61,7 +63,7 @@ type
     Suggestion: TAtlasAnchorSuggestion;
   end;
 
-function ToSet(AAnchors: TAnchors): TAtlasAnchorSet;
+class function TAtlasIdeAnchors.ToSet(AAnchors: TAnchors): TAtlasAnchorSet;
 begin
   Result := [];
   if akLeft in AAnchors then
@@ -82,7 +84,7 @@ begin
   end;
 end;
 
-function ToAnchors(ASet: TAtlasAnchorSet): TAnchors;
+class function TAtlasIdeAnchors.ToAnchors(ASet: TAtlasAnchorSet): TAnchors;
 begin
   Result := [];
   if TAtlasAnchorSide.Left in ASet then
@@ -159,7 +161,7 @@ begin
     end;
     mControls := mControls + [mControl];
     mItems := mItems + [TAtlasAnchorItem.Create(mControl.Name, mControl.BoundsRect, mControl.Align <> alNone,
-      IsFill(mControl, ASettings.DesignerSuggestAnchorsFillClasses.Split([',', ';'])), ToSet(mControl.Anchors),
+      IsFill(mControl, ASettings.DesignerSuggestAnchorsFillClasses.Split([',', ';'])), TAtlasIdeAnchors.ToSet(mControl.Anchors),
       FocusOf(mControl))];
   end;
   mSuggestions := TAtlasAnchorSuggest.Suggest(mItems, TSize.Create(AParent.ClientWidth, AParent.ClientHeight),
@@ -363,7 +365,7 @@ begin
     begin
       FUndoNames := FUndoNames + [mPlans[mIndex].Control.Name];
       FUndoAnchors := FUndoAnchors + [mPlans[mIndex].Control.Anchors];
-      mPlans[mIndex].Control.Anchors := ToAnchors(mPlans[mIndex].Suggestion.Anchors);
+      mPlans[mIndex].Control.Anchors := TAtlasIdeAnchors.ToAnchors(mPlans[mIndex].Suggestion.Anchors);
     end;
   end;
   TAtlasDesignerAccess.DesignerOf(mEditor).Modified;

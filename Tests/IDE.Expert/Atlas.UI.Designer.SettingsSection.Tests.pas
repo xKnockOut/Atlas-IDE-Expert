@@ -56,6 +56,8 @@ type
     procedure LabelPairsRoundTrip;
     [Test]
     procedure ArrangeFormRoundTrip;
+    [Test]
+    procedure WrapRoundTrip;
   end;
 
 implementation
@@ -531,6 +533,32 @@ begin
     Assert.IsTrue(mSaved.DesignerArrangeFormTwoPerRow);
     Assert.IsFalse(mSaved.DesignerArrangeFormSetTabOrder);
     Assert.AreEqual(TAtlasPluginSettings.cGridLabelLeft, mSaved.DesignerArrangeFormLabelAlign);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.WrapRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerWrapInContainer').Checked, 'Vorgabe an');
+    Assert.AreEqual('8', EditOf(mPage, 'DesignerWrapInContainerPadding').Text);
+    Assert.AreEqual('TPanel', EditOf(mPage, 'DesignerWrapInContainerDefaultClass').Text);
+    CheckOf(mPage, 'DesignerWrapInContainer').Checked := False;
+    EditOf(mPage, 'DesignerWrapInContainerPadding').Text := '4';
+    EditOf(mPage, 'DesignerWrapInContainerDefaultClass').Text := 'TGroupBox';
+    EditOf(mPage, 'DesignerWrapInContainerClasses').Text := 'TCardPanel';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerWrapInContainer, 'abschaltbar');
+    Assert.AreEqual(4, mSaved.DesignerWrapInContainerPadding);
+    Assert.AreEqual('TGroupBox', mSaved.DesignerWrapInContainerDefaultClass);
+    Assert.AreEqual('TCardPanel', mSaved.DesignerWrapInContainerClasses);
   finally
     mPage.Free;
   end;

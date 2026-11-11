@@ -1136,6 +1136,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.FormTexts` | `Core/Designer/Atlas.Core.Designer.FormTexts.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.LabelPairs` | `Core/Designer/Atlas.Core.Designer.LabelPairs.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FormGrid` | `Core/Designer/Atlas.Core.Designer.FormGrid.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Wrap` | `Core/Designer/Atlas.Core.Designer.Wrap.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FitText` | `Core/Designer/Atlas.Core.Designer.FitText.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FormModel` | `Core/Designer/Atlas.Core.Designer.FormModel.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.InsertSpace` | `Core/Designer/Atlas.Core.Designer.InsertSpace.pas` | Ordner `Core/Designer` |
@@ -1159,6 +1160,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.FormTexts` | `IDE/Designer/Atlas.IDE.Designer.FormTexts.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.LabelPairs` | `IDE/Designer/Atlas.IDE.Designer.LabelPairs.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.FormGrid` | `IDE/Designer/Atlas.IDE.Designer.FormGrid.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Wrap` | `IDE/Designer/Atlas.IDE.Designer.Wrap.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.FitText` | `IDE/Designer/Atlas.IDE.Designer.FitText.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.InsertSpace` | `IDE/Designer/Atlas.IDE.Designer.InsertSpace.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Navigate` | `IDE/Designer/Atlas.IDE.Designer.Navigate.pas` | Ordner `IDE/Designer` |

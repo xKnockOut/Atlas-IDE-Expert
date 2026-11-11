@@ -740,6 +740,14 @@ type
       write FEditorView.DesignerArrangeFormTwoPerRow;
     property DesignerArrangeFormSetTabOrder: Boolean read FEditorView.DesignerArrangeFormSetTabOrder
       write FEditorView.DesignerArrangeFormSetTabOrder;
+    property DesignerWrapInContainer: Boolean read FEditorView.DesignerWrapInContainer
+      write FEditorView.DesignerWrapInContainer;
+    property DesignerWrapInContainerPadding: Integer read FEditorView.DesignerWrapInContainerPadding
+      write FEditorView.DesignerWrapInContainerPadding;
+    property DesignerWrapInContainerDefaultClass: string read FEditorView.DesignerWrapInContainerDefaultClass
+      write FEditorView.DesignerWrapInContainerDefaultClass;
+    property DesignerWrapInContainerClasses: string read FEditorView.DesignerWrapInContainerClasses
+      write FEditorView.DesignerWrapInContainerClasses;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick

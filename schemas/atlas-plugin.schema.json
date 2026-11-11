@@ -5684,6 +5684,51 @@
       "x-node": "editor.designerBar",
       "x-issue": "#731"
     },
+    "DesignerWrapInContainer": {
+      "description": "Befehle „Einpacken in“ (Untermenü mit TPanel, TGroupBox, TFlowPanel, TGridPanel, TScrollBox, TPageControl und eigenen Klassen) und „Container auflösen“ im Menü „Anordnen“ der Designer-Leiste: Steuerelemente in einen neuen Container setzen oder einen Container auflösen, ohne dass sich auf dem Bildschirm etwas verschiebt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.wrapInContainer",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#733"
+    },
+    "DesignerWrapInContainerPadding": {
+      "description": "Innenrand des neuen Containers in Pixeln.",
+      "type": "integer",
+      "default": 8,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "designer.wrapInContainer.padding",
+      "x-parent": "designer.wrapInContainer",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#733"
+    },
+    "DesignerWrapInContainerDefaultClass": {
+      "description": "Containerklasse, die im Untermenü „Einpacken in“ hervorgehoben ist.",
+      "type": "string",
+      "default": "TPanel",
+      "x-key": "designer.wrapInContainer.defaultClass",
+      "x-parent": "designer.wrapInContainer",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#733"
+    },
+    "DesignerWrapInContainerClasses": {
+      "description": "Eigene Containerklassen für das Untermenü, durch Komma getrennt; sie müssen in der IDE registriert sein.",
+      "type": "string",
+      "default": "",
+      "x-key": "designer.wrapInContainer.classes",
+      "x-parent": "designer.wrapInContainer",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#733"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",

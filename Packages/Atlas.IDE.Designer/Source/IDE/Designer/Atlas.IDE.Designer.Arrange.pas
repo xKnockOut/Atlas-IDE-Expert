@@ -33,6 +33,9 @@
 //   designer.labelPairs, TAtlasIdeLabelPairs).
 // - Als Formularraster anordnen … und Raster rückgängig (#731,
 //   designer.arrangeForm, TAtlasIdeFormGrid).
+// - Einpacken in (Untermenü der Containerklassen, Vorgabe fett), Container
+//   auflösen und Einpacken rückgängig (#733, designer.wrapInContainer,
+//   TAtlasIdeWrap).
 // Gesperrt sind Einträge, für die die Auswahl nicht passt. Nur im Hauptthread.
 
 interface
@@ -52,7 +55,8 @@ uses
   Atlas.IDE.Designer.Anchors,
   Atlas.IDE.Designer.FormTexts,
   Atlas.IDE.Designer.LabelPairs,
-  Atlas.IDE.Designer.FormGrid;
+  Atlas.IDE.Designer.FormGrid,
+  Atlas.IDE.Designer.Wrap;
 
 type
   TAtlasIdeDesignerArrange = class
@@ -70,6 +74,9 @@ type
     FTexts: TAtlasIdeFormTexts;
     FPairs: TAtlasIdeLabelPairs;
     FGrid: TAtlasIdeFormGrid;
+    FWrap: TAtlasIdeWrap;
+    /// <summary>Containerklassen im zuletzt gezeigten Menü.</summary>
+    FWrapClasses: TArray<string>;
     /// <summary>Namen der Stapel-Einträge im zuletzt gezeigten Menü.</summary>
     FStackNames: TArray<string>;
     function AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer; AEnabled: Boolean): TMenuItem;
@@ -79,6 +86,9 @@ type
     procedure AddLayerItems;
     procedure AddPaintItems;
     procedure AddPairItems;
+    procedure AddWrapItems(const ASettings: TAtlasPluginSettings);
+    /// <summary>Einpacken (#733): 0 auflösen, 1 rückgängig, ab 2 Klasse aus FWrapClasses.</summary>
+    procedure RunWrap(ACommand: Integer);
     /// <summary>Untermenüs ab „Fast bündige Kanten“ (#746 ff.).</summary>
     procedure AddFormItems(const ASettings: TAtlasPluginSettings; ASelection: Boolean);
     procedure ItemClick(Sender: TObject);
@@ -141,6 +151,11 @@ const
   /// <summary>Ab hier TAtlasPaintCommand: cPaintFirst + Ord(Befehl).</summary>
   cPaintFirst = 50;
   cPairsFirst = 60;
+  /// <summary>Ab hier Einpacken: cWrapFirst + RunWrap-Befehl.</summary>
+  cWrapFirst = 70;
+  cWrapUnwrap = 0;
+  cWrapUndo = 1;
+  cWrapClasses = 2;
   /// <summary>Ab hier Einträge des Stapels: cStackFirst + Index in FStackNames.</summary>
   cStackFirst = 100;
 
@@ -162,10 +177,12 @@ begin
   FTexts := TAtlasIdeFormTexts.Create(AOnMessage);
   FPairs := TAtlasIdeLabelPairs.Create(AOnMessage);
   FGrid := TAtlasIdeFormGrid.Create(AOnMessage);
+  FWrap := TAtlasIdeWrap.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerArrange.Destroy;
 begin
+  FWrap.Free;
   FGrid.Free;
   FPairs.Free;
   FTexts.Free;
@@ -188,7 +205,7 @@ begin
     ASettings.DesignerDefaultSizes or ASettings.DesignerZOrder or
     ASettings.DesignerPropertyPainter or ASettings.DesignerSuggestAnchors or
     ASettings.DesignerTextTable or ASettings.DesignerLabelPairs or
-    ASettings.DesignerArrangeForm;
+    ASettings.DesignerArrangeForm or ASettings.DesignerWrapInContainer;
 end;
 
 function TAtlasIdeDesignerArrange.AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer;
@@ -365,6 +382,41 @@ begin
     cPairsFirst + Ord(TAtlasPairsCommand.Undo), FPairs.CanUndo);
 end;
 
+procedure TAtlasIdeDesignerArrange.AddWrapItems(const ASettings: TAtlasPluginSettings);
+var
+  mSub: TMenuItem;
+  mIndex: Integer;
+begin
+  mSub := AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerWrapMenu), 0,
+    TAtlasIdeWrap.CanWrap);
+  FWrapClasses := TAtlasIdeWrap.ClassNames;
+  for mIndex := 0 to High(FWrapClasses) do
+  begin
+    AddItem(mSub, FWrapClasses[mIndex], cWrapFirst + cWrapClasses + mIndex, True).Default :=
+      SameText(FWrapClasses[mIndex], ASettings.DesignerWrapInContainerDefaultClass);
+  end;
+  AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerWrapUnwrapCmd),
+    cWrapFirst + cWrapUnwrap, TAtlasIdeWrap.CanUnwrap);
+  AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerWrapUndoCmd), cWrapFirst + cWrapUndo,
+    FWrap.CanUndo);
+end;
+
+procedure TAtlasIdeDesignerArrange.RunWrap(ACommand: Integer);
+begin
+  if ACommand = cWrapUnwrap then
+  begin
+    FWrap.Unwrap;
+  end
+  else if ACommand = cWrapUndo then
+  begin
+    FWrap.Undo;
+  end
+  else if ACommand - cWrapClasses <= High(FWrapClasses) then
+  begin
+    FWrap.Wrap(FWrapClasses[ACommand - cWrapClasses]);
+  end;
+end;
+
 procedure TAtlasIdeDesignerArrange.AddFormItems(const ASettings: TAtlasPluginSettings; ASelection: Boolean);
 begin
   if ASettings.DesignerNearAlignment then
@@ -399,6 +451,10 @@ begin
       TAtlasIdeFormGrid.CanArrange);
     AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerGridUndoCmd), cGridUndo,
       FGrid.CanUndo);
+  end;
+  if ASettings.DesignerWrapInContainer then
+  begin
+    AddWrapItems(ASettings);
   end;
   if ASettings.DesignerTextTable then
   begin
@@ -466,6 +522,10 @@ begin
     begin
       TAtlasIdeDesignerLayers.SelectName(FStackNames[ATag - cStackFirst]);
     end;
+  end
+  else if ATag >= cWrapFirst then
+  begin
+    RunWrap(ATag - cWrapFirst);
   end
   else if ATag >= cPairsFirst then
   begin
