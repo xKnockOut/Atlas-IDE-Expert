@@ -14,6 +14,9 @@ type
   public
     [Test]
     procedure RemovesUnusedUnit;
+    /// <summary>#1921: Namen außerhalb der uses-Listen, auch qualifiziert, ohne Rücksicht auf Schreibung.</summary>
+    [Test]
+    procedure NamesUsedOutsideUsesLists;
     [Test]
     procedure UnitWithInitializationStays;
     [Test]
@@ -206,6 +209,23 @@ begin
   begin
     Result := AText;
   end;
+end;
+
+procedure TUsesActionsTests.NamesUsedOutsideUsesLists;
+const
+  Text = 'unit X;'#10'interface'#10'uses Werk, TPunkt;'#10'implementation'#10 +
+    'var K: tkunde; L: Werk.TListe<Integer>;'#10'end.';
+var
+  Used: TArray<Boolean>;
+begin
+  Used := TUsesActions.NamesUsed(TPascalLexer.Tokenize(Text), ['TKunde', 'TListe', 'TPunkt', 'Werk']);
+  Assert.AreEqual(4, Integer(Length(Used)));
+  Assert.IsTrue(Used[0]);
+  Assert.IsTrue(Used[1]);
+  // Namen in der uses-Liste zählen nicht; Werk steht dagegen als Qualifizierer im Code.
+  Assert.IsFalse(Used[2]);
+  Assert.IsTrue(Used[3]);
+  Assert.AreEqual(0, Integer(Length(TUsesActions.NamesUsed(TPascalLexer.Tokenize(Text), nil))));
 end;
 
 procedure TUsesActionsTests.RemovesUnusedUnit;

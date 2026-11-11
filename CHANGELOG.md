@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Neu
+- Inhalt einer Unit im Hover (#1921): Über einem uses-Eintrag (und jedem anderen Unit-Namen) zeigt der Hover unter dem Dateipfad die Typen aus dem interface-Teil der Unit, nach Art gruppiert (Klassen, Interfaces, Records, Aufzählungen, Sonstige) und alphabetisch; ein Klick auf einen Namen springt zur Deklaration. Oben stehen die Typen, die die aktuelle Datei benutzt, darunter die übrigen; benutzt die Datei keinen, sagt das die erste Zeile. `hints.unitContents` wählt `usedFirst` (Vorgabe), `types` (ohne Benutzt-Abschnitt), `all` (dazu Routinen, Konstanten und Variablen) oder `off`. Lange Listen scrollen wie die XMLDoc.
+
 ## [2.0.1] - 2026-11-08
 
 ### Neu

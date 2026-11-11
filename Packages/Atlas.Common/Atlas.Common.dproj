@@ -615,6 +615,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.Info.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.Lookup.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.UnitContents.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.HoverTypes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Documentation.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Rationale.pas"/>
