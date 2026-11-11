@@ -4897,16 +4897,37 @@
       "x-issue": "#1442"
     },
     "DesignerTabOrderClick": {
-      "description": "Bei eingeblendeter Tab-Reihenfolge vergibt ein Klick auf die Nummern die Reihenfolge neu: der erste Klick unter einem Elternelement setzt 0, der nächste 1 und so weiter. Ändert die .dfm. Aus = die Nummern sind nur Anzeige, Klicks gehen an den Designer.",
+      "description": "Befehle im Menü am Pfeil des Knopfs „Tab-Reihenfolge“, die die Reihenfolge neu vergeben: „Reihenfolge klicken“ (Klicks auf die Marken setzen je Elternelement 0, 1, 2 …, nicht geklickte rücken dahinter; Enter oder ein Klick auf das Symbol übernimmt, Esc stellt den alten Stand her), „Nach Lesereihenfolge sortieren“ und „Tab-Reihenfolge rückgängig“ (auch Strg+Z, solange die Marken zu sehen sind). Ändert die .dfm. Aus = die Marken sind nur Anzeige.",
       "type": "boolean",
-      "default": false,
+      "default": true,
       "x-key": "editor.designerBar.tabOrderClick",
       "x-area": "editor",
       "x-page": "Editor",
       "x-parent": "editor.designerBar",
       "x-node": "editor.designerBar",
-      "x-experimental": true,
-      "x-issue": "#1442"
+      "x-issue": "#603"
+    },
+    "DesignerTabOrderOverlay": {
+      "description": "Blendet die Tab-Reihenfolge beim ersten Zeigen eines Formulars im Designer von selbst ein (Marke oben rechts an jedem Steuerelement mit TabOrder; Rücksprünge gegen die Lesereihenfolge, Lücken und Doppelte rot mit Hinweis, Steuerelemente ohne TabStop grau mit „–“). Aus = nur über den Knopf „Tab-Reihenfolge“ der Designer-Leiste.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.tabOrderOverlay",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#603"
+    },
+    "DesignerTabOrderPaths": {
+      "description": "Zeigt die Tab-Reihenfolge verschachtelter Steuerelemente als Pfad über die Container: „2.1“ ist das Steuerelement mit TabOrder 1 im Container mit TabOrder 2. Im Menü des Knopfs für die Sitzung umschaltbar. Aus = nur die eigene TabOrder.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.tabOrderPaths",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#603"
     },
     "DesignerAlign": {
       "description": "Knopf „Ausrichten“ in der Designer-Leiste: Menü mit linken, rechten, oberen und unteren Kanten, Mitten, im Elternelement zentrieren, gleicher Breite und Höhe und gleichmäßigen Abständen; Bezug ist die zuerst gewählte Komponente. Ein Klick auf das Symbol wiederholt den letzten Befehl. Ändert die .dfm.",

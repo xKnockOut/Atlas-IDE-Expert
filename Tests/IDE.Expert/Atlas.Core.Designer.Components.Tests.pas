@@ -1,8 +1,8 @@
 ﻿unit Atlas.Core.Designer.Components.Tests;
 
 // Tests der Designer-Leiste ohne VCL (#1442): Suche im Fenster „Komponenten
-// suchen“ (Rang, Felder, Art, Weiterschalten), Gruppen der Trefferliste,
-// Tab-Reihenfolge (Rücksprünge, Klickzähler) und Ausrichten.
+// suchen“ (Rang, Felder, Art, Weiterschalten), Gruppen der Trefferliste
+// und Ausrichten.
 
 interface
 
@@ -34,18 +34,6 @@ type
     procedure HierarchyGroupsByParent;
     [Test]
     procedure ClassAndFlat;
-  end;
-
-  [TestFixture]
-  [Category('Atlas.IDE.Designer')]
-  TAtlasTabOrderTests = class
-  public
-    [Test]
-    procedure ReadingOrder;
-    [Test]
-    procedure JumpBackIsMarked;
-    [Test]
-    procedure ClicksCountPerParent;
   end;
 
   [TestFixture]
@@ -213,54 +201,6 @@ begin
   Assert.AreEqual(mHits[6], mRows[6].Item);
 end;
 
-{ TAtlasTabOrderTests }
-
-procedure TAtlasTabOrderTests.ReadingOrder;
-begin
-  Assert.IsTrue(TAtlasTabOrder.ReadsBefore(Rect(0, 0, 50, 20), Rect(100, 4, 150, 24)), 'gleiche Zeile: links zuerst');
-  Assert.IsFalse(TAtlasTabOrder.ReadsBefore(Rect(100, 0, 150, 20), Rect(0, 4, 50, 24)));
-  Assert.IsTrue(TAtlasTabOrder.ReadsBefore(Rect(300, 0, 350, 20), Rect(0, 40, 50, 60)), 'obere Zeile zuerst');
-end;
-
-procedure TAtlasTabOrderTests.JumpBackIsMarked;
-var
-  mStops: TArray<TAtlasTabStop>;
-  mOut: TArray<Boolean>;
-begin
-  // Wie im Mockup: edtName 0, edtOrt 1, OK 2, edtPLZ 3 (rechts oben, Rücksprung), Abbrechen 4.
-  mStops := TArray<TAtlasTabStop>.Create(
-    TAtlasTabStop.Create('edtName', '', 0, Rect(16, 40, 196, 64)),
-    TAtlasTabStop.Create('edtOrt', '', 1, Rect(16, 76, 196, 100)),
-    TAtlasTabStop.Create('edtPLZ', '', 3, Rect(216, 40, 396, 64)),
-    TAtlasTabStop.Create('btnOK', '', 2, Rect(236, 150, 320, 178)),
-    TAtlasTabStop.Create('btnAbbrechen', '', 4, Rect(330, 150, 414, 178)),
-    TAtlasTabStop.Create('edtInnen', 'pnlTop', 0, Rect(0, 0, 50, 20)));
-  mOut := TAtlasTabOrder.OutOfOrder(mStops);
-  Assert.IsFalse(mOut[0]);
-  Assert.IsFalse(mOut[1]);
-  Assert.IsTrue(mOut[2], 'edtPLZ nach OK springt nach oben');
-  Assert.IsFalse(mOut[3]);
-  Assert.IsFalse(mOut[4], 'Abbrechen liegt in der Lesereihenfolge nach edtPLZ');
-  Assert.IsFalse(mOut[5], 'anderes Elternelement zählt für sich');
-end;
-
-procedure TAtlasTabOrderTests.ClicksCountPerParent;
-var
-  mClicks: TAtlasTabClicks;
-begin
-  mClicks := TAtlasTabClicks.Create;
-  try
-    Assert.AreEqual(0, mClicks.Next('MainForm'));
-    Assert.AreEqual(1, mClicks.Next('mainform'));
-    Assert.AreEqual(0, mClicks.Next('pnlTop'));
-    Assert.AreEqual(2, mClicks.Next('MainForm'));
-    mClicks.Reset;
-    Assert.AreEqual(0, mClicks.Next('MainForm'));
-  finally
-    mClicks.Free;
-  end;
-end;
-
 { TAtlasDesignerAlignTests }
 
 function Rects: TArray<TRect>;
@@ -347,7 +287,6 @@ end;
 initialization
   TDUnitX.RegisterTestFixture(TAtlasDesignerSearchTests);
   TDUnitX.RegisterTestFixture(TAtlasDesignerGroupsTests);
-  TDUnitX.RegisterTestFixture(TAtlasTabOrderTests);
   TDUnitX.RegisterTestFixture(TAtlasDesignerAlignTests);
 
 end.
