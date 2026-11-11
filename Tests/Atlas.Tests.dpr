@@ -98,6 +98,7 @@ uses
   Atlas.Common.Semantics.ExpressionTypes.RecordSizes.Tests in 'Common\Semantics\Atlas.Common.Semantics.ExpressionTypes.RecordSizes.Tests.pas',
   Atlas.Common.Semantics.ResolvedSignatures.Tests in 'Common\Semantics\Atlas.Common.Semantics.ResolvedSignatures.Tests.pas',
   Atlas.Common.Lsp.Reassigned.Tests in 'Common\Lsp\Atlas.Common.Lsp.Reassigned.Tests.pas',
+  Atlas.Common.Lsp.Commands.Tests in 'Common\Lsp\Atlas.Common.Lsp.Commands.Tests.pas',
   Atlas.Common.Lsp.ExpressionType.Tests in 'Common\Lsp\Atlas.Common.Lsp.ExpressionType.Tests.pas',
   Atlas.Common.Editing.MethodOrder.Tests in 'Common\Editing\Atlas.Common.Editing.MethodOrder.Tests.pas',
   Atlas.Common.Editing.TypeComments.Tests in 'Common\Editing\Atlas.Common.Editing.TypeComments.Tests.pas',
