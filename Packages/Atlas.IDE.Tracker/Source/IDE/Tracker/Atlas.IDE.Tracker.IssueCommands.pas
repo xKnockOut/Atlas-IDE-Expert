@@ -72,10 +72,10 @@ uses
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.IssueTip,
-  Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.Attach,
-  Atlas.IDE.Tracker.IssueLookups;
+  Atlas.IDE.Tracker.IssueLookups,
+  Atlas.IDE.Foundation.Files;
 
 { TAtlasIdeIssueCommands }
 
@@ -166,7 +166,7 @@ begin
     Exit;
   end;
   // Wie „Issue anzeigen …“: das aktive Projekt der IDE, sonst das des Bereichs.
-  mProject := TAtlasIdeTeamFile.ActiveProject;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
   if mProject = '' then
   begin
     mProject := FContext.CurrentProject;

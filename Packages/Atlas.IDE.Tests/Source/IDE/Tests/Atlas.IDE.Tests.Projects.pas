@@ -27,8 +27,6 @@ type
     class procedure Apply(const AFiles: TArray<string>; AChosen: Integer; const ASay: TAtlasTestsSayProc;
       const AThen: TAtlasTestsProjectProc); static;
   public
-    /// <summary>Zeilen einer Datei: offener Puffer, sonst die Platte.</summary>
-    class function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean; static;
     class function IsTestProject(const AProject: IOTAProject): Boolean; static;
     /// <summary>Offenes Testprojekt, das AFileName ist oder enthält; nil ohne.</summary>
     class function ProjectByFile(const AFileName: string): IOTAProject; static;
@@ -55,9 +53,8 @@ uses
   Atlas.UI.Tests.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
-  Atlas.Text.Lines;
+  Atlas.IDE.Foundation.Host;
 
 /// <summary>Je Datei ein Eintrag der Palette; Id ist der Index.</summary>
 function ProjectCommands(const AFiles: TArray<string>): TArray<TAtlasCommand>;
@@ -77,59 +74,14 @@ begin
   end;
 end;
 
-/// <summary>Fläche, über der die Palette erscheint: aktives Fenster, sonst Hauptfenster, sonst Arbeitsfläche.</summary>
-function PaletteArea: TRect;
-begin
-  if Screen.ActiveForm <> nil then
-  begin
-    Result := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Result := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Result := Screen.WorkAreaRect;
-  end;
-end;
-
 { TAtlasIdeTestProjects }
-
-class function TAtlasIdeTestProjects.ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
-var
-  mBuffer: IOTAEditBuffer;
-  mText: string;
-begin
-  ALines := nil;
-  mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
-  if mBuffer <> nil then
-  begin
-    mText := TAtlasEditorBuffer.Text(mBuffer);
-  end
-  else
-  begin
-    if not FileExists(AFileName) then
-    begin
-      Exit(False);
-    end;
-    try
-      mText := TAtlasTextFile.Load(AFileName).Text;
-    except
-      on Exception do
-        Exit(False);
-    end;
-  end;
-  ALines := TTextLines.SplitLines(mText);
-  Result := True;
-end;
 
 class function TAtlasIdeTestProjects.IsTestProject(const AProject: IOTAProject): Boolean;
 var
   mLines: TArray<string>;
 begin
   Result := (AProject <> nil) and (AProject.FileName <> '') and
-    ReadLines(ChangeFileExt(AProject.FileName, '.dpr'), mLines) and TAtlasTestRun.IsTestProgram(mLines);
+    TAtlasIdeFiles.ReadLines(ChangeFileExt(AProject.FileName, '.dpr'), mLines) and TAtlasTestRun.IsTestProgram(mLines);
 end;
 
 class function TAtlasIdeTestProjects.ProjectByFile(const AFileName: string): IOTAProject;
@@ -269,7 +221,7 @@ begin
           Apply(mFiles, mChosen, mSay, mThen);
         end);
     end;
-  mWindow.ShowOver(PaletteArea);
+  mWindow.ShowOver(TAtlasIdeHost.PopupArea);
 end;
 
 end.

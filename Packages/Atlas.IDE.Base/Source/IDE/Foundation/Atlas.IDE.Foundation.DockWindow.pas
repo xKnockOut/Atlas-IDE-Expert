@@ -69,6 +69,9 @@ type
     constructor Create(const ADock: INTACustomDockableForm; APersistent: Boolean); reintroduce;
     /// <summary>Abmelden und die Form freigeben, falls sie noch lebt.</summary>
     destructor Destroy; override;
+    /// <summary>Atlas-Symbol (#751) als Icon der Form von AHost (Fenstertitel, schwebend); nichts ohne Fenster
+    /// oder Form.</summary>
+    class procedure UpdateIcon(AHost: TAtlasIdeDockWindow); static;
     /// <summary>Aus INTACustomDockableForm.FrameCreated aufrufen: merkt Frame und Form.</summary>
     procedure FrameCreated(AFrame: TCustomFrame);
     /// <summary>Fenster zeigen, bei Bedarf (neu) anlegen; ACreated: neu angelegt. False ohne Frame.</summary>
@@ -95,13 +98,32 @@ uses
   Vcl.Themes,
   Vcl.ComCtrls,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Dock.Plan;
+  Atlas.Core.Dock.Plan,
+  Atlas.UI.Style.Symbol,
+  Atlas.IDE.Foundation.Symbol;
 
 type
   // Zugriff auf das geschützte Color von TCustomForm.
   TFormAccess = class(TCustomForm);
 
 { TAtlasIdeDockWindow }
+
+class procedure TAtlasIdeDockWindow.UpdateIcon(AHost: TAtlasIdeDockWindow);
+var
+  mIcon: TIcon;
+begin
+  if (AHost = nil) or (AHost.Form = nil) then
+  begin
+    Exit;
+  end;
+  mIcon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
+  try
+    // Icon ist erst in TForm öffentlich.
+    TForm(AHost.Form).Icon.Assign(mIcon);
+  finally
+    mIcon.Free;
+  end;
+end;
 
 constructor TAtlasIdeDockWindow.Create(const ADock: INTACustomDockableForm; APersistent: Boolean);
 var

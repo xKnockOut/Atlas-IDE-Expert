@@ -72,7 +72,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Settings.Transfer,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.TeamFile;
+  Atlas.IDE.Foundation.TeamFile,
+  Atlas.IDE.Foundation.Files;
 
 function ReadText(const AFileName: string; out AText: string): Boolean;
 begin
@@ -148,7 +149,7 @@ var
 begin
   AProject := '';
   ATeam := '';
-  mProject := TAtlasIdeTeamFile.ActiveProject;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
   if mProject = '' then
   begin
     Exit;

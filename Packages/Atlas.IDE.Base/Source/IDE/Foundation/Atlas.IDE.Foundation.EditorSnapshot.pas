@@ -30,6 +30,10 @@ type
     class procedure Invalidate(const AFileName: string); overload; static;
     /// <summary>Markiert alle Dateien als veraltet.</summary>
     class procedure Invalidate; overload; static;
+    /// <summary>Ersetzt in ABuffer (Text AText) ab Zeichen AStart AOldLength Zeichen durch AInsert, ein
+    /// Rückgängig-Schritt, und markiert die Datei als veraltet (eigener Schreibvorgang).</summary>
+    class procedure ReplaceText(const ABuffer: IOTAEditBuffer; const AText: string; AStart, AOldLength: Integer;
+      const AInsert: string); static;
     /// <summary>Meldet den Beobachter der Editorereignisse an.</summary>
     class procedure Install; static;
     /// <summary>Meldet ab und gibt die gemerkten Stände frei.</summary>
@@ -213,6 +217,22 @@ begin
     mEntry.State.Dirty := True;
     Entries[mKey] := mEntry;
   end;
+end;
+
+class procedure TAtlasEditorSnapshots.ReplaceText(const ABuffer: IOTAEditBuffer; const AText: string; AStart,
+  AOldLength: Integer; const AInsert: string);
+var
+  mWriter: IOTAEditWriter;
+begin
+  mWriter := ABuffer.CreateUndoableWriter;
+  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
+  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
+  if AInsert <> '' then
+  begin
+    mWriter.Insert(PAnsiChar(UTF8Encode(AInsert)));
+  end;
+  mWriter := nil;
+  Invalidate(ABuffer.FileName);
 end;
 
 class procedure TAtlasEditorSnapshots.Install;

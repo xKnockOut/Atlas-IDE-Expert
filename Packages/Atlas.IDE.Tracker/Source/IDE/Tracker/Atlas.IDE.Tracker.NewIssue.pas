@@ -84,10 +84,10 @@ uses
   Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.NewIssueDialog,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.NewIssuePlace,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Foundation.Files;
 
 const
   cVcsTimeoutMs = 2000;
@@ -449,7 +449,7 @@ begin
     Say(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueNoEditor));
     Exit;
   end;
-  mProject := TAtlasIdeTeamFile.ActiveProject;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
   WithHead(ExtractFileDir(mContext.FileName),
     procedure(ABranch, ACommit: string)
     var
@@ -485,7 +485,7 @@ begin
     Exit;
   end;
   mFindings := AFindings;
-  mProject := TAtlasIdeTeamFile.ActiveProject;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
   WithHead(ExtractFileDir(mProject),
     procedure(ABranch, ACommit: string)
     var
@@ -527,7 +527,7 @@ begin
   mTitle := ATitle;
   mDescription := ADescription;
   mFiles := AFiles;
-  mProject := TAtlasIdeTeamFile.ActiveProject;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
   TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     var
