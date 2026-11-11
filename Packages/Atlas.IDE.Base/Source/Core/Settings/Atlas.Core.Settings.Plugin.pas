@@ -541,6 +541,8 @@ type
     property QuickOpenLibrary: Boolean read FEditorNavigation.QuickOpenLibrary write FEditorNavigation.QuickOpenLibrary;
     property QuickOpenKey: Integer read FNavigationKeys.QuickOpenKey write FNavigationKeys.QuickOpenKey;
     property NavHistory: Boolean read FEditorNavigation.NavHistory write FEditorNavigation.NavHistory;
+    property MouseNavButtons: Boolean read FEditorNavigation.MouseNavButtons
+      write FEditorNavigation.MouseNavButtons;
     property NavBackKey: Integer read FNavigationKeys.NavBackKey write FNavigationKeys.NavBackKey;
     property NavForwardKey: Integer read FNavigationKeys.NavForwardKey write FNavigationKeys.NavForwardKey;
     property LastEditKey: Integer read FNavigationKeys.LastEditKey write FNavigationKeys.LastEditKey;
