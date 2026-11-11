@@ -185,6 +185,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Editor.LensAsk` | `Core/Editor/Atlas.Core.Editor.LensAsk.pas` | Ordner `Core/Editor`; ausstehende Frage einer Code Lens im Hintergrund, Antwort nur für die jüngste Frage |
 | `Atlas.Core.Editor.Metrics` | `Core/Editor/Atlas.Core.Editor.Metrics.pas` | Ordner `Core/Editor`; Antwort von `atlas.server.metrics` für Statusleiste, Metrikbericht und Metrik-Lens (#1756) |
 | `Atlas.Core.Editor.CrumbCard` | `Core/Editor/Atlas.Core.Editor.CrumbCard.pas` | Ordner `Core/Editor`; Kennzahlen-Karte der Brotkrumen aus `Core.Editor.Metrics` (Outline → Editor wäre ein Feature-Zyklus) |
+| `Atlas.Core.Editor.MouseButtons` | `Core/Editor/Atlas.Core.Editor.MouseButtons.pas` | Ordner `Core/Editor`; Maustasten Zurück/Vor → Richtung im Verlauf (#1889) |
 | `Atlas.Core.Editor.Minimap` | `Core/Editor/Atlas.Core.Editor.Minimap.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.MissingUnit` | `Core/Editor/Atlas.Core.Editor.MissingUnit.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.MultiCursor` | `Core/Editor/Atlas.Core.Editor.MultiCursor.pas` | Ordner `Core/Editor` |
@@ -264,6 +265,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Contracts.WelcomeTiles` | `Contracts/Atlas.IDE.Contracts.WelcomeTiles.pas` | Kacheln anderer Module auf der Willkommensseite, Board und Projekte der Seite (Tracker ↔ Willkommensseite), Vertrag zwischen Modulen, #1455 |
 | `Atlas.IDE.Contracts.VersionControl` | `Contracts/Atlas.IDE.Contracts.VersionControl.pas` | Vertrag zwischen Modulen: Dienst und Dialoge der Versionsverwaltung, Zugang TAtlasIdeVcs mit Null-Objekt ohne Modul (#1891) |
 | `Atlas.IDE.Contracts.LineChanges` | `Contracts/Atlas.IDE.Contracts.LineChanges.pas` | Vertrag Änderungsmarken und Zeilenhistorie (#1905) |
+| `Atlas.IDE.Contracts.MouseHistory` | `Contracts/Atlas.IDE.Contracts.MouseHistory.pas` | Vertrag Fenster mit eigenem Verlauf für die Maustasten Zurück/Vor (#1889) |
 | `Atlas.IDE.Contracts.Tests` | `Contracts/Atlas.IDE.Contracts.Tests.pas` | Testprojekte ausführen, Tests debuggen und finden, Ende eines Laufs; für andere Module, Vertrag zwischen Modulen, #1455 |
 | `Atlas.IDE.Contracts.DebugReport` | `Contracts/Atlas.IDE.Contracts.DebugReport.pas` | Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (Debugger → Tracker), Vertrag zwischen Modulen, #1455 |
 | `Atlas.IDE.Contracts.Rules` | `Contracts/Atlas.IDE.Contracts.Rules.pas` | Baseline aktualisieren (Prüfregeln → Willkommensseite) und Regel-Aktionen am Befund (Base → Prüfregeln, #1755), Vertrag zwischen Modulen, #1455 |
@@ -540,6 +542,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.MultiCursorState` | `IDE/Editor/Atlas.IDE.Editor.MultiCursorState.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.NamedRefactoring` | `IDE/Editor/Atlas.IDE.Editor.NamedRefactoring.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.NavHistory` | `IDE/Editor/Atlas.IDE.Editor.NavHistory.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.Editor.MouseButtons` | `IDE/Editor/Atlas.IDE.Editor.MouseButtons.pas` | Ordner `IDE/Editor`; Maustasten Zurück/Vor (#1889) |
 | `Atlas.IDE.Editor.NewLine` | `IDE/Editor/Atlas.IDE.Editor.NewLine.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.Overloads` | `IDE/Editor/Atlas.IDE.Editor.Overloads.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.OverviewRuler` | `IDE/Editor/Atlas.IDE.Editor.OverviewRuler.pas` | Ordner `IDE/Editor` |

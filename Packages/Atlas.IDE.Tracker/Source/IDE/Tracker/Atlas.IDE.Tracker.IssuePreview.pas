@@ -35,6 +35,7 @@
 interface
 
 uses
+  Winapi.Windows,
   Atlas.Core.CiBuild.Contract,
   System.SysUtils,
   System.Classes,
@@ -104,6 +105,9 @@ type
     FLinkWrites: TAtlasIdeIssueLinkWrites;
     FMedia: TAtlasIdeIssueMedia;
     FComments: TAtlasIdeIssueComments;
+    /// <summary>Anmeldung bei den Maustasten Zurück/Vor (#1889); -1 ohne.</summary>
+    FMouseHistory: Integer;
+    function MouseStep(AWindow: HWND; AForward: Boolean): Boolean;
     procedure CreateParts(const ACacheFolder: string);
     procedure CreateDevelopment;
     procedure Wire(AFrame: TAtlasIssueFrame);
@@ -160,6 +164,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Core.Editor.MouseButtons,
+  Atlas.IDE.Contracts.MouseHistory,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.IssueTip,
@@ -592,6 +598,7 @@ end;
 constructor TAtlasIdeIssuePreview.Create(const AHooks: TAtlasIssuePreviewHooks; const ACacheFolder: string);
 begin
   inherited Create;
+  FMouseHistory := -1;
   FHooks := AHooks;
   FHistory := TAtlasIssueHistory.Create;
   CreateParts(ACacheFolder);
@@ -721,6 +728,33 @@ begin
   // Früh anmelden: Die IDE speichert das Fenster im Desktop und legt es beim Laden selbst an (#879).
   TAtlasIdeIssueWindow.Prepare;
   FContext.Start;
+  // Zurück-/Vor-Taste der Maus über dem Fenster blättern in dessen Verlauf (#1889).
+  FMouseHistory := TAtlasMouseHistory.Register(
+    function(AWindow: HWND; ADirection: TAtlasNavDirection): Boolean
+    begin
+      Result := mOwner.MouseStep(AWindow, ADirection = TAtlasNavDirection.Forward);
+    end);
+end;
+
+function TAtlasIdeIssuePreview.MouseStep(AWindow: HWND; AForward: Boolean): Boolean;
+var
+  mFrame: TAtlasIssueFrame;
+begin
+  mFrame := FContext.Frame;
+  Result := FContext.Started and (mFrame <> nil) and mFrame.HandleAllocated and
+    ((AWindow = mFrame.Handle) or IsChild(mFrame.Handle, AWindow));
+  if not Result then
+  begin
+    Exit;
+  end;
+  if AForward then
+  begin
+    GoForward;
+  end
+  else
+  begin
+    GoBack;
+  end;
 end;
 
 function TAtlasIdeIssuePreview.RecentIssues(const ATarget: TAtlasTrackerTarget): TArray<TAtlasTrackerIssue>;
@@ -734,6 +768,8 @@ begin
   begin
     Exit;
   end;
+  TAtlasMouseHistory.Unregister(FMouseHistory);
+  FMouseHistory := -1;
   FContext.Stop;
   CancelLoad;
   FMedia.Cancel;

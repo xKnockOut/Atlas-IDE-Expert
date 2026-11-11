@@ -8,7 +8,7 @@ Back to the [README](../../../README.md)
 - Switch between declaration and implementation (Ctrl+Shift+↑/↓)
 - **Jump to the counterpart** (begin ⇄ end, try → finally → end, `{$IFDEF}` → `{$ENDIF}`)
 - **Peek definition** (Alt+F12) below the line without switching files
-- **Navigation history** across files
+- **Navigation history** across files; the mouse back and forward buttons step through it like Alt+←/Alt+→ in the code editor and the form designer, and over the issue preview through its own history (`navigation.mouseButtons`)
 
 ## Bars above and below the editor
 

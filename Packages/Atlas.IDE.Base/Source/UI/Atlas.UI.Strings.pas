@@ -736,7 +736,9 @@ type
     BreadcrumbsMetricsParameters, BreadcrumbsMetricsMembers, BreadcrumbsMetricsInheritance, BreadcrumbsMetricsLimit,
     BreadcrumbsMetricsMissing,
     // Wechsel zwischen den uses-Klauseln (#1760).
-    GotoUsesToward);
+    GotoUsesToward,
+    // Zurück-/Vor-Taste der Maus (#1889).
+    SettingsMouseNavButtons);
 
   TAtlasStrings = class
   private
@@ -2452,7 +2454,8 @@ const
      'Vererbungstiefe',
      '%s (Grenze %d)',
      'Kennzahlen noch nicht verfügbar',
-     'Zur uses-Klausel (%s)'),
+     'Zur uses-Klausel (%s)',
+     'Zurück-/Vor-Taste der Maus blättern im Navigationsverlauf'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -4084,7 +4087,8 @@ const
      'Inheritance depth',
      '%s (limit %d)',
      'Metrics not available yet',
-     'Go to uses clause (%s)'));
+     'Go to uses clause (%s)',
+     'Mouse back/forward buttons step through the navigation history'));
 
 { TAtlasStrings }
 
