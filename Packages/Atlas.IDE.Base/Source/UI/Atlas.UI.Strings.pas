@@ -747,7 +747,9 @@ type
     // Wechsel zwischen den uses-Klauseln (#1760).
     GotoUsesToward,
     // Auswahlsätze im Designer: Taste in der Übersicht (#739).
-    DesignerSelectionSetsSaveCommand);
+    DesignerSelectionSetsSaveCommand,
+    // Zurück-/Vor-Taste der Maus (#1889).
+    SettingsMouseNavButtons);
 
   TAtlasStrings = class
   private
@@ -2477,7 +2479,8 @@ const
      '%s (Grenze %d)',
      'Kennzahlen noch nicht verfügbar',
      'Zur uses-Klausel (%s)',
-     'Designer: Auswahl speichern …'),
+     'Designer: Auswahl speichern …',
+     'Zurück-/Vor-Taste der Maus blättern im Navigationsverlauf'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -4123,7 +4126,8 @@ const
      '%s (limit %d)',
      'Metrics not available yet',
      'Go to uses clause (%s)',
-     'Designer: Save selection …'));
+     'Designer: Save selection …',
+     'Mouse back/forward buttons step through the navigation history'));
 
 { TAtlasStrings }
 
