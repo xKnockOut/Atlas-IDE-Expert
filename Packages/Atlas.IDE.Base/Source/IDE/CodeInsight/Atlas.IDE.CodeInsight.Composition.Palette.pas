@@ -32,6 +32,7 @@ uses
   Atlas.UI.Strings,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Settings.PaletteSearch,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.IDE.Foundation.Settings,
@@ -270,7 +271,12 @@ begin
   RegisterPartCommands;
   // Zusatzquelle der Palette (#1270), etwa Issues aus „Meine Issues“: erst beim Öffnen gefragt, von einem
   // laufenden Modul (#1455).
-  PaletteInstance.SourceOf := PaletteSourceOfModules;
+  // Mit „@“ (#1884) zeigt die Palette Einstellungen statt der Quelle der Module.
+  PaletteInstance.SourceOf :=
+    function: IAtlasPaletteSource
+    begin
+      Result := TAtlasIdeSettingsPalette.Sources(PaletteSourceOfModules);
+    end;
 end;
 
 procedure StopPalette;

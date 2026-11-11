@@ -186,6 +186,11 @@ type
     /// <summary>Geänderte Werte auf der Optionsseite mit einem Punkt vor der Beschriftung markieren (#723,
     /// settings.markModified).</summary>
     SettingsMarkModified: Boolean;
+    /// <summary>Suchfeld über dem Baum der Optionsseite und Suche auf der Übersicht „Atlas“ (#1884,
+    /// settings.search).</summary>
+    SettingsSearch: Boolean;
+    /// <summary>Präfix @ in der Befehlspalette listet Einstellungen (#1884, palette.settingsPrefix).</summary>
+    PaletteSettingsPrefix: Boolean;
     /// <summary>Vor jedem Import und vor „Alles zurücksetzen“ den aktuellen Stand als Datei sichern (#723,
     /// settings.backupBeforeImport; %APPDATA%\Atlas\Backups).</summary>
     SettingsBackupBeforeImport: Boolean;
@@ -329,6 +334,8 @@ begin
   Result.NotificationsMaxEntries := 200;
   Result.SettingsExportImport := True;
   Result.SettingsMarkModified := True;
+  Result.SettingsSearch := True;
+  Result.PaletteSettingsPrefix := True;
   Result.SettingsBackupBeforeImport := True;
   Result.SettingsExportSecrets := 'omit';
 end;
@@ -398,6 +405,8 @@ begin
   AIo.Number('NotificationsMaxEntries', NotificationsMaxEntries);
   AIo.Flag('SettingsExportImport', SettingsExportImport);
   AIo.Flag('SettingsMarkModified', SettingsMarkModified);
+  AIo.Flag('SettingsSearch', SettingsSearch);
+  AIo.Flag('PaletteSettingsPrefix', PaletteSettingsPrefix);
   AIo.Flag('SettingsBackupBeforeImport', SettingsBackupBeforeImport);
   AIo.Text('SettingsExportSecrets', SettingsExportSecrets);
 end;

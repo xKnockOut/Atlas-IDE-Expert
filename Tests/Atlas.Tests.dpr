@@ -1206,6 +1206,9 @@ uses
   Atlas.Core.Settings.History in '..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.History.pas',
   Atlas.Core.Settings.NodeScope in '..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.NodeScope.pas',
   Atlas.Core.Settings.NodeScope.Tests in 'IDE.Expert\Atlas.Core.Settings.NodeScope.Tests.pas',
+  Atlas.Core.Settings.Search in '..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.Search.pas',
+  Atlas.Core.Settings.Search.Tests in 'IDE.Expert\Atlas.Core.Settings.Search.Tests.pas',
+  Atlas.Core.Commands.SettingsPalette in '..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.SettingsPalette.pas',
   Atlas.Core.Settings.Renames in '..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.Renames.pas',
   Atlas.Core.Settings.QueryMigration in '..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.QueryMigration.pas',
   Atlas.Core.Settings.TeamFile in '..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.TeamFile.pas',
@@ -2014,6 +2017,7 @@ uses
   Atlas.UI.Rules.SettingsSection.Tests in 'IDE.Expert\Atlas.UI.Rules.SettingsSection.Tests.pas',
   Atlas.UI.Settings.Section.Tests in 'IDE.Expert\Atlas.UI.Settings.Section.Tests.pas',
   Atlas.UI.Settings.Overview in '..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Overview.pas' {AtlasSettingsOverview: TFrame},
+  Atlas.UI.Settings.Page.Search in '..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Search.pas',
   Atlas.UI.Settings.Overview.Tests in 'IDE.Expert\Atlas.UI.Settings.Overview.Tests.pas';
 
 // Atlas-Symbol (#751) für die UI-Tests.

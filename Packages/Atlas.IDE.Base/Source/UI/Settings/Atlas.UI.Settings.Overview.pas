@@ -5,6 +5,9 @@
 // von Atlas schaltet Base › Allgemein, jedes Modul seinen Modulschalter. Ein Treffer nennt den Knoten, in dem die Einstellung
 // steht (Module › <Package> › <Bereich>). Die Einstellungen selbst stehen in den Knoten unter „Module“.
 // Reine VCL; den Namen eines Moduls zu seinem Schalter liefert die IDE-Schicht (OnModuleName).
+// Suche (#1884, settings.search): Rangfolge, Synonyme, Tippfehler und Zustand je Treffer aus
+// Atlas.Core.Settings.Search; nur installierte Packages (OnInstalled), Zustand nach OnSettings. Enter im Feld öffnet
+// den ersten Treffer.
 
 interface
 
@@ -15,8 +18,10 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Forms,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Catalog,
-  Atlas.Core.Settings.Groups;
+  Atlas.Core.Settings.Groups,
+  Atlas.Core.Settings.Search;
 
 type
   TAtlasSettingsOverview = class(TFrame)
@@ -32,6 +37,11 @@ type
     FOnOpen: TProc<string, string>;
     FHitNames: TArray<string>;
     FHitModules: TArray<string>;
+    FSearchCaption: TLabel;
+    FOnInstalled: TAtlasModuleInstalled;
+    FOnSettings: TFunc<TAtlasPluginSettings>;
+    procedure SearchKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    function HitText(const AHit: TAtlasSettingHit): string;
     procedure HitClick(Sender: TObject);
     procedure PackagesClick(Sender: TObject);
     class procedure MakeLink(ALabel: TLabel); static;
@@ -52,7 +62,13 @@ type
     /// <summary>Zum Testen: Klick auf den Treffer AIndex bzw. auf die Zeile der Packages.</summary>
     procedure ClickHit(AIndex: Integer);
     procedure ClickPackages;
+    /// <summary>Suche zeigen bzw. verbergen (settings.search, #1884).</summary>
+    procedure SetSearchAvailable(AValue: Boolean);
     property OnModuleName: TFunc<string, string> read FOnModuleName write FOnModuleName;
+    /// <summary>Ist das Package mit diesem Modulschalter installiert? nil = alle.</summary>
+    property OnInstalled: TAtlasModuleInstalled read FOnInstalled write FOnInstalled;
+    /// <summary>Gespeicherte Werte für den Zustand der Treffer; nil = ohne Zustand.</summary>
+    property OnSettings: TFunc<TAtlasPluginSettings> read FOnSettings write FOnSettings;
     /// <summary>Klick: Einstellung (Name) und Modulschalter ihres Knotens; Name '' = Knoten „Module“.</summary>
     property OnOpen: TProc<string, string> read FOnOpen write FOnOpen;
   end;
@@ -62,9 +78,9 @@ implementation
 {$R *.dfm}
 
 uses
+  Winapi.Windows,
   System.UITypes,
   Vcl.Graphics,
-  Atlas.Core.Settings.NodeScope,
   Atlas.UI.Strings;
 
 constructor TAtlasSettingsOverview.Create(AOwner: TComponent);
@@ -85,11 +101,13 @@ begin
   MakeLink(FPackages);
   FPackages.OnClick := PackagesClick;
   AddRow(mTop, FPackages, 30);
-  mLabel := TLabel.Create(Self);
-  mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsAtlasSearch);
-  AddRow(mTop, mLabel, 20);
+  FSearchCaption := TLabel.Create(Self);
+  FSearchCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsAtlasSearch);
+  AddRow(mTop, FSearchCaption, 20);
   FSearch := TEdit.Create(Self);
+  FSearch.TextHint := TAtlasStrings.Text(TAtlasTextId.SettingsSearchPrompt);
   FSearch.OnChange := SearchChange;
+  FSearch.OnKeyDown := SearchKeyDown;
   AddRow(mTop, FSearch, 30);
   FHits := TPanel.Create(Self);
   FHits.BevelOuter := bvNone;
@@ -160,7 +178,12 @@ begin
   FHitNames := nil;
   FHitModules := nil;
   mHits := TAtlasSettingsSearch.Find(FCatalog, FGroups, FSearch.Text, TAtlasStrings.Language = TAtlasLanguage.English,
-    cMaxHits);
+    cMaxHits, TAtlasSettingsSearchHooks.Create(FOnInstalled, nil));
+  if Assigned(FOnSettings) then
+  begin
+    TAtlasSettingsSearch.Annotate(FCatalog, FGroups, FOnSettings(), mHits,
+      TAtlasStrings.Language = TAtlasLanguage.English);
+  end;
   mTop := 0;
   for mHit in mHits do
   begin
@@ -169,8 +192,7 @@ begin
     mLabel.Left := 0;
     mLabel.Top := mTop;
     mLabel.ShowAccelChar := False;
-    mLabel.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsAtlasHit,
-      [mHit.Caption, TAtlasStrings.Text(TAtlasTextId.SettingsModulesNode), ModuleName(mHit.Module), mHit.AreaCaption]);
+    mLabel.Caption := HitText(mHit);
     mLabel.Tag := Length(FHitNames);
     MakeLink(mLabel);
     mLabel.OnClick := HitClick;
@@ -187,6 +209,36 @@ begin
     mLabel.Font.Style := [fsItalic];
     mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsAtlasNoHits);
   end;
+end;
+
+function TAtlasSettingsOverview.HitText(const AHit: TAtlasSettingHit): string;
+var
+  mState: string;
+begin
+  Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsAtlasHit,
+    [AHit.Caption, TAtlasStrings.Text(TAtlasTextId.SettingsModulesNode), ModuleName(AHit.Module), AHit.Path]);
+  mState := TAtlasSettingsSearch.StateText(AHit);
+  if mState <> '' then
+  begin
+    Result := Result + '  ·  ' + mState;
+  end;
+end;
+
+procedure TAtlasSettingsOverview.SearchKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  // Enter: erster Treffer (#1884).
+  if (Key = VK_RETURN) and (Length(FHitNames) > 0) then
+  begin
+    ClickHit(0);
+    Key := 0;
+  end;
+end;
+
+procedure TAtlasSettingsOverview.SetSearchAvailable(AValue: Boolean);
+begin
+  FSearchCaption.Visible := AValue;
+  FSearch.Visible := AValue;
+  FHits.Visible := AValue;
 end;
 
 class procedure TAtlasSettingsOverview.MakeLink(ALabel: TLabel);
