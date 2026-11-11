@@ -122,6 +122,7 @@ begin
     try
       mEntry.Handler();
     except
+      // lsp-ignore: catch-all-without-raise -- ein Abonnent hält die übrigen nicht auf; Meldung geht an den Aufrufer
       on E: Exception do
         Result := Result + [E.ClassName + ': ' + E.Message];
     end;
