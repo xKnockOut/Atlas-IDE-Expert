@@ -22,14 +22,15 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls,
+  Atlas.UI.Foundation.Dialog;
 
 type
 {$SCOPEDENUMS ON}
   TAtlasSafeNoticeKind = (Ask, Safe);
 {$SCOPEDENUMS OFF}
 
-  TAtlasSafeModeNotice = class(TForm)
+  TAtlasSafeModeNotice = class(TAtlasDialog)
   private type
     /// <summary>Steuerelemente des Fensters.</summary>
     TParts = record
@@ -76,7 +77,7 @@ type
     procedure BugClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     /// <summary>Höhe nach dem tatsächlichen Umbruch von Text und Knöpfen (erst mit Fenster bekannt).</summary>
-    procedure FitHeight;
+    procedure FitNoticeHeight;
   public
     /// <summary>ARestore: Beschriftung von „Einstellungen auf den Stand vor … zurücksetzen“; '' blendet den Knopf
     /// aus (nur im abgesicherten Fenster). ADetails: Zeilen für „Details“.</summary>
@@ -127,15 +128,12 @@ const
 constructor TAtlasSafeModeNotice.CreateNotice(AOwner: TComponent; AKind: TAtlasSafeNoticeKind; const AText,
   ASuggestion, ARestore: string; const ADetails: TArray<string>);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', cNoticeWidth);
   FKind := AKind;
   Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeTitle);
   BorderStyle := bsToolWindow;
   BorderIcons := [biSystemMenu];
   Position := poDesigned;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cNoticeWidth);
   OnClose := FormClose;
   CreateTexts(AText, ASuggestion);
   CreateButtons(ARestore, Length(ADetails) > 0);
@@ -254,7 +252,7 @@ begin
   Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
 end;
 
-procedure TAtlasSafeModeNotice.FitHeight;
+procedure TAtlasSafeModeNotice.FitNoticeHeight;
 var
   mIndex, mBottom, mExtra: Integer;
   mControl: TControl;
@@ -291,14 +289,14 @@ end;
 
 procedure TAtlasSafeModeNotice.ShowIn(const AArea: TRect);
 begin
-  FitHeight;
+  FitNoticeHeight;
   Left := AArea.Right - Width - ScaleValue(cGap);
   Top := AArea.Bottom - Height - ScaleValue(cGap);
   // Nicht modal: Die IDE startet weiter, während der Hinweis offen ist.
   Show;
   // Beim Zeigen kann das Fenster auf die Skalierung des Bildschirms umgerechnet werden: neu messen,
   // unten bleibt unten.
-  FitHeight;
+  FitNoticeHeight;
   Top := AArea.Bottom - Height - ScaleValue(cGap);
 end;
 
@@ -384,7 +382,7 @@ begin
   FParts.BugButton.Visible := Assigned(FHandlers.OnBugReport);
   FParts.ExportButton.Visible := Assigned(FHandlers.OnExportLog);
   FParts.DetailsPanel.Visible := not FParts.DetailsPanel.Visible;
-  FitHeight;
+  FitNoticeHeight;
   // Unten bleibt unten: das Fenster wächst nach oben.
   if Visible then
   begin

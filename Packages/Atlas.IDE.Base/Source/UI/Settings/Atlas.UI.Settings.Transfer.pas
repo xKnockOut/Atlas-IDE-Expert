@@ -23,13 +23,14 @@ uses
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Settings.Catalog,
-  Atlas.Core.Settings.Transfer;
+  Atlas.Core.Settings.Transfer,
+  Atlas.UI.Foundation.Dialog;
 
 type
   TAtlasImportPreviewFunc = reference to function(AMode: TAtlasImportMode;
     const AAreas: TArray<string>): TAtlasImportPreview;
 
-  TAtlasExportDialog = class(TForm)
+  TAtlasExportDialog = class(TAtlasDialog)
   private
     FAreas: TArray<TCheckBox>;
     FAreaIds: TArray<string>;
@@ -48,7 +49,7 @@ type
     property Secrets: TRadioGroup read FSecrets;
   end;
 
-  TAtlasImportDialog = class(TForm)
+  TAtlasImportDialog = class(TAtlasDialog)
   private
     FCatalog: TAtlasSettingsCatalog;
     FPreview: TAtlasImportPreview;
@@ -87,7 +88,7 @@ type
     property ApplyButton: TButton read FApply;
   end;
 
-  TAtlasProfileDialog = class(TForm)
+  TAtlasProfileDialog = class(TAtlasDialog)
   private
     FList: TListBox;
     FDescription: TLabel;
@@ -152,16 +153,6 @@ begin
   Result.BevelOuter := bvNone;
   Result.AlignWithMargins := True;
   Result.Margins.SetBounds(cGap, cGap, cGap, cGap);
-end;
-
-procedure SetupForm(AForm: TForm; const ACaption: string; AWidth: Integer);
-begin
-  AForm.Caption := ACaption;
-  AForm.BorderStyle := bsDialog;
-  AForm.Position := poMainFormCenter;
-  AForm.Font.Name := 'Segoe UI';
-  AForm.Font.Size := 9;
-  AForm.ClientWidth := AForm.ScaleValue(AWidth);
 end;
 
 function HasArea(const AAreas: TArray<string>; const AArea: string): Boolean;
@@ -314,8 +305,7 @@ constructor TAtlasExportDialog.CreateDialog(AOwner: TComponent; ACatalog: TAtlas
 var
   mTitle: TLabel;
 begin
-  inherited CreateNew(AOwner);
-  SetupForm(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportTitle), cExportWidth);
+  inherited CreateDialog(AOwner, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportTitle), cExportWidth);
   NewDialogButtons(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportSave), FSave, FCancel);
   NewInfoLabel(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportInfo));
   mTitle := NewTopLabel(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportAreas), cAreasTop);
@@ -394,12 +384,11 @@ constructor TAtlasImportDialog.CreateDialog(AOwner: TComponent; ACatalog: TAtlas
 var
   mButtons: TFlowPanel;
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner,
+    TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsImportTitle, [ExtractFileName(AFileName)]), cImportWidth);
   FCatalog := ACatalog;
   FPreview := APreview;
   FOnPreview := AOnPreview;
-  SetupForm(Self, TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsImportTitle, [ExtractFileName(AFileName)]),
-    cImportWidth);
   mButtons := NewDialogButtons(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportApply), FApply,
     FCancel);
   FCount := TLabel.Create(Self);
@@ -661,8 +650,7 @@ constructor TAtlasProfileDialog.CreateDialog(AOwner: TComponent; const ANames, A
 var
   mButtons: TFlowPanel;
 begin
-  inherited CreateNew(AOwner);
-  SetupForm(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProfileTitle), cProfileWidth);
+  inherited CreateDialog(AOwner, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProfileTitle), cProfileWidth);
   FDescriptions := ADescriptions;
   mButtons := NewButtons(Self);
   FLoad := NewButton(Self, mButtons, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportButton));

@@ -29,7 +29,8 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Package;
+  Atlas.Core.Diagnostics.Package,
+  Atlas.UI.Foundation.Dialog;
 
 type
   TAtlasReportActions = record
@@ -45,7 +46,7 @@ type
     ShowText: TProc<string, string>;
   end;
 
-  TAtlasReportDialog = class(TForm)
+  TAtlasReportDialog = class(TAtlasDialog)
   public const
     cGap = 8;
   private type
@@ -222,7 +223,7 @@ end;
 constructor TAtlasReportDialog.CreateDialog(AOwner: TComponent; const AInput: TAtlasPackageInput; const AFolder,
   AReportUrl: string; const AActions: TAtlasReportActions);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', 0);
   FInput := AInput;
   FActions := AActions;
   FFolder := AFolder;
@@ -230,7 +231,6 @@ begin
   FLastDataAvailable := (AInput.LastDataFile <> '') and FileExists(AInput.LastDataFile);
   Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportTitle);
   BorderStyle := bsSizeable;
-  Position := poMainFormCenter;
   Width := ScaleValue(760);
   Height := ScaleValue(660);
   CreateHead;
